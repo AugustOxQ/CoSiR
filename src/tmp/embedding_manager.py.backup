@@ -13,7 +13,6 @@ from typing import Dict, List, Optional, Any, Union, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from tqdm.auto import tqdm
 import numpy as np
 
 import pandas as pd
@@ -22,217 +21,6 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
-
-# Try to import psutil for memory monitoring
-try:
-    import psutil
-
-    HAS_PSUTIL = True
-except ImportError:
-    HAS_PSUTIL = False
-
-
-# ==================== Multi-Tier Cache System (from FeatureManager) ====================
-
-
-class MultiTierCache:
-    """LRU cache with memory pressure awareness - same as FeatureManager"""
-
-    def __init__(
-        self,
-        l1_size_mb: int = 256,  # Hot cache in RAM
-        l2_size_mb: int = 512,  # Warm cache in RAM
-        l3_path: Optional[Path] = None,  # Cold cache on disk
-    ):
-        self.l1_cache = OrderedDict()  # Hot - immediate access
-        self.l2_cache = OrderedDict()  # Warm - recent access
-        self.l3_path = l3_path  # Cold - disk cache
-
-        if self.l3_path:
-            self.l3_path = Path(self.l3_path)
-            self.l3_path.mkdir(parents=True, exist_ok=True)
-
-        self.l1_max_size = l1_size_mb * 1024 * 1024
-        self.l2_max_size = l2_size_mb * 1024 * 1024
-        self.current_l1_size = 0
-        self.current_l2_size = 0
-
-        self.lock = threading.RLock()
-        self.stats = {"hits": 0, "misses": 0, "evictions": 0}
-
-    def _calculate_size(self, value: Dict[str, Any]) -> int:
-        """Calculate memory size of cached embeddings"""
-        total_size = 0
-        for data in value.values():
-            if isinstance(data, torch.Tensor):
-                total_size += data.numel() * data.element_size()
-            elif isinstance(data, list):
-                # Rough estimate for list data
-                total_size += len(data) * 100  # approximate size per item
-        return total_size
-
-    def get(self, key: str) -> Optional[Dict[str, torch.Tensor]]:
-        """Get from cache with automatic promotion"""
-        with self.lock:
-            # Check L1 (hot cache)
-            if key in self.l1_cache:
-                self.stats["hits"] += 1
-                # Move to end (most recently used)
-                value = self.l1_cache.pop(key)
-                self.l1_cache[key] = value
-                return value
-
-            # Check L2 (warm cache)
-            if key in self.l2_cache:
-                self.stats["hits"] += 1
-                value = self.l2_cache.pop(key)
-                # Promote to L1
-                self._put_l1(key, value)
-                return value
-
-            # Check L3 (disk cache)
-            if self.l3_path and self._exists_l3(key):
-                self.stats["hits"] += 1
-                value = self._load_l3(key)
-                self._put_l1(key, value)
-                return value
-
-            self.stats["misses"] += 1
-            return None
-
-    def put(self, key: str, value: Dict[str, torch.Tensor]) -> None:
-        """Put into cache with size management"""
-        with self.lock:
-            # Always put in L1 first
-            self._put_l1(key, value)
-
-    def _put_l1(self, key: str, value: Dict[str, torch.Tensor]) -> None:
-        """Put in L1 cache with eviction"""
-        value_size = self._calculate_size(value)
-
-        # Remove if already exists
-        if key in self.l1_cache:
-            old_value = self.l1_cache.pop(key)
-            self.current_l1_size -= self._calculate_size(old_value)
-
-        # Evict from L1 to L2 if needed
-        while (
-            self.current_l1_size + value_size > self.l1_max_size
-            and len(self.l1_cache) > 0
-        ):
-            old_key, old_value = self.l1_cache.popitem(last=False)
-            old_size = self._calculate_size(old_value)
-            self.current_l1_size -= old_size
-
-            # Move to L2
-            self._put_l2(old_key, old_value)
-            self.stats["evictions"] += 1
-
-        self.l1_cache[key] = value
-        self.current_l1_size += value_size
-
-    def _put_l2(self, key: str, value: Dict[str, torch.Tensor]) -> None:
-        """Put in L2 cache with eviction to L3"""
-        value_size = self._calculate_size(value)
-
-        # Remove if already exists
-        if key in self.l2_cache:
-            old_value = self.l2_cache.pop(key)
-            self.current_l2_size -= self._calculate_size(old_value)
-
-        # Evict from L2 to L3 if needed
-        while (
-            self.current_l2_size + value_size > self.l2_max_size
-            and len(self.l2_cache) > 0
-        ):
-            old_key, old_value = self.l2_cache.popitem(last=False)
-            old_size = self._calculate_size(old_value)
-            self.current_l2_size -= old_size
-
-            # Move to L3 if available
-            if self.l3_path:
-                self._save_l3(old_key, old_value)
-
-        self.l2_cache[key] = value
-        self.current_l2_size += value_size
-
-    def _exists_l3(self, key: str) -> bool:
-        """Check if key exists in L3 cache"""
-        if not self.l3_path:
-            return False
-        cache_file = self.l3_path / f"{key}.pt"
-        return cache_file.exists()
-
-    def _load_l3(self, key: str) -> Dict[str, torch.Tensor]:
-        """Load from L3 disk cache"""
-        cache_file = self.l3_path / f"{key}.pt"
-        return torch.load(cache_file, map_location="cpu")
-
-    def _save_l3(self, key: str, value: Dict[str, torch.Tensor]) -> None:
-        """Save to L3 disk cache"""
-        cache_file = self.l3_path / f"{key}.pt"
-        torch.save(value, cache_file)
-
-    def _memory_pressure_check(self) -> bool:
-        """Check if system is under memory pressure"""
-        if not HAS_PSUTIL:
-            return False  # Assume no memory pressure if psutil not available
-        memory = psutil.virtual_memory()
-        return memory.percent > 85.0  # High memory usage
-
-    def adaptive_eviction(self) -> None:
-        """Adaptive eviction based on memory pressure"""
-        if self._memory_pressure_check():
-            # Aggressive eviction under memory pressure
-            self._evict_percentage(0.3)  # Evict 30%
-
-    def _evict_percentage(self, percentage: float) -> None:
-        """Evict a percentage of cached items"""
-        with self.lock:
-            # Evict from L1
-            l1_to_evict = int(len(self.l1_cache) * percentage)
-            for _ in range(l1_to_evict):
-                if self.l1_cache:
-                    key, value = self.l1_cache.popitem(last=False)
-                    self.current_l1_size -= self._calculate_size(value)
-                    self._put_l2(key, value)
-
-            # Evict from L2
-            l2_to_evict = int(len(self.l2_cache) * percentage)
-            for _ in range(l2_to_evict):
-                if self.l2_cache:
-                    key, value = self.l2_cache.popitem(last=False)
-                    self.current_l2_size -= self._calculate_size(value)
-                    if self.l3_path:
-                        self._save_l3(key, value)
-
-    def clear_cache(self) -> None:
-        """Clear all cache tiers"""
-        with self.lock:
-            self.l1_cache.clear()
-            self.l2_cache.clear()
-            self.current_l1_size = 0
-            self.current_l2_size = 0
-            self.stats = {"hits": 0, "misses": 0, "evictions": 0}
-
-    def get_cache_info(self) -> Dict[str, Any]:
-        """Get cache statistics"""
-        with self.lock:
-            return {
-                "l1_items": len(self.l1_cache),
-                "l1_size_mb": self.current_l1_size / (1024 * 1024),
-                "l1_max_mb": self.l1_max_size / (1024 * 1024),
-                "l2_items": len(self.l2_cache),
-                "l2_size_mb": self.current_l2_size / (1024 * 1024),
-                "l2_max_mb": self.l2_max_size / (1024 * 1024),
-                "l3_enabled": self.l3_path is not None,
-                "stats": self.stats.copy(),
-                "hit_rate": (
-                    self.stats["hits"] / (self.stats["hits"] + self.stats["misses"])
-                    if (self.stats["hits"] + self.stats["misses"]) > 0
-                    else 0.0
-                ),
-            }
 
 
 # ==================== Trainable Embedding Management ====================
@@ -252,11 +40,6 @@ class TrainableEmbeddingManager:
         chunk_size: Optional[int] = None,
         feature_manager: Optional[object] = None,
         auto_sync: bool = True,
-        # New caching parameters
-        cache_l1_size_mb: int = 256,
-        cache_l2_size_mb: int = 512,
-        enable_l3_cache: bool = True,
-        sync_batch_size: int = 10,  # Batch sync operations
     ):
         """
         Initialize trainable embeddings with disk persistence
@@ -277,8 +60,6 @@ class TrainableEmbeddingManager:
         self.device = device
         self.storage_mode = storage_mode
         self.auto_sync = auto_sync
-        self.sync_batch_size = sync_batch_size
-        self.sync_counter = 0
 
         # Setup disk storage
         if embeddings_dir is None:
@@ -289,14 +70,6 @@ class TrainableEmbeddingManager:
             self.embeddings_dir = Path(embeddings_dir)
             self.embeddings_dir.mkdir(parents=True, exist_ok=True)
 
-        # Initialize multi-tier cache system (like FeatureManager)
-        l3_cache_dir = self.embeddings_dir / "cache" if enable_l3_cache else None
-        self.cache = MultiTierCache(
-            l1_size_mb=cache_l1_size_mb,
-            l2_size_mb=cache_l2_size_mb,
-            l3_path=l3_cache_dir,
-        )
-
         # Determine chunk structure
         self.chunk_size, self.chunk_mapping = self._determine_chunk_structure(
             chunk_size, feature_manager
@@ -306,7 +79,7 @@ class TrainableEmbeddingManager:
         self.id_to_chunk_index = {}
         self._build_chunk_mapping()
 
-        # Storage mode setup with improved caching
+        # Storage mode setup
         if storage_mode == "memory":
             # Memory mode: Keep all embeddings in memory + disk sync
             init_tensor = self._initialize_embeddings(initialization_strategy).to(
@@ -318,12 +91,11 @@ class TrainableEmbeddingManager:
             if self.auto_sync:
                 self._save_all_chunks_to_disk()
         elif storage_mode == "disk":
-            # Disk-only mode: Use intelligent caching instead of simple loaded_chunks
+            # Disk-only mode: No memory storage, load per batch
             self.embeddings = None
             self.id_to_index = None
-            # Remove old simple caching - replaced by MultiTierCache
+            self.loaded_chunks = {}  # Cache for currently loaded chunks
             self.dirty_chunks = set()  # Track which chunks need saving
-            self.pending_updates = {}  # Batch updates before sync
 
             # Check if existing chunks should be loaded or new ones initialized
             existing_chunks = list(self.embeddings_dir.glob("embeddings_chunk_*.pt"))
@@ -343,22 +115,6 @@ class TrainableEmbeddingManager:
 
         # Training state
         self.frozen_indices = set()
-
-        # Performance monitoring
-        self.performance_stats = {
-            "cache_hits": 0,
-            "cache_misses": 0,
-            "disk_loads": 0,
-            "sync_operations": 0,
-        }
-
-        # Add new cache management methods
-        print(f"TrainableEmbeddingManager initialized with intelligent caching:")
-        print(f"  - L1 cache: {cache_l1_size_mb}MB")
-        print(f"  - L2 cache: {cache_l2_size_mb}MB")
-        print(f"  - L3 cache: {'enabled' if enable_l3_cache else 'disabled'}")
-        print(f"  - Sync batch size: {sync_batch_size}")
-        print(f"  - Storage mode: {storage_mode}")
 
     def _initialize_embeddings(self, strategy: str) -> torch.Tensor:
         """Initialize embeddings using various strategies"""
@@ -384,12 +140,6 @@ class TrainableEmbeddingManager:
 
         elif strategy == "uniform":
             return torch.rand(n_samples, self.embedding_dim) * 0.02 - 0.01
-
-        elif strategy == "imgtxt":
-            raise ValueError(
-                "imgtxt strategy requires feature_manager and model parameters. "
-                "Use initialize_embeddings_imgtxt() method instead."
-            )
 
         else:
             raise ValueError(f"Unknown initialization strategy: {strategy}")
@@ -535,12 +285,6 @@ class TrainableEmbeddingManager:
         elif strategy == "uniform":
             return torch.rand(n_samples, self.embedding_dim) * 0.02 - 0.01
 
-        elif strategy == "imgtxt":
-            raise ValueError(
-                "imgtxt strategy requires feature_manager and model parameters. "
-                "Use initialize_embeddings_imgtxt() method instead."
-            )
-
         else:
             raise ValueError(f"Unknown initialization strategy: {strategy}")
 
@@ -565,8 +309,8 @@ class TrainableEmbeddingManager:
             return self.embeddings[indices]
 
         elif self.storage_mode == "disk":
-            # Disk mode: use intelligent caching
-            return self._load_embeddings_with_cache(sample_ids)
+            # Disk mode: load from chunks as needed
+            return self._load_embeddings_from_disk(sample_ids)
 
     def get_embedding_by_index(self, indices: List[int]) -> torch.Tensor:
         """Get embeddings by direct indices (faster for batch operations, memory mode only)"""
@@ -578,14 +322,14 @@ class TrainableEmbeddingManager:
 
     def update_embeddings(self, sample_ids: List[int], new_embeddings: torch.Tensor):
         """
-        Update specific embeddings with intelligent caching and batched sync
+        Update specific embeddings (used during training)
 
         Args:
             sample_ids: Sample IDs to update
             new_embeddings: New embedding values
         """
         if self.storage_mode == "memory":
-            # Memory mode: direct update + batched disk sync
+            # Memory mode: direct update + disk sync
             indices = [
                 self.id_to_index[sid] for sid in sample_ids if sid in self.id_to_index
             ]
@@ -593,20 +337,16 @@ class TrainableEmbeddingManager:
                 # Use .data to maintain leaf status and avoid breaking computational graph
                 self.embeddings.data[indices] = new_embeddings.to(self.device)
 
-            # Batched sync to disk if enabled
+            # Sync to disk if enabled
             if self.auto_sync:
-                self.sync_counter += 1
-                if self.sync_counter >= self.sync_batch_size:
-                    self._sync_updated_samples_to_disk(sample_ids, new_embeddings)
-                    self.sync_counter = 0
-                    self.performance_stats["sync_operations"] += 1
+                self._sync_updated_samples_to_disk(sample_ids, new_embeddings)
 
         elif self.storage_mode == "disk":
-            # Disk mode: update using intelligent caching + batched sync
-            self._update_embeddings_with_cache(sample_ids, new_embeddings)
+            # Disk mode: update in loaded chunks + sync to disk
+            self._update_embeddings_on_disk(sample_ids, new_embeddings)
 
-    def _load_embeddings_with_cache(self, sample_ids: List[int]) -> torch.Tensor:
-        """Load embeddings using intelligent multi-tier caching"""
+    def _load_embeddings_from_disk(self, sample_ids: List[int]) -> torch.Tensor:
+        """Load embeddings from disk chunks (disk mode)"""
         # Group sample IDs by chunk
         chunk_groups = {}
         for sample_id in sample_ids:
@@ -618,37 +358,21 @@ class TrainableEmbeddingManager:
                 chunk_groups[chunk_id] = []
             chunk_groups[chunk_id].append(sample_id)
 
-        # Load chunks using intelligent cache
+        # Load chunks and extract embeddings
         result_embeddings = []
         for chunk_id, chunk_sample_ids in chunk_groups.items():
-            chunk_cache_key = f"embedding_chunk_{chunk_id}"
-
-            # Try to get from cache first
-            chunk_embeddings = self.cache.get(chunk_cache_key)
-            if chunk_embeddings is None:
-                # Cache miss - load from disk
+            # Load chunk (use cache if available)
+            if chunk_id not in self.loaded_chunks:
                 chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-                chunk_embeddings = torch.load(chunk_path, map_location="cpu")
+                self.loaded_chunks[chunk_id] = torch.load(
+                    chunk_path, map_location="cpu"
+                )
 
-                # Store in cache for future use
-                self.cache.put(chunk_cache_key, chunk_embeddings)
-                self.performance_stats["cache_misses"] += 1
-                self.performance_stats["disk_loads"] += 1
-            else:
-                self.performance_stats["cache_hits"] += 1
-
-            # Extract requested embeddings from chunk
+            chunk_embeddings = self.loaded_chunks[chunk_id]
             for sample_id in chunk_sample_ids:
                 result_embeddings.append(chunk_embeddings[sample_id])
 
-        # Adaptive cache management based on memory pressure
-        self.cache.adaptive_eviction()
-
         return torch.stack(result_embeddings).to(self.device)
-
-    def _load_embeddings_from_disk(self, sample_ids: List[int]) -> torch.Tensor:
-        """Backward compatibility: redirect to new caching method"""
-        return self._load_embeddings_with_cache(sample_ids)
 
     def _sync_updated_samples_to_disk(
         self, sample_ids: List[int], new_embeddings: torch.Tensor
@@ -672,10 +396,10 @@ class TrainableEmbeddingManager:
                     chunk_data[sample_id] = new_embedding.detach().cpu()
                 torch.save(chunk_data, chunk_path)
 
-    def _update_embeddings_with_cache(
+    def _update_embeddings_on_disk(
         self, sample_ids: List[int], new_embeddings: torch.Tensor
     ):
-        """Update embeddings using intelligent caching with batched sync"""
+        """Update embeddings directly on disk (disk mode)"""
         # Group by chunks
         chunk_groups = {}
         for i, sample_id in enumerate(sample_ids):
@@ -687,80 +411,41 @@ class TrainableEmbeddingManager:
                 chunk_groups[chunk_id] = []
             chunk_groups[chunk_id].append((sample_id, new_embeddings[i]))
 
-        # Update using intelligent cache
+        # Update loaded chunks in memory
         for chunk_id, updates in chunk_groups.items():
-            chunk_cache_key = f"embedding_chunk_{chunk_id}"
-
-            # Get chunk from cache or load from disk
-            chunk_embeddings = self.cache.get(chunk_cache_key)
-            if chunk_embeddings is None:
-                # Cache miss - load from disk
+            if chunk_id not in self.loaded_chunks:
+                # Load chunk if not in memory
                 chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-                chunk_embeddings = torch.load(chunk_path, map_location="cpu")
-                self.performance_stats["cache_misses"] += 1
-                self.performance_stats["disk_loads"] += 1
-            else:
-                self.performance_stats["cache_hits"] += 1
+                self.loaded_chunks[chunk_id] = torch.load(
+                    chunk_path, map_location="cpu"
+                )
 
-            # Update embeddings in chunk
+            # Update in memory
             for sample_id, new_embedding in updates:
-                chunk_embeddings[sample_id] = new_embedding.detach().cpu()
+                self.loaded_chunks[chunk_id][sample_id] = new_embedding.detach().cpu()
 
-            # Put updated chunk back in cache
-            self.cache.put(chunk_cache_key, chunk_embeddings)
-
-            # Track pending updates for batched sync
-            if chunk_id not in self.pending_updates:
-                self.pending_updates[chunk_id] = []
-            self.pending_updates[chunk_id].extend(updates)
-
-            # Mark as dirty for sync
+            # Mark as dirty for later sync
             self.dirty_chunks.add(chunk_id)
 
-        # Batched sync to disk
+        # Optionally sync immediately
         if self.auto_sync:
-            self.sync_counter += 1
-            if self.sync_counter >= self.sync_batch_size:
-                self.sync_dirty_chunks_to_disk()
-                self.sync_counter = 0
-                self.performance_stats["sync_operations"] += 1
-
-    def _update_embeddings_on_disk(
-        self, sample_ids: List[int], new_embeddings: torch.Tensor
-    ):
-        """Backward compatibility: redirect to new caching method"""
-        return self._update_embeddings_with_cache(sample_ids, new_embeddings)
+            self.sync_dirty_chunks_to_disk()
 
     def sync_dirty_chunks_to_disk(self):
-        """Sync dirty chunks to disk using intelligent cache"""
+        """Sync dirty chunks to disk (disk mode)"""
         for chunk_id in self.dirty_chunks:
-            chunk_cache_key = f"embedding_chunk_{chunk_id}"
-
-            # Get chunk from cache
-            chunk_embeddings = self.cache.get(chunk_cache_key)
-            if chunk_embeddings is not None:
-                # Save to disk
+            if chunk_id in self.loaded_chunks:
                 chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-                torch.save(chunk_embeddings, chunk_path)
-            else:
-                # Fallback: check old loaded_chunks if cache miss
-                if hasattr(self, "loaded_chunks") and chunk_id in self.loaded_chunks:
-                    chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-                    torch.save(self.loaded_chunks[chunk_id], chunk_path)
+                torch.save(self.loaded_chunks[chunk_id], chunk_path)
 
         self.dirty_chunks.clear()
-        self.pending_updates.clear()
 
     def clear_chunk_cache(self):
-        """Clear intelligent cache - useful for memory management"""
+        """Clear loaded chunk cache (disk mode) - useful for memory management"""
         if self.storage_mode == "disk":
             # Sync dirty chunks before clearing
             self.sync_dirty_chunks_to_disk()
-            # Clear the intelligent cache
-            self.cache.clear_cache()
-            # Clear old loaded_chunks if it exists (backward compatibility)
-            if hasattr(self, "loaded_chunks"):
-                self.loaded_chunks.clear()
+            self.loaded_chunks.clear()
 
     def get_all_embeddings(self) -> Tuple[List[int], torch.Tensor]:
         """Return all embeddings with their sample IDs"""
@@ -862,10 +547,10 @@ class TrainableEmbeddingManager:
 
     def get_disk_usage_info(self) -> Dict[str, Any]:
         """
-        Get comprehensive information about disk usage and cache performance
+        Get information about disk usage for embeddings
 
         Returns:
-            Dictionary with disk usage and cache statistics
+            Dictionary with disk usage statistics
         """
         chunk_files = list(self.embeddings_dir.glob("embeddings_chunk_*.pt"))
 
@@ -883,9 +568,6 @@ class TrainableEmbeddingManager:
                 "sample_count": len(self.chunk_mapping.get(chunk_id, [])),
             }
 
-        # Get cache information
-        cache_info = self.cache.get_cache_info()
-
         return {
             "embeddings_dir": str(self.embeddings_dir),
             "total_size_mb": total_size / (1024 * 1024),
@@ -893,210 +575,7 @@ class TrainableEmbeddingManager:
             "chunk_details": chunk_info,
             "storage_mode": self.storage_mode,
             "auto_sync": self.auto_sync,
-            "sync_batch_size": self.sync_batch_size,
-            # Cache performance metrics
-            "cache_info": cache_info,
-            "performance_stats": self.performance_stats.copy(),
-            "dirty_chunks_count": len(self.dirty_chunks),
-            "pending_updates_count": sum(
-                len(updates) for updates in self.pending_updates.values()
-            ),
         }
-
-    def force_sync_all_chunks(self):
-        """Force immediate sync of all dirty chunks (useful at epoch end)"""
-        if len(self.dirty_chunks) > 0:
-            print(f"Force syncing {len(self.dirty_chunks)} dirty chunks...")
-            self.sync_dirty_chunks_to_disk()
-            self.performance_stats["sync_operations"] += 1
-
-    def get_cache_performance(self) -> Dict[str, float]:
-        """Get cache hit rate and performance metrics"""
-        cache_info = self.cache.get_cache_info()
-        total_requests = (
-            self.performance_stats["cache_hits"]
-            + self.performance_stats["cache_misses"]
-        )
-
-        return {
-            "cache_hit_rate": cache_info["hit_rate"],
-            "total_requests": total_requests,
-            "disk_load_ratio": (
-                self.performance_stats["disk_loads"] / total_requests
-                if total_requests > 0
-                else 0.0
-            ),
-            "sync_operations": self.performance_stats["sync_operations"],
-            "l1_usage_percent": (
-                cache_info["l1_size_mb"] / cache_info["l1_max_mb"] * 100
-                if cache_info["l1_max_mb"] > 0
-                else 0.0
-            ),
-            "l2_usage_percent": (
-                cache_info["l2_size_mb"] / cache_info["l2_max_mb"] * 100
-                if cache_info["l2_max_mb"] > 0
-                else 0.0
-            ),
-        }
-
-    def optimize_cache_settings(self, batch_size: int):
-        """Optimize cache and sync settings based on batch size"""
-        # Adjust sync batch size based on training batch size
-        recommended_sync_batch = max(5, min(batch_size // 4, 20))
-        if recommended_sync_batch != self.sync_batch_size:
-            print(
-                f"Recommending sync_batch_size adjustment: {self.sync_batch_size} → {recommended_sync_batch}"
-            )
-            self.sync_batch_size = recommended_sync_batch
-
-        # Trigger adaptive cache management
-        self.cache.adaptive_eviction()
-
-    def get_embeddings_by_chunk(self, chunk_id: int) -> Tuple[List[int], torch.Tensor]:
-        """
-        Load all embeddings from a specific chunk by chunk ID
-
-        Args:
-            chunk_id: The chunk ID to load
-
-        Returns:
-            Tuple of (sample_ids, embeddings_tensor)
-            - sample_ids: List of sample IDs in this chunk (in order)
-            - embeddings_tensor: Tensor of shape (chunk_size, embedding_dim)
-        """
-        if self.storage_mode == "memory":
-            # Memory mode: extract chunk data from in-memory embeddings
-            # Get sample IDs for this chunk
-            chunk_sample_ids = [
-                sid for sid in self.sample_ids if sid // self.chunk_size == chunk_id
-            ]
-
-            if not chunk_sample_ids:
-                raise ValueError(f"No samples found for chunk {chunk_id}")
-
-            # Get embeddings for these sample IDs
-            indices = [self.id_to_index[sid] for sid in chunk_sample_ids]
-            chunk_embeddings = self.embeddings[indices]
-
-            return chunk_sample_ids, chunk_embeddings
-
-        elif self.storage_mode == "disk":
-            # Disk mode: use intelligent cache to load chunk
-            chunk_cache_key = f"embedding_chunk_{chunk_id}"
-
-            # Try to get from cache first
-            chunk_embeddings_dict = self.cache.get(chunk_cache_key)
-            if chunk_embeddings_dict is None:
-                # Cache miss - load from disk
-                chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-                if not chunk_path.exists():
-                    raise FileNotFoundError(
-                        f"Embedding chunk {chunk_id} not found at {chunk_path}"
-                    )
-
-                chunk_embeddings_dict = torch.load(chunk_path, map_location="cpu")
-
-                # Store in cache for future use
-                self.cache.put(chunk_cache_key, chunk_embeddings_dict)
-                self.performance_stats["cache_misses"] += 1
-                self.performance_stats["disk_loads"] += 1
-            else:
-                self.performance_stats["cache_hits"] += 1
-
-            # Extract sample IDs in order from the chunk
-            # Need to get sample IDs that belong to this chunk based on chunk mapping
-            if hasattr(self, "chunk_mapping") and chunk_id in self.chunk_mapping:
-                chunk_sample_ids = self.chunk_mapping[chunk_id]
-            else:
-                # Fallback: get sample IDs from keys in chunk_embeddings_dict
-                chunk_sample_ids = list(chunk_embeddings_dict.keys())
-                chunk_sample_ids.sort()  # Ensure consistent order
-
-            # Convert dict to tensor in sample_id order
-            chunk_embeddings_list = []
-            for sample_id in chunk_sample_ids:
-                if sample_id in chunk_embeddings_dict:
-                    chunk_embeddings_list.append(chunk_embeddings_dict[sample_id])
-                else:
-                    # Initialize missing embeddings
-                    chunk_embeddings_list.append(torch.randn(self.embedding_dim) * 0.02)
-
-            chunk_embeddings = torch.stack(chunk_embeddings_list)
-
-            # Adaptive cache management
-            self.cache.adaptive_eviction()
-
-            return chunk_sample_ids, chunk_embeddings
-
-    def update_embeddings_by_chunk(
-        self, chunk_id: int, sample_ids: List[int], new_embeddings: torch.Tensor
-    ):
-        """
-        Update all embeddings in a specific chunk by chunk ID
-
-        Args:
-            chunk_id: The chunk ID to update
-            sample_ids: List of sample IDs in the chunk (for order verification)
-            new_embeddings: Tensor of shape (len(sample_ids), embedding_dim) with new embeddings
-        """
-        if len(sample_ids) != new_embeddings.shape[0]:
-            raise ValueError(
-                f"Length mismatch: {len(sample_ids)} sample_ids vs {new_embeddings.shape[0]} embeddings"
-            )
-
-        if self.storage_mode == "memory":
-            # Memory mode: update in-memory embeddings
-            indices = [
-                self.id_to_index[sid] for sid in sample_ids if sid in self.id_to_index
-            ]
-            with torch.no_grad():
-                # Use .data to maintain leaf status and avoid breaking computational graph
-                self.embeddings.data[indices] = new_embeddings.to(self.device)
-
-            # Batched sync to disk if enabled
-            if self.auto_sync:
-                self.sync_counter += 1
-                if self.sync_counter >= self.sync_batch_size:
-                    self._sync_updated_samples_to_disk(sample_ids, new_embeddings)
-                    self.sync_counter = 0
-                    self.performance_stats["sync_operations"] += 1
-
-        elif self.storage_mode == "disk":
-            # Disk mode: update using intelligent cache
-            chunk_cache_key = f"embedding_chunk_{chunk_id}"
-
-            # Get chunk from cache or load from disk
-            chunk_embeddings_dict = self.cache.get(chunk_cache_key)
-            if chunk_embeddings_dict is None:
-                # Cache miss - load from disk
-                chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-                if chunk_path.exists():
-                    chunk_embeddings_dict = torch.load(chunk_path, map_location="cpu")
-                else:
-                    # Initialize new chunk
-                    chunk_embeddings_dict = {}
-                self.performance_stats["cache_misses"] += 1
-                self.performance_stats["disk_loads"] += 1
-            else:
-                self.performance_stats["cache_hits"] += 1
-
-            # Update embeddings in chunk dictionary
-            for i, sample_id in enumerate(sample_ids):
-                chunk_embeddings_dict[sample_id] = new_embeddings[i].detach().cpu()
-
-            # Put updated chunk back in cache
-            self.cache.put(chunk_cache_key, chunk_embeddings_dict)
-
-            # Mark as dirty for sync
-            self.dirty_chunks.add(chunk_id)
-
-            # Batched sync to disk
-            if self.auto_sync:
-                self.sync_counter += 1
-                if self.sync_counter >= self.sync_batch_size:
-                    self.sync_dirty_chunks_to_disk()
-                    self.sync_counter = 0
-                    self.performance_stats["sync_operations"] += 1
 
     def get_similarity_matrix(
         self, sample_ids: Optional[List[int]] = None
@@ -1227,64 +706,6 @@ class TrainableEmbeddingManager:
             "num_frozen": len(self.frozen_indices),
             "total_samples": len(self.sample_ids),
         }
-
-    def initialize_embeddings_imgtxt(self, feature_manager, model, device="cpu"):
-        """
-        Initialize label embeddings using imgtxt strategy: (img_emb - txt_emb) @ w_t
-
-        This computes the difference between image and text embeddings in CLIP space,
-        then maps it to label embedding space using the model's orthogonal projection matrix.
-
-        Args:
-            feature_manager: FeatureManager instance to load image/text features
-            model: CoSiR model to get the orthogonal projection matrix w_t
-            device: Device for computation
-        """
-        print("##########Initializing label embeddings using imgtxt strategy##########")
-
-        # Get the orthogonal matrix w_t from the model
-        # This maps from label_embedding_dim to CLIP dim (e.g., 2 -> 512)
-        w_t = (
-            model.combiner.label_proj_layer.weight.data.clone().detach().to(device)
-        )  # Shape: [clip_dim, label_embedding_dim]
-
-        # Get total number of chunks
-        num_chunks = feature_manager.get_num_chunks()
-
-        # Initialize embeddings chunk by chunk
-        for chunk_id in range(num_chunks):
-            # Load features for this chunk
-            features_data = feature_manager.get_features_by_chunk(chunk_id)
-
-            img_features = features_data["img_features"].to(device)
-            txt_features = features_data["txt_features"].to(device)
-            chunk_sample_ids = features_data["sample_ids"]
-
-            # Compute difference in CLIP space: img_emb - txt_emb
-            clip_diff = img_features - txt_features  # Shape: [chunk_size, clip_dim]
-
-            # Map to label embedding space: (img_emb - txt_emb) @ w_t
-            label_embedding_init = (
-                clip_diff @ w_t
-            )  # Shape: [chunk_size, label_embedding_dim]
-
-            # Update embeddings for this chunk
-            self.update_embeddings_by_chunk(
-                chunk_id, chunk_sample_ids, label_embedding_init
-            )
-
-            # Log progress
-            if chunk_id % 100 == 0 or chunk_id == num_chunks - 1:
-                label_move_distance = torch.norm(
-                    label_embedding_init, p=2, dim=1
-                ).mean()
-                print(
-                    f"Chunk: {chunk_id} / {num_chunks-1}, Label Move Distance: {label_move_distance:.3f}"
-                )
-
-        print(
-            f"✅ Completed imgtxt initialization for {len(self.sample_ids)} samples across {num_chunks} chunks"
-        )
 
 
 class EmbeddingInitializer:
@@ -1891,7 +1312,6 @@ class ExperimentContext:
         data: Any,
         artifact_type: str = "pickle",
         description: Optional[str] = None,
-        folder: str = "artifacts",
     ):
         """
         Save experiment artifact
@@ -1899,93 +1319,26 @@ class ExperimentContext:
         Args:
             name: Artifact name
             data: Data to save
-            artifact_type: Type of artifact ('pickle', 'json', 'torch', 'numpy', 'png', 'figure')
+            artifact_type: Type of artifact ('pickle', 'json', 'torch', 'numpy')
             description: Human-readable description
-            folder: Folder to save to ('artifacts', 'plots', 'results', 'checkpoints', 'logs', 'embeddings', 'features', 'configs', 'scripts')
         """
-        # Validate folder parameter
-        available_folders = [
-            "artifacts",
-            "plots",
-            "results",
-            "checkpoints",
-            "logs",
-            "embeddings",
-            "features",
-            "configs",
-            "scripts",
-        ]
-        if folder not in available_folders:
-            raise ValueError(
-                f"Invalid folder '{folder}'. Must be one of: {available_folders}"
-            )
-
-        # Get the target directory
-        target_dir = getattr(self.paths, folder)
-        # Add datetime suffix to filename
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-
-        # Split name into base and extension
-        if "." in name:
-            base_name, ext = name.rsplit(".", 1)
-            timestamped_name = f"{base_name}_{timestamp}.{ext}"
-        else:
-            timestamped_name = f"{name}_{timestamp}"
-
         if artifact_type == "pickle":
-            if not timestamped_name.endswith(".pkl"):
-                timestamped_name = f"{timestamped_name}.pkl"
-            artifact_path = target_dir / timestamped_name
+            artifact_path = self.paths.artifacts / f"{name}.pkl"
             with open(artifact_path, "wb") as f:
                 pickle.dump(data, f)
 
         elif artifact_type == "json":
-            if not timestamped_name.endswith(".json"):
-                timestamped_name = f"{timestamped_name}.json"
-            artifact_path = target_dir / timestamped_name
+            artifact_path = self.paths.artifacts / f"{name}.json"
             with open(artifact_path, "w") as f:
                 json.dump(data, f, indent=2, default=str)
 
         elif artifact_type == "torch":
-            if not timestamped_name.endswith(".pt"):
-                timestamped_name = f"{timestamped_name}.pt"
-            artifact_path = target_dir / timestamped_name
+            artifact_path = self.paths.artifacts / f"{name}.pt"
             torch.save(data, artifact_path)
 
         elif artifact_type == "numpy":
-            if not timestamped_name.endswith(".npy"):
-                timestamped_name = f"{timestamped_name}.npy"
-            artifact_path = target_dir / timestamped_name
+            artifact_path = self.paths.artifacts / f"{name}.npy"
             np.save(artifact_path, data)
-
-        elif artifact_type == "png":
-            if not timestamped_name.endswith(".png"):
-                timestamped_name = f"{timestamped_name}.png"
-            artifact_path = target_dir / timestamped_name
-
-            # Handle different image data types
-            if hasattr(data, "save"):  # PIL Image
-                data.save(artifact_path)
-            elif hasattr(data, "savefig"):  # matplotlib figure
-                data.savefig(artifact_path, dpi=480, bbox_inches="tight")
-            else:
-                # Assume it's a numpy array
-                import matplotlib.pyplot as plt
-
-                plt.imsave(artifact_path, data)
-
-        elif artifact_type == "figure":
-            if not timestamped_name.endswith(".png"):
-                timestamped_name = f"{timestamped_name}.png"
-            artifact_path = target_dir / timestamped_name
-
-            # Handle matplotlib figure
-            if hasattr(data, "savefig"):
-                data.savefig(artifact_path, dpi=480, bbox_inches="tight")
-            else:
-                raise ValueError(
-                    "Data must be a matplotlib figure for 'figure' artifact type"
-                )
 
         else:
             raise ValueError(f"Unsupported artifact type: {artifact_type}")

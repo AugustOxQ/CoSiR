@@ -1,0 +1,132 @@
+# CoSiR Training Configuration with Optimized Embedding Caching
+# This file shows different configurations for the optimized TrainableEmbeddingManager
+
+# =============================================================================
+# QUICK FIX CONFIGURATION (Maximum Performance)
+# Use this for immediate 50-100x speedup with minimal memory usage
+# =============================================================================
+quick_fix:
+  embedding_caching:
+    cache_l1_size_mb: 128          # Smaller cache
+    cache_l2_size_mb: 256          # Smaller cache
+    enable_l3_cache: false         # Disable disk cache for speed
+    auto_sync: false               # DISABLE auto-sync during training
+    sync_batch_size: 1             # Irrelevant when auto_sync=false
+    embedding_chunk_size: null     # Auto-optimize
+    enable_performance_monitoring: true
+    log_cache_stats_every_n_epochs: 10
+    force_sync_at_epoch_end: true  # CRITICAL: Sync at epoch boundaries
+
+# =============================================================================
+# BALANCED CONFIGURATION (Recommended)
+# Good balance of performance and safety
+# =============================================================================
+balanced:
+  embedding_caching:
+    cache_l1_size_mb: 256          # Good cache size
+    cache_l2_size_mb: 512          # Good cache size  
+    enable_l3_cache: true          # Enable disk cache
+    auto_sync: true                # Enable auto-sync
+    sync_batch_size: 10            # Batch every 10 updates
+    embedding_chunk_size: null     # Auto-optimize
+    enable_performance_monitoring: true
+    log_cache_stats_every_n_epochs: 5
+    force_sync_at_epoch_end: true
+
+# =============================================================================
+# HIGH MEMORY CONFIGURATION (Best Performance)
+# For systems with plenty of memory (16GB+ available)
+# =============================================================================
+high_memory:
+  embedding_caching:
+    cache_l1_size_mb: 512          # Large L1 cache
+    cache_l2_size_mb: 1024         # Large L2 cache
+    enable_l3_cache: true          # Enable all cache tiers
+    auto_sync: true                # Safe auto-sync
+    sync_batch_size: 20            # Larger batch sizes
+    embedding_chunk_size: null     # Auto-optimize
+    enable_performance_monitoring: true
+    log_cache_stats_every_n_epochs: 3
+    force_sync_at_epoch_end: true
+
+# =============================================================================
+# LOW MEMORY CONFIGURATION
+# For systems with limited memory (8GB or less available)
+# =============================================================================
+low_memory:
+  embedding_caching:
+    cache_l1_size_mb: 64           # Small L1 cache
+    cache_l2_size_mb: 128          # Small L2 cache
+    enable_l3_cache: true          # Use disk cache
+    auto_sync: true                # Enable sync
+    sync_batch_size: 5             # Frequent sync
+    embedding_chunk_size: null     # Auto-optimize
+    enable_performance_monitoring: true
+    log_cache_stats_every_n_epochs: 10
+    force_sync_at_epoch_end: true
+
+# =============================================================================
+# DEBUG CONFIGURATION
+# Intensive monitoring for debugging and optimization
+# =============================================================================
+debug:
+  embedding_caching:
+    cache_l1_size_mb: 128
+    cache_l2_size_mb: 256
+    enable_l3_cache: true
+    auto_sync: true
+    sync_batch_size: 5             # Frequent sync for debugging
+    embedding_chunk_size: null
+    enable_performance_monitoring: true
+    log_cache_stats_every_n_epochs: 1  # Log every epoch
+    force_sync_at_epoch_end: true
+
+# =============================================================================
+# SMALL DATASET CONFIGURATION  
+# For datasets with < 1000 samples
+# =============================================================================
+small_dataset:
+  embedding_caching:
+    cache_l1_size_mb: 32           # Small cache sufficient
+    cache_l2_size_mb: 64           # Small cache sufficient
+    enable_l3_cache: false         # Not needed for small datasets
+    auto_sync: true                
+    sync_batch_size: 1             # Sync frequently
+    embedding_chunk_size: 50       # Small chunks
+    enable_performance_monitoring: true
+    log_cache_stats_every_n_epochs: 5
+    force_sync_at_epoch_end: true
+
+# =============================================================================
+# LARGE DATASET CONFIGURATION
+# For datasets with > 100,000 samples  
+# =============================================================================
+large_dataset:
+  embedding_caching:
+    cache_l1_size_mb: 1024         # Large cache needed
+    cache_l2_size_mb: 2048         # Large cache needed
+    enable_l3_cache: true          # Essential for large datasets
+    auto_sync: true
+    sync_batch_size: 50            # Large batch sizes
+    embedding_chunk_size: null     # Auto-optimize based on batch size
+    enable_performance_monitoring: true
+    log_cache_stats_every_n_epochs: 10
+    force_sync_at_epoch_end: true
+
+# =============================================================================
+# USAGE EXAMPLES
+# =============================================================================
+
+# Example 1: Quick Fix Integration
+# In your train_cosir.py, replace the embedding_caching section with:
+#
+# config = {
+#     # ... your existing config ...
+#     **yaml.load(open("configs/embedding_optimization_examples.yaml"))["quick_fix"]
+# }
+
+# Example 2: Custom Configuration
+# You can also modify individual settings:
+#
+# config["embedding_caching"]["auto_sync"] = False  # For maximum speed
+# config["embedding_caching"]["cache_l1_size_mb"] = 512  # Increase cache

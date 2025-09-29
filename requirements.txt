@@ -21,10 +21,10 @@ pandas
 seaborn
 
 # --------- Advanced --------- #
-salesforce-lavis
-open_clip_torch
+# salesforce-lavis
+# open_clip_torch
 peft
-dask-cuda
+# dask-cuda
 
 # --------- jupyter --------- #
 ipykernel       # for jupyter notebook

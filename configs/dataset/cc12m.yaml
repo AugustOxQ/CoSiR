@@ -1,0 +1,22 @@
+# @package _global_
+# Conceptual12M Dataset Configuration
+
+# Dataset paths
+data:
+  dataset_type: "conceptual12m"
+  train_annotation_path: "/data/SSD2/HF_datasets"
+  test_annotation_path: "/data/SSD/coco/annotations/coco_karpathy_test.json"
+  train_image_path: "pixparse/cc12m-wds"
+  test_image_path: "/data/SSD/coco/images"
+
+# Feature manager paths - dataset specific
+featuremanager:
+  storage_dir: "/data/SSD2/pre_extract/cc12m/features"
+  sample_ids_path: "/data/SSD2/pre_extract/cc12m/sample_ids.pt"
+
+# Experiment Configuration
+experiment:
+  name: "CoSiR_Experiment"
+  tags: ["CoSiR", "Conceptual12M"]
+  description: "Comprehensive experiment for CoSiR"
+  results_dir: "res/CoSiR_Experiment/cc12m" # Depends on the dataset

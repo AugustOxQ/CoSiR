@@ -31,14 +31,18 @@ def copy_all_files(src_path, dst_base):
 
 
 # ================== Storage Backend Layer ==================
-
-
 class StorageBackend(ABC):
     """Abstract base class for feature storage backends"""
 
     @abstractmethod
     def save_features(
         self, sample_ids: List[int], features: Dict[str, torch.Tensor]
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def save_chunk_directly(
+        self, chunk_id: int, sample_ids: List[int], features: Dict[str, torch.Tensor]
     ) -> None:
         pass
 
@@ -156,7 +160,7 @@ class TorchChunkedStorage(StorageBackend):
                 },
             }
 
-            if self.compression:
+            if self.compression and HAS_LZ4:
                 # Compress tensors before saving
                 for feat_name in chunk_data["features"]:
                     data = chunk_data["features"][feat_name]
@@ -173,6 +177,47 @@ class TorchChunkedStorage(StorageBackend):
 
             torch.save(chunk_data, chunk_path)
 
+    def save_chunk_directly(
+        self, chunk_id: int, sample_ids: List[int], features: Dict[str, torch.Tensor]
+    ) -> None:
+        """Save features directly to a specific chunk (for add_features_chunk compatibility)"""
+        chunk_path = self.storage_dir / f"chunk_{chunk_id}.pt"
+
+        # Prepare chunk data
+        chunk_features = {}
+        for feat_name, feat_data in features.items():
+            if isinstance(feat_data, torch.Tensor):
+                chunk_features[feat_name] = feat_data
+            else:
+                # Handle non-tensor features (like txt_full)
+                chunk_features[feat_name] = feat_data
+
+        chunk_data = {
+            "sample_ids": sample_ids,
+            "features": chunk_features,
+            "chunk_id": chunk_id,
+            "metadata": {
+                "compression": self.compression,
+            },
+        }
+
+        if self.compression and HAS_LZ4:
+            # Compress tensors before saving
+            for feat_name in chunk_data["features"]:
+                data = chunk_data["features"][feat_name]
+                if (
+                    isinstance(data, torch.Tensor) and data.numel() > 0
+                ):  # Only compress non-empty tensors
+                    tensor_bytes = data.numpy().tobytes()
+                    compressed = lz4.frame.compress(tensor_bytes)
+                    chunk_data["features"][feat_name] = {
+                        "compressed_data": compressed,
+                        "shape": data.shape,
+                        "dtype": str(data.dtype),
+                    }
+
+        torch.save(chunk_data, chunk_path)
+
     def load_features(self, sample_ids: List[int]) -> Dict[str, torch.Tensor]:
         """Load features with decompression if needed"""
         chunks = self._group_by_chunks(sample_ids)
@@ -186,7 +231,7 @@ class TorchChunkedStorage(StorageBackend):
             chunk_data = torch.load(chunk_path, map_location="cpu")
 
             # Decompress if needed
-            if self.compression and chunk_data["features"]:
+            if self.compression and HAS_LZ4 and chunk_data["features"]:
                 for feat_name, feat_data in chunk_data["features"].items():
                     if isinstance(feat_data, dict) and "compressed_data" in feat_data:
                         compressed = feat_data["compressed_data"]
@@ -287,6 +332,12 @@ class MemoryMappedStorage(StorageBackend):
         """Save features using memory mapping"""
         # Implementation would involve writing directly to memory-mapped files
         # This is a simplified version
+        pass
+
+    def save_chunk_directly(
+        self, chunk_id: int, sample_ids: List[int], features: Dict[str, torch.Tensor]
+    ) -> None:
+        """Save chunk directly using memory mapping"""
         pass
 
     def load_features(self, sample_ids: List[int]) -> Dict[str, torch.Tensor]:
@@ -450,6 +501,8 @@ class MultiTierCache:
 
     def _memory_pressure_check(self) -> bool:
         """Check if system is under memory pressure"""
+        if not HAS_PSUTIL:
+            return False  # Assume no memory pressure if psutil not available
         memory = psutil.virtual_memory()
         return memory.percent > 85.0  # High memory usage
 
@@ -578,17 +631,14 @@ class AccessPatternLearner:
 
 
 class FeatureManager:
-    """Main orchestrator for feature management with backward compatibility
-
-    This class is a wrapper around the storage backends and the cache system.
-    Used to get features from the storage backends and the cache system.
-    """
+    """Main orchestrator for feature management with backward compatibility"""
 
     def __init__(
         self,
         features_dir: Union[str, Path],
         chunk_size: int = 10000,
         config: Optional[Dict[str, Any]] = None,
+        preload_index: bool = False,
     ):
         # Maintain backward compatibility with original constructor
         self.features_dir = Path(features_dir)
@@ -621,6 +671,10 @@ class FeatureManager:
         self.index_mapping = {}
         self.feature_references = []
 
+        # Build index mapping from existing chunk files if requested
+        if preload_index:
+            self._build_index_mapping()
+
     def _init_storage_backends(self) -> Dict[str, StorageBackend]:
         """Initialize multiple storage backends based on config"""
         backends = {}
@@ -650,6 +704,22 @@ class FeatureManager:
         backends["primary"] = backends[primary_name]
 
         return backends
+
+    def _build_index_mapping(self):
+        """Build sample_id -> chunk mapping from existing chunk files"""
+        chunk_files = list(self.features_dir.glob("chunk_*.pt"))
+        for chunk_file in chunk_files:
+            try:
+                chunk_data = torch.load(chunk_file, map_location="cpu")
+                if "sample_ids" in chunk_data:
+                    for sample_id in chunk_data["sample_ids"]:
+                        self.index_mapping[sample_id] = (
+                            str(chunk_file.name),
+                            sample_id,
+                        )
+            except Exception as e:
+                print(f"Warning: Could not load {chunk_file}: {e}")
+                continue
 
     def _generate_cache_key(
         self, sample_ids: List[int], feature_types: Optional[List[str]] = None
@@ -712,8 +782,89 @@ class FeatureManager:
 
         return self._filter_features(features, feature_types)
 
+    def get_features_by_chunk(
+        self,
+        chunk_id: int,
+        feature_types: Optional[List[str]] = None,
+        async_prefetch: bool = True,
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Load all features from a specific chunk by chunk ID
+
+        Args:
+            chunk_id: The chunk ID to load
+            feature_types: Optional list of feature types to return (e.g., ['img_features'])
+            async_prefetch: Whether to enable async prefetching
+
+        Returns:
+            Dict with same format as get_features(): {"img_features": tensor, "txt_features": tensor, ...}
+        """
+        chunk_path = self.features_dir / f"chunk_{chunk_id}.pt"
+
+        if not chunk_path.exists():
+            raise FileNotFoundError(f"Chunk {chunk_id} not found at {chunk_path}")
+
+        # Generate cache key for this chunk
+        cache_key = f"chunk_{chunk_id}_all"
+
+        # Check cache first
+        cached_features = self.cache.get(cache_key)
+        if cached_features is not None:
+            filtered_features = self._filter_features(cached_features, feature_types)
+            return filtered_features
+
+        # Load chunk from disk
+        chunk_data = torch.load(chunk_path, map_location="cpu")
+
+        # Handle decompression if needed
+        compression_enabled = getattr(
+            self.storage_backends["primary"], "compression", False
+        )
+        if compression_enabled and HAS_LZ4 and chunk_data.get("features"):
+            for feat_name, feat_data in chunk_data["features"].items():
+                if isinstance(feat_data, dict) and "compressed_data" in feat_data:
+                    compressed = feat_data["compressed_data"]
+                    decompressed = lz4.frame.decompress(compressed)
+                    # Convert to tensor
+                    import numpy as np
+
+                    torch_dtype = feat_data["dtype"]
+                    if torch_dtype.startswith("torch."):
+                        torch_dtype = torch_dtype.replace("torch.", "")
+                    np_dtype = getattr(np, torch_dtype)
+                    tensor = np.frombuffer(decompressed, dtype=np_dtype)
+                    tensor = torch.from_numpy(tensor.reshape(feat_data["shape"]).copy())
+                    chunk_data["features"][feat_name] = tensor
+
+        # Extract features in the same format as get_features()
+        features = chunk_data.get("features", {})
+
+        # Cache the result
+        if features:
+            self.cache.put(cache_key, features)
+
+        # Learn access pattern (treat as sequential since it's a whole chunk)
+        if "sample_ids" in chunk_data:
+            self.access_patterns.record_access(chunk_data["sample_ids"])
+
+        # Optional: Trigger prefetching for next chunk
+        if async_prefetch:
+            next_chunk_sample_ids = list(
+                range(
+                    chunk_id * self.chunk_size + self.chunk_size,
+                    (chunk_id + 1) * self.chunk_size + self.chunk_size,
+                )
+            )
+            self.prefetch_manager.prefetch_async(next_chunk_sample_ids)
+
+        return self._filter_features(features, feature_types)
+
     def _load_from_best_backend(self, sample_ids: List[int]) -> Dict[str, torch.Tensor]:
         """Choose best backend based on access pattern"""
+        # Use index mapping if available, otherwise fall back to automatic chunking
+        if self.index_mapping:
+            return self._load_using_index_mapping(sample_ids)
+
         access_pattern = self.access_patterns.classify_pattern(sample_ids)
 
         if access_pattern == "sequential":
@@ -725,6 +876,62 @@ class FeatureManager:
                 return self.storage_backends["primary"].load_features(sample_ids)
         else:
             return self.storage_backends["primary"].load_features(sample_ids)
+
+    def _load_using_index_mapping(
+        self, sample_ids: List[int]
+    ) -> Dict[str, torch.Tensor]:
+        """Load features using the index mapping (for backward compatibility)"""
+        # Group sample IDs by chunk file
+        chunk_groups = {}
+        for sample_id in sample_ids:
+            if sample_id in self.index_mapping:
+                chunk_file, _ = self.index_mapping[sample_id]
+                if chunk_file not in chunk_groups:
+                    chunk_groups[chunk_file] = []
+                chunk_groups[chunk_file].append(sample_id)
+
+        # Load from each chunk file and combine results
+        result_features = {}
+        for chunk_file, chunk_sample_ids in chunk_groups.items():
+            chunk_path = self.features_dir / chunk_file
+            if not chunk_path.exists():
+                continue
+
+            chunk_data = torch.load(chunk_path, map_location="cpu")
+
+            # Extract requested samples from this chunk
+            chunk_sample_ids_list = chunk_data["sample_ids"]
+            indices = [
+                chunk_sample_ids_list.index(sid)
+                for sid in chunk_sample_ids
+                if sid in chunk_sample_ids_list
+            ]
+
+            for feat_name, feat_data in chunk_data["features"].items():
+                if feat_name not in result_features:
+                    if isinstance(feat_data, torch.Tensor):
+                        result_features[feat_name] = []
+                    else:
+                        result_features[feat_name] = []
+
+                if isinstance(feat_data, torch.Tensor):
+                    result_features[feat_name].append(feat_data[indices])
+                else:
+                    # Handle list-type features
+                    result_features[feat_name].extend([feat_data[i] for i in indices])
+
+        # Concatenate tensors from different chunks
+        for feat_name in result_features:
+            if (
+                isinstance(result_features[feat_name], list)
+                and len(result_features[feat_name]) > 0
+            ):
+                if isinstance(result_features[feat_name][0], torch.Tensor):
+                    result_features[feat_name] = torch.cat(
+                        result_features[feat_name], dim=0
+                    )
+
+        return result_features
 
     # ================== Backward Compatibility Methods ==================
 
@@ -748,10 +955,13 @@ class FeatureManager:
             "img_features": img_features,
             "txt_features": txt_features,
             "txt_full": txt_full,
+            "sample_ids": sample_ids,
         }
 
-        # Use new storage backend
-        self.storage_backends["primary"].save_features(sample_ids, features)
+        # Use direct chunk saving to respect explicit chunk_id
+        self.storage_backends["primary"].save_chunk_directly(
+            chunk_id, sample_ids, features
+        )
 
         # Update index mapping for compatibility
         for sample_id in sample_ids:
@@ -761,16 +971,7 @@ class FeatureManager:
         """Maintain backward compatibility - load feature metadata"""
         # This was originally used to scan directory for files
         # Now we maintain compatibility but use the new system
-        for file_name in os.listdir(self.features_dir):
-            if file_name.endswith(".pt"):
-                chunk_file = self.features_dir / file_name
-                try:
-                    chunk_data = torch.load(chunk_file, map_location="cpu")
-                    if "sample_ids" in chunk_data:
-                        for sample_id in chunk_data["sample_ids"]:
-                            self.index_mapping[sample_id] = (str(chunk_file), sample_id)
-                except Exception:
-                    continue  # Skip corrupted files
+        self._build_index_mapping()
 
     def get_chunk(self, chunk_id: int) -> Dict[str, Any]:
         """Maintain backward compatibility with original get_chunk method"""
@@ -784,6 +985,10 @@ class FeatureManager:
         chunk_idx = sample_id % self.chunk_size
         chunk_file = self.features_dir / f"chunk_{sample_id // self.chunk_size}.pt"
         return str(chunk_file), chunk_idx
+
+    def get_num_chunks(self) -> int:
+        """Maintain backward compatibility"""
+        return len(list(self.features_dir.glob("chunk_*.pt")))
 
     def debug_print(self) -> None:
         """Maintain backward compatibility"""
@@ -854,6 +1059,21 @@ def test_feature_manager():
     print(f"Random features shape: img={rand_features['img_features'].shape}")
 
     print("All tests passed!")
+
+    # Test the new get_features_by_chunk method
+    print("\nTesting get_features_by_chunk method...")
+    chunk_features = feature_manager.get_features_by_chunk(0)
+    print(f"Chunk 0 features keys: {chunk_features.keys()}")
+    print(
+        f"Chunk 0 via new method: img={chunk_features['img_features'].shape}, txt={chunk_features['txt_features'].shape}"
+    )
+
+    # Verify consistency with get_chunk
+    chunk_data = feature_manager.get_chunk(0)
+    assert torch.equal(
+        chunk_features["img_features"], chunk_data["features"]["img_features"]
+    )
+    print("✅ get_features_by_chunk consistency verified")
 
 
 if __name__ == "__main__":

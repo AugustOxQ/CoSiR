@@ -1,0 +1,7 @@
+# @package _global_
+# Large Model Configuration
+
+model:
+  embedding_dim: 2  # Larger embedding dimension
+  clip_model: "openai/clip-vit-large-patch14"
+  freeze_backbone: true

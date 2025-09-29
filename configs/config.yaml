@@ -1,0 +1,23 @@
+# CoSiR Training Configuration
+defaults:
+  - dataset: coco
+  - model: base
+  - train: default
+  - experiment: default
+  - _self_
+
+# Random seed for reproducibility
+seed: 42
+
+# Device configuration
+device: cuda
+
+# W&B logging configuration
+wandb:
+  enabled: true
+  project: cosir
+  entity: augustoxq
+  name: ""
+  tags: [Local, redcaps]
+  notes: "CoSiR Training"
+  mode: online

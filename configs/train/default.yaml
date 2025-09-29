@@ -1,0 +1,42 @@
+# @package _global_
+# Training Configuration
+
+train:
+  epochs: 15
+  lr: 1.0e-6
+  weight_decay: 5.0e-2
+  num_workers: 4
+  batch_size: 256
+  initialization_strategy: imgtxt #TODO: change to imgtxt
+  load_existing_features: False
+  evaluation_interval: 5
+  representative_number: 10
+
+# Loss function configuration
+loss:
+  margin: 0.3
+  lambda_pos: 1.0
+  lambda_neg: 1.0
+  lambda_labelchange: 0.1
+  lambda_preserve: 0.1
+  return_dict: true
+
+# Optimizer configuration
+optimizer:
+  type: "AdamW"
+  lr: 1.0e-6
+  weight_decay: 5.0e-2
+  label_lr_multiplier: 5.0e4 # Label embedding learning rate multiplier
+
+# Scheduler configuration
+scheduler:
+  type: "CosineAnnealingLR"
+  T_max: 15 # Should match train.epochs
+  eta_min: 1.0e-9
+
+# Evaluation configuration
+eval:
+  k_vals: [1, 5, 10]
+  train_max_batches: 15 # Should match train.epochs
+  print_metrics: true
+  evaluation_interval: 15

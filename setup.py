@@ -20,7 +20,10 @@ setup(
     name="CoSiR",
     version="0.1.0",
     description="CoSiR package with CoSiR model, hooks, metrics and utils",
-    packages=find_packages(),  # this will include 'src' and 'src.*' packages
+    packages=find_packages(
+        include=["src", "src.*"]
+    ),  # this will include 'src' and 'src.*'
+    package_dir={"": "."},
     include_package_data=True,
     install_requires=read_requirements("requirements.txt"),
     python_requires=">=3.10",

@@ -164,6 +164,7 @@ notebooks/
 
 # Claude
 .claude/
+refactor/
 CLAUDE.md
 
 # Cursor

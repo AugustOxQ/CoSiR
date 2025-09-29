@@ -1,0 +1,28 @@
+# @package _global_
+# Feature manager configuration
+featuremanager:
+  primary_backend: "chunked"
+  chunk_size: 1024
+  cache_size_mb: 512
+  use_compression: false
+  chunked_storage:
+    enabled: true
+    compression: false
+  cache:
+    l1_size_mb: 512
+    l2_size_mb: 1024
+    l3_path: null
+
+# Embedding manager configuration
+embeddingmanager:
+  storage_mode: "disk"
+  initialization_strategy: "zeros"
+  cache_l1_size_mb: 128
+  cache_l2_size_mb: 256
+  enable_l3_cache: true
+  auto_sync: false
+  sync_batch_size: 10
+  embedding_chunk_size: null  # Auto-optimize based on batch_size
+  enable_performance_monitoring: true
+  log_cache_stats_every_n_epochs: 5
+  force_sync_at_epoch_end: true
