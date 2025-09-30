@@ -490,25 +490,47 @@ class TrainableEmbeddingManager:
         self.chunk_mapping = {}
         self.id_to_chunk_index = {}
 
-        for chunk_file in existing_chunks:
-            # Extract chunk ID from filename
-            chunk_id = int(chunk_file.stem.split("_")[-1])
+        if os.path.exists(
+            self.embeddings_dir / "embeddings" / "chunk_mapping.pkl"
+        ) and os.path.exists(
+            self.embeddings_dir / "embeddings" / "id_to_chunk_index.pkl"
+        ):
+            with open(
+                self.embeddings_dir / "embeddings" / "chunk_mapping.pkl", "rb"
+            ) as f:
+                self.chunk_mapping = pickle.load(f)
+            with open(
+                self.embeddings_dir / "embeddings" / "id_to_chunk_index.pkl", "rb"
+            ) as f:
+                self.id_to_chunk_index = pickle.load(f)
 
-            # Load chunk to get sample IDs
-            chunk_data = torch.load(chunk_file, map_location="cpu")
-            sample_ids_in_chunk = list(chunk_data.keys())
+            print(
+                f"Loaded {len(self.chunk_mapping)} chunk mappings and {len(self.id_to_chunk_index)} id to chunk index mappings"
+            )
 
-            # Filter to only include sample IDs that we're managing
-            valid_sample_ids = [
-                sid for sid in sample_ids_in_chunk if sid in self.sample_ids
-            ]
+        else:
+            print(
+                "No chunk mapping or id to chunk index mappings found, rebuilding chunk mapping"
+            )
+            for chunk_file in existing_chunks:
+                # Extract chunk ID from filename
+                chunk_id = int(chunk_file.stem.split("_")[-1])
 
-            if valid_sample_ids:
-                self.chunk_mapping[chunk_id] = valid_sample_ids
+                # Load chunk to get sample IDs
+                chunk_data = torch.load(chunk_file, map_location="cpu")
+                sample_ids_in_chunk = list(chunk_data.keys())
 
-                # Update id_to_chunk_index mapping
-                for idx, sample_id in enumerate(valid_sample_ids):
-                    self.id_to_chunk_index[sample_id] = (chunk_id, idx)
+                # Filter to only include sample IDs that we're managing
+                valid_sample_ids = [
+                    sid for sid in sample_ids_in_chunk if sid in self.sample_ids
+                ]
+
+                if valid_sample_ids:
+                    self.chunk_mapping[chunk_id] = valid_sample_ids
+
+                    # Update id_to_chunk_index mapping
+                    for idx, sample_id in enumerate(valid_sample_ids):
+                        self.id_to_chunk_index[sample_id] = (chunk_id, idx)
 
     def _initialize_embeddings_for_samples(
         self, n_samples: int, strategy: str

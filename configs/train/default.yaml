@@ -2,7 +2,7 @@
 # Training Configuration
 
 train:
-  epochs: 15
+  epochs: 30
   lr: 1.0e-6
   weight_decay: 5.0e-2
   num_workers: 4
@@ -31,12 +31,12 @@ optimizer:
 # Scheduler configuration
 scheduler:
   type: "CosineAnnealingLR"
-  T_max: 15 # Should match train.epochs
+  T_max: 30 # Should match train.epochs
   eta_min: 1.0e-9
 
 # Evaluation configuration
 eval:
   k_vals: [1, 5, 10]
-  train_max_batches: 15 # Should match train.epochs
+  train_max_batches: 30 # Should match train.epochs
   print_metrics: true
-  evaluation_interval: 15
+  evaluation_interval: 5

@@ -1,0 +1,22 @@
+# @package _global_
+# COCO Dataset Configuration
+
+# Dataset paths
+data:
+  dataset_type: "coco"
+  train_annotation_path: "/local/wding/Dataset/coco/annotations/coco_karpathy_train.json"
+  test_annotation_path: "/local/wding/Dataset/coco/annotations/coco_karpathy_test.json"
+  train_image_path: ""
+  test_image_path: "/local/wding/Dataset/coco/images"
+
+# Feature manager paths - dataset specific
+featuremanager:
+  storage_dir: "/local/wding/pre_extract/coco/features"
+  sample_ids_path: "/local/wding/pre_extract/coco/sample_ids.pt"
+
+# Experiment Configuration
+experiment:
+  name: "CoSiR_Experiment"
+  tags: ["CoSiR", "COCO", "Cluster"]
+  description: "Comprehensive experiment for CoSiR"
+  results_dir: "res/CoSiR_Experiment/coco" # Depends on the dataset

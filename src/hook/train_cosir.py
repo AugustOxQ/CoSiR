@@ -90,26 +90,6 @@ def train_cosir(cfg, logger):
         last_epoch=-1,
     )
 
-    # Initialize pre-extraction dataset
-    print("Initializing pre-extraction dataset")
-    if "conceptual" in cfg.data.dataset_type:
-        preextractfeatureclass = FeatureExtractionConceptualDataset
-    else:
-        preextractfeatureclass = FeatureExtractionDataset
-
-    pre_extraction_dataset = preextractfeatureclass(
-        annotation_path=cfg.data.train_annotation_path,
-        image_path=cfg.data.train_image_path,
-        processor=processor,
-        ratio=1,
-    )
-    pre_extraction_dataloader = DataLoader(
-        pre_extraction_dataset,
-        batch_size=cfg.featuremanager.chunk_size,
-        shuffle=True,
-        num_workers=cfg.train.num_workers,
-    )
-
     # Check either load existing sample ids
     if (
         os.path.exists(feature_config["sample_ids_path"])
@@ -122,7 +102,7 @@ def train_cosir(cfg, logger):
         print("Loading existing sample ids")
         sample_ids_list = torch.load(feature_config["sample_ids_path"])
         print(f"Loaded {len(sample_ids_list)} sample ids")
-    else:
+    else:  # Optimized that only create preextraction dataset when necessary
         print("Creating new sample ids")
         feature_manager = FeatureManager(
             features_dir=feature_config["storage_dir"],
@@ -131,6 +111,26 @@ def train_cosir(cfg, logger):
         )
         # Create sample ids list
         sample_ids_list = []
+
+        # Initialize pre-extraction dataset
+        print("Initializing pre-extraction dataset")
+        if "conceptual" in cfg.data.dataset_type:
+            preextractfeatureclass = FeatureExtractionConceptualDataset
+        else:
+            preextractfeatureclass = FeatureExtractionDataset
+
+        pre_extraction_dataset = preextractfeatureclass(
+            annotation_path=cfg.data.train_annotation_path,
+            image_path=cfg.data.train_image_path,
+            processor=processor,
+            ratio=1,
+        )
+        pre_extraction_dataloader = DataLoader(
+            pre_extraction_dataset,
+            batch_size=cfg.featuremanager.chunk_size,
+            shuffle=True,
+            num_workers=cfg.train.num_workers,
+        )
 
         # Pre-extract features
         with torch.no_grad():
@@ -424,6 +424,23 @@ def train_cosir(cfg, logger):
     # Save final embeddings and model combiner state dictionary
     embedding_manager.save_final_embeddings(
         str(experiment.directory / "final_embeddings")
+    )
+
+    # Save embedding mapping id mapping
+    experiment.save_artifact(
+        name="chunk_mapping",
+        data=embedding_manager.chunk_mapping,
+        artifact_type="pickle",
+        description="Chunk mapping id mapping",
+        folder="embeddings",
+    )
+
+    experiment.save_artifact(
+        name="id_to_chunk_index",
+        data=embedding_manager.id_to_chunk_index,
+        artifact_type="pickle",
+        description="Id to chunk index mapping",
+        folder="embeddings",
     )
 
     experiment.save_artifact(

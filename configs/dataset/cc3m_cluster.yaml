@@ -1,0 +1,22 @@
+# @package _global_
+# Conceptual3M Dataset Configuration
+
+# Dataset paths
+data:
+  dataset_type: "conceptual3m"
+  train_annotation_path: ""
+  test_annotation_path: "/local/wding/Dataset/coco/annotations/coco_karpathy_test.json"
+  train_image_path: "pixparse/cc3m-wds"
+  test_image_path: "/local/wding/Dataset/coco/images"
+
+# Feature manager paths - dataset specific
+featuremanager:
+  storage_dir: "/local/wding/pre_extract/cc3m/features"
+  sample_ids_path: "/local/wding/pre_extract/cc3m/sample_ids.pt"
+
+# Experiment Configuration
+experiment:
+  name: "CoSiR_Experiment"
+  tags: ["CoSiR", "Conceptual3M", "Cluster"]
+  description: "Comprehensive experiment for CoSiR"
+  results_dir: "res/CoSiR_Experiment/cc3m" # Depends on the dataset

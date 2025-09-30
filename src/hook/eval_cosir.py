@@ -5,6 +5,7 @@ import numpy as np
 from transformers import AutoProcessor
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
+import json
 
 from src.dataset import (
     CoSiRValidationDataset,
@@ -16,7 +17,6 @@ from src.utils import (
     ExperimentManager,
     TrainableEmbeddingManager,
     get_representatives,
-    get_umap,
 )
 
 
@@ -61,22 +61,30 @@ class CoSiREvaluator:
 
     def _load_config(self) -> Dict[str, Any]:
         """Load experiment configuration"""
-        # Try config.json first (if manually saved)
-        config_path = self.experiment_dir / "config.json"
-        if config_path.exists():
-            import json
+        import ast
 
+        # Try config.json first (if manually saved)
+        config_path = self.experiment_dir / "configs/config.json"
+        if config_path.exists():
+            print(f"Loading config from: {config_path}")
             with open(config_path) as f:
-                return json.load(f)
+                config = json.load(f)
+                # If config is a string (stored incorrectly), parse it
+                if isinstance(config, str):
+                    config = ast.literal_eval(config)
+                return config
 
         # Try experiment_metadata.json (saved by ExperimentManager)
         metadata_path = self.experiment_dir / "experiment_metadata.json"
         if metadata_path.exists():
-            import json
-
+            print(f"Loading metadataconfig from: {metadata_path}")
             with open(metadata_path) as f:
                 metadata = json.load(f)
-                return metadata.get("config", {})
+                config = metadata.get("config", {})
+                # If config is a string (stored incorrectly), parse it
+                if isinstance(config, str):
+                    config = ast.literal_eval(config)
+                return config
 
         raise FileNotFoundError(f"Config not found in {config_path} or {metadata_path}")
 
@@ -331,38 +339,3 @@ def get_embeddings_for_analysis(
     """Get all embeddings for analysis"""
     evaluator = load_cosir_evaluator(experiment_path, device)
     return evaluator.get_all_embeddings()
-
-
-# if __name__ == "__main__":
-#     # Example usage
-#     import sys
-
-#     if len(sys.argv) < 2:
-#         print(
-#             "Usage: python eval_cosir.py <experiment_path> [test_annotation_path] [test_image_path]"
-#         )
-#         sys.exit(1)
-
-#     experiment_path = sys.argv[1]
-
-#     # Load evaluator
-#     evaluator = load_cosir_evaluator(experiment_path)
-
-#     # If test paths provided, run evaluation
-#     if len(sys.argv) >= 4:
-#         test_annotation_path = sys.argv[2]
-#         test_image_path = sys.argv[3]
-
-#         print("Running evaluation on test set...")
-#         results = quick_eval(experiment_path, test_annotation_path, test_image_path)
-
-#         print("\nEvaluation Results:")
-#         for metric, value in results.items():
-#             print(f"  {metric}: {value:.4f}")
-#     else:
-#         print("Evaluator loaded successfully. Use evaluator object for analysis.")
-
-#         # Show basic info
-#         sample_ids, embeddings = evaluator.get_all_embeddings()
-#         print(f"Loaded {len(sample_ids)} sample embeddings")
-#         print(f"Embedding dimension: {embeddings.shape[1]}")

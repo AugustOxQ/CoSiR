@@ -86,7 +86,11 @@ class CoSiRModel(nn.Module):
         # Encode the labels
         lbl_emb = self.label_encoder(labels)  # (batch_size, 512)
         comb_emb = self.combiner(
-            txt_emb, txt_full, lbl_emb, epoch, return_label_proj
+            txt_emb,
+            None,
+            lbl_emb,
+            epoch,
+            return_label_proj,  # Here txt_full is not used
         )  # (batch_size, 512)
 
         return comb_emb

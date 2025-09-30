@@ -213,16 +213,6 @@ class CombinerGated(nn.Module):
     def get_newest(self):
         return self.scalar.get_newest()
 
-    def freeze_switch_modulation(self):
-        pass
-
-    def freeze_all_modulation(self):
-        for p in self.gamma.parameters():
-            p.requires_grad = False
-        for p in self.beta.parameters():
-            p.requires_grad = False
-        self.frozen = True
-
     def forward(
         self,
         text_features: Tensor,  # [B, 512]

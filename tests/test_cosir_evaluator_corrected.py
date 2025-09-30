@@ -12,13 +12,13 @@ import json
 from typing import Dict, Any
 
 # Add src to path
-sys.path.append('src')
+sys.path.append("src")
 
 from utils import (
     ExperimentManager,
     TrainableEmbeddingManager,
     get_representatives,
-    get_umap
+    get_umap,
 )
 import matplotlib.pyplot as plt
 
@@ -30,7 +30,7 @@ def test_cosir_evaluator_corrected():
     print("CORRECTED COSIR EVALUATOR FUNCTIONALITY TEST")
     print("=" * 80)
 
-    experiment_path = "res/CoSiR_Experiment/coco/20250917_090002_CoSiR_Experiment"
+    experiment_path = "res/CoSiR_Experiment/cc3m/20250929_184240_CoSiR_Experiment"
 
     # Load config
     print("\n0. LOADING EXPERIMENT CONFIG")
@@ -48,8 +48,11 @@ def test_cosir_evaluator_corrected():
     exp_manager = ExperimentManager()
     experiment_context = exp_manager.create_experiment(
         "cosir_eval_corrected_test",
-        config={"test": "corrected_cosir_evaluator", "original_experiment": experiment_path},
-        description="Corrected CoSiR Evaluator Test with Real Experiment"
+        config={
+            "test": "corrected_cosir_evaluator",
+            "original_experiment": experiment_path,
+        },
+        description="Corrected CoSiR Evaluator Test with Real Experiment",
     )
     print(f"✓ Created experiment context: {experiment_context.name}")
 
@@ -81,7 +84,9 @@ def test_cosir_evaluator_corrected():
         print(f"  Sample IDs: {len(sample_ids_tensor)} samples")
 
     except Exception as e:
-        print(f"  Could not load actual embeddings ({e}), creating synthetic 2D embeddings...")
+        print(
+            f"  Could not load actual embeddings ({e}), creating synthetic 2D embeddings..."
+        )
 
         # Create synthetic 2D embeddings
         np.random.seed(42)
@@ -137,10 +142,10 @@ def test_cosir_evaluator_corrected():
                 "mean": similarities.mean().item(),
                 "std": similarities.std().item(),
                 "min": similarities.min().item(),
-                "max": similarities.max().item()
+                "max": similarities.max().item(),
             },
             "num_representatives": num_representatives,
-            "embedding_dim": representatives.shape[1]
+            "embedding_dim": representatives.shape[1],
         }
 
         experiment_context.save_artifact(
@@ -148,13 +153,14 @@ def test_cosir_evaluator_corrected():
             data=rep_results,
             artifact_type="pickle",
             folder="results",
-            description="K-means representative embeddings and similarity analysis"
+            description="K-means representative embeddings and similarity analysis",
         )
         print("✓ Saved k_means representative results")
 
     except Exception as e:
         print(f"ERROR in k_means representatives test: {e}")
         import traceback
+
         traceback.print_exc()
 
     # 3. Test arbitrary embedding retrieval
@@ -164,7 +170,9 @@ def test_cosir_evaluator_corrected():
     try:
         num_queries = min(10, len(sample_ids_tensor))
         np.random.seed(42)
-        arbitrary_indices = np.random.choice(len(sample_ids_tensor), size=num_queries, replace=False)
+        arbitrary_indices = np.random.choice(
+            len(sample_ids_tensor), size=num_queries, replace=False
+        )
         arbitrary_sample_ids = sample_ids_tensor[arbitrary_indices].tolist()
         arbitrary_embeddings = all_embeddings[arbitrary_indices]
 
@@ -175,12 +183,14 @@ def test_cosir_evaluator_corrected():
 
         # Find top-k most similar
         k = min(20, len(all_embeddings))
-        top_k_similarities, top_k_indices = torch.topk(arbitrary_similarities, k=k, dim=1)
+        top_k_similarities, top_k_indices = torch.topk(
+            arbitrary_similarities, k=k, dim=1
+        )
 
         # Create retrieval results
         arbitrary_results = {
             "query_sample_ids": arbitrary_sample_ids,
-            "retrieval_results": []
+            "retrieval_results": [],
         }
 
         print("  Top-3 retrievals for each query:")
@@ -188,15 +198,19 @@ def test_cosir_evaluator_corrected():
             retrieved_sample_ids = sample_ids_tensor[top_k_indices[i]].tolist()
             retrieved_similarities = top_k_similarities[i].tolist()
 
-            arbitrary_results["retrieval_results"].append({
-                "query_sample_id": query_sample_id,
-                "retrieved_sample_ids": retrieved_sample_ids,
-                "similarities": retrieved_similarities,
-                "top_1_similarity": retrieved_similarities[0],
-                "mean_similarity": np.mean(retrieved_similarities)
-            })
+            arbitrary_results["retrieval_results"].append(
+                {
+                    "query_sample_id": query_sample_id,
+                    "retrieved_sample_ids": retrieved_sample_ids,
+                    "similarities": retrieved_similarities,
+                    "top_1_similarity": retrieved_similarities[0],
+                    "mean_similarity": np.mean(retrieved_similarities),
+                }
+            )
 
-            print(f"    Query {query_sample_id}: {retrieved_sample_ids[:3]} (sim: {retrieved_similarities[0]:.3f})")
+            print(
+                f"    Query {query_sample_id}: {retrieved_sample_ids[:3]} (sim: {retrieved_similarities[0]:.3f})"
+            )
 
         # Save results
         experiment_context.save_artifact(
@@ -204,7 +218,7 @@ def test_cosir_evaluator_corrected():
             data=arbitrary_results,
             artifact_type="pickle",
             folder="results",
-            description=f"Retrieval results for {num_queries} arbitrary label embeddings (top-{k})"
+            description=f"Retrieval results for {num_queries} arbitrary label embeddings (top-{k})",
         )
 
         print("✓ Saved arbitrary embedding retrieval results")
@@ -212,6 +226,7 @@ def test_cosir_evaluator_corrected():
     except Exception as e:
         print(f"ERROR in arbitrary embedding retrieval test: {e}")
         import traceback
+
         traceback.print_exc()
 
     # 4. Test UMAP/visualization (corrected parameters)
@@ -232,7 +247,7 @@ def test_cosir_evaluator_corrected():
             epoch=0,  # Dummy epoch
             samples_to_track=[],
             z_threshold=3,
-            no_outlier=True
+            no_outlier=True,
         )
 
         # Save UMAP plot
@@ -241,7 +256,7 @@ def test_cosir_evaluator_corrected():
             data=fig,
             artifact_type="figure",
             folder="plots",
-            description="UMAP visualization of embeddings"
+            description="UMAP visualization of embeddings",
         )
 
         print("✓ Saved UMAP plot to plots folder")
@@ -254,39 +269,63 @@ def test_cosir_evaluator_corrected():
         plt.subplot(1, 3, 1)
         if all_embeddings.shape[1] == 2:
             colors = np.arange(len(all_embeddings)) % 10
-            scatter = plt.scatter(all_embeddings[:, 0], all_embeddings[:, 1],
-                       c=colors, s=20, alpha=0.6, cmap='tab10')
-            if 'representatives' in locals():
-                plt.scatter(representatives[:, 0], representatives[:, 1],
-                           c='red', s=100, alpha=0.8, marker='x', linewidth=3,
-                           label='Representatives')
+            scatter = plt.scatter(
+                all_embeddings[:, 0],
+                all_embeddings[:, 1],
+                c=colors,
+                s=20,
+                alpha=0.6,
+                cmap="tab10",
+            )
+            if "representatives" in locals():
+                plt.scatter(
+                    representatives[:, 0],
+                    representatives[:, 1],
+                    c="red",
+                    s=100,
+                    alpha=0.8,
+                    marker="x",
+                    linewidth=3,
+                    label="Representatives",
+                )
                 plt.legend()
-            plt.xlabel('Embedding Dimension 1')
-            plt.ylabel('Embedding Dimension 2')
-            plt.title('2D Embedding Space')
-            plt.colorbar(scatter, label='Sample Group')
+            plt.xlabel("Embedding Dimension 1")
+            plt.ylabel("Embedding Dimension 2")
+            plt.title("2D Embedding Space")
+            plt.colorbar(scatter, label="Sample Group")
 
         # Plot 2: Similarity heatmap
         plt.subplot(1, 3, 2)
-        if 'similarities' in locals():
-            sim_sample = similarities[:min(20, similarities.shape[0]),
-                                    :min(50, similarities.shape[1])]
-            plt.imshow(sim_sample.cpu().numpy(), cmap='viridis', aspect='auto')
-            plt.xlabel('All Embeddings (sample)')
-            plt.ylabel('Representative Embeddings')
-            plt.title('Similarity Heatmap')
-            plt.colorbar(label='Similarity')
+        if "similarities" in locals():
+            sim_sample = similarities[
+                : min(20, similarities.shape[0]), : min(50, similarities.shape[1])
+            ]
+            plt.imshow(sim_sample.cpu().numpy(), cmap="viridis", aspect="auto")
+            plt.xlabel("All Embeddings (sample)")
+            plt.ylabel("Representative Embeddings")
+            plt.title("Similarity Heatmap")
+            plt.colorbar(label="Similarity")
 
         # Plot 3: Embedding statistics
         plt.subplot(1, 3, 3)
         if all_embeddings.shape[1] == 2:
-            plt.hist(all_embeddings[:, 0].cpu().numpy(), bins=30, alpha=0.7,
-                    label='Dim 1', color='blue')
-            plt.hist(all_embeddings[:, 1].cpu().numpy(), bins=30, alpha=0.7,
-                    label='Dim 2', color='orange')
-            plt.xlabel('Embedding Value')
-            plt.ylabel('Frequency')
-            plt.title('Embedding Value Distribution')
+            plt.hist(
+                all_embeddings[:, 0].cpu().numpy(),
+                bins=30,
+                alpha=0.7,
+                label="Dim 1",
+                color="blue",
+            )
+            plt.hist(
+                all_embeddings[:, 1].cpu().numpy(),
+                bins=30,
+                alpha=0.7,
+                label="Dim 2",
+                color="orange",
+            )
+            plt.xlabel("Embedding Value")
+            plt.ylabel("Frequency")
+            plt.title("Embedding Value Distribution")
             plt.legend()
             plt.grid(True, alpha=0.3)
 
@@ -298,22 +337,25 @@ def test_cosir_evaluator_corrected():
             data=plt.gcf(),
             artifact_type="figure",
             folder="plots",
-            description="2D embedding analysis: scatter plot, similarity heatmap, and distributions"
+            description="2D embedding analysis: scatter plot, similarity heatmap, and distributions",
         )
 
         print("✓ Saved additional analysis plots")
-        plt.close('all')
+        plt.close("all")
 
     except Exception as e:
         print(f"ERROR in UMAP visualization test: {e}")
         import traceback
+
         traceback.print_exc()
 
     # Summary
     print("\n" + "=" * 80)
     print("CORRECTED TEST SUMMARY - ALL FUNCTIONALITY WORKING")
     print("=" * 80)
-    print("✓ Successfully loaded/created 2D embeddings compatible with get_representatives")
+    print(
+        "✓ Successfully loaded/created 2D embeddings compatible with get_representatives"
+    )
     print("✓ Generated k_means representative embeddings for evaluation")
     print("✓ Performed retrieval with arbitrary label embeddings")
     print("✓ Created UMAP visualization with correct parameters")
