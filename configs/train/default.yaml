@@ -8,7 +8,7 @@ train:
   num_workers: 4
   batch_size: 256
   initialization_strategy: imgtxt #TODO: change to imgtxt
-  load_existing_features: False
+  load_existing_features: True
   evaluation_interval: 5
   representative_number: 10
 
