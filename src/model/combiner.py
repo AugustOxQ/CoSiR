@@ -11,6 +11,76 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 
 
+import torch
+import torch.nn as nn
+
+
+class ResNetBlock(nn.Module):
+    def __init__(
+        self, input_dim: int, hidden_dim: int, output_dim: int, num_layers: int
+    ):
+        super().__init__()
+
+        if num_layers < 1:
+            raise ValueError("num_layers must be greater than or equal to 1.")
+
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.num_layers = num_layers
+
+        # 1. define internal sequential layers
+        layers = []
+
+        # the first layer in the block
+        if num_layers == 1:
+            # if there is only 1 layer, directly from input_dim to output_dim
+            layers.append(nn.Linear(input_dim, output_dim))
+        else:
+            # otherwise, from input_dim to hidden_dim
+            layers.append(nn.Linear(input_dim, hidden_dim))
+            layers.append(nn.ReLU())  # activation function
+            layers.append(
+                nn.LayerNorm(hidden_dim)
+            )  # normalization (optional, but common)
+
+            # intermediate layers (if any)
+            for _ in range(num_layers - 2):
+                layers.append(nn.Linear(hidden_dim, hidden_dim))
+                layers.append(nn.ReLU())
+                layers.append(nn.LayerNorm(hidden_dim))
+
+            # the last layer in the block
+            layers.append(nn.Linear(hidden_dim, output_dim))
+
+        # 2. wrap internal network
+        self.dense_layers = nn.Sequential(*layers)
+
+        # 3. define projection for skip connection
+        # if the input and output dimensions are different, a linear layer is needed to match the dimensions, so that addition can be performed.
+        if input_dim != output_dim:
+            self.skip_connection_proj = nn.Linear(input_dim, output_dim)
+        else:
+            self.skip_connection_proj = (
+                nn.Identity()
+            )  # if the dimensions are the same, use the identity mapping
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+
+        # calculate the internal network output (F(x))
+        residual = self.dense_layers(x)
+
+        # calculate the skip connection projection (W_s * x)
+        # this step is to ensure dimension matching
+        shortcut = self.skip_connection_proj(x)
+
+        # ResNet core operation: F(x) + W_s * x
+        out = residual + shortcut
+
+        # usually the last layer in the ResNet block has an activation function (but in actual networks, this is usually at the input of the next block or at the end of the network)
+        # here we don't add the final activation, so it can be flexibly used as part of a larger network.
+        return out
+
+
 class FixedSizeQueue:
     def __init__(self, max_size: int) -> None:
         """Initialize a FixedSizeQueue with a given maximum size.
@@ -234,6 +304,190 @@ class CombinerGated(nn.Module):
 
         self.scalar.add(gamma.mean().item())
         self.scalar.add(beta.mean().item())
+
+        if return_label_proj:
+            return F.normalize(combined, dim=-1), label_proj
+        else:
+            return F.normalize(combined, dim=-1)
+
+
+class CombinerPolar(nn.Module):
+    """Combiner module using gated residual + additive label shift."""
+
+    def __init__(
+        self,
+        clip_feature_dim: int = 512,
+        projection_dim: int = 512,
+        hidden_dim: int = 512,
+        num_heads: int = 8,
+        num_layers: int = 4,
+        label_dim: int = 512,
+        warm_up_epoch: int = 5,
+        scale_init: float = 1,
+    ) -> None:
+        super().__init__()
+
+        # Fixed orthogonal projection
+        self.label_proj_layer = nn.Linear(label_dim, projection_dim)
+        nn.init.orthogonal_(self.label_proj_layer.weight)
+        for param in self.label_proj_layer.parameters():
+            param.requires_grad = False
+
+        self.warm_up_epoch = warm_up_epoch
+        self.scalar = FixedSizeQueue(2)
+
+        self.radius_to_scale = ResNetBlock(
+            input_dim=1, hidden_dim=64, output_dim=1, num_layers=4
+        )
+        self.angle_to_rotate = ResNetBlock(
+            input_dim=1, hidden_dim=128, output_dim=clip_feature_dim, num_layers=4
+        )
+
+        self.sigmoid = nn.Sigmoid()
+        self.tanh = nn.Tanh()
+        self.relu = nn.ReLU()
+
+    def print_scalar(self):
+        return self.scalar.get()
+
+    def get_newest(self):
+        return self.scalar.get_newest()
+
+    def forward(
+        self,
+        text_features: Tensor,  # [B, 512]
+        text_full: Tensor,  # unused
+        label_features: Tensor,  # [B, label_dim]
+        epoch: int,
+        return_label_proj: bool = False,
+    ):
+
+        batch_size = text_features.shape[0]
+
+        label_proj = self.label_proj_layer(label_features)
+
+        # Change to polar coordinates
+        radius = torch.norm(label_features, dim=1, keepdim=True)
+        angle = torch.atan2(label_features[:, 1:], label_features[:, :1])
+
+        # Redicus to scale
+        scale_raw = self.radius_to_scale(radius)
+        scale_raw = self.relu(scale_raw)
+        scale = 0.8 + 0.4 * scale_raw  # This project to [0.8, 1.2]
+
+        # Angle to rotate
+        rotation_axis = self.angle_to_rotate(angle)
+        rotation_axis = self.tanh(rotation_axis)
+        rotation_axis = F.normalize(rotation_axis, dim=-1)
+
+        # Projection
+        text_norm = F.normalize(text_features, dim=-1)
+        dot_product = (text_norm * rotation_axis).sum(dim=-1, keepdim=True)
+
+        # Gram-Schmidt orthogonalization
+        axis_component = dot_product * rotation_axis
+        perpendicular = text_norm - axis_component
+        perpendicular = F.normalize(perpendicular, dim=-1)
+
+        # Rotate
+        cos_angle = torch.cos(angle)
+        sin_angle = torch.sin(angle)
+
+        # Angle after rotation
+        rotated_direction = cos_angle * text_norm + sin_angle * perpendicular
+
+        # Combine: scale + rotate
+        text_magnitute = torch.norm(text_norm, dim=-1, keepdim=True).clamp(min=1e-8)
+        combined = scale * rotated_direction + text_magnitute
+
+        if return_label_proj:
+            return F.normalize(combined, dim=-1), label_proj
+        else:
+            return F.normalize(combined, dim=-1)
+
+
+class CombinerSimplePolar(nn.Module):
+    """Combiner module using gated residual + additive label shift."""
+
+    def __init__(
+        self,
+        clip_feature_dim: int = 512,
+        projection_dim: int = 512,
+        hidden_dim: int = 512,
+        num_heads: int = 8,
+        num_layers: int = 4,
+        label_dim: int = 512,
+        warm_up_epoch: int = 5,
+        scale_init: float = 1,
+    ) -> None:
+        super().__init__()
+
+        # Fixed orthogonal projection
+        self.label_proj_layer = nn.Linear(label_dim, projection_dim)
+        nn.init.orthogonal_(self.label_proj_layer.weight)
+        for param in self.label_proj_layer.parameters():
+            param.requires_grad = False
+
+        self.warm_up_epoch = warm_up_epoch
+        self.scalar = FixedSizeQueue(2)
+        self.complex_dim = clip_feature_dim // 2
+        self.clip_feature_dim = clip_feature_dim
+
+        self.radius_to_scale = ResNetBlock(
+            input_dim=1, hidden_dim=128, output_dim=256, num_layers=2
+        )
+        self.angle_to_rotate = ResNetBlock(
+            input_dim=1, hidden_dim=64, output_dim=256, num_layers=4
+        )
+
+    def print_scalar(self):
+        return self.scalar.get()
+
+    def get_newest(self):
+        return self.scalar.get_newest()
+
+    def forward(
+        self,
+        text_features: Tensor,  # [B, 512]
+        text_full: Tensor,  # unused
+        label_features: Tensor,  # [B, label_dim]
+        epoch: int,
+        return_label_proj: bool = False,
+    ):
+
+        batch_size = text_features.shape[0]
+        label_proj = self.label_proj_layer(label_features)
+
+        # 转换为极坐标
+        radius = torch.norm(label_features, dim=1, keepdim=True)  # [B, 1]
+        angle = torch.atan2(
+            label_features[:, 1:2], label_features[:, 0:1]
+        )  # [B, 1] #TODO: 打印出来看一下区别，然后查看gradient
+
+        # 1. 将text_emb重新解释为复数
+        # [B, 512] -> [B, 256, 2] (real, imag)
+        text_complex = text_features.view(batch_size, self.complex_dim, 2)
+        text_real = text_complex[:, :, 0]  # [B, 256]
+        text_imag = text_complex[:, :, 1]  # [B, 256]
+
+        # 2. 生成调制的复数（极坐标形式）
+        phase_shifts = self.angle_to_rotate(angle)  # [B, 256]
+        magnitudes = self.radius_to_scale(radius)  # [B, 256]
+        magnitudes = 0.5 + magnitudes  # [0.5, 1.5]
+
+        # 复数乘法: (a+bi) * (r·e^(iθ)) = r·(a·cos(θ) - b·sin(θ) + i(a·sin(θ) + b·cos(θ)))
+        cos_phase = torch.cos(phase_shifts)
+        sin_phase = torch.sin(phase_shifts)
+
+        # 应用复数乘法
+        modulated_real = magnitudes * (text_real * cos_phase - text_imag * sin_phase)
+        modulated_imag = magnitudes * (text_real * sin_phase + text_imag * cos_phase)
+
+        # 3. 转回实数表示
+        modulated_complex = torch.stack(
+            [modulated_real, modulated_imag], dim=2
+        )  # [B, 256, 2]
+        combined = modulated_complex.view(batch_size, self.clip_feature_dim)  # [B, 512]
 
         if return_label_proj:
             return F.normalize(combined, dim=-1), label_proj

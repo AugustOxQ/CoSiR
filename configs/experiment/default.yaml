@@ -20,9 +20,9 @@ embeddingmanager:
   cache_l1_size_mb: 128
   cache_l2_size_mb: 256
   enable_l3_cache: true
-  auto_sync: false
-  sync_batch_size: 10
-  embedding_chunk_size: null  # Auto-optimize based on batch_size
+  auto_sync: true
+  sync_batch_size: 0
+  embedding_chunk_size: null # Auto-optimize based on batch_size
   enable_performance_monitoring: true
   log_cache_stats_every_n_epochs: 5
   force_sync_at_epoch_end: true

@@ -321,7 +321,6 @@ def train_cosir(*args, **kwargs):
             img_features = features_data["img_features"].to(device, non_blocking=True)
             txt_features = features_data["txt_features"].to(device, non_blocking=True)
             txt_full = features_data["txt_full"].to(device, non_blocking=True)
-            batch_sample_ids = features_data["sample_ids"]
 
             # Get embeddings by chunk directly from optimized manager
             chunk_sample_ids, label_embeddings_data = (

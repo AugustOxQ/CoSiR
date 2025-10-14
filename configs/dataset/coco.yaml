@@ -17,6 +17,6 @@ featuremanager:
 # Experiment Configuration
 experiment:
   name: "CoSiR_Experiment"
-  tags: ["CoSiR", "COCO"]
+  tags: ["CoSiR", "COCO", "local"]
   description: "Comprehensive experiment for CoSiR"
   results_dir: "res/CoSiR_Experiment/coco" # Depends on the dataset

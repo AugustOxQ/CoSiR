@@ -5,7 +5,6 @@ import torch
 import numpy as np
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from sklearn.metrics.pairwise import cosine_similarity
 
 from .base import BaseEvaluator
 from ..config import EvaluationConfig, MetricResult
@@ -110,9 +109,9 @@ class TrainEvaluator(BaseEvaluator):
                 comb_emb_shuffled_cpu = comb_emb_neg.cpu().numpy()
 
                 # Compute similarity matrices
-                sim_raw = cosine_similarity(img_emb_cpu, txt_emb_cls_cpu)
-                sim_comb = cosine_similarity(img_emb_cpu, comb_emb_cpu)
-                sim_comb_shuffled = cosine_similarity(
+                sim_raw = self.safe_cosine_similarity(img_emb_cpu, txt_emb_cls_cpu)
+                sim_comb = self.safe_cosine_similarity(img_emb_cpu, comb_emb_cpu)
+                sim_comb_shuffled = self.safe_cosine_similarity(
                     img_emb_cpu, comb_emb_shuffled_cpu
                 )
 

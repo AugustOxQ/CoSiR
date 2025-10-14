@@ -18,6 +18,6 @@ wandb:
   project: cosir
   entity: augustoxq
   name: ""
-  tags: [Local, redcaps]
+  tags: [Local]
   notes: "CoSiR Training"
   mode: online

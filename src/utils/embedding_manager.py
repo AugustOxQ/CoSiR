@@ -1088,19 +1088,23 @@ class TrainableEmbeddingManager:
             chunk_cache_key = f"embedding_chunk_{chunk_id}"
 
             # Get chunk from cache or load from disk
-            chunk_embeddings_dict = self.cache.get(chunk_cache_key)
-            if chunk_embeddings_dict is None:
+            cached_dict = self.cache.get(chunk_cache_key)
+            if cached_dict is None:
                 # Cache miss - load from disk
                 chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
                 if chunk_path.exists():
-                    chunk_embeddings_dict = torch.load(chunk_path, map_location="cpu")
+                    cached_dict = torch.load(chunk_path, map_location="cpu")
                 else:
                     # Initialize new chunk
-                    chunk_embeddings_dict = {}
+                    cached_dict = {}
                 self.performance_stats["cache_misses"] += 1
                 self.performance_stats["disk_loads"] += 1
             else:
                 self.performance_stats["cache_hits"] += 1
+
+            # CRITICAL: Create a copy of the dict to avoid modifying cached reference
+            # This ensures the cache update is properly detected
+            chunk_embeddings_dict = dict(cached_dict)
 
             # Update embeddings in chunk dictionary
             for i, sample_id in enumerate(sample_ids):
@@ -1273,6 +1277,9 @@ class TrainableEmbeddingManager:
         # Get total number of chunks
         num_chunks = feature_manager.get_num_chunks()
 
+        self.cache.clear_cache()
+        self.dirty_chunks.clear()
+
         # Initialize embeddings chunk by chunk
         for chunk_id in range(num_chunks):
             # Load features for this chunk
@@ -1280,7 +1287,9 @@ class TrainableEmbeddingManager:
 
             img_features = features_data["img_features"].to(device)
             txt_features = features_data["txt_features"].to(device)
-            chunk_sample_ids = features_data["sample_ids"]
+
+            # DEBUG: This needs to get from the embedding manager, not the feature manager, still dont know what is the difference between them
+            chunk_sample_ids, _ = self.get_embeddings_by_chunk(chunk_id)
 
             # Compute difference in CLIP space: img_emb - txt_emb
             clip_diff = img_features - txt_features  # Shape: [chunk_size, clip_dim]
@@ -1288,12 +1297,20 @@ class TrainableEmbeddingManager:
             # Map to label embedding space: (img_emb - txt_emb) @ w_t
             label_embedding_init = (
                 clip_diff @ w_t
-            )  # Shape: [chunk_size, label_embedding_dim]
+            ) * 10  # Shape: [chunk_size, label_embedding_dim]
 
             # Update embeddings for this chunk
             self.update_embeddings_by_chunk(
                 chunk_id, chunk_sample_ids, label_embedding_init
             )
+
+            if chunk_id % 10 == 0:
+                # Check if the embeddings are updated
+                chunk_sample_ids, label_embedding_updated = (
+                    self.get_embeddings_by_chunk(chunk_id)
+                )
+                print(label_embedding_init[0])
+                print(label_embedding_updated[0])
 
             # Log progress
             if chunk_id % 100 == 0 or chunk_id == num_chunks - 1:
@@ -1304,9 +1321,109 @@ class TrainableEmbeddingManager:
                     f"Chunk: {chunk_id} / {num_chunks-1}, Label Move Distance: {label_move_distance:.3f}"
                 )
 
+            self.cache.clear_cache()
+            self.dirty_chunks.clear()
+
         print(
             f"✅ Completed imgtxt initialization for {len(self.sample_ids)} samples across {num_chunks} chunks"
         )
+
+    def store_imgtxt_template(self):
+        """
+        Store current embeddings as template to the parent directory.
+
+        Template will be saved to: self.embeddings_dir.parent.parent / "template_embeddings"
+        This allows reusing the same initialized embeddings across multiple experiments
+        on the same dataset.
+
+        Example directory structure:
+        - res/CoSiR_Experiment/redcaps/20251007_133554_CoSiR_Experiment/training_embeddings/
+          -> template saved to: res/CoSiR_Experiment/redcaps/template_embeddings/
+        """
+        # Determine template directory (two levels up from current embeddings_dir)
+        template_dir = self.embeddings_dir.parent.parent / "template_embeddings"
+        template_dir.mkdir(parents=True, exist_ok=True)
+
+        print(f"Storing template embeddings to: {template_dir}")
+
+        # Force sync to ensure all chunks are on disk
+        if self.storage_mode == "memory":
+            self._save_all_chunks_to_disk()
+        elif self.storage_mode == "disk":
+            self.sync_dirty_chunks_to_disk()
+
+        # Copy all embedding chunk files to template directory
+        chunk_files = list(self.embeddings_dir.glob("embeddings_chunk_*.pt"))
+        if not chunk_files:
+            print("Warning: No embedding chunk files found to copy!")
+            return
+
+        for chunk_file in chunk_files:
+            shutil.copy2(chunk_file, template_dir / chunk_file.name)
+
+        print(f"✅ Stored {len(chunk_files)} embedding chunks as template")
+        print(f"   Template location: {template_dir}")
+
+    def load_imgtxt_template(self):
+        """
+        Load embeddings from template directory and replace current embeddings.
+
+        Template will be loaded from: self.embeddings_dir.parent.parent / "template_embeddings"
+
+        This allows skipping the expensive imgtxt initialization process by reusing
+        previously computed embeddings for the same dataset.
+        """
+        # Determine template directory (two levels up from current embeddings_dir)
+        template_dir = self.embeddings_dir.parent.parent / "template_embeddings"
+
+        if not template_dir.exists():
+            raise FileNotFoundError(
+                f"Template embeddings directory not found: {template_dir}"
+            )
+
+        # Check if template chunks exist
+        template_chunks = list(template_dir.glob("embeddings_chunk_*.pt"))
+        if not template_chunks:
+            raise FileNotFoundError(
+                f"No embedding chunk files found in template directory: {template_dir}"
+            )
+
+        print(f"Loading template embeddings from: {template_dir}")
+        print(f"Found {len(template_chunks)} template chunks")
+
+        # Copy template chunks to current embeddings directory
+        for template_chunk in template_chunks:
+            dest_path = self.embeddings_dir / template_chunk.name
+            shutil.copy2(template_chunk, dest_path)
+
+        # Reload embeddings based on storage mode
+        if self.storage_mode == "memory":
+            # For memory mode, load all chunks into memory
+            print("Loading template chunks into memory...")
+            all_embeddings = []
+            for chunk_id in sorted(self.chunk_mapping.keys()):
+                chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
+                chunk_data = torch.load(chunk_path, map_location="cpu")
+
+                # Extract embeddings in sample_id order for this chunk
+                chunk_sample_ids = self.chunk_mapping[chunk_id]
+                chunk_embeddings = torch.stack(
+                    [chunk_data[sid] for sid in chunk_sample_ids]
+                )
+                all_embeddings.append(chunk_embeddings)
+
+            # Concatenate all chunks and update the embeddings parameter
+            all_embeddings_tensor = torch.cat(all_embeddings, dim=0).to(self.device)
+            self.embeddings = nn.Parameter(all_embeddings_tensor, requires_grad=True)
+            print(f"✅ Loaded {len(all_embeddings_tensor)} embeddings into memory")
+
+        elif self.storage_mode == "disk":
+            # For disk mode, just clear the cache so it loads from new files
+            self.cache.clear_cache()
+            self.dirty_chunks.clear()
+            print(f"✅ Template embeddings loaded, cache cleared")
+
+        print(f"   Template loaded from: {template_dir}")
 
 
 class EmbeddingInitializer:

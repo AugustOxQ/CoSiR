@@ -6,15 +6,10 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
+from typing import Callable
 
-from src.metrics.regularizer import (
-    angular_consistency_loss,
-    boundary_penalty,
-    entropy_loss,
-    label_change_regularizer,
-    pull_away_diversity_loss,
-    text_preserve_regularizer,
-)
+from src.metrics.regularizer import *
+from src.metrics.regularizer_new import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -166,8 +161,8 @@ class LabelContrastiveLoss(
             + self.lambda_neg * loss_neg
             + angular_loss
             + pull_away_loss
-            + self.lambda_labelchange * label_change_loss
-            + self.lambda_preserve * text_preserve_loss
+            + label_change_loss
+            + text_preserve_loss
             + boundary_loss
         )
 
@@ -184,6 +179,106 @@ class LabelContrastiveLoss(
             "loss_boundary": boundary_loss,
             "total_loss": total_loss,
             "early_loss": early_loss,
+        }
+
+        if self.return_dict:
+            return loss_dict
+        else:
+            return total_loss
+
+
+class LabelContrastiveLoss_enhance(nn.Module):
+    def __init__(
+        self,
+        margin: float = 0.2,
+        lambda_pos: float = 1.0,
+        lambda_neg: float = 1.0,
+        lambda_labelchange: float = 0.1,
+        lambda_preserve: float = 0.1,
+        lambda_angular: float = 0.1,
+        lambda_pull_away: float = 0.1,
+        lambda_boundary: float = 0.1,
+        return_dict: bool = False,
+    ) -> None:
+        super().__init__()
+        print("Using Combined Cosine and Contrastive Loss")
+        self.margin = margin
+        self.lambda_pos = lambda_pos
+        self.lambda_neg = lambda_neg
+        self.lambda_labelchange = lambda_labelchange
+        self.lambda_preserve = lambda_preserve
+        self.lambda_angular = lambda_angular
+        self.lambda_pull_away = lambda_pull_away
+        self.lambda_boundary = lambda_boundary
+        self.return_dict = return_dict
+
+    def forward(
+        self,
+        image_features: Tensor,
+        text_features: Tensor,
+        combined_features: Tensor,
+        combined_features_neg: Tensor,
+        label_embedding: Tensor,
+        label_embedding_proj: Tensor,
+        model,
+    ):
+        # Compute cosine similarity
+        cos_pos = F.cosine_similarity(
+            combined_features, image_features, dim=-1
+        )  # Positive contrast
+        cos_orig = F.cosine_similarity(
+            text_features, image_features, dim=-1
+        )  # Original contrast
+        cos_neg = F.cosine_similarity(
+            combined_features_neg, image_features, dim=-1
+        )  # Negative cvidiaontrast
+
+        loss_improve = torch.clamp(
+            cos_orig + self.margin - cos_pos, min=0
+        ).mean()  # Let combined features be closer to image features
+        loss_neg = torch.clamp(
+            cos_pos - cos_neg + self.margin, min=0
+        ).mean()  # Let combined features be further from neg
+
+        # Additional regularizers
+        laplacian_loss = manifold_smoothness_loss_sparse(
+            label_embedding, text_features, combined_features, model=model, alpha=0.15
+        )
+
+        angular_loss = angular_gradient_consistency_loss(
+            label_embedding, text_features, combined_features, model=model, alpha=0.1
+        )
+
+        rotation_loss = rotation_semantic_orthogonality_loss(
+            label_embedding, text_features, combined_features, model=model, alpha=0.1
+        )
+
+        radius_loss = radius_monotonicity_loss(
+            label_embedding, text_features, model, alpha=0.15
+        )
+
+        boundary_loss = boundary_penalty(
+            label_embedding, radius=5.0, alpha=self.lambda_boundary
+        )
+
+        total_loss = (
+            self.lambda_pos * loss_improve
+            + self.lambda_neg * loss_neg
+            + laplacian_loss
+            + angular_loss
+            + rotation_loss
+            + boundary_loss
+            + radius_loss
+        )
+
+        loss_dict = {
+            "loss_improve": loss_improve,
+            "loss_neg": loss_neg,
+            "loss_laplacian": laplacian_loss,
+            "loss_angular": angular_loss,
+            "loss_rotation": rotation_loss,
+            "loss_boundary": boundary_loss,
+            "total_loss": total_loss,
         }
 
         if self.return_dict:

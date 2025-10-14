@@ -3,13 +3,15 @@
 
 train:
   epochs: 30
-  lr: 1.0e-6
+  lr: 1.0e-5
   weight_decay: 5.0e-2
   num_workers: 4
   batch_size: 256
-  initialization_strategy: imgtxt #TODO: change to imgtxt
+  initialization_strategy: imgtxt #TODO: change to imgtxt, debugging time use zeros
+  use_template_embeddings: True
+  save_as_template_embeddings: True
   load_existing_features: True
-  evaluation_interval: 5
+  evaluation_interval: 3
   representative_number: 10
 
 # Loss function configuration
@@ -24,7 +26,7 @@ loss:
 # Optimizer configuration
 optimizer:
   type: "AdamW"
-  lr: 1.0e-6
+  lr: 1.0e-5
   weight_decay: 5.0e-2
   label_lr_multiplier: 5.0e4 # Label embedding learning rate multiplier
 
@@ -39,4 +41,4 @@ eval:
   k_vals: [1, 5, 10]
   train_max_batches: 30 # Should match train.epochs
   print_metrics: true
-  evaluation_interval: 5
+  evaluation_interval: 3

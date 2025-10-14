@@ -7,7 +7,7 @@ from tqdm.auto import tqdm
 import numpy as np
 from transformers import AutoProcessor
 from torch.optim.lr_scheduler import CosineAnnealingLR
-
+import wandb
 
 from src.dataset import (
     CoSiRTrainingChunkDataset,
@@ -15,7 +15,7 @@ from src.dataset import (
     FeatureExtractionDataset,
     FeatureExtractionConceptualDataset,
 )
-from src.model import CoSiRModel
+from src.model import CoSiRModel, Clustering, UMAP_vis
 from src.eval import EvaluationManager, EvaluationConfig
 from src.utils import (
     FeatureManager,
@@ -23,8 +23,10 @@ from src.utils import (
     TrainableEmbeddingManager,
     replace_with_most_different,
     get_representatives,
+    get_umap,
+    visualize_ideal_condition_space,
 )
-from src.metrics import LabelContrastiveLoss
+from src.metrics import LabelContrastiveLoss, LabelContrastiveLoss_enhance
 
 
 def train_cosir(cfg, logger):
@@ -69,7 +71,7 @@ def train_cosir(cfg, logger):
 
     # Setup criteria and optimizer and scheduler
     print("Initializing criteria and optimizer and scheduler")
-    criteria = LabelContrastiveLoss(
+    criteria = LabelContrastiveLoss_enhance(
         margin=cfg.loss.margin,
         lambda_pos=cfg.loss.lambda_pos,
         lambda_neg=cfg.loss.lambda_neg,
@@ -183,6 +185,9 @@ def train_cosir(cfg, logger):
     # Initialize evaluator
     evaluator = EvaluationManager(evaluation_config)
 
+    clustering = Clustering(device=device)
+    umap_vis = UMAP_vis(device=device)
+
     # ========== OPTIMIZED: TrainableEmbeddingManager with Intelligent Caching ==========
 
     # Auto-optimize chunk size based on batch size if not specified
@@ -214,9 +219,36 @@ def train_cosir(cfg, logger):
         chunk_size=embedding_chunk_size,
     )
 
+    # ========== Template Embedding Initialization ==========
     if cfg.train.initialization_strategy == "imgtxt":
-        # Initialize embeddings with imgtxt strategy
-        embedding_manager.initialize_embeddings_imgtxt(feature_manager, model, device)
+        # Determine template directory (one level up from directory, two levels up from embeddings_dir)
+        template_dir = experiment.directory.parent / "template_embeddings"
+        template_exists = template_dir.exists() and list(
+            template_dir.glob("embeddings_chunk_*.pt")
+        )
+
+        # Try to load from template if it exists and is enabled
+        if template_exists and getattr(cfg.train, "use_template_embeddings", True):
+            print("Attempting to load from template embeddings...")
+            try:
+                embedding_manager.load_imgtxt_template()
+            except Exception as e:
+                print(f"Failed to load template: {e}")
+                print("Falling back to imgtxt initialization...")
+                embedding_manager.initialize_embeddings_imgtxt(
+                    feature_manager, model, device
+                )
+        else:
+            # Initialize embeddings with imgtxt strategy
+            print("Initializing embeddings with imgtxt strategy...")
+            embedding_manager.initialize_embeddings_imgtxt(
+                feature_manager, model, device
+            )
+
+            # Save as template embeddings if enabled (default: True)
+            if getattr(cfg.train, "save_as_template_embeddings", True):
+                print("Storing embeddings as template for future use...")
+                embedding_manager.store_imgtxt_template()
 
     # Optimize cache settings based on actual batch size
     embedding_manager.optimize_cache_settings(cfg.featuremanager.chunk_size)
@@ -272,7 +304,6 @@ def train_cosir(cfg, logger):
             img_features = features_data["img_features"].to(device, non_blocking=True)
             txt_features = features_data["txt_features"].to(device, non_blocking=True)
             txt_full = features_data["txt_full"].to(device, non_blocking=True)
-            batch_sample_ids = features_data["sample_ids"]
 
             # Get embeddings by chunk directly from optimized manager
             chunk_sample_ids, label_embeddings_data = (
@@ -319,6 +350,7 @@ def train_cosir(cfg, logger):
                 comb_emb_neg,
                 label_embeddings,
                 label_embedding_proj,
+                model,
             )
 
             loss = loss_dict["total_loss"]
@@ -374,20 +406,20 @@ def train_cosir(cfg, logger):
 
         scheduler.step()
 
-        # Validation loop
-        model.eval()
-        with torch.no_grad():
-            train_results = evaluator.evaluate_train(
-                model=model,
-                feature_manager=feature_manager,
-                embedding_manager=embedding_manager,
-                dataloader=train_loader,
-                device=device,
-                epoch=epoch,
-            )
+        # # Validation loop
+        # model.eval()
+        # with torch.no_grad():
+        #     train_results = evaluator.evaluate_train(
+        #         model=model,
+        #         feature_manager=feature_manager,
+        #         embedding_manager=embedding_manager,
+        #         dataloader=train_loader,
+        #         device=device,
+        #         epoch=epoch,
+        #     )
 
-            # Log train results
-            # logger.log_metrics({train_results.metrics})
+        #     # Log train results
+        #     # logger.log_metrics({train_results.metrics})
 
         if (
             epoch == 0
@@ -414,11 +446,54 @@ def train_cosir(cfg, logger):
                     epoch=epoch,
                 )
 
-                # Check whether test_results is a MetricResult or a tuple
-
                 # Log test results, using a for loop to log each metric
                 for metric, value in test_results.metrics.items():
                     logger.log_metrics({metric: value})
+
+                # Visualize test results
+                # # Check whether label embeddings are 2d or higher dimensional
+                if label_embeddings_all.shape[1] == 2:
+                    umap_features = label_embeddings_all.cpu().numpy()
+                else:
+                    umap_features = umap_vis.learn_umap(
+                        label_embeddings_all, close_cluster=True
+                    )
+                # # Get cluster labels
+                # umap_labels, _ = clustering.get_hdbscan(
+                #     umap_features, method="leaf"
+                # )
+
+                # Visualize label embeddings
+                fig = get_umap(
+                    umap_features,
+                    umap_labels=None,
+                    epoch=epoch,
+                    no_outlier=True,
+                    samples_to_track=[0, 1, 2, 3, 4],
+                )
+                experiment.save_artifact(
+                    name=f"label_embeddings_umap_{epoch}",
+                    data=fig,
+                    artifact_type="figure",
+                    folder="plots",
+                    description=f"UMAP visualization of trained label embeddings at epoch {epoch}",
+                )
+
+                fig2 = visualize_ideal_condition_space(umap_features, epoch)
+                experiment.save_artifact(
+                    name=f"ideal_condition_space_{epoch}",
+                    data=fig2,
+                    artifact_type="figure",
+                    folder="plots",
+                    description=f"Ideal condition space visualization at epoch {epoch}",
+                )
+
+                logger.log_metrics(
+                    {
+                        "vis/umap": wandb.Image(fig),
+                        "vis/ideal_condition_space": wandb.Image(fig2),
+                    }
+                )
 
     # ========== TRAINING COMPLETE: Final Performance Summary ==========
     # Save final embeddings and model combiner state dictionary

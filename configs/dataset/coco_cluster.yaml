@@ -11,12 +11,12 @@ data:
 
 # Feature manager paths - dataset specific
 featuremanager:
-  storage_dir: "/local/wding/pre_extract/coco/features"
-  sample_ids_path: "/local/wding/pre_extract/coco/sample_ids.pt"
+  storage_dir: "/local/wding/Dataset/pre_extract/coco/features"
+  sample_ids_path: "/local/wding/Dataset/pre_extract/coco/sample_ids.pt"
 
 # Experiment Configuration
 experiment:
   name: "CoSiR_Experiment"
   tags: ["CoSiR", "COCO", "Cluster"]
   description: "Comprehensive experiment for CoSiR"
-  results_dir: "res/CoSiR_Experiment/coco" # Depends on the dataset
+  results_dir: "/local/wding/res/CoSiR_Experiment/coco" # Depends on the dataset

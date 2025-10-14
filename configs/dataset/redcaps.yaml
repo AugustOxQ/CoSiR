@@ -17,7 +17,7 @@ featuremanager:
 # Experiment Configuration
 experiment:
   name: "CoSiR_Experiment"
-  tags: ["CoSiR", "RedCaps"]
+  tags: ["CoSiR", "RedCaps", "local"]
   description: "Comprehensive experiment for CoSiR"
   results_dir: "res/CoSiR_Experiment/redcaps" # Depends on the dataset
 

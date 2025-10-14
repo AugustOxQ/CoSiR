@@ -11,15 +11,15 @@ data:
 
 # Feature manager paths - dataset specific
 featuremanager:
-  storage_dir: "/local/wding/pre_extract/redcaps/features"
-  sample_ids_path: "/local/wding/pre_extract/redcaps/sample_ids.pt"
+  storage_dir: "/local/wding/Dataset/pre_extract/redcaps/features"
+  sample_ids_path: "/local/wding/Dataset/pre_extract/redcaps/sample_ids.pt"
 
 # Experiment Configuration
 experiment:
   name: "CoSiR_Experiment"
   tags: ["CoSiR", "RedCaps", "Cluster"]
   description: "Comprehensive experiment for CoSiR"
-  results_dir: "res/CoSiR_Experiment/redcaps" # Depends on the dataset
+  results_dir: "/local/wding/res/CoSiR_Experiment/redcaps" # Depends on the dataset
 
 # This is for redcaps test set
 # test_annotation_path: "/data/PDD/redcaps/redcaps_plus/redcaps_test.json"
