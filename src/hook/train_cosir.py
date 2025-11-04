@@ -8,6 +8,7 @@ import numpy as np
 from transformers import AutoProcessor
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import wandb
+import matplotlib.pyplot as plt
 
 from src.dataset import (
     CoSiRTrainingChunkDataset,
@@ -23,6 +24,7 @@ from src.utils import (
     TrainableEmbeddingManager,
     replace_with_most_different,
     get_representatives,
+    get_representatives_polar_grid,
     get_umap,
     visualize_ideal_condition_space,
 )
@@ -430,7 +432,7 @@ def train_cosir(cfg, logger):
             with torch.no_grad():
                 # Test evaluation
                 _, label_embeddings_all = embedding_manager.get_all_embeddings()
-                representatives = get_representatives(
+                representatives = get_representatives_polar_grid(
                     label_embeddings_all.cpu(),
                     (
                         cfg.train.representative_number
@@ -446,9 +448,9 @@ def train_cosir(cfg, logger):
                     epoch=epoch,
                 )
 
-                # Log test results, using a for loop to log each metric
-                for metric, value in test_results.metrics.items():
-                    logger.log_metrics({metric: value})
+                logger.log_metrics(
+                    {metric: value} for metric, value in test_results.metrics.items()
+                )
 
                 # Visualize test results
                 # # Check whether label embeddings are 2d or higher dimensional
@@ -494,6 +496,8 @@ def train_cosir(cfg, logger):
                         "vis/ideal_condition_space": wandb.Image(fig2),
                     }
                 )
+
+                plt.close("all")
 
     # ========== TRAINING COMPLETE: Final Performance Summary ==========
     # Save final embeddings and model combiner state dictionary

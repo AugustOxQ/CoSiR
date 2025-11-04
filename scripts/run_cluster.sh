@@ -19,4 +19,4 @@ echo "Using ${NUM_PROCS} processes"
 
 ENTRY="main_cosir.py"
 
-surfix="wandb.tags=['cluster']" # General settings
+python main_cosir.py dataset=

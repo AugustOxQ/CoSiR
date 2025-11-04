@@ -7,7 +7,7 @@ import requests
 from PIL import Image
 from transformers import AutoProcessor, CLIPModel
 
-from src.model.combiner import CombinerGated, CombinerSimplePolar, CombinerPolar
+from src.model.combiner import *
 
 
 def get_clip(trainable=False):

@@ -406,7 +406,7 @@ class CombinerPolar(nn.Module):
             return F.normalize(combined, dim=-1)
 
 
-class CombinerSimplePolar(nn.Module):
+class CombinerSimplePolar_enhance(nn.Module):
     """Combiner module using gated residual + additive label shift."""
 
     def __init__(
@@ -458,36 +458,206 @@ class CombinerSimplePolar(nn.Module):
         batch_size = text_features.shape[0]
         label_proj = self.label_proj_layer(label_features)
 
-        # 转换为极坐标
+        # Change to polar coordinates
         radius = torch.norm(label_features, dim=1, keepdim=True)  # [B, 1]
         angle = torch.atan2(
             label_features[:, 1:2], label_features[:, 0:1]
-        )  # [B, 1] #TODO: 打印出来看一下区别，然后查看gradient
+        )  # [B, 1] #TODO: print out and check the difference, then check the gradient
 
-        # 1. 将text_emb重新解释为复数
+        # Interpret text_emb as complex numbers
         # [B, 512] -> [B, 256, 2] (real, imag)
         text_complex = text_features.view(batch_size, self.complex_dim, 2)
         text_real = text_complex[:, :, 0]  # [B, 256]
         text_imag = text_complex[:, :, 1]  # [B, 256]
 
-        # 2. 生成调制的复数（极坐标形式）
+        # Generate modulated complex numbers (polar form)
         phase_shifts = self.angle_to_rotate(angle)  # [B, 256]
         magnitudes = self.radius_to_scale(radius)  # [B, 256]
         magnitudes = 0.5 + magnitudes  # [0.5, 1.5]
 
-        # 复数乘法: (a+bi) * (r·e^(iθ)) = r·(a·cos(θ) - b·sin(θ) + i(a·sin(θ) + b·cos(θ)))
+        # Complex multiplication: (a+bi) * (r·e^(iθ)) = r·(a·cos(θ) - b·sin(θ) + i(a·sin(θ) + b·cos(θ)))
         cos_phase = torch.cos(phase_shifts)
         sin_phase = torch.sin(phase_shifts)
 
-        # 应用复数乘法
+        # Apply complex multiplication
         modulated_real = magnitudes * (text_real * cos_phase - text_imag * sin_phase)
         modulated_imag = magnitudes * (text_real * sin_phase + text_imag * cos_phase)
 
-        # 3. 转回实数表示
+        # Convert back to real representation
         modulated_complex = torch.stack(
             [modulated_real, modulated_imag], dim=2
         )  # [B, 256, 2]
         combined = modulated_complex.view(batch_size, self.clip_feature_dim)  # [B, 512]
+
+        if return_label_proj:
+            return F.normalize(combined, dim=-1), label_proj
+        else:
+            return F.normalize(combined, dim=-1)
+
+
+class CombinerSimplePolar(nn.Module):
+    """Combiner module using gated residual + additive label shift."""
+
+    def __init__(
+        self,
+        clip_feature_dim: int = 512,
+        projection_dim: int = 512,
+        hidden_dim: int = 512,
+        num_heads: int = 8,
+        num_layers: int = 4,
+        label_dim: int = 512,
+        warm_up_epoch: int = 5,
+        scale_init: float = 1,
+    ) -> None:
+        super().__init__()
+
+        # Fixed orthogonal projection
+        self.label_proj_layer = nn.Linear(label_dim, projection_dim)
+        nn.init.orthogonal_(self.label_proj_layer.weight)
+        for param in self.label_proj_layer.parameters():
+            param.requires_grad = False
+
+        self.warm_up_epoch = warm_up_epoch
+        self.scalar = FixedSizeQueue(2)
+        self.clip_feature_dim = clip_feature_dim
+
+        self.radius_to_scale = ResNetBlock(
+            input_dim=1, hidden_dim=64, output_dim=1, num_layers=2
+        )
+        self.angle_to_rotate = ResNetBlock(
+            input_dim=1, hidden_dim=64, output_dim=1, num_layers=2
+        )
+
+        self.max_rotation_angle = torch.pi / 6  # 30度
+
+    def print_scalar(self):
+        return self.scalar.get()
+
+    def get_newest(self):
+        return self.scalar.get_newest()
+
+    def forward(
+        self,
+        text_features: Tensor,  # [B, 512]
+        text_full: Tensor,  # unused
+        label_features: Tensor,  # [B, label_dim]
+        epoch: int,
+        return_label_proj: bool = False,
+    ):
+
+        batch_size = text_features.shape[0]
+        label_proj = self.label_proj_layer(label_features)
+
+        # condition: [B, 2]
+        # text_features: [B, 512]
+
+        # 1. 转极坐标
+        radius = torch.norm(label_features, dim=1, keepdim=True)  # [B, 1]
+        angle = torch.atan2(label_features[:, 1:2], label_features[:, 0:1])  # [B, 1]
+
+        # 2. Radius -> Scale (范围 [0.8, 1.2])
+        scale_factor = 0.8 + 0.4 * self.radius_to_scale(radius)  # [B, 1]
+
+        # 3. Angle -> Rotation strength
+        rotation_strength = self.angle_to_rotate(angle)  # [B, 1], 范围[-1,1]
+
+        # 4. Project condition to feature space (frozen)
+        condition_proj = self.label_proj_layer(label_features)  # [B, 512]
+        condition_proj = F.normalize(condition_proj, dim=-1)
+
+        # 5. 简单的旋转: 在text和condition_proj张成的平面内旋转
+        text_norm = F.normalize(text_features, dim=-1)
+
+        # 计算旋转角度 (由rotation_strength控制, 最大±30度)
+        rotation_angle = rotation_strength * self.max_rotation_angle  # [B, 1]
+
+        # 在text_norm和condition_proj的平面内旋转
+        # 使用简单的线性插值近似
+        cos_theta = torch.cos(rotation_angle)
+        sin_theta = torch.sin(rotation_angle)
+
+        rotated = cos_theta * text_norm + sin_theta * condition_proj
+        rotated = F.normalize(rotated, dim=-1)
+
+        # 6. Apply scale (保持原始magnitude)
+        text_magnitude = torch.norm(text_features, dim=-1, keepdim=True)
+        combined = scale_factor * text_magnitude * rotated
+
+        if return_label_proj:
+            return F.normalize(combined, dim=-1), label_proj
+        else:
+            return F.normalize(combined, dim=-1)
+
+
+class CombinerSimplePolar_noparam(nn.Module):
+    """Combiner module using gated residual + additive label shift."""
+
+    def __init__(
+        self,
+        clip_feature_dim: int = 512,
+        projection_dim: int = 512,
+        hidden_dim: int = 512,
+        num_heads: int = 8,
+        num_layers: int = 4,
+        label_dim: int = 512,
+        warm_up_epoch: int = 5,
+        scale_init: float = 1,
+    ) -> None:
+        super().__init__()
+
+        # Fixed orthogonal projection
+        self.label_proj_layer = nn.Linear(label_dim, projection_dim)
+        nn.init.orthogonal_(self.label_proj_layer.weight)
+        for param in self.label_proj_layer.parameters():
+            param.requires_grad = False
+
+        self.scalar = FixedSizeQueue(2)
+        self.clip_feature_dim = clip_feature_dim
+
+    def print_scalar(self):
+        return self.scalar.get()
+
+    def get_newest(self):
+        return self.scalar.get_newest()
+
+    def forward(
+        self,
+        text_features: Tensor,  # [B, 512]
+        text_full: Tensor,  # unused
+        label_features: Tensor,  # [B, label_dim]
+        epoch: int,
+        return_label_proj: bool = False,
+    ):
+
+        batch_size = text_features.shape[0]
+        label_proj = self.label_proj_layer(label_features)
+
+        # condition: [B, 2]
+        # text_features: [B, 512]
+
+        # 1. 转极坐标
+        radius = torch.norm(label_features, dim=1, keepdim=True)  # [B, 1]
+        angle = torch.atan2(label_features[:, 1:2], label_features[:, 0:1])  # [B, 1]
+
+        # 2. Scale: 直接用radius (无参数)
+        scale_factor = 0.8 + 0.4 * torch.sigmoid(radius)  # [B, 1]
+
+        # 3. Rotation: 用condition在前两个维度做小扰动
+        text_norm = F.normalize(text_features, dim=-1)
+
+        # 在特征空间的前两个维度上应用condition
+        perturbation = torch.zeros_like(text_features)
+        # 旋转强度由angle的tanh控制
+        rotation_strength = torch.tanh(angle) * 0.1  # 小扰动
+        perturbation[:, 0] = label_features[:, 0] * rotation_strength.squeeze()
+        perturbation[:, 1] = label_features[:, 1] * rotation_strength.squeeze()
+
+        rotated = text_norm + perturbation
+        rotated = F.normalize(rotated, dim=-1)
+
+        # 4. Apply scale
+        text_magnitude = torch.norm(text_features, dim=-1, keepdim=True)
+        combined = scale_factor * text_magnitude * rotated
 
         if return_label_proj:
             return F.normalize(combined, dim=-1), label_proj

@@ -4,10 +4,10 @@
 # Dataset paths
 data:
   dataset_type: "coco"
-  train_annotation_path: "/local/wding/Dataset/coco/annotations/coco_karpathy_train.json"
-  test_annotation_path: "/local/wding/Dataset/coco/annotations/coco_karpathy_test.json"
+  train_annotation_path: "/var/scratch/wding/Dataset/coco/annotations/coco_karpathy_train.json"
+  test_annotation_path: "/var/scratch/wding/Dataset/coco/annotations/coco_karpathy_test.json"
   train_image_path: ""
-  test_image_path: "/local/wding/Dataset/coco/images"
+  test_image_path: "/var/scratch/wding/Dataset/coco/images"
 
 # Feature manager paths - dataset specific
 featuremanager:
