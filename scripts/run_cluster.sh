@@ -19,4 +19,8 @@ echo "Using ${NUM_PROCS} processes"
 
 ENTRY="main_cosir.py"
 
-python main_cosir.py dataset=
+python main_cosir.py dataset=coco_cluster train.lr=1e-6
+
+python main_cosir.py dataset=coco_cluster train.lr=1e-5
+
+python main_cosir.py dataset=coco_cluster train.lr=1e-4
