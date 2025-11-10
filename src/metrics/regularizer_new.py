@@ -16,6 +16,9 @@ def angular_gradient_consistency_loss(
 ):
     """
     只用已有的modulation结果 + 1次额外modulation
+    目的是确保在condition space中，相同角度的condition，效果方向应该相似
+    例如：
+    - 如果条件1和条件2在condition space中角度相近，那么它们的效果方向应该相似
     """
     batch_size = len(conditions)
 

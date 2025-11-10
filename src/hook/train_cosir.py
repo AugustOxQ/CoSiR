@@ -448,9 +448,9 @@ def train_cosir(cfg, logger):
                     epoch=epoch,
                 )
 
-                logger.log_metrics(
-                    {metric: value} for metric, value in test_results.metrics.items()
-                )
+                # Log test results
+                for metric, value in test_results.metrics.items():
+                    logger.log_metrics({metric: value})
 
                 # Visualize test results
                 # # Check whether label embeddings are 2d or higher dimensional
