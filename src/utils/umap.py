@@ -95,10 +95,6 @@ def visualize_ideal_condition_space(conditions_2d, epoch):
     - 角度方向上的平滑过渡
     - 8-12个明显的聚类区域
     """
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    # ✅ 修复：统一转换为numpy array
     if isinstance(conditions_2d, torch.Tensor):
         conditions_np = conditions_2d.detach().cpu().numpy()
     else:
@@ -264,6 +260,12 @@ def test_ideal_condition_space():
     fig.savefig(
         "src/utils/umap/ideal_condition_space.png", dpi=480, bbox_inches="tight"
     )
+
+
+def test_angular_semantics():
+    conditions_2d = np.random.rand(1000, 2)
+    fig = visualize_angular_semantics(conditions_2d, model, test_set)
+    fig.savefig("src/utils/umap/angular_semantics.png", dpi=480, bbox_inches="tight")
 
 
 def main():

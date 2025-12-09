@@ -39,4 +39,4 @@ CUDA_VISIBLE_DEVICES=2 python main_cosir.py dataset=cc3m_cluster optimizer.lr=5e
 
 wait
 
-echo "All finish
+echo "All finish"

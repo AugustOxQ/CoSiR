@@ -191,26 +191,21 @@ class LabelContrastiveLoss_enhance(nn.Module):
     def __init__(
         self,
         margin: float = 0.2,
-        lambda_pos: float = 1.0,
-        lambda_neg: float = 1.0,
-        lambda_labelchange: float = 0.1,
-        lambda_preserve: float = 0.1,
-        lambda_angular: float = 0.1,
-        lambda_pull_away: float = 0.1,
-        lambda_boundary: float = 0.1,
+        lambda_1: float = 1.0,  # main loss weight
+        lambda_2: float = 0.3,  # secondary loss weight
+        lambda_3: float = 0.1,  # minor loss weight
+        lambda_4: float = 0.01,  # regularizer weight
         return_dict: bool = False,
     ) -> None:
         super().__init__()
-        print("Using Combined Cosine and Contrastive Loss")
+        print("Using Polar axis regularization loss")
         self.margin = margin
-        self.lambda_pos = lambda_pos
-        self.lambda_neg = lambda_neg
-        self.lambda_labelchange = lambda_labelchange
-        self.lambda_preserve = lambda_preserve
-        self.lambda_angular = lambda_angular
-        self.lambda_pull_away = lambda_pull_away
-        self.lambda_boundary = lambda_boundary
+        self.lambda_pos = lambda_1
+        self.lambda_2 = lambda_2
+        self.lambda_3 = lambda_3
+        self.lambda_4 = lambda_4
         self.return_dict = return_dict
+        # TODO Add diversity loss to encourage more diversity in the embeddings
 
     def forward(
         self,
@@ -219,8 +214,7 @@ class LabelContrastiveLoss_enhance(nn.Module):
         combined_features: Tensor,
         combined_features_neg: Tensor,
         label_embedding: Tensor,
-        label_embedding_proj: Tensor,
-        model,
+        model: nn.Module,
     ):
         # Compute cosine similarity
         cos_pos = F.cosine_similarity(
@@ -229,53 +223,63 @@ class LabelContrastiveLoss_enhance(nn.Module):
         cos_orig = F.cosine_similarity(
             text_features, image_features, dim=-1
         )  # Original contrast
-        cos_neg = F.cosine_similarity(
-            combined_features_neg, image_features, dim=-1
-        )  # Negative cvidiaontrast
 
+        # Main loss: Let at least the conditioned feature is better/equal to the original feature
         loss_improve = torch.clamp(
             cos_orig + self.margin - cos_pos, min=0
         ).mean()  # Let combined features be closer to image features
-        loss_neg = torch.clamp(
-            cos_pos - cos_neg + self.margin, min=0
-        ).mean()  # Let combined features be further from neg
 
-        # Additional regularizers
+        # Secondary Loss: This is how the condition space is ensured to be smooth
         laplacian_loss = manifold_smoothness_loss_sparse(
-            label_embedding, text_features, combined_features, model=model, alpha=0.15
+            label_embedding,
+            text_features,
+            combined_features,
+            model=model,
+            alpha=self.lambda_2,
         )
 
+        # Minor Loss: These three ensures the condition space is well structured in terms of angular and radius change consistency
         angular_loss = angular_gradient_consistency_loss(
-            label_embedding, text_features, combined_features, model=model, alpha=0.1
-        )
-
-        rotation_loss = rotation_semantic_orthogonality_loss(
-            label_embedding, text_features, combined_features, model=model, alpha=0.1
+            label_embedding,
+            text_features,
+            combined_features,
+            model=model,
+            alpha=self.lambda_3,
         )
 
         radius_loss = radius_monotonicity_loss(
-            label_embedding, text_features, model, alpha=0.15
+            label_embedding, text_features, model, alpha=self.lambda_3
         )
 
+        rotation_loss = rotation_semantic_orthogonality_loss(
+            label_embedding,
+            text_features,
+            combined_features,
+            model=model,
+            alpha=self.lambda_3,
+        )
+
+        # Regularizer Loss: this prevents the condition space from being too large
         boundary_loss = boundary_penalty(
-            label_embedding, radius=5.0, alpha=self.lambda_boundary
+            label_embedding,
+            radius=10.0,
+            alpha=self.lambda_4,
         )
 
         total_loss = (
             self.lambda_pos * loss_improve
-            + self.lambda_neg * loss_neg
             + laplacian_loss
             + angular_loss
+            + radius_loss
             + rotation_loss
             + boundary_loss
-            + radius_loss
         )
 
         loss_dict = {
             "loss_improve": loss_improve,
-            "loss_neg": loss_neg,
             "loss_laplacian": laplacian_loss,
             "loss_angular": angular_loss,
+            "loss_radius": radius_loss,
             "loss_rotation": rotation_loss,
             "loss_boundary": boundary_loss,
             "total_loss": total_loss,

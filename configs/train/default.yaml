@@ -3,11 +3,10 @@
 
 train:
   epochs: 30
-  lr: 1.0e-5
-  weight_decay: 5.0e-2
-  num_workers: 4
-  batch_size: 256
+  num_workers: 0
+  batch_size: 2048
   initialization_strategy: imgtxt #TODO: change to imgtxt, debugging time use zeros
+  imgtxt_factor: 10.0 #TODO: change to 1.0, debugging time use 10.0
   use_template_embeddings: True
   save_as_template_embeddings: True
   load_existing_features: True
@@ -17,10 +16,10 @@ train:
 # Loss function configuration
 loss:
   margin: 0.3
-  lambda_pos: 1.0
-  lambda_neg: 1.0
-  lambda_labelchange: 0.1
-  lambda_preserve: 0.1
+  lambda_1: 1.0 # Main contrastive loss
+  lambda_2: 0.5 # Laplacian loss
+  lambda_3: 0.3 # Minor loss
+  lambda_4: 0.0 # Regularizer loss #TODO: change to 0.1, debugging time use 0.0
   return_dict: true
 
 # Optimizer configuration
@@ -33,12 +32,12 @@ optimizer:
 # Scheduler configuration
 scheduler:
   type: "CosineAnnealingLR"
-  T_max: 30 # Should match train.epochs
+  T_max: 0 # Should match train.epochs
   eta_min: 1.0e-9
 
 # Evaluation configuration
 eval:
   k_vals: [1, 5, 10]
-  train_max_batches: 30 # Should match train.epochs
+  train_max_batches: 25 # This is during validation, how many batches we check
   print_metrics: true
   evaluation_interval: 3

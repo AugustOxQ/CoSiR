@@ -5,7 +5,7 @@
 data:
   dataset_type: "conceptual3m"
   train_annotation_path: ""
-  test_annotation_path: "/local/wding/Dataset/coco/annotations/coco_karpathy_test.json"
+  test_annotation_path: "/var/scratch/wding/Dataset/coco/annotations/coco_karpathy_test.json"
   train_image_path: "pixparse/cc3m-wds"
   test_image_path: "/local/wding/Dataset/coco/images"
 

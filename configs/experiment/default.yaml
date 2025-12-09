@@ -2,8 +2,8 @@
 # Feature manager configuration
 featuremanager:
   primary_backend: "chunked"
-  chunk_size: 1024
-  cache_size_mb: 512
+  chunk_size: 4096
+  cache_size_mb: 1024
   use_compression: false
   chunked_storage:
     enabled: true
@@ -17,8 +17,8 @@ featuremanager:
 embeddingmanager:
   storage_mode: "disk"
   initialization_strategy: "zeros"
-  cache_l1_size_mb: 128
-  cache_l2_size_mb: 256
+  cache_l1_size_mb: 512
+  cache_l2_size_mb: 1024
   enable_l3_cache: true
   auto_sync: true
   sync_batch_size: 0

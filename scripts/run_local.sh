@@ -19,10 +19,9 @@ echo "Using ${NUM_PROCS} processes"
 
 ENTRY="main_cosir.py"
 
-# python main_cosir.py dataset=coco optimizer.lr=1e-6
+# 这个是只比较loss参数，不比较模型大小
+python main_cosir.py dataset=coco optimizer.lr=1e-5 model.num_layers=4 model.hidden_dim=128 loss.lambda_1=1.0 loss.lambda_2=0.3 loss.lambda_3=0.15 loss.lambda_4=0.1
 
-# python main_cosir.py dataset=coco optimizer.lr=1e-5
+python main_cosir.py dataset=coco optimizer.lr=1e-5 model.num_layers=4 model.hidden_dim=128 loss.lambda_1=1.0 loss.lambda_2=1.0 loss.lambda_3=0.5 loss.lambda_4=0.01
 
-python main_cosir.py dataset=cc3m optimizer.lr=1e-5
-
-python main_cosir.py dataset=cc3m optimizer.lr=1e-4
+python main_cosir.py dataset=coco optimizer.lr=1e-5 model.num_layers=4 model.hidden_dim=128 loss.lambda_1=1.0 loss.lambda_2=0.5 loss.lambda_3=0.3 loss.lambda_4=0.01

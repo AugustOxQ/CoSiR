@@ -19,7 +19,7 @@ class FeatureExtractionConceptualDataset(Dataset):
         self.annotation_length = -1
         if os.path.exists(annotation_length_path):
             self.annotation_length = int(open(annotation_length_path).read())
-            streaming = True
+            streaming = False  # TODO: change to False, debugging time use True
         else:
             streaming = False
 

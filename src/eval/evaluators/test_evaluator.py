@@ -1,6 +1,6 @@
 """Test set evaluator."""
 
-from typing import Optional, Dict, Any, Tuple, Union
+from typing import Optional, Dict, Any, Tuple, Union, List
 import torch
 from torch.utils.data import DataLoader
 
@@ -47,9 +47,14 @@ class TestEvaluator(BaseEvaluator):
 
         # Extract embeddings from test data
         print("Extracting embeddings from test data...")
-        all_img_emb, all_txt_emb, all_txt_full, text_to_image_map, image_to_text_map = (
-            self.processor.extract_embeddings(model, processor, dataloader)
-        )
+        (
+            all_img_emb,
+            all_txt_emb,
+            all_txt_full,
+            all_raw_text,
+            text_to_image_map,
+            image_to_text_map,
+        ) = self.processor.extract_embeddings(model, processor, dataloader)
 
         # Evaluate with oracle (trying all label embeddings)
         print("Running oracle evaluation...")
@@ -97,6 +102,7 @@ class TestEvaluator(BaseEvaluator):
                 all_img_emb,
                 all_txt_emb,
                 all_txt_full,
+                all_raw_text,
                 text_to_image_map,
                 image_to_text_map,
                 best_label_tti,
@@ -134,6 +140,7 @@ class TestEvaluator(BaseEvaluator):
         all_img_emb: torch.Tensor,
         all_txt_emb: torch.Tensor,
         all_txt_full: torch.Tensor,
+        all_raw_text: List[str],
         text_to_image_map: torch.Tensor,
         image_to_text_map: torch.Tensor,
         best_label_tti: torch.Tensor,
@@ -142,28 +149,29 @@ class TestEvaluator(BaseEvaluator):
     ) -> Tuple:
         """Create detailed results for label inspection."""
 
-        # Compute raw ranking indices for additional analysis
-        img_emb_norm = self.processor.normalize_embeddings(all_img_emb)
-        txt_emb_norm = self.processor.normalize_embeddings(all_txt_emb)
+        # # Compute raw ranking indices for additional analysis
+        # img_emb_norm = self.processor.normalize_embeddings(all_img_emb)
+        # txt_emb_norm = self.processor.normalize_embeddings(all_txt_emb)
 
-        dist_matrix_raw = img_emb_norm @ txt_emb_norm.T
-        inds_raw_itt = torch.argsort(dist_matrix_raw, dim=1, descending=True)
-        inds_raw_tti = torch.argsort(dist_matrix_raw.T, dim=1, descending=True)
+        # dist_matrix_raw = img_emb_norm @ txt_emb_norm.T
+        # inds_raw_itt = torch.argsort(dist_matrix_raw, dim=1, descending=True)
+        # inds_raw_tti = torch.argsort(dist_matrix_raw.T, dim=1, descending=True)
 
-        print(
-            "The order of returned tuple is all_img_emb, all_txt_emb, all_txt_full, text_to_image_map, image_to_text_map, best_label_tti, best_label_itt, inds_raw_tti, inds_raw_itt, results"
-        )
+        # print(
+        #     "The order of returned tuple is all_img_emb, all_txt_emb, all_txt_full, text_to_image_map, image_to_text_map, best_label_tti, best_label_itt, inds_raw_tti, inds_raw_itt, results"
+        # )
 
         return (
             all_img_emb,
             all_txt_emb,
-            all_txt_full,
+            all_raw_text,
+            # all_txt_full,
             text_to_image_map,
             image_to_text_map,
-            best_label_tti,
-            best_label_itt,
-            inds_raw_tti,
-            inds_raw_itt,
+            # best_label_tti,
+            # best_label_itt,
+            # inds_raw_tti,
+            # inds_raw_itt,
             results,
         )
 
@@ -177,9 +185,14 @@ class TestEvaluator(BaseEvaluator):
         device = device or self.config.device
 
         # Extract embeddings
-        all_img_emb, all_txt_emb, all_txt_full, text_to_image_map, image_to_text_map = (
-            self.processor.extract_embeddings(model, processor, dataloader)
-        )
+        (
+            all_img_emb,
+            all_txt_emb,
+            all_txt_full,
+            all_raw_text,
+            text_to_image_map,
+            image_to_text_map,
+        ) = self.processor.extract_embeddings(model, processor, dataloader)
 
         # Compute raw ranking indices
         img_emb_norm = self.processor.normalize_embeddings(all_img_emb)
@@ -193,6 +206,7 @@ class TestEvaluator(BaseEvaluator):
             all_img_emb,
             all_txt_emb,
             all_txt_full,
+            all_raw_text,
             text_to_image_map,
             image_to_text_map,
             inds_raw_tti,

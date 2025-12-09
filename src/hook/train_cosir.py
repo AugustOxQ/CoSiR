@@ -27,6 +27,9 @@ from src.utils import (
     get_representatives_polar_grid,
     get_umap,
     visualize_ideal_condition_space,
+    visualize_angular_semantics_fast,
+    visualize_angular_semantics_text_to_image_fast,
+    CoSiRAutomaticEvaluator,
 )
 from src.metrics import LabelContrastiveLoss, LabelContrastiveLoss_enhance
 
@@ -68,17 +71,21 @@ def train_cosir(cfg, logger):
 
     # Initialize model
     print("Initializing model")
-    model = CoSiRModel(label_dim=cfg.model.embedding_dim).to(device)
+    model = CoSiRModel(
+        label_dim=cfg.model.embedding_dim,
+        num_layers=cfg.model.num_layers,
+        d_model=cfg.model.hidden_dim,
+    ).to(device)
     processor = AutoProcessor.from_pretrained(cfg.model.clip_model, use_fast=False)
 
     # Setup criteria and optimizer and scheduler
     print("Initializing criteria and optimizer and scheduler")
     criteria = LabelContrastiveLoss_enhance(
         margin=cfg.loss.margin,
-        lambda_pos=cfg.loss.lambda_pos,
-        lambda_neg=cfg.loss.lambda_neg,
-        lambda_labelchange=cfg.loss.lambda_labelchange,
-        lambda_preserve=cfg.loss.lambda_preserve,
+        lambda_1=cfg.loss.lambda_1,
+        lambda_2=cfg.loss.lambda_2,
+        lambda_3=cfg.loss.lambda_3,
+        lambda_4=cfg.loss.lambda_4,
         return_dict=cfg.loss.return_dict,
     )
     optimizer = torch.optim.AdamW(
@@ -89,7 +96,7 @@ def train_cosir(cfg, logger):
 
     scheduler = CosineAnnealingLR(
         optimizer,
-        T_max=cfg.scheduler.T_max,
+        T_max=cfg.scheduler.T_max if cfg.scheduler.T_max > 0 else cfg.train.epochs,
         eta_min=cfg.scheduler.eta_min,
         last_epoch=-1,
     )
@@ -143,9 +150,11 @@ def train_cosir(cfg, logger):
                 sample_ids = [int(id) for id in sample_ids]
                 image_inputs = image_inputs.to(device)
                 text_inputs = {k: v.to(device) for k, v in text_inputs.items()}
-                chunk_img, chunk_txt, _, txt_full = model.encode_img_txt(
+                chunk_img, chunk_txt, _, _ = model.encode_img_txt(
                     image_inputs, text_inputs
-                )
+                )  # DEBUG: txt_full is not used
+
+                txt_full = torch.zeros_like(chunk_txt)
 
                 chunk_img, chunk_txt, txt_full = (
                     chunk_img.detach().cpu(),
@@ -187,7 +196,7 @@ def train_cosir(cfg, logger):
     # Initialize evaluator
     evaluator = EvaluationManager(evaluation_config)
 
-    clustering = Clustering(device=device)
+    # clustering = Clustering(device=device)
     umap_vis = UMAP_vis(device=device)
 
     # ========== OPTIMIZED: TrainableEmbeddingManager with Intelligent Caching ==========
@@ -196,9 +205,7 @@ def train_cosir(cfg, logger):
     embedding_chunk_size = cfg.embeddingmanager.embedding_chunk_size
     if embedding_chunk_size is None:
         # Optimal chunk size: 4x batch size, capped at reasonable limits
-        embedding_chunk_size = min(
-            max(cfg.train.batch_size * 4, 100), cfg.featuremanager.chunk_size
-        )
+        embedding_chunk_size = cfg.featuremanager.chunk_size
         print(
             f"Auto-optimized embedding chunk size: {embedding_chunk_size} (4x batch_size)"
         )
@@ -244,7 +251,10 @@ def train_cosir(cfg, logger):
             # Initialize embeddings with imgtxt strategy
             print("Initializing embeddings with imgtxt strategy...")
             embedding_manager.initialize_embeddings_imgtxt(
-                feature_manager, model, device
+                feature_manager,
+                model,
+                device,
+                factor=cfg.train.imgtxt_factor,
             )
 
             # Save as template embeddings if enabled (default: True)
@@ -268,7 +278,7 @@ def train_cosir(cfg, logger):
         train_set,
         batch_size=cfg.featuremanager.chunk_size,  # Load one chunk at a time (batch_idx only)
         shuffle=False,  # We'll handle chunk order manually if needed
-        num_workers=0,  # No worker processes - eliminates all worker issues!
+        num_workers=cfg.train.num_workers,  # No worker processes - eliminates all worker issues!
     )
 
     test_set = CoSiRValidationDataset(
@@ -327,12 +337,12 @@ def train_cosir(cfg, logger):
                 weight_decay=cfg.optimizer.weight_decay,
             )
 
-            comb_emb, label_embedding_proj = model.combine(
+            comb_emb = model.combine(
                 txt_features,
                 txt_full,
                 label_embeddings,
                 epoch=epoch,
-                return_label_proj=True,
+                return_label_proj=False,
             )
 
             label_embedding_neg = replace_with_most_different(label_embeddings)
@@ -351,7 +361,6 @@ def train_cosir(cfg, logger):
                 comb_emb,
                 comb_emb_neg,
                 label_embeddings,
-                label_embedding_proj,
                 model,
             )
 
@@ -437,16 +446,28 @@ def train_cosir(cfg, logger):
                     (
                         cfg.train.representative_number
                         if epoch != cfg.train.epochs - 1
-                        else 50  # Use higher number of representatives for the last epoch
+                        else 30  # Use higher number of representatives for the last epoch
                     ),
                 )
-                test_results = evaluator.evaluate_test(
+                test_results_detailed = evaluator.evaluate_test(
                     model=model,
                     processor=processor,
                     dataloader=test_loader,
                     label_embeddings=representatives,  # Your label embeddings
                     epoch=epoch,
+                    return_detailed_results=True,
                 )
+
+                (
+                    all_img_emb,
+                    all_txt_emb,
+                    all_raw_text,
+                    text_to_image_map,
+                    image_to_text_map,
+                    test_results,
+                ) = test_results_detailed  # type: ignore
+
+                all_raw_image = test_set.get_all_raw_image()
 
                 # Log test results
                 for metric, value in test_results.metrics.items():
@@ -460,10 +481,6 @@ def train_cosir(cfg, logger):
                     umap_features = umap_vis.learn_umap(
                         label_embeddings_all, close_cluster=True
                     )
-                # # Get cluster labels
-                # umap_labels, _ = clustering.get_hdbscan(
-                #     umap_features, method="leaf"
-                # )
 
                 # Visualize label embeddings
                 fig = get_umap(
@@ -498,6 +515,52 @@ def train_cosir(cfg, logger):
                 )
 
                 plt.close("all")
+
+                for tmp_round in range(10):
+                    fig3 = visualize_angular_semantics_fast(
+                        label_embeddings_all.cpu().numpy(),
+                        model,
+                        (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
+                        device=device,
+                    )
+                    experiment.save_artifact(
+                        name=f"angular_semantics_fast_{epoch}_tmp_{tmp_round}",
+                        data=fig3,
+                        artifact_type="figure",
+                        folder="plots",
+                        description=f"Angular semantics visualization at epoch {epoch}",
+                    )
+
+                    fig4 = visualize_angular_semantics_text_to_image_fast(
+                        label_embeddings_all.cpu().numpy(),
+                        model,
+                        (
+                            all_img_emb,
+                            all_txt_emb,
+                            all_raw_image,
+                            all_raw_text,
+                        ),
+                        device=device,
+                    )
+
+                    experiment.save_artifact(
+                        name=f"angular_semantics_text_to_image_{epoch}_tmp_{tmp_round}",
+                        data=fig4,
+                        artifact_type="figure",
+                        folder="plots",
+                        description=f"Angular semantics visualization (text-to-image) at epoch {epoch}",
+                    )
+
+                    plt.close("all")
+
+                cosir_automatic_evaluator = CoSiRAutomaticEvaluator(
+                    model,
+                    (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
+                    label_embeddings_all,
+                    device,
+                )
+                result = cosir_automatic_evaluator.evaluate_all()
+                logger.log_metrics(result)
 
     # ========== TRAINING COMPLETE: Final Performance Summary ==========
     # Save final embeddings and model combiner state dictionary

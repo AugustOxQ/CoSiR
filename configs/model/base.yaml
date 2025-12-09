@@ -5,3 +5,5 @@ model:
   embedding_dim: 2
   clip_model: "openai/clip-vit-base-patch32"
   freeze_backbone: true
+  num_layers: 2
+  hidden_dim: 64

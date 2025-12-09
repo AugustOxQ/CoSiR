@@ -168,6 +168,17 @@ class CoSiRValidationDataset(Dataset):
         self.captions_per_image = min(self.captions_per_image, self.crop_num)
         print(f"Captions per image: {self.captions_per_image}")
 
+    def get_all_raw_image(self, idx: int = -1):
+        self.all_raw_image = []
+        for i in range(len(self.annotations)):
+            img_path = os.path.join(self.image_path, self.annotations[i]["image"])
+            raw_image = Image.open(img_path).convert("RGB")
+            self.all_raw_image.append(raw_image)
+        if idx == -1:
+            return self.all_raw_image
+        else:
+            return self.all_raw_image[idx]
+
     def __len__(self):
         return len(self.annotations)
 

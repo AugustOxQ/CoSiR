@@ -17,7 +17,9 @@ class EmbeddingProcessor:
 
     def extract_embeddings(
         self, model, processor, dataloader: DataLoader
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> Tuple[
+        torch.Tensor, torch.Tensor, torch.Tensor, List[str], torch.Tensor, torch.Tensor
+    ]:
         """Extract embeddings from model for evaluation dataset.
 
         Returns:
@@ -26,6 +28,7 @@ class EmbeddingProcessor:
         all_img_emb = []
         all_txt_emb = []
         all_txt_full = []
+        all_raw_text = []
         image_to_text_map = []
         text_to_image_map = []
 
@@ -47,6 +50,8 @@ class EmbeddingProcessor:
                 raw_text_list = self._flatten_text(
                     raw_text, batch_size, captions_per_image
                 )
+
+                all_raw_text.extend(raw_text_list)
 
                 # Tokenize text
                 text_input = processor(
@@ -94,6 +99,7 @@ class EmbeddingProcessor:
             all_img_emb,
             all_txt_emb,
             all_txt_full,
+            all_raw_text,
             text_to_image_map,
             image_to_text_map,
         )

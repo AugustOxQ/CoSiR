@@ -522,10 +522,10 @@ class CombinerSimplePolar(nn.Module):
         self.clip_feature_dim = clip_feature_dim
 
         self.radius_to_scale = ResNetBlock(
-            input_dim=1, hidden_dim=64, output_dim=1, num_layers=2
+            input_dim=1, hidden_dim=hidden_dim, output_dim=1, num_layers=num_layers
         )
         self.angle_to_rotate = ResNetBlock(
-            input_dim=1, hidden_dim=64, output_dim=1, num_layers=2
+            input_dim=1, hidden_dim=hidden_dim, output_dim=1, num_layers=num_layers
         )
 
         self.max_rotation_angle = torch.pi / 6  # 30度
