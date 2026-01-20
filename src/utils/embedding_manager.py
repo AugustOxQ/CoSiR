@@ -2106,7 +2106,9 @@ class ExperimentContext:
             if hasattr(data, "save"):  # PIL Image
                 data.save(artifact_path)
             elif hasattr(data, "savefig"):  # matplotlib figure
-                data.savefig(artifact_path, dpi=480, bbox_inches="tight")
+                data.savefig(
+                    artifact_path, dpi=200, bbox_inches="tight", pad_inches=0.05
+                )
             else:
                 # Assume it's a numpy array
                 import matplotlib.pyplot as plt
@@ -2120,7 +2122,9 @@ class ExperimentContext:
 
             # Handle matplotlib figure
             if hasattr(data, "savefig"):
-                data.savefig(artifact_path, dpi=480, bbox_inches="tight")
+                data.savefig(
+                    artifact_path, dpi=200, bbox_inches="tight", pad_inches=0.05
+                )
             else:
                 raise ValueError(
                     "Data must be a matplotlib figure for 'figure' artifact type"

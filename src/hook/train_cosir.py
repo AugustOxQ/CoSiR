@@ -516,7 +516,7 @@ def train_cosir(cfg, logger):
 
                 plt.close("all")
 
-                for tmp_round in range(10):
+                for tmp_round in range(3):
                     fig3 = visualize_angular_semantics_fast(
                         label_embeddings_all.cpu().numpy(),
                         model,

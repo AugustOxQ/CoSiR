@@ -2,7 +2,7 @@
 # Feature manager configuration
 featuremanager:
   primary_backend: "chunked"
-  chunk_size: 4096
+  chunk_size: 2048
   cache_size_mb: 1024
   use_compression: false
   chunked_storage:

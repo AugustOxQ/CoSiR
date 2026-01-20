@@ -231,7 +231,7 @@ def visualize_angular_semantics_fast(
     # 固定query image
     fixed_query_id = torch.randint(0, len(precomputed_data[0]), (1,)).item()
 
-    fig, axes = plt.subplots(3, 4, figsize=(36, 27))
+    fig, axes = plt.subplots(3, 4, figsize=(24, 18))
     axes = axes.flatten()
 
     for i in range(n_bins):
@@ -239,7 +239,7 @@ def visualize_angular_semantics_fast(
 
         if not bin_mask.any():
             axes[i].axis("off")
-            axes[i].set_title(f"Angle bin {i}: No data", fontsize=12)
+            axes[i].set_title(f"Angle bin {i}: No data", fontsize=8)
             continue
 
         bin_conditions = conditions_2d[bin_mask]
@@ -269,7 +269,7 @@ def visualize_angular_semantics_fast(
             0.02,
             0.98,
             text_content,
-            fontsize=9,
+            fontsize=6,
             va="top",
             ha="left",
             wrap=True,
@@ -281,7 +281,7 @@ def visualize_angular_semantics_fast(
     plt.tight_layout()
 
     if save_path is not None:
-        fig.savefig(save_path, dpi=480, bbox_inches="tight")
+        fig.savefig(save_path, dpi=200, bbox_inches="tight")
 
     return fig
 
@@ -375,7 +375,7 @@ def visualize_angular_semantics_text_to_image_fast(
     fixed_query_text_id = torch.randint(0, len(precomputed_data[1]), (1,)).item()
     query_text = precomputed_data[3][fixed_query_text_id]
 
-    fig, axes = plt.subplots(3, 4, figsize=(36, 27))
+    fig, axes = plt.subplots(3, 4, figsize=(24, 18))
     axes = axes.flatten()
 
     for i in range(n_bins):
@@ -383,7 +383,7 @@ def visualize_angular_semantics_text_to_image_fast(
 
         if not bin_mask.any():
             axes[i].axis("off")
-            axes[i].set_title(f"Angle bin {i}: No data", fontsize=12)
+            axes[i].set_title(f"Angle bin {i}: No data", fontsize=8)
             continue
 
         bin_conditions = conditions_2d[bin_mask]
@@ -404,7 +404,7 @@ def visualize_angular_semantics_text_to_image_fast(
         ax.axis("off")
 
         title = f"Angle: {np.degrees(angle_bins[i].item()):.0f}° - {np.degrees(angle_bins[i+1].item()):.0f}°\nQuery: {query_text[:60]}..."
-        ax.set_title(title, fontsize=10, fontweight="bold")
+        ax.set_title(title, fontsize=7, fontweight="bold")
 
         # Create a 3x3 grid of images within this subplot
         from matplotlib.gridspec import GridSpecFromSubplotSpec
