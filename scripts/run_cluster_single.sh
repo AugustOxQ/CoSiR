@@ -44,5 +44,5 @@ echo "=========================================="
 
 # 注意：当设置了CUDA_VISIBLE_DEVICES时，PyTorch会将可见的GPU映射为cuda:0
 # 所以device=cuda:0是正确的，它会使用CUDA_VISIBLE_DEVICES指定的GPU
-python main_cosir.py dataset=coco_cluster optimizer.lr=$input_lr device=cuda:0 wandb.name="exp_lr_${lr_safe}" wandb.notes="$EXP_NOTE_PREFIX with lr $input_lr" &
+python main_cosir.py dataset=coco_cluster featuremanager.chunk_size=4096 optimizer.lr=$input_lr device=cuda:0 wandb.notes="$EXP_NOTE_PREFIX with lr $input_lr" &
 echo "Started experiment (lr=$input_lr) on GPU ${GPU_ID:-auto}"

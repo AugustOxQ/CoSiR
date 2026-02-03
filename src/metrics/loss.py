@@ -305,29 +305,46 @@ class LabelPredictionLoss(nn.Module):
 
     def forward(
         self,
+        image_features: Tensor,
+        text_features: Tensor,
+        combined_features_img: Tensor,
+        combined_features_txt: Tensor,
+        combined_features_imgtxt: Tensor,
         label_embedding: Tensor,
         model: nn.Module,
-        condition_predictions: List[Tensor],
     ):
         # Clone the label embedding to avoid backpropagation to the label embedding, only update the condition predictor
-        label_embedding_clone = label_embedding.clone().detach()
-        # Condition loss: this loss help the network to predict the condition correctly
-        img_pred_loss = self.lambda_pos * F.mse_loss(
-            condition_predictions[0], label_embedding_clone
-        )
-        txt_pred_loss = self.lambda_pos * F.mse_loss(
-            condition_predictions[1], label_embedding_clone
-        )
-        imgtxt_pred_loss = self.lambda_pos * F.mse_loss(
-            condition_predictions[2], label_embedding_clone
-        )
 
-        total_loss = +img_pred_loss + txt_pred_loss + imgtxt_pred_loss
+        loss_shape = image_features.shape[0]
+
+        pseudo_targets = torch.arange(loss_shape, device=image_features.device)
+
+        sim_matrix_img = combined_features_img @ image_features.T
+        sim_matrix_txt = combined_features_txt @ image_features.T
+        sim_matrix_imgtxt = combined_features_imgtxt @ image_features.T
+
+        # Cross-entropy loss（双向）
+        loss_img = (
+            F.cross_entropy(sim_matrix_img, pseudo_targets)
+            + F.cross_entropy(sim_matrix_img.T, pseudo_targets)
+        ) / 2
+
+        loss_txt = (
+            F.cross_entropy(sim_matrix_txt, pseudo_targets)
+            + F.cross_entropy(sim_matrix_txt.T, pseudo_targets)
+        ) / 2
+
+        loss_imgtxt = (
+            F.cross_entropy(sim_matrix_imgtxt, pseudo_targets)
+            + F.cross_entropy(sim_matrix_imgtxt.T, pseudo_targets)
+        ) / 2
+
+        total_loss = loss_img + loss_txt + loss_imgtxt
 
         loss_dict = {
-            "loss_img_pred": img_pred_loss,
-            "loss_txt_pred": txt_pred_loss,
-            "loss_imgtxt_pred": imgtxt_pred_loss,
+            "loss_img_pred": loss_img,
+            "loss_txt_pred": loss_txt,
+            "loss_imgtxt_pred": loss_imgtxt,
             "total_loss": total_loss,
         }
 
