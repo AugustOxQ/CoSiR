@@ -9,6 +9,7 @@ from transformers import AutoProcessor
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import wandb
 import matplotlib.pyplot as plt
+from itertools import chain
 
 from src.dataset import (
     CoSiRTrainingChunkDataset,
@@ -31,7 +32,7 @@ from src.utils import (
     visualize_angular_semantics_text_to_image_fast,
     CoSiRAutomaticEvaluator,
 )
-from src.metrics import LabelContrastiveLoss, LabelContrastiveLoss_enhance
+from src.metrics import LabelContrastiveLoss_enhance, LabelPredictionLoss
 
 
 def train_cosir(cfg, logger):
@@ -88,15 +89,55 @@ def train_cosir(cfg, logger):
         lambda_4=cfg.loss.lambda_4,
         return_dict=cfg.loss.return_dict,
     )
+
+    criteria_2 = LabelPredictionLoss(
+        lambda_1=cfg.loss.lambda_pred,
+        return_dict=cfg.loss.return_dict,
+    )
+    # optimizer = torch.optim.AdamW(
+    #     model.parameters(),
+    #     lr=cfg.optimizer.lr,
+    #     weight_decay=cfg.optimizer.weight_decay,
+    # )
+
     optimizer = torch.optim.AdamW(
-        model.parameters(),
-        lr=cfg.optimizer.lr,
-        weight_decay=cfg.optimizer.weight_decay,
+        [
+            {
+                "params": [
+                    p
+                    for n, p in model.named_parameters()
+                    if "condition_predictor" not in n
+                ],
+                "lr": cfg.optimizer.lr,
+                "weight_decay": cfg.optimizer.weight_decay,
+            },
+        ]
+    )
+
+    optimizer_2 = torch.optim.AdamW(
+        [
+            {
+                "params": chain(
+                    model.img_condition_predictor.parameters(),
+                    model.txt_condition_predictor.parameters(),
+                    model.imgtxt_condition_predictor.parameters(),
+                ),
+                "lr": cfg.optimizer.lr_2,
+                "weight_decay": cfg.optimizer.weight_decay,
+            },
+        ]
     )
 
     scheduler = CosineAnnealingLR(
         optimizer,
         T_max=cfg.scheduler.T_max if cfg.scheduler.T_max > 0 else cfg.train.epochs,
+        eta_min=cfg.scheduler.eta_min,
+        last_epoch=-1,
+    )
+
+    scheduler_2 = CosineAnnealingLR(
+        optimizer_2,
+        T_max=cfg.scheduler.T_max if cfg.scheduler.T_max > 0 else cfg.train.epochs_2,
         eta_min=cfg.scheduler.eta_min,
         last_epoch=-1,
     )
@@ -355,6 +396,14 @@ def train_cosir(cfg, logger):
                 return_label_proj=False,
             )
 
+            # DEBUG: predict condition
+
+            img_condition_predicted = model.predict_condition(img_features, "img")
+            txt_condition_predicted = model.predict_condition(txt_features, "txt")
+            imgtxt_condition_predicted = model.predict_condition(
+                torch.cat([img_features, txt_features], dim=-1), "imgtxt"
+            )
+
             loss_dict = criteria(
                 img_features,
                 txt_features,
@@ -455,7 +504,8 @@ def train_cosir(cfg, logger):
                     dataloader=test_loader,
                     label_embeddings=representatives,  # Your label embeddings
                     epoch=epoch,
-                    return_detailed_results=True,
+                    return_detailed_results=True,  # 记住这里是true，也就是detailed_results
+                    use_oracle=True,
                 )
 
                 (
@@ -562,6 +612,120 @@ def train_cosir(cfg, logger):
                 result = cosir_automatic_evaluator.evaluate_all()
                 logger.log_metrics(result)
 
+    # Start label prediction loss training
+    for epoch in range(cfg.train.epochs_2):
+
+        model.train()
+        epoch_loss = 0.0
+        num_batches = 0
+
+        # Track epoch start time for performance monitoring
+        epoch_start_time = time.time()
+
+        for batch_idx, batch in enumerate(tqdm(train_loader)):
+            # Use batch_idx as chunk_id for direct chunk loading
+            chunk_id = batch_idx
+
+            # Load features by chunk directly
+            features_data = feature_manager.get_features_by_chunk(chunk_id)
+
+            img_features = features_data["img_features"].to(device, non_blocking=True)
+            txt_features = features_data["txt_features"].to(device, non_blocking=True)
+
+            # Get embeddings by chunk directly from optimized manager
+            chunk_sample_ids, label_embeddings_data = (
+                embedding_manager.get_embeddings_by_chunk(chunk_id)
+            )
+            label_embeddings = torch.nn.Parameter(
+                label_embeddings_data.to(device), requires_grad=True
+            )
+
+            # predict condition
+            img_condition_predicted = model.predict_condition(img_features, "img")
+            txt_condition_predicted = model.predict_condition(txt_features, "txt")
+            imgtxt_condition_predicted = model.predict_condition(
+                torch.cat([img_features, txt_features], dim=-1), "imgtxt"
+            )
+
+            loss_dict = criteria_2(
+                label_embeddings,
+                model,
+                [
+                    img_condition_predicted,
+                    txt_condition_predicted,
+                    imgtxt_condition_predicted,
+                ],
+            )
+
+            loss = loss_dict["total_loss"]
+
+            epoch_loss += loss.item()
+            num_batches += 1
+
+            # Log batch-level loss components
+            batch_log_dict = {
+                f"train_2/batch_{k}": v.item() if torch.is_tensor(v) else v
+                for k, v in loss_dict.items()
+            }
+            batch_log_dict.update(
+                {
+                    "train_2/epoch": epoch,
+                    "train_2/batch": batch_idx,
+                    "train_2/step": global_step,
+                }
+            )
+            logger.log_metrics(batch_log_dict)
+
+            optimizer_2.zero_grad()
+            loss.backward()
+            optimizer_2.step()  # Update model parameters with accumulated state
+            global_step += 1
+
+        # ========== EPOCH END: Performance Monitoring & Sync ==========
+        epoch_time = time.time() - epoch_start_time
+
+        # Log epoch performance
+        avg_loss = epoch_loss / num_batches
+        print(f"Epoch {epoch}, Loss: {avg_loss:.6f}, Time: {epoch_time:.2f}s")
+
+        # Log to wandb logger
+        logger.log_metrics(
+            {
+                "train_2/epoch": epoch,
+                "train_2/loss": avg_loss,
+                "train_2/epoch_time": epoch_time,
+            }
+        )
+
+        scheduler_2.step()
+
+        # Test evaluation, this time we test for every epoch
+        with torch.no_grad():
+            # Test evaluation
+            _, label_embeddings_all = embedding_manager.get_all_embeddings()
+            test_results_detailed = evaluator.evaluate_test(
+                model=model,
+                processor=processor,
+                dataloader=test_loader,
+                label_embeddings=None,  # Your label embeddings
+                epoch=epoch,
+                return_detailed_results=True,  # 记住这里是true，也就是detailed_results
+                use_oracle=False,
+            )
+
+            (
+                _,
+                _,
+                _,
+                _,
+                _,
+                test_results,
+            ) = test_results_detailed  # type: ignore
+
+            # Log test results
+            for metric, value in test_results.metrics.items():
+                logger.log_metrics({metric: value})
+
     # ========== TRAINING COMPLETE: Final Performance Summary ==========
     # Save final embeddings and model combiner state dictionary
     embedding_manager.save_final_embeddings(
@@ -593,6 +757,6 @@ def train_cosir(cfg, logger):
         description="Final model combiner state dictionary",
     )
 
-    print("Training Complete! 🎉")
+    print("Training Complete!")
 
     return 0

@@ -663,3 +663,24 @@ class CombinerSimplePolar_noparam(nn.Module):
             return F.normalize(combined, dim=-1), label_proj
         else:
             return F.normalize(combined, dim=-1)
+
+
+class ConditionPredictor(nn.Module):
+    """
+    A lightweight predictor (regression) that given input features, predict the condition.
+    """
+
+    def __init__(
+        self,
+        input_dim: int = 512,
+        hidden_dim: int = 512,
+        output_dim: int = 2,
+        num_layers: int = 4,
+    ):
+        super().__init__()
+        # Use resnet block to build the network
+        self.predictor = ResNetBlock(input_dim, hidden_dim, output_dim, num_layers)
+        self.relu = nn.ReLU()
+
+    def forward(self, input_features: Tensor) -> Tensor:
+        return self.relu(self.predictor(input_features))

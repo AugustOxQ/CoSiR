@@ -56,6 +56,28 @@ class CoSiRModel(nn.Module):
             label_dim=label_dim,
         )
 
+        # Additional components
+        self.img_condition_predictor = ConditionPredictor(
+            input_dim=512,
+            hidden_dim=256,
+            output_dim=2,
+            num_layers=num_layers,
+        )
+
+        self.txt_condition_predictor = ConditionPredictor(
+            input_dim=512,
+            hidden_dim=256,
+            output_dim=2,
+            num_layers=num_layers,
+        )
+
+        self.imgtxt_condition_predictor = ConditionPredictor(
+            input_dim=512 * 2,
+            hidden_dim=256,
+            output_dim=2,
+            num_layers=num_layers,
+        )
+
     def encode_img(self, images):
         # Extract image features
         img_output = self.clip_vm(**images)
@@ -94,6 +116,24 @@ class CoSiRModel(nn.Module):
         )  # (batch_size, 512)
 
         return comb_emb
+
+    def predict_condition(self, input_features: Tensor, type: str) -> Tensor:
+        # BUG: 这里我设计的是如果我们要做text-to-image retrieval，那么我们根据看到的text选择最适合的image。 但是实际还有另一种可能，在做text-to-image retrieval的时候，我们也可以直接反其道而行之，我们根据看到的image选择最适合的condition，然后用这个condition来选择最适合的text。
+        # input_features: (batch_size, d_model)
+        if type == "img":
+            output = self.img_condition_predictor(input_features)
+        elif type == "txt":
+            output = self.txt_condition_predictor(input_features)
+        elif type == "imgtxt":
+            output = self.imgtxt_condition_predictor(
+                input_features
+            )  # (batch_size, d_model * 2)
+        else:
+            raise ValueError(f"Invalid condition type: {type}")
+
+        # output = output @ self.combiner.label_proj_layer.weight
+
+        return output
 
     def forward(self, images, texts, labels):
         # Extract image and text features

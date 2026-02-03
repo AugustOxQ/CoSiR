@@ -22,10 +22,11 @@ class TestEvaluator(BaseEvaluator):
         model,
         processor,
         dataloader: DataLoader,
-        label_embeddings: torch.Tensor,
+        label_embeddings: Optional[torch.Tensor] = None,
         epoch: int = 0,
         device: Optional[str] = None,
         return_detailed_results: bool = False,
+        use_oracle: bool = False,
     ) -> Union[MetricResult, Tuple]:
         """
         Evaluate model on test dataset with oracle and raw metrics.
@@ -58,8 +59,35 @@ class TestEvaluator(BaseEvaluator):
 
         # Evaluate with oracle (trying all label embeddings)
         print("Running oracle evaluation...")
-        metrics_oracle, best_label_tti, best_label_itt = (
-            self.oracle_metrics.compute_oracle_recall(
+
+        if use_oracle:
+            metrics_oracle, best_label_tti, best_label_itt = (
+                self.oracle_metrics.compute_oracle_recall(
+                    model,
+                    label_embeddings,
+                    all_img_emb,
+                    all_txt_emb,
+                    all_txt_full,
+                    text_to_image_map,
+                    image_to_text_map,
+                    "oracle",
+                )
+            )
+        else:
+            metrics_oracle_txt, best_label_tti, best_label_itt = (
+                self.oracle_metrics.compute_non_oracle_recall(
+                    model,
+                    label_embeddings,
+                    all_img_emb,
+                    all_txt_emb,
+                    all_txt_full,
+                    text_to_image_map,
+                    image_to_text_map,
+                    "txt_non_oracle",
+                )
+            )
+
+            metrics_oracle, _, _ = self.oracle_metrics.compute_non_oracle_recall_imgtxt(
                 model,
                 label_embeddings,
                 all_img_emb,
@@ -67,9 +95,8 @@ class TestEvaluator(BaseEvaluator):
                 all_txt_full,
                 text_to_image_map,
                 image_to_text_map,
-                "oracle",
+                "imgtxt_non_oracle",
             )
-        )
 
         # Evaluate raw embeddings (without labels)
         print("Running raw evaluation...")
@@ -83,12 +110,22 @@ class TestEvaluator(BaseEvaluator):
         )
 
         # Combine all metrics
-        all_metrics = {
-            "test/epoch": epoch,
-            **metrics_oracle,
-            **metrics_raw,
-            **metrics_diff,
-        }
+        if use_oracle:
+            all_metrics = {
+                "test/epoch": epoch,
+                **metrics_oracle,
+                **metrics_raw,
+                **metrics_diff,
+            }
+
+        else:
+            all_metrics = {
+                "test/epoch": epoch,
+                **metrics_oracle,
+                **metrics_oracle_txt,
+                **metrics_raw,
+                **metrics_diff,
+            }
 
         results = self._format_results(all_metrics, epoch)
 

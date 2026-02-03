@@ -6,7 +6,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
-from typing import Callable
+from typing import Callable, List
+
 
 from src.metrics.regularizer import *
 from src.metrics.regularizer_new import *
@@ -282,6 +283,51 @@ class LabelContrastiveLoss_enhance(nn.Module):
             "loss_radius": radius_loss,
             "loss_rotation": rotation_loss,
             "loss_boundary": boundary_loss,
+            "total_loss": total_loss,
+        }
+
+        if self.return_dict:
+            return loss_dict
+        else:
+            return total_loss
+
+
+class LabelPredictionLoss(nn.Module):
+    def __init__(
+        self,
+        lambda_1: float = 1.0,  # main loss weight
+        return_dict: bool = False,
+    ) -> None:
+        super().__init__()
+        print("Using Label Prediction Loss")
+        self.lambda_pos = lambda_1
+        self.return_dict = return_dict
+
+    def forward(
+        self,
+        label_embedding: Tensor,
+        model: nn.Module,
+        condition_predictions: List[Tensor],
+    ):
+        # Clone the label embedding to avoid backpropagation to the label embedding, only update the condition predictor
+        label_embedding_clone = label_embedding.clone().detach()
+        # Condition loss: this loss help the network to predict the condition correctly
+        img_pred_loss = self.lambda_pos * F.mse_loss(
+            condition_predictions[0], label_embedding_clone
+        )
+        txt_pred_loss = self.lambda_pos * F.mse_loss(
+            condition_predictions[1], label_embedding_clone
+        )
+        imgtxt_pred_loss = self.lambda_pos * F.mse_loss(
+            condition_predictions[2], label_embedding_clone
+        )
+
+        total_loss = +img_pred_loss + txt_pred_loss + imgtxt_pred_loss
+
+        loss_dict = {
+            "loss_img_pred": img_pred_loss,
+            "loss_txt_pred": txt_pred_loss,
+            "loss_imgtxt_pred": imgtxt_pred_loss,
             "total_loss": total_loss,
         }
 

@@ -58,10 +58,11 @@ class EvaluationManager:
         model,
         processor,
         dataloader: DataLoader,
-        label_embeddings: torch.Tensor,
+        label_embeddings: Optional[torch.Tensor] = None,
         epoch: int = 0,
         device: Optional[str] = None,
         return_detailed_results: bool = False,
+        use_oracle: bool = False,
     ) -> Union[MetricResult, Tuple]:
         """
         Evaluate model on test data.
@@ -87,6 +88,7 @@ class EvaluationManager:
             epoch,
             device,
             return_detailed_results,
+            use_oracle,
         )
 
     def encode_test_data(

@@ -3,8 +3,9 @@
 
 train:
   epochs: 30
+  epochs_2: 30 # Label prediction loss epochs
   num_workers: 0
-  batch_size: 2048
+  batch_size: 1024
   initialization_strategy: imgtxt #TODO: change to imgtxt, debugging time use zeros
   imgtxt_factor: 10.0 #TODO: change to 1.0, debugging time use 10.0
   use_template_embeddings: True
@@ -20,12 +21,14 @@ loss:
   lambda_2: 0.5 # Laplacian loss
   lambda_3: 0.3 # Minor loss
   lambda_4: 0.0 # Regularizer loss #TODO: change to 0.1, debugging time use 0.0
+  lambda_pred: 1.0 # Label prediction loss
   return_dict: true
 
 # Optimizer configuration
 optimizer:
   type: "AdamW"
   lr: 1.0e-5
+  lr_2: 5.0e-5
   weight_decay: 5.0e-2
   label_lr_multiplier: 5.0e4 # Label embedding learning rate multiplier
 
@@ -41,3 +44,4 @@ eval:
   train_max_batches: 25 # This is during validation, how many batches we check
   print_metrics: true
   evaluation_interval: 3
+  use_oracle: false
