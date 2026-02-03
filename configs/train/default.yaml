@@ -7,7 +7,7 @@ train:
   num_workers: 0
   batch_size: 1024
   initialization_strategy: imgtxt #TODO: change to imgtxt, debugging time use zeros
-  imgtxt_factor: 10.0 #TODO: change to 1.0, debugging time use 10.0
+  imgtxt_factor: 10.0 #TODO: change to 1.0, debugging time use 10.0 #IMPORTANT: when changing this, we need to re-extract the label embeddings, so also need to change the template embeddings
   use_template_embeddings: True
   save_as_template_embeddings: True
   load_existing_features: True

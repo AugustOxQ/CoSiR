@@ -300,7 +300,7 @@ class LabelPredictionLoss(nn.Module):
     ) -> None:
         super().__init__()
         print("Using Label Prediction Loss")
-        self.lambda_pos = lambda_1
+        self.lambda_pred = lambda_1
         self.return_dict = return_dict
 
     def forward(
@@ -325,19 +325,31 @@ class LabelPredictionLoss(nn.Module):
 
         # Cross-entropy loss（双向）
         loss_img = (
-            F.cross_entropy(sim_matrix_img, pseudo_targets)
-            + F.cross_entropy(sim_matrix_img.T, pseudo_targets)
-        ) / 2
+            self.lambda_pred
+            * (
+                F.cross_entropy(sim_matrix_img, pseudo_targets)
+                + F.cross_entropy(sim_matrix_img.T, pseudo_targets)
+            )
+            / 2
+        )
 
         loss_txt = (
-            F.cross_entropy(sim_matrix_txt, pseudo_targets)
-            + F.cross_entropy(sim_matrix_txt.T, pseudo_targets)
-        ) / 2
+            self.lambda_pred
+            * (
+                F.cross_entropy(sim_matrix_txt, pseudo_targets)
+                + F.cross_entropy(sim_matrix_txt.T, pseudo_targets)
+            )
+            / 2
+        )
 
         loss_imgtxt = (
-            F.cross_entropy(sim_matrix_imgtxt, pseudo_targets)
-            + F.cross_entropy(sim_matrix_imgtxt.T, pseudo_targets)
-        ) / 2
+            self.lambda_pred
+            * (
+                F.cross_entropy(sim_matrix_imgtxt, pseudo_targets)
+                + F.cross_entropy(sim_matrix_imgtxt.T, pseudo_targets)
+            )
+            / 2
+        )
 
         total_loss = loss_img + loss_txt + loss_imgtxt
 
