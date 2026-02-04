@@ -30,6 +30,7 @@ class CoSiRModel(nn.Module):
         nhead: int = 8,
         num_layers: int = 2,
         label_dim: int = 32,
+        min_radius: float = 5,
     ) -> None:
         super().__init__()
         # Frozen CLIP as feature extractor
@@ -62,6 +63,7 @@ class CoSiRModel(nn.Module):
             hidden_dim=256,
             output_dim=2,
             num_layers=num_layers,
+            min_radius=min_radius,
         )
 
         self.txt_condition_predictor = ConditionPredictor(
@@ -69,6 +71,7 @@ class CoSiRModel(nn.Module):
             hidden_dim=256,
             output_dim=2,
             num_layers=num_layers,
+            min_radius=min_radius,
         )
 
         self.imgtxt_condition_predictor = ConditionPredictor(
@@ -76,6 +79,7 @@ class CoSiRModel(nn.Module):
             hidden_dim=256,
             output_dim=2,
             num_layers=num_layers,
+            min_radius=min_radius,
         )
 
     def encode_img(self, images):

@@ -3,7 +3,7 @@
 
 train:
   epochs: 30
-  epochs_2: 30 # Label prediction loss epochs
+  epochs_2: 10 # Label prediction loss epochs
   num_workers: 0
   batch_size: 1024
   initialization_strategy: imgtxt #TODO: change to imgtxt, debugging time use zeros
@@ -45,3 +45,4 @@ eval:
   print_metrics: true
   evaluation_interval: 3
   use_oracle: false
+  perform_evaluation: true

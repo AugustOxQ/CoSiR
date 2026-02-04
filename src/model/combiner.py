@@ -676,11 +676,23 @@ class ConditionPredictor(nn.Module):
         hidden_dim: int = 512,
         output_dim: int = 2,
         num_layers: int = 4,
+        min_radius: float = 5,
+        max_radius: float = 30,
     ):
         super().__init__()
         # Use resnet block to build the network
         self.predictor = ResNetBlock(input_dim, hidden_dim, output_dim, num_layers)
         self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+
+        self.min_radius = min_radius
+        self.max_radius = max_radius
 
     def forward(self, input_features: Tensor) -> Tensor:
-        return self.relu(self.predictor(input_features))
+        output = self.predictor(input_features)
+        radius = self.min_radius + self.sigmoid(output[:, 0:1]) * (
+            self.max_radius - self.min_radius
+        )
+        condition = torch.cat([radius, output[:, 1:2]], dim=-1)
+
+        return condition

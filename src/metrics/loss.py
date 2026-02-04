@@ -296,11 +296,13 @@ class LabelPredictionLoss(nn.Module):
     def __init__(
         self,
         lambda_1: float = 1.0,  # main loss weight
+        temperature: float = 0.07,
         return_dict: bool = False,
     ) -> None:
         super().__init__()
         print("Using Label Prediction Loss")
         self.lambda_pred = lambda_1
+        self.temperature = temperature
         self.return_dict = return_dict
 
     def forward(
@@ -319,9 +321,16 @@ class LabelPredictionLoss(nn.Module):
 
         pseudo_targets = torch.arange(loss_shape, device=image_features.device)
 
-        sim_matrix_img = combined_features_img @ image_features.T
-        sim_matrix_txt = combined_features_txt @ image_features.T
-        sim_matrix_imgtxt = combined_features_imgtxt @ image_features.T
+        image_features = F.normalize(image_features, p=2, dim=1)
+        combined_features_img = F.normalize(combined_features_img, p=2, dim=1)
+        combined_features_txt = F.normalize(combined_features_txt, p=2, dim=1)
+        combined_features_imgtxt = F.normalize(combined_features_imgtxt, p=2, dim=1)
+
+        sim_matrix_img = combined_features_img @ image_features.T / self.temperature
+        sim_matrix_txt = combined_features_txt @ image_features.T / self.temperature
+        sim_matrix_imgtxt = (
+            combined_features_imgtxt @ image_features.T / self.temperature
+        )
 
         # Cross-entropy loss（双向）
         loss_img = (

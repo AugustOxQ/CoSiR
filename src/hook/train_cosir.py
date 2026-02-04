@@ -76,6 +76,7 @@ def train_cosir(cfg, logger):
         label_dim=cfg.model.embedding_dim,
         num_layers=cfg.model.num_layers,
         d_model=cfg.model.hidden_dim,
+        min_radius=cfg.model.min_radius,
     ).to(device)
     processor = AutoProcessor.from_pretrained(cfg.model.clip_model, use_fast=False)
 
@@ -482,9 +483,11 @@ def train_cosir(cfg, logger):
         #     # logger.log_metrics({train_results.metrics})
 
         if (
-            epoch == 0
+            cfg.eval.perform_evaluation
+            and (cfg.train.epoch == 0
             or epoch % evaluation_config.evaluation_interval == 0
             or epoch == cfg.train.epochs - 1
+            )
         ):
             model.eval()
             with torch.no_grad():

@@ -7,3 +7,4 @@ model:
   freeze_backbone: true
   num_layers: 2
   hidden_dim: 64
+  min_radius: 5
