@@ -17,11 +17,18 @@ fi
 
 echo "Using ${NUM_PROCS} processes"
 
-ENTRY="main_cosir.py"
+echo "Test when we initialize with img only, and pre-compute the ground truth embeddings"
 
-# 这个是只比较loss参数，不比较模型大小
-python main_cosir.py dataset=coco optimizer.lr=1e-5 model.num_layers=4 model.hidden_dim=128 loss.lambda_1=1.0 loss.lambda_2=0.3 loss.lambda_3=0.15 loss.lambda_4=0.1
+python main_cosir_phase2.py dataset=redcaps eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
 
-python main_cosir.py dataset=coco optimizer.lr=1e-5 model.num_layers=4 model.hidden_dim=128 loss.lambda_1=1.0 loss.lambda_2=1.0 loss.lambda_3=0.5 loss.lambda_4=0.01
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=5e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
 
-python main_cosir.py dataset=coco optimizer.lr=1e-5 model.num_layers=4 model.hidden_dim=128 loss.lambda_1=1.0 loss.lambda_2=0.5 loss.lambda_3=0.3 loss.lambda_4=0.01
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
+
+# python main_cosir_phase2.py dataset=redcaps eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
+
+# python main_cosir_phase2.py dataset=redcaps eval.perform_evaluation=false optimizer.lr_2=5e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
+
+# python main_cosir_phase2.py dataset=redcaps eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
+
+echo "End of testing"

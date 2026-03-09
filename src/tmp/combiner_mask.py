@@ -768,13 +768,10 @@ class ConditionClassifier(nn.Module):
         input_dim: int = 512,
         hidden_dim: int = 512,
         num_layers: int = 4,
-        dropout: float = 0.5,
+        dropout: float = 0.1,
         num_conditions: int = 12,
         use_temperature: bool = True,
-        init_temperature: float = 0.1,
-        use_gumbel_softmax: bool = True,
-        gumbel_softmax_tau: float = 1.0,
-        gumbel_softmax_hard: bool = False,
+        init_temperature: float = 1.0,
     ):
         super().__init__()
         # ✅ Learnable mask tokens
@@ -782,18 +779,13 @@ class ConditionClassifier(nn.Module):
         self.num_conditions = num_conditions
         self.use_temperature = use_temperature
 
-        # Gumbel softmax parameters
-        self.use_gumbel_softmax = use_gumbel_softmax
-        self.gumbel_softmax_tau = gumbel_softmax_tau
-        self.gumbel_softmax_hard = gumbel_softmax_hard
-
-        self.img_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.01)  # 0.5
-        self.txt_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.01)  # 0.5
-
         if use_temperature:
             self.temperature = nn.Parameter(torch.tensor(init_temperature))
         else:
             self.temperature = 1
+
+        self.img_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.02)
+        self.txt_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.02)
 
         self.img_encoder = GeLUNet(
             input_dim, hidden_dim, hidden_dim, num_layers, dropout=dropout
@@ -803,22 +795,15 @@ class ConditionClassifier(nn.Module):
             input_dim, hidden_dim, hidden_dim, num_layers, dropout=dropout
         )
 
-        self.fuse_encoder = GeLUNet(
+        self.classifier_net = GeLUNet(
             hidden_dim * 2, hidden_dim, num_conditions, num_layers, dropout=dropout
         )
 
     def forward(
-        self,
-        img_emb=None,
-        txt_emb=None,
-        return_logits: bool = False,
-        training_phase: bool = False,
-        argmax: bool = False,
+        self, img_emb=None, txt_emb=None, return_logits: bool = False
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-
         batch_size = img_emb.shape[0] if img_emb is not None else txt_emb.shape[0]
 
-        # This is the original code
         if img_emb is not None:
             img_feat = self.img_encoder(img_emb)
         else:
@@ -829,38 +814,15 @@ class ConditionClassifier(nn.Module):
         else:
             txt_feat = self.txt_mask_token.expand(batch_size, -1)
 
+        # Fuse
         fused = torch.cat([img_feat, txt_feat], dim=-1)
-        logits = self.fuse_encoder(fused)
+        logits = self.classifier_net(fused)
 
-        # if img_emb is not None and txt_emb is not None:
-        #     fused = torch.cat([img_emb, txt_emb], dim=-1)
-        #     logits = self.fuse_encoder(fused)
-        # elif img_emb is not None:
-        #     logits = self.img_encoder(img_emb)
-        # elif txt_emb is not None:
-        #     logits = self.txt_encoder(txt_emb)
-        # else:
-        #     raise ValueError("Either img_emb or txt_emb must be provided")
-
-        if self.use_gumbel_softmax and training_phase:
-            probs = F.gumbel_softmax(
-                logits,
-                tau=self.gumbel_softmax_tau,
-                hard=self.gumbel_softmax_hard,
-                dim=-1,
-            )
+        if self.use_temperature:
+            tmp = self.temperature.clamp(min=0.01, max=10)
+            probs = F.softmax(logits / tmp, dim=-1)
         else:
-            if self.use_temperature:
-                tmp = self.temperature.clamp(min=0.01, max=10)
-                probs = F.softmax(logits / tmp, dim=-1)
-            else:
-                probs = F.softmax(logits, dim=-1)
-
-            if argmax:
-                indices = torch.argmax(probs, dim=-1)  # [Batch]
-                probs = F.one_hot(
-                    indices, num_classes=probs.shape[-1]
-                ).float()  # [Batch, K]
+            probs = F.softmax(logits, dim=-1)
 
         if return_logits:
             return probs, logits

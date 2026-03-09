@@ -327,7 +327,7 @@ class OracleMetrics(RankingMetric):
 
         return conf_top_k_gap
 
-    def compute_non_oracle_recall(
+    def compute_non_oracle_recall_txt(
         self,
         model,
         label_embeddings: Optional[torch.Tensor],
@@ -347,10 +347,10 @@ class OracleMetrics(RankingMetric):
         captions_per_image = image_to_text_map.shape[1]
 
         # Move to device
-        image_embeddings = image_embeddings / image_embeddings.norm(
+        image_embeddings_norm = image_embeddings / image_embeddings.norm(
             dim=-1, keepdim=True
         )
-        image_embeddings = image_embeddings.to(self.config.device)
+        image_embeddings_norm = image_embeddings_norm.to(self.config.device)
         text_embeddings = text_embeddings.to(self.config.device)
         text_full = text_full.to(self.config.device)
 
@@ -368,7 +368,10 @@ class OracleMetrics(RankingMetric):
             for i in range(0, num_texts, self.config.batch_size):
                 end_idx = min(i + self.config.batch_size, num_texts)
                 batch_text_condition = model.predict_condition(
-                    text_embeddings[i:end_idx], "txt"
+                    None,
+                    text_embeddings[i:end_idx],
+                    "img",
+                    return_logits=False,
                 )
                 batch_text_combined = model.combine(
                     text_embeddings[i:end_idx],
@@ -385,30 +388,94 @@ class OracleMetrics(RankingMetric):
 
             combined_embs_tti = torch.cat(combined_embs_tti, dim=0)
 
-            dist_matrix_tti = combined_embs_tti @ image_embeddings.T
+            dist_matrix_tti = combined_embs_tti @ image_embeddings_norm.T
             if self.config.cpu_offload:
                 dist_matrix_tti = dist_matrix_tti.cpu()
             inds_tti = torch.argsort(dist_matrix_tti, dim=1, descending=True)
 
-            # BUG: Here the image side is a bit problematic, because we still need to traverse the whole text embeddings and all conditions, which goes back to the original problem.
-            # TODO: Now I transpose the text sim matrix, but still need to figure this out.
-            # combined_embs_itt = []
-            # for i in range(0, num_images, self.config.batch_size):
-            #     end_idx = min(i + self.config.batch_size, num_images)
-            #     batch_image_condition = model.predict_condition(
-            #         image_embeddings[i:end_idx], "img"
-            #     )
-            #     batch_image_combined = model.combine(
-            #         image_embeddings[i:end_idx],
-            #         0,
-            #         batch_image_condition,
-            #     )
-            #     combined_embs_itt.append(batch_image_combined)
-            #     del batch_image_condition, batch_image_combined
-            #     torch.cuda.empty_cache()
+            dist_matrix_itt = dist_matrix_tti.T
+            if self.config.cpu_offload:
+                dist_matrix_itt = dist_matrix_itt.cpu()
+            inds_itt = torch.argsort(dist_matrix_itt, dim=1, descending=True)
 
-            # combined_embs_itt = torch.cat(combined_embs_itt, dim=0)
-            # dist_matrix_itt = combined_embs_itt.T @ text_embeddings.T
+            metrics = self._compute_recall_from_indices(
+                inds_tti,  # type: ignore
+                inds_itt,  # type: ignore
+                text_to_image_map,
+                image_to_text_map,
+                num_texts,
+                num_images,
+                captions_per_image,
+                prefix,
+            )
+
+            return metrics, best_label_tti, best_label_itt
+
+    def compute_non_oracle_recall_img(
+        self,
+        model,
+        label_embeddings: Optional[torch.Tensor],
+        image_embeddings: torch.Tensor,
+        text_embeddings: torch.Tensor,
+        text_full: torch.Tensor,
+        text_to_image_map: torch.Tensor,
+        image_to_text_map: torch.Tensor,
+        prefix: str = "oracle",
+    ) -> Tuple[Dict[str, float], torch.Tensor, torch.Tensor]:
+        """Compute non-oracle metrics which not use ground truth labels.
+        这里我们不用遍历了，我们直接用condition predictor来预测条件，然后根据条件来筛选
+        """
+
+        num_texts = text_embeddings.shape[0]
+        num_images = image_embeddings.shape[0]
+        captions_per_image = image_to_text_map.shape[1]
+
+        # Move to device
+        image_embeddings_norm = image_embeddings / image_embeddings.norm(
+            dim=-1, keepdim=True
+        )
+        image_embeddings_norm = image_embeddings_norm.to(self.config.device)
+        image_embeddings = image_embeddings.to(self.config.device)
+        text_embeddings = text_embeddings.to(self.config.device)
+        text_full = text_full.to(self.config.device)
+        print(f"Evaluating non-oracle with condition predictor...")
+
+        # Initialize tracking variables
+        best_label_tti = -torch.ones((num_texts,))
+        best_label_itt = -torch.ones((num_images,))
+
+        # Have to do the text-to-image and image-to-text evaluation separately
+        # Text-to-Image evaluation
+        with torch.no_grad():
+            combined_embs_tti = []
+            # First get the condition predictions, break into batches
+            for i in range(0, num_texts, self.config.batch_size):
+                end_idx = min(i + self.config.batch_size, num_texts)
+                batch_text_condition = model.predict_condition(
+                    None,
+                    text_embeddings[i:end_idx],
+                    "img",
+                    return_logits=False,
+                )
+                batch_text_combined = model.combine(
+                    text_embeddings[i:end_idx],
+                    0,
+                    batch_text_condition,
+                )
+
+                combined_embs_tti.append(
+                    batch_text_combined
+                )  # Store the combined embeddings
+
+                del batch_text_condition, batch_text_combined
+                torch.cuda.empty_cache()
+
+            combined_embs_tti = torch.cat(combined_embs_tti, dim=0)
+
+            dist_matrix_tti = combined_embs_tti @ image_embeddings_norm.T
+            if self.config.cpu_offload:
+                dist_matrix_tti = dist_matrix_tti.cpu()
+            inds_tti = torch.argsort(dist_matrix_tti, dim=1, descending=True)
 
             dist_matrix_itt = dist_matrix_tti.T
             if self.config.cpu_offload:
@@ -448,9 +515,10 @@ class OracleMetrics(RankingMetric):
         captions_per_image = image_to_text_map.shape[1]
 
         # Move to device
-        image_embeddings = image_embeddings / image_embeddings.norm(
+        image_embeddings_norm = image_embeddings / image_embeddings.norm(
             dim=-1, keepdim=True
         )
+        image_embeddings_norm = image_embeddings_norm.to(self.config.device)
         image_embeddings = image_embeddings.to(self.config.device)
         text_embeddings = text_embeddings.to(self.config.device)
         text_full = text_full.to(self.config.device)
@@ -476,8 +544,10 @@ class OracleMetrics(RankingMetric):
                     i * captions_per_image : end_idx * captions_per_image
                 ]
                 batch_condition = model.predict_condition(
-                    torch.cat([batch_img_sample, batch_text_sample], dim=-1),
+                    batch_img_sample,
+                    batch_text_sample,
                     "imgtxt",
+                    return_logits=False,
                 )
                 batch_text_combined = model.combine(
                     batch_text_sample,
@@ -494,7 +564,7 @@ class OracleMetrics(RankingMetric):
 
             combined_embs_tti = torch.cat(combined_embs_tti, dim=0)
 
-            dist_matrix_tti = combined_embs_tti @ image_embeddings.T
+            dist_matrix_tti = combined_embs_tti @ image_embeddings_norm.T
             if self.config.cpu_offload:
                 dist_matrix_tti = dist_matrix_tti.cpu()
             inds_tti = torch.argsort(dist_matrix_tti, dim=1, descending=True)

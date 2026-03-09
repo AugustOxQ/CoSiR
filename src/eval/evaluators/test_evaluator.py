@@ -74,20 +74,7 @@ class TestEvaluator(BaseEvaluator):
                 )
             )
         else:
-            metrics_oracle_txt, best_label_tti, best_label_itt = (
-                self.oracle_metrics.compute_non_oracle_recall(
-                    model,
-                    label_embeddings,
-                    all_img_emb,
-                    all_txt_emb,
-                    all_txt_full,
-                    text_to_image_map,
-                    image_to_text_map,
-                    "txt_non_oracle",
-                )
-            )
-
-            metrics_oracle, _, _ = self.oracle_metrics.compute_non_oracle_recall_imgtxt(
+            metrics_oracle, _, _ = self.oracle_metrics.compute_non_oracle_recall_txt(
                 model,
                 label_embeddings,
                 all_img_emb,
@@ -95,7 +82,20 @@ class TestEvaluator(BaseEvaluator):
                 all_txt_full,
                 text_to_image_map,
                 image_to_text_map,
-                "imgtxt_non_oracle",
+                "txt_non_oracle",
+            )
+
+            metrics_oracle_imgtxt, best_label_tti, best_label_itt = (
+                self.oracle_metrics.compute_non_oracle_recall_imgtxt(
+                    model,
+                    label_embeddings,
+                    all_img_emb,
+                    all_txt_emb,
+                    all_txt_full,
+                    text_to_image_map,
+                    image_to_text_map,
+                    "both_non_oracle",
+                )
             )
 
         # Evaluate raw embeddings (without labels)
@@ -122,7 +122,7 @@ class TestEvaluator(BaseEvaluator):
             all_metrics = {
                 "test/epoch": epoch,
                 **metrics_oracle,
-                **metrics_oracle_txt,
+                **metrics_oracle_imgtxt,
                 **metrics_raw,
                 **metrics_diff,
             }

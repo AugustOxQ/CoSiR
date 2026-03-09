@@ -1,3 +1,7 @@
+"""
+Biggest change: we dont have per-sample learnable conditions, instead, we using a fixed set of learnable conditions.
+"""
+
 import time
 import os
 import torch
@@ -23,8 +27,6 @@ from src.utils import (
     FeatureManager,
     ExperimentManager,
     TrainableEmbeddingManager,
-    replace_with_most_different,
-    get_representatives,
     get_representatives_polar_grid,
     get_umap,
     visualize_ideal_condition_space,
@@ -32,10 +34,10 @@ from src.utils import (
     visualize_angular_semantics_text_to_image_fast,
     CoSiRAutomaticEvaluator,
 )
-from src.metrics import LabelContrastiveLoss_enhance, LabelPredictionLoss
+from src.metrics import LabelContrastiveLoss_enhance
 
 
-def train_cosir(cfg, logger):
+def train_cosir_newphase1(cfg, logger):
     seed = cfg.seed
     random.seed(seed)
     torch.manual_seed(seed)

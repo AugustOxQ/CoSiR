@@ -6,6 +6,7 @@ from transformers import CLIPModel
 import requests
 from PIL import Image
 from transformers import AutoProcessor, CLIPModel
+from typing import Optional
 
 from src.model.combiner import *
 
@@ -30,7 +31,7 @@ class CoSiRModel(nn.Module):
         nhead: int = 8,
         num_layers: int = 2,
         label_dim: int = 32,
-        min_radius: float = 5,
+        num_conditions: int = 12,
     ) -> None:
         super().__init__()
         # Frozen CLIP as feature extractor
@@ -53,34 +54,24 @@ class CoSiRModel(nn.Module):
             projection_dim=512,
             hidden_dim=d_model,
             num_heads=nhead,
-            num_layers=num_layers,
+            num_layers=2,  # TODO: here we fix it to 2
             label_dim=label_dim,
         )
 
         # Additional components
-        self.img_condition_predictor = ConditionPredictor(
+        self.unified_condition_predictor = ConditionClassifier(
             input_dim=512,
-            hidden_dim=256,
-            output_dim=2,
+            hidden_dim=512,  # Here the dim is fixed to 512, because the input dim is 512
             num_layers=num_layers,
-            min_radius=min_radius,
+            num_conditions=num_conditions,
+            use_temperature=True,
+            init_temperature=1.0,
         )
 
-        self.txt_condition_predictor = ConditionPredictor(
-            input_dim=512,
-            hidden_dim=256,
-            output_dim=2,
-            num_layers=num_layers,
-            min_radius=min_radius,
-        )
+        self.pretrained_representatives = None
 
-        self.imgtxt_condition_predictor = ConditionPredictor(
-            input_dim=512 * 2,
-            hidden_dim=256,
-            output_dim=2,
-            num_layers=num_layers,
-            min_radius=min_radius,
-        )
+    def set_pretrained_representatives(self, representatives: Tensor, device: str):
+        self.pretrained_representatives = representatives.to(device)
 
     def encode_img(self, images):
         # Extract image features
@@ -121,23 +112,47 @@ class CoSiRModel(nn.Module):
 
         return comb_emb
 
-    def predict_condition(self, input_features: Tensor, type: str) -> Tensor:
-        # BUG: 这里我设计的是如果我们要做text-to-image retrieval，那么我们根据看到的text选择最适合的image。 但是实际还有另一种可能，在做text-to-image retrieval的时候，我们也可以直接反其道而行之，我们根据看到的image选择最适合的condition，然后用这个condition来选择最适合的text。
-        # input_features: (batch_size, d_model)
+    def predict_condition(
+        self,
+        img_emb: Optional[Tensor],
+        txt_emb: Optional[Tensor],
+        type: str,
+        return_logits: bool = True,
+        training_phase: bool = False,
+    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+        # input_features: (batch_size, d_model), pre_trained_representatives: (num_conditions, 2)
         if type == "img":
-            output = self.img_condition_predictor(input_features)
+            probs, logits = self.unified_condition_predictor(
+                img_emb=None,
+                txt_emb=txt_emb,
+                return_logits=True,
+                training_phase=training_phase,
+            )
         elif type == "txt":
-            output = self.txt_condition_predictor(input_features)
+            probs, logits = self.unified_condition_predictor(
+                img_emb=img_emb,
+                txt_emb=None,
+                return_logits=True,
+                training_phase=training_phase,
+            )
         elif type == "imgtxt":
-            output = self.imgtxt_condition_predictor(
-                input_features
-            )  # (batch_size, d_model * 2)
+            probs, logits = self.unified_condition_predictor(
+                img_emb=img_emb,
+                txt_emb=txt_emb,
+                return_logits=True,
+                training_phase=training_phase,
+            )
         else:
             raise ValueError(f"Invalid condition type: {type}")
 
-        # output = output @ self.combiner.label_proj_layer.weight
+        output = (
+            probs @ self.pretrained_representatives
+        )  # [B, num_conditions] @ [num_conditions, 2] -> [B, 2]
 
-        return output
+        if return_logits:
+            return output, logits
+        else:
+            return output
 
     def forward(self, images, texts, labels):
         # Extract image and text features

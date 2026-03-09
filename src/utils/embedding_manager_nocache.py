@@ -369,6 +369,113 @@ class TrainableEmbeddingManager:
             f"✅ Completed imgtxt initialization for {len(self.sample_ids)} samples across {num_chunks} chunks"
         )
 
+    def initialize_embeddings_txt(self, feature_manager, model, device="cpu", factor=1):
+        """
+        Initialize label embeddings using txt strategy: txt_emb @ w_t
+
+        Args:
+            feature_manager: FeatureManager instance to load image/text features
+            model: CoSiR model to get the projection matrix w_t
+            device: Device for computation
+        """
+        print("##########Initializing label embeddings using txt strategy##########")
+
+        # Get the projection matrix from model
+        w_t = model.combiner.label_proj_layer.weight.data.clone().detach().to(device)
+
+        # Get total number of chunks from feature manager
+        num_chunks = feature_manager.get_num_chunks()
+
+        # Initialize embeddings chunk by chunk
+        for chunk_id in range(num_chunks):
+            # Load features for this chunk
+            features_data = feature_manager.get_features_by_chunk(chunk_id)
+
+            txt_features = features_data["txt_features"].to(device)
+
+            # DEBUG: This needs to get from the embedding manager, not the feature manager, still dont know what is the difference between them
+            chunk_sample_ids, _ = self.get_embeddings_by_chunk(chunk_id)
+
+            # Compute: txt_emb @ w_t
+            label_embedding_init = (
+                txt_features @ w_t * factor
+            )  # TODO: Here is the factor
+
+            # Update embeddings for this chunk (auto-saves to disk)
+            self.update_embeddings_by_chunk(
+                chunk_id, chunk_sample_ids, label_embedding_init
+            )
+
+            # if chunk_id % 10 == 0 and chunk_id >= 10:
+            #     chunk_sample_ids_updated, label_embedding_updated = (
+            #         self.get_embeddings_by_chunk(chunk_id)
+            #     )
+            #     print(label_embedding_init[0])
+            #     print(label_embedding_updated[0])
+
+            # Log progress
+            if chunk_id % 100 == 0 or chunk_id == num_chunks - 1:
+                label_move_distance = torch.norm(
+                    label_embedding_init, p=2, dim=1
+                ).mean()
+                print(
+                    f"Chunk: {chunk_id} / {num_chunks-1}, Label Move Distance: {label_move_distance:.3f}"
+                )
+
+        print(
+            f"✅ Completed txt initialization for {len(self.sample_ids)} samples across {num_chunks} chunks"
+        )
+
+    def initialize_embeddings_img(self, feature_manager, model, device="cpu", factor=1):
+        """
+        Initialize label embeddings using img strategy: img_emb @ w_t
+
+        Args:
+            feature_manager: FeatureManager instance to load image/text features
+            model: CoSiR model to get the projection matrix w_t
+            device: Device for computation
+        """
+        print("##########Initializing label embeddings using img strategy##########")
+
+        # Get the projection matrix from model
+        w_t = model.combiner.label_proj_layer.weight.data.clone().detach().to(device)
+
+        # Get total number of chunks from feature manager
+        num_chunks = feature_manager.get_num_chunks()
+
+        # Initialize embeddings chunk by chunk
+        for chunk_id in range(num_chunks):
+            # Load features for this chunk
+            features_data = feature_manager.get_features_by_chunk(chunk_id)
+
+            img_features = features_data["img_features"].to(device)
+
+            # DEBUG: This needs to get from the embedding manager, not the feature manager, still dont know what is the difference between them
+            chunk_sample_ids, _ = self.get_embeddings_by_chunk(chunk_id)
+
+            # Compute: (img_emb - txt_emb) @ w_t
+            label_embedding_init = (
+                img_features @ w_t * factor
+            )  # TODO: Here is the factor
+
+            # Update embeddings for this chunk (auto-saves to disk)
+            self.update_embeddings_by_chunk(
+                chunk_id, chunk_sample_ids, label_embedding_init
+            )
+
+            # Log progress
+            if chunk_id % 100 == 0 or chunk_id == num_chunks - 1:
+                label_move_distance = torch.norm(
+                    label_embedding_init, p=2, dim=1
+                ).mean()
+                print(
+                    f"Chunk: {chunk_id} / {num_chunks-1}, Label Move Distance: {label_move_distance:.3f}"
+                )
+
+        print(
+            f"✅ Completed img initialization for {len(self.sample_ids)} samples across {num_chunks} chunks"
+        )
+
     def load_imgtxt_template(self):
         """Load embeddings from template directory"""
         template_dir = self.embeddings_dir.parent.parent / "template_embeddings"
@@ -381,6 +488,43 @@ class TrainableEmbeddingManager:
             raise FileNotFoundError(f"No chunk files found in: {template_dir}")
 
         print(f"Loading template embeddings from: {template_dir}")
+        print(f"Found {len(template_chunks)} template chunks")
+
+        # Copy template chunks to current directory
+        for template_chunk in template_chunks:
+            dest_path = self.embeddings_dir / template_chunk.name
+            shutil.copy2(template_chunk, dest_path)
+
+        # If memory mode, reload into memory
+        if self.storage_mode == "memory":
+            all_embeddings = []
+            for chunk_id in sorted(self.chunk_mapping.keys()):
+                chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
+                chunk_dict = torch.load(chunk_path, map_location="cpu")
+
+                chunk_sample_ids = self.chunk_mapping[chunk_id]
+                chunk_embeddings = torch.stack(
+                    [chunk_dict[sid] for sid in chunk_sample_ids]
+                )
+                all_embeddings.append(chunk_embeddings)
+
+            all_embeddings_tensor = torch.cat(all_embeddings, dim=0).to(self.device)
+            self.embeddings = nn.Parameter(all_embeddings_tensor, requires_grad=True)
+
+        print(f"✅ Loaded template embeddings for {len(self.sample_ids)} samples")
+
+    def load_phase_1_template(self, path: str):
+        """Load embeddings from phase 1 directory"""
+        phase1_path = Path(path)
+
+        if not phase1_path.exists():
+            raise FileNotFoundError(f"Template directory not found: {phase1_path}")
+
+        template_chunks = list(phase1_path.glob("embeddings_chunk_*.pt"))
+        if not template_chunks:
+            raise FileNotFoundError(f"No chunk files found in: {phase1_path}")
+
+        print(f"Loading template embeddings from: {phase1_path}")
         print(f"Found {len(template_chunks)} template chunks")
 
         # Copy template chunks to current directory

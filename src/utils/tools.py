@@ -32,6 +32,116 @@ def replace_with_most_different(label_embeddings, k=10):
     return new_embeddings
 
 
+def precompute_nearest_condition_labels(
+    train_conditions: torch.Tensor,
+    selected_conditions: torch.Tensor,
+    print_statistics: bool = False,
+) -> torch.Tensor:
+    """
+    For each training sample, find the nearest selected condition.
+
+    Args:
+        train_conditions: Phase 1 conditions for training set [N, 2]
+        selected_conditions: K selected conditions [K, 2]
+
+    Returns:
+        labels: Index of nearest condition for each sample [N]
+    """
+
+    # Compute pairwise distances
+    # [N, 1, 2] - [1, K, 2] → [N, K]
+    dists = torch.norm(
+        train_conditions.unsqueeze(1) - selected_conditions.unsqueeze(0), dim=2
+    )
+
+    # Find nearest
+    labels = dists.argmin(dim=1)  # [N]
+
+    if print_statistics:
+        # Statistics
+        unique, counts = torch.unique(labels, return_counts=True)
+        print(f"\nLabel distribution:")
+        for idx, count in zip(unique.tolist(), counts.tolist()):
+            print(f"  Condition {idx}: {count} samples ({count/len(labels)*100:.1f}%)")
+
+    return labels
+
+
+def select_representative_conditions(
+    all_conditions: torch.Tensor,
+    K: int = 12,
+    method: str = "kmeans",
+    seed: int = 42,
+) -> torch.Tensor:
+    """
+    Select K representative conditions from Phase 1.
+
+    Args:
+        all_conditions: All Phase 1 conditions [N, 2]
+        K: Number of conditions to select
+        method: Selection method ('kmeans', 'diverse', 'random')
+        seed: Random seed
+
+    Returns:
+        selected_conditions: K selected conditions [K, 2]
+    """
+
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+    all_conditions_np = all_conditions.cpu().numpy()
+
+    if method == "kmeans":
+        print(f"Selecting {K} conditions using K-means clustering...")
+        from sklearn.cluster import KMeans
+
+        kmeans = KMeans(n_clusters=K, random_state=seed, n_init=10)
+        kmeans.fit(all_conditions_np)
+
+        selected = torch.from_numpy(kmeans.cluster_centers_).float()
+
+    elif method == "diverse":
+        print(f"Selecting {K} conditions using diversity sampling...")
+
+        # Greedy selection: maximize minimum distance
+        selected_indices = []
+
+        # Start with random point
+        selected_indices.append(np.random.randint(len(all_conditions)))
+
+        for _ in range(K - 1):
+            # Compute distances to selected points
+            selected_points = all_conditions_np[selected_indices]
+            dists = np.min(
+                np.linalg.norm(
+                    all_conditions_np[:, None] - selected_points[None, :], axis=2
+                ),
+                axis=1,
+            )
+
+            # Select point with maximum distance
+            next_idx = np.argmax(dists)
+            selected_indices.append(next_idx)
+
+        selected = all_conditions[selected_indices]
+
+    elif method == "random":
+        print(f"Selecting {K} conditions randomly...")
+        indices = torch.randperm(len(all_conditions))[:K]
+        selected = all_conditions[indices]
+
+    else:
+        raise ValueError(f"Unknown method: {method}")
+
+    print(f"Selected {K} conditions:")
+    print(f"  Mean: {selected.mean(dim=0)}")
+    print(f"  Std:  {selected.std(dim=0)}")
+    print(f"  Min:  {selected.min(dim=0).values}")
+    print(f"  Max:  {selected.max(dim=0).values}")
+
+    return selected
+
+
 def get_representatives(label_embeddings, k=10):
     # Check if label_embeddings are with dimention 2
     assert label_embeddings.shape[1] == 2, "Label embeddings must be with dimention 2"
@@ -91,6 +201,44 @@ def get_representatives_polar_grid(
     )
 
     return sampled_conditions
+
+
+def get_representatives_polar_grid_outsideonly(learned_conditions, num_angles=10):
+    """
+    For each angular sector, pick the real learned condition closest to the 0.95
+    quantile radius within that sector. Returns one real sample per sector.
+
+    Args:
+        learned_conditions: [N, 2] learned conditions
+        num_angles: number of angular sectors
+    Returns:
+        sampled_conditions: [num_angles, 2]
+    """
+    angles = torch.atan2(learned_conditions[:, 1], learned_conditions[:, 0]) % (2 * torch.pi)
+    radii = torch.norm(learned_conditions, dim=1)
+
+    sector_size = 2 * torch.pi / num_angles
+    sector_ids = (angles / sector_size).long().clamp(0, num_angles - 1)
+
+    sampled = []
+    for i in range(num_angles):
+        mask = sector_ids == i
+        if mask.sum() == 0:
+            # No points in this sector: fall back to closest point by angle
+            center = (i + 0.5) * sector_size
+            diffs = (angles - center + torch.pi) % (2 * torch.pi) - torch.pi
+            mask = torch.zeros(len(angles), dtype=torch.bool)
+            mask[diffs.abs().argmin()] = True
+
+        pts = learned_conditions[mask]
+        r = radii[mask]
+        q = r.quantile(0.95)
+        idx = (r - q).abs().argmin()
+        sampled.append(pts[idx])
+
+    result = torch.stack(sampled)
+    print(f"Sampled {len(result)} conditions ({num_angles} angular sectors, 0.95 quantile radius per sector)")
+    return result
 
 
 def precompute_coco_embeddings(model, coco_test_loader, device, processor):

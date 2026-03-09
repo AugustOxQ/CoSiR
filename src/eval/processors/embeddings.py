@@ -14,6 +14,13 @@ class EmbeddingProcessor:
 
     def __init__(self, config: EvaluationConfig):
         self.config = config
+        self.cache = {}
+        self.cache["all_img_emb"] = None
+        self.cache["all_txt_emb"] = None
+        self.cache["all_txt_full"] = None
+        self.cache["all_raw_text"] = None
+        self.cache["text_to_image_map"] = None
+        self.cache["image_to_text_map"] = None
 
     def extract_embeddings(
         self, model, processor, dataloader: DataLoader
@@ -25,6 +32,18 @@ class EmbeddingProcessor:
         Returns:
             Tuple of (image_embeddings, text_embeddings, text_full, text_to_image_map, image_to_text_map)
         """
+
+        if self.cache.get("all_img_emb") is not None:
+            print("Using cached embeddings")
+            return (
+                self.cache["all_img_emb"],
+                self.cache["all_txt_emb"],
+                self.cache["all_txt_full"],
+                self.cache["all_raw_text"],
+                self.cache["text_to_image_map"],
+                self.cache["image_to_text_map"],
+            )
+
         all_img_emb = []
         all_txt_emb = []
         all_txt_full = []
@@ -94,6 +113,13 @@ class EmbeddingProcessor:
         # Convert mappings to tensors
         text_to_image_map = torch.LongTensor(text_to_image_map).to(self.config.device)
         image_to_text_map = torch.LongTensor(image_to_text_map).to(self.config.device)
+
+        self.cache["all_img_emb"] = all_img_emb
+        self.cache["all_txt_emb"] = all_txt_emb
+        self.cache["all_txt_full"] = all_txt_full
+        self.cache["all_raw_text"] = all_raw_text
+        self.cache["text_to_image_map"] = text_to_image_map
+        self.cache["image_to_text_map"] = image_to_text_map
 
         return (
             all_img_emb,
