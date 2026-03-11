@@ -943,3 +943,119 @@ class GeLUNet(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.network(x)
+
+
+class ConditionEncoder(nn.Module):
+    """
+    Direction 3: Fixed K learnable 512-dim conditions with cross-attention.
+    Image features as KV, K prototype conditions as Q.
+    Soft attention over K conditions, gated residual modulation on text.
+    """
+
+    def __init__(
+        self,
+        prototype_conditions: Tensor,
+        dim: int = 512,
+        K: int = 12,
+        num_heads: int = 8,
+        dropout: float = 0.1,
+        stop_gradient: bool = False,  # Problem 8: prevent shortcut learning
+    ):
+        super().__init__()
+        self.dim = dim
+        self.K = K
+        self.stop_gradient = stop_gradient
+
+        # K prototype conditions [K, dim]
+        self.conditions = prototype_conditions
+
+        # Cross-attention: Q=conditions, KV=image features
+        self.cross_attn = nn.MultiheadAttention(
+            embed_dim=dim,
+            num_heads=num_heads,
+            dropout=dropout,
+            batch_first=True,
+        )
+
+        # Soft attention weights over K dynamic conditions
+        self.condition_scorer = nn.Linear(dim, 1)
+
+        # Gated residual modulation (Problem 3)
+        # γ: multiplicative gate, β: additive shift
+        self.gamma_net = nn.Sequential(
+            nn.Linear(dim * 2, dim),
+            nn.Tanh(),
+        )
+        self.beta_net = nn.Linear(dim, dim)
+
+        self.layer_norm = nn.LayerNorm(dim)
+
+        self.gamma_scalar = FixedSizeQueue(2)
+        self.beta_scalar = FixedSizeQueue(2)
+        self.entropy_scalar = FixedSizeQueue(2)
+        self.dynamic_condition_scalar = FixedSizeQueue(2)
+
+    def forward(
+        self,
+        txt_features: torch.Tensor,  # [Batch, dim]
+        img_features: torch.Tensor,  # [Batch, dim]
+        img_full: torch.Tensor,  # [Batch, L, dim]
+        return_attn_weights: bool = False,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Returns:
+            conditioned_txt: [Batch, dim]
+            attn_weights:    [Batch, K] for diversity loss
+        """
+        B = txt_features.size(0)
+
+        # Problem 8: stop-gradient on image KV
+        img_kv = img_full.detach() if self.stop_gradient else img_full
+
+        # Expand prototype conditions to batch: [B, K, dim]
+        Q = self.conditions.unsqueeze(0).expand(B, -1, -1)  # [B, K, dim]
+
+        # Cross-attention: each prototype attends to image features
+        # Output: [B, K, dim] - K dynamic conditions per sample
+        dynamic_conditions, _ = self.cross_attn(
+            query=Q,
+            key=img_kv,
+            value=img_kv,
+        )  # [B, K, dim]
+
+        # Problem 3: soft attention over K dynamic conditions
+        scores = self.condition_scorer(dynamic_conditions)  # [B, K, 1]
+
+        attn_weights = F.softmax(scores.squeeze(-1), dim=-1)  # [B, K]
+
+        # Weighted sum of dynamic conditions
+        condition = torch.einsum(
+            "bk,bkd->bd", attn_weights, dynamic_conditions
+        )  # [B, dim]
+
+        # Problem 4: gated residual modulation on text features
+        gamma = self.gamma_net(torch.cat([txt_features, condition], dim=-1))  # [B, dim]
+        gamma = torch.clamp(gamma, min=-0.5, max=0.5)
+        beta = self.beta_net(condition)  # [B, dim]
+        beta = beta * 0.1
+
+        self.gamma_scalar.add(gamma.detach().mean().item())
+        self.beta_scalar.add(beta.detach().mean().item())
+        entropy = -(attn_weights * torch.log(attn_weights + 1e-8)).sum(dim=-1).mean()
+        self.entropy_scalar.add(entropy.detach().mean().item())
+
+        # dynamic_conditions之间的平均cosine similarity
+        normed = F.normalize(dynamic_conditions, dim=-1)  # [B, K, dim]
+        sim = torch.bmm(normed, normed.transpose(1, 2))  # [B, K, K]
+        mask = ~torch.eye(self.K, dtype=torch.bool, device=sim.device).unsqueeze(0)
+        avg_sim = sim[:, mask.squeeze(0)].mean()
+        self.dynamic_condition_scalar.add(avg_sim.detach().mean().item())
+
+        conditioned_txt = self.layer_norm(
+            txt_features + gamma * txt_features + beta
+        )  # [B, dim]
+
+        if return_attn_weights:
+            return conditioned_txt, attn_weights
+        else:
+            return conditioned_txt

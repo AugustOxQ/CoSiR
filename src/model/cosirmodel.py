@@ -32,6 +32,7 @@ class CoSiRModel(nn.Module):
         num_layers: int = 2,
         label_dim: int = 32,
         num_conditions: int = 12,
+        prototype_conditions: Optional[Tensor] = None,
     ) -> None:
         super().__init__()
         # Frozen CLIP as feature extractor
@@ -45,33 +46,15 @@ class CoSiRModel(nn.Module):
         self.clip_tm = self.clip.text_model  # type: ignore
         self.clip_tproj = self.clip.text_projection  # type: ignore
 
-        # Identity function for now
-        self.label_encoder = nn.Identity()
-
         # Combiner network to combine text and label features
-        self.combiner = CombinerSimplePolar(
-            clip_feature_dim=512,
-            projection_dim=512,
-            hidden_dim=d_model,
+        self.combiner = ConditionEncoder(
+            prototype_conditions=prototype_conditions,  # type: ignore
+            dim=512,
+            K=num_conditions,
             num_heads=nhead,
-            num_layers=2,  # TODO: here we fix it to 2
-            label_dim=label_dim,
+            dropout=0.1,
+            stop_gradient=False,
         )
-
-        # Additional components
-        self.unified_condition_predictor = ConditionClassifier(
-            input_dim=512,
-            hidden_dim=512,  # Here the dim is fixed to 512, because the input dim is 512
-            num_layers=num_layers,
-            num_conditions=num_conditions,
-            use_temperature=True,
-            init_temperature=1.0,
-        )
-
-        self.pretrained_representatives = None
-
-    def set_pretrained_representatives(self, representatives: Tensor, device: str):
-        self.pretrained_representatives = representatives.to(device)
 
     def encode_img(self, images):
         # Extract image features
@@ -99,77 +82,59 @@ class CoSiRModel(nn.Module):
 
         return img_emb, txt_emb, img_full, txt_full
 
-    def combine(self, txt_emb, txt_full, labels, epoch=None, return_label_proj=False):
+    def combine(self, txt_emb, img_emb, img_full):
         # Encode the labels
-        lbl_emb = self.label_encoder(labels)  # (batch_size, 512)
         comb_emb = self.combiner(
             txt_emb,
-            None,
-            lbl_emb,
-            epoch,
-            return_label_proj,  # Here txt_full is not used
+            img_emb,
+            img_full,
         )  # (batch_size, 512)
 
         return comb_emb
 
-    def predict_condition(
-        self,
-        img_emb: Optional[Tensor],
-        txt_emb: Optional[Tensor],
-        type: str,
-        return_logits: bool = True,
-        training_phase: bool = False,
-    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-        # input_features: (batch_size, d_model), pre_trained_representatives: (num_conditions, 2)
-        if type == "img":
-            probs, logits = self.unified_condition_predictor(
-                img_emb=None,
-                txt_emb=txt_emb,
-                return_logits=True,
-                training_phase=training_phase,
-            )
-        elif type == "txt":
-            probs, logits = self.unified_condition_predictor(
-                img_emb=img_emb,
-                txt_emb=None,
-                return_logits=True,
-                training_phase=training_phase,
-            )
-        elif type == "imgtxt":
-            probs, logits = self.unified_condition_predictor(
-                img_emb=img_emb,
-                txt_emb=txt_emb,
-                return_logits=True,
-                training_phase=training_phase,
-            )
-        else:
-            raise ValueError(f"Invalid condition type: {type}")
+    def get_condition_from_img(self, img_emb) -> torch.Tensor:
 
-        output = (
-            probs @ self.pretrained_representatives
-        )  # [B, num_conditions] @ [num_conditions, 2] -> [B, 2]
+        B = img_emb.size(0)
+        Q = self.combiner.conditions.unsqueeze(0).expand(B, -1, -1)  # [B, K, dim]
+        KV = img_emb  # [B, 1, dim]
 
-        if return_logits:
-            return output, logits
-        else:
-            return output
+        dynamic_conditions, _ = self.combiner.cross_attn(
+            query=Q,
+            key=KV,
+            value=KV,
+        )  # [B, K, dim] # This is a bit problematic
+
+        scores = self.combiner.condition_scorer(dynamic_conditions)  # [B, K, 1]
+        attn_weights = F.softmax(scores.squeeze(-1), dim=-1)  # [B, K]
+        condition = torch.einsum(
+            "bk,bkd->bd", attn_weights, dynamic_conditions
+        )  # [B, dim]
+
+        return condition
+
+    def apply_condition_to_txt(self, txt_emb, condition) -> torch.Tensor:
+
+        # 自动广播，不手动expand
+        gamma = self.combiner.gamma_net(
+            torch.cat([txt_emb, condition.expand_as(txt_emb)], dim=-1)
+        )
+        beta = self.combiner.beta_net(condition.expand_as(txt_emb))
+
+        return self.combiner.layer_norm(txt_emb + gamma * txt_emb + beta)
 
     def forward(self, images, texts, labels):
         # Extract image and text features
 
-        img_emb, txt_emb, _, txt_full = self.encode_img_txt(images, texts)
-
-        # Encode the labels
-        lbl_emb = self.label_encoder(labels)  # (batch_size, 512)
+        img_emb, txt_emb, img_full, txt_full = self.encode_img_txt(images, texts)
 
         # Combine text and label features
-        comb_emb = self.combiner(txt_emb, txt_full, lbl_emb)  # (batch_size, 512)
+        comb_emb = self.combine(txt_emb, img_emb)  # (batch_size, 512)
 
         return (
             img_emb,
             txt_emb,
+            img_full,
             txt_full,
-            lbl_emb,
             comb_emb,
         )  # For now we only need img_emb and comb_emb to calculate the loss
 

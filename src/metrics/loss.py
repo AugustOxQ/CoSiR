@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
-from typing import Callable, List
+from typing import Callable, List, Union
 
 
 from src.metrics.regularizer import *
@@ -627,6 +627,129 @@ class LabelClassificationLoss(nn.Module):
             return loss_dict
         else:
             return total_loss
+
+
+class CoSiRLoss(nn.Module):
+    """
+    Problem 5: InfoNCE + pull-away loss on prototype conditions
+    """
+
+    def __init__(
+        self,
+        temperature: float = 0.07,
+        lambda_margin: float = 1.0,
+        lambda_infonce: float = 0.3,
+        lambda_diversity: float = 0.1,
+        lambda_preserve: float = 0.1,
+        return_dict: bool = True,
+    ):
+        super().__init__()
+        self.temperature = nn.Parameter(
+            torch.tensor(temperature, requires_grad=True)
+        )  # Change it to learnable parameter
+        self.lambda_margin = lambda_margin
+        self.lambda_infonce = lambda_infonce
+        self.lambda_diversity = lambda_diversity
+        self.lambda_preserve = lambda_preserve
+        self.delta = 0.1
+        self.return_dict = return_dict
+
+    def info_nce(
+        self,
+        img_features: torch.Tensor,  # [B, dim]
+        conditioned_txt: torch.Tensor,  # [B, dim]
+    ) -> torch.Tensor:
+        # Normalize
+        img = F.normalize(img_features, dim=-1)
+        txt = F.normalize(conditioned_txt, dim=-1)
+
+        # Similarity matrix [B, B]
+        logits = torch.matmul(txt, img.T) / self.temperature
+
+        # Diagonal is positive pairs
+        labels = torch.arange(logits.size(0), device=logits.device)
+
+        loss_i2t = F.cross_entropy(logits, labels)
+        loss_t2i = F.cross_entropy(logits.T, labels)
+
+        return (loss_i2t + loss_t2i) / 2
+
+    def margin_loss(
+        self,
+        img_features: torch.Tensor,  # [B, dim]
+        text_features: torch.Tensor,  # [B, dim]
+        conditioned_txt: torch.Tensor,  # [B, dim]
+    ) -> torch.Tensor:
+
+        img = F.normalize(img_features, dim=-1)
+        txt_conditioned = F.normalize(conditioned_txt, dim=-1)
+        txt_raw = F.normalize(text_features, dim=-1)
+
+        sim_conditioned = img @ txt_conditioned.T / self.temperature
+        sim_raw = img @ txt_raw.T / self.temperature
+
+        loss = F.relu(self.delta - sim_conditioned + sim_raw)
+
+        return loss.mean()
+
+    def pull_away(
+        self,
+        conditions: torch.Tensor,  # [K, dim]
+    ) -> torch.Tensor:
+        # Normalize prototype conditions
+        normed = F.normalize(conditions, dim=-1)  # [K, dim]
+
+        # Cosine similarity matrix [K, K]
+        sim_matrix = torch.matmul(normed, normed.T)  # [K, K]
+
+        # Exclude diagonal
+        K = conditions.size(0)
+        mask = ~torch.eye(K, dtype=torch.bool, device=conditions.device)
+        loss = sim_matrix[mask].pow(2).mean()
+
+        return loss
+
+    def preserve(
+        self,
+        text_features: torch.Tensor,
+        combined_features: torch.Tensor,
+    ) -> torch.Tensor:
+        cos_sim = F.cosine_similarity(combined_features, text_features.detach(), dim=-1)
+        loss = (1 - cos_sim).pow(2).mean()
+        return loss
+
+    def forward(
+        self,
+        img_features: torch.Tensor,  # [B, dim]
+        text_features: torch.Tensor,  # [B, dim]
+        conditioned_txt: torch.Tensor,  # [B, dim]
+        prototype_conditions: torch.Tensor,  # [K, dim]
+    ) -> Union[torch.Tensor, dict]:
+
+        l_margin = self.margin_loss(img_features, text_features, conditioned_txt)
+        l_infonce = self.info_nce(img_features, conditioned_txt)
+        l_diversity = self.pull_away(prototype_conditions)
+        l_preserve = self.preserve(text_features, conditioned_txt)
+
+        total = (
+            self.lambda_margin * l_margin
+            + self.lambda_infonce * l_infonce
+            + self.lambda_diversity * l_diversity
+            + self.lambda_preserve * l_preserve
+        )
+
+        loss_dict = {
+            "infonce_loss": l_infonce,
+            "diversity_loss": l_diversity,
+            "preserve_loss": l_preserve,
+            "margin_loss": l_margin,
+            "total_loss": total,
+        }
+
+        if self.return_dict:
+            return loss_dict
+        else:
+            return total
 
 
 def main(): ...

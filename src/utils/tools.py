@@ -214,7 +214,9 @@ def get_representatives_polar_grid_outsideonly(learned_conditions, num_angles=10
     Returns:
         sampled_conditions: [num_angles, 2]
     """
-    angles = torch.atan2(learned_conditions[:, 1], learned_conditions[:, 0]) % (2 * torch.pi)
+    angles = torch.atan2(learned_conditions[:, 1], learned_conditions[:, 0]) % (
+        2 * torch.pi
+    )
     radii = torch.norm(learned_conditions, dim=1)
 
     sector_size = 2 * torch.pi / num_angles
@@ -237,7 +239,9 @@ def get_representatives_polar_grid_outsideonly(learned_conditions, num_angles=10
         sampled.append(pts[idx])
 
     result = torch.stack(sampled)
-    print(f"Sampled {len(result)} conditions ({num_angles} angular sectors, 0.95 quantile radius per sector)")
+    print(
+        f"Sampled {len(result)} conditions ({num_angles} angular sectors, 0.95 quantile radius per sector)"
+    )
     return result
 
 
@@ -576,3 +580,45 @@ def visualize_angular_semantics_text_to_image_fast(
         fig.savefig(save_path, dpi=480, bbox_inches="tight")
 
     return fig
+
+
+def initialize_conditions(
+    K: int = 12,
+    method: str = "svd",
+    dim: int = 512,
+    device: str = "cpu",
+    scale: float = 1.0,
+) -> torch.nn.Parameter:
+    """
+    Initialize K prototype conditions.
+
+    Args:
+        K:       Number of prototype conditions
+        method:  'svd'    - orthogonal init via SVD (recommended)
+                 'random' - standard normal
+                 'uniform'- uniform spherical
+                 'kmeans' - from precomputed features (requires features)
+        dim:     Dimension of each condition (default: 512)
+        device:  Target device
+        scale:   Scale factor for the conditions
+    """
+    if method == "svd":
+        # QR decomposition of random matrix -> orthogonal init
+        random_matrix = torch.randn(dim, K)
+        Q, _ = torch.linalg.qr(random_matrix)
+        conditions = Q[:, :K].T  # [K, dim]
+
+    elif method == "random":
+        conditions = torch.randn(K, dim)
+        conditions = F.normalize(conditions, dim=-1)
+
+    elif method == "uniform":
+        conditions = torch.randn(K, dim)
+        conditions = F.normalize(conditions, dim=-1)
+        # spread uniformly by normalizing
+        conditions = conditions / conditions.norm(dim=-1, keepdim=True)
+
+    else:
+        raise ValueError(f"Unknown method: {method}")
+
+    return torch.nn.Parameter(conditions.to(device) * scale)

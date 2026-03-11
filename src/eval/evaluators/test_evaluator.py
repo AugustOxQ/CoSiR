@@ -22,7 +22,6 @@ class TestEvaluator(BaseEvaluator):
         model,
         processor,
         dataloader: DataLoader,
-        label_embeddings: Optional[torch.Tensor] = None,
         epoch: int = 0,
         device: Optional[str] = None,
         return_detailed_results: bool = False,
@@ -51,6 +50,7 @@ class TestEvaluator(BaseEvaluator):
         (
             all_img_emb,
             all_txt_emb,
+            all_img_full,
             all_txt_full,
             all_raw_text,
             text_to_image_map,
@@ -61,40 +61,29 @@ class TestEvaluator(BaseEvaluator):
         print("Running oracle evaluation...")
 
         if use_oracle:
-            metrics_oracle, best_label_tti, best_label_itt = (
-                self.oracle_metrics.compute_oracle_recall(
-                    model,
-                    label_embeddings,
-                    all_img_emb,
-                    all_txt_emb,
-                    all_txt_full,
-                    text_to_image_map,
-                    image_to_text_map,
-                    "oracle",
-                )
-            )
+            # metrics_oracle, best_label_tti, best_label_itt = (
+            #     self.oracle_metrics.compute_oracle_recall(
+            #         model,
+            #         None,
+            #         all_img_emb,
+            #         all_txt_emb,
+            #         all_txt_full,
+            #         text_to_image_map,
+            #         image_to_text_map,
+            #         "oracle",
+            #     )
+            # )
+            pass
         else:
-            metrics_oracle, _, _ = self.oracle_metrics.compute_non_oracle_recall_txt(
-                model,
-                label_embeddings,
-                all_img_emb,
-                all_txt_emb,
-                all_txt_full,
-                text_to_image_map,
-                image_to_text_map,
-                "txt_non_oracle",
-            )
-
-            metrics_oracle_imgtxt, best_label_tti, best_label_itt = (
-                self.oracle_metrics.compute_non_oracle_recall_imgtxt(
+            metrics_oracle, best_label_tti, best_label_itt = (
+                self.oracle_metrics.compute_non_oracle_recall(
                     model,
-                    label_embeddings,
                     all_img_emb,
                     all_txt_emb,
-                    all_txt_full,
+                    all_img_full,
                     text_to_image_map,
                     image_to_text_map,
-                    "both_non_oracle",
+                    "non_oracle",
                 )
             )
 
@@ -122,7 +111,6 @@ class TestEvaluator(BaseEvaluator):
             all_metrics = {
                 "test/epoch": epoch,
                 **metrics_oracle,
-                **metrics_oracle_imgtxt,
                 **metrics_raw,
                 **metrics_diff,
             }
@@ -225,6 +213,7 @@ class TestEvaluator(BaseEvaluator):
         (
             all_img_emb,
             all_txt_emb,
+            all_img_full,
             all_txt_full,
             all_raw_text,
             text_to_image_map,
@@ -242,6 +231,7 @@ class TestEvaluator(BaseEvaluator):
         return (
             all_img_emb,
             all_txt_emb,
+            all_img_full,
             all_txt_full,
             all_raw_text,
             text_to_image_map,

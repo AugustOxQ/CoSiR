@@ -940,6 +940,7 @@ class FeatureManager:
         chunk_id: int,
         img_features: torch.Tensor,
         txt_features: torch.Tensor,
+        img_full: Any,
         txt_full: Any,
         sample_ids: List[int],
     ) -> None:
@@ -954,6 +955,7 @@ class FeatureManager:
         features = {
             "img_features": img_features,
             "txt_features": txt_features,
+            "img_full": img_full,
             "txt_full": txt_full,
             "sample_ids": sample_ids,
         }
@@ -1017,6 +1019,7 @@ def test_feature_manager():
     # Create fake features
     img_features = torch.randn(100, 512)
     txt_features = torch.randn(100, 512)
+    img_full = torch.randn(100, 512)
     txt_full = ["sample text"] * 100
 
     # Test adding features in chunks
@@ -1025,12 +1028,14 @@ def test_feature_manager():
         chunk_sample_ids = sample_ids_list[chunk_start:chunk_end]
         chunk_img_features = img_features[chunk_start:chunk_end]
         chunk_txt_features = txt_features[chunk_start:chunk_end]
+        chunk_img_full = img_full[chunk_start:chunk_end]
         chunk_txt_full = txt_full[chunk_start:chunk_end]
 
         feature_manager.add_features_chunk(
             chunk_start // 20,
             chunk_img_features,
             chunk_txt_features,
+            chunk_img_full,
             chunk_txt_full,
             chunk_sample_ids,
         )

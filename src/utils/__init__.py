@@ -4,6 +4,6 @@ from .feature_manager import FeatureManager
 from .tools import *
 from .wandb_logger import SimpleWandbLogger
 from .seed import setup_seed
-from .umap import get_umap, visualize_ideal_condition_space
+from .umap import get_umap, visualize_ideal_condition_space, get_umap_recursive
 
 from .condition_space_evaluator import CoSiRAutomaticEvaluator

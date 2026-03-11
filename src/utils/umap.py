@@ -88,6 +88,81 @@ def get_umap(
     return fig
 
 
+def get_umap_recursive(
+    umap_features_np,
+    umap_labels,
+    epoch,
+    samples_to_track=[],
+    z_threshold=3,
+    no_outlier=True,
+    num_repeats=0,
+):
+
+    fig = plt.figure(figsize=(10, 10))
+
+    if umap_labels is None:
+        umap_labels = np.ones_like(umap_features_np[:, 0])
+
+    if no_outlier:
+        # Compute the z-scores of the features for each dimension
+        z_scores = np.abs(stats.zscore(umap_features_np, axis=0))
+
+        # Filter the points by applying a z-score threshold (default = 3)
+        non_outliers = (z_scores < z_threshold).all(axis=1)
+
+        # Apply the outlier filter
+        filtered_features = umap_features_np[non_outliers]
+        filtered_labels = umap_labels[non_outliers]
+
+    else:
+        filtered_features = umap_features_np
+        filtered_labels = umap_labels
+
+    tmp_labels = filtered_labels >= 0
+
+    plt.scatter(
+        filtered_features[~tmp_labels, 0],
+        filtered_features[~tmp_labels, 1],
+        color=[0.5, 0.5, 0.5],
+        s=0.5,
+        alpha=0.75,
+    )
+
+    plt.scatter(
+        filtered_features[tmp_labels, 0],
+        filtered_features[tmp_labels, 1],
+        c=filtered_labels[tmp_labels],
+        s=0.5,
+        alpha=0.75,
+    )
+
+    # Highlight and annotate the tracked samples (if they are not outliers)
+    if len(samples_to_track) > 0:
+        for sample_idx in samples_to_track:
+            if (
+                not no_outlier or non_outliers[sample_idx]
+            ):  # Only track samples that are not outliers
+                rec = len(umap_features_np) // (num_repeats + 1)
+                for i in range(rec):
+                    x, y = umap_features_np[sample_idx + i * num_repeats, :]
+                    plt.scatter(
+                        x, y, c="red", s=50, edgecolors="k"
+                    )  # Highlight the sample
+                    plt.text(
+                        x, y, f"S-{sample_idx}", fontsize=12, color="black"
+                    )  # Annotate the sample
+
+    # Add the number of UMAP labels to the plot as title
+    plt.title(
+        f"UMAP clusters at epoch {epoch} (outliers removed)"
+        if no_outlier
+        else f"UMAP clusters at epoch {epoch}"
+    )
+    plt.colorbar()
+
+    return fig
+
+
 def visualize_ideal_condition_space(conditions_2d, epoch):
     """
     理想的可视化应该显示：

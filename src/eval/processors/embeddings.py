@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from pathlib import Path
 
 from ..config import EvaluationConfig
 
@@ -14,39 +15,50 @@ class EmbeddingProcessor:
 
     def __init__(self, config: EvaluationConfig):
         self.config = config
-        self.cache = {}
-        self.cache["all_img_emb"] = None
-        self.cache["all_txt_emb"] = None
-        self.cache["all_txt_full"] = None
-        self.cache["all_raw_text"] = None
-        self.cache["text_to_image_map"] = None
-        self.cache["image_to_text_map"] = None
+        self.save_path = ""
+        self.use_cache = False
 
-    def extract_embeddings(
-        self, model, processor, dataloader: DataLoader
-    ) -> Tuple[
-        torch.Tensor, torch.Tensor, torch.Tensor, List[str], torch.Tensor, torch.Tensor
-    ]:
+    def set_save_path(self, save_path: str):
+        self.save_path = save_path
+
+    def load_embeddings(self):
+        file = Path(self.save_path) / "test_cache.pt"
+        if file.exists():
+            return torch.load(file)
+        else:
+            raise FileNotFoundError(f"Embeddings file {file} not found")
+
+    def save_embeddings(self, cache: Dict[str, Any]):
+        file = Path(self.save_path) / "test_cache.pt"
+        torch.save(cache, file)
+        print(f"Embeddings saved to {file}")
+
+    def extract_embeddings(self, model, processor, dataloader: DataLoader):
         """Extract embeddings from model for evaluation dataset.
 
         Returns:
             Tuple of (image_embeddings, text_embeddings, text_full, text_to_image_map, image_to_text_map)
         """
 
-        if self.cache.get("all_img_emb") is not None:
+        if self.use_cache:
+            cache = self.load_embeddings()
             print("Using cached embeddings")
             return (
-                self.cache["all_img_emb"],
-                self.cache["all_txt_emb"],
-                self.cache["all_txt_full"],
-                self.cache["all_raw_text"],
-                self.cache["text_to_image_map"],
-                self.cache["image_to_text_map"],
+                cache["all_img_emb"],
+                cache["all_txt_emb"],
+                cache["all_img_full"],
+                None,  # cache["all_txt_full"],
+                cache["all_raw_text"],
+                cache["text_to_image_map"],
+                cache["image_to_text_map"],
             )
+
+        cache = {}
 
         all_img_emb = []
         all_txt_emb = []
-        all_txt_full = []
+        all_img_full = []
+        # all_txt_full = []
         all_raw_text = []
         image_to_text_map = []
         text_to_image_map = []
@@ -93,41 +105,49 @@ class EmbeddingProcessor:
                     image_index += 1
 
                 # Extract embeddings
-                img_emb, txt_emb, _, txt_full = model.encode_img_txt(
+                img_emb, txt_emb, img_full, _ = model.encode_img_txt(
                     image_input, text_input
                 )
 
                 all_img_emb.append(img_emb.cpu())
                 all_txt_emb.append(txt_emb.cpu())
-                all_txt_full.append(txt_full.cpu())
+                # all_txt_full.append(txt_full.cpu())
+                all_img_full.append(img_full.cpu())
 
                 # Cleanup
-                del img_emb, txt_emb, txt_full, image_input, text_input
+                del img_emb, txt_emb, img_full, image_input, text_input
                 torch.cuda.empty_cache()
 
         # Concatenate all embeddings
         all_img_emb = torch.cat(all_img_emb, dim=0)
         all_txt_emb = torch.cat(all_txt_emb, dim=0)
-        all_txt_full = torch.cat(all_txt_full, dim=0)
+        # all_txt_full = torch.cat(all_txt_full, dim=0)
+        all_img_full = torch.cat(all_img_full, dim=0)
 
         # Convert mappings to tensors
         text_to_image_map = torch.LongTensor(text_to_image_map).to(self.config.device)
         image_to_text_map = torch.LongTensor(image_to_text_map).to(self.config.device)
 
-        self.cache["all_img_emb"] = all_img_emb
-        self.cache["all_txt_emb"] = all_txt_emb
-        self.cache["all_txt_full"] = all_txt_full
-        self.cache["all_raw_text"] = all_raw_text
-        self.cache["text_to_image_map"] = text_to_image_map
-        self.cache["image_to_text_map"] = image_to_text_map
+        cache["all_img_emb"] = all_img_emb
+        cache["all_txt_emb"] = all_txt_emb
+        # cache["all_txt_full"] = all_txt_full
+        cache["all_img_full"] = all_img_full
+        cache["all_raw_text"] = all_raw_text
+        cache["text_to_image_map"] = text_to_image_map
+        cache["image_to_text_map"] = image_to_text_map
+
+        if self.save_path != "":
+            self.save_embeddings(cache)
+            self.use_cache = True
 
         return (
-            all_img_emb,
-            all_txt_emb,
-            all_txt_full,
-            all_raw_text,
-            text_to_image_map,
-            image_to_text_map,
+            cache["all_img_emb"],
+            cache["all_txt_emb"],
+            cache["all_img_full"],
+            None,  # cache["all_txt_full"],
+            cache["all_raw_text"],
+            cache["text_to_image_map"],
+            cache["image_to_text_map"],
         )
 
     def _flatten_text(
