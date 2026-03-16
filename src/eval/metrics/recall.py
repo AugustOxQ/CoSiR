@@ -366,7 +366,9 @@ class OracleMetrics(RankingMetric):
             all_conditions = model.get_condition_from_img(image_full)
 
             conditions_sim = F.cosine_similarity(
-                all_conditions.unsqueeze(0), all_conditions.unsqueeze(1), dim=-1
+                all_conditions[:100].unsqueeze(0),
+                all_conditions[:100].unsqueeze(1),
+                dim=-1,
             ).mean()
             print(f"all_conditions avg sim: {conditions_sim}")
 

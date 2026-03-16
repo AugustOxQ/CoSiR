@@ -1009,7 +1009,7 @@ class ConditionEncoder(nn.Module):
         """
         B = txt_features.size(0)
 
-        # Problem 8: stop-gradient on image KV
+        # stop-gradient on image KV
         img_kv = img_full.detach() if self.stop_gradient else img_full
 
         # Expand prototype conditions to batch: [B, K, dim]
@@ -1023,7 +1023,7 @@ class ConditionEncoder(nn.Module):
             value=img_kv,
         )  # [B, K, dim]
 
-        # Problem 3: soft attention over K dynamic conditions
+        # soft attention over K dynamic conditions
         scores = self.condition_scorer(dynamic_conditions)  # [B, K, 1]
 
         attn_weights = F.softmax(scores.squeeze(-1), dim=-1)  # [B, K]
@@ -1033,7 +1033,7 @@ class ConditionEncoder(nn.Module):
             "bk,bkd->bd", attn_weights, dynamic_conditions
         )  # [B, dim]
 
-        # Problem 4: gated residual modulation on text features
+        # gated residual modulation on text features
         gamma = self.gamma_net(torch.cat([txt_features, condition], dim=-1))  # [B, dim]
         gamma = torch.clamp(gamma, min=-0.5, max=0.5)
         beta = self.beta_net(condition)  # [B, dim]
