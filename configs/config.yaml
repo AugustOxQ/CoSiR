@@ -15,7 +15,7 @@ device: cuda
 # W&B logging configuration
 wandb:
   enabled: true
-  project: cosir_classifier
+  project: cosir_phase_1
   entity: augustoxq
   name: ""
   tags: [Local]

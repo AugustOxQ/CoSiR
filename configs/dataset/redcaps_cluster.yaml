@@ -4,10 +4,10 @@
 # Dataset paths
 data:
   dataset_type: "redcaps"
-  train_annotation_path: "/data/PDD/redcaps/redcaps_plus/redcaps_medium.json"
-  test_annotation_path: "/local/wding/Dataset/coco/annotations/coco_karpathy_test.json"
+  train_annotation_path: "/var/scratch/wding/Dataset/redcaps_plus/redcaps_medium.json"
+  test_annotation_path: "/var/scratch/wding/Dataset/coco/annotations/coco_karpathy_test.json"
   train_image_path: ""
-  test_image_path: "/local/wding/Dataset/coco/images"
+  test_image_path: "/var/scratch/wding/Dataset/coco/images"
 
 # Feature manager paths - dataset specific
 featuremanager:
@@ -20,6 +20,7 @@ experiment:
   tags: ["CoSiR", "RedCaps", "Cluster"]
   description: "Comprehensive experiment for CoSiR"
   results_dir: "/local/wding/res/CoSiR_Experiment/redcaps" # Depends on the dataset
+
 
 # This is for redcaps test set
 # test_annotation_path: "/data/PDD/redcaps/redcaps_plus/redcaps_test.json"

@@ -11,7 +11,7 @@ train:
   use_template_embeddings: True
   save_as_template_embeddings: True
   load_existing_features: True
-  representative_number: 36 # This should equal to selected number of conditions * number of grids
+  representative_number: 12 # This should equal to selected number of conditions * number of grids
 
 # Loss function configuration
 loss:
