@@ -214,7 +214,9 @@ def get_representatives_polar_grid_outsideonly(learned_conditions, num_angles=10
     Returns:
         sampled_conditions: [num_angles, 2]
     """
-    angles = torch.atan2(learned_conditions[:, 1], learned_conditions[:, 0]) % (2 * torch.pi)
+    angles = torch.atan2(learned_conditions[:, 1], learned_conditions[:, 0]) % (
+        2 * torch.pi
+    )
     radii = torch.norm(learned_conditions, dim=1)
 
     sector_size = 2 * torch.pi / num_angles
@@ -237,7 +239,9 @@ def get_representatives_polar_grid_outsideonly(learned_conditions, num_angles=10
         sampled.append(pts[idx])
 
     result = torch.stack(sampled)
-    print(f"Sampled {len(result)} conditions ({num_angles} angular sectors, 0.95 quantile radius per sector)")
+    print(
+        f"Sampled {len(result)} conditions ({num_angles} angular sectors, 0.95 quantile radius per sector)"
+    )
     return result
 
 

@@ -8,3 +8,4 @@ model:
   num_layers: 2
   hidden_dim: 64
   min_radius: 5
+  dropout: 0.1

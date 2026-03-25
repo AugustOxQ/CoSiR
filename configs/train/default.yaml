@@ -6,7 +6,7 @@ train:
   epochs_2: 20 # Label prediction loss epochs
   num_workers: 0
   batch_size: 1024 # This is the batchsize of the evaluation set
-  initialization_strategy: img #TODO: change to imgtxt, debugging time use zeros
+  initialization_strategy: imgtxt #TODO: change to imgtxt, debugging time use zeros
   imgtxt_factor: 10.0 #TODO: change to 1.0, debugging time use 10.0 #IMPORTANT: when changing this, we need to re-extract the label embeddings, so also need to change the template embeddings
   use_template_embeddings: True
   save_as_template_embeddings: True
@@ -43,5 +43,5 @@ eval:
   k_vals: [1, 5, 10]
   train_max_batches: 25 # This is during validation, how many batches we check
   print_metrics: true
-  evaluation_interval: 3
+  evaluation_interval: 10
   perform_evaluation: true

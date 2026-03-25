@@ -85,6 +85,19 @@ class TestEvaluator(BaseEvaluator):
                 "txt_non_oracle",
             )
 
+            metrics_oracle_img, _, _ = (
+                self.oracle_metrics.compute_non_oracle_recall_img(
+                    model,
+                    label_embeddings,
+                    all_img_emb,
+                    all_txt_emb,
+                    all_txt_full,
+                    text_to_image_map,
+                    image_to_text_map,
+                    "img_non_oracle",
+                )
+            )
+
             metrics_oracle_imgtxt, best_label_tti, best_label_itt = (
                 self.oracle_metrics.compute_non_oracle_recall_imgtxt(
                     model,
@@ -122,6 +135,7 @@ class TestEvaluator(BaseEvaluator):
             all_metrics = {
                 "test/epoch": epoch,
                 **metrics_oracle,
+                **metrics_oracle_img,
                 **metrics_oracle_imgtxt,
                 **metrics_raw,
                 **metrics_diff,

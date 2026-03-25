@@ -195,9 +195,17 @@ def train_cosir_phase2(cfg, logger):
     embedding_manager.load_phase_1_template(phase_1_embeddings_path)
 
     # Load other important information from phase 1, pkl format
-    with open(Path(phase_1_other_path) / "id_to_chunk_index.pkl", "rb") as f:
+    # Use prefix matching to support dated filenames like id_to_chunk_index_20250301.pkl
+    _other_dir = Path(phase_1_other_path)
+    _id_to_chunk_files = sorted(_other_dir.glob("id_to_chunk_index*.pkl"))
+    if not _id_to_chunk_files:
+        raise FileNotFoundError(f"No id_to_chunk_index*.pkl found in {phase_1_other_path}")
+    with open(_id_to_chunk_files[0], "rb") as f:
         id_to_chunk_index = pickle.load(f)  # type: ignore
-    with open(Path(phase_1_other_path) / "chunk_mapping.pkl", "rb") as f:
+    _chunk_mapping_files = sorted(_other_dir.glob("chunk_mapping*.pkl"))
+    if not _chunk_mapping_files:
+        raise FileNotFoundError(f"No chunk_mapping*.pkl found in {phase_1_other_path}")
+    with open(_chunk_mapping_files[0], "rb") as f:
         chunk_mapping = pickle.load(f)  # type: ignore
 
     embedding_manager.id_to_chunk_index = id_to_chunk_index

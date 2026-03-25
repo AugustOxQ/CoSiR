@@ -7,6 +7,7 @@ import numpy as np
 from .base import RankingMetric
 from ..config import EvaluationConfig
 from typing import Optional
+from tqdm import tqdm
 
 
 class RecallMetrics(RankingMetric):
@@ -197,7 +198,7 @@ class OracleMetrics(RankingMetric):
         )
         image_embeddings = image_embeddings.to(self.config.device)
         text_embeddings = text_embeddings.to(self.config.device)
-        text_full = text_full.to(self.config.device)
+        # text_full = text_full.to(self.config.device)
 
         # Initialize tracking variables
         best_inds_tti = None
@@ -211,7 +212,9 @@ class OracleMetrics(RankingMetric):
         print(f"Evaluating oracle with {num_labels} labels...")
 
         with torch.no_grad():
-            for label_id in range(-1, num_labels):  # -1 for no label baseline
+            for label_id in tqdm(
+                range(-1, num_labels), desc="Evaluating oracle"
+            ):  # -1 for no label baseline
                 if label_id == -1:
                     # Use raw text embeddings
                     combined_embeddings = text_embeddings.detach().clone()
@@ -229,7 +232,7 @@ class OracleMetrics(RankingMetric):
                         end_idx = min(i + self.config.batch_size, num_texts)
                         batch_combined = model.combine(
                             text_embeddings[i:end_idx],
-                            text_full[i:end_idx],
+                            None,
                             label_emb[i:end_idx],
                         ).detach()
                         combined_embs.append(batch_combined)
@@ -354,7 +357,7 @@ class OracleMetrics(RankingMetric):
         text_embeddings = text_embeddings.to(self.config.device)
         text_full = text_full.to(self.config.device)
 
-        print(f"Evaluating non-oracle with condition predictor...")
+        print(f"Evaluating txt input only with condition predictor...")
 
         # Initialize tracking variables
         best_label_tti = -torch.ones((num_texts,))
@@ -438,46 +441,62 @@ class OracleMetrics(RankingMetric):
         image_embeddings = image_embeddings.to(self.config.device)
         text_embeddings = text_embeddings.to(self.config.device)
         text_full = text_full.to(self.config.device)
-        print(f"Evaluating non-oracle with condition predictor...")
+        print(f"Evaluating img input only with condition predictor...")
 
         # Initialize tracking variables
         best_label_tti = -torch.ones((num_texts,))
         best_label_itt = -torch.ones((num_images,))
 
+        # First collect all conditions predicted.
+        all_conditions_predicted = []
+        for i in range(0, num_texts, self.config.batch_size):
+            end_idx = min(i + self.config.batch_size, num_texts)
+            batch_text_condition = model.predict_condition(
+                image_embeddings[i:end_idx],
+                None,
+                "txt",
+                return_logits=False,
+            )
+            all_conditions_predicted.append(batch_text_condition)
+            del batch_text_condition
+            torch.cuda.empty_cache()
+
+        all_conditions_predicted = torch.cat(all_conditions_predicted, dim=0)
+
         # Have to do the text-to-image and image-to-text evaluation separately
         # Text-to-Image evaluation
         with torch.no_grad():
-            combined_embs_tti = []
-            # First get the condition predictions, break into batches
-            for i in range(0, num_texts, self.config.batch_size):
-                end_idx = min(i + self.config.batch_size, num_texts)
-                batch_text_condition = model.predict_condition(
-                    None,
-                    text_embeddings[i:end_idx],
-                    "img",
-                    return_logits=False,
-                )
-                batch_text_combined = model.combine(
-                    text_embeddings[i:end_idx],
-                    0,
-                    batch_text_condition,
-                )
+            sim_matrix = torch.zeros((num_images, num_texts))
+            # Compute the similarity between the image and the combine of the conditions with all texts
+            for img_idx in tqdm(
+                range(num_images), desc="Computing per image similarity"
+            ):
+                for i in range(0, num_texts, self.config.batch_size):
+                    end_idx = min(i + self.config.batch_size, num_texts)
+                    batch_text_combined = model.combine(
+                        text_embeddings[i:end_idx],
+                        0,
+                        all_conditions_predicted[img_idx].expand(end_idx - i, -1),
+                    )
 
-                combined_embs_tti.append(
-                    batch_text_combined
-                )  # Store the combined embeddings
+                    batch_text_combined = (
+                        batch_text_combined
+                        / batch_text_combined.norm(dim=-1, keepdim=True)
+                    )
 
-                del batch_text_condition, batch_text_combined
-                torch.cuda.empty_cache()
+                    sim_matrix[img_idx, i:end_idx] = (
+                        image_embeddings_norm[img_idx] @ batch_text_combined.T
+                    )
 
-            combined_embs_tti = torch.cat(combined_embs_tti, dim=0)
+                    del batch_text_combined
+                    torch.cuda.empty_cache()
 
-            dist_matrix_tti = combined_embs_tti @ image_embeddings_norm.T
+            dist_matrix_tti = sim_matrix.T
             if self.config.cpu_offload:
                 dist_matrix_tti = dist_matrix_tti.cpu()
             inds_tti = torch.argsort(dist_matrix_tti, dim=1, descending=True)
 
-            dist_matrix_itt = dist_matrix_tti.T
+            dist_matrix_itt = sim_matrix
             if self.config.cpu_offload:
                 dist_matrix_itt = dist_matrix_itt.cpu()
             inds_itt = torch.argsort(dist_matrix_itt, dim=1, descending=True)
@@ -523,7 +542,7 @@ class OracleMetrics(RankingMetric):
         text_embeddings = text_embeddings.to(self.config.device)
         text_full = text_full.to(self.config.device)
 
-        print(f"Evaluating non-oracle with condition predictor...")
+        print(f"Evaluating imgtxt input with condition predictor...")
 
         # Initialize tracking variables
         best_label_tti = -torch.ones((num_texts,))

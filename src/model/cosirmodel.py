@@ -32,6 +32,7 @@ class CoSiRModel(nn.Module):
         num_layers: int = 2,
         label_dim: int = 32,
         num_conditions: int = 12,
+        dropout: float = 0.1,
     ) -> None:
         super().__init__()
         # Frozen CLIP as feature extractor
@@ -63,6 +64,7 @@ class CoSiRModel(nn.Module):
             input_dim=512,
             hidden_dim=512,  # Here the dim is fixed to 512, because the input dim is 512
             num_layers=num_layers,
+            dropout=dropout,
             num_conditions=num_conditions,
             use_temperature=True,
             init_temperature=1.0,
@@ -119,6 +121,7 @@ class CoSiRModel(nn.Module):
         type: str,
         return_logits: bool = True,
         training_phase: bool = False,
+        argmax: bool = False,
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         # input_features: (batch_size, d_model), pre_trained_representatives: (num_conditions, 2)
         if type == "img":
@@ -127,6 +130,7 @@ class CoSiRModel(nn.Module):
                 txt_emb=txt_emb,
                 return_logits=True,
                 training_phase=training_phase,
+                argmax=argmax,
             )
         elif type == "txt":
             probs, logits = self.unified_condition_predictor(
@@ -134,6 +138,7 @@ class CoSiRModel(nn.Module):
                 txt_emb=None,
                 return_logits=True,
                 training_phase=training_phase,
+                argmax=argmax,
             )
         elif type == "imgtxt":
             probs, logits = self.unified_condition_predictor(
@@ -141,6 +146,7 @@ class CoSiRModel(nn.Module):
                 txt_emb=txt_emb,
                 return_logits=True,
                 training_phase=training_phase,
+                argmax=argmax,
             )
         else:
             raise ValueError(f"Invalid condition type: {type}")

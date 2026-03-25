@@ -17,18 +17,44 @@ fi
 
 echo "Using ${NUM_PROCS} processes"
 
-echo "Test when we initialize with img only, and pre-compute the ground truth embeddings"
+# # This section we do img x 96 outsideonly x [lr] x gumble x soft
 
-python main_cosir_phase2.py dataset=redcaps eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img 96 outsideonly lr1e-4 gumble hard" #-> 1
 
-# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=5e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img96 outsideonly lr1e-5 gumble hard" #-> 2
 
-# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-6 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img 96 outsideonly lr1e-6 gumble hard" #-> 3
 
-# python main_cosir_phase2.py dataset=redcaps eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
+# This section we do img x 96 grid x [lr] x gumble x soft
 
-# python main_cosir_phase2.py dataset=redcaps eval.perform_evaluation=false optimizer.lr_2=5e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img 96 grid lr1e-4 gumble hard" #-> 1
 
-# python main_cosir_phase2.py dataset=redcaps eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img96 grid lr1e-5 gumble hard" #-> 2
 
-echo "End of testing"
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-6 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img 96 grid lr1e-6 gumble hard" #-> 3
+
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img 96 grid lr1e-4 softmax hard" #-> x
+
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img96 grid lr1e-5 softmax hard" #-> 4
+
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-6 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img 96 grid lr1e-6 softmax hard" #-> x
+
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img96 grid lr1e-5 gunble argmax" #-> 4
+
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=15 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img96 grid lr1e-4 gunble hard add predict img" #-> 4
+
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 model.dropout=0.25 train.initialization_strategy="img" train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img96 outsideonly lr1e-4 gunble hard using img initialization 1e-5 dropout 0.25" #-> 4
+
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 model.dropout=0.5 train.initialization_strategy="img" train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img96 outsideonly lr1e-4 gunble hard using img initialization 1e-5 dropout 0.5" #-> 4
+
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 model.dropout=0.75 train.initialization_strategy="img" train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img96 outsideonly lr1e-4 gunble hard using img initialization 1e-5 dropout 0.75" #-> 4
+
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=30 model.dropout=0.25 train.initialization_strategy="img" train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img96 outsideonly lr1e-5 gunble hard using img initialization 1e-5 dropout 0.25" #-> 4
+
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=30 model.dropout=0.5 train.initialization_strategy="img" train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img96 outsideonly lr1e-5 gunble hard using img initialization 1e-5 dropout 0.5" #-> 4
+
+# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=30 model.dropout=0.75 train.initialization_strategy="img" train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img96 outsideonly lr1e-5 gunble hard using img initialization 1e-5 dropout 0.75" #-> 4
+
+# python main_cosir_phase2.py dataset=impressions eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 model.dropout=0.5 train.initialization_strategy="img" train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img96 outsideonly lr1e-4 gunble hard using img initialization 1e-5 dropout 0.5" #-> 4
+
+python main_cosir_phase2.py dataset=impressions eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 model.dropout=0.5 train.initialization_strategy="imgtxt" train.representative_number=36 wandb.project="cosir_seperate_dataset" wandb.name="imgtxt96 outsideonly lr1e-4 gunble hard using imgtxt initialization 1e-5 dropout 0.5" #-> 4

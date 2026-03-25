@@ -30,6 +30,8 @@ from src.utils import (
     FeatureManager,
     ExperimentManager,
     TrainableEmbeddingManager,
+    visualize_angular_semantics_fast,
+    visualize_angular_semantics_text_to_image_fast,
     get_representatives_polar_grid,
     get_umap,
     visualize_ideal_condition_space,
@@ -99,6 +101,7 @@ def train_cosir_phase2(cfg, logger):
         num_layers=cfg.model.num_layers,
         d_model=cfg.model.hidden_dim,
         num_conditions=cfg.train.representative_number,
+        dropout=cfg.model.dropout,
     ).to(device)
     processor = AutoProcessor.from_pretrained(cfg.model.clip_model, use_fast=False)
 
@@ -106,7 +109,13 @@ def train_cosir_phase2(cfg, logger):
     phase_1_root_path = experiment.directory.parent
 
     # Load phase 1 model
-    phase_1_model_path = str(phase_1_root_path / "checkpoints" / "phase_1_model.pt")
+    _phase_1_model_path = str(phase_1_root_path / "checkpoints")
+
+    _phase_1_model_files = sorted(Path(_phase_1_model_path).glob("phase_1_model*.pt"))
+    if not _phase_1_model_files:
+        raise FileNotFoundError(f"No phase_1_model*.pkl found in {_phase_1_model_path}")
+    with open(_phase_1_model_files[0], "rb") as f:
+        phase_1_model_path = _phase_1_model_files[0]
 
     # Load everything except the condition predictors, because the condition predictors are already initialized in phase 1.
     phase_1_model = torch.load(phase_1_model_path, map_location=device)
@@ -168,8 +177,12 @@ def train_cosir_phase2(cfg, logger):
             f"Auto-optimized embedding chunk size: {embedding_chunk_size} (4x batch_size)"
         )
 
+    sample_ids_list_2_path = "/data/SSD2/pre_extract/impressions/sample_ids.pt"
+    print(f"Loading sample ids list 2 from {sample_ids_list_2_path}")
+    sample_ids_list_2 = torch.load(sample_ids_list_2_path)
+
     embedding_manager = TrainableEmbeddingManager(
-        sample_ids=sample_ids_list,  # Use actual sample IDs from feature extraction
+        sample_ids=sample_ids_list_2,  # Use actual sample IDs from feature extraction
         embedding_dim=cfg.model.embedding_dim,
         storage_mode=cfg.embeddingmanager.storage_mode,
         device=device,
@@ -193,9 +206,19 @@ def train_cosir_phase2(cfg, logger):
     embedding_manager.load_phase_1_template(phase_1_embeddings_path)
 
     # Load other important information from phase 1, pkl format
-    with open(Path(phase_1_other_path) / "id_to_chunk_index.pkl", "rb") as f:
+    # Use prefix matching to support dated filenames like id_to_chunk_index_20250301.pkl
+    _other_dir = Path(phase_1_other_path)
+    _id_to_chunk_files = sorted(_other_dir.glob("id_to_chunk_index*.pkl"))
+    if not _id_to_chunk_files:
+        raise FileNotFoundError(
+            f"No id_to_chunk_index*.pkl found in {phase_1_other_path}"
+        )
+    with open(_id_to_chunk_files[0], "rb") as f:
         id_to_chunk_index = pickle.load(f)  # type: ignore
-    with open(Path(phase_1_other_path) / "chunk_mapping.pkl", "rb") as f:
+    _chunk_mapping_files = sorted(_other_dir.glob("chunk_mapping*.pkl"))
+    if not _chunk_mapping_files:
+        raise FileNotFoundError(f"No chunk_mapping*.pkl found in {phase_1_other_path}")
+    with open(_chunk_mapping_files[0], "rb") as f:
         chunk_mapping = pickle.load(f)  # type: ignore
 
     embedding_manager.id_to_chunk_index = id_to_chunk_index
@@ -226,7 +249,9 @@ def train_cosir_phase2(cfg, logger):
         annotation_path=cfg.data.test_annotation_path,
         image_path=cfg.data.test_image_path,
         processor=processor,
-        ratio=1.0,
+        ratio=(
+            1.0 if cfg.data.dataset_type != "redcaps2" else 0.2
+        ),  # TODO: change to 0.1 for redcaps2
     )
 
     test_loader = DataLoader(
@@ -243,19 +268,139 @@ def train_cosir_phase2(cfg, logger):
     _, label_embeddings_all = embedding_manager.get_all_embeddings()
 
     print("Getting pre-trained representatives")
-    # pre_trained_representatives = get_representatives_polar_grid_outsideonly(  # -> Set this to be the previous one
-    #     label_embeddings_all.cpu(),
-    #     cfg.train.representative_number,
-    # )  # This will be used to train a classifier to predict the condition, now in total 12x3 = 36 representatives
-
-    pre_trained_representatives = get_representatives_polar_grid(  # -> Set this to be the previous one
+    pre_trained_representatives = get_representatives_polar_grid_outsideonly(  # -> Set this to be the previous one
         label_embeddings_all.cpu(),
-        cfg.train.representative_number // 3,
+        cfg.train.representative_number,
     )  # This will be used to train a classifier to predict the condition, now in total 12x3 = 36 representatives
+
+    # pre_trained_representatives = get_representatives_polar_grid(  # -> Set this to be the previous one
+    #     label_embeddings_all.cpu(),
+    #     cfg.train.representative_number // 3,
+    # )  # This will be used to train a classifier to predict the condition, now in total 12x3 = 36 representatives
 
     pre_trained_representatives_device = pre_trained_representatives.to(device)
 
     model.set_pretrained_representatives(pre_trained_representatives, device)
+
+    print("Evaluating test results with oracle")
+    with torch.no_grad():
+        test_results_detailed = evaluator.evaluate_test(
+            model=model,
+            processor=processor,
+            dataloader=test_loader,
+            label_embeddings=pre_trained_representatives_device,  # Your label embeddings
+            epoch=0,
+            return_detailed_results=True,  # 记住这里是true，也就是detailed_results
+            use_oracle=True,
+        )
+
+        (
+            all_img_emb,
+            all_txt_emb,
+            all_raw_text,
+            text_to_image_map,
+            image_to_text_map,
+            test_results,
+        ) = test_results_detailed  # type: ignore
+
+        # Log test results
+        for metric, value in test_results.metrics.items():
+            logger.log_metrics({f"Test2_oracle_{metric}": value})
+
+        all_raw_image = test_set.get_all_raw_image()
+
+        # Log test results
+        for metric, value in test_results.metrics.items():
+            logger.log_metrics({metric: value})
+
+        # Visualize test results
+        # # Check whether label embeddings are 2d or higher dimensional
+        if label_embeddings_all.shape[1] == 2:
+            umap_features = label_embeddings_all.cpu().numpy()
+        else:
+            umap_features = umap_vis.learn_umap(
+                label_embeddings_all, close_cluster=True
+            )
+
+        # Visualize label embeddings
+        fig = get_umap(
+            umap_features,
+            umap_labels=None,
+            epoch=0,
+            no_outlier=True,
+            samples_to_track=[0, 1, 2, 3, 4],
+        )
+        experiment.save_artifact(
+            name=f"label_embeddings_umap_0",
+            data=fig,
+            artifact_type="figure",
+            folder="plots",
+            description=f"UMAP visualization of trained label embeddings at epoch 0",
+        )
+
+        fig2 = visualize_ideal_condition_space(umap_features, 0)
+        experiment.save_artifact(
+            name=f"ideal_condition_space_0",
+            data=fig2,
+            artifact_type="figure",
+            folder="plots",
+            description=f"Ideal condition space visualization at epoch 0",
+        )
+
+        logger.log_metrics(
+            {
+                "vis/umap": wandb.Image(fig),
+                "vis/ideal_condition_space": wandb.Image(fig2),
+            }
+        )
+
+        plt.close("all")
+
+        for tmp_round in range(6):
+            fig3 = visualize_angular_semantics_fast(
+                label_embeddings_all.cpu().numpy(),
+                model,
+                (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
+                device=device,
+            )
+            experiment.save_artifact(
+                name=f"angular_semantics_fast_0_tmp_{tmp_round}",
+                data=fig3,
+                artifact_type="figure",
+                folder="plots",
+                description=f"Angular semantics visualization at epoch 0",
+            )
+
+            fig4 = visualize_angular_semantics_text_to_image_fast(
+                label_embeddings_all.cpu().numpy(),
+                model,
+                (
+                    all_img_emb,
+                    all_txt_emb,
+                    all_raw_image,
+                    all_raw_text,
+                ),
+                device=device,
+            )
+
+            experiment.save_artifact(
+                name=f"angular_semantics_text_to_image_0_tmp_{tmp_round}",
+                data=fig4,
+                artifact_type="figure",
+                folder="plots",
+                description=f"Angular semantics visualization (text-to-image) at epoch 0",
+            )
+
+            plt.close("all")
+
+        cosir_automatic_evaluator = CoSiRAutomaticEvaluator(
+            model,
+            (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
+            label_embeddings_all,
+            device,
+        )
+        result = cosir_automatic_evaluator.evaluate_all()
+        logger.log_metrics(result)
 
     print("Pre-computing ground truth embeddings")
 
@@ -300,6 +445,7 @@ def train_cosir_phase2(cfg, logger):
 
     # Start label prediction loss training
     print("Starting label prediction loss training")
+    epoch = 0
     for epoch in range(cfg.train.epochs_2):
         model.train()
         # Freeze the combiner
@@ -322,11 +468,11 @@ def train_cosir_phase2(cfg, logger):
             img_features = features_data["img_features"].to(device, non_blocking=True)
             txt_features = features_data["txt_features"].to(device, non_blocking=True)
 
-            # Get embeddings by chunk directly from optimized manager
-            chunk_sample_ids, label_embeddings_data = (
-                embedding_manager.get_embeddings_by_chunk(chunk_id)
-            )
-            label_embeddings = label_embeddings_data.to(device)
+            # # Get embeddings by chunk directly from optimized manager
+            # chunk_sample_ids, label_embeddings_data = (
+            #     embedding_manager.get_embeddings_by_chunk(chunk_id)
+            # )
+            # label_embeddings = label_embeddings_data.to(device)
 
             batch_labels = ground_truth_list[batch_idx].to(device)
 
@@ -421,19 +567,6 @@ def train_cosir_phase2(cfg, logger):
             }
             logger.log_metrics(batch_log_dict_txt)
 
-            comb_emb_origin = model.combine(
-                txt_features,
-                None,
-                label_embeddings,
-                epoch=epoch,
-                return_label_proj=False,
-            )
-
-            # Add two monitors of how much changed in the condition
-            diff_img = torch.nn.functional.mse_loss(comb_emb_img, comb_emb_origin)
-            diff_txt = torch.nn.functional.mse_loss(comb_emb_txt, comb_emb_origin)
-            diff_imgtxt = torch.nn.functional.mse_loss(comb_emb_both, comb_emb_origin)
-
             # Check magnitude
             magnitude_img = torch.norm(pred_cond_img, p=2, dim=1).mean()
             magnitude_txt = torch.norm(pred_cond_txt, p=2, dim=1).mean()
@@ -443,49 +576,6 @@ def train_cosir_phase2(cfg, logger):
             diversity_img = pred_cond_img.std(dim=0).mean()
             diversity_txt = pred_cond_txt.std(dim=0).mean()
             diversity_imgtxt = pred_cond_both.std(dim=0).mean()
-
-            # Check seperation
-            sim_both = (
-                torch.nn.functional.normalize(comb_emb_both, p=2, dim=1)
-                @ torch.nn.functional.normalize(comb_emb_origin, p=2, dim=1).T
-            )
-            sim_img = (
-                torch.nn.functional.normalize(comb_emb_img, p=2, dim=1)
-                @ torch.nn.functional.normalize(comb_emb_origin, p=2, dim=1).T
-            )
-            sim_txt = (
-                torch.nn.functional.normalize(comb_emb_txt, p=2, dim=1)
-                @ torch.nn.functional.normalize(comb_emb_origin, p=2, dim=1).T
-            )
-
-            pos_sims_both = sim_both.diagonal()
-            pos_sims_img = sim_img.diagonal()
-            pos_sims_txt = sim_txt.diagonal()
-
-            neg_sims_both = sim_both[~torch.eye(len(sim_both), dtype=torch.bool)]
-            neg_sims_img = sim_img[~torch.eye(len(sim_img), dtype=torch.bool)]
-            neg_sims_txt = sim_txt[~torch.eye(len(sim_txt), dtype=torch.bool)]
-
-            seperation_dict = {
-                "pos_mean_both": pos_sims_both.mean(),
-                "pos_std_both": pos_sims_both.std(),
-                "neg_mean_both": neg_sims_both.mean(),
-                "neg_std_both": neg_sims_both.std(),
-                "pos_mean_img": pos_sims_img.mean(),
-                "pos_std_img": pos_sims_img.std(),
-                "neg_mean_img": neg_sims_img.mean(),
-                "neg_std_img": neg_sims_img.std(),
-                "pos_mean_txt": pos_sims_txt.mean(),
-                "pos_std_txt": pos_sims_txt.std(),
-                "neg_mean_txt": neg_sims_txt.mean(),
-                "neg_std_txt": neg_sims_txt.std(),
-            }
-
-            batch_log_dict_seperation = {
-                f"train_seperation/{k}": v.item() if torch.is_tensor(v) else v
-                for k, v in seperation_dict.items()
-            }
-            logger.log_metrics(batch_log_dict_seperation)
 
             loss_dict = {
                 "loss_both": loss_both,
@@ -509,9 +599,6 @@ def train_cosir_phase2(cfg, logger):
                     "train_2_other/epoch": epoch,
                     "train_2_other/batch": batch_idx,
                     "train_2_other/step": global_step,
-                    "train_3/diff_embedding_img": (diff_img.item()),
-                    "train_3/diff_embedding_txt": (diff_txt.item()),
-                    "train_3/diff_embedding_imgtxt": (diff_imgtxt.item()),
                     "train_3/magnitude_img": (magnitude_img.item()),
                     "train_3/magnitude_txt": (magnitude_txt.item()),
                     "train_3/magnitude_imgtxt": (magnitude_imgtxt.item()),
@@ -545,254 +632,290 @@ def train_cosir_phase2(cfg, logger):
 
         scheduler_2.step()
 
-        # Test evaluation, this time we test for every epoch
-        with torch.no_grad():
-            # Test evaluation
-            test_results_detailed = evaluator.evaluate_test(
-                model=model,
-                processor=processor,
-                dataloader=test_loader,
-                label_embeddings=None,  # Your label embeddings
-                epoch=epoch,
-                return_detailed_results=True,  # 记住这里是true，也就是detailed_results
-                use_oracle=False,
-            )
+        if (
+            epoch == 0
+            or epoch % cfg.eval.evaluation_interval == 0
+            or epoch == cfg.train.epochs_2 - 1
+        ):
+            # Test evaluation, this time we test for every epoch
+            with torch.no_grad():
+                # Test evaluation
+                test_results_detailed = evaluator.evaluate_test(
+                    model=model,
+                    processor=processor,
+                    dataloader=test_loader,
+                    label_embeddings=None,  # Your label embeddings
+                    epoch=epoch,
+                    return_detailed_results=True,  # 记住这里是true，也就是detailed_results
+                    use_oracle=False,
+                )
 
-            (
-                _,
-                _,
-                _,
-                _,
-                _,
-                test_results,
-            ) = test_results_detailed  # type: ignore
+                (
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    test_results,
+                ) = test_results_detailed  # type: ignore
 
-            # Log test results
-            for metric, value in test_results.metrics.items():
-                logger.log_metrics({metric: value})
+                # Log test results
+                for metric, value in test_results.metrics.items():
+                    logger.log_metrics({metric: value})
 
     for metric, value in test_results.metrics.items():
         logger.log_metrics({f"Test2_final_{metric}": value})
 
-        # Visualize condition predictions
-        # print("Visualizing condition predictions")
-        # with torch.no_grad():
-        #     model.eval()
-        #     all_img_features = []
-        #     all_txt_features = []
-        #     all_combined_features = []
-        #     all_img_condition_predicted = []
-        #     all_txt_condition_predicted = []
-        #     all_imgtxt_condition_predicted = []
-        #     all_combined_condition_img = []
-        #     all_combined_condition_txt = []
-        #     all_combined_condition_imgtxt = []
-        #     for batch_idx, batch in enumerate(tqdm(train_loader)):
-        #         # Use batch_idx as chunk_id for direct chunk loading
-        #         chunk_id = batch_idx
+    # Visualize condition predictions
+    print("Visualizing condition predictions")
+    with torch.no_grad():
+        model.eval()
+        all_img_features = []
+        all_txt_features = []
+        ground_truth_labels = []
+        all_img_condition_predicted = []
+        all_txt_condition_predicted = []
+        all_imgtxt_condition_predicted = []
+        all_combined_condition_img = []
+        all_combined_condition_txt = []
+        all_combined_condition_imgtxt = []
+        for batch_idx, batch in enumerate(tqdm(train_loader)):
 
-        #         # Load features by chunk directly
-        #         features_data = feature_manager.get_features_by_chunk(chunk_id)
+            if batch_idx >= 20:
+                break
 
-        #         img_features = features_data["img_features"].to(device, non_blocking=True)
-        #         txt_features = features_data["txt_features"].to(device, non_blocking=True)
+            # Use batch_idx as chunk_id for direct chunk loading
+            chunk_id = batch_idx
 
-        #         # Get embeddings by chunk directly from optimized manager
-        #         chunk_sample_ids, label_embeddings_data = (
-        #             embedding_manager.get_embeddings_by_chunk(chunk_id)
-        #         )
-        #         label_embeddings = label_embeddings_data.to(device)
+            # Load features by chunk directly
+            features_data = feature_manager.get_features_by_chunk(chunk_id)
 
-        #         # Origin
-        #         combined_features = model.combine(
-        #             txt_features,
-        #             None,
-        #             label_embeddings,
-        #             epoch=epoch,
-        #             return_label_proj=False,
-        #         )
+            img_features = features_data["img_features"].to(device, non_blocking=True)
+            txt_features = features_data["txt_features"].to(device, non_blocking=True)
 
-        #         # predict condition
-        #         # Img
-        #         img_condition_predicted = model.predict_condition(
-        #             img_features,
-        #             None,
-        #             "txt",
-        #             return_logits=False,
-        #         )  # Here we predict the condition, which is the opposite of the mask type
-        #         combined_condition_img = model.combine(
-        #             txt_features,
-        #             None,
-        #             img_condition_predicted,
-        #             epoch=epoch,
-        #             return_label_proj=False,
-        #         )
-        #         txt_condition_predicted = model.predict_condition(
-        #             None,
-        #             txt_features,
-        #             "img",
-        #             return_logits=False,
-        #         )
-        #         combined_condition_txt = model.combine(
-        #             txt_features,
-        #             None,
-        #             txt_condition_predicted,
-        #             epoch=epoch,
-        #             return_label_proj=False,
-        #         )
-        #         imgtxt_condition_predicted = model.predict_condition(
-        #             img_features,
-        #             txt_features,
-        #             "imgtxt",
-        #             return_logits=False,
-        #         )
-        #         combined_condition_imgtxt = model.combine(
-        #             txt_features,
-        #             None,
-        #             imgtxt_condition_predicted,
-        #             epoch=epoch,
-        #             return_label_proj=False,
-        #         )
-        #         all_img_condition_predicted.append(img_condition_predicted)
-        #         all_txt_condition_predicted.append(txt_condition_predicted)
-        #         all_imgtxt_condition_predicted.append(imgtxt_condition_predicted)
-        #         all_img_features.append(img_features)
-        #         all_txt_features.append(txt_features)
-        #         all_combined_features.append(combined_features)
-        #         all_combined_condition_img.append(combined_condition_img)
-        #         all_combined_condition_txt.append(combined_condition_txt)
-        #         all_combined_condition_imgtxt.append(combined_condition_imgtxt)
+            batch_labels = ground_truth_list[batch_idx].to(device)
 
-        #     all_img_condition_predicted = torch.cat(all_img_condition_predicted, dim=0)
-        #     all_txt_condition_predicted = torch.cat(all_txt_condition_predicted, dim=0)
-        #     all_imgtxt_condition_predicted = torch.cat(
-        #         all_imgtxt_condition_predicted, dim=0
-        #     )
+            # predict condition
+            # Img
+            img_condition_predicted = model.predict_condition(
+                img_features,
+                None,
+                "txt",
+                return_logits=False,
+            )  # Here we predict the condition, which is the opposite of the mask type
+            combined_condition_img = model.combine(
+                txt_features,
+                None,
+                img_condition_predicted,
+                epoch=epoch,
+                return_label_proj=False,
+            )
+            txt_condition_predicted = model.predict_condition(
+                None,
+                txt_features,
+                "img",
+                return_logits=False,
+            )
+            combined_condition_txt = model.combine(
+                txt_features,
+                None,
+                txt_condition_predicted,
+                epoch=epoch,
+                return_label_proj=False,
+            )
+            imgtxt_condition_predicted = model.predict_condition(
+                img_features,
+                txt_features,
+                "imgtxt",
+                return_logits=False,
+            )
+            combined_condition_imgtxt = model.combine(
+                txt_features,
+                None,
+                imgtxt_condition_predicted,
+                epoch=epoch,
+                return_label_proj=False,
+            )
+            all_img_condition_predicted.append(img_condition_predicted)
+            all_txt_condition_predicted.append(txt_condition_predicted)
+            ground_truth_labels.append(batch_labels)
+            all_imgtxt_condition_predicted.append(imgtxt_condition_predicted)
+            all_img_features.append(img_features)
+            all_txt_features.append(txt_features)
+            all_combined_condition_img.append(combined_condition_img)
+            all_combined_condition_txt.append(combined_condition_txt)
+            all_combined_condition_imgtxt.append(combined_condition_imgtxt)
 
-        #     all_img_condition_predicted = all_img_condition_predicted.cpu().numpy()
-        #     all_txt_condition_predicted = all_txt_condition_predicted.cpu().numpy()
-        #     all_imgtxt_condition_predicted = all_imgtxt_condition_predicted.cpu().numpy()
+        all_img_condition_predicted = torch.cat(all_img_condition_predicted, dim=0)
+        all_txt_condition_predicted = torch.cat(all_txt_condition_predicted, dim=0)
+        all_imgtxt_condition_predicted = torch.cat(
+            all_imgtxt_condition_predicted, dim=0
+        )
+        ground_truth_labels = torch.cat(ground_truth_labels, dim=0)
 
-        #     # Visualize test results
-        #     _, label_embeddings_all = embedding_manager.get_all_embeddings()
+        all_img_condition_predicted = all_img_condition_predicted.cpu().numpy()
+        all_txt_condition_predicted = all_txt_condition_predicted.cpu().numpy()
+        all_imgtxt_condition_predicted = all_imgtxt_condition_predicted.cpu().numpy()
+        ground_truth_labels = pre_trained_representatives_device[ground_truth_labels]
 
-        #     full_list = {
-        #         "img_condition_predicted": all_img_condition_predicted,
-        #         "txt_condition_predicted": all_txt_condition_predicted,
-        #         "imgtxt_condition_predicted": all_imgtxt_condition_predicted,
-        #         "label_embeddings": label_embeddings_all,
-        #     }
+        # count the number of each label
+        ground_truth_labels, label_counts = torch.unique(
+            ground_truth_labels, return_counts=True, dim=0
+        )
+        # Sort the labels by count
+        ground_truth_labels = ground_truth_labels[label_counts.argsort(descending=True)]
+        label_counts = label_counts[label_counts.argsort(descending=True)]
+        ground_truth_labels = ground_truth_labels.cpu().numpy()
+        label_counts = label_counts.cpu().numpy()
+        # Print each label and its count
+        print("Label counts:")
+        for label, count in zip(ground_truth_labels[:10], label_counts[:10]):
+            print(f"Label {label}: {count} samples")
+        # Print the total number of samples
+        print(f"Total number of samples: {len(ground_truth_labels)}")
 
-        #     for key, value in full_list.items():
-        #         # Visualize label embeddings
-        #         fig = get_umap(
-        #             value,
-        #             umap_labels=None,
-        #             epoch=epoch,
-        #             no_outlier=True,
-        #             samples_to_track=[0, 1, 2, 3, 4],
-        #         )
-        #         experiment.save_artifact(
-        #             name=f"label_embeddings_umap_{key}",
-        #             data=fig,
-        #             artifact_type="figure",
-        #             folder="plots",
-        #             description=f"UMAP visualization of {key}",
-        #         )
+        # Visualize test results
+        _, label_embeddings_all = embedding_manager.get_all_embeddings()
 
-        #         fig2 = visualize_ideal_condition_space(value, epoch)
-        #         experiment.save_artifact(
-        #             name=f"ideal_condition_space_{key}",
-        #             data=fig2,
-        #             artifact_type="figure",
-        #             folder="plots",
-        #             description=f"Ideal condition space visualization of {key}",
-        #         )
+        # plot ground_truth_labels, where the size of the point represents the count of the label
+        plt.figure(figsize=(10, 10))
+        max_size, min_size = 500, 10
+        log_counts = np.log(label_counts)
+        size = (log_counts - log_counts.min()) / (log_counts.max() - log_counts.min())
+        size = size * (max_size - min_size) + min_size
+        plt.scatter(
+            ground_truth_labels[:, 0],
+            ground_truth_labels[:, 1],
+            s=size,
+        )
 
-        #         logger.log_metrics(
-        #             {
-        #                 f"vis/umap_{key}": wandb.Image(fig),
-        #                 f"vis/ideal_condition_space_{key}": wandb.Image(fig2),
-        #             }
-        #         )
+        experiment.save_artifact(
+            name=f"ground_truth_labels",
+            data=plt.gcf(),
+            artifact_type="figure",
+            folder="plots",
+            description=f"Ground truth labels visualization",
+        )
 
-        #         plt.close("all")
+        logger.log_metrics(
+            {
+                f"vis/ground_truth_labels": wandb.Image(plt.gcf()),
+            }
+        )
+        plt.close()
 
-        #     all_img_features = torch.cat(all_img_features, dim=0)
-        #     all_txt_features = torch.cat(all_txt_features, dim=0)
-        #     all_combined_features = torch.cat(all_combined_features, dim=0)
-        #     all_combined_condition_img = torch.cat(all_combined_condition_img, dim=0)
-        #     all_combined_condition_txt = torch.cat(all_combined_condition_txt, dim=0)
-        #     all_combined_condition_imgtxt = torch.cat(all_combined_condition_imgtxt, dim=0)
+        full_list = {
+            "img_condition_predicted": all_img_condition_predicted,
+            "txt_condition_predicted": all_txt_condition_predicted,
+            "imgtxt_condition_predicted": all_imgtxt_condition_predicted,
+            "label_embeddings": label_embeddings_all,
+        }
 
-        #     all_img_features_umap = umap_vis.learn_umap(
-        #         all_img_features, close_cluster=True
-        #     )
-        #     all_txt_features_umap = umap_vis.learn_umap(
-        #         all_txt_features, close_cluster=True
-        #     )
-        #     all_combined_features_umap = umap_vis.learn_umap(
-        #         all_combined_features, close_cluster=True
-        #     )
-        #     all_combined_condition_img_umap = umap_vis.learn_umap(
-        #         all_combined_condition_img, close_cluster=True
-        #     )
-        #     all_combined_condition_txt_umap = umap_vis.learn_umap(
-        #         all_combined_condition_txt, close_cluster=True
-        #     )
-        #     all_combined_condition_imgtxt_umap = umap_vis.learn_umap(
-        #         all_combined_condition_imgtxt, close_cluster=True
-        #     )
+        for key, value in full_list.items():
+            # Visualize label embeddings
+            fig = get_umap(
+                value,
+                umap_labels=None,
+                epoch=epoch,
+                no_outlier=True,
+                samples_to_track=[0, 1, 2, 3, 4],
+            )
+            experiment.save_artifact(
+                name=f"label_embeddings_umap_{key}",
+                data=fig,
+                artifact_type="figure",
+                folder="plots",
+                description=f"UMAP visualization of {key}",
+            )
 
-        #     full_list_combined = {
-        #         "img_features": all_img_features_umap,
-        #         "txt_features": all_txt_features_umap,
-        #         "combined_features_origin": all_combined_features_umap,
-        #         "combined_condition_img": all_combined_condition_img_umap,
-        #         "combined_condition_txt": all_combined_condition_txt_umap,
-        #         "combined_condition_imgtxt": all_combined_condition_imgtxt_umap,
-        #     }
+            fig2 = visualize_ideal_condition_space(value, epoch)
+            experiment.save_artifact(
+                name=f"ideal_condition_space_{key}",
+                data=fig2,
+                artifact_type="figure",
+                folder="plots",
+                description=f"Ideal condition space visualization of {key}",
+            )
 
-        #     for key, value in full_list_combined.items():
-        #         # Visualize label embeddings
-        #         fig = get_umap(
-        #             value,
-        #             umap_labels=None,
-        #             epoch=epoch,
-        #             no_outlier=True,
-        #             samples_to_track=[0, 1, 2, 3, 4],
-        #         )
-        #         experiment.save_artifact(
-        #             name=f"Check_change_{key}",
-        #             data=fig,
-        #             artifact_type="figure",
-        #             folder="plots",
-        #             description=f"UMAP visualization of the change between {key} and the origin",
-        #         )
+            logger.log_metrics(
+                {
+                    f"vis/umap_{key}": wandb.Image(fig),
+                    f"vis/ideal_condition_space_{key}": wandb.Image(fig2),
+                }
+            )
 
-        #         logger.log_metrics(
-        #             {
-        #                 f"vis2/umap_{key}": wandb.Image(fig),
-        #             }
-        #         )
+            plt.close("all")
 
-        #         plt.close("all")
+        all_img_features = torch.cat(all_img_features, dim=0)
+        all_txt_features = torch.cat(all_txt_features, dim=0)
+        all_combined_condition_img = torch.cat(all_combined_condition_img, dim=0)
+        all_combined_condition_txt = torch.cat(all_combined_condition_txt, dim=0)
+        all_combined_condition_imgtxt = torch.cat(all_combined_condition_imgtxt, dim=0)
 
-    # experiment.save_artifact(
-    #     name="full_list",
-    #     data=full_list,
-    #     artifact_type="pickle",
-    #     description="Full list of conditions",
-    #     folder="embeddings",
-    # )
+        all_img_features_umap = umap_vis.learn_umap(
+            all_img_features, close_cluster=True
+        )
+        all_txt_features_umap = umap_vis.learn_umap(
+            all_txt_features, close_cluster=True
+        )
+        all_combined_condition_img_umap = umap_vis.learn_umap(
+            all_combined_condition_img, close_cluster=True
+        )
+        all_combined_condition_txt_umap = umap_vis.learn_umap(
+            all_combined_condition_txt, close_cluster=True
+        )
+        all_combined_condition_imgtxt_umap = umap_vis.learn_umap(
+            all_combined_condition_imgtxt, close_cluster=True
+        )
 
-    # experiment.save_artifact(
-    #     name="full_list_combined",
-    #     data=full_list_combined,
-    #     artifact_type="pickle",
-    #     description="Full list of combined features",
-    #     folder="embeddings",
-    # )
+        full_list_combined = {
+            "img_features": all_img_features_umap,
+            "txt_features": all_txt_features_umap,
+            "combined_condition_img": all_combined_condition_img_umap,
+            "combined_condition_txt": all_combined_condition_txt_umap,
+            "combined_condition_imgtxt": all_combined_condition_imgtxt_umap,
+        }
+
+        for key, value in full_list_combined.items():
+            # Visualize label embeddings
+            fig = get_umap(
+                value,
+                umap_labels=None,
+                epoch=epoch,
+                no_outlier=True,
+                samples_to_track=[0, 1, 2, 3, 4],
+            )
+            experiment.save_artifact(
+                name=f"Check_change_{key}",
+                data=fig,
+                artifact_type="figure",
+                folder="plots",
+                description=f"UMAP visualization of the change between {key} and the origin",
+            )
+
+            logger.log_metrics(
+                {
+                    f"vis2/umap_{key}": wandb.Image(fig),
+                }
+            )
+
+            plt.close("all")
+
+    experiment.save_artifact(
+        name="full_list",
+        data=full_list,
+        artifact_type="pickle",
+        description="Full list of conditions",
+        folder="embeddings",
+    )
+
+    experiment.save_artifact(
+        name="full_list_combined",
+        data=full_list_combined,
+        artifact_type="pickle",
+        description="Full list of combined features",
+        folder="embeddings",
+    )
 
     experiment.save_artifact(
         name="final_model",
