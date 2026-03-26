@@ -14,6 +14,8 @@ from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
 from scipy import cluster
 
+import time
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -160,7 +162,7 @@ class Clustering:
         method="leaf",
     ):  # leaf or eom
         self._ensure_cluster()
-
+        start_time = time.time()
         if isinstance(umap_features, torch.Tensor):
             umap_features_np = umap_features.cpu().numpy()
         else:
@@ -173,6 +175,11 @@ class Clustering:
         )
         hdbscan_model.fit(umap_features_np)
         umap_labels = hdbscan_model.labels_
+
+        end_time = time.time()
+        print(f"Time taken to get HDBSCAN labels: {end_time - start_time} seconds")
+
+        self.close_cluster()
 
         return umap_labels, None
 

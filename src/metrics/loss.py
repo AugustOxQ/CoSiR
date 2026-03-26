@@ -193,7 +193,7 @@ class LabelContrastiveLoss_enhance(nn.Module):
         self,
         margin: float = 0.2,
         lambda_1: float = 1.0,  # main loss weight
-        lambda_2: float = 0.0,  # secondary loss weight
+        lambda_2: float = 0.1,  # secondary loss weight
         lambda_3: float = 0.0,  # minor loss weight
         lambda_4: float = 0.0,  # regularizer weight
         return_dict: bool = False,
@@ -243,38 +243,7 @@ class LabelContrastiveLoss_enhance(nn.Module):
             else 0.0
         )
 
-        # Minor Loss: These three ensures the condition space is well structured in terms of angular and radius change consistency
-        angular_loss = (
-            angular_gradient_consistency_loss(
-                label_embedding,
-                text_features,
-                combined_features,
-                model=model,
-                alpha=self.lambda_3,
-            )
-            if self.lambda_3 > 0
-            else 0.0
-        )
-
-        radius_loss = (
-            radius_monotonicity_loss(
-                label_embedding, text_features, model, alpha=self.lambda_3
-            )
-            if self.lambda_3 > 0
-            else 0.0
-        )
-
-        rotation_loss = (
-            rotation_semantic_orthogonality_loss(
-                label_embedding,
-                text_features,
-                combined_features,
-                model=model,
-                alpha=self.lambda_3,
-            )
-            if self.lambda_3 > 0
-            else 0.0
-        )
+        collapse_loss = -label_embedding.var(dim=0).mean() * self.lambda_3
 
         # Regularizer Loss: this prevents the condition space from being too large
         boundary_loss = (
@@ -290,18 +259,13 @@ class LabelContrastiveLoss_enhance(nn.Module):
         total_loss = (
             self.lambda_pos * loss_improve
             + laplacian_loss
-            + angular_loss
-            + radius_loss
-            + rotation_loss
+            + collapse_loss
             + boundary_loss
         )
 
         loss_dict = {
             "loss_improve": loss_improve,
             "loss_laplacian": laplacian_loss,
-            "loss_angular": angular_loss,
-            "loss_radius": radius_loss,
-            "loss_rotation": rotation_loss,
             "loss_boundary": boundary_loss,
             "total_loss": total_loss,
         }

@@ -226,6 +226,91 @@ class Combiner_basic(nn.Module):
         return F.normalize(output)
 
 
+class Combiner_new(nn.Module):
+    """Combiner module which once trained fuses textual and label information."""
+
+    def __init__(
+        self,
+        clip_feature_dim: int = 512,
+        projection_dim: int = 512,
+        hidden_dim: int = 512,
+        num_heads: int = 8,
+        num_layers: int = 4,
+    ) -> None:
+        """
+        :param clip_feature_dim: CLIP input feature dimension (e.g., 512)
+        :param projection_dim: projection dimension (e.g., 256)
+        :param hidden_dim: hidden dimension (e.g., 512)
+        :param num_heads: Number of heads in multi-head attention
+        :param num_layers: Number of transformer layers
+        """
+        super().__init__()
+
+        self.label_decoder = GeLUNet(
+            input_dim=2,
+            hidden_dim=hidden_dim,
+            output_dim=projection_dim,
+            num_layers=num_layers,
+        )
+
+        # self.dropout = nn.Dropout(0.5)
+
+        # self.dynamic_scalar = nn.Sequential(
+        #     nn.Linear(projection_dim * 2, hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Dropout(0.5),
+        #     nn.Linear(hidden_dim, 1),
+        #     nn.Sigmoid(),
+        # )
+
+        # self.combiner_layer = GeLUNet(
+        #     input_dim=projection_dim + clip_feature_dim,
+        #     hidden_dim=hidden_dim,
+        #     output_dim=clip_feature_dim,
+        #     num_layers=num_layers,
+        # )
+
+        # Larger dynamic scalar means more weight on the combined features
+        self.scalar = FixedSizeQueue(10)
+
+    def print_scalar(self):
+        return self.scalar.get()
+
+    def get_newest(self):
+        return self.scalar.get_newest()
+
+    @torch.jit.export
+    def forward(
+        self, text_features: Tensor, text_full: Optional[Tensor], label_features: Tensor
+    ) -> Tensor:
+        """Combine the text features and label features using attention.
+
+        Outputs combined features.
+        :param text_features: CLIP textual features (shape: batch, 512)
+        :param text_full: CLIP textual features with full sequence length (shape: batch, L, 512)
+        :param label_features: Label features (shape: batch, 512)
+        :return: combined textual features (shape: batch, 512)
+        """
+
+        label_projected_features = self.label_decoder(label_features)
+
+        # raw_combined_features = torch.cat((text_features, label_projected_features), -1)
+
+        # combined_features = self.dropout(
+        #     F.relu(self.combiner_layer(raw_combined_features))
+        # )
+
+        # dynamic_scalar = self.dynamic_scalar(raw_combined_features)
+        # # print(dynamic_scalar.shape) # (batch, 1)
+        # self.scalar.add(dynamic_scalar.mean().item())
+        # # print(self.scalar.get())
+
+        # Option2: Output is a combination of combined_featured and text_features
+        output = text_features + label_projected_features
+
+        return F.normalize(output)
+
+
 class CombinerGated(nn.Module):
     """Combiner module using gated residual + additive label shift."""
 

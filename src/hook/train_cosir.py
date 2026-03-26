@@ -23,9 +23,7 @@ from src.utils import (
     FeatureManager,
     ExperimentManager,
     TrainableEmbeddingManager,
-    replace_with_most_different,
-    get_representatives,
-    get_representatives_polar_grid,
+    get_representatives_hdbscan,
     get_umap,
     visualize_ideal_condition_space,
     visualize_angular_semantics_fast,
@@ -206,7 +204,7 @@ def train_cosir(cfg, logger):
     # Initialize evaluator
     evaluator = EvaluationManager(evaluation_config)
 
-    # clustering = Clustering(device=device)
+    clustering = Clustering(device=device)
     umap_vis = UMAP_vis(device=device)
 
     # ========== OPTIMIZED: TrainableEmbeddingManager with Intelligent Caching ==========
@@ -271,21 +269,23 @@ def train_cosir(cfg, logger):
                     device,
                     factor=cfg.train.imgtxt_factor,
                 )
-
-            if cfg.train.initialization_strategy == "txt":
-                print("Initializing embeddings with txt strategy...")
-                embedding_manager.initialize_embeddings_txt(
-                    feature_manager,
-                    model,
-                    device,
-                )
-
-            if cfg.train.initialization_strategy == "img":
-                print("Initializing embeddings with img strategy...")
-                embedding_manager.initialize_embeddings_img(
-                    feature_manager,
-                    model,
-                    device,
+            # elif cfg.train.initialization_strategy == "txt":
+            #     print("Initializing embeddings with txt strategy...")
+            #     embedding_manager.initialize_embeddings_txt(
+            #         feature_manager,
+            #         model,
+            #         device,
+            #     )
+            # elif cfg.train.initialization_strategy == "img":
+            #     print("Initializing embeddings with img strategy...")
+            #     embedding_manager.initialize_embeddings_img(
+            #         feature_manager,
+            #         model,
+            #         device,
+            #     )
+            else:
+                raise ValueError(
+                    f"Unknown initialization strategy: {cfg.train.initialization_strategy}"
                 )
 
             # Save as template embeddings if enabled (default: True)
@@ -327,6 +327,7 @@ def train_cosir(cfg, logger):
     )
 
     global_step = 0
+
     for epoch in range(cfg.train.epochs):
         experiment.current_epoch = epoch
 
@@ -375,16 +376,6 @@ def train_cosir(cfg, logger):
                 epoch=epoch,
                 return_label_proj=False,
             )
-
-            # label_embedding_neg = replace_with_most_different(label_embeddings)
-
-            # comb_emb_neg = model.combine(
-            #     txt_features,
-            #     txt_full,
-            #     label_embedding_neg,
-            #     epoch=epoch,
-            #     return_label_proj=False,
-            # )
 
             loss_dict = criteria(
                 img_features,
@@ -448,31 +439,23 @@ def train_cosir(cfg, logger):
 
         scheduler.step()
 
-        # # Validation loop
-        # model.eval()
-        # with torch.no_grad():
-        #     train_results = evaluator.evaluate_train(
-        #         model=model,
-        #         feature_manager=feature_manager,
-        #         embedding_manager=embedding_manager,
-        #         dataloader=train_loader,
-        #         device=device,
-        #         epoch=epoch,
-        #     )
-
-        #     # Log train results
-        #     # logger.log_metrics({train_results.metrics})
-
         if cfg.eval.perform_evaluation and (
-            cfg.train.epochs == 0
-            or epoch % evaluation_config.evaluation_interval == 0
+            cfg.train.epochs == 0  # This is for test only
+            or epoch % cfg.eval.evaluation_interval == 0
             or epoch == cfg.train.epochs - 1
         ):
             model.eval()
             with torch.no_grad():
                 # Test evaluation
+                print("Getting all embeddings")
                 _, label_embeddings_all = embedding_manager.get_all_embeddings()
-                representatives = get_representatives_polar_grid(
+                print("Getting HDBSCAN labels")
+                hdbscanlabels, _ = clustering.get_hdbscan(
+                    label_embeddings_all.cpu(), method="eom"
+                )
+                print("Getting representatives")
+                representatives = get_representatives_hdbscan(
+                    hdbscanlabels,
                     label_embeddings_all.cpu(),
                     (
                         cfg.train.representative_number
@@ -480,6 +463,7 @@ def train_cosir(cfg, logger):
                         else 30  # Use higher number of representatives for the last epoch
                     ),
                 )
+                print(f"Evaluating with {len(representatives)} representatives")
                 test_results_detailed = evaluator.evaluate_test(
                     model=model,
                     processor=processor,
@@ -499,8 +483,6 @@ def train_cosir(cfg, logger):
                     test_results,
                 ) = test_results_detailed  # type: ignore
 
-                all_raw_image = test_set.get_all_raw_image()
-
                 # Log test results
                 for metric, value in test_results.metrics.items():
                     logger.log_metrics({metric: value})
@@ -517,7 +499,7 @@ def train_cosir(cfg, logger):
                 # Visualize label embeddings
                 fig = get_umap(
                     umap_features,
-                    umap_labels=None,
+                    umap_labels=hdbscanlabels,
                     epoch=epoch,
                     no_outlier=True,
                     samples_to_track=[0, 1, 2, 3, 4],
@@ -548,42 +530,44 @@ def train_cosir(cfg, logger):
 
                 plt.close("all")
 
-                for tmp_round in range(3):
-                    fig3 = visualize_angular_semantics_fast(
-                        label_embeddings_all.cpu().numpy(),
-                        model,
-                        (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
-                        device=device,
-                    )
-                    experiment.save_artifact(
-                        name=f"angular_semantics_fast_{epoch}_tmp_{tmp_round}",
-                        data=fig3,
-                        artifact_type="figure",
-                        folder="plots",
-                        description=f"Angular semantics visualization at epoch {epoch}",
-                    )
+                # all_raw_image = test_set.get_all_raw_image()
 
-                    fig4 = visualize_angular_semantics_text_to_image_fast(
-                        label_embeddings_all.cpu().numpy(),
-                        model,
-                        (
-                            all_img_emb,
-                            all_txt_emb,
-                            all_raw_image,
-                            all_raw_text,
-                        ),
-                        device=device,
-                    )
+                # for tmp_round in range(3):
+                #     fig3 = visualize_angular_semantics_fast(
+                #         label_embeddings_all.cpu().numpy(),
+                #         model,
+                #         (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
+                #         device=device,
+                #     )
+                #     experiment.save_artifact(
+                #         name=f"angular_semantics_fast_{epoch}_tmp_{tmp_round}",
+                #         data=fig3,
+                #         artifact_type="figure",
+                #         folder="plots",
+                #         description=f"Angular semantics visualization at epoch {epoch}",
+                #     )
 
-                    experiment.save_artifact(
-                        name=f"angular_semantics_text_to_image_{epoch}_tmp_{tmp_round}",
-                        data=fig4,
-                        artifact_type="figure",
-                        folder="plots",
-                        description=f"Angular semantics visualization (text-to-image) at epoch {epoch}",
-                    )
+                #     fig4 = visualize_angular_semantics_text_to_image_fast(
+                #         label_embeddings_all.cpu().numpy(),
+                #         model,
+                #         (
+                #             all_img_emb,
+                #             all_txt_emb,
+                #             all_raw_image,
+                #             all_raw_text,
+                #         ),
+                #         device=device,
+                #     )
 
-                    plt.close("all")
+                #     experiment.save_artifact(
+                #         name=f"angular_semantics_text_to_image_{epoch}_tmp_{tmp_round}",
+                #         data=fig4,
+                #         artifact_type="figure",
+                #         folder="plots",
+                #         description=f"Angular semantics visualization (text-to-image) at epoch {epoch}",
+                #     )
+
+                #     plt.close("all")
 
                 cosir_automatic_evaluator = CoSiRAutomaticEvaluator(
                     model,

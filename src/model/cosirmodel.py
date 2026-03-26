@@ -50,13 +50,12 @@ class CoSiRModel(nn.Module):
         self.label_encoder = nn.Identity()
 
         # Combiner network to combine text and label features
-        self.combiner = CombinerSimplePolar(
+        self.combiner = Combiner_new(
             clip_feature_dim=512,
             projection_dim=512,
             hidden_dim=d_model,
             num_heads=nhead,
-            num_layers=2,  # TODO: here we fix it to 2
-            label_dim=label_dim,
+            num_layers=4,  # TODO: here we fix it to 2
         )
 
         # Additional components
@@ -108,8 +107,6 @@ class CoSiRModel(nn.Module):
             txt_emb,
             None,
             lbl_emb,
-            epoch,
-            return_label_proj,  # Here txt_full is not used
         )  # (batch_size, 512)
 
         return comb_emb

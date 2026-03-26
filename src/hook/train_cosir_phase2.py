@@ -33,8 +33,6 @@ from src.utils import (
     get_representatives_polar_grid,
     get_umap,
     visualize_ideal_condition_space,
-    CoSiRAutomaticEvaluator,
-    get_representatives_polar_grid_outsideonly,
 )
 from src.metrics import (
     LabelClassificationLoss,

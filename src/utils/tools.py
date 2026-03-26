@@ -4,6 +4,7 @@ from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 
 def replace_with_most_different(label_embeddings, k=10):
@@ -199,6 +200,24 @@ def get_representatives_polar_grid(
         f"Sampled {len(sampled_conditions)} conditions "
         f"({num_angles} angles × {num_radii} radii)"
     )
+
+    return sampled_conditions
+
+
+def get_representatives_hdbscan(hdbscan_labels, conditions, k=10):
+    start_time = time.time()
+    unique_clusters = set(hdbscan_labels) - {-1}  # Exclude noise (-1)
+
+    sampled_conditions = []
+    for c in unique_clusters:
+        cluster_conditions = conditions[hdbscan_labels == c]
+        sampled_conditions.append(
+            cluster_conditions[np.random.randint(len(cluster_conditions))]
+        )
+    sampled_conditions = torch.stack(sampled_conditions)[:k]
+
+    end_time = time.time()
+    print(f"Time taken to get representatives: {end_time - start_time} seconds")
 
     return sampled_conditions
 
