@@ -57,4 +57,4 @@ echo "Using ${NUM_PROCS} processes"
 
 # python main_cosir_phase2.py dataset=impressions eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 model.dropout=0.5 train.initialization_strategy="img" train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="img96 outsideonly lr1e-4 gunble hard using img initialization 1e-5 dropout 0.5" #-> 4
 
-python main_cosir_phase2.py dataset=impressions eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 model.dropout=0.5 train.initialization_strategy="imgtxt" train.representative_number=36 wandb.project="cosir_seperate_dataset" wandb.name="imgtxt96 outsideonly lr1e-4 gunble hard using imgtxt initialization 1e-5 dropout 0.5" #-> 4
+python main_cosir_phase2.py dataset=impressions eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=500 model.dropout=0.1 train.initialization_strategy="imgtxt" train.representative_number=96 wandb.project="cosir_seperate_dataset" wandb.name="imgtxt96 "

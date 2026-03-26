@@ -219,17 +219,11 @@ class LabelContrastiveLoss_enhance(nn.Module):
         model: nn.Module,
     ):
         # Compute pairwise cosine similarity matrix [N, N] for InfoNCE loss
+
         cos_pos = compute_cosine_similarity(
             combined_features, image_features
         )  # [N, N] pairwise similarities
-        # cos_orig = F.cosine_similarity(
-        #     text_features, image_features, dim=-1
-        # )  # Original contrast
 
-        # # Main loss: Let at least the conditioned feature is better/equal to the original feature
-        # loss_improve = torch.clamp(
-        #     cos_orig + self.margin - cos_pos, min=0
-        # ).mean()  # Let combined features be closer to image features #TODO: I guess this might not be the best way to do it.
         labels = torch.arange(cos_pos.shape[0], device=cos_pos.device)
         loss_improve = (
             F.cross_entropy(cos_pos / self.temperature, labels)
@@ -537,78 +531,20 @@ class LabelClassificationLoss(nn.Module):
 
         self.return_dict = return_dict
 
-    def get_loss_weights(self, current_epoch: int) -> dict:
-        """
-        Calculate loss weights based on current epoch.
-
-        Phases:
-        - Warmup (0-5): CE=0.8, InfoNCE=0.2
-        - Transition (6-10): CE linear decay, InfoNCE linear increase
-        - Focus (11+): CE=0.1, InfoNCE=0.9
-        """
-
-        # if current_epoch < self.warmup_epochs:
-        #     # Warmup phase: focus on imitation
-        #     ce_weight = 0.8
-        #     infonce_weight = 0.2
-
-        # elif current_epoch < self.transition_epochs:
-        #     # Transition phase: gradually shift
-        #     progress = (current_epoch - self.warmup_epochs) / (
-        #         self.transition_epochs - self.warmup_epochs
-        #     )
-        #     ce_weight = 0.8 - 0.7 * progress  # 0.8 → 0.1
-        #     infonce_weight = 0.2 + 0.7 * progress  # 0.2 → 0.9
-
-        # else:
-        #     # Focus phase: mainly retrieval optimization
-        #     ce_weight = 0.1
-        #     infonce_weight = 0.9
-
-        ce_weight = 0.9
-        infonce_weight = 0.1
-
-        return {
-            "ce": ce_weight,
-            "infonce": infonce_weight,
-            "epoch": current_epoch,
-        }
-
     def forward(
         self,
         classifier_logits: Tensor,
         selected_conditions: Tensor,
-        image_features: Tensor,
-        text_features: Tensor,
         nearest_condition_labels: Tensor,
-        combined_features: Tensor,
         current_epoch: int,
     ):
         # Clone the label embedding to avoid backpropagation to the label embedding, only update the condition predictor
 
-        batch_size = len(text_features)
-
-        weights = self.get_loss_weights(current_epoch)
-
         # 1. Cross-entropy loss (imitation loss)
         loss_ce = F.cross_entropy(classifier_logits, nearest_condition_labels)
 
-        # 2. InfoNCE Loss (retrieval optimization)
-
-        combined_features = F.normalize(combined_features, p=2, dim=1)
-        image_features_norm = F.normalize(image_features, p=2, dim=1)
-
-        sim_matrix = combined_features @ image_features_norm.T / self.temperature
-
-        # Labels
-        labels = torch.arange(batch_size, device=image_features.device)
-
-        loss_infonce = (
-            F.cross_entropy(sim_matrix, labels) + F.cross_entropy(sim_matrix.T, labels)
-        ) / 2
-
         # Combine losses
-        total_loss = weights["ce"] * loss_ce + weights["infonce"] * loss_infonce
+        total_loss = loss_ce
 
         with torch.no_grad():
             pred_labels = classifier_logits.argmax(dim=1)
@@ -616,10 +552,7 @@ class LabelClassificationLoss(nn.Module):
 
         loss_dict = {
             "loss_ce": loss_ce,
-            "loss_infonce": loss_infonce,
             "accuracy": accuracy,
-            "ce_weight": weights["ce"],
-            "infonce_weight": weights["infonce"],
             "total_loss": total_loss,
         }
 

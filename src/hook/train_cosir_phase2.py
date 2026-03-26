@@ -21,8 +21,6 @@ from itertools import chain
 from src.dataset import (
     CoSiRTrainingChunkDataset,
     CoSiRValidationDataset,
-    FeatureExtractionDataset,
-    FeatureExtractionConceptualDataset,
 )
 from src.model import CoSiRModel, Clustering, UMAP_vis
 from src.eval import EvaluationManager, EvaluationConfig
@@ -39,8 +37,6 @@ from src.utils import (
     get_representatives_polar_grid_outsideonly,
 )
 from src.metrics import (
-    LabelContrastiveLoss_enhance,
-    LabelPredictionLoss,
     LabelClassificationLoss,
 )
 
@@ -268,139 +264,139 @@ def train_cosir_phase2(cfg, logger):
     _, label_embeddings_all = embedding_manager.get_all_embeddings()
 
     print("Getting pre-trained representatives")
-    pre_trained_representatives = get_representatives_polar_grid_outsideonly(  # -> Set this to be the previous one
-        label_embeddings_all.cpu(),
-        cfg.train.representative_number,
-    )  # This will be used to train a classifier to predict the condition, now in total 12x3 = 36 representatives
-
-    # pre_trained_representatives = get_representatives_polar_grid(  # -> Set this to be the previous one
+    # pre_trained_representatives = get_representatives_polar_grid_outsideonly(  # -> Set this to be the previous one
     #     label_embeddings_all.cpu(),
-    #     cfg.train.representative_number // 3,
+    #     cfg.train.representative_number,
     # )  # This will be used to train a classifier to predict the condition, now in total 12x3 = 36 representatives
+
+    pre_trained_representatives = get_representatives_polar_grid(  # -> Set this to be the previous one
+        label_embeddings_all.cpu(),
+        cfg.train.representative_number // 3,
+    )  # This will be used to train a classifier to predict the condition, now in total 12x3 = 36 representatives
 
     pre_trained_representatives_device = pre_trained_representatives.to(device)
 
     model.set_pretrained_representatives(pre_trained_representatives, device)
 
-    print("Evaluating test results with oracle")
-    with torch.no_grad():
-        test_results_detailed = evaluator.evaluate_test(
-            model=model,
-            processor=processor,
-            dataloader=test_loader,
-            label_embeddings=pre_trained_representatives_device,  # Your label embeddings
-            epoch=0,
-            return_detailed_results=True,  # 记住这里是true，也就是detailed_results
-            use_oracle=True,
-        )
+    # print("Evaluating test results with oracle")
+    # with torch.no_grad():
+    #     test_results_detailed = evaluator.evaluate_test(
+    #         model=model,
+    #         processor=processor,
+    #         dataloader=test_loader,
+    #         label_embeddings=pre_trained_representatives_device,  # Your label embeddings
+    #         epoch=0,
+    #         return_detailed_results=True,  # 记住这里是true，也就是detailed_results
+    #         use_oracle=True,
+    #     )
 
-        (
-            all_img_emb,
-            all_txt_emb,
-            all_raw_text,
-            text_to_image_map,
-            image_to_text_map,
-            test_results,
-        ) = test_results_detailed  # type: ignore
+    #     (
+    #         all_img_emb,
+    #         all_txt_emb,
+    #         all_raw_text,
+    #         text_to_image_map,
+    #         image_to_text_map,
+    #         test_results,
+    #     ) = test_results_detailed  # type: ignore
 
-        # Log test results
-        for metric, value in test_results.metrics.items():
-            logger.log_metrics({f"Test2_oracle_{metric}": value})
+    #     # Log test results
+    #     for metric, value in test_results.metrics.items():
+    #         logger.log_metrics({f"Test2_oracle_{metric}": value})
 
-        all_raw_image = test_set.get_all_raw_image()
+    #     all_raw_image = test_set.get_all_raw_image()
 
-        # Log test results
-        for metric, value in test_results.metrics.items():
-            logger.log_metrics({metric: value})
+    #     # Log test results
+    #     for metric, value in test_results.metrics.items():
+    #         logger.log_metrics({metric: value})
 
-        # Visualize test results
-        # # Check whether label embeddings are 2d or higher dimensional
-        if label_embeddings_all.shape[1] == 2:
-            umap_features = label_embeddings_all.cpu().numpy()
-        else:
-            umap_features = umap_vis.learn_umap(
-                label_embeddings_all, close_cluster=True
-            )
+    #     # Visualize test results
+    #     # # Check whether label embeddings are 2d or higher dimensional
+    #     if label_embeddings_all.shape[1] == 2:
+    #         umap_features = label_embeddings_all.cpu().numpy()
+    #     else:
+    #         umap_features = umap_vis.learn_umap(
+    #             label_embeddings_all, close_cluster=True
+    #         )
 
-        # Visualize label embeddings
-        fig = get_umap(
-            umap_features,
-            umap_labels=None,
-            epoch=0,
-            no_outlier=True,
-            samples_to_track=[0, 1, 2, 3, 4],
-        )
-        experiment.save_artifact(
-            name=f"label_embeddings_umap_0",
-            data=fig,
-            artifact_type="figure",
-            folder="plots",
-            description=f"UMAP visualization of trained label embeddings at epoch 0",
-        )
+    #     # Visualize label embeddings
+    #     fig = get_umap(
+    #         umap_features,
+    #         umap_labels=None,
+    #         epoch=0,
+    #         no_outlier=True,
+    #         samples_to_track=[0, 1, 2, 3, 4],
+    #     )
+    #     experiment.save_artifact(
+    #         name=f"label_embeddings_umap_0",
+    #         data=fig,
+    #         artifact_type="figure",
+    #         folder="plots",
+    #         description=f"UMAP visualization of trained label embeddings at epoch 0",
+    #     )
 
-        fig2 = visualize_ideal_condition_space(umap_features, 0)
-        experiment.save_artifact(
-            name=f"ideal_condition_space_0",
-            data=fig2,
-            artifact_type="figure",
-            folder="plots",
-            description=f"Ideal condition space visualization at epoch 0",
-        )
+    #     fig2 = visualize_ideal_condition_space(umap_features, 0)
+    #     experiment.save_artifact(
+    #         name=f"ideal_condition_space_0",
+    #         data=fig2,
+    #         artifact_type="figure",
+    #         folder="plots",
+    #         description=f"Ideal condition space visualization at epoch 0",
+    #     )
 
-        logger.log_metrics(
-            {
-                "vis/umap": wandb.Image(fig),
-                "vis/ideal_condition_space": wandb.Image(fig2),
-            }
-        )
+    #     logger.log_metrics(
+    #         {
+    #             "vis/umap": wandb.Image(fig),
+    #             "vis/ideal_condition_space": wandb.Image(fig2),
+    #         }
+    #     )
 
-        plt.close("all")
+    #     plt.close("all")
 
-        for tmp_round in range(6):
-            fig3 = visualize_angular_semantics_fast(
-                label_embeddings_all.cpu().numpy(),
-                model,
-                (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
-                device=device,
-            )
-            experiment.save_artifact(
-                name=f"angular_semantics_fast_0_tmp_{tmp_round}",
-                data=fig3,
-                artifact_type="figure",
-                folder="plots",
-                description=f"Angular semantics visualization at epoch 0",
-            )
+    #     for tmp_round in range(6):
+    #         fig3 = visualize_angular_semantics_fast(
+    #             label_embeddings_all.cpu().numpy(),
+    #             model,
+    #             (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
+    #             device=device,
+    #         )
+    #         experiment.save_artifact(
+    #             name=f"angular_semantics_fast_0_tmp_{tmp_round}",
+    #             data=fig3,
+    #             artifact_type="figure",
+    #             folder="plots",
+    #             description=f"Angular semantics visualization at epoch 0",
+    #         )
 
-            fig4 = visualize_angular_semantics_text_to_image_fast(
-                label_embeddings_all.cpu().numpy(),
-                model,
-                (
-                    all_img_emb,
-                    all_txt_emb,
-                    all_raw_image,
-                    all_raw_text,
-                ),
-                device=device,
-            )
+    #         fig4 = visualize_angular_semantics_text_to_image_fast(
+    #             label_embeddings_all.cpu().numpy(),
+    #             model,
+    #             (
+    #                 all_img_emb,
+    #                 all_txt_emb,
+    #                 all_raw_image,
+    #                 all_raw_text,
+    #             ),
+    #             device=device,
+    #         )
 
-            experiment.save_artifact(
-                name=f"angular_semantics_text_to_image_0_tmp_{tmp_round}",
-                data=fig4,
-                artifact_type="figure",
-                folder="plots",
-                description=f"Angular semantics visualization (text-to-image) at epoch 0",
-            )
+    #         experiment.save_artifact(
+    #             name=f"angular_semantics_text_to_image_0_tmp_{tmp_round}",
+    #             data=fig4,
+    #             artifact_type="figure",
+    #             folder="plots",
+    #             description=f"Angular semantics visualization (text-to-image) at epoch 0",
+    #         )
 
-            plt.close("all")
+    #         plt.close("all")
 
-        cosir_automatic_evaluator = CoSiRAutomaticEvaluator(
-            model,
-            (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
-            label_embeddings_all,
-            device,
-        )
-        result = cosir_automatic_evaluator.evaluate_all()
-        logger.log_metrics(result)
+    #     cosir_automatic_evaluator = CoSiRAutomaticEvaluator(
+    #         model,
+    #         (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
+    #         label_embeddings_all,
+    #         device,
+    #     )
+    #     result = cosir_automatic_evaluator.evaluate_all()
+    #     logger.log_metrics(result)
 
     print("Pre-computing ground truth embeddings")
 
@@ -418,10 +414,12 @@ def train_cosir_phase2(cfg, logger):
             txt_features = features_data["txt_features"].to(device, non_blocking=True)
 
             batch_size = len(img_features)
-            # best diagonal cosine-sim seen so far per sample
-            best_diag_scores = torch.full((batch_size,), float("-inf"), device=device)
-            # which rep index produced that best score (default: rep 0)
+            # best rank seen so far per sample (0 = perfect, i.e. diagonal is top-1)
+            best_ranks = torch.full((batch_size,), float("inf"), device=device)
+            # which rep index produced that best rank (default: rep 0)
             batch_ground_truth = torch.zeros(batch_size, dtype=torch.long)
+
+            img_norm = F.normalize(img_features, dim=1)
 
             for rep_idx, rep in enumerate(pre_trained_representatives_device):
                 # rep: [label_dim] -> expand to [B, label_dim] for the combiner
@@ -433,13 +431,17 @@ def train_cosir_phase2(cfg, logger):
                     epoch=0,
                     return_label_proj=False,
                 )
-                # diagonal of the cosine-sim matrix = per-sample match quality
-                diag_sim = F.cosine_similarity(batch_combined, img_features, dim=1)
+                # full cosine-sim matrix [B, B] — considers off-diagonal negatives
+                combined_norm = F.normalize(batch_combined, dim=1)
+                sim_matrix = combined_norm @ img_norm.T  # [B, B]
+                diag_sim = sim_matrix.diagonal()  # [B]
+                # 0-indexed rank of the correct match within its row (0 = ranked #1)
+                ranks = (sim_matrix > diag_sim.unsqueeze(1)).sum(dim=1).float()
 
-                # update ground truth where this rep beats the current best
-                update_mask = diag_sim > best_diag_scores
+                # update ground truth where this rep gives a better rank
+                update_mask = ranks < best_ranks
                 batch_ground_truth[update_mask] = rep_idx
-                best_diag_scores[update_mask] = diag_sim[update_mask]
+                best_ranks[update_mask] = ranks[update_mask]
 
             ground_truth_list.append(batch_ground_truth)
 
@@ -493,10 +495,7 @@ def train_cosir_phase2(cfg, logger):
             loss_dict_both = criteria_2(
                 logits_both,
                 pred_cond_both,
-                img_features,
-                txt_features,
                 batch_labels,
-                comb_emb_both,
                 epoch,
             )
             loss_both = loss_dict_both["total_loss"]
@@ -524,10 +523,7 @@ def train_cosir_phase2(cfg, logger):
             loss_dict_img = criteria_2(
                 logits_img,
                 pred_cond_img,
-                img_features,
-                txt_features,
                 batch_labels,
-                comb_emb_img,
                 epoch,
             )
             loss_img = loss_dict_img["total_loss"]
@@ -554,10 +550,7 @@ def train_cosir_phase2(cfg, logger):
             loss_dict_txt = criteria_2(
                 logits_txt,
                 pred_cond_txt,
-                img_features,
-                txt_features,
                 batch_labels,
-                comb_emb_txt,
                 epoch,
             )
             loss_txt = loss_dict_txt["total_loss"]

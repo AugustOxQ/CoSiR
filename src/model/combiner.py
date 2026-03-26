@@ -787,8 +787,8 @@ class ConditionClassifier(nn.Module):
         self.gumbel_softmax_tau = gumbel_softmax_tau
         self.gumbel_softmax_hard = gumbel_softmax_hard
 
-        self.img_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 1)  # 0.5
-        self.txt_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 1)  # 0.5
+        self.img_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.01)  # 0.5
+        self.txt_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.01)  # 0.5
 
         if use_temperature:
             self.temperature = nn.Parameter(torch.tensor(init_temperature))
@@ -796,15 +796,15 @@ class ConditionClassifier(nn.Module):
             self.temperature = 1
 
         self.img_encoder = GeLUNet(
-            input_dim, hidden_dim, num_conditions, num_layers, dropout=dropout
+            input_dim, hidden_dim, hidden_dim, num_layers, dropout=dropout
         )
 
         self.txt_encoder = GeLUNet(
-            input_dim, hidden_dim, num_conditions, num_layers, dropout=dropout
+            input_dim, hidden_dim, hidden_dim, num_layers, dropout=dropout
         )
 
         self.fuse_encoder = GeLUNet(
-            input_dim * 2, hidden_dim, num_conditions, num_layers * 2, dropout=dropout
+            hidden_dim * 2, hidden_dim, num_conditions, num_layers * 2, dropout=dropout
         )
 
     def forward(
@@ -818,49 +818,33 @@ class ConditionClassifier(nn.Module):
 
         batch_size = img_emb.shape[0] if img_emb is not None else txt_emb.shape[0]
 
-        # # This is the original code
-        # if img_emb is not None:
-        #     img_feat = self.img_encoder(img_emb)
-        # else:
-        #     img_feat = self.img_mask_token.expand(batch_size, -1)
-
-        # if txt_emb is not None:
-        #     txt_feat = self.txt_encoder(txt_emb)
-        # else:
-        #     txt_feat = self.txt_mask_token.expand(batch_size, -1)
-
-        # fused = torch.cat([img_feat, txt_feat], dim=-1)
-        # logits = self.fuse_encoder(fused)
-
-        if img_emb is not None and txt_emb is not None:
-            fused = torch.cat([img_emb, txt_emb], dim=-1)
-            logits = self.fuse_encoder(fused)
-        elif img_emb is not None:
-            logits = self.img_encoder(img_emb)
-        elif txt_emb is not None:
-            logits = self.txt_encoder(txt_emb)
+        # This is the original code
+        if img_emb is not None:
+            img_feat = self.img_encoder(img_emb)
         else:
-            raise ValueError("Either img_emb or txt_emb must be provided")
+            img_feat = self.img_mask_token.expand(batch_size, -1)
 
-        if self.use_gumbel_softmax and training_phase:
-            probs = F.gumbel_softmax(
-                logits,
-                tau=self.gumbel_softmax_tau,
-                hard=self.gumbel_softmax_hard,
-                dim=-1,
-            )
+        if txt_emb is not None:
+            txt_feat = self.txt_encoder(txt_emb)
         else:
-            if self.use_temperature:
-                tmp = self.temperature.clamp(min=0.01, max=10)
-                probs = F.softmax(logits / tmp, dim=-1)
-            else:
-                probs = F.softmax(logits, dim=-1)
+            txt_feat = self.txt_mask_token.expand(batch_size, -1)
 
-            if argmax:
-                indices = torch.argmax(probs, dim=-1)  # [Batch]
-                probs = F.one_hot(
-                    indices, num_classes=probs.shape[-1]
-                ).float()  # [Batch, K]
+        fused = torch.cat([img_feat, txt_feat], dim=-1)
+        logits = self.fuse_encoder(fused)
+
+        # if img_emb is not None and txt_emb is not None:
+        #     fused = torch.cat([img_emb, txt_emb], dim=-1)
+        #     logits = self.fuse_encoder(fused)
+        # elif img_emb is not None:
+        #     logits = self.img_encoder(img_emb)
+        # elif txt_emb is not None:
+        #     logits = self.txt_encoder(txt_emb)
+        # else:
+        #     raise ValueError("Either img_emb or txt_emb must be provided")
+
+        probs = F.softmax(logits, dim=-1)
+        indices = torch.argmax(probs, dim=-1)  # [Batch]
+        probs = F.one_hot(indices, num_classes=probs.shape[-1]).float()
 
         if return_logits:
             return probs, logits
@@ -903,8 +887,13 @@ class ConditionClassifier2(nn.Module):
         self.gumbel_softmax_tau = gumbel_softmax_tau
         self.gumbel_softmax_hard = gumbel_softmax_hard
 
-        self.img_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.01)  # 0.5
-        self.txt_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.01)  # 0.5
+        # self.img_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.01)  # 0.5
+        # self.txt_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.01)  # 0.5
+
+        self.img_mask_token = torch.zeros(
+            1, hidden_dim
+        )  # use fixd zeros for place holder
+        self.txt_mask_token = torch.zeros(1, hidden_dim)
 
         if use_temperature:
             self.temperature = nn.Parameter(torch.tensor(init_temperature))
@@ -934,29 +923,29 @@ class ConditionClassifier2(nn.Module):
 
         batch_size = img_emb.shape[0] if img_emb is not None else txt_emb.shape[0]
 
-        # This is the original code
-        if img_emb is not None:
-            img_feat = self.img_encoder(img_emb)
-        else:
-            img_feat = self.img_mask_token.expand(batch_size, -1)
-
-        if txt_emb is not None:
-            txt_feat = self.txt_encoder(txt_emb)
-        else:
-            txt_feat = self.txt_mask_token.expand(batch_size, -1)
-
-        fused = torch.cat([img_feat, txt_feat], dim=-1)
-        logits = self.fuse_encoder(fused)
-
-        # if img_emb is not None and txt_emb is not None:
-        #     fused = torch.cat([img_emb, txt_emb], dim=-1)
-        #     logits = self.fuse_encoder(fused)
-        # elif img_emb is not None:
-        #     logits = self.img_encoder(img_emb)
-        # elif txt_emb is not None:
-        #     logits = self.txt_encoder(txt_emb)
+        # # This is the original code
+        # if img_emb is not None:
+        #     img_feat = self.img_encoder(img_emb)
         # else:
-        #     raise ValueError("Either img_emb or txt_emb must be provided")
+        #     img_feat = self.img_mask_token.expand(batch_size, -1)
+
+        # if txt_emb is not None:
+        #     txt_feat = self.txt_encoder(txt_emb)
+        # else:
+        #     txt_feat = self.txt_mask_token.expand(batch_size, -1)
+
+        # fused = torch.cat([img_feat, txt_feat], dim=-1)
+        # logits = self.fuse_encoder(fused)
+
+        if img_emb is not None and txt_emb is not None:
+            fused = torch.cat([img_emb, txt_emb], dim=-1)
+            logits = self.fuse_encoder(fused)
+        elif img_emb is not None:
+            logits = self.img_encoder(img_emb)
+        elif txt_emb is not None:
+            logits = self.txt_encoder(txt_emb)
+        else:
+            raise ValueError("Either img_emb or txt_emb must be provided")
 
         if self.use_gumbel_softmax and training_phase:
             probs = F.gumbel_softmax(
