@@ -246,12 +246,19 @@ class Combiner_new(nn.Module):
         """
         super().__init__()
 
-        self.label_decoder = GeLUNet(
-            input_dim=2,
-            hidden_dim=hidden_dim,
+        self.label_decoder = GeLUNetGradual(
+            input_dim=2 + clip_feature_dim,
             output_dim=projection_dim,
             num_layers=num_layers,
         )
+
+        # self.gate_net = nn.Sequential(
+        #     nn.Linear(clip_feature_dim + projection_dim, hidden_dim),
+        #     nn.GELU(),
+        #     nn.Dropout(0.5),
+        #     nn.Linear(hidden_dim, clip_feature_dim),
+        #     nn.Sigmoid(),
+        # )
 
         # self.dropout = nn.Dropout(0.5)
 
@@ -292,7 +299,7 @@ class Combiner_new(nn.Module):
         :return: combined textual features (shape: batch, 512)
         """
 
-        label_projected_features = self.label_decoder(label_features)
+        # label_projected_features = self.label_decoder(label_features)
 
         # raw_combined_features = torch.cat((text_features, label_projected_features), -1)
 
@@ -305,10 +312,14 @@ class Combiner_new(nn.Module):
         # self.scalar.add(dynamic_scalar.mean().item())
         # # print(self.scalar.get())
 
-        # Option2: Output is a combination of combined_featured and text_features
-        output = text_features + label_projected_features
+        # gate = self.gate_net(torch.cat((text_features, label_projected_features), -1))
+        # combined = text_features + label_projected_features
+        combined = text_features + self.label_decoder(torch.cat((label_features, text_features), -1))
 
-        return F.normalize(output)
+        # self.scalar.add(gate.mean().item())
+        # print(self.scalar.get())
+
+        return F.normalize(combined)
 
 
 class CombinerGated(nn.Module):
@@ -1128,6 +1139,66 @@ class GeLUNet(nn.Module):
                     nn.GELU(),
                 ]
             )
+
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.network(x)
+
+
+class GeLUNetGradual(nn.Module):
+    """
+    A GeLU network whose hidden widths are interpolated geometrically (log-space)
+    between input_dim and output_dim, so the network gradually expands or contracts
+    instead of using a fixed hidden_dim throughout.
+
+    Example: input_dim=2, output_dim=512, num_layers=4
+        layer dims: 2 -> 8 -> 64 -> 512  (roughly evenly spaced in log-space)
+
+    Args:
+        input_dim: Input feature dimension
+        output_dim: Output dimension
+        num_layers: Total number of linear layers (including input and output)
+        dropout: Dropout probability (default: 0.1)
+        use_output_activation: Whether to apply LayerNorm+GELU on the output layer (default: False)
+    """
+
+    def __init__(
+        self,
+        input_dim: int = 2,
+        output_dim: int = 512,
+        num_layers: int = 3,
+        dropout: float = 0.1,
+        use_output_activation: bool = False,
+    ):
+        import math
+
+        super().__init__()
+        assert num_layers >= 1, "num_layers must be at least 1"
+
+        # Compute output dim for each layer via geometric interpolation.
+        # t goes from 1/N to 1, so dims[-1] == output_dim exactly.
+        dims: list[int] = []
+        for i in range(num_layers):
+            t = (i + 1) / num_layers
+            d = int(
+                round(
+                    math.exp(math.log(input_dim) * (1 - t) + math.log(output_dim) * t)
+                )
+            )
+            dims.append(max(d, 1))
+        dims[-1] = output_dim  # guarantee exact match
+
+        layers: list[nn.Module] = []
+        in_d = input_dim
+        for i, out_d in enumerate(dims):
+            layers.append(nn.Linear(in_d, out_d))
+            is_last = i == len(dims) - 1
+            if not is_last:
+                layers.extend([nn.LayerNorm(out_d), nn.GELU(), nn.Dropout(dropout)])
+            elif use_output_activation:
+                layers.extend([nn.LayerNorm(out_d), nn.GELU()])
+            in_d = out_d
 
         self.network = nn.Sequential(*layers)
 

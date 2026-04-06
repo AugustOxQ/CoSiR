@@ -269,20 +269,22 @@ def train_cosir(cfg, logger):
                     device,
                     factor=cfg.train.imgtxt_factor,
                 )
-            # elif cfg.train.initialization_strategy == "txt":
-            #     print("Initializing embeddings with txt strategy...")
-            #     embedding_manager.initialize_embeddings_txt(
-            #         feature_manager,
-            #         model,
-            #         device,
-            #     )
-            # elif cfg.train.initialization_strategy == "img":
-            #     print("Initializing embeddings with img strategy...")
-            #     embedding_manager.initialize_embeddings_img(
-            #         feature_manager,
-            #         model,
-            #         device,
-            #     )
+            elif cfg.train.initialization_strategy == "txt":
+                print("Initializing embeddings with txt strategy...")
+                embedding_manager.initialize_embeddings_txt(
+                    feature_manager,
+                    model,
+                    device,
+                    factor=cfg.train.imgtxt_factor,
+                )
+            elif cfg.train.initialization_strategy == "img":
+                print("Initializing embeddings with img strategy...")
+                embedding_manager.initialize_embeddings_img(
+                    feature_manager,
+                    model,
+                    device,
+                    factor=cfg.train.imgtxt_factor,
+                )
             else:
                 raise ValueError(
                     f"Unknown initialization strategy: {cfg.train.initialization_strategy}"
@@ -325,6 +327,37 @@ def train_cosir(cfg, logger):
         shuffle=False,
         num_workers=cfg.train.num_workers,
     )
+
+    # Load sample types:
+    if cfg.data.dataset_type == "impressions":
+        print("Loading sample types for Impressions dataset")
+        import json
+
+        train_file_path = cfg.data.train_annotation_path
+        train_file = json.load(open(train_file_path))
+
+        # reorder the train_file based on the sample_ids_list
+        train_file = [train_file[i] for i in sample_ids_list]
+
+        # Collect sample types
+        sample_types = []
+        for item in train_file:
+            type_str = item["caption_type"]
+
+            if "caption" in type_str:
+                type_int = 0
+            elif "description" in type_str:
+                type_int = 1
+            elif "impression" in type_str:
+                type_int = 2
+            elif "aesthetic" in type_str:
+                type_int = 3
+            else:
+                raise ValueError(f"Unknown caption type: {type_str}")
+
+            sample_types.append(type_int)
+
+        sample_types = np.array(sample_types)
 
     global_step = 0
 
@@ -512,6 +545,24 @@ def train_cosir(cfg, logger):
                     description=f"UMAP visualization of trained label embeddings at epoch {epoch}",
                 )
 
+                if len(sample_types) == len(umap_features):
+                    print("Get ground truth sample types")
+                    fig_3 = get_umap(
+                        umap_features,
+                        umap_labels=sample_types,
+                        epoch=epoch,
+                        no_outlier=True,
+                        samples_to_track=[0, 1, 2, 3, 4],
+                    )
+
+                    experiment.save_artifact(
+                        name=f"ground_truth_sample_types_{epoch}",
+                        data=fig_3,
+                        artifact_type="figure",
+                        folder="plots",
+                        description=f"Ground truth sample types visualization at epoch {epoch}",
+                    )
+
                 fig2 = visualize_ideal_condition_space(umap_features, epoch)
                 experiment.save_artifact(
                     name=f"ideal_condition_space_{epoch}",
@@ -525,6 +576,11 @@ def train_cosir(cfg, logger):
                     {
                         "vis/umap": wandb.Image(fig),
                         "vis/ideal_condition_space": wandb.Image(fig2),
+                        "vis/ground_truth_sample_types": (
+                            wandb.Image(fig_3)
+                            if len(sample_types) == len(umap_features)
+                            else None
+                        ),
                     }
                 )
 

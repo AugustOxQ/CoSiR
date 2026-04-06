@@ -311,6 +311,112 @@ class OracleMetrics(RankingMetric):
 
         return metrics, best_label_tti, best_label_itt
 
+    def compute_oracle_recall_average(
+        self,
+        model,
+        label_embeddings: Optional[torch.Tensor],
+        image_embeddings: torch.Tensor,
+        text_embeddings: torch.Tensor,
+        text_full: torch.Tensor,
+        text_to_image_map: torch.Tensor,
+        image_to_text_map: torch.Tensor,
+        prefix: str = "oracle",
+    ) -> Tuple[Dict[str, float], torch.Tensor, torch.Tensor]:
+        """Compute oracle metrics by averaging the best rankings of all labels.
+        这里我们不用遍历了，我们直接用condition predictor来预测条件，然后根据条件来筛选，和上面只用单模态的不同，这里我们用imgtxt网络来预测条件
+        """
+
+        num_texts = text_embeddings.shape[0]
+        num_images = image_embeddings.shape[0]
+        captions_per_image = image_to_text_map.shape[1]
+
+        # Move to device
+        image_embeddings_norm = image_embeddings / image_embeddings.norm(
+            dim=-1, keepdim=True
+        )
+        image_embeddings_norm = image_embeddings_norm.to(self.config.device)
+        image_embeddings = image_embeddings.to(self.config.device)
+        text_embeddings = text_embeddings.to(self.config.device)
+        text_full = text_full.to(self.config.device)
+
+        print(f"Evaluating imgtxt input with condition predictor...")
+
+        # Initialize tracking variables
+        best_label_tti = -torch.ones((num_texts,))
+        best_label_itt = -torch.ones((num_images,))
+
+        collective_sims = []
+        # Text-to-Image evaluation
+        with torch.no_grad():
+            # First get the condition predictions, break into batches
+            for label_id in tqdm(
+                range(len(label_embeddings)), desc="Evaluating oracle"
+            ):
+                combined_embs_tti = []
+                label_emb = (
+                    label_embeddings[label_id]
+                    .expand(num_texts, -1)
+                    .to(self.config.device)
+                )
+                for i in range(0, num_texts, self.config.batch_size):
+                    end_idx = min(i + self.config.batch_size, num_texts)
+                    batch_text_combined = model.combine(
+                        text_embeddings[i:end_idx],
+                        None,
+                        label_emb[i:end_idx],
+                    )
+
+                    combined_embs_tti.append(batch_text_combined)
+
+                del batch_text_combined, label_emb
+                torch.cuda.empty_cache()
+
+                combined_embds_tti = torch.cat(combined_embs_tti, dim=0)
+
+                conditioned_sims_tti = combined_embds_tti @ image_embeddings_norm.T
+                collective_sims.append(conditioned_sims_tti)
+
+            collective_sims_tensor = torch.stack(collective_sims, dim=0)
+
+            # 1. 每个 condition 产生的 sim 矩阵之间的方差（逐元素）
+            sim_variance = collective_sims_tensor.var(0)  # [num_text, num_image]
+            print(
+                f"Sim variance - mean: {sim_variance.mean():.4f}, max: {sim_variance.max():.4f}"
+            )
+
+            # 2. 不同 condition 产生的 sim 矩阵两两之间的余弦相似度（衡量diversity）
+            flat = collective_sims_tensor.flatten(1)  # [K, num_text*num_image]
+            flat_norm = flat / flat.norm(dim=-1, keepdim=True)
+            pairwise_sim = flat_norm @ flat_norm.T  # [K, K]
+            # 去掉对角线
+            mask = ~torch.eye(len(collective_sims), dtype=bool)
+            print(
+                f"Pairwise sim matrix diversity - mean off-diag: {pairwise_sim[mask].mean():.4f}"
+            )
+
+            dist_matrix_tti = collective_sims_tensor.max(0).values
+            if self.config.cpu_offload:
+                dist_matrix_tti = dist_matrix_tti.cpu()
+            inds_tti = torch.argsort(dist_matrix_tti, dim=1, descending=True)
+
+            dist_matrix_itt = dist_matrix_tti.T
+            if self.config.cpu_offload:
+                dist_matrix_itt = dist_matrix_itt.cpu()
+            inds_itt = torch.argsort(dist_matrix_itt, dim=1, descending=True)
+
+            metrics = self._compute_recall_from_indices(
+                inds_tti,  # type: ignore
+                inds_itt,  # type: ignore
+                text_to_image_map,
+                image_to_text_map,
+                num_texts,
+                num_images,
+                captions_per_image,
+                prefix,
+            )
+
+            return metrics, best_label_tti, best_label_itt
+
     def compute_confidence(self, dist_matrix: torch.Tensor):
         """ """
         sorted_sims = torch.sort(dist_matrix, dim=1, descending=True)

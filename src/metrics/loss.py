@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 from typing import Callable, List
-
+from numpy import round
 
 from src.metrics.regularizer import *
 from src.metrics.regularizer_new import *
@@ -220,6 +220,8 @@ class LabelContrastiveLoss_enhance(nn.Module):
     ):
         # Compute pairwise cosine similarity matrix [N, N] for InfoNCE loss
 
+        batch_size = combined_features.shape[0]
+
         cos_pos = compute_cosine_similarity(
             combined_features, image_features
         )  # [N, N] pairwise similarities
@@ -236,6 +238,7 @@ class LabelContrastiveLoss_enhance(nn.Module):
                 label_embedding,
                 text_features,
                 combined_features,
+                k=10,
                 model=model,
                 alpha=self.lambda_2,
             )
@@ -263,10 +266,23 @@ class LabelContrastiveLoss_enhance(nn.Module):
             + boundary_loss
         )
 
+        with torch.no_grad():
+            diag_sim = cos_pos.diag().mean()  # 正样本相似度
+            off_diag_sim = (cos_pos.sum() - cos_pos.diag().sum()) / (
+                batch_size * (batch_size - 1)
+            )
+
+            diag_sim_gap = diag_sim - off_diag_sim
+            off_diag_sim_gap = off_diag_sim - diag_sim
+            total_sim_gap = diag_sim - off_diag_sim
+
         loss_dict = {
             "loss_improve": loss_improve,
             "loss_laplacian": laplacian_loss,
             "loss_boundary": boundary_loss,
+            "diag_sim_gap": diag_sim_gap,
+            "off_diag_sim_gap": off_diag_sim_gap,
+            "total_sim_gap": total_sim_gap,
             "total_loss": total_loss,
         }
 

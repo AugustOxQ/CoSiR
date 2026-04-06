@@ -105,7 +105,7 @@ def rotation_semantic_orthogonality_loss(
 
     # 3. 计算anchor之间的语义正交性
     # 相邻anchor的效果应该有明确差异
-    anchor_deltas = anchor_modulations - avg_text
+    anchor_deltas = anchor_modulations - F.normalize(avg_text, p=2, dim=1)
 
     L_ortho = 0
     for i in range(len(anchor_indices)):
@@ -139,6 +139,8 @@ def manifold_smoothness_loss_sparse(
     # 1. 在condition space中计算距离矩阵
     dist_matrix = torch.cdist(conditions, conditions)
 
+    text_emb_normalized = F.normalize(text_emb, p=2, dim=1)
+
     mask = torch.eye(batch_size, device=dist_matrix.device).bool()
     dist_matrix = dist_matrix.masked_fill(mask, float("inf"))
 
@@ -156,10 +158,10 @@ def manifold_smoothness_loss_sparse(
 
     # 4. 计算平滑性
     # 当前condition的效果
-    delta_current = conditional_text_pos - text_emb
+    delta_current = conditional_text_pos - text_emb_normalized
 
     # 邻居condition的效果（在同一个text上）
-    delta_neighbor = conditional_text_from_neighbor - text_emb
+    delta_neighbor = conditional_text_from_neighbor - text_emb_normalized
 
     # 应该相似（近邻在condition space中，效果也应该接近）
     smoothness = F.cosine_similarity(delta_current, delta_neighbor, dim=-1)

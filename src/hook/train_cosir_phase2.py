@@ -31,6 +31,7 @@ from src.utils import (
     visualize_angular_semantics_fast,
     visualize_angular_semantics_text_to_image_fast,
     get_representatives_polar_grid,
+    get_representatives_hdbscan,
     get_umap,
     visualize_ideal_condition_space,
 )
@@ -101,6 +102,7 @@ def train_cosir_phase2(cfg, logger):
 
     # Set phase_1 overall root path
     phase_1_root_path = experiment.directory.parent
+    phase_1_root_path = Path(phase_1_root_path / "20260401_032751_CoSiR_Experiment")
 
     # Load phase 1 model
     _phase_1_model_path = str(phase_1_root_path / "checkpoints")
@@ -159,6 +161,8 @@ def train_cosir_phase2(cfg, logger):
 
     # Initialize evaluator
     evaluator = EvaluationManager(evaluation_config)
+
+    clustering = Clustering(device=device)
 
     # ========== OPTIMIZED: TrainableEmbeddingManager with Intelligent Caching ==========
 
@@ -259,18 +263,18 @@ def train_cosir_phase2(cfg, logger):
 
     print("Extracting pre-trained condition embeddings")
     # First extract all pre-trained condition embeddings
+    print("Getting all embeddings")
     _, label_embeddings_all = embedding_manager.get_all_embeddings()
 
-    print("Getting pre-trained representatives")
-    # pre_trained_representatives = get_representatives_polar_grid_outsideonly(  # -> Set this to be the previous one
-    #     label_embeddings_all.cpu(),
-    #     cfg.train.representative_number,
-    # )  # This will be used to train a classifier to predict the condition, now in total 12x3 = 36 representatives
+    print("Getting HDBSCAN labels")
+    hdbscanlabels, _ = clustering.get_hdbscan(label_embeddings_all.cpu(), method="leaf")
 
-    pre_trained_representatives = get_representatives_polar_grid(  # -> Set this to be the previous one
-        label_embeddings_all.cpu(),
-        cfg.train.representative_number // 3,
-    )  # This will be used to train a classifier to predict the condition, now in total 12x3 = 36 representatives
+    print("Getting pre-trained representatives")
+
+    print("Getting representatives")
+    pre_trained_representatives = get_representatives_hdbscan(
+        hdbscanlabels, label_embeddings_all.cpu(), cfg.train.representative_number
+    )
 
     pre_trained_representatives_device = pre_trained_representatives.to(device)
 

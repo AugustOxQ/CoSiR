@@ -214,7 +214,37 @@ def get_representatives_hdbscan(hdbscan_labels, conditions, k=10):
         sampled_conditions.append(
             cluster_conditions[np.random.randint(len(cluster_conditions))]
         )
+
+    print(
+        f"Sampled {len(sampled_conditions)} conditions, remaining {k - len(sampled_conditions)} conditions to be randomly sampled"
+    )
+
+    if len(sampled_conditions) == 0:
+        # Randomly sample k conditions
+        sampled_conditions = conditions[
+            np.random.choice(
+                len(conditions),
+                k,
+                replace=False,
+            )
+        ]
+
+        return sampled_conditions
+
     sampled_conditions = torch.stack(sampled_conditions)[:k]
+
+    if len(sampled_conditions) < k:
+        # Randomly sample the remaining representatives
+        remaining_conditions = conditions[
+            np.random.choice(
+                len(conditions),
+                k - len(sampled_conditions),
+                replace=False,
+            )
+        ]
+        sampled_conditions = torch.cat(
+            [sampled_conditions, remaining_conditions], dim=0
+        )
 
     end_time = time.time()
     print(f"Time taken to get representatives: {end_time - start_time} seconds")

@@ -62,7 +62,7 @@ class TestEvaluator(BaseEvaluator):
 
         if use_oracle:
             metrics_oracle, best_label_tti, best_label_itt = (
-                self.oracle_metrics.compute_oracle_recall(
+                self.oracle_metrics.compute_oracle_recall_average(
                     model,
                     label_embeddings,
                     all_img_emb,

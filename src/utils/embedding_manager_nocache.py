@@ -404,38 +404,50 @@ class TrainableEmbeddingManager:
         """
         print("##########Initializing label embeddings using txt strategy##########")
 
-        # Get the projection matrix from model
-        w_t = model.combiner.label_proj_layer.weight.data.clone().detach().to(device)
-
         # Get total number of chunks from feature manager
         num_chunks = feature_manager.get_num_chunks()
 
-        # Initialize embeddings chunk by chunk
-        for chunk_id in range(num_chunks):
+        gap_collection = []
+        chunk_sizes = []  # actual number of samples per chunk
+
+        # Collect gaps chunk by chunk
+        for chunk_id in tqdm(range(num_chunks)):
             # Load features for this chunk
             features_data = feature_manager.get_features_by_chunk(chunk_id)
 
             txt_features = features_data["txt_features"].to(device)
 
-            # DEBUG: This needs to get from the embedding manager, not the feature manager, still dont know what is the difference between them
+            gap_collection.append(txt_features.cpu().numpy())
+            chunk_sizes.append(len(txt_features))
+
+        gap_collection = np.concatenate(gap_collection, axis=0)
+
+        print(len(gap_collection))
+
+        # PCA reduction
+        pca = PCA(n_components=2)  # TODO: Here is the dimension
+        label_init_collection = pca.fit_transform(gap_collection)  # [n_samples, 2]
+        # normalize the label_init_collection
+        label_init_collection = (
+            label_init_collection - label_init_collection.mean(0)
+        ) / (label_init_collection.std(0) + 1e-8)
+        label_init_collection = torch.from_numpy(label_init_collection).float()
+
+        # Build cumulative start offsets from actual chunk sizes
+        chunk_starts = np.cumsum([0] + chunk_sizes[:-1])
+
+        for chunk_id in tqdm(range(num_chunks)):
             chunk_sample_ids, _ = self.get_embeddings_by_chunk(chunk_id)
 
-            # Compute: txt_emb @ w_t
-            label_embedding_init = (
-                txt_features @ w_t * factor
-            )  # TODO: Here is the factor
+            # Slice the PCA results for this chunk using actual offsets
+            start = chunk_starts[chunk_id]
+            end = start + chunk_sizes[chunk_id]
+            label_embedding_init = label_init_collection[start:end] * factor
 
             # Update embeddings for this chunk (auto-saves to disk)
             self.update_embeddings_by_chunk(
                 chunk_id, chunk_sample_ids, label_embedding_init
             )
-
-            # if chunk_id % 10 == 0 and chunk_id >= 10:
-            #     chunk_sample_ids_updated, label_embedding_updated = (
-            #         self.get_embeddings_by_chunk(chunk_id)
-            #     )
-            #     print(label_embedding_init[0])
-            #     print(label_embedding_updated[0])
 
             # Log progress
             if chunk_id % 100 == 0 or chunk_id == num_chunks - 1:
@@ -447,7 +459,7 @@ class TrainableEmbeddingManager:
                 )
 
         print(
-            f"✅ Completed txt initialization for {len(self.sample_ids)} samples across {num_chunks} chunks"
+            f"✅ Completed imgtxt initialization for {len(self.sample_ids)} samples across {num_chunks} chunks"
         )
 
     def initialize_embeddings_img(self, feature_manager, model, device="cpu", factor=1):
@@ -461,26 +473,45 @@ class TrainableEmbeddingManager:
         """
         print("##########Initializing label embeddings using img strategy##########")
 
-        # Get the projection matrix from model
-        w_t = model.combiner.label_proj_layer.weight.data.clone().detach().to(device)
-
         # Get total number of chunks from feature manager
         num_chunks = feature_manager.get_num_chunks()
 
-        # Initialize embeddings chunk by chunk
-        for chunk_id in range(num_chunks):
+        gap_collection = []
+        chunk_sizes = []  # actual number of samples per chunk
+
+        # Collect gaps chunk by chunk
+        for chunk_id in tqdm(range(num_chunks)):
             # Load features for this chunk
             features_data = feature_manager.get_features_by_chunk(chunk_id)
 
             img_features = features_data["img_features"].to(device)
 
-            # DEBUG: This needs to get from the embedding manager, not the feature manager, still dont know what is the difference between them
+            gap_collection.append(img_features.cpu().numpy())
+            chunk_sizes.append(len(img_features))
+
+        gap_collection = np.concatenate(gap_collection, axis=0)
+
+        print(len(gap_collection))
+
+        # PCA reduction
+        pca = PCA(n_components=2)  # TODO: Here is the dimension
+        label_init_collection = pca.fit_transform(gap_collection)  # [n_samples, 2]
+        # normalize the label_init_collection
+        label_init_collection = (
+            label_init_collection - label_init_collection.mean(0)
+        ) / (label_init_collection.std(0) + 1e-8)
+        label_init_collection = torch.from_numpy(label_init_collection).float()
+
+        # Build cumulative start offsets from actual chunk sizes
+        chunk_starts = np.cumsum([0] + chunk_sizes[:-1])
+
+        for chunk_id in tqdm(range(num_chunks)):
             chunk_sample_ids, _ = self.get_embeddings_by_chunk(chunk_id)
 
-            # Compute: (img_emb - txt_emb) @ w_t
-            label_embedding_init = (
-                img_features @ w_t * factor
-            )  # TODO: Here is the factor
+            # Slice the PCA results for this chunk using actual offsets
+            start = chunk_starts[chunk_id]
+            end = start + chunk_sizes[chunk_id]
+            label_embedding_init = label_init_collection[start:end] * factor
 
             # Update embeddings for this chunk (auto-saves to disk)
             self.update_embeddings_by_chunk(
@@ -497,7 +528,7 @@ class TrainableEmbeddingManager:
                 )
 
         print(
-            f"✅ Completed img initialization for {len(self.sample_ids)} samples across {num_chunks} chunks"
+            f"✅ Completed imgtxt initialization for {len(self.sample_ids)} samples across {num_chunks} chunks"
         )
 
     def load_imgtxt_template(self):

@@ -55,7 +55,7 @@ class CoSiRModel(nn.Module):
             projection_dim=512,
             hidden_dim=d_model,
             num_heads=nhead,
-            num_layers=4,  # TODO: here we fix it to 2
+            num_layers=6,  # TODO: here we fix it to 2
         )
 
         # Additional components
