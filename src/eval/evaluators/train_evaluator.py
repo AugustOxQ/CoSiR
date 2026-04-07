@@ -74,14 +74,15 @@ class TrainEvaluator(BaseEvaluator):
                 txt_features = features_data["txt_features"].to(
                     device, non_blocking=True
                 )
-                txt_full = features_data["txt_full"].to(device, non_blocking=True)
-                batch_sample_ids = features_data["sample_ids"]
-
-                # Get embeddings by chunk directly from optimized manager
-                chunk_sample_ids, label_embeddings_data = (
-                    embedding_manager.get_embeddings_by_chunk(chunk_id)
+                txt_full = (
+                    features_data["txt_full"].to(device, non_blocking=True)
+                    if "txt_full" in features_data
+                    else None
                 )
+                batch_sample_ids = features_data["sample_ids"].tolist()
 
+                # Get embeddings for this batch by sample_id
+                label_embeddings_data = embedding_manager.get_embeddings(batch_sample_ids)
                 label_embeddings = label_embeddings_data.to(device)
 
                 comb_emb, label_embedding_proj = model.combine(
@@ -126,15 +127,8 @@ class TrainEvaluator(BaseEvaluator):
                 total_samples += 1
 
                 # Cleanup
-                del (
-                    img_features,
-                    txt_features,
-                    txt_full,
-                    label_embeddings,
-                    comb_emb,
-                    comb_emb_neg,
-                    label_embedding_neg,
-                )
+                del img_features, txt_features, txt_full, label_embeddings
+                del comb_emb, comb_emb_neg, label_embedding_neg
                 torch.cuda.empty_cache()
 
         # Compute final metrics

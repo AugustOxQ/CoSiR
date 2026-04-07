@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 from itertools import chain
 
 from src.dataset import (
-    CoSiRTrainingChunkDataset,
+    CoSiRShardDataset,
+    CoSiRShardStreamDataset,
     CoSiRValidationDataset,
     FeatureExtractionDataset,
     FeatureExtractionConceptualDataset,
@@ -42,21 +43,7 @@ def train_cosir(cfg, logger):
     np.random.seed(seed)
     device = cfg.device if torch.cuda.is_available() else "cpu"
 
-    feature_config = {
-        "storage_dir": cfg.featuremanager.storage_dir,
-        "sample_ids_path": cfg.featuremanager.sample_ids_path,
-        "primary_backend": cfg.featuremanager.primary_backend,
-        "chunked_storage": {
-            "enabled": cfg.featuremanager.chunked_storage.enabled,
-            "chunk_size": cfg.featuremanager.chunk_size,
-            "compression": cfg.featuremanager.chunked_storage.compression,
-        },
-        "cache": {
-            "l1_size_mb": cfg.featuremanager.cache.l1_size_mb,
-            "l2_size_mb": cfg.featuremanager.cache.l2_size_mb,
-            "l3_path": cfg.featuremanager.cache.l3_path,
-        },
-    }
+    storage_dir = cfg.featuremanager.storage_dir
 
     evaluation_config = EvaluationConfig(
         device=device,
@@ -110,29 +97,27 @@ def train_cosir(cfg, logger):
         last_epoch=-1,
     )
     # Check either load existing sample ids
-    if (
-        os.path.exists(feature_config["sample_ids_path"])
-        and cfg.train.load_existing_features
-    ):
-        print("Use existing FeatureManager")
+    metadata_path = os.path.join(storage_dir, "metadata.json")
+    if os.path.exists(metadata_path) and cfg.train.load_existing_features:
+        print("Loading existing feature store")
         feature_manager = FeatureManager(
-            feature_config["storage_dir"], config=feature_config, preload_index=False
-        )  # preload_index=False means we don't load the index mapping from the existing chunk files
-        print("Loading existing sample ids")
-        sample_ids_list = torch.load(feature_config["sample_ids_path"])
-        print(f"Loaded {len(sample_ids_list)} sample ids")
-    else:  # Optimized that only create preextraction dataset when necessary
-        print("Creating new sample ids")
-        feature_manager = FeatureManager(
-            features_dir=feature_config["storage_dir"],
-            chunk_size=cfg.featuremanager.chunk_size,
-            config=feature_config,
+            storage_dir,
+            shard_size=cfg.featuremanager.shard_size,
+            hdf5_compression=cfg.featuremanager.hdf5_compression,
+            hdf5_compression_level=cfg.featuremanager.hdf5_compression_level,
         )
-        # Create sample ids list
-        sample_ids_list = []
+        sample_ids_list = feature_manager.get_all_sample_ids()
+        print(f"Loaded {len(sample_ids_list):,} sample ids from existing store")
+    else:
+        print("Extracting features")
+        feature_manager = FeatureManager(
+            storage_dir,
+            shard_size=cfg.featuremanager.shard_size,
+            hdf5_compression=cfg.featuremanager.hdf5_compression,
+            hdf5_compression_level=cfg.featuremanager.hdf5_compression_level,
+        )
 
-        # Initialize pre-extraction dataset
-        print("Initializing pre-extraction dataset")
+        # Build extraction dataset
         if "conceptual" in cfg.data.dataset_type:
             preextractfeatureclass = FeatureExtractionConceptualDataset
         else:
@@ -144,48 +129,58 @@ def train_cosir(cfg, logger):
             processor=processor,
             ratio=1,
         )
+
+        # Probe first batch to determine feature dimensions
+        print("Probing feature dimensions…")
+        _probe_loader = DataLoader(
+            pre_extraction_dataset, batch_size=2, shuffle=False, num_workers=0
+        )
+        _img_in, _txt_in, _ = next(iter(_probe_loader))
+        _img_in = _img_in.to(device)
+        _txt_in = {k: v.to(device) for k, v in _txt_in.items()}
+        with torch.no_grad():
+            _img_e, _txt_e, _img_f, _txt_f = model.encode_img_txt(_img_in, _txt_in)
+        feature_dims = {
+            "img_features": tuple(_img_e.shape[1:]),
+            "txt_features": tuple(_txt_e.shape[1:]),
+        }
+        if cfg.featuremanager.store_img_full:
+            feature_dims["img_full"] = tuple(_img_f.shape[1:])
+        if cfg.featuremanager.store_txt_full:
+            feature_dims["txt_full"] = tuple(_txt_f.shape[1:])
+        print(f"Feature dims: {feature_dims}")
+        del _img_in, _txt_in, _img_e, _txt_e, _img_f, _txt_f, _probe_loader
+
+        feature_manager.open_for_writing(len(pre_extraction_dataset), feature_dims)
+
         pre_extraction_dataloader = DataLoader(
             pre_extraction_dataset,
-            batch_size=cfg.featuremanager.chunk_size,
+            batch_size=cfg.featuremanager.extraction_batch_size,
             shuffle=True,
             num_workers=cfg.train.num_workers,
         )
 
-        # Pre-extract features
         with torch.no_grad():
-            for batch_id, batch in enumerate(tqdm(pre_extraction_dataloader)):
+            for batch in tqdm(pre_extraction_dataloader, desc="Extracting features"):
                 image_inputs, text_inputs, sample_ids = batch
-                sample_ids = [int(id) for id in sample_ids]
+                sample_ids = [int(s) for s in sample_ids]
                 image_inputs = image_inputs.to(device)
                 text_inputs = {k: v.to(device) for k, v in text_inputs.items()}
-                chunk_img, chunk_txt, _, _ = model.encode_img_txt(
+
+                img_e, txt_e, img_f, txt_f = model.encode_img_txt(
                     image_inputs, text_inputs
-                )  # DEBUG: txt_full is not used
-
-                txt_full = torch.zeros_like(chunk_txt)
-
-                chunk_img, chunk_txt, txt_full = (
-                    chunk_img.detach().cpu(),
-                    chunk_txt.detach().cpu(),
-                    txt_full.detach().cpu(),
                 )
 
-                # print(chunk_img.shape, chunk_txt.shape, txt_full.shape)
-
-                # Add features to feature manager
-                feature_manager.add_features_chunk(
-                    batch_id,
-                    chunk_img,
-                    chunk_txt,
-                    txt_full,
+                feature_manager.write_batch(
+                    img_e,
+                    txt_e,
                     sample_ids,
+                    img_full=img_f if cfg.featuremanager.store_img_full else None,
+                    txt_full=txt_f if cfg.featuremanager.store_txt_full else None,
                 )
 
-                # Add sample ids to list
-                sample_ids_list.extend(sample_ids)
-
-        # Save sample ids
-        torch.save(sample_ids_list, feature_config["sample_ids_path"])
+        feature_manager.finalize_writing()
+        sample_ids_list = feature_manager.get_all_sample_ids()
 
     # Initialize folder manager
     exp_manager = ExperimentManager(cfg.experiment.results_dir)
@@ -209,31 +204,19 @@ def train_cosir(cfg, logger):
 
     # ========== OPTIMIZED: TrainableEmbeddingManager with Intelligent Caching ==========
 
-    # Auto-optimize chunk size based on batch size if not specified
-    embedding_chunk_size = cfg.embeddingmanager.embedding_chunk_size
-    if embedding_chunk_size is None:
-        # Optimal chunk size: 4x batch size, capped at reasonable limits
-        embedding_chunk_size = cfg.featuremanager.chunk_size
-        print(
-            f"Auto-optimized embedding chunk size: {embedding_chunk_size} (4x batch_size)"
-        )
-
     embedding_manager = TrainableEmbeddingManager(
-        sample_ids=sample_ids_list,  # Use actual sample IDs from feature extraction
+        sample_ids=sample_ids_list,
         embedding_dim=cfg.model.embedding_dim,
         storage_mode=cfg.embeddingmanager.storage_mode,
         device=device,
         initialization_strategy=cfg.embeddingmanager.initialization_strategy,
         embeddings_dir=str(experiment.directory / "training_embeddings"),
-        # Optimized caching parameters
         cache_l1_size_mb=cfg.embeddingmanager.cache_l1_size_mb,
         cache_l2_size_mb=cfg.embeddingmanager.cache_l2_size_mb,
         enable_l3_cache=cfg.embeddingmanager.enable_l3_cache,
-        # Batched sync optimization
         auto_sync=cfg.embeddingmanager.auto_sync,
         sync_batch_size=cfg.embeddingmanager.sync_batch_size,
-        # Chunk size optimization
-        chunk_size=embedding_chunk_size,
+        chunk_size=cfg.embeddingmanager.embedding_chunk_size,
     )
 
     # ========== Template Embedding Initialization ==========
@@ -295,24 +278,40 @@ def train_cosir(cfg, logger):
                 print("Storing embeddings as template for future use...")
                 embedding_manager.store_imgtxt_template()
 
-    # Optimize cache settings based on actual batch size
-    embedding_manager.optimize_cache_settings(cfg.featuremanager.chunk_size)
-
-    # Use CoSiRTrainingChunkDataset for chunk-based loading
-    train_set = CoSiRTrainingChunkDataset(
-        feature_manager=feature_manager,
-        sample_ids=sample_ids_list,  # Full sample IDs list for reference
-        enable_prefetch=True,
-    )
-
-    # DataLoader with batch_size=chunk_size since we're loading chunks directly, we only use batch_idx as chunk_id
-    # num_workers=0 to eliminate worker process issues completely
-    train_loader = DataLoader(
-        train_set,
-        batch_size=cfg.featuremanager.chunk_size,  # Load one chunk at a time (batch_idx only)
-        shuffle=False,  # We'll handle chunk order manually if needed
-        num_workers=cfg.train.num_workers,  # No worker processes - eliminates all worker issues!
-    )
+    # ── Training dataset: auto-select RAM vs streaming based on available memory ──
+    feature_types = (
+        feature_manager.available_features
+    )  # e.g. ['img_features','txt_features']
+    if feature_manager.fits_in_ram():
+        print(
+            f"RAM mode: loading {feature_manager.cls_features_size_gb():.1f} GiB of "
+            "features into RAM for true-random batches."
+        )
+        train_set = CoSiRShardDataset(feature_manager, feature_types=feature_types)
+        train_loader = DataLoader(
+            train_set,
+            batch_size=cfg.train.batch_size,
+            shuffle=True,
+            num_workers=cfg.train.num_workers,
+            pin_memory=True,
+        )
+    else:
+        print(
+            f"Stream mode: {feature_manager.cls_features_size_gb():.1f} GiB does not "
+            "fit in RAM — using shard-streaming with shuffle window."
+        )
+        train_set = CoSiRShardStreamDataset(
+            feature_manager,
+            feature_types=feature_types,
+            window_shards=cfg.featuremanager.shuffle_window_shards,
+            seed=cfg.seed,
+        )
+        train_loader = DataLoader(
+            train_set,
+            batch_size=cfg.train.batch_size,
+            num_workers=cfg.train.num_workers,
+            pin_memory=True,
+        )
 
     test_set = CoSiRValidationDataset(
         annotation_path=cfg.data.test_annotation_path,
@@ -328,6 +327,7 @@ def train_cosir(cfg, logger):
         num_workers=cfg.train.num_workers,
     )
 
+    sample_types = []
     # Load sample types:
     if cfg.data.dataset_type == "impressions":
         print("Loading sample types for Impressions dataset")
@@ -340,7 +340,7 @@ def train_cosir(cfg, logger):
         train_file = [train_file[i] for i in sample_ids_list]
 
         # Collect sample types
-        sample_types = []
+        # sample_types = []
         for item in train_file:
             type_str = item["caption_type"]
 
@@ -371,21 +371,21 @@ def train_cosir(cfg, logger):
         # Track epoch start time for performance monitoring
         epoch_start_time = time.time()
 
+        if isinstance(train_set, CoSiRShardStreamDataset):
+            train_set.set_epoch(epoch)
+
         for batch_idx, batch in enumerate(tqdm(train_loader)):
-            # Use batch_idx as chunk_id for direct chunk loading
-            chunk_id = batch_idx
+            img_features = batch["img_features"].to(device, non_blocking=True)
+            txt_features = batch["txt_features"].to(device, non_blocking=True)
+            # txt_full is optional — pass zeros if not stored
+            if "txt_full" in batch:
+                txt_full = batch["txt_full"].to(device, non_blocking=True)
+            else:
+                txt_full = torch.zeros_like(txt_features)
+            batch_sample_ids = batch["sample_ids"].tolist()
 
-            # Load features by chunk directly
-            features_data = feature_manager.get_features_by_chunk(chunk_id)
-
-            img_features = features_data["img_features"].to(device, non_blocking=True)
-            txt_features = features_data["txt_features"].to(device, non_blocking=True)
-            txt_full = features_data["txt_full"].to(device, non_blocking=True)
-
-            # Get embeddings by chunk directly from optimized manager
-            chunk_sample_ids, label_embeddings_data = (
-                embedding_manager.get_embeddings_by_chunk(chunk_id)
-            )
+            # Load label embeddings for this batch's sample IDs
+            label_embeddings_data = embedding_manager.get_embeddings(batch_sample_ids)
             label_embeddings = torch.nn.Parameter(
                 label_embeddings_data.to(device), requires_grad=True
             )
@@ -445,10 +445,8 @@ def train_cosir(cfg, logger):
             label_optimizer.step()  # Update label embeddings with fresh optimizer
             global_step += 1
 
-            # Update embeddings by chunk directly using optimized batched sync
-            embedding_manager.update_embeddings_by_chunk(
-                chunk_id, chunk_sample_ids, label_embeddings
-            )
+            # Persist updated label embeddings back to the manager
+            embedding_manager.update_embeddings(batch_sample_ids, label_embeddings)
 
         # ========== EPOCH END: Performance Monitoring & Sync ==========
         epoch_time = time.time() - epoch_start_time
@@ -505,6 +503,7 @@ def train_cosir(cfg, logger):
                     epoch=epoch,
                     return_detailed_results=True,  # 记住这里是true，也就是detailed_results
                     use_oracle=True,
+                    oracle_aggregation=cfg.eval.oracle_aggregation,
                 )
 
                 (
@@ -635,25 +634,17 @@ def train_cosir(cfg, logger):
                 logger.log_metrics(result)
 
     # ========== TRAINING COMPLETE: Final Performance Summary ==========
-    # Save final embeddings and model combiner state dictionary
-    embedding_manager.save_final_embeddings(
-        str(experiment.directory / "final_embeddings")
-    )
+    # Copy final embeddings (memmap files) to a snapshot directory for phase-2 use
+    import pathlib
 
-    # Save embedding mapping id mapping
-    experiment.save_artifact(
-        name="chunk_mapping",
-        data=embedding_manager.chunk_mapping,
-        artifact_type="pickle",
-        description="Chunk mapping id mapping",
-        folder="embeddings",
-    )
+    embedding_manager._copy_to(pathlib.Path(experiment.directory) / "final_embeddings")
 
+    # Save sample_ids list so phase-2 scripts can reconstruct the id→position mapping
     experiment.save_artifact(
-        name="id_to_chunk_index",
-        data=embedding_manager.id_to_chunk_index,
+        name="sample_ids",
+        data=embedding_manager.sample_ids,
         artifact_type="pickle",
-        description="Id to chunk index mapping",
+        description="Ordered sample ID list (position-indexed, replaces chunk_mapping/id_to_chunk_index)",
         folder="embeddings",
     )
 

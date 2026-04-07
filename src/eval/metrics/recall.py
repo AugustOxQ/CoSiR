@@ -321,7 +321,12 @@ class OracleMetrics(RankingMetric):
         text_to_image_map: torch.Tensor,
         image_to_text_map: torch.Tensor,
         prefix: str = "oracle",
+        aggregation: str = "max",
     ) -> Tuple[Dict[str, float], torch.Tensor, torch.Tensor]:
+        """
+        aggregation: 'max'  — oracle upper bound (best label per sample)
+                     'mean' — average similarity across all labels
+        """
         """Compute oracle metrics by averaging the best rankings of all labels.
         这里我们不用遍历了，我们直接用condition predictor来预测条件，然后根据条件来筛选，和上面只用单模态的不同，这里我们用imgtxt网络来预测条件
         """
@@ -345,10 +350,18 @@ class OracleMetrics(RankingMetric):
         best_label_tti = -torch.ones((num_texts,))
         best_label_itt = -torch.ones((num_images,))
 
-        collective_sims = []
+        # Streaming accumulators (all on CPU to avoid stacking K full sim matrices on GPU)
+        running_max_tti: Optional[torch.Tensor] = None   # [N_text, N_img] on CPU
+        # Welford online variance
+        _wf_n = 0
+        _wf_mean: Optional[torch.Tensor] = None          # [N_text, N_img] float32 CPU
+        _wf_M2: Optional[torch.Tensor] = None
+        # Sampled columns for pairwise-diversity (keeps memory tiny)
+        _div_sample_cols = torch.randperm(num_images)[:min(1000, num_images)]
+        _div_samples: list = []  # K tensors of shape [N_text, min(1000, N_img)]
+
         # Text-to-Image evaluation
         with torch.no_grad():
-            # First get the condition predictions, break into batches
             for label_id in tqdm(
                 range(len(label_embeddings)), desc="Evaluating oracle"
             ):
@@ -365,43 +378,66 @@ class OracleMetrics(RankingMetric):
                         None,
                         label_emb[i:end_idx],
                     )
-
                     combined_embs_tti.append(batch_text_combined)
 
                 del batch_text_combined, label_emb
                 torch.cuda.empty_cache()
 
                 combined_embds_tti = torch.cat(combined_embs_tti, dim=0)
+                # Compute sim on GPU then immediately move to CPU to avoid stacking
+                sims_cpu = (combined_embds_tti @ image_embeddings_norm.T).cpu()
+                del combined_embds_tti
+                torch.cuda.empty_cache()
 
-                conditioned_sims_tti = combined_embds_tti @ image_embeddings_norm.T
-                collective_sims.append(conditioned_sims_tti)
+                # Running max
+                if running_max_tti is None:
+                    running_max_tti = sims_cpu.clone()
+                else:
+                    running_max_tti = torch.maximum(running_max_tti, sims_cpu)
 
-            collective_sims_tensor = torch.stack(collective_sims, dim=0)
+                # Welford online variance
+                _wf_n += 1
+                sims_f = sims_cpu.float()
+                if _wf_mean is None:
+                    _wf_mean = sims_f.clone()
+                    _wf_M2 = torch.zeros_like(sims_f)
+                else:
+                    delta = sims_f - _wf_mean
+                    _wf_mean.add_(delta / _wf_n)
+                    _wf_M2.add_(delta * (sims_f - _wf_mean))
 
-            # 1. 每个 condition 产生的 sim 矩阵之间的方差（逐元素）
-            sim_variance = collective_sims_tensor.var(0)  # [num_text, num_image]
+                # Sampled columns for pairwise diversity
+                _div_samples.append(sims_cpu[:, _div_sample_cols].reshape(1, -1))
+
+                del sims_cpu, sims_f
+
+            # 1. Variance across conditions (Welford result)
+            sim_variance = _wf_M2 / max(_wf_n - 1, 1)
             print(
                 f"Sim variance - mean: {sim_variance.mean():.4f}, max: {sim_variance.max():.4f}"
             )
+            del sim_variance, _wf_M2
+            if aggregation != "mean":
+                del _wf_mean
 
-            # 2. 不同 condition 产生的 sim 矩阵两两之间的余弦相似度（衡量diversity）
-            flat = collective_sims_tensor.flatten(1)  # [K, num_text*num_image]
+            # 2. Pairwise sim diversity (sampled columns, tiny memory)
+            flat = torch.cat(_div_samples, dim=0).float()  # [K, N_text * sample_size]
             flat_norm = flat / flat.norm(dim=-1, keepdim=True)
             pairwise_sim = flat_norm @ flat_norm.T  # [K, K]
-            # 去掉对角线
-            mask = ~torch.eye(len(collective_sims), dtype=bool)
+            mask = ~torch.eye(len(_div_samples), dtype=torch.bool)
             print(
                 f"Pairwise sim matrix diversity - mean off-diag: {pairwise_sim[mask].mean():.4f}"
             )
+            del flat, flat_norm, pairwise_sim, mask, _div_samples
 
-            dist_matrix_tti = collective_sims_tensor.max(0).values
-            if self.config.cpu_offload:
-                dist_matrix_tti = dist_matrix_tti.cpu()
+            # Select aggregation: max = oracle upper bound, mean = average across labels
+            if aggregation == "mean":
+                dist_matrix_tti = _wf_mean  # already computed above
+            else:
+                dist_matrix_tti = running_max_tti
             inds_tti = torch.argsort(dist_matrix_tti, dim=1, descending=True)
 
             dist_matrix_itt = dist_matrix_tti.T
-            if self.config.cpu_offload:
-                dist_matrix_itt = dist_matrix_itt.cpu()
             inds_itt = torch.argsort(dist_matrix_itt, dim=1, descending=True)
 
             metrics = self._compute_recall_from_indices(

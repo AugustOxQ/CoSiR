@@ -12,7 +12,6 @@ data:
 # Feature manager paths - dataset specific
 featuremanager:
   storage_dir: "/data/SSD2/pre_extract/redcaps/features"
-  sample_ids_path: "/data/SSD2/pre_extract/redcaps/sample_ids.pt"
 
 # Experiment Configuration
 experiment:

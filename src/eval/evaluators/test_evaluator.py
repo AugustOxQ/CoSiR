@@ -27,6 +27,7 @@ class TestEvaluator(BaseEvaluator):
         device: Optional[str] = None,
         return_detailed_results: bool = False,
         use_oracle: bool = False,
+        oracle_aggregation: str = "max",
     ) -> Union[MetricResult, Tuple]:
         """
         Evaluate model on test dataset with oracle and raw metrics.
@@ -71,6 +72,7 @@ class TestEvaluator(BaseEvaluator):
                     text_to_image_map,
                     image_to_text_map,
                     "oracle",
+                    aggregation=oracle_aggregation,
                 )
             )
         else:

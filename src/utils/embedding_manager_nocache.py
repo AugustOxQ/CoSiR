@@ -1,644 +1,364 @@
 """
-Simplified TrainableEmbeddingManager without caching system
-Created: 2025-01-13
+TrainableEmbeddingManager: per-sample trainable embeddings with numpy-memmap storage.
 
-This is a clean, minimal implementation that:
-- Removes all caching complexity
-- Keeps only essential functions
-- Direct disk I/O for simplicity and reliability
-- Easy to understand and maintain
+Storage layout:
+    embeddings_dir/
+        embeddings.npy   # numpy memmap float32 [N, D]
+        sample_ids.npy   # numpy memmap int64   [N]
+        metadata.json    # N, embedding_dim
+
+Random access by sample_id is O(1) via a position dict — no chunk files, no dict
+loads, no duplication between memory and disk paths.
+
+Modes:
+    'ram'  – full tensor loaded into RAM at init; zero disk I/O during training.
+    'mmap' – file stays on disk; OS page cache warms it up automatically.
+             Use when embeddings are too large for RAM.
 """
 
+import json
+import shutil
+import time
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
 import torch
 import torch.nn as nn
-from pathlib import Path
-from typing import List, Tuple, Optional
-import shutil
 from sklearn.decomposition import PCA
-import numpy as np
 from tqdm import tqdm
-import time
 
 
 class TrainableEmbeddingManager:
-    """Manages per-sample trainable embeddings with simple disk storage"""
+    """
+    Manages per-sample trainable label embeddings.
+
+    After construction the embeddings live in self._data [N, D] (a torch.Tensor
+    in 'ram' mode or a numpy memmap in 'mmap' mode).  All access goes through
+    get_embeddings / update_embeddings which index by sample_id.
+    """
 
     def __init__(
         self,
         sample_ids: List[int],
         embedding_dim: int,
-        device: str = "cuda" if torch.cuda.is_available() else "cpu",
-        initialization_strategy: str = "normal",
-        storage_mode: str = "disk",
-        embeddings_dir: Optional[str] = None,
+        embeddings_dir: str,
+        mode: str = "ram",
+        initialization_strategy: str = "zeros",
+        device: str = "cpu",
+        # Legacy / compat params (accepted but ignored)
+        storage_mode: Optional[str] = None,
         chunk_size: Optional[int] = None,
         feature_manager: Optional[object] = None,
         auto_sync: bool = True,
-        # Deprecated parameters (kept for compatibility, ignored)
         cache_l1_size_mb: int = 256,
         cache_l2_size_mb: int = 512,
         enable_l3_cache: bool = True,
         sync_batch_size: int = 10,
     ):
         """
-        Initialize trainable embeddings with simple disk persistence
-
         Args:
-            sample_ids: List of unique sample identifiers
-            embedding_dim: Dimension of embedding vectors
-            device: Device to store embeddings on (only used for memory mode)
-            initialization_strategy: How to initialize embeddings ('zeros', 'normal', 'uniform')
-            storage_mode: "memory" (all in RAM) or "disk" (load per chunk)
-            embeddings_dir: Directory for embedding chunk files
-            chunk_size: Size of each chunk (if None, uses feature manager's chunk size)
-            feature_manager: FeatureManager to get chunk structure from
-            auto_sync: Whether to automatically sync to disk (always True now)
+            sample_ids:              list of unique integer sample IDs (any order).
+            embedding_dim:           dimension of each embedding vector.
+            embeddings_dir:          directory where the memmap files are stored.
+            mode:                    'ram' or 'mmap'  (default: 'ram').
+            initialization_strategy: 'zeros' | 'normal' | 'uniform'.
+                                     PCA-based strategies ('imgtxt', 'txt', 'img')
+                                     are set via initialize() after construction.
+            device:                  torch device for in-memory tensors (ram mode).
         """
-        self.sample_ids = sorted(sample_ids)
+        # Compat: honour old 'storage_mode' kwarg if passed
+        if storage_mode is not None and mode == "ram":
+            mode = "ram" if storage_mode == "memory" else "mmap"
+
         self.embedding_dim = embedding_dim
         self.device = device
-        self.storage_mode = storage_mode
+        self.mode = mode
+        self.embeddings_dir = Path(embeddings_dir)
+        self.embeddings_dir.mkdir(parents=True, exist_ok=True)
 
-        # Setup disk storage directory
-        if embeddings_dir is None:
-            import tempfile
+        self._emb_path = self.embeddings_dir / "embeddings.npy"
+        self._ids_path = self.embeddings_dir / "sample_ids.npy"
+        self._meta_path = self.embeddings_dir / "metadata.json"
 
-            self.embeddings_dir = Path(tempfile.mkdtemp(prefix="embeddings_"))
+        # Ordered sample list and O(1) position lookup
+        self.sample_ids: List[int] = list(sample_ids)
+        self._id_to_pos: Dict[int, int] = {
+            sid: pos for pos, sid in enumerate(self.sample_ids)
+        }
+        N = len(self.sample_ids)
+
+        if self._emb_path.exists() and self._ids_path.exists():
+            print(f"[EmbeddingManager] Loading existing embeddings ({N:,} samples)…")
+            self._load_storage()
         else:
-            self.embeddings_dir = Path(embeddings_dir)
-            self.embeddings_dir.mkdir(parents=True, exist_ok=True)
+            print(
+                f"[EmbeddingManager] Initialising embeddings "
+                f"({N:,} × {embedding_dim}d, strategy={initialization_strategy})…"
+            )
+            self._create_storage(initialization_strategy)
 
-        # Determine chunk structure
-        if chunk_size is None and feature_manager is not None:
-            chunk_size = feature_manager.chunk_size
-        self.chunk_size = chunk_size if chunk_size is not None else 1000
-
-        # Build chunk mapping: {chunk_id: [sample_ids]}
-        self.chunk_mapping = self._build_chunk_mapping()
-
-        # Build fast lookup: {sample_id: (chunk_id, index_in_chunk)}
-        self.id_to_chunk_index = self._build_id_to_chunk_index()
-
-        # Initialize embeddings
-        if storage_mode == "memory":
-            # Memory mode: keep all embeddings in RAM
-            init_tensor = self._initialize_embeddings(initialization_strategy)
-            self.embeddings = nn.Parameter(init_tensor.to(device), requires_grad=True)
-            self.id_to_index = {sid: idx for idx, sid in enumerate(self.sample_ids)}
-            # Save initial state to disk
-            self._save_all_to_disk()
-        elif storage_mode == "disk":
-            # Disk mode: load on demand
-            self.embeddings = None
-            self.id_to_index = None
-
-            # Check if existing chunks should be loaded
-            existing_chunks = list(self.embeddings_dir.glob("embeddings_chunk_*.pt"))
-            if existing_chunks:
-                print(f"Loading from existing {len(existing_chunks)} chunk files...")
-            else:
-                # Initialize new chunks on disk
-                self._initialize_disk_chunks(initialization_strategy)
-        else:
-            raise ValueError(f"Unknown storage_mode: {storage_mode}")
-
-        print(f"TrainableEmbeddingManager initialized (NO CACHE):")
-        print(f"  - Storage mode: {storage_mode}")
-        print(f"  - Total samples: {len(self.sample_ids)}")
-        print(f"  - Chunk size: {self.chunk_size}")
-        print(f"  - Total chunks: {len(self.chunk_mapping)}")
-
-    def _build_chunk_mapping(self) -> dict:
-        """Build mapping from chunk_id to list of sample_ids"""
-        chunk_mapping = {}
-        for sample_id in self.sample_ids:
-            chunk_id = sample_id // self.chunk_size
-            if chunk_id not in chunk_mapping:
-                chunk_mapping[chunk_id] = []
-            chunk_mapping[chunk_id].append(sample_id)
-        return chunk_mapping
-
-    def _build_id_to_chunk_index(self) -> dict:
-        """Build fast lookup from sample_id to (chunk_id, index_in_chunk)"""
-        id_to_chunk_index = {}
-        for chunk_id, sample_ids in self.chunk_mapping.items():
-            for idx, sample_id in enumerate(sample_ids):
-                id_to_chunk_index[sample_id] = (chunk_id, idx)
-        return id_to_chunk_index
-
-    def _initialize_embeddings(self, strategy: str) -> torch.Tensor:
-        """Initialize embeddings tensor based on strategy"""
-        n_samples = len(self.sample_ids)
-
-        if strategy == "zeros":
-            return torch.zeros(n_samples, self.embedding_dim)
-        elif strategy == "normal":
-            return torch.randn(n_samples, self.embedding_dim) * 0.02
-        elif strategy == "uniform":
-            return torch.rand(n_samples, self.embedding_dim) * 0.02 - 0.01
-        else:
-            raise ValueError(f"Unknown initialization strategy: {strategy}")
-
-    def _initialize_disk_chunks(self, strategy: str):
-        """Initialize embedding chunks on disk"""
         print(
-            f"Initializing {len(self.chunk_mapping)} chunks with strategy: {strategy}"
+            f"[EmbeddingManager] Ready  mode={self.mode}  "
+            f"N={N:,}  D={embedding_dim}"
         )
 
-        for chunk_id, sample_ids in self.chunk_mapping.items():
-            chunk_size = len(sample_ids)
+    # ── Storage helpers ────────────────────────────────────────────────────────
 
-            # Initialize embeddings for this chunk
-            if strategy == "zeros":
-                chunk_embeddings = torch.zeros(chunk_size, self.embedding_dim)
-            elif strategy == "normal":
-                chunk_embeddings = torch.randn(chunk_size, self.embedding_dim) * 0.02
-            elif strategy == "uniform":
-                chunk_embeddings = (
-                    torch.rand(chunk_size, self.embedding_dim) * 0.02 - 0.01
-                )
-            else:
-                raise ValueError(f"Unknown initialization strategy: {strategy}")
+    def _create_storage(self, strategy: str) -> None:
+        """Allocate and initialise memmap files from scratch."""
+        N = len(self.sample_ids)
+        D = self.embedding_dim
 
-            # Create dict mapping sample_id -> embedding
-            chunk_dict = {sample_ids[i]: chunk_embeddings[i] for i in range(chunk_size)}
+        # Write sample_ids
+        ids_mm = np.lib.format.open_memmap(
+            self._ids_path, mode="w+", dtype=np.int64, shape=(N,)
+        )
+        ids_mm[:] = np.array(self.sample_ids, dtype=np.int64)
+        ids_mm.flush()
+        del ids_mm
 
-            # Save to disk
-            chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-            torch.save(chunk_dict, chunk_path)
+        # Write embeddings
+        emb_mm = np.lib.format.open_memmap(
+            self._emb_path, mode="w+", dtype=np.float32, shape=(N, D)
+        )
+        emb_mm[:] = self._make_init_array(N, D, strategy)
+        emb_mm.flush()
+        del emb_mm
 
-    def _save_all_to_disk(self):
-        """Save all embeddings to disk in chunks (memory mode)"""
-        if self.storage_mode != "memory":
-            return
+        self._save_metadata(N, D)
+        self._load_storage()
 
-        for chunk_id, sample_ids in self.chunk_mapping.items():
-            indices = [self.id_to_index[sid] for sid in sample_ids]
-            chunk_embeddings = self.embeddings.data[indices].cpu()
-
-            chunk_dict = {
-                sample_ids[i]: chunk_embeddings[i] for i in range(len(sample_ids))
-            }
-
-            chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-            torch.save(chunk_dict, chunk_path)
-
-    # ==================== Core Access Methods ====================
-
-    def get_embeddings_by_chunk(self, chunk_id: int) -> Tuple[List[int], torch.Tensor]:
-        """
-        Get all embeddings from a specific chunk
-
-        Returns:
-            (sample_ids, embeddings_tensor)
-        """
-        if chunk_id not in self.chunk_mapping:
-            raise ValueError(f"Chunk {chunk_id} not found")
-
-        chunk_sample_ids = self.chunk_mapping[chunk_id]
-
-        if self.storage_mode == "memory":
-            # Get from in-memory tensor
-            indices = [self.id_to_index[sid] for sid in chunk_sample_ids]
-            chunk_embeddings = self.embeddings[indices]
+    def _load_storage(self) -> None:
+        """Open existing memmap files and (optionally) pull into RAM."""
+        mm = np.lib.format.open_memmap(self._emb_path, mode="r+")
+        if self.mode == "ram":
+            self._data: torch.Tensor = torch.from_numpy(np.array(mm)).to(self.device)
         else:
-            # Load from disk
-            chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-            chunk_dict = torch.load(chunk_path, map_location="cpu")
+            self._mmap = mm  # keep alive; access via torch.from_numpy slice
 
-            # Convert dict to tensor in correct order
-            chunk_embeddings = torch.stack(
-                [chunk_dict[sid] for sid in chunk_sample_ids]
-            )
+    def _save_metadata(self, N: int, D: int) -> None:
+        with open(self._meta_path, "w") as f:
+            json.dump({"total_samples": N, "embedding_dim": D}, f, indent=2)
 
-        return chunk_sample_ids, chunk_embeddings
-
-    def update_embeddings_by_chunk(
-        self, chunk_id: int, sample_ids: List[int], new_embeddings: torch.Tensor
-    ):
-        """
-        Update all embeddings in a specific chunk
-
-        Args:
-            chunk_id: The chunk ID to update
-            sample_ids: List of sample IDs in the chunk
-            new_embeddings: Tensor of shape (len(sample_ids), embedding_dim)
-        """
-        if len(sample_ids) != new_embeddings.shape[0]:
+    @staticmethod
+    def _make_init_array(N: int, D: int, strategy: str) -> np.ndarray:
+        if strategy == "zeros":
+            return np.zeros((N, D), dtype=np.float32)
+        elif strategy == "normal":
+            return (np.random.randn(N, D) * 0.02).astype(np.float32)
+        elif strategy == "uniform":
+            return (np.random.rand(N, D) * 0.02 - 0.01).astype(np.float32)
+        else:
             raise ValueError(
-                f"Length mismatch: {len(sample_ids)} sample_ids vs {new_embeddings.shape[0]} embeddings"
+                f"Unknown initialization_strategy '{strategy}'. "
+                "Use 'zeros', 'normal', or 'uniform'. "
+                "For PCA-based init call initialize() separately."
             )
 
-        if self.storage_mode == "memory":
-            # Update in-memory tensor
-            indices = [self.id_to_index[sid] for sid in sample_ids]
-            with torch.no_grad():
-                self.embeddings.data[indices] = new_embeddings.to(self.device)
-
-            # Also update on disk
-            chunk_embeddings = new_embeddings.detach().cpu()
-            chunk_dict = {
-                sample_ids[i]: chunk_embeddings[i] for i in range(len(sample_ids))
-            }
-            chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-            torch.save(chunk_dict, chunk_path)
-
-        else:
-            # Disk mode: load, update, save
-            chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-
-            # Load existing chunk
-            if chunk_path.exists():
-                chunk_dict = torch.load(chunk_path, map_location="cpu")
-            else:
-                chunk_dict = {}
-
-            # Update embeddings
-            for i, sample_id in enumerate(sample_ids):
-                chunk_dict[sample_id] = new_embeddings[i].detach().cpu()
-
-            # print(chunk_dict)
-
-            # Save back to disk immediately
-            torch.save(chunk_dict, chunk_path)
+    # ── Core access ────────────────────────────────────────────────────────────
 
     def get_embeddings(self, sample_ids: List[int]) -> torch.Tensor:
         """
-        Get embeddings for specific sample IDs (can be from different chunks)
-
-        Returns:
-            Tensor of shape (len(sample_ids), embedding_dim)
+        Return embeddings for the given sample IDs as a float32 tensor [B, D].
+        Order matches the input list.
         """
-        if self.storage_mode == "memory":
-            indices = [self.id_to_index[sid] for sid in sample_ids]
-            return self.embeddings[indices]
+        positions = [self._id_to_pos[sid] for sid in sample_ids]
+        if self.mode == "ram":
+            return self._data[positions]
         else:
-            # Group by chunks for efficient loading
-            chunks_to_load = {}
-            for sid in sample_ids:
-                chunk_id, _ = self.id_to_chunk_index[sid]
-                if chunk_id not in chunks_to_load:
-                    chunks_to_load[chunk_id] = []
-                chunks_to_load[chunk_id].append(sid)
+            arr = self._mmap[positions]
+            return torch.from_numpy(np.array(arr))
 
-            # Load and collect embeddings
-            sid_to_emb = {}
-            for chunk_id, chunk_sample_ids in chunks_to_load.items():
-                chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-                chunk_dict = torch.load(chunk_path, map_location="cpu")
+    def update_embeddings(
+        self, sample_ids: List[int], new_embeddings: torch.Tensor
+    ) -> None:
+        """
+        Write updated embeddings back to storage.
 
-                for sid in chunk_sample_ids:
-                    sid_to_emb[sid] = chunk_dict[sid]
+        Args:
+            sample_ids:     IDs whose embeddings changed (same order as new_embeddings).
+            new_embeddings: tensor [B, D].
+        """
+        positions = [self._id_to_pos[sid] for sid in sample_ids]
+        data_np = new_embeddings.detach().cpu().float().numpy()
 
-            # Reorder to match input sample_ids order
-            ordered_embeddings = [sid_to_emb[sid] for sid in sample_ids]
-            return torch.stack(ordered_embeddings)
+        if self.mode == "ram":
+            self._data[positions] = torch.from_numpy(data_np).to(self.device)
+
+        # Always persist to disk so checkpoints are consistent
+        mm = np.lib.format.open_memmap(self._emb_path, mode="r+")
+        mm[positions] = data_np
+        mm.flush()
+        del mm
 
     def get_all_embeddings(self) -> Tuple[List[int], torch.Tensor]:
         """
-        Get all embeddings
-
-        Returns:
-            (all_sample_ids, all_embeddings_tensor)
+        Return (sample_ids_list, all_embeddings [N, D]).
+        Used by evaluation / clustering code.
         """
-
-        start_time = time.time()
-        if self.storage_mode == "memory":
-            return self.sample_ids, self.embeddings.data.cpu()
+        if self.mode == "ram":
+            return self.sample_ids, self._data.cpu()
         else:
-            # Load all chunks
-            all_embeddings = []
-            for chunk_id in sorted(self.chunk_mapping.keys()):
-                _, chunk_embeddings = self.get_embeddings_by_chunk(chunk_id)
-                all_embeddings.append(chunk_embeddings)
+            arr = np.lib.format.open_memmap(self._emb_path, mode="r")
+            return self.sample_ids, torch.from_numpy(np.array(arr))
 
-            end_time = time.time()
-            print(f"Time taken to get all embeddings: {end_time - start_time} seconds")
+    # ── PCA-based initialisation ───────────────────────────────────────────────
 
-            return self.sample_ids, torch.cat(all_embeddings, dim=0)
+    def initialize(
+        self,
+        strategy: str,
+        feature_manager=None,
+        model=None,
+        device: str = "cpu",
+        factor: float = 1.0,
+    ) -> None:
+        """
+        (Re-)initialise embeddings.  Handles all strategies in one place.
 
-    # ==================== Initialization Methods ====================
+        Simple strategies ('zeros', 'normal', 'uniform') do not need
+        feature_manager.  PCA-based strategies ('imgtxt', 'txt', 'img')
+        require it.
+
+        Args:
+            strategy:        one of 'zeros'|'normal'|'uniform'|'imgtxt'|'txt'|'img'.
+            feature_manager: FeatureManager instance (required for PCA strategies).
+            model:           unused — kept for API compatibility.
+            device:          compute device for feature loading.
+            factor:          scalar multiplier applied after PCA normalisation.
+        """
+        N = len(self.sample_ids)
+        D = self.embedding_dim
+
+        if strategy in ("zeros", "normal", "uniform"):
+            data = self._make_init_array(N, D, strategy)
+        elif strategy in ("imgtxt", "txt", "img"):
+            data = self._pca_init(strategy, feature_manager, device, factor)
+        else:
+            raise ValueError(f"Unknown strategy '{strategy}'.")
+
+        # Write to memmap
+        mm = np.lib.format.open_memmap(self._emb_path, mode="r+")
+        mm[:] = data
+        mm.flush()
+        del mm
+
+        # Reload into RAM if needed
+        if self.mode == "ram":
+            self._data = torch.from_numpy(data).to(self.device)
+
+        print(f"[EmbeddingManager] Initialised with strategy='{strategy}'")
+
+    def _pca_init(
+        self,
+        strategy: str,
+        feature_manager,
+        device: str,
+        factor: float,
+    ) -> np.ndarray:
+        """
+        Load all features from FeatureManager, compute PCA, return normalised array.
+        """
+        print(f"[EmbeddingManager] PCA init (strategy={strategy})…")
+
+        # Load features shard-by-shard to handle large datasets
+        source_parts: List[np.ndarray] = []
+        num_shards = feature_manager.get_num_chunks()
+
+        for shard_id in tqdm(range(num_shards), desc="Loading features"):
+            feats = feature_manager.get_features_by_chunk(shard_id)
+            img = feats["img_features"].to(device)
+            txt = feats["txt_features"].to(device)
+
+            if strategy == "imgtxt":
+                part = (img - txt).cpu().numpy()
+            elif strategy == "txt":
+                part = txt.cpu().numpy()
+            else:  # 'img'
+                part = img.cpu().numpy()
+
+            source_parts.append(part)
+
+        source = np.concatenate(source_parts, axis=0)  # [N, clip_dim]
+        print(f"[EmbeddingManager] Running PCA: {source.shape} → {self.embedding_dim}d")
+
+        pca = PCA(n_components=self.embedding_dim)
+        projected = pca.fit_transform(source).astype(np.float32)  # [N, D]
+
+        # Normalise to zero mean, unit std, then scale
+        projected = (projected - projected.mean(0)) / (projected.std(0) + 1e-8)
+        projected = (projected * factor).astype(np.float32)
+
+        # The feature manager iterates shards in order 0..K-1.
+        # We need to re-order rows to match self.sample_ids order.
+        shard_sample_ids: List[int] = feature_manager.get_all_sample_ids()
+        fm_pos = {sid: i for i, sid in enumerate(shard_sample_ids)}
+        reorder = [fm_pos[sid] for sid in self.sample_ids]
+        projected = projected[reorder]
+
+        print(
+            f"[EmbeddingManager] PCA init done. "
+            f"Mean norm: {np.linalg.norm(projected, axis=1).mean():.4f}"
+        )
+        return projected
+
+    # ── Template persistence ───────────────────────────────────────────────────
+
+    def _copy_to(self, dest_dir: Path) -> None:
+        """Copy memmap files to dest_dir."""
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        for fname in ("embeddings.npy", "sample_ids.npy", "metadata.json"):
+            src = self.embeddings_dir / fname
+            if src.exists():
+                shutil.copy2(src, dest_dir / fname)
+
+    def _copy_from(self, src_dir: Path) -> None:
+        """Replace current memmap files with copies from src_dir, then reload."""
+        for fname in ("embeddings.npy", "sample_ids.npy", "metadata.json"):
+            src = src_dir / fname
+            if src.exists():
+                shutil.copy2(src, self.embeddings_dir / fname)
+        self._load_storage()
+
+    def store_imgtxt_template(self) -> None:
+        """Save current embeddings as a reusable template."""
+        template_dir = self.embeddings_dir.parent.parent / "template_embeddings"
+        self._copy_to(template_dir)
+        print(f"[EmbeddingManager] Template saved → {template_dir}")
+
+    def load_imgtxt_template(self) -> None:
+        """Load embeddings from the sibling template_embeddings directory."""
+        template_dir = self.embeddings_dir.parent.parent / "template_embeddings"
+        if not template_dir.exists() or not (template_dir / "embeddings.npy").exists():
+            raise FileNotFoundError(f"No template found at {template_dir}")
+        self._copy_from(template_dir)
+        print(f"[EmbeddingManager] Template loaded ← {template_dir}")
+
+    def load_phase_1_template(self, path: str) -> None:
+        """Load embeddings from an arbitrary directory (e.g. phase-1 output)."""
+        src_dir = Path(path)
+        if not src_dir.exists() or not (src_dir / "embeddings.npy").exists():
+            raise FileNotFoundError(f"No embeddings found at {src_dir}")
+        self._copy_from(src_dir)
+        print(f"[EmbeddingManager] Embeddings loaded ← {src_dir}")
+
+    # ── Convenience wrappers kept for training-script compatibility ────────────
 
     def initialize_embeddings_imgtxt(
-        self, feature_manager, model, device="cpu", factor=1
-    ):
-        """
-        Initialize label embeddings using imgtxt strategy: (img_emb - txt_emb) @ w_t
-
-        Args:
-            feature_manager: FeatureManager instance to load image/text features
-            model: CoSiR model to get the projection matrix w_t
-            device: Device for computation
-        """
-        print("##########Initializing label embeddings using imgtxt strategy##########")
-
-        # Get total number of chunks from feature manager
-        num_chunks = feature_manager.get_num_chunks()
-
-        gap_collection = []
-        chunk_sizes = []  # actual number of samples per chunk
-
-        # Collect gaps chunk by chunk
-        for chunk_id in tqdm(range(num_chunks)):
-            # Load features for this chunk
-            features_data = feature_manager.get_features_by_chunk(chunk_id)
-
-            img_features = features_data["img_features"].to(device)
-            txt_features = features_data["txt_features"].to(device)
-
-            clip_diff = img_features - txt_features
-
-            gap_collection.append(clip_diff.cpu().numpy())
-            chunk_sizes.append(len(clip_diff))
-
-        gap_collection = np.concatenate(gap_collection, axis=0)
-
-        print(len(gap_collection))
-
-        # PCA reduction
-        pca = PCA(n_components=2)  # TODO: Here is the dimension
-        label_init_collection = pca.fit_transform(gap_collection)  # [n_samples, 2]
-        # normalize the label_init_collection
-        label_init_collection = (
-            label_init_collection - label_init_collection.mean(0)
-        ) / (label_init_collection.std(0) + 1e-8)
-        label_init_collection = torch.from_numpy(label_init_collection).float()
-
-        # Build cumulative start offsets from actual chunk sizes
-        chunk_starts = np.cumsum([0] + chunk_sizes[:-1])
-
-        for chunk_id in tqdm(range(num_chunks)):
-            chunk_sample_ids, _ = self.get_embeddings_by_chunk(chunk_id)
-
-            # Slice the PCA results for this chunk using actual offsets
-            start = chunk_starts[chunk_id]
-            end = start + chunk_sizes[chunk_id]
-            label_embedding_init = label_init_collection[start:end] * factor
-
-            # Update embeddings for this chunk (auto-saves to disk)
-            self.update_embeddings_by_chunk(
-                chunk_id, chunk_sample_ids, label_embedding_init
-            )
-
-            # Log progress
-            if chunk_id % 100 == 0 or chunk_id == num_chunks - 1:
-                label_move_distance = torch.norm(
-                    label_embedding_init, p=2, dim=1
-                ).mean()
-                print(
-                    f"Chunk: {chunk_id} / {num_chunks-1}, Label Move Distance: {label_move_distance:.3f}"
-                )
-
-        print(
-            f"✅ Completed imgtxt initialization for {len(self.sample_ids)} samples across {num_chunks} chunks"
-        )
-
-    def initialize_embeddings_txt(self, feature_manager, model, device="cpu", factor=1):
-        """
-        Initialize label embeddings using txt strategy: txt_emb @ w_t
-
-        Args:
-            feature_manager: FeatureManager instance to load image/text features
-            model: CoSiR model to get the projection matrix w_t
-            device: Device for computation
-        """
-        print("##########Initializing label embeddings using txt strategy##########")
-
-        # Get total number of chunks from feature manager
-        num_chunks = feature_manager.get_num_chunks()
-
-        gap_collection = []
-        chunk_sizes = []  # actual number of samples per chunk
-
-        # Collect gaps chunk by chunk
-        for chunk_id in tqdm(range(num_chunks)):
-            # Load features for this chunk
-            features_data = feature_manager.get_features_by_chunk(chunk_id)
-
-            txt_features = features_data["txt_features"].to(device)
-
-            gap_collection.append(txt_features.cpu().numpy())
-            chunk_sizes.append(len(txt_features))
-
-        gap_collection = np.concatenate(gap_collection, axis=0)
-
-        print(len(gap_collection))
-
-        # PCA reduction
-        pca = PCA(n_components=2)  # TODO: Here is the dimension
-        label_init_collection = pca.fit_transform(gap_collection)  # [n_samples, 2]
-        # normalize the label_init_collection
-        label_init_collection = (
-            label_init_collection - label_init_collection.mean(0)
-        ) / (label_init_collection.std(0) + 1e-8)
-        label_init_collection = torch.from_numpy(label_init_collection).float()
-
-        # Build cumulative start offsets from actual chunk sizes
-        chunk_starts = np.cumsum([0] + chunk_sizes[:-1])
-
-        for chunk_id in tqdm(range(num_chunks)):
-            chunk_sample_ids, _ = self.get_embeddings_by_chunk(chunk_id)
-
-            # Slice the PCA results for this chunk using actual offsets
-            start = chunk_starts[chunk_id]
-            end = start + chunk_sizes[chunk_id]
-            label_embedding_init = label_init_collection[start:end] * factor
-
-            # Update embeddings for this chunk (auto-saves to disk)
-            self.update_embeddings_by_chunk(
-                chunk_id, chunk_sample_ids, label_embedding_init
-            )
-
-            # Log progress
-            if chunk_id % 100 == 0 or chunk_id == num_chunks - 1:
-                label_move_distance = torch.norm(
-                    label_embedding_init, p=2, dim=1
-                ).mean()
-                print(
-                    f"Chunk: {chunk_id} / {num_chunks-1}, Label Move Distance: {label_move_distance:.3f}"
-                )
-
-        print(
-            f"✅ Completed imgtxt initialization for {len(self.sample_ids)} samples across {num_chunks} chunks"
-        )
-
-    def initialize_embeddings_img(self, feature_manager, model, device="cpu", factor=1):
-        """
-        Initialize label embeddings using img strategy: img_emb @ w_t
-
-        Args:
-            feature_manager: FeatureManager instance to load image/text features
-            model: CoSiR model to get the projection matrix w_t
-            device: Device for computation
-        """
-        print("##########Initializing label embeddings using img strategy##########")
-
-        # Get total number of chunks from feature manager
-        num_chunks = feature_manager.get_num_chunks()
-
-        gap_collection = []
-        chunk_sizes = []  # actual number of samples per chunk
-
-        # Collect gaps chunk by chunk
-        for chunk_id in tqdm(range(num_chunks)):
-            # Load features for this chunk
-            features_data = feature_manager.get_features_by_chunk(chunk_id)
-
-            img_features = features_data["img_features"].to(device)
-
-            gap_collection.append(img_features.cpu().numpy())
-            chunk_sizes.append(len(img_features))
-
-        gap_collection = np.concatenate(gap_collection, axis=0)
-
-        print(len(gap_collection))
-
-        # PCA reduction
-        pca = PCA(n_components=2)  # TODO: Here is the dimension
-        label_init_collection = pca.fit_transform(gap_collection)  # [n_samples, 2]
-        # normalize the label_init_collection
-        label_init_collection = (
-            label_init_collection - label_init_collection.mean(0)
-        ) / (label_init_collection.std(0) + 1e-8)
-        label_init_collection = torch.from_numpy(label_init_collection).float()
-
-        # Build cumulative start offsets from actual chunk sizes
-        chunk_starts = np.cumsum([0] + chunk_sizes[:-1])
-
-        for chunk_id in tqdm(range(num_chunks)):
-            chunk_sample_ids, _ = self.get_embeddings_by_chunk(chunk_id)
-
-            # Slice the PCA results for this chunk using actual offsets
-            start = chunk_starts[chunk_id]
-            end = start + chunk_sizes[chunk_id]
-            label_embedding_init = label_init_collection[start:end] * factor
-
-            # Update embeddings for this chunk (auto-saves to disk)
-            self.update_embeddings_by_chunk(
-                chunk_id, chunk_sample_ids, label_embedding_init
-            )
-
-            # Log progress
-            if chunk_id % 100 == 0 or chunk_id == num_chunks - 1:
-                label_move_distance = torch.norm(
-                    label_embedding_init, p=2, dim=1
-                ).mean()
-                print(
-                    f"Chunk: {chunk_id} / {num_chunks-1}, Label Move Distance: {label_move_distance:.3f}"
-                )
-
-        print(
-            f"✅ Completed imgtxt initialization for {len(self.sample_ids)} samples across {num_chunks} chunks"
-        )
-
-    def load_imgtxt_template(self):
-        """Load embeddings from template directory"""
-        template_dir = self.embeddings_dir.parent.parent / "template_embeddings"
-
-        if not template_dir.exists():
-            raise FileNotFoundError(f"Template directory not found: {template_dir}")
-
-        template_chunks = list(template_dir.glob("embeddings_chunk_*.pt"))
-        if not template_chunks:
-            raise FileNotFoundError(f"No chunk files found in: {template_dir}")
-
-        print(f"Loading template embeddings from: {template_dir}")
-        print(f"Found {len(template_chunks)} template chunks")
-
-        # Copy template chunks to current directory
-        for template_chunk in template_chunks:
-            dest_path = self.embeddings_dir / template_chunk.name
-            shutil.copy2(template_chunk, dest_path)
-
-        # If memory mode, reload into memory
-        if self.storage_mode == "memory":
-            all_embeddings = []
-            for chunk_id in sorted(self.chunk_mapping.keys()):
-                chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-                chunk_dict = torch.load(chunk_path, map_location="cpu")
-
-                chunk_sample_ids = self.chunk_mapping[chunk_id]
-                chunk_embeddings = torch.stack(
-                    [chunk_dict[sid] for sid in chunk_sample_ids]
-                )
-                all_embeddings.append(chunk_embeddings)
-
-            all_embeddings_tensor = torch.cat(all_embeddings, dim=0).to(self.device)
-            self.embeddings = nn.Parameter(all_embeddings_tensor, requires_grad=True)
-
-        print(f"✅ Loaded template embeddings for {len(self.sample_ids)} samples")
-
-    def load_phase_1_template(self, path: str):
-        """Load embeddings from phase 1 directory"""
-        phase1_path = Path(path)
-
-        if not phase1_path.exists():
-            raise FileNotFoundError(f"Template directory not found: {phase1_path}")
-
-        template_chunks = list(phase1_path.glob("embeddings_chunk_*.pt"))
-        if not template_chunks:
-            raise FileNotFoundError(f"No chunk files found in: {phase1_path}")
-
-        print(f"Loading template embeddings from: {phase1_path}")
-        print(f"Found {len(template_chunks)} template chunks")
-
-        # Copy template chunks to current directory
-        for template_chunk in template_chunks:
-            dest_path = self.embeddings_dir / template_chunk.name
-            shutil.copy2(template_chunk, dest_path)
-
-        # If memory mode, reload into memory
-        if self.storage_mode == "memory":
-            all_embeddings = []
-            for chunk_id in sorted(self.chunk_mapping.keys()):
-                chunk_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-                chunk_dict = torch.load(chunk_path, map_location="cpu")
-
-                chunk_sample_ids = self.chunk_mapping[chunk_id]
-                chunk_embeddings = torch.stack(
-                    [chunk_dict[sid] for sid in chunk_sample_ids]
-                )
-                all_embeddings.append(chunk_embeddings)
-
-            all_embeddings_tensor = torch.cat(all_embeddings, dim=0).to(self.device)
-            self.embeddings = nn.Parameter(all_embeddings_tensor, requires_grad=True)
-
-        print(f"✅ Loaded template embeddings for {len(self.sample_ids)} samples")
-
-    def store_imgtxt_template(self):
-        """Store current embeddings as template"""
-        template_dir = self.embeddings_dir.parent.parent / "template_embeddings"
-        template_dir.mkdir(parents=True, exist_ok=True)
-
-        print(f"Storing template embeddings to: {template_dir}")
-
-        # Copy all chunk files to template directory
-        for chunk_id in self.chunk_mapping.keys():
-            src_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-            dest_path = template_dir / f"embeddings_chunk_{chunk_id}.pt"
-
-            if src_path.exists():
-                shutil.copy2(src_path, dest_path)
-
-        print(f"✅ Stored template with {len(self.chunk_mapping)} chunks")
-
-    def save_final_embeddings(self, save_dir: str):
-        """Save final embeddings to a specified directory"""
-        save_path = Path(save_dir)
-        save_path.mkdir(parents=True, exist_ok=True)
-
-        # Copy all chunk files
-        for chunk_id in self.chunk_mapping.keys():
-            src_path = self.embeddings_dir / f"embeddings_chunk_{chunk_id}.pt"
-            dest_path = save_path / f"embeddings_chunk_{chunk_id}.pt"
-
-            if src_path.exists():
-                shutil.copy2(src_path, dest_path)
-
-        print(f"✅ Saved final embeddings to: {save_path}")
-
-    # ==================== Compatibility Methods ====================
-
-    def optimize_cache_settings(self, batch_size: int):
-        """Compatibility method - does nothing (no cache)"""
+        self, feature_manager, model=None, device="cpu", factor=1
+    ) -> None:
+        self.initialize("imgtxt", feature_manager, model, device, factor)
+
+    def initialize_embeddings_txt(
+        self, feature_manager, model=None, device="cpu", factor=1
+    ) -> None:
+        self.initialize("txt", feature_manager, model, device, factor)
+
+    def initialize_embeddings_img(
+        self, feature_manager, model=None, device="cpu", factor=1
+    ) -> None:
+        self.initialize("img", feature_manager, model, device, factor)
+
+    def optimize_cache_settings(self, batch_size: int) -> None:
+        """No-op — kept for call-site compatibility."""
         pass

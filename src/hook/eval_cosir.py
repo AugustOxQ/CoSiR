@@ -206,7 +206,11 @@ class CoSiREvaluator:
         if self.feature_manager is None:
             raise RuntimeError("Feature manager not loaded")
 
-        return self.feature_manager.load_features(sample_ids)
+        all_data = self.feature_manager.load_all_to_ram(["img_features", "txt_features", "sample_ids"])
+        all_ids = all_data["sample_ids"].tolist()
+        id_to_pos = {sid: i for i, sid in enumerate(all_ids)}
+        positions = [id_to_pos[sid] for sid in sample_ids]
+        return {k: v[positions] for k, v in all_data.items() if k != "sample_ids"}
 
     def get_representatives(self, num_representatives: int = 50) -> torch.Tensor:
         """Get representative embeddings using the same method as training"""

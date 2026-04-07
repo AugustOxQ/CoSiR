@@ -45,3 +45,4 @@ eval:
   print_metrics: true
   evaluation_interval: 10
   perform_evaluation: true
+  oracle_aggregation: "max"  # "max" = oracle upper bound, "mean" = average across conditions

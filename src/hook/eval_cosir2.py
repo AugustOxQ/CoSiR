@@ -58,7 +58,7 @@ def train_cosir_phase2(cfg, logger):
         "primary_backend": cfg.featuremanager.primary_backend,
         "chunked_storage": {
             "enabled": cfg.featuremanager.chunked_storage.enabled,
-            "chunk_size": cfg.featuremanager.chunk_size,
+            "chunk_size": cfg.featuremanager.shard_size,
             "compression": cfg.featuremanager.chunked_storage.compression,
         },
         "cache": {
@@ -162,7 +162,7 @@ def train_cosir_phase2(cfg, logger):
     embedding_chunk_size = cfg.embeddingmanager.embedding_chunk_size
     if embedding_chunk_size is None:
         # Optimal chunk size: 4x batch size, capped at reasonable limits
-        embedding_chunk_size = cfg.featuremanager.chunk_size
+        embedding_chunk_size = cfg.featuremanager.shard_size
         print(
             f"Auto-optimized embedding chunk size: {embedding_chunk_size} (4x batch_size)"
         )
@@ -194,25 +194,8 @@ def train_cosir_phase2(cfg, logger):
 
     embedding_manager.load_phase_1_template(phase_1_embeddings_path)
 
-    # Load other important information from phase 1, pkl format
-    # Use prefix matching to support dated filenames like id_to_chunk_index_20250301.pkl
-    _other_dir = Path(phase_1_other_path)
-    _id_to_chunk_files = sorted(_other_dir.glob("id_to_chunk_index*.pkl"))
-    if not _id_to_chunk_files:
-        raise FileNotFoundError(f"No id_to_chunk_index*.pkl found in {phase_1_other_path}")
-    with open(_id_to_chunk_files[0], "rb") as f:
-        id_to_chunk_index = pickle.load(f)  # type: ignore
-    _chunk_mapping_files = sorted(_other_dir.glob("chunk_mapping*.pkl"))
-    if not _chunk_mapping_files:
-        raise FileNotFoundError(f"No chunk_mapping*.pkl found in {phase_1_other_path}")
-    with open(_chunk_mapping_files[0], "rb") as f:
-        chunk_mapping = pickle.load(f)  # type: ignore
-
-    embedding_manager.id_to_chunk_index = id_to_chunk_index
-    embedding_manager.chunk_mapping = chunk_mapping
-
-    # Optimize cache settings based on actual batch size
-    embedding_manager.optimize_cache_settings(cfg.featuremanager.chunk_size)
+    # (chunk_mapping / id_to_chunk_index pkl files no longer used — embeddings are
+    #  stored as flat memmap and the id→position index is rebuilt from sample_ids.npy)
 
     # Use CoSiRTrainingChunkDataset for chunk-based loading
     train_set = CoSiRTrainingChunkDataset(
@@ -225,7 +208,7 @@ def train_cosir_phase2(cfg, logger):
     # num_workers=0 to eliminate worker process issues completely
     train_loader = DataLoader(
         train_set,
-        batch_size=cfg.featuremanager.chunk_size,  # Load one chunk at a time (batch_idx only)
+        batch_size=cfg.featuremanager.shard_size,  # Load one shard at a time (batch_idx only)
         shuffle=False,  # We'll handle chunk order manually if needed
         num_workers=cfg.train.num_workers,  # No worker processes - eliminates all worker issues!
     )
@@ -284,11 +267,9 @@ def train_cosir_phase2(cfg, logger):
             img_features = features_data["img_features"].to(device, non_blocking=True)
             txt_features = features_data["txt_features"].to(device, non_blocking=True)
 
-            # Get embeddings by chunk directly from optimized manager
-            chunk_sample_ids, label_embeddings_data = (
-                embedding_manager.get_embeddings_by_chunk(chunk_id)
-            )
-            label_embeddings = label_embeddings_data.to(device)
+            # Get embeddings for this shard by sample_id
+            batch_sample_ids = features_data["sample_ids"].tolist()
+            label_embeddings = embedding_manager.get_embeddings(batch_sample_ids).to(device)
 
             batch_labels = precompute_nearest_condition_labels(
                 label_embeddings, pre_trained_representatives_device
@@ -555,11 +536,9 @@ def train_cosir_phase2(cfg, logger):
             img_features = features_data["img_features"].to(device, non_blocking=True)
             txt_features = features_data["txt_features"].to(device, non_blocking=True)
 
-            # Get embeddings by chunk directly from optimized manager
-            chunk_sample_ids, label_embeddings_data = (
-                embedding_manager.get_embeddings_by_chunk(chunk_id)
-            )
-            label_embeddings = label_embeddings_data.to(device)
+            # Get embeddings for this shard by sample_id
+            batch_sample_ids = features_data["sample_ids"].tolist()
+            label_embeddings = embedding_manager.get_embeddings(batch_sample_ids).to(device)
 
             # predict condition
             img_condition_predicted = model.predict_condition(

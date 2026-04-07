@@ -63,6 +63,7 @@ class EvaluationManager:
         device: Optional[str] = None,
         return_detailed_results: bool = False,
         use_oracle: bool = False,
+        oracle_aggregation: str = "max",
     ) -> Union[MetricResult, Tuple]:
         """
         Evaluate model on test data.
@@ -89,6 +90,7 @@ class EvaluationManager:
             device,
             return_detailed_results,
             use_oracle,
+            oracle_aggregation=oracle_aggregation,
         )
 
     def encode_test_data(

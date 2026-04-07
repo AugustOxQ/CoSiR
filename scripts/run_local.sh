@@ -19,6 +19,12 @@ echo "Using ${NUM_PROCS} processes"
 
 # python main_cosir.py dataset=impressions train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=5e-4 train.epochs=500 loss.lambda_2=0.3 loss.lambda_3=0 wandb.name="imgtxt5e-4 500 epochs"
 
-python main_cosir.py dataset=impressions train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-4 train.epochs=300 loss.lambda_2=0.3 loss.lambda_3=0 wandb.name="txt1e-4 300 epochs normalizing text features in manifold loss knn10" optimizer.label_lr_multiplier=5.0e4
+# python main_cosir.py dataset=redcaps train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=5e-5 train.epochs=200 loss.lambda_2=0.3 loss.lambda_3=0 wandb.name="random txt 5e-5 200 epochs normalizing text features in manifold loss knn10 max" optimizer.label_lr_multiplier=5.0e4
+
+# python main_cosir.py dataset=redcaps2 train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=5e-5 train.epochs=200 loss.lambda_2=0.3 loss.lambda_3=0 wandb.name="random txt 5e-5 200 epochs normalizing text features in manifold loss knn10 max" optimizer.label_lr_multiplier=5.0e4
+
+python main_cosir.py dataset=coco train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=5e-5 train.epochs=100 loss.lambda_2=0.3 loss.lambda_3=0 wandb.name="random txt 5e-5 100 epochs normalizing text features in manifold loss knn10 max" optimizer.label_lr_multiplier=5.0e4
+
+# python main_cosir.py dataset=cc3m train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=5e-5 train.epochs=200 loss.lambda_2=0.3 loss.lambda_3=0 wandb.name="random txt 5e-5 200 epochs normalizing text features in manifold loss knn10 max" optimizer.label_lr_multiplier=5.0e4
 
 # python main_cosir_phase2.py dataset=impressions eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=500 model.dropout=0.1 train.initialization_strategy="imgtxt" train.representative_number=36 wandb.project="cosir_seperate_dataset" wandb.name="imgtxt12 1e-5"

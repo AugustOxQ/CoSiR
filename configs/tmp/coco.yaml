@@ -29,18 +29,13 @@ model:
 # Feature manager configuration
 featuremanager:
   storage_dir: "/project/CoSiR/data/comprehensive_cosir_test/features"
-  sample_ids_path: "/project/CoSiR/data/comprehensive_cosir_test/sample_ids.pt"
-  primary_backend: "chunked"
-  chunk_size: 1024
-  cache_size_mb: 512
-  use_compression: false
-  chunked_storage:
-    enabled: true
-    compression: false
-  cache:
-    l1_size_mb: 512
-    l2_size_mb: 1024
-    l3_path: null
+  shard_size: 100000
+  extraction_batch_size: 1024
+  store_img_full: false
+  store_txt_full: false
+  hdf5_compression: true
+  hdf5_compression_level: 4
+  shuffle_window_shards: 4
 
 # Embedding manager configuration
 embeddingmanager:
