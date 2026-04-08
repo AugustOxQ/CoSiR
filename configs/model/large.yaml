@@ -6,5 +6,5 @@ model:
   clip_model: "openai/clip-vit-large-patch14"
   freeze_backbone: true
   num_layers: 2
-  hidden_dim: 64
+  hidden_dim: 1024
   min_radius: 5

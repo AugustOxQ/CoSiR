@@ -53,21 +53,23 @@ class CoSiRModel(nn.Module):
         self.combiner = Combiner_new(
             clip_feature_dim=512,
             projection_dim=512,
+            label_dim=label_dim,
             hidden_dim=d_model,
             num_heads=nhead,
-            num_layers=6,  # TODO: here we fix it to 2
+            num_layers=num_layers,  # TODO: here we fix it to 2
+            dropout=dropout,
         )
 
         # Additional components
-        self.unified_condition_predictor = ConditionClassifier(
-            input_dim=512,
-            hidden_dim=512,  # Here the dim is fixed to 512, because the input dim is 512
-            num_layers=num_layers,
-            dropout=dropout,
-            num_conditions=num_conditions,
-            use_temperature=True,
-            init_temperature=1.0,
-        )
+        # self.unified_condition_predictor = ConditionClassifier(
+        #     input_dim=512,
+        #     hidden_dim=512,  # Here the dim is fixed to 512, because the input dim is 512
+        #     num_layers=num_layers,
+        #     dropout=dropout,
+        #     num_conditions=num_conditions,
+        #     use_temperature=True,
+        #     init_temperature=1.0,
+        # )
 
         self.pretrained_representatives = None
 
@@ -111,51 +113,51 @@ class CoSiRModel(nn.Module):
 
         return comb_emb
 
-    def predict_condition(
-        self,
-        img_emb: Optional[Tensor],
-        txt_emb: Optional[Tensor],
-        type: str,
-        return_logits: bool = True,
-        training_phase: bool = False,
-        argmax: bool = False,
-    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-        # input_features: (batch_size, d_model), pre_trained_representatives: (num_conditions, 2)
-        if type == "img":
-            probs, logits = self.unified_condition_predictor(
-                img_emb=None,
-                txt_emb=txt_emb,
-                return_logits=True,
-                training_phase=training_phase,
-                argmax=argmax,
-            )
-        elif type == "txt":
-            probs, logits = self.unified_condition_predictor(
-                img_emb=img_emb,
-                txt_emb=None,
-                return_logits=True,
-                training_phase=training_phase,
-                argmax=argmax,
-            )
-        elif type == "imgtxt":
-            probs, logits = self.unified_condition_predictor(
-                img_emb=img_emb,
-                txt_emb=txt_emb,
-                return_logits=True,
-                training_phase=training_phase,
-                argmax=argmax,
-            )
-        else:
-            raise ValueError(f"Invalid condition type: {type}")
+    # def predict_condition(
+    #     self,
+    #     img_emb: Optional[Tensor],
+    #     txt_emb: Optional[Tensor],
+    #     type: str,
+    #     return_logits: bool = True,
+    #     training_phase: bool = False,
+    #     argmax: bool = False,
+    # ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+    #     # input_features: (batch_size, d_model), pre_trained_representatives: (num_conditions, 2)
+    #     if type == "img":
+    #         probs, logits = self.unified_condition_predictor(
+    #             img_emb=None,
+    #             txt_emb=txt_emb,
+    #             return_logits=True,
+    #             training_phase=training_phase,
+    #             argmax=argmax,
+    #         )
+    #     elif type == "txt":
+    #         probs, logits = self.unified_condition_predictor(
+    #             img_emb=img_emb,
+    #             txt_emb=None,
+    #             return_logits=True,
+    #             training_phase=training_phase,
+    #             argmax=argmax,
+    #         )
+    #     elif type == "imgtxt":
+    #         probs, logits = self.unified_condition_predictor(
+    #             img_emb=img_emb,
+    #             txt_emb=txt_emb,
+    #             return_logits=True,
+    #             training_phase=training_phase,
+    #             argmax=argmax,
+    #         )
+    #     else:
+    #         raise ValueError(f"Invalid condition type: {type}")
 
-        output = (
-            probs @ self.pretrained_representatives
-        )  # [B, num_conditions] @ [num_conditions, 2] -> [B, 2]
+    #     output = (
+    #         probs @ self.pretrained_representatives
+    #     )  # [B, num_conditions] @ [num_conditions, 2] -> [B, 2]
 
-        if return_logits:
-            return output, logits
-        else:
-            return output
+    #     if return_logits:
+    #         return output, logits
+    #     else:
+    #         return output
 
     def forward(self, images, texts, labels):
         # Extract image and text features

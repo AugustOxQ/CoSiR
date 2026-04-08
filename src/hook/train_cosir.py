@@ -62,6 +62,7 @@ def train_cosir(cfg, logger):
         num_layers=cfg.model.num_layers,
         d_model=cfg.model.hidden_dim,
         num_conditions=cfg.train.representative_number,
+        dropout=cfg.model.dropout,
     ).to(device)
     processor = AutoProcessor.from_pretrained(cfg.model.clip_model, use_fast=False)
 
@@ -251,6 +252,7 @@ def train_cosir(cfg, logger):
                     model,
                     device,
                     factor=cfg.train.imgtxt_factor,
+                    normalize=cfg.train.normalize,
                 )
             elif cfg.train.initialization_strategy == "txt":
                 print("Initializing embeddings with txt strategy...")
@@ -259,6 +261,7 @@ def train_cosir(cfg, logger):
                     model,
                     device,
                     factor=cfg.train.imgtxt_factor,
+                    normalize=cfg.train.normalize,
                 )
             elif cfg.train.initialization_strategy == "img":
                 print("Initializing embeddings with img strategy...")
@@ -267,6 +270,7 @@ def train_cosir(cfg, logger):
                     model,
                     device,
                     factor=cfg.train.imgtxt_factor,
+                    normalize=cfg.train.normalize,
                 )
             else:
                 raise ValueError(
@@ -368,6 +372,11 @@ def train_cosir(cfg, logger):
         epoch_loss = 0.0
         num_batches = 0
 
+        # Freeze model parameters and only train label embeddings
+        if epoch == cfg.train.warm_up_epochs:
+            for param in model.combiner.parameters():
+                param.requires_grad = False
+
         # Track epoch start time for performance monitoring
         epoch_start_time = time.time()
 
@@ -446,6 +455,12 @@ def train_cosir(cfg, logger):
             global_step += 1
 
             # Persist updated label embeddings back to the manager
+
+            if cfg.train.normalize:
+                label_embeddings = torch.nn.functional.normalize(
+                    label_embeddings, dim=-1
+                )
+
             embedding_manager.update_embeddings(batch_sample_ids, label_embeddings)
 
         # ========== EPOCH END: Performance Monitoring & Sync ==========

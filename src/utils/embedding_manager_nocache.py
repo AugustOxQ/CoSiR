@@ -212,6 +212,7 @@ class TrainableEmbeddingManager:
         model=None,
         device: str = "cpu",
         factor: float = 1.0,
+        normalize: bool = False,
     ) -> None:
         """
         (Re-)initialise embeddings.  Handles all strategies in one place.
@@ -233,7 +234,7 @@ class TrainableEmbeddingManager:
         if strategy in ("zeros", "normal", "uniform"):
             data = self._make_init_array(N, D, strategy)
         elif strategy in ("imgtxt", "txt", "img"):
-            data = self._pca_init(strategy, feature_manager, device, factor)
+            data = self._pca_init(strategy, feature_manager, device, factor, normalize)
         else:
             raise ValueError(f"Unknown strategy '{strategy}'.")
 
@@ -255,6 +256,7 @@ class TrainableEmbeddingManager:
         feature_manager,
         device: str,
         factor: float,
+        normalize: bool = False,
     ) -> np.ndarray:
         """
         Load all features from FeatureManager, compute PCA, return normalised array.
@@ -276,6 +278,9 @@ class TrainableEmbeddingManager:
                 part = txt.cpu().numpy()
             else:  # 'img'
                 part = img.cpu().numpy()
+
+            if normalize:
+                part = part / np.linalg.norm(part, axis=1, keepdims=True)
 
             source_parts.append(part)
 
@@ -345,19 +350,19 @@ class TrainableEmbeddingManager:
     # ── Convenience wrappers kept for training-script compatibility ────────────
 
     def initialize_embeddings_imgtxt(
-        self, feature_manager, model=None, device="cpu", factor=1
+        self, feature_manager, model=None, device="cpu", factor=1, normalize=False
     ) -> None:
-        self.initialize("imgtxt", feature_manager, model, device, factor)
+        self.initialize("imgtxt", feature_manager, model, device, factor, normalize)
 
     def initialize_embeddings_txt(
-        self, feature_manager, model=None, device="cpu", factor=1
+        self, feature_manager, model=None, device="cpu", factor=1, normalize=False
     ) -> None:
-        self.initialize("txt", feature_manager, model, device, factor)
+        self.initialize("txt", feature_manager, model, device, factor, normalize)
 
     def initialize_embeddings_img(
-        self, feature_manager, model=None, device="cpu", factor=1
+        self, feature_manager, model=None, device="cpu", factor=1, normalize=False
     ) -> None:
-        self.initialize("img", feature_manager, model, device, factor)
+        self.initialize("img", feature_manager, model, device, factor, normalize)
 
     def optimize_cache_settings(self, batch_size: int) -> None:
         """No-op — kept for call-site compatibility."""

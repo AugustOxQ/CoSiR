@@ -233,9 +233,11 @@ class Combiner_new(nn.Module):
         self,
         clip_feature_dim: int = 512,
         projection_dim: int = 512,
+        label_dim: int = 2,
         hidden_dim: int = 512,
         num_heads: int = 8,
         num_layers: int = 4,
+        dropout: float = 0.5,
     ) -> None:
         """
         :param clip_feature_dim: CLIP input feature dimension (e.g., 512)
@@ -247,9 +249,10 @@ class Combiner_new(nn.Module):
         super().__init__()
 
         self.label_decoder = GeLUNetGradual(
-            input_dim=2 + clip_feature_dim,
+            input_dim=label_dim + clip_feature_dim,
             output_dim=projection_dim,
             num_layers=num_layers,
+            dropout=dropout,
         )
 
         # self.gate_net = nn.Sequential(
@@ -314,7 +317,9 @@ class Combiner_new(nn.Module):
 
         # gate = self.gate_net(torch.cat((text_features, label_projected_features), -1))
         # combined = text_features + label_projected_features
-        combined = text_features + self.label_decoder(torch.cat((label_features, text_features), -1))
+        combined = text_features + self.label_decoder(
+            torch.cat((label_features, text_features), -1)
+        )
 
         # self.scalar.add(gate.mean().item())
         # print(self.scalar.get())

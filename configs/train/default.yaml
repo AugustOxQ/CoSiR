@@ -12,6 +12,8 @@ train:
   save_as_template_embeddings: True
   load_existing_features: True
   representative_number: 12 # This should equal to selected number of conditions * number of grids
+  normalize: false
+  warm_up_epochs: 50 # Warm up epochs for label embedding training
 
 # Loss function configuration
 loss:
@@ -45,4 +47,4 @@ eval:
   print_metrics: true
   evaluation_interval: 10
   perform_evaluation: true
-  oracle_aggregation: "max"  # "max" = oracle upper bound, "mean" = average across conditions
+  oracle_aggregation: "max" # "max" = oracle upper bound, "mean" = average across conditions
