@@ -351,13 +351,13 @@ class OracleMetrics(RankingMetric):
         best_label_itt = -torch.ones((num_images,))
 
         # Streaming accumulators (all on CPU to avoid stacking K full sim matrices on GPU)
-        running_max_tti: Optional[torch.Tensor] = None   # [N_text, N_img] on CPU
+        running_max_tti: Optional[torch.Tensor] = None  # [N_text, N_img] on CPU
         # Welford online variance
         _wf_n = 0
-        _wf_mean: Optional[torch.Tensor] = None          # [N_text, N_img] float32 CPU
+        _wf_mean: Optional[torch.Tensor] = None  # [N_text, N_img] float32 CPU
         _wf_M2: Optional[torch.Tensor] = None
         # Sampled columns for pairwise-diversity (keeps memory tiny)
-        _div_sample_cols = torch.randperm(num_images)[:min(1000, num_images)]
+        _div_sample_cols = torch.randperm(num_images)[: min(1000, num_images)]
         _div_samples: list = []  # K tensors of shape [N_text, min(1000, N_img)]
 
         # Text-to-Image evaluation
@@ -450,6 +450,11 @@ class OracleMetrics(RankingMetric):
                 captions_per_image,
                 prefix,
             )
+
+            # Free GPU tensors that were moved to device inside this function
+            del image_embeddings_norm, image_embeddings, text_embeddings, text_full
+            del inds_tti, inds_itt
+            torch.cuda.empty_cache()
 
             return metrics, best_label_tti, best_label_itt
 
@@ -949,6 +954,10 @@ class OracleMetrics(RankingMetric):
         meanR_i2t, medR_i2t, mAP_i2t = self.calculate_recall_metrics(
             inds_itt, image_to_text_map, captions_per_image
         )
+
+        # Explicitly free the large GPU index tensors before returning
+        del inds_tti, inds_itt
+        torch.cuda.empty_cache()
 
         # Format results
         metrics = {}

@@ -1,8 +1,10 @@
+import textwrap
 import torch
 import torch.nn.functional as F
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import numpy as np
 import time
 
@@ -96,7 +98,7 @@ def select_representative_conditions(
         print(f"Selecting {K} conditions using K-means clustering...")
         from sklearn.cluster import KMeans
 
-        kmeans = KMeans(n_clusters=K, random_state=seed, n_init=10)
+        kmeans = KMeans(n_clusters=K, random_state=seed, n_init="auto")
         kmeans.fit(all_conditions_np)
 
         selected = torch.from_numpy(kmeans.cluster_centers_).float()
@@ -370,7 +372,7 @@ def retrieve_with_condition_fast(
     """
     使用预计算的embeddings快速检索
     """
-    image_embs, text_embs, all_captions_flat, img_to_captions_map = precomputed_data
+    image_embs, text_embs, all_captions_flat, _ = precomputed_data
 
     model.eval()
     # 处理condition
@@ -400,15 +402,14 @@ def retrieve_with_condition_fast(
         )
 
         # Top-k
-        top_k_values, top_k_indices = torch.topk(
+        _, top_k_indices = torch.topk(
             similarities, k=min(k, len(similarities))
         )
 
-        top_k_captions = [
-            all_captions_flat[idx] for idx in top_k_indices.cpu().tolist()
-        ]
+        idx_list = top_k_indices.cpu().tolist()
+        top_k_captions = [all_captions_flat[idx] for idx in idx_list]
 
-        return top_k_captions
+        return idx_list, top_k_captions
 
 
 def visualize_angular_semantics_fast(
@@ -447,7 +448,7 @@ def visualize_angular_semantics_fast(
         bin_center = bin_conditions.median(dim=0)[0]
 
         # ✅ 快速检索
-        top_captions = retrieve_with_condition_fast(
+        _, top_captions = retrieve_with_condition_fast(
             model,
             precomputed_data,
             bin_center,
@@ -504,7 +505,7 @@ def retrieve_image_with_condition_fast(
     Returns:
         top_k_images: list of top-k retrieved images (PIL Images or image data)
     """
-    image_embs, text_embs, all_raw_image, all_raw_text = precomputed_data
+    image_embs, text_embs, all_raw_image, _ = precomputed_data
 
     model.eval()
 
@@ -534,14 +535,14 @@ def retrieve_image_with_condition_fast(
         )
 
         # Top-k
-        top_k_values, top_k_indices = torch.topk(
+        _, top_k_indices = torch.topk(
             similarities, k=min(k, len(similarities))
         )
 
-        # Retrieve top-k images
-        top_k_images = [all_raw_image[idx] for idx in top_k_indices.cpu().tolist()]
+        idx_list = top_k_indices.cpu().tolist()
+        top_k_images = [all_raw_image[idx] for idx in idx_list]
 
-        return top_k_images
+        return idx_list, top_k_images
 
 
 def visualize_angular_semantics_text_to_image_fast(
@@ -591,7 +592,7 @@ def visualize_angular_semantics_text_to_image_fast(
         bin_center = bin_conditions.median(dim=0)[0]
 
         # Fast retrieval: text -> images
-        top_images = retrieve_image_with_condition_fast(
+        _, top_images = retrieve_image_with_condition_fast(
             model,
             precomputed_data,
             bin_center,
@@ -629,3 +630,237 @@ def visualize_angular_semantics_text_to_image_fast(
         fig.savefig(save_path, dpi=480, bbox_inches="tight")
 
     return fig
+
+
+def _clip_baseline_i2t(image_embs, text_embs, all_captions_flat, query_id, k, device):
+    """Raw CLIP image→text retrieval without condition modulation."""
+    img_emb = image_embs[query_id : query_id + 1].to(device)
+    txt = text_embs.to(device)
+    sims = F.cosine_similarity(img_emb.expand(len(txt), -1), txt, dim=1)
+    _, top_idx = torch.topk(sims, k=min(k, len(sims)))
+    idx_list = top_idx.cpu().tolist()
+    return idx_list, [all_captions_flat[i] for i in idx_list]
+
+
+def _clip_baseline_t2i(image_embs, text_embs, all_raw_image, query_text_id, k, device):
+    """Raw CLIP text→image retrieval without condition modulation."""
+    txt_emb = text_embs[query_text_id : query_text_id + 1].to(device)
+    imgs = image_embs.to(device)
+    sims = F.cosine_similarity(txt_emb.expand(len(imgs), -1), imgs, dim=1)
+    _, top_idx = torch.topk(sims, k=min(k, len(sims)))
+    idx_list = top_idx.cpu().tolist()
+    return idx_list, [all_raw_image[i] for i in idx_list]
+
+
+def visualize_given_conditions_image_to_text(
+    conditions, model, precomputed_data, n_queries=3, k=5, all_raw_image=None, device=None
+):
+    """
+    Image-to-text retrieval visualization with pre-given conditions.
+
+    Row 0 = CLIP baseline (no condition). Rows 1..N = one row per condition.
+    Query image spans all rows on the left when all_raw_image is provided.
+    Green cells = ground-truth captions.
+
+    Args:
+        conditions: [N, D] condition embeddings (pre-sampled)
+        model: CoSiR model
+        precomputed_data: (all_img_emb, all_txt_emb, all_captions_flat, img_to_cap_map)
+        n_queries: number of query images (uses first n_queries)
+        k: top-k captions per row
+        all_raw_image: optional list of PIL images for showing the query
+        device: computation device
+
+    Returns:
+        list of figures, one per query image
+    """
+    model.eval()
+
+    if isinstance(conditions, np.ndarray):
+        conditions = torch.from_numpy(conditions).float()
+    conditions = conditions.to(device)
+
+    image_embs, text_embs, all_captions_flat, img_to_cap_map = precomputed_data
+    n_conditions = len(conditions)
+    n_rows = n_conditions + 1          # +1 for CLIP baseline row
+    show_image = all_raw_image is not None
+
+    img_col_w = min(2.0 + n_rows * 0.12, 3.5)   # scales with total rows
+    txt_col_w = 2.6
+    row_h = 1.5
+    n_cols = k + (1 if show_image else 0)
+    total_w = (img_col_w if show_image else 0) + txt_col_w * k
+
+    figs = []
+
+    for query_id in range(n_queries):
+        gt_raw = img_to_cap_map[query_id]
+        gt_cap_set = set(gt_raw.tolist() if isinstance(gt_raw, torch.Tensor) else gt_raw)
+
+        fig = plt.figure(
+            figsize=(total_w, row_h * n_rows),
+            constrained_layout=True,
+            dpi=80,
+        )
+        width_ratios = ([img_col_w] if show_image else []) + [txt_col_w] * k
+        gs = gridspec.GridSpec(n_rows, n_cols, figure=fig, width_ratios=width_ratios)
+
+        fig.suptitle(
+            f"Image→Text  |  Query image idx={query_id}",
+            fontsize=9, fontweight="bold",
+        )
+
+        # Query image spanning all rows (shown once)
+        if show_image:
+            ax_img = fig.add_subplot(gs[:, 0])
+            ax_img.imshow(all_raw_image[query_id])
+            ax_img.axis("off")
+            ax_img.set_title("Query", fontsize=7, pad=2)
+
+        txt_offset = 1 if show_image else 0
+
+        def _render_row(row_idx, row_label, cap_indices, captions):
+            for rank, (cap_idx, caption) in enumerate(zip(cap_indices, captions)):
+                ax = fig.add_subplot(gs[row_idx, rank + txt_offset])
+                ax.axis("off")
+
+                if rank == 0:
+                    ax.set_ylabel(
+                        row_label, fontsize=7, rotation=0,
+                        ha="right", va="center", labelpad=3,
+                    )
+                    ax.yaxis.set_label_coords(-0.06, 0.5)
+                    ax.yaxis.label.set_visible(True)
+
+                if row_idx == 0:
+                    ax.set_title(f"Rank {rank + 1}", fontsize=7, pad=2)
+
+                words = caption.split()
+                truncated = " ".join(words[:30]) + ("…" if len(words) > 30 else "")
+                wrapped = "\n".join(textwrap.wrap(truncated, width=38))
+                facecolor = "limegreen" if cap_idx in gt_cap_set else "lightblue"
+
+                ax.text(
+                    0.5, 0.5, wrapped,
+                    fontsize=5.5, va="center", ha="center",
+                    family="monospace", linespacing=1.3,
+                    bbox=dict(boxstyle="round,pad=0.3", facecolor=facecolor, alpha=0.35),
+                    transform=ax.transAxes,
+                )
+
+        # Row 0: CLIP baseline
+        base_idx, base_caps = _clip_baseline_i2t(
+            image_embs, text_embs, all_captions_flat, query_id, k, device
+        )
+        _render_row(0, "CLIP", base_idx, base_caps)
+
+        # Rows 1..N: conditioned
+        for cond_idx, condition in enumerate(conditions):
+            cap_indices, top_captions = retrieve_with_condition_fast(
+                model, precomputed_data, condition,
+                query_image_id=query_id, k=k, device=device,
+            )
+            _render_row(cond_idx + 1, f"C{cond_idx}", cap_indices, top_captions)
+
+        figs.append(fig)
+
+    return figs
+
+
+def visualize_given_conditions_text_to_image(
+    conditions, model, precomputed_data, n_queries=3, texts_per_image=5, k=4, device=None
+):
+    """
+    Text-to-image retrieval visualization with pre-given conditions.
+
+    Each figure corresponds to one query text and shows how different conditions
+    change the retrieved images. Layout: N_conditions rows x k columns (images).
+
+    The first n_queries * texts_per_image texts are used as queries (matching the
+    first n_queries images' captions). Produces one figure per query text.
+
+    Args:
+        conditions: [N, D] condition embeddings (pre-sampled, not generated here)
+        model: CoSiR model
+        precomputed_data: tuple of (all_img_emb, all_txt_emb, all_raw_image, all_raw_text)
+        n_queries: number of source images — queries are the first n_queries * texts_per_image texts
+        texts_per_image: captions per image (default 5 for COCO-style datasets)
+        k: number of top images to retrieve per condition
+        device: computation device
+
+    Returns:
+        figs: list of matplotlib figures, one per query text
+    """
+    model.eval()
+
+    if isinstance(conditions, np.ndarray):
+        conditions = torch.from_numpy(conditions).float()
+    conditions = conditions.to(device)
+
+    n_conditions = len(conditions)
+    image_embs, text_embs, all_raw_image, all_raw_text = precomputed_data
+    n_rows = n_conditions + 1          # +1 for CLIP baseline row
+
+    n_text_queries = n_queries * texts_per_image
+    img_size = 1.5  # inches per image cell
+    figs = []
+
+    for query_text_id in range(n_text_queries):
+        query_text = all_raw_text[query_text_id]
+        source_image_idx = query_text_id // texts_per_image
+        caption_idx = query_text_id % texts_per_image
+
+        fig, axes = plt.subplots(
+            n_rows, k,
+            figsize=(img_size * k, img_size * n_rows),
+            squeeze=False,
+            dpi=80,
+        )
+        fig.suptitle(
+            f"Text→Image  |  Src img {source_image_idx}, caption {caption_idx}\n"
+            f'"{query_text[:90]}{"…" if len(query_text) > 90 else ""}"',
+            fontsize=8, fontweight="bold", y=1.02,
+        )
+
+        def _render_img_row(row_idx, row_label, img_indices, images):
+            for rank, (img_idx, img) in enumerate(zip(img_indices, images)):
+                ax = axes[row_idx, rank]
+                ax.imshow(img)
+                ax.set_xticks([])
+                ax.set_yticks([])
+
+                if rank == 0:
+                    ax.set_ylabel(
+                        row_label, fontsize=5.5, rotation=0, labelpad=4,
+                        ha="right", va="center",
+                    )
+                    ax.yaxis.set_label_coords(-0.02, 0.5)
+                    ax.yaxis.label.set_visible(True)
+
+                if row_idx == 0:
+                    ax.set_title(f"Rank {rank + 1}", fontsize=7, pad=2)
+
+                is_gt = (img_idx == source_image_idx)
+                for spine in ax.spines.values():
+                    spine.set_visible(is_gt)
+                    spine.set_edgecolor("limegreen" if is_gt else "none")
+                    spine.set_linewidth(3 if is_gt else 0)
+
+        # Row 0: CLIP baseline
+        base_idx, base_imgs = _clip_baseline_t2i(
+            image_embs, text_embs, all_raw_image, query_text_id, k, device
+        )
+        _render_img_row(0, "CLIP", base_idx, base_imgs)
+
+        # Rows 1..N: conditioned
+        for cond_idx, condition in enumerate(conditions):
+            img_indices, top_images = retrieve_image_with_condition_fast(
+                model, precomputed_data, condition,
+                query_text_id=query_text_id, k=k, device=device,
+            )
+            _render_img_row(cond_idx + 1, f"C{cond_idx}", img_indices, top_images)
+
+        plt.tight_layout()
+        figs.append(fig)
+
+    return figs

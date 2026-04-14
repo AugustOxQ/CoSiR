@@ -1,10 +1,9 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-from scipy.stats import pearsonr, spearmanr, kstest
+from scipy.stats import pearsonr, spearmanr
 from scipy.spatial.distance import jensenshannon
 from sklearn.metrics import silhouette_score
-from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from collections import Counter
 import json
@@ -13,18 +12,30 @@ from tqdm import tqdm
 
 class CoSiRAutomaticEvaluator:
     """
-    使用预计算embeddings的自动评估系统
+    Automatic evaluation system for CoSiR.
 
     Args:
-        model: CoSiR模型
+        model: CoSiR model
         precomputed: (image_embs, text_embs, captions_flat, img_to_cap_map)
-            - image_embs: [N_images, 512] torch.Tensor
-            - text_embs: [N_texts, 512] torch.Tensor
-            - captions_flat: list of N_texts个captions
-            - img_to_cap_map: dict {img_idx: [cap_idx1, ..., cap_idx5]}
+            - image_embs: [N_images, D]
+            - text_embs:  [N_texts,  D]
+            - captions_flat: list of N_texts strings
+            - img_to_cap_map: dict {img_idx: [cap_idx, ...]}
+        conditions: [N, D] label embeddings from the training set
+        device: computation device
+        representatives: [N_reps, D] cluster representative conditions
+        hdbscan_labels: [N] int array, -1 = noise
     """
 
-    def __init__(self, model, precomputed, conditions, device):
+    def __init__(
+        self,
+        model,
+        precomputed,
+        conditions,
+        device,
+        representatives=None,
+        hdbscan_labels=None,
+    ):
         self.model = model
         self.device = device
         self.image_embs, self.text_embs, self.captions_flat, self.img_to_cap_map = (
@@ -36,188 +47,138 @@ class CoSiRAutomaticEvaluator:
         self.n_images = len(self.image_embs)
         self.n_texts = len(self.text_embs)
 
+        self.representatives = (
+            representatives.to(device)
+            if isinstance(representatives, torch.Tensor)
+            else None
+        )
+        self.hdbscan_labels = (
+            np.array(hdbscan_labels)
+            if hdbscan_labels is not None and not isinstance(hdbscan_labels, np.ndarray)
+            else hdbscan_labels
+        )
+
         print(f"Evaluator initialized with:")
-        print(f"  - {self.n_images} images")
-        print(f"  - {self.n_texts} text embeddings")
+        print(f"  - {self.n_images} images, {self.n_texts} texts")
+        print(f"  - {len(self.conditions)} conditions")
+        if self.representatives is not None:
+            print(f"  - {len(self.representatives)} representatives")
         print(f"  - Device: {self.device}")
 
-    # ========== 1. 半径-效果相关性 ==========
-    def compute_radius_effect_correlation(self, n_samples=200, n_texts_sample=100):
+    # ========== 1. Magnitude–Effect Correlation ==========
+    def compute_magnitude_effect_correlation(self, n_samples=200, n_texts_sample=100):
         """
-        测量半径和调制强度的Pearson相关系数
+        Pearson correlation between condition norm and modulation strength.
 
-        理想值: r > 0.8
+        Measures whether larger-magnitude conditions produce stronger shifts in
+        text embedding space. Ideal: r > 0.8.
         """
-        print("\n[1/6] Computing Radius-Effect Correlation...")
+        print("\n[1/5] Computing Magnitude–Effect Correlation...")
         self.model.eval()
 
-        # Validate inputs
         n_samples = min(n_samples, len(self.conditions))
         n_texts_sample = min(n_texts_sample, self.n_texts)
 
         if n_samples < 2:
-            print("  ⚠ Warning: Need at least 2 samples for correlation")
-            return {
-                "correlation": 0.0,
-                "p_value": 1.0,
-                "radii_mean": 0.0,
-                "radii_std": 0.0,
-                "effects_mean": 0.0,
-                "effects_std": 0.0,
-                "n_samples": n_samples,
-            }
+            return {"correlation": 0.0, "p_value": 1.0}
 
-        # 随机采样conditions
         condition_indices = torch.randperm(len(self.conditions))[:n_samples]
         sampled_conditions = self.conditions[condition_indices]
+        norms = torch.norm(sampled_conditions, dim=1).cpu().numpy()
 
-        # 计算半径
-        radii = torch.norm(sampled_conditions, dim=1).cpu().numpy()
-
-        # 随机采样texts
         text_indices = torch.randperm(self.n_texts)[:n_texts_sample]
         sampled_text_embs = self.text_embs[text_indices]
 
-        # 计算每个condition的平均调制强度
         effects = []
-
         with torch.no_grad():
-            for condition in tqdm(sampled_conditions, desc="  Processing conditions"):
-                # 用这个condition调制所有采样的texts
+            for condition in tqdm(sampled_conditions, desc="  Processing"):
                 cond_expanded = condition.unsqueeze(0).repeat(len(sampled_text_embs), 1)
                 text_embs_mod = self.model.combine(
                     sampled_text_embs, None, cond_expanded
                 )
-
-                # 计算平均变化幅度
                 delta = torch.norm(text_embs_mod - sampled_text_embs, dim=1).mean()
                 effects.append(delta.cpu().item())
 
         effects = np.array(effects)
 
-        # 计算Pearson相关系数
-        # Check for zero variance to avoid division by zero
-        if radii.std() < 1e-8 or effects.std() < 1e-8:
+        if norms.std() < 1e-8 or effects.std() < 1e-8:
             correlation, p_value = 0.0, 1.0
         else:
-            correlation, p_value = pearsonr(radii, effects)
+            correlation, p_value = pearsonr(norms, effects)
 
-        result = {
-            "correlation": float(correlation),
-            "p_value": float(p_value),
-            # "radii_mean": float(radii.mean()),
-            # "radii_std": float(radii.std()),
-            # "effects_mean": float(effects.mean()),
-            # "effects_std": float(effects.std()),
-            # "n_samples": n_samples,
-        }
+        print(f"  → Pearson r: {correlation:.4f} (p={p_value:.4e})")
+        return {"correlation": float(correlation), "p_value": float(p_value)}
 
-        print(f"  → Correlation: {correlation:.4f} (p={p_value:.4e})")
-        return result
-
-    # ========== 2. 角度-语义单调性 ==========
-    def compute_angular_semantic_monotonicity(
-        self, n_angles=12, n_texts_sample=150, test_radius=2.0
+    # ========== 2. Condition Distance–Semantic Correlation ==========
+    def compute_condition_distance_semantic_correlation(
+        self, n_unique=50, n_texts_sample=100
     ):
         """
-        测量角度差异和语义差异的单调性
+        Spearman correlation between pairwise condition distances and pairwise
+        semantic distances of their modulated text spaces.
 
-        理想值: Spearman ρ > 0.7
+        Nearby conditions should produce similar retrieval behaviour.
+        Works for any condition dimensionality (no polar-grid assumption).
+        Ideal: ρ > 0.7.
         """
-        print("\n[2/6] Computing Angular-Semantic Monotonicity...")
+        print("\n[2/5] Computing Condition Distance–Semantic Correlation...")
         self.model.eval()
 
-        # Validate inputs
-        n_angles = max(2, n_angles)  # Need at least 2 angles
+        n_unique = min(n_unique, len(self.conditions))
         n_texts_sample = min(n_texts_sample, self.n_texts)
 
-        # 生成均匀分布的角度
-        test_angles = torch.linspace(0, 2 * np.pi, n_angles + 1, device=self.device)[
-            :-1
-        ]
-
-        # 生成test conditions (固定半径)
-        test_conditions = torch.stack(
-            [
-                test_radius * torch.cos(test_angles),
-                test_radius * torch.sin(test_angles),
-            ],
-            dim=1,
-        )
-
-        # 随机采样texts
-        text_indices = torch.randperm(self.n_texts)[:n_texts_sample]
+        # Fixed text sample for reproducibility across epochs
+        text_indices = torch.arange(n_texts_sample, device=self.device)
         sampled_text_embs = self.text_embs[text_indices]
 
+        condition_indices = torch.randperm(len(self.conditions))[:n_unique]
+        sampled_conditions = self.conditions[condition_indices]
+
+        # Compute mean-pooled modulated embedding per condition → [n_unique, D]
+        modulated_means = []
         with torch.no_grad():
-            # 对每个angle，调制texts
-            all_modulated = []
-            for condition in tqdm(test_conditions, desc="  Modulating texts"):
-                cond_expanded = condition.unsqueeze(0).repeat(len(sampled_text_embs), 1)
-                text_embs_mod = self.model.combine(
-                    sampled_text_embs, None, cond_expanded
-                )
-                all_modulated.append(text_embs_mod)
+            for condition in tqdm(sampled_conditions, desc="  Modulating"):
+                cond_expanded = condition.unsqueeze(0).repeat(n_texts_sample, 1)
+                mod = self.model.combine(sampled_text_embs, None, cond_expanded)
+                modulated_means.append(F.normalize(mod.mean(dim=0), dim=0))
 
-            all_modulated = torch.stack(all_modulated)  # [n_angles, n_texts, 512]
+        modulated_means = torch.stack(modulated_means)  # [n_unique, D]
 
-            # 计算任意两个角度之间的语义距离
-            angle_diffs = []
-            semantic_dists = []
+        # Pairwise condition L2 distances
+        cond_dists = torch.cdist(sampled_conditions, sampled_conditions)  # [n, n]
 
-            for i in range(n_angles):
-                for j in range(i + 1, n_angles):
-                    # 角度差
-                    angle_diff = torch.abs(test_angles[i] - test_angles[j])
-                    angle_diff = min(angle_diff.item(), 2 * np.pi - angle_diff.item())
-                    angle_diffs.append(angle_diff)
+        # Pairwise cosine distances of modulated spaces
+        sim_matrix = modulated_means @ modulated_means.T  # [n, n]
+        semantic_dists = 1 - sim_matrix
 
-                    # 语义距离（平均余弦距离）
-                    cos_sim = F.cosine_similarity(
-                        all_modulated[i], all_modulated[j], dim=1
-                    ).mean()
-                    semantic_dist = 1 - cos_sim.item()
-                    semantic_dists.append(semantic_dist)
+        # Upper triangle only (exclude diagonal)
+        idx = torch.triu_indices(n_unique, n_unique, offset=1)
+        cond_dists_flat = cond_dists[idx[0], idx[1]].cpu().numpy()
+        semantic_dists_flat = semantic_dists[idx[0], idx[1]].cpu().numpy()
 
-        # 计算Spearman相关系数
-        if len(angle_diffs) < 2:
+        if len(cond_dists_flat) < 2:
             correlation, p_value = 0.0, 1.0
         else:
-            correlation, p_value = spearmanr(angle_diffs, semantic_dists)
-
-        result = {
-            "spearman_rho": float(correlation),
-            "p_value": float(p_value),
-            # "n_angles": n_angles,
-            # "test_radius": test_radius,
-            # "mean_angle_diff": float(np.mean(angle_diffs)) if angle_diffs else 0.0,
-            # "mean_semantic_dist": (
-            #     float(np.mean(semantic_dists)) if semantic_dists else 0.0
-            # ),
-        }
+            correlation, p_value = spearmanr(cond_dists_flat, semantic_dists_flat)
 
         print(f"  → Spearman ρ: {correlation:.4f} (p={p_value:.4e})")
-        return result
+        return {"spearman_rho": float(correlation), "p_value": float(p_value)}
 
-    # ========== 3. 条件化检索提升 ==========
+    # ========== 3. Conditional Retrieval Gain ==========
     def compute_conditional_retrieval_gain(self, n_conditions=10, n_test_images=100):
         """
-        对比使用condition vs 不使用condition的检索性能
+        R@K with random conditions vs no condition.
 
-        指标: R@1, R@5, R@10的提升百分比
+        Ideal: positive absolute gain at R@1/R@5/R@10.
         """
-        print("\n[3/6] Computing Conditional Retrieval Gain...")
+        print("\n[3/5] Computing Conditional Retrieval Gain...")
         self.model.eval()
 
-        # Validate inputs
         n_conditions = min(n_conditions, len(self.conditions))
         n_test_images = min(n_test_images, self.n_images)
 
-        # 随机采样conditions
         condition_indices = torch.randperm(len(self.conditions))[:n_conditions]
         sampled_conditions = self.conditions[condition_indices]
-
-        # 随机采样test images
         test_img_indices = torch.randperm(self.n_images)[:n_test_images].tolist()
 
         all_ranks_baseline = []
@@ -225,94 +186,44 @@ class CoSiRAutomaticEvaluator:
 
         with torch.no_grad():
             for img_idx in tqdm(test_img_indices, desc="  Testing images"):
-                img_emb = self.image_embs[img_idx : img_idx + 1]  # [1, 512]
+                img_emb = self.image_embs[img_idx : img_idx + 1]
+                gt_cap_indices = self.img_to_cap_map[img_idx]
 
-                # Ground truth caption indices (MS-COCO: 5 captions per image)
-                gt_cap_indices = self.img_to_cap_map[
-                    img_idx
-                ]  # list of 5 caption indices
-
-                # ===== Baseline: 无condition =====
-                sims_baseline = F.cosine_similarity(
+                sims_base = F.cosine_similarity(
                     img_emb.expand(self.n_texts, -1), self.text_embs, dim=1
-                )  # [n_texts]
+                )
+                best_rank_base = min(
+                    (sims_base > sims_base[gt]).sum().item() for gt in gt_cap_indices
+                )
+                all_ranks_baseline.append(best_rank_base)
 
-                # 找ground truth的最佳rank
-                gt_ranks_baseline = []
-                for gt_idx in gt_cap_indices:
-                    rank = (sims_baseline > sims_baseline[gt_idx]).sum().item()
-                    gt_ranks_baseline.append(rank)
-
-                if gt_ranks_baseline:
-                    best_rank_baseline = min(gt_ranks_baseline)
-                    all_ranks_baseline.append(best_rank_baseline)
-                else:
-                    continue
-
-                # ===== Conditional: 对每个condition =====
                 for condition in sampled_conditions:
                     cond_expanded = condition.unsqueeze(0).repeat(self.n_texts, 1)
                     text_embs_mod = self.model.combine(
                         self.text_embs, None, cond_expanded
                     )
-
-                    sims_cond = F.cosine_similarity(
+                    sims = F.cosine_similarity(
                         img_emb.expand(self.n_texts, -1), text_embs_mod, dim=1
                     )
+                    best_rank = min(
+                        (sims > sims[gt]).sum().item() for gt in gt_cap_indices
+                    )
+                    all_ranks_conditional.append(best_rank)
 
-                    # 找ground truth的最佳rank
-                    gt_ranks_cond = []
-                    for gt_idx in gt_cap_indices:
-                        rank = (sims_cond > sims_cond[gt_idx]).sum().item()
-                        gt_ranks_cond.append(rank)
-
-                    if gt_ranks_cond:
-                        best_rank_cond = min(gt_ranks_cond)
-                        all_ranks_conditional.append(best_rank_cond)
-
-        # Check if we have any valid ranks
         if not all_ranks_baseline or not all_ranks_conditional:
-            print("  ⚠ Warning: No valid retrieval results found")
-            return {
-                "R@1_baseline": 0.0,
-                "R@1_conditional": 0.0,
-                "R@1_absolute_gain": 0.0,
-                "R@1_relative_gain_%": 0.0,
-                "R@5_baseline": 0.0,
-                "R@5_conditional": 0.0,
-                "R@5_absolute_gain": 0.0,
-                "R@5_relative_gain_%": 0.0,
-                "R@10_baseline": 0.0,
-                "R@10_conditional": 0.0,
-                "R@10_absolute_gain": 0.0,
-                "R@10_relative_gain_%": 0.0,
-                "mean_rank_baseline": 0.0,
-                "mean_rank_conditional": 0.0,
-                "mean_rank_improvement": 0.0,
-            }
+            return {}
 
-        # 计算R@K
         def recall_at_k(ranks, k):
-            if not ranks:
-                return 0.0
-            return (np.array(ranks) < k).mean() * 100  # 转为百分比
+            return float((np.array(ranks) < k).mean() * 100)
 
         result = {}
         for k in [1, 5, 10]:
-            r_baseline = recall_at_k(all_ranks_baseline, k)
-            r_conditional = recall_at_k(all_ranks_conditional, k)
+            r_base = recall_at_k(all_ranks_baseline, k)
+            r_cond = recall_at_k(all_ranks_conditional, k)
+            result[f"R@{k}_baseline"] = r_base
+            result[f"R@{k}_conditional"] = r_cond
+            result[f"R@{k}_absolute_gain"] = r_cond - r_base
 
-            # 绝对提升
-            absolute_gain = r_conditional - r_baseline
-            # 相对提升
-            relative_gain = (absolute_gain / (r_baseline + 1e-8)) * 100
-
-            result[f"R@{k}_baseline"] = float(r_baseline)
-            result[f"R@{k}_conditional"] = float(r_conditional)
-            result[f"R@{k}_absolute_gain"] = float(absolute_gain)
-            result[f"R@{k}_relative_gain_%"] = float(relative_gain)
-
-        # Mean Rank
         result["mean_rank_baseline"] = float(np.mean(all_ranks_baseline))
         result["mean_rank_conditional"] = float(np.mean(all_ranks_conditional))
         result["mean_rank_improvement"] = float(
@@ -320,306 +231,200 @@ class CoSiRAutomaticEvaluator:
         )
 
         print(
-            f"  → R@1: {result['R@1_baseline']:.2f}% → {result['R@1_conditional']:.2f}% "
-            f"(+{result['R@1_absolute_gain']:.2f}%)"
+            f"  → R@1: {result['R@1_baseline']:.2f}% → {result['R@1_conditional']:.2f}%"
+            f" (+{result['R@1_absolute_gain']:.2f}%)"
         )
-        print(
-            f"  → R@5: {result['R@5_baseline']:.2f}% → {result['R@5_conditional']:.2f}% "
-            f"(+{result['R@5_absolute_gain']:.2f}%)"
-        )
-
         return result
 
-    # ========== 4. 检索多样性 ==========
-    def compute_retrieval_diversity(
-        self, n_conditions=12, n_test_images=20, k=10, test_radius=2.0
-    ):
+    # ========== 4. Retrieval Diversity ==========
+    def compute_retrieval_diversity(self, n_conditions=12, n_test_images=20, k=10):
         """
-        测量不同conditions检索结果的多样性
+        Jensen–Shannon Divergence between retrieval distributions of different conditions.
 
-        使用Jensen-Shannon Divergence (JSD)
-        理想值: JSD > 0.1
+        Samples conditions from the actual condition set (no polar-grid assumption).
+        Ideal: mean JSD > 0.1.
         """
-        print("\n[4/6] Computing Retrieval Diversity...")
+        print("\n[4/5] Computing Retrieval Diversity...")
         self.model.eval()
 
-        # Validate inputs
-        n_conditions = max(2, n_conditions)  # Need at least 2 for diversity
+        n_conditions = min(max(2, n_conditions), len(self.conditions))
         n_test_images = min(n_test_images, self.n_images)
         k = min(k, self.n_texts)
 
-        # 在不同角度均匀采样conditions
-        angles = torch.linspace(0, 2 * np.pi, n_conditions + 1, device=self.device)[:-1]
-        test_conditions = torch.stack(
-            [test_radius * torch.cos(angles), test_radius * torch.sin(angles)], dim=1
-        )
-
-        # 随机选择test images
+        condition_indices = torch.randperm(len(self.conditions))[:n_conditions]
+        test_conditions = self.conditions[condition_indices]
         test_img_indices = torch.randperm(self.n_images)[:n_test_images].tolist()
 
-        # 对每个condition，收集检索到的caption indices的分布
-        condition_caption_distributions = [Counter() for _ in range(n_conditions)]
+        distributions = [Counter() for _ in range(n_conditions)]
 
         with torch.no_grad():
             for img_idx in tqdm(test_img_indices, desc="  Testing images"):
                 img_emb = self.image_embs[img_idx : img_idx + 1]
 
-                # 对每个condition检索
                 for cond_idx, condition in enumerate(test_conditions):
                     cond_expanded = condition.unsqueeze(0).repeat(self.n_texts, 1)
                     text_embs_mod = self.model.combine(
                         self.text_embs, None, cond_expanded
                     )
-
                     sims = F.cosine_similarity(
                         img_emb.expand(self.n_texts, -1), text_embs_mod, dim=1
                     )
+                    top_k_indices = torch.topk(sims, k=k)[1].cpu().tolist()
+                    for idx in top_k_indices:
+                        distributions[cond_idx][idx] += 1
 
-                    # Top-k
-                    top_k_indices = torch.topk(sims, k=min(k, self.n_texts))[1]
-
-                    # 收集top-k caption indices
-                    for idx in top_k_indices.cpu().tolist():
-                        condition_caption_distributions[cond_idx][idx] += 1
-
-        # 计算两两之间的JSD
         jsds = []
         for i in range(n_conditions):
             for j in range(i + 1, n_conditions):
-                # 构建共同的vocabulary (caption indices)
-                all_indices = set(condition_caption_distributions[i].keys()) | set(
-                    condition_caption_distributions[j].keys()
+                all_indices = sorted(
+                    set(distributions[i].keys()) | set(distributions[j].keys())
                 )
-
-                if len(all_indices) == 0:
+                if not all_indices:
                     continue
-
-                # 构建分布向量
-                dist_i = np.array(
-                    [
-                        condition_caption_distributions[i][idx]
-                        for idx in sorted(all_indices)
-                    ]
-                )
-                dist_j = np.array(
-                    [
-                        condition_caption_distributions[j][idx]
-                        for idx in sorted(all_indices)
-                    ]
-                )
-
-                # 归一化
-                dist_i = dist_i / (dist_i.sum() + 1e-8)
-                dist_j = dist_j / (dist_j.sum() + 1e-8)
-
-                # 计算JSD
-                jsd = jensenshannon(dist_i, dist_j)
+                di = np.array([distributions[i][x] for x in all_indices], dtype=float)
+                dj = np.array([distributions[j][x] for x in all_indices], dtype=float)
+                di /= di.sum() + 1e-8
+                dj /= dj.sum() + 1e-8
+                jsd = jensenshannon(di, dj)
                 if not np.isnan(jsd):
                     jsds.append(jsd)
 
         result = {
             "mean_jsd": float(np.mean(jsds)) if jsds else 0.0,
             "std_jsd": float(np.std(jsds)) if jsds else 0.0,
-            # "min_jsd": float(np.min(jsds)) if jsds else 0.0,
-            # "max_jsd": float(np.max(jsds)) if jsds else 0.0,
-            # "n_conditions": n_conditions,
-            # "n_pairs": len(jsds),
         }
-
         print(f"  → Mean JSD: {result['mean_jsd']:.4f} ± {result['std_jsd']:.4f}")
         return result
 
-    # ========== 5. 语义一致性 ==========
-    def compute_semantic_coherence_score(self, n_bins=8, n_images_per_bin=5, k=10):
+    # ========== 5. Best-Condition Upper Bound ==========
+    def compute_best_condition_upper_bound(self, n_test_images=20):
         """
-        评估同一角度区间的语义一致性
+        For fixed test images, try every representative condition and keep the best R@K.
+        Compare to no-condition baseline to get retrieval boost upper bound.
 
-        使用简化版本：计算同一bin内检索结果的相似度
+        Uses a fixed set of images (first n_test_images) for epoch-to-epoch comparability.
         """
-        print("\n[5/6] Computing Semantic Coherence...")
+        print("\n[5/5] Computing Best-Condition Upper Bound...")
         self.model.eval()
 
-        # Validate inputs
-        n_images_per_bin = min(n_images_per_bin, self.n_images)
-        k = min(k, self.n_texts)
+        if self.representatives is None:
+            print("  ⚠ No representatives provided, skipping.")
+            return {}
 
-        # 分angle bins
-        angles = torch.atan2(self.conditions[:, 1], self.conditions[:, 0])
-        angle_bins = torch.linspace(-np.pi, np.pi, n_bins + 1, device=self.device)
+        n_test_images = min(n_test_images, self.n_images)
+        test_img_indices = list(range(n_test_images))  # fixed, not random
 
-        bin_coherences = []
+        all_ranks_baseline = []
+        all_ranks_best = []
 
         with torch.no_grad():
-            for i in range(n_bins):
-                bin_mask = (angles >= angle_bins[i]) & (angles < angle_bins[i + 1])
+            for img_idx in tqdm(test_img_indices, desc="  Testing images"):
+                img_emb = self.image_embs[img_idx : img_idx + 1]
+                gt_cap_indices = self.img_to_cap_map[img_idx]
 
-                if not bin_mask.any():
-                    continue
+                # Baseline
+                sims_base = F.cosine_similarity(
+                    img_emb.expand(self.n_texts, -1), self.text_embs, dim=1
+                )
+                best_rank_base = min(
+                    (sims_base > sims_base[gt]).sum().item() for gt in gt_cap_indices
+                )
+                all_ranks_baseline.append(best_rank_base)
 
-                bin_conditions = self.conditions[bin_mask]
+                # Best of representatives
+                best_rank_rep = self.n_texts
+                for rep in self.representatives:
+                    cond_expanded = rep.unsqueeze(0).repeat(self.n_texts, 1)
+                    text_embs_mod = self.model.combine(
+                        self.text_embs, None, cond_expanded
+                    )
+                    sims = F.cosine_similarity(
+                        img_emb.expand(self.n_texts, -1), text_embs_mod, dim=1
+                    )
+                    rank = min((sims > sims[gt]).sum().item() for gt in gt_cap_indices)
+                    best_rank_rep = min(best_rank_rep, rank)
+                all_ranks_best.append(best_rank_rep)
 
-                # 从这个bin随机采样几个conditions
-                n_sample = min(3, len(bin_conditions))
-                sampled_conditions = bin_conditions[
-                    torch.randperm(len(bin_conditions))[:n_sample]
-                ]
+        def recall_at_k(ranks, k):
+            return float((np.array(ranks) < k).mean() * 100)
 
-                # 随机选择test images
-                test_img_indices = torch.randperm(self.n_images)[
-                    :n_images_per_bin
-                ].tolist()
+        result = {}
+        for k in [1, 5, 10]:
+            r_base = recall_at_k(all_ranks_baseline, k)
+            r_best = recall_at_k(all_ranks_best, k)
+            result[f"R@{k}_baseline"] = r_base
+            result[f"R@{k}_best_condition"] = r_best
+            result[f"R@{k}_boost"] = r_best - r_base
 
-                # 收集这个bin所有检索到的text embeddings
-                bin_retrieved_embs = []
-
-                for img_idx in test_img_indices:
-                    img_emb = self.image_embs[img_idx : img_idx + 1]
-
-                    for condition in sampled_conditions:
-                        cond_expanded = condition.unsqueeze(0).repeat(self.n_texts, 1)
-                        text_embs_mod = self.model.combine(
-                            self.text_embs, None, cond_expanded
-                        )
-
-                        sims = F.cosine_similarity(
-                            img_emb.expand(self.n_texts, -1), text_embs_mod, dim=1
-                        )
-
-                        top_k_indices = torch.topk(sims, k=min(k, self.n_texts))[1]
-
-                        # 收集这些text的原始embeddings（未调制）
-                        bin_retrieved_embs.append(self.text_embs[top_k_indices])
-
-                if len(bin_retrieved_embs) > 1:
-                    # 合并所有retrieved embeddings
-                    bin_retrieved_embs = torch.cat(
-                        bin_retrieved_embs, dim=0
-                    )  # [N, 512]
-
-                    # 计算平均pairwise cosine similarity
-                    # 归一化
-                    bin_retrieved_embs = F.normalize(bin_retrieved_embs, dim=1)
-
-                    # 相似度矩阵
-                    sim_matrix = bin_retrieved_embs @ bin_retrieved_embs.T
-
-                    # 去除对角线
-                    n = len(sim_matrix)
-                    mask = torch.ones_like(sim_matrix, dtype=torch.bool)
-                    mask.fill_diagonal_(False)
-
-                    coherence = sim_matrix[mask].mean().item()
-                    bin_coherences.append(coherence)
-
-        result = {
-            "mean_coherence": float(np.mean(bin_coherences)) if bin_coherences else 0.0,
-            "std_coherence": float(np.std(bin_coherences)) if bin_coherences else 0.0,
-            # "n_bins_evaluated": len(bin_coherences),
-            # "coherences_per_bin": [float(c) for c in bin_coherences],
-        }
+        result["mean_rank_baseline"] = float(np.mean(all_ranks_baseline))
+        result["mean_rank_best"] = float(np.mean(all_ranks_best))
+        result["mean_rank_boost"] = float(
+            result["mean_rank_baseline"] - result["mean_rank_best"]
+        )
 
         print(
-            f"  → Mean Coherence: {result['mean_coherence']:.4f} ± {result['std_coherence']:.4f}"
+            f"  → R@1: {result['R@1_baseline']:.2f}% → {result['R@1_best_condition']:.2f}%"
+            f" (boost +{result['R@1_boost']:.2f}%)"
         )
         return result
 
-    # ========== 6. Condition Space质量 ==========
+    # ========== 6. Condition Space Quality ==========
     def compute_condition_space_quality(self):
         """
-        评估condition space本身的质量
-
-        包括：
-        - Silhouette score (聚类质量)
-        - 有效维度数
-        - 分布均匀性
+        Intrinsic geometry of the condition space.
+        - Silhouette score (uses pre-computed HDBSCAN labels, no extra clustering)
+        - PCA effective dimensionality (95% variance)
+        - Near-origin ratio
         """
         print("\n[6/6] Computing Condition Space Quality...")
 
-        conditions = self.conditions.detach().cpu().numpy()
+        conditions_np = self.conditions.detach().cpu().numpy()
 
-        # 1. Silhouette score
-        # Ensure we have enough samples (at least 2*n_clusters)
-        n_clusters = min(8, max(2, len(conditions) // 20))  # More conservative
-        if n_clusters >= 2 and len(conditions) >= 2 * n_clusters:
-            try:
-                kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-                labels = kmeans.fit_predict(conditions)
-                # Check if we have at least 2 different labels
-                if len(np.unique(labels)) >= 2:
-                    silhouette = silhouette_score(conditions, labels)
-                else:
-                    silhouette = 0.0
-            except Exception as e:
-                print(f"  ⚠ Warning: Silhouette score computation failed: {e}")
-                silhouette = 0.0
-        else:
-            silhouette = 0.0
-            n_clusters = 0
+        # Silhouette: use HDBSCAN labels to avoid re-clustering
+        silhouette = 0.0
+        if self.hdbscan_labels is not None:
+            valid = self.hdbscan_labels != -1
+            unique_valid = np.unique(self.hdbscan_labels[valid])
+            if valid.sum() >= 2 and len(unique_valid) >= 2:
+                try:
+                    silhouette = float(
+                        silhouette_score(
+                            conditions_np[valid], self.hdbscan_labels[valid]
+                        )
+                    )
+                except Exception as e:
+                    print(f"  ⚠ Silhouette failed: {e}")
 
-        # 2. 有效维度（通过PCA）
-        if len(conditions) > conditions.shape[1]:
+        # PCA effective dimensions
+        if len(conditions_np) > conditions_np.shape[1]:
             pca = PCA()
-            pca.fit(conditions)
-            # 保留95%方差需要的维度数
+            pca.fit(conditions_np)
             cumsum = np.cumsum(pca.explained_variance_ratio_)
             n_effective_dims = int(np.argmax(cumsum >= 0.95) + 1)
-            variance_ratios = pca.explained_variance_ratio_.tolist()
+            variance_ratios = pca.explained_variance_ratio_[:5].tolist()
         else:
-            n_effective_dims = conditions.shape[1]
+            n_effective_dims = conditions_np.shape[1]
             variance_ratios = []
 
-        # 3. 极坐标分布统计（2D特有）
-        if conditions.shape[1] == 2:
-            angles = np.arctan2(conditions[:, 1], conditions[:, 0])
-            radii = np.linalg.norm(conditions, axis=1)
-
-            # 角度均匀性（Kolmogorov-Smirnov test）
-            # 转换到[0, 1]
-            angles_normalized = (angles + np.pi) / (2 * np.pi)
-            ks_stat, ks_pval = kstest(angles_normalized, "uniform")
-
-            # 半径分布统计
-            radius_stats = {
-                "mean": float(radii.mean()),
-                "std": float(radii.std()),
-                "min": float(radii.min()),
-                "max": float(radii.max()),
-                "median": float(np.median(radii)),
-            }
-
-            # 条件在原点附近的比例
-            near_origin_ratio = (radii < 0.5).mean()
-        else:
-            ks_stat, ks_pval = None, None
-            radius_stats = None
-            near_origin_ratio = None
+        # Near-origin ratio
+        norms = np.linalg.norm(conditions_np, axis=1)
+        near_origin_ratio = float((norms < 0.5).mean())
 
         result = {
-            "silhouette_score": float(silhouette),
-            "n_clusters": n_clusters,
+            "silhouette_score": silhouette,
             "n_effective_dims": int(n_effective_dims),
-            "pca_variance_ratios": variance_ratios[:5],  # 前5个
-            "angle_uniformity_ks_stat": float(ks_stat) if ks_stat is not None else None,
-            "angle_uniformity_p_value": float(ks_pval) if ks_pval is not None else None,
-            "radius_stats": radius_stats,
-            "near_origin_ratio": (
-                float(near_origin_ratio) if near_origin_ratio is not None else None
-            ),
-            "total_conditions": len(conditions),
+            "pca_variance_ratios": variance_ratios,
+            "near_origin_ratio": near_origin_ratio,
+            "total_conditions": len(conditions_np),
         }
 
         print(f"  → Silhouette: {silhouette:.4f}")
-        print(f"  → Effective Dims: {n_effective_dims}/{conditions.shape[1]}")
-        if radius_stats:
-            print(f"  → Radius: {radius_stats['mean']:.2f} ± {radius_stats['std']:.2f}")
-
+        print(f"  → Effective dims: {n_effective_dims}/{conditions_np.shape[1]}")
+        print(f"  → Near-origin: {near_origin_ratio*100:.1f}%")
         return result
 
-    # ========== 主评估函数 ==========
+    # ========== Main ==========
     def evaluate_all(self, save_path=None, verbose=True):
-        """
-        运行所有自动化评估指标
-        """
         if verbose:
             print("=" * 70)
             print(" " * 20 + "CoSiR Automatic Evaluation")
@@ -635,102 +440,76 @@ class CoSiRAutomaticEvaluator:
         }
 
         try:
-            # 1. 半径-效果相关性
-            results["radius_effect"] = self.compute_radius_effect_correlation(
+            results["magnitude_effect"] = self.compute_magnitude_effect_correlation(
                 n_samples=200, n_texts_sample=100
             )
-
-            # 2. 角度-语义单调性
-            results["angular_monotonicity"] = (
-                self.compute_angular_semantic_monotonicity(
-                    n_angles=12, n_texts_sample=150, test_radius=2.0
+            results["condition_distance_correlation"] = (
+                self.compute_condition_distance_semantic_correlation(
+                    n_unique=50, n_texts_sample=100
                 )
             )
-
-            # 3. 检索性能提升
             results["retrieval_gain"] = self.compute_conditional_retrieval_gain(
                 n_conditions=10, n_test_images=100
             )
-
-            # 4. 检索多样性
             results["diversity"] = self.compute_retrieval_diversity(
                 n_conditions=12, n_test_images=20, k=10
             )
-
-            # 5. 语义一致性
-            results["coherence"] = self.compute_semantic_coherence_score(
-                n_bins=8, n_images_per_bin=5, k=10
+            results["best_condition_upper_bound"] = (
+                self.compute_best_condition_upper_bound(n_test_images=20)
             )
-
-            # # 6. Condition space质量
-            # results["space_quality"] = (
-            #     self.compute_condition_space_quality()
-            # )  # DEBUG: This is too slow, we should use a faster method
+            # results["space_quality"] = self.compute_condition_space_quality()
 
         except Exception as e:
             print(f"\n❌ Error during evaluation: {e}")
             import traceback
 
             traceback.print_exc()
-            results["error"] = str(e)
+            results["error"] = {"message": str(e), "traceback": traceback.format_exc()}
 
-        # 保存结果
         if save_path:
             with open(save_path, "w") as f:
                 json.dump(results, f, indent=2)
             print(f"\n✓ Results saved to: {save_path}")
 
-        # 生成summary
         if verbose and "error" not in results:
-            self.print_summary(results)
+            self._print_summary(results)
 
         return results
 
-    def print_summary(self, results):
-        """
-        打印评估摘要
-        """
+    def _print_summary(self, results):
         print("\n" + "=" * 70)
         print(" " * 25 + "EVALUATION SUMMARY")
         print("=" * 70)
 
-        # 定义阈值
-        thresholds = {
-            "radius_correlation": (0.7, "≥"),
-            "angular_monotonicity": (0.6, "≥"),
-            "r1_absolute_gain": (5.0, "≥"),
-            "diversity_jsd": (0.1, "≥"),
-            "coherence": (0.5, "≥"),
-            "silhouette": (0.3, "≥"),
-        }
-
-        # 检查每个指标
         checks = []
 
-        if "radius_effect" in results:
+        if "magnitude_effect" in results:
             checks.append(
                 (
-                    "Radius-Effect Correlation",
-                    results["radius_effect"]["correlation"],
-                    thresholds["radius_correlation"],
+                    "Magnitude–Effect Correlation (r)",
+                    results["magnitude_effect"]["correlation"],
+                    0.8,
+                    "≥",
                 )
             )
 
-        if "angular_monotonicity" in results:
+        if "condition_distance_correlation" in results:
             checks.append(
                 (
-                    "Angular-Semantic Monotonicity (Spearman ρ)",
-                    results["angular_monotonicity"]["spearman_rho"],
-                    thresholds["angular_monotonicity"],
+                    "Condition Distance–Semantic Corr (ρ)",
+                    results["condition_distance_correlation"]["spearman_rho"],
+                    0.7,
+                    "≥",
                 )
             )
 
         if "retrieval_gain" in results:
             checks.append(
                 (
-                    "R@1 Absolute Gain (%)",
+                    "R@1 Gain (random condition, %)",
                     results["retrieval_gain"]["R@1_absolute_gain"],
-                    thresholds["r1_absolute_gain"],
+                    0.0,
+                    "≥",
                 )
             )
 
@@ -739,64 +518,64 @@ class CoSiRAutomaticEvaluator:
                 (
                     "Retrieval Diversity (Mean JSD)",
                     results["diversity"]["mean_jsd"],
-                    thresholds["diversity_jsd"],
+                    0.1,
+                    "≥",
                 )
             )
 
-        if "coherence" in results:
+        if (
+            "best_condition_upper_bound" in results
+            and results["best_condition_upper_bound"]
+        ):
             checks.append(
                 (
-                    "Semantic Coherence",
-                    results["coherence"]["mean_coherence"],
-                    thresholds["coherence"],
+                    "R@1 Boost — best condition (%)",
+                    results["best_condition_upper_bound"]["R@1_boost"],
+                    5.0,
+                    "≥",
                 )
             )
 
         if "space_quality" in results:
             checks.append(
                 (
-                    "Silhouette Score",
+                    "Condition Space Silhouette",
                     results["space_quality"]["silhouette_score"],
-                    thresholds["silhouette"],
+                    0.3,
+                    "≥",
                 )
             )
 
-        # 打印每个检查
         passed = 0
-        for name, value, (threshold, op) in checks:
-            if op == "≥":
-                status = "✓ PASS" if value >= threshold else "✗ FAIL"
-                passed += value >= threshold
-            else:
-                status = "✓ PASS" if value <= threshold else "✗ FAIL"
-                passed += value <= threshold
-
-            print(f"{name:45s}: {value:7.4f}  (thr: {op}{threshold:5.2f})  {status}")
+        for name, value, threshold, op in checks:
+            ok = value >= threshold if op == "≥" else value <= threshold
+            status = "✓ PASS" if ok else "✗ FAIL"
+            passed += ok
+            print(f"{name:45s}: {value:7.4f}  (thr: {op}{threshold:.2f})  {status}")
 
         print("=" * 70)
         score = (passed / len(checks)) * 100 if checks else 0
-        print(f"Overall Score: {passed}/{len(checks)} checks passed ({score:.1f}%)")
+        print(f"Overall: {passed}/{len(checks)} passed ({score:.1f}%)")
         print("=" * 70)
 
-        # 额外的关键信息
         if "retrieval_gain" in results:
-            print(f"\nRetrieval Performance:")
+            rg = results["retrieval_gain"]
+            print(f"\nRetrieval Gain (random conditions):")
+            print(f"  Baseline  R@1: {rg['R@1_baseline']:.2f}%")
             print(
-                f"  Baseline R@1:     {results['retrieval_gain']['R@1_baseline']:.2f}%"
-            )
-            print(
-                f"  Conditional R@1:  {results['retrieval_gain']['R@1_conditional']:.2f}%"
-            )
-            print(
-                f"  Improvement:      +{results['retrieval_gain']['R@1_absolute_gain']:.2f}%"
+                f"  Cond.     R@1: {rg['R@1_conditional']:.2f}%  (+{rg['R@1_absolute_gain']:.2f}%)"
             )
 
-        if "space_quality" in results and results["space_quality"].get("radius_stats"):
-            rs = results["space_quality"]["radius_stats"]
-            print(f"\nCondition Space Statistics:")
+        if (
+            "best_condition_upper_bound" in results
+            and results["best_condition_upper_bound"]
+        ):
+            ub = results["best_condition_upper_bound"]
+            print(f"\nBest-Condition Upper Bound (first 20 test images):")
+            print(f"  Baseline  R@1: {ub['R@1_baseline']:.2f}%")
             print(
-                f"  Radius: {rs['mean']:.2f} ± {rs['std']:.2f} (range: [{rs['min']:.2f}, {rs['max']:.2f}])"
+                f"  Best-rep  R@1: {ub['R@1_best_condition']:.2f}%  (boost +{ub['R@1_boost']:.2f}%)"
             )
             print(
-                f"  Near origin: {results['space_quality']['near_origin_ratio']*100:.1f}%"
+                f"  Mean rank: {ub['mean_rank_baseline']:.1f} → {ub['mean_rank_best']:.1f}"
             )

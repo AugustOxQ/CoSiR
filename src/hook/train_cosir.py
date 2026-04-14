@@ -1,12 +1,18 @@
 import time
 import os
 import torch
+import torch.nn.functional as F
 import random
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 import numpy as np
 from transformers import AutoProcessor
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import (
+    CosineAnnealingLR,
+    LinearLR,
+    SequentialLR,
+    CosineAnnealingWarmRestarts,
+)
 import wandb
 import matplotlib.pyplot as plt
 from itertools import chain
@@ -27,11 +33,11 @@ from src.utils import (
     get_representatives_hdbscan,
     get_umap,
     visualize_ideal_condition_space,
-    visualize_angular_semantics_fast,
-    visualize_angular_semantics_text_to_image_fast,
+    visualize_given_conditions_image_to_text,
+    visualize_given_conditions_text_to_image,
     CoSiRAutomaticEvaluator,
 )
-from src.metrics import LabelContrastiveLoss_enhance, LabelPredictionLoss
+from src.metrics import LabelContrastiveLoss_enhance
 
 
 def train_cosir(cfg, logger):
@@ -91,12 +97,41 @@ def train_cosir(cfg, logger):
         ]
     )
 
-    scheduler = CosineAnnealingLR(
-        optimizer,
-        T_max=cfg.scheduler.T_max if cfg.scheduler.T_max > 0 else cfg.train.epochs,
-        eta_min=cfg.scheduler.eta_min,
-        last_epoch=-1,
-    )
+    if cfg.scheduler.type == "CosineAnnealingLR":
+        scheduler = CosineAnnealingLR(
+            optimizer,
+            T_max=cfg.scheduler.T_max if cfg.scheduler.T_max > 0 else cfg.train.epochs,
+            eta_min=cfg.scheduler.eta_min,
+            last_epoch=-1,
+        )
+    elif cfg.scheduler.type == "CosineAnnealingWarmRestarts":
+        scheduler = CosineAnnealingWarmRestarts(
+            optimizer,
+            T_0=cfg.scheduler.T_0,
+            T_mult=cfg.scheduler.T_mult if cfg.scheduler.T_mult > 0 else 1,
+            eta_min=cfg.scheduler.eta_min,
+            last_epoch=-1,
+        )
+    elif cfg.scheduler.type == "LinearLR":
+        warmup = LinearLR(
+            optimizer,
+            start_factor=0.1,
+            end_factor=1.0,
+            total_iters=int(cfg.train.epochs * 0.1),
+        )
+        decay = LinearLR(
+            optimizer,
+            start_factor=1.0,
+            end_factor=1e-5,
+            total_iters=int(cfg.train.epochs * 0.9),
+        )
+        scheduler = SequentialLR(
+            optimizer,
+            schedulers=[warmup, decay],
+            milestones=[int(cfg.train.epochs * 0.1)],
+        )
+    else:
+        raise ValueError(f"Unknown scheduler type: {cfg.scheduler.type}")
     # Check either load existing sample ids
     metadata_path = os.path.join(storage_dir, "metadata.json")
     if os.path.exists(metadata_path) and cfg.train.load_existing_features:
@@ -365,6 +400,13 @@ def train_cosir(cfg, logger):
 
     global_step = 0
 
+    # Warm-up auto-end tracking
+    automatic_warm_up_end = False
+    warm_up_loss_history: list[float] = []
+    in_warmup = (
+        True if cfg.train.warm_up_epochs > 0 else False
+    )  # single flag; transitions to False exactly once
+
     for epoch in range(cfg.train.epochs):
         experiment.current_epoch = epoch
 
@@ -372,8 +414,17 @@ def train_cosir(cfg, logger):
         epoch_loss = 0.0
         num_batches = 0
 
-        # Freeze model parameters and only train label embeddings
-        if epoch == cfg.train.warm_up_epochs:
+        # Transition out of warm-up: hard limit (if > 0) OR automatic plateau trigger
+        # warm_up_epochs=0 means no hard limit — rely solely on automatic detection
+        scheduled_end = (
+            cfg.train.warm_up_epochs > 0 and epoch >= cfg.train.warm_up_epochs
+        )
+        if in_warmup and (scheduled_end or automatic_warm_up_end):
+            in_warmup = False
+            reason = "scheduled" if scheduled_end else "auto (plateau)"
+            print(
+                f"[WarmUp] Warm-up ended at epoch {epoch} ({reason}) — freezing combiner, starting embedding updates"
+            )
             for param in model.combiner.parameters():
                 param.requires_grad = False
 
@@ -395,6 +446,8 @@ def train_cosir(cfg, logger):
 
             # Load label embeddings for this batch's sample IDs
             label_embeddings_data = embedding_manager.get_embeddings(batch_sample_ids)
+
+            label_embeddings_clone = label_embeddings_data.clone().detach()
             label_embeddings = torch.nn.Parameter(
                 label_embeddings_data.to(device), requires_grad=True
             )
@@ -428,6 +481,14 @@ def train_cosir(cfg, logger):
                 model,
             )
 
+            if batch_idx % 100 == 0:
+                # Compare comb_emb and txt_features
+                cos_sim = torch.nn.functional.cosine_similarity(
+                    comb_emb,
+                    torch.nn.functional.normalize(txt_features, dim=-1),
+                    dim=-1,
+                )
+
             loss = loss_dict["total_loss"]
 
             epoch_loss += loss.item()
@@ -443,6 +504,9 @@ def train_cosir(cfg, logger):
                     "train/epoch": epoch,
                     "train/batch": batch_idx,
                     "train/step": global_step,
+                    "train/cos_sim": (
+                        cos_sim.mean().item() if cos_sim is not None else None
+                    ),
                 }
             )
             logger.log_metrics(batch_log_dict)
@@ -455,13 +519,25 @@ def train_cosir(cfg, logger):
             global_step += 1
 
             # Persist updated label embeddings back to the manager
+            if not in_warmup:
+                if cfg.train.normalize:
+                    label_embeddings = torch.nn.functional.normalize(
+                        label_embeddings, dim=-1
+                    )
 
-            if cfg.train.normalize:
-                label_embeddings = torch.nn.functional.normalize(
-                    label_embeddings, dim=-1
+                embedding_manager.update_embeddings(batch_sample_ids, label_embeddings)
+
+                label_embeddings_diff = (
+                    (label_embeddings.cpu() - label_embeddings_clone.cpu())
+                    .norm(dim=-1)
+                    .mean()
                 )
-
-            embedding_manager.update_embeddings(batch_sample_ids, label_embeddings)
+                batch_log_dict.update(
+                    {
+                        "train/label_embeddings_diff": label_embeddings_diff.item(),
+                    }
+                )
+                logger.log_metrics(batch_log_dict)
 
         # ========== EPOCH END: Performance Monitoring & Sync ==========
         epoch_time = time.time() - epoch_start_time
@@ -480,8 +556,26 @@ def train_cosir(cfg, logger):
                 "train/epoch": epoch,
                 "train/loss": avg_loss,
                 "train/epoch_time": epoch_time,
+                "train/in_warmup": int(in_warmup),
             }
         )
+
+        # Auto warm-up end: track plateau during warm-up phase
+        if in_warmup and not automatic_warm_up_end:
+            warm_up_loss_history.append(avg_loss)
+            patience = cfg.train.warm_up_patience
+            min_delta_pct = cfg.train.warm_up_min_delta_pct
+            if len(warm_up_loss_history) > patience:
+                ref_loss = warm_up_loss_history[-(patience + 1)]
+                improvement_pct = (ref_loss - avg_loss) / (abs(ref_loss) + 1e-8) * 100
+                if improvement_pct < min_delta_pct:
+                    automatic_warm_up_end = True
+                    print(
+                        f"[WarmUp] Plateau detected: loss improved only {improvement_pct:.3f}% "
+                        f"over last {patience} epochs (threshold: {min_delta_pct}%). "
+                        f"Auto-ending warm-up after epoch {epoch}."
+                    )
+                    logger.log_metrics({"train/warmup_auto_ended_epoch": epoch})
 
         scheduler.step()
 
@@ -493,6 +587,7 @@ def train_cosir(cfg, logger):
             model.eval()
             with torch.no_grad():
                 # Test evaluation
+                torch.cuda.empty_cache()  # release any GPU residuals from training
                 print("Getting all embeddings")
                 _, label_embeddings_all = embedding_manager.get_all_embeddings()
                 print("Getting HDBSCAN labels")
@@ -577,6 +672,7 @@ def train_cosir(cfg, logger):
                         description=f"Ground truth sample types visualization at epoch {epoch}",
                     )
 
+                print("Visualizing ideal condition space")
                 fig2 = visualize_ideal_condition_space(umap_features, epoch)
                 experiment.save_artifact(
                     name=f"ideal_condition_space_{epoch}",
@@ -602,51 +698,247 @@ def train_cosir(cfg, logger):
 
                 # all_raw_image = test_set.get_all_raw_image()
 
-                # for tmp_round in range(3):
-                #     fig3 = visualize_angular_semantics_fast(
-                #         label_embeddings_all.cpu().numpy(),
-                #         model,
-                #         (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
-                #         device=device,
-                #     )
+                # print("Visualizing image-to-text")
+                # figs_i2t = visualize_given_conditions_image_to_text(
+                #     representatives.cpu().numpy(),
+                #     model,
+                #     (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
+                #     n_queries=1,
+                #     k=3,
+                #     all_raw_image=all_raw_image,
+                #     device=device,
+                # )
+                # for q_idx, fig in enumerate(figs_i2t):
                 #     experiment.save_artifact(
-                #         name=f"angular_semantics_fast_{epoch}_tmp_{tmp_round}",
-                #         data=fig3,
+                #         name=f"cond_i2t_{epoch}_query{q_idx}",
+                #         data=fig,
                 #         artifact_type="figure",
                 #         folder="plots",
-                #         description=f"Angular semantics visualization at epoch {epoch}",
+                #         description=f"Image-to-text by condition, epoch {epoch}, query {q_idx}",
                 #     )
 
-                #     fig4 = visualize_angular_semantics_text_to_image_fast(
-                #         label_embeddings_all.cpu().numpy(),
-                #         model,
-                #         (
-                #             all_img_emb,
-                #             all_txt_emb,
-                #             all_raw_image,
-                #             all_raw_text,
-                #         ),
-                #         device=device,
-                #     )
-
+                # print("Visualizing text-to-image")
+                # figs_t2i = visualize_given_conditions_text_to_image(
+                #     representatives.cpu().numpy(),
+                #     model,
+                #     (all_img_emb, all_txt_emb, all_raw_image, all_raw_text),
+                #     n_queries=1,
+                #     texts_per_image=test_set.captions_per_image,
+                #     k=3,
+                #     device=device,
+                # )
+                # for q_idx, fig in enumerate(figs_t2i):
                 #     experiment.save_artifact(
-                #         name=f"angular_semantics_text_to_image_{epoch}_tmp_{tmp_round}",
-                #         data=fig4,
+                #         name=f"cond_t2i_{epoch}_query{q_idx}",
+                #         data=fig,
                 #         artifact_type="figure",
                 #         folder="plots",
-                #         description=f"Angular semantics visualization (text-to-image) at epoch {epoch}",
+                #         description=f"Text-to-image by condition, epoch {epoch}, query {q_idx}",
                 #     )
 
-                #     plt.close("all")
+                # plt.close("all")
 
+                print("Evaluating automatic evaluator")
                 cosir_automatic_evaluator = CoSiRAutomaticEvaluator(
                     model,
                     (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
                     label_embeddings_all,
                     device,
+                    representatives=representatives,
+                    hdbscan_labels=hdbscanlabels,
                 )
                 result = cosir_automatic_evaluator.evaluate_all()
-                logger.log_metrics(result)
+                del cosir_automatic_evaluator  # free GPU tensors (conditions, image/text embs)
+                torch.cuda.empty_cache()
+
+                # Log only key scalar metrics to wandb; full results are printed by evaluate_all
+                wandb_metrics = {}
+                if "magnitude_effect" in result:
+                    wandb_metrics["eval/magnitude_r"] = result["magnitude_effect"][
+                        "correlation"
+                    ]
+                if "condition_distance_correlation" in result:
+                    wandb_metrics["eval/condition_dist_rho"] = result[
+                        "condition_distance_correlation"
+                    ]["spearman_rho"]
+                if "retrieval_gain" in result:
+                    wandb_metrics["eval/R@1_gain"] = result["retrieval_gain"][
+                        "R@1_absolute_gain"
+                    ]
+                    wandb_metrics["eval/R@1_baseline"] = result["retrieval_gain"][
+                        "R@1_baseline"
+                    ]
+                    wandb_metrics["eval/R@1_conditional"] = result["retrieval_gain"][
+                        "R@1_conditional"
+                    ]
+                if "diversity" in result:
+                    wandb_metrics["eval/diversity_jsd"] = result["diversity"][
+                        "mean_jsd"
+                    ]
+                if (
+                    "best_condition_upper_bound" in result
+                    and result["best_condition_upper_bound"]
+                ):
+                    wandb_metrics["eval/R@1_boost"] = result[
+                        "best_condition_upper_bound"
+                    ]["R@1_boost"]
+                    wandb_metrics["eval/R@1_best_condition"] = result[
+                        "best_condition_upper_bound"
+                    ]["R@1_best_condition"]
+                if "space_quality" in result:
+                    wandb_metrics["eval/silhouette"] = result["space_quality"][
+                        "silhouette_score"
+                    ]
+                    wandb_metrics["eval/n_effective_dims"] = result["space_quality"][
+                        "n_effective_dims"
+                    ]
+                logger.log_metrics(wandb_metrics)
+
+                # ─── Retrieval snapshot (qualitative cross-epoch tracking) ───
+                print("Saving retrieval snapshot...")
+                _N_FIXED = 50  # first N image/text queries, fixed across all epochs
+                _TOP_K = 10  # top-K results to store per query
+
+                snap_dir = experiment.directory / "retrieval_snapshots"
+                snap_dir.mkdir(parents=True, exist_ok=True)
+
+                _n_img = all_img_emb.shape[0]
+                _n_txt = all_txt_emb.shape[0]
+                _nfi = min(_N_FIXED, _n_img)
+                _nft = min(_N_FIXED, _n_txt)
+
+                _img_n = F.normalize(all_img_emb.to(device), dim=-1)  # [N_img, D]
+                # Use raw (unnormalized) text embeddings — consistent with training
+                _txt_raw = all_txt_emb.to(device)  # [N_txt, D]
+                _fixed_img_n = _img_n[:_nfi]  # [_nfi, D]
+                _fixed_txt_raw = _txt_raw[:_nft]  # [_nft, D]
+
+                _run_max_i2t = None  # [_nfi, N_txt]
+                _run_max_t2i = None  # [_nft, N_img]
+
+                for _rep in representatives:
+                    _cond = _rep.unsqueeze(0).to(device)
+                    # Modulate all texts for i2t query similarity
+                    # combine() already outputs unit-normalized embeddings
+                    _txt_mod = model.combine(_txt_raw, None, _cond.expand(_n_txt, -1))
+                    _sim_i2t = (_fixed_img_n @ _txt_mod.T).cpu()
+                    _run_max_i2t = (
+                        _sim_i2t
+                        if _run_max_i2t is None
+                        else torch.maximum(_run_max_i2t, _sim_i2t)
+                    )
+
+                    # Modulate only fixed text queries for t2i efficiency
+                    _txt_mod_fixed = model.combine(
+                        _fixed_txt_raw, None, _cond.expand(_nft, -1)
+                    )
+                    _sim_t2i = (_txt_mod_fixed @ _img_n.T).cpu()
+                    _run_max_t2i = (
+                        _sim_t2i
+                        if _run_max_t2i is None
+                        else torch.maximum(_run_max_t2i, _sim_t2i)
+                    )
+
+                _ki2t = min(_TOP_K, _n_txt)
+                _kt2i = min(_TOP_K, _n_img)
+                _top_i2t = torch.topk(_run_max_i2t, k=_ki2t, dim=1).indices  # [_nfi, K]
+                _top_t2i = torch.topk(_run_max_t2i, k=_kt2i, dim=1).indices  # [_nft, K]
+
+                # Ground-truth masks
+                _ittmap = image_to_text_map.cpu()  # [N_img, cpi]
+                _ttimap = text_to_image_map.cpu()  # [N_txt]
+
+                _is_gt_i2t = torch.zeros(_nfi, _ki2t, dtype=torch.bool)
+                for _q in range(_nfi):
+                    _gt_set = set(_ittmap[_q].tolist())
+                    for _kp, _tidx in enumerate(_top_i2t[_q].tolist()):
+                        if _tidx in _gt_set:
+                            _is_gt_i2t[_q, _kp] = True
+
+                _is_gt_t2i = torch.zeros(_nft, _kt2i, dtype=torch.bool)
+                for _q in range(_nft):
+                    _gt_img = _ttimap[_q].item()
+                    for _kp, _iidx in enumerate(_top_t2i[_q].tolist()):
+                        if _iidx == _gt_img:
+                            _is_gt_t2i[_q, _kp] = True
+
+                torch.save(
+                    {
+                        "epoch": epoch,
+                        "i2t": {
+                            "query_indices": list(range(_nfi)),
+                            "top_k": _top_i2t,
+                            "is_gt": _is_gt_i2t,
+                        },
+                        "t2i": {
+                            "query_indices": list(range(_nft)),
+                            "top_k": _top_t2i,
+                            "is_gt": _is_gt_t2i,
+                        },
+                    },
+                    snap_dir / f"epoch_{epoch:04d}.pt",
+                )
+                print(
+                    f"  Saved retrieval snapshot → {snap_dir / f'epoch_{epoch:04d}.pt'}"
+                )
+
+                # Metadata: save once (captions, GT maps, image paths, CLIP baseline)
+                _meta_path = snap_dir / "metadata.pt"
+                if not _meta_path.exists():
+                    _image_paths = [
+                        os.path.join(
+                            test_set.image_path, test_set.annotations[i]["image"]
+                        )
+                        for i in range(_n_img)
+                    ]
+                    # CLIP baseline (no condition): raw cosine similarity
+                    _txt_n_for_clip = F.normalize(_txt_raw, dim=-1)
+                    _clip_sim_i2t = (
+                        _fixed_img_n @ _txt_n_for_clip.T
+                    ).cpu()  # [_nfi, N_txt]
+                    _clip_sim_t2i = (
+                        F.normalize(_fixed_txt_raw, dim=-1) @ _img_n.T
+                    ).cpu()  # [_nft, N_img]
+                    _clip_top_i2t = torch.topk(_clip_sim_i2t, k=_ki2t, dim=1).indices
+                    _clip_top_t2i = torch.topk(_clip_sim_t2i, k=_kt2i, dim=1).indices
+
+                    _clip_is_gt_i2t = torch.zeros(_nfi, _ki2t, dtype=torch.bool)
+                    for _q in range(_nfi):
+                        _gt_set = set(_ittmap[_q].tolist())
+                        for _kp, _tidx in enumerate(_clip_top_i2t[_q].tolist()):
+                            if _tidx in _gt_set:
+                                _clip_is_gt_i2t[_q, _kp] = True
+
+                    _clip_is_gt_t2i = torch.zeros(_nft, _kt2i, dtype=torch.bool)
+                    for _q in range(_nft):
+                        _gt_img = _ttimap[_q].item()
+                        for _kp, _iidx in enumerate(_clip_top_t2i[_q].tolist()):
+                            if _iidx == _gt_img:
+                                _clip_is_gt_t2i[_q, _kp] = True
+
+                    torch.save(
+                        {
+                            "captions": all_raw_text,
+                            "image_to_text_map": _ittmap,
+                            "text_to_image_map": _ttimap,
+                            "captions_per_image": test_set.captions_per_image,
+                            "n_images": _n_img,
+                            "n_texts": _n_txt,
+                            "image_paths": _image_paths,
+                            "clip_baseline": {
+                                "i2t": {
+                                    "top_k": _clip_top_i2t,
+                                    "is_gt": _clip_is_gt_i2t,
+                                },
+                                "t2i": {
+                                    "top_k": _clip_top_t2i,
+                                    "is_gt": _clip_is_gt_t2i,
+                                },
+                            },
+                        },
+                        _meta_path,
+                    )
+                    print(f"  Saved retrieval metadata → {_meta_path}")
 
     # ========== TRAINING COMPLETE: Final Performance Summary ==========
     # Copy final embeddings (memmap files) to a snapshot directory for phase-2 use

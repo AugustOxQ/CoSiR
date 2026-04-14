@@ -280,7 +280,7 @@ class TrainableEmbeddingManager:
                 part = img.cpu().numpy()
 
             if normalize:
-                part = part / np.linalg.norm(part, axis=1, keepdims=True)
+                part = part / np.linalg.norm(part, axis=-1, keepdims=True)
 
             source_parts.append(part)
 
@@ -305,6 +305,10 @@ class TrainableEmbeddingManager:
             f"[EmbeddingManager] PCA init done. "
             f"Mean norm: {np.linalg.norm(projected, axis=1).mean():.4f}"
         )
+
+        if normalize:
+            projected = projected / np.linalg.norm(projected, axis=-1, keepdims=True)
+
         return projected
 
     # ── Template persistence ───────────────────────────────────────────────────

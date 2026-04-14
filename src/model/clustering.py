@@ -161,7 +161,8 @@ class Clustering:
         min_sample=50,
         method="leaf",
     ):  # leaf or eom
-        self._ensure_cluster()
+        # Note: cuml.cluster.HDBSCAN is single-GPU and does not use the Dask cluster,
+        # so _ensure_cluster / close_cluster are not called here.
         start_time = time.time()
         if isinstance(umap_features, torch.Tensor):
             umap_features_np = umap_features.cpu().numpy()
@@ -175,11 +176,11 @@ class Clustering:
         )
         hdbscan_model.fit(umap_features_np)
         umap_labels = hdbscan_model.labels_
+        del hdbscan_model
+        torch.cuda.empty_cache()
 
         end_time = time.time()
         print(f"Time taken to get HDBSCAN labels: {end_time - start_time} seconds")
-
-        self.close_cluster()
 
         return umap_labels, None
 
