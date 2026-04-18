@@ -1,7 +1,7 @@
 # CoSiR Training Configuration
 defaults:
   - dataset: coco
-  - model: base
+  - model: clip_base
   - train: default
   - experiment: default
   - _self_

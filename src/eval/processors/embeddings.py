@@ -72,14 +72,17 @@ class EmbeddingProcessor:
 
                 all_raw_text.extend(raw_text_list)
 
-                # Tokenize text
-                text_input = processor(
+                # Tokenize text — omit max_length so each processor uses its own
+                # model_max_length (77 for CLIP, 64 for SigLIP, etc.)
+                tokenizer_kwargs = dict(
                     text=raw_text_list,
                     return_tensors="pt",
                     padding="max_length",
                     truncation=True,
-                    max_length=self.config.max_text_length,
-                ).to(self.config.device)
+                )
+                if self.config.max_text_length is not None:
+                    tokenizer_kwargs["max_length"] = self.config.max_text_length
+                text_input = processor(**tokenizer_kwargs).to(self.config.device)
 
                 # Update mappings
                 for _ in range(batch_size):

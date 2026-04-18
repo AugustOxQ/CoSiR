@@ -81,6 +81,7 @@ def train_cosir_phase2(cfg, logger):
     # Initialize model
     print("Initializing model")
     model = CoSiRModel(
+        backbone_model=cfg.model.clip_model,
         label_dim=cfg.model.embedding_dim,
         num_layers=cfg.model.num_layers,
         d_model=cfg.model.hidden_dim,

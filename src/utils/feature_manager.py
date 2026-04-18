@@ -90,6 +90,35 @@ class FeatureManager:
         with open(self.metadata_path, "w") as f:
             json.dump(self._metadata, f, indent=2)
 
+    def validate_backbone(self, expected_model: str) -> None:
+        """
+        Verify that the stored features were extracted with ``expected_model``.
+
+        Raises:
+            ValueError: if the stored backbone does not match ``expected_model``.
+
+        Old stores that pre-date backbone tracking emit a warning and continue
+        (backward compatibility), but you should re-extract when convenient.
+        """
+        stored = self.metadata.get("backbone_model")
+        if stored is None:
+            print(
+                f"[FeatureManager] WARNING: feature store at '{self.storage_dir}' "
+                f"has no backbone_model recorded (old store). "
+                f"Assuming it matches '{expected_model}'. "
+                "Re-extract to silence this warning."
+            )
+            return
+        if stored != expected_model:
+            raise ValueError(
+                f"[FeatureManager] Backbone mismatch!\n"
+                f"  stored  : {stored}\n"
+                f"  current : {expected_model}\n"
+                f"The cached features at '{self.storage_dir}' were extracted with a "
+                f"different backbone. Delete the feature store and re-run extraction "
+                f"with the current model config."
+            )
+
     # ── Public properties ──────────────────────────────────────────────────────
 
     @property
@@ -135,16 +164,20 @@ class FeatureManager:
         self,
         total_samples: int,
         feature_dims: Dict[str, Tuple[int, ...]],
+        backbone_model: Optional[str] = None,
     ) -> None:
         """
         Initialise the shard files before extraction begins.
 
         Args:
-            total_samples: Exact number of samples that will be written.
-            feature_dims:  Maps feature name → shape tuple (batch dim excluded).
-                           Must include "img_features" and "txt_features".
-                           "img_full" / "txt_full" are optional — omit them if
-                           the extraction dataset does not produce them.
+            total_samples:  Exact number of samples that will be written.
+            feature_dims:   Maps feature name → shape tuple (batch dim excluded).
+                            Must include "img_features" and "txt_features".
+                            "img_full" / "txt_full" are optional — omit them if
+                            the extraction dataset does not produce them.
+            backbone_model: HuggingFace model ID used to extract the features
+                            (e.g. "openai/clip-vit-base-patch32").  Stored in
+                            metadata and validated by validate_backbone() on load.
         Raises:
             FileExistsError: if a store already exists in storage_dir.
         """
@@ -167,6 +200,7 @@ class FeatureManager:
             "available_features": list(feature_dims.keys()),
             "hdf5_compression": self.hdf5_compression,
             "hdf5_compression_level": self.hdf5_compression_level,
+            "backbone_model": backbone_model,
         }
         self._write_cursor = 0
 

@@ -49,6 +49,6 @@ eval:
   k_vals: [1, 5, 10]
   train_max_batches: 25 # This is during validation, how many batches we check
   print_metrics: true
-  evaluation_interval: 10
+  evaluation_interval: 20
   perform_evaluation: true
   oracle_aggregation: "max" # "max" = oracle upper bound, "mean" = average across conditions

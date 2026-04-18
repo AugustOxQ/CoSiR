@@ -64,6 +64,7 @@ def train_cosir(cfg, logger):
     # Initialize model
     print("Initializing model")
     model = CoSiRModel(
+        backbone_model=cfg.model.clip_model,
         label_dim=cfg.model.embedding_dim,
         num_layers=cfg.model.num_layers,
         d_model=cfg.model.hidden_dim,
@@ -142,6 +143,7 @@ def train_cosir(cfg, logger):
             hdf5_compression=cfg.featuremanager.hdf5_compression,
             hdf5_compression_level=cfg.featuremanager.hdf5_compression_level,
         )
+        feature_manager.validate_backbone(cfg.model.clip_model)
         sample_ids_list = feature_manager.get_all_sample_ids()
         print(f"Loaded {len(sample_ids_list):,} sample ids from existing store")
     else:
@@ -187,7 +189,11 @@ def train_cosir(cfg, logger):
         print(f"Feature dims: {feature_dims}")
         del _img_in, _txt_in, _img_e, _txt_e, _img_f, _txt_f, _probe_loader
 
-        feature_manager.open_for_writing(len(pre_extraction_dataset), feature_dims)
+        feature_manager.open_for_writing(
+            len(pre_extraction_dataset),
+            feature_dims,
+            backbone_model=cfg.model.clip_model,
+        )
 
         pre_extraction_dataloader = DataLoader(
             pre_extraction_dataset,
@@ -214,6 +220,10 @@ def train_cosir(cfg, logger):
                     img_full=img_f if cfg.featuremanager.store_img_full else None,
                     txt_full=txt_f if cfg.featuremanager.store_txt_full else None,
                 )
+
+                # Release fragmented reserved-but-unallocated GPU memory each batch.
+                # Especially important for large-patch models (SigLIP, CLIP-L/14).
+                torch.cuda.empty_cache()
 
         feature_manager.finalize_writing()
         sample_ids_list = feature_manager.get_all_sample_ids()

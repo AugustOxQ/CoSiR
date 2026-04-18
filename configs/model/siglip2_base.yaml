@@ -1,0 +1,16 @@
+# @package _global_
+# SigLIP2 Base Model Configuration
+# Backbone: google/siglip2-base-patch16-224 (SigLIP2 with improved training recipe)
+# ViT-B/16: 196 patch tokens @ 768-dim
+# Feature dim is auto-detected from the model at runtime.
+
+model:
+  embedding_dim: 2
+  clip_model: "google/siglip2-base-patch16-224"
+  freeze_backbone: true
+  num_layers: 4
+  hidden_dim: 1024
+  dropout: 0.1
+
+featuremanager:
+  extraction_batch_size: 256

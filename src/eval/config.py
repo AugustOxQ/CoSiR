@@ -20,8 +20,9 @@ class EvaluationConfig:
     max_batches: Optional[int] = 25
     cpu_offload: bool = True  # Whether to move large matrices to CPU for sorting
 
-    # Text processing
-    max_text_length: int = 77
+    # Text processing — None lets each processor use its own model_max_length
+    # (77 for CLIP, 64 for SigLIP, etc.)
+    max_text_length: Optional[int] = None
 
     # Training evaluation specific
     train_max_batches: int = 25
@@ -41,7 +42,7 @@ class EvaluationConfig:
             raise ValueError("k_vals cannot be empty")
         if self.batch_size <= 0:
             raise ValueError("batch_size must be positive")
-        if self.max_text_length <= 0:
+        if self.max_text_length is not None and self.max_text_length <= 0:
             raise ValueError("max_text_length must be positive")
 
 

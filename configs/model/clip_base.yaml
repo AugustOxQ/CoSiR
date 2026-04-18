@@ -1,5 +1,6 @@
 # @package _global_
-# Base Model Configuration
+# CLIP Base Model Configuration
+# ViT-B/32: 49 patch tokens @ 512-dim
 
 model:
   embedding_dim: 2
@@ -7,5 +8,7 @@ model:
   freeze_backbone: true
   num_layers: 4
   hidden_dim: 1024
-  min_radius: 5
   dropout: 0.1
+
+featuremanager:
+  extraction_batch_size: 2048

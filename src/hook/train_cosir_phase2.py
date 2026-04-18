@@ -92,6 +92,7 @@ def train_cosir_phase2(cfg, logger):
     # Initialize model
     print("Initializing model")
     model = CoSiRModel(
+        backbone_model=cfg.model.clip_model,
         label_dim=cfg.model.embedding_dim,
         num_layers=cfg.model.num_layers,
         d_model=cfg.model.hidden_dim,
@@ -155,6 +156,7 @@ def train_cosir_phase2(cfg, logger):
         feature_manager = FeatureManager(
             feature_config["storage_dir"], config=feature_config, preload_index=False
         )  # preload_index=False means we don't load the index mapping from the existing chunk files
+        feature_manager.validate_backbone(cfg.model.clip_model)
         print("Loading existing sample ids")
         sample_ids_list = torch.load(feature_config["sample_ids_path"])
         print(f"Loaded {len(sample_ids_list)} sample ids")

@@ -1,32 +1,61 @@
 import torch
 import torch.nn as nn
-from transformers import CLIPModel
 
 # Load pretrained model
 import requests
 from PIL import Image
-from transformers import AutoProcessor, CLIPModel
+from transformers import AutoModel, AutoProcessor
 from typing import Optional
 
 from src.model.combiner import *
 
+_DEFAULT_BACKBONE = "openai/clip-vit-base-patch32"
 
-def get_clip(trainable=False):
-    """Get CLIP model from Hugging Face's Transformers library."""
-    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-    # Set parameters to be non-trainable
+
+def get_backbone(model_name: str = _DEFAULT_BACKBONE, trainable: bool = False):
+    """Load any CLIP-like backbone (CLIP, SigLIP, SigLIP2, etc.) from Hugging Face."""
+    backbone = AutoModel.from_pretrained(model_name)
     if not trainable:
-        for param in model.parameters():  # type: ignore
+        for param in backbone.parameters():
             param.requires_grad = False
-    return model
+    return backbone
+
+
+def get_backbone_feature_dim(backbone) -> int:
+    """Auto-detect the joint embedding dimension of a CLIP-like backbone.
+
+    Detection order:
+    1. config.projection_dim  — CLIP family (openai/clip-*, laion/CLIP-*)
+    2. visual_projection.out_features — other models with an explicit top-level proj
+    3. vision_model.config.hidden_size — SigLIP / SigLIP2 (projection is inside the
+       vision encoder head, pooler_output already has the final dim)
+    """
+    # 1. CLIP-style: projection_dim in the top-level config
+    if hasattr(backbone, "config") and hasattr(backbone.config, "projection_dim"):
+        return backbone.config.projection_dim
+    # 2. Explicit top-level projection layer
+    if hasattr(backbone, "visual_projection"):
+        proj = backbone.visual_projection
+        if isinstance(proj, nn.Linear):
+            return proj.out_features
+    # 3. SigLIP / SigLIP2: the vision encoder head outputs hidden_size directly
+    if hasattr(backbone, "vision_model") and hasattr(backbone.vision_model, "config"):
+        hidden = getattr(backbone.vision_model.config, "hidden_size", None)
+        if hidden is not None:
+            return hidden
+    raise ValueError(
+        f"Cannot auto-detect feature dim for backbone of type {type(backbone).__name__}. "
+        "Please set it explicitly or use a model with config.projection_dim."
+    )
 
 
 class CoSiRModel(nn.Module):
-    """CLIP-based CoSiR model."""
+    """CoSiR model supporting any CLIP-like backbone (CLIP, SigLIP, SigLIP2, …)."""
 
     def __init__(
         self,
-        clip_trainable: bool = False,
+        backbone_model: str = _DEFAULT_BACKBONE,
+        backbone_trainable: bool = False,
         d_model: int = 512,
         nhead: int = 8,
         num_layers: int = 2,
@@ -35,28 +64,31 @@ class CoSiRModel(nn.Module):
         dropout: float = 0.1,
     ) -> None:
         super().__init__()
-        # Frozen CLIP as feature extractor
-        self.clip = get_clip(clip_trainable)
+        # Load backbone and detect its feature dimension
+        self.backbone = get_backbone(backbone_model, backbone_trainable)
+        self.feature_dim = get_backbone_feature_dim(self.backbone)
 
-        # Vision Model
-        self.clip_vm = self.clip.vision_model  # type: ignore
-        self.clip_vproj = self.clip.visual_projection  # type: ignore
+        # Vision encoder (+ optional separate projection layer)
+        # CLIP: vision_model outputs raw CLS token, visual_projection maps it to joint space
+        # SigLIP: vision_model.head already projects, pooler_output IS the final embedding
+        self.vision_model = self.backbone.vision_model  # type: ignore
+        self.visual_projection = getattr(self.backbone, "visual_projection", None)
 
-        # Textual Model
-        self.clip_tm = self.clip.text_model  # type: ignore
-        self.clip_tproj = self.clip.text_projection  # type: ignore
+        # Text encoder (+ optional separate projection layer)
+        self.text_model = self.backbone.text_model  # type: ignore
+        self.text_projection = getattr(self.backbone, "text_projection", None)
 
         # Identity function for now
         self.label_encoder = nn.Identity()
 
         # Combiner network to combine text and label features
         self.combiner = Combiner_new(
-            clip_feature_dim=512,
-            projection_dim=512,
+            clip_feature_dim=self.feature_dim,
+            projection_dim=self.feature_dim,
             label_dim=label_dim,
             hidden_dim=d_model,
             num_heads=nhead,
-            num_layers=num_layers,  # TODO: here we fix it to 2
+            num_layers=num_layers,
             dropout=dropout,
         )
 
@@ -77,21 +109,27 @@ class CoSiRModel(nn.Module):
         self.pretrained_representatives = representatives.to(device)
 
     def encode_img(self, images):
-        # Extract image features
-        img_output = self.clip_vm(**images)
-        img_emb = self.clip_vproj(img_output.pooler_output)  # CLS token
-        img_full = self.clip_vproj(
-            img_output.last_hidden_state
-        )  # Full image embeddings
-
+        img_output = self.vision_model(**images)
+        if self.visual_projection is not None:
+            # CLIP-style: pooler_output is raw CLS token, needs projection
+            img_emb = self.visual_projection(img_output.pooler_output)
+            img_full = self.visual_projection(img_output.last_hidden_state)
+        else:
+            # SigLIP-style: pooler_output is already the projected embedding
+            img_emb = img_output.pooler_output
+            img_full = img_output.last_hidden_state
         return img_emb, img_full
 
     def encode_txt(self, texts):
-        # Extract text features
-        txt_output = self.clip_tm(**texts)
-        txt_emb = self.clip_tproj(txt_output.pooler_output)  # CLS token
-        txt_full = self.clip_tproj(txt_output.last_hidden_state)  # Full text embeddings
-
+        txt_output = self.text_model(**texts)
+        if self.text_projection is not None:
+            # CLIP-style
+            txt_emb = self.text_projection(txt_output.pooler_output)
+            txt_full = self.text_projection(txt_output.last_hidden_state)
+        else:
+            # SigLIP-style
+            txt_emb = txt_output.pooler_output
+            txt_full = txt_output.last_hidden_state
         return txt_emb, txt_full
 
     def encode_img_txt(self, images, texts):
@@ -180,20 +218,20 @@ class CoSiRModel(nn.Module):
 
 
 def main():
-
-    processor = AutoProcessor.from_pretrained("openai/clip-vit-base-patch32")
+    backbone_name = _DEFAULT_BACKBONE
+    processor = AutoProcessor.from_pretrained(backbone_name)
     url = "http://images.cocodataset.org/val2017/000000039769.jpg"
     image = Image.open(requests.get(url, stream=True).raw)  # type: ignore
-    label = torch.randn(2, 512)
+
+    model = CoSiRModel(backbone_model=backbone_name)
+    label = torch.randn(2, model.feature_dim)
 
     image_input = processor(images=[image, image], return_tensors="pt")
     text_input = processor(
         ["a photo of a cat", "a photo of a dog"], return_tensors="pt"
     )
 
-    model = CoSiRModel()
-
-    img_emb, txt_emb, lbl_emb, comb_emb = model(image_input, text_input, label)
+    img_emb, txt_emb, txt_full, lbl_emb, comb_emb = model(image_input, text_input, label)
     print(img_emb.shape, txt_emb.shape, lbl_emb.shape, comb_emb.shape)
 
 

@@ -363,27 +363,36 @@ class OracleMetrics(RankingMetric):
         # Text-to-Image evaluation
         with torch.no_grad():
             for label_id in tqdm(
-                range(len(label_embeddings)), desc="Evaluating oracle"
+                range(-1, len(label_embeddings)), desc="Evaluating oracle"
             ):
-                combined_embs_tti = []
-                label_emb = (
-                    label_embeddings[label_id]
-                    .expand(num_texts, -1)
-                    .to(self.config.device)
-                )
-                for i in range(0, num_texts, self.config.batch_size):
-                    end_idx = min(i + self.config.batch_size, num_texts)
-                    batch_text_combined = model.combine(
-                        text_embeddings[i:end_idx],
-                        None,
-                        label_emb[i:end_idx],
+                if label_id == -1:
+                    # Use raw text embeddings
+                    combined_embds_tti = text_embeddings.detach().clone()
+                else:
+                    # Combine with label embedding
+                    combined_embs_tti = []
+                    label_emb = (
+                        label_embeddings[label_id]
+                        .expand(num_texts, -1)
+                        .to(self.config.device)
                     )
-                    combined_embs_tti.append(batch_text_combined)
+                    for i in range(0, num_texts, self.config.batch_size):
+                        end_idx = min(i + self.config.batch_size, num_texts)
+                        batch_text_combined = model.combine(
+                            text_embeddings[i:end_idx],
+                            None,
+                            label_emb[i:end_idx],
+                        )
+                        combined_embs_tti.append(batch_text_combined)
 
-                del batch_text_combined, label_emb
-                torch.cuda.empty_cache()
+                    del batch_text_combined, label_emb
+                    torch.cuda.empty_cache()
 
-                combined_embds_tti = torch.cat(combined_embs_tti, dim=0)
+                    combined_embds_tti = torch.cat(combined_embs_tti, dim=0)
+
+                combined_embds_tti = combined_embds_tti / combined_embds_tti.norm(
+                    dim=-1, keepdim=True
+                )
                 # Compute sim on GPU then immediately move to CPU to avoid stacking
                 sims_cpu = (combined_embds_tti @ image_embeddings_norm.T).cpu()
                 del combined_embds_tti

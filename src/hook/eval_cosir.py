@@ -97,6 +97,7 @@ class CoSiREvaluator:
 
         # Initialize model
         self.model = CoSiRModel(
+            backbone_model=self.config["model"]["clip_model"],
             label_dim=self.config["model"]["embedding_dim"],
         )
 
