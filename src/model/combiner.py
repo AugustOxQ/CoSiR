@@ -258,31 +258,6 @@ class Combiner_new(nn.Module):
         for param in self.label_decoder.network[-1].parameters():
             param.data.zero_()
 
-        # self.gate_net = nn.Sequential(
-        #     nn.Linear(clip_feature_dim + projection_dim, hidden_dim),
-        #     nn.GELU(),
-        #     nn.Dropout(0.5),
-        #     nn.Linear(hidden_dim, clip_feature_dim),
-        #     nn.Sigmoid(),
-        # )
-
-        # self.dropout = nn.Dropout(0.5)
-
-        # self.dynamic_scalar = nn.Sequential(
-        #     nn.Linear(projection_dim * 2, hidden_dim),
-        #     nn.ReLU(),
-        #     nn.Dropout(0.5),
-        #     nn.Linear(hidden_dim, 1),
-        #     nn.Sigmoid(),
-        # )
-
-        # self.combiner_layer = GeLUNet(
-        #     input_dim=projection_dim + clip_feature_dim,
-        #     hidden_dim=hidden_dim,
-        #     output_dim=clip_feature_dim,
-        #     num_layers=num_layers,
-        # )
-
         # Larger dynamic scalar means more weight on the combined features
         self.scalar = FixedSizeQueue(10)
 
@@ -292,44 +267,18 @@ class Combiner_new(nn.Module):
     def get_newest(self):
         return self.scalar.get_newest()
 
-    @torch.jit.export
     def forward(
-        self, text_features: Tensor, text_full: Optional[Tensor], label_features: Tensor
-    ) -> Tensor:
-        """Combine the text features and label features using attention.
+        self,
+        text_features: Tensor,
+        text_full: Optional[Tensor],
+        label_features: Tensor,
+        return_delta: bool = False,
+    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+        delta = self.label_decoder(torch.cat((label_features, text_features), -1))
+        combined = text_features + delta
 
-        Outputs combined features.
-        :param text_features: CLIP textual features (shape: batch, 512)
-        :param text_full: CLIP textual features with full sequence length (shape: batch, L, 512)
-        :param label_features: Label features (shape: batch, 512)
-        :return: combined textual features (shape: batch, 512)
-        """
-
-        # label_projected_features = self.label_decoder(label_features)
-
-        # raw_combined_features = torch.cat((text_features, label_projected_features), -1)
-
-        # combined_features = self.dropout(
-        #     F.relu(self.combiner_layer(raw_combined_features))
-        # )
-
-        # dynamic_scalar = self.dynamic_scalar(raw_combined_features)
-        # # print(dynamic_scalar.shape) # (batch, 1)
-        # self.scalar.add(dynamic_scalar.mean().item())
-        # # print(self.scalar.get())
-
-        # gate = self.gate_net(torch.cat((text_features, label_projected_features), -1))
-        # combined = text_features + label_projected_features
-        # combined = text_features + self.label_decoder(
-        #     torch.cat((label_features, text_features), -1)
-        # )
-        combined = text_features + self.label_decoder(
-            torch.cat((label_features, text_features), -1)
-        )
-
-        # self.scalar.add(gate.mean().item())
-        # print(self.scalar.get())
-
+        if return_delta:
+            return F.normalize(combined), delta
         return F.normalize(combined)
 
 

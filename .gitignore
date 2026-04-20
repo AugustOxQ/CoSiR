@@ -162,6 +162,7 @@ output/
 outputs/
 notebooks/
 res/
+multirun/
 
 # Claude
 .claude/

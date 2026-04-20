@@ -236,6 +236,7 @@ class LabelContrastiveLoss_enhance(nn.Module):
         lambda_boundary: float = 0.0,
         lambda_mixup: float = 0.0,  # imix loss weight
         mixup_alpha: float = 1.0,
+        lambda_delta: float = 0.0,  # delta norm penalty weight
         return_dict: bool = False,
     ) -> None:
         super().__init__()
@@ -247,6 +248,7 @@ class LabelContrastiveLoss_enhance(nn.Module):
         self.lambda_boundary = lambda_boundary
         self.lambda_mixup = lambda_mixup
         self.mixup_alpha = mixup_alpha
+        self.lambda_delta = lambda_delta
         self.temperature = 0.07
         self.return_dict = return_dict
 
@@ -258,6 +260,7 @@ class LabelContrastiveLoss_enhance(nn.Module):
         combined_features_neg: Optional[Tensor],
         label_embedding: Tensor,  # type: ignore
         model: nn.Module,
+        delta: Optional[Tensor] = None,
     ):
         # Compute pairwise cosine similarity matrix [N, N] for InfoNCE loss
 
@@ -327,12 +330,19 @@ class LabelContrastiveLoss_enhance(nn.Module):
             else 0.0
         )
 
+        delta_loss = (
+            delta.norm(dim=-1).mean()
+            if self.lambda_delta > 0 and delta is not None
+            else 0.0
+        )
+
         total_loss = (
             self.lambda_pos * loss_improve
             + self.lambda_laplacian * laplacian_loss
             + self.lambda_collapse * collapse_loss
             + self.lambda_boundary * boundary_loss
             + self.lambda_mixup * mixup_loss
+            + self.lambda_delta * delta_loss
         )
 
         with torch.no_grad():
@@ -350,6 +360,7 @@ class LabelContrastiveLoss_enhance(nn.Module):
             "loss_laplacian": laplacian_loss,
             "loss_boundary": boundary_loss,
             "loss_mixup": mixup_loss,
+            "loss_delta": delta_loss,
             "diag_sim_gap": diag_sim_gap,
             "off_diag_sim_gap": off_diag_sim_gap,
             "total_sim_gap": total_sim_gap,
@@ -362,254 +373,81 @@ class LabelContrastiveLoss_enhance(nn.Module):
             return total_loss
 
 
-class LabelPredictionLoss_prev(nn.Module):
+class PrototypeLoss(nn.Module):
+    """Pulls conditions toward K-1 learned prototypes on the unit circle.
+
+    Prototype 0 is fixed at [0, 0] (null / no-modulation cluster).
+    The remaining K-1 prototypes are learnable unit-circle directions.
+    """
+
     def __init__(
         self,
-        lambda_1: float = 1.0,  # contrastive loss weight
-        lambda_2: float = 0.1,  # cos loss weight
-        temperature: float = 0.07,
-        early_epoch: int = 5,
-        return_dict: bool = False,
-    ) -> None:
-        super().__init__()
-        print("Using Label Prediction Loss")
-        self.lambda_pred = lambda_1
-        self.lambda_cos = lambda_2
-        self.temperature = temperature
-        self.early_epoch = early_epoch
-        self.return_dict = return_dict
-
-    def forward(
-        self,
-        image_features: Tensor,
-        text_features: Tensor,
-        combined_features_img: Tensor,
-        combined_features_txt: Tensor,
-        combined_features_imgtxt: Tensor,
-        label_embedding: Tensor,
-        model: nn.Module,
-        condition_predicted: List[Tensor],  # Order is img, txt, imgtxt
-        epoch: int,
+        K: int = 16,
+        temp_start: float = 1.0,
+        temp_end: float = 0.1,
+        total_epochs: int = 500,
+        lambda_attraction: float = 1.0,
+        lambda_entropy: float = 0.1,
+        lambda_repulsion: float = 0.1,
     ):
-        # Clone the label embedding to avoid backpropagation to the label embedding, only update the condition predictor
-
-        loss_shape = image_features.shape[0]
-
-        pseudo_targets = torch.arange(loss_shape, device=image_features.device)
-
-        loss_pred_img, loss_pred_txt, loss_pred_imgtxt = 0, 0, 0
-
-        if epoch >= self.early_epoch:
-            image_features = F.normalize(image_features, p=2, dim=1)
-            combined_features_img = F.normalize(combined_features_img, p=2, dim=1)
-            combined_features_txt = F.normalize(combined_features_txt, p=2, dim=1)
-            combined_features_imgtxt = F.normalize(combined_features_imgtxt, p=2, dim=1)
-
-            sim_matrix_img = combined_features_img @ image_features.T / self.temperature
-            sim_matrix_txt = combined_features_txt @ image_features.T / self.temperature
-            sim_matrix_imgtxt = (
-                combined_features_imgtxt @ image_features.T / self.temperature
-            )
-
-            # Cross-entropy loss（双向）
-            # loss_pred_img = (
-            #     self.lambda_pred
-            #     * (
-            #         F.cross_entropy(sim_matrix_img, pseudo_targets)
-            #         + F.cross_entropy(sim_matrix_img.T, pseudo_targets)
-            #     )
-            #     / 2
-            # )
-
-            # loss_pred_txt = (
-            #     self.lambda_pred
-            #     * (
-            #         F.cross_entropy(sim_matrix_txt, pseudo_targets)
-            #         + F.cross_entropy(sim_matrix_txt.T, pseudo_targets)
-            #     )
-            #     / 2
-            # )
-
-            # loss_pred_imgtxt = (
-            #     self.lambda_pred
-            #     * (
-            #         F.cross_entropy(sim_matrix_imgtxt, pseudo_targets)
-            #         + F.cross_entropy(sim_matrix_imgtxt.T, pseudo_targets)
-            #     )
-            #     / 2
-            # )
-
-            # Cross-entropy loss（单向）
-            loss_pred_img = self.lambda_pred * F.cross_entropy(
-                sim_matrix_img, pseudo_targets
-            )
-            loss_pred_txt = self.lambda_pred * F.cross_entropy(
-                sim_matrix_txt, pseudo_targets
-            )
-            loss_pred_imgtxt = self.lambda_pred * F.cross_entropy(
-                sim_matrix_imgtxt, pseudo_targets
-            )
-
-        loss_cos_img = (
-            1
-            - F.cosine_similarity(
-                condition_predicted[0], label_embedding, dim=-1
-            ).mean()
-        )
-        loss_cos_txt = (
-            1
-            - F.cosine_similarity(
-                condition_predicted[1], label_embedding, dim=-1
-            ).mean()
-        )
-        loss_cos_imgtxt = (
-            1
-            - F.cosine_similarity(
-                condition_predicted[2], label_embedding, dim=-1
-            ).mean()
-        )
-
-        if epoch >= self.early_epoch:
-            loss_cos_img *= self.lambda_cos
-            loss_cos_txt *= self.lambda_cos
-            loss_cos_imgtxt *= self.lambda_cos
-
-        total_loss = (
-            loss_pred_img
-            + loss_pred_txt
-            + loss_pred_imgtxt
-            + loss_cos_img
-            + loss_cos_txt
-            + loss_cos_imgtxt
-        )
-
-        loss_dict = {
-            "loss_pred_img": loss_pred_img,
-            "loss_pred_txt": loss_pred_txt,
-            "loss_pred_imgtxt": loss_pred_imgtxt,
-            "loss_cos_img": loss_cos_img,
-            "loss_cos_txt": loss_cos_txt,
-            "loss_cos_imgtxt": loss_cos_imgtxt,
-            "total_loss": total_loss,
-        }
-
-        if self.return_dict:
-            return loss_dict
-        else:
-            return total_loss
-
-
-class LabelPredictionLoss(nn.Module):
-    def __init__(
-        self,
-        lambda_1: float = 1.0,  # contrastive loss weight
-        lambda_2: float = 0.1,  # cos loss weight
-        temperature: float = 0.07,
-        early_epoch: int = 5,
-        return_dict: bool = False,
-    ) -> None:
         super().__init__()
-        print("Using Label Prediction Loss")
-        self.lambda_pred = lambda_1
-        self.lambda_cos = lambda_2
-        self.temperature = temperature
-        self.early_epoch = early_epoch
-        self.return_dict = return_dict
+        # prototype 0: fixed null (no modulation)
+        self.null_proto: Tensor
+        self.register_buffer("null_proto", torch.zeros(1, 2))
 
-    def forward(
-        self,
-        image_features: Tensor,
-        text_features: Tensor,
-        combined_features: Tensor,
-        model: nn.Module,
-    ):
-        # Clone the label embedding to avoid backpropagation to the label embedding, only update the condition predictor
+        # K-1 learnable prototypes, evenly spaced on unit circle
+        angles = torch.linspace(0, 2 * torch.pi, K)[:-1]  # K-1 angles
+        protos = torch.stack([angles.cos(), angles.sin()], dim=-1)
+        self.prototypes = nn.Parameter(protos)  # [K-1, 2]
 
-        loss_shape = image_features.shape[0]
-
-        pseudo_targets = torch.arange(loss_shape, device=image_features.device)
-
-        image_features = F.normalize(image_features, p=2, dim=1)
-        combined_features = F.normalize(combined_features, p=2, dim=1)
-
-        sim_matrix = combined_features @ image_features.T / self.temperature
-
-        # Cross-entropy loss（双向）
-        loss_pred = (
-            F.cross_entropy(sim_matrix, pseudo_targets)
-            + F.cross_entropy(sim_matrix.T, pseudo_targets)
-        ) / 2
-
-        total_loss = loss_pred
-
-        loss_dict = {
-            "total_loss": total_loss,
-        }
-
-        if self.return_dict:
-            return loss_dict
-        else:
-            return total_loss
-
-
-class LabelClassificationLoss(nn.Module):
-    def __init__(
-        self,
-        temperature: float = 0.07,
-        total_epochs: int = 20,
-        warm_up_epochs: int = 5,
-        middle_epochs: int = 10,
-        return_dict: bool = False,
-    ) -> None:
-        super().__init__()
-        print("Using Label Prediction Loss")
-        self.temperature = temperature
-
+        self.K = K
+        self.temp_start = temp_start
+        self.temp_end = temp_end
         self.total_epochs = total_epochs
-        self.warmup_epochs = (
-            warm_up_epochs
-            # if warm_up_epochs <= total_epochs * 0.25
-            # else int(total_epochs * 0.25)
-        )
-        self.transition_epochs = (
-            middle_epochs
-            # if middle_epochs <= total_epochs * 0.5
-            # else int(total_epochs * 0.5)
-        )
-        # Make sure the transition epochs is greater than the warmup epochs
-        self.transition_epochs = max(self.transition_epochs, self.warmup_epochs)
+        self.lambda_attraction = lambda_attraction
+        self.lambda_entropy = lambda_entropy
+        self.lambda_repulsion = lambda_repulsion
 
-        self.return_dict = return_dict
+    def get_temperature(self, epoch: int) -> float:
+        alpha = min(epoch / self.total_epochs, 1.0)
+        return self.temp_start + alpha * (self.temp_end - self.temp_start)
 
-    def forward(
-        self,
-        classifier_logits: Tensor,
-        selected_conditions: Tensor,
-        nearest_condition_labels: Tensor,
-        current_epoch: int,
-    ):
-        # Clone the label embedding to avoid backpropagation to the label embedding, only update the condition predictor
+    def forward(self, conditions: Tensor, epoch: int) -> Tuple[Tensor, Tensor]:
+        # [K, 2]: null prototype stays at [0,0], rest normalized onto unit circle
+        learned = F.normalize(self.prototypes, dim=-1)  # [K-1, 2]
+        proto = torch.cat([self.null_proto, learned], dim=0)  # [K, 2]
 
-        # 1. Cross-entropy loss (imitation loss)
-        loss_ce = F.cross_entropy(classifier_logits, nearest_condition_labels)
+        cond = F.normalize(conditions, dim=-1)  # [B, 2]
+        tau = self.get_temperature(epoch)
 
-        # Combine losses
-        total_loss = loss_ce
+        dists = torch.cdist(cond, proto)  # [B, K]
+        assign = F.gumbel_softmax(-dists, tau=tau, hard=True)  # [B, K]
+        usage = assign.mean(0)  # [K]
 
-        with torch.no_grad():
-            pred_labels = classifier_logits.argmax(dim=1)
-            accuracy = (pred_labels == nearest_condition_labels).float().mean()
-
-        loss_dict = {
-            "loss_ce": loss_ce,
-            "accuracy": accuracy,
-            "total_loss": total_loss,
-        }
-
-        if self.return_dict:
-            return loss_dict
+        # Attraction: pull condition toward its assigned prototype
+        assigned_proto = assign @ proto  # [B, 2]
+        # conditions assigned to null prototype have assigned_proto=[0,0],
+        # cosine_similarity=0 → attraction term = 1 (maximum), so they are
+        # not artificially pulled anywhere — the null cluster is a free sink
+        null_mask = (assign[:, 0] == 0)  # [B] — not assigned to null
+        if null_mask.any():
+            cond_active = cond[null_mask]
+            proto_active = assigned_proto[null_mask]
+            attraction = (1 - F.cosine_similarity(cond_active, proto_active, dim=-1)).mean()
         else:
-            return total_loss
+            attraction = torch.tensor(0.0, device=conditions.device)
+
+        # Entropy: encourage uniform prototype usage (prevent collapse)
+        entropy = -(usage * (usage + 1e-8).log()).sum()
+
+        # Repulsion: push learned prototypes apart (ignore null prototype)
+        K_learned = learned.shape[0]
+        proto_sim = learned @ learned.T  # [K-1, K-1]
+        mask = ~torch.eye(K_learned, dtype=torch.bool, device=learned.device)
+        repulsion = proto_sim[mask].mean()
+
+        loss = self.lambda_attraction * attraction - self.lambda_entropy * entropy + self.lambda_repulsion * repulsion
+        return loss, usage
 
 
 def main(): ...

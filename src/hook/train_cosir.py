@@ -37,7 +37,7 @@ from src.utils import (
     visualize_given_conditions_text_to_image,
     CoSiRAutomaticEvaluator,
 )
-from src.metrics import LabelContrastiveLoss_enhance
+from src.metrics import LabelContrastiveLoss_enhance, PrototypeLoss
 
 
 def train_cosir(cfg, logger):
@@ -82,9 +82,20 @@ def train_cosir(cfg, logger):
         lambda_collapse=cfg.loss.lambda_collapse,
         lambda_boundary=cfg.loss.lambda_boundary,
         lambda_mixup=cfg.loss.lambda_mixup,
+        lambda_delta=cfg.loss.lambda_delta,
         mixup_alpha=cfg.loss.mixup_alpha,
         return_dict=cfg.loss.return_dict,
     )
+
+    prototype_loss = PrototypeLoss(
+        K=cfg.loss_prototype.K,
+        temp_start=cfg.loss_prototype.temp_start,
+        temp_end=cfg.loss_prototype.temp_end,
+        total_epochs=cfg.train.epochs,
+        lambda_attraction=cfg.loss_prototype.lambda_attraction,
+        lambda_entropy=cfg.loss_prototype.lambda_entropy,
+        lambda_repulsion=cfg.loss_prototype.lambda_repulsion,
+    ).to(device)
 
     # Check either load existing sample ids
     metadata_path = os.path.join(storage_dir, "metadata.json")
@@ -298,6 +309,11 @@ def train_cosir(cfg, logger):
                 "lr": cfg.optimizer.lr_label,
                 "weight_decay": 0.0,
             },
+            {
+                "params": list(prototype_loss.parameters()),
+                "lr": cfg.optimizer.lr,
+                "weight_decay": 0.0,
+            },
         ]
     )
 
@@ -465,16 +481,21 @@ def train_cosir(cfg, logger):
             batch_sample_ids = batch["sample_ids"].tolist()
 
             # Differentiable slice — gradients flow back to embedding_manager.embeddings
-            batch_indices = [embedding_manager.id_to_index[sid] for sid in batch_sample_ids]
-            label_embeddings_before = embedding_manager.embeddings.data[batch_indices].clone()
+            batch_indices = [
+                embedding_manager.id_to_index[sid] for sid in batch_sample_ids
+            ]
+            label_embeddings_before = embedding_manager.embeddings.data[
+                batch_indices
+            ].clone()
             label_embeddings = embedding_manager.embeddings[batch_indices]
 
-            comb_emb = model.combine(
+            comb_emb, delta = model.combine(
                 txt_features,
                 txt_full,
                 label_embeddings,
                 epoch=epoch,
                 return_label_proj=False,
+                return_delta=True,
             )
 
             loss_dict = criteria(
@@ -484,6 +505,7 @@ def train_cosir(cfg, logger):
                 None,
                 label_embeddings,
                 model,
+                delta=delta,
             )
 
             if batch_idx % 100 == 0:
@@ -494,7 +516,11 @@ def train_cosir(cfg, logger):
                     dim=-1,
                 )
 
-            loss = loss_dict["total_loss"]
+            proto_loss, proto_usage = prototype_loss(label_embeddings, epoch)
+            loss = (
+                loss_dict["total_loss"]
+                + cfg.loss_prototype.lambda_prototype * proto_loss
+            )
 
             epoch_loss += loss.item()
             num_batches += 1
@@ -512,6 +538,12 @@ def train_cosir(cfg, logger):
                     "train/cos_sim": (
                         cos_sim.mean().item() if cos_sim is not None else None
                     ),
+                    "prototype/loss": proto_loss.item(),
+                    "prototype/temperature": prototype_loss.get_temperature(epoch),
+                    **{
+                        f"prototype/usage_{i}": v.item()
+                        for i, v in enumerate(proto_usage)
+                    },
                 }
             )
             logger.log_metrics(batch_log_dict)
@@ -531,7 +563,10 @@ def train_cosir(cfg, logger):
                         )
 
                 label_embeddings_diff = (
-                    (embedding_manager.embeddings.data[batch_indices].cpu() - label_embeddings_before.cpu())
+                    (
+                        embedding_manager.embeddings.data[batch_indices].cpu()
+                        - label_embeddings_before.cpu()
+                    )
                     .norm(dim=-1)
                     .mean()
                 )
@@ -707,7 +742,9 @@ def train_cosir(cfg, logger):
                 _cond_fixed_path = _cond_viz_dir / "fixed_data.pt"
                 if not _cond_fixed_path.exists():
                     _image_paths_cond = [
-                        os.path.join(test_set.image_path, test_set.annotations[i]["image"])
+                        os.path.join(
+                            test_set.image_path, test_set.annotations[i]["image"]
+                        )
                         for i in range(all_img_emb.shape[0])
                     ]
                     torch.save(
@@ -742,7 +779,9 @@ def train_cosir(cfg, logger):
                     },
                     _cond_viz_dir / f"epoch_{epoch:04d}.pt",
                 )
-                print(f"  Saved condition viz epoch snapshot → {_cond_viz_dir / f'epoch_{epoch:04d}.pt'}")
+                print(
+                    f"  Saved condition viz epoch snapshot → {_cond_viz_dir / f'epoch_{epoch:04d}.pt'}"
+                )
 
                 print("Evaluating automatic evaluator")
                 cosir_automatic_evaluator = CoSiRAutomaticEvaluator(

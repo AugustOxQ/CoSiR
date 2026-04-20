@@ -25,8 +25,20 @@ loss:
   lambda_collapse: 0.1
   lambda_boundary: 0.0
   lambda_mixup: 0.1 # iMix loss weight (0 = disabled)
+  lambda_delta: 0.1
   mixup_alpha: 1.0 # Beta distribution alpha for iMix sampling
   return_dict: true
+
+# Optimizer configuration
+# Prototype loss configuration
+loss_prototype:
+  lambda_prototype: 1.0 # outer weight on the full prototype loss
+  lambda_attraction: 1.0 # pull condition toward assigned prototype
+  lambda_entropy: 0.1 # encourage uniform prototype usage
+  lambda_repulsion: 0.1 # push learned prototypes apart
+  K: 4 # total prototypes (1 null + K-1 learned)
+  temp_start: 1.0 # gumbel-softmax temperature at epoch 0
+  temp_end: 0.1 # gumbel-softmax temperature at final epoch
 
 # Optimizer configuration
 optimizer:

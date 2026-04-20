@@ -140,16 +140,15 @@ class CoSiRModel(nn.Module):
 
         return img_emb, txt_emb, img_full, txt_full
 
-    def combine(self, txt_emb, txt_full, labels, epoch=None, return_label_proj=False):
-        # Encode the labels
+    def combine(self, txt_emb, txt_full, labels, epoch=None, return_label_proj=False, return_delta=False):
         lbl_emb = self.label_encoder(labels)  # (batch_size, 512)
-        comb_emb = self.combiner(
+        result = self.combiner(
             txt_emb,
             None,
             lbl_emb,
-        )  # (batch_size, 512)
-
-        return comb_emb
+            return_delta=return_delta,
+        )
+        return result
 
     # def predict_condition(
     #     self,
