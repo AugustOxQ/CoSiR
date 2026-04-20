@@ -3,7 +3,7 @@ defaults:
   - dataset: coco
   - model: clip_base
   - train: default
-  - experiment: default
+  - infra: default
   - _self_
 
 # Random seed for reproducibility
@@ -15,7 +15,7 @@ device: cuda
 # W&B logging configuration
 wandb:
   enabled: true
-  project: cosir_non_polar_phase_1
+  project: cosir_new_structure
   entity: augustoxq
   name: ""
   tags: [Local]

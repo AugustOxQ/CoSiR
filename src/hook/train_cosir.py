@@ -77,62 +77,15 @@ def train_cosir(cfg, logger):
     print("Initializing criteria and optimizer and scheduler")
     criteria = LabelContrastiveLoss_enhance(
         margin=cfg.loss.margin,
-        lambda_1=cfg.loss.lambda_1,
-        lambda_2=cfg.loss.lambda_2,
-        lambda_3=cfg.loss.lambda_3,
-        lambda_4=cfg.loss.lambda_4,
+        lambda_contrastive=cfg.loss.lambda_contrastive,
+        lambda_laplacian=cfg.loss.lambda_laplacian,
+        lambda_collapse=cfg.loss.lambda_collapse,
+        lambda_boundary=cfg.loss.lambda_boundary,
+        lambda_mixup=cfg.loss.lambda_mixup,
+        mixup_alpha=cfg.loss.mixup_alpha,
         return_dict=cfg.loss.return_dict,
     )
 
-    optimizer = torch.optim.AdamW(
-        [
-            {
-                "params": [
-                    p
-                    for n, p in model.named_parameters()
-                    if "condition_predictor" not in n
-                ],
-                "lr": cfg.optimizer.lr,
-                "weight_decay": cfg.optimizer.weight_decay,
-            },
-        ]
-    )
-
-    if cfg.scheduler.type == "CosineAnnealingLR":
-        scheduler = CosineAnnealingLR(
-            optimizer,
-            T_max=cfg.scheduler.T_max if cfg.scheduler.T_max > 0 else cfg.train.epochs,
-            eta_min=cfg.scheduler.eta_min,
-            last_epoch=-1,
-        )
-    elif cfg.scheduler.type == "CosineAnnealingWarmRestarts":
-        scheduler = CosineAnnealingWarmRestarts(
-            optimizer,
-            T_0=cfg.scheduler.T_0,
-            T_mult=cfg.scheduler.T_mult if cfg.scheduler.T_mult > 0 else 1,
-            eta_min=cfg.scheduler.eta_min,
-            last_epoch=-1,
-        )
-    elif cfg.scheduler.type == "LinearLR":
-        warmup = LinearLR(
-            optimizer,
-            start_factor=0.1,
-            end_factor=1.0,
-            total_iters=int(cfg.train.epochs * 0.1),
-        )
-        decay = LinearLR(
-            optimizer,
-            start_factor=1.0,
-            end_factor=1e-5,
-            total_iters=int(cfg.train.epochs * 0.9),
-        )
-        scheduler = SequentialLR(
-            optimizer,
-            schedulers=[warmup, decay],
-            milestones=[int(cfg.train.epochs * 0.1)],
-        )
-    else:
-        raise ValueError(f"Unknown scheduler type: {cfg.scheduler.type}")
     # Check either load existing sample ids
     metadata_path = os.path.join(storage_dir, "metadata.json")
     if os.path.exists(metadata_path) and cfg.train.load_existing_features:
@@ -327,6 +280,63 @@ def train_cosir(cfg, logger):
                 print("Storing embeddings as template for future use...")
                 embedding_manager.store_imgtxt_template()
 
+    # ── Optimizer + Scheduler (created after initialization so embedding_manager.embeddings
+    #    points to the final nn.Parameter, not the one replaced during template loading) ──
+    optimizer = torch.optim.AdamW(
+        [
+            {
+                "params": [
+                    p
+                    for n, p in model.named_parameters()
+                    if "condition_predictor" not in n
+                ],
+                "lr": cfg.optimizer.lr,
+                "weight_decay": cfg.optimizer.weight_decay,
+            },
+            {
+                "params": [embedding_manager.embeddings],
+                "lr": cfg.optimizer.lr_label,
+                "weight_decay": 0.0,
+            },
+        ]
+    )
+
+    if cfg.scheduler.type == "CosineAnnealingLR":
+        scheduler = CosineAnnealingLR(
+            optimizer,
+            T_max=cfg.scheduler.T_max if cfg.scheduler.T_max > 0 else cfg.train.epochs,
+            eta_min=cfg.scheduler.eta_min,
+            last_epoch=-1,
+        )
+    elif cfg.scheduler.type == "CosineAnnealingWarmRestarts":
+        scheduler = CosineAnnealingWarmRestarts(
+            optimizer,
+            T_0=cfg.scheduler.T_0,
+            T_mult=cfg.scheduler.T_mult if cfg.scheduler.T_mult > 0 else 1,
+            eta_min=cfg.scheduler.eta_min,
+            last_epoch=-1,
+        )
+    elif cfg.scheduler.type == "LinearLR":
+        warmup = LinearLR(
+            optimizer,
+            start_factor=0.1,
+            end_factor=1.0,
+            total_iters=int(cfg.train.epochs * 0.1),
+        )
+        decay = LinearLR(
+            optimizer,
+            start_factor=1.0,
+            end_factor=1e-5,
+            total_iters=int(cfg.train.epochs * 0.9),
+        )
+        scheduler = SequentialLR(
+            optimizer,
+            schedulers=[warmup, decay],
+            milestones=[int(cfg.train.epochs * 0.1)],
+        )
+    else:
+        raise ValueError(f"Unknown scheduler type: {cfg.scheduler.type}")
+
     # ── Training dataset: auto-select RAM vs streaming based on available memory ──
     feature_types = (
         feature_manager.available_features
@@ -454,25 +464,10 @@ def train_cosir(cfg, logger):
                 txt_full = torch.zeros_like(txt_features)
             batch_sample_ids = batch["sample_ids"].tolist()
 
-            # Load label embeddings for this batch's sample IDs
-            label_embeddings_data = embedding_manager.get_embeddings(batch_sample_ids)
-
-            label_embeddings_clone = label_embeddings_data.clone().detach()
-            label_embeddings = torch.nn.Parameter(
-                label_embeddings_data.to(device), requires_grad=True
-            )
-
-            # Create temp optimizer only for label embeddings to preserve main optimizer state
-            base_lr = optimizer.param_groups[0]["lr"]
-            label_optimizer = torch.optim.AdamW(
-                [
-                    {
-                        "params": [label_embeddings],
-                        "lr": base_lr * cfg.optimizer.label_lr_multiplier,
-                    }
-                ],
-                weight_decay=cfg.optimizer.weight_decay,
-            )
+            # Differentiable slice — gradients flow back to embedding_manager.embeddings
+            batch_indices = [embedding_manager.id_to_index[sid] for sid in batch_sample_ids]
+            label_embeddings_before = embedding_manager.embeddings.data[batch_indices].clone()
+            label_embeddings = embedding_manager.embeddings[batch_indices]
 
             comb_emb = model.combine(
                 txt_features,
@@ -522,23 +517,21 @@ def train_cosir(cfg, logger):
             logger.log_metrics(batch_log_dict)
 
             optimizer.zero_grad()
-            label_optimizer.zero_grad()
             loss.backward()
-            optimizer.step()  # Update model parameters with accumulated state
-            label_optimizer.step()  # Update label embeddings with fresh optimizer
+            optimizer.step()
             global_step += 1
 
-            # Persist updated label embeddings back to the manager
             if not in_warmup:
                 if cfg.train.normalize:
-                    label_embeddings = torch.nn.functional.normalize(
-                        label_embeddings, dim=-1
-                    )
-
-                embedding_manager.update_embeddings(batch_sample_ids, label_embeddings)
+                    with torch.no_grad():
+                        embedding_manager.embeddings.data[batch_indices] = (
+                            torch.nn.functional.normalize(
+                                embedding_manager.embeddings.data[batch_indices], dim=-1
+                            )
+                        )
 
                 label_embeddings_diff = (
-                    (label_embeddings.cpu() - label_embeddings_clone.cpu())
+                    (embedding_manager.embeddings.data[batch_indices].cpu() - label_embeddings_before.cpu())
                     .norm(dim=-1)
                     .mean()
                 )
@@ -552,9 +545,8 @@ def train_cosir(cfg, logger):
         # ========== EPOCH END: Performance Monitoring & Sync ==========
         epoch_time = time.time() - epoch_start_time
 
-        # Force sync all chunks at epoch end (ensures data safety)
-        # if cfg.embeddingmanager.force_sync_at_epoch_end:
-        # embedding_manager.force_sync_all_chunks()
+        # Persist in-memory label embeddings to disk at epoch end
+        embedding_manager._save_all_chunks_to_disk()
 
         # Log epoch performance
         avg_loss = epoch_loss / num_batches
@@ -706,47 +698,51 @@ def train_cosir(cfg, logger):
 
                 plt.close("all")
 
-                # all_raw_image = test_set.get_all_raw_image()
+                # ─── Condition visualization snapshot (interactive notebook use) ───
+                print("Saving condition visualization snapshot...")
+                _cond_viz_dir = experiment.directory / "condition_viz"
+                _cond_viz_dir.mkdir(parents=True, exist_ok=True)
 
-                # print("Visualizing image-to-text")
-                # figs_i2t = visualize_given_conditions_image_to_text(
-                #     representatives.cpu().numpy(),
-                #     model,
-                #     (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
-                #     n_queries=1,
-                #     k=3,
-                #     all_raw_image=all_raw_image,
-                #     device=device,
-                # )
-                # for q_idx, fig in enumerate(figs_i2t):
-                #     experiment.save_artifact(
-                #         name=f"cond_i2t_{epoch}_query{q_idx}",
-                #         data=fig,
-                #         artifact_type="figure",
-                #         folder="plots",
-                #         description=f"Image-to-text by condition, epoch {epoch}, query {q_idx}",
-                #     )
+                # Fixed embeddings saved once — backbone is frozen so these never change
+                _cond_fixed_path = _cond_viz_dir / "fixed_data.pt"
+                if not _cond_fixed_path.exists():
+                    _image_paths_cond = [
+                        os.path.join(test_set.image_path, test_set.annotations[i]["image"])
+                        for i in range(all_img_emb.shape[0])
+                    ]
+                    torch.save(
+                        {
+                            "all_img_emb": all_img_emb.cpu(),
+                            "all_txt_emb": all_txt_emb.cpu(),
+                            "all_raw_text": all_raw_text,
+                            "image_paths": _image_paths_cond,
+                            "image_to_text_map": image_to_text_map.cpu(),
+                            "text_to_image_map": text_to_image_map.cpu(),
+                            "captions_per_image": test_set.captions_per_image,
+                        },
+                        _cond_fixed_path,
+                    )
+                    print(f"  Saved condition viz fixed data → {_cond_fixed_path}")
 
-                # print("Visualizing text-to-image")
-                # figs_t2i = visualize_given_conditions_text_to_image(
-                #     representatives.cpu().numpy(),
-                #     model,
-                #     (all_img_emb, all_txt_emb, all_raw_image, all_raw_text),
-                #     n_queries=1,
-                #     texts_per_image=test_set.captions_per_image,
-                #     k=3,
-                #     device=device,
-                # )
-                # for q_idx, fig in enumerate(figs_t2i):
-                #     experiment.save_artifact(
-                #         name=f"cond_t2i_{epoch}_query{q_idx}",
-                #         data=fig,
-                #         artifact_type="figure",
-                #         folder="plots",
-                #         description=f"Text-to-image by condition, epoch {epoch}, query {q_idx}",
-                #     )
-
-                # plt.close("all")
+                # Per-epoch: all conditions + combiner weights (replace on each call)
+                torch.save(
+                    {
+                        "epoch": epoch,
+                        "label_embeddings_all": label_embeddings_all.cpu(),
+                        "hdbscan_labels": hdbscanlabels,
+                        "representatives": representatives.cpu(),
+                        "combiner_state_dict": model.combiner.state_dict(),
+                        "combiner_config": {
+                            "clip_feature_dim": model.feature_dim,
+                            "projection_dim": model.feature_dim,
+                            "label_dim": cfg.model.embedding_dim,
+                            "num_layers": cfg.model.num_layers,
+                            "dropout": cfg.model.dropout,
+                        },
+                    },
+                    _cond_viz_dir / f"epoch_{epoch:04d}.pt",
+                )
+                print(f"  Saved condition viz epoch snapshot → {_cond_viz_dir / f'epoch_{epoch:04d}.pt'}")
 
                 print("Evaluating automatic evaluator")
                 cosir_automatic_evaluator = CoSiRAutomaticEvaluator(

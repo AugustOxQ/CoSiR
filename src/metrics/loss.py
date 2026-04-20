@@ -188,26 +188,67 @@ class LabelContrastiveLoss(
             return total_loss
 
 
+def imix_loss(
+    text_emb: Tensor,
+    image_emb: Tensor,
+    conditions: Tensor,
+    model: nn.Module,
+    alpha: float = 1.0,
+    lambda_imix: float = 0.1,
+) -> Tensor:
+    B = text_emb.shape[0]
+    device = text_emb.device
+
+    temperature = 0.07
+
+    beta = torch.distributions.Beta(alpha, alpha)
+    lam = beta.sample([B]).to(device)
+    lam = torch.max(lam, 1.0 - lam)
+    perm = torch.randperm(B, device=device)
+
+    lam_exp = lam.view(-1, 1)
+    text_mixed = lam_exp * text_emb + (1.0 - lam_exp) * text_emb[perm]
+
+    cond_mixed = lam_exp * conditions + (1.0 - lam_exp) * conditions[perm]
+    cond_mixed = F.normalize(cond_mixed, dim=-1)
+
+    combined_mixed = model.combine(text_mixed, None, cond_mixed)
+
+    image_norm = F.normalize(image_emb, dim=-1)
+    logits = combined_mixed @ image_norm.T / temperature
+
+    target_A = torch.arange(B, device=device)
+    target_B = perm
+
+    criterion = nn.CrossEntropyLoss(reduction="none")
+    loss = lam * criterion(logits, target_A) + (1.0 - lam) * criterion(logits, target_B)
+
+    return lambda_imix * loss.mean()
+
+
 class LabelContrastiveLoss_enhance(nn.Module):
     def __init__(
         self,
         margin: float = 0.2,
-        lambda_1: float = 1.0,  # main loss weight
-        lambda_2: float = 0.1,  # secondary loss weight
-        lambda_3: float = 0.0,  # minor loss weight
-        lambda_4: float = 0.0,  # regularizer weight
+        lambda_contrastive: float = 1.0,
+        lambda_laplacian: float = 0.1,
+        lambda_collapse: float = 0.0,
+        lambda_boundary: float = 0.0,
+        lambda_mixup: float = 0.0,  # imix loss weight
+        mixup_alpha: float = 1.0,
         return_dict: bool = False,
     ) -> None:
         super().__init__()
         print("Using Polar axis regularization loss")
         self.margin = margin
-        self.lambda_pos = lambda_1
-        self.lambda_2 = lambda_2
-        self.lambda_3 = lambda_3
-        self.lambda_4 = lambda_4
+        self.lambda_pos = lambda_contrastive
+        self.lambda_laplacian = lambda_laplacian
+        self.lambda_collapse = lambda_collapse
+        self.lambda_boundary = lambda_boundary
+        self.lambda_mixup = lambda_mixup
+        self.mixup_alpha = mixup_alpha
         self.temperature = 0.07
         self.return_dict = return_dict
-        # TODO Add diversity loss to encourage more diversity in the embeddings
 
     def forward(
         self,
@@ -226,11 +267,21 @@ class LabelContrastiveLoss_enhance(nn.Module):
             combined_features, image_features
         )  # [N, N] pairwise similarities
 
-        labels = torch.arange(cos_pos.shape[0], device=cos_pos.device)
         loss_improve = (
-            F.cross_entropy(cos_pos / self.temperature, labels)
-            + F.cross_entropy(cos_pos.T / self.temperature, labels)
-        ) / 2
+            (
+                F.cross_entropy(
+                    cos_pos / self.temperature,
+                    torch.arange(batch_size, device=cos_pos.device),
+                )
+                + F.cross_entropy(
+                    cos_pos.T / self.temperature,
+                    torch.arange(batch_size, device=cos_pos.device),
+                )
+            )
+            / 2
+            if self.lambda_pos > 0
+            else 0.0
+        )
 
         # Secondary Loss: This is how the condition space is ensured to be smooth
         laplacian_loss = (
@@ -240,34 +291,52 @@ class LabelContrastiveLoss_enhance(nn.Module):
                 combined_features,
                 k=10,
                 model=model,
-                alpha=self.lambda_2,
+                alpha=1.0,
             )
-            if self.lambda_2 > 0
+            if self.lambda_laplacian > 0
             else 0.0
         )
 
-        collapse_loss = -label_embedding.var(dim=0).mean() * self.lambda_3
+        collapse_loss = (
+            -F.normalize(label_embedding, dim=-1).var(dim=0).mean()
+            if self.lambda_collapse > 0
+            else 0.0
+        )
 
         # Regularizer Loss: this prevents the condition space from being too large
         boundary_loss = (
             boundary_penalty(
                 label_embedding,
                 radius=10.0,
-                alpha=self.lambda_4,
+                alpha=1.0,
             )
-            if self.lambda_4 > 0
+            if self.lambda_boundary > 0
+            else 0.0
+        )
+
+        mixup_loss = (
+            imix_loss(
+                text_features,
+                image_features,
+                label_embedding,
+                model,
+                alpha=self.mixup_alpha,
+                lambda_imix=1.0,
+            )
+            if self.lambda_mixup > 0
             else 0.0
         )
 
         total_loss = (
             self.lambda_pos * loss_improve
-            + laplacian_loss
-            + collapse_loss
-            + boundary_loss
+            + self.lambda_laplacian * laplacian_loss
+            + self.lambda_collapse * collapse_loss
+            + self.lambda_boundary * boundary_loss
+            + self.lambda_mixup * mixup_loss
         )
 
         with torch.no_grad():
-            diag_sim = cos_pos.diag().mean()  # 正样本相似度
+            diag_sim = cos_pos.diag().mean()
             off_diag_sim = (cos_pos.sum() - cos_pos.diag().sum()) / (
                 batch_size * (batch_size - 1)
             )
@@ -280,6 +349,7 @@ class LabelContrastiveLoss_enhance(nn.Module):
             "loss_improve": loss_improve,
             "loss_laplacian": laplacian_loss,
             "loss_boundary": boundary_loss,
+            "loss_mixup": mixup_loss,
             "diag_sim_gap": diag_sim_gap,
             "off_diag_sim_gap": off_diag_sim_gap,
             "total_sim_gap": total_sim_gap,

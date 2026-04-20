@@ -1,0 +1,16 @@
+- dataset=impressions
+- train.imgtxt_factor=1
+- train.initialization_strategy=imgtxt
+- optimizer.lr=0.0001
+- optimizer.lr_label=0.01
+- train.epochs=1000
+- loss.lambda_2=30
+- loss.lambda_3=0.1
+- model.dropout=0.5
+- model.num_layers=6
+- eval.oracle_aggregation=max
+- train.normalize=False
+- model=clip_base
+- eval.evaluation_interval=30
+- loss.lambda_mixup=0.1
+- wandb.name=mixup_0.1

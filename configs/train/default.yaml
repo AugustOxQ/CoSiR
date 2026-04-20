@@ -20,21 +20,20 @@ train:
 # Loss function configuration
 loss:
   margin: 0.3
-  lambda_1: 1.0 # Main contrastive loss
-  lambda_2: 0.1 # Laplacian loss
-  lambda_3: 0.01 # Minor loss
-  lambda_4: 0.0 # Regularizer loss #TODO: change to 0.1, debugging time use 0.0
-  warm_up_epochs: 0 # Warm up epochs for label prediction loss
-  middle_epochs: 0 # Middle epochs for label prediction loss
+  lambda_contrastive: 1.0
+  lambda_laplacian: 0.1
+  lambda_collapse: 0.1
+  lambda_boundary: 0.0
+  lambda_mixup: 0.1 # iMix loss weight (0 = disabled)
+  mixup_alpha: 1.0 # Beta distribution alpha for iMix sampling
   return_dict: true
 
 # Optimizer configuration
 optimizer:
   type: "AdamW"
-  lr: 1.0e-5
-  lr_2: 1.0e-5
+  lr: 1.0e-5 # model parameters
+  lr_label: 1.0e-2 # label embeddings
   weight_decay: 5.0e-2
-  label_lr_multiplier: 5.0e4 # Label embedding learning rate multiplier
 
 # Scheduler configuration
 scheduler:

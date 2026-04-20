@@ -8,7 +8,6 @@ model:
   freeze_backbone: true
   num_layers: 4
   hidden_dim: 1024
-  min_radius: 5
   dropout: 0.1
 
 featuremanager:

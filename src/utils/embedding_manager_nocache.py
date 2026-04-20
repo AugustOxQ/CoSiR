@@ -133,7 +133,14 @@ class TrainableEmbeddingManager:
         """Open existing memmap files and (optionally) pull into RAM."""
         mm = np.lib.format.open_memmap(self._emb_path, mode="r+")
         if self.mode == "ram":
-            self._data: torch.Tensor = torch.from_numpy(np.array(mm)).to(self.device)
+            new_data = torch.from_numpy(np.array(mm)).to(self.device)
+            if hasattr(self, "_data") and isinstance(self._data, nn.Parameter):
+                # Update in-place so any existing optimizer reference stays valid
+                self._data.data.copy_(new_data)
+            else:
+                self._data = nn.Parameter(new_data)
+                self.embeddings: nn.Parameter = self._data
+                self.id_to_index: Dict[int, int] = self._id_to_pos
         else:
             self._mmap = mm  # keep alive; access via torch.from_numpy slice
 
@@ -184,7 +191,7 @@ class TrainableEmbeddingManager:
         data_np = new_embeddings.detach().cpu().float().numpy()
 
         if self.mode == "ram":
-            self._data[positions] = torch.from_numpy(data_np).to(self.device)
+            self._data.data[positions] = torch.from_numpy(data_np).to(self.device)
 
         # Always persist to disk so checkpoints are consistent
         mm = np.lib.format.open_memmap(self._emb_path, mode="r+")
@@ -198,10 +205,19 @@ class TrainableEmbeddingManager:
         Used by evaluation / clustering code.
         """
         if self.mode == "ram":
-            return self.sample_ids, self._data.cpu()
+            return self.sample_ids, self._data.detach().cpu()
         else:
             arr = np.lib.format.open_memmap(self._emb_path, mode="r")
             return self.sample_ids, torch.from_numpy(np.array(arr))
+
+    def _save_all_chunks_to_disk(self) -> None:
+        """Flush in-memory embeddings (RAM mode) to the memmap file on disk."""
+        if self.mode != "ram":
+            return
+        mm = np.lib.format.open_memmap(self._emb_path, mode="r+")
+        mm[:] = self._data.data.cpu().float().numpy()
+        mm.flush()
+        del mm
 
     # ── PCA-based initialisation ───────────────────────────────────────────────
 
@@ -244,9 +260,14 @@ class TrainableEmbeddingManager:
         mm.flush()
         del mm
 
-        # Reload into RAM if needed
+        # Reload into RAM if needed; update in-place to keep optimizer reference valid
         if self.mode == "ram":
-            self._data = torch.from_numpy(data).to(self.device)
+            new_data = torch.from_numpy(data).to(self.device)
+            if hasattr(self, "_data") and isinstance(self._data, nn.Parameter):
+                self._data.data.copy_(new_data)
+            else:
+                self._data = nn.Parameter(new_data)
+                self.embeddings = self._data
 
         print(f"[EmbeddingManager] Initialised with strategy='{strategy}'")
 

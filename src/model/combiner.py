@@ -320,6 +320,9 @@ class Combiner_new(nn.Module):
 
         # gate = self.gate_net(torch.cat((text_features, label_projected_features), -1))
         # combined = text_features + label_projected_features
+        # combined = text_features + self.label_decoder(
+        #     torch.cat((label_features, text_features), -1)
+        # )
         combined = text_features + self.label_decoder(
             torch.cat((label_features, text_features), -1)
         )

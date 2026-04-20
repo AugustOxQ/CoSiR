@@ -1,0 +1,98 @@
+data:
+  dataset_type: impressions
+  train_annotation_path: /project/Impressions/metadata/impressions_train.json
+  test_annotation_path: /project/Impressions/metadata/impressions_test.json
+  train_image_path: /project/Impressions/media
+  test_image_path: /project/Impressions/media
+featuremanager:
+  storage_dir: /data/SSD2/pre_extract/impressions/features
+  extraction_batch_size: 2048
+  shard_size: 100000
+  store_img_full: false
+  store_txt_full: false
+  hdf5_compression: true
+  hdf5_compression_level: 4
+  shuffle_window_shards: 4
+experiment:
+  name: CoSiR_Experiment
+  tags:
+  - CoSiR
+  - Impressions
+  - local
+  description: Comprehensive experiment for CoSiR
+  results_dir: res/CoSiR_Experiment/impressions
+model:
+  embedding_dim: 2
+  clip_model: openai/clip-vit-base-patch32
+  freeze_backbone: true
+  num_layers: 6
+  hidden_dim: 1024
+  dropout: 0.1
+train:
+  epochs: 1000
+  epochs_2: 20
+  num_workers: 0
+  batch_size: 1024
+  initialization_strategy: imgtxt
+  imgtxt_factor: 1
+  use_template_embeddings: true
+  save_as_template_embeddings: true
+  load_existing_features: true
+  representative_number: 12
+  normalize: false
+  warm_up_epochs: 0
+  warm_up_patience: 20
+  warm_up_min_delta_pct: 0.01
+loss:
+  margin: 0.3
+  lambda_contrastive: 0
+  lambda_laplacian: 0.1
+  lambda_collapse: 0.1
+  lambda_boundary: 0.0
+  lambda_mixup: 1
+  mixup_alpha: 1.0
+  return_dict: true
+optimizer:
+  type: AdamW
+  lr: 0.0001
+  lr_label: 0.01
+  weight_decay: 0.05
+scheduler:
+  type: CosineAnnealingLR
+  T_max: 0
+  T_0: 10
+  T_mult: 2
+  eta_min: 1.0e-09
+eval:
+  k_vals:
+  - 1
+  - 5
+  - 10
+  train_max_batches: 25
+  print_metrics: true
+  evaluation_interval: 100
+  perform_evaluation: true
+  oracle_aggregation: max
+embeddingmanager:
+  storage_mode: memory
+  initialization_strategy: zeros
+  cache_l1_size_mb: 512
+  cache_l2_size_mb: 1024
+  enable_l3_cache: true
+  auto_sync: true
+  sync_batch_size: 0
+  embedding_chunk_size: null
+  enable_performance_monitoring: true
+  log_cache_stats_every_n_epochs: 5
+  force_sync_at_epoch_end: true
+seed: 42
+device: cuda
+wandb:
+  enabled: true
+  project: cosir_new_structure
+  entity: augustoxq
+  name: ''
+  tags:
+  - Local
+  notes: CoSiR Training
+  mode: online

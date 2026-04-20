@@ -20,42 +20,38 @@ fi
 
 echo "Using ${NUM_PROCS} processes"
 
-# python main_cosir.py dataset=impressions train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-4 train.epochs=1000 loss.lambda_2=0.1 loss.lambda_3=0 model.dropout=0.1 model.num_layers=6 wandb.name="random normed imgtxt 1e-4 1000 epochs normalizing text features in manifold loss knn10 max high knn loss try normalize initialization" optimizer.label_lr_multiplier=1.0e4 eval.oracle_aggregation="max" train.normalize=true
+python main_cosir.py -m \
+  dataset=impressions \
+  eval.evaluation_interval=100 \
+  eval.oracle_aggregation=max \
+  loss.lambda_collapse=0.1 \
+  loss.lambda_contrastive=0.5,1.0 \
+  loss.lambda_laplacian=0.1 \
+  loss.lambda_mixup=0.5,1.0 \
+  model=clip_base \
+  model.dropout=0.1 \
+  model.num_layers=6 \
+  optimizer.lr=1e-4 \
+  optimizer.lr_label=1.0e-2 \
+  train.epochs=1000 \
+  train.imgtxt_factor=1 \
+  train.initialization_strategy=imgtxt \
+  train.normalize=False
 
-# python main_cosir.py dataset=impressions train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-4 train.epochs=1000 loss.lambda_2=0.1 loss.lambda_3=0 model.dropout=0.1 model.num_layers=6 wandb.name="random normed imgtxt 1e-4 1000 epochs normalizing text features in manifold loss knn10 mean high knn loss try normalize initialization" optimizer.label_lr_multiplier=1.0e4 eval.oracle_aggregation="mean" train.normalize=true # -> good
-
-# python main_cosir.py dataset=impressions train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-4 train.epochs=1000 loss.lambda_2=0.1 loss.lambda_3=0 model.dropout=0.5 model.num_layers=6 wandb.name="random normed imgtxt 1e-4 1000 epochs normalizing text features in manifold loss knn10 max high knn loss try normalize initialization" optimizer.label_lr_multiplier=1.0e4 eval.oracle_aggregation="max" train.normalize=true
-
-# python main_cosir.py dataset=impressions train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-4 train.epochs=1000 loss.lambda_2=0.1 loss.lambda_3=0 model.dropout=0.5 model.num_layers=6 wandb.name="random normed imgtxt 1e-4 1000 epochs normalizing text features in manifold loss knn10 mean high knn loss try normalize initialization" optimizer.label_lr_multiplier=1.0e4 eval.oracle_aggregation="mean" train.normalize=true
-
-
-# python main_cosir.py dataset=impressions train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-4 train.epochs=1000 loss.lambda_2=0.1 loss.lambda_3=0 model.dropout=0.1 model.num_layers=6 wandb.name="random normed imgtxt 1e-4 1000 epochs normalizing text features in manifold loss knn10 max high knn loss try normalize initialization" optimizer.label_lr_multiplier=1.0e3 eval.oracle_aggregation="max" train.normalize=true
-
-# python main_cosir.py dataset=impressions train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-4 train.epochs=1000 loss.lambda_2=0.1 loss.lambda_3=0 model.dropout=0.1 model.num_layers=6 wandb.name="random normed imgtxt 1e-4 1000 epochs normalizing text features in manifold loss knn10 mean high knn loss try normalize initialization" optimizer.label_lr_multiplier=1.0e3 eval.oracle_aggregation="mean" train.normalize=true # Good
-
-# python main_cosir.py dataset=impressions train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-4 train.epochs=1000 loss.lambda_2=0.1 loss.lambda_3=0 model.dropout=0.5 model.num_layers=6 wandb.name="random normed imgtxt 1e-4 1000 epochs normalizing text features in manifold loss knn10 max high knn loss try normalize initialization" optimizer.label_lr_multiplier=1.0e3 eval.oracle_aggregation="max" train.normalize=true
-
-# python main_cosir.py dataset=impressions train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-4 train.epochs=1000 loss.lambda_2=0.1 loss.lambda_3=0 model.dropout=0.5 model.num_layers=6 wandb.name="random normed imgtxt 1e-4 1000 epochs normalizing text features in manifold loss knn10 mean high knn loss try normalize initialization" optimizer.label_lr_multiplier=1.0e3 eval.oracle_aggregation="mean" train.normalize=true
-
-# python main_cosir.py dataset=impressions train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-4 train.epochs=500 loss.lambda_2=0.1 loss.lambda_3=0.0 model.dropout=0.1 model.num_layers=6 wandb.name="random normed imgtxt 1e-4 500 epochs normalizing text features in manifold loss knn10 max high knn loss try normalize initialization" optimizer.label_lr_multiplier=1.0e3 eval.oracle_aggregation="max" train.normalize=True
-
-# python main_cosir.py dataset=coco train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-6 train.epochs=200 loss.lambda_2=30 loss.lambda_3=0.0 model.dropout=0.1 model.num_layers=6 wandb.name="no embedding update sanity check" optimizer.label_lr_multiplier=5.0e5 eval.oracle_aggregation="max" train.normalize=False train.representative_number=6
-
-# python main_cosir.py dataset=coco train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-6 train.epochs=200 loss.lambda_2=30 loss.lambda_3=0.0 model.dropout=0.1 model.num_layers=6 wandb.name="no embedding update sanity check" optimizer.label_lr_multiplier=5.0e5 eval.oracle_aggregation="mean" train.normalize=False train.representative_number=1
-
-
-# python main_cosir.py dataset=impressions train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-6 train.epochs=500 loss.lambda_2=30 loss.lambda_3=0.0 model.dropout=0.1 model.num_layers=6 wandb.name="add clip base" optimizer.label_lr_multiplier=5.0e5 eval.oracle_aggregation="max" train.normalize=True
-
-# python main_cosir.py dataset=impressions train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-6 train.epochs=500 loss.lambda_2=30 loss.lambda_3=0.0 model.dropout=0.1 model.num_layers=6 wandb.name="add clip base" optimizer.label_lr_multiplier=5.0e5 eval.oracle_aggregation="mean" train.normalize=True
-
-# python main_cosir.py dataset=coco train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-6 train.epochs=200 loss.lambda_2=30 loss.lambda_3=0.0 model.dropout=0.1 model.num_layers=6 wandb.name="no embedding update sanity check" optimizer.label_lr_multiplier=5.0e5 eval.oracle_aggregation="max" train.normalize=True train.representative_number=12
-
-# python main_cosir.py dataset=coco train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-6 train.epochs=200 loss.lambda_2=30 loss.lambda_3=0.0 model.dropout=0.1 model.num_layers=6 wandb.name="no embedding update sanity check" optimizer.label_lr_multiplier=5.0e5 eval.oracle_aggregation="mean" train.normalize=True train.representative_number=12
-
-# python main_cosir.py dataset=coco train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-5 train.epochs=200 loss.lambda_2=30 loss.lambda_3=0.0 model.dropout=0.1 model.num_layers=6 wandb.name="no embedding update sanity check" optimizer.label_lr_multiplier=5.0e5 eval.oracle_aggregation="max" train.normalize=True train.representative_number=12
-
-# python main_cosir.py dataset=coco train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-5 train.epochs=200 loss.lambda_2=30 loss.lambda_3=0.0 model.dropout=0.1 model.num_layers=6 wandb.name="no embedding update sanity check" optimizer.label_lr_multiplier=5.0e5 eval.oracle_aggregation="mean" train.normalize=True train.representative_number=12
-
-# python main_cosir.py dataset=coco train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-4 train.epochs=200 loss.lambda_2=30 loss.lambda_3=0.0 model.dropout=0.1 model.num_layers=6 wandb.name="no embedding update sanity check" optimizer.label_lr_multiplier=5.0e5 eval.oracle_aggregation="max" train.normalize=True train.representative_number=12
-
-# python main_cosir.py dataset=coco train.imgtxt_factor=1 train.initialization_strategy="imgtxt" optimizer.lr=1e-4 train.epochs=200 loss.lambda_2=30 loss.lambda_3=0.0 model.dropout=0.1 model.num_layers=6 wandb.name="no embedding update sanity check" optimizer.label_lr_multiplier=5.0e5 eval.oracle_aggregation="mean" train.normalize=True train.representative_number=12
+# python main_cosir.py -m \
+#   dataset=impressions \
+#   eval.evaluation_interval=100 \
+#   eval.oracle_aggregation=max \
+#   loss.lambda_collapse=0.1 \
+#   loss.lambda_contrastive=0.5 \
+#   loss.lambda_laplacian=0.1 \
+#   loss.lambda_mixup=0.5 \
+#   model=clip_base \
+#   model.dropout=0.1 \
+#   model.num_layers=6 \
+#   optimizer.lr=1e-2 \
+#   optimizer.lr_label=1.0e-2 \
+#   train.epochs=1000 \
+#   train.imgtxt_factor=1 \
+#   train.initialization_strategy=imgtxt \
+#   train.normalize=False
