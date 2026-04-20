@@ -307,12 +307,12 @@ def train_cosir(cfg, logger):
             {
                 "params": [embedding_manager.embeddings],
                 "lr": cfg.optimizer.lr_label,
-                "weight_decay": 0.0,
+                "weight_decay": cfg.optimizer.weight_decay,
             },
             {
                 "params": list(prototype_loss.parameters()),
-                "lr": cfg.optimizer.lr,
-                "weight_decay": 0.0,
+                "lr": cfg.optimizer.lr_label,
+                "weight_decay": cfg.optimizer.weight_decay,
             },
         ]
     )
