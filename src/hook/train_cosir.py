@@ -37,7 +37,7 @@ from src.utils import (
     visualize_given_conditions_text_to_image,
     CoSiRAutomaticEvaluator,
 )
-from src.metrics import LabelContrastiveLoss_enhance, PrototypeLoss
+from src.metrics import LabelContrastiveLoss_enhance
 
 
 def train_cosir(cfg, logger):
@@ -86,16 +86,6 @@ def train_cosir(cfg, logger):
         mixup_alpha=cfg.loss.mixup_alpha,
         return_dict=cfg.loss.return_dict,
     )
-
-    prototype_loss = PrototypeLoss(
-        K=cfg.loss_prototype.K,
-        temp_start=cfg.loss_prototype.temp_start,
-        temp_end=cfg.loss_prototype.temp_end,
-        total_epochs=cfg.train.epochs,
-        lambda_attraction=cfg.loss_prototype.lambda_attraction,
-        lambda_entropy=cfg.loss_prototype.lambda_entropy,
-        lambda_repulsion=cfg.loss_prototype.lambda_repulsion,
-    ).to(device)
 
     # Check either load existing sample ids
     metadata_path = os.path.join(storage_dir, "metadata.json")
@@ -309,11 +299,6 @@ def train_cosir(cfg, logger):
                 "lr": cfg.optimizer.lr_label,
                 "weight_decay": 0.0,
             },
-            {
-                "params": list(prototype_loss.parameters()),
-                "lr": cfg.optimizer.lr,
-                "weight_decay": 0.0,
-            },
         ]
     )
 
@@ -516,11 +501,7 @@ def train_cosir(cfg, logger):
                     dim=-1,
                 )
 
-            proto_loss, proto_usage = prototype_loss(label_embeddings, epoch)
-            loss = (
-                loss_dict["total_loss"]
-                + cfg.loss_prototype.lambda_prototype * proto_loss
-            )
+            loss = loss_dict["total_loss"]
 
             epoch_loss += loss.item()
             num_batches += 1
@@ -538,12 +519,6 @@ def train_cosir(cfg, logger):
                     "train/cos_sim": (
                         cos_sim.mean().item() if cos_sim is not None else None
                     ),
-                    "prototype/loss": proto_loss.item(),
-                    "prototype/temperature": prototype_loss.get_temperature(epoch),
-                    **{
-                        f"prototype/usage_{i}": v.item()
-                        for i, v in enumerate(proto_usage)
-                    },
                 }
             )
             logger.log_metrics(batch_log_dict)

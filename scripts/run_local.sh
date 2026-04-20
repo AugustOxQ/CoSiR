@@ -33,7 +33,9 @@ python main_cosir.py -m \
   optimizer.lr=1e-4 \
   optimizer.lr_label=1.0e-2 \
   train.epochs=1000 \
-  train.normalize=False
+  train.normalize=False \
+  train.imgtxt_factor=1 \
+  train.initialization_strategy=txt \
 
 # python main_cosir.py -m \
 #   dataset=impressions \

@@ -30,17 +30,6 @@ loss:
   return_dict: true
 
 # Optimizer configuration
-# Prototype loss configuration
-loss_prototype:
-  lambda_prototype: 1.0 # outer weight on the full prototype loss
-  lambda_attraction: 1.0 # pull condition toward assigned prototype
-  lambda_entropy: 0.1 # encourage uniform prototype usage
-  lambda_repulsion: 0.1 # push learned prototypes apart
-  K: 4 # total prototypes (1 null + K-1 learned)
-  temp_start: 1.0 # gumbel-softmax temperature at epoch 0
-  temp_end: 0.1 # gumbel-softmax temperature at final epoch
-
-# Optimizer configuration
 optimizer:
   type: "AdamW"
   lr: 1.0e-5 # model parameters

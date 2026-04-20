@@ -386,13 +386,9 @@ class PrototypeLoss(nn.Module):
         temp_start: float = 1.0,
         temp_end: float = 0.1,
         total_epochs: int = 500,
-        lambda_attraction: float = 1.0,
-        lambda_entropy: float = 0.1,
-        lambda_repulsion: float = 0.1,
     ):
         super().__init__()
         # prototype 0: fixed null (no modulation)
-        self.null_proto: Tensor
         self.register_buffer("null_proto", torch.zeros(1, 2))
 
         # K-1 learnable prototypes, evenly spaced on unit circle
@@ -404,9 +400,6 @@ class PrototypeLoss(nn.Module):
         self.temp_start = temp_start
         self.temp_end = temp_end
         self.total_epochs = total_epochs
-        self.lambda_attraction = lambda_attraction
-        self.lambda_entropy = lambda_entropy
-        self.lambda_repulsion = lambda_repulsion
 
     def get_temperature(self, epoch: int) -> float:
         alpha = min(epoch / self.total_epochs, 1.0)
@@ -429,11 +422,13 @@ class PrototypeLoss(nn.Module):
         # conditions assigned to null prototype have assigned_proto=[0,0],
         # cosine_similarity=0 → attraction term = 1 (maximum), so they are
         # not artificially pulled anywhere — the null cluster is a free sink
-        null_mask = (assign[:, 0] == 0)  # [B] — not assigned to null
+        null_mask = assign[:, 0] == 0  # [B] — not assigned to null
         if null_mask.any():
             cond_active = cond[null_mask]
             proto_active = assigned_proto[null_mask]
-            attraction = (1 - F.cosine_similarity(cond_active, proto_active, dim=-1)).mean()
+            attraction = (
+                1 - F.cosine_similarity(cond_active, proto_active, dim=-1)
+            ).mean()
         else:
             attraction = torch.tensor(0.0, device=conditions.device)
 
@@ -446,7 +441,7 @@ class PrototypeLoss(nn.Module):
         mask = ~torch.eye(K_learned, dtype=torch.bool, device=learned.device)
         repulsion = proto_sim[mask].mean()
 
-        loss = self.lambda_attraction * attraction - self.lambda_entropy * entropy + self.lambda_repulsion * repulsion
+        loss = attraction - 0.1 * entropy + 0.1 * repulsion
         return loss, usage
 
 

@@ -1,1 +1,1 @@
-from .loss import LabelContrastiveLoss_enhance, PrototypeLoss
+from .loss import LabelContrastiveLoss_enhance
