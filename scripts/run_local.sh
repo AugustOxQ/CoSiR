@@ -20,23 +20,6 @@ fi
 
 echo "Using ${NUM_PROCS} processes"
 
-python main_cosir.py -m \
-  dataset=impressions \
-  eval.evaluation_interval=100 \
-  eval.oracle_aggregation=max \
-  loss.lambda_collapse=0.1 \
-  loss.lambda_contrastive=0.5 \
-  loss.lambda_laplacian=0.1 \
-  loss.lambda_mixup=0.5 \
-  model=clip_base \
-  model.num_layers=6 \
-  optimizer.lr=1e-4 \
-  optimizer.lr_label=1.0e-2 \
-  train.epochs=1000 \
-  train.normalize=False \
-  train.imgtxt_factor=1 \
-  train.initialization_strategy=txt \
-
 # python main_cosir.py -m \
 #   dataset=impressions \
 #   eval.evaluation_interval=100 \
@@ -46,11 +29,27 @@ python main_cosir.py -m \
 #   loss.lambda_laplacian=0.1 \
 #   loss.lambda_mixup=0.5 \
 #   model=clip_base \
-#   model.dropout=0.1 \
 #   model.num_layers=6 \
-#   optimizer.lr=1e-2 \
+#   optimizer.lr=1e-4 \
 #   optimizer.lr_label=1.0e-2 \
 #   train.epochs=1000 \
+#   train.normalize=False \
 #   train.imgtxt_factor=1 \
 #   train.initialization_strategy=imgtxt \
-#   train.normalize=False
+
+python main_cosir.py -m \
+  dataset=redcaps2 \
+  eval.evaluation_interval=50 \
+  eval.oracle_aggregation=mean \
+  loss.lambda_collapse=0.1 \
+  loss.lambda_contrastive=0.5 \
+  loss.lambda_laplacian=0.1 \
+  loss.lambda_mixup=0.5 \
+  model=clip_base \
+  model.num_layers=6 \
+  optimizer.lr=1e-4 \
+  optimizer.lr_label=1.0e-2 \
+  train.epochs=300 \
+  train.normalize=False \
+  train.imgtxt_factor=1 \
+  train.initialization_strategy=txt \

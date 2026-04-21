@@ -25,6 +25,7 @@ def get_umap(
     samples_to_track=[],
     z_threshold=3,
     no_outlier=True,
+    representatives=None,
 ):
 
     fig = plt.figure(figsize=(10, 10))
@@ -76,6 +77,18 @@ def get_umap(
                 plt.text(
                     x, y, f"Sample {sample_idx}", fontsize=12, color="black"
                 )  # Annotate the sample
+
+    # Overlay representative points as gold stars
+    if representatives is not None:
+        reps_np = representatives.cpu().numpy() if hasattr(representatives, "cpu") else np.array(representatives)
+        plt.scatter(
+            reps_np[:, 0], reps_np[:, 1],
+            marker="*", s=300, c="gold", edgecolors="k", linewidths=0.5,
+            zorder=5, label="Representatives",
+        )
+        for i, (x, y) in enumerate(reps_np):
+            plt.text(x, y, str(i), fontsize=7, ha="center", va="bottom", color="black")
+        plt.legend(loc="upper right")
 
     # Add the number of UMAP labels to the plot as title
     plt.title(

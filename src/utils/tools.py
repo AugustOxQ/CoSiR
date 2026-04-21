@@ -206,52 +206,27 @@ def get_representatives_polar_grid(
     return sampled_conditions
 
 
-def get_representatives_hdbscan(hdbscan_labels, conditions, k=10):
+def get_representatives_fps(
+    conditions: torch.Tensor, k: int = 10, inlier_quantile: float = 0.95
+) -> torch.Tensor:
+    """Farthest-point sampling: returns k maximally spread representatives from conditions [N, 2].
+
+    Filters out outliers beyond `inlier_quantile` of L2 distance from the centroid
+    before sampling, so extreme outliers don't anchor the selection.
+    """
     start_time = time.time()
-    unique_clusters = set(hdbscan_labels) - {-1}  # Exclude noise (-1)
+    centroid = conditions.mean(dim=0)
+    dists_from_centroid = torch.norm(conditions - centroid, dim=1)
+    radius = dists_from_centroid.quantile(inlier_quantile)
+    inliers = conditions[dists_from_centroid <= radius]
 
-    sampled_conditions = []
-    for c in unique_clusters:
-        cluster_conditions = conditions[hdbscan_labels == c]
-        sampled_conditions.append(
-            cluster_conditions[np.random.randint(len(cluster_conditions))]
-        )
-
-    print(
-        f"Sampled {len(sampled_conditions)} conditions, remaining {k - len(sampled_conditions)} conditions to be randomly sampled"
-    )
-
-    if len(sampled_conditions) == 0:
-        # Randomly sample k conditions
-        sampled_conditions = conditions[
-            np.random.choice(
-                len(conditions),
-                k,
-                replace=False,
-            )
-        ]
-
-        return sampled_conditions
-
-    sampled_conditions = torch.stack(sampled_conditions)[:k]
-
-    if len(sampled_conditions) < k:
-        # Randomly sample the remaining representatives
-        remaining_conditions = conditions[
-            np.random.choice(
-                len(conditions),
-                k - len(sampled_conditions),
-                replace=False,
-            )
-        ]
-        sampled_conditions = torch.cat(
-            [sampled_conditions, remaining_conditions], dim=0
-        )
-
-    end_time = time.time()
-    print(f"Time taken to get representatives: {end_time - start_time} seconds")
-
-    return sampled_conditions
+    k = min(k, len(inliers))
+    selected = [torch.randint(len(inliers), (1,)).item()]
+    for _ in range(k - 1):
+        dists = torch.cdist(inliers, inliers[selected]).min(dim=1).values
+        selected.append(dists.argmax().item())
+    print(f"Time taken to get representatives: {time.time() - start_time:.3f}s")
+    return inliers[selected]
 
 
 def get_representatives_polar_grid_outsideonly(learned_conditions, num_angles=10):

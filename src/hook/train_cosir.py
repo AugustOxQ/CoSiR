@@ -24,13 +24,13 @@ from src.dataset import (
     FeatureExtractionDataset,
     FeatureExtractionConceptualDataset,
 )
-from src.model import CoSiRModel, Clustering, UMAP_vis
+from src.model import CoSiRModel, UMAP_vis
 from src.eval import EvaluationManager, EvaluationConfig
 from src.utils import (
     FeatureManager,
     ExperimentManager,
     TrainableEmbeddingManager,
-    get_representatives_hdbscan,
+    get_representatives_fps,
     get_umap,
     visualize_ideal_condition_space,
     visualize_given_conditions_image_to_text,
@@ -199,7 +199,6 @@ def train_cosir(cfg, logger):
     # Initialize evaluator
     evaluator = EvaluationManager(evaluation_config)
 
-    clustering = Clustering(device=device)
     umap_vis = UMAP_vis(device=device)
 
     # ========== OPTIMIZED: TrainableEmbeddingManager with Intelligent Caching ==========
@@ -602,13 +601,8 @@ def train_cosir(cfg, logger):
                 torch.cuda.empty_cache()  # release any GPU residuals from training
                 print("Getting all embeddings")
                 _, label_embeddings_all = embedding_manager.get_all_embeddings()
-                print("Getting HDBSCAN labels")
-                hdbscanlabels, _ = clustering.get_hdbscan(
-                    label_embeddings_all.cpu(), method="eom"
-                )
                 print("Getting representatives")
-                representatives = get_representatives_hdbscan(
-                    hdbscanlabels,
+                representatives = get_representatives_fps(
                     label_embeddings_all.cpu(),
                     (
                         cfg.train.representative_number
@@ -653,10 +647,11 @@ def train_cosir(cfg, logger):
                 # Visualize label embeddings
                 fig = get_umap(
                     umap_features,
-                    umap_labels=hdbscanlabels,
+                    umap_labels=None,
                     epoch=epoch,
                     no_outlier=True,
                     samples_to_track=[0, 1, 2, 3, 4],
+                    representatives=representatives,
                 )
                 experiment.save_artifact(
                     name=f"label_embeddings_umap_{epoch}",
@@ -741,7 +736,6 @@ def train_cosir(cfg, logger):
                     {
                         "epoch": epoch,
                         "label_embeddings_all": label_embeddings_all.cpu(),
-                        "hdbscan_labels": hdbscanlabels,
                         "representatives": representatives.cpu(),
                         "combiner_state_dict": model.combiner.state_dict(),
                         "combiner_config": {
@@ -765,7 +759,6 @@ def train_cosir(cfg, logger):
                     label_embeddings_all,
                     device,
                     representatives=representatives,
-                    hdbscan_labels=hdbscanlabels,
                 )
                 result = cosir_automatic_evaluator.evaluate_all()
                 del cosir_automatic_evaluator  # free GPU tensors (conditions, image/text embs)
@@ -861,8 +854,12 @@ def train_cosir(cfg, logger):
 
                 _ki2t = min(_TOP_K, _n_txt)
                 _kt2i = min(_TOP_K, _n_img)
-                _top_i2t = torch.topk(_run_max_i2t, k=_ki2t, dim=1).indices  # [_nfi, K]
-                _top_t2i = torch.topk(_run_max_t2i, k=_kt2i, dim=1).indices  # [_nft, K]
+                _top_i2t = torch.topk(
+                    _run_max_i2t, k=_ki2t, dim=1
+                ).indices  # [_nfi, K] # type: ignore
+                _top_t2i = torch.topk(
+                    _run_max_t2i, k=_kt2i, dim=1
+                ).indices  # [_nft, K] # type: ignore
 
                 # Ground-truth masks
                 _ittmap = image_to_text_map.cpu()  # [N_img, cpi]
