@@ -296,7 +296,7 @@ def train_cosir(cfg, logger):
             {
                 "params": [embedding_manager.embeddings],
                 "lr": cfg.optimizer.lr_label,
-                "weight_decay": 0.0,
+                "weight_decay": 0,
             },
         ]
     )
@@ -644,6 +644,15 @@ def train_cosir(cfg, logger):
                         label_embeddings_all, close_cluster=True
                     )
 
+                # Map representatives to UMAP space by finding their indices in
+                # label_embeddings_all, then looking up their projected 2D coords.
+                # This works for both embedding_dim==2 and higher.
+                rep_indices = torch.cdist(
+                    representatives.float().cpu(),
+                    label_embeddings_all.float().cpu(),
+                ).argmin(dim=1).numpy()
+                umap_representatives = umap_features[rep_indices]
+
                 # Visualize label embeddings
                 fig = get_umap(
                     umap_features,
@@ -651,7 +660,7 @@ def train_cosir(cfg, logger):
                     epoch=epoch,
                     no_outlier=True,
                     samples_to_track=[0, 1, 2, 3, 4],
-                    representatives=representatives,
+                    representatives=umap_representatives,
                 )
                 experiment.save_artifact(
                     name=f"label_embeddings_umap_{epoch}",
@@ -717,6 +726,20 @@ def train_cosir(cfg, logger):
                         )
                         for i in range(all_img_emb.shape[0])
                     ]
+                    # Build per-text caption-type array for impressions (None otherwise)
+                    _test_caption_types = None
+                    if cfg.data.dataset_type == "impressions":
+                        _type_map = {
+                            "caption": 0,
+                            "description": 1,
+                            "impression": 2,
+                            "aesthetic": 3,
+                        }
+                        _flat = []
+                        for _i in range(all_img_emb.shape[0]):
+                            for _t in test_set.annotations[_i]["caption_type"]:
+                                _flat.append(_type_map[_t])
+                        _test_caption_types = torch.tensor(_flat, dtype=torch.long)
                     torch.save(
                         {
                             "all_img_emb": all_img_emb.cpu(),
@@ -726,6 +749,7 @@ def train_cosir(cfg, logger):
                             "image_to_text_map": image_to_text_map.cpu(),
                             "text_to_image_map": text_to_image_map.cpu(),
                             "captions_per_image": test_set.captions_per_image,
+                            "test_caption_types": _test_caption_types,
                         },
                         _cond_fixed_path,
                     )
@@ -745,6 +769,12 @@ def train_cosir(cfg, logger):
                             "num_layers": cfg.model.num_layers,
                             "dropout": cfg.model.dropout,
                         },
+                        # None for non-impressions datasets
+                        "train_sample_types": (
+                            torch.tensor(sample_types, dtype=torch.long)
+                            if len(sample_types) > 0
+                            else None
+                        ),
                     },
                     _cond_viz_dir / f"epoch_{epoch:04d}.pt",
                 )

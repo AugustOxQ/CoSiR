@@ -52,7 +52,8 @@ until curl -s http://localhost:$PORT/health > /dev/null 2>&1; do
     echo "  ${WAIT}s elapsed..."
     if [ $WAIT -ge 600 ]; then
         echo "ERROR: Server did not start within 10 minutes. Check $OUTPUT_BASE/vllm_server.log"
-        kill $VLLM_PID 2>/dev/null
+        kill -9 $VLLM_PID 2>/dev/null
+        pkill -9 -f "VLLM::EngineCore" 2>/dev/null
         exit 1
     fi
 done
@@ -140,7 +141,14 @@ export OUTPUT_BASE
 
 # ── Shutdown server ────────────────────────────────────────────────────────────
 echo ""
-echo "Shutting down vLLM server (PID $VLLM_PID) ..."
-kill $VLLM_PID 2>/dev/null && echo "Done." || echo "Already stopped."
+echo "Shutting down vLLM server ..."
+# Kill the entire process group — vLLM spawns a separate EngineCore child
+# that survives a simple `kill $PID` and keeps the GPU occupied.
+kill -9 $VLLM_PID 2>/dev/null
+pkill -9 -f "VLLM::EngineCore" 2>/dev/null
+pkill -9 -f "vllm serve" 2>/dev/null
+sleep 5
+MEM=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null)
+echo "GPU memory after shutdown: ${MEM} MiB (expect ~1)"
 echo ""
 echo "All results in: $OUTPUT_BASE"

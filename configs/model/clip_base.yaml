@@ -3,7 +3,7 @@
 # ViT-B/32: 49 patch tokens @ 512-dim
 
 model:
-  embedding_dim: 2
+  embedding_dim: 16
   clip_model: "openai/clip-vit-base-patch32"
   freeze_backbone: true
   num_layers: 4

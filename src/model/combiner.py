@@ -249,14 +249,21 @@ class Combiner_new(nn.Module):
         super().__init__()
 
         self.label_decoder = GeLUNetGradual(
-            input_dim=label_dim + clip_feature_dim,
-            output_dim=projection_dim,
+            input_dim=label_dim,
+            output_dim=clip_feature_dim,
             num_layers=num_layers,
             dropout=dropout,
         )
 
-        for param in self.label_decoder.network[-1].parameters():
-            param.data.zero_()
+        # self.text_weighter = GeLUNetGradual(
+        #     input_dim=label_dim,
+        #     output_dim=clip_feature_dim,
+        #     num_layers=num_layers,
+        #     dropout=dropout,
+        # )
+
+        # for param in self.label_decoder.network[-1].parameters():
+        #     param.data.zero_()
 
         # Larger dynamic scalar means more weight on the combined features
         self.scalar = FixedSizeQueue(10)
@@ -274,7 +281,8 @@ class Combiner_new(nn.Module):
         label_features: Tensor,
         return_delta: bool = False,
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-        delta = self.label_decoder(torch.cat((label_features, text_features), -1))
+        delta = self.label_decoder(label_features)
+
         combined = text_features + delta
 
         if return_delta:

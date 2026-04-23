@@ -5,10 +5,10 @@
 # Feature dim is auto-detected from the model at runtime.
 
 model:
-  embedding_dim: 2
+  embedding_dim: 16
   clip_model: "google/siglip-base-patch16-224"
   freeze_backbone: true
-  num_layers: 4
+  num_layers: 6
   hidden_dim: 1024
   dropout: 0.1
 
