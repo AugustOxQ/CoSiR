@@ -9,19 +9,18 @@
 #   bash launch_vllm.sh 8001        # custom port
 
 PORT=${1:-8000}
+MODEL=${2:-Qwen/Qwen2.5-VL-7B-Instruct}   # override: bash launch_vllm.sh 8000 Qwen/Qwen2.5-VL-3B-Instruct
 
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate CoSiR
 
 echo "Starting vLLM server on port $PORT ..."
-echo "Model: Qwen/Qwen3.6-35B-A3B-FP8"
-echo "GPU:   single A6000 (48GB)"
+echo "Model: $MODEL"
 echo ""
 
-vllm serve Qwen/Qwen3.6-35B-A3B-FP8 \
+vllm serve "$MODEL" \
     --port "$PORT" \
     --tensor-parallel-size 1 \
     --max-model-len 8192 \
     --gpu-memory-utilization 0.95 \
-    --reasoning-parser qwen3 \
     --trust-remote-code

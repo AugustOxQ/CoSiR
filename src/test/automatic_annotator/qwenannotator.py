@@ -126,7 +126,7 @@ class QwenAnnotator:
         n_samples: int = 5000,
         batch_size: int = 50,
         port: int = 8000,
-        model_name: str = "Qwen/Qwen3.6-35B-A3B-FP8",
+        model_name: str = "Qwen/Qwen2.5-VL-7B-Instruct",
         max_retries: int = 3,
         retry_delay: float = 5.0,
     ):
@@ -235,11 +235,7 @@ class QwenAnnotator:
                     max_tokens=1024,
                     temperature=0.7,
                     top_p=0.8,
-                    extra_body={
-                        "top_k": 20,
-                        # Disable thinking mode — we want deterministic structured output
-                        "chat_template_kwargs": {"enable_thinking": False},
-                    },
+                    extra_body={"top_k": 20},
                 )
                 last_raw = resp.choices[0].message.content or ""
                 results = _parse_response(last_raw, len(captions_batch))
@@ -353,7 +349,7 @@ def main():
     parser.add_argument("--n_samples", type=int, default=5000, help="Number of samples to use (default: 5000)")
     parser.add_argument("--batch_size", type=int, default=50, help="Captions per API call (default: 50)")
     parser.add_argument("--port", type=int, default=8000, help="vLLM server port (default: 8000)")
-    parser.add_argument("--model_name", default="Qwen/Qwen3.6-35B-A3B-FP8")
+    parser.add_argument("--model_name", default="Qwen/Qwen2.5-VL-7B-Instruct")
     parser.add_argument("--max_retries", type=int, default=3)
     parser.add_argument("--retry_delay", type=float, default=5.0)
     args = parser.parse_args()
