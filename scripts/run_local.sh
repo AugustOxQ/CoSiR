@@ -23,15 +23,16 @@ echo "Using ${NUM_PROCS} processes"
 python main_cosir.py -m \
   dataset=impressions \
   eval.evaluation_interval=100 \
-  "eval.oracle_aggregation=mean, max" \ 
+  eval.oracle_aggregation=mean \
   loss.lambda_collapse=0.1 \
-  loss.lambda_contrastive=0 \
+  loss.lambda_contrastive=1 \
   loss.lambda_laplacian=30 \
   loss.lambda_mixup=1 \
-  model=siglip_base \
+  loss.lambda_delta=0 \
+  model=clip_base \
   model.num_layers=6 \
   optimizer.lr=1e-5 \
-  optimizer.lr_label=1.0e-2 \
+  optimizer.lr_label=1.0e-3 \
   train.epochs=1000 \
   train.normalize=False \
   train.imgtxt_factor=1 \

@@ -3,6 +3,7 @@ import os
 import torch
 import torch.nn.functional as F
 import random
+from typing import cast
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 import numpy as np
@@ -25,17 +26,19 @@ from src.dataset import (
     FeatureExtractionConceptualDataset,
 )
 from src.model import CoSiRModel, UMAP_vis
-from src.eval import EvaluationManager, EvaluationConfig
+from src.eval import EvaluationManager, EvaluationConfig, TestEvaluationDetail
 from src.utils import (
     FeatureManager,
     ExperimentManager,
     TrainableEmbeddingManager,
+    TemplateIncompatibleError,
     get_representatives_fps,
     get_umap,
     visualize_ideal_condition_space,
     visualize_given_conditions_image_to_text,
     visualize_given_conditions_text_to_image,
     CoSiRAutomaticEvaluator,
+    WandbLogger,
 )
 from src.metrics import LabelContrastiveLoss_enhance
 
@@ -226,23 +229,32 @@ def train_cosir(cfg, logger):
     ):
         # Determine template directory (one level up from directory, two levels up from embeddings_dir)
         template_dir = experiment.directory.parent / "template_embeddings"
-        template_exists = template_dir.exists() and list(
-            template_dir.glob("embeddings_chunk_*.pt")
-        )
+        template_exists = template_dir.exists() and (
+            template_dir / "embeddings.npy"
+        ).exists()
 
-        # Try to load from template if it exists and is enabled
+        _need_initialize = True
+        _need_save_template = getattr(cfg.train, "save_as_template_embeddings", True)
+
         if template_exists and getattr(cfg.train, "use_template_embeddings", True):
             print("Attempting to load from template embeddings...")
             try:
-                embedding_manager.load_imgtxt_template()
+                embedding_manager.load_imgtxt_template(
+                    strategy=cfg.train.initialization_strategy,
+                    factor=cfg.train.imgtxt_factor,
+                    normalize=cfg.train.normalize,
+                )
+                _need_initialize = False
+                _need_save_template = False
+            except TemplateIncompatibleError as e:
+                print(f"Template config mismatch: {e}")
+                print("Re-initializing and overwriting template with current config...")
             except Exception as e:
                 print(f"Failed to load template: {e}")
-                print("Falling back to imgtxt initialization...")
-                embedding_manager.initialize_embeddings_imgtxt(
-                    feature_manager, model, device
-                )
-        else:
-            # Initialize embeddings with different strategy
+                print("Falling back to initialization (template will not be overwritten)...")
+                _need_save_template = False
+
+        if _need_initialize:
             if cfg.train.initialization_strategy == "imgtxt":
                 print("Initializing embeddings with imgtxt strategy...")
                 embedding_manager.initialize_embeddings_imgtxt(
@@ -275,10 +287,13 @@ def train_cosir(cfg, logger):
                     f"Unknown initialization strategy: {cfg.train.initialization_strategy}"
                 )
 
-            # Save as template embeddings if enabled (default: True)
-            if getattr(cfg.train, "save_as_template_embeddings", True):
+            if _need_save_template:
                 print("Storing embeddings as template for future use...")
-                embedding_manager.store_imgtxt_template()
+                embedding_manager.store_imgtxt_template(
+                    strategy=cfg.train.initialization_strategy,
+                    factor=cfg.train.imgtxt_factor,
+                    normalize=cfg.train.normalize,
+                )
 
     # ── Optimizer + Scheduler (created after initialization so embedding_manager.embeddings
     #    points to the final nn.Parameter, not the one replaced during template loading) ──
@@ -505,22 +520,28 @@ def train_cosir(cfg, logger):
             epoch_loss += loss.item()
             num_batches += 1
 
-            # Log batch-level loss components
-            batch_log_dict = {
-                f"train/batch_{k}": v.item() if torch.is_tensor(v) else v
+            # Separate loss_dict into actual losses and diagnostic monitors
+            _monitor_keys = {"diag_sim_gap", "off_diag_sim_gap", "total_sim_gap"}
+            loss_metrics = {
+                k: v.item() if torch.is_tensor(v) else v
                 for k, v in loss_dict.items()
+                if k not in _monitor_keys
             }
-            batch_log_dict.update(
-                {
-                    "train/epoch": epoch,
-                    "train/batch": batch_idx,
-                    "train/step": global_step,
-                    "train/cos_sim": (
-                        cos_sim.mean().item() if cos_sim is not None else None
-                    ),
-                }
+            monitor_metrics = {
+                k: v.item() if torch.is_tensor(v) else v
+                for k, v in loss_dict.items()
+                if k in _monitor_keys
+            }
+            monitor_metrics["cos_sim"] = (
+                cos_sim.mean().item() if cos_sim is not None else None
             )
-            logger.log_metrics(batch_log_dict)
+
+            logger.log_train(loss_metrics, epoch=epoch, step=global_step, section="loss")
+            logger.log_train(monitor_metrics, epoch=epoch, step=global_step, section="monitor")
+            logger.log_train(
+                {"batch": batch_idx, "step": global_step},
+                epoch=epoch, step=global_step, section="details",
+            )
 
             optimizer.zero_grad()
             loss.backward()
@@ -544,12 +565,12 @@ def train_cosir(cfg, logger):
                     .norm(dim=-1)
                     .mean()
                 )
-                batch_log_dict.update(
-                    {
-                        "train/label_embeddings_diff": label_embeddings_diff.item(),
-                    }
+                logger.log_train(
+                    {"label_embeddings_diff": label_embeddings_diff.item()},
+                    epoch=epoch,
+                    step=global_step,
+                    section="monitor",
                 )
-                logger.log_metrics(batch_log_dict)
 
         # ========== EPOCH END: Performance Monitoring & Sync ==========
         epoch_time = time.time() - epoch_start_time
@@ -561,14 +582,9 @@ def train_cosir(cfg, logger):
         avg_loss = epoch_loss / num_batches
         print(f"Epoch {epoch}, Loss: {avg_loss:.6f}, Time: {epoch_time:.2f}s")
 
-        # Log to wandb logger
-        logger.log_metrics(
-            {
-                "train/epoch": epoch,
-                "train/loss": avg_loss,
-                "train/epoch_time": epoch_time,
-                "train/in_warmup": int(in_warmup),
-            }
+        logger.log_train(
+            {"loss": avg_loss, "epoch_time": epoch_time, "in_warmup": int(in_warmup)},
+            epoch=epoch,
         )
 
         # Auto warm-up end: track plateau during warm-up phase
@@ -586,7 +602,7 @@ def train_cosir(cfg, logger):
                         f"over last {patience} epochs (threshold: {min_delta_pct}%). "
                         f"Auto-ending warm-up after epoch {epoch}."
                     )
-                    logger.log_metrics({"train/warmup_auto_ended_epoch": epoch})
+                    logger.log_train({"warmup_auto_ended_epoch": epoch}, epoch=epoch)
 
         scheduler.step()
 
@@ -611,29 +627,26 @@ def train_cosir(cfg, logger):
                     ),
                 )
                 print(f"Evaluating with {len(representatives)} representatives")
-                test_results_detailed = evaluator.evaluate_test(
+                test_detail = evaluator.evaluate_test(
                     model=model,
                     processor=processor,
                     dataloader=test_loader,
-                    label_embeddings=representatives,  # Your label embeddings
+                    label_embeddings=representatives,
                     epoch=epoch,
-                    return_detailed_results=True,  # 记住这里是true，也就是detailed_results
+                    return_detailed_results=True,
                     use_oracle=True,
                     oracle_aggregation=cfg.eval.oracle_aggregation,
                 )
 
-                (
-                    all_img_emb,
-                    all_txt_emb,
-                    all_raw_text,
-                    text_to_image_map,
-                    image_to_text_map,
-                    test_results,
-                ) = test_results_detailed  # type: ignore
+                test_detail = cast(TestEvaluationDetail, test_detail)
+                all_img_emb = test_detail.all_img_emb
+                all_txt_emb = test_detail.all_txt_emb
+                all_raw_text = test_detail.all_raw_text
+                text_to_image_map = test_detail.text_to_image_map
+                image_to_text_map = test_detail.image_to_text_map
 
-                # Log test results
-                for metric, value in test_results.metrics.items():
-                    logger.log_metrics({metric: value})
+                # Log test results — one call, epoch x-axis wired up automatically
+                logger.log_test(test_detail.results, epoch=epoch)
 
                 # Visualize test results
                 # # Check whether label embeddings are 2d or higher dimensional
@@ -698,7 +711,7 @@ def train_cosir(cfg, logger):
                     description=f"Ideal condition space visualization at epoch {epoch}",
                 )
 
-                logger.log_metrics(
+                logger.log(
                     {
                         "vis/umap": wandb.Image(fig),
                         "vis/ideal_condition_space": wandb.Image(fig2),
@@ -707,6 +720,7 @@ def train_cosir(cfg, logger):
                             if len(sample_types) == len(umap_features)
                             else None
                         ),
+                        "test_epoch": epoch,
                     }
                 )
 
@@ -794,48 +808,23 @@ def train_cosir(cfg, logger):
                 del cosir_automatic_evaluator  # free GPU tensors (conditions, image/text embs)
                 torch.cuda.empty_cache()
 
-                # Log only key scalar metrics to wandb; full results are printed by evaluate_all
-                wandb_metrics = {}
-                if "magnitude_effect" in result:
-                    wandb_metrics["eval/magnitude_r"] = result["magnitude_effect"][
-                        "correlation"
-                    ]
-                if "condition_distance_correlation" in result:
-                    wandb_metrics["eval/condition_dist_rho"] = result[
-                        "condition_distance_correlation"
-                    ]["spearman_rho"]
-                if "retrieval_gain" in result:
-                    wandb_metrics["eval/R@1_gain"] = result["retrieval_gain"][
-                        "R@1_absolute_gain"
-                    ]
-                    wandb_metrics["eval/R@1_baseline"] = result["retrieval_gain"][
-                        "R@1_baseline"
-                    ]
-                    wandb_metrics["eval/R@1_conditional"] = result["retrieval_gain"][
-                        "R@1_conditional"
-                    ]
-                if "diversity" in result:
-                    wandb_metrics["eval/diversity_jsd"] = result["diversity"][
-                        "mean_jsd"
-                    ]
-                if (
-                    "best_condition_upper_bound" in result
-                    and result["best_condition_upper_bound"]
-                ):
-                    wandb_metrics["eval/R@1_boost"] = result[
-                        "best_condition_upper_bound"
-                    ]["R@1_boost"]
-                    wandb_metrics["eval/R@1_best_condition"] = result[
-                        "best_condition_upper_bound"
-                    ]["R@1_best_condition"]
-                if "space_quality" in result:
-                    wandb_metrics["eval/silhouette"] = result["space_quality"][
-                        "silhouette_score"
-                    ]
-                    wandb_metrics["eval/n_effective_dims"] = result["space_quality"][
-                        "n_effective_dims"
-                    ]
-                logger.log_metrics(wandb_metrics)
+                # Log only key scalar metrics; full results are printed by evaluate_all
+                _eval_keys = {
+                    "magnitude_effect": ["correlation"],
+                    "condition_distance_correlation": ["spearman_rho"],
+                    "retrieval_gain": ["R@1_absolute_gain", "R@1_baseline", "R@1_conditional"],
+                    "diversity": ["mean_jsd"],
+                    "best_condition_upper_bound": ["R@1_boost", "R@1_best_condition"],
+                    "space_quality": ["silhouette_score", "n_effective_dims"],
+                }
+                eval_metrics = {
+                    f"{group}/{key}": result[group][key]
+                    for group, keys in _eval_keys.items()
+                    if result.get(group)
+                    for key in keys
+                    if key in result[group]
+                }
+                logger.log_eval(eval_metrics, epoch=epoch)
 
                 # ─── Retrieval snapshot (qualitative cross-epoch tracking) ───
                 print("Saving retrieval snapshot...")

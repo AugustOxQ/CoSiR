@@ -6,7 +6,7 @@ from typing import Any, Dict, cast
 from accelerate import Accelerator
 
 
-from src.utils import setup_seed, SimpleWandbLogger
+from src.utils import setup_seed, WandbLogger
 from src.hook import train_cosir
 
 
@@ -31,7 +31,7 @@ def main(cfg: DictConfig) -> None:
             notes=(cfg.wandb.notes if getattr(cfg.wandb, "notes", None) else None),
         )
 
-        wandb_logger = SimpleWandbLogger()
+        wandb_logger = WandbLogger()
 
     results = train_cosir(cfg, wandb_logger)
 

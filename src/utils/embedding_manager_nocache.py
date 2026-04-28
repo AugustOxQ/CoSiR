@@ -29,6 +29,11 @@ from sklearn.decomposition import PCA
 from tqdm import tqdm
 
 
+class TemplateIncompatibleError(Exception):
+    """Raised when stored template config doesn't match the requested config."""
+    pass
+
+
 class TrainableEmbeddingManager:
     """
     Manages per-sample trainable label embeddings.
@@ -350,17 +355,65 @@ class TrainableEmbeddingManager:
                 shutil.copy2(src, self.embeddings_dir / fname)
         self._load_storage()
 
-    def store_imgtxt_template(self) -> None:
-        """Save current embeddings as a reusable template."""
+    def store_imgtxt_template(
+        self,
+        strategy: str = "",
+        factor: float = 1.0,
+        normalize: bool = False,
+    ) -> None:
+        """Save current embeddings as a reusable template with config metadata."""
         template_dir = self.embeddings_dir.parent.parent / "template_embeddings"
         self._copy_to(template_dir)
+        config = {
+            "strategy": strategy,
+            "embedding_dim": self.embedding_dim,
+            "factor": factor,
+            "normalize": normalize,
+        }
+        with open(template_dir / "template_config.json", "w") as f:
+            json.dump(config, f, indent=2)
         print(f"[EmbeddingManager] Template saved → {template_dir}")
+        print(f"[EmbeddingManager] Template config: {config}")
 
-    def load_imgtxt_template(self) -> None:
-        """Load embeddings from the sibling template_embeddings directory."""
+    def load_imgtxt_template(
+        self,
+        strategy: str = "",
+        factor: float = 1.0,
+        normalize: bool = False,
+    ) -> None:
+        """Load embeddings from the sibling template_embeddings directory.
+
+        Validates stored config against requested params before loading.
+        Raises TemplateIncompatibleError if any param differs.
+        """
         template_dir = self.embeddings_dir.parent.parent / "template_embeddings"
         if not template_dir.exists() or not (template_dir / "embeddings.npy").exists():
             raise FileNotFoundError(f"No template found at {template_dir}")
+
+        config_path = template_dir / "template_config.json"
+        if config_path.exists() and strategy:
+            with open(config_path) as f:
+                stored = json.load(f)
+            expected = {
+                "strategy": strategy,
+                "embedding_dim": self.embedding_dim,
+                "factor": factor,
+                "normalize": normalize,
+            }
+            mismatches = {
+                k: (stored.get(k), expected[k])
+                for k in expected
+                if stored.get(k) != expected[k]
+            }
+            if mismatches:
+                details = ", ".join(
+                    f"{k}: stored={v[0]!r} vs requested={v[1]!r}"
+                    for k, v in mismatches.items()
+                )
+                raise TemplateIncompatibleError(
+                    f"Template config mismatch — {details}"
+                )
+
         self._copy_from(template_dir)
         print(f"[EmbeddingManager] Template loaded ← {template_dir}")
 

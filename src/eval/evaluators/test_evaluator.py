@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from .base import BaseEvaluator
-from ..config import EvaluationConfig, MetricResult
+from ..config import EvaluationConfig, MetricResult, TestEvaluationDetail
 from ..metrics import RecallMetrics, OracleMetrics
 
 
@@ -28,7 +28,7 @@ class TestEvaluator(BaseEvaluator):
         return_detailed_results: bool = False,
         use_oracle: bool = False,
         oracle_aggregation: str = "max",
-    ) -> Union[MetricResult, Tuple]:
+    ) -> Union[MetricResult, TestEvaluationDetail]:
         """
         Evaluate model on test dataset with oracle and raw metrics.
 
@@ -124,23 +124,30 @@ class TestEvaluator(BaseEvaluator):
             metrics_oracle, metrics_raw, "raw", "diff"
         )
 
-        # Combine all metrics
-        if use_oracle:
-            all_metrics = {
-                "test/epoch": epoch,
-                **metrics_oracle,
-                **metrics_raw,
-                **metrics_diff,
+        # Each group gets its own top-level wandb section (test_oracle/*, test_raw/*, …)
+        # so the UI shows one panel per group rather than one crowded "test" panel.
+        # The input dicts already carry their own group prefix (e.g. "oracle/i2t/R@1"),
+        # so strip it before prepending the wandb section name.
+        def _group(d: dict, group: str) -> dict:
+            pfx = f"{group}/"
+            return {
+                f"test_{group}/{k[len(pfx):]}" if k.startswith(pfx) else f"test_{group}/{k}": v
+                for k, v in d.items()
             }
 
+        if use_oracle:
+            all_metrics = {
+                **_group(metrics_oracle, "oracle"),
+                **_group(metrics_raw, "raw"),
+                **_group(metrics_diff, "diff"),
+            }
         else:
             all_metrics = {
-                "test/epoch": epoch,
-                **metrics_oracle,
-                **metrics_oracle_img,
-                **metrics_oracle_imgtxt,
-                **metrics_raw,
-                **metrics_diff,
+                **_group(metrics_oracle, "oracle"),
+                **_group(metrics_oracle_img, "oracle_img"),
+                **_group(metrics_oracle_imgtxt, "oracle_imgtxt"),
+                **_group(metrics_raw, "raw"),
+                **_group(metrics_diff, "diff"),
             }
 
         results = self._format_results(all_metrics, epoch)
@@ -148,20 +155,15 @@ class TestEvaluator(BaseEvaluator):
         if self.config.print_metrics:
             self._print_results(results)
 
-        return (
-            results
-            if not return_detailed_results
-            else self._create_detailed_results(
-                all_img_emb,
-                all_txt_emb,
-                all_txt_full,
-                all_raw_text,
-                text_to_image_map,
-                image_to_text_map,
-                best_label_tti,
-                best_label_itt,
-                results,
-            )
+        if not return_detailed_results:
+            return results
+        return TestEvaluationDetail(
+            results=results,
+            all_img_emb=all_img_emb,
+            all_txt_emb=all_txt_emb,
+            all_raw_text=all_raw_text,
+            text_to_image_map=text_to_image_map,
+            image_to_text_map=image_to_text_map,
         )
 
     def _compute_metric_difference(
@@ -187,46 +189,6 @@ class TestEvaluator(BaseEvaluator):
                 metric_diff[diff_key] = metrics1[key] - metrics2[corresponding_key]
 
         return metric_diff
-
-    def _create_detailed_results(
-        self,
-        all_img_emb: torch.Tensor,
-        all_txt_emb: torch.Tensor,
-        all_txt_full: torch.Tensor,
-        all_raw_text: List[str],
-        text_to_image_map: torch.Tensor,
-        image_to_text_map: torch.Tensor,
-        best_label_tti: torch.Tensor,
-        best_label_itt: torch.Tensor,
-        results: MetricResult,
-    ) -> Tuple:
-        """Create detailed results for label inspection."""
-
-        # # Compute raw ranking indices for additional analysis
-        # img_emb_norm = self.processor.normalize_embeddings(all_img_emb)
-        # txt_emb_norm = self.processor.normalize_embeddings(all_txt_emb)
-
-        # dist_matrix_raw = img_emb_norm @ txt_emb_norm.T
-        # inds_raw_itt = torch.argsort(dist_matrix_raw, dim=1, descending=True)
-        # inds_raw_tti = torch.argsort(dist_matrix_raw.T, dim=1, descending=True)
-
-        # print(
-        #     "The order of returned tuple is all_img_emb, all_txt_emb, all_txt_full, text_to_image_map, image_to_text_map, best_label_tti, best_label_itt, inds_raw_tti, inds_raw_itt, results"
-        # )
-
-        return (
-            all_img_emb,
-            all_txt_emb,
-            all_raw_text,
-            # all_txt_full,
-            text_to_image_map,
-            image_to_text_map,
-            # best_label_tti,
-            # best_label_itt,
-            # inds_raw_tti,
-            # inds_raw_itt,
-            results,
-        )
 
     def encode_data_only(
         self, model, processor, dataloader: DataLoader, device: Optional[str] = None

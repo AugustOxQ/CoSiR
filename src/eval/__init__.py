@@ -41,7 +41,7 @@ test_log = inference_test(model, processor, test_loader, representatives, epoch,
 
 # Main interfaces
 from .interface import EvaluationManager, inference_train, inference_test, encode_data
-from .config import EvaluationConfig, MetricResult
+from .config import EvaluationConfig, MetricResult, TestEvaluationDetail
 
 # Evaluators
 from .evaluators import TrainEvaluator, TestEvaluator
@@ -55,8 +55,9 @@ from .utils import replace_with_most_different, sample_label_embeddings
 __all__ = [
     # Main interfaces
     'EvaluationManager',
-    'EvaluationConfig', 
+    'EvaluationConfig',
     'MetricResult',
+    'TestEvaluationDetail',
     
     # Evaluators
     'TrainEvaluator',

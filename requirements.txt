@@ -19,6 +19,7 @@ scikit-learn
 numpy
 pandas
 seaborn
+openai
 
 # --------- Advanced --------- #
 # salesforce-lavis
@@ -58,9 +59,22 @@ pipreqs        # for generating requirements.txt
 
 
 # --------- URL --------- #
+# This is for cuda12
 # pip install \
 #     --extra-index-url=https://pypi.nvidia.com \
-#     "cudf-cu12==25.8.*" "dask-cudf-cu12==25.8.*" "cuml-cu12==25.8.*" \
-#     "cugraph-cu12==25.8.*" "nx-cugraph-cu12==25.8.*" "cuxfilter-cu12==25.8.*" \
-#     "cucim-cu12==25.8.*" "pylibraft-cu12==25.8.*" "raft-dask-cu12==25.8.*" \
-#     "cuvs-cu12==25.8.*" "nx-cugraph-cu12==25.8.*"
+#     "cudf-cu12==26.4.*" "dask-cudf-cu12==26.4.*" "cuml-cu12==26.4.*" \
+#     "cugraph-cu12==26.4.*" "nx-cugraph-cu12==26.4.*" "cuxfilter-cu12==26.4.*" \
+#     "cucim-cu12==26.4.*" "pylibraft-cu12==26.4.*" "raft-dask-cu12==26.4.*" \
+#     "cuvs-cu12==26.4.*" "nvforest-cu12==26.4.*" "nx-cugraph-cu12==26.4.*"
+# # https://docs.rapids.ai/install/
+
+# This is for cuda13
+
+# pip install \
+#     --extra-index-url=https://pypi.nvidia.com \
+#     "cudf-cu13==26.4.*" "dask-cudf-cu13==26.4.*" "cuml-cu13==26.4.*" \
+#     "cugraph-cu13==26.4.*" "nx-cugraph-cu13==26.4.*" "cuxfilter-cu13==26.4.*" \
+#     "cucim-cu13==26.4.*" "pylibraft-cu13==26.4.*" "raft-dask-cu13==26.4.*" \
+#     "cuvs-cu13==26.4.*" "nvforest-cu13==26.4.*" "nx-cugraph-cu13==26.4.*"
+
+# uv pip install vllm --torch-backend=auto --no-cache

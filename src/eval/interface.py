@@ -4,7 +4,7 @@ from typing import Optional, List, Union, Tuple, Dict, Any
 import torch
 from torch.utils.data import DataLoader
 
-from .config import EvaluationConfig, MetricResult
+from .config import EvaluationConfig, MetricResult, TestEvaluationDetail
 from .evaluators import TrainEvaluator, TestEvaluator
 
 
@@ -64,22 +64,12 @@ class EvaluationManager:
         return_detailed_results: bool = False,
         use_oracle: bool = False,
         oracle_aggregation: str = "max",
-    ) -> Union[MetricResult, Tuple]:
+    ) -> Union[MetricResult, TestEvaluationDetail]:
         """
         Evaluate model on test data.
 
-        Args:
-            model: Model to evaluate
-            processor: Text processor for tokenization
-            dataloader: Test data loader
-            label_embeddings: Available label embeddings for oracle
-            epoch: Current epoch
-            device: Device for evaluation
-            inspect_labels: Whether to return detailed analysis
-            use_best_label: Whether to use best label for oracle
-
-        Returns:
-            MetricResult
+        Returns MetricResult when return_detailed_results=False,
+        TestEvaluationDetail when return_detailed_results=True.
         """
         return self.test_evaluator.evaluate(
             model,

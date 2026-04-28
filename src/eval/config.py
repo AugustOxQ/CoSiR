@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 import torch
+from torch import Tensor
 
 
 @dataclass
@@ -65,3 +66,15 @@ class MetricResult:
     def update(self, other_metrics: Dict[str, float]) -> None:
         """Update metrics with new values."""
         self.metrics.update(other_metrics)
+
+
+@dataclass
+class TestEvaluationDetail:
+    """Structured return type for evaluate_test(return_detailed_results=True)."""
+
+    results: "MetricResult"
+    all_img_emb: Tensor
+    all_txt_emb: Tensor
+    all_raw_text: List[str]
+    text_to_image_map: Tensor
+    image_to_text_map: Tensor
