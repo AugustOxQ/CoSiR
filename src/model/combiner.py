@@ -247,24 +247,28 @@ class Combiner_new(nn.Module):
         :param num_layers: Number of transformer layers
         """
         super().__init__()
-
-        self.label_decoder = GeLUNetGradual(
-            input_dim=label_dim,
-            output_dim=clip_feature_dim,
-            num_layers=num_layers,
-            dropout=dropout,
+        
+        self.label_decoder = nn.Linear(label_dim, 128)
+        
+        self.text_decoder = nn.Linear(clip_feature_dim, 128)
+        
+        self.combiner_layer = nn.Linear(256, 256)
+        
+        self.dropout1 = nn.Dropout(0.5)
+        self.dropout2 = nn.Dropout(0.5)
+        
+        self.output_layer = nn.Linear(256, clip_feature_dim)
+        
+        self.dropout3 = nn.Dropout(0.5)
+        self.dynamic_scalar = nn.Sequential(
+            nn.Linear(128 * 2, 128),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(128, 1),
+            nn.Sigmoid(),
         )
 
-        # self.text_weighter = GeLUNetGradual(
-        #     input_dim=label_dim,
-        #     output_dim=clip_feature_dim,
-        #     num_layers=num_layers,
-        #     dropout=dropout,
-        # )
-
-        # for param in self.label_decoder.network[-1].parameters():
-        #     param.data.zero_()
-
+        
         # Larger dynamic scalar means more weight on the combined features
         self.scalar = FixedSizeQueue(10)
 
@@ -281,10 +285,14 @@ class Combiner_new(nn.Module):
         label_features: Tensor,
         return_delta: bool = False,
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-        delta = self.label_decoder(label_features)
-
+        
+        label_projected_features = self.dropout1(F.relu(self.label_decoder(label_features)))
+        text_projected_features = self.dropout2(F.relu(self.text_decoder(text_features)))
+        raw_combined_features = torch.cat((label_projected_features, text_projected_features), dim=-1)
+        delta = self.output_layer(self.dropout3(F.relu(self.combiner_layer(raw_combined_features))))   
+        
         combined = text_features + delta
-
+        
         if return_delta:
             return F.normalize(combined), delta
         return F.normalize(combined)
