@@ -248,18 +248,12 @@ class Combiner_new(nn.Module):
         """
         super().__init__()
         
-        self.label_decoder = nn.Linear(label_dim, 128)
+        self.label_decoder = GeLUNetGradual(input_dim=label_dim, output_dim=128, num_layers=num_layers, dropout=dropout)
         
-        self.text_decoder = nn.Linear(clip_feature_dim, 128)
+        self.general_decoder = GeLUNetGradual(input_dim=clip_feature_dim, output_dim=128, num_layers=num_layers, dropout=dropout)
         
-        self.combiner_layer = nn.Linear(256, 256)
+        self.combiner_layer = GeLUNetGradual(input_dim=256, output_dim=512, num_layers=num_layers, dropout=dropout)
         
-        self.dropout1 = nn.Dropout(0.5)
-        self.dropout2 = nn.Dropout(0.5)
-        
-        self.output_layer = nn.Linear(256, clip_feature_dim)
-        
-        self.dropout3 = nn.Dropout(0.5)
         self.dynamic_scalar = nn.Sequential(
             nn.Linear(128 * 2, 128),
             nn.ReLU(),
@@ -280,19 +274,22 @@ class Combiner_new(nn.Module):
 
     def forward(
         self,
-        text_features: Tensor,
-        text_full: Optional[Tensor],
+        general_features: Tensor,
+        general_full: Optional[Tensor],
         label_features: Tensor,
         return_delta: bool = False,
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         
-        label_projected_features = self.dropout1(F.relu(self.label_decoder(label_features)))
-        text_projected_features = self.dropout2(F.relu(self.text_decoder(text_features)))
-        raw_combined_features = torch.cat((label_projected_features, text_projected_features), dim=-1)
-        delta = self.output_layer(self.dropout3(F.relu(self.combiner_layer(raw_combined_features))))   
+        label_projected_features = self.label_decoder(label_features)
+        general_projected_features = self.general_decoder(general_features)
+        raw_combined_features = torch.cat((label_projected_features, general_projected_features), dim=-1)
+        delta = self.combiner_layer(raw_combined_features)
         
-        combined = text_features + delta
-        
+        scalar = self.dynamic_scalar(raw_combined_features)
+        self.scalar.add(scalar.mean().item())
+
+        combined = (1 - scalar) * general_features + scalar * delta
+
         if return_delta:
             return F.normalize(combined), delta
         return F.normalize(combined)

@@ -11,6 +11,7 @@ model:
   num_layers: 4
   hidden_dim: 1024
   dropout: 0.1
+  combine_side: "txt"
 
 featuremanager:
   extraction_batch_size: 256

@@ -335,16 +335,29 @@ class OracleMetrics(RankingMetric):
         num_images = image_embeddings.shape[0]
         captions_per_image = image_to_text_map.shape[1]
 
-        # Move to device
+        combine_side = getattr(model, "combine_side", "txt")
+
+        # Move to device and pre-compute normalized embeddings for both sides
         image_embeddings_norm = image_embeddings / image_embeddings.norm(
             dim=-1, keepdim=True
         )
         image_embeddings_norm = image_embeddings_norm.to(self.config.device)
         image_embeddings = image_embeddings.to(self.config.device)
         text_embeddings = text_embeddings.to(self.config.device)
+        text_embeddings_norm = text_embeddings / text_embeddings.norm(
+            dim=-1, keepdim=True
+        )
         text_full = text_full.to(self.config.device)
 
-        print(f"Evaluating imgtxt input with condition predictor...")
+        # Source embeddings and count for the side being combined
+        if combine_side == "txt":
+            combine_source = text_embeddings
+            n_to_combine = num_texts
+        else:
+            combine_source = image_embeddings
+            n_to_combine = num_images
+
+        print(f"Evaluating oracle (combine_side={combine_side})...")
 
         # Initialize tracking variables
         best_label_tti = -torch.ones((num_texts,))
@@ -360,26 +373,26 @@ class OracleMetrics(RankingMetric):
         _div_sample_cols = torch.randperm(num_images)[: min(1000, num_images)]
         _div_samples: list = []  # K tensors of shape [N_text, min(1000, N_img)]
 
-        # Text-to-Image evaluation
+        # Evaluation loop over all label conditions
         with torch.no_grad():
             for label_id in tqdm(
                 range(-1, len(label_embeddings)), desc="Evaluating oracle"
             ):
                 if label_id == -1:
-                    # Use raw text embeddings
-                    combined_embds_tti = text_embeddings.detach().clone()
+                    # Baseline: use raw (unconditioned) side embeddings
+                    combined_embds_tti = combine_source.detach().clone()
                 else:
-                    # Combine with label embedding
+                    # Combine source embeddings with this label
                     combined_embs_tti = []
                     label_emb = (
                         label_embeddings[label_id]
-                        .expand(num_texts, -1)
+                        .expand(n_to_combine, -1)
                         .to(self.config.device)
                     )
-                    for i in range(0, num_texts, self.config.batch_size):
-                        end_idx = min(i + self.config.batch_size, num_texts)
+                    for i in range(0, n_to_combine, self.config.batch_size):
+                        end_idx = min(i + self.config.batch_size, n_to_combine)
                         batch_text_combined = model.combine(
-                            text_embeddings[i:end_idx],
+                            combine_source[i:end_idx],
                             None,
                             label_emb[i:end_idx],
                         )
@@ -393,8 +406,11 @@ class OracleMetrics(RankingMetric):
                 combined_embds_tti = combined_embds_tti / combined_embds_tti.norm(
                     dim=-1, keepdim=True
                 )
-                # Compute sim on GPU then immediately move to CPU to avoid stacking
-                sims_cpu = (combined_embds_tti @ image_embeddings_norm.T).cpu()
+                # sims_cpu is always [N_txt, N_img] regardless of combine_side
+                if combine_side == "txt":
+                    sims_cpu = (combined_embds_tti @ image_embeddings_norm.T).cpu()
+                else:
+                    sims_cpu = (text_embeddings_norm @ combined_embds_tti.T).cpu()
                 del combined_embds_tti
                 torch.cuda.empty_cache()
 
@@ -461,7 +477,8 @@ class OracleMetrics(RankingMetric):
             )
 
             # Free GPU tensors that were moved to device inside this function
-            del image_embeddings_norm, image_embeddings, text_embeddings, text_full
+            del image_embeddings_norm, text_embeddings_norm
+            del image_embeddings, text_embeddings, text_full
             del inds_tti, inds_itt
             torch.cuda.empty_cache()
 

@@ -79,15 +79,31 @@ class TrainEvaluator(BaseEvaluator):
                     if "txt_full" in features_data
                     else None
                 )
+                img_full = (
+                    features_data["img_full"].to(device, non_blocking=True)
+                    if "img_full" in features_data
+                    else None
+                )
                 batch_sample_ids = features_data["sample_ids"].tolist()
+
+                # Select which side to combine based on model config
+                combine_side = getattr(model, "combine_side", "txt")
+                if combine_side == "txt":
+                    combine_features, combine_full = txt_features, txt_full
+                    # comb_emb targets images; raw baseline is img vs txt
+                    sim_raw_a, sim_raw_b = img_features, txt_features
+                else:
+                    combine_features, combine_full = img_features, img_full
+                    # comb_emb targets texts; raw baseline is txt vs img (transposed)
+                    sim_raw_a, sim_raw_b = txt_features, img_features
 
                 # Get embeddings for this batch by sample_id
                 label_embeddings_data = embedding_manager.get_embeddings(batch_sample_ids)
                 label_embeddings = label_embeddings_data.to(device)
 
                 comb_emb, label_embedding_proj = model.combine(
-                    txt_features,
-                    txt_full,
+                    combine_features,
+                    combine_full,
                     label_embeddings,
                     epoch=epoch,
                     return_label_proj=True,
@@ -96,24 +112,24 @@ class TrainEvaluator(BaseEvaluator):
                 label_embedding_neg = replace_with_most_different(label_embeddings)
 
                 comb_emb_neg = model.combine(
-                    txt_features,
-                    txt_full,
+                    combine_features,
+                    combine_full,
                     label_embedding_neg,
                     epoch=epoch,
                     return_label_proj=False,
                 )
 
                 # Move to CPU for similarity computation
-                img_emb_cpu = img_features.cpu().numpy()
-                txt_emb_cls_cpu = txt_features.cpu().numpy()
+                sim_raw_a_cpu = sim_raw_a.cpu().numpy()
+                sim_raw_b_cpu = sim_raw_b.cpu().numpy()
                 comb_emb_cpu = comb_emb.cpu().numpy()
                 comb_emb_shuffled_cpu = comb_emb_neg.cpu().numpy()
 
                 # Compute similarity matrices
-                sim_raw = self.safe_cosine_similarity(img_emb_cpu, txt_emb_cls_cpu)
-                sim_comb = self.safe_cosine_similarity(img_emb_cpu, comb_emb_cpu)
+                sim_raw = self.safe_cosine_similarity(sim_raw_a_cpu, sim_raw_b_cpu)
+                sim_comb = self.safe_cosine_similarity(sim_raw_a_cpu, comb_emb_cpu)
                 sim_comb_shuffled = self.safe_cosine_similarity(
-                    img_emb_cpu, comb_emb_shuffled_cpu
+                    sim_raw_a_cpu, comb_emb_shuffled_cpu
                 )
 
                 # Compute mean ranks for this batch
@@ -127,7 +143,7 @@ class TrainEvaluator(BaseEvaluator):
                 total_samples += 1
 
                 # Cleanup
-                del img_features, txt_features, txt_full, label_embeddings
+                del img_features, txt_features, txt_full, img_full, label_embeddings
                 del comb_emb, comb_emb_neg, label_embedding_neg
                 torch.cuda.empty_cache()
 

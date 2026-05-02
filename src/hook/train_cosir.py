@@ -73,6 +73,7 @@ def train_cosir(cfg, logger):
         d_model=cfg.model.hidden_dim,
         num_conditions=cfg.train.representative_number,
         dropout=cfg.model.dropout,
+        combine_side=cfg.model.combine_side,
     ).to(device)
     processor = AutoProcessor.from_pretrained(cfg.model.clip_model, use_fast=False)
 
@@ -472,11 +473,14 @@ def train_cosir(cfg, logger):
         for batch_idx, batch in enumerate(tqdm(train_loader)):
             img_features = batch["img_features"].to(device, non_blocking=True)
             txt_features = batch["txt_features"].to(device, non_blocking=True)
-            # txt_full is optional — pass zeros if not stored
             if "txt_full" in batch:
                 txt_full = batch["txt_full"].to(device, non_blocking=True)
             else:
                 txt_full = torch.zeros_like(txt_features)
+            if "img_full" in batch:
+                img_full = batch["img_full"].to(device, non_blocking=True)
+            else:
+                img_full = torch.zeros_like(img_features)
             batch_sample_ids = batch["sample_ids"].tolist()
 
             # Differentiable slice — gradients flow back to embedding_manager.embeddings
@@ -488,9 +492,16 @@ def train_cosir(cfg, logger):
             ].clone()
             label_embeddings = embedding_manager.embeddings[batch_indices]
 
+            if cfg.model.combine_side == "txt":
+                combine_emb, combine_full = txt_features, txt_full
+                loss_img_target, loss_txt_ref = img_features, txt_features
+            else:
+                combine_emb, combine_full = img_features, img_full
+                loss_img_target, loss_txt_ref = txt_features, img_features
+
             comb_emb, delta = model.combine(
-                txt_features,
-                txt_full,
+                combine_emb,
+                combine_full,
                 label_embeddings,
                 epoch=epoch,
                 return_label_proj=False,
@@ -498,8 +509,8 @@ def train_cosir(cfg, logger):
             )
 
             loss_dict = criteria(
-                img_features,
-                txt_features,
+                loss_img_target,
+                loss_txt_ref,
                 comb_emb,
                 None,
                 label_embeddings,
@@ -508,10 +519,9 @@ def train_cosir(cfg, logger):
             )
 
             if batch_idx % 100 == 0:
-                # Compare comb_emb and txt_features
                 cos_sim = torch.nn.functional.cosine_similarity(
                     comb_emb,
-                    torch.nn.functional.normalize(txt_features, dim=-1),
+                    torch.nn.functional.normalize(combine_emb, dim=-1),
                     dim=-1,
                 )
 
@@ -776,6 +786,7 @@ def train_cosir(cfg, logger):
                         "label_embeddings_all": label_embeddings_all.cpu(),
                         "representatives": representatives.cpu(),
                         "combiner_state_dict": model.combiner.state_dict(),
+                        "combine_side": cfg.model.combine_side,
                         "combiner_config": {
                             "clip_feature_dim": model.feature_dim,
                             "projection_dim": model.feature_dim,
@@ -840,31 +851,34 @@ def train_cosir(cfg, logger):
                 _nft = min(_N_FIXED, _n_txt)
 
                 _img_n = F.normalize(all_img_emb.to(device), dim=-1)  # [N_img, D]
-                # Use raw (unnormalized) text embeddings — consistent with training
-                _txt_raw = all_txt_emb.to(device)  # [N_txt, D]
-                _fixed_img_n = _img_n[:_nfi]  # [_nfi, D]
-                _fixed_txt_raw = _txt_raw[:_nft]  # [_nft, D]
+                _txt_raw = all_txt_emb.to(device)                     # [N_txt, D]
+                _txt_n = F.normalize(_txt_raw, dim=-1)                # [N_txt, D]
+                _img_raw = all_img_emb.to(device)                     # [N_img, D]
+                _fixed_img_n = _img_n[:_nfi]                          # [_nfi, D]
+                _fixed_txt_n = _txt_n[:_nft]                          # [_nft, D]
 
                 _run_max_i2t = None  # [_nfi, N_txt]
                 _run_max_t2i = None  # [_nft, N_img]
 
                 for _rep in representatives:
                     _cond = _rep.unsqueeze(0).to(device)
-                    # Modulate all texts for i2t query similarity
-                    # combine() already outputs unit-normalized embeddings
-                    _txt_mod = model.combine(_txt_raw, None, _cond.expand(_n_txt, -1))
-                    _sim_i2t = (_fixed_img_n @ _txt_mod.T).cpu()
+                    if cfg.model.combine_side == "txt":
+                        # Modulate all texts; fixed-img queries gallery of modified texts (i2t),
+                        # and fixed modified-text queries image gallery (t2i).
+                        _comb_mod = model.combine(_txt_raw, None, _cond.expand(_n_txt, -1))
+                        _sim_i2t = (_fixed_img_n @ _comb_mod.T).cpu()
+                        _sim_t2i = (_comb_mod[:_nft] @ _img_n.T).cpu()
+                    else:
+                        # Modulate all images; fixed modified-img queries text gallery (i2t),
+                        # and fixed-txt queries gallery of modified images (t2i).
+                        _comb_mod = model.combine(_img_raw, None, _cond.expand(_n_img, -1))
+                        _sim_i2t = (_comb_mod[:_nfi] @ _txt_n.T).cpu()
+                        _sim_t2i = (_fixed_txt_n @ _comb_mod.T).cpu()
                     _run_max_i2t = (
                         _sim_i2t
                         if _run_max_i2t is None
                         else torch.maximum(_run_max_i2t, _sim_i2t)
                     )
-
-                    # Modulate only fixed text queries for t2i efficiency
-                    _txt_mod_fixed = model.combine(
-                        _fixed_txt_raw, None, _cond.expand(_nft, -1)
-                    )
-                    _sim_t2i = (_txt_mod_fixed @ _img_n.T).cpu()
                     _run_max_t2i = (
                         _sim_t2i
                         if _run_max_t2i is None
@@ -874,11 +888,11 @@ def train_cosir(cfg, logger):
                 _ki2t = min(_TOP_K, _n_txt)
                 _kt2i = min(_TOP_K, _n_img)
                 _top_i2t = torch.topk(
-                    _run_max_i2t, k=_ki2t, dim=1
-                ).indices  # [_nfi, K] # type: ignore
+                    _run_max_i2t, k=_ki2t, dim=1  # type: ignore[arg-type]
+                ).indices  # [_nfi, K]
                 _top_t2i = torch.topk(
-                    _run_max_t2i, k=_kt2i, dim=1
-                ).indices  # [_nft, K] # type: ignore
+                    _run_max_t2i, k=_kt2i, dim=1  # type: ignore[arg-type]
+                ).indices  # [_nft, K]
 
                 # Ground-truth masks
                 _ittmap = image_to_text_map.cpu()  # [N_img, cpi]
@@ -901,6 +915,7 @@ def train_cosir(cfg, logger):
                 torch.save(
                     {
                         "epoch": epoch,
+                        "combine_side": cfg.model.combine_side,
                         "i2t": {
                             "query_indices": list(range(_nfi)),
                             "top_k": _top_i2t,
@@ -928,13 +943,8 @@ def train_cosir(cfg, logger):
                         for i in range(_n_img)
                     ]
                     # CLIP baseline (no condition): raw cosine similarity
-                    _txt_n_for_clip = F.normalize(_txt_raw, dim=-1)
-                    _clip_sim_i2t = (
-                        _fixed_img_n @ _txt_n_for_clip.T
-                    ).cpu()  # [_nfi, N_txt]
-                    _clip_sim_t2i = (
-                        F.normalize(_fixed_txt_raw, dim=-1) @ _img_n.T
-                    ).cpu()  # [_nft, N_img]
+                    _clip_sim_i2t = (_fixed_img_n @ _txt_n.T).cpu()  # [_nfi, N_txt]
+                    _clip_sim_t2i = (_fixed_txt_n @ _img_n.T).cpu()  # [_nft, N_img]
                     _clip_top_i2t = torch.topk(_clip_sim_i2t, k=_ki2t, dim=1).indices
                     _clip_top_t2i = torch.topk(_clip_sim_t2i, k=_kt2i, dim=1).indices
 
@@ -961,6 +971,7 @@ def train_cosir(cfg, logger):
                             "n_images": _n_img,
                             "n_texts": _n_txt,
                             "image_paths": _image_paths,
+                            "combine_side": cfg.model.combine_side,
                             "clip_baseline": {
                                 "i2t": {
                                     "top_k": _clip_top_i2t,

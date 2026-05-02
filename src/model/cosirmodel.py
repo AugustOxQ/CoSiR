@@ -62,6 +62,7 @@ class CoSiRModel(nn.Module):
         label_dim: int = 32,
         num_conditions: int = 12,
         dropout: float = 0.1,
+        combine_side: str = "txt",
     ) -> None:
         super().__init__()
         # Load backbone and detect its feature dimension
@@ -91,6 +92,10 @@ class CoSiRModel(nn.Module):
             num_layers=num_layers,
             dropout=dropout,
         )
+
+        if combine_side not in ("txt", "img"):
+            raise ValueError(f"combine_side must be 'txt' or 'img', got '{combine_side}'")
+        self.combine_side = combine_side
 
         # Additional components
         # self.unified_condition_predictor = ConditionClassifier(
@@ -140,72 +145,31 @@ class CoSiRModel(nn.Module):
 
         return img_emb, txt_emb, img_full, txt_full
 
-    def combine(self, txt_emb, txt_full, labels, epoch=None, return_label_proj=False, return_delta=False):
-        lbl_emb = self.label_encoder(labels)  # (batch_size, 512)
+    def combine(self, emb, emb_full, labels, epoch=None, return_label_proj=False, return_delta=False):
+        """Combine modality embedding with label embeddings.
+
+        ``emb`` must be from the side specified by ``self.combine_side``
+        (txt embedding when combine_side='txt', img embedding when combine_side='img').
+        ``emb_full`` is the full sequence tensor for that side; pass None or zeros if unavailable.
+        """
+        lbl_emb = self.label_encoder(labels)  # (batch_size, D)
         result = self.combiner(
-            txt_emb,
-            None,
+            emb,
+            emb_full,
             lbl_emb,
             return_delta=return_delta,
         )
         return result
 
-    # def predict_condition(
-    #     self,
-    #     img_emb: Optional[Tensor],
-    #     txt_emb: Optional[Tensor],
-    #     type: str,
-    #     return_logits: bool = True,
-    #     training_phase: bool = False,
-    #     argmax: bool = False,
-    # ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-    #     # input_features: (batch_size, d_model), pre_trained_representatives: (num_conditions, 2)
-    #     if type == "img":
-    #         probs, logits = self.unified_condition_predictor(
-    #             img_emb=None,
-    #             txt_emb=txt_emb,
-    #             return_logits=True,
-    #             training_phase=training_phase,
-    #             argmax=argmax,
-    #         )
-    #     elif type == "txt":
-    #         probs, logits = self.unified_condition_predictor(
-    #             img_emb=img_emb,
-    #             txt_emb=None,
-    #             return_logits=True,
-    #             training_phase=training_phase,
-    #             argmax=argmax,
-    #         )
-    #     elif type == "imgtxt":
-    #         probs, logits = self.unified_condition_predictor(
-    #             img_emb=img_emb,
-    #             txt_emb=txt_emb,
-    #             return_logits=True,
-    #             training_phase=training_phase,
-    #             argmax=argmax,
-    #         )
-    #     else:
-    #         raise ValueError(f"Invalid condition type: {type}")
-
-    #     output = (
-    #         probs @ self.pretrained_representatives
-    #     )  # [B, num_conditions] @ [num_conditions, 2] -> [B, 2]
-
-    #     if return_logits:
-    #         return output, logits
-    #     else:
-    #         return output
-
     def forward(self, images, texts, labels):
-        # Extract image and text features
+        img_emb, txt_emb, img_full, txt_full = self.encode_img_txt(images, texts)
 
-        img_emb, txt_emb, _, txt_full = self.encode_img_txt(images, texts)
+        lbl_emb = self.label_encoder(labels)  # (batch_size, D)
 
-        # Encode the labels
-        lbl_emb = self.label_encoder(labels)  # (batch_size, 512)
-
-        # Combine text and label features
-        comb_emb = self.combiner(txt_emb, txt_full, lbl_emb)  # (batch_size, 512)
+        if self.combine_side == "txt":
+            comb_emb = self.combiner(txt_emb, txt_full, lbl_emb)
+        else:
+            comb_emb = self.combiner(img_emb, img_full, lbl_emb)
 
         return (
             img_emb,
@@ -213,7 +177,7 @@ class CoSiRModel(nn.Module):
             txt_full,
             lbl_emb,
             comb_emb,
-        )  # For now we only need img_emb and comb_emb to calculate the loss
+        )
 
 
 def main():

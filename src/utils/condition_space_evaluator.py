@@ -58,12 +58,40 @@ class CoSiRAutomaticEvaluator:
             else hdbscan_labels
         )
 
+        # Side-aware setup: which embeddings get combined, which are the query side
+        combine_side = getattr(model, "combine_side", "txt")
+        if combine_side == "txt":
+            self.combine_embs = self.text_embs    # embeddings fed to model.combine
+            self.query_embs = self.image_embs     # embeddings used as retrieval queries
+            self.n_combine = self.n_texts
+            self.n_query = self.n_images
+            # GT: for each query image, list of matching text indices
+            self.query_to_gt: dict = {
+                img_idx: self.img_to_cap_map[img_idx].tolist()
+                for img_idx in range(self.n_images)
+            }
+        else:
+            self.combine_embs = self.image_embs
+            self.query_embs = self.text_embs
+            self.n_combine = self.n_images
+            self.n_query = self.n_texts
+            # Derive text→image map from the image→text map
+            _t2i: dict = {}
+            for img_idx in range(self.n_images):
+                for txt_idx in self.img_to_cap_map[img_idx].tolist():
+                    _t2i[txt_idx] = img_idx
+            # GT: for each query text, list containing its single matching image index
+            self.query_to_gt = {
+                txt_idx: [_t2i[txt_idx]]
+                for txt_idx in range(self.n_texts)
+            }
+
         print(f"Evaluator initialized with:")
         print(f"  - {self.n_images} images, {self.n_texts} texts")
         print(f"  - {len(self.conditions)} conditions")
         if self.representatives is not None:
             print(f"  - {len(self.representatives)} representatives")
-        print(f"  - Device: {self.device}")
+        print(f"  - Device: {self.device}, combine_side: {combine_side}")
 
     # ========== 1. Magnitude–Effect Correlation ==========
     def compute_magnitude_effect_correlation(self, n_samples=200, n_texts_sample=100):
@@ -86,17 +114,17 @@ class CoSiRAutomaticEvaluator:
         sampled_conditions = self.conditions[condition_indices]
         norms = torch.norm(sampled_conditions, dim=1).cpu().numpy()
 
-        text_indices = torch.randperm(self.n_texts)[:n_texts_sample]
-        sampled_text_embs = self.text_embs[text_indices]
+        combine_indices = torch.randperm(self.n_combine)[:n_texts_sample]
+        sampled_combine_embs = self.combine_embs[combine_indices]
 
         effects = []
         with torch.no_grad():
             for condition in tqdm(sampled_conditions, desc="  Processing"):
-                cond_expanded = condition.unsqueeze(0).repeat(len(sampled_text_embs), 1)
-                text_embs_mod = self.model.combine(
-                    sampled_text_embs, None, cond_expanded
+                cond_expanded = condition.unsqueeze(0).repeat(len(sampled_combine_embs), 1)
+                combine_embs_mod = self.model.combine(
+                    sampled_combine_embs, None, cond_expanded
                 )
-                delta = torch.norm(text_embs_mod - sampled_text_embs, dim=1).mean()
+                delta = torch.norm(combine_embs_mod - sampled_combine_embs, dim=1).mean()
                 effects.append(delta.cpu().item())
 
         effects = np.array(effects)
@@ -127,9 +155,10 @@ class CoSiRAutomaticEvaluator:
         n_unique = min(n_unique, len(self.conditions))
         n_texts_sample = min(n_texts_sample, self.n_texts)
 
-        # Fixed text sample for reproducibility across epochs
-        text_indices = torch.arange(n_texts_sample, device=self.device)
-        sampled_text_embs = self.text_embs[text_indices]
+        # Fixed sample for reproducibility across epochs
+        n_combine_sample = min(n_texts_sample, self.n_combine)
+        combine_indices = torch.arange(n_combine_sample, device=self.device)
+        sampled_combine_embs = self.combine_embs[combine_indices]
 
         condition_indices = torch.randperm(len(self.conditions))[:n_unique]
         sampled_conditions = self.conditions[condition_indices]
@@ -138,8 +167,8 @@ class CoSiRAutomaticEvaluator:
         modulated_means = []
         with torch.no_grad():
             for condition in tqdm(sampled_conditions, desc="  Modulating"):
-                cond_expanded = condition.unsqueeze(0).repeat(n_texts_sample, 1)
-                mod = self.model.combine(sampled_text_embs, None, cond_expanded)
+                cond_expanded = condition.unsqueeze(0).repeat(n_combine_sample, 1)
+                mod = self.model.combine(sampled_combine_embs, None, cond_expanded)
                 modulated_means.append(F.normalize(mod.mean(dim=0), dim=0))
 
         modulated_means = torch.stack(modulated_means)  # [n_unique, D]
@@ -175,38 +204,38 @@ class CoSiRAutomaticEvaluator:
         self.model.eval()
 
         n_conditions = min(n_conditions, len(self.conditions))
-        n_test_images = min(n_test_images, self.n_images)
+        n_test_queries = min(n_test_images, self.n_query)
 
         condition_indices = torch.randperm(len(self.conditions))[:n_conditions]
         sampled_conditions = self.conditions[condition_indices]
-        test_img_indices = torch.randperm(self.n_images)[:n_test_images].tolist()
+        test_query_indices = torch.randperm(self.n_query)[:n_test_queries].tolist()
 
         all_ranks_baseline = []
         all_ranks_conditional = []
 
         with torch.no_grad():
-            for img_idx in tqdm(test_img_indices, desc="  Testing images"):
-                img_emb = self.image_embs[img_idx : img_idx + 1]
-                gt_cap_indices = self.img_to_cap_map[img_idx]
+            for query_idx in tqdm(test_query_indices, desc="  Testing queries"):
+                query_emb = self.query_embs[query_idx : query_idx + 1]
+                gt_indices = self.query_to_gt[query_idx]
 
                 sims_base = F.cosine_similarity(
-                    img_emb.expand(self.n_texts, -1), self.text_embs, dim=1
+                    query_emb.expand(self.n_combine, -1), self.combine_embs, dim=1
                 )
                 best_rank_base = min(
-                    (sims_base > sims_base[gt]).sum().item() for gt in gt_cap_indices
+                    (sims_base > sims_base[gt]).sum().item() for gt in gt_indices
                 )
                 all_ranks_baseline.append(best_rank_base)
 
                 for condition in sampled_conditions:
-                    cond_expanded = condition.unsqueeze(0).repeat(self.n_texts, 1)
-                    text_embs_mod = self.model.combine(
-                        self.text_embs, None, cond_expanded
+                    cond_expanded = condition.unsqueeze(0).repeat(self.n_combine, 1)
+                    combine_embs_mod = self.model.combine(
+                        self.combine_embs, None, cond_expanded
                     )
                     sims = F.cosine_similarity(
-                        img_emb.expand(self.n_texts, -1), text_embs_mod, dim=1
+                        query_emb.expand(self.n_combine, -1), combine_embs_mod, dim=1
                     )
                     best_rank = min(
-                        (sims > sims[gt]).sum().item() for gt in gt_cap_indices
+                        (sims > sims[gt]).sum().item() for gt in gt_indices
                     )
                     all_ranks_conditional.append(best_rank)
 
@@ -248,26 +277,26 @@ class CoSiRAutomaticEvaluator:
         self.model.eval()
 
         n_conditions = min(max(2, n_conditions), len(self.conditions))
-        n_test_images = min(n_test_images, self.n_images)
-        k = min(k, self.n_texts)
+        n_test_queries = min(n_test_images, self.n_query)
+        k = min(k, self.n_combine)
 
         condition_indices = torch.randperm(len(self.conditions))[:n_conditions]
         test_conditions = self.conditions[condition_indices]
-        test_img_indices = torch.randperm(self.n_images)[:n_test_images].tolist()
+        test_query_indices = torch.randperm(self.n_query)[:n_test_queries].tolist()
 
         distributions = [Counter() for _ in range(n_conditions)]
 
         with torch.no_grad():
-            for img_idx in tqdm(test_img_indices, desc="  Testing images"):
-                img_emb = self.image_embs[img_idx : img_idx + 1]
+            for query_idx in tqdm(test_query_indices, desc="  Testing queries"):
+                query_emb = self.query_embs[query_idx : query_idx + 1]
 
                 for cond_idx, condition in enumerate(test_conditions):
-                    cond_expanded = condition.unsqueeze(0).repeat(self.n_texts, 1)
-                    text_embs_mod = self.model.combine(
-                        self.text_embs, None, cond_expanded
+                    cond_expanded = condition.unsqueeze(0).repeat(self.n_combine, 1)
+                    combine_embs_mod = self.model.combine(
+                        self.combine_embs, None, cond_expanded
                     )
                     sims = F.cosine_similarity(
-                        img_emb.expand(self.n_texts, -1), text_embs_mod, dim=1
+                        query_emb.expand(self.n_combine, -1), combine_embs_mod, dim=1
                     )
                     top_k_indices = torch.topk(sims, k=k)[1].cpu().tolist()
                     for idx in top_k_indices:
@@ -311,37 +340,37 @@ class CoSiRAutomaticEvaluator:
             print("  ⚠ No representatives provided, skipping.")
             return {}
 
-        n_test_images = min(n_test_images, self.n_images)
-        test_img_indices = list(range(n_test_images))  # fixed, not random
+        n_test_queries = min(n_test_images, self.n_query)
+        test_query_indices = list(range(n_test_queries))  # fixed, not random
 
         all_ranks_baseline = []
         all_ranks_best = []
 
         with torch.no_grad():
-            for img_idx in tqdm(test_img_indices, desc="  Testing images"):
-                img_emb = self.image_embs[img_idx : img_idx + 1]
-                gt_cap_indices = self.img_to_cap_map[img_idx]
+            for query_idx in tqdm(test_query_indices, desc="  Testing queries"):
+                query_emb = self.query_embs[query_idx : query_idx + 1]
+                gt_indices = self.query_to_gt[query_idx]
 
                 # Baseline
                 sims_base = F.cosine_similarity(
-                    img_emb.expand(self.n_texts, -1), self.text_embs, dim=1
+                    query_emb.expand(self.n_combine, -1), self.combine_embs, dim=1
                 )
                 best_rank_base = min(
-                    (sims_base > sims_base[gt]).sum().item() for gt in gt_cap_indices
+                    (sims_base > sims_base[gt]).sum().item() for gt in gt_indices
                 )
                 all_ranks_baseline.append(best_rank_base)
 
                 # Best of representatives
-                best_rank_rep = self.n_texts
+                best_rank_rep = self.n_combine
                 for rep in self.representatives:
-                    cond_expanded = rep.unsqueeze(0).repeat(self.n_texts, 1)
-                    text_embs_mod = self.model.combine(
-                        self.text_embs, None, cond_expanded
+                    cond_expanded = rep.unsqueeze(0).repeat(self.n_combine, 1)
+                    combine_embs_mod = self.model.combine(
+                        self.combine_embs, None, cond_expanded
                     )
                     sims = F.cosine_similarity(
-                        img_emb.expand(self.n_texts, -1), text_embs_mod, dim=1
+                        query_emb.expand(self.n_combine, -1), combine_embs_mod, dim=1
                     )
-                    rank = min((sims > sims[gt]).sum().item() for gt in gt_cap_indices)
+                    rank = min((sims > sims[gt]).sum().item() for gt in gt_indices)
                     best_rank_rep = min(best_rank_rep, rank)
                 all_ranks_best.append(best_rank_rep)
 
