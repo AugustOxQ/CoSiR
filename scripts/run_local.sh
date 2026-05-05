@@ -21,9 +21,9 @@ fi
 echo "Using ${NUM_PROCS} processes"
 
 python main_cosir.py -m \
-  dataset=impressions \
-  eval.evaluation_interval=100 \
-  eval.oracle_aggregation=max \
+  dataset=coco \
+  eval.evaluation_interval=50 \
+  "eval.oracle_aggregation=mean, max" \
   loss.lambda_collapse=0.1 \
   loss.lambda_contrastive=1 \
   loss.lambda_laplacian=30 \
@@ -32,9 +32,9 @@ python main_cosir.py -m \
   model=clip_base \
   model.num_layers=6 \
   model.embedding_dim=16 \
-  optimizer.lr=1e-4 \
-  optimizer.lr_label=1e-1 \
-  train.epochs=1000 \
+  optimizer.lr=1e-3 \
+  optimizer.lr_label=1e-3 \
+  train.epochs=300 \
   train.normalize=False \
   train.imgtxt_factor=1 \
   train.initialization_strategy=imgtxt

@@ -16,7 +16,6 @@ from torch.optim.lr_scheduler import (
 )
 import wandb
 import matplotlib.pyplot as plt
-from itertools import chain
 
 from src.dataset import (
     CoSiRShardDataset,
@@ -35,10 +34,7 @@ from src.utils import (
     get_representatives_fps,
     get_umap,
     visualize_ideal_condition_space,
-    visualize_given_conditions_image_to_text,
-    visualize_given_conditions_text_to_image,
     CoSiRAutomaticEvaluator,
-    WandbLogger,
 )
 from src.metrics import LabelContrastiveLoss_enhance
 
