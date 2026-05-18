@@ -8,6 +8,7 @@ from transformers import AutoModel, AutoProcessor
 from typing import Optional
 
 from src.model.combiner import *
+from src.model.condition_predictor import ConditionPredictor
 
 _DEFAULT_BACKBONE = "openai/clip-vit-base-patch32"
 
@@ -97,16 +98,13 @@ class CoSiRModel(nn.Module):
             raise ValueError(f"combine_side must be 'txt' or 'img', got '{combine_side}'")
         self.combine_side = combine_side
 
-        # Additional components
-        # self.unified_condition_predictor = ConditionClassifier(
-        #     input_dim=512,
-        #     hidden_dim=512,  # Here the dim is fixed to 512, because the input dim is 512
-        #     num_layers=num_layers,
-        #     dropout=dropout,
-        #     num_conditions=num_conditions,
-        #     use_temperature=True,
-        #     init_temperature=1.0,
-        # )
+        self.condition_predictor = ConditionPredictor(
+            input_dim=self.feature_dim,
+            hidden_dim=d_model,
+            output_dim=label_dim,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
 
         self.pretrained_representatives = None
 
@@ -160,6 +158,14 @@ class CoSiRModel(nn.Module):
             return_delta=return_delta,
         )
         return result
+
+    def predict_condition(self, emb: Tensor) -> Tensor:
+        """Predict condition embedding from the combine-side embedding.
+
+        Caller is responsible for passing the correct embedding (txt_emb when
+        combine_side='txt', img_emb when combine_side='img').
+        """
+        return self.condition_predictor(emb)
 
     def forward(self, images, texts, labels):
         img_emb, txt_emb, img_full, txt_full = self.encode_img_txt(images, texts)

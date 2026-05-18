@@ -328,7 +328,6 @@ class OracleMetrics(RankingMetric):
                      'mean' — average similarity across all labels
         """
         """Compute oracle metrics by averaging the best rankings of all labels.
-        这里我们不用遍历了，我们直接用condition predictor来预测条件，然后根据条件来筛选，和上面只用单模态的不同，这里我们用imgtxt网络来预测条件
         """
 
         num_texts = text_embeddings.shape[0]
@@ -365,6 +364,7 @@ class OracleMetrics(RankingMetric):
 
         # Streaming accumulators (all on CPU to avoid stacking K full sim matrices on GPU)
         running_max_tti: Optional[torch.Tensor] = None  # [N_text, N_img] on CPU
+        running_max_itt: Optional[torch.Tensor] = None  # [N_img, N_text] on CPU
         # Welford online variance
         _wf_n = 0
         _wf_mean: Optional[torch.Tensor] = None  # [N_text, N_img] float32 CPU
@@ -417,8 +417,10 @@ class OracleMetrics(RankingMetric):
                 # Running max
                 if running_max_tti is None:
                     running_max_tti = sims_cpu.clone()
+                    running_max_itt = sims_cpu.T.clone()
                 else:
                     running_max_tti = torch.maximum(running_max_tti, sims_cpu)
+                    running_max_itt = torch.maximum(running_max_itt, sims_cpu.T)
 
                 # Welford online variance
                 _wf_n += 1
@@ -458,11 +460,13 @@ class OracleMetrics(RankingMetric):
             # Select aggregation: max = oracle upper bound, mean = average across labels
             if aggregation == "mean":
                 dist_matrix_tti = _wf_mean  # already computed above
+                dist_matrix_itt = dist_matrix_tti.T
             else:
                 dist_matrix_tti = running_max_tti
+                # Use independently tracked max for ITT — each image picks its own
+                # optimal label rather than inheriting the per-pair TTI maxima.
+                dist_matrix_itt = running_max_itt
             inds_tti = torch.argsort(dist_matrix_tti, dim=1, descending=True)
-
-            dist_matrix_itt = dist_matrix_tti.T
             inds_itt = torch.argsort(dist_matrix_itt, dim=1, descending=True)
 
             metrics = self._compute_recall_from_indices(
@@ -798,6 +802,83 @@ class OracleMetrics(RankingMetric):
             )
 
             return metrics, best_label_tti, best_label_itt
+
+    def compute_predictor_recall(
+        self,
+        model,
+        image_embeddings: torch.Tensor,
+        text_embeddings: torch.Tensor,
+        text_to_image_map: torch.Tensor,
+        image_to_text_map: torch.Tensor,
+        prefix: str = "pre_original",
+    ) -> Dict[str, float]:
+        """Evaluate retrieval using predicted conditions at test time.
+
+        The predictor runs a single forward pass per query on the combine-side
+        embedding, so this is O(N) — no search over representatives.
+        combine_side='txt': predict from each text query.
+        combine_side='img': predict from each image (then transpose sim matrix).
+        """
+        num_texts = text_embeddings.shape[0]
+        num_images = image_embeddings.shape[0]
+        captions_per_image = image_to_text_map.shape[1]
+
+        combine_side = getattr(model, "combine_side", "txt")
+
+        image_embeddings = image_embeddings.to(self.config.device)
+        text_embeddings = text_embeddings.to(self.config.device)
+        image_norm = image_embeddings / image_embeddings.norm(dim=-1, keepdim=True)
+        text_norm = text_embeddings / text_embeddings.norm(dim=-1, keepdim=True)
+
+        print(f"Evaluating predictor recall (combine_side={combine_side})...")
+
+        with torch.no_grad():
+            if combine_side == "txt":
+                combined_all = []
+                for i in range(0, num_texts, self.config.batch_size):
+                    end = min(i + self.config.batch_size, num_texts)
+                    pred = model.predict_condition(text_embeddings[i:end])
+                    combined = model.combine(text_embeddings[i:end], None, pred)
+                    combined_all.append(combined)
+                    del pred, combined
+                    torch.cuda.empty_cache()
+                combined_all = torch.cat(combined_all, dim=0)
+                combined_all = combined_all / combined_all.norm(dim=-1, keepdim=True)
+                # [N_txt, N_img]
+                sims = combined_all @ image_norm.T
+            else:
+                combined_all = []
+                for i in range(0, num_images, self.config.batch_size):
+                    end = min(i + self.config.batch_size, num_images)
+                    pred = model.predict_condition(image_embeddings[i:end])
+                    combined = model.combine(image_embeddings[i:end], None, pred)
+                    combined_all.append(combined)
+                    del pred, combined
+                    torch.cuda.empty_cache()
+                combined_all = torch.cat(combined_all, dim=0)
+                combined_all = combined_all / combined_all.norm(dim=-1, keepdim=True)
+                # [N_txt, N_img]
+                sims = text_norm @ combined_all.T
+
+            if self.config.cpu_offload:
+                sims = sims.cpu()
+
+            inds_tti = torch.argsort(sims, dim=1, descending=True)
+            inds_itt = torch.argsort(sims.T, dim=1, descending=True)
+
+            del sims, combined_all
+            torch.cuda.empty_cache()
+
+        return self._compute_recall_from_indices(
+            inds_tti,
+            inds_itt,
+            text_to_image_map,
+            image_to_text_map,
+            num_texts,
+            num_images,
+            captions_per_image,
+            prefix,
+        )
 
     def compute_non_oracle_recall_prev(
         self,

@@ -124,6 +124,23 @@ class TestEvaluator(BaseEvaluator):
             metrics_oracle, metrics_raw, "raw", "diff"
         )
 
+        # Predictor evaluation (single forward pass, no representative search)
+        metrics_pre_original: dict = {}
+        metrics_pre_diff: dict = {}
+        if hasattr(model, "condition_predictor"):
+            print("Running predictor evaluation...")
+            metrics_pre_original = self.oracle_metrics.compute_predictor_recall(
+                model,
+                all_img_emb,
+                all_txt_emb,
+                text_to_image_map,
+                image_to_text_map,
+                "pre_original",
+            )
+            metrics_pre_diff = self._compute_metric_difference(
+                metrics_pre_original, metrics_raw, "raw", "pre_diff"
+            )
+
         # Each group gets its own top-level wandb section (test_oracle/*, test_raw/*, …)
         # so the UI shows one panel per group rather than one crowded "test" panel.
         # The input dicts already carry their own group prefix (e.g. "oracle/i2t/R@1"),
@@ -140,6 +157,8 @@ class TestEvaluator(BaseEvaluator):
                 **_group(metrics_oracle, "oracle"),
                 **_group(metrics_raw, "raw"),
                 **_group(metrics_diff, "diff"),
+                **_group(metrics_pre_original, "pre_original"),
+                **_group(metrics_pre_diff, "pre_diff"),
             }
         else:
             all_metrics = {
@@ -148,6 +167,8 @@ class TestEvaluator(BaseEvaluator):
                 **_group(metrics_oracle_imgtxt, "oracle_imgtxt"),
                 **_group(metrics_raw, "raw"),
                 **_group(metrics_diff, "diff"),
+                **_group(metrics_pre_original, "pre_original"),
+                **_group(metrics_pre_diff, "pre_diff"),
             }
 
         results = self._format_results(all_metrics, epoch)

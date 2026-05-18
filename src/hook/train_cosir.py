@@ -3,7 +3,7 @@ import os
 import torch
 import torch.nn.functional as F
 import random
-from typing import cast
+from typing import cast, Optional
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 import numpy as np
@@ -310,6 +310,11 @@ def train_cosir(cfg, logger):
                 "lr": cfg.optimizer.lr_label,
                 "weight_decay": 0,
             },
+            {
+                "params": list(model.condition_predictor.parameters()),
+                "lr": cfg.optimizer.lr,
+                "weight_decay": cfg.optimizer.weight_decay,
+            },
         ]
     )
 
@@ -522,6 +527,19 @@ def train_cosir(cfg, logger):
                 )
 
             loss = loss_dict["total_loss"]
+
+            # Condition predictor distillation: predict conditions from combine-side
+            # embeddings, supervised by stop-gradient per-sample conditions.
+            lambda_pred = cfg.loss.lambda_pred
+            if lambda_pred > 0:
+                pred_cond = model.predict_condition(combine_emb)
+                pred_loss = (
+                    1 - torch.nn.functional.cosine_similarity(
+                        pred_cond, label_embeddings.detach(), dim=-1
+                    )
+                ).mean()
+                loss = loss + lambda_pred * pred_loss
+                loss_dict["loss_pred"] = pred_loss
 
             epoch_loss += loss.item()
             num_batches += 1
@@ -775,18 +793,26 @@ def train_cosir(cfg, logger):
                     )
                     print(f"  Saved condition viz fixed data → {_cond_fixed_path}")
 
-                # Per-epoch: all conditions + combiner weights (replace on each call)
+                # Per-epoch: all conditions + combiner + predictor weights (replace on each call)
                 torch.save(
                     {
                         "epoch": epoch,
                         "label_embeddings_all": label_embeddings_all.cpu(),
                         "representatives": representatives.cpu(),
                         "combiner_state_dict": model.combiner.state_dict(),
+                        "predictor_state_dict": model.condition_predictor.state_dict(),
                         "combine_side": cfg.model.combine_side,
                         "combiner_config": {
                             "clip_feature_dim": model.feature_dim,
                             "projection_dim": model.feature_dim,
                             "label_dim": cfg.model.embedding_dim,
+                            "num_layers": cfg.model.num_layers,
+                            "dropout": cfg.model.dropout,
+                        },
+                        "predictor_config": {
+                            "input_dim": model.feature_dim,
+                            "hidden_dim": cfg.model.hidden_dim,
+                            "output_dim": cfg.model.embedding_dim,
                             "num_layers": cfg.model.num_layers,
                             "dropout": cfg.model.dropout,
                         },
@@ -832,6 +858,156 @@ def train_cosir(cfg, logger):
                     if key in result[group]
                 }
                 logger.log_eval(eval_metrics, epoch=epoch)
+
+                # ─── Condition analysis cache (full test set × all representatives) ───
+                # Saves per-representative GT ranks, top-K indices/scores, and
+                # mean/max-aggregated top-K — used by the deep retrieval analysis notebook.
+                print("Saving condition analysis cache...")
+                _ca_dir = experiment.directory / "condition_analysis"
+                _ca_dir.mkdir(parents=True, exist_ok=True)
+                _CA_TOPK = 10
+
+                _n_ca_txt = all_txt_emb.shape[0]
+                _n_ca_img = all_img_emb.shape[0]
+                _K_ca = len(representatives)
+                _bs_ca = max(cfg.train.batch_size, 256)
+
+                _txt_ca = all_txt_emb.to(device)
+                _img_ca = all_img_emb.to(device)
+                _img_ca_n = F.normalize(_img_ca, dim=-1)
+                _txt_ca_n = F.normalize(_txt_ca, dim=-1)
+                _ttimap_ca = text_to_image_map.cpu()          # [N_txt]
+                _ittmap_ca = image_to_text_map.cpu()           # [N_img, cpi]
+
+                _per_rep_gt_rank = torch.zeros(_K_ca, _n_ca_txt, dtype=torch.long)
+                _per_rep_topk_idx = torch.zeros(_K_ca, _n_ca_txt, _CA_TOPK, dtype=torch.long)
+                _per_rep_topk_scores = torch.zeros(_K_ca, _n_ca_txt, _CA_TOPK)
+                _per_rep_i2t_gt_rank = torch.zeros(_K_ca, _n_ca_img, dtype=torch.long)
+                _per_rep_i2t_topk_idx = torch.zeros(_K_ca, _n_ca_img, _CA_TOPK, dtype=torch.long)
+                _per_rep_i2t_topk_scores = torch.zeros(_K_ca, _n_ca_img, _CA_TOPK)
+                _ca_run_mean: Optional[torch.Tensor] = None
+                _ca_run_max: Optional[torch.Tensor] = None
+                _ca_i2t_run_mean: Optional[torch.Tensor] = None
+                _ca_i2t_run_max: Optional[torch.Tensor] = None
+
+                with torch.no_grad():
+                    for _ri in range(_K_ca):
+                        _cond_ca = representatives[_ri].unsqueeze(0).to(device)
+                        if cfg.model.combine_side == "txt":
+                            _cl = []
+                            for _i in range(0, _n_ca_txt, _bs_ca):
+                                _e = min(_i + _bs_ca, _n_ca_txt)
+                                _cl.append(model.combine(
+                                    _txt_ca[_i:_e], None, _cond_ca.expand(_e - _i, -1)
+                                ))
+                            _comb_ca = F.normalize(torch.cat(_cl, dim=0), dim=-1)
+                            _sims_ca = (_comb_ca @ _img_ca_n.T).cpu()  # [N_txt, N_img]
+                        else:
+                            _cl = []
+                            for _i in range(0, _n_ca_img, _bs_ca):
+                                _e = min(_i + _bs_ca, _n_ca_img)
+                                _cl.append(model.combine(
+                                    _img_ca[_i:_e], None, _cond_ca.expand(_e - _i, -1)
+                                ))
+                            _comb_ca = F.normalize(torch.cat(_cl, dim=0), dim=-1)
+                            _sims_ca = (_txt_ca_n @ _comb_ca.T).cpu()  # [N_txt, N_img]
+                        del _cl, _comb_ca
+                        torch.cuda.empty_cache()
+
+                        # T2I: each text finds its GT image
+                        _gt_s = _sims_ca[torch.arange(_n_ca_txt), _ttimap_ca]
+                        _per_rep_gt_rank[_ri] = (
+                            (_sims_ca >= _gt_s.unsqueeze(1)).sum(dim=1).long() - 1
+                        )
+                        _tk = torch.topk(_sims_ca, k=_CA_TOPK, dim=1)
+                        _per_rep_topk_idx[_ri] = _tk.indices
+                        _per_rep_topk_scores[_ri] = _tk.values
+
+                        # I2T: transpose → each image finds its GT text (best among cpi GTs)
+                        _sims_i2t = _sims_ca.T  # [N_img, N_txt] — free from transpose
+                        _i2t_gt_sims = _sims_i2t[
+                            torch.arange(_n_ca_img).unsqueeze(1), _ittmap_ca
+                        ]  # [N_img, cpi]
+                        _i2t_best_gt = _i2t_gt_sims.max(dim=1).values  # [N_img]
+                        _per_rep_i2t_gt_rank[_ri] = (
+                            (_sims_i2t >= _i2t_best_gt.unsqueeze(1)).sum(dim=1).long() - 1
+                        )
+                        _tk_i2t = torch.topk(_sims_i2t, k=_CA_TOPK, dim=1)
+                        _per_rep_i2t_topk_idx[_ri] = _tk_i2t.indices
+                        _per_rep_i2t_topk_scores[_ri] = _tk_i2t.values
+
+                        if _ca_run_mean is None:
+                            _ca_run_mean = _sims_ca.clone()
+                            _ca_run_max = _sims_ca.clone()
+                            _ca_i2t_run_mean = _sims_i2t.clone()
+                            _ca_i2t_run_max = _sims_i2t.clone()
+                        else:
+                            _ca_run_mean.add_(_sims_ca)
+                            torch.maximum(_ca_run_max, _sims_ca, out=_ca_run_max)  # type: ignore[arg-type]
+                            _ca_i2t_run_mean.add_(_sims_i2t)  # type: ignore[union-attr]
+                            torch.maximum(_ca_i2t_run_max, _sims_i2t, out=_ca_i2t_run_max)  # type: ignore[arg-type]
+                        del _sims_ca, _sims_i2t, _i2t_gt_sims, _i2t_best_gt, _tk_i2t
+
+                _ca_run_mean.div_(_K_ca)  # type: ignore[union-attr]
+                _ca_i2t_run_mean.div_(_K_ca)  # type: ignore[union-attr]
+                _ca_oracle = _per_rep_gt_rank.argmin(dim=0)         # [N_txt]
+                _ca_i2t_oracle = _per_rep_i2t_gt_rank.argmin(dim=0) # [N_img]
+                _ca_mean_tk = torch.topk(_ca_run_mean, k=_CA_TOPK, dim=1)      # type: ignore[arg-type]
+                _ca_max_tk = torch.topk(_ca_run_max, k=_CA_TOPK, dim=1)        # type: ignore[arg-type]
+                _ca_i2t_mean_tk = torch.topk(_ca_i2t_run_mean, k=_CA_TOPK, dim=1)  # type: ignore[arg-type]
+                _ca_i2t_max_tk = torch.topk(_ca_i2t_run_max, k=_CA_TOPK, dim=1)   # type: ignore[arg-type]
+
+                # CLIP baseline GT ranks (no condition) for both T2I and I2T
+                _clip_sims_ca = (_txt_ca_n @ _img_ca_n.T).cpu()  # [N_txt, N_img]
+                _clip_gt_s = _clip_sims_ca[torch.arange(_n_ca_txt), _ttimap_ca]
+                _clip_gt_rank = (
+                    (_clip_sims_ca >= _clip_gt_s.unsqueeze(1)).sum(dim=1).long() - 1
+                )
+                _clip_sims_i2t = _clip_sims_ca.T  # [N_img, N_txt]
+                _clip_i2t_gt_sims = _clip_sims_i2t[
+                    torch.arange(_n_ca_img).unsqueeze(1), _ittmap_ca
+                ]
+                _clip_i2t_best_gt = _clip_i2t_gt_sims.max(dim=1).values
+                _clip_i2t_gt_rank = (
+                    (_clip_sims_i2t >= _clip_i2t_best_gt.unsqueeze(1)).sum(dim=1).long() - 1
+                )
+                del _clip_sims_ca, _clip_gt_s, _clip_sims_i2t, _clip_i2t_gt_sims, _clip_i2t_best_gt
+
+                torch.save(
+                    {
+                        "epoch": epoch,
+                        "n_representatives": _K_ca,
+                        # T2I
+                        "per_rep_gt_rank": _per_rep_gt_rank,              # [K, N_txt]
+                        "per_rep_topk_indices": _per_rep_topk_idx,        # [K, N_txt, top_k]
+                        "per_rep_topk_scores": _per_rep_topk_scores,      # [K, N_txt, top_k]
+                        "oracle_condition_idx": _ca_oracle,               # [N_txt]
+                        "mean_topk_indices": _ca_mean_tk.indices,         # [N_txt, top_k]
+                        "mean_topk_scores": _ca_mean_tk.values,           # [N_txt, top_k]
+                        "max_topk_indices": _ca_max_tk.indices,           # [N_txt, top_k]
+                        "max_topk_scores": _ca_max_tk.values,             # [N_txt, top_k]
+                        "clip_gt_rank": _clip_gt_rank,                    # [N_txt]
+                        # I2T
+                        "per_rep_i2t_gt_rank": _per_rep_i2t_gt_rank,     # [K, N_img]
+                        "per_rep_i2t_topk_indices": _per_rep_i2t_topk_idx,  # [K, N_img, top_k]
+                        "per_rep_i2t_topk_scores": _per_rep_i2t_topk_scores, # [K, N_img, top_k]
+                        "i2t_oracle_condition_idx": _ca_i2t_oracle,       # [N_img]
+                        "i2t_mean_topk_indices": _ca_i2t_mean_tk.indices, # [N_img, top_k]
+                        "i2t_mean_topk_scores": _ca_i2t_mean_tk.values,   # [N_img, top_k]
+                        "i2t_max_topk_indices": _ca_i2t_max_tk.indices,   # [N_img, top_k]
+                        "i2t_max_topk_scores": _ca_i2t_max_tk.values,     # [N_img, top_k]
+                        "clip_i2t_gt_rank": _clip_i2t_gt_rank,            # [N_img]
+                    },
+                    _ca_dir / f"epoch_{epoch:04d}.pt",
+                )
+                print(f"  Saved condition analysis → {_ca_dir / f'epoch_{epoch:04d}.pt'}")
+                del _txt_ca, _img_ca, _img_ca_n, _txt_ca_n
+                del _per_rep_gt_rank, _per_rep_topk_idx, _per_rep_topk_scores
+                del _per_rep_i2t_gt_rank, _per_rep_i2t_topk_idx, _per_rep_i2t_topk_scores
+                del _ca_run_mean, _ca_run_max, _ca_mean_tk, _ca_max_tk, _ca_oracle
+                del _ca_i2t_run_mean, _ca_i2t_run_max, _ca_i2t_mean_tk, _ca_i2t_max_tk, _ca_i2t_oracle
+                del _clip_gt_rank, _clip_i2t_gt_rank, _ttimap_ca, _ittmap_ca
+                torch.cuda.empty_cache()
 
                 # ─── Retrieval snapshot (qualitative cross-epoch tracking) ───
                 print("Saving retrieval snapshot...")
@@ -1001,9 +1177,27 @@ def train_cosir(cfg, logger):
     experiment.save_artifact(
         name="phase_1_model",
         folder="checkpoints",
-        data=model.combiner.state_dict(),
+        data={
+            "combiner_state_dict": model.combiner.state_dict(),
+            "predictor_state_dict": model.condition_predictor.state_dict(),
+            "combine_side": cfg.model.combine_side,
+            "combiner_config": {
+                "clip_feature_dim": model.feature_dim,
+                "projection_dim": model.feature_dim,
+                "label_dim": cfg.model.embedding_dim,
+                "num_layers": cfg.model.num_layers,
+                "dropout": cfg.model.dropout,
+            },
+            "predictor_config": {
+                "input_dim": model.feature_dim,
+                "hidden_dim": cfg.model.hidden_dim,
+                "output_dim": cfg.model.embedding_dim,
+                "num_layers": cfg.model.num_layers,
+                "dropout": cfg.model.dropout,
+            },
+        },
         artifact_type="torch",
-        description="Phase 1 model combiner state dictionary",
+        description="Phase 1 model: combiner + condition predictor state dictionaries",
     )
 
     print("Training Complete!")

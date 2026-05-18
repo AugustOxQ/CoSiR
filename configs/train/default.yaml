@@ -26,6 +26,7 @@ loss:
   lambda_boundary: 0.0
   lambda_mixup: 0.1 # iMix loss weight (0 = disabled)
   lambda_delta: 0.1
+  lambda_pred: 0.1 # condition predictor distillation weight (0 = disabled)
   mixup_alpha: 1.0 # Beta distribution alpha for iMix sampling
   return_dict: true
 
