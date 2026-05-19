@@ -77,6 +77,19 @@ async def startup():
     combiner.load_state_dict(epoch_data["combiner_state_dict"])
     combiner.eval()
 
+    # ── Other-side projection (txt is other side for img-combine) ─────────────
+    import torch.nn as nn
+    _fd = cfg["clip_feature_dim"]
+    other_proj = nn.Linear(_fd, _fd)
+    if "other_proj_state_dict" in epoch_data:
+        other_proj.load_state_dict(epoch_data["other_proj_state_dict"])
+    else:
+        nn.init.eye_(other_proj.weight)
+        nn.init.zeros_(other_proj.bias)
+    other_proj.eval()
+    with torch.no_grad():
+        txt_emb_proj = other_proj(txt_emb)  # projected text for model-based sims
+
     # Conditioned image embeddings for all reps [K, n_img, 512]
     print("Computing conditioned embeddings…")
     cond_img = torch.zeros(K, n_img, 512)
@@ -120,7 +133,7 @@ async def startup():
         t2i_ranks = ca["per_rep_gt_rank"][ri]       # [n_txt]
         i2t_ranks = ca["per_rep_i2t_gt_rank"][ri]   # [n_img]
 
-        sims = txt_emb @ cond_img[ri].T             # [n_txt, n_img]
+        sims = txt_emb_proj @ cond_img[ri].T        # [n_txt, n_img]
         gt_sims = sims[torch.arange(n_txt), txt2img]
         ngt_mask = torch.ones(n_txt, n_img, dtype=torch.bool)
         ngt_mask[torch.arange(n_txt), txt2img] = False

@@ -336,17 +336,20 @@ class OracleMetrics(RankingMetric):
 
         combine_side = getattr(model, "combine_side", "txt")
 
-        # Move to device and pre-compute normalized embeddings for both sides
-        image_embeddings_norm = image_embeddings / image_embeddings.norm(
-            dim=-1, keepdim=True
-        )
-        image_embeddings_norm = image_embeddings_norm.to(self.config.device)
+        # Move to device
         image_embeddings = image_embeddings.to(self.config.device)
         text_embeddings = text_embeddings.to(self.config.device)
-        text_embeddings_norm = text_embeddings / text_embeddings.norm(
-            dim=-1, keepdim=True
-        )
         text_full = text_full.to(self.config.device)
+
+        # Pre-compute normalized embeddings; project the "other side" (not the combine side)
+        if combine_side == "txt":
+            _img_proj = model.project_other(image_embeddings)
+            image_embeddings_norm = _img_proj / _img_proj.norm(dim=-1, keepdim=True)
+            text_embeddings_norm = text_embeddings / text_embeddings.norm(dim=-1, keepdim=True)
+        else:
+            image_embeddings_norm = image_embeddings / image_embeddings.norm(dim=-1, keepdim=True)
+            _txt_proj = model.project_other(text_embeddings)
+            text_embeddings_norm = _txt_proj / _txt_proj.norm(dim=-1, keepdim=True)
 
         # Source embeddings and count for the side being combined
         if combine_side == "txt":
@@ -827,8 +830,16 @@ class OracleMetrics(RankingMetric):
 
         image_embeddings = image_embeddings.to(self.config.device)
         text_embeddings = text_embeddings.to(self.config.device)
-        image_norm = image_embeddings / image_embeddings.norm(dim=-1, keepdim=True)
-        text_norm = text_embeddings / text_embeddings.norm(dim=-1, keepdim=True)
+
+        # Project the "other side" before normalizing
+        if combine_side == "txt":
+            _img_proj = model.project_other(image_embeddings)
+            image_norm = _img_proj / _img_proj.norm(dim=-1, keepdim=True)
+            text_norm = text_embeddings / text_embeddings.norm(dim=-1, keepdim=True)
+        else:
+            image_norm = image_embeddings / image_embeddings.norm(dim=-1, keepdim=True)
+            _txt_proj = model.project_other(text_embeddings)
+            text_norm = _txt_proj / _txt_proj.norm(dim=-1, keepdim=True)
 
         print(f"Evaluating predictor recall (combine_side={combine_side})...")
 

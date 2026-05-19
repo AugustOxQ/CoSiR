@@ -86,6 +86,11 @@ class CoSiRAutomaticEvaluator:
                 for txt_idx in range(self.n_texts)
             }
 
+        # Project query embeddings (the "other side") so they live in the same
+        # space as combined embeddings during similarity computations.
+        with torch.no_grad():
+            self.query_embs = model.project_other(self.query_embs)
+
         print(f"Evaluator initialized with:")
         print(f"  - {self.n_images} images, {self.n_texts} texts")
         print(f"  - {len(self.conditions)} conditions")

@@ -98,6 +98,13 @@ class CoSiRModel(nn.Module):
             raise ValueError(f"combine_side must be 'txt' or 'img', got '{combine_side}'")
         self.combine_side = combine_side
 
+        # Learnable projection on the "other side" (the side not fed into the combiner).
+        # Identity-initialized so training starts from the same state as without the projection.
+        # Swap for a small MLP + residual when non-linear extension is needed.
+        self.other_proj = nn.Linear(self.feature_dim, self.feature_dim)
+        nn.init.eye_(self.other_proj.weight)
+        nn.init.zeros_(self.other_proj.bias)
+
         self.condition_predictor = ConditionPredictor(
             input_dim=self.feature_dim,
             hidden_dim=d_model,
@@ -158,6 +165,10 @@ class CoSiRModel(nn.Module):
             return_delta=return_delta,
         )
         return result
+
+    def project_other(self, emb: Tensor) -> Tensor:
+        """Project embeddings from the side that is NOT fed into the combiner."""
+        return self.other_proj(emb)
 
     def predict_condition(self, emb: Tensor) -> Tensor:
         """Predict condition embedding from the combine-side embedding.

@@ -32,8 +32,8 @@ python main_cosir.py -m \
   model=clip_base \
   model.num_layers=6 \
   model.embedding_dim=16 \
-  optimizer.lr=1e-4 \
-  optimizer.lr_label=1e-1 \
+  "optimizer.lr=1e-6, 1e-5, 1e-4, 1e-3" \
+  "optimizer.lr_label=1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1" \
   train.epochs=1000 \
   train.normalize=False \
   train.imgtxt_factor=1 \

@@ -500,6 +500,8 @@ def train_cosir(cfg, logger):
                 combine_emb, combine_full = img_features, img_full
                 loss_img_target, loss_txt_ref = txt_features, img_features
 
+            other_emb = model.project_other(loss_img_target)
+
             comb_emb, delta = model.combine(
                 combine_emb,
                 combine_full,
@@ -510,7 +512,7 @@ def train_cosir(cfg, logger):
             )
 
             loss_dict = criteria(
-                loss_img_target,
+                other_emb,
                 loss_txt_ref,
                 comb_emb,
                 None,
@@ -801,6 +803,7 @@ def train_cosir(cfg, logger):
                         "representatives": representatives.cpu(),
                         "combiner_state_dict": model.combiner.state_dict(),
                         "predictor_state_dict": model.condition_predictor.state_dict(),
+                        "other_proj_state_dict": model.other_proj.state_dict(),
                         "combine_side": cfg.model.combine_side,
                         "combiner_config": {
                             "clip_feature_dim": model.feature_dim,
@@ -815,6 +818,9 @@ def train_cosir(cfg, logger):
                             "output_dim": cfg.model.embedding_dim,
                             "num_layers": cfg.model.num_layers,
                             "dropout": cfg.model.dropout,
+                        },
+                        "other_proj_config": {
+                            "feature_dim": model.feature_dim,
                         },
                         # None for non-impressions datasets
                         "train_sample_types": (
@@ -876,6 +882,11 @@ def train_cosir(cfg, logger):
                 _img_ca = all_img_emb.to(device)
                 _img_ca_n = F.normalize(_img_ca, dim=-1)
                 _txt_ca_n = F.normalize(_txt_ca, dim=-1)
+                # projected "other side" for oracle sims; raw tensors above kept for CLIP baseline
+                if cfg.model.combine_side == "txt":
+                    _other_ca_n = F.normalize(model.project_other(_img_ca), dim=-1)
+                else:
+                    _other_ca_n = F.normalize(model.project_other(_txt_ca), dim=-1)
                 _ttimap_ca = text_to_image_map.cpu()          # [N_txt]
                 _ittmap_ca = image_to_text_map.cpu()           # [N_img, cpi]
 
@@ -901,7 +912,7 @@ def train_cosir(cfg, logger):
                                     _txt_ca[_i:_e], None, _cond_ca.expand(_e - _i, -1)
                                 ))
                             _comb_ca = F.normalize(torch.cat(_cl, dim=0), dim=-1)
-                            _sims_ca = (_comb_ca @ _img_ca_n.T).cpu()  # [N_txt, N_img]
+                            _sims_ca = (_comb_ca @ _other_ca_n.T).cpu()  # [N_txt, N_img]
                         else:
                             _cl = []
                             for _i in range(0, _n_ca_img, _bs_ca):
@@ -910,7 +921,7 @@ def train_cosir(cfg, logger):
                                     _img_ca[_i:_e], None, _cond_ca.expand(_e - _i, -1)
                                 ))
                             _comb_ca = F.normalize(torch.cat(_cl, dim=0), dim=-1)
-                            _sims_ca = (_txt_ca_n @ _comb_ca.T).cpu()  # [N_txt, N_img]
+                            _sims_ca = (_other_ca_n @ _comb_ca.T).cpu()  # [N_txt, N_img]
                         del _cl, _comb_ca
                         torch.cuda.empty_cache()
 
@@ -1028,6 +1039,13 @@ def train_cosir(cfg, logger):
                 _img_raw = all_img_emb.to(device)                     # [N_img, D]
                 _fixed_img_n = _img_n[:_nfi]                          # [_nfi, D]
                 _fixed_txt_n = _txt_n[:_nft]                          # [_nft, D]
+                # projected "other side" for model sims; raw _img_n/_txt_n kept for CLIP baseline
+                if cfg.model.combine_side == "txt":
+                    _other_n = F.normalize(model.project_other(_img_raw), dim=-1)
+                    _fixed_other_n = _other_n[:_nfi]
+                else:
+                    _other_n = F.normalize(model.project_other(_txt_raw), dim=-1)
+                    _fixed_other_n = _other_n[:_nft]
 
                 _run_max_i2t = None  # [_nfi, N_txt]
                 _run_max_t2i = None  # [_nft, N_img]
@@ -1035,17 +1053,17 @@ def train_cosir(cfg, logger):
                 for _rep in representatives:
                     _cond = _rep.unsqueeze(0).to(device)
                     if cfg.model.combine_side == "txt":
-                        # Modulate all texts; fixed-img queries gallery of modified texts (i2t),
-                        # and fixed modified-text queries image gallery (t2i).
+                        # Modulate all texts; fixed projected-img queries gallery of modified texts (i2t),
+                        # and fixed modified-text queries projected-img gallery (t2i).
                         _comb_mod = model.combine(_txt_raw, None, _cond.expand(_n_txt, -1))
-                        _sim_i2t = (_fixed_img_n @ _comb_mod.T).cpu()
-                        _sim_t2i = (_comb_mod[:_nft] @ _img_n.T).cpu()
+                        _sim_i2t = (_fixed_other_n @ _comb_mod.T).cpu()
+                        _sim_t2i = (_comb_mod[:_nft] @ _other_n.T).cpu()
                     else:
-                        # Modulate all images; fixed modified-img queries text gallery (i2t),
-                        # and fixed-txt queries gallery of modified images (t2i).
+                        # Modulate all images; fixed modified-img queries projected-txt gallery (i2t),
+                        # and fixed projected-txt queries gallery of modified images (t2i).
                         _comb_mod = model.combine(_img_raw, None, _cond.expand(_n_img, -1))
-                        _sim_i2t = (_comb_mod[:_nfi] @ _txt_n.T).cpu()
-                        _sim_t2i = (_fixed_txt_n @ _comb_mod.T).cpu()
+                        _sim_i2t = (_comb_mod[:_nfi] @ _other_n.T).cpu()
+                        _sim_t2i = (_fixed_other_n @ _comb_mod.T).cpu()
                     _run_max_i2t = (
                         _sim_i2t
                         if _run_max_i2t is None
@@ -1180,6 +1198,7 @@ def train_cosir(cfg, logger):
         data={
             "combiner_state_dict": model.combiner.state_dict(),
             "predictor_state_dict": model.condition_predictor.state_dict(),
+            "other_proj_state_dict": model.other_proj.state_dict(),
             "combine_side": cfg.model.combine_side,
             "combiner_config": {
                 "clip_feature_dim": model.feature_dim,
@@ -1194,6 +1213,9 @@ def train_cosir(cfg, logger):
                 "output_dim": cfg.model.embedding_dim,
                 "num_layers": cfg.model.num_layers,
                 "dropout": cfg.model.dropout,
+            },
+            "other_proj_config": {
+                "feature_dim": model.feature_dim,
             },
         },
         artifact_type="torch",
