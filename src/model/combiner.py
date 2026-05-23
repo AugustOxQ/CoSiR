@@ -226,6 +226,70 @@ class Combiner_basic(nn.Module):
         return F.normalize(output)
 
 
+class OtherProjMLP(nn.Module):
+    """Non-linear other-side projection: stack of residual blocks, identity-initialized.
+
+    Drop-in replacement for the linear ``other_proj`` in CoSiRModel.  Each
+    block applies a 2-layer MLP with a residual skip connection.  Zero-init on
+    the last linear of every block makes the full stack start as the identity
+    map, matching the linear initialisation strategy.
+
+    Args:
+        feature_dim: Input and output dimension (must match backbone feature dim).
+        hidden_dim:  Width of the hidden layer inside each residual block.
+        num_blocks:  Number of residual blocks stacked (default 3).
+    """
+
+    def __init__(
+        self,
+        feature_dim: int = 512,
+        hidden_dim: int = 512,
+        num_blocks: int = 3,
+    ) -> None:
+        super().__init__()
+        self.feature_dim = feature_dim
+        self.hidden_dim = hidden_dim
+        self.num_blocks = num_blocks
+        self.blocks = nn.ModuleList([
+            ResNetBlock(
+                input_dim=feature_dim,
+                hidden_dim=hidden_dim,
+                output_dim=feature_dim,
+                num_layers=2,
+            )
+            for _ in range(num_blocks)
+        ])
+        # Zero-init the last Linear in every block so F(x)=0 → output=skip=x at init
+        for block in self.blocks:
+            last = block.dense_layers[-1]
+            if isinstance(last, nn.Linear):
+                nn.init.zeros_(last.weight)
+                nn.init.zeros_(last.bias)
+
+    def forward(self, x: Tensor) -> Tensor:
+        for block in self.blocks:
+            x = block(x)
+        return x
+
+
+class ConstrainedSigmoid(nn.Module):
+    """Sigmoid constrained to [lo, hi] to prevent gate saturation at extremes.
+
+    Stores the pre-activation logit in ``last_input`` so callers can apply
+    logit-level regularization without a separate forward pass.
+    """
+
+    def __init__(self, lo: float = 0.1, hi: float = 0.9) -> None:
+        super().__init__()
+        self.lo = lo
+        self.hi = hi
+        self.last_input: Optional[Tensor] = None
+
+    def forward(self, x: Tensor) -> Tensor:
+        self.last_input = x  # keep reference into the computation graph
+        return self.lo + (self.hi - self.lo) * torch.sigmoid(x)
+
+
 class Combiner_new(nn.Module):
     """Combiner module which once trained fuses textual and label information."""
 
@@ -247,22 +311,24 @@ class Combiner_new(nn.Module):
         :param num_layers: Number of transformer layers
         """
         super().__init__()
-        
+
         self.label_decoder = GeLUNetGradual(input_dim=label_dim, output_dim=128, num_layers=num_layers, dropout=dropout)
-        
+
         self.general_decoder = GeLUNetGradual(input_dim=clip_feature_dim, output_dim=128, num_layers=num_layers, dropout=dropout)
-        
+
         self.combiner_layer = GeLUNetGradual(input_dim=256, output_dim=512, num_layers=num_layers, dropout=dropout)
-        
+
         self.dynamic_scalar = nn.Sequential(
             nn.Linear(128 * 2, 128),
             nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(128, 1),
-            nn.Sigmoid(),
+            ConstrainedSigmoid(lo=0.1, hi=0.9),
         )
+        # Zero-init the pre-activation linear so gate starts at sigmoid(0)=0.5 → s=0.5
+        nn.init.zeros_(self.dynamic_scalar[-2].weight)
+        nn.init.zeros_(self.dynamic_scalar[-2].bias)
 
-        
         # Larger dynamic scalar means more weight on the combined features
         self.scalar = FixedSizeQueue(10)
 
@@ -278,21 +344,29 @@ class Combiner_new(nn.Module):
         general_full: Optional[Tensor],
         label_features: Tensor,
         return_delta: bool = False,
+        return_scalar: bool = False,
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-        
+
         label_projected_features = self.label_decoder(label_features)
         general_projected_features = self.general_decoder(general_features)
         raw_combined_features = torch.cat((label_projected_features, general_projected_features), dim=-1)
         delta = self.combiner_layer(raw_combined_features)
-        
+
         scalar = self.dynamic_scalar(raw_combined_features)
+        # gate_logit = pre-activation input to ConstrainedSigmoid; used for logit L2 regularization
+        gate_logit = self.dynamic_scalar[-1].last_input
         self.scalar.add(scalar.mean().item())
 
         combined = (1 - scalar) * general_features + scalar * delta
+        out = F.normalize(combined)
 
+        if return_delta and return_scalar:
+            return out, delta, scalar, gate_logit
         if return_delta:
-            return F.normalize(combined), delta
-        return F.normalize(combined)
+            return out, delta
+        if return_scalar:
+            return out, scalar, gate_logit
+        return out
 
 
 class CombinerGated(nn.Module):

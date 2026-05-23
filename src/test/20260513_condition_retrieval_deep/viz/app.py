@@ -20,7 +20,7 @@ Combiner_new = _combiner_mod.Combiner_new
 
 EXPERIMENT_DIR = Path(
     "/project/CoSiR/res/CoSiR_Experiment/impressions"
-    "/20260513_143031_CoSiR_Experiment"
+    "/20260519_195824_CoSiR_Experiment"
 )
 TYPE_NAMES = ["caption", "description", "impression", "aesthetic"]
 TYPE_COLORS = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2"]

@@ -83,6 +83,9 @@ def train_cosir(cfg, logger):
         lambda_boundary=cfg.loss.lambda_boundary,
         lambda_mixup=cfg.loss.lambda_mixup,
         lambda_delta=cfg.loss.lambda_delta,
+        lambda_gate=cfg.loss.lambda_gate,
+        lambda_gate_logit=cfg.loss.lambda_gate_logit,
+        lambda_preserve=cfg.loss.lambda_preserve,
         mixup_alpha=cfg.loss.mixup_alpha,
         return_dict=cfg.loss.return_dict,
     )
@@ -502,13 +505,14 @@ def train_cosir(cfg, logger):
 
             other_emb = model.project_other(loss_img_target)
 
-            comb_emb, delta = model.combine(
+            comb_emb, delta, gate_scalar, gate_logit = model.combine(
                 combine_emb,
                 combine_full,
                 label_embeddings,
                 epoch=epoch,
                 return_label_proj=False,
                 return_delta=True,
+                return_scalar=True,
             )
 
             loss_dict = criteria(
@@ -519,6 +523,8 @@ def train_cosir(cfg, logger):
                 label_embeddings,
                 model,
                 delta=delta,
+                scalar=gate_scalar,
+                gate_logit=gate_logit,
             )
 
             if batch_idx % 100 == 0:
@@ -821,6 +827,9 @@ def train_cosir(cfg, logger):
                         },
                         "other_proj_config": {
                             "feature_dim": model.feature_dim,
+                            "type": type(model.other_proj).__name__,
+                            "hidden_dim": getattr(model.other_proj, "hidden_dim", model.feature_dim),
+                            "num_blocks": getattr(model.other_proj, "num_blocks", 3),
                         },
                         # None for non-impressions datasets
                         "train_sample_types": (
@@ -1216,6 +1225,9 @@ def train_cosir(cfg, logger):
             },
             "other_proj_config": {
                 "feature_dim": model.feature_dim,
+                "type": type(model.other_proj).__name__,
+                "hidden_dim": getattr(model.other_proj, "hidden_dim", model.feature_dim),
+                "num_blocks": getattr(model.other_proj, "num_blocks", 3),
             },
         },
         artifact_type="torch",

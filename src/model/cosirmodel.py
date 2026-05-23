@@ -101,9 +101,10 @@ class CoSiRModel(nn.Module):
         # Learnable projection on the "other side" (the side not fed into the combiner).
         # Identity-initialized so training starts from the same state as without the projection.
         # Swap for a small MLP + residual when non-linear extension is needed.
-        self.other_proj = nn.Linear(self.feature_dim, self.feature_dim)
-        nn.init.eye_(self.other_proj.weight)
-        nn.init.zeros_(self.other_proj.bias)
+        # self.other_proj = nn.Linear(self.feature_dim, self.feature_dim)
+        # nn.init.eye_(self.other_proj.weight)
+        # nn.init.zeros_(self.other_proj.bias)
+        self.other_proj = OtherProjMLP(feature_dim=self.feature_dim, hidden_dim=d_model, num_blocks=3)
 
         self.condition_predictor = ConditionPredictor(
             input_dim=self.feature_dim,
@@ -150,12 +151,16 @@ class CoSiRModel(nn.Module):
 
         return img_emb, txt_emb, img_full, txt_full
 
-    def combine(self, emb, emb_full, labels, epoch=None, return_label_proj=False, return_delta=False):
+    def combine(self, emb, emb_full, labels, epoch=None, return_label_proj=False, return_delta=False, return_scalar=False):
         """Combine modality embedding with label embeddings.
 
         ``emb`` must be from the side specified by ``self.combine_side``
         (txt embedding when combine_side='txt', img embedding when combine_side='img').
         ``emb_full`` is the full sequence tensor for that side; pass None or zeros if unavailable.
+
+        When return_delta=True and return_scalar=True the return is
+        ``(out, delta, scalar, gate_logit)``; gate_logit is the pre-sigmoid
+        logit from ConstrainedSigmoid, used for logit-level L2 regularization.
         """
         lbl_emb = self.label_encoder(labels)  # (batch_size, D)
         result = self.combiner(
@@ -163,6 +168,7 @@ class CoSiRModel(nn.Module):
             emb_full,
             lbl_emb,
             return_delta=return_delta,
+            return_scalar=return_scalar,
         )
         return result
 

@@ -237,6 +237,10 @@ class LabelContrastiveLoss_enhance(nn.Module):
         lambda_mixup: float = 0.0,  # imix loss weight
         mixup_alpha: float = 1.0,
         lambda_delta: float = 0.0,  # delta norm penalty weight
+        lambda_gate: float = 0.0,   # gate entropy maximization weight
+        lambda_gate_logit: float = 0.0,  # L2 penalty on raw gate logit (prevents sigmoid saturation)
+        lambda_preserve: float = 0.0,  # input preservation weight
+        preserve_tau: float = 0.3,  # max allowed deviation from input (in L2 of unit vectors)
         return_dict: bool = False,
     ) -> None:
         super().__init__()
@@ -249,6 +253,10 @@ class LabelContrastiveLoss_enhance(nn.Module):
         self.lambda_mixup = lambda_mixup
         self.mixup_alpha = mixup_alpha
         self.lambda_delta = lambda_delta
+        self.lambda_gate = lambda_gate
+        self.lambda_gate_logit = lambda_gate_logit
+        self.lambda_preserve = lambda_preserve
+        self.preserve_tau = preserve_tau
         self.temperature = 0.07
         self.return_dict = return_dict
 
@@ -261,6 +269,8 @@ class LabelContrastiveLoss_enhance(nn.Module):
         label_embedding: Tensor,  # type: ignore
         model: nn.Module,
         delta: Optional[Tensor] = None,
+        scalar: Optional[Tensor] = None,
+        gate_logit: Optional[Tensor] = None,
     ):
         # Compute pairwise cosine similarity matrix [N, N] for InfoNCE loss
 
@@ -336,6 +346,33 @@ class LabelContrastiveLoss_enhance(nn.Module):
             else 0.0
         )
 
+        # Maximize gate entropy: penalize scalar near 0 or 1 → encourages adaptive gating
+        gate_entropy_loss = (
+            -(scalar * torch.log(scalar + 1e-8) + (1 - scalar) * torch.log(1 - scalar + 1e-8)).mean()
+            if self.lambda_gate > 0 and scalar is not None
+            else 0.0
+        )
+
+        # Preserve: penalise combined output that deviates far from combine-side input.
+        # Both combined_features and the reference must be on the unit sphere for the
+        # tau threshold to be meaningful (tau=0.3 ≈ ~17° angular deviation).
+        preserve_loss = (
+            F.relu(
+                (combined_features - F.normalize(text_features, dim=-1)).norm(dim=-1) - self.preserve_tau
+            ).pow(2).mean()
+            if self.lambda_preserve > 0
+            else 0.0
+        )
+
+        # L2 on the raw gate logit (pre-sigmoid).  Gradient = 2*logit, which grows
+        # with logit magnitude — provides a counter-force that doesn't vanish through
+        # the sigmoid, preventing the gate logit from saturating at ±∞.
+        gate_logit_loss = (
+            gate_logit.pow(2).mean()
+            if self.lambda_gate_logit > 0 and gate_logit is not None
+            else 0.0
+        )
+
         total_loss = (
             self.lambda_pos * loss_improve
             + self.lambda_laplacian * laplacian_loss
@@ -343,6 +380,9 @@ class LabelContrastiveLoss_enhance(nn.Module):
             + self.lambda_boundary * boundary_loss
             + self.lambda_mixup * mixup_loss
             + self.lambda_delta * delta_loss
+            - self.lambda_gate * gate_entropy_loss  # subtract to maximise entropy
+            + self.lambda_preserve * preserve_loss
+            + self.lambda_gate_logit * gate_logit_loss
         )
 
         with torch.no_grad():
@@ -361,6 +401,9 @@ class LabelContrastiveLoss_enhance(nn.Module):
             "loss_boundary": boundary_loss,
             "loss_mixup": mixup_loss,
             "loss_delta": delta_loss,
+            "loss_gate_entropy": gate_entropy_loss,
+            "loss_gate_logit": gate_logit_loss,
+            "loss_preserve": preserve_loss,
             "diag_sim_gap": diag_sim_gap,
             "off_diag_sim_gap": off_diag_sim_gap,
             "total_sim_gap": total_sim_gap,
