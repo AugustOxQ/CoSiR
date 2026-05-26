@@ -1,0 +1,17 @@
+program: scripts/run_sweep_agent.py
+method: grid
+metric:
+  name: test_oracle/t2i_R1
+  goal: maximize
+  summary: max  # rank runs by their best epoch, not last epoch
+# Kill the bottom 50% of runs once enough data is available.
+early_terminate:
+  type: hyperband
+  min_iter: 3      # don't kill before 3 evaluations (epoch 300 with interval=100)
+  eta: 2           # halving rate
+
+parameters:
+  lr:
+    values: [1.0e-4, 1.0e-3]
+  lr_label:
+    values: [1.0e-5, 1.0e-4]

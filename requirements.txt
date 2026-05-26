@@ -9,6 +9,7 @@ torchmetrics
 transformers
 huggingface_hub
 accelerate
+peft
 
 # --------- ML --------- #
 scipy

@@ -1,5 +1,14 @@
+"""
+CoSiR phase-1 training loop.
+
+Entry point: train_cosir(cfg, logger)
+Private helpers (prefix _) own each setup phase so the main loop stays readable.
+To add a new setup phase, write a new _<phase> function and call it from train_cosir().
+"""
 import time
 import os
+import pathlib
+import json
 import torch
 import torch.nn.functional as F
 import random
@@ -39,17 +48,13 @@ from src.utils import (
 from src.metrics import LabelContrastiveLoss_enhance
 
 
-def train_cosir(cfg, logger):
-    seed = cfg.seed
-    random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
-    device = cfg.device if torch.cuda.is_available() else "cpu"
+# ─── Setup helpers ──────────────────────────────────────────────────────────
+# Each helper owns exactly one setup concern and returns only what its caller needs.
+# To add a new setup phase, define a new _<phase> function and call it from train_cosir().
 
-    storage_dir = cfg.featuremanager.storage_dir
 
+def _setup_model_and_criteria(cfg, device):
+    """Return (EvaluationConfig, CoSiRModel, CLIP processor, loss criteria)."""
     evaluation_config = EvaluationConfig(
         device=device,
         k_vals=cfg.eval.k_vals,
@@ -60,7 +65,6 @@ def train_cosir(cfg, logger):
         ),
     )
 
-    # Initialize model
     print("Initializing model")
     model = CoSiRModel(
         backbone_model=cfg.model.clip_model,
@@ -73,8 +77,7 @@ def train_cosir(cfg, logger):
     ).to(device)
     processor = AutoProcessor.from_pretrained(cfg.model.clip_model, use_fast=False)
 
-    # Setup criteria and optimizer and scheduler
-    print("Initializing criteria and optimizer and scheduler")
+    print("Initializing criteria")
     criteria = LabelContrastiveLoss_enhance(
         margin=cfg.loss.margin,
         lambda_contrastive=cfg.loss.lambda_contrastive,
@@ -89,123 +92,127 @@ def train_cosir(cfg, logger):
         mixup_alpha=cfg.loss.mixup_alpha,
         return_dict=cfg.loss.return_dict,
     )
+    return evaluation_config, model, processor, criteria
 
-    # Check either load existing sample ids
+
+def _extract_or_load_features(cfg, model, processor, device):
+    """Load cached CLIP features from disk, or extract and cache them from the dataset.
+
+    Returns (FeatureManager, sample_ids_list).
+    """
+    storage_dir = cfg.featuremanager.storage_dir
+    feature_manager = FeatureManager(
+        storage_dir,
+        shard_size=cfg.featuremanager.shard_size,
+        hdf5_compression=cfg.featuremanager.hdf5_compression,
+        hdf5_compression_level=cfg.featuremanager.hdf5_compression_level,
+    )
+
     metadata_path = os.path.join(storage_dir, "metadata.json")
     if os.path.exists(metadata_path) and cfg.train.load_existing_features:
         print("Loading existing feature store")
-        feature_manager = FeatureManager(
-            storage_dir,
-            shard_size=cfg.featuremanager.shard_size,
-            hdf5_compression=cfg.featuremanager.hdf5_compression,
-            hdf5_compression_level=cfg.featuremanager.hdf5_compression_level,
-        )
         feature_manager.validate_backbone(cfg.model.clip_model)
         sample_ids_list = feature_manager.get_all_sample_ids()
         print(f"Loaded {len(sample_ids_list):,} sample ids from existing store")
+        return feature_manager, sample_ids_list
+
+    print("Extracting features")
+    if "conceptual" in cfg.data.dataset_type:
+        preextractfeatureclass = FeatureExtractionConceptualDataset
     else:
-        print("Extracting features")
-        feature_manager = FeatureManager(
-            storage_dir,
-            shard_size=cfg.featuremanager.shard_size,
-            hdf5_compression=cfg.featuremanager.hdf5_compression,
-            hdf5_compression_level=cfg.featuremanager.hdf5_compression_level,
-        )
+        preextractfeatureclass = FeatureExtractionDataset
 
-        # Build extraction dataset
-        if "conceptual" in cfg.data.dataset_type:
-            preextractfeatureclass = FeatureExtractionConceptualDataset
-        else:
-            preextractfeatureclass = FeatureExtractionDataset
+    pre_extraction_dataset = preextractfeatureclass(
+        annotation_path=cfg.data.train_annotation_path,
+        image_path=cfg.data.train_image_path,
+        processor=processor,
+        ratio=1,
+    )
 
-        pre_extraction_dataset = preextractfeatureclass(
-            annotation_path=cfg.data.train_annotation_path,
-            image_path=cfg.data.train_image_path,
-            processor=processor,
-            ratio=1,
-        )
+    # Probe first batch to determine feature dimensions
+    print("Probing feature dimensions…")
+    _probe_loader = DataLoader(
+        pre_extraction_dataset, batch_size=2, shuffle=False, num_workers=0
+    )
+    _img_in, _txt_in, _ = next(iter(_probe_loader))
+    _img_in = _img_in.to(device)
+    _txt_in = {k: v.to(device) for k, v in _txt_in.items()}
+    with torch.no_grad():
+        _img_e, _txt_e, _img_f, _txt_f = model.encode_img_txt(_img_in, _txt_in)
+    feature_dims = {
+        "img_features": tuple(_img_e.shape[1:]),
+        "txt_features": tuple(_txt_e.shape[1:]),
+    }
+    if cfg.featuremanager.store_img_full:
+        feature_dims["img_full"] = tuple(_img_f.shape[1:])
+    if cfg.featuremanager.store_txt_full:
+        feature_dims["txt_full"] = tuple(_txt_f.shape[1:])
+    print(f"Feature dims: {feature_dims}")
+    del _img_in, _txt_in, _img_e, _txt_e, _img_f, _txt_f, _probe_loader
 
-        # Probe first batch to determine feature dimensions
-        print("Probing feature dimensions…")
-        _probe_loader = DataLoader(
-            pre_extraction_dataset, batch_size=2, shuffle=False, num_workers=0
-        )
-        _img_in, _txt_in, _ = next(iter(_probe_loader))
-        _img_in = _img_in.to(device)
-        _txt_in = {k: v.to(device) for k, v in _txt_in.items()}
-        with torch.no_grad():
-            _img_e, _txt_e, _img_f, _txt_f = model.encode_img_txt(_img_in, _txt_in)
-        feature_dims = {
-            "img_features": tuple(_img_e.shape[1:]),
-            "txt_features": tuple(_txt_e.shape[1:]),
-        }
-        if cfg.featuremanager.store_img_full:
-            feature_dims["img_full"] = tuple(_img_f.shape[1:])
-        if cfg.featuremanager.store_txt_full:
-            feature_dims["txt_full"] = tuple(_txt_f.shape[1:])
-        print(f"Feature dims: {feature_dims}")
-        del _img_in, _txt_in, _img_e, _txt_e, _img_f, _txt_f, _probe_loader
+    feature_manager.open_for_writing(
+        len(pre_extraction_dataset),
+        feature_dims,
+        backbone_model=cfg.model.clip_model,
+    )
 
-        feature_manager.open_for_writing(
-            len(pre_extraction_dataset),
-            feature_dims,
-            backbone_model=cfg.model.clip_model,
-        )
+    pre_extraction_dataloader = DataLoader(
+        pre_extraction_dataset,
+        batch_size=cfg.featuremanager.extraction_batch_size,
+        shuffle=True,
+        num_workers=cfg.train.num_workers,
+    )
 
-        pre_extraction_dataloader = DataLoader(
-            pre_extraction_dataset,
-            batch_size=cfg.featuremanager.extraction_batch_size,
-            shuffle=True,
-            num_workers=cfg.train.num_workers,
-        )
+    with torch.no_grad():
+        for batch in tqdm(pre_extraction_dataloader, desc="Extracting features"):
+            image_inputs, text_inputs, sample_ids = batch
+            sample_ids = [int(s) for s in sample_ids]
+            image_inputs = image_inputs.to(device)
+            text_inputs = {k: v.to(device) for k, v in text_inputs.items()}
 
-        with torch.no_grad():
-            for batch in tqdm(pre_extraction_dataloader, desc="Extracting features"):
-                image_inputs, text_inputs, sample_ids = batch
-                sample_ids = [int(s) for s in sample_ids]
-                image_inputs = image_inputs.to(device)
-                text_inputs = {k: v.to(device) for k, v in text_inputs.items()}
+            img_e, txt_e, img_f, txt_f = model.encode_img_txt(image_inputs, text_inputs)
+            feature_manager.write_batch(
+                img_e,
+                txt_e,
+                sample_ids,
+                img_full=img_f if cfg.featuremanager.store_img_full else None,
+                txt_full=txt_f if cfg.featuremanager.store_txt_full else None,
+            )
+            # Release fragmented reserved-but-unallocated GPU memory each batch.
+            # Especially important for large-patch models (SigLIP, CLIP-L/14).
+            torch.cuda.empty_cache()
 
-                img_e, txt_e, img_f, txt_f = model.encode_img_txt(
-                    image_inputs, text_inputs
-                )
+    feature_manager.finalize_writing()
+    sample_ids_list = feature_manager.get_all_sample_ids()
+    return feature_manager, sample_ids_list
 
-                feature_manager.write_batch(
-                    img_e,
-                    txt_e,
-                    sample_ids,
-                    img_full=img_f if cfg.featuremanager.store_img_full else None,
-                    txt_full=txt_f if cfg.featuremanager.store_txt_full else None,
-                )
 
-                # Release fragmented reserved-but-unallocated GPU memory each batch.
-                # Especially important for large-patch models (SigLIP, CLIP-L/14).
-                torch.cuda.empty_cache()
+def _setup_experiment(cfg, evaluation_config, device, logger):
+    """Create experiment directory, test evaluator, and UMAP projector.
 
-        feature_manager.finalize_writing()
-        sample_ids_list = feature_manager.get_all_sample_ids()
-
-    # Initialize folder manager
+    Returns (ExperimentContext, EvaluationManager, UMAP_vis).
+    """
     exp_manager = ExperimentManager(cfg.experiment.results_dir)
-
-    # Create comprehensive experiment
     experiment = exp_manager.create_experiment(
         name=cfg.experiment.name,
         config=cfg,
         tags=cfg.experiment.tags,
         description=cfg.experiment.description,
     )
-
     print(f"Created experiment: {experiment.name}")
     print(f"Experiment directory: {experiment.directory}")
 
-    # Initialize evaluator
     evaluator = EvaluationManager(evaluation_config)
-
     umap_vis = UMAP_vis(device=device)
+    return experiment, evaluator, umap_vis
 
-    # ========== OPTIMIZED: TrainableEmbeddingManager with Intelligent Caching ==========
 
+def _init_embedding_manager(cfg, device, sample_ids_list, experiment, feature_manager, model):
+    """Initialize TrainableEmbeddingManager and run the configured initialization strategy.
+
+    Tries to reuse a cached template; falls back to fresh initialization.
+    Returns the initialized embedding_manager.
+    """
     embedding_manager = TrainableEmbeddingManager(
         sample_ids=sample_ids_list,
         embedding_dim=cfg.model.embedding_dim,
@@ -221,82 +228,67 @@ def train_cosir(cfg, logger):
         chunk_size=cfg.embeddingmanager.embedding_chunk_size,
     )
 
-    # ========== Template Embedding Initialization ==========
-    if (
-        cfg.train.initialization_strategy == "imgtxt"
-        or cfg.train.initialization_strategy == "txt"
-        or cfg.train.initialization_strategy == "img"
-    ):
-        # Determine template directory (one level up from directory, two levels up from embeddings_dir)
-        template_dir = experiment.directory.parent / "template_embeddings"
-        template_exists = template_dir.exists() and (
-            template_dir / "embeddings.npy"
-        ).exists()
+    strategy = cfg.train.initialization_strategy
+    if strategy not in ("imgtxt", "txt", "img"):
+        return embedding_manager
 
-        _need_initialize = True
-        _need_save_template = getattr(cfg.train, "save_as_template_embeddings", True)
+    template_dir = experiment.directory.parent / "template_embeddings"
+    template_exists = template_dir.exists() and (template_dir / "embeddings.npy").exists()
 
-        if template_exists and getattr(cfg.train, "use_template_embeddings", True):
-            print("Attempting to load from template embeddings...")
-            try:
-                embedding_manager.load_imgtxt_template(
-                    strategy=cfg.train.initialization_strategy,
-                    factor=cfg.train.imgtxt_factor,
-                    normalize=cfg.train.normalize,
-                )
-                _need_initialize = False
-                _need_save_template = False
-            except TemplateIncompatibleError as e:
-                print(f"Template config mismatch: {e}")
-                print("Re-initializing and overwriting template with current config...")
-            except Exception as e:
-                print(f"Failed to load template: {e}")
-                print("Falling back to initialization (template will not be overwritten)...")
-                _need_save_template = False
+    _need_initialize = True
+    _need_save_template = getattr(cfg.train, "save_as_template_embeddings", True)
 
-        if _need_initialize:
-            if cfg.train.initialization_strategy == "imgtxt":
-                print("Initializing embeddings with imgtxt strategy...")
-                embedding_manager.initialize_embeddings_imgtxt(
-                    feature_manager,
-                    model,
-                    device,
-                    factor=cfg.train.imgtxt_factor,
-                    normalize=cfg.train.normalize,
-                )
-            elif cfg.train.initialization_strategy == "txt":
-                print("Initializing embeddings with txt strategy...")
-                embedding_manager.initialize_embeddings_txt(
-                    feature_manager,
-                    model,
-                    device,
-                    factor=cfg.train.imgtxt_factor,
-                    normalize=cfg.train.normalize,
-                )
-            elif cfg.train.initialization_strategy == "img":
-                print("Initializing embeddings with img strategy...")
-                embedding_manager.initialize_embeddings_img(
-                    feature_manager,
-                    model,
-                    device,
-                    factor=cfg.train.imgtxt_factor,
-                    normalize=cfg.train.normalize,
-                )
-            else:
-                raise ValueError(
-                    f"Unknown initialization strategy: {cfg.train.initialization_strategy}"
-                )
+    if template_exists and getattr(cfg.train, "use_template_embeddings", True):
+        print("Attempting to load from template embeddings...")
+        try:
+            embedding_manager.load_imgtxt_template(
+                strategy=strategy,
+                factor=cfg.train.imgtxt_factor,
+                normalize=cfg.train.normalize,
+            )
+            _need_initialize = False
+            _need_save_template = False
+        except TemplateIncompatibleError as e:
+            print(f"Template config mismatch: {e}")
+            print("Re-initializing and overwriting template with current config...")
+        except Exception as e:
+            print(f"Failed to load template: {e}")
+            print("Falling back to initialization (template will not be overwritten)...")
+            _need_save_template = False
 
-            if _need_save_template:
-                print("Storing embeddings as template for future use...")
-                embedding_manager.store_imgtxt_template(
-                    strategy=cfg.train.initialization_strategy,
-                    factor=cfg.train.imgtxt_factor,
-                    normalize=cfg.train.normalize,
-                )
+    if _need_initialize:
+        _init_fn_map = {
+            "imgtxt": embedding_manager.initialize_embeddings_imgtxt,
+            "txt": embedding_manager.initialize_embeddings_txt,
+            "img": embedding_manager.initialize_embeddings_img,
+        }
+        print(f"Initializing embeddings with {strategy} strategy...")
+        _init_fn_map[strategy](
+            feature_manager,
+            model,
+            device,
+            factor=cfg.train.imgtxt_factor,
+            normalize=cfg.train.normalize,
+        )
 
-    # ── Optimizer + Scheduler (created after initialization so embedding_manager.embeddings
-    #    points to the final nn.Parameter, not the one replaced during template loading) ──
+        if _need_save_template:
+            print("Storing embeddings as template for future use...")
+            embedding_manager.store_imgtxt_template(
+                strategy=strategy,
+                factor=cfg.train.imgtxt_factor,
+                normalize=cfg.train.normalize,
+            )
+
+    return embedding_manager
+
+
+def _build_optimizer_and_scheduler(cfg, model, embedding_manager):
+    """Return (optimizer, scheduler) built after embedding initialization.
+
+    Must be called after _init_embedding_manager so embedding_manager.embeddings
+    is the final nn.Parameter (template loading may replace it).
+    """
+    print("Initializing optimizer and scheduler")
     optimizer = torch.optim.AdamW(
         [
             {
@@ -357,10 +349,17 @@ def train_cosir(cfg, logger):
     else:
         raise ValueError(f"Unknown scheduler type: {cfg.scheduler.type}")
 
-    # ── Training dataset: auto-select RAM vs streaming based on available memory ──
-    feature_types = (
-        feature_manager.available_features
-    )  # e.g. ['img_features','txt_features']
+    return optimizer, scheduler
+
+
+def _build_dataloaders(cfg, feature_manager, processor, sample_ids_list):
+    """Build train and test DataLoaders; also return per-sample type array (Impressions only).
+
+    Returns (train_set, train_loader, test_set, test_loader, sample_types).
+    sample_types is a numpy int array for Impressions, otherwise an empty list.
+    """
+    feature_types = feature_manager.available_features  # e.g. ['img_features','txt_features']
+
     if feature_manager.fits_in_ram():
         print(
             f"RAM mode: loading {feature_manager.cls_features_size_gb():.1f} GiB of "
@@ -398,7 +397,6 @@ def train_cosir(cfg, logger):
         processor=processor,
         ratio=1.0,
     )
-
     test_loader = DataLoader(
         test_set,
         batch_size=cfg.train.batch_size,
@@ -407,22 +405,13 @@ def train_cosir(cfg, logger):
     )
 
     sample_types = []
-    # Load sample types:
     if cfg.data.dataset_type == "impressions":
         print("Loading sample types for Impressions dataset")
-        import json
-
-        train_file_path = cfg.data.train_annotation_path
-        train_file = json.load(open(train_file_path))
-
-        # reorder the train_file based on the sample_ids_list
+        train_file = json.load(open(cfg.data.train_annotation_path))
         train_file = [train_file[i] for i in sample_ids_list]
-
-        # Collect sample types
-        # sample_types = []
+        _type_map = {"caption": 0, "description": 1, "impression": 2, "aesthetic": 3}
         for item in train_file:
             type_str = item["caption_type"]
-
             if "caption" in type_str:
                 type_int = 0
             elif "description" in type_str:
@@ -433,766 +422,607 @@ def train_cosir(cfg, logger):
                 type_int = 3
             else:
                 raise ValueError(f"Unknown caption type: {type_str}")
-
             sample_types.append(type_int)
-
         sample_types = np.array(sample_types)
 
-    global_step = 0
+    return train_set, train_loader, test_set, test_loader, sample_types
 
-    # Warm-up auto-end tracking
-    automatic_warm_up_end = False
-    warm_up_loss_history: list[float] = []
-    in_warmup = (
-        True if cfg.train.warm_up_epochs > 0 else False
-    )  # single flag; transitions to False exactly once
 
-    for epoch in range(cfg.train.epochs):
-        experiment.current_epoch = epoch
+# ─── Evaluation snapshot helpers ────────────────────────────────────────────
+# These are called from _eval_snapshot once per evaluation epoch.
+# Each handles one distinct artifact type and can be extended independently.
 
-        model.train()
-        epoch_loss = 0.0
-        num_batches = 0
 
-        # Transition out of warm-up: hard limit (if > 0) OR automatic plateau trigger
-        # warm_up_epochs=0 means no hard limit — rely solely on automatic detection
-        scheduled_end = (
-            cfg.train.warm_up_epochs > 0 and epoch >= cfg.train.warm_up_epochs
+def _save_condition_viz_snapshot(
+    cfg,
+    epoch,
+    experiment,
+    model,
+    all_img_emb,
+    all_txt_emb,
+    all_raw_text,
+    image_to_text_map,
+    text_to_image_map,
+    test_set,
+    label_embeddings_all,
+    representatives,
+    sample_types,
+):
+    """Save per-epoch condition viz data for the interactive analysis notebooks."""
+    print("Saving condition visualization snapshot...")
+    cond_viz_dir = experiment.directory / "condition_viz"
+    cond_viz_dir.mkdir(parents=True, exist_ok=True)
+
+    # Fixed embeddings saved once — backbone is frozen so these never change
+    fixed_path = cond_viz_dir / "fixed_data.pt"
+    if not fixed_path.exists():
+        image_paths = [
+            os.path.join(test_set.image_path, test_set.annotations[i]["image"])
+            for i in range(all_img_emb.shape[0])
+        ]
+        _test_caption_types = None
+        if cfg.data.dataset_type == "impressions":
+            _type_map = {"caption": 0, "description": 1, "impression": 2, "aesthetic": 3}
+            _flat = []
+            for _i in range(all_img_emb.shape[0]):
+                for _t in test_set.annotations[_i]["caption_type"]:
+                    _flat.append(_type_map[_t])
+            _test_caption_types = torch.tensor(_flat, dtype=torch.long)
+        torch.save(
+            {
+                "all_img_emb": all_img_emb.cpu(),
+                "all_txt_emb": all_txt_emb.cpu(),
+                "all_raw_text": all_raw_text,
+                "image_paths": image_paths,
+                "image_to_text_map": image_to_text_map.cpu(),
+                "text_to_image_map": text_to_image_map.cpu(),
+                "captions_per_image": test_set.captions_per_image,
+                "test_caption_types": _test_caption_types,
+            },
+            fixed_path,
         )
-        if in_warmup and (scheduled_end or automatic_warm_up_end):
-            in_warmup = False
-            reason = "scheduled" if scheduled_end else "auto (plateau)"
-            print(
-                f"[WarmUp] Warm-up ended at epoch {epoch} ({reason}) — freezing combiner, starting embedding updates"
-            )
-            for param in model.combiner.parameters():
-                param.requires_grad = False
+        print(f"  Saved condition viz fixed data → {fixed_path}")
 
-        # Track epoch start time for performance monitoring
-        epoch_start_time = time.time()
+    # Per-epoch: conditions + model weights (replace on each call)
+    epoch_path = cond_viz_dir / f"epoch_{epoch:04d}.pt"
+    torch.save(
+        {
+            "epoch": epoch,
+            "label_embeddings_all": label_embeddings_all.cpu(),
+            "representatives": representatives.cpu(),
+            "combiner_state_dict": model.combiner.state_dict(),
+            "predictor_state_dict": model.condition_predictor.state_dict(),
+            "other_proj_state_dict": model.other_proj.state_dict(),
+            "combine_side": cfg.model.combine_side,
+            "combiner_config": {
+                "clip_feature_dim": model.feature_dim,
+                "projection_dim": model.feature_dim,
+                "label_dim": cfg.model.embedding_dim,
+                "num_layers": cfg.model.num_layers,
+                "dropout": cfg.model.dropout,
+            },
+            "predictor_config": {
+                "input_dim": model.feature_dim,
+                "hidden_dim": cfg.model.hidden_dim,
+                "output_dim": cfg.model.embedding_dim,
+                "num_layers": cfg.model.num_layers,
+                "dropout": cfg.model.dropout,
+            },
+            "other_proj_config": {
+                "feature_dim": model.feature_dim,
+                "type": type(model.other_proj).__name__,
+                "hidden_dim": getattr(model.other_proj, "hidden_dim", model.feature_dim),
+                "num_blocks": getattr(model.other_proj, "num_blocks", 3),
+            },
+            "train_sample_types": (
+                torch.tensor(sample_types, dtype=torch.long) if len(sample_types) > 0 else None
+            ),
+        },
+        epoch_path,
+    )
+    print(f"  Saved condition viz epoch snapshot → {epoch_path}")
 
-        if isinstance(train_set, CoSiRShardStreamDataset):
-            train_set.set_epoch(epoch)
 
-        for batch_idx, batch in enumerate(tqdm(train_loader)):
-            img_features = batch["img_features"].to(device, non_blocking=True)
-            txt_features = batch["txt_features"].to(device, non_blocking=True)
-            if "txt_full" in batch:
-                txt_full = batch["txt_full"].to(device, non_blocking=True)
-            else:
-                txt_full = torch.zeros_like(txt_features)
-            if "img_full" in batch:
-                img_full = batch["img_full"].to(device, non_blocking=True)
-            else:
-                img_full = torch.zeros_like(img_features)
-            batch_sample_ids = batch["sample_ids"].tolist()
+def _save_condition_analysis_cache(
+    cfg,
+    epoch,
+    experiment,
+    model,
+    all_img_emb,
+    all_txt_emb,
+    text_to_image_map,
+    image_to_text_map,
+    representatives,
+    device,
+):
+    """Compute and save per-representative GT ranks and top-K for the full test set.
 
-            # Differentiable slice — gradients flow back to embedding_manager.embeddings
-            batch_indices = [
-                embedding_manager.id_to_index[sid] for sid in batch_sample_ids
-            ]
-            label_embeddings_before = embedding_manager.embeddings.data[
-                batch_indices
-            ].clone()
-            label_embeddings = embedding_manager.embeddings[batch_indices]
+    Used by the deep retrieval analysis notebooks.
+    """
+    print("Saving condition analysis cache...")
+    ca_dir = experiment.directory / "condition_analysis"
+    ca_dir.mkdir(parents=True, exist_ok=True)
+    CA_TOPK = 10
 
+    n_txt = all_txt_emb.shape[0]
+    n_img = all_img_emb.shape[0]
+    K = len(representatives)
+    bs = max(cfg.train.batch_size, 256)
+
+    txt_t = all_txt_emb.to(device)
+    img_t = all_img_emb.to(device)
+    img_n = F.normalize(img_t, dim=-1)
+    txt_n = F.normalize(txt_t, dim=-1)
+    # Projected "other side" for oracle sims; raw tensors kept for CLIP baseline
+    if cfg.model.combine_side == "txt":
+        other_n = F.normalize(model.project_other(img_t), dim=-1)
+    else:
+        other_n = F.normalize(model.project_other(txt_t), dim=-1)
+    ttimap = text_to_image_map.cpu()   # [N_txt]
+    ittmap = image_to_text_map.cpu()   # [N_img, cpi]
+
+    per_rep_gt_rank = torch.zeros(K, n_txt, dtype=torch.long)
+    per_rep_topk_idx = torch.zeros(K, n_txt, CA_TOPK, dtype=torch.long)
+    per_rep_topk_scores = torch.zeros(K, n_txt, CA_TOPK)
+    per_rep_i2t_gt_rank = torch.zeros(K, n_img, dtype=torch.long)
+    per_rep_i2t_topk_idx = torch.zeros(K, n_img, CA_TOPK, dtype=torch.long)
+    per_rep_i2t_topk_scores = torch.zeros(K, n_img, CA_TOPK)
+    run_mean: Optional[torch.Tensor] = None
+    run_max: Optional[torch.Tensor] = None
+    i2t_run_mean: Optional[torch.Tensor] = None
+    i2t_run_max: Optional[torch.Tensor] = None
+
+    with torch.no_grad():
+        for ri in range(K):
+            cond = representatives[ri].unsqueeze(0).to(device)
             if cfg.model.combine_side == "txt":
-                combine_emb, combine_full = txt_features, txt_full
-                loss_img_target, loss_txt_ref = img_features, txt_features
+                chunks = []
+                for i in range(0, n_txt, bs):
+                    e = min(i + bs, n_txt)
+                    chunks.append(model.combine(txt_t[i:e], None, cond.expand(e - i, -1)))
+                comb = F.normalize(torch.cat(chunks, dim=0), dim=-1)
+                sims = (comb @ other_n.T).cpu()            # [N_txt, N_img]
             else:
-                combine_emb, combine_full = img_features, img_full
-                loss_img_target, loss_txt_ref = txt_features, img_features
+                chunks = []
+                for i in range(0, n_img, bs):
+                    e = min(i + bs, n_img)
+                    chunks.append(model.combine(img_t[i:e], None, cond.expand(e - i, -1)))
+                comb = F.normalize(torch.cat(chunks, dim=0), dim=-1)
+                sims = (other_n @ comb.T).cpu()            # [N_txt, N_img]
+            del chunks, comb
+            torch.cuda.empty_cache()
 
-            other_emb = model.project_other(loss_img_target)
+            # T2I: each text finds its GT image
+            gt_s = sims[torch.arange(n_txt), ttimap]
+            per_rep_gt_rank[ri] = (sims >= gt_s.unsqueeze(1)).sum(dim=1).long() - 1
+            tk = torch.topk(sims, k=CA_TOPK, dim=1)
+            per_rep_topk_idx[ri] = tk.indices
+            per_rep_topk_scores[ri] = tk.values
 
-            comb_emb, delta, gate_scalar, gate_logit = model.combine(
-                combine_emb,
-                combine_full,
-                label_embeddings,
-                epoch=epoch,
-                return_label_proj=False,
-                return_delta=True,
-                return_scalar=True,
-            )
+            # I2T: each image finds its best GT text
+            sims_i2t = sims.T                              # [N_img, N_txt]
+            i2t_gt = sims_i2t[torch.arange(n_img).unsqueeze(1), ittmap]
+            i2t_best = i2t_gt.max(dim=1).values
+            per_rep_i2t_gt_rank[ri] = (sims_i2t >= i2t_best.unsqueeze(1)).sum(dim=1).long() - 1
+            tk_i2t = torch.topk(sims_i2t, k=CA_TOPK, dim=1)
+            per_rep_i2t_topk_idx[ri] = tk_i2t.indices
+            per_rep_i2t_topk_scores[ri] = tk_i2t.values
 
-            loss_dict = criteria(
-                other_emb,
-                loss_txt_ref,
-                comb_emb,
-                None,
-                label_embeddings,
-                model,
-                delta=delta,
-                scalar=gate_scalar,
-                gate_logit=gate_logit,
-            )
+            if run_mean is None:
+                run_mean = sims.clone()
+                run_max = sims.clone()
+                i2t_run_mean = sims_i2t.clone()
+                i2t_run_max = sims_i2t.clone()
+            else:
+                run_mean.add_(sims)
+                torch.maximum(run_max, sims, out=run_max)  # type: ignore[arg-type]
+                i2t_run_mean.add_(sims_i2t)               # type: ignore[union-attr]
+                torch.maximum(i2t_run_max, sims_i2t, out=i2t_run_max)  # type: ignore[arg-type]
+            del sims, sims_i2t, i2t_gt, i2t_best, tk_i2t
 
-            if batch_idx % 100 == 0:
-                cos_sim = torch.nn.functional.cosine_similarity(
-                    comb_emb,
-                    torch.nn.functional.normalize(combine_emb, dim=-1),
-                    dim=-1,
-                )
+    run_mean.div_(K)        # type: ignore[union-attr]
+    i2t_run_mean.div_(K)    # type: ignore[union-attr]
+    oracle = per_rep_gt_rank.argmin(dim=0)           # [N_txt]
+    i2t_oracle = per_rep_i2t_gt_rank.argmin(dim=0)  # [N_img]
+    mean_tk = torch.topk(run_mean, k=CA_TOPK, dim=1)          # type: ignore[arg-type]
+    max_tk = torch.topk(run_max, k=CA_TOPK, dim=1)            # type: ignore[arg-type]
+    i2t_mean_tk = torch.topk(i2t_run_mean, k=CA_TOPK, dim=1)  # type: ignore[arg-type]
+    i2t_max_tk = torch.topk(i2t_run_max, k=CA_TOPK, dim=1)    # type: ignore[arg-type]
 
-            loss = loss_dict["total_loss"]
+    # CLIP baseline GT ranks (no condition) for both T2I and I2T
+    clip_sims = (txt_n @ img_n.T).cpu()                        # [N_txt, N_img]
+    clip_gt_s = clip_sims[torch.arange(n_txt), ttimap]
+    clip_gt_rank = (clip_sims >= clip_gt_s.unsqueeze(1)).sum(dim=1).long() - 1
+    clip_sims_i2t = clip_sims.T
+    clip_i2t_gt = clip_sims_i2t[torch.arange(n_img).unsqueeze(1), ittmap]
+    clip_i2t_best = clip_i2t_gt.max(dim=1).values
+    clip_i2t_gt_rank = (clip_sims_i2t >= clip_i2t_best.unsqueeze(1)).sum(dim=1).long() - 1
+    del clip_sims, clip_gt_s, clip_sims_i2t, clip_i2t_gt, clip_i2t_best
 
-            # Condition predictor distillation: predict conditions from combine-side
-            # embeddings, supervised by stop-gradient per-sample conditions.
-            lambda_pred = cfg.loss.lambda_pred
-            if lambda_pred > 0:
-                pred_cond = model.predict_condition(combine_emb)
-                pred_loss = (
-                    1 - torch.nn.functional.cosine_similarity(
-                        pred_cond, label_embeddings.detach(), dim=-1
-                    )
-                ).mean()
-                loss = loss + lambda_pred * pred_loss
-                loss_dict["loss_pred"] = pred_loss
+    torch.save(
+        {
+            "epoch": epoch,
+            "n_representatives": K,
+            # T2I
+            "per_rep_gt_rank": per_rep_gt_rank,               # [K, N_txt]
+            "per_rep_topk_indices": per_rep_topk_idx,         # [K, N_txt, top_k]
+            "per_rep_topk_scores": per_rep_topk_scores,       # [K, N_txt, top_k]
+            "oracle_condition_idx": oracle,                   # [N_txt]
+            "mean_topk_indices": mean_tk.indices,             # [N_txt, top_k]
+            "mean_topk_scores": mean_tk.values,
+            "max_topk_indices": max_tk.indices,
+            "max_topk_scores": max_tk.values,
+            "clip_gt_rank": clip_gt_rank,                     # [N_txt]
+            # I2T
+            "per_rep_i2t_gt_rank": per_rep_i2t_gt_rank,      # [K, N_img]
+            "per_rep_i2t_topk_indices": per_rep_i2t_topk_idx,
+            "per_rep_i2t_topk_scores": per_rep_i2t_topk_scores,
+            "i2t_oracle_condition_idx": i2t_oracle,
+            "i2t_mean_topk_indices": i2t_mean_tk.indices,
+            "i2t_mean_topk_scores": i2t_mean_tk.values,
+            "i2t_max_topk_indices": i2t_max_tk.indices,
+            "i2t_max_topk_scores": i2t_max_tk.values,
+            "clip_i2t_gt_rank": clip_i2t_gt_rank,
+        },
+        ca_dir / f"epoch_{epoch:04d}.pt",
+    )
+    print(f"  Saved condition analysis → {ca_dir / f'epoch_{epoch:04d}.pt'}")
 
-            epoch_loss += loss.item()
-            num_batches += 1
+    # Free GPU tensors explicitly; this function is memory-intensive
+    del txt_t, img_t, img_n, txt_n, other_n
+    torch.cuda.empty_cache()
 
-            # Separate loss_dict into actual losses and diagnostic monitors
-            _monitor_keys = {"diag_sim_gap", "off_diag_sim_gap", "total_sim_gap"}
-            loss_metrics = {
-                k: v.item() if torch.is_tensor(v) else v
-                for k, v in loss_dict.items()
-                if k not in _monitor_keys
-            }
-            monitor_metrics = {
-                k: v.item() if torch.is_tensor(v) else v
-                for k, v in loss_dict.items()
-                if k in _monitor_keys
-            }
-            monitor_metrics["cos_sim"] = (
-                cos_sim.mean().item() if cos_sim is not None else None
-            )
 
-            logger.log_train(loss_metrics, epoch=epoch, step=global_step, section="loss")
-            logger.log_train(monitor_metrics, epoch=epoch, step=global_step, section="monitor")
-            logger.log_train(
-                {"batch": batch_idx, "step": global_step},
-                epoch=epoch, step=global_step, section="details",
-            )
+def _save_retrieval_snapshot(
+    cfg,
+    epoch,
+    experiment,
+    model,
+    all_img_emb,
+    all_txt_emb,
+    all_raw_text,
+    image_to_text_map,
+    text_to_image_map,
+    test_set,
+    representatives,
+    device,
+):
+    """Save qualitative retrieval top-K per query for cross-epoch comparison.
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            global_step += 1
+    Writes one .pt per epoch plus a one-time metadata.pt with the CLIP baseline.
+    """
+    print("Saving retrieval snapshot...")
+    N_FIXED = 50   # first N image/text queries, fixed across all epochs
+    TOP_K = 10     # top-K results stored per query
 
-            if not in_warmup:
-                if cfg.train.normalize:
-                    with torch.no_grad():
-                        embedding_manager.embeddings.data[batch_indices] = (
-                            torch.nn.functional.normalize(
-                                embedding_manager.embeddings.data[batch_indices], dim=-1
-                            )
-                        )
+    snap_dir = experiment.directory / "retrieval_snapshots"
+    snap_dir.mkdir(parents=True, exist_ok=True)
 
-                label_embeddings_diff = (
-                    (
-                        embedding_manager.embeddings.data[batch_indices].cpu()
-                        - label_embeddings_before.cpu()
-                    )
-                    .norm(dim=-1)
-                    .mean()
-                )
-                logger.log_train(
-                    {"label_embeddings_diff": label_embeddings_diff.item()},
-                    epoch=epoch,
-                    step=global_step,
-                    section="monitor",
-                )
+    n_img = all_img_emb.shape[0]
+    n_txt = all_txt_emb.shape[0]
+    nfi = min(N_FIXED, n_img)
+    nft = min(N_FIXED, n_txt)
 
-        # ========== EPOCH END: Performance Monitoring & Sync ==========
-        epoch_time = time.time() - epoch_start_time
+    img_n = F.normalize(all_img_emb.to(device), dim=-1)   # [N_img, D]
+    txt_raw = all_txt_emb.to(device)                      # [N_txt, D]
+    txt_n = F.normalize(txt_raw, dim=-1)                  # [N_txt, D]
+    img_raw = all_img_emb.to(device)                      # [N_img, D]
+    fixed_img_n = img_n[:nfi]
+    fixed_txt_n = txt_n[:nft]
+    # Projected "other side" for model sims; raw img_n/txt_n kept for CLIP baseline
+    if cfg.model.combine_side == "txt":
+        other_n = F.normalize(model.project_other(img_raw), dim=-1)
+        fixed_other_n = other_n[:nfi]
+    else:
+        other_n = F.normalize(model.project_other(txt_raw), dim=-1)
+        fixed_other_n = other_n[:nft]
 
-        # Persist in-memory label embeddings to disk at epoch end
-        embedding_manager._save_all_chunks_to_disk()
+    run_max_i2t = None   # [nfi, N_txt]
+    run_max_t2i = None   # [nft, N_img]
 
-        # Log epoch performance
-        avg_loss = epoch_loss / num_batches
-        print(f"Epoch {epoch}, Loss: {avg_loss:.6f}, Time: {epoch_time:.2f}s")
+    for rep in representatives:
+        cond = rep.unsqueeze(0).to(device)
+        if cfg.model.combine_side == "txt":
+            comb_mod = model.combine(txt_raw, None, cond.expand(n_txt, -1))
+            sim_i2t = (fixed_other_n @ comb_mod.T).cpu()
+            sim_t2i = (comb_mod[:nft] @ other_n.T).cpu()
+        else:
+            comb_mod = model.combine(img_raw, None, cond.expand(n_img, -1))
+            sim_i2t = (comb_mod[:nfi] @ other_n.T).cpu()
+            sim_t2i = (fixed_other_n @ comb_mod.T).cpu()
+        run_max_i2t = sim_i2t if run_max_i2t is None else torch.maximum(run_max_i2t, sim_i2t)
+        run_max_t2i = sim_t2i if run_max_t2i is None else torch.maximum(run_max_t2i, sim_t2i)
 
-        logger.log_train(
-            {"loss": avg_loss, "epoch_time": epoch_time, "in_warmup": int(in_warmup)},
+    ki2t = min(TOP_K, n_txt)
+    kt2i = min(TOP_K, n_img)
+    top_i2t = torch.topk(run_max_i2t, k=ki2t, dim=1).indices   # type: ignore[arg-type]
+    top_t2i = torch.topk(run_max_t2i, k=kt2i, dim=1).indices   # type: ignore[arg-type]
+
+    ittmap = image_to_text_map.cpu()   # [N_img, cpi]
+    ttimap = text_to_image_map.cpu()   # [N_txt]
+
+    is_gt_i2t = torch.zeros(nfi, ki2t, dtype=torch.bool)
+    for q in range(nfi):
+        gt_set = set(ittmap[q].tolist())
+        for kp, tidx in enumerate(top_i2t[q].tolist()):
+            if tidx in gt_set:
+                is_gt_i2t[q, kp] = True
+
+    is_gt_t2i = torch.zeros(nft, kt2i, dtype=torch.bool)
+    for q in range(nft):
+        gt_img = ttimap[q].item()
+        for kp, iidx in enumerate(top_t2i[q].tolist()):
+            if iidx == gt_img:
+                is_gt_t2i[q, kp] = True
+
+    epoch_path = snap_dir / f"epoch_{epoch:04d}.pt"
+    torch.save(
+        {
+            "epoch": epoch,
+            "combine_side": cfg.model.combine_side,
+            "i2t": {"query_indices": list(range(nfi)), "top_k": top_i2t, "is_gt": is_gt_i2t},
+            "t2i": {"query_indices": list(range(nft)), "top_k": top_t2i, "is_gt": is_gt_t2i},
+        },
+        epoch_path,
+    )
+    print(f"  Saved retrieval snapshot → {epoch_path}")
+
+    # Metadata (captions, GT maps, image paths, CLIP baseline) — written once
+    meta_path = snap_dir / "metadata.pt"
+    if not meta_path.exists():
+        image_paths = [
+            os.path.join(test_set.image_path, test_set.annotations[i]["image"])
+            for i in range(n_img)
+        ]
+        clip_sim_i2t = (fixed_img_n @ txt_n.T).cpu()   # [nfi, N_txt]
+        clip_sim_t2i = (fixed_txt_n @ img_n.T).cpu()   # [nft, N_img]
+        clip_top_i2t = torch.topk(clip_sim_i2t, k=ki2t, dim=1).indices
+        clip_top_t2i = torch.topk(clip_sim_t2i, k=kt2i, dim=1).indices
+
+        clip_is_gt_i2t = torch.zeros(nfi, ki2t, dtype=torch.bool)
+        for q in range(nfi):
+            gt_set = set(ittmap[q].tolist())
+            for kp, tidx in enumerate(clip_top_i2t[q].tolist()):
+                if tidx in gt_set:
+                    clip_is_gt_i2t[q, kp] = True
+
+        clip_is_gt_t2i = torch.zeros(nft, kt2i, dtype=torch.bool)
+        for q in range(nft):
+            gt_img = ttimap[q].item()
+            for kp, iidx in enumerate(clip_top_t2i[q].tolist()):
+                if iidx == gt_img:
+                    clip_is_gt_t2i[q, kp] = True
+
+        torch.save(
+            {
+                "captions": all_raw_text,
+                "image_to_text_map": ittmap,
+                "text_to_image_map": ttimap,
+                "captions_per_image": test_set.captions_per_image,
+                "n_images": n_img,
+                "n_texts": n_txt,
+                "image_paths": image_paths,
+                "combine_side": cfg.model.combine_side,
+                "clip_baseline": {
+                    "i2t": {"top_k": clip_top_i2t, "is_gt": clip_is_gt_i2t},
+                    "t2i": {"top_k": clip_top_t2i, "is_gt": clip_is_gt_t2i},
+                },
+            },
+            meta_path,
+        )
+        print(f"  Saved retrieval metadata → {meta_path}")
+
+
+def _eval_snapshot(
+    cfg,
+    epoch,
+    model,
+    embedding_manager,
+    experiment,
+    evaluator,
+    umap_vis,
+    sample_types,
+    test_loader,
+    test_set,
+    logger,
+    processor,
+    device,
+):
+    """Run test evaluation, UMAP viz, auto-evaluator, and all per-epoch snapshots.
+
+    Called at each evaluation epoch and at the final epoch.
+    """
+    model.eval()
+    with torch.no_grad():
+        torch.cuda.empty_cache()
+        print("Getting all embeddings")
+        _, label_embeddings_all = embedding_manager.get_all_embeddings()
+
+        print("Getting representatives")
+        # Use more representatives at the final epoch for richer analysis
+        n_rep = (
+            cfg.train.representative_number
+            if epoch != cfg.train.epochs - 1
+            else 30
+        )
+        representatives = get_representatives_fps(label_embeddings_all.cpu(), n_rep)
+        print(f"Evaluating with {len(representatives)} representatives")
+
+        test_detail = evaluator.evaluate_test(
+            model=model,
+            processor=processor,
+            dataloader=test_loader,
+            label_embeddings=representatives,
             epoch=epoch,
+            return_detailed_results=True,
+            use_oracle=True,
+            oracle_aggregation=cfg.eval.oracle_aggregation,
+        )
+        test_detail = cast(TestEvaluationDetail, test_detail)
+        all_img_emb = test_detail.all_img_emb
+        all_txt_emb = test_detail.all_txt_emb
+        all_raw_text = test_detail.all_raw_text
+        text_to_image_map = test_detail.text_to_image_map
+        image_to_text_map = test_detail.image_to_text_map
+
+        logger.log_test(test_detail.results, epoch=epoch)
+
+        # ── UMAP visualization ──
+        if label_embeddings_all.shape[1] == 2:
+            umap_features = label_embeddings_all.cpu().numpy()
+        else:
+            umap_features = umap_vis.learn_umap(label_embeddings_all, close_cluster=True)
+
+        # Map representatives into UMAP space by nearest-neighbour lookup
+        rep_indices = (
+            torch.cdist(
+                representatives.float().cpu(),
+                label_embeddings_all.float().cpu(),
+            )
+            .argmin(dim=1)
+            .numpy()
+        )
+        umap_representatives = umap_features[rep_indices]
+
+        fig = get_umap(
+            umap_features,
+            umap_labels=None,
+            epoch=epoch,
+            no_outlier=True,
+            samples_to_track=[0, 1, 2, 3, 4],
+            representatives=umap_representatives,
+        )
+        experiment.save_artifact(
+            name=f"label_embeddings_umap_{epoch}",
+            data=fig,
+            artifact_type="figure",
+            folder="plots",
+            description=f"UMAP visualization of trained label embeddings at epoch {epoch}",
         )
 
-        # Auto warm-up end: track plateau during warm-up phase
-        if in_warmup and not automatic_warm_up_end:
-            warm_up_loss_history.append(avg_loss)
-            patience = cfg.train.warm_up_patience
-            min_delta_pct = cfg.train.warm_up_min_delta_pct
-            if len(warm_up_loss_history) > patience:
-                ref_loss = warm_up_loss_history[-(patience + 1)]
-                improvement_pct = (ref_loss - avg_loss) / (abs(ref_loss) + 1e-8) * 100
-                if improvement_pct < min_delta_pct:
-                    automatic_warm_up_end = True
-                    print(
-                        f"[WarmUp] Plateau detected: loss improved only {improvement_pct:.3f}% "
-                        f"over last {patience} epochs (threshold: {min_delta_pct}%). "
-                        f"Auto-ending warm-up after epoch {epoch}."
-                    )
-                    logger.log_train({"warmup_auto_ended_epoch": epoch}, epoch=epoch)
+        fig_3 = None
+        if len(sample_types) == len(umap_features):
+            print("Get ground truth sample types")
+            fig_3 = get_umap(
+                umap_features,
+                umap_labels=sample_types,
+                epoch=epoch,
+                no_outlier=True,
+                samples_to_track=[0, 1, 2, 3, 4],
+            )
+            experiment.save_artifact(
+                name=f"ground_truth_sample_types_{epoch}",
+                data=fig_3,
+                artifact_type="figure",
+                folder="plots",
+                description=f"Ground truth sample types visualization at epoch {epoch}",
+            )
 
-        scheduler.step()
+        print("Visualizing ideal condition space")
+        fig2 = visualize_ideal_condition_space(umap_features, epoch)
+        experiment.save_artifact(
+            name=f"ideal_condition_space_{epoch}",
+            data=fig2,
+            artifact_type="figure",
+            folder="plots",
+            description=f"Ideal condition space visualization at epoch {epoch}",
+        )
 
-        if cfg.eval.perform_evaluation and (
-            cfg.train.epochs == 0  # This is for test only
-            or epoch % cfg.eval.evaluation_interval == 0
-            or epoch == cfg.train.epochs - 1
-        ):
-            model.eval()
-            with torch.no_grad():
-                # Test evaluation
-                torch.cuda.empty_cache()  # release any GPU residuals from training
-                print("Getting all embeddings")
-                _, label_embeddings_all = embedding_manager.get_all_embeddings()
-                print("Getting representatives")
-                representatives = get_representatives_fps(
-                    label_embeddings_all.cpu(),
-                    (
-                        cfg.train.representative_number
-                        if epoch != cfg.train.epochs - 1
-                        else 30  # Use higher number of representatives for the last epoch
-                    ),
-                )
-                print(f"Evaluating with {len(representatives)} representatives")
-                test_detail = evaluator.evaluate_test(
-                    model=model,
-                    processor=processor,
-                    dataloader=test_loader,
-                    label_embeddings=representatives,
-                    epoch=epoch,
-                    return_detailed_results=True,
-                    use_oracle=True,
-                    oracle_aggregation=cfg.eval.oracle_aggregation,
-                )
+        logger.log(
+            {
+                "vis/umap": wandb.Image(fig),
+                "vis/ideal_condition_space": wandb.Image(fig2),
+                "vis/ground_truth_sample_types": (
+                    wandb.Image(fig_3) if fig_3 is not None else None
+                ),
+                "test_epoch": epoch,
+            }
+        )
+        plt.close("all")
 
-                test_detail = cast(TestEvaluationDetail, test_detail)
-                all_img_emb = test_detail.all_img_emb
-                all_txt_emb = test_detail.all_txt_emb
-                all_raw_text = test_detail.all_raw_text
-                text_to_image_map = test_detail.text_to_image_map
-                image_to_text_map = test_detail.image_to_text_map
+        # ── Condition viz snapshot ──
+        _save_condition_viz_snapshot(
+            cfg,
+            epoch,
+            experiment,
+            model,
+            all_img_emb,
+            all_txt_emb,
+            all_raw_text,
+            image_to_text_map,
+            text_to_image_map,
+            test_set,
+            label_embeddings_all,
+            representatives,
+            sample_types,
+        )
 
-                # Log test results — one call, epoch x-axis wired up automatically
-                logger.log_test(test_detail.results, epoch=epoch)
+        # ── Automatic evaluator ──
+        print("Evaluating automatic evaluator")
+        auto_eval = CoSiRAutomaticEvaluator(
+            model,
+            (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
+            label_embeddings_all,
+            device,
+            representatives=representatives,
+        )
+        result = auto_eval.evaluate_all()
+        del auto_eval
+        torch.cuda.empty_cache()
 
-                # Visualize test results
-                # # Check whether label embeddings are 2d or higher dimensional
-                if label_embeddings_all.shape[1] == 2:
-                    umap_features = label_embeddings_all.cpu().numpy()
-                else:
-                    umap_features = umap_vis.learn_umap(
-                        label_embeddings_all, close_cluster=True
-                    )
+        _eval_keys = {
+            "magnitude_effect": ["correlation"],
+            "condition_distance_correlation": ["spearman_rho"],
+            "retrieval_gain": ["R@1_absolute_gain", "R@1_baseline", "R@1_conditional"],
+            "diversity": ["mean_jsd"],
+            "best_condition_upper_bound": ["R@1_boost", "R@1_best_condition"],
+            "space_quality": ["silhouette_score", "n_effective_dims"],
+        }
+        eval_metrics = {
+            f"{group}/{key}": result[group][key]
+            for group, keys in _eval_keys.items()
+            if result.get(group)
+            for key in keys
+            if key in result[group]
+        }
+        logger.log_eval(eval_metrics, epoch=epoch)
 
-                # Map representatives to UMAP space by finding their indices in
-                # label_embeddings_all, then looking up their projected 2D coords.
-                # This works for both embedding_dim==2 and higher.
-                rep_indices = torch.cdist(
-                    representatives.float().cpu(),
-                    label_embeddings_all.float().cpu(),
-                ).argmin(dim=1).numpy()
-                umap_representatives = umap_features[rep_indices]
+        # ── Condition analysis cache ──
+        _save_condition_analysis_cache(
+            cfg,
+            epoch,
+            experiment,
+            model,
+            all_img_emb,
+            all_txt_emb,
+            text_to_image_map,
+            image_to_text_map,
+            representatives,
+            device,
+        )
 
-                # Visualize label embeddings
-                fig = get_umap(
-                    umap_features,
-                    umap_labels=None,
-                    epoch=epoch,
-                    no_outlier=True,
-                    samples_to_track=[0, 1, 2, 3, 4],
-                    representatives=umap_representatives,
-                )
-                experiment.save_artifact(
-                    name=f"label_embeddings_umap_{epoch}",
-                    data=fig,
-                    artifact_type="figure",
-                    folder="plots",
-                    description=f"UMAP visualization of trained label embeddings at epoch {epoch}",
-                )
+        # ── Retrieval snapshot ──
+        _save_retrieval_snapshot(
+            cfg,
+            epoch,
+            experiment,
+            model,
+            all_img_emb,
+            all_txt_emb,
+            all_raw_text,
+            image_to_text_map,
+            text_to_image_map,
+            test_set,
+            representatives,
+            device,
+        )
 
-                if len(sample_types) == len(umap_features):
-                    print("Get ground truth sample types")
-                    fig_3 = get_umap(
-                        umap_features,
-                        umap_labels=sample_types,
-                        epoch=epoch,
-                        no_outlier=True,
-                        samples_to_track=[0, 1, 2, 3, 4],
-                    )
 
-                    experiment.save_artifact(
-                        name=f"ground_truth_sample_types_{epoch}",
-                        data=fig_3,
-                        artifact_type="figure",
-                        folder="plots",
-                        description=f"Ground truth sample types visualization at epoch {epoch}",
-                    )
-
-                print("Visualizing ideal condition space")
-                fig2 = visualize_ideal_condition_space(umap_features, epoch)
-                experiment.save_artifact(
-                    name=f"ideal_condition_space_{epoch}",
-                    data=fig2,
-                    artifact_type="figure",
-                    folder="plots",
-                    description=f"Ideal condition space visualization at epoch {epoch}",
-                )
-
-                logger.log(
-                    {
-                        "vis/umap": wandb.Image(fig),
-                        "vis/ideal_condition_space": wandb.Image(fig2),
-                        "vis/ground_truth_sample_types": (
-                            wandb.Image(fig_3)
-                            if len(sample_types) == len(umap_features)
-                            else None
-                        ),
-                        "test_epoch": epoch,
-                    }
-                )
-
-                plt.close("all")
-
-                # ─── Condition visualization snapshot (interactive notebook use) ───
-                print("Saving condition visualization snapshot...")
-                _cond_viz_dir = experiment.directory / "condition_viz"
-                _cond_viz_dir.mkdir(parents=True, exist_ok=True)
-
-                # Fixed embeddings saved once — backbone is frozen so these never change
-                _cond_fixed_path = _cond_viz_dir / "fixed_data.pt"
-                if not _cond_fixed_path.exists():
-                    _image_paths_cond = [
-                        os.path.join(
-                            test_set.image_path, test_set.annotations[i]["image"]
-                        )
-                        for i in range(all_img_emb.shape[0])
-                    ]
-                    # Build per-text caption-type array for impressions (None otherwise)
-                    _test_caption_types = None
-                    if cfg.data.dataset_type == "impressions":
-                        _type_map = {
-                            "caption": 0,
-                            "description": 1,
-                            "impression": 2,
-                            "aesthetic": 3,
-                        }
-                        _flat = []
-                        for _i in range(all_img_emb.shape[0]):
-                            for _t in test_set.annotations[_i]["caption_type"]:
-                                _flat.append(_type_map[_t])
-                        _test_caption_types = torch.tensor(_flat, dtype=torch.long)
-                    torch.save(
-                        {
-                            "all_img_emb": all_img_emb.cpu(),
-                            "all_txt_emb": all_txt_emb.cpu(),
-                            "all_raw_text": all_raw_text,
-                            "image_paths": _image_paths_cond,
-                            "image_to_text_map": image_to_text_map.cpu(),
-                            "text_to_image_map": text_to_image_map.cpu(),
-                            "captions_per_image": test_set.captions_per_image,
-                            "test_caption_types": _test_caption_types,
-                        },
-                        _cond_fixed_path,
-                    )
-                    print(f"  Saved condition viz fixed data → {_cond_fixed_path}")
-
-                # Per-epoch: all conditions + combiner + predictor weights (replace on each call)
-                torch.save(
-                    {
-                        "epoch": epoch,
-                        "label_embeddings_all": label_embeddings_all.cpu(),
-                        "representatives": representatives.cpu(),
-                        "combiner_state_dict": model.combiner.state_dict(),
-                        "predictor_state_dict": model.condition_predictor.state_dict(),
-                        "other_proj_state_dict": model.other_proj.state_dict(),
-                        "combine_side": cfg.model.combine_side,
-                        "combiner_config": {
-                            "clip_feature_dim": model.feature_dim,
-                            "projection_dim": model.feature_dim,
-                            "label_dim": cfg.model.embedding_dim,
-                            "num_layers": cfg.model.num_layers,
-                            "dropout": cfg.model.dropout,
-                        },
-                        "predictor_config": {
-                            "input_dim": model.feature_dim,
-                            "hidden_dim": cfg.model.hidden_dim,
-                            "output_dim": cfg.model.embedding_dim,
-                            "num_layers": cfg.model.num_layers,
-                            "dropout": cfg.model.dropout,
-                        },
-                        "other_proj_config": {
-                            "feature_dim": model.feature_dim,
-                            "type": type(model.other_proj).__name__,
-                            "hidden_dim": getattr(model.other_proj, "hidden_dim", model.feature_dim),
-                            "num_blocks": getattr(model.other_proj, "num_blocks", 3),
-                        },
-                        # None for non-impressions datasets
-                        "train_sample_types": (
-                            torch.tensor(sample_types, dtype=torch.long)
-                            if len(sample_types) > 0
-                            else None
-                        ),
-                    },
-                    _cond_viz_dir / f"epoch_{epoch:04d}.pt",
-                )
-                print(
-                    f"  Saved condition viz epoch snapshot → {_cond_viz_dir / f'epoch_{epoch:04d}.pt'}"
-                )
-
-                print("Evaluating automatic evaluator")
-                cosir_automatic_evaluator = CoSiRAutomaticEvaluator(
-                    model,
-                    (all_img_emb, all_txt_emb, all_raw_text, image_to_text_map),
-                    label_embeddings_all,
-                    device,
-                    representatives=representatives,
-                )
-                result = cosir_automatic_evaluator.evaluate_all()
-                del cosir_automatic_evaluator  # free GPU tensors (conditions, image/text embs)
-                torch.cuda.empty_cache()
-
-                # Log only key scalar metrics; full results are printed by evaluate_all
-                _eval_keys = {
-                    "magnitude_effect": ["correlation"],
-                    "condition_distance_correlation": ["spearman_rho"],
-                    "retrieval_gain": ["R@1_absolute_gain", "R@1_baseline", "R@1_conditional"],
-                    "diversity": ["mean_jsd"],
-                    "best_condition_upper_bound": ["R@1_boost", "R@1_best_condition"],
-                    "space_quality": ["silhouette_score", "n_effective_dims"],
-                }
-                eval_metrics = {
-                    f"{group}/{key}": result[group][key]
-                    for group, keys in _eval_keys.items()
-                    if result.get(group)
-                    for key in keys
-                    if key in result[group]
-                }
-                logger.log_eval(eval_metrics, epoch=epoch)
-
-                # ─── Condition analysis cache (full test set × all representatives) ───
-                # Saves per-representative GT ranks, top-K indices/scores, and
-                # mean/max-aggregated top-K — used by the deep retrieval analysis notebook.
-                print("Saving condition analysis cache...")
-                _ca_dir = experiment.directory / "condition_analysis"
-                _ca_dir.mkdir(parents=True, exist_ok=True)
-                _CA_TOPK = 10
-
-                _n_ca_txt = all_txt_emb.shape[0]
-                _n_ca_img = all_img_emb.shape[0]
-                _K_ca = len(representatives)
-                _bs_ca = max(cfg.train.batch_size, 256)
-
-                _txt_ca = all_txt_emb.to(device)
-                _img_ca = all_img_emb.to(device)
-                _img_ca_n = F.normalize(_img_ca, dim=-1)
-                _txt_ca_n = F.normalize(_txt_ca, dim=-1)
-                # projected "other side" for oracle sims; raw tensors above kept for CLIP baseline
-                if cfg.model.combine_side == "txt":
-                    _other_ca_n = F.normalize(model.project_other(_img_ca), dim=-1)
-                else:
-                    _other_ca_n = F.normalize(model.project_other(_txt_ca), dim=-1)
-                _ttimap_ca = text_to_image_map.cpu()          # [N_txt]
-                _ittmap_ca = image_to_text_map.cpu()           # [N_img, cpi]
-
-                _per_rep_gt_rank = torch.zeros(_K_ca, _n_ca_txt, dtype=torch.long)
-                _per_rep_topk_idx = torch.zeros(_K_ca, _n_ca_txt, _CA_TOPK, dtype=torch.long)
-                _per_rep_topk_scores = torch.zeros(_K_ca, _n_ca_txt, _CA_TOPK)
-                _per_rep_i2t_gt_rank = torch.zeros(_K_ca, _n_ca_img, dtype=torch.long)
-                _per_rep_i2t_topk_idx = torch.zeros(_K_ca, _n_ca_img, _CA_TOPK, dtype=torch.long)
-                _per_rep_i2t_topk_scores = torch.zeros(_K_ca, _n_ca_img, _CA_TOPK)
-                _ca_run_mean: Optional[torch.Tensor] = None
-                _ca_run_max: Optional[torch.Tensor] = None
-                _ca_i2t_run_mean: Optional[torch.Tensor] = None
-                _ca_i2t_run_max: Optional[torch.Tensor] = None
-
-                with torch.no_grad():
-                    for _ri in range(_K_ca):
-                        _cond_ca = representatives[_ri].unsqueeze(0).to(device)
-                        if cfg.model.combine_side == "txt":
-                            _cl = []
-                            for _i in range(0, _n_ca_txt, _bs_ca):
-                                _e = min(_i + _bs_ca, _n_ca_txt)
-                                _cl.append(model.combine(
-                                    _txt_ca[_i:_e], None, _cond_ca.expand(_e - _i, -1)
-                                ))
-                            _comb_ca = F.normalize(torch.cat(_cl, dim=0), dim=-1)
-                            _sims_ca = (_comb_ca @ _other_ca_n.T).cpu()  # [N_txt, N_img]
-                        else:
-                            _cl = []
-                            for _i in range(0, _n_ca_img, _bs_ca):
-                                _e = min(_i + _bs_ca, _n_ca_img)
-                                _cl.append(model.combine(
-                                    _img_ca[_i:_e], None, _cond_ca.expand(_e - _i, -1)
-                                ))
-                            _comb_ca = F.normalize(torch.cat(_cl, dim=0), dim=-1)
-                            _sims_ca = (_other_ca_n @ _comb_ca.T).cpu()  # [N_txt, N_img]
-                        del _cl, _comb_ca
-                        torch.cuda.empty_cache()
-
-                        # T2I: each text finds its GT image
-                        _gt_s = _sims_ca[torch.arange(_n_ca_txt), _ttimap_ca]
-                        _per_rep_gt_rank[_ri] = (
-                            (_sims_ca >= _gt_s.unsqueeze(1)).sum(dim=1).long() - 1
-                        )
-                        _tk = torch.topk(_sims_ca, k=_CA_TOPK, dim=1)
-                        _per_rep_topk_idx[_ri] = _tk.indices
-                        _per_rep_topk_scores[_ri] = _tk.values
-
-                        # I2T: transpose → each image finds its GT text (best among cpi GTs)
-                        _sims_i2t = _sims_ca.T  # [N_img, N_txt] — free from transpose
-                        _i2t_gt_sims = _sims_i2t[
-                            torch.arange(_n_ca_img).unsqueeze(1), _ittmap_ca
-                        ]  # [N_img, cpi]
-                        _i2t_best_gt = _i2t_gt_sims.max(dim=1).values  # [N_img]
-                        _per_rep_i2t_gt_rank[_ri] = (
-                            (_sims_i2t >= _i2t_best_gt.unsqueeze(1)).sum(dim=1).long() - 1
-                        )
-                        _tk_i2t = torch.topk(_sims_i2t, k=_CA_TOPK, dim=1)
-                        _per_rep_i2t_topk_idx[_ri] = _tk_i2t.indices
-                        _per_rep_i2t_topk_scores[_ri] = _tk_i2t.values
-
-                        if _ca_run_mean is None:
-                            _ca_run_mean = _sims_ca.clone()
-                            _ca_run_max = _sims_ca.clone()
-                            _ca_i2t_run_mean = _sims_i2t.clone()
-                            _ca_i2t_run_max = _sims_i2t.clone()
-                        else:
-                            _ca_run_mean.add_(_sims_ca)
-                            torch.maximum(_ca_run_max, _sims_ca, out=_ca_run_max)  # type: ignore[arg-type]
-                            _ca_i2t_run_mean.add_(_sims_i2t)  # type: ignore[union-attr]
-                            torch.maximum(_ca_i2t_run_max, _sims_i2t, out=_ca_i2t_run_max)  # type: ignore[arg-type]
-                        del _sims_ca, _sims_i2t, _i2t_gt_sims, _i2t_best_gt, _tk_i2t
-
-                _ca_run_mean.div_(_K_ca)  # type: ignore[union-attr]
-                _ca_i2t_run_mean.div_(_K_ca)  # type: ignore[union-attr]
-                _ca_oracle = _per_rep_gt_rank.argmin(dim=0)         # [N_txt]
-                _ca_i2t_oracle = _per_rep_i2t_gt_rank.argmin(dim=0) # [N_img]
-                _ca_mean_tk = torch.topk(_ca_run_mean, k=_CA_TOPK, dim=1)      # type: ignore[arg-type]
-                _ca_max_tk = torch.topk(_ca_run_max, k=_CA_TOPK, dim=1)        # type: ignore[arg-type]
-                _ca_i2t_mean_tk = torch.topk(_ca_i2t_run_mean, k=_CA_TOPK, dim=1)  # type: ignore[arg-type]
-                _ca_i2t_max_tk = torch.topk(_ca_i2t_run_max, k=_CA_TOPK, dim=1)   # type: ignore[arg-type]
-
-                # CLIP baseline GT ranks (no condition) for both T2I and I2T
-                _clip_sims_ca = (_txt_ca_n @ _img_ca_n.T).cpu()  # [N_txt, N_img]
-                _clip_gt_s = _clip_sims_ca[torch.arange(_n_ca_txt), _ttimap_ca]
-                _clip_gt_rank = (
-                    (_clip_sims_ca >= _clip_gt_s.unsqueeze(1)).sum(dim=1).long() - 1
-                )
-                _clip_sims_i2t = _clip_sims_ca.T  # [N_img, N_txt]
-                _clip_i2t_gt_sims = _clip_sims_i2t[
-                    torch.arange(_n_ca_img).unsqueeze(1), _ittmap_ca
-                ]
-                _clip_i2t_best_gt = _clip_i2t_gt_sims.max(dim=1).values
-                _clip_i2t_gt_rank = (
-                    (_clip_sims_i2t >= _clip_i2t_best_gt.unsqueeze(1)).sum(dim=1).long() - 1
-                )
-                del _clip_sims_ca, _clip_gt_s, _clip_sims_i2t, _clip_i2t_gt_sims, _clip_i2t_best_gt
-
-                torch.save(
-                    {
-                        "epoch": epoch,
-                        "n_representatives": _K_ca,
-                        # T2I
-                        "per_rep_gt_rank": _per_rep_gt_rank,              # [K, N_txt]
-                        "per_rep_topk_indices": _per_rep_topk_idx,        # [K, N_txt, top_k]
-                        "per_rep_topk_scores": _per_rep_topk_scores,      # [K, N_txt, top_k]
-                        "oracle_condition_idx": _ca_oracle,               # [N_txt]
-                        "mean_topk_indices": _ca_mean_tk.indices,         # [N_txt, top_k]
-                        "mean_topk_scores": _ca_mean_tk.values,           # [N_txt, top_k]
-                        "max_topk_indices": _ca_max_tk.indices,           # [N_txt, top_k]
-                        "max_topk_scores": _ca_max_tk.values,             # [N_txt, top_k]
-                        "clip_gt_rank": _clip_gt_rank,                    # [N_txt]
-                        # I2T
-                        "per_rep_i2t_gt_rank": _per_rep_i2t_gt_rank,     # [K, N_img]
-                        "per_rep_i2t_topk_indices": _per_rep_i2t_topk_idx,  # [K, N_img, top_k]
-                        "per_rep_i2t_topk_scores": _per_rep_i2t_topk_scores, # [K, N_img, top_k]
-                        "i2t_oracle_condition_idx": _ca_i2t_oracle,       # [N_img]
-                        "i2t_mean_topk_indices": _ca_i2t_mean_tk.indices, # [N_img, top_k]
-                        "i2t_mean_topk_scores": _ca_i2t_mean_tk.values,   # [N_img, top_k]
-                        "i2t_max_topk_indices": _ca_i2t_max_tk.indices,   # [N_img, top_k]
-                        "i2t_max_topk_scores": _ca_i2t_max_tk.values,     # [N_img, top_k]
-                        "clip_i2t_gt_rank": _clip_i2t_gt_rank,            # [N_img]
-                    },
-                    _ca_dir / f"epoch_{epoch:04d}.pt",
-                )
-                print(f"  Saved condition analysis → {_ca_dir / f'epoch_{epoch:04d}.pt'}")
-                del _txt_ca, _img_ca, _img_ca_n, _txt_ca_n
-                del _per_rep_gt_rank, _per_rep_topk_idx, _per_rep_topk_scores
-                del _per_rep_i2t_gt_rank, _per_rep_i2t_topk_idx, _per_rep_i2t_topk_scores
-                del _ca_run_mean, _ca_run_max, _ca_mean_tk, _ca_max_tk, _ca_oracle
-                del _ca_i2t_run_mean, _ca_i2t_run_max, _ca_i2t_mean_tk, _ca_i2t_max_tk, _ca_i2t_oracle
-                del _clip_gt_rank, _clip_i2t_gt_rank, _ttimap_ca, _ittmap_ca
-                torch.cuda.empty_cache()
-
-                # ─── Retrieval snapshot (qualitative cross-epoch tracking) ───
-                print("Saving retrieval snapshot...")
-                _N_FIXED = 50  # first N image/text queries, fixed across all epochs
-                _TOP_K = 10  # top-K results to store per query
-
-                snap_dir = experiment.directory / "retrieval_snapshots"
-                snap_dir.mkdir(parents=True, exist_ok=True)
-
-                _n_img = all_img_emb.shape[0]
-                _n_txt = all_txt_emb.shape[0]
-                _nfi = min(_N_FIXED, _n_img)
-                _nft = min(_N_FIXED, _n_txt)
-
-                _img_n = F.normalize(all_img_emb.to(device), dim=-1)  # [N_img, D]
-                _txt_raw = all_txt_emb.to(device)                     # [N_txt, D]
-                _txt_n = F.normalize(_txt_raw, dim=-1)                # [N_txt, D]
-                _img_raw = all_img_emb.to(device)                     # [N_img, D]
-                _fixed_img_n = _img_n[:_nfi]                          # [_nfi, D]
-                _fixed_txt_n = _txt_n[:_nft]                          # [_nft, D]
-                # projected "other side" for model sims; raw _img_n/_txt_n kept for CLIP baseline
-                if cfg.model.combine_side == "txt":
-                    _other_n = F.normalize(model.project_other(_img_raw), dim=-1)
-                    _fixed_other_n = _other_n[:_nfi]
-                else:
-                    _other_n = F.normalize(model.project_other(_txt_raw), dim=-1)
-                    _fixed_other_n = _other_n[:_nft]
-
-                _run_max_i2t = None  # [_nfi, N_txt]
-                _run_max_t2i = None  # [_nft, N_img]
-
-                for _rep in representatives:
-                    _cond = _rep.unsqueeze(0).to(device)
-                    if cfg.model.combine_side == "txt":
-                        # Modulate all texts; fixed projected-img queries gallery of modified texts (i2t),
-                        # and fixed modified-text queries projected-img gallery (t2i).
-                        _comb_mod = model.combine(_txt_raw, None, _cond.expand(_n_txt, -1))
-                        _sim_i2t = (_fixed_other_n @ _comb_mod.T).cpu()
-                        _sim_t2i = (_comb_mod[:_nft] @ _other_n.T).cpu()
-                    else:
-                        # Modulate all images; fixed modified-img queries projected-txt gallery (i2t),
-                        # and fixed projected-txt queries gallery of modified images (t2i).
-                        _comb_mod = model.combine(_img_raw, None, _cond.expand(_n_img, -1))
-                        _sim_i2t = (_comb_mod[:_nfi] @ _other_n.T).cpu()
-                        _sim_t2i = (_fixed_other_n @ _comb_mod.T).cpu()
-                    _run_max_i2t = (
-                        _sim_i2t
-                        if _run_max_i2t is None
-                        else torch.maximum(_run_max_i2t, _sim_i2t)
-                    )
-                    _run_max_t2i = (
-                        _sim_t2i
-                        if _run_max_t2i is None
-                        else torch.maximum(_run_max_t2i, _sim_t2i)
-                    )
-
-                _ki2t = min(_TOP_K, _n_txt)
-                _kt2i = min(_TOP_K, _n_img)
-                _top_i2t = torch.topk(
-                    _run_max_i2t, k=_ki2t, dim=1  # type: ignore[arg-type]
-                ).indices  # [_nfi, K]
-                _top_t2i = torch.topk(
-                    _run_max_t2i, k=_kt2i, dim=1  # type: ignore[arg-type]
-                ).indices  # [_nft, K]
-
-                # Ground-truth masks
-                _ittmap = image_to_text_map.cpu()  # [N_img, cpi]
-                _ttimap = text_to_image_map.cpu()  # [N_txt]
-
-                _is_gt_i2t = torch.zeros(_nfi, _ki2t, dtype=torch.bool)
-                for _q in range(_nfi):
-                    _gt_set = set(_ittmap[_q].tolist())
-                    for _kp, _tidx in enumerate(_top_i2t[_q].tolist()):
-                        if _tidx in _gt_set:
-                            _is_gt_i2t[_q, _kp] = True
-
-                _is_gt_t2i = torch.zeros(_nft, _kt2i, dtype=torch.bool)
-                for _q in range(_nft):
-                    _gt_img = _ttimap[_q].item()
-                    for _kp, _iidx in enumerate(_top_t2i[_q].tolist()):
-                        if _iidx == _gt_img:
-                            _is_gt_t2i[_q, _kp] = True
-
-                torch.save(
-                    {
-                        "epoch": epoch,
-                        "combine_side": cfg.model.combine_side,
-                        "i2t": {
-                            "query_indices": list(range(_nfi)),
-                            "top_k": _top_i2t,
-                            "is_gt": _is_gt_i2t,
-                        },
-                        "t2i": {
-                            "query_indices": list(range(_nft)),
-                            "top_k": _top_t2i,
-                            "is_gt": _is_gt_t2i,
-                        },
-                    },
-                    snap_dir / f"epoch_{epoch:04d}.pt",
-                )
-                print(
-                    f"  Saved retrieval snapshot → {snap_dir / f'epoch_{epoch:04d}.pt'}"
-                )
-
-                # Metadata: save once (captions, GT maps, image paths, CLIP baseline)
-                _meta_path = snap_dir / "metadata.pt"
-                if not _meta_path.exists():
-                    _image_paths = [
-                        os.path.join(
-                            test_set.image_path, test_set.annotations[i]["image"]
-                        )
-                        for i in range(_n_img)
-                    ]
-                    # CLIP baseline (no condition): raw cosine similarity
-                    _clip_sim_i2t = (_fixed_img_n @ _txt_n.T).cpu()  # [_nfi, N_txt]
-                    _clip_sim_t2i = (_fixed_txt_n @ _img_n.T).cpu()  # [_nft, N_img]
-                    _clip_top_i2t = torch.topk(_clip_sim_i2t, k=_ki2t, dim=1).indices
-                    _clip_top_t2i = torch.topk(_clip_sim_t2i, k=_kt2i, dim=1).indices
-
-                    _clip_is_gt_i2t = torch.zeros(_nfi, _ki2t, dtype=torch.bool)
-                    for _q in range(_nfi):
-                        _gt_set = set(_ittmap[_q].tolist())
-                        for _kp, _tidx in enumerate(_clip_top_i2t[_q].tolist()):
-                            if _tidx in _gt_set:
-                                _clip_is_gt_i2t[_q, _kp] = True
-
-                    _clip_is_gt_t2i = torch.zeros(_nft, _kt2i, dtype=torch.bool)
-                    for _q in range(_nft):
-                        _gt_img = _ttimap[_q].item()
-                        for _kp, _iidx in enumerate(_clip_top_t2i[_q].tolist()):
-                            if _iidx == _gt_img:
-                                _clip_is_gt_t2i[_q, _kp] = True
-
-                    torch.save(
-                        {
-                            "captions": all_raw_text,
-                            "image_to_text_map": _ittmap,
-                            "text_to_image_map": _ttimap,
-                            "captions_per_image": test_set.captions_per_image,
-                            "n_images": _n_img,
-                            "n_texts": _n_txt,
-                            "image_paths": _image_paths,
-                            "combine_side": cfg.model.combine_side,
-                            "clip_baseline": {
-                                "i2t": {
-                                    "top_k": _clip_top_i2t,
-                                    "is_gt": _clip_is_gt_i2t,
-                                },
-                                "t2i": {
-                                    "top_k": _clip_top_t2i,
-                                    "is_gt": _clip_is_gt_t2i,
-                                },
-                            },
-                        },
-                        _meta_path,
-                    )
-                    print(f"  Saved retrieval metadata → {_meta_path}")
-
-    # ========== TRAINING COMPLETE: Final Performance Summary ==========
-    # Copy final embeddings (memmap files) to a snapshot directory for phase-2 use
-    import pathlib
-
+def _save_final_artifacts(model, embedding_manager, experiment, cfg):
+    """Copy final embeddings and save model checkpoints after training completes."""
+    # Copy memmap files so phase-2 scripts can load without re-running training
     embedding_manager._copy_to(pathlib.Path(experiment.directory) / "final_embeddings")
 
-    # Save sample_ids list so phase-2 scripts can reconstruct the id→position mapping
     experiment.save_artifact(
         name="sample_ids",
         data=embedding_manager.sample_ids,
@@ -1234,6 +1064,253 @@ def train_cosir(cfg, logger):
         description="Phase 1 model: combiner + condition predictor state dictionaries",
     )
 
-    print("Training Complete!")
 
+# ─── Entry point ────────────────────────────────────────────────────────────
+
+
+def train_cosir(cfg, logger):
+    # Reproducibility
+    seed = cfg.seed
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    device = cfg.device if torch.cuda.is_available() else "cpu"
+
+    # --- Phase 1: Model & Criteria ---
+    evaluation_config, model, processor, criteria = _setup_model_and_criteria(cfg, device)
+
+    # --- Phase 2: Features ---
+    feature_manager, sample_ids_list = _extract_or_load_features(cfg, model, processor, device)
+
+    # --- Phase 3: Experiment & Evaluators ---
+    experiment, evaluator, umap_vis = _setup_experiment(cfg, evaluation_config, device, logger)
+
+    # --- Phase 4: Embeddings ---
+    # Initialized before the optimizer so the parameter reference is stable after
+    # template loading (which may replace embedding_manager.embeddings).
+    embedding_manager = _init_embedding_manager(
+        cfg, device, sample_ids_list, experiment, feature_manager, model
+    )
+
+    # --- Phase 5: Optimizer & Scheduler ---
+    optimizer, scheduler = _build_optimizer_and_scheduler(cfg, model, embedding_manager)
+
+    # --- Phase 6: Data Loaders ---
+    train_set, train_loader, test_set, test_loader, sample_types = _build_dataloaders(
+        cfg, feature_manager, processor, sample_ids_list
+    )
+
+    # --- Training Loop ---
+    global_step = 0
+    automatic_warm_up_end = False
+    warm_up_loss_history: list[float] = []
+    in_warmup = cfg.train.warm_up_epochs > 0  # transitions to False exactly once
+
+    for epoch in range(cfg.train.epochs):
+        experiment.current_epoch = epoch
+        model.train()
+        epoch_loss = 0.0
+        num_batches = 0
+        cos_sim = None  # updated every 100 batches for cheap monitoring
+
+        # Warm-up transition: hard limit (if > 0) OR automatic plateau detection
+        scheduled_end = cfg.train.warm_up_epochs > 0 and epoch >= cfg.train.warm_up_epochs
+        if in_warmup and (scheduled_end or automatic_warm_up_end):
+            in_warmup = False
+            reason = "scheduled" if scheduled_end else "auto (plateau)"
+            print(
+                f"[WarmUp] Warm-up ended at epoch {epoch} ({reason}) — "
+                "freezing combiner, starting embedding updates"
+            )
+            for param in model.combiner.parameters():
+                param.requires_grad = False
+
+        epoch_start_time = time.time()
+        if isinstance(train_set, CoSiRShardStreamDataset):
+            train_set.set_epoch(epoch)
+
+        for batch_idx, batch in enumerate(tqdm(train_loader)):
+            img_features = batch["img_features"].to(device, non_blocking=True)
+            txt_features = batch["txt_features"].to(device, non_blocking=True)
+            txt_full = (
+                batch["txt_full"].to(device, non_blocking=True)
+                if "txt_full" in batch
+                else torch.zeros_like(txt_features)
+            )
+            img_full = (
+                batch["img_full"].to(device, non_blocking=True)
+                if "img_full" in batch
+                else torch.zeros_like(img_features)
+            )
+            batch_sample_ids = batch["sample_ids"].tolist()
+
+            # Differentiable slice — gradients flow back to embedding_manager.embeddings
+            batch_indices = [embedding_manager.id_to_index[sid] for sid in batch_sample_ids]
+            label_embeddings_before = embedding_manager.embeddings.data[batch_indices].clone()
+            label_embeddings = embedding_manager.embeddings[batch_indices]
+
+            if cfg.model.combine_side == "txt":
+                combine_emb, combine_full = txt_features, txt_full
+                loss_img_target, loss_txt_ref = img_features, txt_features
+            else:
+                combine_emb, combine_full = img_features, img_full
+                loss_img_target, loss_txt_ref = txt_features, img_features
+
+            other_emb = model.project_other(loss_img_target)
+            comb_emb, delta, gate_scalar, gate_logit = model.combine(
+                combine_emb,
+                combine_full,
+                label_embeddings,
+                epoch=epoch,
+                return_label_proj=False,
+                return_delta=True,
+                return_scalar=True,
+            )
+
+            loss_dict = criteria(
+                other_emb,
+                loss_txt_ref,
+                comb_emb,
+                None,
+                label_embeddings,
+                model,
+                delta=delta,
+                scalar=gate_scalar,
+                gate_logit=gate_logit,
+            )
+
+            if batch_idx % 100 == 0:
+                cos_sim = torch.nn.functional.cosine_similarity(
+                    comb_emb,
+                    torch.nn.functional.normalize(combine_emb, dim=-1),
+                    dim=-1,
+                )
+
+            loss = loss_dict["total_loss"]
+
+            # Condition predictor distillation: predict conditions from combine-side
+            # embeddings, supervised by stop-gradient per-sample conditions.
+            lambda_pred = cfg.loss.lambda_pred
+            if lambda_pred > 0:
+                pred_cond = model.predict_condition(combine_emb)
+                pred_loss = (
+                    1
+                    - torch.nn.functional.cosine_similarity(
+                        pred_cond, label_embeddings.detach(), dim=-1
+                    )
+                ).mean()
+                loss = loss + lambda_pred * pred_loss
+                loss_dict["loss_pred"] = pred_loss
+
+            epoch_loss += loss.item()
+            num_batches += 1
+
+            _monitor_keys = {"diag_sim_gap", "off_diag_sim_gap", "total_sim_gap"}
+            loss_metrics = {
+                k: v.item() if torch.is_tensor(v) else v
+                for k, v in loss_dict.items()
+                if k not in _monitor_keys
+            }
+            monitor_metrics = {
+                k: v.item() if torch.is_tensor(v) else v
+                for k, v in loss_dict.items()
+                if k in _monitor_keys
+            }
+            monitor_metrics["cos_sim"] = cos_sim.mean().item() if cos_sim is not None else None
+
+            logger.log_train(loss_metrics, epoch=epoch, step=global_step, section="loss")
+            logger.log_train(monitor_metrics, epoch=epoch, step=global_step, section="monitor")
+            logger.log_train(
+                {"batch": batch_idx, "step": global_step},
+                epoch=epoch,
+                step=global_step,
+                section="details",
+            )
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            global_step += 1
+
+            if not in_warmup:
+                if cfg.train.normalize:
+                    with torch.no_grad():
+                        embedding_manager.embeddings.data[batch_indices] = (
+                            torch.nn.functional.normalize(
+                                embedding_manager.embeddings.data[batch_indices], dim=-1
+                            )
+                        )
+                label_embeddings_diff = (
+                    (
+                        embedding_manager.embeddings.data[batch_indices].cpu()
+                        - label_embeddings_before.cpu()
+                    )
+                    .norm(dim=-1)
+                    .mean()
+                )
+                logger.log_train(
+                    {"label_embeddings_diff": label_embeddings_diff.item()},
+                    epoch=epoch,
+                    step=global_step,
+                    section="monitor",
+                )
+
+        # ── Epoch end ──
+        epoch_time = time.time() - epoch_start_time
+        embedding_manager._save_all_chunks_to_disk()
+
+        avg_loss = epoch_loss / num_batches
+        print(f"Epoch {epoch}, Loss: {avg_loss:.6f}, Time: {epoch_time:.2f}s")
+        logger.log_train(
+            {"loss": avg_loss, "epoch_time": epoch_time, "in_warmup": int(in_warmup)},
+            epoch=epoch,
+        )
+
+        # Auto warm-up plateau detection
+        if in_warmup and not automatic_warm_up_end:
+            warm_up_loss_history.append(avg_loss)
+            patience = cfg.train.warm_up_patience
+            min_delta_pct = cfg.train.warm_up_min_delta_pct
+            if len(warm_up_loss_history) > patience:
+                ref_loss = warm_up_loss_history[-(patience + 1)]
+                improvement_pct = (ref_loss - avg_loss) / (abs(ref_loss) + 1e-8) * 100
+                if improvement_pct < min_delta_pct:
+                    automatic_warm_up_end = True
+                    print(
+                        f"[WarmUp] Plateau detected: loss improved only {improvement_pct:.3f}% "
+                        f"over last {patience} epochs (threshold: {min_delta_pct}%). "
+                        f"Auto-ending warm-up after epoch {epoch}."
+                    )
+                    logger.log_train({"warmup_auto_ended_epoch": epoch}, epoch=epoch)
+
+        scheduler.step()
+
+        # ── Evaluation snapshot (periodic + final epoch) ──
+        eval_due = (
+            cfg.train.epochs == 0  # test-only mode
+            or epoch % cfg.eval.evaluation_interval == 0
+            or epoch == cfg.train.epochs - 1
+        )
+        if cfg.eval.perform_evaluation and eval_due:
+            _eval_snapshot(
+                cfg,
+                epoch,
+                model,
+                embedding_manager,
+                experiment,
+                evaluator,
+                umap_vis,
+                sample_types,
+                test_loader,
+                test_set,
+                logger,
+                processor,
+                device,
+            )
+
+    # --- Final Artifacts ---
+    _save_final_artifacts(model, embedding_manager, experiment, cfg)
+    print("Training Complete!")
     return 0

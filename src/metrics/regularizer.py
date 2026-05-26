@@ -1,8 +1,11 @@
+"""Regularization functions used by LabelContrastiveLoss_enhance."""
+
 import torch
 import torch.nn.functional as F
 
 
 def boundary_penalty(embeddings, radius=1.0, alpha=0.1):
+    """Penalise embeddings whose L2 norm exceeds `radius`."""
     norms = torch.norm(embeddings, p=2, dim=1)
     penalty = torch.where(
         norms > radius, (norms - radius) ** 2, torch.zeros_like(norms)
@@ -10,47 +13,37 @@ def boundary_penalty(embeddings, radius=1.0, alpha=0.1):
     return alpha * torch.mean(penalty)
 
 
-def l2_regularizer(embeddings, alpha=0.1):
-    l2_norm = torch.norm(embeddings, p=2, dim=1)  # Compute L2 norm for each embedding
-    return alpha * torch.mean(l2_norm**2)  # Return the mean L2 norm with scaling
-
-
-def text_preserve_regularizer(text_features, combined_features, tau=0.3, alpha=0.1):
-    delta = (combined_features - text_features).norm(dim=-1)  # [B]
-    excess_change = F.relu(delta - tau)
-    return alpha * excess_change.pow(2).mean()
-
-
-def label_change_regularizer(
-    text_features, combined_features, label_features, tau=0.3, alpha=0.1
+def manifold_smoothness_loss_sparse(
+    conditions, text_emb, conditional_text_pos, k=3, model=None, alpha=0.1
 ):
-    delta = (combined_features - text_features).norm(dim=-1)  # [B]
-    label_norm = label_features.norm(dim=-1)  # [B]
+    """Penalise inconsistent modulation between k-nearest neighbours in condition space."""
+    batch_size = len(conditions)
 
-    # Two sides: label too small or too big compared to delta
-    low = F.relu(delta - label_norm - tau)
-    high = F.relu(label_norm - delta - tau)
-    return alpha * (low.pow(2) + high.pow(2)).mean()
+    dist_matrix = torch.cdist(conditions, conditions)
 
+    text_emb_normalized = F.normalize(text_emb, p=2, dim=1)
 
-def pull_away_diversity_loss(label_proj, alpha=0.1):
-    normalized = F.normalize(label_proj, dim=-1)
-    sim_matrix = torch.matmul(normalized, normalized.T)
-    batch_size = label_proj.size(0)
-    mask = torch.eye(batch_size, device=label_proj.device).bool()
-    off_diag = sim_matrix[~mask].view(batch_size, -1)
-    return alpha * (off_diag**2).mean()
+    mask = torch.eye(batch_size, device=dist_matrix.device).bool()
+    dist_matrix = dist_matrix.masked_fill(mask, float("inf"))
 
+    _, neighbor_indices = torch.topk(dist_matrix, k, largest=False, dim=1)
 
-def angular_consistency_loss(label_proj, text_features, combined_features, alpha=0.1):
-    delta = F.normalize(combined_features - text_features, dim=-1)
-    label_proj = F.normalize(label_proj, dim=-1)
-    return alpha * (1 - (delta * label_proj).sum(dim=-1)).mean()
+    device = conditions.device
+    random_neighbor_idx = torch.randint(0, k, (batch_size,), device=device)
+    selected_neighbors = neighbor_indices[torch.arange(batch_size, device=device), random_neighbor_idx]
 
+    neighbor_conditions = conditions[selected_neighbors]
+    conditional_text_from_neighbor = model.combine(text_emb, None, neighbor_conditions)
 
-def entropy_loss(embeddings: torch.Tensor, alpha: float = 0.1) -> torch.Tensor:
-    sim = F.cosine_similarity(embeddings.unsqueeze(1), embeddings.unsqueeze(0), dim=-1)
-    p = F.softmax(sim, dim=1)
-    log_p = torch.log(p + 1e-6)
-    entropy = -torch.sum(p * log_p, dim=1)
-    return -alpha * entropy.mean()  # maximize entropy
+    delta_current = conditional_text_pos - text_emb_normalized
+    delta_neighbor = conditional_text_from_neighbor - text_emb_normalized
+
+    smoothness = F.cosine_similarity(delta_current, delta_neighbor, dim=-1)
+
+    distances = dist_matrix.gather(1, selected_neighbors.unsqueeze(1)).squeeze(1)
+    distances = torch.clamp(distances, min=1e-8, max=10.0)
+    weights = torch.exp(-distances + 1e-8)
+
+    L_smooth_weighted = ((1 - smoothness) * weights).mean()
+
+    return alpha * L_smooth_weighted

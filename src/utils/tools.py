@@ -161,35 +161,27 @@ def get_representatives(label_embeddings, k=10):
 def get_representatives_polar_grid(
     learned_conditions=None, num_angles=10, num_radii=3, max_radius=None
 ):
-    """
-    在极坐标下均匀采样
+    """Sample conditions uniformly on a polar grid.
+
     Args:
-        num_angles: 角度方向数 (m)
-        num_radii: 半径层数 (n)
-        max_radius: 最大半径，如果None则从learned_conditions推断
-        learned_conditions: [N, 2] 训练学到的conditions
+        num_angles: number of angular sectors
+        num_radii: number of radial rings
+        max_radius: outer radius; inferred from learned_conditions if None
+        learned_conditions: [N, 2] conditions to derive radius from
+
     Returns:
-        sampled_conditions: [k, 2] where k = num_angles * num_radii
+        sampled_conditions: [num_angles * num_radii, 2]
     """
     if max_radius is None and learned_conditions is not None:
-        # 从learned conditions推断合理的radius范围
         radii = torch.norm(learned_conditions, dim=1)
-        max_radius = radii.quantile(0.95)  # 用95分位数，避免outlier
+        max_radius = radii.quantile(0.95)  # 95th percentile avoids outliers
         print(f"Inferred max_radius: {max_radius:.3f}")
     elif max_radius is None:
-        max_radius = 2.0  # 默认值
+        max_radius = 2.0
 
-    # 生成角度: [0, 2π) 均匀分布
-    angles = torch.linspace(0, 2 * torch.pi, num_angles + 1)[:-1]  # 不包括2π
-
-    # 生成半径: [0, max_radius] 均匀或对数分布
-    # 选项1: 线性分布（包括0）
+    angles = torch.linspace(0, 2 * torch.pi, num_angles + 1)[:-1]  # exclude 2π endpoint
     radii = torch.linspace(0, max_radius, num_radii)
 
-    # 选项2: 不包括0（如果你发现0附近的condition不重要）
-    # radii = torch.linspace(0.1 * max_radius, max_radius, num_radii)
-
-    # 生成网格
     sampled_conditions = []
     for r in radii:
         for theta in angles:
@@ -202,7 +194,6 @@ def get_representatives_polar_grid(
         f"Sampled {len(sampled_conditions)} conditions "
         f"({num_angles} angles × {num_radii} radii)"
     )
-
     return sampled_conditions
 
 
@@ -272,14 +263,13 @@ def get_representatives_polar_grid_outsideonly(learned_conditions, num_angles=10
 
 
 def precompute_coco_embeddings(model, coco_test_loader, device, processor):
-    """
-    预计算所有embeddings，加速后续检索
+    """Pre-encode all images and captions for fast retrieval later.
 
     Returns:
-        image_embs: [N_images, 512]
-        text_embs: [N_images*5, 512]
-        captions_flat: list of all captions
-        image_to_captions_map: dict mapping image_idx to caption indices
+        image_embs: [N_images, D]
+        text_embs: [N_images * 5, D]
+        captions_flat: flat list of all caption strings
+        image_to_captions_map: dict mapping image_idx → list of caption indices
     """
     model.eval()
 
@@ -287,9 +277,7 @@ def precompute_coco_embeddings(model, coco_test_loader, device, processor):
     all_text_embs = []
     all_captions_flat = []
     image_to_captions_map = {}
-
     caption_idx = 0
-
     max_text_length = 77
 
     with torch.no_grad():
@@ -297,29 +285,21 @@ def precompute_coco_embeddings(model, coco_test_loader, device, processor):
             image_input, captions = batch
             image_input = image_input.to(device)
 
-            # Image embeddings
             img_embs, _ = model.encode_img(image_input)
             all_image_embs.append(img_embs)
 
-            # Text embeddings
             batch_size = len(image_input)
             for i in range(batch_size):
-                # 这张图的5个captions
-                if isinstance(captions[i], list):
-                    img_captions = captions[i]
-                else:
-                    # 如果是flat的
-                    img_captions = [captions[i * 5 + j] for j in range(5)]
+                img_captions = (
+                    captions[i] if isinstance(captions[i], list)
+                    else [captions[i * 5 + j] for j in range(5)]
+                )
 
                 print(captions[i + 1])
 
-                # 记录映射
                 img_idx = batch_idx * batch_size + i
-                image_to_captions_map[img_idx] = list(
-                    range(caption_idx, caption_idx + 5)
-                )
+                image_to_captions_map[img_idx] = list(range(caption_idx, caption_idx + 5))
 
-                # Encode captions
                 text_tokens = processor(
                     text=img_captions,
                     return_tensors="pt",
@@ -331,26 +311,20 @@ def precompute_coco_embeddings(model, coco_test_loader, device, processor):
 
                 all_text_embs.append(text_embs)
                 all_captions_flat.extend(img_captions)
-
                 caption_idx += 5
 
-    # 合并
-    image_embs = torch.cat(all_image_embs, dim=0)  # [N_images, 512]
-    text_embs = torch.cat(all_text_embs, dim=0)  # [N_images*5, 512]
-
+    image_embs = torch.cat(all_image_embs, dim=0)
+    text_embs = torch.cat(all_text_embs, dim=0)
     return image_embs, text_embs, all_captions_flat, image_to_captions_map
 
 
 def retrieve_with_condition_fast(
     model, precomputed_data, condition, query_image_id=None, k=10, device=None
 ):
-    """
-    使用预计算的embeddings快速检索
-    """
+    """Image-to-text retrieval using precomputed embeddings and a condition vector."""
     image_embs, text_embs, all_captions_flat, _ = precomputed_data
 
     model.eval()
-    # 处理condition
     if isinstance(condition, np.ndarray):
         condition = torch.from_numpy(condition).float()
     if condition.dim() == 1:
@@ -358,42 +332,27 @@ def retrieve_with_condition_fast(
     condition = condition.to(device)
 
     with torch.no_grad():
-        # 选择query
         if query_image_id is None:
             query_image_id = torch.randint(0, len(image_embs), (1,)).item()
 
-        img_emb = image_embs[query_image_id : query_image_id + 1]  # [1, 512]
-
-        # 调制所有text embeddings
-        condition_expanded = condition.repeat(len(text_embs), 1)
+        img_emb = image_embs[query_image_id : query_image_id + 1].to(device)
         text_embs = text_embs.to(device)
-        condition_expanded = condition_expanded.to(device)
-        img_emb = img_emb.to(device)
+        condition_expanded = condition.repeat(len(text_embs), 1)
         text_embs_modulated = model.combine(text_embs, None, condition_expanded)
 
-        # 相似度
         similarities = F.cosine_similarity(
             img_emb.expand(len(text_embs_modulated), -1), text_embs_modulated, dim=1
         )
-
-        # Top-k
-        _, top_k_indices = torch.topk(
-            similarities, k=min(k, len(similarities))
-        )
+        _, top_k_indices = torch.topk(similarities, k=min(k, len(similarities)))
 
         idx_list = top_k_indices.cpu().tolist()
-        top_k_captions = [all_captions_flat[idx] for idx in idx_list]
-
-        return idx_list, top_k_captions
+        return idx_list, [all_captions_flat[idx] for idx in idx_list]
 
 
 def visualize_angular_semantics_fast(
     conditions_2d, model, precomputed_data, save_path=None, device=None
 ):
-    """
-    使用预计算embeddings的快速可视化
-    """
-
+    """Visualize top captions per angular bin using precomputed embeddings."""
     model.eval()
 
     if isinstance(conditions_2d, np.ndarray):
@@ -404,8 +363,6 @@ def visualize_angular_semantics_fast(
 
     n_bins = 12
     angle_bins = torch.linspace(-np.pi, np.pi, n_bins + 1, device=device)
-
-    # 固定query image
     fixed_query_id = torch.randint(0, len(precomputed_data[0]), (1,)).item()
 
     fig, axes = plt.subplots(3, 4, figsize=(24, 18))
@@ -422,7 +379,6 @@ def visualize_angular_semantics_fast(
         bin_conditions = conditions_2d[bin_mask]
         bin_center = bin_conditions.median(dim=0)[0]
 
-        # ✅ 快速检索
         _, top_captions = retrieve_with_condition_fast(
             model,
             precomputed_data,
@@ -432,7 +388,6 @@ def visualize_angular_semantics_fast(
             device=device,
         )
 
-        # 显示（同上）
         ax = axes[i]
         ax.axis("off")
 

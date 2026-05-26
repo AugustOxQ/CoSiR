@@ -6,8 +6,9 @@ import requests
 from PIL import Image
 from transformers import AutoModel, AutoProcessor
 from typing import Optional
+from torch import Tensor
 
-from src.model.combiner import *
+from .combiner import Combiner_new, OtherProjMLP
 from src.model.condition_predictor import ConditionPredictor
 
 _DEFAULT_BACKBONE = "openai/clip-vit-base-patch32"
@@ -101,10 +102,10 @@ class CoSiRModel(nn.Module):
         # Learnable projection on the "other side" (the side not fed into the combiner).
         # Identity-initialized so training starts from the same state as without the projection.
         # Swap for a small MLP + residual when non-linear extension is needed.
-        # self.other_proj = nn.Linear(self.feature_dim, self.feature_dim)
-        # nn.init.eye_(self.other_proj.weight)
-        # nn.init.zeros_(self.other_proj.bias)
-        self.other_proj = OtherProjMLP(feature_dim=self.feature_dim, hidden_dim=d_model, num_blocks=3)
+        self.other_proj = nn.Linear(self.feature_dim, self.feature_dim)
+        nn.init.eye_(self.other_proj.weight)
+        nn.init.zeros_(self.other_proj.bias)
+        # self.other_proj = OtherProjMLP(feature_dim=self.feature_dim, hidden_dim=d_model, num_blocks=3)
 
         self.condition_predictor = ConditionPredictor(
             input_dim=self.feature_dim,
@@ -202,24 +203,3 @@ class CoSiRModel(nn.Module):
             comb_emb,
         )
 
-
-def main():
-    backbone_name = _DEFAULT_BACKBONE
-    processor = AutoProcessor.from_pretrained(backbone_name)
-    url = "http://images.cocodataset.org/val2017/000000039769.jpg"
-    image = Image.open(requests.get(url, stream=True).raw)  # type: ignore
-
-    model = CoSiRModel(backbone_model=backbone_name)
-    label = torch.randn(2, model.feature_dim)
-
-    image_input = processor(images=[image, image], return_tensors="pt")
-    text_input = processor(
-        ["a photo of a cat", "a photo of a dog"], return_tensors="pt"
-    )
-
-    img_emb, txt_emb, txt_full, lbl_emb, comb_emb = model(image_input, text_input, label)
-    print(img_emb.shape, txt_emb.shape, lbl_emb.shape, comb_emb.shape)
-
-
-if __name__ == "__main__":
-    main()
