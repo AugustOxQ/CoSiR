@@ -1,5 +1,6 @@
 """Evaluation pipeline: embedding extraction, training and test evaluators."""
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 import torch
 import torch.nn.functional as F
@@ -241,6 +242,48 @@ class TestEvaluator:
         self.config = config or EvaluationConfig()
         self.recall = RecallMetrics(self.config)
         self.oracle = OracleMetrics(self.config)
+        # In-memory cache: keyed by id(dataloader), stores raw backbone embeddings.
+        # Backbone is frozen so these never change across epochs.
+        self._backbone_cache: Dict[int, Tuple] = {}
+
+    def _get_or_extract_embeddings(
+        self,
+        model,
+        processor,
+        dataloader: DataLoader,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, List[str], torch.Tensor, torch.Tensor]:
+        """Return backbone embeddings, using in-memory then disk cache to avoid re-extraction."""
+        cache_key = id(dataloader)
+        if cache_key in self._backbone_cache:
+            print("Reusing cached test embeddings (in-memory).")
+            return self._backbone_cache[cache_key]
+
+        disk_path: Optional[Path] = None
+        if self.config.cache_dir:
+            disk_path = Path(self.config.cache_dir) / "test_backbone_embeddings.pt"
+            if disk_path.exists():
+                print(f"Loading cached test embeddings from {disk_path} ...")
+                saved = torch.load(disk_path, map_location="cpu", weights_only=False)
+                result = (
+                    saved["img_emb"], saved["txt_emb"], saved["txt_full"],
+                    saved["raw_text"], saved["t2i_map"], saved["i2t_map"],
+                )
+                self._backbone_cache[cache_key] = result
+                return result
+
+        print("Extracting embeddings from test data...")
+        result = extract_embeddings(model, processor, dataloader, self.config)
+
+        if disk_path is not None:
+            print(f"Saving test embeddings to {disk_path} ...")
+            disk_path.parent.mkdir(parents=True, exist_ok=True)
+            torch.save({
+                "img_emb": result[0], "txt_emb": result[1], "txt_full": result[2],
+                "raw_text": result[3], "t2i_map": result[4], "i2t_map": result[5],
+            }, disk_path)
+
+        self._backbone_cache[cache_key] = result
+        return result
 
     def evaluate(
         self,
@@ -255,9 +298,8 @@ class TestEvaluator:
         oracle_aggregation: str = "max",
     ) -> Union[MetricResult, TestEvaluationDetail]:
         """Run all test metrics: oracle/predictor retrieval + raw baseline."""
-        print("Extracting embeddings from test data...")
-        img_emb, txt_emb, txt_full, raw_text, t2i_map, i2t_map = extract_embeddings(
-            model, processor, dataloader, self.config
+        img_emb, txt_emb, txt_full, raw_text, t2i_map, i2t_map = self._get_or_extract_embeddings(
+            model, processor, dataloader
         )
 
         # --- Oracle or non-oracle conditioned retrieval ---
@@ -327,8 +369,8 @@ class TestEvaluator:
         self, model, processor, dataloader: DataLoader, device: Optional[str] = None
     ) -> Tuple:
         """Return embeddings + raw sorted indices without running metrics."""
-        img_emb, txt_emb, txt_full, raw_text, t2i_map, i2t_map = extract_embeddings(
-            model, processor, dataloader, self.config
+        img_emb, txt_emb, txt_full, raw_text, t2i_map, i2t_map = self._get_or_extract_embeddings(
+            model, processor, dataloader
         )
         img_norm = F.normalize(img_emb, p=2, dim=1)
         txt_norm = F.normalize(txt_emb, p=2, dim=1)

@@ -29,11 +29,12 @@ python main_cosir.py -m \
   loss.lambda_laplacian=30 \
   loss.lambda_mixup=1 \
   loss.lambda_delta=0.1 \
-  model=clip_base \
+  model=siglip2_base \
+  experiment.results_dir="res/CoSiR_Experiment_siglip2/impressions" \
   model.num_layers=6 \
   model.embedding_dim=16 \
-  "optimizer.lr=1e-6, 1e-5, 1e-4, 1e-3, 1e-2" \
-  "optimizer.lr_label=1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1" \
+  "optimizer.lr=1e-5, 1e-4, 1e-3" \
+  "optimizer.lr_label=1e-6, 1e-5, 1e-4" \
   train.epochs=1000 \
   train.normalize=False \
   train.imgtxt_factor=1 \

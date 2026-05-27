@@ -203,6 +203,9 @@ def _setup_experiment(cfg, evaluation_config, device, logger):
     print(f"Experiment directory: {experiment.directory}")
 
     evaluator = EvaluationManager(evaluation_config)
+    # Point the evaluator's cache at the experiment directory so frozen backbone
+    # embeddings are saved after the first extraction and reused across epochs.
+    evaluator.config.cache_dir = experiment.directory
     umap_vis = UMAP_vis(device=device)
     return experiment, evaluator, umap_vis
 

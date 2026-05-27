@@ -1,13 +1,13 @@
 #! /bin/bash
 set -euo pipefail
 
-# Run CLIP baseline fine-tuning for multiple modes on a given dataset.
+# Run SigLIP baseline fine-tuning for multiple modes on a given dataset.
 # Usage:
-#   bash scripts/run_baseline.sh                          # impressions, all 3 modes, seed 42
-#   bash scripts/run_baseline.sh --dataset coco           # coco, all 3 modes
-#   bash scripts/run_baseline.sh --modes linear           # single mode
-#   bash scripts/run_baseline.sh --seeds "42 123 456"     # multi-seed (sequential)
-#   bash scripts/run_baseline.sh --epochs 10 --ratio 0.1  # quick test run
+#   bash scripts/run_baseline_siglip.sh                          # impressions, all 3 modes, seed 42
+#   bash scripts/run_baseline_siglip.sh --dataset coco           # coco, all 3 modes
+#   bash scripts/run_baseline_siglip.sh --modes linear           # single mode
+#   bash scripts/run_baseline_siglip.sh --seeds "42 123 456"     # multi-seed (sequential)
+#   bash scripts/run_baseline_siglip.sh --epochs 10 --ratio 0.1  # quick test run
 
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate CoSiR
@@ -16,18 +16,19 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 DATASET="impressions"
-MODES="last_blocks linear lora"
+MODES="lora"
 SEEDS="42"
 EPOCHS=30
-BATCH_SIZE=256
+BATCH_SIZE=128
 LR=1e-5
 RATIO=1.0
 EVAL_INTERVAL=5
 NUM_WORKERS=4
+CLIP_MODEL="google/siglip-base-patch16-224"
 WANDB_PROJECT="cosir_baseline"
 WANDB_ENTITY="augustoxq"
 WANDB_MODE="online"
-OUTPUT_DIR="res/baseline"
+OUTPUT_DIR="res/baseline_siglip"
 EXTRA_ARGS=""
 
 # ── Argument parsing ──────────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ while [[ $# -gt 0 ]]; do
     --ratio)         RATIO="$2";         shift 2 ;;
     --eval_interval) EVAL_INTERVAL="$2"; shift 2 ;;
     --num_workers)   NUM_WORKERS="$2";   shift 2 ;;
+    --clip_model)    CLIP_MODEL="$2";    shift 2 ;;
     --wandb_project) WANDB_PROJECT="$2"; shift 2 ;;
     --wandb_entity)  WANDB_ENTITY="$2";  shift 2 ;;
     --wandb_mode)    WANDB_MODE="$2";    shift 2 ;;
@@ -56,12 +58,13 @@ for MODE in $MODES; do
   for SEED in $SEEDS; do
     echo ""
     echo "=========================================="
-    echo "  dataset=${DATASET}  mode=${MODE}  seed=${SEED}"
+    echo "  dataset=${DATASET}  mode=${MODE}  seed=${SEED}  model=${CLIP_MODEL}"
     echo "=========================================="
 
     python src/baseline/train_baseline.py \
       --dataset        "$DATASET" \
       --mode           "$MODE" \
+      --clip_model     "$CLIP_MODEL" \
       --epochs         "$EPOCHS" \
       --batch_size     "$BATCH_SIZE" \
       --lr             "$LR" \

@@ -67,6 +67,12 @@ class CLIPBaseline(nn.Module):
         self.mode = mode
         self.backbone = AutoModel.from_pretrained(clip_model_name)
 
+        # CLIP exposes top-level projection layers; SigLIP bakes them into the
+        # encoder head (vision_model.head / text_model.head).  Store None when
+        # absent so encode_image/encode_text can branch without attribute errors.
+        self._visual_proj = getattr(self.backbone, "visual_projection", None)
+        self._text_proj = getattr(self.backbone, "text_projection", None)
+
         if mode == "full":
             pass  # all params trainable by default
 
@@ -79,21 +85,25 @@ class CLIPBaseline(nn.Module):
             for layer in self.backbone.text_model.encoder.layers[-num_blocks:]:
                 for p in layer.parameters():
                     p.requires_grad = True
-            for p in self.backbone.visual_projection.parameters():
+            for p in self._visual_head_params():
                 p.requires_grad = True
-            for p in self.backbone.text_projection.parameters():
+            for p in self._text_head_params():
                 p.requires_grad = True
-            for p in self.backbone.vision_model.post_layernorm.parameters():
-                p.requires_grad = True
-            for p in self.backbone.text_model.final_layer_norm.parameters():
-                p.requires_grad = True
+            vln = getattr(self.backbone.vision_model, "post_layernorm", None)
+            if vln is not None:
+                for p in vln.parameters():
+                    p.requires_grad = True
+            tln = getattr(self.backbone.text_model, "final_layer_norm", None)
+            if tln is not None:
+                for p in tln.parameters():
+                    p.requires_grad = True
 
         elif mode == "linear":
             for p in self.backbone.parameters():
                 p.requires_grad = False
-            for p in self.backbone.visual_projection.parameters():
+            for p in self._visual_head_params():
                 p.requires_grad = True
-            for p in self.backbone.text_projection.parameters():
+            for p in self._text_head_params():
                 p.requires_grad = True
 
         elif mode == "lora":
@@ -108,25 +118,56 @@ class CLIPBaseline(nn.Module):
                 bias="none",
             )
             self.backbone = get_peft_model(self.backbone, lora_cfg)
-            for p in self.backbone.visual_projection.parameters():
+            # Re-resolve after wrapping because get_peft_model replaces the module
+            self._visual_proj = getattr(self.backbone, "visual_projection", None)
+            self._text_proj = getattr(self.backbone, "text_projection", None)
+            for p in self._visual_head_params():
                 p.requires_grad = True
-            for p in self.backbone.text_projection.parameters():
+            for p in self._text_head_params():
                 p.requires_grad = True
 
         else:
             raise ValueError(f"Unknown mode: {mode}. Choose from full|last_blocks|linear|lora")
 
+    def _visual_head_params(self):
+        """Projection parameters for the vision side (CLIP or SigLIP)."""
+        if self._visual_proj is not None:
+            return self._visual_proj.parameters()
+        head = getattr(self.backbone.vision_model, "head", None)
+        return head.parameters() if head is not None else iter([])
+
+    def _text_head_params(self):
+        """Projection parameters for the text side (CLIP or SigLIP)."""
+        if self._text_proj is not None:
+            return self._text_proj.parameters()
+        head = getattr(self.backbone.text_model, "head", None)
+        return head.parameters() if head is not None else iter([])
+
     def encode_image(self, pixel_values: torch.Tensor) -> torch.Tensor:
         out = self.backbone.vision_model(pixel_values=pixel_values)
-        return self.backbone.visual_projection(out.pooler_output)
+        # SigLIP2 NaViT has no CLS token → pooler_output is None; fall back to mean pool
+        feat = out.pooler_output if out.pooler_output is not None else out.last_hidden_state.mean(dim=1)
+        if self._visual_proj is not None:
+            feat = self._visual_proj(feat)
+        return feat
 
-    def encode_text(self, input_ids: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
+    def encode_text(self, input_ids: torch.Tensor, attention_mask: torch.Tensor | None = None) -> torch.Tensor:
         out = self.backbone.text_model(input_ids=input_ids, attention_mask=attention_mask)
-        return self.backbone.text_projection(out.pooler_output)
+        if out.pooler_output is not None:
+            feat = out.pooler_output
+        elif attention_mask is not None:
+            # mask-aware mean pool to ignore padding tokens
+            mask = attention_mask.unsqueeze(-1).float()
+            feat = (out.last_hidden_state * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1)
+        else:
+            feat = out.last_hidden_state.mean(dim=1)
+        if self._text_proj is not None:
+            feat = self._text_proj(feat)
+        return feat
 
     def forward(self, inputs: dict) -> tuple:
         img_emb = self.encode_image(inputs["pixel_values"])
-        txt_emb = self.encode_text(inputs["input_ids"], inputs["attention_mask"])
+        txt_emb = self.encode_text(inputs["input_ids"], inputs.get("attention_mask"))
         return img_emb, txt_emb
 
     def trainable_param_count(self) -> int:
@@ -199,7 +240,7 @@ def run_eval(model, processor, val_loader, device, k_vals=(1, 5, 10)):
 
             img_emb = model.encode_image(images["pixel_values"].to(device))
             txt_emb = model.encode_text(
-                text_inputs["input_ids"], text_inputs["attention_mask"]
+                text_inputs["input_ids"], text_inputs.get("attention_mask")
             )
 
             all_img.append(img_emb.cpu())

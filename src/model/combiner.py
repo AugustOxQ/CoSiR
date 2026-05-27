@@ -183,7 +183,7 @@ class Combiner_new(nn.Module):
 
         self.general_decoder = GeLUNetGradual(input_dim=clip_feature_dim, output_dim=128, num_layers=num_layers, dropout=dropout)
 
-        self.combiner_layer = GeLUNetGradual(input_dim=256, output_dim=512, num_layers=num_layers, dropout=dropout)
+        self.combiner_layer = GeLUNetGradual(input_dim=256, output_dim=clip_feature_dim, num_layers=num_layers, dropout=dropout)
 
         self.dynamic_scalar = nn.Sequential(
             nn.Linear(128 * 2, 128),

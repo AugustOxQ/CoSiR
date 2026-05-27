@@ -33,6 +33,12 @@ class EvaluationConfig:
 
     evaluation_interval: int = 1
 
+    # Backbone embedding cache
+    # When set, raw backbone embeddings are saved to/loaded from
+    # {cache_dir}/test_backbone_embeddings.pt so re-extraction is skipped
+    # on subsequent evaluation calls (backbone is frozen, so they never change).
+    cache_dir: Optional[str] = None
+
     # Logging
     print_metrics: bool = True
     metric_prefix: str = ""
