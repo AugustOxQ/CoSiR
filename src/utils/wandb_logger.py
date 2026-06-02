@@ -28,6 +28,9 @@ class WandbLogger:
         # train/ = epoch summaries; train_loss/, train_monitor/, train_details/ = batch-level
         for _s in ("", "_loss", "_monitor", "_details"):
             wandb.define_metric(f"train{_s}/*", step_metric="train_epoch")
+        # Phase 1 experiment-specific train metrics
+        for _s in ("_loss", "_monitor"):
+            wandb.define_metric(f"train_phase1{_s}/*", step_metric="train_epoch")
         wandb.define_metric("vis/*", step_metric="test_epoch")
         # Test groups — each gets its own wandb section (test_oracle/*, etc.)
         for _g in ("oracle", "raw", "diff", "oracle_img", "oracle_imgtxt"):
@@ -42,6 +45,8 @@ class WandbLogger:
             "space_quality",
         ):
             wandb.define_metric(f"eval_{_g}/*", step_metric="eval_epoch")
+        # Phase 1 eval metrics (direction_sim, per-type R@1)
+        wandb.define_metric("eval_phase1/*", step_metric="eval_epoch")
 
     # ------------------------------------------------------------------ #
     # Internal helpers                                                     #

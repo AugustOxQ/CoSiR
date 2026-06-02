@@ -13,7 +13,7 @@ import torch
 import torch.nn.functional as F
 import random
 from typing import cast, Optional
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from tqdm.auto import tqdm
 import numpy as np
 from transformers import AutoProcessor
@@ -368,24 +368,68 @@ def _build_dataloaders(cfg, feature_manager, processor, sample_ids_list):
     """
     feature_types = feature_manager.available_features  # e.g. ['img_features','txt_features']
 
+    # ── Sample types (must be computed before the loader for C1 upsampling) ──
+    sample_types = []
+    if cfg.data.dataset_type == "impressions":
+        print("Loading sample types for Impressions dataset")
+        train_file = json.load(open(cfg.data.train_annotation_path))
+        train_file = [train_file[i] for i in sample_ids_list]
+        _type_map = {"caption": 0, "description": 1, "impression": 2, "aesthetic": 3}
+        for item in train_file:
+            type_str = item["caption_type"]
+            if "caption" in type_str:
+                type_int = 0
+            elif "description" in type_str:
+                type_int = 1
+            elif "impression" in type_str:
+                type_int = 2
+            elif "aesthetic" in type_str:
+                type_int = 3
+            else:
+                raise ValueError(f"Unknown caption type: {type_str}")
+            sample_types.append(type_int)
+        sample_types = np.array(sample_types)
+
+    # ── Train dataset & loader ────────────────────────────────────────────────
+    caption_upsample = getattr(cfg.train, "caption_upsample", 1.0)
+
     if feature_manager.fits_in_ram():
         print(
             f"RAM mode: loading {feature_manager.cls_features_size_gb():.1f} GiB of "
             "features into RAM for true-random batches."
         )
         train_set = CoSiRShardDataset(feature_manager, feature_types=feature_types)
-        train_loader = DataLoader(
-            train_set,
-            batch_size=cfg.train.batch_size,
-            shuffle=True,
-            num_workers=cfg.train.num_workers,
-            pin_memory=True,
-        )
+
+        # C1: upsample caption via WeightedRandomSampler (map-style dataset only)
+        if len(sample_types) > 0 and caption_upsample != 1.0:
+            weights = np.ones(len(sample_types), dtype=np.float32)
+            weights[sample_types == 0] = caption_upsample
+            sampler = WeightedRandomSampler(
+                weights.tolist(), len(weights), replacement=True
+            )
+            train_loader = DataLoader(
+                train_set,
+                batch_size=cfg.train.batch_size,
+                sampler=sampler,
+                num_workers=cfg.train.num_workers,
+                pin_memory=True,
+            )
+            print(f"C1: caption upsampled {caption_upsample}x via WeightedRandomSampler")
+        else:
+            train_loader = DataLoader(
+                train_set,
+                batch_size=cfg.train.batch_size,
+                shuffle=True,
+                num_workers=cfg.train.num_workers,
+                pin_memory=True,
+            )
     else:
         print(
             f"Stream mode: {feature_manager.cls_features_size_gb():.1f} GiB does not "
             "fit in RAM — using shard-streaming with shuffle window."
         )
+        if caption_upsample != 1.0:
+            print("Warning: caption_upsample ignored in stream mode (iterable dataset)")
         train_set = CoSiRShardStreamDataset(
             feature_manager,
             feature_types=feature_types,
@@ -411,27 +455,6 @@ def _build_dataloaders(cfg, feature_manager, processor, sample_ids_list):
         shuffle=False,
         num_workers=cfg.train.num_workers,
     )
-
-    sample_types = []
-    if cfg.data.dataset_type == "impressions":
-        print("Loading sample types for Impressions dataset")
-        train_file = json.load(open(cfg.data.train_annotation_path))
-        train_file = [train_file[i] for i in sample_ids_list]
-        _type_map = {"caption": 0, "description": 1, "impression": 2, "aesthetic": 3}
-        for item in train_file:
-            type_str = item["caption_type"]
-            if "caption" in type_str:
-                type_int = 0
-            elif "description" in type_str:
-                type_int = 1
-            elif "impression" in type_str:
-                type_int = 2
-            elif "aesthetic" in type_str:
-                type_int = 3
-            else:
-                raise ValueError(f"Unknown caption type: {type_str}")
-            sample_types.append(type_int)
-        sample_types = np.array(sample_types)
 
     return train_set, train_loader, test_set, test_loader, sample_types
 
@@ -995,6 +1018,87 @@ def _eval_snapshot(
         }
         logger.log_eval(eval_metrics, epoch=epoch)
 
+        # ── Phase 1 eval metrics: direction_sim + per-type T2I R@1 ──
+        if cfg.data.dataset_type == "impressions" and len(sample_types) > 0:
+            _TYPE_NAMES = ["cap", "des", "imp", "aes"]
+            _type_map_test = {"caption": 0, "description": 1, "impression": 2, "aesthetic": 3}
+            _test_types_list = []
+            for _i in range(all_img_emb.shape[0]):
+                for _tt in test_set.annotations[_i]["caption_type"]:
+                    _test_types_list.append(_type_map_test[_tt])
+            _test_types = np.array(_test_types_list)  # [N_txt]
+            _ttimap = text_to_image_map.cpu()
+
+            _img_t = all_img_emb.to(device)
+            _txt_t = all_txt_emb.to(device)
+            _lab_all = label_embeddings_all.to(device)
+            _n_img = _img_t.shape[0]
+            _phase1_eval: dict = {}
+
+            with torch.no_grad():
+                _other_n = F.normalize(model.project_other(_txt_t), dim=-1)  # [N_txt, D]
+
+                # Direction similarity — compare per-type mean condition shifts on a sample of images
+                if cfg.model.combine_side == "img":
+                    _n_s = min(256, _n_img)
+                    _img_s = _img_t[:_n_s]
+                    _img_s_n = F.normalize(_img_s, dim=-1)
+                    _type_dmeans_eval = []
+                    _present_types_eval = []
+                    for _t in range(4):
+                        _mask_t = sample_types == _t
+                        if not _mask_t.any():
+                            continue
+                        _cond_t = _lab_all[_mask_t].mean(0).unsqueeze(0).expand(_n_s, -1)
+                        _comb_t = F.normalize(model.combine(_img_s, None, _cond_t), dim=-1)
+                        _type_dmeans_eval.append((_comb_t - _img_s_n).mean(0))
+                        _present_types_eval.append(_t)
+
+                    if len(_type_dmeans_eval) >= 2:
+                        _dm_n_eval = F.normalize(torch.stack(_type_dmeans_eval), dim=-1)
+                        _dir_mat = (_dm_n_eval @ _dm_n_eval.T).cpu().numpy()
+                        _nt = len(_type_dmeans_eval)
+                        _off = [(i, j) for i in range(_nt) for j in range(i + 1, _nt)]
+                        _phase1_eval["direction_sim_mean"] = float(
+                            np.mean([_dir_mat[i, j] for i, j in _off])
+                        )
+                        for _ia, _ta in enumerate(_present_types_eval):
+                            for _ib, _tb in enumerate(_present_types_eval):
+                                if _ib > _ia:
+                                    _phase1_eval[
+                                        f"direction_sim_{_TYPE_NAMES[_ta]}_{_TYPE_NAMES[_tb]}"
+                                    ] = float(_dir_mat[_ia, _ib])
+
+                # Per-type T2I R@1: predicted condition vs avg_all condition
+                _pred_cond_e = model.predict_condition(_img_t)  # [N_img, D_cond]
+                _comb_pred = F.normalize(model.combine(_img_t, None, _pred_cond_e), dim=-1)
+                _sims_pred = (_other_n @ _comb_pred.T).cpu()  # [N_txt, N_img]
+                _gt_s = _sims_pred[torch.arange(len(_ttimap)), _ttimap]
+                _ranks_pred = (_sims_pred >= _gt_s.unsqueeze(1)).sum(1).long() - 1
+
+                _avg_cond = _lab_all.mean(0).unsqueeze(0).expand(_n_img, -1)
+                _comb_avg = F.normalize(model.combine(_img_t, None, _avg_cond), dim=-1)
+                _sims_avg = (_other_n @ _comb_avg.T).cpu()
+                _gt_s_avg = _sims_avg[torch.arange(len(_ttimap)), _ttimap]
+                _ranks_avg = (_sims_avg >= _gt_s_avg.unsqueeze(1)).sum(1).long() - 1
+
+                for _t, _name in enumerate(_TYPE_NAMES):
+                    _mask_tt = _test_types == _t
+                    if _mask_tt.any():
+                        _phase1_eval[f"r1_predicted_{_name}"] = float(
+                            (_ranks_pred[_mask_tt] == 0).float().mean()
+                        )
+                        _phase1_eval[f"r1_avg_all_{_name}"] = float(
+                            (_ranks_avg[_mask_tt] == 0).float().mean()
+                        )
+
+            _phase1_log = {f"eval_phase1/{k}": v for k, v in _phase1_eval.items()}
+            _phase1_log["eval_epoch"] = epoch
+            logger.log(_phase1_log)
+
+            del _img_t, _txt_t, _lab_all, _other_n, _comb_pred, _sims_pred, _comb_avg, _sims_avg
+            torch.cuda.empty_cache()
+
         # ── Condition analysis cache ──
         _save_condition_analysis_cache(
             cfg,
@@ -1204,28 +1308,51 @@ def train_cosir(cfg, logger):
 
             loss = loss_dict["total_loss"]
 
-            # Condition predictor distillation: predict conditions from combine-side
-            # embeddings, supervised by stop-gradient per-sample conditions.
+            # Condition predictor distillation + L5 entropy diversity.
+            # pred_cond is shared between both losses to avoid a second forward pass.
             lambda_pred = cfg.loss.lambda_pred
-            if lambda_pred > 0:
+            lambda_ent = getattr(cfg.loss, "lambda_ent", 0.0)
+            ent_tau = getattr(cfg.loss, "ent_tau", 5.0)
+
+            pred_cond = None
+            if lambda_pred > 0 or (lambda_ent > 0 and len(sample_types) > 0):
                 pred_cond = model.predict_condition(combine_emb)
+
+            if lambda_pred > 0 and pred_cond is not None:
                 pred_loss = (
                     1
-                    - torch.nn.functional.cosine_similarity(
-                        pred_cond, label_embeddings.detach(), dim=-1
-                    )
+                    - F.cosine_similarity(pred_cond, label_embeddings.detach(), dim=-1)
                 ).mean()
                 loss = loss + lambda_pred * pred_loss
                 loss_dict["loss_pred"] = pred_loss
 
+            if lambda_ent > 0 and pred_cond is not None and len(sample_types) > 0:
+                # L5: per-batch type-affinity distribution should be uniform across 4 types
+                batch_types_arr = sample_types[np.array(batch_indices)]
+                type_means_list = []
+                for _t in range(4):
+                    _mask = batch_types_arr == _t
+                    if _mask.any():
+                        type_means_list.append(label_embeddings.detach()[_mask].mean(0))
+                    else:
+                        type_means_list.append(label_embeddings.detach().mean(0))
+                type_means_n = F.normalize(torch.stack(type_means_list), dim=-1)  # [4, D_cond]
+                pred_n_l5 = F.normalize(pred_cond, dim=-1)  # [B, D_cond]
+                batch_probs = F.softmax(pred_n_l5 @ type_means_n.T * ent_tau, dim=-1).mean(0)  # [4]
+                pred_entropy = -(batch_probs * torch.log(batch_probs + 1e-8)).sum()
+                loss = loss + lambda_ent * (-pred_entropy)  # maximise entropy
+                loss_dict["pred_entropy"] = pred_entropy.detach()
+
             epoch_loss += loss.item()
             num_batches += 1
 
+            # Phase 1 keys are logged to train_phase1_loss/* — keep them out of train_loss/*
+            _phase1_loss_keys = {"pred_entropy"}
             _monitor_keys = {"diag_sim_gap", "off_diag_sim_gap", "total_sim_gap"}
             loss_metrics = {
                 k: v.item() if torch.is_tensor(v) else v
                 for k, v in loss_dict.items()
-                if k not in _monitor_keys
+                if k not in _monitor_keys and k not in _phase1_loss_keys
             }
             monitor_metrics = {
                 k: v.item() if torch.is_tensor(v) else v
@@ -1234,8 +1361,43 @@ def train_cosir(cfg, logger):
             }
             monitor_metrics["cos_sim"] = cos_sim.mean().item() if cos_sim is not None else None
 
+            phase1_loss_metrics = {
+                k: v.item() if torch.is_tensor(v) else v
+                for k, v in loss_dict.items()
+                if k in _phase1_loss_keys
+            }
+
             logger.log_train(loss_metrics, epoch=epoch, step=global_step, section="loss")
             logger.log_train(monitor_metrics, epoch=epoch, step=global_step, section="monitor")
+            if phase1_loss_metrics:
+                logger.log_train(phase1_loss_metrics, epoch=epoch, step=global_step, section="phase1_loss")
+
+            # Phase 1 monitor: batch-level direction diversity across condition types (every 50 steps)
+            if batch_idx % 50 == 0 and len(sample_types) > 0:
+                with torch.no_grad():
+                    _btypes = sample_types[np.array(batch_indices)]
+                    _comb_n = F.normalize(comb_emb.detach(), dim=-1)
+                    _ref_n = F.normalize(combine_emb.detach(), dim=-1)
+                    _deltas = _comb_n - _ref_n  # [B, D]
+                    _type_dmeans = []
+                    for _t in range(4):
+                        _mask = _btypes == _t
+                        if _mask.any():
+                            _type_dmeans.append(_deltas[_mask].mean(0))
+                    if len(_type_dmeans) >= 2:
+                        _dm_n = F.normalize(torch.stack(_type_dmeans), dim=-1)
+                        _n_t = _dm_n.shape[0]
+                        _triu = torch.triu(
+                            torch.ones(_n_t, _n_t, dtype=torch.bool, device=_dm_n.device),
+                            diagonal=1,
+                        )
+                        _dir_sim = (_dm_n @ _dm_n.T)[_triu].mean().item()
+                        logger.log_train(
+                            {"direction_sim": _dir_sim},
+                            epoch=epoch,
+                            step=global_step,
+                            section="phase1_monitor",
+                        )
             logger.log_train(
                 {"batch": batch_idx, "step": global_step},
                 epoch=epoch,

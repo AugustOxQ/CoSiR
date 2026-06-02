@@ -30,7 +30,7 @@ python main_cosir.py -m \
   loss.lambda_mixup=1 \
   loss.lambda_delta=0.1 \
   model=clip_base \
-  experiment.results_dir="res/CoSiR_Experiment_em2/impressions" \
+  experiment.results_dir="res/CoSiR_Experiment_phase1/impressions" \
   model.num_layers=6 \
   model.embedding_dim=16 \
   "optimizer.lr=1e-5, 1e-4, 1e-3" \
@@ -39,7 +39,3 @@ python main_cosir.py -m \
   train.normalize=False \
   train.imgtxt_factor=1 \
   train.initialization_strategy=imgtxt \
-  "scheduler.type="CosineAnnealingWarmRestarts, CosineAnnealingLR" \
-  scheduler.T_0=50 \
-  scheduler.T_mult=2 \
-  train.em_interval="-1, 50, 100"
