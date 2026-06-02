@@ -298,7 +298,7 @@ def _build_optimizer_and_scheduler(cfg, model, embedding_manager):
                 "params": [
                     p
                     for n, p in model.named_parameters()
-                    if "condition_predictor" not in n
+                    if "condition_predictor" not in n and "other_proj" not in n
                 ],
                 "lr": cfg.optimizer.lr,
                 "weight_decay": cfg.optimizer.weight_decay,
@@ -311,6 +311,11 @@ def _build_optimizer_and_scheduler(cfg, model, embedding_manager):
             {
                 "params": list(model.condition_predictor.parameters()),
                 "lr": cfg.optimizer.lr,
+                "weight_decay": cfg.optimizer.weight_decay,
+            },
+            {
+                "params": list(model.other_proj.parameters()),
+                "lr": cfg.optimizer.lr / 10,
                 "weight_decay": cfg.optimizer.weight_decay,
             },
         ]
@@ -1107,9 +1112,9 @@ def train_cosir(cfg, logger):
 
     # --- Training Loop ---
     global_step = 0
-    automatic_warm_up_end = False
-    warm_up_loss_history: list[float] = []
-    in_warmup = cfg.train.warm_up_epochs > 0  # transitions to False exactly once
+    em_interval = cfg.train.em_interval
+    em_enabled = em_interval > 0
+    _prev_em_phase: str | None = None  # force transition on epoch 0
 
     for epoch in range(cfg.train.epochs):
         experiment.current_epoch = epoch
@@ -1118,17 +1123,23 @@ def train_cosir(cfg, logger):
         num_batches = 0
         cos_sim = None  # updated every 100 batches for cheap monitoring
 
-        # Warm-up transition: hard limit (if > 0) OR automatic plateau detection
-        scheduled_end = cfg.train.warm_up_epochs > 0 and epoch >= cfg.train.warm_up_epochs
-        if in_warmup and (scheduled_end or automatic_warm_up_end):
-            in_warmup = False
-            reason = "scheduled" if scheduled_end else "auto (plateau)"
-            print(
-                f"[WarmUp] Warm-up ended at epoch {epoch} ({reason}) — "
-                "freezing combiner, starting embedding updates"
-            )
-            for param in model.combiner.parameters():
-                param.requires_grad = False
+        # EM phase alternation (disabled when em_interval < 0: both always update)
+        if em_enabled:
+            em_phase = "network" if (epoch // em_interval) % 2 == 0 else "conditions"
+            if em_phase != _prev_em_phase:
+                if em_phase == "network":
+                    print(f"[EM] Epoch {epoch}: switching to NETWORK update phase")
+                    for param in model.parameters():
+                        param.requires_grad = True
+                    embedding_manager.embeddings.requires_grad_(False)
+                else:
+                    print(f"[EM] Epoch {epoch}: switching to CONDITIONS update phase")
+                    for param in model.parameters():
+                        param.requires_grad = False
+                    embedding_manager.embeddings.requires_grad_(True)
+                _prev_em_phase = em_phase
+        else:
+            em_phase = "both"
 
         epoch_start_time = time.time()
         if isinstance(train_set, CoSiRShardStreamDataset):
@@ -1237,7 +1248,7 @@ def train_cosir(cfg, logger):
             optimizer.step()
             global_step += 1
 
-            if not in_warmup:
+            if em_phase in ("conditions", "both"):
                 if cfg.train.normalize:
                     with torch.no_grad():
                         embedding_manager.embeddings.data[batch_indices] = (
@@ -1267,26 +1278,9 @@ def train_cosir(cfg, logger):
         avg_loss = epoch_loss / num_batches
         print(f"Epoch {epoch}, Loss: {avg_loss:.6f}, Time: {epoch_time:.2f}s")
         logger.log_train(
-            {"loss": avg_loss, "epoch_time": epoch_time, "in_warmup": int(in_warmup)},
+            {"loss": avg_loss, "epoch_time": epoch_time, "em_phase": em_phase},
             epoch=epoch,
         )
-
-        # Auto warm-up plateau detection
-        if in_warmup and not automatic_warm_up_end:
-            warm_up_loss_history.append(avg_loss)
-            patience = cfg.train.warm_up_patience
-            min_delta_pct = cfg.train.warm_up_min_delta_pct
-            if len(warm_up_loss_history) > patience:
-                ref_loss = warm_up_loss_history[-(patience + 1)]
-                improvement_pct = (ref_loss - avg_loss) / (abs(ref_loss) + 1e-8) * 100
-                if improvement_pct < min_delta_pct:
-                    automatic_warm_up_end = True
-                    print(
-                        f"[WarmUp] Plateau detected: loss improved only {improvement_pct:.3f}% "
-                        f"over last {patience} epochs (threshold: {min_delta_pct}%). "
-                        f"Auto-ending warm-up after epoch {epoch}."
-                    )
-                    logger.log_train({"warmup_auto_ended_epoch": epoch}, epoch=epoch)
 
         scheduler.step()
 

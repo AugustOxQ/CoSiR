@@ -247,7 +247,6 @@ class CombinerGated(nn.Module):
         num_heads: int = 8,
         num_layers: int = 4,
         label_dim: int = 512,
-        warm_up_epoch: int = 5,
         scale_init: float = 1,
     ) -> None:
         super().__init__()
@@ -258,7 +257,6 @@ class CombinerGated(nn.Module):
         for param in self.label_proj_layer.parameters():
             param.requires_grad = False
 
-        self.warm_up_epoch = warm_up_epoch
         self.scalar = FixedSizeQueue(2)
 
         # Learnable channel-wise scale (optional)

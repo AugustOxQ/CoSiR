@@ -13,9 +13,7 @@ train:
   load_existing_features: True
   representative_number: 12 # This should equal to selected number of conditions * number of grids
   normalize: false
-  warm_up_epochs: 0 # Warm up epochs for label embedding training (hard upper limit)
-  warm_up_patience: 20 # Auto-end warm-up if loss improves less than warm_up_min_delta_pct over this many epochs
-  warm_up_min_delta_pct: 0.01 # Minimum % improvement required to keep warm-up going
+  em_interval: 50 # EM-style training: alternate every N epochs between updating network and updating conditions (negative = disabled, update both every epoch)
 
 # Loss function configuration
 loss:
@@ -44,8 +42,8 @@ optimizer:
 scheduler:
   type: "CosineAnnealingLR" # CosineAnnealingLR, LinearLR, SequentialLR, CosineAnnealingWarmRestarts
   T_max: 0 # Should match train.epochs
-  T_0: 10
-  T_mult: 2
+  T_0: 50
+  T_mult: 1 # This has to be int
   eta_min: 1.0e-9
 
 # Evaluation configuration

@@ -48,6 +48,8 @@ _STATIC_OVERRIDES = [
     "train.normalize=false",
     "train.imgtxt_factor=1",
     "train.initialization_strategy=imgtxt",
+    "scheduler.T_0=50",
+    "scheduler.T_mult=2",
     "wandb.enabled=false",
 ]
 
@@ -56,6 +58,10 @@ def _run():
     with wandb.init() as run:
         lr = wandb.config.lr
         lr_label = wandb.config.lr_label
+        # scheduler_type / em_interval are only present in v2 sweeps; fall back
+        # to the config defaults when running the original lr/lr_label sweep.
+        scheduler_type = getattr(wandb.config, "scheduler_type", None)
+        em_interval = getattr(wandb.config, "em_interval", None)
 
         overrides = _STATIC_OVERRIDES + [
             f"optimizer.lr={lr}",
@@ -63,13 +69,22 @@ def _run():
             # Use the wandb run ID so experiment dirs are unique across parallel agents.
             f"experiment.name=sweep_{run.id}",
         ]
+        if scheduler_type is not None:
+            overrides.append(f"scheduler.type={scheduler_type}")
+        if em_interval is not None:
+            overrides.append(f"train.em_interval={em_interval}")
 
         with initialize_config_dir(config_dir=_CONFIGS_DIR, version_base=None):
             cfg = compose(config_name="config.yaml", overrides=overrides)
 
         print("Sweep run config:\n" + OmegaConf.to_yaml(cfg))
-        # Tag each run with its lr values so they're readable in the runs table.
-        run.config.update({"lr": lr, "lr_label": lr_label})
+        # Tag each run with all swept values so they appear in the runs table.
+        run.config.update({
+            "lr": lr,
+            "lr_label": lr_label,
+            **({"scheduler_type": scheduler_type} if scheduler_type is not None else {}),
+            **({"em_interval": em_interval} if em_interval is not None else {}),
+        })
         logger = WandbLogger()
         train_cosir(cfg, logger)
 
