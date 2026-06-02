@@ -18,6 +18,7 @@ wandb:
   project: cosir_image
   entity: augustoxq
   name: ""
+  group: ""
   tags: [Local]
   notes: "CoSiR Training"
   mode: online
