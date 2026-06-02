@@ -1099,6 +1099,67 @@ def _eval_snapshot(
             del _img_t, _txt_t, _lab_all, _other_n, _comb_pred, _sims_pred, _comb_avg, _sims_avg
             torch.cuda.empty_cache()
 
+        # ── Phase 2 eval: condition transfer score ──
+        # Measures whether similar predicted conditions transfer retrieval benefit across
+        # queries — answers whether the retrieval task is naturally creating coherent
+        # condition structure without GT type labels.
+        # Spearman ρ > 0 and rising → structure emerging; flat → no useful structure.
+        _lambda_var = getattr(cfg.loss, "lambda_var", 0.0)
+        _lambda_cov = getattr(cfg.loss, "lambda_cov", 0.0)
+        if (_lambda_var > 0 or _lambda_cov > 0) and cfg.model.combine_side == "img":
+            from scipy.stats import spearmanr as _spearmanr
+            _TM = min(50, all_img_emb.shape[0])
+            _img_m = all_img_emb[:_TM].to(device)
+            _txt_all = all_txt_emb.to(device)
+            _other_m = F.normalize(model.project_other(_txt_all), dim=-1)  # [N_txt, D]
+            _ittmap_m = image_to_text_map[:_TM].to(device)                 # [TM, cpi]
+            _lab_m = label_embeddings_all.to(device)
+            _avg_cond_m = _lab_m.mean(0).unsqueeze(0).expand(_TM, -1)
+
+            with torch.no_grad():
+                # Predicted conditions for the TM images
+                _pred_conds_m = model.predict_condition(_img_m)             # [TM, D_cond]
+                _pred_conds_n = F.normalize(_pred_conds_m, dim=-1)
+                _cond_sim_mat = (_pred_conds_n @ _pred_conds_n.T).cpu()    # [TM, TM]
+
+                # Avg-all baseline rank for each image (I2T direction)
+                _comb_avg_m = F.normalize(model.combine(_img_m, None, _avg_cond_m), dim=-1)
+                _sims_avg_m = (_comb_avg_m @ _other_m.T)                   # [TM, N_txt]
+                _gt_avg = _sims_avg_m[
+                    torch.arange(_TM, device=device).unsqueeze(1), _ittmap_m
+                ].max(dim=1).values                                         # [TM]
+                _rank_avg_m = (_sims_avg_m >= _gt_avg.unsqueeze(1)).sum(1).long() - 1  # [TM]
+
+                # Per-condition ranks: for each condition j, rank all TM images
+                _rank_matrix = torch.zeros(_TM, _TM, dtype=torch.long)
+                for _j in range(_TM):
+                    _cond_j = _pred_conds_m[_j].unsqueeze(0).expand(_TM, -1)
+                    _comb_j = F.normalize(model.combine(_img_m, None, _cond_j), dim=-1)
+                    _sims_j = (_comb_j @ _other_m.T)                       # [TM, N_txt]
+                    _gt_j = _sims_j[
+                        torch.arange(_TM, device=device).unsqueeze(1), _ittmap_m
+                    ].max(dim=1).values
+                    _rank_matrix[:, _j] = (
+                        (_sims_j >= _gt_j.unsqueeze(1)).sum(1).long() - 1
+                    ).cpu()
+
+                # transfer_gain[i, j] = improvement for image i using condition j vs avg_all
+                _transfer_gain = _rank_avg_m.cpu().unsqueeze(1) - _rank_matrix   # [TM, TM], positive = better
+
+                # Spearman ρ over upper triangle (exclude self-pairs on diagonal)
+                _triu_idx = torch.triu_indices(_TM, _TM, offset=1)
+                _sim_flat = _cond_sim_mat[_triu_idx[0], _triu_idx[1]].numpy()
+                _gain_flat = _transfer_gain[_triu_idx[0], _triu_idx[1]].float().numpy()
+                if _sim_flat.std() > 1e-6 and _gain_flat.std() > 1e-6:
+                    _rho, _ = _spearmanr(_sim_flat, _gain_flat)
+                else:
+                    _rho = 0.0
+                logger.log({"eval_phase2/condition_transfer_rho": float(_rho), "eval_epoch": epoch})
+
+            del _img_m, _txt_all, _other_m, _lab_m, _pred_conds_m, _cond_sim_mat
+            del _comb_avg_m, _sims_avg_m, _rank_matrix, _transfer_gain
+            torch.cuda.empty_cache()
+
         # ── Condition analysis cache ──
         _save_condition_analysis_cache(
             cfg,
@@ -1343,16 +1404,40 @@ def train_cosir(cfg, logger):
                 loss = loss + lambda_ent * (-pred_entropy)  # maximise entropy
                 loss_dict["pred_entropy"] = pred_entropy.detach()
 
+            # VICReg diversity: variance + covariance on normalised conditions.
+            # Applied on unit-sphere projections to be scale-invariant regardless of
+            # whether label_embeddings are normalised during training.
+            lambda_var = getattr(cfg.loss, "lambda_var", 0.0)
+            lambda_cov = getattr(cfg.loss, "lambda_cov", 0.0)
+            if lambda_var > 0 or lambda_cov > 0:
+                _cond_n = F.normalize(label_embeddings, dim=-1)  # [B, D]
+                _D = _cond_n.shape[1]
+                if lambda_var > 0:
+                    _var_gamma = getattr(cfg.loss, "var_gamma", 0.25)
+                    _std = _cond_n.std(dim=0)  # [D]
+                    var_loss = F.relu(_var_gamma - _std).mean()
+                    loss = loss + lambda_var * var_loss
+                    loss_dict["var_loss"] = var_loss.detach()
+                if lambda_cov > 0:
+                    _cond_c = _cond_n - _cond_n.mean(dim=0)
+                    _cov = (_cond_c.T @ _cond_c) / (max(_cond_n.shape[0] - 1, 1))  # [D, D]
+                    _off_diag = torch.ones(_D, _D, dtype=torch.bool, device=_cov.device).fill_diagonal_(False)
+                    cov_loss = _cov[_off_diag].pow(2).mean()
+                    loss = loss + lambda_cov * cov_loss
+                    loss_dict["cov_loss"] = cov_loss.detach()
+
             epoch_loss += loss.item()
             num_batches += 1
 
             # Phase-specific keys are routed to their own wandb sections
             _phase1_loss_keys = {"pred_entropy"}
+            _phase2_loss_keys = {"var_loss", "cov_loss"}
             _monitor_keys = {"diag_sim_gap", "off_diag_sim_gap", "total_sim_gap"}
+            _phase_keys = _phase1_loss_keys | _phase2_loss_keys
             loss_metrics = {
                 k: v.item() if torch.is_tensor(v) else v
                 for k, v in loss_dict.items()
-                if k not in _monitor_keys and k not in _phase1_loss_keys
+                if k not in _monitor_keys and k not in _phase_keys
             }
             monitor_metrics = {
                 k: v.item() if torch.is_tensor(v) else v
@@ -1366,11 +1451,18 @@ def train_cosir(cfg, logger):
                 for k, v in loss_dict.items()
                 if k in _phase1_loss_keys
             }
+            phase2_loss_metrics = {
+                k: v.item() if torch.is_tensor(v) else v
+                for k, v in loss_dict.items()
+                if k in _phase2_loss_keys
+            }
 
             logger.log_train(loss_metrics, epoch=epoch, step=global_step, section="loss")
             logger.log_train(monitor_metrics, epoch=epoch, step=global_step, section="monitor")
             if phase1_loss_metrics:
                 logger.log_train(phase1_loss_metrics, epoch=epoch, step=global_step, section="phase1_loss")
+            if phase2_loss_metrics:
+                logger.log_train(phase2_loss_metrics, epoch=epoch, step=global_step, section="phase2_loss")
 
             # Phase 1 monitor: batch-level direction diversity across condition types (every 50 steps)
             if batch_idx % 50 == 0 and len(sample_types) > 0:

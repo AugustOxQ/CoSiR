@@ -31,6 +31,9 @@ loss:
   lambda_pred: 0.1 # condition predictor distillation weight (0 = disabled)
   lambda_ent: 0.0 # L5: disabled — Phase 1 showed entropy was already maximal from epoch 1
   ent_tau: 5.0 # temperature for type-affinity softmax in L5 (unused when lambda_ent=0)
+  lambda_var: 0.1 # VICReg variance — penalise per-dim std below var_gamma (0 = disabled)
+  lambda_cov: 0.1 # VICReg covariance — decorrelate condition dimensions (0 = disabled)
+  var_gamma: 0.25 # target std per dim on normalised conditions; 1/sqrt(16) = 0.25 for uniform sphere
   mixup_alpha: 1.0 # Beta distribution alpha for iMix sampling
   return_dict: true
 
