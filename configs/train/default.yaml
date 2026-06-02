@@ -14,7 +14,7 @@ train:
   representative_number: 12 # This should equal to selected number of conditions * number of grids
   normalize: false
   em_interval: -1 # EM-style training: alternate every N epochs between updating network and updating conditions (negative = disabled, update both every epoch)
-  caption_upsample: 2.5 # C1: caption sample weight relative to other types (1.0 = disabled)
+  caption_upsample: 1.5 # C1: caption sample weight relative to other types (1.0 = disabled); reduced from 2.5 — Phase 1 showed 2.5x caused direction_sim regression
 
 # Loss function configuration
 loss:
@@ -29,8 +29,8 @@ loss:
   lambda_gate_logit: 0.1 # L2 on raw gate logit — prevents sigmoid saturation (gradient grows with logit)
   lambda_preserve: 0.05 # preservation: penalise combined output drifting far from input
   lambda_pred: 0.1 # condition predictor distillation weight (0 = disabled)
-  lambda_ent: 0.05 # L5: predictor type-entropy diversity — maximise batch-level type spread (0 = disabled)
-  ent_tau: 5.0 # temperature for type-affinity softmax in L5
+  lambda_ent: 0.0 # L5: disabled — Phase 1 showed entropy was already maximal from epoch 1
+  ent_tau: 5.0 # temperature for type-affinity softmax in L5 (unused when lambda_ent=0)
   mixup_alpha: 1.0 # Beta distribution alpha for iMix sampling
   return_dict: true
 

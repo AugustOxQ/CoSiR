@@ -1346,7 +1346,7 @@ def train_cosir(cfg, logger):
             epoch_loss += loss.item()
             num_batches += 1
 
-            # Phase 1 keys are logged to train_phase1_loss/* — keep them out of train_loss/*
+            # Phase-specific keys are routed to their own wandb sections
             _phase1_loss_keys = {"pred_entropy"}
             _monitor_keys = {"diag_sim_gap", "off_diag_sim_gap", "total_sim_gap"}
             loss_metrics = {
