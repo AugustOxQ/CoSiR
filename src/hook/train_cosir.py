@@ -1338,10 +1338,35 @@ def train_cosir(cfg, logger):
                 loss_img_target, loss_txt_ref = txt_features, img_features
 
             other_emb = model.project_other(loss_img_target)
+
+            # Oracle-guided condition selection: give gradient only to samples whose own
+            # condition already outperforms the batch-mean condition.  This breaks the
+            # chicken-and-egg by reinforcing any emergent specialisation.
+            _oracle_guided = getattr(cfg.train, "oracle_guided", False)
+            if _oracle_guided:
+                with torch.no_grad():
+                    _c_mean = label_embeddings.mean(0, keepdim=True).expand_as(label_embeddings)
+                    _other_n_probe = F.normalize(other_emb, dim=-1)
+                    _sim_own = (
+                        F.normalize(model.combine(combine_emb, None, label_embeddings, epoch=epoch), dim=-1)
+                        * _other_n_probe
+                    ).sum(-1)
+                    _sim_mean = (
+                        F.normalize(model.combine(combine_emb, None, _c_mean, epoch=epoch), dim=-1)
+                        * _other_n_probe
+                    ).sum(-1)
+                    _use_own = _sim_own >= _sim_mean  # [B]
+                # Gradient flows only for own-wins positions; mean is already detached (no_grad)
+                oracle_cond = torch.where(_use_own.unsqueeze(1), label_embeddings, _c_mean)
+                _oracle_frac = _use_own.float().mean().item()
+            else:
+                oracle_cond = label_embeddings
+                _oracle_frac = None
+
             comb_emb, delta, gate_scalar, gate_logit = model.combine(
                 combine_emb,
                 combine_full,
-                label_embeddings,
+                oracle_cond,
                 epoch=epoch,
                 return_label_proj=False,
                 return_delta=True,
@@ -1445,6 +1470,8 @@ def train_cosir(cfg, logger):
                 if k in _monitor_keys
             }
             monitor_metrics["cos_sim"] = cos_sim.mean().item() if cos_sim is not None else None
+            if _oracle_frac is not None:
+                monitor_metrics["oracle_frac"] = _oracle_frac
 
             phase1_loss_metrics = {
                 k: v.item() if torch.is_tensor(v) else v
