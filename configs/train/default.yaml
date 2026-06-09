@@ -15,7 +15,8 @@ train:
   normalize: false
   em_interval: -1 # EM-style training: alternate every N epochs between updating network and updating conditions (negative = disabled, update both every epoch)
   caption_upsample: 1.5 # C1: caption sample weight relative to other types (1.0 = disabled); reduced from 2.5 — Phase 1 showed 2.5x caused direction_sim regression
-  oracle_guided: true  # give gradient only to conditions that outperform batch mean (breaks chicken-and-egg)
+  oracle_guided: true  # softmax advantage weighting on condition gradients (breaks chicken-and-egg)
+  oracle_advantage_tau: 0.1  # temperature for softmax(advantage/tau); lower = sharper redistribution
 
 # Loss function configuration
 loss:
@@ -24,7 +25,7 @@ loss:
   lambda_laplacian: 30
   lambda_collapse: 0.1
   lambda_boundary: 0.0
-  lambda_mixup: 1 # iMix loss weight (0 = disabled)
+  lambda_mixup: 1.0 # iMix loss weight (0 = disabled)
   lambda_delta: 0.1 # delta norm penalty — ineffective for gate, disabled
   lambda_gate: 0.05 # gate entropy maximisation (encourages s away from 0/1)
   lambda_gate_logit: 0.1 # L2 on raw gate logit — prevents sigmoid saturation (gradient grows with logit)
@@ -34,6 +35,7 @@ loss:
   ent_tau: 5.0 # temperature for type-affinity softmax in L5 (unused when lambda_ent=0)
   lambda_var: 0.1 # VICReg variance — penalise per-dim std below var_gamma (0 = disabled)
   lambda_cov: 0.1 # VICReg covariance — decorrelate condition dimensions (0 = disabled)
+  lambda_gap_align: 0.0 # gap alignment — condition sim ≈ (txt-img) sim; GT-free query-style proxy
   var_gamma: 0.25 # target std per dim on normalised conditions; 1/sqrt(16) = 0.25 for uniform sphere
   mixup_alpha: 1.0 # Beta distribution alpha for iMix sampling
   return_dict: true
@@ -47,8 +49,8 @@ optimizer:
 
 # Scheduler configuration
 scheduler:
-  type: "CosineAnnealingWarmRestarts" # CosineAnnealingLR, LinearLR, SequentialLR, CosineAnnealingWarmRestarts
-  T_max: 1000 # Should match train.epochs
+  type: "CosineAnnealingLR" # CosineAnnealingLR, LinearLR, SequentialLR, CosineAnnealingWarmRestarts
+  T_max: 0 # Should match train.epochs
   T_0: 100
   T_mult: 2 # This has to be int
   eta_min: 1.0e-9

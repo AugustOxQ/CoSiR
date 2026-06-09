@@ -29,7 +29,6 @@ python main_cosir.py -m \
   model.num_layers=6 \
   model.embedding_dim=16 \
   "optimizer.lr=1e-3" \
-  "optimizer.lr_label=1e-2" \
+  "optimizer.lr_label=1e-3" \
   train.epochs=1000 \
-  train.normalize=False \
   wandb.group="new oracle guided setting" \

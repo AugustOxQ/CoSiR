@@ -1339,34 +1339,36 @@ def train_cosir(cfg, logger):
 
             other_emb = model.project_other(loss_img_target)
 
-            # Oracle-guided condition selection: give gradient only to samples whose own
-            # condition already outperforms the batch-mean condition.  This breaks the
-            # chicken-and-egg by reinforcing any emergent specialisation.
+            # Oracle-guided advantage weighting: after backward, scale each condition's
+            # gradient by softmax(advantage / tau) where advantage = sim_own - sim_rand.
+            # Softmax keeps all conditions in play (no abandonment) while amplifying
+            # conditions that are already more specialised than a random peer.
             _oracle_guided = getattr(cfg.train, "oracle_guided", False)
+            _oracle_weights = None
+            _oracle_frac = None
+            _oracle_mean_adv = None
             if _oracle_guided:
+                _tau = getattr(cfg.train, "oracle_advantage_tau", 0.1)
                 with torch.no_grad():
-                    _c_mean = label_embeddings.mean(0, keepdim=True).expand_as(label_embeddings)
+                    _c_rand = label_embeddings[torch.randperm(len(label_embeddings))]
                     _other_n_probe = F.normalize(other_emb, dim=-1)
                     _sim_own = (
                         F.normalize(model.combine(combine_emb, None, label_embeddings, epoch=epoch), dim=-1)
                         * _other_n_probe
                     ).sum(-1)
-                    _sim_mean = (
-                        F.normalize(model.combine(combine_emb, None, _c_mean, epoch=epoch), dim=-1)
+                    _sim_rand = (
+                        F.normalize(model.combine(combine_emb, None, _c_rand, epoch=epoch), dim=-1)
                         * _other_n_probe
                     ).sum(-1)
-                    _use_own = _sim_own >= _sim_mean  # [B]
-                # Gradient flows only for own-wins positions; mean is already detached (no_grad)
-                oracle_cond = torch.where(_use_own.unsqueeze(1), label_embeddings, _c_mean)
-                _oracle_frac = _use_own.float().mean().item()
-            else:
-                oracle_cond = label_embeddings
-                _oracle_frac = None
+                    _advantage = _sim_own - _sim_rand  # [B], no clamp — all conditions stay active
+                    _oracle_weights = F.softmax(_advantage / _tau, dim=0) * len(_advantage)  # mean=1
+                    _oracle_frac = (_advantage > 0).float().mean().item()
+                    _oracle_mean_adv = _advantage.mean().item()
 
             comb_emb, delta, gate_scalar, gate_logit = model.combine(
                 combine_emb,
                 combine_full,
-                oracle_cond,
+                label_embeddings,
                 epoch=epoch,
                 return_label_proj=False,
                 return_delta=True,
@@ -1451,12 +1453,26 @@ def train_cosir(cfg, logger):
                     loss = loss + lambda_cov * cov_loss
                     loss_dict["cov_loss"] = cov_loss.detach()
 
+            # Gap alignment: condition pairwise similarities should match
+            # (txt - img) pairwise similarities — a GT-free proxy for query style.
+            # Same style → similar gap → similar conditions; works on any dataset.
+            lambda_gap_align = getattr(cfg.loss, "lambda_gap_align", 0.0)
+            if lambda_gap_align > 0:
+                _gap = F.normalize(loss_img_target.detach() - combine_emb.detach(), dim=-1)  # [B, 512]
+                _gap_sim = _gap @ _gap.T                                                      # [B, B]
+                _cond_n_gap = F.normalize(label_embeddings, dim=-1)
+                _cond_sim = _cond_n_gap @ _cond_n_gap.T                                      # [B, B]
+                _off = ~torch.eye(len(_gap_sim), dtype=torch.bool, device=_gap_sim.device)
+                gap_align_loss = F.mse_loss(_cond_sim[_off], _gap_sim[_off].detach())
+                loss = loss + lambda_gap_align * gap_align_loss
+                loss_dict["gap_align_loss"] = gap_align_loss.detach()
+
             epoch_loss += loss.item()
             num_batches += 1
 
             # Phase-specific keys are routed to their own wandb sections
             _phase1_loss_keys = {"pred_entropy"}
-            _phase2_loss_keys = {"var_loss", "cov_loss"}
+            _phase2_loss_keys = {"var_loss", "cov_loss", "gap_align_loss"}
             _monitor_keys = {"diag_sim_gap", "off_diag_sim_gap", "total_sim_gap"}
             _phase_keys = _phase1_loss_keys | _phase2_loss_keys
             loss_metrics = {
@@ -1472,6 +1488,7 @@ def train_cosir(cfg, logger):
             monitor_metrics["cos_sim"] = cos_sim.mean().item() if cos_sim is not None else None
             if _oracle_frac is not None:
                 monitor_metrics["oracle_frac"] = _oracle_frac
+                monitor_metrics["oracle_mean_adv"] = _oracle_mean_adv
 
             phase1_loss_metrics = {
                 k: v.item() if torch.is_tensor(v) else v
@@ -1526,6 +1543,8 @@ def train_cosir(cfg, logger):
 
             optimizer.zero_grad()
             loss.backward()
+            if _oracle_weights is not None and embedding_manager.embeddings.grad is not None:
+                embedding_manager.embeddings.grad[batch_indices] *= _oracle_weights.unsqueeze(1)
             optimizer.step()
             global_step += 1
 
