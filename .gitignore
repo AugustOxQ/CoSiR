@@ -172,4 +172,4 @@ CLAUDE.md
 
 # Cursor
 cursor_log/
-cursor_tmp_file/
+cursor_tmp_file/**/*.npy
