@@ -50,8 +50,8 @@ Key guidelines:
   - Reserve BAD (0) strictly for captions with zero relationship to the image.
 
 OUTPUT FORMAT — respond ONLY with a single JSON object, nothing else:
-{"results": [0, 1, 0, ...]}
-Each integer corresponds to the caption at that 0-indexed position. No explanation, no reasoning, no extra text."""
+{"good": [2, 5, 9]}
+List the 1-based NUMBERS of the captions that are GOOD matches. Every caption you do NOT list is treated as BAD. If none are good, return {"good": []}. No explanation, no reasoning, no extra text."""
 
 
 def _build_user_prompt(captions: list[str]) -> str:
@@ -59,7 +59,8 @@ def _build_user_prompt(captions: list[str]) -> str:
     for i, cap in enumerate(captions):
         lines.append(f"{i + 1}. {cap}")
     lines.append(
-        f'\nRespond with JSON only: {{"results": [...]}} containing exactly {len(captions)} values (0 or 1).'
+        f'\nRespond with JSON only: {{"good": [...]}} listing the numbers (1 to {len(captions)}) '
+        f"of the GOOD captions. Empty list if none are good."
     )
     return "\n".join(lines)
 
@@ -74,39 +75,47 @@ def _encode_image_base64(image_path: str) -> str:
 
 
 def _parse_response(content: str, expected_n: int) -> list[int] | None:
-    """Parse model response into a list of 0/1 values. Returns None on failure.
+    """Parse the model's judgement into a 0/1 list of length expected_n.
 
-    Accepts responses with >= expected_n values and truncates to expected_n,
-    since smaller models sometimes output a few extra values.
+    Primary format is sparse: {"good": [<1-based numbers of GOOD captions>]};
+    everything not listed is bad. This never depends on the response having
+    exactly N entries, so model miscounts and truncation can't break it.
+    Falls back to the dense {"results": [0/1, ...]} format if present.
+    Returns None only if nothing parseable is found (the batch then retries).
     """
-    def _extract(vals_raw) -> list[int] | None:
-        try:
-            vals = [int(v) for v in vals_raw]
-            if len(vals) >= expected_n:
-                return vals[:expected_n]  # truncate if model over-generates
-        except (ValueError, TypeError):
-            pass
-        return None
+    text = content.strip()
 
-    # Attempt 1: direct JSON parse
+    # ---- Primary: sparse "good" indices ----
+    obj = None
+    raw_idx = None
     try:
-        obj = json.loads(content.strip())
-        result = _extract(obj["results"])
-        if result is not None:
-            return result
+        obj = json.loads(text)
+        if isinstance(obj, dict) and "good" in obj:
+            raw_idx = obj["good"]
     except Exception:
-        pass
+        obj = None
+    if raw_idx is None:
+        # Regex works even if surrounded by text or the array is truncated/unclosed.
+        m = re.search(r'"good"\s*:\s*\[([^\]]*)', text)
+        if m is not None:
+            raw_idx = m.group(1).split(",")
+    if raw_idx is not None:
+        good = set()
+        for v in raw_idx:
+            try:
+                i = int(v)
+            except (ValueError, TypeError):
+                continue
+            if 1 <= i <= expected_n:
+                good.add(i)
+        return [1 if (j + 1) in good else 0 for j in range(expected_n)]
 
-    # Attempt 2: regex extraction (model may add surrounding text or truncated JSON)
+    # ---- Fallback: dense "results" array (only usable if it has >= expected_n values) ----
     try:
-        m = re.search(r'"results"\s*:\s*\[([^\]]*)', content)
-        if m:
-            # Works even if the closing ] is missing (truncated response)
-            result = _extract(
-                x.strip() for x in m.group(1).split(",") if x.strip().lstrip("-").isdigit()
-            )
-            if result is not None:
-                return result
+        if isinstance(obj, dict) and "results" in obj:
+            vals = [int(x) for x in obj["results"]]
+            if len(vals) >= expected_n:
+                return vals[:expected_n]
     except Exception:
         pass
 
@@ -226,23 +235,6 @@ class QwenAnnotator:
             },
         ]
 
-        # Constrain the output to EXACTLY one 0/1 per caption as valid JSON.
-        # Without this the model often returns N-1 values or pretty-printed JSON
-        # that overflows max_tokens, and every such batch fails to parse.
-        n_expected = len(captions_batch)
-        guided_schema = {
-            "type": "object",
-            "properties": {
-                "results": {
-                    "type": "array",
-                    "items": {"type": "integer", "enum": [0, 1]},
-                    "minItems": n_expected,
-                    "maxItems": n_expected,
-                }
-            },
-            "required": ["results"],
-        }
-
         last_raw = ""
         for attempt in range(self.max_retries):
             try:
@@ -252,9 +244,6 @@ class QwenAnnotator:
                     max_tokens=2048,
                     temperature=0.0,  # greedy: deterministic, reproducible labels
                     extra_body={
-                        # Structured output: guarantees exactly n_expected integers
-                        # in {0,1}, eliminating the miscount/format parse failures.
-                        "guided_json": guided_schema,
                         # Disable Qwen3.x "thinking" so tokens go to the answer
                         # (harmless/ignored for non-thinking models like Qwen2.5-VL).
                         "chat_template_kwargs": {"enable_thinking": False},
