@@ -103,6 +103,15 @@ LOADED=$(curl -s http://localhost:$PORT/v1/models \
 echo "Loaded model: ${LOADED:-<unknown>}"
 echo ""
 
+# ── Refuse to start a second annotator on the same output dir ───────────────────
+# Multiple annotators racing on one checkpoint corrupt progress (and make deletes
+# look like they "don't take" — a live process just rewrites the files).
+if pgrep -u "$USER" -f "qwenannotator.py.*$OUTPUT_PATH" > /dev/null 2>&1; then
+    echo "ERROR: an annotator is already running for $OUTPUT_PATH."
+    echo "       Stop it first:  pkill -u $USER -f qwenannotator.py"
+    exit 1
+fi
+
 # ── Launch annotator (unbuffered -> live logs, detached) ────────────────────────
 LOG="$OUTPUT_PATH/annotation_run.log"
 echo "============================================"
