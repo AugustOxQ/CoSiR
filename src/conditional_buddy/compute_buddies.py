@@ -13,6 +13,7 @@ import numpy as np
 from scipy.sparse import csgraph, csr_matrix
 
 from .buddy_graph import (
+    ensure_connected,
     ensure_min_degree,
     mix_distances,
     mutual_knn,
@@ -32,9 +33,11 @@ def build_buddy_graphs(
     img_feats: np.ndarray,
     txt_feats: np.ndarray,
     K: int = 30,
+    alpha: float = 0.5,
     device: str = "cuda",
     knn_batch_size: int = 1024,
     use_half: bool = True,
+    connect_components: bool = True,
 ) -> Tuple[csr_matrix, csr_matrix, csr_matrix]:
     """Return (A_img, A_txt, E) — per-modality mutual graphs and their fixed union."""
     img_n = _l2_normalize(img_feats)
@@ -56,6 +59,16 @@ def build_buddy_graphs(
         f"avg degree {E.nnz / E.shape[0]:.2f}, isolated fixed={deg_stats['num_isolated']}, "
         f"connected components={n_comp}"
     )
+
+    if connect_components:
+        E, conn_stats = ensure_connected(E, img_n, txt_n, alpha=alpha, device=device,
+                                         use_half=use_half)
+        n_comp = csgraph.connected_components(E, directed=False, return_labels=False)
+        print(
+            f"[buddies] Step 2b: connected E — added {conn_stats['bridges_added']} "
+            f"bridge(s) over {conn_stats['n_components']} components → "
+            f"connected components={n_comp}"
+        )
     return A_img, A_txt, E
 
 
@@ -71,6 +84,8 @@ def compute_buddy_init(
     normalize_method: str = "rank",
     seed: int = 42,
     use_half: bool = True,
+    eigen_solver: str = "auto",
+    connect_components: bool = True,
     input_sample_ids: Optional[List[int]] = None,
     output_sample_ids: Optional[List[int]] = None,
 ) -> np.ndarray:
@@ -80,6 +95,12 @@ def compute_buddy_init(
     img_feats, txt_feats: (N, D) float32, same row order.
     method:            embedding method ('spectral'; only spectral is supported).
     normalize_method:  'rank' (default) or 'zscore' — see normalise_embedding.
+    eigen_solver:      'auto' (default; arpack for small N, amg for large N),
+                       or force 'arpack' | 'amg' | 'lobpcg' — see spectral_embedding.
+    connect_components: bridge disconnected components of E with a minimal MST of
+                       cross-component edges (default True; no-op when E is already
+                       connected). Required for a usable spectral init on fragmented
+                       graphs — see ensure_connected.
     Returns: (N, n_dim) float32 in ~[-1, 1].
 
     Rows are returned in input order unless both ``input_sample_ids`` and
@@ -90,7 +111,8 @@ def compute_buddy_init(
     txt_n = _l2_normalize(txt_feats)
 
     _, _, E = build_buddy_graphs(
-        img_n, txt_n, K=K, device=device, knn_batch_size=knn_batch_size, use_half=use_half
+        img_n, txt_n, K=K, alpha=alpha, device=device, knn_batch_size=knn_batch_size,
+        use_half=use_half, connect_components=connect_components,
     )
 
     # Step 3: sparse per-modality distances on E's edges
@@ -106,8 +128,9 @@ def compute_buddy_init(
     # Step 5: embed
     if method != "spectral":
         raise ValueError(f"Unknown method '{method}'. Only 'spectral' is supported.")
-    emb = spectral_embedding(D_mixed, n_dim, seed=seed)
-    print(f"[buddies] Step 5: {method} embedding shape={emb.shape}")
+    emb = spectral_embedding(D_mixed, n_dim, seed=seed, eigen_solver=eigen_solver)
+    print(f"[buddies] Step 5: {method} embedding shape={emb.shape} "
+          f"(eigen_solver={eigen_solver})")
 
     # Step 6: normalise (rank by default — robust to eigenvector localization)
     emb = normalise_embedding(emb, method=normalize_method)

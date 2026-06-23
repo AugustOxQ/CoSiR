@@ -12,8 +12,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 import numpy as np
 import torch
+from scipy.sparse.csgraph import connected_components
 
-from src.conditional_buddy.compute_buddies import compute_buddy_init
+from src.conditional_buddy.compute_buddies import build_buddy_graphs, compute_buddy_init
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 USE_HALF = torch.cuda.is_available()
@@ -59,6 +60,28 @@ def test_buddies_closer_than_random():
     print("PASS test_buddies_closer_than_random")
 
 
+def test_ensure_connected():
+    # Two well-separated clusters → the buddy graph has 2 components. The fix should
+    # bridge them into 1 with a single MST edge; off, it stays disconnected.
+    img, txt, _ = _two_cluster_features()
+
+    _, _, E_off = build_buddy_graphs(
+        img, txt, K=15, device=DEVICE, use_half=USE_HALF, connect_components=False
+    )
+    n_off = connected_components(E_off, directed=False, return_labels=False)
+    assert n_off >= 2, f"expected a disconnected graph for the assertion, got {n_off}"
+
+    _, _, E_on = build_buddy_graphs(
+        img, txt, K=15, device=DEVICE, use_half=USE_HALF, connect_components=True
+    )
+    n_on = connected_components(E_on, directed=False, return_labels=False)
+    print(f"  components: connect_off={n_off} connect_on={n_on}")
+    assert n_on == 1, f"ensure_connected left {n_on} components"
+    # bridges added = components_before - 1; symmetric → 2*(C-1) directed entries.
+    assert E_on.nnz == E_off.nnz + 2 * (n_off - 1), "unexpected number of bridge edges"
+    print("PASS test_ensure_connected")
+
+
 def test_reorder_correctness():
     img, txt, _ = _two_cluster_features()
     N = img.shape[0]
@@ -81,5 +104,6 @@ def test_reorder_correctness():
 if __name__ == "__main__":
     test_shape_and_range()
     test_buddies_closer_than_random()
+    test_ensure_connected()
     test_reorder_correctness()
     print("\nAll compute_buddies tests passed.")

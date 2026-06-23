@@ -16,28 +16,64 @@ weighted, missing-edge-aware variant required, and spectral + rank normalization
 covers the use case and scales to MS-COCO / RedCaps.)
 """
 
+import warnings
+
 import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.stats import rankdata
 from sklearn.manifold import SpectralEmbedding
 
+# arpack is exact and well-validated for small graphs, but it relies on a sparse
+# shift-invert factorization that does not scale (memory/time) and stalls on
+# disconnected graphs, whose Laplacian has one near-zero eigenvalue per component
+# clustered at 0 — exactly arpack's worst case. Above this many nodes we switch to a
+# matrix-free multigrid solver (amg) that scales to 1e5+ and tolerates disconnection.
+ARPACK_MAX_N = 20000
 
-def spectral_embedding(D_mixed: csr_matrix, n_dim: int, seed: int = 42) -> np.ndarray:
+
+def spectral_embedding(
+    D_mixed: csr_matrix,
+    n_dim: int,
+    seed: int = 42,
+    eigen_solver: str = "auto",
+) -> np.ndarray:
     """
     Laplacian Eigenmaps on the sparse affinity graph derived from mixed distances.
 
     Affinity = 1 - distance (both rank-normalised, values in [0, 1]). The graph is
     symmetrised and fed to SpectralEmbedding with a precomputed affinity, so no
     dense N×N matrix is ever allocated.
+
+    eigen_solver:
+        "auto"   — arpack for N ≤ ARPACK_MAX_N (exact, preserves prior results),
+                   amg for larger N (matrix-free, scales / tolerates disconnection).
+        "arpack" | "amg" | "lobpcg" — force a specific sklearn solver.
+    amg requires pyamg; if it is missing we fall back to lobpcg with a warning.
     """
     A_mixed = D_mixed.copy().tocsr()
     A_mixed.data = 1.0 - A_mixed.data            # invert: closer → higher weight
     A_mixed = (A_mixed + A_mixed.T) * 0.5         # symmetrise numerical noise
 
+    n = A_mixed.shape[0]
+    if eigen_solver == "auto":
+        eigen_solver = "arpack" if n <= ARPACK_MAX_N else "amg"
+
+    if eigen_solver == "amg":
+        try:
+            import pyamg  # noqa: F401
+        except ImportError:
+            warnings.warn(
+                "pyamg not installed; falling back to lobpcg for spectral embedding. "
+                "Install pyamg (`pip install pyamg`) for the faster, more robust amg "
+                "solver on large graphs.",
+                RuntimeWarning,
+            )
+            eigen_solver = "lobpcg"
+
     se = SpectralEmbedding(
         n_components=n_dim,
         affinity="precomputed",
-        eigen_solver="arpack",
+        eigen_solver=eigen_solver,
         random_state=seed,
     )
     return se.fit_transform(A_mixed).astype(np.float32)  # (N, n_dim)

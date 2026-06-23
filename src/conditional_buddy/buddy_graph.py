@@ -19,6 +19,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from scipy.sparse import csr_matrix, coo_matrix
+from scipy.sparse.csgraph import connected_components, minimum_spanning_tree
 
 
 # ── Nearest-neighbour search (GPU brute-force) ───────────────────────────────
@@ -161,6 +162,76 @@ def ensure_min_degree(
     E_fixed = (E + add).tocsr()
     E_fixed.data[:] = 1.0
     return E_fixed, stats
+
+
+def ensure_connected(
+    E: csr_matrix,
+    img_feats: np.ndarray,
+    txt_feats: np.ndarray,
+    alpha: float = 0.5,
+    device: str = "cuda",  # noqa: ARG001 — kept for signature parity; runs on CPU
+    use_half: bool = True,  # noqa: ARG001
+) -> Tuple[csr_matrix, Dict[str, int]]:
+    """
+    Make E a single connected component with minimal, content-aware bridge edges.
+
+    A disconnected graph's Laplacian has one near-zero eigenvalue per connected
+    component, so a low-dimensional spectral embedding is consumed by component
+    indicators and carries no within-graph structure. ``ensure_min_degree`` fixes
+    isolated *nodes* but not disconnected *components*.
+
+    We pick a medoid per component (node nearest the component centroid in the
+    mix-weighted concat feature ``[√α·img, √(1-α)·txt]`` — whose cosine equals
+    ``α·cos_img + (1-α)·cos_txt``, matching the pipeline's mixed similarity), build a
+    minimum spanning tree over the medoids, and add the C-1 MST edges to E
+    (binary, symmetric). Bridge distances are filled in downstream by
+    ``sparse_cosine_distance`` and are naturally weak (cross-component pairs are far).
+
+    No-op when E is already connected. Returns (E_connected, stats).
+    """
+    E = E.tocsr()
+    n_comp, labels = connected_components(E, directed=False, return_labels=True)
+    stats = {"n_components": int(n_comp), "bridges_added": 0}
+    if n_comp <= 1:
+        return E, stats
+
+    # mix-weighted concat feature; cos(concat) = α·cos_img + (1-α)·cos_txt
+    img_n = img_feats / (np.linalg.norm(img_feats, axis=1, keepdims=True) + 1e-12)
+    txt_n = txt_feats / (np.linalg.norm(txt_feats, axis=1, keepdims=True) + 1e-12)
+    concat = np.concatenate(
+        [np.sqrt(alpha) * img_n, np.sqrt(1.0 - alpha) * txt_n], axis=1
+    ).astype(np.float32)
+
+    n = E.shape[0]
+    onehot = csr_matrix(
+        (np.ones(n, dtype=np.float32), (np.arange(n), labels)), shape=(n, n_comp)
+    )
+    sums = onehot.T @ concat                       # (C, D) component feature sums
+    counts = np.asarray(onehot.sum(0)).ravel()     # (C,)
+    centroids = sums / counts[:, None]
+
+    # medoid = node within each component most aligned with its centroid
+    score = np.einsum("nd,nd->n", concat, centroids[labels])
+    medoids = np.array(
+        [np.where(labels == c)[0][np.argmax(score[labels == c])] for c in range(n_comp)]
+    )
+
+    # MST over medoids in concat-cosine distance (+ε so no real edge is a dropped 0)
+    med = concat[medoids]
+    dist = (1.0 - med @ med.T) + 1e-6
+    np.fill_diagonal(dist, 0.0)
+    mst = minimum_spanning_tree(dist).tocoo()
+    ea, eb = medoids[mst.row], medoids[mst.col]
+
+    add_rows = np.concatenate([ea, eb])
+    add_cols = np.concatenate([eb, ea])
+    add = coo_matrix(
+        (np.ones(len(add_rows), dtype=np.float32), (add_rows, add_cols)), shape=E.shape
+    )
+    E_conn = (E + add).tocsr()
+    E_conn.data[:] = 1.0
+    stats["bridges_added"] = int(len(ea))
+    return E_conn, stats
 
 
 # ── Distances (Steps 3–4) ────────────────────────────────────────────────────
