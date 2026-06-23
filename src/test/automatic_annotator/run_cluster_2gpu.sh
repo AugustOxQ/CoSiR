@@ -21,7 +21,7 @@ set -e
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 ANNOTATION_PATH="/var/scratch/wding/Dataset/redcaps_plus/redcaps_test.json"
-IMAGE_ROOT="/var/scratch/wding/Dataset"
+IMAGE_ROOT="/var/scratch/wding/Dataset/redcaps_test"
 OUTPUT_PATH="/local/wding/res/20260623_qwen27b_2gpu"   # override with --output_path
 MODEL="Qwen/Qwen3.6-27B"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -52,7 +52,9 @@ mkdir -p "$OUTPUT_PATH"
 # ── Env ─────────────────────────────────────────────────────────────────────────
 # Activate your environment BEFORE running this script (cluster uses anaconda):
 #   conda activate <your-env>      # e.g. annot
-[ -z "$CONDA_DEFAULT_ENV" ] && echo "WARNING: no conda env active — activate one first." >&2
+if [ -z "$CONDA_DEFAULT_ENV" ]; then
+    echo "WARNING: no conda env active — activate one first." >&2
+fi
 
 # ── GPUs ───────────────────────────────────────────────────────────────────────
 # Pin to two GPUs. Override before calling, e.g. CUDA_VISIBLE_DEVICES=2,3 bash ...

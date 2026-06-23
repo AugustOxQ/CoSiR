@@ -226,20 +226,37 @@ class QwenAnnotator:
             },
         ]
 
+        # Constrain the output to EXACTLY one 0/1 per caption as valid JSON.
+        # Without this the model often returns N-1 values or pretty-printed JSON
+        # that overflows max_tokens, and every such batch fails to parse.
+        n_expected = len(captions_batch)
+        guided_schema = {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "array",
+                    "items": {"type": "integer", "enum": [0, 1]},
+                    "minItems": n_expected,
+                    "maxItems": n_expected,
+                }
+            },
+            "required": ["results"],
+        }
+
         last_raw = ""
         for attempt in range(self.max_retries):
             try:
                 resp = self.client.chat.completions.create(
                     model=self.model_name,
                     messages=messages,
-                    max_tokens=1024,
-                    temperature=0.7,
-                    top_p=0.8,
+                    max_tokens=2048,
+                    temperature=0.0,  # greedy: deterministic, reproducible labels
                     extra_body={
-                        "top_k": 20,
-                        # Disable Qwen3.x "thinking" so the 1024-token budget isn't
-                        # spent on reasoning (harmless/ignored for non-thinking models
-                        # like Qwen2.5-VL). Matches run_local_test.py.
+                        # Structured output: guarantees exactly n_expected integers
+                        # in {0,1}, eliminating the miscount/format parse failures.
+                        "guided_json": guided_schema,
+                        # Disable Qwen3.x "thinking" so tokens go to the answer
+                        # (harmless/ignored for non-thinking models like Qwen2.5-VL).
                         "chat_template_kwargs": {"enable_thinking": False},
                     },
                 )
