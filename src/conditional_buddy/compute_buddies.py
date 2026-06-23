@@ -1,0 +1,126 @@
+"""
+End-to-end conditional-buddies initialization (Steps 1–6).
+
+`compute_buddy_init` is a pure function over in-memory feature arrays: it builds
+the cross-modal buddy graph, embeds it, normalises the result, and (optionally)
+reorders rows to a target sample-id order. It has no FeatureManager dependency,
+which keeps it easy to unit-test.
+"""
+
+from typing import List, Optional, Tuple
+
+import numpy as np
+from scipy.sparse import csgraph, csr_matrix
+
+from .buddy_graph import (
+    ensure_min_degree,
+    mix_distances,
+    mutual_knn,
+    rank_normalise_sparse,
+    sparse_cosine_distance,
+    union_graph,
+)
+from .embedding_methods import normalise_embedding, spectral_embedding
+
+
+def _l2_normalize(x: np.ndarray) -> np.ndarray:
+    x = np.ascontiguousarray(x, dtype=np.float32)
+    return x / (np.linalg.norm(x, axis=1, keepdims=True) + 1e-12)
+
+
+def build_buddy_graphs(
+    img_feats: np.ndarray,
+    txt_feats: np.ndarray,
+    K: int = 30,
+    device: str = "cuda",
+    knn_batch_size: int = 1024,
+    use_half: bool = True,
+) -> Tuple[csr_matrix, csr_matrix, csr_matrix]:
+    """Return (A_img, A_txt, E) — per-modality mutual graphs and their fixed union."""
+    img_n = _l2_normalize(img_feats)
+    txt_n = _l2_normalize(txt_feats)
+
+    A_img = mutual_knn(img_n, K, device, knn_batch_size, use_half=use_half)
+    A_txt = mutual_knn(txt_n, K, device, knn_batch_size, use_half=use_half)
+    print(
+        f"[buddies] Step 1: mutual KNN (K={K}) — "
+        f"A_img nnz={A_img.nnz:,} (avg deg {A_img.nnz / A_img.shape[0]:.2f}), "
+        f"A_txt nnz={A_txt.nnz:,} (avg deg {A_txt.nnz / A_txt.shape[0]:.2f})"
+    )
+
+    E = union_graph(A_img, A_txt)
+    E, deg_stats = ensure_min_degree(E, img_n, txt_n, device, use_half=use_half)
+    n_comp = csgraph.connected_components(E, directed=False, return_labels=False)
+    print(
+        f"[buddies] Step 2: union graph E — nnz={E.nnz:,}, "
+        f"avg degree {E.nnz / E.shape[0]:.2f}, isolated fixed={deg_stats['num_isolated']}, "
+        f"connected components={n_comp}"
+    )
+    return A_img, A_txt, E
+
+
+def compute_buddy_init(
+    img_feats: np.ndarray,
+    txt_feats: np.ndarray,
+    n_dim: int,
+    method: str = "spectral",
+    K: int = 30,
+    alpha: float = 0.5,
+    device: str = "cuda",
+    knn_batch_size: int = 1024,
+    normalize_method: str = "rank",
+    seed: int = 42,
+    use_half: bool = True,
+    input_sample_ids: Optional[List[int]] = None,
+    output_sample_ids: Optional[List[int]] = None,
+) -> np.ndarray:
+    """
+    Compute conditional-buddies init vectors from CLIP features.
+
+    img_feats, txt_feats: (N, D) float32, same row order.
+    method:            embedding method ('spectral'; only spectral is supported).
+    normalize_method:  'rank' (default) or 'zscore' — see normalise_embedding.
+    Returns: (N, n_dim) float32 in ~[-1, 1].
+
+    Rows are returned in input order unless both ``input_sample_ids`` and
+    ``output_sample_ids`` are given, in which case rows are reordered so row i
+    corresponds to output_sample_ids[i] (the framework's sample-id order).
+    """
+    img_n = _l2_normalize(img_feats)
+    txt_n = _l2_normalize(txt_feats)
+
+    _, _, E = build_buddy_graphs(
+        img_n, txt_n, K=K, device=device, knn_batch_size=knn_batch_size, use_half=use_half
+    )
+
+    # Step 3: sparse per-modality distances on E's edges
+    D_img = sparse_cosine_distance(img_n, E)
+    D_txt = sparse_cosine_distance(txt_n, E)
+
+    # Step 4: rank-normalise and mix
+    D_mixed = mix_distances(
+        rank_normalise_sparse(D_img), rank_normalise_sparse(D_txt), alpha
+    )
+    print(f"[buddies] Step 4: mixed distance matrix nnz={D_mixed.nnz:,} (alpha={alpha})")
+
+    # Step 5: embed
+    if method != "spectral":
+        raise ValueError(f"Unknown method '{method}'. Only 'spectral' is supported.")
+    emb = spectral_embedding(D_mixed, n_dim, seed=seed)
+    print(f"[buddies] Step 5: {method} embedding shape={emb.shape}")
+
+    # Step 6: normalise (rank by default — robust to eigenvector localization)
+    emb = normalise_embedding(emb, method=normalize_method)
+    print(
+        f"[buddies] Step 6: normalised init — shape={emb.shape}, "
+        f"range=[{emb.min():.3f}, {emb.max():.3f}]"
+    )
+
+    if output_sample_ids is not None:
+        if input_sample_ids is None:
+            raise ValueError("output_sample_ids given but input_sample_ids is None.")
+        pos = {sid: i for i, sid in enumerate(input_sample_ids)}
+        reorder = [pos[sid] for sid in output_sample_ids]
+        emb = emb[reorder]
+
+    return emb

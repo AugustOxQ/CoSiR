@@ -72,7 +72,7 @@ echo " Log:        $LOG"
 echo "============================================"
 echo ""
 
-nohup python "$SCRIPT_DIR/qwenannotator.py" \
+nohup python -u "$SCRIPT_DIR/qwenannotator.py" \
     --annotation_path "$ANNOTATION_PATH" \
     --image_root      "$IMAGE_ROOT" \
     --output_path     "$OUTPUT_PATH" \

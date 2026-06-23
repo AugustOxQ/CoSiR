@@ -76,7 +76,7 @@ run_test() {
     echo " Test: batch_size=$BSIZE  →  $OUT_DIR"
     echo "--------------------------------------------"
 
-    python "$SCRIPT_DIR/run_local_test.py" \
+    python -u "$SCRIPT_DIR/run_local_test.py" \
         --annotation_path "$ANNOTATION_PATH" \
         --image_root "$IMAGE_ROOT" \
         --batch_size "$BSIZE" \

@@ -1,10 +1,14 @@
 """
-wandb sweep agent bridge for CoSiR lr / lr_label grid search.
+wandb sweep agent bridge for CoSiR grid search.
+
+Supports v1 (lr/lr_label), v2 (+ scheduler_type/em_interval) and v3
+(embedding_dim/lr/lr_label/buddies.alpha) sweep configs with the same agent;
+parameters not present in a given sweep fall back to the config defaults.
 
 Usage
 -----
   # 1. Create the sweep (once, from repo root):
-  #    wandb sweep scripts/sweep_config.yaml
+  #    wandb sweep scripts/sweep_config_v3.yaml
   #    → prints: "Created sweep: <entity>/<project>/<sweep_id>"
 
   # 2. Launch one agent per GPU:
@@ -30,36 +34,36 @@ from src.hook import train_cosir
 
 _CONFIGS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "configs"))
 
-# Static overrides that mirror run_local.sh (minus the swept lr / lr_label).
-# wandb.enabled=false because the sweep agent already owns the wandb run.
+# W&B group for the sweep runs (overridable via env). Set on wandb.init() so all
+# runs from this sweep are grouped together in the UI.
+_WANDB_GROUP = os.environ.get("WANDB_RUN_GROUP", "condition buddy setting")
+
+# Static overrides shared by every run in the conditional-buddies (v3) sweep.
+# Mirrors the static portion of the multirun command; everything not listed here
+# (loss weights, scheduler, etc.) intentionally falls back to the config defaults
+# in configs/train/default.yaml. wandb.enabled=false because the sweep agent
+# already owns the wandb run.
 _STATIC_OVERRIDES = [
     "dataset=impressions",
     "model=clip_base",
     "eval.evaluation_interval=100",
     "eval.oracle_aggregation=max",
-    "loss.lambda_collapse=0.1",
-    "loss.lambda_contrastive=1",
-    "loss.lambda_laplacian=30",
-    "loss.lambda_mixup=1",
-    "loss.lambda_delta=0.1",
     "model.num_layers=6",
-    "model.embedding_dim=16",
     "train.epochs=1000",
-    "train.normalize=false",
-    "train.imgtxt_factor=1",
-    "train.initialization_strategy=imgtxt",
-    "scheduler.T_0=50",
-    "scheduler.T_mult=2",
+    'experiment.results_dir="res/CoSiR_Experiment_buddy2/impressions"',
     "wandb.enabled=false",
 ]
 
 
 def _run():
-    with wandb.init() as run:
+    with wandb.init(group=_WANDB_GROUP) as run:
         lr = wandb.config.lr
         lr_label = wandb.config.lr_label
-        # scheduler_type / em_interval are only present in v2 sweeps; fall back
-        # to the config defaults when running the original lr/lr_label sweep.
+        # embedding_dim / alpha are swept in v3; scheduler_type / em_interval are
+        # only present in v2 sweeps. Fall back to the config defaults when a given
+        # sweep doesn't sweep that parameter, so the same agent runs v1/v2/v3.
+        embedding_dim = getattr(wandb.config, "embedding_dim", None)
+        alpha = getattr(wandb.config, "alpha", None)
         scheduler_type = getattr(wandb.config, "scheduler_type", None)
         em_interval = getattr(wandb.config, "em_interval", None)
 
@@ -69,6 +73,10 @@ def _run():
             # Use the wandb run ID so experiment dirs are unique across parallel agents.
             f"experiment.name=sweep_{run.id}",
         ]
+        if embedding_dim is not None:
+            overrides.append(f"model.embedding_dim={embedding_dim}")
+        if alpha is not None:
+            overrides.append(f"train.buddies.alpha={alpha}")
         if scheduler_type is not None:
             overrides.append(f"scheduler.type={scheduler_type}")
         if em_interval is not None:
@@ -82,6 +90,8 @@ def _run():
         run.config.update({
             "lr": lr,
             "lr_label": lr_label,
+            **({"embedding_dim": embedding_dim} if embedding_dim is not None else {}),
+            **({"alpha": alpha} if alpha is not None else {}),
             **({"scheduler_type": scheduler_type} if scheduler_type is not None else {}),
             **({"em_interval": em_interval} if em_interval is not None else {}),
         })

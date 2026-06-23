@@ -20,7 +20,7 @@ import json
 import shutil
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -234,20 +234,23 @@ class TrainableEmbeddingManager:
         device: str = "cpu",
         factor: float = 1.0,
         normalize: bool = False,
+        **buddy_kwargs,
     ) -> None:
         """
         (Re-)initialise embeddings.  Handles all strategies in one place.
 
         Simple strategies ('zeros', 'normal', 'uniform') do not need
-        feature_manager.  PCA-based strategies ('imgtxt', 'txt', 'img')
-        require it.
+        feature_manager.  PCA-based strategies ('imgtxt', 'txt', 'img') and the
+        'buddies' strategy require it.
 
         Args:
-            strategy:        one of 'zeros'|'normal'|'uniform'|'imgtxt'|'txt'|'img'.
-            feature_manager: FeatureManager instance (required for PCA strategies).
+            strategy:        one of 'zeros'|'normal'|'uniform'|'imgtxt'|'txt'|'img'|'buddies'.
+            feature_manager: FeatureManager instance (required for feature strategies).
             model:           unused — kept for API compatibility.
             device:          compute device for feature loading.
             factor:          scalar multiplier applied after PCA normalisation.
+            buddy_kwargs:    hyperparameters for the 'buddies' strategy
+                             (k, alpha, method, knn_batch_size, normalize_method, seed).
         """
         N = len(self.sample_ids)
         D = self.embedding_dim
@@ -256,6 +259,8 @@ class TrainableEmbeddingManager:
             data = self._make_init_array(N, D, strategy)
         elif strategy in ("imgtxt", "txt", "img"):
             data = self._pca_init(strategy, feature_manager, device, factor, normalize)
+        elif strategy in ("buddies", "buddy"):
+            data = self._buddy_init(feature_manager, device, **buddy_kwargs)
         else:
             raise ValueError(f"Unknown strategy '{strategy}'.")
 
@@ -337,6 +342,56 @@ class TrainableEmbeddingManager:
 
         return projected
 
+    def _buddy_init(
+        self,
+        feature_manager,
+        device: str,
+        k: int = 30,
+        alpha: float = 0.5,
+        method: str = "spectral",
+        knn_batch_size: int = 1024,
+        normalize_method: str = "rank",
+        seed: int = 42,
+    ) -> np.ndarray:
+        """
+        Conditional-buddies init: build the cross-modal mutual-KNN graph, embed it,
+        and return a normalised [N, D] array reordered to self.sample_ids order.
+        """
+        from src.conditional_buddy import compute_buddy_init
+
+        print(f"[EmbeddingManager] Buddies init (method={method}, K={k}, alpha={alpha})…")
+        img_parts: List[np.ndarray] = []
+        txt_parts: List[np.ndarray] = []
+        num_shards = feature_manager.get_num_chunks()
+        for shard_id in tqdm(range(num_shards), desc="Loading features"):
+            feats = feature_manager.get_features_by_chunk(shard_id)
+            img_parts.append(feats["img_features"].cpu().numpy().astype(np.float32))
+            txt_parts.append(feats["txt_features"].cpu().numpy().astype(np.float32))
+
+        img = np.concatenate(img_parts, axis=0)
+        txt = np.concatenate(txt_parts, axis=0)
+        fm_sample_ids = feature_manager.get_all_sample_ids()
+
+        emb = compute_buddy_init(
+            img,
+            txt,
+            n_dim=self.embedding_dim,
+            method=method,
+            K=k,
+            alpha=alpha,
+            device=device,
+            knn_batch_size=knn_batch_size,
+            normalize_method=normalize_method,
+            seed=seed,
+            input_sample_ids=fm_sample_ids,
+            output_sample_ids=self.sample_ids,
+        )
+        print(
+            f"[EmbeddingManager] Buddies init done. "
+            f"Mean norm: {np.linalg.norm(emb, axis=1).mean():.4f}"
+        )
+        return emb
+
     # ── Template persistence ───────────────────────────────────────────────────
 
     def _copy_to(self, dest_dir: Path) -> None:
@@ -360,8 +415,13 @@ class TrainableEmbeddingManager:
         strategy: str = "",
         factor: float = 1.0,
         normalize: bool = False,
+        extra: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Save current embeddings as a reusable template with config metadata."""
+        """Save current embeddings as a reusable template with config metadata.
+
+        ``extra`` carries strategy-specific hyperparameters (e.g. buddies'
+        {k, alpha, method}) so a stale template is rejected when they change.
+        """
         template_dir = self.embeddings_dir.parent.parent / "template_embeddings"
         self._copy_to(template_dir)
         config = {
@@ -369,6 +429,7 @@ class TrainableEmbeddingManager:
             "embedding_dim": self.embedding_dim,
             "factor": factor,
             "normalize": normalize,
+            "extra": extra or {},
         }
         with open(template_dir / "template_config.json", "w") as f:
             json.dump(config, f, indent=2)
@@ -380,6 +441,7 @@ class TrainableEmbeddingManager:
         strategy: str = "",
         factor: float = 1.0,
         normalize: bool = False,
+        extra: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Load embeddings from the sibling template_embeddings directory.
 
@@ -389,6 +451,18 @@ class TrainableEmbeddingManager:
         template_dir = self.embeddings_dir.parent.parent / "template_embeddings"
         if not template_dir.exists() or not (template_dir / "embeddings.npy").exists():
             raise FileNotFoundError(f"No template found at {template_dir}")
+
+        # Always verify the stored embedding dimension against the requested one,
+        # independent of template_config.json (older templates may lack it).
+        # Read only the .npy header via mmap — no data is loaded into RAM.
+        stored_dim = int(
+            np.lib.format.open_memmap(template_dir / "embeddings.npy", mode="r").shape[1]
+        )
+        if stored_dim != self.embedding_dim:
+            raise TemplateIncompatibleError(
+                f"Template embedding_dim mismatch — stored={stored_dim} vs "
+                f"requested={self.embedding_dim}. Re-initialize to overwrite."
+            )
 
         config_path = template_dir / "template_config.json"
         if config_path.exists() and strategy:
@@ -400,6 +474,10 @@ class TrainableEmbeddingManager:
                 "factor": factor,
                 "normalize": normalize,
             }
+            # Only enforce 'extra' when the caller supplies it (e.g. buddies),
+            # so pre-existing templates without an 'extra' key stay compatible.
+            if extra:
+                expected["extra"] = extra
             mismatches = {
                 k: (stored.get(k), expected[k])
                 for k in expected
@@ -441,6 +519,11 @@ class TrainableEmbeddingManager:
         self, feature_manager, model=None, device="cpu", factor=1, normalize=False
     ) -> None:
         self.initialize("img", feature_manager, model, device, factor, normalize)
+
+    def initialize_embeddings_buddies(
+        self, feature_manager, model=None, device="cpu", **buddy_kwargs
+    ) -> None:
+        self.initialize("buddies", feature_manager, model, device, **buddy_kwargs)
 
     def optimize_cache_settings(self, batch_size: int) -> None:
         """No-op — kept for call-site compatibility."""

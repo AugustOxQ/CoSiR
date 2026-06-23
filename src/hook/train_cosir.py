@@ -232,8 +232,28 @@ def _init_embedding_manager(cfg, device, sample_ids_list, experiment, feature_ma
     )
 
     strategy = cfg.train.initialization_strategy
-    if strategy not in ("imgtxt", "txt", "img"):
+    if strategy == "buddy":  # accept the singular spelling as an alias for "buddies"
+        strategy = "buddies"
+    if strategy not in ("imgtxt", "txt", "img", "buddies"):
         return embedding_manager
+
+    # Buddy hyperparameters (only meaningful for strategy == "buddies"); the
+    # 'extra' dict feeds the template-compatibility guard so a stale buddies
+    # template is rejected when k / alpha / method change.
+    _bud = getattr(cfg.train, "buddies", None)
+    _buddy_kwargs = {
+        "k": int(getattr(_bud, "k", 30)) if _bud is not None else 30,
+        "alpha": float(getattr(_bud, "alpha", 0.5)) if _bud is not None else 0.5,
+        "method": str(getattr(_bud, "method", "spectral")) if _bud is not None else "spectral",
+        "knn_batch_size": int(getattr(_bud, "knn_batch_size", 1024)) if _bud is not None else 1024,
+        "normalize_method": str(getattr(_bud, "normalize_method", "rank")) if _bud is not None else "rank",
+        "seed": int(cfg.seed),
+    }
+    _extra = (
+        {"k": _buddy_kwargs["k"], "alpha": _buddy_kwargs["alpha"], "method": _buddy_kwargs["method"]}
+        if strategy == "buddies"
+        else None
+    )
 
     template_dir = experiment.directory.parent / "template_embeddings"
     template_exists = template_dir.exists() and (template_dir / "embeddings.npy").exists()
@@ -248,6 +268,7 @@ def _init_embedding_manager(cfg, device, sample_ids_list, experiment, feature_ma
                 strategy=strategy,
                 factor=cfg.train.imgtxt_factor,
                 normalize=cfg.train.normalize,
+                extra=_extra,
             )
             _need_initialize = False
             _need_save_template = False
@@ -260,19 +281,24 @@ def _init_embedding_manager(cfg, device, sample_ids_list, experiment, feature_ma
             _need_save_template = False
 
     if _need_initialize:
-        _init_fn_map = {
-            "imgtxt": embedding_manager.initialize_embeddings_imgtxt,
-            "txt": embedding_manager.initialize_embeddings_txt,
-            "img": embedding_manager.initialize_embeddings_img,
-        }
         print(f"Initializing embeddings with {strategy} strategy...")
-        _init_fn_map[strategy](
-            feature_manager,
-            model,
-            device,
-            factor=cfg.train.imgtxt_factor,
-            normalize=cfg.train.normalize,
-        )
+        if strategy == "buddies":
+            embedding_manager.initialize_embeddings_buddies(
+                feature_manager, model, device, **_buddy_kwargs
+            )
+        else:
+            _init_fn_map = {
+                "imgtxt": embedding_manager.initialize_embeddings_imgtxt,
+                "txt": embedding_manager.initialize_embeddings_txt,
+                "img": embedding_manager.initialize_embeddings_img,
+            }
+            _init_fn_map[strategy](
+                feature_manager,
+                model,
+                device,
+                factor=cfg.train.imgtxt_factor,
+                normalize=cfg.train.normalize,
+            )
 
         if _need_save_template:
             print("Storing embeddings as template for future use...")
@@ -280,6 +306,7 @@ def _init_embedding_manager(cfg, device, sample_ids_list, experiment, feature_ma
                 strategy=strategy,
                 factor=cfg.train.imgtxt_factor,
                 normalize=cfg.train.normalize,
+                extra=_extra,
             )
 
     return embedding_manager

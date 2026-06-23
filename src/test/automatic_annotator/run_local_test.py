@@ -18,7 +18,7 @@ from openai import OpenAI
 import time
 
 
-def run_test(image_root: str, annotation_path: str, batch_size: int, port: int, n_images: int = 10, model_name: str = "Qwen/Qwen3.6-35B-A3B-FP8"):
+def run_test(image_root: str, annotation_path: str, batch_size: int, port: int, n_images: int = 10, model_name: str = "Qwen/Qwen2.5-VL-7B-Instruct"):
     with open(annotation_path) as f:
         data = json.load(f)
     samples = data[:max(n_images, batch_size)]  # need at least batch_size captions
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=50)
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--n_images", type=int, default=10)
-    parser.add_argument("--model_name", default="Qwen/Qwen3.6-35B-A3B-FP8")
+    parser.add_argument("--model_name", default="Qwen/Qwen2.5-VL-7B-Instruct")
     args = parser.parse_args()
 
     run_test(

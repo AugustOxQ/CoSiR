@@ -8,8 +8,9 @@
 # CLUSTER usage (after sshing in):
 #   bash run_annotation.sh cluster
 #
-# CUSTOM usage (override any arg):
+# CUSTOM usage (override any arg, incl. a dedicated output dir):
 #   bash run_annotation.sh local --batch_size 100 --n_samples 500
+#   bash run_annotation.sh local --n_samples 1000 --output_path /data/SSD2/annotations/redcaps_1k1k
 
 MODE=${1:-local}
 shift || true   # allow extra args to pass through
@@ -32,6 +33,19 @@ else
     exit 1
 fi
 
+# ── Pull --output_path out of the passthrough args so the log dir + redirect ───
+# use the same location the annotator writes to. Everything else passes through.
+PASS_ARGS=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --output_path)    OUTPUT_PATH="$2"; shift 2 ;;
+        --output_path=*)  OUTPUT_PATH="${1#*=}"; shift ;;
+        *)                PASS_ARGS+=("$1"); shift ;;
+    esac
+done
+
+mkdir -p "$OUTPUT_PATH"
+
 echo "============================================"
 echo " Qwen Automatic Annotator — 5k×5k"
 echo "============================================"
@@ -51,14 +65,14 @@ done
 echo "vLLM server is ready."
 echo ""
 
-nohup python "$SCRIPT_DIR/qwenannotator.py" \
+nohup python -u "$SCRIPT_DIR/qwenannotator.py" \
     --annotation_path "$ANNOTATION_PATH" \
     --image_root "$IMAGE_ROOT" \
     --output_path "$OUTPUT_PATH" \
     --n_samples 5000 \
     --batch_size 50 \
     --port 8000 \
-    "$@" \
+    "${PASS_ARGS[@]}" \
     > "$OUTPUT_PATH/annotation_run.log" 2>&1 &
 
 ANNOTATOR_PID=$!

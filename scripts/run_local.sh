@@ -25,10 +25,11 @@ python main_cosir.py -m \
   eval.evaluation_interval=100 \
   eval.oracle_aggregation=max \
   model=clip_base \
-  experiment.results_dir="res/CoSiR_Experiment_new_oracle_guided/impressions" \
+  experiment.results_dir="res/CoSiR_Experiment_buddy2/impressions" \
   model.num_layers=6 \
-  model.embedding_dim=16 \
-  "optimizer.lr=1e-3" \
-  "optimizer.lr_label=1e-3" \
+  "model.embedding_dim=2, 4, 8, 16, 32" \
+  "optimizer.lr=1e-4, 1e-3" \
+  "optimizer.lr_label=1e-6, 1e-5, 1e-4, 1e-3, 1e-2" \
+  "buddies.alpha=0.25, 0.5, 0.75" \
   train.epochs=1000 \
-  wandb.group="new oracle guided setting" \
+  wandb.group="condition buddy setting" \

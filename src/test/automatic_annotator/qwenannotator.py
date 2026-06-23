@@ -235,7 +235,13 @@ class QwenAnnotator:
                     max_tokens=1024,
                     temperature=0.7,
                     top_p=0.8,
-                    extra_body={"top_k": 20},
+                    extra_body={
+                        "top_k": 20,
+                        # Disable Qwen3.x "thinking" so the 1024-token budget isn't
+                        # spent on reasoning (harmless/ignored for non-thinking models
+                        # like Qwen2.5-VL). Matches run_local_test.py.
+                        "chat_template_kwargs": {"enable_thinking": False},
+                    },
                 )
                 last_raw = resp.choices[0].message.content or ""
                 results = _parse_response(last_raw, len(captions_batch))
