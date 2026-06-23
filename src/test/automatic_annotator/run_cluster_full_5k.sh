@@ -23,9 +23,10 @@ BATCH_SIZE=${1:-50}   # override with: bash run_cluster_full_5k.sh 100
 
 mkdir -p "$OUTPUT_PATH"
 
-# ── Conda ─────────────────────────────────────────────────────────────────────
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate CoSiR
+# ── Env ─────────────────────────────────────────────────────────────────────────
+# Activate your environment BEFORE running this script (cluster uses anaconda):
+#   conda activate <your-env>      # e.g. annot
+[ -z "$CONDA_DEFAULT_ENV" ] && echo "WARNING: no conda env active — activate one first." >&2
 
 # ── Start vLLM server (only if not already running) ───────────────────────────
 if curl -s http://localhost:$PORT/health > /dev/null 2>&1; then

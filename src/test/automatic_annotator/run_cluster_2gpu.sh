@@ -27,6 +27,15 @@ MODEL="Qwen/Qwen3.6-27B"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PORT=8000
 
+# ── HuggingFace cache ───────────────────────────────────────────────────────────
+# The default $HOME often has no space on clusters. Point HF_HOME at a filesystem
+# that has space AND persists across jobs, so the ~54GB model isn't re-downloaded
+# every run. Defaults next to the dataset (persistent); override by exporting
+# HF_HOME first. Avoid node-local /local and the per-run output dir (may be wiped).
+export HF_HOME="${HF_HOME:-/var/scratch/wding/hf_cache}"
+mkdir -p "$HF_HOME"
+echo "HF_HOME: $HF_HOME"
+
 # ── Pull --output_path out of the passthrough args so the vLLM log, annotator ──
 # log, and output dir all agree. Everything else passes through to the annotator.
 PASS_ARGS=()
@@ -40,9 +49,10 @@ done
 
 mkdir -p "$OUTPUT_PATH"
 
-# ── Conda ──────────────────────────────────────────────────────────────────────
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate CoSiR
+# ── Env ─────────────────────────────────────────────────────────────────────────
+# Activate your environment BEFORE running this script (cluster uses anaconda):
+#   conda activate <your-env>      # e.g. annot
+[ -z "$CONDA_DEFAULT_ENV" ] && echo "WARNING: no conda env active — activate one first." >&2
 
 # ── GPUs ───────────────────────────────────────────────────────────────────────
 # Pin to two GPUs. Override before calling, e.g. CUDA_VISIBLE_DEVICES=2,3 bash ...

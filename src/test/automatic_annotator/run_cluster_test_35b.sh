@@ -20,9 +20,10 @@ N_IMAGES=50
 
 mkdir -p "$OUTPUT_BASE"
 
-# ── Conda ────────────────────────────────────────────────────────────────────
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate CoSiR
+# ── Env ─────────────────────────────────────────────────────────────────────────
+# Activate your environment BEFORE running this script (cluster uses anaconda):
+#   conda activate <your-env>      # e.g. annot
+[ -z "$CONDA_DEFAULT_ENV" ] && echo "WARNING: no conda env active — activate one first." >&2
 
 # ── Start vLLM server ────────────────────────────────────────────────────────
 echo "============================================"
