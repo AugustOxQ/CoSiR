@@ -152,6 +152,7 @@ dmypy.json
 *.pickle
 *.csv
 *.json
+*.npy
 
 # Folder
 data/
