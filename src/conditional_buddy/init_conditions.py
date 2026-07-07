@@ -120,7 +120,10 @@ def main(cfg: DictConfig) -> None:
         return
 
     # Full init → write template_embeddings/ in feature-store order.
-    emb = compute_buddy_init(
+    # return_edges=True persists the union graph E so the buddy-graph smoothness
+    # regularizer (cfg.loss.lambda_buddy>0) works when reusing this template; the
+    # edges are in the same row order as emb (no output reorder here).
+    emb, edges = compute_buddy_init(
         img,
         txt,
         n_dim=n_dim,
@@ -131,6 +134,7 @@ def main(cfg: DictConfig) -> None:
         knn_batch_size=bud["knn_batch_size"],
         normalize_method=bud["normalize_method"],
         seed=seed,
+        return_edges=True,
     )
 
     template_dir = Path(cfg.experiment.results_dir) / "template_embeddings"
@@ -138,6 +142,7 @@ def main(cfg: DictConfig) -> None:
     np.lib.format.open_memmap(
         template_dir / "embeddings.npy", mode="w+", dtype=np.float32, shape=emb.shape
     )[:] = emb
+    np.save(template_dir / "buddy_edges.npy", edges.astype(np.int64))
     ids_arr = np.array(sample_ids, dtype=np.int64)
     np.lib.format.open_memmap(
         template_dir / "sample_ids.npy", mode="w+", dtype=np.int64, shape=ids_arr.shape

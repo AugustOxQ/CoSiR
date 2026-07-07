@@ -86,6 +86,7 @@ def compute_buddy_init(
     use_half: bool = True,
     eigen_solver: str = "auto",
     connect_components: bool = True,
+    return_edges: bool = False,
     input_sample_ids: Optional[List[int]] = None,
     output_sample_ids: Optional[List[int]] = None,
 ) -> np.ndarray:
@@ -101,7 +102,11 @@ def compute_buddy_init(
                        cross-component edges (default True; no-op when E is already
                        connected). Required for a usable spectral init on fragmented
                        graphs — see ensure_connected.
-    Returns: (N, n_dim) float32 in ~[-1, 1].
+    return_edges:      if True, return (emb, edges); if False (default) return emb only.
+    Returns: (N, n_dim) float32 in ~[-1, 1], or if return_edges=True, a tuple (emb, edges)
+             where edges is np.int64 [2, M] undirected edge list (i < j), with endpoints
+             expressed as table positions in output_sample_ids order if reordering is
+             requested, else input-row order.
 
     Rows are returned in input order unless both ``input_sample_ids`` and
     ``output_sample_ids`` are given, in which case rows are reordered so row i
@@ -146,4 +151,15 @@ def compute_buddy_init(
         reorder = [pos[sid] for sid in output_sample_ids]
         emb = emb[reorder]
 
-    return emb
+    if not return_edges:
+        return emb
+
+    coo = E.tocoo()
+    upper = coo.row < coo.col
+    edges = np.stack([coo.row[upper], coo.col[upper]]).astype(np.int64)  # input-row positions
+    if output_sample_ids is not None:
+        inv = np.empty(len(reorder), dtype=np.int64)
+        inv[np.asarray(reorder, dtype=np.int64)] = np.arange(len(reorder), dtype=np.int64)
+        edges = inv[edges]  # remap input positions -> output positions
+        edges = np.sort(edges, axis=0)  # re-enforce i < j after remap
+    return emb, edges

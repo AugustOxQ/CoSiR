@@ -27,9 +27,11 @@ python main_cosir.py -m \
   model=clip_base \
   experiment.results_dir="res/CoSiR_Experiment_buddy2/impressions" \
   model.num_layers=6 \
-  "model.embedding_dim=2, 4, 8, 16, 32" \
-  "optimizer.lr=1e-4, 1e-3" \
-  "optimizer.lr_label=1e-6, 1e-5, 1e-4, 1e-3, 1e-2" \
-  "buddies.alpha=0.25, 0.5, 0.75" \
-  train.epochs=1000 \
-  wandb.group="condition buddy setting" \
+  model.embedding_dim=16 \
+  optimizer.lr=1e-4 \
+  optimizer.lr_label=1e-4 \
+  buddies.alpha=0.5 \
+  +loss.lambda_buddy_con=0.3 \
+  +loss.buddy_con_samples=4 \
+  train.epochs=500 \
+  wandb.group="condition buddy training loss" \

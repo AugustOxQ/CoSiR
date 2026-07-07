@@ -372,7 +372,7 @@ class TrainableEmbeddingManager:
         txt = np.concatenate(txt_parts, axis=0)
         fm_sample_ids = feature_manager.get_all_sample_ids()
 
-        emb = compute_buddy_init(
+        emb, edges = compute_buddy_init(
             img,
             txt,
             n_dim=self.embedding_dim,
@@ -385,7 +385,9 @@ class TrainableEmbeddingManager:
             seed=seed,
             input_sample_ids=fm_sample_ids,
             output_sample_ids=self.sample_ids,
+            return_edges=True,
         )
+        np.save(self.embeddings_dir / "buddy_edges.npy", edges.astype(np.int64))
         print(
             f"[EmbeddingManager] Buddies init done. "
             f"Mean norm: {np.linalg.norm(emb, axis=1).mean():.4f}"
@@ -397,18 +399,25 @@ class TrainableEmbeddingManager:
     def _copy_to(self, dest_dir: Path) -> None:
         """Copy memmap files to dest_dir."""
         dest_dir.mkdir(parents=True, exist_ok=True)
-        for fname in ("embeddings.npy", "sample_ids.npy", "metadata.json"):
+        for fname in ("embeddings.npy", "sample_ids.npy", "metadata.json", "buddy_edges.npy"):
             src = self.embeddings_dir / fname
             if src.exists():
                 shutil.copy2(src, dest_dir / fname)
 
     def _copy_from(self, src_dir: Path) -> None:
         """Replace current memmap files with copies from src_dir, then reload."""
-        for fname in ("embeddings.npy", "sample_ids.npy", "metadata.json"):
+        for fname in ("embeddings.npy", "sample_ids.npy", "metadata.json", "buddy_edges.npy"):
             src = src_dir / fname
             if src.exists():
                 shutil.copy2(src, self.embeddings_dir / fname)
         self._load_storage()
+
+    def get_buddy_edges(self):
+        """Return the persisted buddy edge list [2, M] (int64) or None if absent."""
+        path = self.embeddings_dir / "buddy_edges.npy"
+        if not path.exists():
+            return None
+        return np.load(path)
 
     def store_imgtxt_template(
         self,

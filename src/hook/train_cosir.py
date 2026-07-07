@@ -46,6 +46,12 @@ from src.utils import (
     CoSiRAutomaticEvaluator,
 )
 from src.metrics import LabelContrastiveLoss_enhance
+from src.metrics.regularizer import (
+    build_neighbor_csr,
+    buddy_graph_smoothness_loss,
+    buddy_contrastive_loss,
+    reorder_features_to_z,
+)
 
 
 # ─── Setup helpers ──────────────────────────────────────────────────────────
@@ -1297,6 +1303,55 @@ def train_cosir(cfg, logger):
     # --- Phase 5: Optimizer & Scheduler ---
     optimizer, scheduler = _build_optimizer_and_scheduler(cfg, model, embedding_manager)
 
+    # Families #1 & #2 share the persisted E edge list + CSR neighbour index.
+    # Disabled (no-op) when both lambdas are 0 or edges are absent.
+    _lambda_buddy = getattr(cfg.loss, "lambda_buddy", 0.0)
+    _buddy_reg_samples = int(getattr(cfg.loss, "buddy_reg_samples", 4))
+    _lambda_buddy_con = getattr(cfg.loss, "lambda_buddy_con", 0.0)
+    _buddy_con_samples = int(getattr(cfg.loss, "buddy_con_samples", 4))
+    _buddy_con_temp = float(getattr(cfg.loss, "buddy_con_temperature", 0.07))
+    buddy_indptr = buddy_indices = None
+    other_feat_table = None
+    if _lambda_buddy > 0 or _lambda_buddy_con > 0:
+        _edges = embedding_manager.get_buddy_edges()
+        if _edges is None:
+            print("[buddy] lambda_buddy/lambda_buddy_con>0 but no buddy_edges.npy "
+                  "found — disabling buddy terms for this run.")
+            _lambda_buddy = 0.0
+            _lambda_buddy_con = 0.0
+        else:
+            _edge_index = torch.from_numpy(_edges.astype(np.int64)).to(device)
+            buddy_indptr, buddy_indices = build_neighbor_csr(
+                _edge_index, num_nodes=len(embedding_manager.sample_ids)
+            )
+            print(f"[buddy] edges loaded: {_edge_index.shape[1]:,}; "
+                  f"lambda_buddy={_lambda_buddy}, lambda_buddy_con={_lambda_buddy_con}")
+
+    # Family #2: gather the non-combine-side pooled feature per sample, in z-table
+    # order, so anchor combined features can be pulled toward buddy targets.
+    if _lambda_buddy_con > 0 and buddy_indptr is not None:
+        if not feature_manager.fits_in_ram():
+            print("[buddy-con] feature store does not fit in RAM (streaming path) — "
+                  "buddy contrastive term unsupported here; disabling.")
+            _lambda_buddy_con = 0.0
+        else:
+            _other_key = "txt_features" if cfg.model.combine_side == "img" else "img_features"
+            _feat = feature_manager.load_all_to_ram([_other_key])
+            other_feat_table = reorder_features_to_z(
+                _feat[_other_key],
+                [int(s) for s in _feat["sample_ids"].tolist()],
+                embedding_manager.sample_ids,
+            ).to(device)
+            print(f"[buddy-con] enabled: lambda_buddy_con={_lambda_buddy_con}, "
+                  f"samples/anchor={_buddy_con_samples}, temp={_buddy_con_temp}, "
+                  f"other_feat={_other_key} {tuple(other_feat_table.shape)}")
+
+    # Snapshot the initial label embeddings so we can log mean drift ‖z − z_init‖
+    # on the eval cadence. Logged for every run (incl. lambda_buddy=0) so the
+    # baseline drift is the control: it shows how far training moves z away from
+    # the init, and whether the buddy regularizer (lambda_buddy>0) reins that in.
+    _z_init = embedding_manager.embeddings.detach().clone()
+
     # --- Phase 6: Data Loaders ---
     train_set, train_loader, test_set, test_loader, sample_types = _build_dataloaders(
         cfg, feature_manager, processor, sample_ids_list
@@ -1494,6 +1549,45 @@ def train_cosir(cfg, logger):
                 loss = loss + lambda_gap_align * gap_align_loss
                 loss_dict["gap_align_loss"] = gap_align_loss.detach()
 
+            # Family #1: buddy-graph smoothness on z along E (only when conditions train)
+            if (
+                _lambda_buddy > 0
+                and buddy_indptr is not None
+                and embedding_manager.embeddings.requires_grad
+            ):
+                _anchor_pos = torch.tensor(batch_indices, device=device, dtype=torch.long)
+                buddy_loss = buddy_graph_smoothness_loss(
+                    embedding_manager.embeddings,
+                    buddy_indptr,
+                    buddy_indices,
+                    _anchor_pos,
+                    num_samples=_buddy_reg_samples,
+                )
+                loss = loss + _lambda_buddy * buddy_loss
+                loss_dict["loss_buddy"] = buddy_loss.detach()
+
+            # Family #2: buddy contrastive supervision in combined/retrieval space
+            if (
+                _lambda_buddy_con > 0
+                and other_feat_table is not None
+                and embedding_manager.embeddings.requires_grad
+            ):
+                _anchor_pos_con = torch.tensor(batch_indices, device=device, dtype=torch.long)
+                buddy_con_loss, buddy_con_align = buddy_contrastive_loss(
+                    comb_emb,
+                    _anchor_pos_con,
+                    other_feat_table,
+                    model.project_other,
+                    other_emb,
+                    buddy_indptr,
+                    buddy_indices,
+                    num_pos=_buddy_con_samples,
+                    temperature=_buddy_con_temp,
+                )
+                loss = loss + _lambda_buddy_con * buddy_con_loss
+                loss_dict["loss_buddy_con"] = buddy_con_loss.detach()
+                loss_dict["buddy_con_alignment"] = buddy_con_align
+
             epoch_loss += loss.item()
             num_batches += 1
 
@@ -1617,6 +1711,18 @@ def train_cosir(cfg, logger):
             or epoch % cfg.eval.evaluation_interval == 0
             or epoch == cfg.train.epochs - 1
         )
+        if eval_due:
+            with torch.no_grad():
+                _drift = (
+                    (embedding_manager.embeddings.detach() - _z_init)
+                    .norm(dim=1)
+                    .mean()
+                    .item()
+                )
+            logger.log_train(
+                {"drift_from_init": _drift}, epoch=epoch, section="buddy_diag"
+            )
+
         if cfg.eval.perform_evaluation and eval_due:
             _eval_snapshot(
                 cfg,

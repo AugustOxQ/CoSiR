@@ -1,0 +1,38 @@
+program: scripts/run_sweep_agent.py
+method: grid
+metric:
+  name: test_oracle/t2i_R1
+  goal: maximize
+  summary: max  # rank runs by their best epoch, not last epoch
+
+# Kill the bottom 50% of runs once enough data is available.
+early_terminate:
+  type: hyperband
+  min_iter: 3      # don't kill before 3 evaluations (epoch 300 with interval=100)
+  eta: 2           # halving rate
+
+# Family #1 buddy-graph smoothness regularizer sweep:
+#   lambda_buddy x lr x lr_label, holding embedding_dim=16 and buddies.alpha=0.5.
+# lambda_buddy=0 is the baseline (no-regularizer) arm; because lambda_buddy is not
+# part of the buddy template key, every lambda_buddy reuses the SAME init/template,
+# so the 0 vs >0 arms differ only by the training term — a clean ablation.
+# 4 * 2 * 5 = 40 runs.
+#
+# IMPORTANT: launch the agent with a FRESH results dir so the buddy init writes
+# buddy_edges.npy into the template (otherwise lambda_buddy>0 arms disable the term):
+#   RESULTS_DIR="res/CoSiR_buddyreg_sweep/impressions" \
+#     python scripts/run_sweep_agent.py --sweep_id <sweep_id>
+parameters:
+  lambda_buddy:
+    values: [0.0, 0.1, 0.3, 1.0]
+  lr:
+    values: [1.0e-5, 1.0e-4, 1e-3]
+  lr_label:
+    values: [1.0e-5, 1.0e-4, 1.0e-3, 1.0e-2]
+  # Held constant (single-value grid axes → applied via the existing agent paths).
+  embedding_dim:
+    values: [16]
+  alpha:
+    values: [0.5]
+  buddy_reg_samples:
+    values: [4]

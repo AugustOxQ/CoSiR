@@ -1,9 +1,16 @@
 """
 wandb sweep agent bridge for CoSiR grid search.
 
-Supports v1 (lr/lr_label), v2 (+ scheduler_type/em_interval) and v3
-(embedding_dim/lr/lr_label/buddies.alpha) sweep configs with the same agent;
-parameters not present in a given sweep fall back to the config defaults.
+Supports v1 (lr/lr_label), v2 (+ scheduler_type/em_interval), v3
+(embedding_dim/lr/lr_label/buddies.alpha) and v4 (lambda_buddy/lr/lr_label,
+holding embedding_dim/alpha) sweep configs with the same agent; parameters not
+present in a given sweep fall back to the config defaults.
+
+For the v4 buddy-reg sweep, set a FRESH results dir so each per-(dim,alpha)
+template is rebuilt by _buddy_init WITH buddy_edges.npy — otherwise the
+lambda_buddy>0 arms hit the "[buddy-reg] ... disabling" fallback:
+  RESULTS_DIR="res/CoSiR_buddyreg_sweep/impressions" \
+    python scripts/run_sweep_agent.py --sweep_id <sweep_id>
 
 Usage
 -----
@@ -38,7 +45,12 @@ _CONFIGS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "co
 # runs from this sweep are grouped together in the UI.
 _WANDB_GROUP = os.environ.get("WANDB_RUN_GROUP", "condition buddy setting")
 
-# Static overrides shared by every run in the conditional-buddies (v3) sweep.
+# Results dir is env-overridable. The v4 buddy-reg sweep needs a FRESH dir so the
+# buddy init writes buddy_edges.npy into the template (see module docstring); v1–v3
+# keep using the original buddy2 dir.
+_RESULTS_DIR = os.environ.get("RESULTS_DIR", "res/CoSiR_Experiment_buddy2/impressions")
+
+# Static overrides shared by every run in the conditional-buddies sweeps.
 # Mirrors the static portion of the multirun command; everything not listed here
 # (loss weights, scheduler, etc.) intentionally falls back to the config defaults
 # in configs/train/default.yaml. wandb.enabled=false because the sweep agent
@@ -50,7 +62,7 @@ _STATIC_OVERRIDES = [
     "eval.oracle_aggregation=max",
     "model.num_layers=6",
     "train.epochs=1000",
-    'experiment.results_dir="res/CoSiR_Experiment_buddy2/impressions"',
+    f'experiment.results_dir="{_RESULTS_DIR}"',
     "wandb.enabled=false",
 ]
 
@@ -66,6 +78,11 @@ def _run():
         alpha = getattr(wandb.config, "alpha", None)
         scheduler_type = getattr(wandb.config, "scheduler_type", None)
         em_interval = getattr(wandb.config, "em_interval", None)
+        # v4 buddy-reg sweep. lambda_buddy / buddy_reg_samples are NOT in the YAML
+        # (read via getattr defaults in train_cosir), so they must be ADDED with a
+        # leading '+'. lambda_buddy=0 is the baseline (no-regularizer) arm.
+        lambda_buddy = getattr(wandb.config, "lambda_buddy", None)
+        buddy_reg_samples = getattr(wandb.config, "buddy_reg_samples", None)
 
         overrides = _STATIC_OVERRIDES + [
             f"optimizer.lr={lr}",
@@ -81,6 +98,10 @@ def _run():
             overrides.append(f"scheduler.type={scheduler_type}")
         if em_interval is not None:
             overrides.append(f"train.em_interval={em_interval}")
+        if lambda_buddy is not None:
+            overrides.append(f"+loss.lambda_buddy={lambda_buddy}")
+        if buddy_reg_samples is not None:
+            overrides.append(f"+loss.buddy_reg_samples={buddy_reg_samples}")
 
         with initialize_config_dir(config_dir=_CONFIGS_DIR, version_base=None):
             cfg = compose(config_name="config.yaml", overrides=overrides)
@@ -94,6 +115,8 @@ def _run():
             **({"alpha": alpha} if alpha is not None else {}),
             **({"scheduler_type": scheduler_type} if scheduler_type is not None else {}),
             **({"em_interval": em_interval} if em_interval is not None else {}),
+            **({"lambda_buddy": lambda_buddy} if lambda_buddy is not None else {}),
+            **({"buddy_reg_samples": buddy_reg_samples} if buddy_reg_samples is not None else {}),
         })
         logger = WandbLogger()
         train_cosir(cfg, logger)
