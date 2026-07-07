@@ -1,22 +1,23 @@
 # Conditional Buddies — Progress Report
 
-**Date:** 2026-06-24
+**Date:** 2026-06-24 (updated 2026-07-07 with Family #3)
 **Branch:** `experiment/conditional_buddy_train` (init/analysis work landed on `experiment/conditional_buddy`)
 **Audience:** a CoSiR collaborator who knew the project *before* the buddy work began.
 
 ## Executive summary
 
-Over roughly June 9–24, 2026 we built a "conditional buddy" pipeline that gives each
+Over roughly June 9 – July 7, 2026 we built a "conditional buddy" pipeline that gives each
 sample's trainable condition vector a content-aware geometric starting point, validated
 that the buddy signal is real (not a data artifact) on two datasets, and then began using
 that signal *during* training rather than only at initialization. Three independent probes
 — category lift, a held-out encoder (DINOv2), and a vision-language-model judge — all
-confirm buddies connect samples that share specific multimodal content. Two ways of using
-buddies during training are now implemented and gated behind default-off config flags:
-Family #1 (a Laplacian smoothness regularizer on the condition embeddings) and Family #2
-(buddies as extra contrastive retrieval positives). The large-scale ablations for both are
-launched-but-pending-analysis; Family #3 (self-refreshing buddies / co-training) is the
-planned next step.
+confirm buddies connect samples that share specific multimodal content. **All three** planned
+ways of using buddies during training are now implemented and gated behind default-off config
+flags: Family #1 (a Laplacian smoothness regularizer on the condition embeddings), Family #2
+(buddies as extra contrastive retrieval positives), and Family #3 (a self-refreshing buddy
+graph that co-evolves with the model). The large-scale ablations for all three are
+launched-but-pending-analysis — the framework is complete; the retrieval numbers are the
+remaining work.
 
 ---
 
@@ -302,7 +303,74 @@ isolated-anchor zero, self-masking, index alignment, temperature sanity).
 
 ---
 
-## 7. Current status and what's next
+## 7. Using buddies during training — Family #3 (self-refreshing buddies)
+
+**In one sentence:** stop freezing the buddy graph at init — periodically rebuild it from the
+model's *own* current representations during training, so the supervision co-evolves with the
+model instead of staying pinned to the original frozen-CLIP neighborhood.
+
+Design: `docs/superpowers/specs/2026-07-07-buddy-self-refresh-design.md`; plan:
+`docs/superpowers/plans/2026-07-07-buddy-self-refresh.md`; change log: `.claude/20260707_log.md`.
+Implemented in `src/metrics/regularizer.py` (`refresh_buddy_graph`, `edge_jaccard`) and
+`src/hook/train_cosir.py`.
+
+**The gap it closes.** Families #1 and #2 both reuse *one* graph: the init-time cross-modal
+CLIP mutual-KNN (E). That graph reflects what *frozen CLIP* judged similar before any training
+happened. But once the model has learned, its own combined/retrieval space may know better
+neighbors than CLIP did. Family #3 tests exactly that hypothesis: recompute buddies from the
+*evolving* combined features and see whether a live graph beats the frozen one.
+
+**Mechanism.** On a warm-up-then-periodic schedule (default: skip until epoch 50, then refresh
+every 50 epochs), and entirely without gradients: (1) do one pass over all samples to get each
+sample's *current* combined feature; (2) build a fresh mutual-KNN graph from those; (3) union it
+with the frozen CLIP graph — the CLIP edges are **always kept**, the fresh graph only *adds*;
+(4) hand the rebuilt graph to Family #2's contrastive term, which simply reads a new neighbor
+index. Family #3 adds **no new loss** — it is "Family #2 with a live graph," which makes the
+comparison clean: hold everything else fixed and flip only static-vs-refreshed.
+
+**Two guards against a co-training trap.** Recomputing buddies from the very features a loss then
+pulls together risks a feedback loop — already-close points keep re-selecting each other and the
+representation can collapse. Two things prevent it. (a) The CLIP graph is retained as a permanent
+anchor: refresh only *adds* edges, never abandons the validated init. A single "blend" knob
+controls how much of the fresh graph is added, and **blend = 0 reproduces Family #2 exactly**, so
+the ablation is a continuum with a built-in baseline. (b) The contrastive *target* stays the
+buddy's **frozen** CLIP feature (inherited from #2), so the loss never pulls a moving feature
+toward another moving feature — only the *choice of who your buddies are* is dynamic.
+
+**A subtle bug worth flagging (caught in code review).** The graph must be rebuilt from the
+model's *inference* features. In the first cut, the recompute accidentally ran with the model in
+"training" mode, which leaves dropout active — so the graph was built from half-randomized
+features and then frozen for 50 epochs, which would have quietly made the whole experiment
+meaningless. The fix switches the model to eval mode for the recompute pass only; a regression
+test now guarantees two recomputes of the same model produce the *identical* graph.
+
+**Config / gating** (`cfg.loss`, read via `getattr`, default-off → byte-for-byte backward
+compatible):
+
+
+| key                    | default | meaning                                          |
+| ---------------------- | ------- | ------------------------------------------------ |
+| `buddy_refresh`        | `False` | master switch; **False = off**                   |
+| `buddy_refresh_warmup` | `50`    | first refresh epoch (avoids the epoch-0 no-op)   |
+| `buddy_refresh_period` | `50`    | refresh every R epochs                           |
+| `buddy_refresh_blend`  | `1.0`   | fraction of fresh edges added (**0 = static #2**) |
+| `buddy_refresh_k`      | `30`    | mutual-KNN K for the comb-space graph            |
+
+
+Two diagnostics were added: `graph_churn` (how much the graph changes between refreshes —
+thrashing vs stabilizing over training) and `graph_new_edge_frac` (how much the model's
+neighborhood *disagrees* with CLIP).
+
+**Run / ablate.** `scripts/run_buddyrefresh_full.sh` sweeps `buddy_refresh_blend ∈ {0, 1.0}` with
+Family #1 held off and #2 on — `0` = static #2 baseline, `1.0` = full refresh — isolating
+"static vs refreshed graph" as the only difference. Smoke: `scripts/run_buddyrefresh_smoke.sh`.
+Unit + regression tests in `src/test/20260707_buddy_refresh/` (7 tests, incl. the eval-mode
+determinism guard). Because no `buddy_refresh*` key is part of the buddy init template, every arm
+reuses the *same* init — the full `{#1, #2, #3}` matrix shares one buddy initialization.
+
+---
+
+## 8. Current status and what's next
 
 **Validated (with measured numbers, cited above):**
 
@@ -313,18 +381,23 @@ are both necessary for the init to carry structure.
 
 **Implemented but pending analysis:**
 
-- **Family #1** (smoothness regularizer) and **Family #2** (contrastive supervision) are both
-coded, unit-tested, and gated default-off. The large-scale ablation sweeps for both are
-**launched but not yet analyzed** — there are no downstream retrieval (R1) numbers to
-report yet for either family. `analyze_buddyreg_sweep.py` exists to crunch the #1 sweep
-once it lands; its verdict guide explicitly anticipates the "active but redundant → #2 is
-the real test" outcome, which is the motivation for #2.
+- **Family #1** (smoothness regularizer), **Family #2** (contrastive supervision), and
+**Family #3** (self-refreshing graph) are all coded, unit-tested, and gated default-off. The
+large-scale ablation sweeps are **launched but not yet analyzed** — there are no downstream
+retrieval (R1) numbers to report yet for any family. `analyze_buddyreg_sweep.py` exists to
+crunch the #1 sweep once it lands; its verdict guide explicitly anticipates the "active but
+redundant → #2 is the real test" outcome, which is the motivation for #2. #2 and #3 reuse the
+same init template as #1, so the whole `{#1, #2, #3}` matrix can be swept from one buddy
+initialization.
+- **The staged buddy program is now feature-complete.** All three planned ways of using the
+signal beyond init exist behind flags; what remains is running the ablations and reading the
+retrieval outcomes — not more implementation.
 
 **Planned next:**
 
-- **Family #3 — self-refreshing buddies / co-training:** recompute buddies from the *evolving*
-representations during training rather than freezing the init-time graph. Explicitly
-deferred to its own spec in both Family #1 and #2 designs; not yet specced.
+- **Analyze the three ablations** and decide which lever (if any) moves R1: does keeping the
+buddy geometry smooth (#1), supervising retrieval with buddy positives (#2), or letting the
+graph co-evolve (#3) help — and do they compound or overlap?
 - The recurring **B ≫ E** finding suggests testing an init/supervision that leans on B where
 it exists and falls back to E only for B-isolated nodes — noted as a follow-up in the
 analysis reports.
@@ -334,12 +407,15 @@ analysis reports.
 ## Appendix — key paths
 
 - Pipeline source: `src/conditional_buddy/{buddy_graph,compute_buddies,embedding_methods,init_conditions,visualize}.py`
-- Training-time terms: `src/metrics/regularizer.py`; wiring in `src/hook/train_cosir.py`
+- Training-time terms: `src/metrics/regularizer.py` (families #1/#2/#3); wiring in
+`src/hook/train_cosir.py`
 - Init notes: `.claude/conditional_buddies_init.md`
-- Designs: `docs/superpowers/specs/2026-06-{09,22,23,24}-*.md`
-- Plans: `docs/superpowers/plans/2026-06-{23,24}-*.md`
+- Designs: `docs/superpowers/specs/2026-06-{09,22,23,24}-*.md`, `docs/superpowers/specs/2026-07-07-buddy-self-refresh-design.md`
+- Plans: `docs/superpowers/plans/2026-06-{23,24}-*.md`, `docs/superpowers/plans/2026-07-07-buddy-self-refresh.md`
 - Reports: `docs/reports/2026-06-{09,22,23}_*.md`; figures under `docs/reports/assets/`
-- Change logs: `.claude/{20260609,20260623,20260623_buddy_train,20260624}_log.md`
+- Change logs: `.claude/{20260609,20260623,20260623_buddy_train,20260624,20260707}_log.md`
 - Run/ablation: `scripts/run_buddyreg_{smoke,full}.sh`, `scripts/run_buddycon_full.sh`,
-`scripts/sweep_config_v4.yaml`, `scripts/analyze_buddyreg_sweep.py`
+`scripts/run_buddyrefresh_{smoke,full}.sh`, `scripts/sweep_config_v4.yaml`,
+`scripts/analyze_buddyreg_sweep.py`
+- Tests: `src/test/{20260623_buddy_train_reg,20260624_buddy_contrastive,20260707_buddy_refresh}/`
 

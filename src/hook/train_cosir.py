@@ -51,6 +51,8 @@ from src.metrics.regularizer import (
     buddy_graph_smoothness_loss,
     buddy_contrastive_loss,
     reorder_features_to_z,
+    refresh_buddy_graph,
+    edge_jaccard,
 )
 
 
@@ -1312,6 +1314,7 @@ def train_cosir(cfg, logger):
     _buddy_con_temp = float(getattr(cfg.loss, "buddy_con_temperature", 0.07))
     buddy_indptr = buddy_indices = None
     other_feat_table = None
+    _clip_edge_index = None
     if _lambda_buddy > 0 or _lambda_buddy_con > 0:
         _edges = embedding_manager.get_buddy_edges()
         if _edges is None:
@@ -1321,6 +1324,7 @@ def train_cosir(cfg, logger):
             _lambda_buddy_con = 0.0
         else:
             _edge_index = torch.from_numpy(_edges.astype(np.int64)).to(device)
+            _clip_edge_index = _edge_index
             buddy_indptr, buddy_indices = build_neighbor_csr(
                 _edge_index, num_nodes=len(embedding_manager.sample_ids)
             )
@@ -1345,6 +1349,42 @@ def train_cosir(cfg, logger):
             print(f"[buddy-con] enabled: lambda_buddy_con={_lambda_buddy_con}, "
                   f"samples/anchor={_buddy_con_samples}, temp={_buddy_con_temp}, "
                   f"other_feat={_other_key} {tuple(other_feat_table.shape)}")
+
+    # Family #3: self-refreshing buddy graph. Recompute the CSR fed to the #2
+    # contrastive term from the evolving combined features on a schedule.
+    _buddy_refresh = bool(getattr(cfg.loss, "buddy_refresh", False))
+    _buddy_refresh_warmup = int(getattr(cfg.loss, "buddy_refresh_warmup", 50))
+    _buddy_refresh_period = int(getattr(cfg.loss, "buddy_refresh_period", 50))
+    _buddy_refresh_blend = float(getattr(cfg.loss, "buddy_refresh_blend", 1.0))
+    _buddy_refresh_k = int(getattr(cfg.loss, "buddy_refresh_k", 30))
+    combine_feat_table = None
+    _refresh_gen = torch.Generator().manual_seed(0)
+    _prev_comb_edges = None
+    if _buddy_refresh:
+        if _lambda_buddy_con <= 0 or other_feat_table is None or _clip_edge_index is None:
+            print("[buddy-refresh] requires lambda_buddy_con>0 with buddy edges — "
+                  "disabling refresh for this run.")
+            _buddy_refresh = False
+        else:
+            _combine_key = "img_features" if cfg.model.combine_side == "img" else "txt_features"
+            _cfeat = feature_manager.load_all_to_ram([_combine_key])
+            combine_feat_table = reorder_features_to_z(
+                _cfeat[_combine_key],
+                [int(s) for s in _cfeat["sample_ids"].tolist()],
+                embedding_manager.sample_ids,
+            ).to(device)
+            print(f"[buddy-refresh] enabled: warmup={_buddy_refresh_warmup}, "
+                  f"period={_buddy_refresh_period}, blend={_buddy_refresh_blend}, "
+                  f"k={_buddy_refresh_k}, combine_feat={_combine_key} "
+                  f"{tuple(combine_feat_table.shape)}")
+            if cfg.train.em_interval > 0:
+                print("[buddy-refresh] WARNING: em_interval>0 (EM alternation) with "
+                      "buddy_refresh: scheduled refreshes landing in a network phase are "
+                      "skipped, not retried — refresh schedule may desync. Recommended: "
+                      "run refresh with em_interval<0.")
+            if _lambda_buddy > 0:
+                print("[buddy-refresh] WARNING: lambda_buddy>0 with buddy_refresh: Family #1 "
+                      "shares the refreshed CSR (out of scope). Recommended: lambda_buddy=0.")
 
     # Snapshot the initial label embeddings so we can log mean drift ‖z − z_init‖
     # on the eval cadence. Logged for every run (incl. lambda_buddy=0) so the
@@ -1387,6 +1427,31 @@ def train_cosir(cfg, logger):
                 _prev_em_phase = em_phase
         else:
             em_phase = "both"
+
+        # Family #3: refresh the buddy graph feeding the #2 term, on schedule.
+        if (
+            _buddy_refresh
+            and _lambda_buddy_con > 0
+            and combine_feat_table is not None
+            and embedding_manager.embeddings.requires_grad
+            and epoch >= _buddy_refresh_warmup
+            and (epoch - _buddy_refresh_warmup) % _buddy_refresh_period == 0
+        ):
+            buddy_indptr, buddy_indices, _comb_edges, _refresh_stats = refresh_buddy_graph(
+                model,
+                combine_feat_table,
+                embedding_manager.embeddings,
+                _clip_edge_index,
+                num_nodes=len(embedding_manager.sample_ids),
+                k=_buddy_refresh_k,
+                blend=_buddy_refresh_blend,
+                generator=_refresh_gen,
+            )
+            if _prev_comb_edges is not None:
+                _refresh_stats["graph_churn"] = edge_jaccard(_comb_edges, _prev_comb_edges)
+            _prev_comb_edges = _comb_edges
+            logger.log_train(_refresh_stats, epoch=epoch, section="buddy_refresh")
+            print(f"[buddy-refresh] epoch {epoch}: {_refresh_stats}")
 
         epoch_start_time = time.time()
         if isinstance(train_set, CoSiRShardStreamDataset):

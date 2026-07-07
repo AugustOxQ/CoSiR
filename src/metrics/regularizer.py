@@ -1,8 +1,11 @@
 """Regularization functions used by LabelContrastiveLoss_enhance."""
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from typing import Optional
+
+from src.conditional_buddy.buddy_graph import mutual_knn
 
 
 def boundary_penalty(embeddings, radius=1.0, alpha=0.1):
@@ -184,3 +187,86 @@ def reorder_features_to_z(feat: torch.Tensor, feat_ids, z_ids) -> torch.Tensor:
     fpos = {int(sid): i for i, sid in enumerate(feat_ids)}
     order = torch.tensor([fpos[int(sid)] for sid in z_ids], dtype=torch.long)
     return feat[order].contiguous()
+
+
+def _undirected_edge_set(edge_index: torch.Tensor):
+    """Set of frozenset{u, v} for each column; self-loops dropped."""
+    s = set()
+    ei = edge_index.detach().cpu()
+    for k in range(ei.shape[1]):
+        u, v = int(ei[0, k]), int(ei[1, k])
+        if u != v:
+            s.add(frozenset((u, v)))
+    return s
+
+
+def edge_jaccard(ei_a: torch.Tensor, ei_b: torch.Tensor) -> float:
+    """Undirected Jaccard between two edge_index tensors (both empty -> 1.0)."""
+    sa, sb = _undirected_edge_set(ei_a), _undirected_edge_set(ei_b)
+    if not sa and not sb:
+        return 1.0
+    return len(sa & sb) / len(sa | sb)
+
+
+def refresh_buddy_graph(
+    model,
+    combine_feat_table: torch.Tensor,
+    z_table: torch.Tensor,
+    clip_edge_index: torch.Tensor,
+    num_nodes: int,
+    k: int = 30,
+    blend: float = 1.0,
+    chunk: int = 4096,
+    knn_device: str = "cuda",
+    generator: Optional[torch.Generator] = None,
+):
+    """Rebuild the buddy CSR from the model's current combined features.
+
+    Under no_grad: run a chunked full-N ``model.combine`` pass to get
+    ``comb_all`` [N, Dp], build a comb-space mutual-KNN, keep a ``blend``
+    fraction of its edges, union them with the always-kept frozen CLIP edges,
+    and rebuild the CSR. Returns (indptr, indices, comb_edges[2, Mc], stats).
+    ``blend == 0`` never calls mutual_knn and reproduces the CLIP-only CSR.
+    """
+    device = clip_edge_index.device
+    with torch.no_grad():
+        if blend > 0:
+            was_training = model.training
+            model.eval()
+            try:
+                combs = []
+                for s in range(0, num_nodes, chunk):
+                    e = min(s + chunk, num_nodes)
+                    c = model.combine(combine_feat_table[s:e], None, z_table[s:e].detach())
+                    combs.append(c.detach())
+                comb_all = torch.cat(combs, dim=0)  # [N, Dp]
+            finally:
+                model.train(was_training)
+
+            A = mutual_knn(comb_all.float().cpu().numpy(), k, device=knn_device)  # scipy csr
+            coo = A.tocoo()
+            keep_dir = coo.row < coo.col  # one direction per edge, drop self-loops
+            src = torch.from_numpy(coo.row[keep_dir].astype(np.int64))
+            dst = torch.from_numpy(coo.col[keep_dir].astype(np.int64))
+            comb_edges = torch.stack([src, dst], dim=0).to(device)  # [2, Mc]
+
+            m = comb_edges.shape[1]
+            if blend < 1.0 and m > 0:
+                keep = int(round(blend * m))
+                perm = torch.randperm(m, generator=generator)[:keep].to(device)
+                comb_edges = comb_edges[:, perm]
+        else:
+            comb_edges = torch.empty(2, 0, dtype=torch.long, device=device)
+
+        edge_index = torch.cat([clip_edge_index, comb_edges], dim=1)
+        indptr, indices = build_neighbor_csr(edge_index, num_nodes)
+
+        clip_set = _undirected_edge_set(clip_edge_index)
+        comb_set = _undirected_edge_set(comb_edges)
+        new_frac = len(comb_set - clip_set) / max(len(comb_set), 1)
+        stats = {
+            "graph_n_comb_edges": float(comb_edges.shape[1]),
+            "graph_new_edge_frac": float(new_frac),
+            "graph_avg_degree": float(indptr[-1].item()) / max(num_nodes, 1),
+        }
+    return indptr, indices, comb_edges, stats
