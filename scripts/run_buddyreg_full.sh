@@ -50,7 +50,7 @@ RESULTS_DIR="${RESULTS_DIR:-res/CoSiR_buddyreg_ablation/impressions}"
 # they must be ADDED with a leading '+'.
 python main_cosir.py -m \
   dataset=impressions \
-  eval.evaluation_interval=100 \
+  eval.evaluation_interval="${EVAL_INTERVAL:-100}" \
   eval.oracle_aggregation=max \
   model=clip_base \
   model.num_layers=6 \
@@ -62,4 +62,6 @@ python main_cosir.py -m \
   +loss.lambda_buddy="${LAMBDA_BUDDY_SWEEP}" \
   +loss.buddy_reg_samples="${BUDDY_REG_SAMPLES}" \
   experiment.results_dir="${RESULTS_DIR}" \
-  wandb.group="buddy-reg ablation"
+  wandb.group="buddy-reg ablation" \
+  ${WANDB_TAG:+++wandb.tags=[$WANDB_TAG]} \
+  ${LOG_BUDDY_PRESERVATION:++loss.log_buddy_preservation=true}

@@ -53,6 +53,8 @@ from src.metrics.regularizer import (
     reorder_features_to_z,
     refresh_buddy_graph,
     edge_jaccard,
+    compute_comb_all_eval,
+    buddy_knn_preservation,
 )
 
 
@@ -1312,10 +1314,13 @@ def train_cosir(cfg, logger):
     _lambda_buddy_con = getattr(cfg.loss, "lambda_buddy_con", 0.0)
     _buddy_con_samples = int(getattr(cfg.loss, "buddy_con_samples", 4))
     _buddy_con_temp = float(getattr(cfg.loss, "buddy_con_temperature", 0.07))
+    _log_buddy_preservation = bool(getattr(cfg.loss, "log_buddy_preservation", False))
+    _buddy_preservation_k = int(getattr(cfg.loss, "buddy_preservation_k", 10))
     buddy_indptr = buddy_indices = None
+    _clip_indptr = _clip_indices = None   # stable CLIP CSR (never rebound by refresh)
     other_feat_table = None
     _clip_edge_index = None
-    if _lambda_buddy > 0 or _lambda_buddy_con > 0:
+    if _lambda_buddy > 0 or _lambda_buddy_con > 0 or _log_buddy_preservation:
         _edges = embedding_manager.get_buddy_edges()
         if _edges is None:
             print("[buddy] lambda_buddy/lambda_buddy_con>0 but no buddy_edges.npy "
@@ -1328,6 +1333,7 @@ def train_cosir(cfg, logger):
             buddy_indptr, buddy_indices = build_neighbor_csr(
                 _edge_index, num_nodes=len(embedding_manager.sample_ids)
             )
+            _clip_indptr, _clip_indices = buddy_indptr, buddy_indices
             print(f"[buddy] edges loaded: {_edge_index.shape[1]:,}; "
                   f"lambda_buddy={_lambda_buddy}, lambda_buddy_con={_lambda_buddy_con}")
 
@@ -1360,11 +1366,20 @@ def train_cosir(cfg, logger):
     combine_feat_table = None
     _refresh_gen = torch.Generator().manual_seed(0)
     _prev_comb_edges = None
-    if _buddy_refresh:
-        if _lambda_buddy_con <= 0 or other_feat_table is None or _clip_edge_index is None:
-            print("[buddy-refresh] requires lambda_buddy_con>0 with buddy edges — "
-                  "disabling refresh for this run.")
+
+    # The combine-side pooled feature table (z-order) is needed by BOTH the refresh
+    # (#3) and the buddy-preservation diagnostic; build it once if either wants it.
+    if _buddy_refresh or _log_buddy_preservation:
+        if _clip_edge_index is None:
+            print("[buddy] refresh / buddy-preservation requested but no buddy edges — "
+                  "disabling both.")
             _buddy_refresh = False
+            _log_buddy_preservation = False
+        elif not feature_manager.fits_in_ram():
+            print("[buddy] combine-side feature table needs a RAM feature store "
+                  "(streaming path) — disabling refresh and buddy-preservation.")
+            _buddy_refresh = False
+            _log_buddy_preservation = False
         else:
             _combine_key = "img_features" if cfg.model.combine_side == "img" else "txt_features"
             _cfeat = feature_manager.load_all_to_ram([_combine_key])
@@ -1373,6 +1388,14 @@ def train_cosir(cfg, logger):
                 [int(s) for s in _cfeat["sample_ids"].tolist()],
                 embedding_manager.sample_ids,
             ).to(device)
+
+    # Family #3 refresh needs a live #2 term (its frozen target table); guard on it.
+    if _buddy_refresh:
+        if _lambda_buddy_con <= 0 or other_feat_table is None:
+            print("[buddy-refresh] requires lambda_buddy_con>0 with buddy edges — "
+                  "disabling refresh for this run.")
+            _buddy_refresh = False
+        else:
             print(f"[buddy-refresh] enabled: warmup={_buddy_refresh_warmup}, "
                   f"period={_buddy_refresh_period}, blend={_buddy_refresh_blend}, "
                   f"k={_buddy_refresh_k}, combine_feat={_combine_key} "
@@ -1385,6 +1408,12 @@ def train_cosir(cfg, logger):
             if _lambda_buddy > 0:
                 print("[buddy-refresh] WARNING: lambda_buddy>0 with buddy_refresh: Family #1 "
                       "shares the refreshed CSR (out of scope). Recommended: lambda_buddy=0.")
+
+    if _log_buddy_preservation and combine_feat_table is not None and _clip_indptr is not None:
+        print(f"[buddy-preserve] enabled: buddy_knn_preservation@k={_buddy_preservation_k}, "
+              f"logged at eval cadence (uses the frozen CLIP E graph).")
+    else:
+        _log_buddy_preservation = False
 
     # Snapshot the initial label embeddings so we can log mean drift ‖z − z_init‖
     # on the eval cadence. Logged for every run (incl. lambda_buddy=0) so the
@@ -1787,6 +1816,16 @@ def train_cosir(cfg, logger):
             logger.log_train(
                 {"drift_from_init": _drift}, epoch=epoch, section="buddy_diag"
             )
+            if _log_buddy_preservation:
+                _comb_all = compute_comb_all_eval(
+                    model, combine_feat_table, embedding_manager.embeddings
+                )
+                _pres = buddy_knn_preservation(
+                    _comb_all, _clip_indptr, _clip_indices, k=_buddy_preservation_k
+                )
+                logger.log_train(
+                    {"buddy_knn_preservation": _pres}, epoch=epoch, section="buddy_diag"
+                )
 
         if cfg.eval.perform_evaluation and eval_due:
             _eval_snapshot(

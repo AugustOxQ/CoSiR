@@ -231,17 +231,7 @@ def refresh_buddy_graph(
     device = clip_edge_index.device
     with torch.no_grad():
         if blend > 0:
-            was_training = model.training
-            model.eval()
-            try:
-                combs = []
-                for s in range(0, num_nodes, chunk):
-                    e = min(s + chunk, num_nodes)
-                    c = model.combine(combine_feat_table[s:e], None, z_table[s:e].detach())
-                    combs.append(c.detach())
-                comb_all = torch.cat(combs, dim=0)  # [N, Dp]
-            finally:
-                model.train(was_training)
+            comb_all = compute_comb_all_eval(model, combine_feat_table, z_table, chunk=chunk)
 
             A = mutual_knn(comb_all.float().cpu().numpy(), k, device=knn_device)  # scipy csr
             coo = A.tocoo()
@@ -270,3 +260,62 @@ def refresh_buddy_graph(
             "graph_avg_degree": float(indptr[-1].item()) / max(num_nodes, 1),
         }
     return indptr, indices, comb_edges, stats
+
+
+def compute_comb_all_eval(model, combine_feat_table, z_table, chunk: int = 4096):
+    """Combined features for all N under eval-mode + no_grad.
+
+    Eval mode disables dropout so the representation is the deterministic inference
+    one (what retrieval sees); ``no_grad`` keeps it off the autograd tape. The model's
+    train/eval state is restored on exit. Returns [N, Dp] detached.
+    """
+    was_training = model.training
+    model.eval()
+    try:
+        with torch.no_grad():
+            n = combine_feat_table.shape[0]
+            combs = []
+            for s in range(0, n, chunk):
+                e = min(s + chunk, n)
+                c = model.combine(combine_feat_table[s:e], None, z_table[s:e].detach())
+                combs.append(c.detach())
+            return torch.cat(combs, dim=0)
+    finally:
+        model.train(was_training)
+
+
+def buddy_knn_preservation(
+    comb_all: torch.Tensor,
+    indptr: torch.Tensor,
+    indices: torch.Tensor,
+    k: int = 10,
+    chunk: int = 2048,
+) -> float:
+    """Fraction of each node's CLIP-graph buddies that stay in its top-k comb-space NN.
+
+    For every node with at least one buddy, take its ``k`` nearest neighbours by cosine
+    in ``comb_all`` (self excluded) and measure the fraction of its buddies (from the
+    symmetric CLIP CSR ``indptr``/``indices``) that land in that top-k. Averaged over
+    nodes with degree > 0 (isolated nodes are skipped). Higher = training kept the buddy
+    neighbourhood alive where retrieval lives. Pure diagnostic; no gradient.
+    """
+    device = comb_all.device
+    N = comb_all.shape[0]
+    q = F.normalize(comb_all, dim=-1)
+    deg = indptr[1:] - indptr[:-1]
+    total, count = 0.0, 0
+    for s in range(0, N, chunk):
+        e = min(s + chunk, N)
+        b = e - s
+        sims = q[s:e] @ q.t()                                    # [b, N]
+        sims[torch.arange(b, device=device), torch.arange(s, e, device=device)] = float("-inf")
+        topk = sims.topk(k, dim=1).indices                      # [b, k]
+        for bi in range(b):
+            i = s + bi
+            d = int(deg[i])
+            if d == 0:
+                continue
+            bud = indices[indptr[i]:indptr[i + 1]]
+            total += torch.isin(bud, topk[bi]).sum().item() / d
+            count += 1
+    return total / max(count, 1)

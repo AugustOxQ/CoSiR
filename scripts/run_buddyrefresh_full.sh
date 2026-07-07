@@ -45,7 +45,7 @@ RESULTS_DIR="${RESULTS_DIR:-res/CoSiR_buddyrefresh_ablation/impressions}"
 
 python main_cosir.py -m \
   dataset=impressions \
-  eval.evaluation_interval=100 \
+  eval.evaluation_interval="${EVAL_INTERVAL:-100}" \
   eval.oracle_aggregation=max \
   model=clip_base \
   model.num_layers=6 \
@@ -64,4 +64,6 @@ python main_cosir.py -m \
   +loss.buddy_refresh_blend="${BUDDY_REFRESH_BLEND_SWEEP}" \
   +loss.buddy_refresh_k="${BUDDY_REFRESH_K}" \
   experiment.results_dir="${RESULTS_DIR}" \
-  wandb.group="buddy-refresh ablation"
+  wandb.group="buddy-refresh ablation" \
+  ${WANDB_TAG:+++wandb.tags=[$WANDB_TAG]} \
+  ${LOG_BUDDY_PRESERVATION:++loss.log_buddy_preservation=true}

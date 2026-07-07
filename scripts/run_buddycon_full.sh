@@ -54,7 +54,7 @@ RESULTS_DIR="${RESULTS_DIR:-res/CoSiR_buddycon_ablation/impressions}"
 # Family #1 is held OFF (+loss.lambda_buddy=0) so this isolates the contrastive term.
 python main_cosir.py -m \
   dataset=impressions \
-  eval.evaluation_interval=100 \
+  eval.evaluation_interval="${EVAL_INTERVAL:-100}" \
   eval.oracle_aggregation=max \
   model=clip_base \
   model.num_layers=6 \
@@ -68,4 +68,6 @@ python main_cosir.py -m \
   +loss.buddy_con_samples="${BUDDY_CON_SAMPLES}" \
   +loss.buddy_con_temperature="${BUDDY_CON_TEMP}" \
   experiment.results_dir="${RESULTS_DIR}" \
-  wandb.group="buddy-con ablation"
+  wandb.group="buddy-con ablation" \
+  ${WANDB_TAG:+++wandb.tags=[$WANDB_TAG]} \
+  ${LOG_BUDDY_PRESERVATION:++loss.log_buddy_preservation=true}
