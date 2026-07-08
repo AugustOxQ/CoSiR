@@ -49,18 +49,28 @@ FAMILIES = {
         "group": "buddy-reg ablation",
         "axis": ("loss", "lambda_buddy"),
         "axis_label": "lambda_buddy",
-        "diags": {"drift": "train_buddy_diag/drift_from_init"},
-        "diag_hint": "drift ‖z−z_init‖ should SHRINK as λ grows if #1 grips z "
-                     "(flat drift across λ ⇒ term inert / λ too small).",
+        "diags": {
+            "drift": "train_buddy_diag/drift_from_init",
+            "preservation": "train_buddy_diag/buddy_knn_preservation",
+        },
+        "diag_hint": "drift ‖z−z_init‖ that CHANGES with λ ⇒ term active (the smoothness "
+                     "term pulls buddies together but does NOT anchor to init, so drift may "
+                     "GROW; flat drift ⇒ inert). preservation = buddy-NN kept in comb space "
+                     "(higher = buddies survived; compare active arms vs λ=0).",
     },
     "con": {
         "name": "Family #2 — contrastive supervision (combined space)",
         "group": "buddy-con ablation",
         "axis": ("loss", "lambda_buddy_con"),
         "axis_label": "lambda_buddy_con",
-        "diags": {"alignment": "train_loss/buddy_con_alignment"},
-        "diag_hint": "alignment (cos anchor↔buddy positives) should RISE when the "
-                     "term is active (near baseline ⇒ term inert).",
+        "diags": {
+            "alignment": "train_loss/buddy_con_alignment",
+            "preservation": "train_buddy_diag/buddy_knn_preservation",
+        },
+        "diag_hint": "alignment (cos anchor↔buddy positives) RISES when the term is active "
+                     "(baseline logs none → NaN). preservation = buddy-NN kept in comb space "
+                     "(higher at λ_con>0 than at 0 ⇒ the term pulled buddies closer in "
+                     "retrieval space).",
     },
     "refresh": {
         "name": "Family #3 — self-refreshing graph (feeds #2)",
@@ -70,19 +80,25 @@ FAMILIES = {
         "diags": {
             "new_edge_frac": "train_buddy_refresh/graph_new_edge_frac",
             "churn": "train_buddy_refresh/graph_churn",
+            "preservation": "train_buddy_diag/buddy_knn_preservation",
         },
         "diag_hint": "new_edge_frac>0 ⇒ the refreshed graph disagrees with CLIP "
                      "(refresh is doing something); churn≈1 stable, low churn = thrashing. "
-                     "Baseline (blend=0) logs new_edge_frac=0 by construction.",
+                     "Baseline (blend=0) logs new_edge_frac=0 by construction. preservation = "
+                     "buddy-NN kept in comb space (live graph vs static #2).",
     },
 }
 
-# cell coordinates: everything held fixed within a family's sweep
+# cell coordinates: everything held fixed within a family's sweep. `seed` is a pairing
+# coordinate too — a term-OFF/ON pair is compared WITHIN one seed, and the resulting Δ's
+# are aggregated ACROSS seeds (mean ± std, win-rate) in the summary. For a single-seed
+# grid this column is just constant (harmless).
 CELL = [
     ("lr", ("optimizer", "lr")),
     ("lr_label", ("optimizer", "lr_label")),
     ("dim", ("model", "embedding_dim")),
     ("alpha", ("train", "buddies", "alpha")),
+    ("seed", ("seed",)),
 ]
 
 
@@ -107,10 +123,12 @@ def sget(summ, key, default=np.nan):
     return default if v is None else v
 
 
-def fetch(entity, project, fam):
+def fetch(entity, project, fam, tag=None):
     api = wandb.Api()
     rows = []
     for run in api.runs(f"{entity}/{project}", filters={"group": fam["group"]}):
+        if tag and tag not in (run.tags or []):
+            continue  # restrict to this sweep batch (avoids older same-group runs)
         cfg, summ = run.config, run.summary
         axis = cget(cfg, fam["axis"])
         if axis is None:
@@ -172,8 +190,15 @@ def paired_table(df, metric, fam):
             continue
         n = len(deltas[a])
         if n:
+            arr = np.asarray(deltas[a], dtype=float)
+            mean = arr.mean()
+            std = arr.std(ddof=1) if n > 1 else float("nan")
+            sem = std / np.sqrt(n) if n > 1 else float("nan")
+            z = mean / sem if (n > 1 and sem > 0) else float("nan")
+            sig = f"  mean/SEM={z:+.1f}{' *' if abs(z) >= 2 else ''}" if n > 1 else ""
+            spread = f" ± {std:.2f}" if n > 1 else ""
             print(f"      {fam['axis_label']}={a:g}: beats baseline in {wins[a]}/{n} "
-                  f"(mean Δ = {np.mean(deltas[a]):+.2f} R1 pts)")
+                  f"(mean Δ = {mean:+.2f}{spread} R1 pts){sig}")
 
 
 def diag_table(df, fam):
@@ -188,9 +213,10 @@ def diag_table(df, fam):
         print(g.to_string())
 
 
-def analyze_family(entity, project, fam):
-    print(f"\n{'='*78}\n{fam['name']}\n  group='{fam['group']}'  axis={fam['axis_label']}\n{'='*78}")
-    df = fetch(entity, project, fam)
+def analyze_family(entity, project, fam, tag=None):
+    print(f"\n{'='*78}\n{fam['name']}\n  group='{fam['group']}'  axis={fam['axis_label']}"
+          + (f"  tag='{tag}'" if tag else "") + f"\n{'='*78}")
+    df = fetch(entity, project, fam, tag=tag)
     if df.empty:
         print("  (no runs found for this group)")
         return
@@ -209,6 +235,9 @@ def main():
     ap.add_argument("--project", default="cosir_scripts")
     ap.add_argument("--only", choices=list(FAMILIES), default=None,
                     help="analyze only one family (default: all three)")
+    ap.add_argument("--tag", default=None,
+                    help="only include runs carrying this wandb tag "
+                         "(use to isolate one sweep batch from older same-group runs)")
     ap.add_argument("--reg-group", default=None)
     ap.add_argument("--con-group", default=None)
     ap.add_argument("--refresh-group", default=None)
@@ -221,7 +250,7 @@ def main():
         fam = dict(FAMILIES[k])
         if overrides[k]:
             fam["group"] = overrides[k]
-        analyze_family(args.entity, args.project, fam)
+        analyze_family(args.entity, args.project, fam, tag=args.tag)
 
     print(f"\n{'='*78}\nVERDICT GUIDE (per family)")
     print("  consistent +ΔR1 ................................. term WORKS")

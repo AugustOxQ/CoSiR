@@ -484,7 +484,7 @@ def _build_dataloaders(cfg, feature_manager, processor, sample_ids_list):
         annotation_path=cfg.data.test_annotation_path,
         image_path=cfg.data.test_image_path,
         processor=processor,
-        ratio=1.0,
+        ratio=float(getattr(cfg.eval, "test_ratio", 1.0)),
     )
     test_loader = DataLoader(
         test_set,

@@ -1,0 +1,29 @@
+# @package _global_
+# RedCaps-150k Dataset Configuration
+#
+# Points at the ONLY RedCaps feature store that is actually extracted
+# (/data/SSD2/pre_extract/redcaps_150k/features — 150k samples, CLIP ViT-B/32),
+# with its matching train annotation (redcaps_150k.json) and the IN-DOMAIN
+# RedCaps test set (redcaps_test.json, 25k genuine 1:1 pairs). Chosen over the
+# stock redcaps.yaml (which points at an empty feature dir and evals on COCO)
+# to validate the Family #2 buddy-con win on a clean 1:1 dataset with no
+# near-duplicate scaffolding and no domain-shift confound.
+
+# Dataset paths
+data:
+  dataset_type: "redcaps"
+  train_annotation_path: "/data/PDD/redcaps/redcaps_plus/redcaps_150k.json"
+  test_annotation_path: "/data/PDD/redcaps/redcaps_plus/redcaps_test.json"
+  train_image_path: "/data/PDD"
+  test_image_path: "/data/PDD"
+
+# Feature manager paths - dataset specific
+featuremanager:
+  storage_dir: "/data/SSD2/pre_extract/redcaps_150k/features"
+
+# Experiment Configuration
+experiment:
+  name: "CoSiR_Experiment"
+  tags: ["CoSiR", "RedCaps150k", "local"]
+  description: "Comprehensive experiment for CoSiR"
+  results_dir: "res/CoSiR_Experiment/redcaps_150k" # Depends on the dataset

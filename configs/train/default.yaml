@@ -70,3 +70,4 @@ eval:
   evaluation_interval: 20
   perform_evaluation: true
   oracle_aggregation: "max" # "max" = oracle upper bound, "mean" = average across conditions
+  test_ratio: 1.0 # fraction of the test annotations to eval on (first N); <1.0 to subsample large test sets

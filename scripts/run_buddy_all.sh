@@ -20,8 +20,15 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # ── Shared knobs (exported so the child runners inherit them) ────────────────
 export EPOCHS="${EPOCHS:-250}"
 export EVAL_INTERVAL="${EVAL_INTERVAL:-50}"
-export WANDB_TAG="${WANDB_TAG:-buddy-families-250ep}"
+export WANDB_TAG="${WANDB_TAG:-buddy-families-grid}"           # fresh tag → analyse with --tag
 export LOG_BUDDY_PRESERVATION="${LOG_BUDDY_PRESERVATION:-1}"   # non-empty = on; empty = off
+
+# ── Grid over the cheap (template-reuse) optimizer axes: 2 lr × 2 lr_label = 4 cells.
+# Comma lists are expanded by Hydra multirun into the Cartesian product with each
+# family's term axis. lr/lr_label are NOT buddy-init template keys, so all cells reuse
+# the same cached template (no spectral rebuild).
+export LR_SWEEP="${LR_SWEEP:-1e-4,1e-3}"
+export LR_LABEL_SWEEP="${LR_LABEL_SWEEP:-1e-4,1e-3}"
 
 # #3's schedule must fit the epoch budget or refresh never fires (blend=1 ≡ blend=0).
 # At EPOCHS=250 the defaults (warmup=50, period=50) refresh at 50/100/150/200 — aligned
@@ -32,7 +39,7 @@ export BUDDY_REFRESH_PERIOD="${BUDDY_REFRESH_PERIOD:-50}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
 echo "==================================================================="
-echo "Buddy families ablation"
+echo "Buddy families ablation  (grid: lr={$LR_SWEEP} × lr_label={$LR_LABEL_SWEEP})"
 echo "  EPOCHS=$EPOCHS  EVAL_INTERVAL=$EVAL_INTERVAL  tag=$WANDB_TAG"
 echo "  preservation=${LOG_BUDDY_PRESERVATION:-<off>}  refresh warmup/period=$BUDDY_REFRESH_WARMUP/$BUDDY_REFRESH_PERIOD"
 echo "==================================================================="
@@ -47,6 +54,6 @@ echo ">>> Family #1  (smoothness: lambda_buddy 0  vs  {0.1,0.3,1.0})"
 bash "$HERE/run_buddyreg_full.sh"
 
 echo "==================================================================="
-echo "All three families launched (8 runs). Analyse with:"
-echo "  python scripts/analyze_buddy_families.py --entity augustoxq --project <your-wandb-project>"
+echo "All three families launched (~32 runs: 4 cells × term axes). Analyse with:"
+echo "  python scripts/analyze_buddy_families.py --entity augustoxq --project cosir_image --tag $WANDB_TAG"
 echo "==================================================================="

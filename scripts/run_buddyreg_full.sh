@@ -39,8 +39,9 @@ BUDDY_REG_SAMPLES="${BUDDY_REG_SAMPLES:-4}"
 
 # ── Held constant (set these to your best-known values) ──────────────────────
 EMBEDDING_DIM="${EMBEDDING_DIM:-16}"
-LR="${LR:-1e-4}"
-LR_LABEL="${LR_LABEL:-1e-4}"
+LR_SWEEP="${LR_SWEEP:-${LR:-1e-4}}"              # comma list ⇒ Hydra grid (multirun)
+LR_LABEL_SWEEP="${LR_LABEL_SWEEP:-${LR_LABEL:-1e-4}}"
+SEED_SWEEP="${SEED_SWEEP:-${SEED:-42}}"          # comma list ⇒ replicate over seeds
 ALPHA="${ALPHA:-0.5}"
 EPOCHS="${EPOCHS:-1000}"
 RESULTS_DIR="${RESULTS_DIR:-res/CoSiR_buddyreg_ablation/impressions}"
@@ -55,8 +56,9 @@ python main_cosir.py -m \
   model=clip_base \
   model.num_layers=6 \
   model.embedding_dim="${EMBEDDING_DIM}" \
-  optimizer.lr="${LR}" \
-  optimizer.lr_label="${LR_LABEL}" \
+  optimizer.lr="${LR_SWEEP}" \
+  optimizer.lr_label="${LR_LABEL_SWEEP}" \
+  seed="${SEED_SWEEP}" \
   train.buddies.alpha="${ALPHA}" \
   train.epochs="${EPOCHS}" \
   +loss.lambda_buddy="${LAMBDA_BUDDY_SWEEP}" \
