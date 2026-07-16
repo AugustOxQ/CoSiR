@@ -27,6 +27,17 @@ import cross_vlm_buddy as cvb
 ASSETS = os.path.join(ROOT, "docs", "reports", "assets", "buddy_cross_vlm")
 
 
+def _nan_to_none(obj):
+    """Recursively replace float NaN with None so the JSON is strict/portable."""
+    if isinstance(obj, float):
+        return None if obj != obj else obj  # NaN is the only float != itself
+    if isinstance(obj, dict):
+        return {k: _nan_to_none(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_nan_to_none(v) for v in obj]
+    return obj
+
+
 def plot_heatmap(mat, names, title, path):
     fig, ax = plt.subplots(figsize=(8, 7))
     im = ax.imshow(mat, cmap="viridis")
@@ -129,7 +140,7 @@ def main():
               "core_lift": liftE},
     }
     with open(os.path.join(ASSETS, "grid_agreement.json"), "w") as f:
-        json.dump(summary, f, indent=2)
+        json.dump(_nan_to_none(summary), f, indent=2, allow_nan=False)
     print(f"wrote {os.path.join(ASSETS, 'grid_agreement.json')}")
 
     plot_heatmap(aggB["jaccard"], aggB["names"], "B buddy-graph agreement (Jaccard)",

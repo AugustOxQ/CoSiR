@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Post-plan deviation (2026-07-17, implemented):** The chance-correction below is written as a Monte-Carlo permutation null (`perm_null_jaccard`, `--n_perm`/`--seed`). That was intractable at full scale (N=150k) and was replaced — with user approval — by the closed-form **analytic** null it was only estimating: `chance_null_jaccard(a, b, N)` with `E[inter] = |a|·|b| / C(N,2)`. The `n_perm`/`seed` knobs were removed. The spec (`…specs/2026-07-16-…`) is the source of truth; Task 2 / Task 5 code below reflects the pre-deviation API.
+
 **Goal:** Rebuild the cross-modal buddy graph for every (vision × text) encoder cell of a 4×4 grid on RedCaps and measure how much the resulting buddy edge sets agree, plus extract a consensus "core" of surviving buddies.
 
 **Architecture:** A pure-function library (`cross_vlm_buddy.py`) computes per-cell buddy edge sets, chance-corrected pairwise agreement, and consensus core; a thin CLI driver (`run_grid.py`) loads features, runs the library, and writes JSON + plots. All heavy encoders are reused from the held-out grid (cached features) and the existing buddy-graph builders — no new model plumbing.
