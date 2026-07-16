@@ -51,30 +51,24 @@ def jaccard(a: np.ndarray, b: np.ndarray):
     return jac, ov, inter
 
 
-def perm_null_jaccard(a: np.ndarray, b: np.ndarray, N: int, n_perm: int = 200, seed: int = 42):
+def chance_null_jaccard(a: np.ndarray, b: np.ndarray, N: int):
     """
-    Chance-correct Jaccard(a, b) by node-relabeling `b` under random permutations
-    (preserves b's exact degree sequence, destroys alignment). Returns observed,
-    null mean, lift = observed/null_mean, and percentile of observed in the null.
+    Chance-correct Jaccard(a, b) with the closed-form expected overlap under a
+    uniform random node-relabeling of b's graph. Each of b's |b| edges lands on a
+    uniformly random distinct node pair, so E[|a ∩ relabel(b)|] = |a|*|b| / C(N,2).
+    Returns observed Jaccard, the null (expected) Jaccard, and lift = observed/null.
+    Exact in expectation; replaces the intractable Monte-Carlo permutation null.
     """
     obs, _, _ = jaccard(a, b)
-    bi, bj = b // N, b % N
-    rng = np.random.default_rng(seed)
-    nulls = np.empty(n_perm, dtype=np.float64)
-    for k in range(n_perm):
-        perm = rng.permutation(N)
-        pi, pj = perm[bi], perm[bj]
-        lo = np.minimum(pi, pj).astype(np.int64)
-        hi = np.maximum(pi, pj).astype(np.int64)
-        bk = np.unique(lo * N + hi)
-        nulls[k], _, _ = jaccard(a, bk)
-    null_mean = float(nulls.mean())
+    n_pairs = N * (N - 1) / 2.0
+    exp_inter = (float(a.size) * float(b.size)) / n_pairs if n_pairs > 0 else 0.0
+    exp_union = a.size + b.size - exp_inter
+    null_mean = exp_inter / exp_union if exp_union > 0 else 0.0
     lift = obs / null_mean if null_mean > 0 else float("inf")
-    percentile = float((nulls <= obs).mean())
-    return {"observed": obs, "null_mean": null_mean, "lift": lift, "percentile": percentile}
+    return {"observed": obs, "null_mean": null_mean, "lift": lift}
 
 
-def agreement_matrix(cell_keys: dict, N: int, n_perm: int = 200, seed: int = 42):
+def agreement_matrix(cell_keys: dict, N: int):
     """Full pairwise Jaccard / overlap / chance-lift across all cells."""
     names = list(cell_keys.keys())
     n = len(names)
@@ -87,7 +81,7 @@ def agreement_matrix(cell_keys: dict, N: int, n_perm: int = 200, seed: int = 42)
             jj, oo, _ = jaccard(a, b)
             jac[i, j] = jac[j, i] = jj
             ov[i, j] = ov[j, i] = oo
-            res = perm_null_jaccard(a, b, N, n_perm=n_perm, seed=seed)
+            res = chance_null_jaccard(a, b, N)
             lift[i, j] = lift[j, i] = res["lift"]
     off = ~np.eye(n, dtype=bool)
     return {

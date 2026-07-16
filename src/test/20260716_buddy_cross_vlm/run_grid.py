@@ -80,8 +80,6 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--smoke", type=int, default=0)
     ap.add_argument("--K", type=int, default=30)
-    ap.add_argument("--n_perm", type=int, default=200)
-    ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--core_t", type=int, default=8)
     args = ap.parse_args()
@@ -91,8 +89,8 @@ def main():
     cell_B, cell_E, N = cvb.build_cell_graphs(feats, K=args.K, device=args.device)
     n_cells = len(cvb.CELLS)
 
-    aggB = cvb.agreement_matrix(cell_B, N, n_perm=args.n_perm, seed=args.seed)
-    aggE = cvb.agreement_matrix(cell_E, N, n_perm=args.n_perm, seed=args.seed)
+    aggB = cvb.agreement_matrix(cell_B, N)
+    aggE = cvb.agreement_matrix(cell_E, N)
 
     uB, cB = cvb.consensus_counts(list(cell_B.values()))
     uE, cE = cvb.consensus_counts(list(cell_E.values()))
