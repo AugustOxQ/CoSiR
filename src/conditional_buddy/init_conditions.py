@@ -46,6 +46,7 @@ def _buddy_cfg(cfg: DictConfig) -> dict:
         "method": str(bud.get("method", "spectral")),
         "knn_batch_size": int(bud.get("knn_batch_size", 1024)),
         "normalize_method": str(bud.get("normalize_method", "rank")),
+        "b_weight": float(bud.get("b_weight", 1.0)),
     }
 
 
@@ -101,13 +102,17 @@ def main(cfg: DictConfig) -> None:
             rank_normalise_sparse(sparse_cosine_distance(txt_n, E)),
             bud["alpha"],
         )
-        emb = normalise_embedding(
-            spectral_embedding(D_mixed, n_dim, seed=seed), method=bud["normalize_method"]
-        )
-
-        # Strict buddies (intersection) are the meaningful "are buddies neighbours?" test.
+        # Strict buddies (intersection): the "are buddies neighbours?" test, and the
+        # B-lean affinity boost when b_weight != 1.0.
         B = A_img.multiply(A_txt)
         B.data[:] = 1.0
+        emb = normalise_embedding(
+            spectral_embedding(D_mixed, n_dim, seed=seed,
+                               b_edges=B.tocsr() if bud["b_weight"] != 1.0 else None,
+                               b_weight=bud["b_weight"]),
+            method=bud["normalize_method"],
+        )
+
         out_path = str(debug_dir / f"debug_init_{n_dim}d.png")
         if n_dim == 2:
             plot_2d_buddies(emb, B.tocsr(), out_path)
@@ -134,6 +139,7 @@ def main(cfg: DictConfig) -> None:
         knn_batch_size=bud["knn_batch_size"],
         normalize_method=bud["normalize_method"],
         seed=seed,
+        b_weight=bud["b_weight"],
         return_edges=True,
     )
 
@@ -155,7 +161,8 @@ def main(cfg: DictConfig) -> None:
         "embedding_dim": n_dim,
         "factor": float(cfg.train.get("imgtxt_factor", 1.0)),
         "normalize": bool(cfg.train.get("normalize", False)),
-        "extra": {"k": bud["K"], "alpha": bud["alpha"], "method": bud["method"]},
+        "extra": {"k": bud["K"], "alpha": bud["alpha"], "method": bud["method"],
+                  "b_weight": bud["b_weight"]},
     }
     with open(template_dir / "template_config.json", "w") as f:
         json.dump(config, f, indent=2)

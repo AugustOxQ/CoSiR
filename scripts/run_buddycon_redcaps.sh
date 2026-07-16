@@ -17,12 +17,13 @@ set -euo pipefail
 #     the (expensive, one-time) 150k spectral template is built once and reused by the sweep.
 # Then the full 6-run sweep:  bash scripts/run_buddycon_redcaps.sh
 #
-# EPOCHS default is 250, MATCHING Impressions — deliberately NOT scaled down. The per-sample
-# condition embeddings z update once per epoch (only when their sample is drawn), so epochs =
-# updates-per-z. The buddy-con term acts THROUGH z, so undertraining z (few epochs) mutes both
-# arms equally and collapses Δ → a FALSE null. Combiner weights train every step and would be
-# fine with fewer epochs, but z is the term's substrate. Features are cached, so 150k steps/epoch
-# is cheap combiner ops (the one-time cost is the 150k spectral template build).
+# EPOCHS default is 100 (Impressions used 250) — a deadline compromise, NOT scaled by data size.
+# The per-sample condition embeddings z update once per epoch (only when their sample is drawn),
+# so epochs = updates-per-z, and z is the buddy-con term's substrate. 100 gives z enough updates
+# to engage (50 risked a FALSE null — both arms mute and Δ→0); 100 vs 250 just makes this a
+# CONSERVATIVE test (a slightly-undertrained z can only shrink the true Δ, never inflate it).
+# Combiner weights train every step and are fine with fewer epochs. Features are cached, so
+# 150k steps/epoch is cheap combiner ops (the one-time cost is the 150k spectral template build).
 
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
@@ -51,8 +52,8 @@ if [ -n "${SMOKE:-}" ]; then
   export WANDB_TAG="${WANDB_TAG}-smoke"
   echo ">>> SMOKE: 2 epochs, 1 seed, λ_con=0 — pipeline + template + metric sanity"
 else
-  export EPOCHS="${EPOCHS:-250}"
-  export EVAL_INTERVAL="${EVAL_INTERVAL:-25}"
+  export EPOCHS="${EPOCHS:-100}"
+  export EVAL_INTERVAL="${EVAL_INTERVAL:-10}"
   export LAMBDA_BUDDYCON_SWEEP="${LAMBDA_BUDDYCON_SWEEP:-0,1.0}"
   export SEED_SWEEP="${SEED_SWEEP:-1,2,3}"
 fi

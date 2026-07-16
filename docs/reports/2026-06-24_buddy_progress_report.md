@@ -1,6 +1,6 @@
 # Conditional Buddies — Progress Report
 
-**Date:** 2026-06-24 (updated 2026-07-07 with Family #3)
+**Date:** 2026-06-24 (updated 2026-07-08 with the completed ablations, cross-dataset validation, and the near-duplicate confound — §8)
 **Branch:** `experiment/conditional_buddy_train` (init/analysis work landed on `experiment/conditional_buddy`)
 **Audience:** a CoSiR collaborator who knew the project *before* the buddy work began.
 
@@ -15,9 +15,21 @@ confirm buddies connect samples that share specific multimodal content. **All th
 ways of using buddies during training are now implemented and gated behind default-off config
 flags: Family #1 (a Laplacian smoothness regularizer on the condition embeddings), Family #2
 (buddies as extra contrastive retrieval positives), and Family #3 (a self-refreshing buddy
-graph that co-evolves with the model). The large-scale ablations for all three are
-launched-but-pending-analysis — the framework is complete; the retrieval numbers are the
-remaining work.
+graph that co-evolves with the model).
+
+**The ablations are now complete and analyzed (§8), and the result is a nuanced one.** On
+Impressions, Families #1 and #3 are **nulls**, but Family #2 (contrastive supervision) is a
+**real, dose-dependent win** — replicated across seeds, it improves retrieval by **+2.3 R1
+(t2i) / +3.2 R1 (i2t)** at its peak (`λ_con=1.0`), rolling over into harm past the peak. The
+critical test was whether that win survives on a dataset *without* Impressions' near-duplicate
+structure. It does **not**: on RedCaps (genuinely 1-image:1-caption) the same setting gives
+**+0.4 t2i / −0.9 i2t** — a wash-to-negative, even though the term is provably active. A
+same-source-photo probe explains why: **40.6 % of the Impressions buddy edges the term
+optimizes connect records of the *same* photo** (279× enrichment over chance; 0 % on RedCaps
+by construction). So the headline Impressions benefit was, to a now-measured degree, the term
+tightening near-duplicate photos — dataset redundancy rather than transferable image–text
+retrieval signal. What remains is deciding whether a gentler, retuned term is net-positive on
+clean data, or whether buddies belong at initialization only.
 
 ---
 
@@ -244,6 +256,12 @@ init, so 0 vs >0 differ only by the training term — a clean ablation. A wider 
 by `scripts/analyze_buddyreg_sweep.py` (paired per-cell ΔR1 table, λ × lr_label interaction,
 drift-by-λ). Unit + smoke tests in `src/test/20260623_buddy_train_reg/`.
 
+**Verdict (§8): null.** Across the lr×lr_label grid the apparent small t2i gain did not survive
+seed replication (t2i −0.10 ± 0.20 over 3 seeds at the strong cell; i2t +0.90 but not
+significant). At `lr_label=1e-4` the drift diagnostic barely moves (0.079 → 0.086) — `z` hardly
+travels, so the smoothness term has little to grip. Not disproven so much as **inert at the
+tested operating point**; a fair retest would need a higher `lr_label`.
+
 ---
 
 ## 6. Using buddies during training — Family #2 (contrastive supervision)
@@ -300,6 +318,14 @@ shares one init. A `buddy_con_alignment` diagnostic (mean cosine between each an
 Family #1 held off, isolating the contrastive term. Tests in
 `src/test/20260624_buddy_contrastive/` (positive-gather correctness, gradient direction,
 isolated-anchor zero, self-masking, index alignment, temperature sanity).
+
+**Verdict (§8): the one lever that works on Impressions — but see the cross-dataset caveat.**
+Seed-replicated and dose-dependent: `λ_con` = 0.3 → 0.5 → 1.0 gives monotonically rising t2i
+Δ (+1.1 → +1.6 → +2.3 R1, `mean/SEM ≈ 40` at the peak) and i2t (+1.3 → +2.3 → +3.2), then
+rolls over (λ_con=2 weaker, λ_con=4 significantly *harmful*). The mechanism is coherent —
+alignment and buddy-preservation both rise with `λ_con`. **However**, this win is largely
+attributable to Impressions' near-duplicate structure and does **not** transfer cleanly to a
+1:1 dataset — quantified in §8.
 
 ---
 
@@ -368,9 +394,99 @@ Unit + regression tests in `src/test/20260707_buddy_refresh/` (7 tests, incl. th
 determinism guard). Because no `buddy_refresh*` key is part of the buddy init template, every arm
 reuses the *same* init — the full `{#1, #2, #3}` matrix shares one buddy initialization.
 
+**Verdict (§8): null.** `blend=1.0` (live graph) vs `blend=0` (static #2 graph) is dead-neutral
+on Impressions (t2i −0.03, i2t +0.03 over the grid) — despite the refreshed graph provably
+disagreeing with CLIP (`new_edge_frac ≈ 0.20`, `churn ≈ 0.93`). The live graph does real work
+and buys nothing over the static one, so #3 was dropped from cross-dataset follow-up.
+
 ---
 
-## 8. Current status and what's next
+## 8. Cross-dataset validation and the near-duplicate confound
+
+**In one sentence:** Family #2's Impressions win is real and replicated, but a cross-dataset
+test plus a same-source-photo probe show it was substantially the term exploiting Impressions'
+near-duplicate structure — not a transferable retrieval mechanism.
+
+All numbers below: `lr=1e-3, lr_label=1e-4, dim=16, alpha=0.5`; paired *within seed*; the
+oracle `test_oracle/{t2i,i2t}_R1` metric. Tooling: `scripts/run_buddy_seeds.sh`,
+`scripts/run_buddycon_peak.sh`, `scripts/run_buddycon_redcaps.sh`,
+`scripts/analyze_buddy_families.py` (seed-paired, reports `mean Δ ± std` and a `mean/SEM`
+significance read). Change logs: `.claude/{20260707,20260708}_log.md`.
+
+### 8a. Seed replication demotes #1/#3, promotes #2
+
+The initial single-seed lr×lr_label grid put all three families near the noise floor. Replicating
+the strong cell across seeds {1,2,3} — and reading the *paired* Δ — resolved it: the noise floor
+is ~0.1–0.7 R1 (measured from a duplicate config that must be identical), #1 and #3 fall to
+statistical nulls (above), and **#2 emerges as a clean, significant win** (t2i +1.2 ± 0.3,
+`mean/SEM` = 7.0; i2t +1.1 ± 0.8, `mean/SEM` = 2.3 — both 3/3 seeds). The single-seed grid had
+*under*-estimated #2 (its baseline seed happened to sit high), so replication roughly doubled the
+measured effect.
+
+### 8b. Peak-finding: #2 is dose-dependent, peaks at λ_con=1.0
+
+| `λ_con` | Δ t2i (R1) | Δ i2t (R1) |
+| ------: | ---------: | ---------: |
+|     0.3 | +1.1 | +1.3 |
+|     0.5 | +1.6 | +2.3 |
+| **1.0** | **+2.3** | **+3.2** |
+|     2.0 | +1.2 | +0.9 (n.s.) |
+|     4.0 | −0.3 (n.s.) | **−1.8** |
+
+Monotonic up to `λ_con=1.0` (the peak; `mean/SEM ≈ 40` on t2i), then a textbook roll-over: past
+the peak the contrastive term overwhelms the retrieval objective and R1 degrades — `λ_con=4`
+significantly *hurts* i2t. Tellingly, the `buddy_knn_preservation` and `alignment` diagnostics keep
+*rising* through λ_con=4 even as retrieval falls: the auxiliary objective keeps "succeeding" while
+distorting the retrieval geometry it was meant to help. Preservation is a mechanism indicator, not
+a thing to maximize; the sweet spot is where the two still agree (`λ_con ≈ 1.0`).
+
+### 8c. RedCaps: the win does not cleanly transfer
+
+RedCaps-150k is genuinely **1 image : 1 caption** (every `image_id` unique) — no near-duplicate
+scaffolding — with in-domain eval on a representative 5k slice of `redcaps_test`. Transplanting the
+confirmed `λ_con=1.0` setting (3 seeds, conservative 100-epoch schedule):
+
+| metric | Impressions (λ_con=1.0) | RedCaps (λ_con=1.0) |
+| ------ | ----------------------: | ------------------: |
+| Δ t2i R1 | **+2.3** | **+0.4** (z=+11, but ~1.5 % rel) |
+| Δ i2t R1 | **+3.2** | **−0.9** (z=−3.6, *significant loss*) |
+
+A direction-split wash-to-negative — yet the term is unmistakably **active** on RedCaps
+(alignment 0.41; `buddy_knn_preservation` +0.034, a *larger* geometric move than Impressions'
++0.008). The geometric operation still happens; it simply no longer aligns with retrieval once the
+near-duplicates are gone, and in the i2t direction it *over-clusters* distinct images and hurts.
+(Caveats: `λ_con=1.0` was transplanted, not retuned for RedCaps; RedCaps is a harder task; the
+100-epoch schedule is conservative — but a shorter schedule can only shrink Δ, not flip the i2t
+sign.)
+
+### 8d. The confound, quantified: 40.6 % of Impressions buddy edges are the same photo
+
+Impressions has **12,123 records but only 814 source photos** (14.9 records/photo — each photo
+reused across caption/description/impression/aesthetic types). Because buddies are cross-modal
+mutual-KNN, records of the same photo (near-identical CLIP features) become each other's buddies.
+Measuring the actual training edge set (`buddy_edges.npy`, cross-checked = the E union graph the
+term optimizes):
+
+| graph | edges | within-same-photo | vs random (0.145 %) |
+| ----- | ----: | ----------------: | ------------------: |
+| **E (union — what `λ_con` uses)** | 144,172 | **40.6 %** | **279× enriched** |
+| B (strict intersection) | 9,589 | **79.9 %** | **550× enriched** |
+| **RedCaps (any graph)** | — | **0 %** | by construction |
+
+So ~2 in every 5 edges the term pulls together on Impressions are *literally the same photo* —
+trivially-correct retrieval neighbors it tightens "for free." Remove that structure (RedCaps, 0 %)
+and the win collapses. This is the direct, quantified explanation of §8c.
+
+**Cross-thread flag for the B-lean init work.** The strict-intersection B — which the held-out
+encoder grid found to be the "cleaner" buddy signal, and which the new `b_weight` option leans the
+initialization onto — is **79.9 % same-photo**. Part of what makes B "clean" is that it is *even
+more* near-duplicate-dominated than E. On Impressions B-lean will likely look good (more free
+near-dup tightening); on a 1:1 dataset it has nothing to lean on. B-lean should be evaluated on
+clean data before it is credited as a general improvement.
+
+---
+
+## 9. Current status and what's next
 
 **Validated (with measured numbers, cited above):**
 
@@ -379,28 +495,31 @@ DINOv2, VLM all agree; B ≫ E on quality, E needed for connectivity).
 - n_dim=16 is the right init dimensionality; rank normalization and the connectivity bridge
 are both necessary for the init to carry structure.
 
-**Implemented but pending analysis:**
+**Ablation verdicts (§8), with measured numbers:**
 
-- **Family #1** (smoothness regularizer), **Family #2** (contrastive supervision), and
-**Family #3** (self-refreshing graph) are all coded, unit-tested, and gated default-off. The
-large-scale ablation sweeps are **launched but not yet analyzed** — there are no downstream
-retrieval (R1) numbers to report yet for any family. `analyze_buddyreg_sweep.py` exists to
-crunch the #1 sweep once it lands; its verdict guide explicitly anticipates the "active but
-redundant → #2 is the real test" outcome, which is the motivation for #2. #2 and #3 reuse the
-same init template as #1, so the whole `{#1, #2, #3}` matrix can be swept from one buddy
-initialization.
-- **The staged buddy program is now feature-complete.** All three planned ways of using the
-signal beyond init exist behind flags; what remains is running the ablations and reading the
-retrieval outcomes — not more implementation.
+- **Family #1 (smoothness): null** — no significant R1 effect after seed replication; inert at
+the tested `lr_label` (drift barely moves).
+- **Family #3 (self-refresh): null** — the live graph disagrees with CLIP but beats the static
+#2 graph by ~0 R1; dropped from follow-up.
+- **Family #2 (contrastive): the one lever that moves R1 on Impressions** — replicated,
+dose-dependent, peaking at `λ_con=1.0` (+2.3 t2i / +3.2 i2t), rolling over into harm past the
+peak. **But it does not cleanly transfer to a 1:1 dataset** (RedCaps: +0.4 t2i / −0.9 i2t),
+and a same-photo probe shows **40.6 % of the Impressions buddy edges it optimizes are the same
+source photo** (279× enrichment) — so most of the Impressions benefit is a near-duplicate
+artifact, not transferable signal.
 
 **Planned next:**
 
-- **Analyze the three ablations** and decide which lever (if any) moves R1: does keeping the
-buddy geometry smooth (#1), supervising retrieval with buddy positives (#2), or letting the
-graph co-evolve (#3) help — and do they compound or overlap?
-- The recurring **B ≫ E** finding suggests testing an init/supervision that leans on B where
-it exists and falls back to E only for B-isolated nodes — noted as a follow-up in the
-analysis reports.
+- **Decide #2's fate on clean data.** Is a *gentler, retuned* `λ_con` (e.g. {0, 0.1, 0.3}) net-
+positive in *both* directions on RedCaps — i.e. does the term help once it can't over-cluster —
+or is contrastive buddy supervision simply not the lever off near-duplicates? One sweep decides
+it (`LAMBDA_BUDDYCON_SWEEP=0,0.1,0.3 … run_buddycon_redcaps.sh`).
+- **Re-scope the near-duplicate finding into the init story.** The recurring **B ≫ E** quality
+result now has a mechanistic caveat: B is 79.9 % same-photo. Evaluate the B-lean init
+(`b_weight`) on RedCaps before crediting it as a general improvement — on Impressions it may
+just be re-buying the same near-dup shortcut.
+- **If #2 does not survive retuning on clean data, buddies remain an initialization-only
+contribution** — still a validated, content-specific init (§4), just not a training-time term.
 
 ---
 
@@ -413,9 +532,13 @@ analysis reports.
 - Designs: `docs/superpowers/specs/2026-06-{09,22,23,24}-*.md`, `docs/superpowers/specs/2026-07-07-buddy-self-refresh-design.md`
 - Plans: `docs/superpowers/plans/2026-06-{23,24}-*.md`, `docs/superpowers/plans/2026-07-07-buddy-self-refresh.md`
 - Reports: `docs/reports/2026-06-{09,22,23}_*.md`; figures under `docs/reports/assets/`
-- Change logs: `.claude/{20260609,20260623,20260623_buddy_train,20260624,20260707}_log.md`
+- Change logs: `.claude/{20260609,20260623,20260623_buddy_train,20260624,20260707,20260708}_log.md`
 - Run/ablation: `scripts/run_buddyreg_{smoke,full}.sh`, `scripts/run_buddycon_full.sh`,
 `scripts/run_buddyrefresh_{smoke,full}.sh`, `scripts/sweep_config_v4.yaml`,
 `scripts/analyze_buddyreg_sweep.py`
+- §8 cross-dataset tooling: `scripts/{run_buddy_seeds,run_buddycon_peak,run_buddycon_redcaps}.sh`,
+`scripts/analyze_buddy_families.py` (seed-paired ΔR1 + `mean/SEM`); RedCaps config
+`configs/dataset/redcaps_150k.yaml`; near-dup probe reuses
+`src/test/20260622_buddy_analysis/buddy_analysis.py` (`identity_stats`)
 - Tests: `src/test/{20260623_buddy_train_reg,20260624_buddy_contrastive,20260707_buddy_refresh}/`
 

@@ -87,6 +87,7 @@ def compute_buddy_init(
     eigen_solver: str = "auto",
     connect_components: bool = True,
     return_edges: bool = False,
+    b_weight: float = 1.0,
     input_sample_ids: Optional[List[int]] = None,
     output_sample_ids: Optional[List[int]] = None,
 ) -> np.ndarray:
@@ -115,10 +116,19 @@ def compute_buddy_init(
     img_n = _l2_normalize(img_feats)
     txt_n = _l2_normalize(txt_feats)
 
-    _, _, E = build_buddy_graphs(
+    A_img, A_txt, E = build_buddy_graphs(
         img_n, txt_n, K=K, alpha=alpha, device=device, knn_batch_size=knn_batch_size,
         use_half=use_half, connect_components=connect_components,
     )
+
+    # B-lean: strict-intersection buddies to upweight in the spectral affinity.
+    b_edges = None
+    if b_weight != 1.0:
+        b_edges = A_img.multiply(A_txt).tocsr()
+        b_edges.data[:] = 1.0
+        b_edges.eliminate_zeros()
+        print(f"[buddies] B-lean: b_weight={b_weight}, strict-B edges nnz={b_edges.nnz:,} "
+              f"(of E nnz={E.nnz:,})")
 
     # Step 3: sparse per-modality distances on E's edges
     D_img = sparse_cosine_distance(img_n, E)
@@ -133,7 +143,8 @@ def compute_buddy_init(
     # Step 5: embed
     if method != "spectral":
         raise ValueError(f"Unknown method '{method}'. Only 'spectral' is supported.")
-    emb = spectral_embedding(D_mixed, n_dim, seed=seed, eigen_solver=eigen_solver)
+    emb = spectral_embedding(D_mixed, n_dim, seed=seed, eigen_solver=eigen_solver,
+                             b_edges=b_edges, b_weight=b_weight)
     print(f"[buddies] Step 5: {method} embedding shape={emb.shape} "
           f"(eigen_solver={eigen_solver})")
 

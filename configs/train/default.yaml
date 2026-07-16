@@ -20,6 +20,7 @@ train:
     method: spectral         # embedding method (Laplacian Eigenmaps)
     knn_batch_size: 1024
     normalize_method: rank   # rank (per-dim rank->[-1,1], robust) | zscore (legacy)
+    b_weight: 1.0            # B-lean: multiply spectral affinity of strict-intersection (B) buddy edges by this (1.0 = off, union-only; >1 pulls strict buddies tighter)
   em_interval: -1 # EM-style training: alternate every N epochs between updating network and updating conditions (negative = disabled, update both every epoch)
   caption_upsample: 1.5 # C1: caption sample weight relative to other types (1.0 = disabled); reduced from 2.5 — Phase 1 showed 2.5x caused direction_sim regression
   oracle_guided: true  # softmax advantage weighting on condition gradients (breaks chicken-and-egg)

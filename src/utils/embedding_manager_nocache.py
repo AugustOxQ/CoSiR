@@ -352,10 +352,14 @@ class TrainableEmbeddingManager:
         knn_batch_size: int = 1024,
         normalize_method: str = "rank",
         seed: int = 42,
+        b_weight: float = 1.0,
     ) -> np.ndarray:
         """
         Conditional-buddies init: build the cross-modal mutual-KNN graph, embed it,
         and return a normalised [N, D] array reordered to self.sample_ids order.
+
+        b_weight: B-lean affinity multiplier for strict-intersection buddies
+                  (1.0 = off / union-only; >1 pulls strict buddies tighter).
         """
         from src.conditional_buddy import compute_buddy_init
 
@@ -383,6 +387,7 @@ class TrainableEmbeddingManager:
             knn_batch_size=knn_batch_size,
             normalize_method=normalize_method,
             seed=seed,
+            b_weight=b_weight,
             input_sample_ids=fm_sample_ids,
             output_sample_ids=self.sample_ids,
             return_edges=True,

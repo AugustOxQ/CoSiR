@@ -36,6 +36,8 @@ def spectral_embedding(
     n_dim: int,
     seed: int = 42,
     eigen_solver: str = "auto",
+    b_edges: csr_matrix = None,
+    b_weight: float = 1.0,
 ) -> np.ndarray:
     """
     Laplacian Eigenmaps on the sparse affinity graph derived from mixed distances.
@@ -49,10 +51,25 @@ def spectral_embedding(
                    amg for larger N (matrix-free, scales / tolerates disconnection).
         "arpack" | "amg" | "lobpcg" — force a specific sklearn solver.
     amg requires pyamg; if it is missing we fall back to lobpcg with a warning.
+
+    b_edges, b_weight: optional "B-lean". When b_edges (a symmetric binary matrix of
+        strict-intersection buddy edges, a subset of D_mixed's sparsity) is given and
+        b_weight != 1.0, the affinity of those edges is multiplied by b_weight before
+        the eigendecomposition — pulling strict buddies tighter while the rest of the
+        graph still provides connectivity. b_weight=1.0 (default) is a no-op.
     """
     A_mixed = D_mixed.copy().tocsr()
     A_mixed.data = 1.0 - A_mixed.data            # invert: closer → higher weight
     A_mixed = (A_mixed + A_mixed.T) * 0.5         # symmetrise numerical noise
+
+    if b_edges is not None and b_weight != 1.0:
+        Bm = b_edges.tocsr().copy()
+        Bm.data[:] = 1.0
+        Bm = ((Bm + Bm.T) * 0.5).tocsr()          # ensure symmetric binary support
+        Bm.data[:] = 1.0
+        # affinity on B edges scaled by b_weight (weights may exceed 1 — fine for a
+        # precomputed affinity). B ⊆ E so A_mixed.multiply(Bm) selects the B affinities.
+        A_mixed = (A_mixed + (b_weight - 1.0) * A_mixed.multiply(Bm)).tocsr()
 
     n = A_mixed.shape[0]
     if eigen_solver == "auto":

@@ -258,12 +258,17 @@ def _init_embedding_manager(cfg, device, sample_ids_list, experiment, feature_ma
         "knn_batch_size": int(getattr(_bud, "knn_batch_size", 1024)) if _bud is not None else 1024,
         "normalize_method": str(getattr(_bud, "normalize_method", "rank")) if _bud is not None else "rank",
         "seed": int(cfg.seed),
+        "b_weight": float(getattr(_bud, "b_weight", 1.0)) if _bud is not None else 1.0,
     }
-    _extra = (
-        {"k": _buddy_kwargs["k"], "alpha": _buddy_kwargs["alpha"], "method": _buddy_kwargs["method"]}
-        if strategy == "buddies"
-        else None
-    )
+    _extra = None
+    if strategy == "buddies":
+        _extra = {"k": _buddy_kwargs["k"], "alpha": _buddy_kwargs["alpha"],
+                  "method": _buddy_kwargs["method"]}
+        # Only add b_weight to the template key when it departs from the default, so
+        # existing (pre-b_weight) templates stay compatible for standard runs while a
+        # changed lean still forces a rebuild (no silent template reuse across values).
+        if _buddy_kwargs["b_weight"] != 1.0:
+            _extra["b_weight"] = _buddy_kwargs["b_weight"]
 
     template_dir = experiment.directory.parent / "template_embeddings"
     template_exists = template_dir.exists() and (template_dir / "embeddings.npy").exists()
