@@ -104,11 +104,16 @@ The CLIP×CLIP row/column is the reference-anchored slice.
 
 ### (b) Chance correction
 
-Raw Jaccard is inflated by density and luck. Each observed value gets a null: **relabel one
-cell's node identities by a random permutation** (preserves that cell's exact degree
-sequence, destroys alignment), recompute Jaccard, repeat `n_perm ≈ 200` times. Report
-observed, null mean, and **lift = observed / null-mean** (plus percentile of observed in the
-null). Agreement is only credited when it clears the null.
+Raw Jaccard is inflated by density and luck. The null is the expected overlap under a
+uniform random node-relabeling of one cell's graph — the same idea as a permutation null,
+but computed in **closed form** rather than by Monte Carlo (a permutation loop over the
+million-edge `E` graphs is intractable, and it was only ever estimating this expectation).
+Under a random relabeling, each of graph `b`'s `|b|` edges lands on a uniformly random
+distinct node pair, so the expected shared-edge count is `E[inter] = |a|·|b| / C(N,2)` and
+the null Jaccard is `E[inter] / (|a| + |b| − E[inter])`. Report observed, null mean, and
+**lift = observed / null-mean**. Agreement is only credited when lift clears ~1. (This is
+exact in expectation and lower-variance than the Monte-Carlo permutation it replaces; it
+also removes the `n_perm`/`seed` knobs.)
 
 ### (c) Consensus core
 
