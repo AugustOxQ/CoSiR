@@ -98,3 +98,56 @@ def agreement_matrix(cell_keys: dict, N: int, n_perm: int = 200, seed: int = 42)
         "median_offdiag_jaccard": float(np.median(jac[off])),
         "median_offdiag_lift": float(np.nanmedian(lift[off])),
     }
+
+
+# ── common node set ──────────────────────────────────────────────────────────
+
+def valid_vision_mask(feats: dict) -> np.ndarray:
+    """Rows where EVERY vision encoder has a nonzero feature (missing images -> zero rows)."""
+    N = next(iter(feats.values())).shape[0]
+    mask = np.ones(N, dtype=bool)
+    for v in VISION:
+        mask &= (np.abs(feats[v]).sum(axis=1) > 0)
+    return mask
+
+
+# ── consensus core ───────────────────────────────────────────────────────────
+
+def consensus_counts(cell_keys_list: list):
+    """(unique_keys, counts) where counts[k] = #cells containing unique_keys[k]."""
+    allk = np.concatenate(cell_keys_list) if cell_keys_list else np.empty(0, np.int64)
+    uniq, counts = np.unique(allk, return_counts=True)
+    return uniq, counts
+
+
+def survival_curve(counts: np.ndarray, n_cells: int) -> np.ndarray:
+    """Length-n_cells array; index t-1 = #edges present in >= t cells."""
+    return np.array([int((counts >= t).sum()) for t in range(1, n_cells + 1)], dtype=np.int64)
+
+
+def core_edges(unique_keys: np.ndarray, counts: np.ndarray, t: int, N: int) -> np.ndarray:
+    """(M, 2) node-index edge list for edges present in >= t cells."""
+    keys = unique_keys[counts >= t]
+    return np.stack([keys // N, keys % N], axis=1).astype(np.int64)
+
+
+class _SubShim:
+    """Minimal stand-in for redcaps_buddy.Data: only .sub_id and .sub_names are used."""
+    def __init__(self, sub_id, sub_names):
+        self.sub_id = np.asarray(sub_id)
+        self.sub_names = list(sub_names)
+
+
+def core_subreddit_lift(unique_keys, counts, N, sub_id, sub_names, n_cells: int):
+    """Same-subreddit lift of the >= t consensus core, for t = 1..n_cells."""
+    import redcaps_buddy as rb
+    shim = _SubShim(sub_id, sub_names)
+    out = []
+    for t in range(1, n_cells + 1):
+        e = core_edges(unique_keys, counts, t, N)
+        if len(e) == 0:
+            out.append({"t": t, "n_edges": 0, "lift": float("nan")})
+            continue
+        res = rb.subreddit_lift(shim, e)
+        out.append({"t": t, "n_edges": int(len(e)), "lift": float(res["overall_lift"])})
+    return out

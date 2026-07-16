@@ -100,3 +100,52 @@ def test_agreement_matrix_shape_and_diag():
     assert np.allclose(np.diag(out["jaccard"]), 1.0)
     assert out["jaccard"][0, 1] > 0.0 and out["jaccard"][0, 2] == 0.0
     assert np.isfinite(out["median_offdiag_jaccard"])
+
+
+def test_valid_vision_mask_drops_zero_rows():
+    # 4 rows; row 2 is zero in one vision encoder -> dropped. Text ignored by mask.
+    feats = {
+        "clip_img": np.ones((4, 3), np.float32),
+        "dinov2": np.array([[1, 1], [1, 1], [0, 0], [1, 1]], np.float32),
+        "siglip_v": np.ones((4, 2), np.float32),
+        "vit_sup": np.ones((4, 5), np.float32),
+        "clip_txt": np.ones((4, 3), np.float32),  # present but irrelevant to mask
+    }
+    mask = cvb.valid_vision_mask(feats)
+    assert mask.tolist() == [True, True, False, True]
+
+
+def test_consensus_counts_and_survival():
+    cells = [np.array([1, 2, 3], np.int64),
+             np.array([1, 2], np.int64),
+             np.array([1], np.int64)]
+    uniq, counts = cvb.consensus_counts(cells)
+    assert uniq.tolist() == [1, 2, 3]
+    assert counts.tolist() == [3, 2, 1]           # key 1 in all 3 cells, key 3 in one
+    surv = cvb.survival_curve(counts, n_cells=3)
+    assert surv.tolist() == [3, 2, 1]             # >=1:3 edges, >=2:2, >=3:1
+
+
+def test_core_edges_decode():
+    N = 10
+    uniq = np.array([0 * N + 1, 2 * N + 3], np.int64)  # edges (0,1) and (2,3)
+    counts = np.array([3, 1], np.int64)
+    e = cvb.core_edges(uniq, counts, t=2, N=N)
+    assert e.tolist() == [[0, 1]]                  # only the count>=2 edge survives
+
+
+def test_core_subreddit_lift_monotone_when_core_is_coherent():
+    # 6 nodes, 2 subreddits: {0,1,2} sub 0, {3,4,5} sub 1.
+    # High-consensus edges are within-subreddit; low-consensus edges cross.
+    N = 6
+    sub_id = np.array([0, 0, 0, 1, 1, 1])
+    sub_names = ["A", "B"]
+    within = [0 * N + 1, 1 * N + 2, 3 * N + 4]     # same-sub (should be coherent core)
+    cross = [0 * N + 3, 1 * N + 4]                  # cross-sub (noise, low consensus)
+    cells = [np.array(sorted(within + cross), np.int64) for _ in range(5)] \
+        + [np.array(sorted(within), np.int64) for _ in range(5)]
+    uniq, counts = cvb.consensus_counts(cells)
+    curve = cvb.core_subreddit_lift(uniq, counts, N, sub_id, sub_names, n_cells=10)
+    lift_low = next(c["lift"] for c in curve if c["t"] == 1)
+    lift_high = next(c["lift"] for c in curve if c["t"] == 10)
+    assert lift_high >= lift_low                    # purer core -> higher same-sub lift
