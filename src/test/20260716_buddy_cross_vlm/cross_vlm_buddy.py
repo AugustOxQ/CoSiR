@@ -33,7 +33,8 @@ def adj_to_keys(A: csr_matrix) -> np.ndarray:
     """Upper-triangular (i<j) edges of a symmetric adjacency as sorted int64 keys i*N+j."""
     N = A.shape[0]
     U = triu(A, k=1).tocoo()
-    keys = U.row.astype(np.int64) * N + U.col.astype(np.int64)
+    mask = U.data != 0  # guard against explicitly-stored zero entries
+    keys = U.row[mask].astype(np.int64) * N + U.col[mask].astype(np.int64)
     keys.sort()
     return keys
 

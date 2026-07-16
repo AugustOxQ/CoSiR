@@ -2,9 +2,54 @@ import os
 import sys
 
 import numpy as np
+from scipy.sparse import csr_matrix
 
 sys.path.insert(0, os.path.dirname(__file__))
 import cross_vlm_buddy as cvb
+
+
+def test_adj_to_keys_encodes_upper_triangle_and_skips_stored_zeros():
+    N = 5
+    dense = np.zeros((N, N), dtype=np.float64)
+    dense[0, 2] = dense[2, 0] = 1.0
+    dense[1, 3] = dense[3, 1] = 1.0
+    A = csr_matrix(dense)
+    keys = cvb.adj_to_keys(A)
+    assert keys.tolist() == [0 * N + 2, 1 * N + 3] == [2, 8]
+
+    # now inject an explicit stored zero into the sparsity pattern (upper
+    # triangle) and confirm it is NOT reported as an edge.
+    rows = np.array([0, 2, 1, 3, 0, 4], dtype=np.int32)
+    cols = np.array([2, 0, 3, 1, 4, 0], dtype=np.int32)
+    data = np.array([1.0, 1.0, 1.0, 1.0, 0.0, 0.0], dtype=np.float64)
+    A_zero = csr_matrix((data, (rows, cols)), shape=(N, N))
+    # (0, 4) is a structurally-stored zero: it must not appear in the keys.
+    assert A_zero[0, 4] == 0.0
+    assert A_zero.nnz > A.nnz  # confirm the zero entry is actually stored
+    keys_zero = cvb.adj_to_keys(A_zero)
+    assert keys_zero.tolist() == [2, 8]
+    assert (0 * N + 4) not in keys_zero.tolist()
+
+
+def test_perm_null_edges_stay_canonical():
+    N = 30
+    b = np.sort(np.array(
+        [0 * N + 1, 2 * N + 3, 4 * N + 5, 6 * N + 7, 8 * N + 9, 10 * N + 11],
+        dtype=np.int64,
+    ))
+    res = cvb.perm_null_jaccard(b, b, N, n_perm=50, seed=7)
+    # b against itself: perfect observed agreement.
+    assert res["observed"] == 1.0
+    # If the min/max re-canonicalization + dedup step inside perm_null_jaccard
+    # were broken (e.g. keys not re-sorted into i<j form, or duplicate keys
+    # left in after relabeling), the permuted-vs-original null jaccard would
+    # not behave like a random relabeling: it would either spuriously match
+    # more often (broken canonicalization keeping some raw alignment) or
+    # produce degenerate near-zero unions. A correctly canonicalized,
+    # deduplicated null must land strictly below the observed value and
+    # above zero (six edges over 30 nodes is not so sparse that random
+    # relabelings never collide).
+    assert 0.0 < res["null_mean"] < res["observed"]
 
 
 def test_jaccard_identical():
