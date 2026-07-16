@@ -151,3 +151,65 @@ def core_subreddit_lift(unique_keys, counts, N, sub_id, sub_names, n_cells: int)
         res = rb.subreddit_lift(shim, e)
         out.append({"t": t, "n_edges": int(len(e)), "lift": float(res["overall_lift"])})
     return out
+
+
+# ── feature loading + per-cell graph building ────────────────────────────────
+
+def load_grid_features(smoke: int = 0):
+    """
+    Load all 8 grid feature matrices in redcaps row order, slice to the common
+    node set (rows valid across every vision encoder). Returns
+    (feats, sub_id, sub_names, vmask) with feats sliced to the common nodes.
+    smoke>0 keeps only the first `smoke` valid rows (pipeline sanity, not interpreted).
+    """
+    import redcaps_buddy as rb
+    from extract_heldout import cache_path
+
+    data = rb.load_data()
+    feats = {"clip_img": np.ascontiguousarray(data.img, dtype=np.float32),
+             "clip_txt": np.ascontiguousarray(data.txt, dtype=np.float32)}
+    for m in ["dinov2", "siglip_v", "vit_sup", "minilm", "bge", "e5"]:
+        p = cache_path("redcaps", m, 0)
+        if not os.path.exists(p):
+            raise FileNotFoundError(
+                f"missing held-out cache {p}; run:\n"
+                f"  python src/test/20260708_heldout_grid/extract_heldout.py "
+                f"--dataset redcaps --model {m}")
+        feats[m] = np.load(p).astype(np.float32)
+
+    vmask = valid_vision_mask(feats)
+    if smoke:
+        idx = np.where(vmask)[0][:smoke]
+        keep = np.zeros(data.n, dtype=bool)
+        keep[idx] = True
+        vmask = keep
+
+    feats = {k: v[vmask] for k, v in feats.items()}
+    sub_id = data.sub_id[vmask]
+    print(f"[cross-vlm] common nodes: {int(vmask.sum())}/{data.n} "
+          f"(dropped {int((~vmask).sum())})")
+    return feats, sub_id, data.sub_names, vmask
+
+
+def build_cell_graphs(feats: dict, K: int = 30, device: str = "cuda", use_half: bool = True):
+    """
+    Build one mutual-kNN graph per distinct feature matrix (8 total), then the 16
+    cells' B (intersection) and E (union) edge sets. Returns (cell_B, cell_E, N).
+    """
+    from src.conditional_buddy.buddy_graph import mutual_knn, union_graph
+
+    N = next(iter(feats.values())).shape[0]
+    A = {name: mutual_knn(feats[name], K=K, device=device, use_half=use_half)
+         for name in feats}
+    cell_B, cell_E = {}, {}
+    for v, t in CELLS:
+        Aimg, Atxt = A[v], A[t]
+        B = Aimg.multiply(Atxt)
+        B.data[:] = 1.0
+        B = B.tocsr()
+        B.eliminate_zeros()
+        E = union_graph(Aimg, Atxt)
+        key = f"{v}x{t}"
+        cell_B[key] = adj_to_keys(B)
+        cell_E[key] = adj_to_keys(E)
+    return cell_B, cell_E, N
