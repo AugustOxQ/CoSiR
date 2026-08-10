@@ -167,6 +167,7 @@ multirun/
 
 # Claude
 .claude/
+.superpowers/
 refactor/
 CLAUDE.md
 
