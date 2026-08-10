@@ -9,7 +9,7 @@
 
 ## Abstract
 
-CoSiR fuses frozen CLIP image/text features with a per-sample trainable "condition" vector that must start somewhere. We built and validated a graph-based initialization — a "conditional buddy" is a pair of samples that are mutual nearest neighbors in *both* CLIP image space and CLIP text space — and asked three questions over two months of work: (1) is the buddy signal real, or an artifact of CLIP / near-duplicate data? (2) does using it during training, beyond initialization, help retrieval? (3) does it survive changing the vision-language model entirely? The answers so far: the signal is real and remarkably robust — it survives three independent validation probes, six held-out encoders never used to build the graph, and a full graph-rebuild across sixteen vision×text encoder combinations. But of three natural ways to *use* the signal during training, two are statistically null and the third's apparent win is substantially explained by a measured near-duplicate confound in one of our two datasets, not by transferable cross-modal signal. What remains unanswered — and is the critical gap before this is submittable — is whether the validated signal actually improves retrieval at the one place it was designed for: initialization itself. We propose a focused, four-experiment plan to close that gap and the paper's remaining open questions, targeting **TMLR** as the primary venue (with a workshop submission as a scheduling hedge, and a main-track conference as a contingent stretch goal), submittable within 1–2 months.
+CoSiR fuses frozen CLIP image/text features with a per-sample trainable "condition" vector that must start somewhere. We built and validated a graph-based initialization — a "conditional buddy" is a pair of samples that are mutual nearest neighbors in *both* CLIP image space and CLIP text space — and asked three questions over two months of work: (1) is the buddy signal real, or an artifact of CLIP / near-duplicate data? (2) does using it during training, beyond initialization, help retrieval? (3) does it survive changing the vision-language model entirely? The answers so far: the signal is real and remarkably robust — it survives three independent validation probes, six held-out encoders never used to build the graph, and a full graph-rebuild across sixteen vision×text encoder combinations. But of three natural ways to *use* the signal during training, two are statistically null and the third's apparent win is substantially explained by a measured near-duplicate confound in one of our two datasets, not by transferable cross-modal signal. What remains unanswered — and is the critical gap before this is submittable — is whether the validated signal actually improves retrieval at the one place it was designed for: initialization itself, and how this positions against existing neighbor/graph-based contrastive learning methods, which no report currently addresses. We propose a focused plan (a fast prior-art check plus four experiments) to close those gaps, targeting **TMLR** as the primary venue (with a workshop submission as a scheduling hedge, and a main-track conference as a contingent, lower-probability stretch), submittable within 1–2 months.
 
 ---
 
@@ -36,14 +36,17 @@ No experiment currently compares buddy-graph initialization against the prior ge
 
 ## 4. Proposed work
 
-Four experiments close these gaps, in priority order (full detail, exact tooling, and success criteria in the linked spec):
+Five items close these gaps, in priority order (full detail, exact tooling, and success criteria in the linked spec):
 
-| # | Experiment | Answers | Priority |
+| # | Item | Answers | Priority |
 |---|---|---|---|
+| 0 | Related-work / prior-art grounding (NNCLR, mean-shift/prototype SSL, graph-Laplacian init precedent) — reading and writing only, no compute | Does this differentiate cleanly from existing neighbor/graph-based SSL methods, or is there a fatal overlap? | **Critical — do first, in parallel with Exp. 1** |
 | 1 | Buddy-init vs. generic-init, no training-time terms, 3 seeds × 2–3 datasets | Does the core idea work at all? | **Critical — do first** |
 | 2 | Retuned, gentler contrastive-supervision dose on clean (RedCaps) data | Does any dose of the one promising training mechanism survive off near-duplicates? | High |
 | 3 | The "B-lean" initialization variant, validated on clean data | Is the "cleaner buddy signal" finding itself a near-duplicate artifact, like the training-term result was? | High |
 | 4 | Standard CLIP fine-tuning baselines, run and reported | Where does this sit relative to the obvious alternative? | Required for any venue |
+
+Item 0 is new relative to the original plan: no report or spec in this project currently cites or differentiates against the existing neighbor/graph-based contrastive learning literature (NNCLR's nearest-neighbor positives, mean-shift/prototype SSL, graph-Laplacian embedding init in recsys/node2vec). Any reviewer will map this work onto that lineage immediately. It's answerable — the confound-diagnosis finding on Family #2 is a legitimate point of differentiation from NNCLR-class claims — but the positioning needs to happen in week 1, not during writing, so a fatal overlap (if one exists) is found before the experiment budget is spent.
 
 Two stretch items — extending validation to MS-COCO, and testing whether cross-encoder signal *survival* predicts downstream *usefulness* — are proposed as contingent, schedule-permitting additions, not commitments.
 
@@ -53,24 +56,25 @@ Design principle: **the paper's framing does not depend on Experiment 1's outcom
 
 | Choice | Rationale |
 |---|---|
-| **Primary: TMLR** | Reviewed on soundness and community value rather than novelty-or-SOTA pressure — the best match for a confound-controlled analysis paper with a mix of positive, null, and negative findings. Rolling submission removes deadline risk from a timeline that depends on experiment outcomes. |
+| **Primary: TMLR** | Reviewed on soundness and community value rather than novelty-or-SOTA pressure — the best match for a confound-controlled analysis paper with a mix of positive, null, and negative findings. Rolling submission removes deadline risk from a timeline that depends on experiment outcomes. **Not unconditional:** clean if Experiment 1 is positive; if it's null, TMLR is still reachable but requires explicitly reframing as a methodology/cautionary-tale paper, and is also contingent on Experiment 0 not surfacing a fatal prior-art overlap. |
 | **Hedge: a CVPR/ICCV/NeurIPS workshop** (multimodal representation learning / data-centric AI) | Submitted in parallel at reduced length. Fast turnaround gives a guaranteed in-window publication even if TMLR's review process runs long. |
 | **Stretch: ICLR/NeurIPS main track** | Only pursued if Experiment 1 lands a clean, seed-replicated positive result — a genuine "this initialization measurably helps" headline is what main-track reviewers need to see past the mostly-null training-time story. Decided at the Week-3 checkpoint. |
 | Not pursued: CVPR/ICCV/ECCV main track, ACL/EMNLP | Wrong audience fit / wrong evaluation criteria for this paper's actual strengths (see spec §3.2 for the full reasoning). |
 
 ## 6. Timeline
 
-Eight weeks, front-loaded on the highest-information experiment:
+Eight weeks, front-loaded on the highest-information items:
 
+- **Week 1:** Experiment 0 (related-work/prior-art grounding, reading and writing only) runs in parallel with the start of Experiment 1 — cheap, and resolved before deeper compute commitment.
 - **Weeks 1–2:** Experiments 1–4 run in parallel (independent, share existing infrastructure).
-- **Week 3:** Analyze results; decide stretch-tier ambition and whether COCO extension is worth pursuing.
+- **Week 3:** Analyze results, including Experiment 0's note; decide stretch-tier ambition, whether the framing needs adjustment, and whether COCO extension is worth pursuing.
 - **Weeks 4–5:** COCO (if warranted) and the cheap causal-tightening follow-up on the near-duplicate confound.
 - **Week 6:** Optional cross-encoder-survival-vs-usefulness stretch study, only if ahead of schedule.
-- **Weeks 6–8:** Writing, related work, baseline tables, figures, internal review, and preparing both the TMLR and workshop submission packages.
+- **Weeks 6–8:** Writing, related-work section (drafted from Experiment 0's note), baseline tables, figures, internal review, and preparing both the TMLR and workshop submission packages.
 
 ## 7. Risks
 
-The main risk is Experiment 1 returning null or negative — mitigated by design, since the paper's framing was chosen specifically to remain publishable either way (§4). The secondary risk is TMLR's review timeline extending past the target window — mitigated by the parallel workshop submission. Compute risk is managed by strict prioritization: the cheapest, most load-bearing experiment runs first, and every stretch item is explicitly gated on remaining schedule rather than committed up front.
+The main risk is Experiment 1 returning null or negative — mitigated by design, since the paper's framing was chosen specifically to remain publishable either way (§4), though a null result does narrow TMLR to the methodology-paper framing rather than leaving it a clean submit. A second risk, not previously flagged, is prior-art overlap with existing neighbor/graph-based SSL methods (NNCLR, mean-shift/prototype SSL) — mitigated by running Experiment 0 in week 1, before further compute or writing investment, rather than discovering it during drafting in weeks 6–8. The secondary risk is TMLR's review timeline extending past the target window — mitigated by the parallel workshop submission. Compute risk is managed by strict prioritization: the cheapest, most load-bearing experiment runs first, and every stretch item is explicitly gated on remaining schedule rather than committed up front.
 
 ## 8. Expected outcome
 

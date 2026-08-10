@@ -40,7 +40,7 @@ The project's methodological rigor (seed replication, paired significance, analy
 
 | Tier | Venues | Fit | Condition |
 |---|---|---|---|
-| **Primary** | **TMLR** (Transactions on Machine Learning Research) | Best fit. Reviewed on correctness/soundness/community value, not novelty-or-SOTA hype — matches a confound-controlled analysis with partly-null results exactly. No conference deadline pressure, which suits an experiment-dependent timeline. | None — submit once §4's experiments land, regardless of outcome sign. |
+| **Primary** | **TMLR** (Transactions on Machine Learning Research) | Best fit. Reviewed on correctness/soundness/community value, not novelty-or-SOTA hype — matches a confound-controlled analysis with partly-null results exactly. No conference deadline pressure, which suits an experiment-dependent timeline. | **Not unconditional.** If Exp. 1 is positive, TMLR is a clean submit. If Exp. 1 is null/negative, TMLR is still reachable but only by reframing explicitly as a methodology/cautionary paper ("we checked whether a validated, robust graph signal is useful anywhere, including the most basic use, and report exactly what we found") — TMLR's "of interest to a substantial part of the community" bar is harder to clear on pure robustness-plus-nulls than the original framing implies. Also gated on Exp. 0 (below) turning up no fatal prior-art overlap. |
 | **Stretch** | **ICLR / NeurIPS main track** | Plausible only with a genuine positive headline: buddy-init beats generic init cleanly (Exp. 1) on ≥2/3 datasets, ideally with COCO (Exp. 5) broadening the generalization claim beyond RedCaps/Impressions. Without a positive Exp. 1 result, a submission here is a likely reject — these venues weight "does it work" heavily even for analysis-flavored papers. | Go/no-go at the **Week-3 checkpoint** (§6), gated on Exp. 1 + Exp. 4 results. Also check current CFP/deadline dates against the timeline before committing — not verified as part of this spec. |
 | **Hedge** | **CVPR/ICCV/NeurIPS workshop** (multimodal representation learning / data-centric AI / robustness) | High accept likelihood given the existing rigor; fast turnaround (weeks, not TMLR's months). Submit in parallel as insurance so the project has *a* concrete publication in-window even if TMLR review runs long. | Prepare alongside the TMLR submission at reduced length; no additional experiments required beyond §4. |
 | **Not recommended** | CVPR/ICCV/ECCV main track | Vision main-track reviewers weight SOTA benchmark tables heavily; a graph-analysis paper with mostly-null training-time results is a weak fit without a decisive win. | — |
@@ -52,6 +52,10 @@ The project's methodological rigor (seed replication, paired significance, analy
 
 This decouples the *submission decision* from experimental risk — the stretch tier is upside, not a requirement.
 
+### 3.4 Prior-art risk (not yet checked)
+
+Neither this spec nor the existing reports cite or differentiate against the existing neighbor/graph-based contrastive learning literature — NNCLR (nearest-neighbor positives in SSL), mean-shift/prototype-based SSL (SwAV, MSF), or graph-Laplacian/spectral initialization as used in recsys and node2vec-style embedding init. A reviewer at any tier, TMLR included, will map "mutual-kNN graph used as auxiliary signal for a per-sample embedding" onto this lineage within the first paragraph. This is answerable — the project's contrastive-supervision mechanism (Family #2, C4) is architecturally close to NNCLR's neighbor-as-positive idea, and the finding that it's confound-driven rather than transferable is a legitimate, citable point of differentiation from NNCLR-class claims — but the positioning work has not been done, and finding out late (during weeks 6–8 writing) risks discovering an overlap problem after the experiment budget is already spent. See Experiment 0 below.
+
 ---
 
 ## 4. Experiment plan
@@ -59,6 +63,13 @@ This decouples the *submission decision* from experimental risk — the stretch 
 All experiments reuse existing infrastructure (feature caching, buddy-init templates, `analyze_buddy_families.py`-style paired analysis, the seed-replication pattern already used throughout `docs/reports/2026-06-24_buddy_progress_report.md` §8). None require new model architecture or new encoders.
 
 **Statistical standard for every new experiment (§5 governs in detail):** ≥3 seeds, paired-within-seed Δ, report mean ± std and mean/SEM, using the same significance convention already used in the progress report (`mean/SEM` roughly ≥ 2 read as significant; compare to the measured noise floor of ~0.1–0.7 R1 from a duplicate-config run, not to zero).
+
+### Experiment 0 — Related-work grounding & prior-art differentiation check (do first, in parallel with Exp. 1)
+
+- **What:** A focused literature pass (not an experiment — reading/writing only) against the neighbor/graph-based SSL lineage flagged in §3.4: NNCLR, mean-shift/prototype SSL (MSF, SwAV), and graph-Laplacian/spectral init precedent. Produce a short internal note: what's been done before, what's genuinely different here (candidate answer: per-sample *trainable condition vector initialization* in a frozen-CLIP + gated-combiner architecture, validated via encoder-robustness rather than proposed as a new SSL training method), and whether the C4 confound-diagnosis result reframes as a useful counterpoint to NNCLR-style neighbor-as-positive claims.
+- **Why:** No related-work grounding exists anywhere in the project currently (confirmed by grep across `docs/`) despite it being scheduled only in weeks 6–8 (§6) as part of paper drafting. Discovering a fatal prior-art overlap during writing means the experiment budget is already spent; discovering it in week 1 means the framing (or, worst case, the venue tier) can still adapt.
+- **Success criteria:** Not pass/fail. Deliverable is the internal note itself, feeding directly into the paper's eventual related-work section. A "red" outcome (a very close prior match with no clear differentiation) is itself decision-relevant — it would be grounds to revisit the TMLR framing before further compute is spent, not just before writing.
+- **Cost:** Days, not compute. No infrastructure. Runs in parallel with Experiment 1, not sequentially before it.
 
 ### Experiment 1 — Buddy-init-only vs. imgtxt-init-only (critical path, do first)
 
@@ -128,11 +139,12 @@ These are not new conventions — they're what the project already does in `2026
 
 | Weeks | Work |
 |---|---|
+| **1** | Experiment 0 (related-work/prior-art check) run in parallel with the start of Experiment 1 — cheap and highest-value-per-day, resolved before deeper compute commitment. |
 | **1–2** | Experiments 1, 2, 3 run in parallel (independent, share infra); Experiment 4 (baselines) queued alongside on separate compute. |
-| **3** | Analyze all four. **Checkpoint:** decide (a) TMLR/workshop-only vs. also targeting stretch-tier (gated on Exp. 1 being positive, per §3.2), and (b) whether Experiment 5 (COCO) is in scope given remaining time. |
+| **3** | Analyze all four (plus Exp. 0's note). **Checkpoint:** decide (a) TMLR/workshop-only vs. also targeting stretch-tier (gated on Exp. 1 being positive, per §3.2), (b) whether Exp. 0 requires a framing adjustment, and (c) whether Experiment 5 (COCO) is in scope given remaining time. |
 | **4–5** | Experiment 5 (COCO) if in scope; Experiment 7 (causal confound tightening) — cheap, do regardless of the Week-3 outcome. |
 | **6** | Experiment 6 (Approach C) only if meaningfully ahead of schedule. |
-| **6–8** | Writing: paper draft (skeleton reuses the existing slide guide's Part I / Part II structure, `2026-07-08_buddy_slides_guide.md`), related work, baseline table, figures (adapt `scripts/make_slide_figs.py`), internal review buffer, prepare both TMLR and workshop submission packages. |
+| **6–8** | Writing: paper draft (skeleton reuses the existing slide guide's Part I / Part II structure, `2026-07-08_buddy_slides_guide.md`), related-work section (drafted from Exp. 0's note, not started from scratch here), baseline table, figures (adapt `scripts/make_slide_figs.py`), internal review buffer, prepare both TMLR and workshop submission packages. |
 
 ---
 
@@ -155,6 +167,7 @@ These are not new conventions — they're what the project already does in `2026
 | Compute/time overruns on Experiments 2–4 | Priority order (§4) puts the cheapest, highest-information experiment (1) first; stretch items (5, 6) are explicitly gated on schedule, not committed up front. |
 | Baseline runs (Exp. 4) reveal CoSiR underperforms simple fine-tuning | Not a blocker — state as a caveat; the paper's claims are about the graph signal and initialization question, not about beating fine-tuned CLIP. |
 | Scope creep into Experiment 6 (Approach C) crowds out writing time | Explicit Week-6-or-later gate; only pursued if 1–5 finish ahead of schedule. |
+| Prior-art overlap (NNCLR-class neighbor-as-positive methods, graph-Laplacian init precedent) discovered late, undercutting the differentiation story | Experiment 0 runs in week 1, in parallel with Experiment 1, specifically to surface this before further compute or writing investment (§3.4). |
 
 ---
 
@@ -171,5 +184,5 @@ These are not new conventions — they're what the project already does in `2026
 
 - **Placeholder scan:** no TBD/TODO left unresolved; every experiment has a stated success criterion and cost estimate.
 - **Internal consistency:** the framing decision (§3.3) is checked against both possible outcomes of Experiment 1 (§4, Exp. 1) and does not contradict the venue tiering (§3.2); the deliverables list (§7) matches the timeline (§6).
-- **Scope check:** stretch experiments (5, 6) are explicitly gated rather than committed, keeping the critical path (1–4, 7) achievable alone within the window even if stretch items are dropped.
+- **Scope check:** stretch experiments (5, 6) are explicitly gated rather than committed, keeping the critical path (0–4, 7) achievable alone within the window even if stretch items are dropped.
 - **Ambiguity check:** every experiment names its exact tooling (existing script + flag, or "new script mirroring X") and its decision rule, so "what counts as done" is unambiguous per item.
