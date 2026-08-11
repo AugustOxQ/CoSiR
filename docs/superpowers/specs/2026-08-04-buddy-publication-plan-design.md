@@ -52,9 +52,15 @@ The project's methodological rigor (seed replication, paired significance, analy
 
 This decouples the *submission decision* from experimental risk — the stretch tier is upside, not a requirement.
 
-### 3.4 Prior-art risk (not yet checked)
+### 3.4 Prior-art risk (checked — Experiment 0; verdict yellow)
 
-Neither this spec nor the existing reports cite or differentiate against the existing neighbor/graph-based contrastive learning literature — NNCLR (nearest-neighbor positives in SSL), mean-shift/prototype-based SSL (SwAV, MSF), or graph-Laplacian/spectral initialization as used in recsys and node2vec-style embedding init. A reviewer at any tier, TMLR included, will map "mutual-kNN graph used as auxiliary signal for a per-sample embedding" onto this lineage within the first paragraph. This is answerable — the project's contrastive-supervision mechanism (Family #2, C4) is architecturally close to NNCLR's neighbor-as-positive idea, and the finding that it's confound-driven rather than transferable is a legitimate, citable point of differentiation from NNCLR-class claims — but the positioning work has not been done, and finding out late (during weeks 6–8 writing) risks discovering an overlap problem after the experiment budget is already spent. See Experiment 0 below.
+Experiment 0 ran (`docs/reports/2026-08-10_prior_art_note.md`, updated 2026-08-11 with a deeper adversarial follow-up pass). Verdict: **yellow, not red** — related-but-distinguishable prior art exists and must be cited, but no fatal overlap was found.
+
+The closest match is **CMFG** (*"Mutual contextual relation-guided dynamic graph networks for cross-modal image-text retrieval,"* Scientific Reports 2025, PMC12484662), which builds a cross-modal mutual-kNN graph via the same construction primitive as conditional-buddies (independent per-modality k-NN, then mutually-linked across modalities). This means the paper's related-work section **cannot claim the graph-construction mechanism itself is unprecedented** — that framing is now known to be false and would be a citable gap a cross-modal-retrieval-literate reviewer catches immediately. CMFG diverges from conditional-buddies entirely on *use*: it keeps the graph alive as a continuous GCN-message-passing mechanism over trainable encoders every forward pass, never as a one-shot initializer, and never over a frozen backbone.
+
+The novelty claim therefore narrows and sharpens rather than disappears: not "nobody builds this graph" but "nobody uses it as a one-shot initializer of a frozen-backbone, per-sample trainable vector, independently stress-tested by rebuilding the graph from held-out encoders never used to build it (6 held-out encoders, 16 cross-VLM pairs)." Also required in related work: NNCLR (nearest-neighbor positives in SSL), mean-shift/prototype-based SSL (SwAV, MSF — same continuous-training-signal category as CMFG), and LEPORID (graph-Laplacian-to-init precedent, but single-domain, not cross-modal). C4's near-duplicate-confound finding (Family #2's apparent win on Impressions is 40.6%/279×-enriched same-photo edges, does not replicate on RedCaps) remains a legitimate, citable counterpoint to the entire neighbor-as-continuous-signal family (NNCLR, MSF, CMFG) — framed as *quantifying* a concern the field already generally knows about (DINOv2 runs dedup as data curation), not discovering it from scratch.
+
+Net effect on this spec: no venue-tier change, but the related-work section is now a **required, non-trivial four-way citation-and-differentiation job** (CMFG, LEPORID, NNCLR, MSF/SwAV), not an optional positioning paragraph — carry this into the writing timeline (§6).
 
 ---
 
@@ -167,7 +173,7 @@ These are not new conventions — they're what the project already does in `2026
 | Compute/time overruns on Experiments 2–4 | Priority order (§4) puts the cheapest, highest-information experiment (1) first; stretch items (5, 6) are explicitly gated on schedule, not committed up front. |
 | Baseline runs (Exp. 4) reveal CoSiR underperforms simple fine-tuning | Not a blocker — state as a caveat; the paper's claims are about the graph signal and initialization question, not about beating fine-tuned CLIP. |
 | Scope creep into Experiment 6 (Approach C) crowds out writing time | Explicit Week-6-or-later gate; only pursued if 1–5 finish ahead of schedule. |
-| Prior-art overlap (NNCLR-class neighbor-as-positive methods, graph-Laplacian init precedent) discovered late, undercutting the differentiation story | Experiment 0 runs in week 1, in parallel with Experiment 1, specifically to surface this before further compute or writing investment (§3.4). |
+| Related-work section under-cites prior art (CMFG shares the graph-construction primitive; NNCLR/MSF/SwAV/LEPORID are adjacent) and a reviewer catches the gap | Checked in Experiment 0 (§3.4, yellow verdict) — required citation-and-differentiation list is now fixed (CMFG, LEPORID, NNCLR, MSF/SwAV); carry it into the writing timeline (§6) as a mandatory related-work pass, not an optional paragraph. |
 
 ---
 
