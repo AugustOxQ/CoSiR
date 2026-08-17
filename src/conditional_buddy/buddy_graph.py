@@ -63,13 +63,26 @@ def _top1_indices_torch(
     query_feats_gpu: torch.Tensor,
     db_feats_gpu: torch.Tensor,
     query_global_idx: np.ndarray,
+    batch_size: int = 256,
 ) -> np.ndarray:
-    """Top-1 cosine neighbour of each query row against the full database, self excluded."""
-    sims = query_feats_gpu @ db_feats_gpu.t().contiguous()  # [n_q, N]
-    rows = torch.arange(len(query_global_idx), device=query_feats_gpu.device)
-    cols = torch.from_numpy(query_global_idx).to(query_feats_gpu.device)
-    sims[rows, cols] = float("-inf")
-    return sims.argmax(dim=1).cpu().numpy()
+    """Top-1 cosine neighbour of each query row against the full database, self excluded.
+
+    Batched over the query dimension like ``_knn_indices_torch`` above — an
+    unbatched [n_q, N] matmul is fine at N~150k but allocates hundreds of GB at
+    N~3M (a 25k-row isolated set against a 3.1M-row database is a 305GB fp32
+    matrix), even though n_q is tiny relative to N.
+    """
+    n_q = query_feats_gpu.shape[0]
+    db_t = db_feats_gpu.t().contiguous()
+    out = np.empty(n_q, dtype=np.int64)
+    for start in range(0, n_q, batch_size):
+        end = min(start + batch_size, n_q)
+        sims = query_feats_gpu[start:end] @ db_t  # [b, N]
+        rows = torch.arange(end - start, device=query_feats_gpu.device)
+        cols = torch.from_numpy(query_global_idx[start:end]).to(query_feats_gpu.device)
+        sims[rows, cols] = float("-inf")
+        out[start:end] = sims.argmax(dim=1).cpu().numpy()
+    return out
 
 
 def mutual_knn(
