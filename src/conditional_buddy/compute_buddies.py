@@ -25,8 +25,12 @@ from .embedding_methods import normalise_embedding, spectral_embedding
 
 
 def _l2_normalize(x: np.ndarray) -> np.ndarray:
+    """L2-normalize rows in place (no callers need the pre-normalization values back —
+    a second full-size copy here is fine at N~150k but adds ~6GB of dead RAM per call
+    at N~3M, tripling peak usage across the shard-list -> raw -> normalized chain)."""
     x = np.ascontiguousarray(x, dtype=np.float32)
-    return x / (np.linalg.norm(x, axis=1, keepdims=True) + 1e-12)
+    x /= np.linalg.norm(x, axis=1, keepdims=True) + 1e-12
+    return x
 
 
 def build_buddy_graphs(

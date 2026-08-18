@@ -31,6 +31,81 @@ from sklearn.manifold import SpectralEmbedding
 ARPACK_MAX_N = 20000
 
 
+def _amg_spectral_embedding(adjacency: csr_matrix, n_dim: int, seed: int) -> np.ndarray:
+    """``SpectralEmbedding(eigen_solver="amg")``, with one dtype leak patched out.
+
+    Inside sklearn's amg path (``sklearn.manifold._spectral_embedding``), the
+    diagonal shift is built as ``diag_shift = 1e-5 * sparse.eye(N)``.
+    ``scipy.sparse.eye`` defaults to float64 regardless of the Laplacian's own
+    dtype, so ``laplacian += diag_shift`` silently promotes the whole matrix to
+    float64. That's harmless at N~150k (~1GB extra) but at N~3M the doubling
+    propagates through every level of pyamg's multigrid hierarchy plus the
+    LOBPCG working vectors, adding tens of GB and crashing the process
+    (SIGKILL, no clean Python exception — the OOM kill happens below Python's
+    exception machinery).
+
+    An earlier version of this function hand-reimplemented sklearn's whole amg
+    algorithm to fix this, but a transcription difference somewhere broke
+    eigenvector correctness (verified against sklearn's own arpack path on a
+    synthetic clustered graph: reimplementation scored ~0 ARI vs ~0.75 for both
+    sklearn's original amg and arpack). Far lower-risk: monkeypatch just the
+    one leaking call for the duration of sklearn's own (already-validated) code
+    path, so every other line runs exactly as it always has.
+
+    Forcing float32 alone *also* broke correctness the same way (~0 ARI) — a
+    second, independent bug: scipy's ``lobpcg(tol=None)`` defaults to
+    ``sqrt(eps(dtype)) * n``. At N~3M that's ~1069 in float32 (eps~1.19e-7) vs
+    ~46 in float64 (eps~2.22e-16) — a nonsensically loose tolerance that makes
+    LOBPCG report "converged" almost immediately on an unconverged, effectively
+    random result. Fixed by passing an explicit tolerance computed from
+    float64's epsilon regardless of the array's actual (float32) dtype, via
+    ``eigen_tol=`` — sklearn's own auto-tolerance formula, just no longer tied
+    to whatever dtype the array happens to be in.
+
+    Third change: pyamg's default ``smooth=('jacobi', ...)`` prolongation
+    smoothing adds substantial fill-in per multigrid level. On this project's
+    graphs (mutual-kNN union, not a mesh/PDE operator smoothed_aggregation was
+    designed for) it buys little — measured on a real 1.5M-node subset,
+    ``smooth=None`` (plain tentative-prolongation aggregation, i.e. classical
+    AMG-style coarsening without the smoothing step) cut peak memory roughly
+    3x with a clean 6-level hierarchy ([1.5M, 114k, 4k, 38, 11, 2]) vs. the
+    smoothed default, and produced numerically indistinguishable embeddings on
+    the same clustered-graph correctness check used to validate the dtype fix
+    above. sklearn's ``SpectralEmbedding`` doesn't expose this pyamg parameter
+    either, so it's injected the same way: monkeypatching the one call site.
+    """
+    import pyamg
+    import sklearn.manifold._spectral_embedding as _se_mod
+
+    orig_eye = _se_mod.sparse.eye
+    orig_solver = pyamg.smoothed_aggregation_solver
+
+    def _eye_no_promote(n, *args, **kwargs):
+        kwargs.setdefault("dtype", np.float32)
+        return orig_eye(n, *args, **kwargs)
+
+    def _solver_unsmoothed(A, *args, **kwargs):
+        kwargs.setdefault("smooth", None)
+        return orig_solver(A, *args, **kwargs)
+
+    tol = np.sqrt(np.finfo(np.float64).eps) * adjacency.shape[0]
+
+    _se_mod.sparse.eye = _eye_no_promote
+    pyamg.smoothed_aggregation_solver = _solver_unsmoothed
+    try:
+        se = SpectralEmbedding(
+            n_components=n_dim,
+            affinity="precomputed",
+            eigen_solver="amg",
+            eigen_tol=tol,
+            random_state=seed,
+        )
+        return se.fit_transform(adjacency).astype(np.float32)
+    finally:
+        _se_mod.sparse.eye = orig_eye
+        pyamg.smoothed_aggregation_solver = orig_solver
+
+
 def spectral_embedding(
     D_mixed: csr_matrix,
     n_dim: int,
@@ -86,6 +161,11 @@ def spectral_embedding(
                 RuntimeWarning,
             )
             eigen_solver = "lobpcg"
+        else:
+            # Bypass sklearn's SpectralEmbedding here — its amg path has a dtype
+            # leak (float64 promotion via sparse.eye's default dtype) that's
+            # catastrophic at N~3M; see _amg_spectral_embedding's docstring.
+            return _amg_spectral_embedding(A_mixed, n_dim, seed)
 
     se = SpectralEmbedding(
         n_components=n_dim,

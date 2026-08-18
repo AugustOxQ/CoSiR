@@ -374,6 +374,7 @@ class TrainableEmbeddingManager:
 
         img = np.concatenate(img_parts, axis=0)
         txt = np.concatenate(txt_parts, axis=0)
+        del img_parts, txt_parts  # superseded by img/txt; dead weight at N~3M scale
         fm_sample_ids = feature_manager.get_all_sample_ids()
 
         emb, edges = compute_buddy_init(

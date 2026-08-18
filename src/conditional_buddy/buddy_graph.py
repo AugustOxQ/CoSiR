@@ -188,6 +188,11 @@ def ensure_connected(
     """
     Make E a single connected component with minimal, content-aware bridge edges.
 
+    ``img_feats``/``txt_feats`` must already be L2-normalized — the sole caller
+    (``build_buddy_graphs``) always passes its own ``img_n``/``txt_n``, so
+    re-normalizing here would be a second full-size copy of dead-redundant work
+    (harmless at N~150k, ~6GB of pure waste per call at N~3M).
+
     A disconnected graph's Laplacian has one near-zero eigenvalue per connected
     component, so a low-dimensional spectral embedding is consumed by component
     indicators and carries no within-graph structure. ``ensure_min_degree`` fixes
@@ -209,11 +214,14 @@ def ensure_connected(
         return E, stats
 
     # mix-weighted concat feature; cos(concat) = α·cos_img + (1-α)·cos_txt
-    img_n = img_feats / (np.linalg.norm(img_feats, axis=1, keepdims=True) + 1e-12)
-    txt_n = txt_feats / (np.linalg.norm(txt_feats, axis=1, keepdims=True) + 1e-12)
-    concat = np.concatenate(
-        [np.sqrt(alpha) * img_n, np.sqrt(1.0 - alpha) * txt_n], axis=1
-    ).astype(np.float32)
+    # np.sqrt(alpha) is a numpy float64 scalar; under NEP 50 promotion rules
+    # (numpy>=2.0) multiplying a float32 array by it silently upcasts to float64,
+    # transiently doubling — then, across two terms plus the concat output, nearly
+    # quadrupling — memory here. At N~3M that's a ~51GB transient spike (fine at
+    # N~150k, ~2GB). Force float32 scalars so no promotion happens.
+    sqrt_a = np.float32(np.sqrt(alpha))
+    sqrt_1ma = np.float32(np.sqrt(1.0 - alpha))
+    concat = np.concatenate([sqrt_a * img_feats, sqrt_1ma * txt_feats], axis=1)
 
     n = E.shape[0]
     onehot = csr_matrix(
@@ -250,15 +258,28 @@ def ensure_connected(
 # ── Distances (Steps 3–4) ────────────────────────────────────────────────────
 
 
-def sparse_cosine_distance(feats: np.ndarray, E: csr_matrix) -> csr_matrix:
+def sparse_cosine_distance(
+    feats: np.ndarray, E: csr_matrix, batch_size: int = 1_000_000
+) -> csr_matrix:
     """
     Cosine distance (1 - cosine similarity) on the existing edges of E only.
 
     feats: (N, D) float32, L2-normalised. Returns a sparse matrix with E's sparsity.
+
+    Batched over edges: ``feats[rows]``/``feats[cols]`` gather one full feature row
+    per edge endpoint, materializing an (nnz, D) array. Fine at nnz~150k (~0.3GB),
+    but at nnz~54M (a real union-graph size at N~3M) that's a single ~110GB
+    allocation. Chunking bounds peak memory to batch_size rows regardless of nnz.
     """
     E_coo = E.tocoo()
     rows, cols = E_coo.row, E_coo.col
-    sim = np.einsum("nd,nd->n", feats[rows], feats[cols])
+    nnz = len(rows)
+    sim = np.empty(nnz, dtype=np.float32)
+    for start in range(0, nnz, batch_size):
+        end = min(start + batch_size, nnz)
+        sim[start:end] = np.einsum(
+            "nd,nd->n", feats[rows[start:end]], feats[cols[start:end]]
+        )
     dist = 1.0 - np.clip(sim, -1.0, 1.0)
     return csr_matrix((dist, (rows, cols)), shape=E.shape)
 
