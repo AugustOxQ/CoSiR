@@ -267,29 +267,35 @@ def compute_comb_all_eval(model, combine_feat_table, z_table, chunk: int = 4096)
 
     Eval mode disables dropout so the representation is the deterministic inference
     one (what retrieval sees); ``no_grad`` keeps it off the autograd tape. The model's
-    train/eval state is restored on exit. Returns [N, Dp] detached, on CPU.
+    train/eval state is restored on exit. Returns [N, Dp] detached, on the same
+    device as combine_feat_table (GPU, in practice).
 
-    Each chunk is moved to CPU before being appended: keeping them on GPU means the
-    ``combs`` list ends up holding the *entire* [N, Dp] table piecemeal by the time
-    the loop finishes, and ``torch.cat`` then needs to allocate a second, contiguous
-    [N, Dp] block to hold the result — transiently ~doubling the footprint at exactly
-    the moment GPU memory is most exhausted (this runs after most of a training
-    step's own allocations are already live). At N~150k that's noise; at N~3M it's
-    an extra multi-GB spike on top of an already-tight budget. This is an explicitly
-    diagnostic, no-gradient computation (see buddy_knn_preservation, its only
-    consumer) — CPU residency costs some CPU-matmul time there, not correctness.
+    Writes each chunk directly into a pre-allocated [N, Dp] output tensor instead of
+    appending to a list and torch.cat-ing at the end: the list-then-cat pattern holds
+    the *entire* table twice at the moment cat allocates its result (once piecemeal
+    across the list, once contiguous) — a transient GPU memory spike large enough to
+    OOM at N~3M. Pre-allocating once avoids that doubling entirely, with no need to
+    move off GPU. (An earlier version of this function moved chunks to CPU instead —
+    that fixed the memory spike but made its only consumer, buddy_knn_preservation,
+    silently ~1000x slower: that function's similarity matmul is O(N^2 * D), and a
+    CPU matmul is ~50-100x slower per-FLOP than the GPU it was validated on, on ~44x
+    more work at N=1M vs the N~150k it was designed for. No exception, no OOM — just
+    a computation that looked identical to a hang for hours. Staying on GPU keeps
+    both the memory fix and the speed the algorithm actually needs.)
     """
     was_training = model.training
     model.eval()
     try:
         with torch.no_grad():
             n = combine_feat_table.shape[0]
-            combs = []
+            out = None
             for s in range(0, n, chunk):
                 e = min(s + chunk, n)
-                c = model.combine(combine_feat_table[s:e], None, z_table[s:e].detach())
-                combs.append(c.detach().cpu())
-            return torch.cat(combs, dim=0)
+                c = model.combine(combine_feat_table[s:e], None, z_table[s:e].detach()).detach()
+                if out is None:
+                    out = torch.empty((n,) + c.shape[1:], device=c.device, dtype=c.dtype)
+                out[s:e] = c
+            return out
     finally:
         model.train(was_training)
 
@@ -317,11 +323,9 @@ def buddy_knn_preservation(
     even though this loop was already chunked, just not aggressively enough at this
     scale. Budgeted to keep each chunk's matmul under ~1.5GB regardless of N.
 
-    indptr/indices are moved to comb_all's device once, up front, if they differ —
-    compute_comb_all_eval (this function's sole feeder) now returns comb_all on CPU
-    at large N, while indptr/indices (built once from buddy_edges.npy) stay on
-    whatever device edge_index was on, typically GPU. Without this they'd mismatch
-    inside the vectorized buddy-lookup below.
+    indptr/indices are moved to comb_all's device once, up front, in case they ever
+    differ (e.g. a caller passing a CPU comb_all) — cheap and a no-op in the common
+    case where both are already on the same GPU.
 
     The per-node fraction is computed in edge-space (vectorized), not with a Python
     loop over each node: at N~150k a `for` loop over every node was slow but
