@@ -267,7 +267,17 @@ def compute_comb_all_eval(model, combine_feat_table, z_table, chunk: int = 4096)
 
     Eval mode disables dropout so the representation is the deterministic inference
     one (what retrieval sees); ``no_grad`` keeps it off the autograd tape. The model's
-    train/eval state is restored on exit. Returns [N, Dp] detached.
+    train/eval state is restored on exit. Returns [N, Dp] detached, on CPU.
+
+    Each chunk is moved to CPU before being appended: keeping them on GPU means the
+    ``combs`` list ends up holding the *entire* [N, Dp] table piecemeal by the time
+    the loop finishes, and ``torch.cat`` then needs to allocate a second, contiguous
+    [N, Dp] block to hold the result — transiently ~doubling the footprint at exactly
+    the moment GPU memory is most exhausted (this runs after most of a training
+    step's own allocations are already live). At N~150k that's noise; at N~3M it's
+    an extra multi-GB spike on top of an already-tight budget. This is an explicitly
+    diagnostic, no-gradient computation (see buddy_knn_preservation, its only
+    consumer) — CPU residency costs some CPU-matmul time there, not correctness.
     """
     was_training = model.training
     model.eval()
@@ -278,7 +288,7 @@ def compute_comb_all_eval(model, combine_feat_table, z_table, chunk: int = 4096)
             for s in range(0, n, chunk):
                 e = min(s + chunk, n)
                 c = model.combine(combine_feat_table[s:e], None, z_table[s:e].detach())
-                combs.append(c.detach())
+                combs.append(c.detach().cpu())
             return torch.cat(combs, dim=0)
     finally:
         model.train(was_training)
@@ -306,12 +316,20 @@ def buddy_knn_preservation(
     training has already committed a large chunk of it — torch.OutOfMemoryError,
     even though this loop was already chunked, just not aggressively enough at this
     scale. Budgeted to keep each chunk's matmul under ~1.5GB regardless of N.
+
+    indptr/indices are moved to comb_all's device once, up front, if they differ —
+    compute_comb_all_eval (this function's sole feeder) now returns comb_all on CPU
+    at large N, while indptr/indices (built once from buddy_edges.npy) stay on
+    whatever device edge_index was on, typically GPU. Without this they'd mismatch
+    inside torch.isin below.
     """
     device = comb_all.device
     N = comb_all.shape[0]
     q = F.normalize(comb_all, dim=-1)
     if chunk is None:
         chunk = max(1, min(2048, int(1.5e9 // (N * q.element_size()))))
+    indptr = indptr.to(device)
+    indices = indices.to(device)
     deg = indptr[1:] - indptr[:-1]
     total, count = 0.0, 0
     for s in range(0, N, chunk):
