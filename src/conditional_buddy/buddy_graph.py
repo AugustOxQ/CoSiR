@@ -7,10 +7,15 @@ Steps 1–4 of the conditional-buddies initialization pipeline:
     3. sparse_cosine_distance / ensure_min_degree
     4. rank_normalise_sparse / mix_distances
 
-All heavy nearest-neighbour search runs on the GPU via exact brute-force topk
-(mathematically identical to faiss.IndexFlatIP). The search is isolated behind
-``mutual_knn(..., backend=...)`` so an approximate cuvs backend can be swapped in
-for very large N without touching callers.
+Nearest-neighbour search runs behind ``mutual_knn(..., backend=...)``:
+"torch" is exact GPU brute-force topk (mathematically identical to
+faiss.IndexFlatIP) — O(N^2), the dominant cost of the whole pipeline at
+N~3M (~360s/modality measured). "cuvs" is approximate (CAGRA), effectively
+O(N log N) — measured 2.2x faster than exact already at N=1.5M (37s vs 84s),
+widening as N grows, at ~98-99% recall@K on real embeddings. "auto" (the
+mutual_knn default) picks by N: brute-force actually wins below ~500k (ANN
+index-build overhead isn't paid off yet — measured 3.2s exact vs 7.9s cuvs
+at N=300k), so there is no reason to prefer cuvs there.
 """
 
 from typing import Dict, Tuple
@@ -20,6 +25,12 @@ import torch
 import torch.nn.functional as F
 from scipy.sparse import csr_matrix, coo_matrix
 from scipy.sparse.csgraph import connected_components, minimum_spanning_tree
+
+# Below this N, exact brute-force topk is faster in practice (cuVS CAGRA's
+# index-build overhead dominates at small N); above it, exact's O(N^2) cost
+# starts to exceed cuvs's O(N log N)-ish cost. Measured crossover is between
+# 300k (exact wins, 3.2s vs 7.9s) and 1.5M (cuvs wins 2.2x, 37s vs 84s).
+CUVS_MIN_N = 500_000
 
 
 # ── Nearest-neighbour search (GPU brute-force) ───────────────────────────────
@@ -85,13 +96,54 @@ def _top1_indices_torch(
     return out
 
 
+def _knn_indices_cuvs(
+    feats_gpu: torch.Tensor,
+    K: int,
+    itopk_size: int = 128,
+) -> np.ndarray:
+    """
+    Approximate cosine top-K over all rows via cuVS CAGRA, self excluded.
+
+    Same contract as ``_knn_indices_torch``: feats_gpu is (N, D) L2-normalized on
+    the compute device, returns (N, K) int64 neighbour indices. CAGRA's distance
+    metric is inner-product on normalized vectors (== cosine similarity, matching
+    the exact backend's ranking exactly).
+
+    CAGRA requires float32 (fp16 not supported); the caller may have moved
+    features to fp16 for the exact backend's memory budget, so this always
+    upcasts its own copy regardless of feats_gpu's dtype.
+    """
+    from cuvs.neighbors import cagra
+
+    N = feats_gpu.shape[0]
+    feats_f32 = feats_gpu.float()
+    index = cagra.build(cagra.IndexParams(metric="inner_product"), feats_f32)
+    _, neighbors = cagra.search(
+        cagra.SearchParams(itopk_size=itopk_size), index, feats_f32, K + 1
+    )
+    neighbors = torch.as_tensor(neighbors, device=feats_gpu.device).long()  # [N, K+1]
+
+    # Self is almost always column 0 (a normalized vector's closest match is
+    # itself) but isn't guaranteed to be — and on rare approximate-search misses
+    # may not appear at all. Push any self-match to the end via a stable sort on
+    # "is this column self", then take the first K columns; if self never
+    # appears, this is equivalent to just dropping the K+1'th (least similar)
+    # neighbour, which is the correct fallback.
+    row_ids = torch.arange(N, device=feats_gpu.device).unsqueeze(1)
+    is_self = (neighbors == row_ids).float()
+    order = is_self.argsort(dim=1, stable=True)
+    gathered = torch.gather(neighbors, 1, order)
+    return gathered[:, :K].cpu().numpy()
+
+
 def mutual_knn(
     features: np.ndarray,
     K: int,
     device: str = "cuda",
     batch_size: int = 1024,
-    backend: str = "torch",
+    backend: str = "auto",
     use_half: bool = True,
+    itopk_size: int = 128,
 ) -> csr_matrix:
     """
     Build a mutual KNN adjacency matrix.
@@ -99,15 +151,38 @@ def mutual_knn(
     features: (N, D) float32 (L2-normalisation applied internally).
     Returns:  (N, N) sparse binary matrix A_mut where A_mut[i, j] = 1 iff j is in
               i's top-K AND i is in j's top-K.
+
+    backend: "auto" (default) picks "torch" (exact) below CUVS_MIN_N and "cuvs"
+        (approximate, CAGRA) above it — see module docstring for the measured
+        crossover. "torch" or "cuvs" force one explicitly. cuvs falls back to
+        torch with a warning if the package isn't importable (e.g. a lighter
+        install without the RAPIDS stack).
     """
-    if backend != "torch":
-        raise NotImplementedError(
-            f"mutual_knn backend '{backend}' not implemented; use 'torch'. "
-            "(A cuvs ANN backend can be added here for million-scale N.)"
-        )
     N = features.shape[0]
+    if backend == "auto":
+        backend = "cuvs" if N >= CUVS_MIN_N else "torch"
+    if backend == "cuvs":
+        try:
+            import cuvs  # noqa: F401
+        except ImportError:
+            import warnings
+
+            warnings.warn(
+                "mutual_knn backend='cuvs' requested but cuvs is not installed; "
+                "falling back to exact 'torch' (slower at large N, but correct).",
+                RuntimeWarning,
+            )
+            backend = "torch"
+    if backend not in ("torch", "cuvs"):
+        raise NotImplementedError(
+            f"mutual_knn backend '{backend}' not implemented; use 'torch', 'cuvs', or 'auto'."
+        )
+
     feats_gpu = _to_gpu_normalized(features, device, use_half)
-    indices = _knn_indices_torch(feats_gpu, K, batch_size)  # (N, K)
+    if backend == "cuvs":
+        indices = _knn_indices_cuvs(feats_gpu, K, itopk_size)  # (N, K)
+    else:
+        indices = _knn_indices_torch(feats_gpu, K, batch_size)  # (N, K)
 
     rows = np.repeat(np.arange(N), K)
     cols = indices.reshape(-1)
