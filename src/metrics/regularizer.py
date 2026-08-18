@@ -321,7 +321,17 @@ def buddy_knn_preservation(
     compute_comb_all_eval (this function's sole feeder) now returns comb_all on CPU
     at large N, while indptr/indices (built once from buddy_edges.npy) stay on
     whatever device edge_index was on, typically GPU. Without this they'd mismatch
-    inside torch.isin below.
+    inside the vectorized buddy-lookup below.
+
+    The per-node fraction is computed in edge-space (vectorized), not with a Python
+    loop over each node: at N~150k a `for` loop over every node was slow but
+    tolerable; at N~3M it's 3.1 million individual Python-level iterations —
+    tens of minutes of pure interpreter/dispatch overhead regardless of device,
+    fast enough to look "stuck" (no error, no progress, GPU idle) rather than
+    fast enough to look "slow." CSR rows [s, e) are contiguous in `indices` by
+    construction (see build_neighbor_csr), so each chunk's whole buddy-edge list
+    is one slice; every edge is checked against its owning node's top-k in one
+    batched comparison, then summed per node with scatter_add.
     """
     device = comb_all.device
     N = comb_all.shape[0]
@@ -338,12 +348,25 @@ def buddy_knn_preservation(
         sims = q[s:e] @ q.t()                                    # [b, N]
         sims[torch.arange(b, device=device), torch.arange(s, e, device=device)] = float("-inf")
         topk = sims.topk(k, dim=1).indices                      # [b, k]
-        for bi in range(b):
-            i = s + bi
-            d = int(deg[i])
-            if d == 0:
-                continue
-            bud = indices[indptr[i]:indptr[i + 1]]
-            total += torch.isin(bud, topk[bi]).sum().item() / d
-            count += 1
+
+        chunk_deg = deg[s:e]                                     # [b]
+        has_buddies = chunk_deg > 0
+        if not bool(has_buddies.any()):
+            continue
+
+        edge_lo = int(indptr[s].item())
+        edge_hi = int(indptr[e].item())
+        local_indices = indices[edge_lo:edge_hi]                 # [n_edges], CSR-contiguous over [s,e)
+        row_of_edge = torch.repeat_interleave(
+            torch.arange(b, device=device), chunk_deg
+        )                                                          # [n_edges] -> local row in [0, b)
+
+        edge_topk = topk[row_of_edge]                            # [n_edges, k]
+        matched = (edge_topk == local_indices.unsqueeze(1)).any(dim=1).float()  # [n_edges]
+
+        preserved = torch.zeros(b, device=device, dtype=torch.float32)
+        preserved.scatter_add_(0, row_of_edge, matched)
+        frac = preserved[has_buddies] / chunk_deg[has_buddies].float()
+        total += frac.sum().item()
+        count += int(has_buddies.sum().item())
     return total / max(count, 1)
