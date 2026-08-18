@@ -289,7 +289,7 @@ def buddy_knn_preservation(
     indptr: torch.Tensor,
     indices: torch.Tensor,
     k: int = 10,
-    chunk: int = 2048,
+    chunk: int = None,
 ) -> float:
     """Fraction of each node's CLIP-graph buddies that stay in its top-k comb-space NN.
 
@@ -298,10 +298,20 @@ def buddy_knn_preservation(
     symmetric CLIP CSR ``indptr``/``indices``) that land in that top-k. Averaged over
     nodes with degree > 0 (isolated nodes are skipped). Higher = training kept the buddy
     neighbourhood alive where retrieval lives. Pure diagnostic; no gradient.
+
+    chunk: rows of the [chunk, N] similarity matrix computed per iteration. Default
+    (None) scales inversely with N, capped at the original fixed default (2048) so
+    behavior at small/medium N is unchanged: at N~150k, 2048 rows is ~1.2GB fp32 —
+    fine. At N~3M it's ~25GB in one allocation, which alone exceeds the GPU when
+    training has already committed a large chunk of it — torch.OutOfMemoryError,
+    even though this loop was already chunked, just not aggressively enough at this
+    scale. Budgeted to keep each chunk's matmul under ~1.5GB regardless of N.
     """
     device = comb_all.device
     N = comb_all.shape[0]
     q = F.normalize(comb_all, dim=-1)
+    if chunk is None:
+        chunk = max(1, min(2048, int(1.5e9 // (N * q.element_size()))))
     deg = indptr[1:] - indptr[:-1]
     total, count = 0.0, 0
     for s in range(0, N, chunk):
