@@ -11,11 +11,14 @@ Nearest-neighbour search runs behind ``mutual_knn(..., backend=...)``:
 "torch" is exact GPU brute-force topk (mathematically identical to
 faiss.IndexFlatIP) — O(N^2), the dominant cost of the whole pipeline at
 N~3M (~360s/modality measured). "cuvs" is approximate (CAGRA), effectively
-O(N log N) — measured 2.2x faster than exact already at N=1.5M (37s vs 84s),
-widening as N grows, at ~98-99% recall@K on real embeddings. "auto" (the
-mutual_knn default) picks by N: brute-force actually wins below ~500k (ANN
-index-build overhead isn't paid off yet — measured 3.2s exact vs 7.9s cuvs
-at N=300k), so there is no reason to prefer cuvs there.
+O(N log N) — measured 2.2x faster than exact already at N=1.5M (37s vs 84s
+per modality), widening as N grows, at ~98-99% recall@K on real embeddings
+and equivalent downstream buddy-init quality. "auto" (the mutual_knn
+default) picks by N: brute-force still wins through at least N=500k (ANN
+index-build overhead isn't paid off yet — measured, both modalities via
+mutual_knn end-to-end on real data: 17.9s exact vs 31.1s cuvs at N=500k, on
+top of 3.2s vs 7.9s single-modality at N=300k), so there is no reason to
+prefer cuvs below the threshold.
 """
 
 from typing import Dict, Tuple
@@ -28,9 +31,13 @@ from scipy.sparse.csgraph import connected_components, minimum_spanning_tree
 
 # Below this N, exact brute-force topk is faster in practice (cuVS CAGRA's
 # index-build overhead dominates at small N); above it, exact's O(N^2) cost
-# starts to exceed cuvs's O(N log N)-ish cost. Measured crossover is between
-# 300k (exact wins, 3.2s vs 7.9s) and 1.5M (cuvs wins 2.2x, 37s vs 84s).
-CUVS_MIN_N = 500_000
+# starts to exceed cuvs's O(N log N)-ish cost. Measured on real embeddings,
+# both modalities via mutual_knn end-to-end: exact still wins at N=500k
+# (17.9s vs 31.1s cuvs); cuvs wins clearly by N=1.5M (~167s vs ~75s,
+# extrapolated x2 from the single-modality 83.7s/37.3s measurement). The
+# true crossover sits somewhere in between; 1M is a conservative middle
+# ground backed by data on both sides, not the exact crossover point.
+CUVS_MIN_N = 1_000_000
 
 
 # ── Nearest-neighbour search (GPU brute-force) ───────────────────────────────
