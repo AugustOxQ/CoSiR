@@ -19,6 +19,12 @@ set -euo pipefail
 # Normally called by the per-dataset wrappers (run_init_ablation_impressions.sh,
 # run_init_ablation_redcaps.sh), which set DATASET/EPOCHS/EVAL_INTERVAL/TEST_RATIO/
 # BASE_RESULTS_DIR/WANDB_TAG. Safe to call directly for ad-hoc reruns.
+#
+# EXTRA_OVERRIDES: raw space-separated Hydra overrides appended to every invocation,
+# for wrappers that need to override config keys this script doesn't otherwise expose
+# (e.g. data.train_annotation_path/featuremanager.storage_dir for a dataset-size slice
+# sharing the redcaps_full dataset group but pointing at a different annotation/feature
+# store — see run_init_ablation_redcaps_300k.sh / _500k.sh).
 
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
@@ -78,7 +84,8 @@ for STRAT in $INIT_STRATEGY_SWEEP; do
     wandb.group="$WANDB_GROUP" \
     +loss.log_buddy_preservation=true \
     ${TEST_RATIO:+eval.test_ratio=$TEST_RATIO} \
-    ${WANDB_TAG:+++wandb.tags=[$WANDB_TAG]}
+    ${WANDB_TAG:+++wandb.tags=[$WANDB_TAG]} \
+    ${EXTRA_OVERRIDES:-}
 done
 
 echo "==================================================================="
