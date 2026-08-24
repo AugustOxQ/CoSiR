@@ -379,3 +379,55 @@ def rank_normalise_sparse(D: csr_matrix) -> csr_matrix:
 def mix_distances(D_img_n: csr_matrix, D_txt_n: csr_matrix, alpha: float) -> csr_matrix:
     """Convex combination of the two rank-normalised distance matrices."""
     return (alpha * D_img_n + (1.0 - alpha) * D_txt_n).tocsr()
+
+
+def mix_distances_typed(
+    D_img_n: csr_matrix, D_txt_n: csr_matrix, A_img: csr_matrix, A_txt: csr_matrix,
+    alpha: float,
+) -> csr_matrix:
+    """
+    Modality-provenance-aware distance mixing. The fixed-alpha mix_distances() blends
+    BOTH modalities' distance on EVERY edge of E, regardless of which modality(ies)
+    originally justified that edge -- a diagnostic (src/test/20260824_buddy_graph_disagreement/)
+    found this collapses ~98% of a real buddy graph's edges (single-modality-only) from a
+    good rank (median 0.2-0.3) to statistical noise (median ~0.50) on real RedCaps data.
+
+    This function instead uses each edge's OWN supporting modality's rank-normalised
+    distance alone for edges supported by only one modality's mutual-kNN graph, and the
+    existing fixed-alpha blend for edges supported by BOTH (no disagreement to correct)
+    or by NEITHER (added by ensure_min_degree/ensure_connected -- not owned by either
+    modality, so there is no single supporting distance to prefer).
+
+    D_img_n, D_txt_n: rank-normalised distances on E's edges (same sparsity as each
+        other, i.e. both built via sparse_cosine_distance(feats, E) then
+        rank_normalise_sparse -- E's edges, not A_img's or A_txt's).
+    A_img, A_txt: the ORIGINAL per-modality mutual-kNN graphs (pre-union, pre-repair) --
+        used only to classify each edge of E, not to source any distance values.
+    """
+    N = D_img_n.shape[0]
+    coo = D_img_n.tocoo()
+    rows, cols = coo.row, coo.col
+    d_img = coo.data
+    # Index-based (not position-based) lookup -- do not assume D_txt_n's internal
+    # storage order matches D_img_n's; scipy does not guarantee this across independently
+    # rank-normalised matrices even when both share the same sparsity pattern.
+    d_txt = np.asarray(D_txt_n.tocsr()[rows, cols]).ravel()
+
+    def _keys(A: csr_matrix) -> np.ndarray:
+        A_coo = A.tocoo()
+        mask = A_coo.data != 0
+        k = A_coo.row[mask].astype(np.int64) * N + A_coo.col[mask].astype(np.int64)
+        k.sort()
+        return k
+
+    keys = rows.astype(np.int64) * N + cols.astype(np.int64)
+    in_img = np.isin(keys, _keys(A_img))
+    in_txt = np.isin(keys, _keys(A_txt))
+    img_only = in_img & ~in_txt
+    txt_only = ~in_img & in_txt
+
+    mixed = alpha * d_img + (1.0 - alpha) * d_txt  # default: "both" and "repair" edges
+    mixed = np.where(img_only, d_img, mixed)
+    mixed = np.where(txt_only, d_txt, mixed)
+
+    return csr_matrix((mixed, (rows, cols)), shape=D_img_n.shape)
