@@ -58,8 +58,20 @@ def fetch(entity, project, group, tag=None):
     import wandb
     api = wandb.Api()
     rows = []
+    skipped_unfinished = 0
     for run in api.runs(f"{entity}/{project}", filters={"group": group}):
         if tag and tag not in (run.tags or []):
+            continue
+        # A crashed/killed/still-running run can still have partial summary metrics
+        # (e.g. logged at epoch 0 before dying) that look like real numbers to
+        # compute_paired_deltas's per-cell .max(). Excluding anything but a clean
+        # finish is the only safe way to dedupe a cell that got re-run after a
+        # crash — .max() alone can silently prefer the crashed run's number over
+        # the real, fully-trained one (this happened: a driver-outage-killed run
+        # logged epoch-0 metrics that were numerically higher, by epoch-0 noise,
+        # than the finished run's converged ones).
+        if run.state != "finished":
+            skipped_unfinished += 1
             continue
         cfg, summ = run.config, run.summary
         pair = cget(cfg, ("train", "buddies", "encoder_pair"))
@@ -76,6 +88,8 @@ def fetch(entity, project, group, tag=None):
             cv = cget(cfg, cpath)
             row[cname] = cv
         rows.append(row)
+    if skipped_unfinished:
+        print(f"  ({skipped_unfinished} non-finished run(s) under this group excluded from analysis)")
     return pd.DataFrame(rows)
 
 
