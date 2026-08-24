@@ -16,6 +16,7 @@ from .buddy_graph import (
     ensure_connected,
     ensure_min_degree,
     mix_distances,
+    mix_distances_typed,
     mutual_knn,
     rank_normalise_sparse,
     sparse_cosine_distance,
@@ -92,6 +93,7 @@ def compute_buddy_init(
     connect_components: bool = True,
     return_edges: bool = False,
     b_weight: float = 1.0,
+    distance_mode: str = "blend",
     input_sample_ids: Optional[List[int]] = None,
     output_sample_ids: Optional[List[int]] = None,
 ) -> np.ndarray:
@@ -108,6 +110,11 @@ def compute_buddy_init(
                        connected). Required for a usable spectral init on fragmented
                        graphs — see ensure_connected.
     return_edges:      if True, return (emb, edges); if False (default) return emb only.
+    distance_mode:     'blend' (default) uses the existing fixed-alpha
+                       alpha*D_img+(1-alpha)*D_txt on every edge of E; 'typed' uses each
+                       edge's own supporting modality's rank alone for img-only/txt-only
+                       edges (see mix_distances_typed) -- 'blend' exactly reproduces the
+                       function's pre-2026-08-24 behavior; only pass 'typed' explicitly.
     Returns: (N, n_dim) float32 in ~[-1, 1], or if return_edges=True, a tuple (emb, edges)
              where edges is np.int64 [2, M] undirected edge list (i < j), with endpoints
              expressed as table positions in output_sample_ids order if reordering is
@@ -139,10 +146,18 @@ def compute_buddy_init(
     D_txt = sparse_cosine_distance(txt_n, E)
 
     # Step 4: rank-normalise and mix
-    D_mixed = mix_distances(
-        rank_normalise_sparse(D_img), rank_normalise_sparse(D_txt), alpha
-    )
-    print(f"[buddies] Step 4: mixed distance matrix nnz={D_mixed.nnz:,} (alpha={alpha})")
+    if distance_mode not in ("blend", "typed"):
+        raise ValueError(
+            f"Unknown distance_mode '{distance_mode}'. Use 'blend' (default) or 'typed'."
+        )
+    D_img_n = rank_normalise_sparse(D_img)
+    D_txt_n = rank_normalise_sparse(D_txt)
+    if distance_mode == "typed":
+        D_mixed = mix_distances_typed(D_img_n, D_txt_n, A_img, A_txt, alpha)
+    else:
+        D_mixed = mix_distances(D_img_n, D_txt_n, alpha)
+    print(f"[buddies] Step 4: mixed distance matrix nnz={D_mixed.nnz:,} "
+          f"(alpha={alpha}, distance_mode={distance_mode})")
 
     # Step 5: embed
     if method != "spectral":
