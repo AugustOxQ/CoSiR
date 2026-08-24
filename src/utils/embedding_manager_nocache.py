@@ -353,6 +353,7 @@ class TrainableEmbeddingManager:
         normalize_method: str = "rank",
         seed: int = 42,
         b_weight: float = 1.0,
+        feature_override: Optional[Tuple[np.ndarray, np.ndarray, List[int]]] = None,
     ) -> np.ndarray:
         """
         Conditional-buddies init: build the cross-modal mutual-KNN graph, embed it,
@@ -360,22 +361,35 @@ class TrainableEmbeddingManager:
 
         b_weight: B-lean affinity multiplier for strict-intersection buddies
                   (1.0 = off / union-only; >1 pulls strict buddies tighter).
+        feature_override: optional (img_feats, txt_feats, input_sample_ids) triple to
+                  build the graph from instead of feature_manager's own (CLIP) features
+                  — e.g. a non-CLIP (vision, text) encoder pair for the buddy-init
+                  encoder-pair ablation (Experiment 8, docs/superpowers/specs/
+                  2026-08-04-buddy-publication-plan-design.md). img_feats/txt_feats must
+                  be row-aligned to input_sample_ids. Only the GRAPH SOURCE changes —
+                  the frozen training backbone is untouched either way. When given,
+                  feature_manager is not accessed at all (may be None).
         """
         from src.conditional_buddy import compute_buddy_init
 
         print(f"[EmbeddingManager] Buddies init (method={method}, K={k}, alpha={alpha})…")
-        img_parts: List[np.ndarray] = []
-        txt_parts: List[np.ndarray] = []
-        num_shards = feature_manager.get_num_chunks()
-        for shard_id in tqdm(range(num_shards), desc="Loading features"):
-            feats = feature_manager.get_features_by_chunk(shard_id)
-            img_parts.append(feats["img_features"].cpu().numpy().astype(np.float32))
-            txt_parts.append(feats["txt_features"].cpu().numpy().astype(np.float32))
 
-        img = np.concatenate(img_parts, axis=0)
-        txt = np.concatenate(txt_parts, axis=0)
-        del img_parts, txt_parts  # superseded by img/txt; dead weight at N~3M scale
-        fm_sample_ids = feature_manager.get_all_sample_ids()
+        if feature_override is not None:
+            img, txt, fm_sample_ids = feature_override
+            print(f"[EmbeddingManager] Using feature_override — {img.shape[0]} rows "
+                  f"(bypassing feature_manager for graph source)")
+        else:
+            img_parts: List[np.ndarray] = []
+            txt_parts: List[np.ndarray] = []
+            num_shards = feature_manager.get_num_chunks()
+            for shard_id in tqdm(range(num_shards), desc="Loading features"):
+                feats = feature_manager.get_features_by_chunk(shard_id)
+                img_parts.append(feats["img_features"].cpu().numpy().astype(np.float32))
+                txt_parts.append(feats["txt_features"].cpu().numpy().astype(np.float32))
+            img = np.concatenate(img_parts, axis=0)
+            txt = np.concatenate(txt_parts, axis=0)
+            del img_parts, txt_parts  # superseded by img/txt; dead weight at N~3M scale
+            fm_sample_ids = feature_manager.get_all_sample_ids()
 
         emb, edges = compute_buddy_init(
             img,
