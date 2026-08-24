@@ -34,7 +34,11 @@ def _synthetic_data(n_subs=20, per_sub=30, seed=1):
     edges = []
     for s in range(n_subs):
         idx = np.where(sub_id == s)[0]
-        n_edges = 100 + s * 10  # increasing density -> increasing lift by construction
+        n_edges = 100 + s * 10  # increasing density -> DECREASING lift by construction:
+        # every edge here is same-subreddit, so obs_s ~ deg_s ~ 2*n_edges and
+        # exp_s = deg_s * p_s = deg_s^2 / total_endpoints, giving lift_s = obs_s/exp_s
+        # ~ total_endpoints / deg_s — inversely proportional to this subreddit's own
+        # edge density, not increasing with it.
         pairs = rng.choice(idx, size=(n_edges, 2))
         edges.extend(pairs.tolist())
     e = np.array(edges, dtype=np.int64)
@@ -46,8 +50,9 @@ def test_top_k_none_returns_all_qualifying():
     result_all = subreddit_lift(data, e, top_k=None)
     result_15 = subreddit_lift(data, e, top_k=15)
     assert len(result_15["top_enriched"]) == 15
-    assert len(result_all["top_enriched"]) >= 15, (
-        f"expected >=15 qualifying subreddits, got {len(result_all['top_enriched'])}"
+    assert len(result_all["top_enriched"]) == 20, (
+        f"expected exactly 20 qualifying subreddits (the synthetic fixture guarantees "
+        f"all 20 clear exp_s > 5), got {len(result_all['top_enriched'])}"
     )
     # The top-15 (by lift, descending) from the top_k=None result must exactly match the
     # top_k=15 result — same ranking, just not truncated.
