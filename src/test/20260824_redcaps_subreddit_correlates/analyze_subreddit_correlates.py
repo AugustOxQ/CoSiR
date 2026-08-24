@@ -59,35 +59,63 @@ def subreddit_properties(data):
     return props
 
 
-def correlate(lift_by_sub: dict, props_by_sub: dict):
-    """Pearson r AND Spearman rho between per-subreddit lift and each of the three
+def correlate(metric_by_sub: dict, props_by_sub: dict):
+    """Pearson r AND Spearman rho between a per-subreddit metric (lift, or the
+    enrichment z-score — anything keyed by subreddit name) and each of the three
     properties, over subreddits present in both dicts. Pearson only detects linear
     association; Spearman (rank correlation) also catches a monotone-but-nonlinear
     relationship, which matters here because lift vs. size is exactly that (see the
     report's log-x scatter panel). Returns
     {property_name: {"pearson": (r, n), "spearman": (rho, n)}}.
     """
-    names = [n for n in lift_by_sub if n in props_by_sub]
-    lifts = np.array([lift_by_sub[n] for n in names])
+    names = [n for n in metric_by_sub if n in props_by_sub]
+    vals_metric = np.array([metric_by_sub[n] for n in names])
     out = {}
     for prop in ("size", "caption_diversity", "visual_homogeneity"):
         vals = np.array([props_by_sub[n][prop] for n in names])
-        mask = ~np.isnan(lifts) & ~np.isnan(vals)
+        mask = ~np.isnan(vals_metric) & ~np.isnan(vals)
         n = int(mask.sum())
         if n < 3:
             out[prop] = {"pearson": (float("nan"), n), "spearman": (float("nan"), n)}
             continue
-        r = float(np.corrcoef(lifts[mask], vals[mask])[0, 1])
-        rho, _p = spearmanr(lifts[mask], vals[mask])
+        r = float(np.corrcoef(vals_metric[mask], vals[mask])[0, 1])
+        rho, _p = spearmanr(vals_metric[mask], vals[mask])
         out[prop] = {"pearson": (r, n), "spearman": (float(rho), n)}
     return out
 
 
-def run():
+def _print_correlation(label: str, corr: dict):
+    print(f"\nCorrelation(subreddit {label}, property) — Pearson (linear) and Spearman (monotone rank):")
+    for prop, stats in corr.items():
+        r, n_p = stats["pearson"]
+        rho, n_s = stats["spearman"]
+        print(f"  {prop:>20}: pearson r={r:+.3f}  spearman rho={rho:+.3f}  (n={n_p} subreddits)")
+
+
+# Scale -> (storage_dir, annotation_path). "150k" uses redcaps_buddy's own defaults
+# (None -> don't override). 300k/500k point at the UNIFORM-RANDOM diverse subsamples
+# built by build_subsample.py (all 350 subreddits present) -- NOT Experiment 1's
+# same-named training feature stores, which are raw prefixes of a subreddit-grouped
+# file and only span 15/28 subreddits respectively (see docs/reports/
+# 2026-08-24_redcaps_subreddit_signal_correlates.md's scale-extension section).
+SCALES = {
+    "150k": (None, None),
+    "300k": ("/data/SSD2/pre_extract/redcaps_300k_diverse/features",
+             "/data/PDD/redcaps/redcaps_plus/redcaps_300k_diverse.json"),
+    "500k": ("/data/SSD2/pre_extract/redcaps_500k_diverse/features",
+             "/data/PDD/redcaps/redcaps_plus/redcaps_500k_diverse.json"),
+}
+
+
+def run(scale: str = "150k"):
     import redcaps_buddy as rb
 
-    print("Loading RedCaps data + buddy graph...")
-    data = rb.load_data()
+    storage_dir, annotation_path = SCALES[scale]
+    print(f"Loading RedCaps data ({scale}) + buddy graph...")
+    if storage_dir is None:
+        data = rb.load_data()
+    else:
+        data = rb.load_data(storage_dir=storage_dir, annotation_path=annotation_path)
     # Reuses the same buddy-graph construction path as the rest of the RedCaps buddy
     # analysis (K=30 — the project-wide default, configs/train/default.yaml). `alpha`
     # is not a parameter of this path: union_graph combines two unweighted mutual-kNN
@@ -114,15 +142,39 @@ def run():
     print(f"  overall_lift={lift_result['overall_lift']:.2f}x over "
           f"{len(lift_result['top_enriched'])} qualifying subreddits")
 
+    print("Computing per-subreddit enrichment z-score (significance, complementing lift's "
+          "effect-size-only ratio)...")
+    z_result = rb.subreddit_enrichment_zscore(data, e, top_k=None)
+    z_by_sub = {name: z for name, z, _m in z_result["top_enriched"]}
+    m_by_sub = {name: m for name, _z, m in z_result["top_enriched"]}
+    print(f"  z_overall={z_result['z_overall']:.1f} over "
+          f"{len(z_result['top_enriched'])} subreddits passing the z reliability filter "
+          f"(vs. {len(lift_by_sub)} passing lift's filter — the two nulls have different "
+          f"minimum-count requirements, see subreddit_enrichment_zscore's docstring)")
+
     print("Computing per-subreddit properties (size, caption diversity, visual homogeneity)...")
     props_by_sub = subreddit_properties(data)
 
     corr = correlate(lift_by_sub, props_by_sub)
-    print("\nCorrelation(subreddit lift, property) — Pearson (linear) and Spearman (monotone rank):")
-    for prop, stats in corr.items():
-        r, n_p = stats["pearson"]
-        rho, n_s = stats["spearman"]
-        print(f"  {prop:>20}: pearson r={r:+.3f}  spearman rho={rho:+.3f}  (n={n_p} subreddits)")
+    _print_correlation("lift", corr)
+
+    z_corr = correlate(z_by_sub, props_by_sub)
+    _print_correlation("z-score", z_corr)
+
+    # --- Does z suffer the same size confound lift does? ---
+    # lift is structurally pulled toward 1/size (see the purity check below); z, being a
+    # count-based significance statistic, should if anything correlate POSITIVELY with
+    # size (bigger subreddits -> more edges -> more statistical power to detect a fixed
+    # true effect) rather than negatively -- checking this directly rather than assuming it.
+    names_lz = [n for n in z_by_sub if n in props_by_sub]
+    z_common = np.array([z_by_sub[n] for n in names_lz])
+    size_common_z = np.array([props_by_sub[n]["size"] for n in names_lz], dtype=np.float64)
+    rho_size_z, _ = spearmanr(size_common_z, z_common)
+    r_logsize_z = float(np.corrcoef(np.log(size_common_z), z_common)[0, 1])
+    print(f"\nz-score vs. size (sanity check against lift's known 1/size confound):")
+    print(f"  spearman size vs z : {rho_size_z:+.3f}  "
+          f"({'positive as expected (more power at larger N)' if rho_size_z > 0 else 'UNEXPECTED: negative, investigate before trusting z'})")
+    print(f"  pearson  log(size) vs z : {r_logsize_z:+.3f}")
 
     # --- Purity check: is the size effect content-driven or a normalization artifact? ---
     # subreddit_lift computes, per subreddit s: p_s = deg_s / total_endpoints,
@@ -155,40 +207,48 @@ def run():
     print(f"  pearson  log(size)  vs lift            : {r_logsize_lift:+.3f}")
     print(f"  pearson  log(size)  vs log(lift)       : {r_logsize_loglift:+.3f}")
 
-    # --- Full per-subreddit table (name, lift, size, deg_s, purity), sorted by lift desc ---
+    # --- Full per-subreddit table (name, lift, z, size, deg_s/M_s, purity), sorted by lift desc ---
     print(f"\nFull per-subreddit table ({len(names_common)} subreddits, sorted by lift desc):")
-    header = f"{'subreddit':<24}{'lift':>10}{'size':>8}{'deg_s':>8}{'purity':>9}"
+    header = f"{'subreddit':<24}{'lift':>10}{'z':>10}{'size':>8}{'deg_s':>8}{'M_s':>8}{'purity':>9}"
     print(header)
     for n in sorted(names_common, key=lambda x: -lift_by_sub[x]):
-        print(f"{n:<24}{lift_by_sub[n]:>10.2f}{props_by_sub[n]['size']:>8}"
-              f"{deg_by_sub[n]:>8}{purity_by_sub[n]:>9.4f}")
+        z_str = f"{z_by_sub[n]:>10.1f}" if n in z_by_sub else f"{'--':>10}"
+        m_str = f"{m_by_sub[n]:>8}" if n in m_by_sub else f"{'--':>8}"
+        print(f"{n:<24}{lift_by_sub[n]:>10.2f}{z_str}{props_by_sub[n]['size']:>8}"
+              f"{deg_by_sub[n]:>8}{m_str}{purity_by_sub[n]:>9.4f}")
 
-    _write_figure(lift_by_sub, props_by_sub)
-    return lift_by_sub, props_by_sub, corr, purity_by_sub
+    _write_figure(lift_by_sub, z_by_sub, props_by_sub, scale)
+    return lift_by_sub, z_by_sub, props_by_sub, corr, z_corr, purity_by_sub
 
 
-def _write_figure(lift_by_sub, props_by_sub):
+def _write_figure(lift_by_sub, z_by_sub, props_by_sub, scale: str = "150k"):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    names = [n for n in lift_by_sub if n in props_by_sub]
-    lifts = [lift_by_sub[n] for n in names]
     out_dir = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..", "..", "..",
         "docs", "reports", "assets", "redcaps_subreddit_correlates")
     os.makedirs(out_dir, exist_ok=True)
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
-    for ax, prop in zip(axes, ("size", "caption_diversity", "visual_homogeneity")):
-        vals = [props_by_sub[n][prop] for n in names]
-        ax.scatter(vals, lifts, s=14, alpha=0.6)
-        ax.set_xlabel(prop)
-        ax.set_ylabel("subreddit lift")
-        if prop == "size":
-            ax.set_xscale("log")
+    fig, axes = plt.subplots(2, 3, figsize=(15, 9))
+    for row, (metric_by_sub, metric_label) in enumerate(
+        [(lift_by_sub, "subreddit lift"), (z_by_sub, "enrichment z-score")]
+    ):
+        names = [n for n in metric_by_sub if n in props_by_sub]
+        vals_metric = [metric_by_sub[n] for n in names]
+        for col, prop in enumerate(("size", "caption_diversity", "visual_homogeneity")):
+            ax = axes[row, col]
+            vals = [props_by_sub[n][prop] for n in names]
+            ax.scatter(vals, vals_metric, s=14, alpha=0.6)
+            ax.set_xlabel(prop)
+            ax.set_ylabel(metric_label)
+            if prop == "size":
+                ax.set_xscale("log")
+    fig.suptitle(f"RedCaps subreddit signal-strength correlates — {scale} scale")
     fig.tight_layout()
-    path = os.path.join(out_dir, "lift_vs_properties.png")
+    fname = "lift_vs_properties.png" if scale == "150k" else f"lift_vs_properties_{scale}.png"
+    path = os.path.join(out_dir, fname)
     fig.savefig(path, dpi=130)
     plt.close(fig)
     print(f"wrote {path}")
@@ -286,8 +346,9 @@ if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--scale", choices=list(SCALES.keys()), default="150k")
     args = ap.parse_args()
     if args.selftest:
         _selftest()
     else:
-        run()
+        run(scale=args.scale)

@@ -1,7 +1,7 @@
 # What predicts buddy-signal strength across RedCaps subreddits? — Experiment 9
 
-**Date:** 2026-08-24 · **Dataset:** RedCaps-150k (`redcaps_150k.json`, same cache as `2026-06-23_redcaps_buddy.md`) · **Branch:** `experiment/buddy_init_ablation`
-**Code:** `src/test/20260824_redcaps_subreddit_correlates/analyze_subreddit_correlates.py` (analysis), `src/test/20260623_redcaps_buddy/redcaps_buddy.py` (`subreddit_lift`, extended to return every qualifying subreddit, not just top-15)
+**Date:** 2026-08-24 (extended same day with a z-score companion metric and a 150k→300k→500k scale check) · **Dataset:** RedCaps at three independently-drawn, uniform-random, all-350-subreddit scales — 150k (`redcaps_150k.json`), 300k (`redcaps_300k_diverse.json`), 500k (`redcaps_500k_diverse.json`) · **Branch:** `experiment/buddy_init_ablation`
+**Code:** `src/test/20260824_redcaps_subreddit_correlates/analyze_subreddit_correlates.py` (analysis, `--scale {150k,300k,500k}`), `src/test/20260623_redcaps_buddy/redcaps_buddy.py` (`subreddit_lift` extended to return every qualifying subreddit; `subreddit_enrichment_zscore`, new; `load_data` parameterized over scale), `src/test/20260623_redcaps_buddy/build_subsample.py` + `extract_features.py` (generalized to build/extract any scale, not just 150k)
 **Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 9
 **Precursor:** `docs/reports/2026-06-23_redcaps_buddy.md` (the original aggregate ~20× lift finding this deepens)
 
@@ -18,6 +18,8 @@ RedCaps' aggregate ~20× same-subreddit buddy-edge lift (C1) is not evenly distr
 | visual homogeneity (mean pairwise image-cosine-sim) | +0.204 | +0.230 | 159 |
 
 **Caption diversity and visual homogeneity are genuinely null** — weak under both Pearson and Spearman, no reasonable transform moves them. **Size is not null.** Its Pearson r (−0.328) understates the relationship because lift vs. size is a curved, not straight-line, association — visible in the report's own log-x scatter panel. Rank correlation and log-transforms, which are appropriate for a curved monotone relationship, both clear a "moderate" threshold: Spearman ρ = **−0.523**, Pearson on log(size) vs. lift = **−0.509**, Pearson on log(size) vs. log(lift) = **−0.583**. Bigger, more generic subreddits (`pics`, `cats`, `food`, `foodporn`) sit at the low-lift end; small, visually/topically distinctive niches (`f1porn`, `scotch`, `trains`, `sushi`) sit at the high-lift end.
+
+**Extension (same day): a confidence-aware companion metric, and a scale check.** Lift is a pure effect-size ratio — it says nothing about how much evidence backs a given estimate, and a huge lift from a handful of edges is not more trustworthy than a modest lift backed by thousands. We added `subreddit_enrichment_zscore` (§Method) as a companion significance statistic, and re-ran the full analysis at two more independently-drawn, all-350-subreddit RedCaps scales (300k, 500k) to check whether the findings above are an artifact of a small N or hold up as more data arrives. Headline results: (1) the z-score behaves as intended — unlike lift, it correlates *positively* with size (more data → more statistical confidence, not less), directly confirming lift's negative size-correlation is a metric artifact, not a real property of the underlying signal; (2) every finding above — the two nulls, the real-but-structural size effect, the aggregate ~22.8× lift — reproduces at 300k and 500k with the same signs and comparable magnitudes, and subreddit coverage (fraction of the 350 that clear the reliability filter) rises monotonically with N (159→197→214 for lift, 124→157→185 for z), exactly as expected if more data is genuinely rescuing small subreddits into measurability rather than the picture being unstable. See §"Enrichment z-score" and §"Scale robustness" below.
 
 **But the mechanism is not "large subreddits are topically diluted."** We tested that directly using each subreddit's *purity* (the fraction of its buddy-edge endpoints that land on another same-subreddit sample, recovered from `subreddit_lift`'s own internals — see Method). If large subreddits were less topically exclusive, purity should *fall* with size. It does the opposite: purity **rises** with size (Spearman ρ = **+0.214**, Pearson log(size) vs. purity = **+0.187**). The real explanation is structural, not content-driven: a subreddit's edge-endpoint degree `deg_s` tracks its size almost exactly (Spearman ρ = **+0.973**), and `subreddit_lift`'s own formula divides by an expected count that scales with `deg_s` — so at any fixed purity, lift is mechanically pulled toward `1/deg_s`, i.e. toward `1/size`. Large subreddits (e.g. `cats`, purity 0.53; `food`, purity 0.39) can have decent purity and still post low lift purely because their `deg_s` is enormous — the metric's own normalization, not their content, caps how high their lift can go. This is a legitimate null result for caption diversity and visual homogeneity, and a real-but-structural (not content-driven) finding for size — none of it weakens C1's core claim that the signal itself is real.
 
@@ -66,6 +68,31 @@ This matters because the largest qualifying subreddits run into the thousands of
 ### Correlation
 
 Both Pearson `r` and Spearman rank correlation `ρ` (`scipy.stats.spearmanr`) between per-subreddit lift and each property, over the subreddits present in both the lift table (passed `exp_s > 5`) and the properties table (passed `size >= MIN_SUBREDDIT_SIZE`) — 159 subreddits in the actual run (see Results). Pearson only detects a straight-line relationship; Spearman also catches a monotone-but-curved one, which turns out to matter for `size` (see Results and TL;DR).
+
+### Enrichment z-score (a confidence companion to lift)
+
+Lift conflates *effect size* with *reliability*: a lift of 300× from a handful of edges in a 150-sample subreddit is not more trustworthy than a lift of 80× backed by tens of thousands of edges. `redcaps_buddy.subreddit_enrichment_zscore(data, e, top_k=None)` adds a companion significance statistic under the same simplifying null `subreddit_lift` itself uses (each edge's two endpoints as independent draws from the subreddit marginal `p`) — the same closed-form-analytic-null style already used for the cross-VLM agreement check (`cross_vlm_buddy.py`'s `chance_null_jaccard`), not a Monte Carlo permutation:
+
+```
+M = total edges;  M_s = edges with BOTH endpoints in subreddit s (= obs_s / 2)
+mu_s  = M * p_s^2          (expected M_s under the null)
+var_s = M * p_s^2 * (1 - p_s^2)
+z_s   = (M_s - mu_s) / sqrt(var_s)
+```
+
+Reliability filter mirrors `subreddit_lift`'s `exp_s > 5` rule, applied to `mu_s` (expected same-subreddit *edge* count, not endpoint count) — stricter than lift's filter in practice, since `mu_s` and `exp_s` are on different scales (fewer subreddits clear it; see Results). **Caveat, stated up front:** this null treats edges as independent Bernoulli trials, which is an approximation (edges share nodes, so they aren't truly independent) — the same simplification `subreddit_lift`'s own baseline already makes. Treat `z` as a useful relative ranking of confidence, not an exact p-value. At the scales tested here (1.4–5.7M edges), z-scores are uniformly large (median in the hundreds) — a classic large-N effect where almost every measurable subreddit clears "statistically real" by a wide margin. This makes z's *absolute* value uninformative for "is the aggregate signal real" (C1–C3 already answer that) — its value here is entirely in its *relative* ranking and how that ranking correlates against the three properties, differently from lift.
+
+Verified before use: on synthetic data, `z` matches a hand-derivation of the formula above exactly, and correctly assigns a *smaller* z to a small-sample/high-lift subreddit than to a large-sample subreddit with comparable or smaller lift (`src/test/20260824_redcaps_subreddit_correlates/test_subreddit_zscore.py`).
+
+### Multi-scale extension: why not just reuse Experiment 1's existing 300k/500k feature stores?
+
+Experiment 1's training ablations already have extracted RedCaps feature stores at 300k/500k/1M (`/data/SSD2/pre_extract/redcaps_{300k,500k,1M}/features`, built from `redcaps_train_{300000,500000,1000000}.json`). These looked like a free scale-up — until checked directly: `redcaps_train.json` (the 3.1M-row full corpus) is **grouped by subreddit, not shuffled**, so a prefix slice is badly biased. First 300k rows → only **15** subreddits (68% `pics`); first 500k → 28; first 1M → 69. Only the complete 3.1M file naturally spans all 350. Fine for training (subreddit isn't a factor there); fatal for a subreddit-diversity study — it would test "do a handful of huge subreddits look different at more N," not "does the same ~350-subreddit picture get more complete with more data."
+
+The 150k file avoided this because it was never a prefix: `build_subsample.py` uniform-randomly samples (seed 42) from `redcaps_medium.json` (1.55M rows, all 350 subreddits present, natural frequencies) specifically *because* the source is subreddit-grouped — its own docstring says so. That script (and `extract_features.py`, which encodes a sample into a CLIP feature store) were generalized with CLI arguments (`--n`/`--out`/`--seed` and `--annot`/`--storage` respectively; both default to the exact original 150k invocation, and both refuse to overwrite an existing output unless `--force`'d, protecting the files other experiments already depend on) and re-run at `n=300000` and `n=500000`, writing to **new**, non-colliding paths (`redcaps_{300k,500k}_diverse.json`, `/data/SSD2/pre_extract/redcaps_{300k,500k}_diverse/features`) so nothing here touches Experiment 1's existing training assets. Both new samples confirmed all 350 subreddits present before running any analysis.
+
+`redcaps_buddy.load_data()` gained optional `storage_dir`/`annotation_path` parameters (defaulting to the original 150k `STORAGE`/`ANNOT` constants — every existing caller that calls it with no arguments is unaffected) and `analyze_subreddit_correlates.py` gained a `--scale {150k,300k,500k}` flag mapping to the three (storage, annotation) pairs.
+
+**These are three independently-drawn samples, not nested subsets** — the 300k sample is not "the 150k sample plus 150k more," it is a fresh uniform draw from `redcaps_medium.json`. This is why the results below are a genuine robustness check (does a differently-composed sample of comparable-and-larger size tell the same story), not merely "the same subreddits with more repeated data."
 
 ---
 
@@ -180,7 +207,41 @@ The real driver is structural, in the lift formula's own normalization. `subredd
 
 ![Lift vs. the three properties](assets/redcaps_subreddit_correlates/lift_vs_properties.png)
 
-Three scatter panels (size on a log x-axis, caption diversity, visual homogeneity — each vs. subreddit lift on the y-axis) generated by the script's `_write_figure()`. The caption-diversity and visual-homogeneity panels show a broad, noisy cloud, consistent with their null correlations. The size panel (already log-x) shows a visibly curved downward trend, not a straight line — the reason a linear Pearson r understates the size relationship while Spearman and the log-log Pearson recover it.
+Three scatter panels (size on a log x-axis, caption diversity, visual homogeneity — each vs. subreddit lift on the y-axis) generated by the script's `_write_figure()`. The caption-diversity and visual-homogeneity panels show a broad, noisy cloud, consistent with their null correlations. The size panel (already log-x) shows a visibly curved downward trend, not a straight line — the reason a linear Pearson r understates the size relationship while Spearman and the log-log Pearson recover it. (Since this extension, `_write_figure()` produces a 2×3 grid — lift on the top row, z-score on the bottom — at each scale; the 150k figure keeps its original filename for continuity with the citation above, 300k/500k are `lift_vs_properties_{300k,500k}.png`.)
+
+### z-score correlations (150k)
+
+Same three properties, now against the enrichment z-score instead of lift:
+
+| Property | Pearson r | Spearman ρ | n |
+|---|---:|---:|---:|
+| size | +0.090 | **+0.221** | 124 |
+| caption diversity | −0.278 | −0.209 | 124 |
+| visual homogeneity | +0.140 | +0.157 | 124 |
+
+**The size relationship flips sign relative to lift** (lift: ρ=−0.523; z: ρ=+0.221) — exactly as predicted in Method: z is a count-based confidence statistic, so more data (bigger subreddits, more edges) means more statistical power to detect a fixed true effect, not less. This is independent confirmation, from a completely different statistical construction, that lift's negative size correlation is a property of *lift's own normalization*, not of the underlying signal — the same conclusion the purity analysis reached from a different angle. Caption diversity and visual homogeneity remain weak/null under z, consistent with lift — the null isn't an artifact of which metric is used.
+
+### Scale robustness (150k → 300k → 500k)
+
+Three **independently-drawn**, uniform-random, all-350-subreddit RedCaps samples (see Method) were run through the identical pipeline. All headline numbers reproduce with the same signs and comparable magnitudes, and subreddit coverage improves monotonically with N — evidence that more data is genuinely rescuing small subreddits into measurability, not that the 150k picture was unstable:
+
+| Metric | 150k | 300k | 500k |
+|---|---:|---:|---:|
+| overall lift | 22.80× | 22.74× | 22.79× |
+| lift-qualifying subreddits (of 350) | 159 (45%) | 197 (56%) | 214 (61%) |
+| z-qualifying subreddits (of 350) | 124 (35%) | 157 (45%) | 185 (53%) |
+| z_overall | 3,347 | 4,739 | 6,113 |
+| lift vs. size — Pearson / Spearman | −0.328 / −0.523 | −0.311 / −0.532 | −0.319 / −0.590 |
+| lift vs. caption diversity — Pearson / Spearman | −0.219 / −0.224 | −0.218 / −0.242 | −0.206 / −0.251 |
+| lift vs. visual homogeneity — Pearson / Spearman | +0.204 / +0.230 | +0.175 / +0.221 | +0.159 / +0.206 |
+| z vs. size — Pearson / Spearman | +0.090 / +0.221 | +0.081 / +0.163 | +0.112 / +0.226 |
+| purity vs. size — Spearman | +0.214 | +0.269 | +0.257 |
+| log(size) vs. lift — Pearson | −0.509 | −0.492 | −0.533 |
+| log(size) vs. log(lift) — Pearson | −0.583 | −0.599 | −0.643 |
+
+Reading across the row: **overall lift is essentially scale-invariant** (22.7–22.8× at all three N — a strong internal consistency check, since these are three disjoint random draws, not the same data re-measured). **Coverage rises monotonically** (159→197→214 for lift, 124→157→185 for z), confirming the earlier prediction that proportional scale-up would rescue subreddits currently excluded by the `exp_s > 5` / `mu_s > 5` reliability filters, rather than the exclusion being a hard ceiling independent of N. **Every correlation keeps its sign and stays in the same rough band** across all three scales — z vs. size stays positive throughout (opposite of lift, as designed), the two nulls (caption diversity, visual homogeneity) stay weak under both lift and z at every scale, and the size/purity mechanism finding (purity rises with size, ρ≈+0.21–0.27 throughout) holds at every scale tested. No qualitative finding in this report is an artifact of the 150k sample size specifically.
+
+**What this does and doesn't establish.** This confirms the picture is *stable under more of the same kind of data* — it does not yet test 1M or the full 3.1M corpus (deliberately deferred: the plan was to confirm the metric and the trend hold at 150k→500k before committing more compute, per the design discussion preceding this run). Given the monotonic coverage trend already observed, the natural next checkpoint is whether 1M/3.1M continues rescuing subreddits at a similar rate or plateaus — genuinely open, not answered here.
 
 ---
 
@@ -191,6 +252,9 @@ Three scatter panels (size on a log x-axis, caption diversity, visual homogeneit
 - **Rank correlation and log-transforms address most, not all, of the linearity concern.** Adding Spearman `ρ` alongside Pearson `r` (this revision) catches the size relationship's curvature, but neither measure would catch a genuinely non-monotonic relationship (e.g. lift peaking at a middle size and falling on both sides). The scatter figure remains the honest complement to the correlation numbers for that residual risk.
 - **Three properties tested independently, not jointly.** This analysis does not fit a joint model (e.g. multiple regression) over all three properties simultaneously, nor does it test interactions between them (e.g. small-and-visually-homogeneous vs. large-and-visually-homogeneous). A weak individual correlation for each property does not rule out a joint effect. (The purity analysis above is a step in this direction for size specifically, not a full joint model.)
 - **Same caveat as the original report:** this analysis uses the same 150k RedCaps subsample and the same E (union) buddy graph as `2026-06-23_redcaps_buddy.md`; the aggregate lift number (22.80×) it reproduces confirms consistency with that report, but any caveat that applied there (buddy graph fragments into components, spectral-init structure caveats, etc.) is orthogonal to and does not affect this per-subreddit lift/correlation analysis, which operates on raw graph edges, not on any downstream spectral embedding.
+- **z-score's absolute magnitude is not informative at these scales.** With 1.4–5.7M edges, the null model's "is this real" question is answered "yes" for almost every qualifying subreddit by a wide margin (median z in the hundreds) — a standard large-N property of any significance test, not a sign of an unusually strong signal. Only z's *relative ranking* and its correlation direction against the three properties should be read as informative; do not quote a bare z-score as if it conveyed effect size (that's what lift is for).
+- **z's independent-edges null is an approximation**, identical in spirit to lift's own baseline: edges share nodes, so they are not truly statistically independent Bernoulli trials. Treat z as a useful relative-confidence ranking, not an exact p-value.
+- **The 300k/500k samples are independent random draws, not supersets of the 150k sample or of each other** — by design (see Method), since the point was to check whether a differently-composed sample tells the same story, not to add more of the identical rows. A given subreddit's exact lift/z value will differ slightly between scales even for subreddits present at all three, both from genuine sampling variation and from the different subreddit-size mix each draw happens to produce.
 
 ---
 
@@ -198,10 +262,26 @@ Three scatter panels (size on a log x-axis, caption diversity, visual homogeneit
 
 ```bash
 source ~/miniconda3/etc/profile.d/conda.sh && conda activate CoSiR
-python src/test/20260824_redcaps_subreddit_correlates/analyze_subreddit_correlates.py --selftest  # offline arithmetic check
-python src/test/20260824_redcaps_subreddit_correlates/analyze_subreddit_correlates.py             # full run against cached RedCaps-150k data
+python src/test/20260824_redcaps_subreddit_correlates/analyze_subreddit_correlates.py --selftest        # offline arithmetic check
+python src/test/20260824_redcaps_subreddit_correlates/test_subreddit_zscore.py                          # z-score unit tests
+python src/test/20260824_redcaps_subreddit_correlates/test_load_data_scale.py                           # load_data scale-parameterization tests
+python src/test/20260824_redcaps_subreddit_correlates/analyze_subreddit_correlates.py --scale 150k       # (default) 159/124 qualifying
+python src/test/20260824_redcaps_subreddit_correlates/analyze_subreddit_correlates.py --scale 300k       # 197/157 qualifying
+python src/test/20260824_redcaps_subreddit_correlates/analyze_subreddit_correlates.py --scale 500k       # 214/185 qualifying
 ```
 
-Runs in a few minutes end-to-end (loads the cached 150k CLIP feature store, builds the mutual-kNN union buddy graph with `K=30`, computes per-subreddit lift and properties, prints Pearson+Spearman correlations, the purity-vs-size mechanism check, and the full per-subreddit table sorted by lift, then writes the figure). CUDA is used automatically if available (`torch.cuda.is_available()`); falls back to CPU otherwise — no GPU is strictly required.
+Each scale run takes a few minutes end-to-end (loads the cached CLIP feature store for that scale, builds the mutual-kNN union buddy graph with `K=30`, computes per-subreddit lift AND z-score, the three properties, Pearson+Spearman correlations for both metrics, the purity-vs-size mechanism check, the z-vs-size sanity check, and the full per-subreddit table sorted by lift, then writes a 2×3 figure). CUDA is used automatically if available; falls back to CPU otherwise — no GPU is strictly required for the analysis itself (feature extraction below does benefit from one).
 
-**Full per-subreddit table.** `run()` prints the complete 159-row table (subreddit, lift, size, `deg_s`, purity) as part of its normal output — no separate script is needed; the plain command above is the entire reproduction path for the table shown in truncated (top/bottom-15) form above.
+**To build a new scale from scratch** (only needed if adding a scale beyond 150k/300k/500k, or reproducing 300k/500k on a fresh machine): generalized `build_subsample.py` (uniform-random sample from `redcaps_medium.json`) and `extract_features.py` (single-pass CLIP ViT-B/32 encoding, no training) both default to the original 150k invocation and refuse to overwrite an existing output without `--force`:
+
+```bash
+python src/test/20260623_redcaps_buddy/build_subsample.py --n 300000 \
+  --out /data/PDD/redcaps/redcaps_plus/redcaps_300k_diverse.json
+python src/test/20260623_redcaps_buddy/extract_features.py \
+  --annot /data/PDD/redcaps/redcaps_plus/redcaps_300k_diverse.json \
+  --storage /data/SSD2/pre_extract/redcaps_300k_diverse/features
+```
+
+Each extraction took ~7–12 minutes on the GPU available in this environment (300k: 7m12s; 500k: 11m55s) — roughly linear in N, single-pass encoding only, not a training run.
+
+**Full per-subreddit table.** `run()` prints the complete table (subreddit, lift, z, size, `deg_s`, `M_s`, purity) as part of its normal output at every scale — no separate script is needed; the plain commands above are the entire reproduction path for the tables shown in truncated (top/bottom-15, 150k-only) form above.

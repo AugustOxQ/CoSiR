@@ -51,14 +51,21 @@ class Data:
         return self.img.shape[0]
 
 
-def load_data() -> Data:
-    """Load features + metadata with the positional join, in feature-row order."""
-    fm = FeatureManager(STORAGE)
+def load_data(storage_dir: str = STORAGE, annotation_path: str = ANNOT) -> Data:
+    """Load features + metadata with the positional join, in feature-row order.
+
+    storage_dir/annotation_path default to the 150k scale (STORAGE/ANNOT) for full
+    backward compatibility with every existing caller. Pass a different (storage_dir,
+    annotation_path) pair to run this same analysis at a different RedCaps scale (e.g.
+    300k/500k/1M/full) -- see scripts/run_init_ablation_redcaps_{300k,500k,1M}.sh for the
+    matching (feature store, annotation file) pairs already extracted for those scales.
+    """
+    fm = FeatureManager(storage_dir)
     d = fm.load_all_to_ram(["img_features", "txt_features"])
     img = F.normalize(d["img_features"].float(), dim=1).numpy().astype(np.float32)
     txt = F.normalize(d["txt_features"].float(), dim=1).numpy().astype(np.float32)
     sample_ids = [int(x) for x in d["sample_ids"]]
-    meta = json.load(open(ANNOT))
+    meta = json.load(open(annotation_path))
     records = [meta[s] for s in sample_ids]
     subs = [subreddit_of(r) for r in records]
     name2id = {b: i for i, b in enumerate(sorted(set(subs)))}
@@ -134,6 +141,75 @@ def subreddit_lift(data: Data, e: np.ndarray, top_k: int = 15):
         "exp_same_frac": exp_same,
         "overall_lift": overall_lift,
         "n_subreddits": n_sub,
+        "top_enriched": per_sub,
+    }
+
+
+def subreddit_enrichment_zscore(data: Data, e: np.ndarray, top_k: int = 15):
+    """
+    Chance-corrected SIGNIFICANCE (z-score) of same-subreddit edge enrichment —
+    complements subreddit_lift's effect-size ratio with a confidence read. Lift alone
+    conflates effect size and reliability: a huge lift from a handful of edges in a tiny
+    subreddit is not more trustworthy than a modest lift backed by thousands of edges.
+    z rewards the latter.
+
+    Null model: each edge's two endpoints are independent draws from the subreddit
+    marginal p — the same simplifying i.i.d.-endpoints approximation subreddit_lift
+    itself uses, and the same closed-form-analytic-null style already used for the
+    cross-VLM agreement check (cross_vlm_buddy.py's chance_null_jaccard) rather than a
+    Monte Carlo permutation. Under this null, "edge has both endpoints in subreddit s"
+    is a Bernoulli(p_s^2) trial; with M total edges, mu_s = M*p_s^2 and
+    var_s = M*p_s^2*(1-p_s^2). z_s standardizes the observed same-subreddit EDGE count
+    (M_s = obs_s/2, since subreddit_lift's obs_s double-counts via both endpoints)
+    against that Gaussian approximation.
+
+    CAVEAT: this null treats edges as independent Bernoulli trials, which is an
+    approximation — edges share nodes, so they are not truly independent — the same
+    simplification subreddit_lift's own expected-count baseline already makes. Treat z
+    as a useful relative ranking of confidence, not an exact p-value.
+
+    Reliability filter mirrors subreddit_lift's exp_s > 5 rule, applied to mu_s
+    (expected same-subreddit EDGE count, not endpoint count) so the normal
+    approximation is trustworthy.
+
+    top_k: number of top subreddits to return (default 15, ranked by z descending).
+    Set to None to return all subreddits passing the mu_s > 5 reliability filter.
+    """
+    si, sj = data.sub_id[e[:, 0]], data.sub_id[e[:, 1]]
+    same = si == sj
+    n_sub = len(data.sub_names)
+    M = e.shape[0]
+
+    endpoints = np.concatenate([si, sj])
+    p = np.bincount(endpoints, minlength=n_sub).astype(np.float64)
+    p /= p.sum()
+
+    exp_same = float((p ** 2).sum())
+    mu_overall = M * exp_same
+    var_overall = M * exp_same * (1 - exp_same)
+    obs_edges_overall = int(same.sum())
+    z_overall = (
+        (obs_edges_overall - mu_overall) / np.sqrt(var_overall)
+        if var_overall > 0 else float("nan")
+    )
+
+    # M_s = # edges with BOTH endpoints in s = obs_s / 2 (obs_s double-counts via si+sj)
+    obs_s = np.bincount(si[same], minlength=n_sub) + np.bincount(sj[same], minlength=n_sub)
+    M_s = obs_s / 2.0
+    mu_s = M * p ** 2
+    var_s = M * (p ** 2) * (1 - p ** 2)
+    z_s = np.divide(M_s - mu_s, np.sqrt(var_s), out=np.full(n_sub, np.nan), where=var_s > 0)
+
+    reliable = mu_s > 5
+    order = np.argsort(-np.nan_to_num(z_s))
+    per_sub_idx = order if top_k is None else order[:top_k]
+    per_sub = [(data.sub_names[i], float(z_s[i]), int(M_s[i]))
+               for i in per_sub_idx if reliable[i]]
+
+    return {
+        "z_overall": z_overall,
+        "n_subreddits": n_sub,
+        "n_edges": M,
         "top_enriched": per_sub,
     }
 
