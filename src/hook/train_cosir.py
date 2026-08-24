@@ -259,6 +259,7 @@ def _init_embedding_manager(cfg, device, sample_ids_list, experiment, feature_ma
         "normalize_method": str(getattr(_bud, "normalize_method", "rank")) if _bud is not None else "rank",
         "seed": int(cfg.seed),
         "b_weight": float(getattr(_bud, "b_weight", 1.0)) if _bud is not None else 1.0,
+        "distance_mode": str(getattr(_bud, "distance_mode", "blend")) if _bud is not None else "blend",
     }
     # Experiment 8 (buddy-init encoder-pair ablation, docs/superpowers/specs/
     # 2026-08-04-buddy-publication-plan-design.md §4): swap which (vision, text) encoder
@@ -284,6 +285,12 @@ def _init_embedding_manager(cfg, device, sample_ids_list, experiment, feature_ma
             _extra["b_weight"] = _buddy_kwargs["b_weight"]
         if _encoder_pair:
             _extra["encoder_pair"] = _encoder_pair
+        # Only add distance_mode to the template key when it departs from the default,
+        # so existing (pre-distance_mode) templates stay compatible for standard runs
+        # while a changed mode still forces a rebuild (no silent template reuse across
+        # blend/typed).
+        if _buddy_kwargs["distance_mode"] != "blend":
+            _extra["distance_mode"] = _buddy_kwargs["distance_mode"]
 
     template_dir = experiment.directory.parent / "template_embeddings"
     template_exists = template_dir.exists() and (template_dir / "embeddings.npy").exists()

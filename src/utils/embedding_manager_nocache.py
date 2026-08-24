@@ -354,6 +354,7 @@ class TrainableEmbeddingManager:
         seed: int = 42,
         b_weight: float = 1.0,
         feature_override: Optional[Tuple[np.ndarray, np.ndarray, List[int]]] = None,
+        distance_mode: str = "blend",
     ) -> np.ndarray:
         """
         Conditional-buddies init: build the cross-modal mutual-KNN graph, embed it,
@@ -369,6 +370,8 @@ class TrainableEmbeddingManager:
                   be row-aligned to input_sample_ids. Only the GRAPH SOURCE changes —
                   the frozen training backbone is untouched either way. When given,
                   feature_manager is not accessed at all (may be None).
+        distance_mode: 'blend' (default) or 'typed' -- forwarded to compute_buddy_init
+                  unchanged; see that function's docstring.
         """
         from src.conditional_buddy import compute_buddy_init
 
@@ -403,6 +406,7 @@ class TrainableEmbeddingManager:
             normalize_method=normalize_method,
             seed=seed,
             b_weight=b_weight,
+            distance_mode=distance_mode,
             input_sample_ids=fm_sample_ids,
             output_sample_ids=self.sample_ids,
             return_edges=True,
