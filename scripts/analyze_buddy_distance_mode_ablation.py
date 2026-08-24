@@ -146,7 +146,14 @@ def main():
     ap.add_argument("--entity", default="augustoxq")
     ap.add_argument("--project", default="cosir_image")
     ap.add_argument("--group", default="buddy distance-mode ablation")
-    ap.add_argument("--tag", default=None, help="only include runs carrying this wandb tag")
+    ap.add_argument(
+        "--tag",
+        default="buddy-distance-mode-ablation-redcaps_150k",
+        help="only include runs carrying this wandb tag (default excludes -smoke-tagged runs "
+             "from run_buddy_distance_mode_ablation.sh's SMOKE=1 mode, which share this same "
+             "wandb group/results dir and would otherwise silently mix in; pass --tag '' to "
+             "disable filtering, or another value to target a different sweep)",
+    )
     ap.add_argument("--selftest", action="store_true", help="offline arithmetic check, no wandb call")
     args = ap.parse_args()
     if args.selftest:
