@@ -105,6 +105,8 @@ def subreddit_lift(data: Data, e: np.ndarray, top_k: int = 15):
     degree/subreddit imbalance — heavily-connected subreddits don't inflate it).
 
     Also returns per-subreddit within-subreddit lift for the most enriched ones.
+    top_k: number of top subreddits to return (default 15). Set to None to return all
+    subreddits passing the exp_s > 5 reliability filter, sorted by lift descending.
     """
     si, sj = data.sub_id[e[:, 0]], data.sub_id[e[:, 1]]
     same = si == sj
