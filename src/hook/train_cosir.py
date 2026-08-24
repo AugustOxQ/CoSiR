@@ -260,6 +260,19 @@ def _init_embedding_manager(cfg, device, sample_ids_list, experiment, feature_ma
         "seed": int(cfg.seed),
         "b_weight": float(getattr(_bud, "b_weight", 1.0)) if _bud is not None else 1.0,
     }
+    # Experiment 8 (buddy-init encoder-pair ablation, docs/superpowers/specs/
+    # 2026-08-04-buddy-publication-plan-design.md §4): swap which (vision, text) encoder
+    # pair BUILDS the buddy graph/init, while the frozen CLIP training backbone stays
+    # untouched. Set via `+train.buddies.encoder_pair=<vision>:<text>` (e.g. "dinov2:bge");
+    # absent by default, which preserves the exact original CLIP-FeatureManager code path.
+    _encoder_pair = getattr(_bud, "encoder_pair", None) if _bud is not None else None
+    if _encoder_pair:
+        from src.conditional_buddy.heldout_encoder_features import load_encoder_pair_features
+        _vision, _text = str(_encoder_pair).split(":")
+        _img_ov, _txt_ov, _ids_ov = load_encoder_pair_features(
+            cfg.data.dataset_type, _vision, _text, feature_manager
+        )
+        _buddy_kwargs["feature_override"] = (_img_ov, _txt_ov, _ids_ov)
     _extra = None
     if strategy == "buddies":
         _extra = {"k": _buddy_kwargs["k"], "alpha": _buddy_kwargs["alpha"],
@@ -269,6 +282,8 @@ def _init_embedding_manager(cfg, device, sample_ids_list, experiment, feature_ma
         # changed lean still forces a rebuild (no silent template reuse across values).
         if _buddy_kwargs["b_weight"] != 1.0:
             _extra["b_weight"] = _buddy_kwargs["b_weight"]
+        if _encoder_pair:
+            _extra["encoder_pair"] = _encoder_pair
 
     template_dir = experiment.directory.parent / "template_embeddings"
     template_exists = template_dir.exists() and (template_dir / "embeddings.npy").exists()
