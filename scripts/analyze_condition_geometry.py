@@ -25,6 +25,8 @@ Usage:
 """
 import argparse
 import json
+import os
+import sys
 from pathlib import Path
 from typing import Dict, List
 
@@ -32,6 +34,19 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from scipy.stats import pearsonr
+
+_REDCAPS_BUDDY_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "src", "test", "20260623_redcaps_buddy"
+)
+if _REDCAPS_BUDDY_DIR not in sys.path:
+    sys.path.insert(0, _REDCAPS_BUDDY_DIR)
+
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from src.metrics.regularizer import reorder_features_to_z
+from src.model.combiner import Combiner_new
 
 
 def compute_shift(comb_emb: torch.Tensor, unconditioned_emb: torch.Tensor) -> np.ndarray:
@@ -123,6 +138,218 @@ def grid_diversity(comb_grid: torch.Tensor) -> Dict[str, np.ndarray]:
     return {"row_diversity": row_diversity, "col_diversity": col_diversity}
 
 
+def _load_redcaps_train_features():
+    """Frozen CLIP (img, txt) features + sample_ids for RedCaps-150k, in FeatureManager's
+    own row order. Scope is RedCaps-150k only per spec S4 Experiment 11.1."""
+    import redcaps_buddy as rb
+    data = rb.load_data()
+    return data.img, data.txt, data.sample_ids
+
+
+def _rebuild_combiner(epoch_snapshot: dict) -> Combiner_new:
+    cfg = epoch_snapshot["combiner_config"]
+    combiner = Combiner_new(
+        clip_feature_dim=cfg["clip_feature_dim"],
+        projection_dim=cfg["projection_dim"],
+        label_dim=cfg["label_dim"],
+        hidden_dim=512,  # unused by Combiner_new's forward; harmless placeholder
+        num_heads=8,     # unused by Combiner_new's forward; harmless placeholder
+        num_layers=cfg["num_layers"],
+        dropout=cfg["dropout"],
+    )
+    combiner.load_state_dict(epoch_snapshot["combiner_state_dict"])
+    combiner.eval()
+    return combiner
+
+
+def _compute_comb_emb(combiner: Combiner_new, text_feat: torch.Tensor, conditions: torch.Tensor, chunk: int = 4096) -> torch.Tensor:
+    """Chunked forward through the combiner. text_feat/conditions: [N, *], row-aligned."""
+    n = text_feat.shape[0]
+    out = None
+    with torch.no_grad():
+        for s in range(0, n, chunk):
+            e = min(s + chunk, n)
+            c = combiner(text_feat[s:e], None, conditions[s:e])
+            if out is None:
+                out = torch.empty((n,) + c.shape[1:], dtype=c.dtype)
+            out[s:e] = c
+    return out
+
+
+def compute_condition_text_grid(combiner: Combiner_new, text_sample: torch.Tensor, cond_sample: torch.Tensor) -> torch.Tensor:
+    """comb_grid[i, j] = combine(text_sample[i], cond_sample[j]). text_sample: [n_text, D],
+    cond_sample: [n_cond, D_cond]. Small grid (n_text x n_cond combiner calls, batched over
+    j per i) -- feeds grid_diversity's null-condition-vs-dominant-condition check."""
+    n_text = text_sample.shape[0]
+    n_cond = cond_sample.shape[0]
+    out = None
+    with torch.no_grad():
+        for i in range(n_text):
+            t_rep = text_sample[i : i + 1].expand(n_cond, -1)
+            c = combiner(t_rep, None, cond_sample)  # [n_cond, D]
+            if out is None:
+                out = torch.empty((n_text, n_cond) + c.shape[1:], dtype=c.dtype)
+            out[i] = c
+    return out
+
+
+def analyze_run(exp_dir: str, k_ranked: int = 20, n_text_sample: int = 30, n_cond_sample: int = 30, grid_seed: int = 0) -> dict:
+    """Analyze one run's condition_viz/ snapshots. Writes condition_geometry/summary.json
+    and a shift-trajectory plot inside exp_dir. Returns the summary dict."""
+    exp_path = Path(exp_dir)
+    cond_viz_dir = exp_path / "condition_viz"
+    epoch_files = sorted(cond_viz_dir.glob("epoch_*.pt"))
+    if not epoch_files:
+        raise FileNotFoundError(f"no condition_viz/epoch_*.pt snapshots under {exp_dir}")
+
+    img_np, txt_np, feat_sample_ids = _load_redcaps_train_features()
+    img_t = torch.from_numpy(np.ascontiguousarray(img_np)).float()
+    txt_t = torch.from_numpy(np.ascontiguousarray(txt_np)).float()
+
+    edges_path = exp_path / "training_embeddings" / "buddy_edges.npy"
+    buddy_edges = np.load(edges_path) if edges_path.exists() else None
+
+    rng = np.random.default_rng(grid_seed)
+
+    per_epoch = []
+    for ef in epoch_files:
+        snap = torch.load(ef, map_location="cpu")
+        epoch = snap["epoch"]
+        conditions = snap["label_embeddings_all"]  # [N, D]
+        sample_ids = snap["sample_ids"]             # [N], added in Task 1
+        n = conditions.shape[0]
+
+        combine_side = snap.get("combine_side", "txt")
+        raw_feat = img_t if combine_side == "img" else txt_t
+        combine_feat = reorder_features_to_z(raw_feat, feat_sample_ids, sample_ids)
+
+        combiner = _rebuild_combiner(snap)
+        comb_emb = _compute_comb_emb(combiner, combine_feat, conditions)
+
+        shift = compute_shift(comb_emb, combine_feat)
+        cond_np = conditions.numpy()
+        comb_np = comb_emb.numpy()
+        raw_np = F.normalize(combine_feat, dim=-1).numpy()
+
+        cond_norm = np.linalg.norm(cond_np, axis=1)
+        norm_corr = correlate_shift(shift, cond_norm)
+
+        degree_corr = {"r": None, "p": None}
+        if buddy_edges is not None:
+            degree = np.bincount(buddy_edges.flatten(), minlength=n).astype(float)
+            degree_corr = correlate_shift(shift, degree)
+
+        # Condition-vs-text cross grid: same fixed indices every epoch (rng re-seeded per
+        # analyze_run call, sampled once here from this epoch's N -- N is constant across
+        # epochs for one run) so the trajectory below is comparable epoch-to-epoch.
+        text_idx = rng.choice(n, size=min(n_text_sample, n), replace=False)
+        cond_idx = rng.choice(n, size=min(n_cond_sample, n), replace=False)
+        comb_grid = compute_condition_text_grid(combiner, combine_feat[text_idx], conditions[cond_idx])
+        diversity = grid_diversity(comb_grid)
+
+        per_epoch.append({
+            "epoch": int(epoch),
+            "n_samples": int(n),
+            "shift_mean": float(shift.mean()),
+            "shift_std": float(shift.std()),
+            "shift_p10": float(np.percentile(shift, 10)),
+            "shift_p90": float(np.percentile(shift, 90)),
+            "conditioned_effective_dims": effective_dims(comb_np),
+            "unconditioned_effective_dims": effective_dims(raw_np),
+            "condition_effective_dims": effective_dims(cond_np),
+            "conditioned_pairwise_sim": pairwise_sim_spread(comb_np),
+            "unconditioned_pairwise_sim": pairwise_sim_spread(raw_np),
+            "shift_vs_condition_norm": norm_corr,
+            "shift_vs_buddy_degree": degree_corr,
+            "ranked": rank_most_least_changed(shift, sample_ids, k=k_ranked),
+            "grid_diagnostic": {
+                "n_text_sample": int(len(text_idx)),
+                "n_cond_sample": int(len(cond_idx)),
+                "row_diversity_mean": float(np.nanmean(diversity["row_diversity"])),
+                "row_diversity_min": float(np.nanmin(diversity["row_diversity"])),
+                "col_diversity_mean": float(np.nanmean(diversity["col_diversity"])),
+                "col_diversity_min": float(np.nanmin(diversity["col_diversity"])),
+            },
+        })
+
+    out_dir = exp_path / "condition_geometry"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    summary = {"exp_dir": str(exp_path), "per_epoch": per_epoch}
+    with open(out_dir / "summary.json", "w") as f:
+        json.dump(summary, f, indent=2)
+
+    _plot_trajectory(per_epoch, exp_path / "plots" / "condition_geometry_trajectory.png")
+    print(f"Wrote {out_dir / 'summary.json'} ({len(per_epoch)} epochs)")
+    return summary
+
+
+def _plot_trajectory(per_epoch: List[dict], out_path: Path) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    epochs = [e["epoch"] for e in per_epoch]
+    shift_mean = [e["shift_mean"] for e in per_epoch]
+    shift_std = [e["shift_std"] for e in per_epoch]
+    eff_dims = [e["conditioned_effective_dims"] for e in per_epoch]
+    row_div = [e["grid_diagnostic"]["row_diversity_mean"] for e in per_epoch]
+    col_div = [e["grid_diagnostic"]["col_diversity_mean"] for e in per_epoch]
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+    axes[0].errorbar(epochs, shift_mean, yerr=shift_std, marker="o")
+    axes[0].set_xlabel("epoch")
+    axes[0].set_ylabel("shift = 1 - cos(conditioned, unconditioned)")
+    axes[0].set_title("Conditioning shift over training")
+
+    axes[1].plot(epochs, eff_dims, marker="o")
+    axes[1].set_xlabel("epoch")
+    axes[1].set_ylabel("PCA effective dims (95% var)")
+    axes[1].set_title("Conditioned-embedding effective dimensionality")
+
+    axes[2].plot(epochs, row_div, marker="o", label="row (across conditions, per text)")
+    axes[2].plot(epochs, col_div, marker="s", label="col (across texts, per condition)")
+    axes[2].set_xlabel("epoch")
+    axes[2].set_ylabel("mean diversity (1 - mean pairwise cos sim)")
+    axes[2].set_title("Grid diagnostic: low row => conditions null; low col => condition dominates")
+    axes[2].legend(fontsize=8)
+
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=120)
+    plt.close(fig)
+
+
+def compare_runs(dir_a: str, dir_b: str) -> None:
+    """Print a paired epoch-by-epoch diff between two already-analyzed runs (e.g. frozen vs
+    trained, same seed). Requires both to already have condition_geometry/summary.json (run
+    analyze_run on each first)."""
+    with open(Path(dir_a) / "condition_geometry" / "summary.json") as f:
+        a = json.load(f)
+    with open(Path(dir_b) / "condition_geometry" / "summary.json") as f:
+        b = json.load(f)
+
+    a_by_epoch = {e["epoch"]: e for e in a["per_epoch"]}
+    b_by_epoch = {e["epoch"]: e for e in b["per_epoch"]}
+    common = sorted(set(a_by_epoch) & set(b_by_epoch))
+    if not common:
+        print("No overlapping epochs between the two runs.")
+        return
+
+    print(f"\n{'='*78}\nCondition geometry comparison\n  A: {dir_a}\n  B: {dir_b}\n{'='*78}")
+    for ep in common:
+        ea, eb = a_by_epoch[ep], b_by_epoch[ep]
+        d_mean = eb["shift_mean"] - ea["shift_mean"]
+        d_dims = eb["conditioned_effective_dims"] - ea["conditioned_effective_dims"]
+        ids_a = {r["sample_id"] for r in ea["ranked"]["most_changed"]}
+        ids_b = {r["sample_id"] for r in eb["ranked"]["most_changed"]}
+        overlap = len(ids_a & ids_b) / max(len(ids_a | ids_b), 1)
+        d_row = eb["grid_diagnostic"]["row_diversity_mean"] - ea["grid_diagnostic"]["row_diversity_mean"]
+        d_col = eb["grid_diagnostic"]["col_diversity_mean"] - ea["grid_diagnostic"]["col_diversity_mean"]
+        print(f"  epoch {ep:>4}: shift_mean B-A={d_mean:+.4f}  eff_dims B-A={d_dims:+d}  "
+              f"most-changed-set Jaccard(A,B)={overlap:.2f}  "
+              f"row_div B-A={d_row:+.4f}  col_div B-A={d_col:+.4f}")
+
+
 def _selftest():
     torch.manual_seed(0)
     # compute_shift: identical vectors -> shift 0; orthogonal -> shift 1.
@@ -185,9 +412,25 @@ def _selftest():
     print("SELFTEST OK")
 
 
-if __name__ == "__main__":
-    ap = argparse.ArgumentParser()
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--exp-dir", default=None, help="analyze one run's condition_viz/ snapshots")
+    ap.add_argument("--compare", nargs=2, default=None, metavar=("DIR_A", "DIR_B"),
+                     help="print a paired diff between two already-analyzed run directories")
+    ap.add_argument("--k-ranked", type=int, default=20)
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
     if args.selftest:
         _selftest()
+        return
+    if args.exp_dir:
+        analyze_run(args.exp_dir, k_ranked=args.k_ranked)
+        return
+    if args.compare:
+        compare_runs(args.compare[0], args.compare[1])
+        return
+    ap.print_help()
+
+
+if __name__ == "__main__":
+    main()
