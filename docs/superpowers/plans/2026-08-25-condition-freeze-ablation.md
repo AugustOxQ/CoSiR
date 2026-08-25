@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Answer Experiment 11.1 from `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 — does post-init training of the per-sample condition table do anything, holding buddy-init geometry and every other hyperparameter identical between a **frozen** arm (conditions fixed at their buddy-init value for the whole run) and the **trained** arm (today's default)? Answer this on two independent axes: retrieval (`test_oracle/t2i_R1`, `test_oracle/i2t_R1`) and embedding geometry (how much conditioning shifts the combine-side embedding, how that shift distribution and its most/least-changed samples compare across arms and epochs) — because retrieval alone can miss a real divergence.
+**Goal:** Answer Experiment 11.1 from `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 — does post-init training of the per-sample condition table do anything, holding buddy-init geometry and every other hyperparameter identical between a **frozen** arm (conditions fixed at their buddy-init value for the whole run) and the **trained** arm (today's default)? Answer this on two independent axes: retrieval (`test_oracle/t2i_R1`, `test_oracle/i2t_R1`) and embedding geometry (how much conditioning shifts the combine-side embedding, how that shift distribution and its most/least-changed samples compare across arms and epochs, and whether a condition-vs-text cross grid shows conditions are interchangeable/null or one condition dominating and collapsing every text) — because retrieval alone can miss a real divergence.
 
 **Architecture:** No new training-time mechanism is needed — `em_interval` (`configs/train/default.yaml`, EM-alternation) already sets `embedding_manager.embeddings.requires_grad_(False)` whenever `epoch // em_interval` is even, so a sentinel value ≥ `epochs` keeps that freeze active for the whole run. Because `em_interval` is **not** part of the buddy-init template-compatibility key (`_extra` in `_init_embedding_manager`, `src/hook/train_cosir.py`), both arms can — and, for a true paired comparison, must — share one `results_dir` and therefore one buddy-init template: every run in this experiment starts from a byte-identical buddy-init, and only whether gradient reaches the condition table afterward differs. The only source change needed (Task 1) is threading the already-available `sample_ids` list into the per-epoch `condition_viz/epoch_XXXX.pt` snapshot that `_save_condition_viz_snapshot` already writes unconditionally — everything else (per-epoch condition table + combiner weights, frozen train-set CLIP features, buddy-graph edges) is already cached by existing code. From there: a sweep script toggles `em_interval` per arm (Task 2), a paired retrieval-analysis script mirrors the project's existing `analyze_*.py` pattern (Task 3), and a new post-hoc geometry-diagnostic script rebuilds each saved epoch's combiner to compute and rank per-sample conditioning shift (Tasks 4–5, split into an offline-testable pure-math core and the real-data integration).
 
@@ -653,7 +653,7 @@ git commit -m "feat: add paired retrieval analysis for condition freeze ablation
 - Create: `scripts/analyze_condition_geometry.py`
 
 **Interfaces:**
-- Produces: `compute_shift(comb_emb, unconditioned_emb) -> np.ndarray`, `effective_dims(x, variance_threshold=0.95) -> int`, `pairwise_sim_spread(x, n_sample=2000, seed=0) -> dict`, `rank_most_least_changed(shift, sample_ids, k=20) -> dict`, `correlate_shift(shift, other) -> dict` — all pure, no I/O. Consumed by Task 5's real-data integration in the same file.
+- Produces: `compute_shift(comb_emb, unconditioned_emb) -> np.ndarray`, `effective_dims(x, variance_threshold=0.95) -> int`, `pairwise_sim_spread(x, n_sample=2000, seed=0) -> dict`, `rank_most_least_changed(shift, sample_ids, k=20) -> dict`, `correlate_shift(shift, other) -> dict`, `grid_diversity(comb_grid) -> dict` — all pure, no I/O. Consumed by Task 5's real-data integration in the same file.
 
 - [ ] **Step 1: Write the failing selftest**
 
@@ -667,7 +667,11 @@ docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md S4).
 Retrieval numbers (test_oracle/*_R1) can miss a real difference between the frozen and
 trained arms of Experiment 11.1 -- this script inspects the actual embedding geometry
 instead: how much does conditioning shift the combine-side embedding, how does that shift
-distribution compare across epochs/arms, and which samples are moved the most/least.
+distribution compare across epochs/arms, which samples are moved the most/least, and --
+via a condition-vs-text cross grid -- whether conditions are interchangeable/null for a
+given text (low diversity across conditions) or one condition dominates and collapses
+every text to nearly the same output (low diversity across texts). Retrieval numbers alone
+cannot distinguish those two failure modes from each other or from a healthy grid.
 
 Two modes:
   --exp-dir PATH   analyze one run's condition_viz/ snapshots, write
@@ -745,6 +749,42 @@ def correlate_shift(shift: np.ndarray, other: np.ndarray) -> Dict[str, float]:
     return {"r": float(r), "p": float(p)}
 
 
+def grid_diversity(comb_grid: torch.Tensor) -> Dict[str, np.ndarray]:
+    """comb_grid[i, j] = combine(text_i, condition_j), shape [n_text, n_cond, D]. Splits
+    diversity two ways to distinguish two collapse failure modes retrieval numbers can't
+    tell apart:
+
+      row_diversity[i] = 1 - mean pairwise cosine sim among {comb_grid[i, j] for all j}
+                         (low => for text i, varying the condition barely changes the
+                         output => conditions are interchangeable/null for this text)
+      col_diversity[j] = 1 - mean pairwise cosine sim among {comb_grid[i, j] for all i}
+                         (low => for condition j, varying the text barely changes the
+                         output => condition j dominates/collapses the combination)
+
+    Returns {"row_diversity": np.ndarray [n_text], "col_diversity": np.ndarray [n_cond]}.
+    NaN for a row/column of length < 2 (nothing to compare pairwise).
+    """
+    n_text, n_cond, _ = comb_grid.shape
+    g = F.normalize(comb_grid, dim=-1)
+
+    row_diversity = np.full(n_text, np.nan)
+    iu_cond = torch.triu_indices(n_cond, n_cond, offset=1)
+    if iu_cond.shape[1] > 0:
+        for i in range(n_text):
+            sims = g[i] @ g[i].T
+            row_diversity[i] = float(1.0 - sims[iu_cond[0], iu_cond[1]].mean())
+
+    col_diversity = np.full(n_cond, np.nan)
+    iu_text = torch.triu_indices(n_text, n_text, offset=1)
+    if iu_text.shape[1] > 0:
+        for j in range(n_cond):
+            col = g[:, j]
+            sims = col @ col.T
+            col_diversity[j] = float(1.0 - sims[iu_text[0], iu_text[1]].mean())
+
+    return {"row_diversity": row_diversity, "col_diversity": col_diversity}
+
+
 def _selftest():
     torch.manual_seed(0)
     # compute_shift: identical vectors -> shift 0; orthogonal -> shift 1.
@@ -778,6 +818,31 @@ def _selftest():
     x2 = np.array([2.0, 4.0, 6.0, 8.0, 10.0])
     c = correlate_shift(x1, x2)
     assert abs(c["r"] - 1.0) < 1e-6, c
+
+    # grid_diversity: three constructed scenarios covering both failure modes + healthy.
+    n_text, n_cond, d = 6, 5, 8
+    base_text = F.normalize(torch.randn(n_text, d), dim=-1)
+    base_cond = F.normalize(torch.randn(n_cond, d), dim=-1)
+
+    # Case A: output depends only on text, ignores condition entirely -> conditions "null".
+    # row_diversity ~ 0 (no variation across j, for each i); col_diversity high (varies across i).
+    grid_null_cond = base_text.unsqueeze(1).expand(n_text, n_cond, d).clone()
+    ga = grid_diversity(grid_null_cond)
+    assert np.nanmax(ga["row_diversity"]) < 1e-5, ga["row_diversity"]
+    assert np.nanmean(ga["col_diversity"]) > 0.1, ga["col_diversity"]
+
+    # Case B: output depends only on condition, ignores text entirely -> condition dominates.
+    # col_diversity ~ 0 (no variation across i, for each j); row_diversity high (varies across j).
+    grid_dominant_cond = base_cond.unsqueeze(0).expand(n_text, n_cond, d).clone()
+    gb = grid_diversity(grid_dominant_cond)
+    assert np.nanmax(gb["col_diversity"]) < 1e-5, gb["col_diversity"]
+    assert np.nanmean(gb["row_diversity"]) > 0.1, gb["row_diversity"]
+
+    # Case C: healthy -- independent random grid, both diversities nontrivially positive.
+    grid_healthy = F.normalize(torch.randn(n_text, n_cond, d), dim=-1)
+    gc = grid_diversity(grid_healthy)
+    assert np.nanmean(gc["row_diversity"]) > 0.3, gc["row_diversity"]
+    assert np.nanmean(gc["col_diversity"]) > 0.3, gc["col_diversity"]
 
     print("SELFTEST OK")
 
@@ -815,7 +880,7 @@ git commit -m "feat: add pure math core for condition-geometry diagnostic (Exper
 
 **Interfaces:**
 - Consumes: Task 4's pure functions; Task 1's `sample_ids` field in `condition_viz/epoch_XXXX.pt`; `reorder_features_to_z` (`src/metrics/regularizer.py`); `Combiner_new` (`src/model/combiner.py`); `redcaps_buddy.load_data()` (`src/test/20260623_redcaps_buddy/redcaps_buddy.py`); `training_embeddings/buddy_edges.npy` (written by `TrainableEmbeddingManager._buddy_init`).
-- Produces: `analyze_run(exp_dir, k_ranked=20) -> dict` (writes `condition_geometry/summary.json` + `plots/condition_geometry_trajectory.png` inside `exp_dir`), `compare_runs(dir_a, dir_b) -> None` (prints a paired diff) — consumed by Task 7's report-writing step.
+- Produces: `compute_condition_text_grid(combiner, text_sample, cond_sample) -> Tensor[n_text, n_cond, D]` (feeds Task 4's `grid_diversity`); `analyze_run(exp_dir, k_ranked=20, n_text_sample=30, n_cond_sample=30, grid_seed=0) -> dict` (writes `condition_geometry/summary.json` + `plots/condition_geometry_trajectory.png` inside `exp_dir`); `compare_runs(dir_a, dir_b) -> None` (prints a paired diff) — consumed by Task 7's report-writing step.
 
 - [ ] **Step 1: Append the real-data integration functions**
 
@@ -880,7 +945,24 @@ def _compute_comb_emb(combiner: Combiner_new, text_feat: torch.Tensor, condition
     return out
 
 
-def analyze_run(exp_dir: str, k_ranked: int = 20) -> dict:
+def compute_condition_text_grid(combiner: Combiner_new, text_sample: torch.Tensor, cond_sample: torch.Tensor) -> torch.Tensor:
+    """comb_grid[i, j] = combine(text_sample[i], cond_sample[j]). text_sample: [n_text, D],
+    cond_sample: [n_cond, D_cond]. Small grid (n_text x n_cond combiner calls, batched over
+    j per i) -- feeds grid_diversity's null-condition-vs-dominant-condition check."""
+    n_text = text_sample.shape[0]
+    n_cond = cond_sample.shape[0]
+    out = None
+    with torch.no_grad():
+        for i in range(n_text):
+            t_rep = text_sample[i : i + 1].expand(n_cond, -1)
+            c = combiner(t_rep, None, cond_sample)  # [n_cond, D]
+            if out is None:
+                out = torch.empty((n_text, n_cond) + c.shape[1:], dtype=c.dtype)
+            out[i] = c
+    return out
+
+
+def analyze_run(exp_dir: str, k_ranked: int = 20, n_text_sample: int = 30, n_cond_sample: int = 30, grid_seed: int = 0) -> dict:
     """Analyze one run's condition_viz/ snapshots. Writes condition_geometry/summary.json
     and a shift-trajectory plot inside exp_dir. Returns the summary dict."""
     exp_path = Path(exp_dir)
@@ -895,6 +977,8 @@ def analyze_run(exp_dir: str, k_ranked: int = 20) -> dict:
 
     edges_path = exp_path / "training_embeddings" / "buddy_edges.npy"
     buddy_edges = np.load(edges_path) if edges_path.exists() else None
+
+    rng = np.random.default_rng(grid_seed)
 
     per_epoch = []
     for ef in epoch_files:
@@ -924,6 +1008,14 @@ def analyze_run(exp_dir: str, k_ranked: int = 20) -> dict:
             degree = np.bincount(buddy_edges.flatten(), minlength=n).astype(float)
             degree_corr = correlate_shift(shift, degree)
 
+        # Condition-vs-text cross grid: same fixed indices every epoch (rng re-seeded per
+        # analyze_run call, sampled once here from this epoch's N -- N is constant across
+        # epochs for one run) so the trajectory below is comparable epoch-to-epoch.
+        text_idx = rng.choice(n, size=min(n_text_sample, n), replace=False)
+        cond_idx = rng.choice(n, size=min(n_cond_sample, n), replace=False)
+        comb_grid = compute_condition_text_grid(combiner, combine_feat[text_idx], conditions[cond_idx])
+        diversity = grid_diversity(comb_grid)
+
         per_epoch.append({
             "epoch": int(epoch),
             "n_samples": int(n),
@@ -939,6 +1031,14 @@ def analyze_run(exp_dir: str, k_ranked: int = 20) -> dict:
             "shift_vs_condition_norm": norm_corr,
             "shift_vs_buddy_degree": degree_corr,
             "ranked": rank_most_least_changed(shift, sample_ids, k=k_ranked),
+            "grid_diagnostic": {
+                "n_text_sample": int(len(text_idx)),
+                "n_cond_sample": int(len(cond_idx)),
+                "row_diversity_mean": float(np.nanmean(diversity["row_diversity"])),
+                "row_diversity_min": float(np.nanmin(diversity["row_diversity"])),
+                "col_diversity_mean": float(np.nanmean(diversity["col_diversity"])),
+                "col_diversity_min": float(np.nanmin(diversity["col_diversity"])),
+            },
         })
 
     out_dir = exp_path / "condition_geometry"
@@ -961,8 +1061,10 @@ def _plot_trajectory(per_epoch: List[dict], out_path: Path) -> None:
     shift_mean = [e["shift_mean"] for e in per_epoch]
     shift_std = [e["shift_std"] for e in per_epoch]
     eff_dims = [e["conditioned_effective_dims"] for e in per_epoch]
+    row_div = [e["grid_diagnostic"]["row_diversity_mean"] for e in per_epoch]
+    col_div = [e["grid_diagnostic"]["col_diversity_mean"] for e in per_epoch]
 
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
     axes[0].errorbar(epochs, shift_mean, yerr=shift_std, marker="o")
     axes[0].set_xlabel("epoch")
     axes[0].set_ylabel("shift = 1 - cos(conditioned, unconditioned)")
@@ -972,6 +1074,13 @@ def _plot_trajectory(per_epoch: List[dict], out_path: Path) -> None:
     axes[1].set_xlabel("epoch")
     axes[1].set_ylabel("PCA effective dims (95% var)")
     axes[1].set_title("Conditioned-embedding effective dimensionality")
+
+    axes[2].plot(epochs, row_div, marker="o", label="row (across conditions, per text)")
+    axes[2].plot(epochs, col_div, marker="s", label="col (across texts, per condition)")
+    axes[2].set_xlabel("epoch")
+    axes[2].set_ylabel("mean diversity (1 - mean pairwise cos sim)")
+    axes[2].set_title("Grid diagnostic: low row => conditions null; low col => condition dominates")
+    axes[2].legend(fontsize=8)
 
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1003,8 +1112,11 @@ def compare_runs(dir_a: str, dir_b: str) -> None:
         ids_a = {r["sample_id"] for r in ea["ranked"]["most_changed"]}
         ids_b = {r["sample_id"] for r in eb["ranked"]["most_changed"]}
         overlap = len(ids_a & ids_b) / max(len(ids_a | ids_b), 1)
+        d_row = eb["grid_diagnostic"]["row_diversity_mean"] - ea["grid_diagnostic"]["row_diversity_mean"]
+        d_col = eb["grid_diagnostic"]["col_diversity_mean"] - ea["grid_diagnostic"]["col_diversity_mean"]
         print(f"  epoch {ep:>4}: shift_mean B-A={d_mean:+.4f}  eff_dims B-A={d_dims:+d}  "
-              f"most-changed-set Jaccard(A,B)={overlap:.2f}")
+              f"most-changed-set Jaccard(A,B)={overlap:.2f}  "
+              f"row_div B-A={d_row:+.4f}  col_div B-A={d_col:+.4f}")
 ```
 
 - [ ] **Step 2: Replace the `--selftest`-only CLI with the full CLI**
@@ -1073,7 +1185,7 @@ Expected: both print `Wrote .../condition_geometry/summary.json (2 epochs)` with
 python scripts/analyze_condition_geometry.py --compare <frozen_smoke_run_dir> <trained_smoke_run_dir>
 ```
 
-Expected: prints the comparison header and one line per shared epoch (`epoch 0`, `epoch 1`) with `shift_mean B-A`, `eff_dims B-A`, and a Jaccard overlap in `[0, 1]`.
+Expected: prints the comparison header and one line per shared epoch (`epoch 0`, `epoch 1`) with `shift_mean B-A`, `eff_dims B-A`, a Jaccard overlap in `[0, 1]`, and `row_div B-A`/`col_div B-A`.
 
 - [ ] **Step 6: Commit**
 
@@ -1150,7 +1262,7 @@ python scripts/analyze_condition_geometry.py --compare <frozen_seed2_dir> <train
 python scripts/analyze_condition_geometry.py --compare <frozen_seed3_dir> <trained_seed3_dir>
 ```
 
-Capture all three comparisons' full printed output (per-epoch `shift_mean B-A`, `eff_dims B-A`, most-changed-set Jaccard overlap).
+Capture all three comparisons' full printed output (per-epoch `shift_mean B-A`, `eff_dims B-A`, most-changed-set Jaccard overlap, `row_div B-A`/`col_div B-A`).
 
 - [ ] **Step 3: Apply the spec's decision rule**
 
@@ -1158,7 +1270,7 @@ Per spec §4 Experiment 11.1's success criteria: **no real difference on either 
 
 - [ ] **Step 4: Write the results report**
 
-Create `docs/reports/2026-08-25_condition_freeze_ablation.md` following the structure of `docs/reports/2026-08-24_buddy_init_encoder_ablation.md` (method, retrieval results table, geometry-diagnostic results — shift distributions, effective-dims trajectory, most/least-changed samples, correlations against condition norm and buddy degree — interpretation, caveats, reproduction commands).
+Create `docs/reports/2026-08-25_condition_freeze_ablation.md` following the structure of `docs/reports/2026-08-24_buddy_init_encoder_ablation.md` (method, retrieval results table, geometry-diagnostic results — shift distributions, effective-dims trajectory, most/least-changed samples, correlations against condition norm and buddy degree, and the condition-vs-text grid diagnostic's row/col diversity trajectory (interpreted against the two failure modes: low row diversity ⇒ conditions null/interchangeable, low col diversity ⇒ a condition dominates and collapses the combination) — interpretation, caveats, reproduction commands).
 
 - [ ] **Step 5: Update the spec**
 
@@ -1175,9 +1287,9 @@ git commit -m "results: condition freeze ablation (Experiment 11.1)"
 
 ## Self-Review
 
-- **Spec coverage:** Task 1 provides the one missing piece of infrastructure (sample-id-aware per-epoch snapshots) the geometry diagnostic needs; Task 2 implements 11.1's core paired-arm design exactly as specced (shared results_dir/template, `em_interval` as the sole axis); Tasks 3 covers the retrieval axis of the success criteria; Tasks 4–5 cover the geometry axis (distribution comparison, per-sample shift, most/least-changed ranking, correlation against condition norm and buddy degree — all four diagnostics named in the spec's Tooling paragraph); Task 6 executes; Task 7 applies the widened either-axis decision rule and resolves 11.2's gate. 11.2 itself is explicitly out of scope for this plan, per spec.
+- **Spec coverage:** Task 1 provides the one missing piece of infrastructure (sample-id-aware per-epoch snapshots) the geometry diagnostic needs; Task 2 implements 11.1's core paired-arm design exactly as specced (shared results_dir/template, `em_interval` as the sole axis); Tasks 3 covers the retrieval axis of the success criteria; Tasks 4–5 cover the geometry axis (distribution comparison, per-sample shift, most/least-changed ranking, correlation against condition norm and buddy degree, and the condition-vs-text grid diversity split — all five diagnostics named in the spec's Tooling paragraph); Task 6 executes; Task 7 applies the widened either-axis decision rule and resolves 11.2's gate. 11.2 itself is explicitly out of scope for this plan, per spec.
 - **Placeholder scan:** every code block is complete and runnable as written; no TBD/TODO. Task 4 Step 2's note that the selftest is expected to *pass* (not fail) is a deliberate, explained deviation from strict red-green TDD — the file has no external dependency to stub out first, unlike Tasks 3/5 — not a placeholder.
-- **Type/interface consistency:** `_save_condition_viz_snapshot(..., label_ids_all, ...)` (Task 1) matches its call site's new `label_ids_all,` argument and the saved `"sample_ids": list(label_ids_all)` key, which Task 5's `analyze_run` reads back as `snap["sample_ids"]` and passes to `reorder_features_to_z(raw_feat, feat_sample_ids, sample_ids)` and `rank_most_least_changed(shift, sample_ids, k=...)` — same list-of-int type throughout. `compute_paired_deltas(df, metric) -> list[(seed, float)]` and `summarize(deltas) -> dict` (Task 3) mirror the signatures already established by `scripts/analyze_buddy_init_encoder_ablation.py`/`scripts/analyze_buddy_distance_mode_ablation.py`. `analyze_run(exp_dir, k_ranked=20) -> dict` and `compare_runs(dir_a, dir_b) -> None` (Task 5) are defined once and used identically in their smoke-test steps and in Task 7.
+- **Type/interface consistency:** `_save_condition_viz_snapshot(..., label_ids_all, ...)` (Task 1) matches its call site's new `label_ids_all,` argument and the saved `"sample_ids": list(label_ids_all)` key, which Task 5's `analyze_run` reads back as `snap["sample_ids"]` and passes to `reorder_features_to_z(raw_feat, feat_sample_ids, sample_ids)` and `rank_most_least_changed(shift, sample_ids, k=...)` — same list-of-int type throughout. `compute_paired_deltas(df, metric) -> list[(seed, float)]` and `summarize(deltas) -> dict` (Task 3) mirror the signatures already established by `scripts/analyze_buddy_init_encoder_ablation.py`/`scripts/analyze_buddy_distance_mode_ablation.py`. `grid_diversity(comb_grid) -> {"row_diversity": ndarray, "col_diversity": ndarray}` (Task 4) is produced by `compute_condition_text_grid` (Task 5) and consumed identically in `analyze_run`'s `grid_diagnostic` dict, `_plot_trajectory`'s third panel, and `compare_runs`' `row_div`/`col_div` deltas — same key names throughout. `analyze_run(exp_dir, k_ranked=20, n_text_sample=30, n_cond_sample=30, grid_seed=0) -> dict` and `compare_runs(dir_a, dir_b) -> None` (Task 5) are defined once and used identically in their smoke-test steps and in Task 7.
 - **Scope check:** RedCaps-150k, 2 arms, 3 seeds (6 runs) only — 11.2 is explicitly out of scope for this plan (gated on this plan's own result, per spec). Experiments 0–10 are untouched.
 - **Sample-ID consistency (CLAUDE.md's flagged failure mode):** addressed directly in three places — Task 1's verification script cross-checks the new `sample_ids` field against the run's own `training_embeddings/sample_ids.npy` ground truth; Task 5's `analyze_run` uses `reorder_features_to_z` (not a hand-rolled join) to align FeatureManager's row order against the condition table's row order; and `buddy_edges.npy`'s endpoints are already documented (`compute_buddy_init`'s docstring) as table positions in the same `output_sample_ids` order the condition table uses, so `np.bincount` needs no separate reindexing.
 - **Template-sharing correctness (this plan's one genuine departure from every prior experiment's pattern):** called out in Global Constraints, the sweep script's header comment, and Task 2 Step 2's explicit smoke-test check (confirming the second arm loads rather than rebuilds the template) — the one place this plan could most easily be "corrected" into breaking its own pairing design if an implementer pattern-matched on Experiments 1/8/10 without reading the reasoning.
