@@ -211,6 +211,15 @@ def analyze_run(exp_dir: str, k_ranked: int = 20, n_text_sample: int = 30, n_con
 
     rng = np.random.default_rng(grid_seed)
 
+    # Condition-vs-text cross grid: sample the text/condition indices ONCE per run (not
+    # once per epoch), from the first snapshot's N -- N is constant across a run's epochs
+    # (asserted below) -- so the same fixed indices are reused every epoch and the
+    # row/col-diversity trajectory in _plot_trajectory reflects real training dynamics
+    # rather than resampling noise.
+    n_ref = torch.load(epoch_files[0], map_location="cpu")["label_embeddings_all"].shape[0]
+    text_idx = rng.choice(n_ref, size=min(n_text_sample, n_ref), replace=False)
+    cond_idx = rng.choice(n_ref, size=min(n_cond_sample, n_ref), replace=False)
+
     per_epoch = []
     for ef in epoch_files:
         snap = torch.load(ef, map_location="cpu")
@@ -218,6 +227,10 @@ def analyze_run(exp_dir: str, k_ranked: int = 20, n_text_sample: int = 30, n_con
         conditions = snap["label_embeddings_all"]  # [N, D]
         sample_ids = snap["sample_ids"]             # [N], added in Task 1
         n = conditions.shape[0]
+        assert n == n_ref, (
+            f"epoch {epoch} has N={n} samples but the run's first epoch had N={n_ref}; "
+            f"the fixed text/condition grid indices assume constant N across a run's epochs"
+        )
 
         combine_side = snap.get("combine_side", "txt")
         raw_feat = img_t if combine_side == "img" else txt_t
@@ -239,11 +252,7 @@ def analyze_run(exp_dir: str, k_ranked: int = 20, n_text_sample: int = 30, n_con
             degree = np.bincount(buddy_edges.flatten(), minlength=n).astype(float)
             degree_corr = correlate_shift(shift, degree)
 
-        # Condition-vs-text cross grid: same fixed indices every epoch (rng re-seeded per
-        # analyze_run call, sampled once here from this epoch's N -- N is constant across
-        # epochs for one run) so the trajectory below is comparable epoch-to-epoch.
-        text_idx = rng.choice(n, size=min(n_text_sample, n), replace=False)
-        cond_idx = rng.choice(n, size=min(n_cond_sample, n), replace=False)
+        # text_idx/cond_idx were sampled once, before the loop, and reused unchanged here.
         comb_grid = compute_condition_text_grid(combiner, combine_feat[text_idx], conditions[cond_idx])
         diversity = grid_diversity(comb_grid)
 
