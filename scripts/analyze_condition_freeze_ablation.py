@@ -55,8 +55,20 @@ def fetch(entity, project, group, tag=None):
     import wandb
     api = wandb.Api()
     rows = []
+    skipped_unfinished = 0
     for run in api.runs(f"{entity}/{project}", filters={"group": group}):
         if tag and tag not in (run.tags or []):
+            continue
+        # A crashed/killed/still-running run can still have partial summary metrics
+        # (e.g. logged at epoch 0 before dying) that look like real numbers to
+        # compute_paired_deltas's per-cell .max(). Excluding anything but a clean
+        # finish is the only safe way to dedupe a cell that got re-run after a
+        # crash — .max() alone can silently prefer the crashed run's number over
+        # the real, fully-trained one (this happened: a driver-outage-killed run
+        # logged epoch-0 metrics that were numerically higher, by epoch-0 noise,
+        # than the finished run's converged ones).
+        if run.state != "finished":
+            skipped_unfinished += 1
             continue
         cfg, summ = run.config, run.summary
         arm = cget(cfg, ("train", "arm"))
@@ -73,6 +85,8 @@ def fetch(entity, project, group, tag=None):
         for cname, cpath in CELL:
             row[cname] = cget(cfg, cpath)
         rows.append(row)
+    if skipped_unfinished:
+        print(f"  ({skipped_unfinished} non-finished run(s) excluded from analysis)")
     return pd.DataFrame(rows)
 
 
@@ -112,9 +126,7 @@ def analyze(entity, project, group, tag=None):
     if df.empty:
         print("  (no runs found - check --entity/--project/--tag)")
         return
-    n_unfinished = (df["state"] != "finished").sum()
-    print(f"  {len(df)} run(s); arms present: {sorted(df['arm'].unique())}."
-          + (f"  [{n_unfinished} not finished -> best-so-far]" if n_unfinished else ""))
+    print(f"  {len(df)} run(s); arms present: {sorted(df['arm'].unique())}.")
 
     frozen_drift = df.loc[df["arm"] == "frozen", DRIFT].dropna()
     if len(frozen_drift):
@@ -136,6 +148,8 @@ def analyze(entity, project, group, tag=None):
             continue
         sig = f"  mean/SEM={s['z']:+.1f}{' *' if not np.isnan(s['z']) and abs(s['z']) >= 2 else ''}" if s["n"] > 1 else ""
         print(f"    mean delta = {s['mean']:+.2f} (n={s['n']}, wins={s['wins']}/{s['n']}){sig}")
+        print("    Compare mean delta against the noise floor (~0.1-0.7 R1, NOT zero) - "
+              "see docs/reports/2026-06-24_buddy_progress_report.md S8a.")
         for seed, d in sorted(deltas):
             print(f"      seed {seed}: delta = {d:+.2f}")
 
