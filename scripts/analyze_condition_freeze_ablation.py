@@ -25,7 +25,7 @@ import pandas as pd
 
 T2I = "test_oracle/t2i_R1"
 I2T = "test_oracle/i2t_R1"
-DRIFT = "buddy_diag/drift_from_init"
+DRIFT = "train_buddy_diag/drift_from_init"
 BASELINE = "trained"
 TREATMENT = "frozen"
 CELL = [("arm", ("train", "arm")), ("seed", ("seed",))]
