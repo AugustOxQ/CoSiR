@@ -540,6 +540,7 @@ def _save_condition_viz_snapshot(
     text_to_image_map,
     test_set,
     label_embeddings_all,
+    label_ids_all,
     representatives,
     sample_types,
 ):
@@ -584,6 +585,7 @@ def _save_condition_viz_snapshot(
         {
             "epoch": epoch,
             "label_embeddings_all": label_embeddings_all.cpu(),
+            "sample_ids": list(label_ids_all),
             "representatives": representatives.cpu(),
             "combiner_state_dict": model.combiner.state_dict(),
             "predictor_state_dict": model.condition_predictor.state_dict(),
@@ -931,7 +933,7 @@ def _eval_snapshot(
     with torch.no_grad():
         torch.cuda.empty_cache()
         print("Getting all embeddings")
-        _, label_embeddings_all = embedding_manager.get_all_embeddings()
+        label_ids_all, label_embeddings_all = embedding_manager.get_all_embeddings()
 
         print("Getting representatives")
         # Use more representatives at the final epoch for richer analysis
@@ -1048,6 +1050,7 @@ def _eval_snapshot(
             text_to_image_map,
             test_set,
             label_embeddings_all,
+            label_ids_all,
             representatives,
             sample_types,
         )
