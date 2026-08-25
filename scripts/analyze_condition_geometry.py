@@ -6,10 +6,17 @@ Retrieval numbers (test_oracle/*_R1) can miss a real difference between the froz
 trained arms of Experiment 11.1 -- this script inspects the actual embedding geometry
 instead: how much does conditioning shift the combine-side embedding, how does that shift
 distribution compare across epochs/arms, which samples are moved the most/least, and --
-via a condition-vs-text cross grid -- whether conditions are interchangeable/null for a
-given text (low diversity across conditions) or one condition dominates and collapses
-every text to nearly the same output (low diversity across texts). Retrieval numbers alone
-cannot distinguish those two failure modes from each other or from a healthy grid.
+via a condition-vs-combine-side cross grid -- whether conditions are interchangeable/null
+for a given combine-side feature (low diversity across conditions) or one condition
+dominates and collapses every input to nearly the same output (low diversity across
+combine-side features). Retrieval numbers alone cannot distinguish those two failure modes
+from each other or from a healthy grid.
+
+The "combine side" is whichever modality the run's model.combine_side names (img or txt);
+this script reads it from each saved snapshot. Features are loaded RAW / un-normalized from
+the run's own FeatureManager store, matching exactly what train_cosir.py and
+src/eval/metrics.py feed the combiner -- Combiner_new's gated residual is scale-sensitive,
+so normalizing the inputs here would measure a different model than the one that trained.
 
 Two modes:
   --exp-dir PATH   analyze one run's condition_viz/ snapshots, write
@@ -24,22 +31,17 @@ Usage:
   python scripts/analyze_condition_geometry.py --selftest
 """
 import argparse
+import ast
 import json
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 from scipy.stats import pearsonr
-
-_REDCAPS_BUDDY_DIR = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", "src", "test", "20260623_redcaps_buddy"
-)
-if _REDCAPS_BUDDY_DIR not in sys.path:
-    sys.path.insert(0, _REDCAPS_BUDDY_DIR)
 
 _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if _ROOT not in sys.path:
@@ -47,6 +49,7 @@ if _ROOT not in sys.path:
 
 from src.metrics.regularizer import reorder_features_to_z
 from src.model.combiner import Combiner_new
+from src.utils import FeatureManager
 
 
 def compute_shift(comb_emb: torch.Tensor, unconditioned_emb: torch.Tensor) -> np.ndarray:
@@ -138,12 +141,35 @@ def grid_diversity(comb_grid: torch.Tensor) -> Dict[str, np.ndarray]:
     return {"row_diversity": row_diversity, "col_diversity": col_diversity}
 
 
-def _load_redcaps_train_features():
-    """Frozen CLIP (img, txt) features + sample_ids for RedCaps-150k, in FeatureManager's
-    own row order. Scope is RedCaps-150k only per spec S4 Experiment 11.1."""
-    import redcaps_buddy as rb
-    data = rb.load_data()
-    return data.img, data.txt, data.sample_ids
+def _load_run_config(exp_dir: str) -> dict:
+    """The run's own saved Hydra config. The file holds a JSON-encoded *string* of a
+    Python dict repr (not nested JSON), so it needs a literal_eval after json.load."""
+    raw = json.load(open(Path(exp_dir) / "configs" / "config.json"))
+    return ast.literal_eval(raw) if isinstance(raw, str) else raw
+
+
+def _load_train_features(exp_dir: str, cfg: dict = None) -> Tuple[torch.Tensor, torch.Tensor, List[int]]:
+    """Frozen CLIP (img, txt) features + sample_ids for THIS run's own feature store, in
+    FeatureManager's own row order.
+
+    Features are returned **raw / un-normalized**, exactly as `train_cosir.py` and
+    `src/eval/metrics.py` feed them to the combiner. This matters: `Combiner_new.forward`
+    computes a scale-sensitive gated residual `(1-s)*general + s*delta`, so L2-normalizing
+    the inputs here (as an earlier version of this function did, by routing through
+    `redcaps_buddy.load_data()`) changes the mixture the diagnostic measures and produces
+    geometry numbers that do not correspond to the model that was actually trained/evaluated.
+
+    Reading `featuremanager.storage_dir` from the run's own config also makes this
+    dataset-agnostic — nothing here is RedCaps-150k specific.
+    """
+    cfg = cfg if cfg is not None else _load_run_config(exp_dir)
+    storage_dir = cfg["featuremanager"]["storage_dir"]
+    fm = FeatureManager(storage_dir)
+    d = fm.load_all_to_ram(["img_features", "txt_features"])
+    img = d["img_features"].float()
+    txt = d["txt_features"].float()
+    sample_ids = [int(x) for x in d["sample_ids"]]
+    return img, txt, sample_ids
 
 
 def _rebuild_combiner(epoch_snapshot: dict) -> Combiner_new:
@@ -202,9 +228,7 @@ def analyze_run(exp_dir: str, k_ranked: int = 20, n_text_sample: int = 30, n_con
     if not epoch_files:
         raise FileNotFoundError(f"no condition_viz/epoch_*.pt snapshots under {exp_dir}")
 
-    img_np, txt_np, feat_sample_ids = _load_redcaps_train_features()
-    img_t = torch.from_numpy(np.ascontiguousarray(img_np)).float()
-    txt_t = torch.from_numpy(np.ascontiguousarray(txt_np)).float()
+    img_t, txt_t, feat_sample_ids = _load_train_features(exp_dir)
 
     edges_path = exp_path / "training_embeddings" / "buddy_edges.npy"
     buddy_edges = np.load(edges_path) if edges_path.exists() else None

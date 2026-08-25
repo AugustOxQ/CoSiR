@@ -138,6 +138,9 @@ def analyze(entity, project, group, tag=None):
         else:
             print(f"  OK: all {len(frozen_drift)} frozen-arm run(s) show drift_from_init == 0 "
                   f"(freeze confirmed to have taken effect).")
+    else:
+        print(f"  !! WARNING: no {DRIFT} values found for any frozen-arm run -- the freeze "
+              f"premise is UNVERIFIED for this run set. Check the wandb key path.")
 
     for metric in (T2I, I2T):
         print(f"\n  --- {metric} (frozen - trained) ---")
