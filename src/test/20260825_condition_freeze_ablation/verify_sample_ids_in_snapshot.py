@@ -23,7 +23,7 @@ def verify(exp_dir: str) -> None:
 
     truth_path = exp_path / "training_embeddings" / "sample_ids.npy"
     assert truth_path.exists(), f"missing ground-truth {truth_path}"
-    truth_ids = sorted(int(x) for x in np.load(truth_path).tolist())
+    truth_ids = [int(x) for x in np.load(truth_path).tolist()]
 
     for ef in epoch_files:
         snap = torch.load(ef, map_location="cpu")
@@ -33,9 +33,10 @@ def verify(exp_dir: str) -> None:
         assert len(ids) == n_emb, (
             f"{ef}: sample_ids length {len(ids)} != label_embeddings_all rows {n_emb}"
         )
-        assert sorted(int(x) for x in ids) == truth_ids, (
-            f"{ef}: sample_ids do not match training_embeddings/sample_ids.npy "
-            f"(len {len(ids)} vs {len(truth_ids)}, or values differ)"
+        ids_int = [int(x) for x in ids]
+        assert ids_int == truth_ids, (
+            f"{ef}: sample_ids do not match training_embeddings/sample_ids.npy in row order "
+            f"(expected positional equality; len {len(ids_int)} vs {len(truth_ids)}, or values/order differ)"
         )
         print(f"PASS {ef.name}: {len(ids)} sample_ids, all match ground truth")
 
