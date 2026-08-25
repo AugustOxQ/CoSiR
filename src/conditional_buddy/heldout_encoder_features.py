@@ -75,6 +75,19 @@ def load_encoder_pair_features(
                 f"  python src/test/20260708_heldout_grid/extract_heldout.py "
                 f"--dataset {dataset} --model {name}"
             )
-        return np.load(path).astype(np.float32)
+        arr = np.load(path).astype(np.float32)
+        # The assert above only compares two reads of the SAME CLIP-backed store (data vs.
+        # feature_manager) -- it never touches the actual held-out .npy being loaded here. A
+        # stale cache with the same row COUNT but a different row ORDER (e.g. regenerated from
+        # a re-shuffled annotation file) would silently produce a garbage graph without this
+        # check. This only catches a row-count mismatch, not a same-count reordering -- but a
+        # reorder without a count change would require the cache to have been rebuilt against
+        # a differently-sized annotation file that happens to match by coincidence, which is
+        # far less likely than the row-count drift this guards against.
+        assert arr.shape[0] == len(data.sample_ids), (
+            f"held-out cache {path} has {arr.shape[0]} rows, expected {len(data.sample_ids)} "
+            f"(matching {dataset}'s FeatureManager) -- re-run extract_heldout.py for this model"
+        )
+        return arr
 
     return _load(vision), _load(text), data.sample_ids
