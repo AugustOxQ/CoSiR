@@ -1105,10 +1105,10 @@ Expected: `SELFTEST OK`.
 - [ ] **Step 3: Smoke-test against real cached data at small scale**
 
 ```bash
-python scripts/analyze_polysemy_bridges.py --n-bridge-sample 50 --device cpu
+python scripts/analyze_polysemy_bridges.py --n-bridge-sample 50 --device cuda
 ```
 
-Expected: no traceback; prints bridge-node count/fraction (should roughly match the ~80% figure Experiment 10's diagnostic already found on this same dataset), `n_pairs_sampled` at or near 50, and a `pull_summary`/`grading_corr` line. If the `template_ids == sample_ids` assertion in `run()` fires, stop — it means `--storage-dir`/`--template-dir` don't point at the same underlying dataset/config the template was built from; do not proceed to Task 8 until this passes cleanly. `--device cpu` keeps the smoke test usable even without immediate GPU access; the real run in Task 8 can use `--device cuda` for the full-scale mutual-kNN build.
+Expected: no traceback; prints bridge-node count/fraction (should roughly match the ~80% figure Experiment 10's diagnostic already found on this same dataset), `n_pairs_sampled` at or near 50, and a `pull_summary`/`grading_corr` line. If the `template_ids == sample_ids` assertion in `run()` fires, stop — it means `--storage-dir`/`--template-dir` don't point at the same underlying dataset/config the template was built from; do not proceed to Task 8 until this passes cleanly. **Use `--device cuda` (the CLI default) here, not `cpu`** — `n_bridge_sample` only caps how many bridge *pairs* get sampled after the graph is built; it does NOT shrink the mutual-kNN graph-construction cost, which is a brute-force O(N²) pass over the *full* 150k feature set regardless of this flag (`mutual_knn`'s module docstring, `src/conditional_buddy/buddy_graph.py`) — confirmed impractically slow on CPU (42+ minutes with no output) when this was actually run without a GPU.
 
 - [ ] **Step 4: Commit**
 
