@@ -1,0 +1,171 @@
+# Host capability descriptors. `harness gen` reads this to generate each host's
+# native pre-action hook so all three converge on `bin/harness hook pre-tool`.
+
+[claude]
+hook_event = "PreToolUse"
+hook_path  = ".claude-plugin/hooks.json"
+matcher    = "Write|Edit|MultiEdit|Bash|Read"
+deny       = "exit2"
+transport  = "stdin-json"
+model      = "opus"
+delivery_strategy = "monitor"
+delivery_event_turn = "Stop"
+delivery_event_monitor = "SessionStart"
+
+[codex]
+hook_event = "PreToolUse"
+hook_path  = ".codex/hooks.json"
+matcher    = "*"
+deny       = "permissionDecision"
+transport  = "stdin-json"
+model      = "gpt-5.6-sol"
+delivery_strategy = "turn"
+delivery_event_turn = "Stop"
+
+[codex.agent_profiles.worker]
+output_path = "codex/.codex/agents/worker.toml"
+name = "worker"
+description = "Managed implementation worker for one Harness Breezing task."
+model = "gpt-5.6-luna"
+model_reasoning_effort = "max"
+developer_instructions = """
+Implement only the assigned Harness task in the provided worktree.
+Read the task contract and relevant project spec before editing.
+Run focused tests or checks, report exact changed files and residual risks,
+and create the requested commit before returning. Do not spawn subagents.
+"""
+
+[codex.agent_profiles.reviewer]
+output_path = "codex/.codex/agents/reviewer.toml"
+name = "reviewer"
+description = "Read-only reviewer for diffs, risk, and missing tests."
+model = "gpt-5.6-sol"
+model_reasoning_effort = "xhigh"
+sandbox_mode = "read-only"
+developer_instructions = "Review evidence-first. Report prioritized findings with file and line references. Do not edit files."
+
+[cursor]
+hook_event = "preToolUse"
+hook_path  = ".cursor/hooks.json"
+matcher    = "*"
+deny       = "permission"
+transport  = "stdin-json"
+model      = "default"
+delivery_strategy = "turn"
+delivery_event_turn = "stop"
+
+# Grok: the runtime codec/floor adapter exists (bin/harness hook pre-tool
+# --host grok, wired in go/internal/hookcodec — DenyOutput emits a
+# byte-identical Claude PreToolUse deny envelope for host=grok), and native
+# lifecycle-hook FILE generation is now wired (133.8).
+#
+# RESOLVED (2026-08-14, Phase 133.8, measured against `grok 1.0.3
+# (1a29d5bc12d4) [stable]` — note the version moved again from the 0.2.118
+# measured on 2026-08-13, so capability was re-measured rather than assumed):
+#   - `GenerateHooksJSON` now has a `case "grok"` (grokDoc, Claude document
+#     shape, command carries `--host grok`), so hook_generation is "generate".
+#   - `harness gen` writes `.grok/hooks/harness-pretool.json` (493 bytes:
+#     PreToolUse + the Stop delivery entry).
+#   - `grok inspect` picks it up: the Hooks count went 35 -> 36 (PreToolUse
+#     alone) -> 37 (after the Stop delivery entry was added), with two
+#     `command matcher=*  project` rows. **This refutes the 2026-08-11 claim
+#     below that project-level hooks are rejected** — that claim came from
+#     grok-cli (TypeScript), a different product from the Rust "Grok Build
+#     TUI" actually installed. Project-level hooks ARE read by 1.0.3.
+#   - Side finding: grok accepted `Stop` too, so the loader does not reject a
+#     whole file on the first event it does not recognize — which WEAKENS the
+#     27-event hypothesis recorded below as the cause of the plugin-level gap.
+#     Keep it as a candidate, not a conclusion.
+#
+# UNTESTED LINK (discovery != firing): the generated command is the RELATIVE
+# path `bin/harness hook pre-tool --host grok`. Whether grok's hook executor
+# resolves it — and with which working directory — has not been observed.
+# Claude needs the valid_root bootstrap wrapper for exactly this class of
+# problem. If firing turns out to fail, that wrapper (or an absolute path) is
+# the first thing to try; the discovery evidence above says nothing about it.
+#   - Folder trust is already granted (`grok inspect` → "Project trusted: yes"),
+#     so the one-time `--trust` step listed below is done.
+#   - `build_grok()` now copies `hooks/` into the dist (verified by
+#     materializing the dist: `hooks/hooks.json`, 27 events).
+#
+# STILL NOT OBSERVED: grok does not list `plugin: claude-code-harness` among
+# plugin-provided hooks, even though it discovers the plugin's 20 skills and
+# the installed cache already contains `hooks/hooks.json`. The dist change
+# cannot be verified end-to-end until the plugin is reinstalled from a dist
+# built after this change. A candidate cause worth testing then: CCH's
+# hooks.json declares 27 event types (TeammateIdle, WorktreeCreate,
+# InstructionsLoaded, StopFailure, ...) while every plugin grok does list
+# declares only events it knows (vercel: SessionStart/SessionEnd). If the
+# loader rejects a file on the first unknown event name, bundling alone will
+# not be enough. Do not record this as fixed until `grok inspect` lists it.
+#
+# CORRECTION (2026-08-13, re-measured against the CLI actually installed on
+# this machine: `grok 0.2.118 (1e1687c1cf6a) [stable]`, "Grok Build TUI", the
+# Rust binary at ~/.local/bin/grok -> ~/.grok/bin/grok):
+#   The 2026-08-11 evidence below this line previously cited "grok-cli
+#   v1.1.7 src/hooks/{types,config,executor}.ts" — that is a DIFFERENT,
+#   unrelated TypeScript project at a developer-local checkout path, not the
+#   product this repo integrates with. Its "project hooks refused" claim does
+#   NOT apply to the real installed CLI. Corrected, primary-source facts:
+#   - `~/.grok/docs/user-guide/10-hooks.md` (bundled CLI docs, not this
+#     repo's docs) states project-level hooks ARE supported and merged from
+#     `<project>/.grok/hooks/*.json`, `<project>/.claude/settings.json`
+#     (Claude compat), `<project>/.cursor/hooks.json` (Cursor compat), and
+#     hooks bundled inside installed plugins — gated by a one-time
+#     folder-trust grant (`--trust` / `/hooks-trust`), the same gate used for
+#     MCP/LSP. This is the opposite of "intentionally refused".
+#   - Empirically confirmed via `grok inspect --json` (`externalCompat.cells`):
+#     `{vendor:"claude", surface:"hooks", enabled:true, source:"default"}` —
+#     the claude-compat hook surface is ON by default for this project.
+#   - Empirically confirmed via the same `hooks` array: grok actually
+#     discovered and loaded `hooks/hooks.json` files bundled inside FOUR
+#     other real Claude Code plugins (codex, security-guidance, vercel,
+#     agentforce-adlc) that are installed only under
+#     `~/.claude/plugins/{marketplaces,cache}/...` — i.e. the claude-compat
+#     hook loader is not theoretical, it is actively firing for other
+#     plugins in this exact environment.
+#   - The CCH package grok has installed itself
+#     (`~/.grok/installed-plugins/grok-f755b9c9`, built by `build_grok()` in
+#     scripts/build-host-plugin-dist.sh) shows `hooks: false` in
+#     `grok inspect --json` `.plugins[]` — NOT because grok refuses it, but
+#     because `build_grok()` never copies a `hooks/` directory into the grok
+#     dist (it copies skills/, scripts/, .grok/AGENTS.md, .grok-plugin/,
+#     hosts/registry.json only). This is a packaging gap in this repo, not a
+#     grok CLI limitation.
+#   - `bin/harness hook pre-tool --host grok` was probed directly with a
+#     Claude-shaped stdin payload (`{"session_id":...,"tool_name":"Bash",
+#     "tool_input":{"command":"git push --force origin main"},"cwd":...}`)
+#     and correctly denied (exit 2, byte-identical JSON to --host claude).
+#     A Read of a safe file returned exit 0. The wire contract already works;
+#     nothing in the policy engine blocks grok.
+#
+# Net effect (updated 2026-08-14, Phase 133.8): the follow-up described above
+# is DONE for the project-level path — `grokDoc()` added, hook_generation
+# flipped, dist ships `hooks/`, folder trust already granted — and `grok
+# inspect` confirms the generated project hook is loaded. The plugin-level
+# path remains unconfirmed (see STILL NOT OBSERVED above).
+#
+# `~/.grok/user-settings.json` is still NOT written: mutating a user-scope
+# config mid-run is what defense-layer-blast-radius.md's staged-rollout rule
+# exists to prevent. Execution-backend use (scripts/grok-companion.sh,
+# cursor-do style, with worktree + Lead review + cherry-pick containment)
+# remains valid and is unaffected by this change.
+[grok]
+hook_generation = "generate"
+hook_event = "PreToolUse"
+hook_path  = ".grok/hooks/harness-pretool.json"
+matcher    = "*"
+deny       = "permissionDecision"
+transport  = "stdin-json"
+model      = "grok-4.6"
+delivery_strategy = "turn"
+delivery_event_turn = "Stop"
+
+# Hermes declares its snake_case lifecycle hooks in ~/.hermes/config.yaml.
+# harness therefore generates no native hook file and only wires turn delivery.
+[hermes]
+hook_event = "pre_tool_call"
+hook_path  = ".hermes/hooks.json"
+requires_home_path = ".hermes"
+delivery_strategy = "turn"
+delivery_event_turn = "stop"
