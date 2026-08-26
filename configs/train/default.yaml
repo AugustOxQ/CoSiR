@@ -39,6 +39,7 @@ loss:
   lambda_gate_logit: 0.1 # L2 on raw gate logit — prevents sigmoid saturation (gradient grows with logit)
   lambda_preserve: 0.05 # preservation: penalise combined output drifting far from input
   lambda_pred: 1.0 # condition predictor distillation weight (0 = disabled)
+  pred_stopgrad: true # if false, gradient also flows predictor->table too (Experiment 11.3 bidirectional coupling); default true = today's one-way distillation
   lambda_ent: 0.0 # L5: disabled — Phase 1 showed entropy was already maximal from epoch 1
   ent_tau: 5.0 # temperature for type-affinity softmax in L5 (unused when lambda_ent=0)
   lambda_var: 0.1 # VICReg variance — penalise per-dim std below var_gamma (0 = disabled)

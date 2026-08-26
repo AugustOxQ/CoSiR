@@ -45,7 +45,7 @@ from src.utils import (
     visualize_ideal_condition_space,
     CoSiRAutomaticEvaluator,
 )
-from src.metrics import LabelContrastiveLoss_enhance
+from src.metrics import LabelContrastiveLoss_enhance, predictor_consistency_loss
 from src.metrics.regularizer import (
     build_neighbor_csr,
     buddy_graph_smoothness_loss,
@@ -1607,16 +1607,16 @@ def train_cosir(cfg, logger):
             lambda_pred = cfg.loss.lambda_pred
             lambda_ent = getattr(cfg.loss, "lambda_ent", 0.0)
             ent_tau = getattr(cfg.loss, "ent_tau", 5.0)
+            pred_stopgrad = getattr(cfg.loss, "pred_stopgrad", True)
 
             pred_cond = None
             if lambda_pred > 0 or (lambda_ent > 0 and len(sample_types) > 0):
                 pred_cond = model.predict_condition(combine_emb)
 
             if lambda_pred > 0 and pred_cond is not None:
-                pred_loss = (
-                    1
-                    - F.cosine_similarity(pred_cond, label_embeddings.detach(), dim=-1)
-                ).mean()
+                pred_loss = predictor_consistency_loss(
+                    pred_cond, label_embeddings, stopgrad=pred_stopgrad
+                )
                 loss = loss + lambda_pred * pred_loss
                 loss_dict["loss_pred"] = pred_loss
 

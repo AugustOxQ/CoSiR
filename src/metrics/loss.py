@@ -54,6 +54,24 @@ def imix_loss(
     return lambda_imix * loss.mean()
 
 
+def predictor_consistency_loss(
+    pred_cond: Tensor,
+    label_embeddings: Tensor,
+    stopgrad: bool = True,
+) -> Tensor:
+    """Cosine-distance consistency loss between the condition predictor's output and the
+    per-sample condition table.
+
+    stopgrad=True (default): only the predictor receives gradient from this term -- today's
+    one-way distillation (predictor learns to reproduce the table).
+    stopgrad=False: gradient also flows into label_embeddings, pulling the table toward what
+    the predictor -- a bounded-capacity function of the frozen input feature -- can represent
+    (Experiment 11.3, docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md).
+    """
+    target = label_embeddings.detach() if stopgrad else label_embeddings
+    return (1 - F.cosine_similarity(pred_cond, target, dim=-1)).mean()
+
+
 class LabelContrastiveLoss_enhance(nn.Module):
     def __init__(
         self,
