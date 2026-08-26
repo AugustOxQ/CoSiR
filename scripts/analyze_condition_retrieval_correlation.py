@@ -248,6 +248,31 @@ def _project_other(other_proj: nn.Module, feat: torch.Tensor, chunk: int = 4096)
     return F.normalize(out, dim=-1)
 
 
+def build_per_sample_dump(
+    sample_ids: List[int],
+    delta_rank: np.ndarray,
+    delta_rank_swap: np.ndarray,
+    condition_drift: np.ndarray,
+    embedding_shift: np.ndarray,
+) -> Dict[str, np.ndarray]:
+    """Pack the per-sample arrays analyze_pair already computes internally into one dict
+    keyed by sample_id, for persistence (analyze_pair only ever aggregated these into
+    summary statistics before; Experiment 12 needs the raw per-sample values)."""
+    n = len(sample_ids)
+    for name, arr in (
+        ("delta_rank", delta_rank), ("delta_rank_swap", delta_rank_swap),
+        ("condition_drift", condition_drift), ("embedding_shift", embedding_shift),
+    ):
+        assert len(arr) == n, f"length mismatch: sample_ids has {n} entries, {name} has {len(arr)}"
+    return {
+        "sample_ids": np.asarray(sample_ids, dtype=np.int64),
+        "delta_rank": np.asarray(delta_rank),
+        "delta_rank_swap": np.asarray(delta_rank_swap),
+        "condition_drift": np.asarray(condition_drift),
+        "embedding_shift": np.asarray(embedding_shift),
+    }
+
+
 def analyze_pair(
     frozen_dir: str,
     trained_dir: str,
@@ -255,6 +280,7 @@ def analyze_pair(
     seed: int = 0,
     k_extremes: int = 20,
     rank_chunk: int = 200,
+    dump_per_sample: bool = False,
 ) -> dict:
     """Correlate per-sample condition drift and embedding shift (trained arm, against
     the frozen arm's final condition as the exact buddy-init value -- the frozen arm
@@ -443,6 +469,18 @@ def analyze_pair(
     with open(out_path, "w") as f:
         json.dump(result, f, indent=2)
 
+    if dump_per_sample:
+        dump = build_per_sample_dump(
+            sample_ids=query_sample_ids,
+            delta_rank=delta_rank,
+            delta_rank_swap=delta_rank_swap,
+            condition_drift=drift_query,
+            embedding_shift=shift_trained,
+        )
+        dump_path = Path(trained_dir) / "condition_geometry" / "per_sample_retrieval_correlation.npz"
+        np.savez(dump_path, **dump)
+        print(f"  Wrote per-sample dump: {dump_path}")
+
     print(f"\n{'='*78}\nDrift/shift vs retrieval-rank correlation\n"
           f"  frozen:  {frozen_dir}\n  trained: {trained_dir}\n{'='*78}")
     print(f"  n_query_sample={len(query_idx)} / n_population={n}  combine_side={combine_side}")
@@ -536,6 +574,30 @@ def _selftest():
     # _find_shared_init: returns None when no template_embeddings/ is reachable.
     assert _find_shared_init("/nonexistent/results/root/some_run_dir") is None
 
+    # build_per_sample_dump: packs aligned arrays, keyed by sample_id.
+    dump = build_per_sample_dump(
+        sample_ids=[10, 11, 12],
+        delta_rank=np.array([1, -2, 0]),
+        delta_rank_swap=np.array([2, -1, 0]),
+        condition_drift=np.array([0.1, 0.2, 0.3]),
+        embedding_shift=np.array([0.01, 0.02, 0.03]),
+    )
+    assert list(dump["sample_ids"]) == [10, 11, 12], dump
+    assert list(dump["delta_rank"]) == [1, -2, 0], dump
+    assert list(dump["embedding_shift"]) == [0.01, 0.02, 0.03], dump
+
+    try:
+        build_per_sample_dump(
+            sample_ids=[10, 11],
+            delta_rank=np.array([1, -2, 0]),
+            delta_rank_swap=np.array([2, -1, 0]),
+            condition_drift=np.array([0.1, 0.2, 0.3]),
+            embedding_shift=np.array([0.01, 0.02, 0.03]),
+        )
+        raise AssertionError("expected a length-mismatch error")
+    except AssertionError as e:
+        assert "length" in str(e), e
+
     print("SELFTEST OK")
 
 
@@ -548,6 +610,10 @@ def main():
     ap.add_argument("--rank-chunk", type=int, default=200,
                     help="query-dimension chunk size for rank_of_true_match (memory knob only; "
                          "results are chunk-invariant)")
+    ap.add_argument("--dump-per-sample", action="store_true",
+                    help="also write condition_geometry/per_sample_retrieval_correlation.npz "
+                         "with the raw per-sample delta_rank/condition_drift/embedding_shift "
+                         "arrays (Experiment 12)")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
     if args.selftest:
@@ -557,7 +623,7 @@ def main():
         analyze_pair(
             args.pair[0], args.pair[1],
             n_query_sample=args.n_query_sample, seed=args.seed, k_extremes=args.k_extremes,
-            rank_chunk=max(1, args.rank_chunk),
+            rank_chunk=max(1, args.rank_chunk), dump_per_sample=args.dump_per_sample,
         )
         return
     ap.print_help()
