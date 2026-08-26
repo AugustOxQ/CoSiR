@@ -274,11 +274,32 @@ def _selftest():
     assert result["bridge"]["n"] == 1 and result["bridge"]["median_abs_delta_rank"] == 10.0, result
     assert result["neither"]["n"] == 1  # only sample 101 (id 103 was excluded, not in the dump)
     assert "corr_is_polysemic_vs_abs_delta_rank" in result, result
+
+    # save_raw_arrays: always saves pair arrays, and includes retrieval arrays only
+    # when the optional cross-reference was requested.
+    with tempfile.TemporaryDirectory() as tmp:
+        raw_path = os.path.join(tmp, "raw.npz")
+        save_raw_arrays(
+            raw_path,
+            a_idx=np.array([1, 2]), b_idx=np.array([3, 4]), c_idx=np.array([5, 6]),
+            dist_bc=np.array([0.1, 0.2]), dist_bc_baseline=np.array([0.3, 0.4]),
+            jaccard=np.array([0.0, 0.5]),
+            retrieval_raw={
+                "label_kept": np.array(["bridge", "neither"]),
+                "delta_rank": np.array([2.0, -3.0]),
+            },
+        )
+        raw = np.load(raw_path)
+        assert set(raw.files) == {
+            "a_idx", "b_idx", "c_idx", "dist_bc", "dist_bc_baseline", "jaccard",
+            "label_kept", "delta_rank",
+        }, raw.files
+        assert raw["label_kept"].tolist() == ["bridge", "neither"]
     print("SELFTEST OK")
 
 
 def correlate_polysemy_with_retrieval(
-    labels: np.ndarray, sample_ids: List[int], npz_path: str
+    labels: np.ndarray, sample_ids: List[int], npz_path: str, return_raw: bool = False,
 ) -> dict:
     """Join the per-node polysemy label (row-aligned to sample_ids, this script's own
     FeatureManager-order labeling) against Experiment 11.2's per-sample retrieval-rank/
@@ -313,7 +334,33 @@ def correlate_polysemy_with_retrieval(
     result["corr_is_polysemic_vs_abs_delta_rank"] = spearman_correlate(is_polysemic, np.abs(delta_rank))
     result["corr_is_polysemic_vs_condition_drift"] = spearman_correlate(is_polysemic, condition_drift)
     result["corr_is_polysemic_vs_embedding_shift"] = spearman_correlate(is_polysemic, embedding_shift)
+    if return_raw:
+        return result, {"label_kept": label_kept, "delta_rank": delta_rank}
     return result
+
+
+def save_raw_arrays(
+    path: str,
+    a_idx: np.ndarray,
+    b_idx: np.ndarray,
+    c_idx: np.ndarray,
+    dist_bc: np.ndarray,
+    dist_bc_baseline: np.ndarray,
+    jaccard: np.ndarray,
+    retrieval_raw: dict = None,
+) -> None:
+    """Write the optional raw arrays needed to reproduce Experiment 12 figures."""
+    payload = {
+        "a_idx": a_idx,
+        "b_idx": b_idx,
+        "c_idx": c_idx,
+        "dist_bc": dist_bc,
+        "dist_bc_baseline": dist_bc_baseline,
+        "jaccard": jaccard,
+    }
+    if retrieval_raw is not None:
+        payload.update(retrieval_raw)
+    np.savez(path, **payload)
 
 
 def _load_features(storage_dir: str):
@@ -336,6 +383,7 @@ def run(
     seed: int = 0,
     device: str = "cuda",
     per_sample_npz: str = None,
+    save_raw: str = None,
 ) -> dict:
     """End-to-end Experiment 12 pass: rebuild the buddy graph from cached features,
     classify its edges, sample bridge-node (A, B, C) triples, measure whether the
@@ -388,9 +436,19 @@ def run(
         "label_counts": {lbl: int((labels == lbl).sum())
                          for lbl in ("neither", "img_only_only", "txt_only_only", "bridge")},
     }
+    retrieval_raw = None
     if per_sample_npz is not None:
-        result["retrieval_correlation"] = correlate_polysemy_with_retrieval(
-            labels, sample_ids, per_sample_npz
+        if save_raw is not None:
+            result["retrieval_correlation"], retrieval_raw = correlate_polysemy_with_retrieval(
+                labels, sample_ids, per_sample_npz, return_raw=True
+            )
+        else:
+            result["retrieval_correlation"] = correlate_polysemy_with_retrieval(
+                labels, sample_ids, per_sample_npz
+            )
+    if save_raw is not None:
+        save_raw_arrays(
+            save_raw, a_idx, b_idx, c_idx, dist_bc, dist_bc_baseline, jaccard, retrieval_raw
         )
     return result
 
@@ -409,6 +467,8 @@ def main():
                     help="path to a Task 2 --dump-per-sample .npz for the retrieval-rank/"
                          "drift cross-reference (optional)")
     ap.add_argument("--out", default=None, help="write the JSON result here (optional)")
+    ap.add_argument("--save-raw", default=None,
+                    help="write sampled-pair raw arrays (and retrieval arrays when available) to .npz")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
     if args.selftest:
@@ -418,7 +478,7 @@ def main():
     result = run(
         storage_dir=args.storage_dir, template_dir=args.template_dir, K=args.K,
         alpha=args.alpha, n_bridge_sample=args.n_bridge_sample, seed=args.seed,
-        device=args.device, per_sample_npz=args.per_sample_npz,
+        device=args.device, per_sample_npz=args.per_sample_npz, save_raw=args.save_raw,
     )
 
     print(f"\n{'='*78}\nExperiment 12 - cross-modal polysemy bridge-node diagnostic\n{'='*78}")
@@ -445,6 +505,8 @@ def main():
         with open(args.out, "w") as f:
             json.dump(result, f, indent=2)
         print(f"  Wrote {args.out}")
+    if args.save_raw:
+        print(f"  Wrote {args.save_raw}")
 
 
 if __name__ == "__main__":

@@ -24,6 +24,10 @@ bridge nodes: 120,324 / 150,000 (80.2% of nodes)
 label counts: {'neither': 1737, 'img_only_only': 21765, 'txt_only_only': 6174, 'bridge': 120324}
 ```
 
+![Counts of each cross-modal polysemy node label](assets/polysemy_bridges/node_label_counts.png)
+
+The log-scaled count view makes the dominance of bridge nodes (80.2% of the 150,000-node graph) immediately visible while retaining the smaller label groups.
+
 The 80.2% bridge-node fraction matches Experiment 10's own diagnostic figure on this same dataset almost exactly — a strong cross-check that this experiment's rebuilt graph is consistent with the earlier one. Very few nodes (1,737, 1.2%) have no img-only or txt-only edges at all (`neither`) — the large majority of the graph's non-`both`/`repair` edges belong to bridge nodes, not to nodes with only one edge type.
 
 ### False-transitivity audit
@@ -33,6 +37,14 @@ sampled bridge pairs: 5,000
 pull (baseline_dist - bc_dist): mean=+1.9786 (n=5000, frac_pulled_closer=0.914)  mean/SEM=+102.1 *
 grading check: corr(shared_neighbor_jaccard, pull) rho=+0.076 p=8.619e-08
 ```
+
+![Distribution of bridge-pair embedding pull against degree-matched baselines](assets/polysemy_bridges/pull_distribution.png)
+
+The pull distribution is overwhelmingly positive, with the zero reference and mean pull showing how consistently bridge-derived pairs sit closer than their matched baselines.
+
+![Shared-neighbor Jaccard versus bridge-pair embedding pull](assets/polysemy_bridges/jaccard_vs_pull.png)
+
+The fitted trend is positive but shallow against the wide vertical spread, visualizing the statistically real yet practically weak shared-neighbor correlation.
 
 The pull is large and essentially universal: 91.4% of sampled (B, C) pairs sit closer together in the buddy-init embedding than their degree-matched baseline, and the effect clears the project's mean/SEM ≥ 2 significance bar by two orders of magnitude (+102.1). But the grading check — whether that pull scales with how much B and C's neighborhoods actually overlap — comes back statistically significant only because of the large sample size (p = 8.6e-8), not because the relationship is practically strong: rho = +0.076 means shared-neighbor Jaccard explains roughly 0.6% (rho²) of the variance in pull magnitude. The overwhelming majority of the pull is not accounted for by real shared-neighbor structure.
 
@@ -46,6 +58,10 @@ retrieval cross-reference (n_joined=3000):
   bridge:         n=2401 median|delta_rank|=13.0  median_drift=0.0780
   corr(is_polysemic, |delta_rank|): rho=+0.016 p=3.680e-01
 ```
+
+![Median absolute retrieval-rank change by polysemy label](assets/polysemy_bridges/retrieval_by_label.png)
+
+The label-wise medians make the descriptively higher `img_only_only` value visible alongside subgroup sizes and the overall null correlation.
 
 The formal test — is a sample being polysemic *at all* (any of the three non-`neither` labels) correlated with how much its retrieval rank moved between the frozen and trained arms — is a clean null (rho = +0.016, p = 0.37, far from significant). Descriptively, the small `img_only_only` subgroup (n=422) shows a notably higher median `|delta_rank|` (39) than the other three groups (10-14), but this is a single subgroup observation, not the designed statistical test, and should not be read as a confirmed effect without a dedicated follow-up.
 
