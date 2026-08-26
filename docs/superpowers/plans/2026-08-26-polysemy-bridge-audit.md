@@ -982,8 +982,8 @@ def run(
     degree-matched baseline, check whether that pull is graded by shared-neighbor
     structure, and (if per_sample_npz is given) cross-reference the per-node polysemy
     label against Experiment 11.2's per-sample retrieval-rank/drift dump."""
-    from src.conditional_buddy.buddy_graph import bridge_node_stats, build_buddy_graphs, classify_edges
-    from src.conditional_buddy.compute_buddies import _l2_normalize
+    from src.conditional_buddy.buddy_graph import bridge_node_stats, classify_edges
+    from src.conditional_buddy.compute_buddies import _l2_normalize, build_buddy_graphs
 
     img, txt, sample_ids = _load_features(storage_dir)
     img_n, txt_n = _l2_normalize(img), _l2_normalize(txt)
