@@ -253,7 +253,67 @@ def _selftest():
     assert summary["n"] == 3
     assert abs(summary["mean"] - 1.0) < 1e-9, summary
     assert summary["frac_pulled_closer"] == 1.0, summary
+
+    # correlate_polysemy_with_retrieval: 4 nodes, sample_ids in FeatureManager order;
+    # dump covers only 3 of them (id 103 missing -> must be excluded, not crash).
+    import tempfile
+    labels4 = np.array(["bridge", "neither", "img_only_only", "neither"])
+    sample_ids4 = [100, 101, 102, 103]
+    with tempfile.TemporaryDirectory() as tmp:
+        npz_path = os.path.join(tmp, "dump.npz")
+        np.savez(
+            npz_path,
+            sample_ids=np.array([100, 101, 102], dtype=np.int64),
+            delta_rank=np.array([10, 0, -5]),
+            delta_rank_swap=np.array([8, 0, -3]),
+            condition_drift=np.array([0.5, 0.1, 0.2]),
+            embedding_shift=np.array([0.05, 0.01, 0.02]),
+        )
+        result = correlate_polysemy_with_retrieval(labels4, sample_ids4, npz_path)
+    assert result["n_joined"] == 3, result
+    assert result["bridge"]["n"] == 1 and result["bridge"]["median_abs_delta_rank"] == 10.0, result
+    assert result["neither"]["n"] == 1  # only sample 101 (id 103 was excluded, not in the dump)
+    assert "corr_is_polysemic_vs_abs_delta_rank" in result, result
     print("SELFTEST OK")
+
+
+def correlate_polysemy_with_retrieval(
+    labels: np.ndarray, sample_ids: List[int], npz_path: str
+) -> dict:
+    """Join the per-node polysemy label (row-aligned to sample_ids, this script's own
+    FeatureManager-order labeling) against Experiment 11.2's per-sample retrieval-rank/
+    drift dump (Task 2's .npz, keyed by actual sample id -- a different population, the
+    training rows of one specific trained run, so only the intersection is used). Reports
+    per-label median |delta_rank|/condition_drift/embedding_shift, plus Spearman
+    correlations between "is this sample polysemic at all" and each retrieval-side metric.
+    """
+    data = np.load(npz_path)
+    dump_ids = data["sample_ids"].tolist()
+    id_to_row = {sid: row for row, sid in enumerate(sample_ids)}
+    keep = [i for i, sid in enumerate(dump_ids) if sid in id_to_row]
+    rows = np.array([id_to_row[dump_ids[i]] for i in keep], dtype=np.int64)
+
+    label_kept = labels[rows]
+    delta_rank = data["delta_rank"][keep].astype(float)
+    condition_drift = data["condition_drift"][keep].astype(float)
+    embedding_shift = data["embedding_shift"][keep].astype(float)
+    is_polysemic = (label_kept != "neither").astype(float)
+
+    result: dict = {"n_joined": len(keep)}
+    for lbl in ("neither", "img_only_only", "txt_only_only", "bridge"):
+        mask = label_kept == lbl
+        if mask.sum() == 0:
+            continue
+        result[lbl] = {
+            "n": int(mask.sum()),
+            "median_abs_delta_rank": float(np.median(np.abs(delta_rank[mask]))),
+            "median_condition_drift": float(np.median(condition_drift[mask])),
+            "median_embedding_shift": float(np.median(embedding_shift[mask])),
+        }
+    result["corr_is_polysemic_vs_abs_delta_rank"] = spearman_correlate(is_polysemic, np.abs(delta_rank))
+    result["corr_is_polysemic_vs_condition_drift"] = spearman_correlate(is_polysemic, condition_drift)
+    result["corr_is_polysemic_vs_embedding_shift"] = spearman_correlate(is_polysemic, embedding_shift)
+    return result
 
 
 def main():
