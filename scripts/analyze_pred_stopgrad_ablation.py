@@ -9,9 +9,9 @@ scripts/run_condition_freeze_ablation.sh), pairs the new 'pred_coupled' arm agai
 11.1's 'trained' and 'frozen' arms WITHIN each seed, and reports mean delta +/- std and
 mean/SEM (spec S5; delta = pred_coupled - baseline, so positive means pred_coupled wins) for
 test_oracle/{t2i,i2t}_R1 and test_pre_diff/{t2i,i2t}_R1. Also prints each arm's
-buddy_diag/drift_from_init and final-step loss/loss_pred as free diagnostic context (does
-coupling shrink drift toward frozen's ~0, and does the predictor's own reconstruction loss
-converge or diverge).
+train_buddy_diag/drift_from_init and final-step train_loss/loss_pred as free diagnostic
+context (does coupling shrink drift toward frozen's ~0, and does the predictor's own
+reconstruction loss converge or diverge).
 
 Usage
 -----
@@ -29,8 +29,8 @@ T2I_ORACLE = "test_oracle/t2i_R1"
 I2T_ORACLE = "test_oracle/i2t_R1"
 T2I_PREDIFF = "test_pre_diff/t2i_R1"
 I2T_PREDIFF = "test_pre_diff/i2t_R1"
-DRIFT = "buddy_diag/drift_from_init"
-PRED_LOSS = "loss/loss_pred"
+DRIFT = "train_buddy_diag/drift_from_init"
+PRED_LOSS = "train_loss/loss_pred"
 METRICS = [T2I_ORACLE, I2T_ORACLE, T2I_PREDIFF, I2T_PREDIFF]
 TREATMENT = "pred_coupled"
 BASELINES = ["trained", "frozen"]
