@@ -257,51 +257,122 @@ python scripts/analyze_condition_geometry.py --compare <frozen_dir_seed3> <train
 
 ## Experiment 11.2 — drift/shift vs. retrieval-rank correlation
 
-**Date:** 2026-08-26 · **Code:** `scripts/analyze_condition_retrieval_correlation.py` · **Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 11.2 (second, no-new-training branch)
+**Date:** 2026-08-26 (rewritten 2026-08-26 after final whole-branch review) · **Code:** `scripts/analyze_condition_retrieval_correlation.py` · **Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 11.2 (second, no-new-training branch)
+
+### TL;DR for this section
+
+**The condition table's own effect on per-sample retrieval rank is large, highly significant, and replicated in 3/3 seeds — once you isolate it from whole-model divergence.** Holding the trained arm's combiner, `other_proj`, and gallery completely fixed and swapping *only* the condition table (trained → buddy-init) gives `rho(delta_rank_swap, condition_drift)` = **+0.466 / +0.466 / +0.477** (all p < 1e-160): the further a sample's condition drifted from init, the more reverting it to init costs that sample's rank. The naive signed cross-arm delta (`rank_trained − rank_frozen`, |rho| ≤ 0.05) **undersells this by an order of magnitude**, because it compares two independently-trained models — separate combiners, separate `other_proj`, separate condition tables — so most of its variance (std ≈ 1055–1343 ranks) is whole-model divergence rather than the condition table.
+
+Two further corrections to the first write-up of this section, both from re-examining the same data:
+
+1. **Even without the counterfactual, unsigned magnitude is not a null.** `rho(|delta_rank|, condition_drift)` = +0.160 / +0.141 / +0.156 and `rho(|delta_rank|, embedding_shift)` = −0.288 / −0.296 / −0.302, all 3/3 seeds, all far past `|rho| > 0.1`. The signed correlation is near zero because drift predicts *how much* a sample's rank moves, not *which way* — the two directions largely cancel.
+2. **On this diagnostic's own metric the trained arm WINS.** In-sample, own-condition mean rank is better for trained (975 / 980 / 996) than frozen (1118 / 1123 / 1112), R1 is better for trained (0.101 / 0.100 / 0.103 vs. 0.092 / 0.088 / 0.089), and 63.6–64.0% of queries improve. There is no per-sample "degradation" here for drift/shift to explain. **That is the opposite direction from 11.1's headline** — and it is not a contradiction, because this measures a different population with a different metric (see the scope box below). A result here constrains, but cannot resolve, 11.1's held-out oracle regression.
 
 ### Method
 
-11.1 (above) found that letting per-sample conditions keep training after buddy-init hurts i2t retrieval relative to freezing them (frozen beats trained, mean Δ = +4.67 R1, mean/SEM = +32.1, 3/3 seeds) — a large, direction-asymmetric effect that neither `conditioned_effective_dims` nor most-changed-set Jaccard could separate, and that the geometry diagnostic's own correlations (`shift_vs_condition_norm`/`shift_vs_buddy_degree`, both |r| < 0.11 at epoch 99) could not explain mechanistically. Per the spec's §4 Experiment 11.2 gate — resolved to its second, no-new-training branch ("if frozen beats trained, the result is mixed, or the divergence is geometry-only: extend the geometry diagnostic rather than launch new training") because the actual 11.1 result was frozen beating trained on i2t with a t2i null — 11.2 asks the natural next per-sample question directly, reusing only 11.1's existing checkpoints: for each of a run's 150,000 training samples, does how far its condition moved from the frozen arm's (never-moving) buddy-init value (`condition_drift`), or how much conditioning displaces its combine-side embedding (`embedding_shift`), correlate with how much worse (or better) that exact sample's own true match ranks under its trained condition vs. its frozen condition? Ranking is against the FULL 150k-sample training population's projected "other side" (text, since `combine_side=img` for all 6 runs) embeddings — not a small closed gallery — using each sample's own real, assigned condition (no oracle search over conditions, no `condition_predictor`). Full method detail (sample-ID alignment via `reorder_features_to_z`, the frozen-arm first-vs-final-epoch sanity assertion that the "frozen arm never moved" premise actually holds before trusting it as the buddy-init proxy, Spearman `rho` for both correlations) is in `scripts/analyze_condition_retrieval_correlation.py`'s module docstring and `analyze_pair`'s docstring; see also the plan at `docs/superpowers/plans/2026-08-26-condition-drift-retrieval-correlation.md`. Each seed pair was run once with the default, statistically-motivated `n_query_sample=3000` (not reduced for speed).
+11.1 (above) found that letting per-sample conditions keep training after buddy-init hurts **held-out oracle** i2t retrieval relative to freezing them (frozen beats trained, `test_oracle/i2t_R1` mean Δ = +4.67 R1, mean/SEM = +32.1, 3/3 seeds) — a large, direction-asymmetric effect that neither `conditioned_effective_dims` nor most-changed-set Jaccard could separate, and that the geometry diagnostic's own correlations (`shift_vs_condition_norm`/`shift_vs_buddy_degree`, both |r| < 0.11 at epoch 99) could not explain mechanistically. Per the spec's §4 Experiment 11.2 gate — resolved to its second, no-new-training branch ("if frozen beats trained, the result is mixed, or the divergence is geometry-only: extend the geometry diagnostic rather than launch new training") — 11.2 asks the natural next per-sample question, reusing only 11.1's existing checkpoints: does how far a sample's condition moved from buddy-init (`condition_drift`), or how much conditioning displaces its combine-side embedding (`embedding_shift`), predict how that sample's own true match ranks?
 
-**Scope note on `delta_rank`'s own scale:** this diagnostic ranks each sample against the full in-sample *training* population (the same 150k rows the run trained on), not 11.1's held-out `test_oracle/i2t_R1` metric — so `delta_rank`'s aggregate sign/magnitude below is a different quantity from 11.1's test-set retrieval delta and the two should not be compared directly. The load-bearing numbers for this task's question are the two Spearman `rho` correlations, not the aggregate `delta_rank` mean/median (reported below for completeness only).
+Concretely, per seed pair: draw a fixed subsample of **3000 query samples** (`n_query_sample=3000`, `rng` seed 0) and rank each query's true match against the **full 150,000-sample training population's** projected "other side" (text, since `combine_side=img` for all 6 runs) embeddings — a realistic-scale gallery, not a small closed one. Each query is conditioned on its own real, assigned condition (no oracle search over conditions, no `condition_predictor`). The correlations below are over those **3000 queries**; the 150k figure is the gallery size only.
+
+Three rank quantities are computed:
+
+- `rank_frozen` — frozen arm's combiner + `other_proj` + gallery, frozen (= buddy-init) conditions.
+- `rank_trained` — trained arm's combiner + `other_proj` + gallery, trained conditions.
+- `rank_trained_frozen_cond` — **trained** arm's combiner + `other_proj` + gallery held fixed, conditions swapped to the frozen/buddy-init table.
+
+and two deltas: `delta_rank = rank_trained − rank_frozen` (the naive cross-arm delta; two *different models*) and **`delta_rank_swap = rank_trained_frozen_cond − rank_trained`** (the condition-only counterfactual; *one* model, only the condition changes). Positive `delta_rank_swap` = reverting this sample to its init condition ranks it worse.
+
+Supporting detail:
+
+- **Init-proxy validation.** `condition_drift` is measured against the frozen arm's final condition table as a stand-in for buddy-init. `analyze_pair` now checks *both* halves of that premise: (a) the frozen arm's table is unchanged between its first and final saved epoch (stationarity), and (b) that table is numerically identical to the **real shared buddy-init file** on disk, `res/CoSiR_condition_freeze_ablation/redcaps_150k/template_embeddings/embeddings.npy`, aligned by `sample_ids` (max abs per-sample distance asserted < 1e-4; the actual value is 0.0 for all 3 pairs, and each run logs `init_source: shared template_embeddings/embeddings.npy (verified identical)`). Check (b) is the load-bearing half and was previously unchecked; it degrades gracefully to (a) alone if the template file isn't reachable, so the script still runs where only experiment dirs were copied.
+- **Sample-ID alignment** everywhere via `reorder_features_to_z`.
+- **Tie handling is optimistic** (`1 + (sims > true_score).sum()`, strict): a gallery row tied with the true match does not demote it. Exact ties are rare in float32 over a 150k gallery, but the convention matters for reading `delta_rank`'s distribution — **15.8–16.6% of queries have `delta_rank == 0` exactly**, i.e. their rank is literally unchanged between arms. The same convention is applied to both arms, which is what makes their difference well-defined.
+- Full method detail is in `scripts/analyze_condition_retrieval_correlation.py`'s module docstring and `analyze_pair`'s docstring; see also the plan at `docs/superpowers/plans/2026-08-26-condition-drift-retrieval-correlation.md`.
+
+> **Scope box — what this diagnostic measures, and what it does not.**
+> Everything in this section is **in-sample** (the 150k rows the run trained on) and **own-condition** (each sample's actual assigned condition). 11.1's headline `test_oracle/i2t_R1` is **held-out** (test set) and **oracle** (max over all conditions). Those are *two independent construct mismatches*, and neither is fixable by re-running: per-sample conditions only exist for training samples, so there is no way to evaluate this diagnostic on the held-out set at all, and dropping the oracle would change what 11.1 measured. Consequently the aggregate direction here (trained wins) and 11.1's aggregate direction (frozen wins) are **not** in contradiction and must not be compared as if they were the same number. What this section can legitimately claim is about the per-sample *structure* of the condition's effect on rank; what it cannot claim is that it explains — or refutes — 11.1's held-out oracle regression.
 
 ### Per-seed results
 
-| seed | frozen dir | trained dir | delta_rank mean | delta_rank median | rho(drift) | p(drift) | rho(shift) | p(shift) |
-|---:|---|---|---:|---:|---:|---:|---:|---:|
-| 1 | `20260825_170212` | `20260825_161846` | −143.1 | −5.0 | +0.026 | 0.162 | +0.046 | 0.0115 |
-| 2 | `20260825_171558` | `20260825_163307` | −142.4 | −5.0 | +0.017 | 0.338 | +0.040 | 0.0286 |
-| 3 | `20260825_172950` | `20260825_164733` | −116.3 | −5.0 | +0.009 | 0.604 | +0.046 | 0.0115 |
+**In-sample, own-condition retrieval quality of each arm** (3000 queries against the 150k gallery; **not** comparable to 11.1's `test_oracle/i2t_R1`):
 
-(all 3 runs: `n_query_sample=3000`, `n_population=150000`, `combine_side=img`; each JSON written to the trained arm's `condition_geometry/retrieval_correlation_vs_frozen.json`.)
+| seed | frozen dir | trained dir | mean rank frozen | mean rank trained | R1 frozen | R1 trained | frac. queries improved |
+|---:|---|---|---:|---:|---:|---:|---:|
+| 1 | `20260825_170212` | `20260825_161846` | 1118.1 | **975.0** | 0.0923 | **0.1007** | 0.636 |
+| 2 | `20260825_171558` | `20260825_163307` | 1122.8 | **980.4** | 0.0880 | **0.0997** | 0.640 |
+| 3 | `20260825_172950` | `20260825_164733` | 1112.5 | **996.2** | 0.0893 | **0.1033** | 0.639 |
+
+**Rank deltas:**
+
+| seed | `delta_rank` mean | median | std | frac. == 0 | `delta_rank_swap` mean | median |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | −143.1 | −5.0 | 1189.5 | 0.166 | +343.5 | +6.0 |
+| 2 | −142.4 | −5.0 | 1343.0 | 0.161 | +352.0 | +7.0 |
+| 3 | −116.3 | −5.0 | 1055.0 | 0.158 | +357.1 | +7.0 |
+
+**Correlations** (Spearman `rho`, n = 3000 per seed):
+
+| seed | ρ(Δrank, drift) | ρ(Δrank, shift) | ρ(Δrank, Δshift) | ρ(\|Δrank\|, drift) | ρ(\|Δrank\|, shift) | **ρ(Δrank_swap, drift)** |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | +0.026 (p=0.16) | +0.046 (p=0.011) | +0.071 (p=1.0e−4) | **+0.160** (p=1.5e−18) | **−0.288** (p=2.7e−58) | **+0.466** (p=1.6e−161) |
+| 2 | +0.017 (p=0.34) | +0.040 (p=0.029) | +0.046 (p=0.013) | **+0.141** (p=9.1e−15) | **−0.296** (p=1.3e−61) | **+0.466** (p=9.0e−162) |
+| 3 | +0.009 (p=0.60) | +0.046 (p=0.011) | +0.084 (p=4.5e−6) | **+0.156** (p=8.6e−18) | **−0.302** (p=2.8e−64) | **+0.477** (p=4.7e−170) |
+
+(`Δshift` = `embedding_shift_trained − embedding_shift_frozen`, the correctly paired shift quantity for a paired rank delta; the shift-only column is retained for continuity with the first write-up. All 3 runs: `n_query_sample=3000`, `n_population=150000`, `combine_side=img`; each JSON written to the trained arm's `condition_geometry/retrieval_correlation_vs_frozen.json`.)
 
 ### Cross-seed synthesis
 
-- **`condition_drift` vs. `delta_rank`:** sign agrees across all 3 seeds (rho = +0.026, +0.017, +0.009 — all positive, i.e. more drift weakly associates with a worse relative rank) but `|rho|` never exceeds 0.03, far short of the 0.1 practical-significance bar, and `p` does not clear 0.05 in any seed (0.162, 0.338, 0.604). **Clean null** — condition-drift magnitude does not explain per-sample retrieval-rank change.
-- **`embedding_shift` vs. `delta_rank`:** sign also agrees across all 3 seeds (rho = +0.046, +0.040, +0.046) and `p` clears 0.05 in all 3 (0.0115, 0.0286, 0.0115) — statistically detectable at `n=3000`, sign-consistent. But `|rho|` tops out at 0.046, well under the 0.1 bar. **Statistically significant but practically negligible** — shift magnitude explains essentially none of the per-sample rank variance.
-- **Neither correlation clears the modest `|rho| > 0.1` with `p < 0.05` bar, in the same direction, across all 3 seeds.** Per-sample drift/shift magnitude does not meaningfully explain i2t's retrieval-rank degradation under continued conditioning training. Whatever drives 11.1's aggregate i2t regression, it is not simply "samples whose condition moved further, or whose embedding shifted more, rank worse" — at least not at an effect size a linear rank correlation over 3000 queries can detect.
+- **The condition's own effect on rank is real and large (`delta_rank_swap`).** ρ = **+0.466 / +0.466 / +0.477**, p < 1e−160 in all 3 seeds — 4.7× the `|rho| > 0.1` practical bar, and remarkably tight across seeds. Direction: **positive** — the further a sample's condition drifted from buddy-init, the more that sample's rank *degrades* when you feed the trained model the init condition instead. That is the mechanically sensible direction: the trained combiner has co-adapted to the drifted conditions, so high-drift samples are the ones most dependent on them. Aggregate `delta_rank_swap` agrees: mean **+343.5 / +352.0 / +357.1**, median +6/+7/+7 — reverting to init conditions costs rank on average, inside the trained model.
+- **The naive signed cross-arm delta is near-zero, and that is an artifact of the estimator, not evidence of no effect.** ρ(Δrank, drift) = +0.026/+0.017/+0.009 (p = 0.16/0.34/0.60) and ρ(Δrank, shift) = +0.046/+0.040/+0.046 (p = 0.011/0.029/0.011). `delta_rank` compares the frozen run's *whole model* (combiner + `other_proj` + conditions) against the trained run's *whole model* — two independently-trained networks. Its std is 1055–1343 ranks, most of which is whole-model divergence the condition table has nothing to do with. That noise swamps the condition signal. The correctly-paired M1 variant (ρ(Δrank, Δshift) = +0.071/+0.046/+0.084) is uniformly larger than the shift-only version and significant in 3/3 seeds, but still under 0.1 — same swamping.
+- **Unsigned magnitude clears the bar without any counterfactual.** ρ(|Δrank|, drift) = **+0.160/+0.141/+0.156** and ρ(|Δrank|, shift) = **−0.288/−0.296/−0.302**, all p ≤ 9e−15, 3/3 seeds. Reading: condition drift predicts how *far* a sample's rank moves between arms in either direction (so the signed correlation cancels); embedding shift predicts the opposite — samples whose embedding is displaced *most* by conditioning are the ones whose rank moves *least* between arms. This is a genuine, seed-replicated structure that the first write-up's "clean null" framing erased.
+- **Direction of the aggregate effect on this diagnostic's own metric: trained wins.** Mean rank 975/980/996 (trained) vs. 1118/1123/1112 (frozen); R1 0.101/0.100/0.103 vs. 0.092/0.088/0.089; 63.6–64.0% of queries improve. Per the scope box, this is the in-sample, own-condition metric and is **not** 11.1's held-out oracle metric — but it does mean there is no per-sample degradation *here* for the correlations above to be explaining.
+- **Independence caveat.** All 3 seed pairs use the same fixed query-sampling `rng` seed (0, not tied to the run's own training seed) and start from the **identical** shared buddy-init table, so "3/3 seeds agree" on this diagnostic is partly shared-sample and shared-init agreement, not fully independent replication — even though the six underlying training runs genuinely differ by seed. The seed-to-seed tightness of the `delta_rank_swap` numbers (±0.006) should be read with that in mind. Separately, the near-zero signed correlations that do clear p < 0.05 (|ρ| ≈ 0.04) are **distinguishable from zero at n = 3000, but the effect size itself is negligible** — the earlier phrasing "statistically detectable" oversold them.
 
 ### Qualitative extremes
 
-Representative most-degraded rows (`delta_rank` most positive — trained ranks this sample worse than frozen):
+Representative most-degraded rows (`delta_rank` most positive — the trained *run* ranks this sample worse than the frozen run):
 
-| seed | sample_id | delta_rank | condition_drift | embedding_shift |
+| seed | most-degraded rank | sample_id | delta_rank | condition_drift | embedding_shift |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 1st | 42190 | +14202 | 0.134 | 0.316 |
+| 2 | 1st | 42190 | +15446 | 0.153 | 0.285 |
+| 3 | 1st | 42190 | +14216 | 0.107 | 0.186 |
+| 1 | 2nd | 105764 | +10529 | 0.150 | 0.024 |
+| 2 | 2nd | 105764 | +10523 | 0.138 | 0.033 |
+| 3 | **3rd** | 105764 | +10245 | 0.173 | 0.037 |
+
+Sample 42190 is the single most-degraded sample in all 3 seeds. Sample 105764 is 2nd-most-degraded in seeds 1 and 2 but **3rd** in seed 3 — seed 3's 2nd slot is sample 7310 at Δrank = +13616 (the first write-up incorrectly stated 105764 was 2nd in all 3). On the most-improved side, sample_ids 28404, 101763, 83630, 99341 and 132814 recur near the top in at least 2 of 3 seeds (28404: −36750 / −48112 / −17072, top-2 in all 3; 101763: −24906 / −23599 in seeds 2–3; 99341: −16487 / −10842 in seeds 2–3).
+
+**Where the extremes sit in the drift/shift distributions** (median percentile of the k=20 group within the 3000-query sample; recomputed by `extreme_group_percentiles`, reported in each JSON's `extremes_percentiles`):
+
+| seed | degraded: drift pct | degraded: shift pct | improved: drift pct | improved: shift pct |
 |---:|---:|---:|---:|---:|
-| 1 | 42190 | +14202 | 0.134 | 0.316 |
-| 2 | 42190 | +15446 | 0.153 | 0.285 |
-| 3 | 42190 | +14216 | 0.107 | 0.186 |
+| 1 | 68.7 | 9.8 | 55.4 | 22.0 |
+| 2 | 67.8 | 9.7 | 62.2 | 21.2 |
+| 3 | 71.9 | 14.4 | 59.0 | 16.0 |
 
-Sample 42190 is the single most-degraded sample in all 3 seeds, and sample 105764 is the 2nd-most-degraded in all 3 (Δrank = +10529 / +10523 / +10245) — despite `condition_drift`/`embedding_shift` for these two samples varying substantially seed-to-seed (e.g. 42190's `embedding_shift`: 0.316 / 0.285 / 0.186), with no consistent extreme value on either axis relative to the rest of the query sample. Symmetrically, on the most-improved side, sample_ids 28404, 101763, and 99341 recur at or near the top of `most_improved` in at least 2 of 3 seeds (28404: Δrank = −36750 / −48112 in seeds 1–2, present but lower in seed 3 at −17072; 101763: −24906 / −23599 in seeds 2–3; 99341: −16487 / −10842 in seeds 2–3), again with seed-inconsistent drift/shift values. This is consistent with the correlation numbers above: *which* samples swing most is somewhat sample-specific and seed-stable, but that swing does not track `condition_drift` or `embedding_shift` magnitude — something else about those particular samples (caption content, buddy-graph position, etc., unexamined here) drives the largest per-sample rank changes, not how far their own condition moved or how much their own embedding shifted.
+This is a real, seed-replicated pattern, and it is the **opposite** of the first write-up's claim of "no consistent extreme value on either axis": the biggest rank movers — degraded *and* improved alike — sit in the **upper third of `condition_drift`** (median pct 55–72, degraded consistently higher than improved) and the **bottom decile-to-fifth of `embedding_shift`** (median pct 9.7–22.0). Both directions match the unsigned correlations above (drift positive, shift negative) exactly, which is what one should expect if those correlations are describing something real. The correct reading is not "the extremes are unexplained" but "the extremes are high-drift, low-shift samples, in both directions" — the per-row absolute drift/shift values do vary seed-to-seed, which is why the percentile view was needed to see it.
 
 ### Interpretation
 
-This is a genuine, reportable null result, per the plan's own Self-Review ("if the cross-seed synthesis... comes back null on both correlations, that is itself a valid, reportable finding... not a failure requiring more scope"). 11.1 established that continued conditioning training hurts i2t retrieval by a large, seed-replicated margin, and that it measurably changes the embedding-shift distribution and grid-diversity split (also seed-replicated). 11.2 asked whether those two natural per-sample geometric proxies — how far a sample's condition moved, and how much conditioning displaces its embedding — explain *which* samples get hurt. **They do not, at any practically meaningful effect size, in any of the 3 seeds.** The retrieval regression is real and robust; the two most obvious per-sample geometric explanations for it are not the mechanism, or at least not one this linear rank-correlation lens can see. Whatever drives i2t's degradation under continued training operates at a level these two per-sample scalars do not capture — a genuine "we looked, and it isn't this" result that narrows, rather than answers, the open mechanistic question. This closes out the Experiment 11 line of investigation as scoped: the spec's second 11.2 branch (extend the geometry diagnostic, no new training) has now been run to completion, with a null result reported honestly rather than dressed up as a positive finding.
+The first write-up of this section reported a clean null on both correlations and concluded that per-sample drift/shift magnitude "does not meaningfully explain per-sample retrieval-rank change." **That conclusion was an artifact of a single estimator choice and is withdrawn.** The arithmetic was correct; the lens was not. `delta_rank` differences two independently-trained models, so the condition table's own contribution is buried under combiner and `other_proj` divergence.
+
+What the same data actually supports:
+
+1. **The condition table has a large, direct, seed-replicated effect on per-sample rank.** Isolated inside a single fixed model, ρ(Δrank_swap, drift) ≈ **+0.47**, p < 1e−160, 3/3 seeds, in the mechanically expected direction: the trained combiner has co-adapted to the drifted conditions, and high-drift samples pay the most for reverting to init. Post-init condition training is emphatically *not* inert at the per-sample level — consistent with 11.1's geometry axis (trained shifts further, conditions matter more) and now with a much sharper per-sample handle on it.
+2. **Drift predicts the magnitude, not the sign, of cross-arm rank movement.** ρ(|Δrank|, drift) ≈ +0.15 with ρ(Δrank, drift) ≈ +0.02 is exactly the signature of a symmetric-in-direction effect. Embedding shift runs the other way (ρ(|Δrank|, shift) ≈ −0.30): highly-shifted samples are the *stable* ones across arms.
+3. **This diagnostic does not explain 11.1's held-out oracle regression, and cannot.** On the in-sample own-condition metric the trained arm is better, not worse — the opposite direction from 11.1's headline — and the two construct mismatches (in-sample vs. held-out; own-condition vs. oracle-max) are structural, not fixable by re-running. So 11.2's positive finding tells us the condition table's per-sample effect is real and drift-graded; it does **not** tell us that this is the mechanism behind the held-out i2t regression, and it does not rule it out either. Closing that gap would need a diagnostic that reaches the held-out set, which requires a way to assign conditions to unseen samples (i.e. `condition_predictor`) — out of scope for the spec's no-new-training branch.
+
+The honest summary of the 11.2 branch is therefore: **not a null.** The condition table's per-sample retrieval effect is real, large, drift-graded, and seed-replicated once measured with an estimator that isolates it; the naive cross-arm delta undersold it by ~10×; and the relationship to 11.1's held-out oracle result remains open, for a documented structural reason rather than a lack of signal.
 
 ### Reproduction
 
 ```bash
 source ~/miniconda3/etc/profile.d/conda.sh && conda activate CoSiR
+python scripts/analyze_condition_retrieval_correlation.py --selftest
 python scripts/analyze_condition_retrieval_correlation.py --pair res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_170212_CoSiR_Experiment res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_161846_CoSiR_Experiment
 python scripts/analyze_condition_retrieval_correlation.py --pair res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_171558_CoSiR_Experiment res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_163307_CoSiR_Experiment
 python scripts/analyze_condition_retrieval_correlation.py --pair res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_172950_CoSiR_Experiment res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_164733_CoSiR_Experiment
 ```
+
+(`--n-query-sample`, `--seed`, `--k-extremes` and `--rank-chunk` are all exposed on the CLI; `--rank-chunk` is a memory knob only and does not change results.)
