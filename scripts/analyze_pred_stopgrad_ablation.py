@@ -60,7 +60,19 @@ def fetch(entity, project, group, tag=None):
     import wandb
     api = wandb.Api()
     rows = []
+    skipped_unfinished = 0
     for run in api.runs(f"{entity}/{project}", filters={"group": group}):
+        # A crashed/killed/still-running run can still have partial summary metrics
+        # (e.g. logged at epoch 0 before dying) that look like real numbers to
+        # compute_paired_deltas's per-cell .max(). Excluding anything but a clean
+        # finish is the only safe way to dedupe a cell that got re-run after a
+        # crash — .max() alone can silently prefer the crashed run's number over
+        # the real, fully-trained one (this happened: a driver-outage-killed run
+        # logged epoch-0 metrics that were numerically higher, by epoch-0 noise,
+        # than the finished run's converged ones).
+        if run.state != "finished":
+            skipped_unfinished += 1
+            continue
         cfg, summ = run.config, run.summary
         arm = cget(cfg, ("train", "arm"))
         if not arm:
@@ -72,6 +84,8 @@ def fetch(entity, project, group, tag=None):
             v = sget(summ, metric)
             row[metric] = float(v) if not np.isnan(v) else np.nan
         rows.append(row)
+    if skipped_unfinished:
+        print(f"  ({skipped_unfinished} non-finished run(s) excluded from analysis)")
     return pd.DataFrame(rows)
 
 
@@ -112,9 +126,7 @@ def analyze(entity, project, group, tag=None):
     if df.empty:
         print("  (no runs found - check --entity/--project/--tag)")
         return
-    n_unfinished = (df["state"] != "finished").sum()
-    print(f"  {len(df)} run(s); arms present: {sorted(df['arm'].unique())}."
-          + (f"  [{n_unfinished} not finished -> best-so-far]" if n_unfinished else ""))
+    print(f"  {len(df)} run(s); arms present: {sorted(df['arm'].unique())}.")
 
     for baseline in BASELINES:
         print(f"\n  {'-'*70}\n  pred_coupled vs {baseline}\n  {'-'*70}")
