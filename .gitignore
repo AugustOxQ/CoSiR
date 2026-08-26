@@ -174,3 +174,6 @@ CLAUDE.md
 # Cursor
 cursor_log/
 cursor_tmp_file/**/*.npy
+
+# Generated slide decks
+*.pptx
