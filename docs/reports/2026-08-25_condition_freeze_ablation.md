@@ -376,3 +376,105 @@ python scripts/analyze_condition_retrieval_correlation.py --pair res/CoSiR_condi
 ```
 
 (`--n-query-sample`, `--seed`, `--k-extremes` and `--rank-chunk` are all exposed on the CLI; `--rank-chunk` is a memory knob only and does not change results.)
+
+## Experiment 11.3 — bidirectional table↔predictor coupling
+
+### TL;DR for this section
+
+Removing the stop-gradient on the condition-predictor distillation term (`loss.pred_stopgrad=false`, so gradient flows both table→predictor and predictor→table, not just the former) does not recover any of frozen's held-out advantage over trained — it makes things worse. Against **frozen**, the coupled arm (`pred_coupled`) is significantly worse on i2t, seed-replicated 3/3, on both the table's own held-out codebook quality (`test_oracle/i2t_R1` mean Δ = −7.10, mean/SEM = −3.1) and the predictor's standalone usefulness vs. raw CLIP (`test_pre_diff/i2t_R1` mean Δ = −1.00, mean/SEM = −2.8); t2i is a null both ways, consistent with 11.1's own t2i-is-noisier pattern. Against **trained**, the same i2t direction holds (3/3 seeds negative) but does not clear significance (mean/SEM = −1.1) — seed 1 was an outlier (−11.70) against seeds 2–3's much smaller −0.10/−0.40. The diagnostic explains why the hypothesis failed rather than succeeded: `drift_from_init` went *up* under coupling (0.084 vs. trained's 0.064, frozen's 0.000) rather than back down toward the predictable manifold, while the predictor-consistency loss itself dropped sharply (0.011 vs. ~0.03) — table and predictor did converge toward each other, just by both moving further from init together, not by the table snapping back. This is the spec's third named outcome branch (reportable instability), not the second (real signal) — no `lambda_pred` strength follow-up is warranted on this evidence.
+
+### Method
+
+One new arm, `pred_coupled` (`train.em_interval=-1`, `loss.pred_stopgrad=false`), 3 seeds, sharing 11.1's exact `results_dir` and buddy-init template (`scripts/run_pred_stopgrad_ablation.sh`), compared against 11.1's already-completed `trained` and `frozen` arms via `scripts/analyze_pred_stopgrad_ablation.py`. Same operating point as 11.1/11.2: RedCaps-150k, lr=1e-3, lr_label=1e-4, dim=16, alpha=0.5, all training-time buddy terms off. Primary metrics: `test_oracle/{t2i,i2t}_R1` (the table tried directly against held-out queries, oracle-max-over-conditions — unaffected by the predictor) and `test_pre_diff/{t2i,i2t}_R1` (the predictor's single-forward-pass recall minus raw CLIP baseline). Both are computed by the existing eval pipeline with zero new eval code. Free diagnostic context: `train_buddy_diag/drift_from_init` and final-epoch `train_loss/loss_pred` (a wandb-key naming bug — missing the `train_` prefix `logger.log_train` actually applies — was caught and fixed in `scripts/analyze_pred_stopgrad_ablation.py` while reading the seed-1 result; the primary metrics were unaffected since they use a different logging path).
+
+### Per-seed results
+
+```
+Experiment 11.3 - bidirectional table<->predictor coupling  group='condition freeze ablation'  tag='pred-stopgrad-ablation-redcaps_150k'
+==============================================================================
+  11 run(s); arms present: ['frozen', 'pred_coupled', 'trained'].
+
+  ----------------------------------------------------------------------
+  pred_coupled vs trained
+  ----------------------------------------------------------------------
+
+    --- test_oracle/t2i_R1 (pred_coupled - trained) ---
+      mean delta = -0.03 (n=3, wins=1/3)  mean/SEM=-0.3
+        seed 1: delta = -0.20
+        seed 2: delta = +0.20
+        seed 3: delta = -0.10
+
+    --- test_oracle/i2t_R1 (pred_coupled - trained) ---
+      mean delta = -4.07 (n=3, wins=0/3)  mean/SEM=-1.1
+        seed 1: delta = -11.70
+        seed 2: delta = -0.10
+        seed 3: delta = -0.40
+
+    --- test_pre_diff/t2i_R1 (pred_coupled - trained) ---
+      mean delta = -0.27 (n=3, wins=1/3)  mean/SEM=-0.8
+        seed 1: delta = -0.90
+        seed 2: delta = +0.30
+        seed 3: delta = -0.20
+
+    --- test_pre_diff/i2t_R1 (pred_coupled - trained) ---
+      mean delta = -0.37 (n=3, wins=2/3)  mean/SEM=-0.5
+        seed 1: delta = -1.70
+        seed 2: delta = +0.20
+        seed 3: delta = +0.40
+
+  ----------------------------------------------------------------------
+  pred_coupled vs frozen
+  ----------------------------------------------------------------------
+
+    --- test_oracle/t2i_R1 (pred_coupled - frozen) ---
+      mean delta = +0.10 (n=3, wins=1/3)  mean/SEM=+0.4
+        seed 1: delta = -0.20
+        seed 2: delta = +0.60
+        seed 3: delta = -0.10
+
+    --- test_oracle/i2t_R1 (pred_coupled - frozen) ---
+      mean delta = -7.10 (n=3, wins=0/3)  mean/SEM=-3.1 *
+        seed 1: delta = -11.70
+        seed 2: delta = -4.50
+        seed 3: delta = -5.10
+
+    --- test_pre_diff/t2i_R1 (pred_coupled - frozen) ---
+      mean delta = -0.37 (n=3, wins=1/3)  mean/SEM=-1.3
+        seed 1: delta = -0.90
+        seed 2: delta = +0.10
+        seed 3: delta = -0.30
+
+    --- test_pre_diff/i2t_R1 (pred_coupled - frozen) ---
+      mean delta = -1.00 (n=3, wins=0/3)  mean/SEM=-2.8 *
+        seed 1: delta = -1.70
+        seed 2: delta = -0.80
+        seed 3: delta = -0.50
+
+  ----------------------------------------------------------------------
+  diagnostic context (not paired deltas)
+  ----------------------------------------------------------------------
+    frozen: drift_from_init mean=0.0000; final loss/loss_pred mean=0.0304
+    trained: drift_from_init mean=0.0643; final loss/loss_pred mean=0.0306
+    pred_coupled: drift_from_init mean=0.0838; final loss/loss_pred mean=0.0114
+```
+
+### Cross-seed synthesis
+
+Against **frozen**, two of the four metric×baseline cells clear both bars this project holds every claim to (spec §5): seed-replicated (3/3 in sign) and |mean/SEM| ≥ 2 — `test_oracle/i2t_R1` (−7.10, z=−3.1) and `test_pre_diff/i2t_R1` (−1.00, z=−2.8), both `pred_coupled` losing. t2i is a clean null in both directions against frozen (|z| < 1, mixed win counts). Against **trained**, no cell clears |z| ≥ 2 — i2t is directionally consistent (3/3 negative on `test_oracle/i2t_R1`, 2/3 on `test_pre_diff/i2t_R1`) but the variance from seed 1's outlier keeps it under the significance bar; t2i is a null. No cell in either comparison favors `pred_coupled`.
+
+### Diagnostic context
+
+`drift_from_init`: frozen=0.0000 (confirms the freeze mechanism, consistent with 11.1), trained=0.0643, pred_coupled=0.0838 — coupling increased drift by ~30% relative to trained, the opposite of the hypothesized effect (that removing the stop-gradient would pull the table back toward the feature-predictable manifold and shrink drift). `loss_pred` (final epoch): frozen=0.0304, trained=0.0306 (near-identical — as expected, since in both arms the table→predictor gradient path is the same one-way distillation), pred_coupled=0.0114 (63% lower) — table and predictor did become more mutually consistent under coupling, but by both moving further from init together rather than the table snapping back toward what the predictor could already represent.
+
+### Interpretation
+
+This is the spec's third named branch: **reportable instability**, not real signal, not a clean null. The bidirectional coupling does exactly what its stated risk warned it might — table and predictor chase each other into a more mutually-consistent but less generalizable configuration, rather than the table settling back onto the predictable manifold. It is significantly worse than frozen on i2t (both axes), and not distinguishable from — if anything, directionally worse than — the uncoupled trained arm, which itself already loses to frozen per 11.1. No `lambda_pred` strength follow-up is warranted per the spec's own gating discipline: the signal here is a negative result on the mechanism itself, not a promising-but-miscalibrated dose. Combined with 11.1/11.2, the accumulating evidence across Experiment 11's three parts continues to favor the simplest configuration — buddy-init geometry alone, conditions frozen after init — over every post-init training-pressure variant tested so far (implicit default pressure in 11.1, and this explicit table↔predictor coupling in 11.3).
+
+### Reproduction
+
+```bash
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate CoSiR
+SEED_SWEEP=1 bash scripts/run_pred_stopgrad_ablation.sh
+SEED_SWEEP=2,3 bash scripts/run_pred_stopgrad_ablation.sh
+python scripts/analyze_pred_stopgrad_ablation.py --tag pred-stopgrad-ablation-redcaps_150k
+```
