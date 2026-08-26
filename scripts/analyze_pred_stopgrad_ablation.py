@@ -15,7 +15,7 @@ reconstruction loss converge or diverge).
 
 Usage
 -----
-  python scripts/analyze_pred_stopgrad_ablation.py --tag pred-stopgrad-ablation-redcaps_150k
+  python scripts/analyze_pred_stopgrad_ablation.py
   python scripts/analyze_pred_stopgrad_ablation.py --selftest   # offline check, no wandb call
 
 Requires: wandb, pandas, numpy (all already deps).
@@ -56,11 +56,59 @@ def sget(summ, key, default=np.nan):
     return default if v is None else v
 
 
-def fetch(entity, project, group, tag=None):
+def row_passes_filters(arm, tags, epochs, *, treatment_tag, baseline_tag, expected_epochs):
+    """Pure run-selection predicate, factored out of fetch() so it's selftestable without a
+    live wandb call.
+
+    Two independent filters, both required to pass:
+    - Tag filter: TREATMENT ('pred_coupled') rows must carry `treatment_tag`; BASELINE
+      ('trained'/'frozen') rows must carry `baseline_tag`. These are two DIFFERENT tags
+      (11.3's own sweep tag vs. 11.1's pre-existing sweep tag) because both arms' runs share
+      one wandb group but were launched by different scripts at different times.
+    - Epochs filter (defense in depth, applies to ALL arms regardless of tag): `epochs` must
+      equal `expected_epochs` exactly. This catches contamination (e.g. a leftover smoke run
+      whose tag matching has some other subtle bug) even when the tag filter alone would have
+      let it through.
+
+    Returns True iff the run should be included in the analysis.
+    """
+    tags = tags or []
+    if arm == TREATMENT:
+        if treatment_tag and treatment_tag not in tags:
+            return False
+    elif arm in BASELINES:
+        if baseline_tag and baseline_tag not in tags:
+            return False
+    else:
+        return False
+    if expected_epochs is not None and epochs != expected_epochs:
+        return False
+    return True
+
+
+def warn_duplicate_cells(df):
+    """Loud warning -- not a silent .max() -- whenever more than one row remains for a given
+    (arm, seed) cell after filtering. Per the reviewer's principle, a loud failure beats a
+    plausible-looking wrong number: compute_paired_deltas still aggregates duplicate cells via
+    .max() today, but this warning must fire so a human notices and investigates, rather than
+    the script silently producing a number either way (this is exactly how the original
+    smoke-run contamination bug went unnoticed)."""
+    if df.empty:
+        return
+    for (arm, seed), cell in df.groupby(["arm", "seed"]):
+        if len(cell) > 1:
+            ids = ", ".join(cell["run_id"])
+            print(f"  !! WARNING: {len(cell)} rows survived filtering for arm={arm} seed={seed} "
+                  f"(run ids: {ids}) -- compute_paired_deltas will .max() through these silently. "
+                  f"Investigate before trusting this cell.")
+
+
+def fetch(entity, project, group, tag=None, baseline_tag=None, expected_epochs=100):
     import wandb
     api = wandb.Api()
     rows = []
     skipped_unfinished = 0
+    skipped_filtered = 0
     for run in api.runs(f"{entity}/{project}", filters={"group": group}):
         # A crashed/killed/still-running run can still have partial summary metrics
         # (e.g. logged at epoch 0 before dying) that look like real numbers to
@@ -77,7 +125,10 @@ def fetch(entity, project, group, tag=None):
         arm = cget(cfg, ("train", "arm"))
         if not arm:
             continue
-        if arm == TREATMENT and tag and tag not in (run.tags or []):
+        epochs = cget(cfg, ("train", "epochs"))
+        if not row_passes_filters(arm, run.tags, epochs, treatment_tag=tag,
+                                   baseline_tag=baseline_tag, expected_epochs=expected_epochs):
+            skipped_filtered += 1
             continue
         row = {"run_id": run.id, "state": run.state, "arm": arm, "seed": cget(cfg, ("seed",))}
         for metric in METRICS + [DRIFT, PRED_LOSS]:
@@ -86,7 +137,12 @@ def fetch(entity, project, group, tag=None):
         rows.append(row)
     if skipped_unfinished:
         print(f"  ({skipped_unfinished} non-finished run(s) excluded from analysis)")
-    return pd.DataFrame(rows)
+    if skipped_filtered:
+        print(f"  ({skipped_filtered} run(s) excluded by tag/epochs filter -- see --tag/"
+              f"--baseline-tag/--expected-epochs)")
+    df = pd.DataFrame(rows)
+    warn_duplicate_cells(df)
+    return df
 
 
 def compute_paired_deltas(df, metric, baseline):
@@ -119,10 +175,11 @@ def summarize(deltas):
     return {"n": n, "mean": mean, "std": std, "sem": sem, "z": z, "wins": wins}
 
 
-def analyze(entity, project, group, tag=None):
+def analyze(entity, project, group, tag=None, baseline_tag=None, expected_epochs=100):
     print(f"\n{'='*78}\nExperiment 11.3 - bidirectional table<->predictor coupling  group='{group}'"
-          + (f"  tag='{tag}'" if tag else "") + f"\n{'='*78}")
-    df = fetch(entity, project, group, tag=tag)
+          + (f"  tag='{tag}'" if tag else "") + (f"  baseline_tag='{baseline_tag}'" if baseline_tag else "")
+          + f"  expected_epochs={expected_epochs}\n{'='*78}")
+    df = fetch(entity, project, group, tag=tag, baseline_tag=baseline_tag, expected_epochs=expected_epochs)
     if df.empty:
         print("  (no runs found - check --entity/--project/--tag)")
         return
@@ -156,13 +213,25 @@ def main():
     ap.add_argument("--entity", default="augustoxq")
     ap.add_argument("--project", default="cosir_image")
     ap.add_argument("--group", default="condition freeze ablation")
-    ap.add_argument("--tag", default=None, help="only include pred_coupled runs carrying this wandb tag")
+    ap.add_argument("--tag", default="pred-stopgrad-ablation-redcaps_150k",
+                     help="only include pred_coupled (treatment) runs carrying this wandb tag "
+                          "-- matches scripts/run_pred_stopgrad_ablation.sh's own WANDB_TAG default")
+    ap.add_argument("--baseline-tag", default="condition-freeze-ablation-redcaps_150k",
+                     help="only include trained/frozen (baseline) runs carrying this wandb tag "
+                          "-- 11.1's real tag, from scripts/run_condition_freeze_ablation.sh; "
+                          "NOT the same tag as --tag, since the two arms were launched by "
+                          "different scripts sharing one wandb group")
+    ap.add_argument("--expected-epochs", type=int, default=100,
+                     help="defense-in-depth filter, applied to ALL arms: exclude any run whose "
+                          "cfg.train.epochs doesn't match this (catches leftover smoke runs "
+                          "even if tag-matching has some other subtle issue)")
     ap.add_argument("--selftest", action="store_true", help="offline arithmetic check, no wandb call")
     args = ap.parse_args()
     if args.selftest:
         _selftest()
         return
-    analyze(args.entity, args.project, args.group, tag=args.tag)
+    analyze(args.entity, args.project, args.group, tag=args.tag, baseline_tag=args.baseline_tag,
+            expected_epochs=args.expected_epochs)
 
 
 def _selftest():
@@ -189,6 +258,63 @@ def _selftest():
     assert s["n"] == 2
     assert abs(s["mean"] - 2.5) < 1e-9
     assert s["wins"] == 2
+
+    # --- row-selection / filtering check (this experiment's history has TWO real bugs in
+    # exactly this area: the wandb-key-prefix bug, and the smoke-run tag-filter-not-applied-
+    # to-baseline-arms bug this fix addresses). A decoy row mimics a leftover smoke run: same
+    # arm/seed as a real row, but wrong tag and wrong epochs, with a numerically HIGHER metric
+    # value than the real row -- exactly the shape that let smoke runs win compute_paired_
+    # deltas's per-cell .max() undetected. ---
+    real_tag = "pred-stopgrad-ablation-redcaps_150k"
+    base_tag = "condition-freeze-ablation-redcaps_150k"
+    smoke_base_tag = "condition-freeze-ablation-redcaps_150k-smoke"
+    smoke_treat_tag = "pred-stopgrad-ablation-redcaps_150k-smoke"
+
+    # row_passes_filters itself: real rows pass, decoys (wrong tag, or right tag/wrong epochs) don't.
+    assert row_passes_filters("trained", [base_tag], 100, treatment_tag=real_tag,
+                               baseline_tag=base_tag, expected_epochs=100)
+    assert not row_passes_filters("trained", [smoke_base_tag], 2, treatment_tag=real_tag,
+                                   baseline_tag=base_tag, expected_epochs=100), \
+        "decoy baseline row (smoke tag) should be excluded"
+    assert not row_passes_filters("trained", [base_tag], 2, treatment_tag=real_tag,
+                                   baseline_tag=base_tag, expected_epochs=100), \
+        "decoy baseline row (right tag, wrong epochs) should be excluded by the epochs filter"
+    assert row_passes_filters("pred_coupled", [real_tag], 100, treatment_tag=real_tag,
+                               baseline_tag=base_tag, expected_epochs=100)
+    assert not row_passes_filters("pred_coupled", [smoke_treat_tag], 2, treatment_tag=real_tag,
+                                   baseline_tag=base_tag, expected_epochs=100), \
+        "decoy treatment row (smoke tag) should be excluded"
+
+    # End-to-end: a decoy smoke row with an INFLATED metric must not leak into
+    # compute_paired_deltas once fetch()-style filtering is applied upstream of it. Without the
+    # filter, .max() would silently prefer the decoy's 99.0 over the real row's 50.0 -- this is
+    # exactly the shape of the real bug (a 2-epoch smoke run scored higher than the real
+    # 100-epoch seed-1 run on test_oracle/test_pre_diff).
+    raw_rows = [
+        {"run_id": "real_trained_1", "arm": "trained", "seed": 1, "tags": [base_tag], "epochs": 100, T2I_ORACLE: 50.0},
+        {"run_id": "decoy_smoke_trained_1", "arm": "trained", "seed": 1, "tags": [smoke_base_tag], "epochs": 2, T2I_ORACLE: 99.0},
+        {"run_id": "real_frozen_1", "arm": "frozen", "seed": 1, "tags": [base_tag], "epochs": 100, T2I_ORACLE: 54.0},
+        {"run_id": "real_pred_1", "arm": "pred_coupled", "seed": 1, "tags": [real_tag], "epochs": 100, T2I_ORACLE: 52.0},
+    ]
+    filtered_rows = [r for r in raw_rows if row_passes_filters(
+        r["arm"], r["tags"], r["epochs"], treatment_tag=real_tag, baseline_tag=base_tag, expected_epochs=100)]
+    assert len(filtered_rows) == 3, f"expected the decoy excluded (3 rows left), got {[r['run_id'] for r in filtered_rows]}"
+    assert "decoy_smoke_trained_1" not in {r["run_id"] for r in filtered_rows}
+
+    fdf = pd.DataFrame(filtered_rows)
+    decoy_free_deltas = compute_paired_deltas(fdf, T2I_ORACLE, "trained")
+    assert len(decoy_free_deltas) == 1
+    assert abs(decoy_free_deltas[0][1] - 2.0) < 1e-9, \
+        f"decoy leaked into the paired delta: expected +2.0 (52-50), got {decoy_free_deltas[0][1]:+.2f}"
+
+    # Sanity: prove the decoy WOULD have corrupted the result if filtering were skipped (i.e.
+    # this test actually exercises the bug, not a vacuous check).
+    unfiltered_df = pd.DataFrame(raw_rows)
+    contaminated_deltas = compute_paired_deltas(unfiltered_df, T2I_ORACLE, "trained")
+    assert abs(contaminated_deltas[0][1] - (-47.0)) < 1e-9, \
+        "expected the unfiltered decoy to corrupt the delta to 52-99=-47, confirming this test " \
+        "exercises the real bug shape"
+
     print("SELFTEST OK")
 
 

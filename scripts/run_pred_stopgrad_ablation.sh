@@ -81,5 +81,5 @@ python main_cosir.py -m \
 
 echo "==================================================================="
 echo "Done. Analyse (pred_coupled vs 11.1's trained/frozen, mean delta +/- std) with:"
-echo "  python scripts/analyze_pred_stopgrad_ablation.py --tag $WANDB_TAG"
+echo "  python scripts/analyze_pred_stopgrad_ablation.py --tag $WANDB_TAG --baseline-tag condition-freeze-ablation-${DATASET}"
 echo "==================================================================="
