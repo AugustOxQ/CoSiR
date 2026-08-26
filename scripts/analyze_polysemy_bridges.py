@@ -316,14 +316,135 @@ def correlate_polysemy_with_retrieval(
     return result
 
 
+def _load_features(storage_dir: str):
+    from src.utils import FeatureManager
+
+    fm = FeatureManager(storage_dir)
+    data = fm.load_all_to_ram(["img_features", "txt_features"])
+    img = data["img_features"].numpy().astype(np.float32)
+    txt = data["txt_features"].numpy().astype(np.float32)
+    sample_ids = [int(s) for s in data["sample_ids"].tolist()]
+    return img, txt, sample_ids
+
+
+def run(
+    storage_dir: str,
+    template_dir: str,
+    K: int = 30,
+    alpha: float = 0.5,
+    n_bridge_sample: int = 5000,
+    seed: int = 0,
+    device: str = "cuda",
+    per_sample_npz: str = None,
+) -> dict:
+    """End-to-end Experiment 12 pass: rebuild the buddy graph from cached features,
+    classify its edges, sample bridge-node (A, B, C) triples, measure whether the
+    ALREADY-SAVED buddy-init embedding (template_dir) pulls B and C together vs. a
+    degree-matched baseline, check whether that pull is graded by shared-neighbor
+    structure, and (if per_sample_npz is given) cross-reference the per-node polysemy
+    label against Experiment 11.2's per-sample retrieval-rank/drift dump."""
+    from src.conditional_buddy.buddy_graph import bridge_node_stats, classify_edges
+    from src.conditional_buddy.compute_buddies import _l2_normalize, build_buddy_graphs
+
+    img, txt, sample_ids = _load_features(storage_dir)
+    img_n, txt_n = _l2_normalize(img), _l2_normalize(txt)
+    A_img, A_txt, E = build_buddy_graphs(img_n, txt_n, K=K, alpha=alpha, device=device)
+
+    template_ids = np.load(Path(template_dir) / "sample_ids.npy").tolist()
+    assert template_ids == sample_ids, (
+        "template_dir's sample_ids.npy must match the freshly-loaded feature store's "
+        "sample order exactly (CLAUDE.md's sample-id-consistency rule) -- do not proceed "
+        "past this assertion if it fires; it means the wrong template/feature-store pair "
+        "was passed"
+    )
+    emb = np.load(Path(template_dir) / "embeddings.npy")
+
+    N = len(sample_ids)
+    typed = classify_edges(A_img, A_txt, E, N)
+    bstats = bridge_node_stats(typed, N)
+    labels = label_nodes(bstats)
+    E_img_only, E_txt_only = build_typed_adjacency(typed, N)
+
+    rng = np.random.default_rng(seed)
+    pairs = extract_bridge_pairs(bstats, E_img_only, E_txt_only, n_bridge_sample, rng)
+    buckets = degree_deciles(E)
+    baselines = sample_baselines(pairs, E, buckets, rng)
+    valid = baselines >= 0
+    pairs, baselines = pairs[valid], baselines[valid]
+
+    a_idx, b_idx, c_idx = pairs[:, 0], pairs[:, 1], pairs[:, 2]
+    dist_bc = embedded_l2_distance(emb, b_idx, c_idx)
+    dist_bc_baseline = embedded_l2_distance(emb, b_idx, baselines)
+    jaccard = shared_neighbor_jaccard(E, b_idx, c_idx)
+    pull_summary = paired_pull_summary(dist_bc, dist_bc_baseline)
+    grading_corr = spearman_correlate(jaccard, dist_bc_baseline - dist_bc)
+
+    result = {
+        "n_bridge_nodes": bstats["n_bridge_nodes"],
+        "frac_bridge_nodes": bstats["frac_bridge_nodes"],
+        "n_pairs_sampled": int(len(pairs)),
+        "pull_summary": pull_summary,
+        "grading_corr_jaccard_vs_pull": grading_corr,
+        "label_counts": {lbl: int((labels == lbl).sum())
+                         for lbl in ("neither", "img_only_only", "txt_only_only", "bridge")},
+    }
+    if per_sample_npz is not None:
+        result["retrieval_correlation"] = correlate_polysemy_with_retrieval(
+            labels, sample_ids, per_sample_npz
+        )
+    return result
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--storage-dir", default="/data/SSD2/pre_extract/redcaps_150k/features")
+    ap.add_argument("--template-dir",
+                    default="res/CoSiR_condition_freeze_ablation/redcaps_150k/template_embeddings")
+    ap.add_argument("--K", type=int, default=30)
+    ap.add_argument("--alpha", type=float, default=0.5)
+    ap.add_argument("--n-bridge-sample", type=int, default=5000)
+    ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--device", default="cuda")
+    ap.add_argument("--per-sample-npz", default=None,
+                    help="path to a Task 2 --dump-per-sample .npz for the retrieval-rank/"
+                         "drift cross-reference (optional)")
+    ap.add_argument("--out", default=None, help="write the JSON result here (optional)")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
     if args.selftest:
         _selftest()
         return
-    ap.print_help()
+
+    result = run(
+        storage_dir=args.storage_dir, template_dir=args.template_dir, K=args.K,
+        alpha=args.alpha, n_bridge_sample=args.n_bridge_sample, seed=args.seed,
+        device=args.device, per_sample_npz=args.per_sample_npz,
+    )
+
+    print(f"\n{'='*78}\nExperiment 12 - cross-modal polysemy bridge-node diagnostic\n{'='*78}")
+    print(f"  bridge nodes: {result['n_bridge_nodes']:,} ({100*result['frac_bridge_nodes']:.1f}% of nodes)")
+    print(f"  label counts: {result['label_counts']}")
+    print(f"  sampled bridge pairs: {result['n_pairs_sampled']:,}")
+    ps = result["pull_summary"]
+    sig = f"  mean/SEM={ps['z']:+.1f}{' *' if ps['z'] == ps['z'] and abs(ps['z']) >= 2 else ''}" if ps["n"] > 1 else ""
+    print(f"  pull (baseline_dist - bc_dist): mean={ps['mean']:+.4f} (n={ps['n']}, "
+          f"frac_pulled_closer={ps['frac_pulled_closer']:.3f}){sig}")
+    gc = result["grading_corr_jaccard_vs_pull"]
+    print(f"  grading check: corr(shared_neighbor_jaccard, pull) rho={gc['rho']:+.3f} p={gc['p']:.3e}")
+    if "retrieval_correlation" in result:
+        rc = result["retrieval_correlation"]
+        print(f"  retrieval cross-reference (n_joined={rc['n_joined']}):")
+        for lbl in ("neither", "img_only_only", "txt_only_only", "bridge"):
+            if lbl in rc:
+                print(f"    {lbl}: n={rc[lbl]['n']} median|delta_rank|={rc[lbl]['median_abs_delta_rank']:.1f} "
+                      f"median_drift={rc[lbl]['median_condition_drift']:.4f}")
+        c1 = rc["corr_is_polysemic_vs_abs_delta_rank"]
+        print(f"    corr(is_polysemic, |delta_rank|): rho={c1['rho']:+.3f} p={c1['p']:.3e}")
+
+    if args.out:
+        with open(args.out, "w") as f:
+            json.dump(result, f, indent=2)
+        print(f"  Wrote {args.out}")
 
 
 if __name__ == "__main__":
