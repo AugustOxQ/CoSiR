@@ -30,43 +30,10 @@ import sys
 
 import numpy as np
 from scipy.sparse import csr_matrix, triu
+from src.conditional_buddy.buddy_graph import bridge_node_stats, classify_edges
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "20260623_redcaps_buddy")))
-
-
-def _adj_to_keys(A: csr_matrix, N: int) -> np.ndarray:
-    """Upper-triangular (i<j) edges of a symmetric adjacency as sorted int64 keys i*N+j
-    -- same representation as cross_vlm_buddy.py's adj_to_keys, reused here for the same
-    reason: fast set-membership via np.isin on sorted unique arrays."""
-    U = triu(A, k=1).tocoo()
-    mask = U.data != 0
-    keys = (U.row[mask].astype(np.int64) * N + U.col[mask].astype(np.int64))
-    keys.sort()
-    return keys
-
-
-def classify_edges(A_img: csr_matrix, A_txt: csr_matrix, E: csr_matrix, N: int) -> dict:
-    """
-    Classify every edge of E by which modality(ies) support it.
-    Returns {"keys": sorted int64 edge keys (i*N+j, i<j) for E,
-             "img_only"/"txt_only"/"both"/"repair": boolean masks aligned to "keys"}.
-    Every edge falls into exactly one bucket.
-    """
-    keys_img = _adj_to_keys(A_img, N)
-    keys_txt = _adj_to_keys(A_txt, N)
-    keys_E = _adj_to_keys(E, N)
-
-    in_img = np.isin(keys_E, keys_img, assume_unique=True)
-    in_txt = np.isin(keys_E, keys_txt, assume_unique=True)
-
-    return {
-        "keys": keys_E,
-        "img_only": in_img & ~in_txt,
-        "txt_only": ~in_img & in_txt,
-        "both": in_img & in_txt,
-        "repair": ~in_img & ~in_txt,
-    }
 
 
 def rank_normalize(x: np.ndarray) -> np.ndarray:
@@ -100,33 +67,6 @@ def diagnose(img_n: np.ndarray, txt_n: np.ndarray, A_img: csr_matrix, A_txt: csr
     r_txt = rank_normalize(d_txt)
     r_mixed = alpha * r_img + (1.0 - alpha) * r_txt
     return typed, r_img, r_txt, r_mixed
-
-
-def bridge_node_stats(typed: dict, N: int) -> dict:
-    """A node is a 'bridge' if it has at least one img_only edge AND at least one
-    txt_only edge -- i.e. it connects to (at least some) different neighbors via
-    different, non-overlapping modality evidence, the structural precondition for the
-    false-transitivity concern (an unrelated pair pulled together in the spectral
-    embedding purely because they share this bridging node)."""
-    keys = typed["keys"]
-    i = (keys // N).astype(np.int64)
-    j = (keys % N).astype(np.int64)
-
-    deg_img_only = np.zeros(N, dtype=np.int64)
-    deg_txt_only = np.zeros(N, dtype=np.int64)
-    for mask, deg in ((typed["img_only"], deg_img_only), (typed["txt_only"], deg_txt_only)):
-        ii, jj = i[mask], j[mask]
-        np.add.at(deg, ii, 1)
-        np.add.at(deg, jj, 1)
-
-    is_bridge = (deg_img_only > 0) & (deg_txt_only > 0)
-    return {
-        "n_bridge_nodes": int(is_bridge.sum()),
-        "frac_bridge_nodes": float(is_bridge.mean()),
-        "deg_img_only": deg_img_only,
-        "deg_txt_only": deg_txt_only,
-        "is_bridge": is_bridge,
-    }
 
 
 SCALES = {

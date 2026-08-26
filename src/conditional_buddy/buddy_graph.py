@@ -26,7 +26,7 @@ from typing import Dict, Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
-from scipy.sparse import csr_matrix, coo_matrix
+from scipy.sparse import csr_matrix, coo_matrix, triu
 from scipy.sparse.csgraph import connected_components, minimum_spanning_tree
 
 # Below this N, exact brute-force topk is faster in practice (cuVS CAGRA's
@@ -431,3 +431,66 @@ def mix_distances_typed(
     mixed = np.where(txt_only, d_txt, mixed)
 
     return csr_matrix((mixed, (rows, cols)), shape=D_img_n.shape)
+
+
+# ── Edge/node classification (Experiment 12) ─────────────────────────────────
+
+
+def _adj_to_keys(A: csr_matrix, N: int) -> np.ndarray:
+    """Upper-triangular (i<j) edges of a symmetric adjacency as sorted int64 keys
+    i*N+j -- fast set-membership via np.isin on sorted unique arrays."""
+    U = triu(A, k=1).tocoo()
+    mask = U.data != 0
+    keys = (U.row[mask].astype(np.int64) * N + U.col[mask].astype(np.int64))
+    keys.sort()
+    return keys
+
+
+def classify_edges(A_img: csr_matrix, A_txt: csr_matrix, E: csr_matrix, N: int) -> dict:
+    """
+    Classify every edge of the union graph E by which modality(ies) support it.
+
+    Returns {"keys": sorted int64 edge keys (i*N+j, i<j) for E,
+             "img_only"/"txt_only"/"both"/"repair": boolean masks aligned to "keys"}.
+    Every edge falls into exactly one bucket -- an edge cannot be both img_only and
+    txt_only, so a node's img-only and txt-only neighbor sets are always disjoint.
+    """
+    keys_img = _adj_to_keys(A_img, N)
+    keys_txt = _adj_to_keys(A_txt, N)
+    keys_E = _adj_to_keys(E, N)
+
+    in_img = np.isin(keys_E, keys_img, assume_unique=True)
+    in_txt = np.isin(keys_E, keys_txt, assume_unique=True)
+
+    return {
+        "keys": keys_E,
+        "img_only": in_img & ~in_txt,
+        "txt_only": ~in_img & in_txt,
+        "both": in_img & in_txt,
+        "repair": ~in_img & ~in_txt,
+    }
+
+
+def bridge_node_stats(typed: dict, N: int) -> dict:
+    """A node is a 'bridge' if it has at least one img_only edge AND at least one
+    txt_only edge -- i.e. it connects to different neighbors via different,
+    non-overlapping modality evidence (Experiment 12's node "A")."""
+    keys = typed["keys"]
+    i = (keys // N).astype(np.int64)
+    j = (keys % N).astype(np.int64)
+
+    deg_img_only = np.zeros(N, dtype=np.int64)
+    deg_txt_only = np.zeros(N, dtype=np.int64)
+    for mask, deg in ((typed["img_only"], deg_img_only), (typed["txt_only"], deg_txt_only)):
+        ii, jj = i[mask], j[mask]
+        np.add.at(deg, ii, 1)
+        np.add.at(deg, jj, 1)
+
+    is_bridge = (deg_img_only > 0) & (deg_txt_only > 0)
+    return {
+        "n_bridge_nodes": int(is_bridge.sum()),
+        "frac_bridge_nodes": float(is_bridge.mean()),
+        "deg_img_only": deg_img_only,
+        "deg_txt_only": deg_txt_only,
+        "is_bridge": is_bridge,
+    }
