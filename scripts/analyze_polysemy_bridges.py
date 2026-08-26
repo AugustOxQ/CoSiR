@@ -47,6 +47,77 @@ if _ROOT not in sys.path:
 from analyze_condition_retrieval_correlation import spearman_correlate
 
 
+def degree_deciles(E: csr_matrix, n_buckets: int = 10) -> np.ndarray:
+    """Per-node degree-decile bucket id (0 = lowest degree, n_buckets-1 = highest),
+    used to sample a degree-matched baseline node for the false-transitivity check."""
+    degree = np.diff(E.indptr)
+    ranks = rankdata(degree, method="average") / len(degree)  # in (0, 1]
+    buckets = np.minimum((ranks * n_buckets).astype(np.int64), n_buckets - 1)
+    return buckets
+
+
+def sample_baselines(
+    pairs: np.ndarray,
+    E: csr_matrix,
+    buckets: np.ndarray,
+    rng: np.random.Generator,
+    max_tries: int = 50,
+) -> np.ndarray:
+    """For each (A, B, C) row, sample a degree-bucket-matched C' that is NOT a direct
+    E-neighbor of B and not equal to B or C -- the "is B pulled toward C specifically, or
+    just toward any similarly-connected node" baseline. -1 where no candidate was found
+    within max_tries (excluded from downstream stats by the caller)."""
+    node_ids_by_bucket = {k: np.where(buckets == k)[0] for k in np.unique(buckets)}
+    out = np.full(len(pairs), -1, dtype=np.int64)
+    for row in range(len(pairs)):
+        a, b, c = pairs[row]
+        candidates = node_ids_by_bucket[buckets[c]]
+        b_neighbors = set(E.indices[E.indptr[b]:E.indptr[b + 1]].tolist())
+        for _ in range(max_tries):
+            c_prime = int(rng.choice(candidates))
+            if c_prime != b and c_prime != c and c_prime not in b_neighbors:
+                out[row] = c_prime
+                break
+    return out
+
+
+def shared_neighbor_jaccard(E: csr_matrix, b: np.ndarray, c: np.ndarray) -> np.ndarray:
+    """Jaccard overlap of each (b[i], c[i]) pair's neighbor sets in E -- the LINE/GraRep-
+    style second-order-proximity score used to test whether any embedded pull is graded
+    by real shared-neighbor structure. Loop-based: fine at the capped sample size
+    (~thousands of pairs) this experiment uses."""
+    out = np.empty(len(b), dtype=np.float64)
+    for idx in range(len(b)):
+        nb = set(E.indices[E.indptr[b[idx]]:E.indptr[b[idx] + 1]].tolist())
+        nc = set(E.indices[E.indptr[c[idx]]:E.indptr[c[idx] + 1]].tolist())
+        union = len(nb | nc)
+        out[idx] = len(nb & nc) / union if union > 0 else 0.0
+    return out
+
+
+def embedded_l2_distance(emb: np.ndarray, i: np.ndarray, j: np.ndarray) -> np.ndarray:
+    """Euclidean distance between rows i and j of the buddy-init embedding -- matches
+    this project's existing condition_drift L2 convention."""
+    return np.linalg.norm(emb[i] - emb[j], axis=1)
+
+
+def paired_pull_summary(dist_bc: np.ndarray, dist_bc_baseline: np.ndarray) -> dict:
+    """Paired difference (baseline - bridge_pair): positive means the bridge-derived
+    (B, C) pair sits CLOSER together in the embedding than its degree-matched baseline
+    pair, i.e. a 'pull'. Same mean/std/sem/z convention as this project's other
+    paired-delta analysis scripts."""
+    pull = dist_bc_baseline - dist_bc
+    n = len(pull)
+    mean = float(pull.mean())
+    std = float(pull.std(ddof=1)) if n > 1 else float("nan")
+    sem = std / np.sqrt(n) if n > 1 and std == std else float("nan")
+    z = mean / sem if sem == sem and sem > 0 else float("nan")
+    return {
+        "n": n, "mean": mean, "std": std, "sem": sem, "z": z,
+        "frac_pulled_closer": float((pull > 0).mean()),
+    }
+
+
 def build_typed_adjacency(typed: dict, N: int) -> Tuple[csr_matrix, csr_matrix]:
     """Symmetric binary adjacency for just the img-only and just the txt-only edges of
     the union graph, so per-node neighbor lists can be sliced by modality-provenance
@@ -148,6 +219,40 @@ def _selftest():
     assert pairs.shape == (1, 3), pairs.shape
     a, b, c = pairs[0]
     assert a == 1 and b == 0 and c == 4, pairs
+
+    # degree_deciles: 10 nodes with distinct degrees -> deciles 0..9 in order.
+    n10 = 10
+    edges10 = [(0, k) for k in range(1, 10)]  # node 0 has degree 9; nodes 1-9 have degree 1
+    E10 = _sym(n10, edges10)
+    buckets = degree_deciles(E10, n_buckets=10)
+    assert buckets[0] == 9, buckets  # highest degree -> top decile
+    assert buckets[1] < buckets[0], buckets
+
+    # sample_baselines: node 5 (degree 1, bucket low) should never return node 0 (a direct
+    # neighbor of b=1) or nodes with a very different degree.
+    pairs10 = np.array([[0, 1, 5]])  # a=0, b=1 (neighbor of 0), c=5
+    rng10 = np.random.default_rng(1)
+    baselines = sample_baselines(pairs10, E10, buckets, rng10)
+    assert baselines.shape == (1,)
+    assert baselines[0] not in (1, 5, -1), baselines  # not b, not c, and a candidate WAS found
+
+    # shared_neighbor_jaccard: b and c share exactly node 0 as a neighbor (of 9 total).
+    jac = shared_neighbor_jaccard(E10, np.array([1]), np.array([2]))
+    assert abs(jac[0] - (1 / 1)) < 1e-9, jac  # N(1)={0}, N(2)={0} -> intersection=union=1
+
+    # embedded_l2_distance: known Euclidean distances.
+    emb = np.array([[0.0, 0.0], [3.0, 4.0], [0.0, 0.0]])
+    d = embedded_l2_distance(emb, np.array([0, 1]), np.array([1, 2]))
+    assert np.allclose(d, [5.0, 5.0]), d
+
+    # paired_pull_summary: baseline consistently 1.0 farther than the bridge pair ->
+    # mean pull exactly 1.0, all wins.
+    dist_bc = np.array([1.0, 1.0, 1.0])
+    dist_baseline = np.array([2.0, 2.0, 2.0])
+    summary = paired_pull_summary(dist_bc, dist_baseline)
+    assert summary["n"] == 3
+    assert abs(summary["mean"] - 1.0) < 1e-9, summary
+    assert summary["frac_pulled_closer"] == 1.0, summary
     print("SELFTEST OK")
 
 
