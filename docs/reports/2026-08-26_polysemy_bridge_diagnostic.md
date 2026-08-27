@@ -94,6 +94,54 @@ python scripts/analyze_polysemy_bridges.py --n-bridge-sample 5000 --device cuda 
   --per-sample-npz res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_161846_CoSiR_Experiment/condition_geometry/per_sample_retrieval_correlation.npz
 ```
 
+## Experiment 12.2 — Training-trajectory audit: does the i2t deficit hold from the start?
+
+**Motivation:** Experiments 11.1–11.3 (`docs/reports/2026-08-25_condition_freeze_ablation.md`) established that the default post-init-`trained` checkpoint loses to a `frozen`-at-init baseline on i2t retrieval by a wide, seed-replicated margin, with no attempted fix (11.3's `pred_coupled`) recovering any of it. This experiment's own retrieval/drift cross-reference (above) used the final-epoch (99) `trained` checkpoint as "the outcome of post-init training." Before extending that cross-reference further (Experiment 12.3, next section), this audit checks a prior, cheaper question: is epoch 99 even a representative checkpoint to call "trained," or is the i2t deficit still actively growing at that point (making epoch 99 a worst-case, non-representative snapshot of an ongoing collapse)?
+
+### TL;DR
+
+**The i2t deficit is not present at initialization, but it is not still growing at epoch 99 either — it emerges over roughly the first half of training and then plateaus.** Both `trained` and `pred_coupled`'s i2t gap vs. `frozen` starts at ~0 at epoch 0 (shared init, as expected), declines steadily and almost identically across all 6 already-completed runs (3 `trained` seeds, 3 `pred_coupled` seeds) through epoch ~40–50 (reaching roughly −4.2 to −5.3 R1), then flattens out with no further systematic trend through epoch 99 (fluctuating between about −4.1 and −5.3, indistinguishable from noise around a stable level). t2i's gap stays within roughly ±0.8 R1 throughout, with no trend — consistent with 11.1's own t2i noise-floor null. **This means epoch 99 is a fair representative of the settled, post-acquisition-phase effect of continued training, not an outlier mid-collapse** — the cross-reference this report and Experiment 12.3 build on is measuring a plateaued end-state, not a transient still in motion.
+
+### Method
+
+New script `scripts/analyze_training_trajectory.py` pulls per-epoch `test_oracle/{t2i,i2t}_R1` history (not just the final-epoch summary 11.1/11.3's own scripts read) via the wandb API for all 9 already-completed runs (11.1's 3 `trained` + 3 `frozen`, 11.3's 3 `pred_coupled`; same `condition-freeze-ablation-redcaps_150k` / `pred-stopgrad-ablation-redcaps_150k` tags). Rows are joined on the `epoch` key logged in the *same* `wandb.log()` call as these metrics — **not** wandb's own `_step` counter, which is a global logging-call index that does not align across runs (different arms log a different number of things per epoch, e.g. `pred_coupled`'s extra `loss_pred` term, shifting `_step` at the "same" training epoch). A first implementation used `_step` and silently produced empty/misaligned gaps for every run; this was caught before any real numbers were reported (see Caveats) and fixed to use `epoch`, confirmed to share the identical `_step` value as `test_oracle/i2t_R1` within each logged row. Zero new training, zero new eval runs — reuses only already-logged wandb history.
+
+### Results
+
+```
+i2t gap vs frozen (treatment - frozen), by (arm, seed, epoch):
+  trained seed 1: e0=+0.00, e10=-0.80, e20=-2.50, e30=-3.70, e40=-4.20, e50=-4.50, e60=-5.00, e70=-4.90, e80=-4.80, e90=-5.10, e99=-4.90
+  trained seed 2: e0=+0.00, e10=-0.30, e20=-3.00, e30=-4.00, e40=-4.30, e50=-4.80, e60=-4.90, e70=-4.70, e80=-4.50, e90=-4.30, e99=-4.40
+  trained seed 3: e0=+0.00, e10=-0.50, e20=-3.00, e30=-4.10, e40=-4.70, e50=-5.30, e60=-4.60, e70=-4.80, e80=-4.10, e90=-4.70, e99=-4.70
+  pred_coupled seed 1: e0=+0.00, e10=-0.90, e20=-2.50, e30=-3.70, e40=-4.40, e50=-4.30, e60=-4.40, e70=-4.80, e80=-4.60, e90=-4.70, e99=-4.70
+  pred_coupled seed 2: e0=+0.00, e10=-0.40, e20=-3.00, e30=-3.70, e40=-4.90, e50=-4.90, e60=-5.00, e70=-4.70, e80=-4.70, e90=-4.40, e99=-4.50
+  pred_coupled seed 3: e0=+0.10, e10=-0.50, e20=-2.80, e30=-4.20, e40=-4.90, e50=-5.20, e60=-4.70, e70=-4.90, e80=-4.20, e90=-4.70, e99=-5.10
+```
+
+![Per-epoch i2t gap vs. the frozen baseline, all 6 already-completed trained/pred_coupled seeds](assets/training_trajectory/i2t_gap_trajectory.png)
+
+All 6 lines are nearly indistinguishable in shape: a sharp, monotonic decline from epoch 0 to roughly epoch 40–50, then a flat, noisy plateau through epoch 99 with no further systematic drift in either direction. t2i's gap (not plotted; see Reproduction to regenerate) stays within roughly ±0.8 R1 across every epoch and run, with no trend — a stable null, matching 11.1's own t2i noise-floor finding.
+
+### Interpretation
+
+The i2t deficit is **late-onset but saturating, not an ongoing collapse**: it is essentially zero at epoch 0/10 (shared buddy-init geometry, as expected — training hasn't had time to diverge yet), grows steadily through the first ~40–50% of the run, and then holds at a stable level through the final epoch. Because the trajectory has already flattened well before epoch 99, **the final checkpoint used throughout 11.1–11.3 and this report's own retrieval/drift cross-reference is a fair representative of the settled post-init-training effect**, not a worst-case sample of a still-accelerating failure. This narrows what any `trained`-vs-`frozen` per-sample diagnostic (this report's cross-reference, and Experiment 12.3 next) can claim: it characterizes the *plateaued* effect of continued training, not the *transient acquisition* dynamics of epochs 0–50, which would need the intermediate checkpoints Experiment 12.4 tentatively scopes. The near-identical shape between `trained` and `pred_coupled` — two different loss-stack configurations — also reinforces 11.3's own finding that whatever drives this decay is common to both recipes, not something the stop-gradient change specifically introduced or fixed.
+
+### Caveats
+
+- History is pulled via wandb's `run.history(keys=[...])`, which only returns rows where every requested key was logged at the identical step; this repo's training loop happens to log `epoch` in the same call as `test_oracle/*` (confirmed above), but this is an implementation detail of the current logging code, not a documented wandb guarantee — a future change to the logging call structure could silently break this join.
+- This audits `test_oracle` only (the oracle-max-over-conditions metric 11.1's headline used), not `test_pre_diff`/predictor metrics.
+- 11 logged points per run (epoch 0, 10, 20, ..., 99) describe the shape at the eval cadence training already uses, not a continuous curve — a short-lived spike or partial recovery between eval points would not be visible here.
+
+### Reproduction
+
+```bash
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate CoSiR
+python scripts/analyze_training_trajectory.py \
+  --tag condition-freeze-ablation-redcaps_150k \
+  --pred-coupled-tag pred-stopgrad-ablation-redcaps_150k \
+  --out-fig docs/reports/assets/training_trajectory/i2t_gap_trajectory.png
+```
+
 ## Documentation updates (2026-08-27)
 
 - Reframed the diagnostic as cross-modal neighborhood-disagreement bridge structure, rather than semantic polysemy.

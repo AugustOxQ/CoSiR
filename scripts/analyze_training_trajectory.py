@@ -60,11 +60,17 @@ def fetch_history(entity: str, project: str, group: str, tags: dict) -> pd.DataF
         seed = cget(run.config, ("seed",))
         if not arm or arm not in tags:
             continue
-        hist = run.history(keys=[T2I, I2T], pandas=True)
+        # wandb's own `_step` is a global logging-call counter, not the training epoch --
+        # different arms log a different number of things per epoch (e.g. pred_coupled's
+        # extra loss_pred term), so `_step` values do not align across runs at the "same"
+        # epoch. `epoch` is a separate key logged in the exact same wandb.log() call as
+        # these test_oracle metrics (confirmed: identical `_step` to test_oracle/i2t_R1's
+        # own history), so it must be fetched alongside them and used instead of `_step`.
+        hist = run.history(keys=[T2I, I2T, "epoch"], pandas=True)
         if hist is None or hist.empty:
             continue
         for _, hrow in hist.iterrows():
-            epoch = hrow.get("_step")
+            epoch = hrow.get("epoch")
             if epoch is None or pd.isna(epoch):
                 continue
             rows.append({
