@@ -277,6 +277,19 @@ def _selftest():
     assert result["bridge"]["median_delta_rank"] == 10.0, result  # only one bridge row (id 100, delta_rank=10)
     assert "corr_is_polysemic_vs_delta_rank" in result, result
 
+    # pool_cross_references: two runs' cross-reference results -> pooled mean/std/sem/z
+    # of each run's own rho, matching the project's standard multi-seed convention.
+    r1 = {"corr_is_polysemic_vs_abs_delta_rank": {"rho": 0.10, "p": 0.01},
+          "corr_is_polysemic_vs_delta_rank": {"rho": 0.02, "p": 0.5}, "n_joined": 100}
+    r2 = {"corr_is_polysemic_vs_abs_delta_rank": {"rho": 0.20, "p": 0.01},
+          "corr_is_polysemic_vs_delta_rank": {"rho": -0.02, "p": 0.5}, "n_joined": 90}
+    pooled = pool_cross_references([r1, r2], tags=["trained/seed1", "trained/seed2"])
+    assert pooled["n_runs"] == 2
+    assert set(pooled["per_run"].keys()) == {"trained/seed1", "trained/seed2"}
+    abs_stats = pooled["pooled"]["corr_is_polysemic_vs_abs_delta_rank"]
+    assert abs(abs_stats["mean"] - 0.15) < 1e-9, abs_stats
+    assert abs_stats["n"] == 2
+
     # save_raw_arrays: always saves pair arrays, and includes retrieval arrays only
     # when the optional cross-reference was requested.
     with tempfile.TemporaryDirectory() as tmp:
@@ -343,6 +356,26 @@ def correlate_polysemy_with_retrieval(
     return result
 
 
+def pool_cross_references(results: List[dict], tags: List[str]) -> dict:
+    """Pool multiple already-computed correlate_polysemy_with_retrieval() results (one
+    per run/seed) into a per-run table plus mean/std/sem/z of each run's own rho, across
+    runs -- this project's standard multi-seed synthesis convention (see summarize() in
+    scripts/analyze_condition_freeze_ablation.py). Does not re-touch any per-sample data;
+    purely aggregates already-computed per-run dicts."""
+    assert len(results) == len(tags), (len(results), len(tags))
+    per_run = {tag: r for tag, r in zip(tags, results)}
+    pooled = {}
+    for corr_key in ("corr_is_polysemic_vs_abs_delta_rank", "corr_is_polysemic_vs_delta_rank"):
+        rhos = np.array([r[corr_key]["rho"] for r in results], dtype=float)
+        n = len(rhos)
+        mean = float(rhos.mean())
+        std = float(rhos.std(ddof=1)) if n > 1 else float("nan")
+        sem = std / np.sqrt(n) if n > 1 and std == std else float("nan")
+        z = mean / sem if sem == sem and sem > 0 else float("nan")
+        pooled[corr_key] = {"n": n, "mean": mean, "std": std, "sem": sem, "z": z}
+    return {"n_runs": len(results), "per_run": per_run, "pooled": pooled}
+
+
 def save_raw_arrays(
     path: str,
     a_idx: np.ndarray,
@@ -386,7 +419,7 @@ def run(
     n_bridge_sample: int = 5000,
     seed: int = 0,
     device: str = "cuda",
-    per_sample_npz: str = None,
+    per_sample_npz=None,
     save_raw: str = None,
 ) -> dict:
     """End-to-end Experiment 12 pass: rebuild the buddy graph from cached features,
@@ -442,14 +475,20 @@ def run(
     }
     retrieval_raw = None
     if per_sample_npz is not None:
-        if save_raw is not None:
-            result["retrieval_correlation"], retrieval_raw = correlate_polysemy_with_retrieval(
-                labels, sample_ids, per_sample_npz, return_raw=True
-            )
+        npz_list = [per_sample_npz] if isinstance(per_sample_npz, str) else list(per_sample_npz)
+        if len(npz_list) == 1:
+            if save_raw is not None:
+                result["retrieval_correlation"], retrieval_raw = correlate_polysemy_with_retrieval(
+                    labels, sample_ids, npz_list[0], return_raw=True
+                )
+            else:
+                result["retrieval_correlation"] = correlate_polysemy_with_retrieval(
+                    labels, sample_ids, npz_list[0]
+                )
         else:
-            result["retrieval_correlation"] = correlate_polysemy_with_retrieval(
-                labels, sample_ids, per_sample_npz
-            )
+            per_run_results = [correlate_polysemy_with_retrieval(labels, sample_ids, p) for p in npz_list]
+            tags = [Path(p).parent.parent.name for p in npz_list]
+            result["retrieval_correlation"] = pool_cross_references(per_run_results, tags)
     if save_raw is not None:
         save_raw_arrays(
             save_raw, a_idx, b_idx, c_idx, dist_bc, dist_bc_baseline, jaccard, retrieval_raw
@@ -467,9 +506,9 @@ def main():
     ap.add_argument("--n-bridge-sample", type=int, default=5000)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default="cuda")
-    ap.add_argument("--per-sample-npz", default=None,
-                    help="path to a Task 2 --dump-per-sample .npz for the retrieval-rank/"
-                         "drift cross-reference (optional)")
+    ap.add_argument("--per-sample-npz", default=None, nargs="+",
+                    help="one or more Task 2 --dump-per-sample .npz paths for the retrieval-rank/"
+                         "drift cross-reference (optional; multiple paths are pooled across runs)")
     ap.add_argument("--out", default=None, help="write the JSON result here (optional)")
     ap.add_argument("--save-raw", default=None,
                     help="write sampled-pair raw arrays (and retrieval arrays when available) to .npz")
@@ -497,16 +536,27 @@ def main():
     print(f"  grading check: corr(shared_neighbor_jaccard, pull) rho={gc['rho']:+.3f} p={gc['p']:.3e}")
     if "retrieval_correlation" in result:
         rc = result["retrieval_correlation"]
-        print(f"  retrieval cross-reference (n_joined={rc['n_joined']}):")
-        for lbl in ("neither", "img_only_only", "txt_only_only", "bridge"):
-            if lbl in rc:
-                print(f"    {lbl}: n={rc[lbl]['n']} median|delta_rank|={rc[lbl]['median_abs_delta_rank']:.1f} "
-                      f"median_delta_rank={rc[lbl]['median_delta_rank']:+.1f} "
-                      f"median_drift={rc[lbl]['median_condition_drift']:.4f}")
-        c1 = rc["corr_is_polysemic_vs_abs_delta_rank"]
-        print(f"    corr(is_polysemic, |delta_rank|): rho={c1['rho']:+.3f} p={c1['p']:.3e}")
-        c2 = rc["corr_is_polysemic_vs_delta_rank"]
-        print(f"    corr(is_polysemic, delta_rank):   rho={c2['rho']:+.3f} p={c2['p']:.3e}")
+        if "n_runs" in rc:
+            print(f"  retrieval cross-reference, pooled across {rc['n_runs']} run(s): "
+                  f"{sorted(rc['per_run'].keys())}")
+            for corr_key, human in (
+                ("corr_is_polysemic_vs_abs_delta_rank", "|delta_rank|"),
+                ("corr_is_polysemic_vs_delta_rank", "delta_rank"),
+            ):
+                p = rc["pooled"][corr_key]
+                sig = f"  mean/SEM={p['z']:+.1f}{' *' if p['z'] == p['z'] and abs(p['z']) >= 2 else ''}" if p["n"] > 1 else ""
+                print(f"    corr(is_polysemic, {human}) across runs: mean rho={p['mean']:+.3f} (n={p['n']}){sig}")
+        else:
+            print(f"  retrieval cross-reference (n_joined={rc['n_joined']}):")
+            for lbl in ("neither", "img_only_only", "txt_only_only", "bridge"):
+                if lbl in rc:
+                    print(f"    {lbl}: n={rc[lbl]['n']} median|delta_rank|={rc[lbl]['median_abs_delta_rank']:.1f} "
+                          f"median_delta_rank={rc[lbl]['median_delta_rank']:+.1f} "
+                          f"median_drift={rc[lbl]['median_condition_drift']:.4f}")
+            c1 = rc["corr_is_polysemic_vs_abs_delta_rank"]
+            print(f"    corr(is_polysemic, |delta_rank|): rho={c1['rho']:+.3f} p={c1['p']:.3e}")
+            c2 = rc["corr_is_polysemic_vs_delta_rank"]
+            print(f"    corr(is_polysemic, delta_rank):   rho={c2['rho']:+.3f} p={c2['p']:.3e}")
 
     if args.out:
         with open(args.out, "w") as f:
