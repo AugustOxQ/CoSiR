@@ -274,6 +274,8 @@ def _selftest():
     assert result["bridge"]["n"] == 1 and result["bridge"]["median_abs_delta_rank"] == 10.0, result
     assert result["neither"]["n"] == 1  # only sample 101 (id 103 was excluded, not in the dump)
     assert "corr_is_polysemic_vs_abs_delta_rank" in result, result
+    assert result["bridge"]["median_delta_rank"] == 10.0, result  # only one bridge row (id 100, delta_rank=10)
+    assert "corr_is_polysemic_vs_delta_rank" in result, result
 
     # save_raw_arrays: always saves pair arrays, and includes retrieval arrays only
     # when the optional cross-reference was requested.
@@ -328,10 +330,12 @@ def correlate_polysemy_with_retrieval(
         result[lbl] = {
             "n": int(mask.sum()),
             "median_abs_delta_rank": float(np.median(np.abs(delta_rank[mask]))),
+            "median_delta_rank": float(np.median(delta_rank[mask])),
             "median_condition_drift": float(np.median(condition_drift[mask])),
             "median_embedding_shift": float(np.median(embedding_shift[mask])),
         }
     result["corr_is_polysemic_vs_abs_delta_rank"] = spearman_correlate(is_polysemic, np.abs(delta_rank))
+    result["corr_is_polysemic_vs_delta_rank"] = spearman_correlate(is_polysemic, delta_rank)
     result["corr_is_polysemic_vs_condition_drift"] = spearman_correlate(is_polysemic, condition_drift)
     result["corr_is_polysemic_vs_embedding_shift"] = spearman_correlate(is_polysemic, embedding_shift)
     if return_raw:
@@ -497,9 +501,12 @@ def main():
         for lbl in ("neither", "img_only_only", "txt_only_only", "bridge"):
             if lbl in rc:
                 print(f"    {lbl}: n={rc[lbl]['n']} median|delta_rank|={rc[lbl]['median_abs_delta_rank']:.1f} "
+                      f"median_delta_rank={rc[lbl]['median_delta_rank']:+.1f} "
                       f"median_drift={rc[lbl]['median_condition_drift']:.4f}")
         c1 = rc["corr_is_polysemic_vs_abs_delta_rank"]
         print(f"    corr(is_polysemic, |delta_rank|): rho={c1['rho']:+.3f} p={c1['p']:.3e}")
+        c2 = rc["corr_is_polysemic_vs_delta_rank"]
+        print(f"    corr(is_polysemic, delta_rank):   rho={c2['rho']:+.3f} p={c2['p']:.3e}")
 
     if args.out:
         with open(args.out, "w") as f:
