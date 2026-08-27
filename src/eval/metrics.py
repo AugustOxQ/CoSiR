@@ -305,7 +305,11 @@ class OracleMetrics(RankingMetric):
         image_to_text_map: torch.Tensor,
         prefix: str = "txt_non_oracle",
     ) -> Dict[str, float]:
-        """Non-oracle T2I/I2T: predict condition from text query via condition predictor."""
+        """Non-oracle T2I/I2T: predict condition from text query via condition predictor.
+
+        Not adapted to combine_side: always combines text against a raw (unprojected)
+        image gallery, regardless of the configured combine_side.
+        """
         num_texts = text_embeddings.shape[0]
         num_images = image_embeddings.shape[0]
         captions_per_image = image_to_text_map.shape[1]
@@ -356,6 +360,9 @@ class OracleMetrics(RankingMetric):
 
         Note: O(N_images × N_texts) — uses each image's predicted condition to
         score all text queries against that image.
+
+        Not adapted to combine_side: always combines text against a raw (unprojected)
+        image gallery, regardless of the configured combine_side.
         """
         num_texts = text_embeddings.shape[0]
         num_images = image_embeddings.shape[0]
@@ -422,6 +429,9 @@ class OracleMetrics(RankingMetric):
 
         ConditionPredictor takes a single embedding, so we pass the combine-side
         (text) embedding; image context is implicitly encoded via the pairing structure.
+
+        Not adapted to combine_side: always combines text against a raw (unprojected)
+        image gallery, regardless of the configured combine_side.
         """
         num_texts = text_embeddings.shape[0]
         num_images = image_embeddings.shape[0]
