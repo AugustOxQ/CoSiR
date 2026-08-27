@@ -180,25 +180,35 @@ class TrainEvaluator:
                 img_full = data["img_full"].to(device, non_blocking=True) if "img_full" in data else None
                 sample_ids = data["sample_ids"].tolist()
 
-                combine_side = getattr(model, "combine_side", "txt")
-                if combine_side == "txt":
-                    combine_feat, combine_full = txt, txt_full
-                    anchor = img
-                else:
-                    combine_feat, combine_full = img, img_full
-                    anchor = txt
-
                 label_emb = embedding_manager.get_embeddings(sample_ids).to(device)
-                comb_emb = model.combine(combine_feat, combine_full, label_emb, epoch=epoch)
                 label_emb_neg = replace_with_most_different(label_emb)
-                comb_emb_neg = model.combine(combine_feat, combine_full, label_emb_neg, epoch=epoch)
+                if getattr(model, "conditioning_mode", "asymmetric") == "symmetric_shared":
+                    img_comb = model.combine(img, img_full, label_emb, epoch=epoch)
+                    txt_comb = model.combine(txt, txt_full, label_emb, epoch=epoch)
+                    img_comb_neg = model.combine(img, img_full, label_emb_neg, epoch=epoch)
+                    txt_comb_neg = model.combine(txt, txt_full, label_emb_neg, epoch=epoch)
 
-                total_rank_raw += self._mean_rank(anchor, combine_feat)
-                total_rank_comb += self._mean_rank(anchor, comb_emb)
-                total_rank_shuffled += self._mean_rank(anchor, comb_emb_neg)
+                    total_rank_raw += self._mean_rank(img, txt)
+                    total_rank_comb += self._mean_rank(img_comb, txt_comb)
+                    total_rank_shuffled += self._mean_rank(img_comb_neg, txt_comb_neg)
+                else:
+                    combine_side = getattr(model, "combine_side", "txt")
+                    if combine_side == "txt":
+                        combine_feat, combine_full = txt, txt_full
+                        anchor = img
+                    else:
+                        combine_feat, combine_full = img, img_full
+                        anchor = txt
+
+                    comb_emb = model.combine(combine_feat, combine_full, label_emb, epoch=epoch)
+                    comb_emb_neg = model.combine(combine_feat, combine_full, label_emb_neg, epoch=epoch)
+
+                    total_rank_raw += self._mean_rank(anchor, combine_feat)
+                    total_rank_comb += self._mean_rank(anchor, comb_emb)
+                    total_rank_shuffled += self._mean_rank(anchor, comb_emb_neg)
                 total_chunks += 1
 
-                del img, txt, txt_full, img_full, label_emb, comb_emb, comb_emb_neg, label_emb_neg
+                del img, txt, txt_full, img_full, label_emb, label_emb_neg
                 torch.cuda.empty_cache()
 
         n = total_chunks

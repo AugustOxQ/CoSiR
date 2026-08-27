@@ -84,6 +84,7 @@ def _setup_model_and_criteria(cfg, device):
         num_conditions=cfg.train.representative_number,
         dropout=cfg.model.dropout,
         combine_side=cfg.model.combine_side,
+        conditioning_mode=getattr(cfg.model, "conditioning_mode", "asymmetric"),
     ).to(device)
     processor = AutoProcessor.from_pretrained(cfg.model.clip_model, use_fast=False)
 
@@ -101,6 +102,12 @@ def _setup_model_and_criteria(cfg, device):
         lambda_preserve=cfg.loss.lambda_preserve,
         mixup_alpha=cfg.loss.mixup_alpha,
         return_dict=cfg.loss.return_dict,
+        lambda_predictor=(
+            getattr(cfg.loss, "lambda_pred", 0.0)
+            if getattr(cfg.model, "conditioning_mode", "asymmetric")
+            == "symmetric_shared"
+            else 0.0
+        ),
     )
     return evaluation_config, model, processor, criteria
 
@@ -356,8 +363,30 @@ def _build_optimizer_and_scheduler(cfg, model, embedding_manager):
     is the final nn.Parameter (template loading may replace it).
     """
     print("Initializing optimizer and scheduler")
-    optimizer = torch.optim.AdamW(
-        [
+    if getattr(model, "conditioning_mode", "asymmetric") == "symmetric_shared":
+        parameter_groups = [
+            {
+                "params": [
+                    p
+                    for n, p in model.named_parameters()
+                    if "condition_predictor" not in n and "other_proj" not in n
+                ],
+                "lr": cfg.optimizer.lr,
+                "weight_decay": cfg.optimizer.weight_decay,
+            },
+            {
+                "params": [embedding_manager.embeddings],
+                "lr": cfg.optimizer.lr_label,
+                "weight_decay": 0,
+            },
+            {
+                "params": list(model.condition_predictor.parameters()),
+                "lr": cfg.optimizer.lr,
+                "weight_decay": cfg.optimizer.weight_decay,
+            },
+        ]
+    else:
+        parameter_groups = [
             {
                 "params": [
                     p
@@ -383,6 +412,8 @@ def _build_optimizer_and_scheduler(cfg, model, embedding_manager):
                 "weight_decay": cfg.optimizer.weight_decay,
             },
         ]
+    optimizer = torch.optim.AdamW(
+        parameter_groups
     )
 
     if cfg.scheduler.type == "CosineAnnealingLR":
@@ -422,6 +453,36 @@ def _build_optimizer_and_scheduler(cfg, model, embedding_manager):
         raise ValueError(f"Unknown scheduler type: {cfg.scheduler.type}")
 
     return optimizer, scheduler
+
+
+def _compute_symmetric_batch_loss(
+    model,
+    criteria,
+    img_features,
+    txt_features,
+    img_full,
+    txt_full,
+    label_embeddings,
+):
+    """Build the named Option-A batch output and evaluate its paired loss once."""
+    outputs = {
+        "img_emb": img_features,
+        "txt_emb": txt_features,
+        "img_full": img_full,
+        "txt_full": txt_full,
+        "lbl_emb": model.label_encoder(label_embeddings),
+    }
+    outputs.update(
+        model.combine_symmetric(
+            img_features,
+            img_full,
+            txt_features,
+            txt_full,
+            label_embeddings,
+        )
+    )
+    outputs.update(model.predict_symmetric_conditions(img_features, txt_features))
+    return outputs, criteria.forward_symmetric(outputs, model)
 
 
 def _build_dataloaders(cfg, feature_manager, processor, sample_ids_list):
@@ -528,6 +589,45 @@ def _build_dataloaders(cfg, feature_manager, processor, sample_ids_list):
 # Each handles one distinct artifact type and can be extended independently.
 
 
+def _model_persistence_payload(cfg, model):
+    """Return the mode-specific model state shared by snapshots and checkpoints."""
+    payload = {
+        "combiner_state_dict": model.combiner.state_dict(),
+        "predictor_state_dict": model.condition_predictor.state_dict(),
+        "combine_side": cfg.model.combine_side,
+        "combiner_config": {
+            "clip_feature_dim": model.feature_dim,
+            "projection_dim": model.feature_dim,
+            "label_dim": cfg.model.embedding_dim,
+            "num_layers": cfg.model.num_layers,
+            "dropout": cfg.model.dropout,
+        },
+        "predictor_config": {
+            "input_dim": model.feature_dim,
+            "hidden_dim": cfg.model.hidden_dim,
+            "output_dim": cfg.model.embedding_dim,
+            "num_layers": cfg.model.num_layers,
+            "dropout": cfg.model.dropout,
+        },
+    }
+    if getattr(model, "conditioning_mode", "asymmetric") == "symmetric_shared":
+        payload["conditioning_mode"] = "symmetric_shared"
+        return payload
+
+    payload.update(
+        {
+            "other_proj_state_dict": model.other_proj.state_dict(),
+            "other_proj_config": {
+                "feature_dim": model.feature_dim,
+                "type": type(model.other_proj).__name__,
+                "hidden_dim": getattr(model.other_proj, "hidden_dim", model.feature_dim),
+                "num_blocks": getattr(model.other_proj, "num_blocks", 3),
+            },
+        }
+    )
+    return payload
+
+
 def _save_condition_viz_snapshot(
     cfg,
     epoch,
@@ -587,30 +687,7 @@ def _save_condition_viz_snapshot(
             "label_embeddings_all": label_embeddings_all.cpu(),
             "sample_ids": list(label_ids_all),
             "representatives": representatives.cpu(),
-            "combiner_state_dict": model.combiner.state_dict(),
-            "predictor_state_dict": model.condition_predictor.state_dict(),
-            "other_proj_state_dict": model.other_proj.state_dict(),
-            "combine_side": cfg.model.combine_side,
-            "combiner_config": {
-                "clip_feature_dim": model.feature_dim,
-                "projection_dim": model.feature_dim,
-                "label_dim": cfg.model.embedding_dim,
-                "num_layers": cfg.model.num_layers,
-                "dropout": cfg.model.dropout,
-            },
-            "predictor_config": {
-                "input_dim": model.feature_dim,
-                "hidden_dim": cfg.model.hidden_dim,
-                "output_dim": cfg.model.embedding_dim,
-                "num_layers": cfg.model.num_layers,
-                "dropout": cfg.model.dropout,
-            },
-            "other_proj_config": {
-                "feature_dim": model.feature_dim,
-                "type": type(model.other_proj).__name__,
-                "hidden_dim": getattr(model.other_proj, "hidden_dim", model.feature_dim),
-                "num_blocks": getattr(model.other_proj, "num_blocks", 3),
-            },
+            **_model_persistence_payload(cfg, model),
             "train_sample_types": (
                 torch.tensor(sample_types, dtype=torch.long) if len(sample_types) > 0 else None
             ),
@@ -740,6 +817,11 @@ def _save_condition_analysis_cache(
         {
             "epoch": epoch,
             "n_representatives": K,
+            **(
+                {"conditioning_mode": "symmetric_shared"}
+                if model.conditioning_mode == "symmetric_shared"
+                else {}
+            ),
             # T2I
             "per_rep_gt_rank": per_rep_gt_rank,               # [K, N_txt]
             "per_rep_topk_indices": per_rep_topk_idx,         # [K, N_txt, top_k]
@@ -857,6 +939,11 @@ def _save_retrieval_snapshot(
         {
             "epoch": epoch,
             "combine_side": cfg.model.combine_side,
+            **(
+                {"conditioning_mode": "symmetric_shared"}
+                if model.conditioning_mode == "symmetric_shared"
+                else {}
+            ),
             "i2t": {"query_indices": list(range(nfi)), "top_k": top_i2t, "is_gt": is_gt_i2t},
             "t2i": {"query_indices": list(range(nft)), "top_k": top_t2i, "is_gt": is_gt_t2i},
         },
@@ -900,6 +987,11 @@ def _save_retrieval_snapshot(
                 "n_texts": n_txt,
                 "image_paths": image_paths,
                 "combine_side": cfg.model.combine_side,
+                **(
+                    {"conditioning_mode": "symmetric_shared"}
+                    if model.conditioning_mode == "symmetric_shared"
+                    else {}
+                ),
                 "clip_baseline": {
                     "i2t": {"top_k": clip_top_i2t, "is_gt": clip_is_gt_i2t},
                     "t2i": {"top_k": clip_top_t2i, "is_gt": clip_is_gt_t2i},
@@ -1274,32 +1366,7 @@ def _save_final_artifacts(model, embedding_manager, experiment, cfg):
     experiment.save_artifact(
         name="phase_1_model",
         folder="checkpoints",
-        data={
-            "combiner_state_dict": model.combiner.state_dict(),
-            "predictor_state_dict": model.condition_predictor.state_dict(),
-            "other_proj_state_dict": model.other_proj.state_dict(),
-            "combine_side": cfg.model.combine_side,
-            "combiner_config": {
-                "clip_feature_dim": model.feature_dim,
-                "projection_dim": model.feature_dim,
-                "label_dim": cfg.model.embedding_dim,
-                "num_layers": cfg.model.num_layers,
-                "dropout": cfg.model.dropout,
-            },
-            "predictor_config": {
-                "input_dim": model.feature_dim,
-                "hidden_dim": cfg.model.hidden_dim,
-                "output_dim": cfg.model.embedding_dim,
-                "num_layers": cfg.model.num_layers,
-                "dropout": cfg.model.dropout,
-            },
-            "other_proj_config": {
-                "feature_dim": model.feature_dim,
-                "type": type(model.other_proj).__name__,
-                "hidden_dim": getattr(model.other_proj, "hidden_dim", model.feature_dim),
-                "num_blocks": getattr(model.other_proj, "num_blocks", 3),
-            },
-        },
+        data=_model_persistence_payload(cfg, model),
         artifact_type="torch",
         description="Phase 1 model: combiner + condition predictor state dictionaries",
     )
@@ -1320,6 +1387,7 @@ def train_cosir(cfg, logger):
 
     # --- Phase 1: Model & Criteria ---
     evaluation_config, model, processor, criteria = _setup_model_and_criteria(cfg, device)
+    _symmetric_mode = model.conditioning_mode == "symmetric_shared"
 
     # --- Phase 2: Features ---
     feature_manager, sample_ids_list = _extract_or_load_features(cfg, model, processor, device)
@@ -1346,6 +1414,13 @@ def train_cosir(cfg, logger):
     _buddy_con_temp = float(getattr(cfg.loss, "buddy_con_temperature", 0.07))
     _log_buddy_preservation = bool(getattr(cfg.loss, "log_buddy_preservation", False))
     _buddy_preservation_k = int(getattr(cfg.loss, "buddy_preservation_k", 10))
+    if _symmetric_mode and (_lambda_buddy_con > 0 or _log_buddy_preservation):
+        print(
+            "[symmetric] disabling one-sided buddy contrastive/preservation paths; "
+            "the shared-table buddy smoothness regularizer remains enabled once."
+        )
+        _lambda_buddy_con = 0.0
+        _log_buddy_preservation = False
     buddy_indptr = buddy_indices = None
     _clip_indptr = _clip_indices = None   # stable CLIP CSR (never rebound by refresh)
     other_feat_table = None
@@ -1536,15 +1611,6 @@ def train_cosir(cfg, logger):
             label_embeddings_before = embedding_manager.embeddings.data[batch_indices].clone()
             label_embeddings = embedding_manager.embeddings[batch_indices]
 
-            if cfg.model.combine_side == "txt":
-                combine_emb, combine_full = txt_features, txt_full
-                loss_img_target, loss_txt_ref = img_features, txt_features
-            else:
-                combine_emb, combine_full = img_features, img_full
-                loss_img_target, loss_txt_ref = txt_features, img_features
-
-            other_emb = model.project_other(loss_img_target)
-
             # Oracle-guided advantage weighting: after backward, scale each condition's
             # gradient by softmax(advantage / tau) where advantage = sim_own - sim_rand.
             # Softmax keeps all conditions in play (no abandonment) while amplifying
@@ -1553,74 +1619,135 @@ def train_cosir(cfg, logger):
             _oracle_weights = None
             _oracle_frac = None
             _oracle_mean_adv = None
-            if _oracle_guided:
-                _tau = getattr(cfg.train, "oracle_advantage_tau", 0.1)
-                with torch.no_grad():
-                    _c_rand = label_embeddings[torch.randperm(len(label_embeddings))]
-                    _other_n_probe = F.normalize(other_emb, dim=-1)
-                    _sim_own = (
-                        F.normalize(model.combine(combine_emb, None, label_embeddings, epoch=epoch), dim=-1)
-                        * _other_n_probe
-                    ).sum(-1)
-                    _sim_rand = (
-                        F.normalize(model.combine(combine_emb, None, _c_rand, epoch=epoch), dim=-1)
-                        * _other_n_probe
-                    ).sum(-1)
-                    _advantage = _sim_own - _sim_rand  # [B], no clamp — all conditions stay active
-                    _oracle_weights = F.softmax(_advantage / _tau, dim=0) * len(_advantage)  # mean=1
-                    _oracle_frac = (_advantage > 0).float().mean().item()
-                    _oracle_mean_adv = _advantage.mean().item()
-
-            comb_emb, delta, gate_scalar, gate_logit = model.combine(
-                combine_emb,
-                combine_full,
-                label_embeddings,
-                epoch=epoch,
-                return_label_proj=False,
-                return_delta=True,
-                return_scalar=True,
-            )
-
-            loss_dict = criteria(
-                other_emb,
-                loss_txt_ref,
-                comb_emb,
-                None,
-                label_embeddings,
-                model,
-                delta=delta,
-                scalar=gate_scalar,
-                gate_logit=gate_logit,
-            )
-
-            if batch_idx % 100 == 0:
-                cos_sim = torch.nn.functional.cosine_similarity(
-                    comb_emb,
-                    torch.nn.functional.normalize(combine_emb, dim=-1),
-                    dim=-1,
+            if _symmetric_mode:
+                symmetric_outputs, loss_dict = _compute_symmetric_batch_loss(
+                    model,
+                    criteria,
+                    img_features,
+                    txt_features,
+                    img_full,
+                    txt_full,
+                    label_embeddings,
                 )
+                img_comb_emb = symmetric_outputs["img_comb_emb"]
+                txt_comb_emb = symmetric_outputs["txt_comb_emb"]
+
+                if _oracle_guided:
+                    _tau = getattr(cfg.train, "oracle_advantage_tau", 0.1)
+                    with torch.no_grad():
+                        _c_rand = label_embeddings[torch.randperm(len(label_embeddings))]
+                        random_outputs = model.combine_symmetric(
+                            img_features, img_full, txt_features, txt_full, _c_rand
+                        )
+                        _sim_own = (
+                            F.normalize(img_comb_emb, dim=-1)
+                            * F.normalize(txt_comb_emb, dim=-1)
+                        ).sum(-1)
+                        _sim_rand = (
+                            F.normalize(random_outputs["img_comb_emb"], dim=-1)
+                            * F.normalize(random_outputs["txt_comb_emb"], dim=-1)
+                        ).sum(-1)
+                        _advantage = _sim_own - _sim_rand
+                        _oracle_weights = F.softmax(_advantage / _tau, dim=0) * len(_advantage)
+                        _oracle_frac = (_advantage > 0).float().mean().item()
+                        _oracle_mean_adv = _advantage.mean().item()
+
+                if batch_idx % 100 == 0:
+                    cos_sim = (
+                        F.cosine_similarity(img_comb_emb, F.normalize(img_features, dim=-1), dim=-1)
+                        + F.cosine_similarity(txt_comb_emb, F.normalize(txt_features, dim=-1), dim=-1)
+                    ) / 2
+            else:
+                if cfg.model.combine_side == "txt":
+                    combine_emb, combine_full = txt_features, txt_full
+                    loss_img_target, loss_txt_ref = img_features, txt_features
+                else:
+                    combine_emb, combine_full = img_features, img_full
+                    loss_img_target, loss_txt_ref = txt_features, img_features
+
+                other_emb = model.project_other(loss_img_target)
+
+                if _oracle_guided:
+                    _tau = getattr(cfg.train, "oracle_advantage_tau", 0.1)
+                    with torch.no_grad():
+                        _c_rand = label_embeddings[torch.randperm(len(label_embeddings))]
+                        _other_n_probe = F.normalize(other_emb, dim=-1)
+                        _sim_own = (
+                            F.normalize(model.combine(combine_emb, None, label_embeddings, epoch=epoch), dim=-1)
+                            * _other_n_probe
+                        ).sum(-1)
+                        _sim_rand = (
+                            F.normalize(model.combine(combine_emb, None, _c_rand, epoch=epoch), dim=-1)
+                            * _other_n_probe
+                        ).sum(-1)
+                        _advantage = _sim_own - _sim_rand  # [B], no clamp — all conditions stay active
+                        _oracle_weights = F.softmax(_advantage / _tau, dim=0) * len(_advantage)  # mean=1
+                        _oracle_frac = (_advantage > 0).float().mean().item()
+                        _oracle_mean_adv = _advantage.mean().item()
+
+                comb_emb, delta, gate_scalar, gate_logit = model.combine(
+                    combine_emb,
+                    combine_full,
+                    label_embeddings,
+                    epoch=epoch,
+                    return_label_proj=False,
+                    return_delta=True,
+                    return_scalar=True,
+                )
+
+                loss_dict = criteria(
+                    other_emb,
+                    loss_txt_ref,
+                    comb_emb,
+                    None,
+                    label_embeddings,
+                    model,
+                    delta=delta,
+                    scalar=gate_scalar,
+                    gate_logit=gate_logit,
+                )
+
+                if batch_idx % 100 == 0:
+                    cos_sim = torch.nn.functional.cosine_similarity(
+                        comb_emb,
+                        torch.nn.functional.normalize(combine_emb, dim=-1),
+                        dim=-1,
+                    )
 
             loss = loss_dict["total_loss"]
 
             # Condition predictor distillation + L5 entropy diversity.
-            # pred_cond is shared between both losses to avoid a second forward pass.
+            # Symmetric distillation is already included in forward_symmetric; reuse
+            # its two predictions for the optional paired entropy term.
             lambda_pred = cfg.loss.lambda_pred
             lambda_ent = getattr(cfg.loss, "lambda_ent", 0.0)
             ent_tau = getattr(cfg.loss, "ent_tau", 5.0)
-            pred_stopgrad = getattr(cfg.loss, "pred_stopgrad", True)
-
             pred_cond = None
-            if lambda_pred > 0 or (lambda_ent > 0 and len(sample_types) > 0):
+            pred_cond_pair = None
+            if _symmetric_mode and lambda_ent > 0 and len(sample_types) > 0:
+                pred_cond_pair = (
+                    symmetric_outputs["img_predicted_condition"],
+                    symmetric_outputs["txt_predicted_condition"],
+                )
+            elif not _symmetric_mode and (
+                lambda_pred > 0 or (lambda_ent > 0 and len(sample_types) > 0)
+            ):
                 pred_cond = model.predict_condition(combine_emb)
 
-            if lambda_pred > 0 and pred_cond is not None:
+            if not _symmetric_mode and lambda_pred > 0 and pred_cond is not None:
                 pred_loss = predictor_consistency_loss(
-                    pred_cond, label_embeddings, stopgrad=pred_stopgrad
+                    pred_cond,
+                    label_embeddings,
+                    stopgrad=getattr(cfg.loss, "pred_stopgrad", True),
                 )
                 loss = loss + lambda_pred * pred_loss
                 loss_dict["loss_pred"] = pred_loss
 
-            if lambda_ent > 0 and pred_cond is not None and len(sample_types) > 0:
+            if (
+                lambda_ent > 0
+                and (pred_cond is not None or pred_cond_pair is not None)
+                and len(sample_types) > 0
+            ):
                 # L5: per-batch type-affinity distribution should be uniform across 4 types
                 batch_types_arr = sample_types[np.array(batch_indices)]
                 type_means_list = []
@@ -1631,9 +1758,23 @@ def train_cosir(cfg, logger):
                     else:
                         type_means_list.append(label_embeddings.detach().mean(0))
                 type_means_n = F.normalize(torch.stack(type_means_list), dim=-1)  # [4, D_cond]
-                pred_n_l5 = F.normalize(pred_cond, dim=-1)  # [B, D_cond]
-                batch_probs = F.softmax(pred_n_l5 @ type_means_n.T * ent_tau, dim=-1).mean(0)  # [4]
-                pred_entropy = -(batch_probs * torch.log(batch_probs + 1e-8)).sum()
+                if pred_cond_pair is not None:
+                    pred_entropies = []
+                    for side_pred_cond in pred_cond_pair:
+                        pred_n_l5 = F.normalize(side_pred_cond, dim=-1)
+                        batch_probs = F.softmax(
+                            pred_n_l5 @ type_means_n.T * ent_tau, dim=-1
+                        ).mean(0)
+                        pred_entropies.append(
+                            -(batch_probs * torch.log(batch_probs + 1e-8)).sum()
+                        )
+                    pred_entropy = torch.stack(pred_entropies).mean()
+                else:
+                    pred_n_l5 = F.normalize(pred_cond, dim=-1)  # type: ignore[arg-type]
+                    batch_probs = F.softmax(
+                        pred_n_l5 @ type_means_n.T * ent_tau, dim=-1
+                    ).mean(0)
+                    pred_entropy = -(batch_probs * torch.log(batch_probs + 1e-8)).sum()
                 loss = loss + lambda_ent * (-pred_entropy)  # maximise entropy
                 loss_dict["pred_entropy"] = pred_entropy.detach()
 
@@ -1664,7 +1805,12 @@ def train_cosir(cfg, logger):
             # Same style → similar gap → similar conditions; works on any dataset.
             lambda_gap_align = getattr(cfg.loss, "lambda_gap_align", 0.0)
             if lambda_gap_align > 0:
-                _gap = F.normalize(loss_img_target.detach() - combine_emb.detach(), dim=-1)  # [B, 512]
+                _gap_source = (
+                    txt_features.detach() - img_features.detach()
+                    if _symmetric_mode
+                    else loss_img_target.detach() - combine_emb.detach()
+                )
+                _gap = F.normalize(_gap_source, dim=-1)  # [B, 512]
                 _gap_sim = _gap @ _gap.T                                                      # [B, B]
                 _cond_n_gap = F.normalize(label_embeddings, dim=-1)
                 _cond_sim = _cond_n_gap @ _cond_n_gap.T                                      # [B, B]
@@ -1757,9 +1903,17 @@ def train_cosir(cfg, logger):
             if batch_idx % 50 == 0 and len(sample_types) > 0:
                 with torch.no_grad():
                     _btypes = sample_types[np.array(batch_indices)]
-                    _comb_n = F.normalize(comb_emb.detach(), dim=-1)
-                    _ref_n = F.normalize(combine_emb.detach(), dim=-1)
-                    _deltas = _comb_n - _ref_n  # [B, D]
+                    if _symmetric_mode:
+                        _deltas = (
+                            F.normalize(img_comb_emb.detach(), dim=-1)
+                            - F.normalize(img_features.detach(), dim=-1)
+                            + F.normalize(txt_comb_emb.detach(), dim=-1)
+                            - F.normalize(txt_features.detach(), dim=-1)
+                        ) / 2
+                    else:
+                        _comb_n = F.normalize(comb_emb.detach(), dim=-1)
+                        _ref_n = F.normalize(combine_emb.detach(), dim=-1)
+                        _deltas = _comb_n - _ref_n  # [B, D]
                     _type_dmeans = []
                     for _t in range(4):
                         _mask = _btypes == _t
