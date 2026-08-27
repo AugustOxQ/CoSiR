@@ -19,7 +19,6 @@ Usage
 Requires: wandb, pandas, numpy, matplotlib (all already deps).
 """
 import argparse
-import sys
 
 import numpy as np
 import pandas as pd
@@ -95,8 +94,30 @@ def compute_epoch_gaps(df: pd.DataFrame, baseline: str = "frozen", metric: str =
     return pd.DataFrame(out_rows)
 
 
+def render_trajectory_figure(gaps: pd.DataFrame, metric_label: str, out_path: str) -> None:
+    import os
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+    for (arm, seed), g in gaps.groupby(["arm", "seed"]):
+        g = g.sort_values("epoch")
+        ax.plot(g["epoch"], g["gap"], marker="o", markersize=3,
+                label=f"{arm} seed {seed}", alpha=0.85)
+    ax.axhline(0.0, color="black", linewidth=0.8, linestyle="--")
+    ax.set_xlabel("epoch")
+    ax.set_ylabel(f"{metric_label} gap (treatment - frozen)")
+    ax.set_title(f"Per-epoch {metric_label} gap vs. frozen baseline")
+    ax.legend(fontsize=7, ncol=2)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=130)
+    plt.close(fig)
+
+
 def _selftest():
-    """Offline arithmetic check -- no wandb call."""
+    """Offline arithmetic + plotting check -- no wandb call."""
     df = pd.DataFrame([
         {"arm": "frozen", "seed": 1, "epoch": 0, "i2t": 10.0},
         {"arm": "frozen", "seed": 1, "epoch": 10, "i2t": 12.0},
@@ -110,8 +131,56 @@ def _selftest():
     want = [(1, 0, 0.0), (1, 10, -3.0), (2, 0, 0.5)]
     assert got == want, got
 
+    import tempfile
+    import os
+    with tempfile.TemporaryDirectory() as tmp:
+        fig_path = os.path.join(tmp, "gap.png")
+        render_trajectory_figure(gaps, metric_label="i2t", out_path=fig_path)
+        assert os.path.exists(fig_path) and os.path.getsize(fig_path) > 0
+
     print("SELFTEST OK")
 
 
-if __name__ == "__main__" and "--selftest" in sys.argv:
-    _selftest()
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--entity", default="augustoxq")
+    ap.add_argument("--project", default="cosir_image")
+    ap.add_argument("--group", default="condition freeze ablation")
+    ap.add_argument("--tag", default="condition-freeze-ablation-redcaps_150k",
+                    help="wandb tag covering the trained/frozen runs (11.1)")
+    ap.add_argument("--pred-coupled-tag", default="pred-stopgrad-ablation-redcaps_150k",
+                    help="wandb tag covering the pred_coupled runs (11.3)")
+    ap.add_argument("--out-fig", default=None, help="write the i2t gap trajectory figure here")
+    ap.add_argument("--out-json", default=None, help="write the per-epoch gap table (JSON) here")
+    ap.add_argument("--selftest", action="store_true")
+    args = ap.parse_args()
+    if args.selftest:
+        _selftest()
+        return
+
+    tags = {"trained": args.tag, "frozen": args.tag, "pred_coupled": args.pred_coupled_tag}
+    df = fetch_history(args.entity, args.project, args.group, tags)
+    if df.empty:
+        print("  (no runs found - check --entity/--project/--tag/--pred-coupled-tag)")
+        return
+
+    print(f"\n{'='*78}\nExperiment 12.2 - training-trajectory audit  group='{args.group}'\n{'='*78}")
+    print(f"  {len(df)} (run, epoch) row(s); arms present: {sorted(df['arm'].unique())}.")
+
+    for metric, label in ((I2T, "i2t"), (T2I, "t2i")):
+        gaps = compute_epoch_gaps(df, baseline="frozen", metric=label)
+        print(f"\n  --- {label} gap vs frozen (treatment - frozen), by (arm, seed, epoch) ---")
+        for (arm, seed), g in gaps.groupby(["arm", "seed"]):
+            g = g.sort_values("epoch")
+            trail = ", ".join(f"e{int(r.epoch)}={r.gap:+.2f}" for r in g.itertuples())
+            print(f"    {arm} seed {seed}: {trail}")
+        if args.out_fig and label == "i2t":
+            fig_path = args.out_fig
+            render_trajectory_figure(gaps, metric_label=label, out_path=fig_path)
+            print(f"  Wrote {fig_path}")
+        if args.out_json:
+            gaps.to_json(args.out_json.replace(".json", f"_{label}.json"), orient="records", indent=2)
+
+
+if __name__ == "__main__":
+    main()
