@@ -65,6 +65,7 @@ class CoSiRModel(nn.Module):
         num_conditions: int = 12,
         dropout: float = 0.1,
         combine_side: str = "txt",
+        conditioning_mode: str = "asymmetric",
     ) -> None:
         super().__init__()
         # Load backbone and detect its feature dimension
@@ -98,6 +99,13 @@ class CoSiRModel(nn.Module):
         if combine_side not in ("txt", "img"):
             raise ValueError(f"combine_side must be 'txt' or 'img', got '{combine_side}'")
         self.combine_side = combine_side
+
+        if conditioning_mode not in ("asymmetric", "symmetric_shared"):
+            raise ValueError(
+                "conditioning_mode must be 'asymmetric' or 'symmetric_shared', "
+                f"got '{conditioning_mode}'"
+            )
+        self.conditioning_mode = conditioning_mode
 
         # Learnable projection on the "other side" (the side not fed into the combiner).
         # Identity-initialized so training starts from the same state as without the projection.
@@ -185,10 +193,75 @@ class CoSiRModel(nn.Module):
         """
         return self.condition_predictor(emb)
 
+    def combine_symmetric(
+        self,
+        img_emb: Tensor,
+        img_full: Tensor,
+        txt_emb: Tensor,
+        txt_full: Tensor,
+        labels: Tensor,
+    ):
+        """Condition image and text embeddings with the same combiner and labels.
+
+        This is the Option A API for ``conditioning_mode='symmetric_shared'``.
+        Both calls deliberately use ``self.combiner`` so their parameters are tied.
+        """
+        img_comb_emb, img_delta, img_gate, img_gate_logit = self.combine(
+            img_emb,
+            img_full,
+            labels,
+            return_delta=True,
+            return_scalar=True,
+        )
+        txt_comb_emb, txt_delta, txt_gate, txt_gate_logit = self.combine(
+            txt_emb,
+            txt_full,
+            labels,
+            return_delta=True,
+            return_scalar=True,
+        )
+        return {
+            "img_comb_emb": img_comb_emb,
+            "txt_comb_emb": txt_comb_emb,
+            "combiner_diagnostics": {
+                "img": {
+                    "delta": img_delta,
+                    "gate": img_gate,
+                    "gate_logit": img_gate_logit,
+                },
+                "txt": {
+                    "delta": txt_delta,
+                    "gate": txt_gate,
+                    "gate_logit": txt_gate_logit,
+                },
+            },
+        }
+
+    def predict_symmetric_conditions(self, img_emb: Tensor, txt_emb: Tensor):
+        """Predict the shared condition from both modalities with one predictor."""
+        return {
+            "img_predicted_condition": self.predict_condition(img_emb),
+            "txt_predicted_condition": self.predict_condition(txt_emb),
+        }
+
     def forward(self, images, texts, labels):
         img_emb, txt_emb, img_full, txt_full = self.encode_img_txt(images, texts)
 
         lbl_emb = self.label_encoder(labels)  # (batch_size, D)
+
+        if self.conditioning_mode == "symmetric_shared":
+            symmetric_output = self.combine_symmetric(
+                img_emb, img_full, txt_emb, txt_full, labels
+            )
+            symmetric_output.update(self.predict_symmetric_conditions(img_emb, txt_emb))
+            return {
+                "img_emb": img_emb,
+                "txt_emb": txt_emb,
+                "img_full": img_full,
+                "txt_full": txt_full,
+                "lbl_emb": lbl_emb,
+                **symmetric_output,
+            }
 
         if self.combine_side == "txt":
             comb_emb = self.combiner(txt_emb, txt_full, lbl_emb)
@@ -202,4 +275,3 @@ class CoSiRModel(nn.Module):
             lbl_emb,
             comb_emb,
         )
-
