@@ -23,8 +23,7 @@ import argparse
 import numpy as np
 import pandas as pd
 
-T2I = "test_oracle/t2i_R1"
-I2T = "test_oracle/i2t_R1"
+DEFAULT_METRIC_PREFIX = "test_oracle"
 DRIFT = "train_buddy_diag/drift_from_init"
 BASELINE = "trained"
 TREATMENT = "frozen"
@@ -51,8 +50,9 @@ def sget(summ, key, default=np.nan):
     return default if v is None else v
 
 
-def fetch(entity, project, group, tag=None):
+def fetch(entity, project, group, tag=None, metric_prefix=DEFAULT_METRIC_PREFIX):
     import wandb
+    t2i, i2t = f"{metric_prefix}/t2i_R1", f"{metric_prefix}/i2t_R1"
     api = wandb.Api()
     rows = []
     skipped_unfinished = 0
@@ -78,8 +78,8 @@ def fetch(entity, project, group, tag=None):
             "run_id": run.id,
             "state": run.state,
             "arm": arm,
-            T2I: float(sget(summ, T2I)) if not np.isnan(sget(summ, T2I)) else np.nan,
-            I2T: float(sget(summ, I2T)) if not np.isnan(sget(summ, I2T)) else np.nan,
+            t2i: float(sget(summ, t2i)) if not np.isnan(sget(summ, t2i)) else np.nan,
+            i2t: float(sget(summ, i2t)) if not np.isnan(sget(summ, i2t)) else np.nan,
             DRIFT: float(sget(summ, DRIFT)) if not np.isnan(sget(summ, DRIFT)) else np.nan,
         }
         for cname, cpath in CELL:
@@ -119,10 +119,11 @@ def summarize(deltas):
     return {"n": n, "mean": mean, "std": std, "sem": sem, "z": z, "wins": wins}
 
 
-def analyze(entity, project, group, tag=None):
+def analyze(entity, project, group, tag=None, metric_prefix=DEFAULT_METRIC_PREFIX):
+    t2i, i2t = f"{metric_prefix}/t2i_R1", f"{metric_prefix}/i2t_R1"
     print(f"\n{'='*78}\nExperiment 11.1 - condition freeze ablation  group='{group}'"
-          + (f"  tag='{tag}'" if tag else "") + f"\n{'='*78}")
-    df = fetch(entity, project, group, tag=tag)
+          + (f"  tag='{tag}'" if tag else "") + f"  metric_prefix='{metric_prefix}'\n{'='*78}")
+    df = fetch(entity, project, group, tag=tag, metric_prefix=metric_prefix)
     if df.empty:
         print("  (no runs found - check --entity/--project/--tag)")
         return
@@ -142,7 +143,7 @@ def analyze(entity, project, group, tag=None):
         print(f"  !! WARNING: no {DRIFT} values found for any frozen-arm run -- the freeze "
               f"premise is UNVERIFIED for this run set. Check the wandb key path.")
 
-    for metric in (T2I, I2T):
+    for metric in (t2i, i2t):
         print(f"\n  --- {metric} (frozen - trained) ---")
         deltas = compute_paired_deltas(df, metric)
         s = summarize(deltas)
@@ -168,25 +169,30 @@ def main():
     ap.add_argument("--project", default="cosir_image")
     ap.add_argument("--group", default="condition freeze ablation")
     ap.add_argument("--tag", default=None, help="only include runs carrying this wandb tag")
+    ap.add_argument("--metric-prefix", default=DEFAULT_METRIC_PREFIX,
+                     help="wandb metric family to read t2i_R1/i2t_R1 from, e.g. 'test_oracle' "
+                          "(default, asymmetric combine_side runs) or 'test_coupled_oracle' "
+                          "(Experiment 13 symmetric_shared runs' primary oracle metric)")
     ap.add_argument("--selftest", action="store_true", help="offline arithmetic check, no wandb call")
     args = ap.parse_args()
     if args.selftest:
         _selftest()
         return
-    analyze(args.entity, args.project, args.group, tag=args.tag)
+    analyze(args.entity, args.project, args.group, tag=args.tag, metric_prefix=args.metric_prefix)
 
 
 def _selftest():
     """Offline arithmetic check - no wandb call."""
+    t2i = f"{DEFAULT_METRIC_PREFIX}/t2i_R1"
     df = pd.DataFrame([
-        {"arm": "trained", "seed": 1, T2I: 50.0},
-        {"arm": "frozen", "seed": 1, T2I: 49.0},
-        {"arm": "trained", "seed": 2, T2I: 48.0},
-        {"arm": "frozen", "seed": 2, T2I: 48.5},
-        {"arm": "trained", "seed": 3, T2I: 49.0},
-        {"arm": "frozen", "seed": 3, T2I: 49.0},
+        {"arm": "trained", "seed": 1, t2i: 50.0},
+        {"arm": "frozen", "seed": 1, t2i: 49.0},
+        {"arm": "trained", "seed": 2, t2i: 48.0},
+        {"arm": "frozen", "seed": 2, t2i: 48.5},
+        {"arm": "trained", "seed": 3, t2i: 49.0},
+        {"arm": "frozen", "seed": 3, t2i: 49.0},
     ])
-    deltas = compute_paired_deltas(df, T2I)
+    deltas = compute_paired_deltas(df, t2i)
     assert len(deltas) == 3, f"expected 3 paired cells, got {len(deltas)}"
     got = sorted(round(d, 2) for _, d in deltas)
     want = [-1.0, 0.0, 0.5]
