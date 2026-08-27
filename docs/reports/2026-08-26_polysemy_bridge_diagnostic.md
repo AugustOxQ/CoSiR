@@ -9,7 +9,7 @@
 
 ## TL;DR
 
-**Cross-modal neighborhood-disagreement bridge structure is real and pervasive (80.2% of nodes), the buddy-init embedding does pull a bridge node's image-only and text-only neighbors (B, C) together — strongly and reliably (mean pull = +1.98 embedding-distance units, mean/SEM = +102.1, 91.4% of 5,000 sampled pairs pulled closer than baseline) — but that pull is only very weakly explained by real shared-neighbor overlap (Spearman rho = +0.076 between shared-neighbor Jaccard and pull magnitude; statistically significant at this sample size, p = 8.6e-8, but rho² ≈ 0.006 means shared-neighbor structure accounts for well under 1% of the pull's variance).** This lands closer to the spec's **second branch — "real + ungraded" — confirming Experiment 10's flagged "false transitivity" risk as an actual, measurable distortion**, not the "real + graded" branch: most of the pull looks like a broad, largely content-independent effect of the spectral embedding's global smoothing (consistent with Experiment 10's own finding that this method is near-invariant to within-class affinity structure once a dominant edge class is present — see that report's Laplacian-rescale-invariance argument), rather than the embedding faithfully tracking how much B and C's neighborhoods actually overlap. Separately, the per-node bridge/disagreement label does **not** significantly predict per-sample retrieval-rank change in this run's population (`corr(is_bridge_or_one_sided, |delta_rank|)` rho = +0.016, p = 0.37) — a null on the retrieval/drift cross-reference.
+**Cross-modal neighborhood-disagreement bridge structure is real and pervasive (80.2% of nodes), the buddy-init embedding does pull a bridge node's image-only and text-only neighbors (B, C) together — strongly and reliably (mean pull = +1.98 embedding-distance units, mean/SEM = +102.1, 91.4% of 5,000 sampled pairs pulled closer than baseline) — but that pull is only very weakly explained by real shared-neighbor overlap (Spearman rho = +0.076 between shared-neighbor Jaccard and pull magnitude; statistically significant at this sample size, p = 8.6e-8, but rho² ≈ 0.006 means shared-neighbor structure accounts for well under 1% of the pull's variance).** This lands closer to the spec's **second branch — "real + ungraded" — confirming Experiment 10's flagged "false transitivity" risk as an actual, measurable distortion**, not the "real + graded" branch: most of the pull looks like a broad, largely content-independent effect of the spectral embedding's global smoothing (consistent with Experiment 10's own finding that this method is near-invariant to within-class affinity structure once a dominant edge class is present — see that report's Laplacian-rescale-invariance argument), rather than the embedding faithfully tracking how much B and C's neighborhoods actually overlap. Separately, the per-node bridge/disagreement label does **not** significantly predict per-sample retrieval-rank change in this run's population (`corr(is_bridge_or_one_sided, |delta_rank|)` rho = +0.016, p = 0.37) — a null on the retrieval/drift cross-reference. **Update (Experiment 12.3, below):** that single-run null turns out to have been underpowered, not definitive — replicating the same cross-reference with a *signed* `delta_rank` across 6 independently-trained runs (3 seeds each of `trained` and `pred_coupled` vs. `frozen`) finds a small but highly direction-consistent effect (pooled mean/SEM = -9.9 for signed `delta_rank`, +8.3 for `|delta_rank|`), concentrated almost entirely in `img_only_only` nodes, which continued training consistently ranks better than the frozen baseline. See Experiment 12.3 for the full result and Experiment 12's own "Practical takeaway" below for the narrowed conclusion.
 
 ## Method
 
@@ -67,6 +67,8 @@ The label-wise medians make the descriptively higher `img_only_only` value visib
 
 The formal test — is a sample a bridge or one-sided disagreement node *at all* (any of the three non-`neither` labels) correlated with how much its retrieval rank moved between the frozen and trained arms — is a clean null (rho = +0.016, p = 0.37, far from significant). `|delta_rank|` is the magnitude of rank change, not a quality score: a larger value means retrieval position changed more, without saying whether that change was an improvement or deterioration. `condition_drift` likewise records representation change between conditions. This cross-reference is an association check on one paired run, not evidence that the graph label causes retrieval or drift changes. Descriptively, the small `img_only_only` subgroup (n=422) shows a notably higher median `|delta_rank|` (39) than the other three groups (10-14), but this is a single subgroup observation, not the designed statistical test, and should not be read as a confirmed effect without a dedicated follow-up.
 
+**This single-run null is revisited in Experiment 12.3**, which replicates it with a *signed* `delta_rank` measure across 6 independently-trained runs (all 3 `trained` seeds and all 3 `pred_coupled` seeds, each vs. its own-seed `frozen`) instead of relying on one seed's own significance test. That replication finds a small but direction-consistent effect this single run's test lacked the power to detect on its own, and traces it almost entirely to the `img_only_only` subgroup flagged descriptively here — see that section for the numbers.
+
 ## Interpretation
 
 This experiment answers the three questions from the brainstorming session concretely:
@@ -75,7 +77,7 @@ This experiment answers the three questions from the brainstorming session concr
 2. **Is the edge provenance modality-aware — do we know whether an edge is image-only or text-only?** Yes, trivially — `classify_edges`'s per-edge typing already carries this (confirmed again here), and the per-node label (`img_only_only`/`txt_only_only`/`bridge`) makes it queryable per sample. What this experiment adds is that knowing the direction doesn't yet buy anything downstream: the retrieval/drift cross-reference found no significant behavioral signature tied to bridge/disagreement type.
 3. **What about B and C's own relation?** This is the experiment's central, previously-unmeasured finding: B and C — never directly connected in either modality's mutual-kNN graph — do end up measurably closer together than chance in the resulting spectral embedding, and that pull is strong and robust, but it is **not well explained by real second-order/shared-neighbor structure**. Per the spec's own framing, this is the **"false transitivity" branch, not the "real + graded" branch**: the pull looks like a broad byproduct of the spectral method's global smoothing (consistent with Experiment 10's finding that this pipeline's spectral step is near-invariant to fine-grained affinity reweighting once a dominant, structurally homogeneous edge class exists) rather than the embedding faithfully encoding *how much* B and C are actually related through A.
 
-**Practical takeaway for the paper:** this reinforces rather than undercuts the "buddy-init geometry alone is fine" throughline from Experiments 11.1-11.3 — the bridge-pair pull is a measurable but behaviorally inert property of the current construction (no significant retrieval/drift consequence found), not a mechanism actively producing bad training signal. It is nonetheless a genuine, previously-unquantified methodological caveat worth stating plainly in the paper's limitations: the buddy graph's spectral embedding does not cleanly separate "genuinely related via shared context" from "coincidentally connected via one bridging sample," and a reader should not over-interpret embedded closeness between two samples as evidence of deep cross-modal relatedness without checking whether a bridge node is responsible. Per the spec's own discipline, this does **not** trigger a committed follow-up mechanism (e.g. a modality-aware dual-embedding representation) — that would need to be separately scoped and approved, and the retrieval-null result here means there is not yet evidence such a mechanism would move any measured outcome.
+**Practical takeaway for the paper:** this reinforces rather than undercuts the "buddy-init geometry alone is fine" throughline from Experiments 11.1-11.3 — but **with a narrower behavioral claim than this report originally made.** The single-run test above found no significant retrieval/drift consequence, and it remains true that the bridge-pair pull is not a mechanism actively producing *bad* training signal. However, calling it **"behaviorally inert" overstated what a single, likely underpowered null can support**: Experiment 12.3's replication (below), using a signed `delta_rank` across 6 independently-trained runs, finds a small but statistically robust and highly direction-consistent effect (pooled mean/SEM of -9.9 and +8.3 across two different correlation measures) that is concentrated almost entirely in `img_only_only` nodes — samples training consistently ranks better, relative to `frozen`, than the population at large. Bridge nodes proper show the same direction but a much smaller, tighter effect. The effect sizes throughout are small (rho on the order of 0.02-0.03) and this remains far short of evidence that bridge/false-transitivity structure drives 11.1's headline i2t gap, but it is a real, replicated behavioral signature — not inertness. It is nonetheless a genuine, previously-unquantified methodological caveat worth stating plainly in the paper's limitations: the buddy graph's spectral embedding does not cleanly separate "genuinely related via shared context" from "coincidentally connected via one bridging sample," and a reader should not over-interpret embedded closeness between two samples as evidence of deep cross-modal relatedness without checking whether a bridge node is responsible. Per the spec's own discipline, this does **not** trigger a committed follow-up mechanism (e.g. a modality-aware dual-embedding representation) — that would need to be separately scoped and approved, and while Experiment 12.3 shows a real, small, `img_only_only`-concentrated effect, it does not by itself establish that such a mechanism would move any measured training outcome.
 
 ## Caveats
 
@@ -142,9 +144,89 @@ python scripts/analyze_training_trajectory.py \
   --out-fig docs/reports/assets/training_trajectory/i2t_gap_trajectory.png
 ```
 
+## Experiment 12.3 — Cross-recipe, cross-seed, signed replication of the bridge/delta_rank cross-reference
+
+**Motivation:** The original retrieval/drift cross-reference (above) tested one seed-1 `trained`-vs-`frozen` pair with an unsigned `|delta_rank|` measure and found a clean null (rho = +0.016, p = 0.37). The joint Claude+Codex brainstorm on training-validity flagged two independent reasons that single test could be underpowered rather than definitive: (1) one run's own significance test cannot distinguish "no effect" from "an effect too small for n=1 run's own Spearman test to clear," and (2) an unsigned magnitude measure discards a systematic same-direction effect if it happens to look like symmetric noise around zero. This experiment reruns the same cross-reference with a *signed* `delta_rank` (`rank_trained - rank_frozen`; negative means the treatment arm ranks that sample *better* than `frozen`) and pools it across all 6 already-completed runs that admit a same-seed `frozen` comparison — 11.1's 3 `trained` seeds and 11.3's 3 `pred_coupled` seeds — using the project's standard mean/SEM-across-runs significance convention (Experiment 11.1's own `summarize()`), rather than trusting any single run's own p-value.
+
+### TL;DR
+
+**The original single-run null was underpowered, not correct: pooling the same cross-reference (signed this time) across 6 independently-trained runs reveals a small but highly direction-consistent effect — every one of the 6 runs' own correlation has the same sign, even though none individually clears p < 0.05 — and it is concentrated almost entirely in `img_only_only` nodes, which continued training (`trained` or `pred_coupled`) consistently ranks better than the `frozen` baseline (median `delta_rank` -17 to -28 across all 6 runs), far more than `bridge` nodes proper (median -3 to -4, tight and consistent) or `txt_only_only`/`neither` (comparably small).** Zero new training or evaluation runs — this reuses the 6 per-sample dumps already on disk (1 from Experiment 12's own original work, 5 newly generated by re-running the existing `analyze_condition_retrieval_correlation.py --pair ... --dump-per-sample` CLI against already-completed 11.1/11.3 checkpoints).
+
+### Method
+
+Generated 5 additional per-sample retrieval-rank/condition-drift dumps (reusing `scripts/analyze_condition_retrieval_correlation.py --pair <frozen_dir> <treatment_dir> --dump-per-sample` against already-completed checkpoints: 11.1's seed-2/seed-3 `trained` vs `frozen`, and 11.3's seed-1/seed-2/seed-3 `pred_coupled` vs `frozen`), alongside the seed-1 `trained` vs `frozen` dump Experiment 12 already produced. Extended `scripts/analyze_polysemy_bridges.py`'s `correlate_polysemy_with_retrieval()` to also report a signed `median_delta_rank` per label and `corr_is_polysemic_vs_delta_rank` (alongside the existing unsigned versions), and added `pool_cross_references()` — mean/std/sem/z of each run's own rho across runs, matching `analyze_condition_freeze_ablation.py`'s `summarize()` convention exactly. `--per-sample-npz` now accepts multiple paths and dispatches to the pooled path when given more than one. Ran the pooled command once, on GPU, against all 6 dumps, rebuilding the same buddy graph (K=30) used throughout Experiment 12.
+
+### Results
+
+```
+retrieval cross-reference, pooled across 6 run(s):
+  corr(is_polysemic, |delta_rank|) across runs: mean rho=+0.017 (n=6)  mean/SEM=+8.3 *
+  corr(is_polysemic, delta_rank) across runs: mean rho=-0.025 (n=6)  mean/SEM=-9.9 *
+```
+
+Per-run signed `corr(is_polysemic, delta_rank)`, all 6 runs:
+
+| run | recipe | seed | rho | p |
+|---|---|---|---|---|
+| `20260825_161846` | trained | 1 | -0.022 | 0.24 |
+| `20260825_163307` | trained | 2 | -0.025 | 0.17 |
+| `20260825_164733` | trained | 3 | -0.033 | 0.07 |
+| `20260826_100355` | pred_coupled | 1 | -0.017 | 0.34 |
+| `20260826_102258` | pred_coupled | 2 | -0.023 | 0.22 |
+| `20260826_103723` | pred_coupled | 3 | -0.033 | 0.07 |
+
+Not one of the 6 individual runs clears p < 0.05 on its own — exactly why the original single-seed test read as a null — but all 6 signs agree (negative), which is what the pooled mean/SEM convention is built to detect.
+
+Per-label median signed `delta_rank`, all 6 runs (negative = the treatment arm ranks these samples *better* than `frozen`):
+
+| label | n/run | run1 | run2 | run3 | run4 | run5 | run6 |
+|---|---|---|---|---|---|---|---|
+| `neither` | 38 | -2.5 | -1.0 | -0.5 | -3.0 | -2.0 | -0.5 |
+| `img_only_only` | 422 | **-25.5** | **-28.0** | **-17.0** | **-21.0** | **-26.5** | **-17.5** |
+| `txt_only_only` | 139 | -5.0 | -4.0 | -4.0 | -4.0 | -4.0 | -3.0 |
+| `bridge` | 2401 | -4.0 | -4.0 | -4.0 | -3.0 | -4.0 | -4.0 |
+
+### Interpretation
+
+Two things are now established that the single-run test in the original Experiment 12 section could not distinguish from noise:
+
+1. **The effect is real, not just an artifact of one run's sampling** — every one of the 6 independently-trained runs (2 different recipes, 3 seeds each) agrees in sign on both the signed and unsigned correlation, which is exactly the pattern the project's mean/SEM-across-runs convention (used throughout Experiments 11.1-11.3) is designed to separate from chance. The pooled effect clears the project's |z| >= 2 significance bar by a wide margin on both measures.
+2. **The effect is not spread evenly across "polysemic" nodes — it is almost entirely an `img_only_only` phenomenon.** `bridge` nodes (80.2% of the graph) show the same negative direction but a much smaller, very tightly clustered effect (median delta_rank -3 to -4 across all 6 runs); `img_only_only` nodes (14.5% of the graph) show a 4-8x larger effect (median -17 to -28) that is just as consistent run-to-run. This sharpens, and gives a signed, replicated form to, the descriptive `img_only_only` lead this report's own original cross-reference flagged (n=422, `|delta_rank|` median 39 vs 10-14 elsewhere) but explicitly declined to treat as a finding.
+
+A plausible mechanism, consistent with Experiment 12's own false-transitivity finding: `img_only_only` nodes have a mutual-image-neighbor edge but no text-only edge anchoring them, so their buddy-init spectral position is disproportionately shaped by image-side pull without a compensating text-side constraint. Continued training (`trained` or `pred_coupled` alike — the effect is recipe-agnostic) appears to partially correct this specifically for that subgroup, consistently ranking them better than the frozen-at-init baseline. This is a plausible reading, not a demonstrated causal mechanism — no intervention here isolates `img_only_only` nodes' training dynamics from the rest of the model.
+
+**What this changes about Experiment 12's original claim:** the bridge-pair pull is not "behaviorally inert." It has a small, real, statistically robust behavioral signature once tested with enough independent runs and the right (signed) measure — but that signature is concentrated in a specific 14.5%-of-graph subgroup (`img_only_only`), not the 80.2%-of-graph `bridge` majority the original section's headline number was built around. **What this does not change:** the effect sizes are small (rho on the order of 0.02-0.03 even pooled), and nothing here shows this mechanism explains any meaningful fraction of 11.1's much larger i2t retrieval gap (mean delta ~4.67 R1) — this is a real but minor structural signature, not a rehabilitation of "false transitivity" into a major training-outcome driver.
+
+### Caveats
+
+- All 6 runs share the same buddy-init template and graph (K=30) that Experiment 12's diagnostic itself rebuilt — this is a replication across training seeds/recipes, not across independently-constructed graphs.
+- `trained` and `pred_coupled` are two recipes but not maximally different ones (11.3 already established `pred_coupled` reproduces `trained`'s i2t gap almost unchanged) — this is a 2-recipe, 6-run replication, not evidence the effect holds under a training recipe fundamentally different from both.
+- The `img_only_only` mechanism proposed under Interpretation is a plausible reading of a consistent correlational pattern, not a tested causal claim — isolating it would need a dedicated intervention (e.g., freezing only `img_only_only` nodes' conditions), which is out of scope here and not currently planned.
+- Pooling uses each run's own Spearman rho as the unit of replication (matching `analyze_condition_freeze_ablation.py`'s existing convention), not a single pooled-sample test across all ~18,000 joined rows — this was a deliberate choice to stay consistent with how 11.1-11.3 report significance, not an attempt to maximize significance.
+
+### Reproduction
+
+```bash
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate CoSiR
+python scripts/analyze_condition_retrieval_correlation.py \
+  --pair res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_171558_CoSiR_Experiment \
+         res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_163307_CoSiR_Experiment --dump-per-sample
+# ... repeated for the other 4 (seed-3 trained, seed-1/2/3 pred_coupled) same-seed frozen pairs ...
+python scripts/analyze_polysemy_bridges.py --n-bridge-sample 5000 --device cuda \
+  --per-sample-npz \
+    res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_161846_CoSiR_Experiment/condition_geometry/per_sample_retrieval_correlation.npz \
+    res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_163307_CoSiR_Experiment/condition_geometry/per_sample_retrieval_correlation.npz \
+    res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_164733_CoSiR_Experiment/condition_geometry/per_sample_retrieval_correlation.npz \
+    res/CoSiR_condition_freeze_ablation/redcaps_150k/20260826_100355_CoSiR_Experiment/condition_geometry/per_sample_retrieval_correlation.npz \
+    res/CoSiR_condition_freeze_ablation/redcaps_150k/20260826_102258_CoSiR_Experiment/condition_geometry/per_sample_retrieval_correlation.npz \
+    res/CoSiR_condition_freeze_ablation/redcaps_150k/20260826_103723_CoSiR_Experiment/condition_geometry/per_sample_retrieval_correlation.npz \
+  --out res/CoSiR_condition_freeze_ablation/redcaps_150k/polysemy_bridges_pooled_12_3.json
+```
+
 ## Documentation updates (2026-08-27)
 
 - Reframed the diagnostic as cross-modal neighborhood-disagreement bridge structure, rather than semantic polysemy.
 - Defined image-only/text-only edges, bridge nodes, and bridge-pair pull; stated that these are graph-topology and embedding-geometry concepts.
 - Clarified that false transitivity is an expected smoothing consequence that is risky to over-interpret, not a demonstrated performance failure.
 - Clarified that retrieval/drift cross-reference metrics measure association and magnitude of change, not retrieval quality or causality.
+- Added Experiment 12.2 (training-trajectory audit) and 12.3 (signed, 6-run replication of the retrieval/drift cross-reference); narrowed the original "behaviorally inert" claim in the Interpretation section once 12.3 found a small, replicated, `img_only_only`-concentrated effect the single-run test had missed.
