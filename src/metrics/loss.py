@@ -1,6 +1,6 @@
 """Loss functions for CoSiR contrastive training."""
 
-from typing import Optional
+from typing import Mapping, Optional
 
 import torch
 import torch.nn.functional as F
@@ -23,6 +23,7 @@ def imix_loss(
     model: nn.Module,
     alpha: float = 1.0,
     lambda_imix: float = 0.1,
+    full_features: Optional[Tensor] = None,
 ) -> Tensor:
     B = text_emb.shape[0]
     device = text_emb.device
@@ -40,7 +41,11 @@ def imix_loss(
     cond_mixed = lam_exp * conditions + (1.0 - lam_exp) * conditions[perm]
     cond_mixed = F.normalize(cond_mixed, dim=-1)
 
-    combined_mixed = model.combine(text_mixed, None, cond_mixed)
+    full_mixed = None
+    if full_features is not None:
+        full_mixed = lam.view(-1, 1, 1) * full_features + (1.0 - lam).view(-1, 1, 1) * full_features[perm]
+
+    combined_mixed = model.combine(text_mixed, full_mixed, cond_mixed)
 
     image_norm = F.normalize(image_emb, dim=-1)
     logits = combined_mixed @ image_norm.T / temperature
@@ -88,6 +93,7 @@ class LabelContrastiveLoss_enhance(nn.Module):
         lambda_preserve: float = 0.0,  # input preservation weight
         preserve_tau: float = 0.3,  # max allowed deviation from input (in L2 of unit vectors)
         return_dict: bool = False,
+        lambda_predictor: float = 0.0,
     ) -> None:
         super().__init__()
         print("Using Polar axis regularization loss")
@@ -105,6 +111,116 @@ class LabelContrastiveLoss_enhance(nn.Module):
         self.preserve_tau = preserve_tau
         self.temperature = 0.07
         self.return_dict = return_dict
+        self.lambda_predictor = lambda_predictor
+
+    def _symmetric_laplacian_loss(
+        self,
+        conditions: Tensor,
+        features: Tensor,
+        full_features: Tensor,
+        combined_features: Tensor,
+        model: nn.Module,
+    ) -> Tensor:
+        """Laplacian term for one conditioned modality, preserving its full sequence."""
+        batch_size = len(conditions)
+        dist_matrix = torch.cdist(conditions, conditions)
+        dist_matrix = dist_matrix.masked_fill(
+            torch.eye(batch_size, device=dist_matrix.device, dtype=torch.bool), float("inf")
+        )
+        _, neighbor_indices = torch.topk(dist_matrix, min(10, batch_size - 1), largest=False, dim=1)
+        random_neighbor_idx = torch.randint(0, neighbor_indices.shape[1], (batch_size,), device=conditions.device)
+        selected_neighbors = neighbor_indices[torch.arange(batch_size, device=conditions.device), random_neighbor_idx]
+        neighbor_combined = model.combine(features, full_features, conditions[selected_neighbors])
+        delta_current = combined_features - F.normalize(features, p=2, dim=1)
+        delta_neighbor = neighbor_combined - F.normalize(features, p=2, dim=1)
+        smoothness = F.cosine_similarity(delta_current, delta_neighbor, dim=-1)
+        distances = dist_matrix.gather(1, selected_neighbors.unsqueeze(1)).squeeze(1).clamp(min=1e-8, max=10.0)
+        return ((1 - smoothness) * torch.exp(-distances + 1e-8)).mean()
+
+    def forward_symmetric(self, outputs: Mapping[str, object], model: nn.Module):
+        """Compute Option-A loss from the named ``symmetric_shared`` model output.
+
+        The contrastive matrix couples the two conditioned modalities.  Terms tied to
+        a modality are averaged; terms tied to the one shared condition table are
+        evaluated exactly once.
+        """
+        img_features = outputs["img_emb"]
+        txt_features = outputs["txt_emb"]
+        img_full = outputs["img_full"]
+        txt_full = outputs["txt_full"]
+        img_combined = outputs["img_comb_emb"]
+        txt_combined = outputs["txt_comb_emb"]
+        label_embedding = outputs["lbl_emb"]
+        diagnostics = outputs["combiner_diagnostics"]
+        assert isinstance(img_features, Tensor) and isinstance(txt_features, Tensor)
+        assert isinstance(img_full, Tensor) and isinstance(txt_full, Tensor)
+        assert isinstance(img_combined, Tensor) and isinstance(txt_combined, Tensor)
+        assert isinstance(label_embedding, Tensor) and isinstance(diagnostics, Mapping)
+        img_diagnostics = diagnostics["img"]
+        txt_diagnostics = diagnostics["txt"]
+        assert isinstance(img_diagnostics, Mapping) and isinstance(txt_diagnostics, Mapping)
+
+        batch_size = img_combined.shape[0]
+        cos_pos = compute_cosine_similarity(img_combined, txt_combined)
+        targets = torch.arange(batch_size, device=cos_pos.device)
+        loss_improve = (
+            (F.cross_entropy(cos_pos / self.temperature, targets) + F.cross_entropy(cos_pos.T / self.temperature, targets)) / 2
+            if self.lambda_pos > 0 else 0.0
+        )
+
+        laplacian_loss = (
+            (self._symmetric_laplacian_loss(label_embedding, img_features, img_full, img_combined, model)
+             + self._symmetric_laplacian_loss(label_embedding, txt_features, txt_full, txt_combined, model)) / 2
+            if self.lambda_laplacian > 0 else 0.0
+        )
+        collapse_loss = -F.normalize(label_embedding, dim=-1).var(dim=0).mean() if self.lambda_collapse > 0 else 0.0
+        boundary_loss = boundary_penalty(label_embedding, radius=10.0, alpha=1.0) if self.lambda_boundary > 0 else 0.0
+        mixup_loss = (
+            (imix_loss(txt_features, img_features, label_embedding, model, alpha=self.mixup_alpha, lambda_imix=1.0, full_features=txt_full)
+             + imix_loss(img_features, txt_features, label_embedding, model, alpha=self.mixup_alpha, lambda_imix=1.0, full_features=img_full)) / 2
+            if self.lambda_mixup > 0 else 0.0
+        )
+
+        def _mean_pair(name: str, fn):
+            img_value, txt_value = img_diagnostics.get(name), txt_diagnostics.get(name)
+            return (fn(img_value) + fn(txt_value)) / 2 if img_value is not None and txt_value is not None else 0.0
+
+        delta_loss = _mean_pair("delta", lambda value: value.norm(dim=-1).mean()) if self.lambda_delta > 0 else 0.0
+        gate_entropy_loss = _mean_pair(
+            "gate",
+            lambda value: -(value * torch.log(value + 1e-8) + (1 - value) * torch.log(1 - value + 1e-8)).mean(),
+        ) if self.lambda_gate > 0 else 0.0
+        gate_logit_loss = _mean_pair("gate_logit", lambda value: value.pow(2).mean()) if self.lambda_gate_logit > 0 else 0.0
+        preserve_loss = (
+            (F.relu((img_combined - F.normalize(img_features, dim=-1)).norm(dim=-1) - self.preserve_tau).pow(2).mean()
+             + F.relu((txt_combined - F.normalize(txt_features, dim=-1)).norm(dim=-1) - self.preserve_tau).pow(2).mean()) / 2
+            if self.lambda_preserve > 0 else 0.0
+        )
+        img_predicted, txt_predicted = outputs.get("img_predicted_condition"), outputs.get("txt_predicted_condition")
+        predictor_loss = (
+            (predictor_consistency_loss(img_predicted, label_embedding) + predictor_consistency_loss(txt_predicted, label_embedding)) / 2
+            if self.lambda_predictor > 0 and isinstance(img_predicted, Tensor) and isinstance(txt_predicted, Tensor) else 0.0
+        )
+
+        total_loss = (
+            self.lambda_pos * loss_improve + self.lambda_laplacian * laplacian_loss
+            + self.lambda_collapse * collapse_loss + self.lambda_boundary * boundary_loss
+            + self.lambda_mixup * mixup_loss + self.lambda_delta * delta_loss
+            - self.lambda_gate * gate_entropy_loss + self.lambda_preserve * preserve_loss
+            + self.lambda_gate_logit * gate_logit_loss + self.lambda_predictor * predictor_loss
+        )
+        with torch.no_grad():
+            diag_sim = cos_pos.diag().mean()
+            off_diag_sim = (cos_pos.sum() - cos_pos.diag().sum()) / (batch_size * (batch_size - 1))
+        return {
+            "loss_improve": loss_improve, "loss_laplacian": laplacian_loss,
+            "loss_collapse": collapse_loss, "loss_boundary": boundary_loss, "loss_mixup": mixup_loss,
+            "loss_delta": delta_loss, "loss_gate_entropy": gate_entropy_loss,
+            "loss_gate_logit": gate_logit_loss, "loss_preserve": preserve_loss,
+            "loss_predictor": predictor_loss, "diag_sim_gap": diag_sim - off_diag_sim,
+            "off_diag_sim_gap": off_diag_sim - diag_sim, "total_sim_gap": diag_sim - off_diag_sim,
+            "total_loss": total_loss,
+        }
 
     def forward(
         self,
