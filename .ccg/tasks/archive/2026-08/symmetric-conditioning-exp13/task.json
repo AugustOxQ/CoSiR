@@ -1,0 +1,12 @@
+{
+  "id": "symmetric-conditioning-exp13",
+  "title": "Implement Experiment 13 symmetric shared conditioning",
+  "status": "completed",
+  "complexity": "L+",
+  "risk": "medium",
+  "domain": "model-training-evaluation",
+  "currentPhase": "completed",
+  "nextAction": "Archived after Task 4 verification",
+  "createdAt": "2026-08-27T00:00:00Z",
+  "branch": "experiment/symmetric_conditioning_exp13"
+}

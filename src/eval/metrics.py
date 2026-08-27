@@ -281,16 +281,21 @@ class OracleMetrics(RankingMetric):
 
         print("Evaluating independent two-sided oracle diagnostic...")
         with torch.no_grad():
+            text_conditioned_by_representative = [
+                self._condition_symmetric_gallery(
+                    model, text_embeddings, text_representative
+                )
+                for text_representative in tqdm(
+                    label_embeddings, desc="Conditioning independent text gallery"
+                )
+            ]
             for image_representative in tqdm(
                 label_embeddings, desc="Evaluating independent oracle"
             ):
                 image_conditioned = self._condition_symmetric_gallery(
                     model, image_embeddings, image_representative
                 )
-                for text_representative in label_embeddings:
-                    text_conditioned = self._condition_symmetric_gallery(
-                        model, text_embeddings, text_representative
-                    )
+                for text_conditioned in text_conditioned_by_representative:
                     similarity = (text_conditioned @ image_conditioned.T).cpu()
                     candidate_count += 1
                     if aggregate is None:
