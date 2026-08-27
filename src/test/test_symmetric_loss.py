@@ -8,6 +8,18 @@ import torch.nn.functional as F
 from src.metrics.loss import LabelContrastiveLoss_enhance
 
 
+class _RecordingCombiner:
+    def __init__(self, return_zeros: bool = False) -> None:
+        self.full_sequences = []
+        self.return_zeros = return_zeros
+
+    def combine(self, features, full_features, _conditions):
+        self.full_sequences.append(full_features)
+        if self.return_zeros:
+            return torch.zeros_like(features)
+        return F.normalize(features, dim=-1)
+
+
 def test_symmetric_loss_averages_paired_terms_and_uses_both_conditioned_embeddings():
     """Catches a one-sided loss branch or pairing either conditioned side with a raw side."""
     criterion = LabelContrastiveLoss_enhance(
@@ -109,3 +121,69 @@ def test_symmetric_loss_applies_shared_table_regularizers_once():
     torch.testing.assert_close(result["loss_boundary"], torch.tensor(2.0))
     torch.testing.assert_close(result["loss_collapse"], torch.tensor(-0.5))
     torch.testing.assert_close(result["total_loss"], torch.tensor(1.5))
+
+
+def test_symmetric_laplacian_evaluates_each_modal_full_sequence_and_averages():
+    """Catches a one-sided Laplacian term or a dropped full sequence."""
+    criterion = LabelContrastiveLoss_enhance(
+        lambda_contrastive=0.0,
+        lambda_laplacian=1.0,
+        return_dict=True,
+    )
+    features = torch.tensor([[1.0, 0.0], [0.0, 1.0], [-1.0, 0.0]])
+    img_full = torch.full((3, 2, 2), 3.0)
+    txt_full = torch.full((3, 2, 2), 7.0)
+    outputs = {
+        "img_emb": features,
+        "txt_emb": -features,
+        "img_full": img_full,
+        "txt_full": txt_full,
+        "img_comb_emb": -features,
+        "txt_comb_emb": features,
+        "lbl_emb": torch.tensor([[1.0, 0.0], [-0.5, 0.8660254], [-0.5, -0.8660254]]),
+        "combiner_diagnostics": {"img": {}, "txt": {}},
+    }
+    model = _RecordingCombiner()
+
+    result = criterion.forward_symmetric(outputs, model)
+
+    assert len(model.full_sequences) == 2
+    assert model.full_sequences[0] is img_full
+    assert model.full_sequences[1] is txt_full
+    # Each equilateral-table neighbour has distance sqrt(3); each side's cosine
+    # smoothness is zero, so averaging keeps (rather than doubles) exp(-sqrt(3)).
+    torch.testing.assert_close(result["loss_laplacian"], torch.exp(-torch.sqrt(torch.tensor(3.0))))
+
+
+def test_symmetric_mixup_evaluates_each_modal_full_sequence_and_averages():
+    """Catches a one-sided mixup term or omission of the modality's full sequence."""
+    criterion = LabelContrastiveLoss_enhance(
+        lambda_contrastive=0.0,
+        lambda_laplacian=0.0,
+        lambda_mixup=1.0,
+        return_dict=True,
+    )
+    features = torch.tensor([[1.0, 0.0], [0.0, 1.0], [-1.0, 0.0]])
+    img_full = torch.full((3, 2, 2), 3.0)
+    txt_full = torch.full((3, 2, 2), 7.0)
+    outputs = {
+        "img_emb": features,
+        "txt_emb": -features,
+        "img_full": img_full,
+        "txt_full": txt_full,
+        "img_comb_emb": features,
+        "txt_comb_emb": -features,
+        "lbl_emb": features,
+        "combiner_diagnostics": {"img": {}, "txt": {}},
+    }
+    model = _RecordingCombiner(return_zeros=True)
+
+    torch.manual_seed(13)
+    result = criterion.forward_symmetric(outputs, model)
+
+    assert len(model.full_sequences) == 2
+    torch.testing.assert_close(model.full_sequences[0], txt_full)
+    torch.testing.assert_close(model.full_sequences[1], img_full)
+    # Zero logits make every mixup cross entropy log(B); the paired average must
+    # remain log(3), rather than summing to 2 * log(3).
+    torch.testing.assert_close(result["loss_mixup"], torch.log(torch.tensor(3.0)))
