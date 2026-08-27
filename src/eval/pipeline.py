@@ -313,7 +313,21 @@ class TestEvaluator:
         )
 
         # --- Oracle or non-oracle conditioned retrieval ---
-        if use_oracle:
+        symmetric_mode = getattr(model, "conditioning_mode", "asymmetric") == "symmetric_shared"
+        if symmetric_mode:
+            metrics_coupled = self.oracle.compute_symmetric_coupled_oracle_recall(
+                model, label_embeddings, img_emb, txt_emb, t2i_map, i2t_map,
+                "coupled_oracle", aggregation=oracle_aggregation,
+            )
+            metrics_independent = self.oracle.compute_symmetric_independent_oracle_recall(
+                model, label_embeddings, img_emb, txt_emb, t2i_map, i2t_map,
+                "independent_oracle_diagnostic", aggregation=oracle_aggregation,
+            )
+            oracle_groups = {
+                "coupled_oracle": metrics_coupled,
+                "independent_oracle_diagnostic": metrics_independent,
+            }
+        elif use_oracle:
             metrics_oracle = self.oracle.compute_oracle_recall_average(
                 model, label_embeddings, img_emb, txt_emb, txt_full,
                 t2i_map, i2t_map, "oracle", aggregation=oracle_aggregation,
@@ -339,9 +353,14 @@ class TestEvaluator:
         metrics_pred: Dict[str, float] = {}
         if hasattr(model, "condition_predictor"):
             print("Running predictor evaluation...")
-            metrics_pred = self.oracle.compute_predictor_recall(
-                model, img_emb, txt_emb, t2i_map, i2t_map, "pre_original"
-            )
+            if symmetric_mode:
+                metrics_pred = self.oracle.compute_symmetric_predictor_recall(
+                    model, img_emb, txt_emb, t2i_map, i2t_map, "two_sided_predictor"
+                )
+            else:
+                metrics_pred = self.oracle.compute_predictor_recall(
+                    model, img_emb, txt_emb, t2i_map, i2t_map, "pre_original"
+                )
 
         # --- Combine all metric groups under named wandb sections ---
         def _prefix(d: dict, group: str) -> dict:
@@ -355,10 +374,28 @@ class TestEvaluator:
         for group, d in oracle_groups.items():
             all_metrics.update(_prefix(d, group))
         all_metrics.update(_prefix(metrics_raw, "raw"))
-        all_metrics.update(_prefix(self._diff(oracle_groups.get("oracle", {}), metrics_raw, "raw", "diff"), "diff"))
-        if metrics_pred:
-            all_metrics.update(_prefix(metrics_pred, "pre_original"))
-            all_metrics.update(_prefix(self._diff(metrics_pred, metrics_raw, "raw", "pre_diff"), "pre_diff"))
+        if symmetric_mode:
+            coupled_diff = self._diff(
+                oracle_groups["coupled_oracle"],
+                metrics_raw,
+                "raw",
+                "coupled_oracle_diff",
+            )
+            all_metrics.update(_prefix(coupled_diff, "coupled_oracle_diff"))
+            if metrics_pred:
+                all_metrics.update(_prefix(metrics_pred, "two_sided_predictor"))
+                predictor_diff = self._diff(
+                    metrics_pred,
+                    metrics_raw,
+                    "raw",
+                    "two_sided_predictor_diff",
+                )
+                all_metrics.update(_prefix(predictor_diff, "two_sided_predictor_diff"))
+        else:
+            all_metrics.update(_prefix(self._diff(oracle_groups.get("oracle", {}), metrics_raw, "raw", "diff"), "diff"))
+            if metrics_pred:
+                all_metrics.update(_prefix(metrics_pred, "pre_original"))
+                all_metrics.update(_prefix(self._diff(metrics_pred, metrics_raw, "raw", "pre_diff"), "pre_diff"))
 
         results = _format_results(self.config, all_metrics, epoch)
         if self.config.print_metrics:

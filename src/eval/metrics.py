@@ -2,6 +2,7 @@
 
 from typing import Dict, List, Tuple, Optional
 import torch
+import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm
 
@@ -167,6 +168,177 @@ class RecallMetrics(RankingMetric):
 
 class OracleMetrics(RankingMetric):
     """Oracle and predictor-based evaluation over label conditions."""
+
+    def _condition_symmetric_gallery(
+        self,
+        model,
+        embeddings: torch.Tensor,
+        conditions: torch.Tensor,
+    ) -> torch.Tensor:
+        """Condition one full gallery in batches and return normalized embeddings."""
+        embeddings = embeddings.to(self.config.device)
+        conditions = conditions.to(self.config.device)
+        if conditions.ndim == 1:
+            conditions = conditions.expand(len(embeddings), -1)
+        if len(conditions) != len(embeddings):
+            raise ValueError("symmetric gallery conditions must match the gallery size")
+
+        combined_batches = []
+        for start in range(0, len(embeddings), self.config.batch_size):
+            end = min(start + self.config.batch_size, len(embeddings))
+            combined_batches.append(
+                model.combine(embeddings[start:end], None, conditions[start:end])
+            )
+        return F.normalize(torch.cat(combined_batches, dim=0), p=2, dim=-1)
+
+    def _symmetric_recall_from_similarity(
+        self,
+        similarity_t2i: torch.Tensor,
+        text_to_image_map: torch.Tensor,
+        image_to_text_map: torch.Tensor,
+        prefix: str,
+    ) -> Dict[str, float]:
+        """Compute retrieval metrics from one [num_texts, num_images] matrix."""
+        num_texts, num_images = similarity_t2i.shape
+        inds_tti = torch.argsort(similarity_t2i, dim=1, descending=True)
+        inds_itt = torch.argsort(similarity_t2i.T, dim=1, descending=True)
+        return self._compute_recall_from_indices(
+            inds_tti,
+            inds_itt,
+            text_to_image_map,
+            image_to_text_map,
+            num_texts,
+            num_images,
+            image_to_text_map.shape[1],
+            prefix,
+        )
+
+    @staticmethod
+    def _validate_symmetric_oracle_inputs(
+        label_embeddings: torch.Tensor, aggregation: str
+    ) -> None:
+        if label_embeddings is None or len(label_embeddings) == 0:
+            raise ValueError("symmetric oracle evaluation requires representative conditions")
+        if aggregation not in ("max", "mean"):
+            raise ValueError("aggregation must be 'max' or 'mean'")
+
+    def compute_symmetric_coupled_oracle_recall(
+        self,
+        model,
+        label_embeddings: torch.Tensor,
+        image_embeddings: torch.Tensor,
+        text_embeddings: torch.Tensor,
+        text_to_image_map: torch.Tensor,
+        image_to_text_map: torch.Tensor,
+        prefix: str = "coupled_oracle",
+        aggregation: str = "max",
+    ) -> Dict[str, float]:
+        """Primary symmetric oracle using the same representative on both galleries."""
+        self._validate_symmetric_oracle_inputs(label_embeddings, aggregation)
+        aggregate: Optional[torch.Tensor] = None
+
+        print("Evaluating symmetric coupled-table oracle...")
+        with torch.no_grad():
+            for representative in tqdm(
+                label_embeddings, desc="Evaluating coupled-table oracle"
+            ):
+                image_conditioned = self._condition_symmetric_gallery(
+                    model, image_embeddings, representative
+                )
+                text_conditioned = self._condition_symmetric_gallery(
+                    model, text_embeddings, representative
+                )
+                similarity = (text_conditioned @ image_conditioned.T).cpu()
+                if aggregate is None:
+                    aggregate = similarity
+                elif aggregation == "max":
+                    aggregate = torch.maximum(aggregate, similarity)
+                else:
+                    aggregate.add_(similarity)
+
+            if aggregation == "mean":
+                aggregate.div_(len(label_embeddings))
+
+        return self._symmetric_recall_from_similarity(
+            aggregate, text_to_image_map, image_to_text_map, prefix
+        )
+
+    def compute_symmetric_independent_oracle_recall(
+        self,
+        model,
+        label_embeddings: torch.Tensor,
+        image_embeddings: torch.Tensor,
+        text_embeddings: torch.Tensor,
+        text_to_image_map: torch.Tensor,
+        image_to_text_map: torch.Tensor,
+        prefix: str = "independent_oracle_diagnostic",
+        aggregation: str = "max",
+    ) -> Dict[str, float]:
+        """Diagnostic-only oracle over independent image/text representative pairs."""
+        self._validate_symmetric_oracle_inputs(label_embeddings, aggregation)
+        aggregate: Optional[torch.Tensor] = None
+        candidate_count = 0
+
+        print("Evaluating independent two-sided oracle diagnostic...")
+        with torch.no_grad():
+            for image_representative in tqdm(
+                label_embeddings, desc="Evaluating independent oracle"
+            ):
+                image_conditioned = self._condition_symmetric_gallery(
+                    model, image_embeddings, image_representative
+                )
+                for text_representative in label_embeddings:
+                    text_conditioned = self._condition_symmetric_gallery(
+                        model, text_embeddings, text_representative
+                    )
+                    similarity = (text_conditioned @ image_conditioned.T).cpu()
+                    candidate_count += 1
+                    if aggregate is None:
+                        aggregate = similarity
+                    elif aggregation == "max":
+                        aggregate = torch.maximum(aggregate, similarity)
+                    else:
+                        aggregate.add_(similarity)
+
+            if aggregation == "mean":
+                aggregate.div_(candidate_count)
+
+        return self._symmetric_recall_from_similarity(
+            aggregate, text_to_image_map, image_to_text_map, prefix
+        )
+
+    def compute_symmetric_predictor_recall(
+        self,
+        model,
+        image_embeddings: torch.Tensor,
+        text_embeddings: torch.Tensor,
+        text_to_image_map: torch.Tensor,
+        image_to_text_map: torch.Tensor,
+        prefix: str = "two_sided_predictor",
+    ) -> Dict[str, float]:
+        """Deployable retrieval with one shared predictor applied to both galleries."""
+        print("Evaluating symmetric two-sided predictor recall...")
+
+        def _predict_and_condition(embeddings: torch.Tensor) -> torch.Tensor:
+            embeddings = embeddings.to(self.config.device)
+            conditioned_batches = []
+            for start in range(0, len(embeddings), self.config.batch_size):
+                end = min(start + self.config.batch_size, len(embeddings))
+                batch = embeddings[start:end]
+                predicted = model.predict_condition(batch)
+                conditioned_batches.append(model.combine(batch, None, predicted))
+            return F.normalize(torch.cat(conditioned_batches, dim=0), p=2, dim=-1)
+
+        with torch.no_grad():
+            image_conditioned = _predict_and_condition(image_embeddings)
+            text_conditioned = _predict_and_condition(text_embeddings)
+            similarity = text_conditioned @ image_conditioned.T
+            if self.config.cpu_offload:
+                similarity = similarity.cpu()
+
+        return self._symmetric_recall_from_similarity(
+            similarity, text_to_image_map, image_to_text_map, prefix
+        )
 
     def compute_oracle_recall_average(
         self,
