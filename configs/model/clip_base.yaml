@@ -1,0 +1,15 @@
+# @package _global_
+# CLIP Base Model Configuration
+# ViT-B/32: 49 patch tokens @ 512-dim
+
+model:
+  embedding_dim: 16
+  clip_model: "openai/clip-vit-base-patch32"
+  freeze_backbone: true
+  num_layers: 6
+  hidden_dim: 1024
+  dropout: 0.1
+  combine_side: "img"
+
+featuremanager:
+  extraction_batch_size: 2048

@@ -1,6 +1,9 @@
 #! /bin/bash
 set -euo pipefail
 
+# Reduce CUDA memory fragmentation (especially important for large-patch models like SigLIP)
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 # 自动检测进程数（优先使用 CUDA_VISIBLE_DEVICES，其次 nvidia-smi，否则 CPU=1）
 if command -v nvidia-smi >/dev/null 2>&1; then
   if [ -n "${CUDA_VISIBLE_DEVICES-}" ]; then
@@ -17,18 +20,18 @@ fi
 
 echo "Using ${NUM_PROCS} processes"
 
-echo "Test when we initialize with img only, and pre-compute the ground truth embeddings"
-
-python main_cosir_phase2.py dataset=redcaps eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
-
-# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=5e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
-
-# python main_cosir_phase2.py dataset=coco eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
-
-# python main_cosir_phase2.py dataset=redcaps eval.perform_evaluation=false optimizer.lr_2=1e-4 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
-
-# python main_cosir_phase2.py dataset=redcaps eval.perform_evaluation=false optimizer.lr_2=5e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
-
-# python main_cosir_phase2.py dataset=redcaps eval.perform_evaluation=false optimizer.lr_2=1e-5 model.num_layers=4 train.epochs_2=30 loss.warm_up_epochs=10 loss.middle_epochs=15 train.representative_number=36
-
-echo "End of testing"
+python main_cosir.py -m \
+  dataset=impressions \
+  eval.evaluation_interval=100 \
+  eval.oracle_aggregation=max \
+  model=clip_base \
+  experiment.results_dir="res/CoSiR_Experiment_buddy2/impressions" \
+  model.num_layers=6 \
+  model.embedding_dim=16 \
+  optimizer.lr=1e-4 \
+  optimizer.lr_label=1e-4 \
+  buddies.alpha=0.5 \
+  +loss.lambda_buddy_con=0.3 \
+  +loss.buddy_con_samples=4 \
+  train.epochs=500 \
+  wandb.group="condition buddy training loss" \

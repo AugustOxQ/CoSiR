@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 import torch
+from torch import Tensor
 
 
 @dataclass
@@ -20,8 +21,9 @@ class EvaluationConfig:
     max_batches: Optional[int] = 25
     cpu_offload: bool = True  # Whether to move large matrices to CPU for sorting
 
-    # Text processing
-    max_text_length: int = 77
+    # Text processing — None lets each processor use its own model_max_length
+    # (77 for CLIP, 64 for SigLIP, etc.)
+    max_text_length: Optional[int] = None
 
     # Training evaluation specific
     train_max_batches: int = 25
@@ -30,6 +32,12 @@ class EvaluationConfig:
     oracle_topk_different: int = 10  # k for most different embeddings
 
     evaluation_interval: int = 1
+
+    # Backbone embedding cache
+    # When set, raw backbone embeddings are saved to/loaded from
+    # {cache_dir}/test_backbone_embeddings.pt so re-extraction is skipped
+    # on subsequent evaluation calls (backbone is frozen, so they never change).
+    cache_dir: Optional[str] = None
 
     # Logging
     print_metrics: bool = True
@@ -41,7 +49,7 @@ class EvaluationConfig:
             raise ValueError("k_vals cannot be empty")
         if self.batch_size <= 0:
             raise ValueError("batch_size must be positive")
-        if self.max_text_length <= 0:
+        if self.max_text_length is not None and self.max_text_length <= 0:
             raise ValueError("max_text_length must be positive")
 
 
@@ -64,3 +72,15 @@ class MetricResult:
     def update(self, other_metrics: Dict[str, float]) -> None:
         """Update metrics with new values."""
         self.metrics.update(other_metrics)
+
+
+@dataclass
+class TestEvaluationDetail:
+    """Structured return type for evaluate_test(return_detailed_results=True)."""
+
+    results: "MetricResult"
+    all_img_emb: Tensor
+    all_txt_emb: Tensor
+    all_raw_text: List[str]
+    text_to_image_map: Tensor
+    image_to_text_map: Tensor

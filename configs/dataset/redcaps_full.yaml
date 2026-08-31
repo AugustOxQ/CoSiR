@@ -1,0 +1,35 @@
+# @package _global_
+# RedCaps-Full Dataset Configuration
+#
+# The full RedCaps training split (redcaps_train.json, 3,106,894 pairs — this is
+# redcaps.json's full 3,131,894-pair corpus minus the same 25k held-out test split
+# below; redcaps_train.json + redcaps_test.json == redcaps.json). Same in-domain
+# RedCaps test set as redcaps_150k.yaml (redcaps_test.json, 25k genuine 1:1 pairs),
+# so results are directly comparable to the 150k run at matched eval — only the
+# training-set size changes.
+#
+# Own feature store (redcaps_full, not redcaps_150k's) since it's a disjoint,
+# much larger sample set. Nothing is pre-extracted here yet: on first run,
+# src/hook/train_cosir.py's _extract_or_load_features will auto-extract straight
+# from these ~3.1M raw image/caption pairs (FeatureExtractionDataset), which is
+# multiple orders of magnitude larger than any other dataset in this repo and
+# will be correspondingly slow and disk-heavy the first time this config runs.
+
+# Dataset paths
+data:
+  dataset_type: "redcaps"
+  train_annotation_path: "/data/PDD/redcaps/redcaps_plus/redcaps_train.json"
+  test_annotation_path: "/data/PDD/redcaps/redcaps_plus/redcaps_test.json"
+  train_image_path: "/data/PDD"
+  test_image_path: "/data/PDD"
+
+# Feature manager paths - dataset specific
+featuremanager:
+  storage_dir: "/data/SSD2/pre_extract/redcaps_full/features"
+
+# Experiment Configuration
+experiment:
+  name: "CoSiR_Experiment"
+  tags: ["CoSiR", "RedCapsFull", "local"]
+  description: "Comprehensive experiment for CoSiR"
+  results_dir: "res/CoSiR_Experiment/redcaps_full" # Depends on the dataset

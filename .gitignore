@@ -152,6 +152,7 @@ dmypy.json
 *.pickle
 *.csv
 *.json
+*.npy
 
 # Folder
 data/
@@ -162,12 +163,17 @@ output/
 outputs/
 notebooks/
 res/
+multirun/
 
 # Claude
 .claude/
+.superpowers/
 refactor/
 CLAUDE.md
 
 # Cursor
 cursor_log/
-cursor_tmp_file/
+cursor_tmp_file/**/*.npy
+
+# Generated slide decks
+*.pptx

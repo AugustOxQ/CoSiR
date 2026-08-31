@@ -14,6 +14,8 @@ from dask.distributed import Client
 from dask_cuda import LocalCUDACluster
 from scipy import cluster
 
+import time
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -159,8 +161,9 @@ class Clustering:
         min_sample=50,
         method="leaf",
     ):  # leaf or eom
-        self._ensure_cluster()
-
+        # Note: cuml.cluster.HDBSCAN is single-GPU and does not use the Dask cluster,
+        # so _ensure_cluster / close_cluster are not called here.
+        start_time = time.time()
         if isinstance(umap_features, torch.Tensor):
             umap_features_np = umap_features.cpu().numpy()
         else:
@@ -173,114 +176,11 @@ class Clustering:
         )
         hdbscan_model.fit(umap_features_np)
         umap_labels = hdbscan_model.labels_
+        del hdbscan_model
+        torch.cuda.empty_cache()
+
+        end_time = time.time()
+        print(f"Time taken to get HDBSCAN labels: {end_time - start_time} seconds")
 
         return umap_labels, None
 
-
-def test_kmeans():
-    # Example usage of Clustering class
-    random.seed(42)
-
-    clustering = Clustering(device="cuda")
-
-    label_embedding = torch.randn(1024, 512).to(clustering.device)  # Dummy data
-
-    umap_features = clustering.get_umap(label_embedding)
-
-    umap_labels, centers = clustering.get_kmeans(umap_features, n_clusters=1024 - 30)
-
-    updated_embeddings = clustering.kmeans_update(
-        umap_labels, label_embedding, update_type="hard", alpha=0.1
-    )
-
-    # Check if embeddings have been updated
-    differences = torch.any(label_embedding != updated_embeddings, dim=1)
-    num_different_rows = torch.sum(differences).item()
-    print(num_different_rows)
-
-    umap_features_new = clustering.get_umap(updated_embeddings)
-    umap_labels_new, centers_new = clustering.get_kmeans(
-        umap_features_new, n_clusters=1024 - 60
-    )
-
-    updated_embeddings_new = clustering.kmeans_update(
-        umap_labels_new, updated_embeddings, update_type="hard", alpha=0.1
-    )
-
-    # Check if embeddings have been updated
-    differences = torch.any(updated_embeddings != updated_embeddings_new, dim=1)
-    num_different_rows = torch.sum(differences).item()
-    print(num_different_rows)
-
-
-def test_hdbscan():
-    # Example usage of Clustering class
-    random.seed(42)
-
-    clustering = Clustering(device="cuda")
-
-    # label_embedding = torch.randn(1024, 512).to(clustering.device)  # Dummy data
-
-    num_clusters = 5
-    num_points_per_cluster = 1000
-    dim = 512
-
-    clusters = []
-
-    for k in range(num_clusters):
-        # Generate a random mean vector for each cluster
-        # Offset means to ensure clusters are well-separated
-        mu_k = torch.randn(dim) * 10 + k * 100.0
-
-        # Generate samples for the cluster0
-        samples = torch.randn(num_points_per_cluster, dim) + mu_k
-        clusters.append(samples)
-
-    # Combine all clusters into one dataset
-    label_embedding = torch.cat(clusters, dim=0).to(clustering.device)
-
-    umap_features = clustering.get_umap(label_embedding)
-
-    umap_labels, centers = clustering.get_hdbscan(umap_features)
-    print(umap_labels.shape)
-
-    print(type(umap_labels))
-
-    updated_embeddings, centers, cluster_counts = clustering.hdbscan_update(
-        umap_labels,
-        label_embedding,
-        update_type="hard",
-        alpha=0.1,
-        update_noise="ignore",
-    )
-
-    # Check if embeddings have been updated
-    differences = torch.any(label_embedding != updated_embeddings, dim=1)
-    num_different_rows = torch.sum(differences).item()
-    print(num_different_rows)
-
-    umap_features_new, _ = clustering.get_and_predict_umap(updated_embeddings)
-    umap_labels_new, centers_new = clustering.get_hdbscan(umap_features_new)
-
-    updated_embeddings_new, centers_new, cluster_counts_new = clustering.hdbscan_update(
-        umap_labels_new,
-        updated_embeddings,
-        update_type="hard",
-        alpha=0.1,
-        update_noise="assign",
-    )
-
-    print(f"Centers: {centers_new.shape}")
-
-    # Check if embeddings have been updated
-    differences = torch.any(updated_embeddings != updated_embeddings_new, dim=1)
-    num_different_rows = torch.sum(differences).item()
-    print(num_different_rows)
-
-
-def main():
-    test_hdbscan()
-
-
-if __name__ == "__main__":
-    main()

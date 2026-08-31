@@ -60,7 +60,6 @@ class FeatureExtractionConceptualDataset(Dataset):
             return_tensors="pt",
             padding="max_length",
             truncation=True,
-            max_length=77,
         )
 
         # Squeeze batch dimension to match per-sample dict expected by model.encode_txt

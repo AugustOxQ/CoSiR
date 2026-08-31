@@ -28,57 +28,24 @@ class ResNetBlock(nn.Module):
         self.output_dim = output_dim
         self.num_layers = num_layers
 
-        # 1. define internal sequential layers
         layers = []
-
-        # the first layer in the block
         if num_layers == 1:
-            # if there is only 1 layer, directly from input_dim to output_dim
             layers.append(nn.Linear(input_dim, output_dim))
         else:
-            # otherwise, from input_dim to hidden_dim
-            layers.append(nn.Linear(input_dim, hidden_dim))
-            layers.append(nn.ReLU())  # activation function
-            layers.append(
-                nn.LayerNorm(hidden_dim)
-            )  # normalization (optional, but common)
-
-            # intermediate layers (if any)
+            layers.extend([nn.Linear(input_dim, hidden_dim), nn.ReLU(), nn.LayerNorm(hidden_dim)])
             for _ in range(num_layers - 2):
-                layers.append(nn.Linear(hidden_dim, hidden_dim))
-                layers.append(nn.ReLU())
-                layers.append(nn.LayerNorm(hidden_dim))
-
-            # the last layer in the block
+                layers.extend([nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), nn.LayerNorm(hidden_dim)])
             layers.append(nn.Linear(hidden_dim, output_dim))
 
-        # 2. wrap internal network
         self.dense_layers = nn.Sequential(*layers)
 
-        # 3. define projection for skip connection
-        # if the input and output dimensions are different, a linear layer is needed to match the dimensions, so that addition can be performed.
-        if input_dim != output_dim:
-            self.skip_connection_proj = nn.Linear(input_dim, output_dim)
-        else:
-            self.skip_connection_proj = (
-                nn.Identity()
-            )  # if the dimensions are the same, use the identity mapping
+        # Linear projection on the skip path only when dims differ; Identity otherwise
+        self.skip_connection_proj = (
+            nn.Linear(input_dim, output_dim) if input_dim != output_dim else nn.Identity()
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-
-        # calculate the internal network output (F(x))
-        residual = self.dense_layers(x)
-
-        # calculate the skip connection projection (W_s * x)
-        # this step is to ensure dimension matching
-        shortcut = self.skip_connection_proj(x)
-
-        # ResNet core operation: F(x) + W_s * x
-        out = residual + shortcut
-
-        # usually the last layer in the ResNet block has an activation function (but in actual networks, this is usually at the input of the next block or at the end of the network)
-        # here we don't add the final activation, so it can be flexibly used as part of a larger network.
-        return out
+        return self.dense_layers(x) + self.skip_connection_proj(x)
 
 
 class FixedSizeQueue:
@@ -126,16 +93,82 @@ class FixedSizeQueue:
             return -1.0  # In case the queue is empty
 
 
-class Combiner_basic(nn.Module):
+class OtherProjMLP(nn.Module):
+    """Non-linear other-side projection: stack of residual blocks, identity-initialized.
+
+    Drop-in replacement for the linear ``other_proj`` in CoSiRModel.  Each
+    block applies a 2-layer MLP with a residual skip connection.  Zero-init on
+    the last linear of every block makes the full stack start as the identity
+    map, matching the linear initialisation strategy.
+
+    Args:
+        feature_dim: Input and output dimension (must match backbone feature dim).
+        hidden_dim:  Width of the hidden layer inside each residual block.
+        num_blocks:  Number of residual blocks stacked (default 3).
+    """
+
+    def __init__(
+        self,
+        feature_dim: int = 512,
+        hidden_dim: int = 512,
+        num_blocks: int = 3,
+    ) -> None:
+        super().__init__()
+        self.feature_dim = feature_dim
+        self.hidden_dim = hidden_dim
+        self.num_blocks = num_blocks
+        self.blocks = nn.ModuleList([
+            ResNetBlock(
+                input_dim=feature_dim,
+                hidden_dim=hidden_dim,
+                output_dim=feature_dim,
+                num_layers=2,
+            )
+            for _ in range(num_blocks)
+        ])
+        # Zero-init the last Linear in every block so F(x)=0 → output=skip=x at init
+        for block in self.blocks:
+            last = block.dense_layers[-1]
+            if isinstance(last, nn.Linear):
+                nn.init.zeros_(last.weight)
+                nn.init.zeros_(last.bias)
+
+    def forward(self, x: Tensor) -> Tensor:
+        for block in self.blocks:
+            x = block(x)
+        return x
+
+
+class ConstrainedSigmoid(nn.Module):
+    """Sigmoid constrained to [lo, hi] to prevent gate saturation at extremes.
+
+    Stores the pre-activation logit in ``last_input`` so callers can apply
+    logit-level regularization without a separate forward pass.
+    """
+
+    def __init__(self, lo: float = 0.1, hi: float = 0.9) -> None:
+        super().__init__()
+        self.lo = lo
+        self.hi = hi
+        self.last_input: Optional[Tensor] = None
+
+    def forward(self, x: Tensor) -> Tensor:
+        self.last_input = x  # keep reference into the computation graph
+        return self.lo + (self.hi - self.lo) * torch.sigmoid(x)
+
+
+class Combiner_new(nn.Module):
     """Combiner module which once trained fuses textual and label information."""
 
     def __init__(
         self,
         clip_feature_dim: int = 512,
         projection_dim: int = 512,
+        label_dim: int = 2,
         hidden_dim: int = 512,
         num_heads: int = 8,
         num_layers: int = 4,
+        dropout: float = 0.5,
     ) -> None:
         """
         :param clip_feature_dim: CLIP input feature dimension (e.g., 512)
@@ -145,23 +178,23 @@ class Combiner_basic(nn.Module):
         :param num_layers: Number of transformer layers
         """
         super().__init__()
-        self.text_projection_layer = nn.Linear(clip_feature_dim, projection_dim)
-        self.image_projection_layer = nn.Linear(clip_feature_dim, projection_dim)
 
-        self.dropout1 = nn.Dropout(0.5)
-        self.dropout2 = nn.Dropout(0.5)
+        self.label_decoder = GeLUNetGradual(input_dim=label_dim, output_dim=128, num_layers=num_layers, dropout=dropout)
 
-        self.combiner_layer = nn.Linear(projection_dim * 2, hidden_dim)
-        self.output_layer = nn.Linear(hidden_dim, clip_feature_dim)
+        self.general_decoder = GeLUNetGradual(input_dim=clip_feature_dim, output_dim=128, num_layers=num_layers, dropout=dropout)
 
-        self.dropout3 = nn.Dropout(0.5)
+        self.combiner_layer = GeLUNetGradual(input_dim=256, output_dim=clip_feature_dim, num_layers=num_layers, dropout=dropout)
+
         self.dynamic_scalar = nn.Sequential(
-            nn.Linear(projection_dim * 2, hidden_dim),
+            nn.Linear(128 * 2, 128),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(hidden_dim, 1),
-            nn.Sigmoid(),
+            nn.Linear(128, 1),
+            ConstrainedSigmoid(lo=0.1, hi=0.9),
         )
+        # Zero-init the pre-activation linear so gate starts at sigmoid(0)=0.5 → s=0.5
+        nn.init.zeros_(self.dynamic_scalar[-2].weight)
+        nn.init.zeros_(self.dynamic_scalar[-2].bias)
 
         # Larger dynamic scalar means more weight on the combined features
         self.scalar = FixedSizeQueue(10)
@@ -172,62 +205,39 @@ class Combiner_basic(nn.Module):
     def get_newest(self):
         return self.scalar.get_newest()
 
-    @torch.jit.export
     def forward(
-        self, text_features: Tensor, text_full: Tensor, label_features: Tensor
-    ) -> Tensor:
-        """Combine the text features and label features using attention.
+        self,
+        general_features: Tensor,
+        general_full: Optional[Tensor],
+        label_features: Tensor,
+        return_delta: bool = False,
+        return_scalar: bool = False,
+    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
 
-        Outputs combined features.
-        :param text_features: CLIP textual features (shape: batch, 512)
-        :param text_full: CLIP textual features with full sequence length (shape: batch, L, 512)
-        :param label_features: Label features (shape: batch, 512)
-        :return: combined textual features (shape: batch, 512)
-        """
-        assert (
-            len(text_full.shape) == 3
-        ), f"text_full should be of shape (batch, L, 512), instead get {text_full.shape}"
+        label_projected_features = self.label_decoder(label_features)
+        general_projected_features = self.general_decoder(general_features)
+        raw_combined_features = torch.cat((label_projected_features, general_projected_features), dim=-1)
+        delta = self.combiner_layer(raw_combined_features)
 
-        text_projected_features = self.dropout1(
-            F.relu(self.text_projection_layer(text_features))
-        )
-        label_projected_features = self.dropout2(
-            F.relu(self.image_projection_layer(label_features))
-        )
+        scalar = self.dynamic_scalar(raw_combined_features)
+        # gate_logit = pre-activation input to ConstrainedSigmoid; used for logit L2 regularization
+        gate_logit = self.dynamic_scalar[-1].last_input
+        self.scalar.add(scalar.mean().item())
 
-        raw_combined_features = torch.cat(
-            (text_projected_features, label_projected_features), -1
-        )
-        combined_features = self.dropout3(
-            F.relu(self.combiner_layer(raw_combined_features))
-        )
+        combined = (1 - scalar) * general_features + scalar * delta
+        out = F.normalize(combined)
 
-        dynamic_scalar = self.dynamic_scalar(raw_combined_features)
-        # print(dynamic_scalar.shape) # (batch, 1)
-        self.scalar.add(dynamic_scalar.mean().item())
-        # print(self.scalar.get())
-
-        # # Option1: Output is a combination of combined_featured and text_features and label_projected_features
-        output = (
-            self.output_layer(combined_features)
-            + dynamic_scalar * text_features
-            + (1 - dynamic_scalar) * label_projected_features
-        )
-
-        # Option2: Output is a combination of combined_featured and text_features
-        # output = (
-        #     dynamic_scalar * self.output_layer(combined_features)
-        #     + (1 - dynamic_scalar) * text_features
-        # )
-
-        # Option3: Output is combined_features
-        # output = self.output_layer(combined_features) + text_features
-
-        return F.normalize(output)
+        if return_delta and return_scalar:
+            return out, delta, scalar, gate_logit
+        if return_delta:
+            return out, delta
+        if return_scalar:
+            return out, scalar, gate_logit
+        return out
 
 
 class CombinerGated(nn.Module):
-    """Combiner module using gated residual + additive label shift."""
+    """Combiner module using gated residual + additive label shift. (Used in tests only.)"""
 
     def __init__(
         self,
@@ -237,7 +247,6 @@ class CombinerGated(nn.Module):
         num_heads: int = 8,
         num_layers: int = 4,
         label_dim: int = 512,
-        warm_up_epoch: int = 5,
         scale_init: float = 1,
     ) -> None:
         super().__init__()
@@ -248,7 +257,6 @@ class CombinerGated(nn.Module):
         for param in self.label_proj_layer.parameters():
             param.requires_grad = False
 
-        self.warm_up_epoch = warm_up_epoch
         self.scalar = FixedSizeQueue(2)
 
         # Learnable channel-wise scale (optional)
@@ -311,633 +319,59 @@ class CombinerGated(nn.Module):
             return F.normalize(combined, dim=-1)
 
 
-class CombinerPolar(nn.Module):
-    """Combiner module using gated residual + additive label shift."""
-
-    def __init__(
-        self,
-        clip_feature_dim: int = 512,
-        projection_dim: int = 512,
-        hidden_dim: int = 512,
-        num_heads: int = 8,
-        num_layers: int = 4,
-        label_dim: int = 512,
-        warm_up_epoch: int = 5,
-        scale_init: float = 1,
-    ) -> None:
-        super().__init__()
-
-        # Fixed orthogonal projection
-        self.label_proj_layer = nn.Linear(label_dim, projection_dim)
-        nn.init.orthogonal_(self.label_proj_layer.weight)
-        for param in self.label_proj_layer.parameters():
-            param.requires_grad = False
-
-        self.warm_up_epoch = warm_up_epoch
-        self.scalar = FixedSizeQueue(2)
-
-        self.radius_to_scale = ResNetBlock(
-            input_dim=1, hidden_dim=64, output_dim=1, num_layers=4
-        )
-        self.angle_to_rotate = ResNetBlock(
-            input_dim=1, hidden_dim=128, output_dim=clip_feature_dim, num_layers=4
-        )
-
-        self.sigmoid = nn.Sigmoid()
-        self.tanh = nn.Tanh()
-        self.relu = nn.ReLU()
-
-    def print_scalar(self):
-        return self.scalar.get()
-
-    def get_newest(self):
-        return self.scalar.get_newest()
-
-    def forward(
-        self,
-        text_features: Tensor,  # [B, 512]
-        text_full: Tensor,  # unused
-        label_features: Tensor,  # [B, label_dim]
-        epoch: int,
-        return_label_proj: bool = False,
-    ):
-
-        batch_size = text_features.shape[0]
-
-        label_proj = self.label_proj_layer(label_features)
-
-        # Change to polar coordinates
-        radius = torch.norm(label_features, dim=1, keepdim=True)
-        angle = torch.atan2(label_features[:, 1:], label_features[:, :1])
-
-        # Redicus to scale
-        scale_raw = self.radius_to_scale(radius)
-        scale_raw = self.relu(scale_raw)
-        scale = 0.8 + 0.4 * scale_raw  # This project to [0.8, 1.2]
-
-        # Angle to rotate
-        rotation_axis = self.angle_to_rotate(angle)
-        rotation_axis = self.tanh(rotation_axis)
-        rotation_axis = F.normalize(rotation_axis, dim=-1)
-
-        # Projection
-        text_norm = F.normalize(text_features, dim=-1)
-        dot_product = (text_norm * rotation_axis).sum(dim=-1, keepdim=True)
-
-        # Gram-Schmidt orthogonalization
-        axis_component = dot_product * rotation_axis
-        perpendicular = text_norm - axis_component
-        perpendicular = F.normalize(perpendicular, dim=-1)
-
-        # Rotate
-        cos_angle = torch.cos(angle)
-        sin_angle = torch.sin(angle)
-
-        # Angle after rotation
-        rotated_direction = cos_angle * text_norm + sin_angle * perpendicular
-
-        # Combine: scale + rotate
-        text_magnitute = torch.norm(text_norm, dim=-1, keepdim=True).clamp(min=1e-8)
-        combined = scale * rotated_direction + text_magnitute
-
-        if return_label_proj:
-            return F.normalize(combined, dim=-1), label_proj
-        else:
-            return F.normalize(combined, dim=-1)
-
-
-class CombinerSimplePolar_enhance(nn.Module):
-    """Combiner module using gated residual + additive label shift."""
-
-    def __init__(
-        self,
-        clip_feature_dim: int = 512,
-        projection_dim: int = 512,
-        hidden_dim: int = 512,
-        num_heads: int = 8,
-        num_layers: int = 4,
-        label_dim: int = 512,
-        warm_up_epoch: int = 5,
-        scale_init: float = 1,
-    ) -> None:
-        super().__init__()
-
-        # Fixed orthogonal projection
-        self.label_proj_layer = nn.Linear(label_dim, projection_dim)
-        nn.init.orthogonal_(self.label_proj_layer.weight)
-        for param in self.label_proj_layer.parameters():
-            param.requires_grad = False
-
-        self.warm_up_epoch = warm_up_epoch
-        self.scalar = FixedSizeQueue(2)
-        self.complex_dim = clip_feature_dim // 2
-        self.clip_feature_dim = clip_feature_dim
-
-        self.radius_to_scale = ResNetBlock(
-            input_dim=1, hidden_dim=128, output_dim=256, num_layers=2
-        )
-        self.angle_to_rotate = ResNetBlock(
-            input_dim=1, hidden_dim=64, output_dim=256, num_layers=4
-        )
-
-    def print_scalar(self):
-        return self.scalar.get()
-
-    def get_newest(self):
-        return self.scalar.get_newest()
-
-    def forward(
-        self,
-        text_features: Tensor,  # [B, 512]
-        text_full: Tensor,  # unused
-        label_features: Tensor,  # [B, label_dim]
-        epoch: int,
-        return_label_proj: bool = False,
-    ):
-
-        batch_size = text_features.shape[0]
-        label_proj = self.label_proj_layer(label_features)
-
-        # Change to polar coordinates
-        radius = torch.norm(label_features, dim=1, keepdim=True)  # [B, 1]
-        angle = torch.atan2(
-            label_features[:, 1:2], label_features[:, 0:1]
-        )  # [B, 1] #TODO: print out and check the difference, then check the gradient
-
-        # Interpret text_emb as complex numbers
-        # [B, 512] -> [B, 256, 2] (real, imag)
-        text_complex = text_features.view(batch_size, self.complex_dim, 2)
-        text_real = text_complex[:, :, 0]  # [B, 256]
-        text_imag = text_complex[:, :, 1]  # [B, 256]
-
-        # Generate modulated complex numbers (polar form)
-        phase_shifts = self.angle_to_rotate(angle)  # [B, 256]
-        magnitudes = self.radius_to_scale(radius)  # [B, 256]
-        magnitudes = 0.5 + magnitudes  # [0.5, 1.5]
-
-        # Complex multiplication: (a+bi) * (r·e^(iθ)) = r·(a·cos(θ) - b·sin(θ) + i(a·sin(θ) + b·cos(θ)))
-        cos_phase = torch.cos(phase_shifts)
-        sin_phase = torch.sin(phase_shifts)
-
-        # Apply complex multiplication
-        modulated_real = magnitudes * (text_real * cos_phase - text_imag * sin_phase)
-        modulated_imag = magnitudes * (text_real * sin_phase + text_imag * cos_phase)
-
-        # Convert back to real representation
-        modulated_complex = torch.stack(
-            [modulated_real, modulated_imag], dim=2
-        )  # [B, 256, 2]
-        combined = modulated_complex.view(batch_size, self.clip_feature_dim)  # [B, 512]
-
-        if return_label_proj:
-            return F.normalize(combined, dim=-1), label_proj
-        else:
-            return F.normalize(combined, dim=-1)
-
-
-class CombinerSimplePolar(nn.Module):
-    """Combiner module using gated residual + additive label shift."""
-
-    def __init__(
-        self,
-        clip_feature_dim: int = 512,
-        projection_dim: int = 512,
-        hidden_dim: int = 512,
-        num_heads: int = 8,
-        num_layers: int = 4,
-        label_dim: int = 512,
-        warm_up_epoch: int = 5,
-        scale_init: float = 1,
-    ) -> None:
-        super().__init__()
-
-        # Fixed orthogonal projection
-        self.label_proj_layer = nn.Linear(label_dim, projection_dim)
-        nn.init.orthogonal_(self.label_proj_layer.weight)
-        for param in self.label_proj_layer.parameters():
-            param.requires_grad = False
-
-        self.warm_up_epoch = warm_up_epoch
-        self.scalar = FixedSizeQueue(2)
-        self.clip_feature_dim = clip_feature_dim
-
-        self.radius_to_scale = ResNetBlock(
-            input_dim=1, hidden_dim=hidden_dim, output_dim=1, num_layers=num_layers
-        )
-        self.angle_to_rotate = ResNetBlock(
-            input_dim=1, hidden_dim=hidden_dim, output_dim=1, num_layers=num_layers
-        )
-
-        self.max_rotation_angle = torch.pi / 6  # 30度
-
-    def print_scalar(self):
-        return self.scalar.get()
-
-    def get_newest(self):
-        return self.scalar.get_newest()
-
-    def forward(
-        self,
-        text_features: Tensor,  # [B, 512]
-        text_full: Tensor,  # unused
-        label_features: Tensor,  # [B, label_dim]
-        epoch: int,
-        return_label_proj: bool = False,
-    ):
-
-        batch_size = text_features.shape[0]
-        label_proj = self.label_proj_layer(label_features)
-
-        # condition: [B, 2]
-        # text_features: [B, 512]
-
-        # 1. 转极坐标
-        radius = torch.norm(label_features, dim=1, keepdim=True)  # [B, 1]
-        angle = torch.atan2(label_features[:, 1:2], label_features[:, 0:1])  # [B, 1]
-
-        # 2. Radius -> Scale (范围 [0.8, 1.2])
-        scale_factor = 0.8 + 0.4 * self.radius_to_scale(radius)  # [B, 1]
-
-        # 3. Angle -> Rotation strength
-        rotation_strength = self.angle_to_rotate(angle)  # [B, 1], 范围[-1,1]
-
-        # 4. Project condition to feature space (frozen)
-        condition_proj = self.label_proj_layer(label_features)  # [B, 512]
-        condition_proj = F.normalize(condition_proj, dim=-1)
-
-        # 5. 简单的旋转: 在text和condition_proj张成的平面内旋转
-        text_norm = F.normalize(text_features, dim=-1)
-
-        # 计算旋转角度 (由rotation_strength控制, 最大±30度)
-        rotation_angle = rotation_strength * self.max_rotation_angle  # [B, 1]
-
-        # 在text_norm和condition_proj的平面内旋转
-        # 使用简单的线性插值近似
-        cos_theta = torch.cos(rotation_angle)
-        sin_theta = torch.sin(rotation_angle)
-
-        rotated = cos_theta * text_norm + sin_theta * condition_proj
-        rotated = F.normalize(rotated, dim=-1)
-
-        # 6. Apply scale (保持原始magnitude)
-        text_magnitude = torch.norm(text_features, dim=-1, keepdim=True)
-        combined = scale_factor * text_magnitude * rotated
-
-        if return_label_proj:
-            return F.normalize(combined, dim=-1), label_proj
-        else:
-            return F.normalize(combined, dim=-1)
-
-
-class CombinerSimplePolar_noparam(nn.Module):
-    """Combiner module using gated residual + additive label shift."""
-
-    def __init__(
-        self,
-        clip_feature_dim: int = 512,
-        projection_dim: int = 512,
-        hidden_dim: int = 512,
-        num_heads: int = 8,
-        num_layers: int = 4,
-        label_dim: int = 512,
-        warm_up_epoch: int = 5,
-        scale_init: float = 1,
-    ) -> None:
-        super().__init__()
-
-        # Fixed orthogonal projection
-        self.label_proj_layer = nn.Linear(label_dim, projection_dim)
-        nn.init.orthogonal_(self.label_proj_layer.weight)
-        for param in self.label_proj_layer.parameters():
-            param.requires_grad = False
-
-        self.scalar = FixedSizeQueue(2)
-        self.clip_feature_dim = clip_feature_dim
-
-    def print_scalar(self):
-        return self.scalar.get()
-
-    def get_newest(self):
-        return self.scalar.get_newest()
-
-    def forward(
-        self,
-        text_features: Tensor,  # [B, 512]
-        text_full: Tensor,  # unused
-        label_features: Tensor,  # [B, label_dim]
-        epoch: int,
-        return_label_proj: bool = False,
-    ):
-
-        batch_size = text_features.shape[0]
-        label_proj = self.label_proj_layer(label_features)
-
-        # condition: [B, 2]
-        # text_features: [B, 512]
-
-        # 1. 转极坐标
-        radius = torch.norm(label_features, dim=1, keepdim=True)  # [B, 1]
-        angle = torch.atan2(label_features[:, 1:2], label_features[:, 0:1])  # [B, 1]
-
-        # 2. Scale: 直接用radius (无参数)
-        scale_factor = 0.8 + 0.4 * torch.sigmoid(radius)  # [B, 1]
-
-        # 3. Rotation: 用condition在前两个维度做小扰动
-        text_norm = F.normalize(text_features, dim=-1)
-
-        # 在特征空间的前两个维度上应用condition
-        perturbation = torch.zeros_like(text_features)
-        # 旋转强度由angle的tanh控制
-        rotation_strength = torch.tanh(angle) * 0.1  # 小扰动
-        perturbation[:, 0] = label_features[:, 0] * rotation_strength.squeeze()
-        perturbation[:, 1] = label_features[:, 1] * rotation_strength.squeeze()
-
-        rotated = text_norm + perturbation
-        rotated = F.normalize(rotated, dim=-1)
-
-        # 4. Apply scale
-        text_magnitude = torch.norm(text_features, dim=-1, keepdim=True)
-        combined = scale_factor * text_magnitude * rotated
-
-        if return_label_proj:
-            return F.normalize(combined, dim=-1), label_proj
-        else:
-            return F.normalize(combined, dim=-1)
-
-
-class ConditionPredictor_old(nn.Module):
+class GeLUNetGradual(nn.Module):
     """
-    A lightweight predictor (regression) that given input features, predict the condition.
-    """
+    A GeLU network whose hidden widths are interpolated geometrically (log-space)
+    between input_dim and output_dim, so the network gradually expands or contracts
+    instead of using a fixed hidden_dim throughout.
 
-    def __init__(
-        self,
-        input_dim: int = 512,
-        hidden_dim: int = 512,
-        output_dim: int = 2,
-        num_layers: int = 4,
-        min_radius: float = 5,
-        max_radius: float = 30,
-    ):
-        super().__init__()
-        # Use resnet block to build the network
-        self.predictor = ResNetBlock(input_dim, hidden_dim, output_dim, num_layers)
-        self.relu = nn.ReLU()
-        self.sigmoid = nn.Sigmoid()
-
-        self.min_radius = min_radius
-        self.max_radius = max_radius
-
-    def forward(self, input_features: Tensor) -> Tensor:
-        output = self.predictor(input_features)
-        # radius = self.min_radius + self.sigmoid(output[:, 0:1]) * (
-        #     self.max_radius - self.min_radius
-        # )
-        # condition = torch.cat([radius, output[:, 1:2]], dim=-1)
-        condition = output  # TODO: Check new loss first then change back
-        return condition
-
-
-class ConditionPredictor(nn.Module):
-    """
-    A lightweight predictor (regression) that given input features, predict the condition.
-    """
-
-    def __init__(
-        self,
-        input_dim: int = 512,
-        hidden_dim: int = 512,
-        output_dim: int = 2,
-        num_layers: int = 4,
-        min_radius: float = 5,
-        max_radius: float = 40,
-    ):
-        super().__init__()
-        # ✅ Learnable mask tokens
-        self.img_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.02)
-        self.txt_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.02)
-
-        self.img_encoder = GeLUNet(input_dim, hidden_dim, hidden_dim, num_layers)
-
-        self.txt_encoder = GeLUNet(input_dim, hidden_dim, hidden_dim, num_layers)
-
-        self.fusion_net = GeLUNet(hidden_dim * 2, hidden_dim, output_dim, num_layers)
-
-        self.min_radius = min_radius
-        self.max_radius = max_radius
-
-    def forward(self, img_emb=None, txt_emb=None) -> Tensor:
-        batch_size = img_emb.shape[0] if img_emb is not None else txt_emb.shape[0]
-
-        if img_emb is not None:
-            img_feat = self.img_encoder(img_emb)
-        else:
-            img_feat = self.img_mask_token.expand(batch_size, -1)
-
-        if txt_emb is not None:
-            txt_feat = self.txt_encoder(txt_emb)
-        else:
-            txt_feat = self.txt_mask_token.expand(batch_size, -1)
-
-        # Fuse
-        fused = torch.cat([img_feat, txt_feat], dim=-1)
-        condition = self.fusion_net(fused)
-
-        if self.min_radius != 0:
-            # Constrain magnitude
-            norm = torch.norm(condition, dim=1, keepdim=True).clamp(min=1e-8)
-            direction = condition / norm
-            radius = self.min_radius + torch.sigmoid(norm) * (
-                self.max_radius - self.min_radius
-            )
-
-            output = direction * radius
-        else:
-            output = condition
-
-        return output
-
-
-class ConditionClassifier(nn.Module):
-    """
-    A lightweight classifier that given input features, predict the condition.
-    """
-
-    def __init__(
-        self,
-        input_dim: int = 512,
-        hidden_dim: int = 512,
-        num_layers: int = 4,
-        dropout: float = 0.5,
-        num_conditions: int = 12,
-        use_temperature: bool = True,
-        init_temperature: float = 0.1,
-        use_gumbel_softmax: bool = True,
-        gumbel_softmax_tau: float = 1.0,
-        gumbel_softmax_hard: bool = False,
-    ):
-        super().__init__()
-        # ✅ Learnable mask tokens
-
-        self.num_conditions = num_conditions
-        self.use_temperature = use_temperature
-
-        # Gumbel softmax parameters
-        self.use_gumbel_softmax = use_gumbel_softmax
-        self.gumbel_softmax_tau = gumbel_softmax_tau
-        self.gumbel_softmax_hard = gumbel_softmax_hard
-
-        self.img_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.01)  # 0.5
-        self.txt_mask_token = nn.Parameter(torch.randn(1, hidden_dim) * 0.01)  # 0.5
-
-        if use_temperature:
-            self.temperature = nn.Parameter(torch.tensor(init_temperature))
-        else:
-            self.temperature = 1
-
-        self.img_encoder = GeLUNet(
-            input_dim, hidden_dim, hidden_dim, num_layers, dropout=dropout
-        )
-
-        self.txt_encoder = GeLUNet(
-            input_dim, hidden_dim, hidden_dim, num_layers, dropout=dropout
-        )
-
-        self.fuse_encoder = GeLUNet(
-            hidden_dim * 2, hidden_dim, num_conditions, num_layers, dropout=dropout
-        )
-
-    def forward(
-        self,
-        img_emb=None,
-        txt_emb=None,
-        return_logits: bool = False,
-        training_phase: bool = False,
-        argmax: bool = False,
-    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-
-        batch_size = img_emb.shape[0] if img_emb is not None else txt_emb.shape[0]
-
-        # This is the original code
-        if img_emb is not None:
-            img_feat = self.img_encoder(img_emb)
-        else:
-            img_feat = self.img_mask_token.expand(batch_size, -1)
-
-        if txt_emb is not None:
-            txt_feat = self.txt_encoder(txt_emb)
-        else:
-            txt_feat = self.txt_mask_token.expand(batch_size, -1)
-
-        fused = torch.cat([img_feat, txt_feat], dim=-1)
-        logits = self.fuse_encoder(fused)
-
-        # if img_emb is not None and txt_emb is not None:
-        #     fused = torch.cat([img_emb, txt_emb], dim=-1)
-        #     logits = self.fuse_encoder(fused)
-        # elif img_emb is not None:
-        #     logits = self.img_encoder(img_emb)
-        # elif txt_emb is not None:
-        #     logits = self.txt_encoder(txt_emb)
-        # else:
-        #     raise ValueError("Either img_emb or txt_emb must be provided")
-
-        if self.use_gumbel_softmax and training_phase:
-            probs = F.gumbel_softmax(
-                logits,
-                tau=self.gumbel_softmax_tau,
-                hard=self.gumbel_softmax_hard,
-                dim=-1,
-            )
-        else:
-            if self.use_temperature:
-                tmp = self.temperature.clamp(min=0.01, max=10)
-                probs = F.softmax(logits / tmp, dim=-1)
-            else:
-                probs = F.softmax(logits, dim=-1)
-
-            if argmax:
-                indices = torch.argmax(probs, dim=-1)  # [Batch]
-                probs = F.one_hot(
-                    indices, num_classes=probs.shape[-1]
-                ).float()  # [Batch, K]
-
-        if return_logits:
-            return probs, logits
-
-        return probs
-
-    def get_temperature(self) -> float:
-        """Get current temperature value"""
-        if self.use_temperature:
-            return self.temperature.item()
-        return 1.0
-
-
-class GeLUNet(nn.Module):
-    """
-    A lightweight GeLU network with configurable depth.
+    Example: input_dim=2, output_dim=512, num_layers=4
+        layer dims: 2 -> 8 -> 64 -> 512  (roughly evenly spaced in log-space)
 
     Args:
         input_dim: Input feature dimension
-        hidden_dim: Hidden layer dimension
         output_dim: Output dimension
         num_layers: Total number of linear layers (including input and output)
         dropout: Dropout probability (default: 0.1)
-        use_output_activation: Whether to apply activation on output layer (default: False)
+        use_output_activation: Whether to apply LayerNorm+GELU on the output layer (default: False)
     """
 
     def __init__(
         self,
-        input_dim: int = 512,
-        hidden_dim: int = 512,
-        output_dim: int = 2,
+        input_dim: int = 2,
+        output_dim: int = 512,
         num_layers: int = 3,
         dropout: float = 0.1,
         use_output_activation: bool = False,
     ):
-        super().__init__()
+        import math
 
+        super().__init__()
         assert num_layers >= 1, "num_layers must be at least 1"
 
+        # Compute output dim for each layer via geometric interpolation.
+        # t goes from 1/N to 1, so dims[-1] == output_dim exactly.
+        dims: list[int] = []
+        for i in range(num_layers):
+            t = (i + 1) / num_layers
+            d = int(
+                round(
+                    math.exp(math.log(input_dim) * (1 - t) + math.log(output_dim) * t)
+                )
+            )
+            dims.append(max(d, 1))
+        dims[-1] = output_dim  # guarantee exact match
+
         layers: list[nn.Module] = []
-
-        # First layer
-        layers.extend(
-            [
-                nn.Linear(input_dim, hidden_dim),
-                nn.LayerNorm(hidden_dim),
-                nn.GELU(),
-                nn.Dropout(dropout),
-            ]
-        )
-
-        # Hidden layers
-        for _ in range(num_layers - 2):
-            layers.extend(
-                [
-                    nn.Linear(hidden_dim, hidden_dim),
-                    nn.LayerNorm(hidden_dim),
-                    nn.GELU(),
-                    nn.Dropout(dropout),
-                ]
-            )
-
-        # Output layer
-        if num_layers > 1:
-            layers.append(nn.Linear(hidden_dim, output_dim))
-        else:
-            # Special case: only 1 layer
-            layers = [nn.Linear(input_dim, output_dim)]
-
-        # Optional output activation
-        if use_output_activation:
-            layers.extend(
-                [
-                    nn.LayerNorm(output_dim),
-                    nn.GELU(),
-                ]
-            )
+        in_d = input_dim
+        for i, out_d in enumerate(dims):
+            layers.append(nn.Linear(in_d, out_d))
+            is_last = i == len(dims) - 1
+            if not is_last:
+                layers.extend([nn.LayerNorm(out_d), nn.GELU(), nn.Dropout(dropout)])
+            elif use_output_activation:
+                layers.extend([nn.LayerNorm(out_d), nn.GELU()])
+            in_d = out_d
 
         self.network = nn.Sequential(*layers)
 

@@ -6,36 +6,62 @@ train:
   epochs_2: 20 # Label prediction loss epochs
   num_workers: 0
   batch_size: 1024 # This is the batchsize of the evaluation set
-  initialization_strategy: img #TODO: change to imgtxt, debugging time use zeros
-  imgtxt_factor: 10.0 #TODO: change to 1.0, debugging time use 10.0 #IMPORTANT: when changing this, we need to re-extract the label embeddings, so also need to change the template embeddings
+  initialization_strategy: buddies # imgtxt | txt | img | buddies (conditional-buddies graph init; 'buddy' also accepted) | zeros/normal/uniform
+  imgtxt_factor: 1.0 #TODO: change to 1.0, debugging time use 10.0 #IMPORTANT: when changing this, we need to re-extract the label embeddings, so also need to change the template embeddings
   use_template_embeddings: True
   save_as_template_embeddings: True
   load_existing_features: True
   representative_number: 12 # This should equal to selected number of conditions * number of grids
+  normalize: false
+  # Conditional-buddies init hyperparameters (used when initialization_strategy: buddies)
+  buddies:
+    k: 30                    # mutual-KNN neighbours per modality
+    alpha: 0.5               # mix weight: alpha*img_dist + (1-alpha)*txt_dist
+    method: spectral         # embedding method (Laplacian Eigenmaps)
+    knn_batch_size: 1024
+    normalize_method: rank   # rank (per-dim rank->[-1,1], robust) | zscore (legacy)
+    b_weight: 1.0            # B-lean: multiply spectral affinity of strict-intersection (B) buddy edges by this (1.0 = off, union-only; >1 pulls strict buddies tighter)
+  em_interval: -1 # EM-style training: alternate every N epochs between updating network and updating conditions (negative = disabled, update both every epoch)
+  caption_upsample: 1.5 # C1: caption sample weight relative to other types (1.0 = disabled); reduced from 2.5 — Phase 1 showed 2.5x caused direction_sim regression
+  oracle_guided: true  # softmax advantage weighting on condition gradients (breaks chicken-and-egg)
+  oracle_advantage_tau: 0.1  # temperature for softmax(advantage/tau); lower = sharper redistribution
 
 # Loss function configuration
 loss:
   margin: 0.3
-  lambda_1: 1.0 # Main contrastive loss
-  lambda_2: 0.7 # Laplacian loss
-  lambda_3: 0.3 # Minor loss
-  lambda_4: 0.0 # Regularizer loss #TODO: change to 0.1, debugging time use 0.0
-  warm_up_epochs: 0 # Warm up epochs for label prediction loss
-  middle_epochs: 0 # Middle epochs for label prediction loss
+  lambda_contrastive: 1.0
+  lambda_laplacian: 30
+  lambda_collapse: 0.1
+  lambda_boundary: 0.0
+  lambda_mixup: 1.0 # iMix loss weight (0 = disabled)
+  lambda_delta: 0.1 # delta norm penalty — ineffective for gate, disabled
+  lambda_gate: 0.05 # gate entropy maximisation (encourages s away from 0/1)
+  lambda_gate_logit: 0.1 # L2 on raw gate logit — prevents sigmoid saturation (gradient grows with logit)
+  lambda_preserve: 0.05 # preservation: penalise combined output drifting far from input
+  lambda_pred: 1.0 # condition predictor distillation weight (0 = disabled)
+  pred_stopgrad: true # if false, gradient also flows predictor->table too (Experiment 11.3 bidirectional coupling); default true = today's one-way distillation
+  lambda_ent: 0.0 # L5: disabled — Phase 1 showed entropy was already maximal from epoch 1
+  ent_tau: 5.0 # temperature for type-affinity softmax in L5 (unused when lambda_ent=0)
+  lambda_var: 0.1 # VICReg variance — penalise per-dim std below var_gamma (0 = disabled)
+  lambda_cov: 0.1 # VICReg covariance — decorrelate condition dimensions (0 = disabled)
+  lambda_gap_align: 0.0 # gap alignment — condition sim ≈ (txt-img) sim; GT-free query-style proxy
+  var_gamma: 0.25 # target std per dim on normalised conditions; 1/sqrt(16) = 0.25 for uniform sphere
+  mixup_alpha: 1.0 # Beta distribution alpha for iMix sampling
   return_dict: true
 
 # Optimizer configuration
 optimizer:
   type: "AdamW"
-  lr: 1.0e-5
-  lr_2: 1.0e-5
+  lr: 1.0e-5 # model parameters
+  lr_label: 1.0e-2 # label embeddings
   weight_decay: 5.0e-2
-  label_lr_multiplier: 5.0e4 # Label embedding learning rate multiplier
 
 # Scheduler configuration
 scheduler:
-  type: "CosineAnnealingLR"
+  type: "CosineAnnealingLR" # CosineAnnealingLR, LinearLR, SequentialLR, CosineAnnealingWarmRestarts
   T_max: 0 # Should match train.epochs
+  T_0: 100
+  T_mult: 2 # This has to be int
   eta_min: 1.0e-9
 
 # Evaluation configuration
@@ -43,5 +69,7 @@ eval:
   k_vals: [1, 5, 10]
   train_max_batches: 25 # This is during validation, how many batches we check
   print_metrics: true
-  evaluation_interval: 3
+  evaluation_interval: 20
   perform_evaluation: true
+  oracle_aggregation: "max" # "max" = oracle upper bound, "mean" = average across conditions
+  test_ratio: 1.0 # fraction of the test annotations to eval on (first N); <1.0 to subsample large test sets

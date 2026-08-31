@@ -1,0 +1,24 @@
+program: scripts/run_sweep_agent.py
+method: grid
+metric:
+  name: test_oracle/t2i_R1
+  goal: maximize
+  summary: max  # rank runs by their best epoch, not last epoch
+
+# Kill the bottom 50% of runs once enough data is available.
+early_terminate:
+  type: hyperband
+  min_iter: 3      # don't kill before 3 evaluations (epoch 300 with interval=100)
+  eta: 2           # halving rate
+
+# Conditional-buddies sweep: embedding_dim x lr x lr_label x buddies.alpha
+# 5 * 2 * 5 * 3 = 150 runs.
+parameters:
+  embedding_dim:
+    values: [2, 4, 8, 16, 32]
+  lr:
+    values: [1.0e-4, 1.0e-3]
+  lr_label:
+    values: [1.0e-6, 1.0e-5, 1.0e-4, 1.0e-3, 1.0e-2]
+  alpha:
+    values: [0.25, 0.5, 0.75]

@@ -1,9 +1,12 @@
+import textwrap
 import torch
 import torch.nn.functional as F
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import numpy as np
+import time
 
 
 def replace_with_most_different(label_embeddings, k=10):
@@ -95,7 +98,7 @@ def select_representative_conditions(
         print(f"Selecting {K} conditions using K-means clustering...")
         from sklearn.cluster import KMeans
 
-        kmeans = KMeans(n_clusters=K, random_state=seed, n_init=10)
+        kmeans = KMeans(n_clusters=K, random_state=seed, n_init="auto")
         kmeans.fit(all_conditions_np)
 
         selected = torch.from_numpy(kmeans.cluster_centers_).float()
@@ -158,35 +161,27 @@ def get_representatives(label_embeddings, k=10):
 def get_representatives_polar_grid(
     learned_conditions=None, num_angles=10, num_radii=3, max_radius=None
 ):
-    """
-    在极坐标下均匀采样
+    """Sample conditions uniformly on a polar grid.
+
     Args:
-        num_angles: 角度方向数 (m)
-        num_radii: 半径层数 (n)
-        max_radius: 最大半径，如果None则从learned_conditions推断
-        learned_conditions: [N, 2] 训练学到的conditions
+        num_angles: number of angular sectors
+        num_radii: number of radial rings
+        max_radius: outer radius; inferred from learned_conditions if None
+        learned_conditions: [N, 2] conditions to derive radius from
+
     Returns:
-        sampled_conditions: [k, 2] where k = num_angles * num_radii
+        sampled_conditions: [num_angles * num_radii, 2]
     """
     if max_radius is None and learned_conditions is not None:
-        # 从learned conditions推断合理的radius范围
         radii = torch.norm(learned_conditions, dim=1)
-        max_radius = radii.quantile(0.95)  # 用95分位数，避免outlier
+        max_radius = radii.quantile(0.95)  # 95th percentile avoids outliers
         print(f"Inferred max_radius: {max_radius:.3f}")
     elif max_radius is None:
-        max_radius = 2.0  # 默认值
+        max_radius = 2.0
 
-    # 生成角度: [0, 2π) 均匀分布
-    angles = torch.linspace(0, 2 * torch.pi, num_angles + 1)[:-1]  # 不包括2π
-
-    # 生成半径: [0, max_radius] 均匀或对数分布
-    # 选项1: 线性分布（包括0）
+    angles = torch.linspace(0, 2 * torch.pi, num_angles + 1)[:-1]  # exclude 2π endpoint
     radii = torch.linspace(0, max_radius, num_radii)
 
-    # 选项2: 不包括0（如果你发现0附近的condition不重要）
-    # radii = torch.linspace(0.1 * max_radius, max_radius, num_radii)
-
-    # 生成网格
     sampled_conditions = []
     for r in radii:
         for theta in angles:
@@ -199,8 +194,30 @@ def get_representatives_polar_grid(
         f"Sampled {len(sampled_conditions)} conditions "
         f"({num_angles} angles × {num_radii} radii)"
     )
-
     return sampled_conditions
+
+
+def get_representatives_fps(
+    conditions: torch.Tensor, k: int = 10, inlier_quantile: float = 0.95
+) -> torch.Tensor:
+    """Farthest-point sampling: returns k maximally spread representatives from conditions [N, 2].
+
+    Filters out outliers beyond `inlier_quantile` of L2 distance from the centroid
+    before sampling, so extreme outliers don't anchor the selection.
+    """
+    start_time = time.time()
+    centroid = conditions.mean(dim=0)
+    dists_from_centroid = torch.norm(conditions - centroid, dim=1)
+    radius = dists_from_centroid.quantile(inlier_quantile)
+    inliers = conditions[dists_from_centroid <= radius]
+
+    k = min(k, len(inliers))
+    selected = [torch.randint(len(inliers), (1,)).item()]
+    for _ in range(k - 1):
+        dists = torch.cdist(inliers, inliers[selected]).min(dim=1).values
+        selected.append(dists.argmax().item())
+    print(f"Time taken to get representatives: {time.time() - start_time:.3f}s")
+    return inliers[selected]
 
 
 def get_representatives_polar_grid_outsideonly(learned_conditions, num_angles=10):
@@ -214,7 +231,9 @@ def get_representatives_polar_grid_outsideonly(learned_conditions, num_angles=10
     Returns:
         sampled_conditions: [num_angles, 2]
     """
-    angles = torch.atan2(learned_conditions[:, 1], learned_conditions[:, 0]) % (2 * torch.pi)
+    angles = torch.atan2(learned_conditions[:, 1], learned_conditions[:, 0]) % (
+        2 * torch.pi
+    )
     radii = torch.norm(learned_conditions, dim=1)
 
     sector_size = 2 * torch.pi / num_angles
@@ -237,19 +256,20 @@ def get_representatives_polar_grid_outsideonly(learned_conditions, num_angles=10
         sampled.append(pts[idx])
 
     result = torch.stack(sampled)
-    print(f"Sampled {len(result)} conditions ({num_angles} angular sectors, 0.95 quantile radius per sector)")
+    print(
+        f"Sampled {len(result)} conditions ({num_angles} angular sectors, 0.95 quantile radius per sector)"
+    )
     return result
 
 
 def precompute_coco_embeddings(model, coco_test_loader, device, processor):
-    """
-    预计算所有embeddings，加速后续检索
+    """Pre-encode all images and captions for fast retrieval later.
 
     Returns:
-        image_embs: [N_images, 512]
-        text_embs: [N_images*5, 512]
-        captions_flat: list of all captions
-        image_to_captions_map: dict mapping image_idx to caption indices
+        image_embs: [N_images, D]
+        text_embs: [N_images * 5, D]
+        captions_flat: flat list of all caption strings
+        image_to_captions_map: dict mapping image_idx → list of caption indices
     """
     model.eval()
 
@@ -257,9 +277,7 @@ def precompute_coco_embeddings(model, coco_test_loader, device, processor):
     all_text_embs = []
     all_captions_flat = []
     image_to_captions_map = {}
-
     caption_idx = 0
-
     max_text_length = 77
 
     with torch.no_grad():
@@ -267,29 +285,21 @@ def precompute_coco_embeddings(model, coco_test_loader, device, processor):
             image_input, captions = batch
             image_input = image_input.to(device)
 
-            # Image embeddings
             img_embs, _ = model.encode_img(image_input)
             all_image_embs.append(img_embs)
 
-            # Text embeddings
             batch_size = len(image_input)
             for i in range(batch_size):
-                # 这张图的5个captions
-                if isinstance(captions[i], list):
-                    img_captions = captions[i]
-                else:
-                    # 如果是flat的
-                    img_captions = [captions[i * 5 + j] for j in range(5)]
+                img_captions = (
+                    captions[i] if isinstance(captions[i], list)
+                    else [captions[i * 5 + j] for j in range(5)]
+                )
 
                 print(captions[i + 1])
 
-                # 记录映射
                 img_idx = batch_idx * batch_size + i
-                image_to_captions_map[img_idx] = list(
-                    range(caption_idx, caption_idx + 5)
-                )
+                image_to_captions_map[img_idx] = list(range(caption_idx, caption_idx + 5))
 
-                # Encode captions
                 text_tokens = processor(
                     text=img_captions,
                     return_tensors="pt",
@@ -301,26 +311,20 @@ def precompute_coco_embeddings(model, coco_test_loader, device, processor):
 
                 all_text_embs.append(text_embs)
                 all_captions_flat.extend(img_captions)
-
                 caption_idx += 5
 
-    # 合并
-    image_embs = torch.cat(all_image_embs, dim=0)  # [N_images, 512]
-    text_embs = torch.cat(all_text_embs, dim=0)  # [N_images*5, 512]
-
+    image_embs = torch.cat(all_image_embs, dim=0)
+    text_embs = torch.cat(all_text_embs, dim=0)
     return image_embs, text_embs, all_captions_flat, image_to_captions_map
 
 
 def retrieve_with_condition_fast(
     model, precomputed_data, condition, query_image_id=None, k=10, device=None
 ):
-    """
-    使用预计算的embeddings快速检索
-    """
-    image_embs, text_embs, all_captions_flat, img_to_captions_map = precomputed_data
+    """Image-to-text retrieval using precomputed embeddings and a condition vector."""
+    image_embs, text_embs, all_captions_flat, _ = precomputed_data
 
     model.eval()
-    # 处理condition
     if isinstance(condition, np.ndarray):
         condition = torch.from_numpy(condition).float()
     if condition.dim() == 1:
@@ -328,43 +332,27 @@ def retrieve_with_condition_fast(
     condition = condition.to(device)
 
     with torch.no_grad():
-        # 选择query
         if query_image_id is None:
             query_image_id = torch.randint(0, len(image_embs), (1,)).item()
 
-        img_emb = image_embs[query_image_id : query_image_id + 1]  # [1, 512]
-
-        # 调制所有text embeddings
-        condition_expanded = condition.repeat(len(text_embs), 1)
+        img_emb = image_embs[query_image_id : query_image_id + 1].to(device)
         text_embs = text_embs.to(device)
-        condition_expanded = condition_expanded.to(device)
-        img_emb = img_emb.to(device)
+        condition_expanded = condition.repeat(len(text_embs), 1)
         text_embs_modulated = model.combine(text_embs, None, condition_expanded)
 
-        # 相似度
         similarities = F.cosine_similarity(
             img_emb.expand(len(text_embs_modulated), -1), text_embs_modulated, dim=1
         )
+        _, top_k_indices = torch.topk(similarities, k=min(k, len(similarities)))
 
-        # Top-k
-        top_k_values, top_k_indices = torch.topk(
-            similarities, k=min(k, len(similarities))
-        )
-
-        top_k_captions = [
-            all_captions_flat[idx] for idx in top_k_indices.cpu().tolist()
-        ]
-
-        return top_k_captions
+        idx_list = top_k_indices.cpu().tolist()
+        return idx_list, [all_captions_flat[idx] for idx in idx_list]
 
 
 def visualize_angular_semantics_fast(
     conditions_2d, model, precomputed_data, save_path=None, device=None
 ):
-    """
-    使用预计算embeddings的快速可视化
-    """
-
+    """Visualize top captions per angular bin using precomputed embeddings."""
     model.eval()
 
     if isinstance(conditions_2d, np.ndarray):
@@ -375,8 +363,6 @@ def visualize_angular_semantics_fast(
 
     n_bins = 12
     angle_bins = torch.linspace(-np.pi, np.pi, n_bins + 1, device=device)
-
-    # 固定query image
     fixed_query_id = torch.randint(0, len(precomputed_data[0]), (1,)).item()
 
     fig, axes = plt.subplots(3, 4, figsize=(24, 18))
@@ -393,8 +379,7 @@ def visualize_angular_semantics_fast(
         bin_conditions = conditions_2d[bin_mask]
         bin_center = bin_conditions.median(dim=0)[0]
 
-        # ✅ 快速检索
-        top_captions = retrieve_with_condition_fast(
+        _, top_captions = retrieve_with_condition_fast(
             model,
             precomputed_data,
             bin_center,
@@ -403,7 +388,6 @@ def visualize_angular_semantics_fast(
             device=device,
         )
 
-        # 显示（同上）
         ax = axes[i]
         ax.axis("off")
 
@@ -451,7 +435,7 @@ def retrieve_image_with_condition_fast(
     Returns:
         top_k_images: list of top-k retrieved images (PIL Images or image data)
     """
-    image_embs, text_embs, all_raw_image, all_raw_text = precomputed_data
+    image_embs, text_embs, all_raw_image, _ = precomputed_data
 
     model.eval()
 
@@ -481,14 +465,14 @@ def retrieve_image_with_condition_fast(
         )
 
         # Top-k
-        top_k_values, top_k_indices = torch.topk(
+        _, top_k_indices = torch.topk(
             similarities, k=min(k, len(similarities))
         )
 
-        # Retrieve top-k images
-        top_k_images = [all_raw_image[idx] for idx in top_k_indices.cpu().tolist()]
+        idx_list = top_k_indices.cpu().tolist()
+        top_k_images = [all_raw_image[idx] for idx in idx_list]
 
-        return top_k_images
+        return idx_list, top_k_images
 
 
 def visualize_angular_semantics_text_to_image_fast(
@@ -538,7 +522,7 @@ def visualize_angular_semantics_text_to_image_fast(
         bin_center = bin_conditions.median(dim=0)[0]
 
         # Fast retrieval: text -> images
-        top_images = retrieve_image_with_condition_fast(
+        _, top_images = retrieve_image_with_condition_fast(
             model,
             precomputed_data,
             bin_center,
@@ -576,3 +560,237 @@ def visualize_angular_semantics_text_to_image_fast(
         fig.savefig(save_path, dpi=480, bbox_inches="tight")
 
     return fig
+
+
+def _clip_baseline_i2t(image_embs, text_embs, all_captions_flat, query_id, k, device):
+    """Raw CLIP image→text retrieval without condition modulation."""
+    img_emb = image_embs[query_id : query_id + 1].to(device)
+    txt = text_embs.to(device)
+    sims = F.cosine_similarity(img_emb.expand(len(txt), -1), txt, dim=1)
+    _, top_idx = torch.topk(sims, k=min(k, len(sims)))
+    idx_list = top_idx.cpu().tolist()
+    return idx_list, [all_captions_flat[i] for i in idx_list]
+
+
+def _clip_baseline_t2i(image_embs, text_embs, all_raw_image, query_text_id, k, device):
+    """Raw CLIP text→image retrieval without condition modulation."""
+    txt_emb = text_embs[query_text_id : query_text_id + 1].to(device)
+    imgs = image_embs.to(device)
+    sims = F.cosine_similarity(txt_emb.expand(len(imgs), -1), imgs, dim=1)
+    _, top_idx = torch.topk(sims, k=min(k, len(sims)))
+    idx_list = top_idx.cpu().tolist()
+    return idx_list, [all_raw_image[i] for i in idx_list]
+
+
+def visualize_given_conditions_image_to_text(
+    conditions, model, precomputed_data, n_queries=3, k=5, all_raw_image=None, device=None
+):
+    """
+    Image-to-text retrieval visualization with pre-given conditions.
+
+    Row 0 = CLIP baseline (no condition). Rows 1..N = one row per condition.
+    Query image spans all rows on the left when all_raw_image is provided.
+    Green cells = ground-truth captions.
+
+    Args:
+        conditions: [N, D] condition embeddings (pre-sampled)
+        model: CoSiR model
+        precomputed_data: (all_img_emb, all_txt_emb, all_captions_flat, img_to_cap_map)
+        n_queries: number of query images (uses first n_queries)
+        k: top-k captions per row
+        all_raw_image: optional list of PIL images for showing the query
+        device: computation device
+
+    Returns:
+        list of figures, one per query image
+    """
+    model.eval()
+
+    if isinstance(conditions, np.ndarray):
+        conditions = torch.from_numpy(conditions).float()
+    conditions = conditions.to(device)
+
+    image_embs, text_embs, all_captions_flat, img_to_cap_map = precomputed_data
+    n_conditions = len(conditions)
+    n_rows = n_conditions + 1          # +1 for CLIP baseline row
+    show_image = all_raw_image is not None
+
+    img_col_w = min(2.0 + n_rows * 0.12, 3.5)   # scales with total rows
+    txt_col_w = 2.6
+    row_h = 1.5
+    n_cols = k + (1 if show_image else 0)
+    total_w = (img_col_w if show_image else 0) + txt_col_w * k
+
+    figs = []
+
+    for query_id in range(n_queries):
+        gt_raw = img_to_cap_map[query_id]
+        gt_cap_set = set(gt_raw.tolist() if isinstance(gt_raw, torch.Tensor) else gt_raw)
+
+        fig = plt.figure(
+            figsize=(total_w, row_h * n_rows),
+            constrained_layout=True,
+            dpi=80,
+        )
+        width_ratios = ([img_col_w] if show_image else []) + [txt_col_w] * k
+        gs = gridspec.GridSpec(n_rows, n_cols, figure=fig, width_ratios=width_ratios)
+
+        fig.suptitle(
+            f"Image→Text  |  Query image idx={query_id}",
+            fontsize=9, fontweight="bold",
+        )
+
+        # Query image spanning all rows (shown once)
+        if show_image:
+            ax_img = fig.add_subplot(gs[:, 0])
+            ax_img.imshow(all_raw_image[query_id])
+            ax_img.axis("off")
+            ax_img.set_title("Query", fontsize=7, pad=2)
+
+        txt_offset = 1 if show_image else 0
+
+        def _render_row(row_idx, row_label, cap_indices, captions):
+            for rank, (cap_idx, caption) in enumerate(zip(cap_indices, captions)):
+                ax = fig.add_subplot(gs[row_idx, rank + txt_offset])
+                ax.axis("off")
+
+                if rank == 0:
+                    ax.set_ylabel(
+                        row_label, fontsize=7, rotation=0,
+                        ha="right", va="center", labelpad=3,
+                    )
+                    ax.yaxis.set_label_coords(-0.06, 0.5)
+                    ax.yaxis.label.set_visible(True)
+
+                if row_idx == 0:
+                    ax.set_title(f"Rank {rank + 1}", fontsize=7, pad=2)
+
+                words = caption.split()
+                truncated = " ".join(words[:30]) + ("…" if len(words) > 30 else "")
+                wrapped = "\n".join(textwrap.wrap(truncated, width=38))
+                facecolor = "limegreen" if cap_idx in gt_cap_set else "lightblue"
+
+                ax.text(
+                    0.5, 0.5, wrapped,
+                    fontsize=5.5, va="center", ha="center",
+                    family="monospace", linespacing=1.3,
+                    bbox=dict(boxstyle="round,pad=0.3", facecolor=facecolor, alpha=0.35),
+                    transform=ax.transAxes,
+                )
+
+        # Row 0: CLIP baseline
+        base_idx, base_caps = _clip_baseline_i2t(
+            image_embs, text_embs, all_captions_flat, query_id, k, device
+        )
+        _render_row(0, "CLIP", base_idx, base_caps)
+
+        # Rows 1..N: conditioned
+        for cond_idx, condition in enumerate(conditions):
+            cap_indices, top_captions = retrieve_with_condition_fast(
+                model, precomputed_data, condition,
+                query_image_id=query_id, k=k, device=device,
+            )
+            _render_row(cond_idx + 1, f"C{cond_idx}", cap_indices, top_captions)
+
+        figs.append(fig)
+
+    return figs
+
+
+def visualize_given_conditions_text_to_image(
+    conditions, model, precomputed_data, n_queries=3, texts_per_image=5, k=4, device=None
+):
+    """
+    Text-to-image retrieval visualization with pre-given conditions.
+
+    Each figure corresponds to one query text and shows how different conditions
+    change the retrieved images. Layout: N_conditions rows x k columns (images).
+
+    The first n_queries * texts_per_image texts are used as queries (matching the
+    first n_queries images' captions). Produces one figure per query text.
+
+    Args:
+        conditions: [N, D] condition embeddings (pre-sampled, not generated here)
+        model: CoSiR model
+        precomputed_data: tuple of (all_img_emb, all_txt_emb, all_raw_image, all_raw_text)
+        n_queries: number of source images — queries are the first n_queries * texts_per_image texts
+        texts_per_image: captions per image (default 5 for COCO-style datasets)
+        k: number of top images to retrieve per condition
+        device: computation device
+
+    Returns:
+        figs: list of matplotlib figures, one per query text
+    """
+    model.eval()
+
+    if isinstance(conditions, np.ndarray):
+        conditions = torch.from_numpy(conditions).float()
+    conditions = conditions.to(device)
+
+    n_conditions = len(conditions)
+    image_embs, text_embs, all_raw_image, all_raw_text = precomputed_data
+    n_rows = n_conditions + 1          # +1 for CLIP baseline row
+
+    n_text_queries = n_queries * texts_per_image
+    img_size = 1.5  # inches per image cell
+    figs = []
+
+    for query_text_id in range(n_text_queries):
+        query_text = all_raw_text[query_text_id]
+        source_image_idx = query_text_id // texts_per_image
+        caption_idx = query_text_id % texts_per_image
+
+        fig, axes = plt.subplots(
+            n_rows, k,
+            figsize=(img_size * k, img_size * n_rows),
+            squeeze=False,
+            dpi=80,
+        )
+        fig.suptitle(
+            f"Text→Image  |  Src img {source_image_idx}, caption {caption_idx}\n"
+            f'"{query_text[:90]}{"…" if len(query_text) > 90 else ""}"',
+            fontsize=8, fontweight="bold", y=1.02,
+        )
+
+        def _render_img_row(row_idx, row_label, img_indices, images):
+            for rank, (img_idx, img) in enumerate(zip(img_indices, images)):
+                ax = axes[row_idx, rank]
+                ax.imshow(img)
+                ax.set_xticks([])
+                ax.set_yticks([])
+
+                if rank == 0:
+                    ax.set_ylabel(
+                        row_label, fontsize=5.5, rotation=0, labelpad=4,
+                        ha="right", va="center",
+                    )
+                    ax.yaxis.set_label_coords(-0.02, 0.5)
+                    ax.yaxis.label.set_visible(True)
+
+                if row_idx == 0:
+                    ax.set_title(f"Rank {rank + 1}", fontsize=7, pad=2)
+
+                is_gt = (img_idx == source_image_idx)
+                for spine in ax.spines.values():
+                    spine.set_visible(is_gt)
+                    spine.set_edgecolor("limegreen" if is_gt else "none")
+                    spine.set_linewidth(3 if is_gt else 0)
+
+        # Row 0: CLIP baseline
+        base_idx, base_imgs = _clip_baseline_t2i(
+            image_embs, text_embs, all_raw_image, query_text_id, k, device
+        )
+        _render_img_row(0, "CLIP", base_idx, base_imgs)
+
+        # Rows 1..N: conditioned
+        for cond_idx, condition in enumerate(conditions):
+            img_indices, top_images = retrieve_image_with_condition_fast(
+                model, precomputed_data, condition,
+                query_text_id=query_text_id, k=k, device=device,
+            )
+            _render_img_row(cond_idx + 1, f"C{cond_idx}", img_indices, top_images)
+
+        plt.tight_layout()
+        figs.append(fig)
+
+    return figs

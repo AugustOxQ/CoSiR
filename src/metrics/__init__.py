@@ -1,2 +1,1 @@
-from .loss import LabelContrastiveLoss_enhance, LabelPredictionLoss
-from .loss import LabelClassificationLoss
+from .loss import LabelContrastiveLoss_enhance, predictor_consistency_loss

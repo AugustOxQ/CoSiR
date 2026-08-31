@@ -12,7 +12,6 @@ data:
 # Feature manager paths - dataset specific
 featuremanager:
   storage_dir: "/local/wding/Dataset/pre_extract/cc3m/features"
-  sample_ids_path: "/local/wding/Dataset/pre_extract/cc3m/sample_ids.pt"
 
 # Experiment Configuration
 experiment:

@@ -1,9 +1,9 @@
 # CoSiR Training Configuration
 defaults:
   - dataset: coco
-  - model: base
+  - model: clip_base
   - train: default
-  - experiment: default
+  - infra: default
   - _self_
 
 # Random seed for reproducibility
@@ -15,9 +15,10 @@ device: cuda
 # W&B logging configuration
 wandb:
   enabled: true
-  project: cosir_phase_1
+  project: cosir_image
   entity: augustoxq
   name: ""
+  group: ""
   tags: [Local]
   notes: "CoSiR Training"
   mode: online

@@ -25,6 +25,7 @@ def get_umap(
     samples_to_track=[],
     z_threshold=3,
     no_outlier=True,
+    representatives=None,
 ):
 
     fig = plt.figure(figsize=(10, 10))
@@ -77,6 +78,18 @@ def get_umap(
                     x, y, f"Sample {sample_idx}", fontsize=12, color="black"
                 )  # Annotate the sample
 
+    # Overlay representative points as gold stars
+    if representatives is not None:
+        reps_np = representatives.cpu().numpy() if hasattr(representatives, "cpu") else np.array(representatives)
+        plt.scatter(
+            reps_np[:, 0], reps_np[:, 1],
+            marker="*", s=300, c="gold", edgecolors="k", linewidths=0.5,
+            zorder=5, label="Representatives",
+        )
+        for i, (x, y) in enumerate(reps_np):
+            plt.text(x, y, str(i), fontsize=7, ha="center", va="bottom", color="black")
+        plt.legend(loc="upper right")
+
     # Add the number of UMAP labels to the plot as title
     plt.title(
         f"UMAP clusters at epoch {epoch} (outliers removed)"
@@ -89,77 +102,58 @@ def get_umap(
 
 
 def visualize_ideal_condition_space(conditions_2d, epoch):
-    """
-    理想的可视化应该显示：
-    - 清晰的径向结构（同心圆）
-    - 角度方向上的平滑过渡
-    - 8-12个明显的聚类区域
-    """
+    """Visualize condition space in polar and Cartesian views, coloured by radius and angle."""
     if isinstance(conditions_2d, torch.Tensor):
         conditions_np = conditions_2d.detach().cpu().numpy()
     else:
         conditions_np = np.array(conditions_2d)
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 12), subplot_kw={"projection": "polar"})
-    axes = axes.flatten()  # 将2x2的axes展平为1D数组
+    axes = axes.flatten()
 
-    # 转换为极坐标
     angles = np.arctan2(conditions_np[:, 1], conditions_np[:, 0])
     radii = np.linalg.norm(conditions_np, axis=1)
 
-    # 图1: 真正的极坐标散点图
+    # Plot 1: polar scatter
     ax = axes[0]
     ax.scatter(angles, radii, alpha=0.6, s=8)
     ax.set_title(f"Polar Coordinate Visualization at epoch {epoch}")
     ax.set_ylim(0, np.max(radii) * 1.1)
-
-    # 添加角度标记
     ax.set_xticks(np.linspace(0, 2 * np.pi, 8, endpoint=False))
     ax.set_xticklabels(
         [f"{int(np.degrees(t))}°" for t in np.linspace(0, 2 * np.pi, 8, endpoint=False)]
     )
 
-    # 图2: 笛卡尔坐标系中的散点图 + 极坐标网格
+    # Plot 2: Cartesian scatter + polar grid overlay
+    # remove() is needed because the subplot was created with projection="polar"
     ax = axes[1]
-    ax.remove()  # 移除极坐标投影
-    ax = fig.add_subplot(2, 2, 2)  # 添加新的笛卡尔坐标轴
-
+    ax.remove()
+    ax = fig.add_subplot(2, 2, 2)
     ax.scatter(conditions_np[:, 0], conditions_np[:, 1], alpha=0.6, s=8)
-
-    # 添加极坐标网格
     max_radius = np.max(radii)
     for r in np.linspace(0.2, max_radius, 5):
         circle = patches.Circle(
             (0, 0), r, fill=False, linestyle="--", alpha=0.3, color="gray"
         )
         ax.add_patch(circle)
-
     for angle in np.linspace(0, 2 * np.pi, 8, endpoint=False):
         ax.plot(
             [0, max_radius * np.cos(angle)],
             [0, max_radius * np.sin(angle)],
-            "k--",
-            alpha=0.3,
-            linewidth=0.5,
+            "k--", alpha=0.3, linewidth=0.5,
         )
-
     ax.set_aspect("equal")
     ax.set_title(f"Cartesian with Polar Grid at epoch {epoch}")
     ax.set_xlabel("Dimension 0")
     ax.set_ylabel("Dimension 1")
 
-    # 图3: 按半径着色
+    # Plot 3: coloured by radius (modulation strength)
     ax = axes[2]
-    ax.remove()  # 移除极坐标投影
-    ax = fig.add_subplot(2, 2, 3)  # 添加新的笛卡尔坐标轴
-
+    ax.remove()
+    ax = fig.add_subplot(2, 2, 3)
     scatter = ax.scatter(
-        conditions_np[:, 0],
-        conditions_np[:, 1],
-        c=radii,
-        cmap="viridis",
-        alpha=0.6,
-        s=10,
+        conditions_np[:, 0], conditions_np[:, 1],
+        c=radii, cmap="viridis", alpha=0.6, s=10,
     )
     plt.colorbar(scatter, ax=ax, label="Radius (Modulation Strength)")
     ax.set_aspect("equal")
@@ -167,13 +161,13 @@ def visualize_ideal_condition_space(conditions_2d, epoch):
     ax.set_xlabel("Dimension 0")
     ax.set_ylabel("Dimension 1")
 
-    # 图4: 按角度着色
+    # Plot 4: coloured by angle (semantic type)
     ax = axes[3]
-    ax.remove()  # 移除极坐标投影
-    ax = fig.add_subplot(2, 2, 4)  # 添加新的笛卡尔坐标轴
-
+    ax.remove()
+    ax = fig.add_subplot(2, 2, 4)
     scatter = ax.scatter(
-        conditions_np[:, 0], conditions_np[:, 1], c=angles, cmap="hsv", alpha=0.6, s=10
+        conditions_np[:, 0], conditions_np[:, 1],
+        c=angles, cmap="hsv", alpha=0.6, s=10,
     )
     plt.colorbar(scatter, ax=ax, label="Angle (Semantic Type)")
     ax.set_aspect("equal")
@@ -182,15 +176,11 @@ def visualize_ideal_condition_space(conditions_2d, epoch):
     ax.set_ylabel("Dimension 1")
 
     plt.tight_layout()
-
     return fig
 
 
 def visualize_angular_semantics(conditions_2d, model, test_set):
-    """
-    显示每个角度区间的典型检索结果
-    理想效果：清晰的语义渐变
-    """
+    """Show representative retrievals for each angular bin (12 sectors)."""
     n_bins = 12
     angles = torch.atan2(conditions_2d[:, 1], conditions_2d[:, 0])
     angle_bins = torch.linspace(-np.pi, np.pi, n_bins + 1)
@@ -205,73 +195,20 @@ def visualize_angular_semantics(conditions_2d, model, test_set):
         if len(bin_conditions) == 0:
             continue
 
-        # 选择该bin的中位数condition
         bin_center = bin_conditions.median(0)[0]
 
-        # 检索 (需要实现 retrieve_with_condition 函数)
-        # top_captions = retrieve_with_condition(
-        #     model, test_set, bin_center, k=5
-        # )  # 更新方程
-        top_captions = [f"Caption {j+1}" for j in range(5)]  # 占位符
+        # retrieve_with_condition is not yet wired up; placeholder captions shown
+        # top_captions = retrieve_with_condition(model, test_set, bin_center, k=5)
+        top_captions = [f"Caption {j+1}" for j in range(5)]
 
-        # 显示
         ax = axes[i]
         ax.axis("off")
         ax.set_title(
             f"Angle: {np.degrees(angle_bins[i]):.0f}° - {np.degrees(angle_bins[i+1]):.0f}°"
         )
-
-        # 显示检索到的captions
         text = "\n".join([f"{j+1}. {cap}" for j, cap in enumerate(top_captions)])
         ax.text(0.1, 0.5, text, fontsize=8, va="center", wrap=True)
 
     plt.tight_layout()
-
     return fig
 
-
-def test_umap():
-    umap_features_np = np.random.rand(10000, 2)
-    umap_labels = torch.tensor([0] * 5000 + [1] * 5000, device="cpu")
-    print(umap_labels.shape)
-
-    fig = get_umap(
-        umap_features_np,
-        umap_labels,
-        epoch=0,
-        no_outlier=False,
-        samples_to_track=[0, 1, 2, 3, 4],
-    )
-    fig.savefig("src/utils/umap/umap.png", dpi=480, bbox_inches="tight")
-
-    fig = get_umap(
-        umap_features_np,
-        umap_labels,
-        epoch=0,
-        no_outlier=True,
-        samples_to_track=[0, 1, 2, 3, 4],
-    )
-    fig.savefig("src/utils/umap/umap_nooutlier.png", dpi=480, bbox_inches="tight")
-
-
-def test_ideal_condition_space():
-    conditions_2d = np.random.rand(1000, 2)
-    fig = visualize_ideal_condition_space(conditions_2d, epoch=0)
-    fig.savefig(
-        "src/utils/umap/ideal_condition_space.png", dpi=480, bbox_inches="tight"
-    )
-
-
-def test_angular_semantics():
-    conditions_2d = np.random.rand(1000, 2)
-    fig = visualize_angular_semantics(conditions_2d, model, test_set)
-    fig.savefig("src/utils/umap/angular_semantics.png", dpi=480, bbox_inches="tight")
-
-
-def main():
-    test_umap()
-    test_ideal_condition_space()
-
-
-if __name__ == "__main__":
-    main()

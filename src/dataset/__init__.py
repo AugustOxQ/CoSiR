@@ -2,6 +2,8 @@ from .cosir_datamodule import (
     FeatureExtractionDataset,
     CoSiRTrainingDataset,
     CoSiRTrainingChunkDataset,
+    CoSiRShardDataset,
+    CoSiRShardStreamDataset,
     CoSiRValidationDataset,
 )
 

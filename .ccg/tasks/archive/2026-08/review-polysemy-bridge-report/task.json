@@ -1,0 +1,12 @@
+{
+  "id": "review-polysemy-bridge-report",
+  "title": "Clarify Experiment 12 bridge diagnostic report",
+  "status": "completed",
+  "complexity": "S",
+  "risk": "low",
+  "domain": "research",
+  "currentPhase": "completed",
+  "nextAction": "Archived",
+  "createdAt": "2026-08-26T22:27:51Z",
+  "branch": "experiment/condition_drift_retrieval_correlation"
+}

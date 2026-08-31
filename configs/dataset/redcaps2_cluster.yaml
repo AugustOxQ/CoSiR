@@ -1,0 +1,26 @@
+# @package _global_
+# RedCaps Dataset Configuration
+
+# Dataset paths
+data:
+  dataset_type: "redcaps2"
+  train_annotation_path: "/var/scratch/wding/Dataset/redcaps_plus/redcaps_medium.json"
+  test_annotation_path: "/var/scratch/wding/Dataset/redcaps_plus/redcaps_test.json"
+  train_image_path: ""
+  test_image_path: "/var/scratch/wding/Dataset//redcaps_test"
+
+# Feature manager paths - dataset specific
+featuremanager:
+  storage_dir: "/local/wding/Dataset/pre_extract/redcaps/features"
+
+# Experiment Configuration
+experiment:
+  name: "CoSiR_Experiment"
+  tags: ["CoSiR", "RedCaps2", "Cluster"]
+  description: "Comprehensive experiment for CoSiR"
+  results_dir: "/local/wding/res/CoSiR_Experiment/redcaps2" # Depends on the dataset
+
+
+# This is for redcaps test set
+# test_annotation_path: "/data/PDD/redcaps/redcaps_plus/redcaps_test.json"
+# test_image_path: "/data/PDD"
