@@ -500,10 +500,15 @@ def hub_neighbor_pairs(typed: dict, bridge_stats: dict, N: int) -> dict:
     """For every 'hub' node (>=2 txt_only neighbors, Experiment 14), enumerate all
     unordered pairs of its txt_only neighbors and label each pair 'closed' (the pair is
     ALSO connected by a real img_only edge -- a closed triangle: hub--C txt_only,
-    hub--D txt_only, C--D img_only) or 'open' (no such direct edge -- structurally
-    identical to Experiment 12's B/C bridge pair, but sourced from a >=2-txt-neighbor
-    hub instead of a single-txt-neighbor bridge). A node can contribute to multiple
-    pairs if it has 3+ txt_only neighbors.
+    hub--D txt_only, C--D img_only) or 'open' (NOT an img_only edge specifically --
+    this does NOT mean unconnected: a C/D pair can still be linked by a txt_only,
+    'both', or 'repair' edge, since both are already txt_only neighbors of the same
+    hub and are plausibly txt-similar to each other too. Callers who need a genuine
+    "no edge of any kind" control group must additionally check membership against
+    `typed["keys"]` as a whole, not just `typed["img_only"]` -- see Experiment 14's
+    report, docs/reports/2026-08-31_closed_triangle_bridge_diagnostic.md, which found
+    ~52% of 'open'-labeled pairs are contaminated this way). A node can contribute to
+    multiple pairs if it has 3+ txt_only neighbors.
 
     Returns {"hub": int64 (M,), "c": int64 (M,), "d": int64 (M,), "is_closed": bool (M,)}."""
     keys = typed["keys"]

@@ -723,7 +723,7 @@ def main():
         print(f"  hub nodes (deg_txt_only >= 2): {counts['n_hub_nodes']:,}")
         print(f"  hub neighbor-pairs total: {counts['n_pairs_total']:,}")
         print(f"  closed (real img_only edge): {counts['n_closed']:,}")
-        print(f"  open (no direct edge): {counts['n_open']:,}")
+        print(f"  open (not img_only specifically -- may still be txt_only/other-connected): {counts['n_open']:,}")
         return
 
     result = run(
