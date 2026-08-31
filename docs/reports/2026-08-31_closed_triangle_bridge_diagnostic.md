@@ -88,6 +88,41 @@ For context, Experiment 12's original single-neighbor bridge pull (the classic B
 - **The modality-mirrored configuration was not tested** (see Interpretation #5).
 - **The CLI's printed summary omits the `is_hub`/`in_closed_triangle`/`in_open_hub_pair` correlations** (a minor gap in the implementation plan's print-block spec, not a computation bug) — all numbers in this report were read directly from the `--out` JSON and from supplementary one-off scripts (see Reproduction), where they are correctly present.
 
+## Addendum (2026-09-01): the full edge-type breakdown, not just closed-vs-unconnected
+
+The primary result collapses C–D's relationship into a binary (closed-triangle vs. genuinely unconnected), but the union graph `E` actually distinguishes **five** possible relationships (`classify_edges`' own four edge-type buckets, plus "no edge at all"). Breaking the comparison out fully reveals a genuine dose-response pattern, not just a two-way split, and surfaces one further asymmetry.
+
+**C–D by all edge types, population-scale (same 3-seed pooling, 5,000 pairs/category/seed):**
+
+| C–D relationship | Population share (of 8,940,974 hub pairs) | Pooled mean pull | mean/SEM | Ratio vs. unconnected |
+|---|---|---|---|---|
+| `both` (mutual NN in image AND text) | 1.81% (161,907) | +3.2597 ± 0.0076 | +428.7 | **1.35×** |
+| `img_only` (the closed triangle tested above) | 0.79% (70,544) | +3.1681 ± 0.0057 | +553.7 | **1.32×** |
+| `txt_only` | 49.48% (4,423,995) | +2.7324 ± 0.0053 | +517.8 | **1.13×** |
+| `repair` (graph-connectivity bridge edges) | 0% in this pool | — | — | — |
+| unconnected | 47.92% (4,284,528) | +2.4100 ± 0.0049 | +495.1 | 1.00× (baseline) |
+
+This is a clean monotone ordering — `both` > `img_only` > `txt_only` > unconnected — i.e. the embedding's pull scales with how much real connectivity evidence exists between the pair, not just a binary "connected or not." Two things stand out: **`img_only` pulls ~16% harder than `txt_only`** despite both being "one direct edge of some type" (1.32× vs. 1.13× relative to unconnected) — a real asymmetry between the two modalities' single-edge pull strength, echoing the img/txt asymmetry theme running through C9–C11, though no mechanistic link is claimed here. And **`txt_only` dominates C–D's population (49.5% of all hub pairs)** — since C and D are already both text-only neighbors of the same hub, a direct text-only edge between them is the modal outcome, not a rare one; this is the specific source of the ~52% contamination the correction above found in the original "open" definition.
+
+**B–C and B–D, exploratory (same 5,000-row sample, hub-restricted — see caveat below):**
+
+| Pair | Relationship | Sample share | Pooled pull | mean/SEM |
+|---|---|---|---|---|
+| B–C | `txt_only` | ~1.0% (n≈35-56/seed) | +3.0414 ± 0.0306 | +99.5 |
+| B–C | `img_only` | ~1.3% (n≈55-66/seed) | +2.9870 ± 0.1684 | +17.7 |
+| B–C | `both` | too rare (n<10/seed) | — | — |
+| B–C | unconnected | ~97.9% (n≈4,671-4,684/seed) | +2.1206 ± 0.0045 | +469.4 |
+| B–D | `txt_only` | ~1.0% (n≈43-56/seed) | +2.9647 ± 0.1032 | +28.7 |
+| B–D | `img_only` | ~1.4% (n≈64-71/seed) | +2.9900 ± 0.0944 | +31.7 |
+| B–D | `both` | too rare (n<10/seed) | — | — |
+| B–D | unconnected | ~97.8% (n≈4,657-4,664/seed) | +2.1187 ± 0.0050 | +423.6 |
+
+B–C/B–D's unconnected pull (+2.12) is ~12% lower than C–D's unconnected pull (+2.41) — the interesting new observation from this breakdown: the false-transitivity artifact isn't just a function of graph distance, it also depends on whether the indirect path stays within one modality (C–D, both text-linked to the hub) or crosses modalities (B–C/B–D, one image-linked + one text-linked). A same-modality indirect path produces more pull than a cross-modality one, even when both are equally unconnected.
+
+**Caveat on this addendum, and a correction to a comparison offered in conversation before this report was updated:** the B–C/B–D sample was drawn only from **hubs that are also bridges** (105,286 of 110,405 hubs — nodes with ≥2 text-only neighbors AND ≥1 image-only neighbor), not from Experiment 12's full bridge-node population (120,324 nodes, any node with ≥1 image-only AND ≥1 text-only neighbor, including the ~15,000 with only a single text-only neighbor). Hub nodes run higher-degree on average (mean `deg_txt_only` ≈ 19-21 among hubs) than the general bridge population, and higher-degree nodes plausibly sit in more tightly-compressed regions of the spectral embedding — so B–C's +2.12 here is not a controlled, apples-to-apples comparison against Experiment 12's originally-reported +1.98 B–C statistic; the gap is more likely a population/degree artifact than evidence about "unconnected" pairs behaving differently across experiments. A proper controlled comparison would need a matched sample of plain (non-hub) bridge nodes, sampled the same way — not run here. The `img_only`/`txt_only` B–C/B–D rows above are also based on much smaller per-seed samples (35-71 rows) than the C–D table's population-scale rows (5,000/seed), so their mean/SEM values, while large, rest on a thinner evidence base.
+
+This addendum's findings are exploratory extensions of C12, not incorporated into the C12 claims-table row itself (which reports the pre-registered primary comparison only) — except the C–D dose-response ordering, which is population-scale and solid enough to note briefly in the spec.
+
 ## Reproduction
 
 ```bash
@@ -117,4 +152,21 @@ python scripts/analyze_polysemy_bridges.py \
 # sample_baselines/embedded_l2_distance/paired_pull_summary unchanged, redefining only which
 # pairs count as the "open" comparison group (checked against typed["keys"] in full, not just
 # typed["img_only"]). See this report's git history / session record for the exact script.
+```
+
+**Addendum's full edge-type breakdown** (also a standalone script, not promoted into the library, reusing the same unchanged functions):
+
+```bash
+# C-D by all 5 categories (img_only/txt_only/both/repair/unconnected): classify every raw
+# hub pair's C-D relationship against classify_edges' own typed["img_only"/"txt_only"/"both"]
+# masks plus typed["keys"] membership for "unconnected", then sample up to 5,000/category/seed
+# and run the same sample_baselines/embedded_l2_distance/paired_pull_summary pipeline per
+# category. Repeat for seed in {0, 1, 2} and pool.
+#
+# B-C and B-D: for the same (hub, C, D) rows, pick one random image-only neighbor B per hub
+# (requires the hub to also be a bridge -- deg_img_only >= 1, true for 105,286/110,405 hubs),
+# classify B-C and B-D the same 5-way way, and run the same pull pipeline. NOTE: this reuses
+# the hub-restricted sample, not a fresh draw from Experiment 12's full bridge-node population
+# -- see the addendum's caveat before comparing against Experiment 12's original +1.98 B-C
+# statistic. See this report's git history / session record for the exact scripts.
 ```
