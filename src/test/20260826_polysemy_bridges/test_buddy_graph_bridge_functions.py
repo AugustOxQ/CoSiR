@@ -14,7 +14,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 import numpy as np
 from scipy.sparse import csr_matrix
 
-from src.conditional_buddy.buddy_graph import bridge_node_stats, classify_edges, hub_neighbor_pairs
+from src.conditional_buddy.buddy_graph import (
+    bridge_node_stats,
+    classify_edges,
+    hub_neighbor_pairs,
+    pairwise_cosine_distances,
+    minimum_cosine_distance_mask,
+)
 
 
 def _csr(n, edges):
@@ -116,9 +122,46 @@ def test_hub_neighbor_pairs_closed_vs_open():
     print("PASS test_hub_neighbor_pairs_closed_vs_open")
 
 
+def test_pairwise_cosine_distances_for_normalized_features():
+    """The helper is modality-agnostic: image and text CLIP rows use the same
+    normalized-vector cosine geometry.  The selected pairs here have distances
+    0.2, 1.0, and 1.8 respectively."""
+    features = np.array([
+        [1.0, 0.0],
+        [0.8, 0.6],
+        [0.0, 1.0],
+        [-1.0, 0.0],
+    ], dtype=np.float32)
+
+    distances = pairwise_cosine_distances(features, [0, 0, 1], [1, 2, 3])
+
+    np.testing.assert_allclose(distances, [0.2, 1.0, 1.8], atol=1e-6)
+    print("PASS test_pairwise_cosine_distances_for_normalized_features")
+
+
+def test_minimum_cosine_distance_mask_keeps_only_distinct_pairs():
+    """An illustration sampler can retain only C/D pairs that clear its chosen
+    image-feature distance threshold, without changing their graph bucket."""
+    features = np.array([
+        [1.0, 0.0],
+        [0.8, 0.6],
+        [0.0, 1.0],
+        [-1.0, 0.0],
+    ], dtype=np.float32)
+
+    eligible = minimum_cosine_distance_mask(
+        features, [0, 0, 1], [1, 2, 3], min_distance=1.0,
+    )
+
+    assert eligible.tolist() == [False, True, True], eligible
+    print("PASS test_minimum_cosine_distance_mask_keeps_only_distinct_pairs")
+
+
 if __name__ == "__main__":
     test_classify_edges_buckets_correctly()
     test_bridge_node_detection()
     test_img_only_and_txt_only_neighbor_sets_are_disjoint()
     test_hub_neighbor_pairs_closed_vs_open()
+    test_pairwise_cosine_distances_for_normalized_features()
+    test_minimum_cosine_distance_mask_keeps_only_distinct_pairs()
     print("ALL TESTS PASSED")

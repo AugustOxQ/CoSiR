@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Same Trailhead — Example Browser</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;0,700;1,500&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+    :root { --paper:#f1f4eb; --paper-panel:#e7ecdd; --paper-panel-2:#dde4cd; --ink:#24321f; --ink-soft:#566149; --ink-faint:#7c8570; --line:#c6d0b7; --line-strong:#a9b596; --accent-img:#2b6ca3; --accent-txt:#a9631f; --accent-both:#1f7a57; --accent-unconn:#8b8272; --waypoint:#b8402a; --waypoint-soft:#b8402a22; --shadow:0 1px 2px rgba(36,50,31,.08),0 6px 20px rgba(36,50,31,.10); color-scheme:light dark; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --paper:#1a201a; --paper-panel:#232a21; --paper-panel-2:#2b3327; --ink:#e8eee0; --ink-soft:#aeb99f; --ink-faint:#7f8a72; --line:#3a4434; --line-strong:#4d5946; --accent-img:#74acdc; --accent-txt:#dd9c55; --accent-both:#55c48e; --accent-unconn:#9b9382; --waypoint:#e2825f; --waypoint-soft:#e2825f2a; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35); } }
+    :root[data-theme="dark"] { --paper:#1a201a; --paper-panel:#232a21; --paper-panel-2:#2b3327; --ink:#e8eee0; --ink-soft:#aeb99f; --ink-faint:#7f8a72; --line:#3a4434; --line-strong:#4d5946; --accent-img:#74acdc; --accent-txt:#dd9c55; --accent-both:#55c48e; --accent-unconn:#9b9382; --waypoint:#e2825f; --waypoint-soft:#e2825f2a; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35); }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:"Public Sans",ui-sans-serif,system-ui,sans-serif; font-size:15px; line-height:1.55; padding:28px 20px 60px; }
+    .wrap { max-width:1080px; margin:0 auto; }
+    .eyebrow { display:flex; align-items:center; gap:10px; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint); }
+    .eyebrow .dot { width:6px; height:6px; border-radius:50%; background:var(--waypoint); flex:none; }
+    h1 { margin:10px 0 14px; font-family:"Fraunces",ui-serif,Georgia,serif; font-size:clamp(34px,5vw,50px); font-weight:600; line-height:1.04; letter-spacing:-.01em; text-wrap:balance; }
+    .lede { max-width:66ch; color:var(--ink-soft); font-size:16.5px; } .lede b { color:var(--ink); font-weight:600; } header.page { margin-bottom:24px; }
+    .browser-nav { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:18px; }
+    .index-status { min-width:132px; font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink-faint); text-align:center; }
+    button, input { font:inherit; } button { border:1.5px solid var(--line); border-radius:7px; padding:8px 13px; color:var(--ink-soft); background:var(--paper-panel); cursor:pointer; font-size:12.5px; font-weight:600; transition:transform 100ms ease,border-color 150ms ease,background 150ms ease; } button:hover:not(:disabled) { transform:translateY(-1px); border-color:var(--line-strong); } button:focus-visible, input:focus-visible { outline:2px solid var(--waypoint); outline-offset:2px; } button:disabled { cursor:default; opacity:.48; }
+    .index-input { width:72px; padding:8px; border:1.5px solid var(--line); border-radius:7px; color:var(--ink); background:var(--paper-panel); font-family:"IBM Plex Mono",monospace; font-size:12.5px; }
+    .stage { display:grid; grid-template-columns:1.35fr 1fr; gap:18px; align-items:start; } @media (max-width:860px) { .stage { grid-template-columns:1fr; } }
+    .panel { background:var(--paper-panel); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); }
+    .panel-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding:16px 18px 0; }
+    .panel-title { font-family:"Fraunces",serif; font-weight:600; font-size:18px; } .panel-note { font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink-faint); text-align:right; }
+    .map-body { padding:6px 12px 4px; } svg#map { display:block; width:100%; height:auto; }
+    .node-label { fill:var(--paper); font-family:"Fraunces",serif; font-size:20px; font-weight:700; } .node-sub { fill:var(--ink-soft); font-family:"IBM Plex Mono",monospace; font-size:10.5px; }
+    .edge-fixed-txt { stroke:var(--accent-txt); } .edge-fixed-img { stroke:var(--accent-img); } .edge-cd { transition:stroke 220ms ease,stroke-width 220ms ease,stroke-dasharray 220ms ease; } .waypoint-ring { fill:var(--waypoint); }
+    .legend { display:grid; grid-template-columns:repeat(2,1fr); gap:6px 16px; padding:6px 18px 16px; font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink-soft); } .legend-item { display:flex; align-items:center; gap:8px; } .legend-swatch { width:22px; height:0; border-top:3px solid; flex:none; } .legend-swatch.dashed { border-top-style:dashed; } .legend-pct { margin-left:auto; color:var(--ink-faint); }
+    .readout { margin:4px 18px 18px; padding:14px 16px; background:var(--paper-panel-2); border:1px solid var(--line); border-radius:8px; } .readout-row { display:flex; align-items:baseline; justify-content:space-between; gap:10px; } .readout-label { font-family:"IBM Plex Mono",monospace; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); } .readout-value { font-family:"IBM Plex Mono",monospace; font-size:18px; font-weight:600; font-variant-numeric:tabular-nums; text-align:right; } .readout-value .unit { display:block; margin-top:2px; font-size:11px; font-weight:400; color:var(--ink-faint); }
+    .facts { margin-top:8px; color:var(--ink-soft); font-family:"IBM Plex Mono",monospace; font-size:11px; }
+    .dose { position:relative; height:34px; margin-top:14px; } .dose-track { position:absolute; top:16px; right:0; left:0; height:2px; border-radius:2px; background:var(--line-strong); } .dose-tick { position:absolute; top:8px; width:18px; height:18px; margin-left:-9px; border:2px solid var(--paper-panel-2); border-radius:50%; transition:background 200ms ease,transform 200ms ease,box-shadow 200ms ease; cursor:default; } .dose-tick[data-cat="unconnected"] { background:var(--accent-unconn); } .dose-tick[data-cat="txt_only"] { background:var(--accent-txt); } .dose-tick[data-cat="img_only"] { background:var(--accent-img); } .dose-tick[data-cat="both"] { background:var(--accent-both); } .dose-tick[data-active="true"] { transform:scale(1.35); box-shadow:0 0 0 3px var(--waypoint-soft); } .dose-caption { display:flex; justify-content:space-between; margin-top:2px; font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--ink-faint); }
+    .confound-note { margin:12px 14px 4px; padding:12px 14px; background:var(--paper); border:1px solid var(--line); border-left:3px solid var(--waypoint); border-radius:6px; color:var(--ink-soft); font-size:12.5px; } .confound-note .confound-label { margin-bottom:5px; font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--waypoint); } .confound-note p { margin:0 0 6px; } .confound-note p:last-child { margin-bottom:0; } .confound-note b { color:var(--ink); font-weight:600; }
+    .cards { display:flex; flex-direction:column; gap:12px; padding:14px 14px 18px; } .card-group-label { padding:0 2px; font-family:"IBM Plex Mono",monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-faint); } .card { display:grid; grid-template-columns:74px 1fr; gap:12px; align-items:center; padding:10px; } .card-photo-wrap { position:relative; width:74px; height:74px; } .card-photo { display:block; width:74px; height:74px; border:1px solid var(--line); border-radius:6px; object-fit:cover; } .card-badge { position:absolute; top:-7px; left:-7px; display:flex; align-items:center; justify-content:center; width:24px; height:24px; border:2px solid var(--paper-panel); border-radius:50%; background:var(--waypoint); color:var(--paper); font-family:"Fraunces",serif; font-size:13px; font-weight:700; } .card-caption { color:var(--ink); font-size:13.5px; font-style:italic; line-height:1.35; } .card-meta { margin-top:3px; color:var(--ink-faint); font-family:"IBM Plex Mono",monospace; font-size:10.5px; overflow-wrap:anywhere; } .card[data-role="A"],.card[data-role="B"] { border:1px solid var(--line); border-radius:8px; background:var(--paper-panel-2); } .card[data-role="C"],.card[data-role="D"] { border:1.5px dashed var(--line-strong); border-radius:8px; background:var(--paper); } .divider-row { display:flex; align-items:center; gap:8px; margin:2px 0; color:var(--ink-faint); font-family:"IBM Plex Mono",monospace; font-size:10.5px; } .divider-row::before,.divider-row::after { content:""; flex:1; height:1px; background:var(--line); }
+    .explainer { margin-top:22px; padding:18px 20px; border:1px solid var(--line); border-radius:10px; background:var(--paper-panel); color:var(--ink-soft); font-size:13.5px; } .explainer h2 { margin:0 0 8px; color:var(--ink); font-family:"Fraunces",serif; font-size:15px; font-weight:600; } .explainer p { margin:0; } .explainer code { padding:1px 5px; border-radius:4px; background:var(--paper-panel-2); font-family:"IBM Plex Mono",monospace; font-size:12px; } footer.prov { margin-top:16px; color:var(--ink-faint); font-family:"IBM Plex Mono",monospace; font-size:10.5px; text-align:center; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="page">
+      <div class="eyebrow"><span class="dot"></span> Buddy graph field notes · Experiment 14 · RedCaps-150k</div>
+      <h1>Same Trailhead — Example Browser</h1>
+      <p class="lede"><b>A</b> is directly linked to <b>B</b> by image similarity and to <b>C</b> and <b>D</b> by text similarity. Browse 36 real, independently mined examples to see the only relationship that changes: whether <b>C</b> and <b>D</b> also have direct evidence connecting <em>each other</em>.</p>
+      <div class="browser-nav" aria-label="Example navigation"><button id="prev" type="button">Prev</button><input id="index-input" class="index-input" type="number" min="0" step="1" aria-label="Example index"><button id="next" type="button">Next</button><span id="index-status" class="index-status" aria-live="polite"></span></div>
+    </header>
+
+    <div class="stage">
+      <section class="panel" aria-labelledby="map-title">
+        <div class="panel-head"><span id="map-title" class="panel-title">Trailhead map</span><span class="panel-note">K=30 · α=0.5</span></div>
+        <div class="map-body"><svg id="map" viewBox="0 0 600 330" fill="none" aria-label="Buddy graph showing the current example's fixed and varying connections"><line x1="150" y1="200" x2="330" y2="90" stroke-width="3" class="edge-fixed-img" stroke-linecap="round"></line><line x1="150" y1="200" x2="430" y2="150" stroke-width="3" class="edge-fixed-txt" stroke-linecap="round"></line><line x1="150" y1="200" x2="430" y2="270" stroke-width="3" class="edge-fixed-txt" stroke-linecap="round"></line><line id="edge-cd" x1="430" y1="150" x2="430" y2="270" class="edge-cd" stroke-linecap="round"></line><g><circle cx="150" cy="200" r="24" class="waypoint-ring"></circle><text x="150" y="207" text-anchor="middle" class="node-label">A</text><text x="150" y="236" text-anchor="middle" class="node-sub">hub</text></g><g><circle cx="330" cy="90" r="20" class="waypoint-ring"></circle><text x="330" y="97" text-anchor="middle" class="node-label">B</text><text x="330" y="122" text-anchor="middle" class="node-sub">img-only nbr</text></g><g><circle cx="430" cy="150" r="20" class="waypoint-ring"></circle><text x="430" y="157" text-anchor="middle" class="node-label">C</text><text x="465" y="153" class="node-sub">txt-only nbr</text></g><g><circle cx="430" cy="270" r="20" class="waypoint-ring"></circle><text x="430" y="277" text-anchor="middle" class="node-label">D</text><text x="465" y="273" class="node-sub">txt-only nbr</text></g></svg></div>
+        <div class="legend"><div class="legend-item"><span class="legend-swatch dashed" style="border-color:var(--accent-unconn)"></span>unconnected</div><div class="legend-item"><span class="legend-swatch" style="border-color:var(--accent-both)"></span>both (img+txt)</div><div class="legend-item"><span class="legend-swatch" style="border-color:var(--accent-txt)"></span>text-only trail</div><div class="legend-item"><span class="legend-swatch" style="border-color:var(--accent-img)"></span>image-only trail</div></div>
+        <div class="readout"><div class="readout-row"><span class="readout-label">C–D bucket</span><span id="bucket-label" class="readout-value"></span></div><div id="bucket-summary" class="facts"></div><div id="hub-facts" class="facts"></div><div class="dose" aria-label="Aggregate pull increases from unconnected to both"><div class="dose-track"></div><span class="dose-tick" data-cat="unconnected" title="No trail"></span><span class="dose-tick" data-cat="txt_only" title="Text trail"></span><span class="dose-tick" data-cat="img_only" title="Image trail"></span><span class="dose-tick" data-cat="both" title="Confirmed route"></span></div><div id="dose-caption" class="dose-caption"></div></div>
+      </section>
+
+      <section class="panel" aria-labelledby="photos-title"><div class="panel-head"><span id="photos-title" class="panel-title">The four photos</span><span id="active-cat-note" class="panel-note"></span></div><div class="confound-note"><div class="confound-label">Shared-hub context is held constant</div><p><b>C and D always come from this example’s own hub’s text-only neighbors.</b> Each pair therefore begins with comparable topical closeness to A; the variable is only whether C and D are also directly connected.</p><p>These are 36 real, independently mined instances spanning 36 distinct hubs—not one anecdote. The causal evidence remains the report’s larger 5,000-pairs-per-bucket aggregate.</p></div><div class="cards"><div class="card-group-label">Fixed — always connected to A</div><div class="card" data-role="A"><div class="card-photo-wrap"><span class="card-badge">A</span><img id="photo-A" class="card-photo" alt=""></div><div><div id="caption-A" class="card-caption"></div><div id="meta-A" class="card-meta"></div></div></div><div class="card" data-role="B"><div class="card-photo-wrap"><span class="card-badge">B</span><img id="photo-B" class="card-photo" alt=""></div><div><div id="caption-B" class="card-caption"></div><div id="meta-B" class="card-meta"></div></div></div><div class="divider-row">C–D — the relationship that varies</div><div class="card" data-role="C"><div class="card-photo-wrap"><span class="card-badge">C</span><img id="photo-C" class="card-photo" alt=""></div><div><div id="caption-C" class="card-caption"></div><div id="meta-C" class="card-meta"></div></div></div><div class="card" data-role="D"><div class="card-photo-wrap"><span class="card-badge">D</span><img id="photo-D" class="card-photo" alt=""></div><div><div id="caption-D" class="card-caption"></div><div id="meta-D" class="card-meta"></div></div></div></div></section>
+    </div>
+    <div class="explainer"><h2>What “pull” means here</h2><p>Every sample gets a trainable condition vector, initialized from this buddy graph. <b>Pull</b> measures how much closer two vectors sit than a degree-matched random pair. Across the four real C–D connectivity buckets, it rises monotonically: <code>no trail</code> &lt; <code>text trail</code> &lt; <code>image trail</code> &lt; <code>confirmed route</code>.</p></div>
+    <footer class="prov">36 real examples across 16 distinct hubs · RedCaps-150k · K=30 α=0.5 · docs/reports/2026-08-31_closed_triangle_bridge_diagnostic.md</footer>
+  </main>
+  <script src="data.js"></script>
+  <script>
+    (() => {
+      const { examples, edge_type_stats: stats } = window.ABCD_DATA;
+      const order = ["unconnected", "txt_only", "img_only", "both"];
+      const indexInput = document.getElementById("index-input");
+      const edge = document.getElementById("edge-cd");
+      let current = 0;
+      indexInput.max = examples.length - 1;
+
+      function setPhoto(role, item) {
+        const image = document.getElementById("photo-" + role);
+        image.src = item.data_uri;
+        image.alt = role + ": " + item.caption;
+        document.getElementById("caption-" + role).textContent = "“" + item.caption.trim() + "”";
+        document.getElementById("meta-" + role).textContent = "sample " + item.sample_id + " · " + item.image_id;
+      }
+      function edgeStyle(type) {
+        const styles = { unconnected:["var(--accent-unconn)", "6 6", 2], txt_only:["var(--accent-txt)", "none", 3], img_only:["var(--accent-img)", "none", 3], both:["var(--accent-both)", "none", 5] };
+        const [stroke, dash, width] = styles[type];
+        edge.style.stroke = stroke; edge.style.strokeDasharray = dash; edge.style.strokeWidth = width;
+      }
+      function formatMean(value) { return value.toFixed(2); }
+      function formatSem(value) { return value.toFixed(3); }
+      function render(index) {
+        current = Math.max(0, Math.min(examples.length - 1, index));
+        const example = examples[current]; const stat = stats[example.edge_type];
+        ["A", "B", "C", "D"].forEach((role) => setPhoto(role, example[role]));
+        edgeStyle(example.edge_type);
+        document.getElementById("index-status").textContent = "Example " + (current + 1) + " of " + examples.length;
+        indexInput.value = current;
+        document.getElementById("prev").disabled = current === 0;
+        document.getElementById("next").disabled = current === examples.length - 1;
+        document.getElementById("active-cat-note").textContent = stat.label;
+        document.getElementById("bucket-label").textContent = stat.label;
+        document.getElementById("bucket-summary").textContent = stat.population_pct.toFixed(1) + "% of all hub pairs · " + formatMean(stat.pull_mean) + " ± " + formatSem(stat.pull_sem) + " embedding units";
+        document.getElementById("hub-facts").textContent = "this hub: " + example.hub_deg_txt_only + " text-only neighbors, " + example.hub_deg_img_only + " image-only neighbors";
+        const means = order.map((type) => stats[type].pull_mean); const low = Math.min(...means); const span = Math.max(...means) - low;
+        document.querySelectorAll(".dose-tick").forEach((tick) => { const type = tick.dataset.cat; tick.style.left = (4 + ((stats[type].pull_mean - low) / span) * 92) + "%"; tick.dataset.active = String(type === example.edge_type); });
+        document.getElementById("dose-caption").innerHTML = "<span>" + formatMean(low) + " (baseline)</span><span>" + formatMean(Math.max(...means)) + " (strongest)</span>";
+      }
+      document.getElementById("prev").addEventListener("click", () => render(current - 1));
+      document.getElementById("next").addEventListener("click", () => render(current + 1));
+      indexInput.addEventListener("change", () => {
+        const value = Number(indexInput.value);
+        render(Number.isFinite(value) ? Math.trunc(value) : current);
+      });
+      render(0);
+    })();
+  </script>
+</body>
+</html>

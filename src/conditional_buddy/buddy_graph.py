@@ -436,6 +436,68 @@ def mix_distances_typed(
 # ── Edge/node classification (Experiment 12) ─────────────────────────────────
 
 
+def pairwise_cosine_distances(
+    normalized_features: np.ndarray,
+    left_indices: np.ndarray,
+    right_indices: np.ndarray,
+) -> np.ndarray:
+    """Return cosine distances for aligned pairs of L2-normalized feature rows.
+
+    This helper is intentionally agnostic to modality: pass cached CLIP image
+    features to assess visual separation, or text/caption features to assess
+    textual separation.  It does not inspect or alter buddy-graph topology.
+
+    Args:
+        normalized_features: ``(N, D)`` finite, L2-normalized feature matrix.
+        left_indices: One-dimensional row indices for the left endpoints.
+        right_indices: One-dimensional row indices aligned with ``left_indices``.
+
+    Returns:
+        A float32 vector where each element is ``1 - cosine_similarity``.  Values
+        are clipped to the mathematical range ``[0, 2]`` to absorb floating-point
+        round-off from otherwise normalized input.
+    """
+    features = np.asarray(normalized_features)
+    left = np.asarray(left_indices)
+    right = np.asarray(right_indices)
+    if features.ndim != 2:
+        raise ValueError("normalized_features must have shape (N, D)")
+    if left.ndim != 1 or right.ndim != 1:
+        raise ValueError("left_indices and right_indices must be one-dimensional")
+    if len(left) != len(right):
+        raise ValueError("left_indices and right_indices must have the same length")
+
+    similarities = np.einsum("ij,ij->i", features[left], features[right])
+    return np.clip(1.0 - similarities, 0.0, 2.0).astype(np.float32, copy=False)
+
+
+def minimum_cosine_distance_mask(
+    normalized_features: np.ndarray,
+    left_indices: np.ndarray,
+    right_indices: np.ndarray,
+    min_distance: float,
+) -> np.ndarray:
+    """Mark aligned pairs whose cosine distance meets ``min_distance``.
+
+    Designed as an additive eligibility filter for illustrative sampling: callers
+    first select a graph-topology bucket, then apply this mask to the candidate
+    pairs.  The function therefore cannot relabel, add, or remove any buddy-graph
+    edge.  Use image features for visual distinctness and invoke it separately
+    with text features if a caption/semantic-distance criterion is also wanted.
+
+    Args:
+        normalized_features: L2-normalized rows for one feature modality.
+        left_indices: Candidate left endpoint rows.
+        right_indices: Candidate right endpoint rows.
+        min_distance: Inclusive minimum cosine distance in ``[0, 2]``.
+    """
+    if not 0.0 <= min_distance <= 2.0:
+        raise ValueError("min_distance must be within [0, 2]")
+    return pairwise_cosine_distances(
+        normalized_features, left_indices, right_indices,
+    ) >= min_distance
+
+
 def _adj_to_keys(A: csr_matrix, N: int) -> np.ndarray:
     """Upper-triangular (i<j) edges of a symmetric adjacency as sorted int64 keys
     i*N+j -- fast set-membership via np.isin on sorted unique arrays."""
