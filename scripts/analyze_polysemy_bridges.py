@@ -576,23 +576,25 @@ def run(
     K: int = 30,
     alpha: float = 0.5,
     n_bridge_sample: int = 5000,
+    n_hub_sample: int = 5000,
     seed: int = 0,
     device: str = "cuda",
     per_sample_npz=None,
     save_raw: str = None,
 ) -> dict:
-    """End-to-end Experiment 12 pass: rebuild the buddy graph from cached features,
-    classify its edges, sample bridge-node (A, B, C) triples, measure whether the
-    ALREADY-SAVED buddy-init embedding (template_dir) pulls B and C together vs. a
-    degree-matched baseline, check whether that pull is graded by shared-neighbor
-    structure, and (if per_sample_npz is given) cross-reference the per-node polysemy
-    label against Experiment 11.2's per-sample retrieval-rank/drift dump."""
-    from src.conditional_buddy.buddy_graph import bridge_node_stats, classify_edges
-    from src.conditional_buddy.compute_buddies import _l2_normalize, build_buddy_graphs
+    """End-to-end Experiment 12 + Experiment 14 pass: rebuild the buddy graph from
+    cached features, classify its edges, sample bridge-node (A, B, C) triples AND
+    hub-node closed/open (hub, C, D) pairs, measure whether the ALREADY-SAVED
+    buddy-init embedding pulls each kind of pair together vs. a degree-matched
+    baseline, check whether the bridge pull is graded by shared-neighbor structure,
+    compare closed-triangle pull magnitude against open-hub pull magnitude (Experiment
+    14's primary question), and (if per_sample_npz is given) cross-reference the
+    per-node polysemy label AND the new is_hub/in_closed_triangle/in_open_hub_pair
+    flags against Experiment 11.2/12.3's per-sample retrieval-rank/drift dump(s)."""
+    from src.conditional_buddy.buddy_graph import hub_neighbor_pairs
 
-    img, txt, sample_ids = _load_features(storage_dir)
-    img_n, txt_n = _l2_normalize(img), _l2_normalize(txt)
-    A_img, A_txt, E = build_buddy_graphs(img_n, txt_n, K=K, alpha=alpha, device=device)
+    typed, bstats, sample_ids, E = _build_typed_graph(storage_dir, K, alpha, device)
+    N = len(sample_ids)
 
     template_ids = np.load(Path(template_dir) / "sample_ids.npy").tolist()
     assert template_ids == sample_ids, (
@@ -603,9 +605,6 @@ def run(
     )
     emb = np.load(Path(template_dir) / "embeddings.npy")
 
-    N = len(sample_ids)
-    typed = classify_edges(A_img, A_txt, E, N)
-    bstats = bridge_node_stats(typed, N)
     labels = label_nodes(bstats)
     E_img_only, E_txt_only = build_typed_adjacency(typed, N)
 
@@ -623,6 +622,20 @@ def run(
     pull_summary = paired_pull_summary(dist_bc, dist_bc_baseline)
     grading_corr = spearman_correlate(jaccard, dist_bc_baseline - dist_bc)
 
+    # Experiment 14: closed-triangle vs. open-hub-pair pull comparison.
+    hub_pairs_raw = hub_neighbor_pairs(typed, bstats, N)
+    hub_sample = extract_hub_pairs(typed, bstats, N, n_hub_sample, rng)
+    hub_triples, hub_is_closed = hub_sample["pairs"], hub_sample["is_closed"]
+    hub_baselines = sample_baselines(hub_triples, E, buckets, rng)
+    hub_valid = hub_baselines >= 0
+    hub_triples, hub_is_closed = hub_triples[hub_valid], hub_is_closed[hub_valid]
+    hub_baselines = hub_baselines[hub_valid]
+    hub_c, hub_d = hub_triples[:, 1], hub_triples[:, 2]
+    dist_cd = embedded_l2_distance(emb, hub_c, hub_d)
+    dist_cd_baseline = embedded_l2_distance(emb, hub_c, hub_baselines)
+    closed_pull = paired_pull_summary(dist_cd[hub_is_closed], dist_cd_baseline[hub_is_closed])
+    open_pull = paired_pull_summary(dist_cd[~hub_is_closed], dist_cd_baseline[~hub_is_closed])
+
     result = {
         "n_bridge_nodes": bstats["n_bridge_nodes"],
         "frac_bridge_nodes": bstats["frac_bridge_nodes"],
@@ -631,23 +644,42 @@ def run(
         "grading_corr_jaccard_vs_pull": grading_corr,
         "label_counts": {lbl: int((labels == lbl).sum())
                          for lbl in ("neither", "img_only_only", "txt_only_only", "bridge")},
+        "hub_pair_counts": {
+            "n_hub_nodes": int((bstats["deg_txt_only"] >= 2).sum()),
+            "n_pairs_total": int(len(hub_pairs_raw["hub"])),
+            "n_closed_total": int(hub_pairs_raw["is_closed"].sum()),
+            "n_open_total": int((~hub_pairs_raw["is_closed"]).sum()),
+        },
+        "closed_triangle_pull": closed_pull,
+        "open_hub_pull": open_pull,
     }
     retrieval_raw = None
     if per_sample_npz is not None:
+        in_closed, in_open = closed_triangle_membership(hub_pairs_raw, N)
+        extra_flags = {
+            "is_hub": bstats["deg_txt_only"] >= 2,
+            "in_closed_triangle": in_closed,
+            "in_open_hub_pair": in_open,
+        }
         npz_list = [per_sample_npz] if isinstance(per_sample_npz, str) else list(per_sample_npz)
         if len(npz_list) == 1:
             if save_raw is not None:
                 result["retrieval_correlation"], retrieval_raw = correlate_polysemy_with_retrieval(
-                    labels, sample_ids, npz_list[0], return_raw=True
+                    labels, sample_ids, npz_list[0], return_raw=True, extra_flags=extra_flags,
                 )
             else:
                 result["retrieval_correlation"] = correlate_polysemy_with_retrieval(
-                    labels, sample_ids, npz_list[0]
+                    labels, sample_ids, npz_list[0], extra_flags=extra_flags,
                 )
         else:
-            per_run_results = [correlate_polysemy_with_retrieval(labels, sample_ids, p) for p in npz_list]
+            per_run_results = [
+                correlate_polysemy_with_retrieval(labels, sample_ids, p, extra_flags=extra_flags)
+                for p in npz_list
+            ]
             tags = [Path(p).parent.parent.name for p in npz_list]
-            result["retrieval_correlation"] = pool_cross_references(per_run_results, tags)
+            result["retrieval_correlation"] = pool_cross_references(
+                per_run_results, tags, extra_flag_names=list(extra_flags.keys()),
+            )
     if save_raw is not None:
         save_raw_arrays(
             save_raw, a_idx, b_idx, c_idx, dist_bc, dist_bc_baseline, jaccard, retrieval_raw
@@ -663,6 +695,9 @@ def main():
     ap.add_argument("--K", type=int, default=30)
     ap.add_argument("--alpha", type=float, default=0.5)
     ap.add_argument("--n-bridge-sample", type=int, default=5000)
+    ap.add_argument("--n-hub-sample", type=int, default=5000,
+                    help="max closed-triangle pairs AND max open hub pairs to sample "
+                         "independently (Experiment 14) -- see --counts-only first")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--per-sample-npz", default=None, nargs="+",
@@ -693,8 +728,8 @@ def main():
 
     result = run(
         storage_dir=args.storage_dir, template_dir=args.template_dir, K=args.K,
-        alpha=args.alpha, n_bridge_sample=args.n_bridge_sample, seed=args.seed,
-        device=args.device, per_sample_npz=args.per_sample_npz, save_raw=args.save_raw,
+        alpha=args.alpha, n_bridge_sample=args.n_bridge_sample, n_hub_sample=args.n_hub_sample,
+        seed=args.seed, device=args.device, per_sample_npz=args.per_sample_npz, save_raw=args.save_raw,
     )
 
     print(f"\n{'='*78}\nExperiment 12 - cross-modal polysemy bridge-node diagnostic\n{'='*78}")
@@ -707,6 +742,16 @@ def main():
           f"frac_pulled_closer={ps['frac_pulled_closer']:.3f}){sig}")
     gc = result["grading_corr_jaccard_vs_pull"]
     print(f"  grading check: corr(shared_neighbor_jaccard, pull) rho={gc['rho']:+.3f} p={gc['p']:.3e}")
+    hc = result["hub_pair_counts"]
+    print(f"  hub nodes: {hc['n_hub_nodes']:,}; hub pairs: {hc['n_pairs_total']:,} "
+          f"({hc['n_closed_total']:,} closed, {hc['n_open_total']:,} open)")
+    for name, ps in (("closed-triangle", result["closed_triangle_pull"]), ("open-hub", result["open_hub_pull"])):
+        if ps["n"] == 0:
+            print(f"  {name} pull: n=0 (none sampled)")
+            continue
+        sig = f" mean/SEM={ps['z']:+.1f}{' *' if ps['z'] == ps['z'] and abs(ps['z']) >= 2 else ''}" if ps["n"] > 1 else ""
+        print(f"  {name} pull (baseline_dist - pair_dist): mean={ps['mean']:+.4f} "
+              f"(n={ps['n']}, frac_pulled_closer={ps['frac_pulled_closer']:.3f}){sig}")
     if "retrieval_correlation" in result:
         rc = result["retrieval_correlation"]
         if "n_runs" in rc:
