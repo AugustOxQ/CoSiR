@@ -27,9 +27,9 @@ ask = [
 # reason = "customer deploy env update"
 
 [safety.sandbox]
-failIfUnavailable = false
+failIfUnavailable = true
 
 [safety.sandbox.filesystem]
-# denyRead = [".env", "secrets/**"]
+denyRead = [".env", "secrets/**"]
 # allowRead = [".env.example"]
 
