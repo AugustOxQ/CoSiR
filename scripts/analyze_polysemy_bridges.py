@@ -534,6 +534,42 @@ def _load_features(storage_dir: str):
     return img, txt, sample_ids
 
 
+def _build_typed_graph(
+    storage_dir: str, K: int, alpha: float, device: str,
+) -> Tuple[dict, dict, List[int], csr_matrix]:
+    """Rebuild the buddy graph from cached features and classify its edges -- the
+    shared prefix of run() (Experiment 12) and count_hub_pairs() (Experiment 14's
+    Task 0 incidence spike). Returns (typed, bridge_stats, sample_ids, E)."""
+    from src.conditional_buddy.buddy_graph import bridge_node_stats, classify_edges
+    from src.conditional_buddy.compute_buddies import _l2_normalize, build_buddy_graphs
+
+    img, txt, sample_ids = _load_features(storage_dir)
+    img_n, txt_n = _l2_normalize(img), _l2_normalize(txt)
+    A_img, A_txt, E = build_buddy_graphs(img_n, txt_n, K=K, alpha=alpha, device=device)
+
+    N = len(sample_ids)
+    typed = classify_edges(A_img, A_txt, E, N)
+    bstats = bridge_node_stats(typed, N)
+    return typed, bstats, sample_ids, E
+
+
+def count_hub_pairs(storage_dir: str, K: int = 30, alpha: float = 0.5, device: str = "cuda") -> dict:
+    """Experiment 14, Task 0: cheap incidence count of hub nodes and closed-vs-open
+    hub-neighbor pairs on the already-built buddy graph -- zero embedding/template
+    loading, just the graph. Run this BEFORE committing to any real sampling; escalate
+    to RedCaps-300k only if n_closed here is too sparse (see the plan's Task 6)."""
+    from src.conditional_buddy.buddy_graph import hub_neighbor_pairs
+
+    typed, bstats, _, _ = _build_typed_graph(storage_dir, K, alpha, device)
+    raw = hub_neighbor_pairs(typed, bstats, len(bstats["deg_txt_only"]))
+    return {
+        "n_hub_nodes": int((bstats["deg_txt_only"] >= 2).sum()),
+        "n_pairs_total": int(len(raw["hub"])),
+        "n_closed": int(raw["is_closed"].sum()),
+        "n_open": int((~raw["is_closed"]).sum()),
+    }
+
+
 def run(
     storage_dir: str,
     template_dir: str,
@@ -636,9 +672,23 @@ def main():
     ap.add_argument("--save-raw", default=None,
                     help="write sampled-pair raw arrays (and retrieval arrays when available) to .npz")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--counts-only", action="store_true",
+                     help="Experiment 14 Task 0: print hub/closed/open pair counts on the "
+                          "already-built graph and exit -- no template/embedding loading, "
+                          "no sampling. Run this before choosing --n-hub-sample or escalating "
+                          "to a larger feature store.")
     args = ap.parse_args()
     if args.selftest:
         _selftest()
+        return
+
+    if args.counts_only:
+        counts = count_hub_pairs(storage_dir=args.storage_dir, K=args.K, alpha=args.alpha, device=args.device)
+        print(f"\n{'='*78}\nExperiment 14 - hub/closed-triangle incidence count (Task 0)\n{'='*78}")
+        print(f"  hub nodes (deg_txt_only >= 2): {counts['n_hub_nodes']:,}")
+        print(f"  hub neighbor-pairs total: {counts['n_pairs_total']:,}")
+        print(f"  closed (real img_only edge): {counts['n_closed']:,}")
+        print(f"  open (no direct edge): {counts['n_open']:,}")
         return
 
     result = run(
