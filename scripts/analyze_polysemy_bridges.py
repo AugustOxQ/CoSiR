@@ -165,6 +165,42 @@ def extract_bridge_pairs(
     return np.array(triples, dtype=np.int64)
 
 
+def extract_hub_pairs(
+    typed: dict,
+    bridge_stats: dict,
+    N: int,
+    n_sample_per_group: int,
+    rng: np.random.Generator,
+) -> dict:
+    """Experiment 14: sample up to n_sample_per_group closed-triangle pairs and up to
+    n_sample_per_group open hub pairs INDEPENDENTLY (see buddy_graph.hub_neighbor_pairs
+    for the closed/open definition), so a sparse closed-triangle population isn't
+    crowded out by open pairs if both groups exist in very different numbers.
+
+    Returns {"pairs": int64 (M, 3) array of columns [hub, c, d], "is_closed": bool (M,)}."""
+    from src.conditional_buddy.buddy_graph import hub_neighbor_pairs
+
+    raw = hub_neighbor_pairs(typed, bridge_stats, N)
+    if len(raw["hub"]) == 0:
+        return {"pairs": np.zeros((0, 3), dtype=np.int64), "is_closed": np.zeros(0, dtype=bool)}
+
+    pairs_all = np.stack([raw["hub"], raw["c"], raw["d"]], axis=1)
+    is_closed_all = raw["is_closed"]
+
+    kept_pairs, kept_closed = [], []
+    for want_closed in (True, False):
+        idx = np.where(is_closed_all == want_closed)[0]
+        if len(idx) > n_sample_per_group:
+            idx = rng.choice(idx, size=n_sample_per_group, replace=False)
+        kept_pairs.append(pairs_all[idx])
+        kept_closed.append(np.full(len(idx), want_closed, dtype=bool))
+
+    return {
+        "pairs": np.concatenate(kept_pairs, axis=0),
+        "is_closed": np.concatenate(kept_closed, axis=0),
+    }
+
+
 def label_nodes(bridge_stats: dict) -> np.ndarray:
     """Per-node polysemy label from classify_edges/bridge_node_stats's own per-node
     degree counts: 'bridge' (has both an img-only AND a txt-only edge -- the "A" node in
@@ -181,6 +217,21 @@ def label_nodes(bridge_stats: dict) -> np.ndarray:
     return labels
 
 
+def closed_triangle_membership(hub_pairs: dict, N: int) -> Tuple[np.ndarray, np.ndarray]:
+    """Per-node boolean flags derived from hub_neighbor_pairs' RAW (unsampled) output:
+    in_closed_triangle is True for any node appearing as the c/d endpoint of at least
+    one closed pair; in_open_hub_pair is True for any node appearing as the c/d endpoint
+    of at least one open pair. NOT mutually exclusive with each other, or with
+    label_nodes' categories -- a node with 3+ txt_only neighbors can be in both groups."""
+    in_closed = np.zeros(N, dtype=bool)
+    in_open = np.zeros(N, dtype=bool)
+    closed_mask = hub_pairs["is_closed"]
+    for endpoints in (hub_pairs["c"], hub_pairs["d"]):
+        in_closed[endpoints[closed_mask]] = True
+        in_open[endpoints[~closed_mask]] = True
+    return in_closed, in_open
+
+
 def _selftest():
     # label_nodes: 4 nodes -- one bridge, one img-only-only, one txt-only-only, one bare.
     bridge_stats = {
@@ -194,7 +245,7 @@ def _selftest():
     # build_typed_adjacency + extract_bridge_pairs, on the same synthetic graph as
     # buddy_graph's own bridge-node test: node 1 is a bridge (img-only to 0, txt-only to 4).
     from scipy.sparse import csr_matrix as _csr
-    from src.conditional_buddy.buddy_graph import bridge_node_stats, classify_edges
+    from src.conditional_buddy.buddy_graph import bridge_node_stats, classify_edges, hub_neighbor_pairs
 
     def _sym(n, edges):
         rows, cols = [], []
@@ -310,6 +361,29 @@ def _selftest():
             "label_kept", "delta_rank",
         }, raw.files
         assert raw["label_kept"].tolist() == ["bridge", "neither"]
+
+    # extract_hub_pairs + closed_triangle_membership: reuse the same synthetic
+    # closed/open hub structure as buddy_graph's own hub_neighbor_pairs test.
+    n8 = 8
+    A_img8 = _sym(n8, [(0, 1), (2, 5)])
+    A_txt8 = _sym(n8, [(1, 2), (1, 5), (6, 3), (6, 4), (7, 0)])
+    E8 = _sym(n8, [(0, 1), (2, 5), (1, 2), (1, 5), (6, 3), (6, 4), (7, 0)])
+    typed8 = classify_edges(A_img8, A_txt8, E8, n8)
+    bstats8 = bridge_node_stats(typed8, n8)
+    raw_hub_pairs = hub_neighbor_pairs(typed8, bstats8, n8)
+    assert len(raw_hub_pairs["hub"]) == 2, raw_hub_pairs  # one closed pair, one open pair
+
+    rng8 = np.random.default_rng(2)
+    sampled = extract_hub_pairs(typed8, bstats8, n8, n_sample_per_group=10, rng=rng8)
+    assert sampled["pairs"].shape == (2, 3), sampled["pairs"].shape
+    assert set(sampled["is_closed"].tolist()) == {True, False}, sampled["is_closed"]
+
+    in_closed, in_open = closed_triangle_membership(raw_hub_pairs, n8)
+    assert in_closed[2] and in_closed[5], in_closed  # the closed triangle's C/D
+    assert not in_closed[3] and not in_closed[4], in_closed  # the open pair's C/D
+    assert in_open[3] and in_open[4], in_open
+    assert not in_open[2] and not in_open[5], in_open
+    print("PASS extract_hub_pairs + closed_triangle_membership")
     print("SELFTEST OK")
 
 
