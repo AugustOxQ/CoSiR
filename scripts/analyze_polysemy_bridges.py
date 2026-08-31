@@ -384,11 +384,43 @@ def _selftest():
     assert in_open[3] and in_open[4], in_open
     assert not in_open[2] and not in_open[5], in_open
     print("PASS extract_hub_pairs + closed_triangle_membership")
+
+    # correlate_polysemy_with_retrieval + pool_cross_references: extra_flags param
+    # (Experiment 14's is_hub/in_closed_triangle/in_open_hub_pair cross-references).
+    extra_flags4 = {"is_hub": np.array([True, False, True, False])}
+    with tempfile.TemporaryDirectory() as tmp:
+        npz_path4 = os.path.join(tmp, "dump4.npz")
+        np.savez(
+            npz_path4,
+            sample_ids=np.array([100, 101, 102], dtype=np.int64),
+            delta_rank=np.array([10, 0, -5]),
+            delta_rank_swap=np.array([8, 0, -3]),
+            condition_drift=np.array([0.5, 0.1, 0.2]),
+            embedding_shift=np.array([0.05, 0.01, 0.02]),
+        )
+        result_flagged = correlate_polysemy_with_retrieval(
+            labels4, sample_ids4, npz_path4, extra_flags=extra_flags4
+        )
+    assert "corr_is_hub_vs_delta_rank" in result_flagged, result_flagged
+    assert "corr_is_hub_vs_abs_delta_rank" in result_flagged, result_flagged
+    assert result_flagged["is_hub_true"]["n"] == 2, result_flagged  # sample ids 100, 102
+
+    r1f = {**r1, "corr_is_hub_vs_abs_delta_rank": {"rho": 0.30, "p": 0.01},
+           "corr_is_hub_vs_delta_rank": {"rho": 0.05, "p": 0.5}}
+    r2f = {**r2, "corr_is_hub_vs_abs_delta_rank": {"rho": 0.50, "p": 0.01},
+           "corr_is_hub_vs_delta_rank": {"rho": -0.05, "p": 0.5}}
+    pooled_flagged = pool_cross_references(
+        [r1f, r2f], tags=["trained/seed1", "trained/seed2"], extra_flag_names=["is_hub"]
+    )
+    assert "corr_is_hub_vs_abs_delta_rank" in pooled_flagged["pooled"], pooled_flagged
+    assert abs(pooled_flagged["pooled"]["corr_is_hub_vs_abs_delta_rank"]["mean"] - 0.40) < 1e-9, pooled_flagged
+    print("PASS correlate_polysemy_with_retrieval/pool_cross_references extra_flags")
     print("SELFTEST OK")
 
 
 def correlate_polysemy_with_retrieval(
     labels: np.ndarray, sample_ids: List[int], npz_path: str, return_raw: bool = False,
+    extra_flags: dict = None,
 ) -> dict:
     """Join the per-node polysemy label (row-aligned to sample_ids, this script's own
     FeatureManager-order labeling) against Experiment 11.2's per-sample retrieval-rank/
@@ -425,21 +457,38 @@ def correlate_polysemy_with_retrieval(
     result["corr_is_polysemic_vs_delta_rank"] = spearman_correlate(is_polysemic, delta_rank)
     result["corr_is_polysemic_vs_condition_drift"] = spearman_correlate(is_polysemic, condition_drift)
     result["corr_is_polysemic_vs_embedding_shift"] = spearman_correlate(is_polysemic, embedding_shift)
+    if extra_flags:
+        for flag_name, flag_arr in extra_flags.items():
+            flag_kept = flag_arr[rows].astype(float)
+            result[f"corr_{flag_name}_vs_abs_delta_rank"] = spearman_correlate(flag_kept, np.abs(delta_rank))
+            result[f"corr_{flag_name}_vs_delta_rank"] = spearman_correlate(flag_kept, delta_rank)
+            mask_true = flag_kept > 0
+            if mask_true.sum() > 0:
+                result[f"{flag_name}_true"] = {
+                    "n": int(mask_true.sum()),
+                    "median_abs_delta_rank": float(np.median(np.abs(delta_rank[mask_true]))),
+                    "median_delta_rank": float(np.median(delta_rank[mask_true])),
+                }
     if return_raw:
         return result, {"label_kept": label_kept, "delta_rank": delta_rank}
     return result
 
 
-def pool_cross_references(results: List[dict], tags: List[str]) -> dict:
+def pool_cross_references(results: List[dict], tags: List[str], extra_flag_names: List[str] = None) -> dict:
     """Pool multiple already-computed correlate_polysemy_with_retrieval() results (one
     per run/seed) into a per-run table plus mean/std/sem/z of each run's own rho, across
     runs -- this project's standard multi-seed synthesis convention (see summarize() in
-    scripts/analyze_condition_freeze_ablation.py). Does not re-touch any per-sample data;
-    purely aggregates already-computed per-run dicts."""
+    scripts/analyze_condition_freeze_ablation.py). extra_flag_names pools the same
+    corr_{name}_vs_{abs_}delta_rank keys correlate_polysemy_with_retrieval's extra_flags
+    param produces (Experiment 14), on top of the always-present is_polysemic keys. Does
+    not re-touch any per-sample data; purely aggregates already-computed per-run dicts."""
     assert len(results) == len(tags), (len(results), len(tags))
     per_run = {tag: r for tag, r in zip(tags, results)}
+    corr_keys = ["corr_is_polysemic_vs_abs_delta_rank", "corr_is_polysemic_vs_delta_rank"]
+    for flag in (extra_flag_names or []):
+        corr_keys += [f"corr_{flag}_vs_abs_delta_rank", f"corr_{flag}_vs_delta_rank"]
     pooled = {}
-    for corr_key in ("corr_is_polysemic_vs_abs_delta_rank", "corr_is_polysemic_vs_delta_rank"):
+    for corr_key in corr_keys:
         rhos = np.array([r[corr_key]["rho"] for r in results], dtype=float)
         n = len(rhos)
         mean = float(rhos.mean())
