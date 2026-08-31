@@ -21,7 +21,7 @@ top of 3.2s vs 7.9s single-modality at N=300k), so there is no reason to
 prefer cuvs below the threshold.
 """
 
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
@@ -494,3 +494,49 @@ def bridge_node_stats(typed: dict, N: int) -> dict:
         "deg_txt_only": deg_txt_only,
         "is_bridge": is_bridge,
     }
+
+
+def hub_neighbor_pairs(typed: dict, bridge_stats: dict, N: int) -> dict:
+    """For every 'hub' node (>=2 txt_only neighbors, Experiment 14), enumerate all
+    unordered pairs of its txt_only neighbors and label each pair 'closed' (the pair is
+    ALSO connected by a real img_only edge -- a closed triangle: hub--C txt_only,
+    hub--D txt_only, C--D img_only) or 'open' (no such direct edge -- structurally
+    identical to Experiment 12's B/C bridge pair, but sourced from a >=2-txt-neighbor
+    hub instead of a single-txt-neighbor bridge). A node can contribute to multiple
+    pairs if it has 3+ txt_only neighbors.
+
+    Returns {"hub": int64 (M,), "c": int64 (M,), "d": int64 (M,), "is_closed": bool (M,)}."""
+    keys = typed["keys"]
+    i = (keys // N).astype(np.int64)
+    j = (keys % N).astype(np.int64)
+    txt_i, txt_j = i[typed["txt_only"]], j[typed["txt_only"]]
+    img_keys = np.sort(keys[typed["img_only"]])
+
+    neighbors: Dict[int, List[int]] = {}
+    for a, b in zip(txt_i.tolist(), txt_j.tolist()):
+        neighbors.setdefault(a, []).append(b)
+        neighbors.setdefault(b, []).append(a)
+
+    hub_ids = np.where(bridge_stats["deg_txt_only"] >= 2)[0]
+    hubs, cs, ds = [], [], []
+    for hub in hub_ids.tolist():
+        nbrs = neighbors.get(hub, [])
+        for x in range(len(nbrs)):
+            for y in range(x + 1, len(nbrs)):
+                hubs.append(hub)
+                cs.append(nbrs[x])
+                ds.append(nbrs[y])
+
+    if not hubs:
+        empty = np.zeros(0, dtype=np.int64)
+        return {"hub": empty, "c": empty, "d": empty, "is_closed": np.zeros(0, dtype=bool)}
+
+    hub_arr = np.array(hubs, dtype=np.int64)
+    c_arr = np.array(cs, dtype=np.int64)
+    d_arr = np.array(ds, dtype=np.int64)
+    lo = np.minimum(c_arr, d_arr)
+    hi = np.maximum(c_arr, d_arr)
+    pair_keys = lo * N + hi
+    is_closed = np.isin(pair_keys, img_keys)
+
+    return {"hub": hub_arr, "c": c_arr, "d": d_arr, "is_closed": is_closed}

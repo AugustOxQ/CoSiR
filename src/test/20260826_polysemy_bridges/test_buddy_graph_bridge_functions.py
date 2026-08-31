@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 import numpy as np
 from scipy.sparse import csr_matrix
 
-from src.conditional_buddy.buddy_graph import bridge_node_stats, classify_edges
+from src.conditional_buddy.buddy_graph import bridge_node_stats, classify_edges, hub_neighbor_pairs
 
 
 def _csr(n, edges):
@@ -85,8 +85,40 @@ def test_img_only_and_txt_only_neighbor_sets_are_disjoint():
     print("PASS test_img_only_and_txt_only_neighbor_sets_are_disjoint")
 
 
+def test_hub_neighbor_pairs_closed_vs_open():
+    """A hub node (>=2 txt_only neighbors) whose neighbor-pair is ALSO connected by a
+    real img_only edge is a 'closed triangle' (Experiment 14's positive-control case);
+    a hub neighbor-pair with no such direct edge is 'open' (structurally identical to
+    Experiment 12's B/C bridge pair, just sourced from a >=2-neighbor hub). A node with
+    only 1 txt_only neighbor is a bridge but not a hub and contributes no pairs."""
+    n = 8
+    # Node 1: hub, txt_only neighbors 2 and 5; 2-5 is ALSO a real img_only edge -> closed.
+    # Node 6: hub, txt_only neighbors 3 and 4; no edge between 3-4 -> open.
+    # Node 0: bridge but NOT a hub (only 1 txt_only neighbor, to node 7) -> contributes no pairs.
+    A_img = _csr(n, [(0, 1), (2, 5)])
+    A_txt = _csr(n, [(1, 2), (1, 5), (6, 3), (6, 4), (7, 0)])
+    E = _csr(n, [(0, 1), (2, 5), (1, 2), (1, 5), (6, 3), (6, 4), (7, 0)])
+
+    typed = classify_edges(A_img, A_txt, E, n)
+    stats = bridge_node_stats(typed, n)
+    assert stats["deg_txt_only"][1] == 2
+    assert stats["deg_txt_only"][6] == 2
+    assert stats["deg_txt_only"][0] == 1  # bridge, but not a hub
+
+    result = hub_neighbor_pairs(typed, stats, n)
+    found = {
+        (int(h), frozenset((int(c), int(d)))): bool(closed)
+        for h, c, d, closed in zip(result["hub"], result["c"], result["d"], result["is_closed"])
+    }
+    assert found[(1, frozenset((2, 5)))] is True, found  # closed triangle
+    assert found[(6, frozenset((3, 4)))] is False, found  # open pair
+    assert len(found) == 2, found  # node 0 (deg_txt_only=1) contributes nothing
+    print("PASS test_hub_neighbor_pairs_closed_vs_open")
+
+
 if __name__ == "__main__":
     test_classify_edges_buckets_correctly()
     test_bridge_node_detection()
     test_img_only_and_txt_only_neighbor_sets_are_disjoint()
+    test_hub_neighbor_pairs_closed_vs_open()
     print("ALL TESTS PASSED")
