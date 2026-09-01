@@ -86,6 +86,10 @@ For context, Experiment 12's original single-neighbor bridge pull (the classic B
 4. **The retrieval-rank cross-reference's `in_closed_triangle` correlation is a real, more concentrated signal than C10's broad label — but its size shouldn't be read as "4× stronger" in a mechanistic sense**, given the very different population base rates involved. It remains a legitimate lead for a future, more targeted diagnostic (is this driven by the same `img_only_only`/`combine_side` mechanism C10 isolated, or something specific to hub/closed-triangle structure?), reported descriptively per this experiment's own scope — not part of the pre-registered primary criterion, no causal claim made.
 5. **What this does not establish:** why hub-ness amplifies pull (isolated from edge-type composition), and what mechanism produces the closed-triangle/hub retrieval correlation, remain open questions this experiment surfaces but does not answer. The mirror configuration (an img-only hub with a closed triangle via a txt_only edge, rather than the txt-only hub/img_only-closure tested here) was also not examined — given C10's headline was precisely that its subgroup effect flips modality under `combine_side="txt"`, this asymmetry is a natural next check.
 
+### Implication for Conditional Buddy
+
+Conditional Buddy is best described here as learning a **graded, topology-sensitive graph prior**, not a strict lookup of direct buddy edges. Shared-neighbor paths propagate useful relational signal beyond literal edges, while the +31% closed-vs-unconnected contrast shows that direct evidence still receives extra weight. The remaining caveat is selectivity: a genuinely-unconnected two-hop pair still receives roughly three-quarters of a real edge's pull, so this is semantic generalization with some false-transitivity blur, not a categorical representation of direct graph relationships. This experiment does not establish whether that trade-off improves retrieval over untouched CLIP.
+
 **Bottom line for the paper:** C10/C12's "false transitivity" framing narrows further, in the same direction Experiment 13's symmetric-conditioning result (C11, on the `experiment/two_side_conditioning` branch) narrowed C9 — not overturned, but qualified: the buddy-init embedding does discriminate a genuine edge from a genuine non-edge by a real, seed-stable ~31%, though it still pulls a genuinely-unconnected artifact pair together at roughly three-quarters the strength of a real one. Report this experiment's corrected numbers, not the original ~22%/1.2× figures, if citing this result.
 
 ## Caveats
@@ -181,3 +185,11 @@ python scripts/analyze_polysemy_bridges.py \
 # -- see the addendum's caveat before comparing against Experiment 12's original +1.98 B-C
 # statistic. See this report's git history / session record for the exact scripts.
 ```
+
+## Change note (2026-09-01)
+
+### Diff from the preceding report revision
+
+- Added a compact diagram contrasting the genuinely-unconnected false-transitivity control with the closed-triangle positive control.
+- Added the Conditional Buddy interpretation above: indirect graph propagation is potentially useful semantic generalization, but it is not a strict direct-edge representation.
+- No experiment, metric, or conclusion value was changed; these are explanatory documentation additions.
