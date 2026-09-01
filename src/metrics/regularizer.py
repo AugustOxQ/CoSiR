@@ -228,7 +228,9 @@ def sample_buddy_neighbors(
     has_prior = starts > 0
     bases[has_prior] = edge_cdf[(starts[has_prior] - 1)]
     flat_positions = torch.searchsorted(edge_cdf, (bases + rand * totals).reshape(-1), right=True)
-    return active, indices[flat_positions.reshape(A, num_samples)]
+    offsets = flat_positions.reshape(A, num_samples) - starts
+    offsets = torch.minimum(torch.clamp(offsets, min=0), deg[active].unsqueeze(1) - 1)
+    return active, indices[starts + offsets]
 
 
 def buddy_graph_smoothness_loss(

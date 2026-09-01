@@ -6,6 +6,7 @@ Run:
 """
 import os
 import sys
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
 
@@ -139,6 +140,46 @@ def test_skewed_type_weight_samples_both_neighbors_much_more_often():
     both_frequency = (sampled == 3).float().mean().item()
     assert abs(both_frequency - (100.0 / 102.0)) < 0.01, both_frequency
     print("  test_skewed_type_weight_samples_both_neighbors_much_more_often OK")
+
+
+def test_weighted_sampling_clamps_rounded_row_end_boundary():
+    # The largest float32 below one rounds this second row's target up to its
+    # CDF end.  searchsorted(..., right=True) therefore returns 2, but row 1
+    # has only CSR position 1.  The sampler must retain that last position.
+    indptr = torch.tensor([0, 1, 2], dtype=torch.long)
+    indices = torch.tensor([10, 20], dtype=torch.long)
+    edge_cdf = torch.tensor([2.0 ** -10, 2.0 ** -9], dtype=torch.float32)
+    row_weight_sums = torch.tensor([2.0 ** -10, 2.0 ** -10], dtype=torch.float32)
+    near_one = torch.nextafter(torch.ones(1, 1), torch.zeros(1, 1))
+    with patch("src.metrics.regularizer.torch.rand", return_value=near_one):
+        active, sampled = sample_buddy_neighbors(
+            indptr, indices, torch.tensor([1]), num_samples=1,
+            edge_cdf=edge_cdf, row_weight_sums=row_weight_sums,
+        )
+    assert active.tolist() == [0]
+    assert sampled.tolist() == [[20]], sampled.tolist()
+    print("  test_weighted_sampling_clamps_rounded_row_end_boundary OK")
+
+
+def test_weighted_sampling_always_stays_in_each_anchor_row():
+    # Exercise more than 10k draws across several weighted CSR rows.  The
+    # neighbor values deliberately encode their owning row, so this catches a
+    # sample that spills into an adjacent row as well as an out-of-bounds draw.
+    indptr = torch.tensor([0, 3, 5, 7], dtype=torch.long)
+    indices = torch.tensor([10, 11, 12, 20, 21, 30, 31], dtype=torch.long)
+    edge_cdf = torch.tensor([0.25, 0.5, 1.0, 1.25, 2.0, 3.0, 5.0])
+    row_weight_sums = torch.tensor([1.0, 1.0, 3.0])
+    anchors = torch.arange(3, dtype=torch.long).repeat_interleave(4_096)
+    active, sampled = sample_buddy_neighbors(
+        indptr, indices, anchors, num_samples=1,
+        edge_cdf=edge_cdf, row_weight_sums=row_weight_sums,
+        generator=torch.Generator().manual_seed(19),
+    )
+    assert active.numel() == anchors.numel()
+    for row, neighbors in enumerate(([10, 11, 12], [20, 21], [30, 31])):
+        row_samples = sampled[anchors[active] == row, 0]
+        assert torch.isin(row_samples, torch.tensor(neighbors)).all(), row_samples
+    print("  test_weighted_sampling_always_stays_in_each_anchor_row OK")
 
 
 def test_type_aware_csr_requires_edge_provenance():
@@ -294,6 +335,8 @@ if __name__ == "__main__":
     test_uniform_weighted_sampling_matches_uniform_frequencies()
     test_none_type_weights_preserve_exact_uniform_sampling_path()
     test_skewed_type_weight_samples_both_neighbors_much_more_often()
+    test_weighted_sampling_clamps_rounded_row_end_boundary()
+    test_weighted_sampling_always_stays_in_each_anchor_row()
     test_type_aware_csr_requires_edge_provenance()
     test_weighted_smoothness_skips_zero_weight_repair_row()
     test_gradient_shrinks_pair()
