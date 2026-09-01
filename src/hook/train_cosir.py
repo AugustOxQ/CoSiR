@@ -48,6 +48,7 @@ from src.utils import (
 from src.metrics import LabelContrastiveLoss_enhance, predictor_consistency_loss
 from src.metrics.regularizer import (
     build_neighbor_csr,
+    build_semantic_buddy_csr,
     buddy_graph_smoothness_loss,
     buddy_contrastive_loss,
     reorder_features_to_z,
@@ -1344,16 +1345,31 @@ def train_cosir(cfg, logger):
     _lambda_buddy_con = getattr(cfg.loss, "lambda_buddy_con", 0.0)
     _buddy_con_samples = int(getattr(cfg.loss, "buddy_con_samples", 4))
     _buddy_con_temp = float(getattr(cfg.loss, "buddy_con_temperature", 0.07))
+    _buddy_exclude_repair = bool(getattr(cfg.loss, "buddy_exclude_repair", False))
+    _raw_buddy_type_weights = getattr(cfg.loss, "buddy_type_weights", None)
+    _buddy_type_weights = (
+        {str(name): float(weight) for name, weight in _raw_buddy_type_weights.items()}
+        if _raw_buddy_type_weights is not None else None
+    )
+    _buddy_type_aware = _buddy_exclude_repair or _buddy_type_weights is not None
     _log_buddy_preservation = bool(getattr(cfg.loss, "log_buddy_preservation", False))
     _buddy_preservation_k = int(getattr(cfg.loss, "buddy_preservation_k", 10))
     static_buddy_indptr = static_buddy_indices = None
+    static_buddy_edge_cdf = static_buddy_row_weight_sums = None
     buddy_indptr = buddy_indices = None
+    buddy_edge_cdf = buddy_row_weight_sums = None
     _clip_indptr = _clip_indices = None   # stable CLIP CSR (never rebound by refresh)
     other_feat_table = None
     _clip_edge_index = None
-    if _lambda_buddy > 0 or _lambda_buddy_con > 0 or _log_buddy_preservation:
+    if _lambda_buddy > 0 or _lambda_buddy_con > 0 or _log_buddy_preservation or _buddy_type_aware:
         _edges = embedding_manager.get_buddy_edges()
         if _edges is None:
+            if _buddy_type_aware:
+                raise ValueError(
+                    "Type-aware buddy supervision was requested but buddy_edges.npy "
+                    "is missing, so buddy_edge_types.npy cannot be aligned. Rebuild "
+                    "the template with Experiment 15.1 provenance persistence first."
+                )
             print("[buddy] lambda_buddy/lambda_buddy_con>0 but no buddy_edges.npy "
                   "found — disabling buddy terms for this run.")
             _lambda_buddy = 0.0
@@ -1361,13 +1377,44 @@ def train_cosir(cfg, logger):
         else:
             _edge_index = torch.from_numpy(_edges.astype(np.int64)).to(device)
             _clip_edge_index = _edge_index
-            static_buddy_indptr, static_buddy_indices = build_neighbor_csr(
-                _edge_index, num_nodes=len(embedding_manager.sample_ids)
+            _num_buddy_nodes = len(embedding_manager.sample_ids)
+            _clip_indptr, _clip_indices = build_neighbor_csr(
+                _edge_index, num_nodes=_num_buddy_nodes
             )
+            if _buddy_type_aware:
+                _edge_types = embedding_manager.get_buddy_edge_types()
+                if _edge_types is None:
+                    raise ValueError(
+                        "Type-aware buddy supervision was requested but buddy_edge_types.npy "
+                        "is missing. Rebuild the template with Experiment 15.1 provenance "
+                        "persistence first; refusing to silently run untyped supervision."
+                    )
+                (
+                    static_buddy_indptr,
+                    static_buddy_indices,
+                    static_buddy_edge_cdf,
+                    static_buddy_row_weight_sums,
+                ) = build_semantic_buddy_csr(
+                    _edge_index,
+                    _edge_types,
+                    num_nodes=_num_buddy_nodes,
+                    exclude_repair=_buddy_exclude_repair,
+                    type_weights=_buddy_type_weights,
+                )
+            else:
+                static_buddy_indptr, static_buddy_indices = _clip_indptr, _clip_indices
             buddy_indptr, buddy_indices = static_buddy_indptr, static_buddy_indices
-            _clip_indptr, _clip_indices = buddy_indptr, buddy_indices
+            buddy_edge_cdf, buddy_row_weight_sums = (
+                static_buddy_edge_cdf, static_buddy_row_weight_sums
+            )
             print(f"[buddy] edges loaded: {_edge_index.shape[1]:,}; "
                   f"lambda_buddy={_lambda_buddy}, lambda_buddy_con={_lambda_buddy_con}")
+            if _buddy_type_aware:
+                print(
+                    "[buddy-con] type-aware sampling: "
+                    f"exclude_repair={_buddy_exclude_repair}, "
+                    f"weights={_buddy_type_weights}"
+                )
 
     # Family #2: gather the non-combine-side pooled feature per sample, in z-table
     # order, so anchor combined features can be pulled toward buddy targets.
@@ -1395,6 +1442,11 @@ def train_cosir(cfg, logger):
     _buddy_refresh_period = int(getattr(cfg.loss, "buddy_refresh_period", 50))
     _buddy_refresh_blend = float(getattr(cfg.loss, "buddy_refresh_blend", 1.0))
     _buddy_refresh_k = int(getattr(cfg.loss, "buddy_refresh_k", 30))
+    if _buddy_refresh and _buddy_type_aware:
+        raise ValueError(
+            "buddy_refresh cannot be combined with type-aware buddy sampling: refreshed "
+            "edges have no persisted provenance. Disable buddy_refresh for Experiment 15.3."
+        )
     combine_feat_table = None
     _refresh_gen = torch.Generator().manual_seed(0)
     _prev_comb_edges = None
@@ -1505,6 +1557,7 @@ def train_cosir(cfg, logger):
                 blend=_buddy_refresh_blend,
                 generator=_refresh_gen,
             )
+            buddy_edge_cdf = buddy_row_weight_sums = None
             if _prev_comb_edges is not None:
                 _refresh_stats["graph_churn"] = edge_jaccard(_comb_edges, _prev_comb_edges)
             _prev_comb_edges = _comb_edges
@@ -1685,6 +1738,8 @@ def train_cosir(cfg, logger):
                     static_buddy_indices,
                     _anchor_pos,
                     num_samples=_buddy_reg_samples,
+                    edge_cdf=static_buddy_edge_cdf,
+                    row_weight_sums=static_buddy_row_weight_sums,
                 )
                 loss = loss + _lambda_buddy * buddy_loss
                 loss_dict["loss_buddy"] = buddy_loss.detach()
@@ -1706,6 +1761,8 @@ def train_cosir(cfg, logger):
                     buddy_indices,
                     num_pos=_buddy_con_samples,
                     temperature=_buddy_con_temp,
+                    edge_cdf=buddy_edge_cdf,
+                    row_weight_sums=buddy_row_weight_sums,
                 )
                 loss = loss + _lambda_buddy_con * buddy_con_loss
                 loss_dict["loss_buddy_con"] = buddy_con_loss.detach()

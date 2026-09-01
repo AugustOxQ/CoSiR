@@ -1,11 +1,27 @@
 """Regularization functions used by LabelContrastiveLoss_enhance."""
 
+import math
 import numpy as np
 import torch
 import torch.nn.functional as F
 from typing import Optional
 
 from src.conditional_buddy.buddy_graph import mutual_knn
+from src.conditional_buddy.compute_buddies import (
+    EDGE_TYPE_BOTH,
+    EDGE_TYPE_IMG_ONLY,
+    EDGE_TYPE_REPAIR,
+    EDGE_TYPE_TXT_ONLY,
+)
+
+
+_BUDDY_EDGE_TYPE_CODES = {
+    "img_only": int(EDGE_TYPE_IMG_ONLY),
+    "txt_only": int(EDGE_TYPE_TXT_ONLY),
+    "both": int(EDGE_TYPE_BOTH),
+    "repair": int(EDGE_TYPE_REPAIR),
+}
+_DEFAULT_TYPE_WEIGHTS = {"img_only": 1.0, "txt_only": 1.0, "both": 1.0, "repair": 0.0}
 
 
 def boundary_penalty(embeddings, radius=1.0, alpha=0.1):
@@ -77,12 +93,152 @@ def build_neighbor_csr(edge_index: torch.Tensor, num_nodes: int):
     return indptr, dst.contiguous()
 
 
+def _build_weighted_neighbor_csr(
+    edge_index: torch.Tensor, edge_weights: torch.Tensor, num_nodes: int,
+):
+    """Build a symmetric CSR and setup-time CDF metadata for weighted draws."""
+    device = edge_index.device
+    if edge_index.numel() == 0:
+        indptr = torch.zeros(num_nodes + 1, dtype=torch.long, device=device)
+        empty = torch.empty(0, dtype=torch.long, device=device)
+        return indptr, empty, torch.empty(0, device=device), torch.zeros(num_nodes, device=device)
+    src = torch.cat([edge_index[0], edge_index[1]])
+    dst = torch.cat([edge_index[1], edge_index[0]])
+    weights = torch.cat([edge_weights, edge_weights])
+    keep = src != dst
+    src, dst, weights = src[keep], dst[keep], weights[keep]
+    order = torch.argsort(src)
+    src, dst, weights = src[order], dst[order], weights[order]
+    counts = torch.bincount(src, minlength=num_nodes)
+    indptr = torch.zeros(num_nodes + 1, dtype=torch.long, device=device)
+    indptr[1:] = torch.cumsum(counts, dim=0)
+    edge_cdf = torch.cumsum(weights, dim=0)
+    row_weight_sums = torch.zeros(num_nodes, dtype=weights.dtype, device=device)
+    starts, ends = indptr[:-1], indptr[1:]
+    nonempty = ends > starts
+    end_values = edge_cdf[ends[nonempty] - 1]
+    start_values = torch.zeros_like(end_values)
+    has_prior = starts[nonempty] > 0
+    start_values[has_prior] = edge_cdf[starts[nonempty][has_prior] - 1]
+    row_weight_sums[nonempty] = end_values - start_values
+    return indptr, dst.contiguous(), edge_cdf, row_weight_sums
+
+
+def build_semantic_buddy_csr(
+    edge_index: torch.Tensor,
+    edge_types,
+    num_nodes: int,
+    *,
+    exclude_repair: bool = False,
+    type_weights: Optional[dict] = None,
+):
+    """Build the optional semantic buddy graph and weighted-sampling metadata.
+
+    ``edge_types`` is the uint8 provenance array aligned with ``edge_index``:
+    ``img_only``, ``txt_only``, ``both``, and ``repair``.  If either option is
+    active, missing provenance fails loudly.  ``type_weights`` accepts any
+    subset of those string keys; unspecified semantic types default to 1.0 and
+    ``repair`` defaults to 0.0.  A ``None`` mapping preserves uniform sampling.
+
+    Returns ``(indptr, indices, edge_cdf, row_weight_sums)``.  The latter two
+    are ``None`` when no type weights were requested, retaining the old loss
+    sampling path exactly.  Otherwise they are CSR-aligned setup-time metadata
+    for vectorized weighted-with-replacement sampling.
+    """
+    type_aware = exclude_repair or type_weights is not None
+    if type_aware and edge_types is None:
+        raise ValueError(
+            "Type-aware buddy supervision requires buddy_edge_types.npy, but the "
+            "loaded buddy template has no edge provenance. Rebuild the template "
+            "with Experiment 15.1 provenance persistence first."
+        )
+    if edge_types is None:
+        indptr, indices = build_neighbor_csr(edge_index, num_nodes)
+        return indptr, indices, None, None
+
+    types = torch.as_tensor(edge_types, dtype=torch.uint8, device=edge_index.device).reshape(-1)
+    if types.numel() != edge_index.shape[1]:
+        raise ValueError(
+            "buddy_edge_types.npy must have one entry per buddy_edges.npy column "
+            f"({types.numel()} types for {edge_index.shape[1]} edges)."
+        )
+    if torch.any((types < min(_BUDDY_EDGE_TYPE_CODES.values())) | (types > max(_BUDDY_EDGE_TYPE_CODES.values()))):
+        raise ValueError("buddy_edge_types.npy contains an unknown edge-type code.")
+
+    if exclude_repair:
+        keep = types != int(EDGE_TYPE_REPAIR)
+        edge_index, types = edge_index[:, keep], types[keep]
+
+    if type_weights is None:
+        indptr, indices = build_neighbor_csr(edge_index, num_nodes)
+        return indptr, indices, None, None
+
+    unknown = set(type_weights) - set(_BUDDY_EDGE_TYPE_CODES)
+    if unknown:
+        raise ValueError(f"Unknown buddy_type_weights keys: {sorted(unknown)}")
+    weights_by_name = dict(_DEFAULT_TYPE_WEIGHTS)
+    for name, value in type_weights.items():
+        value = float(value)
+        if not math.isfinite(value) or value < 0:
+            raise ValueError(f"buddy_type_weights[{name!r}] must be a finite non-negative number.")
+        weights_by_name[name] = value
+    edge_weights = torch.empty(types.shape[0], dtype=torch.float32, device=edge_index.device)
+    for name, code in _BUDDY_EDGE_TYPE_CODES.items():
+        edge_weights[types == code] = weights_by_name[name]
+    return _build_weighted_neighbor_csr(edge_index, edge_weights, num_nodes)
+
+
+def sample_buddy_neighbors(
+    indptr: torch.Tensor,
+    indices: torch.Tensor,
+    anchor_positions: torch.Tensor,
+    num_samples: int,
+    *,
+    edge_cdf: Optional[torch.Tensor] = None,
+    row_weight_sums: Optional[torch.Tensor] = None,
+    generator: Optional[torch.Generator] = None,
+):
+    """Return active input rows and sampled CSR neighbours with replacement.
+
+    Without CDF metadata this is intentionally the exact historical uniform
+    ``rand * degree`` implementation.  With setup-time CDF metadata, one
+    global ``searchsorted`` samples each anchor's local CSR row by its weights.
+    """
+    deg = indptr[anchor_positions + 1] - indptr[anchor_positions]
+    mask = deg > 0
+    if (edge_cdf is None) != (row_weight_sums is None):
+        raise ValueError("edge_cdf and row_weight_sums must be supplied together.")
+    if row_weight_sums is not None:
+        mask = mask & (row_weight_sums[anchor_positions] > 0)
+    active = torch.nonzero(mask, as_tuple=False).squeeze(1)
+    if active.numel() == 0:
+        return active, torch.empty((0, num_samples), dtype=torch.long, device=indices.device)
+
+    anchors = anchor_positions[active]
+    starts = indptr[anchors].unsqueeze(1)
+    A = anchors.shape[0]
+    rand = torch.rand(A, num_samples, device=indices.device, generator=generator)
+    if edge_cdf is None:
+        degm = deg[active].unsqueeze(1)
+        offsets = torch.clamp((rand * degm).long(), max=degm - 1)
+        return active, indices[starts + offsets]
+
+    totals = row_weight_sums[anchors].unsqueeze(1)
+    bases = torch.zeros_like(totals)
+    has_prior = starts > 0
+    bases[has_prior] = edge_cdf[(starts[has_prior] - 1)]
+    flat_positions = torch.searchsorted(edge_cdf, (bases + rand * totals).reshape(-1), right=True)
+    return active, indices[flat_positions.reshape(A, num_samples)]
+
+
 def buddy_graph_smoothness_loss(
     embeddings: torch.Tensor,
     indptr: torch.Tensor,
     indices: torch.Tensor,
     anchor_positions: torch.Tensor,
     num_samples: int = 4,
+    edge_cdf: Optional[torch.Tensor] = None,
+    row_weight_sums: Optional[torch.Tensor] = None,
     generator: Optional[torch.Generator] = None,
 ) -> torch.Tensor:
     """Mean squared distance between batch anchors and sampled buddies along E.
@@ -97,17 +253,13 @@ def buddy_graph_smoothness_loss(
     num_samples:      buddies sampled per anchor (with replacement).
     """
     device = embeddings.device
-    deg = indptr[anchor_positions + 1] - indptr[anchor_positions]   # [A]
-    mask = deg > 0
-    if not torch.any(mask):
+    active, nbr_pos = sample_buddy_neighbors(
+        indptr, indices, anchor_positions, num_samples,
+        edge_cdf=edge_cdf, row_weight_sums=row_weight_sums, generator=generator,
+    )
+    if active.numel() == 0:
         return embeddings.sum() * 0.0
-    anchors = anchor_positions[mask]
-    deg = deg[mask].unsqueeze(1)                                    # [A', 1]
-    starts = indptr[anchors].unsqueeze(1)                          # [A', 1]
-    A = anchors.shape[0]
-    rand = torch.rand(A, num_samples, device=device, generator=generator)
-    offsets = torch.clamp((rand * deg).long(), max=deg - 1)        # [A', num_samples] in [0, deg)
-    nbr_pos = indices[starts + offsets]                            # [A', num_samples] table positions
+    anchors = anchor_positions[active]
     z_a = embeddings[anchors].unsqueeze(1)                         # [A', 1, D]
     z_n = embeddings[nbr_pos]                                      # [A', num_samples, D]
     return (z_a - z_n).pow(2).sum(-1).mean()
@@ -123,6 +275,8 @@ def buddy_contrastive_loss(
     indices: torch.Tensor,
     num_pos: int = 4,
     temperature: float = 0.07,
+    edge_cdf: Optional[torch.Tensor] = None,
+    row_weight_sums: Optional[torch.Tensor] = None,
     generator: Optional[torch.Generator] = None,
 ):
     """Multi-positive InfoNCE pulling anchors toward their buddies along E.
@@ -144,19 +298,14 @@ def buddy_contrastive_loss(
     Returns (loss scalar, alignment scalar detached = mean cos(anchor, buddy)).
     """
     device = comb_emb.device
-    deg = indptr[anchor_positions + 1] - indptr[anchor_positions]   # [B]
-    mask = deg > 0
-    if not torch.any(mask):
+    active, buddy_pos = sample_buddy_neighbors(
+        indptr, indices, anchor_positions, num_pos,
+        edge_cdf=edge_cdf, row_weight_sums=row_weight_sums, generator=generator,
+    )
+    if active.numel() == 0:
         return comb_emb.sum() * 0.0, torch.zeros((), device=device)
 
-    active = torch.nonzero(mask, as_tuple=False).squeeze(1)        # [A] batch rows
-    anchors = anchor_positions[active]                            # [A] z-positions
-    degm = deg[mask].unsqueeze(1)                                # [A, 1]
-    starts = indptr[anchors].unsqueeze(1)                        # [A, 1]
-    A = anchors.shape[0]
-    rand = torch.rand(A, num_pos, device=device, generator=generator)
-    offsets = torch.clamp((rand * degm).long(), max=degm - 1)     # [A, num_pos] in [0, deg)
-    buddy_pos = indices[starts + offsets]                        # [A, num_pos] z-positions
+    A = active.shape[0]
 
     q = F.normalize(comb_emb[active], dim=-1)                    # [A, Dp]
     pos = F.normalize(project_other(other_feat_table[buddy_pos]), dim=-1)  # [A, num_pos, Dp]
