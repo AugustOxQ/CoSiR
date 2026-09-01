@@ -1,0 +1,6 @@
+{"_example": "Fill with {\"file\": \"path\", \"reason\": \"why\"}. Seed rows are skipped."}
+{"file": "docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md", "reason": "Experiment 15.2 spec -- exact scope/tooling/success criteria"}
+{"file": "scripts/analyze_polysemy_bridges.py", "reason": "extract_hub_pairs / genuinely_unconnected_mask / paired_pull_summary -- the pull diagnostic being extended to read from a checkpoint instead of only the init template (line ~652 currently loads template embeddings.npy)"}
+{"file": "scripts/analyze_condition_geometry.py", "reason": "Already has the exact loading/rebuilding logic needed: _rebuild_combiner, _compute_comb_emb, _load_train_features, reorder_features_to_z -- reuse these, do not reimplement"}
+{"file": "src/metrics/regularizer.py", "reason": "compute_comb_all_eval, reorder_features_to_z -- reusable helpers for computing comb_all from a checkpoint"}
+{"file": "docs/reports/2026-08-31_closed_triangle_bridge_diagnostic.md", "reason": "Experiment 14's original result (z-space, init-only) -- must not be modified or reproduced differently, this task adds a new comb_all-space measurement alongside it"}

@@ -22,6 +22,10 @@ Usage
       --storage-dir /data/SSD2/pre_extract/redcaps_150k/features \\
       --template-dir res/CoSiR_condition_freeze_ablation/redcaps_150k/template_embeddings \\
       --n-bridge-sample 5000
+  python scripts/analyze_polysemy_bridges.py \\
+      --storage-dir /data/SSD2/pre_extract/redcaps_150k/features \\
+      --run-dir res/CoSiR_condition_freeze_ablation/redcaps_150k/RUN \\
+      --epoch 99 --n-hub-sample 5000
 
 Requires: numpy, scipy (all already deps).
 """
@@ -616,9 +620,106 @@ def count_hub_pairs(storage_dir: str, K: int = 30, alpha: float = 0.5, device: s
     }
 
 
+def _align_embeddings_to_graph_order(
+    embeddings: np.ndarray, embedding_sample_ids: List[int], graph_sample_ids: List[int],
+) -> np.ndarray:
+    """Reindex an embedding matrix into the buddy graph's node order by sample ID.
+
+    The graph is indexed in its feature-store order, while condition-viz snapshots are
+    indexed in the embedding-manager's z-table order.  Do not rely on either order
+    happening to match: a row-order mismatch would silently measure the wrong pairs.
+    """
+    assert embeddings.shape[0] == len(embedding_sample_ids), (
+        f"embedding rows ({embeddings.shape[0]}) != embedding sample IDs "
+        f"({len(embedding_sample_ids)})"
+    )
+    source_ids = [int(sid) for sid in embedding_sample_ids]
+    target_ids = [int(sid) for sid in graph_sample_ids]
+    assert len(set(source_ids)) == len(source_ids), "embedding sample IDs must be unique"
+    assert len(set(target_ids)) == len(target_ids), "buddy-graph sample IDs must be unique"
+    source_pos = {sid: i for i, sid in enumerate(source_ids)}
+    target_set = set(target_ids)
+    missing = [sid for sid in target_ids if sid not in source_pos]
+    extra = [sid for sid in source_ids if sid not in target_set]
+    assert not missing and not extra, (
+        "checkpoint and buddy graph must contain exactly the same sample IDs; "
+        f"missing={len(missing)}, extra={len(extra)}"
+    )
+    return embeddings[[source_pos[sid] for sid in target_ids]]
+
+
+def _assert_checkpoint_feature_store_matches_graph(
+    checkpoint_storage_dir: str, graph_storage_dir: str,
+) -> None:
+    """Reject a checkpoint whose configured feature store differs from the graph's."""
+    checkpoint_path = Path(checkpoint_storage_dir).expanduser().resolve()
+    graph_path = Path(graph_storage_dir).expanduser().resolve()
+    assert checkpoint_path == graph_path, (
+        "checkpoint feature store must match the feature store used to build the buddy graph; "
+        f"checkpoint={checkpoint_path}, graph={graph_path}"
+    )
+
+
+def _load_checkpoint_comb_all(
+    run_dir: str, epoch: int, graph_sample_ids: List[int], graph_storage_dir: str,
+) -> np.ndarray:
+    """Rebuild one condition-viz snapshot's ``comb_all`` in buddy-graph node order.
+
+    This deliberately reuses Experiment 11.1's debugged geometry machinery: raw
+    (not L2-normalized) CLIP features, ``reorder_features_to_z``, and the snapshot
+    combiner state.  The final explicit reindex maps z-table rows back into the graph.
+    """
+    from analyze_condition_geometry import (
+        _compute_comb_emb,
+        _load_run_config,
+        _load_train_features,
+        _rebuild_combiner,
+    )
+    from src.metrics.regularizer import reorder_features_to_z
+    import torch
+
+    snapshot_path = Path(run_dir) / "condition_viz" / f"epoch_{epoch:04d}.pt"
+    if not snapshot_path.exists():
+        raise FileNotFoundError(f"condition-viz snapshot not found: {snapshot_path}")
+    snapshot = torch.load(snapshot_path, map_location="cpu")
+    conditions = snapshot["label_embeddings_all"]
+    snapshot_ids = [int(sid) for sid in snapshot["sample_ids"]]
+    assert conditions.shape[0] == len(snapshot_ids), (
+        f"snapshot condition rows ({conditions.shape[0]}) != sample IDs ({len(snapshot_ids)})"
+    )
+    persisted_ids_path = Path(run_dir) / "training_embeddings" / "sample_ids.npy"
+    if persisted_ids_path.exists():
+        persisted_ids = np.load(persisted_ids_path).tolist()
+        assert snapshot_ids == persisted_ids, (
+            "snapshot sample IDs must match this run's persisted z-table order exactly"
+        )
+    run_cfg = _load_run_config(run_dir)
+    _assert_checkpoint_feature_store_matches_graph(
+        run_cfg["featuremanager"]["storage_dir"], graph_storage_dir,
+    )
+    img_feat, txt_feat, feature_sample_ids = _load_train_features(run_dir, run_cfg)
+    assert "combine_side" in snapshot, "condition-viz snapshot is missing combine_side"
+    combine_side = snapshot["combine_side"]
+    assert combine_side in {"img", "txt"}, f"unsupported combine_side: {combine_side!r}"
+    raw_features = img_feat if combine_side == "img" else txt_feat
+    assert len(feature_sample_ids) == raw_features.shape[0], (
+        f"feature rows ({raw_features.shape[0]}) != feature sample IDs ({len(feature_sample_ids)})"
+    )
+    assert len(set(feature_sample_ids)) == len(feature_sample_ids), (
+        "feature-store sample IDs must be unique before reordering into z-table order"
+    )
+    combine_features = reorder_features_to_z(raw_features, feature_sample_ids, snapshot_ids)
+    comb_all = _compute_comb_emb(_rebuild_combiner(snapshot), combine_features, conditions)
+    aligned = _align_embeddings_to_graph_order(
+        comb_all.detach().cpu().numpy(), snapshot_ids, graph_sample_ids,
+    )
+    assert np.isfinite(aligned).all(), "checkpoint comb_all contains non-finite values"
+    return aligned
+
+
 def run(
     storage_dir: str,
-    template_dir: str,
+    template_dir: str = None,
     K: int = 30,
     alpha: float = 0.5,
     n_bridge_sample: int = 5000,
@@ -627,11 +728,13 @@ def run(
     device: str = "cuda",
     per_sample_npz=None,
     save_raw: str = None,
+    checkpoint_run_dir: str = None,
+    checkpoint_epoch: int = None,
 ) -> dict:
     """End-to-end Experiment 12 + Experiment 14 pass: rebuild the buddy graph from
     cached features, classify its edges, sample bridge-node (A, B, C) triples AND
     hub-node closed/open (hub, C, D) pairs, measure whether the ALREADY-SAVED
-    buddy-init embedding pulls each kind of pair together vs. a degree-matched
+    buddy-init or checkpoint ``comb_all`` embedding pulls each kind of pair together vs. a degree-matched
     baseline, check whether the bridge pull is graded by shared-neighbor structure,
     compare closed-triangle pull magnitude against open-hub pull magnitude (Experiment
     14's primary question), and (if per_sample_npz is given) cross-reference the
@@ -642,14 +745,23 @@ def run(
     typed, bstats, sample_ids, E = _build_typed_graph(storage_dir, K, alpha, device)
     N = len(sample_ids)
 
-    template_ids = np.load(Path(template_dir) / "sample_ids.npy").tolist()
-    assert template_ids == sample_ids, (
-        "template_dir's sample_ids.npy must match the freshly-loaded feature store's "
-        "sample order exactly (CLAUDE.md's sample-id-consistency rule) -- do not proceed "
-        "past this assertion if it fires; it means the wrong template/feature-store pair "
-        "was passed"
-    )
-    emb = np.load(Path(template_dir) / "embeddings.npy")
+    if (template_dir is None) == (checkpoint_run_dir is None):
+        raise ValueError("pass exactly one of template_dir or checkpoint_run_dir")
+    if checkpoint_run_dir is None:
+        template_ids = np.load(Path(template_dir) / "sample_ids.npy").tolist()
+        assert template_ids == sample_ids, (
+            "template_dir's sample_ids.npy must match the freshly-loaded feature store's "
+            "sample order exactly (CLAUDE.md's sample-id-consistency rule) -- do not proceed "
+            "past this assertion if it fires; it means the wrong template/feature-store pair "
+            "was passed"
+        )
+        emb = np.load(Path(template_dir) / "embeddings.npy")
+    else:
+        if checkpoint_epoch is None:
+            raise ValueError("checkpoint_epoch is required with checkpoint_run_dir")
+        emb = _load_checkpoint_comb_all(
+            checkpoint_run_dir, checkpoint_epoch, sample_ids, storage_dir,
+        )
 
     labels = label_nodes(bstats)
     E_img_only, E_txt_only = build_typed_adjacency(typed, N)
@@ -760,8 +872,14 @@ def run(
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--storage-dir", default="/data/SSD2/pre_extract/redcaps_150k/features")
-    ap.add_argument("--template-dir",
+    source = ap.add_mutually_exclusive_group()
+    source.add_argument("--template-dir",
                     default="res/CoSiR_condition_freeze_ablation/redcaps_150k/template_embeddings")
+    source.add_argument("--run-dir", default=None,
+                        help="run directory containing condition_viz/epoch_XXXX.pt; rebuilds "
+                             "comb_all from the snapshot instead of loading template embeddings.npy")
+    ap.add_argument("--epoch", type=int, default=None,
+                    help="condition-viz epoch used with --run-dir (for example 0 or 99)")
     ap.add_argument("--K", type=int, default=30)
     ap.add_argument("--alpha", type=float, default=0.5)
     ap.add_argument("--n-bridge-sample", type=int, default=5000)
@@ -798,10 +916,17 @@ def main():
         print(f"  genuinely unconnected (no edge of any kind): {counts['n_genuinely_unconnected']:,}")
         return
 
+    if args.run_dir is not None and args.epoch is None:
+        ap.error("--epoch is required with --run-dir")
+    if args.run_dir is None and args.epoch is not None:
+        ap.error("--epoch is only valid with --run-dir")
+
     result = run(
-        storage_dir=args.storage_dir, template_dir=args.template_dir, K=args.K,
+        storage_dir=args.storage_dir,
+        template_dir=None if args.run_dir is not None else args.template_dir, K=args.K,
         alpha=args.alpha, n_bridge_sample=args.n_bridge_sample, n_hub_sample=args.n_hub_sample,
         seed=args.seed, device=args.device, per_sample_npz=args.per_sample_npz, save_raw=args.save_raw,
+        checkpoint_run_dir=args.run_dir, checkpoint_epoch=args.epoch,
     )
 
     print(f"\n{'='*78}\nExperiment 12 - cross-modal polysemy bridge-node diagnostic\n{'='*78}")
