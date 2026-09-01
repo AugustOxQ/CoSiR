@@ -1,0 +1,54 @@
+{
+  "n_bridge_nodes": 120324,
+  "frac_bridge_nodes": 0.80216,
+  "n_pairs_sampled": 5000,
+  "pull_summary": {
+    "n": 5000,
+    "mean": 0.2669413685798645,
+    "std": 0.21847911179065704,
+    "sem": 0.0030897612298957477,
+    "z": 86.3954683607935,
+    "frac_pulled_closer": 0.8872
+  },
+  "grading_corr_jaccard_vs_pull": {
+    "rho": 0.10691169167539391,
+    "p": 3.465148536614073e-14
+  },
+  "label_counts": {
+    "neither": 1737,
+    "img_only_only": 21765,
+    "txt_only_only": 6174,
+    "bridge": 120324
+  },
+  "hub_pair_counts": {
+    "n_hub_nodes": 110405,
+    "n_pairs_total": 8940974,
+    "n_closed_total": 70544,
+    "n_open_total": 8870430,
+    "n_genuinely_unconnected_total": 4284528
+  },
+  "closed_triangle_pull": {
+    "n": 5000,
+    "mean": 0.6622804403305054,
+    "std": 0.14460758864879608,
+    "sem": 0.0020450601308919705,
+    "z": 323.84399379085545,
+    "frac_pulled_closer": 0.9998
+  },
+  "open_hub_pull": {
+    "n": 5000,
+    "mean": 0.29630282521247864,
+    "std": 0.2302246242761612,
+    "sem": 0.0032558678604359724,
+    "z": 91.005789520218,
+    "frac_pulled_closer": 0.897
+  },
+  "genuinely_unconnected_pull": {
+    "n": 5000,
+    "mean": 0.2671341001987457,
+    "std": 0.21766051650047302,
+    "sem": 0.0030781845442810177,
+    "z": 86.78300353858127,
+    "frac_pulled_closer": 0.891
+  }
+}

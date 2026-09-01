@@ -1,0 +1,12 @@
+{
+  "id": "buddy-false-transitivity-attribution",
+  "title": "Implement Experiment 15.2 (arms a-c, zero new training): attribute false-transitivity pull to pipeline stage using existing 11.1 checkpoints",
+  "status": "completed",
+  "strategy": "guided-develop",
+  "currentPhase": "completed",
+  "nextAction": "Archive and commit the verified zero-new-training Experiment 15.2 implementation and measurements.",
+  "gate": null,
+  "branch": "experiment/condition_drift_retrieval_correlation",
+  "scope": "buddy-false-transitivity-attribution",
+  "createdAt": "2026-09-01T02:31:49Z"
+}
