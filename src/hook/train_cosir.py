@@ -1337,8 +1337,8 @@ def train_cosir(cfg, logger):
     # --- Phase 5: Optimizer & Scheduler ---
     optimizer, scheduler = _build_optimizer_and_scheduler(cfg, model, embedding_manager)
 
-    # Families #1 & #2 share the persisted E edge list + CSR neighbour index.
-    # Disabled (no-op) when both lambdas are 0 or edges are absent.
+    # Family #1 keeps a static CSR from persisted E. Family #2 may later receive
+    # a refreshed CSR from Family #3; the two must not share mutable references.
     _lambda_buddy = getattr(cfg.loss, "lambda_buddy", 0.0)
     _buddy_reg_samples = int(getattr(cfg.loss, "buddy_reg_samples", 4))
     _lambda_buddy_con = getattr(cfg.loss, "lambda_buddy_con", 0.0)
@@ -1346,6 +1346,7 @@ def train_cosir(cfg, logger):
     _buddy_con_temp = float(getattr(cfg.loss, "buddy_con_temperature", 0.07))
     _log_buddy_preservation = bool(getattr(cfg.loss, "log_buddy_preservation", False))
     _buddy_preservation_k = int(getattr(cfg.loss, "buddy_preservation_k", 10))
+    static_buddy_indptr = static_buddy_indices = None
     buddy_indptr = buddy_indices = None
     _clip_indptr = _clip_indices = None   # stable CLIP CSR (never rebound by refresh)
     other_feat_table = None
@@ -1360,9 +1361,10 @@ def train_cosir(cfg, logger):
         else:
             _edge_index = torch.from_numpy(_edges.astype(np.int64)).to(device)
             _clip_edge_index = _edge_index
-            buddy_indptr, buddy_indices = build_neighbor_csr(
+            static_buddy_indptr, static_buddy_indices = build_neighbor_csr(
                 _edge_index, num_nodes=len(embedding_manager.sample_ids)
             )
+            buddy_indptr, buddy_indices = static_buddy_indptr, static_buddy_indices
             _clip_indptr, _clip_indices = buddy_indptr, buddy_indices
             print(f"[buddy] edges loaded: {_edge_index.shape[1]:,}; "
                   f"lambda_buddy={_lambda_buddy}, lambda_buddy_con={_lambda_buddy_con}")
@@ -1435,9 +1437,6 @@ def train_cosir(cfg, logger):
                       "buddy_refresh: scheduled refreshes landing in a network phase are "
                       "skipped, not retried — refresh schedule may desync. Recommended: "
                       "run refresh with em_interval<0.")
-            if _lambda_buddy > 0:
-                print("[buddy-refresh] WARNING: lambda_buddy>0 with buddy_refresh: Family #1 "
-                      "shares the refreshed CSR (out of scope). Recommended: lambda_buddy=0.")
 
     if _log_buddy_preservation and combine_feat_table is not None and _clip_indptr is not None:
         print(f"[buddy-preserve] enabled: buddy_knn_preservation@k={_buddy_preservation_k}, "
@@ -1676,14 +1675,14 @@ def train_cosir(cfg, logger):
             # Family #1: buddy-graph smoothness on z along E (only when conditions train)
             if (
                 _lambda_buddy > 0
-                and buddy_indptr is not None
+                and static_buddy_indptr is not None
                 and embedding_manager.embeddings.requires_grad
             ):
                 _anchor_pos = torch.tensor(batch_indices, device=device, dtype=torch.long)
                 buddy_loss = buddy_graph_smoothness_loss(
                     embedding_manager.embeddings,
-                    buddy_indptr,
-                    buddy_indices,
+                    static_buddy_indptr,
+                    static_buddy_indices,
                     _anchor_pos,
                     num_samples=_buddy_reg_samples,
                 )

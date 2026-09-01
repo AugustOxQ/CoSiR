@@ -13,6 +13,7 @@ import numpy as np
 from scipy.sparse import csgraph, csr_matrix
 
 from .buddy_graph import (
+    classify_edges,
     ensure_connected,
     ensure_min_degree,
     mix_distances,
@@ -23,6 +24,32 @@ from .buddy_graph import (
     union_graph,
 )
 from .embedding_methods import normalise_embedding, spectral_embedding
+
+
+# `buddy_edge_types.npy` codes, aligned column-for-column with `buddy_edges.npy`:
+# 0=img_only, 1=txt_only, 2=both, 3=repair.
+EDGE_TYPE_IMG_ONLY = np.uint8(0)
+EDGE_TYPE_TXT_ONLY = np.uint8(1)
+EDGE_TYPE_BOTH = np.uint8(2)
+EDGE_TYPE_REPAIR = np.uint8(3)
+
+
+def _typed_edge_list(
+    A_img: csr_matrix, A_txt: csr_matrix, E: csr_matrix, N: int,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return sorted ``[2, M]`` union edges and their aligned uint8 provenance.
+
+    The edge columns are built from ``classify_edges()['keys']`` itself, rather
+    than a COO traversal, so the provenance array has a stable, explicit order.
+    """
+    typed = classify_edges(A_img, A_txt, E, N)
+    keys = typed["keys"]
+    edges = np.stack([keys // N, keys % N]).astype(np.int64, copy=False)
+    edge_types = np.full(keys.shape, EDGE_TYPE_REPAIR, dtype=np.uint8)
+    edge_types[typed["img_only"]] = EDGE_TYPE_IMG_ONLY
+    edge_types[typed["txt_only"]] = EDGE_TYPE_TXT_ONLY
+    edge_types[typed["both"]] = EDGE_TYPE_BOTH
+    return edges, edge_types
 
 
 def _l2_normalize(x: np.ndarray) -> np.ndarray:
@@ -115,10 +142,12 @@ def compute_buddy_init(
                        edge's own supporting modality's rank alone for img-only/txt-only
                        edges (see mix_distances_typed) -- 'blend' exactly reproduces the
                        function's pre-2026-08-24 behavior; only pass 'typed' explicitly.
-    Returns: (N, n_dim) float32 in ~[-1, 1], or if return_edges=True, a tuple (emb, edges)
-             where edges is np.int64 [2, M] undirected edge list (i < j), with endpoints
-             expressed as table positions in output_sample_ids order if reordering is
-             requested, else input-row order.
+    Returns: (N, n_dim) float32 in ~[-1, 1], or if return_edges=True, a tuple
+             (emb, edges, edge_types). ``edges`` is an np.int64 [2, M] undirected
+             edge list (i < j), and ``edge_types`` is a uint8 [M] array aligned
+             column-for-column with it: 0=img_only, 1=txt_only, 2=both, 3=repair.
+             Endpoints are expressed as table positions in output_sample_ids order
+             if reordering is requested, else input-row order.
 
     Rows are returned in input order unless both ``input_sample_ids`` and
     ``output_sample_ids`` are given, in which case rows are reordered so row i
@@ -184,12 +213,10 @@ def compute_buddy_init(
     if not return_edges:
         return emb
 
-    coo = E.tocoo()
-    upper = coo.row < coo.col
-    edges = np.stack([coo.row[upper], coo.col[upper]]).astype(np.int64)  # input-row positions
+    edges, edge_types = _typed_edge_list(A_img, A_txt, E, E.shape[0])
     if output_sample_ids is not None:
         inv = np.empty(len(reorder), dtype=np.int64)
         inv[np.asarray(reorder, dtype=np.int64)] = np.arange(len(reorder), dtype=np.int64)
         edges = inv[edges]  # remap input positions -> output positions
         edges = np.sort(edges, axis=0)  # re-enforce i < j after remap
-    return emb, edges
+    return emb, edges, edge_types

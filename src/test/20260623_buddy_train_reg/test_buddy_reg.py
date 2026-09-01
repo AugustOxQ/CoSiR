@@ -12,7 +12,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 import numpy as np
 import torch
 
-from src.metrics.regularizer import build_neighbor_csr, buddy_graph_smoothness_loss
+from src.metrics.regularizer import build_neighbor_csr, buddy_graph_smoothness_loss, refresh_buddy_graph
+from src.conditional_buddy.buddy_graph import classify_edges
+from src.conditional_buddy.compute_buddies import build_buddy_graphs
 
 
 def test_csr_symmetric():
@@ -79,15 +81,16 @@ def test_return_edges_and_remap():
     ids = list(range(N))
 
     # input-order edges
-    _, edges0 = compute_buddy_init(
+    _, edges0, edge_types0 = compute_buddy_init(
         img, txt, n_dim=16, K=10, device="cpu", use_half=False, return_edges=True,
     )
     assert edges0.shape[0] == 2 and edges0.dtype == np.int64
+    assert edge_types0.dtype == np.uint8 and edge_types0.shape == (edges0.shape[1],)
     assert (edges0[0] < edges0[1]).all(), "edges must be stored with i < j"
 
     # reordered output: output row k holds input id perm[k]
     perm = list(rng.permutation(N))
-    _, edges_perm = compute_buddy_init(
+    _, edges_perm, edge_types_perm = compute_buddy_init(
         img, txt, n_dim=16, K=10, device="cpu", use_half=False, return_edges=True,
         input_sample_ids=ids, output_sample_ids=perm,
     )
@@ -98,10 +101,30 @@ def test_return_edges_and_remap():
     set0 = {frozenset((int(a), int(b))) for a, b in edges0.T}
     setr = {frozenset((int(a), int(b))) for a, b in recovered.T}
     assert set0 == setr, "remapped edges do not connect the same samples"
+    by_edge0 = {frozenset((int(a), int(b))): int(t) for (a, b), t in zip(edges0.T, edge_types0)}
+    by_edge_perm = {
+        frozenset((int(a), int(b))): int(t)
+        for (a, b), t in zip(recovered.T, edge_types_perm)
+    }
+    assert by_edge0 == by_edge_perm, "edge types must remain aligned after edge remapping"
+
+    A_img, A_txt, E = build_buddy_graphs(
+        img, txt, K=10, device="cpu", use_half=False,
+    )
+    typed = classify_edges(A_img, A_txt, E, N)
+    expected_counts = {
+        0: int(typed["img_only"].sum()),
+        1: int(typed["txt_only"].sum()),
+        2: int(typed["both"].sum()),
+        3: int(typed["repair"].sum()),
+    }
+    persisted_counts = {code: int((edge_types0 == code).sum()) for code in range(4)}
+    assert persisted_counts == expected_counts, (persisted_counts, expected_counts)
+    assert sum(persisted_counts.values()) == edges0.shape[1]
     print("  test_return_edges_and_remap OK")
 
 
-def test_manager_edges_roundtrip(tmp_root=None):
+def test_manager_edges_and_types_roundtrip(tmp_root=None):
     import tempfile, shutil
     from pathlib import Path
     from src.utils.embedding_manager_nocache import TrainableEmbeddingManager
@@ -115,20 +138,32 @@ def test_manager_edges_roundtrip(tmp_root=None):
             embeddings_dir=str(emb_dir), mode="ram", initialization_strategy="zeros",
         )
         edges = np.array([[0, 2, 4], [1, 3, 5]], dtype=np.int64)
+        edge_types = np.array([0, 2, 3], dtype=np.uint8)
         np.save(emb_dir / "buddy_edges.npy", edges)
+        np.save(emb_dir / "buddy_edge_types.npy", edge_types)
 
         # get_buddy_edges reads it back
         got = mgr.get_buddy_edges()
         assert got is not None and np.array_equal(got, edges)
+        got_types = mgr.get_buddy_edge_types()
+        assert got_types is not None and np.array_equal(got_types, edge_types)
 
         # round-trips through _copy_to / _copy_from (template persistence)
         tmpl = exp.parent / "template_embeddings"
         mgr._copy_to(tmpl)
         assert (tmpl / "buddy_edges.npy").exists(), "edges not copied into template"
+        assert (tmpl / "buddy_edge_types.npy").exists(), "edge types not copied into template"
         (emb_dir / "buddy_edges.npy").unlink()
+        (emb_dir / "buddy_edge_types.npy").unlink()
         mgr._copy_from(tmpl)
         assert np.array_equal(mgr.get_buddy_edges(), edges), "edges not restored from template"
-        print("  test_manager_edges_roundtrip OK")
+        assert np.array_equal(mgr.get_buddy_edge_types(), edge_types), "types not restored from template"
+
+        # A pre-provenance template must not leave stale types from a prior load.
+        (tmpl / "buddy_edge_types.npy").unlink()
+        mgr._copy_from(tmpl)
+        assert mgr.get_buddy_edge_types() is None, "stale types survived an old-template load"
+        print("  test_manager_edges_and_types_roundtrip OK")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -139,5 +174,5 @@ if __name__ == "__main__":
     test_isolated_contributes_zero()
     test_gradient_shrinks_pair()
     test_return_edges_and_remap()
-    test_manager_edges_roundtrip()
+    test_manager_edges_and_types_roundtrip()
     print("ALL TASK 1 TESTS PASSED")

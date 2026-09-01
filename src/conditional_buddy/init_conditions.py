@@ -47,6 +47,7 @@ def _buddy_cfg(cfg: DictConfig) -> dict:
         "knn_batch_size": int(bud.get("knn_batch_size", 1024)),
         "normalize_method": str(bud.get("normalize_method", "rank")),
         "b_weight": float(bud.get("b_weight", 1.0)),
+        "distance_mode": str(bud.get("distance_mode", "blend")),
     }
 
 
@@ -128,7 +129,7 @@ def main(cfg: DictConfig) -> None:
     # return_edges=True persists the union graph E so the buddy-graph smoothness
     # regularizer (cfg.loss.lambda_buddy>0) works when reusing this template; the
     # edges are in the same row order as emb (no output reorder here).
-    emb, edges = compute_buddy_init(
+    emb, edges, edge_types = compute_buddy_init(
         img,
         txt,
         n_dim=n_dim,
@@ -140,6 +141,7 @@ def main(cfg: DictConfig) -> None:
         normalize_method=bud["normalize_method"],
         seed=seed,
         b_weight=bud["b_weight"],
+        distance_mode=bud["distance_mode"],
         return_edges=True,
     )
 
@@ -149,6 +151,7 @@ def main(cfg: DictConfig) -> None:
         template_dir / "embeddings.npy", mode="w+", dtype=np.float32, shape=emb.shape
     )[:] = emb
     np.save(template_dir / "buddy_edges.npy", edges.astype(np.int64))
+    np.save(template_dir / "buddy_edge_types.npy", edge_types)
     ids_arr = np.array(sample_ids, dtype=np.int64)
     np.lib.format.open_memmap(
         template_dir / "sample_ids.npy", mode="w+", dtype=np.int64, shape=ids_arr.shape

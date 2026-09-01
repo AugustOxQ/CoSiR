@@ -14,8 +14,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 import numpy as np
 import torch
+from omegaconf import OmegaConf
 
 from src.conditional_buddy.compute_buddies import compute_buddy_init
+from src.conditional_buddy.init_conditions import _buddy_cfg
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 USE_HALF = torch.cuda.is_available()
@@ -56,6 +58,14 @@ def test_invalid_distance_mode_raises():
         print("PASS test_invalid_distance_mode_raises")
 
 
+def test_standalone_buddy_cfg_forwards_distance_mode():
+    typed = _buddy_cfg(OmegaConf.create({"train": {"buddies": {"distance_mode": "typed"}}}))
+    default = _buddy_cfg(OmegaConf.create({"train": {"buddies": {}}}))
+    assert typed["distance_mode"] == "typed"
+    assert default["distance_mode"] == "blend"
+    print("PASS test_standalone_buddy_cfg_forwards_distance_mode")
+
+
 def test_typed_mode_changes_output_on_engineered_disagreement():
     """On a graph engineered to have real image/text disagreement (scramble some text
     rows relative to their images), 'typed' must produce a DIFFERENT embedding than
@@ -79,5 +89,6 @@ def test_typed_mode_changes_output_on_engineered_disagreement():
 if __name__ == "__main__":
     test_blend_default_matches_no_arg_call()
     test_invalid_distance_mode_raises()
+    test_standalone_buddy_cfg_forwards_distance_mode()
     test_typed_mode_changes_output_on_engineered_disagreement()
     print("ALL TESTS PASSED")

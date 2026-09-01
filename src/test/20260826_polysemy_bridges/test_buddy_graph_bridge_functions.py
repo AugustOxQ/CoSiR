@@ -55,6 +55,19 @@ def test_classify_edges_buckets_correctly():
     print("PASS test_classify_edges_buckets_correctly")
 
 
+def test_classification_counts_cover_every_persisted_edge():
+    """A missing or duplicated provenance code must be observable in the edge count."""
+    n = 6
+    A_img = _csr(n, [(0, 1), (2, 3)])
+    A_txt = _csr(n, [(0, 1), (4, 5)])
+    E = _csr(n, [(0, 1), (2, 3), (4, 5), (1, 2)])
+    typed = classify_edges(A_img, A_txt, E, n)
+    counts = [int(typed[name].sum()) for name in ("img_only", "txt_only", "both", "repair")]
+    assert counts == [1, 1, 1, 1], counts
+    assert sum(counts) == len(typed["keys"]) == E.nnz // 2
+    print("PASS test_classification_counts_cover_every_persisted_edge")
+
+
 def test_bridge_node_detection():
     n = 5
     # Node 1 connects to 0 via img_only, and to 4 via txt_only -> node 1 is a bridge.
@@ -159,6 +172,7 @@ def test_minimum_cosine_distance_mask_keeps_only_distinct_pairs():
 
 if __name__ == "__main__":
     test_classify_edges_buckets_correctly()
+    test_classification_counts_cover_every_persisted_edge()
     test_bridge_node_detection()
     test_img_only_and_txt_only_neighbor_sets_are_disjoint()
     test_hub_neighbor_pairs_closed_vs_open()

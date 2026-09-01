@@ -8,6 +8,7 @@ from src.metrics.regularizer import (
     refresh_buddy_graph,
     edge_jaccard,
     build_neighbor_csr,
+    buddy_graph_smoothness_loss,
 )
 
 
@@ -110,6 +111,31 @@ def test_no_grad_safety():
     print("PASS test_no_grad_safety")
 
 
+def test_static_family_one_csr_is_unchanged_by_refresh():
+    """A refreshed #2/#3 CSR must not replace Family #1's original edge graph."""
+    n = 4
+    clip = torch.tensor([[0], [1]], dtype=torch.long)
+    static_indptr, static_indices = build_neighbor_csr(clip, n)
+    static_indptr_before, static_indices_before = static_indptr.clone(), static_indices.clone()
+    fake = _sym_csr(n, [(2, 3)])
+    reg.mutual_knn = lambda features, K, **kw: fake
+
+    refreshed_indptr, refreshed_indices, _, _ = refresh_buddy_graph(
+        _IdentityCombine(), torch.randn(n, 2), torch.randn(n, 2), clip, num_nodes=n, blend=1.0,
+    )
+    assert torch.equal(static_indptr, static_indptr_before)
+    assert torch.equal(static_indices, static_indices_before)
+    z = torch.tensor([[0.0], [2.0], [0.0], [5.0]])
+    static_loss = buddy_graph_smoothness_loss(
+        z, static_indptr, static_indices, torch.tensor([0]), num_samples=1,
+    )
+    refreshed_loss = buddy_graph_smoothness_loss(
+        z, refreshed_indptr, refreshed_indices, torch.tensor([2]), num_samples=1,
+    )
+    assert static_loss.item() == 4.0 and refreshed_loss.item() == 25.0
+    print("PASS test_static_family_one_csr_is_unchanged_by_refresh")
+
+
 class _DropoutCombine(torch.nn.Module):
     """Stub model whose combine() applies real dropout (train/eval-aware)."""
     def __init__(self):
@@ -187,6 +213,7 @@ if __name__ == "__main__":
     test_blend_fraction_is_respected()
     test_index_alignment_comb_edges_are_z_positions()
     test_no_grad_safety()
+    test_static_family_one_csr_is_unchanged_by_refresh()
     test_refresh_uses_eval_mode_deterministic()
     test_edge_jaccard()
     print("ALL PASS")

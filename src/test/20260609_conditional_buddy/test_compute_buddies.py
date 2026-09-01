@@ -147,7 +147,11 @@ def test_b_weight_forwarded_through_manager():
 
     def spy(*a, **kw):
         captured.update(kw)
-        return np.zeros((N, D), np.float32), np.zeros((2, 1), np.int64)
+        return (
+            np.zeros((N, D), np.float32),
+            np.zeros((2, 1), np.int64),
+            np.zeros(1, np.uint8),
+        )
 
     cb.compute_buddy_init = spy
     try:
