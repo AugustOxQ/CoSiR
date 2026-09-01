@@ -607,3 +607,24 @@ def hub_neighbor_pairs(typed: dict, bridge_stats: dict, N: int) -> dict:
     is_closed = np.isin(pair_keys, img_keys)
 
     return {"hub": hub_arr, "c": c_arr, "d": d_arr, "is_closed": is_closed}
+
+
+def genuinely_unconnected_mask(
+    typed: dict,
+    c: np.ndarray,
+    d: np.ndarray,
+    N: int,
+) -> np.ndarray:
+    """Mark aligned C/D endpoint pairs with no union-graph edge of any type.
+
+    This is stricter than ``~hub_neighbor_pairs(...)["is_closed"]``: that
+    complement means only that C/D is not an ``img_only`` edge, and can still
+    contain a ``txt_only``, ``both``, or ``repair`` edge. Membership is instead
+    checked against ``typed["keys"]``, the complete union-graph edge-key set.
+    """
+    c = np.asarray(c, dtype=np.int64)
+    d = np.asarray(d, dtype=np.int64)
+    lo = np.minimum(c, d)
+    hi = np.maximum(c, d)
+    pair_keys = lo * N + hi
+    return ~np.isin(pair_keys, typed["keys"])

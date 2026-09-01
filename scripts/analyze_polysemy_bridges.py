@@ -201,6 +201,32 @@ def extract_hub_pairs(
     }
 
 
+def extract_genuinely_unconnected_hub_pairs(
+    typed: dict,
+    hub_pairs: dict,
+    N: int,
+    n_sample: int,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Experiment 14: independently sample up to ``n_sample`` hub-neighbor
+    pairs whose C/D endpoints have no edge of any type in the union graph.
+
+    This deliberately leaves ``extract_hub_pairs`` unchanged, preserving its
+    historical closed-vs-not-img-only sample for transparent comparison.
+    """
+    from src.conditional_buddy.buddy_graph import genuinely_unconnected_mask
+
+    genuinely_unconnected = genuinely_unconnected_mask(
+        typed, hub_pairs["c"], hub_pairs["d"], N,
+    )
+    idx = np.where(genuinely_unconnected)[0]
+    if len(idx) > n_sample:
+        idx = rng.choice(idx, size=n_sample, replace=False)
+    if len(idx) == 0:
+        return np.zeros((0, 3), dtype=np.int64)
+    return np.stack([hub_pairs["hub"][idx], hub_pairs["c"][idx], hub_pairs["d"][idx]], axis=1)
+
+
 def label_nodes(bridge_stats: dict) -> np.ndarray:
     """Per-node polysemy label from classify_edges/bridge_node_stats's own per-node
     degree counts: 'bridge' (has both an img-only AND a txt-only edge -- the "A" node in
@@ -245,7 +271,12 @@ def _selftest():
     # build_typed_adjacency + extract_bridge_pairs, on the same synthetic graph as
     # buddy_graph's own bridge-node test: node 1 is a bridge (img-only to 0, txt-only to 4).
     from scipy.sparse import csr_matrix as _csr
-    from src.conditional_buddy.buddy_graph import bridge_node_stats, classify_edges, hub_neighbor_pairs
+    from src.conditional_buddy.buddy_graph import (
+        bridge_node_stats,
+        classify_edges,
+        genuinely_unconnected_mask,
+        hub_neighbor_pairs,
+    )
 
     def _sym(n, edges):
         rows, cols = [], []
@@ -362,28 +393,39 @@ def _selftest():
         }, raw.files
         assert raw["label_kept"].tolist() == ["bridge", "neither"]
 
-    # extract_hub_pairs + closed_triangle_membership: reuse the same synthetic
-    # closed/open hub structure as buddy_graph's own hub_neighbor_pairs test.
-    n8 = 8
-    A_img8 = _sym(n8, [(0, 1), (2, 5)])
-    A_txt8 = _sym(n8, [(1, 2), (1, 5), (6, 3), (6, 4), (7, 0)])
-    E8 = _sym(n8, [(0, 1), (2, 5), (1, 2), (1, 5), (6, 3), (6, 4), (7, 0)])
+    # Hub pairs: one closed triangle, one open-but-still-txt-only-connected pair,
+    # and one genuinely-unconnected pair. The new mask must exclude the contaminated
+    # open pair while leaving the existing closed/open labels untouched.
+    n8 = 10
+    A_img8 = _sym(n8, [(0, 1), (2, 5), (3, 4)])
+    A_txt8 = _sym(n8, [(1, 2), (1, 5), (6, 3), (6, 4), (3, 4), (7, 8), (7, 9)])
+    E8 = _sym(n8, [(0, 1), (2, 5), (1, 2), (1, 5), (6, 3), (6, 4), (3, 4), (7, 8), (7, 9)])
     typed8 = classify_edges(A_img8, A_txt8, E8, n8)
     bstats8 = bridge_node_stats(typed8, n8)
     raw_hub_pairs = hub_neighbor_pairs(typed8, bstats8, n8)
-    assert len(raw_hub_pairs["hub"]) == 2, raw_hub_pairs  # one closed pair, one open pair
+    assert len(raw_hub_pairs["hub"]) == 3, raw_hub_pairs  # one closed pair, two open pairs
+
+    genuinely_unconnected = genuinely_unconnected_mask(
+        typed8, raw_hub_pairs["c"], raw_hub_pairs["d"], n8,
+    )
+    assert genuinely_unconnected.tolist() == [False, False, True], genuinely_unconnected
 
     rng8 = np.random.default_rng(2)
     sampled = extract_hub_pairs(typed8, bstats8, n8, n_sample_per_group=10, rng=rng8)
-    assert sampled["pairs"].shape == (2, 3), sampled["pairs"].shape
+    assert sampled["pairs"].shape == (3, 3), sampled["pairs"].shape
     assert set(sampled["is_closed"].tolist()) == {True, False}, sampled["is_closed"]
+
+    genuinely_sampled = extract_genuinely_unconnected_hub_pairs(
+        typed8, raw_hub_pairs, n8, n_sample=10, rng=rng8,
+    )
+    assert genuinely_sampled.tolist() == [[7, 8, 9]], genuinely_sampled
 
     in_closed, in_open = closed_triangle_membership(raw_hub_pairs, n8)
     assert in_closed[2] and in_closed[5], in_closed  # the closed triangle's C/D
     assert not in_closed[3] and not in_closed[4], in_closed  # the open pair's C/D
     assert in_open[3] and in_open[4], in_open
     assert not in_open[2] and not in_open[5], in_open
-    print("PASS extract_hub_pairs + closed_triangle_membership")
+    print("PASS extract_hub_pairs + genuinely_unconnected + closed_triangle_membership")
 
     # correlate_polysemy_with_retrieval + pool_cross_references: extra_flags param
     # (Experiment 14's is_hub/in_closed_triangle/in_open_hub_pair cross-references).
@@ -554,19 +596,23 @@ def _build_typed_graph(
 
 
 def count_hub_pairs(storage_dir: str, K: int = 30, alpha: float = 0.5, device: str = "cuda") -> dict:
-    """Experiment 14, Task 0: cheap incidence count of hub nodes and closed-vs-open
-    hub-neighbor pairs on the already-built buddy graph -- zero embedding/template
+    """Experiment 14, Task 0: cheap incidence count of hub nodes and closed/open/
+    genuinely-unconnected hub-neighbor pairs on the already-built buddy graph -- zero embedding/template
     loading, just the graph. Run this BEFORE committing to any real sampling; escalate
     to RedCaps-300k only if n_closed here is too sparse (see the plan's Task 6)."""
-    from src.conditional_buddy.buddy_graph import hub_neighbor_pairs
+    from src.conditional_buddy.buddy_graph import genuinely_unconnected_mask, hub_neighbor_pairs
 
     typed, bstats, _, _ = _build_typed_graph(storage_dir, K, alpha, device)
     raw = hub_neighbor_pairs(typed, bstats, len(bstats["deg_txt_only"]))
+    genuinely_unconnected = genuinely_unconnected_mask(
+        typed, raw["c"], raw["d"], len(bstats["deg_txt_only"]),
+    )
     return {
         "n_hub_nodes": int((bstats["deg_txt_only"] >= 2).sum()),
         "n_pairs_total": int(len(raw["hub"])),
         "n_closed": int(raw["is_closed"].sum()),
         "n_open": int((~raw["is_closed"]).sum()),
+        "n_genuinely_unconnected": int(genuinely_unconnected.sum()),
     }
 
 
@@ -591,7 +637,7 @@ def run(
     14's primary question), and (if per_sample_npz is given) cross-reference the
     per-node polysemy label AND the new is_hub/in_closed_triangle/in_open_hub_pair
     flags against Experiment 11.2/12.3's per-sample retrieval-rank/drift dump(s)."""
-    from src.conditional_buddy.buddy_graph import hub_neighbor_pairs
+    from src.conditional_buddy.buddy_graph import genuinely_unconnected_mask, hub_neighbor_pairs
 
     typed, bstats, sample_ids, E = _build_typed_graph(storage_dir, K, alpha, device)
     N = len(sample_ids)
@@ -636,6 +682,28 @@ def run(
     closed_pull = paired_pull_summary(dist_cd[hub_is_closed], dist_cd_baseline[hub_is_closed])
     open_pull = paired_pull_summary(dist_cd[~hub_is_closed], dist_cd_baseline[~hub_is_closed])
 
+    genuinely_unconnected_triples = extract_genuinely_unconnected_hub_pairs(
+        typed, hub_pairs_raw, N, n_hub_sample, rng,
+    )
+    genuinely_unconnected_baselines = sample_baselines(genuinely_unconnected_triples, E, buckets, rng)
+    genuinely_unconnected_valid = genuinely_unconnected_baselines >= 0
+    genuinely_unconnected_triples = genuinely_unconnected_triples[genuinely_unconnected_valid]
+    genuinely_unconnected_baselines = genuinely_unconnected_baselines[genuinely_unconnected_valid]
+    genuinely_unconnected_c = genuinely_unconnected_triples[:, 1]
+    genuinely_unconnected_d = genuinely_unconnected_triples[:, 2]
+    genuinely_unconnected_dist = embedded_l2_distance(
+        emb, genuinely_unconnected_c, genuinely_unconnected_d,
+    )
+    genuinely_unconnected_baseline_dist = embedded_l2_distance(
+        emb, genuinely_unconnected_c, genuinely_unconnected_baselines,
+    )
+    genuinely_unconnected_pull = paired_pull_summary(
+        genuinely_unconnected_dist, genuinely_unconnected_baseline_dist,
+    )
+    genuinely_unconnected_raw = genuinely_unconnected_mask(
+        typed, hub_pairs_raw["c"], hub_pairs_raw["d"], N,
+    )
+
     result = {
         "n_bridge_nodes": bstats["n_bridge_nodes"],
         "frac_bridge_nodes": bstats["frac_bridge_nodes"],
@@ -649,9 +717,11 @@ def run(
             "n_pairs_total": int(len(hub_pairs_raw["hub"])),
             "n_closed_total": int(hub_pairs_raw["is_closed"].sum()),
             "n_open_total": int((~hub_pairs_raw["is_closed"]).sum()),
+            "n_genuinely_unconnected_total": int(genuinely_unconnected_raw.sum()),
         },
         "closed_triangle_pull": closed_pull,
         "open_hub_pull": open_pull,
+        "genuinely_unconnected_pull": genuinely_unconnected_pull,
     }
     retrieval_raw = None
     if per_sample_npz is not None:
@@ -696,7 +766,8 @@ def main():
     ap.add_argument("--alpha", type=float, default=0.5)
     ap.add_argument("--n-bridge-sample", type=int, default=5000)
     ap.add_argument("--n-hub-sample", type=int, default=5000,
-                    help="max closed-triangle pairs AND max open hub pairs to sample "
+                    help="max closed-triangle pairs, open hub pairs, AND genuinely-unconnected "
+                         "hub pairs to sample "
                          "independently (Experiment 14) -- see --counts-only first")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default="cuda")
@@ -708,7 +779,7 @@ def main():
                     help="write sampled-pair raw arrays (and retrieval arrays when available) to .npz")
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--counts-only", action="store_true",
-                     help="Experiment 14 Task 0: print hub/closed/open pair counts on the "
+                     help="Experiment 14 Task 0: print hub/closed/open/genuinely-unconnected pair counts on the "
                           "already-built graph and exit -- no template/embedding loading, "
                           "no sampling. Run this before choosing --n-hub-sample or escalating "
                           "to a larger feature store.")
@@ -724,6 +795,7 @@ def main():
         print(f"  hub neighbor-pairs total: {counts['n_pairs_total']:,}")
         print(f"  closed (real img_only edge): {counts['n_closed']:,}")
         print(f"  open (not img_only specifically -- may still be txt_only/other-connected): {counts['n_open']:,}")
+        print(f"  genuinely unconnected (no edge of any kind): {counts['n_genuinely_unconnected']:,}")
         return
 
     result = run(
@@ -745,7 +817,8 @@ def main():
     hc = result["hub_pair_counts"]
     print(f"  hub nodes: {hc['n_hub_nodes']:,}; hub pairs: {hc['n_pairs_total']:,} "
           f"({hc['n_closed_total']:,} closed, {hc['n_open_total']:,} open)")
-    for name, ps in (("closed-triangle", result["closed_triangle_pull"]), ("open-hub", result["open_hub_pull"])):
+    for name, ps in (("closed-triangle", result["closed_triangle_pull"]), ("open-hub", result["open_hub_pull"]),
+                     ("genuinely-unconnected", result["genuinely_unconnected_pull"])):
         if ps["n"] == 0:
             print(f"  {name} pull: n=0 (none sampled)")
             continue
