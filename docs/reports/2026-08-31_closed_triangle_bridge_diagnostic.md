@@ -12,6 +12,17 @@
 
 **The buddy-init embedding does discriminate a genuine edge from a false-transitivity artifact, by a real and seed-stable ~31%.** Closed-triangle pairs (two of a hub node's text-only neighbors that are *also* directly connected by a real image-only edge) pull together with mean **+3.18** (embedding-distance units, pooled across 3 sampling seeds); pairs with **no edge of any kind** between them pull **+2.42**. This is the corrected, load-bearing number in this report. **An earlier version of this analysis compared closed-triangle pairs against an "open" group defined only as "not an img_only edge" — the final whole-branch review caught that this control group was ~52% contaminated by pairs that ARE connected via some other edge type (almost certainly `txt_only`, since both endpoints are already text-only neighbors of the same hub) — narrowing the apparent gap to a "discriminates, but modestly" ~1.2× ratio. Correcting the open group to genuinely-unconnected pairs widens the gap to ~1.31×, strengthening rather than weakening the "discriminates" verdict.** Two secondary findings, now correctly caveated: hub-node pairs pull harder than Experiment 12's plain single-neighbor bridge pairs, but the two comparisons differ in edge-type composition as well as hub degree, so "hub-ness amplifies pull" is a plausible but not isolated reading; and `in_closed_triangle`/`is_hub` node membership correlates with `delta_rank` more strongly than C10's broad `is_polysemic` label, but the labels have very different population base rates (98.7% vs. 19–82%), so the magnitude comparison is not apples-to-apples.
 
+### What “false transitivity” means here
+
+```text
+Genuinely-unconnected false-transitivity pair       Closed-triangle positive control
+
+C ── txt_only ── A ── txt_only ── D               C ── txt_only ── A ── txt_only ── D
+C ↛ D  (no edge of any kind)                       C ───────── img_only ────────── D
+```
+
+In both cases, C and D share the same text-only hub A, so the embedding can pull them together indirectly. Only the right-hand pair has a direct graph edge; the left-hand pair is the genuinely-unconnected control used to measure false-transitivity pull.
+
 ## Method
 
 Task 0 (incidence count, `--counts-only`, zero embedding/template loading): rebuilt the RedCaps-150k buddy graph (K=30, α=0.5, same template as every prior experiment in this plan) and counted **110,405 hub nodes** (≥2 text-only neighbors) and **8,940,974 hub-neighbor pairs**, of which **70,544 are closed triangles** (also a real `img_only` edge). 70,544 closed-triangle candidates clears this plan's 30-sample floor by three orders of magnitude — **no escalation to RedCaps-300k was needed.**
