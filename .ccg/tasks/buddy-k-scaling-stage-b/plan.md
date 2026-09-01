@@ -1,0 +1,30 @@
+# 实施计划: Experiment 16.2 Stage B — buddy K training ablation
+
+## 需求
+Implement `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 16.2: for the K shortlists 16.1 derived — 150k `{30}` (already covered by C5, no new runs), 300k `{30,35,50}`, 500k `{30,39,50}` — launch the standard buddy-init ablation, **trained arm only** (freeze-vs-trainable dropped per user decision), 3 seeds each, at the C5/C6/C9 matched operating point (`dim=16`, `α=0.5`, `lr=1e-3`/`lr_label=1e-4`, 100 epochs). 300k/500k must use the `_diverse` feature stores/annotations (same correction 16.1 already applied) — C6's existing 300k K=30 trained cell is NOT reusable because it was trained on the plain (non-diverse) store. 18 new training runs total (9 at 300k, 9 at 500k); 150k needs zero new runs.
+
+## 方案
+1. **K as a template-compatibility axis**: confirmed in `src/hook/train_cosir.py` (~line 244-280) that `train.buddies.k` feeds the `_extra` template-compatibility guard alongside `alpha`/`method` — a template built at one K is rejected/rebuilt when K changes. So, exactly like `scripts/run_init_ablation.sh`'s `initialization_strategy` axis, K must be a **bash-loop axis with its own `results_dir`/template per value**, not a Hydra multirun axis. Seed stays the inner Hydra multirun axis (`seed=1,2,3`).
+2. **Dataset-variant correction for 300k/500k**: mirror `scripts/run_init_ablation_redcaps_300k.sh`/`_500k.sh`'s `EXTRA_OVERRIDES` mechanism (`dataset=redcaps_full` base + `data.train_annotation_path`/`featuremanager.storage_dir` override), but point at the corrected paths already used in `src/test/20260901_buddy_k_scaling/buddy_k_sweep.py`'s `SCALES` dict:
+   - 300k: `data.train_annotation_path=/data/PDD/redcaps/redcaps_plus/redcaps_300k_diverse.json featuremanager.storage_dir=/data/SSD2/pre_extract/redcaps_300k_diverse/features`
+   - 500k: `data.train_annotation_path=/data/PDD/redcaps/redcaps_plus/redcaps_500k_diverse.json featuremanager.storage_dir=/data/SSD2/pre_extract/redcaps_500k_diverse/features`
+   - Test set stays `redcaps_full`'s shared `redcaps_test.json` (in-domain, matches every other RedCaps-scale experiment in this plan).
+3. **Fixed operating point, trained arm only**: `train.initialization_strategy=buddies` (no `imgtxt` baseline arm — this experiment compares across K, not buddies-vs-generic-init), `train.buddies.alpha=0.5`, `model.embedding_dim=16`, `optimizer.lr=1e-3`, `optimizer.lr_label=1e-4`, `train.epochs=100`, `eval.oracle_aggregation=max`, no `train.em_interval` override (today's default = trained/updating, matching C5/C9's trained arm and dropping the frozen arm entirely). `seed=1,2,3` via Hydra multirun.
+4. **150k**: script must support being pointed at 150k too (for completeness/re-run capability) but the launch plan only actually invokes 300k and 500k — 150k's K=30 trained cell is satisfied by reusing C5's existing results, not a new run.
+5. **Analysis script**: `scripts/analyze_buddy_k_ablation.py`, mirroring `scripts/analyze_init_ablation.py`'s paired mean/SEM-across-seeds pattern, but grouped by (N, K) instead of by init strategy — report `test_oracle`/`test_pre_diff` t2i/i2t R1 mean ± std and mean/SEM per (N,K) cell, plus the delta relative to each N's K=30 cell (the natural comparison point since K=30 is common to all three N's).
+
+## 执行模式
+**Codex (external model), as a subagent** — same pattern as 16.1, for writing the launcher (`scripts/run_buddy_k_ablation.sh`) and analysis (`scripts/analyze_buddy_k_ablation.py`) scripts only. Per this project's own convention (and prior-session feedback that Codex sessions are unstable for long-running GPU work), **Codex does NOT launch or hold the actual GPU training runs** — Claude (host) launches the 18 training runs via Bash (`run_in_background`) after the scripts are written and spot-checked, and monitors them to completion.
+
+## 步骤
+1. Codex builder writes `scripts/run_buddy_k_ablation.sh`: bash loop over `K_SWEEP` (default `30 35 50` — set per invocation for 300k vs 500k, or accept a `K_SWEEP` env var), each K gets `experiment.results_dir=${BASE_RESULTS_DIR}/k_${K}`, inner `seed=1,2,3` Hydra multirun, `EXTRA_OVERRIDES` passthrough for the dataset-store correction, following `run_init_ablation.sh`'s header-comment documentation style (explain the template-key reasoning inline, same as that script does for `initialization_strategy`).
+2. Codex builder writes two thin per-scale wrappers, `scripts/run_buddy_k_ablation_redcaps_300k.sh` and `_500k.sh` (mirroring `run_init_ablation_redcaps_300k.sh`'s wrapper pattern), each hardcoding the correct `_diverse` `EXTRA_OVERRIDES` and default `K_SWEEP` from that size's shortlist.
+3. Codex builder writes `scripts/analyze_buddy_k_ablation.py`.
+4. Claude reviews the diff (script logic, correct paths, correct template-key reasoning) before any run is launched.
+5. Claude launches 300k (`K_SWEEP="30 35 50"`, 9 runs) and 500k (`K_SWEEP="30 39 50"`, 9 runs) via Bash `run_in_background`, monitors to completion.
+6. Once complete: run `analyze_buddy_k_ablation.py`, write results into `.planning/2026-09-01-buddy-k-scaling-ablation/findings.md`/`progress.md`, append a Result paragraph to 16.2 in the spec, and write a standalone dated report under `docs/reports/` (per this project's established convention, confirmed by the user for 16.1).
+
+## 影响范围
+- 新增: `scripts/run_buddy_k_ablation.sh`, `scripts/run_buddy_k_ablation_redcaps_300k.sh`, `scripts/run_buddy_k_ablation_redcaps_500k.sh`, `scripts/analyze_buddy_k_ablation.py`, plus 18 new `res/CoSiR_init_ablation/...`-style result directories and a new `docs/reports/2026-09-*_buddy_k_ablation_stage_b.md`
+- 修改: `.planning/2026-09-01-buddy-k-scaling-ablation/{findings,progress,task_plan}.md`, `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (16.2 Result paragraph)
+- 测试: no new pytest file — correctness verified by (a) Claude's script review before launch, (b) each run's own training/eval pipeline (already tested infra, unchanged), (c) `analyze_buddy_k_ablation.py`'s paired mean/SEM output cross-checked against raw per-seed numbers before reporting.
