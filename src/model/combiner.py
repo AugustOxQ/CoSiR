@@ -236,6 +236,138 @@ class Combiner_new(nn.Module):
         return out
 
 
+def _return_residual_combiner_output(
+    output: Tensor,
+    delta: Tensor,
+    return_delta: bool,
+    return_scalar: bool,
+) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+    """Match Combiner_new's optional diagnostic return interface."""
+    if return_scalar:
+        scalar = torch.ones_like(delta[..., :1])
+        gate_logit = torch.zeros_like(scalar)
+    if return_delta and return_scalar:
+        return output, delta, scalar, gate_logit
+    if return_delta:
+        return output, delta
+    if return_scalar:
+        return output, scalar, gate_logit
+    return output
+
+
+class CombinerResidualControl(nn.Module):
+    """Identity-initialized full-width residual control for Combiner_new."""
+
+    def __init__(
+        self,
+        clip_feature_dim: int = 512,
+        label_dim: int = 2,
+        dropout: float = 0.5,
+    ) -> None:
+        super().__init__()
+        self.residual = nn.Sequential(
+            nn.Linear(clip_feature_dim + label_dim, 128),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(128, clip_feature_dim),
+        )
+        nn.init.zeros_(self.residual[-1].weight)
+        nn.init.zeros_(self.residual[-1].bias)
+        self.identity_init_parameters = {"residual.3.weight", "residual.3.bias"}
+
+    def forward(
+        self,
+        general_features: Tensor,
+        general_full: Optional[Tensor],
+        label_features: Tensor,
+        return_delta: bool = False,
+        return_scalar: bool = False,
+    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+        del general_full
+        delta = self.residual(torch.cat((general_features, label_features), dim=-1))
+        output = F.normalize(general_features + delta, dim=-1)
+        return _return_residual_combiner_output(output, delta, return_delta, return_scalar)
+
+
+class CombinerLowRankAdapter(nn.Module):
+    """Identity-initialized conditional low-rank residual dictionary."""
+
+    def __init__(
+        self,
+        clip_feature_dim: int = 512,
+        label_dim: int = 2,
+        dropout: float = 0.5,
+        rank: int = 16,
+    ) -> None:
+        super().__init__()
+        self.coefficients = nn.Sequential(
+            nn.Linear(label_dim, rank),
+            nn.Dropout(dropout),
+        )
+        self.basis = nn.Parameter(torch.empty(clip_feature_dim, rank))
+        nn.init.zeros_(self.basis)
+        self.identity_init_parameters = {"basis"}
+
+    def forward(
+        self,
+        general_features: Tensor,
+        general_full: Optional[Tensor],
+        label_features: Tensor,
+        return_delta: bool = False,
+        return_scalar: bool = False,
+    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+        del general_full
+        delta = self.coefficients(label_features) @ self.basis.T
+        output = F.normalize(general_features + delta, dim=-1)
+        return _return_residual_combiner_output(output, delta, return_delta, return_scalar)
+
+
+class CombinerFiLMResidual(nn.Module):
+    """Identity-initialized FiLM residual modulation conditioned on labels."""
+
+    def __init__(
+        self,
+        clip_feature_dim: int = 512,
+        label_dim: int = 2,
+        dropout: float = 0.5,
+        gamma_scale: float = 0.1,
+    ) -> None:
+        super().__init__()
+        self.conditioner = nn.Sequential(
+            nn.Linear(label_dim, 64),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(64, 2 * clip_feature_dim),
+        )
+        nn.init.zeros_(self.conditioner[-1].weight)
+        nn.init.zeros_(self.conditioner[-1].bias)
+        # Bound gamma so the multiplicative gate can't grow unboundedly and
+        # destabilize the frozen CLIP geometry; beta is additive and left
+        # unbounded. Applied after the zeroed projection so gamma=0 at init
+        # (tanh(0)=0) is preserved exactly, per
+        # docs/reports/2026-09-01_combiner_architecture_brainstorm.md candidate 2.
+        self.gamma_scale = gamma_scale
+        self.identity_init_parameters = {
+            "conditioner.3.weight",
+            "conditioner.3.bias",
+        }
+
+    def forward(
+        self,
+        general_features: Tensor,
+        general_full: Optional[Tensor],
+        label_features: Tensor,
+        return_delta: bool = False,
+        return_scalar: bool = False,
+    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+        del general_full
+        gamma_raw, beta = self.conditioner(label_features).chunk(2, dim=-1)
+        gamma = self.gamma_scale * torch.tanh(gamma_raw)
+        delta = gamma * general_features + beta
+        output = F.normalize(general_features + delta, dim=-1)
+        return _return_residual_combiner_output(output, delta, return_delta, return_scalar)
+
+
 class CombinerGated(nn.Module):
     """Combiner module using gated residual + additive label shift. (Used in tests only.)"""
 

@@ -85,6 +85,7 @@ def _setup_model_and_criteria(cfg, device):
         num_conditions=cfg.train.representative_number,
         dropout=cfg.model.dropout,
         combine_side=cfg.model.combine_side,
+        combiner_type=getattr(cfg.model, "combiner_type", "legacy"),
     ).to(device)
     processor = AutoProcessor.from_pretrained(cfg.model.clip_model, use_fast=False)
 

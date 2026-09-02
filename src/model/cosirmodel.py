@@ -8,7 +8,13 @@ from transformers import AutoModel, AutoProcessor
 from typing import Optional
 from torch import Tensor
 
-from .combiner import Combiner_new, OtherProjMLP
+from .combiner import (
+    CombinerFiLMResidual,
+    CombinerLowRankAdapter,
+    CombinerResidualControl,
+    Combiner_new,
+    OtherProjMLP,
+)
 from src.model.condition_predictor import ConditionPredictor
 
 _DEFAULT_BACKBONE = "openai/clip-vit-base-patch32"
@@ -65,6 +71,7 @@ class CoSiRModel(nn.Module):
         num_conditions: int = 12,
         dropout: float = 0.1,
         combine_side: str = "txt",
+        combiner_type: str = "legacy",
     ) -> None:
         super().__init__()
         # Load backbone and detect its feature dimension
@@ -85,15 +92,27 @@ class CoSiRModel(nn.Module):
         self.label_encoder = nn.Identity()
 
         # Combiner network to combine text and label features
-        self.combiner = Combiner_new(
-            clip_feature_dim=self.feature_dim,
-            projection_dim=self.feature_dim,
-            label_dim=label_dim,
-            hidden_dim=d_model,
-            num_heads=nhead,
-            num_layers=num_layers,
-            dropout=dropout,
-        )
+        combiner_classes = {
+            "residual_control": CombinerResidualControl,
+            "lowrank": CombinerLowRankAdapter,
+            "film": CombinerFiLMResidual,
+        }
+        if combiner_type in combiner_classes:
+            self.combiner = combiner_classes[combiner_type](
+                clip_feature_dim=self.feature_dim,
+                label_dim=label_dim,
+                dropout=dropout,
+            )
+        else:
+            self.combiner = Combiner_new(
+                clip_feature_dim=self.feature_dim,
+                projection_dim=self.feature_dim,
+                label_dim=label_dim,
+                hidden_dim=d_model,
+                num_heads=nhead,
+                num_layers=num_layers,
+                dropout=dropout,
+            )
 
         if combine_side not in ("txt", "img"):
             raise ValueError(f"combine_side must be 'txt' or 'img', got '{combine_side}'")
@@ -202,4 +221,3 @@ class CoSiRModel(nn.Module):
             lbl_emb,
             comb_emb,
         )
-
