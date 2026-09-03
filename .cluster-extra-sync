@@ -1,0 +1,19 @@
+# .cluster-extra-sync — lists paths that are "gitignored but still needed on
+# the node", one relative path per line (relative to the repo root). Lines
+# starting with # are comments, blank lines are ignored. Paths must not be
+# absolute and must not contain ..
+#
+# Purpose: these are typically local-only overrides, local-only credentials,
+# etc. that genuinely shouldn't be in git, but are still needed when the code
+# runs on the node. cluster_sync_up.sh does a separate rsync for each entry
+# listed here (not a full-tree sync) after the git sync completes, and
+# excludes these paths from the node's `git clean -fdx` cleanup of "files not
+# in git" so they don't get wiped.
+#
+# Currently empty — CoSiR hasn't needed this mechanism yet (dataset caches go
+# through DATA_LOCAL_BASE/DATA_REMOTE_BASE, results go through RESULTS_REMOTE,
+# both already independent sync paths, no need to duplicate them here). If a
+# future need comes up — e.g. some dataset's _cluster.yaml depends on a
+# local-only credential file, or a hydra override that's only used on the node
+# and shouldn't be committed — just add a relative path, e.g.:
+#   configs/local/node_secrets.yaml

@@ -167,6 +167,10 @@ multirun/
 
 # Claude
 .claude/
+
+# Cluster sync (machine-specific local paths / local run history, not for git)
+cluster_sync.conf
+cluster_sync.log
 .superpowers/
 refactor/
 CLAUDE.md
