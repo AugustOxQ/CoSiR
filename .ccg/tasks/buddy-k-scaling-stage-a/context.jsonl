@@ -1,6 +1,0 @@
-{"_example": "Fill with {\"file\": \"path\", \"reason\": \"why\"}. Seed rows are skipped."}
-{"file": "docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md", "reason": "Experiment 16 full staged design (16.1/16.2)"}
-{"file": "src/conditional_buddy/buddy_graph.py", "reason": "mutual_knn/union_graph/ensure_min_degree/classify_edges primitives to reuse unchanged"}
-{"file": "src/test/20260609_conditional_buddy/dim_hparam_study.py", "reason": "reference pattern for loading RedCaps features via FeatureManager and sweeping K"}
-{"file": "src/test/20260824_redcaps_subreddit_correlates/analyze_subreddit_correlates.py", "reason": "subreddit-lift signal-strength metric to reuse as training-free quality proxy"}
-{"file": ".planning/2026-09-01-buddy-k-scaling-ablation/task_plan.md", "reason": "working task plan for Experiment 16, Phase 3 tracks this implementation"}

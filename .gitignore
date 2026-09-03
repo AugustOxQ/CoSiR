@@ -175,6 +175,18 @@ cluster_sync.log
 refactor/
 CLAUDE.md
 
+# AI coding tool / plugin state — task tracking, session logs, hooks config.
+# None of this is source code or authored documentation; it's regenerated
+# locally by whatever tool/skill produced it and shouldn't be versioned.
+.ccg/
+.agents/
+.planning/
+.codex/
+.cursor/
+.grok/
+.claude-plugin/
+Plans.md
+
 # Cursor
 cursor_log/
 cursor_tmp_file/**/*.npy

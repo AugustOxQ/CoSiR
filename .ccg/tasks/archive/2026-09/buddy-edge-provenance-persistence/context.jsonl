@@ -1,8 +1,0 @@
-{"_example": "Fill with {\"file\": \"path\", \"reason\": \"why\"}. Seed rows are skipped."}
-{"file": "docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md", "reason": "Experiment 15.1 spec -- exact scope/tooling/success criteria for this task"}
-{"file": "src/conditional_buddy/buddy_graph.py", "reason": "classify_edges (line 511) already computes typed provenance; genuinely_unconnected_mask (line 612) added earlier this session"}
-{"file": "src/conditional_buddy/compute_buddies.py", "reason": "build_buddy_graphs / compute_buddy_init -- where edge types need to be computed and returned alongside edges"}
-{"file": "src/conditional_buddy/init_conditions.py", "reason": "Persists buddy_edges.npy (line 151); missing distance_mode plumbing in _buddy_cfg (line ~33)"}
-{"file": "src/utils/embedding_manager_nocache.py", "reason": "get_buddy_edges()/save-load path (lines ~414-441) -- may need a parallel get_buddy_edge_types()"}
-{"file": "src/hook/train_cosir.py", "reason": "refresh_buddy_graph call (~line 1499) rebinds shared CSR; Family #1 needs its own static CSR (bug flagged in comment ~line 1438-1440)"}
-{"file": "src/metrics/regularizer.py", "reason": "buddy_graph_smoothness_loss (Family #1), buddy_contrastive_loss (Family #2), refresh_buddy_graph (Family #3) -- consumers of the CSR being decoupled"}

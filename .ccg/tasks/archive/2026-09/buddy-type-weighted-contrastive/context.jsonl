@@ -1,6 +1,0 @@
-{"_example": "Fill with {\"file\": \"path\", \"reason\": \"why\"}. Seed rows are skipped."}
-{"file": "docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md", "reason": "Experiment 15.3 spec (refined 2026-09-01 per 15.2's attribution result) -- exact scope/priority/success criteria"}
-{"file": "src/metrics/regularizer.py", "reason": "buddy_contrastive_loss (line ~116, primary target) and buddy_graph_smoothness_loss (line ~80, secondary/lower priority) -- both need type-aware sampling using 15.1's persisted edge_types"}
-{"file": "src/conditional_buddy/compute_buddies.py", "reason": "15.1's EDGE_TYPE_IMG_ONLY/TXT_ONLY/BOTH/REPAIR constants and _typed_edge_list -- the provenance encoding already committed (2684c50)"}
-{"file": "src/hook/train_cosir.py", "reason": "Where buddy_edges.npy/buddy_edge_types.npy get loaded and CSR built (~line 1340-1370); needs to also load edge types and pass buddy_exclude_repair/buddy_type_weights through to the loss calls (~line 1675+)"}
-{"file": "src/utils/embedding_manager_nocache.py", "reason": "get_buddy_edge_types() (added in 15.1, commit 2684c50) -- the accessor for loading persisted edge types"}

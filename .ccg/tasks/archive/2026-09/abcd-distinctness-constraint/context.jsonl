@@ -1,8 +1,0 @@
-{"_example": "Fill with {\"file\": \"path\", \"reason\": \"why\"}. Seed rows are skipped."}
-{"file": "src/conditional_buddy/buddy_graph.py", "reason": "hub_neighbor_pairs()/bridge_node_stats() define how A(hub)/C/D are chosen and labeled closed/open"}
-{"file": "scripts/analyze_polysemy_bridges.py", "reason": "extract_hub_pairs()/extract_bridge_pairs()/_build_typed_graph() sample from the buddy graph; run() is Experiment 14's analysis entrypoint and must stay untouched"}
-{"file": "src/test/20260901_same_trailhead_browser/abcd_examples.json", "reason": "the 36-example dataset the browser renders; no committed generator script was found for it"}
-{"file": "src/test/20260901_same_trailhead_browser/data.js", "reason": "wraps abcd_examples.json as window.ABCD_DATA for the browser"}
-{"file": "src/test/20260901_same_trailhead_browser/same_trailhead_browser.html", "reason": "renders A/B/C/D roles; A-B is the img-only 'similar' pair, C/D are txt-only neighbors whose mutual connectivity varies"}
-{"file": "docs/reports/2026-08-31_closed_triangle_bridge_diagnostic.md", "reason": "Experiment 14 report this browser illustrates; documents that genuinely-unconnected C/D pairs still pull together at ~3/4 the strength of a real edge"}
-{"file": ".ccg/tasks/archive/2026-09/build-same-trailhead-browser/", "reason": "prior ccg task that built the browser; its logs show only a review of the HTML/data.js, not the data generator"}

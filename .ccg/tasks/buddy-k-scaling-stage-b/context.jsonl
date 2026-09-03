@@ -1,8 +1,0 @@
-{"_example": "Fill with {\"file\": \"path\", \"reason\": \"why\"}. Seed rows are skipped."}
-{"file": "docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md", "reason": "Experiment 16.2 spec section — authoritative scope (trained-arm only, 18 new runs, dropped C6 reuse)"}
-{"file": "scripts/run_init_ablation.sh", "reason": "template pattern to mirror: K is a template-compat axis like initialization_strategy, needs its own bash-loop + results_dir per value, seed as inner Hydra multirun axis"}
-{"file": "scripts/run_init_ablation_redcaps_300k.sh", "reason": "shows the EXTRA_OVERRIDES mechanism for pointing dataset=redcaps_full at a train-annotation/feature-store slice — but uses the WRONG plain store, must be corrected to _diverse paths for Stage B"}
-{"file": "scripts/analyze_init_ablation.py", "reason": "template pattern for the new analyze_buddy_k_ablation.py — paired mean/SEM across seeds, grouped by axis value"}
-{"file": "src/hook/train_cosir.py", "reason": "lines ~244-280: template-compatibility guard confirming train.buddies.k is a template key (template rejected/rebuilt when K changes)"}
-{"file": "src/test/20260901_buddy_k_scaling/buddy_k_sweep.py", "reason": "Stage A sweep script — SCALES dict has the exact correct _diverse feature_store/annotation_path values to reuse for Stage B's EXTRA_OVERRIDES"}
-{"file": ".planning/2026-09-01-buddy-k-scaling-ablation/task_plan.md", "reason": "working folder task plan, Phase 4/5, decisions log"}
