@@ -57,6 +57,8 @@ filelock        # for datasets
 geoopt          # for Riemannian optimization
 auto_mix_prep   # for data preparation
 pipreqs        # for generating requirements.txt
+python-igraph
+leidenalg
 
 
 # --------- URL --------- #
