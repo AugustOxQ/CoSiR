@@ -1,0 +1,426 @@
+{
+  "redcaps_150k": {
+    "res/CoSiR_init_ablation/redcaps_150k/init_buddies/20260816_164152_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.9588649833527603,
+        "control_mean": 0.7134822025632962,
+        "control_std": 1.1390647892519134e-16,
+        "selectivity": 0.24538278078946407,
+        "z": 24538277.799439523,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.9064501066084523,
+        "control_mean": 0.6023117749875766,
+        "control_std": 7.731724911743417e-05,
+        "selectivity": 0.30413833162087567,
+        "z": 3933.1326937415233,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_init_ablation/redcaps_150k/init_buddies/20260816_165954_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.9590748469414276,
+        "control_mean": 0.7134822025632962,
+        "control_std": 1.1390647892519134e-16,
+        "selectivity": 0.24559264437813144,
+        "z": 24559264.15806721,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.9051696241768165,
+        "control_mean": 0.6023084057153395,
+        "control_std": 8.027103122139878e-05,
+        "selectivity": 0.30286121846147696,
+        "z": 3772.512807243934,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_init_ablation/redcaps_150k/init_buddies/20260816_171711_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.9588230106350266,
+        "control_mean": 0.7134822025632962,
+        "control_std": 1.1390647892519134e-16,
+        "selectivity": 0.24534080807173042,
+        "z": 24534080.52771397,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.9026758403535021,
+        "control_mean": 0.6023185158032154,
+        "control_std": 8.298029816091368e-05,
+        "selectivity": 0.30035732455028674,
+        "z": 3619.185991691586,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_115635_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.958067545767795,
+        "control_mean": 0.7134843011991829,
+        "control_std": 1.6538697285447864e-05,
+        "selectivity": 0.24458324456861202,
+        "z": 14779.607140659155,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.9091462284591423,
+        "control_mean": 0.6022443952207435,
+        "control_std": 0.0001835821783740518,
+        "selectivity": 0.3069018332383988,
+        "z": 1671.6498271136322,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_115853_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.957983600332328,
+        "control_mean": 0.7134843011991829,
+        "control_std": 1.6538697285447864e-05,
+        "selectivity": 0.24449929913314505,
+        "z": 14774.534509622463,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.9092810220602731,
+        "control_mean": 0.6022443952207435,
+        "control_std": 0.0001835821783740518,
+        "selectivity": 0.3070366268395296,
+        "z": 1672.384028332467,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_161846_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.9589909191267489,
+        "control_mean": 0.7134822025632962,
+        "control_std": 1.3617747838874577e-05,
+        "selectivity": 0.24550871656345274,
+        "z": 18015.355102411966,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.9073938207978692,
+        "control_mean": 0.6022814617576813,
+        "control_std": 0.00016137007607369306,
+        "selectivity": 0.30511235904018796,
+        "z": 1890.6445359516413,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_163307_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.9587390387683774,
+        "control_mean": 0.7134843011991829,
+        "control_std": 1.6538697285447864e-05,
+        "selectivity": 0.24525473756919447,
+        "z": 14820.183929816625,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.9078655870460055,
+        "control_mean": 0.602281460622099,
+        "control_std": 0.00015685597119656958,
+        "selectivity": 0.30558412642390653,
+        "z": 1948.0587414397062,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_164733_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.9589069472600995,
+        "control_mean": 0.7134843011991829,
+        "control_std": 1.6538697285447864e-05,
+        "selectivity": 0.24542264606091657,
+        "z": 14830.330256674013,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.9062481092557213,
+        "control_mean": 0.6022646176676595,
+        "control_std": 0.00018238872278439304,
+        "selectivity": 0.3039834915880618,
+        "z": 1666.587829934477,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_170212_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.957983600332328,
+        "control_mean": 0.7134843011991829,
+        "control_std": 1.6538697285447864e-05,
+        "selectivity": 0.24449929913314505,
+        "z": 14774.534509622463,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.9092810220602731,
+        "control_mean": 0.6022443952207435,
+        "control_std": 0.0001835821783740518,
+        "selectivity": 0.3070366268395296,
+        "z": 1672.384028332467,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_171558_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.957983600332328,
+        "control_mean": 0.7134843011991829,
+        "control_std": 1.6538697285447864e-05,
+        "selectivity": 0.24449929913314505,
+        "z": 14774.534509622463,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.9092810220602731,
+        "control_mean": 0.6022443952207435,
+        "control_std": 0.0001835821783740518,
+        "selectivity": 0.3070366268395296,
+        "z": 1672.384028332467,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_172950_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.957983600332328,
+        "control_mean": 0.7134843011991829,
+        "control_std": 1.6538697285447864e-05,
+        "selectivity": 0.24449929913314505,
+        "z": 14774.534509622463,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.9092810220602731,
+        "control_mean": 0.6022443952207435,
+        "control_std": 0.0001835821783740518,
+        "selectivity": 0.3070366268395296,
+        "z": 1672.384028332467,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260826_094328_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.9581934727313894,
+        "control_mean": 0.7134843011991829,
+        "control_std": 1.6538697285447864e-05,
+        "selectivity": 0.2447091715322065,
+        "z": 14787.21661960619,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.909415792949761,
+        "control_mean": 0.6022443952207435,
+        "control_std": 0.00018227660206182012,
+        "selectivity": 0.3071713977290176,
+        "z": 1685.1013418136151,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260826_100355_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.9598723902511226,
+        "control_mean": 0.7134822025632962,
+        "control_std": 1.3617747838874577e-05,
+        "selectivity": 0.2463901876878264,
+        "z": 18080.03718596646,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.9077982697361906,
+        "control_mean": 0.6022679823975681,
+        "control_std": 0.00017932901797771187,
+        "selectivity": 0.30553028733862253,
+        "z": 1703.6464835365255,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260826_102258_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.9594526454529996,
+        "control_mean": 0.7134843011991829,
+        "control_std": 1.6538697285447864e-05,
+        "selectivity": 0.24596834425381664,
+        "z": 14863.305552764536,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.9087417795208207,
+        "control_mean": 0.6022915695743928,
+        "control_std": 0.00015397257316817776,
+        "selectivity": 0.3064502099464279,
+        "z": 1990.1616373933887,
+        "verdict": "positive"
+      }
+    },
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260826_103723_CoSiR_Experiment": {
+      "warmth": {
+        "n": 23824,
+        "real_acc": 0.9600822362190018,
+        "control_mean": 0.7134822025632962,
+        "control_std": 1.3617747838874577e-05,
+        "selectivity": 0.2466000336557056,
+        "z": 18095.4356193951,
+        "verdict": "positive"
+      },
+      "register": {
+        "n": 14837,
+        "real_acc": 0.906585081902727,
+        "control_mean": 0.6022713562121339,
+        "control_std": 0.00019905455357287365,
+        "selectivity": 0.3043137256905931,
+        "z": 1528.7188011560772,
+        "verdict": "positive"
+      }
+    }
+  },
+  "impressions": {
+    "res/CoSiR_init_ablation/impressions/init_buddies/20260816_152247_CoSiR_Experiment": {
+      "aesthetic_vs_description": {
+        "n": 7134,
+        "real_acc": 0.5493388870815401,
+        "control_mean": 0.4973568112862437,
+        "control_std": 0.008546246354541135,
+        "selectivity": 0.0519820757952964,
+        "z": 6.0824381622574695,
+        "verdict": "positive"
+      },
+      "impression_vs_caption": {
+        "n": 4989,
+        "real_acc": 0.71457217343413,
+        "control_mean": 0.7146623236442795,
+        "control_std": 0.0002002148215285929,
+        "selectivity": -9.015021014946445e-05,
+        "z": -0.4502449269836939,
+        "verdict": "null"
+      }
+    },
+    "res/CoSiR_init_ablation/impressions/init_buddies/20260816_153046_CoSiR_Experiment": {
+      "aesthetic_vs_description": {
+        "n": 7134,
+        "real_acc": 0.514573674801047,
+        "control_mean": 0.4972865130605798,
+        "control_std": 0.007559562812710428,
+        "selectivity": 0.017287161740467183,
+        "z": 2.2867908238678636,
+        "verdict": "positive"
+      },
+      "impression_vs_caption": {
+        "n": 4989,
+        "real_acc": 0.7147725742357333,
+        "control_mean": 0.7146322635240391,
+        "control_std": 0.0002527202785199459,
+        "selectivity": 0.0001403107116941804,
+        "z": 0.5551796663062153,
+        "verdict": "null"
+      }
+    },
+    "res/CoSiR_init_ablation/impressions/init_buddies/20260816_153436_CoSiR_Experiment": {
+      "aesthetic_vs_description": {
+        "n": 7134,
+        "real_acc": 0.514573674801047,
+        "control_mean": 0.4972865130605798,
+        "control_std": 0.007559562812710428,
+        "selectivity": 0.017287161740467183,
+        "z": 2.2867908238678636,
+        "verdict": "positive"
+      },
+      "impression_vs_caption": {
+        "n": 4989,
+        "real_acc": 0.7147725742357333,
+        "control_mean": 0.7146322635240391,
+        "control_std": 0.0002527202785199459,
+        "selectivity": 0.0001403107116941804,
+        "z": 0.5551796663062153,
+        "verdict": "null"
+      }
+    },
+    "res/CoSiR_init_ablation/impressions/init_buddies/20260816_154714_CoSiR_Experiment": {
+      "aesthetic_vs_description": {
+        "n": 7134,
+        "real_acc": 0.5487778772638683,
+        "control_mean": 0.4973638140804815,
+        "control_std": 0.008393596659788859,
+        "selectivity": 0.05141406318338676,
+        "z": 6.125383910315388,
+        "verdict": "positive"
+      },
+      "impression_vs_caption": {
+        "n": 4989,
+        "real_acc": 0.71457217343413,
+        "control_mean": 0.7146623236442795,
+        "control_std": 0.0002002148215285929,
+        "selectivity": -9.015021014946445e-05,
+        "z": -0.4502449269836939,
+        "verdict": "null"
+      }
+    },
+    "res/CoSiR_init_ablation/impressions/init_buddies/20260816_155058_CoSiR_Experiment": {
+      "aesthetic_vs_description": {
+        "n": 7134,
+        "real_acc": 0.5521408893401254,
+        "control_mean": 0.49717454698064084,
+        "control_std": 0.007882475053605372,
+        "selectivity": 0.054966342359484555,
+        "z": 6.9732250661666,
+        "verdict": "positive"
+      },
+      "impression_vs_caption": {
+        "n": 4989,
+        "real_acc": 0.7127687672235143,
+        "control_mean": 0.7146122234438788,
+        "control_std": 0.0003225252056460947,
+        "selectivity": -0.0018434562203644145,
+        "z": -5.715519385462581,
+        "verdict": "null"
+      }
+    },
+    "res/CoSiR_init_ablation/impressions/init_buddies/20260816_155441_CoSiR_Experiment": {
+      "aesthetic_vs_description": {
+        "n": 7134,
+        "real_acc": 0.5550843234711057,
+        "control_mean": 0.49806481589776813,
+        "control_std": 0.008162114488302608,
+        "selectivity": 0.05701950757333757,
+        "z": 6.985865953778821,
+        "verdict": "positive"
+      },
+      "impression_vs_caption": {
+        "n": 4989,
+        "real_acc": 0.7147725742357333,
+        "control_mean": 0.7146422835641192,
+        "control_std": 0.00024572454996013414,
+        "selectivity": 0.00013029067161407504,
+        "z": 0.5302090065691303,
+        "verdict": "null"
+      }
+    }
+  }
+}
