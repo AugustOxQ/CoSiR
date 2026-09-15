@@ -6,19 +6,22 @@
 # Same in-domain RedCaps test set as the local redcaps_150k/full configs
 # (redcaps_test.json, 25k pairs) so oracle/pre_diff numbers stay comparable.
 #
-# NOTE: train_annotation_path below is a prediction from redcaps_500k_diverse_cluster.yaml's
-# pattern (same redcaps_plus family, same test_annotation_path/image paths already used
-# there) — it has NOT been confirmed to exist on the node from this container. Task 7's
-# first sync is the actual verification; if it 404s, this file needs a path correction,
-# not a workaround.
+# Path convention (confirmed with the user 2026-09-15, after the first real DAS6
+# launch hit a FileNotFoundError): "redcaps_plus" is only ever a holding directory
+# for annotation JSON files of different sizes (150k/500k/test/...) — it never holds
+# images. Real images live under redcaps/; redcaps_test/ is a filtered, test-split-only
+# image subset kept separately for convenient lightweight transfer. Both confirmed to
+# exist on node411 (redcaps/ itself is not needed here since training reads cached
+# features via FeatureManager, not raw images; only eval touches raw images via
+# test_image_path, and redcaps_test/ already has what it needs).
 
 # Dataset paths
 data:
   dataset_type: "redcaps"
   train_annotation_path: "/var/scratch/wding/Dataset/redcaps_plus/redcaps_150k.json"
   test_annotation_path: "/var/scratch/wding/Dataset/redcaps_plus/redcaps_test.json"
-  train_image_path: "/var/scratch/wding/Dataset/redcaps_plus/images"
-  test_image_path: "/var/scratch/wding/Dataset/redcaps_plus/images"
+  train_image_path: "/var/scratch/wding/Dataset/redcaps"
+  test_image_path: "/var/scratch/wding/Dataset/redcaps_test"
 
 # Feature manager paths - dataset specific
 featuremanager:
