@@ -11,6 +11,7 @@ model:
   dropout: 0.1
   combine_side: "img"
   combiner_type: "legacy"
+  conditioning_mode: "free_vector"  # "free_vector" (default, unchanged) | "prototype_pooled" (Experiment 18)
 
 featuremanager:
   extraction_batch_size: 2048
