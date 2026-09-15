@@ -23,6 +23,24 @@ def test_direction_from_embeddings_rejects_degenerate():
         ta.direction_from_embeddings(emb_a, emb_b)
 
 
+def test_build_control_directions_uses_three_paraphrases(monkeypatch):
+    calls = []
+
+    def fake_build_direction(model, tokenizer, prompts_a, prompts_b, device):
+        calls.append((prompts_a, prompts_b, device))
+        return np.array([1.0, 0.0])
+
+    monkeypatch.setattr(ta, "build_direction", fake_build_direction)
+    ta.build_control_directions(None, None, n=1, seed=42)
+
+    prompts_a, prompts_b, device = calls[0]
+    word_a = prompts_a[0].removeprefix("a photo of a ")
+    word_b = prompts_b[0].removeprefix("a photo of a ")
+    assert prompts_a == [template.format(w=word_a) for template in ta.CONTROL_TEMPLATES]
+    assert prompts_b == [template.format(w=word_b) for template in ta.CONTROL_TEMPLATES]
+    assert device == "cpu"
+
+
 @pytest.mark.slow
 def test_build_direction_live_clip_smoke():
     model, tokenizer = ta.load_clip_text_tower(device="cpu")

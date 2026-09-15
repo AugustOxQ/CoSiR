@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 import axis_definitions as ax
 
 Z_BAR = 2.0
+SELECTIVITY_FLOOR = 0.10
 
 
 def load_checkpoint(run_dir):
@@ -40,14 +41,15 @@ def probe_selectivity(X, y, seed=42, n_shuffles=20, n_folds=5):
     shuffle_accs = np.array(shuffle_accs)
 
     z = float((real_acc - shuffle_accs.mean()) / (shuffle_accs.std(ddof=1) + 1e-8))
+    selectivity = float(real_acc - shuffle_accs.mean())
     return {
         "n": int(len(y)),
         "real_acc": real_acc,
         "control_mean": float(shuffle_accs.mean()),
         "control_std": float(shuffle_accs.std(ddof=1)),
-        "selectivity": float(real_acc - shuffle_accs.mean()),
+        "selectivity": selectivity,
         "z": z,
-        "verdict": "positive" if z >= Z_BAR else "null",
+        "verdict": "positive" if z >= Z_BAR and selectivity >= SELECTIVITY_FLOOR else "null",
     }
 
 

@@ -19,6 +19,7 @@ CONTROL_WORD_POOL = [
     "anchor", "blanket", "compass", "drum", "shovel", "mirror", "ribbon", "pillow",
     "faucet", "trumpet", "sandal", "wrench", "candle", "barrel",
 ]
+CONTROL_TEMPLATES = ["a photo of a {w}", "an image of a {w}", "a picture of a {w}"]
 
 
 def direction_from_embeddings(emb_a: np.ndarray, emb_b: np.ndarray) -> np.ndarray:
@@ -58,8 +59,8 @@ def build_control_directions(model, tokenizer, n=20, seed=42, device="cpu"):
         w1, w2 = rng.sample(CONTROL_WORD_POOL, 2)
         d = build_direction(
             model, tokenizer,
-            [f"a photo of a {w1}"],
-            [f"a photo of a {w2}"],
+            [template.format(w=w1) for template in CONTROL_TEMPLATES],
+            [template.format(w=w2) for template in CONTROL_TEMPLATES],
             device=device,
         )
         directions.append(d)

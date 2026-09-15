@@ -26,6 +26,15 @@ def test_probe_selectivity_random_data_has_low_selectivity():
     assert abs(result["z"]) < 3.0
 
 
+def test_probe_selectivity_requires_effect_size_floor(monkeypatch):
+    scores = iter([np.array([0.56, 0.56]), np.array([0.50, 0.50]), np.array([0.50, 0.50])])
+    monkeypatch.setattr(cp, "cross_val_score", lambda *args, **kwargs: next(scores))
+    result = cp.probe_selectivity(np.zeros((20, 2)), np.array([0, 1] * 10), n_shuffles=2, n_folds=2)
+    assert result["z"] >= cp.Z_BAR
+    assert result["selectivity"] < cp.SELECTIVITY_FLOOR
+    assert result["verdict"] == "null"
+
+
 def test_load_checkpoint_roundtrip(tmp_path):
     emb_dir = tmp_path / "final_embeddings"
     emb_dir.mkdir()

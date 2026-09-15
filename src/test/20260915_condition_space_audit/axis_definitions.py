@@ -23,6 +23,16 @@ REDCAPS_AXES = {
             "an unusual and interesting scene",
             "a strange or unexpected sight",
         ],
+        "content_control_prompts_a": [
+            "a photo of an animal",
+            "an image of an animal",
+            "a picture of an animal",
+        ],
+        "content_control_prompts_b": [
+            "a photo of an object or scene",
+            "an image of an object or scene",
+            "a picture of an object or scene",
+        ],
     },
     "register": {
         "description": (
@@ -40,6 +50,16 @@ REDCAPS_AXES = {
             "a casual snapshot photo",
             "an informal, quick picture",
             "a plain everyday photo",
+        ],
+        "content_control_prompts_a": [
+            "a photo of nature, food, or a vehicle",
+            "an image of nature, food, or a vehicle",
+            "a picture of nature, food, or a vehicle",
+        ],
+        "content_control_prompts_b": [
+            "a photo of an everyday subject",
+            "an image of an everyday subject",
+            "a picture of an everyday subject",
         ],
     },
 }

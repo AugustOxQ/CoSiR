@@ -1,8 +1,6 @@
 import os
 import sys
 
-import numpy as np
-
 sys.path.insert(0, os.path.dirname(__file__))
 import axis_definitions as ax
 
@@ -36,3 +34,12 @@ def test_all_axes_have_prompts():
         for name, spec in axes.items():
             assert spec["prompts_a"], name
             assert spec["prompts_b"], name
+
+
+def test_redcaps_axes_have_content_matched_controls_only():
+    for name, spec in ax.REDCAPS_AXES.items():
+        assert spec["content_control_prompts_a"], name
+        assert spec["content_control_prompts_b"], name
+    for spec in ax.IMPRESSIONS_AXES.values():
+        assert "content_control_prompts_a" not in spec
+        assert "content_control_prompts_b" not in spec

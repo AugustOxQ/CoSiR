@@ -310,7 +310,7 @@
         "control_std": 0.008546246354541135,
         "selectivity": 0.0519820757952964,
         "z": 6.0824381622574695,
-        "verdict": "positive"
+        "verdict": "null"
       },
       "impression_vs_caption": {
         "n": 4989,
@@ -330,7 +330,7 @@
         "control_std": 0.007559562812710428,
         "selectivity": 0.017287161740467183,
         "z": 2.2867908238678636,
-        "verdict": "positive"
+        "verdict": "null"
       },
       "impression_vs_caption": {
         "n": 4989,
@@ -350,7 +350,7 @@
         "control_std": 0.007559562812710428,
         "selectivity": 0.017287161740467183,
         "z": 2.2867908238678636,
-        "verdict": "positive"
+        "verdict": "null"
       },
       "impression_vs_caption": {
         "n": 4989,
@@ -370,7 +370,7 @@
         "control_std": 0.008393596659788859,
         "selectivity": 0.05141406318338676,
         "z": 6.125383910315388,
-        "verdict": "positive"
+        "verdict": "null"
       },
       "impression_vs_caption": {
         "n": 4989,
@@ -390,7 +390,7 @@
         "control_std": 0.007882475053605372,
         "selectivity": 0.054966342359484555,
         "z": 6.9732250661666,
-        "verdict": "positive"
+        "verdict": "null"
       },
       "impression_vs_caption": {
         "n": 4989,
@@ -410,7 +410,7 @@
         "control_std": 0.008162114488302608,
         "selectivity": 0.05701950757333757,
         "z": 6.985865953778821,
-        "verdict": "positive"
+        "verdict": "null"
       },
       "impression_vs_caption": {
         "n": 4989,

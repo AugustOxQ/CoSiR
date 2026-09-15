@@ -1,0 +1,27 @@
+{
+  "redcaps_150k": [
+    "res/CoSiR_init_ablation/redcaps_150k/init_buddies/20260816_164152_CoSiR_Experiment",
+    "res/CoSiR_init_ablation/redcaps_150k/init_buddies/20260816_165954_CoSiR_Experiment",
+    "res/CoSiR_init_ablation/redcaps_150k/init_buddies/20260816_171711_CoSiR_Experiment",
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_115635_CoSiR_Experiment",
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_115853_CoSiR_Experiment",
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_161846_CoSiR_Experiment",
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_163307_CoSiR_Experiment",
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_164733_CoSiR_Experiment",
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_170212_CoSiR_Experiment",
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_171558_CoSiR_Experiment",
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260825_172950_CoSiR_Experiment",
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260826_094328_CoSiR_Experiment",
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260826_100355_CoSiR_Experiment",
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260826_102258_CoSiR_Experiment",
+    "res/CoSiR_condition_freeze_ablation/redcaps_150k/20260826_103723_CoSiR_Experiment"
+  ],
+  "impressions": [
+    "res/CoSiR_init_ablation/impressions/init_buddies/20260816_152247_CoSiR_Experiment",
+    "res/CoSiR_init_ablation/impressions/init_buddies/20260816_153046_CoSiR_Experiment",
+    "res/CoSiR_init_ablation/impressions/init_buddies/20260816_153436_CoSiR_Experiment",
+    "res/CoSiR_init_ablation/impressions/init_buddies/20260816_154714_CoSiR_Experiment",
+    "res/CoSiR_init_ablation/impressions/init_buddies/20260816_155058_CoSiR_Experiment",
+    "res/CoSiR_init_ablation/impressions/init_buddies/20260816_155441_CoSiR_Experiment"
+  ]
+}
