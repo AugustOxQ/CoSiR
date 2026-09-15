@@ -86,6 +86,8 @@ def _setup_model_and_criteria(cfg, device):
         dropout=cfg.model.dropout,
         combine_side=cfg.model.combine_side,
         combiner_type=getattr(cfg.model, "combiner_type", "legacy"),
+        conditioning_mode=cfg.model.conditioning_mode,
+        num_prototypes=cfg.model.num_prototypes,
     ).to(device)
     processor = AutoProcessor.from_pretrained(cfg.model.clip_model, use_fast=False)
 
@@ -322,9 +324,38 @@ def _init_embedding_manager(cfg, device, sample_ids_list, experiment, feature_ma
     if _need_initialize:
         print(f"Initializing embeddings with {strategy} strategy...")
         if strategy == "buddies":
-            embedding_manager.initialize_embeddings_buddies(
-                feature_manager, model, device, **_buddy_kwargs
-            )
+            if cfg.model.conditioning_mode == "prototype_pooled":
+                _, E, img_n, txt_n = embedding_manager.initialize_embeddings_buddies(
+                    feature_manager, model, device, return_graph=True, **_buddy_kwargs
+                )
+                from src.conditional_buddy.prototype_seed import (
+                    coarsen_to_prototype_count,
+                    community_mean_features,
+                    detect_communities,
+                )
+
+                labels = detect_communities(E, seed=cfg.seed)
+                community_means = community_mean_features(labels, img_n, txt_n)
+                community_means = coarsen_to_prototype_count(
+                    community_means,
+                    num_prototypes=cfg.model.num_prototypes,
+                    seed=cfg.seed,
+                )
+                # Community means are frozen CLIP features; map them into the
+                # PrototypeBank condition space with the query projection.
+                with torch.no_grad():
+                    community_means_16d = model.prototype_bank.query_proj(
+                        torch.from_numpy(community_means).float().to(device)
+                    ).detach()
+                model.prototype_bank.seed_from_communities(community_means_16d)
+                print(
+                    f"[prototype-seed] {len(set(labels.tolist()))} communities -> "
+                    f"{cfg.model.num_prototypes} prototypes"
+                )
+            else:
+                embedding_manager.initialize_embeddings_buddies(
+                    feature_manager, model, device, **_buddy_kwargs
+                )
         else:
             _init_fn_map = {
                 "imgtxt": embedding_manager.initialize_embeddings_imgtxt,

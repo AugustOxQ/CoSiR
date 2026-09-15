@@ -235,7 +235,7 @@ class TrainableEmbeddingManager:
         factor: float = 1.0,
         normalize: bool = False,
         **buddy_kwargs,
-    ) -> None:
+    ) -> Optional[Tuple[np.ndarray, object, np.ndarray, np.ndarray]]:
         """
         (Re-)initialise embeddings.  Handles all strategies in one place.
 
@@ -260,7 +260,14 @@ class TrainableEmbeddingManager:
         elif strategy in ("imgtxt", "txt", "img"):
             data = self._pca_init(strategy, feature_manager, device, factor, normalize)
         elif strategy in ("buddies", "buddy"):
-            data = self._buddy_init(feature_manager, device, **buddy_kwargs)
+            return_graph = buddy_kwargs.pop("return_graph", False)
+            buddy_result = self._buddy_init(
+                feature_manager, device, return_graph=return_graph, **buddy_kwargs
+            )
+            if return_graph:
+                data, E, img_n, txt_n = buddy_result
+            else:
+                data = buddy_result
         else:
             raise ValueError(f"Unknown strategy '{strategy}'.")
 
@@ -280,6 +287,9 @@ class TrainableEmbeddingManager:
                 self.embeddings = self._data
 
         print(f"[EmbeddingManager] Initialised with strategy='{strategy}'")
+        if strategy in ("buddies", "buddy") and return_graph:
+            return data, E, img_n, txt_n
+        return None
 
     def _pca_init(
         self,
@@ -355,7 +365,8 @@ class TrainableEmbeddingManager:
         b_weight: float = 1.0,
         feature_override: Optional[Tuple[np.ndarray, np.ndarray, List[int]]] = None,
         distance_mode: str = "blend",
-    ) -> np.ndarray:
+        return_graph: bool = False,
+    ) -> np.ndarray | Tuple[np.ndarray, object, np.ndarray, np.ndarray]:
         """
         Conditional-buddies init: build the cross-modal mutual-KNN graph, embed it,
         and return a normalised [N, D] array reordered to self.sample_ids order.
@@ -394,7 +405,7 @@ class TrainableEmbeddingManager:
             del img_parts, txt_parts  # superseded by img/txt; dead weight at N~3M scale
             fm_sample_ids = feature_manager.get_all_sample_ids()
 
-        emb, edges, edge_types = compute_buddy_init(
+        buddy_result = compute_buddy_init(
             img,
             txt,
             n_dim=self.embedding_dim,
@@ -410,13 +421,20 @@ class TrainableEmbeddingManager:
             input_sample_ids=fm_sample_ids,
             output_sample_ids=self.sample_ids,
             return_edges=True,
+            return_graph=return_graph,
         )
+        if return_graph:
+            emb, edges, edge_types, E, img_n, txt_n = buddy_result
+        else:
+            emb, edges, edge_types = buddy_result
         np.save(self.embeddings_dir / "buddy_edges.npy", edges.astype(np.int64))
         np.save(self.embeddings_dir / "buddy_edge_types.npy", edge_types)
         print(
             f"[EmbeddingManager] Buddies init done. "
             f"Mean norm: {np.linalg.norm(emb, axis=1).mean():.4f}"
         )
+        if return_graph:
+            return emb, E, img_n, txt_n
         return emb
 
     # ── Template persistence ───────────────────────────────────────────────────
@@ -574,9 +592,17 @@ class TrainableEmbeddingManager:
         self.initialize("img", feature_manager, model, device, factor, normalize)
 
     def initialize_embeddings_buddies(
-        self, feature_manager, model=None, device="cpu", **buddy_kwargs
-    ) -> None:
-        self.initialize("buddies", feature_manager, model, device, **buddy_kwargs)
+        self, feature_manager, model=None, device="cpu", return_graph: bool = False,
+        **buddy_kwargs,
+    ) -> Optional[Tuple[np.ndarray, object, np.ndarray, np.ndarray]]:
+        return self.initialize(
+            "buddies",
+            feature_manager,
+            model,
+            device,
+            return_graph=return_graph,
+            **buddy_kwargs,
+        )
 
     def optimize_cache_settings(self, batch_size: int) -> None:
         """No-op — kept for call-site compatibility."""

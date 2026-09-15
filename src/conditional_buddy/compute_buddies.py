@@ -119,6 +119,7 @@ def compute_buddy_init(
     eigen_solver: str = "auto",
     connect_components: bool = True,
     return_edges: bool = False,
+    return_graph: bool = False,
     b_weight: float = 1.0,
     distance_mode: str = "blend",
     input_sample_ids: Optional[List[int]] = None,
@@ -136,18 +137,23 @@ def compute_buddy_init(
                        cross-component edges (default True; no-op when E is already
                        connected). Required for a usable spectral init on fragmented
                        graphs — see ensure_connected.
-    return_edges:      if True, return (emb, edges); if False (default) return emb only.
+    return_edges:      if True, return (emb, edges, edge_types); if False (default)
+                       return emb only.
+    return_graph:      if True, also return the already-built union graph and
+                       L2-normalized image/text features as ``E, img_n, txt_n``.
     distance_mode:     'blend' (default) uses the existing fixed-alpha
                        alpha*D_img+(1-alpha)*D_txt on every edge of E; 'typed' uses each
                        edge's own supporting modality's rank alone for img-only/txt-only
                        edges (see mix_distances_typed) -- 'blend' exactly reproduces the
                        function's pre-2026-08-24 behavior; only pass 'typed' explicitly.
     Returns: (N, n_dim) float32 in ~[-1, 1], or if return_edges=True, a tuple
-             (emb, edges, edge_types). ``edges`` is an np.int64 [2, M] undirected
-             edge list (i < j), and ``edge_types`` is a uint8 [M] array aligned
-             column-for-column with it: 0=img_only, 1=txt_only, 2=both, 3=repair.
-             Endpoints are expressed as table positions in output_sample_ids order
-             if reordering is requested, else input-row order.
+             (emb, edges, edge_types). If return_graph=True, returns
+             (emb, edges, edge_types, E, img_n, txt_n). ``edges`` is an np.int64
+             [2, M] undirected edge list (i < j), and ``edge_types`` is a uint8
+             [M] array aligned column-for-column with it: 0=img_only, 1=txt_only,
+             2=both, 3=repair. Endpoints are expressed as table positions in
+             output_sample_ids order if reordering is requested, else input-row
+             order. E, img_n, and txt_n always remain aligned to input-row order.
 
     Rows are returned in input order unless both ``input_sample_ids`` and
     ``output_sample_ids`` are given, in which case rows are reordered so row i
@@ -210,7 +216,7 @@ def compute_buddy_init(
         reorder = [pos[sid] for sid in output_sample_ids]
         emb = emb[reorder]
 
-    if not return_edges:
+    if not return_edges and not return_graph:
         return emb
 
     edges, edge_types = _typed_edge_list(A_img, A_txt, E, E.shape[0])
@@ -219,4 +225,6 @@ def compute_buddy_init(
         inv[np.asarray(reorder, dtype=np.int64)] = np.arange(len(reorder), dtype=np.int64)
         edges = inv[edges]  # remap input positions -> output positions
         edges = np.sort(edges, axis=0)  # re-enforce i < j after remap
+    if return_graph:
+        return emb, edges, edge_types, E, img_n, txt_n
     return emb, edges, edge_types

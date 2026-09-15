@@ -15,6 +15,7 @@ from .combiner import (
     Combiner_new,
     OtherProjMLP,
 )
+from .prototype_bank import PrototypeBank
 from src.model.condition_predictor import ConditionPredictor
 
 _DEFAULT_BACKBONE = "openai/clip-vit-base-patch32"
@@ -72,6 +73,8 @@ class CoSiRModel(nn.Module):
         dropout: float = 0.1,
         combine_side: str = "txt",
         combiner_type: str = "legacy",
+        conditioning_mode: str = "free_vector",
+        num_prototypes: int = 16,
     ) -> None:
         super().__init__()
         # Load backbone and detect its feature dimension
@@ -117,6 +120,21 @@ class CoSiRModel(nn.Module):
         if combine_side not in ("txt", "img"):
             raise ValueError(f"combine_side must be 'txt' or 'img', got '{combine_side}'")
         self.combine_side = combine_side
+
+        if conditioning_mode not in ("free_vector", "prototype_pooled"):
+            raise ValueError(
+                f"conditioning_mode must be 'free_vector' or 'prototype_pooled', "
+                f"got '{conditioning_mode}'"
+            )
+        self.conditioning_mode = conditioning_mode
+        if conditioning_mode == "prototype_pooled":
+            self.prototype_bank = PrototypeBank(
+                num_prototypes=num_prototypes,
+                condition_dim=label_dim,
+                query_dim=self.feature_dim,
+            )
+        else:
+            self.prototype_bank = None
 
         # Learnable projection on the "other side" (the side not fed into the combiner).
         # Identity-initialized so training starts from the same state as without the projection.
