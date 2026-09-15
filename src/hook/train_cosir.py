@@ -1314,37 +1314,50 @@ def _save_final_artifacts(model, embedding_manager, experiment, cfg):
         folder="embeddings",
     )
 
+    # Build checkpoint dict
+    checkpoint_data = {
+        "combiner_state_dict": model.combiner.state_dict(),
+        "predictor_state_dict": model.condition_predictor.state_dict(),
+        "other_proj_state_dict": model.other_proj.state_dict(),
+        "combine_side": cfg.model.combine_side,
+        "combiner_config": {
+            "clip_feature_dim": model.feature_dim,
+            "projection_dim": model.feature_dim,
+            "label_dim": cfg.model.embedding_dim,
+            "num_layers": cfg.model.num_layers,
+            "dropout": cfg.model.dropout,
+        },
+        "predictor_config": {
+            "input_dim": model.feature_dim,
+            "hidden_dim": cfg.model.hidden_dim,
+            "output_dim": cfg.model.embedding_dim,
+            "num_layers": cfg.model.num_layers,
+            "dropout": cfg.model.dropout,
+        },
+        "other_proj_config": {
+            "feature_dim": model.feature_dim,
+            "type": type(model.other_proj).__name__,
+            "hidden_dim": getattr(model.other_proj, "hidden_dim", model.feature_dim),
+            "num_blocks": getattr(model.other_proj, "num_blocks", 3),
+        },
+    }
+
+    # Save prototype_bank state if using prototype_pooled conditioning mode
+    if cfg.model.conditioning_mode == "prototype_pooled":
+        checkpoint_data["prototype_bank_state_dict"] = model.prototype_bank.state_dict()
+        checkpoint_data["prototype_bank_config"] = {
+            "num_prototypes": cfg.model.num_prototypes,
+            "condition_dim": cfg.model.embedding_dim,
+            "query_dim": model.feature_dim,
+            "temperature_init": 1.0,  # Default value; could be extracted from log_temperature if needed
+        }
+
     experiment.save_artifact(
         name="phase_1_model",
         folder="checkpoints",
-        data={
-            "combiner_state_dict": model.combiner.state_dict(),
-            "predictor_state_dict": model.condition_predictor.state_dict(),
-            "other_proj_state_dict": model.other_proj.state_dict(),
-            "combine_side": cfg.model.combine_side,
-            "combiner_config": {
-                "clip_feature_dim": model.feature_dim,
-                "projection_dim": model.feature_dim,
-                "label_dim": cfg.model.embedding_dim,
-                "num_layers": cfg.model.num_layers,
-                "dropout": cfg.model.dropout,
-            },
-            "predictor_config": {
-                "input_dim": model.feature_dim,
-                "hidden_dim": cfg.model.hidden_dim,
-                "output_dim": cfg.model.embedding_dim,
-                "num_layers": cfg.model.num_layers,
-                "dropout": cfg.model.dropout,
-            },
-            "other_proj_config": {
-                "feature_dim": model.feature_dim,
-                "type": type(model.other_proj).__name__,
-                "hidden_dim": getattr(model.other_proj, "hidden_dim", model.feature_dim),
-                "num_blocks": getattr(model.other_proj, "num_blocks", 3),
-            },
-        },
+        data=checkpoint_data,
         artifact_type="torch",
-        description="Phase 1 model: combiner + condition predictor state dictionaries",
+        description="Phase 1 model: combiner + condition predictor + prototype_bank (if prototype_pooled) state dictionaries",
     )
 
 
