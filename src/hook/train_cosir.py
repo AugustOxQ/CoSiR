@@ -1615,10 +1615,22 @@ def train_cosir(cfg, logger):
             )
             batch_sample_ids = batch["sample_ids"].tolist()
 
-            # Differentiable slice — gradients flow back to embedding_manager.embeddings
-            batch_indices = [embedding_manager.id_to_index[sid] for sid in batch_sample_ids]
-            label_embeddings_before = embedding_manager.embeddings.data[batch_indices].clone()
-            label_embeddings = embedding_manager.embeddings[batch_indices]
+            if model.conditioning_mode == "prototype_pooled":
+                # Differentiable attention-pooling — gradients flow into
+                # model.prototype_bank, not into a per-sample parameter table.
+                # Query = mean of img/txt frozen features, matching the same
+                # convention prototype_seed.community_mean_features used to
+                # seed the bank (Task 3/4) — keeps seeding and querying
+                # consistent.
+                query_features = 0.5 * (img_features + txt_features)
+                label_embeddings = model.prototype_bank(query_features)
+                label_embeddings_before = label_embeddings.detach().clone()
+                batch_indices = None  # unused downstream in this mode
+            else:
+                # Differentiable slice — gradients flow back to embedding_manager.embeddings
+                batch_indices = [embedding_manager.id_to_index[sid] for sid in batch_sample_ids]
+                label_embeddings_before = embedding_manager.embeddings.data[batch_indices].clone()
+                label_embeddings = embedding_manager.embeddings[batch_indices]
 
             if cfg.model.combine_side == "txt":
                 combine_emb, combine_full = txt_features, txt_full
@@ -1704,7 +1716,12 @@ def train_cosir(cfg, logger):
                 loss = loss + lambda_pred * pred_loss
                 loss_dict["loss_pred"] = pred_loss
 
-            if lambda_ent > 0 and pred_cond is not None and len(sample_types) > 0:
+            if (
+                model.conditioning_mode == "free_vector"
+                and lambda_ent > 0
+                and pred_cond is not None
+                and len(sample_types) > 0
+            ):
                 # L5: per-batch type-affinity distribution should be uniform across 4 types
                 batch_types_arr = sample_types[np.array(batch_indices)]
                 type_means_list = []
@@ -1762,6 +1779,7 @@ def train_cosir(cfg, logger):
                 _lambda_buddy > 0
                 and static_buddy_indptr is not None
                 and embedding_manager.embeddings.requires_grad
+                and batch_indices is not None
             ):
                 _anchor_pos = torch.tensor(batch_indices, device=device, dtype=torch.long)
                 buddy_loss = buddy_graph_smoothness_loss(
@@ -1781,6 +1799,7 @@ def train_cosir(cfg, logger):
                 _lambda_buddy_con > 0
                 and other_feat_table is not None
                 and embedding_manager.embeddings.requires_grad
+                and batch_indices is not None
             ):
                 _anchor_pos_con = torch.tensor(batch_indices, device=device, dtype=torch.long)
                 buddy_con_loss, buddy_con_align = buddy_contrastive_loss(
@@ -1842,7 +1861,12 @@ def train_cosir(cfg, logger):
                 logger.log_train(phase2_loss_metrics, epoch=epoch, step=global_step, section="phase2_loss")
 
             # Phase 1 monitor: batch-level direction diversity across condition types (every 50 steps)
-            if batch_idx % 50 == 0 and len(sample_types) > 0:
+            if (
+                model.conditioning_mode == "free_vector"
+                and batch_idx % 50 == 0
+                and len(sample_types) > 0
+                and batch_indices is not None
+            ):
                 with torch.no_grad():
                     _btypes = sample_types[np.array(batch_indices)]
                     _comb_n = F.normalize(comb_emb.detach(), dim=-1)
@@ -1873,15 +1897,25 @@ def train_cosir(cfg, logger):
                 step=global_step,
                 section="details",
             )
+            if model.conditioning_mode == "prototype_pooled" and batch_idx % 50 == 0:
+                logger.log_train(
+                    {"prototype_usage_entropy": model.prototype_bank.usage_entropy().item()},
+                    epoch=epoch,
+                    section="prototype_conditioning",
+                )
 
             optimizer.zero_grad()
             loss.backward()
-            if _oracle_weights is not None and embedding_manager.embeddings.grad is not None:
+            if (
+                batch_indices is not None
+                and _oracle_weights is not None
+                and embedding_manager.embeddings.grad is not None
+            ):
                 embedding_manager.embeddings.grad[batch_indices] *= _oracle_weights.unsqueeze(1)
             optimizer.step()
             global_step += 1
 
-            if em_phase in ("conditions", "both"):
+            if batch_indices is not None and em_phase in ("conditions", "both"):
                 if cfg.train.normalize:
                     with torch.no_grad():
                         embedding_manager.embeddings.data[batch_indices] = (
