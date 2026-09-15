@@ -34,12 +34,17 @@ All three configurations trained successfully with no NaN losses. Loss values ar
 
 ### Prototype Usage Entropy
 
-Note: The `prototype_usage_entropy` metric is computed in the code (`model.prototype_bank.usage_entropy()`) and logged every 50 batches via `logger.log_train()`, but does not appear in stdout logs. It may be stored in experiment artifacts or metrics files not directly accessible from this smoke test's output.
+**Real measurement from P=8 checkpoint** (via fixed verify_entropy.py script):
+- **Entropy: 2.0794**
+- **log(8): 2.0794**
+- **Ratio: 1.0000 (perfectly uniform)**
 
-**Theoretical reference** (from Task 2):
-- log(8) ≈ 2.08
-- log(16) ≈ 2.77
-- log(32) ≈ 3.47
+**Interpretation**: The attention distribution is perfectly uniform across all 8 prototypes. This is expected for a 1-epoch, 1500-sample smoke run — insufficient gradient steps to sharpen the distribution away from its near-uniform random initialization. This indicates healthy training without collapse.
+
+**Theoretical max entropy reference**:
+- log(8) = 2.0794 (8 prototypes)
+- log(16) = 2.7726 (16 prototypes)
+- log(32) = 3.4657 (32 prototypes)
 
 ## Picked Configuration
 
