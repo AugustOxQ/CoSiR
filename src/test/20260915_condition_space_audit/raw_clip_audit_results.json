@@ -1,0 +1,94 @@
+{
+  "redcaps_150k": {
+    "warmth": {
+      "img": {
+        "n_pos": 16998,
+        "n_neg": 6826,
+        "real_auc": 0.9646695435153484,
+        "real_auc_folded": 0.9646695435153484,
+        "control_mean": 0.6876489541159372,
+        "control_std": 0.10952275092958182,
+        "z": 2.529342641184173,
+        "verdict": "positive"
+      },
+      "txt": {
+        "n_pos": 16998,
+        "n_neg": 6826,
+        "real_auc": 0.5448978942628745,
+        "real_auc_folded": 0.5448978942628745,
+        "control_mean": 0.6289635930178028,
+        "control_std": 0.09318155372548798,
+        "z": -0.9021709380471987,
+        "verdict": "null"
+      }
+    },
+    "register": {
+      "img": {
+        "n_pos": 5900,
+        "n_neg": 8937,
+        "real_auc": 0.4114181853008726,
+        "real_auc_folded": 0.5885818146991274,
+        "control_mean": 0.5822061208117841,
+        "control_std": 0.06894026643162013,
+        "z": 0.09248140879834066,
+        "verdict": "null"
+      },
+      "txt": {
+        "n_pos": 5900,
+        "n_neg": 8937,
+        "real_auc": 0.4527800725606553,
+        "real_auc_folded": 0.5472199274393448,
+        "control_mean": 0.6061640513727922,
+        "control_std": 0.07860561628857247,
+        "z": -0.7498715641174984,
+        "verdict": "null"
+      }
+    }
+  },
+  "impressions": {
+    "aesthetic_vs_description": {
+      "img": {
+        "n_pos": 3569,
+        "n_neg": 3565,
+        "real_auc": 0.5002296933583841,
+        "real_auc_folded": 0.5002296933583841,
+        "control_mean": 0.5001519493283484,
+        "control_std": 0.00012806872912074572,
+        "z": 0.6070018852419592,
+        "verdict": "null"
+      },
+      "txt": {
+        "n_pos": 3569,
+        "n_neg": 3565,
+        "real_auc": 0.5264528547013653,
+        "real_auc_folded": 0.5264528547013653,
+        "control_mean": 0.6074595069668411,
+        "control_std": 0.06675680831264429,
+        "z": -1.2134588542865374,
+        "verdict": "null"
+      }
+    },
+    "impression_vs_caption": {
+      "img": {
+        "n_pos": 3566,
+        "n_neg": 1423,
+        "real_auc": 0.4988818422132351,
+        "real_auc_folded": 0.5011181577867649,
+        "control_mean": 0.501661870385924,
+        "control_std": 0.001098375879008712,
+        "z": -0.4950105509821223,
+        "verdict": "null"
+      },
+      "txt": {
+        "n_pos": 3566,
+        "n_neg": 1423,
+        "real_auc": 0.31646072515114043,
+        "real_auc_folded": 0.6835392748488596,
+        "control_mean": 0.5921239440660978,
+        "control_std": 0.07448429040069325,
+        "z": 1.2273100544811042,
+        "verdict": "null"
+      }
+    }
+  }
+}
