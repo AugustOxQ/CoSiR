@@ -29,4 +29,12 @@ Re-run after fix:
 Both counts now nonzero — Task 5 unblocked for both datasets. `checkpoints.json` was regenerated with the corrected candidate lists.
 
 ## Results
-(to be filled after the real run)
+
+Gate verdict: **positive**. Phase A (raw CLIP, the primary gate) found one of eight
+(dataset, axis, modality) cells clearing the decision rule: `redcaps_150k / warmth /
+img`, z=2.53, folded AUC=0.965 vs. control 0.69±0.11 — image-modality-specific, all
+other cells (including `warmth` on text) null. Phase B (existing checkpoints)
+qualitatively corroborates `warmth` as decodable post-training, caveated by
+duplicate checkpoint directories inflating the raw 15/15 count. Per the spec's
+decision rule, Experiment 17.2 should be scoped to the `warmth` axis (RedCaps,
+image modality). Full write-up: `docs/reports/2026-09-15_condition_space_audit.md`.
