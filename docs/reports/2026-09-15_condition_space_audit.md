@@ -338,6 +338,37 @@ any of the grounds considered here (raw-CLIP text-anchor null, content-control
 null). Impressions remains unsuitable for either axis (both non-degenerate
 cells null; both img cells structurally invalid).
 
+## Addendum — dimension-matched (16-D) baseline (closes the capacity confound above)
+
+The capacity confound flagged above was closed with a follow-up diagnostic
+(`raw_clip_probe_baseline_16d.py`, CPU-only, no GPU): reduce raw 512-D CLIP
+features to 16 dimensions two ways — PCA-16 (privileged: keeps the
+highest-variance 16 dims) and GaussianRandomProjection-16 (neutral,
+capacity-matched but not privileged) — then run the same `probe_selectivity`
+used everywhere else in this audit.
+
+| axis | raw-512D | PCA-16 | RandomProj-16 | trained-checkpoint range (n=15) |
+|---|---|---|---|---|
+| warmth | 0.2656 | 0.2625 | **0.1919** | **0.2445 – 0.2466** |
+| register | 0.3394 | 0.3125 | **0.1961** | **0.3004 – 0.3072** |
+
+**This does not confirm "training adds nothing beyond frozen CLIP" — the
+picture is genuinely mixed.** Against the neutral, capacity-matched control
+(RandomProj-16), every trained checkpoint clearly *beats* raw CLIP on both
+axes (a real, non-trivial gap: 0.245–0.247 vs. 0.192 for `warmth`, 0.300–0.307
+vs. 0.196 for `register`). Against the privileged control (PCA-16, which
+specifically finds the best possible 16-D linear subspace for variance,
+not for this axis), raw CLIP edges out trained checkpoints slightly on both
+axes. (Caveat: PCA/RandomProjection were fit on the full per-axis feature
+set rather than inside each cross-validation fold, a mild optimism that
+plausibly affects the PCA-16 comparison more than the RandomProj-16 one —
+see `dimension-matched-baseline-report.md` for the argument.) **Net: training
+does add real, measurable signal relative to a neutral same-capacity
+baseline — the earlier "training adds nothing" framing (Fix 4/5 above)
+overstated the null.** Whether that signal is specifically attributable to
+the buddy-graph structuring (vs. simply "any retrieval training reshapes the
+embedding usefully") is not tested here.
+
 ## Caveats
 
 - All four axes are proxy labels, not ground truth for "emotional tone" or
