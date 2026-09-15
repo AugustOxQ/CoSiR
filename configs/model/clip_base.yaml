@@ -13,6 +13,7 @@ model:
   combiner_type: "legacy"
   conditioning_mode: "free_vector"  # "free_vector" (default, unchanged) | "prototype_pooled" (Experiment 18)
   num_prototypes: 16
+  prototype_temperature_init: 1.0
 
 featuremanager:
   extraction_batch_size: 2048

@@ -88,6 +88,7 @@ def _setup_model_and_criteria(cfg, device):
         combiner_type=getattr(cfg.model, "combiner_type", "legacy"),
         conditioning_mode=cfg.model.conditioning_mode,
         num_prototypes=cfg.model.num_prototypes,
+        temperature_init=getattr(cfg.model, "prototype_temperature_init", 1.0),
     ).to(device)
     processor = AutoProcessor.from_pretrained(cfg.model.clip_model, use_fast=False)
 
@@ -389,13 +390,14 @@ def _build_optimizer_and_scheduler(cfg, model, embedding_manager):
     is the final nn.Parameter (template loading may replace it).
     """
     print("Initializing optimizer and scheduler")
-    optimizer = torch.optim.AdamW(
-        [
+    param_groups = [
             {
                 "params": [
                     p
                     for n, p in model.named_parameters()
-                    if "condition_predictor" not in n and "other_proj" not in n
+                    if "condition_predictor" not in n
+                    and "other_proj" not in n
+                    and "prototype_bank" not in n
                 ],
                 "lr": cfg.optimizer.lr,
                 "weight_decay": cfg.optimizer.weight_decay,
@@ -416,7 +418,15 @@ def _build_optimizer_and_scheduler(cfg, model, embedding_manager):
                 "weight_decay": cfg.optimizer.weight_decay,
             },
         ]
-    )
+    if cfg.model.conditioning_mode == "prototype_pooled":
+        param_groups.append(
+            {
+                "params": list(model.prototype_bank.parameters()),
+                "lr": cfg.optimizer.lr_prototype,
+                "weight_decay": cfg.optimizer.weight_decay,
+            }
+        )
+    optimizer = torch.optim.AdamW(param_groups)
 
     if cfg.scheduler.type == "CosineAnnealingLR":
         scheduler = CosineAnnealingLR(
@@ -1349,7 +1359,7 @@ def _save_final_artifacts(model, embedding_manager, experiment, cfg):
             "num_prototypes": cfg.model.num_prototypes,
             "condition_dim": cfg.model.embedding_dim,
             "query_dim": model.feature_dim,
-            "temperature_init": 1.0,  # Default value; could be extracted from log_temperature if needed
+            "temperature_init": getattr(cfg.model, "prototype_temperature_init", 1.0),
         }
 
     experiment.save_artifact(

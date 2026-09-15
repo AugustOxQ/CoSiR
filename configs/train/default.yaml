@@ -55,6 +55,7 @@ optimizer:
   type: "AdamW"
   lr: 1.0e-5 # model parameters
   lr_label: 1.0e-2 # label embeddings
+  lr_prototype: 1.0e-5 # prototype bank parameters
   weight_decay: 5.0e-2
 
 # Scheduler configuration

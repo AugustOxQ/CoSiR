@@ -75,6 +75,7 @@ class CoSiRModel(nn.Module):
         combiner_type: str = "legacy",
         conditioning_mode: str = "free_vector",
         num_prototypes: int = 16,
+        temperature_init: float = 1.0,
     ) -> None:
         super().__init__()
         # Load backbone and detect its feature dimension
@@ -132,6 +133,7 @@ class CoSiRModel(nn.Module):
                 num_prototypes=num_prototypes,
                 condition_dim=label_dim,
                 query_dim=self.feature_dim,
+                temperature_init=temperature_init,
             )
         else:
             self.prototype_bank = None
