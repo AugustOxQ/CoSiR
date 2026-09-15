@@ -130,15 +130,23 @@ content category**.
 (0.9647 vs. 0.9058) — so the axis is not *purely* a content detector; there is
 a small, real residual beyond raw animal-vs-non-animal content. But the content
 control alone already achieves AUC 0.9058 — **the overwhelming majority of the
-separability (0.9058 of the 0.9647, i.e. essentially all of the "distance
-above chance") is explained by raw visual content (companion-animal photos vs.
-generic-scene photos), not by anything specific to emotional valence.** The
-margin attributable to something beyond content is only 0.059 AUC points,
-against a margin of 0.274 AUC points over the random-prompt control. Compare
-this to `register`, where the content control (0.857) is *higher* than the
-real axis itself (0.589) — meaning for `register`, raw content alone
-over-explains what little separability exists; the "register" framing adds
-nothing measurable.
+separability *above chance* (0.4058 of 0.4647 folded-AUC-above-0.5, i.e. 87.3%)
+is explained by raw visual content (companion-animal photos vs. generic-scene
+photos), not by anything specific to emotional valence.** (The raw AUC ratio,
+0.9058/0.9647, is not the right quantity here — see below.) The margin
+attributable to something beyond content is only 0.059 AUC points, against a
+margin of 0.274 AUC points over the random-prompt control. Compare this to
+`register`, where the content control (0.857) is *higher* than the real axis
+itself (0.589) — meaning for `register`, raw content alone over-explains what
+little separability exists; the "register" framing adds nothing measurable.
+
+**Caveat on the 0.059 residual itself:** this content control is a single,
+hand-written prompt set ("a photo of an animal" vs. "a photo of an object or
+scene"), not a distribution over alternative content-framings the way the
+random-prompt control is (20 independent draws, std=0.109). A different but
+equally reasonable content control could plausibly shrink or grow this margin.
+The 0.059 gap should be read as "not zero, on this one content control," not
+as a precisely bounded effect size.
 
 **Conclusion: `warmth`/img survives as more than pure content, but not as
 established evidence of an emotional-valence axis.** The data supports
@@ -261,6 +269,25 @@ stated success criterion, **the "training added something" bar is not met for
 either axis by the currently-trained checkpoints** — both `warmth` and
 `register` are already fully explained by frozen CLIP.
 
+**Important confound this comparison does not control for: dimensionality.**
+The raw-CLIP baseline probes 512-D features; the trained-checkpoint probe
+targets a 16-D condition vector — a ~32× difference in probe capacity, which
+by itself can produce part or all of an accuracy gap this size (`warmth`: real
+accuracy 0.979 raw vs. 0.958–0.960 trained; `register`: 0.933 raw vs.
+0.903–0.909 trained — gaps of 0.02–0.03 in raw accuracy terms). Some of the
+`register` selectivity gap (~0.0085 of it) also comes from a *shift in the
+control side* (raw control_mean 0.594 vs. trained 0.602), which the
+selectivity metric folds in without distinguishing. As instantiated, this
+comparison — and therefore Experiment 17.2's stated success criterion, which
+inherits it — is not a fair, capacity-matched test of "did training add
+anything": a 16-D subspace is close to structurally unable to clear a 512-D
+baseline regardless of what training does. A fair comparison for 17.2 would
+use a dimension-matched raw-CLIP baseline (e.g. a 16-D PCA or random
+projection of the raw features). The directional finding (trained
+checkpoints don't clearly exceed raw CLIP) is still worth noting, but it
+should not be read as clean evidence that training adds nothing — that
+claim is confounded by capacity, not yet established.
+
 ## Verdict and effect on Experiment 17.2 (revised)
 
 **GATE VERDICT: still formally positive**, per the unchanged statistical
@@ -283,9 +310,11 @@ the content-matched control. The corrected framing:
   would require a valence-controlled test this audit does not run.
 - `register` has essentially no signal beyond content or beyond raw-CLIP
   baseline expectations, on any modality.
-- Neither axis shows evidence that *training* (buddy-init + retrieval
-  fine-tuning) adds anything beyond what frozen CLIP already encodes (Fix 4/5)
-  — both are already fully explained by frozen CLIP's own representations.
+- Neither axis shows trained checkpoints *exceeding* a raw-CLIP supervised
+  probe (Fix 4/5) — but that comparison is dimension-confounded (512-D raw
+  vs. 16-D trained probe capacity), so "training adds nothing beyond frozen
+  CLIP" is a plausible reading, not an established one; a fair test needs a
+  dimension-matched raw-CLIP baseline, not yet run.
 
 **If Experiment 17.2 is pursued targeting `warmth`**, it should be scoped
 honestly as targeting **an animal/companion-content-detection axis with an
@@ -294,8 +323,10 @@ the paper-facing framing from the original report ("proxy for positive
 emotional valence") should not be carried forward without a genuinely
 content-controlled follow-up test (out of scope for this fix wave). Given that
 (a) the content-explained portion dominates the effect, (b) `register` adds
-nothing beyond content or beyond raw CLIP, and (c) training itself adds no
-decodable signal beyond frozen CLIP for either axis, **17.2's original routing
+nothing beyond content or beyond raw CLIP, and (c) trained checkpoints do not
+clearly exceed a raw-CLIP supervised probe on either axis — though that
+comparison is dimension-confounded (512-D vs. 16-D) and not yet a fair test,
+so this point is suggestive, not established — **17.2's original routing
 ("scope to `warmth`, image, as a validated pre-existing signal worth steering")
 is on materially weaker footing than the original report suggested** — a
 defensible alternative reading is that this is now closer to a **content
@@ -304,8 +335,8 @@ whether steering "companion-animal-ness" is the paper's intended
 interpretability claim, rather than treating 17.1 as having validated a
 semantic/emotional axis outright. `register` should not be a 17.2 target on
 any of the grounds considered here (raw-CLIP text-anchor null, content-control
-null, no training lift). Impressions remains unsuitable for either axis
-(both non-degenerate cells null; both img cells structurally invalid).
+null). Impressions remains unsuitable for either axis (both non-degenerate
+cells null; both img cells structurally invalid).
 
 ## Caveats
 
@@ -336,15 +367,21 @@ null, no training lift). Impressions remains unsuitable for either axis
   most likely from duplicate or resumed training-run directories rather than
   independent training runs. Treat Phase B as qualitative/supplementary
   corroboration, not as 15 (or 6) independent statistical trials.
-- **The z-score formula has no minimum-control-std floor**, and this revision
-  found this is *not* just a latent risk — it caused a real false-positive-by-z
-  in the original pass: Impressions' `aesthetic_vs_description` Phase B cells
-  had z up to ≈7.0 purely from `control_std` on the order of 1e-3–1e-4, while
-  actual selectivity (0.017–0.057) never cleared a reasonable effect-size bar.
-  Fix 3's `SELECTIVITY_FLOOR = 0.10` now catches this class of case directly
-  (flipping that axis from "6/6 positive" to "0/6 positive"), and Fix 2's
-  Jaccard check catches the analogous failure mode in Phase A. The one
-  positive cell that survives everywhere in this audit — `redcaps_150k/warmth/img`
-  — has a healthy `control_std` of 0.109 in Phase A and is not a
-  denominator artifact, but every other z-based claim in this audit's history
-  should be read with this failure mode in mind.
+- **The z-score formula has no minimum-effect-size floor** (a related but
+  distinct issue from a near-zero-`control_std` denominator artifact), and
+  this revision found it caused a real false-positive-by-z in the original
+  pass: Impressions' `aesthetic_vs_description` Phase B cells had z up to
+  ≈7.0 with `control_std` around 0.008 (not near-machine-epsilon — a
+  legitimately small but non-degenerate control spread) while actual
+  selectivity (0.017–0.057) never cleared a reasonable effect-size bar. This
+  is a small-effect-size case, not a denominator-collapse case (that failure
+  mode — `control_std` near 1e-16 — did occur elsewhere in the original
+  Phase B run without flipping any verdict; see the individual cell caveat
+  above). Fix 3's `SELECTIVITY_FLOOR = 0.10` catches both this class of case
+  and the denominator-collapse class directly (flipping `aesthetic_vs_description`
+  from "6/6 positive" to "0/6 positive"), and Fix 2's Jaccard check catches
+  the analogous structural-degeneracy failure mode in Phase A. The one
+  positive cell that survives everywhere in this audit —
+  `redcaps_150k/warmth/img` — has a healthy `control_std` of 0.109 in Phase A
+  and clears the effect-size floor by a wide margin, but every other z-based
+  claim in this audit's history should be read with both failure modes in mind.
