@@ -3,7 +3,7 @@
 **Date:** 2026-09-15
 **Motivates from:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 17 (17.1's result), `docs/reports/2026-09-15_condition_space_audit.md` (full 17.1 write-up)
 **Status:** proposed — pending user sign-off before `writing-plans` produces the task-by-task execution plan
-**Branch:** to be forked from `experiment/condition_drift_retrieval_correlation` as `experiment/buddy_prototype_conditioning` once this spec is approved
+**Branch:** isolated in its own `git worktree` off `experiment/condition_drift_retrieval_correlation` (branch `experiment/buddy_prototype_conditioning`), per this project's established pattern for substantial model/train/eval changes with a real chance of abandonment (validated 2026-08-27 for Experiment 13) — see §11
 
 ---
 
@@ -79,6 +79,15 @@ Net effect: one backward pass per step updates the prototype bank, the attention
 ## 9. Execution mode
 
 Same pattern as Experiment 17.1: `subagent-driven-development`, implementation tasks routed through Codex via the `ccg` `codeagent-wrapper --backend codex` bridge, Claude reviewing diffs and running verification. GPU training runs themselves are never launched or held by Codex (per this project's established Codex-session-instability constraint) — only implementation, and read-only monitoring of runs Claude or the user starts directly.
+
+## 10a. Isolation strategy
+
+Per this project's established pattern for substantial, possibly-abandoned architecture changes (Experiment 13, symmetric conditioning, validated 2026-08-27):
+
+- `git worktree add <path> -b experiment/buddy_prototype_conditioning` off `experiment/condition_drift_retrieval_correlation` — not a plain branch checkout in the current worktree.
+- New behavior gated behind an additive opt-in config flag (e.g. `model.conditioning_mode="prototype_pooled"`, sibling to the existing modes) whose **default preserves every existing path byte-for-byte** — the free-per-sample-vector path stays the default and stays untouched.
+- Symlink the gitignored `res/`/`data/` dirs into the new worktree so it shares the existing feature cache and buddy-init templates instead of re-extracting them.
+- This makes abandonment (if the 150k result is null) a zero-cleanup-risk worktree/branch delete, and makes a later merge safe regardless of outcome, since nothing existing is touched by default.
 
 ## 10. Relationship to the publication-plan spec
 
