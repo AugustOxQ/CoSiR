@@ -1,0 +1,32 @@
+# @package _global_
+# RedCaps-150k Dataset Configuration (DAS6 cluster)
+#
+# Cluster counterpart of the local redcaps_150k cell.
+#
+# Same in-domain RedCaps test set as the local redcaps_150k/full configs
+# (redcaps_test.json, 25k pairs) so oracle/pre_diff numbers stay comparable.
+#
+# NOTE: train_annotation_path below is a prediction from redcaps_500k_diverse_cluster.yaml's
+# pattern (same redcaps_plus family, same test_annotation_path/image paths already used
+# there) — it has NOT been confirmed to exist on the node from this container. Task 7's
+# first sync is the actual verification; if it 404s, this file needs a path correction,
+# not a workaround.
+
+# Dataset paths
+data:
+  dataset_type: "redcaps"
+  train_annotation_path: "/var/scratch/wding/Dataset/redcaps_plus/redcaps_150k.json"
+  test_annotation_path: "/var/scratch/wding/Dataset/redcaps_plus/redcaps_test.json"
+  train_image_path: "/var/scratch/wding/Dataset/redcaps_plus/images"
+  test_image_path: "/var/scratch/wding/Dataset/redcaps_plus/images"
+
+# Feature manager paths - dataset specific
+featuremanager:
+  storage_dir: "/local/wding/Dataset/pre_extract/redcaps_150k/features"
+
+# Experiment Configuration
+experiment:
+  name: "CoSiR_Experiment"
+  tags: ["CoSiR", "RedCaps150k", "Cluster"]
+  description: "Prototype conditioning smoke test on DAS6 node411"
+  results_dir: "/local/wding/res/CoSiR_Experiment/redcaps_150k_cluster"

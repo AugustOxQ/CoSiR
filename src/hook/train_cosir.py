@@ -13,7 +13,7 @@ import torch
 import torch.nn.functional as F
 import random
 from typing import cast, Optional
-from torch.utils.data import DataLoader, WeightedRandomSampler
+from torch.utils.data import DataLoader, WeightedRandomSampler, Subset
 from tqdm.auto import tqdm
 import numpy as np
 from transformers import AutoProcessor
@@ -497,6 +497,12 @@ def _build_dataloaders(cfg, feature_manager, processor, sample_ids_list):
         )
         train_set = CoSiRShardDataset(feature_manager, feature_types=feature_types)
 
+        # Optional: cap training dataset size for debugging (e.g., smoke tests)
+        max_train_samples = getattr(cfg.train, "max_train_samples", None)
+        if max_train_samples is not None:
+            train_set = Subset(train_set, range(min(max_train_samples, len(train_set))))
+            print(f"Capped training dataset to {len(train_set)} samples (max_train_samples={max_train_samples})")
+
         # C1: upsample caption via WeightedRandomSampler (map-style dataset only)
         if len(sample_types) > 0 and caption_upsample != 1.0:
             weights = np.ones(len(sample_types), dtype=np.float32)
@@ -527,6 +533,10 @@ def _build_dataloaders(cfg, feature_manager, processor, sample_ids_list):
         )
         if caption_upsample != 1.0:
             print("Warning: caption_upsample ignored in stream mode (iterable dataset)")
+        # Note: max_train_samples is not supported in stream mode (iterable dataset)
+        max_train_samples = getattr(cfg.train, "max_train_samples", None)
+        if max_train_samples is not None:
+            print("Warning: max_train_samples ignored in stream mode (iterable dataset)")
         train_set = CoSiRShardStreamDataset(
             feature_manager,
             feature_types=feature_types,
