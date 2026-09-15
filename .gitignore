@@ -165,6 +165,13 @@ notebooks/
 res/
 multirun/
 
+# Same as data/ and res/ above, but matching a symlink too — the trailing-slash
+# patterns only match real directories via lstat, not symlinks (worktrees use
+# symlinks here to share the feature cache/results across worktrees, per
+# docs/superpowers/specs/2026-09-15-buddy-prototype-conditioning-design.md §10a)
+data
+res
+
 # Claude
 .claude/
 
