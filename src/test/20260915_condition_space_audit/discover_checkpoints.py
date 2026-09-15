@@ -33,11 +33,11 @@ def find_candidate_checkpoints(res_globs):
 
 
 REDCAPS_150K_GLOBS = [
-    "res/CoSiR_init_ablation/redcaps_150k/*_CoSiR_Experiment",
+    "res/CoSiR_init_ablation/redcaps_150k/init_buddies/*_CoSiR_Experiment",
     "res/CoSiR_condition_freeze_ablation/redcaps_150k/*_CoSiR_Experiment",
 ]
 IMPRESSIONS_GLOBS = [
-    "res/CoSiR_init_ablation/impressions/*_CoSiR_Experiment",
+    "res/CoSiR_init_ablation/impressions/init_buddies/*_CoSiR_Experiment",
 ]
 
 
