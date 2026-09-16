@@ -217,3 +217,78 @@ structured, interpretable condition space it was designed to produce.
   is not an approximation), and cross-checked via the `raw/*` recall numbers
   being byte-identical across all 6 independently-cached
   `test_backbone_embeddings.pt` files.
+
+## Follow-up (2026-09-15/16): root-cause fix attempt — real partial progress, but a new, serious regression
+
+After this report's original verdict, two root causes for the collapse were
+investigated and one was found real and fixed (full detail, including the
+rejected/corrected hypotheses, in `.superpowers/sdd/2026-09-15-buddy-prototype-conditioning/progress.md`):
+
+**Root cause confirmed**: `prototype_bank`'s parameters (`keys`/`values`/
+`query_proj`/`log_temperature`) were never split into their own optimizer
+param group — they shared the base model `lr=1e-5`, the *same* rate as
+combiner/backbone. By contrast, `free_vector`'s per-sample condition table
+gets its own `lr_label=1e-2`, 1000x larger. `prototype_bank`'s `temperature_init`
+was also hardcoded (never plumbed from config). Fixed (commit `6eef169`):
+added `optimizer.lr_prototype` as `prototype_bank`'s own param group (default
+1e-5, exact no-op unless overridden) and exposed `model.prototype_temperature_init`
+as a real config key.
+
+**A single-seed 3×2 screen** (`lr_prototype ∈ {1e-5, 1e-3, 1e-2}` ×
+`temperature_init ∈ {1.0, 0.3}`) found real, monotonic movement with
+`lr_prototype`: entropy sharpens (0.92→0.20 at temp=1.0), argmax concentration
+breaks up (top-share 91%→43%, spread across more prototypes), silhouette
+roughly quadruples (0.08–0.12 → 0.37–0.56), and `temp0.3/lr1e-2` became the
+first configuration in this entire investigation to exceed 1 effective PCA
+dimension (reaches 2) and the first with positive register-axis probe
+selectivity (0.200, vs. null everywhere else). This looked like real progress
+and was carried forward to a 3-seed confirmation sweep of that exact combo.
+
+**The 3-seed result is genuinely mixed, not a win — and one axis is a serious,
+seed-replicated regression.** Full numbers: `src/test/20260915_exp18_eval/prototype_fix_3seed_results.json`.
+
+| metric | original `prototype_pooled` (n=3) | `temp0.3/lr_prototype1e-2` (n=3) | direction |
+|---|---|---|---|
+| effective dims (95% var) | 1, 1, 1 | 2, 2, 1 | modest improvement, not fully seed-consistent |
+| silhouette (argmax labels) | 0.122, 0.313, −0.128 | 0.550, 0.561, 0.696 | **real, consistent improvement** — all 3 seeds now positive and much higher |
+| mean pairwise cosine sim | 0.189, 0.156, 0.605 | 0.094, 0.074, 0.120 | improvement — closer to free_vector's ≈0.000, though not there |
+| register selectivity | ≈0 (null) all 3 seeds | 0.200 (+), 0.101 (+), 0.044 (null) | improvement, 2/3 seeds now positive — first time ever for this arm |
+| warmth selectivity | 0.010–0.263 (1/3 positive) | 0.031–0.079 (0/3 positive) | **regression** — the one prior positive signal is now gone in all 3 seeds |
+| `oracle/i2t_R1` | 16.9, 16.8, 16.7 (mean 16.8) | **10.1, 9.9, 11.1 (mean 10.4)** | **large, seed-replicated regression** (std=0.64 — tight, not noise) |
+| `oracle/i2t_R5` | 30.8, 30.7, 30.2 (mean 30.6) | 20.2, 20.2, 21.7 (mean 20.7) | **large, seed-replicated regression** |
+| `oracle/i2t_R10` | 37.5, 37.4, 36.7 (mean 37.2) | 26.0, 26.2, 27.7 (mean 26.6) | **large, seed-replicated regression** |
+| `oracle/t2i_R1/R5/R10` | ~16.4/31.0/37.8 | ~15.9/30.5/37.5 | flat, within noise |
+| `raw/i2t_R1` (arm-independent) | 17.8 | 17.8 | reference point |
+
+**The i2t regression is decisive and tight across seeds (std=0.64 R1 points on
+a ~6.4-point drop) — this is not noise.** Boosting `lr_prototype` enough to
+break the argmax/silhouette collapse also pushes `prototype_bank`'s output
+norms up substantially (`near_origin_ratio` drops from 1.00 to ~0.37–0.41,
+meaning most condition vectors are no longer near-zero), and the resulting
+larger residual injected into the `img`-side combiner (`combine_side="img"`
+for this arm) makes i2t retrieval **worse than doing nothing at all**
+(oracle i2t R1 10.4 vs. raw unconditioned CLIP's 17.8) — a genuinely
+surprising, real cost, not previously seen anywhere in this investigation.
+t2i is unaffected in either direction.
+
+**Honest verdict: this is a real, seed-replicated trade-off, not a fix.**
+The interpretability axis moved in the right direction on several metrics
+(silhouette, cosine diversity, register selectivity in 2/3 seeds) but still
+falls well short of both the free_vector baseline (0.245–0.307 selectivity)
+and PercepT's cited 0.97 silhouette — and now comes bundled with a severe,
+consistent retrieval regression on i2t that makes the checkpoint strictly
+worse than either the original `prototype_pooled` arm or raw CLIP on that
+axis. **This specific configuration (`temperature_init=0.3`, `lr_prototype=1e-2`)
+is not recommendable as-is.** The LR-starvation diagnosis itself still looks
+correct (the screen's monotonic trend is real and mechanistically sensible),
+but this particular operating point overcorrects — a smaller `lr_prototype`
+(the screen's own `1e-3` cell showed weaker interpretability gains but was not
+re-tested at 3 seeds for its retrieval cost, since the 1e-2 cell was picked as
+the strongest single-seed candidate) or a different mechanism entirely (the
+condition-sensitivity contrastive loss or codebook load-balancing loss
+discussed but not yet built) would need to be tried before this direction is
+paper-worthy. Stopping here rather than picking a new operating point
+unilaterally — this specific, surprising trade-off (interpretability progress
+bundled with a retrieval regression worse than the null baseline) is exactly
+the kind of result that needs the user's judgment on whether pursuing this
+mechanism further is worth it, not more autonomous parameter search.
