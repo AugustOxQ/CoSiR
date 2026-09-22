@@ -106,9 +106,10 @@ Stage 1 is the Pareto-best point among the multi-signal methods tried: it has th
 
 No method found a clean escape from the content–affect trade-off: every approach gave up real genre structure to gain emotion structure. The Stage 1 learned two-teacher student found the best available point on that frontier by a clear margin, using the simplest learned-fusion architecture tested. Stage 2 showed that added head capacity made the result worse, not better.
 
+A follow-up content-loss-weight sweep (`learned_student_weight_sweep_pilot_report.md`) has since closed the first open item below: content_weight in {1.0, 1.5, 2.0, 3.0} (affect fixed at 1.0), architecture and data otherwise identical to Stage 1. The `weight=1.0` run reproduced Stage 1 exactly (train 0.1284/0.2799, held-out 0.1095/0.2901), confirming full pipeline determinism. Held-out emotion AMI fell monotonically as content weight rose (0.1095 → 0.0912 → 0.0848 → 0.0631) while held-out genre AMI rose monotonically (0.2901 → 0.4246); no weight cleared the held-out Pareto bar, and up-weighting content only slid the model back toward content-only behavior rather than finding a better balance. Equal weighting (Stage 1) remains the best point found.
+
 The following are explicitly open and were not tasked in this investigation:
 
-- Stage 1's held-out emotion AMI of 0.1095 narrowly misses the 0.1236 Pareto bar. A small, principled loss-weight adjustment between teachers, informed by the now-available gradient-share diagnostic rather than another architectural change, was not tested.
 - Content-anchored re-ranking—letting affect break ties only inside a narrow content-similarity band—was the third-ranked idea from the first brainstorm and was never run.
 - Reconnecting these findings to Experiment 18's RedCaps retrieval-versus-interpretability trade-off remains untested. Every result here is ArtELingo-only; RedCaps has no emotion labels for a comparable GoEmotions affect teacher, so any reconnection needs a label-free affect proxy rather than GoEmotions directly.
 
