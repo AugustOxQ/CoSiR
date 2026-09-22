@@ -1,0 +1,12 @@
+{
+  "id": "artelingo-affect-investigation-stage-report",
+  "title": "Write the ArtELingo affect investigation stage report",
+  "status": "completed",
+  "complexity": "S",
+  "risk": "low",
+  "domain": "documentation",
+  "currentPhase": "completed",
+  "nextAction": "Archive completed task",
+  "createdAt": "2026-09-22T00:00:00Z",
+  "branch": "experiment/buddy_prototype_conditioning"
+}
