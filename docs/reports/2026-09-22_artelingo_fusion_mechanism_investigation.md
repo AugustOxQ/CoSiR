@@ -2,6 +2,8 @@
 
 For visual diagnostics of every fusion mechanism and its training dynamics, see the [fusion diagnostics companion report](2026-09-22_artelingo_fusion_diagnostics_report.md).
 
+**Update, following this report:** a subsequent architecture sweep (`learned_student_arch_sweep_pilot_report.md`) found that replacing Stage 1's scalar gate with single-head self-attention — holding the linear projection heads that Stage 1/2 already established as best fixed — produces **Attention-h1**, the first configuration in this entire investigation to clear the predeclared Pareto bar (emotion AMI > 0.1236 AND genre AMI > 0.1954) on held-out data: emotion AMI=0.1249, genre AMI=0.2404. It does not strictly dominate Stage 1 (Stage 1's held-out genre AMI, 0.2901, is still higher), but it is the standing result by this investigation's own primary success criterion. Everywhere below that names Stage 1 as "the empirical frontier" or "the best result," read Attention-h1 as its update; the rest of this report's methodology and earlier findings are unaffected and still accurate as written.
+
 ## I. Why this investigation started
 
 The preceding ArtELingo affect investigation established that an off-the-shelf affect signal and a properly converged Deep Embedded Clustering (DEC) method could each yield real but modest emotion gains, but neither made a Pareto improvement over the content-only buddy graph: both gained emotion structure by sacrificing much of its genre advantage. It therefore closed with a more specific question: could a smarter **fusion mechanism**, rather than a better encoder or a better clustering method applied to one signal, recover emotion structure while keeping most of content's genre structure? This investigation tests that question directly.

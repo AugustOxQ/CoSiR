@@ -2,6 +2,8 @@
 
 This visual companion to the [fusion-mechanism investigation](2026-09-22_artelingo_fusion_mechanism_investigation.md) makes its already-verified trade-offs and training diagnostics legible at a glance; that narrative report remains the source for methodology and caveats.
 
+**Update, following this report:** a subsequent architecture sweep found that single-head self-attention (replacing Stage 1's scalar gate, holding linear projection heads fixed) clears the held-out Pareto bar for the first time in this investigation — see `learned_student_arch_sweep_pilot_report.md`. The charts and Pareto frontier below predate that result and still show Stage 1 as the frontier; they remain an accurate record of everything through Stage 2 and the weight sweep, just not the final word on the architecture sweep.
+
 ## Fusion Pareto frontier
 
 ![Fusion Pareto frontier](assets/fusion_pareto_frontier.png)
