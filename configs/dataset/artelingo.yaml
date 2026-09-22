@@ -1,0 +1,39 @@
+# @package _global_
+# ArtELingo Dataset Configuration
+#
+# English-only slice of ArtELingo (WikiArt paintings + human emotion-annotated
+# captions), converted from the raw CSV release via
+# scripts/prepare_artelingo_annotations.py. Images are NOT re-downloaded —
+# they resolve against the WikiArt dump already at /data/PDD/wikiart_proj/wikiart/.
+#
+# Split handling: `val` is used as the periodic in-training eval set
+# (test_annotation_path below); the true `test` split (artelingo_test.json)
+# is reserved for final reporting only and is not referenced by this config.
+# The CSV's `rest` bucket is dropped entirely (excluded from the official
+# HuggingFace ArtELingo train/test/val split too — see the converter script's
+# docstring for why we don't fold it into train).
+#
+# Unlike RedCaps/Impressions, each record also carries ground-truth `emotion`
+# (9-way ArtEmis taxonomy) and `art_style` fields — not used by the standard
+# training loop (dataset_type="artelingo" hits no special-cased branch in
+# train_cosir.py, same generic path as redcaps/coco), but available for
+# buddy-graph-vs-ground-truth diagnostics.
+
+# Dataset paths
+data:
+  dataset_type: "artelingo"
+  train_annotation_path: "/data/PDD/artelingo/artelingo_train.json"
+  test_annotation_path: "/data/PDD/artelingo/artelingo_val.json"
+  train_image_path: "/data/PDD/wikiart_proj/wikiart"
+  test_image_path: "/data/PDD/wikiart_proj/wikiart"
+
+# Feature manager paths - dataset specific
+featuremanager:
+  storage_dir: "/data/SSD2/pre_extract/artelingo/features"
+
+# Experiment Configuration
+experiment:
+  name: "CoSiR_Experiment"
+  tags: ["CoSiR", "ArtELingo", "local"]
+  description: "Comprehensive experiment for CoSiR"
+  results_dir: "res/CoSiR_Experiment/artelingo" # Depends on the dataset
