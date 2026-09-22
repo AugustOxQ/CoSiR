@@ -1,0 +1,12 @@
+{
+  "id": "add-single-modality-pilot",
+  "title": "Add ArtELingo single-modality buddy-graph pilot script",
+  "status": "completed",
+  "complexity": "M",
+  "risk": "low",
+  "domain": "analysis",
+  "currentPhase": "completed",
+  "nextAction": "Archived after static verification; GPU execution left to user",
+  "createdAt": "2026-09-22T00:00:00Z",
+  "branch": "main"
+}
