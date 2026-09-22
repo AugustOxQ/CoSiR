@@ -1,5 +1,7 @@
 # ArtELingo stage report: fusion-mechanism investigation
 
+For visual diagnostics of every fusion mechanism and its training dynamics, see the [fusion diagnostics companion report](2026-09-22_artelingo_fusion_diagnostics_report.md).
+
 ## I. Why this investigation started
 
 The preceding ArtELingo affect investigation established that an off-the-shelf affect signal and a properly converged Deep Embedded Clustering (DEC) method could each yield real but modest emotion gains, but neither made a Pareto improvement over the content-only buddy graph: both gained emotion structure by sacrificing much of its genre advantage. It therefore closed with a more specific question: could a smarter **fusion mechanism**, rather than a better encoder or a better clustering method applied to one signal, recover emotion structure while keeping most of content's genre structure? This investigation tests that question directly.
