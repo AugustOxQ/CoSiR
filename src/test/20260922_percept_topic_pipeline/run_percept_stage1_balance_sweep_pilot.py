@@ -12,8 +12,9 @@ from torch.nn import functional as F
 
 
 OUT_DIR = os.path.dirname(__file__)
+REPORT_OUT_DIR = os.environ.get("PERCEPT_OUTPUT_ROOT") or OUT_DIR
 BASE_PILOT_PATH = os.path.join(OUT_DIR, "run_percept_stage1_pilot.py")
-REPORT_PATH = os.path.join(OUT_DIR, "percept_stage1_balance_sweep_pilot_report.md")
+REPORT_PATH = os.path.join(REPORT_OUT_DIR, "percept_stage1_balance_sweep_pilot_report.md")
 LAMBDA_BALANCE_VALUES = (10, 50, 100, 500)
 
 
@@ -249,6 +250,7 @@ def write_report(pretrain_losses: list[float], input_dim: int, results: list[dic
         lines.append(
             f"**Merely a compromise.** Some lambda values escape collapse, but none clear both held-out AMI thresholds. {collapse_trend(results)} {refinement_recommendation(results)} This sweep does not establish a new standing PercepT-pipeline result.\n"
         )
+    os.makedirs(REPORT_OUT_DIR, exist_ok=True)
     with open(REPORT_PATH, "w") as report_file:
         report_file.writelines(lines)
 

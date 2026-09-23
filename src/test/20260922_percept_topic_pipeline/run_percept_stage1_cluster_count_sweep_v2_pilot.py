@@ -13,9 +13,10 @@ import numpy as np
 
 
 OUT_DIR = os.path.dirname(__file__)
+REPORT_OUT_DIR = os.environ.get("PERCEPT_OUTPUT_ROOT") or OUT_DIR
 TEMPLATE_PATH = os.path.join(OUT_DIR, "run_percept_stage1_cluster_count_sweep_pilot.py")
 REPORT_PATH = os.path.join(
-    OUT_DIR, "percept_stage1_cluster_count_sweep_v2_pilot_report.md"
+    REPORT_OUT_DIR, "percept_stage1_cluster_count_sweep_v2_pilot_report.md"
 )
 CLUSTER_COUNT_PAIRS = ((40, 27), (60, 40), (80, 53))
 EMOTION_PARETO_BAR = 0.1236
@@ -260,6 +261,7 @@ def write_report(
             "suggests no emotion/genre crossing point in the tested range.\n"
         )
 
+    os.makedirs(REPORT_OUT_DIR, exist_ok=True)
     with open(REPORT_PATH, "w") as report_file:
         report_file.writelines(lines)
 

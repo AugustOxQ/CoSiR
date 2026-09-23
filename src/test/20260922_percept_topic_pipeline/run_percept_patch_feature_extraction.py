@@ -11,10 +11,12 @@ from transformers import CLIPModel, CLIPProcessor
 
 OUT_DIR = os.path.dirname(__file__)
 BASE_PILOT_PATH = os.path.join(OUT_DIR, "run_percept_stage1_pilot.py")
-TRAIN_JSON = "/data/PDD/artelingo/artelingo_train.json"
-HELDOUT_JSON = "/data/PDD/artelingo/artelingo_val_test.json"
+PERCEPT_FEATURE_ROOT = os.environ.get("PERCEPT_FEATURE_ROOT", "/data/SSD2/pre_extract")
+PERCEPT_RAW_JSON_ROOT = os.environ.get("PERCEPT_RAW_JSON_ROOT", "/data/PDD/artelingo")
+TRAIN_JSON = f"{PERCEPT_RAW_JSON_ROOT}/artelingo_train.json"
+HELDOUT_JSON = f"{PERCEPT_RAW_JSON_ROOT}/artelingo_val_test.json"
 IMAGE_ROOT = "/data/PDD/wikiart_proj/wikiart"
-CACHE_DIR = "/data/SSD2/pre_extract/artelingo_percept_patch_features"
+CACHE_DIR = f"{PERCEPT_FEATURE_ROOT}/artelingo_percept_patch_features"
 TRAIN_CACHE_PATH = os.path.join(CACHE_DIR, "train_patch_features.pt")
 HELDOUT_CACHE_PATH = os.path.join(CACHE_DIR, "heldout_patch_features.pt")
 MODEL_NAME = "openai/clip-vit-base-patch32"

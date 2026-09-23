@@ -16,11 +16,12 @@ from torch import nn
 
 
 OUT_DIR = os.path.dirname(__file__)
+REPORT_OUT_DIR = os.environ.get("PERCEPT_OUTPUT_ROOT") or OUT_DIR
 BASE_PILOT_PATH = os.path.join(OUT_DIR, "run_percept_stage1_pilot.py")
 BALANCE_SWEEP_PATH = os.path.join(
     OUT_DIR, "run_percept_stage1_balance_sweep_v2_pilot.py"
 )
-REPORT_PATH = os.path.join(OUT_DIR, "percept_stage1_seed_stress_pilot_report.md")
+REPORT_PATH = os.path.join(REPORT_OUT_DIR, "percept_stage1_seed_stress_pilot_report.md")
 SEEDS = (7, 123, 2024)
 LAMBDA_BALANCE = 1000
 EMOTION_PARETO_BAR = 0.1236
@@ -185,6 +186,7 @@ def write_report(results: list[dict], input_dim: int) -> None:
             "PercepT Stage 1 configuration going into Stage 2.\n"
         )
 
+    os.makedirs(REPORT_OUT_DIR, exist_ok=True)
     with open(REPORT_PATH, "w") as report_file:
         report_file.writelines(lines)
 

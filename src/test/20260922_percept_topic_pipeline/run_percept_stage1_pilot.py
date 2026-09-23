@@ -21,14 +21,17 @@ from transformers import AutoModel, AutoTokenizer
 
 
 OUT_DIR = os.path.dirname(__file__)
+REPORT_OUT_DIR = os.environ.get("PERCEPT_OUTPUT_ROOT") or OUT_DIR
 BUDDY_DIR = os.path.abspath(os.path.join(OUT_DIR, "..", "20260923_artelingo_buddy_analysis"))
 PIPELINE_PATH = os.path.join(BUDDY_DIR, "run_pipeline.py")
 AFFECT_PILOT_PATH = os.path.join(BUDDY_DIR, "run_affect_pilot.py")
 CCA_AUDIT_PATH = os.path.join(BUDDY_DIR, "run_cca_audit_pilot.py")
-REPORT_PATH = os.path.join(OUT_DIR, "percept_stage1_pilot_report.md")
+REPORT_PATH = os.path.join(REPORT_OUT_DIR, "percept_stage1_pilot_report.md")
 
-HELDOUT_STORAGE_DIR = "/data/SSD2/pre_extract/artelingo_heldout/features"
-HELDOUT_JSON = "/data/PDD/artelingo/artelingo_val_test.json"
+PERCEPT_FEATURE_ROOT = os.environ.get("PERCEPT_FEATURE_ROOT", "/data/SSD2/pre_extract")
+PERCEPT_RAW_JSON_ROOT = os.environ.get("PERCEPT_RAW_JSON_ROOT", "/data/PDD/artelingo")
+HELDOUT_STORAGE_DIR = f"{PERCEPT_FEATURE_ROOT}/artelingo_heldout/features"
+HELDOUT_JSON = f"{PERCEPT_RAW_JSON_ROOT}/artelingo_val_test.json"
 MODEL_NAME = "SamLowe/roberta-base-go_emotions"
 BATCH_SIZE = 256
 MAX_LENGTH = 64
@@ -349,6 +352,7 @@ def write_report(pretrain_losses: list[float], dec_losses: list[dict[str, float]
             "The pilot did not simultaneously clear both held-out AMI thresholds.\n"
         ),
     ])
+    os.makedirs(REPORT_OUT_DIR, exist_ok=True)
     with open(REPORT_PATH, "w") as report_file:
         report_file.writelines(lines)
 

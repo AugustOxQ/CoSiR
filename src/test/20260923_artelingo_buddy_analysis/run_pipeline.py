@@ -54,9 +54,11 @@ from src.conditional_buddy.compute_buddies import build_buddy_graphs
 from src.conditional_buddy.prototype_seed import detect_communities
 from src.utils import FeatureManager
 
-STORAGE_DIR = "/data/SSD2/pre_extract/artelingo/features"
-TRAIN_JSON = "/data/PDD/artelingo/artelingo_train.json"
-GENRE_JSON = "/data/PDD/artelingo/artelingo_genre_emotion_eng.json"
+PERCEPT_FEATURE_ROOT = os.environ.get("PERCEPT_FEATURE_ROOT", "/data/SSD2/pre_extract")
+PERCEPT_RAW_JSON_ROOT = os.environ.get("PERCEPT_RAW_JSON_ROOT", "/data/PDD/artelingo")
+STORAGE_DIR = f"{PERCEPT_FEATURE_ROOT}/artelingo/features"
+TRAIN_JSON = f"{PERCEPT_RAW_JSON_ROOT}/artelingo_train.json"
+GENRE_JSON = f"{PERCEPT_RAW_JSON_ROOT}/artelingo_genre_emotion_eng.json"
 MAIN_CSV = "/data/PDD/artelingo/ArtELingo/ArtELingo/Dataset/artelingo_release_lite.csv"
 OUT_DIR = os.path.dirname(__file__)
 

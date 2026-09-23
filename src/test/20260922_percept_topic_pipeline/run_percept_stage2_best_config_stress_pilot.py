@@ -30,8 +30,9 @@ from run_percept_stage2_sweep_pilot import (
 
 
 OUT_DIR = os.path.dirname(__file__)
+REPORT_OUT_DIR = os.environ.get("PERCEPT_OUTPUT_ROOT") or OUT_DIR
 REPORT_PATH = os.path.join(
-    OUT_DIR, "percept_stage2_best_config_stress_pilot_report.md"
+    REPORT_OUT_DIR, "percept_stage2_best_config_stress_pilot_report.md"
 )
 SEED = 42
 SEEDS = (42, 7, 123, 2024)
@@ -72,6 +73,7 @@ def write_report(refit_metrics: dict, reproduced: bool, results: dict[int, dict]
             f"the absolute AMI tolerance of {REPRODUCTION_TOLERANCE:.3f}; no Stage-2 "
             "mapper was trained, so this pilot cannot silently use a different clustering.\n"
         )
+        os.makedirs(REPORT_OUT_DIR, exist_ok=True)
         with open(REPORT_PATH, "w") as report_file:
             report_file.writelines(lines)
         return
@@ -145,6 +147,7 @@ def write_report(refit_metrics: dict, reproduced: bool, results: dict[int, dict]
         )
         + "\n"
     )
+    os.makedirs(REPORT_OUT_DIR, exist_ok=True)
     with open(REPORT_PATH, "w") as report_file:
         report_file.writelines(lines)
 

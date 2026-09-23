@@ -28,8 +28,9 @@ from run_percept_stage2_sweep_pilot import (
 
 
 OUT_DIR = os.path.dirname(__file__)
+REPORT_OUT_DIR = os.environ.get("PERCEPT_OUTPUT_ROOT") or OUT_DIR
 REPORT_PATH = os.path.join(
-    OUT_DIR, "percept_stage2_arch_ablation_pilot_report.md"
+    REPORT_OUT_DIR, "percept_stage2_arch_ablation_pilot_report.md"
 )
 SEED = 42
 SEEDS = (42, 7, 123, 2024)
@@ -145,6 +146,7 @@ def write_report(
             "plain-linear classifier was trained, so this ablation cannot silently "
             "use a different clustering.\n"
         )
+        os.makedirs(REPORT_OUT_DIR, exist_ok=True)
         with open(REPORT_PATH, "w") as report_file:
             report_file.writelines(lines)
         return
@@ -227,6 +229,7 @@ def write_report(
             "numbers may instead be largely explained by frozen topics being "
             "recoverable from the image at all.\n"
         )
+    os.makedirs(REPORT_OUT_DIR, exist_ok=True)
     with open(REPORT_PATH, "w") as report_file:
         report_file.writelines(lines)
 

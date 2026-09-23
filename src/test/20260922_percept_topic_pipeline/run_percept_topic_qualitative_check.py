@@ -17,12 +17,13 @@ import torch
 
 
 OUT_DIR = os.path.dirname(__file__)
+REPORT_OUT_DIR = os.environ.get("PERCEPT_OUTPUT_ROOT") or OUT_DIR
 BASE_PILOT_PATH = os.path.join(OUT_DIR, "run_percept_stage1_pilot.py")
 SWEEP_PILOT_PATH = os.path.join(
     OUT_DIR, "run_percept_stage1_cluster_count_sweep_pilot.py"
 )
 STAGE2_SWEEP_PILOT_PATH = os.path.join(OUT_DIR, "run_percept_stage2_sweep_pilot.py")
-REPORT_PATH = os.path.join(OUT_DIR, "percept_topic_qualitative_check_report.md")
+REPORT_PATH = os.path.join(REPORT_OUT_DIR, "percept_topic_qualitative_check_report.md")
 
 N_INITIAL_CLUSTERS = 60
 N_SURVIVING_CLUSTERS = 40
@@ -171,6 +172,7 @@ def write_report(
             "the qualitative target inspection was stopped rather than silently "
             "using a different topic space.\n"
         )
+        os.makedirs(REPORT_OUT_DIR, exist_ok=True)
         with open(REPORT_PATH, "w") as report_file:
             report_file.writelines(lines)
         return
@@ -208,6 +210,7 @@ def write_report(
         "in this small sample establishes that all threshold-derived memberships "
         "are semantically meaningful.\n",
     ])
+    os.makedirs(REPORT_OUT_DIR, exist_ok=True)
     with open(REPORT_PATH, "w") as report_file:
         report_file.writelines(lines)
 

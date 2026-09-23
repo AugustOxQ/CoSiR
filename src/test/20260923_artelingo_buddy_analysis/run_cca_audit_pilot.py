@@ -20,13 +20,16 @@ from sklearn.linear_model import LinearRegression
 
 
 OUT_DIR = os.path.dirname(__file__)
+REPORT_OUT_DIR = os.environ.get("PERCEPT_OUTPUT_ROOT") or OUT_DIR
 PIPELINE_PATH = os.path.join(OUT_DIR, "run_pipeline.py")
 AFFECT_PILOT_PATH = os.path.join(OUT_DIR, "run_affect_pilot.py")
 SINGLE_MODALITY_PATH = os.path.join(OUT_DIR, "run_single_modality_pilot.py")
-REPORT_PATH = os.path.join(OUT_DIR, "cca_audit_pilot_report.md")
+REPORT_PATH = os.path.join(REPORT_OUT_DIR, "cca_audit_pilot_report.md")
 
-HELDOUT_STORAGE_DIR = "/data/SSD2/pre_extract/artelingo_heldout/features"
-HELDOUT_JSON = "/data/PDD/artelingo/artelingo_val_test.json"
+PERCEPT_FEATURE_ROOT = os.environ.get("PERCEPT_FEATURE_ROOT", "/data/SSD2/pre_extract")
+PERCEPT_RAW_JSON_ROOT = os.environ.get("PERCEPT_RAW_JSON_ROOT", "/data/PDD/artelingo")
+HELDOUT_STORAGE_DIR = f"{PERCEPT_FEATURE_ROOT}/artelingo_heldout/features"
+HELDOUT_JSON = f"{PERCEPT_RAW_JSON_ROOT}/artelingo_val_test.json"
 HELDOUT_PAINTINGS = 9_365
 CONTENT_PCA_DIM = 50
 CCA_N_COMPONENTS = 10
@@ -238,6 +241,7 @@ def write_report(
         "## Final synthesis\n\n",
         synthesis + "\n",
     ])
+    os.makedirs(REPORT_OUT_DIR, exist_ok=True)
     with open(REPORT_PATH, "w") as report_file:
         report_file.writelines(lines)
 

@@ -16,12 +16,14 @@ from torch import nn
 
 
 OUT_DIR = os.path.dirname(__file__)
+REPORT_OUT_DIR = os.environ.get("PERCEPT_OUTPUT_ROOT") or OUT_DIR
 BASE_PILOT_PATH = os.path.join(OUT_DIR, "run_percept_stage1_pilot.py")
 SWEEP_PILOT_PATH = os.path.join(
     OUT_DIR, "run_percept_stage1_cluster_count_sweep_pilot.py"
 )
-REPORT_PATH = os.path.join(OUT_DIR, "percept_stage2_pilot_report.md")
-PATCH_FEATURE_DIR = "/data/SSD2/pre_extract/artelingo_percept_patch_features"
+REPORT_PATH = os.path.join(REPORT_OUT_DIR, "percept_stage2_pilot_report.md")
+PERCEPT_FEATURE_ROOT = os.environ.get("PERCEPT_FEATURE_ROOT", "/data/SSD2/pre_extract")
+PATCH_FEATURE_DIR = f"{PERCEPT_FEATURE_ROOT}/artelingo_percept_patch_features"
 TRAIN_PATCH_FEATURE_PATH = os.path.join(PATCH_FEATURE_DIR, "train_patch_features.pt")
 HELDOUT_PATCH_FEATURE_PATH = os.path.join(
     PATCH_FEATURE_DIR, "heldout_patch_features.pt"
@@ -192,6 +194,7 @@ def write_report(
             f"the absolute AMI tolerance of {REPRODUCTION_TOLERANCE:.3f}; Stage 2 "
             "was not trained, so it cannot silently use a different clustering.\n"
         )
+        os.makedirs(REPORT_OUT_DIR, exist_ok=True)
         with open(REPORT_PATH, "w") as report_file:
             report_file.writelines(lines)
         return
@@ -255,6 +258,7 @@ def write_report(
             f"{improvement:.4f}, below the 0.01 practical margin.\n"
         ),
     ])
+    os.makedirs(REPORT_OUT_DIR, exist_ok=True)
     with open(REPORT_PATH, "w") as report_file:
         report_file.writelines(lines)
 

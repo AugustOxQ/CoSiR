@@ -17,8 +17,9 @@ from torch.nn import functional as F
 
 
 OUT_DIR = os.path.dirname(__file__)
+REPORT_OUT_DIR = os.environ.get("PERCEPT_OUTPUT_ROOT") or OUT_DIR
 BASE_PILOT_PATH = os.path.join(OUT_DIR, "run_percept_stage1_pilot.py")
-REPORT_PATH = os.path.join(OUT_DIR, "percept_stage1_idec_faithful_pilot_report.md")
+REPORT_PATH = os.path.join(REPORT_OUT_DIR, "percept_stage1_idec_faithful_pilot_report.md")
 GAMMA = 0.1
 SEEDS = (7, 123, 2024)
 EMOTION_PARETO_BAR = 0.1236
@@ -403,6 +404,7 @@ def write_report(input_dim: int, phase_one: dict, phase_two: list[dict] | None) 
                 f"**Seed-dependent result.** Only {clearers}/4 seeds clear the held-out "
                 "Pareto bar, so faithful IDEC is not a reliable standing configuration.\n"
             )
+    os.makedirs(REPORT_OUT_DIR, exist_ok=True)
     with open(REPORT_PATH, "w") as report_file:
         report_file.writelines(lines)
 
