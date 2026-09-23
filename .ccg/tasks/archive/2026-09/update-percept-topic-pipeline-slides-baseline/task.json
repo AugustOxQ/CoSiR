@@ -1,0 +1,12 @@
+{
+  "id": "update-percept-topic-pipeline-slides-baseline",
+  "title": "Add Attention-h1 baseline provenance slides to the percept-topic pipeline deck",
+  "status": "completed",
+  "complexity": "M",
+  "risk": "medium",
+  "domain": "documentation",
+  "currentPhase": "completed",
+  "nextAction": "Archived after build and verification",
+  "createdAt": "2026-09-23T08:31:56Z",
+  "branch": "experiment/percept_topic_pipeline"
+}
