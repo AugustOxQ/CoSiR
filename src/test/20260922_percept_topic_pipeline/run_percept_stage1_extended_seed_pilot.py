@@ -50,8 +50,18 @@ base = cluster_sweep.base
 
 
 def metrics(emotion_ami: float, genre_ami: float) -> dict:
-    """Build the report-only metric shape for a cited held-out result."""
-    return {"emotion": {"AMI": emotion_ami}, "genre": {"AMI": genre_ami}}
+    """Build the report-only metric shape for a cited held-out result.
+
+    `base.verdict()` unconditionally reads `metrics["collapsed"]` first; all
+    four cited seeds are already established non-collapsed "Real success"
+    results in the source report, so this is set accordingly rather than
+    omitted.
+    """
+    return {
+        "emotion": {"AMI": emotion_ami},
+        "genre": {"AMI": genre_ami},
+        "collapsed": False,
+    }
 
 
 def clears(metrics_: dict) -> bool:
