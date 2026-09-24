@@ -41,18 +41,19 @@ from sklearn.decomposition import PCA
 
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 # `run_learned_student_arch_sweep_pilot.py` (loaded below as a sibling module)
-# resolves its own `src.conditional_buddy.prototype_seed` import relative to
-# `os.path.dirname(__file__)` computed from ITS OWN exec'd `__file__`, which
-# has been observed to fail to resolve on at least one cluster node despite
-# working in this dev container -- root cause not fully pinned down. Import
-# the same dependency here first, from an independently and robustly computed
-# absolute repo root, so it is already cached in `sys.modules` by the time
-# the sibling module's own (possibly fragile) import of it runs; that import
-# then becomes a no-op cache hit regardless of the sibling module's own path
-# computation.
+# resolves its own `src.conditional_buddy.prototype_seed` import via
+# `if REPO_ROOT not in sys.path: sys.path.insert(0, REPO_ROOT)`. On node404,
+# `/local/wding/CoSiR` is already present in `sys.path` via this conda env's
+# PYTHONPATH, positioned AFTER site-packages -- so that guard is truthy and
+# skips the insert, and that later-position entry then fails to resolve
+# `src.conditional_buddy` as a script-mode `__main__` (confirmed empirically:
+# an unconditional insert at position 0 works; the guarded version, and a
+# guarded pre-import here, both reproduce the identical failure). Force it to
+# position 0 UNCONDITIONALLY here, before loading the sibling module, so the
+# resulting cached `sys.modules` entries make its own guarded insert's
+# (skipped) no-op irrelevant.
 _REPO_ROOT = os.path.abspath(os.path.join(OUT_DIR, "..", "..", ".."))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
+sys.path.insert(0, _REPO_ROOT)
 import src.conditional_buddy.prototype_seed  # noqa: F401  (see comment above)
 REPORT_OUT_DIR = os.environ.get("PERCEPT_OUTPUT_ROOT") or OUT_DIR
 ARCH_SWEEP_PATH = os.path.join(OUT_DIR, "run_learned_student_arch_sweep_pilot.py")
