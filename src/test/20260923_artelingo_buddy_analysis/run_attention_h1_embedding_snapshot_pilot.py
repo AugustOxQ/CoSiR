@@ -29,6 +29,7 @@ Leiden pass that was never previously computed or saved.
 import importlib.util
 import json
 import os
+import sys
 import time
 
 os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
@@ -38,7 +39,21 @@ import torch
 from sklearn.decomposition import PCA
 
 
-OUT_DIR = os.path.dirname(__file__)
+OUT_DIR = os.path.dirname(os.path.abspath(__file__))
+# `run_learned_student_arch_sweep_pilot.py` (loaded below as a sibling module)
+# resolves its own `src.conditional_buddy.prototype_seed` import relative to
+# `os.path.dirname(__file__)` computed from ITS OWN exec'd `__file__`, which
+# has been observed to fail to resolve on at least one cluster node despite
+# working in this dev container -- root cause not fully pinned down. Import
+# the same dependency here first, from an independently and robustly computed
+# absolute repo root, so it is already cached in `sys.modules` by the time
+# the sibling module's own (possibly fragile) import of it runs; that import
+# then becomes a no-op cache hit regardless of the sibling module's own path
+# computation.
+_REPO_ROOT = os.path.abspath(os.path.join(OUT_DIR, "..", "..", ".."))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+import src.conditional_buddy.prototype_seed  # noqa: F401  (see comment above)
 REPORT_OUT_DIR = os.environ.get("PERCEPT_OUTPUT_ROOT") or OUT_DIR
 ARCH_SWEEP_PATH = os.path.join(OUT_DIR, "run_learned_student_arch_sweep_pilot.py")
 REPORT_PATH = os.path.join(
