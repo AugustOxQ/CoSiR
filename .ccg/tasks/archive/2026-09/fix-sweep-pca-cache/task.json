@@ -1,0 +1,12 @@
+{
+  "id": "fix-sweep-pca-cache",
+  "title": "Cache PCA fits for every content_pca_dim",
+  "status": "completed",
+  "complexity": "M",
+  "risk": "medium",
+  "domain": "backend",
+  "currentPhase": "completed",
+  "nextAction": "Archive verified fix",
+  "createdAt": "2026-09-27T23:59:20.286844+00:00",
+  "branch": "experiment/percept_topic_pipeline"
+}

@@ -1,0 +1,1 @@
+Self-review: PCA results are keyed by content_pca_dim; raw caching is unchanged. The 10→30→10 regression test failed before the change and passed after it. All four cache tests passed. External model calls omitted per explicit task instruction.
