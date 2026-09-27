@@ -1,0 +1,12 @@
+{
+  "id": "remove-sweep-pca-padding",
+  "title": "Remove PCA padding workaround and enlarge sweep cache test fixture",
+  "status": "completed",
+  "complexity": "S",
+  "risk": "low",
+  "domain": "backend",
+  "currentPhase": "completed",
+  "nextAction": "Archived after passing focused cache tests",
+  "createdAt": "2026-09-28T00:00:00Z",
+  "branch": "experiment/percept_topic_pipeline"
+}
