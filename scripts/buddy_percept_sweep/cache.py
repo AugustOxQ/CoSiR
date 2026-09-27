@@ -53,14 +53,9 @@ class FixedInputCache:
         if self._raw is None:
             self._raw = raw_loader()
         if self._fitted is None or self._pca_dim != content_pca_dim:
-            fit_dim = min(content_pca_dim, *self._raw.train_content_raw.shape)
-            pca = PCA(n_components=fit_dim, random_state=42)
+            pca = PCA(n_components=content_pca_dim, random_state=42)
             train_content = pca.fit_transform(self._raw.train_content_raw).astype(np.float32)
             heldout_content = pca.transform(self._raw.heldout_content_raw).astype(np.float32)
-            if fit_dim < content_pca_dim:
-                padding = (0, content_pca_dim - fit_dim)
-                train_content = np.pad(train_content, ((0, 0), padding))
-                heldout_content = np.pad(heldout_content, ((0, 0), padding))
             self._fitted = FixedInputs(
                 train_content=train_content,
                 train_affect=self._raw.train_affect,

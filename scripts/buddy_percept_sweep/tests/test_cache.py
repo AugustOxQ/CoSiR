@@ -9,15 +9,15 @@ def _fake_raw_loader_factory(call_counter):
         call_counter["raw_calls"] += 1
         rng = np.random.default_rng(0)
         return RawInputs(
-            train_content_raw=rng.normal(size=(20, 200)).astype(np.float32),
+            train_content_raw=rng.normal(size=(40, 200)).astype(np.float32),
             heldout_content_raw=rng.normal(size=(8, 200)).astype(np.float32),
-            train_affect=rng.normal(size=(20, 28)).astype(np.float32),
+            train_affect=rng.normal(size=(40, 28)).astype(np.float32),
             heldout_affect=rng.normal(size=(8, 28)).astype(np.float32),
-            train_emotion=["awe"] * 20,
+            train_emotion=["awe"] * 40,
             heldout_emotion=["awe"] * 8,
-            train_genre=np.array(["landscape"] * 20, dtype=object),
+            train_genre=np.array(["landscape"] * 40, dtype=object),
             heldout_genre=np.array(["landscape"] * 8, dtype=object),
-            train_patches=torch.zeros(20, 50, 512),
+            train_patches=torch.zeros(40, 50, 512),
             heldout_patches=torch.zeros(8, 50, 512),
         )
     return _loader
@@ -28,7 +28,7 @@ def test_first_call_fits_pca_and_calls_raw_loader_once():
     cache = FixedInputCache()
     result = cache.get(content_pca_dim=10, raw_loader=_fake_raw_loader_factory(counter))
     assert counter["raw_calls"] == 1
-    assert result.train_content.shape == (20, 10)
+    assert result.train_content.shape == (40, 10)
     assert result.content_pca_dim == 10
 
 
@@ -47,8 +47,8 @@ def test_different_pca_dim_refits_with_new_shape():
     loader = _fake_raw_loader_factory(counter)
     first = cache.get(content_pca_dim=10, raw_loader=loader)
     second = cache.get(content_pca_dim=30, raw_loader=loader)
-    assert first.train_content.shape == (20, 10)
-    assert second.train_content.shape == (20, 30)
+    assert first.train_content.shape == (40, 10)
+    assert second.train_content.shape == (40, 30)
     # Raw loader is itself cached independently of PCA dim -- only the
     # PCA fit is redone, not the underlying feature extraction.
     assert counter["raw_calls"] == 1
