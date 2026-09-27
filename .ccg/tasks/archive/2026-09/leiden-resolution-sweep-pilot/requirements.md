@@ -1,0 +1,1 @@
+Standalone RedCaps resolution sweep per LEIDEN_RESOLUTION_SWEEP_BRIEF.md. Reuse B1 split, raw train union, transfer and lift; gate resolution 1.0 against B1 before remaining resolutions. Deliver script and report only.

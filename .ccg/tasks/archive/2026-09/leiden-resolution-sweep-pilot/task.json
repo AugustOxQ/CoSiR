@@ -1,0 +1,12 @@
+{
+  "id": "leiden-resolution-sweep-pilot",
+  "title": "RedCaps Leiden resolution sweep pilot",
+  "status": "completed",
+  "complexity": "M",
+  "risk": "low",
+  "domain": "experimental-analysis",
+  "currentPhase": "completed",
+  "nextAction": "Archive completed task",
+  "createdAt": "2026-09-27T12:15:58.240562+00:00",
+  "branch": "experiment/percept_topic_pipeline"
+}

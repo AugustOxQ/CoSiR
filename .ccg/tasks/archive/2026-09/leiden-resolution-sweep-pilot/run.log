@@ -1,0 +1,18 @@
+[2026-09-27 14:20:12] Loaded B1 split from /project/CoSiR-buddy_prototype_conditioning/src/test/20260927_redcaps_topic_formation/b1_redcaps_single_teacher_pilot_split.npz: train=120,000, val=15,000.
+[2026-09-27 14:20:13] Rebuilding the raw train teacher union graph (K=30); device=cuda.
+[2026-09-27 14:20:15] resolution=1.0: partitioning raw train teacher graph.
+[2026-09-27 14:20:32] resolution=1.0 sanity check: communities=1423 (cited 1423, diff 0.0%); below1%=1404 (cited 1404, diff 0.0%).
+[2026-09-27 14:21:27] resolution=1.0: communities=1423 below1%=1404 coverage=27/1423 community_lift=4.773x
+[2026-09-27 14:21:27] resolution=0.5: partitioning raw train teacher graph.
+[2026-09-27 14:22:38] resolution=0.5: communities=1410 below1%=1398 coverage=14/1410 community_lift=4.707x
+[2026-09-27 14:22:38] resolution=0.25: partitioning raw train teacher graph.
+[2026-09-27 14:23:32] resolution=0.25: communities=1403 below1%=1396 coverage=7/1403 community_lift=3.967x
+[2026-09-27 14:23:32] resolution=0.1: partitioning raw train teacher graph.
+[2026-09-27 14:24:25] resolution=0.1: communities=1398 below1%=1396 coverage=2/1398 community_lift=1.926x
+[2026-09-27 14:24:25] resolution=0.05: partitioning raw train teacher graph.
+[2026-09-27 14:25:41] resolution=0.05: communities=1397 below1%=1396 coverage=1/1397 community_lift=0.971x
+[2026-09-27 14:25:41] resolution=0.01: partitioning raw train teacher graph.
+[2026-09-27 14:26:44] resolution=0.01: communities=1397 below1%=1396 coverage=1/1397 community_lift=0.971x
+[2026-09-27 14:26:44] resolution=0.005: partitioning raw train teacher graph.
+[2026-09-27 14:27:36] resolution=0.005: communities=1397 below1%=1396 coverage=1/1397 community_lift=0.971x
+[2026-09-27 14:27:36] Wrote /project/CoSiR-buddy_prototype_conditioning/src/test/20260927_redcaps_topic_formation/run_leiden_resolution_sweep_pilot_report.md
