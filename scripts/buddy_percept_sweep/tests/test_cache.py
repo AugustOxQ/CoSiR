@@ -52,3 +52,18 @@ def test_different_pca_dim_refits_with_new_shape():
     # Raw loader is itself cached independently of PCA dim -- only the
     # PCA fit is redone, not the underlying feature extraction.
     assert counter["raw_calls"] == 1
+
+
+def test_revisiting_pca_dim_reuses_earlier_fit():
+    counter = {"raw_calls": 0}
+    cache = FixedInputCache()
+    loader = _fake_raw_loader_factory(counter)
+
+    first = cache.get(content_pca_dim=10, raw_loader=loader)
+    cache.get(content_pca_dim=30, raw_loader=loader)
+    third = cache.get(content_pca_dim=10, raw_loader=loader)
+
+    assert counter["raw_calls"] == 1
+    assert third is first
+    assert third.train_content.shape == (40, 10)
+    assert third.content_pca_dim == 10

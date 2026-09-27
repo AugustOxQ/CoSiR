@@ -46,17 +46,16 @@ class FixedInputCache:
 
     def __init__(self) -> None:
         self._raw: Optional[RawInputs] = None
-        self._pca_dim: Optional[int] = None
-        self._fitted: Optional[FixedInputs] = None
+        self._fitted_by_dim: dict[int, FixedInputs] = {}
 
     def get(self, content_pca_dim: int, raw_loader: Callable[[], RawInputs]) -> FixedInputs:
         if self._raw is None:
             self._raw = raw_loader()
-        if self._fitted is None or self._pca_dim != content_pca_dim:
+        if content_pca_dim not in self._fitted_by_dim:
             pca = PCA(n_components=content_pca_dim, random_state=42)
             train_content = pca.fit_transform(self._raw.train_content_raw).astype(np.float32)
             heldout_content = pca.transform(self._raw.heldout_content_raw).astype(np.float32)
-            self._fitted = FixedInputs(
+            self._fitted_by_dim[content_pca_dim] = FixedInputs(
                 train_content=train_content,
                 train_affect=self._raw.train_affect,
                 heldout_content=heldout_content,
@@ -69,5 +68,4 @@ class FixedInputCache:
                 heldout_patches=self._raw.heldout_patches,
                 content_pca_dim=content_pca_dim,
             )
-            self._pca_dim = content_pca_dim
-        return self._fitted
+        return self._fitted_by_dim[content_pca_dim]
