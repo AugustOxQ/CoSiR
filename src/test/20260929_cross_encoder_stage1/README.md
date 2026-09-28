@@ -24,3 +24,34 @@ The 256-row smoke gate passed: DINOv2 `(256, 384)` and e5 `(256, 768)`, both fin
 | --- | --- | --- | --- | --- | --- |
 | `dinov2_img.npy` | `(308723, 384)` | float32 | yes | 0.9999999 / 1.0000000 / 1.0000001 | -0.2817402 / 0.2824658 |
 | `e5_txt.npy` | `(308723, 768)` | float32 | yes | 0.9999999 / 1.0000000 / 1.0000001 | -0.2043188 / 0.1518828 |
+
+## SigLIP vision swap with the saved e5 text array
+
+`extract_siglip.py` encodes the same 61,402 distinct ArtELingo images with
+`google/siglip-base-patch16-224`. It uses `get_image_features` (including the
+`pooler_output` return used by newer transformers), then L2-normalizes each
+768-dimensional float32 vector and restores annotation row order. It does not
+load or re-extract e5 captions. The output is `features/siglip_v_img.npy`.
+
+Run from the repository root with the `CoSiR` environment and local CUDA GPU:
+
+```bash
+python -u src/test/20260929_cross_encoder_stage1/extract_siglip.py --smoke-only
+python -u src/test/20260929_cross_encoder_stage1/extract_siglip.py
+python -u src/test/20260929_cross_encoder_stage1/run_siglip_e5_validation.py
+```
+
+The full extraction command repeats the 256-row smoke gate before encoding all
+images. `run_siglip_e5_validation.py` pairs the new image array with the
+existing `features/e5_txt.npy`, checks their matching 768-dimensional widths,
+and runs the same graph, Stage 1, raw baseline, and emotion AMI comparison as
+the DINOv2 + e5 validation. No padding or projection is applied.
+
+The separate 256-row SigLIP smoke run passed with finite `(256, 768)` float32
+features and unit row norms. The full command passed its own smoke gate, then
+encoded all 61,402 unique images and restored all 308,723 annotation rows in
+**454.390 seconds** of extraction wall-clock time (excluding startup and smoke).
+The saved `siglip_v_img.npy` is `(308723, 768)` float32, all finite, with row
+norm min / mean / max **0.9999999 / 1.0000000 / 1.0000001** and value min /
+max **-0.2986873 / 0.5251451**. Pillow warned about an unusually large source
+image; the full run completed and validated the output.
