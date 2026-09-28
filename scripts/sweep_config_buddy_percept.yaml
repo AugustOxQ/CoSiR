@@ -1,0 +1,67 @@
+# scripts/sweep_config_buddy_percept.yaml
+program: scripts/run_buddy_percept_sweep_agent.py
+method: bayes
+metric:
+  name: objective
+  goal: maximize
+early_terminate:
+  type: hyperband
+  min_iter: 3
+  eta: 2
+project: CoSiR-buddy-percept-sweep
+
+# Core (spec §5.1-5.2) -- always meaningful.
+parameters:
+  heads:
+    values: ["mlp128", "attn1", "attn4"]
+  lr:
+    distribution: log_uniform_values
+    min: 0.0003
+    max: 0.003
+  noise_std:
+    values: [0.0, 0.02, 0.05, 0.1]
+  leiden_resolution:
+    distribution: log_uniform_values
+    min: 0.05
+    max: 2.0
+  mapper_lr:
+    distribution: log_uniform_values
+    min: 0.0003
+    max: 0.03
+  mapper_epochs:
+    values: [100, 200, 400, 800, 1600]
+  merge_small_threshold:
+    values: [0.0, 0.01, 0.02]
+  class_balanced_loss:
+    values: [true, false]
+  target_cutoff:
+    values: ["single_label", 0.5, 0.3, 0.15]
+
+  # Extra (spec §5.3-5.4) -- included now per explicit approval of the
+  # full 22-dim sweep. To fall back to core-only, regenerate this file
+  # with just the block above (do not add a runtime toggle -- see plan
+  # Task 8 note).
+  num_heads:
+    values: [1, 2, 4, 8, 16]
+  d_shared:
+    values: [16, 32, 64, 128]
+  content_pca_dim:
+    values: [30, 50, 80, 120]
+  lambda_affect:
+    distribution: log_uniform_values
+    min: 0.5
+    max: 2.0
+  teacher_graph_K:
+    values: [10, 15, 20, 30]
+  batch_size:
+    values: [512, 1024, 2048, 4096]
+  weight_decay:
+    values: [0.0, 0.00001, 0.0001]
+  num_queries:
+    values: [1, 2, 4, 8]
+  mlp_head:
+    values: ["linear", "one_hidden"]
+  transfer_k:
+    values: [10, 20, 30, 40]
+  weight_decay_stage2:
+    values: [0.0, 0.00001, 0.0001]
