@@ -4,6 +4,7 @@ loading functions this investigation already validated, via the
 established sibling-module-import pattern (never edits the originals).
 """
 import importlib.util
+import os
 from pathlib import Path
 
 import numpy as np
@@ -28,6 +29,16 @@ def load_real_raw_inputs():
     single_modality = arch.load_sibling_module("single_modality_for_sweep", arch.SINGLE_MODALITY_PATH)
     cca_audit = arch.load_sibling_module("cca_for_sweep", arch.CCA_AUDIT_PATH)
     heldout_pipeline = arch.load_sibling_module("heldout_pipeline_for_sweep", arch.PIPELINE_PATH)
+    # `arch.HELDOUT_STORAGE_DIR`/`arch.HELDOUT_JSON` are hardcoded constants
+    # in the original pilot (never edited -- see module docstring). Route
+    # them through the same two env vars `run_pipeline.py`'s own
+    # PERCEPT_FEATURE_ROOT/PERCEPT_RAW_JSON_ROOT already respect, so a DAS6
+    # launch (which sets these to node-side paths) resolves the held-out
+    # split correctly too, while local runs (unset) are unaffected.
+    feature_root = os.environ.get("PERCEPT_FEATURE_ROOT", "/data/SSD2/pre_extract")
+    json_root = os.environ.get("PERCEPT_RAW_JSON_ROOT", "/data/PDD/artelingo")
+    arch.HELDOUT_STORAGE_DIR = f"{feature_root}/artelingo_heldout/features"
+    arch.HELDOUT_JSON = f"{json_root}/artelingo_val_test.json"
     heldout_pipeline.STORAGE_DIR = arch.HELDOUT_STORAGE_DIR
     heldout_pipeline.TRAIN_JSON = arch.HELDOUT_JSON
 

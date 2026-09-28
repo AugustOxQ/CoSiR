@@ -1,0 +1,39 @@
+# @package _global_
+# ArtELingo dataset config for DAS6 cluster runs (node-side paths).
+#
+# Same dataset as configs/dataset/artelingo.yaml (unmodified, local-only
+# paths), but declared using each node's REMOTE_ROOT convention
+# (/local/wding/...) so cluster-run's generic hydra-config path scanner
+# (any resolved key ending in _path/_dir/_root/_base) can sync it via
+# DATA_MAP:
+#   /local/wding/Dataset/artelingo                    <- /data/PDD/artelingo
+#   /local/wding/Dataset/wikiart_proj                  <- /data/PDD/wikiart_proj
+#   /local/wding/pre_extract/artelingo                 <- /data/SSD2/pre_extract/artelingo
+#   /local/wding/pre_extract/artelingo_percept_patch_features
+#                                                       <- /data/SSD2/pre_extract/artelingo_percept_patch_features
+#
+# Used as a data-sync trigger for the buddy-percept comprehensive sweep
+# (docs/superpowers/plans/2026-09-28-buddy-percept-sweep.md):
+#   cluster check --sync-data -- python main_cosir.py dataset=artelingo_cluster
+# Not used for actual training. The sweep's own entrypoint script sets
+# PERCEPT_FEATURE_ROOT=/local/wding/pre_extract and
+# PERCEPT_RAW_JSON_ROOT=/local/wding/Dataset/artelingo so its Python code
+# (which reads those two env vars, defaulting to the local-only paths)
+# resolves to these same node-side locations once synced.
+
+data:
+  dataset_type: "artelingo"
+  train_annotation_path: "/local/wding/Dataset/artelingo/artelingo_train.json"
+  test_annotation_path: "/local/wding/Dataset/artelingo/artelingo_val.json"
+  train_image_path: "/local/wding/Dataset/wikiart_proj/wikiart"
+  test_image_path: "/local/wding/Dataset/wikiart_proj/wikiart"
+
+featuremanager:
+  storage_dir: "/local/wding/pre_extract/artelingo/features"
+  patch_feature_dir: "/local/wding/pre_extract/artelingo_percept_patch_features"
+
+experiment:
+  name: "CoSiR_Experiment"
+  tags: ["CoSiR", "ArtELingo", "cluster", "buddy-percept-sweep"]
+  description: "Data-sync trigger only for the buddy-percept comprehensive sweep"
+  results_dir: "res/CoSiR_Experiment/artelingo"
