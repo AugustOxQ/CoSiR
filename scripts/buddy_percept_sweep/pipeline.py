@@ -23,27 +23,28 @@ from scripts.buddy_percept_sweep.targets import (
 
 @dataclass
 class TrialConfig:
-    heads: str
-    num_heads: int
-    d_shared: int
-    lr: float
-    noise_std: float
-    lambda_affect: float
-    batch_size: int
-    weight_decay: float
-    teacher_graph_K: int
-    leiden_resolution: float
-    merge_small_threshold: float
-    mapper_lr: float
-    mapper_epochs: int
-    num_queries: int
-    mlp_head: str
-    transfer_k: int
-    target_cutoff: Union[str, float]
-    class_balanced_loss: bool
-    weight_decay_stage2: float
+    heads: str = "attn1"
+    num_heads: int = 1
+    d_shared: int = 32
+    lr: float = 1e-3
+    noise_std: float = 0.0
+    lambda_affect: float = 1.0
+    batch_size: int = 1024
+    weight_decay: float = 0.0
+    teacher_graph_K: int = 20
+    leiden_resolution: float = 1.0
+    merge_small_threshold: float = 0.0
+    mapper_lr: float = 1e-2
+    mapper_epochs: int = 400
+    num_queries: int = 1
+    mlp_head: str = "linear"
+    transfer_k: int = 20
+    target_cutoff: Union[str, float] = "single_label"
+    class_balanced_loss: bool = False
+    weight_decay_stage2: float = 0.0
     max_epochs_stage1: int = 200
     seed: int = 42
+    content_pca_dim: int = 50
 
 
 @dataclass

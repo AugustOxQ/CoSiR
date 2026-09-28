@@ -5,6 +5,11 @@ from scripts.buddy_percept_sweep.cache import FixedInputs
 from scripts.buddy_percept_sweep.pipeline import TrialConfig, run_trial
 
 
+def test_trial_config_has_defaults_including_content_pca_dim():
+    config = TrialConfig()
+    assert config.content_pca_dim == 50
+
+
 def _tiny_fixed_inputs(n_train=60, n_heldout=24):
     rng = np.random.default_rng(0)
     # Two synthetic "emotion" and "genre" clusters so AMI has real signal.
