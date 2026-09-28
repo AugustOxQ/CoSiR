@@ -22,6 +22,8 @@ def leiden_partition(
 ) -> np.ndarray:
     adjacency: csr_matrix = mutual_knn(embedding, K=k_neighbors, backend="auto", device=device)
     sources, targets = adjacency.nonzero()
+    upper_triangle = sources < targets
+    sources, targets = sources[upper_triangle], targets[upper_triangle]
     graph = ig.Graph(n=adjacency.shape[0], edges=list(zip(sources.tolist(), targets.tolist())))
     partition = leidenalg.find_partition(
         graph, leidenalg.RBConfigurationVertexPartition,
