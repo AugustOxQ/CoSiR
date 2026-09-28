@@ -196,6 +196,12 @@ def main() -> None:
     cca_audit = arch.load_sibling_module(
         "artelingo_run_cca_audit_attn_snapshot", arch.CCA_AUDIT_PATH
     )
+    # `arch.evaluate_checkpoint` reads `cca_audit` as a module-level global,
+    # normally set by `arch.main()`'s `global cca_audit; cca_audit = ...`
+    # assignment -- which never runs here since we call arch's functions
+    # directly instead of its main(). Set it explicitly so that global
+    # reference resolves.
+    arch.cca_audit = cca_audit
     heldout_pipeline = arch.load_sibling_module(
         "artelingo_run_pipeline_attn_snapshot_heldout", arch.PIPELINE_PATH
     )

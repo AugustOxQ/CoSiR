@@ -5,8 +5,8 @@ B1's completely untrained "graph-only baseline" was ~99% occupancy-collapsed
 using Leiden's default modularity resolution (equivalent to
 RBConfigurationVertexPartition at resolution_parameter=1.0). This script tests
 whether a lower resolution recovers a smaller, healthier-occupancy partition
-without hurting community-level subreddit lift. B1's device choice rebuilds
-the graph (CUDA when available); Leiden, transfer, and lift run on CPU. Read-only against
+without hurting community-level subreddit lift. The graph rebuild, Leiden,
+transfer, and lift run on CPU. Read-only against
 shared/frozen files (redcaps_buddy.py, prototype_seed.py, buddy_graph.py are
 imported, never modified); reuses B1's saved split and B1's own occupancy/
 transfer/lift code paths rather than reimplementing them.
@@ -171,7 +171,7 @@ def write_report(rows: list[dict], discrepancy: str | None,
 
 
 def main() -> None:
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
     with np.load(B1_SPLIT_PATH) as split:
         train_idx, val_idx, test_idx = (split[key] for key in
                                         ("train_idx", "val_idx", "test_idx"))
