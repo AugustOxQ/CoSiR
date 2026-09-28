@@ -87,14 +87,14 @@ def symmetric_infonce(embeddings: torch.Tensor, pairs: np.ndarray, device: torch
 
 
 def build_teacher_graphs(train_content, train_affect, heldout_content, heldout_affect,
-                          teacher_graph_K: int, teacher_graph_alpha: float) -> TeacherGraphs:
+                          teacher_graph_K: int, teacher_graph_alpha: float, device: str) -> TeacherGraphs:
     """Builds train-side teacher graphs only (held-out reference graphs are
     built the same way by the pipeline orchestration in Task 6, which
     already needs the Leiden/mutual_knn machinery for a different purpose)."""
     from src.conditional_buddy.buddy_graph import mutual_knn
 
-    content_graph = mutual_knn(train_content, K=teacher_graph_K, backend="auto")
-    affect_graph = mutual_knn(train_affect, K=teacher_graph_K, backend="auto")
+    content_graph = mutual_knn(train_content, K=teacher_graph_K, backend="auto", device=device)
+    affect_graph = mutual_knn(train_affect, K=teacher_graph_K, backend="auto", device=device)
     # teacher_graph_alpha mixes the two graphs' edge sets before InfoNCE
     # sampling would be a bigger change than tonight's investigation ever
     # tested; here it selects the fraction of edges drawn from each graph
@@ -114,7 +114,7 @@ def train_stage1(student, fixed_inputs, lr: float, noise_std: float, lambda_affe
     teacher = build_teacher_graphs(
         fixed_inputs.train_content, fixed_inputs.train_affect,
         fixed_inputs.heldout_content, fixed_inputs.heldout_affect,
-        teacher_graph_K, teacher_graph_alpha,
+        teacher_graph_K, teacher_graph_alpha, device=str(device),
     )
     train_content_t = torch.as_tensor(fixed_inputs.train_content, dtype=torch.float32, device=device)
     train_affect_t = torch.as_tensor(fixed_inputs.train_affect, dtype=torch.float32, device=device)

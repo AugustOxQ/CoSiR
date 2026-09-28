@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from scripts.buddy_percept_sweep.stage1 import ParameterizedLearnedStudent, train_stage1
+from scripts.buddy_percept_sweep.stage1 import ParameterizedLearnedStudent, build_teacher_graphs, train_stage1
 from scripts.buddy_percept_sweep.cache import FixedInputs
 
 
@@ -43,6 +43,19 @@ def test_attention_head_variants_produce_correct_shape():
         )
         embedding, _ = student(torch.randn(5, 10), torch.randn(5, 28))
         assert embedding.shape == (5, 16)
+
+
+def test_build_teacher_graphs_runs_on_cpu():
+    fixed = _tiny_fixed_inputs()
+    graphs = build_teacher_graphs(
+        fixed.train_content, fixed.train_affect,
+        fixed.heldout_content, fixed.heldout_affect,
+        teacher_graph_K=5, teacher_graph_alpha=0.5, device="cpu",
+    )
+    assert graphs.content_edges.shape[1] == 2
+    assert graphs.affect_edges.shape[1] == 2
+    assert len(graphs.content_edges) > 0
+    assert len(graphs.affect_edges) > 0
 
 
 def test_train_stage1_runs_end_to_end_on_tiny_data():
