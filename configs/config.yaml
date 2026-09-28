@@ -1,8 +1,9 @@
-# CoSiR Training Configuration
+# CoSiR v2 Training Configuration
+# model: and train: groups were removed with the pre-rewrite model/loss/training
+# code (see docs/superpowers/specs/2026-09-28-cosir-v2-ground-up-redesign.md).
+# Add them back fresh as Block 1/Candidate A get built.
 defaults:
   - dataset: coco
-  - model: clip_base
-  - train: default
   - infra: default
   - _self_
 

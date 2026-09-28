@@ -8,7 +8,12 @@ from hydra.core.hydra_config import HydraConfig
 
 
 from src.utils import setup_seed, WandbLogger
-from src.hook import train_cosir
+
+# TODO(cosir-v2 Block 1): wire up the rebuilt training entrypoint once it exists.
+# The old `from src.hook import train_cosir` was removed with the rest of the
+# pre-rewrite model/loss/training code — see
+# docs/superpowers/specs/2026-09-28-cosir-v2-ground-up-redesign.md.
+train_cosir = None
 
 
 @hydra.main(version_base=None, config_path="configs", config_name="config.yaml")
