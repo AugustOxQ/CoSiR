@@ -1,0 +1,13 @@
+{
+  "id": "content-teacher-graph",
+  "title": "ContentTeacherGraph typed wrapper over buddy graph construction",
+  "status": "completed",
+  "complexity": "M",
+  "risk": "medium",
+  "domain": "backend",
+  "currentPhase": "completed",
+  "nextAction": "Archived after implementation, verification, and report",
+  "createdAt": "2026-09-28T20:50:46Z",
+  "branch": "cosir-v2",
+  "commit": "f5bc52c396fb00b2acc9ddcd18f4da18ceca5afd"
+}
