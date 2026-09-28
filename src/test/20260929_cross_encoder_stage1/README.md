@@ -55,3 +55,34 @@ The saved `siglip_v_img.npy` is `(308723, 768)` float32, all finite, with row
 norm min / mean / max **0.9999999 / 1.0000000 / 1.0000001** and value min /
 max **-0.2986873 / 0.5251451**. Pillow warned about an unusually large source
 image; the full run completed and validated the output.
+
+## ImageNet-supervised ViT vision swap with the saved e5 text array
+
+`extract_vit_sup.py` uses the `google/vit-base-patch16-224` backbone and its
+`last_hidden_state[:, 0]` CLS token. It L2-normalizes the 768-dimensional
+float32 vectors, encodes each distinct image once, and restores the ArtELingo
+annotation row order in `features/vit_sup_img.npy`. The ImageNet classification
+supervision of this vision model is separate from the emotion labels used only
+to evaluate the resulting communities.
+
+Run from the repository root with the `CoSiR` environment and local CUDA GPU:
+
+```bash
+python -u src/test/20260929_cross_encoder_stage1/extract_vit_sup.py --smoke-only
+python -u src/test/20260929_cross_encoder_stage1/extract_vit_sup.py
+python -u src/test/20260929_cross_encoder_stage1/run_vit_sup_e5_validation.py
+```
+
+The full extraction repeats the smoke gate. `run_vit_sup_e5_validation.py`
+reuses the existing `features/e5_txt.npy` and verifies that both modalities
+have 768 features per row before running the unchanged graph, Stage 1, raw
+baseline, community detection, and emotion AMI pipeline. No padding or
+projection is applied.
+
+The separate 256-row smoke test and the full command's repeated smoke gate
+passed. The full run encoded all 61,402 unique images and restored all 308,723
+rows in **450.809 seconds** of extraction wall-clock time, excluding startup
+and smoke. `vit_sup_img.npy` is `(308723, 768)` float32 and finite, with row
+norm min / mean / max **0.9999999 / 1.0000000 / 1.0000001** and value min /
+max **-0.3249589 / 0.3157847**. Pillow warned about two unusually large
+source images, both of which were processed successfully.

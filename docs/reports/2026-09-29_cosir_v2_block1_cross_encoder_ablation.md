@@ -11,6 +11,7 @@
 | CLIP + CLIP (from Block 1) | 0.035781 | 0.036942 | +0.001161 |
 | DINOv2 + e5 (prior run) | 0.032652 | 0.040973 | +0.008321 |
 | SigLIP + e5 | 0.034434 | 0.040173 | +0.005739 |
+| vit_sup + e5 | 0.031267 | 0.052282 | +0.021015 |
 
 The DINOv2 + e5 gain is about **0.007160 AMI greater** than CLIP's gain (about 7.2 times its size). As a secondary finding, the **raw** DINOv2 + e5 features score **0.003129 lower** than raw CLIP on emotion AMI, while their trained Stage 1 embeddings score **0.004031 higher** than trained CLIP. Thus the larger training gain is not simply a stronger raw-feature baseline. These are measured differences from one run per pair, not estimates of statistical significance or seed robustness.
 
@@ -22,6 +23,8 @@ The DINOv2 + e5 gain is about **0.007160 AMI greater** than CLIP's gain (about 7
 | DINOv2 + e5, trained | 18 | 1,023 / 14,660.5 / 36,053 | 0 |
 | SigLIP + e5, raw | 29 | 22 / 8,440 / 34,989 | 0 |
 | SigLIP + e5, trained | 19 | 3,654 / 15,477 / 32,591 | 0 |
+| vit_sup + e5, raw | 23 | 21 / 10,213 / 36,089 | 0 |
+| vit_sup + e5, trained | 15 | 6,099 / 20,045 / 43,193 | 0 |
 
 The CLIP figures and occupancy come from [Block 1's same-split validation](2026-09-28_cosir_v2_block1_stage1_validation.md). All AMI scores compare communities with the real `emotion` field for the same 308,723 ArtELingo training rows.
 
@@ -60,3 +63,72 @@ The precise SigLIP + e5 scores were **0.034434421 raw AMI** and **0.040173012 tr
 | Total, including load and AMI | 698.140 s |
 
 Both SigLIP partitions had no empty communities. The trained partition had 19 communities, ranging from 3,654 to 32,591 rows (median 15,477); the raw partition had 29 communities, ranging from 22 to 34,989 rows (median 8,440). As in the DINOv2 run, PyTorch warned when it wrapped the read-only e5 memory map; training only read it, and validation finished successfully.
+
+## vit_sup + e5 extension
+
+`extract_vit_sup.py` used the `google/vit-base-patch16-224` backbone and its
+`last_hidden_state[:, 0]` CLS token, then L2-normalized each float32 vector.
+This encoder was supervised for **ImageNet classification**. That is a
+different pretraining objective from DINOv2's self-supervision and SigLIP's
+image–text contrastive learning; it is also distinct from the
+GoEmotions-based affect teacher discussed in Block 1. A separate 256-row
+smoke test passed before the full run, which repeated the smoke gate. Full
+extraction encoded 61,402 distinct images once and restored all 308,723
+annotation-row positions in **450.809 s**, excluding startup and smoke.
+`vit_sup_img.npy` is `(308723, 768)` float32, finite, with row-norm min /
+mean / max of 0.9999999 / 1.0000000 / 1.0000001. The existing `e5_txt.npy`
+was reused without re-extraction.
+
+`run_vit_sup_e5_validation.py` constructed the graph from the original
+vit_sup and e5 arrays with `GraphConfig()` and obtained **3,170,297 undirected
+edges**. Both inputs have 768 features per row, so the unchanged
+`train_stage1(..., Stage1Config())` received them directly, without padding
+or projection. The raw baseline separately L2-normalized each view and
+concatenated them into 1,536-dimensional vectors. Both variants used the
+default `detect_communities` and the same 308,723 training-row emotion labels
+for AMI; the pipeline used seed 42.
+
+The precise vit_sup + e5 scores were **0.031266983 raw AMI** and **0.052281892
+trained AMI**, a **+0.021014909** gap. Its raw AMI was 0.004514 below raw
+CLIP + CLIP, while its trained AMI was 0.015340 above trained CLIP + CLIP.
+The raw partition had 23 communities, with sizes from 21 to 36,089 (median
+10,213); the trained partition had 15 communities, from 6,099 to 43,193
+(median 20,045). Neither partition had empty communities.
+
+| vit_sup + e5 measured stage | Wall time |
+|---|---:|
+| Graph construction | 18.019 s |
+| Stage 1 training and embedding pass | 2.002 s |
+| Trained embedding community detection | 87.016 s |
+| Raw-feature community detection | 600.762 s |
+| Total, including load and AMI | 709.897 s |
+
+As in the earlier cross-encoder runs, PyTorch warned when it wrapped the
+read-only feature memory maps; training only read those arrays, and the run
+completed successfully.
+
+## Four-pair synthesis
+
+| Encoder pair | Trained − raw emotion AMI gap |
+|---|---:|
+| CLIP + CLIP | +0.001161 |
+| DINOv2 + e5 | +0.008321 |
+| SigLIP + e5 | +0.005739 |
+| vit_sup + e5 | +0.021015 |
+
+**Verdict:** All three different-from-CLIP pairs widen the in-sample emotion
+AMI gap relative to CLIP + CLIP. The ImageNet-classification-supervised
+vit_sup pair gives the largest gap, about 18.1 times CLIP's. This converges
+with the DINOv2 and SigLIP results: the near-zero CLIP gap is specific to that
+tested pair rather than a general failure of the Stage 1 training mechanism.
+It supports, but does not establish causally, the interpretation that the
+CLIP pair limited the observed training gain. The encoder pairs also differ
+in text tower and, for DINOv2, dimension matching; these are one-seed,
+same-split results, not a held-out or seed-robustness estimate.
+
+Across the three e5 pairs, the gap increases as prior **RedCaps** union-graph
+agreement with CLIP + CLIP decreases: SigLIP + e5 had Jaccard 0.173 and a
+0.005739 gap; DINOv2 + e5 had Jaccard 0.134–0.138 and a 0.008321 gap;
+vit_sup + e5 had Jaccard 0.128–0.132 and a 0.021015 gap. This ordering is
+suggestive, not conclusive: it uses only three non-CLIP pairs, and those
+Jaccard values came from a different dataset and graph experiment.
