@@ -1,0 +1,3 @@
+# ArtELingo content-only Stage 1 validation
+
+`run_validation.py` runs the default content graph, 200-epoch Stage 1 student training, and Leiden community detection on all 308,723 cached ArtELingo train image/text CLIP pairs, then scores the resulting train communities against the corresponding real train emotion labels with adjusted mutual information. This is an in-sample validation, not a held-out evaluation. From the repository root, with the `CoSiR` environment and local GPU available, rerun with `python -u src/test/20260928_stage1_validation/run_validation.py`; the script reads `/data/SSD2/pre_extract/artelingo/features` and `/data/PDD/artelingo/artelingo_train.json`, checks the positional sample-ID join, and prints stage timings and community statistics.
