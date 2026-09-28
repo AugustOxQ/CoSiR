@@ -37,3 +37,17 @@ For a same-split calibration, `src/test/20260928_stage1_validation/raw_clip_base
 | Empty communities | 0 | 0 |
 
 The raw-CLIP community sizes were 36,537, 35,997, 34,484, 29,856, 26,044, 20,745, 18,082, 16,918, 15,868, 13,834, 13,378, 11,959, 7,973, 7,390, 6,001, 5,835, 5,155, 1,359, 466, 356, 254, 121, and 111 samples. Thus the baseline also produced a non-degenerate partition. Stage 1 is higher by only **0.001161 AMI**; these results are **roughly equal**. This is an honest signal that Stage 1 training is not adding much to this in-sample emotion-community alignment beyond the frozen CLIP features yet. It does not by itself establish whether Stage 1 is broken or how either embedding performs on held-out data.
+
+## Epoch sensitivity check
+
+`src/test/20260928_stage1_validation/epoch_sensitivity_check.py` repeated the same 308,723-sample `FeatureManager`/`artelingo_train.json` positional join and built the content graph once with `build_content_graph(..., GraphConfig())` (3,130,544 undirected edges). It trained fresh Stage 1 students with seed 42 and otherwise default `Stage1Config` settings for 200, 2,000, and 10,000 epochs. Each epoch is one sampled 1,024-edge batch. Each embedding was clustered with the unchanged default `detect_communities`, summarized with `community_stats`, and scored against the same in-sample emotion labels. The raw-CLIP floor is the Task 5b AMI of 0.035781.
+
+| Epochs | Final training loss | Communities | Emotion AMI | Gap over raw-CLIP baseline |
+|---:|---:|---:|---:|---:|
+| 200 | 3.051670 | 21 | 0.036942 | +0.001161 |
+| 2,000 | 2.714368 | 24 | 0.036682 | +0.000901 |
+| 10,000 | 2.671519 | 22 | 0.035851 | +0.000070 |
+
+The first sampled-batch loss was 6.123320 in all three runs. The 200-epoch run reproduced Task 5's first loss, final loss, community count, and AMI exactly. The final sampled-batch loss fell by 0.337302 from 200 to 2,000 epochs, then by only 0.042849 over the next 8,000 epochs; individual batch losses are noisy, so these endpoint values are only a coarse optimization check.
+
+**Finding: more epochs do not help emotion alignment here.** AMI stays near the raw-CLIP floor and is effectively equal to it at 10,000 epochs, despite the lower training loss. The 200-epoch result is therefore not explained by insufficient training duration for this content-only configuration. Eventual factor-discovery/Candidate A work needs to account for the possibility that a content-only teacher graph built solely from CLIP nearest neighbors carries little additional emotion-relevant signal, regardless of training duration. This is a single-seed, in-sample diagnostic, not a held-out performance claim.
