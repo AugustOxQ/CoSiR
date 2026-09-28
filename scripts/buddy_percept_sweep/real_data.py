@@ -50,7 +50,7 @@ def load_real_raw_inputs():
     train_genre = np.array([genre_map.get(p, "") for p in paintings], dtype=object)
     heldout_genre = np.array([genre_map.get(p, "") for p in heldout_paintings], dtype=object)
 
-    stage2 = arch.load_sibling_module("stage2_for_sweep_patches", _BUDDY_DIR / "run_buddy_stage2_pilot.py")
+    stage2 = arch.load_sibling_module("stage2_for_sweep_patches", _BUDDY_DIR.parent / "20260922_percept_topic_pipeline" / "run_percept_stage2_pilot.py")
     train_patches = stage2.load_patch_features(stage2.TRAIN_PATCH_FEATURE_PATH, len(paintings), "train")
     heldout_patches = stage2.load_patch_features(stage2.HELDOUT_PATCH_FEATURE_PATH, len(heldout_paintings), "held-out")
 

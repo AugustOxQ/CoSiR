@@ -20,7 +20,7 @@ _CACHE = FixedInputCache()  # lives for the whole agent process (spec §3.1)
 def main() -> None:
     run = wandb.init()
     config = resolve_trial_config(dict(wandb.config))
-    fixed_inputs = _CACHE.get(content_pca_dim=getattr(wandb.config, "content_pca_dim", 50),
+    fixed_inputs = _CACHE.get(content_pca_dim=config.content_pca_dim,
                               raw_loader=load_real_raw_inputs)
 
     def log_checkpoint(epoch: int, proxy: float) -> None:
