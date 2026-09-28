@@ -1,0 +1,12 @@
+{
+  "id": "task-9-local-smoke-test",
+  "title": "Run the buddy percept sweep on real ArtELingo data and local GPU",
+  "status": "completed",
+  "complexity": "S",
+  "risk": "low",
+  "domain": "test",
+  "currentPhase": "completed",
+  "nextAction": "Archived after the real-data smoke test",
+  "createdAt": "2026-09-28T00:55:29Z",
+  "branch": "experiment/percept_topic_pipeline"
+}
