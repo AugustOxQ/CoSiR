@@ -7,23 +7,24 @@
 # they resolve against the WikiArt dump already at /data/PDD/wikiart_proj/wikiart/.
 #
 # Split handling: `val` is used as the periodic in-training eval set
-# (test_annotation_path below); the true `test` split (artelingo_test.json)
-# is reserved for final reporting only and is not referenced by this config.
+# (test_annotation_path below) via the 5-captions-per-image retrieval JSON;
+# the true `test` split (artelingo_test_retrieval.json) is reserved for final
+# reporting only and is not referenced by this config.
 # The CSV's `rest` bucket is dropped entirely (excluded from the official
 # HuggingFace ArtELingo train/test/val split too — see the converter script's
 # docstring for why we don't fold it into train).
 #
-# Unlike RedCaps/Impressions, each record also carries ground-truth `emotion`
-# (9-way ArtEmis taxonomy) and `art_style` fields — not used by the standard
-# training loop (dataset_type="artelingo" hits no special-cased branch in
-# train_cosir.py, same generic path as redcaps/coco), but available for
-# buddy-graph-vs-ground-truth diagnostics.
+# Unlike RedCaps/Impressions, flat training rows also carry ground-truth
+# `emotion` (9-way ArtEmis taxonomy) and `art_style`; retrieval eval rows
+# retain `art_style` only. The standard training loop does not use these fields
+# (dataset_type="artelingo" hits no special-cased branch in train_cosir.py,
+# same generic path as redcaps/coco), but they support diagnostics.
 
 # Dataset paths
 data:
   dataset_type: "artelingo"
   train_annotation_path: "/data/PDD/artelingo/artelingo_train.json"
-  test_annotation_path: "/data/PDD/artelingo/artelingo_val.json"
+  test_annotation_path: "/data/PDD/artelingo/artelingo_val_retrieval.json"
   train_image_path: "/data/PDD/wikiart_proj/wikiart"
   test_image_path: "/data/PDD/wikiart_proj/wikiart"
 
