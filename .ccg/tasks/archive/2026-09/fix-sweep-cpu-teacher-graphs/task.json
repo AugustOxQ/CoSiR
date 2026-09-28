@@ -1,0 +1,12 @@
+{
+  "id": "fix-sweep-cpu-teacher-graphs",
+  "title": "Thread the selected device through Stage 1 teacher graph construction",
+  "status": "completed",
+  "complexity": "M",
+  "risk": "medium",
+  "domain": "backend",
+  "currentPhase": "completed",
+  "nextAction": "Archive verified fix",
+  "createdAt": "2026-09-28T00:10:14Z",
+  "branch": "experiment/percept_topic_pipeline"
+}
