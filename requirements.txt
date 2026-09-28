@@ -17,6 +17,8 @@ opencv-python
 einops
 matplotlib
 scikit-learn
+python-igraph
+leidenalg
 numpy
 pandas
 seaborn
