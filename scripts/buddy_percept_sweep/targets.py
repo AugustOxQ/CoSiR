@@ -21,10 +21,20 @@ def _fit_knn(train_embeddings: np.ndarray, k: int) -> NearestNeighbors:
     return knn
 
 
+def _batched_kneighbors(knn: NearestNeighbors, query_embeddings: np.ndarray):
+    distances = []
+    indices = []
+    for start in range(0, len(query_embeddings), 128):
+        batch_distances, batch_indices = knn.kneighbors(query_embeddings[start:start + 128])
+        distances.append(batch_distances)
+        indices.append(batch_indices)
+    return np.concatenate(distances), np.concatenate(indices)
+
+
 def assign_to_train_communities(train_embeddings: np.ndarray, train_labels: np.ndarray,
                                  query_embeddings: np.ndarray, k: int) -> np.ndarray:
     knn = _fit_knn(train_embeddings, k)
-    _, indices = knn.kneighbors(query_embeddings)
+    _, indices = _batched_kneighbors(knn, query_embeddings)
     neighbor_labels = train_labels[indices]
     n_topics = int(train_labels.max()) + 1
     votes = np.zeros((len(query_embeddings), n_topics), dtype=np.int64)
@@ -36,7 +46,7 @@ def assign_to_train_communities(train_embeddings: np.ndarray, train_labels: np.n
 def cosine_vote_fractions(train_embeddings: np.ndarray, train_labels: np.ndarray,
                            query_embeddings: np.ndarray, n_topics: int, k: int) -> np.ndarray:
     knn = _fit_knn(train_embeddings, k)
-    _, indices = knn.kneighbors(query_embeddings)
+    _, indices = _batched_kneighbors(knn, query_embeddings)
     neighbor_labels = train_labels[indices]
     fractions = np.zeros((len(query_embeddings), n_topics), dtype=np.float32)
     for topic in range(n_topics):

@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.neighbors import NearestNeighbors
 
 from scripts.buddy_percept_sweep.targets import (
     assign_to_train_communities, build_targets, cosine_vote_fractions, one_hot,
@@ -27,6 +28,44 @@ def test_cosine_vote_fractions_sum_to_one_per_row():
     fractions = cosine_vote_fractions(train_embeddings, train_labels, train_embeddings[:3], n_topics=2, k=5)
     assert fractions.shape == (3, 2)
     np.testing.assert_allclose(fractions.sum(axis=1), 1.0, atol=1e-6)
+
+
+def test_heldout_knn_queries_are_batched_without_changing_votes(monkeypatch):
+    rng = np.random.default_rng(42)
+    train_embeddings = rng.normal(size=(40, 6)).astype(np.float32)
+    query_embeddings = rng.normal(size=(150, 6)).astype(np.float32)
+    train_labels = np.arange(40) % 3
+    k = 5
+    n_topics = 3
+
+    knn = NearestNeighbors(n_neighbors=k, metric="cosine").fit(train_embeddings)
+    _, direct_indices = knn.kneighbors(query_embeddings)
+    neighbor_labels = train_labels[direct_indices]
+    counts = np.stack(
+        [(neighbor_labels == topic).sum(axis=1) for topic in range(n_topics)], axis=1
+    )
+    expected_assignments = counts.argmax(axis=1)
+    expected_fractions = (counts / k).astype(np.float32)
+    expected_fractions /= expected_fractions.sum(axis=1, keepdims=True)
+
+    query_sizes = []
+    original_kneighbors = NearestNeighbors.kneighbors
+
+    def record_batch(self, queries, *args, **kwargs):
+        query_sizes.append(len(queries))
+        return original_kneighbors(self, queries, *args, **kwargs)
+
+    monkeypatch.setattr(NearestNeighbors, "kneighbors", record_batch)
+    assignments = assign_to_train_communities(
+        train_embeddings, train_labels, query_embeddings, k=k
+    )
+    fractions = cosine_vote_fractions(
+        train_embeddings, train_labels, query_embeddings, n_topics=n_topics, k=k
+    )
+
+    assert query_sizes == [128, 22, 128, 22]
+    np.testing.assert_array_equal(assignments, expected_assignments)
+    np.testing.assert_array_equal(fractions, expected_fractions)
 
 
 def test_build_targets_single_label_is_one_hot():
