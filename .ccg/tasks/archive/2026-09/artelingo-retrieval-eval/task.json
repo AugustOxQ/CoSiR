@@ -1,0 +1,13 @@
+{
+  "id": "artelingo-retrieval-eval",
+  "title": "Build 1 image vs 5 captions ArtELingo retrieval eval split",
+  "status": "completed",
+  "complexity": "M",
+  "risk": "medium",
+  "domain": "dataset",
+  "currentPhase": "completed",
+  "nextAction": "Archived",
+  "createdAt": "2026-09-28T14:32:40.672381+00:00",
+  "branch": "experiment/buddy_prototype_conditioning",
+  "completedAt": "2026-09-28T14:49:58.523816+00:00"
+}
