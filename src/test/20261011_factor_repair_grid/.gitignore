@@ -1,0 +1,6 @@
+*.npy
+*.json
+*.pt
+cache/
+checkpoints/
+*.log
