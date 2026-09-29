@@ -1,0 +1,5 @@
+*.npy
+*.json
+*.pt
+cache/
+*.log
