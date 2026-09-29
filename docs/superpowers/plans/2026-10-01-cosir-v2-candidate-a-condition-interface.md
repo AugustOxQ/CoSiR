@@ -365,6 +365,73 @@ at similar severity) — the last case would be real evidence for reconsidering
 
 ---
 
+### Task 6: per-factor separability diagnostic — what explains the dead/live split?
+
+**Added 2026-10-03** after Task 5 found class-balanced training with 4x more episodes did not move
+the collapse at all (training/held-out accuracy and predicted-factor diversity were flat from epoch
+50 through 300) — ruling out undertraining/class-imbalance as the cause. Read
+`docs/reports/2026-10-03_cosir_v2_candidate_a_condition_recovery_balanced_retrain.md` in full for
+the exact per-factor accuracy table this task correlates against (14 factors with nonzero accuracy:
+3, 7, 10, 12, 13, 16, 19, 21, 22, 25, 27, 28, 29, 30; 18 factors at exactly 0%: the rest).
+
+**This is a pure data-analysis task — no model training.** It tests two hypotheses against the
+already-computed factor codes and Task 5's already-reported per-factor accuracy, to find out *why*
+roughly half the factors are unrecoverable before choosing an architecture fix:
+1. **Cross-factor scale hypothesis**: `ConditionEncoder`'s per-factor head has weights tied across
+   all 32 factors and sees raw, unnormalized activation values. If live and dead factors differ
+   systematically in absolute activation scale (not just percentile-relative separation), a
+   scale-naive tied head could structurally favor whichever factors happen to fall in the range its
+   weights learned to fire on.
+2. **Small-sample noise hypothesis**: each episode's support set has only `num_support=4` items
+   (`EpisodeMiningConfig`'s default). A factor's *population-level* high/low pools can be
+   well-separated while still producing per-episode support-set means that land ambiguously close to
+   the contrast side, if that factor's within-pool variance is large relative to its high/low gap —
+   a noise floor that more episodes or more training does not reduce, since each new episode is
+   still only 4 items. This would explain Task 5's completely flat training curves better than an
+   undertrained-tied-head story.
+
+**Files:** create `src/test/20261004_condition_factor_separability_diagnostic/run_diagnostic.py`;
+create `docs/reports/2026-10-04_cosir_v2_candidate_a_factor_separability_diagnostic.md`.
+
+**Method:** reproduce Task 3/5's factor-code preparation (Task 6-of-the-prior-plan's recipe: raw
+CLIP features, `usage_balance_penalty`, no whitening, 32 factors, seed 42) to get real `(308723,
+32)` `pair_codes`. Reuse the same percentile-pool definition `mine_episodes` uses internally
+(`high_activation_percentile=90.0`, `low_activation_percentile=50.0` — import/reuse that logic
+rather than re-deriving it by hand, to stay consistent with what mining actually sees) to get each
+factor's high/low pool membership. For each of the 32 factors, compute:
+- `high_mean`, `low_mean`, `gap = high_mean - low_mean` (absolute, unnormalized).
+- `high_std`, `low_std`, pooled std, and `cohens_d = gap / pooled_std` (a scale-normalized
+  effect-size measure — if this correlates with accuracy but raw `gap`/scale doesn't, that argues
+  against the cross-factor-scale hypothesis specifically).
+- Dataset-wide column scale: `mean(pair_codes[:, l])`, `std(pair_codes[:, l])`, `max(pair_codes[:, l])`
+  (tests whether live factors simply have systematically larger raw magnitudes overall).
+- **Small-sample noise estimate**: standard error of a `num_support`-sized sample mean from the high
+  pool, `high_std / sqrt(num_support)` (analytically) — compare against `gap`. Report the ratio
+  `gap / (high_std / sqrt(num_support))` as a per-factor signal-to-noise ratio (SNR) for a 4-item
+  support-set mean. Also compute this empirically, not just analytically: draw 1000 random
+  `num_support=4`-sized samples from each factor's high pool (seed 42), compute each sample's mean,
+  and report what fraction of those sample means fall below `low_mean + 0.5 * gap` (a simple,
+  interpretable "how often does a real 4-item support mean land ambiguously close to the contrast
+  side" measure) — this is the more direct, assumption-light version of the SNR idea.
+
+**Correlate** each of these five per-factor statistics (`gap`, `cohens_d`, dataset-wide scale, the
+analytical SNR, the empirical ambiguous-mean fraction) against Task 5's per-factor accuracy (read
+its report's table directly, 32 values) using Spearman correlation. Report all five correlations in
+one table, plus a scatter-style comparison (a compact table of factor, accuracy, and each of the 5
+statistics, sorted by accuracy, is sufficient — no plotting library needed).
+
+**Report, plainly, verdict up front**: which hypothesis (or combination, or neither) does the
+evidence support — is dead/live status explained by raw cross-factor scale differences (supports
+hypothesis 1, a scale-normalization fix), by small-sample noise in 4-item support sets (supports
+hypothesis 2, a larger-support-set or noise-aware-pooling fix), by both, or by neither (meaning a
+third, not-yet-identified factor is likely responsible, and say so directly rather than force-fitting
+the data to one of the two hypotheses this task set out to test).
+
+- [ ] Implement the diagnostic script, write the report with the correlation table and verdict.
+- [ ] Commit: `git add src/test/20261004_condition_factor_separability_diagnostic/ docs/reports/2026-10-04_cosir_v2_candidate_a_factor_separability_diagnostic.md && git commit -m "docs(cosir-v2): diagnose which factor-level statistic explains condition-recovery dead/live split"`
+
+---
+
 ## Self-review
 
 **Placeholder scan:** no TBD/TODO; "your call, document why" points are explicit
