@@ -45,3 +45,24 @@ claims: (1) the 32-factor space has collapsed to about one dimension; (2) the he
 factor discovery (with effective-rank / max-|r| gates) and move to a painting-grouped split before
 stage (d). The review's "probable causes" (non-contrastive agreement loss, no decorrelation,
 copy-satisfiable balance loss) are plausible but were not tested here.
+
+## Correction (2026-09-29, later the same day): the readout numbers above were over-regularized
+
+`verify.py`'s `ridge_readout` used an absolute penalty `lambda = 1e-3 * n` (i.e. 1e-3 in covariance
+units). The codes' covariance eigenvalues have median ~2e-5 (min 1e-6, max ~0.21), so that penalty
+suppressed nearly every non-dominant code direction. Re-measured on the same cached codes, split,
+and 100k seeded fit rows (held-row relative L2):
+
+| Readout from all 32 codes | Image | Text |
+|---|---:|---:|
+| lambda = 1e-3 * n (this log's table above) | 0.544 | 0.504 |
+| lambda = 1e-3 * trace/d (scale-invariant, `src/eval/factor_gates.py`) | 0.494 | 0.467 |
+| lambda = 0 (least squares) | 0.484 | 0.455 |
+
+So the codes linearly carry about as much of CLIP as **PCA rank ~11-12 (image) / ~8 (text)**, not
+rank 4-5 / 2 as stated above. The variance-based collapse findings stand unchanged (PC1 86.5%,
+participation ratio 1.32, 374/496 pairs |r| >= .9). The corrected reading: the collapse is mainly a
+**scale/geometry** collapse, not an information collapse. The information survives in directions
+whose variance is ~10^4 times smaller than the dominant axis, which is why any dot-product score
+over the codes (including s(I,T|c)) effectively sees only that axis. The code-PC readout curve in
+the table above (k=1..32) is affected by the same over-regularization and should not be relied on.

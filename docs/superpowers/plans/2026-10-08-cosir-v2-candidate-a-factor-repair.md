@@ -30,7 +30,9 @@ architecture" §1–3). **Motivating evidence** (read before any task):
 - `docs/reports/2026-09-29_cosir_v2_code_review.md`: the collapse and split-leakage findings.
 - `src/test/20260929_factor_collapse_verification/20260929_factor_collapse_verification_log.md`:
   the controller's independent check. Codes have participation ratio (PR) 1.32 against CLIP's
-  ~40. All 32 codes linearly carry about as much as CLIP PCA rank 2 (text) / 4–5 (image).
+  ~40. See that log's correction section: the codes still linearly carry about as much as CLIP
+  PCA rank ~11-12 (image) / ~8 (text), but in directions with ~10^4 times less variance than the
+  dominant axis. The collapse is one of scale/geometry more than of information.
   99.54% of held rows' images appear in training.
 - `docs/reports/2026-10-07_cosir_v2_candidate_a_naive_rule_mechanism.md`: what the collapse did to
   the condition interface.
