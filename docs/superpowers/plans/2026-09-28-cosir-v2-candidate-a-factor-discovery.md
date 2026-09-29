@@ -288,6 +288,63 @@ not a reason to keep tuning until numbers look acceptable.
 
 ---
 
+### Task 6: usage-balance loss in isolation (no whitening) — variable-isolation check
+
+**Added 2026-09-30** after Task 5 found that reduced-rank whitening does not fix the
+reconstruction collapse at any tested threshold (95%/99%/99.9% variance all gave reconstruction
+error ~0.99, vs. 0.55 raw) even though mass concentration stayed low (7-8% top-2, actually slightly
+better than full-rank). Read
+`docs/reports/2026-09-30_cosir_v2_candidate_a_reduced_rank_whitening.md` in full for those exact
+numbers.
+
+**Why this task exists**: Task 4 changed *two* things simultaneously — added
+`usage_balance_penalty` to the loss **and** switched the encoder's input from raw to whitened CLIP
+features. Every result since (Tasks 4 and 5) has that confound baked in: we don't know whether the
+loss term alone, on raw (unwhitened) features, already fixes mass concentration without paying
+whitening's reconstruction cost. This task isolates that single variable — same as the discipline
+already used everywhere else in this plan (one variable at a time).
+
+**Scope note**: stay on CLIP features, same as Tasks 3-5. This is a rerun of Task 3's exact data
+pipeline (raw, unwhitened CLIP features) with only `lambda_usage_balance` added — no new code
+should be required beyond a config/script change, since `usage_balance_penalty` and
+`FactorTrainingConfig.lambda_usage_balance` already exist from Task 4.
+
+**Files:**
+- Create: `src/test/20260930_factor_usage_balance_no_whitening/run_revalidation.py` (adapt Task
+  3/4/5's real-data loading pattern — same `FeatureManager`/`artelingo_train.json` positional join,
+  same graph/community rebuild — but feed **raw, unwhitened** CLIP features into
+  `SharedFactorEncoder`, with `lambda_usage_balance` set to the same value Task 4 used).
+- Create: `docs/reports/2026-09-30_cosir_v2_candidate_a_usage_balance_no_whitening.md`.
+- No changes expected to `src/model/factors.py`, `src/train/factors.py`,
+  `src/train/train_factors.py`, or `src/model/whitening.py` — if you find you need one, explain why
+  before proceeding, since the brief's premise is that no new code is needed.
+
+**Real re-validation**: train factor discovery on raw (unwhitened) CLIP image/text features with
+`lambda_usage_balance` at Task 4's value, same 32 factors, seed 42, one run (no post-hoc tuning).
+Report, plainly, verdict up front, comparing directly against all three prior runs (Task 3 raw/no
+usage-balance, Task 4 whitened+usage-balance, Task 5 reduced-rank-whitened+usage-balance):
+1. **Top-2 (and max single) factor activation-mass share** — was 87.7% (Task 3, no usage-balance
+   at all), 8.66% (Task 4, full-rank-whitened), 7.76% (Task 5, K=433 reduced-rank-whitened). Does
+   the loss term alone, without whitening, meaningfully reduce concentration below 87.7%?
+2. **Anti-split and dead-factor counts** — were 1/32 and 0/32 raw (Task 3); 0/32 and 0/32 with
+   whitening (Tasks 4-5). Report whether these hold without whitening too.
+3. **Cross-community-spanning fraction** — was 59.4% (Task 3), 78.1% (Task 4), 96.9% (Task 5).
+4. **Reconstruction relative L2 error and matched/shuffled cosine** — was 0.554/0.510 and
+   0.926/0.606 (Task 3, raw target, no usage-balance); 0.993/0.993 and ~0.90/~0.58 with whitening
+   (Tasks 4-5). This is the number this task exists to test: does skipping whitening let
+   reconstruction stay close to the raw baseline while the usage-balance loss still does its job?
+
+State the plain verdict: does `usage_balance_penalty` alone (no whitening) give low mass
+concentration **and** good reconstruction simultaneously, or does removing whitening bring back
+some version of the original problem (concentration creeping back up even with the penalty
+active), or something in between? Report exactly what happens, not what would be convenient.
+
+- [ ] Real re-validation on ArtELingo (one run, as specified), write the report with a plain
+  verdict, comparing every number directly against Tasks 3, 4, and 5.
+- [ ] Commit: `git add src/test/20260930_factor_usage_balance_no_whitening/ docs/reports/2026-09-30_cosir_v2_candidate_a_usage_balance_no_whitening.md && git commit -m "docs(cosir-v2): re-validate factor discovery with usage-balance loss alone (no whitening)"`
+
+---
+
 ## Self-review
 
 **Placeholder scan:** no TBD/TODO; the "no validated reference for this loss combination" and
