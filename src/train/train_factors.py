@@ -23,6 +23,14 @@ from src.train.factors import (
 class FactorTrainingConfig:
     """Starting weights, not validated optima.
 
+    WARNING: the defaults are the historical collapsed recipe R0 (cosine
+    agreement; 32 factors collapse onto about one axis, see
+    docs/reports/2026-10-09_cosir_v2_candidate_a_factor_collapse_diagnosis.md).
+    They are kept unchanged for reproducibility. New work should start from
+    ``R3_CONFIG``, the recipe selected in
+    docs/reports/2026-10-11_cosir_v2_candidate_a_factor_repair.md (derive
+    variants with ``dataclasses.replace(R3_CONFIG, ...)``; do not mutate it).
+
     Usage balance starts at 0.1, comparable to anti-split because both are
     secondary balance regularizers relative to reconstruction and agreement.
 
@@ -54,6 +62,42 @@ class FactorTrainingConfig:
     center_inputs: bool = False
 
 
+R3_CONFIG = FactorTrainingConfig(lambda_usage_balance=0.1, agreement="infonce", lambda_decorrelation=1.0)
+"""The repaired recipe R3 (Task 6 selection, amended gates). Train it with ``group_ids`` = leakage-group
+ids of the training rows, as Task 6 did; equals the config stored in Task 6's selected_seed42.pt."""
+
+
+def encode_rows(model: SharedFactorEncoder, img_features, txt_features, rows=None,
+                batch_size: int = 8192, device=None) -> tuple[np.ndarray, np.ndarray]:
+    """Encode (a subset of) rows with a frozen model: eval mode, no_grad, fixed-size batches.
+
+    ``rows`` selects rows first (``None`` = all). ``device`` is where batches are sent (default: the
+    model's device; the model is not moved). The model's train/eval mode is restored afterwards.
+    Returns float32 numpy ``(img_codes, txt_codes)``.
+    """
+    if batch_size < 1:
+        raise ValueError("batch_size must be positive")
+    if rows is not None:
+        img_features, txt_features = img_features[rows], txt_features[rows]
+    if len(img_features) != len(txt_features):
+        raise ValueError("Image and text features must have the same number of rows")
+    target = torch.device(device) if device is not None else next(model.parameters()).device
+    was_training = model.training
+    model.eval()
+    img_out, txt_out = [], []
+    try:
+        with torch.no_grad():
+            for start in range(0, len(img_features), batch_size):
+                stop = start + batch_size
+                img_out.append(model.encode_image(torch.as_tensor(
+                    img_features[start:stop], dtype=torch.float32, device=target)).cpu().numpy())
+                txt_out.append(model.encode_text(torch.as_tensor(
+                    txt_features[start:stop], dtype=torch.float32, device=target)).cpu().numpy())
+    finally:
+        model.train(was_training)
+    return np.concatenate(img_out), np.concatenate(txt_out)
+
+
 def train_factors(
     img_features: np.ndarray,
     txt_features: np.ndarray,
@@ -66,11 +110,19 @@ def train_factors(
 
     Graph consistency compares the mean of each node's two modality codes on
     the induced graph of the sampled nodes. All other losses see the same nodes.
-    ``group_ids`` (one entry per row, e.g. painting id) is used only by the
-    ``"infonce"`` agreement term, to exclude same-group pairs as negatives.
+    ``group_ids`` (one integer per row, e.g. painting / leakage-group id) is used only by the
+    ``"infonce"`` agreement term, to exclude same-group pairs as negatives. InfoNCE REQUIRES it:
+    the content graph is a mutual-kNN graph on image features, so same-painting edges are common,
+    and silently treating them as negatives trains a recipe that is not the validated R3. Pass
+    ``group_ids=np.arange(n)`` to opt out of masking explicitly.
     """
     if config.agreement not in {"cosine", "infonce"}:
         raise ValueError(f"agreement must be 'cosine' or 'infonce', got {config.agreement!r}")
+    if config.agreement == "infonce" and group_ids is None:
+        raise ValueError(
+            "agreement='infonce' needs group_ids (one integer group id per row, e.g. leakage-group ids) so "
+            "same-painting pairs are not used as negatives; pass group_ids=np.arange(n) to disable masking explicitly"
+        )
     upper = triu(graph, k=1).tocoo()
     upper.eliminate_zeros()
     edges = np.column_stack((upper.row, upper.col)).astype(np.int64, copy=False)
@@ -86,6 +138,10 @@ def train_factors(
         if group_ids.shape != (len(img),):
             raise ValueError(
                 f"group_ids must have one entry per row ({len(img)}), got shape {group_ids.shape}"
+            )
+        if not np.issubdtype(group_ids.dtype, np.integer):
+            raise ValueError(
+                f"group_ids must be integer ids (e.g. dense leakage-group ids), got dtype {group_ids.dtype}"
             )
 
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
@@ -149,17 +205,8 @@ def train_factors(
         print(f"factor epoch={epoch} loss={loss.item():.6f}", flush=True)
 
     model.eval()
-    full_img_codes = []
-    full_txt_codes = []
-    with torch.no_grad():
-        for start in range(0, len(img), 8192):
-            full_img_codes.append(
-                model.encode_image(img[start : start + 8192].to(selected_device)).cpu().numpy()
-            )
-            full_txt_codes.append(
-                model.encode_text(txt[start : start + 8192].to(selected_device)).cpu().numpy()
-            )
-    return model, np.concatenate(full_img_codes), np.concatenate(full_txt_codes)
+    full_img_codes, full_txt_codes = encode_rows(model, img, txt, device=selected_device)
+    return model, full_img_codes, full_txt_codes
 
 
 def save_factor_checkpoint(model: SharedFactorEncoder, config: FactorTrainingConfig, path) -> None:
