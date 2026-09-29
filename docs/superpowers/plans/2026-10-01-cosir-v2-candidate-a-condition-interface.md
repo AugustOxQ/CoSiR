@@ -545,6 +545,63 @@ sweep Task 7 used:
 
 ---
 
+### Task 9: why does the naive rule work? Mechanism analysis before stage (d)
+
+**Added 2026-10-06** after Task 8. The naive rule `w(c)=ReLU(support_mean−contrast_mean)` beats
+every other variant, but three things in the Task 7/8 tables do not fit the simple story "naive
+works because it identifies the targeted factor":
+1. The naive-over-uniform lift is **β-dependent**: ≈+17 i2t R@1 points at `β=0.3`, but ≈+0.1 at
+   `β=0.03` and ≈+3.5 at `β=0` (the only scale-free setting). Uniform *degrades* as `β` grows while
+   naive improves — the variants have very different weight magnitudes, and `β` was hand-picked.
+2. The **oracle** (one-hot on the true factor) *loses* to naive (42.87 vs 52.83 i2t R@1 at `β=0`).
+   Per `mine_episodes`, the positive is a random high-`l` item and condition-only distractors are
+   high-`l` items chosen to be *least* similar to the anchor on other factors — one-hot `w` cannot
+   separate them. So naive's advantage likely comes from non-target factors.
+3. **CLIP-only is near chance** (13.67% vs 1/13≈7.7%): candidate pools are defined by the same
+   factor codes used for scoring, and supports/contrasts use the same high/low-percentile rule as
+   the positive — naive may partly read back the mining recipe (circularity).
+
+Stage (d) inherits all three, so this is answered first. Four questions, one script directory:
+
+**Files:** create `src/test/20261007_naive_rule_mechanism_analysis/` (script(s); cached `.npy`
+codes are allowed there but must not be committed — add a local `.gitignore`); create
+`docs/reports/2026-10-07_cosir_v2_candidate_a_naive_rule_mechanism.md`. Reuse Task 7's
+`run_ranking_eval.py` functions (split, factor prep, mining + remap, `score_pool`, swap pairs)
+unchanged; verify the reproduction with Task 8's held-out-episode SHA-256.
+
+- **Q1 — scale-fair comparison.** L1-normalize every variant's `w` per episode (uniform already
+  sums to 1; zero vectors stay zero). Sweep `β` over a log grid (incl. 0); **select `β` per variant
+  on the 4,096 train episodes**, report held-out R@1/@3 at that `β`. At `β=0` use tie-aware ranks
+  (report tie counts; count ties as half-rank). Paired per-episode bootstrap CIs for naive−uniform
+  and naive−CLIP-only, at `β=0` and at the selected `β`. Swap reversal at the selected `β`.
+- **Q2 — where does the signal come from.** At `β=0` and at naive's selected `β`: ablations
+  target-only, naive-minus-target (target weight zeroed), top-k naive weights (k=1,3,5),
+  support-mean-only (no contrast subtraction), and anchor-profile `w = anchor pair code` (no
+  supports at all). Plus a **per-role breakdown**: for each variant, how often each distractor role
+  (hard negative / condition-only / anchor-only) outranks the positive — explaining oracle<naive.
+- **Q3 — circularity.** (a) Cross-seed: train a second factor model (`FactorTrainingConfig` seed 43,
+  same train items and graph); keep Task 7's episodes (mined with seed-42 codes) but compute naive/
+  uniform/CLIP-only weights and scores with seed-43 codes (naive needs no factor alignment; oracle
+  is skipped). Report how aligned the two factor sets are (per-factor max |Pearson| on held-out
+  items). (b) Label-defined episodes: ArtELingo's human `emotion` field defines the condition —
+  supports/anchor/positive share emotion `e`, contrasts and distractors have other emotions, half
+  the distractors chosen as CLIP-nearest to the anchor; never place two annotations of the same
+  painting in one episode. Held-out items only. Naive/uniform/CLIP-only with bootstrap CIs.
+- **Q4 — why the learned head failed.** (a) Capacity: regress the `ConditionEncoder` head onto
+  naive's output (MSE, train episodes); report held-out R² and ranking. (b) Objective: from that
+  naive-mimicking init, continue Task 7's recovery cross-entropy training; track recovery loss,
+  ranking R@1 and swap reversal over epochs (does the recovery objective move it away from naive?
+  compare recovery loss at naive-init vs Task 7's trained head). (c) Train the head from scratch
+  with a ranking InfoNCE loss (positive vs 12 candidates, both directions) on train episodes;
+  report held-out ranking and swap reversal vs naive.
+
+- [ ] Implement, run, write the report: verdict first — a plain-language answer to "why does naive
+  work, and is its condition-specific lift real, scale-fair, and non-circular?"; then one section
+  per question; then implications for stage (d).
+- [ ] Commit: `git add src/test/20261007_naive_rule_mechanism_analysis/ docs/reports/2026-10-07_cosir_v2_candidate_a_naive_rule_mechanism.md && git commit -m "docs(cosir-v2): naive-rule mechanism analysis (scale, ablations, circularity, head failure)"`
+
+---
+
 ## Self-review
 
 **Placeholder scan:** no TBD/TODO; "your call, document why" points are explicit
