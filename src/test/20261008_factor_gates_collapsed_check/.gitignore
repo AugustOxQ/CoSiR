@@ -1,0 +1,4 @@
+*.json
+*.npy
+*.log
+__pycache__/
