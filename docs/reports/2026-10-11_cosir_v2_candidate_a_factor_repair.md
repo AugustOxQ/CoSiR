@@ -1,6 +1,194 @@
 # CoSiR v2 Candidate A: factor-repair grid, pre-registered gates and goal-based selection
 
-## Verdict
+## Verdict (final state, after the user's amendment)
+
+**Under amended gates, the factor space is repaired.**
+
+The selected recipe is **R3**: InfoNCE agreement in place of the cosine term, plus the decorrelation penalty (`agreement="infonce", lambda_decorrelation=1.0`). It passes all nine amended gates in three places:
+- on `val` at seed 42;
+- on `val` at replication seeds 43 and 44;
+- on `held` rows.
+
+**The gates were amended after the fact.** The user changed two thresholds after the pre-registered rule had stopped with no passing run. That stop is documented below as the historical record. The two changes:
+- readout must be no worse than R0's, instead of the absolute CLIP PCA-10 floor;
+- the sparsity cap is 50% active, instead of 37.5%.
+
+Under the original pre-registered gates, R3 passes 7 of 9 on `val` and on `held`. It fails the absolute text-readout floor and the 37.5% sparsity cap.
+
+- **Is the space repaired?** Yes, in geometry and in pair-specificity, on held rows as on val. Held rows, R3 against R0:
+
+  | Measure (held rows) | R3 | R0 |
+  |---|---:|---:|
+  | Participation ratio img / txt | 21.8 / 20.7 | 1.34 / 1.31 |
+  | Max \|r\| between factors | 0.451, no pair ≥ 0.9 | 0.99936, 371/496 pairs ≥ 0.9 |
+  | First-PC share of code variance, img / txt | 0.105 / 0.121 | 0.860 / 0.872 |
+  | Pair-retrieval ratio | 1.13 | 0.368 |
+
+  - On the same held pools, R3's code R@10 is 0.387 against CLIP's 0.343.
+  - R3 has no dead factors and no modality-private factors, and all 32 factors span communities.
+- **Which mechanism did it?** InfoNCE agreement.
+  - All four InfoNCE ReLU runs (R1, R3, R6, R7) escape the collapse and reach a pair-retrieval ratio of 1.04-1.13.
+  - Decorrelation adds little on top. From R1 to R3 the selection score goes from +3.85 to +4.17, and max |r| from 0.476 to 0.430.
+  - R3 was chosen over R6 (R3 plus input centering) by the tie-break. R6 scored 0.82 points higher, which is inside the pre-registered 1-point tie band. The tie-break prefers the lower mean readout, and R3's is 0.4698 against R6's 0.4709.
+- **Condition-specific benefit over R0.** Measured on val, beta=0, over 2,048 emotion plus 2,048 art-style episodes.
+  - R3 scores **+4.17** R@1 points, against R0's **+0.55**.
+  - Replication seeds score +3.71 (seed 43) and +4.28 (seed 44). Neither is at or below R0.
+  - The benefit is uneven across directions. For art style it sits mainly in text-to-image (+7.6 to +8.3 points against +2.3 to +2.7 for image-to-text). For emotion it sits mainly in image-to-text (+3.8 to +4.2 points against +0.8 to +2.6 for text-to-image).
+  - The held-episode test of this benefit is Task 7's job. No held episodes were built or scored here.
+- **Cost in linear-readout error: none relative to R0.** This is an affine readout of CLIP features from the codes, which is the readout gate's metric. The model's own decoder reconstruction was not measured.
+  - On held, R3 reads out 0.4800 (image) and 0.4600 (text), against R0's 0.4939 and 0.4680.
+  - Against CLIP PCA-10 (0.4949 / 0.4454), R3 is better on image and 0.0146 worse on text.
+- **Cost in sparsity.** On held, 45% of image factors and 49% of text factors are active per row. The original cap was 37.5% and the amended cap is 50%.
+- **Seed stability: the gates and the score replicate; the individual axes only partly do.**
+  - Hungarian matching of the seed-43 and seed-44 factors to seed 42 gives mean |r| 0.747 / 0.742 and median 0.837 / 0.786.
+  - The minimum is only 0.143 / 0.195. Of the 32 factors, 13 and 10 match at |r| ≥ 0.9, while 5 and 4 match below 0.5.
+  - This is a stable subspace with some unstable axes. The plan counts that as a caveat, not a failure.
+- **Checkpoints for Task 7.** `checkpoints/selected_seed42.pt` (R3) and `checkpoints/R0_seed42.pt` both come from deterministic seed-42 retrains, which reproduced all 24 compared stored grid metrics exactly. Reloading either checkpoint re-encodes 1,000 held rows bit-identically.
+
+## Amended thresholds (user decision, after the fact)
+
+### The two changes and their stated reasons
+
+The plan amendment is in commit `d490b96` (2026-09-29). It was decided after the Step 4.4 stop, on `val` results only; held rows had not been encoded. All other gates, the selection rule, the tie-break, replication and the held check are unchanged.
+
+1. **Readout becomes "no worse than R0".** A run passes if readout_img ≤ R0's readout_img and readout_txt ≤ R0's readout_txt, on the same rows.
+   - Stated reason: the floor exists so that a repair must not lose information (Ruling 4), and R0 itself never met the absolute PCA-10 text floor.
+   - Reference for the grid and for seeds 43/44: R0's seed-42 `val` readout, the exact stored values 0.493539 (image) and 0.466609 (text).
+   - Reference for the held check: R0's `held` readout, 0.493931 and 0.467955.
+   - R0 is its own reference, so it passes this gate trivially.
+2. **Sparsity cap becomes ≤ 50% active** (`FactorGateThresholds(max_active_fraction=0.5)`).
+   - Stated reason: runs made sparser, TopK at 25% active and R7, scored lower on the selection metric than the InfoNCE runs at 44-49% active.
+
+**How the change was implemented.** `run_grid.py --amended` re-derives both the original and the amended flags from each run's stored gate values, so the grid was re-gated without retraining. For all nine runs, the re-derived original flags equal the stored ones (asserted). New evaluations (seeds 43/44 and held) call `evaluate_factor_gates` with `max_active_fraction=0.5`, then apply the R0-reference readout rule to the values it returns. Nothing under `src/` changed.
+
+**What this means for interpretation.**
+- The thresholds were changed after the val results were known. They are exactly the two gates the best runs had failed.
+- The val selection is therefore no longer a pre-registered test. What remains honest is:
+  - the replication seeds;
+  - the held gates, computed once after the decision and not informing it;
+  - Task 7's held label episodes, which are the independent test of the condition benefit.
+
+### Re-gated grid (val): original and amended flags side by side
+
+Only the readout and sparsity columns can change. All other flags are identical under both rules (asserted).
+
+| run | PR | redundancy | readout (orig -> amended) | sparsity (orig -> amended) | dead | private | concentration | spanning | pair retrieval | original passed | amended passed | selection score | mean readout |
+|---|---|---|---|---|---|---|---|---|---|---:|---:|---:|---:|
+| R0 | FAIL | FAIL | FAIL -> **PASS** | FAIL -> **FAIL** | PASS | PASS | PASS | PASS | FAIL | 4/9 | **5/9** | +0.0055 | 0.4801 |
+| R1 | PASS | PASS | FAIL -> **PASS** | FAIL -> **PASS** | PASS | PASS | PASS | PASS | PASS | 7/9 | **9/9** | +0.0385 | 0.4708 |
+| R2 | FAIL | FAIL | PASS -> **PASS** | FAIL -> **FAIL** | PASS | PASS | PASS | PASS | PASS | 6/9 | **6/9** | +0.0331 | 0.4370 |
+| R3 | PASS | PASS | FAIL -> **PASS** | FAIL -> **PASS** | PASS | PASS | PASS | PASS | PASS | 7/9 | **9/9** | +0.0417 | 0.4698 |
+| R4 | PASS | PASS | FAIL -> **FAIL** | PASS -> **PASS** | PASS | FAIL | PASS | PASS | PASS | 7/9 | **7/9** | +0.0237 | 0.4829 |
+| R5 | PASS | PASS | FAIL -> **FAIL** | PASS -> **PASS** | PASS | FAIL | PASS | PASS | PASS | 7/9 | **7/9** | +0.0270 | 0.4788 |
+| R6 | PASS | PASS | FAIL -> **PASS** | FAIL -> **PASS** | PASS | PASS | PASS | PASS | PASS | 7/9 | **9/9** | +0.0499 | 0.4709 |
+| R7 | PASS | PASS | FAIL -> **PASS** | FAIL -> **PASS** | PASS | FAIL | PASS | PASS | PASS | 6/9 | **8/9** | +0.0391 | 0.4781 |
+| R8 | PASS | PASS | PASS -> **PASS** | PASS -> **PASS** | PASS | PASS | PASS | PASS | FAIL | 8/9 | **8/9** | +0.0338 | 0.4474 |
+
+- R4 and R5 still fail readout: their image readout (0.5002 / 0.4999) is worse than R0's 0.4935.
+- R0 and R2 still fail sparsity: 0.735 and 0.839 active.
+
+### Selection under the amended gates (pre-registered rule, applied literally)
+
+1. **Necessary (all amended gates pass):** R1, R3 and R6.
+2. **Highest score:** R6, +0.04993.
+3. **Tie band (within 1.0 R@1 point of the best):** R6 and R3. R3 is 0.82 points below R6. R1 (+0.03845) is 1.15 points below, so it is not tied.
+4. **Tie-break (lower mean readout):** R3 at 0.46975, against R6 at 0.47093. **R3 is selected.**
+5. **Gate sanity check (Step 4.5):** no gate-failing run beats +4.99 by more than 2 points (the best failing run is R7 at +3.91). **No flag.**
+
+These results agree with the controller's expectation. They were computed from the stored JSON by `select()`, not assumed.
+
+**The selected `FactorTrainingConfig`:**
+
+```
+FactorTrainingConfig(num_factors=32, lr=0.001, epochs=2000, batch_size=1024,
+    lambda_reconstruction=1.0, lambda_paired=1.0, lambda_graph=1.0, lambda_sparsity=0.01,
+    lambda_anti_split=0.1, lambda_usage_balance=0.1, seed=42, agreement="infonce",
+    infonce_temperature=0.1, lambda_decorrelation=1.0, activation="relu", topk=None,
+    center_inputs=False)
+```
+
+Training call: `train_factors(train_img, train_txt, train_graph, config, group_ids=leakage_groups(...)[train])`.
+
+### Replication (Step 5, val, amended gates, readout reference = R0 seed-42 val)
+
+| seed | amended gates | original gates (failed) | PR img / txt | max abs r (pairs >= .9) | PC1 img / txt | active img / txt | readout img / txt | dead / private | spanning | code R@10 / ratio | emotion lift | art-style lift | selection score | Hungarian abs r to seed 42: mean / median / min (n >= .9, n < .5, of 32) |
+|---|---:|---|---|---|---|---|---|---|---:|---|---:|---:|---:|---|
+| 42 | 9/9 | 7/9 (readout, sparsity) | 21.701 / 20.786 | 0.4302 (0/496) | 0.104 / 0.119 | 0.4534 / 0.4874 | 0.4806 / 0.4589 | 0 / 0 | 1.000 | 0.3858 / 1.1301 | +0.0339 | +0.0496 | +0.0417 | reference |
+| 43 | 9/9 | 7/9 (readout, sparsity) | 21.970 / 21.156 | 0.3617 (0/496) | 0.105 / 0.116 | 0.4286 / 0.4850 | 0.4807 / 0.4594 | 0 / 0 | 1.000 | 0.3847 / 1.1268 | +0.0227 | +0.0515 | +0.0371 | 0.747 / 0.837 / 0.143 (13, 5) |
+| 44 | 9/9 | 7/9 (readout, sparsity) | 21.752 / 20.785 | 0.4404 (0/496) | 0.104 / 0.119 | 0.4357 / 0.4768 | 0.4810 / 0.4617 | 0 / 0 | 1.000 | 0.3839 / 1.1244 | +0.0305 | +0.0552 | +0.0428 | 0.742 / 0.786 / 0.195 (10, 4) |
+
+| seed | emotion lift i2t / t2i | art-style lift i2t / t2i |
+|---|---|---|
+| 42 | +0.0415 / +0.0264 | +0.0234 / +0.0757 |
+| 43 | +0.0376 / +0.0078 | +0.0264 / +0.0767 |
+| 44 | +0.0396 / +0.0215 | +0.0273 / +0.0830 |
+
+- Both replication seeds pass all nine amended gates, so the recipe stays selected.
+- The scores (+3.71, +4.28) are within ±0.6 points of seed 42's +4.17, and far above R0's +0.55.
+- The weakest cell is seed 43's emotion text-to-image lift, at +0.78 points.
+- The Hungarian alignment uses the seed-42 `val` pair codes, which are 0.5·(img + txt). Codes and Hungarian matching on −|r| come from `scipy.optimize.linear_sum_assignment`. No factor is constant in any seed.
+
+### Held check (Step 6): the first and only time held rows were encoded
+
+Setup:
+- Eval rows are the 61,744 held rows. Fit and community rows are train rows, as on val.
+- The amended thresholds apply. The readout reference is **R0's held readout (0.493931 / 0.467955)**.
+- R0 is the reference itself, so its amended readout flag passes trivially. Its values are reported for comparison.
+
+| model | PR | redundancy | readout (orig -> amended) | sparsity (orig -> amended) | dead | private | concentration | spanning | pair retrieval | original passed | amended passed |
+|---|---|---|---|---|---|---|---|---|---|---:|---:|
+| selected R3 | PASS | PASS | FAIL -> **PASS** | FAIL -> **PASS** | PASS | PASS | PASS | PASS | PASS | 7/9 | **9/9** |
+| R0 | FAIL | FAIL | FAIL -> **PASS** (self-reference) | FAIL -> **FAIL** | PASS | PASS | PASS | PASS | FAIL | 4/9 | **5/9** |
+
+| model | PR img / txt | max abs r (pairs >= .9) | PC1 img / txt | readout img (PCA-10) | readout txt (PCA-10) | active img / txt | dead / private | top-2 | spanning | code R@10 / CLIP R@10 / ratio |
+|---|---|---|---|---|---|---|---|---:|---:|---|
+| selected R3 | 21.775 / 20.676 | 0.45057 (0/496) | 0.105 / 0.121 | 0.4800 (0.4949) | 0.4600 (0.4454) | 0.4526 / 0.4857 | 0 / 0 | 0.0803 | 1.000 | 0.3871 / 0.3427 / 1.1295 |
+| R0 | 1.338 / 1.305 | 0.99936 (371/496) | 0.860 / 0.872 | 0.4939 (0.4949) | 0.4680 (0.4454) | 0.7168 / 0.7314 | 0 / 0 | 0.0784 | 1.000 | 0.1261 / 0.3427 / 0.3680 |
+
+Held values track the val values closely for both models:
+- readout within 0.0014;
+- active fraction within 0.004;
+- retrieval ratio within 0.006;
+- max |r| within 0.021;
+- participation ratio within 0.12.
+
+### Checkpoints and reload verification
+
+- **Where the models came from.** Both checkpointed models are **deterministic seed-42 retrains**. The in-memory grid models were not kept after the stop.
+  - The R0 and R3 retrains were checked against the stored grid results on 24 values each: gate values, PC1 shares, first and last loss, mean code, both lift means and the selection score.
+  - Both matched **exactly**.
+  - The retrains were used only to obtain the models and the seed-42 val pair codes for the alignment. They are not new configurations.
+- **Saved** with `save_factor_checkpoint`:
+  - `src/test/20261011_factor_repair_grid/checkpoints/selected_seed42.pt` (R3);
+  - `src/test/20261011_factor_repair_grid/checkpoints/R0_seed42.pt`.
+
+  Both files are gitignored.
+- **Reloaded** with `load_factor_checkpoint(path, device="cuda:0")`. The same 1,000 held rows (chosen with `default_rng(42)`) were encoded as one batch by the in-session model and by the reloaded model.
+  - **Bit-identical** for both models: max abs difference 0.0, and the config round-trip is equal.
+  - For information, the same rows inside the full 8,192-row-batch held encoding differ by at most 8.3e-7 (R3) and 3.0e-7 (R0). That difference comes from the batch shape (cuBLAS), not from the checkpoint.
+
+### Before / after against Task 1's collapsed codes
+
+| | Task 1 collapsed (row split, held) | R0 (painting split, held) | selected R3 (painting split, held) | selected R3 (val) |
+|---|---:|---:|---:|---:|
+| PR img / txt | 1.3242 / 1.3262 | 1.338 / 1.305 | 21.775 / 20.676 | 21.701 / 20.786 |
+| max abs r | 0.99977 | 0.99936 | 0.45057 | 0.43019 |
+| readout img (PCA-10) | 0.4936 (0.4943) | 0.4939 (0.4949) | 0.4800 (0.4949) | 0.4806 (0.4951) |
+| readout txt (PCA-10) | 0.4669 (0.4452) | 0.4680 (0.4454) | 0.4600 (0.4454) | 0.4589 (0.4441) |
+| active img / txt | 0.7133 / 0.7176 | 0.7168 / 0.7314 | 0.4526 / 0.4857 | 0.4534 / 0.4874 |
+| retrieval ratio | 0.3709 | 0.3680 | 1.1295 | 1.1301 |
+| gates passed, original / amended | 4/9 / n/a | 4/9 / 5/9 | 7/9 / 9/9 | 7/9 / 9/9 |
+
+## Original pre-registered result (historical record): the Step 4.4 stop
+
+The rest of this section is the verdict as written at the stop. Five reviewer wording fixes are folded in:
+- pair-specificity;
+- linear-readout cost;
+- ties;
+- the loss table;
+- the non-finite ruling.
+
+### Original verdict
 
 **No configuration passes all nine gates on `val`. Under the pre-registered rule (Step 4.4) no recipe is selected, and the task stops here for the user to decide.** No runs were added and no thresholds were changed. Three things were therefore not run:
 
@@ -17,7 +205,7 @@ What the nine runs show, in plain language:
   - Max |r| goes from 0.9993 to 0.43-0.80, with no factor pair at or above 0.9.
   - The first principal component's share of code variance drops from 0.86-0.87 to 0.10-0.13.
   - Decorrelation on top of the cosine term (R2) only partly lifts the collapse (PR 2.86 / 3.02, max |r| 0.950), and fails both geometry gates.
-- **Pair-specificity is repaired only by InfoNCE.** Every InfoNCE run reaches a pair-retrieval ratio of 0.91-1.13. R1, R3 and R6 reach code R@10 of 0.386-0.387 against CLIP's 0.341 on the same painting-disjoint val pools, so the 32-factor code matches image-caption pairs better than raw CLIP does. Without an agreement term (R8) the ratio is 0.397 and fails, exactly as in Task 3's D3.
+- **Only InfoNCE brings the pair-retrieval ratio to about 0.9 or above** (0.91-1.13 in every InfoNCE run). Cosine plus decorrelation (R2) clears the 0.5 gate only narrowly, at 0.538. It stays collapsed, so this is not pair-specificity of a healthy space. R1, R3 and R6 reach code R@10 of 0.386-0.387 against CLIP's 0.341 on the same painting-disjoint val pools, so the 32-factor code matches image-caption pairs better than raw CLIP does. Without an agreement term (R8) the ratio is 0.397 and fails, exactly as in Task 3's D3.
 - **No mechanism in the grid meets pair-specificity and the readout/sparsity floors at the same time.**
   - The best InfoNCE runs (R1, R3, R6) fail exactly two gates. One is the text readout: 0.4589-0.4600 against the CLIP PCA-10 floor of 0.4441, a miss of 0.015-0.016. The other is sparsity: 44-49% of factors are active per row, against a gate of 37.5%.
   - Stronger L1 (R7) reaches image sparsity but not text (0.405). It also adds 3 modality-private factors and worsens the readout.
@@ -30,13 +218,13 @@ What the nine runs show, in plain language:
   - R5 +2.70, R4 +2.37.
 
   All of these runs fail at least one gate, so none is selected.
-- **Cost to reconstruction relative to R0: none for the ReLU repair runs; TopK costs some on the image side.**
+- **Cost in linear-readout error relative to R0: none for the ReLU repair runs; TopK costs some on the image side.** This is the readout gate's metric: an affine readout of the CLIP features from the codes. It is not the model's own decoder reconstruction, which this task did not measure.
   - Every InfoNCE ReLU run reads out CLIP features better than R0 in both modalities: image 0.4806-0.4912 against 0.4935, text 0.4589-0.4650 against 0.4666. R8 (0.4700 / 0.4249) and R2 (0.4492 / 0.4248) are better still.
   - The readout gate fails because the absolute text floor (CLIP PCA-10, 0.4441) is stricter than anything R0 reached. R0 fails that floor too. The repair itself does not lose information.
   - Only TopK loses image readout against R0 (0.5002 / 0.4999 vs 0.4935).
 - **Gate sanity check (Step 4.5): not applicable, so no flag.** The check compares gate-failing runs against the best passing run, and there is none. Descriptively only, and not part of the rule: the highest-scoring run (R6, 7/9) exceeds the 8/9 run (R8) by 1.61 R@1 points.
 
-**Options for the user.** None of these was run. Each is a gate or configuration decision that the plan reserves for the user.
+**Options for the user, as offered at the stop.** None of these was run. Each is a gate or configuration decision that the plan reserves for the user. *Resolved 2026-09-29:* the user chose a variant of option 3 (readout no worse than R0) together with a 50% sparsity cap. See "Amended thresholds" above.
 
 1. **Waive a named gate for a near-passing run.**
    - R6 or R3 miss only the text readout floor, by about 0.015, and sparsity.
@@ -45,9 +233,9 @@ What the nine runs show, in plain language:
 2. **Register new configurations aimed at the joint binding set.** The InfoNCE runs clear pair retrieval with a wide margin (ratio 1.13 against 0.5). A weaker agreement weight or temperature might trade some of that margin for readout and sparsity. R8 sits at the other end of that same axis.
 3. **Revisit the text readout floor** (Ruling 4 kept it at PCA-10 as an information floor). Every InfoNCE ReLU run is closer to it than R0 is.
 
-## Evidence
+## Evidence for the original grid (val, original gates)
 
-All numbers come from one run of `src/test/20261011_factor_repair_grid/run_grid.py`: seed 42, RTX 3090, torch 2.11.0+cu130, 387.4 s total, of which the train-side graph, Stage 1 and communities took 54.8 s. Each fit took about 24-30 s of training plus about 10 s of evaluation.
+All numbers in this section come from one run of `src/test/20261011_factor_repair_grid/run_grid.py`: seed 42, RTX 3090, torch 2.11.0+cu130, 387.4 s total, of which the train-side graph, Stage 1 and communities took 54.8 s. Each fit took about 24-30 s of training plus about 10 s of evaluation.
 
 Setup:
 
@@ -55,6 +243,7 @@ Setup:
 - **Train-side graph:** 2,198,162 edges and 22 Leiden communities, rebuilt here and identical to Task 3.
 - **Gates:** fit = train rows, eval = val rows, community codes and labels = train rows, default thresholds.
 - **Every run:** base `lambda_usage_balance=0.1`, seed 42, 32 factors, 2,000 epochs, `group_ids = leakage_groups(...)[train]`, other fields at their defaults. All codes and losses were finite in all nine runs.
+- **Finite codes.** The dispatch ruling "assert all codes are finite before gating/scoring" was implemented as *record a failed run*. A run with non-finite train or val codes would be kept in the table with every gate FAIL instead of aborting the script or being dropped. The branch never triggered: every run in the grid, the replication and the retrains was finite.
 
 Validation label episodes were built once and shared by every run:
 
@@ -149,9 +338,25 @@ How the columns are defined:
 
 The benefit is uneven across directions. For art style it sits mostly in text-to-image: R6 lift +9.33 points in t2i against +1.95 in i2t, and R8 +9.47 against +1.37. For emotion it sits in image-to-text: R6 +5.37 against +3.32. R0's emotion lift is negative in both directions (-0.15 and -0.10 points).
 
-### Before / after against Task 1's collapsed codes
+### Loss and runtime per run (seed 42)
 
-No model was selected, so the "after" columns are the two runs nearest to passing. They are descriptive only.
+| run | loss first | loss last | mean of last 100 | mean code img / txt (val) | train s |
+|---|---:|---:|---:|---|---:|
+| R0 | 0.93165 | -0.14783 | -0.14612 | 0.1018 / 0.0989 | 24 |
+| R1 | 8.35477 | 5.22943 | 5.15636 | 0.1581 / 0.1545 | 25 |
+| R2 | 0.94369 | -0.11012 | -0.10792 | 0.1118 / 0.1049 | 28 |
+| R3 | 8.36682 | 5.25179 | 5.17578 | 0.1621 / 0.1542 | 29 |
+| R4 | 8.53089 | 5.43908 | 5.39825 | 0.2226 / 0.2266 | 26 |
+| R5 | 8.53774 | 5.58101 | 5.54510 | 0.2310 / 0.2234 | 30 |
+| R6 | 8.56187 | 5.19589 | 5.14714 | 0.1448 / 0.1411 | 30 |
+| R7 | 8.67352 | 5.47569 | 5.41184 | 0.0531 / 0.0514 | 29 |
+| R8 | 0.30742 | -0.27202 | -0.27092 | 0.0785 / 0.0767 | 24 |
+
+Totals differ in scale between agreement types. InfoNCE's log-softmax term is about log(batch) at the start, so the InfoNCE totals start near 8.4. They are not comparable with the cosine totals. All losses were finite at every epoch.
+
+### Before / after against Task 1's collapsed codes (at the stop, descriptive)
+
+At the stop no model was selected, so the "after" columns are the two runs nearest to passing. They are descriptive only. The final before/after table, with the selected R3 on held rows, is in the amendment section above.
 
 | | Task 1 collapsed (row split, held) | R0 (painting split, val) | R8 (val, 8/9) | R6 (val, 7/9, top score) |
 |---|---:|---:|---:|---:|
@@ -168,7 +373,7 @@ No model was selected, so the "after" columns are the two runs nearest to passin
 
 R0 reproduces Task 3's D0, and R8 reproduces D3, to every printed decimal. R0: PR 1.342 / 1.309, max |r| 0.99934, retrieval 0.3732. R8: PR 20.629 / 17.074, max |r| 0.79963, readout 0.4700 / 0.4249, retrieval 0.3974. Training on this setup is deterministic, and the rebuilt train-side graph matches Task 3's.
 
-### Not run because of the stop
+### Not run at the time of the stop (later run under the amendment, see above)
 
 - Step 5: seed replication (seeds 43 and 44), and Hungarian factor alignment.
 - Step 6: gates on held rows for the selected model and for R0, the checkpoints `checkpoints/selected_seed42.pt` and `checkpoints/R0_seed42.pt`, and the reload check.
@@ -177,24 +382,49 @@ The code paths for both steps were exercised once in a 3-epoch smoke run whose n
 
 ## Caveats
 
-- **Single seed, single run per configuration, and no confidence intervals on lift.** Each label type has 2,048 episodes. Score differences of about 1 R@1 point between runs are not resolvable; the pre-registered rule treats them as ties. Among the InfoNCE ReLU runs the scores span 3.85-4.99 points. Only R6 vs R1 and R6 vs R7 differ by more than 1 point (1.14 and 1.08).
-- **Ties at beta=0 in sparse codes.** Ties count half against the positive. They are frequent where codes are sparse or collapsed:
-  - R8: 701 of 2,048 emotion i2t naive episodes have a candidate tied with the positive;
-  - R4 and R5: 425-488;
-  - R0: 436;
-  - R1, R3 and R6: 25-46.
+- **After-the-fact thresholds.** The two amended gates (readout no worse than R0, and sparsity ≤ 50%) were set after the val results were known. They are exactly the gates the best runs had failed.
+  - The val-based selection is therefore post hoc, even though the selection rule and tie-break were applied unchanged.
+  - The evidence not shaped by the decision is: the replication seeds, the held gates (computed once, after the decision) and Task 7's held label episodes.
+  - Under the original pre-registered gates, no run passes (see the historical section).
+- **Tie-break over R6.** R3 was selected over R6 by a mean-readout difference of 0.0012. R6 scored 0.82 points higher, inside the 1-point band. The two recipes differ only in input centering.
+- **Unstable axes across seeds.** The replication seeds pass every gate and score +3.71 and +4.28. But only 13 (seed 43) and 10 (seed 44) of the 32 factors match seed 42's at |r| ≥ 0.9, and the worst matches are 0.143 and 0.195. The subspace is stable but some individual factors are not. Anything that reads meaning into a specific factor index should be checked across seeds.
+- **Single seed per grid configuration, and no confidence intervals on lift.** Each label type has 2,048 episodes. Score differences of about 1 R@1 point between runs are not resolvable, which is why the pre-registered rule treats them as ties. Among the InfoNCE ReLU runs the scores span 3.85-4.99 points. Only R6 vs R1 and R6 vs R7 differ by more than 1 point (1.14 and 1.08).
+- **Ties at beta=0.** The rank is tie-aware: rank = 1 + (number of candidates scored above the positive) + 0.5 × (number tied with it).
+  - A single tie with the positive therefore gives rank 1.5. That is a **full miss at R@1**, which needs rank ≤ 1.
+  - The half-rank convention only matters at R@3 and deeper; rank 1.5 counts as a hit at R@3.
+  - Ties are frequent where codes are sparse or collapsed, and they lower R@1 for both naive and uniform weights. Lift is a difference, so the effect partly cancels, but it may understate what sparse codes could deliver.
 
-  This lowers R@1 for both naive and uniform in those runs. Lift is a difference, so the effect partly cancels, but it may understate the benefit available from sparse codes.
-- **A retrieval ratio above 1 is not leakage.** Val rows are painting- and image-disjoint from the train rows the model was fit on (asserted). The ratio uses 30 pools of 1,000, so differences of a few hundredths are within pool noise.
-- **The readout gate is linear.** It measures an affine readout of CLIP features from the codes, not the model's own decoder reconstruction. The text floor (PCA-10, 0.4441) is the single number that binds every InfoNCE ReLU run.
-- **Held rows and integrity checks.** Held rows were never encoded or scored. Their metadata (painting ids, image hashes, art styles) was read only by integrity checks: the split-leakage assertion and the one-style-per-painting assertion. Neither can influence selection.
+  Episodes (of 2,048 per label type) in which at least one candidate ties the positive, per direction:
+
+  | run | emotion naive i2t / t2i | emotion uniform i2t / t2i | art naive i2t / t2i | art uniform i2t / t2i |
+  |---|---|---|---|---|
+  | R0 | 436 / 411 | 104 / 97 | 307 / 317 | 89 / 75 |
+  | R1 | 32 / 43 | 0 / 3 | 16 / 29 | 0 / 1 |
+  | R2 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+  | R3 | 25 / 36 | 0 / 0 | 20 / 27 | 0 / 0 |
+  | R4 | 425 / 434 | 54 / 64 | 264 / 319 | 36 / 39 |
+  | R5 | 488 / 473 | 111 / 103 | 312 / 340 | 60 / 63 |
+  | R6 | 32 / 46 | 0 / 0 | 21 / 16 | 1 / 1 |
+  | R7 | 86 / 104 | 1 / 9 | 65 / 65 | 3 / 2 |
+  | R8 | 701 / 689 | 318 / 331 | 429 / 424 | 216 / 209 |
+
+- **A retrieval ratio above 1 is not leakage.** Val and held rows are painting- and image-disjoint from the train rows the model was fit on (asserted). Val uses 30 pools of 1,000 rows and held uses 61 pools, so differences of a few hundredths are within pool noise.
+- **The readout gate is linear.** It measures an affine readout of CLIP features from the codes, not the model's own decoder reconstruction, which was not measured here. Under the original rule, the text floor (PCA-10, 0.4441 on val) is the single number that binds every InfoNCE ReLU run.
+- **Held rows were used once, in Step 6.** Held rows were encoded and gated once, for R3 and R0, after the selection and the replication had finished. Before that, their metadata (painting ids, image hashes, art styles) was read only by two integrity checks: the split-leakage assertion and the one-style-per-painting assertion. Neither can influence selection. No held label episodes were built.
 - **What the selection score measures.** It averages two label types and both directions. The episodes come from val paintings, and the labels were not used in training. The score says nothing yet about arbitrary human-stated conditions.
 
 ## Reproduction
 
 ```
+# original grid (Steps 1-4; about 6.5 min on an RTX 3090)
 /root/miniconda3/envs/CoSiR/bin/python src/test/20261011_factor_repair_grid/run_grid.py
+# amendment continuation: re-gate + select (Step A), R0/R3 seed-42 retrains, seeds 43/44, held check, checkpoints (about 4 min)
+/root/miniconda3/envs/CoSiR/bin/python src/test/20261011_factor_repair_grid/run_grid.py --amended
+# tables only, from results/summary.json and results/amended_summary.json
 /root/miniconda3/envs/CoSiR/bin/python src/test/20261011_factor_repair_grid/run_grid.py --tables
+/root/miniconda3/envs/CoSiR/bin/python src/test/20261011_factor_repair_grid/run_grid.py --amended --tables
 ```
 
-The first command takes about 6.5 minutes on an RTX 3090. The second reprints the tables from `results/summary.json`. Per-run JSON and logs are gitignored in the same folder. Log: `src/test/20261011_factor_repair_grid/20261011_factor_repair_grid_log.md`.
+- Per-run JSON, logs, val pair codes and checkpoints are gitignored in the same folder.
+- Re-running `--amended` re-encodes held rows. Its results are only reproductions of the single held check reported here.
+- Log: `src/test/20261011_factor_repair_grid/20261011_factor_repair_grid_log.md`.

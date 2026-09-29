@@ -60,4 +60,61 @@ None. Per the pre-registered rule, the user decides the next step, and no runs w
 
 - Committed: `run_grid.py`, this log, `.gitignore`.
 - Gitignored: `results/*.json` (per-run results and `summary.json`), `run_grid.log`, `cache/smoke/smoke.log`.
-- Tables can be regenerated with `run_grid.py --tables`. No `checkpoints/` directory exists because Step 6 was not reached.
+- Tables can be regenerated with `run_grid.py --tables`. At the stop, no `checkpoints/` directory existed because Step 6 had not been reached. See the continuation below.
+
+## Continuation: amended gates (user decision, after the fact)
+
+### Problem
+
+The pre-registered grid stopped at Step 4.4. The user then amended two gates in plan commit `d490b96`, 2026-09-29. The decision was made on val results only; held rows had not been encoded.
+
+- **Readout:** a run passes if its readout is no worse than R0's in each modality, on the same rows. Before, the floor was CLIP PCA-10.
+- **Sparsity:** the cap becomes `max_active_fraction=0.5`; it was 0.375.
+
+Everything else is unchanged: the other gates, the selection rule, the tie-break, replication and the held check. The readout reference is R0's seed-42 val readout for the grid and for seeds 43/44, and R0's held readout for the held check.
+
+### Investigation steps
+
+1. `run_grid.py --amended` was added. No `src/` file changed.
+   - `both_flag_sets` / `regate` re-derive the original and the amended flags from stored gate values. They check the flags that `evaluate_factor_gates` returned against the thresholds it was called with.
+   - `compare_to_stored` checks that a deterministic retrain reproduces the stored metrics exactly.
+   - `run_amended` performs Step A, the retrains, Step 5 and Step 6, in that order. Held rows are encoded only at the very end.
+   - `--regate-only` runs Step A without loading any data.
+2. **Step A, no training:** the 9 stored runs were re-gated.
+   - The re-derived original flags equal the stored flags for all 9 runs (asserted).
+   - Passing set under the amended gates: **R1, R3, R6**, each 9/9.
+   - Best score: R6 +0.04993. R3 (+0.04175) is inside the 1-point tie band; R1 (+0.03845) is not.
+   - Tie-break on mean readout: R3 0.46975 < R6 0.47093, so **R3 is selected** (InfoNCE + decorrelation 1.0).
+   - Sanity check: no flag.
+3. **Smoke test of the continuation path** (`--smoke` then `--smoke --amended`: 3 epochs, 256 episodes, val rows standing in for held). It passed. Its numbers were discarded and its checkpoints deleted. The logs are `cache/smoke/smoke_grid2.log` and `cache/smoke/smoke_amended.log`.
+4. **The real continuation**, `run_grid.py --amended`, run once in 225.0 s.
+   - The train-side setup was rebuilt (2,198,162 edges, 22 communities), and the val episodes and split were asserted identical to the stored grid run.
+   - Deterministic seed-42 retrains of R0 and R3 reproduced **all 24 compared stored metrics exactly**. These retrains provide the models for the held check and the checkpoints, and the seed-42 val pair codes for the alignment.
+   - **Step 5 replication:** R3 was retrained with seeds 43 and 44, under the amended gates with the R0 seed-42 val readout as the reference.
+
+     | seed | amended gates | score | Hungarian \|r\| to seed 42 (mean / median / min) |
+     |---|---:|---:|---|
+     | 43 | 9/9 | +0.0371 | 0.747 / 0.837 / 0.143 |
+     | 44 | 9/9 | +0.0428 | 0.742 / 0.786 / 0.195 |
+
+     Neither seed scores at or below R0 (+0.0055).
+   - **Step 6 held check,** the first and only encoding of held rows (61,744 rows). The readout reference is R0's held readout, 0.493931 / 0.467955.
+     - Selected R3 passes **9/9 amended** (7/9 original: text readout 0.4600 vs PCA-10 0.4454, and active 0.4857).
+     - R0 passes 5/9 amended and 4/9 original. Its readout passes trivially, since R0 is its own reference.
+   - **Checkpoints:** `checkpoints/selected_seed42.pt` (R3) and `checkpoints/R0_seed42.pt` were saved with `save_factor_checkpoint`. After `load_factor_checkpoint(..., device="cuda:0")`, both re-encode 1,000 held rows **bit-identically** (max abs difference 0.0), and the config round-trip is equal.
+
+### Result
+
+The factor space is repaired under the amended gates. The recipe is R3: `agreement="infonce", lambda_decorrelation=1.0`, with base `lambda_usage_balance=0.1`, seed 42, 32 factors, 2,000 epochs and all other fields at their defaults. The full `FactorTrainingConfig` is in the report.
+
+Under the original pre-registered gates, R3 still fails the text readout floor and the 37.5% sparsity cap. The report labels the amendment as after the fact.
+
+### Files (continuation)
+
+- `run_grid.py`: `--amended` and `--regate-only` modes added; the setup code was factored into `setup_context`.
+- Gitignored:
+  - `results/amended_summary.json`
+  - `results/R3_seed43.json`, `results/R3_seed44.json`
+  - `results/R3_seed4{2,3,4}_val_pair_codes.npy`
+  - `run_amended.log`
+  - `checkpoints/selected_seed42.pt`, `checkpoints/R0_seed42.pt`

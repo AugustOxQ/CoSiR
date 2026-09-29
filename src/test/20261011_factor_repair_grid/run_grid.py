@@ -21,6 +21,13 @@ the repository root with the CoSiR environment:
 ``cache/smoke/`` and substitutes val rows for held rows in step 6 (held rows are never encoded
 in smoke mode). Its numbers are discarded. ``--tables`` reprints the markdown tables from
 ``results/summary.json`` without training anything.
+
+``--amended`` is the continuation after the user's AFTER-THE-FACT gate amendment (plan commit d490b96):
+readout must be no worse than R0 on the same rows, and at most 50% of factors may be active. It re-gates the
+stored grid (no retraining) and applies the unchanged selection rule. Then it retrains R0 and the selected
+recipe at seed 42 (deterministic; checked against the stored metrics), replicates with seeds 43/44, and runs
+the held check with checkpoints. ``--amended --regate-only`` does only the re-gating;
+``--amended --tables`` reprints its tables.
 """
 
 import argparse
@@ -454,18 +461,289 @@ def print_tables(summary: dict) -> None:
 
 # ----------------------------------------------------------------------------- main
 
+# ----------------------------------------------------------------------------- amended gates
+
+# User decision 2026-09-29, AFTER the Step 4.4 stop (plan amendment, commit d490b96). This is an
+# after-the-fact threshold change. Only two gates change; everything else is the pre-registered rule.
+#   readout:  pass iff readout <= R0's readout in each modality, on the same rows
+#             (val: R0 seed-42 val readout; held: R0's held readout)
+#   sparsity: max active fraction <= 0.50 (was 0.375)
+AMENDED_MAX_ACTIVE = 0.5
+ORIGINAL_THRESHOLDS = FactorGateThresholds()
+AMENDED_THRESHOLDS = FactorGateThresholds(max_active_fraction=AMENDED_MAX_ACTIVE)
+READOUT_KEYS = ("readout_img", "readout_txt")
+REPRO_KEYS = ("participation_ratio_img", "participation_ratio_txt", "active_fraction_img", "active_fraction_txt",
+              "readout_img", "readout_txt", "pca10_img", "pca10_txt", "top2_mass_share",
+              "code_retrieval_recall", "clip_retrieval_recall", "retrieval_ratio", "dead_indices", "private_indices")
+
+
+def max_active(values: dict) -> float:
+    return max(values["active_fraction_img"], values["active_fraction_txt"])
+
+
+def both_flag_sets(values: dict, returned: dict, reference: dict, thresholds_used: FactorGateThresholds):
+    """Original (pre-registered) and amended flags from one set of gate values.
+
+    Every flag except readout and sparsity is evaluate_factor_gates' own. The flags it returned are
+    checked against a re-derivation from the values under the thresholds it was called with."""
+    rank = ORIGINAL_THRESHOLDS.readout_pca_rank
+    pca_readout = bool(values["readout_img"] <= values[f"pca{rank}_img"]
+                       and values["readout_txt"] <= values[f"pca{rank}_txt"])
+    if returned["readout"] != pca_readout:
+        raise AssertionError("Returned readout flag disagrees with the PCA-10 re-derivation")
+    if returned["sparsity"] != (max_active(values) <= thresholds_used.max_active_fraction):
+        raise AssertionError("Returned sparsity flag disagrees with the thresholds it was computed under")
+    original = {**returned, "readout": pca_readout,
+                "sparsity": bool(max_active(values) <= ORIGINAL_THRESHOLDS.max_active_fraction)}
+    amended = {**returned,
+               "readout": bool(all(values[k] <= reference[k] for k in READOUT_KEYS)),
+               "sparsity": bool(max_active(values) <= AMENDED_MAX_ACTIVE)}
+    return original, amended
+
+
+def regate(result: dict, reference: dict, thresholds_used: FactorGateThresholds) -> dict:
+    """Copy of a result whose `passed` / `all_passed` are the AMENDED flags; originals kept alongside."""
+    out = dict(result)
+    if result.get("values") is None:                        # non-finite run: failed under both rules
+        flags = {g: False for g in GATES}
+        original, amended = flags, dict(flags)
+    else:
+        original, amended = both_flag_sets(result["values"], result["passed"], reference, thresholds_used)
+    out.update(original_passed=original, original_all_passed=all(original.values()),
+               original_gates_passed=int(sum(original.values())),
+               passed=amended, all_passed=all(amended.values()), gates_passed=int(sum(amended.values())),
+               readout_reference=reference)
+    return out
+
+
+def compare_to_stored(result: dict, stored: dict) -> dict:
+    """Exact comparison of a deterministic retrain against the stored grid result."""
+    pairs = {f"values.{k}": (result["values"][k], stored["values"][k]) for k in REPRO_KEYS}
+    pairs["values.correlation.max_abs"] = (result["values"]["correlation"]["max_abs"],
+                                           stored["values"]["correlation"]["max_abs"])
+    pairs["values.community.spanning_fraction"] = (result["values"]["community"]["spanning_fraction"],
+                                                   stored["values"]["community"]["spanning_fraction"])
+    for key in ("selection_score", "pc1_share_img", "pc1_share_txt", "loss_first", "loss_last", "mean_code_img"):
+        pairs[key] = (result[key], stored[key])
+    for name in LABEL_SETS:
+        pairs[f"lifts.{name}.lift_mean"] = (result["lifts"][name]["lift_mean"], stored["lifts"][name]["lift_mean"])
+    mismatches = {k: {"retrained": a, "stored": b} for k, (a, b) in pairs.items() if a != b}
+    return {"identical": not mismatches, "n_compared": len(pairs), "mismatches": mismatches}
+
+
+def print_amended_tables(amended: dict) -> None:
+    print("\n### Re-gated grid (val): original -> amended flags")
+    print("| run | readout orig -> amended | sparsity orig -> amended | other failing gates | original passed"
+          " | amended passed | selection score | mean readout |")
+    print("|---|---|---|---|---|---|---|---|")
+    for r in amended["regated"]:
+        other = [g for g in GATES if g not in ("readout", "sparsity") and not r["passed"][g]]
+        print(f"| {r['run']} | {_fmt_gate(r['original_passed']['readout'])} -> {_fmt_gate(r['passed']['readout'])}"
+              f" | {_fmt_gate(r['original_passed']['sparsity'])} -> {_fmt_gate(r['passed']['sparsity'])}"
+              f" | {', '.join(other) or 'none'} | {r['original_gates_passed']}/9 | {r['gates_passed']}/9"
+              f" | {r['selection_score']:+.4f} | {r['mean_readout']:.4f} |")
+    print("\n### Amended flags, all gates (val)")
+    print("| run | " + " | ".join(GATES) + " | passed |")
+    print("|---|" + "---|" * (len(GATES) + 1))
+    for r in amended["regated"]:
+        print(f"| {r['run']} | " + " | ".join(_fmt_gate(r["passed"][g]) for g in GATES) + f" | {r['gates_passed']}/9 |")
+    print("\n### Amended selection")
+    print(json.dumps({k: v for k, v in amended["selection"].items() if k != "binding_gates"}, indent=1))
+    for label, repro in amended.get("reproduction", {}).items():
+        print(f"Deterministic retrain {label}: identical={repro['identical']} over {repro['n_compared']} values"
+              f" {repro['mismatches'] or ''}")
+    rep = amended.get("replication")
+    if rep:
+        print("\n### Replication (val, amended gates; readout reference = R0 seed-42 val)")
+        print("| seed | amended gates | failed (amended) | original gates | PR img/txt | max abs r | active img/txt"
+              " | readout img/txt | ratio | emotion lift | art lift | score | Hungarian mean/median/min |")
+        print("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+        for r in rep["runs"]:
+            v = r["values"]
+            align = r.get("alignment_to_seed42")
+            align_cell = "reference" if align is None else f"{align['mean']:.4f} / {align['median']:.4f} / {align['min']:.4f}"
+            failed = [g for g in GATES if not r["passed"][g]]
+            print(f"| {r['seed']} | {r['gates_passed']}/9 | {', '.join(failed) or 'none'} | {r['original_gates_passed']}/9"
+                  f" | {v['participation_ratio_img']:.3f}/{v['participation_ratio_txt']:.3f}"
+                  f" | {v['correlation']['max_abs']:.4f} | {v['active_fraction_img']:.4f}/{v['active_fraction_txt']:.4f}"
+                  f" | {v['readout_img']:.4f}/{v['readout_txt']:.4f} | {v['retrieval_ratio']:.4f}"
+                  f" | {r['lifts']['emotion']['lift_mean']:+.4f} | {r['lifts']['art_style']['lift_mean']:+.4f}"
+                  f" | {r['selection_score']:+.4f} | {align_cell} |")
+        print(json.dumps({k: v for k, v in rep.items() if k != "runs"}, indent=1))
+    held = amended.get("held")
+    if held:
+        print(f"\n### Held check ({held['eval_part']} rows; readout reference = R0's held readout)")
+        print("| model | " + " | ".join(GATES) + " | amended passed | original passed | PR img/txt | max abs r"
+              " | active img/txt | readout img (PCA-10) | readout txt (PCA-10) | ratio | reload bit-identical |")
+        print("|---|" + "---|" * (len(GATES) + 9))
+        for h in held["models"]:
+            v = h["values"]
+            print(f"| {h['model']} | " + " | ".join(_fmt_gate(h["passed"][g]) for g in GATES)
+                  + f" | {h['gates_passed']}/9 | {h['original_gates_passed']}/9"
+                  f" | {v['participation_ratio_img']:.3f}/{v['participation_ratio_txt']:.3f}"
+                  f" | {v['correlation']['max_abs']:.4f} | {v['active_fraction_img']:.4f}/{v['active_fraction_txt']:.4f}"
+                  f" | {v['readout_img']:.4f} ({v['pca10_img']:.4f}) | {v['readout_txt']:.4f} ({v['pca10_txt']:.4f})"
+                  f" | {v['retrieval_ratio']:.4f} | {h['checkpoint']['bit_identical']} |")
+            print(f"    checkpoint: {h['checkpoint']}")
+
+
+def run_amended(args, results_dir: Path, checkpoint_dir: Path, epochs: int, n_episodes: int) -> None:
+    """Continuation after the user's amendment: re-gate stored runs, select, replicate, held check."""
+    started = perf_counter()
+    amended_path = results_dir / "amended_summary.json"
+    grid_summary = json.loads((results_dir / "summary.json").read_text())
+    stored = grid_summary["grid"]
+    if [r["run"] for r in stored] != list(GRID):
+        raise AssertionError("Stored grid does not match the pre-registered R0-R8")
+    r0_val = next(r for r in stored if r["run"] == "R0")
+    val_reference = {k: r0_val["values"][k] for k in READOUT_KEYS}      # exact stored values
+
+    # Step A: re-gate the nine stored runs (no retraining); pre-registered selection on amended flags.
+    regated = [regate(r, val_reference, ORIGINAL_THRESHOLDS) for r in stored]
+    for r, s in zip(regated, stored):
+        if r["original_passed"] != s["passed"]:
+            raise AssertionError(f"{r['run']}: re-derived original flags differ from the stored ones")
+    selection = select(regated, args.smoke)
+    amended = {"mode": grid_summary["mode"], "amendment": {
+                   "decision": "user, 2026-09-29, after the Step 4.4 stop; plan commit d490b96; after the fact",
+                   "readout": "readout <= R0 readout per modality on the same rows",
+                   "max_active_fraction": AMENDED_MAX_ACTIVE, "original_max_active_fraction":
+                   ORIGINAL_THRESHOLDS.max_active_fraction},
+               "readout_reference_val": val_reference,
+               "regated": [{k: r[k] for k in ("run", "passed", "all_passed", "gates_passed", "original_passed",
+                                              "original_all_passed", "original_gates_passed", "selection_score",
+                                              "mean_readout")} for r in regated],
+               "selection": selection}
+
+    def write() -> None:
+        amended["runtime_seconds"] = perf_counter() - started
+        amended_path.write_text(json.dumps(amended, indent=1))
+
+    write()
+    selected = selection["selected"] or selection.get("smoke_forced_selection")
+    print(f"Amended selection: {json.dumps({k: v for k, v in selection.items() if k != 'binding_gates'})}", flush=True)
+    if selected is None or args.regate_only:
+        print_amended_tables(amended)
+        if selected is None:
+            print("STOP: no run passes all amended gates on val.", flush=True)
+        return
+
+    ctx, meta = setup_context(epochs, n_episodes, AMENDED_THRESHOLDS)
+    if meta["episodes"] != grid_summary["episodes"] or list(meta["split_sizes"]) != list(grid_summary["split_sizes"]):
+        raise AssertionError("Val episodes or split differ from the stored grid run")
+    amended.update(torch=meta["torch"], device=meta["device"], setup=meta["setup"])
+
+    # Deterministic seed-42 retrain of R0 and the selected recipe (models for the held check,
+    # seed-42 val pair codes for the Hungarian alignment); must reproduce the stored metrics exactly.
+    models, configs, train_codes, pair_codes = {}, {}, {}, {}
+    amended["reproduction"] = {}
+    for run_id in dict.fromkeys(("R0", selected)):
+        print(f"[{run_id} seed {SEED}] deterministic retrain", flush=True)
+        result, model, config, codes, pairs = run_config(run_id, GRID[run_id], SEED, ctx)
+        stored_run = next(r for r in stored if r["run"] == run_id)
+        amended["reproduction"][f"{run_id}_seed{SEED}"] = compare_to_stored(result, stored_run)
+        models[run_id], configs[run_id], train_codes[run_id], pair_codes[run_id] = model, config, codes, pairs
+        print(f"[{run_id} seed {SEED}] reproduction {amended['reproduction'][f'{run_id}_seed{SEED}']}", flush=True)
+        write()
+    np.save(results_dir / f"{selected}_seed{SEED}_val_pair_codes.npy", pair_codes[selected])
+
+    # Step 5: replication with seeds 43 and 44 under the amended gates (reference: R0 seed-42 val).
+    selected_regated = next(r for r in regated if r["run"] == selected)
+    replication = {"recipe": selected, "overrides": GRID[selected], "runs": [{**selected_regated, "seed": SEED}]}
+    for seed in REPLICATION_SEEDS:
+        print(f"[{selected} seed {seed}] replication", flush=True)
+        result, _, _, _, pairs = run_config(selected, GRID[selected], seed, ctx)
+        np.save(results_dir / f"{selected}_seed{seed}_val_pair_codes.npy", pairs)
+        result = regate(result, val_reference, AMENDED_THRESHOLDS)
+        result["alignment_to_seed42"] = factor_alignment(pair_codes[selected], pairs) if result["finite"] else None
+        (results_dir / f"{selected}_seed{seed}.json").write_text(json.dumps(result, indent=1))
+        replication["runs"].append(result)
+        print_run(result)
+    rep_runs = replication["runs"][1:]
+    r0_score = r0_val["selection_score"]
+    replication.update(all_seeds_pass=all(r["all_passed"] for r in rep_runs),
+                       seeds_at_or_below_R0=[r["seed"] for r in rep_runs if r["selection_score"] <= r0_score],
+                       scores={str(r["seed"]): r["selection_score"] for r in replication["runs"]})
+    amended["replication"] = replication
+    write()
+    if not replication["all_seeds_pass"] and not args.smoke:
+        amended["stop"] = "a replication seed fails an amended gate on val: recipe not selected (Step 5)"
+        write()
+        print("STOP: a replication seed fails an amended gate on val. Held rows untouched.", flush=True)
+        print_amended_tables(amended)
+        return
+
+    # Step 6: held check, once — the first time held rows are encoded. R0 first: its held readout
+    # is the readout reference for the selected model. Smoke mode substitutes val rows.
+    eval_rows = ctx.split.val if args.smoke else ctx.split.held
+    held = {"eval_part": "val (smoke stand-in)" if args.smoke else "held", "models": []}
+    r0_held = held_check("R0", models["R0"], configs["R0"], train_codes["R0"], ctx, eval_rows,
+                         checkpoint_dir / "R0_seed42.pt")
+    held_reference = {k: r0_held["values"][k] for k in READOUT_KEYS}
+    held["readout_reference"] = held_reference
+    held["models"].append({**regate(r0_held, held_reference, AMENDED_THRESHOLDS),
+                           "note": "R0 is the readout reference itself (readout flag trivially PASS)"})
+    selected_held = held_check("selected " + selected, models[selected], configs[selected], train_codes[selected],
+                               ctx, eval_rows, checkpoint_dir / "selected_seed42.pt")
+    held["models"].insert(0, regate(selected_held, held_reference, AMENDED_THRESHOLDS))
+    amended["held"] = held
+    amended["selected_config"] = asdict(configs[selected])
+    write()
+    print(f"Selected recipe config: {json.dumps(amended['selected_config'])}", flush=True)
+    print_amended_tables(amended)
+    print(f"Total runtime {perf_counter() - started:.1f}s", flush=True)
+
+
+def setup_context(epochs: int, n_episodes: int, thresholds: FactorGateThresholds):
+    """Data, painting-grouped split, art styles, train-side graph/communities, shared val episodes."""
+    data = load_artelingo()
+    groups = leakage_groups(data.paintings, data.img_features)
+    split = grouped_split(groups, fractions=(0.7, 0.1, 0.2), seed=SEED)
+    sizes = (len(split.train), len(split.val), len(split.held))
+    if sizes != EXPECTED_SPLIT:
+        raise AssertionError(f"Unexpected split sizes {sizes}")
+    leak = split_leakage(split, data.paintings, data.img_features)
+    if any(leak.values()):
+        raise AssertionError(f"Split leakage: {leak}")
+    print(f"Split train/val/held = {sizes}, leakage zero", flush=True)
+    styles = load_art_styles(data.sample_ids, data.paintings, groups)
+    print(f"art_style joined: {len(np.unique(styles))} styles, one per painting and per leakage group", flush=True)
+    graph, community_labels, setup = build_train_side(data.img_features[split.train], data.txt_features[split.train])
+    print(f"Train-side setup: {setup['edges']:,} edges, {setup['communities']} communities, "
+          f"{setup['setup_seconds']:.1f}s", flush=True)
+    episodes, episode_meta = build_val_episodes({"emotion": data.emotions, "art_style": styles},
+                                                groups, split.val, n_episodes)
+    for name, meta in episode_meta.items():
+        print(f"{name} episodes: {meta['n_episodes']} over {meta['eligible_labels']} target labels "
+              f"{meta['label_counts']}", flush=True)
+    ctx = Context(data, split, groups, graph, community_labels, episodes, thresholds, epochs)
+    meta = {"torch": torch.__version__,
+            "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
+            "split_sizes": sizes, "leakage": leak, "setup": setup, "episodes": episode_meta}
+    return ctx, meta
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--tables", action="store_true")
+    parser.add_argument("--amended", action="store_true",
+                        help="continuation after the user's after-the-fact gate amendment (Steps A, 5, 6)")
+    parser.add_argument("--regate-only", action="store_true", help="with --amended: Step A only, no training")
     args = parser.parse_args()
     out_dir = HERE / "cache" / "smoke" if args.smoke else HERE
     results_dir, checkpoint_dir = out_dir / "results", out_dir / "checkpoints"
     summary_path = results_dir / "summary.json"
     if args.tables:
-        print_tables(json.loads(summary_path.read_text()))
+        if args.amended:
+            print_amended_tables(json.loads((results_dir / "amended_summary.json").read_text()))
+        else:
+            print_tables(json.loads(summary_path.read_text()))
         return
     epochs, n_episodes = (3, 256) if args.smoke else (EPOCHS, N_EPISODES)
+    if args.amended:
+        run_amended(args, results_dir, checkpoint_dir, epochs, n_episodes)
+        return
     results_dir.mkdir(parents=True, exist_ok=True)
     started = perf_counter()
 
@@ -479,33 +757,10 @@ def main() -> None:
 
     print(f"Mode: {'SMOKE (numbers discarded)' if args.smoke else 'REAL'}; epochs {epochs}; "
           f"episodes {n_episodes} per label type", flush=True)
-    data = load_artelingo()
-    groups = leakage_groups(data.paintings, data.img_features)
-    split = grouped_split(groups, fractions=(0.7, 0.1, 0.2), seed=SEED)
-    sizes = (len(split.train), len(split.val), len(split.held))
-    if sizes != EXPECTED_SPLIT:
-        raise AssertionError(f"Unexpected split sizes {sizes}")
-    leak = split_leakage(split, data.paintings, data.img_features)
-    if any(leak.values()):
-        raise AssertionError(f"Split leakage: {leak}")
-    print(f"Split train/val/held = {sizes}, leakage zero", flush=True)
-    styles = load_art_styles(data.sample_ids, data.paintings, groups)
-    print(f"art_style joined: {len(np.unique(styles))} styles, one per painting and per leakage group", flush=True)
-
-    graph, community_labels, setup = build_train_side(data.img_features[split.train], data.txt_features[split.train])
-    print(f"Train-side setup: {setup['edges']:,} edges, {setup['communities']} communities, "
-          f"{setup['setup_seconds']:.1f}s", flush=True)
-    episodes, episode_meta = build_val_episodes({"emotion": data.emotions, "art_style": styles},
-                                                groups, split.val, n_episodes)
-    for name, meta in episode_meta.items():
-        print(f"{name} episodes: {meta['n_episodes']} over {meta['eligible_labels']} target labels "
-              f"{meta['label_counts']}", flush=True)
     thresholds = FactorGateThresholds()
-    ctx = Context(data, split, groups, graph, community_labels, episodes, thresholds, epochs)
-    summary = {"mode": "smoke" if args.smoke else "real", "torch": torch.__version__,
-               "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
-               "split_sizes": sizes, "leakage": leak,
-               "setup": setup, "episodes": episode_meta, "thresholds": asdict(thresholds),
+    ctx, meta = setup_context(epochs, n_episodes, thresholds)
+    split = ctx.split
+    summary = {"mode": "smoke" if args.smoke else "real", **meta, "thresholds": asdict(thresholds),
                "base": BASE, "grid_overrides": GRID, "grid": []}
 
     # Steps 1-3: the grid (seed 42), gates + condition lift on val.
