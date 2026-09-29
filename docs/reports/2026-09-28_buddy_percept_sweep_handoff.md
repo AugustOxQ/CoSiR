@@ -1,5 +1,12 @@
 # Handoff: buddy-percept comprehensive sweep — read this first in the next session
 
+> **Status 2026-09-30: COMPLETE. This handoff is historical.** The sweep
+> was stopped on 2026-09-29 and Task 11 (the 4-seed stress test) is done.
+> Results and caveats are in master report §6i
+> (`docs/reports/2026-09-26_artelingo_buddy_vs_percept_stage1_report.md`).
+> The steps below describe the state on 2026-09-28 and should not be
+> followed.
+
 Written 2026-09-28, end of the session that built and launched the sweep.
 Branch `experiment/percept_topic_pipeline`, worktree
 `/project/CoSiR-buddy_prototype_conditioning` (based on `/project/CoSiR`).

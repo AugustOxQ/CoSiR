@@ -73,13 +73,16 @@ Concretely:
   directly). **This reverses the investigation's Stage 2 headline
   conclusion** — see §6g for the full account and what it does and does
   not imply for Stage 1. **FOLLOW-UP 2026-09-30** (see §6i): a
-  ~2,267-trial joint Stage 1 + Stage 2 sweep of buddy, followed by a
-  4-seed stress test of its top 10 finalists, found one configuration
-  (`m8x7ifx4`) that clears the Stage 1 Pareto bar on 4/4 seeds, with
-  Stage 2 macro AUC 0.9355 ± 0.0046 at 13–16 topics. That number comes
-  from a re-implemented pipeline, a different topic count and target
-  construction, and a much larger tuning budget than PercepT got, so it
-  is **not** a like-for-like comparison with 0.9226 or 0.8534. The §6g
+  ~2,267-trial joint Stage 1 + Stage 2 sweep, followed by a 4-seed
+  stress test of its top 10 finalists, found one configuration
+  (`m8x7ifx4`) that clears the sweep's gate on 4/4 seeds, with Stage 2
+  macro AUC 0.9355 ± 0.0046 at 13–16 topics. That result is internal to
+  a re-implemented harness. Its Stage 1 differs structurally from the
+  pilots' (teacher graph, InfoNCE negatives, optimizer). Its AMIs use
+  k-NN transfer, which reads ~0.01 higher on emotion than §3's method.
+  It uses a different topic count and target construction, and it had a
+  much larger tuning budget than PercepT got. So it is **not**
+  comparable to 0.9226, to 0.8534, or to §3's "3/4 seeds". The §6g
   headline stands until a matched head-to-head is run. The stress test
   also showed that the sweep's own top-ranked configs pass the Stage 1
   gate on only 1/4 seeds (the winner's curse near the gate), and that
@@ -816,22 +819,37 @@ step itself, not simply how the two InfoNCE terms are weighted.
 
 **2026-09-30.** The hand-tuned candidate rounds above (§6c–§6h) were
 replaced by one systematic search: a 21-dimensional Bayesian W&B sweep
-(`polysemic/CoSiR-buddy-percept-sweep/40i43gt5`) over buddy's whole
-pipeline. It covered Stage 1 (student architecture, learning rate, noise,
-affect weight, teacher graph, Leiden resolution, topic merging) and
-Stage 2 (mapper size, learning rate, epochs, target construction). Each
-trial ran both stages end to end at seed 42 and was scored as
+(`polysemic/CoSiR-buddy-percept-sweep/40i43gt5`) over a
+**re-implemented** version of buddy's pipeline
+(`scripts/buddy_percept_sweep/`). The re-implementation differs
+structurally from the pilots behind §3–§6h; see "Comparability" below.
+It covered Stage 1 (student architecture, learning rate, noise, affect
+weight, teacher graph, Leiden resolution, topic merging) and Stage 2
+(mapper size, learning rate, epochs, target construction). Each trial ran
+both stages end to end at seed 42 and was scored as
 
 ```
 objective = stage2_macro_auc if (emotion_ami > 0.1236 and genre_ami > 0.1954) else -1.0
 ```
 
-That is, "clear this investigation's Stage 1 Pareto bar, then maximize
-Stage 2 AUC." The sweep ran on 9 GPUs across three DAS6 nodes for about
-36 hours and was stopped on 2026-09-29 after about 2,267 trials, roughly
-340 of which passed the gate. Design:
+That is, "clear this investigation's Stage 1 Pareto thresholds, then
+maximize Stage 2 AUC." **How the AMIs are measured matters here.** In
+this harness, both AMIs are *k-NN transfer* AMIs. Held-out paintings are
+assigned to the merged train topics by a k-NN vote, with `transfer_k`
+itself swept over {10, 20, 30, 40}, which is the method of §6e. §2/§3
+instead re-clustered the held-out paintings independently with Leiden,
+and that is where the thresholds and the attention-h1 baseline's "3/4
+seeds" come from. At seed 42 with k=20, transfer gives emotion AMI
++0.0115 and genre AMI +0.0126 above independent re-clustering, and
+emotion AMI rises with k: 0.1327 at k=10, 0.1364 at k=20, 0.1390 at k=50
+([`heldout_label_transfer_pilot_report.md`](../../src/test/20260923_artelingo_buddy_analysis/heldout_label_transfer_pilot_report.md)).
+The gate was therefore easier to pass here than in §3's sense of the
+bar. Genre AMI rests on only 159 genre-labelled held-out paintings.
+
+The sweep ran on 9 GPUs across three DAS6 nodes for about 36 hours. It
+was stopped on 2026-09-29 after about 2,267 trials, of which 335 had
+passed the gate by then. Design:
 [`2026-09-28-buddy-percept-sweep-design.md`](../superpowers/specs/2026-09-28-buddy-percept-sweep-design.md).
-The pipeline was re-implemented for the sweep in `scripts/buddy_percept_sweep/`.
 
 **Finalist filter.** Finalists were limited to gate-passing runs that had
 topic merging on and ended with at most 45 topics. All 49 gate-passing
@@ -842,7 +860,8 @@ compared with the other runs. This deliberately excludes the sweep's raw
 [`finalists.json`](../../src/test/20260928_buddy_percept_sweep/finalists.json),
 were each re-run at seeds 42/7/123/2024. Each seed re-fits Stage 1 as
 well as Stage 2. The winner rule was fixed before the results came in:
-most gate passes out of 4, then highest mean AUC. Tooling:
+most gate passes out of 4, then highest mean AUC. The stress test ran on
+DAS6 at commit `0ca4f24`. Tooling:
 [`run_top10_stress.py`](../../src/test/20260928_buddy_percept_sweep/run_top10_stress.py);
 full table:
 [`stress_summary.md`](../../src/test/20260928_buddy_percept_sweep/stress_summary.md);
@@ -851,8 +870,8 @@ raw logs: `src/test/20260928_buddy_percept_sweep/stress_logs/`.
 | sweep rank | run | sweep objective (seed 42) | gate passes | Stage 2 AUC mean ± std | emotion AMI mean (per seed) | genre AMI mean | topics per seed |
 |---:|---|---:|---:|---:|---|---:|---|
 | 10 | **m8x7ifx4** | 0.9371 | **4/4** | **0.9355 ± 0.0046** | **0.1295** (0.1291/0.1302/0.1317/0.1269) | 0.3116 | 16/14/14/13 |
-| 7 | bfrae3fr | 0.9395 | 3/4 | 0.9399 ± 0.0036 | 0.1236 (0.1239/0.1133/0.1252/0.1320) | 0.3294 | 12/10/14/13 |
-| 5 | j4fp661m | 0.9442 | 3/4 | 0.9357 ± 0.0051 | 0.1273 (0.1309/0.1279/0.1236/0.1269) | 0.3233 | 17/19/22/21 |
+| 7 | bfrae3fr | 0.9395 | 3/4 | 0.9399 ± 0.0036 | 0.12359 (0.1239/0.1133/0.1252/0.1320) | 0.3294 | 12/10/14/13 |
+| 5 | j4fp661m | 0.9442 | 3/4 | 0.9357 ± 0.0051 | 0.1273 (0.1309/0.1279/**0.12356**/0.1269) | 0.3233 | 17/19/22/21 |
 | 3 | 1vavykgu | 0.9467 | 2/4 | 0.9482 ± 0.0035 | 0.1220 | 0.2599 | 30/27/26/27 |
 | 8 | knp9y2wp | 0.9377 | 2/4 | 0.9360 ± 0.0054 | 0.1231 | 0.2779 | 23/21/22/20 |
 | 9 | wokudgi4 | 0.9374 | 2/4 | 0.9309 ± 0.0076 | 0.1238 | 0.3214 | 14/14/15/13 |
@@ -861,23 +880,34 @@ raw logs: `src/test/20260928_buddy_percept_sweep/stress_logs/`.
 | 4 | woy8z3lw | 0.9443 | 1/4 | 0.9486 ± 0.0028 | 0.1195 | 0.3176 | 32/30/29/32 |
 | 6 | 2lvvlkmy | 0.9414 | 1/4 | 0.9431 ± 0.0012 | 0.1198 | 0.3698 | 14/14/14/13 |
 
-(AUC mean includes seeds that failed the gate.)
+AUC mean includes seeds that failed the gate. j4fp661m's seed 123
+(0.12356) fails the 0.1236 bar by less than 0.0001, and bfrae3fr's
+emotion mean (0.12359) also sits just below it.
 
 **What the stress test found:**
 
 1. **Winner: `m8x7ifx4`**, the sweep's 10th-ranked finalist and the only
-   one that clears the Pareto bar on all four seeds. Its emotion AMI is
-   0.1269–0.1317, clearing the 0.1236 bar by 0.003 to 0.008 on every
-   seed. Its genre AMI is 0.296–0.329, far above the 0.1954 bar, and
-   its Stage 2 macro AUC is 0.9355 ± 0.0046 (min 0.9309) with 13–16
-   topics. Config: Stage 1 `attn1` student, `lr=4.58e-4`, `noise_std=0.1`,
-   `lambda_affect=1.03`, `d_shared=64`, `batch_size=2048`,
-   `weight_decay=1e-5`, `content_pca_dim=80`, `teacher_graph_K=15`,
-   `leiden_resolution=0.836`, `merge_small_threshold=0.02`,
-   `transfer_k=40`. Stage 2: mapper with `num_queries=8`, `num_heads=4`,
-   `mlp_head=one_hidden`, `mapper_lr=5.96e-3`, `mapper_epochs=400`,
-   `weight_decay_stage2=1e-4`, `class_balanced_loss=false`,
-   `target_cutoff=0.15`.
+   one that clears the gate on all four seeds. Its transfer-AMI emotion
+   is 0.1269–0.1317, clearing the 0.1236 threshold by 0.003 to 0.008 on
+   every seed. That margin is *smaller* than the ~0.01 that transfer adds
+   over §3's independent re-clustering, so this is **not** evidence that
+   it clears §3's bar. Its genre AMI is 0.296–0.329, well above 0.1954.
+   Its Stage 2 macro AUC is 0.9355 ± 0.0046 (min 0.9309) with 13–16
+   topics. It uses the maximum swept `transfer_k=40`, and 8 of the 10
+   finalists use k ≥ 30. The optimizer favoured large k, which by itself
+   raises held-out emotion AMI (see above). Config:
+   - **Stage 1:** attention-fusion student with **4 heads**
+     (`heads=attn1`, `num_heads=4`; in this harness `heads` only selects
+     attention vs. MLP fusion and `num_heads` sets the head count, so this
+     is *not* the pilots' one-head "Attention-h1"), `d_shared=64`,
+     `lr=4.58e-4`, `noise_std=0.1`, `lambda_affect=1.03`,
+     `batch_size=2048`, `weight_decay=1e-5`, `content_pca_dim=80`,
+     `teacher_graph_K=15`, `leiden_resolution=0.836`,
+     `merge_small_threshold=0.02`, `transfer_k=40`.
+   - **Stage 2:** mapper with `num_queries=8`, `mlp_head=one_hidden`,
+     `mapper_lr=5.96e-3`, `mapper_epochs=400`,
+     `weight_decay_stage2=1e-4`, `class_balanced_loss=false`,
+     `target_cutoff=0.15`.
 2. **The sweep's leaderboard suffered from the winner's curse.** Ranks 1,
    2, 4 and 6 of the sweep each pass the gate on only 1 of 4 seeds, and
    that one pass is always seed 42, the seed the sweep scored them on.
@@ -888,18 +918,23 @@ raw logs: `src/test/20260928_buddy_percept_sweep/stress_logs/`.
    averaged 0.107). **A single-seed sweep score for a gated objective is
    an optimistic estimate near the gate boundary.** This is why the stress
    test was needed, and why its winner comes from near the bottom of the
-   finalist list.
-3. **Across finalists, emotion AMI and Stage 2 AUC trade off.** The
+   finalist list. Re-seeding removes this seed-level luck. It does **not**
+   remove split-level selection: the 2,267-trial search, the finalist
+   filter, the winner choice and the reported numbers all use the same
+   9,365-painting held-out split, and there is no untouched test split.
+3. **Among these finalists, emotion AMI and Stage 2 AUC trade off.** The
    correlation of per-finalist means is r = −0.85; across all 40 per-seed
    runs it is r = −0.47. The highest-AUC configs (0.95–0.96) all sit
-   below the emotion bar on average. Within buddy's design space, extra
-   Stage 2 AUC is bought by weakening the emotion structure of the
-   topics. Genre AMI never bound (lowest single run 0.2465). Emotion is
-   the binding constraint, which fits Finding D and §6h: emotion is
-   buddy's weak axis.
+   below the emotion threshold on average. These are 10 configs picked
+   near the gate, so this describes the frontier the search found, not a
+   law of buddy's design space. Still, on that frontier, extra Stage 2
+   AUC came with weaker emotion structure. Genre AMI never bound (lowest
+   single run 0.2465). Emotion was the binding constraint, which fits
+   Finding D and §6h: emotion is buddy's weak axis.
 4. **The pipeline is deterministic at a fixed seed.** Every finalist's
-   seed-42 re-run, in a fresh process on a fresh job, reproduced its
-   sweep objective and topic count. Six matched bit for bit and four
+   seed-42 re-run reproduced its sweep objective and topic count. The
+   re-runs came from new stress jobs; two finalists ran back to back in
+   one process, and the second still matched. Six matched bit for bit and four
    differed by 1e-16 (floating-point round-off). The spread in
    the table is seed variance, not run-to-run noise. This spread (AUC std
    0.001–0.008) is much larger than the std of 0.0001 in §6d/§6g. Those
@@ -911,29 +946,79 @@ raw logs: `src/test/20260928_buddy_percept_sweep/stress_logs/`.
 **Comparability. This does not overturn §6g.** It is tempting to set
 0.9355 against buddy's earlier 0.8534 (§6f) and PercepT's
 symmetrically tuned 0.9226 (§6g). Neither comparison is sound yet:
-- The sweep used a **re-implemented** pipeline
-  (`scripts/buddy_percept_sweep/`). Its local smoke test checked that the
-  numbers were finite and plausible (AUC 0.878–0.916, K=16). No one has
-  checked that it reproduces 0.8534 at §6f's exact configuration. The
-  +0.08 over §6f is suggestive but not measured like for like.
-- Topic count and targets differ: 13–16 topics with `transfer_k=40`
-  here, compared with 16 topics and k=20 for buddy (§6f) and 40
-  single-label topics for PercepT (§6g). Macro AUC is not comparable
-  across topic vocabularies.
-- PercepT was not searched through this harness. Buddy received
-  ~2,267 trials of joint Stage 1 + Stage 2 search; PercepT received only
-  the small learning-rate/epoch grid on its mapper in §6g, with its
-  Stage 1 fixed. Claiming a buddy win on this basis would
-  repeat the one-sided tuning that §6g had to correct.
+- **The harness's Stage 1 is structurally different from the pilots'
+  buddy Stage 1**, not just re-coded. The design spec (§4, "Reused
+  building blocks (exact files, no reimplementation)") asked for the
+  pilots' own files. The implementation plan prescribed fresh
+  re-implementations instead, a plan-level deviation that no task review
+  caught. The differences:
+  - **Content teacher graph.** The pilots build it with
+    `pipeline.build_buddy_graphs(img, txt, K=20, alpha=0.5,
+    connect_components=True)`: the union of an image-only and a
+    text-only mutual-kNN graph, with minimum-degree and connectivity
+    repair. The harness uses one mutual-kNN graph over PCA-reduced
+    concatenated image+text features, with no union and no repair. Its
+    affect teacher also skips that repair.
+  - **InfoNCE.** The pilots use in-batch negatives
+    (`anchors @ positives.T`). The harness scores each anchor against
+    every training node, including the anchor itself, which is never
+    masked out.
+  - **Optimizer and stopping.** The pilots use Adam with plateau early
+    stopping. The harness uses AdamW with a cosine schedule for a fixed
+    200 epochs.
 
-**What it does support:** within this harness, buddy has a configuration
-that clears the Stage 1 Pareto bar on 4/4 seeds, where the attention-h1
-baseline in §3 cleared it on 3/4. That configuration reaches Stage 2
-macro AUC 0.93–0.94 at 13–16 topics. **The Stage 2 headline from §6g
-("PercepT 0.9226 vs. buddy 0.8534") stands until a matched head-to-head
-is run.** That means both systems through the same harness, with matched
-topic counts, the same target construction, and a comparable tuning
-budget for PercepT.
+  The harness has no setting that reproduces the pilots' Stage 1, so
+  "does it reproduce §6f's 0.8534?" cannot even be tested until a
+  faithful mode is added. The local smoke test only checked that the
+  numbers were finite and plausible (AUC 0.878–0.916, K=16).
+- **The Stage 1 numbers use a different measurement.** The gate uses
+  k-NN transfer AMI, which reads ~0.01 higher on emotion than §3's
+  independent re-clustering at k=20 and rises further with k (see the
+  top of this section).
+- **Topic count and targets differ.** Here it is 13–16 topics with
+  `transfer_k=40`; buddy in §6f had 16 topics with k=20, and PercepT in
+  §6g had 40 single-label topics. Macro AUC is not comparable across
+  topic vocabularies.
+- **The tuning budgets are very unequal.** PercepT was not searched
+  through this harness. Buddy received ~2,267 trials of joint Stage 1 +
+  Stage 2 search; PercepT received only the small learning-rate/epoch
+  grid on its mapper in §6g, with its Stage 1 fixed. Claiming a buddy
+  win on this basis would repeat the one-sided tuning that §6g had to
+  correct.
+
+**Sweep limitations, for anyone reusing the harness:**
+- The hyperband early-termination block was probably a no-op. It keys on
+  `objective`, which is logged only once per run. The checkpoint metric
+  was the training-batch loss, not the held-out recall that the spec
+  asked for.
+- `stage1_fused_silhouette` was not logged, so the sweep says nothing
+  about the silhouette axis.
+- `heads=attn1` and `heads=attn4` build identical models (only
+  `num_heads` matters), so the space has effectively 20 dimensions, and
+  W&B's parameter importance for `heads` is meaningless.
+- Each trial ran as a fresh process (`wandb agent` with `program:`), so
+  the in-memory input cache never carried over between trials.
+  GoEmotions features were re-extracted every trial, which wasted
+  roughly 40% of the compute.
+- The number of topics skipped in the AUC average is not logged. So,
+  unlike §6d/§6g, the winner is not confirmed to have zero skipped
+  topics.
+
+**What it does support:** only claims *internal to this harness*. On the
+harness's transfer-AMI measurement, one configuration (`m8x7ifx4`)
+clears the gate on 4/4 seeds and reaches Stage 2 macro AUC 0.93–0.94
+with 13–16 topics. The sweep's single-seed leaderboard was unreliable
+near the gate. This result is **not** comparable to §3's "attention-h1
+clears the bar on 3/4 seeds", which used a stricter measurement. Two
+cheap checks would firm it up before anyone cites it:
+- Re-run `m8x7ifx4` on new seeds with `transfer_k=20` fixed.
+- Score the §3 baseline with the transfer method at 4 seeds.
+
+**The Stage 2 headline from §6g ("PercepT 0.9226 vs. buddy 0.8534")
+stands until a matched head-to-head is run.** That needs a faithful
+buddy Stage 1 mode in the harness, validated against §6f first, and then
+both systems through that same harness with matched topic counts, the
+same target construction, and a comparable tuning budget for PercepT.
 
 ## 7. Artifact map
 

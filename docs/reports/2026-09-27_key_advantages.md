@@ -230,14 +230,16 @@ Stage 2 correction above. A seventh, more speculative attempt at Stage 1
 clean negative.
 
 **2026-09-30 follow-up (master report §6i).** A ~2,267-trial joint
-Stage 1 + Stage 2 sweep of buddy, then a 4-seed stress test of its top
-10 finalists, found one configuration (`m8x7ifx4`) that clears the
-Stage 1 Pareto bar on 4/4 seeds. The attention-h1 baseline cleared it on
-3/4. That configuration reaches Stage 2 macro AUC 0.9355 ± 0.0046 at
-13–16 topics. This does **not** change the Stage 2 bottom line above.
-The number comes from a re-implemented pipeline, uses a different topic
-count and target construction, and had far more tuning budget than
-PercepT got, so a matched head-to-head is still needed before any Stage 2
-claim changes. It also shows that, within buddy, emotion AMI and Stage 2
-AUC trade off against each other (r = −0.85 across finalists). Emotion
-remains buddy's binding constraint.
+Stage 1 + Stage 2 sweep, then a 4-seed stress test of its top 10
+finalists, found one configuration (`m8x7ifx4`) that clears the sweep's
+gate on 4/4 seeds, with Stage 2 macro AUC 0.9355 ± 0.0046 at 13–16
+topics. This changes **neither** bottom line above. The sweep ran in a
+re-implemented harness whose Stage 1 differs structurally from the
+pilots'. Its AMIs use k-NN transfer, which reads ~0.01 higher on emotion
+than the independent re-clustering behind §2's Pareto-bar results. It
+used a different topic count and target construction, and it had far
+more tuning budget than PercepT got. So its "4/4" cannot be set against
+the attention-h1 baseline's 3/4, and its AUC cannot be set against
+0.9226 or 0.8534. Among the 10 finalists, emotion AMI and Stage 2 AUC
+traded off (r = −0.85), and emotion was the binding constraint, which
+fits emotion being buddy's weak axis.

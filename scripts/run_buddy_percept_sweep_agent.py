@@ -14,7 +14,13 @@ from scripts.buddy_percept_sweep.config import resolve_trial_config
 from scripts.buddy_percept_sweep.pipeline import run_trial
 from scripts.buddy_percept_sweep.real_data import load_real_raw_inputs
 
-_CACHE = FixedInputCache()  # lives for the whole agent process (spec §3.1)
+# Lives for this Python process only. With the sweep YAML's `program:`
+# target, `wandb agent` starts a fresh process per trial, so this cache
+# never carries over between trials: every trial re-extracts GoEmotions
+# features (~40% of trial compute in sweep 40i43gt5). To actually reuse
+# it, drive trials in-process with `wandb.agent(sweep_id, function=main)`
+# or cache the extracted features on disk.
+_CACHE = FixedInputCache()
 
 
 def main() -> None:

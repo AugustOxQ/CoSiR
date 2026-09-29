@@ -88,17 +88,19 @@ def symmetric_infonce(embeddings: torch.Tensor, pairs: np.ndarray, device: torch
 
 def build_teacher_graphs(train_content, train_affect, heldout_content, heldout_affect,
                           teacher_graph_K: int, teacher_graph_alpha: float, device: str) -> TeacherGraphs:
-    """Builds train-side teacher graphs only (held-out reference graphs are
-    built the same way by the pipeline orchestration in Task 6, which
-    already needs the Leiden/mutual_knn machinery for a different purpose)."""
+    """Builds train-side teacher graphs only. The held-out arguments are
+    accepted but unused; no held-out teacher graphs are built anywhere.
+
+    Unlike the pilots' `pipeline.build_buddy_graphs` (union of image-only
+    and text-only mutual-kNN graphs with min-degree/connectivity repair),
+    the content teacher here is a single mutual-kNN graph over the given
+    content features, with no repair."""
     from src.conditional_buddy.buddy_graph import mutual_knn
 
     content_graph = mutual_knn(train_content, K=teacher_graph_K, backend="auto", device=device)
     affect_graph = mutual_knn(train_affect, K=teacher_graph_K, backend="auto", device=device)
-    # teacher_graph_alpha mixes the two graphs' edge sets before InfoNCE
-    # sampling would be a bigger change than tonight's investigation ever
-    # tested; here it selects the fraction of edges drawn from each graph
-    # per epoch (simple, reviewable interpretation of "content/affect mix").
+    # teacher_graph_alpha is accepted but unused (it was dropped from the
+    # sweep as an inert dimension); kept in the signature for callers.
     content_edges = upper_triangle_edges(content_graph)
     affect_edges = upper_triangle_edges(affect_graph)
     return TeacherGraphs(content_edges=content_edges, affect_edges=affect_edges)
