@@ -8,15 +8,17 @@
 
 ---
 
+
+
 ## TL;DR
 
-**The buddy-init embedding does discriminate a genuine edge from a false-transitivity artifact, by a real and seed-stable ~31%.** Closed-triangle pairs (two of a hub node's text-only neighbors that are *also* directly connected by a real image-only edge) pull together with mean **+3.18** (embedding-distance units, pooled across 3 sampling seeds); pairs with **no edge of any kind** between them pull **+2.42**. This is the corrected, load-bearing number in this report. **An earlier version of this analysis compared closed-triangle pairs against an "open" group defined only as "not an img_only edge" — the final whole-branch review caught that this control group was ~52% contaminated by pairs that ARE connected via some other edge type (almost certainly `txt_only`, since both endpoints are already text-only neighbors of the same hub) — narrowing the apparent gap to a "discriminates, but modestly" ~1.2× ratio. Correcting the open group to genuinely-unconnected pairs widens the gap to ~1.31×, strengthening rather than weakening the "discriminates" verdict.** Two secondary findings, now correctly caveated: hub-node pairs pull harder than Experiment 12's plain single-neighbor bridge pairs, but the two comparisons differ in edge-type composition as well as hub degree, so "hub-ness amplifies pull" is a plausible but not isolated reading; and `in_closed_triangle`/`is_hub` node membership correlates with `delta_rank` more strongly than C10's broad `is_polysemic` label, but the labels have very different population base rates (98.7% vs. 19–82%), so the magnitude comparison is not apples-to-apples.
+**The buddy-init embedding does discriminate a genuine edge from a false-transitivity artifact, by a real and seed-stable ~31%.** Closed-triangle pairs (two of a hub node's text-only neighbors that are *also* directly connected by a real image-only edge) pull together with mean **+3.18** (embedding-distance units, pooled across 3 sampling seeds); pairs with **no edge of any kind** between them pull **+2.42**. This is the corrected, load-bearing number in this report. **An earlier version of this analysis compared closed-triangle pairs against an "open" group defined only as "not an img_only edge" — the final whole-branch review caught that this control group was ~52% contaminated by pairs that ARE connected via some other edge type (almost certainly** `txt_only`**, since both endpoints are already text-only neighbors of the same hub) — narrowing the apparent gap to a "discriminates, but modestly" ~1.2× ratio. Correcting the open group to genuinely-unconnected pairs widens the gap to ~1.31×, strengthening rather than weakening the "discriminates" verdict.** Two secondary findings, now correctly caveated: hub-node pairs pull harder than Experiment 12's plain single-neighbor bridge pairs, but the two comparisons differ in edge-type composition as well as hub degree, so "hub-ness amplifies pull" is a plausible but not isolated reading; and `in_closed_triangle`/`is_hub` node membership correlates with `delta_rank` more strongly than C10's broad `is_polysemic` label, but the labels have very different population base rates (98.7% vs. 19–82%), so the magnitude comparison is not apples-to-apples.
 
 ### What “false transitivity” means here
 
 ```text
 Genuinely-unconnected false-transitivity pair       Closed-triangle positive control
-
+·
 C ── txt_only ── A ── txt_only ── D               C ── txt_only ── A ── txt_only ── D
 C ↛ D  (no edge of any kind)                       C ───────── img_only ────────── D
 ```
@@ -37,29 +39,35 @@ Retrieval cross-reference reused the same 6 already-on-disk per-sample `.npz` du
 
 **Closed-triangle vs. genuinely-unconnected pull, pooled across 3 sampling seeds (corrected primary comparison):**
 
-| Statistic | Closed triangle | Genuinely unconnected | Contrast (closed − open) |
-|---|---|---|---|
-| Per-seed mean pull | 3.1815, 3.1796, 3.1704 | 2.4332, 2.4355, 2.4057 | 0.7483, 0.7441, 0.7647 |
-| Pooled mean (± SEM across seeds) | **+3.1772 ± 0.0034** | **+2.4248 ± 0.0096** | **+0.7524 ± 0.0063** |
-| mean/SEM (across seeds) | +927.0 | +253.3 | **+119.7** |
-| frac_pulled_closer (single seed, n=5000) | 0.998–0.999 | 0.961–0.965 | — |
-| Relative ratio (closed / genuinely-open) | | | **1.31×** |
+
+| Statistic                                | Closed triangle        | Genuinely unconnected  | Contrast (closed − open) |
+| ---------------------------------------- | ---------------------- | ---------------------- | ------------------------ |
+| Per-seed mean pull                       | 3.1815, 3.1796, 3.1704 | 2.4332, 2.4355, 2.4057 | 0.7483, 0.7441, 0.7647   |
+| Pooled mean (± SEM across seeds)         | **+3.1772 ± 0.0034**   | **+2.4248 ± 0.0096**   | **+0.7524 ± 0.0063**     |
+| mean/SEM (across seeds)                  | +927.0                 | +253.3                 | **+119.7**               |
+| frac_pulled_closer (single seed, n=5000) | 0.998–0.999            | 0.961–0.965            | —                        |
+| Relative ratio (closed / genuinely-open) |                        |                        | **1.31×**                |
+
 
 **For transparency, the original (contaminated) comparison** — closed vs. "not-`img_only`," including the 51.7%-contaminated pairs:
 
-| Statistic | Closed triangle | "Open" (contaminated) | Contrast |
-|---|---|---|---|
-| Pooled mean (± SEM) | +3.1804 ± 0.0070 | +2.6047 ± 0.0114 | +0.5757 ± 0.0179 (mean/SEM=+32.1) |
-| Relative ratio | | | 1.20–1.24× |
+
+| Statistic           | Closed triangle  | "Open" (contaminated) | Contrast                          |
+| ------------------- | ---------------- | --------------------- | --------------------------------- |
+| Pooled mean (± SEM) | +3.1804 ± 0.0070 | +2.6047 ± 0.0114      | +0.5757 ± 0.0179 (mean/SEM=+32.1) |
+| Relative ratio      |                  |                       | 1.20–1.24×                        |
+
 
 The corrected comparison's closed-triangle numbers are consistent with the original (both ≈+3.18, as expected — the closed group's definition didn't change). The "open" side dropped from +2.60 to +2.42 once contaminated pairs were excluded, **widening** the closed/open gap from ~1.22× to ~1.31× — i.e. the original analysis, if anything, *understated* how much the embedding discriminates a real edge from a genuine non-edge.
 
 **Population-level degree check (closed vs. genuinely-open groups, full 8.94M-pair population, not just the sampled subset):**
 
-| | Hub `deg_txt_only` | C-endpoint E-degree |
-|---|---|---|
-| Closed group | mean 19.23, median 20 | mean 34.28, median 35 |
+
+|                      | Hub `deg_txt_only`    | C-endpoint E-degree   |
+| -------------------- | --------------------- | --------------------- |
+| Closed group         | mean 19.23, median 20 | mean 34.28, median 35 |
 | Genuinely-open group | mean 20.88, median 22 | mean 31.22, median 31 |
+
 
 The two groups differ by ~8–10% on both degree measures, in opposite directions (open-group hubs are somewhat higher-degree; closed-group C-endpoints are somewhat higher-degree) — a real but modest confound, not a dramatic one, and not obviously biased toward inflating the closed/open pull gap in either direction given the two measures pull opposite ways.
 
@@ -69,12 +77,14 @@ For context, Experiment 12's original single-neighbor bridge pull (the classic B
 
 **Secondary — retrieval cross-reference (descriptive, #3), pooled across the same 6 runs C10/Experiment 12.3 used (n_joined=3,000 per run):**
 
-| Flag | Population true-rate | corr vs. `delta_rank` (signed) | corr vs. `\|delta_rank\|` |
-|---|---|---|---|
-| `is_polysemic` (C10's original label) | 2,962/3,000 = 98.7% | rho=−0.025, mean/SEM=−9.9 | rho=+0.017, mean/SEM=+8.3 |
-| `is_hub` (≥2 text-only neighbors) | 2,222/3,000 = 74.1% | rho=+0.096, mean/SEM=+14.9 | rho=−0.099, mean/SEM=−145.0 |
-| `in_closed_triangle` | 570/3,000 = 19.0% | rho=+0.107, mean/SEM=+30.8 | rho=−0.273, mean/SEM=−375.7 |
-| `in_open_hub_pair` | 2,475/3,000 = 82.5% | rho=+0.108, mean/SEM=+15.9 | rho=−0.101, mean/SEM=−80.9 |
+
+| Flag                                  | Population true-rate | corr vs. `delta_rank` (signed) | corr vs. `|delta_rank|`     |
+| ------------------------------------- | -------------------- | ------------------------------ | --------------------------- |
+| `is_polysemic` (C10's original label) | 2,962/3,000 = 98.7%  | rho=−0.025, mean/SEM=−9.9      | rho=+0.017, mean/SEM=+8.3   |
+| `is_hub` (≥2 text-only neighbors)     | 2,222/3,000 = 74.1%  | rho=+0.096, mean/SEM=+14.9     | rho=−0.099, mean/SEM=−145.0 |
+| `in_closed_triangle`                  | 570/3,000 = 19.0%    | rho=+0.107, mean/SEM=+30.8     | rho=−0.273, mean/SEM=−375.7 |
+| `in_open_hub_pair`                    | 2,475/3,000 = 82.5%  | rho=+0.108, mean/SEM=+15.9     | rho=−0.101, mean/SEM=−80.9  |
+
 
 **Caveat:** `is_polysemic`'s 98.7% true-rate means its correlation rests on only 38 minority (negative) cases — a much more attenuated statistic than the other three, which sit at more balanced base rates. The magnitude comparison between `in_closed_triangle` (rho=+0.107) and `is_polysemic` (rho=−0.025) is therefore not a clean apples-to-apples comparison; the former isn't necessarily "4× stronger" in any mechanistic sense, only larger under very different population balance. Separately, `is_hub` (74.1%) and `in_open_hub_pair` (82.5%) are near-collinear populations (most hubs' sampled pairs are open, since open pairs vastly outnumber closed ones) and produce nearly identical rhos (+0.096 vs. +0.108) — these are not two independent pieces of evidence.
 
@@ -83,8 +93,10 @@ For context, Experiment 12's original single-neighbor bridge pull (the classic B
 1. **Primary criterion result: "Discriminates," and more clearly than first measured.** The corrected +0.75 gap (closed +3.18 vs. genuinely-unconnected +2.42) is real, stable across 3 independent sampling seeds, clears this project's `mean/SEM ≥ 2` bar by two orders of magnitude, and — per this experiment's own instruction to judge on magnitude rather than significance alone — represents a genuine ~31% relative difference, wider than the ~22% first measured against a contaminated control group. The embedding is not blind to the difference between a genuine edge and a genuine non-edge. This still qualifies rather than reverses C10/C12's false-transitivity caution — the embedding pulls a truly-unconnected artifact pair together at roughly three-quarters the strength of a real edge, not a small fraction of it — but it discriminates more clearly than the first pass suggested.
 2. **The control-group contamination itself is worth naming as a methodological lesson, not just a footnote.** Defining "open" as "not the specific edge type under test" rather than "no edge at all" is an easy mistake in any graph-diagnostic experiment with multiple edge types, and it happened here despite passing individual task review five times — because no single task's reviewer was positioned to question the experiment's own construct validity, only its code's fidelity to the plan. It took the final whole-branch review, explicitly checking the report's own conclusions against the underlying data, to catch it.
 3. **Hub-ness plausibly amplifies pull, but the evidence for that specific mechanism (vs. edge-type composition) is not isolated here.** Both closed and genuinely-open hub-pairs pull harder than Experiment 12's plain single-neighbor bridge pairs — but that comparison changes two things at once (hub degree AND edge-type composition: hub pairs are two txt_only-type endpoints, Experiment 12's classic pair is one img_only + one txt_only). A future experiment holding edge-type composition fixed while varying only hub degree would be needed to isolate the mechanism.
-4. **The retrieval-rank cross-reference's `in_closed_triangle` correlation is a real, more concentrated signal than C10's broad label — but its size shouldn't be read as "4× stronger" in a mechanistic sense**, given the very different population base rates involved. It remains a legitimate lead for a future, more targeted diagnostic (is this driven by the same `img_only_only`/`combine_side` mechanism C10 isolated, or something specific to hub/closed-triangle structure?), reported descriptively per this experiment's own scope — not part of the pre-registered primary criterion, no causal claim made.
+4. **The retrieval-rank cross-reference's** `in_closed_triangle` **correlation is a real, more concentrated signal than C10's broad label — but its size shouldn't be read as "4× stronger" in a mechanistic sense**, given the very different population base rates involved. It remains a legitimate lead for a future, more targeted diagnostic (is this driven by the same `img_only_only`/`combine_side` mechanism C10 isolated, or something specific to hub/closed-triangle structure?), reported descriptively per this experiment's own scope — not part of the pre-registered primary criterion, no causal claim made.
 5. **What this does not establish:** why hub-ness amplifies pull (isolated from edge-type composition), and what mechanism produces the closed-triangle/hub retrieval correlation, remain open questions this experiment surfaces but does not answer. The mirror configuration (an img-only hub with a closed triangle via a txt_only edge, rather than the txt-only hub/img_only-closure tested here) was also not examined — given C10's headline was precisely that its subgroup effect flips modality under `combine_side="txt"`, this asymmetry is a natural next check.
+
+
 
 ### Implication for Conditional Buddy
 
@@ -101,7 +113,9 @@ Conditional Buddy is best described here as learning a **graded, topology-sensit
 - **The bridge-subgroup relocation question from C10** (does the `img_only_only`/`txt_only_only` concentration effect interact with hub/closed-triangle structure specifically?) **was not investigated here.**
 - **n=3 sampling seeds**, matching this plan's standard bar — this is resampling-seed variation on a fixed, already-built graph and embedding, not training-seed variation; it establishes the pull estimates are stable under resampling, not that they'd be stable under a differently-constructed buddy graph.
 - **The modality-mirrored configuration was not tested** (see Interpretation #5).
-- **The CLI's printed summary omits the `is_hub`/`in_closed_triangle`/`in_open_hub_pair` correlations** (a minor gap in the implementation plan's print-block spec, not a computation bug) — all numbers in this report were read directly from the `--out` JSON and from supplementary one-off scripts (see Reproduction), where they are correctly present.
+- **The CLI's printed summary omits the** `is_hub`**/**`in_closed_triangle`**/**`in_open_hub_pair` **correlations** (a minor gap in the implementation plan's print-block spec, not a computation bug) — all numbers in this report were read directly from the `--out` JSON and from supplementary one-off scripts (see Reproduction), where they are correctly present.
+
+
 
 ## Addendum (2026-09-01): the full edge-type breakdown, not just closed-vs-unconnected
 
@@ -109,28 +123,32 @@ The primary result collapses C–D's relationship into a binary (closed-triangle
 
 **C–D by all edge types, population-scale (same 3-seed pooling, 5,000 pairs/category/seed):**
 
-| C–D relationship | Population share (of 8,940,974 hub pairs) | Pooled mean pull | mean/SEM | Ratio vs. unconnected |
-|---|---|---|---|---|
-| `both` (mutual NN in image AND text) | 1.81% (161,907) | +3.2597 ± 0.0076 | +428.7 | **1.35×** |
-| `img_only` (the closed triangle tested above) | 0.79% (70,544) | +3.1681 ± 0.0057 | +553.7 | **1.32×** |
-| `txt_only` | 49.48% (4,423,995) | +2.7324 ± 0.0053 | +517.8 | **1.13×** |
-| `repair` (graph-connectivity bridge edges) | 0% in this pool | — | — | — |
-| unconnected | 47.92% (4,284,528) | +2.4100 ± 0.0049 | +495.1 | 1.00× (baseline) |
 
-This is a clean monotone ordering — `both` > `img_only` > `txt_only` > unconnected — i.e. the embedding's pull scales with how much real connectivity evidence exists between the pair, not just a binary "connected or not." Two things stand out: **`img_only` pulls ~16% harder than `txt_only`** despite both being "one direct edge of some type" (1.32× vs. 1.13× relative to unconnected) — a real asymmetry between the two modalities' single-edge pull strength, echoing the img/txt asymmetry theme running through C9–C11, though no mechanistic link is claimed here. And **`txt_only` dominates C–D's population (49.5% of all hub pairs)** — since C and D are already both text-only neighbors of the same hub, a direct text-only edge between them is the modal outcome, not a rare one; this is the specific source of the ~52% contamination the correction above found in the original "open" definition.
+| C–D relationship                              | Population share (of 8,940,974 hub pairs) | Pooled mean pull | mean/SEM | Ratio vs. unconnected |
+| --------------------------------------------- | ----------------------------------------- | ---------------- | -------- | --------------------- |
+| `both` (mutual NN in image AND text)          | 1.81% (161,907)                           | +3.2597 ± 0.0076 | +428.7   | **1.35×**             |
+| `img_only` (the closed triangle tested above) | 0.79% (70,544)                            | +3.1681 ± 0.0057 | +553.7   | **1.32×**             |
+| `txt_only`                                    | 49.48% (4,423,995)                        | +2.7324 ± 0.0053 | +517.8   | **1.13×**             |
+| `repair` (graph-connectivity bridge edges)    | 0% in this pool                           | —                | —        | —                     |
+| unconnected                                   | 47.92% (4,284,528)                        | +2.4100 ± 0.0049 | +495.1   | 1.00× (baseline)      |
+
+
+This is a clean monotone ordering — `both` > `img_only` > `txt_only` > unconnected — i.e. the embedding's pull scales with how much real connectivity evidence exists between the pair, not just a binary "connected or not." Two things stand out: `img_only` **pulls ~16% harder than** `txt_only` despite both being "one direct edge of some type" (1.32× vs. 1.13× relative to unconnected) — a real asymmetry between the two modalities' single-edge pull strength, echoing the img/txt asymmetry theme running through C9–C11, though no mechanistic link is claimed here. And `txt_only` **dominates C–D's population (49.5% of all hub pairs)** — since C and D are already both text-only neighbors of the same hub, a direct text-only edge between them is the modal outcome, not a rare one; this is the specific source of the ~52% contamination the correction above found in the original "open" definition.
 
 **B–C and B–D, exploratory (same 5,000-row sample, hub-restricted — see caveat below):**
 
-| Pair | Relationship | Sample share | Pooled pull | mean/SEM |
-|---|---|---|---|---|
-| B–C | `txt_only` | ~1.0% (n≈35-56/seed) | +3.0414 ± 0.0306 | +99.5 |
-| B–C | `img_only` | ~1.3% (n≈55-66/seed) | +2.9870 ± 0.1684 | +17.7 |
-| B–C | `both` | too rare (n<10/seed) | — | — |
-| B–C | unconnected | ~97.9% (n≈4,671-4,684/seed) | +2.1206 ± 0.0045 | +469.4 |
-| B–D | `txt_only` | ~1.0% (n≈43-56/seed) | +2.9647 ± 0.1032 | +28.7 |
-| B–D | `img_only` | ~1.4% (n≈64-71/seed) | +2.9900 ± 0.0944 | +31.7 |
-| B–D | `both` | too rare (n<10/seed) | — | — |
-| B–D | unconnected | ~97.8% (n≈4,657-4,664/seed) | +2.1187 ± 0.0050 | +423.6 |
+
+| Pair | Relationship | Sample share                | Pooled pull      | mean/SEM |
+| ---- | ------------ | --------------------------- | ---------------- | -------- |
+| B–C  | `txt_only`   | ~1.0% (n≈35-56/seed)        | +3.0414 ± 0.0306 | +99.5    |
+| B–C  | `img_only`   | ~1.3% (n≈55-66/seed)        | +2.9870 ± 0.1684 | +17.7    |
+| B–C  | `both`       | too rare (n<10/seed)        | —                | —        |
+| B–C  | unconnected  | ~97.9% (n≈4,671-4,684/seed) | +2.1206 ± 0.0045 | +469.4   |
+| B–D  | `txt_only`   | ~1.0% (n≈43-56/seed)        | +2.9647 ± 0.1032 | +28.7    |
+| B–D  | `img_only`   | ~1.4% (n≈64-71/seed)        | +2.9900 ± 0.0944 | +31.7    |
+| B–D  | `both`       | too rare (n<10/seed)        | —                | —        |
+| B–D  | unconnected  | ~97.8% (n≈4,657-4,664/seed) | +2.1187 ± 0.0050 | +423.6   |
+
 
 B–C/B–D's unconnected pull (+2.12) is ~12% lower than C–D's unconnected pull (+2.41) — the interesting new observation from this breakdown: the false-transitivity artifact isn't just a function of graph distance, it also depends on whether the indirect path stays within one modality (C–D, both text-linked to the hub) or crosses modalities (B–C/B–D, one image-linked + one text-linked). A same-modality indirect path produces more pull than a cross-modality one, even when both are equally unconnected.
 
@@ -186,10 +204,15 @@ python scripts/analyze_polysemy_bridges.py \
 # statistic. See this report's git history / session record for the exact scripts.
 ```
 
+
+
 ## Change note (2026-09-01)
+
+
 
 ### Diff from the preceding report revision
 
 - Added a compact diagram contrasting the genuinely-unconnected false-transitivity control with the closed-triangle positive control.
 - Added the Conditional Buddy interpretation above: indirect graph propagation is potentially useful semantic generalization, but it is not a strict direct-edge representation.
 - No experiment, metric, or conclusion value was changed; these are explanatory documentation additions.
+
