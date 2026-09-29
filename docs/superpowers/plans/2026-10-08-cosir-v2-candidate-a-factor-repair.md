@@ -1485,6 +1485,7 @@ git commit -m "feat(cosir-v2): conditioning module + human-label episode evaluat
 | R5 | R4 + `lambda_decorrelation=1.0` |
 | R6 | R3 + `center_inputs=True` |
 | R7 | R3 + `lambda_sparsity=0.1` |
+| R8 | `lambda_paired=0.0`: no agreement term at all, the Task 3 D3 recipe. **Added 2026-09-29 at the Task 3 checkpoint, with user approval.** It is the simplest candidate and the control for whether InfoNCE adds pair-specific value. |
 
 - [ ] **Step 2: Gates on `val` for every run.** Report a table: one row per run, one column per gate
   value, with pass/fail marks.
