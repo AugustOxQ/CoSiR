@@ -70,3 +70,11 @@ All emotions distributed proportionally across parts.
 - **Deterministic and seed-controlled** via seed=42
 
 The split is ready for Tasks 3, 6, and 7.
+
+## Note: residual near-duplicates (final-review measurement)
+
+"Zero leakage" above means zero leakage on exact keys: the painting slug and the bit-identical image vector. The final whole-branch review measured residual near-duplicates on this seed-42 split:
+- 24 held rows (0.04%) have a train image at CLIP cosine ≥ 0.99;
+- 63 held rows (0.10%) have one at cosine ≥ 0.98.
+
+These are real WikiArt duplicates stored under different painting slugs. One example is `camille-pissarro_boulevard-montmartre-spring-rain` and its `…-1897` counterpart. The final review found that this affects no conclusion. The `split_leakage` docstring in `src/data/splits.py` records the same caveat.
