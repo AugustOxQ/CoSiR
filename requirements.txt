@@ -46,6 +46,7 @@ wandb
 # --------- utils ---------#
 tqdm
 Pillow
+psutil          # hard import in src/utils/feature_manager.py (memory-aware caching)
 
 # --------- others --------- #
 pyrootutils     # standardizing the project root setup
