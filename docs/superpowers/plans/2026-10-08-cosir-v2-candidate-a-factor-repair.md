@@ -1516,6 +1516,23 @@ git commit -m "feat(cosir-v2): conditioning module + human-label episode evaluat
      gate (for example sparsity) may not be necessary for the aim, and it goes to the user. Do
      not change the selection.
 
+- [ ] **Amendment (2026-09-29, user decision after the Step 4.4 stop). This is an after-the-fact
+  threshold change and must be labelled as such in the report.** No run passed all nine gates. The
+  best InfoNCE runs failed only the text readout floor (0.459 vs CLIP PCA-10 0.444) and sparsity
+  (44-49% active vs 37.5%). The user approved two changes, applied to the saved runs without
+  retraining:
+  1. The readout gate becomes **"no worse than R0"**, i.e. readout ≤ R0's readout in each modality
+     on the same rows. This is the floor's stated purpose (Ruling 4: a repair must not lose
+     information). R0 itself never met the absolute PCA-10 text floor.
+  2. The sparsity cap becomes **≤ 50% active** (`max_active_fraction=0.5`). Grid evidence: runs made
+     sparser (TopK at 25% active, and R7) scored lower on the selection metric than the 44-49%
+     InfoNCE runs.
+
+  All other gates, the selection rule, the tie-break, replication and the held check are unchanged.
+  For replication seeds the readout reference is R0's seed-42 `val` readout; for the held check it
+  is R0's `held` readout. The held-out tests (Step 6, then Task 7) were not used in making this
+  decision.
+
 - [ ] **Step 5: Seed replication.**
   - Retrain the selected recipe with seeds 43 and 44. Both must pass all gates on `val`;
     otherwise the recipe is **not** selected. Report it and stop, as in Step 4.
