@@ -155,6 +155,10 @@ dmypy.json
 *.npy
 
 # Folder
+# Root-level data/res may be real dirs (/project/CoSiR) or symlinks to them (worktrees);
+# the trailing-slash patterns below don't match symlinks, so ignore the root entries explicitly.
+/data
+/res
 data/
 !src/data/
 wandb/
