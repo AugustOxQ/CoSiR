@@ -46,8 +46,9 @@ Branch `experiment/percept_topic_pipeline`, worktree
    > 2026-09-29 after about 2,267 runs. The finalists are frozen in
    > `src/test/20260928_buddy_percept_sweep/finalists.json`, and the
    > stress step ran on DAS6 through `scripts/run_buddy_percept_top10_stress.sh`.
-   > See the Task 11 section of the SDD ledger for the reasoning behind
-   > these choices.
+   > See the Task 11 section of the SDD ledger (preserved at
+   > `src/test/20260928_buddy_percept_sweep/20260928_buddy_percept_sweep_log.md`)
+   > for the reasoning behind these choices.
 
    The stress test re-runs each finalist at the established 4-seed
    stress convention (42/7/123/2024) and picks a winner. Fold the winning config + result into
@@ -90,12 +91,11 @@ symmetric-tuning correction."
 - Plan: `docs/superpowers/plans/2026-09-28-buddy-percept-sweep.md` (11
   tasks, all code in `scripts/buddy_percept_sweep/`)
 - SDD ledger (full blow-by-blow of every review finding, ruling, and fix
-  round across all 11 tasks): `.superpowers/sdd/2026-09-28-buddy-percept-sweep/progress.md`
-  — this is git-ignored scratch, but it's still on disk in this worktree;
-  read it if you want the detailed history of what each task's review
-  caught and how it was fixed. Once Task 11 is done and a final
-  whole-branch review is clean, this workspace should be deleted per the
-  subagent-driven-development skill's normal finish flow.
+  round across all 11 tasks and the final review): originally the
+  git-ignored `.superpowers/sdd/2026-09-28-buddy-percept-sweep/progress.md`,
+  which was deleted on 2026-09-30 after the final review came back clean.
+  A verbatim copy is tracked at
+  `src/test/20260928_buddy_percept_sweep/20260928_buddy_percept_sweep_log.md`.
 
 Tasks 1–10 are complete and reviewed. **Task 11 (post-sweep top-10
 4-seed stress test) is the only one left.** (Corrected 2026-09-29: this
