@@ -26,14 +26,24 @@ Branch `experiment/percept_topic_pipeline`, worktree
    enough completed, gate-passing runs (dozens+, your judgment — the
    objective gate is `stage2_macro_auc if emotion_ami>0.1236 and
    genre_ami>0.1954 else -1.0`, so only check runs with `objective > -1`
-   count), run the post-sweep top-10 stress test:
-   ```
-   source ~/miniconda3/etc/profile.d/conda.sh && conda activate CoSiR
-   python src/test/20260928_buddy_percept_sweep/run_top10_stress.py polysemic/CoSiR-buddy-percept-sweep/40i43gt5
-   ```
-   This pulls the top 10 runs by `objective`, re-runs each at the
-   established 4-seed stress convention (42/7/123/2024), and prints a
-   final winner. Fold the winning config + result into
+   count), run the post-sweep top-10 stress test.
+
+   > **Correction (2026-09-29):** an earlier version of this step gave a
+   > one-line command for `run_top10_stress.py` and said the script was
+   > already written. That was wrong: Task 11 had never been implemented
+   > (the SDD ledger ends at Task 10). It was built on 2026-09-29
+   > (commits up to `f576b8f`) with a changed design: it only picks runs
+   > that used topic merging and ended with at most 45 topics, and it
+   > has three subcommands (`select`, `stress`, `summarize`), so the
+   > old one-line command does not work. The sweep was stopped on
+   > 2026-09-29 after about 2,267 runs. The finalists are frozen in
+   > `src/test/20260928_buddy_percept_sweep/finalists.json`, and the
+   > stress step ran on DAS6 through `scripts/run_buddy_percept_top10_stress.sh`.
+   > See the Task 11 section of the SDD ledger for the reasoning behind
+   > these choices.
+
+   The stress test re-runs each finalist at the established 4-seed
+   stress convention (42/7/123/2024) and picks a winner. Fold the winning config + result into
    `docs/reports/2026-09-26_artelingo_buddy_vs_percept_stage1_report.md`
    as a new subsection, matching this investigation's established
    reporting convention (see §6a–§6h there for the pattern).
@@ -81,10 +91,9 @@ symmetric-tuning correction."
   subagent-driven-development skill's normal finish flow.
 
 Tasks 1–10 are complete and reviewed. **Task 11 (post-sweep top-10
-4-seed stress test) is the only one left** — its script
-(`src/test/20260928_buddy_percept_sweep/run_top10_stress.py`) is already
-written and tested (with mocked data), just never run against real sweep
-results yet since the sweep had just started.
+4-seed stress test) is the only one left.** (Corrected 2026-09-29: this
+paragraph used to say its script was already written and tested. It was
+not; see the correction under step 3 above.)
 
 ## Execution method used
 
@@ -101,10 +110,10 @@ kill the process tree (`pkill -9 -f "codeagent-wrapper --progress
 --backend"` etc.) — this happened twice tonight, described in more detail
 in the master report's earlier sections from prior nights.
 
-If Task 11 needs any further real code changes (unlikely, but possible if
-its dry-run-only script needs adjusting once it sees real sweep data),
-follow the same pattern: dispatch to Codex, review the diff yourself or
-via a second Codex dispatch, don't just trust "done."
+If Task 11 needs any further real code changes, do not send them to
+Codex. As of 2026-09-29 the user's rule is that code goes to Codex only
+when they explicitly ask. Use Claude Code subagents sized to the task
+instead, and still review the diff rather than trusting "done."
 
 ## DAS6 / cluster-run gotchas discovered tonight (important, not in any doc elsewhere)
 
