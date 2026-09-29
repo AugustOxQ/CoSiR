@@ -156,6 +156,7 @@ dmypy.json
 
 # Folder
 data/
+!src/data/
 wandb/
 other/
 out/
