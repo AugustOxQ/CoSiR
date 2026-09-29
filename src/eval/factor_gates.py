@@ -6,6 +6,19 @@ passes all of them. These gates add dimensionality, redundancy, linear
 information, sparsity and pair-specificity checks. Dead / private / spanning
 definitions are copied from
 src/test/20260928_factor_discovery_validation/run_validation.py.
+
+Two gate rules exist; call the one you mean explicitly.
+
+* Pre-registered rule (the defaults): ``PREREGISTERED_THRESHOLDS`` (equal to
+  ``FactorGateThresholds()``, max active fraction 0.375) and the readout gate
+  compared with CLIP PCA-``readout_pca_rank`` per modality (``readout_rule``
+  ``"pca_rank"``). Under it the selected repaired recipe R3 passes 7 of 9.
+* Amended rule of 2026-09-29, which the Task 6/7 reports used to select and
+  check R3 (user decision, after the fact; plan commit d490b96):
+  ``thresholds=AMENDED_2026_09_29_THRESHOLDS`` (max active fraction 0.5) plus
+  ``readout_reference=(R0 readout_img, R0 readout_txt)`` measured by this
+  function on the SAME rows (``readout_rule`` ``"reference"``). Under it R3
+  passes 9 of 9. See docs/reports/2026-10-11_cosir_v2_candidate_a_factor_repair.md.
 """
 
 from dataclasses import dataclass
@@ -32,6 +45,12 @@ class FactorGateThresholds:
     retrieval_k: int = 10
     min_retrieval_ratio: float = 0.5          # code R@k / CLIP R@k, same pools
     seed: int = 42
+
+
+PREREGISTERED_THRESHOLDS = FactorGateThresholds()              # the plan's pre-registered values
+AMENDED_2026_09_29_THRESHOLDS = FactorGateThresholds(max_active_fraction=0.5)
+"""Amended sparsity cap. The amended readout rule is not a threshold: also pass
+``readout_reference`` (R0's readout on the same rows) to ``evaluate_factor_gates``."""
 
 
 def relative_l2(target: np.ndarray, reconstruction: np.ndarray) -> float:
@@ -166,8 +185,22 @@ class FactorGateReport:
 def evaluate_factor_gates(*, fit_img_codes, fit_txt_codes, fit_img_features, fit_txt_features,
                           eval_img_codes, eval_txt_codes, eval_img_features, eval_txt_features,
                           community_img_codes, community_txt_codes, community_labels,
-                          thresholds: FactorGateThresholds = FactorGateThresholds()) -> FactorGateReport:
+                          thresholds: FactorGateThresholds = FactorGateThresholds(),
+                          readout_reference: tuple[float, float] | None = None) -> FactorGateReport:
+    """Nine pass/fail gates on eval rows; readout is fit on fit rows.
+
+    ``readout_reference=None`` (default): the readout gate passes iff the code
+    readout is <= CLIP PCA-``readout_pca_rank`` in each modality. Given
+    ``(ref_img, ref_txt)``: it passes iff readout_img <= ref_img and
+    readout_txt <= ref_txt (the 2026-09-29 amended rule; see the module
+    docstring). ``values["readout_rule"]`` records which rule was applied and
+    ``values["readout_reference"]`` the reference used (``None`` for PCA rank).
+    """
     t = thresholds
+    if readout_reference is not None:
+        reference = np.asarray(readout_reference, dtype=np.float64)
+        if reference.shape != (2,) or not np.isfinite(reference).all():
+            raise ValueError(f"readout_reference must be two finite numbers (img, txt), got {readout_reference!r}")
     fit_rows = np.arange(len(fit_img_codes))
     if len(fit_rows) > t.readout_fit_rows:
         fit_rows = np.sort(np.random.default_rng(t.seed).choice(fit_rows, t.readout_fit_rows, replace=False))
@@ -183,7 +216,7 @@ def evaluate_factor_gates(*, fit_img_codes, fit_txt_codes, fit_img_features, fit
         values[f"pca{t.readout_pca_rank}_{name}"] = pca_rel_l2(
             np.asarray(fit_feat)[fit_rows], eval_feat, t.readout_pca_rank)
     pair = 0.5 * (np.asarray(eval_img_codes, np.float64) + np.asarray(eval_txt_codes, np.float64))
-    values["correlation"] = factor_correlation_summary(pair)
+    values["correlation"] = factor_correlation_summary(pair, threshold=t.max_pair_abs_corr)
     dead, private = dead_and_private(eval_img_codes, eval_txt_codes, t.near_zero_mean, t.private_min_over_max)
     values["dead_indices"], values["private_indices"] = dead.tolist(), private.tolist()
     values["top2_mass_share"] = top2_mass_share(eval_img_codes, eval_txt_codes)
@@ -198,10 +231,17 @@ def evaluate_factor_gates(*, fit_img_codes, fit_txt_codes, fit_img_features, fit
     values["code_retrieval_recall"], values["clip_retrieval_recall"] = code_recall, clip_recall
     values["retrieval_ratio"] = code_recall / clip_recall
     rank = t.readout_pca_rank
+    if readout_reference is None:
+        values["readout_rule"], values["readout_reference"] = "pca_rank", None
+        readout_passed = values["readout_img"] <= values[f"pca{rank}_img"] and values["readout_txt"] <= values[f"pca{rank}_txt"]
+    else:
+        values["readout_rule"] = "reference"
+        values["readout_reference"] = {"img": float(reference[0]), "txt": float(reference[1])}
+        readout_passed = values["readout_img"] <= reference[0] and values["readout_txt"] <= reference[1]
     passed = {
         "participation_ratio": bool(min(values["participation_ratio_img"], values["participation_ratio_txt"]) >= t.min_participation_ratio),
         "redundancy": bool(values["correlation"]["max_abs"] <= t.max_pair_abs_corr and not values["correlation"]["constant_factors"]),
-        "readout": bool(values["readout_img"] <= values[f"pca{rank}_img"] and values["readout_txt"] <= values[f"pca{rank}_txt"]),
+        "readout": bool(readout_passed),
         "sparsity": bool(max(values["active_fraction_img"], values["active_fraction_txt"]) <= t.max_active_fraction),
         "dead": len(dead) <= t.max_dead,
         "modality_private": len(private) <= t.max_private,
