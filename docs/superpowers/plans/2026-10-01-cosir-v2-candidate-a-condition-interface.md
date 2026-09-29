@@ -432,6 +432,81 @@ the data to one of the two hypotheses this task set out to test).
 
 ---
 
+### Task 7: item-disjoint ranking evaluation — does the interface support conditional retrieval at all?
+
+**Added 2026-10-04** after Task 6's diagnostic ruled out both proposed causes of the condition-
+recovery collapse (data separability and small-sample noise are not the problem) and an independent
+Codex design review (`.superpowers/sdd/2026-10-01-cosir-v2-candidate-a-condition-interface/design-review-request.md`,
+read it for full context) identified the real gap: every prior task measured *exact-factor
+recovery* via a strict argmax classification proxy, never whether the resulting `w(c)` actually
+ranks conditional retrieval candidates correctly — which is what the spec's `s(I,T|c)` scoring
+function (stage d, not yet built) actually needs. This task answers the load-bearing question
+directly, before investing in any further architecture change.
+
+**Files:** create `src/test/20261005_condition_ranking_evaluation/run_ranking_eval.py`; create
+`docs/reports/2026-10-05_cosir_v2_candidate_a_condition_ranking_evaluation.md`.
+
+**Fixes the item-leakage caveat present since Task 3**: split by underlying ArtELingo item (not by
+episode) — hold out a fixed 20% of item indices (seed 42), and mine episodes only from the
+remaining 80% for training / only from the held-out 20% for evaluation, so no held-out episode's
+anchor, support, contrast, positive, or any distractor overlaps an item used in training.
+
+**`w(c)` constructions to compare, all on the same held-out episodes**:
+1. **Trained**: `ConditionEncoder`, trained on training-split episodes with the existing
+   recoverability objective (same as Tasks 1/3/5, for continuity — do not invent a new training
+   objective here, that would confound the comparison).
+2. **Naive nonparametric**: `w(c) = ReLU(support_mean - contrast_mean)`, no learned parameters.
+3. **Uniform**: `w(c) = ones(L) / L` — a condition-blind control; if this scores comparably to the
+   others, the factor term isn't doing meaningful conditional work at all.
+4. **Shuffled-condition negative control**: for each held-out episode, use a *different*, randomly
+   selected other episode's support/contrast set (same seed) to compute `w(c)` — tests whether
+   ranking quality actually depends on getting the right condition, or would look similar with any
+   condition.
+5. **Oracle**: a one-hot `w(c)` on the episode's true `targeted_factor` — an upper bound on what a
+   perfect condition interface could achieve with this factor space and scoring formula.
+
+**Scoring formula** (from the spec, stage (d) not yet trained — using it read-only here to
+*evaluate* is in scope, training it is not): `s(I,T|c) = β·cos(CLIP_I(I), CLIP_T(T)) +
+Σ_l w_l(c)·a_I,l(I)·a_T,l(T)`. Pick a reasonable fixed `β` (your call, document why — e.g. a value
+that keeps both terms on comparable scale given the factor codes' typical magnitude; report results
+at 2-3 `β` values if the choice meaningfully changes conclusions, don't silently pick whichever
+value looks best) — since no training has calibrated `β`, this evaluation is necessarily
+approximate; say so plainly in the report.
+
+**For each held-out episode and each `w(c)` variant**, using i2t direction (rank the candidate pool
+— positive, hard negatives, condition-only distractors, anchor-only distractors — as texts for the
+fixed anchor image; do the same for t2i with roles reversed) report:
+1. **Rank of the true positive** among the full candidate pool (1 = best).
+2. **Recall@1 and Recall@3** across all held-out episodes, both directions.
+3. **True factor's within-episode rank**: separately from the ranking-quality numbers above, for
+   each episode compute all 32 factors' `support_mean - contrast_mean` gap and report where the
+   *targeted* factor ranks among them (1 = largest gap) — this is the number that determines whether
+   a future architecture change (cross-factor attention) is well-targeted or not. Report the
+   distribution (e.g. median rank, fraction in top-3, top-10) across all held-out episodes.
+4. **Condition-swap reversal check**: for a sample of episodes with two *different* valid
+   conditions available (if the mined episode set doesn't naturally give you this, construct it by
+   pairing two episodes that share the same anchor pool structure but different `targeted_factor` —
+   document exactly how you constructed the pairing), verify whether the ranking of the same
+   candidate pool actually changes/reverses appropriately when `c` changes. Report the fraction of
+   sampled pairs where it does, for each `w(c)` variant.
+
+**Report, plainly, verdict up front**: does *any* `w(c)` variant achieve non-trivial Recall@1/@3
+(meaningfully above the uniform-control baseline)? Does the trained head over- or under-perform the
+naive nonparametric rule? Where does the true factor rank within-episode (median, top-3 fraction) —
+this number alone should settle whether cross-factor attention is a well-motivated next step or a
+poorly-targeted one, per the design review's framing. Does the condition-swap check show real,
+condition-sensitive reversal for any variant, or does ranking look similar regardless of condition
+(which would mean the CLIP-cosine term is doing all the work and the factor term isn't contributing
+meaningfully)? State the answer to each question directly — this task's job is to find out whether
+the condition-interface concept is viable at all with the current factor space, not to make one
+variant look good.
+
+- [ ] Implement the ranking-evaluation script and write the report with all four measures above,
+  compared across all five `w(c)` variants.
+- [ ] Commit: `git add src/test/20261005_condition_ranking_evaluation/ docs/reports/2026-10-05_cosir_v2_candidate_a_condition_ranking_evaluation.md && git commit -m "docs(cosir-v2): item-disjoint ranking evaluation of the condition interface"`
+
+---
+
 ## Self-review
 
 **Placeholder scan:** no TBD/TODO; "your call, document why" points are explicit
