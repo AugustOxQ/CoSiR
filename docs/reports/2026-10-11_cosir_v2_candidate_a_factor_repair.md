@@ -26,9 +26,12 @@ Under the original pre-registered gates, R3 passes 7 of 9 on `val` and on `held`
 
   - On the same held pools, R3's code R@10 is 0.387 against CLIP's 0.343.
   - R3 has no dead factors and no modality-private factors, and all 32 factors span communities.
-- **Which mechanism did it?** InfoNCE agreement.
-  - All four InfoNCE ReLU runs (R1, R3, R6, R7) escape the collapse and reach a pair-retrieval ratio of 1.04-1.13.
-  - Decorrelation adds little on top. From R1 to R3 the selection score goes from +3.85 to +4.17, and max |r| from 0.476 to 0.430.
+  - **What the "repaired" claim rests on.** The amended 50% sparsity cap sits only about 1.3 points above R3's seed-42 val text active fraction (0.487). The claim therefore rests mainly on the pre-registered geometry gates: participation ratio, redundancy and pair retrieval. R3 passes those by wide margins under the ORIGINAL thresholds. On val, its PR is 20.8 (gate ≥ 8), its max |r| is 0.43 (gate ≤ 0.90) and its pair-retrieval ratio is 1.13 (gate ≥ 0.5). On held, the same values are 20.7, 0.45 and 1.13.
+- **Which mechanism did it?** Removing the cosine agreement term escapes the collapse. InfoNCE then adds pair-specificity.
+  - The collapse is caused by the cosine agreement term. Removing it (R8, equivalently Task 3's D3) already escapes the collapse: PR 20.6 / 17.1, max |r| 0.80, and 8/9 original gates.
+  - InfoNCE's specific contribution is pair-specificity: the pair-retrieval ratio rises from 0.40 (R8) to 1.13 (R3). It also adds about 0.8 selection-score points over R8 (R3 +4.17, R8 +3.38). All four InfoNCE ReLU runs (R1, R3, R6, R7) escape the collapse and reach a ratio of 1.04-1.13.
+  - Decorrelation on top of the cosine term (R2) only partly lifts the collapse (PR 2.86 / 3.02, max |r| 0.950). It passes pair retrieval only narrowly (0.538).
+  - Decorrelation adds little on top of InfoNCE. From R1 to R3 the selection score goes from +3.85 to +4.17, and max |r| from 0.476 to 0.430.
   - R3 was chosen over R6 (R3 plus input centering) by the tie-break. R6 scored 0.82 points higher, which is inside the pre-registered 1-point tie band. The tie-break prefers the lower mean readout, and R3's is 0.4698 against R6's 0.4709.
 - **Condition-specific benefit over R0.** Measured on val, beta=0, over 2,048 emotion plus 2,048 art-style episodes.
   - R3 scores **+4.17** R@1 points, against R0's **+0.55**.
@@ -39,11 +42,14 @@ Under the original pre-registered gates, R3 passes 7 of 9 on `val` and on `held`
   - On held, R3 reads out 0.4800 (image) and 0.4600 (text), against R0's 0.4939 and 0.4680.
   - Against CLIP PCA-10 (0.4949 / 0.4454), R3 is better on image and 0.0146 worse on text.
 - **Cost in sparsity.** On held, 45% of image factors and 49% of text factors are active per row. The original cap was 37.5% and the amended cap is 50%.
-- **Seed stability: the gates and the score replicate; the individual axes only partly do.**
-  - Hungarian matching of the seed-43 and seed-44 factors to seed 42 gives mean |r| 0.747 / 0.742 and median 0.837 / 0.786.
-  - The minimum is only 0.143 / 0.195. Of the 32 factors, 13 and 10 match at |r| ≥ 0.9, while 5 and 4 match below 0.5.
-  - This is a stable subspace with some unstable axes. The plan counts that as a caveat, not a failure.
-- **Checkpoints for Task 7.** `checkpoints/selected_seed42.pt` (R3) and `checkpoints/R0_seed42.pt` both come from deterministic seed-42 retrains, which reproduced all 24 compared stored grid metrics exactly. Reloading either checkpoint re-encodes 1,000 held rows bit-identically.
+- **Seed stability: the gates and the score replicate. About 24 directions are shared across seeds and about 7 are seed-specific; individual factor indices are not stable.**
+  - Hungarian matching of individual seed-43 and seed-44 factors to seed 42 gives mean |r| 0.747 / 0.742 and median 0.837 / 0.786. The minimum is only 0.143 / 0.195. Of the 32 factors, 13 and 10 match at |r| ≥ 0.9, while 5 and 4 match below 0.5.
+  - Final-review measurements (post hoc) of the spanned directions:
+    - The canonical correlations from seed 42 to seeds 43/44 have median 0.94.
+    - Of the 32, 19–20 are ≥ 0.9 and 24–25 are ≥ 0.8. The last few are only 0.06–0.09.
+    - Every seed-43/44 factor is linearly predictable from the seed-42 codes with R² ≥ 0.55 (median about 0.86).
+  - The plan counts this as a caveat, not a failure.
+- **Checkpoints for Task 7.** `checkpoints/selected_seed42.pt` (R3) and `checkpoints/R0_seed42.pt` both come from deterministic seed-42 retrains, which reproduced all 24 compared stored grid metrics exactly. Reloading either checkpoint re-encodes 1,000 held rows bit-identically. Their SHA-256 hashes are listed under "Checkpoints and reload verification".
 
 ## Amended thresholds (user decision, after the fact)
 
@@ -59,7 +65,7 @@ The plan amendment is in commit `d490b96` (2026-09-29). It was decided after the
 2. **Sparsity cap becomes ≤ 50% active** (`FactorGateThresholds(max_active_fraction=0.5)`).
    - Stated reason: runs made sparser, TopK at 25% active and R7, scored lower on the selection metric than the InfoNCE runs at 44-49% active.
 
-**How the change was implemented.** `run_grid.py --amended` re-derives both the original and the amended flags from each run's stored gate values, so the grid was re-gated without retraining. For all nine runs, the re-derived original flags equal the stored ones (asserted). New evaluations (seeds 43/44 and held) call `evaluate_factor_gates` with `max_active_fraction=0.5`, then apply the R0-reference readout rule to the values it returns. Nothing under `src/` changed.
+**How the change was implemented.** `run_grid.py --amended` re-derives both the original and the amended flags from each run's stored gate values, so the grid was re-gated without retraining. For all nine runs, the re-derived original flags equal the stored ones (asserted). New evaluations (seeds 43/44 and held) call `evaluate_factor_gates` with `max_active_fraction=0.5`, then apply the R0-reference readout rule to the values it returns. Nothing under `src/` changed at the time. Since the final review, `src/eval/factor_gates.py` exposes the same rule: `evaluate_factor_gates(..., thresholds=AMENDED_2026_09_29_THRESHOLDS, readout_reference=(R0 readout_img, R0 readout_txt))`, with R0's readout measured on the same rows. Its defaults remain the pre-registered rule, under which R3 passes 7/9. The numbers in this report were produced by `run_grid.py`.
 
 **What this means for interpretation.**
 - The thresholds were changed after the val results were known. They are exactly the two gates the best runs had failed.
@@ -126,7 +132,7 @@ Training call: `train_factors(train_img, train_txt, train_graph, config, group_i
 - Both replication seeds pass all nine amended gates, so the recipe stays selected.
 - The scores (+3.71, +4.28) are within ±0.6 points of seed 42's +4.17, and far above R0's +0.55.
 - The weakest cell is seed 43's emotion text-to-image lift, at +0.78 points.
-- The Hungarian alignment uses the seed-42 `val` pair codes, which are 0.5·(img + txt). Codes and Hungarian matching on −|r| come from `scipy.optimize.linear_sum_assignment`. No factor is constant in any seed.
+- The Hungarian alignment matches each replication seed's factors one-to-one to seed 42's factors. It maximizes the total |r| by running `scipy.optimize.linear_sum_assignment` on −|r|, where r is the Pearson correlation between factor columns of the `val` pair codes, 0.5·(img + txt). No factor is constant in any seed.
 
 ### Held check (Step 6): the first and only time held rows were encoded
 
@@ -163,6 +169,9 @@ Held values track the val values closely for both models:
   - `src/test/20261011_factor_repair_grid/checkpoints/R0_seed42.pt`.
 
   Both files are gitignored.
+- **SHA-256**, computed with `sha256sum` during the final-review fix wave. They match the prefixes the final reviewer recorded.
+  - `checkpoints/selected_seed42.pt`: `1c299fc008ca006ffd2de37315ac3557523bf06e0b755d4dcbf70b999b4e453f`
+  - `checkpoints/R0_seed42.pt`: `4229dfe55f735bc7e9849c8d7af623b5872a9de940f616969ef477fb00a253a7`
 - **Reloaded** with `load_factor_checkpoint(path, device="cuda:0")`. The same 1,000 held rows (chosen with `default_rng(42)`) were encoded as one batch by the in-session model and by the reloaded model.
   - **Bit-identical** for both models: max abs difference 0.0, and the config round-trip is equal.
   - For information, the same rows inside the full 8,192-row-batch held encoding differ by at most 8.3e-7 (R3) and 3.0e-7 (R0). That difference comes from the batch shape (cuBLAS), not from the checkpoint.
@@ -387,7 +396,10 @@ The code paths for both steps were exercised once in a 3-epoch smoke run whose n
   - The evidence not shaped by the decision is: the replication seeds, the held gates (computed once, after the decision) and Task 7's held label episodes.
   - Under the original pre-registered gates, no run passes (see the historical section).
 - **Tie-break over R6.** R3 was selected over R6 by a mean-readout difference of 0.0012. R6 scored 0.82 points higher, inside the 1-point band. The two recipes differ only in input centering.
-- **Unstable axes across seeds.** The replication seeds pass every gate and score +3.71 and +4.28. But only 13 (seed 43) and 10 (seed 44) of the 32 factors match seed 42's at |r| ≥ 0.9, and the worst matches are 0.143 and 0.195. The subspace is stable but some individual factors are not. Anything that reads meaning into a specific factor index should be checked across seeds.
+- **Seed-specific directions and unstable factor indices.** The replication seeds pass every gate and score +3.71 and +4.28.
+  - The final review measured the spanned directions (post hoc). About 24 directions are shared across seeds: the canonical correlations to seed 42 have median 0.94, and 19–20 of 32 are ≥ 0.9, 24–25 ≥ 0.8. About 7 are seed-specific: the last canonical correlations are 0.06–0.09. Every seed-43/44 factor is linearly predictable from the seed-42 codes with R² ≥ 0.55 (median about 0.86).
+  - Individual factor indices are less stable. Only 13 (seed 43) and 10 (seed 44) of the 32 factors match a seed-42 factor one-to-one at |r| ≥ 0.9, and the worst matches are 0.143 and 0.195.
+  - Anything that reads meaning into a specific factor index should be checked across seeds.
 - **Single seed per grid configuration, and no confidence intervals on lift.** Each label type has 2,048 episodes. Score differences of about 1 R@1 point between runs are not resolvable, which is why the pre-registered rule treats them as ties. Among the InfoNCE ReLU runs the scores span 3.85-4.99 points. Only R6 vs R1 and R6 vs R7 differ by more than 1 point (1.14 and 1.08).
 - **Ties at beta=0.** The rank is tie-aware: rank = 1 + (number of candidates scored above the positive) + 0.5 × (number tied with it).
   - A single tie with the positive therefore gives rank 1.5. That is a **full miss at R@1**, which needs rank ≤ 1.

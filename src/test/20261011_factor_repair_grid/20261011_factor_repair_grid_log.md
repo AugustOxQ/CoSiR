@@ -118,3 +118,5 @@ Under the original pre-registered gates, R3 still fails the text readout floor a
   - `results/R3_seed4{2,3,4}_val_pair_codes.npy`
   - `run_amended.log`
   - `checkpoints/selected_seed42.pt`, `checkpoints/R0_seed42.pt`
+
+**Disclosure (final review):** `run_grid.py` was edited after the amended run (file mtime 23:23:07, `run_amended.log` and `results/amended_summary.json` written 23:18:45). What was edited cannot be determined from git: the version that ran was never committed, and `a51cfa7` (23:23:07) is the first commit containing `--amended`. The final review re-derived all reported numbers.
