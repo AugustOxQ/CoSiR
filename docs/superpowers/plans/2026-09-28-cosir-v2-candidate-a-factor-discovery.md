@@ -221,6 +221,73 @@ Report, plainly, up front verdict first:
 
 ---
 
+### Task 5: reduced-rank whitening (fixing the reconstruction collapse)
+
+**Added 2026-09-29** after Task 4's real validation fixed mass-concentration (top-2 share 87.7% ->
+8.66%) but surfaced a new cost: full-rank whitening (`n_components=feature_dim`) collapsed
+reconstruction quality (relative L2 error 0.55/0.51 -> 0.99/0.99). Read
+`docs/reports/2026-09-29_cosir_v2_candidate_a_factor_balance_fix.md` in full for the exact numbers
+this task must improve on.
+
+**Working hypothesis for why this happened**: raw CLIP features are near-rank-deficient (Task 4's
+own float32 PCA attempt saw component variances blow up to ~1e8 before switching to float64) —
+most of the 512 dimensions carry very little real variance. Full-rank whitening rescales *every*
+component, including near-zero-eigenvalue ones, to unit variance. That inflates negligible noise
+directions into full-scale signal, and a 32-factor *linear* dictionary has no low-rank structure
+left to exploit — the whitened target is closer to isotropic noise across the full 512 dims.
+Truncating to the top-K components (by cumulative explained variance) before whitening should keep
+enough concentration removed to prevent 2-factor dominance, while not inflating the noise tail.
+
+**Files:**
+- Modify: `src/model/whitening.py` (`pca_whiten` gets an `n_components` parameter, or a new
+  `pca_whiten_truncated` function — your call, document which; keep the existing full-rank
+  behavior available since Task 4's tests depend on it, do not break them).
+- Modify: `src/test/test_whitening.py` (add truncated-rank coverage).
+- Create: `src/test/20260930_factor_reduced_rank_whitening/run_revalidation.py` +
+  `docs/reports/2026-09-30_cosir_v2_candidate_a_reduced_rank_whitening.md`.
+
+**Scope note**: stay on CLIP features, same as Tasks 3-4 — do not combine with the cross-encoder
+ablation findings (different plan, different question). Isolate one variable (whitening rank) at a
+time.
+
+**Interfaces:**
+- Truncated whitening: fit full-rank PCA (reuse the existing float64 fit), pick `K` = the smallest
+  number of components whose cumulative explained-variance ratio reaches a threshold (start with
+  99%; report the exact `K` this produces on real CLIP features, and report the top-2 mass share
+  and reconstruction error you'd get at a couple of other thresholds too — e.g. 95%, 99.9% — as a
+  sensitivity check, not just the one number you settle on). Keep only the top-`K` whitened
+  components; drop the rest (do not zero-pad back to 512 — feed the K-dim whitened features
+  directly into `SharedFactorEncoder(feature_dim=K, ...)`).
+- Test: on a synthetic fixture with a few high-variance and many near-zero-variance directions,
+  confirm truncated whitening at a given threshold selects the expected `K` and that dropped
+  components are genuinely low-variance in the original (non-whitened) data.
+
+**Real re-validation** (`run_revalidation.py`, reusing Task 3/4's real-data loading pattern
+exactly): re-run factor discovery with truncated-rank-whitened CLIP features (same
+`lambda_usage_balance` as Task 4) at your chosen threshold. Report, plainly, verdict up front:
+1. Chosen `K` (out of 512) and the variance-threshold sensitivity check (K and its downstream
+   numbers at 2-3 thresholds).
+2. Top-2 factor mass share (was 87.7% raw / 8.66% full-rank-whitened) at the chosen `K`.
+3. Anti-split and dead-factor counts, re-checked.
+4. Cross-community-spanning fraction, re-checked (was 59.4% raw / 78.1% full-rank-whitened).
+5. Reconstruction relative L2 error and paired-agreement cosine, re-checked (was 0.55/0.51 raw,
+   0.99/0.99 full-rank-whitened) — this is the number this task exists to fix. Report whether
+   truncation recovers reconstruction quality close to the raw-feature baseline while keeping mass
+   concentration low, or whether the trade-off persists at every threshold tried.
+
+If the trade-off persists at every threshold (no `K` gives both low mass-concentration and
+reasonable reconstruction), say so as directly as Tasks 3-4 did — this is a real possible outcome,
+not a reason to keep tuning until numbers look acceptable.
+
+- [ ] TDD for truncated whitening (real discriminative test on the synthetic fixture, not a
+  shape-check).
+- [ ] Real re-validation on ArtELingo at 2-3 variance thresholds, write the report with a plain
+  verdict, comparing every number directly against Task 3 (raw) and Task 4 (full-rank-whitened).
+- [ ] Commit (implementation): `git add src/model/whitening.py src/test/test_whitening.py && git commit -m "feat(cosir-v2): reduced-rank PCA whitening for factor discovery"`
+- [ ] Commit (validation): `git add src/test/20260930_factor_reduced_rank_whitening/ docs/reports/2026-09-30_cosir_v2_candidate_a_reduced_rank_whitening.md && git commit -m "docs(cosir-v2): re-validate factor discovery with reduced-rank whitening"`
+
+---
+
 ## Self-review
 
 **Placeholder scan:** no TBD/TODO; the "no validated reference for this loss combination" and
