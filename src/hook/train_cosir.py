@@ -1737,12 +1737,14 @@ def train_cosir(cfg, logger):
             lambda_ent = getattr(cfg.loss, "lambda_ent", 0.0)
             ent_tau = getattr(cfg.loss, "ent_tau", 5.0)
             pred_stopgrad = getattr(cfg.loss, "pred_stopgrad", True)
+            predictor_start_epoch = getattr(cfg.train, "predictor_start_epoch", 0)
+            predictor_active = epoch >= predictor_start_epoch
 
             pred_cond = None
-            if lambda_pred > 0 or (lambda_ent > 0 and len(sample_types) > 0):
+            if (lambda_pred > 0 and predictor_active) or (lambda_ent > 0 and len(sample_types) > 0):
                 pred_cond = model.predict_condition(combine_emb)
 
-            if lambda_pred > 0 and pred_cond is not None:
+            if lambda_pred > 0 and predictor_active and pred_cond is not None:
                 pred_loss = predictor_consistency_loss(
                     pred_cond, label_embeddings, stopgrad=pred_stopgrad
                 )

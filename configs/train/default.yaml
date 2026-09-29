@@ -14,6 +14,7 @@ train:
   load_existing_features: True
   representative_number: 12 # This should equal to selected number of conditions * number of grids
   normalize: false
+  predictor_start_epoch: 0 # Epoch at which condition_predictor distillation (lambda_pred) turns on. Default 0 = trains from the start (current/original behavior, unchanged). Set > 0 to let conditions stabilize before the predictor starts chasing them.
   # Conditional-buddies init hyperparameters (used when initialization_strategy: buddies)
   buddies:
     k: 30                    # mutual-KNN neighbours per modality
