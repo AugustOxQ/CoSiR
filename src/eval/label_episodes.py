@@ -6,11 +6,19 @@ for agreeing with its own mined structure.
 """
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
 
 from src.model.conditioning import conditional_score, naive_condition_weights, pair_codes
+
+if TYPE_CHECKING:                                   # avoid importing the feature store at runtime
+    from src.data.artelingo import ArtelingoData
+
+STANDARD_LABELS = ("emotion", "art_style")
+EMOTION_CATCH_ALL = "something else"                # never an emotion target (Ruling 13)
+STANDARD_MIN_PAINTINGS_PER_LABEL = 30
 
 
 @dataclass(frozen=True)
@@ -95,6 +103,35 @@ def build_label_episodes(labels, paintings, rows, n_episodes, seed=42, num_suppo
                             for k, v in fields.items()})
 
 
+def standard_label_episodes(data: "ArtelingoData", groups: np.ndarray, rows: np.ndarray, label: str,
+                            n_episodes: int, seed: int = 42) -> LabelEpisodes:
+    """The standard ArtELingo label episodes (Ruling 13); reproduces Task 6/7's construction.
+
+    Equals the ``build_label_episodes`` call in
+    src/test/20261011_factor_repair_grid/run_grid.py::build_val_episodes, which Task 7's run_eval.py
+    reused for val and held: ``paintings=groups`` (the full leakage-group id array, one per row of
+    ``data``), ``exclude_target_paintings_from_negatives=True``, ``min_paintings_per_label=30``, and for
+    ``label="emotion"`` ``exclude_target_labels=("something else",)``. ``label="art_style"`` uses
+    ``data.art_styles`` and asserts one style per leakage group. ``rows`` are global row indices (e.g.
+    ``split.val``); only they are sampled.
+    """
+    if label not in STANDARD_LABELS:
+        raise ValueError(f"label must be one of {STANDARD_LABELS}, got {label!r}")
+    labels = np.asarray(data.emotions if label == "emotion" else data.art_styles)
+    groups = np.asarray(groups)
+    if groups.shape != labels.shape:
+        raise ValueError(f"groups must have one leakage-group id per row ({len(labels)}), got shape {groups.shape}")
+    if label == "art_style":
+        _, group_codes = np.unique(groups, return_inverse=True)
+        _, style_codes = np.unique(labels, return_inverse=True)
+        if len(np.unique(np.stack([group_codes, style_codes], axis=1), axis=0)) != group_codes.max() + 1:
+            raise ValueError("Some leakage group maps to more than one art_style")
+    exclude = (EMOTION_CATCH_ALL,) if label == "emotion" else ()
+    return build_label_episodes(labels, groups, rows, n_episodes, seed=seed,
+                                min_paintings_per_label=STANDARD_MIN_PAINTINGS_PER_LABEL,
+                                exclude_target_labels=exclude, exclude_target_paintings_from_negatives=True)
+
+
 def tie_aware_rank(scores: torch.Tensor) -> torch.Tensor:
     positive, others = scores[:, :1], scores[:, 1:]
     rank = 1.0 + (others > positive).sum(dim=1) + 0.5 * (others == positive).sum(dim=1)
@@ -123,11 +160,20 @@ def label_episode_recall(img_feat, txt_feat, img_codes, txt_codes, episodes: Lab
     return out
 
 
-def condition_lift(img_feat, txt_feat, img_codes, txt_codes, episodes: LabelEpisodes) -> dict:
-    """Naive minus uniform R@1 at beta=0: the condition-specific benefit of the factor space."""
+def label_episode_weights(img_codes, txt_codes, episodes: LabelEpisodes, top_k: int | None = None) -> torch.Tensor:
+    """Naive condition weights per episode, (n_episodes, num_factors), from global-row code arrays.
+
+    ReLU(mean support pair code - mean contrast pair code), L1-normalized (optionally top-k), where a
+    pair code is 0.5 * (image code + text code) of one row. An all-zero row means "no factor favoured".
+    """
     support = pair_codes(_t(img_codes[episodes.supports]), _t(txt_codes[episodes.supports]))
     contrast = pair_codes(_t(img_codes[episodes.contrasts]), _t(txt_codes[episodes.contrasts]))
-    naive = naive_condition_weights(support, contrast)
+    return naive_condition_weights(support, contrast, top_k=top_k)
+
+
+def condition_lift(img_feat, txt_feat, img_codes, txt_codes, episodes: LabelEpisodes) -> dict:
+    """Naive minus uniform R@1 at beta=0: the condition-specific benefit of the factor space."""
+    naive = label_episode_weights(img_codes, txt_codes, episodes)
     uniform = torch.full_like(naive, 1.0 / naive.shape[-1])
     result = {name: label_episode_recall(img_feat, txt_feat, img_codes, txt_codes, episodes, w, 0.0)
               for name, w in (("naive", naive), ("uniform", uniform))}
