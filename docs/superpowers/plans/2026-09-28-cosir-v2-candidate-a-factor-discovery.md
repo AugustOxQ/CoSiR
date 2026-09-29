@@ -154,6 +154,73 @@ tried and why, not just the final result.
 
 ---
 
+### Task 4: usage-balance regularizer + input whitening (fixing the mass-concentration collapse)
+
+**Added 2026-09-29** after Task 3's real validation found a third, unanticipated failure mode:
+2 of 32 factors carried 87.7% of all activation mass (13/32 factors concentrated in a single
+community; the anti-split and dead-factor controls both worked as designed, but nothing in the
+original loss suite targeted *cross-factor* usage balance). Read
+`docs/reports/2026-09-28_cosir_v2_candidate_a_factor_discovery_validation.md` in full for the
+exact numbers this task must improve on.
+
+**Files:**
+- Create: `src/model/whitening.py`; test `src/test/test_whitening.py`.
+- Modify: `src/train/factors.py` (add `usage_balance_penalty`); test addition in
+  `src/test/test_factor_losses.py`.
+- Modify: `src/train/train_factors.py` (`FactorTrainingConfig` gets `lambda_usage_balance: float`;
+  wire the new loss into the training loop).
+- Create: `src/test/20260929_factor_balance_fix/run_revalidation.py` +
+  `docs/reports/2026-09-29_cosir_v2_candidate_a_factor_balance_fix.md`.
+
+**Scope note**: this task stays on **CLIP features**, matching Task 3's original setup exactly —
+do not combine this with the cross-encoder findings from the Block 1 ablation plan
+(`docs/superpowers/plans/2026-09-29-cosir-v2-block1-cross-encoder-ablation.md`); that's a
+different, later experiment. Isolate one variable (the loss/preprocessing fix) at a time.
+
+**Interfaces:**
+- `usage_balance_penalty(img_codes: Tensor[B,L], txt_codes: Tensor[B,L]) -> Tensor` — negative
+  entropy of the batch's combined per-factor mean activation, normalized to a distribution:
+  `p = mean_activation / mean_activation.sum()`, `penalty = (p * (p + eps).log()).sum()`. This
+  quantity is minimized (most negative) when `p` is uniform (maximum entropy) and approaches 0 as
+  activation concentrates onto few factors — added to the total loss with a positive
+  `lambda_usage_balance`, minimizing it pushes toward uniform per-factor usage. Test this exactly
+  like the anti-split penalty was tested: construct a deliberately peaked fixture (activation mass
+  concentrated in 2 of 8 factors) and a deliberately uniform fixture, assert the peaked fixture's
+  penalty is measurably higher (closer to 0, less negative) than the uniform fixture's.
+- `pca_whiten(features: np.ndarray, seed: int = 42) -> tuple[np.ndarray, PCA]` in
+  `src/model/whitening.py` — fits `sklearn.decomposition.PCA(whiten=True)` on `features`
+  (full-rank, `n_components=features.shape[1]` — decorrelate and unit-variance-scale each
+  component without discarding dimensions), returns the whitened features and the fitted `PCA`
+  object (so a caller can apply the *same* fit to held-out data later, even though this task only
+  needs the train-split transform). Test: whitened output has near-zero cross-component
+  covariance and near-unit per-component variance on a synthetic correlated-features fixture.
+
+**Real re-validation** (`run_revalidation.py`, reusing Task 3's real-data loading pattern exactly,
+CLIP features): re-run factor discovery with (a) `lambda_usage_balance` added at a reasonable
+starting weight (your call, document why — comparable in spirit to how `lambda_anti_split` was
+scaled) and (b) PCA-whitened CLIP features as the encoder input instead of raw CLIP features.
+Report, plainly, up front verdict first:
+1. Does the max single-factor (or top-2-factor) activation-mass share drop substantially below
+   87.7%? Report the actual new number.
+2. Re-check anti-split and dead-factor counts — did fixing mass-concentration break either of the
+   two previously-working controls (a real risk: pushing hard for uniform usage could force
+   otherwise-dead or modality-private factors to activate anyway, in a way that isn't genuinely
+   meaningful)? Report plainly if so.
+3. Re-check the cross-community-spanning fraction (was 19/32 = 59.4%) — did it improve, stay flat,
+   or get worse?
+4. If results still show real problems, say so as directly as Task 3 did — this task's job is to
+   test the proposed fix honestly, not to declare victory.
+
+- [ ] TDD for `usage_balance_penalty` and `pca_whiten`, real anti-split-style discriminative
+  tests, not shape-checks.
+- [ ] Wire both into `train_factors`/`FactorTrainingConfig`.
+- [ ] Real re-validation on ArtELingo, write the report with a plain verdict, comparing every
+  number directly against Task 3's original figures.
+- [ ] Commit (implementation): `git add src/model/whitening.py src/test/test_whitening.py src/train/factors.py src/test/test_factor_losses.py src/train/train_factors.py src/test/test_train_factors.py && git commit -m "feat(cosir-v2): usage-balance regularizer + PCA whitening for factor discovery"`
+- [ ] Commit (validation): `git add src/test/20260929_factor_balance_fix/ docs/reports/2026-09-29_cosir_v2_candidate_a_factor_balance_fix.md && git commit -m "docs(cosir-v2): re-validate factor discovery with usage-balance fix"`
+
+---
+
 ## Self-review
 
 **Placeholder scan:** no TBD/TODO; the "no validated reference for this loss combination" and
