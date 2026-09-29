@@ -84,10 +84,10 @@ Concretely:
   much larger tuning budget than PercepT got. So it is **not**
   comparable to 0.9226, to 0.8534, or to §3's "3/4 seeds". The §6g
   headline stands until a matched head-to-head is run. The stress test
-  also showed that the sweep's own top-ranked configs pass the Stage 1
-  gate on only 1/4 seeds (the winner's curse near the gate), and that
-  emotion AMI and Stage 2 AUC trade off against each other (r = −0.85
-  across finalists).
+  also showed that the sweep's two top-ranked configs, and 4 of its top
+  6, pass the gate on only 1/4 seeds (the winner's curse near the gate).
+  Among the 10 finalists, emotion AMI and Stage 2 AUC also traded off
+  (r = −0.85), a frontier observation rather than a general law.
 
 **Do not pursue the DEC-style clustering-loss hybrid further** (see §4) — it
 was tried four times (literal transplant, geometry-corrected vMF kernel, a
@@ -818,7 +818,9 @@ step itself, not simply how the two InfoNCE terms are weighted.
 ## 6i. Joint Stage 1 + Stage 2 hyperparameter sweep, and a 4-seed stress test of its finalists
 
 **2026-09-30.** The hand-tuned candidate rounds above (§6c–§6h) were
-replaced by one systematic search: a 21-dimensional Bayesian W&B sweep
+replaced by one systematic search: a 20-parameter Bayesian W&B sweep
+(earlier documents say 21 or 22: `teacher_graph_alpha` was dropped as
+inert, and the sweep YAML has 20 parameters)
 (`polysemic/CoSiR-buddy-percept-sweep/40i43gt5`) over a
 **re-implemented** version of buddy's pipeline
 (`scripts/buddy_percept_sweep/`). The re-implementation differs
@@ -839,12 +841,17 @@ assigned to the merged train topics by a k-NN vote, with `transfer_k`
 itself swept over {10, 20, 30, 40}, which is the method of §6e. §2/§3
 instead re-clustered the held-out paintings independently with Leiden,
 and that is where the thresholds and the attention-h1 baseline's "3/4
-seeds" come from. At seed 42 with k=20, transfer gives emotion AMI
-+0.0115 and genre AMI +0.0126 above independent re-clustering, and
-emotion AMI rises with k: 0.1327 at k=10, 0.1364 at k=20, 0.1390 at k=50
+seeds" come from. On the pilots' attention-h1 snapshot (seed 42, 19
+train topics), transfer at k=20 gives emotion AMI +0.0115 and genre AMI
++0.0126 above independent re-clustering, and emotion AMI rises with k:
+0.1327 at k=10, 0.1364 at k=20, 0.1390 at k=50
 ([`heldout_label_transfer_pilot_report.md`](../../src/test/20260923_artelingo_buddy_analysis/heldout_label_transfer_pilot_report.md)).
-The gate was therefore easier to pass here than in §3's sense of the
-bar. Genre AMI rests on only 159 genre-labelled held-out paintings.
+This offset was measured on the pilot model, not on this harness, but
+it indicates the gate was easier to pass here than in §3's sense of the
+bar. The same caveat applies to the "clears Pareto bar" column in §6e,
+whose AMIs are also transfer AMIs judged against thresholds set with
+independent re-clustering. Genre AMI rests on only 159
+genre-labelled held-out paintings.
 
 The sweep ran on 9 GPUs across three DAS6 nodes for about 36 hours. It
 was stopped on 2026-09-29 after about 2,267 trials, of which 335 had
@@ -994,8 +1001,8 @@ symmetrically tuned 0.9226 (§6g). Neither comparison is sound yet:
 - `stage1_fused_silhouette` was not logged, so the sweep says nothing
   about the silhouette axis.
 - `heads=attn1` and `heads=attn4` build identical models (only
-  `num_heads` matters), so the space has effectively 20 dimensions, and
-  W&B's parameter importance for `heads` is meaningless.
+  `num_heads` matters), so `heads` is effectively binary (MLP vs.
+  attention), and W&B's parameter importance for it is misleading.
 - Each trial ran as a fresh process (`wandb agent` with `program:`), so
   the in-memory input cache never carried over between trials.
   GoEmotions features were re-extracted every trial, which wasted
