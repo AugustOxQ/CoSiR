@@ -252,6 +252,55 @@ project's established report convention (verdict first, then evidence, then cave
 
 ---
 
+### Task 4: confusion-pattern diagnostic for the 19 dead factors
+
+**Added 2026-10-01** after Task 3's real validation found held-out condition recovery well above
+chance overall (21.95% vs. 3.125%) but sharply uneven: 19 of 32 factors had zero correct held-out
+predictions while several others reached 67-100%. Read
+`docs/reports/2026-10-01_cosir_v2_candidate_a_condition_interface_validation.md` in full for the
+exact numbers this task must explain. This is a **diagnostic-only** task — no architecture or
+training change yet; the point is to find out *why* the 19 factors are dead before choosing a fix.
+
+**Files:** create `src/test/20261002_condition_confusion_diagnostic/run_diagnostic.py`; create
+`docs/reports/2026-10-02_cosir_v2_candidate_a_condition_confusion_diagnostic.md`.
+
+**Method:** reproduce Task 3's exact setup byte-for-byte where it matters for reproducibility (same
+Task 6 factor-encoder recipe, same `mine_episodes` call with the same `EpisodeMiningConfig` and
+`seed=42`, same 80/20 episode split with `seed=42`, same `ConditionEncoder` training) so the mined
+episodes and train/held-out split are identical to Task 3's. Additionally:
+1. For every held-out episode, record `(true_factor, predicted_factor)` where
+   `predicted_factor = argmax(w(c))`. Build the full 32x32 confusion matrix (rows = true factor,
+   columns = predicted factor).
+2. For each of the 19 factors Task 3 reported as zero-correct, report the full distribution of what
+   they were predicted as instead (which factor(s) absorbed their held-out episodes, and in what
+   proportion) — not just the single most common wrong prediction.
+3. **Global prediction skew check**: across *all* held-out predictions (not just the wrong ones),
+   report how concentrated the predicted-factor distribution is (e.g. what fraction of all 205
+   held-out predictions land on the 5 most-predicted factors) — this tests whether the encoder is
+   collapsing toward a handful of "attractor" factors regardless of the true condition, a different
+   failure mode from correlated-but-distinct factors being confused with each other.
+4. **Real-data correlation check**: compute the `(32, 32)` pairwise cosine similarity matrix between
+   factor columns of `pair_codes` across all 308,723 real samples (i.e., how correlated each pair of
+   factors' real activation patterns is, independent of any episode or training). For each of the 19
+   dead factors, report whether its most-common wrong prediction (from step 2) is among its top-3
+   most-correlated factors by this real-data measure. Report the fraction of dead factors for which
+   this holds.
+
+**Report, plainly, verdict up front**: which story does the evidence support — (a) real-data factor
+correlation genuinely makes some conditions ambiguous from a few examples (dead factors' wrong
+predictions concentrate on their most-correlated real-data neighbors), (b) the encoder collapses
+toward a small fixed set of attractor factors regardless of the true condition (a training/capacity
+issue, not a factor-space issue), or (c) neither pattern is clear (wrong predictions look close to
+uniformly spread across the other 31 factors, suggesting something else, e.g. too little training
+data per factor). State which of these (or a mix) the numbers actually show, do not force-fit to
+one story if the evidence is mixed.
+
+- [ ] Implement the diagnostic script and write the report with the confusion matrix, per-dead-
+  factor breakdown, global skew check, and real-data correlation check.
+- [ ] Commit: `git add src/test/20261002_condition_confusion_diagnostic/ docs/reports/2026-10-02_cosir_v2_candidate_a_condition_confusion_diagnostic.md && git commit -m "docs(cosir-v2): diagnose condition-recovery confusion pattern on dead factors"`
+
+---
+
 ## Self-review
 
 **Placeholder scan:** no TBD/TODO; "your call, document why" points are explicit
