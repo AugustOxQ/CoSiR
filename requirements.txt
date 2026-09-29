@@ -16,7 +16,7 @@ scipy
 opencv-python
 einops
 matplotlib
-scikit-learn
+scikit-learn<1.9   # cuml-cu12==25.8.* imports a private sklearn API removed in 1.9 (BaseEstimator._get_default_requests)
 numpy
 pandas
 seaborn
@@ -26,7 +26,7 @@ openai
 # salesforce-lavis
 # open_clip_torch
 peft
-# dask-cuda
+dask-cuda       # hard import via src/model/clustering.py -> src/model/__init__.py
 
 # --------- jupyter --------- #
 ipykernel       # for jupyter notebook
@@ -44,6 +44,7 @@ wandb
 # --------- utils ---------#
 tqdm
 Pillow
+psutil          # hard import in src/utils/feature_manager.py (memory-aware caching)
 
 # --------- others --------- #
 pyrootutils     # standardizing the project root setup
