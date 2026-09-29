@@ -1,11 +1,11 @@
 # Experiment 13 — Symmetric conditioning (Option A): does removing the one-sided combiner explain the i2t/t2i freeze-ablation asymmetry?
 
-> **Promoted docs-only from `experiment/two_side_conditioning`** (2026-08-31) per this project's two-branch reconciliation convention. **The code this report describes (`model.conditioning_mode="symmetric_shared"`, the SDD implementation ledger, the new unit tests) is NOT present on this branch (`experiment/condition_drift_retrieval_correlation`)** — it lives only on `experiment/two_side_conditioning` (worktree `/project/CoSiR-two_side_conditioning`). This copy exists so the finding is citable from either branch's report history; treat the "Code" line below as historical/foreign, not something to go looking for here.
+> **Promoted docs-only from `experiment/two_side_conditioning`** (2026-08-31) per this project's two-branch reconciliation convention. **The code this report describes (`model.conditioning_mode="symmetric_shared"`, the SDD implementation ledger, the new unit tests) is NOT present on main** — it lives only on the archived branch `experiment/two_side_conditioning` (tag `archive/experiment/two_side_conditioning`; its worktree was removed 2026-09-30). This copy exists so the finding is citable from either branch's report history; treat the "Code" line below as historical/foreign, not something to go looking for here.
 
 **Date:** 2026-08-27
 **Dataset:** RedCaps-150k
 **Implementation branch/worktree:** `experiment/two_side_conditioning` (worktree `/project/CoSiR-two_side_conditioning`; originally implemented on `experiment/symmetric_conditioning_exp13`, branched from `experiment/condition_drift_retrieval_correlation` at `de4edd1`, then consolidated onto `experiment/two_side_conditioning`)
-**Analysis branch:** `experiment/two_side_conditioning` (original); also promoted docs-only to `experiment/condition_drift_retrieval_correlation` (this copy)
+**Analysis branch:** `experiment/two_side_conditioning` (original); also promoted docs-only to `experiment/condition_drift_retrieval_correlation` (this copy, carried to main on 2026-09-30)
 **Code:** `src/model/cosirmodel.py`, `src/metrics/loss.py`, `src/hook/train_cosir.py`, `src/eval/pipeline.py`, `src/eval/metrics.py` (new opt-in `model.conditioning_mode="symmetric_shared"`); `.superpowers/sdd/2026-08-27-symmetric-conditioning-exp13/` (full SDD implementation ledger); `docs/superpowers/scratch/2026-08-27_codex_symmetric_combiner_brainstorm.md` (architecture design memo this implements) — **all only on `experiment/two_side_conditioning`**
 **Motivated by:** `docs/reports/2026-08-27_combine_side_txt_replication.md` (C10) — flipping `combine_side` shrinks C9's i2t-vs-t2i freeze-ablation asymmetry by ~11× but does not eliminate it, leaving "why does image-side combination amplify this" unexplained
 **Compute:** 1 smoke test (2 epochs × 2 arms) + 6 real runs (3 seeds × {trained, frozen}, 100 epochs each, ~2.5h wall time)
@@ -44,7 +44,7 @@ Freeze/drift sanity check passed: all 3 frozen-arm runs show `drift_from_init ==
 ## Interpretation
 
 1. **Both the primary and deployable metrics agree, and both land inside the established noise floor (~0.1–0.7 R1) on both retrieval directions.** This is not merely "smaller than img-combine" (as the `combine_side="txt"` replication showed) — it is a null result by this project's own standard (`mean/SEM ≥ 2`), and the deployable-tier i2t delta is not even sign-consistent with the primary tier's (−0.40 vs. +0.53), the kind of sign instability expected from noise, not a real directional effect.
-2. **Per Experiment 13's pre-registered success criteria** (originally `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 on `experiment/two_side_conditioning`; see this branch's copy for the promoted C11 summary): this is the **"Supports the architectural-amplification hypothesis"** outcome — `A` shrinks substantially relative to img-combine, and unlike the txt-combine replication, i2t itself is no longer a seed-replicated significant effect at all (2/3 and 0/3 win-rates on the two metric tiers, vs. 3/3 for both img-combine and txt-combine).
+2. **Per Experiment 13's pre-registered success criteria** (`docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4, Experiment 13 — promoted to main's copy on 2026-09-30 alongside the C11 summary): this is the **"Supports the architectural-amplification hypothesis"** outcome — `A` shrinks substantially relative to img-combine, and unlike the txt-combine replication, i2t itself is no longer a seed-replicated significant effect at all (2/3 and 0/3 win-rates on the two metric tiers, vs. 3/3 for both img-combine and txt-combine).
 3. **This is a stronger result than the `combine_side="txt"` replication predicted.** That experiment showed the one-sided combiner *amplifies* the i2t effect by ~11×, implying a real i2t effect might survive symmetrization, just smaller. Instead, symmetrizing the combiner removes essentially all of it. The most direct reading: **C9's headline finding — "continued post-init training of the conditions regresses i2t retrieval" — is largely, possibly entirely, an artifact of conditioning only one modality**, not a property of buddy-graph training dynamics in general.
 4. **What this does not (yet) establish**: why the one-sided combiner specifically produces this effect (a mechanistic account, e.g. via gradient asymmetry into the shared condition table, or the `other_proj` identity-init pathway never adapting) is still open — this experiment shows *that* removing the asymmetry removes the effect, not the causal mechanism by which the asymmetry produced it.
 
@@ -59,10 +59,10 @@ Freeze/drift sanity check passed: all 3 frozen-arm runs show `drift_from_init ==
 
 ## Reproduction
 
-> The commands below only work on `experiment/two_side_conditioning` (worktree `/project/CoSiR-two_side_conditioning`) — the `model.conditioning_mode` flag they reference does not exist on this branch.
+> The commands below only work on a checkout of the archived tag `archive/experiment/two_side_conditioning` (e.g. `git worktree add ../CoSiR-two_side_conditioning archive/experiment/two_side_conditioning`) — the `model.conditioning_mode` flag they reference does not exist on main.
 
 ```bash
-# (from the worktree /project/CoSiR-two_side_conditioning, branch experiment/two_side_conditioning)
+# (from a checkout of tag archive/experiment/two_side_conditioning)
 source ~/miniconda3/etc/profile.d/conda.sh && conda activate CoSiR
 
 # smoke test (fast sanity gate)
