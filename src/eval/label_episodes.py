@@ -25,6 +25,8 @@ class LabelEpisodes:
 
 def _draw_distinct(rng, pool, paintings, used, count):
     """Draw `count` rows from `pool` whose paintings are not yet in `used` (updates `used`)."""
+    if count > 0 and len(pool) == 0:
+        raise ValueError("Not enough distinct paintings to fill an episode")
     picked = []
     for _ in range(50 * count):
         if len(picked) == count:
@@ -47,24 +49,42 @@ def _draw_distinct(rng, pool, paintings, used, count):
 
 def build_label_episodes(labels, paintings, rows, n_episodes, seed=42, num_support=4, num_contrast=4,
                          num_distractors=12, min_paintings_per_label=30,
-                         exclude_target_labels=()) -> LabelEpisodes:
+                         exclude_target_labels=(),
+                         exclude_target_paintings_from_negatives: bool = False) -> LabelEpisodes:
+    """Label-defined retrieval episodes.
+
+    `exclude_target_paintings_from_negatives`: for per-annotation labels (emotion) an other-label row
+    often depicts a painting that another annotator gave the target label, which makes it an ambiguous
+    negative. When True, contrasts and distractors come only from rows whose painting carries the
+    target label in NO row of the full `labels` array (not just `rows`).
+    """
     labels, paintings = np.asarray(labels), np.asarray(paintings)
     rows = np.asarray(rows, dtype=np.int64)
     rng = np.random.default_rng(seed)
     row_labels = labels[rows]
     members = {label: rows[row_labels == label] for label in np.unique(row_labels)}
     others = {label: rows[row_labels != label] for label in members}
+    missing = sorted({str(x) for x in exclude_target_labels if x not in members})
+    if missing:
+        raise ValueError(f"exclude_target_labels not present in labels[rows]: {missing}")
+    excluded = set(exclude_target_labels)
     eligible = sorted(label for label, m in members.items()
-                      if label not in set(exclude_target_labels)
+                      if label not in excluded
                       and len(np.unique(paintings[m])) >= min_paintings_per_label)
     if len(eligible) < 2:
         raise ValueError("Need at least two eligible target labels")
+    negatives = others
+    if exclude_target_paintings_from_negatives:
+        negatives = {}
+        for label in eligible:                              # once per label, not per episode
+            target_paintings = np.unique(paintings[labels == label])
+            negatives[label] = others[label][~np.isin(paintings[others[label]], target_paintings)]
     fields = {k: [] for k in ("anchor", "positive", "supports", "contrasts", "distractors", "labels")}
     for _ in range(n_episodes):
         label = eligible[rng.integers(len(eligible))]       # label-balanced targets
         used: set = set()
         same = _draw_distinct(rng, members[label], paintings, used, 2 + num_support)
-        other = _draw_distinct(rng, others[label], paintings, used, num_contrast + num_distractors)
+        other = _draw_distinct(rng, negatives[label], paintings, used, num_contrast + num_distractors)
         fields["anchor"].append(same[0])
         fields["positive"].append(same[1])
         fields["supports"].append(same[2:])
@@ -77,7 +97,9 @@ def build_label_episodes(labels, paintings, rows, n_episodes, seed=42, num_suppo
 
 def tie_aware_rank(scores: torch.Tensor) -> torch.Tensor:
     positive, others = scores[:, :1], scores[:, 1:]
-    return 1.0 + (others > positive).sum(dim=1) + 0.5 * (others == positive).sum(dim=1)
+    rank = 1.0 + (others > positive).sum(dim=1) + 0.5 * (others == positive).sum(dim=1)
+    non_finite = ~torch.isfinite(scores).all(dim=1)         # NaN/inf never counts as a success
+    return torch.where(non_finite, torch.full_like(rank, float(scores.shape[1])), rank)
 
 
 def _t(values) -> torch.Tensor:

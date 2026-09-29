@@ -99,3 +99,76 @@ def test_condition_lift_is_positive_when_a_factor_encodes_the_label_and_near_zer
     ep = build_label_episodes(labels, paintings, np.arange(n), 400, seed=42)
     assert condition_lift(img, txt, informative, informative, ep)["lift_mean"] > 0.3
     assert abs(condition_lift(img, txt, noise, noise, ep)["lift_mean"]) < 0.1
+
+
+# ---- Fix round 1: clean negatives for per-annotation labels, exclusion validation, non-finite ranks ----
+
+def _per_row_fixture(seed=3, n_paintings=300, rows_per_painting=3):
+    """Per-ANNOTATION labels (like emotion): every row's label is drawn independently, so a painting
+    usually carries several labels and an other-label row often shows a painting that also has the target."""
+    rng = np.random.default_rng(seed)
+    paintings = np.repeat(np.arange(n_paintings), rows_per_painting).astype(str)
+    labels = rng.choice(np.array(["a", "b", "c"]), size=len(paintings))
+    return labels, paintings
+
+
+def _negatives_with_target_painting(ep, labels, paintings):
+    """Count contrast/distractor rows whose painting has ANY row (full label array) labeled as the episode target."""
+    bad = 0
+    for i in range(len(ep.labels)):
+        has_target = set(paintings[labels == ep.labels[i]])
+        bad += sum(paintings[r] in has_target for r in [*ep.contrasts[i], *ep.distractors[i]])
+    return bad
+
+
+def test_clean_negatives_flag_removes_target_paintings_from_contrasts_and_distractors():
+    labels, paintings = _per_row_fixture()
+    n = len(labels)
+    for rows in (np.arange(n), np.arange(0, n, 2)):      # the subset proves "target paintings" use the FULL label array
+        clean = build_label_episodes(labels, paintings, rows, 200, seed=42,
+                                     exclude_target_paintings_from_negatives=True)
+        assert _negatives_with_target_painting(clean, labels, paintings) == 0
+        assert all(labels[r] != clean.labels[i] for i in range(200)
+                   for r in [*clean.contrasts[i], *clean.distractors[i]])
+        assert set(np.concatenate([clean.anchor, clean.positive, clean.supports.ravel(),
+                                   clean.contrasts.ravel(), clean.distractors.ravel()]).tolist()) <= set(rows.tolist())
+        default = build_label_episodes(labels, paintings, rows, 200, seed=42)
+        assert _negatives_with_target_painting(default, labels, paintings) > 0    # the flag is what removes them
+
+
+def test_clean_negatives_flag_default_off_is_identical_to_omitting_it():
+    labels, paintings = _per_row_fixture()
+    rows = np.arange(len(labels))
+    omitted = build_label_episodes(labels, paintings, rows, 60, seed=42)
+    explicit = build_label_episodes(labels, paintings, rows, 60, seed=42,
+                                    exclude_target_paintings_from_negatives=False)
+    for name in ("anchor", "positive", "supports", "contrasts", "distractors", "labels"):
+        assert np.array_equal(getattr(omitted, name), getattr(explicit, name))
+
+
+def test_clean_negatives_raises_when_no_clean_pool_can_fill_an_episode():
+    # Every painting carries every label, so no painting is free of the target label.
+    paintings = np.repeat(np.arange(100), 3).astype(str)
+    labels = np.tile(np.array(["a", "b", "c"]), 100)
+    with pytest.raises(ValueError):
+        build_label_episodes(labels, paintings, np.arange(len(labels)), 5, seed=42,
+                             exclude_target_paintings_from_negatives=True)
+    build_label_episodes(labels, paintings, np.arange(len(labels)), 5, seed=42)   # default still builds
+
+
+def test_exclude_target_labels_must_be_present_in_the_rows():
+    labels, paintings, _ = _fixture()
+    rows = np.arange(len(labels))
+    with pytest.raises(ValueError):
+        build_label_episodes(labels, paintings, rows, 10, seed=42, exclude_target_labels=("Something else",))
+    with pytest.raises(ValueError):                                     # present in `labels`, absent from `rows`
+        build_label_episodes(labels, paintings, np.flatnonzero(labels != "c"), 10, seed=42,
+                             exclude_target_labels=("c",))
+    ep = build_label_episodes(labels, paintings, rows, 10, seed=42, exclude_target_labels=("c",))
+    assert "c" not in set(ep.labels.tolist())
+
+
+def test_tie_aware_rank_gives_non_finite_rows_the_worst_rank():
+    scores = torch.tensor([[float("nan"), 1.0, 2.0], [5.0, 1.0, 2.0], [1.0, float("inf"), 0.0]])
+    assert tie_aware_rank(scores).tolist() == [3.0, 1.0, 3.0]
+    assert tie_aware_rank(torch.tensor([[1.0, float("-inf"), 0.0]])).tolist() == [3.0]   # any non-finite entry
