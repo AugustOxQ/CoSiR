@@ -61,7 +61,15 @@ def grouped_split(groups: np.ndarray, fractions=(0.7, 0.1, 0.2), seed: int = 42)
 
 
 def split_leakage(split: GroupedSplit, paintings: np.ndarray, img_features: np.ndarray) -> dict:
-    """Rows of val/held whose painting or exact image vector also appears in an earlier part."""
+    """Rows of val/held whose painting or exact image vector also appears in an earlier part.
+
+    Exact keys only: zero here means no shared painting slug and no bit-identical image vector,
+    not "no near-duplicate image". Final-review measurement (seed-42 ArtELingo split):
+    24 held rows (0.04%) have a train image at CLIP cosine >= 0.99 and 63 (0.10%) at >= 0.98. These
+    are real WikiArt duplicates stored under different painting slugs, e.g.
+    ``camille-pissarro_boulevard-montmartre-spring-rain`` vs its ``...-1897`` slug (as the reviewer reported it).
+    The final review judged that they change no reported conclusion.
+    """
     paintings = np.asarray(paintings)
     hashes = image_hashes(img_features)
     checks = (("val", "train", split.val, split.train),
