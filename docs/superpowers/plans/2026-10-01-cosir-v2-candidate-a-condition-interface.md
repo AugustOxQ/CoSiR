@@ -507,6 +507,44 @@ variant look good.
 
 ---
 
+### Task 8: add the CLIP-only baseline row (closes the missing-baseline gap)
+
+**Added 2026-10-05** after Task 7 found the naive nonparametric rule beats the "Uniform"
+condition-blind control by a real, bootstrap-confirmed margin. Uniform (`w(c)=ones(32)/32`) is
+CLIP-dominated (mean CLIP contribution ≈0.057 vs. mean uniform factor contribution ≈0.013 at
+`β=0.3`) but not exactly "no conditioning mechanism at all" — it still adds a small constant factor
+term. This task adds the missing, exact baseline: `w(c) = zeros(32)`, i.e. plain
+`β·cos(CLIP_I(I), CLIP_T(T))` with zero factor contribution, to know precisely how much the whole
+factor-conditioning apparatus (naive or trained) lifts over doing nothing conditional at all.
+
+**Scope**: a small, additive rerun — reuse Task 7's exact item-disjoint split, mined episodes,
+factor codes, and scoring formula (do not re-derive any of it). Add one more `w(c)` variant to the
+same comparison; do not change any existing variant's computation.
+
+**Files:** create `src/test/20261006_condition_clip_only_baseline/run_clip_only_baseline.py`
+(reusing Task 7's `run_ranking_eval.py` data-loading/split/mining/scoring code directly — import or
+copy the relevant functions, document which); create
+`docs/reports/2026-10-06_cosir_v2_candidate_a_clip_only_baseline.md`.
+
+**Task**: compute `w(c) = zeros(32)` for every held-out episode (i.e. the factor term contributes
+exactly 0 to every candidate's score, regardless of `β`). Report, at the same `β ∈ {0, 0.03, 0.3}`
+sweep Task 7 used:
+1. i2t and t2i Recall@1/@3 for this CLIP-only row, alongside Task 7's existing five rows
+   (transcribe them directly from the Task 7 report for a single combined table — do not rerun
+   them, only the new zeros row needs a fresh computation) at each `β`.
+2. Confirm and report that swap reversal is exactly 0% for this row at every `β` (it must be,
+   since a condition-blind score cannot reverse — a discrepancy would indicate a bug, not a real
+   effect; if you find one, report it plainly rather than silently fixing and re-running until it
+   passes).
+3. State plainly: how much of Task 7's naive-vs-uniform lift survives when compared against the
+   *true* zero-conditioning baseline instead of uniform? Is the naive rule's advantage over
+   CLIP-only comparable to, larger than, or smaller than its advantage over uniform?
+
+- [ ] Implement the script, write the report with the combined six-row comparison table.
+- [ ] Commit: `git add src/test/20261006_condition_clip_only_baseline/ docs/reports/2026-10-06_cosir_v2_candidate_a_clip_only_baseline.md && git commit -m "docs(cosir-v2): add CLIP-only baseline to close the condition-interface comparison gap"`
+
+---
+
 ## Self-review
 
 **Placeholder scan:** no TBD/TODO; "your call, document why" points are explicit
