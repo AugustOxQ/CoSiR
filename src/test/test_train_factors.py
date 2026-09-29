@@ -127,3 +127,93 @@ def test_usage_balance_weight_changes_learned_factor_mass(paired_features):
         return np.sort(mass)[-2:].sum() / mass.sum()
 
     assert top_two_share(img_strong, txt_strong) < top_two_share(img_zero, txt_zero) - 0.05
+
+
+def _ring_fixture() -> tuple[np.ndarray, np.ndarray, csr_matrix]:
+    """Tiny CPU fixture shared by the golden and checkpoint tests: N=64, D=16, ring graph."""
+    n, d = 64, 16
+    rng = np.random.default_rng(2026)
+    img = rng.standard_normal((n, d)).astype(np.float32)
+    txt = rng.standard_normal((n, d)).astype(np.float32)
+    nodes = np.arange(n)
+    nxt = (nodes + 1) % n
+    graph = csr_matrix(
+        (np.ones(2 * n, dtype=np.float32),
+         (np.concatenate((nodes, nxt)), np.concatenate((nxt, nodes)))),
+        shape=(n, n),
+    )
+    return img, txt, graph
+
+
+def test_default_config_codes_match_pre_change_golden_values():
+    """Pins the default-config training computation; values were captured from the code before
+    the default-off collapse-fix mechanisms were added (docs/reports/2026-10-09_*diagnosis.md)."""
+    img, txt, graph = _ring_fixture()
+    config = FactorTrainingConfig(num_factors=8, epochs=5, batch_size=16)
+    _, img_codes, _ = train_factors(img, txt, graph, config, device="cpu")
+    golden = np.array(
+        [
+            [0.755346, 0.277184, 0.554156, 0.21297, 0.0, 0.0, 0.0, 0.123],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [1.333562, 0.856291, 1.006007, 0.019826, 0.0, 0.0, 0.160164, 0.0],
+            [1.442109, 0.805504, 0.730896, 0.29193, 0.0, 0.0, 0.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    assert np.array_equal(np.round(img_codes[:4], 6), golden)
+
+
+def test_checkpoint_round_trip_gives_identical_codes(tmp_path):
+    from src.train.train_factors import load_factor_checkpoint, save_factor_checkpoint
+
+    # tiny centered TopK + InfoNCE run, then save/load, then re-encode
+    img, txt, graph = _ring_fixture()
+    config = FactorTrainingConfig(num_factors=8, epochs=3, batch_size=16, agreement="infonce",
+                                  activation="topk", topk=3, center_inputs=True, lambda_decorrelation=1.0)
+    model, img_codes, _ = train_factors(img, txt, graph, config, device="cpu", group_ids=np.arange(64) // 2)
+    save_factor_checkpoint(model, config, tmp_path / "f.pt")
+    loaded, loaded_config = load_factor_checkpoint(tmp_path / "f.pt")
+    with torch.no_grad():
+        again = loaded.encode_image(torch.as_tensor(img, dtype=torch.float32)).numpy()
+    assert loaded_config == config and np.array_equal(again, img_codes)
+
+
+def test_group_ids_length_mismatch_and_unknown_agreement_raise():
+    img, txt, graph = _ring_fixture()
+    with pytest.raises(ValueError):
+        train_factors(img, txt, graph, FactorTrainingConfig(num_factors=8, epochs=1, batch_size=16,
+                                                            agreement="bogus"), device="cpu")
+    with pytest.raises(ValueError):
+        train_factors(img, txt, graph, FactorTrainingConfig(num_factors=8, epochs=1, batch_size=16,
+                                                            agreement="infonce"),
+                      device="cpu", group_ids=np.arange(63))
+
+
+def test_each_fix_mechanism_is_wired_into_training():
+    img, txt, graph = _ring_fixture()
+    base = dict(num_factors=8, epochs=5, batch_size=16)
+    _, default_codes, _ = train_factors(img, txt, graph, FactorTrainingConfig(**base), device="cpu")
+    for overrides in (dict(agreement="infonce"), dict(lambda_decorrelation=1.0),
+                      dict(activation="topk", topk=2), dict(center_inputs=True)):
+        _, codes, _ = train_factors(img, txt, graph, FactorTrainingConfig(**base, **overrides),
+                                    device="cpu")
+        assert not np.array_equal(codes, default_codes), overrides
+
+
+def test_center_inputs_stores_feature_means_in_model_buffers():
+    img, txt, graph = _ring_fixture()
+    off, _, _ = train_factors(img, txt, graph, FactorTrainingConfig(num_factors=8, epochs=1,
+                                                                    batch_size=16), device="cpu")
+    on, _, _ = train_factors(img, txt, graph, FactorTrainingConfig(num_factors=8, epochs=1,
+                                                                   batch_size=16, center_inputs=True),
+                             device="cpu")
+    assert not off.image_mean.any() and not off.text_mean.any()
+    assert np.allclose(on.image_mean.numpy(), img.mean(axis=0))
+    assert np.allclose(on.text_mean.numpy(), txt.mean(axis=0))
+
+
+def test_group_ids_length_is_validated_for_any_agreement():
+    img, txt, graph = _ring_fixture()
+    with pytest.raises(ValueError, match="group_ids"):
+        train_factors(img, txt, graph, FactorTrainingConfig(num_factors=8, epochs=1, batch_size=16),
+                      device="cpu", group_ids=np.arange(65))

@@ -6,6 +6,7 @@ import torch
 from scipy.sparse import csr_matrix
 
 from src.model.factors import SharedFactorEncoder
+from src.train.factors import cross_modal_infonce_loss, decorrelation_penalty
 from src.train.factors import (
     anti_split_penalty,
     graph_neighbor_consistency_loss,
@@ -121,3 +122,42 @@ def test_usage_balance_penalty_detects_two_factor_mass_concentration():
     assert uniform_loss.item() == pytest.approx(-np.log(8), abs=1e-5)
     assert concentrated_loss.item() > uniform_loss.item() + 1.1
     assert concentrated.grad is not None and concentrated.grad.abs().sum() > 0
+
+
+def test_infonce_rejects_the_collapsed_solution_that_cosine_agreement_accepts():
+    collapsed = torch.ones(32, 8)                                   # every item on one direction
+    assert paired_agreement_loss(collapsed, collapsed).item() < 1e-6
+    assert abs(cross_modal_infonce_loss(collapsed, collapsed).item() - torch.log(torch.tensor(32.0)).item()) < 1e-4
+    distinct = torch.eye(32)                                        # every item its own direction
+    assert cross_modal_infonce_loss(distinct, distinct).item() < 0.05
+
+
+def test_infonce_masks_same_group_false_negatives():
+    torch.manual_seed(0)
+    codes = torch.rand(6, 8)
+    codes[1] = codes[0]                                             # same painting, near-duplicate
+    groups = torch.tensor([0, 0, 1, 2, 3, 4])
+    masked = cross_modal_infonce_loss(codes, codes, group_ids=groups)
+    unmasked = cross_modal_infonce_loss(codes, codes)
+    assert masked.item() < unmasked.item()
+
+
+def test_infonce_validates_inputs():
+    with pytest.raises(ValueError):
+        cross_modal_infonce_loss(torch.rand(4, 3), torch.rand(4, 3), temperature=0.0)
+    with pytest.raises(ValueError):
+        cross_modal_infonce_loss(torch.rand(4, 3), torch.rand(4, 3), group_ids=torch.tensor([0, 1]))
+
+
+def test_decorrelation_separates_copies_from_independent_and_ignores_constants():
+    torch.manual_seed(0)
+    z = torch.randn(512, 1)
+    copies = torch.relu(1 + z.repeat(1, 8) + 0.01 * torch.randn(512, 8))
+    independent = torch.relu(torch.randn(512, 8))
+    assert decorrelation_penalty(copies).item() > 0.8
+    assert decorrelation_penalty(independent).item() < 0.05
+    with_constant = independent.clone()
+    with_constant[:, 3] = 0.5
+    value = decorrelation_penalty(with_constant)
+    assert torch.isfinite(value) and value.item() < 0.05
+    assert decorrelation_penalty(torch.rand(1, 8)).item() == 0.0     # one row: no variance, no NaN

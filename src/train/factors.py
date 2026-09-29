@@ -38,6 +38,51 @@ def paired_agreement_loss(img_codes: Tensor, txt_codes: Tensor) -> Tensor:
     return (1 - F.cosine_similarity(img_codes, txt_codes, dim=1)).mean()
 
 
+def cross_modal_infonce_loss(
+    img_codes: Tensor,
+    txt_codes: Tensor,
+    temperature: float = 0.1,
+    group_ids: Tensor | None = None,
+) -> Tensor:
+    """Symmetric image<->text InfoNCE on L2-normalized codes.
+
+    Unlike paired_agreement_loss, a single code direction shared by every item
+    scores log(B), not 0: matched pairs must beat in-batch negatives. Off-diagonal
+    pairs with equal group_ids (same painting / image) are excluded as negatives.
+    """
+    if temperature <= 0:
+        raise ValueError("temperature must be positive")
+    logits = F.normalize(img_codes, dim=1) @ F.normalize(txt_codes, dim=1).T / temperature
+    if group_ids is not None:
+        group_ids = torch.as_tensor(group_ids, device=logits.device)
+        if group_ids.shape != (len(img_codes),):
+            raise ValueError("group_ids must have one entry per row")
+        same = group_ids[:, None] == group_ids[None, :]
+        same.fill_diagonal_(False)
+        logits = logits.masked_fill(same, float("-inf"))
+    targets = torch.arange(len(logits), device=logits.device)
+    return 0.5 * (F.cross_entropy(logits, targets) + F.cross_entropy(logits.T, targets))
+
+
+def decorrelation_penalty(codes: Tensor, eps: float = 1e-6) -> Tensor:
+    """Mean squared off-diagonal batch correlation over factors with non-zero std.
+
+    Constant factors are excluded (no NaN); the dead/constant gates in
+    src/eval/factor_gates.py catch a model that escapes by going constant.
+    """
+    if len(codes) < 2:
+        return codes.sum() * 0.0
+    std = codes.std(dim=0)
+    varying = std > eps
+    k = int(varying.sum())
+    if k < 2:
+        return codes.sum() * 0.0
+    z = (codes[:, varying] - codes[:, varying].mean(dim=0)) / std[varying]
+    corr = z.T @ z / (len(codes) - 1)
+    off = corr - torch.diag(torch.diagonal(corr))
+    return (off**2).sum() / (k * (k - 1))
+
+
 def graph_neighbor_consistency_loss(
     codes: Tensor, graph: csr_matrix, sample_idx: np.ndarray
 ) -> Tensor:
