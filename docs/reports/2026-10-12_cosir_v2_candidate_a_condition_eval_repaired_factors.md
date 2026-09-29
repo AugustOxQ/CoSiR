@@ -2,7 +2,7 @@
 
 ## Verdict
 
-**On held-out paintings, the repaired factors (R3) improve condition-aware matching over the collapsed factors (R0) for emotion and art-style conditions, in both retrieval directions. Two of the three pre-registered readiness criteria hold: the primary criterion and the floor. The secondary swap-reversal criterion does not hold.**
+**On held-out paintings, the repaired factors (R3) beat the collapsed factors (R0) at condition-aware matching for emotion and art-style conditions. R3 was selected under gates that were amended after the fact (Task 6). A condition-specific improvement over R0 is shown for text→image only. In image→text, R3 is better than R0 overall, but most of that gain (83%) is condition-independent, and the interaction CI spans 0 (post-hoc analysis from the final review, below). Two of the three pre-registered readiness criteria hold as written: the primary criterion and the floor. The secondary swap-reversal criterion does not hold.**
 
 **Primary test.** 2,048 human-label episodes (1,024 emotion, 1,024 art style), built once from held rows and identical for both models.
 
@@ -26,7 +26,7 @@
 
 **What the numbers say, in plain terms:**
 - **The benefit is modest in absolute terms.** Given the condition, R3 puts the right item first about one time in five.
-- **Part of R3's gain over R0 is not condition-specific.** With the condition ignored (uniform weights), R3 already beats R0 by +3.8 [+2.1, +5.4] points in image→text. The text→image difference is −0.2 [−1.8, +1.4]. The condition-specific part is the naive − uniform gap.
+- **In image→text, most of R3's gain over R0 is not condition-specific.** With the condition ignored (uniform weights), R3 already beats R0 by +3.8 [+2.1, +5.4] points in image→text. That is 83% of the +4.5-point naive gain (86% at β=0). The interaction (R3 naive − R3 uniform) − (R0 naive − R0 uniform) is +0.8 [−1.0, +2.6] in image→text, a CI that spans 0, against +4.4 [+2.4, +6.4] in text→image. In text→image the uniform difference is −0.2 [−1.8, +1.4], so there R3's gain is condition-specific. Better use of the condition than R0 is therefore shown for text→image only; the image→text gain comes from a better space overall. The interaction numbers are a post-hoc analysis from the final review (see below).
 - **The benefit is uneven.** For art style, the condition helps text→image strongly: +7.4 [+5.1, +9.9]. It does not clearly help image→text: +1.5 [−0.7, +3.6], a CI that includes 0. For emotion, the condition helps both directions by about 2.5-3 points.
 - **Factor-mined episodes cannot compare the two models.** Each model mines its own episodes, so R0-vs-R3 comparisons there are unpaired and descriptive only. The repaired space also makes those episodes much harder for any scorer that ignores the condition: uniform weights reach about 11% R@1 on R3's mined episodes (chance is 7.7%), against 40-53% on R0's. Absolute mined R@1 therefore says nothing about which model is better.
 
@@ -83,7 +83,8 @@ All values are held R@1 in percent (image→text / text→image) unless stated o
   - On R0's mined held episodes, only 9 pairs satisfy the swap-pair conditions, against 61 in Task 9.
   - These are different episodes on a different split, so this is descriptive.
 - **Factor effect (R0 → R3), on the same painting split.**
-  - The primary, paired comparison is the label-episode rows. R3 is higher in every pooled and per-type cell.
+  - The primary, paired comparison is the label-episode rows. R3 naive is higher than R0 naive in every pooled and per-type cell.
+  - Only in text→image is that gain condition-specific. In image→text, R3 uniform − R0 uniform already accounts for most of it (83% pooled at the selected β). See the post-hoc interaction analysis below.
   - On mined episodes, the absolute R@1 falls, but the episodes themselves changed. With decorrelated factors, anchor-only distractors (like the anchor on everything except the target factor) become real competitors: uniform weights let at least one of them outrank the positive in 88-89% of R3's episodes, against 7-19% of R0's.
   - The large R3 naive-over-uniform gap on mined episodes is partly this construction effect. That is why the plan calls it a floor, not evidence of repair.
 
@@ -109,6 +110,7 @@ Per label type, reported alongside:
 
 - The one per-type cell whose CI includes 0 is art style image→text for naive − uniform.
 - At β=0 (for information), the primary criterion also holds: R3 − R0 is +6.2 [+4.2, +8.2] / +7.5 [+5.5, +9.7], and naive − uniform is +2.6 [+0.9, +4.2] / +4.9 [+3.2, +6.6].
+- The criterion is met as written, but it contains no interaction test (see Caveats). The post-hoc interaction analysis below shows better use of the condition than R0 in text→image only.
 
 **2. Secondary (naive swap reversal on factor-mined held episodes higher than R0's, in both directions): NOT MET.**
 
@@ -125,6 +127,24 @@ Per label type, reported alongside:
 **3. Floor (naive − uniform on factor-mined held episodes, CI above 0 in both directions): MET.**
 - R3: +21.4 [+18.5, +24.2] i2t and +22.7 [+19.8, +25.6] t2i. At β=0: +17.9 / +22.9.
 - As the plan says, this cannot establish repair on its own. On the painting split, collapsed R0 does **not** meet this floor at its selected β (+0.9 [−1.1, +2.8] / −0.3 [−2.1, +1.6]). It does meet it at β=0.
+
+## Post-hoc analysis from the final review (informed no decision)
+
+This section was added after the final whole-branch review. **It is post hoc: it informed no decision, and it was not recomputed here.** Recomputing it would touch the held rows a third time. The numbers are the final reviewer's, cited as given.
+
+**Method.** A difference-in-differences on the identical held label episodes: the interaction (R3 naive − R3 uniform) − (R0 naive − R0 uniform), in R@1 points. It uses a paired bootstrap over episodes, with 5,000 resamples and seed 42. The re-scored R@1 values match `results/eval_results.json` exactly. The per-type rows are at each variant's selected β.
+
+| scope | selected β | β=0 |
+|---|---:|---:|
+| pooled i2t | +0.78 [−1.03, +2.64] | +0.88 [−1.12, +2.78] |
+| pooled t2i | **+4.39 [+2.39, +6.40]** | **+4.54 [+2.54, +6.59]** |
+| art-style i2t | 0.0 [−2.8, +2.8] | — |
+| emotion i2t | +1.6 [−0.9, +4.0] | — |
+
+**What it shows.**
+- **Text→image:** the interaction is clearly positive at both β settings. R3 uses the condition better than R0 does.
+- **Image→text:** the interaction CI spans 0 in the pooled set (at both β settings) and in each label type (at the selected β). The condition-independent share of R3's i2t gain over R0 is 83% at the selected β (the uniform difference is +3.76 of +4.54 points) and 86% at β=0. So the image→text gain comes from a better space overall, not from better use of the condition.
+- **Criterion 1** is still literally met, and its verdict is unchanged. The analysis narrows what that verdict means.
 
 ## Evidence
 
@@ -371,6 +391,8 @@ The counts from `conditional_score` equal those from Task 9's `score_pool`-based
     - A smoke run preceded the real run. It used val rows in place of held rows and computed no held metric.
     - Like the real run, it encoded all rows, held included, only to assert that every code is finite.
     - One code change followed the smoke run: recording "no valid swap pairs" instead of crashing. No number from the smoke run informed any choice.
+    - Later, the final review re-scored the same held label episodes for its post-hoc interaction analysis (above). That use came after every decision and informed none. It is not repeated here.
+11. **Criterion 1 is a conjunction with no interaction test.** It requires (a) R3 naive > R0 naive and (b) R3 naive > R3 uniform, each with a CI above 0. Both can hold while R3 uses the condition no better than R0: (a) can come from a better space overall, and (b) from a condition benefit that R0 shares. Only the interaction (R3 naive − R3 uniform) − (R0 naive − R0 uniform) isolates better use of the condition, and the pre-registered criteria did not include it. The final review's post-hoc interaction analysis (above) finds it in text→image only.
 
 ## Reproduction
 

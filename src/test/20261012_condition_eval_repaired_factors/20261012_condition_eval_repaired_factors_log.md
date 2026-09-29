@@ -4,7 +4,7 @@
 
 Plan Task 7 (docs/superpowers/plans/2026-10-08-cosir-v2-candidate-a-factor-repair.md). Candidate A scores an image I and a text T under a condition c as `s(I,T|c) = beta*cos(CLIP_I, CLIP_T) + sum_l w_l(c)*a_I,l*a_T,l` over 32 non-negative factors. The naive rule sets `w(c) = ReLU(mean support code - mean contrast code)`, L1-normalized.
 
-Task 6 selected the repaired recipe R3 (InfoNCE agreement plus decorrelation) on val, under gates the user amended after the fact. This task measures, on held rows never used for any decision, whether R3 improves conditional cross-item matching over the collapsed recipe R0. The primary test uses human-label episodes (emotion and art style) that are identical for both models, so the comparison is paired.
+Task 6 selected the repaired recipe R3 (InfoNCE agreement plus decorrelation) on val, under gates the user amended after the fact. This task measures, on held rows never used for any decision, whether R3 improves conditional cross-item matching over the collapsed recipe R0. The primary test uses human-label episodes (emotion and art style) that are identical for both models, so the comparison is paired. Outcome, as narrowed by the final review's post-hoc interaction analysis (report, "Post-hoc analysis from the final review"): a condition-specific improvement over R0 is shown for text→image only. In image→text, R3 is better than R0 overall, but most of that gain (83%) is condition-independent, and the interaction CI spans 0.
 
 Inputs are Task 6's two checkpoints only. No factor training, no `src/` change.
 
@@ -48,6 +48,8 @@ Readiness criteria (brief Step 3), applied literally:
 
 The full tables are in the report.
 
+Criterion 1 is met as written, but it has no interaction test. The final review's post-hoc difference-in-differences, (R3 naive − R3 uniform) − (R0 naive − R0 uniform), is +0.78 [−1.03, +2.64] i2t and +4.39 [+2.39, +6.40] t2i at the selected β. It is cited in the report, informed no decision, and was not recomputed.
+
 ## Root cause / interpretation notes
 
 - On mined episodes, R3 and R0 differ mostly because the *episodes* differ.
@@ -72,3 +74,5 @@ This task is an evaluation, so no code fix was needed. Report: `docs/reports/202
   - `run_eval.log`
   - `results/eval_results.json`
   - `cache/smoke/smoke.log`
+
+**Disclosure (final review):** `run_eval.py` was edited after the real run: the `clopper_pearson` helper and the `--tables` option were added (file mtime 23:36:48, results written 23:35:53; `run_eval.log` has no Clopper-Pearson line). No computed result changed.
