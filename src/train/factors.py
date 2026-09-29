@@ -88,3 +88,11 @@ def anti_split_penalty(img_codes: Tensor, txt_codes: Tensor) -> Tensor:
         return (img_codes.sum() + txt_codes.sum()) * 0.0
     imbalance = (mean_img - mean_txt).abs() / (combined + 1e-8)
     return imbalance[active].mean()
+
+
+def usage_balance_penalty(img_codes: Tensor, txt_codes: Tensor) -> Tensor:
+    """Negative entropy of combined mean factor usage; lower means more even usage."""
+    eps = 1e-8
+    mean_activation = 0.5 * (img_codes.mean(dim=0) + txt_codes.mean(dim=0))
+    p = mean_activation / (mean_activation.sum() + eps)
+    return (p * (p + eps).log()).sum()

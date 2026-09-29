@@ -110,3 +110,20 @@ def test_training_uses_unique_edge_nodes_with_positive_and_negative_pairs(
     )
     assert batch_sizes[0] == 6
     assert batch_sizes[-1] == len(img)
+
+
+def test_usage_balance_weight_changes_learned_factor_mass(paired_features):
+    img, txt, graph = paired_features
+    base = dict(num_factors=8, epochs=80, batch_size=24, seed=42)
+    _, img_zero, txt_zero = train_factors(
+        img, txt, graph, FactorTrainingConfig(**base, lambda_usage_balance=0.0), device="cpu"
+    )
+    _, img_strong, txt_strong = train_factors(
+        img, txt, graph, FactorTrainingConfig(**base, lambda_usage_balance=5.0), device="cpu"
+    )
+
+    def top_two_share(image, text):
+        mass = 0.5 * (image.mean(axis=0) + text.mean(axis=0))
+        return np.sort(mass)[-2:].sum() / mass.sum()
+
+    assert top_two_share(img_strong, txt_strong) < top_two_share(img_zero, txt_zero) - 0.05

@@ -1,6 +1,7 @@
 """Behavior tests for factor-discovery objectives on controlled synthetic codes."""
 
 import numpy as np
+import pytest
 import torch
 from scipy.sparse import csr_matrix
 
@@ -11,6 +12,7 @@ from src.train.factors import (
     paired_agreement_loss,
     reconstruction_loss,
     sparsity_penalty,
+    usage_balance_penalty,
 )
 
 
@@ -106,3 +108,16 @@ def test_anti_split_penalty_detects_modality_private_factors():
     # Gradient descent reduces dominant activations and raises suppressed ones.
     assert (split_img.grad[:, :4] > 0).all()
     assert (split_txt.grad[:, :4] < 0).all()
+
+
+def test_usage_balance_penalty_detects_two_factor_mass_concentration():
+    uniform = torch.ones(16, 8)
+    concentrated = torch.tensor([[7.0, 7.0] + [0.1] * 6] * 16).requires_grad_()
+
+    uniform_loss = usage_balance_penalty(uniform, uniform)
+    concentrated_loss = usage_balance_penalty(concentrated, concentrated)
+    concentrated_loss.backward()
+
+    assert uniform_loss.item() == pytest.approx(-np.log(8), abs=1e-5)
+    assert concentrated_loss.item() > uniform_loss.item() + 1.1
+    assert concentrated.grad is not None and concentrated.grad.abs().sum() > 0

@@ -13,12 +13,17 @@ from src.train.factors import (
     paired_agreement_loss,
     reconstruction_loss,
     sparsity_penalty,
+    usage_balance_penalty,
 )
 
 
 @dataclass
 class FactorTrainingConfig:
-    """Starting weights; this exact combination has no validated reference."""
+    """Starting weights, not validated optima.
+
+    Usage balance starts at 0.1, comparable to anti-split because both are
+    secondary balance regularizers relative to reconstruction and agreement.
+    """
 
     num_factors: int = 32
     lr: float = 1e-3
@@ -29,6 +34,7 @@ class FactorTrainingConfig:
     lambda_graph: float = 1.0
     lambda_sparsity: float = 0.01
     lambda_anti_split: float = 0.1
+    lambda_usage_balance: float = 0.1
     seed: int = 42
 
 
@@ -85,6 +91,7 @@ def train_factors(
                 sparsity_penalty(img_codes) + sparsity_penalty(txt_codes)
             )
             + config.lambda_anti_split * anti_split_penalty(img_codes, txt_codes)
+            + config.lambda_usage_balance * usage_balance_penalty(img_codes, txt_codes)
         )
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
