@@ -301,6 +301,70 @@ one story if the evidence is mixed.
 
 ---
 
+### Task 5: class-balanced training fix + recovery re-test
+
+**Added 2026-10-02** after Task 4's diagnostic found the condition-recovery failure is story (b):
+the encoder collapses onto a handful of attractor factors (5 factors absorbed 68.78% of held-out
+predictions; 16/32 factors were never predicted at all) rather than confusing genuinely correlated
+factors (the real-data-correlation check ruled out story (a), 0/19). This points at the
+recoverability-check's training procedure — 819 training episodes over 32 classes (~25/factor), 100
+epochs, `lr=0.05`, no class-balanced sampling — as an imbalanced/undertrained-classifier artifact,
+not evidence the factor space itself is unusable. Read
+`docs/reports/2026-10-02_cosir_v2_candidate_a_condition_confusion_diagnostic.md` in full.
+
+**Scope note**: this task changes the recoverability-check's *training procedure* (more episodes,
+class-balanced batch sampling, a revised optimization schedule) to test whether the collapse is
+fixable — it does **not** change `ConditionEncoder`'s architecture (from Task 1) or `mine_episodes`'
+mining logic (from Task 2). If, after this fix, the collapse persists, that is real evidence the
+architecture itself needs reconsideration — report that plainly rather than trying further training
+tweaks past what's specified here.
+
+**Files:** create `src/test/20261003_condition_recovery_balanced_retrain/run_retrain.py`; create
+`docs/reports/2026-10-03_cosir_v2_candidate_a_condition_recovery_balanced_retrain.md`.
+
+**Changes to test, in one combined re-run** (report if you find you need to isolate them
+individually to explain a surprising result — but run the combined version as the primary result):
+1. **More episodes**: `num_episodes=4096` (4x Task 3/4's 1024) via the same `mine_episodes` call,
+   same `EpisodeMiningConfig` defaults, seed 42 — gives ~128 episodes/factor on average instead of
+   ~32, reducing per-class sample-size noise. Use the same 80/20 episode-level split (seed 42).
+2. **Class-balanced batch sampling**: during `ConditionEncoder` training, weight each training
+   episode by `1 / (count of training episodes sharing its targeted_factor)` (inverse-frequency
+   weighting — a standard fix for classifier collapse toward majority/easy classes) so the expected
+   number of episodes per factor per epoch is equal, instead of Task 3/4's plain sequential/random
+   batches. Implement via `torch.utils.data.WeightedRandomSampler` or an equivalent explicit
+   resampling scheme — your call, document which.
+3. **Revised optimization schedule**: lower learning rate (`lr=0.01`, down from `0.05`) and more
+   epochs (`300`, up from `100`) — document this as a single deliberate choice, not a
+   tune-until-it-works loop; if you do find yourself needing a second adjustment to get a sane
+   training curve, report what you tried and why, matching this project's established honesty
+   convention (see Task 3/4's factor-discovery reports for the pattern).
+4. **Training-dynamics tracking** (new, to directly diagnose whether balancing worked): every 50
+   epochs, record (a) training-set accuracy, (b) held-out accuracy, (c) the number of *distinct*
+   factors predicted at least once across the held-out set (the diversity metric Task 4 found stuck
+   at 16/32) — report this trajectory, not just the final numbers, so a reader can see whether
+   balanced sampling actually changes the collapse dynamic during training or just shifts the final
+   snapshot.
+
+**Report, plainly, verdict up front**, comparing directly against Task 3/4's baseline:
+1. Held-out recovery accuracy (was 45/205 = 21.95%) — report the new number.
+2. Number of distinct factors predicted at least once in the held-out set (was 16/32).
+3. Prediction concentration on the top-5 most-predicted factors (was 68.78%).
+4. Per-factor accuracy breakdown (was 19/32 at exactly 0%) — report how many factors are now at 0%,
+   and whether the previously-dead factors specifically improved or whether different factors are
+   now dead (a real risk: balancing could fix the aggregate while just moving which factors collapse).
+5. The training-dynamics trajectory from step 4 above.
+
+State plainly whether class-balanced training with more episodes fixes the collapse (uniform-ish
+per-factor accuracy, most/all factors predicted at least once), only partially fixes it (better
+aggregate but a meaningfully-sized dead-factor set remains), or does not fix it (collapse persists
+at similar severity) — the last case would be real evidence for reconsidering
+`ConditionEncoder`'s architecture rather than its training procedure.
+
+- [ ] Implement the balanced-retraining script and write the report with the comparison above.
+- [ ] Commit: `git add src/test/20261003_condition_recovery_balanced_retrain/ docs/reports/2026-10-03_cosir_v2_candidate_a_condition_recovery_balanced_retrain.md && git commit -m "docs(cosir-v2): re-test condition recovery with class-balanced training"`
+
+---
+
 ## Self-review
 
 **Placeholder scan:** no TBD/TODO; "your call, document why" points are explicit
