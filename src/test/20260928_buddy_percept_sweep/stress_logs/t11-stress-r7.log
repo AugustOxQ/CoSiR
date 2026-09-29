@@ -1,0 +1,38 @@
+{"cuda_visible_devices": "0", "duration_s": 1693, "ended_at": "2026-09-29T22:19:38.300771+00:00", "exit_code": 0, "gpu_slots": [0], "host": "node404", "inherited_cuda_visible_devices": "0,1,2", "pgid": 613022, "pid": 613022, "pid_start": 176469936, "slurm_job_id": "56904", "started_at": "2026-09-29T21:51:26.181269+00:00", "state": "succeeded"}
+[23:51:41] Extraction verified complete: 308723 sample ids match /local/wding/Dataset/artelingo/artelingo_train.json.
+[23:51:41] Extraction verified complete: 46813 sample ids match /local/wding/Dataset/artelingo/artelingo_val_test.json.
+[23:51:48] Dedup: 308723 rows -> 61402 unique paintings. Image-embedding self-consistency check (same painting, different caption rows, n=500): min cosine sim = 1.0000 (should be ~1.0 — same image every time; low value would mean a data bug).
+[23:51:48] Dedup: 46813 rows -> 9365 unique paintings. Image-embedding self-consistency check (same painting, different caption rows, n=500): min cosine sim = 1.0000 (should be ~1.0 — same image every time; low value would mean a data bug).
+[2026-09-29 23:51:48] Loading GoEmotions encoder (SamLowe/roberta-base-go_emotions) on cuda...
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 201/201 [00:00<00:00, 5397.35it/s]
+[2026-09-29 23:51:52] Extracting GoEmotions probabilities for 308723 English caption rows in 1206 batches (batch_size=256, max_length=64)...
+[2026-09-29 23:52:04] Affect encoder progress: 25,600/308,723 caption rows.
+[2026-09-29 23:52:16] Affect encoder progress: 51,200/308,723 caption rows.
+[2026-09-29 23:52:28] Affect encoder progress: 76,800/308,723 caption rows.
+[2026-09-29 23:52:40] Affect encoder progress: 102,400/308,723 caption rows.
+[2026-09-29 23:52:53] Affect encoder progress: 128,000/308,723 caption rows.
+[2026-09-29 23:53:05] Affect encoder progress: 153,600/308,723 caption rows.
+[2026-09-29 23:53:18] Affect encoder progress: 179,200/308,723 caption rows.
+[2026-09-29 23:53:30] Affect encoder progress: 204,800/308,723 caption rows.
+[2026-09-29 23:53:42] Affect encoder progress: 230,400/308,723 caption rows.
+[2026-09-29 23:53:54] Affect encoder progress: 256,000/308,723 caption rows.
+[2026-09-29 23:54:06] Affect encoder progress: 281,600/308,723 caption rows.
+[2026-09-29 23:54:19] Affect encoder progress: 307,200/308,723 caption rows.
+[2026-09-29 23:54:19] Affect encoder progress: 308,723/308,723 caption rows.
+[2026-09-29 23:54:20] Loading GoEmotions encoder (SamLowe/roberta-base-go_emotions) on cuda...
+
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 201/201 [00:00<00:00, 4423.67it/s]
+[2026-09-29 23:54:21] Extracting GoEmotions probabilities for 46813 English caption rows in 183 batches (batch_size=256, max_length=64)...
+[2026-09-29 23:54:33] Affect encoder progress: 25,600/46,813 caption rows.
+[2026-09-29 23:54:44] Affect encoder progress: 46,813/46,813 caption rows.
+STRESS_SEED {"rank":7,"run_id":"bfrae3fr","seed":42,"objective":0.9394962762095903,"auc":0.9394962762095903,"emo":0.12387980310466364,"genre":0.3785284112444423,"n_topics":12,"stage1_seconds":221.6038825539872,"stage2_seconds":153.58862548694015}
+STRESS_SEED {"rank":7,"run_id":"bfrae3fr","seed":7,"objective":-1.0,"auc":0.9426339983552581,"emo":0.11326839259118807,"genre":0.3275430923985775,"n_topics":10,"stage1_seconds":221.47530337120406,"stage2_seconds":179.20933946990408}
+STRESS_SEED {"rank":7,"run_id":"bfrae3fr","seed":123,"objective":0.9433330215834003,"auc":0.9433330215834003,"emo":0.12515955577639248,"genre":0.3047600055327056,"n_topics":14,"stage1_seconds":218.4538509750273,"stage2_seconds":143.08907550410368}
+STRESS_SEED {"rank":7,"run_id":"bfrae3fr","seed":2024,"objective":0.9342614857708906,"auc":0.9342614857708906,"emo":0.13204047960775886,"genre":0.30664538767643085,"n_topics":13,"stage1_seconds":214.38873153715394,"stage2_seconds":131.2231224111747}
+STRESS_RESULT {"n_seeds":4,"gate_pass_count":3,"auc_mean":0.9399311954797849,"auc_std":0.0035781394319402047,"auc_min":0.9342614857708906,"auc_max":0.9433330215834003,"emo_mean":0.12358705777000076,"genre_mean":0.32936922421303905,"objective_mean":0.4542726958909703,"n_topics":[12,10,14,13],"per_seed":[{"seed":42,"objective":0.9394962762095903,"auc":0.9394962762095903,"emo":0.12387980310466364,"genre":0.3785284112444423,"n_topics":12,"stage1_seconds":221.6038825539872,"stage2_seconds":153.58862548694015},{"seed":7,"objective":-1.0,"auc":0.9426339983552581,"emo":0.11326839259118807,"genre":0.3275430923985775,"n_topics":10,"stage1_seconds":221.47530337120406,"stage2_seconds":179.20933946990408},{"seed":123,"objective":0.9433330215834003,"auc":0.9433330215834003,"emo":0.12515955577639248,"genre":0.3047600055327056,"n_topics":14,"stage1_seconds":218.4538509750273,"stage2_seconds":143.08907550410368},{"seed":2024,"objective":0.9342614857708906,"auc":0.9342614857708906,"emo":0.13204047960775886,"genre":0.30664538767643085,"n_topics":13,"stage1_seconds":214.38873153715394,"stage2_seconds":131.2231224111747}],"rank":7,"run_id":"bfrae3fr","sweep_objective":0.9394962762095904,"sweep_n_topics":12}
+logs: ok on node404
+RESULT {"ok":true,"tag":"t11-stress-r7","node":"node404","status":{"cuda_visible_devices":"0","duration_s":1693,"ended_at":"2026-09-29T22:19:38.300771+00:00","exit_code":0,"gpu_slots":[0],"host":"node404","inherited_cuda_visible_devices":"0,1,2","pgid":613022,"pid":613022,"pid_start":176469936,"slurm_job_id":"56904","started_at":"2026-09-29T21:51:26.181269+00:00","state":"succeeded"},"sub":"logs"}
