@@ -1,0 +1,12 @@
+Loaded 308,723 rows, 9 emotions
+== Reconstruction baselines (held rows; factor model reported 0.5606 img / 0.5154 txt)
+img {'mean_only': 0.6385, 'pca_1': 0.6074, 'pca_4': 0.5463, 'pca_32': 0.3971}
+txt {'mean_only': 0.551, 'pca_1': 0.5167, 'pca_4': 0.4796, 'pca_32': 0.3739}
+== Factor-code geometry (held rows)
+img {'zero_fraction': 0.28672615191513484, 'active_per_row': 22.824763138715685, 'pc_share_top1_top3_top5': [0.86540687084198, 0.9685701131820679, 0.9881982803344727], 'participation_ratio': 1.324223518371582}
+txt {'zero_fraction': 0.2823695238480849, 'active_per_row': 22.964175236861283, 'pc_share_top1_top3_top5': [0.8650311231613159, 0.9683164358139038, 0.9914069175720215], 'participation_ratio': 1.3262226581573486}
+pair-code factor pairs with |r|>=.9: 374/496; mean |r| 0.865
+img-txt code cosine: matched 0.920, shuffled 0.589
+== Split leakage (split_items is by annotation row)
+unique image vectors: 61,901 of 308,723
+held rows whose exact image vector is in train: 0.9954

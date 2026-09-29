@@ -1,7 +1,7 @@
 # CoSiR v2 Candidate A — factor-discovery repair + painting-grouped split
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (adapted:
-> Codex is the implementer, Claude the controller/reviewer — see Global Constraints) or
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (Claude
+> Code subagents implement; Claude is controller/reviewer — see Global Constraints) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`)
 > syntax for tracking.
 
@@ -58,9 +58,9 @@ measured usage, not independence.
 - **No unregistered configurations.** Tasks 3, 6 and 7 list every configuration they run. Anything
   else needs controller and user approval first. The gate thresholds in Task 1 are pre-registered
   judgment calls; if they prove binding, report it. Never relax one silently.
-- Implementer: Codex via
-  `codex e --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -c mcp_servers={} -C /project/CoSiR-v2 --json -`.
-  Claude is the sole reviewer. Never use `.ccg/tasks/`. Real GPU runs on the local machine are
+- Implementers are Claude Code subagents, with the model sized to each task's difficulty. **No
+  code goes to Codex unless the user explicitly says so** (user direction, 2026-09-29). Claude
+  reviews every task. Never use `.ccg/tasks/`. Real GPU runs on the local machine are
   pre-authorized. Every run in this plan is expected to take under about 15 minutes; if one would
   exceed 30 minutes, stop and hand back to the controller.
 - Commits end with a blank line and `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Never push.
@@ -828,7 +828,8 @@ git commit -m "docs(cosir-v2): one-variable-at-a-time diagnosis of the factor-sp
 - Modify: `src/train/factors.py` (add `cross_modal_infonce_loss`, `decorrelation_penalty`)
 - Modify: `src/train/train_factors.py` (new config fields, `group_ids`, checkpoint helpers)
 - Test: `src/test/test_factors.py`, `src/test/test_factor_losses.py`, `src/test/test_train_factors.py` (additions only)
-- Create: `.claude/20261010_log.md` (change log for the three modified files)
+- Create: `.claude/20261010_log.md` (change log for the three modified files; `.claude/` is
+  gitignored in this repo, so the log is written but not committed)
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks. These are code-only changes.
@@ -1074,7 +1075,7 @@ pre-existing test.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/model/factors.py src/train/factors.py src/train/train_factors.py src/test/test_factors.py src/test/test_factor_losses.py src/test/test_train_factors.py .claude/20261010_log.md
+git add src/model/factors.py src/train/factors.py src/train/train_factors.py src/test/test_factors.py src/test/test_factor_losses.py src/test/test_train_factors.py
 git commit -m "feat(cosir-v2): default-off factor-collapse fixes (InfoNCE agreement, decorrelation, TopK, centering) + checkpoints"
 ```
 
