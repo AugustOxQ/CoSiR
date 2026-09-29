@@ -71,6 +71,6 @@ for COMBINER in $COMBINER_SWEEP; do
 done
 
 echo "==================================================================="
-echo "Done. Pull results with ./cluster_sync_down.sh, then analyse with:"
+echo "Done. Pull results with ~/.claude/skills/cluster-run/cluster pull, then analyse with:"
 echo "  python scripts/analyze_combiner_architecture_smoke.py --group '${WANDB_GROUP}'"
 echo "==================================================================="
