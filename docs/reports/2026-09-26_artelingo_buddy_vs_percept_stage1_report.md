@@ -1088,6 +1088,22 @@ and its mean emotion AMI of 0.1230 sits just below the 0.1236 threshold.
 The matched head-to-head (next section, in progress) scores both systems
 on both yardsticks, on the same GPUs.
 
+## 6k. Matched PercepT-vs-buddy head-to-head (in progress)
+
+**2026-09-30.** Both systems now run through one validated harness:
+- **Faithfulness to the pilots:** the buddy Stage 1 port is bit-exact to
+  the pilot; the PercepT port reproduces §6g at 0.9258 vs 0.9226; the shared
+  Stage 2 reproduces §6f at 0.85341 vs 0.8534.
+- **Matched setup:** topic counts are matched at K≈16 and K≈40, both systems
+  use the same k=20 held-out labels, tuning and selection use a val half
+  with a separate test half, and each of the four cells gets an equal
+  300-trial W&B search.
+
+Full report, with protocol, validation, the interim leaderboard and (when
+done) the result:
+[`auto/percept/2026-09-30_matched_percept_buddy_h2h.md`](auto/percept/2026-09-30_matched_percept_buddy_h2h.md).
+Until that result is in, §6g's headline stands.
+
 ## 7. Artifact map
 
 All new scripts, briefs, and reports referenced above live in
