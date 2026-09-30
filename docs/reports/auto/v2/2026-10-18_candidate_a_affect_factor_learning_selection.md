@@ -44,8 +44,9 @@ In plain terms:
 - **The setup is sound.** C0 passes all eight binding gates (and the ninth, sparsity). R3, C0 and S reproduce the
   2×2's stored ranks exactly on the first 2,048 episodes per label.
 
-The pre-registered next steps (spec §6 and §7) are replication with seeds 43 and 44 and the one held test on fresh
-episodes; they are separate tasks and this report confirms nothing on held data. E is not a candidate after this
+Replication with seeds 43 and 44 is reported in its own section below (style gain and pooled gain replicate; the
+emotion gain does at seed 44 and is smaller at seed 43). The one held test on fresh episodes is a separate task and
+this report confirms nothing on held data. E is not a candidate after this
 step. The extras in Results 5 to 9 are context and informed no decision.
 
 ![D_emo and D_style per cell against the matched control](../../assets/2026-10-18_affect_factor_learning/criterion.png)
@@ -432,6 +433,55 @@ oracle (β 0: i2t +1.34 [+0.10, +2.59], t2i +2.27 [+0.95, +3.59]) and the image-
 The loss is real for the naive rule, the rule the guard protects. The measured `D_emo` SE is 0.41 points (mean over
 E and SE).
 
+## Replication (seeds 43 and 44, reported only)
+
+Spec §6 asks for SE and C0 to be retrained with two more seeds and evaluated exactly as at seed 42: the same 4,096 +
+4,096 selection episodes (prefix SHA-256 asserted), the same rows and masking, the same gates with the same readout
+reference, and the naive rule at β 0.3. Each seed's SE is compared with the C0 of the same seed, with the same paired
+bootstrap (5,000 resamples over episodes). Four runs were trained on the local GPU (three at once, then one; 2,000
+steps, all finite, peak 3.9 GiB). Seed 42 is recomputed through the same code as a check and matches the stored
+selection output to the last digit. **The verdict rests on seed 42; none of this changes the rule or the pick.**
+
+| Seed | `D_emo` (points) | `D_style` (points) | Pooled | Binding gates SE / C0 | Sparsity SE (img / caption) | Sparsity C0 (img / caption) |
+|---|---:|---:|---:|---|---|---|
+| 42 (selection) | +1.31 [+0.54, +2.06] | +1.12 [+0.29, +1.93] | +1.21 [+0.65, +1.78] | 8/8 / 8/8 | 0.422 / 0.529 fail | 0.419 / 0.479 pass |
+| 43 | +0.50 [−0.26, +1.29] | +2.14 [+1.25, +3.00] | +1.32 [+0.73, +1.89] | 8/8 / 8/8 | 0.435 / 0.515 fail | 0.431 / 0.483 pass |
+| 44 | +1.28 [+0.49, +2.06] | +1.04 [+0.21, +1.90] | +1.16 [+0.56, +1.75] | 8/8 / 8/8 | 0.439 / 0.518 fail | 0.421 / 0.475 pass |
+
+Naive R@1 (%, mean of directions) behind the differences, with the training end state of each run:
+
+| Seed | Model | Emotion | Art style | Pooled | Final condition loss | Final τ | Wall-clock (min) |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 42 | SE | 16.43 [15.55, 17.33] | 26.01 [24.98, 27.11] | 21.22 [20.50, 21.95] | 0.752 | 0.0409 | 10.6 |
+| 42 | C0 | 15.12 [14.27, 15.97] | 24.89 [23.83, 25.98] | 20.01 [19.29, 20.68] | n/a | n/a | 11.2 |
+| 43 | SE | 15.48 [14.61, 16.35] | 26.25 [25.16, 27.31] | 20.86 [20.15, 21.58] | 1.037 | 0.0452 | 10.3 |
+| 43 | C0 | 14.98 [14.12, 15.82] | 24.11 [23.06, 25.16] | 19.54 [18.85, 20.24] | n/a | n/a | 10.3 |
+| 44 | SE | 15.55 [14.70, 16.41] | 26.33 [25.24, 27.44] | 20.94 [20.21, 21.64] | 0.883 | 0.0492 | 10.3 |
+| 44 | C0 | 14.27 [13.43, 15.12] | 25.29 [24.23, 26.36] | 19.78 [19.08, 20.48] | n/a | n/a | 8.9 |
+
+In plain terms:
+
+- **The direction replicates; the size of the emotion gain does not fully.** SE beats its own-seed C0 on emotion and
+  on style at every seed, and the pooled gain is stable (+1.16 to +1.32, every interval above 0). Style is above 0
+  at all three seeds (lower bounds +0.21 to +1.25). Emotion is +1.31, +0.50 and +1.28: seeds 42 and 44 agree, while
+  seed 43's gain is smaller and its interval (−0.26 to +1.29) includes 0.
+- **Seed 43 would not have met the emotion bar on its own.** Had the selection rule been applied to seed 43, `D_emo`'s
+  lower bound of −0.26 would have failed the "above 0" requirement. Two of three seeds clear it, so one seed is a
+  plausible draw from a true gain of about +1 point, but three seeds cannot pin the size down; the mean of the three
+  point estimates is +1.03 on emotion and +1.43 on style. Seed 43's smaller `D_emo` comes from SE (15.48% against
+  16.43% at seed 42), not from a stronger C0.
+- **Seed-to-seed spread is the same order as the effect.** C0's own emotion R@1 moves from 14.27% to 15.12% across
+  seeds, about the size of the SE gain, which is why a single-seed `D_emo` of +1.31 was always a soft number. The
+  intervals above are over episodes within one seed and do not include that seed-to-seed variation.
+- **Gates behave as at seed 42.** Both models pass all eight binding gates at every seed. SE's caption code fails the
+  report-only sparsity cap (0.515 to 0.529 against 0.50) at every seed and C0 passes it, so the sparsity note in the
+  verdict holds across seeds.
+- **Training ended normally.** All four runs are finite; SE's condition loss ends between 0.75 and 1.04 (from about
+  1.2 at step 1, well under the uniform level of 1.386), and τ settles near 0.04 to 0.05.
+
+Caveat: the three seeds share the same selection episodes, so the comparison isolates training variation but not
+episode sampling. The held test, on fresh episodes, is the pre-registered confirmation.
+
 ## What this means
 
 1. **An external affect signal does what no label-free signal did: it moves emotion.** In the 2×2 and the headroom
@@ -451,10 +501,9 @@ E and SE).
 
 ## Next steps
 
-Pre-registered, and not part of this report: **replication** of SE and C0 with seeds 43 and 44 (spec §6; four runs
-of about 10 minutes on the local GPU), then the **held test** of SE against C0 on fresh held episodes, with the
+Pre-registered, and not part of the selection verdict: the **held test** of SE against C0 on fresh held episodes, with the
 episode count set by spec §7's power rule from SE's `D_emo` CI above. The verdict rests on seed 42; the replication
-seeds are reported beside it.
+seeds (section above) are reported beside it.
 
 Options outside this pre-registration, for the user to weigh later: E's emotion gain (+3.99) with a style
 safeguard of another kind, or a trained scorer on SE's or E's codes (Result 5, point 2). Neither is planned.
@@ -486,7 +535,7 @@ safeguard of another kind, or a trained scorer on SE's or E's codes (Result 5, p
   β 0.3).
 - **One seed; episodes reuse rows.** The verdict rests on seed 42. The bootstrap CIs resample episodes under fixed
   models and do not cover training randomness; episodes reuse selection rows, so the CIs are somewhat optimistic. SE's
-  `D_emo` lower bound is +0.54, a margin that replication will test.
+  `D_emo` lower bound is +0.54, a margin the replication tested: seeds 44 and 42 agree, seed 43's emotion lower bound is −0.26 (Replication section).
 - **Mechanisms are inferences.** Why E's naive rule reads less style, why the affect loss stays high, and why SE's
   caption codes are dense are readings we did not test; the measurements are what the tables show.
 
@@ -511,12 +560,12 @@ safeguard of another kind, or a trained scorer on SE's or E's codes (Result 5, p
 
 - Spec: [affect factor-learning design](../../../superpowers/specs/2026-09-30-cosir-v2-candidate-a-affect-factor-learning-design.md)
   (§4 affect source, §5 cells and gates, §6 rule and stop points, §11 caveats).
-- Script: `src/test/20261018_affect_factor_learning/run_affect.py` (`--run CELL`, `--evaluate`, `--tables`;
+- Script: `src/test/20261018_affect_factor_learning/run_affect.py` (`--run CELL --seed S`, `--evaluate`, `--replicate`, `--tables`;
   `apply_affect_rule` holds the pre-registered rule). It reuses the 2×2's `run_grid.py` and `run_posthoc.py` helpers
   and stage (d)'s cache.
 - Log: `src/test/20261018_affect_factor_learning/20261018_affect_factor_learning_log.md`.
 - Figures: `docs/reports/assets/2026-10-18_affect_factor_learning/`, built by
   `docs/reports/assets/build_2026-10-18_affect_factor_learning_figures.py` from the stored results.
 - Gitignored, local only: `results/selection_results.json` (every number in Results 2 to 9), `results/selection_ranks.npz`,
-  `results/history_{E,SE}_seed42.json`, `cache/affect_prepare.json` (Result 1), the checkpoints and the run logs.
+  `results/replication.json` (Replication section), `results/history_*.json`, `cache/affect_prepare.json` (Result 1), the checkpoints and the run logs.
 - Previous step: [factor-learning 2×2 selection](2026-10-16_candidate_a_factor_learning_selection.md).

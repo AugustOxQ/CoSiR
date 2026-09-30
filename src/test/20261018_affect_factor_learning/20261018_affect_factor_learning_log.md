@@ -91,3 +91,24 @@ E's condition loss stays near uniform (last-10 mean 1.24 vs log 4 = 1.386); SE 0
 docs/reports/auto/v2/2026-10-18_candidate_a_affect_factor_learning_selection.md; figures
 docs/reports/assets/2026-10-18_affect_factor_learning/ (build_2026-10-18_affect_factor_learning_figures.py).
 Next (not this task): Task 4 replication of SE and C0 (seeds 43, 44), then Task 5 held test.
+
+## Task 4 replication (seeds 43 and 44 of SE and C0)
+1. Trained in this folder as separate processes (`run_affect.py --run CELL --seed S`): SE 43, SE 44 and C0 43 in
+   parallel (about 620 s each, three on one RTX 3090), then C0 44 alone (535 s). All finite, peak 3.93 to 3.94 GiB;
+   SE condition loss at the end 1.037 (seed 43) and 0.883 (seed 44), tau 0.0452 and 0.0492. No start-up failure. The
+   first launch attempt died at once because of a shell quoting mistake (no process reached training, nothing written),
+   and a cleanup pkill also killed the launching shell; both were rerun from a script, nothing else affected.
+2. `--replicate` (69 s) -> results/replication.json, run_replicate.log. It reuses `selection_episodes`, `model_codes`
+   (new optional `seed` argument; config asserted equal to `grid.cell_config("S" / "C0", seed)`; the reference-SHA
+   check applies to seed 42 only), `grid.gate_report` with the same fit/eval rows and readout reference,
+   `label_episode_weights`, `probe.fixed_weight_ranks` at beta 0.3 and `probe.r1_diff`. `model_path` and
+   `training_record` gained the same optional `seed`. `evaluate()` itself is unchanged: `--tables` output for
+   selection_results.json is byte-identical before and after (313 lines compared), and the JSON is untouched.
+   Seed 42 is recomputed through the new path and equals the stored D_emo / D_style points exactly (asserted).
+3. Result (SE minus same-seed C0, naive beta 0.3, R@1 points): seed 43 D_emo +0.50 [-0.26, +1.29], D_style +2.14
+   [+1.25, +3.00], pooled +1.32 [+0.73, +1.89]; seed 44 D_emo +1.28 [+0.49, +2.06], D_style +1.04 [+0.21, +1.90],
+   pooled +1.16 [+0.56, +1.75]. Both models pass 8/8 binding gates at both seeds; SE fails the report-only sparsity
+   cap (caption 0.515 and 0.518), C0 passes it. Reported only; the verdict stays on seed 42 (rule untouched).
+4. Report: a Replication section in docs/reports/auto/v2/2026-10-18_candidate_a_affect_factor_learning_selection.md.
+   reports_sum.md row is not touched here (another session has uncommitted edits to it); its row still says
+   "replication and held test pending".

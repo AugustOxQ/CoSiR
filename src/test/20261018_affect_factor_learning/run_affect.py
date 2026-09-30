@@ -363,24 +363,26 @@ def selection_episodes(data, cache) -> tuple[dict, dict, dict]:
     return episodes, nulls, meta
 
 
-def model_path(name: str) -> Path:
+def model_path(name: str, seed: int = SEED) -> Path:
+    if seed != SEED:                                   # replication seeds are trained in this folder
+        return CKPT / f"{name}_seed{seed}.pt"
     return {"C0": C0_REF, "S": S_REF}.get(name, CKPT / f"{name}_seed{SEED}.pt")
 
 
-def model_codes(name: str, data, cache, prep_record: dict) -> tuple[np.ndarray, np.ndarray, dict]:
+def model_codes(name: str, data, cache, prep_record: dict, seed: int = SEED) -> tuple[np.ndarray, np.ndarray, dict]:
     """Full-length (n_rows, 32) codes: finite on scorer-train and selection rows, NaN elsewhere."""
     rows = np.concatenate([cache["scorer_train"], cache["selection"]])
     if name == "R3":
         return (sel.masked(cache["img_codes"], rows), sel.masked(cache["txt_codes"], rows),
                 {"source": "stage (d) cache img_codes / txt_codes (original R3, trained on all train rows)"})
-    path = model_path(name)
+    path = model_path(name, seed)
     sha = grid.sha256_file(path)
-    if name in REFERENCE_SHA_KEYS and sha != prep_record[REFERENCE_SHA_KEYS[name]]:
+    if seed == SEED and name in REFERENCE_SHA_KEYS and sha != prep_record[REFERENCE_SHA_KEYS[name]]:
         raise AssertionError(f"{path.name}: SHA-256 differs from the one recorded at prepare")
     model, config = load_factor_checkpoint(path, device=grid.DEVICE)
-    expected = grid.cell_config("C0" if name == "C0" else "S", SEED)
+    expected = grid.cell_config("C0" if name == "C0" else "S", seed)
     if dataclasses.asdict(config) != dataclasses.asdict(expected):
-        raise AssertionError(f"{path.name}: stored config differs from grid.cell_config({'C0' if name == 'C0' else 'S'!r}, 42)")
+        raise AssertionError(f"{path.name}: stored config differs from grid.cell_config({'C0' if name == 'C0' else 'S'!r}, {seed})")
     ic, tc = encode_rows(model, data.img_features, data.txt_features, rows=rows)
     out = []
     for codes in (ic, tc):
@@ -388,13 +390,13 @@ def model_codes(name: str, data, cache, prep_record: dict) -> tuple[np.ndarray, 
         full[rows] = codes
         out.append(full)
     info = {"checkpoint": str(path.relative_to(ROOT)), "sha256": sha,
-            "config": "grid.cell_config('C0', 42)" if name == "C0" else "grid.cell_config('S', 42)"}
+            "config": f"grid.cell_config('{'C0' if name == 'C0' else 'S'}', {seed})"}
     return out[0], out[1], info
 
 
-def training_record(name: str) -> dict:
-    folder = RESULTS if name in CELLS else grid.RESULTS
-    record = json.loads((folder / f"history_{name}_seed{SEED}.json").read_text())
+def training_record(name: str, seed: int = SEED) -> dict:
+    folder = RESULTS if name in CELLS or seed != SEED else grid.RESULTS
+    record = json.loads((folder / f"history_{name}_seed{seed}.json").read_text())
     if record["steps"] != grid.FULL_STEPS:
         raise AssertionError(f"{name}: history is not a {grid.FULL_STEPS}-step run")
     h = record["history"]
@@ -767,6 +769,113 @@ def evaluate() -> dict:
     return results
 
 
+# ----------------------------------------------------------------------------- Task 4: replication
+
+REPLICATION_SEEDS = (43, 44)
+REPLICATION_JSON = RESULTS / "replication.json"
+
+
+def replicate() -> dict:
+    """Seeds 43 and 44 of the picked cell and C0, on evaluate()'s selection episodes and code path (same rows,
+    masking, gates with the same fit/eval rows and readout reference, naive at beta 0.3, paired bootstrap).
+    Reported only; the verdict rests on seed 42. Seed 42 is recomputed through this path as a consistency check."""
+    started = perf_counter()
+    picked = json.loads(SELECTION_JSON.read_text())["rule"]["picked"]
+    if picked not in CELLS:
+        raise AssertionError(f"selection did not pick a cell: {picked}")
+    data = load_artelingo()
+    cache, prep, meta, _ = grid.load_grid()
+    prep_record = json.loads((CACHE / "affect_prepare.json").read_text())
+    st, sl = cache["scorer_train"], cache["selection"]
+    n_rows = len(cache["groups"])
+    community_local = cache["community"][st]
+    if not np.array_equal(community_local, prep["community_local"]):
+        raise AssertionError("community labels differ from the grid's prepared ones")
+    episodes, _, eps_meta = selection_episodes(data, cache)
+    img, txt = (sel.masked(x, sl) for x in (data.img_features, data.txt_features))
+    allowed, in_sel = grid._row_mask(n_rows, np.concatenate([st, sl])), grid._row_mask(n_rows, sl)
+    for name, arr in (("img eval features", img), ("txt eval features", txt)):
+        probe.assert_row_scope(name, arr, in_sel)
+    reference = meta["r0_readout_reference"]
+
+    def one(name: str, seed: int) -> dict:
+        ic_full, tc_full, info = model_codes(name, data, cache, prep_record, seed)
+        for side, arr in (("img", ic_full), ("txt", tc_full)):
+            probe.assert_row_scope(f"{name} seed {seed} {side} codes", arr, allowed)
+        g = grid.gate_report(ic_full[st], tc_full[st], ic_full[sl], tc_full[sl], data, cache, community_local,
+                             reference=reference)
+        passed = {n: bool(v) for n, v in g.passed.items()}
+        ic, tc = sel.masked(ic_full, sl), sel.masked(tc_full, sl)
+        weights = {label: label_episode_weights(ic, tc, episodes[label]) for label in LABELS}
+        ranks, _ = probe.fixed_weight_ranks(img, txt, ic, tc, episodes, weights, BETA_FIXED)
+        return {"ranks": ranks, "model": info, "training": training_record(name, seed),
+                "gates": {"values": grid._jsonable(g.values), "passed": passed,
+                          "binding_passed": bool(all(passed[n] for n in BINDING_GATES)),
+                          "n_binding_passed": int(sum(passed[n] for n in BINDING_GATES)),
+                          "sparsity_passed": passed["sparsity"], "n_passed": int(sum(passed.values()))},
+                "naive_r1": probe.r1_with_ci(ranks)}
+
+    per_seed = {}
+    for seed in (SEED, *REPLICATION_SEEDS):
+        t0 = perf_counter()
+        models = {name: one(name, seed) for name in (picked, "C0")}
+        diff = probe.r1_diff(models[picked]["ranks"], models["C0"]["ranks"])
+        per_seed[str(seed)] = {
+            "d_emo": diff["emotion"]["mean"], "d_style": diff["art_style"]["mean"], "d_pooled": diff["pooled"]["mean"],
+            "vs_c0": diff,
+            "binding_ok": {m: models[m]["gates"]["binding_passed"] for m in models},
+            "sparsity_passed": {m: models[m]["gates"]["sparsity_passed"] for m in models},
+            "models": {m: {k: v for k, v in models[m].items() if k != "ranks"} for m in models}}
+        log(f"seed {seed} {picked} - C0: D_emo {_ci(diff['emotion']['mean'])}, D_style {_ci(diff['art_style']['mean'])}, "
+            f"pooled {_ci(diff['pooled']['mean'])}; binding {per_seed[str(seed)]['binding_ok']}, sparsity "
+            f"{per_seed[str(seed)]['sparsity_passed']} ({perf_counter() - t0:.1f} s)")
+    stored = json.loads(SELECTION_JSON.read_text())
+    check = {"d_emo_point_diff": per_seed[str(SEED)]["d_emo"]["point"] - stored["d_emo"][picked]["point"],
+             "d_style_point_diff": per_seed[str(SEED)]["d_style"]["point"] - stored["d_style"][picked]["point"]}
+    if max(abs(v) for v in check.values()) > 1e-6:
+        raise AssertionError(f"seed-42 recomputation differs from selection_results.json: {check}")
+    results = {"label": f"replication (seeds {list(REPLICATION_SEEDS)}) of the picked cell {picked} vs C0 on the "
+                        f"selection episodes; REPORTED ONLY, the verdict rests on seed 42 (seed 42 recomputed here "
+                        f"as a consistency check)",
+              "picked": picked, "episodes": eps_meta,
+              "settings": {"n_episodes_per_label": N_EPISODES, "beta_fixed": BETA_FIXED,
+                           "bootstrap": {"n_boot": 5000, "seed": 42, "unit": "episode (paired)"},
+                           "readout_reference": reference, "rows": "as evaluate()"},
+              "seed42_consistency_vs_selection_json": check, "per_seed": per_seed,
+              "seconds": perf_counter() - started}
+    REPLICATION_JSON.write_text(json.dumps(grid._jsonable(results), indent=2))
+    log(f"Replication in {results['seconds']:.1f} s -> {REPLICATION_JSON}")
+    return results
+
+
+def replication_tables(path: Path = REPLICATION_JSON) -> None:
+    res = json.loads(path.read_text())
+    picked = res["picked"]
+    out = [f"### Replication: {picked} - C0 per seed (naive, beta 0.3; paired R@1 points, 95% CI; reported only)\n",
+           "| Seed | D_emo | D_style | pooled | binding gates " + f"{picked} / C0 | sparsity {picked} / C0 |",
+           "|---|---:|---:|---:|---|---|"]
+    for seed, v in res["per_seed"].items():
+        b, sp = v["binding_ok"], v["sparsity_passed"]
+        out.append(f"| {seed}{' (selection)' if int(seed) == SEED else ''} | {_ci(v['d_emo'])} | {_ci(v['d_style'])} | "
+                   f"{_ci(v['d_pooled'])} | {v['models'][picked]['gates']['n_binding_passed']}/8 "
+                   f"({'pass' if b[picked] else 'FAIL'}) / {v['models']['C0']['gates']['n_binding_passed']}/8 "
+                   f"({'pass' if b['C0'] else 'FAIL'}) | "
+                   + " / ".join(f"{grid._gate_value('sparsity', v['models'][m]['gates']['values'])} "
+                                f"{'pass' if sp[m] else 'FAIL'}" for m in (picked, "C0")) + " |")
+    out.append("\n| Seed | model | naive R@1 emotion (mean) | naive R@1 art style (mean) | pooled | final condition loss | "
+               "final tau | wall-clock (min) |")
+    out.append("|---|---|---:|---:|---:|---:|---:|---:|")
+    for seed, v in res["per_seed"].items():
+        for m, d in v["models"].items():
+            r, t = d["naive_r1"], d["training"]
+            out.append(f"| {seed} | {m} | {_r1ci(r['emotion']['mean'])} | {_r1ci(r['art_style']['mean'])} | "
+                       f"{_r1ci(r['pooled']['mean'])} | "
+                       f"{'n/a' if t['final_condition_loss'] is None else format(t['final_condition_loss'], '.3f')} | "
+                       f"{'n/a' if t['final_tau'] is None else format(t['final_tau'], '.4f')} | {t['seconds'] / 60:.1f} |")
+    out.append(f"\nSeed-42 recomputation vs selection_results.json: {res['seed42_consistency_vs_selection_json']}")
+    print("\n".join(out))
+
+
 # ----------------------------------------------------------------------------- Task 3: tables
 
 def _ci(block: dict) -> str:
@@ -1027,7 +1136,8 @@ def main() -> None:
     parser.add_argument("--tables", action="store_true")
     args = parser.parse_args()
     if args.replicate:
-        raise NotImplementedError("Task 4")
+        replicate()
+        replication_tables()
     if args.prepare:
         prepare()
     if args.smoke:
@@ -1039,6 +1149,8 @@ def main() -> None:
         tables()
     elif args.tables:
         tables()
+        if REPLICATION_JSON.exists():
+            replication_tables()
 
 
 if __name__ == "__main__":
