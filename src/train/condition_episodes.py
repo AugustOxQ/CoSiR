@@ -35,6 +35,8 @@ def pair_feature_units(img_features, txt_features) -> np.ndarray:
 
 def _hard_negatives(rng, anchor, pool, units, keys, used, count, hard_pool):
     """The `count` rows of `pool` most CLIP-similar to the anchor (among a random `hard_pool` sample)."""
+    if count == 0:
+        return []
     sample = pool if len(pool) <= hard_pool else rng.choice(pool, hard_pool, replace=False)
     sample = sample[~np.isin(keys[sample], list(used))]
     order = np.argsort(-(units[sample] @ units[anchor]), kind="stable")
@@ -53,6 +55,8 @@ def _hard_negatives(rng, anchor, pool, units, keys, used, count, hard_pool):
 def mine_condition_episodes(source, units, keys, n_episodes, rng, episodes_per_condition=4, num_support=4,
                             num_contrast=4, num_positive=4, num_hard=6, num_random=6, hard_pool=2048,
                             max_failures=1000) -> ConditionEpisodes:
+    if num_hard > 0 and units is None:
+        raise ValueError("hard negatives need CLIP units (pair_feature_units); pass num_hard=0 to mine without them")
     fields = {k: [] for k in ("anchor", "supports", "contrasts", "candidates")}
     failures = 0
     while len(fields["anchor"]) < n_episodes:

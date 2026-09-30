@@ -6,7 +6,7 @@ import torch
 from scipy.sparse import csr_matrix
 
 from src.model.factors import SharedFactorEncoder
-from src.train.factors import cross_modal_infonce_loss, decorrelation_penalty
+from src.train.factors import cross_modal_infonce_loss, decorrelation_penalty, painting_infonce_loss
 from src.train.factors import (
     anti_split_penalty,
     graph_neighbor_consistency_loss,
@@ -161,3 +161,55 @@ def test_decorrelation_separates_copies_from_independent_and_ignores_constants()
     value = decorrelation_penalty(with_constant)
     assert torch.isfinite(value) and value.item() < 0.05
     assert decorrelation_penalty(torch.rand(1, 8)).item() == 0.0     # one row: no variance, no NaN
+
+
+def _painting_codes(n, f=6, seed=0):
+    g = torch.Generator().manual_seed(seed)
+    return torch.rand(n, f, generator=g), torch.rand(n, f, generator=g)
+
+
+def test_painting_infonce_equals_row_infonce_when_each_painting_has_one_row():
+    img, txt = _painting_codes(10)
+    ids = np.array([7, 3, 9, 1, 0, 5, 2, 8, 6, 4])
+    expected = cross_modal_infonce_loss(img, txt, 0.1, torch.as_tensor(ids))
+    assert torch.allclose(painting_infonce_loss(img, txt, ids, 0.1), expected, atol=1e-6)
+
+
+def test_painting_infonce_ignores_caption_spread_when_painting_means_are_fixed():
+    img, txt = _painting_codes(8)
+    ids = np.array([0, 0, 1, 1, 2, 2, 3, 3])
+    img = img[[0, 0, 2, 2, 4, 4, 6, 6]]                  # rows of a painting share one image
+    shift = torch.zeros_like(txt)
+    shift[0], shift[1] = 0.05, -0.05                     # painting 0's mean caption code is unchanged
+    assert torch.allclose(painting_infonce_loss(img, txt, ids), painting_infonce_loss(img, txt + shift, ids),
+                          atol=1e-6)
+
+
+def test_painting_infonce_is_invariant_to_row_order():
+    img, txt = _painting_codes(9, seed=1)
+    ids = np.array([0, 0, 0, 1, 1, 2, 3, 3, 3])
+    perm = np.random.default_rng(0).permutation(9)
+    assert torch.allclose(painting_infonce_loss(img, txt, ids),
+                          painting_infonce_loss(img[perm], txt[perm], ids[perm]), atol=1e-6)
+
+
+def test_painting_infonce_handles_single_row_paintings():
+    img, txt = _painting_codes(5, seed=2)
+    loss = painting_infonce_loss(img, txt, np.array([0, 0, 1, 2, 2]))
+    assert torch.isfinite(loss)
+    assert painting_infonce_loss(img[:1], txt[:1], np.array([4])).item() == 0.0   # one painting: nothing to contrast
+
+
+def test_painting_infonce_gradient_reaches_every_caption_row():
+    img, txt = _painting_codes(6, seed=3)
+    txt.requires_grad_(True)
+    painting_infonce_loss(img, txt, np.array([0, 0, 1, 1, 2, 2])).backward()
+    assert (txt.grad.abs().sum(dim=1) > 0).all()
+
+
+def test_painting_infonce_validates_inputs():
+    img, txt = _painting_codes(4)
+    with pytest.raises(ValueError, match="temperature"):
+        painting_infonce_loss(img, txt, np.arange(4), 0.0)
+    with pytest.raises(ValueError, match="one entry per row"):
+        painting_infonce_loss(img, txt, np.arange(3))

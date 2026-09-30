@@ -132,3 +132,25 @@ def test_hard_negatives_sampled_branch_takes_the_top_k_of_the_random_sample():
     assert used == {keys[anchor], *(keys[r] for r in picked)}
     global_top = pool[np.argsort(-(units[pool] @ units[anchor]), kind="stable")[:count]]
     assert set(picked) != set(global_top.tolist())                  # the sample, not all outside items
+
+
+def test_zero_hard_negatives_need_no_units_and_give_random_outside_negatives():
+    _, _, _, keys = _world()
+    labels = np.arange(4000) % 5
+    src = CommunitySource(labels, np.arange(4000), min_group_rows=100)
+    ep = mine_condition_episodes(src, None, keys, 30, np.random.default_rng(4), num_hard=0, num_random=12)
+    assert ep.candidates.shape == (30, 16)
+    assert ep.positive_mask[:, :4].all() and not ep.positive_mask[:, 4:].any()
+    for i in range(30):
+        group = labels[ep.anchor[i]]
+        assert (labels[ep.supports[i]] == group).all() and (labels[ep.candidates[i, :4]] == group).all()
+        assert (labels[ep.contrasts[i]] != group).all() and (labels[ep.candidates[i, 4:]] != group).all()
+        rows = [ep.anchor[i], *ep.supports[i], *ep.contrasts[i], *ep.candidates[i]]
+        assert len(set(keys[rows].tolist())) == len(rows)            # no painting repeats
+
+
+def test_hard_negatives_without_units_raise_up_front():
+    _, _, _, keys = _world()
+    src = CommunitySource(np.arange(4000) % 5, np.arange(4000), min_group_rows=100)
+    with pytest.raises(ValueError, match="units"):
+        mine_condition_episodes(src, None, keys, 5, np.random.default_rng(5), num_hard=2)

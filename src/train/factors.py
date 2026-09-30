@@ -64,6 +64,36 @@ def cross_modal_infonce_loss(
     return 0.5 * (F.cross_entropy(logits, targets) + F.cross_entropy(logits.T, targets))
 
 
+def painting_infonce_loss(
+    img_codes: Tensor,
+    txt_codes: Tensor,
+    painting_ids: Tensor | np.ndarray,
+    temperature: float = 0.1,
+) -> Tensor:
+    """Symmetric InfoNCE between each painting's mean image code and its mean caption code.
+
+    Rows with the same painting id are averaged per modality. A painting's rows share one image, so its
+    image mean is that image's code; its caption mean is the average code of its captions. The means are
+    matched against the batch's other paintings with ``cross_modal_infonce_loss``, so one caption's code may
+    differ from the image code as long as the painting's mean caption code matches it (factor-learning spec §5).
+    """
+    if temperature <= 0:
+        raise ValueError("temperature must be positive")
+    ids = painting_ids if isinstance(painting_ids, Tensor) else torch.as_tensor(np.asarray(painting_ids))
+    ids = ids.to(img_codes.device)
+    if ids.shape != (len(img_codes),) or txt_codes.shape != img_codes.shape:
+        raise ValueError("painting_ids must have one entry per row, and both code arrays the same shape")
+    _, inverse = torch.unique(ids, return_inverse=True)
+    n = int(inverse.max()) + 1
+    counts = torch.zeros(n, device=img_codes.device, dtype=img_codes.dtype).index_add_(
+        0, inverse, torch.ones(len(inverse), device=img_codes.device, dtype=img_codes.dtype))[:, None]
+    img_mean = torch.zeros(n, img_codes.shape[1], device=img_codes.device, dtype=img_codes.dtype).index_add_(
+        0, inverse, img_codes) / counts
+    txt_mean = torch.zeros(n, txt_codes.shape[1], device=txt_codes.device, dtype=txt_codes.dtype).index_add_(
+        0, inverse, txt_codes) / counts
+    return cross_modal_infonce_loss(img_mean, txt_mean, temperature)
+
+
 def decorrelation_penalty(codes: Tensor, eps: float = 1e-6) -> Tensor:
     """Mean squared off-diagonal batch correlation over factors with non-zero std.
 
