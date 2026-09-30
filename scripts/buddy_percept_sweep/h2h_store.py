@@ -63,9 +63,37 @@ def _obj(x) -> np.ndarray:
     return out
 
 
-def build_arrays(pilot) -> dict:
+_SEED = 42
+
+
+def build_arrays(pilot, percept_base=None) -> dict:
     """The expensive part (real data). Mirrors real_data.load_real_raw_inputs
-    and the PercepT Stage-1 input flow of fit_stage1_and_get_targets."""
+    and the PercepT Stage-1 input flow of fit_stage1_and_get_targets.
+
+    Runs under the snapshot pilot's determinism settings so the stored inputs
+    are bit-identical to what the pilot computes in-process; previous torch
+    flags are restored afterwards. `percept_base` (default: load the PercepT
+    stage-1 pilot) is injectable for tests."""
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+    prev = (torch.are_deterministic_algorithms_enabled(),
+            torch.is_deterministic_algorithms_warn_only_enabled(),
+            torch.backends.cudnn.deterministic, torch.backends.cudnn.benchmark)
+    torch.manual_seed(_SEED)
+    np.random.seed(_SEED)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(_SEED)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.use_deterministic_algorithms(True, warn_only=True)
+    try:
+        return _build_arrays(pilot, percept_base)
+    finally:
+        torch.use_deterministic_algorithms(prev[0], warn_only=prev[1])
+        torch.backends.cudnn.deterministic = prev[2]
+        torch.backends.cudnn.benchmark = prev[3]
+
+
+def _build_arrays(pilot, percept_base) -> dict:
     import torch as _torch
 
     arch, pipeline, heldout_pipeline = pilot.arch, pilot.pipeline, pilot.heldout_pipeline
@@ -76,7 +104,7 @@ def build_arrays(pilot) -> dict:
 
     paintings, img, txt, counts = pipeline.load_dedup_features()
     h_paintings, h_img, h_txt, h_counts = heldout_pipeline.load_dedup_features()
-    if (len(paintings), len(h_paintings)) != (_EXPECTED_TRAIN, _EXPECTED_HELDOUT):
+    if (len(paintings), len(h_paintings)) != (_EXPECTED_TRAIN, _EXPECTED_HELDOUT) and percept_base is None:
         raise RuntimeError(f"unexpected painting counts {len(paintings)}/{len(h_paintings)}; "
                            f"expected {_EXPECTED_TRAIN}/{_EXPECTED_HELDOUT}")
     train_emotion = _obj([pipeline.majority(c) for c in counts])
@@ -91,8 +119,8 @@ def build_arrays(pilot) -> dict:
     train_genre = _obj([genre_map.get(p, "") for p in paintings])
     heldout_genre = _obj([genre_map.get(p, "") for p in h_paintings])
 
-    base = arch.load_sibling_module("percept_stage1_base_for_h2h",
-                                    str(_PERCEPT_DIR / "run_percept_stage1_pilot.py"))
+    base = percept_base or arch.load_sibling_module(
+        "percept_stage1_base_for_h2h", str(_PERCEPT_DIR / "run_percept_stage1_pilot.py"))
     log = pipeline.log
     aff768 = base.extract_affect_embedding_nodes(pipeline.TRAIN_JSON, paintings, device, log)
     h_aff768 = base.extract_affect_embedding_nodes(base.HELDOUT_JSON, h_paintings, device, log)
@@ -142,6 +170,8 @@ def load_or_build_store(cache_dir: Optional[Path] = None,
                     arrays = builder()
                     with open(tmp, "wb") as fh:   # a file object stops savez appending ".npz"
                         np.savez(fh, **{k: arrays[k] for k in _ARRAY_KEYS})
+                        fh.flush()
+                        os.fsync(fh.fileno())
                     os.replace(tmp, final)
             finally:
                 fcntl.flock(lock_file, fcntl.LOCK_UN)

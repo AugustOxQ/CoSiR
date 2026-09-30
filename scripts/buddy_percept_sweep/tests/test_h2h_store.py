@@ -41,3 +41,33 @@ def test_partial_file_is_never_loaded(tmp_path):
     (tmp_path / "h2h_store.npz.tmp").write_bytes(b"garbage")
     s = h2h_store.load_or_build_store(tmp_path, builder=_fake_arrays, patch_loader=_patches)
     assert s.train_img.shape == (12, 4)
+
+
+def test_build_arrays_runs_deterministic_and_restores_flags():
+    from types import SimpleNamespace
+    seen = []
+    def rec(ret):
+        def fn(*a, **k):
+            seen.append((torch.are_deterministic_algorithms_enabled(),
+                         torch.backends.cudnn.deterministic, torch.backends.cudnn.benchmark))
+            return ret
+        return fn
+    x = lambda n, c: np.zeros((n, c), dtype=np.float32)
+    def mk_pipeline(n):
+        return SimpleNamespace(
+            assert_extraction_complete=rec(None), TRAIN_JSON="t", log=lambda *_: None,
+            load_dedup_features=rec(([f"p{i}" for i in range(n)], x(n, 4), x(n, 4), [{"joy": 1}] * n)),
+            majority=lambda c: "joy", load_genre_map=lambda: {})
+    affect_pilot = SimpleNamespace(extract_affect_nodes=rec(x(3, 28)))
+    cca = SimpleNamespace(content_features=rec(x(3, 8)))
+    pilot = SimpleNamespace(arch=SimpleNamespace(HELDOUT_JSON="h"), pipeline=mk_pipeline(3),
+                            heldout_pipeline=mk_pipeline(3), affect_pilot=affect_pilot, cca_audit=cca)
+    base = SimpleNamespace(HELDOUT_JSON="h", extract_affect_embedding_nodes=rec(x(3, 6)),
+                           fused_embeddings=rec(x(3, 10)))
+    before = (torch.are_deterministic_algorithms_enabled(),
+              torch.backends.cudnn.deterministic, torch.backends.cudnn.benchmark)
+    out = h2h_store.build_arrays(pilot, percept_base=base)
+    assert seen and all(s == (True, True, False) for s in seen)
+    assert (torch.are_deterministic_algorithms_enabled(),
+            torch.backends.cudnn.deterministic, torch.backends.cudnn.benchmark) == before
+    assert out["train_affect28"].dtype == np.float64
