@@ -95,3 +95,16 @@ Full tables: `--tables`, and the report
 Nothing needed fixing. The pre-registered verdict is: criterion 1 not met, criterion 2 met. Held rows
 were used once, for these measurements only, and informed no choice. The stage (e) decision is the
 user's.
+
+## Follow-up: final fix wave (post-hoc, no held rows)
+
+The final whole-branch review corrected the interpretation of this task's two verdicts. The verdicts
+themselves are unchanged: criterion 1 NOT MET, criterion 2 MET.
+- Criterion 1's miss is inconclusive. The test was underpowered: P(both lower bounds > 0) ≈ 0.4 if the
+  held effect equalled the selection estimates.
+- Criterion 2's pass is reproduced on selection rows by the naive rule at G3's learned β.
+
+The analyses ran on selection rows only, in `src/test/20261013_stage_d_selection/run_posthoc.py`; see
+that folder's log, section "Post-hoc diagnostics (final fix wave)". Held rows were not touched again.
+The power and same-label numbers are arithmetic on this folder's stored `results/final_results.json`.
+The β-matched control on held rows was not run; it is option (a) in the final report.

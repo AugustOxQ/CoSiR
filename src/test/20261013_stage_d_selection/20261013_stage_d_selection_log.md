@@ -110,3 +110,118 @@ and `--tables` reprints them.
 
 Nothing needed fixing. The selected run is **G3** (CLIP clusters, no swap, seed 42), checkpoint
 `checkpoints/G3.pt`. Task 7 (seeds 43/44 and the final held-out test) is the controller's call.
+
+## Reproduction recipe
+
+From the repository root, CoSiR environment:
+
+```bash
+python src/test/20261013_stage_d_selection/run_selection.py --prepare
+# the five runs as parallel OS processes, each with 6 BLAS threads:
+for r in G1 G2 G3 G4 G5; do
+  OMP_NUM_THREADS=6 MKL_NUM_THREADS=6 OPENBLAS_NUM_THREADS=6 \
+    python src/test/20261013_stage_d_selection/run_selection.py --run $r > src/test/20261013_stage_d_selection/run_$r.log 2>&1 &
+done; wait
+python src/test/20261013_stage_d_selection/run_selection.py --evaluate
+python src/test/20261013_stage_d_selection/run_posthoc.py --run          # post-hoc diagnostics (below)
+```
+
+- **BLAS threads:** the five training runs used `OMP_NUM_THREADS = MKL_NUM_THREADS = OPENBLAS_NUM_THREADS = 6`
+  (recorded in each `results/history_G{k}.json` as `omp_num_threads`). `--evaluate` and the post-hoc run used
+  the default thread count (the post-hoc run recorded 16 torch threads).
+- **Parallel vs sequential:** every run owns its seed-42 generators, so running the five in parallel gives
+  the same result as running them one after another **up to floating-point nondeterminism** (GPU training
+  is not bit-deterministic, about 1e-6). This was argued by construction and was not tested empirically.
+
+## Post-hoc diagnostics (final fix wave)
+
+**Every number in this section is post-hoc, on selection rows (scorer-train rows for the mechanism
+check), and informed no pre-registered decision.** The pre-registered selection (G3) and Task 7's two
+verdicts are unchanged. No model was trained and no held row was read.
+
+### Problem
+
+The final whole-branch review (`.superpowers/sdd/2026-09-30-cosir-v2-candidate-a-stage-d/final-fix-findings.md`)
+found the code and verdicts sound but the interpretation wrong in four places:
+- criterion 2's pass is reproduced by the naive rule at G3's learned β (C1);
+- the per-episode ceiling is uninformative (C2);
+- criterion 1's miss is underpowered, not negative (I1);
+- about a third of Δ is the β drop (I2), and the β-collapse mechanism needed a check (I3).
+
+### Investigation steps
+
+1. **`src/` additions (TDD, change log in `.claude/20261013_log.md`):**
+   - `ceiling_ranks(..., target_column=0)`: an int or one int per episode declares another candidate the
+     target; a random distractor gives the ceiling's null.
+   - `label_oracle_ranks(...)`: one softmax-parametrized weight vector per target label, fitted on the
+     label's other folds (2 folds, 200 Adam steps, lr 0.1, seed 42; smooth margin as in the ceiling,
+     both directions, labels weighted equally), ranks out of fold.
+2. **Script** `run_posthoc.py`. It imports `run_final.py` (and through it `run_selection.py`) and reuses
+   their cache, episode construction, masking, swap checks and swap halves.
+   - `--run`: 134 s on CPU, 16 torch threads (`run_posthoc.log`).
+   - Output: `results/posthoc_results.json` and `results/posthoc_ranks.npz` (gitignored).
+   - `--tables` reprints everything.
+3. **Row scope.** The selection analyses NaN-mask every row outside the selection set. The mechanism
+   check NaN-masks everything outside scorer-train. Held rows are not read. The I1/M2 numbers are
+   arithmetic on Task 7's stored `final_results.json`.
+4. **Reproduction checks, all exact:**
+   - naive (β 0.3) and G1-G5 ranks equal Task 6's stored ranks on 100% of episodes, right and wrong
+     condition, every scope; their Δ equal Task 6's bit for bit;
+   - the selection swap episodes (SHA-256 `41f8215f…2478`) and the naive and G3 success rates equal Task
+     7's discarded smoke run;
+   - the per-episode ceiling equals Task 6's stored ceiling ranks on 100% of episodes.
+
+### Results (post-hoc, selection rows)
+
+- **C1, swap test (1,024 selection episodes; success i2t / t2i).**
+  - naive at β 0.3: 18.75 / 21.00. Success rises steadily as naive's β falls:
+    - β 0.2: +2.00 [+1.32, +2.73] pooled over naive at 0.3;
+    - β 0.1: +4.00 [+2.98, +5.08];
+    - G3's β 0.0496: +5.22 [+3.91, +6.54];
+    - β 0.02: +6.05 [+4.64, +7.47].
+  - G3: +5.27 [+3.22, +7.37].
+  - **G3 − naive at G3's β: +0.05 [−2.10, +2.20].**
+  - G3's interface at β 0.3: +0.68 [−1.17, +2.64].
+  - Of the five runs, only G5 adds swap success beyond its own β drop: +2.59 [+0.73, +4.44], and its
+    interface at β 0.3 gives +2.69 [+0.98, +4.39]. G5 was not selected and not evaluated on held.
+- **I2, Δ decomposition (pooled mean, R@1 points).** Δ(run, naive@0.3) = β drop + beyond, exactly.
+
+  | Run | Total | β drop | Beyond |
+  |---|---|---|---|
+  | G3 | +2.54 | +0.88 [+0.31, +1.44] (35%) | +1.66 [+0.55, +2.80] (i2t +0.56 [−0.95, +2.05], t2i +2.76 [+1.27, +4.30]) |
+  | G1 | +0.46 | +0.90 | −0.44 [−1.45, +0.63] |
+  | G2 | +0.79 | +0.95 | −0.16 [−1.15, +0.85] |
+  | G4 | +2.36 | +0.88 | +1.48 [+0.37, +2.61] |
+  | G5 | +3.00 | +0.95 | +2.05 [+1.06, +3.08] |
+
+  - Each run's interface at β 0.3: G3 +1.62 [+0.59, +2.71], G1 −0.29, G2 +0.09, G4 +1.53, G5 +2.12.
+  - The review's reference values for G1/G2/G5 (−0.42, −0.09, +2.12) were computed against naive at
+    G3's β. The values here use each run's own β, as the finding specifies. G3's values match.
+- **C2, ceilings (R@1 i2t / t2i, β 0.3; chance 7.69%):**
+  - naive 18.36 / 20.36;
+  - per-episode ceiling 84.72 / 86.65, and its random-target null 77.12 / 79.27;
+  - **label oracle (CV) 18.41 / 21.04**, and its random-target null 7.69 / 7.62.
+  - Label oracle − naive: +0.05 [−1.12, +1.22] / +0.68 [−0.49, +1.88].
+  - At G3's β, the label oracle scores 19.19 / 21.61 against naive's 18.80 / 20.24: +0.39 [−0.85, +1.64] /
+    +1.37 [+0.15, +2.61].
+- **I3, mechanism check (1,024 mined scorer-train episodes per source, seed 42; pairwise accuracy, ties
+  count one half).**
+  - CLIP alone ranks a positive above a hard negative only 28.7-35.3% of the time, and above a random
+    negative 68.2-77.0% of the time.
+  - As naive's β goes 0.3 → 0, positive-over-hard rises by 2.7-3.5 points in every source and direction
+    (clip_cluster 49.6 → 52.3 / 46.1 → 48.8). Positive-over-random stays within 0.6 points (clip_cluster
+    85.6 → 85.3 / 85.7 → 85.8).
+- **I1 / M2, from the stored held numbers (normal approximation).**
+  - Held SE is 1.00 (i2t) and 1.11 (t2i).
+  - If the held effect equalled the selection points (+1.83, +3.25), the chance that each lower bound is
+    above 0 would be 0.45 (i2t) and 0.83 (t2i). Both at once: 0.38 assuming independence, 0.39 with the
+    selection i2t/t2i correlation (0.10).
+  - The held CIs contain the selection points.
+  - Dropping the 8.74% same-label wrong conditions scales the point by ×1.096 and the SE by ×1.047, so z
+    rises only ×1.047. The lower bounds become −1.13 and −0.51.
+
+### Solution / follow-up
+
+Both reports now carry these post-hoc sections and corrected wording; the pre-registered verdict lines
+are unchanged. The β-matched control on held rows was **not** run: it is listed as a user option in the
+final report.
