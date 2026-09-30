@@ -23,16 +23,26 @@ In plain terms:
 - **The setup is sound.** C0 passes all nine gates and scores 19.71% naive R@1, level with the current system
   (original R3, 19.36%; difference +0.35 [−0.34, +1.04]).
 - **The style signal works, but at a price.** S is the only cell that beats C0: +1.44 points pooled, all of it
-  from art style (+3.61 [+2.37, +4.86]), mostly in text→image retrieval. It pays with emotion (−0.73, lower
-  bound −1.83, below the −1.0 guard) and with denser caption codes (active fraction 0.559 against the 0.50 cap).
-  Either failure alone stops it.
-- **Painting-level agreement does not free emotion.** A is worse than C0 on both labels (emotion −1.90, style
-  −4.15), and its label oracle falls as well, so its code holds less label information, not just differently
-  weighted information. The agreement hypothesis, in the form tested here, is not supported.
+  from art style (+3.61 [+2.37, +4.86]), mostly in text→image retrieval. It fails the rule twice. Its caption
+  codes are denser than the cap allows (active fraction 0.559 against 0.50). And its emotion difference at β 0.3,
+  −0.73 [−1.83, +0.39], is not significantly negative, but the interval reaches below −1.0, so the guard could
+  not show that emotion stayed within a point of C0 (at this sample size the guard had little power; see
+  Caveats). Either failure alone stops S. The clearer evidence of an emotion cost does not depend on the codes'
+  scale: with the factor term alone (β 0), S is −2.10 [−3.27, −0.90] against C0 on emotion under the naive rule
+  (−2.10 in each retrieval direction) and −2.10 [−3.30, −0.83] under the label oracle.
+- **Painting-level agreement, in the form tested here, does not free emotion.** A is worse than C0 on both labels
+  (emotion −1.90, style −4.15). A post-hoc probe finds that A's caption codes carry less emotion than C0's even
+  in their within-painting variation, where the hypothesis expected more (30.9% against 35.6%, majority 28.4%).
+  The test was not clean: A kept the graph term, every same-painting pair of rows is a graph edge, and so the
+  graph term still pulled a painting's caption codes toward each other (54.9% of its positive pairs in the
+  shared sampler's batches are same-painting pairs). The hypothesis is not supported, but this cell did not
+  remove the whole constraint the hypothesis blames.
 - **Combining the two cancels the style gain.** AS loses the style gain (+0.05) and keeps an emotion loss (−1.59).
 
 Per spec §6 this ends the experiment at the selection stage. Replication (seeds 43 and 44) and the held test
-are not run, and the held rows were not read. What to try next is the user's decision.
+are not run, and the held rows were not read. The post-hoc diagnostics below were computed after the verdict
+and informed none of it. The options for what comes next, with their costs, are listed under "Next steps"; the
+choice is the user's.
 
 ![D and D_emotion per cell against the matched control](../../assets/2026-10-16_factor_learning/criterion_d.png)
 
@@ -91,6 +101,9 @@ episodes and ranks the other half (2 folds, 200 steps), which measures how much 
 carries whatever the weighting rule. Its **null** declares a random negative the positive and should sit at
 chance.
 
+**Ties.** All ranks are tie-aware, the project's convention: a positive tied with another candidate gets a rank
+of at least 1.5, and R@1 needs rank 1, so a tie counts as a miss.
+
 **Where and how long.** Everything ran on the local RTX 3090. The Task 3 timing smoke projected 8.2 to 9.2
 minutes per sequential run and a 3.9 GiB peak. C0, A and S then trained as three parallel processes in 11.1 to
 11.3 minutes each. AS was launched in parallel too but ran out of GPU memory at start-up (four processes
@@ -145,12 +158,31 @@ Paired differences to C0 per label and direction (R@1 points, 95% CI):
 **Reading.** S's whole gain sits in one cell of this table: art style, text→image (+5.86). There the candidates
 are images, and the headroom probe found that art style is read from the image (linear probe 59.8%) far better
 than from the caption (26.0%). A condition loss built on CLIP image clusters therefore sharpened exactly the
-side that carries style. Its emotion loss is also on the text→image side (−1.42), where the image candidates
-carry little emotion to begin with.
+side that carries style.
 
-For A, the largest loss is the mirror image of S's gain: style text→image (−5.96). A's image codes lost style
-information. Both of A's emotion directions also fell, which is the opposite of what the agreement hypothesis
-predicted for caption candidates (image→text).
+S's emotion difference looks one-sided at β 0.3 (−0.05 image→text, −1.42 text→image), but that pattern comes
+from how C0 responds to β, not from S's code. With the factor term alone (β 0), S loses the same amount in both
+directions, and the label oracle puts more of the loss on the image→text side:
+
+Emotion R@1 (%) per direction for C0 and S, with S − C0 (paired, 95% CI). From the stored β-grid and oracle
+results.
+
+| | Naive β 0, i2t | Naive β 0, t2i | Naive β 0.3, i2t | Naive β 0.3, t2i | Oracle β 0, i2t | Oracle β 0, t2i |
+|---|---:|---:|---:|---:|---:|---:|
+| C0 | 15.92 | 15.87 | 14.40 | 15.67 | 17.14 | 17.38 |
+| S | 13.82 | 13.77 | 14.36 | 14.26 | 14.45 | 15.87 |
+| S − C0 | −2.10 [−3.66, −0.49] | −2.10 [−3.71, −0.54] | −0.05 [−1.56, +1.46] | −1.42 [−2.93, +0.10] | −2.69 [−4.25, −1.12] | −1.51 [−3.22, +0.25] |
+
+From β 0 to β 0.3, C0's image→text emotion R@1 falls by 1.52 points (15.92 to 14.40) while S's rises by 0.54
+(13.82 to 14.36), which closes the image→text gap; in text→image both move by less than half a point, so that
+gap stays. The emotion cost of S's code is therefore not confined to text→image, where image candidates carry
+little emotion; at β 0 it is at least as large on caption candidates.
+
+For A, the largest loss is style text→image (−5.96), the mirror image of S's gain. There the query is a caption
+and the candidates are images, so both of A's codes enter the score. The post-hoc probes (diagnostic 1 below)
+confirm that A's image codes hold less style than C0's (linear probe 39.8% against 45.5%). Both of A's emotion
+directions also fell, which is the opposite of what the agreement hypothesis predicted for caption candidates
+(image→text).
 
 **Against the current system.** C0 itself is level with original R3 overall (+0.35 [−0.34, +1.04]), slightly
 better on style (+1.49 [+0.46, +2.49]) and slightly worse on emotion (−0.78 [−1.73, +0.20]). So the new sampler
@@ -196,27 +228,40 @@ directions, with 95% CIs. Dashed line: original R3's oracle. Dotted line: the or
 models.*
 
 R@1 (%), mean of the two directions, 95% CIs. R3's oracle at β 0 (20.47%) is the value the headroom probe
-reported as 20.5%.
+reported as 20.5%. The column "oracle β 0 − own naive β 0.3" mixes two β values, as stage (d) and the probe
+reported it; the column "same β 0.3" compares like with like (post-hoc, from the stored ranks).
 
-| Model | Naive, β 0.3 | Oracle, β 0.3 | **Oracle, β 0** | Oracle β 0: emotion | Oracle β 0: style | Null, β 0 | Oracle β 0 − own naive | Oracle β 0 − R3 oracle β 0 |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| original R3 | 19.36 | 19.73 | **20.47** [19.49, 21.47] | 16.77 | 24.17 | 7.54 | +1.11 [+0.23, +2.04] | (reference) |
-| C0 | 19.71 | 20.25 | 21.12 [20.13, 22.09] | 17.26 | 24.98 | 7.75 | +1.40 [+0.54, +2.30] | +0.65 [−0.12, +1.44] |
-| A | 16.69 | 17.66 | 16.83 [15.93, 17.74] | 14.26 | 19.41 | 7.62 | +0.15 [−0.67, +0.93] | −3.64 [−4.55, −2.73] |
-| S | 21.15 | 21.29 | **21.86** [20.86, 22.86] | 15.16 | 28.56 | 7.52 | +0.71 [−0.16, +1.61] | **+1.39 [+0.51, +2.28]** |
-| AS | 18.95 | 18.93 | 19.34 [18.37, 20.29] | 13.55 | 25.12 | 7.53 | +0.39 [−0.40, +1.23] | −1.14 [−2.05, −0.23] |
+| Model | Naive, β 0.3 | Oracle, β 0.3 | **Oracle, β 0** | Oracle β 0: emotion | Oracle β 0: style | Null, β 0 | Oracle β 0 − own naive β 0.3 (mixed β) | Oracle − own naive, same β 0.3 | Oracle β 0 − R3 oracle β 0 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| original R3 | 19.36 | 19.73 | **20.47** [19.49, 21.47] | 16.77 | 24.17 | 7.54 | +1.11 [+0.23, +2.04] | +0.37 [−0.50, +1.23] | (reference) |
+| C0 | 19.71 | 20.25 | 21.12 [20.13, 22.09] | 17.26 | 24.98 | 7.75 | +1.40 [+0.54, +2.30] | +0.54 [−0.32, +1.37] | +0.65 [−0.12, +1.44] |
+| A | 16.69 | 17.66 | 16.83 [15.93, 17.74] | 14.26 | 19.41 | 7.62 | +0.15 [−0.67, +0.93] | +0.98 [+0.24, +1.71] | −3.64 [−4.55, −2.73] |
+| S | 21.15 | 21.29 | **21.86** [20.86, 22.86] | 15.16 | 28.56 | 7.52 | +0.71 [−0.16, +1.61] | +0.13 [−0.73, +1.03] | **+1.39 [+0.51, +2.28]** |
+| AS | 18.95 | 18.93 | 19.34 [18.37, 20.29] | 13.55 | 25.12 | 7.53 | +0.39 [−0.40, +1.23] | −0.01 [−0.78, +0.76] | −1.14 [−2.05, −0.23] |
 
 **Reading.** Only S raises the oracle above R3's, by +1.39 points, and the split shows where it came from:
 style +4.39 [+2.98, +5.74] and emotion −1.61 [−2.76, −0.44] against R3's oracle. Against C0's oracle, S is
 +0.74 [−0.17, +1.64] pooled, with style +3.59 [+2.20, +4.93] and emotion −2.10 [−3.30, −0.83]. So S's code did
-not gain label information overall; it **traded emotion information for style information**. The
-naive-rule results in Result 2 are therefore a property of the code, not of the weighting. A's code lost both
-(oracle −4.28 [−5.19, −3.39] against C0's). Every model stays far below the 49.8% ceiling of the probe's
-label-aligned code.
+not gain label information usable by the cross-modal score overall; it **traded emotion for style**. The
+naive-rule results in Result 2 are therefore a property of the code, not of the weighting.
 
-As in stage (d), the oracle beats each model's own naive rule by at most 1.4 points. The naive rule already
-extracts nearly all the label information these codes hold. Every null sits at chance (7.52% to 7.75%
-against 7.69%), so the oracle does not fit noise.
+A's oracle is 4.28 points below C0's at β 0 (−4.28 [−5.19, −3.39]). Two things limit what this shows alone. The
+oracle ranks through the product of image and caption codes, so it measures label information usable by the
+cross-modal score, and A's codes also match an image to its own caption less well than C0's (pair retrieval
+0.875 of CLIP against 1.116). A lower oracle alone therefore does not show that the code holds less label
+information; the per-modality probes in diagnostic 1 show that it does (caption→emotion −7.5 points,
+image→style −5.7). Ties also count as misses, and A's sparse codes tie often at β 0. The effect is small
+for the naive rule (A's β-0 naive R@1 is 16.38% as scored and 16.62% with ties broken at random), and at
+β 0.3, where no model has ties, A's oracle is still 2.59 points below C0's (17.66% against 20.25%;
+−2.59 [−3.43, −1.73]).
+Every model stays far below the 49.8% ceiling of the probe's label-aligned code.
+
+Pooled, the naive rule extracts nearly all the label information the oracle can use: at the same β the oracle
+beats each model's own naive rule by at most 1.0 point (A at β 0.3, +0.98 [+0.24, +1.71]; at β 0 the largest
+is R3's +0.89), and by at most 1.4 in the mixed-β column. Per label this does not always hold: on emotion,
+C0's oracle beats its naive rule by +1.37 [+0.07, +2.64] at β 0 (S's by +1.37 [+0.10, +2.64]), and C0's by
++2.22 [+1.03, +3.47] in the mixed-β comparison. Every null sits at chance (7.52% to 7.75% against 7.69%), so
+the oracle does not fit noise.
 
 ## Result 5: the β grid (is a gain a code-scale effect?)
 
@@ -232,8 +277,10 @@ candidates at β 0.3, averaged over episodes.
 | S | 0.325 | **5.16** | 15.6 |
 | AS | 0.224 | 2.44 | 15.0 |
 
-S's codes are 21% larger than C0's, so at β 0.3 S leans on CLIP about a third less than C0 does. Naive R@1 (%)
-on the β grid, mean of directions, pooled / emotion / style:
+S's codes are 21% larger than C0's (RMS 0.325 against 0.268). The spread ratio measures what that does to the
+balance of the score: C0's ratio is 0.66 of S's (3.39 / 5.16), so at β 0.3 the CLIP term weighs about a third
+less against the factor term for S than for C0. Naive R@1 (%) on the β grid, mean of directions,
+pooled / emotion / style:
 
 | Model | β 0 | β 0.03 | β 0.1 | **β 0.3** | β 1 |
 |---|---|---|---|---|---|
@@ -254,12 +301,38 @@ S − C0 at the same β (paired, R@1 points, 95% CI; context, not part of the ru
 | 1 | +2.00 [+1.28, +2.72] | −0.15 [−1.05, +0.76] | +4.15 [+3.03, +5.27] |
 
 **Reading.** At β 0 the ranking uses the factor term alone and does not depend on the codes' overall scale, so
-a difference there is a property of the code. S's style gain is +3.88 at β 0, about the same as at β 0.3: it is
-**in the code, not a β effect**. S's emotion loss is largest at β 0 (−2.10) and shrinks as β grows, because the
-CLIP term masks part of what the code lost. The pooled gain therefore grows with β. Even at β 1 the emotion
-difference (−0.15 [−1.05, +0.76]) would sit just below the guard's bound, and β 1 lowers every model's R@1; in
-any case, choosing β after seeing the results is what the pre-registration rules out. A is worse than C0 at every β (−3.87 at β 0 to −2.28 at β 1), so its loss is not a
-scale artefact either, even though its codes are the smallest.
+a difference there is a property of the code. S's style gain is +3.88 at β 0, a little larger than at β 0.3:
+it is **in the code, not a β effect**. S's emotion loss is largest at β 0 (−2.10) and shrinks as β grows,
+because the CLIP term masks part of what the code lost. The pooled gain therefore grows with β. Even at β 1 the
+emotion difference (−0.15 [−1.05, +0.76]) would sit just below the guard's bound, and β 1 lowers every model's
+R@1; in any case, choosing β after seeing the results is what the pre-registration rules out. A is worse than
+C0 at every β (−3.87 at β 0 to −2.28 at β 1), so its loss is not a scale artefact either, even though its codes
+are the smallest.
+
+**Balance-matched comparison (post-hoc, selection rows, informed no pre-registered decision).** How much of `D`
+comes from S's larger codes? We matched the balance of the two score terms in two ways: C0 at the β where its
+spread ratio equals S's at β 0.3 (β = 0.3 × 3.39 / 5.16 = 0.197), and S at the β where its ratio equals C0's at
+β 0.3 (0.457). Each comparison was estimated twice: by linear interpolation of R@1 in β between the two
+neighbouring stored grid points, and by re-scoring the same episodes at the matched β with the same naive
+weights (the weights do not depend on β; the re-scoring code reproduces the stored β-0.3 ranks exactly).
+
+S − C0, naive R@1 points, mean of directions (95% CI where the episodes were scored).
+
+| Comparison | Method | Pooled | Emotion | Art style |
+|---|---|---:|---:|---:|
+| both at β 0.3 (the pre-registered `D`) | stored | +1.44 [+0.61, +2.26] | −0.73 [−1.83, +0.39] | +3.61 [+2.37, +4.86] |
+| S at β 0.3, C0 at β 0.197 | interpolated | +1.23 | −1.01 | +3.46 |
+| S at β 0.3, C0 at β 0.197 | re-scored | +1.05 [+0.18, +1.89] | −1.17 [−2.27, −0.05] | +3.27 [+2.03, +4.54] |
+| S at β 0.457, C0 at β 0.3 | interpolated | +1.26 | −0.97 | +3.49 |
+| S at β 0.457, C0 at β 0.3 | re-scored | +1.15 [+0.34, +1.94] | −1.07 [−2.15, +0.00] | +3.37 [+2.15, +4.57] |
+| both at β 0 (scale-free) | stored | +0.89 [+0.00, +1.76] | −2.10 [−3.27, −0.90] | +3.88 [+2.56, +5.18] |
+
+Interpolation puts the share of `D` due to the scale difference at 12 to 15%; re-scoring, which is exact at the
+matched β, puts it at 20 to 27% (`D` +1.05 to +1.15 instead of +1.44). A little over half of that share comes
+from the CLIP term masking part of the emotion loss (emotion −1.07 to −1.17 when matched, against −0.73), the
+rest from a slightly larger style difference at β 0.3 (+3.61 against +3.27 to +3.37). The style gain itself
+does not come from scale: it is largest at β 0 (+3.88), where scale plays no role. With the balance matched,
+S still beats C0 pooled, and its emotion point estimate falls just below −1.0.
 
 ## Result 6: the condition loss and τ over training
 
@@ -269,58 +342,235 @@ scale artefact either, even though its codes are the smallest.
 noisy) and the learned softmax temperature τ, for the two cells with the condition loss. With 4 positives among
 16 candidates, uniform scores give log 4 = 1.386.*
 
-| Cell | Loss at step 1 | Loss at step 200 | Final loss (step 2,000) | τ at step 1 | Final τ |
+| Cell | Loss at step 1 | Mean of logged steps 50 to 500 | Mean of the last 10 logged steps (1,550 to 2,000) | τ at step 1 | Final τ |
 |---|---:|---:|---:|---:|---:|
-| S | 1.100 | 0.405 | 0.466 | 0.0193 | 0.0403 |
-| AS | 1.100 | 0.489 | 0.522 | 0.0193 | 0.0345 |
+| S | 1.100 | 0.494 | 0.443 | 0.0193 | 0.0403 |
+| AS | 1.100 | 0.638 | 0.619 | 0.0193 | 0.0345 |
 
-The condition loss fell from 1.10 to between 0.4 and 0.5 within the first 200 steps and then stayed flat and
-noisy. AS stayed above S at every logged step after the first: with painting-level agreement, the codes fit the style episodes less well. τ rose
-steadily and had not levelled off at step 2,000. τ does not change rankings; a rising τ with a flat loss means
-the score gaps grew at the same rate, which matches S's larger code scale (Result 5). The loss curve suggests
-most of the condition loss's effect on the fit was reached early, but it does not show whether the ranking
-effects (the style gain, the emotion loss) were still growing.
+Each logged loss is one batch of 64 episodes, so the table averages ten logged steps (the single-batch values
+at step 2,000 are 0.466 and 0.522). The condition loss fell from 1.10 to about 0.45 (S) and 0.63 (AS) by step 50
+and then declined only slightly, with a lot of batch-to-batch noise. AS stayed above S at every logged step
+after the first: with painting-level agreement, the codes fit the style episodes less well. τ rose steadily and
+had not levelled off at step 2,000. τ does not change rankings; a rising τ with a flat loss means the score gaps
+grew at the same rate, which matches S's larger code scale (Result 5). The loss curve suggests most of the
+condition loss's effect on the fit was reached early, but it does not show whether the ranking effects (the
+style gain, the emotion loss) were still growing.
+
+## Post-hoc diagnostics (selection rows)
+
+Everything in this section was computed after the verdict by `run_posthoc.py`. It is post-hoc, on selection
+rows, and informed no pre-registered decision. Nothing was retrained: the only fitted models are diagnostic
+multinomial logistic probes on standardized codes (C 1.0), fit on scorer-train rows and scored on selection
+rows, as in the headroom probe. Labels are used only to fit or score these diagnostics. Val and held rows were
+never read (asserted). Two more post-hoc pieces appear above: the per-direction emotion table (Result 2) and the
+balance-matched comparison (Result 5). Differences to C0 on row-level accuracies carry 95% CIs from resampling
+selection paintings (2,000 resamples), since rows of one painting share an image.
+
+### 1. What each modality's code holds
+
+Top-1 accuracy (%) of a linear probe that reads a label from one modality's 32-number code. In brackets: the
+difference to C0 in points. Majority baselines: 28.40% for emotion, 15.97% for art style. The same probes on raw
+512-d CLIP features (headroom probe) reach 57.9% (caption→emotion), 59.8% (image→style), 26.0%
+(caption→style) and 35.2% (image→emotion).
+
+| Model | Caption → emotion | Image → art style | Caption → art style | Image → emotion |
+|---|---:|---:|---:|---:|
+| original R3 | 46.28 (+0.51 [+0.15, +0.85]) | 45.46 (−0.08 [−1.09, +0.93]) | 25.05 (−0.07 [−0.38, +0.24]) | 34.81 (+0.19 [−0.14, +0.49]) |
+| **C0** | **45.77** | **45.53** | **25.12** | **34.63** |
+| A | 38.28 (−7.49 [−7.96, −7.01]) | 39.82 (−5.72 [−6.84, −4.65]) | 23.74 (−1.39 [−1.78, −0.96]) | 33.79 (−0.84 [−1.21, −0.45]) |
+| S | 45.63 (−0.15 [−0.56, +0.26]) | 47.36 (+1.83 [+0.77, +2.87]) | 25.18 (+0.05 [−0.27, +0.41]) | 34.14 (−0.49 [−0.84, −0.13]) |
+| AS | 41.60 (−4.17 [−4.61, −3.72]) | 43.91 (−1.63 [−2.74, −0.54]) | 24.48 (−0.64 [−0.99, −0.28]) | 34.12 (−0.51 [−0.84, −0.14]) |
+
+**Reading.**
+
+- **A's codes hold less of both labels**, in the modality that carries each: caption→emotion −7.5 points and
+  image→style −5.7. So A's losses are not only a matter of weaker image-caption alignment. Its image codes did
+  lose style information, which supports the reading of A's text→image style loss in Result 2.
+- **S's caption codes hold as much emotion as C0's** (45.6% against 45.8%), and its image codes a little more
+  style (+1.8). S's emotion cost at β 0 is therefore not emotion pushed out of the caption code; it is a loss in
+  what the image-caption factor product can use. If S's emotion loss is a trade within the 32-factor budget, the
+  trade is in which factors the two modalities share, not in what the caption code holds.
+- Every code, R3's included, sits about 12 points below raw CLIP on caption→emotion and 14 points below on
+  image→style. No cell narrowed that gap by more than 2 points.
+
+### 2. Within-painting caption variation: the direct test of the agreement mechanism
+
+The agreement hypothesis says per-pair agreement pulls a painting's caption codes toward its single image code
+and so removes the within-painting caption variation, which carries emotion. Painting-level agreement (A) should
+then leave more emotion in that variation. For each row we took the caption code minus the mean caption code of
+the same painting's rows in the same part (scorer-train rows for the fit, selection rows for the score;
+paintings with at least 2 rows, which is 183,692 and 32,413 rows) and fit the same emotion probe on it.
+
+| Code | Residual → emotion (%) | Difference to C0 | Within-painting share of caption variance |
+|---|---:|---:|---:|
+| raw CLIP captions (512-d) | 46.98 | | 0.656 |
+| original R3 | 35.89 | +0.26 [−0.08, +0.61] | 0.447 |
+| **C0** | **35.62** | | **0.447** |
+| A | 30.95 | −4.68 [−5.08, −4.26] | 0.525 |
+| S | 34.60 | −1.02 [−1.40, −0.65] | 0.445 |
+| AS | 32.73 | −2.89 [−3.29, −2.51] | 0.494 |
+
+Majority baseline 28.40%. The CLIP row reproduces the headroom check's 47.0%.
+
+**Reading.** Painting-level agreement did loosen the caption codes within a painting: 52.5% of A's caption-code
+variance is within paintings, against 44.7% for C0. But that extra variation carries less emotion, not more:
+30.9% against 35.6%, close to the 28.4% majority. This is the most direct evidence against the hypothesis in
+the form tested. It does not rule out a version without the graph term's same-painting pull (next diagnostic),
+but it gives no sign that such a version would help.
+
+### 3. The graph term kept part of the constraint
+
+Every one of the 386,439 same-painting row pairs among scorer-train rows is an edge of the content graph (they
+make up 20.6% of its 1,873,347 edges): images are identical within a painting, and the graph links mutual nearest
+neighbours in CLIP. The graph term, weight 1.0 in every cell, raises the cosine between neighbours' pair codes;
+within a painting the image codes are identical, so it pulls the painting's caption codes toward each other. We
+replayed the sampler of the first 50 training steps exactly. The shared painting sampler raised the same-painting
+share of the graph term's positive pairs from 18.4% (the edge-sampled rows alone; 16.8% to 21.2% across batches)
+to 54.9% (53.1% to 56.6%). In A, therefore, more than half of the graph term's pull was the within-painting
+homogenization that the hypothesis blames on per-pair agreement. A removed the per-pair constraint but kept a
+similar one, and the shared sampler gave it more weight than the edge sampler alone would have.
+
+### 4. What each code's main factor lines up with
+
+Adjusted mutual information (AMI) between each row's strongest factor (the argmax of its pair code, 32 groups)
+and three partitions: the CLIP image clusters (stage (d)'s 64 k-means groups, which label scorer-train rows only,
+so this column uses scorer-train rows), art style and emotion (selection rows).
+
+| Model | CLIP image clusters (scorer-train) | Art style | Emotion |
+|---|---:|---:|---:|
+| original R3 | 0.347 | 0.135 | 0.055 |
+| **C0** | **0.349** | **0.143** | **0.055** |
+| A | 0.294 | 0.120 | 0.052 |
+| S | 0.423 | 0.187 | 0.050 |
+| AS | 0.354 | 0.151 | 0.056 |
+
+For reference, the CLIP image clusters themselves reach 0.318 with art style and 0.035 with emotion.
+
+**Reading.** S learned the clusters: its strongest factor lines up with them 0.074 more than C0's. Its style
+alignment rose as well (+0.044), by more in relative terms (31% against 21%), and its emotion alignment fell
+slightly. So the condition loss moved the factors toward the clusters, and the style content of the clusters
+came along. S's strongest factor is still far less style-aligned than the clusters themselves (0.187 against
+0.318), consistent with clusters that mix content and style. A's factors line up less with everything.
+
+### 5. Where S gains and loses, per target
+
+![S − C0 per target label](../../assets/2026-10-16_factor_learning/per_target.png)
+
+*Figure 5. Post-hoc: S − C0 in naive R@1 per target label (mean of the two directions, 95% bootstrap CI within
+each target) at β 0.3 (blue) and β 0 (orange); n is the number of episodes per target. Targets are sorted by
+the β-0 difference.*
+
+- **Emotion: spread across emotions.** At β 0, seven of eight emotions are worse under S, by 1.4 to 3.5 points
+  each; contentment, fear, sadness, anger and awe each contribute 15% to 21% of the total loss. Only amusement
+  improves (+2.0 at β 0, +3.83 [+0.40, +7.26] at β 0.3). With about 250 episodes per emotion, no single
+  interval lies clearly below zero. The label oracle at β 0 concentrates the loss more: fear −7.66
+  [−11.69, −3.45] and sadness −5.83 [−9.59, −2.26] account for 83% of it.
+- **Style: concentrated in a few visually distinctive styles.** At β 0.3, 17 of 23 styles gain, and five account
+  for 78% of the total gain: Ukiyo-e (+26.19 [+18.45, +33.93], 30% of the total on its own), Abstract
+  Expressionism (+12.80), Pop Art (+9.89), Mannerism (+9.24) and Cubism (+8.62). Fauvism is the one clear loss,
+  at β 0 (−9.05 [−16.19, −1.90]). This fits a signal built from image clusters: styles with a distinctive look
+  form clusters of their own.
 
 ## What this means
 
-1. **The style signal does what it was built to do, and nothing more.** Training on CLIP image clusters moved
-   the factors toward art style (+3.61 naive, +3.59 oracle against C0), which confirms that the probe's
-   alignment measure (AMI 0.32) points at usable signal. The factors have a fixed budget of 32, and the style
-   gain came with an emotion loss (−2.10 in the oracle against C0) and with denser caption codes. As the
-   design expected, a style-aligned signal alone does not improve emotion, and here it made emotion worse.
-2. **Relaxing agreement is not the same as adding a signal.** Painting-level agreement removes a constraint on
-   individual captions, but nothing in the remaining losses rewards emotion, so the freed capacity did not go to
-   emotion. Instead the codes became sparser and carried less of CLIP and of both labels. The agreement
-   hypothesis may still be right about why R3 lacks emotion; this experiment shows that removing the constraint
-   is not enough to put emotion in.
-3. **The limit identified by stage (d) and the probe still holds.** Every oracle stays within 1.4 points of its
-   own naive rule and far below the 49.8% ceiling. What the factors carry, not how they are weighted, sets the
-   result.
+1. **The style signal does what it was built to do, at a cost in emotion.** Training on CLIP image clusters
+   moved the factors toward those clusters and toward art style (+3.61 naive and +3.59 oracle against C0; the
+   strongest factor's AMI with style 0.187 against 0.143), which is consistent with the probe's alignment measure
+   (AMI 0.32) pointing at usable signal. The gain is concentrated in a few visually distinctive styles. The
+   emotion cost is clear where the codes' scale plays no role: −2.10 at β 0 under both the naive rule and the
+   oracle, and under the naive rule in each direction and in seven of eight emotions. At the pre-registered
+   β 0.3 the CLIP term masks part of it.
+   A linear probe still reads emotion from S's caption codes as well as from C0's, so what S lost is emotion
+   information the image-caption product can use. As the design expected, a style-aligned signal alone does not
+   improve emotion.
+2. **Relaxing per-pair agreement did not put emotion into the codes, but the test kept part of the constraint.**
+   Painting-level agreement loosened the caption codes within a painting, yet that variation carries less
+   emotion than C0's (30.9% against 35.6%), and A's codes hold less of both labels overall. The graph term,
+   unchanged in A, still pulled same-painting caption codes together (more than half of its positive pairs in
+   the shared sampler's batches), so the experiment did not test relaxed agreement alone. The hypothesis may
+   still explain part of why R3 lacks emotion, but nothing here suggests that relaxing agreement is enough to
+   put emotion in.
+3. **The limit identified by stage (d) and the probe still holds.** Pooled and at the same β, every oracle stays
+   within 1.0 point of its own naive rule and far below the 49.8% ceiling. What the factors carry, not how they
+   are weighted, sets the result. The exception is small and label-specific: on emotion at β 0, the oracle beats
+   the naive rule by +1.37 points for both C0 and S.
+
+## Next steps (the user's decision)
+
+- **(a) Close this line.** Label-free CLIP-image-cluster episodes move style at the code level (+3.88 at β 0)
+  but cost emotion (−2.10 at β 0), and no label-free source lines up with emotion (AMI 0.06 or less in the
+  headroom probe). Cost: none beyond recording the result.
+- **(b) A cleaner agreement test, A′, as a new pre-registration.** Painting-level agreement with same-painting
+  edges masked out of the graph term, and an emotion guard sized to its standard error: about 8,192 emotion
+  episodes per label give a half-width near 0.55 and a 94% chance of passing at a true emotion effect of 0
+  (normal approximation from the SE below). Cost: a spec amendment, one small code change (edge masking), two
+  training runs of about 9 to 11 minutes each on the local GPU (A′ and C0), and an evaluation; 8,192 episodes
+  per label would reuse selection rows heavily, so the larger guard set belongs on held rows or needs that
+  reuse disclosed. Diagnostic 2 argues against it: A's within-painting caption variation carries less emotion
+  than C0's, not more.
+- **(c) A style-only claim from S**, which needs a new pre-registration with a powered emotion non-inferiority
+  test (margin and number of episodes set from the SE below) and fresh held episodes; the held rows were read
+  twice before, which must be disclosed. S's sparsity-gate failure (caption active fraction 0.559) would have to
+  be fixed or the gate amended before the run. Cost: a spec, seeds 43 and 44 for S and C0 (four runs of about
+  9 to 11 minutes), and the held test.
+- **(d) Capacity changes** (more factors, TopK), out of scope under spec §10. Diagnostics 1 and 4 bear on it: S
+  kept its caption codes' emotion content while its strongest factors moved toward the image clusters, so a
+  larger budget would have to change which factors the two modalities share, not only how many there are.
+  Cost: a spec change and a new grid.
+- **(e) An external affect signal**, the parent-spec question left out of scope here (spec §10). This is the
+  user's decision at the level of the parent spec.
 
 ## Caveats (spec §11)
 
 - **The control is not R3.** C0 uses the expanded sampler and scorer-train rows only. It is level with original
   R3 pooled (+0.35 [−0.34, +1.04]) and slightly stronger on style (+1.49 [+0.46, +2.49]), so S's gain against R3
   (+1.79) is a little larger than against C0 (+1.44).
+- **The reference models saw the selection rows.** Original R3 (the reference row) and R0 (the readout gate's
+  reference) were trained without labels on all train rows, the selection rows included; the four new cells never
+  saw them. This slightly favours R3 in "C0 is level with R3", and it makes the readout gate slightly harder for
+  the new cells, which matters for AS (it misses the readout reference by 0.0008).
 - **The selection rows had been read before**: by stage (d)'s selection and post-hoc analyses and by the headroom
   probe, whose readings shaped this design. This step was for choosing, and the held test on new episodes was
-  meant to confirm a choice. With a stop, no result here is confirmed on held data, in either direction.
-- **Style, not emotion.** The only condition signal was style-aligned, and emotion gains were not expected. The
-  guard fired because emotion got worse, not because it failed to improve.
-- **Content vs style.** CLIP image clusters also follow content (AMI with style 0.32 is far from 1). S's style
-  gain (+3.61) is real but modest, consistent with the factors learning a mix of content and style clusters.
-- **Code scale acts like β.** S's codes are 21% larger than C0's. The β grid shows its style gain is in the code
-  and its emotion loss is partly masked by CLIP at higher β.
+  meant to confirm a choice. With a stop, no result here is confirmed on held data, in either direction. The
+  post-hoc diagnostics above read the selection rows once more.
+- **The emotion guard had little power, a flaw in the spec.** All three emotion CIs have a half-width of about 1.1
+  points. Taking SE = 0.565 (the mean over A, S and AS of the distance from the point estimate to the lower
+  bound, divided by 1.96) and a normal approximation, a cell passes the −1.0 guard only when its emotion point
+  estimate exceeds +0.11. A cell whose true emotion effect is 0 then passes 42% of the time, one at −0.5 passes
+  14%, and one at +0.5 passes 76%. The guard therefore effectively demanded an emotion gain, while spec §1
+  expected emotion to stay flat for S; spec §7's power rule covered only `D`. The stop does not depend on this:
+  S also fails the sparsity gate, and its scale-free emotion loss (−2.10 [−3.27, −0.90]) is real.
+- **Style, not emotion.** The only condition signal was style-aligned, and emotion gains were not expected. At
+  the pre-registered β 0.3, S's emotion difference (−0.73 [−1.83, +0.39]) is not significant: the guard fired
+  because non-inferiority at −1.0 could not be shown, not because emotion was shown to be worse. The evidence
+  that S costs emotion comes from β 0 (−2.10 under both the naive rule and the oracle).
+- **A is not a clean test of the agreement hypothesis.** The graph term kept pulling same-painting caption codes
+  together (diagnostic 3), and A's image-caption alignment fell (pair retrieval 0.875 of CLIP against C0's
+  1.116), which lowers any score that ranks through the image-caption product, the oracle included. The
+  per-modality probes show that A's codes also hold less of each label, so the alignment drop is not the whole
+  story.
+- **Content vs style.** CLIP image clusters also follow content (AMI with style 0.32 is far from 1). S's
+  strongest factors moved toward the clusters (AMI 0.423 against C0's 0.349) and less toward style (0.187 against
+  0.143), and its style gain is concentrated in a few visually distinctive styles; the factors learned a mix of
+  content and style clusters.
+- **Code scale acts like β.** S's codes are 21% larger than C0's. The style gain is in the code (largest at β 0),
+  and the scale difference accounts for 20% to 27% of `D` when the balance is matched by re-scoring (Result 5).
+- **Ties count as misses.** A's sparse codes tie often at β 0 (617 to 782 naive episodes per label and direction
+  with the positive tied to some candidate, against 21 to 50 for C0), which somewhat depresses A's β-0 numbers.
+  The positive is tied at the top in only 17 to 120 of them, so breaking ties at random would raise A's β-0 naive
+  R@1 by 0.24 points (16.38% to 16.62%). There are no ties at β 0.3, where A's oracle is still 2.59 points below
+  C0's.
 - **Emotion labels are per annotation**, and the image carries little of them (image→emotion probe 35.2% against
   a 28.4% majority), so emotion differences in text→image retrieval rest on weak image evidence.
 - **One seed, one split.** The verdict rests on seed 42 alone. The bootstrap CIs resample episodes under fixed
   models and do not cover training randomness. S failed the sparsity cap by 0.059 and the guard by 0.83 points
   on the lower bound; we cannot tell from one seed how stable either margin is. Replication was not run because
   the rule stopped.
-- **Training budget.** In Task 2's synthetic check, where the condition signal was weak, the condition loss
-  gave no gain at 300 steps but +0.23 R@1 at the real 2,000-step budget. The effect of this loss depends on
-  training length, and 2,000 steps was fixed before the run. We did not test whether S's style gain or its
-  emotion loss keeps growing with longer training.
+- **Training budget.** In a synthetic check of the plan's original weak world (style amplitude 0.25;
+  `weak_world_check.py`, rerun on CPU for this report), the condition loss gave no gain at 300 steps (naive R@1
+  0.270 with the loss against 0.285 without, chance 0.25) but a large one at the real 2,000-step budget (0.550
+  against 0.318). The effect of this loss depends on training length, and 2,000 steps was fixed before the run.
+  We did not test whether S's style gain or its emotion loss keeps growing with longer training.
 - **AS was rerun alone.** The parallel launch of AS ran out of GPU memory at start-up; the rerun used the same
   command, settings and seed, alone on the GPU.
 
@@ -335,16 +585,23 @@ effects (the style gain, the emotion loss) were still growing.
 - Original R3 reproduces the headroom probe's stored ranks exactly (identical-rank share 1.000): the naive rule
   at all five β values and CLIP only (asserted), the label oracle at β 0.3 and 0 and its null (reported).
 - Rerunning the whole evaluation gave identical results.
+- The post-hoc script reproduces the stored β-0 naive ranks exactly when it recomputes the scores for the tie
+  analysis, and the stored β-0.3 ranks of C0 and S when it re-scores at a new β (both asserted); its CLIP
+  caption-residual probe reproduces the headroom check's 47.0%.
 
 ## Files
 
 - Spec: [factor-learning design](../../../superpowers/specs/2026-09-30-cosir-v2-candidate-a-factor-learning-design.md)
   (§4 cells, §5 losses, §6 rule and stop points, §11 caveats).
 - Script: `src/test/20261016_factor_learning_grid/run_grid.py` (`--run CELL`, `--evaluate`, `--tables`;
-  `apply_rule` holds the pre-registered rule). It reuses the headroom probe's helpers
+  `apply_rule` holds the pre-registered rule; `--run` refuses to overwrite an existing full checkpoint unless
+  `--overwrite` is passed). It reuses the headroom probe's helpers
   (`src/test/20261015_factor_headroom_probe/run_probe.py`) and stage (d)'s cache.
+- Post-hoc diagnostics: `src/test/20261016_factor_learning_grid/run_posthoc.py` (`--run`, `--tables`), and the
+  synthetic training-budget check `src/test/20261016_factor_learning_grid/weak_world_check.py`.
 - Log: `src/test/20261016_factor_learning_grid/20261016_factor_learning_grid_log.md`.
 - Figures: `docs/reports/assets/2026-10-16_factor_learning/`, built by
   `docs/reports/assets/build_2026-10-16_factor_learning_figures.py` from the stored results.
-- Gitignored, local only: `results/selection_results.json` (every number in this report),
-  `results/selection_ranks.npz`, `results/history_*_seed42.json`, the four checkpoints and the run logs.
+- Gitignored, local only: `results/selection_results.json` (every pre-registered number in this report),
+  `results/posthoc_results.json` (every post-hoc number), `results/selection_ranks.npz`,
+  `results/history_*_seed42.json`, the four checkpoints and the run logs.

@@ -1,8 +1,9 @@
 """Figures for docs/reports/auto/v2/2026-10-16_candidate_a_factor_learning_selection.md.
 
-Reads the grid's stored selection results (gitignored, local only):
+Reads the grid's stored selection results and the post-hoc diagnostics (gitignored, local only):
     src/test/20261016_factor_learning_grid/results/selection_results.json
-and writes four PNGs to docs/reports/assets/2026-10-16_factor_learning/.
+    src/test/20261016_factor_learning_grid/results/posthoc_results.json   (run_posthoc.py --run)
+and writes five PNGs to docs/reports/assets/2026-10-16_factor_learning/.
 
 Run from the repository root:
     python docs/reports/assets/build_2026-10-16_factor_learning_figures.py
@@ -19,6 +20,7 @@ import numpy as np  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
 RESULTS = ROOT / "src/test/20261016_factor_learning_grid/results/selection_results.json"
+POSTHOC = ROOT / "src/test/20261016_factor_learning_grid/results/posthoc_results.json"
 OUT = ROOT / "docs/reports/assets/2026-10-16_factor_learning"
 
 SERIES_1, SERIES_2, SERIES_3 = "#2a78d6", "#eb6834", "#1baf7a"   # validated categorical slots (light surface)
@@ -168,6 +170,37 @@ def training_figure(r: dict) -> None:
     plt.close(fig)
 
 
+def per_target_figure(p: dict) -> None:
+    """Post-hoc: S - C0 naive R@1 per target (emotion, art style) at beta 0.3 and beta 0, with per-target CIs."""
+    panels = (("emotion", "Emotion targets"), ("art_style", "Art-style targets"))
+    fig, axes = plt.subplots(1, 2, figsize=(13.0, 8.2), dpi=200)
+    for ax, (label, title) in zip(axes, panels):
+        rows = p["per_target"][label]
+        order = sorted(rows["naive@0"], key=lambda t: rows["naive@0"][t]["diff"]["point"])
+        y = np.arange(len(order), dtype=float)
+        for col, color, off, name in (("naive@0.3", SERIES_1, 0.17, "naive, β 0.3 (the pre-registered β)"),
+                                      ("naive@0", SERIES_2, -0.17, "naive, β 0 (factor term only, scale-free)")):
+            pts = np.array([rows[col][t]["diff"]["point"] for t in order])
+            lo = np.array([rows[col][t]["diff"]["ci95"][0] for t in order])
+            hi = np.array([rows[col][t]["diff"]["ci95"][1] for t in order])
+            ax.errorbar(pts, y + off, xerr=[pts - lo, hi - pts], fmt="o", color=color, ecolor=color,
+                        elinewidth=1.1, capsize=2, markersize=4, label=name, zorder=3)
+        ax.axvline(0.0, color=INK, linewidth=1.0, zorder=1)
+        names = [f"{t.replace('Ukiyo_e', 'Ukiyo-e').replace('_', ' ')} (n={rows['naive@0'][t]['n']})" for t in order]
+        ax.set_yticks(y, names, fontsize=8)
+        ax.set_ylim(-0.7, len(order) - 0.3)
+        ax.set_title(title, fontsize=11, color=INK, loc="left", fontweight="bold")
+        ax.set_xlabel("S − C0, naive R@1 (points), mean of i2t and t2i, 95% CI per target")
+        ax.grid(axis="x", color=GRID, linewidth=0.8, zorder=0)
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, frameon=False, fontsize=9, loc="upper left", bbox_to_anchor=(0.01, 0.955), ncol=2)
+    fig.suptitle("Post-hoc, selection rows: where S gains and loses against C0, per target label",
+                 fontsize=11.5, color=INK, x=0.01, ha="left")
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.savefig(OUT / "per_target.png", facecolor=SURFACE)
+    plt.close(fig)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     r = json.loads(RESULTS.read_text())
@@ -175,6 +208,8 @@ def main() -> None:
     criterion_figure(r)
     oracle_figure(r)
     training_figure(r)
+    if POSTHOC.exists():
+        per_target_figure(json.loads(POSTHOC.read_text()))
     print(f"wrote {sorted(p.name for p in OUT.glob('*.png'))} to {OUT}")
 
 

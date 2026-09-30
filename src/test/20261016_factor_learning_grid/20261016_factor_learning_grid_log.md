@@ -60,3 +60,43 @@ Rule outcome: **STOP, no cell qualifies** (C0 passes all gates). Without the gat
 emotion guard (lower bound -1.83 <= -1.0). Replication and the held test are not run.
 
 Report: `docs/reports/auto/v2/2026-10-16_candidate_a_factor_learning_selection.md`.
+
+# Final fix wave (whole-branch review, 2026-09-30)
+
+## Problem
+The final review kept the stop verdict (no cell qualifies) but found attribution and wording errors in the
+selection report: S's emotion guard failure read as "emotion got worse" (at beta 0.3 D_emotion is not
+significant; the guard lacked power), the emotion loss placed in text->image (at beta 0 it is equal in both
+directions), cell A presented as a clean test of the agreement hypothesis (the graph term kept a same-painting
+pull), plus minor points (ties, mixed-beta oracle column, single-batch losses, an uncommitted check).
+
+## Steps
+1. `run_posthoc.py` (new): post-hoc diagnostics on selection rows, probes fit on scorer-train rows; nothing
+   retrained; val and held never read (asserted). `--run` (97 s, GPU for encoding, 12 CPU workers for 26 probes)
+   writes `results/posthoc_results.json`; `--tables` reprints. Contents: per-modality code probes, within-painting
+   caption-residual emotion probe (CLIP reference 46.98%, reproduces 47.0%), AMI of the argmax pair-code factor,
+   per-target S - C0, guard power, per-direction emotion table, balance-matched S vs C0 (interpolated and
+   re-scored), same-beta oracle columns, ties at beta 0 (random tie-break), graph-term confound, history summary.
+2. `weak_world_check.py` (committed copy of the controller's throwaway check, repo-relative paths); rerun on CPU
+   (22 s wall): amp 0.25, 300 steps none 0.285 / cond 0.270; 2,000 steps none 0.3175 / cond 0.550. Matches.
+3. `run_grid.py --run` refuses to overwrite an existing full checkpoint unless `--overwrite` (F8).
+4. Figure 5 (`per_target.png`) added to the build script; the four existing PNGs rebuild byte-identical.
+5. Report revised (verdict wording, Results 2, 4, 5, 6, new post-hoc section, next steps, caveats).
+
+## Verified numbers (post-hoc)
+- Graph: all 386,439 same-painting scorer-train pairs are graph edges (20.6% of 1,873,347). Replaying training
+  steps 1-50: same-painting share of the graph term's positive pairs 18.4% edge-sampled -> 54.9% expanded.
+- Guard: SE 0.565; pass needs point > +0.107; P(pass | 0) 42.5%, P(pass | -0.5) 14.1%; n 8,192 -> half-width 0.55.
+- Balance-matched S - C0 (matched beta: C0 0.197, S 0.457): interpolated D +1.23 / +1.26 (12-15% of D);
+  re-scored +1.05 [+0.18, +1.89] / +1.15 [+0.34, +1.94] (20-27% of D), about 55-60% of it via emotion masking.
+  The reviewer's "about 15%, all by emotion masking" holds only for the interpolation.
+- Probes (acc %, C0 / A / S): caption->emotion 45.77 / 38.28 / 45.63; image->style 45.53 / 39.82 / 47.36.
+- Caption residual -> emotion: C0 35.62, A 30.95 (-4.68 [-5.08, -4.26]); A's within-painting variance share 0.525
+  vs C0 0.447.
+- AMI argmax factor vs CLIP clusters / style / emotion: C0 0.349 / 0.143 / 0.055; S 0.423 / 0.187 / 0.050.
+- Ties: A beta-0 naive 16.38% tie-aware, 16.62% random tie-break; positive tied at the top in 17-120 episodes.
+- Condition loss, mean of last 10 logged steps: S 0.443, AS 0.619; AS above S at every logged step after step 1.
+
+## Result
+The pre-registered verdict, rule, D / D_emotion and gate outcomes are unchanged. Report:
+`docs/reports/auto/v2/2026-10-16_candidate_a_factor_learning_selection.md`.
