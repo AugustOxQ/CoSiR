@@ -30,30 +30,22 @@ def indexed_targets(reports: Path) -> set[str]:
     return {os.path.normpath(t).rstrip("/") for t in LINK.findall(text) if "://" not in t}
 
 
+def must_be_indexed(reports: Path) -> list[str]:
+    """Reports (outside pilots/), decks and pilot folders, relative to docs/reports."""
+    paths = [md for sub in ("auto", "stage", "weekly") for md in (reports / sub).rglob("*.md")
+             if "pilots" not in md.relative_to(reports).parts]
+    paths += (reports / "pptx").glob("*.pptx")
+    paths += (d for d in (reports / "auto").glob("*/pilots/*") if d.is_dir())
+    return sorted(p.relative_to(reports).as_posix() for p in paths)
+
+
 def check(reports: Path = REPORTS) -> list[str]:
-    problems = []
     linked = indexed_targets(reports)
-
-    for entry in sorted(p.name for p in reports.iterdir()):
-        if entry not in TOP_LEVEL and not entry.startswith("."):
-            problems.append(f"loose at top level (move it into a folder): {entry}")
-
-    expected = []
-    for sub in ("auto", "stage", "weekly"):
-        for md in sorted((reports / sub).rglob("*.md")) if (reports / sub).is_dir() else []:
-            if "pilots" not in md.relative_to(reports).parts:
-                expected.append(md)
-    expected += sorted((reports / "pptx").glob("*.pptx")) if (reports / "pptx").is_dir() else []
-    pilot_dirs = sorted(d for d in (reports / "auto").glob("*/pilots/*") if d.is_dir()) if (reports / "auto").is_dir() else []
-
-    for path in expected + pilot_dirs:
-        rel = path.relative_to(reports).as_posix()
-        if rel not in linked:
-            problems.append(f"not indexed in {SUM}: {rel}")
-
-    for target in sorted(linked):
-        if not (reports / target).exists() and not target.endswith(".pptx"):
-            problems.append(f"broken link in {SUM}: {target}")
+    loose = [e.name for e in reports.iterdir() if e.name not in TOP_LEVEL and not e.name.startswith(".")]
+    problems = [f"loose at top level (move it into a folder): {name}" for name in sorted(loose)]
+    problems += [f"not indexed in {SUM}: {rel}" for rel in must_be_indexed(reports) if rel not in linked]
+    problems += [f"broken link in {SUM}: {t}" for t in sorted(linked)
+                 if not (reports / t).exists() and not t.endswith(".pptx")]
     return problems
 
 
