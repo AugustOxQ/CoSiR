@@ -113,3 +113,17 @@ well self-generated partitions align with the labels (AMI).
 `/ccg:verify-quality` returned 0 errors and 11 warnings: long `tables` and `sanity_checks` functions, many
 parameters, and a file over 500 lines. The neighbouring stage-(d) scripts follow the same pattern, so nothing
 was changed.
+
+## Full run (2026-09-30, after the container reboot)
+
+- Probe `max_iter` raised from 500 to 1,000 before the run (commit 3b2560e): at 500 the image→style fit had
+  stopped at the cap. In the full run all four probes converged (167 to 693 iterations).
+- `run_probe.py --run --device cuda`: 293 s in total, 204 s of it the four CPU probe fits. The selection
+  episode SHA-256s equal stage (d)'s. All three sanity checks passed and were asserted: R3 naive, R3 oracle and
+  CLIP-only at β 0.3 reproduce stage (d)'s ranks exactly (identical-rank share 1.000); clip512 uniform at β 0
+  equals CLIP-only; every oracle null is between 6.8% and 8.3% R@1 (chance 7.7%).
+- **Result:** label-probe oracle − R3 oracle = +30.03 [+28.25, +31.84] (emotion) and +28.71 [+27.03, +30.40]
+  (art style) R@1 points, mean of directions → **headroom** for both label types by the plan's reading rule.
+  Raw CLIP-512 oracle exceeds R3's by +3.80; PCA-32/128 fall 5.2 to 5.4 points below it. AMI: CLIP image
+  clusters vs art style 0.318, communities 0.227; every partition vs emotion ≤ 0.056 (caption residual 0.031).
+- Report: `docs/reports/auto/v2/2026-10-15_candidate_a_factor_headroom_probe.md`.
