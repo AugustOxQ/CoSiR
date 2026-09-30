@@ -72,6 +72,16 @@ The commissioned review (`docs/reports/auto/v2/2026-09-28_stage1_genecis_synthes
 
 **Global engineering constraints for the rebuild** (per the user, 2026-09-28): everything is written function/class-formal — proper typed modules, not ad hoc scripts. Configs start minimal and are added to per block, not carried over from the old bloated loss-weight-laden config files (removed in the foundation-stripping commit). Implementation is dispatched to Codex per task (controller = Claude, reviewing each diff; implementer = Codex, direct `codex e --dangerously-bypass-approvals-and-sandbox` invocation, not the broken `codeagent-wrapper`); execution proceeds automatically task to task without pausing for check-ins, except when Codex hits a usage/context limit or gets stuck — that stops for the user's decision.
 
+## Amendment 2026-09-30: external affect signal allowed (user decision)
+
+Following PercepT, the GoEmotions RoBERTa (`SamLowe/roberta-base-go_emotions`, fine-tuned on Reddit comments with 28
+emotion categories, never trained on ArtELingo) may be used as a **training signal** for Candidate A, in the form of
+its 28 sigmoid probabilities per caption. This relaxes the "no external structured condition taxonomy" boundary above
+for this one model only. ArtELingo's emotion and style labels remain evaluation-only, no other external model or
+taxonomy is added, and the retrieval model at test time still reads only frozen CLIP features. Motivation: the
+factor-learning 2×2 (`docs/reports/auto/v2/2026-10-16_candidate_a_factor_learning_selection.md`) found no label-free
+route to emotion. Design: `docs/superpowers/specs/2026-09-30-cosir-v2-candidate-a-affect-factor-learning-design.md`.
+
 ## Next step
 
 Task-by-task implementation plan for Block 1 + Candidate A, per `superpowers:writing-plans` conventions, execution via Codex-as-implementer with Claude as controller/reviewer (`superpowers:subagent-driven-development`'s discipline — fresh dispatch per task, review, fix loop, ledger — adapted for a Codex implementer instead of a Claude subagent).
