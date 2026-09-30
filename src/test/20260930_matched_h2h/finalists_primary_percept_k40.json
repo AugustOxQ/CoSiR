@@ -1,0 +1,122 @@
+[
+  {
+    "rank": 1,
+    "id": "55vcoewq",
+    "objective": 0.9692402716589154,
+    "config": {
+      "system": "percept",
+      "k_target": 40,
+      "mlp_head": "one_hidden",
+      "mapper_lr": 0.003807956226495855,
+      "num_queries": 4,
+      "mapper_epochs": 400,
+      "target_cutoff": "single_label",
+      "percept_dec_lr": 5.066871205016489e-05,
+      "train_target_k": 40,
+      "class_balanced_loss": false,
+      "percept_pretrain_lr": 0.0004503995612130651,
+      "weight_decay_stage2": 0.0001,
+      "percept_lambda_balance": 5842.001949333508,
+      "percept_pretrain_epochs": 100,
+      "percept_n_initial_factor": 2.5,
+      "percept_stability_threshold": 0.001,
+      "percept_lambda_reconstruction": 6.775994265370597
+    }
+  },
+  {
+    "rank": 2,
+    "id": "0biqmu50",
+    "objective": 0.9676949863557652,
+    "config": {
+      "system": "percept",
+      "k_target": 40,
+      "mlp_head": "one_hidden",
+      "mapper_lr": 0.007484243338117345,
+      "num_queries": 4,
+      "mapper_epochs": 800,
+      "target_cutoff": 0.3,
+      "percept_dec_lr": 5.278030855450754e-05,
+      "train_target_k": 40,
+      "class_balanced_loss": false,
+      "percept_pretrain_lr": 0.0004084318680634078,
+      "weight_decay_stage2": 0.0001,
+      "percept_lambda_balance": 4073.6782366954353,
+      "percept_pretrain_epochs": 100,
+      "percept_n_initial_factor": 1.5,
+      "percept_stability_threshold": 0.001,
+      "percept_lambda_reconstruction": 3.14880032750475
+    }
+  },
+  {
+    "rank": 3,
+    "id": "5v2qrkcf",
+    "objective": 0.9670444919965852,
+    "config": {
+      "system": "percept",
+      "k_target": 40,
+      "mlp_head": "one_hidden",
+      "mapper_lr": 0.009692330730156368,
+      "num_queries": 4,
+      "mapper_epochs": 800,
+      "target_cutoff": 0.15,
+      "percept_dec_lr": 8.145222058175061e-05,
+      "train_target_k": 20,
+      "class_balanced_loss": false,
+      "percept_pretrain_lr": 0.0003694827027743729,
+      "weight_decay_stage2": 1e-05,
+      "percept_lambda_balance": 46.087253518652496,
+      "percept_pretrain_epochs": 100,
+      "percept_n_initial_factor": 2.5,
+      "percept_stability_threshold": 0.003,
+      "percept_lambda_reconstruction": 4.348230784575541
+    }
+  },
+  {
+    "rank": 4,
+    "id": "r97eb5nj",
+    "objective": 0.966817606445924,
+    "config": {
+      "system": "percept",
+      "k_target": 40,
+      "mlp_head": "one_hidden",
+      "mapper_lr": 0.014827678850880138,
+      "num_queries": 1,
+      "mapper_epochs": 800,
+      "target_cutoff": 0.5,
+      "percept_dec_lr": 0.00013605613691887304,
+      "train_target_k": 40,
+      "class_balanced_loss": false,
+      "percept_pretrain_lr": 0.0004250684647753974,
+      "weight_decay_stage2": 0.0001,
+      "percept_lambda_balance": 22.975232615188546,
+      "percept_pretrain_epochs": 100,
+      "percept_n_initial_factor": 2.5,
+      "percept_stability_threshold": 0.001,
+      "percept_lambda_reconstruction": 1.3767584042914325
+    }
+  },
+  {
+    "rank": 5,
+    "id": "l0r773gx",
+    "objective": 0.9665698872240388,
+    "config": {
+      "system": "percept",
+      "k_target": 40,
+      "mlp_head": "one_hidden",
+      "mapper_lr": 0.015806356818719298,
+      "num_queries": 2,
+      "mapper_epochs": 800,
+      "target_cutoff": 0.3,
+      "percept_dec_lr": 7.070677527335477e-05,
+      "train_target_k": 40,
+      "class_balanced_loss": false,
+      "percept_pretrain_lr": 0.0003675188411765337,
+      "weight_decay_stage2": 1e-05,
+      "percept_lambda_balance": 6204.349391944383,
+      "percept_pretrain_epochs": 100,
+      "percept_n_initial_factor": 2,
+      "percept_stability_threshold": 0.003,
+      "percept_lambda_reconstruction": 0.7027546697442723
+    }
+  }
+]
