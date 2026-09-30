@@ -28,7 +28,7 @@ class FactorComboSource:
 
     def __init__(self, pair_codes, rows, top_frac=0.10, bottom_frac=0.50, max_factors=3,
                  min_group_rows=200, max_tries=100):
-        self.rows = np.sort(np.asarray(rows, dtype=np.int64))
+        self.rows = np.unique(np.asarray(rows, dtype=np.int64))          # sorted, duplicates dropped
         self.fit_codes = np.asarray(pair_codes, dtype=np.float32)[self.rows]
         self.num_factors = self.fit_codes.shape[1]
         self.top_frac, self.bottom_frac, self.max_factors = top_frac, bottom_frac, max_factors
@@ -73,7 +73,8 @@ class _PartitionSource:
     swap_capable = False
 
     def _setup(self, labels_by_view: dict, rows, min_group_rows, max_tries):
-        self.rows = np.sort(np.asarray(rows, dtype=np.int64))
+        """Build the per-view groups. Cached member/outside arrays are read-only: every Condition shares them."""
+        self.rows = np.unique(np.asarray(rows, dtype=np.int64))          # sorted, duplicates dropped
         self.labels_by_view = {v: np.asarray(l, dtype=np.int64) for v, l in labels_by_view.items()}
         self.max_tries = max_tries
         self._members, self._outside = {}, {}
@@ -84,6 +85,7 @@ class _PartitionSource:
                     continue
                 inside = self.rows[fit_labels == group]
                 if len(inside) >= min_group_rows and len(self.rows) - len(inside) >= min_group_rows:
+                    inside.flags.writeable = False
                     self._members[(view, int(group))] = inside
         if not self._members:
             raise RuntimeError(f"{self.name}: no group has at least {min_group_rows} rows")
@@ -91,7 +93,9 @@ class _PartitionSource:
 
     def _condition(self, key) -> Condition:
         if key not in self._outside:
-            self._outside[key] = np.setdiff1d(self.rows, self._members[key], assume_unique=True)
+            outside = np.setdiff1d(self.rows, self._members[key], assume_unique=True)
+            outside.flags.writeable = False
+            self._outside[key] = outside
         return Condition(self.name, key, self._members[key], self._outside[key])
 
     def sample_condition(self, rng) -> Condition:
@@ -109,7 +113,7 @@ class ClipClusterSource(_PartitionSource):
 
     def __init__(self, img_features, txt_features, rows, n_clusters=64, seed=42, min_group_rows=200,
                  max_tries=100):
-        rows = np.sort(np.asarray(rows, dtype=np.int64))
+        rows = np.unique(np.asarray(rows, dtype=np.int64))                # sorted, duplicates dropped
         labels_by_view = {}
         for view, feats in (("image", img_features), ("caption", txt_features)):
             x = np.asarray(feats, dtype=np.float32)[rows]
@@ -120,6 +124,20 @@ class ClipClusterSource(_PartitionSource):
             labels[rows] = fit
             labels_by_view[view] = labels
         self._setup(labels_by_view, rows, min_group_rows, max_tries)
+
+    @classmethod
+    def from_labels(cls, image_labels, caption_labels, rows, min_group_rows=200, max_tries=100) -> "ClipClusterSource":
+        """Rebuild a source from saved k-means labels (one per row of the full data, -1 outside the fit rows).
+
+        No refit: the groups are exactly those of the source whose ``labels_by_view`` produced the labels.
+        """
+        image_labels, caption_labels = np.asarray(image_labels), np.asarray(caption_labels)
+        if image_labels.shape != caption_labels.shape or image_labels.ndim != 1:
+            raise ValueError(f"image and caption labels must be 1-D and the same length, got "
+                             f"{image_labels.shape} and {caption_labels.shape}")
+        source = cls.__new__(cls)
+        source._setup({"image": image_labels, "caption": caption_labels}, rows, min_group_rows, max_tries)
+        return source
 
     def sample_swap(self, rng) -> tuple[Condition, Condition]:
         for _ in range(self.max_tries):

@@ -70,6 +70,12 @@ def _swap_loss(scorer, sw, data, device):
 
 def train_scorer(source, img_feat, txt_feat, img_codes, txt_codes, keys, factor_scale, config: ScorerTrainingConfig,
                  device=None, log_every=100):
+    """Train a conditional scorer on episodes mined fresh every step; returns ``(scorer.eval(), history)``.
+
+    Side effect: calls ``torch.manual_seed(config.seed)``, which resets the GLOBAL torch RNG (CPU and
+    CUDA) of the calling process. Episode mining uses its own ``np.random.default_rng(config.seed)``.
+    ``config.steps == 0`` returns the step-0 model, which equals the naive rule exactly.
+    """
     if config.swap and not source.swap_capable:
         raise ValueError(f"{source.name} cannot form swap pairs; train it without the swap term")
     device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))

@@ -105,3 +105,30 @@ def test_mining_is_deterministic_for_a_seed():
     a = mine_condition_episodes(src, units, keys, 12, np.random.default_rng(7))
     b = mine_condition_episodes(src, units, keys, 12, np.random.default_rng(7))
     assert np.array_equal(a.candidates, b.candidates) and np.array_equal(a.supports, b.supports)
+
+
+def test_hard_negatives_sampled_branch_takes_the_top_k_of_the_random_sample():
+    """With len(pool) > hard_pool, hard negatives are the nearest among a random sample, not the global nearest."""
+    from src.train.condition_episodes import _hard_negatives
+    img, txt, _, keys = _world()                                    # two rows per painting
+    units = pair_feature_units(img, txt)
+    labels = np.repeat(np.arange(4), 1000)
+    anchor, hard_pool, count = 0, 256, 6
+    pool = np.flatnonzero(labels != labels[anchor])                 # the outside rows: 3,000 > hard_pool
+    used = {keys[anchor]}
+    picked = _hard_negatives(np.random.default_rng(11), anchor, pool, units, keys, used, count, hard_pool)
+    sample = np.random.default_rng(11).choice(pool, hard_pool, replace=False)
+    sample = sample[keys[sample] != keys[anchor]]
+    expected, seen = [], {keys[anchor]}
+    for idx in np.argsort(-(units[sample] @ units[anchor]), kind="stable"):
+        if keys[sample[idx]] not in seen:
+            seen.add(keys[sample[idx]])
+            expected.append(int(sample[idx]))
+        if len(expected) == count:
+            break
+    assert picked == expected
+    assert set(picked) <= set(pool.tolist())                        # outside the anchor's group
+    assert len({keys[r] for r in picked}) == count and keys[anchor] not in {keys[r] for r in picked}
+    assert used == {keys[anchor], *(keys[r] for r in picked)}
+    global_top = pool[np.argsort(-(units[pool] @ units[anchor]), kind="stable")[:count]]
+    assert set(picked) != set(global_top.tolist())                  # the sample, not all outside items

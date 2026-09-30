@@ -102,3 +102,36 @@ def test_community_source_skips_small_groups_and_cannot_swap():
     assert src.swap_capable is False
     with pytest.raises(NotImplementedError):
         src.sample_swap(rng)
+
+
+def test_partition_caches_are_read_only_and_rows_are_deduplicated():
+    labels = np.repeat(np.arange(4), 250)
+    rows = np.concatenate([np.arange(1000), np.arange(0, 1000, 5)])       # 200 duplicated rows
+    src = CommunitySource(labels, rows, min_group_rows=50)
+    assert np.array_equal(src.rows, np.arange(1000))
+    rng = np.random.default_rng(5)
+    for _ in range(8):
+        c = src.sample_condition(rng)
+        assert len(np.unique(c.inside)) == len(c.inside) and len(np.unique(c.outside)) == len(c.outside)
+        assert len(c.inside) + len(c.outside) == 1000
+        with pytest.raises(ValueError):
+            c.inside[0] = -1
+        with pytest.raises(ValueError):
+            c.outside[0] = -1
+    codes = np.maximum(0.0, np.random.default_rng(6).normal(size=(1000, 4))).astype(np.float32)
+    assert np.array_equal(FactorComboSource(codes, rows, min_group_rows=20).rows, np.arange(1000))
+
+
+def test_clip_cluster_source_from_labels_equals_the_fitted_source():
+    img, txt, _, _ = _blobs()
+    rows = np.arange(0, len(img), 2)
+    fitted = ClipClusterSource(img, txt, rows, n_clusters=4, seed=42, min_group_rows=50)
+    rebuilt = ClipClusterSource.from_labels(fitted.labels_by_view["image"], fitted.labels_by_view["caption"], rows,
+                                            min_group_rows=50)
+    assert isinstance(rebuilt, ClipClusterSource) and rebuilt.name == "clip_cluster" and rebuilt.swap_capable
+    assert rebuilt.valid_keys == fitted.valid_keys and np.array_equal(rebuilt.rows, fitted.rows)
+    assert all(np.array_equal(rebuilt._condition(k).inside, fitted._condition(k).inside) for k in fitted.valid_keys)
+    a, b = rebuilt.sample_swap(np.random.default_rng(7))
+    assert a.key[0] == "image" and b.key[0] == "caption"
+    with pytest.raises(ValueError):
+        ClipClusterSource.from_labels(fitted.labels_by_view["image"], fitted.labels_by_view["caption"][:-1], rows)
