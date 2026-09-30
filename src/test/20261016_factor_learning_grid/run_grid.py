@@ -5,7 +5,8 @@ A (painting agreement), S (CLIP image k-means condition episodes), AS (both). Ru
 
     python src/test/20261016_factor_learning_grid/run_grid.py --prepare
     python src/test/20261016_factor_learning_grid/run_grid.py --smoke            # timing: local GPU or DAS6?
-    python src/test/20261016_factor_learning_grid/run_grid.py --run C0 --seed 42
+    python src/test/20261016_factor_learning_grid/run_grid.py --run C0 --seed 42    # refuses an existing
+                                                                                    # checkpoint (--overwrite)
     python src/test/20261016_factor_learning_grid/run_grid.py --evaluate         # Task 4: gates, metrics, rule
     python src/test/20261016_factor_learning_grid/run_grid.py --tables           # reprint from the JSON
 
@@ -133,7 +134,11 @@ def load_grid():
     return cache, prep, meta, load_npz(CACHE / "graph.npz").tocsr()
 
 
-def run_cell(cell: str, seed: int, steps: int = FULL_STEPS, tag: str = "") -> dict:
+def run_cell(cell: str, seed: int, steps: int = FULL_STEPS, tag: str = "", overwrite: bool = False) -> dict:
+    name = f"{cell}_seed{seed}{tag}"
+    if not tag and not overwrite and (CKPT / f"{name}.pt").exists():   # full runs only; smoke tags may rerun
+        raise FileExistsError(f"{CKPT / f'{name}.pt'} exists: it may be evidence behind a report. Refusing to "
+                              f"overwrite it; pass --overwrite to retrain and replace it.")
     cache, prep, _, graph = load_grid()
     data = load_artelingo()
     st = cache["scorer_train"]
@@ -153,7 +158,6 @@ def run_cell(cell: str, seed: int, steps: int = FULL_STEPS, tag: str = "") -> di
     if not (np.isfinite(img_codes).all() and np.isfinite(txt_codes).all()):
         raise AssertionError(f"{cell} seed {seed}: non-finite codes")
     peak = torch.cuda.max_memory_allocated() / 2**30 if DEVICE == "cuda" else 0.0
-    name = f"{cell}_seed{seed}{tag}"
     save_factor_checkpoint(model, config, CKPT / f"{name}.pt")
     record = {"cell": cell, "seed": seed, "steps": steps, "seconds": seconds, "peak_gpu_gib": peak,
               "history": history, "last_print": out.getvalue().strip().splitlines()[-1],
@@ -600,6 +604,8 @@ def main() -> None:
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--run", choices=sorted(CELLS))
     parser.add_argument("--seed", type=int, default=SEED)
+    parser.add_argument("--overwrite", action="store_true",
+                        help="with --run: replace an existing full checkpoint (refused by default)")
     parser.add_argument("--evaluate", action="store_true")
     parser.add_argument("--tables", action="store_true")
     args = parser.parse_args()
@@ -608,7 +614,7 @@ def main() -> None:
     elif args.smoke:
         smoke()
     elif args.run:
-        run_cell(args.run, args.seed)
+        run_cell(args.run, args.seed, overwrite=args.overwrite)
     elif args.evaluate:
         evaluate()
         tables()
