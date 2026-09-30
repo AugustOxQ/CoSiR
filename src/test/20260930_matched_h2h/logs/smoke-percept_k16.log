@@ -1,0 +1,119 @@
+{"cuda_visible_devices": "1", "duration_s": 203, "ended_at": "2026-09-30T02:17:52.450786+00:00", "exit_code": 0, "gpu_slots": [1], "host": "node404", "inherited_cuda_visible_devices": "0,1,2", "pgid": 627433, "pid": 627433, "pid_start": 178048375, "slurm_job_id": "57202", "started_at": "2026-09-30T02:14:31.551470+00:00", "state": "succeeded"}
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 5060.25it/s]
+[transformers] [1mRobertaModel LOAD REPORT[0m from: SamLowe/roberta-base-go_emotions
+Key                        | Status     | 
+---------------------------+------------+-
+classifier.out_proj.weight | UNEXPECTED | 
+classifier.dense.weight    | UNEXPECTED | 
+classifier.dense.bias      | UNEXPECTED | 
+classifier.out_proj.bias   | UNEXPECTED | 
+pooler.dense.weight        | MISSING    | 
+pooler.dense.bias          | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 4213.32it/s]
+[transformers] [1mRobertaModel LOAD REPORT[0m from: SamLowe/roberta-base-go_emotions
+Key                        | Status     | 
+---------------------------+------------+-
+classifier.out_proj.weight | UNEXPECTED | 
+classifier.dense.weight    | UNEXPECTED | 
+classifier.dense.bias      | UNEXPECTED | 
+classifier.out_proj.bias   | UNEXPECTED | 
+pooler.dense.weight        | MISSING    | 
+pooler.dense.bias          | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[04:14:56] [percept-stage1] Pretrain epoch 010/100: mean reconstruction=0.000073
+[04:15:00] [percept-stage1] Pretrain epoch 020/100: mean reconstruction=0.000054
+[04:15:03] [percept-stage1] Pretrain epoch 030/100: mean reconstruction=0.000045
+[04:15:07] [percept-stage1] Pretrain epoch 040/100: mean reconstruction=0.000040
+[04:15:10] [percept-stage1] Pretrain epoch 050/100: mean reconstruction=0.000036
+[04:15:14] [percept-stage1] Pretrain epoch 060/100: mean reconstruction=0.000033
+[04:15:17] [percept-stage1] Pretrain epoch 070/100: mean reconstruction=0.000031
+[04:15:21] [percept-stage1] Pretrain epoch 080/100: mean reconstruction=0.000030
+[04:15:24] [percept-stage1] Pretrain epoch 090/100: mean reconstruction=0.000029
+[04:15:29] [percept-stage1] Pretrain epoch 100/100: mean reconstruction=0.000028
+[04:15:54] [percept-stage1] Starting K=24 joint DEC training (fixed reconstruction loss scale) (up to 500 full-batch epochs, lr=0.0001, stability threshold=0.001, balance lambda=1000)...
+[04:15:56] [percept-stage1] K=24 DEC epoch 010/500: fraction_changed=0.028305 (1,738 nodes)
+[04:15:58] [percept-stage1] K=24 DEC epoch 020/500: fraction_changed=0.014804 (909 nodes)
+[04:15:58] [percept-stage1] K=24 DEC epoch 025/500: total=0.095406, KL=0.007092, reconstruction=0.080938, balance=0.000007
+[04:15:59] [percept-stage1] K=24 DEC epoch 030/500: fraction_changed=0.008420 (517 nodes)
+[04:16:01] [percept-stage1] K=24 DEC epoch 040/500: fraction_changed=0.003827 (235 nodes)
+[04:16:02] [percept-stage1] K=24 DEC epoch 050/500: total=0.084862, KL=0.007577, reconstruction=0.076764, balance=0.000001
+[04:16:02] [percept-stage1] K=24 DEC epoch 050/500: fraction_changed=0.003111 (191 nodes)
+[04:16:04] [percept-stage1] K=24 DEC epoch 060/500: fraction_changed=0.002003 (123 nodes)
+[04:16:05] [percept-stage1] K=24 DEC epoch 070/500: fraction_changed=0.001156 (71 nodes)
+[04:16:05] [percept-stage1] K=24 DEC epoch 071/500: total=0.084041, KL=0.007928, reconstruction=0.076097, balance=0.000000
+[04:16:05] [percept-stage1] K=24 DEC epoch 071/500: fraction_changed=0.000993 (61 nodes)
+[04:16:05] [percept-stage1] Stopping K=24 DEC at epoch 71: stability criterion.
+[2026-09-30 04:16:12] heldout-independent: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 04:16:13] heldout-independent: mutual graph nnz=44,088; isolated fixed=73; connected components=5.
+[2026-09-30 04:16:13] heldout-independent: added 4 bridge(s) over 5 components; final connected components=1.
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 5467.69it/s]
+[transformers] [1mRobertaModel LOAD REPORT[0m from: SamLowe/roberta-base-go_emotions
+Key                        | Status     | 
+---------------------------+------------+-
+classifier.out_proj.weight | UNEXPECTED | 
+classifier.dense.weight    | UNEXPECTED | 
+classifier.dense.bias      | UNEXPECTED | 
+classifier.out_proj.bias   | UNEXPECTED | 
+pooler.dense.weight        | MISSING    | 
+pooler.dense.bias          | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 7378.73it/s]
+[transformers] [1mRobertaModel LOAD REPORT[0m from: SamLowe/roberta-base-go_emotions
+Key                        | Status     | 
+---------------------------+------------+-
+classifier.out_proj.weight | UNEXPECTED | 
+classifier.dense.weight    | UNEXPECTED | 
+classifier.dense.bias      | UNEXPECTED | 
+classifier.out_proj.bias   | UNEXPECTED | 
+pooler.dense.weight        | MISSING    | 
+pooler.dense.bias          | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[04:16:33] [percept-stage1] Pretrain epoch 010/100: mean reconstruction=0.000076
+[04:16:36] [percept-stage1] Pretrain epoch 020/100: mean reconstruction=0.000057
+[04:16:38] [percept-stage1] Pretrain epoch 030/100: mean reconstruction=0.000047
+[04:16:41] [percept-stage1] Pretrain epoch 040/100: mean reconstruction=0.000041
+[04:16:44] [percept-stage1] Pretrain epoch 050/100: mean reconstruction=0.000037
+[04:16:52] [percept-stage1] Pretrain epoch 060/100: mean reconstruction=0.000034
+[04:16:58] [percept-stage1] Pretrain epoch 070/100: mean reconstruction=0.000032
+[04:17:01] [percept-stage1] Pretrain epoch 080/100: mean reconstruction=0.000031
+[04:17:04] [percept-stage1] Pretrain epoch 090/100: mean reconstruction=0.000030
+[04:17:06] [percept-stage1] Pretrain epoch 100/100: mean reconstruction=0.000029
+[04:17:16] [percept-stage1] Starting K=24 joint DEC training (fixed reconstruction loss scale) (up to 500 full-batch epochs, lr=0.0001, stability threshold=0.001, balance lambda=1000)...
+[04:17:17] [percept-stage1] K=24 DEC epoch 010/500: fraction_changed=0.030911 (1,898 nodes)
+[04:17:19] [percept-stage1] K=24 DEC epoch 020/500: fraction_changed=0.017361 (1,066 nodes)
+[04:17:19] [percept-stage1] K=24 DEC epoch 025/500: total=0.093030, KL=0.006818, reconstruction=0.082710, balance=0.000004
+[04:17:20] [percept-stage1] K=24 DEC epoch 030/500: fraction_changed=0.007980 (490 nodes)
+[04:17:22] [percept-stage1] K=24 DEC epoch 040/500: fraction_changed=0.006156 (378 nodes)
+[04:17:23] [percept-stage1] K=24 DEC epoch 050/500: total=0.087275, KL=0.007268, reconstruction=0.079531, balance=0.000000
+[04:17:23] [percept-stage1] K=24 DEC epoch 050/500: fraction_changed=0.002687 (165 nodes)
+[04:17:25] [percept-stage1] K=24 DEC epoch 060/500: fraction_changed=0.002459 (151 nodes)
+[04:17:26] [percept-stage1] K=24 DEC epoch 068/500: total=0.086528, KL=0.007572, reconstruction=0.078882, balance=0.000000
+[04:17:26] [percept-stage1] K=24 DEC epoch 068/500: fraction_changed=0.000782 (48 nodes)
+[04:17:26] [percept-stage1] Stopping K=24 DEC at epoch 68: stability criterion.
+[2026-09-30 04:17:33] heldout-independent: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 04:17:33] heldout-independent: mutual graph nnz=44,102; isolated fixed=72; connected components=4.
+[2026-09-30 04:17:33] heldout-independent: added 3 bridge(s) over 4 components; final connected components=1.
+SMOKE {"preset":"percept_k16","config":{"system":"percept","k_target":16},"seeds":[1001,1002],"subset":"val","objective":0.9219940478566185,"split_digest":"5f9e2827257203258c6654676f700d7069f5446a","load_seconds":11.6,"trial_seconds":178.8,"per_seed":[{"seed":1001,"n_topics":16,"k_miss":0,"resolution":null,"transfer_emo":0.11039371704511515,"transfer_genre":0.2983984629686686,"ind_emo":0.10254088928379777,"ind_genre":0.3448791750086425,"ind_k":13,"native_emo":0.1078130986282741,"native_genre":0.25507762327840744,"auc_primary":0.919398962319351,"skipped_primary":0,"auc_native":0.9153279030683472,"skipped_native":0,"stage1_seconds":82.49087147507817,"stage2_seconds":16.055668666027486},{"seed":1002,"n_topics":16,"k_miss":0,"resolution":null,"transfer_emo":0.11583461608615561,"transfer_genre":0.22001491815865085,"ind_emo":0.09570835101216009,"ind_genre":0.317311586299328,"ind_k":14,"native_emo":0.1174541785298633,"native_genre":0.1987260643285516,"auc_primary":0.924589133393886,"skipped_primary":0,"auc_native":0.9196376060014828,"skipped_native":0,"stage1_seconds":64.43515374301933,"stage2_seconds":15.805881725857034}]}
+logs: ok on node404
+RESULT {"ok":true,"tag":"smoke-percept_k16","node":"node404","status":{"cuda_visible_devices":"1","duration_s":203,"ended_at":"2026-09-30T02:17:52.450786+00:00","exit_code":0,"gpu_slots":[1],"host":"node404","inherited_cuda_visible_devices":"0,1,2","pgid":627433,"pid":627433,"pid_start":178048375,"slurm_job_id":"57202","started_at":"2026-09-30T02:14:31.551470+00:00","state":"succeeded"},"sub":"logs"}

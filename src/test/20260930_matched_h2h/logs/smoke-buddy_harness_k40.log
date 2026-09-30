@@ -1,0 +1,16 @@
+{"cuda_visible_devices": "0", "duration_s": 270, "ended_at": "2026-09-30T02:18:35.712739+00:00", "exit_code": 0, "gpu_slots": [0], "host": "node404", "inherited_cuda_visible_devices": "0,1,2", "pgid": 626857, "pid": 626857, "pid_start": 178046003, "slurm_job_id": "57202", "started_at": "2026-09-30T02:14:06.849008+00:00", "state": "succeeded"}
+[2026-09-30 04:14:44] train-topics: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 04:14:44] train-topics: mutual graph nnz=635,150; isolated fixed=273; connected components=11.
+[2026-09-30 04:14:44] train-topics: added 10 bridge(s) over 11 components; final connected components=1.
+[2026-09-30 04:15:32] heldout-independent: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 04:15:32] heldout-independent: mutual graph nnz=60,874; isolated fixed=2; connected components=1.
+[2026-09-30 04:15:32] heldout-independent: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 04:17:06] train-topics: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 04:17:07] train-topics: mutual graph nnz=631,736; isolated fixed=246; connected components=7.
+[2026-09-30 04:17:07] train-topics: added 6 bridge(s) over 7 components; final connected components=1.
+[2026-09-30 04:17:30] heldout-independent: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 04:17:30] heldout-independent: mutual graph nnz=60,926; isolated fixed=3; connected components=1.
+[2026-09-30 04:17:30] heldout-independent: added 0 bridge(s) over 1 components; final connected components=1.
+SMOKE {"preset":"buddy_harness_k40","config":{"system":"buddy","k_target":40,"buddy_impl":"harness","buddy_heads":"attn1","buddy_num_heads":4,"buddy_d_shared":64,"leiden_graph":"pilot_repaired","merge_small_threshold":0.005,"target_cutoff":0.15,"class_balanced_loss":true},"seeds":[1001,1002],"subset":"val","objective":0.9328298485442059,"split_digest":"5f9e2827257203258c6654676f700d7069f5446a","load_seconds":12.5,"trial_seconds":244.4,"per_seed":[{"seed":1001,"n_topics":40,"k_miss":0,"resolution":2.01803598062065,"transfer_emo":0.10790986709244847,"transfer_genre":0.24010939800763714,"ind_emo":0.1061973911789419,"ind_genre":0.3164927772764003,"ind_k":14,"auc_primary":0.9334631061982804,"skipped_primary":0,"stage1_seconds":64.47038314910606,"stage2_seconds":73.22237330512144},{"seed":1002,"n_topics":40,"k_miss":0,"resolution":2.114742526881128,"transfer_emo":0.11270411135033138,"transfer_genre":0.24737670638834147,"ind_emo":0.10182254837967833,"ind_genre":0.26267153054529385,"ind_k":16,"auc_primary":0.9321965908901315,"skipped_primary":0,"stage1_seconds":44.82516806409694,"stage2_seconds":61.8588146911934}]}
+logs: ok on node404
+RESULT {"ok":true,"tag":"smoke-buddy_harness_k40","node":"node404","status":{"cuda_visible_devices":"0","duration_s":270,"ended_at":"2026-09-30T02:18:35.712739+00:00","exit_code":0,"gpu_slots":[0],"host":"node404","inherited_cuda_visible_devices":"0,1,2","pgid":626857,"pid":626857,"pid_start":178046003,"slurm_job_id":"57202","started_at":"2026-09-30T02:14:06.849008+00:00","state":"succeeded"},"sub":"logs"}
