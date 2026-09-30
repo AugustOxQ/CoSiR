@@ -29,7 +29,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-GATE_BARS = (0.1236, 0.1954)  # emotion, genre -- informational only
+GATE_BARS = (0.1236, 0.1954)  # emotion, genre -- informational only (also the ind_* gate)
 DEFAULT_SEEDS = (42, 7, 123, 2024)
 
 
@@ -44,10 +44,28 @@ def select_finalists(runs: list[dict], n: int = 10, max_topics: int = 45) -> lis
     return [{**r, "rank": rank} for rank, r in enumerate(kept[:n], start=1)]
 
 
+def apply_overrides(config: dict, sets: list[str]) -> dict:
+    """Return a copy of `config` with each `KEY=VALUE` applied. VALUE is parsed
+    as JSON, falling back to the raw string; KEY must already be in `config`."""
+    out = dict(config)
+    for item in sets:
+        key, sep, raw = item.partition("=")
+        if not sep:
+            sys.exit(f"error: --set must be KEY=VALUE, got {item!r}")
+        if key not in config:
+            sys.exit(f"error: --set key {key!r} is not in the finalist config "
+                     f"(available: {sorted(config)})")
+        try:
+            out[key] = json.loads(raw)
+        except json.JSONDecodeError:
+            out[key] = raw
+    return out
+
+
 def summarize_seed_results(per_seed: list[dict]) -> dict:
     aucs = np.array([r["auc"] for r in per_seed], dtype=float)
     objectives = np.array([r["objective"] for r in per_seed], dtype=float)
-    return {
+    summary = {
         "n_seeds": len(per_seed),
         "gate_pass_count": int((objectives > -1.0).sum()),
         "auc_mean": float(aucs.mean()),
@@ -60,6 +78,12 @@ def summarize_seed_results(per_seed: list[dict]) -> dict:
         "n_topics": [r["n_topics"] for r in per_seed],
         "per_seed": per_seed,
     }
+    if all("ind_emo" in r and "ind_genre" in r for r in per_seed):
+        summary["ind_emo_mean"] = float(np.mean([r["ind_emo"] for r in per_seed]))
+        summary["ind_genre_mean"] = float(np.mean([r["ind_genre"] for r in per_seed]))
+        summary["ind_gate_pass_count"] = int(sum(
+            r["ind_emo"] > GATE_BARS[0] and r["ind_genre"] > GATE_BARS[1] for r in per_seed))
+    return summary
 
 
 def rank_finalists(summaries: list[dict]) -> list[dict]:
@@ -84,6 +108,12 @@ def format_summary_markdown(ranked: list[dict]) -> str:
         "seed-42 re-run objective", "gate passes", "AUC mean ± std", "AUC min",
         "AUC max", "emotion AMI mean", "genre AMI mean", "topics per seed",
     ]
+    show_tag = any("tag" in s for s in ranked)
+    show_ind = any("ind_emo_mean" in s for s in ranked)
+    if show_tag:
+        header.append("tag")
+    if show_ind:
+        header += ["ind emo mean", "ind genre mean", "ind gate passes"]
     lines = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
     for stress_rank, s in enumerate(ranked, start=1):
         seed42 = next((r["objective"] for r in s["per_seed"] if r["seed"] == 42), None)
@@ -96,6 +126,13 @@ def format_summary_markdown(ranked: list[dict]) -> str:
             f"{s['emo_mean']:.4f}", f"{s['genre_mean']:.4f}",
             "/".join(str(t) for t in s["n_topics"]),
         ]
+        if show_tag:
+            cells.append(str(s.get("tag", "")))
+        if show_ind:
+            cells += [
+                _fmt(s.get("ind_emo_mean")), _fmt(s.get("ind_genre_mean")),
+                f"{s['ind_gate_pass_count']}/{s['n_seeds']}" if "ind_gate_pass_count" in s else "n/a",
+            ]
         lines.append("| " + " | ".join(cells) + " |")
     winner = ranked[0]
     lines += ["", f"Winner: rank {winner['rank']} ({winner['run_id']})"]
@@ -167,11 +204,14 @@ def cmd_stress(args: argparse.Namespace) -> None:
     missing = [rank for rank in ranks if rank not in by_rank]
     if missing:
         sys.exit(f"error: rank(s) {missing} not in {args.finalists} (available: {sorted(by_rank)})")
+    for rank in ranks:  # fail on a bad --set before any heavy loading
+        apply_overrides(by_rank[rank]["config"], args.set)
 
     # Heavy imports (torch, sklearn, real data) stay out of module scope so
     # `--help`, `select`, `summarize` and the unit tests remain lightweight.
     from scripts.buddy_percept_sweep.cache import FixedInputCache
     from scripts.buddy_percept_sweep.config import resolve_trial_config
+    from scripts.buddy_percept_sweep.pilot_metrics import ami_emotion_genre, independent_partition
     from scripts.buddy_percept_sweep.pipeline import run_trial
     from scripts.buddy_percept_sweep.real_data import load_real_raw_inputs
 
@@ -179,15 +219,18 @@ def cmd_stress(args: argparse.Namespace) -> None:
     if out_dir is not None:
         out_dir.mkdir(parents=True, exist_ok=True)
 
+    pilot_modules = None  # loaded lazily, once per process, for --independent-ami
+    tag_field = {"tag": args.tag} if args.tag else {}
     cache = FixedInputCache()  # one per process: finalists share the raw-data load
     for rank in ranks:
         finalist = by_rank[rank]
-        config = resolve_trial_config(finalist["config"])
+        config = resolve_trial_config(apply_overrides(finalist["config"], args.set))
         fixed_inputs = cache.get(content_pca_dim=config.content_pca_dim,
                                  raw_loader=load_real_raw_inputs)
         per_seed = []
         for seed in seeds:
-            result = run_trial(dataclasses.replace(config, seed=seed), fixed_inputs)
+            result = run_trial(dataclasses.replace(config, seed=seed), fixed_inputs,
+                               return_artifacts=args.independent_ami)
             row = {
                 "seed": seed,
                 "objective": result.objective,
@@ -198,8 +241,20 @@ def cmd_stress(args: argparse.Namespace) -> None:
                 "stage1_seconds": result.stage1_seconds,
                 "stage2_seconds": result.stage2_seconds,
             }
+            if args.independent_ami:
+                if pilot_modules is None:
+                    import torch
+                    from scripts.buddy_percept_sweep.pilot_metrics import load_pilot_modules
+                    pilot_modules = load_pilot_modules()
+                    device = "cuda" if torch.cuda.is_available() else "cpu"
+                labels = independent_partition(
+                    result.artifacts["heldout_embedding"], pilot_modules, "heldout", seed, device)
+                ind_emo, ind_genre = ami_emotion_genre(
+                    labels, fixed_inputs.heldout_emotion, fixed_inputs.heldout_genre)
+                row.update(ind_emo=ind_emo, ind_genre=ind_genre, ind_k=len(set(labels.tolist())))
             per_seed.append(row)
-            print("STRESS_SEED " + _dumps({"rank": rank, "run_id": finalist["id"], **row}), flush=True)
+            print("STRESS_SEED " + _dumps({"rank": rank, "run_id": finalist["id"], **tag_field, **row}),
+                  flush=True)
 
         summary = {
             **summarize_seed_results(per_seed),
@@ -207,6 +262,7 @@ def cmd_stress(args: argparse.Namespace) -> None:
             "run_id": finalist["id"],
             "sweep_objective": finalist["objective"],
             "sweep_n_topics": finalist["n_topics"],
+            **tag_field,
         }
         print("STRESS_RESULT " + _dumps(summary), flush=True)
         if out_dir is not None:
@@ -240,6 +296,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_stress.add_argument("--ranks", required=True, help="comma-separated 1-based ranks, e.g. 1,10")
     p_stress.add_argument("--seeds", default=",".join(str(s) for s in DEFAULT_SEEDS))
     p_stress.add_argument("--out-dir", default=None)
+    p_stress.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
+                          help="override a finalist config key (repeatable; VALUE parsed as JSON)")
+    p_stress.add_argument("--tag", default="", help="label added to every STRESS_SEED/STRESS_RESULT line")
+    p_stress.add_argument("--independent-ami", action="store_true",
+                          help="also score held-out AMI by independent re-clustering (pilot method)")
     p_stress.set_defaults(func=cmd_stress)
 
     p_sum = sub.add_parser("summarize", help="rank finalists from stress job logs")

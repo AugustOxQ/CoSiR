@@ -231,3 +231,82 @@ def test_stress_errors_clearly_on_missing_rank_before_loading_anything(tmp_path)
 
     assert "[3]" in str(excinfo.value)
     assert "available: [1]" in str(excinfo.value)
+
+
+def test_apply_overrides_parses_json_and_falls_back_to_string():
+    config = {"transfer_k": 40, "class_balanced_loss": False, "heads": "attn1", "noise_std": 0.1}
+    snapshot = copy.deepcopy(config)
+
+    out = m.apply_overrides(
+        config, ["transfer_k=20", "class_balanced_loss=true", "heads=mlp128", "noise_std=0.25"])
+
+    assert out == {"transfer_k": 20, "class_balanced_loss": True, "heads": "mlp128", "noise_std": 0.25}
+    assert config == snapshot  # input not mutated
+
+
+def test_apply_overrides_unknown_key_errors_clearly():
+    with pytest.raises(SystemExit) as excinfo:
+        m.apply_overrides({"transfer_k": 40}, ["transferk=20"])
+    assert "transferk" in str(excinfo.value)
+
+
+def test_apply_overrides_rejects_missing_equals():
+    with pytest.raises(SystemExit):
+        m.apply_overrides({"transfer_k": 40}, ["transfer_k"])
+
+
+def test_summarize_seed_results_adds_independent_keys_only_when_every_row_has_them():
+    rows = [
+        {**_seed_row(42, 0.9, 0.9), "ind_emo": 0.13, "ind_genre": 0.20, "ind_k": 30},
+        {**_seed_row(7, 0.9, 0.9), "ind_emo": 0.12, "ind_genre": 0.25, "ind_k": 31},
+        {**_seed_row(123, 0.9, 0.9), "ind_emo": 0.14, "ind_genre": 0.19, "ind_k": 29},
+    ]
+    s = m.summarize_seed_results(rows)
+    assert s["ind_emo_mean"] == pytest.approx((0.13 + 0.12 + 0.14) / 3)
+    assert s["ind_genre_mean"] == pytest.approx((0.20 + 0.25 + 0.19) / 3)
+    assert s["ind_gate_pass_count"] == 1  # only the first row clears both bars
+
+    partial = m.summarize_seed_results(rows[:2] + [_seed_row(123, 0.9, 0.9)])
+    assert not any(key.startswith("ind_") for key in partial)
+    plain = m.summarize_seed_results([_seed_row(42, 0.9, 0.9)])
+    assert not any(key.startswith("ind_") for key in plain)
+
+
+def test_format_summary_markdown_shows_tag_and_independent_columns_when_present():
+    per_seed = [{**_seed_row(s, 0.9, 0.9), "ind_emo": 0.13, "ind_genre": 0.21, "ind_k": 30}
+                for s in (42, 7)]
+    summary = m.summarize_seed_results(per_seed)
+    summary.update(rank=1, run_id="abc", sweep_objective=0.9, sweep_n_topics=20, tag="k20")
+
+    md = m.format_summary_markdown([summary])
+
+    assert "| tag |" in md and "| k20 |" in md
+    assert "ind emo mean" in md and "ind genre mean" in md and "ind gate passes" in md
+    assert "| 2/2 |" in md  # ind gate passes
+
+    plain = m.summarize_seed_results([_seed_row(42, 0.9, 0.9)])
+    plain.update(rank=1, run_id="abc", sweep_objective=0.9, sweep_n_topics=20)
+    plain_md = m.format_summary_markdown([plain])
+    assert "tag" not in plain_md and "ind emo" not in plain_md
+
+
+def test_stress_parser_accepts_new_flags():
+    args = m.build_parser().parse_args(
+        ["stress", "--finalists", "f.json", "--ranks", "1", "--set", "transfer_k=20",
+         "--set", "seed=3", "--tag", "k20", "--independent-ami"])
+    assert args.set == ["transfer_k=20", "seed=3"]
+    assert args.tag == "k20" and args.independent_ami is True
+    defaults = m.build_parser().parse_args(["stress", "--finalists", "f.json", "--ranks", "1"])
+    assert defaults.set == [] and defaults.tag == "" and defaults.independent_ami is False
+
+
+def test_stress_errors_on_unknown_set_key_before_loading_anything(tmp_path):
+    finalists = tmp_path / "finalists.json"
+    finalists.write_text(json.dumps(m.select_finalists([_run("a", 0.9, 20, 0.01)])))
+    args = m.build_parser().parse_args(
+        ["stress", "--finalists", str(finalists), "--ranks", "1", "--set", "nope=1"])
+
+    with pytest.raises(SystemExit) as excinfo:
+        args.func(args)
+
+    assert "nope" in str(excinfo.value)

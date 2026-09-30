@@ -56,10 +56,12 @@ class TrialResult:
     n_topics_after_merge: int
     stage1_seconds: float
     stage2_seconds: float
+    artifacts: Optional[dict] = None
 
 
 def run_trial(config: TrialConfig, fixed_inputs: FixedInputs,
-              log_checkpoint: Optional[Callable[[int, float], None]] = None) -> TrialResult:
+              log_checkpoint: Optional[Callable[[int, float], None]] = None,
+              return_artifacts: bool = False) -> TrialResult:
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
     if torch.cuda.is_available():
@@ -101,6 +103,15 @@ def run_trial(config: TrialConfig, fixed_inputs: FixedInputs,
         genre_ami = 0.0
     stage1_seconds = time.monotonic() - stage1_start
 
+    artifacts = None
+    if return_artifacts:
+        artifacts = {
+            "train_embedding": np.asarray(train_embedding, dtype=np.float32),
+            "heldout_embedding": np.asarray(heldout_embedding, dtype=np.float32),
+            "raw_labels": raw_labels, "merged_labels": merged_labels,
+            "heldout_hard": heldout_hard,
+        }
+
     stage2_start = time.monotonic()
     if n_topics < 2:
         # Degenerate partition: no valid multi-class target to train a
@@ -109,7 +120,7 @@ def run_trial(config: TrialConfig, fixed_inputs: FixedInputs,
             emotion_ami=emotion_ami, genre_ami=genre_ami, stage2_macro_auc=0.5,
             objective=compute_objective(emotion_ami, genre_ami, 0.5),
             n_topics_after_merge=n_topics, stage1_seconds=stage1_seconds,
-            stage2_seconds=time.monotonic() - stage2_start,
+            stage2_seconds=time.monotonic() - stage2_start, artifacts=artifacts,
         )
 
     if config.target_cutoff == "single_label":
@@ -149,5 +160,5 @@ def run_trial(config: TrialConfig, fixed_inputs: FixedInputs,
     return TrialResult(
         emotion_ami=emotion_ami, genre_ami=genre_ami, stage2_macro_auc=stage2_macro_auc,
         objective=objective, n_topics_after_merge=n_topics,
-        stage1_seconds=stage1_seconds, stage2_seconds=stage2_seconds,
+        stage1_seconds=stage1_seconds, stage2_seconds=stage2_seconds, artifacts=artifacts,
     )

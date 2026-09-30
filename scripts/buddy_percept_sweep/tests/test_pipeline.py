@@ -88,3 +88,42 @@ def test_run_trial_is_deterministic_for_same_seed_and_fixed_inputs():
     assert first.n_topics_after_merge >= 2
     for field in ("emotion_ami", "genre_ami", "stage2_macro_auc", "objective", "n_topics_after_merge"):
         assert getattr(first, field) == getattr(second, field)
+
+
+def test_run_trial_return_artifacts_matches_default_and_has_expected_shapes():
+    fixed = _tiny_fixed_inputs()
+    config = TrialConfig(
+        heads="attn1", num_heads=1, d_shared=8, lr=1e-3, noise_std=0.0,
+        lambda_affect=1.0, batch_size=16, weight_decay=0.0,
+        teacher_graph_K=5,
+        leiden_resolution=1.0, merge_small_threshold=0.0,
+        mapper_lr=1e-2, mapper_epochs=20, num_queries=1, mlp_head="linear",
+        transfer_k=5, target_cutoff="single_label", class_balanced_loss=False,
+        weight_decay_stage2=0.0, max_epochs_stage1=20, seed=123,
+    )
+    plain = run_trial(config, fixed)
+    with_artifacts = run_trial(config, fixed, return_artifacts=True)
+    assert plain.artifacts is None
+    artifacts = with_artifacts.artifacts
+    assert set(artifacts) == {"train_embedding", "heldout_embedding", "raw_labels",
+                              "merged_labels", "heldout_hard"}
+    assert artifacts["train_embedding"].shape == (60, 8)
+    assert artifacts["heldout_embedding"].shape == (24, 8)
+    assert artifacts["train_embedding"].dtype == np.float32
+    assert artifacts["heldout_embedding"].dtype == np.float32
+    assert artifacts["raw_labels"].shape == (60,)
+    assert artifacts["merged_labels"].shape == (60,)
+    assert artifacts["heldout_hard"].shape == (24,)
+    for field in ("emotion_ami", "genre_ami", "stage2_macro_auc", "objective", "n_topics_after_merge"):
+        assert getattr(plain, field) == getattr(with_artifacts, field)
+
+
+def test_run_trial_return_artifacts_on_degenerate_early_return():
+    fixed = _tiny_fixed_inputs()
+    config = TrialConfig(
+        heads="mlp128", num_heads=1, d_shared=8, batch_size=16, teacher_graph_K=5,
+        leiden_resolution=0.001, transfer_k=5, max_epochs_stage1=20,
+    )
+    result = run_trial(config, fixed, return_artifacts=True)
+    assert result.objective == -1.0
+    assert result.artifacts["heldout_hard"].shape == (24,)
