@@ -243,3 +243,23 @@ the attention-h1 baseline's 3/4, and its AUC cannot be set against
 0.9226 or 0.8534. Among the 10 finalists, emotion AMI and Stage 2 AUC
 traded off (r = −0.85), and emotion was the binding constraint, which
 fits emotion being buddy's weak axis.
+
+**2026-09-30 matched head-to-head (master report §6k).** Both systems ran
+through one harness at matched K (16, 40), with matched labels and an equal
+300-trial search per cell, selected on a val half and reported on a test
+half at 5 seeds. In the primary (approved) comparison, ranked by Stage 2
+AUC alone, buddy's winners lead PercepT (the baseline) by +0.027 and +0.033
+on test (0.993 vs 0.966 and 0.994 vs 0.960, p ≤ 0.005, replicated on val),
+but only by giving up emotion structure (independent emotion AMI 0.060 vs
+0.079 and 0.110). In a secondary comparison, designed after the interim
+leaderboard with its emotion floor fixed on val before test, we detected no
+Stage 2 difference at n = 5 seeds on either half (test Δ +0.003
+[−0.013, +0.018] at K = 16 and −0.005 [−0.013, +0.004] at K = 40). At equal
+AUC buddy's constrained winners never showed less emotion than PercepT's
+(level on test, about 0.02 more on val); PercepT's test-half genre lead
+(+0.10 AMI) did not replicate on val, so no genre difference is
+established. Which comparison leads is the user's open choice. Under either,
+the Stage 2 bottom line above ("PercepT wins") does not hold under matched
+conditions. Buddy's remaining Stage 1 edge is reach: it has configurations
+above 0.125 emotion AMI and PercepT's sweep had none, though neither sweep
+was designed to probe that region.

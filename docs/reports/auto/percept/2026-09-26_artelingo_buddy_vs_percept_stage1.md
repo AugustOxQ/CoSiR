@@ -6,6 +6,20 @@ Generated 2026-09-26. Branch `experiment/percept_topic_pipeline`.
 
 ## ⭐ RECOMMENDED SOLUTION (read this section first)
 
+> **Status note, 2026-10-01 (after §6j and §6k).** This recommendation was
+> written on 2026-09-27 and predates both checks. §6j found that the
+> unmodified Attention-h1 student clears the emotion bar on only 2 of 4 DAS6
+> seeds (3 of 4 on the local GPU), with mean independent emotion AMI 0.1230,
+> just below the 0.1236 threshold. §6k's matched head-to-head removed its
+> Stage 2 case: ranked by Stage 2 AUC, buddy leads PercepT only by giving up
+> emotion structure; at a common emotion floor we detected no Stage 2
+> difference; and none of the eight head-to-head winners used this pilot
+> Stage 1 (all used the §6i harness Stage 1, which was not validated against
+> the pilot). At K = 16 one pilot-Stage-1 finalist showed no detectable
+> difference from PercepT on the val half (Δ +0.002, 95% CI [−0.023, +0.028], 4 seeds). The Stage 2 bullets below (§6a to §6f) were superseded by
+> §6g and §6k. Read this section as the 2026-09-27 recommendation, not a
+> current one.
+
 **Adopt the unmodified Attention-h1 buddy-graph student, optionally with the
 cosine-annealed learning rate, as the Stage 1 topic-formation mechanism, in
 place of PercepT's autoencoder+DEC — and use `assign_to_train_communities`
@@ -88,6 +102,27 @@ Concretely:
   6, pass the gate on only 1/4 seeds (the winner's curse near the gate).
   Among the 10 finalists, emotion AMI and Stage 2 AUC also traded off
   (r = −0.85), a frontier observation rather than a general law.
+  **MATCHED HEAD-TO-HEAD 2026-09-30** (see §6k): with both systems in one
+  harness at matched K (16, 40), matched labels and an equal 300-trial
+  search per cell, selected on a val half and reported on a test half at 5
+  seeds. *Primary (approved) comparison:* ranked by val Stage 2 AUC,
+  buddy's winners lead PercepT on test (0.993 vs 0.966 at K = 16, 0.994 vs
+  0.960 at K = 40; +0.027 and +0.033, p ≤ 0.005, replicated on val), but
+  keep less emotion structure (independent AMI 0.060 vs 0.079 and 0.110).
+  *Secondary comparison (designed after the interim leaderboard; emotion
+  floor fixed on val before test):* among trials above a common emotion
+  floor, no Stage 2 difference was detected at n = 5 seeds on either half
+  (test Δ +0.003 [−0.013, +0.018] and −0.005 [−0.013, +0.004]). At equal
+  AUC buddy's constrained winners never showed less emotion than PercepT's
+  (level on test, about 0.02 more on val); a test-half genre gap in
+  PercepT's favour did not replicate on val. Which comparison leads is the
+  user's open choice. Either way the §6g headline ("PercepT wins Stage 2")
+  does not hold under matched conditions.
+  **CONFIRMATION CHECKS 2026-09-30** (see §6j): on the investigation's own
+  independent re-clustering yardstick, the sweep winner clears the emotion
+  bar on only 1/8 seeds (mean 0.1189). The untuned pilot baseline scores
+  higher on emotion on both yardsticks (0.1230 independent, 0.1341 gate).
+  The winner's gains are genre AMI and Stage 2 AUC, not emotion.
 
 **Do not pursue the DEC-style clustering-loss hybrid further** (see §4) — it
 was tried four times (literal transplant, geometry-corrected vMF kernel, a
@@ -1026,6 +1061,122 @@ stands until a matched head-to-head is run.** That needs a faithful
 buddy Stage 1 mode in the harness, validated against §6f first, and then
 both systems through that same harness with matched topic counts, the
 same target construction, and a comparable tuning budget for PercepT.
+
+## 6j. The two confirmation checks: the sweep winner's Stage 1 advantage does not hold up
+
+**2026-09-30.** Both checks proposed at the end of §6i were run on DAS6
+(commit `a906a89`). The winner `m8x7ifx4` was scored on its 4 original seeds
+and on 4 new ones (11, 23, 57, 101), with `transfer_k` 40 (as tuned) and 20.
+The pilots' unchanged attention-h1 baseline was re-fitted at seeds
+42/7/123/2024. Every run was scored on both yardsticks:
+
+- **independent:** re-cluster the held-out embedding on its own, with the
+  pilots' repaired mutual-kNN graph and modularity Leiden (§2/§3's
+  method, the one the Pareto bar was set with);
+- **gate:** the sweep's measurement, where train topics are merged at 0.02 and
+  held-out paintings are labelled by a k-NN vote.
+
+Raw logs are in `src/test/20260930_harness_confirmation/logs/`.
+
+| system | seeds | independent emotion AMI (mean, range) | independent genre AMI (mean) | clears bar, independent | gate emotion AMI, k=40 (mean) | clears gate, k=40 | Stage 2 AUC (mean) |
+|---|---|---|---|---:|---:|---:|---:|
+| attention-h1 baseline (pilot, untuned) | 42/7/123/2024 | **0.1230** (0.1179–0.1293) | 0.2403 | 2/4 | **0.1341** | 3/4 (seed 42 misses on genre, 0.1945) | — |
+| sweep winner `m8x7ifx4` | original 4 | 0.1164 (0.1104–0.1234) | 0.3014 | 0/4 | 0.1295 | 4/4 | 0.9355 |
+| sweep winner `m8x7ifx4` | new 4 | 0.1213 (0.1182–0.1251) | 0.3058 | 1/4 | 0.1314 | 4/4 | 0.9376 |
+
+With `transfer_k` fixed at 20 on the new seeds, the winner's gate emotion
+AMI is 0.1286 (still 4/4). Its independent AMI does not change. Its Stage 2
+AUC barely changes: `transfer_k` also sets the k of the train-side
+multi-label vote in `pipeline.run_trial`, so per-seed AUCs differ by up to
+0.0005, and the 4-seed mean is 0.9376 at both values.
+
+**What this shows:**
+
+1. **The winner's "4/4 seeds" is an artefact of the transfer yardstick.**
+   On the investigation's own independent measurement it clears the
+   emotion bar on only 1 of 8 seeds (mean 0.1189).
+2. **On emotion, the winner is no better than the untuned baseline on
+   either yardstick.** The baseline scores higher on both: 0.1230 vs 0.1189
+   independent, 0.1341 vs 0.1295–0.1314 gate. The sweep did not find a
+   better emotion structure. It found configurations with much higher
+   genre AMI (≈0.30 vs ≈0.24) and much higher Stage 2 AUC, at a small cost
+   in emotion. This matches the emotion/AUC trade-off seen among the
+   finalists in §6i.
+3. **Its Stage 2 AUC is robust.** On 4 new seeds it scores 0.9376
+   (0.924–0.944), in line with the stress test. This number is still
+   harness-internal and not comparable to §6g, for the reasons listed in
+   §6i.
+4. **The pilot result depends on the GPU.** Re-fitting the "unchanged"
+   baseline on DAS6 gives seed-42 independent AMIs of 0.1187 / 0.2639; the
+   local GPU gave 0.1249 / 0.2404 (§3). Seed-level numbers therefore shift
+   by up to ~0.006 between GPU types, which is about the width of the
+   margins being argued over. From here on, every cross-system comparison
+   runs on one GPU type (DAS6); the one local check (§6k's V1) compared
+   against pilot numbers from the same local GPU.
+
+§3's Stage 1 conclusion ("buddy clears the AMI bar without PercepT's
+occupancy collapse") rests on the pilot baseline. It is weakened but not
+reversed. On DAS6 the baseline clears the bar on 2/4 seeds (3/4 locally),
+and its mean emotion AMI of 0.1230 sits just below the 0.1236 threshold.
+The matched head-to-head (next section) scores both systems on both
+yardsticks, on the same GPUs.
+
+## 6k. Matched PercepT-vs-buddy head-to-head: plain-AUC winners and an emotion-constrained comparison
+
+**2026-09-30.** Both systems ran through one harness:
+- **Faithfulness to the pilots:** the buddy *pilot* Stage 1 port is
+  bit-exact to the pilot; the PercepT port reproduces §6g at 0.9258 vs
+  0.9226; the shared Stage 2 reproduces §6f at 0.85341 vs 0.8534. The buddy
+  *harness* Stage 1 (§6i), which every buddy winner used, was not validated
+  against the pilot.
+- **Matched setup:** matched K (16 and 40), the same k = 20 held-out labels,
+  a val/test split of the held-out set, and an equal 300-trial Bayesian
+  search per system per K. The user approved the objective, K levels,
+  split and budget; the rest were controller rulings.
+
+Full report:
+[`auto/percept/2026-09-30_matched_percept_buddy_h2h.md`](2026-09-30_matched_percept_buddy_h2h.md).
+
+On the test half, 5 fresh seeds each. The test half was not used for
+selection in this experiment, but it is part of the held-out set that §6a
+to §6i tuned on, so the references (not shown here) carry a selection
+advantage on it. PercepT is the baseline; Δ is buddy minus PercepT.
+
+| selection | K | buddy AUC | PercepT AUC (baseline) | Δ test [95% CI] | Δ val stress | buddy / PercepT independent emotion AMI, test |
+|---|---|---:|---:|---|---|---|
+| plain AUC (primary) | 16 | 0.9931 | 0.9664 | +0.027 [+0.014, +0.040] | +0.025 | 0.060 / 0.079 |
+| plain AUC (primary) | 40 | 0.9937 | 0.9604 | +0.033 [+0.025, +0.041] | +0.030 | 0.060 / 0.110 |
+| emotion floor (secondary) | 16 | 0.9462 | 0.9435 | +0.003 [−0.013, +0.018] | +0.004 | 0.121 / 0.120 |
+| emotion floor (secondary) | 40 | 0.9550 | 0.9598 | −0.005 [−0.013, +0.004] | +0.001 | 0.128 / 0.120 |
+
+- **Primary (plain AUC, the approved protocol):** buddy's winners lead on
+  Stage 2 AUC on both halves, but only by giving up affect. They set the
+  affect-loss weight at the search's lower bound (0.25), and their topics
+  keep 76% (K = 16, 0.060 / 0.079) and 55% (K = 40, 0.060 / 0.110) of
+  PercepT's independent emotion AMI.
+- **Secondary (emotion-constrained, designed after the interim leaderboard
+  showed buddy's early lead came with emotion AMI ≈ 0.05; floor fixed on
+  val before any test run):** no Stage 2 difference was detected at n = 5
+  seeds on either half. The test CIs exclude only differences larger than
+  about +0.018 / −0.013 (K = 16) and +0.004 / −0.013 (K = 40); with
+  PercepT's native labels the K = 40 sign flips (+0.0007). At equal AUC
+  buddy's constrained winners never showed less emotion than PercepT's:
+  level on test, about 0.02 more on val (0.117 vs 0.096; 0.127 vs 0.108).
+  PercepT's topics carried about 0.10 more genre AMI on test, but on val
+  the difference was −0.005 and +0.030 (buddy's favour), so no genre
+  difference is established.
+- **Which comparison leads is open** (the user's choice).
+- **§6g's headline ("PercepT 0.9226 vs buddy 0.8534") does not hold under
+  matched conditions** under either selection.
+- **Caveats:** buddy's winners all use the §6i harness Stage 1. The search
+  drew the pilot Stage 1 in only 25 and 20 of 300 trials, yet those trials
+  supplied 8 of the 10 constrained buddy finalists (52 to 55% of them
+  cleared the floor, against 2 to 6% of harness trials), and at K = 16 the
+  pilot runner-up showed no detectable difference from PercepT on val
+  (0.9463 vs 0.9438; Δ +0.002, 95% CI [−0.023, +0.028], 4 seeds). The AUC-only
+  search sampled buddy's high-emotion region thinly: `m8x7ifx4`, inside
+  the buddy K = 16 search space, scores 0.9352 on test at 0.127 emotion
+  AMI. A pilot-only buddy search remains open.
 
 ## 7. Artifact map
 

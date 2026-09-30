@@ -21,7 +21,7 @@ Research lines:
 ## Start here
 
 - **Current work (v2):** [factor-learning selection](auto/v2/2026-10-16_candidate_a_factor_learning_selection.md), the latest result (2×2 of painting-level agreement and CLIP-image-cluster condition episodes against a matched control: no cell qualifies, so the experiment stopped before the held test; the style episodes raised art-style R@1 but cost emotion and broke the sparsity gate, and painting-level agreement lowered both labels; the next step is the user's decision), after the [factor headroom probe](auto/v2/2026-10-15_candidate_a_factor_headroom_probe.md) (frozen CLIP carries far more emotion and style than R3's factors express, so factor learning is the next lever), the [stage (d) final held-out test](auto/v2/2026-10-14_candidate_a_stage_d_final.md) (trained scorer G3 vs naive: condition-use gain not met, inconclusive because underpowered; human swap test met as pre-registered, but reproduced by the naive rule at G3's learned β, so it reflects the lower CLIP weight; the stage (e) decision is the user's), following [stage (d) selection](auto/v2/2026-10-13_candidate_a_stage_d_selection.md) and building on [condition eval on repaired factors](auto/v2/2026-10-12_candidate_a_condition_eval_repaired_factors.md) and [factor repair](auto/v2/2026-10-11_candidate_a_factor_repair.md), the current recipe R3.
-- **Percept line summary:** [buddy vs PercepT master report](auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md), [comprehensive analysis](stage/2026-09-27_comprehensive_analysis.md) and [key advantages](stage/2026-09-27_key_advantages.md).
+- **Percept line summary:** [buddy vs PercepT master report](auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md), [comprehensive analysis](stage/2026-09-27_comprehensive_analysis.md) and [key advantages](stage/2026-09-27_key_advantages.md); the final result is the [matched head-to-head](auto/percept/2026-09-30_matched_percept_buddy_h2h.md) (master report §6k).
 - **Buddy line summary:** the [archived publication plan](../archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md) (claims C1–C12; no longer updated) and the [latest weekly report](weekly/2026-09-02_conditional_buddies.md).
 - **Publication plan for v2:** not written yet. It will replace the archived buddy plan, with v2 as the main body.
 
@@ -78,12 +78,13 @@ To open an archived line: `git worktree add ../CoSiR-<name> archive/<branch>`.
 | Date | Report | What it is |
 |---|---|---|
 | 09-15 | [buddy_prototype_conditioning](auto/percept/2026-09-15_buddy_prototype_conditioning.md) | Exp 18: buddy-graph prototype conditioning |
-| 09-26 | [artelingo_buddy_vs_percept_stage1](auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md) | **Master report:** buddy graph replacing PercepT's autoencoder+DEC in Stage 1. §6i holds the sweep result. |
+| 09-26 | [artelingo_buddy_vs_percept_stage1](auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md) | **Master report:** buddy graph replacing PercepT's autoencoder+DEC in Stage 1. §6i sweep, §6j confirmation checks, §6k matched head-to-head. |
 | 09-26 | [buddy_silhouette_gap_brainstorm](auto/percept/2026-09-26_buddy_silhouette_gap_brainstorm.md) | Ranked next directions for the Stage 1 silhouette gap |
 | 09-27 | [agy_independent_percept_review](auto/percept/2026-09-27_agy_independent_percept_review.md) | Independent adversarial review of the PercepT baseline and the evaluation |
 | 09-27 | [method_improvement_and_redcaps_brainstorm](auto/percept/2026-09-27_method_improvement_and_redcaps_brainstorm.md) | Next ArtELingo tests and a RedCaps transfer pilot |
 | 09-27 | [redcaps_b1_result_and_diagnosis](auto/percept/2026-09-27_redcaps_b1_result_and_diagnosis.md) | RedCaps B1 pilot result and root-cause diagnosis |
 | 09-28 | [buddy_percept_sweep_handoff](auto/percept/2026-09-28_buddy_percept_sweep_handoff.md) | Handoff for the buddy-percept comprehensive sweep |
+| 09-30 | [matched_percept_buddy_h2h](auto/percept/2026-09-30_matched_percept_buddy_h2h.md) | **Matched PercepT-vs-buddy head-to-head:** one validated harness, matched K, equal 300-trial searches. Plain AUC: buddy leads but with less emotion structure; at an emotion floor no AUC difference detected. Supersedes §6g |
 
 ## auto/buddy: conditional buddies
 
@@ -130,6 +131,8 @@ To open an archived line: `git worktree add ../CoSiR-<name> archive/<branch>`.
 | [buddy/pilots/20260609_conditional_buddy](auto/buddy/pilots/20260609_conditional_buddy/) | 1 | Conditional-buddy debug log |
 | [buddy/pilots/20260716_buddy_cross_vlm](auto/buddy/pilots/20260716_buddy_cross_vlm/) | 1 | Cross-VLM survival log |
 | [buddy/pilots/20260915_condition_space_audit](auto/buddy/pilots/20260915_condition_space_audit/) | 1 | Condition-space audit log |
+| [percept/pilots/20260930_harness_confirmation](auto/percept/pilots/20260930_harness_confirmation/) | 1 | Confirmation checks log (master report §6j) |
+| [percept/pilots/20260930_matched_h2h](auto/percept/pilots/20260930_matched_h2h/) | 4 | Matched head-to-head: debug log, SDD ledger, val stress and test summaries |
 
 ## stage: stage reports
 

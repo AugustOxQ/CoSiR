@@ -196,8 +196,8 @@
    "to": "docs/reports/weekly/2026-09-23_percept_topic_pipeline_slides.md"
   },
   "docs/reports/2026-09-26_artelingo_buddy_vs_percept_stage1_report.md": {
-   "dest_blob": "121003c08d03a069adc8371214c614a56f39fbc1",
-   "src_blob": "f5403b3a48282591d609c7b13514afd85d190778",
+   "dest_blob": "35e7587046d55c85165ba37677965c70d821d73d",
+   "src_blob": "31f9b00688436996b13232cf8096da9190e04a56",
    "to": "docs/reports/auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md"
   },
   "docs/reports/2026-09-26_buddy_silhouette_gap_brainstorm.md": {
@@ -216,8 +216,8 @@
    "to": "docs/reports/stage/2026-09-27_comprehensive_analysis.md"
   },
   "docs/reports/2026-09-27_key_advantages.md": {
-   "dest_blob": "1b304df18ddd80377ef97dcedd445d565eb7f9a4",
-   "src_blob": "0bbb2daa386f2660c8f731b3dc771e7e5ef44a84",
+   "dest_blob": "ec4cd0ae79aefe91d7db8ec0e2e9e4e442f544d9",
+   "src_blob": "63e0da4f07a38600fc1b5c019cdba1c97009edef",
    "to": "docs/reports/stage/2026-09-27_key_advantages.md"
   },
   "docs/reports/2026-09-27_method_improvement_and_redcaps_brainstorm.md": {
@@ -249,6 +249,21 @@
    "dest_blob": "f36ff638f21fbded5339c77fbec0c03cd10a3913",
    "src_blob": "f36ff638f21fbded5339c77fbec0c03cd10a3913",
    "to": "docs/reports/assets/2026-09-16_stage_report/build_diagrams.py"
+  },
+  "docs/reports/assets/2026-09-30_h2h/fig1_auc_vs_emotion.png": {
+   "dest_blob": "bedb88278cbc525ab3260a03438cc4867750db7d",
+   "src_blob": "bedb88278cbc525ab3260a03438cc4867750db7d",
+   "to": "docs/reports/assets/2026-09-30_h2h/fig1_auc_vs_emotion.png"
+  },
+  "docs/reports/assets/2026-09-30_h2h/fig2_test_results.png": {
+   "dest_blob": "e0d91a1eb78f92400c2eef6f8cca5bab79310714",
+   "src_blob": "e0d91a1eb78f92400c2eef6f8cca5bab79310714",
+   "to": "docs/reports/assets/2026-09-30_h2h/fig2_test_results.png"
+  },
+  "docs/reports/assets/2026-09-30_h2h/fig3_val_vs_test.png": {
+   "dest_blob": "4f897ba23d96b05a544ebc26542f07bf6bcd4743",
+   "src_blob": "4f897ba23d96b05a544ebc26542f07bf6bcd4743",
+   "to": "docs/reports/assets/2026-09-30_h2h/fig3_val_vs_test.png"
   },
   "docs/reports/assets/buddy_analysis/identity_heldout.png": {
    "dest_blob": "e69115c4f0247b23e261a780a7d89f2e23f82798",
@@ -309,6 +324,11 @@
    "dest_blob": "82f0dee9ffbbaa0fe4e7904f94b73615e71cc228",
    "src_blob": "0740c0a3d648b580d22c4bdccc8f4fd637ade419",
    "to": "docs/reports/assets/build_2026-09-23_weekly_percept_topic_pipeline_slides.py"
+  },
+  "docs/reports/assets/build_2026-09-30_h2h_figures.py": {
+   "dest_blob": "a6b1a416e573faea40ead523754c0bdee13572d5",
+   "src_blob": "a6b1a416e573faea40ead523754c0bdee13572d5",
+   "to": "docs/reports/assets/build_2026-09-30_h2h_figures.py"
   },
   "docs/reports/assets/cca_canonical_correlations.png": {
    "dest_blob": "6dc82d6ed1c66c2d8f9aeab538f5f6f9da0b374d",
@@ -574,6 +594,11 @@
    "dest_blob": "692ddcdae576d5a1c181b1ea094934c9d44a262e",
    "src_blob": "692ddcdae576d5a1c181b1ea094934c9d44a262e",
    "to": "docs/reports/assets/weight_sweep_tradeoff.png"
+  },
+  "docs/reports/auto/percept/2026-09-30_matched_percept_buddy_h2h.md": {
+   "dest_blob": "d2459ce7c8d7e4b97e00b9ec93294d7ee410ad19",
+   "src_blob": "978315aabdc9c3c4f00aecb05a737b26a7c664d5",
+   "to": "docs/reports/auto/percept/2026-09-30_matched_percept_buddy_h2h.md"
   },
   "src/test/20250911_embedding_performance_debugging/20250911_embedding_performance_log.md": {
    "dest_blob": "c8466058319302fb15098f5791a92b43411a9fba",
@@ -1029,6 +1054,31 @@
    "dest_blob": "2c23dec4ca340792534937334e393c3d418ae9dd",
    "src_blob": "2c23dec4ca340792534937334e393c3d418ae9dd",
    "to": "docs/reports/auto/percept/pilots/20260928_buddy_percept_sweep/stress_summary.md"
+  },
+  "src/test/20260930_harness_confirmation/20260930_harness_confirmation_log.md": {
+   "dest_blob": "eb2b5534c342d1510e5bc2954b8f60d3cdd88db0",
+   "src_blob": "eb2b5534c342d1510e5bc2954b8f60d3cdd88db0",
+   "to": "docs/reports/auto/percept/pilots/20260930_harness_confirmation/20260930_harness_confirmation_log.md"
+  },
+  "src/test/20260930_matched_h2h/20260930_matched_h2h_log.md": {
+   "dest_blob": "fd34d3b8f43d5dc82b49061037b579633e1eed0b",
+   "src_blob": "fd34d3b8f43d5dc82b49061037b579633e1eed0b",
+   "to": "docs/reports/auto/percept/pilots/20260930_matched_h2h/20260930_matched_h2h_log.md"
+  },
+  "src/test/20260930_matched_h2h/20260930_matched_h2h_sdd_ledger.md": {
+   "dest_blob": "3d1ed42c941b2cd0af9a658706a5b8096b174ed3",
+   "src_blob": "3d1ed42c941b2cd0af9a658706a5b8096b174ed3",
+   "to": "docs/reports/auto/percept/pilots/20260930_matched_h2h/20260930_matched_h2h_sdd_ledger.md"
+  },
+  "src/test/20260930_matched_h2h/stress_summary.md": {
+   "dest_blob": "9d08f2fb1ea9a1f515d42fcfa4a0e382d65ca826",
+   "src_blob": "9d08f2fb1ea9a1f515d42fcfa4a0e382d65ca826",
+   "to": "docs/reports/auto/percept/pilots/20260930_matched_h2h/stress_summary.md"
+  },
+  "src/test/20260930_matched_h2h/test_summary.md": {
+   "dest_blob": "c7acf0687ea664724ce9ea839d3fedbcf8bf856a",
+   "src_blob": "c7acf0687ea664724ce9ea839d3fedbcf8bf856a",
+   "to": "docs/reports/auto/percept/pilots/20260930_matched_h2h/test_summary.md"
   },
   "worktree:docs/reports/2026-09-16_stage_report_prototype_conditioning_slides.pptx": {
    "dest_blob": "728adaa3b42938ad45d7010b4351455e21799ef4",
