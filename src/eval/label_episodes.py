@@ -5,6 +5,7 @@ be compared on the very same episodes (paired), and they do not reward a model
 for agreeing with its own mined structure.
 """
 
+import hashlib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -159,3 +160,12 @@ def condition_lift(img_feat, txt_feat, img_codes, txt_codes, episodes: LabelEpis
               for name, w in (("naive", naive), ("uniform", uniform))}
     lift = {d: result["naive"][d]["recall1"] - result["uniform"][d]["recall1"] for d in ("i2t", "t2i")}
     return {**result, "lift": lift, "lift_mean": 0.5 * (lift["i2t"] + lift["t2i"])}
+
+
+def label_episodes_sha256(episodes: LabelEpisodes) -> str:
+    """Identity of a label-episode set; equals the repair plan's Task 7 ``label_sha`` (held hashes recorded there)."""
+    digest = hashlib.sha256()
+    for field in ("anchor", "positive", "supports", "contrasts", "distractors"):
+        digest.update(np.ascontiguousarray(getattr(episodes, field), dtype=np.int64).tobytes())
+    digest.update("\n".join(map(str, episodes.labels.tolist())).encode())
+    return digest.hexdigest()
