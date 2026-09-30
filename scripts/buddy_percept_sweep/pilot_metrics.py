@@ -24,6 +24,8 @@ class PilotModules:
     heldout_pipeline: object    # held-out copy with STORAGE_DIR/TRAIN_JSON routed
     affect_pilot: object
     single_modality: object
+    arch: object = None         # the learned-student arch pilot module (path constants, loader)
+    cca_audit: object = None    # cca_for_metrics: content_features
 
 
 def _load_module(name: str, path: Path):
@@ -44,8 +46,13 @@ def load_pilot_modules() -> PilotModules:
     json_root = os.environ.get("PERCEPT_RAW_JSON_ROOT", "/data/PDD/artelingo")
     heldout_pipeline.STORAGE_DIR = f"{feature_root}/artelingo_heldout/features"
     heldout_pipeline.TRAIN_JSON = f"{json_root}/artelingo_val_test.json"
+    cca_audit = arch.load_sibling_module("cca_for_metrics", arch.CCA_AUDIT_PATH)
+    arch.cca_audit = cca_audit
+    arch.HELDOUT_STORAGE_DIR = heldout_pipeline.STORAGE_DIR
+    arch.HELDOUT_JSON = heldout_pipeline.TRAIN_JSON
     return PilotModules(pipeline=pipeline, heldout_pipeline=heldout_pipeline,
-                        affect_pilot=affect_pilot, single_modality=single_modality)
+                        affect_pilot=affect_pilot, single_modality=single_modality,
+                        arch=arch, cca_audit=cca_audit)
 
 
 def independent_partition(embedding: np.ndarray, modules: PilotModules,
