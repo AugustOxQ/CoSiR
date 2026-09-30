@@ -198,3 +198,6 @@ cursor_tmp_file/**/*.npy
 
 # Generated slide decks
 *.pptx
+
+# Record of reports gathered from other branches (scripts/promote_reports.py)
+!docs/reports/.promoted.json

@@ -1,0 +1,1044 @@
+{
+ "experiment/percept_topic_pipeline": {
+  "docs/reports/2026-06-09_buddies_dim_hparam_study.md": {
+   "dest_blob": "39f1d876103ce74ad871b1fdd4607ec749a40f2f",
+   "src_blob": "ef59e574f2d91b16a1246407ad350e58eea9d16e",
+   "to": "docs/reports/auto/buddy/2026-06-09_buddies_dim_hparam_study.md"
+  },
+  "docs/reports/2026-06-09_weekly_conditional_buddies.md": {
+   "dest_blob": "108a27e6c5cae6c30dd6fe9b75a62486310c952e",
+   "src_blob": "eed2e22be98407cd20111aaa721618924d461546",
+   "to": "docs/reports/weekly/2026-06-09_conditional_buddies.md"
+  },
+  "docs/reports/2026-06-22_buddy_analysis.md": {
+   "dest_blob": "802f611b771a8e5cc7d103c319327531652d4594",
+   "src_blob": "70ed2be2a2970ef9380d04b109c207eb749de81b",
+   "to": "docs/reports/auto/buddy/2026-06-22_buddy_analysis.md"
+  },
+  "docs/reports/2026-06-23_redcaps_buddy.md": {
+   "dest_blob": "08df271da67552b73ed383bb831ecba0c99d42af",
+   "src_blob": "b14ae63727acbf9c905f1dd802d41eb996bdbb54",
+   "to": "docs/reports/auto/buddy/2026-06-23_redcaps_buddy.md"
+  },
+  "docs/reports/2026-06-24_buddy_progress_report.md": {
+   "dest_blob": "00ef3f583d28fe6e873c80f50f336e8ea04457eb",
+   "src_blob": "3e6a8ed7e4268b591d866d38018a0eb973afb54e",
+   "to": "docs/reports/stage/2026-06-24_buddy_progress.md"
+  },
+  "docs/reports/2026-07-08_buddy_slides_guide.md": {
+   "dest_blob": "2f261b00cb1516104c0890d67213541a2af3d63d",
+   "src_blob": "d06a601b266dfee279854bef25fa357f3e923a80",
+   "to": "docs/reports/weekly/2026-07-08_buddy_slides_guide.md"
+  },
+  "docs/reports/2026-07-08_heldout_grid.md": {
+   "dest_blob": "23ae47f6a4791e5f925c110b77c9d02e27f80760",
+   "src_blob": "23ae47f6a4791e5f925c110b77c9d02e27f80760",
+   "to": "docs/reports/auto/buddy/2026-07-08_heldout_grid.md"
+  },
+  "docs/reports/2026-07-16_buddy_cross_vlm_survival.md": {
+   "dest_blob": "4517de4178aced12b1f4563be8c01052b5498b51",
+   "src_blob": "4517de4178aced12b1f4563be8c01052b5498b51",
+   "to": "docs/reports/auto/buddy/2026-07-16_buddy_cross_vlm_survival.md"
+  },
+  "docs/reports/2026-08-10_prior_art_note.md": {
+   "dest_blob": "55fd3ff112761a144a761cfc1c5e491ffc3178cf",
+   "src_blob": "55fd3ff112761a144a761cfc1c5e491ffc3178cf",
+   "to": "docs/reports/auto/buddy/2026-08-10_prior_art_note.md"
+  },
+  "docs/reports/2026-08-16_buddy_init_ablation.md": {
+   "dest_blob": "d33ea4bf8bb675a35e17d384f7cd3293e3f38780",
+   "src_blob": "cd54bcc3d80ad033b70511b6997a51f8328c1e6a",
+   "to": "docs/reports/auto/buddy/2026-08-16_buddy_init_ablation.md"
+  },
+  "docs/reports/2026-08-19_buddy_init_ablation_redcaps_300k.md": {
+   "dest_blob": "fb8bcea8bb541c270a9aaafd91c086de30a2fd87",
+   "src_blob": "4a2f50e394ced11d4ce3927c49a45f370336aac1",
+   "to": "docs/reports/auto/buddy/2026-08-19_buddy_init_ablation_redcaps_300k.md"
+  },
+  "docs/reports/2026-08-19_buddy_init_ablation_slides.pptx": {
+   "dest_blob": "c4b6307464c1606e0e909f66659ba60d023cbf42",
+   "src_blob": "c4b6307464c1606e0e909f66659ba60d023cbf42",
+   "to": "docs/reports/pptx/2026-08-19_buddy_init_ablation_slides.pptx"
+  },
+  "docs/reports/2026-08-19_weekly_conditional_buddies_slides.md": {
+   "dest_blob": "168662b86ffed9a265d05a1561c0bbc6837013c1",
+   "src_blob": "b1869f9e7ec6746aaac1805251ccd5e02a2af41e",
+   "to": "docs/reports/weekly/2026-08-19_conditional_buddies_slides.md"
+  },
+  "docs/reports/2026-08-19_weekly_conditional_buddies_slides.pptx": {
+   "dest_blob": "1a7de1755cc53e65692b533122f797dedf71e9c3",
+   "src_blob": "1a7de1755cc53e65692b533122f797dedf71e9c3",
+   "to": "docs/reports/pptx/2026-08-19_conditional_buddies_slides.pptx"
+  },
+  "docs/reports/2026-08-24_buddy_distance_mode_ablation.md": {
+   "dest_blob": "03c07b8ec152c1eb28888e9aaf2976851b3d5039",
+   "src_blob": "36b88deb7355aa1f30d1641f1e1f8e9d926d1349",
+   "to": "docs/reports/auto/buddy/2026-08-24_buddy_distance_mode_ablation.md"
+  },
+  "docs/reports/2026-08-24_buddy_init_encoder_ablation.md": {
+   "dest_blob": "22e253661f02fbbde6554754af4587d1f4261e5a",
+   "src_blob": "c222086609d90ff858cf03ebe2ab6dcbd71b7af9",
+   "to": "docs/reports/auto/buddy/2026-08-24_buddy_init_encoder_ablation.md"
+  },
+  "docs/reports/2026-08-24_redcaps_subreddit_signal_correlates.md": {
+   "dest_blob": "8b915a78d030a93d6ee29007830ac7af52984df6",
+   "src_blob": "6da0bda60fc75d969760265b81c6287b26aab3a4",
+   "to": "docs/reports/auto/buddy/2026-08-24_redcaps_subreddit_signal_correlates.md"
+  },
+  "docs/reports/2026-08-25_condition_freeze_ablation.md": {
+   "dest_blob": "39dab2cdc7f87d1138c1f08b6f149171b9dce54d",
+   "src_blob": "ec4a76e9e2ece185d8107afaa014877e0acbc5be",
+   "to": "docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md"
+  },
+  "docs/reports/2026-08-26_polysemy_bridge_diagnostic.md": {
+   "dest_blob": "6535e43aba0706e393417f66f429e67356defb9a",
+   "src_blob": "d4a3df5ecc3a8e27cc735c4e9b7d5d8608d0b99d",
+   "to": "docs/reports/auto/buddy/2026-08-26_polysemy_bridge_diagnostic.md"
+  },
+  "docs/reports/2026-08-26_weekly_conditional_buddies.md": {
+   "dest_blob": "e64de46d9465f9045c3f54b8aa0a6aba4a9f7a0b",
+   "src_blob": "3213b258cc83c5ecac6b72b3a716e37ec4fda6b9",
+   "to": "docs/reports/weekly/2026-08-26_conditional_buddies.md"
+  },
+  "docs/reports/2026-08-26_weekly_conditional_buddies_slides.md": {
+   "dest_blob": "758e4b547b533a494693fec878db1e74eddaaaca",
+   "src_blob": "758e4b547b533a494693fec878db1e74eddaaaca",
+   "to": "docs/reports/weekly/2026-08-26_conditional_buddies_slides.md"
+  },
+  "docs/reports/2026-08-27_combine_side_txt_replication.md": {
+   "dest_blob": "285f9b14205fd0abc364d3267d0afc832ad85fba",
+   "src_blob": "c3bb74b6c0eca870d29a15a89c7964027b01d862",
+   "to": "docs/reports/auto/buddy/2026-08-27_combine_side_txt_replication.md"
+  },
+  "docs/reports/2026-08-27_symmetric_conditioning_exp13.md": {
+   "dest_blob": "ac8b599c69c6334b420f7c88b07a001759dd340c",
+   "src_blob": "c70d7f9bb7812e1fe35749314f502c85255c3767",
+   "to": "docs/reports/auto/buddy/2026-08-27_symmetric_conditioning_exp13.md"
+  },
+  "docs/reports/2026-08-31_closed_triangle_bridge_diagnostic.md": {
+   "dest_blob": "ab665e05c5b8d8ee2bd6e33ab0ed560627575b2b",
+   "src_blob": "33cbc4978c2e53b550dc99166b5857c3138fb169",
+   "to": "docs/reports/auto/buddy/2026-08-31_closed_triangle_bridge_diagnostic.md"
+  },
+  "docs/reports/2026-09-01_buddy_k_scaling_stage_a.md": {
+   "dest_blob": "46c089937780fd2bc2d6f59ac073695ff4460854",
+   "src_blob": "46c089937780fd2bc2d6f59ac073695ff4460854",
+   "to": "docs/reports/auto/buddy/2026-09-01_buddy_k_scaling_stage_a.md"
+  },
+  "docs/reports/2026-09-01_combiner_architecture_brainstorm.md": {
+   "dest_blob": "064c993bec4cae15bd6e9aa16e9aae7f26acbf1d",
+   "src_blob": "1a579ef4634e1beda739ae21680108df56032796",
+   "to": "docs/reports/auto/buddy/2026-09-01_combiner_architecture_brainstorm.md"
+  },
+  "docs/reports/2026-09-02_buddy_k_ablation_stage_b.md": {
+   "dest_blob": "e1075a2472c360aa9eae3f3addc115b9a0cf63cb",
+   "src_blob": "cc91e992395c991c8d8c236fef8de43c6d13808d",
+   "to": "docs/reports/auto/buddy/2026-09-02_buddy_k_ablation_stage_b.md"
+  },
+  "docs/reports/2026-09-02_combiner_architecture_ablation.md": {
+   "dest_blob": "5fd25a3335a6c71a5b60b292a6dc10de5f73d907",
+   "src_blob": "c38a22c054fff5c9296da7b639cdfa3c9eebdc89",
+   "to": "docs/reports/auto/buddy/2026-09-02_combiner_architecture_ablation.md"
+  },
+  "docs/reports/2026-09-15_buddy_prototype_conditioning.md": {
+   "dest_blob": "77df82e51bc3cf892a22831a5801980502076568",
+   "src_blob": "77df82e51bc3cf892a22831a5801980502076568",
+   "to": "docs/reports/auto/percept/2026-09-15_buddy_prototype_conditioning.md"
+  },
+  "docs/reports/2026-09-15_condition_space_audit.md": {
+   "dest_blob": "0d9a670b5efe3bda2405d416fb6e88238dd4956a",
+   "src_blob": "0d9a670b5efe3bda2405d416fb6e88238dd4956a",
+   "to": "docs/reports/auto/buddy/2026-09-15_condition_space_audit.md"
+  },
+  "docs/reports/2026-09-16_stage_report_prototype_conditioning.md": {
+   "dest_blob": "73d243ae4f0f6416197bd514ed8202c12582586a",
+   "src_blob": "18e24138ddb346f7e208071720ce0614d23b9552",
+   "to": "docs/reports/stage/2026-09-16_prototype_conditioning.md"
+  },
+  "docs/reports/2026-09-16_stage_report_prototype_conditioning_slides.md": {
+   "dest_blob": "218e2ac511103b56ad9946a5277f0eb4386bc254",
+   "src_blob": "42e9401fb2e0e67fd19a8e3da9826d9116fce182",
+   "to": "docs/reports/stage/2026-09-16_prototype_conditioning_slides.md"
+  },
+  "docs/reports/2026-09-22_artelingo_affect_investigation_stage_report.md": {
+   "dest_blob": "7173da11eaddf221be5f203f42c10025ae4df9d5",
+   "src_blob": "7173da11eaddf221be5f203f42c10025ae4df9d5",
+   "to": "docs/reports/stage/2026-09-22_artelingo_affect_investigation.md"
+  },
+  "docs/reports/2026-09-22_artelingo_fusion_diagnostics_report.md": {
+   "dest_blob": "59d9a421e364b6ead598c46de72afeb2563e8b0a",
+   "src_blob": "81bb803bc06797f74d235f3c4ad0378e4a71ab7f",
+   "to": "docs/reports/stage/2026-09-22_artelingo_fusion_diagnostics.md"
+  },
+  "docs/reports/2026-09-22_artelingo_fusion_mechanism_investigation.md": {
+   "dest_blob": "f5c14f6981f14004c07b2225de128a6e978de361",
+   "src_blob": "19fcea0e323b6845a6d661b2042128a7619f87b2",
+   "to": "docs/reports/stage/2026-09-22_artelingo_fusion_mechanism_investigation.md"
+  },
+  "docs/reports/2026-09-23_artelingo_percept_stage1_report.md": {
+   "dest_blob": "c88b905ee2bb8f9c8a89ad27d674520f804d0e4c",
+   "src_blob": "c88b905ee2bb8f9c8a89ad27d674520f804d0e4c",
+   "to": "docs/reports/stage/2026-09-23_artelingo_percept_stage1.md"
+  },
+  "docs/reports/2026-09-23_artelingo_percept_stage2_report.md": {
+   "dest_blob": "e2c4dfb3c60ce5758cf5c5bfc45b1f80bc9cbf06",
+   "src_blob": "e2c4dfb3c60ce5758cf5c5bfc45b1f80bc9cbf06",
+   "to": "docs/reports/stage/2026-09-23_artelingo_percept_stage2.md"
+  },
+  "docs/reports/2026-09-23_weekly_percept_topic_pipeline.md": {
+   "dest_blob": "a5cff8c06053affc4b3a9fe1c65872d2b5c95778",
+   "src_blob": "152a5d026aea450e3f9d48431d2495281708ee71",
+   "to": "docs/reports/weekly/2026-09-23_percept_topic_pipeline.md"
+  },
+  "docs/reports/2026-09-23_weekly_percept_topic_pipeline_slides.md": {
+   "dest_blob": "69ca0a3df2d6956414583d7b0ded331accb02ac6",
+   "src_blob": "69ca0a3df2d6956414583d7b0ded331accb02ac6",
+   "to": "docs/reports/weekly/2026-09-23_percept_topic_pipeline_slides.md"
+  },
+  "docs/reports/2026-09-26_artelingo_buddy_vs_percept_stage1_report.md": {
+   "dest_blob": "121003c08d03a069adc8371214c614a56f39fbc1",
+   "src_blob": "f5403b3a48282591d609c7b13514afd85d190778",
+   "to": "docs/reports/auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md"
+  },
+  "docs/reports/2026-09-26_buddy_silhouette_gap_brainstorm.md": {
+   "dest_blob": "b17cdba5442cae876f1ec44a32b678b37bdeac83",
+   "src_blob": "83620f7d958bc129075824713afa3060505cba63",
+   "to": "docs/reports/auto/percept/2026-09-26_buddy_silhouette_gap_brainstorm.md"
+  },
+  "docs/reports/2026-09-27_agy_independent_percept_review.md": {
+   "dest_blob": "3b0370fa755da737621dea768ab5e714c007fb43",
+   "src_blob": "fbaa639fe3872ce29ea280d4b4934e6fdec92ed4",
+   "to": "docs/reports/auto/percept/2026-09-27_agy_independent_percept_review.md"
+  },
+  "docs/reports/2026-09-27_comprehensive_analysis.md": {
+   "dest_blob": "b107f8c9e76cf3c8ed53bc2918e0c8c3ce5dc560",
+   "src_blob": "a757c65215ca65ec229fafed522544fc5985f248",
+   "to": "docs/reports/stage/2026-09-27_comprehensive_analysis.md"
+  },
+  "docs/reports/2026-09-27_key_advantages.md": {
+   "dest_blob": "1b304df18ddd80377ef97dcedd445d565eb7f9a4",
+   "src_blob": "0bbb2daa386f2660c8f731b3dc771e7e5ef44a84",
+   "to": "docs/reports/stage/2026-09-27_key_advantages.md"
+  },
+  "docs/reports/2026-09-27_method_improvement_and_redcaps_brainstorm.md": {
+   "dest_blob": "8d580876ec570294d259516616b04968c5737e36",
+   "src_blob": "efc52d5271513c8d65b7f696ec07d241deb605d2",
+   "to": "docs/reports/auto/percept/2026-09-27_method_improvement_and_redcaps_brainstorm.md"
+  },
+  "docs/reports/2026-09-27_redcaps_b1_result_and_diagnosis.md": {
+   "dest_blob": "987482b7cade16065f2ceb7f566386180d6737d8",
+   "src_blob": "556b5b0159692ca47550976c509c0306895e3f31",
+   "to": "docs/reports/auto/percept/2026-09-27_redcaps_b1_result_and_diagnosis.md"
+  },
+  "docs/reports/2026-09-28_buddy_percept_sweep_handoff.md": {
+   "dest_blob": "e954a30366d2d2fe0c0d69a92e1720f06c701b3f",
+   "src_blob": "5bca7958f3537313689b335e9a25e9a19430a516",
+   "to": "docs/reports/auto/percept/2026-09-28_buddy_percept_sweep_handoff.md"
+  },
+  "docs/reports/assets/2026-09-16_stage_report/architecture_after.png": {
+   "dest_blob": "41c1f8f9daadcfcf6851fc81f6daa930c51eaeca",
+   "src_blob": "41c1f8f9daadcfcf6851fc81f6daa930c51eaeca",
+   "to": "docs/reports/assets/2026-09-16_stage_report/architecture_after.png"
+  },
+  "docs/reports/assets/2026-09-16_stage_report/architecture_before.png": {
+   "dest_blob": "5c2d9b85e8c17730a0c60a9b4710168a0a903e07",
+   "src_blob": "5c2d9b85e8c17730a0c60a9b4710168a0a903e07",
+   "to": "docs/reports/assets/2026-09-16_stage_report/architecture_before.png"
+  },
+  "docs/reports/assets/2026-09-16_stage_report/build_diagrams.py": {
+   "dest_blob": "f36ff638f21fbded5339c77fbec0c03cd10a3913",
+   "src_blob": "f36ff638f21fbded5339c77fbec0c03cd10a3913",
+   "to": "docs/reports/assets/2026-09-16_stage_report/build_diagrams.py"
+  },
+  "docs/reports/assets/buddy_analysis/identity_heldout.png": {
+   "dest_blob": "e69115c4f0247b23e261a780a7d89f2e23f82798",
+   "src_blob": "e69115c4f0247b23e261a780a7d89f2e23f82798",
+   "to": "docs/reports/assets/buddy_analysis/identity_heldout.png"
+  },
+  "docs/reports/assets/buddy_analysis/phase2_vlm.png": {
+   "dest_blob": "81c87701ddbb5e3a3b2166b51d814e585daa9200",
+   "src_blob": "81c87701ddbb5e3a3b2166b51d814e585daa9200",
+   "to": "docs/reports/assets/buddy_analysis/phase2_vlm.png"
+  },
+  "docs/reports/assets/buddy_analysis/type_confusion.png": {
+   "dest_blob": "3cc0768b8a64e9c5a99613111235d4237ee8b5ba",
+   "src_blob": "3cc0768b8a64e9c5a99613111235d4237ee8b5ba",
+   "to": "docs/reports/assets/buddy_analysis/type_confusion.png"
+  },
+  "docs/reports/assets/buddy_cross_vlm/agreement_B.png": {
+   "dest_blob": "1f180a91c9ec27f0a618754faae4e15ce05e7d0c",
+   "src_blob": "1f180a91c9ec27f0a618754faae4e15ce05e7d0c",
+   "to": "docs/reports/assets/buddy_cross_vlm/agreement_B.png"
+  },
+  "docs/reports/assets/buddy_cross_vlm/agreement_E.png": {
+   "dest_blob": "34e7bfebcd8415eaaa4044869cd5a53b3e612e95",
+   "src_blob": "34e7bfebcd8415eaaa4044869cd5a53b3e612e95",
+   "to": "docs/reports/assets/buddy_cross_vlm/agreement_E.png"
+  },
+  "docs/reports/assets/buddy_cross_vlm/core_lift.png": {
+   "dest_blob": "d96442e29da2d77b7474b02a4fd58f8414da7d88",
+   "src_blob": "d96442e29da2d77b7474b02a4fd58f8414da7d88",
+   "to": "docs/reports/assets/buddy_cross_vlm/core_lift.png"
+  },
+  "docs/reports/assets/buddy_cross_vlm/survival_curves.png": {
+   "dest_blob": "5c321b79289fb6c9525f77f7baf7f45a480d19ff",
+   "src_blob": "5c321b79289fb6c9525f77f7baf7f45a480d19ff",
+   "to": "docs/reports/assets/buddy_cross_vlm/survival_curves.png"
+  },
+  "docs/reports/assets/buddy_degree_hist.png": {
+   "dest_blob": "c835abb4bfdeb5060c5cd6f1a7d9efee04363d77",
+   "src_blob": "c835abb4bfdeb5060c5cd6f1a7d9efee04363d77",
+   "to": "docs/reports/assets/buddy_degree_hist.png"
+  },
+  "docs/reports/assets/build_2026-08-26_weekly_slides.py": {
+   "dest_blob": "70c83b8a87efbbfc10521395d4dc8a9414ffc1e0",
+   "src_blob": "eab7844e5f0e0fd0387bd6c1aed7a5a43b6f0749",
+   "to": "docs/reports/assets/build_2026-08-26_weekly_slides.py"
+  },
+  "docs/reports/assets/build_2026-09-16_stage_report_slides.py": {
+   "dest_blob": "6efb394ceebe03bfcb43b29ec3a7e581fd176600",
+   "src_blob": "b220ecda200fef41e99aa1377e168bc1e76c9de8",
+   "to": "docs/reports/assets/build_2026-09-16_stage_report_slides.py"
+  },
+  "docs/reports/assets/build_2026-09-22_fusion_diagnostics_charts.py": {
+   "dest_blob": "cc4c512fce63af3f041530579d1a9a9350af12db",
+   "src_blob": "cc4c512fce63af3f041530579d1a9a9350af12db",
+   "to": "docs/reports/assets/build_2026-09-22_fusion_diagnostics_charts.py"
+  },
+  "docs/reports/assets/build_2026-09-23_weekly_percept_topic_pipeline_slides.py": {
+   "dest_blob": "82f0dee9ffbbaa0fe4e7904f94b73615e71cc228",
+   "src_blob": "0740c0a3d648b580d22c4bdccc8f4fd637ade419",
+   "to": "docs/reports/assets/build_2026-09-23_weekly_percept_topic_pipeline_slides.py"
+  },
+  "docs/reports/assets/cca_canonical_correlations.png": {
+   "dest_blob": "6dc82d6ed1c66c2d8f9aeab538f5f6f9da0b374d",
+   "src_blob": "6dc82d6ed1c66c2d8f9aeab538f5f6f9da0b374d",
+   "to": "docs/reports/assets/cca_canonical_correlations.png"
+  },
+  "docs/reports/assets/collapse_comparison.png": {
+   "dest_blob": "7080742652355fe614e320379f7ef04c01f602c2",
+   "src_blob": "7080742652355fe614e320379f7ef04c01f602c2",
+   "to": "docs/reports/assets/collapse_comparison.png"
+  },
+  "docs/reports/assets/collapse_zscore.png": {
+   "dest_blob": "52e1e4980cb7be79dbcc0e0ebe3db0df638408c8",
+   "src_blob": "52e1e4980cb7be79dbcc0e0ebe3db0df638408c8",
+   "to": "docs/reports/assets/collapse_zscore.png"
+  },
+  "docs/reports/assets/comprehensive_analysis/buddy_pca.png": {
+   "dest_blob": "d00df5588f1bdc1f3fc6dcf9381e2254a870d5d7",
+   "src_blob": "d00df5588f1bdc1f3fc6dcf9381e2254a870d5d7",
+   "to": "docs/reports/assets/comprehensive_analysis/buddy_pca.png"
+  },
+  "docs/reports/assets/comprehensive_analysis/occupancy.png": {
+   "dest_blob": "bf908903b43091da8c1bfb2f1f5d2c610ad060a7",
+   "src_blob": "bf908903b43091da8c1bfb2f1f5d2c610ad060a7",
+   "to": "docs/reports/assets/comprehensive_analysis/occupancy.png"
+  },
+  "docs/reports/assets/comprehensive_analysis/percept_pca.png": {
+   "dest_blob": "abc07a0c2be79965d58d16bbf14bb4b1953212e2",
+   "src_blob": "abc07a0c2be79965d58d16bbf14bb4b1953212e2",
+   "to": "docs/reports/assets/comprehensive_analysis/percept_pca.png"
+  },
+  "docs/reports/assets/comprehensive_analysis/topic_auc.png": {
+   "dest_blob": "d557c0281c8e2370a0bc77e0c026cd237d401a3c",
+   "src_blob": "d557c0281c8e2370a0bc77e0c026cd237d401a3c",
+   "to": "docs/reports/assets/comprehensive_analysis/topic_auc.png"
+  },
+  "docs/reports/assets/comprehensive_analysis/tournament.png": {
+   "dest_blob": "80858b6c0e2831cf09f74fb83c2ae749e59503d6",
+   "src_blob": "80858b6c0e2831cf09f74fb83c2ae749e59503d6",
+   "to": "docs/reports/assets/comprehensive_analysis/tournament.png"
+  },
+  "docs/reports/assets/comprehensive_analysis/training_curves.png": {
+   "dest_blob": "f85fb463b7a6360b3fbe9b71d7a969ef672697d4",
+   "src_blob": "f85fb463b7a6360b3fbe9b71d7a969ef672697d4",
+   "to": "docs/reports/assets/comprehensive_analysis/training_curves.png"
+  },
+  "docs/reports/assets/diagrams/attention_h1_embedding_before_after_tsne.png": {
+   "dest_blob": "9557f2e3d362469d6168f21bc866290cc7b528fe",
+   "src_blob": "9557f2e3d362469d6168f21bc866290cc7b528fe",
+   "to": "docs/reports/assets/diagrams/attention_h1_embedding_before_after_tsne.png"
+  },
+  "docs/reports/assets/diagrams/percept_attention_architecture_heldout_ami.png": {
+   "dest_blob": "53c2743a7599c909e6fd454ad8d0b1bdde0efa5e",
+   "src_blob": "53c2743a7599c909e6fd454ad8d0b1bdde0efa5e",
+   "to": "docs/reports/assets/diagrams/percept_attention_architecture_heldout_ami.png"
+  },
+  "docs/reports/assets/diagrams/percept_fusion_mechanism_progression.png": {
+   "dest_blob": "2fd68f4ad389c64ca892f3f7c7ba4a0ab7aff88d",
+   "src_blob": "2fd68f4ad389c64ca892f3f7c7ba4a0ab7aff88d",
+   "to": "docs/reports/assets/diagrams/percept_fusion_mechanism_progression.png"
+  },
+  "docs/reports/assets/diagrams/percept_k_sweep_heldout_ami.png": {
+   "dest_blob": "8a2f58da8c929b1c7b970c710222360f9fef78f3",
+   "src_blob": "8a2f58da8c929b1c7b970c710222360f9fef78f3",
+   "to": "docs/reports/assets/diagrams/percept_k_sweep_heldout_ami.png"
+  },
+  "docs/reports/assets/diagrams/percept_stage1_cluster_label_composition.png": {
+   "dest_blob": "64a2cf28f8052dfeaefe10cc10826d3056282b8c",
+   "src_blob": "64a2cf28f8052dfeaefe10cc10826d3056282b8c",
+   "to": "docs/reports/assets/diagrams/percept_stage1_cluster_label_composition.png"
+  },
+  "docs/reports/assets/diagrams/percept_stage1_embedding_before_after_tsne.png": {
+   "dest_blob": "854e6884a4a86ec7a533922e6a9223dd7b0ece57",
+   "src_blob": "854e6884a4a86ec7a533922e6a9223dd7b0ece57",
+   "to": "docs/reports/assets/diagrams/percept_stage1_embedding_before_after_tsne.png"
+  },
+  "docs/reports/assets/diagrams/percept_stage1_label_composition_before_after.png": {
+   "dest_blob": "550d036b4572e3c55fbb07e0885e20f1f47beaa6",
+   "src_blob": "550d036b4572e3c55fbb07e0885e20f1f47beaa6",
+   "to": "docs/reports/assets/diagrams/percept_stage1_label_composition_before_after.png"
+  },
+  "docs/reports/assets/dim_sweep/umap_by_dim.png": {
+   "dest_blob": "a69cb9b05bee5ee1eb7d7a2a09693da9899e7700",
+   "src_blob": "a69cb9b05bee5ee1eb7d7a2a09693da9899e7700",
+   "to": "docs/reports/assets/dim_sweep/umap_by_dim.png"
+  },
+  "docs/reports/assets/dim_sweep_metrics.png": {
+   "dest_blob": "4be30fada5c1861cd9c137a5b2007c6666b7b353",
+   "src_blob": "4be30fada5c1861cd9c137a5b2007c6666b7b353",
+   "to": "docs/reports/assets/dim_sweep_metrics.png"
+  },
+  "docs/reports/assets/fixed_rank.png": {
+   "dest_blob": "68face64e8aacbd5951f910e603a6140b0437754",
+   "src_blob": "68face64e8aacbd5951f910e603a6140b0437754",
+   "to": "docs/reports/assets/fixed_rank.png"
+  },
+  "docs/reports/assets/fusion_method_bars.png": {
+   "dest_blob": "61f04947e3082fdd7fde8cd3254ca64b9f57f52d",
+   "src_blob": "61f04947e3082fdd7fde8cd3254ca64b9f57f52d",
+   "to": "docs/reports/assets/fusion_method_bars.png"
+  },
+  "docs/reports/assets/fusion_pareto_frontier.png": {
+   "dest_blob": "410d0b42f7f802420d5659ffe8d1d5e85f1d8327",
+   "src_blob": "410d0b42f7f802420d5659ffe8d1d5e85f1d8327",
+   "to": "docs/reports/assets/fusion_pareto_frontier.png"
+  },
+  "docs/reports/assets/heldout_grid/impressions_grid.png": {
+   "dest_blob": "215877c9ea4321f3661ecca5210d997701cd5c59",
+   "src_blob": "215877c9ea4321f3661ecca5210d997701cd5c59",
+   "to": "docs/reports/assets/heldout_grid/impressions_grid.png"
+  },
+  "docs/reports/assets/heldout_grid/redcaps_grid.png": {
+   "dest_blob": "cfe42a4533a7c80a96bf95c5c7865f508e8448c7",
+   "src_blob": "cfe42a4533a7c80a96bf95c5c7865f508e8448c7",
+   "to": "docs/reports/assets/heldout_grid/redcaps_grid.png"
+  },
+  "docs/reports/assets/hierarchical_controls_bars.png": {
+   "dest_blob": "bc80c4c4b7339d4ef0c4539714f961c9348ffd1e",
+   "src_blob": "bc80c4c4b7339d4ef0c4539714f961c9348ffd1e",
+   "to": "docs/reports/assets/hierarchical_controls_bars.png"
+  },
+  "docs/reports/assets/hparam_heatmaps.png": {
+   "dest_blob": "cbaeb0e2e524253e858cbc7b90c7bee87a1812db",
+   "src_blob": "cbaeb0e2e524253e858cbc7b90c7bee87a1812db",
+   "to": "docs/reports/assets/hparam_heatmaps.png"
+  },
+  "docs/reports/assets/plot_attention_h1_embedding_snapshot.py": {
+   "dest_blob": "513a267dd70592e635809ec4fa193642ff4287e5",
+   "src_blob": "513a267dd70592e635809ec4fa193642ff4287e5",
+   "to": "docs/reports/assets/plot_attention_h1_embedding_snapshot.py"
+  },
+  "docs/reports/assets/plot_percept_stage1_embedding_snapshot.py": {
+   "dest_blob": "a1498f85a277161c164ac39ed9c4916ef4783876",
+   "src_blob": "a1498f85a277161c164ac39ed9c4916ef4783876",
+   "to": "docs/reports/assets/plot_percept_stage1_embedding_snapshot.py"
+  },
+  "docs/reports/assets/polysemy_bridges/jaccard_vs_pull.png": {
+   "dest_blob": "49ffac472c7d26b5e9a9a810c89a01f00fe52ba2",
+   "src_blob": "49ffac472c7d26b5e9a9a810c89a01f00fe52ba2",
+   "to": "docs/reports/assets/polysemy_bridges/jaccard_vs_pull.png"
+  },
+  "docs/reports/assets/polysemy_bridges/node_label_counts.png": {
+   "dest_blob": "2bb43838d968c82652c969f508f239dbcd93879d",
+   "src_blob": "2bb43838d968c82652c969f508f239dbcd93879d",
+   "to": "docs/reports/assets/polysemy_bridges/node_label_counts.png"
+  },
+  "docs/reports/assets/polysemy_bridges/pull_distribution.png": {
+   "dest_blob": "3e4a8a99a1cda9f46bf75e7002cb237f016fb6ce",
+   "src_blob": "3e4a8a99a1cda9f46bf75e7002cb237f016fb6ce",
+   "to": "docs/reports/assets/polysemy_bridges/pull_distribution.png"
+  },
+  "docs/reports/assets/polysemy_bridges/retrieval_by_label.png": {
+   "dest_blob": "f61edbd80c2e31b0a728d3dd77508b5e214252dd",
+   "src_blob": "f61edbd80c2e31b0a728d3dd77508b5e214252dd",
+   "to": "docs/reports/assets/polysemy_bridges/retrieval_by_label.png"
+  },
+  "docs/reports/assets/redcaps_buddy/baseline/init_structure.png": {
+   "dest_blob": "71ecff37c0fd7bce8140f39e1c091be21c7d18b9",
+   "src_blob": "71ecff37c0fd7bce8140f39e1c091be21c7d18b9",
+   "to": "docs/reports/assets/redcaps_buddy/baseline/init_structure.png"
+  },
+  "docs/reports/assets/redcaps_buddy/baseline/lift_and_dino.png": {
+   "dest_blob": "6f5512269c7b11e14bcce589bb6ab5fae9414c9f",
+   "src_blob": "6f5512269c7b11e14bcce589bb6ab5fae9414c9f",
+   "to": "docs/reports/assets/redcaps_buddy/baseline/lift_and_dino.png"
+  },
+  "docs/reports/assets/redcaps_buddy/init_structure.png": {
+   "dest_blob": "69b71f0187df36988af653ccac8ae828a2d4fed1",
+   "src_blob": "69b71f0187df36988af653ccac8ae828a2d4fed1",
+   "to": "docs/reports/assets/redcaps_buddy/init_structure.png"
+  },
+  "docs/reports/assets/redcaps_buddy/lift_and_dino.png": {
+   "dest_blob": "6f5512269c7b11e14bcce589bb6ab5fae9414c9f",
+   "src_blob": "6f5512269c7b11e14bcce589bb6ab5fae9414c9f",
+   "to": "docs/reports/assets/redcaps_buddy/lift_and_dino.png"
+  },
+  "docs/reports/assets/redcaps_buddy/phase2_vlm.png": {
+   "dest_blob": "cad3468e38e2ea0f6c88d5addbff81f3bccb01b3",
+   "src_blob": "cad3468e38e2ea0f6c88d5addbff81f3bccb01b3",
+   "to": "docs/reports/assets/redcaps_buddy/phase2_vlm.png"
+  },
+  "docs/reports/assets/redcaps_subreddit_correlates/lift_vs_properties.png": {
+   "dest_blob": "37c5e4b44df15bfcd9eeda57838d3e0dfd52c6cb",
+   "src_blob": "37c5e4b44df15bfcd9eeda57838d3e0dfd52c6cb",
+   "to": "docs/reports/assets/redcaps_subreddit_correlates/lift_vs_properties.png"
+  },
+  "docs/reports/assets/redcaps_subreddit_correlates/lift_vs_properties_300k.png": {
+   "dest_blob": "ca193d4620a87b09ab9e7cb2275885abd0c1b71d",
+   "src_blob": "ca193d4620a87b09ab9e7cb2275885abd0c1b71d",
+   "to": "docs/reports/assets/redcaps_subreddit_correlates/lift_vs_properties_300k.png"
+  },
+  "docs/reports/assets/redcaps_subreddit_correlates/lift_vs_properties_500k.png": {
+   "dest_blob": "ff21da7aab74befbae5fc64d1626b0ead4d0c1e7",
+   "src_blob": "ff21da7aab74befbae5fc64d1626b0ead4d0c1e7",
+   "to": "docs/reports/assets/redcaps_subreddit_correlates/lift_vs_properties_500k.png"
+  },
+  "docs/reports/assets/slides/buddy_venn.png": {
+   "dest_blob": "5e5a61a6686c6edccb3be90f890668352433b323",
+   "src_blob": "5e5a61a6686c6edccb3be90f890668352433b323",
+   "to": "docs/reports/assets/slides/buddy_venn.png"
+  },
+  "docs/reports/assets/slides/laplacian_eigenmaps.png": {
+   "dest_blob": "8bcdb39c79f33f0c2adab932fc3d7abc30766cb0",
+   "src_blob": "8bcdb39c79f33f0c2adab932fc3d7abc30766cb0",
+   "to": "docs/reports/assets/slides/laplacian_eigenmaps.png"
+  },
+  "docs/reports/assets/slides/nearup_enrichment.png": {
+   "dest_blob": "3dd892eb9e22e061ac9524fc5652b567f4cb8557",
+   "src_blob": "3dd892eb9e22e061ac9524fc5652b567f4cb8557",
+   "to": "docs/reports/assets/slides/nearup_enrichment.png"
+  },
+  "docs/reports/assets/slides/peak_curve.png": {
+   "dest_blob": "622eb11035a1685cb78ba2f8ed9f25773b504f54",
+   "src_blob": "622eb11035a1685cb78ba2f8ed9f25773b504f54",
+   "to": "docs/reports/assets/slides/peak_curve.png"
+  },
+  "docs/reports/assets/slides/seed_replication.png": {
+   "dest_blob": "f1235844fab3592cc2b7e2f469d7189011055d87",
+   "src_blob": "f1235844fab3592cc2b7e2f469d7189011055d87",
+   "to": "docs/reports/assets/slides/seed_replication.png"
+  },
+  "docs/reports/assets/slides/seed_replication_table.png": {
+   "dest_blob": "5754bdd95cbae760169e4575070efd1b3e334933",
+   "src_blob": "5754bdd95cbae760169e4575070efd1b3e334933",
+   "to": "docs/reports/assets/slides/seed_replication_table.png"
+  },
+  "docs/reports/assets/slides/training_families.png": {
+   "dest_blob": "b1fa2cbf41c69794bf00c87e5d8de193932a4db1",
+   "src_blob": "b1fa2cbf41c69794bf00c87e5d8de193932a4db1",
+   "to": "docs/reports/assets/slides/training_families.png"
+  },
+  "docs/reports/assets/slides/transfer_bars.png": {
+   "dest_blob": "942e18f777dd8a3220d2e7447140d8fd4f6d7e11",
+   "src_blob": "942e18f777dd8a3220d2e7447140d8fd4f6d7e11",
+   "to": "docs/reports/assets/slides/transfer_bars.png"
+  },
+  "docs/reports/assets/stage1_checkpoint_trajectory.png": {
+   "dest_blob": "62fa4d58bb482ee2f8caa5e3d413c7a8d5485347",
+   "src_blob": "62fa4d58bb482ee2f8caa5e3d413c7a8d5485347",
+   "to": "docs/reports/assets/stage1_checkpoint_trajectory.png"
+  },
+  "docs/reports/assets/stage1_vs_stage2_trajectory.png": {
+   "dest_blob": "08ad004a3a9d0c73abb679845e8c07f1c66126ca",
+   "src_blob": "08ad004a3a9d0c73abb679845e8c07f1c66126ca",
+   "to": "docs/reports/assets/stage1_vs_stage2_trajectory.png"
+  },
+  "docs/reports/assets/test_build_2026_09_22_fusion_diagnostics_charts.py": {
+   "dest_blob": "b2646594575759457b7c3c51b28c9c10640cff9b",
+   "src_blob": "b2646594575759457b7c3c51b28c9c10640cff9b",
+   "to": "docs/reports/assets/test_build_2026_09_22_fusion_diagnostics_charts.py"
+  },
+  "docs/reports/assets/training_trajectory/combine_side_txt_i2t_gap_trajectory.png": {
+   "dest_blob": "715af8a79932cb33f74f4ae24a91aa84474c3dae",
+   "src_blob": "715af8a79932cb33f74f4ae24a91aa84474c3dae",
+   "to": "docs/reports/assets/training_trajectory/combine_side_txt_i2t_gap_trajectory.png"
+  },
+  "docs/reports/assets/training_trajectory/i2t_gap_trajectory.png": {
+   "dest_blob": "79df6f9ac28875aa91d57ad2b622a0feed95b3d9",
+   "src_blob": "79df6f9ac28875aa91d57ad2b622a0feed95b3d9",
+   "to": "docs/reports/assets/training_trajectory/i2t_gap_trajectory.png"
+  },
+  "docs/reports/assets/weight_sweep_tradeoff.png": {
+   "dest_blob": "692ddcdae576d5a1c181b1ea094934c9d44a262e",
+   "src_blob": "692ddcdae576d5a1c181b1ea094934c9d44a262e",
+   "to": "docs/reports/assets/weight_sweep_tradeoff.png"
+  },
+  "src/test/20250911_embedding_performance_debugging/20250911_embedding_performance_log.md": {
+   "dest_blob": "c8466058319302fb15098f5791a92b43411a9fba",
+   "src_blob": "c8466058319302fb15098f5791a92b43411a9fba",
+   "to": "docs/reports/auto/buddy/pilots/20250911_embedding_performance_debugging/20250911_embedding_performance_log.md"
+  },
+  "src/test/20250911_embedding_performance_debugging/MEMORY_ISSUES_RESOLVED.md": {
+   "dest_blob": "6141b13e906294a2228be14b1b4cd9216d9e0aef",
+   "src_blob": "6141b13e906294a2228be14b1b4cd9216d9e0aef",
+   "to": "docs/reports/auto/buddy/pilots/20250911_embedding_performance_debugging/MEMORY_ISSUES_RESOLVED.md"
+  },
+  "src/test/20250911_embedding_performance_debugging/OPTIMIZATION_COMPLETE.md": {
+   "dest_blob": "bf5cd327514cab74ab6566a47ea8be94ae809ae8",
+   "src_blob": "bf5cd327514cab74ab6566a47ea8be94ae809ae8",
+   "to": "docs/reports/auto/buddy/pilots/20250911_embedding_performance_debugging/OPTIMIZATION_COMPLETE.md"
+  },
+  "src/test/20250911_embedding_performance_debugging/TRAIN_COSIR_INTEGRATION_COMPLETE.md": {
+   "dest_blob": "fd2fc8e24f178ca238c0f4c2ff461994ecd55791",
+   "src_blob": "fd2fc8e24f178ca238c0f4c2ff461994ecd55791",
+   "to": "docs/reports/auto/buddy/pilots/20250911_embedding_performance_debugging/TRAIN_COSIR_INTEGRATION_COMPLETE.md"
+  },
+  "src/test/20250911_embedding_performance_debugging/detailed_analysis_summary.md": {
+   "dest_blob": "6cacaae1acc43d7384d241f854db666103c2018f",
+   "src_blob": "6cacaae1acc43d7384d241f854db666103c2018f",
+   "to": "docs/reports/auto/buddy/pilots/20250911_embedding_performance_debugging/detailed_analysis_summary.md"
+  },
+  "src/test/20250930_config_debug/20250930_config_debug_log.md": {
+   "dest_blob": "819ae6f35cbff5f77b90c1eb2cc3bfeb94744321",
+   "src_blob": "819ae6f35cbff5f77b90c1eb2cc3bfeb94744321",
+   "to": "docs/reports/auto/buddy/pilots/20250930_config_debug/20250930_config_debug_log.md"
+  },
+  "src/test/20251111_condition_space_evaluator/20251111_debugging_log.md": {
+   "dest_blob": "586fb866e750ec8748571a174a7c8799a9b3f6b7",
+   "src_blob": "586fb866e750ec8748571a174a7c8799a9b3f6b7",
+   "to": "docs/reports/auto/buddy/pilots/20251111_condition_space_evaluator/20251111_debugging_log.md"
+  },
+  "src/test/20251119_text_to_image_retrieval/20251119_text_to_image_retrieval_log.md": {
+   "dest_blob": "0d0ee3e9e82ece85768b84b1d760e4ee1fcf6bb8",
+   "src_blob": "0d0ee3e9e82ece85768b84b1d760e4ee1fcf6bb8",
+   "to": "docs/reports/auto/buddy/pilots/20251119_text_to_image_retrieval/20251119_text_to_image_retrieval_log.md"
+  },
+  "src/test/20260519_network_analysis/improvement_suggestions.md": {
+   "dest_blob": "26412216cd66ba39829cf878558e4bdc9a0c2801",
+   "src_blob": "26412216cd66ba39829cf878558e4bdc9a0c2801",
+   "to": "docs/reports/auto/buddy/pilots/20260519_network_analysis/improvement_suggestions.md"
+  },
+  "src/test/20260609_conditional_buddy/20260609_conditional_buddy_log.md": {
+   "dest_blob": "1edaa8347c2e35b7a2c8a28ae5691934a75654a6",
+   "src_blob": "1edaa8347c2e35b7a2c8a28ae5691934a75654a6",
+   "to": "docs/reports/auto/buddy/pilots/20260609_conditional_buddy/20260609_conditional_buddy_log.md"
+  },
+  "src/test/20260716_buddy_cross_vlm/20260716_buddy_cross_vlm_log.md": {
+   "dest_blob": "d5b7f14546e63354d173e02396beaa688372a341",
+   "src_blob": "d5b7f14546e63354d173e02396beaa688372a341",
+   "to": "docs/reports/auto/buddy/pilots/20260716_buddy_cross_vlm/20260716_buddy_cross_vlm_log.md"
+  },
+  "src/test/20260915_condition_space_audit/20260915_condition_space_audit_log.md": {
+   "dest_blob": "5e1fddda4763cb8ed061d51785878ab2804f19fd",
+   "src_blob": "a0be268b0b0ad1f7897fe285d505fd68e07f59d4",
+   "to": "docs/reports/auto/buddy/pilots/20260915_condition_space_audit/20260915_condition_space_audit_log.md"
+  },
+  "src/test/20260922_percept_brainstorm/codex_findings.md": {
+   "dest_blob": "77a63bcf50c5e40392ecf6acc70faadd88e6e9e2",
+   "src_blob": "77a63bcf50c5e40392ecf6acc70faadd88e6e9e2",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_brainstorm/codex_findings.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_balance_sweep_pilot_report.md": {
+   "dest_blob": "be3fe5cfbc5cfddbf44bea8a45a2de703cb95e12",
+   "src_blob": "be3fe5cfbc5cfddbf44bea8a45a2de703cb95e12",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_balance_sweep_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_balance_sweep_v2_pilot_report.md": {
+   "dest_blob": "445874c28359fd14a8761c0a41848ac773f0a965",
+   "src_blob": "445874c28359fd14a8761c0a41848ac773f0a965",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_balance_sweep_v2_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_cluster_count_sweep_pilot_report.md": {
+   "dest_blob": "a010d3adbe49d252b30e6e0ff40eead841e55d3a",
+   "src_blob": "a010d3adbe49d252b30e6e0ff40eead841e55d3a",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_cluster_count_sweep_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_cluster_count_sweep_v2_pilot_report.md": {
+   "dest_blob": "f994d32be981d0f7934d7eee7491606ffd42bb6d",
+   "src_blob": "f994d32be981d0f7934d7eee7491606ffd42bb6d",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_cluster_count_sweep_v2_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_dec_recon_anneal_pilot_report.md": {
+   "dest_blob": "b5baa72ea3bce00e231e5a32562e15dabcd088d0",
+   "src_blob": "b5baa72ea3bce00e231e5a32562e15dabcd088d0",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_dec_recon_anneal_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_extended_seed_pilot_report.md": {
+   "dest_blob": "02fbc1720f92e51c1aa3bfa532107cef3a67ed43",
+   "src_blob": "02fbc1720f92e51c1aa3bfa532107cef3a67ed43",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_extended_seed_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_faithful_recipe_balance_pilot_report.md": {
+   "dest_blob": "8ffdb0b433939b830983fe2bb60dbbebe2d2e6ac",
+   "src_blob": "8ffdb0b433939b830983fe2bb60dbbebe2d2e6ac",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_faithful_recipe_balance_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_faithful_recipe_fixed_pilot_report.md": {
+   "dest_blob": "a6a52d3cff09c53354ecbdbed50c6fc1b244ea25",
+   "src_blob": "11796d8c0edd32e60bf7def132910fb78dcdfc35",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_faithful_recipe_fixed_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_faithful_recipe_pilot_report.md": {
+   "dest_blob": "34109180978ff7f9bfbe99f30da8e519cc9e1099",
+   "src_blob": "34109180978ff7f9bfbe99f30da8e519cc9e1099",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_faithful_recipe_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_fine_k_sweep_pilot_report.md": {
+   "dest_blob": "68b3877a7de3c842639692d98c1da4bcef32a38d",
+   "src_blob": "68b3877a7de3c842639692d98c1da4bcef32a38d",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_fine_k_sweep_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_idec_faithful_pilot_report.md": {
+   "dest_blob": "6d72489fac5217eb7f2ed3d0413c0f6d6e4635a9",
+   "src_blob": "6d72489fac5217eb7f2ed3d0413c0f6d6e4635a9",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_idec_faithful_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_noise_floor_pilot_report.md": {
+   "dest_blob": "bc40d9daef206e7e04acebf26f5d80ba5873d9c5",
+   "src_blob": "bc40d9daef206e7e04acebf26f5d80ba5873d9c5",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_noise_floor_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_pilot_report.md": {
+   "dest_blob": "8efb2c2352b28bb82f21e48250945635c10afc4b",
+   "src_blob": "8efb2c2352b28bb82f21e48250945635c10afc4b",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_recon_weight_sweep_pilot_report.md": {
+   "dest_blob": "08824ff3afe4fe07abb27ec40a8ab7bf356df710",
+   "src_blob": "08824ff3afe4fe07abb27ec40a8ab7bf356df710",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_recon_weight_sweep_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_seed_stress_pilot_report.md": {
+   "dest_blob": "76db0c333e5d693df332e907b2bb13c55fff9c98",
+   "src_blob": "76db0c333e5d693df332e907b2bb13c55fff9c98",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_seed_stress_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage1_stabilized_pilot_report.md": {
+   "dest_blob": "d49ec77a63435d9404f544a45b2deae966258f00",
+   "src_blob": "d49ec77a63435d9404f544a45b2deae966258f00",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage1_stabilized_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage2_arch_ablation_pilot_report.md": {
+   "dest_blob": "60bb9c0287c7c49b126c45bfd7f9b0eab0111825",
+   "src_blob": "60bb9c0287c7c49b126c45bfd7f9b0eab0111825",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage2_arch_ablation_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage2_best_config_stress_pilot_report.md": {
+   "dest_blob": "9fa9cc0f3b5938ffc6d05200dea84cc1f3e38cf9",
+   "src_blob": "9fa9cc0f3b5938ffc6d05200dea84cc1f3e38cf9",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage2_best_config_stress_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage2_extended_seed_pilot_report.md": {
+   "dest_blob": "aa06bc0d0c276ffbb539f56db56fe6a76ef1d747",
+   "src_blob": "aa06bc0d0c276ffbb539f56db56fe6a76ef1d747",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage2_extended_seed_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage2_fixed_pilot_report.md": {
+   "dest_blob": "7bdea14a2de0b6c2ec7c5223a7881e42f52986a2",
+   "src_blob": "36a6eb57a044531b291e67b854862b961136a562",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage2_fixed_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage2_pilot_report.md": {
+   "dest_blob": "f37ef55af131ce6e2acf66fa09da60a6a9c589c3",
+   "src_blob": "f37ef55af131ce6e2acf66fa09da60a6a9c589c3",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage2_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_stage2_sweep_pilot_report.md": {
+   "dest_blob": "fb3a0d432a362018f3c839fc4b6e25139de538e8",
+   "src_blob": "fb3a0d432a362018f3c839fc4b6e25139de538e8",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_stage2_sweep_pilot_report.md"
+  },
+  "src/test/20260922_percept_topic_pipeline/percept_topic_qualitative_check_report.md": {
+   "dest_blob": "0235386233447e5aa82bc0e20f7308dda1b182a2",
+   "src_blob": "0235386233447e5aa82bc0e20f7308dda1b182a2",
+   "to": "docs/reports/auto/percept/pilots/20260922_percept_topic_pipeline/percept_topic_qualitative_check_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/affect_pilot_report.md": {
+   "dest_blob": "8300aabca49e028039f2211d46c4650b2a11268b",
+   "src_blob": "8300aabca49e028039f2211d46c4650b2a11268b",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/affect_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/alt_encoder_pilot_report.md": {
+   "dest_blob": "2cc7fcb556e583a1064ab061033cf10b8e42c8c0",
+   "src_blob": "2cc7fcb556e583a1064ab061033cf10b8e42c8c0",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/alt_encoder_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/attention_h1_baseline_seed_stress_pilot_report.md": {
+   "dest_blob": "26007cebbc1048a73c8a646887541e75516fd4b1",
+   "src_blob": "26007cebbc1048a73c8a646887541e75516fd4b1",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/attention_h1_baseline_seed_stress_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/attention_h1_dec_hybrid_pilot_report.md": {
+   "dest_blob": "55ddd6816b90f9161a16ecf37d9eb8fee66b697e",
+   "src_blob": "55ddd6816b90f9161a16ecf37d9eb8fee66b697e",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/attention_h1_dec_hybrid_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/attention_h1_decoupled_cluster_head_detached_pilot_report.md": {
+   "dest_blob": "d23e67585d05f62414e8172d9c6ea56490368d24",
+   "src_blob": "d23e67585d05f62414e8172d9c6ea56490368d24",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/attention_h1_decoupled_cluster_head_detached_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/attention_h1_decoupled_cluster_head_pilot_report.md": {
+   "dest_blob": "f38fce0b8a9b9cb5347c8c56fff56e3588846ec4",
+   "src_blob": "f38fce0b8a9b9cb5347c8c56fff56e3588846ec4",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/attention_h1_decoupled_cluster_head_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/attention_h1_embedding_snapshot_pilot_report.md": {
+   "dest_blob": "5a756ce120d0a8e17806ebc65176a9f14543c1e5",
+   "src_blob": "5a756ce120d0a8e17806ebc65176a9f14543c1e5",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/attention_h1_embedding_snapshot_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/attention_h1_leiden_pseudo_contrastive_pilot_report.md": {
+   "dest_blob": "c415387e6d87216f47c0b2d985f4ff2acd247da0",
+   "src_blob": "c415387e6d87216f47c0b2d985f4ff2acd247da0",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/attention_h1_leiden_pseudo_contrastive_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/attention_h1_noise_schedule_pilot_report.md": {
+   "dest_blob": "7469f93118ad159d06a546da609dbc060ba94139",
+   "src_blob": "7469f93118ad159d06a546da609dbc060ba94139",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/attention_h1_noise_schedule_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/attention_h1_noise_schedule_pseudo_contrastive_pilot_report.md": {
+   "dest_blob": "3a6c2b2bd5da50cc0bcbba9d0409b29244609276",
+   "src_blob": "3a6c2b2bd5da50cc0bcbba9d0409b29244609276",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/attention_h1_noise_schedule_pseudo_contrastive_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/attention_h1_noise_schedule_pseudo_contrastive_stress_pilot_report.md": {
+   "dest_blob": "96225bf73af5529ee8d719c94ffd5ac0e8bdd97b",
+   "src_blob": "96225bf73af5529ee8d719c94ffd5ac0e8bdd97b",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/attention_h1_noise_schedule_pseudo_contrastive_stress_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/attention_h1_vmf_dec_hybrid_pilot_report.md": {
+   "dest_blob": "d20dd92640b2bf91242a2a0e05c27e8c341cb36d",
+   "src_blob": "d20dd92640b2bf91242a2a0e05c27e8c341cb36d",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/attention_h1_vmf_dec_hybrid_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/bert_ceiling_pilot_report.md": {
+   "dest_blob": "5dd2ffff6c9942a5d81236aa9e37537224a256d9",
+   "src_blob": "5dd2ffff6c9942a5d81236aa9e37537224a256d9",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/bert_ceiling_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/bert_heldout_pilot_report.md": {
+   "dest_blob": "7053613df88caca50344b22d5e3006e815f8eb20",
+   "src_blob": "7053613df88caca50344b22d5e3006e815f8eb20",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/bert_heldout_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/buddy_percept_downstream_probe_pilot_report.md": {
+   "dest_blob": "d6ff3f7a15918d3b20d2974e90a8d2c43a2fdb4a",
+   "src_blob": "d6ff3f7a15918d3b20d2974e90a8d2c43a2fdb4a",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/buddy_percept_downstream_probe_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/buddy_percept_matched_silhouette_audit_pilot_report.md": {
+   "dest_blob": "a73e0ef88ff200d8f053eced9a4013fddc5699ab",
+   "src_blob": "a73e0ef88ff200d8f053eced9a4013fddc5699ab",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/buddy_percept_matched_silhouette_audit_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/buddy_stage2_pilot_report.md": {
+   "dest_blob": "4198f8a8c264bc93ef4abc9a911847d88245a76c",
+   "src_blob": "4198f8a8c264bc93ef4abc9a911847d88245a76c",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/buddy_stage2_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/cca_audit_pilot_report.md": {
+   "dest_blob": "5a3c591c908b33c1d21a3a38733b0c7c092aaaee",
+   "src_blob": "5a3c591c908b33c1d21a3a38733b0c7c092aaaee",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/cca_audit_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/codex_methodology_review.md": {
+   "dest_blob": "a9e10a6d94ef96789fe6aea34f20b43c1edf9a7d",
+   "src_blob": "a9e10a6d94ef96789fe6aea34f20b43c1edf9a7d",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/codex_methodology_review.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/dec_pilot_report.md": {
+   "dest_blob": "55b64abd1a9577ccbe9de329cab8f847eb75924b",
+   "src_blob": "55b64abd1a9577ccbe9de329cab8f847eb75924b",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/dec_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/dec_pilot_v2_report.md": {
+   "dest_blob": "9286c2366e7213badd8b26a17533451ebb2b8656",
+   "src_blob": "9286c2366e7213badd8b26a17533451ebb2b8656",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/dec_pilot_v2_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/dshared_capacity_sweep_pilot_report.md": {
+   "dest_blob": "0c273821edb690885d236c61c9462f9442a08176",
+   "src_blob": "0c273821edb690885d236c61c9462f9442a08176",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/dshared_capacity_sweep_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/findings_report.md": {
+   "dest_blob": "e72a25ec932f05803010719381a65d16b359630f",
+   "src_blob": "e72a25ec932f05803010719381a65d16b359630f",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/findings_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/fusion_brainstorm_codex_findings.md": {
+   "dest_blob": "1ea9392174474710889c0062971d7ff52328fbe6",
+   "src_blob": "1ea9392174474710889c0062971d7ff52328fbe6",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/fusion_brainstorm_codex_findings.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/heldout_label_transfer_pilot_report.md": {
+   "dest_blob": "16c2fefaea30037c56806a566e311e786c8d822c",
+   "src_blob": "16c2fefaea30037c56806a566e311e786c8d822c",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/heldout_label_transfer_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/hierarchical_refinement_pilot_report.md": {
+   "dest_blob": "48359c3b5d3ea117d3fc4cca74f50d0884c5af25",
+   "src_blob": "48359c3b5d3ea117d3fc4cca74f50d0884c5af25",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/hierarchical_refinement_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/joint_fusion_brainstorm_codex_findings.md": {
+   "dest_blob": "4a755edc508287755b4d8ee949ee1c1f5ad3b3c0",
+   "src_blob": "4a755edc508287755b4d8ee949ee1c1f5ad3b3c0",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/joint_fusion_brainstorm_codex_findings.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/late_fusion_pilot_report.md": {
+   "dest_blob": "097127d7b7411fadbd945e5e7dafcc364b9a26e5",
+   "src_blob": "097127d7b7411fadbd945e5e7dafcc364b9a26e5",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/late_fusion_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/learned_student_arch_sweep_pilot_report.md": {
+   "dest_blob": "02568c383209f84c4536206a9f625d1ad0a07b87",
+   "src_blob": "02568c383209f84c4536206a9f625d1ad0a07b87",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/learned_student_arch_sweep_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/learned_student_stage1_pilot_report.md": {
+   "dest_blob": "9a8dd40fc35f448f43ae5deb2994d779d52c2111",
+   "src_blob": "9a8dd40fc35f448f43ae5deb2994d779d52c2111",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/learned_student_stage1_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/learned_student_stage2_pilot_report.md": {
+   "dest_blob": "b0b30afc89bb03418b525299edeef59ab439727c",
+   "src_blob": "b0b30afc89bb03418b525299edeef59ab439727c",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/learned_student_stage2_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/learned_student_weight_sweep_pilot_report.md": {
+   "dest_blob": "ca8615db0b907542e69cb6c626968572bccf7632",
+   "src_blob": "ca8615db0b907542e69cb6c626968572bccf7632",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/learned_student_weight_sweep_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/percept_on_buddy_embedding_pilot_report.md": {
+   "dest_blob": "2d4121357519039c88bb55f9c8919471f4461263",
+   "src_blob": "2d4121357519039c88bb55f9c8919471f4461263",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/percept_on_buddy_embedding_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/reconstruction_anchored_cluster_head_pilot_report.md": {
+   "dest_blob": "7bf71284b294e17762469524c3187a813d1a8ad7",
+   "src_blob": "7bf71284b294e17762469524c3187a813d1a8ad7",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/reconstruction_anchored_cluster_head_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/single_modality_pilot_report.md": {
+   "dest_blob": "2d1adc6dfde7b76ff3f3551bc1f75b705e232bea",
+   "src_blob": "2d1adc6dfde7b76ff3f3551bc1f75b705e232bea",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/single_modality_pilot_report.md"
+  },
+  "src/test/20260923_artelingo_buddy_analysis/soft_stage2_target_pilot_report.md": {
+   "dest_blob": "2bf18b7308ce4617cf1406b9a9543d0984f8ceaf",
+   "src_blob": "2bf18b7308ce4617cf1406b9a9543d0984f8ceaf",
+   "to": "docs/reports/auto/percept/pilots/20260923_artelingo_buddy_analysis/soft_stage2_target_pilot_report.md"
+  },
+  "src/test/20260927_deep_stage_analysis/candidate1_min_occupancy_pilot_report.md": {
+   "dest_blob": "d5ec7a73efa9fd3b348dbf929879b06a9eae47ef",
+   "src_blob": "d5ec7a73efa9fd3b348dbf929879b06a9eae47ef",
+   "to": "docs/reports/auto/percept/pilots/20260927_deep_stage_analysis/candidate1_min_occupancy_pilot_report.md"
+  },
+  "src/test/20260927_deep_stage_analysis/candidate1_stress_pilot_report.md": {
+   "dest_blob": "7c1547d01d0dc32e768b56c56aac892e2b888ff2",
+   "src_blob": "7c1547d01d0dc32e768b56c56aac892e2b888ff2",
+   "to": "docs/reports/auto/percept/pilots/20260927_deep_stage_analysis/candidate1_stress_pilot_report.md"
+  },
+  "src/test/20260927_deep_stage_analysis/candidate1_variant_c_stress_report.md": {
+   "dest_blob": "919d775147000ec167901dd5121524d83899bd27",
+   "src_blob": "919d775147000ec167901dd5121524d83899bd27",
+   "to": "docs/reports/auto/percept/pilots/20260927_deep_stage_analysis/candidate1_variant_c_stress_report.md"
+  },
+  "src/test/20260927_deep_stage_analysis/candidate2_mapper_sweep_pilot_report.md": {
+   "dest_blob": "9ced830f1f92e6473b15c5f77428ac5bec0b29a1",
+   "src_blob": "9ced830f1f92e6473b15c5f77428ac5bec0b29a1",
+   "to": "docs/reports/auto/percept/pilots/20260927_deep_stage_analysis/candidate2_mapper_sweep_pilot_report.md"
+  },
+  "src/test/20260927_deep_stage_analysis/candidate3_k_sweep_pilot_report.md": {
+   "dest_blob": "e52a0f8bf55c47858574b7963a82428280b63c76",
+   "src_blob": "e52a0f8bf55c47858574b7963a82428280b63c76",
+   "to": "docs/reports/auto/percept/pilots/20260927_deep_stage_analysis/candidate3_k_sweep_pilot_report.md"
+  },
+  "src/test/20260927_deep_stage_analysis/candidate4_fixed_pilot_report.md": {
+   "dest_blob": "383f36bd84cfa2211e9f0d79726c85032f0f7e4b",
+   "src_blob": "383f36bd84cfa2211e9f0d79726c85032f0f7e4b",
+   "to": "docs/reports/auto/percept/pilots/20260927_deep_stage_analysis/candidate4_fixed_pilot_report.md"
+  },
+  "src/test/20260927_deep_stage_analysis/candidate4_fixed_stress_report.md": {
+   "dest_blob": "c3ce4a54929d603f38c2af8b73aa80f5362ecbc8",
+   "src_blob": "c3ce4a54929d603f38c2af8b73aa80f5362ecbc8",
+   "to": "docs/reports/auto/percept/pilots/20260927_deep_stage_analysis/candidate4_fixed_stress_report.md"
+  },
+  "src/test/20260927_deep_stage_analysis/candidate4_rich_multilabel_pilot_report.md": {
+   "dest_blob": "c8ead267dc22bdc594aba3e10a397262198dd397",
+   "src_blob": "c8ead267dc22bdc594aba3e10a397262198dd397",
+   "to": "docs/reports/auto/percept/pilots/20260927_deep_stage_analysis/candidate4_rich_multilabel_pilot_report.md"
+  },
+  "src/test/20260927_deep_stage_analysis/candidate6_affect_upweight_pilot_report.md": {
+   "dest_blob": "efcd1f25d3811d125d878c2019fa410fd8972acf",
+   "src_blob": "efcd1f25d3811d125d878c2019fa410fd8972acf",
+   "to": "docs/reports/auto/percept/pilots/20260927_deep_stage_analysis/candidate6_affect_upweight_pilot_report.md"
+  },
+  "src/test/20260927_deep_stage_analysis/deep_stage_analysis_report.md": {
+   "dest_blob": "36863d4f2904b2564cbe51dfadceecb9f8b1b34e",
+   "src_blob": "e0db5cfde3b2125ce89dace5d27b09f7ae8bee9b",
+   "to": "docs/reports/auto/percept/pilots/20260927_deep_stage_analysis/deep_stage_analysis_report.md"
+  },
+  "src/test/20260927_deep_stage_analysis/percept_fixed_snapshot_pilot_report.md": {
+   "dest_blob": "8098301e02d4d0bee39f46d5d5a6d018f217252d",
+   "src_blob": "8098301e02d4d0bee39f46d5d5a6d018f217252d",
+   "to": "docs/reports/auto/percept/pilots/20260927_deep_stage_analysis/percept_fixed_snapshot_pilot_report.md"
+  },
+  "src/test/20260927_deep_stage_analysis/percept_mapper_symmetric_sweep_pilot_report.md": {
+   "dest_blob": "0fc0e367baf7b56d32b73588c2301cc06d5f31b9",
+   "src_blob": "0fc0e367baf7b56d32b73588c2301cc06d5f31b9",
+   "to": "docs/reports/auto/percept/pilots/20260927_deep_stage_analysis/percept_mapper_symmetric_sweep_pilot_report.md"
+  },
+  "src/test/20260927_deep_stage_analysis/reconstruction_anchored_cluster_head_fixed_pilot_report.md": {
+   "dest_blob": "1ae9ef9d9c7487984b0a545afa540de9a9cc5b87",
+   "src_blob": "2229ab520d60ad8559f08ca330d98f4ddb6886c2",
+   "to": "docs/reports/auto/percept/pilots/20260927_deep_stage_analysis/reconstruction_anchored_cluster_head_fixed_pilot_report.md"
+  },
+  "src/test/20260927_redcaps_topic_formation/b1_redcaps_single_teacher_pilot_report.md": {
+   "dest_blob": "29bebb409ca1a3fdecf1a6a95d33c14ee1da2284",
+   "src_blob": "8676d6d1c6cda4ca28db915014058583e3e04d72",
+   "to": "docs/reports/auto/percept/pilots/20260927_redcaps_topic_formation/b1_redcaps_single_teacher_pilot_report.md"
+  },
+  "src/test/20260927_redcaps_topic_formation/run_b1_repaired_graph_pilot_report.md": {
+   "dest_blob": "b72129d7b55754a39f87ed7feb9807a70b214d8f",
+   "src_blob": "f371a29ba0d6b21a9cb2964c26c6676d6f33ae7f",
+   "to": "docs/reports/auto/percept/pilots/20260927_redcaps_topic_formation/run_b1_repaired_graph_pilot_report.md"
+  },
+  "src/test/20260927_redcaps_topic_formation/run_leiden_resolution_sweep_pilot_report.md": {
+   "dest_blob": "52f7da393824cfb5d5807ac88041f29b2470a701",
+   "src_blob": "10a7e34e4d53606970efc46da2fdd9e2ad5121f7",
+   "to": "docs/reports/auto/percept/pilots/20260927_redcaps_topic_formation/run_leiden_resolution_sweep_pilot_report.md"
+  },
+  "src/test/20260927_redcaps_topic_formation/run_subreddit_proxy_diagnostic_report.md": {
+   "dest_blob": "a2ca060540d476a3735e79c808793dcb01dc05bf",
+   "src_blob": "42fb3560f35f0dce31f251a9796d1208df2314ed",
+   "to": "docs/reports/auto/percept/pilots/20260927_redcaps_topic_formation/run_subreddit_proxy_diagnostic_report.md"
+  },
+  "src/test/20260928_buddy_percept_sweep/20260928_buddy_percept_sweep_log.md": {
+   "dest_blob": "358b191b036acf1aaa19d03c5e17127ab6e85a92",
+   "src_blob": "d70a28726f8a477e85c17980bc561bfb40fe7957",
+   "to": "docs/reports/auto/percept/pilots/20260928_buddy_percept_sweep/20260928_buddy_percept_sweep_log.md"
+  },
+  "src/test/20260928_buddy_percept_sweep/stress_summary.md": {
+   "dest_blob": "2c23dec4ca340792534937334e393c3d418ae9dd",
+   "src_blob": "2c23dec4ca340792534937334e393c3d418ae9dd",
+   "to": "docs/reports/auto/percept/pilots/20260928_buddy_percept_sweep/stress_summary.md"
+  },
+  "worktree:docs/reports/2026-09-16_stage_report_prototype_conditioning_slides.pptx": {
+   "dest_blob": "728adaa3b42938ad45d7010b4351455e21799ef4",
+   "src_blob": "728adaa3b42938ad45d7010b4351455e21799ef4",
+   "to": "docs/reports/pptx/2026-09-16_prototype_conditioning_slides.pptx"
+  },
+  "worktree:docs/reports/2026-09-23_weekly_percept_topic_pipeline_slides.pptx": {
+   "dest_blob": "1402db9c315ad096dec750225ca5e9c118d61ee0",
+   "src_blob": "1402db9c315ad096dec750225ca5e9c118d61ee0",
+   "to": "docs/reports/pptx/2026-09-23_percept_topic_pipeline_slides.pptx"
+  }
+ }
+}

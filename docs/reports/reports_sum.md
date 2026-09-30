@@ -41,7 +41,7 @@ To open an archived line: `git worktree add ../CoSiR-<name> archive/<branch>`.
 1. **Name:** `YYYY-MM-DD_<topic>.md`. Leave out words the folder already says: no `weekly_`, `stage_report`, `_report` or `cosir_v2_`.
 2. **Place:** put it in `auto/<line>/`, `stage/` or `weekly/`. Slide markdown sits next to its report. Decks go in `pptx/`, and their build script goes in `assets/build_<date>_<topic>_slides.py`.
 3. **Index:** add one row to the matching table below, oldest first, with a one-line description. Starting a new research line means adding `auto/<line>/`, a table here and a row in the tables above.
-4. **Promote:** when copying a report from another branch, place it the same way and index it.
+4. **Reports on other branches:** these stay on their branch until a stage report or comparison needs them. Gather them with `python scripts/promote_reports.py <branch>`, adding `--line <name>` for a branch it doesn't know yet, and `--dry-run` to preview. It copies new or changed reports, pilots and local decks into this layout, adds rows here using each report's title, and runs the check. Polish the new rows, then commit. `.promoted.json` records what came from where.
 5. **Check:** run `python scripts/check_reports_sum.py`. It fails if any report, deck or pilot folder is missing here, if a link here is broken, or if a file sits loose in `docs/reports/`.
 
 ## auto/v2: CoSiR v2
