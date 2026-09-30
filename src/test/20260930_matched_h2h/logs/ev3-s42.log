@@ -1,0 +1,60 @@
+{"cuda_visible_devices": "0", "duration_s": 160, "ended_at": "2026-09-30T01:57:33.384675+00:00", "exit_code": 0, "gpu_slots": [0], "host": "node405", "inherited_cuda_visible_devices": "0,1,2", "pgid": 3657208, "pid": 3657208, "pid_start": 177997950, "slurm_job_id": "57200", "started_at": "2026-09-30T01:54:54.866745+00:00", "state": "succeeded"}
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 4441.02it/s]
+[transformers] [1mRobertaModel LOAD REPORT[0m from: SamLowe/roberta-base-go_emotions
+Key                        | Status     | 
+---------------------------+------------+-
+classifier.out_proj.weight | UNEXPECTED | 
+classifier.dense.bias      | UNEXPECTED | 
+classifier.out_proj.bias   | UNEXPECTED | 
+classifier.dense.weight    | UNEXPECTED | 
+pooler.dense.weight        | MISSING    | 
+pooler.dense.bias          | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 4551.67it/s]
+[transformers] [1mRobertaModel LOAD REPORT[0m from: SamLowe/roberta-base-go_emotions
+Key                        | Status     | 
+---------------------------+------------+-
+classifier.out_proj.weight | UNEXPECTED | 
+classifier.dense.bias      | UNEXPECTED | 
+classifier.out_proj.bias   | UNEXPECTED | 
+classifier.dense.weight    | UNEXPECTED | 
+pooler.dense.weight        | MISSING    | 
+pooler.dense.bias          | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[03:55:19] [percept-stage1] Pretrain epoch 010/100: mean reconstruction=0.000078
+[03:55:22] [percept-stage1] Pretrain epoch 020/100: mean reconstruction=0.000056
+[03:55:25] [percept-stage1] Pretrain epoch 030/100: mean reconstruction=0.000046
+[03:55:27] [percept-stage1] Pretrain epoch 040/100: mean reconstruction=0.000041
+[03:55:30] [percept-stage1] Pretrain epoch 050/100: mean reconstruction=0.000037
+[03:55:33] [percept-stage1] Pretrain epoch 060/100: mean reconstruction=0.000034
+[03:55:36] [percept-stage1] Pretrain epoch 070/100: mean reconstruction=0.000032
+[03:55:39] [percept-stage1] Pretrain epoch 080/100: mean reconstruction=0.000030
+[03:55:42] [percept-stage1] Pretrain epoch 090/100: mean reconstruction=0.000029
+[03:55:45] [percept-stage1] Pretrain epoch 100/100: mean reconstruction=0.000028
+[03:56:08] [percept-stage1] Starting K=60 joint DEC training (fixed reconstruction loss scale) (up to 500 full-batch epochs, lr=0.0001, stability threshold=0.001, balance lambda=1000)...
+[03:56:10] [percept-stage1] K=60 DEC epoch 010/500: fraction_changed=0.052474 (3,222 nodes)
+[03:56:12] [percept-stage1] K=60 DEC epoch 020/500: fraction_changed=0.021791 (1,338 nodes)
+[03:56:13] [percept-stage1] K=60 DEC epoch 025/500: total=0.097391, KL=0.007358, reconstruction=0.082419, balance=0.000008
+[03:56:14] [percept-stage1] K=60 DEC epoch 030/500: fraction_changed=0.011824 (726 nodes)
+[03:56:15] [percept-stage1] K=60 DEC epoch 040/500: fraction_changed=0.006645 (408 nodes)
+[03:56:17] [percept-stage1] K=60 DEC epoch 050/500: total=0.086583, KL=0.007909, reconstruction=0.077877, balance=0.000001
+[03:56:17] [percept-stage1] K=60 DEC epoch 050/500: fraction_changed=0.004381 (269 nodes)
+[03:56:19] [percept-stage1] K=60 DEC epoch 060/500: fraction_changed=0.002671 (164 nodes)
+[03:56:21] [percept-stage1] K=60 DEC epoch 070/500: fraction_changed=0.001482 (91 nodes)
+[03:56:22] [percept-stage1] K=60 DEC epoch 075/500: total=0.085389, KL=0.008423, reconstruction=0.076765, balance=0.000000
+[03:56:22] [percept-stage1] K=60 DEC epoch 076/500: total=0.085391, KL=0.008443, reconstruction=0.076747, balance=0.000000
+[03:56:22] [percept-stage1] K=60 DEC epoch 076/500: fraction_changed=0.000896 (55 nodes)
+[03:56:22] [percept-stage1] Stopping K=60 DEC at epoch 76: stability criterion.
+EARLY_V3 {"seed":42,"k":40,"dec_epochs":76,"dec_stop_reason":"stability criterion","heldout_unmapped":0,"stage1_seconds":69.1,"native_emo":0.10728744619663187,"native_genre":0.2769847497633956,"heldout_multi_labelled_fraction":0.0,"auc_tuned_per_seed":[0.9255790124699745,0.9258820727460279,0.9259400331211349,0.9256539294907098],"auc_tuned_mean":0.9257637619569618,"auc_untuned":0.5802797785719194,"reference":{"k":40,"native_emo":0.1094,"native_genre":0.2798,"auc_tuned_mean":0.9226,"auc_untuned":0.5843}}
+logs: ok on node405
+RESULT {"ok":true,"tag":"ev3-s42","node":"node405","status":{"cuda_visible_devices":"0","duration_s":160,"ended_at":"2026-09-30T01:57:33.384675+00:00","exit_code":0,"gpu_slots":[0],"host":"node405","inherited_cuda_visible_devices":"0,1,2","pgid":3657208,"pid":3657208,"pid_start":177997950,"slurm_job_id":"57200","started_at":"2026-09-30T01:54:54.866745+00:00","state":"succeeded"},"sub":"logs"}
