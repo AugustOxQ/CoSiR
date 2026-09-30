@@ -140,3 +140,9 @@ def test_run_config_calls_trial_per_seed_and_emits_lines(monkeypatch, capsys):
     assert len(seeds) == 3 and len(res) == 1
     assert seeds[1]["auc_primary"] is None and seeds[0]["tag"] == "t" and seeds[0]["subset"] == "val"
     assert res[0]["sweep_objective"] == 0.7 and res[0]["rank"] == 3 and res[0]["run_id"] == "abc"
+
+
+def test_select_top_drops_non_finished_runs():
+    runs = [{**_run(1, 0.9), "state": "running"}, {**_run(2, 0.8), "state": "crashed"},
+            {**_run(3, 0.7), "state": "finished"}]
+    assert [r["id"] for r in sel.select_top(runs, 5)] == ["r3"]

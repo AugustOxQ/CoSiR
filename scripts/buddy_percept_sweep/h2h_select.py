@@ -56,7 +56,8 @@ def config_for_trial(config: dict) -> dict:
 
 
 def select_top(runs: list, n: int) -> list:
-    kept = [r for r in runs if r.get("objective") is not None and r["objective"] > -1.0]
+    kept = [r for r in runs if r.get("objective") is not None and r["objective"] > -1.0
+            and r.get("state", "finished") == "finished"]
     kept.sort(key=lambda r: r["objective"], reverse=True)  # stable
     return [{"rank": rank, "id": r["id"], "objective": r["objective"], "config": config_for_trial(r["config"])}
             for rank, r in enumerate(kept[:n], start=1)]
@@ -237,9 +238,9 @@ def cmd_select(args) -> None:
     if len(parts) != 3:
         sys.exit(f"error: --sweep must be entity/project/sweep_id, got {args.sweep!r}")
     api = wandb.Api(timeout=120)
-    runs = api.runs("/".join(parts[:2]), filters={"sweep": parts[2], "summary_metrics.objective": {"$gt": -1}},
+    runs = api.runs("/".join(parts[:2]), filters={"sweep": parts[2], "state": "finished", "summary_metrics.objective": {"$gt": -1}},
                     order="-summary_metrics.objective", per_page=200)
-    rows = [{"id": r.id, "objective": r.summary_metrics.get("objective"), "config": dict(r.config)} for r in runs]
+    rows = [{"id": r.id, "objective": r.summary_metrics.get("objective"), "state": r.state, "config": dict(r.config)} for r in runs]
     top = select_top(rows, args.top)
     Path(args.out).write_text(json.dumps(top, indent=2) + "\n")
     print(f"{len(rows)} finished runs with objective > -1 -> {len(top)} written to {args.out}")
