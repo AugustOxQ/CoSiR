@@ -9,6 +9,19 @@ directions. **Factor-combination conditions do not work** (G1, G2). **The swap t
 The pre-registered rule selects **G3 (CLIP clusters, no swap)**. The stop point (best score ≤ +0.5)
 is not reached, so the final held-out test (Task 7) can go ahead.
 
+**Post-hoc correction** (final review; selection rows only; informed no pre-registered decision). The
+selection and the rule above stand, but three readings change:
+- **About a third of the gain is the lower CLIP weight, not the learned interface.** Simply lowering
+  the naive rule's β to G3's learned 0.0496 gains +0.88 [+0.31, +1.44] of G3's +2.54. G3's interface adds
+  +1.66 [+0.55, +2.80] beyond that, mostly in text→image and art style.
+- **On the human swap test, the naive rule at G3's β does as well as G3** (G3 − naive at G3's β: +0.05
+  [−2.10, +2.20]). This is the test Task 7 later used as criterion 2.
+- **The per-episode ceiling is uninformative, and "the frozen factors are not the limit yet" is
+  retracted.** A random distractor declared the positive still reaches 77-79%. A cross-validated oracle
+  with one weight vector per label does not clearly beat naive: 18.4 / 21.0 against 18.4 / 20.4.
+
+See [Post-hoc diagnostics](#post-hoc-diagnostics-final-review).
+
 What the numbers say, in plain terms:
 
 - **Which condition source works.**
@@ -40,12 +53,22 @@ What the numbers say, in plain terms:
     spans 0) and +1.29 [+0.12, +2.47] in t2i. G5's rises +1.32 [+0.34, +2.32] and +1.29 [+0.27, +2.34].
   - So part of the gain means "leans harder on the condition" rather than "ranks better". Both are
     reported below.
+  - Post-hoc, the β drop alone accounts for about a third of G3's score (+0.88 of +2.54). See
+    [What the learned correction adds beyond the β drop](#what-the-learned-correction-adds-beyond-the-β-drop).
 - **Why G3 and not G5.** G5 has the highest score. G3 and G4 lie within 1.0 point of it, so the three
   tie. The pre-registered tie-break prefers a no-swap run (G3 or G5), then the earlier run in the
   table, which is G3. The two cannot be told apart: G5 − G3 = +0.46 [−0.40, +1.32].
-- **Headroom.** The ceiling (oracle per-episode weights on the frozen factors) reaches 84.7 / 86.7 R@1,
-  against naive's 18.4 / 20.4. The oracle is fitted to the answer, so this is an optimistic bound. Even
-  so, it says the frozen factors are not the limit yet.
+  - Post-hoc, G5 is the only run whose swap-test success exceeds naive at its own β (+2.59
+    [+0.73, +4.44]). This informed no choice, and G5 was not evaluated on held rows.
+- **Headroom (corrected post-hoc).** The per-episode ceiling reaches 84.7 / 86.7 R@1, but it measures
+  the oracle's flexibility, not the factors. It fits 32 free weights per episode against 12 negatives,
+  and with a random distractor declared the positive it still reaches 77.1 / 79.3.
+  - The informative bound is a **label oracle**: one weight vector per target label, fitted on half of
+    that label's episodes and scored on the other half. Its random-target null sits at chance (7.7 / 7.6).
+  - It reaches 18.4 / 21.0 against naive's 18.4 / 20.4, and does not clearly beat naive: +0.05
+    [−1.12, +1.22] / +0.68 [−0.49, +1.88].
+  - So no fixed per-label weighting of the frozen factors does clearly better than the naive rule. The
+    earlier reading, "the frozen factors are not the limit yet", is retracted.
 
 This is the **selection** set. R3's encoders saw these paintings' features during training (never
 their labels), so these numbers are for choosing a run, not final results. The final, pre-registered
@@ -135,6 +158,8 @@ the deranged condition.
 - CLIP-only uses all-zero condition weights; uniform uses weights of 1/32. Both use β = 0.3 and
   ignore the condition, so their wrong-condition R@1 equals their right-condition R@1.
 - The ceiling uses per-episode oracle weights, optimized on the episode's own positive (β = 0.3).
+  Post-hoc, it turned out to be uninformative: see
+  [Ceilings](#ceilings-per-episode-label-oracle-and-their-nulls).
 - Chance is 7.7%.
 
 **Pooled (4,096 episodes)**
@@ -240,6 +265,184 @@ barely lower their training loss after the first 100 steps. How well a run fits 
 does not predict transfer to human conditions: the source that fits best (factor combinations)
 transfers worst.
 
+## Post-hoc diagnostics (final review)
+
+**Everything in this section is post-hoc, on selection rows (scorer-train rows for the mechanism
+check), and informed no pre-registered decision.** The final review's fix wave added it. The rule,
+its selection of G3, and every table above are unchanged.
+- Script: `run_posthoc.py`, 134 s on CPU. No model was trained and no held row was read.
+- It first recomputes naive's and G1-G5's ranks and Δ. They equal the numbers above bit for bit.
+
+### Post-hoc control: naive at the learned β
+
+This is the human swap test of Task 7's criterion 2, built the same way on selection rows:
+`build_human_swap_episodes(..., seed=42)`, 1,024 episodes. They are the same episodes as Task 7's
+discarded smoke run (SHA-256 `41f8215f…2478`), and naive's and G3's rates match it.
+- Success means `p_emo` ranks above `p_style` under the emotion condition, and the reverse under the
+  style condition.
+- Rates are percentages; differences are pooled over directions, with paired-bootstrap 95% CIs.
+
+| Scorer | β | Success i2t | Success t2i | Difference vs naive at β 0.3 |
+|---|---:|---:|---:|---:|
+| naive (the pre-registered baseline) | 0.3 | 18.75 | 21.00 | — |
+| naive | 0.2 | 20.80 | 22.95 | +2.00 [+1.32, +2.73] |
+| naive | 0.1 | 22.85 | 24.90 | +4.00 [+2.98, +5.08] |
+| **naive at G3's β** | 0.0496 | 24.41 | 25.78 | **+5.22 [+3.91, +6.54]** |
+| naive | 0.02 | 25.29 | 26.56 | +6.05 [+4.64, +7.47] |
+| **G3** | 0.0496 | 23.73 | 26.56 | **+5.27 [+3.22, +7.37]** |
+| G3's interface with β reset to 0.3 | 0.3 | 18.36 | 22.75 | +0.68 [−1.17, +2.64] |
+
+- **Naive's swap success rises steadily as its CLIP weight falls.** The zero-parameter naive rule at
+  G3's β gains as much as G3 does.
+- **G3 − naive at G3's β: +0.05 [−2.10, +2.20]** (i2t −0.68 [−3.52, +2.25], t2i +0.78 [−2.15, +3.71]).
+- **G3's learned interface at the original β adds +0.68 [−1.17, +2.64]**, a CI that spans 0.
+- So on selection rows, G3's swap-test gain comes from the lower CLIP weight, not from the trained
+  interface.
+
+The same control for every run (swap success difference, pooled, 95% CI):
+
+| Run | Run − naive at the run's own β | Run's interface at β 0.3 − naive at β 0.3 |
+|---|---:|---:|
+| G1 | −1.51 [−3.56, +0.54] | −0.20 [−2.00, +1.56] |
+| G2 | −0.15 [−2.05, +1.76] | +0.78 [−0.93, +2.54] |
+| G3 | +0.05 [−2.10, +2.20] | +0.68 [−1.17, +2.64] |
+| G4 | +0.29 [−1.86, +2.44] | +1.12 [−0.78, +3.12] |
+| G5 | +2.59 [+0.73, +4.44] | +2.69 [+0.98, +4.39] |
+
+Only G5 (communities) shows a swap-test gain beyond its β drop. The pre-registered tie-break did not
+select it, and it was not evaluated on held rows; evaluating it now would be a post-hoc use of held
+rows.
+
+### What the learned correction adds beyond the β drop
+
+Δ is a difference of per-episode quantities, so it splits exactly into two parts:
+- Δ(run vs naive at β 0.3), the selection score, equals
+- Δ(naive at the run's β vs naive at β 0.3), the **β drop alone**, plus
+- Δ(run vs naive at the run's β), **what the learned correction adds beyond it**.
+
+The last column evaluates the run's learned interface at the original β 0.3.
+
+Pooled, mean of directions (R@1 points, 95% CI):
+
+| Run | β | Selection score | β drop alone | Beyond the β drop | Interface at β 0.3 |
+|---|---:|---:|---:|---:|---:|
+| G1 | 0.046 | +0.46 [−0.54, +1.51] | +0.90 [+0.33, +1.48] | −0.44 [−1.45, +0.63] | −0.29 [−1.29, +0.72] |
+| G2 | 0.040 | +0.79 [−0.23, +1.81] | +0.95 [+0.38, +1.53] | −0.16 [−1.15, +0.85] | +0.09 [−0.85, +1.04] |
+| **G3** | 0.050 | **+2.54 [+1.44, +3.67]** | **+0.88 [+0.31, +1.44]** | **+1.66 [+0.55, +2.80]** | +1.62 [+0.59, +2.71] |
+| G4 | 0.050 | +2.36 [+1.29, +3.49] | +0.88 [+0.31, +1.44] | +1.48 [+0.37, +2.61] | +1.53 [+0.46, +2.61] |
+| G5 | 0.040 | +3.00 [+2.05, +3.99] | +0.95 [+0.38, +1.53] | +2.05 [+1.06, +3.08] | +2.12 [+1.22, +3.08] |
+
+Beyond the β drop, per direction and label type (R@1 points, 95% CI):
+
+| Run | i2t | t2i | Emotion (mean) | Art style (mean) |
+|---|---:|---:|---:|---:|
+| G1 | −0.71 [−2.10, +0.73] | −0.17 [−1.56, +1.22] | −1.42 [−2.83, +0.05] | +0.54 [−0.93, +1.98] |
+| G2 | −0.68 [−2.05, +0.73] | +0.37 [−1.00, +1.73] | −1.12 [−2.49, +0.22] | +0.81 [−0.66, +2.29] |
+| **G3** | +0.56 [−0.95, +2.05] | **+2.76 [+1.27, +4.30]** | +0.59 [−0.93, +2.10] | **+2.73 [+1.10, +4.42]** |
+| G4 | +0.81 [−0.71, +2.29] | +2.15 [+0.66, +3.71] | +0.15 [−1.44, +1.71] | +2.81 [+1.22, +4.42] |
+| G5 | +1.39 [+0.07, +2.73] | +2.71 [+1.39, +4.08] | +0.88 [−0.46, +2.25] | +3.22 [+1.78, +4.64] |
+
+- **About a third of G3's selection score is the β drop alone:** +0.88 of +2.54 (35%). G4 and G5 are
+  similar (37% and 32%).
+- **For G1 and G2 the β drop is the whole score.** Beyond it, the factor-combination interfaces are
+  slightly negative, with CIs spanning 0.
+- **G3's learned correction is real on selection rows, but narrow:** +1.66 [+0.55, +2.80] overall,
+  made of text→image (+2.76) and art style (+2.73). In image→text (+0.56) and for emotion (+0.59) its
+  CIs span 0.
+- **The correction does not depend on the lower β.** Evaluated at β 0.3, G3's interface still gains
+  +1.62 [+0.59, +2.71] in Δ. It changes label-episode rankings, yet adds nothing on the swap test.
+- **Plain R@1, G3 − naive at G3's β:** +0.07 [−1.10, +1.25] (i2t) and +1.42 [+0.27, +2.56] (t2i).
+- The review's reference values for G1, G2 and G5 (−0.42, −0.09, +2.12) were computed against naive at
+  G3's β. This table uses each run's own β, as the review's finding specifies. G3's values agree.
+
+### Ceilings: per-episode, label oracle, and their nulls
+
+R@1 on the selection label episodes (%). β is 0.3 unless stated; chance is 7.69%.
+
+| Scorer | Pooled i2t | Pooled t2i | Emotion i2t | Emotion t2i | Art style i2t | Art style t2i |
+|---|---:|---:|---:|---:|---:|---:|
+| naive | 18.36 | 20.36 | 16.50 | 15.14 | 20.21 | 25.59 |
+| per-episode ceiling (the "ceiling" above) | 84.72 | 86.65 | 81.98 | 84.23 | 87.45 | 89.06 |
+| per-episode ceiling, random-target null | 77.12 | 79.27 | 77.00 | 78.81 | 77.25 | 79.74 |
+| **label oracle (cross-validated)** | **18.41** | **21.04** | 16.16 | 15.43 | 20.65 | 26.66 |
+| label oracle, random-target null | 7.69 | 7.62 | 7.42 | 7.76 | 7.96 | 7.47 |
+| naive at G3's β (0.0496) | 18.80 | 20.24 | 16.94 | 15.09 | 20.65 | 25.39 |
+| label oracle at G3's β | 19.19 | 21.61 | 17.04 | 16.21 | 21.34 | 27.00 |
+
+How each row is built:
+- **Per-episode ceiling:** `ceiling_ranks`, the diagnostic above. It fits one weight vector per episode
+  on the very candidate it then ranks.
+- **Random-target null:** the same fit, but with one random distractor per episode declared the target
+  (`target_column`, seed 42).
+- **Label oracle:** `label_oracle_ranks`. It fits ONE weight vector per target label on half of that
+  label's episodes and ranks the other half, with 2 folds, so every rank is out of fold. It uses the
+  same smooth-margin objective as the ceiling.
+
+What the table says:
+- **The per-episode ceiling is uninformative.** It fits 32 free weights per episode against 12
+  negatives. With a random distractor declared the positive it still reaches 77-79%, not far below its
+  85-87% on the real positive. Its height measures the oracle's flexibility, not information in the
+  factors.
+- **The label oracle is the informative bound.** Its random-target null sits exactly at chance, so it
+  cannot fit noise.
+- **The label oracle does not clearly beat naive.** Paired R@1 differences:
+  - at β 0.3: +0.05 [−1.12, +1.22] (i2t) and +0.68 [−0.49, +1.88] (t2i);
+  - at G3's β: +0.39 [−0.85, +1.64] and +1.37 [+0.15, +2.61].
+- **Reading.** No fixed per-label weighting of the 32 frozen factors ranks a same-label positive
+  clearly better than the naive rule. The frozen factors do carry the labels: naive and the oracle are
+  far above chance and above CLIP-only. But they carry little that a better weighting could still
+  extract.
+- **Spec §9's gate is now answered by the label oracle, not the per-episode ceiling.** The gate says to
+  revisit fine-tuning the factor encoders only if the ceiling check shows the frozen factors lack the
+  needed information.
+  - By this post-hoc probe, the frozen R3 factors have little headroom beyond naive for these two
+    conditions.
+  - That is the case in which §9 allows revisiting factor fine-tuning.
+  - The probe covers one weighting family (linear, one vector per label), so it is evidence, not proof.
+    G5's plain R@1 (19.68 / 21.66) is above the oracle's, so the oracle is not an upper bound for
+    a trained interface either.
+
+### Mechanism check: why training drives β down
+
+The episodes are 1,024 per source, mined from scorer-train rows exactly as in training
+(`mine_condition_episodes`, seed 42, `hard_pool=2048`). Each has 4 positives and 12 negatives:
+- 6 hard negatives, the CLIP-nearest among a random sample of 2,048 outside rows;
+- 6 random outside negatives.
+
+Accuracy is the share of positive-negative pairs where the positive scores higher (ties count one
+half), in %.
+
+| Source | Scorer | Positive > hard, i2t | Positive > hard, t2i | Positive > random, i2t | Positive > random, t2i |
+|---|---|---:|---:|---:|---:|
+| CLIP clusters | CLIP alone | 30.6 | 28.7 | 71.0 | 77.0 |
+| CLIP clusters | naive, β 0.3 | 49.6 | 46.1 | 85.6 | 85.7 |
+| CLIP clusters | naive, β 0 | 52.3 | 48.8 | 85.3 | 85.8 |
+| factor combinations | CLIP alone | 33.3 | 35.3 | 68.2 | 73.9 |
+| factor combinations | naive, β 0.3 | 78.9 | 80.5 | 92.7 | 93.3 |
+| factor combinations | naive, β 0 | 82.4 | 83.6 | 93.3 | 93.9 |
+| communities | CLIP alone | 31.9 | 31.7 | 68.5 | 75.1 |
+| communities | naive, β 0.3 | 50.6 | 56.7 | 82.2 | 87.6 |
+| communities | naive, β 0 | 53.3 | 60.2 | 82.1 | 87.7 |
+
+The intermediate β values (0.2, 0.1, 0.05, 0.02) lie in between: positive-over-hard rises
+monotonically as β falls, in every source and direction. `--tables` prints the full grid.
+
+- **On training episodes, CLIP points the wrong way.** CLIP alone ranks a positive above a hard
+  negative only 29-35% of the time, because the hard negatives are chosen to be CLIP-near. Against
+  random negatives it is right 68-77% of the time.
+- **Lowering naive's β helps against hard negatives only.** Positive-over-hard rises 2.7-3.5 points in
+  every source and direction, while positive-over-random stays within 0.6 points. Half of each training
+  episode's negatives are hard, so the training loss rewards a lower β.
+- **On human-label evaluation episodes every negative is random,** and there CLIP helps: CLIP-only gets
+  12.2 / 14.7 against 7.7% chance.
+- **This corroborates the β-collapse explanation by a mechanism check. It is not a causal test:** no run
+  with a frozen β or without hard negatives was trained.
+- **Implication:** the training objective rewards ignoring CLIP, while the evaluation rewards using
+  it. A revised stage (d) should do one or more of the following:
+  - freeze β;
+  - pre-register naive at the learned β as the baseline;
+  - match training negatives to evaluation negatives.
+
 ## Caveats
 
 - **The selection set is in-sample for R3's features** (spec §10). R3's encoders saw these paintings'
@@ -259,14 +462,23 @@ transfers worst.
   - 11.9% of emotion episodes;
   - 4.1% of art-style episodes.
   - Those episodes get a "wrong" condition that is effectively right. This attenuates Δ toward 0 for
-    every run and for naive alike. It does not change the ranking of runs or the sign of any gain.
+    every run and for naive alike. It should not change the ranking of runs or the sign of any gain in
+    expectation (untested).
 - **Part of the gain is heavier reliance on the condition, not better ranking.** All five runs cut β
   6-7.5× and sparsified the weights. That makes the wrong condition hurt more, and Δ rewards it.
   So we report plain R@1 − naive too: G3 is +0.51 (CI spans 0) in i2t and +1.29 (CI above 0) in t2i.
-- **A likely cause of the β collapse** (an interpretation, not tested): half of each training
-  episode's negatives are the CLIP-nearest outside items. On training episodes the CLIP term actively
-  misleads, so training pushes β down. On human-label episodes the negatives are random and CLIP
-  helps: CLIP-only gets 12.2 / 14.7 against 7.7% chance. β had not converged at 3,000 steps.
+  Post-hoc, the β drop alone is about a third of G3's Δ, and on the swap test it is all of G3's gain.
+- **The cause of the β collapse is corroborated by a mechanism check, not a causal test.**
+  - Six of each training episode's 12 negatives are hard negatives: the CLIP-nearest among a random
+    sample of 2,048 outside rows (`hard_pool`).
+  - On mined training episodes, CLIP alone ranks a positive above such a hard negative only 29-35% of
+    the time, and lowering naive's β raises positive-over-hard accuracy while leaving
+    positive-over-random flat (see [Mechanism check](#mechanism-check-why-training-drives-β-down)).
+  - On human-label episodes the negatives are random and CLIP helps: CLIP-only gets 12.2 / 14.7 against
+    7.7% chance. β had not converged at 3,000 steps.
+  - **Implication:** the training objective rewards ignoring CLIP, while the evaluation rewards using
+    it. A revised stage (d) should freeze β, or pre-register naive at the learned β as the baseline,
+    and/or match training negatives to evaluation negatives.
 - **The swap term had no usable signal for CLIP clusters:** the swap loss stayed flat. For factor
   combinations it learned the swap task (0.90 → 0.24), but that did not transfer.
 - **Single seed, single selection set.** Task 7 retrains G3 with seeds 43 and 44. GPU training is not
@@ -277,8 +489,11 @@ transfers worst.
 
 ## Files
 
-- Script: `src/test/20261013_stage_d_selection/run_selection.py`. `--tables` reprints every table
-  above from `results/selection_results.json`.
+- Script: `src/test/20261013_stage_d_selection/run_selection.py`. `--tables` reprints every
+  pre-registered table above from `results/selection_results.json`.
+- Post-hoc script: `src/test/20261013_stage_d_selection/run_posthoc.py`. `--tables` reprints every
+  post-hoc table from `results/posthoc_results.json` (and `results/posthoc_ranks.npz`, the ceiling and
+  oracle ranks).
 - Log: `src/test/20261013_stage_d_selection/20261013_stage_d_selection_log.md`.
 - Gitignored, local only:
   - `cache/prepare.{npz,json}` (split, codes, source labels);

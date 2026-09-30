@@ -2,26 +2,46 @@
 
 ## Verdict
 
-**On held-out paintings, the trained scorer G3 does not use the condition better than the naive rule
-in both retrieval directions, so criterion 1 is NOT MET. It does pass the human emotion-vs-style swap
-test, so criterion 2 is MET.** Seeds 43 and 44 of the same recipe give the same two verdicts.
+**Criterion 1 is NOT MET, as pre-registered.** On held-out paintings, the trained scorer G3 was not
+shown to use the condition better than naive in both directions (inconclusive). The test was
+underpowered for the effect seen on the selection set.
+
+**Criterion 2 is MET, as pre-registered.** But the same pass is reproduced on selection rows by the
+zero-parameter naive rule at G3's learned β. So it reflects the lower CLIP weight, not the trained
+interface.
+
+Seeds 43 and 44 of the same recipe give the same two literal verdicts. The post-hoc numbers cited below
+come from selection rows only and informed no pre-registered decision; held rows were not touched again.
 
 The two questions, in plain terms:
 
-- **Did the trained scorer use the condition better than naive, in both directions, on held? No.**
+- **Did the trained scorer use the condition better than naive, in both directions, on held? Not
+  shown (inconclusive).**
   - The condition-use gain Δ is positive in both directions: +0.83 R@1 points in image→text and +1.61
     in text→image. But both 95% CIs include 0: [−1.12, +2.78] and [−0.54, +3.81].
-  - On the selection set the same model scored +1.83 and +3.25, with both CIs above 0. On held rows the
-    gain is about half that size and no longer distinguishable from 0.
-  - All of the remaining gain comes from **art style**, where Δ is +2.59 [+0.54, +4.69] (driven by text→image: +3.71 [+0.68, +6.74]). For **emotion** the gain is zero (−0.15 [−2.29, +2.05]).
+  - **The test was underpowered.** The held standard errors are about 1.0 (i2t) and 1.1 (t2i) points.
+    Suppose the held effect equalled the selection estimates (+1.83, +3.25). Then both lower bounds
+    would clear 0 with probability of only about 0.4: 0.38 assuming independence, 0.39 with the
+    selection-set correlation between directions. This is a post-hoc normal approximation from the
+    stored CIs.
+  - **The held CIs contain the selection estimates:** +1.83 ∈ [−1.12, +2.78] and +3.25 ∈ [−0.54, +3.81].
+    The held point estimates are lower, but a drop from selection to held is not established.
+  - All of the remaining gain comes from **art style**, where Δ is +2.59 [+0.54, +4.69] (driven by text→image: +3.71 [+0.68, +6.74]). For **emotion** the gain is indistinguishable from zero (−0.15 [−2.29, +2.05]).
   - Plain ranking is not better either. G3's held R@1 is 16.70 / 21.34 against naive's 17.63 / 20.90. The paired
     differences are −0.93 [−2.44, +0.59] and +0.44 [−1.17, +2.10].
-- **Did it pass the human swap test? Yes.**
+- **Did it pass the human swap test? Yes, as pre-registered, but the naive rule passes it too once its
+  β is lowered.**
   - In the swap test, the anchor and the 13 candidates stay the same and only the condition changes,
     from the anchor's emotion to its art style. Success means the ranking flips the right way.
   - G3 succeeds in **25.4% / 26.6%** of held episodes (i2t / t2i). Naive succeeds in **18.8% / 20.3%**.
   - The difference is **+6.40 [+4.20, +8.54]** points pooled, and it is above 0 in each direction. All
     three seeds pass (+5.9 to +8.1).
+  - **Post-hoc control, on selection rows** (the same construction, 1,024 episodes). The naive rule
+    with β lowered to G3's learned 0.0496 gains +5.22 [+3.91, +6.54] over naive at β 0.3, as much as G3
+    does (+5.27 [+3.22, +7.37]).
+    - G3 − naive at G3's β: **+0.05 [−2.10, +2.20]**.
+    - G3's trained interface with β reset to 0.3 gains only +0.68 [−1.17, +2.64].
+    - This control was not run on held rows; that is option (a) below.
 
 **How to read the two results together.** Training cut G3's CLIP weight β from 0.30 to 0.05 and
 concentrated its condition weights on about 4 factors instead of naive's 16. So G3 relies more on
@@ -33,11 +53,36 @@ the condition:
   The +6.5 / +6.3 gain in the conjunction comes mostly from both halves holding in the same episode
   more often.
 
-On held rows, the evidence therefore shows a scorer that is **more condition-sensitive** than naive.
-It does not show a scorer that **ranks better** given the right condition. This reading is an
-interpretation, not a separate test.
+The post-hoc control on selection rows shows where the swap-test gain comes from. Naive at G3's β
+gains as much, so the lower β alone produces it. On label episodes G3's interface does add something
+beyond the β drop on selection rows: +1.66 [+0.55, +2.80], about two thirds of its selection score, mostly
+text→image and art style.
 
-**The stage (e) decision is the user's.** This report states only which pre-registered criteria hold.
+On held rows, the evidence therefore shows a scorer that is **more condition-sensitive** than naive at
+β 0.3, which a lower β alone achieves. It does not show a scorer that **ranks better** given the right
+condition. This reading is an interpretation supported by post-hoc controls on selection rows, not a
+held-out test.
+
+### Options for the user
+
+- **(a) Run the β-matched control on held rows,** as a labelled post-hoc diagnostic. This means naive
+  at G3's learned β on the same held label and swap episodes. It would show whether the attribution
+  above holds on held rows. It would be a second, post-hoc use of the held split.
+- **(b) A revised stage (d).**
+  - Freeze β, or pre-register the β-matched naive as the baseline.
+  - Match training negatives to evaluation negatives.
+  - Power the criteria from the selection variance, with new held episodes if needed.
+- **(c) Go to stage (e) with the swap-test evidence,** discounted per the post-hoc control: on selection
+  rows the swap-test pass is the lower CLIP weight, which the naive rule gets for free.
+- **(d) Revisit factor fine-tuning** only if the label oracle shows the frozen factors lack the
+  conditions.
+  - Post-hoc, on selection rows, the cross-validated label oracle (one weight vector per label) does
+    not clearly beat naive: 18.4 / 21.0 against 18.4 / 20.4 R@1 at β 0.3.
+  - So the frozen factors hold little about these conditions beyond what naive already uses. That is
+    the case spec §9 names for revisiting
+    ([selection report, Ceilings](2026-10-13_candidate_a_stage_d_selection.md#ceilings-per-episode-label-oracle-and-their-nulls)).
+
+The stage (e) decision is the user's.
 
 ## Criterion 1 (primary): condition-use gain on the held label episodes, NOT MET
 
@@ -54,6 +99,16 @@ The criterion's definition:
 | G3 seed 44 | +0.78 [−1.22, +2.78] | +2.05 [+0.00, +4.25] | +1.42 [−0.07, +2.91] | no |
 
 Seed 44's text→image lower bound is exactly 0.00, which fails the strict "> 0" test.
+
+**Power** (post-hoc, normal approximation, from the stored held CIs and Task 6's selection points):
+
+| Direction | Held Δ (95% CI) | Held SE | Selection Δ | Selection Δ inside held CI? | P(lower bound > 0) if the held effect equalled the selection Δ |
+|---|---:|---:|---:|---|---:|
+| i2t | +0.83 [−1.12, +2.78] | 1.00 | +1.83 | yes | 0.45 |
+| t2i | +1.61 [−0.54, +3.81] | 1.11 | +3.25 | yes | 0.83 |
+| both | | | | | 0.38 (independent), 0.39 (selection correlation 0.10) |
+
+So the criterion-1 miss is inconclusive, not evidence that G3 fails to use the condition better.
 
 **Per label type** (context, not criteria):
 
@@ -128,6 +183,10 @@ column is the success rate.
 - For naive, the two halves rarely hold together, because its rankings under the two conditions are
   similar. G3's rankings differ more between conditions, so the conjunction rises.
 
+**Post-hoc attribution.** Lowering naive's β has the same effect on selection rows, with no training:
+see [Post-hoc diagnostics](#post-hoc-diagnostics-selection-rows). The verdict stands as pre-registered;
+its attribution to the trained interface does not.
+
 ## Replication: seeds 43 and 44
 
 Both seeds use G3's recipe with only the seed changed: CLIP-cluster conditions, no swap term,
@@ -148,8 +207,10 @@ k-means refit on scorer-train rows reproduces Task 6's cached labels exactly.
   500, 0.14 at step 1,000, 0.08 at step 2,000, and 0.04-0.06 at step 3,000.
 - **Seed 42 reproduces Task 6 exactly.** Re-scored here, its selection gain equals Task 6's recorded
   value bit for bit in every scope.
-- **On held rows, all three seeds lose the same way.** Δ shrinks to +0.8 to +1.2 in i2t and +1.4 to
-  +2.1 in t2i, and no seed has both CIs above 0. The held miss is therefore not a seed-42 accident.
+- **On held rows, all three seeds miss the same way.** Δ is +0.8 to +1.2 in i2t and +1.4 to +2.1 in
+  t2i, below the selection points but with CIs that contain them. No seed has both CIs above 0.
+  - So the miss is not a seed-42 accident.
+  - At this test's power (about 0.4, above), it is not evidence of no effect either.
 
 ## Context: held R@1 and R@3 on the same label episodes
 
@@ -202,6 +263,58 @@ CLIP-only equals that report's CLIP-only row in every cell as well.
 
 τ is the logit temperature and does not change rankings.
 
+## Post-hoc diagnostics (selection rows)
+
+**Every number in this section is post-hoc, on selection rows, and informed no pre-registered
+decision.** Held rows were not touched again.
+- The numbers come from `src/test/20261013_stage_d_selection/run_posthoc.py`, which trains nothing.
+- The [selection report](2026-10-13_candidate_a_stage_d_selection.md#post-hoc-diagnostics-final-review)
+  has the full tables, the ceilings and the mechanism check.
+
+### Post-hoc control: naive at the learned β
+
+The human swap test (criterion 2's construction) was built on selection rows:
+`build_human_swap_episodes(..., seed=42)`, 1,024 episodes. Rates are success percentages (i2t / t2i);
+differences are pooled over directions against naive at β 0.3.
+
+| Scorer | β | Success i2t / t2i | Difference vs naive at β 0.3 |
+|---|---:|---|---:|
+| naive (the pre-registered baseline) | 0.3 | 18.75 / 21.00 | — |
+| naive | 0.2 | 20.80 / 22.95 | +2.00 [+1.32, +2.73] |
+| naive | 0.1 | 22.85 / 24.90 | +4.00 [+2.98, +5.08] |
+| **naive at G3's β** | 0.0496 | 24.41 / 25.78 | **+5.22 [+3.91, +6.54]** |
+| naive | 0.02 | 25.29 / 26.56 | +6.05 [+4.64, +7.47] |
+| **G3** | 0.0496 | 23.73 / 26.56 | **+5.27 [+3.22, +7.37]** |
+| G3's interface at β 0.3 | 0.3 | 18.36 / 22.75 | +0.68 [−1.17, +2.64] |
+
+- G3 − naive at G3's β: **+0.05 [−2.10, +2.20]**.
+- Naive's swap success rises steadily as β falls, with no training at all.
+- The trained interface, put back at β 0.3, adds a gain whose CI spans 0.
+- **Criterion 2's pass on held rows (+6.40) is therefore best attributed to the lower CLIP weight.**
+  The held-side check is option (a).
+
+### What the learned correction adds beyond the β drop
+
+Δ splits exactly into two parts: the β drop alone (naive at the run's β vs naive at β 0.3), and what
+the learned correction adds beyond it (the run vs naive at its own β). The values are pooled selection
+Δ in R@1 points, with 95% CIs.
+
+| Run | Selection score | β drop alone | Beyond the β drop | Beyond: i2t | Beyond: t2i |
+|---|---:|---:|---:|---:|---:|
+| **G3 (selected)** | +2.54 [+1.44, +3.67] | +0.88 [+0.31, +1.44] | **+1.66 [+0.55, +2.80]** | +0.56 [−0.95, +2.05] | +2.76 [+1.27, +4.30] |
+| G1 | +0.46 [−0.54, +1.51] | +0.90 [+0.33, +1.48] | −0.44 [−1.45, +0.63] | −0.71 [−2.10, +0.73] | −0.17 [−1.56, +1.22] |
+| G2 | +0.79 [−0.23, +1.81] | +0.95 [+0.38, +1.53] | −0.16 [−1.15, +0.85] | −0.68 [−2.05, +0.73] | +0.37 [−1.00, +1.73] |
+| G4 | +2.36 [+1.29, +3.49] | +0.88 [+0.31, +1.44] | +1.48 [+0.37, +2.61] | +0.81 [−0.71, +2.29] | +2.15 [+0.66, +3.71] |
+| G5 | +3.00 [+2.05, +3.99] | +0.95 [+0.38, +1.53] | +2.05 [+1.06, +3.08] | +1.39 [+0.07, +2.73] | +2.71 [+1.39, +4.08] |
+
+- **About a third of G3's selection score (35%) is the β drop.** What the correction adds beyond it
+  lies in text→image and art style (+2.73 [+1.10, +4.42]). For image→text and emotion (+0.59) the CIs
+  span 0.
+- **Evaluated at β 0.3, G3's interface still gains +1.62 [+0.59, +2.71] in Δ.** So on label episodes
+  the correction does something the β drop does not, even though it adds nothing on the swap test.
+- **The held criterion-1 Δ has not been split this way.** Doing so would need naive at G3's β on held
+  rows, which is option (a).
+
 ## What was run
 
 - **Script:** `src/test/20261014_stage_d_final/run_final.py`. It imports Task 6's `run_selection.py` and
@@ -244,23 +357,36 @@ CLIP-only equals that report's CLIP-only row in every cell as well.
     naive's, while its right-condition R@1 does not rise (−0.93 / +0.44).
   - The swap test rewards a ranking that changes with the condition. A lower β makes that easier
     without better one-sided judgments, as the two-halves table shows.
-  - Criterion 2's pass is real by its definition. It is best read as "more condition-sensitive than
-    naive", not as "understands the condition better".
-  - Task 6 attributed the collapse, as an untested interpretation, to CLIP-nearest hard negatives in
-    training episodes, where the CLIP term misleads. β had not converged at 3,000 steps in any seed.
+  - Criterion 2's pass is real by its definition. But post-hoc, on selection rows, naive at G3's β
+    passes by the same margin (G3 − naive at G3's β: +0.05 [−2.10, +2.20]). So the pass reflects the
+    lower CLIP weight, not the trained interface.
+  - **The collapse's cause is corroborated by a mechanism check, not a causal test.** The check ran on
+    mined scorer-train episodes; see the
+    [selection report](2026-10-13_candidate_a_stage_d_selection.md#mechanism-check-why-training-drives-β-down).
+    - Half of each training episode's negatives are hard: the CLIP-nearest among a random sample of
+      2,048 outside rows. CLIP alone ranks a positive above them only 29-35% of the time, against
+      68-77% for random negatives.
+    - Lowering naive's β raises positive-over-hard accuracy and leaves positive-over-random flat.
+    - β had not converged at 3,000 steps in any seed.
+  - **Implication:** the training objective rewards ignoring CLIP, while the evaluation rewards using
+    it. A revised stage (d) should freeze β, or pre-register naive at the learned β as the baseline,
+    and/or match training negatives to evaluation negatives (option (b)).
 - **Same-label wrong conditions.** `wrong_condition` sometimes hands an episode the condition of
   another episode with the same target label. That "wrong" condition is effectively right.
   - Measured on the held episodes: **12.9%** of emotion episodes and **4.6%** of art-style episodes
     (8.7% pooled).
   - This attenuates Δ toward 0 for G3 and naive alike.
-  - Rescaling by 1/(1 − 0.087) as a rough correction leaves both criterion-1 lower bounds below 0, at
-    about −1.2 and −0.6. So this effect does not explain the miss.
+  - Dropping the same-label episodes changes little. Assume they contribute 0 to Δ and the rest keep
+    their variance (post-hoc, from the stored numbers). Then the point scales by ×1.096 and the SE by
+    ×1.047, so z rises only about 5%. The lower bounds stay below 0, at about −1.1 (i2t) and −0.5 (t2i).
+    So this effect does not explain the miss.
 - **Selection set vs held** (spec §10).
   - The selection set contains paintings whose features R3's encoders saw, never their labels. That
     was acceptable for choosing a run but not for final numbers.
-  - The held Δ is about half the selection Δ in both directions. Part of the drop may be this
-    in-sample effect, and part may be ordinary selection optimism. G3 was one of five runs, though
-    not the top scorer.
+  - The held Δ point estimates are lower than the selection ones in both directions. But the held CIs
+    contain the selection estimates, so a real drop is not established.
+  - If there is a drop, this in-sample effect and ordinary selection optimism could contribute. G3 was
+    one of five runs, though not the top scorer.
 - **Emotion labels are per annotation** (spec §10). Clean negatives mitigate, but do not remove, the
   ambiguity. Emotion's Δ is about 0 on held, as it was within noise on the selection set.
 - **Label coverage** (spec §10). Only two human condition types exist. Neither result says anything yet
@@ -282,13 +408,17 @@ CLIP-only equals that report's CLIP-only row in every cell as well.
 - **Training randomness.** Seeds 43 and 44 cover it only partly: three seeds, one split. GPU training is
   not bit-deterministic (about 1e-6, per Task 6). All three seeds agree on both verdicts.
 - **Criterion 2's reference point.** Condition-blind scorers (CLIP-only, uniform) score 0% on the swap
-  test by construction. Naive's 18.8-20.3% is the only meaningful baseline, and the test compares
-  against it.
+  test by construction. Naive's 18.8-20.3% is the pre-registered baseline, and the test compares
+  against it. Post-hoc, naive at a lower β is a stronger baseline; see
+  [Post-hoc control](#post-hoc-control-naive-at-the-learned-β).
 
 ## Files
 
-- **Script:** `src/test/20261014_stage_d_final/run_final.py`. `--tables` reprints every table above
+- **Script:** `src/test/20261014_stage_d_final/run_final.py`. `--tables` reprints every held table above
   from the saved JSON.
+- **Post-hoc script (selection rows only):** `src/test/20261013_stage_d_selection/run_posthoc.py`. It
+  produces every post-hoc number here, and the power and same-label numbers from the stored
+  `results/final_results.json`. `--tables` reprints them.
 - **Log:** `src/test/20261014_stage_d_final/20261014_stage_d_final_log.md`.
 - **Gitignored, local only:**
   - `cache/prepare_checks.json` and `cache/held_codes.npz`;

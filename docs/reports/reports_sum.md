@@ -20,7 +20,7 @@ Research lines:
 
 ## Start here
 
-- **Current work (v2):** [stage (d) final held-out test](auto/v2/2026-10-14_candidate_a_stage_d_final.md), the latest result (trained scorer G3 vs naive: condition-use gain not met, human swap test met; the stage (e) decision is the user's), following [stage (d) selection](auto/v2/2026-10-13_candidate_a_stage_d_selection.md) and building on [condition eval on repaired factors](auto/v2/2026-10-12_candidate_a_condition_eval_repaired_factors.md) and [factor repair](auto/v2/2026-10-11_candidate_a_factor_repair.md), the current recipe R3.
+- **Current work (v2):** [stage (d) final held-out test](auto/v2/2026-10-14_candidate_a_stage_d_final.md), the latest result (trained scorer G3 vs naive: condition-use gain not met, inconclusive because underpowered; human swap test met as pre-registered, but reproduced by the naive rule at G3's learned β, so it reflects the lower CLIP weight; the stage (e) decision is the user's), following [stage (d) selection](auto/v2/2026-10-13_candidate_a_stage_d_selection.md) and building on [condition eval on repaired factors](auto/v2/2026-10-12_candidate_a_condition_eval_repaired_factors.md) and [factor repair](auto/v2/2026-10-11_candidate_a_factor_repair.md), the current recipe R3.
 - **Percept line summary:** [buddy vs PercepT master report](auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md), [comprehensive analysis](stage/2026-09-27_comprehensive_analysis.md) and [key advantages](stage/2026-09-27_key_advantages.md).
 - **Buddy line summary:** the [archived publication plan](../archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md) (claims C1–C12; no longer updated) and the [latest weekly report](weekly/2026-09-02_conditional_buddies.md).
 - **Publication plan for v2:** not written yet. It will replace the archived buddy plan, with v2 as the main body.
@@ -68,8 +68,8 @@ To open an archived line: `git worktree add ../CoSiR-<name> archive/<branch>`.
 | 10-09 | [candidate_a_factor_collapse_diagnosis](auto/v2/2026-10-09_candidate_a_factor_collapse_diagnosis.md) | Where the factor-space collapse comes from |
 | 10-11 | [candidate_a_factor_repair](auto/v2/2026-10-11_candidate_a_factor_repair.md) | Factor-repair grid, pre-registered gates, goal-based selection |
 | 10-12 | [candidate_a_condition_eval_repaired_factors](auto/v2/2026-10-12_candidate_a_condition_eval_repaired_factors.md) | Condition interface on the repaired factors, held-out |
-| 10-13 | [candidate_a_stage_d_selection](auto/v2/2026-10-13_candidate_a_stage_d_selection.md) | Stage (d) selection: five self-generated-condition scorers vs the naive rule (G3 selected) |
-| 10-14 | [candidate_a_stage_d_final](auto/v2/2026-10-14_candidate_a_stage_d_final.md) | Stage (d) final held-out test: G3 vs naive (condition-use gain not met; human swap test met) |
+| 10-13 | [candidate_a_stage_d_selection](auto/v2/2026-10-13_candidate_a_stage_d_selection.md) | Stage (d) selection: five self-generated-condition scorers vs the naive rule (G3 selected; post-hoc: about a third of the gain is the β drop, the per-episode ceiling is uninformative, and a per-label oracle does not clearly beat naive) |
+| 10-14 | [candidate_a_stage_d_final](auto/v2/2026-10-14_candidate_a_stage_d_final.md) | Stage (d) final held-out test: G3 vs naive (condition-use gain not met, inconclusive; human swap test met as pre-registered but reproduced by naive at G3's learned β) |
 
 ## auto/percept: Exp 18, ArtELingo and PercepT
 
