@@ -1,0 +1,86 @@
+# Head-to-head sweep cell: percept at K=16 (W&B polysemic/CoSiR-h2h). Generated once; the four files
+# share the Stage 2 block and `run_cap` (= TRIALS_PER_CELL in h2h_agent.py) -- edit them together.
+# Run with one in-process agent per GPU: scripts/run_h2h_agent.sh <entity/project/sweep_id>
+name: h2h_percept_k16
+program: scripts/buddy_percept_sweep/h2h_agent.py
+method: bayes
+metric:
+  name: objective
+  goal: maximize
+run_cap: 300
+parameters:
+  system:
+    value: percept
+  k_target:
+    value: 16
+  percept_pretrain_epochs:
+    values:
+    - 50
+    - 100
+    - 200
+  percept_pretrain_lr:
+    distribution: log_uniform_values
+    min: 0.0003
+    max: 0.003
+  percept_dec_lr:
+    distribution: log_uniform_values
+    min: 3.0e-05
+    max: 0.001
+  percept_lambda_balance:
+    distribution: log_uniform_values
+    min: 10.0
+    max: 10000.0
+  percept_lambda_reconstruction:
+    distribution: log_uniform_values
+    min: 0.1
+    max: 10.0
+  percept_n_initial_factor:
+    values:
+    - 1.0
+    - 1.5
+    - 2.0
+    - 2.5
+  percept_stability_threshold:
+    values:
+    - 0.001
+    - 0.003
+  mapper_lr:
+    distribution: log_uniform_values
+    min: 0.001
+    max: 0.03
+  mapper_epochs:
+    values:
+    - 100
+    - 200
+    - 400
+    - 800
+  num_queries:
+    values:
+    - 1
+    - 2
+    - 4
+    - 8
+  mlp_head:
+    values:
+    - linear
+    - one_hidden
+  weight_decay_stage2:
+    values:
+    - 0.0
+    - 1.0e-05
+    - 0.0001
+  class_balanced_loss:
+    values:
+    - false
+    - true
+  target_cutoff:
+    values:
+    - single_label
+    - 0.15
+    - 0.3
+    - 0.5
+  train_target_k:
+    values:
+    - 10
+    - 20
+    - 40

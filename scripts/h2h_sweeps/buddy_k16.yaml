@@ -1,0 +1,140 @@
+# Head-to-head sweep cell: buddy at K=16 (W&B polysemic/CoSiR-h2h). Generated once; the four files
+# share the Stage 2 block and `run_cap` (= TRIALS_PER_CELL in h2h_agent.py) -- edit them together.
+# Run with one in-process agent per GPU: scripts/run_h2h_agent.sh <entity/project/sweep_id>
+# buddy_heads / buddy_num_heads: under buddy_impl=harness, attn1/attn4 map to the harness `attn` head and
+# buddy_num_heads sets its head count; under buddy_impl=pilot, attn4 means the pilot's 4-head fusion and
+# buddy_num_heads is ignored (mlp128 ignores it in both).
+name: h2h_buddy_k16
+program: scripts/buddy_percept_sweep/h2h_agent.py
+method: bayes
+metric:
+  name: objective
+  goal: maximize
+run_cap: 300
+parameters:
+  system:
+    value: buddy
+  k_target:
+    value: 16
+  buddy_impl:
+    values:
+    - pilot
+    - harness
+  buddy_heads:
+    values:
+    - mlp128
+    - attn1
+    - attn4
+  buddy_num_heads:
+    values:
+    - 1
+    - 2
+    - 4
+    - 8
+  buddy_d_shared:
+    values:
+    - 16
+    - 32
+    - 64
+    - 128
+  buddy_lr:
+    distribution: log_uniform_values
+    min: 0.0001
+    max: 0.01
+  buddy_batch_size:
+    values:
+    - 512
+    - 1024
+    - 2048
+    - 4096
+  buddy_content_pca_dim:
+    values:
+    - 30
+    - 50
+    - 80
+    - 120
+  buddy_temperature:
+    values:
+    - 0.05
+    - 0.1
+    - 0.2
+  buddy_max_epochs:
+    values:
+    - 100
+    - 200
+    - 400
+  buddy_plateau_window:
+    values:
+    - 3
+    - 5
+    - 10
+  buddy_noise_std:
+    values:
+    - 0.0
+    - 0.05
+    - 0.1
+    - 0.2
+  buddy_lambda_affect:
+    distribution: log_uniform_values
+    min: 0.25
+    max: 4.0
+  buddy_weight_decay:
+    values:
+    - 0.0
+    - 1.0e-05
+    - 0.0001
+  buddy_teacher_graph_K:
+    values:
+    - 10
+    - 15
+    - 20
+    - 30
+  leiden_graph:
+    values:
+    - mknn
+    - pilot_repaired
+  merge_small_threshold:
+    values:
+    - 0.005
+    - 0.01
+    - 0.02
+  mapper_lr:
+    distribution: log_uniform_values
+    min: 0.001
+    max: 0.03
+  mapper_epochs:
+    values:
+    - 100
+    - 200
+    - 400
+    - 800
+  num_queries:
+    values:
+    - 1
+    - 2
+    - 4
+    - 8
+  mlp_head:
+    values:
+    - linear
+    - one_hidden
+  weight_decay_stage2:
+    values:
+    - 0.0
+    - 1.0e-05
+    - 0.0001
+  class_balanced_loss:
+    values:
+    - false
+    - true
+  target_cutoff:
+    values:
+    - single_label
+    - 0.15
+    - 0.3
+    - 0.5
+  train_target_k:
+    values:
+    - 10
+    - 20
+    - 40
