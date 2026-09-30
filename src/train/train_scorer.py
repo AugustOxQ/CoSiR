@@ -106,12 +106,12 @@ def train_scorer(source, img_feat, txt_feat, img_codes, txt_codes, keys, factor_
         optimizer.step()
         if step % log_every == 0 or step == config.steps - 1:
             history["step"].append(step)
-            history["loss"].append(float(loss))
-            history["loss_rank"].append(float(loss_rank))
+            history["loss"].append(loss.detach().item())
+            history["loss_rank"].append(loss_rank.detach().item())
             if loss_swap is not None:
-                history["loss_swap"].append(float(loss_swap))
-            history["beta"].append(float(scorer.beta))
-            history["tau"].append(float(scorer.tau))
+                history["loss_swap"].append(loss_swap.detach().item())
+            history["beta"].append(scorer.beta.detach().item())
+            history["tau"].append(scorer.tau.detach().item())
     return scorer.eval(), history
 
 
