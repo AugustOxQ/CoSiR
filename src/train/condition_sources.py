@@ -158,3 +158,27 @@ class CommunitySource(_PartitionSource):
 
     def __init__(self, community_labels, rows, min_group_rows=200, max_tries=100):
         self._setup({"community": community_labels}, rows, min_group_rows, max_tries)
+
+
+class MultiPartitionSource(_PartitionSource):
+    """Several partitions of the same rows at once (e.g. affect clusters and CLIP image clusters).
+
+    A condition is one group of one view; its outside is the fit rows outside that group. ``sample_condition`` draws a
+    view uniformly, then one of that view's valid groups uniformly, so each view supplies about the same share of
+    conditions whatever its number of groups. A view with no valid group is dropped.
+    """
+
+    name = "multi_partition"
+
+    def __init__(self, labels_by_view: dict, rows, min_group_rows=200, max_tries=100):
+        if not labels_by_view:
+            raise ValueError("labels_by_view needs at least one view")
+        self._setup(dict(labels_by_view), rows, min_group_rows, max_tries)
+        self._keys_by_view: dict = {}
+        for key in self.valid_keys:
+            self._keys_by_view.setdefault(key[0], []).append(key)
+        self.views = sorted(self._keys_by_view)
+
+    def sample_condition(self, rng) -> Condition:
+        keys = self._keys_by_view[self.views[int(rng.integers(len(self.views)))]]
+        return self._condition(keys[int(rng.integers(len(keys)))])

@@ -55,6 +55,14 @@ def join_art_styles(sample_ids: np.ndarray, annotations: list[dict]) -> np.ndarr
     return styles
 
 
+def join_captions(sample_ids: np.ndarray, annotations: list[dict]) -> np.ndarray:
+    """annotations[sample_id]["caption"] per feature row (the same positional join as join_annotations)."""
+    rows = _rows_by_sample_id(sample_ids, annotations)
+    if any(not isinstance(row.get("caption"), str) or not row["caption"].strip() for row in rows):
+        raise ValueError("Every ArtELingo row needs a non-empty string caption")
+    return np.asarray([row["caption"] for row in rows], dtype=object)
+
+
 def load_artelingo(feature_dir: str = FEATURE_DIR, annotations_path: Path = ANNOTATIONS_PATH,
                    expected_samples: int = 308_723) -> ArtelingoData:
     manager = FeatureManager(storage_dir=feature_dir)

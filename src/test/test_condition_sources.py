@@ -135,3 +135,43 @@ def test_clip_cluster_source_from_labels_equals_the_fitted_source():
     assert a.key[0] == "image" and b.key[0] == "caption"
     with pytest.raises(ValueError):
         ClipClusterSource.from_labels(fitted.labels_by_view["image"], fitted.labels_by_view["caption"][:-1], rows)
+
+
+from src.train.condition_episodes import mine_condition_episodes  # noqa: E402
+from src.train.condition_sources import MultiPartitionSource  # noqa: E402
+
+
+def test_multi_partition_source_draws_each_view_about_half_the_time():
+    rows = np.arange(2000)
+    src = MultiPartitionSource({"affect": rows % 4, "image": rows % 16}, rows, min_group_rows=50)
+    rng = np.random.default_rng(0)
+    views = [src.sample_condition(rng).key[0] for _ in range(4000)]
+    assert src.views == ["affect", "image"]
+    assert 0.46 < views.count("affect") / len(views) < 0.54      # uniform over keys would give 4/20 = 0.2
+
+
+def test_multi_partition_conditions_and_outside_follow_their_view():
+    rows = np.arange(2000)
+    labels = {"affect": rows % 4, "image": (rows // 7) % 10}
+    src = MultiPartitionSource(labels, rows, min_group_rows=50)
+    assert len(set(src.valid_keys)) == len(src.valid_keys) == 14
+    for key in src.valid_keys:
+        cond = src._condition(key)
+        view_labels = labels[key[0]]
+        assert (view_labels[cond.inside] == key[1]).all() and (view_labels[cond.outside] != key[1]).all()
+        assert len(np.union1d(cond.inside, cond.outside)) == 2000
+
+
+def test_view_without_valid_groups_is_excluded():
+    rows = np.arange(1000)
+    src = MultiPartitionSource({"affect": rows % 4, "tiny": rows % 500}, rows, min_group_rows=100)
+    assert src.views == ["affect"]
+    assert all(src.sample_condition(np.random.default_rng(i)).key[0] == "affect" for i in range(20))
+
+
+def test_multi_partition_source_feeds_the_miner_and_is_not_swap_capable():
+    rows = np.arange(4000)
+    keys = rows // 2
+    src = MultiPartitionSource({"affect": rows % 5, "image": (rows // 3) % 6}, rows, min_group_rows=100)
+    ep = mine_condition_episodes(src, None, keys, 20, np.random.default_rng(1), num_hard=0, num_random=12)
+    assert ep.candidates.shape == (20, 16) and not src.swap_capable

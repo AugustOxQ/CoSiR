@@ -83,3 +83,22 @@ def test_load_artelingo_exposes_art_styles_by_the_same_positional_join(tmp_path,
     assert data.paintings.tolist() == ["p0", "p0", "p1"]
     assert data.art_styles.tolist() == ["Baroque", "Baroque", "Cubism"]
     assert data.emotions.tolist() == ["sadness", "awe", "fear"]
+
+
+from src.data.artelingo import join_captions  # noqa: E402
+
+
+def test_join_captions_is_positional_by_sample_id():
+    annotations = [{"caption": "calm sea", "painting": "p0"}, {"caption": "a dark storm", "painting": "p1"}]
+    assert join_captions(np.array([1, 0]), annotations).tolist() == ["a dark storm", "calm sea"]
+
+
+@pytest.mark.parametrize("bad", [{}, {"caption": ""}, {"caption": "   "}, {"caption": ["a list"]}, {"caption": None}])
+def test_join_captions_rejects_missing_or_bad_captions(bad):
+    with pytest.raises(ValueError, match="caption"):
+        join_captions(np.array([0]), [bad])
+
+
+def test_join_captions_rejects_bad_ids():
+    with pytest.raises(ValueError):
+        join_captions(np.array([0, 0]), [{"caption": "a"}, {"caption": "b"}])
