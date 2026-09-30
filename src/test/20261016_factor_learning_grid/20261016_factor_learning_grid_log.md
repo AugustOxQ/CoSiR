@@ -26,3 +26,37 @@ peak 3.86 GiB. Decision: `run_locally` (thresholds: 45 min per run, 3 h total, 2
 - CUDA present; prepare numbers match expectations (183,694 rows, 36,518 paintings, 64 groups, finite reference).
 - All four cells train 10 and 60 steps with finite codes; checkpoints and histories written.
 - Smoke checkpoints (`*_smoke*.pt`) are discarded, never evaluated. Cache, checkpoints, results and logs are gitignored.
+
+# Task 4: full runs, selection evaluation, rule (2026-09-30)
+
+## Steps
+1. Trained the four cells at seed 42, 2,000 steps, locally. 4 x 3.86 GiB <= 20, so all four were launched as
+   parallel processes. AS died at start-up with CUDA OOM (the four processes reserved 5-7 GiB each, more than
+   the 3.9 GiB allocated peak; see `run_AS_seed42_oom_attempt1.log`). C0, A and S finished in parallel
+   (673.9 / 667.6 / 676.2 s); AS was rerun with the same command alone afterwards (528.2 s). All codes finite.
+2. Added `apply_rule` + `_check_rule` (verbatim from the brief), `model_codes`, `selection_episodes`,
+   `evaluate`, `tables` and diagnostics (`weight_summary`, `term_spread`, `history_record`, `reproduce_probe`).
+   Probe helpers are imported via importlib as `probe`.
+3. `--evaluate` (104 s; `run_evaluate.log`), run twice with identical results (the second run added the
+   cell - C0 comparison on the beta grid as context).
+
+## What was verified
+- `_check_rule()` passed; selection episode SHA-256s equal stage (d)'s; all episode rows are selection rows.
+- Codes finite on scorer-train + selection rows and NaN elsewhere; evaluation inputs NaN outside selection.
+- Checkpoint configs equal `cell_config(cell, 42)`; histories are 2,000-step runs; smoke checkpoints unused.
+- Original R3 reproduces the headroom probe's stored ranks exactly (naive at all betas, CLIP-only, oracle at
+  0.3 and 0, oracle null): identical share 1.000.
+
+## Result (selection rows, naive R@1 at beta 0.3, pooled mean of directions)
+| model | gates | naive R@1 | D vs C0 | D_emotion vs C0 |
+|---|---|---:|---:|---:|
+| R3 (reference) | 9/9 | 19.36 | | |
+| C0 | 9/9 | 19.71 | | |
+| A | 8/9 (readout) | 16.69 | -3.03 [-3.85, -2.20] | -1.90 [-3.03, -0.81] |
+| S | 8/9 (sparsity, caption 0.559) | 21.15 | +1.44 [+0.61, +2.26] | -0.73 [-1.83, +0.39] |
+| AS | 8/9 (readout, caption +0.0008) | 18.95 | -0.77 [-1.62, +0.07] | -1.59 [-2.69, -0.51] |
+
+Rule outcome: **STOP, no cell qualifies** (C0 passes all gates). Without the gates, S would still fail the
+emotion guard (lower bound -1.83 <= -1.0). Replication and the held test are not run.
+
+Report: `docs/reports/auto/v2/2026-10-16_candidate_a_factor_learning_selection.md`.
