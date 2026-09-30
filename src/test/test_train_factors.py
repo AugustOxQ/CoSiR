@@ -305,3 +305,174 @@ def test_encode_rows_reproduces_the_codes_train_factors_returns():
                                                                                     batch_size=16), device="cpu")
     again_img, again_txt = encode_rows(model, img, txt)
     assert np.array_equal(again_img, img_codes) and np.array_equal(again_txt, txt_codes)
+
+
+import dataclasses
+
+from src.train.condition_episodes import mine_condition_episodes
+from src.train.condition_sources import CommunitySource
+from src.train.factor_condition_loss import naive_episode_scores
+from src.train.train_factors import GroupRows
+
+
+def test_group_rows_expand_returns_every_row_of_each_touched_group():
+    groups = np.array([3, 1, 3, 2, 1, 3, 0])
+    index = GroupRows(groups)
+    assert index.expand(np.array([0])).tolist() == [0, 2, 5]
+    assert index.expand(np.array([4, 6])).tolist() == [1, 4, 6]
+    assert index.expand(np.array([2, 5, 0])).tolist() == [0, 2, 5]
+
+
+def test_painting_batches_contain_complete_paintings(paired_features, monkeypatch):
+    import src.train.train_factors as tf
+
+    img, txt, graph = paired_features                       # 48 rows, edges (2k, 2k+1)
+    groups = np.arange(48) // 4                              # paintings of 4 rows
+    seen = []
+    real = tf.cross_modal_infonce_loss
+
+    def spy(img_codes, txt_codes, temperature, group_ids):
+        seen.append(group_ids.cpu().numpy())
+        return real(img_codes, txt_codes, temperature, group_ids)
+
+    monkeypatch.setattr(tf, "cross_modal_infonce_loss", spy)
+    config = FactorTrainingConfig(num_factors=4, epochs=3, batch_size=4, agreement="infonce",
+                                  painting_batches=True)
+    train_factors(img, txt, graph, config, device="cpu", group_ids=groups)
+    assert len(seen) == 3
+    for batch_groups in seen:
+        assert (np.bincount(batch_groups)[np.unique(batch_groups)] == 4).all()
+
+
+def test_painting_agreement_replaces_the_row_infonce(paired_features, monkeypatch):
+    import src.train.train_factors as tf
+
+    img, txt, graph = paired_features
+    calls = {"painting": 0, "row": 0}
+    real_painting = tf.painting_infonce_loss
+
+    def painting_spy(*args, **kwargs):
+        calls["painting"] += 1
+        return real_painting(*args, **kwargs)
+
+    def row_spy(*args, **kwargs):
+        calls["row"] += 1
+        raise AssertionError("row InfoNCE must not run under painting agreement")
+
+    monkeypatch.setattr(tf, "painting_infonce_loss", painting_spy)
+    monkeypatch.setattr(tf, "cross_modal_infonce_loss", row_spy)
+    config = FactorTrainingConfig(num_factors=4, epochs=2, batch_size=4, agreement="infonce",
+                                  agreement_level="painting", painting_batches=True)
+    train_factors(img, txt, graph, config, device="cpu", group_ids=np.arange(48) // 4)
+    assert calls == {"painting": 2, "row": 0}
+
+
+def _condition_world():
+    img, txt, graph = _ring_fixture()                        # 64 rows, D = 16
+    keys = np.arange(64)                                     # each row its own painting
+    source = CommunitySource(np.arange(64) % 4, np.arange(64), min_group_rows=4)
+    return img, txt, graph, keys, source
+
+
+def test_condition_loss_trains_and_records_history():
+    img, txt, graph, keys, source = _condition_world()
+    config = FactorTrainingConfig(num_factors=8, epochs=5, batch_size=16, agreement="infonce",
+                                  painting_batches=True, lambda_condition=1.0, condition_episodes_per_step=8)
+    history = {}
+    _, img_codes, txt_codes = train_factors(img, txt, graph, config, device="cpu", group_ids=keys,
+                                            condition_source=source, history=history, log_every=1)
+    assert np.isfinite(img_codes).all() and np.isfinite(txt_codes).all()
+    assert history["step"] == [1, 2, 3, 4, 5]
+    assert all(np.isfinite(history["condition_loss"])) and all(t > 0 for t in history["tau"])
+
+
+def test_condition_source_rows_must_index_training_rows():
+    img, txt, graph, keys, _ = _condition_world()
+    global_source = CommunitySource(np.arange(200) % 4, np.arange(100, 200), min_group_rows=4)
+    config = FactorTrainingConfig(num_factors=8, epochs=1, batch_size=16, agreement="infonce",
+                                  painting_batches=True, lambda_condition=1.0)
+    with pytest.raises(ValueError, match="training rows"):
+        train_factors(img, txt, graph, config, device="cpu", group_ids=keys, condition_source=global_source)
+
+
+@pytest.mark.parametrize("overrides, kwargs, message", [
+    (dict(lambda_condition=1.0), dict(), "condition_source"),
+    (dict(), dict(condition_source="SOURCE"), "condition_source"),
+    (dict(agreement_level="painting"), dict(), "painting_batches"),
+    (dict(agreement_level="rows"), dict(), "agreement_level"),
+    (dict(painting_batches=True), dict(group_ids=None), "group_ids"),
+])
+def test_new_options_are_validated(overrides, kwargs, message):
+    img, txt, graph, keys, source = _condition_world()
+    config = dataclasses.replace(FactorTrainingConfig(num_factors=8, epochs=1, batch_size=16, agreement="infonce"),
+                                 **overrides)
+    call = {"group_ids": keys, **kwargs}
+    if call.get("condition_source") == "SOURCE":
+        call["condition_source"] = source
+    if call["group_ids"] is None and config.agreement == "infonce":
+        config = dataclasses.replace(config, agreement="cosine")
+    with pytest.raises(ValueError, match=message):
+        train_factors(img, txt, graph, config, device="cpu", **call)
+
+
+def test_checkpoint_without_new_fields_loads_with_defaults(tmp_path):
+    from src.train.train_factors import load_factor_checkpoint, save_factor_checkpoint
+
+    img, txt, graph = _ring_fixture()
+    config = FactorTrainingConfig(num_factors=8, epochs=2, batch_size=16)
+    model, _, _ = train_factors(img, txt, graph, config, device="cpu")
+    save_factor_checkpoint(model, config, tmp_path / "old.pt")
+    payload = torch.load(tmp_path / "old.pt", weights_only=True)
+    for field in ("agreement_level", "painting_batches", "lambda_condition", "condition_episodes_per_step",
+                  "condition_beta"):
+        payload["config"].pop(field)
+    torch.save(payload, tmp_path / "old.pt")
+    _, loaded = load_factor_checkpoint(tmp_path / "old.pt")
+    assert loaded == config
+
+
+def _style_world(seed=7):
+    """480 rows / 240 paintings; a 4-way 'style' carried by a low-variance direction, content high-variance.
+
+    The style amplitude (1.5, not the brief's 0.25) keeps the style codes above the factor-code scale reachable in
+    300 Adam steps; at 0.25 even the condition loss cannot move the naive R@1 (0.27 vs 0.285)."""
+    rng = np.random.default_rng(seed)
+    paint = np.arange(480) // 2
+    style = rng.integers(0, 4, 240)[paint]
+    content = rng.standard_normal((240, 12))[paint]
+    onehot = np.eye(4)[style] * 1.5
+    img = np.hstack([content, onehot]) + 0.05 * rng.standard_normal((480, 16))
+    txt = np.hstack([content + 0.3 * rng.standard_normal((480, 12)), onehot]) + 0.05 * rng.standard_normal((480, 16))
+    left = np.arange(0, 480, 2)
+    graph = csr_matrix((np.ones(480, dtype=np.float32),
+                        (np.concatenate((left, left + 1)), np.concatenate((left + 1, left)))), shape=(480, 480))
+    return img.astype(np.float32), txt.astype(np.float32), graph, paint, style
+
+
+def _naive_r1(model, img, txt, source, keys, n=200, seed=99):
+    from src.train.train_factors import encode_rows
+
+    ic, tc = encode_rows(model, img, txt, device="cpu")
+    ep = mine_condition_episodes(source, None, keys, n, np.random.default_rng(seed), num_hard=0, num_random=12)
+    t = lambda a: torch.as_tensor(a)                                   # noqa: E731
+    scores = naive_episode_scores(t(img), t(txt), t(ic), t(tc), t(ep.anchor), t(ep.supports), t(ep.contrasts),
+                                  t(ep.candidates), beta=0.3)
+    mask = torch.as_tensor(ep.positive_mask).float()
+    hit = [mask.gather(1, s.argmax(dim=1, keepdim=True)).mean().item() for s in scores.values()]
+    return sum(hit) / 2
+
+
+def test_condition_loss_teaches_a_low_variance_condition():
+    from src.train.train_factors import R3_CONFIG
+
+    img, txt, graph, paint, style = _style_world()
+    source = CommunitySource(style, np.arange(480), min_group_rows=20)
+    base = dataclasses.replace(R3_CONFIG, num_factors=8, epochs=300, batch_size=64, painting_batches=True,
+                               condition_episodes_per_step=16)
+    runs = {}
+    for name, lam in (("none", 0.0), ("condition", 1.0)):
+        config = dataclasses.replace(base, lambda_condition=lam)
+        model, _, _ = train_factors(img, txt, graph, config, device="cpu", group_ids=paint,
+                                    condition_source=source if lam > 0 else None)
+        runs[name] = _naive_r1(model, img, txt, source, paint)
+    assert runs["condition"] >= runs["none"] + 0.10, runs

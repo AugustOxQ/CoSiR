@@ -1,5 +1,6 @@
 """Train a shared factor dictionary from paired features and a content graph."""
 
+import math
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -7,12 +8,15 @@ import torch
 from scipy.sparse import csr_matrix, triu
 
 from src.model.factors import SharedFactorEncoder
+from src.train.condition_episodes import mine_condition_episodes
+from src.train.factor_condition_loss import naive_episode_loss, naive_episode_scores
 from src.train.factors import (
     anti_split_penalty,
     cross_modal_infonce_loss,
     decorrelation_penalty,
     graph_neighbor_consistency_loss,
     paired_agreement_loss,
+    painting_infonce_loss,
     reconstruction_loss,
     sparsity_penalty,
     usage_balance_penalty,
@@ -41,6 +45,13 @@ class FactorTrainingConfig:
     decorrelation penalty; ``activation="topk"`` (with ``topk``) keeps only the
     top-k factors per item; ``center_inputs`` subtracts per-modality feature
     means inside the encoder.
+
+    The last five fields (factor-learning spec 2026-09-30) are also OFF by default.
+    ``painting_batches`` expands every edge-sampled batch to all rows of each sampled painting (group);
+    ``agreement_level="painting"`` replaces the row InfoNCE with ``painting_infonce_loss`` (needs
+    ``painting_batches`` and ``agreement="infonce"``); ``lambda_condition > 0`` adds the naive-rule
+    condition-episode loss (``naive_episode_loss``) on ``condition_episodes_per_step`` episodes mined per
+    step from a ``condition_source``, scored at the fixed ``condition_beta`` with 12 random negatives.
     """
 
     num_factors: int = 32
@@ -60,6 +71,11 @@ class FactorTrainingConfig:
     activation: str = "relu"
     topk: int | None = None
     center_inputs: bool = False
+    agreement_level: str = "pair"
+    painting_batches: bool = False
+    lambda_condition: float = 0.0
+    condition_episodes_per_step: int = 64
+    condition_beta: float = 0.3
 
 
 R3_CONFIG = FactorTrainingConfig(lambda_usage_balance=0.1, agreement="infonce", lambda_decorrelation=1.0)
@@ -98,6 +114,42 @@ def encode_rows(model: SharedFactorEncoder, img_features, txt_features, rows=Non
     return np.concatenate(img_out), np.concatenate(txt_out)
 
 
+class GroupRows:
+    """Row lookup by group id: ``expand(rows)`` returns every row of every group that ``rows`` touches, sorted."""
+
+    def __init__(self, group_ids: np.ndarray) -> None:
+        self._group_ids = np.asarray(group_ids)
+        self._order = np.argsort(self._group_ids, kind="stable")
+        self._sorted = self._group_ids[self._order]
+
+    def expand(self, rows: np.ndarray) -> np.ndarray:
+        groups = np.unique(self._group_ids[np.asarray(rows)])
+        starts = np.searchsorted(self._sorted, groups, side="left")
+        stops = np.searchsorted(self._sorted, groups, side="right")
+        return np.sort(np.concatenate([self._order[a:b] for a, b in zip(starts, stops)]))
+
+
+CONDITION_RANDOM_NEGATIVES = 12
+
+
+def _mine_condition(source, group_ids: np.ndarray, config: FactorTrainingConfig, rng):
+    return mine_condition_episodes(source, None, group_ids, config.condition_episodes_per_step, rng,
+                                   num_hard=0, num_random=CONDITION_RANDOM_NEGATIVES)
+
+
+def _episode_tensors(model: SharedFactorEncoder, img: torch.Tensor, txt: torch.Tensor, episodes, device):
+    """Encode the unique rows of a batch of episodes; return their features, codes and row-local indices."""
+    table = np.concatenate([episodes.anchor[:, None], episodes.supports, episodes.contrasts, episodes.candidates],
+                           axis=1)
+    rows, inverse = np.unique(table, return_inverse=True)
+    inverse = torch.as_tensor(inverse.reshape(table.shape), device=device)
+    s, c = episodes.supports.shape[1], episodes.contrasts.shape[1]
+    index = {"anchor": inverse[:, 0], "supports": inverse[:, 1:1 + s], "contrasts": inverse[:, 1 + s:1 + s + c],
+             "candidates": inverse[:, 1 + s + c:]}
+    img_rows, txt_rows = img[rows].to(device), txt[rows].to(device)
+    return img_rows, txt_rows, model.encode_image(img_rows), model.encode_text(txt_rows), index
+
+
 def train_factors(
     img_features: np.ndarray,
     txt_features: np.ndarray,
@@ -105,6 +157,9 @@ def train_factors(
     config: FactorTrainingConfig,
     device: str | None = None,
     group_ids: np.ndarray | None = None,
+    condition_source=None,
+    history: dict | None = None,
+    log_every: int = 50,
 ) -> tuple[SharedFactorEncoder, np.ndarray, np.ndarray]:
     """Fit one edge-sampled unique-node batch per epoch; encode all rows once.
 
@@ -115,6 +170,9 @@ def train_factors(
     the content graph is a mutual-kNN graph on image features, so same-painting edges are common,
     and silently treating them as negatives trains a recipe that is not the validated R3. Pass
     ``group_ids=np.arange(n)`` to opt out of masking explicitly.
+    ``condition_source`` (rows 0 .. n-1 of the arrays passed in) is required exactly when
+    ``config.lambda_condition > 0``. ``history``, if a dict, receives per-step logs every ``log_every`` steps (plus
+    the first and last).
     """
     if config.agreement not in {"cosine", "infonce"}:
         raise ValueError(f"agreement must be 'cosine' or 'infonce', got {config.agreement!r}")
@@ -143,6 +201,19 @@ def train_factors(
             raise ValueError(
                 f"group_ids must be integer ids (e.g. dense leakage-group ids), got dtype {group_ids.dtype}"
             )
+    if config.agreement_level not in {"pair", "painting"}:
+        raise ValueError(f"agreement_level must be 'pair' or 'painting', got {config.agreement_level!r}")
+    if config.agreement_level == "painting" and not (config.painting_batches and config.agreement == "infonce"):
+        raise ValueError("agreement_level='painting' needs painting_batches=True and agreement='infonce'")
+    if (config.painting_batches or config.lambda_condition > 0) and group_ids is None:
+        raise ValueError("painting_batches and the condition loss need group_ids (painting / leakage-group ids)")
+    if config.lambda_condition < 0:
+        raise ValueError("lambda_condition must be >= 0")
+    if (config.lambda_condition > 0) != (condition_source is not None):
+        raise ValueError("pass a condition_source exactly when lambda_condition > 0")
+    if condition_source is not None and (condition_source.rows.min() < 0
+                                         or condition_source.rows.max() >= len(img_features)):
+        raise ValueError("condition_source rows must index the training rows (0 .. n-1), not global rows")
 
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     torch.manual_seed(config.seed)
@@ -157,6 +228,19 @@ def train_factors(
     model = model.to(selected_device)
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
 
+    group_rows = GroupRows(group_ids) if config.painting_batches else None
+    log_tau = None
+    if config.lambda_condition > 0:
+        condition_rng = np.random.default_rng([config.seed, 1])
+        first_episodes = _mine_condition(condition_source, group_ids, config, condition_rng)
+        with torch.no_grad():                                    # tau := std of step-0 scores (unit-scale logits)
+            img_rows, txt_rows, ic, tc, index = _episode_tensors(model, img, txt, first_episodes, selected_device)
+            scores = naive_episode_scores(img_rows, txt_rows, ic, tc, index["anchor"], index["supports"],
+                                          index["contrasts"], index["candidates"], config.condition_beta)
+            std = float(torch.cat([scores["i2t"].ravel(), scores["t2i"].ravel()]).std())
+        log_tau = torch.nn.Parameter(torch.tensor(math.log(max(std, 1e-6)), device=selected_device))
+        optimizer.add_param_group({"params": [log_tau]})
+
     for epoch in range(1, config.epochs + 1):
         model.train()
         epoch_rng = np.random.default_rng(config.seed + epoch)
@@ -164,6 +248,8 @@ def train_factors(
             len(edges), size=config.batch_size, replace=len(edges) < config.batch_size
         )]
         node_ids = np.unique(sampled.reshape(-1))
+        if group_rows is not None:
+            node_ids = group_rows.expand(node_ids)
         img_batch = img[node_ids].to(selected_device)
         txt_batch = txt[node_ids].to(selected_device)
         img_codes = model.encode_image(img_batch)
@@ -171,7 +257,11 @@ def train_factors(
         local_graph = graph[node_ids][:, node_ids].tocsr()
         local_ids = np.arange(len(node_ids), dtype=np.int64)
 
-        if config.agreement == "cosine":
+        if config.agreement_level == "painting":
+            agreement = painting_infonce_loss(
+                img_codes, txt_codes, torch.as_tensor(group_ids[node_ids], device=selected_device),
+                config.infonce_temperature)
+        elif config.agreement == "cosine":
             agreement = paired_agreement_loss(img_codes, txt_codes)
         else:
             agreement = cross_modal_infonce_loss(
@@ -199,10 +289,28 @@ def train_factors(
             loss = loss + config.lambda_decorrelation * 0.5 * (
                 decorrelation_penalty(img_codes) + decorrelation_penalty(txt_codes)
             )
+        condition_loss = None
+        if config.lambda_condition > 0:
+            episodes = first_episodes if epoch == 1 else _mine_condition(condition_source, group_ids, config,
+                                                                         condition_rng)
+            img_rows, txt_rows, ic, tc, index = _episode_tensors(model, img, txt, episodes, selected_device)
+            condition_loss = naive_episode_loss(
+                img_rows, txt_rows, ic, tc, **index,
+                positive_mask=torch.as_tensor(episodes.positive_mask, device=selected_device),
+                beta=config.condition_beta, log_tau=log_tau)
+            loss = loss + config.lambda_condition * condition_loss
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         optimizer.step()
         print(f"factor epoch={epoch} loss={loss.item():.6f}", flush=True)
+        if history is not None and (epoch % log_every == 0 or epoch in (1, config.epochs)):
+            history.setdefault("step", []).append(epoch)
+            history.setdefault("loss", []).append(loss.item())
+            history.setdefault("agreement", []).append(agreement.item())
+            history.setdefault("batch_rows", []).append(int(len(node_ids)))
+            if condition_loss is not None:
+                history.setdefault("condition_loss", []).append(condition_loss.item())
+                history.setdefault("tau", []).append(float(log_tau.detach().exp()))
 
     model.eval()
     full_img_codes, full_txt_codes = encode_rows(model, img, txt, device=selected_device)
