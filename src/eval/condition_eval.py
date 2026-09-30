@@ -161,27 +161,116 @@ def swap_success_difference(model_success, naive_success, n_boot=5000, seed=42) 
     return out
 
 
+def _target_first(candidates: np.ndarray, target_column) -> np.ndarray:
+    """Reorder each episode's candidates so ``target_column`` (an int, or one int per episode) comes first.
+
+    ``tie_aware_rank`` ranks column 0, so this makes the chosen candidate the "positive". The other
+    candidates keep their order. ``target_column=0`` returns the candidates unchanged.
+    """
+    n, k = candidates.shape
+    cols = np.broadcast_to(np.asarray(target_column, dtype=np.int64), (n,))
+    if (cols < 0).any() or (cols >= k).any():
+        raise ValueError(f"target_column must lie in [0, {k}), got {np.unique(cols)}")
+    if not cols.any():
+        return candidates
+    rest = np.arange(k - 1)[None, :]
+    rest = rest + (rest >= cols[:, None])
+    return np.take_along_axis(candidates, np.concatenate([cols[:, None], rest], axis=1), axis=1)
+
+
+def _direction_tensors(direction, img_feat, txt_feat, img_codes, txt_codes, anchor, candidates, device):
+    if direction == "i2t":
+        qf, cf, qc, cc = img_feat, txt_feat, img_codes, txt_codes
+    else:
+        qf, cf, qc, cc = txt_feat, img_feat, txt_codes, img_codes
+    return _t(qf[anchor], device), _t(cf[candidates], device), _t(qc[anchor], device), _t(cc[candidates], device)
+
+
+def _smooth_margin(scores: torch.Tensor) -> torch.Tensor:
+    """Column 0's margin over a soft maximum (temperature 0.01) of the other columns, per episode."""
+    return scores[:, 0] - 0.01 * torch.logsumexp(scores[:, 1:] / 0.01, dim=1)
+
+
 def ceiling_ranks(img_feat, txt_feat, img_codes, txt_codes, episodes: LabelEpisodes, beta=0.3, steps=100, lr=0.1,
-                  device=None) -> dict:
-    """Oracle upper bound: per-episode simplex weights optimised on the episode's own positive (diagnostic only)."""
-    candidates = np.concatenate([episodes.positive[:, None], episodes.distractors], axis=1)
+                  device=None, target_column=0) -> dict:
+    """Oracle upper bound: per-episode simplex weights optimised on the episode's own positive (diagnostic only).
+
+    Each episode gets its own weights (one softmax-parametrized vector per episode and direction), fitted
+    on the very candidate it is then scored on. With 32 factors against 12 negatives this is very flexible:
+    ``target_column`` (an int, or one int per episode, indexing ``[positive, *distractors]``) declares
+    another candidate the target, and a random distractor as target gives the null of this bound.
+    """
+    candidates = _target_first(np.concatenate([episodes.positive[:, None], episodes.distractors], axis=1),
+                               target_column)
     out = {}
     for d in ("i2t", "t2i"):
-        if d == "i2t":
-            qf, cf, qc, cc = img_feat, txt_feat, img_codes, txt_codes
-        else:
-            qf, cf, qc, cc = txt_feat, img_feat, txt_codes, img_codes
-        q, c = _t(qf[episodes.anchor], device), _t(cf[candidates], device)
-        qcode, ccode = _t(qc[episodes.anchor], device), _t(cc[candidates], device)
+        q, c, qcode, ccode = _direction_tensors(d, img_feat, txt_feat, img_codes, txt_codes, episodes.anchor,
+                                                candidates, device)
         theta = torch.zeros(len(episodes.anchor), qcode.shape[1], device=q.device, requires_grad=True)
         optimizer = torch.optim.Adam([theta], lr=lr)
         for _ in range(steps):
             s = conditional_score(q, c, qcode, ccode, torch.softmax(theta, dim=1), beta)
-            margin = s[:, 0] - 0.01 * torch.logsumexp(s[:, 1:] / 0.01, dim=1)
+            margin = _smooth_margin(s)
             optimizer.zero_grad()
             (-margin.mean()).backward()
             optimizer.step()
         with torch.no_grad():
             s = conditional_score(q, c, qcode, ccode, torch.softmax(theta, dim=1), beta)
             out[d] = tie_aware_rank(s).cpu().numpy()
+    return out
+
+
+def label_oracle_ranks(img_feat, txt_feat, img_codes, txt_codes, episodes: LabelEpisodes, beta=0.3, folds=2,
+                       steps=200, lr=0.1, seed=42, device=None, target_column=0) -> dict[str, np.ndarray]:
+    """Low-flexibility oracle: ONE simplex weight vector per target label, cross-validated across episodes.
+
+    Each label's episodes are split into ``folds`` folds (seeded permutation). For every fold, one
+    softmax-parametrized weight vector per label is fitted on that label's episodes in the other folds,
+    maximizing the smooth margin of the target over the other candidates (as in ``ceiling_ranks``),
+    averaged over both directions and weighted so every label counts equally. The fold's episodes are then
+    ranked with their label's vector, so every rank is out of fold. The same vector serves i2t and t2i.
+
+    Returns tie-aware ranks per direction for every episode. ``target_column`` works as in
+    ``ceiling_ranks``; a random distractor as target gives this oracle's null. Diagnostic only: if it
+    clearly beats the naive rule, the frozen factors carry the labels.
+    """
+    if folds < 2:
+        raise ValueError("folds must be at least 2 for out-of-fold ranks")
+    names, label_idx = np.unique(np.asarray(episodes.labels), return_inverse=True)
+    counts = np.bincount(label_idx, minlength=len(names))
+    if counts.min() < folds:
+        raise ValueError(f"every label needs at least {folds} episodes; {names[counts.argmin()]!r} has "
+                         f"{counts.min()}")
+    rng = np.random.default_rng(seed)
+    fold_of = np.empty(len(label_idx), dtype=np.int64)
+    for label in range(len(names)):
+        members = np.flatnonzero(label_idx == label)
+        fold_of[rng.permutation(members)] = np.arange(len(members)) % folds
+    candidates = _target_first(np.concatenate([episodes.positive[:, None], episodes.distractors], axis=1),
+                               target_column)
+    tensors = {d: _direction_tensors(d, img_feat, txt_feat, img_codes, txt_codes, episodes.anchor, candidates,
+                                     device) for d in ("i2t", "t2i")}
+    n_factors = tensors["i2t"][2].shape[1]
+    out = {d: np.full(len(label_idx), np.nan) for d in ("i2t", "t2i")}
+    for fold in range(folds):
+        train, test = np.flatnonzero(fold_of != fold), np.flatnonzero(fold_of == fold)
+        train_labels = torch.as_tensor(label_idx[train], device=tensors["i2t"][0].device)
+        share = torch.as_tensor(1.0 / np.bincount(label_idx[train], minlength=len(names))[label_idx[train]],
+                                dtype=torch.float32, device=train_labels.device)
+        theta = torch.zeros(len(names), n_factors, device=train_labels.device, requires_grad=True)
+        optimizer = torch.optim.Adam([theta], lr=lr)
+        for _ in range(steps):
+            weights = torch.softmax(theta, dim=1)[train_labels]
+            loss = 0.0
+            for q, c, qcode, ccode in tensors.values():
+                s = conditional_score(q[train], c[train], qcode[train], ccode[train], weights, beta)
+                loss = loss - 0.5 * (_smooth_margin(s) * share).sum()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        with torch.no_grad():
+            weights = torch.softmax(theta, dim=1)[torch.as_tensor(label_idx[test], device=train_labels.device)]
+            for d, (q, c, qcode, ccode) in tensors.items():
+                s = conditional_score(q[test], c[test], qcode[test], ccode[test], weights, beta)
+                out[d][test] = tie_aware_rank(s).cpu().numpy()
     return out
