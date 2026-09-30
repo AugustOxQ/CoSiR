@@ -139,6 +139,13 @@ def test_main_requires_a_sweep_and_merges_both_flags(monkeypatch):
         h2h_agent.main([])
 
 
+@pytest.fixture(autouse=True)
+def _no_sleep(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(h2h_agent.time, "sleep", lambda s: sleeps.append(s))
+    return sleeps
+
+
 def _round_robin_setup(monkeypatch, budgets):
     """Fake wandb whose agent runs `function` once per call while the sweep's budget remains."""
     logs, agent_calls = [], []
@@ -167,8 +174,8 @@ def test_round_robin_visits_sweeps_in_order_and_stops_after_a_zero_trial_pass(mo
     budgets = {"a": 2, "b": 0, "c": 1}
     logs, calls = _round_robin_setup(monkeypatch, budgets)
     h2h_agent.run_agent(SWEEPS, None)
-    # pass 1: a, b, c (2 trials); pass 2: a, b, c (1 trial: a); pass 3: a, b, c (0 trials) -> stop
-    assert [c[2] for c in calls] == list("abc") * 3
+    # passes 1-2 run trials (2, then 1); passes 3-5 are empty -> stop
+    assert [c[2] for c in calls] == list("abc") * 5
     assert all(c[:2] == ("e", "p") and c[3] == 1 for c in calls)
     assert len(logs) == 3 and budgets == {"a": 0, "b": 0, "c": 0}
 
@@ -196,3 +203,42 @@ def test_free_cuda_collects_garbage_before_emptying_the_cache(monkeypatch):
     monkeypatch.setitem(sys.modules, "torch", types.SimpleNamespace(cuda=cuda))
     h2h_agent._free_cuda()
     assert order == ["gc", "empty_cache"]
+
+
+def test_three_empty_passes_stop_with_two_sleeps(monkeypatch, _no_sleep):
+    logs, calls = _round_robin_setup(monkeypatch, {"a": 0, "b": 0, "c": 0})
+    assert h2h_agent.run_agent(SWEEPS, None) == 0
+    assert len(calls) == 9 and _no_sleep == [h2h_agent.EMPTY_PASS_SLEEP_S] * 2   # sleeps between passes 1-2, 2-3
+
+
+def test_empty_pass_then_resume_continues(monkeypatch, _no_sleep):
+    budgets = {"a": 2, "b": 0, "c": 0}
+    logs, calls = _round_robin_setup(monkeypatch, budgets)
+    real_agent = sys.modules["wandb"].agent
+
+    def flaky(sweep_id, **kw):
+        if 3 <= len(calls) < 6:
+            calls.append((kw["entity"], kw["project"], sweep_id, kw["count"]))
+            return
+        return real_agent(sweep_id, **kw)
+
+    sys.modules["wandb"].agent = flaky
+    assert h2h_agent.run_agent(SWEEPS, None) == 2
+    assert len(logs) == 2 and len(_no_sleep) >= 3      # slept after the empty pass, then resumed
+
+
+def test_wandb_agent_exception_does_not_crash_loop(monkeypatch, capsys):
+    budgets = {"a": 1, "b": 1, "c": 0}
+    logs, calls = _round_robin_setup(monkeypatch, budgets)
+    real_agent = sys.modules["wandb"].agent
+    boom = {"left": 1}
+
+    def agent(sweep_id, **kw):
+        if boom["left"]:
+            boom["left"] -= 1
+            raise RuntimeError("api down")
+        return real_agent(sweep_id, **kw)
+
+    sys.modules["wandb"].agent = agent
+    assert h2h_agent.run_agent(SWEEPS, None) == 2
+    assert "api down" in capsys.readouterr().err and len(logs) == 2

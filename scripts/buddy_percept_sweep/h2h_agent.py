@@ -7,7 +7,7 @@ Runs `wandb.agent(..., function=_trial, count=1)` in this process, so the
 fixed-input store, the split and the pilot / PercepT modules load once per
 process. With several sweeps the agent goes round-robin (one trial per sweep
 per pass), so every cell progresses together and no GPU idles when one cell
-reaches its `run_cap`; it stops after a full pass that ran no trial, or after
+reaches its `run_cap`; it stops after EMPTY_PASSES_TO_STOP consecutive full passes that ran no trial, or after
 `--count` trials in total. A failing trial logs objective=-1.0 and the error
 and never kills the agent.
 """
@@ -15,6 +15,7 @@ import argparse
 import gc
 import numbers
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -27,6 +28,8 @@ if __package__ in (None, ""):
 from scripts.buddy_percept_sweep.h2h_trial import OBJECTIVE_FAIL, resolve_h2h_config, run_h2h_trial
 from scripts.buddy_percept_sweep.h2h_types import SEARCH_SEEDS
 
+EMPTY_PASSES_TO_STOP = 3  # consecutive zero-trial passes over all sweeps before the agent gives up
+EMPTY_PASS_SLEEP_S = 60   # sleep after each zero-trial pass that is not the last (so 2 sleeps before stopping)
 TRIALS_PER_CELL = 300     # `run_cap` in all four scripts/h2h_sweeps/*.yaml; keep them in step
 
 
@@ -133,18 +136,30 @@ def _trial() -> None:
 
 def run_agent(sweeps: list, count: Optional[int]) -> int:
     """Round-robin over `sweeps` [(entity, project, sweep_id), ...], one trial
-    per sweep per pass. Stops when a full pass ran no trial (every sweep is
-    finished) or when `count` trials have run in total. Returns the trial count."""
+    per sweep per pass. Stops after EMPTY_PASSES_TO_STOP consecutive passes that
+    ran no trial (sleeping EMPTY_PASS_SLEEP_S between them, so a transient W&B
+    failure does not end the run) or when `count` trials have run in total; a
+    pass that runs a trial resets the counter. An exception from wandb.agent
+    itself is logged to stderr and counts as a zero-trial call. Returns the trial count."""
     import wandb
     start = _TRIALS_RUN
+    empty_passes = 0
     while True:
         pass_start = _TRIALS_RUN
         for entity, project, sweep_id in sweeps:
             if count is not None and _TRIALS_RUN - start >= count:
                 return _TRIALS_RUN - start
-            wandb.agent(sweep_id, function=_trial, entity=entity, project=project, count=1)
-        if _TRIALS_RUN == pass_start:
+            try:
+                wandb.agent(sweep_id, function=_trial, entity=entity, project=project, count=1)
+            except Exception as exc:
+                print(f"wandb.agent failed for {entity}/{project}/{sweep_id}: {exc!r}", file=sys.stderr)
+        if _TRIALS_RUN != pass_start:
+            empty_passes = 0
+            continue
+        empty_passes += 1
+        if empty_passes >= EMPTY_PASSES_TO_STOP:
             return _TRIALS_RUN - start
+        time.sleep(EMPTY_PASS_SLEEP_S)
 
 
 def main(argv=None) -> None:
