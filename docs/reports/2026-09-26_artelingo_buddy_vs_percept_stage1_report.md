@@ -88,6 +88,11 @@ Concretely:
   6, pass the gate on only 1/4 seeds (the winner's curse near the gate).
   Among the 10 finalists, emotion AMI and Stage 2 AUC also traded off
   (r = −0.85), a frontier observation rather than a general law.
+  **CONFIRMATION CHECKS 2026-09-30** (see §6j): on the investigation's own
+  independent re-clustering yardstick, the sweep winner clears the emotion
+  bar on only 1/8 seeds (mean 0.1189). The untuned pilot baseline scores
+  higher on emotion on both yardsticks (0.1230 independent, 0.1341 gate).
+  The winner's gains are genre AMI and Stage 2 AUC, not emotion.
 
 **Do not pursue the DEC-style clustering-loss hybrid further** (see §4) — it
 was tried four times (literal transplant, geometry-corrected vMF kernel, a
@@ -1026,6 +1031,62 @@ stands until a matched head-to-head is run.** That needs a faithful
 buddy Stage 1 mode in the harness, validated against §6f first, and then
 both systems through that same harness with matched topic counts, the
 same target construction, and a comparable tuning budget for PercepT.
+
+## 6j. The two confirmation checks: the sweep winner's Stage 1 advantage does not hold up
+
+**2026-09-30.** Both checks proposed at the end of §6i were run on DAS6
+(commit `a906a89`). The winner `m8x7ifx4` was scored on its 4 original seeds
+and on 4 new ones (11, 23, 57, 101), with `transfer_k` 40 (as tuned) and 20.
+The pilots' unchanged attention-h1 baseline was re-fitted at seeds
+42/7/123/2024. Every run was scored on both yardsticks:
+
+- **independent:** re-cluster the held-out embedding on its own, with the
+  pilots' repaired mutual-kNN graph and modularity Leiden (§2/§3's
+  method, the one the Pareto bar was set with);
+- **gate:** the sweep's measurement, where train topics are merged at 0.02 and
+  held-out paintings are labelled by a k-NN vote.
+
+Raw logs are in `src/test/20260930_harness_confirmation/logs/`.
+
+| system | seeds | independent emotion AMI (mean, range) | independent genre AMI (mean) | clears bar, independent | gate emotion AMI, k=40 (mean) | clears gate, k=40 | Stage 2 AUC (mean) |
+|---|---|---|---|---:|---:|---:|---:|
+| attention-h1 baseline (pilot, untuned) | 42/7/123/2024 | **0.1230** (0.1179–0.1293) | 0.2403 | 2/4 | **0.1341** | 3/4 (seed 42 misses on genre, 0.1945) | — |
+| sweep winner `m8x7ifx4` | original 4 | 0.1164 (0.1104–0.1234) | 0.3014 | 0/4 | 0.1295 | 4/4 | 0.9355 |
+| sweep winner `m8x7ifx4` | new 4 | 0.1213 (0.1182–0.1251) | 0.3058 | 1/4 | 0.1314 | 4/4 | 0.9376 |
+
+With `transfer_k` fixed at 20 on the new seeds, the winner's gate emotion
+AMI is 0.1286 (still 4/4). Its independent AMI and Stage 2 AUC do not
+change (`transfer_k` touches only held-out labelling).
+
+**What this shows:**
+
+1. **The winner's "4/4 seeds" is an artefact of the transfer yardstick.**
+   On the investigation's own independent measurement it clears the
+   emotion bar on only 1 of 8 seeds (mean 0.1189).
+2. **On emotion, the winner is no better than the untuned baseline on
+   either yardstick.** The baseline scores higher on both: 0.1230 vs 0.1189
+   independent, 0.1341 vs 0.1295–0.1314 gate. The sweep did not find a
+   better emotion structure. It found configurations with much higher
+   genre AMI (≈0.30 vs ≈0.24) and much higher Stage 2 AUC, at a small cost
+   in emotion. This matches the emotion/AUC trade-off seen among the
+   finalists in §6i.
+3. **Its Stage 2 AUC is robust.** On 4 new seeds it scores 0.9376
+   (0.924–0.944), in line with the stress test. This number is still
+   harness-internal and not comparable to §6g, for the reasons listed in
+   §6i.
+4. **The pilot result depends on the GPU.** Re-fitting the "unchanged"
+   baseline on DAS6 gives seed-42 independent AMIs of 0.1187 / 0.2639; the
+   local GPU gave 0.1249 / 0.2404 (§3). Seed-level numbers therefore shift
+   by up to ~0.006 between GPU types, which is about the width of the
+   margins being argued over. From here on, comparisons use one GPU type
+   (DAS6) for every arm.
+
+§3's Stage 1 conclusion ("buddy clears the AMI bar without PercepT's
+occupancy collapse") rests on the pilot baseline. It is weakened but not
+reversed. On DAS6 the baseline clears the bar on 2/4 seeds (3/4 locally),
+and its mean emotion AMI of 0.1230 sits just below the 0.1236 threshold.
+The matched head-to-head (next section, in progress) scores both systems
+on both yardsticks, on the same GPUs.
 
 ## 7. Artifact map
 

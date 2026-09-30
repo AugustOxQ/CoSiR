@@ -1,0 +1,244 @@
+{"cuda_visible_devices": "0", "duration_s": 500, "ended_at": "2026-09-30T01:05:10.323201+00:00", "exit_code": 0, "gpu_slots": [0], "host": "node403", "inherited_cuda_visible_devices": "0,1,2", "pgid": 1820666, "pid": 1820666, "pid_start": 177581995, "slurm_job_id": "57201", "started_at": "2026-09-30T00:56:52.363309+00:00", "state": "succeeded"}
+[2026-09-30 02:59:13] Using cuda for the Attention-h1 embedding snapshot.
+[2026-09-30 02:59:13] Verifying and loading train CLIP features...
+[02:59:14] Extraction verified complete: 308723 sample ids match /local/wding/Dataset/artelingo/artelingo_train.json.
+[02:59:19] Dedup: 308723 rows -> 61402 unique paintings. Image-embedding self-consistency check (same painting, different caption rows, n=500): min cosine sim = 1.0000 (should be ~1.0 — same image every time; low value would mean a data bug).
+[2026-09-30 02:59:19] Extracting train GoEmotions probabilities...
+[2026-09-30 02:59:19] Loading GoEmotions encoder (SamLowe/roberta-base-go_emotions) on cuda...
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]
+Loading weights:  13%|█▎        | 27/201 [00:00<00:00, 256.48it/s]
+Loading weights:  26%|██▋       | 53/201 [00:00<00:00, 191.61it/s]
+Loading weights:  37%|███▋      | 74/201 [00:00<00:00, 174.71it/s]
+Loading weights:  46%|████▌     | 92/201 [00:00<00:00, 157.42it/s]
+Loading weights:  62%|██████▏   | 124/201 [00:00<00:00, 199.59it/s]
+Loading weights:  72%|███████▏  | 145/201 [00:00<00:00, 176.01it/s]
+Loading weights:  82%|████████▏ | 164/201 [00:00<00:00, 158.00it/s]
+Loading weights: 100%|██████████| 201/201 [00:01<00:00, 200.65it/s]
+[2026-09-30 02:59:28] Extracting GoEmotions probabilities for 308723 English caption rows in 1206 batches (batch_size=256, max_length=64)...
+[2026-09-30 02:59:43] Affect encoder progress: 25,600/308,723 caption rows.
+[2026-09-30 02:59:55] Affect encoder progress: 51,200/308,723 caption rows.
+[2026-09-30 03:00:07] Affect encoder progress: 76,800/308,723 caption rows.
+[2026-09-30 03:00:20] Affect encoder progress: 102,400/308,723 caption rows.
+[2026-09-30 03:00:32] Affect encoder progress: 128,000/308,723 caption rows.
+[2026-09-30 03:00:45] Affect encoder progress: 153,600/308,723 caption rows.
+[2026-09-30 03:00:57] Affect encoder progress: 179,200/308,723 caption rows.
+[2026-09-30 03:01:10] Affect encoder progress: 204,800/308,723 caption rows.
+[2026-09-30 03:01:22] Affect encoder progress: 230,400/308,723 caption rows.
+[2026-09-30 03:01:34] Affect encoder progress: 256,000/308,723 caption rows.
+[2026-09-30 03:01:47] Affect encoder progress: 281,600/308,723 caption rows.
+[2026-09-30 03:01:59] Affect encoder progress: 307,200/308,723 caption rows.
+[2026-09-30 03:02:00] Affect encoder progress: 308,723/308,723 caption rows.
+[2026-09-30 03:02:00] Verifying and loading held-out CLIP features...
+[03:02:00] Extraction verified complete: 46813 sample ids match /local/wding/Dataset/artelingo/artelingo_val_test.json.
+[03:02:01] Dedup: 46813 rows -> 9365 unique paintings. Image-embedding self-consistency check (same painting, different caption rows, n=500): min cosine sim = 1.0000 (should be ~1.0 — same image every time; low value would mean a data bug).
+[2026-09-30 03:02:01] Extracting held-out GoEmotions probabilities...
+[2026-09-30 03:02:01] Loading GoEmotions encoder (SamLowe/roberta-base-go_emotions) on cuda...
+
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 201/201 [00:00<00:00, 4247.45it/s]
+[2026-09-30 03:02:02] Extracting GoEmotions probabilities for 46813 English caption rows in 183 batches (batch_size=256, max_length=64)...
+[2026-09-30 03:02:15] Affect encoder progress: 25,600/46,813 caption rows.
+[2026-09-30 03:02:25] Affect encoder progress: 46,813/46,813 caption rows.
+[2026-09-30 03:02:26] Fitting train-only content PCA (50 components)...
+[2026-09-30 03:02:44] Building train content and affect teacher graphs...
+[buddies] Step 1: mutual KNN (K=20) — A_img nnz=482,242 (avg deg 7.85), A_txt nnz=235,532 (avg deg 3.84)
+[buddies] Step 2: union graph E — nnz=711,804, avg degree 11.59, isolated fixed=1063, connected components=38
+[buddies] Step 2b: connected E — added 37 bridge(s) over 38 components → connected components=1
+[2026-09-30 03:02:46] train-affect-teacher: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:02:47] train-affect-teacher: mutual graph nnz=619,072; isolated fixed=683; connected components=88.
+[2026-09-30 03:02:47] train-affect-teacher: added 87 bridge(s) over 88 components; final connected components=1.
+[2026-09-30 03:02:47] Teacher edge lists: content=355,939, affect=310,306.
+[2026-09-30 03:02:47] Capturing epoch-0 (pre-training) embeddings and running Leiden...
+[2026-09-30 03:02:48] epoch0-train-attn1: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:02:48] epoch0-train-attn1: mutual graph nnz=673,518; isolated fixed=330; connected components=17.
+[2026-09-30 03:02:48] epoch0-train-attn1: added 16 bridge(s) over 17 components; final connected components=1.
+[2026-09-30 03:02:56] epoch0-heldout-attn1: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:02:56] epoch0-heldout-attn1: mutual graph nnz=106,608; isolated fixed=42; connected components=3.
+[2026-09-30 03:02:56] epoch0-heldout-attn1: added 2 bridge(s) over 3 components; final connected components=1.
+[2026-09-30 03:02:57] epoch=0 train emotion AMI=0.0716 genre AMI=0.2860; held-out emotion AMI=0.0506 genre AMI=0.2042.
+[2026-09-30 03:02:57] Training Attention-h1 to convergence (this reruns the established recipe)...
+[2026-09-30 03:02:57] held-out-content-reference: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:02:57] held-out-content-reference: mutual graph nnz=96,616; isolated fixed=67; connected components=3.
+[2026-09-30 03:02:57] held-out-content-reference: added 2 bridge(s) over 3 components; final connected components=1.
+[2026-09-30 03:02:57] held-out-affect-reference: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:02:57] held-out-affect-reference: mutual graph nnz=92,208; isolated fixed=111; connected components=16.
+[2026-09-30 03:02:57] held-out-affect-reference: added 15 bridge(s) over 16 components; final connected components=1.
+[2026-09-30 03:02:57] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:02:57] held-out-learned-student: mutual graph nnz=106,608; isolated fixed=42; connected components=3.
+[2026-09-30 03:02:57] held-out-learned-student: added 2 bridge(s) over 3 components; final connected components=1.
+[2026-09-30 03:02:58] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:02:58] held-out-learned-student: mutual graph nnz=116,380; isolated fixed=22; connected components=1.
+[2026-09-30 03:02:58] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:02:59] epoch=5 content_recall=0.0752 affect_recall=0.0275
+[2026-09-30 03:02:59] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:02:59] held-out-learned-student: mutual graph nnz=120,856; isolated fixed=5; connected components=2.
+[2026-09-30 03:02:59] held-out-learned-student: added 1 bridge(s) over 2 components; final connected components=1.
+[2026-09-30 03:02:59] epoch=10 content_recall=0.0797 affect_recall=0.0380
+[2026-09-30 03:03:00] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:00] held-out-learned-student: mutual graph nnz=120,100; isolated fixed=4; connected components=1.
+[2026-09-30 03:03:00] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:00] epoch=15 content_recall=0.0755 affect_recall=0.0504
+[2026-09-30 03:03:00] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:00] held-out-learned-student: mutual graph nnz=122,578; isolated fixed=5; connected components=1.
+[2026-09-30 03:03:00] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:01] epoch=20 content_recall=0.0754 affect_recall=0.0631
+[2026-09-30 03:03:01] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:01] held-out-learned-student: mutual graph nnz=123,168; isolated fixed=2; connected components=1.
+[2026-09-30 03:03:01] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:01] epoch=25 content_recall=0.0733 affect_recall=0.0744
+[2026-09-30 03:03:01] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:01] held-out-learned-student: mutual graph nnz=122,830; isolated fixed=3; connected components=1.
+[2026-09-30 03:03:01] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:02] epoch=30 content_recall=0.0703 affect_recall=0.0839
+[2026-09-30 03:03:02] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:02] held-out-learned-student: mutual graph nnz=121,012; isolated fixed=3; connected components=1.
+[2026-09-30 03:03:02] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:02] epoch=35 content_recall=0.0686 affect_recall=0.0932
+[2026-09-30 03:03:03] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:03] held-out-learned-student: mutual graph nnz=120,734; isolated fixed=3; connected components=1.
+[2026-09-30 03:03:03] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:03] epoch=40 content_recall=0.0686 affect_recall=0.1009
+[2026-09-30 03:03:03] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:03] held-out-learned-student: mutual graph nnz=120,990; isolated fixed=5; connected components=1.
+[2026-09-30 03:03:03] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:04] epoch=45 content_recall=0.0691 affect_recall=0.1083
+[2026-09-30 03:03:04] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:04] held-out-learned-student: mutual graph nnz=120,842; isolated fixed=4; connected components=1.
+[2026-09-30 03:03:04] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:04] epoch=50 content_recall=0.0714 affect_recall=0.1101
+[2026-09-30 03:03:04] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:04] held-out-learned-student: mutual graph nnz=121,454; isolated fixed=5; connected components=1.
+[2026-09-30 03:03:04] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:05] epoch=55 content_recall=0.0763 affect_recall=0.1128
+[2026-09-30 03:03:05] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:05] held-out-learned-student: mutual graph nnz=121,044; isolated fixed=3; connected components=1.
+[2026-09-30 03:03:05] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:06] epoch=60 content_recall=0.0780 affect_recall=0.1121
+[2026-09-30 03:03:06] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:06] held-out-learned-student: mutual graph nnz=121,816; isolated fixed=5; connected components=1.
+[2026-09-30 03:03:06] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:06] epoch=65 content_recall=0.0783 affect_recall=0.1150
+[2026-09-30 03:03:06] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:06] held-out-learned-student: mutual graph nnz=121,490; isolated fixed=4; connected components=1.
+[2026-09-30 03:03:06] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:07] epoch=70 content_recall=0.0755 affect_recall=0.1207
+[2026-09-30 03:03:07] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:07] held-out-learned-student: mutual graph nnz=120,448; isolated fixed=4; connected components=1.
+[2026-09-30 03:03:07] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:07] epoch=75 content_recall=0.0749 affect_recall=0.1240
+[2026-09-30 03:03:07] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:07] held-out-learned-student: mutual graph nnz=120,412; isolated fixed=7; connected components=1.
+[2026-09-30 03:03:07] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:08] epoch=80 content_recall=0.0751 affect_recall=0.1264
+[2026-09-30 03:03:08] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:08] held-out-learned-student: mutual graph nnz=121,022; isolated fixed=6; connected components=1.
+[2026-09-30 03:03:08] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:09] epoch=85 content_recall=0.0745 affect_recall=0.1270
+[2026-09-30 03:03:09] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:09] held-out-learned-student: mutual graph nnz=121,302; isolated fixed=5; connected components=1.
+[2026-09-30 03:03:09] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:09] epoch=90 content_recall=0.0780 affect_recall=0.1263
+[2026-09-30 03:03:09] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:09] held-out-learned-student: mutual graph nnz=120,854; isolated fixed=6; connected components=1.
+[2026-09-30 03:03:09] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:10] epoch=95 content_recall=0.0788 affect_recall=0.1278
+[2026-09-30 03:03:10] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:10] held-out-learned-student: mutual graph nnz=122,220; isolated fixed=5; connected components=2.
+[2026-09-30 03:03:10] held-out-learned-student: added 1 bridge(s) over 2 components; final connected components=1.
+[2026-09-30 03:03:10] epoch=100 content_recall=0.0805 affect_recall=0.1283
+[2026-09-30 03:03:11] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:11] held-out-learned-student: mutual graph nnz=121,506; isolated fixed=7; connected components=1.
+[2026-09-30 03:03:11] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:11] epoch=105 content_recall=0.0804 affect_recall=0.1290
+[2026-09-30 03:03:11] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:11] held-out-learned-student: mutual graph nnz=121,832; isolated fixed=6; connected components=1.
+[2026-09-30 03:03:11] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:12] epoch=110 content_recall=0.0819 affect_recall=0.1339
+[2026-09-30 03:03:12] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:12] held-out-learned-student: mutual graph nnz=122,126; isolated fixed=4; connected components=1.
+[2026-09-30 03:03:12] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:12] epoch=115 content_recall=0.0814 affect_recall=0.1361
+[2026-09-30 03:03:12] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:12] held-out-learned-student: mutual graph nnz=121,242; isolated fixed=4; connected components=1.
+[2026-09-30 03:03:12] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:13] epoch=120 content_recall=0.0842 affect_recall=0.1329
+[2026-09-30 03:03:13] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:13] held-out-learned-student: mutual graph nnz=122,372; isolated fixed=2; connected components=1.
+[2026-09-30 03:03:13] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:14] epoch=125 content_recall=0.0839 affect_recall=0.1377
+[2026-09-30 03:03:14] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:14] held-out-learned-student: mutual graph nnz=121,456; isolated fixed=2; connected components=1.
+[2026-09-30 03:03:14] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:14] epoch=130 content_recall=0.0837 affect_recall=0.1383
+[2026-09-30 03:03:14] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:14] held-out-learned-student: mutual graph nnz=122,356; isolated fixed=3; connected components=1.
+[2026-09-30 03:03:14] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:15] epoch=135 content_recall=0.0804 affect_recall=0.1476
+[2026-09-30 03:03:15] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:15] held-out-learned-student: mutual graph nnz=121,404; isolated fixed=3; connected components=1.
+[2026-09-30 03:03:15] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:15] epoch=140 content_recall=0.0849 affect_recall=0.1404
+[2026-09-30 03:03:15] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:15] held-out-learned-student: mutual graph nnz=121,638; isolated fixed=4; connected components=1.
+[2026-09-30 03:03:15] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:16] epoch=145 content_recall=0.0864 affect_recall=0.1390
+[2026-09-30 03:03:16] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:16] held-out-learned-student: mutual graph nnz=121,524; isolated fixed=4; connected components=1.
+[2026-09-30 03:03:16] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:17] epoch=150 content_recall=0.0871 affect_recall=0.1379
+[2026-09-30 03:03:17] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:17] held-out-learned-student: mutual graph nnz=121,632; isolated fixed=4; connected components=1.
+[2026-09-30 03:03:17] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:17] epoch=155 content_recall=0.0840 affect_recall=0.1477
+[2026-09-30 03:03:17] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:17] held-out-learned-student: mutual graph nnz=121,502; isolated fixed=3; connected components=1.
+[2026-09-30 03:03:17] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:18] epoch=160 content_recall=0.0868 affect_recall=0.1418
+[2026-09-30 03:03:18] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:18] held-out-learned-student: mutual graph nnz=122,198; isolated fixed=6; connected components=1.
+[2026-09-30 03:03:18] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:18] epoch=165 content_recall=0.0868 affect_recall=0.1446
+[2026-09-30 03:03:18] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:18] held-out-learned-student: mutual graph nnz=121,884; isolated fixed=5; connected components=1.
+[2026-09-30 03:03:18] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:19] epoch=170 content_recall=0.0873 affect_recall=0.1448
+[2026-09-30 03:03:19] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:19] held-out-learned-student: mutual graph nnz=121,702; isolated fixed=6; connected components=1.
+[2026-09-30 03:03:19] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:20] epoch=175 content_recall=0.0887 affect_recall=0.1434
+[2026-09-30 03:03:20] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:20] held-out-learned-student: mutual graph nnz=122,412; isolated fixed=6; connected components=1.
+[2026-09-30 03:03:20] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:20] epoch=180 content_recall=0.0922 affect_recall=0.1387
+[2026-09-30 03:03:20] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:20] held-out-learned-student: mutual graph nnz=121,620; isolated fixed=5; connected components=1.
+[2026-09-30 03:03:20] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:21] epoch=185 content_recall=0.0926 affect_recall=0.1402
+[2026-09-30 03:03:21] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:21] held-out-learned-student: mutual graph nnz=121,864; isolated fixed=5; connected components=1.
+[2026-09-30 03:03:21] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:21] epoch=190 content_recall=0.0877 affect_recall=0.1486
+[2026-09-30 03:03:22] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:22] held-out-learned-student: mutual graph nnz=121,974; isolated fixed=3; connected components=1.
+[2026-09-30 03:03:22] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:22] epoch=195 content_recall=0.0876 affect_recall=0.1484
+[2026-09-30 03:03:22] held-out-learned-student: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:22] held-out-learned-student: mutual graph nnz=121,868; isolated fixed=5; connected components=1.
+[2026-09-30 03:03:22] held-out-learned-student: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:23] epoch=200 content_recall=0.0919 affect_recall=0.1430
+[2026-09-30 03:03:23] Training stopped: reached MAX_EPOCHS=200.
+[2026-09-30 03:03:23] Capturing final (post-training) embeddings and running Leiden...
+[2026-09-30 03:03:23] final-train-attn1: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:23] final-train-attn1: mutual graph nnz=705,396; isolated fixed=89; connected components=4.
+[2026-09-30 03:03:23] final-train-attn1: added 3 bridge(s) over 4 components; final connected components=1.
+[2026-09-30 03:03:29] final-heldout-attn1: building mutual-kNN graph (K=20, device=cuda)...
+[2026-09-30 03:03:29] final-heldout-attn1: mutual graph nnz=121,868; isolated fixed=5; connected components=1.
+[2026-09-30 03:03:29] final-heldout-attn1: added 0 bridge(s) over 1 components; final connected components=1.
+[2026-09-30 03:03:30] final train emotion AMI=0.1285 genre AMI=0.2372; held-out emotion AMI=0.1187 genre AMI=0.2639.
+[2026-09-30 03:03:31] Wrote embedding snapshot to src/test/20260930_harness_confirmation/snapshots/seed42/snapshot_seed42.npz.
+[2026-09-30 03:03:31] Wrote report to src/test/20260930_harness_confirmation/snapshots/seed42/snapshot_seed42_report.md.
+BASELINE_RESULT {"seed":42,"independent":{"emotion":0.11873964795763096,"genre":0.26389985331405785,"k":18,"train_k":19},"transfer":{"10":{"emotion":0.12575929618574513,"genre":0.19206443437013251},"20":{"emotion":0.12809604401054683,"genre":0.19587985160386726},"30":{"emotion":0.1288294267318607,"genre":0.1984454570491369},"40":{"emotion":0.13082734962104225,"genre":0.19720688253934648}},"merged_transfer":{"k_after_merge":17,"by_k":{"20":{"emotion":0.1281124890474332,"genre":0.1911475508277352},"40":{"emotion":0.1306893364660841,"genre":0.19454797669734222}}}}
+logs: ok on node403
+RESULT {"ok":true,"tag":"qc2-s42","node":"node403","status":{"cuda_visible_devices":"0","duration_s":500,"ended_at":"2026-09-30T01:05:10.323201+00:00","exit_code":0,"gpu_slots":[0],"host":"node403","inherited_cuda_visible_devices":"0,1,2","pgid":1820666,"pid":1820666,"pid_start":177581995,"slurm_job_id":"57201","started_at":"2026-09-30T00:56:52.363309+00:00","state":"succeeded"},"sub":"logs"}
