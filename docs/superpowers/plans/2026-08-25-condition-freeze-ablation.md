@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Answer Experiment 11.1 from `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 — does post-init training of the per-sample condition table do anything, holding buddy-init geometry and every other hyperparameter identical between a **frozen** arm (conditions fixed at their buddy-init value for the whole run) and the **trained** arm (today's default)? Answer this on two independent axes: retrieval (`test_oracle/t2i_R1`, `test_oracle/i2t_R1`) and embedding geometry (how much conditioning shifts the combine-side embedding, how that shift distribution and its most/least-changed samples compare across arms and epochs, and whether a condition-vs-text cross grid shows conditions are interchangeable/null or one condition dominating and collapsing every text) — because retrieval alone can miss a real divergence.
+**Goal:** Answer Experiment 11.1 from `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 — does post-init training of the per-sample condition table do anything, holding buddy-init geometry and every other hyperparameter identical between a **frozen** arm (conditions fixed at their buddy-init value for the whole run) and the **trained** arm (today's default)? Answer this on two independent axes: retrieval (`test_oracle/t2i_R1`, `test_oracle/i2t_R1`) and embedding geometry (how much conditioning shifts the combine-side embedding, how that shift distribution and its most/least-changed samples compare across arms and epochs, and whether a condition-vs-text cross grid shows conditions are interchangeable/null or one condition dominating and collapsing every text) — because retrieval alone can miss a real divergence.
 
 **Architecture:** No new training-time mechanism is needed — `em_interval` (`configs/train/default.yaml`, EM-alternation) already sets `embedding_manager.embeddings.requires_grad_(False)` whenever `epoch // em_interval` is even, so a sentinel value ≥ `epochs` keeps that freeze active for the whole run. Because `em_interval` is **not** part of the buddy-init template-compatibility key (`_extra` in `_init_embedding_manager`, `src/hook/train_cosir.py`), both arms can — and, for a true paired comparison, must — share one `results_dir` and therefore one buddy-init template: every run in this experiment starts from a byte-identical buddy-init, and only whether gradient reaches the condition table afterward differs. The only source change needed (Task 1) is threading the already-available `sample_ids` list into the per-epoch `condition_viz/epoch_XXXX.pt` snapshot that `_save_condition_viz_snapshot` already writes unconditionally — everything else (per-epoch condition table + combiner weights, frozen train-set CLIP features, buddy-graph edges) is already cached by existing code. From there: a sweep script toggles `em_interval` per arm (Task 2), a paired retrieval-analysis script mirrors the project's existing `analyze_*.py` pattern (Task 3), and a new post-hoc geometry-diagnostic script rebuilds each saved epoch's combiner to compute and rank per-sample conditioning shift (Tasks 4–5, split into an offline-testable pure-math core and the real-data integration).
 
 **Tech Stack:** Python 3.10, Hydra/OmegaConf, PyTorch, wandb, numpy/pandas/scipy/matplotlib. Existing CoSiR training entrypoint `main_cosir.py`; existing RedCaps-150k `FeatureManager`/`redcaps_buddy.load_data()`; existing `reorder_features_to_z` (`src/metrics/regularizer.py`). No new dependencies.
 
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 11.1 (added 2026-08-25).
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 11.1 (added 2026-08-25).
 
 ## Global Constraints
 
@@ -285,7 +285,7 @@ Create `scripts/run_condition_freeze_ablation.sh`:
 ```bash
 #!/bin/bash
 set -euo pipefail
-# Experiment 11.1 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md §4):
+# Experiment 11.1 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md §4):
 # does post-init training of the conditions do anything, holding buddy-init geometry, the
 # frozen CLIP backbone, and every other hyperparameter identical between arms?
 #
@@ -420,7 +420,7 @@ Create `scripts/analyze_condition_freeze_ablation.py`:
 
 ```python
 """
-Paired analysis for Experiment 11.1 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+Paired analysis for Experiment 11.1 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 S4): does post-init training of the conditions change retrieval, holding buddy-init geometry
 and every other hyperparameter identical between the frozen and trained arms?
 
@@ -662,7 +662,7 @@ Create `scripts/analyze_condition_geometry.py`:
 ```python
 """
 Post-hoc condition-embedding geometry diagnostic (Experiment 11.1, spec
-docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md S4).
+docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md S4).
 
 Retrieval numbers (test_oracle/*_R1) can miss a real difference between the frozen and
 trained arms of Experiment 11.1 -- this script inspects the actual embedding geometry
@@ -1231,7 +1231,7 @@ Check the wandb UI (project `cosir_image`, group `condition freeze ablation`, ta
 
 **Files:**
 - Create: `docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md` (adjust date to when Task 6 actually completes)
-- Modify: `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (add the Experiment 11.1 outcome to §2's claims table; resolve 11.2's gate per the widened either-axis rule)
+- Modify: `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` (add the Experiment 11.1 outcome to §2's claims table; resolve 11.2's gate per the widened either-axis rule)
 
 **Interfaces:**
 - Consumes: `scripts/analyze_condition_freeze_ablation.py` (Task 3) and `scripts/analyze_condition_geometry.py` (Tasks 4–5) output.
@@ -1274,12 +1274,12 @@ Create `docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md` followi
 
 - [ ] **Step 5: Update the spec**
 
-In `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`: add the outcome as a new row in §2's claims table (next available letter), citing the new report; in §4 Experiment 11.2, replace "Gate: Runs if 11.1 clears the noise floor on retrieval in either direction, or the geometry diagnostic shows a real divergence between arms even with null retrieval" with the actual resolved status (either "gate cleared — proceeding" with which axis triggered it, or "gate not cleared — 11.2 dropped from scope, see report for the clean-null result").
+In `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`: add the outcome as a new row in §2's claims table (next available letter), citing the new report; in §4 Experiment 11.2, replace "Gate: Runs if 11.1 clears the noise floor on retrieval in either direction, or the geometry diagnostic shows a real divergence between arms even with null retrieval" with the actual resolved status (either "gate cleared — proceeding" with which axis triggered it, or "gate not cleared — 11.2 dropped from scope, see report for the clean-null result").
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+git add docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 git commit -m "results: condition freeze ablation (Experiment 11.1)"
 ```
 

@@ -3,7 +3,7 @@ Load buddy-graph source features for an arbitrary (vision, text) encoder pair, r
 to a given FeatureManager's sample-id order.
 
 Used by Experiment 8 (buddy-init encoder-pair ablation,
-docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md) to swap which encoder
+docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md) to swap which encoder
 pair BUILDS the buddy graph/init while the frozen training backbone stays CLIP throughout.
 
 'clip_img'/'clip_txt' come straight from the dataset's own load_data() (which itself reads

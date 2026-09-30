@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-31 · **Dataset:** RedCaps, 150,000 rows (same operating point as Experiments 9–12) · **Branch:** `experiment/condition_drift_retrieval_correlation`
 **Code:** `scripts/analyze_polysemy_bridges.py` (`extract_hub_pairs`, `closed_triangle_membership`, `count_hub_pairs`, `_build_typed_graph`, `--counts-only`/`--n-hub-sample`), `src/conditional_buddy/buddy_graph.py` (`hub_neighbor_pairs`)
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 14
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 14
 **Motivated by:** `docs/reports/auto/buddy/2026-08-26_polysemy_bridge_diagnostic.md` (Experiment 12/C10) — the B–C bridge pull is real but only very weakly explained by shared-neighbor structure ("false transitivity"), and every pair measured there was, by construction, never directly connected — no positive control existed to check whether the embedding treats a genuine edge any differently from an indirect artifact.
 **Implementation plan:** `docs/superpowers/plans/2026-08-31-closed-triangle-bridge-diagnostic.md`, executed via `subagent-driven-development` (Tasks 1–5, all reviewed clean; Task 6 caught and corrected a construct-validity bug in its own control group during the final whole-branch review — see Caveats)
 

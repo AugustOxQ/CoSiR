@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python, PyTorch, Hydra/OmegaConf, pytest.
 
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 13; `docs/superpowers/scratch/2026-08-27_codex_symmetric_combiner_brainstorm.md`.
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 13; `docs/superpowers/scratch/2026-08-27_codex_symmetric_combiner_brainstorm.md`.
 
 ## Global Constraints
 

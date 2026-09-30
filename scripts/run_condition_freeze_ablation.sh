@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-# Experiment 11.1 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md §4):
+# Experiment 11.1 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md §4):
 # does post-init training of the conditions do anything, holding buddy-init geometry, the
 # frozen CLIP backbone, and every other hyperparameter identical between arms?
 #

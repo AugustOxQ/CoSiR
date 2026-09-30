@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-# Experiment 11.3 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md,
+# Experiment 11.3 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md,
 # Experiment 11.3 subsection): does removing the stop-gradient on the condition-predictor
 # distillation term (loss.pred_stopgrad=false) change test_oracle (the table's own held-out
 # codebook quality) or test_pre_diff (the predictor's standalone usefulness vs. raw CLIP),

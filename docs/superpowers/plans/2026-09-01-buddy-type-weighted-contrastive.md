@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python, PyTorch, NumPy, Hydra, existing runnable CPU test scripts.
 
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (Experiment 15.3; 15.2 Result immediately above it)
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` (Experiment 15.3; 15.2 Result immediately above it)
 
 ## Global Constraints
 

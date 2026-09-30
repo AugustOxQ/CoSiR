@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.10, numpy, torch, `transformers` (`AutoModel`/`AutoTokenizer`, `openai/clip-vit-base-patch32`), scikit-learn (`LogisticRegression`, `StratifiedKFold`, `roc_auc_score`), pytest; conda env `CoSiR`; existing `src.utils.FeatureManager`.
 
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4, Experiment 17.1.
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4, Experiment 17.1.
 
 **Execution mode:** Per this project's established convention (see `.ccg/tasks/buddy-k-scaling-stage-a/plan.md` for the pattern used on Experiment 16.1), prefer routing each task's implementation through Codex as a subagent, with Claude reviewing the diff and running verification directly. This is CPU-light, training-free work — no GPU-job caution needed, and Codex may run the scripts itself as part of its own verification, with Claude spot-checking final artifacts.
 
@@ -43,7 +43,7 @@ Create `src/test/20260915_condition_space_audit/20260915_condition_space_audit_l
 ```markdown
 # Condition-Space Steerability Audit (Exp. 17.1) — Log
 
-Spec: docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md (Experiment 17.1)
+Spec: docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md (Experiment 17.1)
 Plan: docs/superpowers/plans/2026-09-15-condition-space-audit.md
 
 ## Checkpoint discovery
@@ -1001,7 +1001,7 @@ Create `docs/reports/auto/buddy/2026-09-15_condition_space_audit.md`, filling `<
 # Condition-Space Steerability Audit — Experiment 17.1
 
 **Date:** 2026-09-15
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`, Experiment 17.1
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`, Experiment 17.1
 **Plan:** `docs/superpowers/plans/2026-09-15-condition-space-audit.md`
 
 ## What was tested
@@ -1080,7 +1080,7 @@ git commit -m "docs(exp17.1): summarize condition-space audit results and gate v
 ### Task 7: Append the Result paragraph to the spec, close out the log
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (Experiment 17.1's entry in §4)
+- Modify: `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` (Experiment 17.1's entry in §4)
 - Modify: `src/test/20260915_condition_space_audit/20260915_condition_space_audit_log.md`
 
 **Interfaces:**
@@ -1089,7 +1089,7 @@ git commit -m "docs(exp17.1): summarize condition-space audit results and gate v
 
 - [ ] **Step 1: Append a Result paragraph to 17.1 in the spec**
 
-In `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`, find Experiment 17.1's bullet list (ends with its `**Cost:**` line) and append one more bullet, matching this spec's existing `**Result (YYYY-MM-DD, ...):**` convention (see 16.1/16.2 for the exact style — one paragraph, state the verdict, the winning axis if any, and link the report):
+In `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`, find Experiment 17.1's bullet list (ends with its `**Cost:**` line) and append one more bullet, matching this spec's existing `**Result (YYYY-MM-DD, ...):**` convention (see 16.1/16.2 for the exact style — one paragraph, state the verdict, the winning axis if any, and link the report):
 
 ```markdown
 - **Result (2026-09-15, `src/test/20260915_condition_space_audit/`):** <fill in from docs/reports/auto/buddy/2026-09-15_condition_space_audit.md's Verdict section — state positive/null/partial, the winning axis and its z/AUC if positive or partial, and what this means for 17.2's scope per the decision rule above>. Full write-up: `docs/reports/auto/buddy/2026-09-15_condition_space_audit.md`.
@@ -1102,7 +1102,7 @@ In `src/test/20260915_condition_space_audit/20260915_condition_space_audit_log.m
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md src/test/20260915_condition_space_audit/20260915_condition_space_audit_log.md
+git add docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md src/test/20260915_condition_space_audit/20260915_condition_space_audit_log.md
 git commit -m "docs(exp17.1): record condition-space audit result in publication-plan spec"
 ```
 

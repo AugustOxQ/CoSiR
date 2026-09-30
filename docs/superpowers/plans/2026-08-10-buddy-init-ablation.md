@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Close the two gates on the critical path of `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`: (0) a fast related-work/prior-art check, and (1) the paper's foundational, currently-unmeasured claim — does buddy-graph spectral initialization beat the prior generic (`imgtxt`) initialization on retrieval, with every training-time buddy term held off?
+**Goal:** Close the two gates on the critical path of `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`: (0) a fast related-work/prior-art check, and (1) the paper's foundational, currently-unmeasured claim — does buddy-graph spectral initialization beat the prior generic (`imgtxt`) initialization on retrieval, with every training-time buddy term held off?
 
 **Architecture:** Experiment 0 is a literature-reading task with a written note as its only deliverable — no code. Experiment 1 reuses the existing Hydra (`main_cosir.py -m`) + wandb pipeline, following the established pattern for sweeping a *template-key* config axis (`scripts/run_blean_impressions.sh`'s `b_weight` loop): `initialization_strategy` is looped in bash (each value gets its own `results_dir` so its own `template_embeddings/`, avoiding template-compatibility races), while `seed` is a Hydra multirun axis inside each loop iteration (seed is not a template key, so seeds correctly share one template — that's intentional replication, not a bug). A new analysis script pairs `imgtxt` vs `buddies` within each `(lr, lr_label, dim, alpha, seed)` cell and reports mean Δ ± std / mean-SEM, per the project's existing statistical convention (`scripts/analyze_buddy_families.py`).
 
@@ -27,7 +27,7 @@
 
 **Interfaces:**
 - Consumes: nothing from other tasks — fully independent, can run in parallel with Tasks 1–5.
-- Produces: a written verdict (`green` / `yellow` / `red` overlap risk) that feeds the Week-3 checkpoint in `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §6, and the eventual paper's related-work section.
+- Produces: a written verdict (`green` / `yellow` / `red` overlap risk) that feeds the Week-3 checkpoint in `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §6, and the eventual paper's related-work section.
 
 This task has no code — the "test" is a completeness check against a fixed checklist (Step 5).
 
@@ -51,7 +51,7 @@ Create `docs/reports/auto/buddy/2026-08-10_prior_art_note.md` with this structur
 # Prior-Art Grounding Note — Conditional Buddies
 
 **Date:** 2026-08-10
-**Feeds:** docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md §3.4, §6 Week-3 checkpoint
+**Feeds:** docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md §3.4, §6 Week-3 checkpoint
 
 ## What exists
 
@@ -119,7 +119,7 @@ There is no pytest-style test for this file — the codebase's own convention fo
 ```bash
 #!/bin/bash
 set -euo pipefail
-# Experiment 1 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md §4):
+# Experiment 1 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md §4):
 # does buddy-graph spectral initialization actually beat the prior generic (imgtxt) init on
 # retrieval, with every training-time buddy term held OFF (lambda_buddy=0, lambda_buddy_con=0,
 # buddy_refresh=False — all default/absent, never added as an override below)?
@@ -335,7 +335,7 @@ Create `scripts/analyze_init_ablation.py` with **only** the imports, constants, 
 
 ```python
 """
-Paired analysis for Experiment 1 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+Paired analysis for Experiment 1 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 S4): does buddy-graph spectral initialization beat the prior generic (imgtxt) initialization on
 retrieval, with every training-time buddy term held off?
 
@@ -613,7 +613,7 @@ Check the wandb UI (project `cosir_image`, group `buddy-init ablation`, tags `in
 
 **Files:**
 - Create: `docs/reports/2026-08-10_buddy_init_ablation.md` (adjust date to when Task 5 actually completes)
-- Modify: `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (update §2's claims table or add a new row once the result is in — see Step 3)
+- Modify: `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` (update §2's claims table or add a new row once the result is in — see Step 3)
 
 **Interfaces:**
 - Consumes: `scripts/analyze_init_ablation.py` (Task 4) output.
@@ -643,12 +643,12 @@ Create `docs/reports/2026-08-10_buddy_init_ablation.md` following the structure 
 
 - [ ] **Step 4: Update the spec**
 
-In `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`, add the Experiment 1 outcome as a new row in §2's claims table (or amend §3.2's TMLR/stretch-tier conditions to reflect the actual result rather than the hypothetical), citing the new report.
+In `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`, add the Experiment 1 outcome as a new row in §2's claims table (or amend §3.2's TMLR/stretch-tier conditions to reflect the actual result rather than the hypothetical), citing the new report.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/reports/2026-08-10_buddy_init_ablation.md docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+git add docs/reports/2026-08-10_buddy_init_ablation.md docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 git commit -m "results: buddy-init vs imgtxt-init ablation (Experiment 1)"
 ```
 

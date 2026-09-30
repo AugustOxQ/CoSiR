@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Answer Experiment 8 from `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 — does the *choice* of (vision, text) encoder pair used to build the buddy graph/init matter for downstream retrieval, holding the frozen CLIP training backbone, gated combiner, and all training-time buddy terms fixed (off), on RedCaps-150k? And, as a secondary check, does a pair's C3 cross-VLM survival rate predict its Experiment 8 retrieval Δ?
+**Goal:** Answer Experiment 8 from `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 — does the *choice* of (vision, text) encoder pair used to build the buddy graph/init matter for downstream retrieval, holding the frozen CLIP training backbone, gated combiner, and all training-time buddy terms fixed (off), on RedCaps-150k? And, as a secondary check, does a pair's C3 cross-VLM survival rate predict its Experiment 8 retrieval Δ?
 
 **Architecture:** `compute_buddy_init(img_feats, txt_feats, ...)` (`src/conditional_buddy/compute_buddies.py`) is already a pure function over raw feature arrays. The only code gap is that `TrainableEmbeddingManager._buddy_init` always sources those arrays from the training run's own (CLIP) `FeatureManager` — there is no way to hand it a different encoder pair's features. This plan adds one small, backward-compatible `feature_override` parameter to `_buddy_init` (Task 1), a loader that fetches an arbitrary (vision, text) pair's cached features row-aligned to the training FeatureManager (Task 2, reusing the already-cached `heldout_feats/` from the cross-VLM survival study), and a new Hydra-visible `train.buddies.encoder_pair` override that wires the two together in `train_cosir.py` (Task 3). From there the ablation reuses the exact bash-loop-over-template-key-axis / Hydra-multirun-over-seed pattern already established by `scripts/run_init_ablation.sh` (Experiment 1), just swapping the swept axis from `initialization_strategy` to `encoder_pair` (Task 4), with a paired analysis script keyed the same way (Task 5).
 
 **Tech Stack:** Python 3.10, Hydra/OmegaConf, PyTorch, wandb, numpy/pandas. Existing CoSiR training entrypoint `main_cosir.py`; existing held-out feature cache (`src/test/20260708_heldout_grid/extract_heldout.py`) and cross-VLM survival results (`docs/reports/assets/buddy_cross_vlm/grid_agreement.json`). No new dependencies.
 
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 8 (added 2026-08-24).
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 8 (added 2026-08-24).
 
 ## Global Constraints
 
@@ -43,7 +43,7 @@ Create `src/test/20260824_buddy_init_encoder_ablation/test_feature_override.py`:
 """
 Test: TrainableEmbeddingManager's buddies init accepts a feature_override triple,
 bypassing FeatureManager entirely (Experiment 8 — buddy-init encoder-pair ablation,
-docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md).
+docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md).
 
 Run:
     python src/test/20260824_buddy_init_encoder_ablation/test_feature_override.py
@@ -250,7 +250,7 @@ triple; when given, builds the buddy graph from it instead, bypassing `feature_m
 entirely. `feature_manager=None` is valid in that case. Backward-compatible — omitting the
 argument reproduces the exact original code path.
 
-**Why:** Experiment 8 (`docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`
+**Why:** Experiment 8 (`docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`
 §4) needs to build the buddy graph from encoder pairs other than CLIP while keeping the
 frozen training backbone on CLIP. See `docs/superpowers/plans/
 2026-08-24-buddy-init-encoder-ablation.md` Task 1.
@@ -364,7 +364,7 @@ Load buddy-graph source features for an arbitrary (vision, text) encoder pair, r
 to a given FeatureManager's sample-id order.
 
 Used by Experiment 8 (buddy-init encoder-pair ablation,
-docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md) to swap which encoder
+docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md) to swap which encoder
 pair BUILDS the buddy graph/init while the frozen training backbone stays CLIP throughout.
 
 'clip_img'/'clip_txt' come straight from the dataset's own load_data() (which itself reads
@@ -575,7 +575,7 @@ passes them through as `feature_override` (Task 1). Absent by default — behavi
 unchanged for every existing config/sweep. Also added to the buddies template-compatibility
 `extra` dict so a stale template from a different pair is never silently reused.
 
-**Why:** Experiment 8 (`docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`
+**Why:** Experiment 8 (`docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`
 §4). See `docs/superpowers/plans/2026-08-24-buddy-init-encoder-ablation.md` Task 3.
 ```
 
@@ -602,7 +602,7 @@ git commit -m "feat: wire train.buddies.encoder_pair override into training (Exp
 ```bash
 #!/bin/bash
 set -euo pipefail
-# Experiment 8 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md §4):
+# Experiment 8 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md §4):
 # does the CHOICE of (vision, text) encoder pair used to BUILD the buddy graph/init matter
 # for downstream retrieval, holding the frozen CLIP training backbone, gated combiner, and
 # all training-time buddy terms OFF (same operating point as Experiment 1's 'buddies' arm)?
@@ -740,7 +740,7 @@ Create `scripts/analyze_buddy_init_encoder_ablation.py` with the imports, consta
 
 ```python
 """
-Paired analysis for Experiment 8 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+Paired analysis for Experiment 8 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 S4): does the (vision, text) encoder pair used to build the buddy graph/init matter for
 downstream retrieval, holding the frozen CLIP backbone and all training-time buddy terms off?
 
@@ -1034,7 +1034,7 @@ Check the wandb UI (project `cosir_image`, group `buddy-init encoder-pair ablati
 
 **Files:**
 - Create: `docs/reports/auto/buddy/2026-08-24_buddy_init_encoder_ablation.md` (adjust date to when Task 6 actually completes)
-- Modify: `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (add the Experiment 8 outcome, and re-check whether Experiment 6 is still needed per its "likely subsumed" note in §6/§8)
+- Modify: `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` (add the Experiment 8 outcome, and re-check whether Experiment 6 is still needed per its "likely subsumed" note in §6/§8)
 
 **Interfaces:**
 - Consumes: `scripts/analyze_buddy_init_encoder_ablation.py` (Task 5) output.
@@ -1058,12 +1058,12 @@ Create `docs/reports/auto/buddy/2026-08-24_buddy_init_encoder_ablation.md` follo
 
 - [ ] **Step 4: Update the spec**
 
-In `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`: add the outcome as a new row in §2's claims table (next available letter), citing the new report; and in §6/§8, resolve the "Experiment 6 likely subsumed" note based on the actual correlation result (drop Experiment 6 from scope if the correlation is clear either way; keep it only if the result is ambiguous enough that Experiment 6's per-sample-level version would add real information).
+In `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`: add the outcome as a new row in §2's claims table (next available letter), citing the new report; and in §6/§8, resolve the "Experiment 6 likely subsumed" note based on the actual correlation result (drop Experiment 6 from scope if the correlation is clear either way; keep it only if the result is ambiguous enough that Experiment 6's per-sample-level version would add real information).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/reports/auto/buddy/2026-08-24_buddy_init_encoder_ablation.md docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+git add docs/reports/auto/buddy/2026-08-24_buddy_init_encoder_ablation.md docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 git commit -m "results: buddy-init encoder-pair ablation (Experiment 8)"
 ```
 

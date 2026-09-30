@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-16 · **Datasets:** Impressions (N = 12,123), RedCaps-150k (N = 150,000) · **Branch:** `experiment/buddy_init_ablation`
 **Code:** `scripts/run_init_ablation.sh`, `scripts/run_init_ablation_impressions.sh`, `scripts/run_init_ablation_redcaps.sh`, `scripts/analyze_init_ablation.py`
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 1
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 1
 **Plan:** `docs/superpowers/plans/2026-08-10-buddy-init-ablation.md` (Task 6)
 
 ---

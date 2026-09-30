@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python, NumPy, SciPy sparse (`csr_matrix`), the project's existing `FeatureManager`/`build_buddy_graphs` pipeline. No new dependencies.
 
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`, "### Experiment 14" section (commit `ab565d9`).
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`, "### Experiment 14" section (commit `ab565d9`).
 
 ## Global Constraints
 
@@ -759,13 +759,13 @@ Write `docs/reports/YYYY-MM-DD_closed_triangle_bridge_diagnostic.md` following t
 
 - [ ] **Step 5: Fold the result into the spec's claims table**
 
-Following this plan's established pattern (see how Experiment 12.3's result was folded into C10, and Experiment 13's into C11): add a new claim row (or extend C10/C12 if the result is best read as a direct qualifier of the existing false-transitivity claim rather than a standalone one — judgment call at write time) to `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`, and a "**Result (YYYY-MM-DD):**" line to the Experiment 14 plan-section entry itself, matching Experiment 12.5's pattern (spec line with `**Result:**` inline, `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md:242`).
+Following this plan's established pattern (see how Experiment 12.3's result was folded into C10, and Experiment 13's into C11): add a new claim row (or extend C10/C12 if the result is best read as a direct qualifier of the existing false-transitivity claim rather than a standalone one — judgment call at write time) to `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`, and a "**Result (YYYY-MM-DD):**" line to the Experiment 14 plan-section entry itself, matching Experiment 12.5's pattern (spec line with `**Result:**` inline, `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md:242`).
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add docs/reports/YYYY-MM-DD_closed_triangle_bridge_diagnostic.md docs/reports/assets/ \
-  docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+  docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 git commit -m "results: run Experiment 14 closed-triangle bridge diagnostic"
 ```
 

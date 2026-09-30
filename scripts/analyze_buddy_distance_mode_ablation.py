@@ -1,5 +1,5 @@
 """
-Paired analysis for Experiment 10 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+Paired analysis for Experiment 10 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 S4): does modality-provenance-aware distance mixing ("typed") beat the current fixed-alpha
 blend ("blend") on retrieval, and does it narrow C6's gap to raw CLIP (test_pre_diff)?
 

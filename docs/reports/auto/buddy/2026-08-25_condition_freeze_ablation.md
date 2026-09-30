@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-25 · **Dataset:** RedCaps, 150,000 rows of `redcaps_train.json` (matches C5/C6/C7/C8's scale) · **Branch:** `experiment/buddy_init_ablation2`
 **Code:** `scripts/run_condition_freeze_ablation.sh`, `scripts/analyze_condition_freeze_ablation.py`, `scripts/analyze_condition_geometry.py`
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 11.1
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 11.1
 
 ---
 
@@ -257,7 +257,7 @@ python scripts/analyze_condition_geometry.py --compare <frozen_dir_seed3> <train
 
 ## Experiment 11.2 — drift/shift vs. retrieval-rank correlation
 
-**Date:** 2026-08-26 (rewritten 2026-08-26 after final whole-branch review) · **Code:** `scripts/analyze_condition_retrieval_correlation.py` · **Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 11.2 (second, no-new-training branch)
+**Date:** 2026-08-26 (rewritten 2026-08-26 after final whole-branch review) · **Code:** `scripts/analyze_condition_retrieval_correlation.py` · **Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 11.2 (second, no-new-training branch)
 
 ### TL;DR for this section
 

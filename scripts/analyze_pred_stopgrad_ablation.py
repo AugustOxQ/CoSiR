@@ -1,5 +1,5 @@
 """
-Paired analysis for Experiment 11.3 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md,
+Paired analysis for Experiment 11.3 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md,
 Experiment 11.3 subsection): does removing the stop-gradient on the condition-predictor
 distillation term change test_oracle or test_pre_diff, relative to Experiment 11.1's existing
 trained/frozen arms?

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.10, NumPy, SciPy (sparse), Hydra/OmegaConf, PyTorch, wandb, pandas. Existing CoSiR training entrypoint `main_cosir.py`. No new dependencies.
 
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 10 (added 2026-08-24).
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 10 (added 2026-08-24).
 
 ## Global Constraints
 
@@ -198,7 +198,7 @@ supporting modality's rank alone for img-only/txt-only edges instead of always b
 both modalities. Purely additive -- `mix_distances` is untouched, no existing caller
 affected.
 
-**Why:** Experiment 10 (`docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`
+**Why:** Experiment 10 (`docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`
 §4), following up on the modality-disagreement diagnostic
 (`src/test/20260824_buddy_graph_disagreement/`).
 ```
@@ -400,7 +400,7 @@ Append to `.claude/20260824_log.md`:
 backward-compatible via `test_blend_default_matches_no_arg_call` and the pre-existing
 `test_compute_buddies.py` synthetic suite.
 
-**Why:** Experiment 10 (`docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`
+**Why:** Experiment 10 (`docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`
 §4). See `docs/superpowers/plans/2026-08-24-buddy-distance-mode-ablation.md` Task 2.
 ```
 
@@ -517,7 +517,7 @@ new construction (Task 1/2); absent by default -- behavior unchanged for every e
 config/sweep. Also added to the buddies template-compatibility `extra` dict so a stale
 template from one mode is never silently reused under the other.
 
-**Why:** Experiment 10 (`docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`
+**Why:** Experiment 10 (`docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`
 §4). See `docs/superpowers/plans/2026-08-24-buddy-distance-mode-ablation.md` Task 3.
 ```
 
@@ -544,7 +544,7 @@ git commit -m "feat: wire train.buddies.distance_mode override into training (Ex
 ```bash
 #!/bin/bash
 set -euo pipefail
-# Experiment 10 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md §4):
+# Experiment 10 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md §4):
 # does modality-provenance-aware distance mixing ("typed") beat the current fixed-alpha
 # blend ("blend") on retrieval, and does it narrow C6's still-open gap to raw CLIP
 # (test_pre_diff)? Same operating point and isolation discipline as Experiment 1:
@@ -657,7 +657,7 @@ Create `scripts/analyze_buddy_distance_mode_ablation.py` with only the imports, 
 
 ```python
 """
-Paired analysis for Experiment 10 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+Paired analysis for Experiment 10 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 S4): does modality-provenance-aware distance mixing ("typed") beat the current fixed-alpha
 blend ("blend") on retrieval, and does it narrow C6's gap to raw CLIP (test_pre_diff)?
 
@@ -917,7 +917,7 @@ Check the wandb UI (project `cosir_image`, group `buddy distance-mode ablation`,
 
 **Files:**
 - Create: `docs/reports/auto/buddy/2026-08-24_buddy_distance_mode_ablation.md` (adjust date to when Task 6 actually completes)
-- Modify: `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (add the Experiment 10 outcome, per its success criteria in §4)
+- Modify: `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` (add the Experiment 10 outcome, per its success criteria in §4)
 
 **Interfaces:**
 - Consumes: `scripts/analyze_buddy_distance_mode_ablation.py` (Task 5) output.
@@ -941,12 +941,12 @@ Create `docs/reports/auto/buddy/2026-08-24_buddy_distance_mode_ablation.md` foll
 
 - [ ] **Step 4: Update the spec**
 
-In `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`, add the Experiment 10 outcome as a new row in §2's claims table (next available letter), citing the new report, and update §3.3's framing paragraph if the result is positive enough to change the "does anything close the gap to CLIP" narrative established by C6.
+In `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`, add the Experiment 10 outcome as a new row in §2's claims table (next available letter), citing the new report, and update §3.3's framing paragraph if the result is positive enough to change the "does anything close the gap to CLIP" narrative established by C6.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/reports/auto/buddy/2026-08-24_buddy_distance_mode_ablation.md docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+git add docs/reports/auto/buddy/2026-08-24_buddy_distance_mode_ablation.md docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 git commit -m "results: buddy distance-mode ablation (Experiment 10)"
 ```
 

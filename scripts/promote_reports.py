@@ -40,6 +40,13 @@ DEFAULT_LINES = {"experiment/percept_topic_pipeline": "percept"}
 LAYOUT = ("auto/", "stage/", "weekly/", "pptx/", "assets/")
 PILOT_SKIP = {"README.md", "implementation_plan.md", "CLUSTER_RUN_PLAN.md"}
 NOT_COPIED = {f"{R}/reports_sum.md", MANIFEST}
+# Docs that moved here after side branches recorded their paths; gathered copies follow the move.
+REDIRECTS = {
+    "docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md":
+        "docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md",
+    "docs/proposals/2026-08-04-conditional-buddies-publication-proposal.md":
+        "docs/archive/buddy_publication_plan/2026-08-04-conditional-buddies-publication-proposal.md",
+}
 LINK = re.compile(r"(!?\[[^\]]*\]\()([^)\s]+)(\))")
 SCHEME = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
 DECK_OUT = re.compile(r'((?:parents\[1\]|ROOT) / )"(\d{4}-\d\d-\d\d_[^"/]+\.pptx)"')
@@ -274,8 +281,9 @@ def promote(root: Path, ref: str, line: str, dry_run: bool = False, force: bool 
         return items
     mapping = {i.path: i.dest for i in items if not i.action.startswith("skip")}
     mapping.update({os.path.dirname(i.path): os.path.dirname(i.dest) for i in items if "/pilots/" in i.dest})
-    renames = sorted(((i.path, i.dest) for i in items if i.path.startswith(R) and i.path != i.dest),
-                     key=lambda pair: -len(pair[0]))
+    mapping.update(REDIRECTS)
+    renames = sorted([(i.path, i.dest) for i in items if i.path.startswith(R) and i.path != i.dest]
+                     + list(REDIRECTS.items()), key=lambda pair: -len(pair[0]))
     recs = manifest.setdefault(ref, {})
     for i in items:
         if i.action in ("new", "update"):

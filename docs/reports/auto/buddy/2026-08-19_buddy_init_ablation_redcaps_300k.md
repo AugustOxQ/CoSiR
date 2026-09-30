@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-19 · **Dataset:** RedCaps, first 300,000 rows of `redcaps_train.json` (a scale slice toward the full 3,106,894-row corpus) · **Branch:** `experiment/buddy_init_ablation`
 **Code:** `scripts/run_init_ablation_redcaps_300k.sh`, `scripts/run_init_ablation.sh`, `scripts/analyze_init_ablation.py`
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 1
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 1
 **Prior result:** `docs/reports/auto/buddy/2026-08-16_buddy_init_ablation.md` (RedCaps-150k, same question)
 
 ---

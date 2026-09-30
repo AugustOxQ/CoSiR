@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-24 · **Dataset:** RedCaps, 150,000 rows of `redcaps_train.json` (matches C5's scale) · **Branch:** `experiment/buddy_init_ablation`
 **Code:** `scripts/run_buddy_distance_mode_ablation.sh`, `scripts/analyze_buddy_distance_mode_ablation.py`
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 10
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 10
 **Precursor:** `src/test/20260824_buddy_graph_disagreement/` (the no-training diagnostic that motivated this experiment and whose edge-composition/dilution findings this report does not re-litigate)
 
 ---

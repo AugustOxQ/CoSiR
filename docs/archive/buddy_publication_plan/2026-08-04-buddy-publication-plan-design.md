@@ -1,5 +1,7 @@
 # Conditional Buddies — Publication Plan
 
+> **ARCHIVED 2026-09-30. No longer updated.** This was the living publication plan for the conditional-buddies line (Experiments 0–17, claims C1–C12). Each result was recorded here along with how it affected the paper. The project's main body is now the CoSiR v2 redesign, and a new v2 publication plan will replace this one. Don't add experiments or claims here. The code behind these results is on tag `archive/experiment/condition_drift_retrieval_correlation`; Exp 13 is on `archive/experiment/two_side_conditioning`.
+
 **Date:** 2026-08-04
 **Motivates from:** `docs/reports/stage/2026-06-24_buddy_progress.md` (full narrative to date), `docs/reports/auto/buddy/2026-07-16_buddy_cross_vlm_survival.md` (latest completed result), `docs/reports/weekly/2026-07-08_buddy_slides_guide.md` (existing narrative skeleton)
 **Status:** proposed — pending user sign-off before `writing-plans` produces the task-by-task execution plan
@@ -428,7 +430,7 @@ These are not new conventions — they're what the project already does in `2026
 1. **This spec** (design/decision record).
 2. **Task-by-task execution plan** — to be authored by the `writing-plans` skill once this spec is approved, one plan per experiment cluster (mirrors the existing `docs/superpowers/plans/2026-07-16-buddy-cross-vlm-survival.md` pattern: checkboxed steps, exact commands, expected output).
 3. **Results reports** for each experiment, in the existing `docs/reports/YYYY-MM-DD_*.md` format, as they complete.
-4. **Research proposal** (separate narrative document, `docs/proposals/2026-08-04-conditional-buddies-publication-proposal.md`) — for external/advisor-facing communication of this plan; see that document for the polished pitch version of everything in this spec.
+4. **Research proposal** (separate narrative document, `docs/archive/buddy_publication_plan/2026-08-04-conditional-buddies-publication-proposal.md`) — for external/advisor-facing communication of this plan; see that document for the polished pitch version of everything in this spec.
 5. **Paper draft** (out of scope for this spec; produced in weeks 6–8 per §6).
 
 ---

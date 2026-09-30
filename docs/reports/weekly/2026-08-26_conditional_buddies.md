@@ -196,5 +196,5 @@ This is precisely the motivation for 11.3: it asks whether making the table more
 - Experiment 9: [RedCaps subreddit signal correlates](../auto/buddy/2026-08-24_redcaps_subreddit_signal_correlates.md)
 - Experiment 10: [buddy distance-mode ablation](../auto/buddy/2026-08-24_buddy_distance_mode_ablation.md)
 - Experiments 11.1 and 11.2: [condition freeze ablation and drift/rank analysis](../auto/buddy/2026-08-25_condition_freeze_ablation.md)
-- Master status and gates: [publication-plan design](../../superpowers/specs/2026-08-04-buddy-publication-plan-design.md)
+- Master status and gates: [publication-plan design](../../archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md)
 - Experiment 11.3 implementation plan: [pred-stopgrad ablation plan](../../superpowers/plans/2026-08-26-pred-stopgrad-ablation.md)

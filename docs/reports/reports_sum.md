@@ -22,7 +22,8 @@ Research lines:
 
 - **Current work (v2):** [condition eval on repaired factors](auto/v2/2026-10-12_candidate_a_condition_eval_repaired_factors.md), the latest result, and [factor repair](auto/v2/2026-10-11_candidate_a_factor_repair.md), the current recipe R3.
 - **Percept line summary:** [buddy vs PercepT master report](auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md), [comprehensive analysis](stage/2026-09-27_comprehensive_analysis.md) and [key advantages](stage/2026-09-27_key_advantages.md).
-- **Buddy line summary:** the living spec `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (claims C1–C12) and the [latest weekly report](weekly/2026-09-02_conditional_buddies.md).
+- **Buddy line summary:** the [archived publication plan](../archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md) (claims C1–C12; no longer updated) and the [latest weekly report](weekly/2026-09-02_conditional_buddies.md).
+- **Publication plan for v2:** not written yet. It will replace the archived buddy plan, with v2 as the main body.
 
 ## Where the code lives
 

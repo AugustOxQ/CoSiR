@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-24 · **Dataset:** RedCaps, 150,000 rows of `redcaps_train.json` (matches C5's scale) · **Branch:** `experiment/buddy_init_ablation`
 **Code:** `scripts/run_buddy_init_encoder_ablation.sh`, `scripts/analyze_buddy_init_encoder_ablation.py`
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 8 (this report also folds in Experiment 6's deferred question — see "Survival-rate correlation" below)
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 8 (this report also folds in Experiment 6's deferred question — see "Survival-rate correlation" below)
 **Precursor:** `docs/reports/auto/buddy/2026-07-16_buddy_cross_vlm_survival.md` (C3, the 16-pair cross-VLM survival study whose encoder pairs and per-pair survival rates this experiment reuses and joins against)
 
 ---
@@ -110,7 +110,7 @@ The i2t result deserves to be reported honestly rather than forced into a tidy s
 
 ### Consequence for Experiment 6
 
-Per the spec's own scoping (`docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 8's "Why": *"Joining each pair's Exp. 8 retrieval Δ against its already-measured C3 cross-VLM survival rate also answers, for free, the question Experiment 6 explicitly deferred... Experiment 6 can likely be dropped from scope once this runs."*), this correlation check **is** that answer, run at the pair level across all 16 cells with 3-seed replication per cell. The result is clear enough in both directions (near-zero for t2i, moderately negative for i2t) that a separate per-sample-level Experiment 6 sub-study would not resolve genuine ambiguity — it would refine a already-clear "no"/"weakly negative" into a more granular version of the same answer. **Experiment 6 is subsumed by this result and is dropped from scope** (see the spec update, §6/§8).
+Per the spec's own scoping (`docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 8's "Why": *"Joining each pair's Exp. 8 retrieval Δ against its already-measured C3 cross-VLM survival rate also answers, for free, the question Experiment 6 explicitly deferred... Experiment 6 can likely be dropped from scope once this runs."*), this correlation check **is** that answer, run at the pair level across all 16 cells with 3-seed replication per cell. The result is clear enough in both directions (near-zero for t2i, moderately negative for i2t) that a separate per-sample-level Experiment 6 sub-study would not resolve genuine ambiguity — it would refine a already-clear "no"/"weakly negative" into a more granular version of the same answer. **Experiment 6 is subsumed by this result and is dropped from scope** (see the spec update, §6/§8).
 
 ## Overall picture
 

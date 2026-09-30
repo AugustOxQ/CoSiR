@@ -1,6 +1,6 @@
 """
 Post-hoc drift/shift-vs-retrieval-rank correlation diagnostic (Experiment 11.2, spec
-docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md S4).
+docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md S4).
 
 Experiment 11.1 found that letting the per-sample condition table keep training after
 buddy-init hurts i2t retrieval relative to freezing it right after init (frozen beats

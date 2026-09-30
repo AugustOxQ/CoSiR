@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Answer Experiment 9 from `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 — deepen C1's aggregate ~20× RedCaps subreddit-lift number into a per-subreddit breakdown, and check whether subreddit size, caption diversity, and visual homogeneity predict where the buddy signal is strongest.
+**Goal:** Answer Experiment 9 from `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 — deepen C1's aggregate ~20× RedCaps subreddit-lift number into a per-subreddit breakdown, and check whether subreddit size, caption diversity, and visual homogeneity predict where the buddy signal is strongest.
 
 **Architecture:** `subreddit_lift()` (`src/test/20260623_redcaps_buddy/redcaps_buddy.py`) already computes a per-subreddit lift array internally but only returns the top-15 most-enriched. This plan extends it to optionally return every qualifying subreddit (Task 1), then adds a small, self-contained analysis script that pulls three per-subreddit properties (sample count, caption diversity, visual homogeneity — the latter two via a closed-form mean-pairwise-cosine-similarity identity, avoiding an O(n²) pass) from the same already-loaded `Data` object, and correlates them against the extended lift array (Task 2). No training, no new features, no graph rebuilding — this is a pure analysis pass over data the pipeline already has cached.
 
 **Tech Stack:** Python 3.10, numpy, matplotlib (`Agg` backend, matching this codebase's existing convention). No new dependencies, no GPU required.
 
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 9 (added 2026-08-24).
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 9 (added 2026-08-24).
 
 ## Global Constraints
 
@@ -165,7 +165,7 @@ If Step 3 required an actual code change, append to `.claude/20260824_log.md` (c
 **After:** `top_k=None` returns every subreddit passing the existing `exp_s > 5`
 reliability filter, sorted by lift descending. Default behavior (`top_k=15`) unchanged.
 
-**Why:** Experiment 9 (`docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`
+**Why:** Experiment 9 (`docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`
 §4) needs the full per-subreddit lift distribution, not just the top 15, to correlate
 against subreddit properties. See `docs/superpowers/plans/
 2026-08-24-redcaps-subreddit-signal-correlates.md` Task 1.
@@ -199,7 +199,7 @@ Create `src/test/20260824_redcaps_subreddit_correlates/analyze_subreddit_correla
 
 ```python
 """
-Experiment 9 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md S4):
+Experiment 9 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md S4):
 what predicts buddy-signal strength across RedCaps subreddits? Correlates per-subreddit
 buddy-edge lift (redcaps_buddy.subreddit_lift, full breakdown) against three properties:
 sample count, caption diversity (1 - mean pairwise CLIP-text cosine similarity within the
@@ -414,7 +414,7 @@ git commit -m "feat: add RedCaps subreddit signal-strength correlation analysis 
 
 **Files:**
 - Create: `docs/reports/auto/buddy/2026-08-24_redcaps_subreddit_signal_correlates.md` (adjust date to when this actually runs)
-- Modify: `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (extend C1's evidence note in §2)
+- Modify: `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` (extend C1's evidence note in §2)
 
 **Interfaces:**
 - Consumes: Task 2's `run()` output.
@@ -434,12 +434,12 @@ Create `docs/reports/auto/buddy/2026-08-24_redcaps_subreddit_signal_correlates.m
 
 - [ ] **Step 3: Update the spec**
 
-In `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §2, extend C1's row (or add a short note beneath the claims table, following the same pattern C6 used to extend C5) citing the new report and stating whether any property meaningfully predicts subreddit-level signal strength.
+In `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §2, extend C1's row (or add a short note beneath the claims table, following the same pattern C6 used to extend C5) citing the new report and stating whether any property meaningfully predicts subreddit-level signal strength.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docs/reports/auto/buddy/2026-08-24_redcaps_subreddit_signal_correlates.md docs/reports/assets/redcaps_subreddit_correlates/ docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+git add docs/reports/auto/buddy/2026-08-24_redcaps_subreddit_signal_correlates.md docs/reports/assets/redcaps_subreddit_correlates/ docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 git commit -m "results: RedCaps subreddit signal-strength correlates (Experiment 9)"
 ```
 

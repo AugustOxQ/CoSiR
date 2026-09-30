@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-# Experiment 8 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md §4):
+# Experiment 8 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md §4):
 # does the CHOICE of (vision, text) encoder pair used to BUILD the buddy graph/init matter
 # for downstream retrieval, holding the frozen CLIP training backbone, gated combiner, and
 # all training-time buddy terms OFF (same operating point as Experiment 1's 'buddies' arm)?

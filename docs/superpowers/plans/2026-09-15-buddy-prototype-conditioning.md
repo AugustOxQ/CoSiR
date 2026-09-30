@@ -867,7 +867,7 @@ Two separate launches, two separate confirmations — do not batch them into one
 
 - [ ] **Step 2: Retrieval comparison**
 
-For each seed, compare `test_oracle`/`test_pre_diff` t2i/i2t R1 between the two arms' `res/CoSiR_Experiment/exp18_baseline/seed{1,2,3}` and `res/CoSiR_Experiment/exp18_prototype_pooled/seed{1,2,3}` result directories, against this project's standard noise floor (§5, `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`) — mean Δ ± std across seeds, `mean/SEM` significance read, matching this project's established reporting convention.
+For each seed, compare `test_oracle`/`test_pre_diff` t2i/i2t R1 between the two arms' `res/CoSiR_Experiment/exp18_baseline/seed{1,2,3}` and `res/CoSiR_Experiment/exp18_prototype_pooled/seed{1,2,3}` result directories, against this project's standard noise floor (§5, `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`) — mean Δ ± std across seeds, `mean/SEM` significance read, matching this project's established reporting convention.
 
 - [ ] **Step 3: Interpretability readout — reuse 17.1's probe harness**
 

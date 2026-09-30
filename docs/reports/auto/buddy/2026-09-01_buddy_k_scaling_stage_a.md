@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-01 · **Dataset:** RedCaps at three independently-drawn, uniform-random, all-350-subreddit scales — 150k (`redcaps_150k.json`), 300k (`redcaps_300k_diverse.json`), 500k (`redcaps_500k_diverse.json`), the same three stores used by Experiment 9/C1a · **Branch:** `experiment/condition_drift_retrieval_correlation`
 **Code:** `src/test/20260901_buddy_k_scaling/buddy_k_sweep.py`
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 16, subsection 16.1
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 16, subsection 16.1
 **Precursor:** `src/test/20260609_conditional_buddy/dim_hparam_study.py` (the project's only earlier K sweep — Impressions only, statistics-only, never checked against training, and predates the strict/union distinction this report depends on)
 
 ---

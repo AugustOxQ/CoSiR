@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Answer Experiment 11.3 from `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (Experiment 11.3 subsection) — does removing the stop-gradient on the condition-predictor distillation term (so the per-sample condition table is also pulled toward what `condition_predictor` can represent, not just the reverse) change `test_oracle` (the table's own held-out codebook quality) and/or `test_pre_diff` (the predictor's standalone usefulness vs. raw CLIP), relative to Experiment 11.1's existing frozen and trained arms?
+**Goal:** Answer Experiment 11.3 from `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` (Experiment 11.3 subsection) — does removing the stop-gradient on the condition-predictor distillation term (so the per-sample condition table is also pulled toward what `condition_predictor` can represent, not just the reverse) change `test_oracle` (the table's own held-out codebook quality) and/or `test_pre_diff` (the predictor's standalone usefulness vs. raw CLIP), relative to Experiment 11.1's existing frozen and trained arms?
 
 **Architecture:** No new architecture — `condition_predictor` (`src/model/condition_predictor.py`) and its distillation loss (`lambda_pred`, `train_cosir.py`) already exist. The only change is a new boolean config flag, `loss.pred_stopgrad` (default `True` = today's one-way distillation), threaded through a small pure function extracted from the training loop into `src/metrics/loss.py` (Task 1) — mirroring how `imix_loss` already lives there as a pure, testable helper called from the training loop, rather than leaving the branch inline and untestable. A new sweep arm (`pred_coupled`: `train.em_interval=-1`, `loss.pred_stopgrad=false`) reuses Experiment 11.1's exact `results_dir` and wandb group so it shares the identical buddy-init template and can be compared directly against 11.1's already-completed `trained`/`frozen` runs without re-running them (Task 2). Both primary metrics (`test_oracle`, `test_pre_diff`) are already computed by the existing eval pipeline (`src/eval/pipeline.py`) with zero new eval code — the analysis script (Task 3) only needs to fetch and pair them from wandb, following the same pattern as `scripts/analyze_condition_freeze_ablation.py`.
 
 **Tech Stack:** Python 3.10, Hydra/OmegaConf, PyTorch, wandb, numpy/pandas. Existing CoSiR training entrypoint `main_cosir.py`. No new dependencies.
 
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`, Experiment 11.3 subsection (added 2026-08-26).
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`, Experiment 11.3 subsection (added 2026-08-26).
 
 ## Global Constraints
 
@@ -43,7 +43,7 @@ Create `src/test/test_loss_predictor_consistency.py`:
 
 ```python
 """Tests for src.metrics.loss.predictor_consistency_loss (Experiment 11.3,
-docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md).
+docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md).
 
 Verifies the actual autograd claim the spec's "What" section makes: with
 stopgrad=True (today's default), only the predictor receives gradient from this
@@ -143,7 +143,7 @@ def predictor_consistency_loss(
     one-way distillation (predictor learns to reproduce the table).
     stopgrad=False: gradient also flows into label_embeddings, pulling the table toward what
     the predictor -- a bounded-capacity function of the frozen input feature -- can represent
-    (Experiment 11.3, docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md).
+    (Experiment 11.3, docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md).
     """
     target = label_embeddings.detach() if stopgrad else label_embeddings
     return (1 - F.cosine_similarity(pred_cond, target, dim=-1)).mean()
@@ -270,7 +270,7 @@ label_embeddings, stopgrad=True)`, mirroring how `imix_loss` already lives in th
 pure helper called from the training loop. `stopgrad=True` (default) preserves today's
 behavior exactly; `stopgrad=False` lets gradient also flow into `label_embeddings`.
 
-**Why:** Experiment 11.3 (`docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`)
+**Why:** Experiment 11.3 (`docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`)
 needs this as a config-toggleable, unit-testable branch — see
 `docs/superpowers/plans/2026-08-26-pred-stopgrad-ablation.md` Task 1.
 
@@ -324,7 +324,7 @@ Create `scripts/run_pred_stopgrad_ablation.sh`:
 ```bash
 #!/bin/bash
 set -euo pipefail
-# Experiment 11.3 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md,
+# Experiment 11.3 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md,
 # Experiment 11.3 subsection): does removing the stop-gradient on the condition-predictor
 # distillation term (loss.pred_stopgrad=false) change test_oracle (the table's own held-out
 # codebook quality) or test_pre_diff (the predictor's standalone usefulness vs. raw CLIP),
@@ -442,7 +442,7 @@ Create `scripts/analyze_pred_stopgrad_ablation.py`:
 
 ```python
 """
-Paired analysis for Experiment 11.3 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md,
+Paired analysis for Experiment 11.3 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md,
 Experiment 11.3 subsection): does removing the stop-gradient on the condition-predictor
 distillation term change test_oracle or test_pre_diff, relative to Experiment 11.1's existing
 trained/frozen arms?

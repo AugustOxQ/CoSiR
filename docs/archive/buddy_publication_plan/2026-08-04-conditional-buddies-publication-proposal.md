@@ -1,8 +1,10 @@
 # Research Proposal: Conditional Buddies — When Does Graph-Based Neighbor Structure Help Contrastive Image–Text Retrieval?
 
+> **ARCHIVED 2026-09-30. No longer updated.** This was the living publication plan for the conditional-buddies line (Experiments 0–17, claims C1–C12). Each result was recorded here along with how it affected the paper. The project's main body is now the CoSiR v2 redesign, and a new v2 publication plan will replace this one. Don't add experiments or claims here. The code behind these results is on tag `archive/experiment/condition_drift_retrieval_correlation`; Exp 13 is on `archive/experiment/two_side_conditioning`. This proposal is the short pitch version of that plan.
+
 **Date:** 2026-08-04
 **Project:** CoSiR — conditional buddy initialization and training
-**Full technical plan:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`
+**Full technical plan:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`
 **Prepared for:** publication decision / advisor–collaborator review
 
 ---
@@ -82,4 +84,4 @@ At minimum: a methodologically rigorous paper establishing that a specific, easy
 
 ---
 
-*See `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` for exact experiment configurations, tooling references, statistical methodology standards, and the full risk/decision framework.*
+*See `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` for exact experiment configurations, tooling references, statistical methodology standards, and the full risk/decision framework.*

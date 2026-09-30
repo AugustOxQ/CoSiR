@@ -1,7 +1,7 @@
 # Prior-Art Grounding Note — Conditional Buddies
 
 **Date:** 2026-08-10 (updated 2026-08-11 — deeper adversarial follow-up pass; updated 2026-08-15 — second adversarial pass into cross-lingual/multi-view and CV retrieval/clustering lineages)
-**Feeds:** docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md §3.4, §6 Week-3 checkpoint
+**Feeds:** docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md §3.4, §6 Week-3 checkpoint
 
 **2026-08-11 update:** a follow-up search targeted specifically at cross-modal graph
 construction (rather than the single-modality/single-domain lineage searched initially)

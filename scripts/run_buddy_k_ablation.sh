@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-# Experiment 16.2 Stage B (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md §4):
+# Experiment 16.2 Stage B (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md §4):
 # does the K selected by Stage A's strict/union buddy-graph diagnostic change downstream
 # retrieval, holding the buddy-init operating point fixed? This is the trained buddies arm
 # only: no imgtxt baseline arm and no train.em_interval override.

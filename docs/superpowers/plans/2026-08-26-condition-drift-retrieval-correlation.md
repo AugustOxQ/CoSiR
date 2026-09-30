@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Answer Experiment 11.2 from `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 — *why* does letting the per-sample condition table keep training after buddy-init hurt i2t retrieval (Experiment 11.1's finding: frozen beats trained, mean Δ=+4.67 R1, mean/SEM=+32.1, 3/3 seeds)? Correlate each sample's condition drift-from-init and conditioned-embedding shift (already computable from 11.1's saved checkpoints) against that same sample's own i2t retrieval-rank change between the frozen and trained arms, using each sample's own actual (not oracle, not predicted) condition. No new training.
+**Goal:** Answer Experiment 11.2 from `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 — *why* does letting the per-sample condition table keep training after buddy-init hurt i2t retrieval (Experiment 11.1's finding: frozen beats trained, mean Δ=+4.67 R1, mean/SEM=+32.1, 3/3 seeds)? Correlate each sample's condition drift-from-init and conditioned-embedding shift (already computable from 11.1's saved checkpoints) against that same sample's own i2t retrieval-rank change between the frozen and trained arms, using each sample's own actual (not oracle, not predicted) condition. No new training.
 
 **Architecture:** This is a pure post-hoc analysis over artifacts Experiment 11.1 already produced: the paired frozen/trained `condition_viz/epoch_XXXX.pt` checkpoints (per-sample conditions + combiner + `other_proj` weights, already saved unconditionally by `_save_condition_viz_snapshot`) and each run's own frozen-CLIP feature store. Since the frozen arm's conditions never move (by `em_interval`'s construction), its final-epoch condition table *is* the buddy-init value — no separate init file needs to be located. A new script rebuilds each arm's final-epoch combiner and `other_proj`, computes each sampled training example's own-condition conditioned embedding, ranks it against the **full training population's** projected "other side" embeddings (not a small closed gallery — this keeps the rank numbers at a realistic retrieval-task scale), and correlates the frozen→trained rank delta against condition drift and embedding shift via Spearman rank correlation. Split into an offline-testable pure-math core (Task 1) and real-data integration (Task 2), mirroring the pattern already used for 11.1's own geometry diagnostic (`scripts/analyze_condition_geometry.py`, Tasks 4–5 of `docs/superpowers/plans/2026-08-25-condition-freeze-ablation.md`), whose helper functions this plan reuses directly rather than duplicating.
 
 **Tech Stack:** Python 3.10, PyTorch, numpy, scipy (`scipy.stats.spearmanr`). Reuses `scripts/analyze_condition_geometry.py`'s `compute_shift`, `_load_run_config`, `_load_train_features`, `_rebuild_combiner`, `_compute_comb_emb`; `src/metrics/regularizer.py`'s `reorder_features_to_z`; `src/model/combiner.py`'s `OtherProjMLP`. No new dependencies, no `src/` changes.
 
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 11.2 (gate resolved 2026-08-25, routed to the "extend the geometry diagnostic... correlate per-sample condition drift and per-sample embedding shift against per-sample retrieval outcome" branch — this plan implements exactly that branch).
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 11.2 (gate resolved 2026-08-25, routed to the "extend the geometry diagnostic... correlate per-sample condition drift and per-sample embedding shift against per-sample retrieval outcome" branch — this plan implements exactly that branch).
 
 ## Global Constraints
 
@@ -36,7 +36,7 @@ Create `scripts/analyze_condition_retrieval_correlation.py`:
 ```python
 """
 Post-hoc drift/shift-vs-retrieval-rank correlation diagnostic (Experiment 11.2, spec
-docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md S4).
+docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md S4).
 
 Experiment 11.1 found that letting the per-sample condition table keep training after
 buddy-init hurts i2t retrieval relative to freezing it right after init (frozen beats
@@ -503,7 +503,7 @@ git commit -m "feat: add real-data integration + CLI for drift/shift-vs-retrieva
 
 **Files:**
 - Modify: `docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md` (append an "Experiment 11.2" section)
-- Modify: `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (resolve 11.2's remaining "11.2 itself remains unscoped/not-yet-run" sentence with the actual result)
+- Modify: `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` (resolve 11.2's remaining "11.2 itself remains unscoped/not-yet-run" sentence with the actual result)
 
 **Interfaces:**
 - Consumes: `scripts/analyze_condition_retrieval_correlation.py`'s `analyze_pair` (Task 2), applied to Experiment 11.1's 3 real same-seed frozen/trained directory pairs.
@@ -534,12 +534,12 @@ Append a new `## Experiment 11.2 — drift/shift vs. retrieval-rank correlation`
 
 - [ ] **Step 5: Update the spec**
 
-In `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`'s Experiment 11.2 entry, replace the closing sentence "11.2 itself remains unscoped/not-yet-run as of this update; scoping its exact analysis is future work, not done here." with the actual resolved outcome (the cross-seed correlation result and a pointer to the new report section).
+In `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`'s Experiment 11.2 entry, replace the closing sentence "11.2 itself remains unscoped/not-yet-run as of this update; scoping its exact analysis is future work, not done here." with the actual resolved outcome (the cross-seed correlation result and a pointer to the new report section).
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+git add docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 git commit -m "results: drift/shift vs retrieval-rank correlation (Experiment 11.2)"
 ```
 

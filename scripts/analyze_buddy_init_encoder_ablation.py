@@ -1,5 +1,5 @@
 """
-Paired analysis for Experiment 8 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+Paired analysis for Experiment 8 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 S4): does the (vision, text) encoder pair used to build the buddy graph/init matter for
 downstream retrieval, holding the frozen CLIP backbone and all training-time buddy terms off?
 

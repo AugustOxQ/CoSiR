@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Answer Experiment 12 from `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (Experiment 12 subsection) — does the existing buddy-graph construction already implicitly reflect cross-modal polysemy (a bridge node A connected to B via an image-only edge and to C via a text-only edge), does the resulting spectral embedding place B and C closer together than chance, and — if so — is that pull graded by real shared-neighbor structure (legitimate signal) or flat/arbitrary ("false transitivity", the risk Experiment 10's own diagnostic flagged but never measured)? Also: does a per-node polysemy label predict anything about per-sample retrieval rank or condition drift (reusing Experiment 11.2's machinery)?
+**Goal:** Answer Experiment 12 from `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` (Experiment 12 subsection) — does the existing buddy-graph construction already implicitly reflect cross-modal polysemy (a bridge node A connected to B via an image-only edge and to C via a text-only edge), does the resulting spectral embedding place B and C closer together than chance, and — if so — is that pull graded by real shared-neighbor structure (legitimate signal) or flat/arbitrary ("false transitivity", the risk Experiment 10's own diagnostic flagged but never measured)? Also: does a per-node polysemy label predict anything about per-sample retrieval rank or condition drift (reusing Experiment 11.2's machinery)?
 
 **Architecture:** No new training, no new graph-construction mechanism. `classify_edges()`/`bridge_node_stats()` (currently a one-off diagnostic in `src/test/20260824_buddy_graph_disagreement/diagnose_disagreement.py`) move into `src/conditional_buddy/buddy_graph.py` as reusable public functions (Task 1). `scripts/analyze_condition_retrieval_correlation.py`'s `analyze_pair()` gets a small opt-in extension to persist the per-sample arrays it already computes internally but currently only aggregates (Task 2). A new script, `scripts/analyze_polysemy_bridges.py`, is built incrementally (Tasks 3–7) as a set of small pure functions (each with its own selftest coverage) wired together by one `run()`/`main()` (Task 7), then run once against the existing RedCaps-150k buddy-init template and cached features to produce the actual finding (Task 8).
 
 **Tech Stack:** Python 3.10, numpy, scipy.sparse, scipy.stats (spearmanr, rankdata). No new dependencies. No PyTorch/training/wandb needed except to load one existing checkpoint snapshot in Task 8 for the retrieval-correlation cross-reference.
 
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`, Experiment 12 subsection (added 2026-08-26).
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`, Experiment 12 subsection (added 2026-08-26).
 
 ## Global Constraints
 
@@ -38,7 +38,7 @@ Create `src/test/20260826_polysemy_bridges/test_buddy_graph_bridge_functions.py`
 
 ```python
 """Tests for classify_edges/bridge_node_stats (Experiment 12,
-docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md), promoted from the
+docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md), promoted from the
 one-off src/test/20260824_buddy_graph_disagreement/diagnose_disagreement.py diagnostic
 into src/conditional_buddy/buddy_graph.py as reusable public functions.
 
@@ -256,7 +256,7 @@ a one-off diagnostic script, not importable as reusable infrastructure.
 **After:** Moved into `src/conditional_buddy/buddy_graph.py` as public functions, byte-identical
 logic. `diagnose_disagreement.py` now imports them instead of redefining them.
 
-**Why:** Experiment 12 (`docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`)
+**Why:** Experiment 12 (`docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`)
 depends on them as core logic, not a throwaway diagnostic — see
 `docs/superpowers/plans/2026-08-26-polysemy-bridge-audit.md` Task 1.
 
@@ -458,7 +458,7 @@ Create `scripts/analyze_polysemy_bridges.py`:
 
 ```python
 """
-Experiment 12 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md,
+Experiment 12 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md,
 Experiment 12 subsection): cross-modal polysemy bridge-node diagnostic.
 
 Does the existing buddy-graph construction already implicitly reflect cross-modal
@@ -1159,7 +1159,7 @@ Create `docs/reports/auto/buddy/2026-08-26_polysemy_bridge_diagnostic.md`:
 
 **Date:** 2026-08-26 · **Dataset:** RedCaps, 150,000 rows (matches C5/Exp 9-11's scale) · **Branch:** `experiment/condition_drift_retrieval_correlation`
 **Code:** `scripts/analyze_polysemy_bridges.py`, `src/conditional_buddy/buddy_graph.py` (`classify_edges`/`bridge_node_stats`)
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 12
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 12
 **Precursor:** `src/test/20260824_buddy_graph_disagreement/diagnose_disagreement.py` (found ~80% of nodes are "bridge" nodes; this experiment measures what that structurally implies for the resulting embedding)
 
 ---

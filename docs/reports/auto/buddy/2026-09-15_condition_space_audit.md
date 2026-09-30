@@ -5,7 +5,7 @@ found 1 Critical + 7 Important issues in the original pass (see `.superpowers/sd
 for the full fix wave). This revision replaces the original results/verdict with numbers
 from the corrected pipeline — nothing here is a re-derivation from memory, every number
 below comes from a real re-run of the scripts in `src/test/20260915_condition_space_audit/`.
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`, Experiment 17.1
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`, Experiment 17.1
 **Plan:** `docs/superpowers/plans/2026-09-15-condition-space-audit.md`
 
 ## What changed in this revision, and why

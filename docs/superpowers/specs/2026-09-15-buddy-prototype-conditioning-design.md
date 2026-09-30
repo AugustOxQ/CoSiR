@@ -1,7 +1,7 @@
 # Buddy-Graph Prototype Conditioning (Experiment 18)
 
 **Date:** 2026-09-15
-**Motivates from:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 17 (17.1's result), `docs/reports/auto/buddy/2026-09-15_condition_space_audit.md` (full 17.1 write-up)
+**Motivates from:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 17 (17.1's result), `docs/reports/auto/buddy/2026-09-15_condition_space_audit.md` (full 17.1 write-up)
 **Status:** proposed — pending user sign-off before `writing-plans` produces the task-by-task execution plan
 **Branch:** isolated in its own `git worktree` off `experiment/condition_drift_retrieval_correlation` (branch `experiment/buddy_prototype_conditioning`), per this project's established pattern for substantial model/train/eval changes with a real chance of abandonment (validated 2026-08-27 for Experiment 13) — see §11
 
@@ -91,7 +91,7 @@ Per this project's established pattern for substantial, possibly-abandoned archi
 
 ## 10. Relationship to the publication-plan spec
 
-This experiment **supersedes** Experiment 17.2's original sketch (reserved concept subspace + steering-vector regularization toward a linear axis) in `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4. A short pointer is added there rather than forking the whole spec (the `experiment/two_side_conditioning` spec fork caused real reconciliation cost later — avoided here deliberately). 17.2's architecture-fix-only arm (low-rank, symmetric combiner) is **not** superseded — it is this spec's own baseline arm (§7a), so it is pursued regardless of this experiment's outcome, exactly as originally scoped.
+This experiment **supersedes** Experiment 17.2's original sketch (reserved concept subspace + steering-vector regularization toward a linear axis) in `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4. A short pointer is added there rather than forking the whole spec (the `experiment/two_side_conditioning` spec fork caused real reconciliation cost later — avoided here deliberately). 17.2's architecture-fix-only arm (low-rank, symmetric combiner) is **not** superseded — it is this spec's own baseline arm (§7a), so it is pursued regardless of this experiment's outcome, exactly as originally scoped.
 
 ## Out of scope
 

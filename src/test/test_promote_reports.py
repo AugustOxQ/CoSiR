@@ -146,3 +146,13 @@ def test_branch_update_is_copied_but_local_edits_are_protected(repo):
     assert "edited on main" in copy.read_text()
     items = promote_reports.promote(repo, "feat", "lab", force=True)
     assert _actions(items)[src] == "update" and copy.read_text().endswith("even more\n")
+
+
+def test_links_to_docs_moved_here_follow_the_move(repo, monkeypatch):
+    monkeypatch.setattr(promote_reports, "REDIRECTS", {"docs/old/plan.md": "docs/archive/plan.md"})
+    _write(repo, "docs/archive/plan.md", "# plan\n")
+    _commit_on(repo, "feat", {"docs/reports/2026-10-04_uses_plan_report.md":
+                              "# Uses plan\n[plan](../old/plan.md) see docs/old/plan.md\n"})
+    promote_reports.promote(repo, "feat", "lab")
+    copy = (repo / "docs/reports/auto/lab/2026-10-04_uses_plan.md").read_text()
+    assert "](../../../archive/plan.md)" in copy and "see docs/archive/plan.md" in copy

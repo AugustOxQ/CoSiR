@@ -1,5 +1,5 @@
 """
-Paired analysis for Experiment 11.1 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+Paired analysis for Experiment 11.1 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 S4): does post-init training of the conditions change retrieval, holding buddy-init geometry
 and every other hyperparameter identical between the frozen and trained arms?
 

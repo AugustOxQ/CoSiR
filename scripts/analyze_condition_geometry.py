@@ -1,6 +1,6 @@
 """
 Post-hoc condition-embedding geometry diagnostic (Experiment 11.1, spec
-docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md S4).
+docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md S4).
 
 Retrieval numbers (test_oracle/*_R1) can miss a real difference between the frozen and
 trained arms of Experiment 11.1 -- this script inspects the actual embedding geometry

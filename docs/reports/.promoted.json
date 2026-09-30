@@ -41,17 +41,17 @@
    "to": "docs/reports/auto/buddy/2026-07-16_buddy_cross_vlm_survival.md"
   },
   "docs/reports/2026-08-10_prior_art_note.md": {
-   "dest_blob": "55fd3ff112761a144a761cfc1c5e491ffc3178cf",
+   "dest_blob": "85b217cb4818e2697a1652fbdd05f71884f3e3e0",
    "src_blob": "55fd3ff112761a144a761cfc1c5e491ffc3178cf",
    "to": "docs/reports/auto/buddy/2026-08-10_prior_art_note.md"
   },
   "docs/reports/2026-08-16_buddy_init_ablation.md": {
-   "dest_blob": "d33ea4bf8bb675a35e17d384f7cd3293e3f38780",
+   "dest_blob": "d57d23c2b436c81ca611b364d895cfb45e763e18",
    "src_blob": "cd54bcc3d80ad033b70511b6997a51f8328c1e6a",
    "to": "docs/reports/auto/buddy/2026-08-16_buddy_init_ablation.md"
   },
   "docs/reports/2026-08-19_buddy_init_ablation_redcaps_300k.md": {
-   "dest_blob": "fb8bcea8bb541c270a9aaafd91c086de30a2fd87",
+   "dest_blob": "2acfe3685ca854eb716adf4dfc9310c18819974c",
    "src_blob": "4a2f50e394ced11d4ce3927c49a45f370336aac1",
    "to": "docs/reports/auto/buddy/2026-08-19_buddy_init_ablation_redcaps_300k.md"
   },
@@ -71,32 +71,32 @@
    "to": "docs/reports/pptx/2026-08-19_conditional_buddies_slides.pptx"
   },
   "docs/reports/2026-08-24_buddy_distance_mode_ablation.md": {
-   "dest_blob": "03c07b8ec152c1eb28888e9aaf2976851b3d5039",
+   "dest_blob": "6b20e4f3b59ec61e35dd8e9c05707e01965aa342",
    "src_blob": "36b88deb7355aa1f30d1641f1e1f8e9d926d1349",
    "to": "docs/reports/auto/buddy/2026-08-24_buddy_distance_mode_ablation.md"
   },
   "docs/reports/2026-08-24_buddy_init_encoder_ablation.md": {
-   "dest_blob": "22e253661f02fbbde6554754af4587d1f4261e5a",
+   "dest_blob": "cbbf5b1fd7f5110e0368e9af303bac673d050a5f",
    "src_blob": "c222086609d90ff858cf03ebe2ab6dcbd71b7af9",
    "to": "docs/reports/auto/buddy/2026-08-24_buddy_init_encoder_ablation.md"
   },
   "docs/reports/2026-08-24_redcaps_subreddit_signal_correlates.md": {
-   "dest_blob": "8b915a78d030a93d6ee29007830ac7af52984df6",
+   "dest_blob": "84afefb0b7e77e9a732b7d0dd2de51af184932bc",
    "src_blob": "6da0bda60fc75d969760265b81c6287b26aab3a4",
    "to": "docs/reports/auto/buddy/2026-08-24_redcaps_subreddit_signal_correlates.md"
   },
   "docs/reports/2026-08-25_condition_freeze_ablation.md": {
-   "dest_blob": "39dab2cdc7f87d1138c1f08b6f149171b9dce54d",
+   "dest_blob": "4a8dce052f49a9f38b26f3ba53778f3743089c36",
    "src_blob": "ec4a76e9e2ece185d8107afaa014877e0acbc5be",
    "to": "docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md"
   },
   "docs/reports/2026-08-26_polysemy_bridge_diagnostic.md": {
-   "dest_blob": "6535e43aba0706e393417f66f429e67356defb9a",
+   "dest_blob": "2699478a943049d8fc67df8e32ea7725b6e8f617",
    "src_blob": "d4a3df5ecc3a8e27cc735c4e9b7d5d8608d0b99d",
    "to": "docs/reports/auto/buddy/2026-08-26_polysemy_bridge_diagnostic.md"
   },
   "docs/reports/2026-08-26_weekly_conditional_buddies.md": {
-   "dest_blob": "e64de46d9465f9045c3f54b8aa0a6aba4a9f7a0b",
+   "dest_blob": "0782095fc1d9c892badfc0c6c58c22c07826c343",
    "src_blob": "3213b258cc83c5ecac6b72b3a716e37ec4fda6b9",
    "to": "docs/reports/weekly/2026-08-26_conditional_buddies.md"
   },
@@ -111,27 +111,27 @@
    "to": "docs/reports/auto/buddy/2026-08-27_combine_side_txt_replication.md"
   },
   "docs/reports/2026-08-27_symmetric_conditioning_exp13.md": {
-   "dest_blob": "ac8b599c69c6334b420f7c88b07a001759dd340c",
+   "dest_blob": "main-owned: newer than this branch's copy; never overwrite",
    "src_blob": "c70d7f9bb7812e1fe35749314f502c85255c3767",
    "to": "docs/reports/auto/buddy/2026-08-27_symmetric_conditioning_exp13.md"
   },
   "docs/reports/2026-08-31_closed_triangle_bridge_diagnostic.md": {
-   "dest_blob": "ab665e05c5b8d8ee2bd6e33ab0ed560627575b2b",
+   "dest_blob": "main-owned: newer than this branch's copy; never overwrite",
    "src_blob": "33cbc4978c2e53b550dc99166b5857c3138fb169",
    "to": "docs/reports/auto/buddy/2026-08-31_closed_triangle_bridge_diagnostic.md"
   },
   "docs/reports/2026-09-01_buddy_k_scaling_stage_a.md": {
-   "dest_blob": "46c089937780fd2bc2d6f59ac073695ff4460854",
+   "dest_blob": "cc3173db666220e91c0fc931a546d4a4f471a793",
    "src_blob": "46c089937780fd2bc2d6f59ac073695ff4460854",
    "to": "docs/reports/auto/buddy/2026-09-01_buddy_k_scaling_stage_a.md"
   },
   "docs/reports/2026-09-01_combiner_architecture_brainstorm.md": {
-   "dest_blob": "064c993bec4cae15bd6e9aa16e9aae7f26acbf1d",
+   "dest_blob": "6a571f2b796c44aa3e820e76390357e78e40c0c9",
    "src_blob": "1a579ef4634e1beda739ae21680108df56032796",
    "to": "docs/reports/auto/buddy/2026-09-01_combiner_architecture_brainstorm.md"
   },
   "docs/reports/2026-09-02_buddy_k_ablation_stage_b.md": {
-   "dest_blob": "e1075a2472c360aa9eae3f3addc115b9a0cf63cb",
+   "dest_blob": "481fc18b4921f2f30726f4a64765c7b6536a9050",
    "src_blob": "cc91e992395c991c8d8c236fef8de43c6d13808d",
    "to": "docs/reports/auto/buddy/2026-09-02_buddy_k_ablation_stage_b.md"
   },
@@ -141,12 +141,12 @@
    "to": "docs/reports/auto/buddy/2026-09-02_combiner_architecture_ablation.md"
   },
   "docs/reports/2026-09-15_buddy_prototype_conditioning.md": {
-   "dest_blob": "77df82e51bc3cf892a22831a5801980502076568",
+   "dest_blob": "a52e457b59d6a6d645ca39bcb4af9ef24ae690f5",
    "src_blob": "77df82e51bc3cf892a22831a5801980502076568",
    "to": "docs/reports/auto/percept/2026-09-15_buddy_prototype_conditioning.md"
   },
   "docs/reports/2026-09-15_condition_space_audit.md": {
-   "dest_blob": "0d9a670b5efe3bda2405d416fb6e88238dd4956a",
+   "dest_blob": "687b5b24f7b46749c022015f4f104c65e219c687",
    "src_blob": "0d9a670b5efe3bda2405d416fb6e88238dd4956a",
    "to": "docs/reports/auto/buddy/2026-09-15_condition_space_audit.md"
   },
@@ -221,7 +221,7 @@
    "to": "docs/reports/stage/2026-09-27_key_advantages.md"
   },
   "docs/reports/2026-09-27_method_improvement_and_redcaps_brainstorm.md": {
-   "dest_blob": "8d580876ec570294d259516616b04968c5737e36",
+   "dest_blob": "25ad6478cebfede16879772a7b90f1ff8f75ad6f",
    "src_blob": "efc52d5271513c8d65b7f696ec07d241deb605d2",
    "to": "docs/reports/auto/percept/2026-09-27_method_improvement_and_redcaps_brainstorm.md"
   },
@@ -631,7 +631,7 @@
    "to": "docs/reports/auto/buddy/pilots/20260716_buddy_cross_vlm/20260716_buddy_cross_vlm_log.md"
   },
   "src/test/20260915_condition_space_audit/20260915_condition_space_audit_log.md": {
-   "dest_blob": "5e1fddda4763cb8ed061d51785878ab2804f19fd",
+   "dest_blob": "ff32e5280fb5205177e2c9e22a2db5796309ce01",
    "src_blob": "a0be268b0b0ad1f7897fe285d505fd68e07f59d4",
    "to": "docs/reports/auto/buddy/pilots/20260915_condition_space_audit/20260915_condition_space_audit_log.md"
   },

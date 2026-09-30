@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-# Experiment 1 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md §4):
+# Experiment 1 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md §4):
 # does buddy-graph spectral initialization actually beat the prior generic (imgtxt) init on
 # retrieval, with every training-time buddy term held OFF (lambda_buddy=0, lambda_buddy_con=0,
 # buddy_refresh=False — all default/absent, never added as an override below)?

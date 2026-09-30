@@ -1,5 +1,5 @@
 """
-Experiment 12 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md,
+Experiment 12 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md,
 Experiment 12 subsection): cross-modal polysemy bridge-node diagnostic.
 
 Does the existing buddy-graph construction already implicitly reflect cross-modal

@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-24 (extended same day with a z-score companion metric and a 150k→300k→500k scale check) · **Dataset:** RedCaps at three independently-drawn, uniform-random, all-350-subreddit scales — 150k (`redcaps_150k.json`), 300k (`redcaps_300k_diverse.json`), 500k (`redcaps_500k_diverse.json`) · **Branch:** `experiment/buddy_init_ablation`
 **Code:** `src/test/20260824_redcaps_subreddit_correlates/analyze_subreddit_correlates.py` (analysis, `--scale {150k,300k,500k}`), `src/test/20260623_redcaps_buddy/redcaps_buddy.py` (`subreddit_lift` extended to return every qualifying subreddit; `subreddit_enrichment_zscore`, new; `load_data` parameterized over scale), `src/test/20260623_redcaps_buddy/build_subsample.py` + `extract_features.py` (generalized to build/extract any scale, not just 150k)
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 9
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 9
 **Precursor:** `docs/reports/auto/buddy/2026-06-23_redcaps_buddy.md` (the original aggregate ~20× lift finding this deepens)
 
 ---

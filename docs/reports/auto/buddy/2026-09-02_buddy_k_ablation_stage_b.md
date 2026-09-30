@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-02 · **Dataset:** RedCaps 300k/500k, `redcaps_300k_diverse`/`redcaps_500k_diverse` (same independently-drawn, all-350-subreddit stores as Stage A/Experiment 9/C1a) · **Branch:** `experiment/condition_drift_retrieval_correlation`
 **Code:** `scripts/run_buddy_k_ablation.sh`, `scripts/run_buddy_k_ablation_redcaps_{300k,500k}.sh`, `scripts/analyze_buddy_k_ablation.py`
-**Spec:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 16, subsection 16.2
+**Spec:** `docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 16, subsection 16.2
 **Precursor:** `docs/reports/auto/buddy/2026-09-01_buddy_k_scaling_stage_a.md` (Experiment 16.1 — the graph-diagnostic sweep that derived this experiment's K shortlists and the K(N) scaling prediction being tested here)
 
 ---

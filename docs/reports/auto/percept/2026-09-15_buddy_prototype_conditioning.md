@@ -61,7 +61,7 @@ needed. Full per-run numbers: `src/test/20260915_exp18_eval/oracle_retrieval_res
 | `oracle/t2i_R10` | 37.70 ± 0.00 | 37.77 ± 0.06 | +0.07 ± 0.06 | 2.00 | inside — null |
 | `oracle/i2t_R10` | 35.80 ± 0.00 | 37.20 ± 0.44 | +1.40 ± 0.44 | 5.56 | beyond — real but small |
 
-Reading this the way this project's own convention (`docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`
+Reading this the way this project's own convention (`docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md`
 §5/§38) reads C7/C8's flagged-but-marginal cells: `mean/SEM ≥ 2` is necessary but
 not sufficient — a tiny cross-seed variance can inflate `mean/SEM` for a magnitude
 that is still inside the established noise floor. `i2t_R1`'s +0.6 sits exactly at

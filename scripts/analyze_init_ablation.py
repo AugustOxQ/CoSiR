@@ -1,5 +1,5 @@
 """
-Paired analysis for Experiment 1 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+Paired analysis for Experiment 1 (spec docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md
 S4): does buddy-graph spectral initialization beat the prior generic (imgtxt) initialization on
 retrieval, with every training-time buddy term held off?
 

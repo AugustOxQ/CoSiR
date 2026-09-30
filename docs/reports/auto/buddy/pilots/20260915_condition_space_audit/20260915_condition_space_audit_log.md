@@ -1,6 +1,6 @@
 # Condition-Space Steerability Audit (Exp. 17.1) — Log
 
-Spec: docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md (Experiment 17.1)
+Spec: docs/archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md (Experiment 17.1)
 Plan: docs/superpowers/plans/2026-09-15-condition-space-audit.md
 
 ## Checkpoint discovery

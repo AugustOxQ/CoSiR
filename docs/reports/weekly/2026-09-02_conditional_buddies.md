@@ -227,4 +227,4 @@ Two new tunable axes were also discovered this week, both with the same shape: a
 - Experiment 16.2: [buddy K ablation, Stage B](../auto/buddy/2026-09-02_buddy_k_ablation_stage_b.md)
 - Combiner architecture brainstorm: [literature search + candidate shortlist](../auto/buddy/2026-09-01_combiner_architecture_brainstorm.md)
 - Combiner architecture ablation: [family vs. dimension results](../auto/buddy/2026-09-02_combiner_architecture_ablation.md)
-- Master status and gates: [publication-plan design](../../superpowers/specs/2026-08-04-buddy-publication-plan-design.md)
+- Master status and gates: [publication-plan design](../../archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md)
