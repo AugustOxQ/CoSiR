@@ -1,10 +1,99 @@
 # CoSiR v2 Candidate A: condition-aware factor learning, first experiment (design)
 
-**Status:** design approved section by section in conversation (2026-09-30); awaiting review of this written
-spec. **Parent spec:** `docs/superpowers/specs/2026-09-28-cosir-v2-ground-up-redesign.md` (Candidate A §1-4).
+**Status:** design approved section by section in conversation (2026-09-30); written spec reviewed by the user
+(2026-09-30: approved after adding §0 context). **Parent spec:** `docs/superpowers/specs/2026-09-28-cosir-v2-ground-up-redesign.md` (Candidate A §1-4).
 **Follows:** stage (d) (`docs/superpowers/specs/2026-09-30-cosir-v2-candidate-a-stage-d-design.md`, §9 gate) and
 the headroom probe (`docs/reports/auto/v2/2026-10-15_candidate_a_factor_headroom_probe.md`). **Handoff:**
 `docs/superpowers/handoffs/2026-09-30-candidate-a-factor-learning-handoff.md`.
+
+## 0. Context: the system and the terms this spec uses
+
+**The task.** CoSiR v2 Candidate A scores an image and a caption *under a condition*, such as "the same emotion
+as these examples" or "the same art style as these examples". It retrieves in two directions: **i2t** (an
+image is the query; candidate captions are ranked) and **t2i** (a caption is the query; candidate images are
+ranked).
+
+**Data and features.** ArtELingo: 308,723 rows, each one painting image with one annotator's caption. Every
+caption carries the annotator's **emotion** label (9 values, one of them "something else"); every painting has
+one **art style** (27 values). Images and captions are represented by **frozen CLIP ViT-B/32 features**
+(512-dimensional, pre-extracted, never fine-tuned). The human labels are used **only to evaluate**, never to
+train.
+
+**Factors.** Two small encoders map CLIP features into a shared space of 32 non-negative numbers, the
+**factors** (`SharedFactorEncoder` in `src/model/factors.py`: one linear layer plus ReLU per modality, so an
+image and a caption each get a 32-number **code**). Each factor is meant to capture one aspect (a palette, a
+mood, a subject). The encoders are trained without labels:
+- reconstruction: decoders rebuild the CLIP features from the codes;
+- **paired agreement**: an image and its own caption get similar codes;
+- a graph term: neighbours in a content graph (mutual nearest neighbours in CLIP) get similar codes;
+- sparsity, usage-balance and decorrelation terms that keep the factors distinct and in use.
+
+A row's **pair code** is `0.5·(image code + caption code)`.
+
+**R0 and R3, the two training recipes so far.**
+- **R0** is the original recipe (cosine agreement). Its 32 factors collapsed onto about one direction
+  (participation ratio 1.3); see `docs/reports/auto/v2/2026-10-09_candidate_a_factor_collapse_diagnosis.md`.
+  R0 is kept only as the reference level for one collapse gate (the readout gate, below).
+- **R3** is the repaired recipe (InfoNCE agreement plus a decorrelation penalty; `R3_CONFIG` in
+  `src/train/train_factors.py`), selected on 2026-09-29 (`docs/reports/auto/v2/2026-10-11_candidate_a_factor_repair.md`).
+  Its participation ratio is about 21, and its codes match images to captions better than raw CLIP does.
+  **R3 is the current factor model.** Its checkpoint
+  (`src/test/20261011_factor_repair_grid/checkpoints/selected_seed42.pt`) was trained on all train rows.
+
+**Conditions from examples.** A condition is given by 4 **supports** (items that have it) and 4 **contrasts**
+(items that do not).
+
+**The naive rule** turns them into factor weights with no parameters:
+`w = ReLU(mean support pair code − mean contrast pair code)`, L1-normalized, so the factors more active in the
+supports than in the contrasts get the weight.
+
+**The score** of a query `q` and a candidate `c` (from opposite modalities) under weights `w` is
+
+`s(q, c | w) = β · cos(CLIP_q, CLIP_c) + Σ_l w_l · q_l · c_l`
+
+where `q_l` and `c_l` are the two codes' values on factor `l` (`conditional_score` in `src/model/conditioning.py`).
+**β** is the weight of plain CLIP similarity relative to the condition-weighted factor term. At β = 0 the ranking
+uses the factors only; a larger β leans more on generic CLIP similarity. **β = 0.3** was chosen on val for R3
+and is the pre-registered value in stage (d) and here. How much a given β matters depends on the size of the
+factor codes, so the same β does not mean the same balance for different factor models.
+
+**Label episodes (the evaluation).** For a target label `L` (one emotion or one art style), an episode has:
+- an anchor with `L`;
+- 4 supports with `L` and 4 contrasts without it;
+- 13 candidates: 1 positive with `L` and 12 negatives from paintings never given `L`.
+
+The query is the anchor (its image for i2t, its caption for t2i). **R@1** is the share of episodes in which the
+positive is ranked first; chance is 1/13 = 7.7%. Results are pooled over emotion and art style, and reported per
+direction or as the mean of the two directions. `standard_label_episodes` in `src/eval/label_episodes.py` builds
+them.
+
+**The label oracle** is a diagnostic, not a method. It fits one weight vector per label on half of that label's
+episodes and ranks the other half with it (cross-validated), measuring how much label information a code
+carries whatever the weighting rule.
+
+**Rows.** The data is split by painting (seed 42) into train, val and held rows. Stage (d) split train again
+by painting into **scorer-train** (85%) and **selection** (15%). A **painting** (leakage group) is all rows that
+share one image; no painting is ever in two parts.
+
+**What came before.**
+- **Stage (d)** trained a small scorer on frozen R3 codes: a learned correction to the naive rule, plus a
+  learned β. It learned from **self-generated conditions**, meaning conditions made without human labels, for
+  example "same CLIP image cluster". No gain could be attributed to the training: the gains were explained by β
+  dropping. The label oracle on R3 was also about equal to naive, so R3's factors, not the rule, limit the
+  conditioning (`docs/reports/auto/v2/2026-10-14_candidate_a_stage_d_final.md`).
+- **The headroom probe** (§1) then showed that frozen CLIP holds far more of the labels than R3 does.
+
+**Collapse gates.** Nine pass/fail checks on a factor space, from the R3 repair (`src/eval/factor_gates.py`,
+amended thresholds of 2026-09-29):
+- effective dimensionality (participation ratio);
+- redundancy (maximum factor correlation);
+- linear readout of CLIP features from the codes, which must be no worse than R0's;
+- sparsity (share of active factors ≤ 50%);
+- dead factors, modality-private factors, usage concentration and community spanning;
+- image-caption pair retrieval relative to raw CLIP.
+
+**AMI** (adjusted mutual information) measures how well a partition of the rows lines up with a label: 0 means
+unrelated, 1 means identical.
 
 ## 1. Intent
 
