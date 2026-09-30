@@ -1,7 +1,10 @@
-"""Figures for docs/reports/auto/v2/2026-10-18_candidate_a_affect_factor_learning_selection.md.
+"""Figures for docs/reports/auto/v2/2026-10-18_candidate_a_affect_factor_learning_selection.md and
+docs/reports/auto/v2/2026-10-19_candidate_a_affect_factor_learning_held.md (held_*.png).
 
-Reads the affect run's stored selection results (gitignored, local only):
+Reads the affect run's stored results (gitignored, local only):
     src/test/20261018_affect_factor_learning/results/selection_results.json   (run_affect.py --evaluate)
+    src/test/20261018_affect_factor_learning/results/replication.json         (run_affect.py --replicate)
+    src/test/20261019_affect_factor_learning_held/results/held_results.json   (run_held.py --run; if present)
 and writes the PNGs to docs/reports/assets/2026-10-18_affect_factor_learning/.
 
 Run from the repository root:
@@ -19,6 +22,8 @@ import numpy as np  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
 RESULTS = ROOT / "src/test/20261018_affect_factor_learning/results/selection_results.json"
+REPLICATION = ROOT / "src/test/20261018_affect_factor_learning/results/replication.json"
+HELD_RESULTS = ROOT / "src/test/20261019_affect_factor_learning_held/results/held_results.json"
 OUT = ROOT / "docs/reports/assets/2026-10-18_affect_factor_learning"
 
 SERIES_1, SERIES_2, SERIES_3 = "#2a78d6", "#eb6834", "#1baf7a"   # validated categorical slots (light surface)
@@ -239,6 +244,105 @@ def training_figure(r: dict) -> None:
     plt.close(fig)
 
 
+def held_criterion_figure(h: dict, r: dict, rep: dict) -> None:
+    """Held test (2026-10-19 report): SE - C0 on held vs selection, per seed, and plain naive R@1 on held per model."""
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(14.0, 5.6), dpi=200, gridspec_kw={"width_ratios": [1.15, 1.0]})
+    rows = (("held, seed 42\n(the criterion)", h["d_emo"], h["d_style"], h["d_pooled"]),
+            ("held, seed 43\n(context)", h["seeds_vs_c0"]["43"]["d_emo"], h["seeds_vs_c0"]["43"]["d_style"],
+             h["seeds_vs_c0"]["43"]["d_pooled"]),
+            ("held, seed 44\n(context)", h["seeds_vs_c0"]["44"]["d_emo"], h["seeds_vs_c0"]["44"]["d_style"],
+             h["seeds_vs_c0"]["44"]["d_pooled"]),
+            ("selection, seed 42\n(picked SE)", r["d_emo"]["SE"], r["d_style"]["SE"], r["d_pooled"]["SE"]),
+            ("selection, seed 43", rep["per_seed"]["43"]["d_emo"], rep["per_seed"]["43"]["d_style"],
+             rep["per_seed"]["43"]["d_pooled"]),
+            ("selection, seed 44", rep["per_seed"]["44"]["d_emo"], rep["per_seed"]["44"]["d_style"],
+             rep["per_seed"]["44"]["d_pooled"]))
+    y = np.array([6.0, 5.0, 4.0, 2.4, 1.4, 0.4])
+    series = ((1, SERIES_1, "D_emo: emotion (criterion: lower bound > 0)"),
+              (2, SERIES_2, "D_style: art style (guard: lower bound > −1.5)"),
+              (3, SERIES_3, "pooled (context)"))
+    for (idx, color, name), off in zip(series, (0.24, 0.0, -0.24)):
+        stats = [point_ci(row[idx]) for row in rows]
+        pts = np.array([s[0] for s in stats])
+        lo, hi = np.array([s[1] for s in stats]), np.array([s[2] for s in stats])
+        ax.errorbar(pts, y + off, xerr=[pts - lo, hi - pts], fmt="o", color=color, ecolor=color, elinewidth=1.6,
+                    capsize=3, markersize=5.5, label=name, zorder=3)
+        for yi, p, top in zip(y + off, pts, hi):
+            ax.text(top + 0.07, yi, signed(p), va="center", fontsize=7.5, color=INK)
+    ax.axvline(0.0, color=INK, linewidth=1.0, zorder=1)
+    ax.axvline(-1.5, color=MUTED, linewidth=1.0, linestyle="--", zorder=1)
+    ax.axhline(3.2, color=GRID, linewidth=1.2, zorder=0)
+    ax.text(0.05, 6.55, "0 (criterion)", color=INK, fontsize=8, va="bottom", ha="left")
+    ax.text(-1.45, 6.55, "−1.5 (style guard)", color=MUTED, fontsize=8, va="bottom", ha="left")
+    ax.text(3.95, 3.45, f"held: {h['meta']['n_per_label']:,} fresh episodes per label", fontsize=8, color=MUTED,
+            ha="right", va="bottom")
+    ax.text(3.95, 2.95, "selection: 4,096 episodes per label", fontsize=8, color=MUTED, ha="right", va="top")
+    ax.set_yticks(y, [row[0] for row in rows], fontsize=8.5)
+    ax.set_xlim(-2.0, 4.0)
+    ax.set_ylim(-0.2, 6.9)
+    ax.set_xlabel("SE − C0 of the same seed, naive R@1 at β 0.3 (points), mean of i2t and t2i, 95% CI")
+    ax.grid(axis="x", color=GRID, linewidth=0.8, zorder=0)
+    ax.legend(frameon=False, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
+    ax.set_title("(a) SE minus the matched control C0", fontsize=11, color=INK, loc="left", fontweight="bold")
+
+    # Baselines in neutral grays, SE in the one accent that panel (a) does not use (categorical slot 7, violet).
+    models = (("clip_only", "CLIP only", "#c9c8c2", INK), ("R3", "original R3\n(current system)", REFERENCE, INK),
+              ("C0_seed42", "C0\n(matched control)", MUTED, SURFACE), ("SE_seed42", "SE\n(picked)", "#4a3aa7", SURFACE))
+    scopes = (("emotion", "emotion"), ("art_style", "art style"), ("pooled", "pooled"))
+    x = np.arange(len(scopes), dtype=float)
+    width = 0.2
+    for i, (m, name, color, text_color) in enumerate(models):
+        blocks = [(h["clip_only_r1"] if m == "clip_only" else h["naive_r1"][m])[s]["mean"] for s, _ in scopes]
+        stats = [point_ci(b) for b in blocks]
+        pts = np.array([s[0] for s in stats])
+        err = np.array([[p - lo for p, lo, _ in stats], [top - p for p, _, top in stats]])
+        pos = x + (i - 1.5) * width
+        bx.bar(pos, pts, width * 0.94, color=color, label=name.replace("\n", " "), zorder=2, edgecolor=SURFACE,
+               linewidth=0.8)
+        bx.errorbar(pos, pts, yerr=err, fmt="none", ecolor=INK, elinewidth=0.8, capsize=2, zorder=3)
+        for xi, p in zip(pos, pts):
+            bx.text(xi, 0.8, f"{p:.1f}", ha="center", va="bottom", fontsize=7, color=text_color, fontweight="bold",
+                    rotation=90)
+    bx.axhline(h["chance_r1"], color=MUTED, linestyle=":", linewidth=1.0, zorder=1,
+               label=f"chance: {h['chance_r1']:.1f}")
+    bx.set_xticks(x, [name for _, name in scopes], fontsize=9.5)
+    bx.set_ylabel("naive R@1 (%) at β 0.3 on held, mean of i2t and t2i")
+    bx.set_ylim(0, 31)
+    bx.grid(axis="y", color=GRID, linewidth=0.8, zorder=0)
+    bx.legend(frameon=False, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=3)
+    bx.set_title("(b) plain R@1 on the held episodes (seed 42 models)", fontsize=11, color=INK, loc="left",
+                 fontweight="bold")
+    fig.tight_layout()
+    fig.savefig(OUT / "held_criterion.png", facecolor=SURFACE)
+    plt.close(fig)
+
+
+def held_per_target_figure(h: dict, r: dict) -> None:
+    """SE - C0 per target emotion at beta 0.3: held (seed-43 episodes) beside selection (seed-42 episodes)."""
+    held, sel = h["per_target"]["emotion"]["naive@0.3"], r["extras"]["per_target"]["SE"]["emotion"]["naive@0.3"]
+    order = sorted(held, key=lambda t: held[t]["diff"]["point"])
+    y = np.arange(len(order), dtype=float)
+    fig, ax = plt.subplots(figsize=(8.8, 5.0), dpi=200)
+    for rows, color, off, name in ((held, SERIES_1, 0.17, "held (8,192 episodes, seed 43)"),
+                                   (sel, REFERENCE, -0.17, "selection (4,096 episodes, seed 42)")):
+        pts = np.array([rows[t]["diff"]["point"] for t in order])
+        lo = np.array([rows[t]["diff"]["ci95"][0] for t in order])
+        hi = np.array([rows[t]["diff"]["ci95"][1] for t in order])
+        ax.errorbar(pts, y + off, xerr=[pts - lo, hi - pts], fmt="o", color=color, ecolor=color, elinewidth=1.2,
+                    capsize=2, markersize=4.5, label=name, zorder=3)
+    ax.axvline(0.0, color=INK, linewidth=1.0, zorder=1)
+    ax.set_yticks(y, [f"{t} (held n={held[t]['n']})" for t in order], fontsize=8.5)
+    ax.set_ylim(-0.7, len(order) - 0.3)
+    ax.set_xlabel("SE − C0 (seed 42), naive R@1 at β 0.3 (points), mean of directions, 95% CI per target")
+    ax.grid(axis="x", color=GRID, linewidth=0.8, zorder=0)
+    ax.legend(frameon=False, fontsize=8.5, loc="lower right")
+    ax.set_title("Where SE's emotion gain over C0 comes from, per target emotion", fontsize=11, color=INK,
+                 loc="left", fontweight="bold")
+    fig.tight_layout()
+    fig.savefig(OUT / "held_per_target_emotion.png", facecolor=SURFACE)
+    plt.close(fig)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     r = json.loads(RESULTS.read_text())
@@ -248,6 +352,10 @@ def main() -> None:
     per_target_figure(r)
     oracle_figure(r)
     training_figure(r)
+    if HELD_RESULTS.exists():                          # the 2026-10-19 held report's figures
+        h = json.loads(HELD_RESULTS.read_text())
+        held_criterion_figure(h, r, json.loads(REPLICATION.read_text()))
+        held_per_target_figure(h, r)
     print(f"wrote {sorted(p.name for p in OUT.glob('*.png'))} to {OUT}")
 
 
