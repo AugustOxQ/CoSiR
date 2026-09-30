@@ -105,3 +105,10 @@ def test_cross_painting_image_duplicates_share_a_part_and_image_leakage_is_detec
     row_leakage = split_leakage(row_split, paintings, features)
     assert row_leakage["val_rows_image_in_train"] > 0 or row_leakage["held_rows_image_in_train"] > 0, \
         "Random row split should show image leakage from duplicates"
+
+
+def test_grouped_subsplit_rejects_empty_parts():
+    import pytest
+    from src.data.splits import grouped_subsplit
+    with pytest.raises(ValueError):
+        grouped_subsplit(np.zeros(10, dtype=int), np.arange(10), 0.5)   # one group cannot be split

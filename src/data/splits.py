@@ -81,3 +81,22 @@ def split_leakage(split: GroupedSplit, paintings: np.ndarray, img_features: np.n
         out[f"{part}_rows_painting_in_{reference_name}"] = int(sum(p in seen_paintings for p in paintings[rows]))
         out[f"{part}_rows_image_in_{reference_name}"] = int(sum(h in seen_hashes for h in hashes[rows]))
     return out
+
+
+def grouped_subsplit(groups: np.ndarray, rows: np.ndarray, second_fraction: float,
+                     seed: int = 42) -> tuple[np.ndarray, np.ndarray]:
+    """Split ``rows`` into (first, second) by whole leakage groups; ``second`` gets ~second_fraction of rows."""
+    if not 0.0 < second_fraction < 1.0:
+        raise ValueError("second_fraction must be in (0, 1)")
+    rows = np.asarray(rows, dtype=np.int64)
+    unique, inverse, counts = np.unique(np.asarray(groups)[rows], return_inverse=True, return_counts=True)
+    order = np.random.default_rng(seed).permutation(len(unique))
+    shares = counts[order] / counts.sum()
+    start = np.cumsum(shares) - shares
+    in_second = np.empty(len(unique), dtype=bool)
+    in_second[order] = start >= 1.0 - second_fraction
+    mask = in_second[inverse]
+    first, second = np.sort(rows[~mask]), np.sort(rows[mask])
+    if len(first) == 0 or len(second) == 0:
+        raise ValueError("A sub-split part is empty; too few groups for this fraction")
+    return first, second

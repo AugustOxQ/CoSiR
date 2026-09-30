@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
+from src.data.sampling import draw_distinct
 from src.model.conditioning import conditional_score, naive_condition_weights, pair_codes
 
 if TYPE_CHECKING:                                   # avoid importing the feature store at runtime
@@ -31,28 +32,7 @@ class LabelEpisodes:
     labels: np.ndarray
 
 
-def _draw_distinct(rng, pool, paintings, used, count):
-    """Draw `count` rows from `pool` whose paintings are not yet in `used` (updates `used`)."""
-    if count > 0 and len(pool) == 0:
-        raise ValueError("Not enough distinct paintings to fill an episode")
-    picked = []
-    for _ in range(50 * count):
-        if len(picked) == count:
-            break
-        row = int(pool[rng.integers(len(pool))])
-        if paintings[row] not in used:
-            used.add(paintings[row])
-            picked.append(row)
-    if len(picked) < count:
-        eligible = pool[~np.isin(paintings[pool], list(used))]
-        _, first = np.unique(paintings[eligible], return_index=True)    # one row per painting
-        eligible = eligible[np.sort(first)]
-        if len(eligible) < count - len(picked):
-            raise ValueError("Not enough distinct paintings to fill an episode")
-        for row in rng.choice(eligible, count - len(picked), replace=False):
-            used.add(paintings[row])
-            picked.append(int(row))
-    return picked
+_draw_distinct = draw_distinct
 
 
 def build_label_episodes(labels, paintings, rows, n_episodes, seed=42, num_support=4, num_contrast=4,
