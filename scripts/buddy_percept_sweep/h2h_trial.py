@@ -15,7 +15,7 @@ import numbers
 import time
 import typing
 from dataclasses import dataclass
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 
@@ -213,11 +213,12 @@ def _plain(value):
     return value
 
 
-def _buddy_topics(cfg: H2HConfig, train_embedding: np.ndarray, pilot, seed: int, device: str):
+def _buddy_topics(cfg: H2HConfig, train_embedding: np.ndarray, pilot, seed: int, device: str,
+                  topic_graph_device: Optional[str] = None):
     """(labels, resolution, k_miss, k_raw, bisect_steps) on the buddy train
     embedding. k_raw is K before merging at the chosen resolution; bisect_steps
     the Leiden runs used (0 in fixed-resolution mode)."""
-    graph = build_topic_graph(train_embedding, cfg.leiden_graph, pilot, device)
+    graph = build_topic_graph(train_embedding, cfg.leiden_graph, pilot, topic_graph_device or device)
     if cfg.k_target == 0:
         raw = leiden_on_graph(graph, cfg.leiden_resolution, seed)
         labels = merge_small_communities(train_embedding, raw, cfg.merge_small_threshold)[0]
@@ -228,7 +229,7 @@ def _buddy_topics(cfg: H2HConfig, train_embedding: np.ndarray, pilot, seed: int,
 
 
 def _run_seed(cfg: H2HConfig, store: H2HStore, subset_idx: np.ndarray, monitor_idx: np.ndarray, seed: int,
-              pilot, percept_mods, device: str) -> dict:
+              pilot, percept_mods, device: str, topic_graph_device: Optional[str] = None) -> dict:
     """One seed. Every step is seeded from `seed` (global RNGs are reseeded
     before Stage 1 and again before topic formation), so a rerun with the same
     config, seed and inputs gives the same row. stage1_seconds covers Stage 1,
@@ -239,7 +240,7 @@ def _run_seed(cfg: H2HConfig, store: H2HStore, subset_idx: np.ndarray, monitor_i
         stage1 = fit_buddy_stage1(cfg.buddy, store, seed, monitor_idx, pilot, device)
         seed_all(seed)
         labels, resolution, k_miss, k_raw, bisect_steps = _buddy_topics(cfg, stage1.train_embedding, pilot,
-                                                                         seed, device)
+                                                                         seed, device, topic_graph_device)
         native_subset = None
     else:
         stage1 = fit_percept_stage1(cfg.percept, store, seed, cfg.k_target, percept_mods, device)
@@ -296,10 +297,12 @@ def _mean_over_seeds(rows: list) -> dict:
 
 
 def run_h2h_trial(cfg: H2HConfig, store: H2HStore, split: H2HSplit, subset: str, seeds: tuple,
-                  pilot, percept_mods, device: str, monitor: str = "val") -> dict:
+                  pilot, percept_mods, device: str, monitor: str = "val",
+                  topic_graph_device: Optional[str] = None) -> dict:
     """Runs every seed on held-out subset `subset` ("val" | "test"). The buddy
     pilot's plateau monitor watches `split.val_idx` (monitor="val") or all
-    held-out rows (monitor="all").
+    held-out rows (monitor="all"). `topic_graph_device` (default None = `device`)
+    forces the device of the buddy topic graph (e.g. "cpu" for §6i fidelity).
     The first seed whose row has `k_miss` ends the loop (the objective is
     already -1.0); `aborted_after_k_miss` is True when that skipped seeds.
     Returns {"per_seed": [row, ...], "objective": float, "mean": {...}, "split_digest": str,
@@ -323,7 +326,8 @@ def run_h2h_trial(cfg: H2HConfig, store: H2HStore, split: H2HSplit, subset: str,
     monitor_idx = np.asarray(monitor_idx, dtype=np.int64)
     rows = []
     for seed in seeds:
-        rows.append(_run_seed(cfg, store, subset_idx, monitor_idx, int(seed), pilot, percept_mods, device))
+        rows.append(_run_seed(cfg, store, subset_idx, monitor_idx, int(seed), pilot, percept_mods, device,
+                              topic_graph_device))
         if rows[-1]["k_miss"]:
             break
     return {"per_seed": rows, "objective": _objective(rows), "mean": _mean_over_seeds(rows),

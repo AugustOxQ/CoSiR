@@ -446,3 +446,16 @@ def test_same_config_and_seed_give_identical_rows(monkeypatch, system):
     a, b = _without_timing(first["per_seed"])
     assert a.replace('"seed": 1', "") != b.replace('"seed": 2', "")   # the fake really is seed-dependent
     json.dumps(first)                                                  # rows are JSON-serializable
+
+
+@pytest.mark.parametrize("forced,expected", [(None, "cpu-default"), ("cpu", "cpu")])
+def test_topic_graph_device_override(monkeypatch, forced, expected):
+    devices = []
+    _patch_fakes(monkeypatch)
+    monkeypatch.setattr(h2h_trial, "build_topic_graph",
+                        lambda emb, kind, pilot, device, **kw: devices.append(device) or "graph")
+    monkeypatch.setattr(h2h_trial, "target_k_partition", _fake_target_k([]))
+    cfg = resolve_h2h_config({"system": "buddy", "k_target": 6})
+    kwargs = {} if forced is None else {"topic_graph_device": forced}
+    run_h2h_trial(cfg, _store(), _split(), "val", (1,), None, None, "cpu-default", **kwargs)
+    assert devices == [expected]
