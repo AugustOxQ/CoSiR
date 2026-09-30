@@ -214,15 +214,17 @@ def _plain(value):
 
 
 def _buddy_topics(cfg: H2HConfig, train_embedding: np.ndarray, pilot, seed: int, device: str):
-    """(labels, resolution, k_miss) on the buddy train embedding."""
+    """(labels, resolution, k_miss, k_raw, bisect_steps) on the buddy train
+    embedding. k_raw is K before merging at the chosen resolution; bisect_steps
+    the Leiden runs used (0 in fixed-resolution mode)."""
     graph = build_topic_graph(train_embedding, cfg.leiden_graph, pilot, device)
     if cfg.k_target == 0:
         raw = leiden_on_graph(graph, cfg.leiden_resolution, seed)
         labels = merge_small_communities(train_embedding, raw, cfg.merge_small_threshold)[0]
-        return labels, cfg.leiden_resolution, False
+        return labels, cfg.leiden_resolution, False, int(len(np.unique(raw))), 0
     labels, info = target_k_partition(train_embedding, graph, cfg.k_target, K_TOLERANCE,
                                       cfg.merge_small_threshold, seed)
-    return labels, info["resolution"], not info["hit"]
+    return labels, info["resolution"], not info["hit"], int(info["k_raw"]), int(info["steps"])
 
 
 def _run_seed(cfg: H2HConfig, store: H2HStore, subset_idx: np.ndarray, monitor_idx: np.ndarray, seed: int,
@@ -236,12 +238,14 @@ def _run_seed(cfg: H2HConfig, store: H2HStore, subset_idx: np.ndarray, monitor_i
     if cfg.system == "buddy":
         stage1 = fit_buddy_stage1(cfg.buddy, store, seed, monitor_idx, pilot, device)
         seed_all(seed)
-        labels, resolution, k_miss = _buddy_topics(cfg, stage1.train_embedding, pilot, seed, device)
+        labels, resolution, k_miss, k_raw, bisect_steps = _buddy_topics(cfg, stage1.train_embedding, pilot,
+                                                                         seed, device)
         native_subset = None
     else:
         stage1 = fit_percept_stage1(cfg.percept, store, seed, cfg.k_target, percept_mods, device)
         seed_all(seed)
         labels, resolution, k_miss = stage1.train_labels, math.nan, False
+        k_raw, bisect_steps = None, 0
         native_subset = np.asarray(stage1.heldout_native)[subset_idx]
     labels = np.asarray(labels, dtype=np.int64)
     n_topics = int(len(np.unique(labels)))
@@ -266,7 +270,7 @@ def _run_seed(cfg: H2HConfig, store: H2HStore, subset_idx: np.ndarray, monitor_i
         stage2_seconds = time.monotonic() - start
 
     row = {"seed": seed, "n_topics": n_topics, "k_miss": bool(k_miss), "resolution": float(resolution),
-           **metrics1, **metrics2, "stage1_seconds": stage1_seconds, "stage2_seconds": stage2_seconds}
+           "k_raw": k_raw, "bisect_steps": bisect_steps, **metrics1, **metrics2, "stage1_seconds": stage1_seconds, "stage2_seconds": stage2_seconds}
     return {key: _plain(value) for key, value in row.items()}
 
 
@@ -296,7 +300,10 @@ def run_h2h_trial(cfg: H2HConfig, store: H2HStore, split: H2HSplit, subset: str,
     """Runs every seed on held-out subset `subset` ("val" | "test"). The buddy
     pilot's plateau monitor watches `split.val_idx` (monitor="val") or all
     held-out rows (monitor="all").
-    Returns {"per_seed": [row, ...], "objective": float, "mean": {...}, "split_digest": str}."""
+    The first seed whose row has `k_miss` ends the loop (the objective is
+    already -1.0); `aborted_after_k_miss` is True when that skipped seeds.
+    Returns {"per_seed": [row, ...], "objective": float, "mean": {...}, "split_digest": str,
+    "aborted_after_k_miss": bool}."""
     validate_h2h_config(cfg)
     if subset == "val":
         subset_idx = split.val_idx
@@ -313,7 +320,11 @@ def run_h2h_trial(cfg: H2HConfig, store: H2HStore, split: H2HSplit, subset: str,
     if len(seeds) == 0:
         raise ValueError("run_h2h_trial needs at least one seed")
     subset_idx = np.asarray(subset_idx, dtype=np.int64)
-    rows = [_run_seed(cfg, store, subset_idx, np.asarray(monitor_idx, dtype=np.int64), int(seed), pilot,
-                      percept_mods, device) for seed in seeds]
+    monitor_idx = np.asarray(monitor_idx, dtype=np.int64)
+    rows = []
+    for seed in seeds:
+        rows.append(_run_seed(cfg, store, subset_idx, monitor_idx, int(seed), pilot, percept_mods, device))
+        if rows[-1]["k_miss"]:
+            break
     return {"per_seed": rows, "objective": _objective(rows), "mean": _mean_over_seeds(rows),
-            "split_digest": split.digest}
+            "split_digest": split.digest, "aborted_after_k_miss": len(rows) < len(seeds)}

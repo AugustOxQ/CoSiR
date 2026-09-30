@@ -253,7 +253,7 @@ def _fake_target_k(calls, miss_seeds=()):
 # ---------------------------------------------------------------- run_h2h_trial
 
 def test_k_miss_on_one_seed_gives_objective_minus_one_and_keeps_both_rows(monkeypatch):
-    """Review Focus 1."""
+    """Review Focus 1 (a miss on the last seed: every seed ran, nothing left to abort)."""
     s2_calls, tk_calls = [], []
     _patch_fakes(monkeypatch, s2_calls=s2_calls)
     monkeypatch.setattr(h2h_trial, "build_topic_graph", lambda emb, kind, pilot, device, **kw: ("graph", kind))
@@ -270,6 +270,36 @@ def test_k_miss_on_one_seed_gives_objective_minus_one_and_keeps_both_rows(monkey
     assert all((c["tolerance"], c["k_target"], c["merge"], c["graph"]) == (2, 16, 0.01, ("graph", "mknn"))
                for c in tk_calls)
     assert out["split_digest"] == "d1g3st"
+    assert out["aborted_after_k_miss"] is False
+
+
+def test_k_miss_on_first_seed_aborts_the_remaining_seeds(monkeypatch):
+    buddy_calls, s2_calls = [], []
+    _patch_fakes(monkeypatch, buddy_calls=buddy_calls, s2_calls=s2_calls)
+    monkeypatch.setattr(h2h_trial, "build_topic_graph", lambda emb, kind, pilot, device, **kw: "graph")
+    monkeypatch.setattr(h2h_trial, "target_k_partition", _fake_target_k([], miss_seeds=(1,)))
+    cfg = resolve_h2h_config({"system": "buddy", "k_target": 16})
+    out = run_h2h_trial(cfg, _store(), _split(), "val", (1, 2), pilot=None, percept_mods=None, device="cpu")
+    assert out["objective"] == -1.0
+    assert [r["seed"] for r in out["per_seed"]] == [1] and out["per_seed"][0]["k_miss"] is True
+    assert [c["seed"] for c in buddy_calls] == [1]          # Stage 1 ran once
+    assert s2_calls == [] and out["aborted_after_k_miss"] is True
+
+
+def test_buddy_rows_carry_bisection_diagnostics(monkeypatch):
+    _patch_fakes(monkeypatch)
+    monkeypatch.setattr(h2h_trial, "build_topic_graph", lambda *a, **k: "graph")
+    monkeypatch.setattr(h2h_trial, "target_k_partition", _fake_target_k([]))
+    cfg = resolve_h2h_config({"system": "buddy", "k_target": 16})
+    row, = run_h2h_trial(cfg, _store(), _split(), "val", (1,), None, None, "cpu")["per_seed"]
+    assert row["k_raw"] == 16 and row["bisect_steps"] == 3
+
+
+def test_percept_rows_have_no_bisection_diagnostics(monkeypatch):
+    _patch_fakes(monkeypatch)
+    cfg = resolve_h2h_config({"system": "percept", "k_target": 16})
+    row, = run_h2h_trial(cfg, _store(), _split(), "val", (1,), None, "mods", "cpu")["per_seed"]
+    assert row["k_raw"] is None and row["bisect_steps"] == 0
 
 
 def test_percept_n_topics_is_distinct_train_labels_not_k_target(monkeypatch):
@@ -322,6 +352,7 @@ def test_fixed_resolution_mode_uses_config_resolution_and_never_bisects(monkeypa
     assert [r["resolution"] for r in out["per_seed"]] == [0.37, 0.37]
     assert [r["k_miss"] for r in out["per_seed"]] == [False, False]
     assert [r["n_topics"] for r in out["per_seed"]] == [7, 7]
+    assert [(r["k_raw"], r["bisect_steps"]) for r in out["per_seed"]] == [(7, 0), (7, 0)]
     assert out["objective"] == pytest.approx(0.7)
 
 
@@ -367,9 +398,9 @@ def test_objective_is_mean_primary_auc_and_row_keys(monkeypatch):
     assert out["objective"] == pytest.approx(0.75)
     assert out["mean"]["auc_primary"] == pytest.approx(0.75)
     assert out["mean"]["k_miss"] == 0.0 and "seed" not in out["mean"]
-    assert set(out) == {"per_seed", "objective", "mean", "split_digest"}
+    assert set(out) == {"per_seed", "objective", "mean", "split_digest", "aborted_after_k_miss"}
     assert set(out["per_seed"][0]) == {
-        "seed", "n_topics", "k_miss", "resolution", "auc_primary", "skipped_primary", "transfer_emo",
+        "seed", "n_topics", "k_miss", "resolution", "k_raw", "bisect_steps", "auc_primary", "skipped_primary", "transfer_emo",
         "transfer_genre", "ind_emo", "ind_genre", "ind_k", "stage1_seconds", "stage2_seconds"}
 
 

@@ -1,12 +1,18 @@
 """In-process W&B agent for the matched-topic-count head-to-head sweeps.
 
-    python scripts/buddy_percept_sweep/h2h_agent.py --sweep entity/project/sweep_id [--count N]
+    python scripts/buddy_percept_sweep/h2h_agent.py --sweep entity/project/sweep_id [--sweep ...] [--count N]
+    python scripts/buddy_percept_sweep/h2h_agent.py --sweeps id_a,id_b,id_c,id_d [--count N]
 
-Runs `wandb.agent(..., function=_trial)` in this process, so the fixed-input
-store, the split and the pilot / PercepT modules load once per process. A
-failing trial logs objective=-1.0 and the error and never kills the agent.
+Runs `wandb.agent(..., function=_trial, count=1)` in this process, so the
+fixed-input store, the split and the pilot / PercepT modules load once per
+process. With several sweeps the agent goes round-robin (one trial per sweep
+per pass), so every cell progresses together and no GPU idles when one cell
+reaches its `run_cap`; it stops after a full pass that ran no trial, or after
+`--count` trials in total. A failing trial logs objective=-1.0 and the error
+and never kills the agent.
 """
 import argparse
+import gc
 import numbers
 import sys
 from dataclasses import dataclass
@@ -34,6 +40,7 @@ class AgentState:
 
 
 _STATE: Optional[AgentState] = None
+_TRIALS_RUN = 0            # incremented by every _trial call; run_agent reads it to see whether a pass did work
 
 
 def _get_state(system: str) -> AgentState:
@@ -60,6 +67,15 @@ def parse_sweep(text: str) -> tuple:
     if len(parts) != 3 or not all(parts):
         raise ValueError(f"--sweep must be entity/project/sweep_id, got {text!r}")
     return tuple(parts)
+
+
+def parse_sweep_list(items) -> list:
+    """Every `--sweep` / `--sweeps` value, each possibly comma-separated, as
+    [(entity, project, sweep_id), ...] in the order given."""
+    sweeps = [parse_sweep(part.strip()) for item in items for part in item.split(",") if part.strip()]
+    if not sweeps:
+        raise ValueError("no sweep given; pass --sweep entity/project/sweep_id (repeatable) or --sweeps a,b,c")
+    return sweeps
 
 
 def _scalar(value):
@@ -89,12 +105,15 @@ def _free_cuda() -> None:
     try:
         import torch
         if torch.cuda.is_available():
+            gc.collect()                    # drop dead tensors first so empty_cache can release their blocks
             torch.cuda.empty_cache()
     except Exception:
         pass
 
 
 def _trial() -> None:
+    global _TRIALS_RUN
+    _TRIALS_RUN += 1
     import wandb
     run = wandb.init()
     try:
@@ -112,14 +131,34 @@ def _trial() -> None:
             _free_cuda()
 
 
+def run_agent(sweeps: list, count: Optional[int]) -> int:
+    """Round-robin over `sweeps` [(entity, project, sweep_id), ...], one trial
+    per sweep per pass. Stops when a full pass ran no trial (every sweep is
+    finished) or when `count` trials have run in total. Returns the trial count."""
+    import wandb
+    start = _TRIALS_RUN
+    while True:
+        pass_start = _TRIALS_RUN
+        for entity, project, sweep_id in sweeps:
+            if count is not None and _TRIALS_RUN - start >= count:
+                return _TRIALS_RUN - start
+            wandb.agent(sweep_id, function=_trial, entity=entity, project=project, count=1)
+        if _TRIALS_RUN == pass_start:
+            return _TRIALS_RUN - start
+
+
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--sweep", required=True, help="entity/project/sweep_id")
-    parser.add_argument("--count", type=int, default=None, help="max trials for this agent (default: no limit)")
+    parser.add_argument("--sweep", action="append", default=[],
+                        help="entity/project/sweep_id; repeatable, each value may be comma-separated")
+    parser.add_argument("--sweeps", action="append", default=[], help="comma-separated entity/project/sweep_id list")
+    parser.add_argument("--count", type=int, default=None, help="max trials in total (default: until all sweeps finish)")
     args = parser.parse_args(argv)
-    entity, project, sweep_id = parse_sweep(args.sweep)
-    import wandb
-    wandb.agent(sweep_id, function=_trial, project=project, entity=entity, count=args.count)
+    try:
+        sweeps = parse_sweep_list(args.sweep + args.sweeps)
+    except ValueError as exc:
+        parser.error(str(exc))
+    run_agent(sweeps, args.count)
 
 
 if __name__ == "__main__":

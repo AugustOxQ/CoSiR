@@ -1,6 +1,8 @@
 # Head-to-head sweep cell: buddy at K=40 (W&B polysemic/CoSiR-h2h). Generated once; the four files
 # share the Stage 2 block and `run_cap` (= TRIALS_PER_CELL in h2h_agent.py) -- edit them together.
-# Run with one in-process agent per GPU: scripts/run_h2h_agent.sh <entity/project/sweep_id>
+# merge_small_threshold is the one buddy option that differs by K (buddy_k16.yaml: 0.005, 0.01, 0.02).
+# Run with one in-process agent per GPU, round-robin over all four sweeps:
+#   scripts/run_h2h_agent.sh <sweep_id_a>,<sweep_id_b>,<sweep_id_c>,<sweep_id_d>
 # buddy_heads / buddy_num_heads: under buddy_impl=harness, attn1/attn4 map to the harness `attn` head and
 # buddy_num_heads sets its head count; under buddy_impl=pilot, attn4 means the pilot's 4-head fusion and
 # buddy_num_heads is ignored (mlp128 ignores it in both).
@@ -95,9 +97,9 @@ parameters:
     - pilot_repaired
   merge_small_threshold:
     values:
+    - 0.002
     - 0.005
     - 0.01
-    - 0.02
   mapper_lr:
     distribution: log_uniform_values
     min: 0.001
