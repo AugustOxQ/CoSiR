@@ -10,7 +10,7 @@ This file is the index to every report in `docs/reports/`. Keep it current: ever
 | `auto/<line>/pilots/<dir>/` | Pilot reports and debug logs copied from `src/test/<dir>/` on branches whose code is not on main. |
 | `stage/` | **Stage reports.** Syntheses across several experiments, including progress and comprehensive reports, plus their slide markdown. |
 | `weekly/` | **Weekly reports** and their slide markdown. |
-| `pptx/` | **Rendered decks.** Built from slide markdown by `assets/build_*_slides.py`. `*.pptx` is gitignored, except the two 2026-08-19 decks. |
+| `pptx/` | **Slide decks (.pptx).** Built from slide markdown by `assets/build_*_slides.py`. `*.pptx` is gitignored, so decks exist only locally; rebuild them from the slide markdown. |
 | `assets/` | Figures, figure data and build scripts used by the reports. |
 
 Research lines:
