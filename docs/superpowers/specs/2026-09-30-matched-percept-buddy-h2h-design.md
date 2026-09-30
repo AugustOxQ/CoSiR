@@ -59,6 +59,13 @@ Controller rulings (each overridable; cost if wrong in brackets):
   equally for both systems.]
 - **R5 Stage 2 space is identical for both systems**; Stage 1 spaces are
   system-specific (§6).
+- **R7 Buddy Stage 1 implementations.** The four structural knobs of §4
+  (`teacher_graph`, `infonce_negatives`, `stage1_optimizer`,
+  `stage1_stopping`) are realised as one categorical `buddy_impl`
+  {pilot, harness}: `pilot` is a faithful port of the snapshot pilot
+  (union teacher graph + repair, in-batch InfoNCE, Adam, plateau stopping,
+  PCA seeded by the run seed), `harness` is the §6i Stage 1. Mixed
+  combinations are not searched. [A hybrid could beat both; not tested.]
 - **R6 Seeds.** Search trials use seeds (1001, 1002); stress uses
   (42, 7, 123, 2024); test uses fresh (11, 23, 57, 101, 211). No seed is
   reused across these roles.
@@ -104,8 +111,11 @@ Stage 2 is the existing harness mapper (`ParameterizedAttentionPoolingMapper`,
   (a) buddy §6f 0.8534 from `attention_h1_embedding_snapshot.npz` (Leiden
   K=19 → merge 3 smallest → K=16, transfer k=20, multi-label cutoff 0.15,
   class-balanced, mapper lr 1e-2, 400 epochs, 4 mapper seeds), and
-  (b) PercepT §6g 0.9226 from `percept_fixed_snapshot.npz` (K=40, native
-  targets, mapper lr 1e-2, 400 epochs). Before any AUC comparison, the
+  (b) PercepT from `percept_fixed_snapshot.npz` (K=40, native targets):
+  its recorded 0.5925 at the untuned mapper (lr 1e-3, 100 epochs). The
+  snapshot is the §6b fixed run, not §6g's refit, so 0.9226 is checked in
+  V3 instead; V1 also reports lr 1e-2 / 400 epochs on the snapshot as
+  information. Before any AUC comparison, the
   harness-built train and held-out target matrices must equal the pilot's
   own target matrices exactly (computed by importing the §6f / §6g pilot
   functions), so a mismatch is pinned to targets or to the mapper, not both.
