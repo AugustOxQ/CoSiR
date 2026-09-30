@@ -1,6 +1,6 @@
 # 2026-09-29 factor-collapse verification log
 
-**Problem.** The code review (`docs/reports/2026-09-29_cosir_v2_code_review.md`) makes two critical
+**Problem.** The code review (`docs/reports/auto/v2/2026-09-29_code_review.md`) makes two critical
 claims: (1) the 32-factor space has collapsed to about one dimension; (2) the held-out split reuses
 99.5% of training images. Asked to check both independently before planning stage (d).
 

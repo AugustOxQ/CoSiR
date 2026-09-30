@@ -1,6 +1,6 @@
 """Generate the four NEW result figures for the buddy slides deck (report §8).
 
-All numbers are hard-coded from docs/reports/2026-06-24_buddy_progress_report.md §8 — no wandb
+All numbers are hard-coded from docs/reports/stage/2026-06-24_buddy_progress.md §8 — no wandb
 needed. Writes PNGs into docs/reports/assets/slides/. Edit the tuples if final numbers shift
 (e.g. after the last RedCaps run lands). Run from repo root in the CoSiR env:
     python scripts/make_slide_figs.py

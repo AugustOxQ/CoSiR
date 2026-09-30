@@ -3,7 +3,7 @@
 **Date:** 2026-06-23
 **Status:** Approved (no commit by Claude per user; user handles commits)
 **Branch:** `experiment/conditional_buddy_train`
-**Precursors:** `docs/reports/2026-06-23_redcaps_buddy.md` (buddy signal validated: subreddit
+**Precursors:** `docs/reports/auto/buddy/2026-06-23_redcaps_buddy.md` (buddy signal validated: subreddit
 lift ~20×, held-out DINOv2 0.39, VLM GOOD-rate 81%), `src/conditional_buddy/`,
 `src/metrics/loss.py`, `src/metrics/regularizer.py`.
 

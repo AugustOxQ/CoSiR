@@ -1,7 +1,7 @@
 # Buddy-Graph Prototype Conditioning (Experiment 18)
 
 **Date:** 2026-09-15
-**Motivates from:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 17 (17.1's result), `docs/reports/2026-09-15_condition_space_audit.md` (full 17.1 write-up)
+**Motivates from:** `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §4 Experiment 17 (17.1's result), `docs/reports/auto/buddy/2026-09-15_condition_space_audit.md` (full 17.1 write-up)
 **Status:** proposed — pending user sign-off before `writing-plans` produces the task-by-task execution plan
 **Branch:** isolated in its own `git worktree` off `experiment/condition_drift_retrieval_correlation` (branch `experiment/buddy_prototype_conditioning`), per this project's established pattern for substantial model/train/eval changes with a real chance of abandonment (validated 2026-08-27 for Experiment 13) — see §11
 

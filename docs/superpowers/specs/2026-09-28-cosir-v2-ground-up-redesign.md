@@ -3,9 +3,9 @@
 **Date:** 2026-09-28
 **Status:** foundation decisions settled by user; architecture (§3) explicitly open, pending literature review + brainstorm
 **Motivates from:**
-- `docs/reports/2026-09-28_cosir_architecture_rethink_literature_brainstorm.md` (tonight's earlier clean-slate candidate survey, Candidates A-E)
-- `docs/reports/2026-09-26_artelingo_buddy_vs_percept_stage1_report.md` (the buddy-vs-PercepT Stage1/Stage2 investigation)
-- Experiment 18's real result (`docs/reports/2026-09-16_stage_report_prototype_conditioning.md`, on `experiment/buddy_prototype_conditioning`): patching the existing free-vector + combiner architecture found a genuine, seed-replicated interpretability/retrieval trade-off, never resolved
+- `docs/reports/auto/v2/2026-09-28_architecture_rethink_literature_brainstorm.md` (tonight's earlier clean-slate candidate survey, Candidates A-E)
+- `docs/reports/auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md` (the buddy-vs-PercepT Stage1/Stage2 investigation)
+- Experiment 18's real result (`docs/reports/stage/2026-09-16_prototype_conditioning.md`, on `experiment/buddy_prototype_conditioning`): patching the existing free-vector + combiner architecture found a genuine, seed-replicated interpretability/retrieval trade-off, never resolved
 - Tonight's live baseline runs on ArtELingo (`/project/CoSiR-exp18_artelingo`): confirmed the current architecture's conditioning is weak, asymmetric (i2t >> t2i under `combine_side="img"`), and that the condition-predictor's training-order coupling, while real, isn't the dominant bottleneck (verified via a controlled A/B — see session transcript, 2026-09-28)
 - GeneCIS (Vaze, Carion, Misra, arXiv 2306.07969) — direct intellectual ancestor of this project's own `combiner.py` (its file header already credits GeneCIS's `combiner_model.py`)
 
@@ -32,7 +32,7 @@ This project has run ~18 numbered experiments incrementally patching one core sk
 
 ## 3. Block 1 (settled): the validated attention Stage 1, rebuilt fresh
 
-**Decision (settled):** the first block of CoSiR v2 is a rebuilt version of the already-validated buddy-graph topic-formation mechanism — "Attention-h1": a two-teacher-graph (content + affect) symmetric InfoNCE-trained student with one-head self-attention fusion, LayerNorm + L2-normalized output, producing a topic/community embedding space over frozen CLIP features via the buddy graph (cross-modal mutual-kNN). This architecture is what "clears the held-out AMI Pareto bar" in the ArtELingo investigation (`docs/reports/2026-09-26_artelingo_buddy_vs_percept_stage1_report.md`, and the architecture-sweep commit `4b0e48d` on `experiment/percept_topic_pipeline`).
+**Decision (settled):** the first block of CoSiR v2 is a rebuilt version of the already-validated buddy-graph topic-formation mechanism — "Attention-h1": a two-teacher-graph (content + affect) symmetric InfoNCE-trained student with one-head self-attention fusion, LayerNorm + L2-normalized output, producing a topic/community embedding space over frozen CLIP features via the buddy graph (cross-modal mutual-kNN). This architecture is what "clears the held-out AMI Pareto bar" in the ArtELingo investigation (`docs/reports/auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md`, and the architecture-sweep commit `4b0e48d` on `experiment/percept_topic_pipeline`).
 
 **Reference implementation** (for understanding the validated mechanism, not for copying): `src/test/20260923_artelingo_buddy_analysis/run_learned_student_arch_sweep_pilot.py` (`LearnedStudent("attn1")`), on branch `experiment/percept_topic_pipeline`. The currently-running buddy-percept sweep (`polysemic/CoSiR-buddy-percept-sweep/40i43gt5`, 55+ gate-passing trials as of tonight, Task 11 top-10 stress test still pending) is independently validating and tuning this same Stage 1 mechanism jointly with a Stage 2 classifier — its eventual winning hyperparameters are a direct input to this block once available, but Block 1's own construction does not need to wait for Task 11 to begin.
 
@@ -53,7 +53,7 @@ Two new points the user wants this redesign to establish as CoSiR's actual diffe
 
 ## §4 resolved: Block 2 is Candidate A (shared factors + support-conditioned score), Candidate B held in reserve
 
-The commissioned review (`docs/reports/2026-09-28_cosir_v2_stage1_genecis_synthesis_brainstorm.md`) resolved §4 above. **Settled, after discussion with the user:** build **Candidate A** first — build it as the primary Block 2+ line; **Candidate B** (nonparametric graph-local metric) is not built now, held in reserve as a smaller ablation once Candidate A has first results, specifically to answer "is the factor layer doing real work, or is Stage 1's graph carrying everything." This document now authorizes Block 1 and Block 2 (Candidate A) implementation, task by task, per the plan this spec motivates.
+The commissioned review (`docs/reports/auto/v2/2026-09-28_stage1_genecis_synthesis_brainstorm.md`) resolved §4 above. **Settled, after discussion with the user:** build **Candidate A** first — build it as the primary Block 2+ line; **Candidate B** (nonparametric graph-local metric) is not built now, held in reserve as a smaller ablation once Candidate A has first results, specifically to answer "is the factor layer doing real work, or is Stage 1's graph carrying everything." This document now authorizes Block 1 and Block 2 (Candidate A) implementation, task by task, per the plan this spec motivates.
 
 **Two open sub-decisions the review surfaced, both resolved:**
 - *Affect-teacher supervision*: Attention-h1's affect graph uses a GoEmotions-**supervised**-pretrained encoder, not a self-supervised one — a real asterisk on the "self/unsupervised" differentiator. Resolution: Block 1 tests **content-only buddy guidance first** (the strictest, genuinely unsupervised variant), and a content+self-supervised-pretrained-affect variant as a second arm — not a straight carry-over of the GoEmotions-supervised teacher. Whether either affect arm captures anything useful without supervision is an empirical question, not an assumption.

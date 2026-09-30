@@ -13,7 +13,7 @@ from pptx.oxml.ns import nsdecls
 from pptx.util import Inches, Pt
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "2026-09-23_weekly_percept_topic_pipeline_slides.pptx"
+OUT = ROOT / "pptx" / "2026-09-23_percept_topic_pipeline_slides.pptx"
 DIAGRAMS = Path(__file__).resolve().parent / "diagrams"
 PROGRESSION = DIAGRAMS / "percept_fusion_mechanism_progression.png"
 K_SWEEP = DIAGRAMS / "percept_k_sweep_heldout_ami.png"

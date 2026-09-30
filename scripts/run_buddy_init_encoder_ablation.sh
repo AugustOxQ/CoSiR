@@ -17,7 +17,7 @@ set -euo pipefail
 #
 # Requires the held-out feature cache for every non-CLIP encoder used to already exist:
 #   python src/test/20260708_heldout_grid/extract_heldout.py --dataset redcaps --model <name>
-# (already run for the C3 cross-VLM survival study — see docs/reports/2026-07-16_buddy_cross_vlm_survival.md)
+# (already run for the C3 cross-VLM survival study — see docs/reports/auto/buddy/2026-07-16_buddy_cross_vlm_survival.md)
 
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 

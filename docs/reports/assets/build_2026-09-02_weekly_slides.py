@@ -12,7 +12,7 @@ from pptx.util import Inches, Pt
 from pptx.oxml import parse_xml
 from pptx.oxml.ns import nsdecls
 
-OUT = Path(__file__).resolve().parents[1] / "2026-09-02_weekly_conditional_buddies_slides.pptx"
+OUT = Path(__file__).resolve().parents[1] / "pptx" / "2026-09-02_conditional_buddies_slides.pptx"
 ASSETS = Path(__file__).resolve().parent
 W, H = Inches(13.333), Inches(7.5)
 BLACK = RGBColor(0x1A, 0x1A, 0x1A)

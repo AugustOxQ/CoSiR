@@ -152,7 +152,7 @@ def analyze(entity, project, group, tag=None):
         sig = f"  mean/SEM={s['z']:+.1f}{' *' if not np.isnan(s['z']) and abs(s['z']) >= 2 else ''}" if s["n"] > 1 else ""
         print(f"    mean delta = {s['mean']:+.2f} (n={s['n']}, wins={s['wins']}/{s['n']}){sig}")
         print("    Compare mean delta against the noise floor (~0.1-0.7 R1, NOT zero) - "
-              "see docs/reports/2026-06-24_buddy_progress_report.md S8a.")
+              "see docs/reports/stage/2026-06-24_buddy_progress.md S8a.")
         for seed, d in sorted(deltas):
             print(f"      seed {seed}: delta = {d:+.2f}")
 

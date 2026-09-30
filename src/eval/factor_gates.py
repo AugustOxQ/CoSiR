@@ -18,7 +18,7 @@ Two gate rules exist; call the one you mean explicitly.
   ``thresholds=AMENDED_2026_09_29_THRESHOLDS`` (max active fraction 0.5) plus
   ``readout_reference=(R0 readout_img, R0 readout_txt)`` measured by this
   function on the SAME rows (``readout_rule`` ``"reference"``). Under it R3
-  passes 9 of 9. See docs/reports/2026-10-11_cosir_v2_candidate_a_factor_repair.md.
+  passes 9 of 9. See docs/reports/auto/v2/2026-10-11_candidate_a_factor_repair.md.
 """
 
 from dataclasses import dataclass

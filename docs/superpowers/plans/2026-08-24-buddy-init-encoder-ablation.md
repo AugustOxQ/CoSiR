@@ -619,7 +619,7 @@ set -euo pipefail
 #
 # Requires the held-out feature cache for every non-CLIP encoder used to already exist:
 #   python src/test/20260708_heldout_grid/extract_heldout.py --dataset redcaps --model <name>
-# (already run for the C3 cross-VLM survival study — see docs/reports/2026-07-16_buddy_cross_vlm_survival.md)
+# (already run for the C3 cross-VLM survival study — see docs/reports/auto/buddy/2026-07-16_buddy_cross_vlm_survival.md)
 
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
@@ -1033,7 +1033,7 @@ Check the wandb UI (project `cosir_image`, group `buddy-init encoder-pair ablati
 ### Task 7: Analyze results and write the report
 
 **Files:**
-- Create: `docs/reports/2026-08-24_buddy_init_encoder_ablation.md` (adjust date to when Task 6 actually completes)
+- Create: `docs/reports/auto/buddy/2026-08-24_buddy_init_encoder_ablation.md` (adjust date to when Task 6 actually completes)
 - Modify: `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (add the Experiment 8 outcome, and re-check whether Experiment 6 is still needed per its "likely subsumed" note in §6/§8)
 
 **Interfaces:**
@@ -1054,7 +1054,7 @@ Per spec §4 Experiment 8's success criteria: if one or more non-CLIP pairs beat
 
 - [ ] **Step 3: Write the results report**
 
-Create `docs/reports/2026-08-24_buddy_init_encoder_ablation.md` following the structure of `docs/reports/2026-08-16_buddy_init_ablation.md` (method, per-pair results table, survival-rate correlation, interpretation, caveats, reproduction commands).
+Create `docs/reports/auto/buddy/2026-08-24_buddy_init_encoder_ablation.md` following the structure of `docs/reports/auto/buddy/2026-08-16_buddy_init_ablation.md` (method, per-pair results table, survival-rate correlation, interpretation, caveats, reproduction commands).
 
 - [ ] **Step 4: Update the spec**
 
@@ -1063,7 +1063,7 @@ In `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`: add the
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/reports/2026-08-24_buddy_init_encoder_ablation.md docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+git add docs/reports/auto/buddy/2026-08-24_buddy_init_encoder_ablation.md docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
 git commit -m "results: buddy-init encoder-pair ablation (Experiment 8)"
 ```
 

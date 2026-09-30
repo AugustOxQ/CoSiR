@@ -7,7 +7,7 @@ Reads wandb runs from the 'buddy-init ablation' group (scripts/run_init_ablation
 imgtxt vs buddies WITHIN each (lr, lr_label, dim, alpha, seed) cell, and reports mean delta +/- std
 and mean/SEM (the project's standard significance read - see spec S5). Compare the resulting
 mean delta against the measured noise floor (~0.1-0.7 R1 from a duplicate-config run,
-docs/reports/2026-06-24_buddy_progress_report.md S8a), NOT against zero.
+docs/reports/stage/2026-06-24_buddy_progress.md S8a), NOT against zero.
 
 Usage
 -----
@@ -150,7 +150,7 @@ def paired_table(df, metric):
     print(f"\n    Over {s['n']} paired cell(s): buddies beats imgtxt in {s['wins']}/{s['n']} "
           f"(mean delta = {s['mean']:+.2f}{spread} R1 pts){sig}")
     print("    Compare mean delta against the noise floor (~0.1-0.7 R1, NOT zero) - "
-          "see docs/reports/2026-06-24_buddy_progress_report.md S8a.")
+          "see docs/reports/stage/2026-06-24_buddy_progress.md S8a.")
 
 
 def analyze(entity, project, group, tag=None):

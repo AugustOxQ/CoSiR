@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-08
 **Datasets:** Impressions (12,123) and RedCaps-150k
-**Builds on:** `docs/reports/2026-06-22_buddy_analysis.md` (Impressions) and
-`docs/reports/2026-06-23_redcaps_buddy.md` (RedCaps), which each ran a *single*
+**Builds on:** `docs/reports/auto/buddy/2026-06-22_buddy_analysis.md` (Impressions) and
+`docs/reports/auto/buddy/2026-06-23_redcaps_buddy.md` (RedCaps), which each ran a *single*
 held-out encoder (DINOv2-small, vision only).
 
 ## Motivation
@@ -86,7 +86,7 @@ All outputs are L2-normalized before scoring.
    buddy_cross vs random distance and their ratio). `--smoke N` scores the
    `smoke_<model>.npy` caches on the first-N subgraph (pipeline sanity only).
 
-4. **`docs/reports/2026-07-08_heldout_grid.md`** — the maintained report: motivation,
+4. **`docs/reports/auto/buddy/2026-07-08_heldout_grid.md`** — the maintained report: motivation,
    model slate, method, a **Smoke** section (filled now), and per-dataset result
    tables + verdict (filled when the full extraction runs after the GPU frees up).
 

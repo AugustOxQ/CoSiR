@@ -10,7 +10,7 @@ are separate, later plans.
 
 **Spec:** `docs/superpowers/specs/2026-09-28-cosir-v2-ground-up-redesign.md`, "Candidate A
 architecture" §1 ("Factor discovery"). **Important context from Block 1's validation** (read
-`docs/reports/2026-09-28_cosir_v2_block1_stage1_validation.md` in full, especially the raw-CLIP
+`docs/reports/auto/v2/2026-09-28_block1_stage1_validation.md` in full, especially the raw-CLIP
 baseline and epoch-sensitivity sections): content-only Stage 1's trained embedding turned out
 in-sample-emotion-AMI-equivalent to raw CLIP features clustered directly — the teacher graph is
 itself built from raw CLIP mutual-kNN, so this is expected, not a bug. **This is why factor
@@ -91,7 +91,7 @@ raw CLIP features as the encoder input; that would conflate two different things
   activation is consistently high in one modality and consistently near-zero in the other across
   a batch (e.g. a group-sparsity-style term comparing per-factor mean activation between
   modalities). Read the MGSAE reference this stage is inspired by (cited in
-  `docs/reports/2026-09-28_cosir_v2_stage1_genecis_synthesis_brainstorm.md`, "Literature survey"
+  `docs/reports/auto/v2/2026-09-28_stage1_genecis_synthesis_brainstorm.md`, "Literature survey"
   table) for the shape of this control if you want a concrete precedent — do not skip this loss
   term or treat it as optional, it's the reason this whole discovery stage exists as a validated
   block rather than an assumption.
@@ -113,7 +113,7 @@ raw CLIP features as the encoder input; that would conflate two different things
 
 **Files:** Create `src/train/train_factors.py`; test `src/test/test_train_factors.py`; create
 `src/test/20260928_factor_discovery_validation/run_validation.py` +
-`docs/reports/2026-09-28_cosir_v2_candidate_a_factor_discovery_validation.md`.
+`docs/reports/auto/v2/2026-09-28_candidate_a_factor_discovery_validation.md`.
 
 **Interfaces:**
 - `@dataclass FactorTrainingConfig`: `num_factors: int`, `lr: float`, `epochs: int`,
@@ -139,7 +139,7 @@ raw CLIP features as the encoder input; that would conflate two different things
    pairs), whether training is stable (no NaN, sparsity penalty doesn't collapse all codes to
    zero).
 
-Report the real numbers in `docs/reports/2026-09-28_cosir_v2_candidate_a_factor_discovery_validation.md`,
+Report the real numbers in `docs/reports/auto/v2/2026-09-28_candidate_a_factor_discovery_validation.md`,
 with a plain verdict up front (does this factor dictionary look usable as a foundation for the
 condition-interface stage, or does it show the split-dictionary/topic-renaming failure modes) —
 matching this project's established report convention (verdict first, then evidence, then
@@ -160,7 +160,7 @@ tried and why, not just the final result.
 2 of 32 factors carried 87.7% of all activation mass (13/32 factors concentrated in a single
 community; the anti-split and dead-factor controls both worked as designed, but nothing in the
 original loss suite targeted *cross-factor* usage balance). Read
-`docs/reports/2026-09-28_cosir_v2_candidate_a_factor_discovery_validation.md` in full for the
+`docs/reports/auto/v2/2026-09-28_candidate_a_factor_discovery_validation.md` in full for the
 exact numbers this task must improve on.
 
 **Files:**
@@ -170,7 +170,7 @@ exact numbers this task must improve on.
 - Modify: `src/train/train_factors.py` (`FactorTrainingConfig` gets `lambda_usage_balance: float`;
   wire the new loss into the training loop).
 - Create: `src/test/20260929_factor_balance_fix/run_revalidation.py` +
-  `docs/reports/2026-09-29_cosir_v2_candidate_a_factor_balance_fix.md`.
+  `docs/reports/auto/v2/2026-09-29_candidate_a_factor_balance_fix.md`.
 
 **Scope note**: this task stays on **CLIP features**, matching Task 3's original setup exactly —
 do not combine this with the cross-encoder findings from the Block 1 ablation plan
@@ -217,7 +217,7 @@ Report, plainly, up front verdict first:
 - [ ] Real re-validation on ArtELingo, write the report with a plain verdict, comparing every
   number directly against Task 3's original figures.
 - [ ] Commit (implementation): `git add src/model/whitening.py src/test/test_whitening.py src/train/factors.py src/test/test_factor_losses.py src/train/train_factors.py src/test/test_train_factors.py && git commit -m "feat(cosir-v2): usage-balance regularizer + PCA whitening for factor discovery"`
-- [ ] Commit (validation): `git add src/test/20260929_factor_balance_fix/ docs/reports/2026-09-29_cosir_v2_candidate_a_factor_balance_fix.md && git commit -m "docs(cosir-v2): re-validate factor discovery with usage-balance fix"`
+- [ ] Commit (validation): `git add src/test/20260929_factor_balance_fix/ docs/reports/auto/v2/2026-09-29_candidate_a_factor_balance_fix.md && git commit -m "docs(cosir-v2): re-validate factor discovery with usage-balance fix"`
 
 ---
 
@@ -226,7 +226,7 @@ Report, plainly, up front verdict first:
 **Added 2026-09-29** after Task 4's real validation fixed mass-concentration (top-2 share 87.7% ->
 8.66%) but surfaced a new cost: full-rank whitening (`n_components=feature_dim`) collapsed
 reconstruction quality (relative L2 error 0.55/0.51 -> 0.99/0.99). Read
-`docs/reports/2026-09-29_cosir_v2_candidate_a_factor_balance_fix.md` in full for the exact numbers
+`docs/reports/auto/v2/2026-09-29_candidate_a_factor_balance_fix.md` in full for the exact numbers
 this task must improve on.
 
 **Working hypothesis for why this happened**: raw CLIP features are near-rank-deficient (Task 4's
@@ -244,7 +244,7 @@ enough concentration removed to prevent 2-factor dominance, while not inflating 
   behavior available since Task 4's tests depend on it, do not break them).
 - Modify: `src/test/test_whitening.py` (add truncated-rank coverage).
 - Create: `src/test/20260930_factor_reduced_rank_whitening/run_revalidation.py` +
-  `docs/reports/2026-09-30_cosir_v2_candidate_a_reduced_rank_whitening.md`.
+  `docs/reports/auto/v2/2026-09-30_candidate_a_reduced_rank_whitening.md`.
 
 **Scope note**: stay on CLIP features, same as Tasks 3-4 — do not combine with the cross-encoder
 ablation findings (different plan, different question). Isolate one variable (whitening rank) at a
@@ -284,7 +284,7 @@ not a reason to keep tuning until numbers look acceptable.
 - [ ] Real re-validation on ArtELingo at 2-3 variance thresholds, write the report with a plain
   verdict, comparing every number directly against Task 3 (raw) and Task 4 (full-rank-whitened).
 - [ ] Commit (implementation): `git add src/model/whitening.py src/test/test_whitening.py && git commit -m "feat(cosir-v2): reduced-rank PCA whitening for factor discovery"`
-- [ ] Commit (validation): `git add src/test/20260930_factor_reduced_rank_whitening/ docs/reports/2026-09-30_cosir_v2_candidate_a_reduced_rank_whitening.md && git commit -m "docs(cosir-v2): re-validate factor discovery with reduced-rank whitening"`
+- [ ] Commit (validation): `git add src/test/20260930_factor_reduced_rank_whitening/ docs/reports/auto/v2/2026-09-30_candidate_a_reduced_rank_whitening.md && git commit -m "docs(cosir-v2): re-validate factor discovery with reduced-rank whitening"`
 
 ---
 
@@ -294,7 +294,7 @@ not a reason to keep tuning until numbers look acceptable.
 reconstruction collapse at any tested threshold (95%/99%/99.9% variance all gave reconstruction
 error ~0.99, vs. 0.55 raw) even though mass concentration stayed low (7-8% top-2, actually slightly
 better than full-rank). Read
-`docs/reports/2026-09-30_cosir_v2_candidate_a_reduced_rank_whitening.md` in full for those exact
+`docs/reports/auto/v2/2026-09-30_candidate_a_reduced_rank_whitening.md` in full for those exact
 numbers.
 
 **Why this task exists**: Task 4 changed *two* things simultaneously — added
@@ -314,7 +314,7 @@ should be required beyond a config/script change, since `usage_balance_penalty` 
   3/4/5's real-data loading pattern — same `FeatureManager`/`artelingo_train.json` positional join,
   same graph/community rebuild — but feed **raw, unwhitened** CLIP features into
   `SharedFactorEncoder`, with `lambda_usage_balance` set to the same value Task 4 used).
-- Create: `docs/reports/2026-09-30_cosir_v2_candidate_a_usage_balance_no_whitening.md`.
+- Create: `docs/reports/auto/v2/2026-09-30_candidate_a_usage_balance_no_whitening.md`.
 - No changes expected to `src/model/factors.py`, `src/train/factors.py`,
   `src/train/train_factors.py`, or `src/model/whitening.py` — if you find you need one, explain why
   before proceeding, since the brief's premise is that no new code is needed.
@@ -341,7 +341,7 @@ active), or something in between? Report exactly what happens, not what would be
 
 - [ ] Real re-validation on ArtELingo (one run, as specified), write the report with a plain
   verdict, comparing every number directly against Tasks 3, 4, and 5.
-- [ ] Commit: `git add src/test/20260930_factor_usage_balance_no_whitening/ docs/reports/2026-09-30_cosir_v2_candidate_a_usage_balance_no_whitening.md && git commit -m "docs(cosir-v2): re-validate factor discovery with usage-balance loss alone (no whitening)"`
+- [ ] Commit: `git add src/test/20260930_factor_usage_balance_no_whitening/ docs/reports/auto/v2/2026-09-30_candidate_a_usage_balance_no_whitening.md && git commit -m "docs(cosir-v2): re-validate factor discovery with usage-balance loss alone (no whitening)"`
 
 ---
 

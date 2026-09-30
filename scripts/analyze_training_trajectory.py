@@ -1,7 +1,7 @@
 """
 Experiment 12.2 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md,
 Experiment 12.2 subsection): does the trained/pred_coupled-vs-frozen i2t retrieval
-deficit (established in Experiment 11.1/11.3, docs/reports/2026-08-25_condition_freeze_ablation.md)
+deficit (established in Experiment 11.1/11.3, docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md)
 hold from the earliest logged epoch, or does it grow over the 100-epoch run?
 
 Pulls ALREADY-LOGGED per-epoch test_oracle/{t2i,i2t}_R1 history (not just the final-epoch

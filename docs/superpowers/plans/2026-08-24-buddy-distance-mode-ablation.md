@@ -916,7 +916,7 @@ Check the wandb UI (project `cosir_image`, group `buddy distance-mode ablation`,
 ### Task 7: Analyze results and write the report
 
 **Files:**
-- Create: `docs/reports/2026-08-24_buddy_distance_mode_ablation.md` (adjust date to when Task 6 actually completes)
+- Create: `docs/reports/auto/buddy/2026-08-24_buddy_distance_mode_ablation.md` (adjust date to when Task 6 actually completes)
 - Modify: `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (add the Experiment 10 outcome, per its success criteria in §4)
 
 **Interfaces:**
@@ -937,7 +937,7 @@ Per spec §4 Experiment 10's success criteria: **positive** (retrieval win, seed
 
 - [ ] **Step 3: Write the results report**
 
-Create `docs/reports/2026-08-24_buddy_distance_mode_ablation.md` following the structure of `docs/reports/2026-08-19_buddy_init_ablation_redcaps_300k.md` (which already established the `test_raw`/`test_pre_diff` reporting convention): method, the diagnostic's motivating numbers (cite `src/test/20260824_buddy_graph_disagreement/`), results tables (retrieval AND gap-to-CLIP), the decision-rule outcome, caveats, reproduction commands.
+Create `docs/reports/auto/buddy/2026-08-24_buddy_distance_mode_ablation.md` following the structure of `docs/reports/auto/buddy/2026-08-19_buddy_init_ablation_redcaps_300k.md` (which already established the `test_raw`/`test_pre_diff` reporting convention): method, the diagnostic's motivating numbers (cite `src/test/20260824_buddy_graph_disagreement/`), results tables (retrieval AND gap-to-CLIP), the decision-rule outcome, caveats, reproduction commands.
 
 - [ ] **Step 4: Update the spec**
 
@@ -946,7 +946,7 @@ In `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`, add the
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/reports/2026-08-24_buddy_distance_mode_ablation.md docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+git add docs/reports/auto/buddy/2026-08-24_buddy_distance_mode_ablation.md docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
 git commit -m "results: buddy distance-mode ablation (Experiment 10)"
 ```
 

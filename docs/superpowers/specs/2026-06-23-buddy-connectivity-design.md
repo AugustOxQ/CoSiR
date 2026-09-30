@@ -3,7 +3,7 @@
 **Date:** 2026-06-23
 **Status:** Approved
 **Branch:** `experiment/conditional_buddy`
-**Context:** `docs/reports/2026-06-23_redcaps_buddy.md` (post-fix update),
+**Context:** `docs/reports/auto/buddy/2026-06-23_redcaps_buddy.md` (post-fix update),
 `.claude/20260623_log.md` (eigensolver fix)
 
 ## Problem

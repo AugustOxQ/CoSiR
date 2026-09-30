@@ -1122,7 +1122,7 @@ git commit -m "feat: wire up analyze_polysemy_bridges.py end-to-end CLI (Experim
 ### Task 8: Run the real analysis and write up results
 
 **Files:**
-- Create: `docs/reports/2026-08-26_polysemy_bridge_diagnostic.md`
+- Create: `docs/reports/auto/buddy/2026-08-26_polysemy_bridge_diagnostic.md`
 
 **Interfaces:**
 - Consumes: Task 7's `run()`/CLI, Task 2's `--dump-per-sample` flag.
@@ -1130,7 +1130,7 @@ git commit -m "feat: wire up analyze_polysemy_bridges.py end-to-end CLI (Experim
 
 - [ ] **Step 1: Produce the per-sample retrieval-correlation dump from an existing 11.1 pair**
 
-Pick one already-completed same-seed frozen/trained pair from Experiment 11.1 (see `docs/reports/2026-08-25_condition_freeze_ablation.md`'s run manifest for the exact `run dir`s) and re-run 11.2's analysis with the new flag:
+Pick one already-completed same-seed frozen/trained pair from Experiment 11.1 (see `docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md`'s run manifest for the exact `run dir`s) and re-run 11.2's analysis with the new flag:
 
 ```bash
 source ~/miniconda3/etc/profile.d/conda.sh && conda activate CoSiR
@@ -1152,7 +1152,7 @@ Save the full printed output — it is the source of every number in Step 3.
 
 - [ ] **Step 3: Write the results report**
 
-Create `docs/reports/2026-08-26_polysemy_bridge_diagnostic.md`:
+Create `docs/reports/auto/buddy/2026-08-26_polysemy_bridge_diagnostic.md`:
 
 ```markdown
 # Cross-modal polysemy: does the buddy graph already reflect it, and is any B-C pull real signal or a "false transitivity" artifact?
@@ -1231,7 +1231,7 @@ Fill in every bracketed section using Step 2's actual output — do not leave an
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docs/reports/2026-08-26_polysemy_bridge_diagnostic.md res/CoSiR_condition_freeze_ablation/redcaps_150k/polysemy_bridges_summary.json
+git add docs/reports/auto/buddy/2026-08-26_polysemy_bridge_diagnostic.md res/CoSiR_condition_freeze_ablation/redcaps_150k/polysemy_bridges_summary.json
 git commit -m "results: cross-modal polysemy bridge-node diagnostic (Experiment 12)"
 ```
 

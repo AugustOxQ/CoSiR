@@ -63,7 +63,7 @@ Criterion 1 is met as written, but it has no interaction test. The final review'
 
 ## Solution implemented
 
-This task is an evaluation, so no code fix was needed. Report: `docs/reports/2026-10-12_cosir_v2_candidate_a_condition_eval_repaired_factors.md`. The stage (d) decision is the user's.
+This task is an evaluation, so no code fix was needed. Report: `docs/reports/auto/v2/2026-10-12_candidate_a_condition_eval_repaired_factors.md`. The stage (d) decision is the user's.
 
 ## Files
 

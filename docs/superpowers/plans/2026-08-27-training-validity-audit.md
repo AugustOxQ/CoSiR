@@ -63,7 +63,7 @@ Expected: `ImportError` / `NameError` — `compute_epoch_gaps` does not exist ye
 """
 Experiment 12.2 (spec docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md,
 Experiment 12.2 subsection): does the trained/pred_coupled-vs-frozen i2t retrieval
-deficit (established in Experiment 11.1/11.3, docs/reports/2026-08-25_condition_freeze_ablation.md)
+deficit (established in Experiment 11.1/11.3, docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md)
 hold from the earliest logged epoch, or does it grow over the 100-epoch run?
 
 Pulls ALREADY-LOGGED per-epoch test_oracle/{t2i,i2t}_R1 history (not just the final-epoch
@@ -513,7 +513,7 @@ git commit -m "feat: support multi-run pooled cross-reference for Experiment 12.
 ### Task 5: Run 12.2 and 12.3 for real, update the report (NOT dispatched to a subagent — judgment-heavy, done in the main session)
 
 **Files:**
-- Modify: `docs/reports/2026-08-26_polysemy_bridge_diagnostic.md` (add "Experiment 12.2" and "Experiment 12.3" sections; narrow the existing Interpretation section's overclaim per the brainstorm memo's point 1)
+- Modify: `docs/reports/auto/buddy/2026-08-26_polysemy_bridge_diagnostic.md` (add "Experiment 12.2" and "Experiment 12.3" sections; narrow the existing Interpretation section's overclaim per the brainstorm memo's point 1)
 - Create (if `--out-fig` is used): `docs/reports/assets/training_trajectory/i2t_gap_trajectory.png`
 
 **Steps (not TDD — this is real-data execution and report writing):**
@@ -566,7 +566,7 @@ git commit -m "feat: support multi-run pooled cross-reference for Experiment 12.
 - [ ] **Step 5:** Commit the report update and any new figure.
 
 ```bash
-git add docs/reports/2026-08-26_polysemy_bridge_diagnostic.md docs/reports/assets/training_trajectory/
+git add docs/reports/auto/buddy/2026-08-26_polysemy_bridge_diagnostic.md docs/reports/assets/training_trajectory/
 git commit -m "results: add Experiment 12.2/12.3 (training-trajectory audit + cross-recipe replication)"
 ```
 

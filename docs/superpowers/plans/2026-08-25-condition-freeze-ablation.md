@@ -1230,7 +1230,7 @@ Check the wandb UI (project `cosir_image`, group `condition freeze ablation`, ta
 ### Task 7: Run all analyses, write the report, update the spec
 
 **Files:**
-- Create: `docs/reports/2026-08-25_condition_freeze_ablation.md` (adjust date to when Task 6 actually completes)
+- Create: `docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md` (adjust date to when Task 6 actually completes)
 - Modify: `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (add the Experiment 11.1 outcome to §2's claims table; resolve 11.2's gate per the widened either-axis rule)
 
 **Interfaces:**
@@ -1270,7 +1270,7 @@ Per spec §4 Experiment 11.1's success criteria: **no real difference on either 
 
 - [ ] **Step 4: Write the results report**
 
-Create `docs/reports/2026-08-25_condition_freeze_ablation.md` following the structure of `docs/reports/2026-08-24_buddy_init_encoder_ablation.md` (method, retrieval results table, geometry-diagnostic results — shift distributions, effective-dims trajectory, most/least-changed samples, correlations against condition norm and buddy degree, and the condition-vs-text grid diagnostic's row/col diversity trajectory (interpreted against the two failure modes: low row diversity ⇒ conditions null/interchangeable, low col diversity ⇒ a condition dominates and collapses the combination) — interpretation, caveats, reproduction commands).
+Create `docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md` following the structure of `docs/reports/auto/buddy/2026-08-24_buddy_init_encoder_ablation.md` (method, retrieval results table, geometry-diagnostic results — shift distributions, effective-dims trajectory, most/least-changed samples, correlations against condition norm and buddy degree, and the condition-vs-text grid diagnostic's row/col diversity trajectory (interpreted against the two failure modes: low row diversity ⇒ conditions null/interchangeable, low col diversity ⇒ a condition dominates and collapses the combination) — interpretation, caveats, reproduction commands).
 
 - [ ] **Step 5: Update the spec**
 
@@ -1279,7 +1279,7 @@ In `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`: add the
 - [ ] **Step 6: Commit**
 
 ```bash
-git add docs/reports/2026-08-25_condition_freeze_ablation.md docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+git add docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
 git commit -m "results: condition freeze ablation (Experiment 11.1)"
 ```
 

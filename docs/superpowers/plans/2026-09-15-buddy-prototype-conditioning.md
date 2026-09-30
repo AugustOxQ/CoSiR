@@ -856,7 +856,7 @@ Two separate launches, two separate confirmations — do not batch them into one
 ### Task 9: Pull results, evaluate, and write the report
 
 **Files:**
-- Create: `docs/reports/2026-09-15_buddy_prototype_conditioning.md` (date reflects actual completion, adjust if this lands later)
+- Create: `docs/reports/auto/percept/2026-09-15_buddy_prototype_conditioning.md` (date reflects actual completion, adjust if this lands later)
 
 - [ ] **Step 1: Pull results from both nodes**
 
@@ -879,12 +879,12 @@ Call `condition_space_evaluator.py`'s existing `sklearn.metrics.silhouette_score
 
 - [ ] **Step 5: Write the report**
 
-Follow this project's report convention (see `docs/reports/2026-09-15_condition_space_audit.md` for the template: verdict up front, then evidence, then caveats). State explicitly: (a) the retrieval R1 result and whether it beats the noise floor, (b) the probe-selectivity comparison against 17.1's raw-CLIP and free-vector baselines, (c) the silhouette/prototype-coherence number, (d) whether prototype collapse was observed during the real 150k/100-epoch runs (not just the 1-2k smoke test), (e) a plain verdict: did this redesign beat the architecture-fix-only baseline on retrieval, on interpretability, on both, or on neither.
+Follow this project's report convention (see `docs/reports/auto/buddy/2026-09-15_condition_space_audit.md` for the template: verdict up front, then evidence, then caveats). State explicitly: (a) the retrieval R1 result and whether it beats the noise floor, (b) the probe-selectivity comparison against 17.1's raw-CLIP and free-vector baselines, (c) the silhouette/prototype-coherence number, (d) whether prototype collapse was observed during the real 150k/100-epoch runs (not just the 1-2k smoke test), (e) a plain verdict: did this redesign beat the architecture-fix-only baseline on retrieval, on interpretability, on both, or on neither.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add docs/reports/2026-09-15_buddy_prototype_conditioning.md
+git add docs/reports/auto/percept/2026-09-15_buddy_prototype_conditioning.md
 git commit -m "docs(exp18): record buddy-graph prototype conditioning result"
 ```
 

@@ -147,7 +147,7 @@ def _ring_fixture() -> tuple[np.ndarray, np.ndarray, csr_matrix]:
 
 def test_default_config_codes_match_pre_change_golden_values():
     """Pins the default-config training computation; values were captured from the code before
-    the default-off collapse-fix mechanisms were added (docs/reports/2026-10-09_*diagnosis.md)."""
+    the default-off collapse-fix mechanisms were added (docs/reports/auto/v2/2026-10-09_*diagnosis.md)."""
     img, txt, graph = _ring_fixture()
     config = FactorTrainingConfig(num_factors=8, epochs=5, batch_size=16)
     _, img_codes, _ = train_factors(img, txt, graph, config, device="cpu")

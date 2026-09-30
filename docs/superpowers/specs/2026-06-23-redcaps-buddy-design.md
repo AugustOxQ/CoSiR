@@ -3,7 +3,7 @@
 **Date:** 2026-06-23
 **Status:** Approved (no commit per user)
 **Branch:** `experiment/conditional_buddy`
-**Precursors:** `docs/reports/2026-06-22_buddy_analysis.md` (Impressions),
+**Precursors:** `docs/reports/auto/buddy/2026-06-22_buddy_analysis.md` (Impressions),
 `docs/superpowers/specs/2026-06-09-conditional-buddies-init-design.md`
 
 ## Why RedCaps
@@ -84,7 +84,7 @@ normalize_method="rank")` → `[150K, 16]`, then:
   `load_data` with subreddit-from-path; reuses `src/conditional_buddy/`
   primitives `mutual_knn`, `union_graph`, `compute_buddy_init`),
   `extract_dino.py`, `run_phase1.py`.
-- Report: `docs/reports/2026-06-23_redcaps_buddy.md` + `assets/redcaps_buddy/`.
+- Report: `docs/reports/auto/buddy/2026-06-23_redcaps_buddy.md` + `assets/redcaps_buddy/`.
 
 ## Phase 2 (deferred)
 

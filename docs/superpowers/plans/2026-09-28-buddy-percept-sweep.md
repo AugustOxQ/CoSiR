@@ -1918,7 +1918,7 @@ git commit -m "feat(sweep): add post-sweep top-10 4-seed stress test"
 Run: `python src/test/20260928_buddy_percept_sweep/run_top10_stress.py <sweep_id>`
 
 Fold the winning configuration and its 4-seed stress result into
-`docs/reports/2026-09-26_artelingo_buddy_vs_percept_stage1_report.md` as a
+`docs/reports/auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md` as a
 new subsection, matching this investigation's established reporting
 convention.
 

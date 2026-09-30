@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Always run Python/bash training or analysis commands with `source ~/miniconda3/etc/profile.d/conda.sh && conda activate CoSiR` first (per `.claude/CLAUDE.md`).
-- Statistical standard for every paired comparison (spec §5): ≥3 seeds, paired-within-seed Δ, report mean ± std and mean/SEM (flag `|z| ≥ 2` with `*`), compare the resulting mean Δ against the measured noise floor (~0.1–0.7 R1, `docs/reports/2026-06-24_buddy_progress_report.md` §8a) — **never against zero**.
+- Statistical standard for every paired comparison (spec §5): ≥3 seeds, paired-within-seed Δ, report mean ± std and mean/SEM (flag `|z| ≥ 2` with `*`), compare the resulting mean Δ against the measured noise floor (~0.1–0.7 R1, `docs/reports/stage/2026-06-24_buddy_progress.md` §8a) — **never against zero**.
 - Fixed operating point for Experiment 1 (the confirmed strong cell from prior sweeps): `lr=1e-3`, `lr_label=1e-4`, `embedding_dim=16`, `alpha=0.5`.
 - Every training-time buddy term must stay OFF: never pass `+loss.lambda_buddy`, `+loss.lambda_buddy_con`, or `+loss.buddy_refresh*` as overrides. Omitting them gives the code's own default of `0.0` / `False` (`src/hook/train_cosir.py:1317-1370`) — this is the *actual* off state, not an approximation of it.
 - wandb defaults for this project are `entity=augustoxq`, `project=cosir_image` (`configs/config.yaml:18-19`). New analysis tooling must default to these — `scripts/analyze_buddy_families.py`'s `--project` default (`cosir_scripts`) is stale relative to where runs actually land (every script that calls it overrides `--project cosir_image` explicitly); do not copy that stale default.
@@ -23,7 +23,7 @@
 ### Task 0: Related-work / prior-art grounding note (Experiment 0)
 
 **Files:**
-- Create: `docs/reports/2026-08-10_prior_art_note.md`
+- Create: `docs/reports/auto/buddy/2026-08-10_prior_art_note.md`
 
 **Interfaces:**
 - Consumes: nothing from other tasks — fully independent, can run in parallel with Tasks 1–5.
@@ -45,7 +45,7 @@ Use WebSearch for `"node2vec" graph embedding initialization` and `"Laplacian ei
 
 - [ ] **Step 4: Write the note**
 
-Create `docs/reports/2026-08-10_prior_art_note.md` with this structure (fill every section — no section may be left as a heading only):
+Create `docs/reports/auto/buddy/2026-08-10_prior_art_note.md` with this structure (fill every section — no section may be left as a heading only):
 
 ```markdown
 # Prior-Art Grounding Note — Conditional Buddies
@@ -97,7 +97,7 @@ Confirm every bracketed placeholder in the template above has been replaced with
 - [ ] **Step 6: Commit**
 
 ```bash
-git add docs/reports/2026-08-10_prior_art_note.md
+git add docs/reports/auto/buddy/2026-08-10_prior_art_note.md
 git commit -m "docs: prior-art grounding note (Experiment 0)"
 ```
 
@@ -343,7 +343,7 @@ Reads wandb runs from the 'buddy-init ablation' group (scripts/run_init_ablation
 imgtxt vs buddies WITHIN each (lr, lr_label, dim, alpha, seed) cell, and reports mean delta +/- std
 and mean/SEM (the project's standard significance read - see spec S5). Compare the resulting
 mean delta against the measured noise floor (~0.1-0.7 R1 from a duplicate-config run,
-docs/reports/2026-06-24_buddy_progress_report.md S8a), NOT against zero.
+docs/reports/stage/2026-06-24_buddy_progress.md S8a), NOT against zero.
 
 Usage
 -----
@@ -521,7 +521,7 @@ def paired_table(df, metric):
     print(f"\n    Over {s['n']} paired cell(s): buddies beats imgtxt in {s['wins']}/{s['n']} "
           f"(mean delta = {s['mean']:+.2f}{spread} R1 pts){sig}")
     print("    Compare mean delta against the noise floor (~0.1-0.7 R1, NOT zero) - "
-          "see docs/reports/2026-06-24_buddy_progress_report.md S8a.")
+          "see docs/reports/stage/2026-06-24_buddy_progress.md S8a.")
 
 
 def analyze(entity, project, group, tag=None):
@@ -639,7 +639,7 @@ Determine which outcome applies, checking the mean Δ against the noise floor (~
 
 - [ ] **Step 3: Write the results report**
 
-Create `docs/reports/2026-08-10_buddy_init_ablation.md` following the structure of `docs/reports/2026-07-16_buddy_cross_vlm_survival.md` (method, results tables, interpretation, caveats, reproduction commands). Include: the exact operating point, the full paired tables from Step 1, the decision-rule outcome from Step 2, and a pointer back to the spec.
+Create `docs/reports/2026-08-10_buddy_init_ablation.md` following the structure of `docs/reports/auto/buddy/2026-07-16_buddy_cross_vlm_survival.md` (method, results tables, interpretation, caveats, reproduction commands). Include: the exact operating point, the full paired tables from Step 1, the decision-rule outcome from Step 2, and a pointer back to the spec.
 
 - [ ] **Step 4: Update the spec**
 

@@ -150,23 +150,23 @@ this worktree to read it without switching branches).
 **Files:**
 - Create: `src/test/20260928_stage1_validation/run_validation.py`,
   `src/test/20260928_stage1_validation/README.md`
-- Create: `docs/reports/2026-09-28_cosir_v2_block1_stage1_validation.md`
+- Create: `docs/reports/auto/v2/2026-09-28_block1_stage1_validation.md`
 
 **Interfaces:** none new — this task wires Tasks 1-4 together into one real run and reports what
 comes out. Uses cached ArtELingo CLIP features (already extracted, per
 `/data/SSD2/pre_extract/artelingo/features` — confirm this path or the equivalent still resolves
 from `FeatureManager` before assuming it does) and real ArtELingo emotion/genre labels for
 held-out AMI, matching the metric convention already established in
-`docs/reports/2026-09-26_artelingo_buddy_vs_percept_stage1_report.md` (held-out emotion AMI,
+`docs/reports/auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md` (held-out emotion AMI,
 genre AMI, occupancy/balance across communities).
 
 - [ ] Write `run_validation.py`: load cached features, build the content graph (Task 1), train
   Stage 1 (Task 3), detect communities (Task 4), compute held-out AMI against real ArtELingo
   labels and occupancy stats, print a clear summary.
 - [ ] Run it for real (local GPU) and record the actual numbers.
-- [ ] Write `docs/reports/2026-09-28_cosir_v2_block1_stage1_validation.md`: report the numbers
+- [ ] Write `docs/reports/auto/v2/2026-09-28_block1_stage1_validation.md`: report the numbers
   plainly, and explicitly compare against the original (affect-included) Attention-h1 result from
-  `docs/reports/2026-09-26_artelingo_buddy_vs_percept_stage1_report.md` — **expect a real
+  `docs/reports/auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md` — **expect a real
   difference, not a match**, since this build deliberately drops the affect teacher; the point of
   this task is establishing this rebuild's own content-only baseline number, not reproducing the
   old one. State plainly whether content-only alone clears the same held-out AMI Pareto bar

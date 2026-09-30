@@ -10,7 +10,7 @@ later plan).
 
 **Spec:** `docs/superpowers/specs/2026-09-28-cosir-v2-ground-up-redesign.md`, "Candidate A
 architecture" §1-2 and 4 ("Condition interface", "Training"). **Important context**: read
-`docs/reports/2026-09-30_cosir_v2_candidate_a_usage_balance_no_whitening.md` in full — it is the
+`docs/reports/auto/v2/2026-09-30_candidate_a_usage_balance_no_whitening.md` in full — it is the
 validated factor-discovery recipe this stage builds on (raw CLIP features + `usage_balance_penalty`,
 **no whitening**; do not reintroduce whitening, it was tested twice and only hurt reconstruction).
 Also read `/root/.claude/projects/-project-CoSiR/memory/project_candidate-a-factor-discovery-status.md`
@@ -205,7 +205,7 @@ spelled out):
 ### Task 3: real validation on ArtELingo (the actual point of this plan)
 
 **Files:** Create `src/test/20261001_condition_interface_validation/run_validation.py`; create
-`docs/reports/2026-10-01_cosir_v2_candidate_a_condition_interface_validation.md`.
+`docs/reports/auto/v2/2026-10-01_candidate_a_condition_interface_validation.md`.
 
 Reuse Task 3-6's real-data loading pattern exactly (same `FeatureManager`/`artelingo_train.json`
 positional join). Train `SharedFactorEncoder` inline using Task 6's exact validated recipe (raw
@@ -248,7 +248,7 @@ encoder show a real problem that needs a design decision before proceeding — m
 project's established report convention (verdict first, then evidence, then caveats).
 
 - [ ] Implement the real-data script (Part A + Part B) and write the report.
-- [ ] Commit: `git add src/test/20261001_condition_interface_validation/ docs/reports/2026-10-01_cosir_v2_candidate_a_condition_interface_validation.md && git commit -m "docs(cosir-v2): validate condition interface + episode mining on real ArtELingo data"`
+- [ ] Commit: `git add src/test/20261001_condition_interface_validation/ docs/reports/auto/v2/2026-10-01_candidate_a_condition_interface_validation.md && git commit -m "docs(cosir-v2): validate condition interface + episode mining on real ArtELingo data"`
 
 ---
 
@@ -257,12 +257,12 @@ project's established report convention (verdict first, then evidence, then cave
 **Added 2026-10-01** after Task 3's real validation found held-out condition recovery well above
 chance overall (21.95% vs. 3.125%) but sharply uneven: 19 of 32 factors had zero correct held-out
 predictions while several others reached 67-100%. Read
-`docs/reports/2026-10-01_cosir_v2_candidate_a_condition_interface_validation.md` in full for the
+`docs/reports/auto/v2/2026-10-01_candidate_a_condition_interface_validation.md` in full for the
 exact numbers this task must explain. This is a **diagnostic-only** task — no architecture or
 training change yet; the point is to find out *why* the 19 factors are dead before choosing a fix.
 
 **Files:** create `src/test/20261002_condition_confusion_diagnostic/run_diagnostic.py`; create
-`docs/reports/2026-10-02_cosir_v2_candidate_a_condition_confusion_diagnostic.md`.
+`docs/reports/auto/v2/2026-10-02_candidate_a_condition_confusion_diagnostic.md`.
 
 **Method:** reproduce Task 3's exact setup byte-for-byte where it matters for reproducibility (same
 Task 6 factor-encoder recipe, same `mine_episodes` call with the same `EpisodeMiningConfig` and
@@ -297,7 +297,7 @@ one story if the evidence is mixed.
 
 - [ ] Implement the diagnostic script and write the report with the confusion matrix, per-dead-
   factor breakdown, global skew check, and real-data correlation check.
-- [ ] Commit: `git add src/test/20261002_condition_confusion_diagnostic/ docs/reports/2026-10-02_cosir_v2_candidate_a_condition_confusion_diagnostic.md && git commit -m "docs(cosir-v2): diagnose condition-recovery confusion pattern on dead factors"`
+- [ ] Commit: `git add src/test/20261002_condition_confusion_diagnostic/ docs/reports/auto/v2/2026-10-02_candidate_a_condition_confusion_diagnostic.md && git commit -m "docs(cosir-v2): diagnose condition-recovery confusion pattern on dead factors"`
 
 ---
 
@@ -310,7 +310,7 @@ factors (the real-data-correlation check ruled out story (a), 0/19). This points
 recoverability-check's training procedure — 819 training episodes over 32 classes (~25/factor), 100
 epochs, `lr=0.05`, no class-balanced sampling — as an imbalanced/undertrained-classifier artifact,
 not evidence the factor space itself is unusable. Read
-`docs/reports/2026-10-02_cosir_v2_candidate_a_condition_confusion_diagnostic.md` in full.
+`docs/reports/auto/v2/2026-10-02_candidate_a_condition_confusion_diagnostic.md` in full.
 
 **Scope note**: this task changes the recoverability-check's *training procedure* (more episodes,
 class-balanced batch sampling, a revised optimization schedule) to test whether the collapse is
@@ -320,7 +320,7 @@ architecture itself needs reconsideration — report that plainly rather than tr
 tweaks past what's specified here.
 
 **Files:** create `src/test/20261003_condition_recovery_balanced_retrain/run_retrain.py`; create
-`docs/reports/2026-10-03_cosir_v2_candidate_a_condition_recovery_balanced_retrain.md`.
+`docs/reports/auto/v2/2026-10-03_candidate_a_condition_recovery_balanced_retrain.md`.
 
 **Changes to test, in one combined re-run** (report if you find you need to isolate them
 individually to explain a surprising result — but run the combined version as the primary result):
@@ -361,7 +361,7 @@ at similar severity) — the last case would be real evidence for reconsidering
 `ConditionEncoder`'s architecture rather than its training procedure.
 
 - [ ] Implement the balanced-retraining script and write the report with the comparison above.
-- [ ] Commit: `git add src/test/20261003_condition_recovery_balanced_retrain/ docs/reports/2026-10-03_cosir_v2_candidate_a_condition_recovery_balanced_retrain.md && git commit -m "docs(cosir-v2): re-test condition recovery with class-balanced training"`
+- [ ] Commit: `git add src/test/20261003_condition_recovery_balanced_retrain/ docs/reports/auto/v2/2026-10-03_candidate_a_condition_recovery_balanced_retrain.md && git commit -m "docs(cosir-v2): re-test condition recovery with class-balanced training"`
 
 ---
 
@@ -370,7 +370,7 @@ at similar severity) — the last case would be real evidence for reconsidering
 **Added 2026-10-03** after Task 5 found class-balanced training with 4x more episodes did not move
 the collapse at all (training/held-out accuracy and predicted-factor diversity were flat from epoch
 50 through 300) — ruling out undertraining/class-imbalance as the cause. Read
-`docs/reports/2026-10-03_cosir_v2_candidate_a_condition_recovery_balanced_retrain.md` in full for
+`docs/reports/auto/v2/2026-10-03_candidate_a_condition_recovery_balanced_retrain.md` in full for
 the exact per-factor accuracy table this task correlates against (14 factors with nonzero accuracy:
 3, 7, 10, 12, 13, 16, 19, 21, 22, 25, 27, 28, 29, 30; 18 factors at exactly 0%: the rest).
 
@@ -391,7 +391,7 @@ roughly half the factors are unrecoverable before choosing an architecture fix:
    undertrained-tied-head story.
 
 **Files:** create `src/test/20261004_condition_factor_separability_diagnostic/run_diagnostic.py`;
-create `docs/reports/2026-10-04_cosir_v2_candidate_a_factor_separability_diagnostic.md`.
+create `docs/reports/auto/v2/2026-10-04_candidate_a_factor_separability_diagnostic.md`.
 
 **Method:** reproduce Task 3/5's factor-code preparation (Task 6-of-the-prior-plan's recipe: raw
 CLIP features, `usage_balance_penalty`, no whitening, 32 factors, seed 42) to get real `(308723,
@@ -428,7 +428,7 @@ third, not-yet-identified factor is likely responsible, and say so directly rath
 the data to one of the two hypotheses this task set out to test).
 
 - [ ] Implement the diagnostic script, write the report with the correlation table and verdict.
-- [ ] Commit: `git add src/test/20261004_condition_factor_separability_diagnostic/ docs/reports/2026-10-04_cosir_v2_candidate_a_factor_separability_diagnostic.md && git commit -m "docs(cosir-v2): diagnose which factor-level statistic explains condition-recovery dead/live split"`
+- [ ] Commit: `git add src/test/20261004_condition_factor_separability_diagnostic/ docs/reports/auto/v2/2026-10-04_candidate_a_factor_separability_diagnostic.md && git commit -m "docs(cosir-v2): diagnose which factor-level statistic explains condition-recovery dead/live split"`
 
 ---
 
@@ -444,7 +444,7 @@ function (stage d, not yet built) actually needs. This task answers the load-bea
 directly, before investing in any further architecture change.
 
 **Files:** create `src/test/20261005_condition_ranking_evaluation/run_ranking_eval.py`; create
-`docs/reports/2026-10-05_cosir_v2_candidate_a_condition_ranking_evaluation.md`.
+`docs/reports/auto/v2/2026-10-05_candidate_a_condition_ranking_evaluation.md`.
 
 **Fixes the item-leakage caveat present since Task 3**: split by underlying ArtELingo item (not by
 episode) — hold out a fixed 20% of item indices (seed 42), and mine episodes only from the
@@ -503,7 +503,7 @@ variant look good.
 
 - [ ] Implement the ranking-evaluation script and write the report with all four measures above,
   compared across all five `w(c)` variants.
-- [ ] Commit: `git add src/test/20261005_condition_ranking_evaluation/ docs/reports/2026-10-05_cosir_v2_candidate_a_condition_ranking_evaluation.md && git commit -m "docs(cosir-v2): item-disjoint ranking evaluation of the condition interface"`
+- [ ] Commit: `git add src/test/20261005_condition_ranking_evaluation/ docs/reports/auto/v2/2026-10-05_candidate_a_condition_ranking_evaluation.md && git commit -m "docs(cosir-v2): item-disjoint ranking evaluation of the condition interface"`
 
 ---
 
@@ -524,7 +524,7 @@ same comparison; do not change any existing variant's computation.
 **Files:** create `src/test/20261006_condition_clip_only_baseline/run_clip_only_baseline.py`
 (reusing Task 7's `run_ranking_eval.py` data-loading/split/mining/scoring code directly — import or
 copy the relevant functions, document which); create
-`docs/reports/2026-10-06_cosir_v2_candidate_a_clip_only_baseline.md`.
+`docs/reports/auto/v2/2026-10-06_candidate_a_clip_only_baseline.md`.
 
 **Task**: compute `w(c) = zeros(32)` for every held-out episode (i.e. the factor term contributes
 exactly 0 to every candidate's score, regardless of `β`). Report, at the same `β ∈ {0, 0.03, 0.3}`
@@ -541,7 +541,7 @@ sweep Task 7 used:
    CLIP-only comparable to, larger than, or smaller than its advantage over uniform?
 
 - [ ] Implement the script, write the report with the combined six-row comparison table.
-- [ ] Commit: `git add src/test/20261006_condition_clip_only_baseline/ docs/reports/2026-10-06_cosir_v2_candidate_a_clip_only_baseline.md && git commit -m "docs(cosir-v2): add CLIP-only baseline to close the condition-interface comparison gap"`
+- [ ] Commit: `git add src/test/20261006_condition_clip_only_baseline/ docs/reports/auto/v2/2026-10-06_candidate_a_clip_only_baseline.md && git commit -m "docs(cosir-v2): add CLIP-only baseline to close the condition-interface comparison gap"`
 
 ---
 
@@ -565,7 +565,7 @@ Stage (d) inherits all three, so this is answered first. Four questions, one scr
 
 **Files:** create `src/test/20261007_naive_rule_mechanism_analysis/` (script(s); cached `.npy`
 codes are allowed there but must not be committed — add a local `.gitignore`); create
-`docs/reports/2026-10-07_cosir_v2_candidate_a_naive_rule_mechanism.md`. Reuse Task 7's
+`docs/reports/auto/v2/2026-10-07_candidate_a_naive_rule_mechanism.md`. Reuse Task 7's
 `run_ranking_eval.py` functions (split, factor prep, mining + remap, `score_pool`, swap pairs)
 unchanged; verify the reproduction with Task 8's held-out-episode SHA-256.
 
@@ -598,7 +598,7 @@ unchanged; verify the reproduction with Task 8's held-out-episode SHA-256.
 - [ ] Implement, run, write the report: verdict first — a plain-language answer to "why does naive
   work, and is its condition-specific lift real, scale-fair, and non-circular?"; then one section
   per question; then implications for stage (d).
-- [ ] Commit: `git add src/test/20261007_naive_rule_mechanism_analysis/ docs/reports/2026-10-07_cosir_v2_candidate_a_naive_rule_mechanism.md && git commit -m "docs(cosir-v2): naive-rule mechanism analysis (scale, ablations, circularity, head failure)"`
+- [ ] Commit: `git add src/test/20261007_naive_rule_mechanism_analysis/ docs/reports/auto/v2/2026-10-07_candidate_a_naive_rule_mechanism.md && git commit -m "docs(cosir-v2): naive-rule mechanism analysis (scale, ablations, circularity, head failure)"`
 
 ---
 

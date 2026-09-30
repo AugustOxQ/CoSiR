@@ -1,7 +1,7 @@
 # B-leaning condition initialization (β affinity reweight)
 
 **Date:** 2026-07-08
-**Motivates from:** `docs/reports/2026-07-08_heldout_grid.md` — across 6 held-out
+**Motivates from:** `docs/reports/auto/buddy/2026-07-08_heldout_grid.md` — across 6 held-out
 encoders × 2 graphs × 2 datasets, the strict intersection **B** is consistently a
 much cleaner buddy signal than the union **E** (mean B ratio ~0.38–0.51 vs E
 ~0.58–0.73). Yet init uses **E**. This adds an *option* to lean the init on B.

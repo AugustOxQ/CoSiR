@@ -25,10 +25,10 @@ class FactorTrainingConfig:
 
     WARNING: the defaults are the historical collapsed recipe R0 (cosine
     agreement; 32 factors collapse onto about one axis, see
-    docs/reports/2026-10-09_cosir_v2_candidate_a_factor_collapse_diagnosis.md).
+    docs/reports/auto/v2/2026-10-09_candidate_a_factor_collapse_diagnosis.md).
     They are kept unchanged for reproducibility. New work should start from
     ``R3_CONFIG``, the recipe selected in
-    docs/reports/2026-10-11_cosir_v2_candidate_a_factor_repair.md (derive
+    docs/reports/auto/v2/2026-10-11_candidate_a_factor_repair.md (derive
     variants with ``dataclasses.replace(R3_CONFIG, ...)``; do not mutate it).
 
     Usage balance starts at 0.1, comparable to anti-split because both are

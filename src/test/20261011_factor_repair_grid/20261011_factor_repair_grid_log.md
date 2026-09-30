@@ -54,7 +54,7 @@ Reproduction check: R0 reproduces Task 3's D0, and R8 reproduces D3, to every pr
 
 ## Solution implemented
 
-None. Per the pre-registered rule, the user decides the next step, and no runs were added and no thresholds changed. Full tables, the verdict and the options are in `docs/reports/2026-10-11_cosir_v2_candidate_a_factor_repair.md`. There is no selected `FactorTrainingConfig`.
+None. Per the pre-registered rule, the user decides the next step, and no runs were added and no thresholds changed. Full tables, the verdict and the options are in `docs/reports/auto/v2/2026-10-11_candidate_a_factor_repair.md`. There is no selected `FactorTrainingConfig`.
 
 ## Files
 

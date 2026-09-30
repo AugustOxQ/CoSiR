@@ -27,14 +27,14 @@ repaired model paired on identical label-defined episodes.
 
 **Spec:** `docs/superpowers/specs/2026-09-28-cosir-v2-ground-up-redesign.md` ("Candidate A
 architecture" §1–3). **Motivating evidence** (read before any task):
-- `docs/reports/2026-09-29_cosir_v2_code_review.md`: the collapse and split-leakage findings.
+- `docs/reports/auto/v2/2026-09-29_code_review.md`: the collapse and split-leakage findings.
 - `src/test/20260929_factor_collapse_verification/20260929_factor_collapse_verification_log.md`:
   the controller's independent check. Codes have participation ratio (PR) 1.32 against CLIP's
   ~40. See that log's correction section: the codes still linearly carry about as much as CLIP
   PCA rank ~11-12 (image) / ~8 (text), but in directions with ~10^4 times less variance than the
   dominant axis. The collapse is one of scale/geometry more than of information.
   99.54% of held rows' images appear in training.
-- `docs/reports/2026-10-07_cosir_v2_candidate_a_naive_rule_mechanism.md`: what the collapse did to
+- `docs/reports/auto/v2/2026-10-07_candidate_a_naive_rule_mechanism.md`: what the collapse did to
   the condition interface.
 
 This plan **supersedes the "validated" verdict of the factor-discovery plan's Task 6**
@@ -757,7 +757,7 @@ git commit -m "feat(cosir-v2): ArtELingo loader + painting/image-grouped train/v
 - Create: `src/test/20261009_factor_collapse_diagnosis/run_diagnosis.py`,
   `src/test/20261009_factor_collapse_diagnosis/20261009_factor_collapse_diagnosis_log.md`,
   `src/test/20261009_factor_collapse_diagnosis/.gitignore` (`*.npy`, `*.json`, `*.pt`, `cache/`)
-- Create: `docs/reports/2026-10-09_cosir_v2_candidate_a_factor_collapse_diagnosis.md`
+- Create: `docs/reports/auto/v2/2026-10-09_candidate_a_factor_collapse_diagnosis.md`
 - No `src/` changes. If a variant seems to need one, stop and report instead.
 
 **Interfaces:**
@@ -817,7 +817,7 @@ matter through optimization. Its prior is low, but it is cheap to check.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/test/20261009_factor_collapse_diagnosis/ docs/reports/2026-10-09_cosir_v2_candidate_a_factor_collapse_diagnosis.md
+git add src/test/20261009_factor_collapse_diagnosis/ docs/reports/auto/v2/2026-10-09_candidate_a_factor_collapse_diagnosis.md
 git commit -m "docs(cosir-v2): one-variable-at-a-time diagnosis of the factor-space collapse"
 ```
 
@@ -1460,7 +1460,7 @@ git commit -m "feat(cosir-v2): conditioning module + human-label episode evaluat
 - Create: `src/test/20261011_factor_repair_grid/run_grid.py`,
   `src/test/20261011_factor_repair_grid/20261011_factor_repair_grid_log.md`,
   `src/test/20261011_factor_repair_grid/.gitignore` (`*.npy`, `*.json`, `*.pt`, `cache/`, `checkpoints/`)
-- Create: `docs/reports/2026-10-11_cosir_v2_candidate_a_factor_repair.md`
+- Create: `docs/reports/auto/v2/2026-10-11_candidate_a_factor_repair.md`
 
 **Interfaces:**
 - Consumes: Task 1 (gates), Task 2 (data and split), Task 4 (config fields, `group_ids`,
@@ -1558,7 +1558,7 @@ git commit -m "feat(cosir-v2): conditioning module + human-label episode evaluat
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/test/20261011_factor_repair_grid/ docs/reports/2026-10-11_cosir_v2_candidate_a_factor_repair.md
+git add src/test/20261011_factor_repair_grid/ docs/reports/auto/v2/2026-10-11_candidate_a_factor_repair.md
 git commit -m "docs(cosir-v2): factor-discovery repair grid with pre-registered gates and goal-based selection"
 ```
 
@@ -1570,7 +1570,7 @@ git commit -m "docs(cosir-v2): factor-discovery repair grid with pre-registered 
 - Create: `src/test/20261012_condition_eval_repaired_factors/run_eval.py`,
   `src/test/20261012_condition_eval_repaired_factors/20261012_condition_eval_repaired_factors_log.md`,
   `src/test/20261012_condition_eval_repaired_factors/.gitignore`
-- Create: `docs/reports/2026-10-12_cosir_v2_candidate_a_condition_eval_repaired_factors.md`
+- Create: `docs/reports/auto/v2/2026-10-12_candidate_a_condition_eval_repaired_factors.md`
 
 **Interfaces:**
 - Consumes:
@@ -1644,7 +1644,7 @@ git commit -m "docs(cosir-v2): factor-discovery repair grid with pre-registered 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/test/20261012_condition_eval_repaired_factors/ docs/reports/2026-10-12_cosir_v2_candidate_a_condition_eval_repaired_factors.md
+git add src/test/20261012_condition_eval_repaired_factors/ docs/reports/auto/v2/2026-10-12_candidate_a_condition_eval_repaired_factors.md
 git commit -m "docs(cosir-v2): condition-interface re-evaluation on repaired factors (label-defined, paired)"
 ```
 

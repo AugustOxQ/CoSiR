@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 # Full-scale validation of the combiner-architecture ablation's headline result
-# (docs/reports/2026-09-02_combiner_architecture_ablation.md): does the `lowrank`
+# (docs/reports/auto/buddy/2026-09-02_combiner_architecture_ablation.md): does the `lowrank`
 # fusion family's oracle i2t R1 win over `legacy` survive at the project's real
 # training scale/duration, not just the redcaps_150k/30-epoch smoke pass?
 #

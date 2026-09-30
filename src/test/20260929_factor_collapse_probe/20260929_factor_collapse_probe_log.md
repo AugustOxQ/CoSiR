@@ -12,4 +12,4 @@
 
 **Root cause (probable).** The paired-agreement loss is non-contrastive, nothing decorrelates the factors, and the usage-balance loss can be satisfied by copies of one axis. Sparsity pressure is weak and the inputs are uncentered.
 
-**Resolution.** Diagnostic only; no source changes. The full write-up and fix recommendations are in `docs/reports/2026-09-29_cosir_v2_code_review.md`.
+**Resolution.** Diagnostic only; no source changes. The full write-up and fix recommendations are in `docs/reports/auto/v2/2026-09-29_code_review.md`.

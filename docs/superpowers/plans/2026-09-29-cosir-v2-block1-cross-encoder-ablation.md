@@ -4,7 +4,7 @@
 > pre-authorized on the local machine. Checkbox steps.
 
 **Goal:** test whether Block 1's "content-only Stage 1 plateaus at the raw-feature baseline"
-finding (`docs/reports/2026-09-28_cosir_v2_block1_stage1_validation.md`,
+finding (`docs/reports/auto/v2/2026-09-28_block1_stage1_validation.md`,
 `docs/reports/2026-09-28_cosir_v2_..._raw_clip_baseline...`) is a property of buddy/InfoNCE
 training itself, or a property of CLIP ViT-B/32's specific features. Reuse Block 1's exact
 pipeline (`build_content_graph`, `train_stage1`, `detect_communities`) unchanged, only swapping
@@ -84,7 +84,7 @@ those exact choices, they're already validated to load and run correctly in this
 
 **Files:**
 - Create: `src/test/20260929_cross_encoder_stage1/run_cross_encoder_validation.py`
-- Create: `docs/reports/2026-09-29_cosir_v2_block1_cross_encoder_ablation.md`
+- Create: `docs/reports/auto/v2/2026-09-29_block1_cross_encoder_ablation.md`
 
 **What to do:**
 1. Load the DINOv2/e5 features saved by Task 1 (do not re-extract).
@@ -98,7 +98,7 @@ those exact choices, they're already validated to load and run correctly in this
 4. Compute the same real `emotion` label (from `artelingo_train.json`, same positional join) AMI
    for both: (a) DINOv2+e5-trained Stage 1, (b) raw DINOv2+e5 features clustered directly.
 5. Report all four numbers side by side in a clear table: CLIP Stage 1 (0.036942, from
-   `docs/reports/2026-09-28_cosir_v2_block1_stage1_validation.md`), CLIP raw baseline (0.035781,
+   `docs/reports/auto/v2/2026-09-28_block1_stage1_validation.md`), CLIP raw baseline (0.035781,
    same report), DINOv2+e5 Stage 1 (new), DINOv2+e5 raw baseline (new). Community counts/
    occupancy for all four too, where available.
 
@@ -114,7 +114,7 @@ right.
 
 - [ ] Run it for real, write the report with real numbers, plain verdict up front (matching this
   project's established report convention).
-- [ ] Commit: `git add src/test/20260929_cross_encoder_stage1/run_cross_encoder_validation.py docs/reports/2026-09-29_cosir_v2_block1_cross_encoder_ablation.md && git commit -m "docs(cosir-v2): cross-encoder (DINOv2+e5) ablation for Block 1 Stage 1"`
+- [ ] Commit: `git add src/test/20260929_cross_encoder_stage1/run_cross_encoder_validation.py docs/reports/auto/v2/2026-09-29_block1_cross_encoder_ablation.md && git commit -m "docs(cosir-v2): cross-encoder (DINOv2+e5) ablation for Block 1 Stage 1"`
 
 ## Self-review
 

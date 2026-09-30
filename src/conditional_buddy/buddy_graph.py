@@ -568,7 +568,7 @@ def hub_neighbor_pairs(typed: dict, bridge_stats: dict, N: int) -> dict:
     hub and are plausibly txt-similar to each other too. Callers who need a genuine
     "no edge of any kind" control group must additionally check membership against
     `typed["keys"]` as a whole, not just `typed["img_only"]` -- see Experiment 14's
-    report, docs/reports/2026-08-31_closed_triangle_bridge_diagnostic.md, which found
+    report, docs/reports/auto/buddy/2026-08-31_closed_triangle_bridge_diagnostic.md, which found
     ~52% of 'open'-labeled pairs are contaminated this way). A node can contribute to
     multiple pairs if it has 3+ txt_only neighbors.
 

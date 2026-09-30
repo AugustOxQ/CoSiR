@@ -3,7 +3,7 @@
 **Date:** 2026-06-23
 **Status:** Approved (no commit per user)
 **Branch:** `experiment/conditional_buddy`
-**Precursors:** `docs/reports/2026-06-23_redcaps_buddy.md`,
+**Precursors:** `docs/reports/auto/buddy/2026-06-23_redcaps_buddy.md`,
 `src/test/20260622_buddy_analysis/phase2_vlm.py` (Impressions Phase 2)
 
 ## Goal
@@ -47,7 +47,7 @@ sanity check first. Server via `src/test/automatic_annotator/launch_vllm.sh`
 
 ## Report
 
-Add "Result 3 — VLM judge (Phase 2)" to `docs/reports/2026-06-23_redcaps_buddy.md`
+Add "Result 3 — VLM judge (Phase 2)" to `docs/reports/auto/buddy/2026-06-23_redcaps_buddy.md`
 with the B/E gradient, mirroring the Impressions Phase 2 section.
 
 ## Not doing

@@ -15,7 +15,7 @@ class SharedFactorEncoder(nn.Module):
     encoder weights to be decoder transposes.
 
     Two optional, default-off mechanisms address the factor collapse diagnosed
-    in docs/reports/2026-10-09_cosir_v2_candidate_a_factor_collapse_diagnosis.md:
+    in docs/reports/auto/v2/2026-10-09_candidate_a_factor_collapse_diagnosis.md:
 
     * ``activation="topk"`` keeps only the ``topk`` largest pre-activations per
       row (ReLU-clipped), so every item selects a small set of factors.

@@ -413,7 +413,7 @@ git commit -m "feat: add RedCaps subreddit signal-strength correlation analysis 
 ### Task 3: Run the full analysis and write the report
 
 **Files:**
-- Create: `docs/reports/2026-08-24_redcaps_subreddit_signal_correlates.md` (adjust date to when this actually runs)
+- Create: `docs/reports/auto/buddy/2026-08-24_redcaps_subreddit_signal_correlates.md` (adjust date to when this actually runs)
 - Modify: `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (extend C1's evidence note in §2)
 
 **Interfaces:**
@@ -430,7 +430,7 @@ Capture: the overall lift and subreddit count, the three correlation coefficient
 
 - [ ] **Step 2: Write the results report**
 
-Create `docs/reports/2026-08-24_redcaps_subreddit_signal_correlates.md` with: method (full per-subreddit lift, the three properties and how each is computed, the closed-form identity used and why), the full results table (or top/bottom-N if the full table is large — state the total count either way), the three correlation coefficients with interpretation, the scatter figure, caveats (e.g. `MIN_SUBREDDIT_SIZE` threshold's effect on which subreddits are included), and reproduction command.
+Create `docs/reports/auto/buddy/2026-08-24_redcaps_subreddit_signal_correlates.md` with: method (full per-subreddit lift, the three properties and how each is computed, the closed-form identity used and why), the full results table (or top/bottom-N if the full table is large — state the total count either way), the three correlation coefficients with interpretation, the scatter figure, caveats (e.g. `MIN_SUBREDDIT_SIZE` threshold's effect on which subreddits are included), and reproduction command.
 
 - [ ] **Step 3: Update the spec**
 
@@ -439,7 +439,7 @@ In `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` §2, ext
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docs/reports/2026-08-24_redcaps_subreddit_signal_correlates.md docs/reports/assets/redcaps_subreddit_correlates/ docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+git add docs/reports/auto/buddy/2026-08-24_redcaps_subreddit_signal_correlates.md docs/reports/assets/redcaps_subreddit_correlates/ docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
 git commit -m "results: RedCaps subreddit signal-strength correlates (Experiment 9)"
 ```
 

@@ -502,7 +502,7 @@ git commit -m "feat: add real-data integration + CLI for drift/shift-vs-retrieva
 ### Task 3: Run against the 3 real seed pairs, write the report addendum, update the spec
 
 **Files:**
-- Modify: `docs/reports/2026-08-25_condition_freeze_ablation.md` (append an "Experiment 11.2" section)
+- Modify: `docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md` (append an "Experiment 11.2" section)
 - Modify: `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md` (resolve 11.2's remaining "11.2 itself remains unscoped/not-yet-run" sentence with the actual result)
 
 **Interfaces:**
@@ -530,7 +530,7 @@ For each of the two correlations (`condition_drift`, `embedding_shift`), note wh
 
 - [ ] **Step 4: Append the results to the report**
 
-Append a new `## Experiment 11.2 — drift/shift vs. retrieval-rank correlation` section to `docs/reports/2026-08-25_condition_freeze_ablation.md`, covering: method (one paragraph, pointing at this plan and `analyze_pair`'s docstring), the per-seed table (`rho`, `p`, `delta_rank` mean, for both correlations), the cross-seed synthesis from Step 3, 2-3 representative rows from the most-degraded extremes table, interpretation, and the reproduction commands from Step 2.
+Append a new `## Experiment 11.2 — drift/shift vs. retrieval-rank correlation` section to `docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md`, covering: method (one paragraph, pointing at this plan and `analyze_pair`'s docstring), the per-seed table (`rho`, `p`, `delta_rank` mean, for both correlations), the cross-seed synthesis from Step 3, 2-3 representative rows from the most-degraded extremes table, interpretation, and the reproduction commands from Step 2.
 
 - [ ] **Step 5: Update the spec**
 
@@ -539,7 +539,7 @@ In `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`'s Experi
 - [ ] **Step 6: Commit**
 
 ```bash
-git add docs/reports/2026-08-25_condition_freeze_ablation.md docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
+git add docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md
 git commit -m "results: drift/shift vs retrieval-rank correlation (Experiment 11.2)"
 ```
 

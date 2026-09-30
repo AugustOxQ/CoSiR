@@ -21,7 +21,7 @@
 - Sample-id join is **positional**: `records = [meta[s] for s in sample_ids]` where `sample_ids` comes from `FeatureManager.load_all_to_ram(...)["sample_ids"]` (or, for a checkpoint, `final_embeddings/sample_ids.npy`) — same pattern as `src/test/20260623_redcaps_buddy/redcaps_buddy.py::load_data`. Never assume `sample_id == list index` without this join.
 - No GPU training. CLIP text-tower encoding of a handful of short prompts runs fine on CPU (`device="cpu"` default throughout this plan) — do not add CUDA-only code paths.
 - Every control comparison (direction-based and probe-based) uses `seed=42` for reproducibility, matching this project's existing convention (e.g. `2026-07-16-buddy-cross-vlm-survival.md`'s `seed=42` default).
-- Artifacts dir for the final report: `docs/reports/2026-09-15_condition_space_audit.md` (this project's report-naming convention).
+- Artifacts dir for the final report: `docs/reports/auto/buddy/2026-09-15_condition_space_audit.md` (this project's report-naming convention).
 
 ---
 
@@ -268,7 +268,7 @@ Create `src/test/20260915_condition_space_audit/axis_definitions.py`:
 """Concrete two-pole label-group and prompt-pair definitions for the Exp. 17.1
 condition-space audit. Subreddit/caption_type pools were chosen from labels
 verified as well-populated in redcaps_150k / impressions_train during spec
-research (2026-09-15) — see docs/reports/2026-09-15_condition_space_audit.md.
+research (2026-09-15) — see docs/reports/auto/buddy/2026-09-15_condition_space_audit.md.
 """
 import numpy as np
 
@@ -940,7 +940,7 @@ git commit -m "feat(exp17.1): existing-checkpoint control-task-gated probe (Phas
 
 **Files:**
 - Create: `src/test/20260915_condition_space_audit/summarize.py`
-- Create: `docs/reports/2026-09-15_condition_space_audit.md`
+- Create: `docs/reports/auto/buddy/2026-09-15_condition_space_audit.md`
 
 **Interfaces:**
 - Consumes: `raw_clip_audit_results.json` (Task 4), `checkpoint_probe_results.json` (Task 5).
@@ -995,7 +995,7 @@ Expected: a table of every (dataset, axis, modality) row plus one `GATE VERDICT:
 
 - [ ] **Step 3: Write the report**
 
-Create `docs/reports/2026-09-15_condition_space_audit.md`, filling `<...>` markers with the actual run output from Step 2 (the summary table, the gate verdict, and — from `checkpoint_probe_results.json` — whether any existing checkpoint already shows a positive/null selectivity per axis):
+Create `docs/reports/auto/buddy/2026-09-15_condition_space_audit.md`, filling `<...>` markers with the actual run output from Step 2 (the summary table, the gate verdict, and — from `checkpoint_probe_results.json` — whether any existing checkpoint already shows a positive/null selectivity per axis):
 
 ```markdown
 # Condition-Space Steerability Audit — Experiment 17.1
@@ -1071,7 +1071,7 @@ flagged exploratory.>
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/test/20260915_condition_space_audit/summarize.py docs/reports/2026-09-15_condition_space_audit.md
+git add src/test/20260915_condition_space_audit/summarize.py docs/reports/auto/buddy/2026-09-15_condition_space_audit.md
 git commit -m "docs(exp17.1): summarize condition-space audit results and gate verdict"
 ```
 
@@ -1092,7 +1092,7 @@ git commit -m "docs(exp17.1): summarize condition-space audit results and gate v
 In `docs/superpowers/specs/2026-08-04-buddy-publication-plan-design.md`, find Experiment 17.1's bullet list (ends with its `**Cost:**` line) and append one more bullet, matching this spec's existing `**Result (YYYY-MM-DD, ...):**` convention (see 16.1/16.2 for the exact style — one paragraph, state the verdict, the winning axis if any, and link the report):
 
 ```markdown
-- **Result (2026-09-15, `src/test/20260915_condition_space_audit/`):** <fill in from docs/reports/2026-09-15_condition_space_audit.md's Verdict section — state positive/null/partial, the winning axis and its z/AUC if positive or partial, and what this means for 17.2's scope per the decision rule above>. Full write-up: `docs/reports/2026-09-15_condition_space_audit.md`.
+- **Result (2026-09-15, `src/test/20260915_condition_space_audit/`):** <fill in from docs/reports/auto/buddy/2026-09-15_condition_space_audit.md's Verdict section — state positive/null/partial, the winning axis and its z/AUC if positive or partial, and what this means for 17.2's scope per the decision rule above>. Full write-up: `docs/reports/auto/buddy/2026-09-15_condition_space_audit.md`.
 ```
 
 - [ ] **Step 2: Fill in the log's Results section**

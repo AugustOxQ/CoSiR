@@ -746,7 +746,7 @@ python scripts/analyze_polysemy_bridges.py \
   --out docs/reports/assets/2026-XX-XX_closed_triangle_bridge_diagnostic_result.json
 ```
 
-(Substitute the exact 6 per-sample `.npz` paths Experiment 12.3 already produced/used — find them via `find res -name 'per_sample.npz'` or by checking `docs/reports/2026-08-26_polysemy_bridge_diagnostic.md`'s Experiment 12.3 section for the exact run directory names; if `--template-dir` uses a different graph snapshot than 300k required per Step 2, substitute that path throughout.)
+(Substitute the exact 6 per-sample `.npz` paths Experiment 12.3 already produced/used — find them via `find res -name 'per_sample.npz'` or by checking `docs/reports/auto/buddy/2026-08-26_polysemy_bridge_diagnostic.md`'s Experiment 12.3 section for the exact run directory names; if `--template-dir` uses a different graph snapshot than 300k required per Step 2, substitute that path throughout.)
 
 - [ ] **Step 4: Apply the pre-registered success criteria and write the report**
 
@@ -755,7 +755,7 @@ Using the printed `closed-triangle pull` vs. `open-hub pull` lines from Step 3 (
 - **Does not discriminate**: the two are comparable in magnitude.
 - **Ambiguous**: closed-triangle pull is smaller.
 
-Write `docs/reports/YYYY-MM-DD_closed_triangle_bridge_diagnostic.md` following this project's existing report structure (see `docs/reports/2026-08-26_polysemy_bridge_diagnostic.md` for the template: Date/Dataset/Code/Motivated-by/Compute header, TL;DR, Method, Results table, Interpretation numbered list applying the three-way criteria above, Caveats, Reproduction commands). Include: the Task 0 counts and which feature store was used (Step 2), the closed vs. open pull comparison (primary, #2), the hub-vs-plain-bridge pull comparison read off `label_counts`/`hub_pair_counts` context (secondary, #1, descriptive), and the `is_hub`/`in_closed_triangle`/`in_open_hub_pair` retrieval cross-reference results (secondary, #3, descriptive).
+Write `docs/reports/YYYY-MM-DD_closed_triangle_bridge_diagnostic.md` following this project's existing report structure (see `docs/reports/auto/buddy/2026-08-26_polysemy_bridge_diagnostic.md` for the template: Date/Dataset/Code/Motivated-by/Compute header, TL;DR, Method, Results table, Interpretation numbered list applying the three-way criteria above, Caveats, Reproduction commands). Include: the Task 0 counts and which feature store was used (Step 2), the closed vs. open pull comparison (primary, #2), the hub-vs-plain-bridge pull comparison read off `label_counts`/`hub_pair_counts` context (secondary, #1, descriptive), and the `is_hub`/`in_closed_triangle`/`in_open_hub_pair` retrieval cross-reference results (secondary, #3, descriptive).
 
 - [ ] **Step 5: Fold the result into the spec's claims table**
 

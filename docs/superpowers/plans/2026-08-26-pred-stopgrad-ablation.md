@@ -671,7 +671,7 @@ git commit -m "feat: add paired analysis for pred-stopgrad ablation (Experiment 
 ### Task 4: Launch the sweep and write up results
 
 **Files:**
-- Modify: `docs/reports/2026-08-25_condition_freeze_ablation.md` (append new `## Experiment 11.3` section, matching the existing `## Experiment 11.2` section's structure)
+- Modify: `docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md` (append new `## Experiment 11.3` section, matching the existing `## Experiment 11.2` section's structure)
 
 **Interfaces:**
 - Consumes: Task 2's sweep script, Task 3's analysis script.
@@ -696,7 +696,7 @@ Save the full printed output — it is the source of every number in Step 3.
 
 - [ ] **Step 3: Append the results section**
 
-Open `docs/reports/2026-08-25_condition_freeze_ablation.md` and append, after the existing `## Experiment 11.2` section's final subsection (`### Reproduction`), a new top-level section:
+Open `docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md` and append, after the existing `## Experiment 11.2` section's final subsection (`### Reproduction`), a new top-level section:
 
 ```markdown
 ## Experiment 11.3 — bidirectional table↔predictor coupling
@@ -755,7 +755,7 @@ Fill in every bracketed section using Step 2's actual output — do not leave an
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docs/reports/2026-08-25_condition_freeze_ablation.md
+git add docs/reports/auto/buddy/2026-08-25_condition_freeze_ablation.md
 git commit -m "results: bidirectional table<->predictor coupling (Experiment 11.3)"
 ```
 

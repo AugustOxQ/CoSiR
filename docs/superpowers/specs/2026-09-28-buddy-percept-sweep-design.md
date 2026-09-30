@@ -12,7 +12,7 @@ each), running up to a 24-hour soft budget (extendable if not yet
 converged).
 
 This is the direct continuation of tonight's overnight investigation
-(`docs/reports/2026-09-26_artelingo_buddy_vs_percept_stage1_report.md`),
+(`docs/reports/auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md`),
 which hand-tuned a handful of hyperparameters one at a time (candidates
 1-6). This sweep replaces that manual process with a systematic search
 over the full space at once, now that the per-trial cost is known to be
