@@ -36,7 +36,8 @@ bound > -1.5 (SE seed 42 vs C0 seed 42, naive beta 0.3, mean of directions, pair
 | D_style,held | +0.65 | [+0.07, +1.21] | > -1.5: met |
 | pooled | +1.36 | [+0.96, +1.76] | context |
 
-**CONFIRMED.** Recomputed independently from `held_ranks.npz` (same numbers).
+**CONFIRMED.** Recomputed from `held_ranks.npz` with a separate bootstrap: points identical; CIs agree within 0.03
+across 20 other bootstrap seeds (corrected in the final fix wave; the earlier "same numbers" held only for seed 42).
 Context: naive R@1 SE 21.24 / C0 19.88 / R3 19.45 / CLIP-only 13.16 pooled; SE - R3 emotion +1.56 [+1.01, +2.09].
 Seeds 43 / 44 (same-seed C0): D_emo +1.85 [+1.29, +2.39] / +1.64 [+1.12, +2.17]; D_style +2.00 / +1.18.
 beta 0: D_emo +2.45 [+1.84, +3.05], D_style +0.62 [-0.01, +1.25]. Oracle beta 0 SE - C0: emotion +3.02, style +1.78.
@@ -49,3 +50,16 @@ build_2026-10-18_affect_factor_learning_figures.py; the six selection PNGs rebui
 ## Files (gitignored)
 results/power.json, results/smoke_held.json + smoke_held_ranks.npz (discarded), results/held_started.json,
 results/held_results.json, results/held_ranks.npz, run_power.log, run_smoke.log, run_held.log.
+
+## Final fix wave (2026-10-01, after the whole-branch final review)
+Verdict unchanged (CONFIRMED). No held row read again; nothing retrained.
+- Held run time stated as 2026-10-01 01:23 CEST (2026-09-30 23:23:29 UTC, from held_started.json; system TZ
+  Europe/Amsterdam).
+- Held CIs re-bootstrapped from the stored ranks with seeds 1-20 (`run_posthoc_affect.py`): D_emo lower +1.514 to
+  +1.544, upper +2.600 to +2.637; D_style lower +0.049 to +0.085, upper +1.215 to +1.245; max deviation 0.031.
+- Report corrected: distant-supervision disclosure with scorer-train numbers; "first" claims (R3's repair was
+  confirmed on held against R0 first); trained-scorer ceiling (+0.74 [+0.33, +1.16] pooled at beta 0.3, at most
+  +1.78, of which +0.34 is the beta effect); smoke-twice clause; sparsity amendment; C0-recipe share of the style
+  edge over R3 (+1.36 of +2.01) and C0's emotion deficit to R3 per seed (-0.51 / -0.66 / -1.03); awe/admiration note;
+  next-step options (a)-(d) with costs; design-effect caveat (selection anchor-painting bootstrap 1.02).
+

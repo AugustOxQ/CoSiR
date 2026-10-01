@@ -36,6 +36,12 @@ In plain terms:
   `D_emo,held` +1.85 [+1.29, +2.39] (seed 43) and +1.64 [+1.12, +2.17] (seed 44), and style +2.00 and +1.18. Seed 43,
   whose emotion gain on selection was small and not significant (+0.50 [−0.26, +1.29]), clears the emotion bar on
   held (Result 6).
+- **What kind of signal this is.** SE is trained without ArtELingo labels, but it is distantly supervised on
+  emotion. GoEmotions, PercepT's affect teacher, names 6 of the 8 evaluated emotions and reads the emotion words that
+  many ArtEmis captions state (31.5% of sadness captions contain a sadness word, against 0.42% of other captions), and
+  several affect clusters are near-pure proxies of one emotion. On selection rows, SE's emotion gain is +3.21 on
+  episodes whose positive caption states its emotion word and +0.96 on the rest (post-hoc, selection rows, informed
+  no pre-registered decision). This is not a leak, but it is not label-free factor discovery either ("What the affect signal is").
 
 Held rows were read before, in two earlier final tests on seed-42 episodes; these seed-43 episodes are new, the rows
 and paintings are not (section "Held rows: history and scope").
@@ -63,7 +69,7 @@ the label, 4 supports, 4 contrasts, and 13 candidates: 1 positive with the label
 given it. **R@1** is the share of episodes where the positive ranks first (chance 7.69%); a tie counts as a miss (no
 episode had one at β 0.3). ArtELingo's emotion and style labels are used only here, to evaluate.
 
-**The models** (all trained without labels; none saw a held row):
+**The models** (all trained without ArtELingo labels; none saw a held row):
 
 | Model | What it is | Role here |
 |---|---|---|
@@ -77,13 +83,31 @@ The affect partition is 64 MiniBatch k-means groups of the 28 sigmoid probabilit
 every model reads frozen CLIP features alone. The selection report explains the cells and the rule that picked SE:
 [affect factor-learning selection](2026-10-18_candidate_a_affect_factor_learning_selection.md).
 
-**The held test** (spec §7, run once on 2026-10-01, 151 seconds on the local RTX 3090):
+**What the affect signal is, and how close it sits to the labels** (post-hoc, scorer-train rows, informed no
+pre-registered decision; the selection report's "Post-hoc diagnostics", D1). GoEmotions' categories name 6 of the 8 evaluated ArtEmis emotions
+directly: amusement, anger, disgust, excitement, fear and sadness; awe and contentment have no counterpart. ArtEmis
+annotators explain their emotion in the caption, and many captions state the emotion word, which GoEmotions reads: a
+word of the label's own family appears in 31.5% of sadness, 27.7% of anger, 22.9% of fear and 17.6% of excitement
+captions, against 0.05% to 0.45% of captions with other labels. GoEmotions' argmax is "sadness" for 49.7% of sadness
+captions and "fear" for 36.9% of fear captions. Several affect clusters are near-pure proxies of one evaluated
+emotion (7,444 rows at 90.0% sadness, 5,791 at 87.1% fear, 2,933 at 94.5% amusement), and row-weighted cluster
+purity is 0.488 against the 0.284 of always guessing the majority emotion. **This is not a leak:** the affect vectors
+cover scorer-train rows only, the held paintings are disjoint from them, at test time every model reads CLIP features
+only, and C0 reads the same CLIP features. **What it means:** SE is distantly supervised on emotion by an external
+classifier, PercepT's affect teacher, that reads the emotion words the ArtEmis protocol leads annotators to write. The
+results below describe that, not label-free factor discovery.
+
+**The held test** (spec §7, run once on 2026-10-01 at 01:23 CEST, which is 2026-09-30 23:23 UTC; 151 seconds on the
+local RTX 3090):
 
 1. **Power first** (`--power`, written before any held read). The episode count per label came from the picked cell's
    selection `D_emo` CI (table in "Power"): 8,192 per label.
 2. **Smoke** (`--smoke`): the identical code on the selection rows in place of the held rows (seed 43, 8,192 per
    label). It ran end to end with finite outputs; its numbers were discarded. As a code check it also rebuilt the
    selection episodes (seed 42, 4,096) and reproduced the selection `D_emo` and `D_style` exactly (every rank identical).
+   The smoke ran twice: between the two runs the script was edited to add β-0 rows for the replication seeds (a
+   reported extra). Both runs used selection rows, the edit did not touch the criterion code (per the held log), and
+   the held run used the same script bytes as the second smoke (SHA-256 asserted).
 3. **The run** (`--run`). The script recomputed `grouped_split(leakage_groups(...), seed=42)` and its selection
    sub-split and asserted both equal to stage (d)'s cache; asserted that held rows share no row or painting with the
    train and val parts; loaded the seven checkpoints with their SHA-256s and configs asserted; encoded **only** the
@@ -106,15 +130,17 @@ SE − C0, seed 42, naive rule at β 0.3 (paired R@1 points, 95% CI):
 | Pooled (16,384 episodes) | +1.36 [+0.96, +1.76] | +1.13 [+0.59, +1.67] | +1.59 [+1.03, +2.17] |
 
 **The rule, by hand.** `D_emo,held` lower bound +1.51 > 0: met. `D_style,held` lower bound +0.07 > −1.5: met.
-**Confirmed.** The verdict was recomputed from the stored ranks (`held_ranks.npz`) with an independent bootstrap and
-gave the same numbers to the last digit.
+**Confirmed.** The verdict was recomputed from the stored ranks (`held_ranks.npz`) with a separate bootstrap: the
+points are identical, and the CIs agree within 0.03 points across 20 other bootstrap seeds (lower bounds +1.51 to
++1.54 for emotion and +0.05 to +0.09 for style; recomputed from the stored ranks only, `run_posthoc_affect.py`).
 
 **Reading.**
 
 - **Emotion now gains in both directions.** On selection, SE's emotion gain came almost only from image→text
-  (+2.34 against +0.27), and the selection report read this as "the gain sits where emotion lives", in the captions.
-  On held, text→image gains as much (+2.21), and it does so at all three seeds (+2.21, +1.68, +1.68; on selection
-  +0.27, +0.17, +1.42). So the direction pattern on selection does not generalize; why it differed there is not
+  (+2.34 against +0.27), and the selection report first read this as the gain sitting in the captions (it now marks
+  that reading as a seed-42 selection result). On held, text→image gains about as much (+2.21), and it does so at all
+  three seeds (text→image +2.21, +1.68, +1.68; image→text +1.94, +2.01, +1.60; on selection text→image gained +0.27,
+  +0.17, +1.42). So the direction pattern on selection does not generalize; why it differed there is not
   something this test can tell (different rows and episodes). The criterion averages the two directions, so this does
   not affect the verdict.
 - **Style's small gain sits in text→image**, as on selection (+0.98 here, +1.71 there): the image clusters' style
@@ -179,8 +205,9 @@ Naive R@1 (%) of each model on the grid (pooled / emotion / style):
   terms by linear interpolation on this grid (C0 at β 0.277, where its spread ratio equals SE's at 0.3; or SE at
   0.325) gives `D_emo` +2.05 and +2.01 against +2.08, a change of at most 0.07 points.
 - **The style difference is small at every β** (+0.60 to +0.90) and at β 0 its interval touches 0. We therefore claim
-  no style gain in the code; what the test shows is that SE loses no style against C0. Balance matching leaves it at
-  +0.62 to +0.65.
+  no naive-rule style gain at β 0; what the test shows is that SE loses no style against C0. Balance matching leaves
+  it at +0.62 to +0.65. The label oracle (Result 4) suggests that SE's codes hold more linearly usable style than
+  C0's (+1.78), which the naive rule with 4 supports does not turn into a clear gain.
 - **Against R3 at β 0**, SE is +1.74 [+1.14, +2.36] on emotion and +1.98 [+1.34, +2.61] on style, and C0 is −0.71
   [−1.27, −0.17] on emotion; so C0's emotion deficit to R3, and SE's lead, are also in the codes, not in their scale
   (R3's codes are the loudest of the three, ratio 4.37).
@@ -203,11 +230,22 @@ t2i +2.51) and +1.78 [+1.19, +2.38] on style; at β 0.3 +2.14, +2.75 and +1.54. 
 +3.17 pooled, +2.72 emotion, +3.63 style.
 
 **Reading.** The oracle confirms both halves of the verdict with a different weighting: SE's codes hold more usable
-emotion information than C0's (+3.02) and more style information too (+1.78), where the naive rule showed only a small
-style gain. Every null sits at chance (7.89% to 8.04%). The gap between SE's oracle and its own naive rule (+1.44 at
-β 0, +1.90 on emotion) is larger than C0's (+0.58) and R3's (+0.13), as on selection (+1.86 for SE): part of what
-SE's codes carry is left unused by 4 supports and 4 contrasts. This gap is smaller than on selection and far smaller
-than E's there (+5.16).
+emotion information than C0's (+3.02) and more linearly usable style (+1.78), which the naive rule turns into only a
+small style difference that is not significant at β 0 (Result 3). Every null sits at chance (7.89% to 8.04%). The
+gap between SE's oracle and its own naive rule (+1.44 at β 0, +1.90 on emotion) is larger than C0's (+0.58) and R3's
+(+0.13), as on selection (+1.86 for SE): part of what SE's codes carry is left unused by 4 supports and 4 contrasts.
+This gap is smaller than on selection and far smaller than E's there (+5.16).
+
+**How much a smarter weighting could add.** At the operating β 0.3, SE's oracle beats its own naive rule by only
++0.74 [+0.33, +1.16] pooled (+1.14 [+0.57, +1.74] on emotion). Against the β-0 oracle the gap from the operating
+point is +1.78 (23.02 against 21.24), of which +0.34 comes from lowering the naive rule's β alone (21.58 at β 0
+against 21.24 at β 0.3), the same β effect that explained stage (d)'s trained-scorer result. The oracle also knows
+the target label and fits its weights on half of the episodes (4,096 per label type here, about 500 per target
+emotion), which a scorer reading 4 + 4 examples cannot. And on selection rows the naive rule closes the gap by itself
+when it gets more examples: with 16 or 32 supports it reaches SE's β-0.3 oracle on emotion (support-count curve;
+post-hoc, selection rows, informed no pre-registered decision; selection report D3). The ceiling for a trained
+scorer on SE's codes is therefore about 0.7 to 1.8 points pooled, weak evidence of headroom and no larger than the
+gain this test confirmed.
 
 ## Result 5: per target (which emotions and styles move)
 
@@ -221,8 +259,13 @@ episodes, seed 42).*
   +4.13 [+2.60, +5.63] (25% of the total gain), contentment +3.48 [+2.04, +4.97] (21%), anger +2.89, amusement +2.75,
   fear +2.15, excitement +1.73; disgust +1.30 [−0.24, +2.94] is not significant. **Awe loses again**, −2.04 [−3.52,
   −0.61] (selection −2.85). On selection sadness alone was 66% of the gain; on held the gain is spread over more
-  emotions. Awe has no direct GoEmotions category, which fits its loss, but contentment has none either and gains
-  (an untested reading, as in the selection report).
+  emotions. Awe has no direct GoEmotions category, which fits its loss, but contentment has none either and gains.
+  On scorer-train, GoEmotions' argmax for awe captions is admiration (45.2%), which is also the most frequent
+  non-neutral argmax for contentment (26.2% of its captions) and excitement (20.8%). An untested reading is that the
+  affect clusters merge awe with contentment and excitement. A post-hoc check on the selection awe episodes (selection
+  rows, informed no pre-registered decision) points that way, weakly: SE's extra awe misses land on contentment and
+  excitement candidates (+1.67 and +1.28 of +2.85 points with each candidate's own label, neither interval excluding
+  0; contentment +3.83 [+0.88, +6.78] when candidates take their painting's majority emotion; selection report D4).
 - **Style: a few distinctive styles gain, a few lose, the net is small.** 12 of 24 styles gain. Four gain clearly:
   Ukiyo-e +7.92 [+4.19, +11.65], Abstract Expressionism +6.95, Pop Art +5.49 and Naive Art (Primitivism) +4.90, the
   same kind of visually distinct styles that gained on selection. Two lose clearly: Mannerism (Late Renaissance)
@@ -289,37 +332,66 @@ point estimate exceeds −0.92: with probability 99.9% for a true style change o
 
 ## What this means
 
-1. **An affect signal from outside ArtELingo made the factors carry emotion, and the gain survives a held test.**
-   After the 2×2 and the headroom probe found no label-free route to emotion, conditions built from GoEmotions
-   clusters of the captions (half of SE's conditions) raise emotion R@1 over the matched control by about 2 points on
-   held, at every seed, in the code itself (β 0 and the oracle agree), without a style loss. This is the first
-   factor-learning change on this line that is confirmed on held data.
+1. **Distant supervision on emotion from PercepT's affect teacher made the factors carry emotion, and the gain
+   survives a held test.** After the 2×2 and the headroom probe found no label-free route to emotion, conditions
+   built from GoEmotions clusters of the captions (half of SE's conditions) raise emotion R@1 over the matched control
+   by about 2 points on held, at every seed, in the code itself (β 0 and the oracle agree), without a style loss.
+   The models never see an ArtELingo label, but the affect clusters are an emotion pseudo-partition: GoEmotions names
+   6 of the 8 evaluated emotions and reads the emotion words many captions state, and on selection rows SE's gain is
+   concentrated in episodes whose positive caption states its emotion (+3.21 against +0.96). SE is the first
+   condition-episode factor recipe confirmed on held data, and its gain is the first emotion gain over the matched,
+   non-collapsed control. It is not the first factor change confirmed on held: R3's repair beat the collapsed R0 on
+   held, emotion included ([condition eval on repaired factors](2026-10-12_candidate_a_condition_eval_repaired_factors.md)).
 2. **SE beats the current system on both labels.** Against the naive rule on original R3, SE gains 1.56 points on
    emotion and 2.01 on style (pooled +1.79), and it widens what the factors add over CLIP only from 6.30 to 8.08
-   points. The comparison against R3 is context: R3 was trained on all train rows and C0 is the controlled baseline.
+   points. Most of the style edge comes from C0's recipe, not from the condition episodes: C0 alone is +1.36 of SE's
+   +2.01 on style. And C0 sits below R3 on emotion at every seed (−0.51, −0.66, −1.03); whether that cost comes from
+   the painting-expanded batches or from training on fewer rows (scorer-train only) is not separated here. The
+   comparison against R3 is context: R3 was trained on all train rows and C0 is the controlled baseline.
 3. **The size is modest in absolute terms.** Emotion R@1 goes from 14.9% to 17.0% with 13 candidates, and the label
    oracle on SE's codes reaches 19.6% on emotion, far below the 49.8% of a label-aligned code. SE is a better factor
-   recipe, not a solution to emotion retrieval. The oracle gap (+1.9 on emotion) says a weighting smarter than the
-   naive rule could extract a little more from SE's codes (an inference; stage (d) found no such headroom on R3).
+   recipe, not a solution to emotion retrieval. A weighting smarter than the naive rule has little room: at the
+   operating β the oracle beats the naive rule by +0.74 pooled, the ceiling is about 0.7 to 1.8 points, and on
+   selection more supports close the gap without any trained component (Result 4).
 
 ## Next steps
 
 This report closes the pre-registered part of the affect factor-learning plan. What follows is for the user to
-decide; none of it is planned:
+decide; none of it is planned. Each option comes with its cost.
 
-- adopt SE's recipe as the factor code for later Candidate A work in place of R3 (the evidence above), keeping C0 as
-  its control;
-- revisit a trained scorer on SE's codes, since SE's oracle beats its naive rule where R3's did not (Result 4);
-- look for a larger emotion gain with a style safeguard of another kind (E gained +3.99 on selection but lost style),
-  which would need a new pre-registration and fresh episodes.
+- **(a) Adopt SE as the v2 factor model**, framed as distant supervision from PercepT's affect teacher, with C0 as
+  its control, and move on to the v2 publication plan and stage (e). Cost: no new compute for the adoption itself;
+  stage (e), a human-judged set, is its own effort. The publication plan has to carry the disclosure above (the
+  affect signal tracks the labels, and much of the selection gain sits where captions state the emotion word).
+- **(b) A trained scorer on SE's codes: not recommended.** It was to be considered only if more supports could not
+  close the oracle gap, and they do (selection report D3). Its ceiling is about 0.7 to 1.8 points pooled, no larger
+  than the gain already confirmed. Cost if pursued anyway: a stage-(d)-sized effort with a new pre-registration and
+  fresh episodes.
+- **(c) Baselines a paper will need, which require a spec amendment.** The naive rule on the 28-d GoEmotions codes
+  themselves (a teacher-only baseline: how far does the affect teacher get without any factor learning?), and a
+  comparison with PercepT. Cost: an amendment, since the current spec forbids running GoEmotions on evaluation
+  captions; a GoEmotions pass over those captions (minutes on the local GPU); and new evaluation episodes, which for a
+  held number means another held read (see (d)).
+- **(d) A held-row budget.** Held rows have now been read in three final tests (the repair plan's, stage (d)'s and
+  this one). Fix a budget for further held reads before any new pre-registration. Cost: a decision, no compute.
+
+A larger emotion gain with a style safeguard of another kind (E gained +3.99 on selection but lost style) would need
+a new pre-registration and fresh episodes; it is not among the options above.
 
 ## Caveats (spec §11 and the 2×2's lessons)
 
-- **Taxonomy mismatch.** GoEmotions' 28 Reddit categories are not ArtEmis's 9. Awe, without a direct counterpart,
-  loses on held as on selection (−2.04); the other seven emotions gain or hold.
+- **Taxonomy overlap and mismatch.** GoEmotions' 28 Reddit categories are not ArtEmis's 9, but they name 6 of the 8
+  evaluated emotions (amusement, anger, disgust, excitement, fear, sadness). The emotion word appears in 18% to 32% of
+  anger, excitement, fear and sadness captions against under 0.5% of other captions, GoEmotions' argmax is "sadness"
+  for 49.7% of sadness captions and "fear" for 36.9% of fear captions, and six affect clusters are at least 85% one
+  emotion (selection report D1). Awe, without a direct counterpart, loses on held as on selection (−2.04); the other
+  seven emotions gain or hold.
+- **Distant supervision.** SE is trained without ArtELingo labels but with an emotion signal that tracks them
+  closely. The emotion-word split was measured on selection rows only (held rows are not read again), so how much of
+  the held gain sits in episodes whose captions state the emotion word is not known.
 - **Image side.** Images carry little emotion (image→emotion probe 35.2% against a 28.4% majority). On held the
-  emotion gain is nevertheless as large in text→image (images ranked) as in image→text; on selection it was not.
-  The criterion averages the two directions.
+  emotion gain is nevertheless as large in text→image (images ranked) as in image→text; on selection at seed 42 it
+  was not. The criterion averages the two directions.
 - **Affect clusters and content.** The affect partition's AMI with art style is 0.016, so it does not follow visual
   style; it may still follow caption subject matter, which we did not measure.
 - **Selection rows were read many times**; this held test on fresh episodes is what confirms. Held rows were read in
@@ -327,13 +399,17 @@ decide; none of it is planned:
 - **The control is C0, not R3.** C0 is 0.51 points below R3 on emotion on held; SE's emotion edge over R3 (+1.56) is
   smaller than over C0 (+2.08). R3 and R0 were trained on all train rows; C0 and SE on scorer-train rows only.
 - **Code scale acts like β.** SE's code is 8% louder than C0's; its emotion gain is larger at β 0 and moves by at
-  most 0.07 points when the balance is matched (Result 3). The small style difference is claimed only as "no loss".
+  most 0.07 points when the balance is matched (Result 3). The small style difference is claimed only as "no loss"
+  under the naive rule.
 - **One seed decides; episodes reuse rows.** The verdict rests on seed 42; seeds 43 and 44 agree but share the held
-  episodes. 16,384 episodes reuse 61,744 rows and 12,281 paintings, so the bootstrap CIs, which resample episodes
-  under fixed models, are somewhat optimistic and do not include training randomness. A guard pass here is a
+  episodes. 16,384 episodes reuse 61,744 rows and 12,281 paintings. The held CIs resample episodes under fixed models
+  and do not include training randomness. On selection, resampling anchor paintings instead of episodes widened
+  `D_emo`'s interval by a factor of 1.02 and `D_style`'s by 1.01 (selection report D5), so anchor reuse is unlikely
+  to make the held intervals materially optimistic; the reuse of other roles is not measured. A guard pass here is a
   non-inferiority statement; had it failed, that would have meant failure to show non-inferiority, not a shown loss.
-- **Sparsity was report-only** by a decision made before any run; SE's caption codes fail that cap at every seed (0.515
-  to 0.529 against 0.50). The held test does not revisit gates.
+- **Sparsity is report-only by an amendment.** The spec made sparsity report-only after the 2×2's S had failed it,
+  before any run of this experiment. SE's caption codes fail that cap at every seed (0.515 to 0.529 against 0.50), so
+  SE's eligibility at selection depends on that amendment. The held test does not revisit gates.
 - **Mechanisms are inferences.** Why the direction pattern differs between selection and held, why awe loses, and
   why SE's style gain is small are readings, not tested results.
 
@@ -360,6 +436,9 @@ decide; none of it is planned:
 - Script: `src/test/20261019_affect_factor_learning_held/run_held.py` (`--power`, `--smoke`, `--run`, `--tables`;
   `held_episode_count` and `held_verdict` hold the pre-registered power rule and criterion). It reuses
   `run_affect.py`, the 2×2's `run_grid.py` and stage (d)'s cache.
+- Post-hoc diagnostics (added 2026-10-01, selection and scorer-train rows only, plus a re-bootstrap of the stored held
+  ranks): `src/test/20261018_affect_factor_learning/run_posthoc_affect.py`, reported in the selection report's
+  "Post-hoc diagnostics" (D1 to D5).
 - Log: `src/test/20261019_affect_factor_learning_held/20261019_affect_factor_learning_held_log.md`.
 - Figures: `docs/reports/assets/2026-10-18_affect_factor_learning/held_criterion.png` and `held_per_target_emotion.png`,
   built by `docs/reports/assets/build_2026-10-18_affect_factor_learning_figures.py`.

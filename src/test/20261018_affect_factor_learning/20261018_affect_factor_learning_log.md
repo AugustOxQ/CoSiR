@@ -12,8 +12,10 @@ measures diagnostics, and times the runs so the local-vs-DAS6 choice can be made
 2. `--prepare` (125 s total), then `--smoke`.
 
 ## Verified
-- Row scope: only `cache["scorer_train"]` captions reach the model; asserted `len(captions) == len(st)` and that
-  no selection/val/held row overlaps scorer-train. Probe split asserted inside scorer-train and painting-disjoint.
+- Row scope: only `cache["scorer_train"]` captions reach the model; asserted `len(captions) == len(st)`. The overlap
+  assertion checks scorer-train against selection only (the stage (d) cache has no val or held key); val and held
+  are excluded structurally, since captions are joined only for scorer-train rows (corrected in the final fix wave,
+  2026-10-01). Probe split asserted inside scorer-train and painting-disjoint.
 - Affect array (183,694, 28), finite, in [0, 1] (asserted). Extraction 84.7 s on the RTX 3090.
 - C0 and S reference checkpoints: stored configs equal `grid.cell_config("C0"/"S", 42)` (asserted); SHA-256 in
   `cache/affect_prepare.json` (C0 7653caf0985b..., S 33d35943ec62...).
@@ -112,3 +114,28 @@ Next (not this task): Task 4 replication of SE and C0 (seeds 43, 44), then Task 
 4. Report: a Replication section in docs/reports/auto/v2/2026-10-18_candidate_a_affect_factor_learning_selection.md.
    reports_sum.md row is not touched here (another session has uncommitted edits to it); its row still says
    "replication and held test pending".
+
+## Final fix wave (2026-10-01, after the whole-branch final review)
+Verdicts unchanged (selection picked SE; held confirmed it). Nothing retrained; held and val rows never read.
+1. `run_posthoc_affect.py` (new; committed in 4105376 before its first run, so its emotion word lists were fixed
+   before any split): GoEmotions stubbed to raise; captions joined for scorer-train and selection rows only;
+   rebuilt selection episodes and stored ranks asserted against selection_results.json; `--run` 49 s ->
+   results/posthoc_affect.json (gitignored), run_posthoc_affect.log; `--tables` reprints.
+2. Results (post-hoc, selection rows, informed no pre-registered decision):
+   - Scorer-train: GoEmotions names 6 of 8 targets; own-word rates sadness 31.5%, anger 27.7%, fear 22.9%,
+     excitement 17.6% (other captions 0.05% to 0.45%); argmax sadness 49.7% of sadness captions, fear 36.9% of fear;
+     clusters 7,444 rows 90.0% sadness, 5,791 87.1% fear, 2,933 94.5% amusement; purity 0.488 vs 0.284 base.
+   - Word split of D_emo (SE - C0): positive caption states the word (624 episodes) +3.21 [+1.12, +5.29]; does not
+     +0.96 [+0.16, +1.79]; neither anchor nor positive +0.75 [-0.14, +1.66].
+   - Support curve (2,048 per label per count): SE - C0 emotion +0.76 / +3.03 / +3.15 / +2.64 at 4 / 8 / 16 / 32
+     supports; SE naive emotion 20.17 at 16 and 20.68 at 32 against its stored beta-0.3 oracle 19.70. No label
+     needed a cap (smallest eligible target 35 paintings). k=4 reproduces stage (d)'s SHA and the stored ranks.
+   - Awe (509 episodes): SE's extra misses go to contentment (+1.67 row label, +3.83 [+0.88, +6.78] painting label)
+     and excitement (+1.28).
+   - Anchor-painting bootstrap: width ratio 1.018 (D_emo), 1.012 (D_style).
+   - Held CIs re-bootstrapped from stored ranks with seeds 1-20: max endpoint deviation 0.031.
+3. Reports corrected (both): "without ArtELingo labels"; distant-supervision disclosure; corrected "first" claims;
+   held outcome note and replication wording in the selection report; trained-scorer ceiling; minors F5a-k; new
+   "Post-hoc diagnostics" section (D1-D5) and figure support_curve.png (build script extended; other PNGs
+   byte-identical).
+

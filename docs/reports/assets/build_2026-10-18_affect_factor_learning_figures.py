@@ -5,6 +5,7 @@ Reads the affect run's stored results (gitignored, local only):
     src/test/20261018_affect_factor_learning/results/selection_results.json   (run_affect.py --evaluate)
     src/test/20261018_affect_factor_learning/results/replication.json         (run_affect.py --replicate)
     src/test/20261019_affect_factor_learning_held/results/held_results.json   (run_held.py --run; if present)
+    src/test/20261018_affect_factor_learning/results/posthoc_affect.json      (run_posthoc_affect.py --run; if present)
 and writes the PNGs to docs/reports/assets/2026-10-18_affect_factor_learning/.
 
 Run from the repository root:
@@ -24,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[3]
 RESULTS = ROOT / "src/test/20261018_affect_factor_learning/results/selection_results.json"
 REPLICATION = ROOT / "src/test/20261018_affect_factor_learning/results/replication.json"
 HELD_RESULTS = ROOT / "src/test/20261019_affect_factor_learning_held/results/held_results.json"
+POSTHOC = ROOT / "src/test/20261018_affect_factor_learning/results/posthoc_affect.json"
 OUT = ROOT / "docs/reports/assets/2026-10-18_affect_factor_learning"
 
 SERIES_1, SERIES_2, SERIES_3 = "#2a78d6", "#eb6834", "#1baf7a"   # validated categorical slots (light surface)
@@ -343,6 +345,40 @@ def held_per_target_figure(h: dict, r: dict) -> None:
     plt.close(fig)
 
 
+def support_curve_figure(p: dict) -> None:
+    """Post-hoc: naive R@1 at beta 0.3 against the number of supports (= contrasts), with each model's stored oracle."""
+    c = p["support_curve"]
+    counts = [int(k) for k in c["per_count"]]
+    xpos = np.arange(len(counts), dtype=float)
+    models = (("C0", REFERENCE, -0.08), ("E", SERIES_1, 0.0), ("SE", SERIES_2, 0.08))
+    names = {"C0": "C0 (control)", "E": "E (affect clusters)", "SE": "SE (affect + image clusters)"}
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.6), dpi=200)
+    for ax, scope, title in zip(axes, ("emotion", "art_style"), ("Emotion episodes", "Art-style episodes")):
+        for m, color, off in models:
+            stats = [point_ci(c["per_count"][str(k)]["0.3"]["r1"][m][scope]["mean"]) for k in counts]
+            pts = np.array([s[0] for s in stats])
+            lo, hi = np.array([s[1] for s in stats]), np.array([s[2] for s in stats])
+            ax.errorbar(xpos + off, pts, yerr=[pts - lo, hi - pts], fmt="o-", color=color, ecolor=color,
+                        elinewidth=1.3, capsize=3, markersize=5, linewidth=2.0, label=f"{names[m]}, naive rule",
+                        zorder=3)
+            ax.axhline(c["stored_4096"][m]["oracle@0.3"][scope], color=color, linestyle="--", linewidth=1.2,
+                       zorder=2)
+        ax.set_xticks(xpos, [f"{k}" + ("\n(the evaluated setting)" if k == 4 else "") for k in counts], fontsize=8.5)
+        ax.set_xlabel("supports per episode (and as many contrasts)", fontsize=9)
+        ax.set_title(title, fontsize=11, color=INK, loc="left", fontweight="bold")
+        ax.grid(axis="y", color=GRID, linewidth=0.8, zorder=0)
+    axes[0].set_ylabel("Naive R@1 (%) at β 0.3, mean of directions")
+    handles, labels = axes[0].get_legend_handles_labels()
+    handles.append(plt.Line2D([], [], color=MUTED, linestyle="--", linewidth=1.2))
+    labels.append("same model's label oracle, β 0.3 (stored, 4,096 episodes)")
+    fig.legend(handles, labels, frameon=False, fontsize=8.5, loc="upper left", bbox_to_anchor=(0.01, 0.93), ncol=2)
+    fig.suptitle("Post-hoc, selection rows: more supports close the gap to the label oracle (2,048 new episodes "
+                 "per label and count)", fontsize=11.5, color=INK, x=0.01, ha="left")
+    fig.tight_layout(rect=(0, 0, 1, 0.87))
+    fig.savefig(OUT / "support_curve.png", facecolor=SURFACE)
+    plt.close(fig)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     r = json.loads(RESULTS.read_text())
@@ -356,6 +392,8 @@ def main() -> None:
         h = json.loads(HELD_RESULTS.read_text())
         held_criterion_figure(h, r, json.loads(REPLICATION.read_text()))
         held_per_target_figure(h, r)
+    if POSTHOC.exists():                               # post-hoc diagnostics (final-review fix wave)
+        support_curve_figure(json.loads(POSTHOC.read_text()))
     print(f"wrote {sorted(p.name for p in OUT.glob('*.png'))} to {OUT}")
 
 
