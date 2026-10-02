@@ -52,7 +52,7 @@ semart() {
 
 vg() {
   local d=$ROOT/visual_genome; mkdir -p "$d"
-  # Stanford VG 1.2: images.zip -> VG_100K (64,346), images2.zip -> VG_100K_2 (43,731)
+  # Stanford VG 1.2: images.zip -> VG_100K, images2.zip -> VG_100K_2; 108,249 images in total (counted 2026-10-02)
   fetch "https://cs.stanford.edu/people/rak248/VG_100K_2/images.zip"  "$d/images.zip"
   fetch "https://cs.stanford.edu/people/rak248/VG_100K_2/images2.zip" "$d/images2.zip"
   for z in images images2; do unzip -tq "$d/$z.zip" >/dev/null || die "$z.zip corrupt"; done
@@ -61,7 +61,7 @@ vg() {
   # GeneCIS config expects one flat dir of <image_id>.jpg ("VG_100K_all"); symlinks avoid duplicating the files
   mkdir -p "$d/VG_100K_all"
   find "$d/VG_100K" "$d/VG_100K_2" -name '*.jpg' -exec ln -sfn {} "$d/VG_100K_all/" \;
-  check_count "VG images" "$(find "$d/VG_100K_all" -name '*.jpg' | wc -l)" 108077
+  check_count "VG images" "$(find "$d/VG_100K_all" -name '*.jpg' | wc -l)" 108249
   log "set /project/genecis/config.py visual_genome_images = $d/VG_100K_all (image_data.json is not needed by VAWDataset)"
 }
 
