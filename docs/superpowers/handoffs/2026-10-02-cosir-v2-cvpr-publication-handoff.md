@@ -27,8 +27,10 @@ The user chose these from the options in the affect factor-learning held report:
 - **Write the v2 publication plan.** This is the main deliverable of the next session.
 - **Run the baselines the paper needs.** At least a teacher-only baseline (the naive rule on the raw
   28-d GoEmotions codes) and a PercepT comparison. The literature review will add more.
-- Not chosen for now: closing out the percept line (archive tag, push, weekly-report fix). Its branch
-  `experiment/percept_topic_pipeline` (head 1b70d7f) stays as it is until the user archives it.
+- Done on 2026-10-02 after this handoff was first written: the weekly report was corrected to the final
+  head-to-head and committed (904f06d), the GeneCIS feasibility work was committed (02eac6d), and main
+  was pushed to origin. Not done: the percept branch `experiment/percept_topic_pipeline` (head 1b70d7f,
+  never pushed) stays as it is until the user turns it into an archive tag.
 
 ## Where the evidence stands
 
@@ -56,8 +58,8 @@ per episode.
   "self/unsupervised condition discovery". The storyline has to be rebuilt around what still holds.
 - **No standard benchmark yet.** Everything so far uses in-house ArtELingo label episodes.
   [`2026-10-20_genecis_feasibility.md`](../../reports/auto/v2/2026-10-20_genecis_feasibility.md),
-  written by another session and uncommitted on main, says GeneCIS (CVPR 2023, the paper CoSiR builds on)
-  is usable for evaluation:
+  says GeneCIS (CVPR 2023, the paper CoSiR builds on) is usable for evaluation. The same session wrote
+  `scripts/preprocess_genecis.py` and `configs/dataset/genecis.yaml` for the object half:
   - The object half can be evaluated today; the attribute half needs a Visual Genome 1.2 download.
   - It needs an image-to-image scoring mode and a text-condition adapter.
   - It measures zero-shot transfer, which is not v2's primary claim.
@@ -126,9 +128,8 @@ per episode.
   - figures;
   - paper-draft style, with no dashes.
 - **Review.** The whole-branch final review is mandatory; it has caught a paper-facing defect every time.
-- **Other sessions' work on main.** Main has uncommitted files from other sessions: the 2026-09-30 weekly
-  report and its assets, the GeneCIS feasibility report, `scripts/preprocess_genecis.py`, and
-  `configs/dataset/genecis.yaml`. Stage only your own files by explicit path.
-  - The weekly report still calls the matched head-to-head interim. Its summary also says PercepT leads
-    Stage 2 at 0.9226 vs 0.8534, which the head-to-head (master report §6k) superseded. Fix both before
-    it is shared.
+- **Git.** Main is clean and pushed (only the local `bin/harness` symlink is untracked; leave it out).
+  Other sessions may work on main in parallel: stage only your own files, by explicit path.
+- **Latest weekly report:** [`weekly/2026-09-30_percept_buddy_to_v2.md`](../../reports/weekly/2026-09-30_percept_buddy_to_v2.md)
+  covers both lines up to 30 September, with the final head-to-head; a useful starting point for the
+  paper's storyline.
