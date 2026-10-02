@@ -2,7 +2,7 @@
 
 Run from the repository root:
     python docs/superpowers/specs/assets/build_2026-10-02_cvpr_plan_timeline.py
-Writes docs/superpowers/specs/assets/2026-10-02_cvpr_plan_timeline.png. The rows mirror the spec's §11 table;
+Writes docs/superpowers/specs/assets/2026-10-02_cvpr_plan_timeline.png. The rows mirror the spec's §11 table (revision 2, 2026-10-03);
 edit both together.
 """
 
@@ -28,10 +28,10 @@ PHASES = {                                   # categorical slots 1 to 6, validat
 }
 D = lambda m, d: date(2026, m, d)  # noqa: E731
 ROWS = [  # (label, start, end inclusive, phase)
-    ("E0 setup, episode module, Qwen fidelity", D(10, 2), D(10, 4), "0 setup"),
-    ("E1 tier-1 baselines (ArtELingo)", D(10, 3), D(10, 6), "1 go/no-go"),
+    ("E0 setup, episode module, Qwen fidelity", D(10, 3), D(10, 5), "0 setup"),
+    ("E1 tier-1 baselines and controls", D(10, 4), D(10, 6), "1 go/no-go"),
     ("E2 pseudo-partitions (ArtELingo)", D(10, 4), D(10, 5), "1 go/no-go"),
-    ("E3 method A, go/no-go runs", D(10, 5), D(10, 9), "1 go/no-go"),
+    ("E3 method A, held-out aspect, MLLM probe", D(10, 5), D(10, 9), "1 go/no-go"),
     ("E4 feature extraction on DAS6", D(10, 5), D(10, 12), "1 go/no-go"),
     ("E5 replication seeds", D(10, 10), D(10, 11), "2 generalize"),
     ("E6 CUB (unseen species)", D(10, 10), D(10, 16), "2 generalize"),
@@ -46,9 +46,11 @@ ROWS = [  # (label, start, end inclusive, phase)
     ("E15 writing", D(10, 26), D(11, 16), "4 writing and review"),
     ("E16 final review, fix wave", D(11, 11), D(11, 14), "4 writing and review"),
     ("E17 supplementary", D(11, 16), D(11, 23), "5 supplementary"),
+    ("E18 literature completion", D(10, 19), D(10, 30), "4 writing and review"),
+    ("E19 pre-abstract review", D(11, 5), D(11, 6), "4 writing and review"),
 ]
 MILESTONES = [  # (date, label, emphasis)
-    (D(10, 9), "GO / NO-GO", True),
+    (D(10, 9), "GO / branch 2 / 3", True),
     (D(10, 16), "CUB check", False),
     (D(10, 23), "methods frozen", False),
     (D(11, 1), "experiments frozen", False),
@@ -57,7 +59,7 @@ MILESTONES = [  # (date, label, emphasis)
     (D(11, 16), "paper deadline", True),
     (D(11, 23), "supplementary", True),
 ]
-TODAY = D(10, 2)
+TODAY = D(10, 3)
 
 
 def main() -> None:
@@ -101,7 +103,7 @@ def main() -> None:
     handles = [Patch(facecolor=c, edgecolor="none", label=f"phase {p}") for p, c in PHASES.items()]
     ax.legend(handles=handles, loc="lower left", bbox_to_anchor=(0.0, -0.17), ncol=6, frameon=False, fontsize=8.6,
               handlelength=1.2, columnspacing=1.4)
-    ax.set_title("CoSiR v2 CVPR plan: experiments E0 to E17 and decision points (solid lines: hard deadlines)",
+    ax.set_title("CoSiR v2 CVPR plan: experiments E0 to E19 and decision points (solid lines: hard deadlines)",
                  loc="left", fontsize=11.5, fontweight="bold", pad=10)
     fig.tight_layout()
     fig.savefig(OUT, facecolor=SURFACE, bbox_inches="tight")

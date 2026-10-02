@@ -1,7 +1,8 @@
 # CoSiR v2: CVPR publication plan (design)
 
 **Date:** 2026-10-02
-**Status:** sections approved by the user in brainstorming; genre resolved (kept); this written spec awaits the user's review.
+**Status:** revision 2 (2026-10-03). Sections approved by the user in brainstorming; then reviewed by a five-seat ARS
+panel (Major Revision, two repairable blocks) and revised with the user's approval; §14 maps every required change.
 **Replaces:** the archived conditional-buddies plan (`docs/archive/buddy_publication_plan/`) as the project's
 publication target.
 
@@ -13,13 +14,16 @@ publication target.
 - **Why the problem changed.** On 2026-10-02 we found that our previous evaluation (examples of a *value*, such as
   "sad, like these") is solved by a 4-shot classifier that ignores the query. We also found that our current model
   cannot yet do the *aspect* version, although supervised probes show the task is learnable.
-- **The plan.** Train the model's shared image–text factors for aspect selection. A go/no-go is set for Oct 9.
-  The method is then tested on four benchmarks and two frozen backbones, against baselines that a reviewer will
-  ask for. Each held-out test set is read once.
+- **The plan.** Train the model's shared image–text factors for aspect selection. A go/no-go on Oct 9 chooses
+  between three paper branches: a method paper (GO), a benchmark paper if an in-context multimodal LLM can solve
+  the task from the examples while our method cannot, or a downgraded venue if nothing works. The paper is then
+  tested on four benchmarks and two frozen backbones, against the baselines a reviewer will ask for, with every
+  claim scored on *condition gain* (a statistic that is exactly zero for any scorer ignoring the condition) as
+  well as R@1. Each held-out test set is read once.
 
 ![Timeline of the plan](assets/2026-10-02_cvpr_plan_timeline.png)
 
-*Figure 1. Experiments E0 to E17 (§11) by phase, with decision points (dashed lines) and hard deadlines (solid lines).
+*Figure 1. Experiments E0 to E19 (§11) by phase, with decision points (dashed lines) and hard deadlines (solid lines).
 Built by `assets/build_2026-10-02_cvpr_plan_timeline.py`; its rows mirror the §11 table.*
 
 Terms in *italics* at first use are defined in the glossary (Appendix A).
@@ -159,6 +163,20 @@ Six investigations, all on selection rows (held rows untouched), changed the pla
   - The condition never shows the query's value and never names the aspect.
   - Both directions are scored.
   - **Swap test:** the same query and candidates under the swapped condition (S and C exchanged) must re-rank.
+- **Task vs protocol.** The task is the first three bullets. Scoring both directions, the swap test and condition
+  gain (§5.1) are evaluation choices, not properties of the task.
+
+**Use case** (proposed by the controller on 2026-10-03; **to confirm with the user**). The interface fits a user who
+holds examples of a relation but cannot or will not name it:
+1. **Creative tools.** A designer's mood board pairs images with captions or tags that "go together", and the designer
+   wants more images or texts that relate the same way.
+2. **Relevance feedback.** While searching, users mark image–text pairs that match. This shows the wanted respect
+   without anyone naming it.
+3. **Dataset curation.** For example, find captions that describe images the way a set of curated affective alt-texts
+   does.
+
+We lead with (1) and (2). Whether examples actually beat names, and for which aspects, is measured rather than
+assumed (K3).
 
 **Against GeneCIS.** GeneCIS focus conditions name the aspect in text and compare image with image. Ours shows the
 aspect by examples and compares image with caption.
@@ -167,35 +185,57 @@ aspect by examples and compares image with caption.
 
 ## 4. Contributions and claims (approved)
 
-- **C1, task and protocol.**
-  - Novelty statement: *"to our knowledge, the first cross-modal similarity in which the aspect is fixed at test
-    time only by value-disjoint, cross-item image–caption examples with a contrast aspect, evaluated in both
-    directions with a paired swap test."*
+- **C1, task, benchmark and protocol.**
+  - Novelty statement: *"to our knowledge, the first cross-modal similarity task in which the aspect is fixed at
+    test time only by value-disjoint, cross-item image–caption examples, with contrast pairs on another aspect."*
+  - The protocol is described separately as the evaluation, not the task: both directions, a paired swap test,
+    condition gain and clustered statistics.
+  - **Release:** episode files, splits, label joins and evaluation code for all four datasets, as a benchmark.
   - We cite the neighbours (metric learning from pairs, Contextual Visual Similarity, MARS, GeneCIS, CLAY, CRL,
     in-context embedders) and motivate value-disjoint examples by K1.
   - We do **not** claim that inferring a notion of similarity from examples, test-time reweighting, or
     relation-by-example retrieval is new.
-- **C2, method.** A shared sparse image–text factor basis, trained on *pseudo-aspect episodes* with no labels from
-  the evaluation taxonomy, is the prior that makes it possible to estimate a similarity from just four example pairs
-  at test time.
-  - The training-free *agreement rule* is presented openly as a Rocchio/KISSME-style estimator, not as the novelty.
-  - Distant affect supervision is disclosed where a dataset uses it.
-- **C3, analysis.** Aspects live asymmetrically across modalities: emotion in captions, style in images, colour in
-  both. The weaker modality caps cross-modal matching, and the effect persists across four backbones, so it belongs
-  to the data.
+- **C2, method.** A shared sparse image–text factor basis, trained on *pseudo-aspect episodes*, is the prior that
+  makes it possible to estimate a similarity from just four example pairs at test time.
+  - **Supervision, stated plainly:** the method uses no labels from the evaluation taxonomy, but on ArtELingo it is
+    distantly supervised by a GoEmotions classifier whose categories name 6 of the 8 evaluation emotions.
+  - Each ArtELingo pseudo-partition was chosen to resemble one evaluation aspect, and the paper says so. Whether
+    the mechanism extends to an aspect with no matching partition is tested, not assumed (K8).
+  - The training-free *agreement rule* is presented openly as a Rocchio/KISSME-style estimator (a contrast of
+    cross-modal second moments), not as the novelty.
+- **C3, analysis.** In the datasets we test, aspects are carried unevenly by the two modalities:
+  - emotion by ArtEmis captions;
+  - style by images;
+  - colour by both.
+
+  The weaker side bounds cross-modal matching, and the pattern holds across four backbones. We do **not** claim it is
+  a property of modalities in general. On ArtELingo it is confounded with how the data were collected: captions are
+  written to explain one viewer's emotion, and emotion labels are per viewer. E12 separates the two with a
+  label-agreement reference (painting-majority emotion) and with SemArt's neutral catalogue text as a contrasting
+  annotation protocol.
 
 | # | Claim | Evidence | Status |
 |---|---|---|---|
-| K1 | Value episodes are solved by the supports alone | prototype vs model, query ablation | **done** (support spike) |
-| K2 | Our method beats backbone-only, raw-feature metric-from-pairs baselines and the same rule on unsupervised bases, on aspect episodes, in both directions, on every dataset | pre-registered final tests (§10) | open; factors are at CLIP level today |
-| K3 | Examples beat naming the aspect on subjective aspects and match it on objective ones | CRL, Qwen with the aspect in its instruction, privileged names | open |
-| K4 | Gains hold on a strong backbone (Qwen3-VL-Embedding-2B) | second backbone | open |
-| K5 | GeneCIS focus attribute: competitive with the published frozen-B/32 rows (example and text protocols reported apart) | GeneCIS runs | open |
-| K6 | The rule selects aspect factors, and the factors are shared across modalities | ablations, swap analysis, per-factor analysis | open |
-| K7 | The gain comes from the *learned* basis | same rule on raw, PCA/NMF/SpLiCE and learned factors | open |
+| # | Claim | Evidence (primary comparisons are in §10) | Status |
+|---|---|---|---|
+| K1 | On our earlier value episodes, a prototype of the supports that ignores the query beats our model, and the query adds little (+0.57 R@1) | prototype vs model, query ablation (selection rows) | **done** (support spike) |
+| K2 | On ArtELingo, CUB and SemArt aspect episodes (both directions pooled), our method beats backbone-only, the best raw-feature metric-from-pairs baseline and the uniform-weight control on **both** R@1 and condition gain, under §10's multiplicity rule. Per-direction and per-aspect-pair results are reported, not claimed | pre-registered final reads | open; factors are at CLIP level today |
+| K3 | (outcome-neutral) Whether examples beat, match (within ±1.0 R@1) or lose to naming the aspect, separately for subjective and objective aspects, as typed in §10 before any example-vs-name result is seen | CRL, Qwen with the aspect in its instruction, privileged names, in-context MLLM | open; the appended spike favours names on emotion (13.3 vs 10.3) |
+| K4 | K2's gains hold on Qwen3-VL-Embedding-2B | second backbone | open |
+| K5 | GeneCIS focus attribute as a **transfer diagnostic** of a COCO-trained model (example protocol). A comparability claim against published rows is made only if the stretch text protocol lands, and then against the focus-attribute column (§5.4) | GeneCIS runs | open |
+| K6 | The rule selects aspect factors, and the factors are shared across modalities | ablations, swap analysis, per-factor analysis, split-dictionary ablation | open |
+| K7 | The gain comes from the *learned* basis: the same rule on learned factors beats it on raw features, PCA/NMF, SpLiCE and a sparse-autoencoder basis (**primary** comparison) | §10 | open |
+| K8 | The mechanism extends to an aspect with no matching training partition (leave-one-aspect-out, §6) | held-out-aspect test | open; if it fails, C2 narrows to selection among aspects represented in training |
 
-**Fallback.** If K2 fails, K1, K3 and C3 could carry a task, benchmark and analysis paper but not the method paper.
-The switch is discussed with the user at the Oct 9 decision (§11).
+**Decision branches on Oct 9** (EIC review W6). Each branch has its claim table fixed now.
+
+| Branch | Condition | Paper | Claims carried | Venue |
+|---|---|---|---|---|
+| **1, GO** | §6 GO rule met | method paper | C1, C2, C3; K1 to K8 | CVPR |
+| **2, NO-GO, MLLM works** | GO missed, and the in-context MLLM probe (§6) has a condition gain CI lower bound > 0 and an R@1 gain over backbone-only with CI lower bound > 0 | benchmark paper: a solvable, released task that embedders and metric-from-pairs fail while an MLLM given the examples partly succeeds | C1, C3; K1; K3 (with the MLLM as the example scorer); embedder and baseline tables | CVPR |
+| **3, NO-GO, nothing works** | neither | an analysis and negative-results paper (the task, the value-episode shortcut, modality asymmetry across annotation protocols) | C1, C3, K1, K3 | a workshop or a datasets-and-benchmarks track, chosen with the user |
+
+The user decides the switch on Oct 9 from the pre-registered numbers.
 
 ## 5. Benchmarks and protocols (approved)
 
@@ -208,12 +248,21 @@ The switch is discussed with the user at the Oct 9 decision (§11).
     each other and from the anchor's;
   - condition A uses S = P_A, C = P_B; condition B swaps them;
   - every item in an episode comes from a distinct painting or photo. With three aspects, all three aspect pairs
-    are used.
-- **Primary metric:** R@1, the mean over both directions and all conditions.
+    are used;
+  - **third-aspect control:** where a dataset labels a third aspect, p_A, p_B and the 11 negatives all differ from
+    the anchor on it, so the third aspect cannot stand in for the conditioned one. The realised balance is reported.
+- **Primary metrics (both are required):**
+  - **R@1:** the mean over both directions and all conditions.
+  - ***Condition gain*** (review W1, EIC W1): for each anchor and direction, the target of condition A ranks first
+    under A minus it ranks first under the swapped condition B, averaged over both targets. Equivalently, R@1 minus
+    the other-aspect rate.
+    - A scorer that ignores the condition ranks identically under A and B, so its condition gain is exactly 0 (CLIP
+      included), however high its R@1.
+    - A scorer that finds "shares some aspect with the anchor" can reach about 50% R@1 but still scores 0.
 - **Secondary metrics:**
-  - per condition and direction;
+  - per condition, direction and aspect pair;
   - *swap success*: p_A above p_B under condition A *and* p_B above p_A under condition B, always reported next to
-    R@1, because a scorer can flip with the condition without being right;
+    R@1;
   - the other-aspect rate;
   - a 101-candidate gallery variant on ArtELingo and CUB.
 - **Splits.** Factor training uses image–caption pairs and pseudo-partitions only, no labels. A labelled
@@ -224,7 +273,7 @@ The switch is discussed with the user at the Oct 9 decision (§11).
 | Dataset | Aspects | Captions | Test split | Notes |
 |---|---|---|---|---|
 | **ArtELingo** (primary) | emotion (8) × style (23) × genre (10; 81% of paintings labelled, §5.3) | human, affective | held rows, fresh-seed aspect episodes | asymmetric aspects; label-probe ceiling about 23 R@1 |
-| **CUB-200-2011 + Reed et al. captions** (bird photos) | primary colour (15), bill shape (9), and a third attribute group chosen in E0 | human, 10 per image, written without species names | the standard zero-shot split's **50 unseen species**; development on 30 of the 150 training species, kept out of factor training | colour is symmetric across modalities; captions name colours |
+| **CUB-200-2011 + Reed et al. captions** (bird photos) | primary colour (15), bill shape (9), and a third attribute group chosen in E0 | human, 10 per image, written without species names | the standard zero-shot split's **50 unseen species**; development on 30 of the 150 training species, kept out of factor training | colour is symmetric across modalities; captions name colours. **Disclosure:** the backbone check scored attribute probes on CUB's standard test split, which spans all 200 species, so the 50 test species were read once in that diagnostic (no CoSiR model; recorded in the held ledger) |
 | **GeneCIS focus attribute** | condition = attribute type | none (Visual Genome object crops) | the benchmark (2,000 templates) | image to image; see §5.4 |
 | **SemArt** (paintings with catalogue descriptions) | type (10), school (26), timeframe (22) | catalogue text, artist names and dates scrubbed | official test (1,069 paintings); development = official val | main paper if on time, otherwise supplementary |
 | GeneCIS focus object | condition = an object (value-type) | COCO | benchmark | supplementary only |
@@ -273,10 +322,21 @@ The original decision record follows.
 
 1. **Example protocol (ours).** Image to image on image codes, with supports and contrasts drawn from other
    templates that share the condition. It is not comparable with published numbers.
-2. **Text protocol (stretch).** A phrase-to-weights adapter `w = a_T(phrase)`. It is needed for a row beside the
-   frozen ViT-B/32 results: SEARLE 14.4 (as re-run by CIReVL, Table 3; SEARLE itself reports no GeneCIS result),
-   CIReVL 15.9, OSrCIR 17.4 average R@1. OSrCIR's independent reproduction gave 14.0 (Paracosm, arXiv
-   2602.00813**v1** Table 3; later versions drop it).
+2. **Text protocol (stretch).** A phrase-to-weights adapter `w = a_T(phrase)`. Only this protocol allows a
+   comparability claim. We run only focus attribute, so the bar is the published **focus-attribute** R@1 at frozen
+   ViT-B/32, not the four-task averages (review R2 W1, DA M4):
+
+   | Method | Focus attribute | Four-task average (context only) |
+   |---|---:|---:|
+   | SEARLE (CIReVL's re-run, Table 3; SEARLE itself reports no GeneCIS result) | 18.9 | 14.4 |
+   | CIReVL | 17.9 | 15.9 |
+   | OSrCIR | 19.4 | 17.4 (independently reproduced at 14.0 in Paracosm arXiv 2602.00813**v1**, Table 3) |
+   | STiTch (arXiv 2605.21261) | 21.1 | 18.4 |
+
+   Without the text protocol, K5 is reported as a transfer diagnostic only. GeneCIS measures image-to-image
+   transfer, not the cross-modal task.
+3. **No development reads.** GeneCIS has no development split, so E7 builds and tests its pipeline on COCO-derived
+   episodes (no GeneCIS template). The benchmark is read only once, in E14.
 
 Always reported: image only, text only and image + text on our backbones. GeneCIS's CC3M training triplets are never
 used.
@@ -310,24 +370,47 @@ used.
 
 | Dataset | Pseudo-partitions (no evaluation labels) |
 |---|---|
-| ArtELingo | GoEmotions affect k-means of captions (emotion-like; distant supervision); backbone image k-means (style-like; adjusted mutual information 0.32 with style); caption-content k-means (genre-like) |
-| CUB (150 training species) | backbone image k-means; **per-sentence** caption k-means (Reed's captions focus on different parts, such as "red crown" or "short beak") |
+| ArtELingo | GoEmotions affect k-means of captions (emotion-like; distant supervision); backbone image k-means (style-like; adjusted mutual information 0.32 with style); caption-content k-means (genre-like). **Each is hand-matched to one evaluation aspect; disclosed.** |
+| CUB (150 training species) | **generic** partitions only: backbone image k-means and whole-caption k-means, each at two granularities, with no part list or part-motivated design (review DA C1). Per-sentence caption k-means is reported as an ablation |
 | SemArt | image k-means; description k-means |
 | GeneCIS | a factor model trained on COCO train2014 pairs (none are GeneCIS images), with image and caption k-means |
 
+**Held-out-aspect test** (review DA C1, validated; claim K8). It is pre-registered and runs in the go/no-go week.
+- **Leave-one-aspect-out on ArtELingo:** train with the emotion-like and style-like partitions only (no
+  caption-content partition), then evaluate the episodes that involve genre (genre × emotion, genre × style).
+- **Rule:** K8 holds if genre-pair condition gain has a clustered 95% CI lower bound above 0 against the
+  uniform-weight control. Otherwise C2 narrows to "selection among aspects represented in training", and the paper
+  says so.
+- **Generic partitions on CUB** (table above) give a second, cross-dataset test of the same question.
+- **Supervision ablation:** an emotion run without the affect partition separates the GoEmotions signal from the
+  rest (review R2 W4).
+
 **Go/no-go.** Pre-registered before the first run; ArtELingo, CLIP B/32, selection rows; decided Fri Oct 9.
-- **Grid:** at most about 10 runs (partition set × L × loss weights), about 10 minutes each locally.
-- **Picking:** the best run is picked on seed-42 selection aspect episodes. The GO test uses **fresh seed-43
-  episodes** from the same rows, so picking the best of about ten runs does not inflate the result.
-- **GO** if, on those fresh episodes, pooled aspect R@1 has a 95% CI lower bound above 0 against **both**
-  backbone-only (11.1) **and** the best raw-feature metric-from-pairs baseline (§8), with that baseline's fusion
-  weight cross-fitted. Swap success is reported at matched R@1.
-- **Strong GO:** pooled R@1 of about 15 or more, i.e. a third of the way to the ceiling of about 23.
-- **NO-GO:** stop the method line and discuss the fallback framing with the user.
+- **Grid and picking:** at most about 10 runs (partition set × L × loss weights), about 10 minutes each locally.
+  The best run is **picked on seed-42** selection aspect episodes.
+- **Fresh test episodes:** the GO test uses **fresh seed-43 episodes** from the same selection rows (the same rows,
+  so the test is not independent of development; disclosed). Picking the best of about ten runs therefore does not
+  inflate the result.
+- **GO** if, on those fresh episodes and with the painting-clustered bootstrap of §10, the picked run beats
+  **each** of the following on **both** R@1 and condition gain (95% CI lower bound above 0):
+  - backbone-only (R@1 11.1, condition gain 0);
+  - the best raw-feature metric-from-pairs baseline, fusion weight cross-fitted;
+  - the *uniform-weight control*: our factors with uniform weights, i.e. the condition removed.
+- **Strong GO:** R@1 at least 4 points above backbone-only (about 15 against 11.1), with condition gain at least
+  +4 points. The label-probe reference (about 23) is a diagnostic, not a bound.
+- **Early MLLM probe** (decides branch 2 vs 3, §4):
+  - **Setup:** Qwen3-VL-2B-Instruct as an in-context reranker, given the 4 support and 4 contrast pairs, the query
+    and the 13 candidates.
+  - **Size:** 300 selection episodes per aspect pair, seed 44.
+  - **Cost:** t2i prompts carry about 30 images each, so the 8B model is used only if time allows.
+  - **Rule:** it "works" if condition gain and R@1 over backbone-only both have a CI lower bound above 0.
+- **NO-GO:** GO is missed. The user chooses branch 2 or 3 (§4) from the numbers.
 - **Replication:** a winner is re-run at seeds 43 and 44 before it moves to other datasets and Qwen.
 
-**Open risk R-pseudo** (flagged by the user, accepted for now): the pseudo-partitions are proxies, and the model may
-learn the episode format rather than aspects. The cross-dataset and unseen-species results are the test.
+**Risk R-pseudo** (flagged by the user): the pseudo-partitions are proxies, and the model may learn the episode
+format or a selector among trained aspects rather than the aspects themselves. **It is now tested:**
+- the held-out-aspect test and generic CUB partitions (K8);
+- the uniform-weight control and condition gain (K2).
 
 ## 7. Backbones (approved)
 
@@ -351,16 +434,23 @@ All baselines run on the same features and episodes.
 | Tier | Baseline | What it does | Reviewer question |
 |---|---|---|---|
 | 1 | backbone only | cosine of query and candidate | is conditioning needed at all? |
+| 1 | uniform-weight control | our factors with uniform weights (the condition removed) | does the condition matter beyond the factors? (K2) |
 | 1 | metric from pairs on raw features | estimate a similarity from the 4+4 example pairs directly on raw features: the diagonal agreement rule (signed and ReLU), low-rank KISSME with shrinkage (inverse covariance of similar pairs minus that of dissimilar pairs), RCA (whitening by within-pair variation), a Xing-style metric fit per episode, and Wang et al.'s per-query weights | "your rule is few-shot KISSME" |
-| 1 | the agreement rule on unsupervised bases | PCA-32/64, NMF-32 and SpLiCE sparse concept codes instead of our factors (SpLiCE on captions follows its App. B.3; state the centering per modality) | K7: is it the learned basis? |
+| 1 | per-episode pair probe | a logistic probe fit on the 4 support vs 4 contrast pairs (pair features), scoring query–candidate pairs | "a fitted classifier beats a parameter-free rule" (restored, review R2 W2) |
+| 1 | Tip-Adapter cache | training-free affinity to support pairs minus contrast pairs, plus β·cos | the standard training-free few-shot CLIP baseline (restored) |
+| 1 | the agreement rule on unsupervised bases | PCA-32/64, NMF-32, SpLiCE sparse concept codes (on captions following its App. B.3; centering stated per modality) and a **sparse-autoencoder basis** (a TopK SAE trained jointly on image and caption features) instead of our factors | K7: is it the learned basis? (primary) |
 | 1 | value prototype or Rocchio | mean of support items minus mean of contrasts | do value baselines fail on aspects? |
-| 1 | C0, SE, R3 | our earlier factor recipes | what do aspect episodes add? |
+| 1 | C0, SE, R3 | our earlier factor recipes (ablation rows in the paper, not headline baselines) | what do aspect episodes add? |
 | 2 | names, privileged | project items onto the true value names ("a painting that evokes fear", …) and compare | upper reference for naming |
 | 2 | CRL (NeurIPS 2025) | an LLM lists an aspect's values from one word ("emotion"); project and compare | K3, training-free names |
 | 2 | Qwen3-VL-Embedding with the aspect in its instruction | "represent this painting by the emotion it evokes" | would an instruction embedder make the method unnecessary? |
-| 3 | label-supervised probe ceiling | per-modality classifiers trained with the labels (converged, fixed thread count) | distance to supervision |
-| 3 | GeneCIS rows | published frozen-B/32 numbers; image / text / image + text | K5 |
-| stretch | CLAY (CVPR 2026) reimplementation; an in-context MLLM reranker given the example pairs | | strongest naming and in-context comparisons |
+| 2 | **in-context MLLM reranker** (required) | Qwen3-VL-2B-Instruct given the same support and contrast pairs, the query and the candidates | would an MLLM given the same examples make the method unnecessary? (also decides branch 2) |
+| 3 | label-probe reference | per-modality classifiers trained with the labels (converged, fixed thread count); a diagnostic reference, not a bound | distance to supervision |
+| 3 | GeneCIS rows | published frozen-B/32 focus-attribute numbers (§5.4); image / text / image + text | K5 |
+| stretch | CLAY (CVPR 2026) reimplementation; verbalise-then-name (an MLLM describes what the supports share, then a names baseline uses the description) | | strongest naming comparisons |
+
+**Equal tuning.** Every baseline gets the same cross-fitted grid size as our method. A pick at a grid edge extends
+the grid once, for every method alike.
 
 **Out of the tables.**
 - **Teacher-only:** GoEmotions cannot read images, so it cannot score cross-modal pairs. It becomes a text-side
@@ -393,63 +483,91 @@ episode SHA-256 and purpose. Each final script refuses a second run.
   checkpoints, fusion weights, β and episode counts frozen.
 - **Reserve read:** only for a pre-registered fix after a final-review finding, never for a second attempt at a
   better number.
-- **Disclosure:** ArtELingo's held rows shaped earlier design decisions; the paper says so.
+- **Disclosures:**
+  - ArtELingo's held rows shaped earlier design decisions.
+  - CUB's 50 test species were read once by the backbone check's attribute probes.
+  - The paper states both, and the ledger records them.
 
 **Statistics.**
-- **Primary metric:** aspect R@1, the mean over directions and aspect pairs.
-- **Uncertainty:** paired bootstrap over anchors (5,000 resamples).
-- **Seeds:** our models train with 3 seeds. The headline is the 3-seed mean, with its CI from bootstrapping anchors
-  on per-anchor seed means; every seed is also reported.
-- **Pre-declared primary comparisons** ("beats" means CI lower bound > 0):
+- **Primary metrics:** aspect R@1 and condition gain (§5.1), each the mean over directions and aspect pairs.
+- **Uncertainty: a clustered bootstrap** (5,000 resamples; review R1 W2). The resampling unit is the anchor's
+  cluster:
+  - the painting, for ArtELingo and SemArt;
+  - the species, for CUB (50 clusters, so wide intervals by design);
+  - the reference image, for GeneCIS.
+
+  A two-way (anchor cluster × candidate cluster) bootstrap is reported as a sensitivity check, together with the
+  item-reuse rate per split.
+- **Seeds:** our models train with 3 seeds. The headline is the 3-seed mean. Its CI resamples clusters and seeds
+  together, and every seed is also reported.
+- **Pre-declared primary comparisons** ("beats" means a CI lower bound > 0 on both primary metrics):
   - ours vs backbone only;
   - ours vs the best raw metric-from-pairs baseline;
-  - ours vs Qwen with the aspect in its instruction ("beats" or "matches", per aspect type, declared in the
-    pre-registration).
-  - All other comparisons are descriptive.
-- **Episode counts** come from a power calculation on selection variance (default 4,096 anchors per aspect pair).
-- **Swap success** is always shown next to R@1.
+  - ours vs the uniform-weight control;
+  - K7: learned factors vs the best unsupervised basis.
+- **Multiplicity:** the family is these four comparisons × {ArtELingo, CUB, SemArt}, per backbone, with
+  Holm–Bonferroni within each family. K3 (examples vs names) and K8 (held-out aspect) are separate pre-declared
+  families. GeneCIS and everything else are descriptive.
+- **"Matches" (K3):** two one-sided tests at 90% CI, equivalence margin **±1.0 R@1 point**, fixed now.
+- **Aspect typing for K3,** fixed now and independent of any model result (review R1 W18, R2 W5, R3 W3):
+  - **subjective** means the label records an individual viewer's response, which annotators often disagree on:
+    ArtELingo emotion;
+  - **objective** means a curated catalogue fact or a physical attribute: style, genre, SemArt type, school and
+    timeframe, and the CUB attributes.
+
+  E12 reports annotator agreement on emotion (paintings with 3 or more annotations) as a check on the typing, not as
+  a way to change it.
+- **Power:** a simulation from the development split's clustered bootstrap. It picks the anchors per aspect pair
+  needed to detect a true condition-gain difference of 2.0 points with at least 80% power at the Holm-adjusted α.
+  The count is capped by the data (SemArt's test set has 1,069 paintings) and written into the E13
+  pre-registration.
+- **Swap success** is always shown next to R@1 and condition gain.
 
 ## 11. Experiment plan and schedule (approved)
 
 | # | Experiment | Dates | Output or decision |
 |---|---|---|---|
-| E0 | **Setup:** a generic aspect-episode module (`src/eval/`) for all datasets, with tests; held ledger; genre coverage (§5.3); CUB third aspect group (the highest min(image, caption) probe gain over the majority rate, among `has_shape`, `has_wing_pattern`, `has_breast_pattern`, `has_wing_color`); Qwen fidelity check | Oct 2 to 4 | module; decisions recorded |
-| E1 | Tier-1 baselines on ArtELingo selection aspect episodes (B/32) | Oct 3 to 6 | baseline table; the metric-from-pairs bar for the go/no-go |
+| E0 | **Setup:** a generic aspect-episode module (`src/eval/`) for all datasets, with the third-aspect control, condition gain and the clustered bootstrap, with tests; held ledger (including the CUB backbone-check read); genre coverage (§5.3, done); CUB third aspect group (the highest min(image, caption) probe gain over the majority rate, among `has_shape`, `has_wing_pattern`, `has_breast_pattern`, `has_wing_color`); Qwen fidelity check | Oct 3 to 5 | module; decisions recorded |
+| E1 | Tier-1 baselines on ArtELingo selection aspect episodes (B/32), including the uniform-weight control, per-episode pair probe and Tip-Adapter cache | Oct 4 to 6 | baseline table; the bars for the go/no-go |
 | E2 | ArtELingo pseudo-partitions (affect and image k-means exist; caption-content k-means is new) | Oct 4 to 5 | partitions and their agreement with the labels (diagnostic only) |
-| E3 | Method A training and go/no-go (at most about 10 runs) | Oct 5 to 9 | **GO / NO-GO, Fri Oct 9** |
+| E3 | Method A training and go/no-go (at most about 10 runs); held-out-aspect test (leave genre out); supervision ablation; early in-context MLLM probe (300 episodes per aspect pair) | Oct 5 to 9 | **GO / branch 2 / branch 3, Fri Oct 9** |
 | E4 | DAS6 extraction: Qwen on all ArtELingo rows; B/32 and Qwen on SemArt, GeneCIS crops and COCO, COCO train2014 | Oct 5 to 12 | caches under `/data/SSD2/pre_extract/` |
 | E5 | Replication seeds 43 and 44 on ArtELingo | Oct 10 to 11 | seed table |
-| E6 | CUB: partitions, training, development evaluation | Oct 10 to 16 | **CUB check, Oct 16:** if A does not beat the baselines on CUB development, claims narrow to ArtELingo plus analysis |
-| E7 | GeneCIS focus attribute: example protocol, COCO-trained factors, baselines; text protocol as stretch | Oct 13 to 20 | GeneCIS table |
+| E6 | CUB: generic partitions, training, development evaluation | Oct 10 to 16 | **CUB check, Oct 16:** if A does not beat the baselines on CUB development, claims narrow to ArtELingo plus analysis |
+| E7 | GeneCIS focus attribute: pipeline built and tested on COCO-derived episodes (no GeneCIS template read); COCO-trained factors; text protocol as stretch | Oct 13 to 20 | pipeline ready for E14 |
 | E8 | SemArt: scrubbing, partitions, training, development | Oct 15 to 22 | main or supplementary |
 | E9 | Qwen backbone runs on every dataset | Oct 12 to 22 | K4 |
-| E10 | Tier-2 baselines: CRL, Qwen instruction names, privileged names | Oct 12 to 20 | K3 |
-| E11 | Ablations: rule on bases (K7); no episodes vs value episodes; factor-group and swap analysis (K6) | Oct 14 to 23 | ablation tables |
-| E12 | C3 analysis: converged ceilings across datasets and backbones; GoEmotions text-side analysis | Oct 16 to 30 | analysis figures |
+| E10 | Tier-2 baselines: CRL, Qwen instruction names, privileged names, in-context MLLM reranker (aspect typing already fixed in §10) | Oct 12 to 20 | K3 |
+| E11 | Ablations: rule on bases including the SAE basis (K7); no episodes vs value episodes; split-dictionary ablation, factor-group and swap analysis (K6); per-sentence CUB partitions | Oct 14 to 23 | ablation tables |
+| E12 | C3 analysis: converged label-probe references across datasets and backbones; a painting-majority emotion reference and annotator agreement; SemArt's neutral catalogue text as an annotation-protocol contrast; emotion results split by GoEmotions coverage; GoEmotions text-side analysis | Oct 16 to 30 | analysis figures |
 | E13 | Pre-registration and power for the final reads | Oct 21 to 23 | **methods frozen Oct 23** |
 | E14 | Final reads, one main read per dataset | Oct 24 to Nov 1 | **main-paper experiments frozen Nov 1** |
-| E15 | Writing: draft from Oct 26, full draft Nov 6; title and abstract fixed Nov 7; registration Nov 10 | Oct 26 to Nov 16 | the paper |
+| E15 | Writing: main-paper outline and page budget by Oct 26 (what moves to the supplement); full draft Nov 6; title and abstract fixed Nov 7; registration Nov 10 | Oct 26 to Nov 16 | the paper |
 | E16 | Whole-branch final review (most capable model, re-deriving every load-bearing number) and fix wave | Nov 11 to 14 | review report |
 | E17 | Supplementary: slipped datasets, GeneCIS focus object, 101-candidate galleries, stretch baselines, optional buddy vs PercepT | Nov 16 to 23 | supplementary |
+| E18 | Literature completion: finish the novelty search (C-STS, Multiview Triplet Embedding and the other leads from the review) before the title and abstract are fixed | Oct 19 to 30 | updated novelty statement |
+| E19 | Pre-abstract internal review of the story, claims and numbers (before the Nov 7 freeze) | Nov 5 to 6 | go-ahead for the abstract |
 
 Every experiment ends with a report in `docs/reports/auto/v2/`, one row in `reports_sum.md`, a commit, and an update
 of §4's claims table.
 
 **Planning scope.**
-- The first implementation plan covers **E0 to E5** in task-level detail.
+- The first implementation plan covers **E0 to E5**, including E3's held-out-aspect test and MLLM probe, in task-level detail.
 - E6 onward gets its own plan after a GO on Oct 9, informed by what E3 finds.
-- After a NO-GO, the next plan is the fallback framing, agreed with the user.
+- After a NO-GO, the next plan follows the branch the user picks (§4): branch 2 plans the benchmark paper around
+  the in-context MLLM, and branch 3 plans the analysis paper and its venue.
 
 ## 12. Risks
 
 | ID | Risk | Mitigation or signal |
 |---|---|---|
-| **R-pseudo** | pseudo-aspect partitions are proxies; the model may learn the episode format | cross-dataset and unseen-species results; disclose distant supervision |
-| R-nogo | A fails on Oct 9 | fallback framing (K1, K3, C3), discussed with the user before switching |
+| **R-pseudo** | pseudo-aspect partitions are proxies; the model may learn the episode format or a selector among trained aspects | tested by the held-out-aspect test and generic CUB partitions (K8) and by condition gain against the uniform-weight control (K2); distant supervision disclosed |
+| R-nogo | A fails on Oct 9 | three pre-declared branches (§4) with claim tables; the early MLLM probe decides branch 2 vs 3 |
 | R-kissme | a raw-feature metric from pairs matches A | K7 fails and the basis is not the contribution; known by Oct 9 |
-| R-names | Qwen with the aspect in its instruction beats examples | narrow K3 to where names fail (subjective aspects) |
+| R-names | names beat examples (already seen for emotion in the spike) | K3 is outcome-neutral with typing fixed in advance; the paper reports where examples win and where they don't |
+| R-mllm | the in-context MLLM reranker is slow (about 30 images per t2i prompt) | 300-episode probe with the 2B model; full runs only where the branch needs them |
 | R-ceiling | ArtELingo's ceiling is low (about 23) | relative gains; CUB colour as the symmetric case; C3 turns the cap into a finding |
-| R-time | 4 datasets × 2 backbones in about 5 weeks | staged priority; SemArt moves to the supplementary first |
+| R-time | 4 datasets × 2 backbones in about 5 weeks | cut order: SemArt to the supplement, then the GeneCIS text protocol, then the 101-candidate galleries, then Qwen on SemArt |
 | R-qwen | our reimplementation differs from the official one | E0 fidelity check; PE-Core fallback |
 | R-infra | local GPU loss (happened 2026-10-02); a shared machine | DAS6 as backup; GPU lock; commit after every task |
 | R-held | ArtELingo held rows shaped earlier design | fresh-seed episodes on a new task; disclosure |
@@ -477,7 +595,12 @@ of §4's claims table.
 | backbone | the frozen encoder whose features everything builds on (CLIP ViT-B/32; Qwen3-VL-Embedding-2B) |
 | β | weight of the backbone cosine in the score |
 | candidate | one of the 13 items ranked in an episode, in the modality opposite the anchor |
-| ceiling (label-probe) | R@1 when factor codes are replaced by classifiers trained with the true labels: a diagnostic upper reference, never a model |
+| ceiling, label-probe reference | R@1 when factor codes are replaced by classifiers trained with the true labels: a diagnostic reference, not a bound (it varies with probe convergence) |
+| clustered bootstrap | resampling whole clusters (paintings, species) rather than single anchors, because items recur across episodes |
+| condition gain | R@1 under the correct condition minus R@1 of the same target under the swapped condition; exactly 0 for any scorer that ignores the condition |
+| equivalence margin | the band (±1.0 R@1 point) within which "matches" is claimed, tested with two one-sided tests |
+| held-out-aspect test (leave-one-aspect-out) | training without the partition that mirrors one aspect, then testing that aspect (K8) |
+| in-context MLLM reranker | a multimodal LLM given the example pairs, the query and the candidates in one prompt, asked to pick the match |
 | code / factor | an item's 32 non-negative numbers in the shared space / one of those dimensions |
 | condition | what the user cares about, given here by support and contrast pairs |
 | condition episode / pseudo-aspect episode | a training episode built from clusters instead of labels; value-type for SE, aspect-type for method A |
@@ -496,14 +619,52 @@ of §4's claims table.
 | Rocchio, CSN | relevance feedback (1971) and Conditional Similarity Networks (2017), the classic ancestors of our rule and score |
 | support pair | an example pair that agrees on the wanted aspect |
 | swap test / swap success | exchanging supports and contrasts must flip which aspect candidate wins |
+| uniform-weight control | our factors with all weights equal, i.e. the condition removed |
+
+## 14. Revision log: response to the ARS review (2026-10-03)
+
+A five-seat ARS panel (journal fit, methodology, domain, perspective and devil's advocate) under the v3.6.2 sprint
+contract returned **Major Revision**, with two repairable blocks and the devil's-advocate CRITICAL validated. The
+record is in `src/test/20261027_ars_plan_review/` and the summary in
+[the review report](../../reports/auto/v2/2026-10-27_ars_plan_review.md). The user approved every change below on
+2026-10-03.
+
+| Review item | Change |
+|---|---|
+| REV-01 (D1 block): condition-blind gains pass GO | condition gain as a co-primary metric (§5.1); uniform-weight control; GO requires both metrics (§6) |
+| REV-20 (D1 block): anchor-only bootstrap | clustered bootstrap by painting, species or reference image; two-way sensitivity check (§10) |
+| REV-21 (D1 block): no margin for "matches" | ±1.0 R@1 equivalence margin with two one-sided tests (§10) |
+| REV-55 (D3 block, DA C1): no held-out aspect | leave-one-aspect-out test and generic CUB partitions; claim K8 with a narrowing rule (§4, §6) |
+| REV-02, REV-35: K3 adverse evidence, typing after results | K3 outcome-neutral; aspect typing fixed now (§10) |
+| REV-03: no use case | use-case paragraph, to confirm with the user (§3) |
+| REV-04, REV-05, REV-37: K5 decidability, transfer, wrong column | K5 as a transfer diagnostic; focus-attribute bar; GeneCIS read only in E14 (§4, §5.4) |
+| REV-06: incomplete novelty search | E18 literature completion before Nov 7 |
+| REV-07, REV-38: missing in-context and probe baselines | in-context MLLM reranker required; per-episode probe and Tip-Adapter restored; verbalise-then-name as stretch (§8) |
+| REV-08: undefined fallback | three decision branches with claim tables and venues (§4) |
+| REV-09: evaluation counted as task | task vs protocol separated (§3, §4 C1) |
+| REV-10, REV-23: C3 overreach, label construction | C3 narrowed; label-agreement reference and SemArt protocol contrast in E12 (§4, §11) |
+| REV-11, REV-22: K2 and K7 wording | K2 restated against §10; K7 a primary comparison (§4, §10) |
+| REV-28, REV-29: multiplicity, power | Holm family and power simulation defined (§10) |
+| REV-39: no SAE basis | jointly trained TopK SAE basis in K7 (§8) |
+| REV-40, REV-41: supervision understated, hand-matched partitions | C2 wording, disclosure, supervision ablation, emotion split by GoEmotions coverage (§4, §6, §11) |
+| REV-32 (SC-33): third aspect | third-aspect control in episodes (§5.1) |
+| SC-16, SC-17, SC-15: review after the abstract, no outline, one-item cut list | E19 pre-abstract review; outline and page budget in E15; cut order in R-time |
+| SC-20: "ceiling" | renamed label-probe reference; strong GO stated against backbone-only (§6) |
+| SC-25 (R1 W6): GeneCIS has no development split | E7 builds on COCO-derived episodes; GeneCIS read once in E14 |
+| SC-37 (R1 W19): CUB test species read | disclosed in §5.2, §10 and the backbone report |
+| Citation check E1, E2 and attributions | applied on 2026-10-02 (commit 410c673) |
+
+Should-fix and consider items not listed here stay in the roadmap (`revision_roadmap.md`) and are handled in the
+implementation plans or the writing phase.
 
 ## Appendix B. Sources
 
 - **Handoffs:** `docs/superpowers/handoffs/2026-10-02-cosir-v2-cvpr-publication-handoff.md`,
   `docs/superpowers/handoffs/2026-10-02-cvpr-plan-brainstorm-progress.md`.
 - **v2 foundation spec:** `docs/superpowers/specs/2026-09-28-cosir-v2-ground-up-redesign.md`.
-- **Reports:** everything in `docs/reports/auto/v2/` (the chain from 2026-10-04 to 2026-10-25), indexed in
-  `docs/reports/reports_sum.md`.
+- **Reports:** everything in `docs/reports/auto/v2/` (the chain from 2026-10-04 to 2026-10-28, including the
+  citation check and the ARS plan review), indexed in `docs/reports/reports_sum.md`.
+- **ARS review record:** `src/test/20261027_ars_plan_review/` (cards, editorial decision, roadmap, provenance).
 - **Code used so far:**
   - `src/model/factors.py`, `src/model/conditioning.py`;
   - `src/eval/label_episodes.py`, `src/eval/condition_eval.py`;
