@@ -1,7 +1,7 @@
 # CoSiR v2: CVPR publication plan (design)
 
 **Date:** 2026-10-02
-**Status:** sections approved by the user in brainstorming; this written spec awaits the user's review.
+**Status:** sections approved by the user in brainstorming; genre resolved (kept); this written spec awaits the user's review.
 **Replaces:** the archived conditional-buddies plan (`docs/archive/buddy_publication_plan/`) as the project's
 publication target.
 
@@ -197,7 +197,7 @@ aspect by examples and compares image with caption.
 **Fallback.** If K2 fails, K1, K3 and C3 could carry a task, benchmark and analysis paper but not the method paper.
 The switch is discussed with the user at the Oct 9 decision (§11).
 
-## 5. Benchmarks and protocols (approved; genre open)
+## 5. Benchmarks and protocols (approved)
 
 ### 5.1 Common protocol
 
@@ -223,7 +223,7 @@ The switch is discussed with the user at the Oct 9 decision (§11).
 
 | Dataset | Aspects | Captions | Test split | Notes |
 |---|---|---|---|---|
-| **ArtELingo** (primary) | emotion (8) × style (23) × **genre** (open, §5.3) | human, affective | held rows, fresh-seed aspect episodes | asymmetric aspects; label-probe ceiling about 23 R@1 |
+| **ArtELingo** (primary) | emotion (8) × style (23) × genre (10; 81% of paintings labelled, §5.3) | human, affective | held rows, fresh-seed aspect episodes | asymmetric aspects; label-probe ceiling about 23 R@1 |
 | **CUB-200-2011 + Reed et al. captions** (bird photos) | primary colour (15), bill shape (9), and a third attribute group chosen in E0 | human, 10 per image, written without species names | the standard zero-shot split's **50 unseen species**; development on 30 of the 150 training species, kept out of factor training | colour is symmetric across modalities; captions name colours |
 | **GeneCIS focus attribute** | condition = attribute type | none (Visual Genome object crops) | the benchmark (2,000 templates) | image to image; see §5.4 |
 | **SemArt** (paintings with catalogue descriptions) | type (10), school (26), timeframe (22) | catalogue text, artist names and dates scrubbed | official test (1,069 paintings); development = official val | main paper if on time, otherwise supplementary |
@@ -238,7 +238,23 @@ The switch is discussed with the user at the Oct 9 decision (§11).
 
 Our loaders pass the Visual Genome path themselves; the GeneCIS clone is not edited.
 
-### 5.3 Open item: ArtELingo genre
+### 5.3 ArtELingo genre (resolved 2026-10-02: kept)
+
+**Result of the coverage check** (`src/test/20261026_genre_coverage/`). ArtGAN's labels cover 81% of paintings in
+every split. The smallest genre still has 149 paintings in selection and 296 in held.
+
+| Split | Paintings | With genre |
+|---|---:|---:|
+| scorer-train | 36,518 | 29,593 (81.0%) |
+| selection | 6,451 | 5,256 (81.5%) |
+| held | 12,281 | 9,949 (81.0%) |
+
+- The rule below passes, so **genre is the third ArtELingo aspect**. Genre episodes draw only from the labelled
+  paintings.
+- The class-name file is gone upstream. The id-to-name mapping was recovered from the ArtELingo-28 genre names (9 of
+  10 ids, purity 1.0). Id 5 (`nude_painting`) is inferred by elimination and alphabetical order.
+
+The original decision record follows.
 
 - **Why keep it.** The user wants genre (subject matter: portrait, landscape, still life and so on). It is the one
   ArtELingo aspect visible in both modalities, which C3 needs as its within-dataset control. Three aspects also
