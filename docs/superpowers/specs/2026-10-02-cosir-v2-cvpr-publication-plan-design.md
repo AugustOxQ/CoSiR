@@ -251,8 +251,9 @@ every split. The smallest genre still has 149 paintings in selection and 296 in 
 
 - The rule below passes, so **genre is the third ArtELingo aspect**. Genre episodes draw only from the labelled
   paintings.
-- The class-name file is gone upstream. The id-to-name mapping was recovered from the ArtELingo-28 genre names (9 of
-  10 ids, purity 1.0). Id 5 (`nude_painting`) is inferred by elimination and alphabetical order.
+- Class names come from ArtGAN's `WikiArt Dataset/Genre/genre_class` (no `.txt` extension; corrected by the
+  [citation check](../../reports/auto/v2/2026-10-28_citation_check.md), E1). They agree with the mapping we recovered
+  from the ArtELingo-28 genre names on all 9 ids that occur there (purity 1.0). Id 5 is `nude_painting`.
 
 The original decision record follows.
 
@@ -273,8 +274,9 @@ The original decision record follows.
 1. **Example protocol (ours).** Image to image on image codes, with supports and contrasts drawn from other
    templates that share the condition. It is not comparable with published numbers.
 2. **Text protocol (stretch).** A phrase-to-weights adapter `w = a_T(phrase)`. It is needed for a row beside the
-   published frozen ViT-B/32 results: SEARLE 14.4, CIReVL 15.9, OSrCIR 17.4 average R@1 (OSrCIR's independent
-   reproduction gave 14.0).
+   frozen ViT-B/32 results: SEARLE 14.4 (as re-run by CIReVL, Table 3; SEARLE itself reports no GeneCIS result),
+   CIReVL 15.9, OSrCIR 17.4 average R@1. OSrCIR's independent reproduction gave 14.0 (Paracosm, arXiv
+   2602.00813**v1** Table 3; later versions drop it).
 
 Always reported: image only, text only and image + text on our backbones. GeneCIS's CC3M training triplets are never
 used.
@@ -350,7 +352,7 @@ All baselines run on the same features and episodes.
 |---|---|---|---|
 | 1 | backbone only | cosine of query and candidate | is conditioning needed at all? |
 | 1 | metric from pairs on raw features | estimate a similarity from the 4+4 example pairs directly on raw features: the diagonal agreement rule (signed and ReLU), low-rank KISSME with shrinkage (inverse covariance of similar pairs minus that of dissimilar pairs), RCA (whitening by within-pair variation), a Xing-style metric fit per episode, and Wang et al.'s per-query weights | "your rule is few-shot KISSME" |
-| 1 | the agreement rule on unsupervised bases | PCA-32/64, NMF-32 and SpLiCE sparse concept codes instead of our factors | K7: is it the learned basis? |
+| 1 | the agreement rule on unsupervised bases | PCA-32/64, NMF-32 and SpLiCE sparse concept codes instead of our factors (SpLiCE on captions follows its App. B.3; state the centering per modality) | K7: is it the learned basis? |
 | 1 | value prototype or Rocchio | mean of support items minus mean of contrasts | do value baselines fail on aspects? |
 | 1 | C0, SE, R3 | our earlier factor recipes | what do aspect episodes add? |
 | 2 | names, privileged | project items onto the true value names ("a painting that evokes fear", …) and compare | upper reference for naming |

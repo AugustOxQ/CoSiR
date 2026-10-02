@@ -26,7 +26,7 @@ for f in ("genre_train.csv", "genre_val.csv"):
             ids.setdefault(name, int(k))
 print("ArtGAN genre entries", len(ids), "conflicts", sum(v == -1 for v in ids.values()))
 
-# id -> name, recovered from the ArtELingo-28 genre names (genre_class.txt is gone upstream)
+# id -> name, recovered from the ArtELingo-28 genre names (ArtGAN's `Genre/genre_class` file, no .txt, gives the same names; see the 2026-10-28 citation check, E1)
 g28 = json.load(open("/data/PDD/artelingo/artelingo_genre_emotion_eng.json"))
 votes = collections.defaultdict(collections.Counter)
 for r in g28:
