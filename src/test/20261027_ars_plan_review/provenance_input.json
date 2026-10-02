@@ -1,0 +1,59 @@
+{
+ "schema_version": "review-panel-provenance-input/1.0",
+ "panel_id": "cosir-v2-cvpr-plan-review-round-1",
+ "mode": "reviewer_full",
+ "contract_id": "reviewer/reviewer_full/v2",
+ "contract_sha256": "e9712090d2469fea15a37b8e22d4e137afbcb2bf38d5789939c5df56738ef7af",
+ "seats": [
+  {
+   "seat_id": "EIC",
+   "role_id": "eic",
+   "context_id": "phase2-a5a59a0411f99c004",
+   "peer_outputs_visible": false,
+   "actor_type": "model",
+   "model_family": "claude",
+   "provider": "anthropic",
+   "human_reviewer_id": null
+  },
+  {
+   "seat_id": "R1",
+   "role_id": "methodology",
+   "context_id": "phase2-acac9543481c0c7b8",
+   "peer_outputs_visible": false,
+   "actor_type": "model",
+   "model_family": "claude",
+   "provider": "anthropic",
+   "human_reviewer_id": null
+  },
+  {
+   "seat_id": "R2",
+   "role_id": "domain",
+   "context_id": "phase2-af78edff540b9c5db",
+   "peer_outputs_visible": false,
+   "actor_type": "model",
+   "model_family": "claude",
+   "provider": "anthropic",
+   "human_reviewer_id": null
+  },
+  {
+   "seat_id": "R3",
+   "role_id": "perspective",
+   "context_id": "phase2-ae5bd1e9ef38d6b5b",
+   "peer_outputs_visible": false,
+   "actor_type": "model",
+   "model_family": "claude",
+   "provider": "anthropic",
+   "human_reviewer_id": null
+  },
+  {
+   "seat_id": "DA",
+   "role_id": "da",
+   "context_id": "phase2-a07a9bb249a8d27a4",
+   "peer_outputs_visible": false,
+   "actor_type": "model",
+   "model_family": "claude",
+   "provider": "anthropic",
+   "human_reviewer_id": null
+  }
+ ]
+}

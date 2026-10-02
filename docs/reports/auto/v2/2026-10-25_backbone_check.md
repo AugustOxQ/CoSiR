@@ -21,7 +21,7 @@ probes fitted with the human labels; probes use 60,000 scorer-train rows, episod
 were never read), plus attribute probes on CUB. Baseline of every number: CLIP ViT-B/32 through the same pipeline.
 
 **Setup.** Four frozen backbones: CLIP B/32, SigLIP 2 So400m/14-384, PE-Core L/14-336 and Qwen3-VL-Embedding-2B.
-Features were extracted for 37,738 selection paintings with 92,413 captions (ArtELingo) and all 11,788 images with
+Features were extracted for 37,738 paintings with 92,413 captions (ArtELingo: the paintings behind the 60,000 sampled scorer-train rows and all selection rows) and all 11,788 images with
 117,880 captions (CUB). A *probe* is a logistic regression (C=1.0, max_iter 300) on L2-normalised features, scored as
 accuracy. The *cross-modal ceiling* is aspect R@1 with the probe-derived scorer, averaged over the i2t and t2i
 directions. *Backbone-only aspect R@1* is the cosine of anchor and candidate, mean of the four aspect and direction
@@ -75,8 +75,8 @@ Probe accuracy (%), image / caption, test split, label = the single attribute va
 | Bill shape (9, 41.4) | 60.8 / 50.2 | 67.3 / 55.3 | 67.6 / 52.9 | 66.3 / 55.5 |
 | Size (5, 50.7) | 62.2 / 57.8 | 62.5 / 60.2 | 63.2 / 59.3 | 62.4 / 60.0 |
 
-- **Primary colour is symmetric.** Image and caption probes are within 2.3 points under every backbone, three times the
-  majority rate. This is the first symmetric aspect we have measured, against ArtELingo's gaps of 21 to 35 points.
+- **Primary colour is symmetric.** Image and caption probes are within 2.6 points under every backbone, three times the
+  majority rate. This is the first symmetric aspect we have measured, against ArtELingo's gaps of 22 to 46 points (emotion 22 to 26, style 36 to 46).
 - **Bill shape leans to images** (images 66.3 to 67.6 against captions 52.9 to 55.5 for the three new backbones; CLIP
   60.8 against 50.2). The majority is 41.4.
 - **Size is a poor aspect.** Every cell is within 13 points of the 50.7 majority and the best caption cell is 60.2, so
@@ -123,7 +123,7 @@ fixed thread count.
 | Qwen | 2,691 | 268 | 390 | 340 | 3,689 |
 
 Qwen takes 3.8 times SigLIP 2 and 6.4 times PE in total (4.5 and 7.3 times on ArtELingo alone). The whole run took
-about 62 minutes of GPU time.
+about 88 minutes of GPU time (5,257 s summed over the timing table).
 
 ## What this means
 
@@ -154,3 +154,5 @@ We do not pick a backbone here. The trade-off:
 - Figure: `docs/reports/assets/2026-10-25_backbone_check/backbone_check.png`, built by
   `docs/reports/assets/build_2026-10-25_backbone_check_figures.py`.
 - Previous step: [aspect-episode spike](2026-10-23_aspect_episode_spike.md).
+
+**Correction and disclosure (2026-10-02, after the ARS plan review).** The three numbers above were corrected (2.3 to 2.6, 21 to 35 to 22 to 46, 62 to 88 minutes), and the ArtELingo painting count is now labelled correctly. The CUB probes and retrieval check were scored on CUB's standard test split (5,794 images spanning all 200 species), which includes the 50 species the plan holds out as its CUB test set, so that set was read once here (attribute probes and retrieval, diagnostic, no CoSiR model). The plan's held ledger records this read.

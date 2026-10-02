@@ -1,0 +1,1611 @@
+{
+  "manifest_format_version": "1.0",
+  "base_draft_hash": "16c9912faec0",
+  "blocks": [
+    {
+      "block_id": "B0001",
+      "old_hash": "bc0e96a54add",
+      "first_line_excerpt": "# CoSiR v2: CVPR publication plan (design)"
+    },
+    {
+      "block_id": "B0002",
+      "old_hash": "4ca8f9a42d70",
+      "first_line_excerpt": "**Date:** 2026-10-02"
+    },
+    {
+      "block_id": "B0003",
+      "old_hash": "28eb300ca822",
+      "first_line_excerpt": "**In one paragraph.**"
+    },
+    {
+      "block_id": "B0004",
+      "old_hash": "e7c5484faca0",
+      "first_line_excerpt": "- **The problem.** We will submit CoSiR v2 to CVPR (paper deadline Nov 16) on a…"
+    },
+    {
+      "block_id": "B0005",
+      "old_hash": "ba9ffec9a628",
+      "first_line_excerpt": "![Timeline of the plan](assets/2026-10-02_cvpr_plan_timeline.png)"
+    },
+    {
+      "block_id": "B0006",
+      "old_hash": "48e125efdb24",
+      "first_line_excerpt": "*Figure 1. Experiments E0 to E17 (§11) by phase, with decision points (dashed l…"
+    },
+    {
+      "block_id": "B0007",
+      "old_hash": "6016f203f761",
+      "first_line_excerpt": "Terms in *italics* at first use are defined in the glossary (Appendix A)."
+    },
+    {
+      "block_id": "B0008",
+      "old_hash": "cb3f91d54eee",
+      "first_line_excerpt": "---"
+    },
+    {
+      "block_id": "B0009",
+      "old_hash": "c93cca18ac6f",
+      "first_line_excerpt": "## 1. Goal, venue and resources"
+    },
+    {
+      "block_id": "B0010",
+      "old_hash": "f3938ef0af9d",
+      "first_line_excerpt": "**Goal.** Publish CoSiR v2 at CVPR. The user's four requirements for the paper …"
+    },
+    {
+      "block_id": "B0011",
+      "old_hash": "899cbde5a1b6",
+      "first_line_excerpt": "1. strong results;"
+    },
+    {
+      "block_id": "B0012",
+      "old_hash": "f64b4e77307f",
+      "first_line_excerpt": "**Dates** (from the user)."
+    },
+    {
+      "block_id": "B0013",
+      "old_hash": "8c9bede74dc4",
+      "first_line_excerpt": "| Milestone | Date |"
+    },
+    {
+      "block_id": "B0014",
+      "old_hash": "b780da8fb436",
+      "first_line_excerpt": "**Compute.**"
+    },
+    {
+      "block_id": "B0015",
+      "old_hash": "2a800a6ffe37",
+      "first_line_excerpt": "- **DAS6 GPU cluster.** The node and GPU count depend on what the user reserves…"
+    },
+    {
+      "block_id": "B0016",
+      "old_hash": "0927f396f164",
+      "first_line_excerpt": "## 2. Background: what CoSiR is and how we got here"
+    },
+    {
+      "block_id": "B0017",
+      "old_hash": "6320a0faf3c0",
+      "first_line_excerpt": "### 2.1 The research question"
+    },
+    {
+      "block_id": "B0018",
+      "old_hash": "4a462185d86a",
+      "first_line_excerpt": "CoSiR studies **conditional image–text similarity**. Whether an image and a cap…"
+    },
+    {
+      "block_id": "B0019",
+      "old_hash": "4e9f9b9ad8c7",
+      "first_line_excerpt": "- The direct ancestor is GeneCIS (Vaze, Carion and Misra, CVPR 2023). It ranks …"
+    },
+    {
+      "block_id": "B0020",
+      "old_hash": "35783a6a5237",
+      "first_line_excerpt": "### 2.2 Three lines of work"
+    },
+    {
+      "block_id": "B0021",
+      "old_hash": "5a0287350802",
+      "first_line_excerpt": "| Line | Period | What it was | Outcome |"
+    },
+    {
+      "block_id": "B0022",
+      "old_hash": "591abd5a76b4",
+      "first_line_excerpt": "### 2.3 CoSiR v2 as it stood on the morning of 2026-10-02"
+    },
+    {
+      "block_id": "B0023",
+      "old_hash": "d827e3bf0892",
+      "first_line_excerpt": "**Data: ArtELingo** (English part, `/data/PDD/artelingo/artelingo_train.json`)."
+    },
+    {
+      "block_id": "B0024",
+      "old_hash": "d43b07cc4e91",
+      "first_line_excerpt": "- WikiArt paintings with ArtEmis-style annotations. Each annotation is one view…"
+    },
+    {
+      "block_id": "B0025",
+      "old_hash": "f5da268704a6",
+      "first_line_excerpt": "**Splits.** All splits are grouped by painting, so no painting crosses a split."
+    },
+    {
+      "block_id": "B0026",
+      "old_hash": "231b005c7f54",
+      "first_line_excerpt": "| Split | Rows | Paintings | Role |"
+    },
+    {
+      "block_id": "B0027",
+      "old_hash": "224002405cb8",
+      "first_line_excerpt": "(Scorer-train and selection together form the 216,107-row train part.)"
+    },
+    {
+      "block_id": "B0028",
+      "old_hash": "8a88ee449852",
+      "first_line_excerpt": "**Features.** Frozen CLIP ViT-B/32 image and caption embeddings, cached once. C…"
+    },
+    {
+      "block_id": "B0029",
+      "old_hash": "1f68740ae3ee",
+      "first_line_excerpt": "**Model (Candidate A).**"
+    },
+    {
+      "block_id": "B0030",
+      "old_hash": "a93ee76c967d",
+      "first_line_excerpt": "- Two small encoders map a row's image feature and caption feature into one sha…"
+    },
+    {
+      "block_id": "B0031",
+      "old_hash": "b384cb047939",
+      "first_line_excerpt": "**Factor recipes.**"
+    },
+    {
+      "block_id": "B0032",
+      "old_hash": "49756456ea45",
+      "first_line_excerpt": "- **R0:** the first recipe. It collapsed to about one effective dimension throu…"
+    },
+    {
+      "block_id": "B0033",
+      "old_hash": "86e80be1c269",
+      "first_line_excerpt": "**Evaluation (label episodes).**"
+    },
+    {
+      "block_id": "B0034",
+      "old_hash": "f94ca2ff2132",
+      "first_line_excerpt": "- An *anchor* (the query) has a target label: one emotion or one style."
+    },
+    {
+      "block_id": "B0035",
+      "old_hash": "d98808e574c2",
+      "first_line_excerpt": "### 2.4 What changed on 2026-10-02"
+    },
+    {
+      "block_id": "B0036",
+      "old_hash": "de56d0355d2a",
+      "first_line_excerpt": "Six investigations, all on selection rows (held rows untouched), changed the pl…"
+    },
+    {
+      "block_id": "B0037",
+      "old_hash": "5faf5ee2ea56",
+      "first_line_excerpt": "| Report | Finding | Consequence |"
+    },
+    {
+      "block_id": "B0038",
+      "old_hash": "bcbd148ea2f7",
+      "first_line_excerpt": "**Value versus aspect, by example.**"
+    },
+    {
+      "block_id": "B0039",
+      "old_hash": "054d8bb466c3",
+      "first_line_excerpt": "- **Value condition (old):** \"sad, like these\". The supports are 4 sad painting…"
+    },
+    {
+      "block_id": "B0040",
+      "old_hash": "64698f83f088",
+      "first_line_excerpt": "## 3. Problem definition (approved)"
+    },
+    {
+      "block_id": "B0041",
+      "old_hash": "2a9835ec7aab",
+      "first_line_excerpt": "**Example-conditioned aspect similarity across modalities.**"
+    },
+    {
+      "block_id": "B0042",
+      "old_hash": "7428443b4db6",
+      "first_line_excerpt": "- **Input:** a query x (an image or a caption) and a condition c = (S, C)."
+    },
+    {
+      "block_id": "B0043",
+      "old_hash": "7ad23a9ce17b",
+      "first_line_excerpt": "**Against GeneCIS.** GeneCIS focus conditions name the aspect in text and compa…"
+    },
+    {
+      "block_id": "B0044",
+      "old_hash": "6e5e11619486",
+      "first_line_excerpt": "- GeneCIS *focus attribute* (condition = an attribute type such as \"colour\") is…"
+    },
+    {
+      "block_id": "B0045",
+      "old_hash": "d6f2d3501faf",
+      "first_line_excerpt": "## 4. Contributions and claims (approved)"
+    },
+    {
+      "block_id": "B0046",
+      "old_hash": "a68329578a8e",
+      "first_line_excerpt": "- **C1, task and protocol.**"
+    },
+    {
+      "block_id": "B0047",
+      "old_hash": "2a15cc89f0bb",
+      "first_line_excerpt": "| # | Claim | Evidence | Status |"
+    },
+    {
+      "block_id": "B0048",
+      "old_hash": "4cb3be980caf",
+      "first_line_excerpt": "**Fallback.** If K2 fails, K1, K3 and C3 could carry a task, benchmark and anal…"
+    },
+    {
+      "block_id": "B0049",
+      "old_hash": "cf07da38e2c6",
+      "first_line_excerpt": "## 5. Benchmarks and protocols (approved)"
+    },
+    {
+      "block_id": "B0050",
+      "old_hash": "950285e55c2d",
+      "first_line_excerpt": "### 5.1 Common protocol"
+    },
+    {
+      "block_id": "B0051",
+      "old_hash": "e01edfa8b62d",
+      "first_line_excerpt": "- **Aspect episodes:**"
+    },
+    {
+      "block_id": "B0052",
+      "old_hash": "03e19458431c",
+      "first_line_excerpt": "### 5.2 Datasets, in priority order"
+    },
+    {
+      "block_id": "B0053",
+      "old_hash": "fae8d1ae74d9",
+      "first_line_excerpt": "| Dataset | Aspects | Captions | Test split | Notes |"
+    },
+    {
+      "block_id": "B0054",
+      "old_hash": "05fc599a5207",
+      "first_line_excerpt": "**Data on disk** (`/data/SSD/`; downloaded 2026-10-02 by `scripts/download_benc…"
+    },
+    {
+      "block_id": "B0055",
+      "old_hash": "8870ed9f3fa2",
+      "first_line_excerpt": "- `cub/` (11,788 images; captions in `captions/extracted/text_c10`);"
+    },
+    {
+      "block_id": "B0056",
+      "old_hash": "68f84f967642",
+      "first_line_excerpt": "Our loaders pass the Visual Genome path themselves; the GeneCIS clone is not ed…"
+    },
+    {
+      "block_id": "B0057",
+      "old_hash": "28c63fa7da27",
+      "first_line_excerpt": "### 5.3 ArtELingo genre (resolved 2026-10-02: kept)"
+    },
+    {
+      "block_id": "B0058",
+      "old_hash": "784c1aa606f1",
+      "first_line_excerpt": "**Result of the coverage check** (`src/test/20261026_genre_coverage/`). ArtGAN'…"
+    },
+    {
+      "block_id": "B0059",
+      "old_hash": "7af4dac5a224",
+      "first_line_excerpt": "| Split | Paintings | With genre |"
+    },
+    {
+      "block_id": "B0060",
+      "old_hash": "3ed36fe15fe8",
+      "first_line_excerpt": "- The rule below passes, so **genre is the third ArtELingo aspect**. Genre epis…"
+    },
+    {
+      "block_id": "B0061",
+      "old_hash": "2f028d014229",
+      "first_line_excerpt": "The original decision record follows."
+    },
+    {
+      "block_id": "B0062",
+      "old_hash": "7f25b4569598",
+      "first_line_excerpt": "- **Why keep it.** The user wants genre (subject matter: portrait, landscape, s…"
+    },
+    {
+      "block_id": "B0063",
+      "old_hash": "94adbff49a3d",
+      "first_line_excerpt": "### 5.4 GeneCIS protocols"
+    },
+    {
+      "block_id": "B0064",
+      "old_hash": "bc1b429efbd2",
+      "first_line_excerpt": "1. **Example protocol (ours).** Image to image on image codes, with supports an…"
+    },
+    {
+      "block_id": "B0065",
+      "old_hash": "af7c41e32d88",
+      "first_line_excerpt": "Always reported: image only, text only and image + text on our backbones. GeneC…"
+    },
+    {
+      "block_id": "B0066",
+      "old_hash": "2dbaa6997413",
+      "first_line_excerpt": "## 6. Method A: aspect-trained factors (approved)"
+    },
+    {
+      "block_id": "B0067",
+      "old_hash": "67f03a603798",
+      "first_line_excerpt": "**Model.** The v2 structure is kept."
+    },
+    {
+      "block_id": "B0068",
+      "old_hash": "dd6369b25335",
+      "first_line_excerpt": "- Two small encoders map frozen backbone features of each modality into a share…"
+    },
+    {
+      "block_id": "B0069",
+      "old_hash": "e08c1b97b9b6",
+      "first_line_excerpt": "**Training: pseudo-aspect episodes.**"
+    },
+    {
+      "block_id": "B0070",
+      "old_hash": "582d04985cb1",
+      "first_line_excerpt": "- Each training row carries cluster ids from K *pseudo-partitions*, i.e. cluste…"
+    },
+    {
+      "block_id": "B0071",
+      "old_hash": "235cd3e4099e",
+      "first_line_excerpt": "| Dataset | Pseudo-partitions (no evaluation labels) |"
+    },
+    {
+      "block_id": "B0072",
+      "old_hash": "ef5275a72fbd",
+      "first_line_excerpt": "**Go/no-go.** Pre-registered before the first run; ArtELingo, CLIP B/32, select…"
+    },
+    {
+      "block_id": "B0073",
+      "old_hash": "1ceaeee02a54",
+      "first_line_excerpt": "- **Grid:** at most about 10 runs (partition set × L × loss weights), about 10 …"
+    },
+    {
+      "block_id": "B0074",
+      "old_hash": "47a22a4faa3c",
+      "first_line_excerpt": "**Open risk R-pseudo** (flagged by the user, accepted for now): the pseudo-part…"
+    },
+    {
+      "block_id": "B0075",
+      "old_hash": "5dfdc2d36251",
+      "first_line_excerpt": "## 7. Backbones (approved)"
+    },
+    {
+      "block_id": "B0076",
+      "old_hash": "a19ab49bd96e",
+      "first_line_excerpt": "- **Development** on CLIP ViT-B/32 (cached; runs take minutes)."
+    },
+    {
+      "block_id": "B0077",
+      "old_hash": "f237f3d7bbd8",
+      "first_line_excerpt": "## 8. Baselines (approved)"
+    },
+    {
+      "block_id": "B0078",
+      "old_hash": "4efe90f111f0",
+      "first_line_excerpt": "All baselines run on the same features and episodes."
+    },
+    {
+      "block_id": "B0079",
+      "old_hash": "71d446e16c4f",
+      "first_line_excerpt": "- **On development splits,** fusion weights (and β) are cross-fitted: chosen on…"
+    },
+    {
+      "block_id": "B0080",
+      "old_hash": "74ed8f26d4a2",
+      "first_line_excerpt": "| Tier | Baseline | What it does | Reviewer question |"
+    },
+    {
+      "block_id": "B0081",
+      "old_hash": "45d50273e2b9",
+      "first_line_excerpt": "**Out of the tables.**"
+    },
+    {
+      "block_id": "B0082",
+      "old_hash": "1250fc3323c2",
+      "first_line_excerpt": "- **Teacher-only:** GoEmotions cannot read images, so it cannot score cross-mod…"
+    },
+    {
+      "block_id": "B0083",
+      "old_hash": "46d87d979bb5",
+      "first_line_excerpt": "## 9. Out of scope"
+    },
+    {
+      "block_id": "B0084",
+      "old_hash": "275f7215d14f",
+      "first_line_excerpt": "- Fine-tuning the backbone."
+    },
+    {
+      "block_id": "B0085",
+      "old_hash": "cad6243ef447",
+      "first_line_excerpt": "## 10. Held budget and statistics (approved)"
+    },
+    {
+      "block_id": "B0086",
+      "old_hash": "35f1bbb0bfe7",
+      "first_line_excerpt": "**Ledger.** Every read of a final split is logged in `docs/superpowers/held_led…"
+    },
+    {
+      "block_id": "B0087",
+      "old_hash": "58dca285e56c",
+      "first_line_excerpt": "| Dataset | Development | Final test | Budget |"
+    },
+    {
+      "block_id": "B0088",
+      "old_hash": "1cdce89575ea",
+      "first_line_excerpt": "- **Main read:** one pre-registered run per dataset, covering all models and ba…"
+    },
+    {
+      "block_id": "B0089",
+      "old_hash": "d1c27d2873c5",
+      "first_line_excerpt": "**Statistics.**"
+    },
+    {
+      "block_id": "B0090",
+      "old_hash": "327d936ec12d",
+      "first_line_excerpt": "- **Primary metric:** aspect R@1, the mean over directions and aspect pairs."
+    },
+    {
+      "block_id": "B0091",
+      "old_hash": "5ad3720b41bf",
+      "first_line_excerpt": "## 11. Experiment plan and schedule (approved)"
+    },
+    {
+      "block_id": "B0092",
+      "old_hash": "c859a7463612",
+      "first_line_excerpt": "| # | Experiment | Dates | Output or decision |"
+    },
+    {
+      "block_id": "B0093",
+      "old_hash": "882806e498f1",
+      "first_line_excerpt": "Every experiment ends with a report in `docs/reports/auto/v2/`, one row in `rep…"
+    },
+    {
+      "block_id": "B0094",
+      "old_hash": "c3d5a13ae386",
+      "first_line_excerpt": "**Planning scope.**"
+    },
+    {
+      "block_id": "B0095",
+      "old_hash": "8f8d5ffdc455",
+      "first_line_excerpt": "- The first implementation plan covers **E0 to E5** in task-level detail."
+    },
+    {
+      "block_id": "B0096",
+      "old_hash": "99186c114d7d",
+      "first_line_excerpt": "## 12. Risks"
+    },
+    {
+      "block_id": "B0097",
+      "old_hash": "58ec726db444",
+      "first_line_excerpt": "| ID | Risk | Mitigation or signal |"
+    },
+    {
+      "block_id": "B0098",
+      "old_hash": "6bc55d319fc4",
+      "first_line_excerpt": "## 13. Conventions"
+    },
+    {
+      "block_id": "B0099",
+      "old_hash": "7abc5b2e34e4",
+      "first_line_excerpt": "- Implementation goes to Claude Code subagents sized to the task; the controlle…"
+    },
+    {
+      "block_id": "B0100",
+      "old_hash": "cb3f91d54eee",
+      "first_line_excerpt": "---"
+    },
+    {
+      "block_id": "B0101",
+      "old_hash": "f016930c5e66",
+      "first_line_excerpt": "## Appendix A. Glossary"
+    },
+    {
+      "block_id": "B0102",
+      "old_hash": "c5d8b75bb716",
+      "first_line_excerpt": "| Term | Meaning here |"
+    },
+    {
+      "block_id": "B0103",
+      "old_hash": "c28e67010495",
+      "first_line_excerpt": "## Appendix B. Sources"
+    },
+    {
+      "block_id": "B0104",
+      "old_hash": "11dbd3c717bd",
+      "first_line_excerpt": "- **Handoffs:** `docs/superpowers/handoffs/2026-10-02-cosir-v2-cvpr-publication…"
+    },
+    {
+      "block_id": "B0105",
+      "old_hash": "cb3f91d54eee",
+      "first_line_excerpt": "---"
+    },
+    {
+      "block_id": "B0106",
+      "old_hash": "5809f0690e1b",
+      "first_line_excerpt": "# Appendix (evidence report): 2026-10-21_cvpr_literature_review"
+    },
+    {
+      "block_id": "B0107",
+      "old_hash": "502c0592e724",
+      "first_line_excerpt": "## CVPR literature review for CoSiR v2: prior art, baselines and benchmarks"
+    },
+    {
+      "block_id": "B0108",
+      "old_hash": "7ebac3603f4f",
+      "first_line_excerpt": "**Report date:** 2026-10-21 (sequence date in this folder; the research was don…"
+    },
+    {
+      "block_id": "B0109",
+      "old_hash": "2be94f27e97a",
+      "first_line_excerpt": "**CoSiR v2 in the terms used below.** CoSiR v2 scores an image I and a caption …"
+    },
+    {
+      "block_id": "B0110",
+      "old_hash": "2f6507c81ddb",
+      "first_line_excerpt": "### 1. Verdict"
+    },
+    {
+      "block_id": "B0111",
+      "old_hash": "8f70f84dcb32",
+      "first_line_excerpt": "The closest prior art falls into three lines that no paper we found combines: t…"
+    },
+    {
+      "block_id": "B0112",
+      "old_hash": "7d326de6f415",
+      "first_line_excerpt": "### 2. Literature by thread"
+    },
+    {
+      "block_id": "B0113",
+      "old_hash": "fc99e0a8e48c",
+      "first_line_excerpt": "#### 2.1 Conditional similarity learning"
+    },
+    {
+      "block_id": "B0114",
+      "old_hash": "1ba9c14e7005",
+      "first_line_excerpt": "Conditional similarity began as image-only metric learning with a known conditi…"
+    },
+    {
+      "block_id": "B0115",
+      "old_hash": "7f25998dbdcd",
+      "first_line_excerpt": "**Table 1. Conditional similarity methods.**"
+    },
+    {
+      "block_id": "B0116",
+      "old_hash": "9450e4523aa8",
+      "first_line_excerpt": "| Paper | Condition form | Modalities | Backbone, frozen? | Benchmarks, metric …"
+    },
+    {
+      "block_id": "B0117",
+      "old_hash": "469532d4fdb8",
+      "first_line_excerpt": "**Learning conditions without condition labels.** Three groups of papers alread…"
+    },
+    {
+      "block_id": "B0118",
+      "old_hash": "ab1340f96d79",
+      "first_line_excerpt": "#### 2.2 Composed image retrieval and zero-shot CIR"
+    },
+    {
+      "block_id": "B0119",
+      "old_hash": "1570f1520ae9",
+      "first_line_excerpt": "Composed image retrieval (CIR) ranks target images for a reference image plus a…"
+    },
+    {
+      "block_id": "B0120",
+      "old_hash": "a30ec3e08ec2",
+      "first_line_excerpt": "**Table 2. Methods that report GeneCIS numbers (selected).**"
+    },
+    {
+      "block_id": "B0121",
+      "old_hash": "37042185e3f0",
+      "first_line_excerpt": "| Method, venue | Condition and modality | Backbone, frozen? | GeneCIS R@1 (sou…"
+    },
+    {
+      "block_id": "B0122",
+      "old_hash": "d2792098c176",
+      "first_line_excerpt": "**Frozen CLIP ViT-B/32 rows on GeneCIS** (average R@1): Pic2Word 11.13, SEARLE …"
+    },
+    {
+      "block_id": "B0123",
+      "old_hash": "c78193b93862",
+      "first_line_excerpt": "Three pitfalls matter for a GeneCIS table. Papers use five formats (the four ta…"
+    },
+    {
+      "block_id": "B0124",
+      "old_hash": "48af39d6d1d9",
+      "first_line_excerpt": "**Successor benchmarks.** CLAY-EVAL (synthetic FLUX images with object and huma…"
+    },
+    {
+      "block_id": "B0125",
+      "old_hash": "5c8be1e16867",
+      "first_line_excerpt": "#### 2.3 Example-conditioned and few-shot retrieval"
+    },
+    {
+      "block_id": "B0126",
+      "old_hash": "10dce6632ae3",
+      "first_line_excerpt": "This thread answers the key novelty question."
+    },
+    {
+      "block_id": "B0127",
+      "old_hash": "0663df00f7f9",
+      "first_line_excerpt": "**Table 3. Retrieval or similarity conditioned on examples.**"
+    },
+    {
+      "block_id": "B0128",
+      "old_hash": "04c0bca43597",
+      "first_line_excerpt": "| Paper | What the examples define | Modalities | Backbone, frozen? | Benchmark…"
+    },
+    {
+      "block_id": "B0129",
+      "old_hash": "9ab3f6e76008",
+      "first_line_excerpt": "**Is there prior work on cross-modal image↔text similarity conditioned by examp…"
+    },
+    {
+      "block_id": "B0130",
+      "old_hash": "c2596023ded9",
+      "first_line_excerpt": "#### 2.4 Affective and subjective cross-modal retrieval"
+    },
+    {
+      "block_id": "B0131",
+      "old_hash": "807a72abbcf3",
+      "first_line_excerpt": "The affect literature on our data is about classification, captioning and topic…"
+    },
+    {
+      "block_id": "B0132",
+      "old_hash": "d3a903420508",
+      "first_line_excerpt": "**Table 4. Affective, subjective and art-style work.**"
+    },
+    {
+      "block_id": "B0133",
+      "old_hash": "d1891fb25a0c",
+      "first_line_excerpt": "| Paper | Task, condition | Backbone, frozen? | Benchmarks, metric | Headline n…"
+    },
+    {
+      "block_id": "B0134",
+      "old_hash": "7b23d60bfc78",
+      "first_line_excerpt": "**Correction for the project.** PercepT's paper uses ModernBERT-base fine-tuned…"
+    },
+    {
+      "block_id": "B0135",
+      "old_hash": "af67b0088a98",
+      "first_line_excerpt": "#### 2.5 Sparse or interpretable shared concept spaces on CLIP"
+    },
+    {
+      "block_id": "B0136",
+      "old_hash": "8ff46d8bd125",
+      "first_line_excerpt": "**Table 5. Sparse and concept codes on CLIP-like encoders.**"
+    },
+    {
+      "block_id": "B0137",
+      "old_hash": "282ee1b66bbc",
+      "first_line_excerpt": "| Paper | Code type | Shared image and text? | Backbone, frozen? | Used for ret…"
+    },
+    {
+      "block_id": "B0138",
+      "old_hash": "83ff61e8c66c",
+      "first_line_excerpt": "**Has anyone used sparse codes for condition-weighted retrieval?** Partly. TEVI…"
+    },
+    {
+      "block_id": "B0139",
+      "old_hash": "4350c4ccb3cc",
+      "first_line_excerpt": "#### 2.6 Text-conditioned and instruction-conditioned embeddings"
+    },
+    {
+      "block_id": "B0140",
+      "old_hash": "2710445dcd63",
+      "first_line_excerpt": "**Table 6. Conditional embeddings with a text or instruction condition.** Unive…"
+    },
+    {
+      "block_id": "B0141",
+      "old_hash": "276102d316c1",
+      "first_line_excerpt": "| Paper | Condition | Modalities | Backbone, frozen? | Benchmarks, metric | Hea…"
+    },
+    {
+      "block_id": "B0142",
+      "old_hash": "3a1c7c93e12b",
+      "first_line_excerpt": "#### 2.7 Candidate benchmarks"
+    },
+    {
+      "block_id": "B0143",
+      "old_hash": "19fe882c5b23",
+      "first_line_excerpt": "The benchmark subagent verified 37 datasets; the ranked shortlist with all requ…"
+    },
+    {
+      "block_id": "B0144",
+      "old_hash": "f8f5a8a466e8",
+      "first_line_excerpt": "#### 2.8 Backbones and universal or instruction-following multimodal embedders"
+    },
+    {
+      "block_id": "B0145",
+      "old_hash": "23568b445126",
+      "first_line_excerpt": "Universal multimodal embedders turn an MLLM into a retriever; most take a task …"
+    },
+    {
+      "block_id": "B0146",
+      "old_hash": "e5065b7b76e4",
+      "first_line_excerpt": "**Table 7. Frozen backbone candidates.**"
+    },
+    {
+      "block_id": "B0147",
+      "old_hash": "76378570dfdf",
+      "first_line_excerpt": "| Model (paper) | Type, size | Embedding dim | Weights memory (bf16, our estima…"
+    },
+    {
+      "block_id": "B0148",
+      "old_hash": "eaa628b62473",
+      "first_line_excerpt": "Three observations follow. First, the best open, permissively licensed instruct…"
+    },
+    {
+      "block_id": "B0149",
+      "old_hash": "96334e3efdc2",
+      "first_line_excerpt": "**When the image and text encoders do not share a space.** With a pair of unimo…"
+    },
+    {
+      "block_id": "B0150",
+      "old_hash": "308c846b3706",
+      "first_line_excerpt": "### 3. Baselines we can run"
+    },
+    {
+      "block_id": "B0151",
+      "old_hash": "c21985975499",
+      "first_line_excerpt": "All baselines run on the same frozen features as CoSiR (CLIP ViT-B/32 caches ex…"
+    },
+    {
+      "block_id": "B0152",
+      "old_hash": "5d2fe4db2c13",
+      "first_line_excerpt": "**Table 8. Ranked baselines.**"
+    },
+    {
+      "block_id": "B0153",
+      "old_hash": "a0d40d7da787",
+      "first_line_excerpt": "| Rank | Baseline | What it computes | Needs | Reviewer question it answers |"
+    },
+    {
+      "block_id": "B0154",
+      "old_hash": "e9b3f3dfb0d0",
+      "first_line_excerpt": "On GeneCIS itself, a frozen ViT-B/32 model should be compared with image only, …"
+    },
+    {
+      "block_id": "B0155",
+      "old_hash": "b9cbc04ea834",
+      "first_line_excerpt": "### 4. Benchmarks"
+    },
+    {
+      "block_id": "B0156",
+      "old_hash": "fad59bed9770",
+      "first_line_excerpt": "Ranked for example-conditioned image↔text episodes with at least two independen…"
+    },
+    {
+      "block_id": "B0157",
+      "old_hash": "23608eb0db5b",
+      "first_line_excerpt": "**Table 9. Ranked candidate benchmarks.**"
+    },
+    {
+      "block_id": "B0158",
+      "old_hash": "45aa376529a0",
+      "first_line_excerpt": "| Rank | Benchmark | Size | Aspects | Caption source | Licence | Download | Pri…"
+    },
+    {
+      "block_id": "B0159",
+      "old_hash": "961395f75391",
+      "first_line_excerpt": "### 5. Novelty risks and how a reviewer would phrase them"
+    },
+    {
+      "block_id": "B0160",
+      "old_hash": "3ea9dc692f6e",
+      "first_line_excerpt": "1. **\"The condition rule is relevance feedback.\"** \"ReLU(mean support − mean co…"
+    },
+    {
+      "block_id": "B0161",
+      "old_hash": "83900103b67c",
+      "first_line_excerpt": "### 6. References"
+    },
+    {
+      "block_id": "B0162",
+      "old_hash": "da1b92e86593",
+      "first_line_excerpt": "Links were fetched during this review unless marked UNVERIFIED. Venues come fro…"
+    },
+    {
+      "block_id": "B0163",
+      "old_hash": "8cdc1d4350a6",
+      "first_line_excerpt": "**Conditional similarity (§2.1)**"
+    },
+    {
+      "block_id": "B0164",
+      "old_hash": "2941d3f4a8e0",
+      "first_line_excerpt": "- Veit, Belongie, Karaletsos. Conditional Similarity Networks. CVPR 2017. https…"
+    },
+    {
+      "block_id": "B0165",
+      "old_hash": "08f4e0829851",
+      "first_line_excerpt": "**Composed image retrieval (§2.2)**"
+    },
+    {
+      "block_id": "B0166",
+      "old_hash": "c545c6808364",
+      "first_line_excerpt": "- Saito et al. Pic2Word. CVPR 2023. https://arxiv.org/abs/2302.03084"
+    },
+    {
+      "block_id": "B0167",
+      "old_hash": "1f97bb80b341",
+      "first_line_excerpt": "**Example-conditioned retrieval (§2.3)**"
+    },
+    {
+      "block_id": "B0168",
+      "old_hash": "9c390e9c6628",
+      "first_line_excerpt": "- Rocchio. Relevance feedback in information retrieval. In Salton (ed.), The SM…"
+    },
+    {
+      "block_id": "B0169",
+      "old_hash": "a0b530230ff8",
+      "first_line_excerpt": "**Affect and art (§2.4)**"
+    },
+    {
+      "block_id": "B0170",
+      "old_hash": "1fdccbe69d02",
+      "first_line_excerpt": "- Mohamed, Church, Elhoseiny. Beyond Semantics: Modeling Factual and Affective …"
+    },
+    {
+      "block_id": "B0171",
+      "old_hash": "654c86d0bb6f",
+      "first_line_excerpt": "**Sparse and concept codes (§2.5)**"
+    },
+    {
+      "block_id": "B0172",
+      "old_hash": "c5d413122495",
+      "first_line_excerpt": "- Bhalla et al. Interpreting CLIP with Sparse Linear Concept Embeddings (SpLiCE…"
+    },
+    {
+      "block_id": "B0173",
+      "old_hash": "0fddded22ba8",
+      "first_line_excerpt": "**Text-conditioned embeddings (§2.6)**"
+    },
+    {
+      "block_id": "B0174",
+      "old_hash": "60a0a988bea9",
+      "first_line_excerpt": "- Lim, Lee, Park, Oh. CLAY. CVPR 2026. https://arxiv.org/abs/2604.11539"
+    },
+    {
+      "block_id": "B0175",
+      "old_hash": "ced88d5d4b5c",
+      "first_line_excerpt": "**Benchmarks (§2.7, §4)**"
+    },
+    {
+      "block_id": "B0176",
+      "old_hash": "3b2e0df57575",
+      "first_line_excerpt": "- Reed, Akata, Schiele, Lee. Learning Deep Representations of Fine-grained Visu…"
+    },
+    {
+      "block_id": "B0177",
+      "old_hash": "c7d4cd3cf402",
+      "first_line_excerpt": "**Backbones and universal embedders (§2.8)**"
+    },
+    {
+      "block_id": "B0178",
+      "old_hash": "56fb8dc6e5fc",
+      "first_line_excerpt": "- Radford et al. CLIP. https://arxiv.org/abs/2103.00020 (not re-fetched)"
+    },
+    {
+      "block_id": "B0179",
+      "old_hash": "0b24675d3a86",
+      "first_line_excerpt": "**UNVERIFIED or second-hand items.** DistillCIR, DiffComp and CIG GeneCIS table…"
+    },
+    {
+      "block_id": "B0180",
+      "old_hash": "cb3f91d54eee",
+      "first_line_excerpt": "---"
+    },
+    {
+      "block_id": "B0181",
+      "old_hash": "384c2be7997b",
+      "first_line_excerpt": "# Appendix (evidence report): 2026-10-22_support_baseline_spike"
+    },
+    {
+      "block_id": "B0182",
+      "old_hash": "7849abeefbc1",
+      "first_line_excerpt": "## CoSiR v2: do simple support-set baselines match SE on the label episodes? (s…"
+    },
+    {
+      "block_id": "B0183",
+      "old_hash": "54a9c2fe6285",
+      "first_line_excerpt": "### Verdict"
+    },
+    {
+      "block_id": "B0184",
+      "old_hash": "52ceeb0ecc12",
+      "first_line_excerpt": "**No, SE does not hold the lead. Simple support-set baselines on raw CLIP featu…"
+    },
+    {
+      "block_id": "B0185",
+      "old_hash": "5cd0a1821296",
+      "first_line_excerpt": "### What we tested"
+    },
+    {
+      "block_id": "B0186",
+      "old_hash": "b6401afc2677",
+      "first_line_excerpt": "All numbers are R@1 (%) on the 4,096 emotion and 4,096 art-style label episodes…"
+    },
+    {
+      "block_id": "B0187",
+      "old_hash": "e32c80a0020b",
+      "first_line_excerpt": "Scorers (all on raw CLIP ViT-B/32 features, no training except the probe fit in…"
+    },
+    {
+      "block_id": "B0188",
+      "old_hash": "ea96473313bc",
+      "first_line_excerpt": "- **CLIP only**: cosine of query and candidate. **C0** and **SE** are the facto…"
+    },
+    {
+      "block_id": "B0189",
+      "old_hash": "8651d6cd36c9",
+      "first_line_excerpt": "λ was chosen on the pooled R@1 of one episode parity half and applied to the ot…"
+    },
+    {
+      "block_id": "B0190",
+      "old_hash": "8e1b2953471f",
+      "first_line_excerpt": "### Results"
+    },
+    {
+      "block_id": "B0191",
+      "old_hash": "7f23fee4a3d5",
+      "first_line_excerpt": "![Support-set baselines against SE](../../assets/2026-10-22_support_baseline_sp…"
+    },
+    {
+      "block_id": "B0192",
+      "old_hash": "38cf7afb269b",
+      "first_line_excerpt": "*Figure 1. R@1 (%) on the selection episodes. (a) Pooled, emotion and art style…"
+    },
+    {
+      "block_id": "B0193",
+      "old_hash": "52ad67da5445",
+      "first_line_excerpt": "#### Result 1: support-set baselines beat SE pooled"
+    },
+    {
+      "block_id": "B0194",
+      "old_hash": "09f718584de5",
+      "first_line_excerpt": "| Scorer | Pooled | Emotion | Style | Pooled − SE, paired 95% CI |"
+    },
+    {
+      "block_id": "B0195",
+      "old_hash": "a2f114cc0935",
+      "first_line_excerpt": "Paired differences by label against SE:"
+    },
+    {
+      "block_id": "B0196",
+      "old_hash": "dbbbe1561385",
+      "first_line_excerpt": "| Scorer minus SE | Emotion | Style |"
+    },
+    {
+      "block_id": "B0197",
+      "old_hash": "efc5a34487fe",
+      "first_line_excerpt": "Reading. The probe beats SE pooled by +2.87 points, and nearly all of it is art…"
+    },
+    {
+      "block_id": "B0198",
+      "old_hash": "3977b42cf4e5",
+      "first_line_excerpt": "#### Result 2: the query adds little, so the episodes mostly test few-shot reco…"
+    },
+    {
+      "block_id": "B0199",
+      "old_hash": "55d4f84fd2bf",
+      "first_line_excerpt": "| Scorer | Pooled | Emotion | Style |"
+    },
+    {
+      "block_id": "B0200",
+      "old_hash": "770326a18f24",
+      "first_line_excerpt": "A scorer that ignores the query reaches 22.83, above SE (21.22) and above C0 (2…"
+    },
+    {
+      "block_id": "B0201",
+      "old_hash": "448ca34fb8dd",
+      "first_line_excerpt": "#### Result 3: where SE wins, it wins cross-modally"
+    },
+    {
+      "block_id": "B0202",
+      "old_hash": "f9a80ce58c2d",
+      "first_line_excerpt": "| Cell (candidate ranked) | CLIP only | SE | Prototype + query | Leader |"
+    },
+    {
+      "block_id": "B0203",
+      "old_hash": "24b05cb369c0",
+      "first_line_excerpt": "SE leads where the candidate's modality carries the aspect weakly: art style in…"
+    },
+    {
+      "block_id": "B0204",
+      "old_hash": "c7fb43dd8244",
+      "first_line_excerpt": "Reading, not a tested result: the shared factor space carries a condition shown…"
+    },
+    {
+      "block_id": "B0205",
+      "old_hash": "e0ce78dd7ed2",
+      "first_line_excerpt": "#### Result 4: `raw_naive` is not evidence"
+    },
+    {
+      "block_id": "B0206",
+      "old_hash": "42a2e52cae1c",
+      "first_line_excerpt": "`raw_naive_cv` (13.46 pooled) equals CLIP only (13.45). The naive rule's factor…"
+    },
+    {
+      "block_id": "B0207",
+      "old_hash": "7e6092e77fa0",
+      "first_line_excerpt": "### What this means for the publication plan"
+    },
+    {
+      "block_id": "B0208",
+      "old_hash": "63b92c734072",
+      "first_line_excerpt": "- The claim \"learned factors beat the obvious few-shot baseline\" does not hold …"
+    },
+    {
+      "block_id": "B0209",
+      "old_hash": "23807a1b764c",
+      "first_line_excerpt": "### Caveats"
+    },
+    {
+      "block_id": "B0210",
+      "old_hash": "5e826c51c6e7",
+      "first_line_excerpt": "- Selection rows, read many times. Diagnostic, not pre-registered. One seed of …"
+    },
+    {
+      "block_id": "B0211",
+      "old_hash": "88f63e663644",
+      "first_line_excerpt": "### Files"
+    },
+    {
+      "block_id": "B0212",
+      "old_hash": "52fa81641f97",
+      "first_line_excerpt": "- Script: `src/test/20261022_support_baseline_spike/run_spike.py` (CPU, 22 s, t…"
+    },
+    {
+      "block_id": "B0213",
+      "old_hash": "cb3f91d54eee",
+      "first_line_excerpt": "---"
+    },
+    {
+      "block_id": "B0214",
+      "old_hash": "ddc2fdcbf079",
+      "first_line_excerpt": "# Appendix (evidence report): 2026-10-23_aspect_episode_spike"
+    },
+    {
+      "block_id": "B0215",
+      "old_hash": "da8a973c8dbf",
+      "first_line_excerpt": "## CoSiR v2: can a factor model select the aspect on cross-modal aspect episode…"
+    },
+    {
+      "block_id": "B0216",
+      "old_hash": "54a9c2fe6285",
+      "first_line_excerpt": "### Verdict"
+    },
+    {
+      "block_id": "B0217",
+      "old_hash": "b75739cb994c",
+      "first_line_excerpt": "**No. On cross-modal aspect episodes no factor model selects the aspect, althou…"
+    },
+    {
+      "block_id": "B0218",
+      "old_hash": "5cd0a1821296",
+      "first_line_excerpt": "### What we tested"
+    },
+    {
+      "block_id": "B0219",
+      "old_hash": "90717d6b73b7",
+      "first_line_excerpt": "All numbers are R@1 (%) on 4,096 *aspect episodes* built on the selection rows …"
+    },
+    {
+      "block_id": "B0220",
+      "old_hash": "20a9b032e2e3",
+      "first_line_excerpt": "**Episode design.** The previous spike showed that value episodes (the supports…"
+    },
+    {
+      "block_id": "B0221",
+      "old_hash": "0d6d6969d457",
+      "first_line_excerpt": "- The 13 candidates are shared by both conditions: [p_emo, p_style, 11 negative…"
+    },
+    {
+      "block_id": "B0222",
+      "old_hash": "9fb1b8295f74",
+      "first_line_excerpt": "**Scorers.** *CLIP only* is the cosine of anchor and candidate. **SE**, **C0** …"
+    },
+    {
+      "block_id": "B0223",
+      "old_hash": "9024b8b615bb",
+      "first_line_excerpt": "w = ReLU( mean over supports of a_I(x) ⊙ a_T(y) − mean over contrasts of a_I(x'…"
+    },
+    {
+      "block_id": "B0224",
+      "old_hash": "afe98627bcca",
+      "first_line_excerpt": "where a_I and a_T are the image and caption factor codes of an example pair (x,…"
+    },
+    {
+      "block_id": "B0225",
+      "old_hash": "8e1b2953471f",
+      "first_line_excerpt": "### Results"
+    },
+    {
+      "block_id": "B0226",
+      "old_hash": "9e7b0a0604d2",
+      "first_line_excerpt": "![Aspect episodes](../../assets/2026-10-23_aspect_episode_spike/aspect_episodes…"
+    },
+    {
+      "block_id": "B0227",
+      "old_hash": "e0b9b9e4dc79",
+      "first_line_excerpt": "*Figure 1. R@1 (%) on the aspect episodes. (a) Pooled over both aspects and dir…"
+    },
+    {
+      "block_id": "B0228",
+      "old_hash": "30a8ad9d7ece",
+      "first_line_excerpt": "#### Result 1: no factor model beats CLIP only"
+    },
+    {
+      "block_id": "B0229",
+      "old_hash": "4d002a974cb8",
+      "first_line_excerpt": "| Scorer | Emotion | Style | Pooled | Pooled minus CLIP, paired 95% CI |"
+    },
+    {
+      "block_id": "B0230",
+      "old_hash": "2a2562c1ed76",
+      "first_line_excerpt": "Reading. Every non-privileged scorer is within 0.3 points of CLIP only and ever…"
+    },
+    {
+      "block_id": "B0231",
+      "old_hash": "df935d90333d",
+      "first_line_excerpt": "#### Result 2: the swap test must be read next to R@1"
+    },
+    {
+      "block_id": "B0232",
+      "old_hash": "19eb78942feb",
+      "first_line_excerpt": "The swap success of the cv scorers is small (SE 4.96, C0 4.43, R3 6.65, raw agr…"
+    },
+    {
+      "block_id": "B0233",
+      "old_hash": "a22799ad1179",
+      "first_line_excerpt": "#### Result 3: the task is learnable, and each aspect lives in one modality"
+    },
+    {
+      "block_id": "B0234",
+      "old_hash": "07c7b34b36b2",
+      "first_line_excerpt": "The *label ceiling* is diagnostic only: for each aspect we fit a multinomial lo…"
+    },
+    {
+      "block_id": "B0235",
+      "old_hash": "edb34a5d0ed1",
+      "first_line_excerpt": "| Aspect | CLIP i2t | CLIP t2i | Ceiling i2t | Ceiling t2i | Same-modality ceil…"
+    },
+    {
+      "block_id": "B0236",
+      "old_hash": "fbf533d578aa",
+      "first_line_excerpt": "| Probe selection accuracy (%) | From image | From caption |"
+    },
+    {
+      "block_id": "B0237",
+      "old_hash": "24b88c04b0ed",
+      "first_line_excerpt": "Reading. Cross-modal ceilings are 21 to 24 against CLIP's 9 to 13, so about 11 …"
+    },
+    {
+      "block_id": "B0238",
+      "old_hash": "7e6092e77fa0",
+      "first_line_excerpt": "### What this means for the publication plan"
+    },
+    {
+      "block_id": "B0239",
+      "old_hash": "df9bb9322756",
+      "first_line_excerpt": "- The user chose method A: train the shared factors for aspect selection, with …"
+    },
+    {
+      "block_id": "B0240",
+      "old_hash": "23807a1b764c",
+      "first_line_excerpt": "### Caveats"
+    },
+    {
+      "block_id": "B0241",
+      "old_hash": "a596cfc242e4",
+      "first_line_excerpt": "- Selection rows, read many times. Diagnostic, not pre-registered. One seed per…"
+    },
+    {
+      "block_id": "B0242",
+      "old_hash": "88f63e663644",
+      "first_line_excerpt": "### Files"
+    },
+    {
+      "block_id": "B0243",
+      "old_hash": "5d5d4ebf2e95",
+      "first_line_excerpt": "- Script: `src/test/20261023_aspect_episode_spike/run_aspect.py` (35 s, one GPU…"
+    },
+    {
+      "block_id": "B0244",
+      "old_hash": "cb3f91d54eee",
+      "first_line_excerpt": "---"
+    },
+    {
+      "block_id": "B0245",
+      "old_hash": "fd6f60d0183d",
+      "first_line_excerpt": "# Appendix (evidence report): 2026-10-24_aspect_task_novelty_check"
+    },
+    {
+      "block_id": "B0246",
+      "old_hash": "4a5a38d2bb37",
+      "first_line_excerpt": "## Novelty check: example-conditioned aspect similarity across modalities"
+    },
+    {
+      "block_id": "B0247",
+      "old_hash": "d5d2b282ea43",
+      "first_line_excerpt": "**Report date:** 2026-10-24 (sequence date in this folder; the research was don…"
+    },
+    {
+      "block_id": "B0248",
+      "old_hash": "e3d7f2819d92",
+      "first_line_excerpt": "**The task under test.** A query x (an image or a caption) and a condition c = …"
+    },
+    {
+      "block_id": "B0249",
+      "old_hash": "2f6507c81ddb",
+      "first_line_excerpt": "### 1. Verdict"
+    },
+    {
+      "block_id": "B0250",
+      "old_hash": "8622ee58716f",
+      "first_line_excerpt": "We found no paper that defines this task: none scores image↔text across differe…"
+    },
+    {
+      "block_id": "B0251",
+      "old_hash": "fa5337c1064b",
+      "first_line_excerpt": "### 2. Property table"
+    },
+    {
+      "block_id": "B0252",
+      "old_hash": "59cfb4d597d0",
+      "first_line_excerpt": "Properties: **(a)** the condition is an aspect, not a value or an instance; **(…"
+    },
+    {
+      "block_id": "B0253",
+      "old_hash": "ab239954d5ba",
+      "first_line_excerpt": "**Table 1. Prior work against the six properties.**"
+    },
+    {
+      "block_id": "B0254",
+      "old_hash": "0e32d9660070",
+      "first_line_excerpt": "| Paper | (a) aspect | (b) examples | (c) I↔T, cross-item | (d) test-time few-s…"
+    },
+    {
+      "block_id": "B0255",
+      "old_hash": "063d553d279f",
+      "first_line_excerpt": "No row reaches more than three \"yes\" marks (RICE, VASR and the visual-prompting…"
+    },
+    {
+      "block_id": "B0256",
+      "old_hash": "f44055a73d9f",
+      "first_line_excerpt": "### 3. Closest papers in detail"
+    },
+    {
+      "block_id": "B0257",
+      "old_hash": "1a22d1de4a61",
+      "first_line_excerpt": "**3.1 Contextual Visual Similarity** (Wang, Kitani, Hebert, arXiv 1612.02534, 2…"
+    },
+    {
+      "block_id": "B0258",
+      "old_hash": "752628544120",
+      "first_line_excerpt": "**3.2 Metric learning from equivalence constraints** (Xing et al., NIPS 2002; R…"
+    },
+    {
+      "block_id": "B0259",
+      "old_hash": "0ba356b4b380",
+      "first_line_excerpt": "**3.3 Personalized Clustering via Targeted Representation Learning** (Geng et a…"
+    },
+    {
+      "block_id": "B0260",
+      "old_hash": "52216285e1e1",
+      "first_line_excerpt": "**3.4 BGE-EN-ICL** (Li et al., arXiv 2409.15700, 2024), with **RICE** (Jedidi e…"
+    },
+    {
+      "block_id": "B0261",
+      "old_hash": "75ec7965edee",
+      "first_line_excerpt": "**3.5 MARS: Multimodal Analogical Reasoning over Knowledge Graphs** (Zhang et a…"
+    },
+    {
+      "block_id": "B0262",
+      "old_hash": "d04c1d80a768",
+      "first_line_excerpt": "### 4. Recommended novelty statement and must-cite list"
+    },
+    {
+      "block_id": "B0263",
+      "old_hash": "fafbae27a7b0",
+      "first_line_excerpt": "**Statement we can defend.** \"We introduce example-conditioned aspect similarit…"
+    },
+    {
+      "block_id": "B0264",
+      "old_hash": "833adde913fa",
+      "first_line_excerpt": "**Claims to avoid.** We must not call new: inferring a notion of similarity fro…"
+    },
+    {
+      "block_id": "B0265",
+      "old_hash": "e092b8f2fdf4",
+      "first_line_excerpt": "**Must cite.**"
+    },
+    {
+      "block_id": "B0266",
+      "old_hash": "ec9916a25b6e",
+      "first_line_excerpt": "- Metric learning from pairs: Xing et al. 2002; RCA (Bar-Hillel et al. 2005); I…"
+    },
+    {
+      "block_id": "B0267",
+      "old_hash": "5dc75c1b38b6",
+      "first_line_excerpt": "### 5. Baselines this implies"
+    },
+    {
+      "block_id": "B0268",
+      "old_hash": "09d8664bf836",
+      "first_line_excerpt": "These complement the baselines in §3 of the 2026-10-21 review (prototype, Rocch…"
+    },
+    {
+      "block_id": "B0269",
+      "old_hash": "417265485244",
+      "first_line_excerpt": "**Table 2. Baselines from the pair-metric, in-context and analogy lines.**"
+    },
+    {
+      "block_id": "B0270",
+      "old_hash": "5095bbbe470d",
+      "first_line_excerpt": "| Baseline | Lineage | What it computes | Needs | Reviewer question |"
+    },
+    {
+      "block_id": "B0271",
+      "old_hash": "dc3dcddfe6bc",
+      "first_line_excerpt": "The first four rows need a shared image-text space, which CLIP provides; with u…"
+    },
+    {
+      "block_id": "B0272",
+      "old_hash": "83900103b67c",
+      "first_line_excerpt": "### 6. References"
+    },
+    {
+      "block_id": "B0273",
+      "old_hash": "557749052093",
+      "first_line_excerpt": "Links were opened in this session unless marked †, meaning verified in the [202…"
+    },
+    {
+      "block_id": "B0274",
+      "old_hash": "f3d262e4154d",
+      "first_line_excerpt": "**Metric learning from pairs (thread 1)**"
+    },
+    {
+      "block_id": "B0275",
+      "old_hash": "ed79aacce48e",
+      "first_line_excerpt": "- Xing, Ng, Jordan, Russell. Distance Metric Learning with Application to Clust…"
+    },
+    {
+      "block_id": "B0276",
+      "old_hash": "fcb5c65a35e5",
+      "first_line_excerpt": "**Example-conditioned embedders (thread 2)**"
+    },
+    {
+      "block_id": "B0277",
+      "old_hash": "df57d66793a9",
+      "first_line_excerpt": "- Li, Qin, Xiao, Chen, Luo, Shao, Lian, Liu. Making Text Embedders Few-Shot Lea…"
+    },
+    {
+      "block_id": "B0278",
+      "old_hash": "184494490ec8",
+      "first_line_excerpt": "**Analogy and relation by example (thread 3)**"
+    },
+    {
+      "block_id": "B0279",
+      "old_hash": "be1c33a30769",
+      "first_line_excerpt": "- Sadeghi, Zitnick, Farhadi. VISALOGY: Answering Visual Analogy Questions. NIPS…"
+    },
+    {
+      "block_id": "B0280",
+      "old_hash": "a5e167b93c17",
+      "first_line_excerpt": "**Criterion defined by examples (thread 4)**"
+    },
+    {
+      "block_id": "B0281",
+      "old_hash": "841c3b5409ee",
+      "first_line_excerpt": "- Wang, Kitani, Hebert. Contextual Visual Similarity. arXiv 1612.02534, 2016. h…"
+    },
+    {
+      "block_id": "B0282",
+      "old_hash": "552a98391493",
+      "first_line_excerpt": "**Fixed aspect across modalities (thread 5)**"
+    },
+    {
+      "block_id": "B0283",
+      "old_hash": "5af938e67992",
+      "first_line_excerpt": "- Zhao, Li, Yao, Nie, Xu, Yang, Keutzer. Emotion-Based End-to-End Matching Betw…"
+    },
+    {
+      "block_id": "B0284",
+      "old_hash": "b37c5abc0eec",
+      "first_line_excerpt": "**Searched, nothing found.** arXiv abstract queries for in-context or demonstra…"
+    },
+    {
+      "block_id": "B0285",
+      "old_hash": "cb3f91d54eee",
+      "first_line_excerpt": "---"
+    },
+    {
+      "block_id": "B0286",
+      "old_hash": "2b25d7513253",
+      "first_line_excerpt": "# Appendix (evidence report): 2026-10-25_backbone_check"
+    },
+    {
+      "block_id": "B0287",
+      "old_hash": "d02e9b9d31f4",
+      "first_line_excerpt": "## CoSiR v2: which frozen backbone joins CLIP ViT-B/32? (backbone check)"
+    },
+    {
+      "block_id": "B0288",
+      "old_hash": "54a9c2fe6285",
+      "first_line_excerpt": "### Verdict"
+    },
+    {
+      "block_id": "B0289",
+      "old_hash": "a5fbf37c7ee1",
+      "first_line_excerpt": "**The weaker-modality probes barely move across four backbones, so the modality…"
+    },
+    {
+      "block_id": "B0290",
+      "old_hash": "5cd0a1821296",
+      "first_line_excerpt": "### What we tested"
+    },
+    {
+      "block_id": "B0291",
+      "old_hash": "db7c4858bca3",
+      "first_line_excerpt": "**Question.** Which frozen backbone sits beside CLIP ViT-B/32 in the final tabl…"
+    },
+    {
+      "block_id": "B0292",
+      "old_hash": "556f37a542ea",
+      "first_line_excerpt": "**Setup.** Four frozen backbones: CLIP B/32, SigLIP 2 So400m/14-384, PE-Core L/…"
+    },
+    {
+      "block_id": "B0293",
+      "old_hash": "8e1b2953471f",
+      "first_line_excerpt": "### Results"
+    },
+    {
+      "block_id": "B0294",
+      "old_hash": "5d8c5af550c3",
+      "first_line_excerpt": "![Backbone check](../../assets/2026-10-25_backbone_check/backbone_check.png)"
+    },
+    {
+      "block_id": "B0295",
+      "old_hash": "5fb5b8c93cac",
+      "first_line_excerpt": "*Figure 1. (a) ArtELingo probe accuracy (%) per backbone. Light bars are the we…"
+    },
+    {
+      "block_id": "B0296",
+      "old_hash": "408b01a4321e",
+      "first_line_excerpt": "#### Result 1: weak-side probes are flat, strong-side probes move (claim C3)"
+    },
+    {
+      "block_id": "B0297",
+      "old_hash": "6970aaf8bec6",
+      "first_line_excerpt": "| Probe accuracy (%) | CLIP | SigLIP 2 | PE | Qwen | Spread |"
+    },
+    {
+      "block_id": "B0298",
+      "old_hash": "f9223b9ac5c9",
+      "first_line_excerpt": "Reading. Four different encoders and training recipes add about one point to th…"
+    },
+    {
+      "block_id": "B0299",
+      "old_hash": "db81f92e825b",
+      "first_line_excerpt": "#### Result 2: ceilings separate CLIP from the rest, not the rest from each oth…"
+    },
+    {
+      "block_id": "B0300",
+      "old_hash": "f2c9fb4f909d",
+      "first_line_excerpt": "| (%) | CLIP | SigLIP 2 | PE | Qwen |"
+    },
+    {
+      "block_id": "B0301",
+      "old_hash": "b98655e34b2b",
+      "first_line_excerpt": "The sum for CLIP is 46.42 on recomputation from the JSON (the controller's note…"
+    },
+    {
+      "block_id": "B0302",
+      "old_hash": "4246b18b3000",
+      "first_line_excerpt": "#### Result 3: CUB attribute probes and retrieval"
+    },
+    {
+      "block_id": "B0303",
+      "old_hash": "8aed7c595a79",
+      "first_line_excerpt": "Probe accuracy (%), image / caption, test split, label = the single attribute v…"
+    },
+    {
+      "block_id": "B0304",
+      "old_hash": "9d0762b3cd56",
+      "first_line_excerpt": "| Group (classes, majority) | CLIP | SigLIP 2 | PE | Qwen |"
+    },
+    {
+      "block_id": "B0305",
+      "old_hash": "ba83400a05dc",
+      "first_line_excerpt": "- **Primary colour is symmetric.** Image and caption probes are within 2.3 poin…"
+    },
+    {
+      "block_id": "B0306",
+      "old_hash": "0b07d3546bd0",
+      "first_line_excerpt": "Retrieval sanity check, 5,794 test images, first caption each, R@1 %:"
+    },
+    {
+      "block_id": "B0307",
+      "old_hash": "bcef4a0b722e",
+      "first_line_excerpt": "| | CLIP | SigLIP 2 | PE | Qwen |"
+    },
+    {
+      "block_id": "B0308",
+      "old_hash": "0f9c6fd1fa62",
+      "first_line_excerpt": "Instance retrieval is near zero everywhere probably because the 5,794 test imag…"
+    },
+    {
+      "block_id": "B0309",
+      "old_hash": "13045524c4c0",
+      "first_line_excerpt": "#### Result 4: CLIP reproduction"
+    },
+    {
+      "block_id": "B0310",
+      "old_hash": "70ebd7e8446a",
+      "first_line_excerpt": "The CLIP aspect R@1 values (9.42, 10.86, 10.77, 13.45) match the spike exactly.…"
+    },
+    {
+      "block_id": "B0311",
+      "old_hash": "6737796f9a64",
+      "first_line_excerpt": "### Implementation notes and cost"
+    },
+    {
+      "block_id": "B0312",
+      "old_hash": "759ea99b8cfb",
+      "first_line_excerpt": "- PE-Core was loaded through open_clip from `hf-hub:timm/PE-Core-L-14-336` (tex…"
+    },
+    {
+      "block_id": "B0313",
+      "old_hash": "f28ec48578f0",
+      "first_line_excerpt": "| Model | ArtELingo images | ArtELingo captions | CUB images | CUB captions | T…"
+    },
+    {
+      "block_id": "B0314",
+      "old_hash": "d189bc6a5b31",
+      "first_line_excerpt": "Qwen takes 3.8 times SigLIP 2 and 6.4 times PE in total (4.5 and 7.3 times on A…"
+    },
+    {
+      "block_id": "B0315",
+      "old_hash": "872fce00e737",
+      "first_line_excerpt": "### What this means"
+    },
+    {
+      "block_id": "B0316",
+      "old_hash": "71b7c0c41de1",
+      "first_line_excerpt": "We do not pick a backbone here. The trade-off:"
+    },
+    {
+      "block_id": "B0317",
+      "old_hash": "f319248bbc81",
+      "first_line_excerpt": "- **Qwen3-VL-Embedding-2B:** best emotion ceiling (27.37) and best backbone-onl…"
+    },
+    {
+      "block_id": "B0318",
+      "old_hash": "23807a1b764c",
+      "first_line_excerpt": "### Caveats"
+    },
+    {
+      "block_id": "B0319",
+      "old_hash": "8da74eae79e2",
+      "first_line_excerpt": "- Diagnostic on selection rows, one seed per backbone, no confidence intervals.…"
+    },
+    {
+      "block_id": "B0320",
+      "old_hash": "88f63e663644",
+      "first_line_excerpt": "### Files"
+    },
+    {
+      "block_id": "B0321",
+      "old_hash": "dc36359fb7e8",
+      "first_line_excerpt": "- Scripts: `src/test/20261025_backbone_check/run_backbone_check.py`, `extract.p…"
+    }
+  ]
+}
