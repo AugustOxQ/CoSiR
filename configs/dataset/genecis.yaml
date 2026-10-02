@@ -1,0 +1,34 @@
+# @package _global_
+# GeneCIS (COCO half: focus_object, change_object) Dataset Configuration
+# Built by scripts/preprocess_genecis.py; see docs/reports/auto/v2/2026-10-20_genecis_feasibility.md §7.
+
+# Dataset paths
+# GeneCIS is evaluation-only (no training split). A factor model for it must be trained on
+# other data, e.g. COCO train2014, which shares no images with it.
+data:
+  dataset_type: "genecis_coco"
+  train_annotation_path: "/data/PDD/genecis/genecis_coco.json"
+  test_annotation_path: "/data/PDD/genecis/genecis_coco.json"
+  train_image_path: "/data/SSD/coco/images"
+  test_image_path: "/data/SSD/coco/images"
+
+# Feature manager paths - dataset specific
+featuremanager:
+  storage_dir: "/data/SSD2/pre_extract/genecis_coco/features"
+
+# GeneCIS benchmark specifics
+genecis:
+  templates_dir: "/data/PDD/genecis/templates"
+  manifest_path: "/data/PDD/genecis/manifest.json"
+  tasks: ["focus_object", "change_object"]
+  unavailable_tasks: ["focus_attribute", "change_attribute"] # need Visual Genome 1.2 images
+  gallery_size: 15 # target + 14
+  condition_slots: [9, 10, 11, 12, 13] # dissimilar scene, contains the condition object
+  similar_scene_slots: [0, 1, 2, 3, 4, 5, 6, 7, 8] # similar scene, lacks the condition object
+
+# Experiment Configuration
+experiment:
+  name: "CoSiR_Experiment"
+  tags: ["CoSiR", "GeneCIS", "local"]
+  description: "Comprehensive experiment for CoSiR"
+  results_dir: "res/CoSiR_Experiment/genecis_coco" # Depends on the dataset
