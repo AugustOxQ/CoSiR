@@ -367,6 +367,14 @@ used.
   value from supports. These episodes reward exactly what the aspect spike found missing:
   - putting the anchor's value on an aspect into *both* modalities' codes;
   - keeping aspects in separable factors that the rule can select.
+- **What the basis must look like** (simulation, 2026-10-03, while writing the E0 to E5 plan):
+  - The rule transfers across values only if all values of an aspect share factors, each value being a different
+    pattern over the same factors. Value-specific factors give exactly zero condition gain under value-disjoint
+    conditions (every candidate ties), against 0.20 to 0.32 for aspect-block codes.
+  - Raw features that mix aspects defeat raw pair rules in the same way: 0.00 mixed, against 0.70 to 0.95 when each
+    aspect has its own block of dimensions.
+  - This is the mechanism behind C2 and K7: the learned basis must separate aspects into blocks of shared factors,
+    which raw CLIP does not.
 
 | Dataset | Pseudo-partitions (no evaluation labels) |
 |---|---|
