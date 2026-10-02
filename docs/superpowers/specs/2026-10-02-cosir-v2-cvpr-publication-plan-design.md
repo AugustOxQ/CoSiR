@@ -166,7 +166,7 @@ Six investigations, all on selection rows (held rows untouched), changed the pla
 - **Task vs protocol.** The task is the first three bullets. Scoring both directions, the swap test and condition
   gain (§5.1) are evaluation choices, not properties of the task.
 
-**Use case** (proposed by the controller on 2026-10-03; **to confirm with the user**). The interface fits a user who
+**Use case** (confirmed by the user on 2026-10-03). The interface fits a user who
 holds examples of a relation but cannot or will not name it:
 1. **Creative tools.** A designer's mood board pairs images with captions or tags that "go together", and the designer
    wants more images or texts that relate the same way.
@@ -636,7 +636,7 @@ record is in `src/test/20261027_ars_plan_review/` and the summary in
 | REV-21 (D1 block): no margin for "matches" | ±1.0 R@1 equivalence margin with two one-sided tests (§10) |
 | REV-55 (D3 block, DA C1): no held-out aspect | leave-one-aspect-out test and generic CUB partitions; claim K8 with a narrowing rule (§4, §6) |
 | REV-02, REV-35: K3 adverse evidence, typing after results | K3 outcome-neutral; aspect typing fixed now (§10) |
-| REV-03: no use case | use-case paragraph, to confirm with the user (§3) |
+| REV-03: no use case | use-case paragraph, confirmed by the user (§3) |
 | REV-04, REV-05, REV-37: K5 decidability, transfer, wrong column | K5 as a transfer diagnostic; focus-attribute bar; GeneCIS read only in E14 (§4, §5.4) |
 | REV-06: incomplete novelty search | E18 literature completion before Nov 7 |
 | REV-07, REV-38: missing in-context and probe baselines | in-context MLLM reranker required; per-episode probe and Tip-Adapter restored; verbalise-then-name as stretch (§8) |
