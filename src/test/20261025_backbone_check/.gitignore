@@ -1,0 +1,8 @@
+*.npy
+*.npz
+*.json
+*.pt
+*.log
+cache/
+checkpoints/
+results/
