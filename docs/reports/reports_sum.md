@@ -24,7 +24,7 @@ Research lines:
 - **Percept line summary:** [buddy vs PercepT master report](auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md), [comprehensive analysis](stage/2026-09-27_comprehensive_analysis.md) and [key advantages](stage/2026-09-27_key_advantages.md); the final result is the [matched head-to-head](auto/percept/2026-09-30_matched_percept_buddy_h2h.md) (master report §6k).
 - **Buddy line summary:** the [archived publication plan](../archive/buddy_publication_plan/2026-08-04-buddy-publication-plan-design.md) (claims C1–C12; no longer updated) and the [last buddy-line weekly report](weekly/2026-09-02_conditional_buddies.md).
 - **Latest weekly report:** [22 to 30 Sep](weekly/2026-09-30_percept_buddy_to_v2.md), covering the buddy model against the PercepT baseline and CoSiR v2 up to stage (d), with its figures in `assets/2026-09-30_weekly/`.
-- **Publication plan for v2:** not written yet. It will replace the archived buddy plan, with v2 as the main body.
+- **Publication plan for v2:** [CVPR publication plan (design)](../superpowers/specs/2026-10-02-cosir-v2-cvpr-publication-plan-design.md), 2026-10-02, replacing the archived buddy plan. Example-conditioned aspect similarity across modalities; benchmarks ArtELingo, CUB (unseen species), GeneCIS focus attribute, SemArt; method A (aspect-trained factors) with a go/no-go on Oct 9; claims K1 to K7.
 
 ## Where the code lives
 
