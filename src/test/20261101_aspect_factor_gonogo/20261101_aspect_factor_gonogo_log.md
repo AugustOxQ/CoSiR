@@ -65,6 +65,28 @@ uniform-weight control, plus the K8 held-out-genre test. Every rule is fixed in 
   returns shares of 0.95 to 1.00 for the smoke checkpoint and for SE, C0 and R3. Dense ReLU codes keep every value's
   mean above 10% of the maximum, so this diagnostic may not separate models; we report it as pre-registered.
 
+## Review fix round 1: pre-registration addendum (2026-10-03, before any grid result)
+
+- **Addendum** committed first (759ee83), while the grid was queued on the GPU lock and no grid checkpoint existed:
+  the value-sharing share is disclosed as blind and gets two descriptive measures (mean η² over live factors and the
+  value spread S, floor 1/V); `S1_vs_A1_emotion_pairs` becomes the clean ablation (banks IC vs AIC), with
+  `H1_vs_A1_genre_pairs` as K8 context; K8's wording (the AI bank's image partition carries genre, AMI 0.397 vs
+  0.161); failure handling (failed H1: K8 untestable and not holding; failed S1 or A1: rows omitted; GO always
+  computed); the picked run against all nine GO-bar candidates and SE_uniform on seed 43; input and checkpoint
+  SHA-256s; the measured backbone-only R@1 (12.96 / 13.53, so strong GO needs about 17.5); GO as an
+  intersection-union test. Pick, GO, strong GO and K8 rules unchanged.
+- **Code:** only the `--gonogo` section changed (`--train` and `--select` are byte-identical); the new file was built
+  and smoke-tested under a temporary name in this folder and swapped in with `os.replace`, so a grid run starting at
+  that moment reads a complete file.
+- **Smoke (`--gonogo --smoke`, CPU, 12.1 s):** all sections present (`go`, `k8`, `ablation`, `baseline_context`,
+  `value_sharing`, `verdict`, `inputs`, `checkpoints`, `run_status`), every float finite, no missing value. Value
+  spread S on the real SE, C0 and R3 codes: 0.42 to 0.63 across aspects and modalities (reviewer: 0.44 to 0.65);
+  mean η² 0.02 to 0.06 on emotion, up to 0.25 on genre (image). Synthetic check with our function: one factor per
+  value S 0.128 (1/V 0.125), aspect block S 0.703; the blind share gave 0.75 and 1.00 there.
+- **Failure paths** (monkeypatched status, outputs in a temporary smoke subfolder): H1 and S1 failed → GO computed, K8
+  "untestable … counts as K8 not holding", all S1/H1 rows omitted; A1 failed with A2 picked → the two A1-based rows
+  omitted, S1-vs-picked kept, K8 tested; a checkpoint missing without a failed record stops `--gonogo` before any work.
+
 ## Launch commands (controller)
 
 ```bash
