@@ -77,6 +77,40 @@ def decide(pilot: dict, h3: dict) -> dict:
     }
 
 
+def write_decision_atomic(result: dict, decision_path: Path, is_smoke: bool) -> None:
+    """Write decision result with race condition protection.
+
+    Smoke mode: overwrites existing file.
+    Real mode: writes to temp file, then uses os.link() for atomic linking;
+    os.link() fails if target exists, preventing silent overwrites.
+
+    Args:
+        result: decision result dict
+        decision_path: Path to decision.json
+        is_smoke: whether in smoke mode
+
+    Raises:
+        FileExistsError: if real mode and target already exists
+    """
+    if is_smoke:
+        with open(decision_path, "w") as f:
+            json.dump(result, f, indent=1)
+    else:
+        # Real: atomic write with os.link() (fails if target exists)
+        temp_fd, temp_path = tempfile.mkstemp(dir=decision_path.parent, text=True)
+        try:
+            with os.fdopen(temp_fd, "w") as f:
+                json.dump(result, f, indent=1)
+            os.chmod(temp_path, 0o644)
+            try:
+                os.link(temp_path, decision_path)
+            except FileExistsError:
+                raise FileExistsError(f"decision.json already exists: {decision_path}. Not overwriting.")
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Joint decision of the method-repair diagnostics")
     parser.add_argument("--smoke", action="store_true", help="Run on smoke data")
@@ -117,31 +151,8 @@ def main():
     }
     result["decided_at"] = datetime.now(timezone.utc).isoformat()
 
-    # Write decision atomically
-    if args.smoke:
-        # Smoke: allow overwrite
-        with open(decision_path, "w") as f:
-            json.dump(result, f, indent=1)
-    else:
-        # Real: write atomically with temp file + os.replace, refusing race
-        if decision_path.exists():
-            raise FileExistsError(f"Real decision.json already exists: {decision_path}. Not overwriting.")
-
-        # Write to temp file in same directory to ensure same filesystem
-        temp_fd, temp_path = tempfile.mkstemp(dir=decision_path.parent, text=True)
-        try:
-            with os.fdopen(temp_fd, "w") as f:
-                json.dump(result, f, indent=1)
-            # Re-check existence before replace (race condition check)
-            if decision_path.exists():
-                os.unlink(temp_path)
-                raise FileExistsError(f"Real decision.json exists (written by another process): {decision_path}")
-            os.replace(temp_path, decision_path)
-        except Exception:
-            # Clean up temp file on error
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
-            raise
+    # Write decision with race condition protection
+    write_decision_atomic(result, decision_path, args.smoke)
 
     # Print next step
     print(result["next_step"])

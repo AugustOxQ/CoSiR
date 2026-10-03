@@ -1,6 +1,7 @@
 """Tests for the joint decision logic (Task 8 of method-repair diagnostics)."""
 
 import importlib.util
+import json
 import pytest
 from pathlib import Path
 
@@ -10,6 +11,7 @@ spec = importlib.util.spec_from_file_location("decide", diagnostics_path)
 decide_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(decide_module)
 decide = decide_module.decide
+write_decision_atomic = decide_module.write_decision_atomic
 NEXT = decide_module.NEXT
 
 
@@ -122,6 +124,74 @@ class TestJointDecisionTable:
         result = decide(pilot, h3)
         required_keys = {"h1", "h3", "decision", "next_step", "h2_bank"}
         assert required_keys.issubset(result.keys())
+
+
+class TestAtomicWrite:
+    """Test atomic write behavior with race condition protection."""
+
+    def test_real_mode_raises_when_target_exists(self, tmp_path):
+        """Real mode: FileExistsError raised when decision.json already exists, content unchanged."""
+        decision_path = tmp_path / "decision.json"
+        original_content = {"existing": "decision"}
+
+        # Pre-create the target file
+        with open(decision_path, "w") as f:
+            json.dump(original_content, f)
+
+        # Try to write new result
+        new_result = {"h1": "promising", "h3": "ceiling_sufficient", "decision": "preregister_A3_nested"}
+
+        # Should raise FileExistsError
+        with pytest.raises(FileExistsError, match="decision.json already exists"):
+            write_decision_atomic(new_result, decision_path, is_smoke=False)
+
+        # Verify original content is unchanged
+        with open(decision_path) as f:
+            actual_content = json.load(f)
+        assert actual_content == original_content
+
+    def test_smoke_mode_overwrites(self, tmp_path):
+        """Smoke mode: overwrites existing file."""
+        decision_path = tmp_path / "decision.json"
+        original_content = {"old": "decision"}
+
+        # Pre-create the target file
+        with open(decision_path, "w") as f:
+            json.dump(original_content, f)
+
+        # Write new result in smoke mode
+        new_result = {
+            "h1": "promising",
+            "h3": "ceiling_sufficient",
+            "decision": "preregister_A3_nested",
+            "next_step": "test",
+            "h2_bank": "MK",
+        }
+        write_decision_atomic(new_result, decision_path, is_smoke=True)
+
+        # Verify new content was written
+        with open(decision_path) as f:
+            actual_content = json.load(f)
+        assert actual_content == new_result
+
+    def test_real_mode_creates_new_file(self, tmp_path):
+        """Real mode: creates new file when target doesn't exist."""
+        decision_path = tmp_path / "decision.json"
+
+        result = {
+            "h1": "promising",
+            "h3": "ceiling_sufficient",
+            "decision": "preregister_A3_nested",
+            "next_step": "test",
+            "h2_bank": "MK",
+        }
+        write_decision_atomic(result, decision_path, is_smoke=False)
+
+        # Verify file was created with correct content
+        assert decision_path.exists()
+        with open(decision_path) as f:
+            actual_content = json.load(f)
+        assert actual_content == result
 
 
 if __name__ == "__main__":
