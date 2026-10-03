@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import numpy as np  # noqa: E402
-from common import C0_CKPT, FRESH_LABEL_SEED, LAB_PARTS, LABEL_RUNS, N_FRESH, folders, local_rows, rg  # noqa: E402
+from common import C0_CKPT, FRESH_LABEL_SEED, LAB_PARTS, LABEL_RUNS, N_FRESH, ROOT, folders, local_rows, rg  # noqa: E402
 
 from src.data.artelingo_splits import artelingo_splits  # noqa: E402
 from src.eval.aspect_episodes import (PaintingValueIndex, build_aspect_episodes, concat_episodes,  # noqa: E402
@@ -44,6 +44,21 @@ def ckpt_path(run, seed, smoke):
     return folders(smoke)["ckpt"] / f"{run}_seed{seed}.pt"
 
 
+def failed_path(run, seed, smoke):
+    return folders(smoke)["res"] / f"failed_{run}_seed{seed}.json"
+
+
+def run_state(run, seed, smoke):
+    """ok (checkpoint, no failed record), failed (failed record, no checkpoint); anything else is an error."""
+    ck, fp = ckpt_path(run, seed, smoke), failed_path(run, seed, smoke)
+    if fp.exists():
+        assert not ck.exists(), f"{run} seed {seed}: both {fp.name} and a checkpoint exist"
+        return "failed"
+    if ck.exists():
+        return "ok"
+    raise FileNotFoundError(f"{run} seed {seed}: neither {ck} nor {fp.name}; not trained yet or crashed without a record")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--smoke", action="store_true")
@@ -63,8 +78,7 @@ def main():
     a3_sha = rg.sha_file(a3_path)
     assert pilot["A3"]["provenance"]["sha256"] == a3_sha, "pilot A3 SHA-256 != the A3 checkpoint loaded here"
     g_star = float(pilot["A3"]["g_star"])
-    for run in RUNS_SCORED:
-        assert ckpt_path(run, SEED, smoke).exists(), f"missing checkpoint {ckpt_path(run, SEED, smoke)}"
+    state = {run: run_state(run, SEED, smoke) for run in RUNS_SCORED}
 
     ctx = rg.EvalContext(SEED, smoke)
     data = ctx.data
@@ -113,6 +127,11 @@ def main():
     # ---- fit of each LAB run against A3 on the fresh label episodes
     fit, fits_resolved, needs_seed43, runs = {}, {}, [], {}
     for run in LABEL_RUNS:
+        if state[run] == "failed":
+            fit[run] = fits_resolved[run] = "no_fit"
+            runs[run] = {"status": "failed", "failed_record": str(failed_path(run, SEED, smoke).relative_to(ROOT)),
+                         "fit": {"reading": "no_fit"}, "resolved": "no_fit"}
+            continue
         ck42 = ckpt_path(run, SEED, smoke)
         pa = term_fresh(ck42)
         for m in METRICS:
@@ -122,7 +141,11 @@ def main():
         entry = {"vs_A3_gain": r, "reading": reading, "seed43": None}
         if reading == "inconclusive":
             ck43 = ckpt_path(run, 43, smoke)
-            if ck43.exists():
+            if failed_path(run, 43, smoke).exists():
+                assert not ck43.exists(), f"{run} seed 43: both failed record and checkpoint"
+                reading = "no_fit"
+                entry["seed43"] = {"status": "failed", "reading": "no_fit"}
+            elif ck43.exists():
                 pa43 = term_fresh(ck43)
                 avg = {m: 0.5 * (np.asarray(pa[m]) + np.asarray(pa43[m])) for m in METRICS}
                 r2 = compare(avg, pa_a3, fclusters, "gain")
@@ -148,6 +171,8 @@ def main():
     cl = ctx.anchor_group
     ta_pa, _ = term_transfer(a3_path)
     for run in RUNS_SCORED:
+        if state[run] == "failed":
+            continue
         pt, (ic, tc) = term_transfer(ckpt_path(run, SEED, smoke))
         inp = EvalInputs(ctx.img, ctx.txt, ic, tc)
         tu = agreement_term(inp, ctx.pooled, uniform=True)
@@ -166,8 +191,12 @@ def main():
     nested_gains = {r: runs[r]["transfer_seed42"]["nested_gain_point"] for r in fitting}
     best_run = max(nested_gains, key=nested_gains.get) if fitting else None
     best_gain = nested_gains[best_run] if best_run else None
-    mk3 = compare(per_anchor_of(arrays, "MK3"), ta_pa, cl, "gain")
-    matched_k = {"MK3_minus_A3_term_only_gain": mk3, "granularity_lever": bool(mk3["ci95"][0] > 0)}
+    if state["MK3"] == "failed":
+        mk3 = None
+        matched_k = {"status": "failed", "failed_record": str(failed_path("MK3", SEED, smoke).relative_to(ROOT)), "granularity_lever": False}
+    else:
+        mk3 = compare(per_anchor_of(arrays, "MK3"), ta_pa, cl, "gain")
+        matched_k = {"MK3_minus_A3_term_only_gain": mk3, "granularity_lever": bool(mk3["ci95"][0] > 0)}
     h3 = None if needs_seed43 else h3_reading(fit, best_gain, g_star)
 
     result.update(runs=runs, fit=fit, best_fitting_run=best_run, best_nested_gain=best_gain, g_star=g_star,
@@ -181,14 +210,20 @@ def main():
              f"{'nested gain':>11s} {'loss %<const':>12s} {'tau first/last':>16s}"]
     for run in LABEL_RUNS:
         e = runs[run]
+        if e.get("status") == "failed":
+            lines.append(f"{run:4s} FAILED (counts as no_fit)")
+            continue
         c = e["vs_A3_gain"]
         lines.append(f"{run:4s} {c['point']:8.2f} [{c['ci95'][0]:6.2f},{c['ci95'][1]:6.2f}] {e['resolved']:>12s} "
                      f"{e['transfer_seed42']['nested_gain_point']:11.2f} {e['loss_vs_constant']['pct_below_constant']:12.2f} "
                      f"{e['tau']['first']:8.4f}/{e['tau']['last']:.4f}")
     lines.append(f"best fitting run {best_run}, best nested gain {best_gain}, g*={g_star:.3f}, h3_reading={h3}, "
                  f"needs_seed43={needs_seed43}")
-    lines.append(f"matched-k MK3 - A3 term-only gain {mk3['point']:.2f} [{mk3['ci95'][0]:.2f}, {mk3['ci95'][1]:.2f}], "
-                 f"granularity_lever={matched_k['granularity_lever']}")
+    if mk3 is None:
+        lines.append("matched-k: MK3 FAILED, granularity_lever=False")
+    else:
+        lines.append(f"matched-k MK3 - A3 term-only gain {mk3['point']:.2f} [{mk3['ci95'][0]:.2f}, {mk3['ci95'][1]:.2f}], "
+                     f"granularity_lever={matched_k['granularity_lever']}")
     text = "\n".join(lines)
     (res / "h3.txt").write_text(text + "\n")
     print(text)
