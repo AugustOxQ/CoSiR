@@ -3,7 +3,7 @@ seed-44 selection-row aspect episodes? Pre-registered rule: the MLLM works iff c
 lower bound > 0 on both r1 and gain.
 
 Run: flock -n -o -E 75 /tmp/gpu0.lock /root/miniconda3/envs/CoSiR/bin/python src/test/20261102_mllm_probe/run_probe.py
-         [--n 300] [--seed 44] [--out <dir>]
+         [--n 300] [--seed 44] [--model <hf id>] [--out <dir>]
 Resumes from <out>/probe_partial.npz (checkpoint every 50 episodes)."""
 import argparse
 import hashlib
@@ -75,18 +75,18 @@ def make_prompt(build_messages, ep, i, cond, d, perm, path, cap):
     return build_messages((None, cap[anchor]), [path[int(c)] for c in cand], supports, contrasts, d)
 
 
-def fingerprint(ep, perms, path, cap, hashes):
+def fingerprint(ep, perms, path, cap, hashes, model_id=MODEL_ID):
     """Everything that must be identical for a partial file to be resumable."""
     from src.eval.mllm_reranker import INSTRUCTION, build_messages
     sha = lambda x: hashlib.sha256(x.encode()).hexdigest()
     sample = {d: sha(json.dumps(make_prompt(build_messages, ep, 0, "a", d, np.arange(13), path, cap)))
               for d in DIRECTIONS}
-    return json.dumps({"model": MODEL_ID, "max_pixels": MAX_PIXELS, "episodes_sha256": hashes,
+    return json.dumps({"model": model_id, "max_pixels": MAX_PIXELS, "episodes_sha256": hashes,
                        "instruction": sha(INSTRUCTION), "sample_prompt": sample,
                        "perms": sha(perms.tobytes().hex())}, sort_keys=True)
 
 
-def run_mllm(ep, perms, path, cap, out_dir, rec, fp):
+def run_mllm(ep, perms, path, cap, out_dir, rec, fp, model_id=MODEL_ID):
     from src.eval.mllm_reranker import QwenReranker, build_messages, unpermute
     n = len(ep.anchor)
     scores = np.full((len(CONDITIONS), len(DIRECTIONS), n, 13), np.nan)
@@ -100,7 +100,7 @@ def run_mllm(ep, perms, path, cap, out_dir, rec, fp):
     rr = None
     if done < n:
         t_load = time.time()
-        rr = QwenReranker(MODEL_ID, "cuda", MAX_PIXELS)
+        rr = QwenReranker(model_id, "cuda", MAX_PIXELS)
         rec["model_load_s"] = time.time() - t_load
 
     def save():
@@ -134,8 +134,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=300)
     ap.add_argument("--seed", type=int, default=44)
+    ap.add_argument("--model", default=MODEL_ID)
     ap.add_argument("--out", default=str(Path(__file__).parent / "results"))
     args = ap.parse_args()
+    t_start = time.time()
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     data = load_artelingo()
@@ -148,11 +150,18 @@ def main():
     path, cap = row_lookups(data, annotations, ep.rows())
     perms = np.stack([np.random.default_rng([args.seed, i]).permuted(
         np.tile(np.arange(13), (len(CONDITIONS), len(DIRECTIONS), 1)), axis=-1) for i in range(len(ep.anchor))])
-    rec = {"model": MODEL_ID, "max_pixels": MAX_PIXELS, "n_per_pair": args.n, "seed": args.seed,
+    rec = {"model": args.model, "max_pixels": MAX_PIXELS, "n_per_pair": args.n, "seed": args.seed,
            "episodes_sha256": hashes}
     t0 = time.time()
-    mllm = run_mllm(ep, perms, path, cap, out_dir, rec, fingerprint(ep, perms, path, cap, hashes))
+    mllm = run_mllm(ep, perms, path, cap, out_dir, rec, fingerprint(ep, perms, path, cap, hashes, args.model),
+                    args.model)
     rec["probe_total_s"] = time.time() - t0
+    rec["wall_total_s"] = time.time() - t_start
+    import torch
+    rec["peak_gpu_mem_bytes"] = int(torch.cuda.max_memory_allocated())
+    sha_file = lambda f: hashlib.sha256(Path(f).read_bytes()).hexdigest()
+    rec["runner_sha256"] = sha_file(__file__)
+    rec["mllm_reranker_sha256"] = sha_file(ROOT / "src/eval/mllm_reranker.py")
     cos = cosine_baseline(data, splits.selection, ep)
     clusters = splits.groups[ep.anchor]
     pa_m, pa_c = per_anchor(mllm), per_anchor(cos)
