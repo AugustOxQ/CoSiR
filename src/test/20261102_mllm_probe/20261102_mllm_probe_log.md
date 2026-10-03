@@ -54,3 +54,18 @@ Other changes in this round:
   the 5 tie prompts where bf16 ties exist (fp32 breaks them).
 - Smoke v2 (`--n 4`, `results/smoke_v2/`): 2.58 s per episode (4 prompts), no NaN; re-running on the complete partial
   skips model loading. Smoke numbers are 12 episodes and not informative.
+
+## Post-hoc (final-review fix wave, 2026-10-03; not pre-registered): letter preference and probe resolution
+
+Descriptive only, outside the decision map. Script `posthoc_letter_bias.py` (CPU, stored `probe_partial.npz` and
+`probe.json`), output `results/posthoc_letter_bias.json`. The top-scored letter of each ranking is recovered through the
+stored permutation (letter j showed column perms[j]).
+
+- v2 (fixed prompt): 3,600 rankings, no top-score ties. The top score fell on letter C in 626 rankings (17.4%), on A in
+  138 (3.8%), against 7.7% for a uniform choice (chi-square 857.9, df 12). v1 (pre-fix, bf16): C 14.4%, G 4.2%,
+  94 top-score ties.
+- Because the candidates were permuted at random before lettering, the preference cannot favour the target over the
+  other aspect's candidate in expectation; it adds noise to both rates.
+- Resolution: the pooled paired gain interval (MLLM minus cosine) has a half-width of 1.17 points in v2 (1.15 in v1),
+  so a pooled gain had to exceed about 1.2 points for its interval to clear zero; 80% power needs about 1.7 points.
+- Only Qwen3-VL-2B-Instruct was probed. Spec §6 allows the 8B model "if time allows"; it was not tried.

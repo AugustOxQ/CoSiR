@@ -144,3 +144,41 @@ that trained on it, so the training task was fit weakly in-sample and hardly at 
 as the 0.26 gain on labelled aspects, so the near-zero labelled gain is not a transfer failure from a well-fit training
 task; E3 mostly tested a recipe whose factors barely learned the pseudo-aspect task (consistent with the 1 to 4.4%
 training-loss drop), and the NO-GO speaks to that recipe, not to the idea.
+
+## Post-hoc (final-review fix wave, 2026-10-03; not pre-registered): fixed-lambda profile, ablation replication, bootstrap-seed sensitivity
+
+Descriptive only, outside the decision map; it changes no pick, rule or verdict. Script `posthoc_lambda_profile.py`
+(CPU, selection rows only, stored checkpoints and Task 9 codes), outputs `results/posthoc_lambda_profile.json`,
+`results/posthoc_lambda_profile_seed{42,43}.npz` (per-anchor arrays) and `.txt`. The script first re-derives the stored
+cross-fitted arrays (A3 from the pick and the GO test, SE and C0 from Task 9) bit-exactly, then scores
+z(cos) + lambda z(term) at every fixed lambda of the grid (no cross-fitting). Bootstrap 5,000 resamples, seed 42.
+
+Fixed-lambda profile, seed-43 test episodes (R@1 / condition gain [95% CI] / either aspect candidate first = R@1 +
+other-aspect rate; cosine 13.53 / 0 / 27.05):
+
+| lambda | A3 agreement | C0 agreement | SE agreement | A3 uniform (R@1 / either) |
+|---|---|---|---|---|
+| 0.25 | 13.84 / +0.26 [0.01, 0.51] / 27.43 | 13.48 / −0.18 / 27.14 | 13.41 / −0.12 / 26.93 | 14.78 / 29.57 |
+| 0.5 | 13.75 / +0.44 [0.10, 0.78] / 27.06 | 13.29 / +0.08 / 26.50 | 13.29 / +0.21 / 26.38 | 15.74 / 31.47 |
+| 1 | 12.92 / +0.72 [0.30, 1.13] / 25.11 | 12.19 / +0.13 / 24.25 | 12.01 / −0.05 / 24.06 | 16.47 / 32.93 |
+| 2 | 12.12 / +0.88 [0.44, 1.32] / 23.36 | 11.57 / +0.43 [−0.02, 0.88] / 22.71 | 11.10 / −0.02 / 22.22 | 16.84 / 33.69 |
+| 8 | 11.51 / +1.14 [0.71, 1.58] / 21.88 | 10.92 / +0.25 / 21.59 | 10.57 / +0.06 / 21.07 | 16.89 / 33.79 |
+| inf | 11.17 / +0.97 [0.53, 1.41] / 21.37 | 10.61 / +0.16 [−0.28, 0.61] / 21.05 | 10.29 / +0.05 [−0.39, 0.51] / 20.52 | 16.74 / 33.48 |
+
+Seed-42 selection episodes, A3 term only (lambda inf): 11.02 / +0.99 [0.56, 1.45] / 21.04. Paired term-only gains:
+A3 − SE +0.91 [0.38, 1.47] (seed 43) and +1.24 [0.70, 1.78] (seed 42); A3 − C0 +0.80 [0.25, 1.37] and +0.91
+[0.35, 1.46]. C0's largest gain at any lambda is +0.43 (seed 43, lambda 2), SE's +0.21 (lambda 0.5); every C0 and SE
+interval includes 0.
+
+Reading (post-hoc): aspect training gave the agreement-weighted term a reliable gain of about one point over SE and C0,
+but the same term ranks either aspect candidate first less often than the cosine (21.4 against 27.1) and far less
+often than the uniform term (33.5). The pre-registered criterion, mean(R@1, gain) with R@1 = (either + gain) / 2,
+therefore rewards small lambda (A3's picks 0.5 and 0.25), where most of the gain is gone.
+
+Supervision ablation on both draws (S1 − A1, emotion pairs, one model seed per arm, so no training variance in the
+interval): seed 43 gain −0.56 [−1.05, −0.07] (A1 +0.54, S1 −0.02); seed 42 +0.23 [−0.24, +0.69] (A1 −0.04, S1
++0.19). The seed-43 drop does not replicate on the seed-42 draw.
+
+Bootstrap-seed sensitivity (seeds 0 to 99; seed 42 reproduces gonogo.json exactly): lower bound above 0 for A3 − cosine
+R@1 in 29/100 (median −0.002), A3 − cosine gain 0/100, A3 − RCA R@1 78/100 and gain 96/100 (both metrics 74/100),
+A3 − uniform R@1 0/100 (median −3.29). GO (all six) passes in 0/100.
