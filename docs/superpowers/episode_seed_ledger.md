@@ -9,5 +9,5 @@ pre-registered A′. Held rows have their own ledger (`held_ledger.md`).
 | 43 | spent | E1 baselines; E3 GO test, K8 and ablation (2026-10-03); E3 post-hoc fixed-λ profile and bootstrap-seed sensitivity (2026-10-03) |
 | 44 | MLLM probe | Qwen3-VL-2B-Instruct v1 and v2, 300 episodes per pair (2026-10-03) |
 | 45 | reserved: the single GO test of a future method (A′ was stopped at the diagnostics stage, branch 3) | none |
-| 46 | Qwen3-VL-8B-Instruct MLLM probe (addendum `src/test/20261106_mllm_probe_8b/PREREGISTRATION.md`) | pending |
+| 46 | spent | Qwen3-VL-8B-Instruct MLLM probe, 600 per pair (2026-10-03, node404; addendum `src/test/20261106_mllm_probe_8b/PREREGISTRATION.md`): works = False |
 | 47 and later | free | none |

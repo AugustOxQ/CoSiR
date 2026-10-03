@@ -43,4 +43,22 @@ committed in de3bd45 before the 8B model scored anything.
   each letter, processor image settings and the episodes' SHA-256. Same weight snapshot on both machines
   (0c351dd01ed87e9c1b53cbc748cba10e6187ff3b). Remaining difference: the model's forward code and kernels of the two
   library versions, which can change logits by numerical noise but not the inputs; disclosed.
-- Results and verdict: to be added after the node run.
+- Finished 2026-10-03 (1,800/1,800 episodes, 3.59 s per episode, wall 6,512 s, peak allocated GPU memory 18.9 GB);
+  pulled with `cluster pull --tag mllm-probe-8b-seed46 --node node404` into
+  `res/cluster_jobs/mllm-probe-8b-seed46/code/outputs/mllm_probe_8b_seed46/`. The node's seed-46 episode arrays are
+  identical to the ones saved locally before the move. Runner SHA-256 9751e818… (the path-override version, ea77ad1),
+  reranker SHA-256 7779b605… (unchanged, as pre-registered).
+
+## Verdict (PREREGISTRATION §3; re-derived by the controller from `per_anchor.npz` with `cluster_bootstrap`)
+| Pooled, 1,800 seed-46 episodes (1,507 anchor paintings) | Qwen3-VL-8B | CLIP cosine | 8B minus cosine [95% CI] |
+|---|---|---|---|
+| R@1 | 14.21 | 13.14 | +1.07 [0.17, 1.93] |
+| Condition gain | 0.21 | 0.00 | +0.21 [−0.51, 0.94] |
+| Either aspect candidate first (descriptive) | 28.21 | 26.28 | +1.93 [0.25, 3.51] |
+
+**MLLM works (pre-registered rule): False.** The R@1 bound clears zero but the condition-gain bound does not. The 8B model
+put an aspect-sharing candidate first more often than the cosine, but did not choose the conditioned aspect over the
+other one. Per pair (descriptive): emotion×style R@1 +1.88 [0.42, 3.33], gain +0.38 [−0.91, 1.66]; emotion×genre
++0.88 [−0.63, 2.42], gain −0.04 [−1.29, 1.23]; style×genre +0.46 [−1.17, 2.04], gain +0.29 [−1.00, 1.59]. Swap 12.67.
+Context (not a paired comparison; different episodes): the 2B v2 probe on seed 44 gave R@1 +0.22 [−1.13, 1.53] and gain
+−0.53 [−1.68, 0.66].
