@@ -23,4 +23,12 @@ committed in de3bd45 before the 8B model scored anything.
 ## Run
 - Command: `flock -n -o -E 75 /tmp/gpu0.lock run_probe.py --n 600 --seed 46 --model Qwen/Qwen3-VL-8B-Instruct
   --out src/test/20261106_mllm_probe_8b/results`
-- Results and verdict: to be added after the run.
+- Local start 2026-10-03 18:09 (`results/`, run log `run_probe_8b.log`): stopped by the controller at 18:23 after the
+  150-episode checkpoint (5.36 s per episode), at the user's request, to free the local GPU for other projects. No
+  verdict, summary or score was computed or read from the partial file (`results/probe_partial.npz`); it is kept
+  unread as a record.
+- Moved to DAS6 node404 (user's reservation). The node run starts fresh from episode 0 with identical rules, model,
+  seed, episode count and code path; only data locations differ (environment-variable overrides; image paths therefore
+  differ in the resume fingerprint, so the local partial could not be resumed there in any case). The node run's
+  output is `outputs/mllm_probe_8b_seed46` in the job's code worktree, pulled back with `cluster pull --tag`.
+- Results and verdict: to be added after the node run.
