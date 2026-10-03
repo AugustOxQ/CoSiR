@@ -3,6 +3,9 @@
 **Date:** 2026-10-02
 **Status:** revision 2 (2026-10-03). Sections approved by the user in brainstorming; then reviewed by a five-seat ARS
 panel (Major Revision, two repairable blocks) and revised with the user's approval; §14 maps every required change.
+**Revision 3 (2026-10-03, after the E3 NO-GO):** the user chose a method repair (A′) before giving up branch 1;
+§15 defines A′, its diagnostics stage and its single GO test. §1 to §14 are unchanged and remain the record of
+method A and its go/no-go.
 **Replaces:** the archived conditional-buddies plan (`docs/archive/buddy_publication_plan/`) as the project's
 publication target.
 
@@ -665,6 +668,63 @@ record is in `src/test/20261027_ars_plan_review/` and the summary in
 
 Should-fix and consider items not listed here stay in the roadmap (`revision_roadmap.md`) and are handled in the
 implementation plans or the writing phase.
+
+## 15. Revision 3: the method repair A′ (2026-10-03)
+
+**Why.** E3, the pre-registered go/no-go of method A (§6), ended NO-GO on 2026-10-03
+([E3 report](../../reports/auto/v2/2026-11-01_aspect_factor_gonogo.md)). Its post-hoc analysis named two limits: the
+agreement-weighted factor term selects the conditioned aspect (term-only condition gain about 1 point, above SE and
+C0) but finds an aspect-sharing candidate less often than the cosine (either rate 21.4 against 27.1), while the
+uniform term finds one more often (33.4); and the pseudo-aspect loss stayed 1% to 4% below its constant-score value.
+The user chose a repair before branch 3. A methodology-focus ARS review of the repair order
+([record](../../../src/test/20261104_ars_repair_order_review/editorial_decision.md)) returned Major Revision; the rules
+below carry its required changes R1 to R12.
+
+**Method A′ (a method change, not a repair of E3).** The factor model and the agreement rule of §6 are kept. The
+test-time score becomes the *nested score*
+
+  s = z(cos) + λ_u · z(T_u) + λ_a · z(T_a),
+
+with T_u the uniform factor term (w = 1/L), T_a the agreement-weighted factor term of §6 and z the per-episode
+z-score over the 13 candidates (`zscore_rows`). λ_u ∈ {0, 0.5, 1, 2, 4, 8, 16} and λ_a ∈ {0, 0.25, 0.5, 1, 2, 4, 8, 16}
+(56 cells; a term with weight 0 is left out, so (0, 0) is the cosine and λ_u = 0 is §6's 1-D fusion).
+- **Nested uniform control:** the same formula with T_a replaced by T_u, i.e. z(cos) + σ · z(T_u) over the 30 distinct
+  sums σ = λ_u + λ_a, ascending. It removes the condition (gain 0 by construction), so GO against it asks whether the
+  conditioned term adds R@1 and gain to the best unconditioned fusion.
+- **Cross-fitting** by parity `np.arange(n) % 2` over the pooled episodes, as in §6. On each tuning half the control
+  picks σ by R@1 (its gain is 0); the nested score picks the cell that maximises min(R@1 − R@1 of the control tuned on
+  the same half, condition gain). Ties go to the first cell in row-major order (λ_u outer, λ_a inner, both
+  ascending), and to the smaller σ for the control. Each half's pick scores the other half. (E3's mean(R@1, gain)
+  criterion equals either/4 + 3·gain/4 and accepts cells that lose R@1 to the control; ARS W2.)
+
+**Diagnostics stage before any A′ test** (rules pre-registered in
+`src/test/20261105_method_repair_diagnostics/PREREGISTRATION.md`, committed before any run of the stage):
+- **H1 pilot:** the nested score on the existing E3 checkpoints, seed-42 selection episodes only, with A3 as the
+  pre-specified primary model and the other runs, C0 and SE as descriptive rows.
+- **H3 learnability diagnostic:** the same architecture and loss trained on episodes built from the evaluation labels
+  of **scorer-train** rows (bank LAB), plus a label-free matched-granularity bank. H3 is an upper-bound diagnostic.
+  It is never a candidate, its checkpoints are excluded from every A′ candidate set by hash, no setting chosen on LAB
+  passes into A′, and the paper reports it as a bound on selection among trained aspects.
+- **H2 grid:** pre-registered with the stage, run only if the stage's joint decision table sends the project there,
+  on pseudo banks only, behind a training-fit gate.
+
+**The A′ GO test (unchanged rule, new draw, one look).**
+- GO, strong GO and the three comparators are §6's: backbone-only cosine, the GO bar RCA (named on seed 42 in E1,
+  not re-picked) and A′'s nested uniform control, each beaten on both R@1 and condition gain (painting-clustered 95%
+  lower bound of the paired difference above 0, 5,000 resamples, bootstrap seed 42).
+- The test reads fresh **seed-45** selection episodes (4,096 per aspect pair unless the A′ pre-registration sets a
+  larger count for power), with cosine and RCA re-run on them by the E1 runner.
+- **Seed 45 is scored once, for one A′ fixed in a pre-registration committed before any seed-45 file exists**
+  (model, grid, pick rule, control, comparators, episode count, bootstrap). A failure ends the repair and the project
+  takes branch 3. The test happens by Oct 12 at the latest. A GO gives branch 1 under §4.
+- **Episode-seed ledger:** 42 development and picks; 43 spent (E3's test); 44 the 2B MLLM probe; 45 the A′ test;
+  any 8B MLLM probe uses 46 or later.
+- Held rows stay unread (ArtELingo held budget 0 of 2 used for aspect episodes).
+
+**What the paper must report with any A′ result:** E3's NO-GO of method A; that the nested score came from a post-hoc
+profile that included the spent seed-43 draw; the number of development looks at seed 42; that seed 45 draws its
+episodes from the same 6,451 selection paintings as seeds 42 and 43 (a fresh-episode result, not a fresh-painting
+one); and H3 as a label-trained upper bound only.
 
 ## Appendix B. Sources
 
