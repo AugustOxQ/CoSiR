@@ -78,21 +78,43 @@ _PARTICLES = {"the", "of", "de", "di", "da", "del", "della", "van", "von", "der"
               "dei", "des", "du", "ten", "ter"}
 
 
+def _fold(text: str) -> str:
+    """Accent-fold per character, keeping the string length so match spans map back to the original."""
+    import unicodedata
+    out = []
+    for c in text:
+        base = "".join(x for x in unicodedata.normalize("NFKD", c) if not unicodedata.combining(x))
+        out.append(base if len(base) == 1 else c)
+    return "".join(out)
+
+
+_YEAR = re.compile(r"(?<!\d)\d{3,4}(?:['\u2019]?s)?(?!\d)(?:\s?[-\u2013]\s?\d{1,4}(?!\d))?")
+
+
 def scrub_semart(description: str, author: str, title: str, date: str) -> str:
     """Remove the title string, the author's name tokens and every 3- or 4-digit year from a description.
 
-    Name tokens are the author's words of three or more letters that are not particles (the, of, de, van, ...);
-    a trailing possessive is removed with the token. Matching is case-insensitive on word boundaries. `date` is
-    scrubbed through the year rule (its digits are years); centuries written in words are left alone.
+    Title: exact string, case- and accent-insensitive, not inside a longer word. Name tokens: the author's words of
+    three or more letters that are not particles (the, of, de, van, ...), matched accent-folded on word boundaries,
+    with a trailing possessive. Years: 3 or 4 digit numbers not part of a longer number, with decade forms (1660s,
+    1770's) and a range tail (1553-54, 1500-1550). `date` is scrubbed through the year rule; centuries written in
+    words are left alone. Known over-scrub: common words in author fields (master, jan, younger, elder) are removed.
     """
-    out = description
-    title = (title or "").strip()
+    text = description
+    folded = _fold(text)
+    spans = []
+    title = _fold((title or "").strip())
     if title:
-        out = re.sub(re.escape(title), " ", out, flags=re.IGNORECASE)
-    for tok in re.findall(r"[^\W\d_]+", author or "", flags=re.UNICODE):
+        spans += [m.span() for m in re.finditer(rf"(?<!\w){re.escape(title)}(?!\w)", folded, flags=re.IGNORECASE)]
+    for tok in re.findall(r"[^\W\d_]+", _fold(author or ""), flags=re.UNICODE):
         if len(tok) >= 3 and tok.lower() not in _PARTICLES:
-            out = re.sub(rf"\b{re.escape(tok)}(?:['’]s)?\b", " ", out, flags=re.IGNORECASE)
-    out = re.sub(r"\b\d{3,4}\b", " ", out)
+            spans += [m.span() for m in re.finditer(rf"\b{re.escape(tok)}(?:['\u2019]s)?\b", folded,
+                                                    flags=re.IGNORECASE)]
+    chars = list(text)
+    for i, j in spans:
+        for k in range(i, j):
+            chars[k] = " "
+    out = _YEAR.sub(" ", "".join(chars))
     return re.sub(r"\s+", " ", out).strip()
 
 
@@ -280,6 +302,32 @@ def out_dir_for(dataset, backbone, smoke, root=PRE_EXTRACT):
     return Path(root) / ("_smoke" if smoke else "") / dataset / backbone
 
 
+def check_arrays(img, txt, tol=1e-2, chunk=65536) -> dict:
+    """Finite and unit-norm gate (chunked, read-only); rows of an empty array are vacuously fine."""
+    res = {"ok": True, "n_nonfinite": 0, "n_bad_norm": 0, "max_norm_dev": 0.0}
+    for arr in (img, txt):
+        for i in range(0, len(arr), chunk):
+            x = np.asarray(arr[i:i + chunk], dtype=np.float32)
+            fin = np.isfinite(x).all(1)
+            res["n_nonfinite"] += int((~fin).sum())
+            dev = np.abs(np.linalg.norm(np.where(np.isfinite(x), x, 0), axis=1) - 1)
+            res["n_bad_norm"] += int((dev > tol).sum())
+            res["max_norm_dev"] = max(res["max_norm_dev"], float(dev[fin].max()) if fin.any() else 0.0)
+    res["ok"] = res["n_nonfinite"] == 0 and res["n_bad_norm"] == 0
+    return res
+
+
+def verify(dataset, backbone, root=PRE_EXTRACT) -> dict:
+    """Read-only gate on a sealed output."""
+    out = out_dir_for(dataset, backbone, False, root)
+    idx = json.load(open(out / "index.json"))
+    img, txt = np.load(out / "img.npy", mmap_mode="r"), np.load(out / "txt.npy", mmap_mode="r")
+    res = check_arrays(img, txt)
+    res["shape_ok"] = (len(img), len(txt)) == (idx["n_images"], idx["n_texts"])
+    res["ok"] = res["ok"] and res["shape_ok"]
+    return res
+
+
 def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset="", log=print) -> dict:
     out = Path(out)
     index_path, prog_path = out / "index.json", out / "progress.json"
@@ -336,7 +384,11 @@ def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset=""
         save()
         log(f"[{dataset}/{enc.name}] texts {b}/{n_txt}  {prog['txt_done'] / max(prog['txt_seconds'], 1e-9):.1f}/s")
     pool.shutdown()
+    img.flush(); txt.flush()
+    prog["gate"] = check_arrays(img, txt)
     save()
+    if not prog["gate"]["ok"]:
+        raise SystemExit(f"finite/norm gate failed, index.json not written: {prog['gate']}")
     del img, txt
     index = {"dataset": dataset, "backbone": enc.name, "smoke": smoke, "dtype": "float16", "dim": dim,
              "n_images": n_img, "n_texts": n_txt, "n_texts_truncated": prog["n_truncated"],
@@ -351,12 +403,20 @@ def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset=""
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--dataset", required=True, choices=sorted(ADAPTERS))
-    ap.add_argument("--backbone", required=True, choices=[CLIP, QWEN])
+    ap.add_argument("--dataset", choices=sorted(ADAPTERS))
+    ap.add_argument("--backbone", choices=[CLIP, QWEN])
+    ap.add_argument("--verify", nargs=2, metavar=("DATASET", "BACKBONE"),
+                    help="read-only finite/norm gate on a sealed output")
     ap.add_argument("--limit", type=int, default=None, help="first N images (smoke; writes under _smoke/)")
     ap.add_argument("--overwrite", action="store_true")
     ap.add_argument("--device", default="cuda")
     a = ap.parse_args(argv)
+    if a.verify:
+        res = verify(*a.verify)
+        print(json.dumps(res))
+        raise SystemExit(0 if res["ok"] else 1)
+    if not (a.dataset and a.backbone):
+        ap.error("--dataset and --backbone are required")
     if a.backbone not in ALLOWED[a.dataset]:
         raise SystemExit(f"{a.dataset} is extracted with {ALLOWED[a.dataset]} only")
     spec = apply_limit(ADAPTERS[a.dataset](), a.limit)

@@ -50,3 +50,13 @@ qwen 92 + 19 min. Total about 5.3 h. Final sizes: about 4.4 GB (artelingo qwen 1
 
 ## Full-run results
 (counts, timings and SHA-256 of each index.json are appended here after the full run)
+
+## Fix round 1 (review)
+- `scrub_semart` year rule is now `(?<!\d)\d{3,4}(?:'?s)?(?!\d)` plus a range tail (`1553-54`, `1500-1550`), so decades
+  (`1660s`, `1770's`) and range stubs no longer leak. Title removal is guarded by `(?<!\w)...(?!\w)`; title and
+  author tokens are matched accent-folded (length-preserving fold). Tests added for 1660s, 1770's, 1553-54, c. 1730.
+- Known over-scrub trade-off: common words in author fields (master, jan, younger, elder, ...) are removed from every
+  description (about 1,300 removals over 21,382 descriptions); particles (the, of, de, van, ...) are kept.
+- `extract()` now runs a chunked finite and unit-norm gate (tolerance 1e-2; empty arrays vacuous) before writing
+  index.json, records it as `progress.json["gate"]`, and refuses to seal on failure. New read-only
+  `--verify DATASET BACKBONE` runs the same gate (plus row counts against index.json) on a sealed output.

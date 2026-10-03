@@ -113,6 +113,18 @@ def test_crop_matches_genecis_arithmetic(tmp_path):
     assert im.size == (34, 34)
 
 
+@pytest.mark.parametrize("text,gone", [("built in the 1660s by him", "1660"), ("the 1770's view", "1770"),
+                                       ("dated 1553-54 or so", "54"), ("c. 1730 approx", "1730")])
+def test_scrub_semart_decades_ranges(text, gone):
+    out = scrub_semart(text, "X, Y", "Z", "")
+    assert gone not in out and "-" not in out and "'s" not in out
+
+
+def test_scrub_semart_accent_fold_and_title_word_guard():
+    out = scrub_semart("Velazquez and Velázquez, Madonnas and Madonna", "VELÁZQUEZ, Diego", "Madonna", "")
+    assert "elazquez" not in out.replace("á", "a") and "Madonnas" in out and out.endswith("and")
+
+
 class FakeEnc:
     name, dim = ef.QWEN, 8
 
@@ -169,3 +181,20 @@ def test_extract_resumes_from_progress(tmp_path, monkeypatch):
     assert (np.load(out / "img.npy")[:, 0] == 1).all() and (np.load(out / "txt.npy")[:, 1] == 1).all()
     assert again.calls == 2 + 3          # image chunks 2..4 and 4..5, then three text chunks of 2
     assert json.load(open(out / "progress.json"))["img_done"] == 5
+
+
+def test_gate_refuses_nan_and_verify_reads_sealed(tmp_path):
+    class NaNEnc(FakeEnc):
+        def encode_texts(self, texts, bs):
+            x = super().encode_texts(texts, bs)
+            x[0] = np.nan
+            return x
+    out = tmp_path / "bad"
+    with pytest.raises(SystemExit):
+        ef.extract(_spec(tmp_path), NaNEnc(), out, dataset="t", log=lambda s: None)
+    assert not (out / "index.json").exists() and not json.load(open(out / "progress.json"))["gate"]["ok"]
+    good = tmp_path / "root" / "d" / ef.QWEN
+    ef.extract(_spec(tmp_path), FakeEnc(), good, dataset="d", log=lambda s: None)
+    assert ef.verify("d", ef.QWEN, root=tmp_path / "root")["ok"]
+    t = np.load(good / "txt.npy"); t[1] *= 2; np.save(good / "txt.npy", t)
+    assert not ef.verify("d", ef.QWEN, root=tmp_path / "root")["ok"]
