@@ -205,4 +205,67 @@ Applied mechanically: GO gives branch 1; GO missed and the MLLM works gives bran
 
 ## Addenda
 
-None.
+### Addendum 2026-10-03 (before any grid result)
+
+- **When:** written after the review of Tasks 12 and 13, while the grid was still queued on the GPU lock. No grid
+  checkpoint existed or had been read, and `--select` and `--gonogo` had not run on real data.
+- **Why:** the review found that the value-sharing diagnostic cannot see value-specific factors, that the S1-vs-picked
+  ablation mixes the bank change with the pick's other settings, and that failure handling and provenance were
+  underspecified.
+- **Unchanged:** the pick (§5), GO and strong GO (§6) and K8 (§7) decision rules stay exactly as committed in 994e138.
+
+**A1. Value sharing (§8), disclosed as blind, plus descriptive measures.**
+- The pre-registered share stays and is reported as pre-registered, labelled blind: a synthetic code with one factor
+  per value scores 1.00 on it, the same as aspect-block codes (the reviewer's check).
+- Added on the same selection rows (rows labelled with one of the aspect's values that have at least 30 selection
+  paintings), for each model and each modality separately:
+  - η²_f = between-value sum of squares / total sum of squares of factor f's code over those rows. Reported: the mean
+    over live factors (total sum of squares > 0) and the number of live factors.
+  - Value spread S = Σ_f η²_f·PR_f / Σ_f η²_f, with PR_f = (Σ_v e_vf)² / (V·Σ_v e_vf²) and e_vf = m[v, f] − min over
+    v of m[v, f] (PR_f = 0 when every e_vf is 0, which also makes η²_f = 0). S lies in [1/V, 1], and 1/V is reported
+    beside it. Factors that each carry one value give S near 1/V; codes in which every value is a pattern over shared
+    factors give a larger S.
+- Reference check by the reviewer: synthetic one-hot codes S 0.08 to 0.14, synthetic block codes 0.47 to 0.49; real
+  SE, C0 and R3 codes S 0.44 to 0.65 with mean η² 0.03 to 0.04.
+- Descriptive only; it decides nothing.
+
+**A2. Clean supervision ablation (§8).**
+- S1 and A1 differ only in the bank (IC against AIC). `S1_vs_A1_emotion_pairs` (S1 minus A1 on emotion×style and
+  emotion×genre, paired compare on R@1 and condition gain) is the ablation the paper cites.
+- The S1-vs-picked row is kept as briefed.
+- `H1_vs_A1_genre_pairs` (H1 minus A1 on emotion×genre and style×genre; banks AI against AIC) is added as context for
+  K8.
+- Both rows are descriptive. A1 is scored like every other model (cross-fitted on the pooled seed-43 episodes).
+
+**A3. What a K8 pass means (§7).**
+- E2's AMI table (`build_record.json`) shows that the image partition, which the AI bank keeps, carries genre: AMI
+  with genre 0.397, against 0.161 for the caption partition that H1 leaves out.
+- A K8 pass therefore means "the mechanism reaches genre without any genre label or genre-matched partition", not
+  "genre was unseen in training". K8 is reported with this wording; the rule is unchanged.
+
+**A4. Failure handling (§3).**
+- A run *failed to train* when its checkpoint is missing and `results/failed_<run>_seed42.json` exists.
+- If H1 failed, K8 is untestable and counts as not holding.
+- If S1 failed, the S1 ablation rows are omitted. If A1 failed (it then cannot be the pick), the A1-based rows are
+  omitted.
+- GO is computed regardless: `--gonogo` does not stop on an H1, S1 or A1 failure.
+- A checkpoint that is missing without a failed record means the grid is incomplete, and `--gonogo` stops before
+  computing anything.
+
+**A5. Best-baseline context (descriptive).**
+- On the seed-43 episodes: the picked run against each of the nine GO-bar candidates and against SE_uniform (paired
+  compare on R@1 and condition gain, Task 9's seed-43 per-anchor arrays), plus the seed-43 ranking of the nine
+  candidates read from `baselines_seed43.json`.
+- The GO baseline stays the seed-42 pick (rca, §6). The seed-43 ranking (wang first) is reported so that the paper can
+  say which baseline is best on the test episodes. It decides nothing.
+
+**A6. Provenance.** `gonogo.json` records the SHA-256 of `per_anchor_seed43.npz`, `baselines_seed42.json`,
+`baselines_seed43.json`, `episodes_seed43.npz`, `picked.json` and every checkpoint used (picked, H1, S1, A1).
+
+**A7. Measured backbone-only R@1.** On these episodes cosine reaches R@1 12.96 (seed 42) and 13.53 (seed 43), not the
+11.1 that spec §6 quotes from an earlier spike's episodes. Strong GO compares against the measured cosine (§6), so it
+needs R@1 of about 17.5 or more on seed 43, not "about 15".
+
+**A8. Multiplicity of the GO rule.** GO is an intersection-union test: it holds only if all six one-sided tests (three
+comparators × two metrics, each "95% CI lower bound > 0", i.e. one-sided at 2.5%) reject. An intersection-union test
+keeps its error rate at the level of the component tests, so no multiplicity adjustment is needed.
