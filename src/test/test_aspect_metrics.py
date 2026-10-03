@@ -66,3 +66,47 @@ def test_summarize_and_compare_in_points():
     clusters = np.arange(10)
     assert summarize(good, clusters)["r1"]["point"] == pytest.approx(100.0)
     assert compare(good, blind, clusters, "gain")["point"] == pytest.approx(100.0)
+
+
+def test_first_place_infinite_values_are_misses():                         # finite guard coverage
+    """Verify the finite mask catches +inf and -inf, not just NaN."""
+    s = np.zeros((4, 13))
+    s[0, 0] = 1.0; s[0, 1] = 0.0                                            # all finite: hit
+    s[1, 0] = np.inf; s[1, 1] = 0.0                                         # +inf target: miss (non-finite)
+    s[2, 0] = 1.0; s[2, 5] = -np.inf                                        # -inf in other: miss (non-finite)
+    s[3, 0] = 1.0; s[3, 5] = np.inf                                         # +inf in other: miss (non-finite)
+    assert first_place(s, 0).tolist() == [1.0, 0.0, 0.0, 0.0]
+
+
+def test_swap_positive_case_and_non_finite_coverage():                     # swap coverage
+    """Test positive swap case and non-finite handling in swap."""
+    # Perfect scorer case: should have swap=1 for matching pairs
+    s_a = np.zeros((2, 13)); s_a[:, 0] = 1.0; s_a[:, 1] = 0.5
+    s_b = np.zeros((2, 13)); s_b[:, 0] = 0.5; s_b[:, 1] = 1.0
+    m = per_anchor(_scores(s_a, s_b))
+    assert np.all(m["swap"] == 1.0)                                         # both rows swap
+
+    # Tie case: p_a == p_b in both conditions, expect swap=0
+    s_a = np.zeros((2, 13)); s_a[:, 0] = 1.0; s_a[:, 1] = 1.0
+    s_b = np.zeros((2, 13)); s_b[:, 0] = 1.0; s_b[:, 1] = 1.0
+    m = per_anchor(_scores(s_a, s_b))
+    assert np.all(m["swap"] == 0.0)                                         # ties are misses
+
+    # Non-finite in non-target columns: should be miss (Review Focus 4)
+    s_a = np.zeros((2, 13)); s_a[:, 0] = 1.0; s_a[:, 1] = 0.5; s_a[0, 5] = np.nan
+    s_b = np.zeros((2, 13)); s_b[:, 0] = 0.5; s_b[:, 1] = 1.0; s_b[0, 6] = np.inf
+    m = per_anchor(_scores(s_a, s_b))
+    assert m["swap"].tolist() == [0.0, 1.0]                                 # only row 1 is finite
+
+
+def test_cluster_bootstrap_ratio_of_sums_with_unequal_sizes():              # bootstrap definition
+    """Verify ratio-of-sums (actual) vs mean-of-means (wrong) with correlated cluster sizes."""
+    # Small clusters (size 1) valued 1, large clusters (size 100) valued 0
+    # Mean = (50*1 + 50*0) / (50*1 + 50*100) ≈ 0.0099
+    # Mean-of-means = (1 + 0) / 2 = 0.5 (wrong)
+    clusters = np.concatenate([np.repeat(np.arange(50), 1), np.repeat(np.arange(50, 100), 100)])
+    values = np.concatenate([np.ones(50), np.zeros(5000)])
+    result = cluster_bootstrap(values, clusters, n_boot=1000, seed=42)
+    assert np.isclose(result["point"], values.mean(), rtol=1e-6)
+    assert result["ci95"][0] < values.mean() < result["ci95"][1]
+    assert not (result["ci95"][0] <= 0.5 <= result["ci95"][1])              # excludes mean-of-means
