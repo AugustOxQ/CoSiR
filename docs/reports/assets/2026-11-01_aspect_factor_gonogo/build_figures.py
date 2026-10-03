@@ -7,6 +7,10 @@ Reads only stored arrays and records:
   src/test/20261102_mllm_probe/results/             per_anchor.npz, probe.json, episodes_seed44.npz (v1, pre-fix prompt)
   src/test/20261102_mllm_probe/results/v2/          per_anchor.npz, probe.json (v2, fixed prompt; used if present)
   src/test/20261101_aspect_factor_gonogo/results/  train_fit_diagnostic.json (post-hoc check; summaries only, copied)
+  src/test/20261101_aspect_factor_gonogo/results/  posthoc_lambda_profile.json and posthoc_lambda_profile_seed{42,43}.npz
+                                                    (post-hoc fixed-lambda profile, ablation on both draws, bootstrap-seed
+                                                    sensitivity; re-derived here from the per-anchor arrays)
+  src/test/20261102_mllm_probe/results/             posthoc_letter_bias.json (v2 top-letter counts recounted here)
 
 Every summary and paired comparison is recomputed here with src.eval.aspect_metrics (painting-clustered bootstrap,
 5,000 resamples, seed 42) and asserted equal to the stored record wherever one exists, so the figures and the report
@@ -15,7 +19,8 @@ tables rest on a re-derivation, not on copied log lines.
 Run from the repository root:
   OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 /root/miniconda3/envs/CoSiR/bin/python \
       docs/reports/assets/2026-11-01_aspect_factor_gonogo/build_figures.py
-Writes r1_vs_gain.png, per_pair.png, aspect_loss.png, method_diagram.png and figure_data.json next to this file.
+Writes r1_vs_gain.png, per_pair.png, aspect_loss.png, lambda_profile.png, method_diagram.png and figure_data.json next to
+this file.
 """
 import json
 import math
@@ -32,7 +37,7 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch  # noqa: E402
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
 sys.path.insert(0, str(ROOT))
-from src.eval.aspect_metrics import METRICS, compare, summarize  # noqa: E402
+from src.eval.aspect_metrics import METRICS, cluster_bootstrap, compare, summarize  # noqa: E402
 
 E3 = ROOT / "src/test/20261101_aspect_factor_gonogo/results"
 E1 = ROOT / "src/test/20261030_aspect_baselines/results"
@@ -275,6 +280,183 @@ if FIT.exists():
         DATA["train_fit_diagnostic"]["models"][name] = {
             f"{k}_{sc}": {m: rec[k][sc]["pooled"][m] for m in ("r1", "gain", "other", "swap")}
             for k in ("fresh", "bank") for sc in ("agreement", "uniform", "fixed_beta")}
+# ------------------------------------------------------------------ post-hoc checks of the final-review fix wave
+# posthoc_lambda_profile.py (not pre-registered, outside the decision map): every summary is recomputed here from the
+# per-anchor arrays it saved, and the numbers the report quotes are asserted to two decimals.
+PH = json.load(open(E3 / "posthoc_lambda_profile.json"))
+assert PH["note"].startswith("POST-HOC")
+LAM_KEYS = PH["lambda_grid"]
+ph_arr = {}
+for seed, cl_s in ((43, cl43), (42, cl42)):
+    z = np.load(E3 / f"posthoc_lambda_profile_seed{seed}.npz")
+    assert (z["anchor_group"] == cl_s).all(), f"post-hoc seed {seed} anchors differ from the stored episodes"
+    ph_arr[seed] = z
+    rec = PH[f"seed{seed}"]
+    for name in ("A3", "C0", "SE"):
+        for weights in ("agreement", "uniform"):
+            for lk in LAM_KEYS:
+                pa = {m: z[f"{name}__{weights}__{lk}__{m}"] for m in ("r1", "gain", "other")}
+                for m, v in (("r1", pa["r1"]), ("gain", pa["gain"]), ("either", pa["r1"] + pa["other"])):
+                    s = cluster_bootstrap(v, cl_s)
+                    same({"point": 100 * s["point"], "ci95": [100 * c for c in s["ci95"]]},
+                         rec["models"][name][weights][lk][m], f"post-hoc seed{seed} {name} {weights} {lk} {m}")
+    for o in ("SE", "C0"):
+        a3 = {m: z[f"A3__agreement__inf__{m}"] for m in METRICS if f"A3__agreement__inf__{m}" in z}
+        ot = {m: z[f"{o}__agreement__inf__{m}"] for m in METRICS if f"{o}__agreement__inf__{m}" in z}
+        same(compare(a3, ot, cl_s, "gain"), rec["term_only_paired_gain"][f"A3_minus_{o}"],
+             f"post-hoc seed{seed} term-only gain A3 - {o}")
+# the cross-fitted A3 arrays of the pick and of the GO test are reproduced by the post-hoc scorer at the picked lambdas
+for (seed, z_runs, key) in ((43, g43, "picked"), (42, g42, "A3")):
+    picks_run = gj["go"]["picked_lambda_picks"] if seed == 43 else sel["A3"]["lambda_picks"]
+    par = np.arange(len(z_runs["anchor_group"])) % 2
+    for half in ("0", "1"):
+        lk = "inf" if picks_run[half] == "inf" else f"{float(picks_run[half]):g}"
+        apply = par != int(half)
+        assert np.array_equal(ph_arr[seed][f"A3__agreement__{lk}__r1"][apply], z_runs[f"{key}__r1"][apply])
+        assert np.array_equal(ph_arr[seed][f"A3__agreement__{lk}__gain"][apply], z_runs[f"{key}__gain"][apply])
+# supervision ablation on both draws, from the stored cross-fitted arrays (seed 42 from the pick, seed 43 from the test)
+emo42 = np.isin(g42["pair_index"], [0, 1])
+for seed, mm, cl_s, emo_s in ((43, m43, cl43, emo), (42, m42, cl42, emo42)):
+    rec = PH["ablation_emotion_pairs"][f"seed{seed}"]
+    for m in ("r1", "gain"):
+        same(compare(sub(mm["S1"], emo_s), sub(mm["A1"], emo_s), cl_s[emo_s], m), rec[f"S1_minus_A1_{m}"],
+             f"post-hoc ablation seed{seed} S1 - A1 {m}")
+        for r in ("A1", "S1"):
+            same(summarize(sub(mm[r], emo_s), cl_s[emo_s])[m], rec[f"{r}_{m}"], f"post-hoc ablation seed{seed} {r} {m}")
+# bootstrap-seed sensitivity of the six GO lower bounds (seeds 0..99)
+bss = PH["bootstrap_seed_sensitivity"]
+go_cmp = {"backbone_only": m43["cosine"], "go_baseline": m43["rca"], "uniform_control": m43["A3_uniform"]}
+lb_counts, lbs_all = {}, {}
+for k, other in go_cmp.items():
+    for m in ("r1", "gain"):
+        lbs = np.array([100 * cluster_bootstrap(pk[m] - other[m], cl43, seed=s)["ci95"][0] for s in range(bss["n_seeds"])])
+        lbs_all[f"{k}__{m}"] = lbs
+        lb_counts[f"{k}__{m}"] = int((lbs > 0).sum())
+assert lb_counts == bss["lower_bound_above_0"], (lb_counts, bss["lower_bound_above_0"])
+both = {k: int(((lbs_all[f"{k}__r1"] > 0) & (lbs_all[f"{k}__gain"] > 0)).sum()) for k in go_cmp}
+assert both == bss["beats_both_metrics"] and bss["GO_all_six"] == 0
+CHECKS.append("post-hoc bootstrap-seed sensitivity counts (600 lower bounds)")
+# the numbers the report quotes (points, two decimals); a mismatch means the report text is stale
+r2 = lambda x: round(x, 2)  # noqa: E731
+P43, P42 = PH["seed43"]["models"], PH["seed42"]["models"]
+QUOTED = {
+    "A3 s43 gain lam 1": (P43["A3"]["agreement"]["1"]["gain"]["point"], 0.72),
+    "A3 s43 gain lam 8": (P43["A3"]["agreement"]["8"]["gain"]["point"], 1.14),
+    "A3 s43 gain lam 8 lo": (P43["A3"]["agreement"]["8"]["gain"]["ci95"][0], 0.71),
+    "A3 s43 gain lam 8 hi": (P43["A3"]["agreement"]["8"]["gain"]["ci95"][1], 1.58),
+    "A3 s43 gain inf": (P43["A3"]["agreement"]["inf"]["gain"]["point"], 0.97),
+    "A3 s43 gain inf lo": (P43["A3"]["agreement"]["inf"]["gain"]["ci95"][0], 0.53),
+    "A3 s43 gain inf hi": (P43["A3"]["agreement"]["inf"]["gain"]["ci95"][1], 1.41),
+    "A3 s42 gain inf": (P42["A3"]["agreement"]["inf"]["gain"]["point"], 0.99),
+    "A3 s42 gain inf lo": (P42["A3"]["agreement"]["inf"]["gain"]["ci95"][0], 0.56),
+    "A3 s42 gain inf hi": (P42["A3"]["agreement"]["inf"]["gain"]["ci95"][1], 1.45),
+    "C0 s43 max gain": (max(v["gain"]["point"] for v in P43["C0"]["agreement"].values()), 0.43),
+    "SE s43 gain inf": (P43["SE"]["agreement"]["inf"]["gain"]["point"], 0.05),
+    "A3 s43 either inf": (P43["A3"]["agreement"]["inf"]["either"]["point"], 21.37),
+    "A3 uniform s43 either inf": (P43["A3"]["uniform"]["inf"]["either"]["point"], 33.48),
+    "cosine s43 either": (PH["seed43"]["cosine"]["either"]["point"], 27.05),
+    "A3-SE term-only s43": (PH["seed43"]["term_only_paired_gain"]["A3_minus_SE"]["point"], 0.91),
+    "A3-SE term-only s43 lo": (PH["seed43"]["term_only_paired_gain"]["A3_minus_SE"]["ci95"][0], 0.38),
+    "A3-SE term-only s43 hi": (PH["seed43"]["term_only_paired_gain"]["A3_minus_SE"]["ci95"][1], 1.47),
+    "A3-SE term-only s42": (PH["seed42"]["term_only_paired_gain"]["A3_minus_SE"]["point"], 1.24),
+    "A3-C0 term-only s43": (PH["seed43"]["term_only_paired_gain"]["A3_minus_C0"]["point"], 0.80),
+    "A3-C0 term-only s43 lo": (PH["seed43"]["term_only_paired_gain"]["A3_minus_C0"]["ci95"][0], 0.25),
+    "A3-C0 term-only s43 hi": (PH["seed43"]["term_only_paired_gain"]["A3_minus_C0"]["ci95"][1], 1.37),
+    "A3-C0 term-only s42": (PH["seed42"]["term_only_paired_gain"]["A3_minus_C0"]["point"], 0.91),
+    "S1-A1 s43": (PH["ablation_emotion_pairs"]["seed43"]["S1_minus_A1_gain"]["point"], -0.56),
+    "S1-A1 s42": (PH["ablation_emotion_pairs"]["seed42"]["S1_minus_A1_gain"]["point"], 0.23),
+    "S1-A1 s42 lo": (PH["ablation_emotion_pairs"]["seed42"]["S1_minus_A1_gain"]["ci95"][0], -0.24),
+    "S1-A1 s42 hi": (PH["ablation_emotion_pairs"]["seed42"]["S1_minus_A1_gain"]["ci95"][1], 0.69),
+    "A1 s42 emotion gain": (PH["ablation_emotion_pairs"]["seed42"]["A1_gain"]["point"], -0.04),
+}
+for what, (got, want) in QUOTED.items():
+    assert r2(got) == want, f"report quotes {want} for {what}, the post-hoc record has {got}"
+    CHECKS.append(f"quoted {what}")
+assert (lb_counts["backbone_only__r1"], lb_counts["backbone_only__gain"], both["go_baseline"],
+        lb_counts["uniform_control__r1"]) == (29, 0, 74, 0)
+# the post-hoc table of report §6.1 is regenerated here and must appear verbatim in the report
+REPORT = (ROOT / "docs/reports/auto/v2/2026-11-01_aspect_factor_gonogo.md").read_text()
+
+
+def f2(x):
+    return f"{x:.2f}".replace("-", "−")
+
+
+def gci(e):
+    return f"{f2(e['point'])} [{f2(e['ci95'][0])}, {f2(e['ci95'][1])}]"
+
+
+def table_row(label, P, lk):
+    a, c0, se, u = P["A3"]["agreement"][lk], P["C0"]["agreement"][lk], P["SE"]["agreement"][lk], P["A3"]["uniform"][lk]
+    if lk == "0":
+        g = lambda e: f2(e["gain"]["point"])  # noqa: E731
+    else:
+        g = lambda e: gci(e["gain"])  # noqa: E731
+    return (f"| {label} | {f2(a['r1']['point'])} / {g(a)} / {f2(a['either']['point'])} | {g(c0)} / "
+            f"{f2(c0['either']['point'])} | {g(se)} / {f2(se['either']['point'])} | {f2(u['r1']['point'])} / "
+            f"{f2(u['either']['point'])} |")
+
+
+rows = [table_row("0 (cosine)", P43, "0")] + [table_row(k, P43, k) for k in ("0.25", "0.5", "1", "2", "8")] + \
+       [table_row("∞ (term only)", P43, "inf"), table_row("∞, seed-42 episodes", P42, "inf")]
+for row in rows:
+    assert row in REPORT, f"report §6.1 table row missing or stale: {row}"
+    CHECKS.append(f"report table row {row[:24]}")
+def dci(e):
+    return f"{e['point']:+.2f}".replace("-", "−") + f" [{f2(e['ci95'][0])}, {f2(e['ci95'][1])}]"
+
+
+for seed, label in ((43, "seed 43 (test draw)"), (42, "seed 42 (pick draw)")):
+    a = PH["ablation_emotion_pairs"][f"seed{seed}"]
+    row = (f"| {label} | {a['n_episodes']:,} | {dci(a['S1_minus_A1_r1'])} | {dci(a['S1_minus_A1_gain'])} | "
+           f"{gci(a['A1_gain'])} | {gci(a['S1_gain'])} |")
+    assert row in REPORT, f"report §8 table row missing or stale: {row}"
+    CHECKS.append(f"report table row {label}")
+mc_med = bss["lower_bound_median"]
+assert (lb_counts["go_baseline__r1"], lb_counts["go_baseline__gain"], round(mc_med["backbone_only__r1"], 3),
+        round(mc_med["backbone_only__gain"], 3), r2(mc_med["uniform_control__r1"])) == (78, 96, -0.002, -0.035, -3.29)
+CHECKS.append("quoted bootstrap-seed medians")
+crit = {k: 0.5 * (v["r1"]["point"] + v["gain"]["point"]) for k, v in P43["A3"]["agreement"].items()}
+assert (r2(crit["0.5"]), r2(crit["0.25"]), r2(crit["1"]), r2(crit["inf"]), r2(crit["0"])) == (7.09, 7.05, 6.82, 6.07, 6.76)
+assert max(crit, key=crit.get) == "0.5"
+# A3's per-pair gains on the seed-42 pick episodes (the order differs from seed 43)
+pp42 = {p: summarize(sub(m42["A3"], g42["pair_index"] == i), cl42[g42["pair_index"] == i])["gain"]
+        for i, p in enumerate(PAIRS)}
+for p in PAIRS:
+    same(pp42[p], sel["A3"]["per_pair"][p]["gain"], f"seed42 A3 per-pair gain {p}")
+assert [r2(pp42[p]["point"]) for p in PAIRS] == [0.12, 0.63, 0.80]
+# fit-repair arithmetic of report §11: R@1 = (either + gain) / 2, so beating the uniform control's R@1 needs
+# gain > 2 * R@1_uniform - either
+need_xfit = 2 * s43["A3_uniform"]["r1"]["point"] - DATA["either_aspect_first_rate"]["seed43"]["A3 (picked)"]
+need_term = 2 * s43["A3_uniform"]["r1"]["point"] - P43["A3"]["agreement"]["inf"]["either"]["point"]
+assert (r2(need_xfit), r2(need_term)) == (6.18, 12.07), (need_xfit, need_term)
+CHECKS.append("fit-repair arithmetic")
+# MLLM letter preference (posthoc_letter_bias.py): recount the v2 top letters from the stored scores and permutations
+LB = json.load(open(MLLM / "posthoc_letter_bias.json"))
+zv2 = np.load(MLLM / "v2" / "probe_partial.npz")
+top_letter = np.zeros(13, dtype=np.int64)
+for ci in range(2):
+    for di in range(2):
+        tops = zv2["scores"][ci, di].argmax(1)
+        p = zv2["perms"][:, ci, di, :]
+        top_letter += np.bincount(np.argmax(p == tops[:, None], axis=1), minlength=13)
+v2lb = LB["runs"]["v2 (fixed prompt)"]
+assert top_letter.tolist() == list(v2lb["top_letter_counts"].values())
+assert (int(top_letter[2]), int(top_letter.sum()), r2(100 * top_letter[2] / top_letter.sum()),
+        r2(100 * top_letter[0] / top_letter.sum())) == (626, 3600, 17.39, 3.83)
+assert round(v2lb["gain_interval_half_width"], 1) == 1.2
+CHECKS.append("MLLM v2 top-letter counts recomputed from probe_partial.npz")
+v1lb = LB["runs"]["v1 (pre-fix prompt)"]
+assert (r2(v2lb["gain_interval_half_width"]), r2(v1lb["gain_interval_half_width"]),
+        round(v2lb["gain_80pct_power"], 1), round(v1lb["top_letter_share_pct"]["C"], 1)) == (1.17, 1.15, 1.7, 14.4)
+assert v2lb["top_score_ties"] == 0
+CHECKS.append("quoted MLLM resolution and v1 letter share")
+DATA["posthoc_lambda_profile"] = {"note": PH["note"],
+                                  **{f"seed{s}": {k: PH[f"seed{s}"][k] for k in ("cosine", "models", "term_only_paired_gain",
+                                                                                 "term_only_paired_r1")} for s in (43, 42)},
+                                  "ablation_emotion_pairs": PH["ablation_emotion_pairs"],
+                                  "bootstrap_seed_sensitivity": bss}
+DATA["mllm_letter_bias"] = LB
 DATA["checks_passed"] = len(CHECKS)
 
 
@@ -511,6 +693,48 @@ fig.suptitle("E3 training: the pseudo-aspect episode loss on 32 training episode
              fontsize=10)
 fig.tight_layout()
 fig.savefig(HERE / "aspect_loss.png", dpi=150, bbox_inches="tight")
+plt.close(fig)
+
+# Figure (post-hoc): fixed-lambda profile of the agreement term, seed-43 test episodes (seed 42 thin, A3 only)
+fig, axes = plt.subplots(1, 3, figsize=(14, 4.0))
+xpos = np.arange(len(LAM_KEYS))
+prof_col = {"A3": C_A, "C0": "#9e9e9e", "SE": C_OLD}
+for name in ("A3", "C0", "SE"):
+    rec = PH["seed43"]["models"][name]["agreement"]
+    for ax, m in zip(axes, ("gain", "either", "r1")):
+        pt = np.array([rec[k][m]["point"] for k in LAM_KEYS])
+        lo = pt - np.array([rec[k][m]["ci95"][0] for k in LAM_KEYS])
+        hi = np.array([rec[k][m]["ci95"][1] for k in LAM_KEYS]) - pt
+        ax.errorbar(xpos, pt, yerr=[lo, hi], color=prof_col[name], marker="o", ms=3.5, lw=1.4 if name == "A3" else 1.0,
+                    capsize=2, label=f"{name}, agreement weights")
+rec42 = PH["seed42"]["models"]["A3"]["agreement"]
+for ax, m in zip(axes, ("gain", "either", "r1")):
+    ax.plot(xpos, [rec42[k][m]["point"] for k in LAM_KEYS], color=C_A, lw=0.8, ls="--", label="A3, seed-42 episodes")
+uni = PH["seed43"]["models"]["A3"]["uniform"]
+for ax, m in zip(axes[1:], ("either", "r1")):
+    ax.plot(xpos, [uni[k][m]["point"] for k in LAM_KEYS], color=C_UNI, marker="D", ms=3, lw=1.0,
+            label="A3, uniform weights")
+    ax.axhline(PH["seed43"]["cosine"][m]["point"], color=C_COS, lw=0.8, ls=":", label="cosine (lambda = 0)")
+axes[0].axhline(0, color="k", lw=0.5)
+picked_half = [gj["go"]["picked_lambda_picks"][h] for h in ("0", "1")]
+for ax in axes:
+    for lam in picked_half:
+        ax.axvline(LAM_KEYS.index("inf" if lam == "inf" else f"{float(lam):g}"), color=C_A, lw=0.6, alpha=0.4)
+    ax.set_xticks(xpos, LAM_KEYS, fontsize=7.5)
+    ax.set_xlabel("fusion weight lambda (fixed, no cross-fitting)")
+    ax.tick_params(labelsize=7.5)
+axes[0].set_ylabel("condition gain (points)")
+axes[1].set_ylabel("either aspect candidate first (%)")
+axes[2].set_ylabel("R@1 (%)")
+axes[0].set_title("(i) condition gain", fontsize=9, loc="left")
+axes[1].set_title("(ii) R@1 + other-aspect rate", fontsize=9, loc="left")
+axes[2].set_title("(iii) R@1 = (either + gain) / 2", fontsize=9, loc="left")
+axes[0].legend(fontsize=7, loc="upper left")
+axes[1].legend(fontsize=7, loc="center right")
+fig.suptitle("Post-hoc (not pre-registered): z(cos) + lambda z(term) at fixed lambda on the seed-43 test episodes; "
+             "faint vertical lines mark A3's cross-fitted picks (0.5, 0.25)", fontsize=9.5)
+fig.tight_layout()
+fig.savefig(HERE / "lambda_profile.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 # Figure: what method A changes relative to C0 and SE

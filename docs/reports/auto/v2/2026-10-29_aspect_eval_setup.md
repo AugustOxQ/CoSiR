@@ -19,8 +19,13 @@ the same audited code. We built it, and four checks came out as follows.
 
 Reviews found five issues on the way: three code defects (a NaN-to-finite rewrite inside the plan's own z-score code,
 the validator's missing third-aspect check, and a Qwen image-resize mismatch) and two test or design gaps (metric
-tests that could not fail, and a shared lambda grid extension). All five are fixed and pinned by tests. §5 lists what the stack
-now guarantees and §6 lists the caveats we carry forward.
+tests that could not fail, and a shared lambda grid extension). All five are fixed. Four are pinned by unit tests, each
+checked by deleting or reverting its guard on a scratch copy of the code: the NaN rule, the validator, the metric tests
+and the per-half lambda grid. For the validator and the lambda grid the pinning was completed only in the final-review
+fix wave of 2026-10-03: before it, no test reached the validator's p_a, p_b, negatives, unlabelled-row and
+third-aspect-candidate rules, and the per-half grid test still passed on the earlier shared-grid code. The Qwen resize
+fix is pinned by the fidelity check's large-image stage, a real-data script run at E0, not by a unit test. §5 lists what
+the stack now guarantees and §6 lists the caveats we carry forward.
 
 ## 1. What we set out to build
 
@@ -163,7 +168,9 @@ Rule (spec §11 E0): among `has_shape`, `has_wing_pattern`, `has_breast_pattern`
 with the highest min(image probe, caption probe) accuracy minus the majority rate. Baseline: the majority rate of the
 dev images. The probes are logistic regressions (C = 1) on frozen CLIP ViT-B/32 features, trained on 7,071 images of
 120 training species and scored on 1,750 images of the 30 development species. The 2,967 images of the 50 zero-shot
-test species were never read. The features are the CLIP ViT-B/32 backbone-check features. They were extracted before
+test species were never used: `load_cub()` reads the whole CUB metadata (species, attributes and captions of all
+11,788 images) into memory, the script uses the test species' entries only to exclude them, and it loads only
+training-species rows from the cached feature file. The features are the CLIP ViT-B/32 backbone-check features. They were extracted before
 the Qwen preprocessing fix, which concerns only the Qwen encoder, so they are unaffected.
 
 | Group | Image probe | Caption probe | Majority | min minus majority | n_probe | n_dev |

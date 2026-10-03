@@ -17,7 +17,8 @@ Three findings matter for the later experiments.
 1. No baseline separates the aspects. Only Wang et al.'s similarity and the logistic probe have a gain CI that excludes 0
    on seed 42, and the gains are 0.36 and 0.35 points.
 2. The agreement rule on the existing factor codes (SE, C0, R3) does no better than the raw baselines: gain point
-   estimates between -0.17 and 0.10 on both seeds, every CI containing 0 (the widest case, R3 on seed 43, is [-0.36, 0.01]).
+   estimates between -0.17 and 0.10 on both seeds, every CI containing 0 (the widest case, R3 on seed 43, is [-0.36, 0.01];
+   R3 is transductive on these rows, Section 5).
 3. The uniform-weight SE control (condition removed) raises R@1 to 16.30 (seed 42) and 16.58 (seed 43), against
    12.96 and 13.53 for cosine. The factor term alone lifts R@1 by about 3 points with condition gain 0 by construction.
    An R@1 lift is therefore not evidence of using the condition (Section 6).
@@ -40,8 +41,9 @@ of each pair's episodes:
 
 **Metrics.** R@1 is the share of anchors whose target candidate ranks strictly first (ties are misses), averaged over
 conditions and over image to text and text to image. Condition gain is R@1 minus the other-aspect rate, the rate at which
-the other aspect's candidate wins under the same condition. Swap is the share of anchors for which the top candidate
-changes correctly when the condition changes. All CIs are 95% bootstrap intervals over 5,000 resamples that resample whole
+the other aspect's candidate wins under the same condition. Swap is the share of anchors for which p_a scores above
+p_b under condition a and p_b scores above p_a under condition b, averaged over the two directions; it compares the two
+aspect candidates only, whatever the other 11 candidates score. All CIs are 95% bootstrap intervals over 5,000 resamples that resample whole
 anchor paintings (seed 42). Gain and swap are in points.
 
 **Cross-fitted fusion.** Every term except the cosine is fused with the cosine by z-fusion and weight λ from
@@ -59,8 +61,10 @@ on a 32-component whitened PCA basis, where the method uses one (wang works on r
 the product z = x * y of an image and its caption, fitted per episode on support (label 1) against contrast (label 0).
 tip: a Tip-Adapter style cache lookup over the pair products. value_prototype: scores a candidate by cosine to the support
 mean minus the contrast mean (not metric-from-pairs, so excluded from the GO bar). SE, C0, R3: the agreement rule on the
-codes of the affect-supervised factor model (SE), the unconditioned control (C0) and the stage (d) model (R3). SE_uniform:
-SE codes with uniform factor weights, the condition removed.
+codes of the affect-supervised factor model (SE), the unconditioned control (C0) and the stage (d) model (R3). R3 is
+transductive here: its encoders were trained on all train rows, which include the selection rows of these episodes
+(features only, never labels), while SE and C0 trained on scorer-train rows only (Section 5). SE_uniform: SE codes with
+uniform factor weights, the condition removed.
 
 ## 2. Results
 
@@ -85,7 +89,7 @@ Seed 42 (baseline row: cosine).
 | value_prototype | 12.96 [12.67, 13.26] | 0.00 [0.00, 0.00] | 12.96 | 0.00 | 0.0 / 0.0 |
 | SE | 12.94 [12.64, 13.25] | -0.01 [-0.19, 0.17] | 12.95 | 2.19 | 0.25 / 0.0 |
 | C0 | 13.03 [12.73, 13.33] | -0.10 [-0.28, 0.08] | 13.13 | 2.34 | 0.0 / 0.25 |
-| R3 | 13.15 [12.83, 13.46] | 0.10 [-0.16, 0.35] | 13.05 | 4.50 | 0.25 / 0.25 |
+| R3 (transductive) | 13.15 [12.83, 13.46] | 0.10 [-0.16, 0.35] | 13.05 | 4.50 | 0.25 / 0.25 |
 | SE_uniform | 16.30 [15.96, 16.63] | 0.00 [0.00, 0.00] | 16.30 | 0.00 | 16.0 / 16.0 |
 
 Seed 43.
@@ -105,7 +109,7 @@ Seed 43.
 | value_prototype | 13.43 [13.12, 13.74] | 0.28 [0.01, 0.55] | 13.14 | 6.67 | 0.25 / 0.25 |
 | SE | 13.43 [13.12, 13.73] | 0.05 [-0.20, 0.28] | 13.38 | 4.15 | 0.0 / 0.5 |
 | C0 | 13.53 [13.23, 13.83] | 0.00 [0.00, 0.00] | 13.53 | 0.00 | 0.0 / 0.0 |
-| R3 | 13.50 [13.19, 13.81] | -0.17 [-0.36, 0.01] | 13.67 | 2.34 | 0.0 / 0.25 |
+| R3 (transductive) | 13.50 [13.19, 13.81] | -0.17 [-0.36, 0.01] | 13.67 | 2.34 | 0.0 / 0.25 |
 | SE_uniform | 16.58 [16.24, 16.92] | 0.00 [0.00, 0.00] | 16.58 | 0.00 | 4.0 / 4.0 |
 
 Mean of R@1 and gain for the nine GO candidates (the cosine's own value is 6.48 on seed 42 and 6.76 on seed 43):
@@ -139,7 +143,7 @@ Per pair, seed 42 (cell: R@1 / gain [CI of gain]).
 | value_prototype | 10.06 / 0.00 [0.00, 0.00] | 14.59 / 0.00 [0.00, 0.00] | 14.23 / 0.00 [0.00, 0.00] |
 | SE | 10.06 / -0.08 [-0.35, 0.21] | 14.50 / 0.05 [-0.29, 0.39] | 14.26 / -0.01 [-0.33, 0.33] |
 | C0 | 9.94 / -0.21 [-0.49, 0.07] | 14.69 / -0.02 [-0.34, 0.30] | 14.47 / -0.05 [-0.38, 0.29] |
-| R3 | 10.05 / -0.16 [-0.56, 0.24] | 14.67 / 0.29 [-0.15, 0.73] | 14.72 / 0.16 [-0.31, 0.62] |
+| R3 (transductive) | 10.05 / -0.16 [-0.56, 0.24] | 14.67 / 0.29 [-0.15, 0.73] | 14.72 / 0.16 [-0.31, 0.62] |
 | SE_uniform | 12.04 / 0.00 [0.00, 0.00] | 18.63 / 0.00 [0.00, 0.00] | 18.23 / 0.00 [0.00, 0.00] |
 
 Per pair, seed 43.
@@ -159,21 +163,23 @@ Per pair, seed 43.
 | value_prototype | 10.31 / -0.08 [-0.50, 0.35] | 15.05 / 0.66 [0.19, 1.12] | 14.92 / 0.26 [-0.22, 0.74] |
 | SE | 10.66 / 0.26 [-0.09, 0.64] | 14.84 / -0.07 [-0.52, 0.37] | 14.78 / -0.05 [-0.47, 0.38] |
 | C0 | 10.45 / 0.00 [0.00, 0.00] | 15.13 / 0.00 [0.00, 0.00] | 15.00 / 0.00 [0.00, 0.00] |
-| R3 | 10.53 / -0.12 [-0.42, 0.17] | 15.03 / -0.11 [-0.43, 0.22] | 14.95 / -0.27 [-0.58, 0.05] |
+| R3 (transductive) | 10.53 / -0.12 [-0.42, 0.17] | 15.03 / -0.11 [-0.43, 0.22] | 14.95 / -0.27 [-0.58, 0.05] |
 | SE_uniform | 12.02 / 0.00 [0.00, 0.00] | 18.68 / 0.00 [0.00, 0.00] | 19.04 / 0.00 [0.00, 0.00] |
 
 ![per pair gain](../../assets/2026-10-30_aspect_baselines/per_pair_gain.png)
 
 ## 3. Analysis
 
-**Why the raw baselines stay at the backbone.** The agreement-style baselines work only if each aspect occupies its own
-directions in the feature space: then the shared directions of the support pairs identify the aspect, and the contrast
-pairs cancel the rest. Raw CLIP mixes emotion, style and genre across all dimensions, and the examples are value-disjoint
-from the anchor, so an estimate fitted on four pairs mostly captures the examples' own values, not the aspect (plan
-Mechanism note; spec §6). The synthetic block world in the Task 8 tests shows the same rules do work when the aspects sit
-in separate blocks, so the null here is about the features and not about the rules. The evidence matches this reading:
-every gain is within 0.4 points of 0, the largest per-pair gain is 0.91 (probe on emotion x genre, seed 42), and most
-cells straddle 0.
+**Why the raw baselines stay at the backbone (a reading we did not test on CLIP).** The agreement-style baselines work
+only if each aspect occupies its own directions in the feature space: then the shared directions of the support pairs
+identify the aspect, and the contrast pairs cancel the rest. Our explanation is that raw CLIP mixes emotion, style and
+genre across all dimensions, and that because the examples are value-disjoint from the anchor, an estimate fitted on four
+pairs mostly captures the examples' own values, not the aspect (plan Mechanism note; spec §6). What was tested is the
+converse on synthetic data: the block world in the Task 8 tests shows the same rules work when the aspects sit in
+separate blocks, and the plan's simulation gave 0.00 when they are mixed. We did not measure how CLIP's dimensions mix
+the three aspects, so "the null is about the features and not about the rules" remains a hypothesis for CLIP. The
+evidence is consistent with it: every gain is within 0.4 points of 0, the largest per-pair gain is 0.91 (probe on
+emotion x genre, seed 42), and most cells straddle 0.
 
 **Bilinear.** Under value-disjoint supports a bilinear form fitted on the supports has no information about the anchor's
 value, so it is weak by construction (Task 8 ruling, with a positive control in its tests). Its row is a floor, not a
@@ -181,7 +187,8 @@ competitor.
 
 **Comparison with the earlier spike.** The aspect spike (emotion x style, 4,096 episodes, no third-aspect constraint)
 measured CLIP R@1 11.13 and SE at a fixed β of 0.3 at 10.95 with swap 16.25, and E0 reproduced these to 0.01. The E1
-emotion x style episodes are harder (the genre constraint removes shortcuts) and give cosine 10.06. SE here, with
+emotion x style episodes are harder and give cosine 10.06; we attribute that to the genre constraint removing shortcuts
+through a shared genre, but we did not test it (for example by scoring the same anchors without the constraint). SE here, with
 cross-fitted λ, gives 10.06 and gain -0.08 [-0.35, 0.21]: again no condition effect. The two experiments agree.
 
 ## 4. The GO bar
@@ -216,9 +223,11 @@ The two-part test (R@1 and gain, each with a CI) carries the weight.
 - **Codes provenance.** SE: `src/test/20261018_affect_factor_learning/checkpoints/SE_seed42.pt`, SHA-256
   `93add21b2367c2c56210d68a54c85f5ead120a91986f04fb5e8dbd328f446786`. C0:
   `src/test/20261016_factor_learning_grid/checkpoints/C0_seed42.pt`, SHA-256
-  `7653caf0985b564d30f7629004b511e1a7821a8b1e5d8962cbe2131fd90111d2`. R3: the stage (d) cache codes (original R3, trained on
-  all train rows). Codes were encoded once on CPU and cached; the runner re-hashes the checkpoints each run
-  (`results/codes_provenance.json`).
+  `7653caf0985b564d30f7629004b511e1a7821a8b1e5d8962cbe2131fd90111d2`. R3: the stage (d) cache codes (original R3,
+  `src/test/20261011_factor_repair_grid/checkpoints/selected_seed42.pt`, trained on all 216,107 train rows). Those
+  rows include the 32,413 selection rows that every episode here uses, so R3's rows are transductive (its encoders saw
+  the episodes' features in training, never their labels) and are context, not a fair comparator. Codes were encoded
+  once on CPU and cached; the runner re-hashes the checkpoints each run (`results/codes_provenance.json`).
 - **Review.** The runner passed an independent review that re-derived the seed-42 cosine R@1 (12.9618) and the full RCA
   recomputation (mean 6.7424) bit-exactly.
 

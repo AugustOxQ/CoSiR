@@ -20,6 +20,16 @@ from the backbone check and are reused.
 - `scrub_semart` removes the title string, the author's name words (3+ letters, particles such as the/of/de/van kept)
   with a trailing possessive, and every 3 or 4 digit number. Centuries written in words ("16th century") stay.
 
+## Row-scope disclosure (added in the final-review fix wave, 2026-10-03)
+`artelingo_full` encodes every ArtELingo row, including the val (30,872) and held (61,744) rows of the stage (d)
+split, because later experiments need one feature store in `load_artelingo()` order. The adapter opens the annotation
+file, which also holds the emotion labels, but uses only each record's painting, image path and caption; no emotion,
+style or genre label is used or stored, nothing is scored, and the held ledger is unchanged. Val and held features
+become usable only through a later pre-registered read. `semart` encodes the train, val and test CSVs and copies each
+row's TYPE, SCHOOL and TIMEFRAME fields (SemArt's aspect labels) into `index.json` as metadata for all three splits;
+nothing is scored, and those fields of the val and test rows are not to be used before a pre-registered read.
+`genecis_coco` encodes the item list only (features, no templates, no scoring).
+
 ## GeneCIS access disclosure
 `genecis_vg_crops` opens `/project/genecis/genecis/focus_attribute.json` only to build the union of (image_id, bbox)
 crops over every role (reference, target, gallery). It does not store or print any role, condition text, target
