@@ -52,3 +52,35 @@ def test_aspect_bank_required_iff_lambda():
     with pytest.raises(ValueError):
         train_factors(img, txt, graph, dataclasses.replace(R3_CONFIG, epochs=1), device="cpu", group_ids=groups,
                       aspect_bank=bank)
+
+
+def test_fixed_tau_stays_at_step0_value():
+    import dataclasses
+    img, txt, groups, bank, graph = _tiny()
+    cfg = dataclasses.replace(R3_CONFIG, epochs=6, batch_size=64, lambda_aspect=1.0, aspect_episodes_per_step=8,
+                              num_factors=8, painting_batches=True, aspect_tau_fixed=True)
+    history = {}
+    train_factors(img, txt, graph, cfg, device="cpu", group_ids=groups, aspect_bank=bank, history=history,
+                  log_every=1)
+    taus = history["tau"]
+    assert len(taus) == 6 and all(t == taus[0] for t in taus)
+
+
+def test_learned_tau_moves_by_default():
+    import dataclasses
+    img, txt, groups, bank, graph = _tiny()
+    cfg = dataclasses.replace(R3_CONFIG, epochs=6, batch_size=64, lambda_aspect=1.0, aspect_episodes_per_step=8,
+                              num_factors=8, painting_batches=True)
+    assert cfg.aspect_tau_fixed is False
+    history = {}
+    train_factors(img, txt, graph, cfg, device="cpu", group_ids=groups, aspect_bank=bank, history=history,
+                  log_every=1)
+    assert len(set(history["tau"])) > 1
+
+
+def test_fixed_tau_needs_the_aspect_loss():
+    import dataclasses, pytest
+    img, txt, groups, bank, graph = _tiny()
+    with pytest.raises(ValueError):
+        train_factors(img, txt, graph, dataclasses.replace(R3_CONFIG, epochs=1, aspect_tau_fixed=True),
+                      device="cpu", group_ids=groups)

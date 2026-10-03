@@ -81,6 +81,7 @@ class FactorTrainingConfig:
     aspect_episodes_per_step: int = 32
     aspect_beta: float = 0.3
     lambda_swap: float = 1.0
+    aspect_tau_fixed: bool = False          # True: keep the aspect-loss temperature at its step-0 value (spec §15)
 
 
 R3_CONFIG = FactorTrainingConfig(lambda_usage_balance=0.1, agreement="infonce", lambda_decorrelation=1.0)
@@ -235,6 +236,8 @@ def train_factors(
         raise ValueError("condition_source rows must index the training rows (0 .. n-1), not global rows")
     if config.lambda_aspect < 0:
         raise ValueError("lambda_aspect must be >= 0")
+    if config.aspect_tau_fixed and config.lambda_aspect <= 0:
+        raise ValueError("aspect_tau_fixed needs lambda_aspect > 0")
     if (config.lambda_aspect > 0) != (aspect_bank is not None):
         raise ValueError("pass an aspect_bank exactly when lambda_aspect > 0")
     if config.lambda_aspect > 0 and config.lambda_condition > 0:
@@ -275,8 +278,11 @@ def train_factors(
                                                               selected_device)
             scores = aspect_episode_scores(img_rows, txt_rows, ic, tc, idx, config.aspect_beta)
             std = float(torch.cat([scores[k].ravel() for k in sorted(scores)]).std())
-        log_tau = torch.nn.Parameter(torch.tensor(math.log(max(std, 1e-6)), device=selected_device))
-        optimizer.add_param_group({"params": [log_tau]})
+        if config.aspect_tau_fixed:
+            log_tau = torch.tensor(math.log(max(std, 1e-6)), device=selected_device)   # constant, not optimised
+        else:
+            log_tau = torch.nn.Parameter(torch.tensor(math.log(max(std, 1e-6)), device=selected_device))
+            optimizer.add_param_group({"params": [log_tau]})
 
     for epoch in range(1, config.epochs + 1):
         model.train()
