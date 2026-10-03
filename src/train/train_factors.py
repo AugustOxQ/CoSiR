@@ -8,6 +8,7 @@ import torch
 from scipy.sparse import csr_matrix, triu
 
 from src.model.factors import SharedFactorEncoder
+from src.train.aspect_loss import aspect_episode_loss, aspect_episode_scores
 from src.train.condition_episodes import mine_condition_episodes
 from src.train.factor_condition_loss import naive_episode_loss, naive_episode_scores
 from src.train.factors import (
@@ -76,6 +77,10 @@ class FactorTrainingConfig:
     lambda_condition: float = 0.0
     condition_episodes_per_step: int = 64
     condition_beta: float = 0.3
+    lambda_aspect: float = 0.0
+    aspect_episodes_per_step: int = 32
+    aspect_beta: float = 0.3
+    lambda_swap: float = 1.0
 
 
 R3_CONFIG = FactorTrainingConfig(lambda_usage_balance=0.1, agreement="infonce", lambda_decorrelation=1.0)
@@ -150,6 +155,18 @@ def _episode_tensors(model: SharedFactorEncoder, img: torch.Tensor, txt: torch.T
     return img_rows, txt_rows, model.encode_image(img_rows), model.encode_text(txt_rows), index
 
 
+def _aspect_tensors(model, img, txt, bank, take: np.ndarray, device):
+    parts = (bank.anchor[take][:, None], bank.candidates[take], bank.pairs_a_img[take], bank.pairs_a_txt[take],
+             bank.pairs_b_img[take], bank.pairs_b_txt[take])
+    table = np.concatenate(parts, axis=1)
+    rows, inverse = np.unique(table, return_inverse=True)
+    inv = torch.as_tensor(inverse.reshape(table.shape), device=device)
+    idx = {"anchor": inv[:, 0], "candidates": inv[:, 1:14], "pa_img": inv[:, 14:18], "pa_txt": inv[:, 18:22],
+           "pb_img": inv[:, 22:26], "pb_txt": inv[:, 26:30]}
+    img_rows, txt_rows = img[rows].to(device), txt[rows].to(device)
+    return img_rows, txt_rows, model.encode_image(img_rows), model.encode_text(txt_rows), idx
+
+
 def train_factors(
     img_features: np.ndarray,
     txt_features: np.ndarray,
@@ -158,6 +175,7 @@ def train_factors(
     device: str | None = None,
     group_ids: np.ndarray | None = None,
     condition_source=None,
+    aspect_bank=None,
     history: dict | None = None,
     log_every: int = 50,
 ) -> tuple[SharedFactorEncoder, np.ndarray, np.ndarray]:
@@ -171,7 +189,8 @@ def train_factors(
     and silently treating them as negatives trains a recipe that is not the validated R3. Pass
     ``group_ids=np.arange(n)`` to opt out of masking explicitly.
     ``condition_source`` (rows 0 .. n-1 of the arrays passed in) is required exactly when
-    ``config.lambda_condition > 0``. ``history``, if a dict, receives per-step logs every ``log_every`` steps (plus
+    ``config.lambda_condition > 0``. ``aspect_bank`` (an ``AspectEpisodes`` with local rows 0 .. n-1) is required
+    exactly when ``config.lambda_aspect > 0`` and is not combined with the condition loss. ``history``, if a dict, receives per-step logs every ``log_every`` steps (plus
     the first and last).
     """
     if config.agreement not in {"cosine", "infonce"}:
@@ -214,6 +233,14 @@ def train_factors(
     if condition_source is not None and (condition_source.rows.min() < 0
                                          or condition_source.rows.max() >= len(img_features)):
         raise ValueError("condition_source rows must index the training rows (0 .. n-1), not global rows")
+    if config.lambda_aspect < 0:
+        raise ValueError("lambda_aspect must be >= 0")
+    if (config.lambda_aspect > 0) != (aspect_bank is not None):
+        raise ValueError("pass an aspect_bank exactly when lambda_aspect > 0")
+    if config.lambda_aspect > 0 and config.lambda_condition > 0:
+        raise ValueError("the value-condition loss and the aspect loss are not combined")
+    if aspect_bank is not None and (aspect_bank.rows().min() < 0 or aspect_bank.rows().max() >= len(img_features)):
+        raise ValueError("aspect_bank rows must index the training rows (0 .. n-1)")
 
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     torch.manual_seed(config.seed)
@@ -238,6 +265,16 @@ def train_factors(
             scores = naive_episode_scores(img_rows, txt_rows, ic, tc, index["anchor"], index["supports"],
                                           index["contrasts"], index["candidates"], config.condition_beta)
             std = float(torch.cat([scores["i2t"].ravel(), scores["t2i"].ravel()]).std())
+        log_tau = torch.nn.Parameter(torch.tensor(math.log(max(std, 1e-6)), device=selected_device))
+        optimizer.add_param_group({"params": [log_tau]})
+    if config.lambda_aspect > 0:
+        aspect_rng = np.random.default_rng([config.seed, 2])
+        first_take = aspect_rng.choice(len(aspect_bank.anchor), config.aspect_episodes_per_step, replace=False)
+        with torch.no_grad():                                    # tau := std of step-0 scores (unit-scale logits)
+            img_rows, txt_rows, ic, tc, idx = _aspect_tensors(model, img, txt, aspect_bank, first_take,
+                                                              selected_device)
+            scores = aspect_episode_scores(img_rows, txt_rows, ic, tc, idx, config.aspect_beta)
+            std = float(torch.cat([scores[k].ravel() for k in sorted(scores)]).std())
         log_tau = torch.nn.Parameter(torch.tensor(math.log(max(std, 1e-6)), device=selected_device))
         optimizer.add_param_group({"params": [log_tau]})
 
@@ -299,6 +336,14 @@ def train_factors(
                 positive_mask=torch.as_tensor(episodes.positive_mask, device=selected_device),
                 beta=config.condition_beta, log_tau=log_tau)
             loss = loss + config.lambda_condition * condition_loss
+        aspect_loss = None
+        if config.lambda_aspect > 0:
+            take = first_take if epoch == 1 else aspect_rng.choice(len(aspect_bank.anchor),
+                                                                    config.aspect_episodes_per_step, replace=False)
+            img_rows, txt_rows, ic, tc, idx = _aspect_tensors(model, img, txt, aspect_bank, take, selected_device)
+            aspect_loss = aspect_episode_loss(aspect_episode_scores(img_rows, txt_rows, ic, tc, idx,
+                                                                    config.aspect_beta), log_tau, config.lambda_swap)
+            loss = loss + config.lambda_aspect * aspect_loss
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         optimizer.step()
@@ -310,6 +355,9 @@ def train_factors(
             history.setdefault("batch_rows", []).append(int(len(node_ids)))
             if condition_loss is not None:
                 history.setdefault("condition_loss", []).append(condition_loss.item())
+                history.setdefault("tau", []).append(float(log_tau.detach().exp()))
+            if aspect_loss is not None:
+                history.setdefault("aspect_loss", []).append(aspect_loss.item())
                 history.setdefault("tau", []).append(float(log_tau.detach().exp()))
 
     model.eval()
