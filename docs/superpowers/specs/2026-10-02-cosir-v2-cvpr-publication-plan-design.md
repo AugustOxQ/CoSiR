@@ -273,7 +273,7 @@ The user decides the switch on Oct 9 from the pre-registered numbers.
 | Dataset | Aspects | Captions | Test split | Notes |
 |---|---|---|---|---|
 | **ArtELingo** (primary) | emotion (8) × style (23) × genre (10; 81% of paintings labelled, §5.3) | human, affective | held rows, fresh-seed aspect episodes | asymmetric aspects; label-probe ceiling about 23 R@1 |
-| **CUB-200-2011 + Reed et al. captions** (bird photos) | primary colour (15), bill shape (9), and a third attribute group chosen in E0 | human, 10 per image, written without species names | the standard zero-shot split's **50 unseen species**; development on 30 of the 150 training species, kept out of factor training | colour is symmetric across modalities; captions name colours. **Disclosure:** the backbone check scored attribute probes on CUB's standard test split, which spans all 200 species, so the 50 test species were read once in that diagnostic (no CoSiR model; recorded in the held ledger) |
+| **CUB-200-2011 + Reed et al. captions** (bird photos) | primary colour (15), bill shape (9), and wing colour (`has_wing_color`, chosen in E0: min(image, caption) probe accuracy 0.430 / 0.470 on the 30 development species against a majority rate of 0.276, margin +0.154; the other groups reach +0.008 to +0.055; caveat: labelled on only 532 development images, single development draw, low majority inflates the margin; [E0 report](../../reports/auto/v2/2026-10-29_aspect_eval_setup.md)) | human, 10 per image, written without species names | the standard zero-shot split's **50 unseen species**; development on 30 of the 150 training species, kept out of factor training | colour is symmetric across modalities; captions name colours. **Disclosure:** the backbone check scored attribute probes on CUB's standard test split, which spans all 200 species, so the 50 test species were read once in that diagnostic (no CoSiR model; recorded in the held ledger) |
 | **GeneCIS focus attribute** | condition = attribute type | none (Visual Genome object crops) | the benchmark (2,000 templates) | image to image; see §5.4 |
 | **SemArt** (paintings with catalogue descriptions) | type (10), school (26), timeframe (22) | catalogue text, artist names and dates scrubbed | official test (1,069 paintings); development = official val | main paper if on time, otherwise supplementary |
 | GeneCIS focus object | condition = an object (value-type) | COCO | benchmark | supplementary only |
@@ -429,6 +429,7 @@ format or a selector among trained aspects rather than the aspects themselves. *
 - **Fidelity check first.** Our reimplementation (`src/test/20261025_backbone_check/extract.py`: transformers
   5.6.2, last-token pooling, default instruction, capped image resolution) must be checked against the official
   implementation before paper use. If it fails, fall back to PE-Core L/14.
+- **Fidelity result (E0, 2026-10-29).** PASS on both stages after the preprocessing fix (the port now pre-resizes like `qwen_vl_utils`): image-to-caption top-1 agreement 48/50 on CUB images and on large ArtELingo images, cosine minimum 0.9996, so no PE-Core fallback. Features use max_pixels 524,288, below the official default 1,843,200 ([E0 report](../../reports/auto/v2/2026-10-29_aspect_eval_setup.md)).
 - **Packages** go in `pip --target` directories, never into the CoSiR env.
 
 ## 8. Baselines (approved)
