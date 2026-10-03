@@ -73,15 +73,37 @@ def test_bilinear_is_condition_dependent_but_weak_under_value_disjoint_supports(
     assert per_anchor(B.bilinear_agreement_term(inputs, ep2, basis))["gain"].mean() > 0.05
 
 
+def _standardized_diag(inputs, ep, scaler):
+    """The Rocchio rule in the probe's own standardized space: w = mean over S of z - mean over C of z, with
+    z = (x*y - mean) / std, and score = w . standardize(q*c). This is the closed-form rule a probe could collapse to."""
+    out = {}
+    for c in ("a", "b"):
+        si, st, ci, ct, _ = ep.condition(c)
+        w = (((inputs.img[si] * inputs.txt[st] - scaler.mean) / scaler.std).mean(1)
+             - ((inputs.img[ci] * inputs.txt[ct] - scaler.mean) / scaler.std).mean(1))
+        out[c] = {}
+        for d in ("i2t", "t2i"):
+            q, cand = ((inputs.img[ep.anchor], inputs.txt[ep.candidates]) if d == "i2t"
+                       else (inputs.txt[ep.anchor], inputs.img[ep.candidates]))
+            out[c][d] = (((q[:, None] * cand - scaler.mean) / scaler.std) * w[:, None]).sum(-1)
+    return out
+
+
 def test_pair_probe_is_not_the_diag_rule(setup):
-    """Ranking differs: the fraction of (condition, direction, episode) rows whose argmax differs from diag's is > 0
-    (a copy of diag would give exactly 0). Scale: mean |term| on the first 50 episodes is stable (< 10% change)
-    whether the probe is fit on 50 episodes or on all 200, because the loss is summed per episode."""
+    """Ranking differs from both closed-form agreement rules: the fraction of (condition, direction, episode) rows
+    whose argmax differs is > 0 against the raw diag rule and > 0.02 against the standardized diag (Rocchio) rule.
+    Measured on this world (2026-10-03): 0.32 against raw diag and 0.081 against standardized diag (0.065 to 0.090
+    per condition and direction, 800 rankings); a copy of either rule gives exactly 0, and 0.02 is a quarter of the
+    measured value. Scale: mean |term| on the first 50 episodes is stable (< 10% change) whether the probe is fit on
+    50 episodes or on all 200, because the loss is summed per episode."""
     ep, inputs, basis = setup
     probe = B.pair_probe_term(inputs, ep, basis.scaler)
     diag = B.diag_agreement_term(inputs, ep, relu=False)
     differs = np.mean([(probe[c][d].argmax(1) != diag[c][d].argmax(1)).mean() for c in probe for d in probe[c]])
     assert differs > 0
+    rocchio = _standardized_diag(inputs, ep, basis.scaler)
+    differs_std = np.mean([(probe[c][d].argmax(1) != rocchio[c][d].argmax(1)).mean() for c in probe for d in probe[c]])
+    assert differs_std > 0.02
     sub = dataclasses.replace(ep, **{f.name: getattr(ep, f.name)[:50] for f in dataclasses.fields(ep)})
     small = B.pair_probe_term(inputs, sub, basis.scaler)
     full_abs = np.mean([np.abs(probe[c][d][:50]).mean() for c in probe for d in probe[c]])

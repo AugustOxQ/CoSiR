@@ -1,4 +1,6 @@
-"""Pick CUB's third aspect (spec 11 E0). Development species only: the 50 zero-shot test species are never read."""
+"""Pick CUB's third aspect (spec 11 E0). Development species only. The 50 zero-shot test species are never used:
+load_cub() reads every image's metadata, the test species' entries serve only to exclude them, and only
+training-species feature rows are loaded."""
 
 import json
 from pathlib import Path

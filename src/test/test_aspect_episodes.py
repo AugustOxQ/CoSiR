@@ -254,3 +254,100 @@ def test_validator_rejects_pair_with_matching_differ_aspect():
 
     with pytest.raises(AssertionError, match="episode 0: pair"):
         validate_aspect_episodes(corrupted_ep, labels, groups, index)
+
+
+def _episode_paintings(ep, i, groups):
+    every = np.concatenate([[ep.anchor[i]], ep.candidates[i], ep.pairs_a_img[i], ep.pairs_a_txt[i], ep.pairs_b_img[i],
+                            ep.pairs_b_txt[i]])
+    return np.unique(groups[every])
+
+
+def _fresh_row(labels, groups, ep, mask):
+    """First labelled row satisfying ``mask`` whose painting does not appear anywhere in episode 0, so the painting,
+    unlabelled-row and earlier role rules cannot be what rejects the tamper."""
+    ok = mask & ~np.isin(groups, _episode_paintings(ep, 0, groups))
+    ok &= (labels["emotion"] >= 0) & (labels["style"] >= 0) & (labels["genre"] >= 0)
+    rows = np.flatnonzero(ok)
+    assert len(rows), "precondition: no fresh row satisfies the tamper"
+    return rows[0]
+
+
+@pytest.mark.parametrize("break_", ["value", "lacks"])
+def test_validator_rejects_bad_p_a(break_):
+    """p_a rule: p_a must carry the anchor's emotion and its painting must lack the anchor's style. Breaking either
+    half must be rejected by that rule (no later rule looks at column 0 when no third aspect is given)."""
+    labels, groups = _world()
+    index = PaintingValueIndex(labels, groups)
+    ep = build_aspect_episodes(labels, groups, np.arange(len(groups)), "emotion", "style", 10, seed=16, index=index)
+    a, b = labels["emotion"][ep.anchor[0]], labels["style"][ep.anchor[0]]
+    if break_ == "value":                                  # another emotion, painting still lacks style b
+        mask = (labels["emotion"] != a) & index.lacks("style", b)
+    else:                                                  # the anchor's emotion, but the painting has style b
+        mask = (labels["emotion"] == a) & (labels["style"] == b)
+    cand = ep.candidates.copy()
+    cand[0, 0] = _fresh_row(labels, groups, ep, mask)
+    with pytest.raises(AssertionError, match=r"^episode 0: p_a$"):
+        validate_aspect_episodes(replace(ep, candidates=cand), labels, groups, index)
+
+
+@pytest.mark.parametrize("shared", ["emotion", "style"])
+def test_validator_rejects_negative_sharing_an_anchor_value(shared):
+    """Negatives rule: a negative's painting must lack both of the anchor's values."""
+    labels, groups = _world()
+    index = PaintingValueIndex(labels, groups)
+    ep = build_aspect_episodes(labels, groups, np.arange(len(groups)), "emotion", "style", 10, seed=17, index=index)
+    a, b = labels["emotion"][ep.anchor[0]], labels["style"][ep.anchor[0]]
+    mask = ((labels["emotion"] == a) & index.lacks("style", b) if shared == "emotion"
+            else index.lacks("emotion", a) & (labels["style"] == b))
+    cand = ep.candidates.copy()
+    cand[0, 5] = _fresh_row(labels, groups, ep, mask)
+    with pytest.raises(AssertionError, match=r"^episode 0: neg$"):
+        validate_aspect_episodes(replace(ep, candidates=cand), labels, groups, index)
+
+
+@pytest.mark.parametrize("column", [0, 5])
+def test_validator_rejects_candidate_sharing_the_anchors_third_aspect(column):
+    """Third-aspect candidate rule: every candidate (p_a and negatives alike) must lack the anchor's genre. The
+    replacement satisfies its own role (p_a or negative) and is labelled, so only that rule can reject it."""
+    labels, groups = _world()
+    index = PaintingValueIndex(labels, groups)
+    ep = build_aspect_episodes(labels, groups, np.arange(len(groups)), "emotion", "style", 10, seed=18, third="genre",
+                               index=index)
+    a, b, t = (labels[k][ep.anchor[0]] for k in ("emotion", "style", "genre"))
+    role = (labels["emotion"] == a) if column == 0 else index.lacks("emotion", a)
+    mask = role & index.lacks("style", b) & (labels["genre"] == t)
+    cand = ep.candidates.copy()
+    cand[0, column] = _fresh_row(labels, groups, ep, mask)
+    with pytest.raises(AssertionError, match=r"^episode 0: third aspect$"):
+        validate_aspect_episodes(replace(ep, candidates=cand), labels, groups, index, third="genre")
+
+
+@pytest.mark.parametrize("break_", ["value", "lacks"])
+def test_validator_rejects_bad_p_b(break_):
+    """p_b rule, the mirror of the p_a rule: p_b must carry the anchor's style and its painting must lack the anchor's
+    emotion."""
+    labels, groups = _world()
+    index = PaintingValueIndex(labels, groups)
+    ep = build_aspect_episodes(labels, groups, np.arange(len(groups)), "emotion", "style", 10, seed=19, index=index)
+    a, b = labels["emotion"][ep.anchor[0]], labels["style"][ep.anchor[0]]
+    if break_ == "value":                                  # another style, painting still lacks emotion a
+        mask = (labels["style"] != b) & index.lacks("emotion", a)
+    else:                                                  # the anchor's style, but the painting has emotion a
+        mask = (labels["style"] == b) & ~index.lacks("emotion", a)
+    cand = ep.candidates.copy()
+    cand[0, 1] = _fresh_row(labels, groups, ep, mask)
+    with pytest.raises(AssertionError, match=r"^episode 0: p_b$"):
+        validate_aspect_episodes(replace(ep, candidates=cand), labels, groups, index)
+
+
+def test_validator_rejects_unlabelled_row_on_a_conditioned_aspect():
+    """Unlabelled-row rule: with genre as a conditioned aspect, a negative without a genre label must be rejected."""
+    labels, groups = _world()
+    index = PaintingValueIndex(labels, groups)
+    ep = build_aspect_episodes(labels, groups, np.arange(len(groups)), "genre", "style", 10, seed=20, index=index)
+    used = _episode_paintings(ep, 0, groups)
+    rows = np.flatnonzero((labels["genre"] == -1) & ~np.isin(groups, used))
+    cand = ep.candidates.copy()
+    cand[0, 5] = rows[0]
+    with pytest.raises(AssertionError, match=r"^episode 0: unlabelled row$"):
+        validate_aspect_episodes(replace(ep, candidates=cand), labels, groups, index)

@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from src.eval.aspect_episodes import build_aspect_episodes
 from src.eval.aspect_metrics import per_anchor
@@ -134,3 +135,63 @@ def test_crossfit_validates_parity():
     for bad in (np.arange(39) % 2, np.arange(40) % 3, np.zeros(40, int), np.ones(40, int)):
         with pytest.raises(ValueError):
             crossfit_lambda(cos, term, bad)
+
+
+# Row patterns for the per-half extension tests, written for condition a (target column 0, other-aspect column 1);
+# condition b swaps columns 0 and 1. Column 2 is a distractor (a negative), so the other-aspect rate stays 0 and the
+# cross-fit criterion equals R@1. With z-scores over 13 candidates, the target beats the distractor in an "A" row once
+# lambda * eps / std(term row) > 1 / std(cos row), i.e. lambda > about 1.38 / eps:
+#   "A12" (eps 0.115): lost at lambda <= 8, won at 16, 32, 64 and inf;
+#   "A45" (eps 0.031): lost at lambda <= 32, won at 64 and inf;
+#   "B": the term ties the target with the distractor and the cosine prefers the target, so every finite lambda wins
+#        and lambda = inf (term alone, a tie) is a miss.
+def _row(kind):
+    cos, term = np.zeros(13), np.zeros(13)
+    if kind == "B":
+        cos[0], term[0], term[2] = 1.0, 1.0, 1.0
+    else:
+        eps = {"A12": 0.115, "A45": 0.031}[kind]
+        cos[2], term[0], term[2] = 1.0, 1.0, 1.0 - eps
+    return cos, term
+
+
+def _extension_halves(extending_half):
+    """40 rows, parity halves of 20. The extending half (12 "A12" + 8 "B" rows) picks 16 on the base grid: 20 hits
+    at 16 against 12 at inf and 8 at lambda <= 8, so its grid is extended. The isolated half (12 "A45" + 8 "B" rows)
+    picks inf on the base grid (12 hits against 8 for every finite lambda up to 16), but lambda = 64 would give it 20
+    hits. It must keep inf: the extension belongs to the other half only."""
+    n = 40
+    cos = {c: {d: np.zeros((n, 13)) for d in ("i2t", "t2i")} for c in ("a", "b")}
+    term = {c: {d: np.zeros((n, 13)) for d in ("i2t", "t2i")} for c in ("a", "b")}
+    for r in range(n):
+        half_rank = r // 2                                              # 0..19 inside the row's parity half
+        if r % 2 == extending_half:
+            kind = "A12" if half_rank < 12 else "B"
+        else:
+            kind = "A45" if half_rank < 12 else "B"
+        c_row, t_row = _row(kind)
+        for d in ("i2t", "t2i"):
+            cos["a"][d][r], term["a"][d][r] = c_row, t_row
+            cos["b"][d][r], term["b"][d][r] = c_row[[1, 0, *range(2, 13)]], t_row[[1, 0, *range(2, 13)]]
+    return cos, term
+
+
+@pytest.mark.parametrize("extending_half", [0, 1])
+def test_crossfit_extension_never_leaks_into_the_other_half(monkeypatch, extending_half):
+    """extending_half = 0 fails on the earlier shared-dict code (half 1 then chose 64 from half 0's extension);
+    extending_half = 1 fails on any variant that extends both halves when either picks 16."""
+    import src.eval.aspect_scorers as mod
+    cos, term = _extension_halves(extending_half)
+    parity = np.arange(40) % 2
+    isolated = 1 - extending_half
+    real_fused = mod.fused_scores
+    tune_iso = parity == isolated
+    # the design does what the docstring says: the isolated half prefers 64 to inf, and inf to every base finite lambda
+    crit = {lam: mod._criterion(real_fused(cos, term, lam), tune_iso) for lam in LAMBDA_GRID + [32.0, 64.0]}
+    assert crit[64.0] > crit[float("inf")] > max(crit[lam] for lam in LAMBDA_GRID[:-1])
+    calls = []
+    monkeypatch.setattr(mod, "fused_scores", lambda c, t, lam: (calls.append(lam), real_fused(c, t, lam))[1])
+    _, picks = crossfit_lambda(cos, term, parity)
+    assert set(calls) >= {32.0, 64.0}                                   # the extending half did extend
+    assert picks[extending_half] in (16.0, 32.0, 64.0)
+    assert picks[isolated] == float("inf")
