@@ -8,6 +8,7 @@ Fresh episodes are NEW episodes (seed 777 + pair index) over scorer-train rows, 
 not the training bank's episodes. Bank episodes are the first 2,048 of each block of bank_AIC.npz (seen in training by
 A1..A6; H1 and S1 trained on other banks).
 """
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -37,7 +38,9 @@ PAIRS = (("affect", "caption", "image"), ("affect", "image", "caption"), ("capti
 PAIR_NAMES = [f"{a}__{b}" for a, b, _ in PAIRS]
 FIELDS = ("anchor", "candidates", "pairs_a_img", "pairs_a_txt", "pairs_b_img", "pairs_b_txt")
 MODELS = {**{r: HERE / "checkpoints" / f"{r}_seed42.pt" for r in ("A1", "A2", "A3", "A4", "A5", "A6", "H1", "S1")},
-          "C0": GRID_CK / "C0_seed42.pt", "SE": GRID_CK / "S_seed42.pt"}
+          "C0": GRID_CK / "C0_seed42.pt",
+          "SE": ROOT / "src/test/20261018_affect_factor_learning/checkpoints/SE_seed42.pt",   # as run_affect.model_path("SE")
+          "S": GRID_CK / "S_seed42.pt"}                  # extra reference: the factor-learning grid's style cell, NOT SE
 
 
 def finite_tree(o, where=""):
@@ -92,12 +95,13 @@ def main():
 
     res = {"note": "POST-HOC, DESCRIPTIVE; not pre-registered; outside the E3 decision map",
            "fresh_episodes": "new episodes (seed 777+pair index) over scorer-train rows, not the training bank's",
-           "n_per_pair": N_EP, "beta": BETA, "models": {}, "cosine": {}}
+           "n_per_pair": N_EP, "beta": BETA, "models": {}, "cosine": {}, "checkpoint_sha256": {}}
     cos = {}
     for k, ep in sets.items():
         cos[k] = cosine_scores(EvalInputs(img, txt), ep)
         res["cosine"][k] = report(per_anchor(cos[k]), k)
     for name, path in MODELS.items():
+        res["checkpoint_sha256"][name] = hashlib.sha256(path.read_bytes()).hexdigest()
         model, _ = load_factor_checkpoint(path, device="cpu")
         ic, tc = encode_rows(model, data.img_features, data.txt_features, rows=st, device="cpu")
         assert np.isfinite(ic).all() and np.isfinite(tc).all() and len(ic) == n
@@ -112,6 +116,7 @@ def main():
             entry["fixed_beta"] = report(per_anchor(fixed_beta_scores(inp, ep, BETA)), k)
             res["models"][name][k] = entry
         print("scored", name, flush=True)
+    assert res["checkpoint_sha256"]["SE"].startswith("93add21b") and res["checkpoint_sha256"]["S"].startswith("33d35943")
     finite_tree(res)
     (HERE / "results").mkdir(exist_ok=True)
     (HERE / "results" / "train_fit_diagnostic.json").write_text(json.dumps(res, indent=1))

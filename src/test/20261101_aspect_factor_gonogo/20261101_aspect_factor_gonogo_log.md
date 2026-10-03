@@ -102,37 +102,45 @@ Grid, pick and GO test: pending (the controller launches the grid, then `--selec
 ## Post-hoc diagnostic (not pre-registered): training-task fit
 
 Descriptive only, outside the pre-registered E3 decision map; it changes no pick, gate or conclusion of the go/no-go.
-Script `train_fit_diagnostic.py`, output `results/train_fit_diagnostic.json` (+ `.txt`). CPU. Scorer-train rows only (local
-rows 0..n-1, matching the E2 banks). Fresh episodes are NEW episodes (seed 777 + pair index, 2,048 per pair, validated)
-over training rows built from the E2 partitions, not the training bank's episodes; bank episodes are the first 2,048 of
-each block of `bank_AIC.npz` (A1..A6 trained on them; H1 on AI, S1 on IC). Pairs: affect__caption (third image),
-affect__image (third caption), caption__image (third affect). Scores are the E3 scorers: cross-fitted agreement rule
-(z-fusion with cosine), and the training-time fixed-beta score (beta 0.3, no fusion). Pooled over 3 pairs, in points,
-cluster bootstrap by painting; the uniform-weight control has gain 0.00 by construction (R@1 about 22.5 to 23.2 for every
-model, above cosine, because the unconditioned factor term itself adds retrieval signal).
+Script `train_fit_diagnostic.py`, output `results/train_fit_diagnostic.json` (+ `.txt`, checkpoint SHA-256s recorded in
+the JSON). CPU. Scorer-train rows only (local rows 0..n-1, matching the E2 banks). Fresh episodes are NEW episodes
+(seed 777 + pair index, 2,048 per pair, validated) over training rows built from the E2 partitions, not the training
+bank's episodes; bank episodes are the first 2,048 of each block of `bank_AIC.npz` (A1..A6 trained on them; H1 on AI, S1
+on IC). Pairs: affect__caption (third image), affect__image (third caption), caption__image (third affect). Scores are the
+E3 scorers: cross-fitted agreement rule (z-fusion with cosine) and the training-time fixed-beta score (beta 0.3, no
+fusion). C0 = grid C0 seed 42; SE = `20261018_affect_factor_learning/checkpoints/SE_seed42.pt` (SHA 93add21b..., the SE of
+E1 and E3); S = the factor-learning grid's style cell `S_seed42.pt` (SHA 33d35943...), an extra reference that is not SE
+(an earlier version of this diagnostic mislabelled it SE). Pooled over 3 pairs, points, cluster bootstrap by painting. The
+uniform-weight control has gain 0.00 by construction (R@1 22.5 to 23.2 for every model, above cosine, because the
+unconditioned factor term itself carries retrieval signal).
 
 R@1 / condition gain, pooled (cosine R@1: fresh 18.41, bank 17.96; cosine gain 0 by construction):
 
 | Model | fresh agreement | fresh fixed-beta | bank agreement | bank fixed-beta |
 |---|---|---|---|---|
-| A1 | 18.89 / 0.54 [-0.01, 1.13] | 17.57 / 0.54 | 18.09 / 0.90 | 18.01 / 1.33 |
-| A2 | 18.38 / 0.02 | 17.89 / 0.33 | 18.75 / 1.14 | 18.61 / 1.81 |
-| A3 | 19.04 / 0.36 [-0.12, 0.86] | 17.69 / 0.95 [0.28, 1.62] | 19.57 / 1.18 | 18.05 / 1.87 |
-| A4 | 18.93 / 0.48 | 17.79 / 0.69 | 18.88 / 0.50 | 17.86 / 0.63 |
-| A5 | 18.82 / 0.61 | 17.39 / 0.47 | 18.73 / 0.48 | 17.71 / 1.16 |
-| A6 | 18.87 / -0.06 | 17.54 / 0.64 | 18.43 / 1.04 | 17.90 / 1.28 |
-| H1 | 18.46 / -0.28 | 17.50 / -0.02 | 18.60 / -0.15 | 17.67 / 0.65 |
-| S1 | 18.29 / -0.32 | 17.72 / 0.15 | 18.73 / 0.28 | 17.65 / 0.38 |
-| C0 | 18.00 / -0.41 [-0.81, 0.00] | 16.56 / 0.04 | 18.31 / 0.04 | 16.57 / 0.28 |
-| SE | 18.41 / -0.41 [-0.71, -0.12] | 15.70 / -0.20 | 18.17 / -0.24 | 16.09 / 0.16 |
+| A1 | 18.89 / +0.54 | 17.57 / +0.54 | 18.09 / +0.90 | 18.01 / +1.33 |
+| A2 | 18.38 / +0.02 | 17.89 / +0.33 | 18.75 / +1.14 | 18.61 / +1.81 |
+| A3 | 19.04 / +0.36 | 17.69 / +0.95 | 19.57 / +1.18 | 18.05 / +1.87 |
+| A4 | 18.93 / +0.48 | 17.79 / +0.69 | 18.88 / +0.50 | 17.86 / +0.63 |
+| A5 | 18.82 / +0.61 | 17.39 / +0.47 | 18.73 / +0.48 | 17.71 / +1.16 |
+| A6 | 18.87 / -0.06 | 17.54 / +0.64 | 18.43 / +1.04 | 17.90 / +1.28 |
+| H1 | 18.46 / -0.28 | 17.50 / -0.02 | 18.60 / -0.15 | 17.67 / +0.65 |
+| S1 | 18.29 / -0.32 | 17.72 / +0.15 | 18.73 / +0.28 | 17.65 / +0.38 |
+| C0 | 18.00 / -0.41 | 16.56 / +0.04 | 18.31 / +0.04 | 16.57 / +0.28 |
+| SE | 18.40 / -0.16 | 16.40 / +0.17 | 18.70 / +0.16 | 16.65 / +0.60 |
+| S | 18.41 / -0.41 | 15.70 / -0.20 | 18.17 / -0.24 | 16.09 / +0.16 |
 
-Per pair (A3, fresh, agreement): affect__caption R@1 16.77 gain 0.31; affect__image 17.74 / 0.62; caption__image 22.62 / 0.15.
-Full per-pair, other and swap values for every model are in the JSON.
+Gain intervals (95%) that exclude 0, all 44 pooled gains checked. Fresh episodes: positive, A5 agreement 0.61 [0.07, 1.18]
+and A3 fixed-beta 0.95 [0.28, 1.62]; negative, H1 agreement -0.28 [-0.56, -0.004] and S agreement -0.41 [-0.72, -0.12].
+SE (-0.16 [-0.45, 0.13] agreement; 0.17 [-0.56, 0.87] fixed-beta) and C0 (-0.41 [-0.81, 0.00]; 0.04 [-0.68, 0.74])
+include 0, as do A1 (0.54 [-0.01, 1.13]) and A3 agreement (0.36 [-0.12, 0.86]). Bank (training) episodes: positive,
+agreement A1 0.90, A2 1.14, A3 1.18, A6 1.04 and fixed-beta A1 1.33, A2 1.81, A3 1.87, A5 1.16, A6 1.28; none negative.
+H1 fixed-beta bank (-0.02 lower bound), A4 and others are borderline or include 0.
 
-Reading: the trained models did not fit the pseudo-aspect training task in a way a held-out set of its own episodes
-shows: on fresh episodes no model ranks the pseudo-aspect target first clearly above cosine (best A3 R@1 19.04 vs 18.41)
-and the condition gain is 0.36 to 0.61 for A1/A3/A4/A5 with CIs spanning 0 (A3 fixed-beta 0.95 [0.28, 1.62] is the only
-interval above 0 on fresh episodes, with R@1 below cosine), and even the in-sample bank gain stays at 0.5 to 1.9 points.
-That is the same order as the 0.26 gain on labelled aspects, so the near-zero labelled gain is not a transfer failure
-from a well-fit training task; E3 mostly tested an implementation whose factors barely learned the pseudo-aspect task
-(consistent with the 1 to 4.4% training-loss drop), and the NO-GO speaks to that recipe, not to the idea.
+Reading: on fresh episodes no model ranks the pseudo-aspect target first clearly above cosine (best A3 R@1 19.04 vs
+18.41) and the condition gain is at most 0.95 (A3 fixed-beta, where R@1 is below cosine), with only two of the 22 fresh
+gains for the E3 candidates and references clearly positive; the in-sample bank gain reaches 0.9 to 1.9 for the A runs
+that trained on it, so the training task was fit weakly in-sample and hardly at all out of sample. That is the same order
+as the 0.26 gain on labelled aspects, so the near-zero labelled gain is not a transfer failure from a well-fit training
+task; E3 mostly tested a recipe whose factors barely learned the pseudo-aspect task (consistent with the 1 to 4.4%
+training-loss drop), and the NO-GO speaks to that recipe, not to the idea.
