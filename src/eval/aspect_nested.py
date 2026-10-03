@@ -116,6 +116,10 @@ def se_from_ci(ci95) -> float:
 
 def margin_reading(m_r: float, se_r: float, m_g: float, se_g: float, k: float = K_SE) -> str:
     """H1 pilot: not promising if either margin <= 0; promising if both >= k SE; inconclusive otherwise."""
+    if not (math.isfinite(m_r) and math.isfinite(se_r) and math.isfinite(m_g) and math.isfinite(se_g)):
+        raise ValueError(f"all of m_r, se_r, m_g, se_g must be finite, got ({m_r}, {se_r}, {m_g}, {se_g})")
+    if se_r <= 0 or se_g <= 0:
+        raise ValueError(f"se_r and se_g must be positive, got se_r={se_r}, se_g={se_g}")
     if m_r <= 0 or m_g <= 0:
         return "not_promising"
     if m_r >= k * se_r and m_g >= k * se_g:
@@ -125,19 +129,31 @@ def margin_reading(m_r: float, se_r: float, m_g: float, se_g: float, k: float = 
 
 def ceiling_threshold(se_r: float, se_g: float) -> float:
     """g* = max(2·K_SE·SE_R, K_SE·SE_g): the R@1 margin against the control is about gain / 2."""
+    if not (math.isfinite(se_r) and math.isfinite(se_g)):
+        raise ValueError(f"se_r and se_g must be finite, got se_r={se_r}, se_g={se_g}")
+    if se_r < 0 or se_g < 0:
+        raise ValueError(f"se_r and se_g must be non-negative, got se_r={se_r}, se_g={se_g}")
     return max(2 * K_SE * se_r, K_SE * se_g)
 
 
 def predicted_power(margin: float, se: float) -> float:
     """Descriptive: P(lower bound > 0) on a fresh draw if the true margin is half the observed one."""
+    if not (math.isfinite(margin) and math.isfinite(se)):
+        raise ValueError(f"margin and se must be finite, got margin={margin}, se={se}")
+    if se <= 0:
+        raise ValueError(f"se must be positive, got se={se}")
     return 0.5 * (1.0 + math.erf((margin / (2 * se) - Z975) / math.sqrt(2.0)))
 
 
 def fit_reading(result: dict) -> str:
     """H3 fit from a paired compare(X, A3, ..., 'gain') result: fits / inconclusive / no_fit."""
-    if result["ci95"][0] > 0:
+    point = result["point"]
+    lo, hi = result["ci95"]
+    if not (math.isfinite(point) and math.isfinite(lo) and math.isfinite(hi)):
+        raise ValueError(f"point and CI bounds must be finite, got point={point}, ci95=[{lo}, {hi}]")
+    if lo > 0:
         return "fits"
-    if result["point"] <= 0:
+    if point <= 0:
         return "no_fit"
     return "inconclusive"
 
