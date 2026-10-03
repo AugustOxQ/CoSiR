@@ -31,4 +31,16 @@ committed in de3bd45 before the 8B model scored anything.
   seed, episode count and code path; only data locations differ (environment-variable overrides; image paths therefore
   differ in the resume fingerprint, so the local partial could not be resumed there in any case). The node run's
   output is `outputs/mllm_probe_8b_seed46` in the job's code worktree, pulled back with `cluster pull --tag`.
+- Node job `mllm-probe-8b-seed46` (commit ea77ad1, node404 GPU slot 0, started 2026-10-03 16:58 UTC). Data reached the
+  node with `scripts/das6_sync_mllm_probe_8b.py` (19.3 GB: 8B snapshot, features, annotations, genre labels, the 5,224
+  WikiArt images the seed-46 episodes use). The wrapper's in-job checks passed (snapshot complete, 0 of 5,224 images
+  missing). Speed on node404: about 3.6 s per episode.
+- **Deviation found and checked: transformers 5.16.1 on the node versus 5.6.2 locally** (every earlier local check,
+  including the v2 rendering check and the timing smoke, used 5.6.2). Check (b33d223; job `render-check-8b-node`,
+  CPU only, no scores): the 48 prompts of the first 4 seed-46 episodes per pair, both conditions and directions, rendered
+  through the reranker's processor path under both versions. Result IDENTICAL on every field: input_ids SHA-256,
+  sequence length, image-token count, image_grid_thw, pixel_values (bf16) SHA-256, letter token ids and the token before
+  each letter, processor image settings and the episodes' SHA-256. Same weight snapshot on both machines
+  (0c351dd01ed87e9c1b53cbc748cba10e6187ff3b). Remaining difference: the model's forward code and kernels of the two
+  library versions, which can change logits by numerical noise but not the inputs; disclosed.
 - Results and verdict: to be added after the node run.
