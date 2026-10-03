@@ -6,7 +6,9 @@ Run: flock -n -o -E 75 /tmp/gpu0.lock /root/miniconda3/envs/CoSiR/bin/python src
          [--n 300] [--seed 44] [--out <dir>]
 Resumes from <out>/probe_partial.npz (checkpoint every 50 episodes)."""
 import argparse
+import hashlib
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -73,23 +75,38 @@ def make_prompt(build_messages, ep, i, cond, d, perm, path, cap):
     return build_messages((None, cap[anchor]), [path[int(c)] for c in cand], supports, contrasts, d)
 
 
-def run_mllm(ep, perms, path, cap, out_dir, rec):
-    from src.eval.mllm_reranker import QwenReranker, build_messages
+def fingerprint(ep, perms, path, cap, hashes):
+    """Everything that must be identical for a partial file to be resumable."""
+    from src.eval.mllm_reranker import INSTRUCTION, build_messages
+    sha = lambda x: hashlib.sha256(x.encode()).hexdigest()
+    sample = {d: sha(json.dumps(make_prompt(build_messages, ep, 0, "a", d, np.arange(13), path, cap)))
+              for d in DIRECTIONS}
+    return json.dumps({"model": MODEL_ID, "max_pixels": MAX_PIXELS, "episodes_sha256": hashes,
+                       "instruction": sha(INSTRUCTION), "sample_prompt": sample,
+                       "perms": sha(perms.tobytes().hex())}, sort_keys=True)
+
+
+def run_mllm(ep, perms, path, cap, out_dir, rec, fp):
+    from src.eval.mllm_reranker import QwenReranker, build_messages, unpermute
     n = len(ep.anchor)
     scores = np.full((len(CONDITIONS), len(DIRECTIONS), n, 13), np.nan)
     done, times = 0, []
     partial = out_dir / "probe_partial.npz"
     if partial.exists():
         z = np.load(partial)
-        assert np.array_equal(z["perms"], perms), "partial file was made with other permutations or episodes"
+        assert str(z["fingerprint"]) == fp, "partial file was made with other episodes, prompts, model or permutations"
         scores, done, times = z["scores"], int(z["done"]), list(z["times"])
         print(f"resuming at episode {done}/{n}", flush=True)
-    t_load = time.time()
-    rr = QwenReranker(MODEL_ID, "cuda", MAX_PIXELS)
-    rec["model_load_s"] = time.time() - t_load
+    rr = None
+    if done < n:
+        t_load = time.time()
+        rr = QwenReranker(MODEL_ID, "cuda", MAX_PIXELS)
+        rec["model_load_s"] = time.time() - t_load
 
     def save():
-        np.savez(partial, scores=scores, perms=perms, done=done, times=np.asarray(times))
+        tmp = out_dir / "probe_partial.tmp.npz"
+        np.savez(tmp, scores=scores, perms=perms, done=done, times=np.asarray(times), fingerprint=fp)
+        os.replace(tmp, partial)
 
     for i in range(done, n):
         t0 = time.time()
@@ -98,13 +115,14 @@ def run_mllm(ep, perms, path, cap, out_dir, rec):
                 perm = perms[i, ci, di]
                 msgs = make_prompt(build_messages, ep, i, cond, d, perm, path, cap)
                 logits = rr.score(msgs)
-                scores[ci, di, i, perm] = logits                      # un-permute to the episode's column order
+                scores[ci, di, i] = unpermute(logits, perm)           # back to the episode's column order
         times.append(time.time() - t0)
         done = i + 1
         if done % CHECKPOINT_EVERY == 0 or done == n:
             save()
             print(f"episode {done}/{n}, {np.mean(times[-CHECKPOINT_EVERY:]):.2f} s/episode (4 prompts)", flush=True)
     rec["episode_s_mean"], rec["prompt_s_mean"] = float(np.mean(times)), float(np.mean(times)) / 4
+    rec["prompt_layout"] = "explicit line breaks (v2)"
     return {c: {d: scores[ci, di] for di, d in enumerate(DIRECTIONS)} for ci, c in enumerate(CONDITIONS)}
 
 
@@ -133,7 +151,7 @@ def main():
     rec = {"model": MODEL_ID, "max_pixels": MAX_PIXELS, "n_per_pair": args.n, "seed": args.seed,
            "episodes_sha256": hashes}
     t0 = time.time()
-    mllm = run_mllm(ep, perms, path, cap, out_dir, rec)
+    mllm = run_mllm(ep, perms, path, cap, out_dir, rec, fingerprint(ep, perms, path, cap, hashes))
     rec["probe_total_s"] = time.time() - t0
     cos = cosine_baseline(data, splits.selection, ep)
     clusters = splits.groups[ep.anchor]
