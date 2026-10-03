@@ -247,26 +247,32 @@ for r, h in hist.items():
                            "constant_score_value": chance,
                            "relative_gap_last10": float((chance - al[-10:].mean()) / chance),
                            "tau_start": h["history"]["tau"][0], "tau_end": h["history"]["tau"][-1],
+                           "log_tau_rise": math.log(h["history"]["tau"][-1] / h["history"]["tau"][0]),
+                           "log_tau_rise_over_max_adam_move": math.log(h["history"]["tau"][-1] / h["history"]["tau"][0])
+                           / (h["config"]["lr"] * (h["history"]["step"][-1] - h["history"]["step"][0])),
+                           "log_tau_rise_over_max_adam_move_steps_50_to_1050": math.log(
+                               h["history"]["tau"][h["history"]["step"].index(1050)]
+                               / h["history"]["tau"][h["history"]["step"].index(50)]) / (h["config"]["lr"] * 1000),
                            "aspect_loss_window_means": {
                                f"{a}-{b}": float(al[(st_ >= a) & (st_ <= b)].mean())
                                for st_ in [np.asarray(h["history"]["step"])]
                                for a, b in ((50, 500), (550, 1000), (1050, 1500), (1550, 2000))},
                            "lambda_aspect": h["config"]["lambda_aspect"], "lambda_swap": h["config"]["lambda_swap"],
                            "num_factors": h["config"]["num_factors"], "aspect_beta": h["config"]["aspect_beta"]}
-# post-hoc training-fit diagnostic (controller commit 938d1e5; not pre-registered, outside the decision map). Its JSON
-# stores summaries only, so the headline numbers are read from it, not recomputed. Its row labelled "SE" scored the
-# factor-learning grid's style cell S (S_seed42.pt), not E1's SE checkpoint, so it is carried here under that name.
+# post-hoc training-fit diagnostic (commits 938d1e5 and 8a8e999; not pre-registered, outside the decision map). Its JSON
+# stores summaries only, so the headline numbers are read from it, not recomputed. Since 8a8e999 its "SE" row is E1's
+# SE checkpoint (SHA-256 93add21b...) and "S" is the factor-learning grid's style cell, a separate reference row.
 FIT = ROOT / "src/test/20261101_aspect_factor_gonogo/results/train_fit_diagnostic.json"
 if FIT.exists():
     fit = json.load(open(FIT))
     assert fit["note"].startswith("POST-HOC")
+    assert fit["checkpoint_sha256"]["SE"].startswith("93add21b") and fit["checkpoint_sha256"]["S"].startswith("33d35943")
     DATA["train_fit_diagnostic"] = {"note": fit["note"], "n_per_pair": fit["n_per_pair"],
                                     "cosine": {k: {m: fit["cosine"][k]["pooled"][m] for m in ("r1", "gain")}
                                                for k in ("fresh", "bank")},
                                     "models": {}}
     for name, rec in fit["models"].items():
-        label = "S (grid style cell; labelled SE in the JSON)" if name == "SE" else name
-        DATA["train_fit_diagnostic"]["models"][label] = {
+        DATA["train_fit_diagnostic"]["models"][name] = {
             f"{k}_{sc}": {m: rec[k][sc]["pooled"][m] for m in ("r1", "gain", "other", "swap")}
             for k in ("fresh", "bank") for sc in ("agreement", "uniform", "fixed_beta")}
 DATA["checks_passed"] = len(CHECKS)

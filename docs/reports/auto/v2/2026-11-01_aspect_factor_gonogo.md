@@ -1,4 +1,4 @@
-# E3: aspect-trained factors miss the go/no-go; held-out genre, supervision ablation and the early MLLM probe
+# E3: aspect-trained factors miss the go/no-go; the K8 genre test, supervision ablation and the early MLLM probe
 
 Date: 2026-11-01 (sequence date of plan step E3, CVPR plan spec §6 and §11; the runs took place on 2026-10-03).
 Experiment folders: `src/test/20261101_aspect_factor_gonogo/` (pre-registration, runner, logs) and
@@ -29,21 +29,24 @@ R@1 by almost 3 points.
 two.*
 
 - **Strong GO** (R@1 and gain each at least 4 points above backbone only) was far away: +0.23 and +0.26.
-- **K8, the held-out-aspect test, failed.** H1, trained without the caption partition, gained +0.10 [−0.21, 0.40]
-  on genre pairs over its uniform control. Under the pre-registered rule, claim C2 narrows to "selection among
-  aspects represented in training".
+- **K8 failed.** H1, trained without the caption partition and with no genre label, gained +0.10 [−0.21, 0.40] on
+  genre pairs over its uniform control. Under the pre-registered rule, claim C2 narrows to "selection among aspects
+  represented in training". Even a pass would have been weak evidence, because the image partition that H1 keeps
+  carries genre (AMI 0.397).
 - **Supervision ablation (descriptive).** Removing the GoEmotions affect partition lowered the emotion-pair condition
   gain by 0.56 [0.07, 1.05] points (S1 against A1), so the little conditioning that A1 showed on emotion came from the
-  distant supervision.
+  distant supervision. A1 was not the picked run, and the comparison decides nothing.
 - **Why the method failed.** The factor term does find candidates that share *an* aspect with the query: with uniform
   weights it puts one of the two aspect-sharing candidates first in 33.4% of rankings, against 27.1% for the cosine.
   But the agreement weights do not pick the conditioned aspect out of the two. The factors spread every aspect's
   values over shared dimensions (value spread S 0.41 to 0.65, far above the one-factor-per-value floor), yet each
-  factor carries little value information (mean η² 0.02 to 0.06 for emotion), and aspect training changed this by
-  about as much as SE's value episodes did. During training the pseudo-aspect loss stayed only 1.0% to 4.4% below the
-  value it takes when every candidate gets the same score, and a post-hoc check (not pre-registered) found a gain of
-  only 0.36 [−0.12, 0.86] for A3 on fresh episodes of its own training task. The models barely fit that task, so the
-  NO-GO is a verdict on method A as implemented, upstream of any transfer to labelled aspects.
+  factor carries little value information (mean η² 0.02 to 0.06 for emotion); aspect training raised it on emotion
+  captions about as much as SE's value episodes did. During training the pseudo-aspect loss stayed only 1.0% to 4.4%
+  below the value it takes when every candidate gets the same score, and a post-hoc check (not pre-registered) found
+  a gain of 0.36 [−0.12, 0.86] for A3 on fresh episodes of its own training task, against 0.00 for the cosine. Our
+  post-hoc reading is that the models fit that task only weakly, so the NO-GO judges method A as implemented, an
+  optimisation or objective failure upstream of transfer. The untested alternative is a task failure: these k-means
+  pseudo-partitions may not be learnable as conditional aspects by this basis.
 - **Early MLLM probe: neither run worked.** The fixed-prompt run (v2), which decides, reached R@1 13.50 against 13.28
   for the cosine (+0.22 [−1.13, 1.53]) with a condition gain of −0.53 [−1.68, 0.66]. The pre-fix run (v1), whose
   rendering glued the letter labels onto neighbouring tokens, gave +0.28 [−0.98, 1.54] and 0.00 [−1.16, 1.15].
@@ -69,7 +72,7 @@ The aspect task replaced an earlier evaluation, and every step since has narrowe
    aspect are patterns over shared factors. One factor per value gives exactly zero condition gain, and raw features
    that mix the aspects defeat raw pair rules the same way (spec §6).
 4. **E0** ([report](2026-10-29_aspect_eval_setup.md)) built the shared evaluation stack and reproduced the spike to
-   0.01 (CLIP 11.13, SE 10.95).
+   0.01 (CLIP 11.13; SE 10.95, scored as in the spike at a fixed β of 0.3 without cross-fitting).
 5. **E1** ([report](2026-10-30_aspect_baselines.md)) ran nine raw-feature metric-from-pairs baselines on 12,288
    aspect episodes per seed. None separated the aspects. RCA set the GO bar (mean of R@1 and gain 6.74 on seed 42).
    SE's uniform-weight control raised R@1 to 16.30 at gain 0, which made the uniform control a hard GO comparator.
@@ -109,12 +112,13 @@ score temperature τ is learned. All runs trained for 2,000 steps at model seed 
 | A4 | AIC | λ_swap 0 | yes |
 | A5 | AIC | aspect β 0 (no cosine in the training score) | yes |
 | A6 | AIC | no sparsity penalty, decorrelation 0.1 (meant to give denser codes) | yes |
-| H1 | AI (affect, image) | A1's settings; the held-out-genre model for K8 | no, test only |
+| H1 | AI (affect, image) | A1's settings; the model with no genre label or genre partition, for K8 | no, test only |
 | S1 | IC (image, caption) | A1's settings; the supervision ablation without the affect partition | no, descriptive |
 
-Training took 579 to 621 s per run, three at a time on the local RTX 3090 (peak 3.93 GiB), from 03:14 to 03:44. No
-run had a dead factor. On scorer-train rows the image codes were 42% to 45% active (A2: 30% of 64) and the caption
-codes 48% to 51% (A2: 34%). A6 was meant to be denser but was not: 43% and 50% active, against A1's 43% and 48%.
+Training took 579 to 621 s per run, three at a time on the local RTX 3090 (peak 3.93 GiB, A2 3.94 GiB), from 03:14 to
+03:44. No run had a dead factor. On scorer-train rows the image codes were 42% to 45% active (A2: 30% of 64) and the
+caption codes 48% to 51% (A2: 34%). A6 was meant to be denser but was not: 43% and 50% active, against A1's 43% and
+48%.
 
 ## 3. Protocol and the pre-registered rules
 
@@ -178,11 +182,12 @@ w = 1/L, so the condition is removed and its gain is 0 by construction.
 *λ picks are written as "tuned on half 0 / tuned on half 1"; each half's pick scores the other half.*
 
 The pick rule chose **A3** (criterion 6.955), ahead of A4 (6.824) and of the two ineligible runs H1 (6.762) and S1
-(6.726). A3 was the only change that helped on both metrics at once: tripling the weight of the aspect loss lifted
-condition gain from A1's −0.09 to 0.52 and R@1 from 12.93 to 13.39, level with the GO bar's 13.38. Dropping the swap
-term (A4) cost little, while 64 factors (A2), no cosine in the training score (A5) and the "denser" variant (A6)
-left the gain at zero. A3's lead over A4 (0.13 on the criterion) is well inside the intervals, so the pick is one
-draw from a cluster of similar runs.
+(6.726). Every run is one change from A1 (R@1 12.93, gain −0.09). Two changes raised both metrics: tripling the
+aspect loss weight (A3: +0.46 R@1 and +0.60 gain, R@1 13.39 level with the GO bar's 13.38) and dropping the swap term
+(A4: +0.34 R@1 and +0.46 gain). 64 factors (A2), no cosine in the training score (A5) and the "denser" variant (A6)
+kept the gain within 0.15 of zero (−0.09, 0.05 and −0.02), differences that sit well inside the intervals. No paired
+comparison between runs was pre-registered, and A3's lead over A4 (0.13 on the criterion) is well inside the
+intervals, so the pick is one draw from a cluster of similar runs.
 
 The seed-42 table already showed two signs of the outcome. Every run sat within 0.45 R@1 of the cosine, while every
 uniform control sat 3.2 to 3.7 points above it (16.12 to 16.61). And cross-fitting gave the condition-weighted term a
@@ -208,8 +213,9 @@ The three paired comparisons are in the Summary table. A3 beat the GO bar on bot
   difference, which equals A3's own gain because the cosine's is 0, had a lower bound of −0.04.
 - **Against its uniform control**, A3 lost 2.96 points of R@1, and the gain comparison is again A3's own gain.
 
-So GO failed on condition gain against two comparators and on R@1 against one. Strong GO failed by more than an order
-of magnitude: +0.23 R@1 and +0.26 gain against the required +4.0 each.
+So GO failed on both metrics against backbone only (on R@1 by a lower bound of exactly 0.000, which the strict
+"above 0" rule does not accept) and against its uniform control; against RCA it passed both. Strong GO failed by more
+than an order of magnitude: +0.23 R@1 and +0.26 gain against the required +4.0 each.
 
 **The winner's curse.** A3's seed-42 gain of 0.52 halved to 0.26 on the fresh episodes. Runs that were not picked
 moved by similar amounts in both directions (A1 from −0.09 to 0.34, H1 from 0.26 to 0.04, S1 from 0.25 to 0.00), so
@@ -218,8 +224,9 @@ Testing on fresh episodes removed the selection advantage that the seed-42 pick 
 
 **Per aspect pair** (Figure 3). A3's gain was positive only on emotion × genre, 0.70 [0.15, 1.24], with −0.14
 [−0.60, 0.30] on emotion × style and 0.22 [−0.30, 0.75] on style × genre. Emotion × style was the hardest pair for
-every scorer (cosine R@1 10.45 against 15.13 and 15.00 for the genre pairs), because emotion is carried by the
-captions and style by the images, so a cross-modal match on either aspect is bounded by its weaker side (spec C3).
+every scorer (cosine R@1 10.45 against 15.13 and 15.00 for the genre pairs). That is consistent with claim C3, still
+open until E12: emotion is carried mainly by the captions and style by the images, so a cross-modal match on either
+aspect would be bounded by its weaker side.
 
 **Against all nine raw baselines** (addendum A5, descriptive). On the seed-43 episodes A3 beat KISSME and RCA on both
 metrics, beat Wang et al.'s per-query metric, the pair probe and Tip-Adapter on R@1 only, and did not beat the
@@ -260,7 +267,7 @@ the conditioned one. On the seed-43 episodes:
 
 The factor similarity, unweighted, lifted the "either candidate" rate by 6.4 points over the cosine: it detects that
 a candidate shares *some* aspect with the query. Most of that lift came from the genre pairs (A3's uniform control
-reached 19.29 and 19.31 on the two genre pairs against the cosine's 15.13 and 15.00, but 11.55 against 10.45 on
+reached R@1 19.29 and 19.31 on the two genre pairs against the cosine's 15.13 and 15.00, but 11.55 against 10.45 on
 emotion × style), which fits the image codes carrying genre most strongly (η² below). The agreement weights were meant
 to turn this into a choice between the two candidates, and they did not: with the weights, the "either" rate fell
 back to 27.25, and the target led the other aspect's candidate by only 0.26 points (13.76 against 13.50). The
@@ -308,9 +315,9 @@ descriptive measures added by the addendum test this on the selection rows (eval
 2. **The value signal in those factors is weak, and weakest for emotion.** On average the value labels explain 2% to
    6% of a factor's variance for emotion, 6% to 14% for style and 14% to 26% for genre. Emotion is the aspect that
    the captions carry (E0, spec C3), and even the caption codes explain only 5% to 6% of it.
-3. **Aspect training barely changed the codes.** A3's η² exceeded C0's by about a fifth on emotion captions (0.057
-   against 0.047) and genre images (0.264 against 0.222), the same amount SE's value episodes achieved (0.057 and
-   0.249). On these measures, A3's codes look like C0's and SE's.
+3. **Aspect training changed the codes little.** A3's η² exceeded C0's by about a fifth on emotion captions (0.057
+   against 0.047) and genre images (0.264 against 0.222). SE's value episodes matched that on emotion captions (0.057)
+   and came close on genre images (0.249). On these measures, A3's codes look like C0's and SE's.
 
 What these measures do not show is whether separate factors specialise in separate aspects (an aspect-block basis).
 We did not measure that, and it is the remaining part of the mechanism note's requirement.
@@ -321,10 +328,14 @@ The training logs (Figure 4) show the most direct cause we found. The pseudo-asp
 every candidate gets the same score, the cross-entropy is ln 13 and the swap term ln 2, so the loss is 3.258 with the
 swap term and 2.565 without it. Over the last ten logged steps (steps 1,550 to 2,000), every run stayed between 1.0%
 and 4.4% below that value: A3 3.222 against 3.258 (1.1% below), A1 3.191 (2.0%), S1 3.116 (4.4%), A4 2.470 against
-2.565 (3.7%). After a drop in the first 50 steps the loss stayed flat: A3 averaged 3.175 over steps 50 to 500 and
-3.222 over steps 1,550 to 2,000. Over the same steps the learned temperature τ rose steadily, from 0.031 to 0.082 for
-A3, which flattens the softmax. A learned temperature moves this way when sharper scores would raise the loss, that
-is, when the scores rank the target first only a little more often than chance.
+2.565 (3.7%). After a drop in the first 50 steps the loss did not decrease further: A3 drifted back up toward the
+constant-score value (3.175 over steps 50 to 500, 3.222 over steps 1,550 to 2,000), and H1's mean over steps 50 to 500
+(3.308) sat above it. Over the same steps the learned temperature τ rose steadily, from 0.031 to 0.082 for A3, which
+flattens the softmax. In every run log τ rose by 0.60 to 1.04 over 2,000 steps, which is 30% to 52% of the most Adam
+can move one parameter at learning rate 0.001 (2.0 over 2,000 steps), and 42% to 64% of it over steps 50 to 1,050; its
+gradient kept the same sign for most of training. A learned temperature rises when sharper scores would raise the
+loss, which fits weakly informative scores, but a growing score scale or training that had not converged would also
+produce it, and we did not separate these.
 
 ![Training aspect loss](../../assets/2026-11-01_aspect_factor_gonogo/aspect_loss.png)
 
@@ -332,13 +343,13 @@ is, when the scores rank the target first only a little more often than chance.
 steps on that step's 32 training episodes. Right: the learned temperature τ. A3, the picked run, is the thick line.*
 
 This places the failure upstream of transfer. E3 was designed to ask whether a basis trained on pseudo-aspects
-transfers to labelled aspects. Under these settings the basis barely learned the pseudo-aspect task itself, so the
-transfer question was not really posed. The post-hoc check below tests this directly.
+transfers to labelled aspects. Under these settings the basis learned the pseudo-aspect task itself only weakly
+(§6.4), so the transfer question was not really posed. The post-hoc check below tests this directly.
 
 ### 6.4 Post-hoc check: the training task on fresh pseudo-aspect episodes
 
 **Not pre-registered, descriptive, outside the decision map.** It ran after the GO verdict and changes no pick, rule
-or conclusion of the go/no-go. We scored the trained models on their own task (commit 938d1e5,
+or conclusion of the go/no-go. We scored the trained models on their own task (commits 938d1e5 and 8a8e999,
 `src/test/20261101_aspect_factor_gonogo/train_fit_diagnostic.py`, CPU, scorer-train rows only). The *fresh* episodes
 were new pseudo-aspect episodes built from the E2 partitions (seed 777 plus the pair index, 2,048 per partition pair,
 validated, third partition controlled) over the training rows, so the models had never seen these episodes. The *bank*
@@ -359,40 +370,45 @@ control and, as a second view, the training-time score with a fixed β of 0.3. C
 | H1 | 18.46 / −0.28 [−0.56, −0.004] | 17.50 / −0.02 [−0.71, 0.65] | 18.60 / −0.15 [−0.65, 0.34] | 22.79 |
 | S1 | 18.29 / −0.32 [−0.70, 0.07] | 17.72 / 0.15 [−0.53, 0.85] | 18.73 / 0.28 [−0.29, 0.86] | 22.97 |
 | C0 (no aspect training) | 18.00 / −0.41 [−0.81, 0.00] | 16.56 / 0.04 [−0.68, 0.74] | 18.31 / 0.04 [−0.47, 0.55] | 23.07 |
+| SE (value episodes) | 18.40 / −0.16 [−0.45, 0.13] | 16.40 / 0.17 [−0.55, 0.86] | 18.70 / 0.16 [−0.24, 0.59] | 22.75 |
 
 *Three bounds sit at zero to two decimals, so they are shown to three: A4's training-score lower bound (−0.004), H1's
 agreement-rule upper bound (−0.004, so H1's interval lies just below zero) and C0's agreement-rule upper bound
-(0.000). The diagnostic's row labelled SE scored the factor-learning grid's style cell S
-(`src/test/20261016_factor_learning_grid/checkpoints/S_seed42.pt`), not the SE model of E1 and E3
-(`src/test/20261018_affect_factor_learning/checkpoints/SE_seed42.pt`), so we leave it out.*
+(0.000). The SE row is the SE checkpoint of E1 and E3
+(`src/test/20261018_affect_factor_learning/checkpoints/SE_seed42.pt`, SHA-256 93add21b…). The first version of the
+check (938d1e5) had scored the factor-learning grid's style cell S under the label SE; 8a8e999 corrected the label and
+kept S as a separate reference row, which we leave out.*
 
-1. **On fresh episodes of their own task the models barely selected the conditioned pseudo-aspect.** The A runs'
-   condition gain under the agreement rule was −0.06 to 0.61 against the cosine's 0.00, and only A5's interval
-   cleared zero (0.61 [0.07, 1.18]). Under the training-time score only A3 cleared it (0.95 [0.28, 1.62]), and it gave
-   up R@1 to do so (17.69 against 18.41). These gains are of the same order as A3's 0.26 on labelled aspects.
+1. **On fresh episodes of their own task the gains were small.** The A runs' condition gain under the agreement rule
+   was −0.06 to 0.61 against the cosine's 0.00, and only A5's interval cleared zero (0.61 [0.07, 1.18]). Under the
+   training-time score only A3 cleared it (0.95 [0.28, 1.62]). That score has lower R@1 than the cosine for every
+   model (C0 16.56, SE 16.40, A5 17.39, A3 17.69, against 18.41), so the R@1 drop belongs to the scorer, not to A3's
+   gain. These gains are of the same order as A3's 0.26 on labelled aspects.
 2. **Even on bank episodes, which they mostly trained on, the gains stayed small:** 0.48 to 1.18 for A1 to A6 under
    the agreement rule, against 0.04 for C0.
-3. **The uniform controls repeated the labelled-episode pattern.** Every model, C0 included, reached R@1 22.74 to
+3. **The uniform controls repeated the labelled-episode pattern.** Every model, C0 and SE included, reached R@1 22.74 to
    23.07 with its uniform control against the cosine's 18.41. The unconditioned factor similarity finds candidates that
    share a cluster whether or not the model was trained on aspect episodes, and aspect training added little
    conditional selection on top (A3 0.36 against C0 −0.41 on fresh episodes).
 
-So the near-zero gain on labelled aspects is not the failure of transfer from a well-fit training task. The models
-barely fit the pseudo-aspect task, and E3's NO-GO is a verdict on method A as implemented: an optimisation or
-objective failure upstream of transfer. It does not refute the idea that a basis trained on pseudo-aspects would
-transfer to labelled aspects, because E3 never produced such a basis.
+So the near-zero gain on labelled aspects is not the failure of transfer from a well-fit training task. Our reading,
+made after the verdict, is that E3's NO-GO judges method A as implemented: an optimisation or objective failure
+upstream of transfer. The alternative we did not test is a task failure: the k-means pseudo-partitions may not be
+learnable as conditional aspects by this basis. Either way, E3 does not refute the idea that a basis which fits
+pseudo-aspects would transfer to labelled aspects, because E3 never produced such a basis.
 
 ### 6.5 Summary of the mechanism
 
 The factor basis encodes enough shared structure, mostly genre and style, to find aspect-sharing candidates, and its
 values do spread across shared factors. But the codes carry little value information per factor, aspect training left
 them close to C0's, and the training objective stayed near its constant-score value; on fresh episodes of their own
-task the models ranked the conditioned pseudo-aspect's candidate first barely more often than the other one. The
+task the models ranked the conditioned pseudo-aspect's candidate first only a little more often than the other one
+(A3: gain 0.36, against 0.00 for the cosine). The
 agreement rule therefore had little aspect-specific signal to select from, and the small gains it found on labelled
 aspects (largest on emotion × genre, the pair that the affect and image partitions mirror most directly) did not
 survive the fresh test episodes.
 
-## 7. Held-out genre (K8)
+## 7. K8: genre with no genre label or genre partition
 
 **Why it was tested.** Each ArtELingo pseudo-partition was chosen to resemble one evaluation aspect, so a reviewer can
 ask whether the method learns aspects or a selector among the aspects it was trained on (risk R-pseudo). K8 trains H1
@@ -546,10 +562,14 @@ the evidence that branch 2 needs.
     the same selection rows as the seed-42 pick episodes, so the GO test is not independent of development (spec §6).
 13. **One model seed.** Every run trained at model seed 42; replication at seeds 43 and 44 was planned only after a
     GO (plan Task 17) and was not run.
-14. **Post-hoc training-fit check** (§6.4, commit 938d1e5): run after the GO verdict, not pre-registered, descriptive
-    and outside the decision map. Its JSON stores summaries only, so its numbers here are read from
-    `train_fit_diagnostic.json` rather than recomputed from per-anchor arrays. Its row labelled SE is the grid's style
-    cell S and is left out.
+14. **Post-hoc training-fit check** (§6.4, commits 938d1e5 and 8a8e999): run after the GO verdict, not
+    pre-registered, descriptive and outside the decision map. Its JSON stores summaries only, so its numbers here are
+    read from `train_fit_diagnostic.json` rather than recomputed from per-anchor arrays. 8a8e999 replaced a mislabelled
+    SE row (the grid's style cell S) with the real SE checkpoint; the S row is left out.
+15. **The "K7 bar"** (Task 15 ruling on the plan's file list): read as the raw-feature comparator of K7, the agreement
+    rule on raw CLIP features (diag), measured at E3. The picked run did not beat it (it equals the cosine on seed 43).
+    K7 stays open because the PCA, NMF, SpLiCE and SAE bases belong to E11. The spec's K2, K7 and K8 status cells link
+    to this report.
 
 ## 11. Which branch the numbers point to
 
@@ -564,24 +584,32 @@ benchmark paper) needs a working MLLM; neither condition holds.
 
 | Item | Content |
 |---|---|
-| Evidence already in hand | K1 (the value-episode shortcut); E1 and E3 as a documented negative result (no raw-feature metric, factor recipe or in-context 2B MLLM selects the aspect from examples); the aspect spike's label-probe reference (about 23 R@1) showing the task is learnable with labels |
+| Evidence already in hand | K1 (the value-episode shortcut); E1 and E3 as a documented negative result (no raw-feature metric, factor recipe or in-context 2B MLLM beats backbone only and its uniform control on both metrics, and pooled condition gains stay below 0.6 points); the aspect spike's label-probe reference (about 23 R@1) showing the task is learnable with labels |
 | Next experiments | C3 analysis (E12: label-probe references across datasets and backbones, a painting-majority emotion reference, SemArt's neutral catalogue text as a contrasting annotation protocol); K3 naming baselines (CRL, privileged names, Qwen3-VL-Embedding with the aspect in its instruction) |
 | Release | episode files, splits, label joins and evaluation code (C1), in the scope the chosen venue needs |
 | Held reads | only as C3 and K3 need them, within §10's budget |
 | Venue | a workshop or a datasets-and-benchmarks track, chosen with the user; the deadline is not fixed yet |
 
-**Controller's observation for the user's decision (not a pre-registered outcome).** §6.3 and §6.4 show that method A
-never fit its own training task: the aspect loss stayed near its constant-score value and fresh pseudo-aspect episodes
-gave A3 a gain of 0.36 [−0.12, 0.86]. E3 therefore says little about whether a well-fit pseudo-aspect basis would
-transfer. Before giving up branch 1, the user may want a short fit-repair step, pre-registered like E3:
+**Controller's observation for the user's decision (not a pre-registered outcome).** §6.3 and §6.4 suggest that
+method A fit its own training task only weakly: the aspect loss stayed near its constant-score value, and fresh
+pseudo-aspect episodes gave A3 a gain of 0.36 [−0.12, 0.86]. E3 therefore says little about whether a well-fit
+pseudo-aspect basis would transfer. Before giving up branch 1, the user may want a short fit-repair step,
+pre-registered like E3:
 
-- **What it would check:** why the aspect loss stays near its constant-score value, along the axes the logs point to:
-  the aspect loss weight against the InfoNCE agreement term, the scale of the factor term against β·cos in the
-  training score, a fixed against a learned τ, and the number of episodes per step.
+- **What the logs support.** The temperature and the score scale come first. In every run log τ rose steadily, by
+  30% to 52% of the most Adam can move it (§6.3), so the optimiser kept flattening the scores. A repair would start
+  from a fixed or bounded τ and from the scale of the factor term against β·cos in the training score, then the number
+  of episodes per step.
+- **What the logs do not support.** The loss weight is a weak lead: tripling λ_aspect (A3) left the unweighted aspect
+  loss closer to its constant-score value than A1's (3.222, 1.1% below, against 3.191, 2.0% below).
+- **The untested alternative.** The k-means pseudo-partitions may not be learnable as conditional aspects by this
+  basis at all. That would be a task failure, not an optimisation failure; a repair step would show it as a fit check
+  that stays near zero whatever the settings.
 - **Its gate:** first the training-fit check of §6.4 (a pre-registered gain on fresh pseudo-aspect episodes clearly
   above zero); only a run that passes it goes to a GO test, picked on seed-42 selection episodes and tested on a new
   fresh episode seed (seed 43 is spent), against the same three comparators.
-- **Cost in days:** about 2 to 3 working days. Writing the pre-registration and reading the loss terms takes about a
+- **Estimated cost (our estimate from E3's timings, not measured):** about 2 to 3 working days. Writing the
+  pre-registration and reading the loss terms takes about a
   day; a grid of up to about 10 short runs costs under an hour of GPU time (E3's 8 runs took 30 minutes, three at a
   time), the fit check and a GO test take minutes on the CPU, and the report about half a day. Started on Oct 4, it
   would end before the Oct 9 decision, leaving the branch 1 schedule (replication from Oct 10, methods frozen Oct 23,
@@ -613,7 +641,7 @@ The user decides on Oct 9 from these numbers.
   `picked.json`, `gonogo.json`, `per_anchor_select_seed42.npz`, `per_anchor_gonogo_seed43.npz`,
   `history_<run>_seed42.json`); E1's `src/test/20261030_aspect_baselines/results/` (`per_anchor_seed{42,43}.npz`,
   `baselines_seed{42,43}.json`); the MLLM probe's `src/test/20261102_mllm_probe/results/` (v1) and `results/v2/`
-  (v2, log `run_probe_v2.log`); the post-hoc check's `train_fit_diagnostic.json` (commit 938d1e5).
+  (v2, log `run_probe_v2.log`); the post-hoc check's `train_fit_diagnostic.json` (commits 938d1e5 and 8a8e999).
 - Re-derivation: `docs/reports/assets/2026-11-01_aspect_factor_gonogo/build_figures.py` recomputed every summary and
   paired comparison in this report from the per-anchor arrays with `src.eval.aspect_metrics` and asserted 229 of them
   equal to the stored records (the GO comparisons, K8, the ablation rows, the baseline context, the per-pair summaries
