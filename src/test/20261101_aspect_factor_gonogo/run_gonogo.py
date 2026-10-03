@@ -1,14 +1,16 @@
-"""E3: the aspect-factor training grid and the seed-42 selection pick (CVPR plan Task 12).
+"""E3: the aspect-factor training grid, the seed-42 selection pick (CVPR plan Task 12), and the seed-43 GO test,
+held-out-genre K8 test, ablation rows and value-sharing diagnostic (Task 13).
 
 The rules are fixed in PREREGISTRATION.md in this folder, committed before any run. Run from the repo root:
 
   python src/test/20261101_aspect_factor_gonogo/run_gonogo.py --train A1 --seed 42 [--smoke]    # GPU (one run)
   flock -n -o -E 75 /tmp/gpu0.lock bash src/test/20261101_aspect_factor_gonogo/run_grid.sh      # the 8 grid runs
   OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 python src/test/20261101_aspect_factor_gonogo/run_gonogo.py --select [--smoke]
+  OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 python src/test/20261101_aspect_factor_gonogo/run_gonogo.py --gonogo [--smoke]
 
 Row scope: training reads scorer-train rows only (local rows 0..n-1 of artelingo_splits().scorer_train); evaluation
 reads selection rows only (features and codes are NaN elsewhere, asserted); val and held rows are never read.
---select runs on the CPU. --smoke trains 50 steps on Task 10's smoke bank into checkpoints/smoke/ and
+--select and --gonogo run on the CPU. --smoke trains 50 steps on Task 10's smoke bank into checkpoints/smoke/ and
 results/smoke/, and evaluates Task 9's smoke episodes with the A1 smoke checkpoint standing in for every run.
 """
 import argparse
@@ -29,9 +31,10 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(ROOT))
 
 from src.data.artelingo import load_artelingo  # noqa: E402
-from src.data.artelingo_splits import artelingo_splits  # noqa: E402
-from src.eval.aspect_episodes import AspectEpisodes, concat_episodes, episodes_sha256  # noqa: E402
-from src.eval.aspect_metrics import METRICS, per_anchor, summarize  # noqa: E402
+from src.data.artelingo_splits import artelingo_aspect_labels, artelingo_splits  # noqa: E402
+from src.eval.aspect_episodes import (AspectEpisodes, concat_episodes, eligible_values,  # noqa: E402
+                                      episodes_sha256)
+from src.eval.aspect_metrics import METRICS, compare, per_anchor, summarize  # noqa: E402
 from src.eval.aspect_scorers import EvalInputs, agreement_term, cosine_scores, crossfit_lambda  # noqa: E402
 from src.train.train_factors import (R3_CONFIG, encode_rows, load_factor_checkpoint,  # noqa: E402
                                      save_factor_checkpoint, train_factors)
@@ -59,6 +62,12 @@ POOLED_ORDER = [f"{a}__{b}" for a, b in PAIRS]
 FIELDS = ("anchor", "candidates", "pairs_a_img", "pairs_a_txt", "pairs_b_img", "pairs_b_txt")
 CRITERION = ("maximize 0.5 * (R@1 point + condition gain point) of the cross-fitted scores on the pooled seed-42 "
              "selection episodes, among A1..A6; ties go to the lower run id")
+GO_CANDIDATES = ("diag", "diag_relu", "bilinear", "kissme", "rca", "xing", "wang", "probe", "tip")
+EMOTION_PAIRS = (0, 1)                                             # emotion__style, emotion__genre
+GENRE_PAIRS = (1, 2)                                               # emotion__genre, style__genre
+STRONG_GO_POINTS = 4.0
+MIN_PAINTINGS = 30                                                 # value eligibility, as in the episodes
+SHARE_FRACTION = 0.1                                               # value sharing: >= 10% of the factor's max
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 T0 = perf_counter()
 
@@ -292,6 +301,11 @@ def select(smoke: bool) -> None:
     out_sel, out_pick = f["res"] / "select_seed42.json", f["res"] / "picked.json"
     if not smoke and (out_sel.exists() or out_pick.exists()):
         raise FileExistsError(f"{out_pick} or {out_sel} exists: the pick is frozen. Refusing to overwrite.")
+    failed = {run for run in RUNS if not smoke and not checkpoint_path(run, 42, smoke).exists()
+              and (f["res"] / f"failed_{run}_seed42.json").exists()}
+    missing = [run for run in RUNS if run not in failed and not checkpoint_path(run, 42, smoke).exists()]
+    if missing:
+        raise FileNotFoundError(f"checkpoints missing (and no failed record) for {missing}: the grid is not complete")
     f["res"].mkdir(parents=True, exist_ok=True)
     ctx = EvalContext(42, smoke)
     log(f"seed-42 selection episodes: {ctx.n} pooled ({ctx.n_per_pair} per pair), SHA-256s match Task 9")
@@ -301,13 +315,10 @@ def select(smoke: bool) -> None:
         row = {"eligible": run in ELIGIBLE, "bank": RUNS[run][0]}
         if smoke:
             row["smoke_stand_in"] = "A1 smoke checkpoint (50 steps) stands in for this run"
-        failed = f["res"] / f"failed_{run}_seed42.json"
-        if not ckpt.exists():
-            if failed.exists() and not smoke:
-                rows[run] = {**row, "status": "failed (non-finite codes)", "eligible": False}
-                log(f"{run}: failed run, not eligible")
-                continue
-            raise FileNotFoundError(f"{ckpt} missing (and no failed record): the grid is not complete")
+        if run in failed:
+            rows[run] = {**row, "status": "failed (non-finite codes)", "eligible": False}
+            log(f"{run}: failed run, not eligible")
+            continue
         ic, tc = ctx.encode(ckpt)
         pa, picks = ctx.score(ic, tc, uniform=False)
         pa_u, picks_u = ctx.score(ic, tc, uniform=True)
@@ -352,8 +363,209 @@ def select(smoke: bool) -> None:
         print(f"{run:4s} {str(r['eligible']):5s} {cell(o['r1'])} {cell(o['gain'])} {o['other']['point']:6.2f} "
               f"{o['swap']['point']:6.2f} {r['criterion']:7.3f}  {u['r1']['point']:8.2f} {u['gain']['point']:9.2f}  "
               f"{r['lambda_picks']}")
-    print(f"\nPICKED: {picked}" + (" (SMOKE: every run is the A1 smoke checkpoint; the tie goes to A1)" if smoke else ""))
+    note = " (SMOKE: every run is the A1 smoke checkpoint; the tie goes to A1)" if smoke else ""
+    print(f"\nPICKED: {picked}{note}")
     log(f"wrote {out_sel.relative_to(ROOT)} and {out_pick.relative_to(ROOT)}")
+
+
+# ---------------------------------------------------------------- --gonogo (Task 13)
+
+
+def go_baseline(record42: dict) -> tuple[str, dict]:
+    """The first entry of Task 9's seed-42 GO-bar ranking, re-checked against the per-scorer points of that file."""
+    ranking = record42["go_bar_ranking"]
+    if sorted(g["scorer"] for g in ranking) != sorted(GO_CANDIDATES):
+        raise AssertionError(f"GO-bar ranking must cover exactly {GO_CANDIDATES}")
+    means = {s: 0.5 * (record42["scorers"][s]["overall"]["r1"]["point"]
+                       + record42["scorers"][s]["overall"]["gain"]["point"]) for s in GO_CANDIDATES}
+    name = ranking[0]["scorer"]
+    if means[name] != max(means.values()) or ranking[0]["mean_r1_gain"] != means[name]:
+        raise AssertionError(f"go_bar_ranking[0] = {name} is not the top of {means}")
+    return name, means
+
+
+def subset(pa: dict, mask: np.ndarray) -> dict:
+    return {m: pa[m][mask] for m in METRICS}
+
+
+def paired(pa: dict, pb: dict, clusters, mask=None) -> dict:
+    """compare() on R@1 and condition gain; beats = both CI lower bounds above 0."""
+    if mask is not None:
+        pa, pb, clusters = subset(pa, mask), subset(pb, mask), clusters[mask]
+    r1, gain = compare(pa, pb, clusters, "r1"), compare(pa, pb, clusters, "gain")
+    return {"r1": r1, "gain": gain, "beats": bool(r1["ci95"][0] > 0 and gain["ci95"][0] > 0)}
+
+
+def value_sharing(codes: dict, labels: dict, groups: np.ndarray, selection: np.ndarray) -> dict:
+    """Per aspect, model and modality: the share of factors whose value-mean code is >= 10% of the factor's largest
+    value-mean for at least half of the aspect's values (PREREGISTRATION.md §8). Selection rows only."""
+    out = {}
+    for aspect in ("emotion", "style", "genre"):
+        lab = labels[aspect]
+        rows = selection[lab[selection] >= 0]
+        values = eligible_values(lab, groups, rows, MIN_PAINTINGS)
+        out[aspect] = {"values": len(values), "labelled_rows": int(len(rows)), "models": {}}
+        for model, (img_codes, txt_codes) in codes.items():
+            entry = {}
+            for side, c in (("img", img_codes), ("txt", txt_codes)):
+                means = np.stack([c[rows[lab[rows] == v]].astype(np.float64).mean(0) for v in values])   # (V, L)
+                top = means.max(0)
+                live = top > 0
+                hits = (means >= SHARE_FRACTION * top).sum(0)
+                shared = live & (2 * hits >= len(values))
+                entry[side] = {"share": float(shared.mean()), "shared": int(shared.sum()),
+                               "dead": int((~live).sum()), "factors": int(len(top))}
+            entry["mean_share"] = 0.5 * (entry["img"]["share"] + entry["txt"]["share"])
+            out[aspect]["models"][model] = entry
+    return out
+
+
+def gonogo(smoke: bool) -> None:
+    f = folders(smoke)
+    out_json, out_npz = f["res"] / "gonogo.json", f["res"] / "per_anchor_gonogo_seed43.npz"
+    if not smoke and (out_json.exists() or out_npz.exists()):
+        raise FileExistsError(f"{out_json} exists: the GO test runs once. Refusing to overwrite.")
+    pick = json.loads((f["res"] / "picked.json").read_text())
+    if pick["smoke"] != smoke:
+        raise AssertionError(f"picked.json smoke={pick['smoke']} but this run has smoke={smoke}")
+    run = pick["run"]
+    if run is None:
+        raise SystemExit("picked.json names no run (every A run failed): GO is missed by PREREGISTRATION.md §3")
+    ok = [r for r in ELIGIBLE if pick["table"][r]["status"] == "ok"]
+    best = max(pick["table"][r]["criterion"] for r in ok)
+    if run != next(r for r in ok if pick["table"][r]["criterion"] == best):
+        raise AssertionError(f"picked.json names {run}, but its own table picks another run by the rule")
+    picked_ckpt = ROOT / pick["checkpoint"]
+    if picked_ckpt != checkpoint_path(run, 42, smoke):
+        raise AssertionError(f"picked.json checkpoint {picked_ckpt} is not {checkpoint_path(run, 42, smoke)}")
+    if sha_file(picked_ckpt) != pick["checkpoint_sha256"]:
+        raise AssertionError(f"{picked_ckpt}: SHA-256 differs from picked.json; the pick is frozen")
+    go_name, go_means = go_baseline(json.loads((f["e1"] / "baselines_seed42.json").read_text()))
+
+    ctx = EvalContext(43, smoke)
+    log(f"seed-43 test episodes: {ctx.n} pooled ({ctx.n_per_pair} per pair), SHA-256s match Task 9")
+    t9 = np.load(f["e1"] / "per_anchor_seed43.npz")
+    for key in t9.files:
+        if len(t9[key]) != ctx.n:
+            raise AssertionError(f"per_anchor_seed43.npz[{key}] has {len(t9[key])} rows, the episodes have {ctx.n}")
+    if not (np.array_equal(t9["anchor_group"], ctx.anchor_group) and np.array_equal(t9["pair_index"], ctx.pair_index)):
+        raise AssertionError("per_anchor_seed43.npz anchor_group / pair_index differ from the episodes")
+
+    def t9_pa(scorer):
+        return {m: t9[f"{scorer}__{m}"].astype(np.float64) for m in METRICS}
+
+    cos_pa = per_anchor(ctx.cos)
+    for m in METRICS:
+        if not np.array_equal(cos_pa[m], t9[f"cosine__{m}"]):
+            raise AssertionError(f"recomputed cosine {m} differs from Task 9's seed-43 array: misaligned episodes")
+    if not (cos_pa["gain"] == 0).all():
+        raise AssertionError("cosine condition gain must be exactly 0")
+
+    pas, picks, ckpts, codes = {}, {}, {}, {}
+    for role, rid in (("picked", run), ("H1", "H1"), ("S1", "S1")):
+        path = picked_ckpt if role == "picked" else checkpoint_path(rid, 42, smoke)
+        ic, tc = ctx.encode(path)
+        codes[f"picked ({run})" if role == "picked" else role] = (ic, tc)
+        pas[role], picks[role] = ctx.score(ic, tc, uniform=False)
+        if role in ("picked", "H1"):
+            pas[f"{role}_uniform"], picks[f"{role}_uniform"] = ctx.score(ic, tc, uniform=True)
+        ckpts[role] = {"run": rid, "checkpoint": str(path.relative_to(ROOT)), "sha256": sha_file(path)}
+        if smoke:
+            ckpts[role]["smoke_stand_in"] = "A1 smoke checkpoint (50 steps) stands in for this run"
+        log(f"{role} ({rid}): scored, lambda picks {picks[role]}")
+    clusters = ctx.anchor_group
+
+    # ---- GO (PREREGISTRATION.md §6)
+    comparators = {"backbone_only": ("cosine", cos_pa), "go_baseline": (go_name, t9_pa(go_name)),
+                   "uniform_control": (f"{run}_uniform", pas["picked_uniform"])}
+    go = {"picked": run, "picked_overall": ctx.summary(pas["picked"]), "picked_per_pair": ctx.per_pair(pas["picked"]),
+          "picked_lambda_picks": picks["picked"], "uniform_lambda_picks": picks["picked_uniform"], "comparators": {}}
+    for key, (name, pa) in comparators.items():
+        go["comparators"][key] = {"name": name, "overall": ctx.summary(pa), **paired(pas["picked"], pa, clusters)}
+    bo = go["comparators"]["backbone_only"]
+    go["GO"] = all(c["beats"] for c in go["comparators"].values())
+    go["strong_go_r1_condition"] = bool(bo["r1"]["point"] >= STRONG_GO_POINTS)
+    go["strong_go_gain_condition"] = bool(bo["gain"]["point"] >= STRONG_GO_POINTS)
+    go["strong_go"] = bool(go["GO"] and go["strong_go_r1_condition"] and go["strong_go_gain_condition"])
+
+    # ---- K8 (PREREGISTRATION.md §7)
+    genre = np.isin(ctx.pair_index, GENRE_PAIRS)
+    k8_cmp = paired(pas["H1"], pas["H1_uniform"], clusters, genre)
+    k8 = {"run": "H1", "bank": RUNS["H1"][0], "pairs": [POOLED_ORDER[i] for i in GENRE_PAIRS],
+          "n_episodes": int(genre.sum()), "gain_vs_uniform": k8_cmp["gain"], "r1_vs_uniform": k8_cmp["r1"],
+          "H1_genre_pairs": ctx.summary(pas["H1"], genre),
+          "H1_uniform_genre_pairs": ctx.summary(pas["H1_uniform"], genre),
+          "per_pair_gain_vs_uniform": {POOLED_ORDER[i]: paired(pas["H1"], pas["H1_uniform"], clusters,
+                                                               ctx.pair_index == i)["gain"] for i in GENRE_PAIRS},
+          "H1_all_pairs": ctx.summary(pas["H1"]), "lambda_picks": picks["H1"],
+          "uniform_lambda_picks": picks["H1_uniform"], "K8": bool(k8_cmp["gain"]["ci95"][0] > 0)}
+
+    # ---- ablation rows (descriptive, PREREGISTRATION.md §8)
+    emotion = np.isin(ctx.pair_index, EMOTION_PAIRS)
+    rows = {f"picked ({run})": pas["picked"], "S1": pas["S1"], **{s: t9_pa(s) for s in ("SE", "C0", "R3")}}
+    ablation = {"pairs": [POOLED_ORDER[i] for i in EMOTION_PAIRS], "n_episodes": int(emotion.sum()),
+                "S1_vs_picked_emotion_pairs": paired(pas["S1"], pas["picked"], clusters, emotion),
+                "S1_lambda_picks": picks["S1"],
+                "rows": {name: {"emotion_pairs": ctx.summary(pa, emotion), "all_pairs": ctx.summary(pa)}
+                         for name, pa in rows.items()},
+                "note": "descriptive; SE, C0 and R3 are Task 9's seed-43 cross-fitted per-anchor arrays"}
+
+    # ---- value sharing (diagnostic, selection-row labels)
+    t9_codes = {}
+    for s in ("SE", "C0", "R3"):
+        path = E1 / f"codes_{s}.npz"                      # Task 9's cache (also used in smoke mode)
+        z = np.load(path)
+        codes[s] = (ctx.masked(z["img"]), ctx.masked(z["txt"]))
+        t9_codes[s] = {"path": str(path.relative_to(ROOT)), "sha256": sha_file(path)}
+    sharing = value_sharing(codes, artelingo_aspect_labels(ctx.data), ctx.groups, ctx.selection)
+
+    branch = ("branch 1 (GO: method paper)" if go["GO"] else
+              "GO missed: branch 2 if the Task 14 MLLM probe works, else branch 3 (the user decides on Oct 9)")
+    verdict = {"picked": run, "GO": go["GO"], "strong_go": go["strong_go"], "K8": k8["K8"], "go_baseline": go_name,
+               "decision_map": branch}
+    record = {"episodes_seed": 43, "smoke": smoke, "n_per_pair": ctx.n_per_pair, "episodes_sha256": ctx.shas,
+              "picked_json": pick, "go_baseline": {"name": go_name, "seed42_mean_r1_gain": go_means},
+              "checkpoints": ckpts, "task9_codes": t9_codes, "go": go, "k8": k8, "ablation": ablation,
+              "value_sharing": sharing, "verdict": verdict, "script_sha256": sha_file(Path(__file__))}
+    assert_finite_tree(record)
+    arrays = {"anchor_group": ctx.anchor_group, "pair_index": ctx.pair_index}
+    for role, pa in pas.items():
+        for m in METRICS:
+            arrays[f"{role}__{m}"] = pa[m]
+    np.savez(out_npz, **arrays)
+    out_json.write_text(json.dumps(record, indent=1))
+
+    def line(label, c):
+        return (f"  {label:34s} R@1 {c['r1']['point']:+6.2f} [{c['r1']['ci95'][0]:+6.2f},{c['r1']['ci95'][1]:+6.2f}]"
+                f"   gain {c['gain']['point']:+6.2f} [{c['gain']['ci95'][0]:+6.2f},{c['gain']['ci95'][1]:+6.2f}]"
+                f"   beats: {'yes' if c['beats'] else 'no'}")
+
+    po = go["picked_overall"]
+    print("\n" + "=" * 34 + " E3 GO / NO-GO (seed-43 selection episodes) " + "=" * 34)
+    if smoke:
+        print("SMOKE RUN: every model role is the A1 smoke checkpoint (50 steps); these numbers mean nothing.")
+    print(f"picked run: {run} (seed-42 criterion {pick['criterion_value']:.3f}); {ctx.n} episodes, "
+          f"{len(np.unique(clusters))} anchor paintings")
+    print(f"picked: R@1 {cell(po['r1'])}  gain {cell(po['gain'])}  swap {po['swap']['point']:.2f}")
+    print("picked minus comparator (clustered bootstrap, 5,000 resamples):")
+    for key, label in (("backbone_only", "backbone-only (cosine)"), ("go_baseline", f"GO baseline ({go_name})"),
+                       ("uniform_control", f"uniform-weight control ({run})")):
+        print(line(label, go["comparators"][key]))
+    print(f"GO: {go['GO']}    strong GO: {go['strong_go']} (R@1 >= +4: {go['strong_go_r1_condition']}, "
+          f"gain >= +4: {go['strong_go_gain_condition']})")
+    g = k8["gain_vs_uniform"]
+    print(f"K8 (H1 on {k8['n_episodes']} genre-pair episodes, gain vs H1 uniform): {g['point']:+.2f} "
+          f"[{g['ci95'][0]:+.2f},{g['ci95'][1]:+.2f}] -> K8 {'holds' if k8['K8'] else 'fails'}")
+    s = ablation["S1_vs_picked_emotion_pairs"]
+    print(f"ablation (descriptive), S1 minus picked on emotion pairs: R@1 {s['r1']['point']:+.2f}, "
+          f"gain {s['gain']['point']:+.2f}")
+    print("value sharing (mean of image and caption share):")
+    for aspect, entry in sharing.items():
+        print(f"  {aspect:8s} ({entry['values']:2d} values): " + ", ".join(
+            f"{m} {e['mean_share']:.2f}" for m, e in entry["models"].items()))
+    print(f"decision map: {branch}")
+    print("=" * 112)
+    log(f"wrote {out_json.relative_to(ROOT)} and {out_npz.relative_to(ROOT)}")
 
 
 # ---------------------------------------------------------------- main
@@ -364,14 +576,17 @@ def main() -> None:
     mode = ap.add_mutually_exclusive_group(required=True)
     mode.add_argument("--train", choices=sorted(RUNS), metavar="RUN", help="train one grid run (A1..A6, H1, S1)")
     mode.add_argument("--select", action="store_true", help="seed-42 selection table and the pick")
+    mode.add_argument("--gonogo", action="store_true", help="seed-43 GO test, K8, ablation rows, value sharing")
     ap.add_argument("--seed", type=int, default=42, help="model seed for --train")
     ap.add_argument("--smoke", action="store_true")
     args = ap.parse_args()
     torch.set_num_threads(int(os.environ.get("OMP_NUM_THREADS", 8)))
     if args.train:
         train(args.train, args.seed, args.smoke)
-    else:
+    elif args.select:
         select(args.smoke)
+    else:
+        gonogo(args.smoke)
     log("done")
 
 

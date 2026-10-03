@@ -39,14 +39,40 @@ uniform-weight control, plus the K8 held-out-genre test. Every rule is fixed in 
   and `per_anchor_select_seed42.npz` written to `results/smoke/`.
 - **`run_grid.sh` logic** was checked with a stub trainer in the scratchpad (one run forced to fail): the other 7
   ran 3 at a time, the script exited 1 naming the missing run, and a relaunch trained only that run.
+- **`--gonogo --smoke` (Task 13):** 1,536 pooled seed-43 smoke episodes (512 per pair; Task 9's smoke file),
+  1,285 anchor paintings; the A1 smoke checkpoint stands in for picked, H1 and S1. Every section is present
+  (`go`, `k8`, `ablation`, `value_sharing`, `verdict`), no NaN anywhere (asserted), 10.0 s on the CPU. The smoke GO
+  baseline is xing, whose smoke λ picks were 0 on both halves, so its row equals cosine (checked: identical arrays).
+  Smoke verdict (meaningless by design): GO false, K8 false.
+- **Real-input checks (no trained run involved):** on Task 9's full outputs the GO baseline resolves to **rca**
+  (mean of R@1 and gain 6.742 on seed 42); both episode files hold 12,288 pooled episodes (4,096 per pair) whose
+  SHA-256s match; the recomputed cosine per-anchor arrays equal Task 9's exactly on seeds 42 and 43 (4,602 and
+  4,575 anchor paintings); Task 9's cached SE/C0/R3 codes are finite on all selection rows; the value-sharing
+  diagnostic sees 8 emotion, 23 style and 10 genre values on selection rows.
+- **Guard checks** (scratch copies, monkeypatched folder): `--gonogo` refuses a `picked.json` whose run is not the
+  rule's pick from its own table, whose checkpoint SHA-256 or path differs, or whose smoke flag differs; real
+  `--train`, `--select` and `--gonogo` refuse to overwrite; `--select` stops before any work when a checkpoint is
+  missing without a failed record and accepts a failed record; `check_base_config` catches a drifted recipe.
+
+## Observations for the decision (from Task 9, before any trained run)
+
+- The uniform-weight control is a strong R@1 bar: on seed 42, SE's uniform control reached R@1 16.30 against
+  cosine 12.96 (Task 9 table), because factor similarity ranks both shared-aspect candidates high. Beating it on
+  R@1 with a CI lower bound above 0 is likely the hardest of the three GO comparisons.
+- Backbone-only R@1 on these episodes is 12.96 (seed 42) and 13.53 (seed 43), not the spec's 11.1 (an earlier
+  spike's episodes). The rule compares against the measured cosine, so strong GO needs about R@1 17.5 on seed 43.
+- The value-sharing diagnostic, as pre-registered (10% of the factor's largest value-mean, half of the values),
+  returns shares of 0.95 to 1.00 for the smoke checkpoint and for SE, C0 and R3. Dense ReLU codes keep every value's
+  mean above 10% of the maximum, so this diagnostic may not separate models; we report it as pre-registered.
 
 ## Launch commands (controller)
 
 ```bash
 flock -n -o -E 75 /tmp/gpu0.lock bash src/test/20261101_aspect_factor_gonogo/run_grid.sh
 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 /root/miniconda3/envs/CoSiR/bin/python src/test/20261101_aspect_factor_gonogo/run_gonogo.py --select
+OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 /root/miniconda3/envs/CoSiR/bin/python src/test/20261101_aspect_factor_gonogo/run_gonogo.py --gonogo
 ```
 
 ## Results
 
-Grid and pick: pending (the controller launches the grid).
+Grid, pick and GO test: pending (the controller launches the grid, then `--select`, then `--gonogo`).
