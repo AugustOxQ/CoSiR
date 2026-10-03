@@ -1,6 +1,7 @@
 """Load cached ArtELingo CLIP features with their positional annotation join."""
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,8 +9,9 @@ import numpy as np
 
 from src.utils import FeatureManager
 
-FEATURE_DIR = "/data/SSD2/pre_extract/artelingo/features"
-ANNOTATIONS_PATH = Path("/data/PDD/artelingo/artelingo_train.json")
+# Local defaults; a cluster job overrides them through the environment (e.g. scripts/run_mllm_probe_8b.sh).
+FEATURE_DIR = os.environ.get("COSIR_ARTELINGO_FEATURES") or "/data/SSD2/pre_extract/artelingo/features"
+ANNOTATIONS_PATH = Path(os.environ.get("COSIR_ARTELINGO_ANNOTATIONS") or "/data/PDD/artelingo/artelingo_train.json")
 
 
 @dataclass(frozen=True)

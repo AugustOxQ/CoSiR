@@ -5,11 +5,13 @@ file (no .txt extension; see docs/reports/auto/v2/2026-10-28_citation_check.md, 
 """
 
 import csv
+import os
 from pathlib import Path
 
 import numpy as np
 
-GENRE_DIR = Path("/data/SSD/wikiart_genre")
+# Local default; a cluster job overrides it through the environment (e.g. scripts/run_mllm_probe_8b.sh).
+GENRE_DIR = Path(os.environ.get("COSIR_WIKIART_GENRE_DIR") or "/data/SSD/wikiart_genre")
 GENRE_CSVS = (GENRE_DIR / "genre_train.csv", GENRE_DIR / "genre_val.csv")
 GENRE_NAMES = ["abstract_painting", "cityscape", "genre_painting", "illustration", "landscape", "nude_painting",
                "portrait", "religious_painting", "sketch_and_study", "still_life"]

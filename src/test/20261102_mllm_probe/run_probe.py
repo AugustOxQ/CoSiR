@@ -25,7 +25,7 @@ from src.eval.aspect_episodes import (PaintingValueIndex, build_aspect_episodes,
 from src.eval.aspect_metrics import CONDITIONS, DIRECTIONS, compare, per_anchor, summarize           # noqa: E402
 from src.eval.aspect_scorers import EvalInputs, cosine_scores                            # noqa: E402
 
-WIKIART = Path("/data/PDD/wikiart_proj/wikiart")
+WIKIART = Path(os.environ.get("COSIR_WIKIART_DIR") or "/data/PDD/wikiart_proj/wikiart")   # env: cluster runs
 PAIRS = (("emotion", "style", "genre"), ("emotion", "genre", "style"), ("style", "genre", "emotion"))
 CHECKPOINT_EVERY = 50
 MODEL_ID = "Qwen/Qwen3-VL-2B-Instruct"
