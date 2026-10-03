@@ -93,15 +93,49 @@ def cub_inputs():
     return paths, caps
 
 
-def qwen_check(max_pixels):
+def large_inputs(n_huge_min=12):
+    """50 ArtELingo SELECTION-row images that need downscaling (> 524,288 px; >= 10 above 1,843,200), distinct paintings,
+    seed-42 order, each with the caption of one selection row of its painting."""
+    import numpy as np
+    from PIL import Image
+    from src.data.artelingo import ANNOTATIONS_PATH, join_captions, load_artelingo
+    from src.data.artelingo_splits import artelingo_splits
+    data = load_artelingo()
+    sel = artelingo_splits(data).selection
+    ann = json.load(open(ANNOTATIONS_PATH))
+    sid = data.sample_ids[sel]
+    caps = join_captions(sid, ann)
+    first = {}
+    for k, row_paint in enumerate(np.asarray(data.paintings)[sel].tolist()):
+        first.setdefault(row_paint, k)                                  # one selection row per painting
+    keys = sorted(first)
+    order = np.random.default_rng(42).permutation(len(keys))
+    huge, mid = [], []
+    for j in order:
+        k = first[keys[j]]
+        path = WIKIART / ann[int(sid[k])]["image"]
+        with Image.open(path) as im:
+            px = im.size[0] * im.size[1]
+        if px > 1_843_200 and len(huge) < n_huge_min:
+            huge.append((path, caps[k], px))
+        elif 524_288 < px <= 1_843_200 and len(mid) < N_QWEN - n_huge_min:
+            mid.append((path, caps[k], px))
+        if len(huge) == n_huge_min and len(mid) == N_QWEN - n_huge_min:
+            break
+    items = huge + mid
+    assert len(items) == N_QWEN and len(huge) >= 10 and all(px > 524_288 for _, _, px in items)
+    assert np.isin(np.array([first[k] for k in keys]), np.arange(len(sel))).all()
+    return [str(a) for a, _, _ in items], [str(b) for _, b, _ in items], [px for _, _, px in items]
+
+
+def qwen_check(max_pixels, tag, paths, caps):
     import gc
     import numpy as np
     import torch
     from PIL import Image
     from src.data import feature_extract as fe
-    paths, caps = cub_inputs()
     SCRATCH.mkdir(parents=True, exist_ok=True)
-    spec, out = SCRATCH / "inputs.json", SCRATCH / f"official_{max_pixels}.npz"
+    spec, out = SCRATCH / "inputs_{tag}.json", SCRATCH / f"official_{tag}_{max_pixels}.npz"
     json.dump({"images": paths, "texts": caps}, open(spec, "w"))
     enc = fe.Qwen3VLEmb("cuda", fe.QWEN_INSTRUCTION_DEFAULT, max_pixels)
     ours_img = enc.encode_images([Image.open(p).convert("RGB") for p in paths], batch_size=8)
@@ -125,26 +159,43 @@ def qwen_check(max_pixels):
     agree = int((s_ours.argmax(1) == s_off.argmax(1)).sum())
     agree_t2i = int((s_ours.argmax(0) == s_off.argmax(0)).sum())
     acc_o, acc_f = int((s_ours.argmax(1) == np.arange(N_QWEN)).sum()), int((s_off.argmax(1) == np.arange(N_QWEN)).sum())
-    print(f"max_pixels={max_pixels}: image cosine min/median/max {ci.min():.4f}/{np.median(ci):.4f}/{ci.max():.4f}; "
+    print(f"[{tag}] max_pixels={max_pixels}: image cosine min/median/max {ci.min():.4f}/{np.median(ci):.4f}/{ci.max():.4f}; "
           f"caption cosine {ct.min():.4f}/{np.median(ct):.4f}/{ct.max():.4f}; "
           f"all {allc.min():.4f}/{np.median(allc):.4f}/{allc.max():.4f}")
-    print(f"image-to-caption top-1 agreement {agree}/{N_QWEN} (text-to-image {agree_t2i}/{N_QWEN}); "
+    print(f"[{tag}] GATED direction: image-to-caption (i2t) top-1 agreement {agree}/{N_QWEN} (rule >= {QWEN_MIN_TOP1}); "
+          f"text-to-image (t2i, not gated) {agree_t2i}/{N_QWEN}; "
           f"matched-pair top-1 ours {acc_o}/{N_QWEN}, official {acc_f}/{N_QWEN}")
     ok = bool(allc.min() >= QWEN_MIN_COS and agree >= QWEN_MIN_TOP1)
     return ok, allc, agree
 
 
-def main():
+def verdict_line(name, ok, mp, allc, agree):
     import numpy as np
+    print(f"{name} {'PASS' if ok else 'FAIL'} (max_pixels={mp}): min/median/max cosine {allc.min():.4f}/"
+          f"{np.median(allc):.4f}/{allc.max():.4f}, i2t top-1 agreement {agree}/{N_QWEN}")
+
+
+def main():
+    from PIL import Image
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
     clip_check()
+    paths, caps = cub_inputs()
+    px = []
+    for p in paths:
+        with Image.open(p) as im:
+            px.append(im.size[0] * im.size[1])
+    print(f"CUB stage images span {min(px):,}-{max(px):,} px (no downscaling)")
     for mp in (MAX_PIXELS_BACKBONE, MAX_PIXELS_RETRY):
-        ok, allc, agree = qwen_check(mp)
-        verdict = "QWEN PASS" if ok else "QWEN FAIL"
-        print(f"{verdict} (max_pixels={mp}): min/median/max cosine {allc.min():.4f}/{np.median(allc):.4f}/"
-              f"{allc.max():.4f}, top-1 agreement {agree}/{N_QWEN}")
+        ok, allc, agree = qwen_check(mp, "CUB", paths, caps)
+        verdict_line("QWEN", ok, mp, allc, agree)
         if ok:
-            return
+            break
+    lp, lc, lpx = large_inputs()
+    print(f"large stage images span {min(lpx):,}-{max(lpx):,} px; {sum(p > 1_843_200 for p in lpx)} above 1,843,200 "
+          f"(all above {MAX_PIXELS_BACKBONE:,}, so every image is downscaled)")
+    ok, allc, agree = qwen_check(MAX_PIXELS_BACKBONE, "LARGE", lp, lc)
+    verdict_line("QWEN-LARGE", ok, MAX_PIXELS_BACKBONE, allc, agree)
+    print("final Qwen features use max_pixels 524,288 (512 tokens), below the official default 1,843,200")
 
 
 if __name__ == "__main__":
