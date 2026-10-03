@@ -1,3 +1,5 @@
+import dataclasses
+
 import numpy as np
 import pytest
 
@@ -32,12 +34,11 @@ def setup():
     return ep, inputs, basis
 
 
-@pytest.mark.parametrize("name", ["diag", "diag_relu", "bilinear", "kissme", "rca", "xing", "wang", "probe", "tip"])
+@pytest.mark.parametrize("name", ["diag", "diag_relu", "kissme", "rca", "xing", "wang", "probe", "tip"])
 def test_pair_baselines_use_the_condition(setup, name):
     ep, inputs, basis = setup
     term = {"diag": lambda: B.diag_agreement_term(inputs, ep, relu=False),
             "diag_relu": lambda: B.diag_agreement_term(inputs, ep, relu=True),
-            "bilinear": lambda: B.bilinear_agreement_term(inputs, ep, basis),
             "kissme": lambda: B.kissme_term(inputs, ep, basis),
             "rca": lambda: B.rca_term(inputs, ep, basis),
             "xing": lambda: B.xing_term(inputs, ep, basis),
@@ -51,3 +52,21 @@ def test_pair_baselines_use_the_condition(setup, name):
 def test_value_prototype_has_little_gain_on_aspect_episodes(setup):
     ep, inputs, _ = setup
     assert per_anchor(B.value_prototype_term(inputs, ep))["gain"].mean() < 0.05
+
+
+def test_bilinear_is_condition_dependent_but_weak_under_value_disjoint_supports(setup):
+    """After per-modality centring and whitening, the 6 value patterns of an aspect form a near-regular simplex, so
+    the value-level quadratic form q'^T (sum_v P_v P_v^T) c' gives the shared value only a small constant boost and is
+    close to blind when supports never show the anchor's value (measured gain -0.019 at r=16, 0.116 at r=8).
+    The positive control gives the supports the anchor's own value, where the same code must show a clear gain."""
+    ep, inputs, basis = setup
+    term = B.bilinear_agreement_term(inputs, ep, basis)
+    assert term["a"]["i2t"].shape == (200, 13) and np.isfinite(term["a"]["i2t"]).all()
+    assert not np.allclose(term["a"]["i2t"], term["b"]["i2t"])
+    assert abs(per_anchor(term)["gain"].mean()) < 0.05
+    labels, groups, _, _ = _world()
+    rng = np.random.default_rng(3)
+    pick = lambda key: np.stack([rng.choice(np.flatnonzero(labels[key] == labels[key][i]), 4) for i in ep.anchor])  # noqa: E731
+    shared_a, shared_b = pick("a"), pick("b")
+    ep2 = dataclasses.replace(ep, pairs_a_img=shared_a, pairs_a_txt=shared_a, pairs_b_img=shared_b, pairs_b_txt=shared_b)
+    assert per_anchor(B.bilinear_agreement_term(inputs, ep2, basis))["gain"].mean() > 0.05
