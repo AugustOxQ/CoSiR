@@ -5,6 +5,7 @@ Run from the repo root (CPU only; codes are encoded once on CPU and cached):
 Only selection rows are finite in every evaluation array. PCA basis and PairScaler use training rows (no labels).
 """
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
@@ -48,39 +49,51 @@ def load_ra():
     return ra
 
 
-def get_codes(out_dir: Path, data, cache, ra):
-    """SE, C0, R3 codes (scorer-train + selection rows finite). Encoded once on CPU, cached to results/codes_*.npz."""
+R3_SOURCE = "stage (d) cache img_codes / txt_codes (original R3, trained on all train rows)"
+
+
+def get_codes(ra, data, cache):
+    """SE, C0, R3 codes (scorer-train + selection rows finite). Encoded once on CPU, cached to results/codes_*.npz.
+    Returns (codes, provenance); the checkpoint is re-hashed on every call, also on a cache hit."""
     ra.grid.DEVICE = "cpu"                                   # model_codes reads grid.DEVICE at call time
     prep_record = json.loads((ra.CACHE / "affect_prepare.json").read_text())
-    codes = {}
+    codes, prov = {}, {}
     for name in ("SE", "C0", "R3"):
         path = HERE / "results" / f"codes_{name}.npz"
+        if name == "R3":
+            prov[name] = {"source": R3_SOURCE}
+        else:
+            ckpt = ra.model_path(name)
+            prov[name] = {"checkpoint": str(ckpt.relative_to(ROOT)), "sha256": ra.grid.sha256_file(ckpt)}
         if path.exists():
             z = np.load(path)
             codes[name] = (z["img"], z["txt"])
         else:
             ic, tc, info = ra.model_codes(name, data, cache, prep_record)
+            if name != "R3":
+                assert info["sha256"] == prov[name]["sha256"], name
             path.parent.mkdir(parents=True, exist_ok=True)
             np.savez(path, img=ic, txt=tc)
             codes[name] = (ic, tc)
             log(f"encoded {name} codes on CPU: {info}")
-    return codes
-
-
-def concat_terms(parts):
-    return {c: {d: np.concatenate([p[c][d] for p in parts]) for d in parts[0][c]} for c in parts[0]}
+    return codes, prov
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--episodes-seed", type=int, required=True)
     ap.add_argument("--n", type=int, default=None, help="episodes per pair (default 4096; 64 with --smoke)")
+    ap.add_argument("--overwrite", action="store_true", help="replace existing outputs in results/")
     ap.add_argument("--smoke", action="store_true")
     args = ap.parse_args()
     n = args.n or (64 if args.smoke else 4096)
     seed = args.episodes_seed
     out_dir = HERE / "results" / ("smoke" if args.smoke else "")
     out_dir.mkdir(parents=True, exist_ok=True)
+    targets = [out_dir / f"{k}_seed{seed}.{e}" for k, e in (("episodes", "npz"), ("per_anchor", "npz"), ("baselines", "json"))]
+    clash = [t.name for t in targets if t.exists()]
+    if clash and not args.smoke and not args.overwrite:
+        sys.exit(f"refusing to overwrite {clash} in {out_dir}; pass --overwrite to replace them")
 
     ra = load_ra()
     data = ra.load_artelingo()
@@ -98,7 +111,9 @@ def main():
     txt = ra.sel.masked(data.txt_features, selection)
     assert np.isnan(img[~in_sel]).all() and np.isnan(txt[~in_sel]).all()
     assert np.isfinite(img[in_sel]).all() and np.isfinite(txt[in_sel]).all()
-    raw_codes = get_codes(out_dir, data, cache, ra)
+    raw_codes, code_prov = get_codes(ra, data, cache)
+    if not args.smoke:
+        (HERE / "results" / "codes_provenance.json").write_text(json.dumps(code_prov, indent=1))
     codes = {}
     for k, (ic, tc) in raw_codes.items():
         ic, tc = ra.sel.masked(ic, selection), ra.sel.masked(tc, selection)
@@ -110,7 +125,7 @@ def main():
     # ---- basis and scaler: the same 60,000 scorer-train rows, no labels
     fit_rows = np.random.default_rng(0).choice(scorer_train, 60000, replace=False)
     assert not in_sel[fit_rows].any()
-    fit_sha = __import__("hashlib").sha256(np.ascontiguousarray(fit_rows, dtype=np.int64).tobytes()).hexdigest()
+    fit_sha = hashlib.sha256(np.ascontiguousarray(fit_rows, dtype=np.int64).tobytes()).hexdigest()
     fi, ft = (np.asarray(x[fit_rows], np.float32) for x in (data.img_features, data.txt_features))
     fi, ft = (x / np.linalg.norm(x, axis=1, keepdims=True) for x in (fi, ft))   # unit rows, like EvalInputs
     basis = fit_pca_basis(fi, ft)
@@ -186,7 +201,7 @@ def main():
     go = [{"scorer": s, "mean_r1_gain": v, "r1": summ[s]["r1"]["point"], "gain": summ[s]["gain"]["point"]}
           for v, s in ranking]
     record = {"episodes_seed": seed, "n_per_pair": n, "pair_order": [f"{a}__{b}" for a, b, _ in PAIRS],
-              "episodes_sha256": shas, "fit_rows_sha256": fit_sha, "fit_rows": 60000,
+              "episodes_sha256": shas, "codes_provenance": code_prov, "fit_rows_sha256": fit_sha, "fit_rows": 60000,
               "scorers": {s: {"overall": summ[s], "per_pair": per_pair[s], "lambda_picks": picks[s]} for s in order},
               "go_bar_ranking": go, "timings_s": timings, "total_s": perf_counter() - T0}
     (out_dir / f"baselines_seed{seed}.json").write_text(json.dumps(record, indent=1))
