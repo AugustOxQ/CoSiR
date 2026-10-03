@@ -169,24 +169,42 @@ def test_joint_decision_table():
 
 
 # I1: Test the pick rule uses min-margin criterion
-def test_crossfit_nested_pick_rule_criterion():
-    """I1: Verify the pick rule uses min(R@1-control_R@1, gain) by testing the behavior is reasonable."""
+def _tagged_crossfit(monkeypatch, table_ctrl, table_nest):
+    """Run crossfit_nested with _means replaced by a lookup table keyed by which control sigma or nested cell the
+    scores came from, so the pick rule and tie order can be tested exactly."""
+    import src.eval.aspect_nested as an
     cos, tu, ta = _world()
     n = len(cos["a"]["i2t"])
-    parity = np.arange(n) % 2
-    nested, control, picks = crossfit_nested(cos, tu, ta, parity)
+    real_combine = an._combine
 
-    # The picked cells and sigmas should be from the pre-registered grid
+    def tagged(zc, zu, za, lam_u, lam_a):
+        out = real_combine(zc, zu, za, lam_u, lam_a)
+        out["_tag"] = ("ctrl", lam_u) if za is zu else ("nest", lam_u, lam_a)
+        return out
+
+    def fake_means(scores, rows):
+        tag = scores["_tag"]
+        return table_ctrl[tag[1]] if tag[0] == "ctrl" else table_nest[(tag[1], tag[2])]
+
+    monkeypatch.setattr(an, "_combine", tagged)
+    monkeypatch.setattr(an, "_means", fake_means)
+    return an.crossfit_nested(cos, tu, ta, np.arange(n) % 2)[2]
+
+
+def test_crossfit_nested_pick_rule_criterion(monkeypatch):
+    """The control picks sigma by R@1; the nested score picks argmax min(R@1 - control R@1, gain). Gain-only picks A,
+    R@1-only and margin-only pick B, the min-margin rule picks C; a smallest-sigma or gain-based control pick gives 0."""
+    table_ctrl = {s: (0.10, 0.0) for s in control_sums()}
+    table_ctrl[2.0] = (0.20, 0.0)
+    A, B, C = (0.5, 4.0), (8.0, 0.25), (1.0, 1.0)
+    table_nest = {cell: (0.15, 0.0) for cell in nested_cells()}
+    table_nest[A] = (0.18, 0.09)          # margin -0.02, gain 0.09 -> min -0.02
+    table_nest[B] = (0.30, 0.01)          # margin +0.10, gain 0.01 -> min  0.01
+    table_nest[C] = (0.25, 0.04)          # margin +0.05, gain 0.04 -> min  0.04
+    picks = _tagged_crossfit(monkeypatch, table_ctrl, table_nest)
     for half in (0, 1):
-        assert tuple(picks[half]["cell"]) in nested_cells()
-        assert picks[half]["sigma"] in control_sums()
-        # Verify the picks produce valid scores on the test half
-        apply = parity != half
-        cell_scores = nested_scores(cos, tu, ta, *picks[half]["cell"])
-        for c in CONDITIONS:
-            for d in DIRECTIONS:
-                assert np.isfinite(cell_scores[c][d][apply]).all()
-
+        assert picks[half]["sigma"] == 2.0
+        assert tuple(picks[half]["cell"]) == C
 
 # I2: Test independence - perturb BOTH halves
 def test_crossfit_nested_independence_both_halves():
@@ -197,46 +215,44 @@ def test_crossfit_nested_independence_both_halves():
     _, _, picks_orig = crossfit_nested(cos, tu, ta, parity)
 
     # Shuffle half 0; half 1's pick should not change
-    shuffled = {k: {c: {d: v[c][d].copy() for d in DIRECTIONS} for c in CONDITIONS}
-                for k, v in (("cos", cos), ("tu", tu), ("ta", ta))}
+    shuffled0 = {k: {c: {d: v[c][d].copy() for d in DIRECTIONS} for c in CONDITIONS}
+                 for k, v in (("cos", cos), ("tu", tu), ("ta", ta))}
     rng = np.random.default_rng(7)
     for c in CONDITIONS:
         for d in DIRECTIONS:
-            for key in shuffled:
-                rows = shuffled[key][c][d][parity == 0]
-                shuffled[key][c][d][parity == 0] = rows + rng.normal(size=rows.shape).astype(np.float32)
-    _, _, picks_shuffled = crossfit_nested(shuffled["cos"], shuffled["tu"], shuffled["ta"], parity)
-    assert picks_shuffled[1] == picks_orig[1], "Shuffling half 0 should not change half 1's pick"
+            for key in shuffled0:
+                rows = shuffled0[key][c][d][parity == 0]
+                shuffled0[key][c][d][parity == 0] = rows + rng.normal(size=rows.shape).astype(np.float32)
+    _, _, picks0 = crossfit_nested(shuffled0["cos"], shuffled0["tu"], shuffled0["ta"], parity)
+    assert picks0[1] == picks_orig[1], "Shuffling half 0 should not change half 1's pick"
+
+    # Shuffle half 1; half 0's pick should not change
+    shuffled1 = {k: {c: {d: v[c][d].copy() for d in DIRECTIONS} for c in CONDITIONS}
+                 for k, v in (("cos", cos), ("tu", tu), ("ta", ta))}
+    rng = np.random.default_rng(8)
+    for c in CONDITIONS:
+        for d in DIRECTIONS:
+            for key in shuffled1:
+                rows = shuffled1[key][c][d][parity == 1]
+                shuffled1[key][c][d][parity == 1] = rows + rng.normal(size=rows.shape).astype(np.float32)
+    _, _, picks1 = crossfit_nested(shuffled1["cos"], shuffled1["tu"], shuffled1["ta"], parity)
+    assert picks1[0] == picks_orig[0], "Shuffling half 1 should not change half 0's pick"
 
 
 # I3: Test partial ties in cells and sigmas
 def test_crossfit_nested_partial_ties(monkeypatch):
-    """I3: When there are ties in criterion value, the first in row-major order wins for cells,
-    and the smallest sigma wins for control."""
-    cos, tu, ta = _world()
-    n = len(cos["a"]["i2t"])
-
-    # Create a simple synthetic dataset where we can control the metrics
-    # by monkeypatching _means to return known values
-    original_means = aspect_nested_module._means
-
-    def synthetic_means(scores, rows):
-        # Return synthetic metrics: all cells (0.0, 0.0) and (0.0, 0.25) tie high,
-        # all sigmas 0.5 and 1.0 tie high
-        m_result = original_means(scores, rows)
-        # Just verify the original result is reasonable
-        return (0.5, 0.5) if m_result[0] > 0 else (0.0, 0.0)
-
-    # For a true test of tie-breaking, use the zero-scores case which is simpler
-    flat = {c: {d: np.zeros_like(cos[c][d]) for d in DIRECTIONS} for c in CONDITIONS}
-    _, _, picks = crossfit_nested(flat, flat, flat, np.arange(n) % 2)
-
-    # With all zeros, all metrics are the same, so ties go to first cell (0.0, 0.0)
-    # and smallest sigma (0.0)
+    """Two sigma tie at the top control R@1 -> the smaller wins; two cells tie at the top criterion -> the earlier in
+    row-major order wins; every other cell and sigma is strictly worse."""
+    table_ctrl = {s: (0.10, 0.0) for s in control_sums()}
+    table_ctrl[1.0] = table_ctrl[4.0] = (0.20, 0.0)
+    first, later = (1.0, 0.5), (2.0, 0.25)
+    assert nested_cells().index(first) < nested_cells().index(later)
+    table_nest = {cell: (0.15, 0.0) for cell in nested_cells()}
+    table_nest[first] = table_nest[later] = (0.25, 0.04)
+    picks = _tagged_crossfit(monkeypatch, table_ctrl, table_nest)
     for half in (0, 1):
-        assert picks[half]["cell"] == [0.0, 0.0], f"Ties should go to first cell, got {picks[half]['cell']}"
-        assert picks[half]["sigma"] == 0.0, f"Ties should go to smallest sigma, got {picks[half]['sigma']}"
-
+        assert picks[half]["sigma"] == 1.0
+        assert tuple(picks[half]["cell"]) == first
 
 # Ruling 4: Input validation tests
 def test_margin_reading_rejects_nonfinite():
