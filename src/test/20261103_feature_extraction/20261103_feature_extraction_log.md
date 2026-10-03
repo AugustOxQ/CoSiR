@@ -59,7 +59,21 @@ qwen 92 + 19 min. Total about 5.3 h. Final sizes: about 4.4 GB (artelingo qwen 1
 0.6 GB); `/data/SSD2` has 2.0 TB free.
 
 ## Full-run results
-(counts, timings and SHA-256 of each index.json are appended here after the full run)
+
+Wall time: 04:26:59 to 08:46:59 (4h 20m total). All 8 datasets/backbones completed rc=0. Verify: 8/8 pass.
+
+| dataset | backbone | n_img | n_txt | truncated | img_s | txt_s | gate | SHA-256 | size |
+|---|---|---|---|---|---|---|---|---|---|
+| artelingo_full | qwen3vl_emb_2b | 61402 | 308723 | 0 | 5350 | 902 | pass | 62ce92464da63ca6c03266f9b9e6cee5 | 1.5G |
+| semart | clip_b32 | 21382 | 21382 | 11313 | 94 | 5 | pass | 971ef5b0119c25b5d55ac80cf5eafaf3 | 45M |
+| semart | qwen3vl_emb_2b | 21382 | 21382 | 442 | 2102 | 241 | pass | c3f1df216066d673ab79fc9c5a2d99ba | 170M |
+| genecis_vg_crops | clip_b32 | 15773 | 0 | 0 | 23 | 0 | pass | 9206b0385c3f41601fefc55fb44c4c8d | 17M |
+| genecis_vg_crops | qwen3vl_emb_2b | 15773 | 0 | 0 | 587 | 0 | pass | 1086f06ee6cbabc2e59a50d3b5bffc94 | 63M |
+| genecis_coco | qwen3vl_emb_2b | 3033 | 15178 | 0 | 171 | 38 | pass | bbe380bf61951df527ec1b58ba5cdfc3 | 73M |
+| coco_train2014 | clip_b32 | 82783 | 414113 | 0 | 154 | 41 | pass | 0f17bcb1073a2201d2c088aba8edbefd | 506M |
+| coco_train2014 | qwen3vl_emb_2b | 82783 | 414113 | 0 | 4666 | 1058 | pass | cfe7f8bdebc0f6651da6e25357d62c56 | 2.0G |
+
+Total disk use: 4.5 GB
 
 ## Fix round 1 (review)
 - `scrub_semart` year rule is now `(?<!\d)\d{3,4}(?:'?s)?(?!\d)` plus a range tail (`1553-54`, `1500-1550`), so decades
