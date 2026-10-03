@@ -91,20 +91,32 @@ def _criterion(scores, rows):
 
 
 def crossfit_lambda(cos: dict, term: dict, parity: np.ndarray):
-    """Pick lambda on each parity half by mean(R@1, condition gain), apply it to the other half; one edge extension."""
+    """Pick lambda on each parity half by mean(R@1, condition gain), apply it to the other half.
+
+    Each half has its own candidate list: the grid is extended with {32, 64} for a half only when that half's own
+    pick lands on 16."""
+    n = len(cos["a"]["i2t"])
     parity = np.asarray(parity)
-    fused = {lam: fused_scores(cos, term, lam) for lam in LAMBDA_GRID}
+    if parity.shape != (n,) or not np.isin(parity, (0, 1)).all() or not ((parity == 0).any() and (parity == 1).any()):
+        raise ValueError(f"parity must be a length-{n} array of 0/1 with both halves non-empty")
+    cache = {}
+
+    def fused(lam):
+        if lam not in cache:
+            cache[lam] = fused_scores(cos, term, lam)
+        return cache[lam]
+
     picks = {}
     out = {c: {d: np.empty_like(cos[c][d]) for d in DIRECTIONS} for c in CONDITIONS}
     for half in (0, 1):
         tune, apply = parity == half, parity != half
-        best = max(fused, key=lambda lam: _criterion(fused[lam], tune))
-        if best == LAMBDA_GRID[-2]:                                  # 16 picked: extend the grid once
-            for lam in EDGE_EXTENSION:
-                fused[lam] = fused_scores(cos, term, lam)
-            best = max(fused, key=lambda lam: _criterion(fused[lam], tune))
+        candidates = list(LAMBDA_GRID)
+        best = max(candidates, key=lambda lam: _criterion(fused(lam), tune))
+        if best == LAMBDA_GRID[-2]:                                  # 16 picked: extend this half's grid once
+            candidates += EDGE_EXTENSION
+            best = max(candidates, key=lambda lam: _criterion(fused(lam), tune))
         picks[half] = best
         for c in CONDITIONS:
             for d in DIRECTIONS:
-                out[c][d][apply] = fused[best][c][d][apply]
+                out[c][d][apply] = fused(best)[c][d][apply]
     return out, picks
