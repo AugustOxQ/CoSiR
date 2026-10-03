@@ -72,9 +72,11 @@ a6a4bb2 feat(v2): nested score, its uniform control, min-margin cross-fit and pr
   (L3 0.01).
 - **Matched-k: not a lever.** MK3 minus A3 term-only gain on seed 42 −0.88 [−1.44, −0.34].
 - **Decision (§8): branch 3, stop the repair.** Seed 45 not built; H2 grid not run.
-- Descriptive: label training raised the seed-42 term-only gain from 0.99 (A3) to 1.85 (L3) and 1.82 (LT); the aspect
-  loss stayed within 2% of its constant-score value (L3 1.8% below, L5 1.0% below, LT 0.4% above); term-only either
-  rates (21.0 to 22.9) stayed below the cosine's 25.92.
+- Descriptive: with A3's settings, label training raised the seed-42 term-only gain from 0.99 (A3) to 1.85 (L3) and
+  1.82 (LT) (L3 minus A3 +0.86 [0.28, 1.42]); with A5's settings it did not (L5 +0.36 [−0.20, 0.93] on seed 42, no fit
+  on fresh label episodes). The aspect loss stayed within 2% of its constant-score value (L3 1.8% below, L5 1.0% below,
+  LT 0.4% above) without tracking the fit; term-only either rates (21.0 to 22.9) stayed below the cosine's 25.92; each
+  LAB run's nested R@1 stayed within 0.1 of its own nested control (L3 −0.04, L5 −0.03, LT −0.09).
 
 ## Issues
 
@@ -85,8 +87,12 @@ a6a4bb2 feat(v2): nested score, its uniform control, min-margin cross-fit and pr
 2. **L5 inconclusive at seed 42.** The first H3 pass stopped with exit 3 and `needs_seed43 = ["L5"]`.
 3. **g* far below the ARS panel's estimate** (0.218 against about 0.94): the odd-tuned nested pick equalled the
    control, so half the anchors contribute a zero paired difference and the SEs shrink.
-4. **`build_record.json` has no script SHA-256**, although PREREGISTRATION §10 asks every result JSON for it;
-   `build_banks.py` was committed 33 s after the record was written and is unchanged since.
+4. **Provenance gaps against PREREGISTRATION §10.** `build_record.json` has no script SHA-256 (`build_banks.py` was
+   committed 33 s after the record was written and is unchanged since). `h3.json` records no SHA-256 for the seed-42
+   checkpoints it scored (L3, L5, LT, MK3), for C0's checkpoint or for `partitions_LAB.npz`.
+5. **Arrays not stored.** `per_anchor_h3.npz` omits L5's seed-43 and C0's term-only arrays on the fresh label episodes
+   and A3's seed-42 term-only arrays (behind the two-seed L5 decision, the minus-C0 columns and the matched-k reading),
+   and the LAB runs' seed-42 nested controls.
 
 ## Resolution
 
@@ -96,9 +102,16 @@ a6a4bb2 feat(v2): nested score, its uniform control, min-margin cross-fit and pr
    `h3_pass1_needs_seed43.json`, and the two passes differ only in the seed-43 resolution (asserted by the report's
    build script).
 3. g* was kept, since the rule was frozen; the ceiling failed it anyway.
-4. Disclosed in the report (§7); bank and partition SHA-256s are recorded and verified.
+4. Disclosed in the report (§7, item 9). Re-hashed on disk (16-character prefixes): L3 7b21cd81da5855c3, L5
+   95e4dd1d3754aa5b, LT db85fc88043ccc67, MK3 57747154f9c935d1, C0 7653caf0985b564d, `partitions_LAB.npz`
+   c06cff38431ece08; each equals the history, `label_checkpoints.json`, E1's `codes_provenance.json` or
+   `build_record.json` value, and recomputation from them reproduced the stored arrays bit for bit.
+5. Disclosed in the report (§7, item 10). The build script re-encodes the checkpoints to recompute these arrays; the
+   final whole-branch review did the same and matched.
 
-The report's `build_figures.py` re-derived every quoted summary and paired comparison from the stored arrays,
-recomputed A3's 56-cell profile and cross-fit from its checkpoint, rebuilt the fresh label episodes (SHA-256 checked)
-and reapplied the readings and the decision. Storage: `results/` holds about 54 MB and `checkpoints/` about 2.4 MB
+The report's `build_figures.py` (522 checks) recomputed every quoted summary and paired comparison from the stored
+arrays, recomputed A3's 56-cell profile and every run's cross-fit from the checkpoints, rebuilt the fresh label
+episodes (SHA-256 checked) and reapplied the readings and the decision. It reuses the stage's own code, so it is a
+determinism and consistency check; the final whole-branch review supplied the independent re-derivation (its own
+z-score, nested combination and min-margin cross-fit, bit-identical arrays and picks) and confirmed branch 3. Storage: `results/` holds about 54 MB and `checkpoints/` about 2.4 MB
 (all gitignored); nothing over 1 GB was written.

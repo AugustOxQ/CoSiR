@@ -28,20 +28,25 @@ before any script of the stage existed, and every rule below was applied mechani
 - **The nested score did not use the condition.** Of the two tuning halves of the min-margin cross-fit, one picked the
   cell (8, 0), which is the control itself, and the other picked (4, 0.25), a quarter weight on the conditioned term.
   The nested score therefore recovered the control's R@1 (+3.13 [2.80, 3.45] over A3 under E3's score) and gave up
-  E3's gain (−0.53 [−0.88, −0.20]). In A3's uncross-fitted 56-cell profile no cell reached the control's best R@1 of
-  16.55: wherever the uniform weight brought R@1 near that level, weight on the conditioned term cost at least as much
-  "either" rate as it added gain (the one exception, (4, 0.25), sat 0.004 R@1 above its row's λ_a = 0 cell).
-- **Labels roughly doubled the term's selection signal, and the nested score still did not use it.** Trained on the evaluation
-  labels of scorer-train rows, the term reached a term-only gain of 1.85 (L3) against A3's 0.99 on seed 42 (paired
-  +0.86 [0.28, 1.42]). Yet its aspect loss stayed within 2% of the constant-score value (L3 1.8% below, LT 0.4% above),
-  it still ranked an aspect-sharing candidate first less often than the cosine (either rate 22.93 against 25.92), and
-  the nested cross-fit again kept almost no weight on it (nested gains 0.01 to 0.05, against g* 0.218).
-- **Our reading** (§5, not pre-registered): the k-means pseudo-partitions were not the main limit of method A. With
-  true labels the same score and objective still left the condition gain far below what the nested score needs, so the
-  scoring rule and the objective are the limits within this architecture and loss.
+  E3's gain (−0.53 [−0.88, −0.20]). In A3's uncross-fitted 56-cell profile no cell with λ_a > 0 reached the
+  control's best R@1 of 16.55 (the cell (8, 0) that reaches it is the control): wherever the uniform weight brought
+  R@1 near that level, weight on the conditioned term cost at least as much "either" rate as it added gain (the one exception, (4, 0.25), sat 0.004 R@1 above its row's λ_a = 0 cell).
+- **With A3's settings, label training raised the term's selection signal, and the nested score still did not use
+  it.** Trained with A3's settings on the evaluation labels of scorer-train rows, the term reached a term-only gain of
+  1.85 (L3) and 1.82 (LT) against A3's 0.99 on seed 42 (L3 minus A3 +0.86 [0.28, 1.42], roughly 1.3 to 2.4 times A3's
+  gain). With A5's settings it did not: L5 did not fit (two-seed mean +0.08 [−0.41, 0.56] over A3 on fresh label
+  episodes; +0.36 [−0.20, 0.93] on seed 42). The label-trained terms still ranked an aspect-sharing candidate first
+  less often than the cosine (L3 either rate 22.93 against 25.92), and the nested cross-fit again kept almost no
+  weight on them: nested gains 0.01 to 0.05 against g* 0.218, and nested R@1 within 0.1 of each run's own control.
+- **Our reading** (§5, not pre-registered): at this training budget, label training was not sufficient to clear the
+  ceiling. The pseudo-partitions are a measurable limit (labels gave the term its largest measured lift, +0.86 gain and
+  +1.89 either over A3 with A3's settings), but removing that limit left the nested gain far below g*. The stage did not rank
+  the remaining limits: the term's either-rate cost under the nested score, the objective and its training budget
+  remain untested candidates.
 - **What this does not show.** Branch 3 follows from pre-registered thresholds on development draws, for one model
-  seed per run. It does not show that the task is unlearnable (label-supervised probes reach about 23 R@1 on aspect
-  episodes), nor that no other score or objective would work. Seed 45, reserved for a single A′ test, was never built.
+  seed per run. It does not show that the task is unlearnable (on the aspect-episode spike's episodes, a different
+  episode set, label probes reached a pooled 23.09 R@1 against CLIP's 11.13), nor that no other score, objective or
+  training budget would work. Seed 45, reserved for a single A′ test, was never built.
 
 ## 1. Where this comes from
 
@@ -267,13 +272,15 @@ from the stored per-anchor arrays and are descriptive. A3's term-only arrays wer
 equal E3's post-hoc arrays at λ = ∞; its nested row is the H1 pilot.*
 
 **The ceiling was too low.** The best fitting run was LT, with a cross-fitted nested gain of 0.05 [−0.11, 0.22]
-against g\* = 0.218; L3 reached 0.01. The H3 reading is therefore *ceiling too low*. The label-trained terms carried
-nearly twice A3's selection signal when scored alone (L3 1.85 and LT 1.82 against 0.99; paired +0.86 [0.28, 1.42] and
-+0.83 [0.27, 1.40]), but under the min-margin cross-fit the nested score again put little weight on them: at least
-one half of every LAB run picked λ_a = 0 or 0.25 (L3 (16, 0.25) and (2, 0); L5 (16, 0.25) and (8, 0.25); LT (2, 0)),
-and only LT's other half, (4, 1), gave the term a weight as large as 1. Their nested R@1 (16.32 to 16.88)
-and nested either rates (32.63 to 33.74, computed for this report) sat close to the uniform fusions of §3 (controls
-16.26 to 16.59, either 32.53 to 33.17), with gains near zero.
+against g\* = 0.218; L3 reached 0.01. The H3 reading is therefore *ceiling too low*. Scored alone, the terms trained
+with A3's settings carried more selection signal than A3's (L3 1.85 and LT 1.82 against 0.99; paired +0.86
+[0.28, 1.42] and +0.83 [0.27, 1.40]), and L5's did not differ clearly (+0.36 [−0.20, 0.93]). Under the min-margin
+cross-fit the nested score again put little weight on them: at least one half of every LAB run picked λ_a = 0 or 0.25
+(L3 (16, 0.25) and (2, 0); L5 (16, 0.25) and (8, 0.25); LT (2, 0)), and only LT's other half, (4, 1), gave the term a
+weight as large as 1. Against each run's own nested uniform control, the pre-registered comparator, the nested R@1
+margins were −0.04 [−0.09, 0.02] (L3), −0.03 [−0.09, 0.04] (L5) and −0.09 [−0.24, 0.06] (LT), at gains of 0.01, 0.01
+and 0.05 (computed for this report; h3.json does not store these controls, so the build script recomputed them from
+the checkpoints).
 
 **Matched granularity did not help.** MK3, trained on label-free k-means partitions with as many clusters as the
 evaluation aspects have values, had a term-only gain of 0.11 [−0.30, 0.54], below A3's by 0.88 [0.34, 1.44]. The
@@ -309,34 +316,42 @@ We separate what was measured from how we read it.
 
 **Measured.**
 
-1. **True labels roughly doubled the agreement-weighted term's selection signal.** On seed 42, the term-only gain was
-   1.85 for L3 and 1.82 for LT against 0.99 for A3 (paired +0.86 [0.28, 1.42] and +0.83 [0.27, 1.40]); on fresh label
-   episodes over the training rows it was 2.09 and 2.24 against 0.90. A3's and L3's gains changed little between the
-   training rows and the selection rows (A3 0.90 and 0.99, L3 2.09 and 1.85; different episodes, not paired).
+1. **With A3's settings, true labels raised the agreement-weighted term's selection signal; with A5's they did not
+   detectably.** On seed 42, the term-only gain was 1.85 for L3 and 1.82 for LT against 0.99 for A3 (paired +0.86
+   [0.28, 1.42] and +0.83 [0.27, 1.40]; for L3 roughly 1.3 to 2.4 times A3's gain), and the term-only either rate rose
+   by 1.89 [1.41, 2.38] and 1.22 [0.73, 1.71] (computed for this report). On fresh label episodes over the training
+   rows the gains were 2.09 and 2.24 against 0.90. L5 (A5's settings) did not fit (two-seed mean +0.08 [−0.41, 0.56])
+   and on seed 42 differed from A3 by +0.36 [−0.20, 0.93] in gain and +0.16 [−0.30, 0.62] in either rate. A3's and L3's
+   gains changed little between the training rows and the selection rows (A3 0.90 and 0.99, L3 2.09 and 1.85;
+   different episodes, not paired).
 2. **Even with true labels the aspect loss stayed within 2% of its constant-score value** (L3 1.8% below, L5 1.0%,
-   L5 seed 43 0.5%, LT 0.4% above), as on pseudo-partitions (E3: 1.0% to 4.4% below; MK3 2.3%).
+   L5 seed 43 0.5%, LT 0.4% above), as on pseudo-partitions (E3: 1.0% to 4.4% below; MK3 2.3%). The loss level did not
+   track the fit: LT ended above the reference and had the largest fit (§4.3).
 3. **The label-trained term still found aspect-sharing candidates less often than the cosine.** Its term-only either
    rate was 2.99 [2.37, 3.60] points below the cosine for L3 and 3.66 for LT (A3 4.88, MK3 5.79), and about 10 points
    below the nested control's 33.09.
 4. **The nested score did not convert the larger signal into gain.** The min-margin cross-fit chose λ_a ≤ 0.25 on at
-   least one half of every run, and the nested gains were 0.01 (L3), 0.01 (L5) and 0.05 (LT), against g\* 0.218 and
-   A3's −0.01.
+   least one half of every run, the nested gains were 0.01 (L3), 0.01 (L5) and 0.05 (LT), against g\* 0.218 and A3's
+   −0.01, and each run's nested R@1 stayed within 0.1 of its own nested control (−0.04, −0.03, −0.09).
 5. **Granularity matched to the labels did not substitute for the labels.** MK3's term-only gain (0.11) was below
    A3's (−0.88 [−1.44, −0.34]).
 
 **Our reading** (not pre-registered).
 
-- **The pseudo-partitions were not the main limit.** Replacing them by the evaluation labels themselves, the most
-  favourable partitions for these aspects, about doubled a one-point gain, and the result stayed far below what the
-  nested score needs. Since R@1 = (either + gain) / 2, a cell that kept the control's either rate of 33.09 would beat
-  the control's R@1 with any positive gain. On A3's profile no cell with weight on T_a kept it (the highest was 33.02,
-  at (4, 0.25)), and near the control's R@1 each step of weight on T_a cost more either rate than it added gain (§3).
-  The LAB runs' cross-fits, with about twice A3's term-only gain, again settled on cells with near-zero gain.
-- **The scoring rule and the objective are the limits within this architecture and loss.** The agreement-weighted
-  term selects the conditioned aspect but displaces the shared factor similarity that finds aspect-sharing candidates,
-  and the training objective fits even labelled aspects only weakly (a loss within 2% of a constant score). A method
-  that adds selection to aspect-finding would need either a term that keeps the uniform term's either rate or a much
-  larger gain than labels gave here. This stage tested neither.
+- **Label training was not sufficient to clear the ceiling at this training budget.** Replacing the
+  pseudo-partitions by the evaluation labels, the most favourable partitions for these aspects, gave the term the
+  largest lift we measured (+0.86 gain and +1.89 either over A3 on seed 42, with A3's settings), so the
+  pseudo-partitions are a measurable limit. The lift did not reach the nested score. Since R@1 = (either + gain) / 2, a
+  cell that kept the control's either rate of 33.09 would beat the control's R@1 with any positive gain; on A3's
+  profile no cell with weight on T_a kept it (the highest was 33.02, at (4, 0.25)), near the control's R@1 each step of
+  weight on T_a cost more either rate than it added gain (§3), and the LAB runs' cross-fits again settled on cells with
+  near-zero gain.
+- **The stage did not rank the remaining limits.** It varied neither the score, nor the objective, nor the training
+  budget (2,000 steps of 32 episodes), so the term's either-rate cost under the nested score, the objective and its
+  training budget remain untested candidates; the H2 grid that would have varied the budget was not run. The loss
+  level cannot separate them: it stayed within 2% of its constant-score value in every run but did not track the fit
+  (§4.3). A method that adds selection to aspect-finding would need a term that keeps the uniform term's either rate or
+  a much larger gain than labels gave here, and this stage tested neither.
 - **The rising τ did not cap the fit.** E3 §6.3 could not explain why τ rose in every run. Fixing it (LT) gave a fit
   at least as large as learning it (L3), with a loss above its reference. LT minus L3 was not tested as a pair, so
   this rests on two separate fits.
@@ -351,8 +366,8 @@ are the user's decision.
 
 **What the decision does not show.**
 
-- It does not show that the aspect task is unlearnable. Label-supervised probes reach about 23 R@1 on aspect episodes
-  (aspect-episode spike, E3 §11), and the stage tested only E3's architecture, loss and agreement rule, with three
+- It does not show that the aspect task is unlearnable. On the aspect-episode spike's episodes, a different episode
+  set, label probes reached a pooled 23.09 R@1 against CLIP's 11.13, and the stage tested only E3's architecture, loss and agreement rule, with three
   label-trained settings and one matched-granularity setting.
 - No A′ result on a test draw exists. The readings are thresholds on development draws (seed-42 selection episodes
   and fresh label episodes on training rows).
@@ -368,7 +383,8 @@ are the user's decision.
    steps, the four processes together holding about 23 GiB; neither wrote a checkpoint, history or failure record
    (logs kept as `train_L3_seed42_oom_attempt1.log` and `train_L5_seed42_oom_attempt1.log`). LT and MK3 completed.
    L3 and L5 were rerun with identical settings, two at a time, as §4 allows after an infrastructure failure. No
-   setting changed, and no result of any run existed when they were rerun.
+   setting changed, and no H3 score existed when they were rerun (the H1 pilot result and the LT and MK3 histories
+   did).
 2. **L5's seed-43 retrain.** The first H3 pass (`h3_pass1_needs_seed43.json`) found L5 inconclusive and recorded
    `needs_seed43` with no H3 reading. L5 was retrained at model seed 43, as §7 prescribes, and the scorer was rerun.
    The two JSON files differ only in L5's seed-43 entry and resolved reading, the fit map, the H3 reading and the
@@ -378,8 +394,9 @@ are the user's decision.
    the outcome.
 4. **Development looks at seed 42.** The seed-42 selection episodes have now been scored by E1, E3's pick, E3's
    post-hoc fixed-λ profile and, in this stage, the H1 pilot (eight models and A3's 56-cell profile) and the H3
-   transfer (four runs). The build script of this report recomputed the same scores deterministically and computed
-   descriptive paired differences from stored arrays; it trained and scored no new model.
+   transfer (four runs). The build script of this report recomputed the same scores deterministically (including the
+   LAB runs' nested controls, which `score_h3.py` computed but did not store) and computed descriptive paired
+   differences from those arrays; it trained no model and scored no new model or scorer.
 5. **LAB reads evaluation labels on training rows**, which spec §4 C2 forbids for the method. LAB is a diagnostic of
    selection among trained aspects; its checkpoints (L3, L5 at seeds 42 and 43, LT) are listed by SHA-256 in
    `results/label_checkpoints.json`, and no setting was chosen from them.
@@ -390,14 +407,28 @@ are the user's decision.
    `/tmp` found episode files only for seeds 42, 43 and 44, and the build script asserts that no file under `src/test/`
    carries "seed45" in its name. The episode-seed ledger lists seed 45 as reserved with no scoring. Val and held rows
    were not read.
-9. **Bank build provenance.** `build_record.json` stores the SHA-256 of every bank and partition file but not the
-   SHA-256 of the script that built them, which pre-registration §10 asks of every result JSON. `build_banks.py` was
-   committed (b044925) 33 s after the build record was written and has not changed since. The training histories and
-   both scorer outputs do carry their script SHA-256s, which match `train_runs.py` at c24464b, `score_pilot.py` at
-   83e7027 and `score_h3.py` at 3afe1bd.
-10. **Smoke runs** (`results/smoke/`, `checkpoints/smoke/`) used A1's E3 smoke checkpoint and 50-step models to test
+9. **Provenance gaps against pre-registration §10**, which asks every result JSON to record the SHA-256 of the
+   episode sets, banks, partition files and checkpoints it read and of its own script.
+   - `build_record.json` stores the SHA-256 of every bank and partition file but not of the script that built them.
+     `build_banks.py` was committed (b044925) 33 s after the build record was written and has not changed since.
+   - `h3.json` records the SHA-256 of A3's checkpoint, L5's seed-43 checkpoint, the seed-42 and fresh episode sets and
+     its script, but not of the seed-42 checkpoints it scored (L3, L5, LT, MK3), of C0's checkpoint or of
+     `partitions_LAB.npz`. We re-hashed these files: L3 7b21cd81da5855c3, L5 95e4dd1d3754aa5b, LT db85fc88043ccc67,
+     MK3 57747154f9c935d1, C0 7653caf0985b564d (`src/test/20261016_factor_learning_grid/checkpoints/C0_seed42.pt`)
+     and `partitions_LAB.npz` c06cff38431ece08 (16-character prefixes). Each equals the value in the run's history,
+     `label_checkpoints.json`, E1's `codes_provenance.json` or `build_record.json`, and recomputation from these files
+     reproduced the stored arrays bit for bit (build script and final review).
+   - The training histories and both scorer outputs carry their script SHA-256s, which match `train_runs.py` at
+     c24464b, `score_pilot.py` at 83e7027 and `score_h3.py` at 3afe1bd.
+10. **Arrays not stored.** `per_anchor_h3.npz` omits three sets of per-anchor arrays behind quoted numbers: L5's
+    seed-43 term-only arrays on the fresh label episodes (behind the deciding two-seed mean), A3's seed-42 term-only
+    arrays (behind the deciding matched-k comparison) and C0's term-only arrays on the fresh label episodes (behind the
+    minus-C0 columns). Re-deriving them needs the checkpoints re-encoded; the build script and the final review both
+    did so and matched the stored summaries exactly. The LAB runs' seed-42 nested controls are not stored either
+    (§4.2).
+11. **Smoke runs** (`results/smoke/`, `checkpoints/smoke/`) used A1's E3 smoke checkpoint and 50-step models to test
     the scripts; no smoke number entered a reading.
-11. **No reading sits at a bootstrap boundary.** H1's reading depends only on the signs of the points m_R and m_g; the
+12. **No reading sits at a bootstrap boundary.** H1's reading depends only on the signs of the points m_R and m_g; the
     fit lower bounds of L3 and LT (0.60 and 0.77) and the matched-k upper bound (−0.34) are far from zero, and LT's
     nested gain (0.05) is a quarter of g\*.
 
@@ -405,6 +436,7 @@ are the user's decision.
 
 - One development draw per diagnostic (seed 42 for transfer and the pilot, one fresh label draw for the fit), and one
   model seed per run (two for L5).
+- One training budget for every run (2,000 steps of 32 episodes); the H2 grid that would have varied it was not run.
 - H3 bounds selection among aspects represented in training; a fitting LAB run says nothing about transfer to unseen
   aspects (spec C2), and a non-fitting one says nothing about other architectures.
 - The intervals resample anchor paintings, not example choices or training runs.
@@ -426,11 +458,14 @@ are the user's decision.
 - Context: E1's `src/test/20261030_aspect_baselines/results/per_anchor_seed42.npz`; E3's
   `src/test/20261101_aspect_factor_gonogo/results/` (`picked.json`, `select_seed42.json`,
   `per_anchor_select_seed42.npz`, `posthoc_lambda_profile_seed42.npz`, `history_A3_seed42.json`).
-- Re-derivation: `docs/reports/assets/2026-11-05_method_repair_diagnostics/build_figures.py` recomputed every summary
-  and paired comparison quoted here with `src.eval.aspect_metrics`, asserted each against the stored JSON to 1e-9,
-  recomputed A3's 56-cell profile and cross-fit from its checkpoint and rebuilt the fresh label episodes (SHA-256
-  checked), reapplied the readings, g\* and the joint decision, and checked the provenance hashes (506 checks). Its
-  output `figure_data.json` (local, gitignored) holds every number of §3 and §4, with the descriptive ones marked
+- Consistency check: `docs/reports/assets/2026-11-05_method_repair_diagnostics/build_figures.py` recomputed every
+  summary and paired comparison quoted here with `src.eval.aspect_metrics`, asserted each against the stored JSON to
+  1e-9, recomputed A3's 56-cell profile and every run's cross-fit from the checkpoints, rebuilt the fresh label
+  episodes (SHA-256 checked), reapplied the readings, g\* and the joint decision, and checked the provenance hashes
+  (522 checks). It reuses the stage's own nested-score, cross-fit and reading code, so it checks determinism and
+  consistency, not correctness of that code. The independent re-derivation came from the final whole-branch review,
+  which implemented its own z-score, nested combination and min-margin cross-fit and obtained bit-identical arrays
+  and picks. The script's output `figure_data.json` holds every number of §3 and §4, with the descriptive ones marked
   `computed_here`.
 - Spec: [CVPR publication plan](../../../superpowers/specs/2026-10-02-cosir-v2-cvpr-publication-plan-design.md) §4,
   §6 and §15; episode-seed ledger `docs/superpowers/episode_seed_ledger.md`.

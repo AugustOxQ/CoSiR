@@ -189,9 +189,10 @@ pre-registration for this report.
 ## What it changed
 
 The user approved the revisions. Spec revision 3 (§15) and the diagnostics pre-registration were committed before any
-script of the diagnostics stage ran, and the stage then ran under them. Its results (the H1 pilot on A3, the H3 fit
-and ceiling, the matched-k reading and the joint decision) are not part of this report. They belong in the separate
-report `2026-11-05_method_repair_diagnostics.md`, which is yet to be written.
+script of the diagnostics stage ran, and the stage then ran under them. Its results are in the separate
+[method-repair diagnostics report](2026-11-05_method_repair_diagnostics.md): the H1 pilot on A3 was not promising and
+H3's ceiling was too low (best fitting run LT, nested gain 0.05 against g* 0.218), so the pre-registered joint table
+gave branch 3 and the repair stopped.
 
 ## Caveats
 

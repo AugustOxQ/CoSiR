@@ -64,6 +64,14 @@ def test_fixed_tau_stays_at_step0_value():
                   log_every=1)
     taus = history["tau"]
     assert len(taus) == 6 and all(t == taus[0] for t in taus)
+    # The constant must be the step-0 value, not any constant: the learned run (same seed, same step-0 scores) logs
+    # tau0 after exactly one Adam step at lr 1e-3, which moves log(tau) by at most lr.
+    import math
+    learned = {}
+    train_factors(img, txt, graph, dataclasses.replace(cfg, aspect_tau_fixed=False), device="cpu", group_ids=groups,
+                  aspect_bank=bank, history=learned, log_every=1)
+    assert abs(math.log(taus[0] / learned["tau"][0])) <= 1.1e-3
+    assert taus[0] != 1.0
 
 
 def test_learned_tau_moves_by_default():

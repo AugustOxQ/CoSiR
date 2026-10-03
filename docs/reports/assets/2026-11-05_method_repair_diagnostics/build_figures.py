@@ -9,7 +9,13 @@ and, for context, E1's per_anchor_seed42.npz (cosine, RCA), E3's select_seed42.j
 posthoc_lambda_profile_seed42.npz and history_A3_seed42.json. Seed 43, 44 and 45 episode files are never opened, and
 val and held rows are never read (every selection-row array is NaN elsewhere, asserted by E3's EvalContext).
 
-Re-derivations (CPU, deterministic):
+What the checks are: a determinism and consistency check of the stored results, not an independent re-derivation.
+The script reuses the stage's own code (crossfit_nested, nested_scores, the reading functions of
+src/eval/aspect_nested.py, src.eval.aspect_metrics), so an error inside that code would be reproduced here. The
+independent re-derivation (its own z-score, nested combination and min-margin cross-fit, with bit-identical arrays and
+picks) was supplied by the final whole-branch review.
+
+Recomputations (CPU, deterministic):
   * every summary and paired comparison the report quotes, recomputed with src.eval.aspect_metrics (painting-clustered
     bootstrap, 5,000 resamples, seed 42) and asserted equal to the stored JSON (points and interval bounds to 1e-9);
   * A3's 56-cell uncross-fitted nested profile and the control's 30 sigma values, recomputed from the A3 checkpoint on
@@ -19,7 +25,10 @@ Re-derivations (CPU, deterministic):
   * the fresh label episodes are rebuilt with the pre-registered seeds (3042 + pair index) and their SHA-256s asserted
     equal to h3.json; C0's and L5 seed 43's term-only arrays on them (not stored) are recomputed from the checkpoints;
   * A3's seed-42 term-only arrays (not stored in per_anchor_h3.npz) are recomputed and asserted bit-equal to E3's
-    post-hoc profile at lambda = inf.
+    post-hoc profile at lambda = inf;
+  * each H3 run's seed-42 codes are re-encoded from its checkpoint (SHA-256 checked against the histories and the
+    registry), its term-only and cross-fitted nested arrays asserted bit-equal to per_anchor_h3.npz and its picks to
+    h3.json, and its nested control (not stored) recomputed to give the margin against its own control.
 Numbers with no stored counterpart (marked "computed_here" in figure_data.json) are descriptive and decide nothing.
 
 Run from the repository root:
@@ -433,8 +442,20 @@ for r in TRANSFER_RUNS:
     same_val(sn_["gain"]["point"], e["nested_gain_point"], f"transfer {r} nested gain point")
     if r in h3p1["runs"] and "transfer_seed42" in h3p1["runs"][r]:
         same(st_["gain"], h3p1["runs"][r]["transfer_seed42"]["term_only"]["gain"], f"pass 1 transfer {r} unchanged")
+    ck = DIAG / "checkpoints" / f"{r}_seed42.pt"
+    check(sha(ck) == hist[f"{r}_seed42"]["checkpoint_sha256"], f"{r} seed-42 checkpoint SHA-256 equals its history")
+    ic_r, tc_r = ctx.encode(ck)
+    inp_r = EvalInputs(ctx.img, ctx.txt, ic_r, tc_r)
+    ta_r = agreement_term(inp_r, ctx.pooled)
+    n_r, c_r, picks_r = crossfit_nested(ctx.cos, agreement_term(inp_r, ctx.pooled, uniform=True), ta_r, ctx.parity)
+    same_arrays(per_anchor(ta_r), pt, f"transfer {r} term-only recomputed vs stored")
+    same_arrays(per_anchor(n_r), pn, f"transfer {r} nested recomputed vs stored")
+    check({str(k): v for k, v in picks_r.items()} == e["picks"], f"transfer {r} picks recomputed equal h3.json")
+    pc_r = per_anchor(c_r)
+    own = {m: brief(compare(pn, pc_r, cl, m)) for m in ("r1", "gain")}
     tr[r] = {"term_only": st_, "term_only_either": ei, "nested": sn_, "picks": e["picks"],
-             "nested_either": either_ci(either_of(pn), cl)}
+             "nested_either": either_ci(either_of(pn), cl), "control": ctx.summary(pc_r),
+             "nested_minus_own_control": own}
 mk = compare(term["MK3"], pt_a3, cl, "gain")
 same(mk, h3["matched_k"]["MK3_minus_A3_term_only_gain"], "matched-k MK3 minus A3 term-only gain")
 same(mk, h3p1["matched_k"]["MK3_minus_A3_term_only_gain"], "pass 1 matched-k unchanged")
@@ -454,6 +475,8 @@ check(dec == decision["decision"] == "branch_3" and decision["h1"] == reading an
 check(decision["h2_bank"] == ("MK" if lever else "AIC"), "H2 bank field consistent with the matched-k reading")
 # descriptive pairs computed here
 pairs_here = {r: {"term_only_gain_minus_A3": brief(compare(term[r], pt_a3, cl, "gain")),
+                  "term_only_either_minus_A3": brief(compare({"e": either_of(term[r])}, {"e": either_of(pt_a3)},
+                                                             cl, "e")),
                   "term_only_either_minus_cosine": brief(compare({"e": either_of(term[r])}, {"e": either_of(cos_pa)},
                                                                  cl, "e"))}
               for r in ("L3", "L5", "LT")}
@@ -464,7 +487,10 @@ pairs_here["MK3"] = {"term_only_either_minus_cosine": brief(compare({"e": either
 DATA["h3_transfer"] = {r: {"term_only": {m: brief(tr[r]["term_only"][m]) for m in ("r1", "gain", "other")},
                            "term_only_either": tr[r]["term_only_either"],
                            "nested": {m: brief(tr[r]["nested"][m]) for m in ("r1", "gain", "other")},
-                           **({"picks": tr[r]["picks"], "nested_either": tr[r]["nested_either"]} if r != "A3" else {})}
+                           **({"picks": tr[r]["picks"], "nested_either": tr[r]["nested_either"],
+                               "computed_here": {"control_r1": brief(tr[r]["control"]["r1"]),
+                                                 "nested_minus_own_control": tr[r]["nested_minus_own_control"]}}
+                              if r != "A3" else {})}
                        for r in tr}
 DATA["h3_decision"] = {"fit": fit, "best_fitting_run": best_run, "best_nested_gain": gains[best_run],
                        "g_star": g_star, "h3_reading": h3r, "matched_k": brief(mk), "granularity_lever": lever,
