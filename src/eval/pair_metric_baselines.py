@@ -149,21 +149,53 @@ def wang_term(inputs, ep, steps: int = 50):
     return _each(fn)
 
 
-def pair_probe_term(inputs, ep, steps: int = 200, l2: float = 1.0):
+@dataclass
+class PairScaler:
+    mean: np.ndarray           # (D,) mean of z = x*y over same-row image-caption products of training rows
+    std: np.ndarray            # (D,)
+
+
+def fit_pair_scaler(img_rows, txt_rows, seed: int = 42) -> PairScaler:
+    """Unsupervised statistics of z = x*y (rows unit-normalized first, like EvalInputs); fit on training rows only."""
+    x = np.asarray(img_rows, np.float64)
+    y = np.asarray(txt_rows, np.float64)
+    if len(x) > 50_000:
+        keep = np.random.default_rng(seed).choice(len(x), 50_000, replace=False)
+        x, y = x[keep], y[keep]
+    x = x / np.linalg.norm(x, axis=1, keepdims=True)
+    y = y / np.linalg.norm(y, axis=1, keepdims=True)
+    z = x * y
+    return PairScaler(z.mean(0).astype(np.float32), np.maximum(z.std(0), 1e-8).astype(np.float32))
+
+
+def pair_probe_term(inputs, ep, scaler, steps: int = 300, l2: float = 1.0, return_grad_norm: bool = False):
+    """Standardized L2 logistic probe on z = x*y (S = 1, C = 0), fit per episode with Adam (lr 0.05) on the SUM over
+    episodes of [mean BCE + 0.5*l2*||beta||^2/8], so each episode's optimisation does not depend on n."""
+    mean, std = _t(scaler.mean), _t(scaler.std)
+    grad_norms = []
+
     def fn(cond, d):
         sx, sy, cx, cy = (_t(a) for a in _pairs(inputs, ep, cond))
-        z = torch.cat([sx * sy, cx * cy], dim=1)                          # (n, 8, D)
+        z = (torch.cat([sx * sy, cx * cy], dim=1) - mean) / std           # (n, 8, D)
         y = torch.cat([torch.ones(sx.shape[:2]), torch.zeros(cx.shape[:2])], dim=1)
         beta = torch.zeros(z.shape[0], z.shape[-1], requires_grad=True)
         bias = torch.zeros(z.shape[0], requires_grad=True)
-        opt = torch.optim.SGD([beta, bias], lr=0.5)
+        opt = torch.optim.Adam([beta, bias], lr=0.05)
         for _ in range(steps):
             logits = (z * beta[:, None]).sum(-1) + bias[:, None]
-            loss = F.binary_cross_entropy_with_logits(logits, y) + 0.5 * l2 * (beta ** 2).sum(-1).mean() / z.shape[1]
-            opt.zero_grad(); loss.backward(); opt.step()
+            per_ep = F.binary_cross_entropy_with_logits(logits, y, reduction="none").mean(1) \
+                + 0.5 * l2 * (beta ** 2).sum(-1) / z.shape[1]
+            opt.zero_grad(); per_ep.sum().backward(); opt.step()
+        logits = (z * beta[:, None]).sum(-1) + bias[:, None]
+        per_ep = F.binary_cross_entropy_with_logits(logits, y, reduction="none").mean(1) \
+            + 0.5 * l2 * (beta ** 2).sum(-1) / z.shape[1]
+        g_beta, g_bias = torch.autograd.grad(per_ep.sum(), [beta, bias])
+        grad_norms.append(torch.sqrt((g_beta ** 2).sum(-1) + g_bias ** 2).mean().item())
         q, c, _, _ = _sides(inputs, ep, d)
-        return ((_t(q)[:, None] * _t(c) * beta.detach()[:, None]).sum(-1) + bias.detach()[:, None]).numpy()
-    return _each(fn)
+        qc = (_t(q)[:, None] * _t(c) - mean) / std
+        return ((qc * beta.detach()[:, None]).sum(-1) + bias.detach()[:, None]).numpy()
+    out = _each(fn)
+    return (out, float(np.mean(grad_norms))) if return_grad_norm else out
 
 
 def tip_adapter_term(inputs, ep, gamma: float = 5.0):

@@ -31,6 +31,7 @@ def setup():
     ep = build_aspect_episodes(labels, groups, np.arange(len(groups)), "a", "b", 200, seed=1)
     inputs = EvalInputs(img, txt)
     basis = B.fit_pca_basis(inputs.img, inputs.txt, r=16)
+    basis.scaler = B.fit_pair_scaler(inputs.img, inputs.txt)
     return ep, inputs, basis
 
 
@@ -43,7 +44,7 @@ def test_pair_baselines_use_the_condition(setup, name):
             "rca": lambda: B.rca_term(inputs, ep, basis),
             "xing": lambda: B.xing_term(inputs, ep, basis),
             "wang": lambda: B.wang_term(inputs, ep),
-            "probe": lambda: B.pair_probe_term(inputs, ep),
+            "probe": lambda: B.pair_probe_term(inputs, ep, basis.scaler),
             "tip": lambda: B.tip_adapter_term(inputs, ep)}[name]()
     assert term["a"]["i2t"].shape == (200, 13) and np.isfinite(term["a"]["i2t"]).all()
     assert per_anchor(term)["gain"].mean() > 0.05                 # the condition changes the ranking
@@ -70,3 +71,19 @@ def test_bilinear_is_condition_dependent_but_weak_under_value_disjoint_supports(
     shared_a, shared_b = pick("a"), pick("b")
     ep2 = dataclasses.replace(ep, pairs_a_img=shared_a, pairs_a_txt=shared_a, pairs_b_img=shared_b, pairs_b_txt=shared_b)
     assert per_anchor(B.bilinear_agreement_term(inputs, ep2, basis))["gain"].mean() > 0.05
+
+
+def test_pair_probe_is_not_the_diag_rule(setup):
+    """Ranking differs: the fraction of (condition, direction, episode) rows whose argmax differs from diag's is > 0
+    (a copy of diag would give exactly 0). Scale: mean |term| on the first 50 episodes is stable (< 10% change)
+    whether the probe is fit on 50 episodes or on all 200, because the loss is summed per episode."""
+    ep, inputs, basis = setup
+    probe = B.pair_probe_term(inputs, ep, basis.scaler)
+    diag = B.diag_agreement_term(inputs, ep, relu=False)
+    differs = np.mean([(probe[c][d].argmax(1) != diag[c][d].argmax(1)).mean() for c in probe for d in probe[c]])
+    assert differs > 0
+    sub = dataclasses.replace(ep, **{f.name: getattr(ep, f.name)[:50] for f in dataclasses.fields(ep)})
+    small = B.pair_probe_term(inputs, sub, basis.scaler)
+    full_abs = np.mean([np.abs(probe[c][d][:50]).mean() for c in probe for d in probe[c]])
+    small_abs = np.mean([np.abs(small[c][d]).mean() for c in small for d in small[c]])
+    assert abs(small_abs - full_abs) / full_abs < 0.10
