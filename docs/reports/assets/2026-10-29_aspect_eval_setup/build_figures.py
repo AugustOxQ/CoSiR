@@ -48,8 +48,8 @@ def cub_margins():
     a.bar([i + w for i in x], maj, w, label="majority rate (baseline)", color=GREY)
     a.set_xticks(list(x)); a.set_xticklabels(groups, rotation=15, fontsize=8); a.set_ylabel("accuracy on 30 dev species")
     a.legend(fontsize=8); a.set_title("(a) Probe accuracy against the majority rate", fontsize=10)
-    cols = [GREY, GREY, GREY, TEAL]
-    b.bar(groups, margin, color=cols)
+    cols = [GREY, GREY, GREY, PURPLE]
+    b.bar(groups, margin, color=cols, hatch="//", edgecolor="#222")
     for i, m in enumerate(margin):
         b.text(i, m + 0.004, f"{m:.3f}", ha="center", fontsize=8)
     b.set_xticks(range(4)); b.set_xticklabels(groups, rotation=15, fontsize=8)

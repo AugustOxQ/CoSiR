@@ -17,8 +17,9 @@ the same audited code. We built it, and four checks came out as follows.
 | CUB third aspect | `has_wing_color`, min(image, caption) accuracy minus majority rate = +0.154 | majority rate 0.276; the other three groups reach +0.008 to +0.055 |
 | Qwen3-VL-Embedding-2B port against the official pipeline | PASS on both stages after a preprocessing fix; image-to-caption top-1 agreement 48/50 on both, cosine minimum 0.9996 | the official `Qwen3VLEmbedder` in transformers 4.57.6 |
 
-Reviews found three real defects on the way (a NaN-to-finite rewrite inside the plan's own z-score code, gaps in the
-episode validator, and a Qwen image-resize mismatch). All three are fixed and pinned by tests. §5 lists what the stack
+Reviews found five issues on the way: three code defects (a NaN-to-finite rewrite inside the plan's own z-score code,
+the validator's missing third-aspect check, and a Qwen image-resize mismatch) and two test or design gaps (metric
+tests that could not fail, and a shared lambda grid extension). All five are fixed and pinned by tests. §5 lists what the stack
 now guarantees and §6 lists the caveats we carry forward.
 
 ## 1. What we set out to build
@@ -65,7 +66,9 @@ gain, and applied to the other half. A pick of 16 extends that half's grid once 
 ## 2. Spike reproduction
 
 Baseline: the stored numbers of the aspect spike ([aspect episode spike](2026-10-23_aspect_episode_spike.md)), on its
-own 4,096 stored episodes. We rebuilt the scoring path from scratch in the new modules and re-ran it on those episodes.
+own 4,096 stored episodes. The exact stored values are in
+`src/test/20261023_aspect_episode_spike/results/aspect_results.json` (swap 16.24755859375) and `run_aspect.log` line 24
+(SE_agree_b0.3: 10.95 pooled, swap 16.25); the spike report itself only says 16 to 18%. We rebuilt the scoring path from scratch in the new modules and re-ran it on those episodes.
 `reproduce_spike.py` printed, on the final code (re-run for this report, GPU free, exit 0):
 
 ```
@@ -84,8 +87,9 @@ REPRODUCED
 | SE at beta 0.3, swap | 16.25 | 16.25 | under 0.01 |
 
 The check ties out three different code paths: the cosine scorer, the fixed-beta agreement scorer and the swap metric.
-The script asserts a tolerance of 0.01 on each. The same numbers came out before and after the review fixes of §4, so
-those fixes changed only how non-finite rows behave and not any finite score. The four test files of the stack (episodes,
+The script asserts a tolerance of 0.01 on each. The same three numbers came out before and after the review fixes of §4. The script uses the fixed-beta scorers and
+does not exercise lambda cross-fitting, so this shows that the NaN fixes left finite fixed-beta scores unchanged; the
+cross-fitting path is covered by its own synthetic tests. The four test files of the stack (episodes,
 metrics, rule, scorers) pass together, 37 tests, including the mechanism tests that pin the point of the design: a
 scorer that ignores the condition has gain 0, an aspect finder that ignores the condition has gain 0 (and half the R@1 of the
 perfect conditional scorer), and an aspect-block code makes the agreement rule work where value-specific codes tie.
@@ -102,19 +106,21 @@ the stage (d) cache.
 
 Labelled share of the selection rows (6,451 paintings), after excluding the emotion catch-all "something else":
 
-| Aspect | Labelled share | Values present |
-|---|---:|---:|
-| emotion | 0.892 | 8 |
-| style | 1.000 | 27 |
-| genre (WikiArt, ArtGAN class file) | 0.815 | 10 |
+| Aspect | Labelled share | Values present | Eligible (at least 30 paintings, `eligible_values`) |
+|---|---:|---:|---:|
+| emotion | 0.892 | 8 | 8 |
+| style | 1.000 | 27 | 23 |
+| genre (WikiArt, ArtGAN class file) | 0.815 | 10 | 10 |
+
+Four styles have fewer than 30 selection paintings, so the spec's 23 styles are the eligible ones.
 
 Genre is missing for 18.5% of selection rows, so the third-aspect control restricts every role to labelled rows. The
 builder enforces this and the validator asserts it on every row of every episode (§4).
 
 ## 4. What the reviews found
 
-The reviews of Tasks 2 to 6 each found something that a happy-path test did not. We list them because the third and
-fourth are the kind that would have changed a paper number silently.
+The reviews of Tasks 2 to 6 each found something that a happy-path test did not. Items 1, 2 and 5 are code defects. Items 3 and 4 are test and design gaps. Item 1 is the kind that would have changed
+a paper number silently (an out-of-scope row counted as a hit or a tie), and item 5 would have changed Qwen features.
 
 1. **NaN became finite inside the plan's own code.** The plan's `zscore_rows` computed `where(std > 0, z, 0)`. A row
    with a NaN has a NaN std, `NaN > 0` is false, and the row became all zeros, a finite value. `agreement_weights` did
@@ -169,8 +175,7 @@ the Qwen preprocessing fix, which concerns only the Qwen encoder, so they are un
 
 ![CUB third aspect](../../assets/2026-10-29_aspect_eval_setup/cub_third_aspect.png)
 
-*Figure 2. (a) Probe accuracy against the majority rate for the four candidate groups. (b) The selection margin. Teal
-marks the pick.*
+*Figure 2. (a) Probe accuracy against the majority rate for the four candidate groups. (b) The selection margin. The hatched purple bar marks the pick.*
 
 We picked `has_wing_color`, so the CUB aspects are primary colour, bill shape and wing colour. Why it won: three of the
 groups are dominated by their majority class (has_breast_pattern's probes sit 0.008 above 0.499), so a probe adds
@@ -213,7 +218,8 @@ trivially. We fixed it before the final run. Anything that uses the cache as cos
 **Cause.** The official embedder calls `qwen_vl_utils.fetch_image` (patch factor 32, `smart_resize` with min_pixels
 4,096 and the given max_pixels, RGBA onto white, PIL default resampling) and then runs the processor with
 `do_resize=False`. Our port had used the processor's own resize, a slightly different grid and resampling. It was
-invisible on images under max_pixels (the CUB stage) and mattered once images were downscaled.
+small on images under max_pixels (CUB stage: image cosine min 0.9990, which became 1.0000 after the fix, and t2i
+47/50, which became 50/50) and larger once images were downscaled.
 
 **Fix.** `_qwen_smart_resize` and `_qwen_prepare_image` were copied from `qwen_vl_utils/vision_process.py` (cited in a
 comment, nothing imported from the target folder) and `encode_images` pre-resizes and calls the processor with
