@@ -8,6 +8,7 @@ LAB runs (L3, L5, LT) append their checkpoint SHA-256 to results/label_checkpoin
 """
 import argparse
 import dataclasses
+import fcntl
 import json
 import os
 import sys
@@ -26,6 +27,17 @@ from src.data.artelingo_splits import artelingo_splits  # noqa: E402
 from src.train.train_factors import save_factor_checkpoint, train_factors  # noqa: E402
 
 SEEDS = (42, 43)
+
+
+def register_checkpoint(reg: Path, name: str, sha: str) -> None:
+    """Add {name: sha} to the registry under an exclusive lock (parallel runs), writing atomically."""
+    with open(str(reg) + ".lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        shas = json.loads(reg.read_text()) if reg.exists() else {}
+        shas[name] = sha
+        tmp = reg.with_name(reg.name + f".tmp{os.getpid()}")
+        tmp.write_text(json.dumps(shas, indent=1, sort_keys=True))
+        os.replace(tmp, reg)
 
 
 def train(run: str, seed: int, smoke: bool) -> None:
@@ -49,9 +61,12 @@ def train(run: str, seed: int, smoke: bool) -> None:
     sp = artelingo_splits(data)
     st, local_groups = local_rows(data, sp)
     n = len(st)
+    record = json.loads(record_path.read_text())
+    if rg.sha_array(local_groups) != record["sha256"]["local_groups"]:
+        raise AssertionError("local_groups SHA-256 differs from E2's build_record.json")
     graph_path = e2 / "graph.npz"
     graph_sha = rg.sha_file(graph_path)
-    if graph_sha != json.loads(record_path.read_text())["sha256"]["graph.npz"]:
+    if graph_sha != record["sha256"]["graph.npz"]:
         raise AssertionError("graph.npz SHA-256 differs from E2's build_record.json")
     graph = load_npz(graph_path).tocsr()
     if graph.shape != (n, n):
@@ -61,6 +76,7 @@ def train(run: str, seed: int, smoke: bool) -> None:
     rows = bank.rows()
     if rows.min() < 0 or rows.max() >= n:
         raise AssertionError(f"bank {bank_name} rows leave 0..{n - 1}: [{rows.min()}, {rows.max()}]")
+    rg.check_base_config(seed, steps)
     config = run_config(run, seed, steps)
     load_s = perf_counter() - t_load
     rg.log(f"{name}: loaded {n} scorer-train rows, graph {graph.shape}, bank {bank_name} ({len(bank.anchor)} episodes) "
@@ -88,10 +104,7 @@ def train(run: str, seed: int, smoke: bool) -> None:
                code_stats_scorer_train=rg.code_stats(img_codes, txt_codes))
     hist.write_text(json.dumps(out, indent=1))
     if run in LABEL_RUNS:
-        reg = f["res"] / "label_checkpoints.json"
-        shas = json.loads(reg.read_text()) if reg.exists() else {}
-        shas[name] = out["checkpoint_sha256"]
-        reg.write_text(json.dumps(shas, indent=1, sort_keys=True))
+        register_checkpoint(f["res"] / "label_checkpoints.json", name, out["checkpoint_sha256"])
     rg.log(f"{name}: {steps} steps in {train_s:.1f}s (load {load_s:.1f}s), peak GPU {peak:.2f} GiB, "
            f"codes {out['code_stats_scorer_train']} -> {ckpt.relative_to(ROOT)}")
 

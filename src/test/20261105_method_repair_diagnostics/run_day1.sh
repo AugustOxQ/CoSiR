@@ -7,8 +7,14 @@ PY=/root/miniconda3/envs/CoSiR/bin/python
 DIR=src/test/20261105_method_repair_diagnostics
 mkdir -p "$DIR/results"
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4      # four processes share the 32 cores with other sessions
+pids=(); names=()
 for run in L3 L5 LT MK3; do
   $PY "$DIR/train_runs.py" --train "$run" --seed 42 > "$DIR/results/train_${run}_seed42.log" 2>&1 &
+  pids+=($!); names+=("$run")
 done
-wait
+fail=0
+for i in "${!pids[@]}"; do
+  if ! wait "${pids[$i]}"; then echo "day-1: ${names[$i]} FAILED, see $DIR/results/train_${names[$i]}_seed42.log" >&2; fail=1; fi
+done
+[ "$fail" -eq 0 ] || exit 1
 echo "day-1 trainings done"
