@@ -1,12 +1,15 @@
 """Joint decision of the method-repair diagnostics (PREREGISTRATION.md §8).
 
 Outputs results/decision.json with the pre-registered table and next step.
+Writes atomically to prevent races: temp file + os.replace for real, direct write for smoke.
 """
 
 import argparse
 import importlib.util
 import json
+import os
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -94,10 +97,6 @@ def main():
     if not h3_path.exists():
         raise FileNotFoundError(f"H3 results not found: {h3_path}")
 
-    # Refuse to overwrite real results
-    if not args.smoke and decision_path.exists():
-        raise FileExistsError(f"Real decision.json already exists: {decision_path}. Not overwriting.")
-
     # Load inputs
     with open(pilot_path) as f:
         pilot = json.load(f)
@@ -118,9 +117,31 @@ def main():
     }
     result["decided_at"] = datetime.now(timezone.utc).isoformat()
 
-    # Write decision
-    with open(decision_path, "w") as f:
-        json.dump(result, f, indent=1)
+    # Write decision atomically
+    if args.smoke:
+        # Smoke: allow overwrite
+        with open(decision_path, "w") as f:
+            json.dump(result, f, indent=1)
+    else:
+        # Real: write atomically with temp file + os.replace, refusing race
+        if decision_path.exists():
+            raise FileExistsError(f"Real decision.json already exists: {decision_path}. Not overwriting.")
+
+        # Write to temp file in same directory to ensure same filesystem
+        temp_fd, temp_path = tempfile.mkstemp(dir=decision_path.parent, text=True)
+        try:
+            with os.fdopen(temp_fd, "w") as f:
+                json.dump(result, f, indent=1)
+            # Re-check existence before replace (race condition check)
+            if decision_path.exists():
+                os.unlink(temp_path)
+                raise FileExistsError(f"Real decision.json exists (written by another process): {decision_path}")
+            os.replace(temp_path, decision_path)
+        except Exception:
+            # Clean up temp file on error
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+            raise
 
     # Print next step
     print(result["next_step"])

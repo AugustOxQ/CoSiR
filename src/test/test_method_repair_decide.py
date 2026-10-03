@@ -2,93 +2,108 @@
 
 import importlib.util
 import pytest
-import sys
 from pathlib import Path
 
-# Import the decide function using importlib since module name starts with a digit
+# Import the decide function and NEXT dict using importlib since module name starts with a digit
 diagnostics_path = Path(__file__).resolve().parent / "20261105_method_repair_diagnostics" / "decide.py"
 spec = importlib.util.spec_from_file_location("decide", diagnostics_path)
 decide_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(decide_module)
 decide = decide_module.decide
+NEXT = decide_module.NEXT
 
 
-class TestJointDecision:
-    """Test the decide() pure function with synthetic data."""
+class TestJointDecisionTable:
+    """Test all 9 (h1, h3) combinations per pre-registered table."""
 
-    def test_promising_reading(self):
-        """(a) promising H1 → preregister_A3_nested, regardless of H3."""
+    @pytest.mark.parametrize("h1_reading,h3_reading,expected_decision", [
+        # h1 = "promising" → always preregister_A3_nested (regardless of h3)
+        ("promising", "no_fit", "preregister_A3_nested"),
+        ("promising", "ceiling_too_low", "preregister_A3_nested"),
+        ("promising", "ceiling_sufficient", "preregister_A3_nested"),
+        # h1 = "inconclusive" → h2_grid only if ceiling_sufficient, else branch_3
+        ("inconclusive", "no_fit", "branch_3"),
+        ("inconclusive", "ceiling_too_low", "branch_3"),
+        ("inconclusive", "ceiling_sufficient", "h2_grid"),
+        # h1 = "not_promising" → h2_grid only if ceiling_sufficient, else branch_3
+        ("not_promising", "no_fit", "branch_3"),
+        ("not_promising", "ceiling_too_low", "branch_3"),
+        ("not_promising", "ceiling_sufficient", "h2_grid"),
+    ])
+    def test_decision_table_9_combinations(self, h1_reading, h3_reading, expected_decision):
+        """Test all 9 (h1, h3) combinations against pre-registered decision table."""
+        pilot = {"A3": {"reading": h1_reading}}
+        h3 = {
+            "h3_reading": h3_reading,
+            "matched_k": {"granularity_lever": True},
+        }
+        result = decide(pilot, h3)
+        assert result["h1"] == h1_reading
+        assert result["h3"] == h3_reading
+        assert result["decision"] == expected_decision
+
+    @pytest.mark.parametrize("granularity_lever,expected_bank", [
+        (True, "MK"),
+        (False, "AIC"),
+    ])
+    def test_h2_bank_selection(self, granularity_lever, expected_bank):
+        """Test h2_bank is MK when granularity_lever=True, AIC when False."""
+        pilot = {"A3": {"reading": "inconclusive"}}
+        h3 = {
+            "h3_reading": "ceiling_sufficient",
+            "matched_k": {"granularity_lever": granularity_lever},
+        }
+        result = decide(pilot, h3)
+        assert result["h2_bank"] == expected_bank
+
+    def test_next_step_preregister_a3_nested_exact(self):
+        """Assert next_step is exact NEXT["preregister_A3_nested"] for promising."""
         pilot = {"A3": {"reading": "promising"}}
         h3 = {
-            "h3_reading": "ceiling_sufficient",
-            "matched_k": {"granularity_lever": True},
-        }
-        result = decide(pilot, h3)
-        assert result["h1"] == "promising"
-        assert result["h3"] == "ceiling_sufficient"
-        assert result["decision"] == "preregister_A3_nested"
-        assert "pre-registration" in result["next_step"]
-        assert result["h2_bank"] == "MK"
-
-    def test_not_promising_ceiling_sufficient_mk(self):
-        """(b) not_promising + ceiling_sufficient + granularity_lever=True → h2_grid with MK."""
-        pilot = {"A3": {"reading": "not_promising"}}
-        h3 = {
-            "h3_reading": "ceiling_sufficient",
-            "matched_k": {"granularity_lever": True},
-        }
-        result = decide(pilot, h3)
-        assert result["h1"] == "not_promising"
-        assert result["h3"] == "ceiling_sufficient"
-        assert result["decision"] == "h2_grid"
-        assert result["h2_bank"] == "MK"
-        assert "H2 grid" in result["next_step"]
-        assert "{bank}" not in result["next_step"]  # Should be formatted
-        assert "MK" in result["next_step"]
-
-    def test_not_promising_ceiling_sufficient_aic(self):
-        """(b) not_promising + ceiling_sufficient + granularity_lever=False → h2_grid with AIC."""
-        pilot = {"A3": {"reading": "not_promising"}}
-        h3 = {
-            "h3_reading": "ceiling_sufficient",
+            "h3_reading": "no_fit",
             "matched_k": {"granularity_lever": False},
         }
         result = decide(pilot, h3)
-        assert result["h1"] == "not_promising"
-        assert result["h3"] == "ceiling_sufficient"
-        assert result["decision"] == "h2_grid"
-        assert result["h2_bank"] == "AIC"
-        assert "H2 grid" in result["next_step"]
-        assert "AIC" in result["next_step"]
+        assert result["next_step"] == NEXT["preregister_A3_nested"]
 
-    def test_inconclusive_no_fit_branch_3(self):
-        """(c) inconclusive + no_fit → branch_3."""
+    @pytest.mark.parametrize("granularity_lever,expected_bank", [
+        (True, "MK"),
+        (False, "AIC"),
+    ])
+    def test_next_step_h2_grid_exact(self, granularity_lever, expected_bank):
+        """Assert next_step equals NEXT["h2_grid"].format(bank=bank) for h2_grid decision."""
+        pilot = {"A3": {"reading": "inconclusive"}}
+        h3 = {
+            "h3_reading": "ceiling_sufficient",
+            "matched_k": {"granularity_lever": granularity_lever},
+        }
+        result = decide(pilot, h3)
+        expected_next_step = NEXT["h2_grid"].format(bank=expected_bank)
+        assert result["next_step"] == expected_next_step
+
+    def test_next_step_branch_3_exact(self):
+        """Assert next_step is exact NEXT["branch_3"] for branch_3 decision."""
         pilot = {"A3": {"reading": "inconclusive"}}
         h3 = {
             "h3_reading": "no_fit",
             "matched_k": {"granularity_lever": False},
         }
         result = decide(pilot, h3)
-        assert result["h1"] == "inconclusive"
-        assert result["h3"] == "no_fit"
-        assert result["decision"] == "branch_3"
-        assert "branch 3" in result["next_step"]
+        assert result["next_step"] == NEXT["branch_3"]
 
-    def test_inconclusive_ceiling_too_low_branch_3(self):
-        """(c) inconclusive + ceiling_too_low → branch_3."""
+    def test_failed_mk3_shape_h2_bank_aic(self):
+        """Test failed MK3 shape: h3["matched_k"] has status and granularity_lever=False → AIC."""
         pilot = {"A3": {"reading": "inconclusive"}}
         h3 = {
-            "h3_reading": "ceiling_too_low",
-            "matched_k": {"granularity_lever": True},
+            "h3_reading": "ceiling_sufficient",
+            "matched_k": {"status": "failed", "granularity_lever": False},
         }
         result = decide(pilot, h3)
-        assert result["h1"] == "inconclusive"
-        assert result["h3"] == "ceiling_too_low"
-        assert result["decision"] == "branch_3"
-        assert "branch 3" in result["next_step"]
+        assert result["h2_bank"] == "AIC"
+        assert result["decision"] == "h2_grid"
 
     def test_null_h3_reading_raises(self):
-        """(d) null h3_reading raises ValueError."""
+        """null h3_reading raises ValueError before any decision."""
         pilot = {"A3": {"reading": "inconclusive"}}
         h3 = {
             "h3_reading": None,
@@ -97,17 +112,7 @@ class TestJointDecision:
         with pytest.raises(ValueError, match="h3_reading is null"):
             decide(pilot, h3)
 
-    def test_not_promising_ceiling_too_low_branch_3(self):
-        """not_promising + ceiling_too_low → branch_3."""
-        pilot = {"A3": {"reading": "not_promising"}}
-        h3 = {
-            "h3_reading": "ceiling_too_low",
-            "matched_k": {"granularity_lever": False},
-        }
-        result = decide(pilot, h3)
-        assert result["decision"] == "branch_3"
-
-    def test_result_structure(self):
+    def test_result_has_required_keys(self):
         """Verify result dict has all required keys."""
         pilot = {"A3": {"reading": "promising"}}
         h3 = {
