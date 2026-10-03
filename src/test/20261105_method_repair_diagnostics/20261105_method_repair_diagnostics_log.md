@@ -73,8 +73,8 @@ a6a4bb2 feat(v2): nested score, its uniform control, min-margin cross-fit and pr
 - **Matched-k: not a lever.** MK3 minus A3 term-only gain on seed 42 −0.88 [−1.44, −0.34].
 - **Decision (§8): branch 3, stop the repair.** Seed 45 not built; H2 grid not run.
 - Descriptive: with A3's settings, label training raised the seed-42 term-only gain from 0.99 (A3) to 1.85 (L3) and
-  1.82 (LT) (L3 minus A3 +0.86 [0.28, 1.42]); with A5's settings it did not (L5 +0.36 [−0.20, 0.93] on seed 42, no fit
-  on fresh label episodes). The aspect loss stayed within 2% of its constant-score value (L3 1.8% below, L5 1.0% below,
+  1.82 (LT) (L3 minus A3 +0.86 [0.28, 1.42]); L5 (labels with A5's settings: λ_aspect 1, β 0) did not beat A3 (+0.36 [−0.20, 0.93] on seed 42, no fit
+  on fresh label episodes; L5 still beat C0, gain +0.97 [0.45, 1.51]; L3 to A3 gain ratio 1.87 [1.22, 3.26]). The aspect loss stayed within 2% of its constant-score value (L3 1.8% below, L5 1.0% below,
   LT 0.4% above) without tracking the fit; term-only either rates (21.0 to 22.9) stayed below the cosine's 25.92; each
   LAB run's nested R@1 stayed within 0.1 of its own nested control (L3 −0.04, L5 −0.03, LT −0.09).
 
@@ -105,7 +105,7 @@ a6a4bb2 feat(v2): nested score, its uniform control, min-margin cross-fit and pr
 4. Disclosed in the report (§7, item 9). Re-hashed on disk (16-character prefixes): L3 7b21cd81da5855c3, L5
    95e4dd1d3754aa5b, LT db85fc88043ccc67, MK3 57747154f9c935d1, C0 7653caf0985b564d, `partitions_LAB.npz`
    c06cff38431ece08; each equals the history, `label_checkpoints.json`, E1's `codes_provenance.json` or
-   `build_record.json` value, and recomputation from them reproduced the stored arrays bit for bit.
+   `build_record.json` value, and recomputation from them reproduced the stored arrays (and, for C0, the stored summaries).
 5. Disclosed in the report (§7, item 10). The build script re-encodes the checkpoints to recompute these arrays; the
    final whole-branch review did the same and matched.
 

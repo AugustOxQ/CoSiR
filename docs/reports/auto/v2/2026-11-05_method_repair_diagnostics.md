@@ -1,4 +1,4 @@
-# Method-repair diagnostics: the nested score adds nothing on A3, label training lifts the term but not the ceiling, branch 3
+# Method-repair diagnostics: the nested score adds nothing on A3, label training with A3's settings lifts the term but not the ceiling, branch 3
 
 Date: 2026-11-05 (sequence date of the method-repair diagnostics stage, CVPR plan spec §15; the runs took place on
 2026-10-03). Experiment folder: `src/test/20261105_method_repair_diagnostics/` (pre-registration, scripts, folder log;
@@ -33,9 +33,10 @@ before any script of the stage existed, and every rule below was applied mechani
   R@1 near that level, weight on the conditioned term cost at least as much "either" rate as it added gain (the one exception, (4, 0.25), sat 0.004 R@1 above its row's λ_a = 0 cell).
 - **With A3's settings, label training raised the term's selection signal, and the nested score still did not use
   it.** Trained with A3's settings on the evaluation labels of scorer-train rows, the term reached a term-only gain of
-  1.85 (L3) and 1.82 (LT) against A3's 0.99 on seed 42 (L3 minus A3 +0.86 [0.28, 1.42], roughly 1.3 to 2.4 times A3's
-  gain). With A5's settings it did not: L5 did not fit (two-seed mean +0.08 [−0.41, 0.56] over A3 on fresh label
-  episodes; +0.36 [−0.20, 0.93] on seed 42). The label-trained terms still ranked an aspect-sharing candidate first
+  1.85 (L3) and 1.82 (LT) against A3's 0.99 on seed 42 (L3 minus A3 +0.86 [0.28, 1.42]; ratio of gains 1.87, 95% interval
+  [1.22, 3.26], painting clusters, 5,000 resamples, seed 42, computed for this report). L5 (labels with A5's settings:
+  λ_aspect 1, β 0) did not beat A3: two-seed fit +0.08 [−0.41, 0.56] on fresh label episodes; seed-42 term-only
+  transfer +0.36 [−0.20, 0.93]. L5 still beat C0 (+0.97 [0.45, 1.51] gain). The label-trained terms still ranked an aspect-sharing candidate first
   less often than the cosine (L3 either rate 22.93 against 25.92), and the nested cross-fit again kept almost no
   weight on them: nested gains 0.01 to 0.05 against g* 0.218, and nested R@1 within 0.1 of each run's own control.
 - **Our reading** (§5, not pre-registered): at this training budget, label training was not sufficient to clear the
@@ -316,11 +317,12 @@ We separate what was measured from how we read it.
 
 **Measured.**
 
-1. **With A3's settings, true labels raised the agreement-weighted term's selection signal; with A5's they did not
-   detectably.** On seed 42, the term-only gain was 1.85 for L3 and 1.82 for LT against 0.99 for A3 (paired +0.86
-   [0.28, 1.42] and +0.83 [0.27, 1.40]; for L3 roughly 1.3 to 2.4 times A3's gain), and the term-only either rate rose
+1. **With A3's settings, true labels raised the agreement-weighted term's selection signal; L5 (labels with A5's
+   settings) did not beat A3.** On seed 42, the term-only gain was 1.85 for L3 and 1.82 for LT against 0.99 for A3 (paired +0.86
+   [0.28, 1.42] and +0.83 [0.27, 1.40]; ratio of gains to A3's 1.87 [1.22, 3.26] for L3 and 1.84 [1.20, 3.27] for LT,
+   painting clusters, 5,000 resamples, seed 42, computed for this report), and the term-only either rate rose
    by 1.89 [1.41, 2.38] and 1.22 [0.73, 1.71] (computed for this report). On fresh label episodes over the training
-   rows the gains were 2.09 and 2.24 against 0.90. L5 (A5's settings) did not fit (two-seed mean +0.08 [−0.41, 0.56])
+   rows the gains were 2.09 and 2.24 against 0.90. L5 (labels with A5's settings: λ_aspect 1, β 0) did not beat A3 (two-seed fit +0.08 [−0.41, 0.56]; it still beat C0, gain +0.97 [0.45, 1.51])
    and on seed 42 differed from A3 by +0.36 [−0.20, 0.93] in gain and +0.16 [−0.30, 0.62] in either rate. A3's and L3's
    gains changed little between the training rows and the selection rows (A3 0.90 and 0.99, L3 2.09 and 1.85;
    different episodes, not paired).
@@ -346,8 +348,8 @@ We separate what was measured from how we read it.
   profile no cell with weight on T_a kept it (the highest was 33.02, at (4, 0.25)), near the control's R@1 each step of
   weight on T_a cost more either rate than it added gain (§3), and the LAB runs' cross-fits again settled on cells with
   near-zero gain.
-- **The stage did not rank the remaining limits.** It varied neither the score, nor the objective, nor the training
-  budget (2,000 steps of 32 episodes), so the term's either-rate cost under the nested score, the objective and its
+- **The stage did not rank the remaining limits.** It varied neither the agreement-weighted term's form (scoring rules beyond the nested family), nor the objective, nor
+  the training budget (2,000 steps of 32 episodes), so the term's either-rate cost under the nested score, the objective and its
   training budget remain untested candidates; the H2 grid that would have varied the budget was not run. The loss
   level cannot separate them: it stayed within 2% of its constant-score value in every run but did not track the fit
   (§4.3). A method that adds selection to aspect-finding would need a term that keeps the uniform term's either rate or
@@ -417,7 +419,7 @@ are the user's decision.
      MK3 57747154f9c935d1, C0 7653caf0985b564d (`src/test/20261016_factor_learning_grid/checkpoints/C0_seed42.pt`)
      and `partitions_LAB.npz` c06cff38431ece08 (16-character prefixes). Each equals the value in the run's history,
      `label_checkpoints.json`, E1's `codes_provenance.json` or `build_record.json`, and recomputation from these files
-     reproduced the stored arrays bit for bit (build script and final review).
+     reproduced the stored arrays (and, for C0, the stored summaries) (build script and final review).
    - The training histories and both scorer outputs carry their script SHA-256s, which match `train_runs.py` at
      c24464b, `score_pilot.py` at 83e7027 and `score_h3.py` at 3afe1bd.
 10. **Arrays not stored.** `per_anchor_h3.npz` omits three sets of per-anchor arrays behind quoted numbers: L5's
