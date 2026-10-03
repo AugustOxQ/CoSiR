@@ -114,26 +114,102 @@ def test_validator_rejects_unlabelled_third_aspect():
         validate_aspect_episodes(corrupted_ep, labels, groups, index, third="genre")
 
 
-def test_validator_rejects_pair_with_anchor_aspect_a_value():
-    """Validator must reject a pair row that carries the anchor's aspect-A value."""
+def test_validator_rejects_pair_values_anchor_emotion():
+    """Validator must reject a pair where the shared aspect equals the anchor's value (pair values rule)."""
     labels, groups = _world()
     rows = np.arange(len(groups))
     index = PaintingValueIndex(labels, groups)
     ep = build_aspect_episodes(labels, groups, rows, "emotion", "style", 10, seed=12)
 
-    # Find a row with the anchor's emotion value but different style
     anchor_emotion = labels["emotion"][ep.anchor[0]]
-    candidate_row = np.where((labels["emotion"] == anchor_emotion) &
-                              (labels["style"] != labels["style"][ep.anchor[0]]))[0][0]
 
-    # Corrupt: replace a pairs_a_img row with one that has the anchor's emotion value
+    # Find two rows with the anchor's emotion, different styles, from different paintings not in episode 0
+    used_paintings = {groups[ep.anchor[0]], groups[ep.candidates[0, 0]], groups[ep.candidates[0, 1]]}
+    candidates_paintings = set(groups[ep.candidates[0]])
+    used_paintings.update(candidates_paintings)
+    # Also mark paintings used in pairs as used
+    for arr in [ep.pairs_a_img[0], ep.pairs_a_txt[0], ep.pairs_b_img[0], ep.pairs_b_txt[0]]:
+        used_paintings.update(groups[arr])
+
+    rows_with_anchor_emotion = np.where(labels["emotion"] == anchor_emotion)[0]
+    candidate_rows = []
+    for row in rows_with_anchor_emotion:
+        if groups[row] not in used_paintings:
+            candidate_rows.append(row)
+            if len(candidate_rows) == 2 and labels["style"][candidate_rows[0]] != labels["style"][candidate_rows[1]]:
+                break
+
+    assert len(candidate_rows) >= 2, "Could not find suitable rows for test"
+    img_row, txt_row = candidate_rows[0], candidate_rows[1]
+    assert labels["style"][img_row] != labels["style"][txt_row], "Rows must differ in style"
+
+    # Corrupt: replace both pairs_a_img[0,0] and pairs_a_txt[0,0] with rows sharing anchor's emotion
     corrupted_pairs_a_img = ep.pairs_a_img.copy()
-    corrupted_pairs_a_img[0, 0] = candidate_row
+    corrupted_pairs_a_txt = ep.pairs_a_txt.copy()
+    corrupted_pairs_a_img[0, 0] = img_row
+    corrupted_pairs_a_txt[0, 0] = txt_row
 
-    corrupted_ep = replace(ep, pairs_a_img=corrupted_pairs_a_img)
+    corrupted_ep = replace(ep, pairs_a_img=corrupted_pairs_a_img, pairs_a_txt=corrupted_pairs_a_txt)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match="pair values"):
         validate_aspect_episodes(corrupted_ep, labels, groups, index)
+
+
+def test_validator_rejects_example_shows_anchor_value():
+    """Validator must reject when an example painting contains the anchor's aspect value (an example shows the anchor's value rule)."""
+    labels, groups = _world()
+    rows = np.arange(len(groups))
+    index = PaintingValueIndex(labels, groups)
+    ep = build_aspect_episodes(labels, groups, rows, "emotion", "style", 10, seed=15)
+
+    anchor_emotion = labels["emotion"][ep.anchor[0]]
+    
+    # Get the emotions used in the original pairs_a (excluding the pair we'll replace)
+    original_pair_emotions = np.unique(labels["emotion"][ep.pairs_a_img[0, 1:]])  # emotions of pairs 1-3
+    assert len(original_pair_emotions) == 3, "Need 3 distinct emotions in other pairs"
+    
+    # Find an emotion not used in those 3 pairs and not the anchor emotion
+    all_emotions = np.unique(labels["emotion"][labels["emotion"] >= 0])
+    unused_emotion = None
+    for emo in all_emotions:
+        if emo != anchor_emotion and emo not in original_pair_emotions:
+            unused_emotion = emo
+            break
+    assert unused_emotion is not None, "Need an unused emotion for pair values rule"
+    
+    # Find two rows with unused_emotion from a painting with anchor emotion, different styles
+    used_in_ep0 = set(ep.rows())
+    used_paintings = {groups[r] for r in used_in_ep0}
+    paintings_with_anchor = set(np.unique(groups[labels["emotion"] == anchor_emotion]))
+    
+    rows_with_unused = np.where(labels["emotion"] == unused_emotion)[0]
+    rows_with_unused = rows_with_unused[~np.isin(groups[rows_with_unused], list(used_paintings))]
+    
+    img_row = None
+    txt_row = None
+    for row in rows_with_unused:
+        if groups[row] in paintings_with_anchor:
+            img_row = row
+            # Find txt_row with different style, different painting
+            txt_cand = rows_with_unused[(groups[rows_with_unused] != groups[row]) &
+                                        (labels["style"][rows_with_unused] != labels["style"][row])]
+            if len(txt_cand) > 0:
+                txt_row = txt_cand[0]
+                break
+    
+    assert img_row is not None and txt_row is not None, "Could not find suitable rows"
+    
+    # Corrupt: replace pair 0 in pairs_a_img and pairs_a_txt
+    corrupted_pairs_a_img = ep.pairs_a_img.copy()
+    corrupted_pairs_a_txt = ep.pairs_a_txt.copy()
+    corrupted_pairs_a_img[0, 0] = img_row
+    corrupted_pairs_a_txt[0, 0] = txt_row
+    
+    corrupted_ep = replace(ep, pairs_a_img=corrupted_pairs_a_img, pairs_a_txt=corrupted_pairs_a_txt)
+    
+    with pytest.raises(AssertionError, match="an example shows the anchor's value"):
+        validate_aspect_episodes(corrupted_ep, labels, groups, index)
+
 
 
 def test_validator_rejects_painting_duplication():
@@ -167,14 +243,14 @@ def test_validator_rejects_pair_with_matching_differ_aspect():
     # Find two rows that have the same emotion and style
     same_emotion_style = np.where((labels["emotion"] == labels["emotion"][ep.pairs_a_img[0, 0]]) &
                                     (labels["style"] == labels["style"][ep.pairs_a_img[0, 0]]))[0]
-    if len(same_emotion_style) >= 2:
-        bad_row = same_emotion_style[1]
+    assert len(same_emotion_style) >= 2, "Precondition: need rows with same emotion and style"
+    bad_row = same_emotion_style[1]
 
-        # Corrupt: replace pairs_a_txt with a row that has the same style as pairs_a_img
-        corrupted_pairs_a_txt = ep.pairs_a_txt.copy()
-        corrupted_pairs_a_txt[0, 0] = bad_row
+    # Corrupt: replace pairs_a_txt with a row that has the same style as pairs_a_img
+    corrupted_pairs_a_txt = ep.pairs_a_txt.copy()
+    corrupted_pairs_a_txt[0, 0] = bad_row
 
-        corrupted_ep = replace(ep, pairs_a_txt=corrupted_pairs_a_txt)
+    corrupted_ep = replace(ep, pairs_a_txt=corrupted_pairs_a_txt)
 
-        with pytest.raises(AssertionError):
-            validate_aspect_episodes(corrupted_ep, labels, groups, index)
+    with pytest.raises(AssertionError, match="episode 0: pair"):
+        validate_aspect_episodes(corrupted_ep, labels, groups, index)
