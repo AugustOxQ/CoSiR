@@ -98,3 +98,41 @@ OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 /root/miniconda3/envs/CoSiR/bin/python src/t
 ## Results
 
 Grid, pick and GO test: pending (the controller launches the grid, then `--select`, then `--gonogo`).
+
+## Post-hoc diagnostic (not pre-registered): training-task fit
+
+Descriptive only, outside the pre-registered E3 decision map; it changes no pick, gate or conclusion of the go/no-go.
+Script `train_fit_diagnostic.py`, output `results/train_fit_diagnostic.json` (+ `.txt`). CPU. Scorer-train rows only (local
+rows 0..n-1, matching the E2 banks). Fresh episodes are NEW episodes (seed 777 + pair index, 2,048 per pair, validated)
+over training rows built from the E2 partitions, not the training bank's episodes; bank episodes are the first 2,048 of
+each block of `bank_AIC.npz` (A1..A6 trained on them; H1 on AI, S1 on IC). Pairs: affect__caption (third image),
+affect__image (third caption), caption__image (third affect). Scores are the E3 scorers: cross-fitted agreement rule
+(z-fusion with cosine), and the training-time fixed-beta score (beta 0.3, no fusion). Pooled over 3 pairs, in points,
+cluster bootstrap by painting; the uniform-weight control has gain 0.00 by construction (R@1 about 22.5 to 23.2 for every
+model, above cosine, because the unconditioned factor term itself adds retrieval signal).
+
+R@1 / condition gain, pooled (cosine R@1: fresh 18.41, bank 17.96; cosine gain 0 by construction):
+
+| Model | fresh agreement | fresh fixed-beta | bank agreement | bank fixed-beta |
+|---|---|---|---|---|
+| A1 | 18.89 / 0.54 [-0.01, 1.13] | 17.57 / 0.54 | 18.09 / 0.90 | 18.01 / 1.33 |
+| A2 | 18.38 / 0.02 | 17.89 / 0.33 | 18.75 / 1.14 | 18.61 / 1.81 |
+| A3 | 19.04 / 0.36 [-0.12, 0.86] | 17.69 / 0.95 [0.28, 1.62] | 19.57 / 1.18 | 18.05 / 1.87 |
+| A4 | 18.93 / 0.48 | 17.79 / 0.69 | 18.88 / 0.50 | 17.86 / 0.63 |
+| A5 | 18.82 / 0.61 | 17.39 / 0.47 | 18.73 / 0.48 | 17.71 / 1.16 |
+| A6 | 18.87 / -0.06 | 17.54 / 0.64 | 18.43 / 1.04 | 17.90 / 1.28 |
+| H1 | 18.46 / -0.28 | 17.50 / -0.02 | 18.60 / -0.15 | 17.67 / 0.65 |
+| S1 | 18.29 / -0.32 | 17.72 / 0.15 | 18.73 / 0.28 | 17.65 / 0.38 |
+| C0 | 18.00 / -0.41 [-0.81, 0.00] | 16.56 / 0.04 | 18.31 / 0.04 | 16.57 / 0.28 |
+| SE | 18.41 / -0.41 [-0.71, -0.12] | 15.70 / -0.20 | 18.17 / -0.24 | 16.09 / 0.16 |
+
+Per pair (A3, fresh, agreement): affect__caption R@1 16.77 gain 0.31; affect__image 17.74 / 0.62; caption__image 22.62 / 0.15.
+Full per-pair, other and swap values for every model are in the JSON.
+
+Reading: the trained models did not fit the pseudo-aspect training task in a way a held-out set of its own episodes
+shows: on fresh episodes no model ranks the pseudo-aspect target first clearly above cosine (best A3 R@1 19.04 vs 18.41)
+and the condition gain is 0.36 to 0.61 for A1/A3/A4/A5 with CIs spanning 0 (A3 fixed-beta 0.95 [0.28, 1.62] is the only
+interval above 0 on fresh episodes, with R@1 below cosine), and even the in-sample bank gain stays at 0.5 to 1.9 points.
+That is the same order as the 0.26 gain on labelled aspects, so the near-zero labelled gain is not a transfer failure
+from a well-fit training task; E3 mostly tested an implementation whose factors barely learned the pseudo-aspect task
+(consistent with the 1 to 4.4% training-loss drop), and the NO-GO speaks to that recipe, not to the idea.
