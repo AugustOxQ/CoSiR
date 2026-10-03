@@ -29,6 +29,44 @@ def _batches(xs, bs):
         yield xs[i:i + bs]
 
 
+# Image pre-resize copied from the official pipeline: qwen_vl_utils/vision_process.py (smart_resize, to_rgb and the
+# resize step of fetch_image), as called by the model snapshot's scripts/qwen3_vl_embedding.py. The official embedder
+# resizes with PIL (default resample) to multiples of 32 and then calls the processor with do_resize=False.
+_QWEN_FACTOR = 32                      # image_patch_size 16 * spatial merge 2
+_QWEN_MIN_PIXELS = 4 * 32 * 32         # the official embedder's MIN_PIXELS
+_QWEN_MAX_RATIO = 200
+
+
+def _qwen_smart_resize(height, width, factor, min_pixels, max_pixels):
+    import math
+    if max(height, width) / min(height, width) > _QWEN_MAX_RATIO:
+        raise ValueError(f"absolute aspect ratio must be smaller than {_QWEN_MAX_RATIO}")
+    h_bar = max(factor, round(height / factor) * factor)
+    w_bar = max(factor, round(width / factor) * factor)
+    if h_bar * w_bar > max_pixels:
+        beta = math.sqrt((height * width) / max_pixels)
+        h_bar = math.floor(height / beta / factor) * factor
+        w_bar = math.floor(width / beta / factor) * factor
+    elif h_bar * w_bar < min_pixels:
+        beta = math.sqrt(min_pixels / (height * width))
+        h_bar = math.ceil(height * beta / factor) * factor
+        w_bar = math.ceil(width * beta / factor) * factor
+    return h_bar, w_bar
+
+
+def _qwen_prepare_image(im, max_pixels):
+    from PIL import Image
+    if im.mode == "RGBA":
+        bg = Image.new("RGB", im.size, (255, 255, 255))
+        bg.paste(im, mask=im.split()[3])
+        im = bg
+    else:
+        im = im.convert("RGB")
+    w, h = im.size
+    h2, w2 = _qwen_smart_resize(h, w, _QWEN_FACTOR, _QWEN_MIN_PIXELS, max_pixels)
+    return im.resize((w2, h2))
+
+
 class Encoder:
     name: str
     dim: int
@@ -103,7 +141,8 @@ class Qwen3VLEmb(Encoder):
         pad = self.p.tokenizer.pad_token_id
         out = []
         for b in _batches(list(images), batch_size):
-            items = [self.p(text=[prompt], images=[im.convert("RGB")], return_tensors="pt") for im in b]
+            items = [self.p(text=[prompt], images=[_qwen_prepare_image(im, self.max_pixels)], do_resize=False,
+                           return_tensors="pt") for im in b]
             L = max(o["input_ids"].shape[1] for o in items)
             ids = torch.full((len(b), L), pad)
             mask = torch.zeros(len(b), L, dtype=torch.long)
