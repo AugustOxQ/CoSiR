@@ -129,6 +129,7 @@ def validate_aspect_episodes(ep: AspectEpisodes, labels: dict, groups: np.ndarra
                              third: str | None = None) -> None:
     """Assert every rule of spec §5.1 on the final arrays."""
     la, lb = index.labels[ep.aspect_a], index.labels[ep.aspect_b]
+    lt = index.labels[third] if third else None
     for i in range(len(ep.anchor)):
         r = ep.anchor[i]
         a, b = la[r], lb[r]
@@ -143,6 +144,7 @@ def validate_aspect_episodes(ep: AspectEpisodes, labels: dict, groups: np.ndarra
         if third:
             t = index.labels[third][r]
             assert t >= 0 and index.lacks(third, t)[ep.candidates[i]].all(), f"episode {i}: third aspect"
+            assert (lt[every] >= 0).all(), f"episode {i}: unlabelled third aspect"
         for share, differ, xs, ys, own in ((la, lb, ep.pairs_a_img[i], ep.pairs_a_txt[i], a),
                                            (lb, la, ep.pairs_b_img[i], ep.pairs_b_txt[i], b)):
             assert (share[xs] == share[ys]).all() and (differ[xs] != differ[ys]).all(), f"episode {i}: pair"
