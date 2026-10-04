@@ -156,3 +156,18 @@ Every reader that selects the conditioned aspect (now including N6, term-only ga
 rate once fused with the strongest condition-free score; the margin left (+0.15 R@1 for N6c) is below what the pass
 rules can confirm. The night's new condition-free scores (centered factor term 17.94; plus the head term 18.34) raised
 the bar the conditioned scorers must clear.
+
+## Controller rulings during the overnight run (from the execution ledgers)
+
+1. Worked directly on main, no worktree (the project's standing convention). Cost if wrong: commits would need moving.
+2. The runners were verified by smoke runs, in-script reproduction assertions and independent re-derivation by
+   reviewers, not by unit tests of the glue. Cost if wrong: a glue bug surfaces only in a real run.
+3. D0 "unreadable" with a passing configuration would have been reported to the user instead of acting on row 1 (not
+   triggered: Told's gain lower bound 20.48).
+4. Adopted N1's matched condition-free control (`ADDENDUM_1.md`) after the final review found the declared control
+   confounded; both verdicts are reported. Cost if wrong: the user may prefer the committed §6 reading (also NO-GO).
+5. After the NO-GO, the re-applied table governed (row 2: build N6), a step `DECISION_RULE.md` had not named.
+6. N6's runner did not compute the D0 descriptive reference named in `ADDENDUM_2_N6.md` §2; the report quotes D0 from
+   the same seed-42 episodes instead.
+7. Overrode `ADDENDUM_2_N6.md` §4's "no further method overnight" for one pre-registered configuration, N6c (gate
+   failed, no test seed scored). Cost if wrong: the user may have wanted to decide this.
