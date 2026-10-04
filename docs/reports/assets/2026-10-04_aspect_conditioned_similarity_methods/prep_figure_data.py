@@ -79,7 +79,7 @@ add(point("N6 T6u term", "partition", N6, "term_T6u", note="T6 with uniform weig
 add(point("N6 nested", "partition", N6, "nested", note="nested score of the partition heads", show=True))
 add(point("N6 control", "partition", N6, "control", kind="control", note="condition-free control of N6 nested"))
 add(point("N6c", "partition", N6C, "config", note="N6c gate configuration", show=True))
-add(point("N6c C1 control", "partition", N6C, "control", kind="control", note="declared control of N6c"))
+add(point("N6c declared control", "partition", N6C, "control", kind="control", note="declared control of N6c"))
 # MLLM probes (different episodes)
 add(dict(label="Qwen3-VL-8B", family="mllm", kind="aware", show=True, hollow=True, r1=14.21, r1_ci=None, gain=0.21, gain_ci=[-0.51, 0.94],
          either=28.21, either_ci=None, source_file=MLLM8.replace("/project/CoSiR/", ""), source_key="verdict table, lines 55-57", seed=46,

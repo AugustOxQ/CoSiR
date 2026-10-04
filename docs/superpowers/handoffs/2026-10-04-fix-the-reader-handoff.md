@@ -99,8 +99,8 @@ against B **and against its counterpart** (R@1, gain, either, with intervals), a
   its probabilities averaged over the two conditions; for a gated score, the gate applied to T_cf);
 - a **development bar** before any test seed is built: R@1 over max(B, the matched counterpart) of at least **0.5 with a
   lower bound above 0**, and gain lower bound above 0. N6's current reader on B (+0.19 over B, +0.14 over its
-  counterpart) is the reference to beat, not a candidate. Every pick so far roughly halved on fresh seeds (0.52 to 0.26,
-  0.26 to 0.15), so a smaller development margin is unlikely to survive;
+  counterpart) is the reference to beat, not a candidate. Every pick so far roughly halved on fresh seeds (gains 0.52 to 0.26
+  and 0.26 to 0.15), so a smaller development margin is unlikely to survive;
 - the single configuration carried forward (largest R@1 margin over its counterpart among those that clear the bar), the
   test (Section 5) and what follows each outcome.
 
@@ -120,8 +120,9 @@ against B **and against its counterpart** (R@1, gain, either, with intervals), a
      from bank episodes on the other half (or swap halves and average), so the reader learns from out-of-sample
      posteriors as it will meet them on selection rows.
    - **Domain-shift check.** Bank supports share a partition cluster exactly; real supports share an ArtELingo value that
-     the partitions only partly track (AMI 0.20 to 0.40). This is how method A and the dropped meta-conditioner N4 failed
-     to transfer. Report the reader's accuracy on held-out bank episodes beside its seed-42 pick accuracy; kill it if the
+     the partitions only partly track (AMI 0.20 to 0.40). Published evidence against the dropped meta-conditioner N4 (a
+     pseudo-task adapter that did not help real tasks) points at this gap; E3 never tested it, because method A barely
+     fitted the bank. Report the reader's accuracy on held-out bank episodes beside its seed-42 pick accuracy; kill it if the
      first is high and the second does not move.
    Score with the arg-max partition or the expected term Σ_h P(h)·s_h; enforce the swap structure (condition b's
    probabilities computed from the swapped inputs).
@@ -193,7 +194,7 @@ counterpart from `diagnose_counterparts.py`.
 - Δ under condition b is exactly −Δ under a; a condition-antisymmetric term flips B's top two in a k = 2 cascade.
 - Ties count as misses; zero-weight episodes give constant rows (`flat_share` in the runners).
 - B's cross-fit picks are tuned on the same parity halves a fusion reuses (a small second-order leak).
-- B uses centering on the episode's own example items. A reviewer probe found centering on 8 random items gives 16.86
+- B uses centering on the episode's own example items. A reviewer probe found centering on 8 random items gives 16.85
   and on the global mean 17.14, against 17.95. Part of B's lift may come from the value-disjoint episode construction.
   Before the paper, rerun B with a fixed reference set and report both.
 - Exploratory looks on seed 42 are not evidence; only the fresh-seed test is. Seed 42 has been reused many times.
