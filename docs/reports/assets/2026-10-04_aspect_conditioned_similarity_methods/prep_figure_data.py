@@ -51,8 +51,14 @@ add(point("cosine", "baseline", E1, "cosine", note="CLIP cosine", show=True))
 for k in ["diag", "diag_relu", "bilinear", "kissme", "rca", "xing", "wang", "probe", "tip"]:
     add(point(k, "baseline", E1, k, show=k in ("rca", "wang"), note="rca = GO bar" if k == "rca" else "E1 pair-metric baseline"))
 add(point("SE_uniform", "baseline", E1, "SE_uniform", note="E1 SE with uniform weights"))
-for k in ("C0","SE"):
-    q = point(k, "factor", E1, k, note="E1 agreement rule on the factor basis, scored alone (gain chart only)"); q["frontier"] = False; add(q)
+CKJ = Q + "checks_seed42.json"
+_ck = json.load(open(CKJ))["factors"]
+for k in ("C0", "SE"):  # term-only (agreement term scored alone), not E1's fused values
+    t = _ck[k]["term_only"]["agree"]; sm = t["summary"]
+    add(dict(label=k, family="factor", kind="aware", show=False, hollow=False, frontier=False, r1=sm["r1"]["point"], r1_ci=sm["r1"]["ci95"],
+             gain=sm["gain"]["point"], gain_ci=sm["gain"]["ci95"], either=t["either"]["point"], either_ci=t["either"]["ci95"],
+             source_file=CKJ.replace("/project/CoSiR/", ""), source_key=f"factors.{k}.term_only.agree", seed=42,
+             note="agreement term scored alone (gain chart only); replaces E1's fused values", per_pair=None))
 add(point("A3 (E3 score)", "factor", E3, "A3", note="picked run under E3 selection score, cross-fitted", show=True))
 add(point("A3 agree term", "factor", CK, "A3__term_agree", note="agreement term scored alone", show=True))
 add(point("A3 N1 term", "factor", CK, "A3__term_N1", note="centered rule term scored alone"))

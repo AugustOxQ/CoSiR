@@ -13,13 +13,10 @@ aspect. On ArtELingo the task is learnable in principle: label-supervised probes
 R@1 30.66 against 12.96 for CLIP cosine on our development episodes. Over three days we tested a learned factor basis
 read by a training-free agreement rule (method A), a repaired fusion of it (A′), in-context multimodal LLMs (2B and 8B),
 and five further readers and fusions. None passed its pre-registered test. The common failure is arithmetic:
-R@1 = (either rate + condition gain) / 2, and every scorer that reads the condition lost about as much *either rate*
-(how often some aspect-sharing candidate ranks first) as it gained in *condition gain* (how often the conditioned
+R@1 = (either rate + condition gain) / 2, and every scorer trained without ArtELingo labels that reads the condition lost at least as much *either rate* (how often some aspect-sharing candidate ranks first) as it gained in *condition gain* (how often the conditioned
 candidate wins over the other aspect's). Two results change the outlook. First, the condition can be read: inferring
-the aspect from the pairs keeps 63% of the told probes' gain, and a label-free reader on cross-modal heads trained on
-k-means partitions reaches a condition gain of 4.41 [3.96, 4.87], four times the best factor rule. Second, condition-free
-scores that use the examples without reading the condition rose from 16.55 to 18.34 R@1, so the bar for a method is now
-higher and better defined. We describe the task, the protocol, each attempt with its baseline, the controls that caught
+the aspect from the pairs keeps 63% of the told probes' gain, and a reader on cross-modal heads trained without ArtELingo labels (the affect partition is distantly supervised by a GoEmotions classifier whose categories name 6 of the 8 evaluation emotions, and the image clusters carry style and genre, Table 4) on k-means partitions reaches a condition gain of 4.41 [3.96, 4.87], 3.5 times the best factor rule (N1, 1.25) and 4.5 times A3's agreement rule (0.99). Second, condition-free
+scores that use the examples without reading the condition rose from 16.55 to 18.34 R@1, so the bar for a method is now higher and better defined (with a caveat about the episode construction, Section 11.3). We describe the task, the protocol, each attempt with its baseline, the controls that caught
 two false passes, and what a passing method has to do.
 
 ## 1. Introduction
@@ -57,21 +54,20 @@ orange: an attempt that failed its pre-registered GO or gate; teal: a positive f
 **Main findings.**
 
 1. **The task is learnable but not by the methods tried.** Told label probes reach R@1 30.66 and condition gain 21.06
-   on the development episodes (cosine 12.96 and 0). No label-free method reached a reliable gain above 0.3 once fused
-   for ranking.
+   on the development episodes (cosine 12.96 and 0). No method trained without ArtELingo labels beat its matched condition-free control on R@1 with a lower bound above 0 (best: N6 +0.23 [−0.01, 0.47], N6c +0.15 [−0.06, 0.38]), although fused condition gains reached 1.69 [1.35, 2.02].
 2. **Method A failed its GO** on fresh episodes: R@1 13.76 against 13.53 for cosine and 16.72 for its own
    condition-free control, gain 0.26 [−0.04, 0.56]. Its agreement term alone selects the aspect (gain 0.97) but finds
    aspect-sharing candidates less often than cosine (either 21.4 against 27.1).
-3. **Every repair hit the same wall.** A nested fusion (A′), label-trained factors, a centered rule (N1), a
+3. **Every repair hit the same wall.** A nested fusion (A′), factors trained on the labels as a diagnostic, a centered rule (N1), a
    find-then-select cascade (N2) and two head-based readers (N6, N6c) all landed within 0.3 R@1 of, or below, their
    matched condition-free controls.
 4. **The condition can be read.** With label probes, the aspect inferred from the pairs keeps 63% of the told gain.
-   With label-free cross-modal heads on k-means partitions, the reader's condition gain is 4.41 (A3's rule: 0.99).
+   With cross-modal heads on k-means partitions trained without ArtELingo labels (the affect partition is distantly supervised by a GoEmotions classifier whose categories name 6 of the 8 evaluation emotions, and the image clusters carry style and genre, Table 4), the reader's condition gain is 4.41 (A3's rule: 0.99).
 5. **The condition-free bar rose.** Centering factor codes on the episode's example items, and averaging partition
    heads, lifted the best score that ignores the condition to 18.34 R@1 (RCA 13.38), part of which may come from how
    the episodes are built (Section 11.3).
 6. **Controls matter.** Two configurations passed against a control that removed more than the condition; matched
-   controls (the same score with only the condition removed) reversed both.
+   controls (the same score with only the condition removed) removed both passes: N1 fell 1.15 [0.92, 1.38] below its matched control, and N6c's margin shrank from +0.55 [0.31, 0.79] to +0.15 [−0.06, 0.38].
 
 ## 2. Task, data and protocol
 
@@ -81,7 +77,7 @@ orange: an attempt that failed its pre-registered GO or gate; teal: a positive f
 
 *Figure 1. One aspect episode. The query has values on aspects A and B. Four support pairs (teal) share a value of A
 among themselves (each an image of one painting with a caption of another), four contrast pairs (orange) do the same for
-B. Candidate p_A shares the query's value of A, p_B its value of B, eleven negatives (grey) share neither. Swapping
+B. Candidate p_A shares the query's value of A, p_B its value of B, eleven negatives (grey) share neither; all 13 candidates differ from the query on the third aspect. Swapping
 supports and contrasts must move p_B to the top.*
 
 An *aspect episode* (spec §5.1) consists of:
@@ -91,7 +87,7 @@ An *aspect episode* (spec §5.1) consists of:
   a value of the conditioned aspect A; the four pairs show four different values, never the query's own (*value-disjoint*);
 - **4 contrast pairs** built the same way for a second aspect B;
 - **13 candidates** in the other modality: p_A shares the query's value of A, p_B its value of B, 11 negatives share
-  neither and differ from the query on the third aspect too. All 30 rows of an episode come from 30 different paintings.
+  neither; all 13 candidates differ from the query on the third aspect. All 30 rows of an episode come from 30 different paintings.
 
 Under condition A the target is p_A; swapping supports and contrasts (condition B) makes p_B the target. The aspect is
 never named. On ArtELingo the aspects are **emotion** (8 values, the catch-all "something else" removed), **style**
@@ -134,14 +130,14 @@ condition must not lose more of the first than it gains in the second.
 
 Intervals resample anchor paintings (clusters), so an episode's dependence on its painting is respected. Development
 used episode seed 42; tests used fresh seeds (43 for method A; 45, 47 and 48 for N1). A ledger records every use of
-every seed. Each decision rule was committed to git before the numbers it governs were computed, and each stage ended
+every seed. Each decision rule was committed to git before the numbers it governs were read; two exceptions are disclosed in Section 12 (Addendum 1 was committed two minutes after the N1 test had been computed but before its outputs were read; N6c's gate against its nested control was already known to pass from an exploratory run), and each stage ended
 with a whole-branch review on the most capable model that re-derived every load-bearing number from the stored
 per-anchor arrays with independent code.
 
 ### 2.5 Baselines and controls
 
 - **Backbone only (cosine)**: CLIP cosine of query and candidate; condition gain 0 by construction.
-- **Raw metric from pairs** (E1, Section 4): nine published ways to turn example pairs into a metric. The best on seed
+- **Raw metric from pairs** (E1, Section 4): nine ways to turn example pairs into a metric (KISSME, RCA, Xing and CVS from the literature; the others are generic or our own). The best on seed
   42, **RCA**, is the *GO bar*.
 - **Condition-free control**: the method's own score with the condition removed. A **matched** control removes only the
   condition and keeps every other ingredient of the score (same terms, same weight budget). Section 9.2 shows why the
@@ -157,7 +153,7 @@ per-anchor arrays with independent code.
 **Value episodes measured recognition, not similarity.** The first benchmark conditioned on a *value* ("sad, like
 these"): supports carried the query's own label. A prototype of the supports that ignored the query entirely scored
 R@1 22.83 on these episodes, and adding the query raised it by only 0.57 [0.20, 0.96]; the best raw-CLIP probe (24.10)
-beat our factor model SE (21.22) by 2.87 [2.14, 3.64]. The supports gave the answer away, so we redefined the condition to
+beat our factor model SE (the C0 factor recipe plus value-condition episodes from GoEmotions affect clusters; 21.22) by 2.87 [2.14, 3.64]. The supports gave the answer away, so we redefined the condition to
 show an *aspect* through values the query does not have.
 
 **On aspect episodes the factor models did nothing, but labels showed headroom.** On 4,096 emotion × style aspect
@@ -168,8 +164,7 @@ reached 23.09. Only a privileged reference given the label *names* as text promp
 **The modalities carry the aspects unevenly.** Probes predict emotion from captions far better than from images (56.9%
 against 35.2%) and style from images far better than from captions (60.8% against 25.4%). Four frozen backbones (CLIP,
 SigLIP 2, PE-Core, Qwen3-VL-Embedding-2B) moved the weak side by at most 1.5 points (emotion from images 35.1 to 36.6;
-style from captions 25.4 to 26.3) while moving the strong side by up to 11, so the asymmetry is a property of the data,
-and a cross-modal match is capped by the weaker side. We kept CLIP for all method work.
+style from captions 25.4 to 26.3) while moving the strong side by up to 11, so the asymmetry is not specific to one backbone; whether it comes from the modalities or from how the ArtEmis captions were collected is not separated. A cross-modal match is capped by the weaker side. We kept CLIP for all method work.
 
 **Novelty.** A literature search found no paper that defines the task, but every ingredient exists: per-query weights
 from a few examples (Contextual Visual Similarity, Wang et al. 2016), metric learning from pairs (Xing 2002, RCA, KISSME
@@ -196,7 +191,7 @@ cosine as z(cos) + λ·z(term), λ cross-fitted on the two halves of the episode
 | **RCA (GO bar)** | 13.38 [13.08, 13.69] | 0.10 [−0.08, 0.29] |
 | Wang et al. (CVS) | 12.99 | 0.36 [0.06, 0.66] (seed 43: 0.30 [0.06, 0.55]) |
 | per-episode probe | 12.79 | 0.35 [0.04, 0.65] |
-| other six | 12.79 to 13.06 | −0.16 to 0.12 |
+| other six | 12.85 to 13.06 | −0.16 to 0.12 |
 | SE codes, uniform weights (condition-free) | **16.30** [15.96, 16.63] | 0 |
 
 No baseline separated the aspects: every gain stayed within 0.4 points of 0. The striking row is the last one. A factor
@@ -250,7 +245,7 @@ once:
 | A3's uniform-weight control | **16.72** | **−2.96 [−3.29, −2.64]** | +0.26 [−0.04, 0.56] |
 
 **NO-GO.** The gain halved from the pick draw (0.52 to 0.26) and A3 lost almost 3 points of R@1 to its own control. The
-held-out-aspect test (K8: a run trained without the genre partition, tested on genre pairs) also failed, and so did its
+held-out-aspect test (K8: a run trained on the affect and image partitions only, with no caption partition and no genre label, though its image partition carries genre, AMI 0.397, tested on genre pairs) also failed, and so did its
 positive control, so it did not isolate the held-out aspect. A 2B MLLM probe also failed (Section 7), and the
 pre-registered map pointed to branch 3.
 
@@ -267,7 +262,7 @@ constant-score value throughout: the model barely fitted the pseudo-aspect episo
 
 ## 6. Repair A′: keep the condition-free term, add the conditioned one
 
-The user chose to try a repair before branch 3. A two-seat methodology review of the repair order (ARS) returned Major
+The user chose to try a repair before branch 3. An automated two-seat methodology review of the repair order (ARS) returned Major
 Revision with twelve rule changes, including a pick rule aligned with the binding comparison: the old criterion,
 mean(R@1, gain) = either/4 + 3·gain/4, could prefer a cell that adds 1.0 gain while losing 2.9 either and 0.95 R@1.
 
@@ -384,7 +379,7 @@ by a conditioned term lost R@1 at every k (agreement term: −2.29 to −4.58; N
 
 ## 10. N6 and N6c: a reader that works, a fusion that does not yet
 
-**N6** trains, for each of E2's three label-free partitions and each modality, a logistic head (64 classes) on CLIP
+**N6** trains, for each of E2's three label-free partitions (so the heads are trained without ArtELingo labels) and each modality, a logistic head (64 classes) on CLIP
 features of 60,000 scorer-train rows; an item is represented by its three head posteriors. The reader is D0's rule over
 the three partitions; the condition-free version averages the three heads.
 
@@ -397,7 +392,7 @@ the three partitions; the condition-free version averages the three heads.
 | N6 nested (cosine, condition-free term, reader term) | 17.30 [16.94, 17.66] | 1.69 [1.35, 2.02] | 32.91 |
 | its control | 17.07 [16.73, 17.42] | 0 | 34.15 |
 
-The reader's gain of 4.41 is the largest label-free condition gain measured in the project (the best factor rule 1.25;
+The reader's gain of 4.41 is the largest condition gain without ArtELingo labels measured in the project until the exploratory contrastive readers of Section 14 (5.10 and 6.07) (the best factor rule 1.25;
 factors trained on the evaluation labels 3.20 with N1's rule; the 8B MLLM 0.21). Inside the nested score, N6 beat its
 control on gain but not reliably on R@1 (+0.23 [−0.01, 0.47]; the lower bound stayed at or below 0 for all of
 bootstrap seeds 0 to 99), so it failed its pre-registered pass. The reader picked the affect partition for most
@@ -405,9 +400,11 @@ emotion-conditioned rankings and the image partition for most style- and genre-c
 condition of style × genre, where image clusters carry genre more than style and the reader picked affect.
 
 **N6c** came from an exploratory look at seed 42: N6's reader term placed on the strongest condition-free base
-(cosine plus A3's centered uniform term, R@1 17.94) reached 18.49. Pre-registered as a new configuration with a gate
+(cosine plus A3's centered uniform term, R@1 17.94) reached 18.49. Committed as a new configuration after the exploratory look, before its matched control was computed, with a gate
 against its matched control (the same score with N6's reader replaced by its averaged heads), it reached R@1 +0.15
 [−0.06, 0.38] over that control (18.34), so the gate failed and no test seed was spent.
+
+Two overnight rulings by the controller are disclosed here. Addendum 2 §4 said no further method would be built overnight after N6 failed; the controller overrode that line for N6c, adopted the matched control, and took the "build N6" step that the committed decision rule had not named (rulings in the quick-checks log).
 
 ![N6 trade-off](../assets/2026-11-08_new_method_quick_checks/n6_tradeoff.png)
 
@@ -423,42 +420,35 @@ scorers (orange) sit up and to the left of the condition-free ones (blue); dotte
 
 ![Frontier](../assets/2026-10-04_aspect_conditioned_similarity_methods/frontier.png)
 
-*Figure 6. Every scorer of the stage on the seed-42 development episodes: either rate against condition gain. Dotted
-lines are constant R@1 (cosine 12.96, E3's control 16.55, the best condition-free score 18.34). Hollow markers use a
-different episode draw (MLLM, seed 46). See `FIGURES.md` in the assets folder for the full key.*
+*Figure 6. Every scorer of the stage on the seed-42 development episodes: condition gain (y) against either rate (x). Dotted
+lines are constant R@1 (cosine 12.96, E3's control 16.55, the best condition-free score 18.34). Hollow markers: label diagnostics (seed 42) and the MLLM (seed 46). See `FIGURES.md` in the assets folder for the full key.*
 
 Figure 6 separates three groups. Condition-free scores (gain 0) moved right along the x axis, from cosine (either 25.9)
 to the uniform factor term (33.1), the centered term (35.9) and the centered term plus averaged heads (36.7). Scorers that
 read the condition moved up but also left: A3's rule alone at gain 1.0 and either 21.0, N6's reader at 4.4 and 28.6,
-label probes at 13.3 and 36.7 (inferred) or 21.1 and 40.3 (told). Fusions (A′, N1, N6, N6c) sit just below or on the
-best condition-free line of their own family.
+label probes at 13.3 and 36.7 (inferred) or 21.1 and 40.3 (told). Fusions sit within 0.25 R@1 of their own family's condition-free control (A′ −0.02, N6 +0.23, N6c +0.15), except N1, 1.15 below its matched control.
 
 ![Gain progression](../assets/2026-10-04_aspect_conditioned_similarity_methods/gain_progression.png)
 
-*Figure 7. Condition gain of each reader scored alone (term only), with 95% intervals. Hatched bars use evaluation
-labels and are diagnostics, not methods.*
+*Figure 7. Condition gain of each reader scored alone (term only), with 95% intervals. Scored alone, except the raw baselines, which E1 fused with cosine; the C0 and SE bars are their agreement terms alone (seed 42). Hatched bars use evaluation labels and are diagnostics, not methods.*
 
 ### 11.2 Why every fusion lands on the wall
 
 ![Margins](../assets/2026-10-04_aspect_conditioned_similarity_methods/margins.png)
 
 *Figure 8. R@1 (left) and condition gain (right) of each fused method minus its condition-free control, with 95%
-intervals; where a declared and a matched control exist, both are shown.*
+intervals; where a declared and a matched control exist, both are shown. The controls of A′ and N6 are already matched (the same terms with the condition removed) and are drawn as matched squares.*
 
 A fused score beats its matched control only if it adds more condition gain than it loses either rate. The measured
 trades were close to even (Figure 8): N6c added 1.19 gain and lost 0.88 either (net +0.15 R@1); N6 nested added 1.69 and
-lost 1.23 (net +0.23); A′ on A3 added nothing and lost nothing, because the cross-fit put no weight on the conditioned
-term. The loss of either rate has a direct cause visible in Table 8 and Table 9: a reader that picks the wrong aspect, or
-a representation that is weak in one modality (emotion from images, style from captions), promotes negatives as often as
-it promotes the target. D0 shows the cost is not intrinsic: with label posteriors, inferring the aspect keeps an either
-rate of 36.7, far above cosine, together with a gain of 13.3.
+lost 1.23 (net +0.23); A′ on A3 added nothing and lost nothing (gain −0.01, R@1 −0.02): one tuning half picked the control itself and the other put a small weight (0.25 against 4) on the conditioned term. Our reading, supported only by the exploratory analysis of Section 14: the loss of either rate comes from a reader that picks the wrong aspect, or a representation that is weak in one modality (emotion from images, style from captions), promotes negatives as often as
+it promotes the target. D0's condition-free counterpart (the mean of the three label-probe scores) has an either rate of 45.08 (R@1 22.54); Told keeps 40.27 and Inferred-hard 36.70, so reading the condition costs either rate even with label posteriors (−4.81 [−5.36, −4.26] for Told and −8.38 [−8.93, −7.85] for Inferred-hard), but the gain outruns the cost (Inferred-hard beats the counterpart by 2.48 [2.11, 2.84] R@1, Told by 8.12 [7.75, 8.50]). The cost can be outpaced, not avoided.
 
 ![Per pair](../assets/2026-10-04_aspect_conditioned_similarity_methods/per_pair.png)
 
 *Figure 9. Condition gain by aspect pair for the main readers (seed 42).*
 
-Where reading works is consistent across methods (Figure 9): gains were largest on emotion × genre and smallest on
-emotion × style, matching D0's pick accuracy (77% against 38%).
+Where reading works is consistent across methods (Figure 9): gains were smallest on emotion × style for every reader and largest on emotion × genre for six of the seven (A3's agreement term peaked on style × genre, 1.57 against 1.35), matching D0's pick accuracy (77% against 38%).
 
 ### 11.3 The condition-free bar and its caveat
 
@@ -472,13 +462,14 @@ finding.
 
 ## 12. Process: what the reviews caught
 
-- **An outside-style review of the plan** (five seats, Major Revision) made condition gain co-primary, added the
+- **An automated multi-persona LLM review of the plan** (ARS: five seats of one model family, no human reviewer; Major Revision) made condition gain co-primary, added the
   condition-free control, the clustered bootstrap, the held-out aspect test and the MLLM baseline. Without it, the
   condition-blind uniform term (16.30 R@1, Section 4) would have passed the original GO rule.
-- **A methodology review of the repair order** replaced a pick criterion that rewarded trading R@1 for gain.
+- **An automated two-seat methodology review of the repair order (ARS)** replaced a pick criterion that rewarded trading R@1 for gain.
 - **Whole-branch final reviews** re-derived every number from the stored arrays with independent code. They found the
   confounded N1 control (Section 9.2), several overclaims in reports and two false sentences; all were corrected before
   the results were reported.
+- **Disclosed exceptions to pre-registration:** Addendum 1 was committed two minutes after the N1 test had been computed but before its outputs were read; N6c's gate against its nested control was already known to pass from an exploratory run. Addendum 2 §4 said no further method would be built overnight after N6 failed; the controller overrode that line for N6c, adopted the matched control, and took the "build N6" step that the committed decision rule had not named (rulings in the quick-checks log).
 - **Seeds:** development on seed 42; seed 43 spent on E3's test; 44 and 46 on MLLM probes; 45, 47 and 48 on N1's test.
   Fresh seeds start at 49.
 
@@ -497,31 +488,28 @@ finding.
 
 ## 14. What a passing method has to do, and a first diagnosis
 
-The numbers point to one requirement: add selection without losing aspect-finding. A method must keep the either rate
-of the strongest condition-free score (about 36.7 on seed 42) while adding a reliable condition gain, or raise both, as
-the label-probe reader does.
+The numbers point to one requirement: add selection without losing aspect-finding. A method must add more condition gain than it loses either rate against the strongest condition-free score B (R@1 18.34, either 36.68): the told partition does (gain 4.56 for an either loss of 1.57); N6's reader does not by a reliable margin (0.79 for 0.41).
 
-To find which part blocks this, we ran exploratory diagnostics on seed 42 after the stage (`src/test/20261109_fix_diagnostics/`;
-they decide nothing). Each variant was added on top of the best condition-free score B (C2, R@1 18.34, either 36.68)
-with A′'s min-margin cross-fit against B.
+To find which part blocks this, we ran exploratory diagnostics on seed 42 after the stage (`src/test/20261109_fix_diagnostics/`; they decide nothing). Each variant was added on top of B (N6c's matched control: cosine, A3's centered uniform term and the averaged heads, max-R@1 cross-fit; R@1 18.34, either 36.68) with A′'s min-margin cross-fit against B. Each reader also got a condition-free counterpart T_cf, the mean of its two condition scores, fused on B the same way; the difference between the fused reader and its counterpart is the margin from reading the condition (the counterpart's gain is 0, so the margin's gain equals the fused gain).
 
-*Table 10. Exploratory, seed 42: what N6's reader needs to clear the condition-free bar.*
+*Table 10. Exploratory, seed 42: what N6's reader needs to clear the condition-free bar. "Fused" is the variant fused on B; "counterpart" is T_cf fused on B; all columns in pp.*
 
-| Variant added on top of B | R@1 minus B | Gain | Either minus B |
-|---|---|---|---|
-| N6 reader (label-free, hard pick) | +0.19 [0.01, 0.38] | 0.79 [0.52, 1.05] | −0.41 [−0.70, −0.12] |
-| contrastive reader (picked partition minus contrast-like partition) | +0.07 [−0.08, 0.22] | 0.53 | −0.39 |
-| **same heads, partition told** (emotion to affect, style and genre to image) | **+1.50 [1.22, 1.79]** | **4.56 [4.21, 4.93]** | −1.57 |
-| label probes told (diagnostic upper bound) | +12.28 [11.81, 12.75] | 20.55 | +4.00 |
+| Variant added on top of B | Fused minus B: R@1 | gain | either | Counterpart minus B: R@1 | either | Fused minus counterpart: R@1 | either |
+|---|---|---|---|---|---|---|---|
+| N6 reader (trained without ArtELingo labels, hard pick) | +0.19 [0.01, 0.38] | 0.79 [0.52, 1.05] | −0.41 [−0.70, −0.12] | +0.05 [−0.05, 0.15] | +0.10 [−0.09, 0.29] | **+0.14 [−0.04, 0.32]** | −0.51 [−0.76, −0.25] |
+| contrastive reader (picked partition minus contrast-like partition) | +0.07 [−0.08, 0.22] | 0.53 | −0.39 | not computed | not computed | not computed | not computed |
+| same heads, partition told (emotion to affect, style and genre to image) | +1.50 [1.22, 1.79] | 4.56 [4.21, 4.93] | −1.57 [−2.03, −1.08] | +0.35 [0.16, 0.55] | +0.70 [0.32, 1.09] | **+1.14 [0.90, 1.41]** | −2.27 [−2.66, −1.88] |
+| label-probe reference (diagnostic, not a bound) | +12.28 [11.81, 12.75] | 20.55 [19.99, 21.09] | +4.00 [3.35, 4.68] | +5.62 [5.27, 5.97] | +11.24 [10.53, 11.95] | +6.66 [6.31, 7.00] | −7.23 [−7.70, −6.76] |
 
-The heads are good enough; the reader's choice of partition is not. Told the right partition, the same label-free heads
-clear B by 1.50 R@1, about ten times N6c's margin. The label-free reader picks the told partition in 52% of rankings and
-is right under both conditions in only 28% of episodes. In those episodes the fusion gains +1.16 [0.80, 1.54] R@1 and
-2.21 gain with no either loss (+0.12 [−0.43, 0.66]); in the others it loses 0.61 [0.29, 0.94] either. The wrong picks are
-concentrated where the partitions are ambiguous: under the style condition of style × genre the reader picks the image
-partition in only 17% of rankings, and even the told mapping cannot separate style from genre, because both live in the
-image clusters (Table 4). A contrastive reader and a top-k cascade with N6's reader did not help (cascades lost 0.55 to
-2.59 R@1).
+The heads are good enough; the reader's choice of partition is not. Told the right partition, the same heads trained without ArtELingo labels clear B by 1.50 R@1 against +0.19 for N6's reader fused the same way. Part of that comes from the condition-free side: the told term with the condition removed already adds 0.35 [0.16, 0.55] on its own. The margin from reading the condition is therefore +1.14 [0.90, 1.41] R@1 for the told partition against +0.14 [−0.04, 0.32] for N6's label-free reader. The told term pays −2.27 either for 4.56 gain, so its gain outruns its either cost; it is not free. The label-free reader picks the told partition in 52% of rankings and is right under both conditions in only 28% of episodes. In those episodes the fusion gains +1.16 [0.80, 1.54] R@1 and 2.21 gain with no detectable either loss (+0.12 [−0.43, 0.66]); in the others it loses 0.61 [0.29, 0.94] either. The wrong picks are concentrated where the partitions are ambiguous: under the style condition of style × genre the reader picks the image partition in only 17% of rankings, and even the told mapping cannot separate style from genre, because both live in the image clusters (Table 4). A contrastive reader and a top-k cascade with N6's reader did not help (cascades lost 0.55 to 2.59 R@1).
+
+Caveats on this analysis:
+
+- The difference Δ between the two aspect scores under condition b is exactly −Δ under condition a, and the told mapping sends style and genre to the image partition, so no style × genre episode can have both picks right. The 28% both-correct episodes come from emotion × style and emotion × genre only (1,576 and 1,883 of 3,459 episodes, none from style × genre), and the subset is selected after the fact.
+- On those same 3,459 episodes the told-partition fusion, whose picks are right everywhere, lost −3.01 [−3.93, −2.09] either, so the small either change of N6's reader there holds only at the small weight the cross-fit gave it.
+- B's cross-fit picks were tuned on the same parity halves the fusion reuses (a small second-order leak), and seed 42 was reused for every analysis.
+- N6's reader on B nominally clears B (+0.19 [0.01, 0.38]) in this exploratory look, but the lower bound sits at 0 under another bootstrap stream; it is not a pass.
+- The pick accuracy of any reader that takes the argmax of the score difference and uses the told mapping is capped at 83.3% pooled (100% on emotion × style and emotion × genre, 50% on style × genre, because of the antisymmetry), and both picks can be right in at most 66.7% of episodes; the label-free reader reached 52.4% pick accuracy and 28.1% both-correct.
 
 The handoff (`docs/superpowers/handoffs/2026-10-04-fix-the-reader-handoff.md`) turns this into a plan: a reader that
 chooses the aspect correctly (calibrated on label-free pseudo-aspect episodes), a partition that separates style from
@@ -541,14 +529,23 @@ genre, a matched control for each, and a test on fresh seeds 49 to 51.
 | D0 | label-probe diagnostic: Told vs Inferred aspect |
 | N1, N2, N6, N6c | centered rule; find-then-select cascade; partition-head reader; N6 on the centered base |
 | GO bar | RCA, the best raw baseline on seed 42 |
+| B | best condition-free score (cosine, A3's centered uniform term and the averaged heads; R@1 18.34, either 36.68) |
+| C0, SE | earlier factor models: C0 = factor recipe without condition training; SE = C0 plus value-condition episodes from GoEmotions affect clusters |
+| RCA | relevant component analysis, a metric learned from pairs |
+| KISSME | a metric learned from similar and dissimilar pairs by comparing their covariances |
+| z(·) | per-episode z-score over the 13 candidates |
+| ARS | automated research and review pipeline of LLM personas (no human reviewer) |
+| E0 to E3 | experiment numbers of the plan (E0 setup, E1 baselines, E2 partitions, E3 method A and its GO test) |
+| L3 | factors trained on the evaluation labels (diagnostic) |
+| T_cf | condition-free counterpart of a reader: the mean of its two condition scores (Section 14) |
 
 ## Appendix B. Reproducibility
 
 - Code: `src/eval/aspect_episodes.py`, `aspect_metrics.py`, `aspect_scorers.py`, `aspect_nested.py`,
   `aspect_quick_checks.py`; runners under `src/test/20261030_aspect_baselines/`, `20261101_aspect_factor_gonogo/`,
-  `20261105_method_repair_diagnostics/`, `20261106_mllm_probe_8b/`, `20261108_new_method_quick_checks/`.
+  `20261105_method_repair_diagnostics/`, `20261106_mllm_probe_8b/`, `20261108_new_method_quick_checks/`, `20261109_fix_diagnostics/` (`diagnose_fixes.py`, `diagnose_counterparts.py`).
 - Results: per-anchor arrays and JSON summaries in each folder's `results/` (gitignored); figures of this report are
   built by `docs/reports/assets/2026-10-04_aspect_conditioned_similarity_methods/prep_figure_data.py` and
-  `make_figures.py` from those files.
+  `make_figures.py` from those files. The fix diagnostics of Section 14 stored summaries only (no per-anchor arrays).
 - Decision records: `DECISION_RULE.md`, `TEST_CONFIG.md`, `ADDENDUM_1.md` to `ADDENDUM_3_N6C.md` and the
   `PREREGISTRATION.md` files of E3, A′ and the 8B probe; episode ledger `docs/superpowers/episode_seed_ledger.md`.

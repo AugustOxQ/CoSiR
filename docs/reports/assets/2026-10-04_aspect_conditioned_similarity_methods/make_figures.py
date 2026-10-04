@@ -78,8 +78,8 @@ def fig_chain():
              ("A prime: nested score", "R@1 16.52 vs control 16.55\nPre-registered branch 3", "fail"),
              ("MLLM in context", "Qwen3-VL-8B: R@1 +1.07, gain +0.21\nNot working by the pre-registered rule", "fail"),
              ("D0: label probes", "Inferred labels recover 13.33 of the\n21.06 gain that told labels give", "pos"),
-             ("N1: centered rule", "Fresh-seed NO-GO\n-1.15 R@1 vs the matched control", "fail"),
-             ("N6: partition heads", "Term-only gain 4.41\nNested R@1 +0.23 [-0.01, 0.47] vs control", "pos"),
+             ("N1: centered rule", "Fresh-seed NO-GO\n-1.15 R@1 vs the matched control (seed 42)", "fail"),
+             ("N6: partition heads\n(reads the condition; fusion misses by a hair)", "Term-only gain 4.41\nNested R@1 +0.23 [-0.01, 0.47] vs control", "pos"),
              ("N6c: gate", "+0.15 [-0.06, 0.38] R@1 vs matched control\nGate not passed", "fail")]
     col = {"ctx": (GREY, "#e9e8e2"), "fail": (ORANGE, tint(ORANGE, .2)), "pos": (TEAL, tint(TEAL, .22))}
     fig, ax = plt.subplots(figsize=(15, 8)); ax.set_xlim(0, 150); ax.set_ylim(-6, 84); ax.axis("off")
@@ -90,13 +90,14 @@ def fig_chain():
         row, c = divmod(i, 3); x = 2 + c * 49; y = 56 - row * 26
         pos.append((x, y)); ec, fc = col[k]
         box(ax, x, y, W, H, fc, ec, lw=1.8)
-        ax.text(x + 1.8, y + H - 3.2, f"{i+1}. {t}", fontsize=10.5, fontweight="bold", va="center")
+        if "\n" in t: ax.text(x + 1.8, y + H - 1.2, f"{i+1}. {t}", fontsize=8.4, fontweight="bold", va="top", linespacing=1.25)
+        else: ax.text(x + 1.8, y + H - 3.2, f"{i+1}. {t}", fontsize=10.5, fontweight="bold", va="center")
         ax.text(x + 1.8, y + 6.2, r, fontsize=9.3, va="center", color=INK2, linespacing=1.4)
     for i in range(8):
         (x, y), (x2, y2) = pos[i], pos[i + 1]
         if (i + 1) % 3: arrow(ax, (x + W + .3, y + H / 2), (x2 - .3, y2 + H / 2))
         else: arrow(ax, (x + W / 2, y - .3), (x2 + W / 2, y2 + H + .3), rad=0.0) if False else arrow(ax, (x + W - 6, y - .3), (x2 + 6, y2 + H + .3), rad=-0.0)
-    for j, (c, t) in enumerate([("ctx", "context or baseline"), ("fail", "failed its GO or gate"), ("pos", "new positive finding")]):
+    for j, (c, t) in enumerate([("ctx", "context or baseline"), ("fail", "failed its GO or gate"), ("pos", "new positive finding (the reading)")]):
         ax.add_patch(Rectangle((2 + j * 38, -4.5), 4, 3, fc=col[c][1], ec=col[c][0], lw=1.6)); ax.text(7.5 + j * 38, -3, t, fontsize=9.5, va="center", color=INK2)
     fig.savefig(os.path.join(OUT, "chain.png"), dpi=170, bbox_inches="tight"); plt.close(fig)
 
@@ -108,7 +109,7 @@ OFF.update({"cosine": (-34, 26, "right"), "rca": (20, 50, "left"), "wang": (-30,
        "N6 nested": (-9, 7, "right"), "N6c": (7, 6, "left"), "D0 told": (-10, -3, "right"), "Qwen3-VL-8B": (30, -40, "left")})
 SHORT = {"cosine": "cosine", "rca": "RCA (GO bar)", "wang": "Wang (best gain)", "A3 (E3 score)": "A3, E3 score", "A3 agree term": "A3 agree term",
          "A' nested on A3": "A prime nested", "N1 nested on A3": "N1 nested A3", "A3 matched control": "matched control 17.94",
-         "C2 (N6c matched)": "C2 18.34", "N6 T6 term": "N6 T6 term", "N6 nested": "N6 nested", "N6c": "N6c", "D0 told": "D0 told",
+         "C2 (N6c matched)": "B 18.34", "N6 T6 term": "N6 T6 term", "N6 nested": "N6 nested", "N6c": "N6c", "D0 told": "D0 told",
          "Qwen3-VL-8B": "Qwen3-VL-8B (seed 46)"}
 FAN = {}
 def make_fan():
@@ -156,7 +157,7 @@ def fig_frontier():
     a1.text(29.3, 2 * 16.55 - 29.3 + .15, "R@1 = 16.55 (E3 control)", fontsize=8.5, color=INK2, rotation=-31, rotation_mode="anchor", va="bottom")
     a1.text(33.3, 2 * 18.34 - 33.3 + .15, "R@1 = 18.34 (best condition-free)", fontsize=8.5, color=INK2, rotation=-31, rotation_mode="anchor", va="bottom")
     draw_pts(a1, numbered, True)
-    a1.set_xlim(20.2, 38.6); a1.set_ylim(-0.55, 4.7); a1.set_xlabel("either rate (pp): share of episodes with p_A or p_B ranked first"); a1.set_ylabel("condition gain (pp)")
+    a1.set_xlim(20.2, 38.6); a1.set_ylim(-0.55, 4.7); a1.set_xlabel("either rate (pp): share of rankings with p_A or p_B ranked first"); a1.set_ylabel("condition gain (pp)")
     a1.set_title("Zoom on the dense region (seed-42 development episodes)", fontsize=10.5, loc="left", color=INK2)
     a1.axhline(0, color=MUTED, lw=.8)
     # key
@@ -172,8 +173,8 @@ def fig_frontier():
 
 # ---------------------------------------------------------------- 4 gain progression
 def fig_gain():
-    G = [("Raw baselines (E1)", [("wang", "Wang metric", 0), ("probe", "Linear probe", 0)]),
-         ("Factor rules, term only", [("C0", None, 0), ("SE", None, 0), ("A3 agree term", "A3 agreement term", 0), ("A3 N1 term", "A3 N1 term", 0)]),
+    G = [("Raw baselines (fused with cosine, E1)", [("wang", "Wang metric", 0), ("probe", "Linear probe", 0)]),
+         ("Factor rules, term only", [("C0", "C0 agreement term", 0), ("SE", "SE agreement term", 0), ("A3 agree term", "A3 agreement term", 0), ("A3 N1 term", "A3 N1 term", 0)]),
          ("Label-trained factors (diagnostic)", [("L3 agree term", "L3 agreement term", 1), ("L3 N1 term", "L3 N1 term", 1)]),
          ("MLLMs (other episodes)", [("Qwen3-VL-2B v2", "Qwen3-VL-2B, seed 44", 1), ("Qwen3-VL-8B", "Qwen3-VL-8B, seed 46", 1)]),
          ("Partition heads, term only", [("N6 T6 term", "N6 T6", 0), ("N6 T6soft term", "N6 T6soft", 0)]),
@@ -195,7 +196,7 @@ def fig_gain():
     ax.set_title("Condition gain by method family (seed-42 development episodes unless noted)", fontsize=12.5, fontweight="bold", loc="left")
     ax.tick_params(axis="y", length=0)
     for sp in ("left",): ax.spines[sp].set_visible(False)
-    fig.text(0.01, 0.005, "Hatched = diagnostic (uses labels). MLLM bars are on different episodes (2B seed 44, 8B seed 46). Term-only: the term scored alone.", fontsize=8.5, color=INK2)
+    fig.text(0.01, 0.005, "Hatched = diagnostic (uses labels). MLLM bars are on different episodes (2B seed 44, 8B seed 46). Term-only: the term scored alone; raw baselines were fused with cosine in E1.", fontsize=8.5, color=INK2)
     fig.savefig(os.path.join(OUT, "gain_progression.png"), dpi=170, bbox_inches="tight"); plt.close(fig)
 
 # ---------------------------------------------------------------- 5 margins
@@ -214,7 +215,7 @@ def fig_margins():
     fig, axs = plt.subplots(1, 2, figsize=(14, 6.2), sharey=True, gridspec_kw={"wspace": 0.06})
     for ai, (ax, kd, kc, ttl) in enumerate([(axs[0], "d_r1", "d_r1_ci", "R@1 minus control (pp)"), (axs[1], "d_gain", "d_gain_ci", "Condition gain minus control (pp)")]):
         for k in order:
-            m = rows[k]; y = ypos[k]; matched = "matched" in k[1]; off = .17 if matched else -.17
+            m = rows[k]; y = ypos[k]; matched = "matched" in k[1] or k[0] in ("A' nested A3", "N6 nested"); off = .17 if matched else -.17
             if ypos[k] in (0, 3): off = 0
             c = "#4a3aa7" if matched else "#2a78d6"
             ax.errorbar(m[kd], y + off, xerr=[[m[kd] - m[kc][0]], [m[kc][1] - m[kd]]], fmt="o" if not matched else "s", color=c, ecolor=c, capsize=3.5, ms=7, lw=1.6, zorder=4)
@@ -224,7 +225,7 @@ def fig_margins():
     axs[0].set_xlim(-1.75, 1.7); axs[1].set_xlim(-.4, 2.9)
     axs[0].set_yticks(range(5)); axs[0].set_yticklabels([ylab[i] for i in range(5)], fontsize=9.5); axs[0].tick_params(axis="y", length=0)
     fig.legend([Line2D([], [], marker="o", ls="", color="#2a78d6", ms=7), Line2D([], [], marker="s", ls="", color="#4a3aa7", ms=7)],
-                  ["vs declared control (circle)", "vs matched control (square)"], loc="lower center", ncol=2, fontsize=9.5, frameon=False, bbox_to_anchor=(0.5, -0.04))
+                  ["vs declared control (circle)", "vs matched control (square; the A prime and N6 controls are matched by construction)"], loc="lower center", ncol=2, fontsize=9.5, frameon=False, bbox_to_anchor=(0.5, -0.04))
     fig.suptitle("The wall: fused methods against their condition-free controls, 95% cluster-bootstrap CIs", x=0.06, ha="left", fontsize=13, fontweight="bold", y=1.0)
     fig.savefig(os.path.join(OUT, "margins.png"), dpi=170, bbox_inches="tight"); plt.close(fig)
 
