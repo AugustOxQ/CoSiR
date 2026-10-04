@@ -165,6 +165,7 @@ To open an archived line: `git worktree add ../CoSiR-<name> archive/<branch>`.
 | 09-23 | [artelingo_percept_stage2](stage/2026-09-23_artelingo_percept_stage2.md) | PercepT Stage 2: P-topic mapping |
 | 09-27 | [comprehensive_analysis](stage/2026-09-27_comprehensive_analysis.md) | Comprehensive buddy versus PercepT analysis on ArtELingo |
 | 09-27 | [key_advantages](stage/2026-09-27_key_advantages.md) | Key advantages of buddy-graph topic formation |
+| 10-04 | [aspect_conditioned_similarity_methods](stage/2026-10-04_aspect_conditioned_similarity_methods.md) | CoSiR v2 stage report, 2 to 4 October: the aspect-episode task, protocol and every method attempt (E1 baselines, method A and its NO-GO, A′, MLLM probes, candidates, D0, N1, N2, N6, N6c) on one either-vs-gain frontier; none beats its matched condition-free control (best condition-free score 18.34 R@1 vs RCA 13.38); the condition can be read (N6 label-free reader gain 4.41); exploratory diagnostics show the reader's aspect choice is the blocker (told partition +1.50 [1.22, 1.79] over the best condition-free score) |
 
 ## weekly: weekly reports and slides
 
