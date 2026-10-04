@@ -5,7 +5,11 @@
 After the A′ repair ended at branch 3 and the Qwen3-VL-8B probe did not select the demonstrated aspect, the user asked
 for more method attempts before the branch decision. We ran the three CPU checks of the approved spec
 (`docs/superpowers/specs/2026-10-04-new-method-quick-checks-design.md`) on the seed-42 development episodes and then
-followed the pre-committed decision table, with three addenda written overnight. Each addendum was committed before the new numbers that decide it were computed (the fresh-seed test outputs, N6's seed-42 check, N6c's comparison with C2); Addendum 1 was written from the final review's seed-42 matched-control numbers for A3, and Addendum 3's gate against C1 was already known to pass from the exploratory run. **No configuration passed against its matched condition-free control, and the one fresh-seed test
+followed the pre-committed decision table, with three addenda written overnight. Each addendum was committed before
+the new numbers that decide it were computed (the fresh-seed test outputs, N6's seed-42 check, N6c's comparison with
+C2); Addendum 1 was written from the final review's seed-42 matched-control numbers for A3, and Addendum 3's gate
+against C1 was already known to pass from the exploratory run. **No configuration passed against its matched
+condition-free control, and the one fresh-seed test
 that ran was NO-GO.** The night still changed the picture in two ways: a label-free reader now selects the conditioned
 aspect clearly (N6, term-only condition gain 4.41), and two new condition-free scores raised the bar every
 conditioned scorer has to clear (17.94 and 18.34 R@1 on seed 42, against 16.55 for E3's control and 13.38 for the GO
