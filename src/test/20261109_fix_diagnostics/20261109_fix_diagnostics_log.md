@@ -38,3 +38,20 @@ Caveats:
 - B's cross-fit picks were tuned on the same parity halves that the fusion's cross-fit reuses, so the fused
   differences carry a small second-order leak.
 - All of this is one seed and a development look.
+
+## Addendum: condition-free counterparts (EXPLORATORY: decides nothing; seed 42 development episodes only)
+
+`diagnose_counterparts.py` (CPU, about 50 s; imports `diagnose_fixes.py`, changes nothing) rebuilds B (equal to the stored
+C2 exactly) and the refit D0 probes (D0told equal to the stored arrays). Full numbers: `results/diagnose_counterparts.txt`.
+- **D0uni** (mean of the three probe dots, same under both conditions): R@1 22.54, either 45.08, gain 0. D0told minus
+  D0uni: R@1 +8.12 [7.75, 8.50], gain +21.06, either −4.81 [−5.36, −4.26]. D0 inferred-hard minus D0uni: R@1 +2.48
+  [2.11, 2.84], gain +13.33, either −8.38 [−8.93, −7.85].
+- **Matched counterparts on B** (fused T minus fused T_cf, the margin from reading the condition): T6 R@1 +0.14
+  [−0.04, 0.32], either −0.51 [−0.76, −0.25]; T6oracle +1.14 [0.90, 1.41], either −2.27; D0told +6.66 [6.31, 7.00],
+  either −7.23. The condition-free versions gain either on B (+0.10, +0.70, +11.24), so the either loss is tied to
+  conditioning.
+- **Both-correct subset** (3459 of 12288 episodes: e×s 1576, e×g 1883, s×g 0): T6 on B, either +0.12 [−0.43, 0.66]
+  there, −0.61 [−0.94, −0.29] on the rest; the told fusion, either −3.01 [−3.93, −2.09] there and −1.00 on the rest.
+- **Pick ceiling** (argmax-Δ reader, enumerated; Δ_b = −Δ_a held exactly, max |Δ_a + Δ_b| = 0): 100% on e×s and e×g,
+  50% on s×g (argmax and argmin cannot both be image), so 83.3% pooled and at most 66.7% of episodes with both picks
+  correct. Observed: 52.4% and 28.1%.
