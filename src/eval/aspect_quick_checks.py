@@ -4,7 +4,8 @@ told / inferred scorers. Every score function returns scores[cond][dir] -> (E, K
 
 import numpy as np
 
-from src.eval.aspect_metrics import CONDITIONS, DIRECTIONS
+from src.eval.aspect_metrics import CONDITIONS, DIRECTIONS, per_anchor
+from src.eval.aspect_nested import nested_cells, nested_scores
 from src.eval.aspect_scorers import EvalInputs
 
 ASPECTS = ("emotion", "style", "genre")
@@ -274,8 +275,53 @@ def decision_row(configs: list, d0: str) -> dict:
 GO_COMPARATORS = ("cosine", "rca", "control")
 
 
-def go_verdict(pooled: dict) -> dict:
-    """§6: GO iff, on the pooled test seeds, the paired difference config − comparator has a 95% lower bound above 0
-    for R@1 and for condition gain against every comparator. ``pooled[comparator][metric]`` is a compare() result."""
-    failed = [f"{c}/{m}" for c in GO_COMPARATORS for m in ("r1", "gain") if not pooled[c][m]["ci95"][0] > 0]
+def go_verdict(pooled: dict, comparators=GO_COMPARATORS) -> dict:
+    """§6 (and ADDENDUM_1 R3 with comparators=ADDENDUM_COMPARATORS): GO iff, on the pooled test seeds, the paired
+    difference config − comparator has a 95% lower bound above 0 for R@1 and for condition gain against every
+    comparator. ``pooled[comparator][metric]`` is a compare() result."""
+    failed = [f"{c}/{m}" for c in comparators for m in ("r1", "gain") if not pooled[c][m]["ci95"][0] > 0]
     return {"go": not failed, "failed": failed}
+
+
+# ---------------------------------------------------------------- ADDENDUM_1.md: matched condition-free control
+
+ADDENDUM_COMPARATORS = (*GO_COMPARATORS, "matched")
+
+
+def _require_condition_free(scores: dict, what: str) -> None:
+    for d in DIRECTIONS:
+        if not np.array_equal(np.asarray(scores["a"][d]), np.asarray(scores["b"][d]), equal_nan=True):
+            raise ValueError(f"{what} must be identical under both conditions (condition-free)")
+
+
+def crossfit_condition_free(cos: dict, t_u: dict, t_c: dict, parity) -> tuple:
+    """ADDENDUM_1 R1: the matched condition-free control. Over the 56 nested cells z(cos) + λ_u·z(t_u) + λ_a·z(t_c),
+    with t_u and t_c both condition-free, each episode-index parity half picks the cell with the highest R@1 (ties to
+    the first cell in row-major order, λ_u outer); each half's pick scores the other half."""
+    _require_condition_free(t_u, "t_u")
+    _require_condition_free(t_c, "t_c")
+    n = len(cos["a"]["i2t"])
+    parity = np.asarray(parity)
+    if parity.shape != (n,) or not np.isin(parity, (0, 1)).all() or not ((parity == 0).any() and (parity == 1).any()):
+        raise ValueError(f"parity must be a length-{n} array of 0/1 with both halves non-empty")
+    cache = {}
+
+    def scored(cell):
+        if cell not in cache:
+            cache[cell] = nested_scores(cos, t_u, t_c, *cell)
+        return cache[cell]
+
+    def r1(cell, rows):
+        s = scored(cell)
+        return float(per_anchor({c: {d: s[c][d][rows] for d in DIRECTIONS} for c in CONDITIONS})["r1"].mean())
+
+    out = {c: {d: np.empty(np.asarray(cos[c][d]).shape, np.float32) for d in DIRECTIONS} for c in CONDITIONS}
+    picks = {}
+    for half in (0, 1):
+        tune, apply = parity == half, parity != half
+        cell = max(nested_cells(), key=lambda c: r1(c, tune))        # max keeps the first of equal maxima
+        picks[half] = [float(cell[0]), float(cell[1])]
+        for c in CONDITIONS:
+            for d in DIRECTIONS:
+                out[c][d][apply] = scored(cell)[c][d][apply]
+    return out, picks

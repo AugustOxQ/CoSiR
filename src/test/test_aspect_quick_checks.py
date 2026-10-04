@@ -298,3 +298,58 @@ def test_go_verdict_needs_all_six_lower_bounds_above_zero():
     assert go_verdict(bad) == {"go": False, "failed": ["rca/gain", "control/r1"]}
     with pytest.raises(KeyError):
         go_verdict({"cosine": ok["cosine"]})                      # every comparator must be present
+
+
+# ---------------------------------------------------------------- ADDENDUM_1.md: matched condition-free control
+
+from src.eval.aspect_nested import nested_cells, nested_scores  # noqa: E402
+from src.eval.aspect_quick_checks import ADDENDUM_COMPARATORS, crossfit_condition_free  # noqa: E402
+
+
+def _cf_world(n=400, seed=3):
+    """Condition-free scores: cosine and t_u random; t_c pushes column 0 up for most episodes."""
+    rng = np.random.default_rng(seed)
+    cos, t_u = rng.normal(size=(n, 13)), rng.normal(size=(n, 13))
+    t_c = rng.normal(size=(n, 13))
+    t_c[:, 0] += 3.0 * (rng.random(n) < 0.7)
+    return _sc(cos), _sc(t_u), _sc(t_c), np.arange(n) % 2
+
+
+def _r1_on(scores, rows):
+    return float(per_anchor({c: {d: scores[c][d][rows] for d in DIRECTIONS} for c in CONDITIONS})["r1"].mean())
+
+
+def test_crossfit_condition_free_picks_the_first_best_cell_and_applies_it_out_of_sample():
+    cos, t_u, t_c, parity = _cf_world()
+    out, picks = crossfit_condition_free(cos, t_u, t_c, parity)
+    for half in (0, 1):
+        tune = parity == half
+        r1 = [_r1_on(nested_scores(cos, t_u, t_c, *cell), tune) for cell in nested_cells()]
+        best = nested_cells()[int(np.argmax(r1))]                    # argmax keeps the first maximum
+        assert picks[half] == [best[0], best[1]]
+        applied = nested_scores(cos, t_u, t_c, *best)
+        for c in CONDITIONS:
+            for d in DIRECTIONS:
+                np.testing.assert_array_equal(out[c][d][parity != half], applied[c][d][parity != half])
+    assert picks[0][1] > 0                                           # the column-0 term is used
+    assert (per_anchor(out)["gain"] == 0).all()                      # condition-free by construction
+
+
+def test_crossfit_condition_free_rejects_a_conditioned_term():
+    cos, t_u, t_c, parity = _cf_world(n=40)
+    t_c["b"]["i2t"] = t_c["b"]["i2t"] + 1e-3
+    with pytest.raises(ValueError):
+        crossfit_condition_free(cos, t_u, t_c, parity)
+    with pytest.raises(ValueError):
+        crossfit_condition_free(cos, t_c, t_u, parity)
+    with pytest.raises(ValueError):
+        crossfit_condition_free(cos, t_u, _cf_world(n=40)[2], np.zeros(40))      # one empty half
+
+
+def test_go_verdict_with_the_matched_comparator():
+    assert ADDENDUM_COMPARATORS == ("cosine", "rca", "control", "matched")
+    ok = {c: {m: _r(0.5, 0.1, 0.9) for m in ("r1", "gain")} for c in ADDENDUM_COMPARATORS}
+    assert go_verdict(ok, ADDENDUM_COMPARATORS) == {"go": True, "failed": []}
+    ok["matched"]["r1"] = _r(-0.03, -0.07, 0.0)
+    assert go_verdict(ok, ADDENDUM_COMPARATORS) == {"go": False, "failed": ["matched/r1"]}
+    assert go_verdict(ok) == {"go": True, "failed": []}                          # §6 comparators only
