@@ -353,3 +353,18 @@ def test_go_verdict_with_the_matched_comparator():
     ok["matched"]["r1"] = _r(-0.03, -0.07, 0.0)
     assert go_verdict(ok, ADDENDUM_COMPARATORS) == {"go": False, "failed": ["matched/r1"]}
     assert go_verdict(ok) == {"go": True, "failed": []}                          # §6 comparators only
+
+
+# ---------------------------------------------------------------- N6 (ADDENDUM_2_N6.md): condition-free head score
+
+from src.eval.aspect_quick_checks import probe_dots, uniform_probe_scores  # noqa: E402
+
+
+def test_uniform_probe_scores_average_the_aspects_and_ignore_the_condition():
+    post, ep = _d0_world(), _ep()
+    u = uniform_probe_scores(post, ep, ASP)
+    dots = probe_dots(post, ep, ASP)
+    for d in DIRECTIONS:
+        np.testing.assert_allclose(u["a"][d], np.mean([dots[h][d] for h in ASP], axis=0))
+        np.testing.assert_array_equal(u["a"][d], u["b"][d])
+    assert (per_anchor(u)["gain"] == 0).all()

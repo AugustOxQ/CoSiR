@@ -325,3 +325,13 @@ def crossfit_condition_free(cos: dict, t_u: dict, t_c: dict, parity) -> tuple:
             for d in DIRECTIONS:
                 out[c][d][apply] = scored(cell)[c][d][apply]
     return out, picks
+
+
+# ---------------------------------------------------------------- N6 (ADDENDUM_2_N6.md)
+
+def uniform_probe_scores(post: dict, ep, aspects=ASPECTS) -> dict:
+    """The condition-free probe score: the mean over ``aspects`` of p_h(query) . p_h(candidate), identical under both
+    conditions (N6's T_6u when ``post`` holds the partition heads)."""
+    stack = _stacked_dots(post, ep, aspects)
+    mean = {d: stack[d].mean(axis=1) for d in DIRECTIONS}
+    return {c: {d: mean[d].copy() for d in DIRECTIONS} for c in CONDITIONS}
