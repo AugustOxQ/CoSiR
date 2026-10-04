@@ -201,3 +201,71 @@ def inferred_scores(post: dict, ep, mode: str, aspects=ASPECTS) -> tuple:
         out[cond] = {d: np.einsum("nh,nhk->nk", w, stack[d]) for d in DIRECTIONS}
         info[cond] = {"weights": w, "fallback": fallback}
     return out, info
+
+
+# ---------------------------------------------------------------- decision rule
+# src/test/20261108_new_method_quick_checks/DECISION_RULE.md, committed before any check ran.
+
+D0_FRACTION = 0.5          # §2: "close to Told" = Inferred keeps at least half of Told's condition gain
+N2_RARE_SHARE = 10.0       # §5: both aspect candidates "rarely" in the top k = a share below 10%
+CONFIG_ORDER = ("N1-nested-A3", "N1-nested-C0", "N1-nested-SE", "N2-2-agree", "N2-3-agree", "N2-5-agree",
+                "N2-2-N1", "N2-3-N1", "N2-5-N1")
+NEXT = {1: "fix the passing configuration and test it on fresh episode seeds 45, 47, 48 (GO rule, DECISION_RULE.md §6)",
+        2: "build N6 (cross-modal heads on the label-free k-means partitions, aspect picked by D0's decision variant), "
+           "run the same checks, then the same test",
+        3: "stop method work; move to branch 3 with D0, N1 and N2 reported as analysis results"}
+
+
+def d0_reading(told_gain: dict, gains: dict) -> dict:
+    """§2. ``told_gain``: Told's pooled condition gain {'point', 'ci95'} (points); ``gains``: {'hard': point,
+    'soft': point}. The decision variant has the larger gain (ties to 'hard'). 'close' if its gain >= 0.5 x Told's,
+    'far' otherwise, 'unreadable' if Told's gain has a lower bound <= 0."""
+    variant = "hard" if gains["hard"] >= gains["soft"] else "soft"
+    threshold = D0_FRACTION * told_gain["point"]
+    if told_gain["ci95"][0] <= 0:
+        reading = "unreadable"
+    else:
+        reading = "close" if gains[variant] >= threshold else "far"
+    return {"variant": variant, "gain": float(gains[variant]), "told_gain": float(told_gain["point"]),
+            "threshold": float(threshold), "reading": reading}
+
+
+def config_passes(r1_vs_control: dict, gain_vs_control: dict) -> bool:
+    """§4: both paired differences against the configuration's own condition-free control have lower bounds > 0."""
+    return bool(r1_vs_control["ci95"][0] > 0 and gain_vs_control["ci95"][0] > 0)
+
+
+def n1_stop(gain_minus_current: float, either_n1: float, either_cos: float) -> dict:
+    """§5: N1 stops on a checkpoint if its term-only gain is not above the current rule's (paired point) or its
+    term-only either rate is below cosine's (points)."""
+    reasons = []
+    if gain_minus_current <= 0:
+        reasons.append("term-only gain not above the current rule")
+    if either_n1 < either_cos:
+        reasons.append("term-only either rate below cosine")
+    return {"stop": bool(reasons), "reasons": reasons}
+
+
+def n2_reading(share_both: float, gain_vs_control: dict) -> dict:
+    """§5 readings at one k: both aspect candidates rarely in the top k; the reordering adds no gain."""
+    return {"rare": bool(share_both < N2_RARE_SHARE), "no_gain": bool(gain_vs_control["ci95"][0] <= 0)}
+
+
+def decision_row(configs: list, d0: str) -> dict:
+    """§4, first matching row wins. ``configs``: dicts with 'name', 'passes', 'm_r', 'm_g' (points), in
+    CONFIG_ORDER (configurations that were not computed are left out). Several passing: the largest
+    min(m_r, m_g), ties to the earlier one."""
+    names = [c["name"] for c in configs]
+    if any(n not in CONFIG_ORDER for n in names) or names != sorted(names, key=CONFIG_ORDER.index):
+        raise ValueError(f"configs must be named from CONFIG_ORDER and kept in its order, got {names}")
+    if d0 not in ("close", "far", "unreadable"):
+        raise ValueError(f"unknown D0 reading {d0!r}")
+    passing = [c for c in configs if c["passes"]]
+    if passing:
+        best = max(passing, key=lambda c: min(c["m_r"], c["m_g"]))      # max keeps the first of equal maxima
+        return {"row": 1, "config": best["name"], "next": NEXT[1]}
+    if d0 == "unreadable":
+        return {"row": None, "config": None, "next": "D0 cannot be read (Told's gain is not reliably positive); "
+                                                      "report to the user without applying a row"}
+    row = 2 if d0 == "close" else 3
+    return {"row": row, "config": None, "next": NEXT[row]}

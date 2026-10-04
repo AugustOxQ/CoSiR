@@ -216,3 +216,68 @@ def test_soft_falls_back_to_uniform_when_no_aspect_is_shown():
     np.testing.assert_allclose(w, [[1 / 3, 1 / 3, 1 / 3]])
     with pytest.raises(ValueError):
         inferred_weights(post, ep, "a", "median", ASP)
+
+
+# ---------------------------------------------------------------- decision rule (DECISION_RULE.md)
+
+from src.eval.aspect_quick_checks import (  # noqa: E402
+    CONFIG_ORDER, config_passes, d0_reading, decision_row, n1_stop, n2_reading,
+)
+
+
+def _r(point, lo, hi):
+    return {"point": point, "ci95": [lo, hi]}
+
+
+def test_d0_reading_threshold_is_half_of_told_gain():
+    told = _r(10.0, 9.0, 11.0)
+    assert d0_reading(told, {"hard": 5.0, "soft": 4.0})["reading"] == "close"       # exactly half counts as close
+    assert d0_reading(told, {"hard": 4.99, "soft": 4.0})["reading"] == "far"
+    r = d0_reading(told, {"hard": 3.0, "soft": 6.0})
+    assert r["variant"] == "soft" and r["gain"] == 6.0 and r["threshold"] == 5.0 and r["reading"] == "close"
+    assert d0_reading(told, {"hard": 4.0, "soft": 4.0})["variant"] == "hard"        # ties go to hard
+
+
+def test_d0_reading_is_unreadable_when_told_has_no_reliable_gain():
+    assert d0_reading(_r(1.0, -0.2, 2.0), {"hard": 0.9, "soft": 0.8})["reading"] == "unreadable"
+    assert d0_reading(_r(1.0, 0.0, 2.0), {"hard": 0.9, "soft": 0.8})["reading"] == "unreadable"
+
+
+def test_config_passes_needs_both_lower_bounds_above_zero():
+    assert config_passes(_r(0.5, 0.1, 0.9), _r(0.4, 0.05, 0.8))
+    assert not config_passes(_r(0.5, 0.1, 0.9), _r(0.4, 0.0, 0.8))
+    assert not config_passes(_r(0.5, -0.1, 0.9), _r(0.4, 0.05, 0.8))
+
+
+def test_n1_stop_rules():
+    assert n1_stop(0.3, 26.0, 25.92) == {"stop": False, "reasons": []}
+    assert n1_stop(0.0, 26.0, 25.92)["stop"]                     # gain no more than the current rule
+    assert n1_stop(0.3, 25.0, 25.92)["stop"]                     # either rate below cosine's
+    assert len(n1_stop(-0.1, 20.0, 25.92)["reasons"]) == 2
+
+
+def test_n2_reading():
+    assert n2_reading(9.99, _r(0.2, 0.01, 0.4)) == {"rare": True, "no_gain": False}
+    assert n2_reading(10.0, _r(0.2, 0.0, 0.4)) == {"rare": False, "no_gain": True}
+
+
+def _cfg(name, passes, m_r=0.0, m_g=0.0):
+    return {"name": name, "passes": passes, "m_r": m_r, "m_g": m_g}
+
+
+def test_decision_row_order_and_pick():
+    configs = [_cfg("N1-nested-A3", True, 0.3, 0.2), _cfg("N1-nested-C0", True, 0.5, 0.2),
+               _cfg("N2-2-agree", True, 0.1, 0.9)]
+    d = decision_row(configs, "far")                              # row 1 wins over any D0 reading
+    assert d["row"] == 1 and d["config"] == "N1-nested-A3"        # min margins 0.2, 0.2, 0.1: tie -> earlier
+    none = [_cfg("N1-nested-A3", False), _cfg("N2-2-agree", False)]
+    assert decision_row(none, "close")["row"] == 2
+    assert decision_row(none, "far")["row"] == 3
+    assert decision_row(none, "unreadable")["row"] is None
+    with pytest.raises(ValueError):
+        decision_row(none, "maybe")
+    with pytest.raises(ValueError):
+        decision_row([_cfg("N2-3-agree", False), _cfg("N1-nested-A3", False)], "far")   # out of CONFIG_ORDER
+    with pytest.raises(ValueError):
+        decision_row([_cfg("N3-nested-A3", False)], "far")                               # unknown name
+    assert CONFIG_ORDER[0] == "N1-nested-A3" and len(CONFIG_ORDER) == 9
