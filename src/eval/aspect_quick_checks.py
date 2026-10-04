@@ -269,3 +269,13 @@ def decision_row(configs: list, d0: str) -> dict:
                                                       "report to the user without applying a row"}
     row = 2 if d0 == "close" else 3
     return {"row": row, "config": None, "next": NEXT[row]}
+
+
+GO_COMPARATORS = ("cosine", "rca", "control")
+
+
+def go_verdict(pooled: dict) -> dict:
+    """§6: GO iff, on the pooled test seeds, the paired difference config − comparator has a 95% lower bound above 0
+    for R@1 and for condition gain against every comparator. ``pooled[comparator][metric]`` is a compare() result."""
+    failed = [f"{c}/{m}" for c in GO_COMPARATORS for m in ("r1", "gain") if not pooled[c][m]["ci95"][0] > 0]
+    return {"go": not failed, "failed": failed}

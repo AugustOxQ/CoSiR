@@ -281,3 +281,20 @@ def test_decision_row_order_and_pick():
     with pytest.raises(ValueError):
         decision_row([_cfg("N3-nested-A3", False)], "far")                               # unknown name
     assert CONFIG_ORDER[0] == "N1-nested-A3" and len(CONFIG_ORDER) == 9
+
+
+# ---------------------------------------------------------------- fresh-seed GO rule (DECISION_RULE.md §6)
+
+from src.eval.aspect_quick_checks import GO_COMPARATORS, go_verdict  # noqa: E402
+
+
+def test_go_verdict_needs_all_six_lower_bounds_above_zero():
+    ok = {c: {m: _r(0.5, 0.1, 0.9) for m in ("r1", "gain")} for c in GO_COMPARATORS}
+    assert GO_COMPARATORS == ("cosine", "rca", "control")
+    assert go_verdict(ok) == {"go": True, "failed": []}
+    bad = {c: dict(v) for c, v in ok.items()}
+    bad["rca"]["gain"] = _r(0.2, 0.0, 0.4)                       # a lower bound of exactly 0 fails
+    bad["control"]["r1"] = _r(0.1, -0.05, 0.3)
+    assert go_verdict(bad) == {"go": False, "failed": ["rca/gain", "control/r1"]}
+    with pytest.raises(KeyError):
+        go_verdict({"cosine": ok["cosine"]})                      # every comparator must be present
