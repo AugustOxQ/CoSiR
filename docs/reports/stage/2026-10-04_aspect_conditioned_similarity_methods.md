@@ -14,8 +14,8 @@ R@1 30.66 against 12.96 for CLIP cosine on our development episodes. Over three 
 read by a training-free agreement rule (method A), a repaired fusion of it (A′), in-context multimodal LLMs (2B and 8B),
 and five further readers and fusions. None passed its pre-registered test. The common failure is arithmetic:
 R@1 = (either rate + condition gain) / 2, and every scorer trained without ArtELingo labels that reads the condition lost at least as much *either rate* (how often some aspect-sharing candidate ranks first) as it gained in *condition gain* (how often the conditioned
-candidate wins over the other aspect's). Two results change the outlook. First, the condition can be read: inferring
-the aspect from the pairs keeps 63% of the told probes' gain, and a reader on cross-modal heads trained without ArtELingo labels (the affect partition is distantly supervised by a GoEmotions classifier whose categories name 6 of the 8 evaluation emotions, and the image clusters carry style and genre, Table 4) on k-means partitions reaches a condition gain of 4.41 [3.96, 4.87], 3.5 times the best factor rule (N1, 1.25) and 4.5 times A3's agreement rule (0.99). Second, condition-free
+candidate wins over the other aspect's). Two results change the outlook. The first is that the condition can be read: inferring
+the aspect from the pairs keeps 63% of the told probes' gain, and a reader on cross-modal heads trained without ArtELingo labels (the affect partition is distantly supervised by a GoEmotions classifier whose categories name 6 of the 8 evaluation emotions, and the image clusters carry style and genre, Table 4) on k-means partitions reaches a condition gain of 4.41 [3.96, 4.87], 3.5 times the best factor rule (N1, 1.25) and 4.5 times A3's agreement rule (0.99). The second is that condition-free
 scores that use the examples without reading the condition rose from 16.55 to 18.34 R@1, so the bar for a method is now higher and better defined (with a caveat about the episode construction, Section 11.3). We describe the task, the protocol, each attempt with its baseline, the controls that caught
 two false passes, and what a passing method has to do.
 
@@ -194,7 +194,7 @@ cosine as z(cos) + λ·z(term), λ cross-fitted on the two halves of the episode
 | other six | 12.85 to 13.06 | −0.16 to 0.12 |
 | SE codes, uniform weights (condition-free) | **16.30** [15.96, 16.63] | 0 |
 
-No baseline separated the aspects: every gain stayed within 0.4 points of 0. The striking row is the last one. A factor
+No baseline separated the aspects: every gain stayed within 0.4 points of 0. The last row matters most. A factor
 term with *uniform* weights, which ignores the condition, lifted R@1 by 3.3 points through the either rate alone. An
 R@1 lift is therefore not evidence of reading the condition, and every method must beat its own condition-free control.
 The ranking of the nine baselines was not stable across seeds (RCA fell below cosine on seed 43 by its mean of R@1 and
@@ -441,8 +441,8 @@ intervals; where a declared and a matched control exist, both are shown. The con
 
 A fused score beats its matched control only if it adds more condition gain than it loses either rate. The measured
 trades were close to even (Figure 8): N6c added 1.19 gain and lost 0.88 either (net +0.15 R@1); N6 nested added 1.69 and
-lost 1.23 (net +0.23); A′ on A3 added nothing and lost nothing (gain −0.01, R@1 −0.02): one tuning half picked the control itself and the other put a small weight (0.25 against 4) on the conditioned term. Our reading, supported only by the exploratory analysis of Section 14: the loss of either rate comes from a reader that picks the wrong aspect, or a representation that is weak in one modality (emotion from images, style from captions), promotes negatives as often as
-it promotes the target. D0's condition-free counterpart (the mean of the three label-probe scores) has an either rate of 45.08 (R@1 22.54); Told keeps 40.27 and Inferred-hard 36.70, so reading the condition costs either rate even with label posteriors (−4.81 [−5.36, −4.26] for Told and −8.38 [−8.93, −7.85] for Inferred-hard), but the gain outruns the cost (Inferred-hard beats the counterpart by 2.48 [2.11, 2.84] R@1, Told by 8.12 [7.75, 8.50]). The cost can be outpaced, not avoided.
+lost 1.23 (net +0.23); A′ on A3 added nothing and lost nothing (gain −0.01, R@1 −0.02): one tuning half picked the control itself and the other put a small weight (0.25 against 4) on the conditioned term. Our reading, supported only by the exploratory analysis of Section 14: the loss of either rate comes from a reader that picks the wrong aspect, or from a representation that is weak in one modality (emotion from images, style from captions) and so promotes negatives as often as
+it promotes the target. D0's condition-free counterpart (the mean of the three label-probe scores) has an either rate of 45.08 (R@1 22.54); Told keeps 40.27 and Inferred-hard 36.70, so reading the condition costs either rate even with label posteriors (−4.81 [−5.36, −4.26] for Told and −8.38 [−8.93, −7.85] for Inferred-hard), but the gain outruns the cost (Inferred-hard beats the counterpart by 2.48 [2.11, 2.84] R@1, Told by 8.12 [7.75, 8.50]). Reading the condition always costs either rate, and only a large enough gain outpaces that cost.
 
 ![Per pair](../assets/2026-10-04_aspect_conditioned_similarity_methods/per_pair.png)
 
