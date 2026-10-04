@@ -5,8 +5,7 @@
 After the A′ repair ended at branch 3 and the Qwen3-VL-8B probe did not select the demonstrated aspect, the user asked
 for more method attempts before the branch decision. We ran the three CPU checks of the approved spec
 (`docs/superpowers/specs/2026-10-04-new-method-quick-checks-design.md`) on the seed-42 development episodes and then
-followed the pre-committed decision table, with three addenda written overnight, each committed before the numbers it
-governs were read. **No configuration passed against its matched condition-free control, and the one fresh-seed test
+followed the pre-committed decision table, with three addenda written overnight. Each addendum was committed before the new numbers that decide it were computed (the fresh-seed test outputs, N6's seed-42 check, N6c's comparison with C2); Addendum 1 was written from the final review's seed-42 matched-control numbers for A3, and Addendum 3's gate against C1 was already known to pass from the exploratory run. **No configuration passed against its matched condition-free control, and the one fresh-seed test
 that ran was NO-GO.** The night still changed the picture in two ways: a label-free reader now selects the conditioned
 aspect clearly (N6, term-only condition gain 4.41), and two new condition-free scores raised the bar every
 conditioned scorer has to clear (17.94 and 18.34 R@1 on seed 42, against 16.55 for E3's control and 13.38 for the GO
@@ -24,7 +23,7 @@ bar RCA).
 
 What this does not show: that the condition cannot help. The numbers say that at the current accuracy of the readers,
 every scorer that reads the condition loses aspect-finding about as fast as it gains selection once it is fused with
-the strongest condition-free score (Section 8).
+the strongest condition-free score (the point estimates of the net R@1 margins are positive, +0.15 and +0.23, but too small for the pass rules to confirm) (Section 8).
 
 ## 1. Where this line of work stands
 
@@ -60,7 +59,7 @@ The aspects are emotion, style and genre (three aspect pairs, pooled).
 
 ## 3. How the rules were set and changed
 
-Every rule was committed before the numbers it governs were read; the times are commit times on 2026-10-04.
+Each addendum was committed before the new numbers that decide it were computed (the fresh-seed test outputs, N6's seed-42 check, N6c's comparison with C2); Addendum 1 was written from the final review's seed-42 matched-control numbers for A3, and Addendum 3's gate against C1 was already known to pass from the exploratory run. The times are commit times on 2026-10-04.
 
 | Commit | Time | What it fixed |
 |---|---|---|
@@ -125,11 +124,9 @@ matched control of `ADDENDUM_1.md` (the same nested family with T_N1u in place o
 ![N1 trade-off](../../assets/2026-11-08_new_method_quick_checks/n1_tradeoff.png)
 
 *Figure 2. Either rate against condition gain for A3's scorers on seed 42. Dotted lines are constant R@1. The nested N1
-point sits on its declared control's line (16.55); the condition-free centered scorers sit on a higher line (17.94).*
+point sits just right of its declared control's line (16.79 against 16.55); the condition-free centered scorers sit on a higher line (17.94).*
 
-Why centering helps without the condition: the 8 example items never show the query's values (the episodes are
-value-disjoint), so subtracting their mean removes what artworks share in general and leaves what distinguishes this
-query. Both conditions use the same 8 items, so the score uses the examples but not which of them are supports.
+Why centering helps is not tested. Subtracting the mean of the 8 example items removes what the episode's examples share, and by construction those examples never show the query's values, so the term also penalises candidates that resemble values the target lacks. Both conditions use the same 8 items, so the score uses the examples but not which of them are supports. A probe by the final reviewer (seed 42, decides nothing) found that centering on the global selection-row mean gives 17.14 and on 8 random items 16.85, against 17.95 on the episode's own examples: about 0.8 of the 1.4-point lift needs the episode's own examples, so part of it may come from the value-disjoint episode construction.
 
 ## 6. N2: reranking a short list does not protect the either rate
 
@@ -170,9 +167,8 @@ seed), the usual shrinkage of a pick made on one draw.
 ## 8. N6 reads the condition; N6 and N6c still miss their matched controls
 
 **N6** trains cross-modal heads on E2's three label-free k-means partitions (affect clusters of GoEmotions caption
-probabilities, CLIP image clusters, CLIP caption clusters; 64 clusters each; no evaluation label), represents each item
-by its head posteriors and reads the condition with D0's hard rule over the three partitions. Its condition-free
-version averages the three heads.
+probabilities, CLIP image clusters, CLIP caption clusters; 64 clusters each; no evaluation label) (no ArtELingo label is used, but the partitions are aspect-shaped: GoEmotions is an emotion classifier trained on external labels, and the image clusters carry genre and style, E2 AMI 0.397 and 0.318), represents each item
+by its head posteriors and reads the condition with D0's hard rule over the three partitions. Its condition-free version T_6u averages the three heads.
 
 | Seed 42 | R@1 | Gain | Either |
 |---|---|---|---|
@@ -181,39 +177,32 @@ version averages the three heads.
 | N6-nested | 17.30 [16.94, 17.66] | 1.69 [1.35, 2.02] | 32.91 |
 | its control z(cos) + σ·z(T_6u) | 17.07 [16.73, 17.42] | 0 | 34.15 |
 
-The term's gain of 4.41 is the largest label-free gain measured in the project: A3's rule reached 0.99, factors trained
-on the true labels 1.85, and Qwen3-VL-8B 0.21. The reader picked the affect partition in 59 and 68% of emotion-conditioned
+The term's gain of 4.41 is the largest label-free gain measured in the project. The strongest earlier label-free term on these episodes was N1 on A3 (1.25; the agreement rule 0.99), factors trained on the evaluation labels reached 3.20 with N1's rule (L3; 1.85 with the agreement rule), and Qwen3-VL-8B reached 0.21. The reader picked the affect partition in 59 and 68% of emotion-conditioned
 rankings and the image partition in 54 to 62% of style- and genre-conditioned ones, except under the style condition of
 style × genre, where it picked affect (58%) over image (17%): the image clusters carry genre more than style (E2 AMI
-0.397 against 0.318), so there the contrast pairs agree more on image clusters than the supports do. N6-nested beat its
+0.397 against 0.318), so there the contrast pairs agree more on image clusters than the supports do (the support pairs of that condition also differ on genre by construction). Δ for the affect partition averages about 0 everywhere, while Δ for the image partition swings by ±0.02 to 0.03, so many affect picks mean that the image and caption partitions look contrast-like rather than that affect looks support-like. N6-nested beat its
 control on gain but not reliably on R@1 (+0.23 [−0.01, 0.47]; the lower bound stayed at or below 0 in all of bootstrap
 seeds 0 to 99), so N6 failed its pass and, by `ADDENDUM_2_N6.md` §4, the night's method work should have ended here.
 
 **N6c** came from an exploratory look at seed 42: N6's term on the centered factor base reached R@1 18.49 against that
-base's 17.94 (+0.55 [0.31, 0.79]). We committed it as a new configuration with a gate against two controls before
-scoring either: C1, the base alone, and C2, N6c with the condition removed (N6's averaged heads in place of its reader).
+base's 17.94 (+0.55 [0.31, 0.79]). We committed it as a new configuration with a gate against two controls: C1, the base alone, whose comparison the exploratory run had already shown (+0.55), and C2, N6c with the condition removed (N6's averaged heads in place of its reader), which had never been computed.
 The configuration and C1 reproduced the exploratory numbers exactly. C2 reached 18.34 [17.97, 18.70], and N6c beat it by
 only +0.15 [−0.06, 0.38] R@1, so the gate failed and no test seed was scored.
 
 ![N6 trade-off](../../assets/2026-11-08_new_method_quick_checks/n6_tradeoff.png)
 
 *Figure 5. Either rate against condition gain for the N6 scorers on seed 42; the reading scorers (orange) sit up and to
-the left of the condition-free ones (blue); N6c sits just left of C2's constant-R@1 line.*
+the left of the condition-free ones (blue); N6c sits just right of C2's constant-R@1 line (18.49 against 18.34), a margin of +0.15 [−0.06, 0.38] that the interval cannot confirm.*
 
 ## 9. What the numbers say
 
-- **The reader is no longer the bottleneck by itself.** D0 and N6 show that four example pairs identify the aspect when
-  items carry aspect-shaped blocks: label probes keep 63% of the told gain, label-free heads give a term-only gain of
-  4.41. This points at the representation, not the reader, as the limit of the factor rule (gain about 1), as D0's "close"
-  reading predicted.
+- **The condition can be read.** D0 and N6 show that four example pairs identify the aspect when items carry aspect-shaped blocks: label probes keep 63% of the told gain, and label-free heads give a term-only gain of 4.41 against 1.25 for the best factor rule. By the spec's pre-declared reading of D0 this points at the representation as the factor rule's limit; we did not run D0's reader on the factor codes, so reader and representation are not separated for the factors.
 - **The either-rate cost is the binding constraint.** Since R@1 = (either + gain) / 2, a conditioned score beats its
   matched control only if it gains more selection than it loses aspect-finding. N6c gained 1.19 and lost 0.88 either
-  (net +0.15 R@1); N6-nested gained 1.69 and lost 1.24 (net +0.23); N1-nested on fresh seeds gained 0.15 and lost 0.02
-  against a control that was itself 1.25 below its matched one. Our reading (not tested): every reader picks the wrong aspect often enough
+  (net +0.15 R@1); N6-nested gained 1.69 and lost 1.23 (net +0.23); N1-nested on fresh seeds gained 0.15 and lost 0.02
+  against a control that was itself 1.26 below its matched one. Our reading (not tested): every reader picks the wrong aspect often enough
   (D0's hard pick misses 41% of the time) that the conditioned term promotes a non-target in a sizeable share of rankings.
-- **The condition-free bar rose.** Centering on the episode's examples and averaging partition heads lifted the best
-  condition-free score from 16.55 to 18.34 on seed 42 (13.38 for RCA). These scores use the examples but not the
-  condition; for an analysis paper they are a finding of their own, and any future method must beat them.
+- **The condition-free bar rose.** Centering on the episode's examples lifted the best label-free condition-free score from 16.55 to 17.94 on seed 42 (17.75 pooled on seeds 45, 47, 48) and, with the averaged heads, to 18.34 (seed 42 only; RCA 13.38). These scores use the examples but not the condition. Before they count as a finding of their own, a control centred on non-episode items must show how much of the lift depends on the value-disjoint episode construction; any future method must beat them.
 - **Where selection works.** In D0, N6 and N6c the gain was largest on emotion × genre and smallest on emotion × style,
   matching D0's pick accuracies; the style × genre style condition is the predicted weak spot of the image partition.
 
@@ -238,6 +227,9 @@ user's. Two routes the numbers leave open, neither started:
 - **Steps the user had not pre-approved.** The user asked for full automation overnight. The controller (a) adopted the
   matched control and the step after a NO-GO (`ADDENDUM_1.md` R4), (b) built N6 (spec row 2), and (c) overrode its own
   "no further method overnight" line for N6c. Each ruling is in `ADDENDUM_*.md` and the run ledger.
+- **Order of Addendum 1 R2 and Addendum 2.** R2 said the seed-42 re-application would run before any further step, but Addendum 2 (N6) was committed at 04:17, before R2's computation finished (04:20). It made no difference: R4 sends a NO-GO to row 2 whatever R2 finds, and C0's and SE's N1 gain lower bounds (−0.16, −0.34) mean they could not pass against any condition-free control.
+- **Two small slips in committed rule files** (left unedited as records): `ADDENDUM_1.md` §3 quotes N1's term-only gain difference as [−0.27, 0.78], the stored value is [−0.275, 0.768]; `ADDENDUM_3_N6C.md` §4 calls A3's matched control 'T_N1u-only', it is the (T_u, T_N1u) family.
+- **Dropped synthesis gate.** The approved spec dropped the synthesis's gate before building test seeds (both seed-42 margins at least 2.8 SE); N1-nested-A3's gain margin was about 2.4 SE, so under that gate seeds 45, 47 and 48 would not have been built.
 - **Multiplicity.** Nine configurations were eligible at the seed-42 check; seeds 45, 47, 48 tested one of them (N1);
   N6 and N6c were later candidates on the same development seed. N6c was found by looking at seed-42 results; its
   seed-42 numbers are exploratory, and its gate failed before any test.

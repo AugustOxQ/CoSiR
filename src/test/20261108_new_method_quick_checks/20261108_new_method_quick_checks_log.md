@@ -114,8 +114,8 @@ AMI 0.397 against 0.318), so there the contrast pairs (which share genre) agree 
 support pairs do, the style × genre weakness the ARS synthesis predicted. Soft fallback 18.8%.
 
 By `ADDENDUM_2_N6.md` §4, N6 failing at seed 42 ends method work under this spec: no test stage, no new method
-overnight. The term-only gain of 4.41 is the largest label-free condition gain measured in the project (A3's rule
-0.99, label-trained L3 1.85, Qwen3-VL-8B 0.21), so N6's reader does read the condition; under the nested score it
+overnight. The term-only gain of 4.41 is the largest label-free condition gain measured in the project (N1 on A3 1.25, the agreement rule
+0.99; label-trained L3 3.20 with N1's rule, 1.85 with the agreement rule; Qwen3-VL-8B 0.21), so N6's reader does read the condition; under the nested score it
 loses either rate (32.91 against 34.15) about as fast as it gains selection.
 
 ## Exploratory analysis of N6 (decides nothing) and Addendum 3 (N6c)
