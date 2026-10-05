@@ -1,0 +1,248 @@
+# Pseudo-aspect groupings: how good they are, Leiden communities, and the open design question (DRAFT)
+
+**Status: draft, exploratory.** Written 2026-10-05 from a working session. Every number is on the seed-42 development
+episodes (12,288 episodes, 4,602 anchor paintings), and none of it decides the GO. Intervals are 95% and resample anchor
+paintings (5,000 resamples). Run folders: `src/test/20261110_partition_profile/`, `src/test/20261111_community_told_oracle/`
+and `src/test/20261112_community_sweep/` (commit a6287af; result files gitignored). Figures and their data:
+`docs/reports/assets/2026-11-12_partition_quality_leiden_communities/`.
+
+## Summary
+
+The stage report of 4 October ended with a diagnosis: the label-free reader picks the right pseudo-aspect grouping in
+only 52.4% of rankings, so its margin over its matched condition-free counterpart is +0.14 [−0.04, 0.32] R@1, while the
+same scorer told the right grouping reaches +1.14 [0.90, 1.41]. We asked what the groupings themselves are worth. A
+profile against the evaluation labels showed that the affect grouping (k-means, 64 clusters on GoEmotions probabilities)
+does carry emotion as clusters, but almost none of that signal survives the classifiers that place a lone image or
+caption into a cluster (same-emotion pairs agree 2.17 times as often as different-emotion pairs on the clusters, 1.11
+times through the classifiers). Replacing the affect k-means with Leiden communities on the same signal raised the told
+margin to +1.64 [1.37, 1.92] and the reader margin to +0.35 [0.15, 0.57]; k-means with the same number of groups did not
+move (told +1.10). A 3 × 3 sweep of the Leiden graph's k and resolution (14 to 118 groups) found Leiden ahead of k-means at
+every matched count (told +0.48 to +0.88) and margins that barely depend on the settings; the picked cell reached a reader
+margin of +0.50 [0.30, 0.71], the development bar. The discussion then turned to the groupings as a component: their
+number of groups was inherited and never tested, every grouping uses the same number, nobody knew whether they were good
+before they were used, they are fixed, and their groups do not interact. We decided to redesign that component before
+returning to the bars, the reader and the next experiments.
+
+## 1. Where this started
+
+The stage report (`docs/reports/stage/2026-10-04_aspect_conditioned_similarity_methods.md`, Sections 10, 11 and 14) and
+the handoff (`docs/superpowers/handoffs/2026-10-04-fix-the-reader-handoff.md`) placed the block in the reader: the heads of
+N6, trained without ArtELingo labels, beat their matched counterpart by +1.14 when told the right grouping and by +0.14
+when the reader chose. The plan was to calibrate or learn the reader, add a grouping that separates style from genre, and
+test once on fresh seeds 49 to 51.
+
+A design question and answer on the stage report (commit 7b26631, Section 3 of that report) traced how the buddy line
+left the pipeline. The Stage 2 topic mapper was dropped by design on 28 September, the affect buddy graph was never built,
+and the Block 1 Leiden communities lost to image k-means on 1 October. What survived was the content buddy graph as a
+regulariser of method A's factors, which reaches today's numbers only through B, and the GoEmotions signal, as a k-means
+grouping. The conditions of an episode therefore come from its example pairs and from three fixed k-means groupings, and
+no part of the system discovers or learns them. That prompted the question of this report: do the groupings that define
+the pseudo-aspects coincide with the human aspects?
+
+**The affect signal is external and frozen.** The GoEmotions model is the public checkpoint
+`SamLowe/roberta-base-go_emotions` (RoBERTa-base fine-tuned on Reddit comments, 28 labels). The scripts we checked,
+on the buddy line, on the percept branch's PercepT port and in v2 (`src/data/affect.py`), load it in eval mode and run it
+under `no_grad`. The only optimisers in them train PercepT's own autoencoder, and we found no script that fine-tunes it. It reads ArtELingo captions at inference and never trained on them. Our
+PercepT port uses the same checkpoint, so that comparison shares the signal; the published PercepT uses ModernBERT-base
+and CLIP ViT-L/14. Against cosine, RCA and the MLLM baselines, which get no GoEmotions signal, the method has an extra
+external source that the paper must state (its labels name 6 of the 8 evaluation emotions).
+
+## 2. Terms used below
+
+| Term | Meaning |
+|---|---|
+| grouping (partition) | one way of splitting the 183,694 scorer-train rows into groups without evaluation labels: **affect** (GoEmotions probabilities of the caption), **image** (CLIP image features), **caption** (CLIP caption features); E2 built each with k-means, 64 clusters |
+| group | one cell of a grouping (a cluster or community) |
+| head | a logistic regression on frozen CLIP features, trained on 60,000 scorer-train rows to predict a row's group from its image alone or its caption alone; one per grouping and modality, six in all (N6) |
+| agreement | for an image of one painting and a caption of another, the dot product of the image head's and the caption head's group probabilities |
+| reader | N6's label-free rule: for each grouping, support-pair agreement minus contrast-pair agreement (Δ); pick the grouping with the largest Δ and score candidates by agreement with the query on it |
+| told | the same scorer given the right grouping from the evaluation labels (emotion to affect, style and genre to image); a diagnostic ceiling for the reader on these groupings and heads |
+| B | the best score that ignores the condition: cosine, A3's centered factor term and the agreement averaged over the three groupings, weights cross-fitted; R@1 18.34 [17.97, 18.70] (cosine 12.96, RCA 13.38) |
+| matched counterpart | B plus the added term averaged over the two conditions, so it has the same ingredients but cannot follow the condition |
+| margin | R@1 of B plus the term (told or reader) minus R@1 of its matched counterpart: what reading the condition adds |
+| λ | the added term's weight relative to B (in the code a pair, (1 + λ_u) on z(B) and λ_a on z(term)), chosen on one parity half of the episodes and applied to the other (min-margin rule for the term, max R@1 for the counterpart) |
+
+The bars: the GO requires, on fresh seeds 49 to 51 pooled, R@1 and condition gain lower bounds above 0 against cosine,
+RCA, B and the matched counterpart. Because every fresh-seed test so far roughly halved the development margin, the
+development bar on seed 42 is a reader margin of at least +0.5 with a lower bound above 0. Three oracle layers frame it:
+the label-free reader (+0.14), told groupings (+1.14) and told label-probe posteriors built from the evaluation labels
+(+6.66).
+
+## 3. How good the groupings are (partition profile)
+
+We profiled the three E2 groupings against the evaluation labels on scorer-train rows, and through the heads on selection
+rows. The run took 13.8 s; exact counts agreed with 2,000,000 sampled pairs in all 90 comparisons (largest |z| 2.42), and
+the controller re-derived six values with an independent sample.
+
+**Per group.** Every emotion has at least one clearly emotion-coherent affect cluster, but no emotion sits in one cluster.
+
+*Table 1. Affect grouping (k-means 64) by emotion, scorer-train rows.*
+
+| Emotion | Base rate | Best cluster: purity (lift) | Share of the emotion's rows in it | Clusters to cover 80% |
+|---|---|---|---|---|
+| sadness | 11.8% | 92.6% (7.9×) | 35% | 10 |
+| fear | 10.3% | 89.5% (8.7×) | 30% | 11 |
+| amusement | 11.2% | 95.9% (8.5×) | 15% | 19 |
+| disgust | 5.4% | 89.8% (16.5×) | 12% | 15 |
+| excitement | 9.4% | 87.5% (9.4×) | 16% | 17 |
+| anger | 1.6% | 61.0% (37×) | 19% | 15 |
+| awe | 18.4% | 70.9% (3.9×), 588 rows | 1.4% | 15 |
+| contentment | 31.9% | 86.1% (2.7×) | 5.5% | 18 |
+
+The median emotion needs 15 of the 64 clusters to cover 80% of its rows, against 28 for a value spread like all rows.
+Sadness splits three ways: 35% in cluster 38 (93% sad), about 21% in five smaller mostly sad clusters (3, 59, 32, 35 and 46; 49 to 78% sad,
+plausibly GoEmotions' separate grief, disappointment and remorse labels), and about 19% in two large mixed clusters
+(57 and 1, 31,000 rows, whose top emotion reaches only 21 to 27%; plausibly captions that state no emotion). Both
+readings of the split are untested. The 18 October affect report had already noted six clusters at least 85% one emotion
+and row purity 0.488 against 0.284 for the majority guess (`2026-10-18_candidate_a_affect_factor_learning_selection.md`).
+
+**Per pair, on the groups and through the heads.** For two rows on different paintings, we compared how often they share
+a group when they share an aspect value with how often they do when they do not (Figure 1, blue). Through the heads we
+compared the mean agreement of an image of one painting with a caption of another under the same split (orange).
+
+![Lift on groups and through heads](../../assets/2026-11-12_partition_quality_leiden_communities/lift_groups_vs_heads.png)
+
+*Figure 1. Ratio of agreement for same-value pairs over different-value pairs, on the groups (perfect placement) and
+through the heads. 1.0 means no signal. The second group is the Leiden affect grouping of Section 5 (31 groups).*
+
+The affect grouping carries emotion on the groups (2.17×; 7.67% against 3.53% share a cluster) and almost none through the
+heads (1.11×; agreement 0.0446 against 0.0402). The image grouping keeps part of its genre signal (9.75× to 3.00×) and
+less of style (4.59× to 1.54×). For the reader the relevant comparison is support-like pairs (same value of the
+conditioned aspect, different value of the other) against contrast-like pairs: for the affect grouping under emotion
+conditions it is 2.04× on the groups and 1.03 to 1.04× through the heads.
+
+*Table 2. Held-out accuracy of the six heads (10,000 scorer-train rows not used for fitting).*
+
+| Grouping | Image head | Caption head |
+|---|---|---|
+| affect, k-means 64 | 13.5% | 34.6% |
+| image, k-means 64 | 92.7% | 22.9% |
+| caption, k-means 64 | 21.6% | 89.7% |
+
+Each grouping is predicted well from the modality it was built from and poorly from the other. The affect grouping is
+built from the caption's text through GoEmotions, so even its caption head, which sees only CLIP caption features, reaches
+34.6%.
+
+**Why the reader picks as it does.** Through the heads, the mean support-minus-contrast contrast under emotion conditions
+is +0.0012 to +0.0018 for affect, against −0.0055 (emotion × style) and −0.0236 (emotion × genre) for the image grouping and
+−0.0019 and −0.0171 for caption, with a per-episode spread near 0.017 (handoff Section 3). The reader takes affect for
+emotion mainly because the others turn negative. Under the style condition of style × genre the image grouping's contrast
+is −0.0205 and affect's about 0, so the reader takes affect, matching the observed 17.1% image picks. Even on the groups
+the image grouping's style-minus-genre contrast is −0.033 (0.44×): it carries genre more than style, so no reader can use it
+for style.
+
+*Sources: `src/test/20261110_partition_profile/` (log, `profile_partitions.py`); E2 report
+`docs/reports/auto/v2/2026-10-31_pseudo_partitions.md`; N6 heads in `src/test/20261108_new_method_quick_checks/run_n6.py`.*
+
+## 4. The told oracle with Leiden affect communities
+
+Plan `src/test/20261111_community_told_oracle/PLAN.md` (written before any number) changed only the affect grouping and
+kept the image and caption groupings, the told mapping and B. Arm R0 reproduced the stored diagnostics exactly (told
++1.14, reader +0.14, pick accuracy 52.4%), and a fresh refit of the six heads was bit-identical to the stored posteriors.
+Arm L used `src/model/communities.py::detect_communities` at its defaults (kNN union graph with k = 20, modularity, seed 42)
+on the 28 GoEmotions probabilities per row, with groups under 200 rows merged (42 communities, 41 after merging). Arm K
+used E2's k-means at 41 clusters.
+
+*Table 3. Told and reader margins over the matched counterpart (R@1).*
+
+| Affect grouping | Groups | Told margin | e×s / e×g / s×g | Reader margin | Pick accuracy | Told vs R0 (paired) |
+|---|---|---|---|---|---|---|
+| R0: k-means | 64 | +1.14 [0.90, 1.41] | +1.14 / +2.62 / −0.33 | +0.14 [−0.04, 0.32] | 52.4% | baseline |
+| L: Leiden | 41 | +1.64 [1.37, 1.92] | +2.50 / +3.03 / −0.61 | +0.35 [0.15, 0.57] | 54.7% | +0.50 [0.25, 0.74] |
+| K: k-means | 41 | +1.10 [0.81, 1.40] | +1.48 / +2.48 / −0.65 | +0.16 [0.00, 0.33] | 51.3% | −0.04 [−0.22, 0.13] |
+
+At the same 41 groups Leiden beat k-means by +0.54 [0.31, 0.78] told, so the gain came from how Leiden groups the rows
+and the number of groups did not explain it. Leiden's groups were more emotion-coherent (pair lift 2.71 against 2.04 for K and 2.17 for
+R0), but through the heads the signal stayed small (1.145, 1.120 and 1.109). Most of the told gain came from emotion ×
+style, the weakest pair, whose margin doubled. The negative style × genre margins come from the fusion weights; that pair
+runs on the unchanged image grouping. By the plan's reading, L was promising (paired lower bound above 0 and a reader
+moving up), K not better. The controller re-derived the margins and paired differences from the stored per-anchor arrays
+and reran Leiden from scratch (same 42 communities).
+
+## 5. Sweep of the Leiden graph's k and resolution
+
+Plan `src/test/20261112_community_sweep/PLAN.md` (written before any number) fixed a 3 × 3 grid, graph k ∈ {10, 20, 40}
+by resolution ∈ {0.25, 1.0, 4.0} with `RBConfigurationVertexPartition`, a k-means control at every distinct group count,
+and a pick rule: the largest reader margin, ties within 0.05 to fewer groups. The k = 20, resolution 1.0 cell reproduced
+arm L exactly (ARI 1.0). Three CPU processes ran 9 Leiden cells and 8 k-means controls in 7 to 8.5 minutes each; every
+process first reproduced R0 and B.
+
+![Margins against the number of groups](../../assets/2026-11-12_partition_quality_leiden_communities/margins_vs_groups.png)
+
+*Figure 2. Told margin (left) and reader margin (right) against the number of affect groups, for the nine Leiden cells
+(coloured by graph k, slightly offset horizontally) and k-means at matched counts (grey, including R0 at 64). Bars are 95%
+intervals.*
+
+*Table 4. Group count, told margin and reader margin by cell (R@1).*
+
+| Graph k | Resolution 0.25 | Resolution 1.0 | Resolution 4.0 |
+|---|---|---|---|
+| groups, k = 10 / 20 / 40 | 15 / 14 / 15 | 44 / 41 / 31 | 118 / 95 / 88 |
+| told, k = 10 | +1.95 [1.67, 2.24] | +1.83 [1.54, 2.12] | +1.85 [1.57, 2.13] |
+| told, k = 20 | +1.70 [1.42, 1.98] | +1.64 [1.37, 1.92] | +1.68 [1.40, 1.95] |
+| told, k = 40 | +1.88 [1.58, 2.18] | +1.68 [1.40, 1.95] | +1.65 [1.38, 1.92] |
+| reader, k = 10 | +0.38 [0.17, 0.59] | +0.40 [0.18, 0.61] | +0.46 [0.23, 0.69] |
+| reader, k = 20 | +0.38 [0.18, 0.58] | +0.35 [0.15, 0.57] | +0.48 [0.25, 0.71] |
+| reader, k = 40 | +0.36 [0.16, 0.56] | +0.50 [0.30, 0.71] | +0.46 [0.23, 0.69] |
+
+- **Leiden against k-means at matched counts:** told +0.48 to +0.88 in all nine cells, every lower bound above 0; reader
+  +0.17 to +0.33, lower bound above 0 in six cells and between −0.02 and 0.00 in three. k-means stayed at +0.97 to +1.24
+  told and +0.14 to +0.18 reader at every count from 14 to 118.
+- **Flat in the settings:** all nine told margins lie inside each other's intervals, and so do the reader margins. The
+  cluster-level emotion lift rose with the group count (1.99 at 14 groups to 3.45 at 118), but the lift through the heads
+  stayed at 1.12 to 1.16, because head accuracy fell as groups multiplied (image head 21.2% at 14 groups, 4.8% at 118).
+- **Pick accuracy** stayed at 54.1 to 55.9% (R0 52.4%), so the reader's gain came from stronger evidence when it picked
+  right, and picking right more often did not account for it.
+- **The pick** (k = 40, resolution 1.0, 31 groups): reader margin +0.50 [0.30, 0.71], made of +1.44 condition gain for an
+  either-rate cost of −0.43 (N6 on R0: +0.79 for −0.51); told +1.68 [1.40, 1.95]. It is the first label-free configuration
+  whose development margin reaches +0.5. It is the maximum of nine cells and beats the untuned default by only +0.15
+  [−0.01, 0.31], so shrinkage on fresh seeds is expected; B′ (B rebuilt with the cell's averaged-heads term) was not
+  computed for it (for arm L, B′ was 18.44, below its counterpart). The reader now recovers 30% of the told margin,
+  against 12% for R0.
+
+*Sources: `src/test/20261111_community_told_oracle/` and `src/test/20261112_community_sweep/` (PLANs, logs, scripts);
+figure data `docs/reports/assets/2026-11-12_partition_quality_leiden_communities/figure_data.json`.*
+
+## 6. The groupings as a component: what is open
+
+The numbers above improved the affect grouping. The discussion that followed questioned the component as a whole.
+
+1. **The number of groups was never tested.** 64 first appears as the k-means setting of the "CLIP clusters" condition
+   source in stage (d) (`2026-10-13_candidate_a_stage_d_selection.md`); the affect grouping copied "the settings of the
+   image-cluster source" (`2026-10-18_candidate_a_affect_factor_learning_selection.md`), and E2 reused all three. We found
+   no stated reason for 64. Today's sweep is the first variation, and only for affect.
+2. **Every grouping uses the same number.** Nothing requires that; each grouping could have its own, chosen by a
+   criterion that does not read the evaluation labels.
+3. **Their quality was unknown before use.** They were judged after the fact by AMI with the evaluation labels (stage
+   report Table 4), and the told margin was the first functional test.
+4. **They are fixed.** Each is computed once from frozen features; the heads are trained once on them, the reader is a
+   rule, and nothing is trained end to end. Method A trained its factors on episode banks built from them, and a bank's
+   support pairs share a group by construction, while real same-emotion pairs share an affect cluster only 7.7% of the
+   time (3.5% for different emotions).
+5. **Groups do not interact.** Agreement counts only probability in the same group, so two sad clusters count as
+   unrelated; across groupings only fixed rules connect them (B averages, the reader takes the largest Δ).
+
+**Decision (user, 2026-10-05).** The grouping component is to be re-discussed in detail and reshaped before we return to
+the bars, the reader and the margins. The proposed robustness runs (several Leiden seeds for the picked and default
+cells; the fixed set R0, k-means at 31 and 41, Leiden at 41 and 31 on the spent episode seeds 45, 47 and 48) are on hold
+until then. A parallel discussion of improving the Leiden method and using it in factor learning was opened in a separate
+session.
+
+**Questions for that discussion.**
+- What should a grouping be judged on before it is used, without the evaluation labels (for example how well a lone image
+  and a lone caption can be placed in it, or how stable it is across seeds)?
+- One number of groups per grouping, chosen by that criterion, or a soft or hierarchical grouping?
+- Should groupings be learned or updated with the heads or the factors instead of fixed in advance?
+- Should sibling groups count as partial agreement (a group-to-group similarity in the agreement)?
+- Which grouping separates style from genre, and can the caption half be placed in the affect grouping by GoEmotions
+  itself instead of by a head?
+
+## 7. Limitations
+
+- One episode seed (42), reused many times; one Leiden seed and one head-fit draw per cell; the sweep's pick is the best
+  of nine.
+- The told mapping was chosen with the labels (from AMI); the profile reads evaluation labels on scorer-train and
+  selection rows and is descriptive only.
+- B's cross-fit was tuned on the same parity halves that the fusions reuse.
+- Emotion is labelled per viewer row and style and genre per painting, so the per-group numbers mix two label levels.
+- No result here was tested on fresh seeds.
