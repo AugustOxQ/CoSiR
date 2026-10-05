@@ -1,10 +1,12 @@
-# Pseudo-aspect groupings: how good they are, Leiden communities, and the open design question (DRAFT)
+# Pseudo-aspect groupings: how good they are, Leiden communities, and the first redesign steps (DRAFT)
 
-**Status: draft, exploratory.** Written 2026-10-05 from a working session. Every number is on the seed-42 development
-episodes (12,288 episodes, 4,602 anchor paintings), and none of it decides the GO. Intervals are 95% and resample anchor
-paintings (5,000 resamples). Run folders: `src/test/20261110_partition_profile/`, `src/test/20261111_community_told_oracle/`
-and `src/test/20261112_community_sweep/` (commit a6287af; result files gitignored). Figures and their data:
-`docs/reports/assets/2026-11-12_partition_quality_leiden_communities/`.
+**Status: draft, exploratory.** Written 2026-10-05 from a working session; Sections 7 to 10 added the same evening
+(redesign research, step 0 and step 1). Every number is on the seed-42 development episodes (12,288 episodes, 4,602
+anchor paintings), and none of it decides the GO. Intervals are 95% and resample anchor paintings (5,000 resamples). Run
+folders: `src/test/20261110_partition_profile/`, `src/test/20261111_community_told_oracle/` and
+`src/test/20261112_community_sweep/` (commit a6287af); `src/test/20261114_grouping_research/` (literature),
+`src/test/20261115_grouping_step0_checks/` and `src/test/20261116_grouping_step1_style/` (result files gitignored).
+Figures and their data: `docs/reports/assets/2026-11-12_partition_quality_leiden_communities/`.
 
 ## Summary
 
@@ -22,6 +24,19 @@ margin of +0.50 [0.30, 0.71], the development bar. The discussion then turned to
 number of groups was inherited and never tested, every grouping uses the same number, nobody knew whether they were good
 before they were used, they are fixed, and their groups do not interact. We decided to redesign that component before
 returning to the bars, the reader and the next experiments.
+
+The redesign began with a literature run (six scans and a synthesis) that ranked four designs by where the sources are
+merged and recommended the cheapest, one grouping per source (P0), as the first and control design. Three label-light
+checks followed (step 0). A label-free placeability score ranked Leiden above k-means at every matched count, as the told
+margins do, and was adopted for comparisons at one group count; counting sibling groups as related lifted the reader and
+its condition-free counterpart by the same half point, so the margin from reading stayed at +0.35; and the image head
+reaches half of the small painting-level ceiling for affect. Step 1 added a style grouping built from CSD style
+embeddings (hand-matched) or VGG-19 Gram statistics (generic). CSD gave the first grouping that matches style at least as
+well as genre and raised the told margin to +2.23 [1.93, 2.56], the highest so far, with a style × genre gain of +1.00
+[0.49, 1.51]; but the label-free reader fell to +0.06 [−0.15, 0.28], below a random fourth grouping (+0.25), because the
+extra grouping lifts the matched comparators and the reader picks CSD for genre conditions too. No arm reached the
+development bar. Of everything tried in P0, the CSD style grouping is the only change worth continuing, and only together
+with a reader fix (Section 10).
 
 ## 1. Where this started
 
@@ -61,6 +76,8 @@ external source that the paper must state (its labels name 6 of the 8 evaluation
 | matched counterpart | B plus the added term averaged over the two conditions, so it has the same ingredients but cannot follow the condition |
 | margin | R@1 of B plus the term (told or reader) minus R@1 of its matched counterpart: what reading the condition adds |
 | λ | the added term's weight relative to B (in the code a pair, (1 + λ_u) on z(B) and λ_a on z(term)), chosen on one parity half of the episodes and applied to the other (min-margin rule for the term, max R@1 for the counterpart) |
+| B′ | B rebuilt with the averaged-heads term of a configuration's own groupings (the condition-free bar extended by any new ingredient) |
+| bar margin | R@1 of the fused reader minus whichever of B′ and the matched counterpart has the larger R@1 (Sections 8 and 9); the development bar asks for at least +0.5 with a lower bound above 0 |
 
 The bars: the GO requires, on fresh seeds 49 to 51 pooled, R@1 and condition gain lower bounds above 0 against cosine,
 RCA, B and the matched counterpart. Because every fresh-seed test so far roughly halved the development margin, the
@@ -237,12 +254,197 @@ session.
 - Which grouping separates style from genre, and can the caption half be placed in the affect grouping by GoEmotions
   itself instead of by a head?
 
-## 7. Limitations
+## 7. The redesign: what the literature says and which designs we considered
+
+**How we decided.** In discussion the user added two further concerns: the sources were chosen to match the evaluation
+aspects (CLIP image, CLIP caption, GoEmotions), and no grouping holds a single property. The user's first idea was to
+fuse several sources into one structure and then split it into single-property groupings. We wrote a brief
+(`src/test/20261114_grouping_research/research_brief.md`) and ran an ARS deep-research pass of six parallel scans (three-way
+WHY/HOW/WHAT scans for threads 1 to 4, quick briefs for 5 and 6) and a synthesis (`synthesis.md` in the same folder). The
+scans verified each cited paper's existence; most were read at abstract level or through fetch summaries, so the
+theory results below need a human read before they enter a paper.
+
+**Designs**, named by where the sources are merged:
+
+| Design | Sources merged at | How the parts are separated | What is trained |
+|---|---|---|---|
+| P0 | not merged: one grouping per source | not needed | heads only |
+| L (late fusion) | groupings: the M groupings are kept and a small model refines them jointly | non-redundancy given the other groupings, placeability, staying close to the own source | a refinement model and heads |
+| G | graphs: one layer per source in a multiplex graph, one shared Leiden partition | which layers support each community | heads |
+| E | edges: every source's neighbour edges pooled and tagged by source | competing property heads, source tags, modality, non-redundancy | a two-tower trunk and heads |
+| consensus (dropped) | one fused partition | nothing records which source grouped which rows | |
+
+**What the literature contributed** (synthesis §1 to §4; reader-inferred where marked there).
+- No published method fuses several sources and then splits them while measuring that each part holds one property
+  (scan T1). The successes that recover several facets learn them jointly on properties that are independent or sampled
+  by attribute (MFCVAE, SCE-Net, DiscoverNet).
+- Identifiability results for image and text (Daunhawer et al., ICLR 2023, and related work; scan T2) recover the block of
+  factors both modalities share, not modality-specific factors. In our data the shared block is content; style is mostly
+  image-only and viewer-level emotion caption-only. An objective or a selection rule that rewards cross-modal
+  placeability therefore pulls groupings toward content.
+- Losses that reshape a representation and its groups without DEC exist (SCAN, TEMI, SwAV, IIC; scan T3), but the
+  cross-modal ones reward what image and caption share.
+- The best-supported style encoder not trained on WikiArt style labels is CSD (Somepalli et al. 2024, preprint; trained
+  on LAION-Styles); Gram statistics of an ImageNet VGG are the cleanest generic option (scan T4). Long-CLIP has low
+  priority because ArtEmis captions average 15.8 words.
+- The synthesis ranked P0 first (the control every fusion design needs, every part supported), then L, then G (its first
+  step is in effect the dropped consensus partition), then E (against the identifiability results, most expensive, and
+  overlapping factor learning).
+
+**Decisions (user, 2026-10-05).** Follow the synthesis order (checks first, then P0, then L); hand-matched sources first,
+then a fixed generic source menu written before their results; GoEmotions stays the affect source for now; the affect
+grouping is the Leiden default (graph k 20, resolution 1.0, 41 groups), because the sweep's pick was chosen by a reader
+margin on labelled episodes, which the rule that no grouping choice reads evaluation labels excludes; the decision point
+is 9 October, the date of the CVPR plan's go/no-go.
+
+## 8. Step 0: three label-light checks
+
+Plan `src/test/20261115_grouping_step0_checks/PLAN.md` (written before any number) and an addendum for check 0a
+(`ADDENDUM_0a.md`); log in the same folder. The controller re-derived every number below with its own code.
+
+**0a, the same-painting ceiling of the affect grouping.** A painting's rows share one image while each row's affect group
+comes from its own caption, so the image can only place a row as well as the painting's viewers agree. Two rows of the
+same painting share an affect group 1.54 times (k-means 64) and 1.65 times (Leiden) as often as rows of different
+paintings, against 1.00 for random relabellings of the same sizes; in absolute terms only about 6% of same-painting pairs
+share a group (13% for the caption grouping). The plan's first reading compared the image head's accuracy with a
+leave-one-out "painting majority" accuracy; that predictor ignores how common each group is (7.33% against 11.49% for
+always guessing k-means' largest group), so the reading was a design error and was replaced by the addendum. On the 5,231
+paintings the head never saw, the image head reaches **half of the calibrated ceiling** for both groupings:
+
+| Grouping | Ceiling R_u (perfect painting-level predictor) | Image head H | Share reached F = (H − 1)/(R_u − 1) | Random control |
+|---|---|---|---|---|
+| k-means 64 | 1.543 [1.483, 1.600] | 1.272 [1.259, 1.285] | 0.50 [0.46, 0.56] | 1.00 |
+| Leiden (41) | 1.652 [1.585, 1.722] | 1.327 [1.314, 1.342] | 0.50 [0.45, 0.56] | 1.00 |
+
+Reading: limited room. A better image head could move Leiden's ratio from 1.33 toward 1.65 at most.
+
+**0b, placeability as a label-free criterion.** Placeability is the adjusted mutual information between the image head's
+and the caption head's group assignments of the same row. It ranked each Leiden cell of the sweep above k-means at the
+same group count in 9 of 9 pairs (Leiden 0.038 to 0.073, k-means 0.035 to 0.043), the ordering the told margins give, so
+it was adopted. It also rises with the number of groups (0.038 at 14 groups, 0.073 at 118) while the told margins stay
+flat, so it can compare groupings only at one group count within one source.
+
+**0c, sibling-aware agreement.** Agreement p_imgᵀ S p_txt, with S the centred-centroid cosine similarity between groups,
+counts two sad clusters as related. Against plain agreement the margins did not move (told +0.02 [−0.26, 0.30], reader
+−0.01 [−0.25, 0.25]). S improved the reader on B from +0.41 to +0.89 R@1 and its pick accuracy from 54.7% to 58.9%, but it
+improved the condition-free counterpart by the same amount (+0.05 to +0.55; B′ 18.44 to 19.06): smoothing over siblings
+made the heads a better similarity in both uses, not a better reader. The plan's safety gate (same-row against random-pair
+separation) penalised smoothing by design and was not the right test; the "do not adopt" reading rests on the margins.
+
+## 9. Step 1: a style grouping beside affect, image and caption
+
+Plan `src/test/20261116_grouping_step1_style/PLAN.md` (written before any number); log in the same folder. The image
+grouping carries genre more than style (pair ratio 0.44 for style against genre; told gain on style × genre exactly 0),
+so a grouping in which style dominates is the only route to reading style × genre.
+
+**Features and groupings.** CSD ViT-L style embeddings (the authors' release, hash-checked) and VGG-19 Gram statistics
+(five layers, a 128-dimension PCA per layer, 640 dimensions) for the 61,402 painting images; Leiden at the default
+settings on one node per painting; a random grouping of CSD's sizes as the control for offering the reader a fourth
+option. Label-free diagnostics and one disclosed label description (computed after the arms; it chose nothing):
+
+| Grouping | Groups | Overlap with the CLIP image grouping (AMI) | Stability over Leiden seeds | AMI with style / genre | Style-vs-genre pair ratio |
+|---|---|---|---|---|---|
+| CLIP image k-means 64 (reference) | 64 | 1 | | 0.32 / 0.40 | 0.44 |
+| CLIP image Leiden (reference) | 17 | 0.57 | 0.74 | 0.28 / 0.44 | 0.43 |
+| **CSD** | 17 | 0.40 | 0.81 | **0.34 / 0.33** | **0.83** |
+| Gram | 11 | 0.22 | 0.67 | 0.14 / 0.19 | 0.77 |
+| random | 17 | 0.00 | | 0.00 / 0.00 | 1.00 |
+
+CSD carries something the CLIP image grouping does not (overlap 0.40, below the 0.57 of another clustering of the same
+CLIP features), is stable, and is the first grouping that matches style at least as well as genre; style still does not
+dominate (ratio below 1). Gram is new but weak on both labels.
+
+**Arms** (A0 is the Leiden affect grouping with the image and caption k-means groupings, which reproduced the
+told-oracle arm L exactly; the reader picks among the arm's groupings):
+
+| Arm | Told margin | Told on style × genre, minus A0 | Reader margin | Bar margin | Reader minus the random-slot arm |
+|---|---|---|---|---|---|
+| A0 (baseline) | +1.64 [1.37, 1.92] | | +0.35 [0.15, 0.57] | +0.31 [0.10, 0.53] | |
+| AR: + random grouping | +0.67 [0.40, 0.95] | +0.07 [−0.42, 0.57] | +0.25 [0.09, 0.42] | +0.16 [−0.02, 0.35] | |
+| A1: + CSD | **+2.23 [1.93, 2.56]** | **+1.00 [0.49, 1.51]** | +0.06 [−0.15, 0.28] | +0.01 [−0.23, 0.24] | −0.19 [−0.44, 0.04] |
+| A1s: + CSD, image head on CSD | +2.26 [1.94, 2.61] | +0.96 [0.42, 1.47] | −0.01 [−0.24, 0.22] | −0.01 [−0.26, 0.25] | −0.26 [−0.52, −0.01] |
+| A2: + Gram | +1.76 [1.45, 2.08] | +0.61 [0.08, 1.15] | −0.00 [−0.18, 0.17] | −0.04 [−0.25, 0.18] | −0.26 [−0.47, −0.05] |
+| A2s: + Gram, image head on Gram | +1.60 [1.26, 1.93] | +0.65 [0.09, 1.21] | +0.10 [−0.04, 0.23] | +0.10 [−0.04, 0.23] | −0.16 [−0.34, 0.02] |
+| A3: Leiden image and caption (descriptive) | +1.39 [1.09, 1.69] | | +0.04 [−0.20, 0.27] | +0.04 [−0.20, 0.27] | |
+
+![Step 1: told and reader margins, and the reader's picks under A1](../../assets/2026-11-12_partition_quality_leiden_communities/step1_told_reader.png)
+
+*Figure 3. (a) Told and reader margins over the matched counterpart for every step-1 arm, with 95% intervals. (b) Under
+A1, the share of rankings in which the reader picked each grouping, for four conditions; ✓ marks the grouping the told
+oracle uses.*
+
+**Readings** (plan §6). R1, the told oracle gains on style × genre: met by all four style arms. R2, the development bar:
+met by none. R3, better than a random fourth grouping: met by none. Under the plan no fresh-seed test was built.
+
+**Why the told margin rose and the reader fell.** Told "style goes to CSD, genre goes to image", the oracle no longer reads
+style from a genre-dominated grouping, and its style × genre margin rose from −0.61 to +0.39. The label-free reader picks
+the grouping with the largest Δ (support-pair agreement minus contrast-pair agreement) and fails in two ways.
+1. *A coarse extra grouping wins when the right signal is weak.* Seventeen large groups give large agreement values, so
+   Δ swings widely by chance. The random grouping, which carries nothing, was picked in 27% to 35% of emotion conditions
+   and 37% of style × genre style conditions, where the right grouping's Δ is weak, against 11% of emotion × style style
+   conditions and 5% to 7% of genre conditions, where the image grouping's Δ is strong. The extra grouping also lifts the matched comparators (A1: B′ − B +0.46), so what it adds as a condition-free
+   similarity does not count as reading.
+2. *CSD looks like "the visual grouping" for both style and genre.* Because CSD follows genre about as much as style, the
+   support pairs of a genre condition agree on it too, and its coarse groups beat the 64-group image grouping on Δ. Under
+   A1 the reader picked CSD in 73.5% of emotion × style style conditions (correct), but also in 70.5% of emotion × genre
+   genre conditions, where the image grouping is correct (15.8%), and in 55.0% of style × genre genre conditions; under
+   style × genre style conditions CSD's Δ is about zero (pair ratio 0.83) and the reader drifted to affect (45.8%).
+
+## 10. Where the grouping component stands: what to continue
+
+**Design status.**
+
+| Design | Status | What was tested | Result |
+|---|---|---|---|
+| P0 | partly tested | Leiden against k-means for affect (Sections 4, 5) | Leiden better at every matched count |
+| | | sibling-aware agreement (step 0c) | lifts the reader and its counterpart equally; no reading gain |
+| | | placeability as a criterion (step 0b) | adopted, at one group count within one source |
+| | | image-side affect ceiling (step 0a) | the head reaches half of a small ceiling |
+| | | style grouping from CSD or Gram (step 1) | told up (+2.23 for CSD), reader about 0; bar not reached |
+| | | Leiden for image and caption (step 1, A3) | worse (reader −0.32 against A0) |
+| L | not tested | | |
+| G | not tested | the synthesis reduced it to a quick dominance diagnostic, not run | |
+| E | not tested | the synthesis proposed moving it to the factor-learning discussion | |
+| consensus | dropped | by reasoning and the percept line's union graph | |
+
+**Checklist for P0.**
+
+| Item | Continue? | Reason |
+|---|---|---|
+| Leiden affect grouping (default, 41 groups) | keep, as the base | beat k-means at every group count |
+| CSD style grouping | **yes, together with a reader fix** | the only change that raised the ceiling (told +2.23 against +1.64; style × genre +1.00) |
+| Gram style grouping | drop for now | weak on both labels; a later generic reference |
+| sibling-aware agreement | stop | lifts the reader and its control equally |
+| image-side affect head work | stop (low priority) | half of a small ceiling is already reached |
+| Leiden for image and caption | stop | made the reader worse |
+
+**Why this continuation has the best chance, and how good the chance is.** Against the larger of B′ and the matched
+counterpart, the told term with CSD leaves a ceiling of +2.23 R@1 (A0: +1.64); the development bar of +0.5 needs a reader
+that recovers a little under a quarter of it. A0's reader recovered about a fifth of its ceiling (+0.31 of +1.64), and
+with CSD added the reader recovers nothing (+0.01 of +2.23). The first fix of the reader
+handoff targets the failure seen here: dividing each grouping's Δ by its own spread removes the advantage of coarse
+groupings, needs no labels and runs in minutes on CPU. The chance is moderate at best: every fresh-seed test so far
+roughly halved the development margin, and CSD's genre content (pair ratio 0.83) may still confuse a well-scaled reader.
+That second problem is the one design L addresses (non-redundancy given the image grouping would remove what CSD shares
+with it).
+
+**Open decision for 9 October (user).** (a) Lift the hold on the reader and fix it with the CSD grouping in the set; or
+(b) continue the grouping redesign with design L. A change of course to the benchmark or analysis paper is not on the
+table now.
+
+## 11. Limitations
 
 - One episode seed (42), reused many times; one Leiden seed and one head-fit draw per cell; the sweep's pick is the best
   of nine.
 - The told mapping was chosen with the labels (from AMI); the profile reads evaluation labels on scorer-train and
-  selection rows and is descriptive only.
+  selection rows and is descriptive only. Step 1's told mapping (style to the style grouping) was fixed in its plan
+  before any number.
 - B's cross-fit was tuned on the same parity halves that the fusions reuse.
 - Emotion is labelled per viewer row and style and genre per painting, so the per-group numbers mix two label levels.
+- Two step-0 rules were design errors, both disclosed above: the leave-one-out reading of 0a (replaced by the addendum)
+  and the instance-level gate of 0c.
+- CSD starts from a CLIP model and was trained on web images; overlap of its training images with our paintings cannot
+  be ruled out. Its labels contain no WikiArt style annotations.
+- The literature run read most papers at abstract level or through fetch summaries; the identifiability results need a
+  human read before they are cited.
 - No result here was tested on fresh seeds.

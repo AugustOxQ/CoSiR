@@ -1,0 +1,157 @@
+{
+ "source": {
+  "style": "src/test/20261116_grouping_step1_style/results/step1_eval_style.json",
+  "descriptive": "src/test/20261116_grouping_step1_style/results/step1_eval_descriptive.json",
+  "plan_sha256": "b00a4a7aa796957addc232dd92e1b1579306f8b312748a36ac1479331f8b0520"
+ },
+ "margins": [
+  {
+   "arm": "A0",
+   "label": "A0: today (affect L, image, caption)",
+   "told": [
+    1.641845703125,
+    1.3704182535377485,
+    1.9179153733531167
+   ],
+   "reader": [
+    0.35400390625,
+    0.14637657008472774,
+    0.5663906354775172
+   ]
+  },
+  {
+   "arm": "AR",
+   "label": "AR: + random 4th grouping",
+   "told": [
+    0.6693522135416667,
+    0.4011138785864822,
+    0.9521341564981828
+   ],
+   "reader": [
+    0.25431315104166663,
+    0.09450883220133734,
+    0.4229535922289193
+   ]
+  },
+  {
+   "arm": "A1",
+   "label": "A1: + CSD style grouping",
+   "told": [
+    2.23388671875,
+    1.931715027314252,
+    2.56416961303361
+   ],
+   "reader": [
+    0.06306966145833334,
+    -0.15428154378387002,
+    0.2800853321558147
+   ]
+  },
+  {
+   "arm": "A1s",
+   "label": "A1s: + CSD, CSD image head",
+   "told": [
+    2.262369791666667,
+    1.9438276755365562,
+    2.614274544621377
+   ],
+   "reader": [
+    -0.008138020833333332,
+    -0.23692955669642213,
+    0.22193270638838175
+   ]
+  },
+  {
+   "arm": "A2",
+   "label": "A2: + Gram style grouping",
+   "told": [
+    1.7618815104166667,
+    1.4520051975731327,
+    2.08113154943561
+   ],
+   "reader": [
+    -0.002034505208333333,
+    -0.18300169706491357,
+    0.17017867271695952
+   ]
+  },
+  {
+   "arm": "A2s",
+   "label": "A2s: + Gram, Gram image head",
+   "told": [
+    1.59912109375,
+    1.2646263268562323,
+    1.9309259745456795
+   ],
+   "reader": [
+    0.09765625,
+    -0.040981172013563626,
+    0.23485885374219165
+   ]
+  },
+  {
+   "arm": "A3",
+   "label": "A3: Leiden image and caption",
+   "told": [
+    1.3875325520833335,
+    1.087206364674454,
+    1.6921359730602652
+   ],
+   "reader": [
+    0.03865559895833333,
+    -0.19771829045324654,
+    0.2723251935612529
+   ]
+  }
+ ],
+ "A1_picks": [
+  {
+   "pair": "emotion__style",
+   "condition": "b",
+   "aspect": "style",
+   "correct": "style_csd",
+   "shares": {
+    "affect": 7.3486328125,
+    "image": 9.375,
+    "caption": 9.7900390625,
+    "style_csd": 73.486328125
+   }
+  },
+  {
+   "pair": "emotion__genre",
+   "condition": "b",
+   "aspect": "genre",
+   "correct": "image",
+   "shares": {
+    "affect": 4.296875,
+    "image": 15.8203125,
+    "caption": 9.3994140625,
+    "style_csd": 70.4833984375
+   }
+  },
+  {
+   "pair": "style__genre",
+   "condition": "a",
+   "aspect": "style",
+   "correct": "style_csd",
+   "shares": {
+    "affect": 45.849609375,
+    "image": 7.421875,
+    "caption": 16.552734375,
+    "style_csd": 30.17578125
+   }
+  },
+  {
+   "pair": "style__genre",
+   "condition": "b",
+   "aspect": "genre",
+   "correct": "image",
+   "shares": {
+    "affect": 9.521484375,
+    "image": 20.41015625,
+    "caption": 15.1123046875,
+    "style_csd": 54.9560546875
+   }
+  }
+ ]
+}
