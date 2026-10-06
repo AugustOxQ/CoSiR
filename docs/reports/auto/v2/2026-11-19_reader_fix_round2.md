@@ -38,7 +38,7 @@ R1's fused reader is round-1 R-c exactly (fused R@1 18.919, paired difference 0.
 1's cells, so the top-k restriction never entered the fused score. Its +0.028 [−0.002, +0.059] over round-1 R-c came
 entirely from its counterpart, whose half-1 pick moved to a top-k cell that scored 7 more hits on its tune half and
 0.057 R@1 less on the other half. Both reader fixes lowered the bar margin against R1: R2 by −0.356 [−0.612, −0.106] and
-R3 by −0.395 [−0.641, −0.146] (R1 is round 1's seed-42 winner, so part of its lead (round 1 estimated 0.1 to 0.15 R@1 for its best-of-seven choice) may be selection inflation; the sign holds in the in-sample comparison at equal freedom.). R2 became more confident (mean top probability 0.694 to 0.757) and less accurate (pick
+R3 by −0.395 [−0.641, −0.146] R1 is round 1's seed-42 winner, so part of its lead may be selection inflation (round 1 estimated 0.1 to 0.15 R@1 for its best-of-seven choice); the sign holds in the in-sample comparison at equal freedom. R2 became more confident (mean top probability 0.694 to 0.757) and less accurate (pick
 accuracy 51.3% to 47.2%), mostly by moving picks to the caption grouping, which no aspect maps to. R3 picked the told
 grouping more often than any A0 reader so far (55.7%, against R1's 51.3% and the step-1 arg-max reader's 54.7%), yet had
 the lowest bar margin: its probabilities were flatter and changed less between the two conditions, so its weighted term
@@ -367,7 +367,7 @@ The tune-half advantages were 2 to 11 rankings of 24,576 on the tune-half criter
 every time. Allowing k_top < 13 changed the bar margin by +0.028 [−0.002, +0.059] for R1 (through its
 counterpart), −0.057 [−0.121, +0.006] for R2 and −0.153 [−0.240, −0.062] for R3. Restricted to the k_top 13 cells, R2
 would have reached +0.173 [−0.022, +0.369] and R3 +0.230 [+0.047, +0.413] against B′, both still far from +0.5 and below
-R1. Over all 896 cells, in sample, the best fused cell was a k_top 13 cell for
+R1. Over all 896 cells, in sample on all 12,288 seed-42 episodes (no cross-fit), the best fused cell was a k_top 13 cell for
 every reader (cells 117, 67 and 167), and the best restricted cell was lower (18.976, 18.683 and 18.728 against 19.116,
 18.703 and 18.766).
 
