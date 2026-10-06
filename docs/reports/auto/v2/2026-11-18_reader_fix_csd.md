@@ -588,7 +588,9 @@ pre-registered rule. The whole-branch final review has run (§5) and confirmed t
   comparators (Table 2). The gain is there (every gain statistic has a lower bound above 0, up to +2.667), but measured
   against the bar comparator at least half of it went back in either rate for every candidate.
 - *Where the loss sits.* On the two emotion pairs the strongest readers were above +0.5; on style × genre every A0 and
-  A1 reader was below 0. The grouping report names CSD's genre overlap as the problem design L addresses.
+  A1 reader was below 0. There the readers gained little and paid about the same either cost as on emotion × genre
+  (R-c: gain +1.788 against +5.249, either change −2.985 against −2.808; §4.5). The grouping report names CSD's genre
+  overlap as the problem design L addresses.
 - *The CSD question.* Under no reader was A1's bar margin clearly above A0's (largest difference +0.037 [−0.238,
   +0.318]); the told ceiling with CSD (+2.23) is unused.
 
