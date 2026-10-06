@@ -4,6 +4,7 @@
     /root/miniconda3/envs/CoSiR/bin/python -m pytest src/test/20261121_round3_affect_gate/test_r3_fusion.py -q -p no:cacheprovider
 Each guard has a test that fails when the guard is deleted (mutations are listed in the task report)."""
 import sys
+import warnings
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -237,6 +238,21 @@ def test_score_frozen_applies_cell_of_tune_half_to_other_half():
     assert RF.describe(39)["tau_index"] == 0 and RF.describe(39)["lambda_u"] == 4.0
 
 
+def test_open_shares_are_integer_counts_over_E_in_float64():
+    E = 12288
+    a = np.zeros(E, np.float32)
+    a[:9941] = 1
+    b = np.zeros(E, np.float32)
+    b[:3627] = 1
+    g = [{"a": a, "b": b} for _ in range(4)]
+    s = RF.open_shares(g, np.arange(E) % 3)["tau_0"]
+    assert s["open_count"] == {"a": 9941, "b": 3627} and s["n_episodes"] == E
+    assert s["a"] == 100.0 * 9941 / E == 80.90006510416667
+    assert s["a"] != 80.90006709098816                              # not the float32 mean
+    assert s["overall"] == 100.0 * (9941 + 3627) / (2 * E)
+    assert sum(v["a"] for v in s["per_pair_open_count"].values()) == 9941
+
+
 def test_open_shares_label_free_counts():
     pair_index = np.arange(12) % 3
     g = [{c: np.ones(12, np.float32) for c in CONDITIONS} for _ in range(4)]
@@ -247,15 +263,17 @@ def test_open_shares_label_free_counts():
 
 # ---------------------------------------------------------------- reader (injected half-readers)
 
-def fake_readers(seed=0):
+def fake_readers(seed=0, names=None):
     rng = np.random.default_rng(seed)
     halves = []
     for _ in range(2):
         X = rng.normal(size=(300, 18))
         y = rng.integers(0, 3, size=300)
         sc = StandardScaler().fit(X)
-        halves.append({"scaler": sc, "model": LogisticRegression(max_iter=200).fit(sc.transform(X), y)})
-    return {"halves": halves}
+        with warnings.catch_warnings():            # scipy's L-BFGS-B disp/iprint deprecation inside sklearn's fit
+            warnings.filterwarnings("ignore", message=".*disp.*iprint.*", category=DeprecationWarning)
+            halves.append({"scaler": sc, "model": LogisticRegression(max_iter=200).fit(sc.transform(X), y)})
+    return {"halves": halves, "feature_names": R.rf.feature_names(R.A0) if names is None else names}
 
 
 def test_reader_matches_manual_computation_and_never_uses_smoke(monkeypatch):
@@ -284,6 +302,48 @@ def test_reader_matches_manual_computation_and_never_uses_smoke(monkeypatch):
     monkeypatch.setattr(RF.rb, "load_readers", fake_load)
     RF.reader(bundle)
     assert calls == [("A0", False)]
+
+
+def test_reader_refuses_another_feature_layout():
+    rng = np.random.default_rng(21)
+    bundle = SimpleNamespace(F={c: rng.normal(size=(5, 18)) for c in CONDITIONS},
+                             stack={d: rng.normal(size=(5, 3, 13)).astype(np.float32) for d in DIRECTIONS})
+    with pytest.raises(AssertionError, match="feature layout"):
+        RF.reader(bundle, readers=fake_readers(names=list(reversed(R.rf.feature_names(R.A0)))))
+
+
+def test_fused_only_has_no_counterpart_quantity_and_does_not_select_it(monkeypatch):
+    bundle = make_bundle(40, seed=22)
+    T = make_T(40, seed=23)
+    P, m, pick = make_margins(40, seed=24)
+    gates = RF.gates_r1(m, R.TAUS)
+
+    def boom(*a, **k):
+        raise AssertionError("select_cf called")
+    monkeypatch.setattr(RF.F, "select_cf", boom)
+    fo = RF.run_family(bundle, T, gates, fused_only=True)
+    assert fo["cpick"] is None and fo["cf"] is None
+    assert set(fo["details"]) == {"fused"}
+    assert all("counterpart" not in k for k in fo) and "counterpart" not in str(fo["details"]).lower()
+    monkeypatch.undo()
+    full = RF.run_family(bundle, T, gates)
+    assert fo["fpick"] == full["fpick"] and fo["details"]["fused"] == full["details"]["fused"]
+    assert "counterpart" in full["details"]
+
+
+def test_cells_must_be_in_range():
+    bundle = make_bundle(40, seed=25)
+    T = make_T(40, seed=26)
+    P, m, pick = make_margins(40, seed=27)
+    g = RF.gates_r1(m, R.TAUS)
+    for bad in ((224, 0), (0, -1)):
+        with pytest.raises(ValueError):
+            RF.score_frozen(bundle, T, g, bad, (0, 0))
+        with pytest.raises(ValueError):
+            RF.score_frozen(bundle, T, g, (0, 0), bad)
+    with pytest.raises(ValueError):
+        RF.score_frozen(bundle, T, g, {0: 5}, (0, 0))
+    RF.score_frozen(bundle, T, g, (0, 223), {0: 223, 1: 0})
 
 
 # ---------------------------------------------------------------- statistics
@@ -385,7 +445,8 @@ def test_sensitivity_recovers_variance_components_and_formula():
     rng = np.random.default_rng(18)
     P_, m, s_a2, s_e2 = 100_000, 3, 4.0, 9.0
     cl = np.repeat(np.arange(P_), m)
-    diff = rng.normal(0, np.sqrt(s_a2), size=P_)[cl] + rng.normal(0, np.sqrt(s_e2), size=len(cl))
+    pp = rng.normal(0, np.sqrt(s_a2), size=P_)[cl] + rng.normal(0, np.sqrt(s_e2), size=len(cl))
+    diff = pp / 100.0                                              # per-anchor fractions in; percentage points out
     r = RS.sensitivity(diff, cl)
     assert r["sigma_a2"] == pytest.approx(s_a2, rel=0.05) and r["sigma_e2"] == pytest.approx(s_e2, rel=0.05)
     n = len(cl)
@@ -394,8 +455,12 @@ def test_sensitivity_recovers_variance_components_and_formula():
     assert r["half_width"] == pytest.approx(1.96 * r["SE"], rel=1e-12)
     assert r["x"] == pytest.approx(2.80 * r["SE"], rel=1e-12)
     assert r["n0"] == pytest.approx(3.0, rel=1e-3)
-    ci = cluster_bootstrap(diff, cl)["ci95"]
-    assert r["seed42_half_width"] == 0.5 * (ci[1] - ci[0])
+    ci = C.point_ci(diff, cl)["ci95"]                              # pp
+    assert r["seed42_half_width"] == pytest.approx(0.5 * (ci[1] - ci[0]), rel=1e-12)
+    # known case: a constant-variance fraction difference gives SE in pp (x100 of the fraction-unit value)
+    r_frac = RS.sensitivity(diff[:3000], cl[:3000])
+    r_pp = RS.sensitivity(diff[:3000] * 100.0, cl[:3000])          # pre-scaled input would be 100x too large again
+    assert r_pp["SE"] == pytest.approx(100.0 * r_frac["SE"], rel=1e-12)
 
 
 def test_sensitivity_clamps_negative_between_component_to_zero():

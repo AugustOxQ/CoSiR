@@ -86,15 +86,16 @@ def bar_info_pooled(per_seed) -> tuple:
 
 
 def sensitivity(diff, cl) -> dict:
-    """Rule 6.1 on one seed's per-episode paired difference `diff` (any unit; pass percentage points to read pp),
-    clustered by anchor painting `cl`.
+    """Rule 6.1 on one seed's per-episode paired difference `diff` (per-anchor FRACTIONS, as pooled_check takes them;
+    scaled by 100 inside), clustered by anchor painting `cl`. SE, half_width, x, seed42_half_width, sigma_a2 and
+    sigma_e2 are in PERCENTAGE POINTS (sigma_*2 in pp squared).
 
     One-way decomposition: sigma_e2 = within-painting mean square; sigma_a2 = max(0, (between MS - sigma_e2) / n0),
     n0 = (n - sum_p m_p^2 / n) / (P - 1). Projected pooled SE over three seeds:
     SE^2 = (sigma_a2 * (9 sum_p m_p^2 - 6 n) + sigma_e2 * 3 n) / (3 n)^2.
     -> {"SE", "half_width" (1.96 SE), "x" (2.80 SE), "seed42_half_width" (half the width of this difference's own 95%
     painting-bootstrap interval), "sigma_a2", "sigma_e2", "n0", "n", "P"}."""
-    d = np.asarray(diff, dtype=np.float64)
+    d = 100.0 * np.asarray(diff, dtype=np.float64)
     _, idx = np.unique(np.asarray(cl), return_inverse=True)
     n, P = len(d), int(idx.max()) + 1
     if P < 2 or n <= P:
@@ -111,7 +112,7 @@ def sensitivity(diff, cl) -> dict:
     sig_a2 = max(0.0, (msb - sig_e2) / n0)
     se2 = (sig_a2 * (9 * sum_m2 - 6 * n) + sig_e2 * 3 * n) / (3 * n) ** 2
     se = float(np.sqrt(se2))
-    ci = cluster_bootstrap(d, cl)["ci95"]   # same unit as diff (the bootstrap of the mean)
+    ci = cluster_bootstrap(d, cl)["ci95"]   # pp, as d is
     return {"SE": se, "half_width": Z_HALF * se, "x": K_DETECT * se,
             "seed42_half_width": 0.5 * (ci[1] - ci[0]), "sigma_a2": float(sig_a2), "sigma_e2": float(sig_e2),
             "n0": float(n0), "n": int(n), "P": P}

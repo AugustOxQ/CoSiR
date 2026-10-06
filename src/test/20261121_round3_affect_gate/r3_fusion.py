@@ -28,6 +28,8 @@ def reader(bundle, readers=None):
     readers: the pickle dict of rb.load_readers (injected by tests); default rb.load_readers("A0", False), never smoke."""
     if readers is None:
         readers = rb.load_readers("A0", False)[0]
+    if readers["feature_names"] != rf.feature_names(R.A0):
+        raise AssertionError("the readers were trained on another feature layout")
     P = {c: rf.average_probs(rbe.half_reader_probs(readers, bundle.F[c], N_GROUPINGS)) for c in CONDITIONS}
     for c in CONDITIONS:
         if not np.allclose(P[c].sum(axis=1), 1.0, rtol=0, atol=1e-12):
@@ -79,16 +81,24 @@ def gates_random(g_r1, share, rng_seed, n):
 
 
 def open_shares(gates, pair_index):
-    """Label-free open shares (percent) per tau index: overall, per condition, per aspect pair."""
+    """Label-free open counts and shares per tau index. Integer counts are primary (rule 5 item 3 compares counts);
+    shares (percent) are count / episodes in float64, never a float32 mean."""
     pair_index = np.asarray(pair_index)
     out = {}
     for k, g in enumerate(gates):
+        E = len(g["a"])
+        cnt = {c: open_count(g, c) for c in CONDITIONS}
+        pp_cnt, pp = {}, {}
+        for i, p in enumerate(C.POOLED_ORDER):
+            msk = pair_index == i
+            e_i = int(msk.sum())
+            pp_cnt[p] = {c: int(np.count_nonzero(np.asarray(g[c])[msk])) for c in CONDITIONS}
+            pp[p] = 100.0 * (pp_cnt[p]["a"] + pp_cnt[p]["b"]) / (2 * e_i) if e_i else float("nan")
         out[f"tau_{k}"] = {
-            "overall": 100 * float(np.mean(np.concatenate([g["a"], g["b"]]))),
-            "a": 100 * float(np.mean(g["a"])), "b": 100 * float(np.mean(g["b"])),
-            "open_count": {c: open_count(g, c) for c in CONDITIONS},
-            "per_pair": {p: 100 * float(np.mean(np.concatenate([g["a"][pair_index == i], g["b"][pair_index == i]])))
-                         for i, p in enumerate(C.POOLED_ORDER)}}
+            "open_count": cnt, "n_episodes": E,
+            "overall": 100.0 * (cnt["a"] + cnt["b"]) / (2 * E),
+            "a": 100.0 * cnt["a"] / E, "b": 100.0 * cnt["b"] / E,
+            "per_pair_open_count": pp_cnt, "per_pair": pp}
     return out
 
 
@@ -102,17 +112,19 @@ def _terms(bundle, T, gates):
 
 
 def _as_picks(cells):
-    if isinstance(cells, dict):
-        return {int(h): int(c) for h, c in cells.items()}
-    return {h: int(c) for h, c in enumerate(cells)}
+    picks = ({int(h): int(c) for h, c in cells.items()} if isinstance(cells, dict)
+             else {h: int(c) for h, c in enumerate(cells)})
+    if sorted(picks) != [0, 1] or not all(0 <= c < N_CELLS for c in picks.values()):
+        raise ValueError(f"cells must be one per tune half, each in 0..{N_CELLS - 1}: {picks}")
+    return picks
 
 
 def run_family(bundle, T, gates, fused_only=False):
     """The 224 cells of one gate set. Integer cross-fits (round 2's): control sigma* by tune half, min-margin fused pick,
     max-R@1 counterpart pick (ties to the lowest cell number, integer sums). -> {"fpick", "cpick" (None if fused_only),
     "sigma" {half: sigma*}, "fused" per-anchor dict, "cf" per-anchor dict (None if fused_only), "details"}.
-    The counterpart's statistics are computed in the same pass either way; with fused_only it is not selected or
-    assembled."""
+    The counterpart's per-cell statistics are computed in the same pass either way; with fused_only the counterpart is
+    not cross-fitted, assembled or reported (no cpick, no cf, no counterpart field in details)."""
     if len(gates) != F.N_TAU:
         raise ValueError(f"{len(gates)} gate sets, expected {F.N_TAU}")
     parity = np.asarray(bundle.parity)
@@ -125,8 +137,16 @@ def run_family(bundle, T, gates, fused_only=False):
     fpick = F.select_fused(fri, fgi, ctrl, parity)
     fused = F.assemble(zB, info, gated, fpick, parity)
     C._assert_finite(fused, "fused")
-    cpick = F.select_cf(cri, parity)
-    details = F.pick_details(fri, fgi, cri, ctrl, parity, fpick, cpick)
+    if fused_only:                      # rule 6.4: the counterpart is not cross-fitted, assembled or written
+        details = {"fused": {}}
+        for h in (0, 1):
+            tune = F.tune_mask(parity, h)
+            details["fused"][str(h)] = {"rho": int(fri[fpick[h]][tune].sum(dtype=np.int64)),
+                                        "gamma": int(fgi[fpick[h]][tune].sum(dtype=np.int64)),
+                                        "rho_ctrl": int(ctrl[h][1]), "n_tune": int(tune.sum())}
+    else:
+        cpick = F.select_cf(cri, parity)
+        details = F.pick_details(fri, fgi, cri, ctrl, parity, fpick, cpick)
     out = {"fpick": fpick, "cpick": None, "sigma": {h: ctrl[h][0] for h in (0, 1)}, "fused": per_anchor(fused),
            "cf": None, "details": details, "ctrl": {h: {"sigma": ctrl[h][0], "rho_ctrl": ctrl[h][1]} for h in (0, 1)}}
     if not fused_only:
