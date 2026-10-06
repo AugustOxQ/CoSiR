@@ -17,14 +17,18 @@ The two quick-check modules named run_checks: this file loads src/test/20261108_
 by path (importlib) under the name run_checks, which is the module run_n6, run_told_oracle and round 1's run_step1 all
 import under that name; a different module already registered as run_checks stops the import.
 
-Dry check on seed 42 (writes only to results/smoke/; prints only PASS/FAIL lines; redirect the output to a log, since
-round 1's load_bundle logs step-1 values):
+Dry check on seed 42 (writes only to results/smoke/). Its output is CHECK <name> PASS|FAIL lines, the final
+R3_BUNDLE_DRY42 line and r3_bundle's own progress lines (counts, shapes, seconds). compare_with_round1 discards
+everything round 1's load_bundle and run_sweep.setup print, so no seed-42 value appears (rule §10); exceptions still
+propagate:
     CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1 \
     /root/miniconda3/envs/CoSiR/bin/python src/test/20261121_round3_affect_gate/r3_bundle.py --dry-check-42 \
         > src/test/20261121_round3_affect_gate/results/smoke/r3_bundle_dry42.log 2>&1
 """
 import argparse
+import contextlib
 import importlib.util
+import io
 import json
 import sys
 import time
@@ -331,6 +335,15 @@ def affect_least_redundant(red) -> bool:
 
 # ---------------------------------------------------------------- §5 item 1: seed 42 against round 1
 
+@contextlib.contextmanager
+def _quiet():
+    """Discard stdout and stderr of round-1 / step-1 code: round 1's load_bundle and run_sweep.setup print seed-42
+    margin values, which rule §10 keeps out of every console and log. Exceptions propagate unchanged."""
+    sink = io.StringIO()
+    with contextlib.redirect_stdout(sink), contextlib.redirect_stderr(sink):
+        yield
+
+
 class BundleMismatch(AssertionError):
     """compare_with_round1 found a difference; ``result`` holds every check's pass or fail."""
 
@@ -348,8 +361,11 @@ def compare_with_round1(bundle, r1=None) -> dict:
     "all_pass"}; raises BundleMismatch (an AssertionError carrying the same dict) on any failure."""
     if bundle.seed != 42 or bundle.smoke or bundle.ctx is None:
         raise ValueError("compare_with_round1 takes the freshly built non-smoke seed-42 bundle only")
-    if r1 is None:
-        r1 = C.load_bundle(smoke=False)       # asserts round 1's rule, inputs and the step-1 arrays itself
+    with _quiet():                            # round 1 prints seed-42 margins; discarded (rule §10)
+        if r1 is None:
+            r1 = C.load_bundle(smoke=False)   # asserts round 1's rule, inputs and the step-1 arrays itself
+        st1 = C.grouping_stack(r1.post, r1.ctx.pooled, A0)
+        F1, _ = rbe.seed42_features(r1, A0)
     checks = {}
 
     def same(name, x, y, nan=False):
@@ -380,10 +396,8 @@ def compare_with_round1(bundle, r1=None) -> dict:
     for h in A0:
         for side in ("img", "txt"):
             same(f"post.{h}.{side}", bundle.post[h][side], r1.post[h][side], nan=True)
-    st1 = C.grouping_stack(r1.post, ep1, A0)
     for d in DIRECTIONS:
         same(f"stack.{d}", bundle.stack[d], st1[d])
-    F1, _ = rbe.seed42_features(r1, A0)
     for c in CONDITIONS:
         same(f"features.{c}", bundle.F[c], F1[c])
     checks["affect_head"] = json.loads(json.dumps(bundle.affect_head)) == json.loads(json.dumps(r1.affect_head))
@@ -507,6 +521,10 @@ def dry_check_42() -> bool:
         res = compare_with_round1(bundle)
     except BundleMismatch as e:
         res = e.result
+    except BaseException as e:                # round 1's own stop (SystemExit, AssertionError, ...): marker, re-raise
+        print(f"CHECK compare_with_round1 FAIL ({type(e).__name__})", flush=True)
+        print("R3_BUNDLE_DRY42 FAIL", flush=True)
+        raise
     for k, v in res["checks"].items():
         print(f"CHECK {k} {'PASS' if v is True else 'FAIL'}", flush=True)
     cache = out_dir / "r3_bundle_dry42_cache.npz"

@@ -14,8 +14,10 @@ Two kinds of test:
 Every assertion on real data asserts a plain bool with a message, so a failure prints no array or metric value.
 """
 import builtins
+import contextlib
 import io
 import json
+import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -214,6 +216,88 @@ def _cache_refusals_of_bad_arrays(bad):
     assert not bad.exists()
 
 
+def mini_seed42_pair(n=6, rows=40, seed=0):
+    """A synthetic seed-42 bundle and an identical stand-in for round 1's load_bundle() (real round-1 functions on
+    small arrays): every round-1 comparison passes; D7's values cannot equal the rule's, so compare_with_round1 must
+    raise BundleMismatch naming exactly the six redundancy checks."""
+    from src.eval.aspect_episodes import AspectEpisodes
+    rng = np.random.default_rng(seed)
+
+    def idx(*shape):
+        return rng.integers(0, rows, size=shape).astype(np.int64)
+
+    def soft(k):
+        x = rng.random(size=(rows, k)).astype(np.float32)
+        return (x / x.sum(axis=1, keepdims=True)).astype(np.float32)
+
+    ep = AspectEpisodes("mixed", "mixed", idx(n), idx(n, 13), idx(n, 4), idx(n, 4), idx(n, 4), idx(n, 4))
+    post = {h: {"img": soft(k), "txt": soft(k)} for h, k in zip(A0, (5, 6, 6))}
+    b = fake_bundle(n=n, seed=42, smoke=False, rng_seed=seed + 1)
+    b.parity = (np.arange(n) % 2).astype(np.int64)
+    b.anchor, b.post = ep.anchor, post
+    b.stack = R3.C.grouping_stack(post, ep, A0)
+    b.F, _ = R3.rbe.seed42_features(SimpleNamespace(ctx=SimpleNamespace(pooled=ep), post=post), A0)
+    b.ctx = SimpleNamespace(pooled=ep)
+    b.episodes_sha256 = {"emotion__style": "s1"}
+
+    def copy_scores(x):
+        return {c: {d: np.array(x[c][d], copy=True) for d in DIRECTIONS} for c in CONDITIONS}
+
+    ep1 = AspectEpisodes("mixed", "mixed", *(np.array(getattr(ep, f), copy=True) for f in
+                                             ("anchor", "candidates", "pairs_a_img", "pairs_a_txt", "pairs_b_img",
+                                              "pairs_b_txt")))
+    r1 = SimpleNamespace(
+        ctx=SimpleNamespace(pooled=ep1, shas=dict(b.episodes_sha256), cos=copy_scores(b.cos)),
+        cl=b.cl.copy(), parity=b.parity.copy(), pair_index=b.pair_index.copy(), B=copy_scores(b.B),
+        pB={m: v.copy() for m, v in b.pB.items()}, Bp={"A0": copy_scores(b.Bp)},
+        pBp={"A0": {m: v.copy() for m, v in b.pBp.items()}}, t_n1u=copy_scores(b.t_n1u),
+        post={h: {s_: post[h][s_].copy() for s_ in ("img", "txt")} for h in A0},
+        affect_head=dict(b.affect_head), checks={"stand_in": True})
+    return b, r1
+
+
+def _noisy_stand_in(r1):
+    """Stand-in for round 1's load_bundle that prints value-like lines, as the real one does."""
+    def load_bundle(smoke=False):
+        print("  told: margin R@1 1.23 [0.45, 6.78]")
+        R3.C.log("R0 reproduces the stored numbers exactly: told margin (1.14, 0.9, 1.41)")
+        print("reader margin 0.35", file=sys.stderr)
+        return r1
+    return load_bundle
+
+
+def test_compare_with_round1_prints_nothing_and_flags_mismatches(capfd):
+    RED = {f"redundancy.{h}.{d}_equals_rule" for h in A0 for d in DIRECTIONS}
+    b, r1 = mini_seed42_pair()
+    with mock.patch.object(R3.C, "load_bundle", _noisy_stand_in(r1)), \
+            mock.patch.object(RB, "load_external", lambda bundle, path=None: {}):
+        with pytest.raises(RB.BundleMismatch) as e:
+            RB.compare_with_round1(b)
+        failed = {k for k, v in e.value.result["checks"].items() if v is not True}
+        assert failed - {"redundancy.affect_least_redundant_both_directions"} == RED
+        # one perturbed round-1 array is named among the failures
+        r1.B["a"]["i2t"][2, 5] += np.float32(1.0)
+        with pytest.raises(RB.BundleMismatch) as e:
+            RB.compare_with_round1(b)
+        assert e.value.result["checks"]["B.a.i2t"] is False and e.value.result["checks"]["B.b.i2t"] is True
+    out, err = capfd.readouterr()
+    assert out == "" and err == "", "compare_with_round1 let round 1's printing through"
+
+
+def test_compare_with_round1_propagates_round1_exceptions(capfd):
+    b, _ = mini_seed42_pair()
+
+    def failing(smoke=False):
+        print("told: margin R@1 9.99")
+        raise SystemExit("regression check failed: 3 step-1 arrays differ from step1_eval_style.npz")
+
+    with mock.patch.object(R3.C, "load_bundle", failing):
+        with pytest.raises(SystemExit, match="regression check failed"):
+            RB.compare_with_round1(b)
+    out, err = capfd.readouterr()
+    assert out == "" and err == ""
+
+
 def assert_bundles_equal(a, b):
     for k in ("seed", "smoke", "n"):
         assert getattr(a, k) == getattr(b, k), k
@@ -290,9 +374,26 @@ def smoke_build():
     eps = R3.AB / "results" / "smoke" / f"episodes_seed{SMOKE_SEED}.npz"
     if not eps.exists():
         pytest.fail(f"smoke seed {SMOKE_SEED} is not built: run run_baselines.py --smoke --episodes-seed {SMOKE_SEED}")
-    with Recorder() as rec:
+    out, err = io.StringIO(), io.StringIO()
+    with Recorder() as rec, contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
         bundle = RB.build_bundle(SMOKE_SEED, True)
+    rec.stdout, rec.stderr = out.getvalue(), err.getvalue()
     return bundle, rec
+
+
+DECIMAL = re.compile(r"\d\.\d")
+
+
+def test_smoke_build_prints_no_value(smoke_build):
+    """Rule §10: a smoke build shows only shapes, counts, file names and pass/fail. The build's stdout holds only
+    r3_bundle's own progress lines, none with a decimal number; stderr is empty. Only counts are reported here."""
+    _, rec = smoke_build
+    lines = [ln for ln in rec.stdout.splitlines() if ln.strip()]
+    foreign = sum("[r3_bundle]" not in ln for ln in lines)
+    decimals = sum(bool(DECIMAL.search(ln)) for ln in lines)
+    assert foreign == 0, f"{foreign} stdout lines of the build are not r3_bundle's own"
+    assert decimals == 0, f"{decimals} stdout lines of the build carry a decimal number"
+    assert rec.stderr.strip() == "", f"the build wrote {len(rec.stderr.splitlines())} lines to stderr"
 
 
 def test_smoke_shapes_and_dtypes(smoke_build):
@@ -400,7 +501,8 @@ def test_smoke_load_external_passes(smoke_build):
 
 
 def _write_variant(src, dst, change):
-    z = dict(np.load(src))
+    with np.load(src) as f:
+        z = dict(f)
     change(z)
     np.savez(dst, **z)
 
