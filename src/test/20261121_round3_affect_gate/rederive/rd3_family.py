@@ -31,7 +31,9 @@ def control(zB, parity):
     return idx, {h: int(ctrl_rho[idx[h], h]) for h in (0, 1)}, ctrl_rho
 
 
-def run_family(B, T, gates, taus, parity):
+def run_family(B, T, gates, taus, parity, with_counterpart=True):
+    """with_counterpart=False: the counterpart (G_cf, its cells, its cross-fit) is not computed at all (rule §6.4 for R1
+    on the test seeds)."""
     parity = np.asarray(parity)
     E = len(parity)
     tune = {h: parity == h for h in (0, 1)}
@@ -43,7 +45,7 @@ def run_family(B, T, gates, taus, parity):
     gz = [{c: {d: gates[t][c].astype(np.float32)[:, None] * zT[c][d] for d in DIRS} for c in COND}
           for t in range(N_T(taus))]
     G = []
-    for t in range(N_T(taus)):
+    for t in range(N_T(taus) if with_counterpart else 0):
         g = {d: (0.5 * (gz[t]["a"][d].astype(np.float64) + gz[t]["b"][d].astype(np.float64))).astype(np.float32)
              for d in DIRS}
         G.append({c: {d: g[d] for d in DIRS} for c in COND})
@@ -58,20 +60,23 @@ def run_family(B, T, gates, taus, parity):
         t, u, a = K.cell_decode(cid)
         lu, la = K.NU[u], K.NA[a]
         fs = {c: {d: K.combine(zB[c][d], gz[t][c][d], lu, la) for d in DIRS} for c in COND}
-        cs = {c: {d: K.combine(zB[c][d], G[t][c][d], lu, la) for d in DIRS} for c in COND}
-        cf_condfree &= all(np.array_equal(cs["a"][d], cs["b"][d]) for d in DIRS)
         f_cnt[cid] = np.stack(K.counts(fs))
-        c_cnt[cid] = np.stack(K.counts(cs))
+        if with_counterpart:
+            cs = {c: {d: K.combine(zB[c][d], G[t][c][d], lu, la) for d in DIRS} for c in COND}
+            cf_condfree &= all(np.array_equal(cs["a"][d], cs["b"][d]) for d in DIRS)
+            c_cnt[cid] = np.stack(K.counts(cs))
     if not cf_condfree:
         raise AssertionError("a counterpart cell is not condition-free")
     hit_f, oth_f = f_cnt[:, 0].astype(np.int64), f_cnt[:, 1].astype(np.int64)
-    hit_c = c_cnt[:, 0].astype(np.int64)
     rho_f = np.stack([hit_f[:, tune[h]].sum(1) for h in (0, 1)], axis=1)
     gam_f = np.stack([(hit_f - oth_f)[:, tune[h]].sum(1) for h in (0, 1)], axis=1)
-    rho_c = np.stack([hit_c[:, tune[h]].sum(1) for h in (0, 1)], axis=1)
+    rho_c = None
+    if with_counterpart:
+        hit_c = c_cnt[:, 0].astype(np.int64)
+        rho_c = np.stack([hit_c[:, tune[h]].sum(1) for h in (0, 1)], axis=1)
     crit_f = np.stack([np.minimum(rho_f[:, h] - rho_ctrl[h], gam_f[:, h]) for h in (0, 1)], axis=1)
     pick_f = {h: int(np.argmax(crit_f[:, h])) for h in (0, 1)}       # first maximum = lowest cell number
-    pick_c = {h: int(np.argmax(rho_c[:, h])) for h in (0, 1)}
+    pick_c = {h: int(np.argmax(rho_c[:, h])) for h in (0, 1)} if with_counterpart else None
 
     def assemble(cnt, pick):
         out = {m: np.empty(E, np.float64) for m in METRICS}
@@ -82,7 +87,8 @@ def run_family(B, T, gates, taus, parity):
                 out[m][app] = met[m][app]
         return out
 
-    pn, pc = assemble(f_cnt, pick_f), assemble(c_cnt, pick_c)
+    pn = assemble(f_cnt, pick_f)
+    pc = assemble(c_cnt, pick_c) if with_counterpart else None
 
     # literal check: per-anchor metrics of the literally assembled scores of the chosen cells
     def assembled_scores(pick, kind):
@@ -96,9 +102,11 @@ def run_family(B, T, gates, taus, parity):
                     out[c][d][app] = K.combine(zB[c][d], term[c][d], K.NU[u], K.NA[a])[app]
         return out
 
-    lit_f, lit_c = K.metrics(assembled_scores(pick_f, "f")), K.metrics(assembled_scores(pick_c, "c"))
-    literal = {"fused": all(np.array_equal(lit_f[m], pn[m]) for m in METRICS),
-               "counterpart": all(np.array_equal(lit_c[m], pc[m]) for m in METRICS)}
+    lit_f = K.metrics(assembled_scores(pick_f, "f"))
+    literal = {"fused": all(np.array_equal(lit_f[m], pn[m]) for m in METRICS)}
+    if with_counterpart:
+        lit_c = K.metrics(assembled_scores(pick_c, "c"))
+        literal["counterpart"] = all(np.array_equal(lit_c[m], pc[m]) for m in METRICS)
     if not all(literal.values()):
         raise AssertionError(f"count-based arrays differ from the literally assembled scores: {literal}")
     nt = {h: int(tune[h].sum()) for h in (0, 1)}
@@ -108,13 +116,15 @@ def run_family(B, T, gates, taus, parity):
                                     "rho": int(rho_f[pick_f[h], h]), "gamma": int(gam_f[pick_f[h], h]),
                                     "n_cells_at_max": int((crit_f[:, h] == crit_f[pick_f[h], h]).sum()),
                                     "scores_parity": 1 - h} for h in (0, 1)},
-           "counterpart_cells": {str(h): {**K.cell_desc(pick_c[h], taus), "rho": int(rho_c[pick_c[h], h]),
-                                          "n_cells_at_max": int((rho_c[:, h] == rho_c[pick_c[h], h]).sum()),
-                                          "scores_parity": 1 - h} for h in (0, 1)},
+           "counterpart_cells": ({str(h): {**K.cell_desc(pick_c[h], taus), "rho": int(rho_c[pick_c[h], h]),
+                                           "n_cells_at_max": int((rho_c[:, h] == rho_c[pick_c[h], h]).sum()),
+                                           "scores_parity": 1 - h} for h in (0, 1)} if with_counterpart
+                                 else "not computed"),
            "literal_assembly_equal": literal, "counterpart_condition_free_all_cells": bool(cf_condfree),
-           "G_cf_identical_both_conditions": True, "taus": [float(t) for t in taus]}
-    extra = {"rho_f": rho_f, "gam_f": gam_f, "rho_c": rho_c, "crit_f": crit_f, "ctrl_rho": ctrl_rho,
-             "f_cnt": f_cnt, "c_cnt": c_cnt}
+           "G_cf_identical_both_conditions": bool(with_counterpart), "taus": [float(t) for t in taus]}
+    extra = {"rho_f": rho_f, "gam_f": gam_f, "crit_f": crit_f, "ctrl_rho": ctrl_rho, "f_cnt": f_cnt}
+    if with_counterpart:
+        extra["rho_c"], extra["c_cnt"] = rho_c, c_cnt
     return rec, pn, pc, extra
 
 
