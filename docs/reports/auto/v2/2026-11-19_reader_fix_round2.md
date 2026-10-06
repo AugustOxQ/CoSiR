@@ -38,7 +38,7 @@ R1's fused reader is round-1 R-c exactly (fused R@1 18.919, paired difference 0.
 1's cells, so the top-k restriction never entered the fused score. Its +0.028 [−0.002, +0.059] over round-1 R-c came
 entirely from its counterpart, whose half-1 pick moved to a top-k cell that scored 7 more hits on its tune half and
 0.057 R@1 less on the other half. Both reader fixes lowered the bar margin against R1: R2 by −0.356 [−0.612, −0.106] and
-R3 by −0.395 [−0.641, −0.146]. R2 became more confident (mean top probability 0.694 to 0.757) and less accurate (pick
+R3 by −0.395 [−0.641, −0.146] (R1 is round 1's seed-42 winner, so part of its lead (round 1 estimated 0.1 to 0.15 R@1 for its best-of-seven choice) may be selection inflation; the sign holds in the in-sample comparison at equal freedom.). R2 became more confident (mean top probability 0.694 to 0.757) and less accurate (pick
 accuracy 51.3% to 47.2%), mostly by moving picks to the caption grouping, which no aspect maps to. R3 picked the told
 grouping more often than any A0 reader so far (55.7%, against R1's 51.3% and the step-1 arg-max reader's 54.7%), yet had
 the lowest bar margin: its probabilities were flatter and changed less between the two conditions, so its weighted term
@@ -126,18 +126,19 @@ consequential was blocking finding B1: the cross-fit criterion, compared as floa
 tied cells differently from exact arithmetic (on round-1 R-c's 224 cells, 12 cell pairs on tune half 0 were ordered
 differently, and four cells tied at the maximum), so two correct implementations could pick different cells. The rule
 now compares integer hit counts (§3.4). B2 corrected the names of R3's bank arrays. All 18 findings were applied and the
-rule was committed at 16:15 (dc9fac6) before any code existed. Its prior was that a GO was "moderate at best".
+rule was committed at 16:13 (dc9fac6) before any code existed. Its prior was that a GO was "moderate at best".
 
 **Implementation, checks and runs** (Amsterdam time, from the run log).
 
 | Time | Step |
 |---|---|
-| 16:15 | rule committed; fusion stream (Sonnet) and reader stream (Opus) dispatched in parallel |
+| 16:13 | rule committed (dc9fac6) |
+| 16:15 | fusion stream (Sonnet) and reader stream (Opus) dispatched in parallel |
 | 16:31 | independent re-derivation, phase 1 (no candidate number): regression check exact; μ42, σ42, π̂, D(k), k* = 2, R3's chosen C |
 | 16:36 | fusion stream done (22 tests); task review 16:38: approved, 0 critical, 0 important, 8 minor |
 | 16:39 | **regression check passed**: R1 on cells 0 to 223 reproduces round-1 R-c exactly (34 comparisons) |
 | 16:40 | reader stream done (21 tests, 23 of 23 mutations caught); R2 and R3 reader stages launched alongside its task review |
-| 16:41 | R1 on 896 cells: bar margin +0.472 against the counterpart; R2 and R3 reader stages done |
+| 16:41 | R1 on 896 cells: bar margin +0.472 against the counterpart; R2 reader stage done (R3 at 16:42) |
 | 16:44 | R2 and R3 on 896 cells: +0.116 and +0.077 against B′ |
 | 16:55 | re-derivation, phase 2: all 480 compared quantities identical |
 | 16:57 | **rule applied**: no candidate clears; no test; A1 ablation on R1 as the best development candidate, not carried |
@@ -216,7 +217,7 @@ cell with the largest ρ, both compared as integers with ties to the lowest cell
 
 ### 3.5 The regression check
 
-Before any round-2 candidate number existed, R1 restricted to cells 0 to 223 had to reproduce round-1 R-c: its terms,
+Before any full-data round-2 candidate number existed, R1 restricted to cells 0 to 223 had to reproduce round-1 R-c: its terms,
 margins, picks and thresholds, the chosen cells, all ten per-anchor arrays and the bar margin +0.4435221354166667
 [0.21646171563312194, 0.6735669710776852] with the gain statistic 2.667236328125 [2.325087836946873,
 3.012361650695922], at full precision. All 34 comparisons were exact (16:39). R1's full result minus round-1 R-c is
@@ -282,8 +283,8 @@ Descriptive; per-pair results are not tested and change no verdict.*
 | R2 | +0.311 [+0.006, +0.618] | +0.342 [−0.006, +0.699] | −0.305 [−0.630, +0.031] | +0.574 / +1.794 / +0.385 |
 | R3 | +0.507 [+0.212, +0.795] | +0.232 [−0.120, +0.591] | −0.507 [−0.840, −0.174] | +0.629 / +1.904 / +0.330 |
 
-R1's per-pair bar margins differ from round-1 R-c's only on the two emotion pairs, through its counterpart; on style ×
-genre both are −0.598. Both reader fixes lost most on emotion × genre, where round 1's reader had bought its largest
+R1's per-pair bar margin point estimates differ from round-1 R-c's only on the two emotion pairs, through its
+counterpart; on style × genre both are −0.598 (14 episodes differ, which moves the interval only). Both reader fixes lost most on emotion × genre, where round 1's reader had bought its largest
 gain (+5.249): R2 kept +1.794 and R3 +1.904 of it. R3's emotion × style bar margin (+0.507) is the only per-pair value
 of a round-2 fix above +0.5, and it is not tested. Every candidate stayed negative on style × genre, as every A0 and A1
 reader of round 1 did.
@@ -309,7 +310,7 @@ to 18.447 and the bar margin rose by the same 0.028. The reader did not improve;
 out of sample.
 
 **R2 and R3 against R1.** Both reader fixes lowered the fused R@1 by about 0.37 to 0.40 and the bar margin by about
-0.36 to 0.40, with intervals that exclude 0. §5 analyses why.
+0.36 to 0.40, with intervals that exclude 0. R1 is round 1's seed-42 winner, so part of its lead (round 1 estimated 0.1 to 0.15 R@1 for its best-of-seven choice) may be selection inflation; the sign holds in the in-sample comparison at equal freedom. §5 analyses why.
 
 *Sources: `results/rule_application.json` (`diagnostics_decide_nothing`); `rederive/rd2_phase2_report.md` §3 (the same
 numbers by independent code); `results/cand_R1_A0.json` (`crossfit.cells.integer_criteria`); the other-half R@1 of cells
@@ -362,11 +363,13 @@ is the criterion on the tune half: min(ρ − ρ_ctrl, γ) for the fused reader,
 | R2 counterpart, tune half 0 | 278 (k 5): 4,602 / 18.119 | 36: 4,600 / 18.180 | −0.061 |
 | R3 fused, tune half 1 | 574 (k 3): 96 / 18.632 | 115: 86 / 18.937 | −0.305 |
 
-The tune-half advantages were 2 to 11 rankings of 24,576 (0.008 to 0.045 R@1), and the other-half loss was larger
+The tune-half advantages were 2 to 11 rankings of 24,576 on the tune-half criterion, and the other-half loss was larger
 every time. Allowing k_top < 13 changed the bar margin by +0.028 [−0.002, +0.059] for R1 (through its
 counterpart), −0.057 [−0.121, +0.006] for R2 and −0.153 [−0.240, −0.062] for R3. Restricted to the k_top 13 cells, R2
 would have reached +0.173 [−0.022, +0.369] and R3 +0.230 [+0.047, +0.413] against B′, both still far from +0.5 and below
-R1.
+R1. Over all 896 cells, in sample, the best fused cell was a k_top 13 cell for
+every reader (cells 117, 67 and 167), and the best restricted cell was lower (18.976, 18.683 and 18.728 against 19.116,
+18.703 and 18.766).
 
 **Why it had little to gain.** The spec's premise was that the fused reader loses R@1 by putting first a candidate that
 B ranked low. At R1's chosen cells, 11.1% of the 49,152 first places came from outside B's top 3, and 12.3% of those
@@ -411,7 +414,7 @@ rate, a margin of −0.002, where R1 bought +2.667 for −1.780 (Table 7). Our r
 a grouping aligned with no aspect, promotes candidates that share the query's caption cluster, which are mostly
 negatives, so it costs either rate without buying R@1. The cross-fit responded with low term weights (cells 67 and 615,
 term weight relative to B 0.67 and 0.94), which held the either cost to −0.393 and the gain to +0.918. R2's counterpart
-fell below B (18.290), so B′ set the bar.
+(18.290) fell below B′ (18.437), so B′ set the bar.
 
 ![Reader confidence and picks](../../assets/2026-11-19_reader_fix_round2/reader_confidence.png)
 
@@ -520,7 +523,7 @@ D(k) disclosure) and 9 nits. All were applied before the commit.
 tests, including a naive reference for every per-cell statistic on 65 random cells and a constructed case where round
 1's float criterion misorders an exact tie. Its task report lists mutations M1 to M28 with two variants of M6 and
 reports every one caught except M6c, which deletes a per-cell condition-free assertion that is redundant when the top-k
-set is taken from B; the run log counts this as 27 of 28. The reader stream (`r2_readers.py`, `run_r2_readers.py`) has
+set is taken from B; the run log counts this as 29 of 30 (M1 to M28 plus M6b and M6c; the progress ledger says 27 of 28). The reader stream (`r2_readers.py`, `run_r2_readers.py`) has
 21 tests, and all 23 of its mutations were caught; its purity-4 checks on the real A0 and A1 banks reproduced round 1's
 features, labels and standardised differences exactly. Both task reviews (Sonnet) approved the code with no critical or
 important finding (8 and 6 minor findings, deferred).
@@ -559,8 +562,13 @@ run log.*
   no candidate number. The A1 ablation script was written by the controller, not by a reviewed subagent; two slips
   (a second scaling to percentage points, which `point_ci` already applies, and the npz hash key) were fixed before its
   only real run.
-- **Provenance note.** The log records the regression check at HEAD cdf9b4d, while `regression_check.json` records
-  ee48015, the reader-stream commit that landed at 16:38. That commit added only reader-stream files, so the fusion code
+- **Smoke runs.** During implementation, smoke runs on 600 seed-42 episodes (`results/smoke/`, not results under rule
+  §9) computed R1's 896-cell cross-fit on A0 (16:19) and A1 (16:21), before the regression check and before the rule
+  was applied; their numbers appeared in the task report. The fusion code did not change afterwards, and the SHA-256s
+  recorded in every candidate file equal the committed code.
+- **Provenance note.** The run log and `regression_check.json` record the regression check at HEAD ee48015 (the
+  reader-stream commit that landed at 16:38) with the fusion code as at cdf9b4d; the progress ledger says "regression
+  exact at cdf9b4d". That commit added only reader-stream files, so the fusion code
   that ran is the same either way.
 - **R3's purity is a level match.** D(k) does not measure the support-contrast signal directly (§5.3).
 - **Pick accuracy uses the told mapping**, which credits one grouping per aspect, maps style and genre both to image on
@@ -586,8 +594,10 @@ paper), or another reader round under a new pre-registered rule.
   lower bound of +0.240. Its gain over round 1 is a counterpart artefact (§4.3), so the best fused reader of the line
   has not moved since round 1.
 - *The picks fix made things worse.* Adapting the reader (R2) and retraining it on realistic practice episodes (R3)
-  lowered the bar margin by 0.36 and 0.39 against R1, with intervals that exclude 0. R3 raised pick accuracy to 55.7%
-  and still lost, so better arg-max picks are not the lever for the weighted term.
+  lowered the bar margin by 0.36 and 0.39 against R1, with intervals that exclude 0 (R1 is round 1's seed-42 winner,
+  so part of its lead may be selection inflation of about 0.1 to 0.15 R@1; the sign holds in the in-sample comparison
+  at equal freedom). R3 raised pick accuracy to 55.7% and still lost, so higher arg-max accuracy alone did not raise
+  the bar margin.
 - *The top-k restriction did not pay.* Every one of the four restricted picks did worse out of sample than its k_top
   13 alternative, and at R1's own cells restricting to B's top k would lose 43 to 139 more hits than it gains.
 - *The comparators move with the reader.* With csd (A1), R1's fused R@1 stayed flat (+0.051) while its counterpart rose,

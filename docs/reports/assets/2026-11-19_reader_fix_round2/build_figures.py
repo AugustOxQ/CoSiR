@@ -128,8 +128,8 @@ def fig_what_changed():
     arrow(ax, 0.60, y1 - 0.06, 0.085, y2 + h + 0.005)
     # row 3: comparators
     y3 = 0.05
-    box(ax, 0.20, y3, 0.35, 0.13, "matched counterpart: G_cf = (g^a z(T^a) + g^b z(T^b)) / 2,\nsame 896 cells and same top-k sets, "
-        "max-R@1 cross-fit", "replaced")
+    box(ax, 0.20, y3, 0.35, 0.13, "matched counterpart (round-1 R-c's definition):\nG_cf = (g^a z(T^a) + g^b z(T^b)) / 2; extended in round 2\n"
+        "to 896 cells, shared top-k sets, max-R@1 cross-fit", "unchanged")
     box(ax, 0.59, y3, 0.39, 0.13, "comparators B and B′(A0); bar comparator = the largest of\nB, B′, counterpart; bar +0.5, both lower bounds above 0",
         "same")
     handles = [Patch(fc="#ecebe8", ec="#8a8984", label="grey: same as round 1 (data, heads, comparators, bar)"),
@@ -369,7 +369,7 @@ def fig_term_weight(diag):
         ax.set_xlim(-0.3, len(la) - 0.4)
     h, l = axes[0].get_legend_handles_labels()
     fig.legend(h, l, loc="lower center", ncol=6, fontsize=8.3, frameon=False, bbox_to_anchor=(0.5, 0.0))
-    fig.suptitle("At every term weight R1 stays above R2 and R3: the readers, not the cross-fit, set the order",
+    fig.suptitle("At every positive term weight R1 stays above R2 and R3: the readers, not the cross-fit, set the order",
                  fontsize=12, x=0.02, ha="left", color=INK)
     fig.text(0.02, 0.885, "Diagnostic, in sample (all episodes, no cross-fit; optimistic). Cells (k_top 13, τ_2, λ_u 0, "
              "λ_a) of each reader's own family, from diagnostics.py.", fontsize=8.5, color=INK2)
