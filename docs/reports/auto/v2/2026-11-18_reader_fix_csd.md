@@ -256,13 +256,18 @@ figure from the stored step-1 arrays; every other value is stored.*
 Every reader bought condition gain at a cost in either rate, and the readers sat on a rough frontier: more gain came
 with a larger either cost. Against the bar comparator (panel b), the arg-max reader on A0 bought +1.337 of gain for an
 either cost of −0.710; R-b expected on A0 bought +2.112 for −1.485, with the same bar margin; R-c bought +2.667 for
-−1.780. R-c's gain exceeded the A0 arg-max reader's by 1.330, and 1.070 of that went back in either rate; half the
+−1.780. R-c's gain exceeded the A0 arg-max reader's by 1.331 [+0.942, +1.716], and 1.070 of that went back in either
+rate (either change against the bar comparator, R-c minus the A0 arg-max reader: −1.070 [−1.469, −0.661]); half the
 remainder is the +0.130 bar-margin difference of Table 2. R-a sat at the other end: little gain (+0.850 on A1, +0.958 on A0) at little either
 cost against the counterpart (−0.346, −0.360). Against B′ on A1, though, its either cost was −0.940, which put its bar
 margin below 0.
 
 *Sources: `results/cand_<name>.json` (`margin`, `fused_vs_Bprime`, `gain_statistic`); figure built by
-`docs/reports/assets/2026-11-18_reader_fix_csd/build_figures.py`, which asserts the identity on every row.*
+`docs/reports/assets/2026-11-18_reader_fix_csd/build_figures.py`, which asserts the identity on every row. The two
+intervals of R-c against the A0 arg-max reader (+1.331 and −1.070) were added after the fidelity check of the user-read
+briefing `docs/user_read/2026-10-06_reader_fix.md`: paired per anchor from `results/cand_Rc_Rb_expected_A0.npz` and
+`step1_eval_style.npz` (A0 reader and B′ arrays), painting-cluster bootstrap (5,000 resamples, seed 42), computed by
+that check and recomputed by us with `src.eval.aspect_metrics.cluster_bootstrap`.*
 
 ### 3.3 Where the comparators sit
 
@@ -469,6 +474,8 @@ raised B′ by +0.368 and the counterparts by +0.140 to +0.507. A1's bar margins
 reader (−0.305 [−0.553, −0.053]) and R-a (−0.275 [−0.512, −0.039]); under R-b expected (−0.216 [−0.483, +0.053]) the
 interval includes 0, and under R-b arg-max the difference was +0.037 [−0.238, +0.318]. What CSD added counted mostly as condition-free similarity, which the rule credits to the
 comparators. The told ceiling with CSD (+2.23) stayed far above the best A1 bar margin (+0.181).
+These A1 − A0 differences are descriptive under the rule (§5 item 2): four comparisons with no correction for multiple
+testing, and the two intervals that exclude 0 have upper bounds of only −0.053 and −0.039.
 
 *Sources: `results/ra_summary.json` (`A1_minus_A0_under_Ra`); `results/rb_summary.json` (`A1_minus_A0`);
 `step1_eval_style.json` (`arms.A1.vs_A0`); `results/cand_<name>.json` (`r1_means`, `margin`); intervals for the entries added at the final review from `results/cand_<name>.npz` (`fused__r1`, `cf__r1`, `bar_v`) and `step1_eval_style.npz` (`{arm}__reader__fused__r1`, `{arm}__reader__cf__r1`, `{arm}__Bprime__r1`, `B__r1`).*
@@ -603,7 +610,12 @@ pre-registered rule. The whole-branch final review has run (§5) and confirmed t
 - Per-pair results are descriptive and were not tested.
 - Some numbers were computed by us for this report from stored arrays: the reference rows' either change against B′
   (Figure 2), the identical-pick shares, the mean two-condition probabilities and the T^a/T^b correlations
-  (Section 4.2), and the ranking counts behind R-c's gap. They are descriptive and were not independently re-derived.
+  (Section 4.2), and the ranking counts behind R-c's gap and the shared gain statistic. They are descriptive. The final
+  review re-derived all of them from the stored arrays (`final_review/out/fr_stored.json`: the A0 reference row's either
+  change against B′ −0.710, the identical-pick shares 10.8% and 22.0%, the mean two-condition probabilities, the
+  T^a/T^b correlations, R-c's net 218 rankings and the 1,038 rankings of §3.1). The two intervals of R-c against the A0 arg-max
+  reader in §3.2 (+1.331 and −1.070) were computed after the final review, by the fidelity check of the user-read
+  briefing and again by us; the final review did not re-derive them.
 - There is no test. The whole-branch final review scheduled by the rule ran on 2026-10-06 (§5).
 
 *Sources: `DECISION_RULE.md` §4.2 item 10, §5 and D12; `results/rb_diag_*.txt`; head accuracies from `DECISION_RULE.md`
