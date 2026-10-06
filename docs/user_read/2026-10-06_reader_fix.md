@@ -4,7 +4,7 @@ Full report, final-reviewed: [CoSiR v2 reader fix with the CSD style grouping](.
 
 ## Executive summary
 
-We tried three new versions of the **reader**, the part of CoSiR v2 that guesses which aspect the example pairs of an episode (one ranking task) share. One that cleared a development bar fixed in advance would have earned a one-off test on fresh, never-used episodes before the decision on Friday 9 October. None cleared it. The best, a confidence-gated reader, beat the strongest scorer that ignores the examples' aspect by +0.444 percentage points of R@1 (the share of rankings with the right candidate first), against a bar of +0.5; the current reader's margin on the same measure is +0.31. The gated reader and two learned-reader variants picked up the aspect up to twice as strongly as the current reader, but gave most of that back, because a candidate sharing either aspect came first less often. As the rule prescribes, no fresh test was built. All numbers come from development episodes we have reused many times; independent code and a final review re-derived every one except two intervals added later (Result 2), each computed twice independently. We advise one more reader round of about a week (our estimate) under a new rule committed before any code, with an analysis or benchmark paper prepared as the CVPR fallback (abstract 10 November). On Friday you choose between that, a late-fusion step that refines the existing groupings jointly (design L) and a change of course.
+We tried three new versions of the **reader**, the part of CoSiR v2 that guesses which aspect the example pairs of an episode share (an episode is one ranking task, scored as four rankings: two conditions, meaning which of two aspects the examples show, times two directions, image to caption and back). One that cleared a development bar fixed in advance would have earned a one-off test on fresh, never-used episodes before the decision on Friday 9 October. None cleared it. The best, a confidence-gated reader, beat the strongest scorer that ignores the examples' aspect by +0.444 percentage points of R@1 (the share of rankings with the right candidate first), against a bar of +0.5; the current reader's margin on the same measure is +0.31. The gated reader and two of the other new candidates picked up the aspect up to twice as strongly as the current reader, but gave most of that back, because a candidate sharing either aspect came first less often. As the rule prescribes, no fresh test was built. All numbers come from development episodes we have reused many times. Every number from this run was re-derived by independent code and a final review; the two intervals in Result 2 were added afterwards and checked twice. We advise one more reader round, about two days of work (our rough estimate) time-boxed to one week, under a new rule committed before any code, with an analysis or benchmark paper prepared as the CVPR fallback (abstract 10 November). On Friday you choose between that, a late-fusion step that refines the existing groupings jointly (design L) and a change of course.
 
 **Assumed background:** you know ML and roughly that CoSiR v2 scores image and caption similarity under an aspect shown only by example pairs, aiming at CVPR; this report re-explains the internal names, the grouping redesign, matched controls and the decision rule. Its question: did any new reader clear the pre-set bar, so the fresh test could run before Friday, and what does that mean for Friday's decision?
 
@@ -14,9 +14,9 @@ In each episode CoSiR v2 ranks 13 captions for a painting's image (or 13 images 
 
 ![The ceiling rose at each step; the reader stayed low](assets/2026-10-06_reader_fix/fig1_ceiling_vs_reader.png)
 
-*Figure 1. Margin over the matched control (same scorer, aspect signal removed) in R@1 points, 95% bootstrap intervals; blue: told (right grouping given from labels), orange: the reader. The results use the bar margin (defined below), which is never larger: without the style grouping the current reader has +0.35 here, +0.31 as a bar margin.*
+*Figure 1. Margin over the matched control (same scorer, aspect signal removed) in R@1 points, 95% bootstrap intervals; blue: told (right grouping given from labels), orange: the reader. Rows: on 4 October all groupings were k-means clusters; on 5 October the emotion-like grouping was rebuilt as communities of caption emotion scores, then the style grouping was added. The results judge readers more strictly, against the strongest of three scorers that ignore the aspect, so without the style grouping the current reader's +0.35 here becomes +0.31 there.*
 
-**How sure:** on the same groupings the told margin is +1.64 [1.37, 1.92] against the reader's +0.35 [0.15, 0.57], so reading looks like the bottleneck. These are development episodes, this run's new code reproduced the 5 October rows exactly, and the told scorer uses evaluation labels: a diagnostic ceiling, not a reachable target.
+**How sure:** on the same groupings the told margin is +1.64 [1.37, 1.92] against the reader's +0.35 [0.15, 0.57]; this is the gap this step set out to close, and whether reading is the bottleneck is our view (see Advice). These are development episodes, this run's new code reproduced the 5 October rows exactly, and the told scorer uses evaluation labels: a diagnostic ceiling, not a reachable target.
 
 ## Results
 
@@ -27,7 +27,7 @@ In each episode CoSiR v2 ranks 13 captions for a painting's image (or 13 images 
 - **Learned reader:** a small classifier trained on **practice episodes**, made-up episodes built from the groupings so that the shared grouping is known; it scores with its top grouping (top pick) or a probability-weighted mix (weighted).
 - **Confidence-gated reader:** uses the weighted mix only where the top grouping is clearly ahead, and otherwise ignores the aspect.
 
-The noise-scaled and learned readers ran with and without the style grouping, the gated reader on the best of those six: seven candidates, with the current reader as reference. The **bar margin** is a candidate's R@1 minus that of the strongest of three **aspect-blind scorers**: the project's best scorer that ignores the aspect, its rebuild on the reader's groupings, and the matched control. The **condition gain** is R@1 minus the rate at which the other aspect's candidate comes first (0 for an aspect-blind scorer); the **either rate** is how often a candidate sharing either aspect comes first. The rule asked for a bar margin of at least +0.5 with its interval above 0, and a gain interval above 0.
+The noise-scaled and learned readers ran with and without the style grouping, the gated reader on the best of those six: seven candidates, with the current reader as reference. The **bar margin** is a candidate's R@1 minus that of the strongest of three **aspect-blind scorers**: the project's best scorer that ignores the aspect, the same scorer recomputed with the reader's own set of groupings, and the matched control. The **condition gain** is R@1 minus the rate at which the other aspect's candidate comes first (0 for an aspect-blind scorer); the **either rate** is how often a candidate sharing either aspect comes first. The rule asked for a bar margin of at least +0.5 with its interval above 0, and a gain interval above 0.
 
 ### 1. No reader cleared the bar; the best missed it by 0.056 points
 
@@ -39,7 +39,7 @@ The noise-scaled and learned readers ran with and without the style grouping, th
 
 All seven candidates failed the +0.5 clause; three met the other two. The gated reader's +0.444 [+0.216, +0.674] means it put the right candidate first in 218 more of the 49,152 development rankings than the strongest aspect-blind scorer; +0.5 needed 246. Against the current reader it gained only +0.130 [−0.146, +0.410].
 
-**How sure:** development data (one draw, read many times), a matched control, and a bar committed before any result. The miss is far smaller than the interval's half-width (about 0.23), so it does not show the true margin is below +0.5. The rule puts the inflation from picking the best of seven at roughly 0.1 to 0.15 R@1, and set the +0.5 bar to allow for the roughly halved effects of earlier fresh-seed tests (which measured condition gains, not these margins). Independent code and a final review re-derived every number. Full report, sections [3.1](../reports/auto/v2/2026-11-18_reader_fix_csd.md#31-the-main-table) and [4.3](../reports/auto/v2/2026-11-18_reader_fix_csd.md#43-r-c-the-gate-trades-either-rate-for-gain).
+**How sure:** development data (one draw, read many times), a matched control, and a bar committed before any result. The miss is far smaller than the interval's half-width (about 0.23), so it does not show the true margin is below +0.5. The rule puts the inflation from picking the best of seven at roughly 0.1 to 0.15 R@1, and set the +0.5 bar to allow for the roughly halved effects of earlier fresh-seed tests (which measured condition gains, not these margins). Independent code and a final review re-derived every number in this table. Full report, sections [3.1](../reports/auto/v2/2026-11-18_reader_fix_csd.md#31-the-main-table) and [4.3](../reports/auto/v2/2026-11-18_reader_fix_csd.md#43-r-c-the-gate-trades-either-rate-for-gain).
 
 ### 2. Three readers read the aspect up to twice as strongly, and paid most of it back
 
@@ -51,13 +51,15 @@ Because R@1 = (either rate + condition gain) / 2 exactly, reading the aspect pay
 
 *Figure 3. Blue: condition gain; red: change in either rate; both against the strongest aspect-blind scorer, without the style grouping. The black dot, the bar margin, is half their sum.*
 
+Each episode sets two aspects against each other, an **aspect pair**: emotion × style, emotion × genre or style × genre. By pair:
+
 | Gated reader | emotion × style | emotion × genre | style × genre |
 |---|---|---|---|
 | condition gain | +0.964 | +5.249 | +1.788 |
 | change in either rate | +0.452 | −2.808 | −2.985 |
 | bar margin | +0.708 | +1.221 | −0.598 |
 
-The cost lands on the two **aspect pairs** (the two aspects an episode sets against each other) that include genre. On emotion × genre the large gain pays for it; on style × genre it does not, and that pair alone holds the average under +0.5.
+The cost lands on the two pairs that include genre. On emotion × genre the large gain pays for it; on style × genre it does not, and that pair alone holds the average under +0.5.
 
 **How sure:** every candidate's gain interval lies above 0 (gated: [+2.325, +3.012]). Against the current reader, the gated reader's extra gain (+1.331 [+0.942, +1.716]) and extra either cost (−1.070 [−1.469, −0.661]) are clear of 0 but post hoc: computed after the final review on the selected best candidate, not fixed in advance. The pair split is descriptive and untested. Development data, one draw. Full report, sections [3.2](../reports/auto/v2/2026-11-18_reader_fix_csd.md#32-what-the-fused-readers-gain-and-lose) and [3.4](../reports/auto/v2/2026-11-18_reader_fix_csd.md#34-per-aspect-pair).
 
@@ -65,11 +67,11 @@ The cost lands on the two **aspect pairs** (the two aspects an episode sets agai
 
 **Noise scaling held back the image and style groupings, and the learned reader scored much lower on real episodes than on practice ones, on a stricter measure.**
 
-These are the groupings whose evidence varies most by chance. The noise-scaled reader's **pick accuracy** (how often it picks the label-derived right grouping) fell from 54.7% to 47.1% without the style grouping, mostly where image is right, and with it from 73.5% to 47.6% in the emotion × style episodes that show style. In a control set with an empty grouping (style groups shuffled across paintings), scaling inflated its tiny noise to the size of real evidence, so it won 30.5% of picks, against 20.3% under the current reader and 27.3% under the learned reader (Figure 4).
+These are the groupings whose evidence varies most by chance. The noise-scaled reader's **pick accuracy** (how often it picks the label-derived right grouping) fell from 54.7% to 47.1% without the style grouping, mostly where image is right, and with it from 73.5% to 47.6% in the emotion × style episodes that show style; both drops are far larger than their noise. We also ran every reader on a **control set** of groupings in which an **empty grouping** (the style groups shuffled across paintings, so it carries nothing) replaces the style grouping. There scaling inflated the empty grouping's tiny noise to the size of real evidence, so it won 30.5% of picks, against 20.3% under the current reader and 27.3% under the learned reader (Figure 4).
 
 ![Dividing by noise made the empty grouping win more often](assets/2026-10-06_reader_fix/fig4_empty_grouping.png)
 
-*Figure 4. Share of picks going to the empty grouping in the control set (lower is better); the dashed line is a uniform pick among four groupings.*
+*Figure 4. Share of picks going to the empty grouping (style groups shuffled across paintings) in the control set, where it replaces the style grouping (lower is better); the dashed line is a uniform pick among four groupings.*
 
 Without the style grouping, the learned reader named the shared grouping in about 79% of held-out practice episodes but picked the right grouping in only 51.3% of real ones; with it, about 63% against 48.7% (Figure 5). The real-episode score is stricter: it credits only one label-derived grouping per aspect. The gated reader inherits these picks.
 
@@ -77,7 +79,7 @@ Without the style grouping, the learned reader named the shared grouping in abou
 
 *Figure 5. Right picks on held-out practice episodes (blue; the learned reader is two copies, each trained on half the paintings) and on real development episodes (orange). Chance is one grouping in three (33%) without the style grouping, one in four (25%) with it.*
 
-**How sure:** diagnostics that decide nothing, reproduced by independent code. The two accuracies are not like for like (and genre is not a class in the practice episodes), so the gap is not a pure transfer loss; its two likely causes were not separated, and its cost in bar margin was not tested. Development data. Full report, sections [4.1](../reports/auto/v2/2026-11-18_reader_fix_csd.md#41-r-a-the-noise-scale-makes-the-empty-grouping-competitive) and [4.2](../reports/auto/v2/2026-11-18_reader_fix_csd.md#42-r-b-a-learned-reader-that-transfers-only-partly-from-its-bank).
+**How sure:** diagnostics that decide nothing, reproduced by independent code. The two accuracies are not like for like (and genre is not a class in the practice episodes), so the gap is not a pure transfer loss; two possible causes were not separated, and its cost in bar margin was not tested. Development data. Full report, sections [4.1](../reports/auto/v2/2026-11-18_reader_fix_csd.md#41-r-a-the-noise-scale-makes-the-empty-grouping-competitive) and [4.2](../reports/auto/v2/2026-11-18_reader_fix_csd.md#42-r-b-a-learned-reader-that-transfers-only-partly-from-its-bank).
 
 ### 4. The style grouping did not clearly raise any reader's bar margin
 
@@ -93,16 +95,16 @@ With the style grouping, the rebuilt aspect-blind scorer rose by +0.368 and the 
 
 ## Advice (our view)
 
-**We recommend one more short reader round under a new pre-registered rule (committed before any result), aimed at the two weaknesses we found:** the either-rate cost, which we measured (for example, a fusion or gate that keeps the aspect-blind scorer's knack for finding aspect-sharing candidates while it reads the aspect), and the learned reader's practice-to-real gap, a diagnosis not yet measured like for like. Develop it without the style grouping and keep that grouping as an ablation, since adding it never clearly raised a bar margin. Time-box it to about a week, keep the three fresh, never-used draws of episodes (seeds 49 to 51) for its test, and prepare the analysis or benchmark paper in parallel as the CVPR fallback.
+**We recommend one more short reader round under a new pre-registered rule (committed before any result), aimed at the two weaknesses we found:** the either-rate cost, which we measured (for example, a fusion or gate that keeps the aspect-blind scorer's knack for finding aspect-sharing candidates while it reads the aspect), and the learned reader's practice-to-real gap, a diagnosis not yet measured like for like. Develop it without the style grouping and keep that grouping as an ablation, since adding it never clearly raised a bar margin. Time-box it to one week, keep the three fresh, never-used draws of episodes (seeds 49 to 51) for its test, and prepare the analysis or benchmark paper in parallel as the CVPR fallback.
 
 Why: the best reader missed by 28 rankings out of 49,152, and its weaknesses are identified, though why the either cost arises is a diagnosis, not a tested cause; the pipeline is verified and reusable. On the same groupings, the told ceiling (+1.64 over its matched control) is 3.7 times the gated reader's +0.444 over its matched control, which is also its strongest comparator. We read that as the bottleneck lying in reading the groupings, so we see design L, which changes the groupings, as the less targeted option. That inference is our view: the told ceiling uses labels, and better groupings might also make reading easier, which we have not tested.
 
-Cost and risk: about two days of work in all (our rough estimate). Each extra round on the same development episodes inflates its best result (selection), and only the fresh draws correct for that.
+Cost and risk: about two days of work (our rough estimate), time-boxed to one week. Each extra round on the same development episodes inflates its best result (selection), and only the fresh draws correct for that.
 
 ## Where things stand and what's next
 
 - The rule has been applied: no candidate cleared the bar, so no test was built and the fresh draws are unused.
-- The full report passed a final review that confirmed the verdict, and it is committed with the rule, code and run log; this briefing is not.
+- The full report passed a final review that confirmed the verdict, and it is committed with the rule, code and run log.
 - **Your decision on Friday 9 October**, among the rule's three options: (1) design L, a small late-fusion model that refines the existing groupings jointly so each adds what the others lack, aimed at the style grouping's overlap with genre; it has not been run yet; (2) a change of course to an analysis or benchmark paper; (3) another reader round under a new pre-registered rule (our advice).
 - If you choose (3), the next step is the new rule, written and reviewed before any code.
 
@@ -110,7 +112,7 @@ Cost and risk: about two days of work in all (our rough estimate). Each extra ro
 
 | Plain name | Meaning | Full report's name |
 |---|---|---|
-| episode | one ranking task: query, 4 example and 4 contrasting pairs, 13 candidates | episode |
+| episode | one ranking task, scored as four rankings (two conditions × two directions) | episode |
 | reader | picks the grouping the examples share and scores with it | reader |
 | current reader | picks the grouping the example pairs favour most over the contrasting pairs | step-1 arg-max reader |
 | noise-scaled reader | that evidence divided by its chance variation | R-a |
@@ -122,13 +124,13 @@ Cost and risk: about two days of work in all (our rough estimate). Each extra ro
 | style grouping | 17 communities of CSD style features | csd |
 | empty grouping | style groups shuffled across paintings | rand |
 | without / with the style grouping | the reader's set of groupings | A0 / A1 |
-| control set | the three groupings plus the empty one | AR |
+| control set | the three groupings plus the empty one, in place of the style grouping | AR |
 | told | given the right grouping from labels; a ceiling | told |
 | R@1 | share of rankings with the right candidate first (chance 7.69%); differences in percentage points | R@1 |
 | condition gain | R@1 minus the other aspect's first-place rate | condition gain, gain statistic |
 | either rate | how often a candidate sharing either aspect comes first | either rate |
 | matched control | the same scorer with only the aspect signal removed | matched counterpart |
-| aspect-blind scorers | best aspect-blind scorer, its rebuild, the matched control | B, B′, matched counterpart |
+| aspect-blind scorers | best aspect-blind scorer, the same recomputed on the reader's groupings, the matched control | B, B′, matched counterpart |
 | bar margin | R@1 minus the strongest aspect-blind scorer's | bar margin |
 | development bar | bar margin at least +0.5, its interval and the gain interval above 0 | development bar (rule item 3) |
 | development episodes | the reused draw of 12,288 episodes, four rankings each | episode seed 42 |

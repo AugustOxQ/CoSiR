@@ -143,7 +143,7 @@ def all_rows():
 def fig1_history():
     # told and label-free reader margins over the matched control; full report section 2 table
     # (stage report section 14; grouping report sections 4 and 9)
-    steps = ["4 Oct: first groupings", "5 Oct: new emotion-like grouping", "5 Oct: plus the style grouping"]
+    steps = ["4 Oct: k-means clusters only", "5 Oct: emotion-like grouping rebuilt", "5 Oct: style grouping added"]
     told = [(1.14, 0.90, 1.41), (1.64, 1.37, 1.92), (2.23, 1.93, 2.56)]
     reader = [(0.14, -0.04, 0.32), (0.35, 0.15, 0.57), (0.06, -0.15, 0.28)]
     fig, ax = plt.subplots(figsize=(6.4, 4.6))

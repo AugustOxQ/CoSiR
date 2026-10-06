@@ -569,7 +569,8 @@ pre-registered rule. The whole-branch final review has run (§5) and confirmed t
 **Facts that bear on the choice.** We state these without choosing.
 - *Distance to the bar.* The best candidate, R-c, fell 0.056 R@1 short (28 net rankings of 49,152), with a lower bound
   of +0.216 and a gain statistic lower bound of +2.325. Against the arg-max reader on A0 its paired bar-margin
-  difference was +0.130 [−0.146, +0.410].
+  difference was +0.130 [−0.146, +0.410]. The miss (0.056) is far smaller than the interval's half-width (about 0.23), so the
+  data do not show that R-c's true margin is below +0.5, just as they do not show that it is above.
 - *Against B alone.* Three candidates would exceed +0.5 over B (18.341): R-c +0.578 [+0.358, +0.811], R-b arg-max on A1
   +0.645 [+0.371, +0.915] and R-b expected on A1 +0.629 [+0.388, +0.872]. The shortfall comes from B′ and the matched
   counterparts absorbing condition-free lift, which is what the rule's comparators are for (against B′ alone R-c is
