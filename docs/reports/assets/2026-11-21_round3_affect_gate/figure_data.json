@@ -204,6 +204,29 @@
    0.7270393176884571
   ]
  },
+ "seed42_R1_vs_external": {
+  "r1_vs_cosine": {
+   "point": 5.95703125,
+   "ci95": [
+    5.588943030341268,
+    6.330282143655176
+   ]
+  },
+  "r1_vs_rca": {
+   "point": 5.537923177083334,
+   "ci95": [
+    5.161895297451256,
+    5.906546878738736
+   ]
+  },
+  "gain_vs_rca": {
+   "point": 2.5634765625,
+   "ci95": [
+    2.1728325337640837,
+    2.9544263529265353
+   ]
+  }
+ },
  "R1_test_either_vs_own_counterpart": -1.4817979600694444,
  "either_cost_per_unit_gain": {
   "AFF_test": 0.5202288516550878,
@@ -320,6 +343,7 @@
   "regression_check.json": "35a987fe4bdaa553bc827ddefed2f48df51c4fe9c2be1b33e94bce4d2f464fdb",
   "seed42_arrays.npz": "5ea4b09a4161a5eac6ca78942cf0f4b99b9c634edca651fba4c2689c7c24ab8a",
   "bs_10_subsets.json": "c9d64815c1c6dba9e84177f7a33fb4e917a326f801ed9b115ae770ce1a1988f1",
+  "per_anchor_seed42.npz": "a4818ba0fa5f7249355afe2d2483404dcd34d22cae26984b76be787bb6e9e59d",
   "go_seed49.npz": "b05c086f6e1831895616a715ca26b86d4dc9b66788b7937fa5f70c4dad72c309",
   "go_seed50.npz": "d5f709952d7fe1d5528c621c8ad02090b99cca6d002579f92bc56679e7e5d5d1",
   "go_seed51.npz": "898d769d7b5d1c2089e2badd160e6c8de88dbf0c239bcd05a81368f3c8497476"

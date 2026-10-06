@@ -39,6 +39,8 @@ from src.eval.aspect_metrics import cluster_bootstrap  # noqa: E402
 RES = ROOT / "src/test/20261121_round3_affect_gate/results"
 BS10 = ROOT / "src/test/20261120_r1_levers_brainstorm/results/bs_10_subsets.json"
 BS10_SHA = "c9d64815c1c6dba9e84177f7a33fb4e917a326f801ed9b115ae770ce1a1988f1"  # rule D15
+PA42 = ROOT / "src/test/20261030_aspect_baselines/results/per_anchor_seed42.npz"
+PA42_SHA = "a4818ba0fa5f7249355afe2d2483404dcd34d22cae26984b76be787bb6e9e59d"  # rule D15
 RULE_SHA = "2d311dbeac1a561fc2a719b730075c30819f4f7f3a592041cb64b65821dc5925"
 OUT = Path(__file__).resolve().parent
 DPI = 150
@@ -183,6 +185,15 @@ def data():
     bp_42 = s42["aff_fused__r1"] - s42["aff_bar_v"]
     close(100 * bp_42.mean(), 18.436686197916664)  # rule D11
     r1_minus_bp_42 = pp(s42["r1_fused__r1"] - bp_42, s42["cl"])
+    # seed 42: R1 against the external baselines (Table 7; the final review's N9), with cosine and RCA per anchor from
+    # per_anchor_seed42.npz, aligned to the seed-42 arrays; AFF minus cosine must equal the phase-1 seed-42 point
+    assert sha(PA42) == PA42_SHA
+    pa = np.load(PA42, allow_pickle=False)
+    assert np.array_equal(pa["anchor_group"], s42["cl"]) and np.array_equal(pa["pair_index"], s42["pair_index"])
+    close(100 * float((s42["aff_fused__r1"] - pa["cosine__r1"]).mean()), 6.174723307291666)
+    r1_ext_42 = {"r1_vs_cosine": pp(s42["r1_fused__r1"] - pa["cosine__r1"], s42["cl"]),
+                 "r1_vs_rca": pp(s42["r1_fused__r1"] - pa["rca__r1"], s42["cl"]),
+                 "gain_vs_rca": pp(s42["r1_fused__gain"] - pa["rca__gain"], s42["cl"])}
 
     # either cost per unit of gain against the own counterpart; R1's test-seed either change from margin and gain
     # (R@1 = (either + gain) / 2 per episode, so either difference = 2 * margin - gain exactly)
@@ -222,6 +233,7 @@ def data():
         "pooled_mean_r1": means,
         "per_pair_vs_Bprime": per_pair,
         "seed42_R1_minus_Bprime": r1_minus_bp_42,
+        "seed42_R1_vs_external": r1_ext_42,
         "R1_test_either_vs_own_counterpart": r1_either_test,
         "either_cost_per_unit_gain": either_ratio,
         "sensitivity_vs_realised": proj,
@@ -230,7 +242,7 @@ def data():
         "inputs_sha256": {f.name: sha(f) for f in
                           [RES / "test_verdict.json", RES / "go_pooled.json", RES / "descriptive.json",
                            RES / "sensitivity.json", RES / "regression_check.json", RES / "seed42_arrays.npz",
-                           BS10] + [RES / f"go_seed{s}.npz" for s in SEEDS]},
+                           BS10, PA42] + [RES / f"go_seed{s}.npz" for s in SEEDS]},
     }
     (OUT / "figure_data.json").write_text(json.dumps(fig_data, indent=1, ensure_ascii=False) + "\n")
     return verdict, gop, desc, sens, reg3, reg2, bs10, fig_data
@@ -274,9 +286,9 @@ def fig_checks(gop, sens):
     handles = [Line2D([0], [0], color=C_AFF, lw=2.2, marker="o", ms=7,
                       label="pooled point and 95% interval, seeds 49 to 51 (36,864 episodes)"),
                Line2D([0], [0], color="none", marker="D", ms=7, mfc="white", mec=INK, mew=1.4,
-                      label="detectable margin x, projected from seed 42 before the build")]
+                      label="detectable margin x, projected from seed 42 (reads a failed check only)")]
     fig.legend(handles=handles, loc="lower center", ncol=2, fontsize=9, frameon=False, bbox_to_anchor=(0.5, 0.0))
-    fig.suptitle("Every GO check and the secondary check cleared 0, each point at least 1.5 times its detectable margin",
+    fig.suptitle("Every GO check and the secondary check cleared 0 (x shown for reference; none failed)",
                  fontsize=12, x=0.02, ha="left", color=INK)
     fig.savefig(OUT / "checks.png", dpi=DPI)
     plt.close(fig)
@@ -373,7 +385,7 @@ def fig_random_share(desc, reg3, reg2, bs10):
                Line2D([0], [0], color="none", marker="o", ms=7, mfc="white", mec=INK2, mew=1.8,
                       label="seed 42 (recorded; R1's comparator there was its counterpart)")]
     fig.legend(handles=handles, loc="lower center", ncol=2, fontsize=9, frameon=False, bbox_to_anchor=(0.45, 0.0))
-    fig.suptitle("A random gate with AFF's per-condition open shares matched AFF; R1 trailed both",
+    fig.suptitle("A random gate with AFF's per-condition open shares matched AFF; R1's point lay below both",
                  fontsize=12, x=0.02, ha="left", color=INK)
     fig.savefig(OUT / "random_share.png", dpi=DPI)
     plt.close(fig)

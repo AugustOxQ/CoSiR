@@ -7,8 +7,8 @@ Amsterdam time; the rule was applied at 21:16.
 pooled 95% lower bounds above 0 on the fresh episode seeds 49, 50 and 51, and the pre-registered secondary check (AFF
 against R1) passes. The claim is the rule's §6.10 (§3.5 below). The multiplicity disclosure of rule §6.11 (§10) applies
 to every AFF number in this report. The decision quantities are the GO checks and the secondary check (§5.2, §6.1);
-the seed-42 regression checks (§4) checked the code; everything else is descriptive and decides nothing. A whole-branch
-final review follows this report (§11.6).
+the seed-42 regression checks (§4) checked the code; everything else is descriptive and decides nothing. The
+whole-branch final review (commit dc52401) confirmed the GO with fixes, all applied in this revision (§11.6).
 **Records:** binding rule `src/test/20261121_round3_affect_gate/DECISION_RULE.md` (commit fab5ae1, SHA-256
 2d311dbe…5925); spec `docs/superpowers/specs/2026-10-06-round3-affect-gate-design.md` (commit 728f5d7); handoff
 `docs/superpowers/handoffs/2026-10-06-round3-affect-gate-handoff.md`; plan
@@ -36,14 +36,13 @@ the affect grouping. AFF reached +0.700 on seed 42, but it was found there by a 
 therefore sent it straight to the fresh episode seeds 49, 50 and 51 under a pre-registered rule, with R1 run beside it.
 
 **The verdict is GO.** Pooled over the three seeds (36,864 episodes on 5,195 anchor paintings), AFF's fused reader beat
-every comparator on R@1 and on condition gain. Each point estimate also exceeded its detectable margin x, the true
-margin at which the check's lower bound would clear 0 with probability 0.8, projected from seed 42 before any test seed
-was built.
+every comparator on R@1 and on condition gain. The table also gives each check's detectable margin x, projected from
+seed 42 before any test seed was built; the rule uses x only to read a failed check, and none failed.
 
 *Table S1. The rule's seven GO checks and its secondary check, pooled over seeds 49 to 51 (R@1 or condition gain, in
 percentage points, with 95% painting-bootstrap intervals).*
 
-| Check: AFF's fused reader minus … | Point [95% interval] | x | Pass |
+| Check: AFF's fused reader minus … | Point [95% interval] | x (reads a failed check only) | Pass |
 |---|---|---|---|
 | cosine, R@1 | +5.840 [+5.611, +6.069] | 0.324 | yes |
 | RCA, R@1 | +5.722 [+5.495, +5.946] | 0.320 | yes |
@@ -62,18 +61,20 @@ on each seed alone; the bar margins were +0.700, +0.452 and +0.623.
 Four descriptive results qualify the GO.
 
 - **R1 would also have passed.** Through the same pipeline, R1 cleared all seven checks pooled, with a bar margin of
-  +0.389 [+0.254, +0.532] against B′(A0). AFF's +0.202 over R1 passed the secondary check. With seed 42's chosen cells
-  on every test seed the difference was +0.090 [+0.005, +0.177], so about half of it came from R1's own per-seed cell
-  choice.
-- **The pooled claim rests on the two emotion pairs.** AFF's bar margin was +0.810 on emotion × style, +1.544 on
-  emotion × genre and −0.580 [−0.793, −0.363] on style × genre, where AFF also fell below B and its counterpart. A0 has
-  no grouping that carries style apart from genre, and the reader still picked affect in 77.6% of the style × genre
-  conditions whose supports show style.
-- **The gain comes from steering one side.** A random gate that opens R1's gate with AFF's open share in each condition
+  +0.389 [+0.254, +0.532] against B′(A0). AFF's +0.202 over R1 passed the secondary check; §6.3 discusses how much of it
+  reflects R1's own per-seed cell choice.
+- **The pooled claim rests on the two emotion pairs.** AFF's bar margin was +0.810 on emotion × style, +1.544 on emotion
+  × genre and −0.580 [−0.793, −0.363] on style × genre, where AFF also fell below B (−0.336, interval excluding 0) and,
+  in its point, below its counterpart (−0.149 [−0.348, +0.051]). A0 has no grouping that carries style apart from genre,
+  and the reader still picked affect in 77.6% of the style × genre conditions whose supports show style.
+- **The gain comes from a one-sided gate.** A random gate that opens R1's gate with AFF's open share in each condition
   (80.6% of condition a, 29.7% of condition b), and therefore reads which condition is a, matched AFF: AFF minus the
-  control was −0.042 [−0.138, +0.048] and +0.029 [−0.076, +0.132] for two draws. The control is not a method. It shows
-  that the reader's affect pick pays as a label-free choice of the side to steer, and that its choice of episodes
-  within a side added nothing measurable.
+  control was −0.042 [−0.138, +0.048] and +0.029 [−0.076, +0.132] for two draws (rule §9: reported only; the user
+  decides what follows). The control is not a method. It shows that the per-condition asymmetry, not the choice of
+  episodes within a condition, carries the gain. Our reading: AFF's label-free part is a visual-contrast rule that
+  steers when the visual groupings agree more on the contrasts than on the supports. On this benchmark that is the
+  emotion side of the two emotion pairs, where steering pays, and the style side of style × genre, where it costs R@1
+  (−0.580 against B′(A0)).
 - **The gain has an either-rate cost.** Against its counterpart, AFF bought +3.319 of condition gain and paid 1.727 of
   either rate, 0.52 per unit of gain, the same ratio as on seed 42.
 
@@ -163,7 +164,7 @@ cleared the bar: R1 reached +0.472 [+0.240, +0.703], R2 +0.116 and R3 +0.077. On
 R-c exactly (+0.444). The user decided to keep improving R1 and to leave the grouping redesign (design L) for later.
 
 **The brainstorm** (18:16 to 18:40, exploratory, seed 42) read R1's stored arrays. R1's margin came from the two emotion
-conditions (fused minus counterpart +1.41 on emotion × style a and +2.69 on emotion × genre a), where the condition-free
+conditions (fused minus counterpart +1.40 on emotion × style a and +2.70 on emotion × genre a), where the condition-free
 score ranks the emotion target first only 10 to 13% of the time. Image and caption picks never paid: their grouping
 scores are highly redundant with B (row correlation 0.62 to 0.71, against 0.35 to 0.38 for affect). Among about 50
 label-free variants, 15 declared oracles and 2 controls, its rank-1 idea was **AFF**: open R1's gate only on affect
@@ -196,14 +197,17 @@ disclosure with a stated prior.
 | 20:50 to 20:52 | **seed-42 regression checks passed** (134 comparisons, §4) |
 | 20:54 | end-to-end wiring smoke test passed on smoke seeds 9001 to 9003 |
 | 20:58 | runner stream review approved; seed build launched |
-| 21:00 to 21:08 | seeds 49, 50, 51 built and hash-checked |
+| 20:58 to 21:08 | seeds 49, 50, 51 built (one invocation of `run_r3_build.py`, which ran `run_baselines.py` once per seed) and hash-checked |
 | 21:08 to 21:10 | GO pass (GO quantities only) |
 | 21:14 | re-derivation phase 2: 229 quantities agree |
 | 21:16 | **rule applied: GO** |
 | 21:17 | descriptive pass (rule §7) |
+| 21:49 | this report committed (02215b8) with §11.6 as a placeholder; whole-branch final review dispatched |
+| 22:29 | final review: CONFIRMED WITH FIXES (§11.6); fix wave applied to this report afterwards |
 
-*Sources: round 1's and round 2's reports (Summary, §2); the brainstorm (Summary, §2.1, §3.1, §6); the handoff §2;
-the spec §1; the rule header; the run log (all times).*
+*Sources: round 1's and round 2's reports (Summary, §2); the brainstorm (Summary, §2.1, §3.1, §6), with its +1.41 and
++2.69 as recomputed from round-1 R-c's arrays by the final review (N5: +1.40 and +2.70); the handoff §2; the spec §1;
+the rule header; the run log (all times).*
 
 ## 3. Method
 
@@ -313,10 +317,10 @@ Before any seed was built, the rule projected each check's pooled standard error
 differences (a one-way split of the variance by anchor painting, three independent draws of the same anchor
 distribution). The detectable margins x ran from 0.180 (against B) to 0.324 (against cosine). Against the three
 condition-free comparators they were 0.180 to 0.193, below the prior's expected bar margin of +0.3, and 0.131 for the
-secondary check. The seeds were then built in one invocation of `run_baselines.py` (21:00 to 21:08). All nine new
-per-pair episode SHA-256s were distinct from each other and from the 15 of seeds 42, 43, 45, 47 and 48, and
-`codes_provenance.json` kept its recorded SHA-256 before and after each build. The build logs, which print the cosine
-and RCA tables, were not opened.
+secondary check. The seeds were then built by one invocation of `run_r3_build.py` (20:58 to 21:08), which ran
+`run_baselines.py` once per seed. All nine new per-pair episode SHA-256s were distinct from each other and from the 15
+of seeds 42, 43, 45, 47 and 48, and `codes_provenance.json` kept its recorded SHA-256 before and after each build. The
+build logs, which print the cosine and RCA tables, were not opened.
 
 ### 5.2 The GO checks
 
@@ -340,8 +344,7 @@ pooled interval.*
 
 All seven lower bounds were above 0, the lowest being +0.462 (against B′(A0)), so the verdict was GO; no bound lay
 within 1e-12 of 0. The projection held: every realised half-width was within 5% of the projected one, except the
-secondary check's, which was 18% wider. Each point estimate exceeded its x, by a factor of 3.1 against B′(A0), 4.4
-against the counterpart and 1.5 for the secondary check.
+secondary check's, which was 18% wider. The rule uses x only to read a failed check, and none failed.
 
 ![The checks with their detectable margins](../../assets/2026-11-21_round3_affect_gate/checks.png)
 
@@ -403,10 +406,10 @@ The baseline here is R1, the previous best reader, scored on the same episodes w
 
 ### 6.1 The secondary check
 
-AFF's fused R@1 minus R1's was +0.202 [+0.093, +0.309] pooled, so the pre-registered secondary check passed: AFF beat
-R1 on the same episodes. Its point was 1.5 times its x (0.131), and its interval was the one wider than projected
-(§5.2). Per seed it was +0.185, +0.262 and +0.159, with seed 51's interval reaching −0.022. Since AFF and R1 shared the
-bar comparator B′(A0) everywhere, the difference in bar margin was the same +0.202.
+AFF's fused R@1 minus R1's was +0.202 [+0.093, +0.309] pooled, so the pre-registered secondary check passed: AFF beat R1
+on the same episodes. Its interval was the one wider than projected (§5.2). Per seed it was +0.185, +0.262 and +0.159,
+with seed 51's interval reaching −0.022. Since AFF and R1 shared the bar comparator B′(A0) everywhere, the difference in
+bar margin was the same +0.202.
 
 ### 6.2 R1's own seven checks (descriptive)
 
@@ -415,13 +418,13 @@ Descriptive; R1 gives no second verdict.*
 
 | Check: R1's fused reader minus … | Test seeds, pooled | Seed 42 |
 |---|---|---|
-| cosine, R@1 | +5.638 [+5.419, +5.864] | |
-| RCA, R@1 | +5.520 [+5.296, +5.747] | |
+| cosine, R@1 | +5.638 [+5.419, +5.864] | +5.957 [+5.589, +6.330] |
+| RCA, R@1 | +5.520 [+5.296, +5.747] | +5.538 [+5.162, +5.907] |
 | B, R@1 | +0.604 [+0.471, +0.745] | +0.578 |
 | B′(A0), R@1 (bar margin) | +0.389 [+0.254, +0.532] | +0.482 [+0.236, +0.727] |
 | its matched counterpart, R@1 | +0.519 [+0.390, +0.651] | +0.444 [+0.216, +0.674] |
 | gain statistic | +2.521 [+2.335, +2.708] | +2.667 [+2.325, +3.012] |
-| RCA, condition gain | +2.488 [+2.287, +2.696] | |
+| RCA, condition gain | +2.488 [+2.287, +2.696] | +2.563 [+2.173, +2.954] |
 
 R1 cleared all seven checks pooled, so R1 would also have earned a GO under this list. Its bar margin on seed 42 was
 +0.444 against its counterpart, which was the stronger comparator there (18.475 against B′(A0)'s 18.437). Against
@@ -433,25 +436,27 @@ against its own counterpart was 1.482 (our arithmetic, 2 × margin − gain), 0.
 
 With seed 42's chosen cells applied to every test seed (the frozen-cell line, §9.1), AFF's bar margin barely changed
 (+0.585 against +0.591 cross-fitted), while R1's rose to +0.495 against +0.389. The frozen-cell AFF minus R1 was
-therefore +0.090 [+0.005, +0.177], under half of the cross-fitted +0.202. Most of the gap came from seed 50, where R1's
-cross-fit chose cells 14 and 151 and reached +0.189, against +0.460 with seed 42's cells. That is tune-half noise of
-the kind round 2 saw with the top-k cells: cells chosen on one half of the seed's episodes did worse on the other half
-than seed 42's cells did.
+therefore +0.090 [+0.005, +0.177] (a descriptive quantity outside the rule's §6.9 and §7 lists, computed by the
+descriptive pass, not pre-registered, decides nothing), under half of the pre-registered +0.202. Most of the gap came
+from seed 50, where R1's cross-fit chose cells 14 and 151 and reached +0.189, against +0.460 with seed 42's cells. That
+is tune-half noise of the kind round 2 saw with the top-k cells: cells chosen on one half of the seed's episodes did
+worse on the other half than seed 42's cells did.
 
 ![Per seed and per pair](../../assets/2026-11-21_round3_affect_gate/bar_per_seed_pair.png)
 
 *Figure 3. Bar margin against B′(A0) per test seed and pooled (left), and per aspect pair pooled over the seeds
 (right), for AFF and R1, with 95% intervals. Per-pair results are not tested.*
 
-**Reading.** The secondary check says AFF beat R1 on these episodes, as pre-registered. Two facts limit what it adds:
-R1 alone also passed the GO list, and with the cells held fixed AFF's lead over R1 was +0.090 with a lower bound of
-+0.005. AFF is the better reader of the two on this evidence, by +0.202 as pre-registered and by +0.090 when the
-cells are held at seed 42's choice, and the one change in the gate is cheap. About two thirds of AFF's margin over
-B′(A0) (+0.389 of +0.591) is the margin R1 already had.
+**Reading.** The secondary check says AFF beat R1 on these episodes, as pre-registered. Two facts limit what it adds: R1
+alone also passed the GO list, and with the cells held fixed AFF's lead over R1 was +0.090 with a lower bound of +0.005
+(the descriptive quantity above, which decides nothing). AFF's gate is the better of the two on this evidence: the
+pre-registered secondary result is +0.202 [+0.093, +0.309], and the one change in the gate is cheap. About two thirds of
+AFF's margin over B′(A0) (+0.389 of +0.591) is the margin R1 already had.
 
 *Sources: `results/test_verdict.json` (`secondary`); `results/descriptive.{json,txt}` (item 1 per seed, item 2
 `AFF_minus_R1_bar_margin`, `frozen_cell_line`, item 3); round 2's report Table 2 (R1 against B on seed 42, +0.578);
-seed-42 R1 minus B′(A0) and the either arithmetic from `figure_data.json` (`seed42_R1_minus_Bprime`,
+seed-42 R1 minus B′(A0), R1's seed-42 differences from cosine and RCA (the final review's N9, recomputed by the figure
+script) and the either arithmetic from `figure_data.json` (`seed42_R1_minus_Bprime`, `seed42_R1_vs_external`,
 `R1_test_either_vs_own_counterpart`, `either_cost_per_unit_gain`).*
 
 ## 7. Per aspect pair
@@ -545,30 +550,42 @@ and a float32 share; R1's seed-42 value is against its counterpart, its bar comp
 | R1 | +0.389 [+0.254, +0.532] | +2.521 | +0.202 [+0.093, +0.309] | +0.444 (vs counterpart) |
 
 **What it shows.** The control matched AFF within noise: the two paired differences straddle 0 (−0.042 and +0.029), each
-with a half-width of about 0.1, and the control's two draws bracket AFF. Both draws were above R1's +0.389. At τ_0 AFF
-and the control open the gate on the same share of each condition; what differs is which episodes inside a condition get
-steered (and, at the higher thresholds, how R1's confidence gate thins the control's set). AFF steers the episodes where
-the reader confidently picks affect, the control steers random ones. So the reader's choice of episodes within a
-condition added nothing we could measure: both paired intervals lie within −0.138 and +0.132 R@1. What paid was steering
-one side, the side where the reader sees affect, much more often than the other: AFF's τ_0 gate opened on 80.6% of
-condition-a values and 29.7% of condition-b values pooled, against 100.0% and 99.99% for R1's τ_0 gate and 64.5% and
-35.9% at τ_2.
+with a half-width of about 0.1, and the control's two draws bracket AFF. R1's point lay below both. At τ_0 AFF and the
+control open the gate on the same share of each condition; what differs is which episodes inside a condition get steered
+(and, at the higher thresholds, how R1's confidence gate thins the control's set). AFF steers the episodes where the
+reader confidently picks affect, the control steers random ones. So the reader's choice of episodes within a condition
+added nothing we could measure: both paired intervals lie within −0.138 and +0.132 R@1. What carried the gain was the
+per-condition asymmetry: AFF's τ_0 gate opened on 80.6% of condition-a values and 29.7% of condition-b values pooled,
+against 100.0% and 99.99% for R1's τ_0 gate and 64.5% and 35.9% at τ_2.
+
+**The rule's reading.** Rule §9 has a row for this case, "the random-share control matches or beats AFF", and it
+applies: draw 0's point (+0.633) is above AFF's (+0.591), and both paired differences straddle 0. Under §9 the result is
+reported only, it gives no second verdict, and the user decides what follows.
 
 **Why one side pays.** In the two emotion pairs condition a is the emotion side, where the condition-free score ranks
 the target first only 10 to 13% of the time (seed 42, brainstorm §2.1) and where affect, the grouping least redundant
 with B, carries what B lacks. On the b side the targets are style or genre, which B already ranks, and the brainstorm
-found that R1's steering there bought nothing (+0.01 and −0.25 R@1 over its counterpart on the two emotion pairs'
-condition b, seed 42). A gate that opens mostly on the emotion side spends the either-rate cost where it buys R@1.
+found that R1's steering there bought nothing (+0.01 and −0.26 R@1 over its counterpart on the two emotion pairs'
+condition b, seed 42, as the final review recomputed them from round-1 R-c's arrays). A gate that opens mostly on
+condition a therefore spends the either-rate cost where it buys R@1 in the two emotion pairs. In style × genre the same
+asymmetry puts the steering on the style side, where it costs R@1 (§7).
 
-**The pick as a side detector.** AFF's gate opened on 78.4%, 85.8% and 77.6% of condition a and on 41.9%, 22.0%
-and 25.2% of condition b in the three pairs, so the affect pick followed the side about as much in style × genre, where
-condition a shows style, as in the emotion pairs. The brainstorm read the pick as a side detector ("the contrasts of
-this side are visually coherent, so the supports show the non-visual aspect"), and these shares fit that reading. Our
-reading of why, not tested: since Δ^b = −Δ^a exactly, the reader sees the same evidence mirrored in the two conditions,
-and its affect pick goes to the side whose contrasts agree more on the visual groupings than its supports do. In
-style × genre that is the style side, because genre dominates the image grouping. The side decision is what a
-label-free method needs, and the control obtains it only by reading the condition. AFF's contribution is that it finds
-the side without labels; the evidence does not support saying that it recognises emotion supports.
+**What the affect pick tracks: visual contrast.** AFF's gate opened on 78.4%, 85.8% and 77.6% of condition a and on
+41.9%, 22.0% and 25.2% of condition b in the three pairs, so the affect pick fell on condition a about as often in style
+× genre, where condition a shows style, as in the emotion pairs. The brainstorm read the pick as a side detector ("the
+contrasts of this side are visually coherent, so the supports show the non-visual aspect"). A final-review diagnostic,
+label-free and outside §7's list (`final_review/fr3_side.py`, pooled over seeds 49 to 51), fits that reading. When both
+visual groupings had Δ < 0 (the contrasts agree more than the supports), the reader picked affect in 95.1%, 96.1% and
+93.4% of condition a in the three pairs, against 57.0%, 60.7% and 50.2% otherwise (condition b: 89.7%, 74.0% and 76.8%
+against 32.1%, 18.1% and 18.4%). The mean affect Δ in condition a was about 0 (+0.003, +0.002 and −0.001), against
+−0.021, −0.033 and −0.026 for image.
+
+Our reading: AFF's label-free part is a visual-contrast rule: it steers when the visual groupings agree more on the
+contrasts than on the supports. On this benchmark that is the emotion side of the two emotion pairs, where steering
+pays, and the style side of style × genre, where it costs R@1 (−0.580 against B′(A0)). The control shows that this
+per-condition asymmetry, not the choice of episodes within a condition, carries the gain. Whether the side it picks pays
+depends on the benchmark's pair order, since condition a is the emotion side in two of the three pairs. The evidence
+does not support saying that AFF recognises emotion supports.
 
 **Per pair** (our arithmetic from the per-pair bar margins; no intervals, not tested), AFF minus the control was +0.037
 and +0.031 on emotion × style, +0.157 and +0.279 on emotion × genre, and −0.319 and −0.222 on style × genre. The
@@ -596,7 +613,10 @@ scores the test seed's episodes of parity 1 − h), against the per-seed cross-f
 | R1, per-seed cross-fit | Table 6 | +0.389 [+0.254, +0.532] | +0.515 | +0.189 | +0.464 | all pass |
 | R1, seed-42 cells | 116, 119; 58, 123 | +0.495 [+0.362, +0.633] | +0.602 | +0.460 | +0.423 | all pass |
 | AFF minus R1, per-seed cross-fit | | +0.202 [+0.093, +0.309] | +0.185 | +0.262 | +0.159 | |
-| AFF minus R1, seed-42 cells | | +0.090 [+0.005, +0.177] | +0.128 | −0.010 | +0.153 | |
+| AFF minus R1, seed-42 cells (see the note) | | +0.090 [+0.005, +0.177] | +0.128 | −0.010 | +0.153 | |
+
+*Note: the last row is a descriptive quantity outside the rule's §6.9 and §7 lists, computed by the descriptive pass,
+not pre-registered, decides nothing. We keep it as a caveat on the size of the secondary check.*
 
 AFF's result did not depend on the per-seed cell choice: with seed 42's cells it passed all seven checks pooled, with a
 gain statistic of +3.162 against +3.319 cross-fitted. Its per-pair bar margins with the frozen cells were +0.960, +1.390
@@ -658,19 +678,23 @@ Table 1 (R1's seed-42 τ_2 shares); `DECISION_RULE.md` D7 and §5 item 3.*
   AFF on other readers was seen only in the brainstorm, on seed 42.
 - **The control reads condition identity.** The random-share control matched AFF, but it knows which condition is a; it
   is a mechanism control, never a method (§8).
-- **The either-rate cost.** AFF paid 1.727 [1.546, 1.907] of either rate against its counterpart for +3.319 of gain;
-  R@1 rose because the gain exceeded that cost ((3.319 − 1.727) / 2 = +0.796, the margin).
-- **The secondary check's size.** About half of AFF's +0.202 over R1 depended on R1's per-seed cell choice (+0.090
-  with seed 42's cells), and R1 alone also passed the seven checks (§6).
+- **The either-rate cost.** AFF paid 1.727 [1.546, 1.907] of either rate against its counterpart for +3.319 of gain; R@1
+  rose because the gain exceeded that cost ((3.319 − 1.727) / 2 = +0.796, the margin).
+- **The secondary check's size.** The pre-registered secondary result is +0.202 [+0.093, +0.309]. With seed 42's cells
+  on every test seed, AFF minus R1 was +0.090 [+0.005, +0.177], a descriptive quantity outside the rule's §6.9 and §7
+  lists, computed by the descriptive pass, not pre-registered, decides nothing; we report it as a caveat on the size of
+  the secondary check. R1 alone also passed the seven checks (§6).
 - **The prior.** It expected about +0.3; the outcome, +0.591, was about twice that, and the prior had said a large
-  fresh-seed margin would be a surprise. The prior was written before the test and governs nothing; we report it
-  because it was pre-registered.
+  fresh-seed margin would be a surprise. The prior was written before the test and governs nothing; we report it because
+  it was pre-registered.
 - **Report diagnostics.** The per-pair decomposition of Table 9, the pooled means of cosine, RCA and R1's fused reader,
   R1's seed-42 margin over B′(A0), the either-cost ratios, the per-pair AFF-minus-control differences and the per-pair
   open shares were computed after the verdict by `build_figures.py` from the stored per-anchor arrays and summaries; no
   new scorer was run and nothing was decided by them. The script first re-derives the seven pooled checks and the
   secondary check (points and intervals) and the per-pair bar margins of AFF and R1 from the same arrays and asserts
-  that they equal the stored values.
+  that they equal the stored values. The final review's diagnostics quoted here (the Δ shares of §8, R1's seed-42
+  differences from cosine and RCA in Table 7, which the figure script also recomputes, and the corrected brainstorm
+  quotes of §2 and §8) are likewise outside §7's list and decide nothing.
 - **No held rows were read and no GPU was used.** All runs were CPU only, at most three processes.
 
 *Sources: `DECISION_RULE.md` §6.10, §6.11, header (prior); `results/descriptive.json`; `build_figures.py`.*
@@ -732,48 +756,78 @@ identical (difference 0.0). It also passed the §6.2 hash check and found no low
 ### 11.5 Process notes
 
 - The rule allowed phase 1 to run during implementation; it computed only the seed-42 targets the rule already states.
-- Smoke runs never printed a metric value; the bundle stream's dry check had logged round 1's known seed-42 values once,
-  before any real run, and was fixed (7ece674).
+- Smoke runs printed no metric value to the console. Under a pre-flight ruling, run_baselines' own smoke-build logs hold
+  its scorer tables for the smoke draws, read only with grep. Round 1's known seed-42 values appear in the dry-check
+  output and in the red-test log of its fix (7ece674).
+- Phase 2 of the re-derivation was authorised at 21:08:40, while the GO pass was still running (`go_pooled.json` was
+  written at 21:09:59); rule §8 places phase 2 after the GO pass. Its first step, the hash check, ran at 21:11 and its
+  bundles at 21:11 to 21:13, so the order had no effect.
+- Rule §8 (steps 10 and 11), the plan and the spec put the final review, its fix wave and the scoped re-review before
+  the report. This report was committed first (02215b8, with §11.6 as a placeholder) and the final review then covered
+  it; a ruling line in the SDD ledger and the run log records this.
 - Nothing reserved for after the verdict was computed before it: R1's counterpart was not cross-fitted in the GO pass
   (asserted by the runner and checked by its review), and phase 2 skipped it too.
 - The deferred minor findings of the task reviews (untested guards, a boundary-flag binding, naming) changed no number;
   they are listed in the SDD ledger.
+- Tests to add before the code is reused (final review N11 and §4): a GO-pass assertion that `cl == groups[anchor]` and
+  that AFF's family sees AFF's τ_0 open counts (mutations M09, M10); the §5-order test (M20); a test of the ρ_ctrl term
+  in the fused cross-fit criterion (M06); and tests for the other survivors, the descriptive pass's cache-reproduces-GO
+  check (M27), the pick tie rule (M28) and the GO pass's episode-hash cross check (M31).
 
 ### 11.6 The whole-branch final review
 
-[Placeholder for the controller: the outcome of the whole-branch final review of round 3, its fix wave and the scoped
-re-review.]
+The whole-branch final review (Opus, fresh context; `final_review/final_review.md`, commit dc52401) **CONFIRMED the GO
+WITH FIXES**. It rebuilt seeds 42, 49, 50 and 51 independently with its own code from the allowed loaders. All 862
+automated comparisons with the stored results were bit-identical (691 on the test seeds, 171 on seed 42 and the bundle
+caches), and it checked about 250 further numbers of this report at the precision shown. It found 0 blocking, 3
+should-fix and 11 nit findings, all in the report text, with no change to any number, verdict or code: S1 the mechanism
+wording (§8 and the Summary), S2 the §9 row for the control, S3 the label of the frozen-cell AFF minus R1, and N1 to
+N11. All were applied in this fix wave. Its 32 mutations on scratch copies caught every named guard; the 6 survivors
+(M06, M09, M20, M27, M28, M31) are covered for this round by the run's own records, the seed-42 regression, the phase-2
+re-derivation or the review, and are listed for reuse (§11.5).
+
+A scoped re-review of this fix wave follows: [outcome to be added].
 
 *Sources: `rule_check/opus_rule_check.md`; `.superpowers/sdd/2026-10-06-round3-affect-gate/progress.md` and
-`task-{1,2,3}-review.md`, `task-{1,2}-rereview-1.md`; `rederive/rd3_phase1_report.md`, `rd3_phase2_report.md`; the run
-log.*
+`task-{1,2,3}-review.md`, `task-{1,2}-rereview-1.md`; `rederive/rd3_phase1_report.md`, `rd3_phase2_report.md`;
+`final_review/final_review.md` (§1 to §5, N4, N6, N10, N11); the run log; the timestamps of
+`rederive/out/PHASE2_AUTHORISED` and `results/go_pooled.json`.*
 
 ## 12. What follows
 
 **What the rule says.** All seven checks pass: GO within the claim of §3.5, with the disclosure of §10. The secondary
-check passes. Under the rule's outcome table, what follows is the user's decision. Seeds 49 to 51 have now been read;
-seeds 52 and later are free in the episode-seed ledger.
+check passes. Two rows of the outcome table apply: the GO row (all seven checks pass) and "the random-share control
+matches or beats AFF" (draw 0 +0.633 against AFF's +0.591; both paired differences straddle 0), which is reported only
+and leaves what follows to the user. Seeds 49 to 51 have now been read; seeds 52 and later are free in the episode-seed
+ledger.
 
 **The user's open choices** (the user decides):
 
-1. **The held-split paper test.** The held split is reserved for the paper test. AFF, with every piece frozen as in
-   this round, is the only candidate of this line that has passed a pre-registered fresh-seed test (R1's pass was
+1. **The held-split paper test.** The held split is reserved for the paper test. AFF, with every piece frozen as in this
+   round, is the only candidate of this line that has passed a pre-registered fresh-seed test (R1's pass was
    descriptive).
 2. **Style × genre.** The pooled claim rests on the emotion pairs. Options are to accept and disclose the style × genre
    loss, to add a label-free abstention on style × genre (brainstorm idea 4) or a detector with CSD evidence (idea 2),
    or the deferred grouping work for a style signal (design L). Any change to the method needs its own pre-registered
    fresh-seed round on seeds 52 and later before the held split, since seeds 49 to 51 no longer test a changed method.
-3. **How to describe the mechanism.** The random-share control shows that AFF's gain is one-sided steering, with the
-   affect pick choosing the side. The paper's account of the method should say so.
-4. **AFF or R1.** AFF beat R1 by +0.202 (+0.090 with frozen cells), and R1 also passed. The paper can present AFF as R1
-   plus a one-line gate change, with R1 as its ablation.
+3. **How to describe the mechanism.** Our reading: AFF's label-free part is a visual-contrast rule: it steers when the
+   visual groupings agree more on the contrasts than on the supports. On this benchmark that is the emotion side of the
+   two emotion pairs, where steering pays, and the style side of style × genre, where it costs R@1 (−0.580 against
+   B′(A0)). The control shows that this per-condition asymmetry, not the choice of episodes within a condition, carries
+   the gain. The paper's account of the method should say so.
+4. **AFF or R1.** AFF beat R1 by +0.202 (pre-registered; +0.090 with frozen cells, a descriptive quantity outside the
+   rule's lists), and R1 also passed. The paper can present AFF as R1 plus a one-line gate change, with R1 as its
+   ablation.
 
 **Our view** (ours, not a decision). The fresh-seed result is stronger than we expected: AFF kept 84% of its seed-42 bar
-margin over B′(A0), and every check's point exceeded its detectable margin. We would take AFF, frozen as tested, to the
-held-split paper test, and describe it plainly as one-sided affect steering whose label-free part is the choice of side.
-We would not tune it further on these seeds. Style × genre is the clearest weakness: if the user wants it addressed
-before the paper test, a single pre-registered abstention variant on seeds 52 to 54 seems the cheapest route, and the
-brainstorm's detector AUCs (0.61 to 0.65 for style × genre) suggest a modest ceiling.
+margin over B′(A0). We would take AFF, frozen as tested, to the held-split paper test, and describe it plainly: its
+label-free part is a visual-contrast rule that steers when the visual groupings agree more on the contrasts than on the
+supports, which on this benchmark is the emotion side of the two emotion pairs (where steering pays) and the style side
+of style × genre (where it costs R@1). We would not tune it further on these seeds. Style × genre is the clearest
+weakness: if the user wants it addressed before the paper test, a single pre-registered abstention variant on seeds 52
+to 54 seems the cheapest route, and the brainstorm's detector AUCs (0.61 to 0.65 for style × genre) suggest a modest
+ceiling.
 
-*Sources: `DECISION_RULE.md` §6.10, §9; `docs/superpowers/episode_seed_ledger.md` (via the run log, 21:00 to 21:08);
-the brainstorm §2.4, §3.2, §3.4; §6 to §8 of this report.*
+*Sources: `DECISION_RULE.md` §6.10, §9 (the GO row and the random-share row); `docs/superpowers/episode_seed_ledger.md`
+(via the run log, 21:00 to 21:08); `final_review/final_review.md` S1, S2; the brainstorm §2.4, §3.2, §3.4; §6 to §8 of
+this report.*
