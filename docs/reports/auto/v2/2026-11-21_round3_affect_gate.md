@@ -786,7 +786,7 @@ N11. All were applied in this fix wave. Its 32 mutations on scratch copies caugh
 (M06, M09, M20, M27, M28, M31) are covered for this round by the run's own records, the seed-42 regression, the phase-2
 re-derivation or the review, and are listed for reuse (§11.5).
 
-A scoped re-review of this fix wave follows: [outcome to be added].
+A scoped re-review of this fix wave (Sonnet) found all fourteen findings addressed and no new breakage: no number changed without cause, no broken link or figure reference, and no contradiction between sections. Round 3 is closed; the next step is the user's.
 
 *Sources: `rule_check/opus_rule_check.md`; `.superpowers/sdd/2026-10-06-round3-affect-gate/progress.md` and
 `task-{1,2,3}-review.md`, `task-{1,2}-rereview-1.md`; `rederive/rd3_phase1_report.md`, `rd3_phase2_report.md`;
