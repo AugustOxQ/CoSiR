@@ -316,7 +316,7 @@ def test_delta_int_non_multiple_of_quarter_raises():
     cl, pi, pB, pBp0, pBp1 = make_world(n)
     fam, aff = make_family(n, 1), make_family(n, 2)
     fam["fused"] = dict(fam["fused"], r1=fam["fused"]["r1"] + 0.1)
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match="multiple of 0.25"):
         RS4.dev_record("V4", fam, aff, pB, pBp0, pBp1, cl, pi)
 
 
@@ -361,17 +361,19 @@ def rec_(delta, clears=True):
 
 def test_carry_rules():
     r = RS4.carry({"V4": rec_(10), "V2": rec_(30), "V24": rec_(40, clears=False)})
-    assert r == {"E": ["V4", "V2"], "M": 30, "tied": ["V4", "V2"], "carried": "V4"}      # 30 - 10 = 20 <= 24
+    assert r == {"E": ["V4", "V2"], "M": 30, "tied": ["V4", "V2"], "carried": "V4", "boundaries": []}      # 30 - 10 = 20 <= 24
     r = RS4.carry({"V4": rec_(10), "V2": rec_(34), "V24": rec_(5)})
     assert r["tied"] == ["V4", "V2"] and r["carried"] == "V4"                           # gap exactly 24 is tied
     r = RS4.carry({"V4": rec_(10), "V2": rec_(35), "V24": rec_(5)})
     assert r["E"] == ["V4", "V2", "V24"] and r["M"] == 35 and r["tied"] == ["V2"] and r["carried"] == "V2"
     r = RS4.carry({"V4": rec_(0), "V2": rec_(-3), "V24": rec_(7, clears=False)})        # Delta must be > 0 and clear
-    assert r == {"E": [], "M": None, "tied": [], "carried": None}
+    assert r == {"E": [], "M": None, "tied": [], "carried": None, "boundaries": []}
     r = RS4.carry({"V4": rec_(1), "V2": rec_(30), "V24": rec_(30)})
     assert r["tied"] == ["V2", "V24"] and r["carried"] == "V2"                          # order V4, V2, V24
     with pytest.raises(AssertionError):
         RS4.carry({"V4": rec_(10.0), "V2": rec_(3), "V24": rec_(2)})                    # integers only
+    with pytest.raises(AssertionError):
+        RS4.carry({"V4": rec_(10), "V2": rec_(3)})                                      # all three candidates
 
 
 # ---------------------------------------------------------------- GO checks
@@ -430,7 +432,6 @@ def test_go_fails_when_only_the_aff_check_fails():
     ps = make_per_seed(offset=0.5, seed=7)
     for s in ps:                                  # the candidate is far above every comparator but equal to AFF
         s["aff_fused"] = {"r1": s["fused"]["r1"].copy(), "gain": s["fused"]["gain"].copy()}
-        s["aff_fused"]["r1"][0] = 1.0 - s["aff_fused"]["r1"][0]
         s["fused"]["gain"] = np.ones(len(s["cl"]))          # a clear condition gain over the counterpart and RCA
         s["rca"]["gain"] = np.zeros(len(s["cl"]))
         s["fused"]["r1"] = np.clip(s["fused"]["r1"] + 0.25, 0, 1)
@@ -489,3 +490,133 @@ def test_sensitivity_all_covers_every_check_and_matches_rs3():
     for v in out.values():
         assert v["x"] == pytest.approx(2.8 * v["SE"], rel=1e-12)
     assert len(RS4.sensitivity_all("V4", seed42)) == 8
+
+
+# ---------------------------------------------------------------- review fixes
+
+def make_bundle(n=40, seed=0):
+    rng = np.random.default_rng(seed)
+    base = {d: rng.normal(size=(n, 13)).astype(np.float32) for d in DIRECTIONS}
+    B = {c: {d: base[d].copy() for d in DIRECTIONS} for c in CONDITIONS}
+    return SimpleNamespace(B=B, parity=np.arange(n) % 2)
+
+
+def make_T(n=40, seed=1):
+    rng = np.random.default_rng(seed)
+    T = {c: {} for c in CONDITIONS}
+    for c, col in (("a", 0), ("b", 1)):
+        for d in DIRECTIONS:
+            t = rng.normal(size=(n, 13)).astype(np.float32)
+            t[:, col] += 1.5 * (rng.random(n) < 0.6)
+            T[c][d] = t
+    return T
+
+
+def test_candidate_counterpart_is_built_from_the_candidates_own_gates(monkeypatch):
+    """I1 (Review focus 3): G_cf of V4 comes from V4's gates, not AFF's."""
+    n = 40
+    b, T = make_bundle(n), make_T(n)
+    g_aff = [{c: np.ones(n, np.float32) for c in CONDITIONS} for _ in range(4)]
+    keep = (np.arange(n) % 2 == 0).astype(np.float32)                          # V4 vetoes half of the episodes
+    cand = RF4.run_candidate(b, T, "V4", g_aff, keep=keep)
+    aff = RF3.run_family(b, T, g_aff)
+    own = RF3.run_family(b, T, RF4.gates_candidate("V4", g_aff, keep=keep))
+    for m in ("r1", "gain", "other"):
+        np.testing.assert_array_equal(np.asarray(cand["cf"][m]), np.asarray(own["cf"][m]))
+        np.testing.assert_array_equal(np.asarray(cand["fused"][m]), np.asarray(own["fused"][m]))
+    assert any(not np.array_equal(np.asarray(cand["cf"][m]), np.asarray(aff["cf"][m])) for m in ("r1", "other"))
+    assert cand["cpick"] != aff["cpick"] or not np.array_equal(cand["cf"]["r1"], aff["cf"]["r1"])
+    # the mutation (AFF's gates reach the counterpart) reproduces AFF's counterpart, which the assertion above rejects
+    monkeypatch.setattr(RF4, "gates_candidate", lambda name, g, pick_a1=None, keep=None: g)
+    mut = RF4.run_candidate(b, T, "V4", g_aff, keep=keep)
+    for m in ("r1", "gain", "other"):
+        np.testing.assert_array_equal(np.asarray(mut["cf"][m]), np.asarray(aff["cf"][m]))
+    assert any(not np.array_equal(np.asarray(mut["cf"][m]), np.asarray(own["cf"][m])) for m in ("r1", "other"))
+    monkeypatch.undo()
+    fo = RF4.run_candidate(b, T, "V4", g_aff, keep=keep, fused_only=True)
+    assert fo["cf"] is None and fo["cpick"] is None
+
+
+def test_select_fused_uses_rho_ctrl_in_the_min_margin_criterion():
+    """I2 / M06: min(rho - rho_ctrl, gamma) and min(rho, gamma) choose different cells on both halves."""
+    parity = np.array([0, 1, 0, 1])
+    fri = np.array([[3, 2, 3, 2], [2, 2, 2, 2], [3, 3, 2, 3]], np.int8)
+    fgi = np.array([[1, 1, 0, 1], [2, 1, 1, 1], [1, 1, 1, 0]], np.int8)
+    ctrl = {0: (0.0, 3), 1: (0.0, 4)}
+    assert F.select_fused(fri, fgi, ctrl, parity) == {0: 2, 1: 2}
+    ignoring = {0: (0.0, 0), 1: (0.0, 0)}                                       # the mutant: rho_ctrl ignored
+    assert F.select_fused(fri, fgi, ignoring, parity) == {0: 1, 1: 0}
+    tie = np.zeros((3, 4), np.int8)
+    assert F.select_fused(tie, tie, {0: (0.0, 0), 1: (0.0, 0)}, parity) == {0: 0, 1: 0}   # ties to the lowest cell
+
+
+def test_aff_gate_takes_no_factors_and_returns_copies():
+    g_aff, pick, keep = make_gates()
+    with pytest.raises(ValueError):
+        RF4.gates_candidate("AFF", g_aff, keep=keep)
+    with pytest.raises(ValueError):
+        RF4.gates_candidate("AFF", g_aff, pick_a1=pick)
+    out = RF4.gates_candidate("AFF", g_aff)
+    for t in range(4):
+        for c in CONDITIONS:
+            assert out[t][c] is not g_aff[t][c] and not np.shares_memory(out[t][c], g_aff[t][c])
+            np.testing.assert_array_equal(out[t][c], g_aff[t][c])
+
+
+def test_factor_shapes_must_match_the_gate():
+    g_aff, pick, keep = make_gates()
+    with pytest.raises(AssertionError):
+        RF4.gates_candidate("V4", g_aff, keep=np.zeros(1, np.float32))
+    with pytest.raises(AssertionError):
+        RF4.gates_candidate("V2", g_aff, pick_a1={c: np.zeros(1, np.int64) for c in CONDITIONS})
+    with pytest.raises(AssertionError):
+        RF4.gates_imgabst_r1(g_aff, keep[:-1])
+
+
+def test_reader_a1_layout_check_is_unconditional():
+    p = np.tile([0.4, 0.3, 0.2, 0.1], (3, 1))
+    rd = stub_readers(p, p)
+    del rd["feature_names"]
+    with pytest.raises(KeyError):
+        RF4.reader_a1(SimpleNamespace(F1={c: np.zeros((3, 24)) for c in CONDITIONS}), readers=rd)
+
+
+def test_boundaries_are_flagged():
+    n = 40
+    cl, pi, pB, pBp0, pBp1 = make_world(n)
+    fam = make_family(n, 1)
+    same = RS4.dev_record("V4", fam, fam, pB, pBp0, pBp1, cl, pi)                # Delta = 0 exactly
+    assert same["delta_int"] == 0 and any("exactly 0" in x for x in same["boundaries"])
+    assert "cell_text" in same and same["cell_text"]["fused"][0]["tau_index"] == RF3.describe(3)["tau_index"]
+    other = RS4.dev_record("V4", fam, make_family(n, 2), pB, pBp0, pBp1, cl, pi)
+    assert not any("exactly 0" in x for x in other["boundaries"]) or other["delta_int"] == 0
+    r = RS4.carry({"V4": rec_(10), "V2": rec_(34), "V24": rec_(5)})
+    assert r["boundaries"] == ["V4: tie gap M - Delta_k is exactly 24"]
+    r = RS4.carry({"V4": dict(rec_(0, clears=False), boundaries=["V4: Delta_k is exactly 0"]), "V2": rec_(3), "V24": rec_(2)})
+    assert r["boundaries"] == ["V4: Delta_k is exactly 0"]
+    # a D10 clause within 1e-12 of its threshold: patch C.point_ci so the bar point sits 5e-13 above 0.5
+    orig = C.point_ci
+    calls = {"n": 0}
+
+    def fake(values, clusters):
+        calls["n"] += 1
+        r = orig(values, clusters)
+        return {"point": 0.5 + 5e-13, "ci95": [0.1, 0.9]} if calls["n"] == 1 else r
+
+    try:
+        RS4.C.point_ci = fake
+        rec = RS4.dev_record("V4", fam, make_family(n, 2), pB, pBp0, pBp1, cl, pi)
+    finally:
+        RS4.C.point_ci = orig
+    assert any("clause 1" in x for x in rec["boundaries"])
+
+
+def test_comparators_accept_r1_and_imgabst_with_a0_order():
+    A, B0, CF, BB = pa([.25]), pa([.5]), pa([.75]), pa([1.0])
+    for name in ("R1", "IMGABST"):
+        assert [l for l, _ in RS4.comparators(name, BB, B0, A, CF)] == ["Bprime_A0", "counterpart", "B"]
+
+
+def test_sensitivity_all_unknown_name_is_value_error():
+    with pytest.raises(ValueError):
+        RS4.sensitivity_all("V9", {"cl": np.arange(3)})

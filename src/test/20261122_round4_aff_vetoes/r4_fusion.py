@@ -25,7 +25,7 @@ def reader_a1(bundle, readers=None):
     readers: the pickle dict (injected by tests); default bundle.readers_a1."""
     if readers is None:
         readers = bundle.readers_a1
-    if "feature_names" in readers and list(readers["feature_names"]) != rf.feature_names(R4.A1):
+    if list(readers["feature_names"]) != rf.feature_names(R4.A1):
         raise AssertionError("the A1 readers were trained on another feature layout")
     P = {}
     for c in CONDITIONS:
@@ -57,6 +57,10 @@ def apply_keep(g, keep):
     """The one gate-factor function behind V4's abstention (and the IMGABST path of section 5 item 3): g_t^c * keep, for
     every tau index and condition. keep: (n,) 0/1 float32 (a_v), the same for both conditions."""
     keep = np.asarray(keep)
+    for gt in g:
+        for c in CONDITIONS:
+            if keep.shape != np.asarray(gt[c]).shape:
+                raise AssertionError("the keep factor's shape differs from the gate's")
     if keep.dtype != np.float32 or not np.all((keep == 0) | (keep == 1)):
         raise AssertionError("the keep factor must be a float32 0/1 array")
     return [{c: (np.asarray(gt[c]) * keep).astype(np.float32) for c in CONDITIONS} for gt in g]
@@ -64,6 +68,10 @@ def apply_keep(g, keep):
 
 def apply_affect_pick(g, pick_a1):
     """g_t^c * 1[pi_A1^c = affect] (V2's factor)."""
+    for gt in g:
+        for c in CONDITIONS:
+            if np.asarray(pick_a1[c]).shape != np.asarray(gt[c]).shape:
+                raise AssertionError("the A1 pick's shape differs from the gate's")
     return [{c: (np.asarray(gt[c]) * (np.asarray(pick_a1[c]) == AFFECT).astype(np.float32)).astype(np.float32)
              for c in CONDITIONS} for gt in g]
 
@@ -77,8 +85,10 @@ def gates_candidate(name, g_aff, pick_a1=None, keep=None):
         raise ValueError(f"{name} needs the abstention factor keep")
     if name in ("V2", "V24") and pick_a1 is None:
         raise ValueError(f"{name} needs the A1 picks")
+    if name == "AFF" and (pick_a1 is not None or keep is not None):
+        raise ValueError("AFF takes no veto factors")
     _check_01(g_aff, "AFF gate")
-    g = [{c: np.asarray(gt[c]) for c in CONDITIONS} for gt in g_aff]
+    g = [{c: np.array(gt[c], copy=True) for c in CONDITIONS} for gt in g_aff]
     if name in ("V4", "V24"):
         g = apply_keep(g, keep)
     if name in ("V2", "V24"):
@@ -97,3 +107,9 @@ def gates_imgabst_r1(g_r1, keep):
     g = apply_keep(g_r1, keep)
     _check_01(g, "IMGABST gate")
     return g
+
+
+def run_candidate(bundle, T, name, g_aff, pick_a1=None, keep=None, fused_only=False):
+    """The candidate's family (D7): its gates (gates_candidate) in a single RF3.run_family call, so the matched
+    counterpart G_cf is built from the candidate's own gates, never AFF's."""
+    return RF3.run_family(bundle, T, gates_candidate(name, g_aff, pick_a1=pick_a1, keep=keep), fused_only=fused_only)

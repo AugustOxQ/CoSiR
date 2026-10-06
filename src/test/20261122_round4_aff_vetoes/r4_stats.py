@@ -8,7 +8,8 @@ import numpy as np
 
 import r4_common as R4
 
-RS3, C, F = R4.RS3, R4.C, R4.RF3.F
+RS3, C, F, RF3 = R4.RS3, R4.C, R4.RF3.F, R4.RF3
+BOUNDARY_EPS = 1e-12
 TIE_BAND = R4.TIE_BAND_UNITS
 
 BASE_CHECKS = ("vs_cosine", "vs_rca", "vs_B", "vs_Bprime_A0")
@@ -22,7 +23,7 @@ _NAMES = {"vs_cosine": "cosine", "vs_rca": "RCA", "vs_B": "B", "vs_Bprime_A0": "
 def comparators(name, pB, pBp0, pBp1, cf):
     """Condition-free comparators in D8's tie order. V4 and AFF: B'(A0), counterpart, B. V2 and V24: B'(A1), B'(A0),
     counterpart, B. -> list of (label, per_anchor)."""
-    if name in ("V4", "AFF"):
+    if name in ("V4", "AFF", "R1", "IMGABST"):
         return [("Bprime_A0", pBp0), ("counterpart", cf), ("B", pB)]
     if name in ("V2", "V24"):
         return [("Bprime_A1", pBp1), ("Bprime_A0", pBp0), ("counterpart", cf), ("B", pB)]
@@ -72,13 +73,24 @@ def dev_record(name, fam, aff_fam, pB, pBp0, pBp1, cl, pair_index):
            "d10": {"c1": c1, "c2": c2, "c3": c3, "clears": bool(c1 and c2 and c3)},
            "per_pair_bar_margin": {p: C.point_ci(v[pair_index == i], cl[pair_index == i])
                                    for i, p in enumerate(C.POOLED_ORDER)},
+           "cell_text": {k: {int(h): RF3.describe(int(c)) for h, c in fam[p].items()}
+                         for k, p in (("fused", "fpick"), ("cf", "cpick"))},
            "delta_int": None, "delta": None}
+    b = []
+    for lbl, val, thr in (("D10 clause 1 (bar margin point vs 0.5)", bar["point"], C.BAR_TARGET),
+                          ("D10 clause 2 (bar margin lower bound vs 0)", bar["ci95"][0], 0.0),
+                          ("D10 clause 3 (gain statistic lower bound vs 0)", gain["ci95"][0], 0.0)):
+        if abs(val - thr) <= BOUNDARY_EPS:
+            b.append(f"{name}: {lbl}: {val!r} within 1e-12 of {thr}")
+    rec["boundaries"] = b
     if aff_fam is not None:
         n = len(fu["r1"])
         di = int((F.as_int4(fu["r1"], "candidate r1").astype(np.int64)
                   - F.as_int4(aff_fam["fused"]["r1"], "AFF r1").astype(np.int64)).sum())
         ci = C.point_ci(_f64(fu["r1"]) - _f64(aff_fam["fused"]["r1"]), cl)["ci95"]
         rec["delta_int"] = di
+        if di == 0:
+            rec["boundaries"].append(f"{name}: Delta_k is exactly 0")
         rec["delta"] = {"point": 100.0 * di / (4 * n), "ci95": ci}
     return rec
 
@@ -86,16 +98,19 @@ def dev_record(name, fam, aff_fam, pB, pBp0, pBp1, cl, pair_index):
 def carry(records):
     """Section 5 items 8 and 9. records: {name: dev_record}. E = candidates that clear D10 with Delta > 0 (integers);
     M = largest Delta in E; tied = members of E with M - Delta <= 24; carried = first tied in the order V4, V2, V24."""
-    order = [n for n in R4.CANDIDATES if n in records]
+    assert set(records) == set(R4.CANDIDATES), f"carry needs exactly {R4.CANDIDATES}, got {sorted(records)}"
+    order = list(R4.CANDIDATES)
     for n in order:
         if type(records[n]["delta_int"]) is not int:
             raise AssertionError(f"{n}: Delta_k must be a Python int, got {type(records[n]['delta_int'])}")
     E = [n for n in order if records[n]["d10"]["clears"] and records[n]["delta_int"] > 0]
+    bnd = [x for n in order for x in records[n].get("boundaries", [])]
     if not E:
-        return {"E": [], "M": None, "tied": [], "carried": None}
+        return {"E": [], "M": None, "tied": [], "carried": None, "boundaries": bnd}
     M = max(records[n]["delta_int"] for n in E)
     tied = [n for n in E if M - records[n]["delta_int"] <= TIE_BAND]
-    return {"E": E, "M": M, "tied": tied, "carried": tied[0]}
+    bnd += [f"{n}: tie gap M - Delta_k is exactly {TIE_BAND}" for n in E if M - records[n]["delta_int"] == TIE_BAND]
+    return {"E": E, "M": M, "tied": tied, "carried": tied[0], "boundaries": bnd}
 
 
 # ---------------------------------------------------------------- the GO checks (section 6.5)
@@ -145,8 +160,9 @@ def go_checks(name, per_seed):
 def sensitivity_all(name, seed42):
     """Section 6.1 for every GO check: RS3.sensitivity on the seed-42 per-episode difference. seed42: one per_seed
     element. -> {check: {SE, half_width, x, seed42_half_width, ...}} in go_checks' order."""
+    names = _check_names(name)
     d = _diffs(name, seed42)
-    return {k: RS3.sensitivity(d[k], np.asarray(seed42["cl"])) for k in _check_names(name)}
+    return {k: RS3.sensitivity(d[k], np.asarray(seed42["cl"])) for k in names}
 
 
 # ---------------------------------------------------------------- reading a failed check (section 6.7)
