@@ -4,6 +4,7 @@
 """
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -24,7 +25,17 @@ def rand_scores(rng, E=40, Kc=13, same_cond=False):
 
 
 def test_rule_sha_matches():
+    import hashlib
+    assert hashlib.sha256(C.RULE.read_bytes()).hexdigest() == C.RULE_SHA      # direct, not through assert_rule
     C.assert_rule()
+
+
+def test_assert_rule_raises_on_altered_rule(tmp_path, monkeypatch):
+    altered = tmp_path / "DECISION_RULE.md"
+    altered.write_bytes(C.RULE.read_bytes() + b"\nan altered line\n")
+    monkeypatch.setattr(C, "RULE", altered)
+    with pytest.raises(SystemExit):
+        C.assert_rule()
 
 
 def test_sigma_matches_bruteforce_var_of_delta():
@@ -193,3 +204,62 @@ def test_pick_statistics_and_shares():
     acc, share = C.pick_statistics(ti, parts, C.TOLD["A1"], pi, cl)
     assert acc["correct_share"]["point"] == 100.0 and abs(share["overall"]["affect"] - 100 * 8 / 24) < 1e-9
     assert abs(sum(share["overall"].values()) - 100) < 1e-9
+
+
+def test_assemble_scores_each_half_with_the_other_halfs_pick():
+    rng = np.random.default_rng(6)
+    E = 20
+    B, T = rand_scores(rng, E=E, same_cond=True), rand_scores(rng, E=E)
+    zB, zT = _zdict(B), _zdict(T)
+    margins = {"a": rng.random(E), "b": rng.random(E)}
+    taus, _ = K.thresholds(margins)
+    terms = K.gated_terms(zT, K.gates(margins, taus)[0])
+    cells = [(0, 1.0, 0.0), (0, 0.0, 4.0)]
+    parity = np.arange(E) % 2
+    si = _combine(zB, zB, terms, cells[0][1], cells[0][2])
+    sj = _combine(zB, zB, terms, cells[1][1], cells[1][2])
+    assert not all(np.array_equal(si[c][d], sj[c][d]) for c in CONDITIONS for d in DIRECTIONS)
+    out = K.assemble(zB, {0: terms}, cells, {0: 0, 1: 1}, parity)    # half 0 picked cell i, half 1 picked cell j
+    for c in CONDITIONS:
+        for d in DIRECTIONS:
+            assert np.array_equal(out[c][d][parity == 1], si[c][d][parity == 1])   # parity-1 rows: cell i (tuned on half 0)
+            assert np.array_equal(out[c][d][parity == 0], sj[c][d][parity == 0])   # parity-0 rows: cell j (tuned on half 1)
+
+
+def test_per_pair_bar_uses_the_overall_comparator_for_every_pair():
+    n = 60
+    pair_index = np.repeat(np.arange(3), 20)
+    cl = np.arange(n) // 2
+    fused = pa(np.ones(n))
+    cf = pa(np.where(pair_index == 0, 0.5, 0.9))
+    B = pa(np.where(pair_index == 0, 0.9, 0.0))                 # inside pair 0 alone, B beats the counterpart
+    Bp = pa(np.zeros(n))
+    assert C.bar_comparator(Bp, cf, B)[0] == "counterpart"      # overall (0.767 vs 0.3 vs 0)
+    for p_ in (fused, cf, B, Bp):                               # gain arrays too
+        p_["gain"] = p_["r1"] * 0.5
+    _, info = C.bar_info(fused, cf, Bp, B, cl, pair_index)
+    assert info["comparator"] == "counterpart"
+    assert info["per_pair_r1"][C.POOLED_ORDER[0]]["point"] == pytest.approx(50.0)       # vs counterpart, not B (10.0)
+    assert info["per_pair_r1"][C.POOLED_ORDER[1]]["point"] == pytest.approx(10.0)
+    assert info["per_pair_gain"][C.POOLED_ORDER[0]]["point"] == pytest.approx(25.0)
+
+
+def test_evaluate_counterpart_term_is_two_condition_mean_identical_under_both(monkeypatch):
+    rng = np.random.default_rng(7)
+    E = 12
+    B, T = rand_scores(rng, E=E, same_cond=True), rand_scores(rng, E=E)
+    seen = {}
+
+    def fake_cf(cos, t_u, t_c, parity):
+        seen["t_u"], seen["t_c"] = t_u, t_c
+        return cos, {}
+
+    monkeypatch.setattr(C, "crossfit_nested", lambda cb, ct, t, parity: (B, B, {}))
+    monkeypatch.setattr(C, "crossfit_condition_free", fake_cf)
+    monkeypatch.setattr(C, "evaluate_fused", lambda *a, **k: ({}, {}))
+    bundle = SimpleNamespace(ctx=SimpleNamespace(parity=np.arange(E) % 2), B=B, pB=C.per_anchor(B))
+    C.evaluate(bundle, "A1", T, {"a": np.zeros(E, int), "b": np.zeros(E, int)}, "synthetic")
+    for d in DIRECTIONS:
+        ref = (0.5 * (T["a"][d].astype(np.float64) + T["b"][d].astype(np.float64))).astype(np.float32)
+        assert np.array_equal(seen["t_c"]["a"][d], ref) and np.array_equal(seen["t_c"]["b"][d], ref)
+        assert np.array_equal(seen["t_u"]["a"][d], B["a"][d])          # the user side stays B
