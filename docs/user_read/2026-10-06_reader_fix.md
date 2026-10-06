@@ -186,6 +186,7 @@ The risk of another round is selection: each extra round on the same development
 | R@1 | share of rankings with the right candidate first; differences in percentage points | R@1 |
 | matched control | the same scorer with only the aspect signal removed | matched counterpart |
 | aspect-blind scorers | best aspect-blind scorer, the same recomputed on the reader's groupings, the matched control | B, B′, matched counterpart |
+| simple baselines | plain CLIP image-caption similarity, and a similarity learned from the example pairs | cosine, RCA |
 | bar margin | R@1 minus the strongest aspect-blind scorer's | bar margin |
 | bar | bar margin at least +0.5, its interval above 0, and a clear gain | development bar |
 | condition gain | R@1 minus the other aspect's first-place rate | condition gain, gain statistic |
@@ -194,3 +195,22 @@ The risk of another round is selection: each extra round on the same development
 | fresh test | one-off test on three never-used episode draws | fresh-seed test (seeds 49 to 51) |
 | pre-registered rule | a decision rule committed before any result | decision rule |
 | design L | late-fusion refinement of the groupings | design L |
+
+## The bar and the GO standard
+
+Passing the bar only earns the one-off fresh test; that test alone decides GO. The middle column marks where the
+confidence-gated reader stands.
+
+| | Bar (development episodes) | Confidence-gated reader | GO standard (fresh test) |
+|---|---|---|---|
+| Data | the reused development episodes | measured | three never-used episode draws, not built yet |
+| Size of the margin | at least +0.5 | +0.444 ✗ (0.056 short) | reliably above 0 |
+| Margin's lower bound | above 0 | +0.216 ✓ | pooled lower bound above 0 against each comparator |
+| Compared against | the three aspect-blind scorers | ✓ (strongest: the matched control) | the same three plus the two simple baselines |
+| Condition gain | lower bound above 0 | +2.33 ✓ | lower bound above 0, also against the learned simple baseline |
+| Outcome | all of the above must hold | not cleared (failed only the size) | not run, because the bar was not cleared |
+
+- Only the best candidate that clears the bar takes the fresh test. Its three draws are pooled for the verdict, and
+  each is also reported on its own.
+- A GO shows that the result holds on new episodes from the same paintings, not on new paintings, which stay reserved
+  for the paper's final test.
