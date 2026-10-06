@@ -11,4 +11,6 @@ pre-registered A′. Held rows have their own ledger (`held_ledger.md`).
 | 45 | test (spent) | N1-nested-A3 fresh-seed test with 47 and 48, NO-GO; A3's matched control scored for `ADDENDUM_1.md` R3 (2026-10-04, `src/test/20261108_new_method_quick_checks/`); N6c's test not run (gate failed) |
 | 46 | spent | Qwen3-VL-8B-Instruct MLLM probe, 600 per pair (2026-10-03, node404; addendum `src/test/20261106_mllm_probe_8b/PREREGISTRATION.md`): works = False |
 | 47, 48 | test (spent) | as seed 45 (2026-10-04) |
-| 49 and later | free | none |
+| 49, 50, 51 | test (spent) | Reader-fix round 3 fresh-seed test of AFF (one-sided affect steering on R1) with R1 beside it, built 2026-10-06 21:00 to 21:08 with `run_baselines.py`, hash-checked against seeds 42, 43, 45, 47, 48 (`src/test/20261121_round3_affect_gate/`) |
+| 52 and later | free | none |
+| 9001, 9002, 9003 | smoke | Wiring smoke only (64 episodes per pair, `run_baselines.py --smoke`, written to `results/smoke/`), round 3's end-to-end test (2026-10-06); never results |
