@@ -3,7 +3,7 @@
 
 Every chart reads stored outputs; nothing is recomputed except differences and sums of stored values.
   src/test/20261117_reader_fix_csd/results/cand_<name>.json      the seven candidates and the AR runs
-  src/test/20261117_reader_fix_csd/results/ra_summary.json       picks that go to the empty grouping (AR check)
+  src/test/20261117_reader_fix_csd/results/ra_summary.json       A1 minus A0 under the noise-scaled reader
   src/test/20261117_reader_fix_csd/results/rb_reader_<cfg>.json  learned reader's accuracy on held-out practice episodes
   src/test/20261116_grouping_step1_style/results/step1_eval_style.json  the current (step-1 arg-max) reader
 The history of told and reader margins (figure 1) is typed in from the full report's section 2 table. The script
@@ -212,7 +212,7 @@ def fig2_bar_margins(rows):
     ax.grid(axis="x", color=GRID, lw=0.7)
     ax.set_axisbelow(True)
     title(fig, "No candidate reached the +0.5 bar;\nthe best fell 0.056 short")
-    save(fig, "fig2_bar_margins.png")
+    save(fig, "fig3_bar_margins.png")
 
 
 # ----------------------------------------------------------------------------------------------- 3 result 2
@@ -245,40 +245,10 @@ def fig3_gain_either(rows):
                         Line2D([], [], color=INK, marker="o", lw=0, ms=9, label="bar margin = half the sum")],
                loc="upper left", bbox_to_anchor=(0.02, 0.87), ncol=2, frameon=False, fontsize=12)
     title(fig, "More gain, but most of it went back in either rate")
-    save(fig, "fig3_gain_vs_either.png")
+    save(fig, "fig4_gain_vs_either.png")
 
 
 # ----------------------------------------------------------------------------------------------- 4 result 3
-def fig4_empty_grouping():
-    ar = load(RES / "ra_summary.json")["ar_check"]
-    rb = load(RES / "cand_Rb_argmax_AR.json")["pick_share"]
-    rbe = load(RES / "cand_Rb_expected_AR.json")["pick_share"]
-    assert rb["overall"]["rand"] == rbe["overall"]["rand"]  # the two scorings share the pick
-    vals = [("current reader", ar["reader_step1_argmax"]["overall"]["rand"], C_CUR),
-            ("learned", rb["overall"]["rand"], C_LA),
-            ("noise-scaled", ar["reader_Ra"]["overall"]["rand"], C_NS)]
-    for (_, v, _), want in zip(vals, [20.3, 27.3, 30.5]):
-        close(v, want, 0.051)
-    fig, ax = plt.subplots(figsize=(6.4, 3.9))
-    fig.subplots_adjust(left=0.3, right=0.95, top=0.8, bottom=0.2)
-    ys = np.array([2, 1, 0])
-    for y, (lab, v, c) in zip(ys, vals):
-        ax.barh(y, v, height=0.55, color=c)
-        ax.text(v + 0.6, y, f"{v:.1f}%", va="center", fontsize=12.5, color=INK, bbox=WHITE_BG, zorder=5)
-    ax.axvline(25, color=INK, lw=1.4, ls=(0, (5, 3)))
-    ax.text(25.4, 2.55, "chance 25%", fontsize=12, va="center", color=INK)
-    ax.set_yticks(ys)
-    ax.set_yticklabels([v[0] for v in vals])
-    clean_y(ax)
-    ax.set_xlim(0, 37)
-    ax.set_ylim(-0.5, 2.85)
-    ax.set_xlabel("picks that go to the empty grouping (%)")
-    ax.grid(axis="x", color=GRID, lw=0.7)
-    ax.set_axisbelow(True)
-    title(fig, "Dividing by noise made the empty grouping\nwin more often, not less")
-    save(fig, "fig4_empty_grouping.png")
-
-
 def fig5_practice_vs_real():
     cfgs = [("A0", "without the\nstyle grouping", 100 / 3), ("A1", "with the\nstyle grouping", 25.0)]
     want = {"A0": (79.71, 79.08, 51.26), "A1": (62.87, 62.70, 48.69)}
@@ -309,7 +279,7 @@ def fig5_practice_vs_real():
                         Line2D([], [], color=INK, lw=1.4, ls=(0, (5, 3)), label="chance")],
                loc="upper left", bbox_to_anchor=(0.02, 0.87), ncol=1, frameon=False, fontsize=12)
     title(fig, "The learned reader scores much lower on real\nepisodes, on a stricter measure")
-    save(fig, "fig5_practice_vs_real.png")
+    save(fig, "fig2_practice_vs_real.png")
 
 
 # ----------------------------------------------------------------------------------------------- 5 result 4
@@ -351,7 +321,7 @@ def fig6_style_grouping(rows):
                         Line2D([], [], marker="o", lw=0, ms=11, color=INK2, label="with it")],
                loc="upper left", bbox_to_anchor=(0.02, 0.86), ncol=2, frameon=False, fontsize=12)
     title(fig, "With the style grouping, bar margins\nfell or stayed flat")
-    save(fig, "fig6_style_grouping.png")
+    save(fig, "fig5_style_grouping.png")
 
 
 def main():
@@ -359,7 +329,6 @@ def main():
     fig1_history()
     fig2_bar_margins(rows)
     fig3_gain_either(rows)
-    fig4_empty_grouping()
     fig5_practice_vs_real()
     fig6_style_grouping(rows)
 
