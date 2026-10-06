@@ -188,12 +188,16 @@ means:
 
 **Key evidence.** Pooled over the three fresh draws:
 
-| Affect steering minus … | R@1 points [95% interval] |
-|---|---|
-| strongest aspect-blind scorer (the bar margin) | +0.591 [+0.462, +0.729] |
-| its matched control | +0.796 [+0.670, +0.920] |
-| plain CLIP image-caption similarity (simple baseline) | +5.84 [+5.61, +6.07] |
-| confidence-gated reader (secondary check) | +0.202 [+0.093, +0.309] |
+| Scorer | Its R@1 (%) | Affect steering minus it, R@1 points [95% interval] |
+|---|---|---|
+| affect steering | 18.88 | |
+| strongest aspect-blind scorer (the bar margin) | 18.29 | +0.591 [+0.462, +0.729] |
+| its matched control | 18.08 | +0.796 [+0.670, +0.920] |
+| plain CLIP image-caption similarity (simple baseline) | 13.04 | +5.84 [+5.61, +6.07] |
+| confidence-gated reader (secondary check) | 18.68 | +0.202 [+0.093, +0.309] |
+
+R@1 is the share of rankings with the right candidate first; picking at random among the 13 candidates gives 7.7%.
+Plain CLIP sits low because the right candidate is always another painting that shares only one aspect with the query.
 
 ![The gain sits on the two emotion pairs](assets/2026-10-06_reader_fix_affect_steering/fig3_per_pair.png)
 
