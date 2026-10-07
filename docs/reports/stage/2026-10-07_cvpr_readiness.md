@@ -5,6 +5,10 @@
 > the CVPR GO bar, (3) what the novelty and contributions are, and (4) how to analyse the results deeply and clearly.
 > It decides nothing; the decisions in §6 are the user's. Facts come from the reports cited per section; judgements
 > are marked as ours.
+>
+> **Update, 7 October (the user's decisions):** the framing (§3, §6 item 1) is on hold for now. The fine-tuned CLIP
+> comparator (§2) is adopted in a lightweight form with three variants (a linear probe, the last block, LoRA) and no
+> full fine-tuning; the experiments run on the DAS6 nodes 404, 405 and 411.
 
 ## Summary
 
@@ -21,12 +25,14 @@
   datasets-and-benchmarks track or a workshop is the natural fallback.
 - **A fine-tuned CLIP** is not required as a headline competitor, but a cheap version (contrastive fine-tune on
   ArtELingo image–caption pairs, scored by cosine) should join the condition-free comparators before the held test,
-  because it could raise the floor exactly where AFF gains.
+  because it could raise the floor exactly where AFF gains. **Adopted by the user:** three lightweight variants (a
+  linear probe, the last block, LoRA), no full fine-tuning (§2).
 - **The strongest contribution** is the task with its evaluation protocol (matched controls, condition gain, swap
   test), then the analysis (modality asymmetry; what label-free condition reading can and cannot do). The method's
   novelty is modest and must be described as what it is: a side detector distantly supervised by GoEmotions.
-- **Decisions for the user (§6):** the paper's framing, soon, because it decides whether CUB and SemArt work starts
-  now; whether to add the fine-tuned CLIP comparator; how B′(A1) enters the held test; the analysis items to fund.
+- **Decisions for the user (§6):** the paper's framing (on hold since 7 October), which decides whether CUB and SemArt
+  work starts; how B′(A1) enters the held test; the analysis items to fund. The fine-tuned CLIP comparator is decided
+  (three lightweight variants).
 
 ## 1. Where we stand
 
@@ -89,6 +95,19 @@ held test.**
 **Our recommendation:** train (a), score it by cosine on the development seeds, and add it to the held test's
 comparator list (as a GO comparator if it lands near AFF, otherwise as a reported baseline). Running AFF on top of it
 belongs with K4 and only if time allows.
+
+**Decided by the user (7 October).** Variant (a), in three lightweight forms, with no full fine-tuning:
+
+| Form | What is trained | Why it is in the set |
+|---|---|---|
+| Linear probe | a linear map on the frozen image and caption features | the cheapest adaptation; shows how much a re-weighting of CLIP's space alone buys |
+| Last block | the last transformer block of each encoder | the standard partial fine-tune |
+| LoRA | low-rank adapters in the encoders' attention | the standard parameter-efficient fine-tune |
+
+Each is trained without evaluation labels on scorer-train image–caption pairs, chosen on held-out image–caption
+retrieval (never on aspect episodes), and scored by cosine on the development episodes beside AFF and its
+comparators. The runs use the DAS6 nodes 404, 405 and 411 (up to 9 GPUs). The design details are in the experiment's
+spec.
 
 *Sources: CVPR plan §8, §9; `docs/reports/auto/v2/2026-10-25_backbone_check.md`.*
 
@@ -206,10 +225,11 @@ Part of this exists in rounds 3 and 4; the new items are marked **new**, with a 
 
 ## 6. Decisions for the user
 
-1. **The paper's framing** (§3): A, B or C. Our view: target B, keep C as the fallback, and decide before the
-   ArtELingo held read, because the framing decides which comparators and claims the held test must carry and whether
-   CUB and SemArt work starts now.
-2. **The fine-tuned CLIP comparator** (§2): add the cheap version (a) before the held test, or not.
+1. **The paper's framing** (§3): A, B or C. **On hold** (the user, 7 October). Our view: target B, keep C as the
+   fallback, and decide before the ArtELingo held read, because the framing decides which comparators and claims the
+   held test must carry and whether CUB and SemArt work starts now.
+2. **The fine-tuned CLIP comparator** (§2): **decided** (the user, 7 October): three lightweight variants (linear
+   probe, last block, LoRA), no full fine-tuning, started on DAS6.
 3. **B′(A1) in the held test**: as a GO check, a reported comparator, or not at all (open since round 4).
 4. **Which new analyses to fund** (§5): our short list is per-emotion with GoEmotions coverage, the ladder figure,
    the flip analysis and the qualitative episodes (all cheap), then the number of example pairs.
