@@ -147,7 +147,11 @@ def test_constants():
     assert R5.CANDIDATES == ("G-T", "G-TF") and R5.TIE_BAND_UNITS == 24
     assert (R5.GOEMO_BATCH, R5.GOEMO_MAXLEN, R5.REG_SAMPLE, R5.SPOT_SAMPLE) == (256, 64, (5, 2048), (6, 1024))
     assert (R5.GOEMO_TOL, R5.GE_MAX_ITER, R5.GE_FALLBACK_MAX_ITER) == (1e-4, 300, 3000)
-    assert R5.GOEMO_FILE_SHA is None and R5.GE_POST_SHA is None
+    import re
+    for sha, fname in ((R5.GOEMO_FILE_SHA, "r5_goemotions_selection.npz"), (R5.GE_POST_SHA, "r5_ge_posterior.npz")):
+        assert sha is None or re.fullmatch(r"[0-9a-f]{64}", sha)
+        if sha is not None and (R5.CACHE / fname).exists():
+            assert R5.sha256_file(R5.CACHE / fname) == sha
     assert R5.AUC_AFF == 0.7870951145887375 and R5.GROUP_LIFT == 2.7111312041209863
     assert R5.AFF_MINUS_BP1 == (0.33162434895833337, (0.048231414333532084, 0.6246158772581268))
     assert R5.AFF_EITHER_PER_GAIN == 0.5238718116415958
