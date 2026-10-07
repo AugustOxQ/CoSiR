@@ -18,9 +18,16 @@ import r5_guard as G  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def _fresh_guard():
+def _fresh_guard(monkeypatch):
     G._reset_for_tests()
+    saved = dict(R5.RB3._HEADS)
+    R5.RB3._HEADS.clear()                       # each test sets up the cache it needs
+    monkeypatch.setattr(R5, "N_ROWS", 40)       # synthetic sizes for ge_from_file
+    monkeypatch.setattr(R5, "N_SELECTION", 20)
+    monkeypatch.setattr(G, "_GE_FPS", set())
     yield
+    R5.RB3._HEADS.clear()
+    R5.RB3._HEADS.update(saved)
     G._reset_for_tests()
 
 
@@ -198,13 +205,21 @@ def _post(seed=0):
     return Q
 
 
-def _bundle(Q):
+def _cache(Q, key=60000):
+    R5.RB3._HEADS[key] = {"post": {"affect": {"img": _post(1), "txt": Q}}}
+
+
+def _bundle(Q, cached=True):
+    if cached:
+        _cache(Q)
     return SimpleNamespace(post={"affect": {"img": _post(1), "txt": Q}})
 
 
-def _ge_file(tmp_path, n_sel=20, rows=None, classes=None, sums=1.0, name="ge.npz"):
+def _ge_file(tmp_path, n_sel=20, rows=None, classes=None, sums=1.0, name="ge.npz", nan=False):
     rng = np.random.default_rng(3)
     ps = (rng.dirichlet(np.ones(K), n_sel) * sums).astype(np.float32)
+    if nan:
+        ps[3, 4] = np.nan
     rows = np.arange(5, 5 + n_sel, dtype=np.int64) if rows is None else rows
     classes = np.arange(K) if classes is None else classes
     p = tmp_path / name
@@ -226,6 +241,36 @@ def test_clip_from_bundle_is_a_read_only_view():
         G.require(pl, "x")
 
 
+def test_clip_from_bundle_needs_an_equal_cached_head():
+    Q = _post()
+    _cache(Q.copy())                                       # an equal array (by value) passes
+    assert G.clip_from_bundle(_bundle(Q, cached=False)).kind == "clip"
+    R5.RB3._HEADS.clear()
+    _cache(_post(7))                                       # a different array refuses
+    with pytest.raises(G.GuardError):
+        G.clip_from_bundle(_bundle(Q, cached=False))
+    R5.RB3._HEADS.clear()                                  # an empty cache refuses
+    with pytest.raises(G.GuardError):
+        G.clip_from_bundle(_bundle(Q, cached=False))
+
+
+def test_placements_are_minted_only_by_the_two_constructors(tmp_path, monkeypatch):
+    with pytest.raises(G.GuardError):
+        G.Placement("clip", _post(), "0" * 64)
+    p, ps, rows = _ge_file(tmp_path)
+    monkeypatch.setattr(R5, "GE_POST_SHA", R5.sha256_file(p))
+    ge = G.ge_from_file(p)
+    with pytest.raises(G.GuardError):                      # forged clip carrying the GE array
+        G.Placement("clip", ge.Q, G.fingerprint(ge.Q))
+    with pytest.raises(G.GuardError):                      # forged ge skipping the SHA check
+        G.Placement("ge", ge.Q, "0" * 64)
+    with pytest.raises(G.GuardError):                      # the bundle's Q being the GE array is not a clip
+        G.clip_from_bundle(_bundle(np.array(ge.Q)))
+    G.release(_regression(tmp_path))
+    assert G.require(ge, "x") is ge
+    assert G.require(G.clip_from_bundle(_bundle(_post())), "x").kind == "clip"
+
+
 def test_clip_from_bundle_refuses_a_wrong_array():
     with pytest.raises(G.GuardError):
         G.clip_from_bundle(_bundle(_post().astype(np.float64)))
@@ -236,7 +281,7 @@ def test_clip_from_bundle_refuses_a_wrong_array():
 def test_require_refuses_ge_before_release_and_accepts_clip(tmp_path, monkeypatch):
     p, ps, rows = _ge_file(tmp_path)
     monkeypatch.setattr(R5, "GE_POST_SHA", R5.sha256_file(p))
-    ge = G.ge_from_file(p, n_rows=N, n_sel=20)
+    ge = G.ge_from_file(p)
     clip = G.clip_from_bundle(_bundle(_post()))
     assert G.require(clip, "x") is clip
     with pytest.raises(G.GuardError):
@@ -253,7 +298,7 @@ def test_require_refuses_ge_before_release_and_accepts_clip(tmp_path, monkeypatc
 def test_ge_from_file(tmp_path, monkeypatch):
     p, ps, rows = _ge_file(tmp_path)
     monkeypatch.setattr(R5, "GE_POST_SHA", R5.sha256_file(p))
-    ge = G.ge_from_file(p, n_rows=N, n_sel=20)
+    ge = G.ge_from_file(p)
     assert ge.kind == "ge" and ge.sha256 == R5.GE_POST_SHA
     assert ge.Q.dtype == np.float32 and ge.Q.shape == (N, K) and not ge.Q.flags.writeable
     assert np.array_equal(ge.Q[rows], ps) and np.isnan(ge.Q[:5]).all() and np.isnan(ge.Q[25:]).all()
@@ -262,10 +307,10 @@ def test_ge_from_file(tmp_path, monkeypatch):
 def test_ge_from_file_refuses_wrong_or_unset_sha(tmp_path, monkeypatch):
     p, _, _ = _ge_file(tmp_path)
     with pytest.raises(G.GuardError):          # constant not committed yet (None)
-        G.ge_from_file(p, n_rows=N, n_sel=20)
+        G.ge_from_file(p)
     monkeypatch.setattr(R5, "GE_POST_SHA", "0" * 64)
     with pytest.raises(G.GuardError):
-        G.ge_from_file(p, n_rows=N, n_sel=20)
+        G.ge_from_file(p)
 
 
 def test_ge_from_file_refuses_malformed_files(tmp_path, monkeypatch):
@@ -274,12 +319,15 @@ def test_ge_from_file_refuses_malformed_files(tmp_path, monkeypatch):
         "classes": dict(classes=np.arange(K)[::-1].copy()),
         "sums": dict(sums=0.9),
         "short": dict(n_sel=19, rows=np.arange(5, 24, dtype=np.int64)),
+        "high_row": dict(rows=np.arange(30, 50, dtype=np.int64)),
+        "negative_row": dict(rows=np.arange(-3, 17, dtype=np.int64)),
+        "nan": dict(nan=True),
     }
     for name, kw in cases.items():
         p, _, _ = _ge_file(tmp_path, name=name + ".npz", **kw)
         monkeypatch.setattr(R5, "GE_POST_SHA", R5.sha256_file(p))
         with pytest.raises(G.GuardError):
-            G.ge_from_file(p, n_rows=N, n_sel=20)
+            G.ge_from_file(p)
 
 
 def _regression(tmp_path, mutate=None, name="results"):

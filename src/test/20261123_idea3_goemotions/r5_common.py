@@ -51,8 +51,10 @@ TEST_SEEDS = (52, 53, 54)                                  # rule §4 item 3
 SMOKE_SEEDS = (9001, 9002, 9003)                           # rule §10
 EARLIER_SEEDS = (42, 43, 45, 47, 48, 49, 50, 51)           # rule §6.2 hash check
 R3.TEST_SEEDS = TEST_SEEDS                                 # round 3's seed guard reads this at call time
-assert tuple(R4C.TEST_SEEDS) == TEST_SEEDS, "round 4's TEST_SEEDS differs from this round's"
-assert tuple(R3.SMOKE_SEEDS) == SMOKE_SEEDS
+if tuple(R4C.TEST_SEEDS) != TEST_SEEDS:
+    raise ImportError("round 4's TEST_SEEDS differs from this round's")
+if tuple(R3.SMOKE_SEEDS) != SMOKE_SEEDS:
+    raise ImportError("round 3's SMOKE_SEEDS differs from this round's")
 
 RULE = HERE / "DECISION_RULE.md"
 RULE_SHA = "19e59fc7220c05b630f4773a94578aa3858d29853dbf7d438455e1ee973d735e"

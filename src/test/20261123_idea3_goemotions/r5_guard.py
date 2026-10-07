@@ -8,8 +8,9 @@ object only from the GE file (ge_from_file: the file's SHA-256 must equal r5_com
 rule's SHA-256. require_carry() is the further gate of the measured diagnostics. State is per process.
 """
 import hashlib
+import io
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -23,6 +24,8 @@ class GuardError(RuntimeError):
 
 
 _STATE = {"released": False}
+_MINT = object()          # module-private: only clip_from_bundle and ge_from_file hold it
+_GE_FPS = set()           # fingerprints of every GE Q minted in this process
 
 
 def _reset_for_tests():
@@ -49,8 +52,11 @@ class Placement:
     kind: str
     Q: np.ndarray
     sha256: str
+    _token: object = field(default=None, repr=False, compare=False)
 
     def __post_init__(self):
+        if self._token is not _MINT:
+            raise GuardError("a Placement is built only by clip_from_bundle or ge_from_file")
         if self.kind not in ("clip", "ge"):
             raise GuardError(f"placement kind {self.kind!r} is not 'clip' or 'ge'")
         Q = self.Q
@@ -64,26 +70,28 @@ def clip_from_bundle(bundle) -> Placement:
     Q = bundle.post["affect"]["txt"]
     if not isinstance(Q, np.ndarray) or Q.dtype != np.float32 or Q.ndim != 2 or Q.shape[1] != R5.N_CLASSES:
         raise GuardError(f"the bundle's affect caption posterior is not a float32 (rows, {R5.N_CLASSES}) array")
-    for hit in R5.RB3._HEADS.values():
-        cached = hit["post"]["affect"]["txt"]
-        if cached is not Q and not np.array_equal(cached, Q, equal_nan=True):
-            raise GuardError("the bundle's affect caption posterior differs from round 3's cached heads")
+    if not any(np.array_equal(hit["post"]["affect"]["txt"], Q, equal_nan=True) for hit in R5.RB3._HEADS.values()):
+        raise GuardError("the bundle's affect caption posterior equals none of round 3's cached heads "
+                         "(the cache is empty or holds other arrays)")
     view = Q.view()
     view.flags.writeable = False
-    return Placement("clip", view, fingerprint(view))
+    fp = fingerprint(view)
+    if fp in _GE_FPS:
+        raise GuardError("the bundle's affect caption posterior is the GE placement, not Q_CLIP")
+    return Placement("clip", view, fp, _MINT)
 
 
-def ge_from_file(path, n_rows=None, n_sel=None) -> Placement:
+def ge_from_file(path) -> Placement:
     """Q_GE from cache/r5_ge_posterior.npz (keys post_sel, rows, classes): the file's SHA-256 must equal
     r5_common.GE_POST_SHA (refused while it is None). Scatters post_sel into a NaN float32 (308,723, 41) array."""
-    n_rows = R5.N_ROWS if n_rows is None else n_rows
-    n_sel = R5.N_SELECTION if n_sel is None else n_sel
+    n_rows, n_sel = R5.N_ROWS, R5.N_SELECTION
     if R5.GE_POST_SHA is None:
         raise GuardError("r5_common.GE_POST_SHA is not set: the GE posterior file has not been committed as an input")
-    sha = R5.sha256_file(path)
+    data = Path(path).read_bytes()                       # one read: the bytes hashed are the bytes loaded
+    sha = hashlib.sha256(data).hexdigest()
     if sha != R5.GE_POST_SHA:
         raise GuardError(f"{Path(path).name}: SHA-256 {sha} differs from r5_common.GE_POST_SHA")
-    with np.load(path) as z:
+    with np.load(io.BytesIO(data)) as z:
         post_sel, rows, classes = z["post_sel"], z["rows"], z["classes"]
     K = R5.N_CLASSES
     if post_sel.dtype != np.float32 or post_sel.shape != (n_sel, K):
@@ -98,7 +106,8 @@ def ge_from_file(path, n_rows=None, n_sel=None) -> Placement:
     Q = np.full((n_rows, K), np.nan, np.float32)
     Q[rows] = post_sel
     Q.flags.writeable = False
-    return Placement("ge", Q, sha)
+    _GE_FPS.add(fingerprint(Q))
+    return Placement("ge", Q, sha, _MINT)
 
 
 def require(placement, what) -> Placement:
@@ -106,12 +115,20 @@ def require(placement, what) -> Placement:
     'clip' placement must still match its fingerprint (nobody wrote into it)."""
     if not isinstance(placement, Placement):
         raise GuardError(f"{what}: a Placement is required, got {type(placement).__name__}")
+    if placement._token is not _MINT:
+        raise GuardError(f"{what}: this Placement was not minted by clip_from_bundle or ge_from_file")
     if placement.kind == "ge":
+        if R5.GE_POST_SHA is None or placement.sha256 != R5.GE_POST_SHA:
+            raise GuardError(f"{what}: the GE placement is not bound to r5_common.GE_POST_SHA")
         if not _STATE["released"]:
             raise GuardError(f"{what}: a GE-placement result is refused before rule section 5 items 1 to 4 have "
                              f"passed and results/regression_check.json is released (rule D11)")
-    elif fingerprint(placement.Q) != placement.sha256:
-        raise GuardError(f"{what}: the CLIP placement changed since it was taken from the bundle")
+    else:
+        fp = fingerprint(placement.Q)
+        if fp != placement.sha256:
+            raise GuardError(f"{what}: the CLIP placement changed since it was taken from the bundle")
+        if fp in _GE_FPS:
+            raise GuardError(f"{what}: a clip placement carries the GE array")
     return placement
 
 
