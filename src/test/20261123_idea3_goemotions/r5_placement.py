@@ -24,6 +24,14 @@ class PlacementError(RuntimeError):
     """A placement input, class set or mapping is not what rule D4 requires, or the GE head did not converge."""
 
 
+class CapReached(PlacementError):
+    """The refit reached the fallback cap too (D4): carries both iteration counts."""
+
+    def __init__(self, msg, n_iter_first, n_iter_fallback, caps):
+        super().__init__(msg)
+        self.n_iter_first, self.n_iter_fallback, self.caps = n_iter_first, n_iter_fallback, tuple(caps)
+
+
 def draw_positions(scorer_train, draw):
     """Positions of ``draw`` in ``scorer_train`` order with ``scorer_train[pos] == draw`` (rule section 5 item 3); a
     draw row that is not a scorer-train row refuses."""
@@ -90,7 +98,8 @@ def fit_ge_head(X, lab, scorer_train, rows, caps=(R5.GE_MAX_ITER, R5.GE_FALLBACK
         used = True
         res = place(X, identity, lab, scorer_train, rows, caps[1], **kw)
         if res["n_iter"] >= caps[1]:
-            raise PlacementError(f"the GE head reached its fallback cap ({caps[1]}); no GE posterior is written")
+            raise CapReached(f"the GE head reached its fallback cap ({caps[1]}); no GE posterior is written",
+                             first, res["n_iter"], caps)
     rec = head_record(res, lab, **({"n_classes": kw["n_classes"]} if "n_classes" in kw else {}))
     rec.update({"n_iter": first if not used else res["n_iter"], "fallback_used": used,
                 "n_iter_fallback": res["n_iter"] if used else None, "n_iter_first": first})
@@ -111,7 +120,9 @@ def load_goemo(path):
 
 def ge_input(ctx, goemo_npz, scorer_train, affect_probs, n_goemo=R5.N_GOEMO):
     """D4's input X: float32 (n_rows, 28), NaN except X[scorer_train[i]] = affect_probs[i] and X[rows] = probs."""
-    z = load_goemo(goemo_npz) if isinstance(goemo_npz, (str, Path)) else goemo_npz
+    if not isinstance(goemo_npz, (str, Path)):         # only a path: its SHA-256 check cannot be skipped
+        raise PlacementError("ge_input takes the GoEmotions file's path, not a loaded mapping")
+    z = load_goemo(goemo_npz)
     scorer_train, probs, rows = np.asarray(scorer_train), np.asarray(z["probs"]), np.asarray(z["rows"])
     affect_probs = np.asarray(affect_probs)
     if affect_probs.shape != (len(scorer_train), n_goemo):

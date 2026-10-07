@@ -119,16 +119,22 @@ def test_ge_input_mapping_and_refusals(tmp_path, monkeypatch):
     ap = np.random.default_rng(1).dirichlet(np.ones(28), len(st)).astype(np.float32)
     pr = np.random.default_rng(2).dirichlet(np.ones(28), len(rows)).astype(np.float32)
     z = {"probs": pr, "rows": rows.astype(np.int64)}
-    X = P.ge_input(ctx, z, st, ap)
+    f0 = tmp_path / "g0.npz"
+    np.savez(f0, **z)
+    monkeypatch.setattr(R5, "GOEMO_FILE_SHA", R5.sha256_file(f0))
+    X = P.ge_input(ctx, f0, st, ap)
     assert X.dtype == np.float32 and X.shape == (N, 28)
     assert np.array_equal(X[st], ap) and np.array_equal(X[rows], pr)
     assert np.isnan(np.delete(X, np.concatenate([st, rows]), 0)).all()
     with pytest.raises(P.PlacementError, match="affect_probs"):
-        P.ge_input(ctx, z, st[:-1], ap)
+        P.ge_input(ctx, f0, st[:-1], ap)
     with pytest.raises(P.PlacementError, match="selection"):
-        P.ge_input(SimpleNamespace(groups=np.zeros(N), selection=rows[::-1].copy()), z, st, ap)
+        P.ge_input(SimpleNamespace(groups=np.zeros(N), selection=rows[::-1].copy()), f0, st, ap)
+    with pytest.raises(P.PlacementError, match="path"):
+        P.ge_input(ctx, z, st, ap)                    # a loaded mapping would skip the SHA-256 check
     f = tmp_path / "g.npz"
     np.savez(f, **z)
+    monkeypatch.setattr(R5, "GOEMO_FILE_SHA", None)
     with pytest.raises(P.PlacementError, match="GOEMO_FILE_SHA is not set"):
         P.ge_input(ctx, f, st, ap)                    # refused while the constant is None
     monkeypatch.setattr(R5, "GOEMO_FILE_SHA", "0" * 64)
@@ -157,3 +163,139 @@ def test_write_ge_posterior_once_and_checks(tmp_path):
         P.write_ge_posterior(tmp_path / "b.npz", post, rows[::-1].copy(), np.arange(k), **kw)
     with pytest.raises(P.PlacementError):
         P.write_ge_posterior(tmp_path / "b.npz", post, rows, np.arange(1, k + 1), **kw)
+
+
+def test_unlabeled_rows_refused():
+    F, lab, st, rows = world()
+    lab[st] = -1                                      # every draw and check row unlabeled
+    with pytest.raises(P.PlacementError, match="without a label"):
+        P.place(F, P.identity, lab, st, rows, 300, **KW)
+
+
+def _ge_files(tmp_path, monkeypatch, rows_override=None, probs_bad=False, ap_bad=False):
+    F, lab, st, rows = world()
+    ctx = SimpleNamespace(groups=np.zeros(N), selection=rows)
+    ap = np.random.default_rng(1).dirichlet(np.ones(28), len(st)).astype(np.float32)
+    pr = np.random.default_rng(2).dirichlet(np.ones(28), len(rows)).astype(np.float32)
+    if probs_bad:
+        pr[3, 5] = np.nan
+    if ap_bad:
+        ap[3, 5] = np.inf
+    f = tmp_path / "g.npz"
+    np.savez(f, probs=pr, rows=rows.astype(np.int64))
+    monkeypatch.setattr(R5, "GOEMO_FILE_SHA", R5.sha256_file(f))
+    return ctx, f, st, ap
+
+
+def test_ge_input_overlapping_rows_refused(tmp_path, monkeypatch):
+    ctx, f, st, ap = _ge_files(tmp_path, monkeypatch)
+    with pytest.raises(P.PlacementError, match="overlap"):
+        P.ge_input(ctx, f, np.concatenate([st[:-1], ctx.selection[:1]]), ap)
+
+
+@pytest.mark.parametrize("kw", [{"probs_bad": True}, {"ap_bad": True}])
+def test_ge_input_nonfinite_refused(tmp_path, monkeypatch, kw):
+    ctx, f, st, ap = _ge_files(tmp_path, monkeypatch, **kw)
+    with pytest.raises(P.PlacementError, match="non-finite"):
+        P.ge_input(ctx, f, st, ap)
+
+
+def test_cap_reached_carries_both_counts():
+    F, lab, st, rows = world()
+    with pytest.raises(P.CapReached) as e:
+        P.fit_ge_head(F, lab, st, rows, caps=(1, 2), **KW)
+    assert e.value.n_iter_first == 1 and e.value.n_iter_fallback == 2 and e.value.caps == (1, 2)
+
+
+# ---------------------------------------------------------------- main() with stubs (no real data, no real fit)
+
+import json  # noqa: E402
+import run_r5_placement as RUN  # noqa: E402
+
+NSEL = R5.N_SELECTION
+
+
+class Stubs:
+    def __init__(self, tmp_path, monkeypatch, item3_pass=True, cap_fail=False):
+        self.calls = []
+        self.tmp = tmp_path
+        (tmp_path / "results" / "smoke").mkdir(parents=True)
+        (tmp_path / "cache").mkdir()
+        monkeypatch.setattr(R5, "RESULTS", tmp_path / "results")
+        monkeypatch.setattr(R5, "SMOKE", tmp_path / "results" / "smoke")
+        monkeypatch.setattr(RUN, "GE_NPZ", tmp_path / "cache" / "r5_ge_posterior.npz")
+        monkeypatch.setattr(R5, "assert_rule", lambda: None)
+        monkeypatch.setattr(R5, "assert_modules", lambda: None)
+        monkeypatch.setattr(R5, "assert_inputs", lambda names: None)
+        sel = np.arange(NSEL, dtype=np.int64)
+        ctx = SimpleNamespace(groups=np.zeros(R5.N_ROWS, np.int8), selection=sel)
+        monkeypatch.setattr(RUN, "load_world", lambda: (ctx, np.arange(NSEL, NSEL + 10), None))
+        monkeypatch.setattr(RUN, "load_affect_probs", lambda: None)
+        monkeypatch.setattr(RUN, "item3", lambda *a: {"passed": item3_pass})
+        monkeypatch.setattr(RUN.P, "ge_input", lambda *a, **k: self.calls.append("ge_input") or "X")
+
+        def fit(*a, **k):
+            self.calls.append("fit_ge_head")
+            if cap_fail:
+                raise P.CapReached("cap", 300, 3000, (300, 3000))
+            post = np.random.default_rng(0).dirichlet(np.ones(R5.N_CLASSES), NSEL).astype(np.float32)
+            rec = {"heldout_accuracy": 12.5, "classes": list(range(R5.N_CLASSES)), "n_iter": 5, "fallback_used": False,
+                   "n_iter_fallback": None, "check_majority_share": 6.0, "uniform": 2.4}
+            return {"post": post, "classes": np.arange(R5.N_CLASSES)}, rec
+        monkeypatch.setattr(RUN.P, "fit_ge_head", fit)
+
+
+def test_main_refuses_without_goemo_sha(tmp_path, monkeypatch):
+    st = Stubs(tmp_path, monkeypatch)
+    monkeypatch.setattr(R5, "GOEMO_FILE_SHA", None)
+    monkeypatch.setattr(RUN, "load_world", lambda: st.calls.append("load_world"))
+    with pytest.raises(SystemExit, match="GOEMO_FILE_SHA"):
+        RUN.main([])
+    assert st.calls == [] and not list((tmp_path / "results").glob("*.json"))
+
+
+def test_main_item3_fail_stops_before_ge(tmp_path, monkeypatch, capsys):
+    st = Stubs(tmp_path, monkeypatch, item3_pass=False)
+    monkeypatch.setattr(R5, "GOEMO_FILE_SHA", "0" * 64)
+    with pytest.raises(SystemExit) as e:
+        RUN.main([])
+    assert e.value.code == 1
+    assert st.calls == []
+    rec = json.loads((tmp_path / "results" / "placement.json").read_text())
+    assert rec["item3"]["passed"] is False and "ge_head" not in rec
+    assert not (tmp_path / "cache" / "r5_ge_posterior.npz").exists()
+
+
+def test_main_pass_writes_both_once(tmp_path, monkeypatch):
+    st = Stubs(tmp_path, monkeypatch)
+    monkeypatch.setattr(R5, "GOEMO_FILE_SHA", "0" * 64)
+    RUN.main([])
+    assert st.calls == ["ge_input", "fit_ge_head"]
+    rec = json.loads((tmp_path / "results" / "placement.json").read_text())
+    npz = tmp_path / "cache" / "r5_ge_posterior.npz"
+    assert rec["item3"]["passed"] and rec["ge_head"]["heldout_accuracy"] == 12.5
+    assert rec["ge_posterior_sha256"] == R5.sha256_file(npz) and rec["rule_sha256"] == R5.RULE_SHA
+    with pytest.raises(SystemExit):
+        RUN.main([])                                  # a second run never overwrites
+
+
+def test_main_cap_failure_writes_record_and_no_posterior(tmp_path, monkeypatch):
+    Stubs(tmp_path, monkeypatch, cap_fail=True)
+    monkeypatch.setattr(R5, "GOEMO_FILE_SHA", "0" * 64)
+    with pytest.raises(SystemExit) as e:
+        RUN.main([])
+    assert e.value.code == 1
+    rec = json.loads((tmp_path / "results" / "placement_failure.json").read_text())
+    assert rec["n_iter_first"] == 300 and rec["n_iter_fallback"] == 3000
+    assert not (tmp_path / "cache" / "r5_ge_posterior.npz").exists()
+    assert not (tmp_path / "results" / "placement.json").exists()
+
+
+@pytest.mark.parametrize("name", ["results/placement.json", "cache/r5_ge_posterior.npz"])
+def test_main_refuses_existing_outputs_before_any_work(tmp_path, monkeypatch, name):
+    st = Stubs(tmp_path, monkeypatch)
+    monkeypatch.setattr(R5, "GOEMO_FILE_SHA", "0" * 64)
+    (tmp_path / name).write_bytes(b"x")
+    with pytest.raises(SystemExit, match="exist"):
+        RUN.main([])
+    assert st.calls == []

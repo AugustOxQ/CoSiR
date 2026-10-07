@@ -68,10 +68,27 @@ def item3(ctx, lab, scorer_train):
     return rec
 
 
-def main():
+def load_world():
+    """ctx (data and row sets only), scorer_train, lab. Separate so tests can stub it."""
+    from src.data.artelingo_splits import artelingo_splits
+
+    ctx = R5.RG.EvalContext(42, False)          # data and row sets only; no episode field is read
+    scorer_train = np.asarray(artelingo_splits(ctx.data).scorer_train)
+    with np.load(R5.C.INPUT_FILES["affect_L_partition(per_anchor_told_oracle)"]) as z:
+        partition_L = np.asarray(z["partition_L"], dtype=np.int64)
+    lab = R5.RTO.global_labels(partition_L, scorer_train, R5.N_ROWS)
+    return ctx, scorer_train, lab
+
+
+def load_affect_probs():
+    with np.load(R5.input_path(AFFECT_NPZ)) as z:
+        return np.asarray(z["affect_probs"])
+
+
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--item3-only", action="store_true")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     R5.assert_rule()
     R5.assert_modules()
     R5.assert_inputs([AFFECT_NPZ])
@@ -80,13 +97,7 @@ def main():
         R5.refuse_existing([out_json, GE_NPZ], False)
         if R5.GOEMO_FILE_SHA is None:
             raise SystemExit("r5_common.GOEMO_FILE_SHA is not set: no GE head is fitted")
-    from src.data.artelingo_splits import artelingo_splits
-
-    ctx = R5.RG.EvalContext(42, False)          # data and row sets only; no episode field is read
-    scorer_train = np.asarray(artelingo_splits(ctx.data).scorer_train)
-    with np.load(R5.C.INPUT_FILES["affect_L_partition(per_anchor_told_oracle)"]) as z:
-        partition_L = np.asarray(z["partition_L"], dtype=np.int64)
-    lab = R5.RTO.global_labels(partition_L, scorer_train, R5.N_ROWS)
+    ctx, scorer_train, lab = load_world()
     if len(ctx.groups) != R5.N_ROWS:
         raise SystemExit("unexpected row count")
     rec3 = item3(ctx, lab, scorer_train)
@@ -96,10 +107,17 @@ def main():
         R5.write_json_once(out_json, rec, smoke=args.item3_only)
         print(f"wrote {out_json.name} sha256 {R5.sha256_file(out_json)}")
         sys.exit(0 if rec3["passed"] else 1)
-    with np.load(R5.input_path(AFFECT_NPZ)) as z:
-        affect_probs = np.asarray(z["affect_probs"])
+    affect_probs = load_affect_probs()
     X = P.ge_input(ctx, GOEMO_NPZ, scorer_train, affect_probs)
-    res, head = P.fit_ge_head(X, lab, scorer_train, ctx.selection)
+    try:
+        res, head = P.fit_ge_head(X, lab, scorer_train, ctx.selection)
+    except P.CapReached as e:                   # D4: both counts reach the user before the work stops
+        fail = {"rule_sha256": R5.RULE_SHA, "time": R5.now_ams(), "item3": rec3,
+                "failure": "the GE head reached its fallback cap", "n_iter_first": e.n_iter_first,
+                "n_iter_fallback": e.n_iter_fallback, "caps": list(e.caps)}
+        R5.write_json_once(R5.RESULTS / "placement_failure.json", fail, smoke=False)
+        print("GE head did not converge under the fallback; placement_failure.json written; no GE posterior")
+        sys.exit(1)
     post_sel = res["post"][ctx.selection]
     sha = P.write_ge_posterior(GE_NPZ, post_sel, np.asarray(ctx.selection, dtype=np.int64), res["classes"])
     rec["ge_head"] = head
