@@ -76,7 +76,7 @@ N_CLASSES = 41                                             # partition_L communi
 N_GOEMO = 28
 
 GOEMO_FILE_SHA = "f8372a89a808421772e19cce9413dbab9b83dcef5cfd28da8232d77d729e18a8"  # SHA-256 of cache/r5_goemotions_selection.npz; set by a one-line commit after D2's run
-GE_POST_SHA = None       # SHA-256 of cache/r5_ge_posterior.npz; set by a one-line commit after D4's run
+GE_POST_SHA = "081bb19e2a9b23cc5d97612f83950f77e2c9a503919e48d42fb72d94bbd7fbf7"  # SHA-256 of cache/r5_ge_posterior.npz; set by a one-line commit after D4's run
 
 # rule §5 item 3: told_oracle.json arm L's CLIP-head record (the placement function must reproduce it)
 CLIP_HEAD_RECORD = {
