@@ -17,6 +17,7 @@ import r5_stats as S  # noqa: E402
 N = 48
 CL = np.repeat(np.arange(12), 4)
 PAIR = np.tile(np.arange(3), 16)
+TAUS = R5.R3.TAUS
 
 
 def pa(r1, other=None, gain=None):
@@ -175,7 +176,7 @@ def _stub(seed=0):
 
 def test_dev_record_structure():
     f, a, pB, p0, pG, p1 = _stub()
-    r = S.dev_record("G-T", f, a, pB, p0, pG, p1, CL, PAIR)
+    r = S.dev_record("G-T", f, a, pB, p0, pG, p1, CL, PAIR, TAUS)
     assert r["name"] == "G-T"
     assert type(r["delta_int"]) is int
     assert r["bar_comparator"] in ("Bprime_G", "Bprime_A0", "counterpart", "B")
@@ -191,7 +192,7 @@ def test_dev_record_structure():
 
 def test_dev_record_identical_to_aff_has_delta_zero_flag():
     f, a, pB, p0, pG, p1 = _stub()
-    r = S.dev_record("G-TF", a, a, pB, p0, pG, p1, CL, PAIR)
+    r = S.dev_record("G-TF", a, a, pB, p0, pG, p1, CL, PAIR, TAUS)
     assert r["delta_int"] == 0
     assert any("exactly 0" in b for b in r["boundaries"])
 
@@ -200,68 +201,84 @@ def test_dev_record_bar_ties_to_bprime_g_first():
     same = np.full(N, 0.25)
     f = fam(pa(np.full(N, 0.75)), cfpa(np.full(N, 0.25)))
     a = fam(pa(np.full(N, 0.5)), cfpa(np.full(N, 0.25)))
-    r = S.dev_record("G-T", f, a, pa(same), pa(same), pa(same), pa(same), CL, PAIR)
+    r = S.dev_record("G-T", f, a, pa(same), pa(same), pa(same), pa(same), CL, PAIR, TAUS)
     assert r["bar_comparator"] == "Bprime_G"
 
 
 def test_dev_record_refuses_unknown_name_and_nonzero_cf_gain():
     f, a, pB, p0, pG, p1 = _stub()
     with pytest.raises(ValueError):
-        S.dev_record("V4", f, a, pB, p0, pG, p1, CL, PAIR)
+        S.dev_record("V4", f, a, pB, p0, pG, p1, CL, PAIR, TAUS)
     f["cf"]["gain"] = np.full(N, 0.25)
     with pytest.raises(AssertionError):
-        S.dev_record("G-T", f, a, pB, p0, pG, p1, CL, PAIR)
+        S.dev_record("G-T", f, a, pB, p0, pG, p1, CL, PAIR, TAUS)
 
 
 def test_dev_record_without_aff_has_no_delta():
     f, a, pB, p0, pG, p1 = _stub()
-    r = S.dev_record("G-T", f, None, pB, p0, pG, p1, CL, PAIR)
+    r = S.dev_record("G-T", f, None, pB, p0, pG, p1, CL, PAIR, TAUS)
     assert r["delta_int"] is None
     assert r["delta"] is None
 
 
 # ---------------------------------------------------------------- carry (items 7 and 8)
 
-def crec(delta, clears=True, bnd=None):
-    return {"delta_int": delta, "d10": {"c1": clears, "c2": clears, "c3": clears, "clears": clears},
-            "boundaries": list(bnd or [])}
+SHA = "ab" * 32
+
+
+def crec(delta, clears=True, bnd=None, name="G-T"):
+    """A record with the fields carry recomputes D10 from (it ignores any stored 'clears')."""
+    lo_gain = 0.1 if clears else -0.1
+    return {"name": name, "delta_int": delta, "bar_margin": {"point": 0.9, "ci95": [0.1, 1.5]},
+            "gain_statistic": {"point": 1.0, "ci95": [lo_gain, 2.0]}, "boundaries": list(bnd or []),
+            "d10": {"clears": True}}
+
+
+def two(g, h):
+    return {"G-T": g, "G-TF": {**h, "name": "G-TF"}}
 
 
 def test_carry_tie_band_24_inclusive_25_exclusive():
-    c = S.carry({"G-T": crec(100), "G-TF": crec(124)})
+    c = S.carry(two(crec(100), crec(124)), SHA)
     assert c["M"] == 124
     assert c["tied"] == ["G-T", "G-TF"]
     assert c["carried"] == "G-T"
     assert any("exactly 24" in b for b in c["boundaries"])
-    c = S.carry({"G-T": crec(100), "G-TF": crec(125)})
+    c = S.carry(two(crec(100), crec(125)), SHA)
     assert c["tied"] == ["G-TF"]
     assert c["carried"] == "G-TF"
     assert c["boundaries"] == []
 
 
 def test_carry_tie_goes_to_gt_regardless_of_who_is_larger():
-    assert S.carry({"G-T": crec(10), "G-TF": crec(11)})["carried"] == "G-T"
-    assert S.carry({"G-T": crec(11), "G-TF": crec(10)})["carried"] == "G-T"
+    assert S.carry(two(crec(10), crec(11)), SHA)["carried"] == "G-T"
+    assert S.carry(two(crec(11), crec(10)), SHA)["carried"] == "G-T"
 
 
 def test_carry_delta_zero_not_in_e():
-    c = S.carry({"G-T": crec(0), "G-TF": crec(5)})
+    c = S.carry(two(crec(0), crec(5)), SHA)
     assert c["E"] == ["G-TF"]
     assert c["carried"] == "G-TF"
-    c = S.carry({"G-T": crec(0), "G-TF": crec(-3)})
+    c = S.carry(two(crec(0), crec(-3)), SHA)
     assert c["E"] == []
 
 
-def test_carry_requires_all_clauses():
-    r = crec(500)
-    r["d10"] = {"c1": True, "c2": True, "c3": False, "clears": False}
-    c = S.carry({"G-T": r, "G-TF": crec(1)})
+def test_carry_requires_all_clauses_recomputed_not_stored():
+    r = crec(500, clears=False)                 # stored d10 says clears True; the gain lower bound is -0.1
+    c = S.carry(two(r, crec(1)), SHA)
     assert c["E"] == ["G-TF"]
     assert c["carried"] == "G-TF"
+    assert c["candidates"]["G-T"]["d10"]["c3"] is False
+    r = crec(500)
+    r["bar_margin"] = {"point": 0.49, "ci95": [0.1, 1.5]}
+    assert S.carry(two(r, crec(1)), SHA)["E"] == ["G-TF"]
+    r = crec(500)
+    r["bar_margin"] = {"point": 0.9, "ci95": [0.0, 1.5]}
+    assert S.carry(two(r, crec(1)), SHA)["E"] == ["G-TF"]
 
 
 def test_carry_empty_is_kill():
-    c = S.carry({"G-T": crec(50, clears=False), "G-TF": crec(-4)})
+    c = S.carry(two(crec(50, clears=False), crec(-4)), SHA)
     assert c["E"] == []
     assert c["M"] is None
     assert c["tied"] == []
@@ -271,25 +288,160 @@ def test_carry_empty_is_kill():
 
 
 def test_carry_console_line_and_fields():
-    c = S.carry({"G-T": crec(7), "G-TF": crec(1)}, dev_seed42_sha256="ab" * 32)
+    c = S.carry(two(crec(7), crec(1)), SHA)
     assert c["kill"] is False
     assert S.console_line(c) == "CARRY G-T (pending the phase-1 agreement, rule §8)"
-    assert c["dev_seed42_sha256"] == "ab" * 32
+    assert c["dev_seed42_sha256"] == SHA
     assert c["rule_sha256"] == R5.RULE_SHA
     assert c["candidates"]["G-T"]["delta_int"] == 7
     assert c["candidates"]["G-TF"]["d10"]["clears"] is True
 
 
+def test_carry_requires_a_valid_dev_sha():
+    for bad in (None, "", "ab" * 31, "AB" * 32, "zz" * 32, 5):
+        with pytest.raises(ValueError):
+            S.carry(two(crec(1), crec(2)), bad)
+    with pytest.raises(TypeError):
+        S.carry(two(crec(1), crec(2)))
+
+
 def test_carry_refuses_float_delta_and_wrong_set():
     with pytest.raises(AssertionError):
-        S.carry({"G-T": crec(1.0), "G-TF": crec(2)})
+        S.carry(two(crec(1.0), crec(2)), SHA)
     with pytest.raises(AssertionError):
-        S.carry({"G-T": crec(np.int64(1)), "G-TF": crec(2)})
+        S.carry(two(crec(np.int64(1)), crec(2)), SHA)
     with pytest.raises(AssertionError):
-        S.carry({"G-T": crec(1)})
+        S.carry({"G-T": crec(1)}, SHA)
 
 
 def test_carry_collects_record_boundaries():
-    c = S.carry({"G-T": crec(7, bnd=["G-T: x"]), "G-TF": crec(1, bnd=["G-TF: y"])})
+    c = S.carry(two(crec(7, bnd=["G-T: x"]), crec(1, bnd=["G-TF: y"])), SHA)
     assert "G-T: x" in c["boundaries"]
     assert "G-TF: y" in c["boundaries"]
+
+
+# ---------------------------------------------------------------- D10 through dev_record (round 4's D10_CASES)
+
+def world(n=48):
+    rng = np.random.default_rng(5)
+    cl = np.repeat(np.arange(12), n // 12)
+    pi = np.arange(n) % 3
+    q = lambda: rng.integers(0, 5, n) / 4.0
+    fused = pa(q(), other=q())
+    cf = cfpa(q())
+    aff = pa(q(), other=q())
+    return cl, pi, fam(fused, cf), fam(aff, cfpa(q())), pa(q()), pa(q()), pa(q()), pa(q())
+
+
+D10_CASES = [
+    ((0.5, 0.1, 0.9), (1.0, 0.2, 2.0), {"c1": True, "c2": True, "c3": True}, {1}),
+    ((0.49, 0.1, 0.9), (1.0, 0.2, 2.0), {"c1": False, "c2": True, "c3": True}, set()),
+    ((0.6, 0.0, 0.9), (1.0, 0.2, 2.0), {"c1": True, "c2": False, "c3": True}, {2}),
+    ((0.6, 0.1, 0.9), (1.0, 0.0, 2.0), {"c1": True, "c2": True, "c3": False}, {3}),
+    ((0.6, -0.1, 0.9), (1.0, 0.2, 2.0), {"c1": True, "c2": False, "c3": True}, set()),
+]
+
+
+@pytest.mark.parametrize("bar, gain, want, at", D10_CASES)
+def test_d10_clauses_through_dev_record(monkeypatch, bar, gain, want, at):
+    """Round 4's D10_CASES: C.point_ci returns `bar` for the bar margin's per-episode values and C.compare returns
+    `gain` for fused-minus-counterpart gain; every other interval is computed as usual."""
+    cl, pi, f, a, pB, p0, pG, p1 = world()
+    _, comp, _ = S.bar_comparator(S.comparators(pB, p0, pG, f["cf"]))
+    bar_v = f["fused"]["r1"] - comp["r1"]
+    seen = []
+    point_ci, compare = R5.C.point_ci, R5.C.compare
+
+    def fake_point_ci(values, clusters):
+        x = np.asarray(values, np.float64)
+        if x.shape == bar_v.shape and np.array_equal(x, bar_v):
+            seen.append("bar")
+            return {"point": bar[0], "ci95": [bar[1], bar[2]]}
+        return point_ci(values, clusters)
+
+    def fake_compare(per_a, per_b, clusters, metric):
+        if metric == "gain" and per_a is f["fused"] and per_b is f["cf"]:
+            seen.append("gain")
+            return {"point": gain[0], "ci95": [gain[1], gain[2]]}
+        return compare(per_a, per_b, clusters, metric)
+
+    monkeypatch.setattr(R5.C, "point_ci", fake_point_ci)
+    monkeypatch.setattr(R5.C, "compare", fake_compare)
+    rec = S.dev_record("G-T", f, a, pB, p0, pG, p1, cl, pi, TAUS)
+    assert seen.count("bar") == 1
+    assert seen.count("gain") == 1
+    assert rec["bar_margin"] == {"point": bar[0], "ci95": [bar[1], bar[2]]}
+    assert rec["gain_statistic"] == {"point": gain[0], "ci95": [gain[1], gain[2]]}
+    assert rec["d10"] == {**want, "clears": want["c1"] and want["c2"] and want["c3"]}
+    flagged = {i for i in (1, 2, 3) if any(f"D10 clause {i} " in s for s in rec["boundaries"])}
+    assert flagged == at
+
+
+# ---------------------------------------------------------------- dev_record values recomputed from the inputs
+
+def perpair_world(n=48):
+    """B'(A0) leads overall (0.5 vs 1/3) but B'_G leads in pair 0 (1.0 vs 0.5): a per-pair re-choice would differ."""
+    rng = np.random.default_rng(11)
+    cl = np.repeat(np.arange(12), n // 12)
+    pi = np.arange(n) % 3
+    pG = pa((pi == 0).astype(float))
+    p0 = pa(np.full(n, 0.5))
+    pB = pa(rng.integers(0, 3, n) / 4.0)
+    p1 = pa(rng.integers(0, 5, n) / 4.0)
+    f = fam(pa(rng.integers(0, 5, n) / 4.0, other=rng.integers(0, 3, n) / 4.0), cfpa(rng.integers(0, 5, n) / 4.0))
+    a = fam(pa(rng.integers(0, 5, n) / 4.0, other=rng.integers(0, 3, n) / 4.0), cfpa(rng.integers(0, 5, n) / 4.0))
+    return cl, pi, f, a, pB, p0, pG, p1
+
+
+def test_dev_record_matches_hand_numbers():
+    cl, pi, f, a, pB, p0, pG, p1 = perpair_world()
+    n = len(cl)
+    rec = S.dev_record("G-T", f, a, pB, p0, pG, p1, cl, pi, TAUS)
+    C = R5.C
+    fu, cf = f["fused"], f["cf"]
+    label, comp, _ = S.bar_comparator(S.comparators(pB, p0, pG, cf))
+    assert label == "Bprime_A0"
+    assert rec["bar_comparator"] == "Bprime_A0"
+    v = fu["r1"] - comp["r1"]
+    want = C.point_ci(v, cl)
+    assert rec["bar_margin"]["point"] == want["point"]
+    assert rec["bar_margin"]["ci95"] == want["ci95"]
+    m = C.point_ci(fu["r1"] - cf["r1"], cl)
+    assert rec["margin_vs_counterpart"]["point"] == m["point"]
+    assert rec["margin_vs_counterpart"]["ci95"] == m["ci95"]
+    g = C.point_ci(fu["gain"] - cf["gain"], cl)
+    assert rec["gain_statistic"]["point"] == g["point"]
+    assert rec["gain_statistic"]["ci95"] == g["ci95"]
+    e = fu["r1"] + fu["other"] - cf["r1"] - cf["other"]
+    assert rec["either_change"] == pytest.approx(100 * e.mean(), abs=1e-12)
+    assert rec["either_change"] != 0
+    d = int(round(4 * (fu["r1"] - a["fused"]["r1"]).sum()))
+    assert rec["delta_int"] == d
+    assert type(rec["delta_int"]) is int
+    assert rec["delta"]["point"] == pytest.approx(100 * d / (4 * n), abs=1e-12)
+    assert rec["delta"]["ci95"] == C.point_ci(fu["r1"] - a["fused"]["r1"], cl)["ci95"]
+    assert rec["Bprime_G_minus_Bprime_A0"] == C.point_ci(pG["r1"] - p0["r1"], cl)
+    assert rec["beside_Bprime_A1"]["mean_r1"] == 100 * float(np.mean(p1["r1"]))
+    assert rec["beside_Bprime_A1"]["candidate_minus"] == C.point_ci(fu["r1"] - p1["r1"], cl)
+    for i, p in enumerate(C.POOLED_ORDER):
+        w = C.point_ci(v[pi == i], cl[pi == i])
+        assert rec["per_pair_bar_margin"][p]["point"] == w["point"]
+        assert rec["per_pair_bar_margin"][p]["ci95"] == w["ci95"]
+    # the seed's comparator, not pair 0's own best (B'_G): pair 0 would give a different number
+    alt = C.point_ci((fu["r1"] - pG["r1"])[pi == 0], cl[pi == 0])
+    assert rec["per_pair_bar_margin"][C.POOLED_ORDER[0]]["point"] != alt["point"]
+
+
+def test_dev_record_cell_text_uses_the_candidates_taus():
+    cl, pi, f, a, pB, p0, pG, p1 = perpair_world()
+    f["fpick"], f["cpick"] = {0: 100, 1: 200}, {0: 100, 1: 200}
+    taus = (0.11, 0.22, 0.33, 0.44)
+    assert tuple(taus) != tuple(R5.R3.TAUS)
+    rec = S.dev_record("G-TF", f, a, pB, p0, pG, p1, cl, pi, taus)
+    for k in ("fused", "cf"):
+        for h, c in rec["cell_text"][k].items():
+            assert c["tau"] == taus[c["tau_index"]]
+    assert rec["cell_text"]["fused"][0]["tau_index"] == 1
+    assert rec["cell_text"]["fused"][1]["tau_index"] == 3
+    with pytest.raises(TypeError):
+        S.dev_record("G-TF", f, a, pB, p0, pG, p1, cl, pi)

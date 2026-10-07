@@ -23,6 +23,8 @@ def _gate(placement, carry_path, what):
     if carry_path is None:
         if placement.kind != "clip":
             raise G.GuardError(f"{what}: a GE placement needs results/carry.json (rule D11)")
+        if G.is_released():
+            raise G.GuardError(f"{what}: after release the diagnostics need results/carry.json (rule D11)")
         return
     G.require_carry(carry_path)
 
@@ -61,13 +63,12 @@ def auc_delta(Ffeat, pair_index, placement, carry_path=None, column=2):
 
 # ---------------------------------------------------------------- (c) pair lift
 
-def pair_lift(Pi, Pt, labS, gS, placement, carry_path=None, selection=None):
-    """(c) run_told_oracle.pair_stats_heads on float64 posteriors of the selection rows. If `selection` is given,
-    Pt must equal placement.Q[selection] by value. -> the full dict plus the three ratios and the group lift."""
+def pair_lift(Pi, Pt, labS, gS, placement, selection, carry_path=None):
+    """(c) run_told_oracle.pair_stats_heads on float64 posteriors of the selection rows. If `selection` (mandatory)
+    Pt must equal placement.Q[selection] by value, so the posterior is bound to the placement that was guarded. -> the full dict plus the three ratios and the group lift."""
     _gate(placement, carry_path, "pair_lift")
     Pi, Pt = np.asarray(Pi, np.float64), np.asarray(Pt, np.float64)
-    if selection is not None and not np.array_equal(Pt, placement.Q[np.asarray(selection)].astype(np.float64),
-                                                    equal_nan=True):
+    if not np.array_equal(Pt, placement.Q[np.asarray(selection)].astype(np.float64), equal_nan=True):
         raise ValueError("Pt is not the placement's rows at the selection")
     full = RTO.pair_stats_heads(Pi, Pt, labS, gS)
     return {"ratio_same_over_diff": full["by_aspect"]["ratio_same_over_diff"],
@@ -82,6 +83,10 @@ def reassemble(bundle, T, gates, fam, placement, carry_path=None):
     """Fused and counterpart scores re-assembled with the cells fam's cross-fits chose (run_family's assembly). The
     per_anchor of the result must equal fam's arrays exactly. -> {"fused": scores, "cf": scores}."""
     _gate(placement, carry_path, "reassemble")
+    return _reassemble(bundle, T, gates, fam)
+
+
+def _reassemble(bundle, T, gates, fam):
     parity = np.asarray(bundle.parity)
     zB, gated, Gc = RF3._terms(bundle, T, gates)
     info = RF3.F.rank_info(bundle.B)
@@ -89,6 +94,8 @@ def reassemble(bundle, T, gates, fam, placement, carry_path=None):
            "cf": RF3.F.assemble(zB, info, Gc, fam["cpick"], parity)}
     for who in ("fused", "cf"):
         pa = per_anchor(out[who])
+        if set(fam[who]) != set(pa):
+            raise AssertionError(f"the family's {who} arrays and the re-assembled ones have different metrics")
         for m, v in fam[who].items():
             if not np.array_equal(np.asarray(pa[m]), np.asarray(v)):
                 raise AssertionError(f"re-assembled {who} scores differ from the family's {m} array")
@@ -134,9 +141,10 @@ def minus(diff_cand, diff_aff):
             for k in ("cond", "dir")}
 
 
-def chosen_cells(fam):
-    """The chosen cell of each cross-fit on each tune half: tau index, tau, lambda_u, lambda_a."""
-    return {k: {int(h): RF3.describe(int(c)) for h, c in fam[p].items()}
+def chosen_cells(fam, taus):
+    """The chosen cell of each cross-fit on each tune half: tau index, tau, lambda_u, lambda_a. taus is required: tau'
+    for G-TF, R3.TAUS for AFF and G-T."""
+    return {k: {int(h): RF3.describe(int(c), taus) for h, c in fam[p].items()}
             for k, p in (("fused", "fpick"), ("cf", "cpick"))}
 
 
@@ -145,15 +153,15 @@ def either_cost_per_gain(rec):
     return -rec["either_change"] / rec["gain_statistic"]["point"]
 
 
-def sharper_term(bundle, T, gates, fam, cl, pair_index, placement, carry_path=None, aff=None):
+def sharper_term(bundle, T, gates, fam, cl, pair_index, taus, placement, carry_path=None, aff=None):
     """(d) for one family: re-assembly (checked against fam), per pair x condition and per direction fused minus
     counterpart in R@1, gain and either with intervals, the chosen cells. `aff`: the return value of this function
     for AFF; if given, 'minus_aff' holds the paired candidate-minus-AFF intervals. 'diff' is kept (episode arrays)
     for that use and is not for the JSON."""
     _gate(placement, carry_path, "sharper_term")
-    S = reassemble(bundle, T, gates, fam, placement, carry_path)
+    S = _reassemble(bundle, T, gates, fam)
     diff = term_diff(episode_terms(S["fused"]), episode_terms(S["cf"]))
-    out = {**summarize(diff, cl, pair_index), "cells": chosen_cells(fam), "diff": diff}
+    out = {**summarize(diff, cl, pair_index), "cells": chosen_cells(fam, taus), "diff": diff}
     if aff is not None:
         out["minus_aff"] = summarize(minus(diff, aff["diff"]), cl, pair_index)
     return out

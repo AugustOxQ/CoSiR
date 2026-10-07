@@ -70,10 +70,11 @@ def d10(record) -> dict:
 
 # ---------------------------------------------------------------- the development record (section 5 item 5)
 
-def dev_record(name, fam, aff_fam, pB, pBp0, pBpG, pBp1, cl, pair_index):
+def dev_record(name, fam, aff_fam, pB, pBp0, pBpG, pBp1, cl, pair_index, taus):
     """One candidate's seed-42 development numbers (rule section 5 item 5). fam / aff_fam: run_family outputs
     (aff_fam None gives no Delta, for the item 4 regression path). pBp1: B'(A1)'s per-anchor dict or None (beside).
-    cl, pair_index: arrays over the episodes."""
+    cl, pair_index: arrays over the episodes. taus: the tau values the candidate's cells index (tau' for G-TF,
+    R3.TAUS for AFF and G-T); required, since describe() defaults to AFF's."""
     if name not in CANDIDATES:
         raise ValueError(f"unknown candidate {name!r}")
     cl, pair_index = np.asarray(cl), np.asarray(pair_index)
@@ -92,7 +93,7 @@ def dev_record(name, fam, aff_fam, pB, pBp0, pBpG, pBp1, cl, pair_index):
            "either_change": d3["either"]["point"],
            "per_pair_bar_margin": {p: C.point_ci(v[pair_index == i], cl[pair_index == i])
                                    for i, p in enumerate(C.POOLED_ORDER)},
-           "cell_text": {k: {int(h): RF3.describe(int(c)) for h, c in fam[p].items()}
+           "cell_text": {k: {int(h): RF3.describe(int(c), taus) for h, c in fam[p].items()}
                          for k, p in (("fused", "fpick"), ("cf", "cpick"))},
            "Bprime_G_minus_Bprime_A0": C.point_ci(_f64(pBpG["r1"]) - _f64(pBp0["r1"]), cl),
            "beside_Bprime_A1": None, "delta_int": None, "delta": None}
@@ -114,21 +115,29 @@ def dev_record(name, fam, aff_fam, pB, pBp0, pBpG, pBp1, cl, pair_index):
 
 # ---------------------------------------------------------------- carry (items 7 and 8)
 
-def carry(records, dev_seed42_sha256=None):
-    """Section 5 items 7 and 8. records: {name: dev_record}. E = candidates that clear all of D10 with Delta_k > 0
+def _check_sha(x):
+    if not (isinstance(x, str) and len(x) == 64 and all(ch in "0123456789abcdef" for ch in x)):
+        raise ValueError("dev_seed42_sha256 must be 64 lowercase hex characters")
+
+
+def carry(records, dev_seed42_sha256):
+    """Section 5 items 7 and 8. records: {name: dev_record}. D10 is recomputed here from each record's bar margin and
+    gain statistic (a stored 'clears' is not trusted). E = candidates that clear all of D10 with Delta_k > 0
     (integers); M = largest Delta_k in E; tied = members of E with M - Delta_k <= 24; carried = first tied in the order
     G-T, G-TF; E empty is a kill. The returned dict is what results/carry.json holds (the runner writes it):
     E, M, tied, carried, kill, boundaries, per-candidate Delta_k and D10 clauses, the SHA-256 of
-    results/dev_seed42.json (holds tau') and this rule's SHA-256."""
+    results/dev_seed42.json (holds tau'; required, 64 hex characters) and this rule's SHA-256."""
+    _check_sha(dev_seed42_sha256)
     assert set(records) == set(CANDIDATES), f"carry needs exactly {CANDIDATES}, got {sorted(records)}"
     order = list(CANDIDATES)
     for n in order:
         if type(records[n]["delta_int"]) is not int:
             raise AssertionError(f"{n}: Delta_k must be a Python int, got {type(records[n]['delta_int'])}")
-    E = [n for n in order if records[n]["d10"]["clears"] and records[n]["delta_int"] > 0]
+    k10 = {n: d10({**records[n], "name": n}) for n in order}
+    E = [n for n in order if k10[n]["clauses"]["clears"] and records[n]["delta_int"] > 0]
     bnd = [x for n in order for x in records[n].get("boundaries", [])]
     out = {"E": E, "M": None, "tied": [], "carried": None, "kill": not E,
-           "candidates": {n: {"delta_int": records[n]["delta_int"], "d10": dict(records[n]["d10"])} for n in order},
+           "candidates": {n: {"delta_int": records[n]["delta_int"], "d10": dict(k10[n]["clauses"])} for n in order},
            "dev_seed42_sha256": dev_seed42_sha256, "rule_sha256": R5.RULE_SHA}
     if E:
         M = max(records[n]["delta_int"] for n in E)

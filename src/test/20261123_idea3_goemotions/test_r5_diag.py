@@ -21,6 +21,7 @@ import r5_diag as D  # noqa: E402
 from src.eval.aspect_metrics import CONDITIONS, DIRECTIONS, per_anchor  # noqa: E402
 
 RF3, C = R5.RF3, R5.C
+TAUS = R5.R3.TAUS
 
 
 @pytest.fixture(autouse=True)
@@ -34,8 +35,9 @@ def _fresh():
 
 def clip_placement(monkeypatch, n=6):
     Q = np.random.default_rng(0).dirichlet(np.ones(41), size=n).astype(np.float32)
-    monkeypatch.setattr(R5.RB3, "_HEADS", {"k": {"post": {"affect": {"txt": Q}}}})
-    return G.clip_from_bundle(SimpleNamespace(post={"affect": {"txt": Q}}))
+    post = {"img": Q, "txt": Q}                      # r3_bundle's shape: post is the bundle's post["affect"]
+    monkeypatch.setattr(R5.RB3, "_HEADS", {"k": {"post": post}})
+    return G.clip_from_bundle(SimpleNamespace(post={"affect": post}))
 
 
 def ge_placement(tmp_path, monkeypatch):
@@ -80,9 +82,11 @@ def test_ge_refused_before_release_everywhere(tmp_path, monkeypatch):
     with pytest.raises(G.GuardError):
         D.auc_delta({"a": np.zeros((6, 18)), "b": np.zeros((6, 18))}, PI, ge, cp)
     with pytest.raises(G.GuardError):
-        D.pair_lift(None, None, None, None, ge, cp)
+        D.pair_lift(None, None, None, None, ge, np.arange(4), cp)
     with pytest.raises(G.GuardError):
-        D.sharper_term(None, None, None, None, None, None, ge, cp)
+        D.sharper_term(None, None, None, None, None, None, TAUS, ge, cp)
+    with pytest.raises(G.GuardError):
+        D.reassemble(None, None, None, None, ge, cp)
 
 
 def test_ge_needs_carry_even_when_released(tmp_path, monkeypatch):
@@ -104,6 +108,33 @@ def test_clip_allowed_without_carry_but_bad_carry_refused(tmp_path, monkeypatch)
     assert isinstance(D.auc_emotion(x, PI, clip), float)
     with pytest.raises(G.GuardError):
         D.auc_emotion(x, PI, clip, carry_file(tmp_path, sha="0" * 64))
+
+
+def test_clip_object_cannot_launder_ge_arrays(tmp_path, monkeypatch):
+    """Reviewer's bypass 1: Q_GE rows passed as Pt through a clip placement, before release."""
+    clip = clip_placement(monkeypatch, n=80)
+    ge = ge_placement(tmp_path, monkeypatch)
+    sel = np.array([0, 2, 3, 5])
+    rng = np.random.default_rng(2)
+    Pi = rng.dirichlet(np.ones(41), 4)
+    labS = {k: np.array([0, 1, 0, 1]) for k in ("emotion", "style", "genre")}
+    with pytest.raises(ValueError):
+        D.pair_lift(Pi, ge.Q[sel].astype(np.float64), labS, np.array([0, 0, 1, 1]), clip, sel)
+    with pytest.raises(TypeError):
+        D.pair_lift(Pi, clip.Q[sel], labS, np.array([0, 0, 1, 1]), clip)           # selection is mandatory
+
+
+def test_clip_without_carry_refused_after_release(tmp_path, monkeypatch):
+    """Reviewer's bypass 2: a clip object and carry_path None once the guard is released."""
+    clip = clip_placement(monkeypatch)
+    x = {"a": np.array([.1, .2, .3, .4, .5, .6]), "b": np.array([.6, .5, .4, .3, .2, .1])}
+    assert isinstance(D.auc_emotion(x, PI, clip), float)
+    release_guard(tmp_path)
+    with pytest.raises(G.GuardError):
+        D.auc_emotion(x, PI, clip)
+    with pytest.raises(G.GuardError):
+        D.auc_delta({"a": np.zeros((6, 18)), "b": np.zeros((6, 18))}, PI, clip)
+    assert isinstance(D.auc_emotion(x, PI, clip, carry_file(tmp_path)), float)
 
 
 def test_non_placement_refused():
@@ -158,13 +189,14 @@ def test_auc_delta_reads_column_two(monkeypatch):
 # ---------------------------------------------------------------- (c) pair lift
 
 def test_pair_lift_matches_pair_stats_heads(monkeypatch):
-    clip = clip_placement(monkeypatch)
+    clip = clip_placement(monkeypatch, n=60)
     rng = np.random.default_rng(4)
     n = 60
-    Pi, Pt = rng.dirichlet(np.ones(5), n), rng.dirichlet(np.ones(5), n)
+    Pt0 = clip.Q.astype(np.float64)
+    Pi, Pt = rng.dirichlet(np.ones(41), n), Pt0
     labS = {"emotion": rng.integers(0, 3, n), "style": rng.integers(0, 3, n), "genre": rng.integers(0, 3, n)}
     gS = rng.integers(0, 6, n)
-    got = D.pair_lift(Pi.astype(np.float32), Pt, labS, gS, clip)
+    got = D.pair_lift(Pi.astype(np.float32), Pt, labS, gS, clip, np.arange(n))
     ref = R5.RTO.pair_stats_heads(Pi.astype(np.float32).astype(np.float64), Pt, labS, gS)
     assert got["ratio_same_over_diff"] == ref["by_aspect"]["ratio_same_over_diff"]
     assert got["emotionxstyle"] == ref["contrast"]["emotionxstyle"]["ratio"]
@@ -181,9 +213,9 @@ def test_pair_lift_selection_must_match_placement(monkeypatch):
     Pi = rng.dirichlet(np.ones(41), n)
     labS = {k: rng.integers(0, 3, n) for k in ("emotion", "style", "genre")}
     gS = rng.integers(0, 8, n)
-    D.pair_lift(Pi, Pt, labS, gS, clip, selection=sel)
+    D.pair_lift(Pi, Pt, labS, gS, clip, sel)
     with pytest.raises(ValueError):
-        D.pair_lift(Pi, Pt + 0.01, labS, gS, clip, selection=sel)
+        D.pair_lift(Pi, Pt + 0.01, labS, gS, clip, sel)
 
 
 # ---------------------------------------------------------------- (d) the sharper term
@@ -199,16 +231,23 @@ def hand_scores(rows):
 
 
 def test_episode_terms_definitions():
-    # episode: i2t: a hits target (col0 first), b wins other (col0 first, target col1); t2i: a other wins (col1 first),
-    # b target wins (col1 first)
-    S = hand_scores([((2, 1), (2, 1), (1, 2), (1, 2))])
+    """Asymmetric episode. a, i2t: target first; a, t2i: other first; b, i2t: tie (a miss for both); b, t2i: target
+    first. So cond a: R@1 .5, other .5; cond b: R@1 .5, other 0; i2t: R@1 .5, other 0; t2i: R@1 .5, other .5."""
+    S = hand_scores([((2, 1), (1, 1), (1, 2), (1, 2))])
     t = D.episode_terms(S)
-    assert t["cond"]["a"]["r1"][0] == 0.5 and t["cond"]["a"]["other"][0] == 0.5
-    assert t["cond"]["b"]["r1"][0] == 0.5 and t["cond"]["b"]["other"][0] == 0.5
-    assert t["dir"]["i2t"]["r1"][0] == 0.5          # a hits, b misses
-    assert t["dir"]["i2t"]["other"][0] == 0.5
+    assert t["cond"]["a"]["r1"][0] == 0.5
+    assert t["cond"]["a"]["other"][0] == 0.5
+    assert t["cond"]["b"]["r1"][0] == 0.5
+    assert t["cond"]["b"]["other"][0] == 0.0
+    assert t["dir"]["i2t"]["r1"][0] == 0.5
+    assert t["dir"]["i2t"]["other"][0] == 0.0
     assert t["dir"]["t2i"]["r1"][0] == 0.5
-    assert D._metric(t["cond"]["a"], "gain")[0] == 0.0
+    assert t["dir"]["t2i"]["other"][0] == 0.5
+    assert D._metric(t["dir"]["i2t"], "gain")[0] == 0.5
+    assert D._metric(t["dir"]["t2i"], "gain")[0] == 0.0
+    assert D._metric(t["dir"]["i2t"], "either")[0] == 0.5
+    assert D._metric(t["dir"]["t2i"], "either")[0] == 1.0
+    assert D._metric(t["cond"]["b"], "gain")[0] == 0.5
     assert D._metric(t["cond"]["a"], "either")[0] == 1.0
 
 
@@ -237,6 +276,37 @@ def test_term_diff_orientation_fused_minus_cf():
     assert d["dir"]["t2i"]["r1"][0] == 1.0
 
 
+def const_diff(pair_index, scale=1.0):
+    """A per-episode difference dict whose value depends on (pair, condition, metric) or (direction, metric)."""
+    m_k = {"r1": 0.001, "gain": 0.01, "either": 0.1}
+    cond = {c: {m: scale * (np.asarray(pair_index) + 1) * (1 if c == "a" else 5) * k for m, k in m_k.items()}
+            for c in CONDITIONS}
+    dr = {d: {m: np.full(len(pair_index), scale * (1 if d == "i2t" else 7) * k) for m, k in m_k.items()}
+          for d in DIRECTIONS}
+    return {"cond": cond, "dir": dr}
+
+
+def test_summarize_pins_pair_condition_and_direction():
+    pi = np.arange(12) % 3
+    s = D.summarize(const_diff(pi), np.arange(12), pi)
+    for i, p in enumerate(C.POOLED_ORDER):
+        for c in CONDITIONS:
+            for m, k in (("r1", 0.001), ("gain", 0.01), ("either", 0.1)):
+                want = 100 * (i + 1) * (1 if c == "a" else 5) * k
+                assert s["per_pair_condition"][p][c][m]["point"] == pytest.approx(want)
+    for d in DIRECTIONS:
+        for m, k in (("r1", 0.001), ("gain", 0.01), ("either", 0.1)):
+            assert s["per_direction"][d][m]["point"] == pytest.approx(100 * (1 if d == "i2t" else 7) * k)
+
+
+def test_minus_sign_is_candidate_minus_aff():
+    pi = np.arange(12) % 3
+    out = D.minus(const_diff(pi, 3.0), const_diff(pi, 1.0))
+    s = D.summarize(out, np.arange(12), pi)
+    assert s["per_direction"]["i2t"]["r1"]["point"] == pytest.approx(100 * 2 * 0.001)
+    assert s["per_pair_condition"][C.POOLED_ORDER[1]]["b"]["gain"]["point"] == pytest.approx(100 * 2 * 2 * 5 * 0.01)
+
+
 def synth(n=48, seed=0):
     rng = np.random.default_rng(seed)
     base = {d: rng.normal(size=(n, 13)).astype(np.float32) for d in DIRECTIONS}
@@ -260,19 +330,33 @@ def test_sharper_term_reassembly_and_structure(monkeypatch):
     bundle, T, gates = synth()
     fam = RF3.run_family(bundle, T, gates)
     cl, pi = np.arange(48) // 4, np.arange(48) % 3
-    out = D.sharper_term(bundle, T, gates, fam, cl, pi, clip)
+    out = D.sharper_term(bundle, T, gates, fam, cl, pi, TAUS, clip)
     assert set(out["per_pair_condition"]) == set(C.POOLED_ORDER)
     assert set(out["per_pair_condition"][C.POOLED_ORDER[0]]) == {"a", "b"}
     assert set(out["per_direction"]) == {"i2t", "t2i"}
     assert set(out["per_direction"]["i2t"]) == {"r1", "gain", "either"}
     assert set(out["cells"]["fused"]) == {0, 1}
-    # pooled over pairs and conditions the per-direction mean difference equals the family's fused minus cf R@1
     d = out["diff"]
     both = 0.5 * (d["dir"]["i2t"]["r1"] + d["dir"]["t2i"]["r1"])
     np.testing.assert_array_equal(both, np.asarray(fam["fused"]["r1"]) - np.asarray(fam["cf"]["r1"]))
-    aff = D.sharper_term(bundle, T, gates, fam, cl, pi, clip)
-    again = D.sharper_term(bundle, T, gates, fam, cl, pi, clip, aff=aff)
+    gain_both = 0.5 * (d["dir"]["i2t"]["gain"] + d["dir"]["t2i"]["gain"])
+    np.testing.assert_array_equal(gain_both, np.asarray(fam["fused"]["gain"]) - np.asarray(fam["cf"]["gain"]))
+    aff = D.sharper_term(bundle, T, gates, fam, cl, pi, TAUS, clip)
+    again = D.sharper_term(bundle, T, gates, fam, cl, pi, TAUS, clip, aff=aff)
     assert again["minus_aff"]["per_direction"]["i2t"]["r1"]["point"] == 0.0
+
+
+def test_chosen_cells_use_the_given_taus(monkeypatch):
+    bundle, T, gates = synth()
+    fam = RF3.run_family(bundle, T, gates)
+    fam["fpick"], fam["cpick"] = {0: 100, 1: 200}, {0: 100, 1: 200}
+    taus = (0.11, 0.22, 0.33, 0.44)
+    cells = D.chosen_cells(fam, taus)
+    assert cells["fused"][0]["tau_index"] == 1
+    assert cells["fused"][0]["tau"] == 0.22
+    assert cells["cf"][1]["tau"] == 0.44
+    with pytest.raises(TypeError):
+        D.chosen_cells(fam)
 
 
 def test_reassembly_mismatch_raises(monkeypatch):
@@ -284,14 +368,23 @@ def test_reassembly_mismatch_raises(monkeypatch):
     bad["fused"]["r1"][0] += 0.25
     with pytest.raises(AssertionError):
         D.reassemble(bundle, T, gates, bad, clip)
-    wrong_cells = dict(fam)
-    wrong_cells["fpick"] = {h: (c + 37) % 224 for h, c in fam["fpick"].items()}
-    # different cells give different per-anchor arrays unless the synthetic data make them tie; accept only a raise
-    try:
-        D.reassemble(bundle, T, gates, wrong_cells, clip)
-    except AssertionError:
-        return
-    pytest.skip("synthetic cells tie")
+    # cells known to give different scores on this synthetic data (checked: per-anchor arrays differ)
+    wrong = dict(fam)
+    wrong["fpick"] = {0: 0, 1: 223}
+    assert not all(np.array_equal(RF3.F.assemble(*_asm_args(bundle, T, gates), wrong["fpick"], bundle.parity)[c][d],
+                                  RF3.F.assemble(*_asm_args(bundle, T, gates), fam["fpick"], bundle.parity)[c][d])
+                   for c in CONDITIONS for d in DIRECTIONS)
+    with pytest.raises(AssertionError):
+        D.reassemble(bundle, T, gates, wrong, clip)
+    extra = dict(fam)
+    extra["fused"] = {**fam["fused"], "bogus": np.zeros(48)}
+    with pytest.raises(AssertionError):
+        D.reassemble(bundle, T, gates, extra, clip)
+
+
+def _asm_args(bundle, T, gates):
+    zB, gated, _ = RF3._terms(bundle, T, gates)
+    return zB, RF3.F.rank_info(bundle.B), gated
 
 
 def test_either_cost_per_gain():
