@@ -1,0 +1,199 @@
+{
+  "fig1": {
+    "methods": {
+      "GoEmotions, steering term only": {
+        "point": -0.34383138020833337,
+        "ci95": [
+          -0.5222166846883708,
+          -0.16297832514540103
+        ],
+        "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+        "source_keys": {
+          "point": "descriptive.minus_AFF.G-T.pooled.point",
+          "ci95": "descriptive.minus_AFF.G-T.pooled.ci95"
+        },
+        "label": "GoEmotions, steering term only",
+        "net_rankings": {
+          "value": -169,
+          "source_file": "src/test/20261123_idea3_goemotions/results/dev_seed42.json",
+          "source_key": "candidates.G-T.delta_int"
+        },
+        "total_rankings": {
+          "value": 49152,
+          "derived_from": [
+            {
+              "source_file": "src/test/20261123_idea3_goemotions/results/dev_seed42.json",
+              "source_key": "candidates.G-T.delta_int"
+            },
+            {
+              "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+              "source_key": "descriptive.minus_AFF.G-T.pooled.point"
+            }
+          ],
+          "operation": "round(100 * delta_int / pooled.point)"
+        }
+      },
+      "GoEmotions, term and reader": {
+        "point": -0.27262369791666663,
+        "ci95": [
+          -0.4565247245743068,
+          -0.09238454151969994
+        ],
+        "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+        "source_keys": {
+          "point": "descriptive.minus_AFF.G-TF.pooled.point",
+          "ci95": "descriptive.minus_AFF.G-TF.pooled.ci95"
+        },
+        "label": "GoEmotions, term and reader",
+        "net_rankings": {
+          "value": -134,
+          "source_file": "src/test/20261123_idea3_goemotions/results/dev_seed42.json",
+          "source_key": "candidates.G-TF.delta_int"
+        },
+        "total_rankings": {
+          "value": 49152,
+          "derived_from": [
+            {
+              "source_file": "src/test/20261123_idea3_goemotions/results/dev_seed42.json",
+              "source_key": "candidates.G-TF.delta_int"
+            },
+            {
+              "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+              "source_key": "descriptive.minus_AFF.G-TF.pooled.point"
+            }
+          ],
+          "operation": "round(100 * delta_int / pooled.point)"
+        }
+      }
+    },
+    "reference": {
+      "value": 0.0,
+      "source_key": "brief: change against affect steering"
+    },
+    "units": "percentage points"
+  },
+  "fig2": {
+    "bars": {
+      "caption_x_caption_CLIP": {
+        "value": 1.6563540987645193,
+        "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+        "source_key": "descriptive.pair_lifts.caption_x_caption_CLIP.ratio_same_over_diff"
+      },
+      "caption_x_caption_GE": {
+        "value": 2.5747361780729103,
+        "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+        "source_key": "descriptive.pair_lifts.caption_x_caption_GE.ratio_same_over_diff"
+      },
+      "image_x_image": {
+        "value": 1.0432515762928676,
+        "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+        "source_key": "descriptive.pair_lifts.image_x_image.ratio_same_over_diff"
+      },
+      "image_x_caption_CLIP": {
+        "value": 1.1445184466303795,
+        "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+        "source_key": "descriptive.pair_lifts.image_x_caption_CLIP.ratio_same_over_diff"
+      },
+      "image_x_caption_GE": {
+        "value": 1.207331272357703,
+        "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+        "source_key": "descriptive.pair_lifts.image_x_caption_GE.ratio_same_over_diff"
+      }
+    },
+    "communities": {
+      "value": 2.7111312041209863,
+      "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+      "source_key": "diagnostics.pair_lift.groups"
+    },
+    "baseline": {
+      "value": 1.0,
+      "source_key": "brief: no-signal lift"
+    },
+    "units": "same-emotion / different-emotion lift (ratio)"
+  },
+  "fig3": {
+    "methods": {
+      "GoEmotions, steering term only": {
+        "gain_minus_AFF": {
+          "point": 0.8219401041666666,
+          "ci95": [
+            0.5473940598100887,
+            1.0997916944842665
+          ],
+          "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+          "source_keys": {
+            "point": "descriptive.fixed_cells.G-T_at_AFF_cells.gain_minus_AFF.point",
+            "ci95": "descriptive.fixed_cells.G-T_at_AFF_cells.gain_minus_AFF.ci95"
+          }
+        },
+        "either_minus_AFF": {
+          "point": -1.416015625,
+          "ci95": [
+            -1.6943691582730787,
+            -1.1312102278963105
+          ],
+          "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+          "source_keys": {
+            "point": "descriptive.fixed_cells.G-T_at_AFF_cells.either_minus_AFF.point",
+            "ci95": "descriptive.fixed_cells.G-T_at_AFF_cells.either_minus_AFF.ci95"
+          }
+        },
+        "minus_AFF": {
+          "point": -0.29703776041666663,
+          "ci95": [
+            -0.4887166820807385,
+            -0.1042526519860795
+          ],
+          "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+          "source_keys": {
+            "point": "descriptive.fixed_cells.G-T_at_AFF_cells.minus_AFF.point",
+            "ci95": "descriptive.fixed_cells.G-T_at_AFF_cells.minus_AFF.ci95"
+          }
+        }
+      },
+      "GoEmotions, term and reader": {
+        "gain_minus_AFF": {
+          "point": 0.7100423177083333,
+          "ci95": [
+            0.43546029770007066,
+            1.0090379985629752
+          ],
+          "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+          "source_keys": {
+            "point": "descriptive.fixed_cells.G-TF_at_AFF_cells.gain_minus_AFF.point",
+            "ci95": "descriptive.fixed_cells.G-TF_at_AFF_cells.gain_minus_AFF.ci95"
+          }
+        },
+        "either_minus_AFF": {
+          "point": -1.2227376302083335,
+          "ci95": [
+            -1.5031144998153474,
+            -0.9467061404557124
+          ],
+          "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+          "source_keys": {
+            "point": "descriptive.fixed_cells.G-TF_at_AFF_cells.either_minus_AFF.point",
+            "ci95": "descriptive.fixed_cells.G-TF_at_AFF_cells.either_minus_AFF.ci95"
+          }
+        },
+        "minus_AFF": {
+          "point": -0.25634765625,
+          "ci95": [
+            -0.4457005329630872,
+            -0.060688573018442195
+          ],
+          "source_file": "docs/reports/assets/2026-11-23_idea3_goemotions/figure_data.json",
+          "source_keys": {
+            "point": "descriptive.fixed_cells.G-TF_at_AFF_cells.minus_AFF.point",
+            "ci95": "descriptive.fixed_cells.G-TF_at_AFF_cells.minus_AFF.ci95"
+          }
+        }
+      }
+    },
+    "reference": {
+      "value": 0.0,
+      "source_key": "brief: change against affect steering"
+    },
+    "units": "percentage points"
+  }
+}

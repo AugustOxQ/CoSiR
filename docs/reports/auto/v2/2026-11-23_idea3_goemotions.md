@@ -906,9 +906,9 @@ seed-42 results go to the user, who decides what follows.
 
 1. **The held-split paper test with AFF frozen.** AFF is still the only method of this line that passed a
    pre-registered fresh-seed test, and both held reads remain unspent. This is the step deferred twice (rounds 4 and 5).
-2. **How B′(A1) enters that test** (a GO check, a reported comparator, or not at all). On seed 42 AFF is +0.332
-   [+0.048, +0.625] above it, and both GE candidates were level with it (−0.012 and +0.059). The choice should be fixed
-   before that test is written.
+2. **How B′(A1) enters that test** (a GO check, a reported comparator, or not at all). On seed 42 (development data)
+   AFF is +0.332 [+0.048, +0.625] above it, a lower bound just above zero, and both GE candidates were level with it
+   (−0.012 and +0.059). The choice should be fixed before that test is written.
 3. **Idea 3's untried variants.** The why-section bears on them directly:
    - *Retrained readers on GE features (G-R).* G-TF's frozen readers already picked as AFF's on 95% of values and
      detected emotion conditions as well (0.790 against 0.787); retraining could move the picks, but the term would
