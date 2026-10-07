@@ -390,3 +390,41 @@ def _asm_args(bundle, T, gates):
 def test_either_cost_per_gain():
     rec = {"either_change": -1.629638671875, "gain_statistic": {"point": 3.110758463541667}}
     assert D.either_cost_per_gain(rec) == pytest.approx(R5.AFF_EITHER_PER_GAIN)
+
+
+def test_chosen_cells_keep_fused_and_counterpart_picks_apart():
+    """Final review N8 (deferred minor T4-1, the diagnostics' twin of dev_record's cell_text)."""
+    bundle, T, gates = synth()
+    fam = RF3.run_family(bundle, T, gates)
+    fam["fpick"], fam["cpick"] = {0: 46, 1: 117}, {0: 101, 1: 25}
+    cells = D.chosen_cells(fam, TAUS)
+    assert [cells["fused"][h]["cell"] for h in (0, 1)] == [46, 117]
+    assert [cells["cf"][h]["cell"] for h in (0, 1)] == [101, 25]
+
+
+def test_sharper_term_minus_aff_is_candidate_minus_aff(monkeypatch):
+    """Final review N8 (mutation T3, deferred minor T4-2): with AFF's family different from the candidate's,
+    minus_aff is the candidate's (fused minus counterpart) minus AFF's, paired, never the reverse."""
+    clip = clip_placement(monkeypatch)
+    bundle, T, gates = synth()
+    rng = np.random.default_rng(5)
+    T_aff = {c: {d: rng.normal(size=T[c][d].shape).astype(np.float32) for d in DIRECTIONS} for c in CONDITIONS}
+    fam_c = RF3.run_family(bundle, T, gates)
+    fam_a = RF3.run_family(bundle, T_aff, gates)
+    cl, pi = np.arange(48) // 4, np.arange(48) % 3
+    cand = D.sharper_term(bundle, T, gates, fam_c, cl, pi, TAUS, clip)
+    aff = D.sharper_term(bundle, T_aff, gates, fam_a, cl, pi, TAUS, clip)
+    out = D.sharper_term(bundle, T, gates, fam_c, cl, pi, TAUS, clip, aff=aff)
+    moved = 0
+    for d in DIRECTIONS:
+        for m in ("r1", "gain", "either"):
+            want = cand["per_direction"][d][m]["point"] - aff["per_direction"][d][m]["point"]
+            assert out["minus_aff"]["per_direction"][d][m]["point"] == pytest.approx(want, abs=1e-9)
+            moved += abs(want) > 1e-6
+    for p in C.POOLED_ORDER:
+        for c in CONDITIONS:
+            want = (cand["per_pair_condition"][p][c]["gain"]["point"]
+                    - aff["per_pair_condition"][p][c]["gain"]["point"])
+            assert out["minus_aff"]["per_pair_condition"][p][c]["gain"]["point"] == pytest.approx(want, abs=1e-9)
+            moved += abs(want) > 1e-6
+    assert moved >= 3          # the two families really differ, so a reversed order would flip these signs

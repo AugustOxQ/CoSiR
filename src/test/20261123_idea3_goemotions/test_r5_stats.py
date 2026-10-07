@@ -445,3 +445,20 @@ def test_dev_record_cell_text_uses_the_candidates_taus():
     assert rec["cell_text"]["fused"][1]["tau_index"] == 3
     with pytest.raises(TypeError):
         S.dev_record("G-TF", f, a, pB, p0, pG, p1, cl, pi)
+
+
+def test_dev_record_cell_text_keeps_fused_and_counterpart_picks_apart():
+    """Final review N8 (mutation T1, deferred minor T4-1): with fused picks different from the counterpart's (round 5's
+    G-T on seed 42: 46, 117 against 101, 25), cell_text["fused"] describes the fused picks and cell_text["cf"] the
+    counterpart's."""
+    f, a, pB, p0, pG, p1 = _stub()
+    f["fpick"], f["cpick"] = {0: 46, 1: 117}, {0: 101, 1: 25}
+    rec = S.dev_record("G-T", f, a, pB, p0, pG, p1, CL, PAIR, TAUS)
+    for kind, picks in (("fused", f["fpick"]), ("cf", f["cpick"])):
+        for h, cell in picks.items():
+            assert rec["cell_text"][kind][h] == R5.RF3.describe(cell, TAUS)
+    assert rec["cell_text"]["fused"][0]["cell"] == 46
+    assert rec["cell_text"]["fused"][0]["lambda_a"] == 8.0
+    assert rec["cell_text"]["cf"][0]["cell"] == 101
+    assert rec["cell_text"]["cf"][1]["lambda_a"] == 0.25
+    assert rec["cells"] == {"fpick": {0: 46, 1: 117}, "cpick": {0: 101, 1: 25}}

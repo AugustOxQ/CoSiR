@@ -429,3 +429,19 @@ def test_reset_for_tests(tmp_path):
     assert G.is_released()
     G._reset_for_tests()
     assert not G.is_released()
+
+
+def test_require_refuses_a_minted_clip_carrying_the_ge_array(tmp_path, monkeypatch):
+    """Final review N8 (mutation G3): require()'s clip branch refuses a clip placement whose array is the GE array, even
+    one minted with the module's own token, which bypasses the constructors' checks. Before and after release."""
+    p, ps, rows = _ge_file(tmp_path)
+    monkeypatch.setattr(R5, "GE_POST_SHA", R5.sha256_file(p))
+    ge = G.ge_from_file(p)
+    forged = G.Placement("clip", ge.Q, G.fingerprint(ge.Q), G._MINT)
+    assert forged.kind == "clip" and forged.sha256 == G.fingerprint(forged.Q)   # passes the fingerprint check
+    with pytest.raises(G.GuardError, match="carries the GE array"):
+        G.require(forged, "x")
+    G.release(_regression(tmp_path))
+    with pytest.raises(G.GuardError, match="carries the GE array"):
+        G.require(forged, "x")
+    assert G.require(ge, "x") is ge
