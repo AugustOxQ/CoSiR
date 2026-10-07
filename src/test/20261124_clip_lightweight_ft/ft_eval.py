@@ -35,7 +35,7 @@ POOLED_SEEDS = (49, 50, 51)
 PAIRS = (("emotion", "style"), ("emotion", "genre"), ("style", "genre"))
 POOLED_ORDER = [f"{a}__{b}" for a, b in PAIRS]
 FIELDS = ("anchor", "candidates", "pairs_a_img", "pairs_a_txt", "pairs_b_img", "pairs_b_txt")
-REPORT_METRICS = ("r1", "other", "gain")
+REPORT_METRICS = ("r1", "either", "gain", "other")   # either = r1 + other (round 1 common.either)
 # scorer name -> (file, key prefix); the metric name follows "__". Seeds 49-51: round 3's go_seed{s}.npz; seed 42: round 4.
 SOURCES = {
     "49-51": {"AFF": (R3 / "go_seed{s}.npz", "aff_fused"), "B": (R3 / "go_seed{s}.npz", "B"),
@@ -96,8 +96,16 @@ def assert_aligned(cl_a, pair_a, cl_b, pair_b, what: str):
         raise AssertionError(f"{what}: anchor paintings or pair index differ from the episodes")
 
 
+def metric_values(per_anchor_dict, metric):
+    """Per-anchor values of a reported metric; either = R@1 + other-aspect rate."""
+    if metric == "either":
+        return (np.asarray(per_anchor_dict["r1"], dtype=np.float64)
+                + np.asarray(per_anchor_dict["other"], dtype=np.float64))
+    return np.asarray(per_anchor_dict[metric], dtype=np.float64)
+
+
 def pool(data, seeds, scorer, metric):
-    return np.concatenate([np.asarray(data[s]["scorers"][scorer][metric], dtype=np.float64) for s in seeds])
+    return np.concatenate([metric_values(data[s]["scorers"][scorer], metric) for s in seeds])
 
 
 def _scope(data, seeds, variants, mask_fn=None):
@@ -124,6 +132,9 @@ def build_report(data, variants, pooled_seeds=POOLED_SEEDS) -> dict:
     rep["pooled"] = _scope(data, tuple(pooled_seeds), variants)
     rep["pairs"] = {str(i): _scope(data, tuple(pooled_seeds), variants, lambda d, i=i: d["pair_index"] == i)
                     for i in np.unique(data[pooled_seeds[0]]["pair_index"])}
+    if 42 in data:
+        rep["pairs_seed42"] = {str(i): _scope(data, (42,), variants, lambda d, i=i: d["pair_index"] == i)
+                               for i in np.unique(data[42]["pair_index"])}
     return rep
 
 
@@ -132,15 +143,16 @@ def format_table(rep, variants) -> str:
         return f"{r['point']:+7.2f} [{r['ci95'][0]:+6.2f},{r['ci95'][1]:+6.2f}]"
     lines = []
     scopes = [(f"seed {k}", v) for k, v in rep["seeds"].items()] + [("pooled 49-51", rep["pooled"])] + \
-             [(f"pair {POOLED_ORDER[int(k)]} (49-51)", v) for k, v in rep["pairs"].items()]
+             [(f"pair {POOLED_ORDER[int(k)]} (49-51)", v) for k, v in rep["pairs"].items()] + \
+             [(f"pair {POOLED_ORDER[int(k)]} (seed 42)", v) for k, v in rep.get("pairs_seed42", {}).items()]
     for title, sc in scopes:
         lines.append(f"== {title}  (n={sc['n_episodes']}, pp, 95% painting-bootstrap)")
-        lines.append(f"{'scorer':<12}" + "".join(f"{m:>26}" for m in REPORT_METRICS))
+        lines.append(f"{'scorer':<26}" + "".join(f"{m:>25}" for m in REPORT_METRICS))
         for n, r in sc["scorers"].items():
-            lines.append(f"{n:<12}" + "".join(f"{f(r[m]):>26}" for m in REPORT_METRICS))
+            lines.append(f"{n:<26}" + "".join(f"{f(r[m]):>25}" for m in REPORT_METRICS))
         for v in variants:
             for cname, r in sc["comparisons"][v].items():
-                lines.append(f"{v + ': ' + cname:<12}" + "".join(f"{f(r[m]):>26}" for m in REPORT_METRICS))
+                lines.append(f"{v + ': ' + cname:<26}" + "".join(f"{f(r[m]):>25}" for m in REPORT_METRICS))
         lines.append("")
     return "\n".join(lines)
 
@@ -155,7 +167,7 @@ def load_context():
     return data, sp
 
 
-def load_episodes(seed):
+def load_episodes(seed, selection):
     z = np.load(E1 / f"episodes_seed{seed}.npz")
     base = json.loads((E1 / f"baselines_seed{seed}.json").read_text())
     if list(z["pair_order"]) != POOLED_ORDER or base["pair_order"] != POOLED_ORDER:
@@ -165,6 +177,8 @@ def load_episodes(seed):
         ep = AspectEpisodes(a, b, *(z[f"{a}__{b}__{k}"].astype(np.int64) for k in FIELDS))
         if episodes_sha256(ep) != base["episodes_sha256"][f"{a}__{b}"]:
             raise AssertionError(f"episodes_seed{seed} {a}__{b}: SHA-256 differs from baselines_seed{seed}.json")
+        if not np.isin(ep.rows(), selection).all():
+            raise AssertionError(f"episodes_seed{seed} {a}__{b}: a row outside selection")
         parts.append(ep)
     n_per = len(parts[0].anchor)
     if any(len(p.anchor) != n_per for p in parts) or n_per != base["n_per_pair"]:
@@ -175,13 +189,22 @@ def load_episodes(seed):
 def load_stored(seed):
     """AFF, B, Bp0 (and Bp1 on seed 42) per-anchor arrays, plus the stored cl and pair_index to align against."""
     src = SOURCES["42"] if seed == 42 else SOURCES["49-51"]
-    scorers, cl, pi = {}, None, None
+    scorers, cl, pi, stored_cos = {}, None, None, {}
     for name, (path, prefix) in src.items():
         z = np.load(str(path).format(s=seed))
+        stored_cos[name] = {m: np.asarray(z[f"cosine__{m}"], dtype=np.float64) for m in METRICS}
         scorers[name] = {m: np.asarray(z[f"{prefix}__{m}"], dtype=np.float64) for m in METRICS}
         if cl is None:
             cl, pi = z["cl"], z["pair_index"]
-    return scorers, cl, pi
+    return scorers, cl, pi, stored_cos
+
+
+def assert_stored_cosine(seed, plain, stored_cos):
+    """Every stored scorer file's own cosine__* equals the recomputed plain cosine (ties each stored row to the episodes)."""
+    for name, cos in stored_cos.items():
+        for m in METRICS:
+            if not np.array_equal(plain[m], cos[m]):
+                raise AssertionError(f"seed {seed}: stored cosine__{m} next to {name} differs from the episodes' cosine")
 
 
 def assert_plain_matches(seed, plain):
@@ -192,7 +215,7 @@ def assert_plain_matches(seed, plain):
             raise AssertionError(f"seed {seed}: plain cosine {m} differs from per_anchor_seed{seed}.npz")
 
 
-def run(features: dict, out: Path | None, self_check: bool = False, seeds=SEEDS):
+def run(features: dict, out: Path | None, self_check: bool = False, seeds=SEEDS, quiet: bool = False):
     data, sp = load_context()
     n_rows = len(sp.groups)
     sel = np.asarray(sp.selection)
@@ -204,16 +227,26 @@ def run(features: dict, out: Path | None, self_check: bool = False, seeds=SEEDS)
     for name, path in features.items():
         z = np.load(path)
         variants_feats[name] = place_features(z["rows"], z["img"], z["txt"], n_rows, sel, allowed_val)
-    if self_check:
-        variants_feats["frozen_standin"] = frozen
+    if self_check:       # real features.npz path: frozen val+selection features in a shuffled row order
+        import tempfile
+        both = np.concatenate([sel, allowed_val])
+        both = both[np.random.default_rng(0).permutation(len(both))]
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "features.npz"
+            np.savez(p, rows=both, img=data.img_features[both], txt=data.txt_features[both])
+            z = np.load(p)
+            variants_feats["frozen_standin"] = place_features(z["rows"], z["img"], z["txt"], n_rows, sel, allowed_val)
+        if not all(np.array_equal(a, b, equal_nan=True) for a, b in zip(variants_feats["frozen_standin"], frozen)):
+            raise AssertionError("shuffled stand-in placement differs from the ordered placement")
     per_seed, checks = {}, {}
     for s in seeds:
-        ep, pair_index = load_episodes(s)
+        ep, pair_index = load_episodes(s, sel)
         cl = sp.groups[ep.anchor]
-        scorers, cl_s, pi_s = load_stored(s)
+        scorers, cl_s, pi_s, stored_cos = load_stored(s)
         assert_aligned(cl_s, pi_s, cl, pair_index, f"seed {s} stored arrays")
         plain = score_features(*frozen, ep)
         assert_plain_matches(s, plain)
+        assert_stored_cosine(s, plain, stored_cos)
         scorers["plain"] = plain
         for name, (fi, ft) in variants_feats.items():
             scorers[f"ft:{name}"] = score_features(fi, ft, ep)
@@ -224,8 +257,8 @@ def run(features: dict, out: Path | None, self_check: bool = False, seeds=SEEDS)
             if not same:
                 raise AssertionError(f"seed {s}: frozen stand-in differs from plain")
     if self_check:
-        print("self-check passed: seeds", list(seeds), "episodes SHA-256, stored-array alignment, plain == stored "
-              "cosine__*, placement/masking, stand-in == plain")
+        print("PASS self-check: seeds", list(seeds), "episodes SHA-256, rows inside selection, stored-array alignment "
+              "(cl, pair_index, stored cosine__*), plain == per_anchor cosine__*, shuffled npz placement, stand-in == plain")
         return None
     names = list(variants_feats)
     rep = build_report(per_seed, names)
@@ -237,7 +270,10 @@ def run(features: dict, out: Path | None, self_check: bool = False, seeds=SEEDS)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(rep, indent=1))
         out.with_suffix(".txt").write_text(table)
-    print(table)
+    if quiet:
+        print(f"PASS alignment checks, seeds {list(seeds)}; wrote {out}")
+    else:
+        print(table)
     return rep
 
 
@@ -246,11 +282,14 @@ def main():
     ap.add_argument("--features", nargs="*", default=[], metavar="VARIANT=features.npz")
     ap.add_argument("--out", type=Path, default=HERE / "results" / "eval.json")
     ap.add_argument("--self-check", action="store_true", help="alignment asserts with frozen CLIP as a stand-in")
+    ap.add_argument("--quiet", action="store_true", help="print only the output path and pass/fail lines")
     a = ap.parse_args()
+    if any("=" not in kv for kv in a.features):
+        ap.error("--features entries must be VARIANT=path/to/features.npz")
     feats = dict(kv.split("=", 1) for kv in a.features)
     if not feats and not a.self_check:
         ap.error("give --features or --self-check")
-    run(feats, a.out, self_check=a.self_check)
+    run(feats, a.out, self_check=a.self_check, quiet=a.quiet)
 
 
 if __name__ == "__main__":

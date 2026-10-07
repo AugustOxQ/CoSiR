@@ -93,6 +93,15 @@ def test_difference_signs_and_definitions():
     assert pooled["AFF_minus_ft"]["r1"]["ci95"][0] > 0
     assert pooled["ft_minus_plain"]["gain"]["point"] == pytest.approx(0.0, abs=1e-9)
     assert pooled["AFF_minus_ft"]["other"]["point"] == pytest.approx(-5.0, abs=1e-9)   # AFF 0.05 - ft 0.10
+    # either = r1 + other: AFF 0.75, ft 0.70, plain 0.50, Bp0 0.60
+    sc = rep["pooled"]["scorers"]
+    assert sc["AFF"]["either"]["point"] == pytest.approx(75.0, abs=1.0)   # jitter enters r1 and other
+    assert sc["AFF"]["either"]["point"] == pytest.approx(sc["AFF"]["r1"]["point"] + sc["AFF"]["other"]["point"])
+    assert pooled["AFF_minus_ft"]["either"]["point"] == pytest.approx(5.0, abs=1e-9)
+    assert pooled["ft_minus_plain"]["either"]["point"] == pytest.approx(20.0, abs=1e-9)
+    assert pooled["ft_minus_Bp0"]["either"]["point"] == pytest.approx(10.0, abs=1e-9)
+    lo, hi = pooled["AFF_minus_ft"]["either"]["ci95"]
+    assert lo <= 5.0 <= hi
 
 
 def test_pooled_clusters_are_paintings_across_seeds():
@@ -113,7 +122,8 @@ def test_bp1_only_on_seed42_and_pair_split():
     rep = E.build_report(_fake([42, 49, 50, 51]), ["x"], pooled_seeds=(49, 50, 51))
     assert "Bp1" in rep["seeds"]["42"]["scorers"]
     assert "Bp1" not in rep["seeds"]["49"]["scorers"] and "Bp1" not in rep["pooled"]["scorers"]
-    assert set(rep["pairs"]) == {"0", "1", "2"}
+    assert set(rep["pairs"]) == {"0", "1", "2"} and set(rep["pairs_seed42"]) == {"0", "1", "2"}
+    assert rep["pairs_seed42"]["0"]["n_episodes"] == 8
     assert rep["pairs"]["1"]["n_episodes"] == 24
     assert rep["pairs"]["2"]["comparisons"]["x"]["ft_minus_plain"]["r1"]["point"] == pytest.approx(20.0, abs=1e-9)
 
@@ -139,3 +149,20 @@ def test_score_features_matches_cosine_on_tiny_episodes():
     r = E.score_features(img, txt, ep)
     assert set(r) == {"r1", "gain", "other", "swap", "strict"} and r["r1"].shape == (n,)
     assert np.array_equal(r["gain"], np.zeros(n))                          # cosine: gain 0 by construction
+
+
+def test_hand_computed_episode_top1_and_either():
+    from src.eval.aspect_episodes import AspectEpisodes
+    # unit 2-d features. Image row 0 points along x; captions: row 0 = x (candidate p_a), row 1 = y (p_b),
+    # row 2 = -x. i2t from anchor image 0: cosines [1, 0, -1] -> p_a is top-1 (hit), p_b is not.
+    # t2i from anchor caption 0 (x): images rows 0..2 = x, y, -x -> cosines [1, 0, -1] -> p_a top-1 again.
+    img = np.array([[1, 0], [0, 1], [-1, 0]], np.float32)
+    txt = img.copy()
+    ep = AspectEpisodes("a", "b", np.array([0]), np.array([[0, 1, 2]]), np.array([[0]]), np.array([[0]]),
+                        np.array([[1]]), np.array([[1]]))
+    r = E.score_features(img, txt, ep)
+    # cosine ignores the condition: p_a wins under both. r1 = 0.5*(hit_aa=1 + hit_bb=0) = 0.5;
+    # other = 0.5*(hit_ba=0 + hit_ab=1) = 0.5; gain = r1 - other = 0; either = r1 + other = 1.
+    assert r["r1"][0] == 0.5 and r["other"][0] == 0.5 and r["gain"][0] == 0.0
+    assert E.metric_values(r, "either")[0] == 1.0
+    assert r["swap"][0] == 0.0 and r["strict"][0] == 0.0
