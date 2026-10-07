@@ -13,6 +13,7 @@ Run with the system Python, NOT the CoSiR conda env (conda's OpenSSL breaks the 
 --node defaults to cluster.conf's NODE.
 """
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -45,6 +46,16 @@ def build_actions(cfg, need_complete):
         if need_complete:
             sys.exit(f"REFUSING --run: {msg}")
         print(f"WARNING: {msg} (the plan includes partial files; --run refuses until it is built)")
+    else:
+        rec = json.loads((Path(cache_local) / "cache_record.json").read_text())
+        size = (Path(cache_local) / "images_uint8.npy").stat().st_size
+        payload = rec["n_images"] * 224 * 224 * 3
+        if not (payload < size <= payload + 4096) or rec["shape"] != [rec["n_images"], 224, 224, 3]:
+            sys.exit(f"local cache {cache_local} does not match cache_record.json: images_uint8.npy is {size} bytes, "
+                     f"record says {rec['n_images']} images ({payload} payload bytes)")
+        n_paintings = len(json.loads((Path(cache_local) / "paintings.json").read_text())["paintings"])
+        if n_paintings != rec["n_images"]:
+            sys.exit(f"local paintings.json has {n_paintings} paintings, record says {rec['n_images']}")
     return actions
 
 

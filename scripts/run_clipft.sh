@@ -2,7 +2,7 @@
 # Lightweight CLIP fine-tuning comparator (docs/superpowers/specs/2026-10-07-clip-lightweight-ft-design.md) on a DAS6 node.
 # Launch from the CoSiR worktree:  cluster launch --node node404 -- bash scripts/run_clipft.sh <LP|LB|LoRA> <lr> [--check-only|--smoke]
 # The job's cwd is its code worktree; results land in outputs/clipft/<variant>_lr<lr>[_smoke] (`cluster pull --tag` fetches them).
-# `--check-only` verifies the inputs and exits without training. CLIPFT_VERIFY_SHA=1 also re-hashes the 7.4 GB image cache.
+# `--check-only` verifies the inputs and exits without training. The 7.4 GB image cache is SHA-256 verified by default (about a minute); CLIPFT_SKIP_SHA=1 skips it (local smoke tests only).
 # Data reach the node with scripts/das6_sync_clipft.py. Node paths below can be overridden for a local check;
 # CLIPFT_ALLOW_NO_GPU=1 skips the CUDA check (local check only).
 set -euo pipefail
@@ -39,10 +39,10 @@ nvidia-smi -L 2>&1 || echo "nvidia-smi not available"
 for f in images_uint8.npy paintings.json cache_record.json; do
     [[ -f "$CLIPFT_IMAGE_CACHE/$f" ]] || fail "image cache incomplete, missing: $CLIPFT_IMAGE_CACHE/$f"
 done
-# Sizes against cache_record.json (shape/dtype/length); the SHA-256 only when CLIPFT_VERIFY_SHA=1 (hashing 7.4 GB is slow).
-python - "$CLIPFT_IMAGE_CACHE" "${CLIPFT_VERIFY_SHA:-0}" <<'PY' || fail "image cache does not match cache_record.json"
+# Sizes against cache_record.json (shape/dtype/length), then the SHA-256 of both files unless CLIPFT_SKIP_SHA=1.
+python - "$CLIPFT_IMAGE_CACHE" "${CLIPFT_SKIP_SHA:-0}" <<'PY' || fail "image cache does not match cache_record.json"
 import hashlib, json, os, sys
-d, verify = sys.argv[1], sys.argv[2] == "1"
+d, verify = sys.argv[1], sys.argv[2] != "1"
 rec = json.load(open(f"{d}/cache_record.json"))
 n, shape = rec["n_images"], rec["shape"]
 size = os.path.getsize(f"{d}/images_uint8.npy")
@@ -61,7 +61,7 @@ if verify:
         if h.hexdigest() != sha:
             sys.exit(f"SHA-256 mismatch: {name}")
     print("image cache SHA-256 ok")
-print(f"image cache ok: {n} images, {size} bytes" + ("" if verify else " (sizes only; CLIPFT_VERIFY_SHA=1 hashes)"))
+print(f"image cache ok: {n} images, {size} bytes" + ("" if verify else " (sizes only; SHA skipped by CLIPFT_SKIP_SHA=1)"))
 PY
 
 repo="$HF_HUB_CACHE/models--${MODEL//\//--}"
@@ -87,4 +87,4 @@ echo "inputs ok"
 
 SMOKE=()
 [[ "$MODE" == "--smoke" ]] && SMOKE=(--smoke)
-exec python src/test/20261124_clip_lightweight_ft/ft_train.py --variant "$VARIANT" --lr "$LR" --epochs "$EPOCHS" --out "$OUT" "${SMOKE[@]}"
+exec python src/test/20261124_clip_lightweight_ft/ft_train.py --variant "$VARIANT" --lr "$LR" --epochs "$EPOCHS" --out "$OUT" ${SMOKE[@]+"${SMOKE[@]}"}
