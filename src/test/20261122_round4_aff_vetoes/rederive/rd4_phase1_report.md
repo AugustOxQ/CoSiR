@@ -19,8 +19,8 @@ rules' text.
 - No boundary case of rule §8: no D10 clause lies within 1e-12 of its threshold, no Δ_k is 0, and there is no tie gap.
 - `out/rd4_phase1.json` has SHA-256 **13e30ebc5f42d3f3e464c44bc9dd8494179fcca10b7cbd522543dad281ff5ff5**. It was written
   to `out/rd4_phase1.sha256` at 01:40, before any comparison with the implementation. Rule §8 says phase 1 must agree
-  with the implementation before a kill is reported. We have not run that comparison: `rd4_compare_phase1.py` is ready
-  for the controller (§9).
+  with the implementation before a kill is reported. That comparison ran at 02:35 and **agrees on all 932 compared
+  quantities** (§11).
 
 ## 1. What we computed, and with what
 
@@ -256,3 +256,84 @@ All outputs are in `rederive/out/`, which the repository's `.gitignore` (`out/`)
 
 Nothing exceeds 100 MB, and the total is 147 MB. The two caches can be deleted once the agreement is settled.
 Runtime: 44 s for the bundle, 85 s for the references (run in parallel), and 20 s for phase 1.
+
+## 11. Agreement with the implementation (rule §8), 2026-10-07 02:35
+
+**Outcome: `all_agree` = true.** We compared 932 quantities: 807 scalars and 125 arrays. Every scalar is identical:
+the largest absolute difference is exactly 0, so the 1e-9 pp and τ/v₇₅ tolerances were never needed. Every per-anchor
+array, gate array and pick array is identical in value, shape and dtype. The kill therefore stands on both sides. Both
+find E = ∅, M none, an empty tied set, no carried candidate and no boundaries. Both have Δ_int −18, −18 and −34, and
+both have the same D10 clauses: V4 passes all three; V2 fails clause 1; V24 fails clauses 1 and 2.
+
+The implementation's files we read were only its four result files, never its code:
+
+| File | SHA-256 |
+|---|---|
+| `regression_check.json` | 20005dde51cf… |
+| `dev_seed42.json` | fd7b3f480d59… |
+| `carry.json` | d246fa4f1012… |
+| `seed42_arrays.npz` | 72fb827fa9b4… |
+
+There is no `sensitivity.json`, as expected after a kill. Our `rd4_phase1.json` kept its SHA-256 (13e30ebc…5ff5),
+which the script asserts. The result is in `out/agreement_phase1.json` (SHA-256 4993766a…8553).
+
+**What changed in the script.** The first version located keys by a token heuristic: it matched 123 quantities and
+left 46 unmatched. Now that the layout is known, every comparison names its implementation key explicitly. The script
+covers:
+
+- the 262 named regression comparisons;
+- the top-level regression fields (passed, items, cells, D7, τ_0 open counts, input SHA-256s);
+- every development field of V4, V2, V24 and AFF: fused and counterpart R@1; cells and their (τ index, τ, λ_u, λ_a);
+  σ*; bar comparator; bar margin, margin and gain statistic with intervals and cluster counts; either change; D10
+  clauses; per-pair bar margins with intervals; Δ_int with its point and interval; boundaries; B′(A1) beside AFF;
+- every carry field;
+- all 125 arrays of `seed42_arrays.npz`, compared with `numpy.array_equal`.
+
+137 scalar comparisons and 13 array comparisons are derived, and labelled as such:
+
+- per-τ, per-condition gate-algebra outcomes from our gate arrays;
+- open counts at every τ index for all six gates (AFF, V4, V2, V24, R1, R1 × a_v), from the implementation's gate arrays;
+- the integer sums of 4·R@1 behind every mean, and each Δ_int, from the implementation's per-anchor arrays;
+- our bar, gain, margin and Δ difference arrays against the same differences formed from its arrays;
+- a_v (`keep`) from our v;
+- AFF minus B′(A1) with its interval, from our arrays;
+- the implementation's own SHA-256 bindings between its files.
+
+| Source | Scalar comparisons | Of which derived |
+|---|---|---|
+| `regression_check.json` | 416 | 53 |
+| `dev_seed42.json` | 260 | 15 |
+| `carry.json` | 30 | 4 |
+| `seed42_arrays.npz` (scalars formed from its arrays) | 101 | 65 |
+| `seed42_arrays.npz`: 108 per-anchor arrays, 12 gate arrays (4 × 12,288), 4 probability arrays, τ | 125 arrays | 13 |
+
+**Implementation leaves without a counterpart in ours** (42 of 771, each with its reason):
+
+| Leaves | Count | Reason |
+|---|---|---|
+| `k_top` | 16 | round 2's top-k parameter (13 = no restriction) |
+| metadata | 11 | `what`, `runtime_s`, write times, git head |
+| `r3.episodes.*` | 7 | episode-file arrays checked against round 1's bundle; ours checks anchors and candidates against the episodes file and `load_bundle`, and the features (which read every support and contrast pair) against the rd2 cache |
+| `r3.T_N1u.*` | 4 | an intermediate of B and B′ that our bundle does not store; B and B′ themselves are compared |
+| `inputs_sha256` of round 3's implementation modules | 4 | we do not read those modules, by mandate |
+
+No leaf is unexplained.
+
+**Our quantities without a counterpart in theirs**, all listed in the JSON with reasons:
+
+- references other than `load_bundle` (episodes file, step-1 eval, rd2 cache, n6 file, told_oracle picks);
+- the cross-fit picks of B, B′(A0) and B′(A1);
+- either-change intervals (they record the point);
+- R1 × a_v's margin against its counterpart (equal to its bar margin there);
+- per-pair margins and gains;
+- the bootstrap point of Δ_k and the up/down episode counts;
+- cross-fit internals (criteria, ρ, γ, ρ_ctrl);
+- per-clause boundary flags (both boundary lists are empty);
+- pick shares, reader C values and the bs_04 cross-check;
+- sensitivity (kill on both sides).
+
+**The check is not vacuous.** We ran it on copies of the implementation's files in the session scratchpad with four
+perturbations: a 2e-9 shift of V4's bar-margin lower bound, Δ_int of V2 set to −17, one element of V24's counterpart
+"other" array, and one regression comparison's pass flag. All four were reported as disagreements. The changed files
+also broke the SHA-256 bindings between the implementation's files, and the script reported that too. The real run was
+then repeated unchanged.
