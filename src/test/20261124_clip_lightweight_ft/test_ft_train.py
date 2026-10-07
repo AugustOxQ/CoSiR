@@ -3,6 +3,7 @@ import copy
 import json
 import math
 import os
+import pickle
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -215,6 +216,10 @@ def test_best_epoch_and_cross_run_selection():
     assert ft_train.select_runs(runs) == {"lr": 1e-4, "epoch": 1, "selection": 0.6}
     runs[0]["epochs"][1]["selection"] = 0.61
     assert ft_train.select_runs(runs) == {"lr": 3e-4, "epoch": 1, "selection": 0.61}
+    # Precedence: the smaller learning rate wins a tie even at a later epoch (swapping lr and epoch in the key fails)
+    runs = [{"lr": 3e-4, "epochs": [ep(0, 0.9), ep(1, 0.6), ep(2, 0.5)]},
+            {"lr": 1e-4, "epochs": [ep(0, 0.9), ep(1, 0.5), ep(2, 0.6)]}]
+    assert ft_train.select_runs(runs) == {"lr": 1e-4, "epoch": 2, "selection": 0.6}
 
 
 # --------------------------------------------------------------------------------------------- rows
@@ -246,27 +251,41 @@ class _Held(dict):
         raise AssertionError("a held annotation was read")
 
 
+# Splits interleave in sorted painting order, so the train paintings (p01 p03 p04 p06 p08) are NOT cache rows 0..4.
+SPLIT_OF = ["val", "scorer_train", "selection", "scorer_train", "scorer_train", "val", "scorer_train", "selection",
+            "scorer_train", "held"]
+CAPS_PER = [3, 4, 3, 3, 4, 3, 3, 3, 3, 3]
+
+
+def _colour(k):
+    """The image content encodes the painting id k (red channel 20 + 22 k)."""
+    return np.array([20 + 22 * k, 220 - 20 * k, 60 + 15 * k])
+
+
+def _painting_of_image(u8) -> int:
+    return int(round((float(np.asarray(u8, dtype=np.float64)[..., 0].mean()) - 20) / 22))
+
+
 def _toy_run_data(tmp_path):
     """32 feature rows over 10 paintings with shuffled sample_ids; p09 is held (no image file, poisoned
-    annotations, NaN features)."""
-    caps_per = [4, 3, 3, 4, 3, 3, 3, 3, 3, 3]
-    split_of = ["scorer_train"] * 5 + ["val"] * 2 + ["selection"] * 2 + ["held"]
+    annotations, NaN features). Image colour and caption both encode the painting id."""
     wiki = tmp_path / "wikiart"
     (wiki / "S").mkdir(parents=True)
     rng = np.random.default_rng(0)
+    checker = np.where((np.arange(48)[:, None] // 8 + np.arange(64)[None, :] // 8) % 2 == 0, 10, -10)
     for k in range(9):
-        arr = (rng.integers(0, 256, (1, 1, 3)) + rng.integers(0, 60, (48, 64, 3))).clip(0, 255).astype(np.uint8)
+        arr = (_colour(k)[None, None, :] + checker[:, :, None]).clip(0, 255).astype(np.uint8)
         Image.fromarray(arr).save(wiki / "S" / f"p{k:02d}.jpg", quality=95)
-    ann_paint = [k for k, c in enumerate(caps_per) for _ in range(c)]  # annotation order
+    ann_paint = [k for k, c in enumerate(CAPS_PER) for _ in range(c)]  # annotation order
     words = ["red", "blue", "green", "gold", "grey", "pink", "black", "white"]
     ann = []
     for a, k in enumerate(ann_paint):
-        rec = {"image": f"S/p{k:02d}.jpg", "caption": f"caption {a}: a {words[a % 8]} painting number {k}",
+        rec = {"image": f"S/p{k:02d}.jpg", "caption": f"caption {a}: a {words[a % 8]} painting, number {k}",
                "painting": f"p{k:02d}", "emotion": "awe", "art_style": "S"}
-        ann.append(_Held(rec) if split_of[k] == "held" else rec)
+        ann.append(_Held(rec) if SPLIT_OF[k] == "held" else rec)
     sample_ids = rng.permutation(len(ann))
     paintings = np.array([f"p{ann_paint[s]:02d}" for s in sample_ids])
-    split_row = np.array([split_of[ann_paint[s]] for s in sample_ids])
+    split_row = np.array([SPLIT_OF[ann_paint[s]] for s in sample_ids])
     img = rng.standard_normal((len(ann), 512)).astype(np.float32)
     txt = rng.standard_normal((len(ann), 512)).astype(np.float32)
     img[split_row == "held"] = np.nan
@@ -278,6 +297,64 @@ def _toy_run_data(tmp_path):
     return data, ann, splits, cache
 
 
+def test_training_items_hold_their_rows_image_and_caption(tmp_path, tokenizer):
+    """Item j of the training data = the image of train.rows[j]'s painting and the caption of train.rows[j]."""
+    data, ann, splits, cache = _toy_run_data(tmp_path)
+    images, index, _ = ft_data.load_image_cache(cache)
+    idx = ft_data.split_index(data, splits=splits)
+    train_cache_rows = sorted(index[p] for p in set(data.paintings[idx["scorer_train"]].tolist()))
+    assert train_cache_rows == [1, 3, 4, 6, 8]  # not 0..4: a split position used as a cache row would be caught
+    train = ft_train.make_rowset("LB", data, idx["scorer_train"], ann, tokenizer, index)
+    ds = ft_train.train_dataset(train, cache)
+    assert len(ds) == len(train.rows) == 17
+    for j, r in enumerate(train.rows):
+        jj, u8, ids, mask = ds[j]
+        k = int(data.paintings[r][1:])
+        assert jj == j and _painting_of_image(u8) == k  # the image shows painting k
+        assert np.array_equal(u8.numpy(), images[index[data.paintings[r]]])
+        caption = ann[int(data.sample_ids[r])]["caption"]
+        assert caption.endswith(f"number {k}")  # the caption names painting k
+        enc = tokenizer([caption], return_tensors="np", **ft_train.TOKENS)
+        assert np.array_equal(ids.numpy(), enc["input_ids"][0]) and np.array_equal(mask.numpy(), enc["attention_mask"][0])
+
+
+def test_train_dataset_never_pickles_the_memmap(tmp_path):
+    data, ann, splits, cache = _toy_run_data(tmp_path)
+    ds = ft_train.TrainPairs(cache, np.array([0, 1]), np.zeros((2, 77), np.int32), np.ones((2, 77), np.int8))
+    ds[0]  # opens the memmap in this process
+    assert ds._images is not None
+    blob = pickle.dumps(ds)
+    assert len(blob) < 10_000  # two images alone would be 300 kB
+    again = pickle.loads(blob)
+    assert again._images is None and np.array_equal(again[1][1].numpy(), ds[1][1].numpy())
+
+
+def test_lp_trains_in_fp32(monkeypatch):
+    monkeypatch.setattr(torch.cuda, "is_bf16_supported", lambda *a, **k: True)  # as on a bf16-capable GPU
+    assert ft_train.use_bf16("LP", torch.device("cuda")) is False
+    assert ft_train.use_bf16("LB", torch.device("cuda")) is True and ft_train.use_bf16("LoRA", "cuda") is True
+    assert ft_train.use_bf16("LB", torch.device("cpu")) is False
+
+
+def _expected_features(variant, model, data, ann, rows, cache, tokenizer):
+    """Features of `rows` computed independently: row r = the caption of annotations[sample_ids[r]] and the image of
+    its painting (from the cache's painting index); LP = the maps applied to the cached features."""
+    with torch.no_grad():
+        if variant == "LP":
+            return (torch.from_numpy(data.img_features[rows]) @ model.img_map.weight.T,
+                    torch.from_numpy(data.txt_features[rows]) @ model.txt_map.weight.T)
+        images, index, _ = ft_data.load_image_cache(cache)
+        u8 = torch.from_numpy(np.stack([images[index[data.paintings[r]]] for r in rows]))
+        mean = torch.tensor(ft_data.CLIP_MEAN).view(1, 3, 1, 1)
+        std = torch.tensor(ft_data.CLIP_STD).view(1, 3, 1, 1)
+        px = (u8.permute(0, 3, 1, 2).float() / 255.0 - mean) / std
+        enc = tokenizer([ann[int(data.sample_ids[r])]["caption"] for r in rows], return_tensors="pt",
+                        max_length=77, padding="max_length", truncation=True)
+        return (model.visual_projection(model.vision_model(pixel_values=px).pooler_output),
+                model.text_projection(model.text_model(input_ids=enc["input_ids"],
+                                                       attention_mask=enc["attention_mask"]).pooler_output))
+
+
 @pytest.mark.parametrize("variant,lr", [("LP", 1e-3), ("LB", 1e-5), ("LoRA", 1e-4)])
 def test_run_outputs_and_row_order(tmp_path, clip, tokenizer, variant, lr):
     data, ann, splits, cache = _toy_run_data(tmp_path)
@@ -286,13 +363,18 @@ def test_run_outputs_and_row_order(tmp_path, clip, tokenizer, variant, lr):
                                 "--device", "cpu", "--workers", "0"])
     ft_train.run(args, data=data, annotations=ann, splits=splits, cache_dir=cache, clip=copy.deepcopy(clip),
                  verbose=False)
-    assert sorted(p.name for p in out.iterdir()) == sorted(ft_train.OUT_FILES)
+    assert sorted(p.name for p in out.iterdir()) == sorted(
+        ["metrics.json", "best_params.pt", "features.npz", "features_epoch0.npz", "run_record.json"])
+    assert set(ft_train.OUT_FILES) == {p.name for p in out.iterdir()}
+    with pytest.raises(FileExistsError, match="clear --out"):
+        ft_train.run(args, data=data, annotations=ann, splits=splits, cache_dir=cache, clip=copy.deepcopy(clip),
+                     verbose=False)
 
     met = json.loads((out / "metrics.json").read_text())
     assert [e["epoch"] for e in met["epochs"]] == [0, 1, 2]
     for e in met["epochs"]:
         assert {"i2t_r1", "t2i_r1", "selection", "i2t_correct", "t2i_correct", "train_loss", "logit_scale"} <= set(e)
-        assert e["n_images"] == 2 and e["n_captions"] == 6  # val: p05, p06 with 3 captions each
+        assert e["n_images"] == 2 and e["n_captions"] == 6  # val: p00, p05 with 3 captions each
     assert met["epochs"][0]["train_loss"] is None
     assert met["best_epoch"] == ft_train.best_epoch(met["epochs"]) and met["best_epoch"] >= 1
     assert met["lr"] == lr and met["variant"] == variant
@@ -300,36 +382,27 @@ def test_run_outputs_and_row_order(tmp_path, clip, tokenizer, variant, lr):
     best = torch.load(out / "best_params.pt")
     model = ft_train.build_model(variant, copy.deepcopy(clip))
     assert set(best["params"]) == ft_train.trainable_names(model) and best["epoch"] == met["best_epoch"]
+    plain = copy.deepcopy(model).eval()  # the untrained variant (LP: identity; LoRA: B = 0)
     ft_train.load_trainable(model, best["params"])
     model.eval()
 
-    z = np.load(out / "features.npz")
-    assert set(z.files) == {"rows", "img", "txt"}
     want_rows = np.sort(np.concatenate([splits.val, splits.selection]))
-    assert z["rows"].dtype == np.int64 and np.array_equal(z["rows"], want_rows)
-    assert z["img"].dtype == z["txt"].dtype == np.float32 and z["img"].shape == z["txt"].shape == (12, 512)
-    assert np.isfinite(z["img"]).all() and np.isfinite(z["txt"]).all()
-
-    # Row alignment, computed independently: row r = the caption of annotations[sample_ids[r]] + its painting's image
-    rows = z["rows"]
-    with torch.no_grad():
-        if variant == "LP":
-            exp_img = torch.from_numpy(data.img_features[rows]) @ model.img_map.weight.T
-            exp_txt = torch.from_numpy(data.txt_features[rows]) @ model.txt_map.weight.T
-        else:
-            images, index, _ = ft_data.load_image_cache(cache)
-            u8 = torch.from_numpy(np.stack([images[index[data.paintings[r]]] for r in rows]))
-            mean = torch.tensor(ft_data.CLIP_MEAN).view(1, 3, 1, 1)
-            std = torch.tensor(ft_data.CLIP_STD).view(1, 3, 1, 1)
-            px = (u8.permute(0, 3, 1, 2).float() / 255.0 - mean) / std
-            enc = tokenizer([ann[int(data.sample_ids[r])]["caption"] for r in rows], return_tensors="pt",
-                            max_length=77, padding="max_length", truncation=True)
-            exp_img = model.visual_projection(model.vision_model(pixel_values=px).pooler_output)
-            exp_txt = model.text_projection(model.text_model(input_ids=enc["input_ids"],
-                                                             attention_mask=enc["attention_mask"]).pooler_output)
-    np.testing.assert_allclose(z["img"], exp_img.numpy(), atol=1e-4, rtol=1e-4)
-    np.testing.assert_allclose(z["txt"], exp_txt.numpy(), atol=1e-4, rtol=1e-4)
-    assert np.abs(z["txt"] - exp_txt.numpy()[::-1]).max() > 1e-2  # a misaligned order would fail
+    for name, m in (("features.npz", model), ("features_epoch0.npz", plain)):
+        z = np.load(out / name)
+        assert set(z.files) == {"rows", "img", "txt"}, name
+        assert z["rows"].dtype == np.int64 and np.array_equal(z["rows"], want_rows), name
+        assert z["img"].dtype == z["txt"].dtype == np.float32 and z["img"].shape == z["txt"].shape == (12, 512)
+        assert np.isfinite(z["img"]).all() and np.isfinite(z["txt"]).all()
+        # Row alignment, computed independently
+        exp_img, exp_txt = _expected_features(variant, m, data, ann, z["rows"], cache, tokenizer)
+        np.testing.assert_allclose(z["img"], exp_img.numpy(), atol=1e-4, rtol=1e-4, err_msg=name)
+        np.testing.assert_allclose(z["txt"], exp_txt.numpy(), atol=1e-4, rtol=1e-4, err_msg=name)
+        assert np.abs(z["txt"] - exp_txt.numpy()[::-1]).max() > 1e-2  # a misaligned order would fail
+    z0 = np.load(out / "features_epoch0.npz")
+    if variant == "LP":  # the untrained LP reproduces the frozen cached features bit for bit
+        assert np.array_equal(z0["img"], data.img_features[want_rows])
+        assert np.array_equal(z0["txt"], data.txt_features[want_rows])
+    assert np.abs(z0["txt"] - np.load(out / "features.npz")["txt"]).max() > 0  # training moved the features
 
     rec = json.loads((out / "run_record.json").read_text())
     for key in ("args", "git_commit", "hostname", "gpu_name", "versions", "start_time", "end_time", "best_epoch",
@@ -339,3 +412,4 @@ def test_run_outputs_and_row_order(tmp_path, clip, tokenizer, variant, lr):
     assert rec["best_epoch"] == met["best_epoch"] and rec["n_trainable_params"] == ft_train.n_trainable(model)
     assert rec["checks"]["reload"]["ok"] is True
     assert rec["data"]["n_train_paintings"] == 5 and rec["training"]["steps_per_epoch"] == 1
+    assert rec["training"]["amp"] == "fp32"

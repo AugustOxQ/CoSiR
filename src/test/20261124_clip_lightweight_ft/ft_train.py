@@ -7,13 +7,15 @@ src.data.artelingo), CLIPFT_IMAGE_CACHE (ft_data's uint8 image cache; LB and LoR
 
 - Sampler: every epoch draws one caption per scorer-train painting, shuffled, seeded by (0, epoch); a batch never holds
   two captions of one painting. Symmetric InfoNCE, learnable temperature initialised from CLIP's logit_scale and
-  clamped at log(100); AdamW, linear warm-up over 5% of all steps then cosine decay; bf16 autocast on CUDA.
+  clamped at log(100); AdamW, linear warm-up over 5% of all steps then cosine decay; bf16 autocast on CUDA for LB
+  and LoRA (LP trains in fp32).
 - Val retrieval after every epoch (epoch 0 = plain CLIP, the reference): image->caption R@1 over all val captions (a
   hit if the top caption belongs to the image's painting), caption->image R@1 over the val paintings' images; their
   mean is the selection metric. Ties go to the lower index. The best epoch is chosen among epochs >= 1.
 - Outputs in --out: metrics.json (rewritten after every epoch), best_params.pt (the best epoch's trained parameters
   only), features.npz (rows int64 = every val and selection row in feature-row order; img, txt float32 (n, 512) =
-  raw projection outputs of the best epoch, not normalised), run_record.json.
+  raw projection outputs of the best epoch, not normalised), features_epoch0.npz (the same for the untrained model:
+  LP = the frozen cached features, LB/LoRA = plain CLIP through the uint8 image cache), run_record.json.
 - Held rows are never used: every row the trainer touches is asserted to lie in scorer_train, val or selection; held
   rows' captions and images are never read. No evaluation label is read.
 - Rows follow the feature-row order; a row's caption is annotations[data.sample_ids[row]]["caption"]; a row's image
@@ -61,7 +63,7 @@ ADAMW = {"betas": (0.9, 0.999), "eps": 1e-8}
 LORA = {"r": 16, "lora_alpha": 32, "lora_dropout": 0.05, "target_modules": ["q_proj", "k_proj", "v_proj", "out_proj"]}
 TOKENS = {"max_length": 77, "padding": "max_length", "truncation": True}
 SMOKE = {"train_paintings": 64, "val_rows": 32, "selection_rows": 32, "max_epochs": 2, "batch_size": 32}
-OUT_FILES = ("metrics.json", "best_params.pt", "features.npz", "run_record.json")
+OUT_FILES = ("metrics.json", "best_params.pt", "features.npz", "features_epoch0.npz", "run_record.json")
 _MEAN = torch.tensor(ft_data.CLIP_MEAN).view(1, 3, 1, 1)
 _STD = torch.tensor(ft_data.CLIP_STD).view(1, 3, 1, 1)
 
@@ -337,6 +339,11 @@ class TrainPairs(torch.utils.data.Dataset):
         self.cache_dir, self.image_rows, self.ids, self.mask = str(cache_dir), image_rows, ids, mask
         self._images = None
 
+    def __getstate__(self):  # never pickle an open memmap into a worker; each worker reopens it
+        state = self.__dict__.copy()
+        state["_images"] = None
+        return state
+
     def __len__(self):
         return len(self.image_rows)
 
@@ -345,6 +352,17 @@ class TrainPairs(torch.utils.data.Dataset):
             self._images = np.load(Path(self.cache_dir) / ft_data.IMAGES_FILE, mmap_mode="r")
         return (j, torch.from_numpy(np.array(self._images[self.image_rows[j]])),
                 torch.from_numpy(self.ids[j].astype(np.int64)), torch.from_numpy(self.mask[j].astype(np.int64)))
+
+
+def train_dataset(train: RowSet, cache_dir) -> TrainPairs:
+    """Training pairs: item j = the image of train.rows[j]'s painting (its cache row from the painting index) and the
+    caption tokens of train.rows[j]."""
+    return TrainPairs(cache_dir, train.cache_rows[train.pos], train.ids, train.mask)
+
+
+def use_bf16(variant: str, device) -> bool:
+    """bf16 autocast for LB and LoRA on a CUDA device that supports it; LP (a 512 x 512 map) trains in fp32."""
+    return variant != "LP" and torch.device(device).type == "cuda" and torch.cuda.is_bf16_supported()
 
 
 class EpochOrder(torch.utils.data.Sampler):
@@ -450,6 +468,26 @@ def feature_check(img_rows, txt_rows, img_ref, txt_ref) -> dict:
 
 
 # ------------------------------------------------------------------------------------------------ run
+def write_features(path: Path, rowsets, feats, idx: dict) -> np.ndarray:
+    """Write the features.npz layout: rows int64 ascending (feature-row order); img, txt float32 (n, 512) raw
+    projection outputs. rowsets and feats ((img, txt) per row set) are aligned; returns the rows."""
+    rows = np.concatenate([rs.rows for rs in rowsets])
+    order = np.argsort(rows, kind="stable")
+    rows = rows[order]
+    if len(np.unique(rows)) != len(rows):
+        raise AssertionError(f"{path.name}: duplicate rows")
+    check_rows(rows, idx, f"{path.name} rows")
+    img = torch.cat([f[0] for f in feats]).numpy()[order].astype(np.float32)
+    txt = torch.cat([f[1] for f in feats]).numpy()[order].astype(np.float32)
+    if not (np.isfinite(img).all() and np.isfinite(txt).all()):
+        raise AssertionError(f"{path.name}: non-finite features")
+    tmp = path.with_name(path.name + ".part")
+    with open(tmp, "wb") as f:
+        np.savez(f, rows=rows.astype(np.int64), img=img, txt=txt)
+    tmp.replace(path)
+    return rows
+
+
 def _write_json(path: Path, obj) -> None:
     tmp = path.with_name(path.name + ".part")
     tmp.write_text(json.dumps(obj, indent=1))
@@ -478,7 +516,7 @@ def _versions() -> dict:
 
 
 def run(args, data=None, annotations=None, splits=None, cache_dir=None, clip=None, verbose: bool = True) -> dict:
-    """Train one (variant, lr) and write the four output files. data/annotations/splits/cache_dir/clip default to the
+    """Train one (variant, lr) and write the five output files. data/annotations/splits/cache_dir/clip default to the
     real inputs (env paths); tests pass toy ones."""
     def log(*a):
         if verbose:
@@ -487,13 +525,13 @@ def run(args, data=None, annotations=None, splits=None, cache_dir=None, clip=Non
     t0, start = time.time(), now()
     out = Path(args.out)
     if any((out / f).exists() for f in OUT_FILES):
-        raise FileExistsError(f"{out} already holds run outputs")
+        raise FileExistsError(f"{out} already holds run outputs; clear --out first (remove the folder) to rerun")
     out.mkdir(parents=True, exist_ok=True)
     variant, device = args.variant, torch.device(args.device)
     image_variant = variant != "LP"
     epochs = min(args.epochs, SMOKE["max_epochs"]) if args.smoke else args.epochs
     batch_size = SMOKE["batch_size"] if args.smoke else BATCH_SIZE
-    amp = device.type == "cuda" and torch.cuda.is_bf16_supported()
+    amp = use_bf16(variant, device)
     torch.manual_seed(SEED)
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
@@ -535,7 +573,7 @@ def run(args, data=None, annotations=None, splits=None, cache_dir=None, clip=Non
     if image_variant:
         workers = min(int(args.workers), 8)
         loader = torch.utils.data.DataLoader(
-            TrainPairs(cache_dir, train.cache_rows[train.pos], train.ids, train.mask), batch_size=batch_size,
+            train_dataset(train, cache_dir), batch_size=batch_size,
             sampler=sampler, num_workers=workers, pin_memory=device.type == "cuda", drop_last=False,
             persistent_workers=workers > 0, multiprocessing_context="spawn" if workers > 0 else None)
     else:
@@ -559,6 +597,8 @@ def run(args, data=None, annotations=None, splits=None, cache_dir=None, clip=Non
     checks["epoch0_vs_cached_val_features"] = feature_check(img0, txt0, *cached_val)
     log(f"[ft] epoch 0 (plain CLIP) evaluated; recomputed vs cached val features: "
         f"{checks['epoch0_vs_cached_val_features']}")
+    write_features(out / "features_epoch0.npz", (val, sel),
+                   ((img0, txt0), encode_rowset(model, variant, sel, device, images)), idx)
     _write_json(out / "metrics.json", metrics)
 
     step = 0
@@ -612,18 +652,7 @@ def run(args, data=None, annotations=None, splits=None, cache_dir=None, clip=Non
     diff = {k: again[k] - best_rec[k] for k in ("i2t_correct", "t2i_correct")}
     checks["reload"] = {"ok": all(abs(v) <= 2 for v in diff.values()), "count_differences": diff,
                         "note": "val retrieval recomputed from best_params equals the best epoch's (<= 2 near-tie flips)"}
-    rows = np.concatenate([val.rows, sel.rows])
-    order = np.argsort(rows, kind="stable")
-    rows = rows[order]
-    check_rows(rows, idx, "features.npz rows")
-    img = torch.cat([vi, si]).numpy()[order].astype(np.float32)
-    txt = torch.cat([vt, st]).numpy()[order].astype(np.float32)
-    if not (np.isfinite(img).all() and np.isfinite(txt).all()):
-        raise AssertionError("non-finite features")
-    tmp = out / "features.npz.part"
-    with open(tmp, "wb") as f:
-        np.savez(f, rows=rows.astype(np.int64), img=img, txt=txt)
-    tmp.replace(out / "features.npz")
+    rows = write_features(out / "features.npz", (val, sel), ((vi, vt), (si, st)), idx)
 
     git = _git_info()
     record = {
