@@ -23,7 +23,8 @@ item stops the run, exit 1, and nothing further is computed or written):
      tau_0 open counts (gate statistics) as integers.
 A Guard refuses every candidate computation, candidate file and candidate print until items 1 to 5 have passed in
 order and regression_check.json says so (rule §5; M20); item 5's gates need items 1 to 4. Then:
-  6-7. each candidate's family (run_candidate with its own gates; AFF's family is item 2's) and dev_record ->
+  6-7. each candidate's family (run_candidate with its own gates, which must equal item 5's verified gates at every
+       tau index and condition; AFF's family is item 2's) and dev_record ->
        results/seed42_arrays.npz (per-anchor arrays, gates, cells and sigma* of R1, IMGABST, AFF, V4, V2 and V24, the
        comparators B, B'(A0), B'(A1), cosine and RCA, the readers' picks) and results/dev_seed42.json (rule SHA-256,
        Amsterdam time);
@@ -505,27 +506,38 @@ def array_keys():
     return tuple(keys)
 
 
+def same_gates(g, h):
+    """Two gate lists equal at every tau index and condition, in value, shape and dtype."""
+    return len(g) == len(h) and all(np.asarray(g[t][c]).dtype == np.asarray(h[t][c]).dtype
+                                    and np.array_equal(g[t][c], h[t][c]) for t in range(len(g)) for c in CONDITIONS)
+
+
 def develop(st, guard):
     """Items 6 and 7: each candidate's family with its own gates (D6, D7) and its development record against AFF's
-    family of item 2 (D8 to D10). -> ({name: family}, {name: dev_record}, AFF's dev_record)."""
+    family of item 2 (D8 to D10). The gates each family was run from must equal item 5's verified gates st["G"] at
+    every tau index and condition (final review S6), and they are the ones seed42_arrays stores.
+    -> ({name: family}, {name: dev_record}, AFF's dev_record, {name: gates used})."""
     b, T, g_aff = st["b"], st["rd"]["T"], st["g_aff"]
     cl, pi = np.asarray(b.cl), np.asarray(b.pair_index)
-    fam, recs = {}, {}
+    fam, recs, used = {}, {}, {}
     for k in R4.CANDIDATES:
-        fam[k] = guard.call(R4F.run_candidate, b, T, k, g_aff,
-                            pick_a1=st["ra1"]["pick"] if R4.READS_CSD[k] else None,
-                            keep=st["keep"] if USES_V[k] else None)
+        fam[k], used[k] = guard.call(R4F.run_candidate, b, T, k, g_aff, return_gates=True,
+                                     pick_a1=st["ra1"]["pick"] if R4.READS_CSD[k] else None,
+                                     keep=st["keep"] if USES_V[k] else None)
+        if not same_gates(used[k], st["G"][k]):
+            raise AssertionError(f"{k}: the gates of the development step differ from item 5's verified gates")
         recs[k] = guard.call(R4S.dev_record, k, fam[k], st["fam_aff"], b.pB, b.pBp, b.pBp1, cl, pi)
     aff = guard.call(R4S.dev_record, "AFF", st["fam_aff"], None, b.pB, b.pBp, b.pBp1, cl, pi)
-    return fam, recs, aff
+    return fam, recs, aff, used
 
 
-def arrays(st, fam):
+def arrays(st, fam, used):
+    """seed42_arrays.npz's content; the candidates' gates are those develop() ran (used), equal to item 5's."""
     b, ext, rd, ra1 = st["b"], st["ext"], st["rd"], st["ra1"]
     fams = {"r1": st["fam_r1"], "imgabst": st["fam_img"], "aff": st["fam_aff"],
             **{k.lower(): fam[k] for k in R4.CANDIDATES}}
     gates = {"r1": st["g_r1"], "imgabst": st["g_img"], "aff": st["g_aff"],
-             **{k.lower(): st["G"][k] for k in R4.CANDIDATES}}
+             **{k.lower(): used[k] for k in R4.CANDIDATES}}
     arr = {"cl": np.asarray(b.cl), "pair_index": np.asarray(b.pair_index), "parity": np.asarray(b.parity),
            "taus": np.asarray(st["taus"], np.float64), "v": np.asarray(b.v, np.float64),
            "keep": np.asarray(st["keep"], np.float32)}
@@ -634,8 +646,8 @@ def development(P, dry, st, guard):
     """Items 6 to 9 and §6.1 after the regression record was written and the guard released. -> exit status."""
     b = st["b"]
     cl = np.asarray(b.cl)
-    fam, recs, aff = develop(st, guard)
-    arr = arrays(st, fam)
+    fam, recs, aff, used = develop(st, guard)
+    arr = arrays(st, fam, used)
     guard.savez(P["arr"], arr)
     print(f"{P['arr'].name} written ({len(arr)} arrays)", flush=True)
     aff_r1 = np.asarray(st["fam_aff"]["fused"]["r1"], np.float64)

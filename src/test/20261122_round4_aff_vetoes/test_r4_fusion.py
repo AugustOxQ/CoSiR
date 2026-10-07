@@ -611,6 +611,76 @@ def test_boundaries_are_flagged():
     assert any("clause 1" in x for x in rec["boundaries"])
 
 
+# ---------------------------------------------------------------- final-review fixes (S5, N13)
+
+# (bar margin (point, lower, upper), gain statistic (point, lower, upper), expected clauses, clauses flagged as a
+# rule §8 boundary). Each row separates the rule's D10 from one mutation the final review found surviving.
+D10_CASES = [
+    ((0.5, 0.1, 0.9), (1.0, 0.2, 2.0), {"c1": True, "c2": True, "c3": True}, {1}),     # point exactly 0.5 passes (D1)
+    ((0.49, 0.1, 0.9), (1.0, 0.2, 2.0), {"c1": False, "c2": True, "c3": True}, set()),  # 0.4 < point < 0.5 fails (D4)
+    ((0.6, 0.0, 0.9), (1.0, 0.2, 2.0), {"c1": True, "c2": False, "c3": True}, {2}),    # lower bound exactly 0 fails (D2)
+    ((0.6, 0.1, 0.9), (1.0, 0.0, 2.0), {"c1": True, "c2": True, "c3": False}, {3}),    # gain lower bound 0 fails, bar's > 0 (D3)
+    ((0.6, -0.1, 0.9), (1.0, 0.2, 2.0), {"c1": True, "c2": False, "c3": True}, set()),  # c3 reads the gain, not the bar (D3)
+]
+
+
+@pytest.mark.parametrize("bar, gain, want, at", D10_CASES)
+def test_d10_clauses_read_the_rules_thresholds(monkeypatch, bar, gain, want, at):
+    """S5 (final review): the content of the three D10 clauses, on chosen values. C.point_ci is patched to return `bar`
+    for the bar margin's per-anchor values, and C.compare (which C.diff3 calls for the gain statistic; it does not go
+    through C.point_ci) to return `gain` for the fused-minus-counterpart gain; every other interval is computed as
+    usual. Kills D1 (clause 1 strict), D2 (clause 2 >= 0), D3 (clause 3 on the bar margin) and D4 (bar 0.4)."""
+    assert C.BAR_TARGET == 0.5                                                  # rule D10 clause 1
+    n = 40
+    cl, pi, pB, pBp0, pBp1 = make_world(n)
+    fam, aff = make_family(n, 1, shift=1), make_family(n, 2)
+    _, comp, _ = RS4.bar_comparator(RS4.comparators("V4", pB, pBp0, pBp1, fam["cf"]))
+    bar_v = np.asarray(fam["fused"]["r1"], np.float64) - np.asarray(comp["r1"], np.float64)
+    seen = []
+    point_ci, compare = C.point_ci, C.compare
+
+    def fake_point_ci(values, clusters):
+        x = np.asarray(values, np.float64)
+        if x.shape == bar_v.shape and np.array_equal(x, bar_v):
+            seen.append("bar")
+            return {"point": bar[0], "ci95": [bar[1], bar[2]]}
+        return point_ci(values, clusters)
+
+    def fake_compare(per_a, per_b, clusters, metric):
+        if metric == "gain" and per_a is fam["fused"] and per_b is fam["cf"]:
+            seen.append("gain")
+            return {"point": gain[0], "ci95": [gain[1], gain[2]]}
+        return compare(per_a, per_b, clusters, metric)
+
+    monkeypatch.setattr(C, "point_ci", fake_point_ci)
+    monkeypatch.setattr(C, "compare", fake_compare)
+    rec = RS4.dev_record("V4", fam, aff, pB, pBp0, pBp1, cl, pi)
+    assert seen.count("bar") == 1 and seen.count("gain") == 1                   # both chosen values reached dev_record
+    assert rec["bar_margin"] == {"point": bar[0], "ci95": [bar[1], bar[2]]}
+    assert rec["gain_statistic"] == {"point": gain[0], "ci95": [gain[1], gain[2]]}
+    assert rec["d10"] == {**want, "clears": want["c1"] and want["c2"] and want["c3"]}
+    flagged = {i for i in (1, 2, 3) if any(f"D10 clause {i} " in s for s in rec["boundaries"])}
+    assert flagged == at                                                        # a value exactly at a threshold is a §8 boundary
+
+
+def test_a_factor_that_would_open_a_gate_is_refused(monkeypatch):
+    """N13 (final review, mutation A5): gates_candidate's own check that every candidate gate is closed wherever AFF's
+    is closed fires, even though the real factor functions can never open a gate."""
+    g_aff, pick, keep = make_gates()
+    assert any(np.any(np.asarray(g[c]) == 0) for g in g_aff for c in CONDITIONS)    # precondition: AFF shuts something
+
+    def opens(g, *_):
+        return [{c: np.ones_like(np.asarray(gt[c]), dtype=np.float32) for c in CONDITIONS} for gt in g]
+
+    monkeypatch.setattr(RF4, "apply_keep", opens)
+    with pytest.raises(AssertionError, match="open where AFF's is closed"):
+        RF4.gates_candidate("V4", g_aff, keep=keep)
+    monkeypatch.undo()
+    monkeypatch.setattr(RF4, "apply_affect_pick", opens)
+    with pytest.raises(AssertionError, match="open where AFF's is closed"):
+        RF4.gates_candidate("V2", g_aff, pick_a1=pick)
+
+
 def test_comparators_accept_r1_and_imgabst_with_a0_order():
     A, B0, CF, BB = pa([.25]), pa([.5]), pa([.75]), pa([1.0])
     for name in ("R1", "IMGABST"):

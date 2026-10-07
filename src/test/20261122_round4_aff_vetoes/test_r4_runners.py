@@ -200,6 +200,29 @@ def test_guard_items_must_pass_in_order_and_release_needs_a_passed_record(tmp_pa
     assert (tmp_path / "dev_seed42.json").exists()
 
 
+def test_guard_refuses_an_item_out_of_order_even_when_its_comparisons_passed():
+    """N13 (final review, mutation G2): the order check itself refuses an item ahead of its turn; the item's own
+    comparisons all passed, so the refusal cannot come from a missing or failed row."""
+    g, rec = S.Guard(), S.Recorder()
+    for k in (1, 2, 3):
+        rec.add(k, "x", 1, 1)
+    with pytest.raises(S.GuardError, match="out of order"):
+        g.item_passed(2, rec)
+    g.item_passed(1, rec)
+    with pytest.raises(S.GuardError, match="out of order"):
+        g.item_passed(3, rec)
+    g.item_passed(2, rec)
+    with pytest.raises(S.GuardError, match="out of order"):                 # the same item twice
+        g.item_passed(2, rec)
+    assert g.passed == [1, 2]
+
+
+def test_items_run_in_the_rules_order():
+    """N13 (final review, mutation G5): the runner's item sequence is rule §5 items 1 to 5, in order."""
+    assert S.ITEMS == (S.item1, S.item2, S.item3, S.item4, S.item5)
+    assert [f.__name__ for f in S.ITEMS] == [f"item{k}" for k in range(1, 6)]
+
+
 # ---------------------------------------------------------------- item 5
 
 def _passed_guard(upto=4):
@@ -263,6 +286,83 @@ def test_item5_fails_when_v_from_the_a0_features_disagrees():
     S.item5(rec, w, _passed_guard())
     bad = [r["name"] for r in rec.rows if not r["pass"]]
     assert "V4_equals_AFF_times_v_below_v75.tau0.a" in bad
+
+
+# ---------------------------------------------------------------- the development step uses item 5's gates (S6)
+
+def _released_guard(tmp_path):
+    g = _passed_guard(5)
+    reg = tmp_path / "regression_check.json"
+    reg.write_text(json.dumps({"passed": True, "items_passed": [1, 2, 3, 4, 5]}))
+    g.release(reg)
+    return g
+
+
+def _world_after_item5():
+    """make_world with one episode moved to v = 0.95 v75 where AFF's gate is open (tau_0, condition a), so a threshold
+    of 0.9 v75 (mutation A10) changes V4's and V24's gates; the A0 features move with v, so item 5 still passes."""
+    w = make_world()
+    i, x = _open_index(w), 0.95 * R4.V75
+    w["b"].v[i] = x
+    w["b"].F["a"][i, 6], w["b"].F["a"][i, 7] = x, x + 0.005
+    w["b"].F["b"][i, 6], w["b"].F["b"][i, 7] = x + 0.005, x
+    rec = S.Recorder()
+    S.item5(rec, w, _passed_guard())
+    assert all(r["pass"] for r in rec.rows)
+    return w
+
+
+def _gates_equal(g, h):
+    return len(g) == len(h) and all(np.asarray(g[t][c]).dtype == np.asarray(h[t][c]).dtype
+                                    and np.array_equal(g[t][c], h[t][c]) for t in range(len(g)) for c in CONDITIONS)
+
+
+def test_develop_uses_and_stores_item5s_verified_gates(tmp_path):
+    """S6 (final review): the gates behind the development numbers are the gates item 5 verified, the families were run
+    from exactly them, and seed42_arrays stores the gates develop() used. Kills A10 (develop() builds a_v with another
+    threshold than the one item 5 verified)."""
+    w = _world_after_item5()
+    other = RF4.abstain(w["b"].v, 0.9 * R4.V75)                             # precondition: A10 is visible here
+    assert not _gates_equal(RF4.gates_candidate("V4", w["g_aff"], keep=other), w["G"]["V4"])
+    fam, recs, aff, used = S.develop(w, _released_guard(tmp_path))
+    assert list(used) == list(R4.CANDIDATES) and list(fam) == list(R4.CANDIDATES)
+    for k in R4.CANDIDATES:
+        assert _gates_equal(used[k], w["G"][k]), k
+        again = RF3.run_family(w["b"], w["rd"]["T"], w["G"][k])
+        for part in ("fused", "cf"):
+            for m in METRICS:
+                np.testing.assert_array_equal(fam[k][part][m], again[part][m])
+        assert fam[k]["fpick"] == again["fpick"] and fam[k]["cpick"] == again["cpick"]
+    arr = S.arrays(dict(w, taus=tuple(R3.TAUS)), fam, used)                 # run() puts taus into the state
+    for k in R4.CANDIDATES:
+        for c in CONDITIONS:
+            np.testing.assert_array_equal(arr[f"{k.lower()}_gate__{c}"], np.stack([g[c] for g in used[k]]))
+
+
+def test_develop_refuses_gates_that_differ_from_item5s(tmp_path):
+    """S6: when the gates develop() builds are not item 5's verified gates (here a_v changed after item 5), the
+    development step raises before any candidate record exists."""
+    w = _world_after_item5()
+    w["keep"] = RF4.abstain(w["b"].v, 0.9 * R4.V75)
+    with pytest.raises(AssertionError, match="item 5"):
+        S.develop(w, _released_guard(tmp_path))
+    w = _world_after_item5()
+    w["G"] = dict(w["G"], V2=RF4.gates_candidate("V2", w["g_aff"], pick_a1={c: np.zeros(N, np.int64) for c in CONDITIONS}))
+    assert not _gates_equal(w["G"]["V2"], RF4.gates_candidate("V2", w["g_aff"], pick_a1=w["ra1"]["pick"]))
+    with pytest.raises(AssertionError, match="V2"):
+        S.develop(w, _released_guard(tmp_path))
+
+
+def test_run_candidate_returns_the_gates_it_ran(tmp_path):
+    """S6: run_candidate(..., return_gates=True) returns the family and the very gates its family was run from."""
+    w = _world_after_item5()
+    fam, g = RF4.run_candidate(w["b"], w["rd"]["T"], "V24", w["g_aff"], pick_a1=w["ra1"]["pick"], keep=w["keep"],
+                               return_gates=True)
+    assert _gates_equal(g, w["G"]["V24"])
+    plain = RF4.run_candidate(w["b"], w["rd"]["T"], "V24", w["g_aff"], pick_a1=w["ra1"]["pick"], keep=w["keep"])
+    for m in METRICS:
+        np.testing.assert_array_equal(fam["fused"][m], plain["fused"][m])
+        np.testing.assert_array_equal(fam["cf"][m], plain["cf"][m])
 
 
 # ---------------------------------------------------------------- §5 order test (M20)

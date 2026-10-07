@@ -109,7 +109,10 @@ def gates_imgabst_r1(g_r1, keep):
     return g
 
 
-def run_candidate(bundle, T, name, g_aff, pick_a1=None, keep=None, fused_only=False):
+def run_candidate(bundle, T, name, g_aff, pick_a1=None, keep=None, fused_only=False, return_gates=False):
     """The candidate's family (D7): its gates (gates_candidate) in a single RF3.run_family call, so the matched
-    counterpart G_cf is built from the candidate's own gates, never AFF's."""
-    return RF3.run_family(bundle, T, gates_candidate(name, g_aff, pick_a1=pick_a1, keep=keep), fused_only=fused_only)
+    counterpart G_cf is built from the candidate's own gates, never AFF's. return_gates=True returns (family, gates),
+    the gates being the very list the family was run from (final review S6: the runner checks them against item 5's)."""
+    g = gates_candidate(name, g_aff, pick_a1=pick_a1, keep=keep)
+    fam = RF3.run_family(bundle, T, g, fused_only=fused_only)
+    return (fam, g) if return_gates else fam
