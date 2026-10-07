@@ -1,0 +1,1703 @@
+{
+ "what": "round 4 figure data. 'rederived': the decision quantities, re-derived from seed42_arrays.npz and asserted equal to dev_seed42.json and carry.json. 'descriptive': breakdowns computed after the kill (seed 42, decides nothing, no new variant scored); pp, 95% painting-bootstrap intervals (5,000 resamples, seed 42)",
+ "rederived": {
+  "records": {
+   "V4": {
+    "fused_r1": 19.099934895833336,
+    "cf_r1": 18.391927083333336,
+    "fpick": [
+     39,
+     119
+    ],
+    "cpick": [
+     167,
+     54
+    ],
+    "sigma": [
+     0.0,
+     0.0
+    ],
+    "bar_comparator": "Bprime_A0",
+    "bar_margin": {
+     "point": 0.6632486979166667,
+     "ci95": [
+      0.42921625314611117,
+      0.8944505576588029
+     ]
+    },
+    "margin_vs_counterpart": {
+     "point": 0.7080078125,
+     "ci95": [
+      0.49975103998915654,
+      0.9211904339094573
+     ]
+    },
+    "gain_statistic": {
+     "point": 2.797444661458333,
+     "ci95": [
+      2.4854376869391626,
+      3.117038606778897
+     ]
+    },
+    "either_change": -1.3814290364583335,
+    "either_change_ci": [
+     -1.6799890009163325,
+     -1.0789894791788144
+    ],
+    "d10": {
+     "c1": true,
+     "c2": true,
+     "c3": true,
+     "clears": true
+    },
+    "per_pair_bar_margin": {
+     "emotion__style": {
+      "point": 0.921630859375,
+      "ci95": [
+       0.5373619263872108,
+       1.3086103155861049
+      ]
+     },
+     "emotion__genre": {
+      "point": 1.324462890625,
+      "ci95": [
+       0.9060572803879107,
+       1.7366331434024198
+      ]
+     },
+     "style__genre": {
+      "point": -0.25634765625,
+      "ci95": [
+       -0.6118522226672006,
+       0.11172622140868138
+      ]
+     }
+    },
+    "delta_int": -18,
+    "delta": {
+     "point": -0.03662109375,
+     "ci95": [
+      -0.10506836425355538,
+      0.03271528780460466
+     ]
+    }
+   },
+   "V2": {
+    "fused_r1": 19.099934895833336,
+    "cf_r1": 18.34716796875,
+    "fpick": [
+     39,
+     119
+    ],
+    "cpick": [
+     93,
+     166
+    ],
+    "sigma": [
+     0.0,
+     0.0
+    ],
+    "bar_comparator": "Bprime_A1",
+    "bar_margin": {
+     "point": 0.29500325520833337,
+     "ci95": [
+      0.010178842628223385,
+      0.578411107785257
+     ]
+    },
+    "margin_vs_counterpart": {
+     "point": 0.7527669270833333,
+     "ci95": [
+      0.5414826440611668,
+      0.9645552443639847
+     ]
+    },
+    "gain_statistic": {
+     "point": 2.952067057291667,
+     "ci95": [
+      2.629555301390828,
+      3.284878158194984
+     ]
+    },
+    "either_change": -1.446533203125,
+    "either_change_ci": [
+     -1.7361479052844329,
+     -1.1512858635641638
+    ],
+    "d10": {
+     "c1": false,
+     "c2": true,
+     "c3": true,
+     "clears": false
+    },
+    "per_pair_bar_margin": {
+     "emotion__style": {
+      "point": 0.128173828125,
+      "ci95": [
+       -0.32129435688512686,
+       0.5898879855013872
+      ]
+     },
+     "emotion__genre": {
+      "point": 1.3671875,
+      "ci95": [
+       0.833941268687955,
+       1.898354190090382
+      ]
+     },
+     "style__genre": {
+      "point": -0.6103515625,
+      "ci95": [
+       -1.0600880493950158,
+       -0.1383636110560892
+      ]
+     }
+    },
+    "delta_int": -18,
+    "delta": {
+     "point": -0.03662109375,
+     "ci95": [
+      -0.11495968701561131,
+      0.038888209184998086
+     ]
+    }
+   },
+   "V24": {
+    "fused_r1": 19.0673828125,
+    "cf_r1": 18.391927083333336,
+    "fpick": [
+     39,
+     119
+    ],
+    "cpick": [
+     149,
+     166
+    ],
+    "sigma": [
+     0.0,
+     0.0
+    ],
+    "bar_comparator": "Bprime_A1",
+    "bar_margin": {
+     "point": 0.262451171875,
+     "ci95": [
+      -0.016448639942734416,
+      0.54087577359005
+     ]
+    },
+    "margin_vs_counterpart": {
+     "point": 0.6754557291666667,
+     "ci95": [
+      0.473481170763905,
+      0.877962829789816
+     ]
+    },
+    "gain_statistic": {
+     "point": 2.748616536458333,
+     "ci95": [
+      2.4376065646148186,
+      3.067759640265408
+     ]
+    },
+    "either_change": -1.397705078125,
+    "either_change_ci": [
+     -1.6774664510002653,
+     -1.1168742814045742
+    ],
+    "d10": {
+     "c1": false,
+     "c2": false,
+     "c3": true,
+     "clears": false
+    },
+    "per_pair_bar_margin": {
+     "emotion__style": {
+      "point": 0.103759765625,
+      "ci95": [
+       -0.34112994952446174,
+       0.5538072114485252
+      ]
+     },
+     "emotion__genre": {
+      "point": 1.2451171875,
+      "ci95": [
+       0.7221883913167371,
+       1.7636976846633703
+      ]
+     },
+     "style__genre": {
+      "point": -0.5615234375,
+      "ci95": [
+       -1.0060422906964246,
+       -0.09972513275431746
+      ]
+     }
+    },
+    "delta_int": -34,
+    "delta": {
+     "point": -0.06917317708333333,
+     "ci95": [
+      -0.16515849108866412,
+      0.026392838403383488
+     ]
+    }
+   },
+   "AFF": {
+    "fused_r1": 19.136555989583336,
+    "cf_r1": 18.39599609375,
+    "fpick": [
+     39,
+     119
+    ],
+    "cpick": [
+     149,
+     10
+    ],
+    "sigma": [
+     0.0,
+     0.0
+    ],
+    "bar_comparator": "Bprime_A0",
+    "bar_margin": {
+     "point": 0.6998697916666667,
+     "ci95": [
+      0.4598852740816973,
+      0.9371680126852968
+     ]
+    },
+    "margin_vs_counterpart": {
+     "point": 0.7405598958333333,
+     "ci95": [
+      0.5196896694963071,
+      0.9598857494832738
+     ]
+    },
+    "gain_statistic": {
+     "point": 3.110758463541667,
+     "ci95": [
+      2.780005709854805,
+      3.4559584315470384
+     ]
+    },
+    "either_change": -1.629638671875,
+    "either_change_ci": [
+     -1.9464780404744315,
+     -1.3095998368766755
+    ],
+    "d10": {
+     "c1": true,
+     "c2": true,
+     "c3": true,
+     "clears": true
+    },
+    "per_pair_bar_margin": {
+     "emotion__style": {
+      "point": 0.9765625,
+      "ci95": [
+       0.5785321458573172,
+       1.3775886939702795
+      ]
+     },
+     "emotion__genre": {
+      "point": 1.45263671875,
+      "ci95": [
+       1.0342696066046755,
+       1.8759388816913407
+      ]
+     },
+     "style__genre": {
+      "point": -0.32958984375,
+      "ci95": [
+       -0.7089190499272904,
+       0.05458614674142936
+      ]
+     }
+    }
+   }
+  },
+  "beside_aff": {
+   "Bprime_A1_mean_r1": 18.804931640625,
+   "Bprime_A0_mean_r1": 18.436686197916664,
+   "B_mean_r1": 18.341064453125,
+   "AFF_fused_r1": 19.136555989583336,
+   "AFF_minus_Bprime_A1": {
+    "point": 0.33162434895833337,
+    "ci95": [
+     0.048231414333532084,
+     0.6246158772581268
+    ]
+   }
+  },
+  "E": [],
+  "kill": true
+ },
+ "descriptive": {
+  "int_sums": {
+   "AFF": 9406,
+   "V4": 9388,
+   "V2": 9388,
+   "V24": 9372,
+   "Bprime_A1": 9243,
+   "Bprime_A0": 9062,
+   "B": 9015
+  },
+  "closure": {
+   "V4": {
+    "0": {
+     "emotion__style|a": {
+      "aff_open": 3267,
+      "closed": 492,
+      "share": 15.059687786960515
+     },
+     "emotion__style|b": {
+      "aff_open": 1696,
+      "closed": 228,
+      "share": 13.443396226415095
+     },
+     "emotion__genre|a": {
+      "aff_open": 3508,
+      "closed": 470,
+      "share": 13.397947548460662
+     },
+     "emotion__genre|b": {
+      "aff_open": 903,
+      "closed": 126,
+      "share": 13.953488372093023
+     },
+     "style__genre|a": {
+      "aff_open": 3166,
+      "closed": 734,
+      "share": 23.183828174352495
+     },
+     "style__genre|b": {
+      "aff_open": 1028,
+      "closed": 207,
+      "share": 20.136186770428015
+     },
+     "emotion_side": {
+      "aff_open": 6775,
+      "closed": 962,
+      "share": 14.199261992619926
+     },
+     "other_values": {
+      "aff_open": 6793,
+      "closed": 1295,
+      "share": 19.063742087442957
+     }
+    },
+    "1": {
+     "emotion__style|a": {
+      "aff_open": 2941,
+      "closed": 387,
+      "share": 13.158789527371642
+     },
+     "emotion__style|b": {
+      "aff_open": 1312,
+      "closed": 141,
+      "share": 10.746951219512194
+     },
+     "emotion__genre|a": {
+      "aff_open": 3254,
+      "closed": 366,
+      "share": 11.247695144437616
+     },
+     "emotion__genre|b": {
+      "aff_open": 588,
+      "closed": 69,
+      "share": 11.73469387755102
+     },
+     "style__genre|a": {
+      "aff_open": 2810,
+      "closed": 553,
+      "share": 19.679715302491104
+     },
+     "style__genre|b": {
+      "aff_open": 673,
+      "closed": 108,
+      "share": 16.047548291233284
+     },
+     "emotion_side": {
+      "aff_open": 6195,
+      "closed": 753,
+      "share": 12.154963680387409
+     },
+     "other_values": {
+      "aff_open": 5383,
+      "closed": 871,
+      "share": 16.180568456251162
+     }
+    },
+    "2": {
+     "emotion__style|a": {
+      "aff_open": 2375,
+      "closed": 223,
+      "share": 9.389473684210527
+     },
+     "emotion__style|b": {
+      "aff_open": 790,
+      "closed": 56,
+      "share": 7.0886075949367084
+     },
+     "emotion__genre|a": {
+      "aff_open": 2751,
+      "closed": 233,
+      "share": 8.46964740094511
+     },
+     "emotion__genre|b": {
+      "aff_open": 252,
+      "closed": 21,
+      "share": 8.333333333333334
+     },
+     "style__genre|a": {
+      "aff_open": 2200,
+      "closed": 329,
+      "share": 14.954545454545455
+     },
+     "style__genre|b": {
+      "aff_open": 326,
+      "closed": 31,
+      "share": 9.50920245398773
+     },
+     "emotion_side": {
+      "aff_open": 5126,
+      "closed": 456,
+      "share": 8.895825204838081
+     },
+     "other_values": {
+      "aff_open": 3568,
+      "closed": 437,
+      "share": 12.247757847533633
+     }
+    },
+    "3": {
+     "emotion__style|a": {
+      "aff_open": 1319,
+      "closed": 71,
+      "share": 5.382865807429871
+     },
+     "emotion__style|b": {
+      "aff_open": 245,
+      "closed": 9,
+      "share": 3.673469387755102
+     },
+     "emotion__genre|a": {
+      "aff_open": 1771,
+      "closed": 83,
+      "share": 4.686617730095991
+     },
+     "emotion__genre|b": {
+      "aff_open": 30,
+      "closed": 1,
+      "share": 3.3333333333333335
+     },
+     "style__genre|a": {
+      "aff_open": 1218,
+      "closed": 99,
+      "share": 8.12807881773399
+     },
+     "style__genre|b": {
+      "aff_open": 61,
+      "closed": 2,
+      "share": 3.278688524590164
+     },
+     "emotion_side": {
+      "aff_open": 3090,
+      "closed": 154,
+      "share": 4.983818770226537
+     },
+     "other_values": {
+      "aff_open": 1554,
+      "closed": 111,
+      "share": 7.142857142857143
+     }
+    },
+    "as_scored": {
+     "emotion__style|a": {
+      "aff_open": 2810,
+      "closed": 364,
+      "share": 12.95373665480427
+     },
+     "emotion__style|b": {
+      "aff_open": 1216,
+      "closed": 142,
+      "share": 11.677631578947368
+     },
+     "emotion__genre|a": {
+      "aff_open": 3120,
+      "closed": 360,
+      "share": 11.538461538461538
+     },
+     "emotion__genre|b": {
+      "aff_open": 585,
+      "closed": 75,
+      "share": 12.820512820512821
+     },
+     "style__genre|a": {
+      "aff_open": 2693,
+      "closed": 544,
+      "share": 20.20051986632009
+     },
+     "style__genre|b": {
+      "aff_open": 647,
+      "closed": 109,
+      "share": 16.846986089644513
+     },
+     "emotion_side": {
+      "aff_open": 5930,
+      "closed": 724,
+      "share": 12.209106239460372
+     },
+     "other_values": {
+      "aff_open": 5141,
+      "closed": 870,
+      "share": 16.922777669714062
+     }
+    }
+   },
+   "V2": {
+    "0": {
+     "emotion__style|a": {
+      "aff_open": 3267,
+      "closed": 308,
+      "share": 9.427609427609427
+     },
+     "emotion__style|b": {
+      "aff_open": 1696,
+      "closed": 852,
+      "share": 50.235849056603776
+     },
+     "emotion__genre|a": {
+      "aff_open": 3508,
+      "closed": 305,
+      "share": 8.694412770809578
+     },
+     "emotion__genre|b": {
+      "aff_open": 903,
+      "closed": 524,
+      "share": 58.02879291251384
+     },
+     "style__genre|a": {
+      "aff_open": 3166,
+      "closed": 735,
+      "share": 23.21541377132028
+     },
+     "style__genre|b": {
+      "aff_open": 1028,
+      "closed": 489,
+      "share": 47.568093385214006
+     },
+     "emotion_side": {
+      "aff_open": 6775,
+      "closed": 613,
+      "share": 9.047970479704796
+     },
+     "other_values": {
+      "aff_open": 6793,
+      "closed": 2600,
+      "share": 38.27469453849551
+     }
+    },
+    "1": {
+     "emotion__style|a": {
+      "aff_open": 2941,
+      "closed": 186,
+      "share": 6.324379462767766
+     },
+     "emotion__style|b": {
+      "aff_open": 1312,
+      "closed": 523,
+      "share": 39.86280487804878
+     },
+     "emotion__genre|a": {
+      "aff_open": 3254,
+      "closed": 193,
+      "share": 5.931161647203442
+     },
+     "emotion__genre|b": {
+      "aff_open": 588,
+      "closed": 264,
+      "share": 44.89795918367347
+     },
+     "style__genre|a": {
+      "aff_open": 2810,
+      "closed": 505,
+      "share": 17.97153024911032
+     },
+     "style__genre|b": {
+      "aff_open": 673,
+      "closed": 228,
+      "share": 33.87815750371471
+     },
+     "emotion_side": {
+      "aff_open": 6195,
+      "closed": 379,
+      "share": 6.117836965294592
+     },
+     "other_values": {
+      "aff_open": 5383,
+      "closed": 1520,
+      "share": 28.237042541333828
+     }
+    },
+    "2": {
+     "emotion__style|a": {
+      "aff_open": 2375,
+      "closed": 73,
+      "share": 3.0736842105263156
+     },
+     "emotion__style|b": {
+      "aff_open": 790,
+      "closed": 187,
+      "share": 23.670886075949365
+     },
+     "emotion__genre|a": {
+      "aff_open": 2751,
+      "closed": 82,
+      "share": 2.980734278444202
+     },
+     "emotion__genre|b": {
+      "aff_open": 252,
+      "closed": 57,
+      "share": 22.61904761904762
+     },
+     "style__genre|a": {
+      "aff_open": 2200,
+      "closed": 233,
+      "share": 10.590909090909092
+     },
+     "style__genre|b": {
+      "aff_open": 326,
+      "closed": 47,
+      "share": 14.417177914110429
+     },
+     "emotion_side": {
+      "aff_open": 5126,
+      "closed": 155,
+      "share": 3.0238002341006633
+     },
+     "other_values": {
+      "aff_open": 3568,
+      "closed": 524,
+      "share": 14.68609865470852
+     }
+    },
+    "3": {
+     "emotion__style|a": {
+      "aff_open": 1319,
+      "closed": 2,
+      "share": 0.1516300227445034
+     },
+     "emotion__style|b": {
+      "aff_open": 245,
+      "closed": 16,
+      "share": 6.530612244897959
+     },
+     "emotion__genre|a": {
+      "aff_open": 1771,
+      "closed": 7,
+      "share": 0.3952569169960474
+     },
+     "emotion__genre|b": {
+      "aff_open": 30,
+      "closed": 1,
+      "share": 3.3333333333333335
+     },
+     "style__genre|a": {
+      "aff_open": 1218,
+      "closed": 38,
+      "share": 3.1198686371100166
+     },
+     "style__genre|b": {
+      "aff_open": 61,
+      "closed": 1,
+      "share": 1.639344262295082
+     },
+     "emotion_side": {
+      "aff_open": 3090,
+      "closed": 9,
+      "share": 0.2912621359223301
+     },
+     "other_values": {
+      "aff_open": 1554,
+      "closed": 56,
+      "share": 3.6036036036036037
+     }
+    },
+    "as_scored": {
+     "emotion__style|a": {
+      "aff_open": 2810,
+      "closed": 180,
+      "share": 6.405693950177936
+     },
+     "emotion__style|b": {
+      "aff_open": 1216,
+      "closed": 495,
+      "share": 40.70723684210526
+     },
+     "emotion__genre|a": {
+      "aff_open": 3120,
+      "closed": 188,
+      "share": 6.0256410256410255
+     },
+     "emotion__genre|b": {
+      "aff_open": 585,
+      "closed": 287,
+      "share": 49.05982905982906
+     },
+     "style__genre|a": {
+      "aff_open": 2693,
+      "closed": 488,
+      "share": 18.12105458596361
+     },
+     "style__genre|b": {
+      "aff_open": 647,
+      "closed": 251,
+      "share": 38.794435857805254
+     },
+     "emotion_side": {
+      "aff_open": 5930,
+      "closed": 368,
+      "share": 6.2057335581787525
+     },
+     "other_values": {
+      "aff_open": 5141,
+      "closed": 1521,
+      "share": 29.585683719120794
+     }
+    }
+   },
+   "V24": {
+    "0": {
+     "emotion__style|a": {
+      "aff_open": 3267,
+      "closed": 699,
+      "share": 21.395775941230486
+     },
+     "emotion__style|b": {
+      "aff_open": 1696,
+      "closed": 920,
+      "share": 54.24528301886792
+     },
+     "emotion__genre|a": {
+      "aff_open": 3508,
+      "closed": 644,
+      "share": 18.358038768529077
+     },
+     "emotion__genre|b": {
+      "aff_open": 903,
+      "closed": 567,
+      "share": 62.7906976744186
+     },
+     "style__genre|a": {
+      "aff_open": 3166,
+      "closed": 1094,
+      "share": 34.55464308275426
+     },
+     "style__genre|b": {
+      "aff_open": 1028,
+      "closed": 568,
+      "share": 55.252918287937746
+     },
+     "emotion_side": {
+      "aff_open": 6775,
+      "closed": 1343,
+      "share": 19.822878228782287
+     },
+     "other_values": {
+      "aff_open": 6793,
+      "closed": 3149,
+      "share": 46.35654350066245
+     }
+    },
+    "1": {
+     "emotion__style|a": {
+      "aff_open": 2941,
+      "closed": 518,
+      "share": 17.613056783407004
+     },
+     "emotion__style|b": {
+      "aff_open": 1312,
+      "closed": 579,
+      "share": 44.13109756097561
+     },
+     "emotion__genre|a": {
+      "aff_open": 3254,
+      "closed": 480,
+      "share": 14.751075599262446
+     },
+     "emotion__genre|b": {
+      "aff_open": 588,
+      "closed": 298,
+      "share": 50.68027210884354
+     },
+     "style__genre|a": {
+      "aff_open": 2810,
+      "closed": 821,
+      "share": 29.21708185053381
+     },
+     "style__genre|b": {
+      "aff_open": 673,
+      "closed": 284,
+      "share": 42.199108469539375
+     },
+     "emotion_side": {
+      "aff_open": 6195,
+      "closed": 998,
+      "share": 16.109765940274414
+     },
+     "other_values": {
+      "aff_open": 5383,
+      "closed": 1982,
+      "share": 36.819617313765555
+     }
+    },
+    "2": {
+     "emotion__style|a": {
+      "aff_open": 2375,
+      "closed": 278,
+      "share": 11.705263157894738
+     },
+     "emotion__style|b": {
+      "aff_open": 790,
+      "closed": 214,
+      "share": 27.088607594936708
+     },
+     "emotion__genre|a": {
+      "aff_open": 2751,
+      "closed": 278,
+      "share": 10.10541621228644
+     },
+     "emotion__genre|b": {
+      "aff_open": 252,
+      "closed": 70,
+      "share": 27.77777777777778
+     },
+     "style__genre|a": {
+      "aff_open": 2200,
+      "closed": 455,
+      "share": 20.681818181818183
+     },
+     "style__genre|b": {
+      "aff_open": 326,
+      "closed": 70,
+      "share": 21.47239263803681
+     },
+     "emotion_side": {
+      "aff_open": 5126,
+      "closed": 556,
+      "share": 10.846664065548186
+     },
+     "other_values": {
+      "aff_open": 3568,
+      "closed": 809,
+      "share": 22.673766816143498
+     }
+    },
+    "3": {
+     "emotion__style|a": {
+      "aff_open": 1319,
+      "closed": 73,
+      "share": 5.534495830174374
+     },
+     "emotion__style|b": {
+      "aff_open": 245,
+      "closed": 23,
+      "share": 9.387755102040817
+     },
+     "emotion__genre|a": {
+      "aff_open": 1771,
+      "closed": 87,
+      "share": 4.912478825522304
+     },
+     "emotion__genre|b": {
+      "aff_open": 30,
+      "closed": 2,
+      "share": 6.666666666666667
+     },
+     "style__genre|a": {
+      "aff_open": 1218,
+      "closed": 116,
+      "share": 9.523809523809524
+     },
+     "style__genre|b": {
+      "aff_open": 61,
+      "closed": 2,
+      "share": 3.278688524590164
+     },
+     "emotion_side": {
+      "aff_open": 3090,
+      "closed": 160,
+      "share": 5.17799352750809
+     },
+     "other_values": {
+      "aff_open": 1554,
+      "closed": 143,
+      "share": 9.202059202059202
+     }
+    },
+    "as_scored": {
+     "emotion__style|a": {
+      "aff_open": 2810,
+      "closed": 479,
+      "share": 17.04626334519573
+     },
+     "emotion__style|b": {
+      "aff_open": 1216,
+      "closed": 543,
+      "share": 44.6546052631579
+     },
+     "emotion__genre|a": {
+      "aff_open": 3120,
+      "closed": 464,
+      "share": 14.871794871794872
+     },
+     "emotion__genre|b": {
+      "aff_open": 585,
+      "closed": 316,
+      "share": 54.01709401709402
+     },
+     "style__genre|a": {
+      "aff_open": 2693,
+      "closed": 788,
+      "share": 29.261047159301892
+     },
+     "style__genre|b": {
+      "aff_open": 647,
+      "closed": 301,
+      "share": 46.52241112828439
+     },
+     "emotion_side": {
+      "aff_open": 5930,
+      "closed": 943,
+      "share": 15.902192242833053
+     },
+     "other_values": {
+      "aff_open": 5141,
+      "closed": 1948,
+      "share": 37.8914608052908
+     }
+    }
+   }
+  },
+  "open_counts": {
+   "AFF": {
+    "0": {
+     "a": 9941,
+     "b": 3627
+    },
+    "1": {
+     "a": 9005,
+     "b": 2573
+    },
+    "2": {
+     "a": 7326,
+     "b": 1368
+    },
+    "3": {
+     "a": 4308,
+     "b": 336
+    }
+   },
+   "V4": {
+    "0": {
+     "a": 8245,
+     "b": 3066
+    },
+    "1": {
+     "a": 7699,
+     "b": 2255
+    },
+    "2": {
+     "a": 6541,
+     "b": 1260
+    },
+    "3": {
+     "a": 4055,
+     "b": 324
+    }
+   },
+   "V2": {
+    "0": {
+     "a": 8593,
+     "b": 1762
+    },
+    "1": {
+     "a": 8121,
+     "b": 1558
+    },
+    "2": {
+     "a": 6938,
+     "b": 1077
+    },
+    "3": {
+     "a": 4261,
+     "b": 318
+    }
+   },
+   "V24": {
+    "0": {
+     "a": 7504,
+     "b": 1572
+    },
+    "1": {
+     "a": 7186,
+     "b": 1412
+    },
+    "2": {
+     "a": 6315,
+     "b": 1014
+    },
+    "3": {
+     "a": 4032,
+     "b": 309
+    }
+   },
+   "R1": {
+    "0": {
+     "a": 12288,
+     "b": 12288
+    },
+    "1": {
+     "a": 10294,
+     "b": 8138
+    },
+    "2": {
+     "a": 7913,
+     "b": 4375
+    },
+    "3": {
+     "a": 4502,
+     "b": 1642
+    }
+   },
+   "IMGABST": {
+    "0": {
+     "a": 9216,
+     "b": 9216
+    },
+    "1": {
+     "a": 8184,
+     "b": 6176
+    },
+    "2": {
+     "a": 6731,
+     "b": 3343
+    },
+    "3": {
+     "a": 4109,
+     "b": 1220
+    }
+   }
+  },
+  "open_counts_as_scored": {
+   "AFF": {
+    "a": 8623,
+    "b": 2448
+   },
+   "V4": {
+    "a": 7355,
+    "b": 2122
+   },
+   "V2": {
+    "a": 7767,
+    "b": 1415
+   },
+   "V24": {
+    "a": 6892,
+    "b": 1288
+   }
+  },
+  "minus_AFF": {
+   "V4": {
+    "pooled": {
+     "point": -0.03662109375,
+     "ci95": [
+      -0.10506836425355538,
+      0.03271528780460466
+     ]
+    },
+    "emotion__style": {
+     "point": -0.054931640625,
+     "ci95": [
+      -0.17140163713618228,
+      0.061396401160623025
+     ]
+    },
+    "emotion__genre": {
+     "point": -0.128173828125,
+     "ci95": [
+      -0.2433726614631942,
+      -0.012351626165031963
+     ]
+    },
+    "style__genre": {
+     "point": 0.0732421875,
+     "ci95": [
+      -0.054651777172231186,
+      0.20276375533137114
+     ]
+    },
+    "gain": {
+     "point": -0.31331380208333337,
+     "ci95": [
+      -0.42469562640740194,
+      -0.20162742216112495
+     ]
+    },
+    "other": {
+     "point": 0.27669270833333337,
+     "ci95": [
+      0.19505432950781026,
+      0.3596835602718675
+     ]
+    },
+    "either": {
+     "point": 0.24007161458333334,
+     "ci95": [
+      0.1409980224589901,
+      0.34029309168088673
+     ]
+    }
+   },
+   "V2": {
+    "pooled": {
+     "point": -0.03662109375,
+     "ci95": [
+      -0.11495968701561131,
+      0.038888209184998086
+     ]
+    },
+    "emotion__style": {
+     "point": -0.10986328125,
+     "ci95": [
+      -0.23862406011387066,
+      0.02454650392794722
+     ]
+    },
+    "emotion__genre": {
+     "point": -0.067138671875,
+     "ci95": [
+      -0.1918841193323083,
+      0.055310754988080836
+     ]
+    },
+    "style__genre": {
+     "point": 0.067138671875,
+     "ci95": [
+      -0.07221998216741186,
+      0.21264057336261463
+     ]
+    },
+    "gain": {
+     "point": -0.15869140625,
+     "ci95": [
+      -0.2767535023020481,
+      -0.04292222898700347
+     ]
+    },
+    "other": {
+     "point": 0.1220703125,
+     "ci95": [
+      0.03691021110671779,
+      0.20431870692082854
+     ]
+    },
+    "either": {
+     "point": 0.08544921875,
+     "ci95": [
+      -0.024212393698607865,
+      0.19363056383183
+     ]
+    }
+   },
+   "V24": {
+    "pooled": {
+     "point": -0.06917317708333334,
+     "ci95": [
+      -0.16515849108866412,
+      0.026392838403383488
+     ]
+    },
+    "emotion__style": {
+     "point": -0.13427734375,
+     "ci95": [
+      -0.3037225343098912,
+      0.03649790699701658
+     ]
+    },
+    "emotion__genre": {
+     "point": -0.189208984375,
+     "ci95": [
+      -0.3422953947046216,
+      -0.030954961687858506
+     ]
+    },
+    "style__genre": {
+     "point": 0.115966796875,
+     "ci95": [
+      -0.055902011334901705,
+      0.28916705834465434
+     ]
+    },
+    "gain": {
+     "point": -0.36214192708333337,
+     "ci95": [
+      -0.5127104549289471,
+      -0.21710464610395114
+     ]
+    },
+    "other": {
+     "point": 0.29296875,
+     "ci95": [
+      0.18885434483702498,
+      0.3986581623101498
+     ]
+    },
+    "either": {
+     "point": 0.22379557291666666,
+     "ci95": [
+      0.08830440623305424,
+      0.3619909275438985
+     ]
+    }
+   }
+  },
+  "net_rankings": {
+   "V4": {
+    "changed_episodes": 1490,
+    "fully_closed_episodes": 1490,
+    "nonzero": 261,
+    "up": 124,
+    "down": 137,
+    "net_rankings": -18,
+    "emotion__style": {
+     "a_only": {
+      "episodes": 317,
+      "net_rankings": -15
+     },
+     "b_only": {
+      "episodes": 95,
+      "net_rankings": 4
+     },
+     "both": {
+      "episodes": 47,
+      "net_rankings": 2
+     },
+     "total": -9
+    },
+    "emotion__genre": {
+     "a_only": {
+      "episodes": 334,
+      "net_rankings": -27
+     },
+     "b_only": {
+      "episodes": 49,
+      "net_rankings": 2
+     },
+     "both": {
+      "episodes": 26,
+      "net_rankings": 4
+     },
+     "total": -21
+    },
+    "style__genre": {
+     "a_only": {
+      "episodes": 513,
+      "net_rankings": 8
+     },
+     "b_only": {
+      "episodes": 78,
+      "net_rankings": 7
+     },
+     "both": {
+      "episodes": 31,
+      "net_rankings": -3
+     },
+     "total": 12
+    }
+   },
+   "V2": {
+    "changed_episodes": 1840,
+    "fully_closed_episodes": 981,
+    "nonzero": 316,
+    "up": 151,
+    "down": 165,
+    "net_rankings": -18,
+    "emotion__style": {
+     "a_only": {
+      "episodes": 164,
+      "net_rankings": -11
+     },
+     "b_only": {
+      "episodes": 479,
+      "net_rankings": -4
+     },
+     "both": {
+      "episodes": 16,
+      "net_rankings": -3
+     },
+     "total": -18
+    },
+    "emotion__genre": {
+     "a_only": {
+      "episodes": 179,
+      "net_rankings": -18
+     },
+     "b_only": {
+      "episodes": 278,
+      "net_rankings": 9
+     },
+     "both": {
+      "episodes": 9,
+      "net_rankings": -2
+     },
+     "total": -11
+    },
+    "style__genre": {
+     "a_only": {
+      "episodes": 464,
+      "net_rankings": 5
+     },
+     "b_only": {
+      "episodes": 227,
+      "net_rankings": 5
+     },
+     "both": {
+      "episodes": 24,
+      "net_rankings": 1
+     },
+     "total": 11
+    }
+   },
+   "V24": {
+    "changed_episodes": 2753,
+    "fully_closed_episodes": 1968,
+    "nonzero": 500,
+    "up": 236,
+    "down": 264,
+    "net_rankings": -34,
+    "emotion__style": {
+     "a_only": {
+      "episodes": 424,
+      "net_rankings": -27
+     },
+     "b_only": {
+      "episodes": 488,
+      "net_rankings": 4
+     },
+     "both": {
+      "episodes": 55,
+      "net_rankings": 1
+     },
+     "total": -22
+    },
+    "emotion__genre": {
+     "a_only": {
+      "episodes": 429,
+      "net_rankings": -38
+     },
+     "b_only": {
+      "episodes": 281,
+      "net_rankings": 5
+     },
+     "both": {
+      "episodes": 35,
+      "net_rankings": 2
+     },
+     "total": -31
+    },
+    "style__genre": {
+     "a_only": {
+      "episodes": 740,
+      "net_rankings": 12
+     },
+     "b_only": {
+      "episodes": 253,
+      "net_rankings": 10
+     },
+     "both": {
+      "episodes": 48,
+      "net_rankings": -3
+     },
+     "total": 19
+    }
+   }
+  },
+  "V4_vs_V2": {
+   "episodes_differ": 426,
+   "same_sum": true
+  },
+  "V4_closed_vs_kept_AFF_minus_B": {
+   "emotion__style": {
+    "closed": {
+     "point": 0.49019607843137253,
+     "ci95": [
+      -0.5939846240872159,
+      1.5384615384615385
+     ],
+     "episodes": 459
+    },
+    "kept": {
+     "point": 1.6749379652605458,
+     "ci95": [
+      1.1748217734067345,
+      2.1747444014178288
+     ],
+     "episodes": 2821
+    },
+    "aff_shut": 816
+   },
+   "emotion__genre": {
+    "closed": {
+     "point": 1.2836185819070904,
+     "ci95": [
+      0.18027765287769787,
+      2.4436434913690084
+     ],
+     "episodes": 409
+    },
+    "kept": {
+     "point": 2.034684065934066,
+     "ci95": [
+      1.5433151432469305,
+      2.5317731496069094
+     ],
+     "episodes": 2912
+    },
+    "aff_shut": 775
+   },
+   "style__genre": {
+    "closed": {
+     "point": -0.482315112540193,
+     "ci95": [
+      -1.3201591639871382,
+      0.3252431053722296
+     ],
+     "episodes": 622
+    },
+    "kept": {
+     "point": -0.560965283657917,
+     "ci95": [
+      -1.093429871366802,
+      -0.0425531914893617
+     ],
+     "episodes": 2362
+    },
+    "aff_shut": 1112
+   }
+  },
+  "comparator_gaps": {
+   "AFF_minus_B": {
+    "pooled": {
+     "point": 0.7954915364583334,
+     "ci95": [
+      0.5841739875095656,
+      1.0089439787592314
+     ]
+    },
+    "emotion__style": {
+     "point": 1.20849609375,
+     "ci95": [
+      0.8302706974906146,
+      1.5799065450931595
+     ]
+    },
+    "emotion__genre": {
+     "point": 1.57470703125,
+     "ci95": [
+      1.2086560031908826,
+      1.9508369642702996
+     ]
+    },
+    "style__genre": {
+     "point": -0.396728515625,
+     "ci95": [
+      -0.7368977893328662,
+      -0.06616463097545078
+     ]
+    }
+   },
+   "Bprime_A0_minus_B": {
+    "pooled": {
+     "point": 0.09562174479166666,
+     "ci95": [
+      -0.05684390944983477,
+      0.250550608354107
+     ]
+    },
+    "emotion__style": {
+     "point": 0.23193359375,
+     "ci95": [
+      -0.02433682161109759,
+      0.48889616135007846
+     ]
+    },
+    "emotion__genre": {
+     "point": 0.1220703125,
+     "ci95": [
+      -0.15391915383624258,
+      0.4007480696571868
+     ]
+    },
+    "style__genre": {
+     "point": -0.067138671875,
+     "ci95": [
+      -0.33311333449367625,
+      0.1943209741371709
+     ]
+    }
+   },
+   "Bprime_A1_minus_Bprime_A0": {
+    "pooled": {
+     "point": 0.36824544270833337,
+     "ci95": [
+      0.14426684051597705,
+      0.5939932409501769
+     ]
+    },
+    "emotion__style": {
+     "point": 0.738525390625,
+     "ci95": [
+      0.38393660287565157,
+      1.0938769156837584
+     ]
+    },
+    "emotion__genre": {
+     "point": 0.018310546875,
+     "ci95": [
+      -0.3759918782673637,
+      0.4276794339587431
+     ]
+    },
+    "style__genre": {
+     "point": 0.347900390625,
+     "ci95": [
+      -0.04997380084827392,
+      0.744655935521131
+     ]
+    }
+   },
+   "AFF_minus_Bprime_A1": {
+    "pooled": {
+     "point": 0.33162434895833337,
+     "ci95": [
+      0.048231414333532084,
+      0.6246158772581268
+     ]
+    },
+    "emotion__style": {
+     "point": 0.238037109375,
+     "ci95": [
+      -0.21499697485729974,
+      0.7013504246816099
+     ]
+    },
+    "emotion__genre": {
+     "point": 1.434326171875,
+     "ci95": [
+      0.8969819937488401,
+      1.9606135345099782
+     ]
+    },
+    "style__genre": {
+     "point": -0.677490234375,
+     "ci95": [
+      -1.1388828473983759,
+      -0.19030206677026942
+     ]
+    }
+   }
+  },
+  "floor_arithmetic": {
+   "fused_needed_vs_BprimeA1": 19.304931640625,
+   "above_AFF": 0.1683756510416643,
+   "V2_V24_fused_minus_BprimeA0": {
+    "V2": 0.6632486979166714,
+    "V24": 0.6306966145833357
+   }
+  },
+  "R1_abstention_vs_AFF_tau2": {
+   "a": {
+    "emotion__style": {
+     "R1_open": 2589,
+     "abstention_closes_on_R1": 346,
+     "of_which_AFF_gate_already_shut": 123,
+     "AFF_open": 2375,
+     "abstention_closes_on_AFF": 223
+    },
+    "emotion__genre": {
+     "R1_open": 2904,
+     "abstention_closes_on_R1": 341,
+     "of_which_AFF_gate_already_shut": 108,
+     "AFF_open": 2751,
+     "abstention_closes_on_AFF": 233
+    },
+    "style__genre": {
+     "R1_open": 2420,
+     "abstention_closes_on_R1": 495,
+     "of_which_AFF_gate_already_shut": 166,
+     "AFF_open": 2200,
+     "abstention_closes_on_AFF": 329
+    },
+    "all": {
+     "R1_open": 7913,
+     "abstention_closes_on_R1": 1182,
+     "of_which_AFF_gate_already_shut": 397,
+     "AFF_open": 7326,
+     "abstention_closes_on_AFF": 785
+    }
+   },
+   "b": {
+    "emotion__style": {
+     "R1_open": 1589,
+     "abstention_closes_on_R1": 314,
+     "of_which_AFF_gate_already_shut": 258,
+     "AFF_open": 790,
+     "abstention_closes_on_AFF": 56
+    },
+    "emotion__genre": {
+     "R1_open": 1396,
+     "abstention_closes_on_R1": 280,
+     "of_which_AFF_gate_already_shut": 259,
+     "AFF_open": 252,
+     "abstention_closes_on_AFF": 21
+    },
+    "style__genre": {
+     "R1_open": 1390,
+     "abstention_closes_on_R1": 438,
+     "of_which_AFF_gate_already_shut": 407,
+     "AFF_open": 326,
+     "abstention_closes_on_AFF": 31
+    },
+    "all": {
+     "R1_open": 4375,
+     "abstention_closes_on_R1": 1032,
+     "of_which_AFF_gate_already_shut": 924,
+     "AFF_open": 1368,
+     "abstention_closes_on_AFF": 108
+    }
+   }
+  },
+  "R1_and_abstention": {
+   "R1_fused_r1": 18.918863932291664,
+   "abstention_fused_r1": 19.059244791666664,
+   "R1_per_pair_bar": {
+    "emotion__style": 0.7080078125,
+    "emotion__genre": 1.220703125,
+    "style__genre": -0.59814453125
+   },
+   "abstention_per_pair_bar": {
+    "emotion__style": 0.677490234375,
+    "emotion__genre": 1.28173828125,
+    "style__genre": -0.262451171875
+   }
+  }
+ },
+ "inputs_sha256": {
+  "dev_seed42.json": "fd7b3f480d5997284f9d8cfe29fe25275ff3edd38c1ada0a9392d8396ba9e01f",
+  "carry.json": "d246fa4f1012f6ad9e7879e1a5b415a90df9105eb2a3709a450e7d86f4bdf4ba",
+  "regression_check.json": "20005dde51cffe6a97f494bcc5e14ffb746be2f5f03c91cd4c6928af3405f282",
+  "seed42_arrays.npz": "72fb827fa9b44360d237dd3a3d555403825cf3847282976d24073dcc12ee0c75",
+  "DECISION_RULE.md": "cf11a8739e963995d6674648845ac9b0957632583a364cb099c354810f8e911b"
+ }
+}
