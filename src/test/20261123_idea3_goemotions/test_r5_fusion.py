@@ -31,7 +31,7 @@ import r5_common as R5  # noqa: E402
 import r5_guard as R5G  # noqa: E402
 import r5_bundle as R5B  # noqa: E402
 import r5_fusion as R5F  # noqa: E402
-from test_r5_bundle import make_ge, release_guard, synth_bundle  # noqa: E402
+from test_r5_bundle import LEAK, make_ge, release_guard, synth_bundle  # noqa: E402
 
 from src.eval.aspect_metrics import CONDITIONS, DIRECTIONS, METRICS  # noqa: E402
 from src.eval.aspect_nested import _zdict  # noqa: E402
@@ -41,7 +41,7 @@ F2 = RF3.F                                     # round 2's fusion pieces
 A0 = R3.A0
 TAUS = tuple(R3.TAUS)
 SMOKE_SEED = 9001
-DECIMAL = re.compile(r"\d\.\d")
+S42 = SimpleNamespace(seed=42, smoke=False)     # what tau_prime accepts
 GIVEN = (0.0, 0.02, 0.05, 0.1)                 # a tau' "read from the record" on a seed other than 42 (synthetic)
 
 
@@ -92,7 +92,7 @@ def test_tau_prime_is_rc_core_thresholds_on_seed42_counts(monkeypatch):
         return real(margins)
 
     monkeypatch.setattr(rc_core, "thresholds", spy)
-    t = R5F.tau_prime(m)
+    t = R5F.tau_prime(m, S42)
     assert calls == [["a", "b"]]                                             # condition a first
     want = np.percentile(np.concatenate([m["a"], m["b"]]), [0, 25, 50, 75])
     assert type(t) is tuple and len(t) == 4 and all(type(x) is float for x in t)
@@ -100,7 +100,7 @@ def test_tau_prime_is_rc_core_thresholds_on_seed42_counts(monkeypatch):
     for bad in ({"a": m["a"][:-1], "b": m["b"]}, {"a": m["a"], "b": m["b"], "c": m["a"]}, {"a": m["a"]},
                 {"a": m["a"].astype(np.float32), "b": m["b"]}):
         with pytest.raises(ValueError):
-            R5F.tau_prime(bad)
+            R5F.tau_prime(bad, S42)
 
 
 @pytest.mark.parametrize("bad", [(0.0, 0.1, 0.2), (0.0, 0.3, 0.2, 0.4), (0.0, np.nan, 0.2, 0.3), "0.1",
@@ -256,6 +256,94 @@ def test_g_t_takes_no_tau_prime(tmp_path, monkeypatch):
         R5F.run_candidate("G-T", b, ext, cand, tau_prime=TAUS)
 
 
+@pytest.mark.parametrize("seed, smoke", [(52, False), (SMOKE_SEED, True), (42, True), (43, False)])
+def test_tau_prime_itself_refuses_every_bundle_but_seed_42(seed, smoke, monkeypatch):
+    """Review minor 4: tau_prime takes the bundle and refuses anything other than seed 42 non-smoke, before it reads
+    a margin (rc_core.thresholds is never called)."""
+    rng = np.random.default_rng(1)
+    m = {"a": rng.random(12_288), "b": rng.random(12_288)}
+
+    def boom(*a, **k):
+        raise AssertionError("thresholds computed")
+
+    monkeypatch.setattr(rc_core, "thresholds", boom)
+    with pytest.raises(ValueError, match="seed 42"):
+        R5F.tau_prime(m, SimpleNamespace(seed=seed, smoke=smoke))
+    monkeypatch.undo()
+    assert len(R5F.tau_prime(m, S42)) == 4
+
+
+def test_run_candidate_refuses_another_bundle(tmp_path, monkeypatch):
+    """run_candidate's own check_pair (review minor 3): another bundle of the same seed, smoke flag and n is refused
+    by the pairing check, not later by D7; another seed too."""
+    b, pl, ext = _ge(tmp_path, monkeypatch, seed=30)
+    cand = R5F.candidate("G-T", b, ext)
+    other = synth_bundle(seed=31)
+    assert (other.seed, other.smoke, other.n) == (b.seed, b.smoke, b.n)
+    with pytest.raises(AssertionError, match="image and caption slices differ"):
+        R5F.run_candidate("G-T", other, ext, cand)
+    with pytest.raises(AssertionError, match="another seed"):
+        R5F.run_candidate("G-T", SimpleNamespace(**{**vars(b), "seed": 52, "smoke": False}), ext, cand)
+
+
+@pytest.mark.parametrize("bad", ["float64", "not_0_1", "three_sets", "shape"])
+def test_candidate_refuses_gates_that_are_not_float32_0_1(tmp_path, monkeypatch, bad):
+    """candidate's own check_gates (review minor 3), fed malformed gates by a stand-in for RF3.gates_aff."""
+    b, pl, ext = _ge(tmp_path, monkeypatch, seed=32)
+    real = RF3.gates_aff
+
+    def malformed(m, pick, taus):
+        g = real(m, pick, taus)
+        if bad == "float64":
+            return [{c: x[c].astype(np.float64) for c in CONDITIONS} for x in g]
+        if bad == "not_0_1":
+            return [{c: (x[c] * np.float32(0.5)).astype(np.float32) for c in CONDITIONS} for x in g]
+        if bad == "three_sets":
+            return g[:3]
+        return [{c: x[c][:-1] for c in CONDITIONS} for x in g]
+
+    monkeypatch.setattr(RF3, "gates_aff", malformed)
+    with pytest.raises(AssertionError, match="gate"):
+        R5F.candidate("G-T", b, ext)
+
+
+def test_expected_d6_refuses_readers_of_another_feature_layout(tmp_path, monkeypatch):
+    """expected_d6's own layout check (review minor 3): it reads the half-readers directly for G-TF."""
+    b, pl, ext = _ge(tmp_path, monkeypatch, seed=33)
+    b.readers = dict(b.readers, feature_names=list(reversed(b.readers["feature_names"])))
+    with pytest.raises(AssertionError, match="feature layout"):
+        R5F.expected_d6("G-TF", b, ext, tau_prime=GIVEN)
+
+
+def test_g_tf_refuses_an_extension_without_F_and_g_t_runs_on_it(tmp_path, monkeypatch):
+    """Review I1: on a test seed F_G exists only if G-TF is carried. An extension built with features=False is
+    refused for G-TF; G-T runs end to end on it and gives what it gives on the full extension, and seed42_features
+    is never called on the way."""
+    b = synth_bundle(seed=34)
+    pl = make_ge(tmp_path, monkeypatch, b, seed=134)
+    release_guard(tmp_path)
+    full = R5B.extend(b, pl)
+    want = R5F.run_candidate("G-T", b, full, R5F.candidate("G-T", b, full))
+    calls = []
+    real = R3.rbe.seed42_features
+    monkeypatch.setattr(R3.rbe, "seed42_features", lambda *a, **k: calls.append(1) or real(*a, **k))
+    nf = R5B.extend(b, pl, features=False)
+    assert nf.F is None
+    gt = R5F.candidate("G-T", b, nf)
+    fam = R5F.run_candidate("G-T", b, nf, gt)
+    assert calls == [], "F_Q was computed on the way"
+    assert (fam["fpick"], fam["cpick"], fam["sigma"]) == (want["fpick"], want["cpick"], want["sigma"])
+    for part in ("fused", "cf"):
+        for m in METRICS:
+            np.testing.assert_array_equal(fam[part][m], want[part][m])
+    full_cand = R5F.candidate("G-TF", b, full, tau_prime=GIVEN)
+    for call in (lambda: R5F.candidate("G-TF", b, nf, tau_prime=GIVEN),
+                 lambda: R5F.expected_d6("G-TF", b, nf, tau_prime=GIVEN),
+                 lambda: R5F.run_candidate("G-TF", b, nf, full_cand, tau_prime=GIVEN)):
+        with pytest.raises(ValueError, match="F_Q"):
+            call()
+
+
 # ---------------------------------------------------------------- D7: family, counterpart, stored gates
 
 def test_counterpart_is_built_from_the_candidates_own_term_and_gates(tmp_path, monkeypatch):
@@ -273,7 +361,8 @@ def test_counterpart_is_built_from_the_candidates_own_term_and_gates(tmp_path, m
     monkeypatch.setattr(RF3, "run_family", spy)
     fam = R5F.run_candidate("G-TF", b, ext, cand, tau_prime=GIVEN)
     monkeypatch.undo()
-    assert len(seen) == 1 and seen[0][0] is b and seen[0][1] is cand["T"] and seen[0][2] is cand["gates"]
+    assert len(seen) == 1 and seen[0][0] is b and seen[0][1] is cand["T"]
+    assert seen[0][2] is fam["gates"] and _same_gates(fam["gates"], cand["gates"])   # the stored copy is what ran
     assert seen[0][3] is False                                                  # the counterpart is cross-fitted
     own = RF3.run_family(b, cand["T"], cand["gates"])
     with_aff = RF3.run_family(b, cand["T"], g_aff)
@@ -297,7 +386,19 @@ def test_the_family_stores_the_gates_it_ran_from(tmp_path, monkeypatch):
     for name, kw in (("G-T", {}), ("G-TF", {"tau_prime": GIVEN})):
         cand = R5F.candidate(name, b, ext, **kw)
         fam = R5F.run_candidate(name, b, ext, cand, **kw)
-        assert fam["gates"] is cand["gates"] and fam["taus"] == cand["taus"] and fam["candidate"] == name
+        assert fam["taus"] == cand["taus"] and fam["candidate"] == name
+        assert fam["gates"] is not cand["gates"] and _same_gates(fam["gates"], cand["gates"])
+        for t in range(4):                                                     # a read-only copy (review minor 6)
+            for c in CONDITIONS:
+                assert not np.shares_memory(fam["gates"][t][c], cand["gates"][t][c])
+                assert fam["gates"][t][c].flags.writeable is False
+                with pytest.raises(ValueError):
+                    fam["gates"][t][c][0] = np.float32(1.0)
+        stored = [{c: g[c].copy() for c in CONDITIONS} for g in fam["gates"]]
+        for g in cand["gates"]:                                                # a later change of cand's gates
+            for c in CONDITIONS:
+                g[c][:] = 1 - g[c]
+        assert _same_gates(fam["gates"], stored)
         assert set(fam["gate_check"]) == {f"tau_{t}" for t in range(4)} | {"P", "T", "m", "pick", "taus"}
         assert all(fam["gate_check"][f"tau_{t}"] == {"a": True, "b": True} for t in range(4))
         assert all(fam["gate_check"][k] is True for k in ("P", "T", "m", "pick", "taus"))
@@ -442,7 +543,7 @@ def test_smoke_clip_candidates_and_families_equal_affs(smoke_build):
         fams = {"G-T": R5F.run_candidate("G-T", b, ext, cands["G-T"]),
                 "G-TF": R5F.run_candidate("G-TF", b, ext, cands["G-TF"], tau_prime=TAUS)}
     lines = [ln for ln in out.getvalue().splitlines() if ln.strip()]
-    assert not any(DECIMAL.search(ln) for ln in lines), "a decimal number was printed"
+    assert not any(LEAK.search(ln) for ln in lines), "a decimal number was printed"
     for name, cand in cands.items():
         for k in ("P", "m", "pick"):
             assert all(bool(np.array_equal(cand[k][c], aff[k][c])) and cand[k][c].dtype == aff[k][c].dtype

@@ -2,7 +2,8 @@
 7; §5 items 4 and 5; §6.3 and §6.4; §10 list A item 5).
 
   candidate(name, bundle, ext, tau_prime=None)   D6: the reader outputs (P, T, m, pick), the thresholds and the gates
-  tau_prime(m)                                   D6: tau' = rc_core.thresholds of G-TF's seed-42 margins (24,576)
+  tau_prime(m, bundle)                           D6: tau' = rc_core.thresholds of G-TF's seed-42 margins (24,576);
+                                                 refused on any bundle but seed 42 (non-smoke)
   check_taus(taus)                               a tau' read from a record: four finite non-decreasing floats
   expected_d6(name, bundle, ext, tau_prime=None) D6 recomputed independently (D7's gate check)
   run_candidate(name, bundle, ext, cand, tau_prime=None)
@@ -15,6 +16,9 @@ D6's table, one reader (round 3's r3_fusion.reader with the bundle's frozen A0 h
   G-TF  reader on F_G, term on stack_G, tau'_0..tau'_3
 tau' is computed only on seed 42 (non-smoke) from G-TF's own margins, and on every other seed it is passed in from
 results/dev_seed42.json and never recomputed (a missing tau' is refused there, a passed one refused on seed 42).
+G-TF needs an extension with F_Q (r5_bundle.extend(..., features=True)); G-T runs on one without (rule §4 item 5:
+on a test seed F_G and G-TF's reader exist only if G-TF is carried). The family stores, read-only, the very gate
+arrays it ran from.
 
 Every function that takes an extension calls r5_bundle.require_ext (r5_guard.require on its placement) first: a GE
 extension is refused before the guard is released (D11). Nothing here prints.
@@ -48,9 +52,13 @@ def is_seed42(bundle) -> bool:
 
 # ---------------------------------------------------------------- tau'
 
-def tau_prime(m) -> tuple:
+def tau_prime(m, bundle) -> tuple:
     """D6: tau'_0..tau'_3 = round 1's rc_core.thresholds of G-TF's margins (numpy.percentile, linear, at 0, 25, 50 and
-    75, condition a's margins first, float64); its count must be seed 42's 24,576. -> tuple of four floats."""
+    75, condition a's margins first, float64) on seed 42 only: refused for a bundle other than seed 42 non-smoke; the
+    count must be seed 42's 24,576. -> tuple of four floats."""
+    if not is_seed42(bundle):
+        raise ValueError("tau' is computed on seed 42 (non-smoke) only; on every other seed it is read from "
+                         "results/dev_seed42.json and never recomputed (D6)")
     if not isinstance(m, dict) or set(m) != set(CONDITIONS):
         raise ValueError("tau' takes the margins of both conditions {'a': ..., 'b': ...}")
     for c in CONDITIONS:
@@ -86,7 +94,7 @@ def _thresholds(name, bundle, m, given):
     if is_seed42(bundle):
         if given is not None:
             raise ValueError("on seed 42 tau' is computed from G-TF's margins (D6), never passed in")
-        return tau_prime(m)
+        return tau_prime(m, bundle)
     if given is None:
         raise ValueError("on every seed but 42, tau' is read from results/dev_seed42.json and passed in; it is never "
                          "recomputed (D6)")
@@ -105,6 +113,12 @@ def _readers(bundle):
     if readers is None:
         raise ValueError("the bundle carries no readers (round 1's A0 half-readers); they are never loaded here")
     return readers
+
+
+def _check_features(name, ext, what):
+    """G-TF reads F_Q: an extension built without features (rule §4 item 5) is refused for it."""
+    if name == "G-TF" and not R5B.has_features(ext):
+        raise ValueError(f"{what}: G-TF needs an extension with F_Q (r5_bundle.extend(..., features=True))")
 
 
 def check_gates(gates, n) -> bool:
@@ -129,6 +143,7 @@ def candidate(name, bundle, ext, tau_prime=None) -> dict:
         "gates": [ {c: (n,) float32 0/1} ] x 4, "taus": (4 floats)}."""
     R5B.require_ext(ext, f"r5_fusion.candidate {name}")
     _check_name(name)
+    _check_features(name, ext, "r5_fusion.candidate")
     R5B.check_pair(bundle, ext)
     readers = _readers(bundle)
     src = {"bundle": bundle, "ext": ext}
@@ -147,6 +162,7 @@ def expected_d6(name, bundle, ext, tau_prime=None) -> dict:
     elsewhere), T = common.expected_term(stack_Q, P'). Same keys as candidate()."""
     R5B.require_ext(ext, f"r5_fusion.expected_d6 {name}")
     _check_name(name)
+    _check_features(name, ext, "r5_fusion.expected_d6")
     readers = _readers(bundle)
     if name == "G-T":
         aff = RF3.reader(SimpleNamespace(F=bundle.F, stack=bundle.stack), readers=readers)      # AFF exactly (D1)
@@ -193,16 +209,21 @@ def run_candidate(name, bundle, ext, cand, tau_prime=None) -> dict:
     cross-fit and the matched counterpart from the candidate's OWN term and gates, its max-R@1 cross-fit), after D7's
     gate check: cand must equal expected_d6 exactly. ``tau_prime``: G-TF's tau' from the record on every seed but 42
     (required there, refused on seed 42 and for G-T). -> run_family's dict ("fpick", "cpick", "sigma", "fused", "cf",
-    "details", "ctrl") plus "candidate", "gates" (the very list the family ran from), "taus" and "gate_check"."""
+    "details", "ctrl") plus "candidate", "gates" (a copy of cand's gates, taken before the check: the very arrays the
+    check compared and the family ran from, read-only once the family has run), "taus" and "gate_check"."""
     R5B.require_ext(ext, f"r5_fusion.run_candidate {name}")
     _check_name(name)
     if not isinstance(cand, dict) or set(cand) != set(KEYS):
         raise ValueError(f"cand must be candidate()'s dict with keys {KEYS}")
     R5B.check_pair(bundle, ext)
-    checked = gate_check(cand, expected_d6(name, bundle, ext, tau_prime))   # value, shape and dtype of every gate
-    fam = RF3.run_family(bundle, cand["T"], cand["gates"])
+    gates = [{c: np.array(g[c], copy=True) for c in g} for g in cand["gates"]]       # owned by this family
+    checked = gate_check(dict(cand, gates=gates), expected_d6(name, bundle, ext, tau_prime))
+    fam = RF3.run_family(bundle, cand["T"], gates)
+    for g in gates:                                   # frozen after the run (torch.as_tensor warns on read-only input)
+        for c in g:
+            g[c].flags.writeable = False
     fam["candidate"] = name
-    fam["gates"] = cand["gates"]
+    fam["gates"] = gates
     fam["taus"] = tuple(cand["taus"])
     fam["gate_check"] = checked
     return fam

@@ -45,7 +45,8 @@ rbe, rf = R3.rbe, R3.rf
 A0, A1 = R3.A0, RB4.A1
 SMOKE_SEED = 9001
 K41 = R5.N_CLASSES
-DECIMAL = re.compile(r"\d\.\d")
+# any decimal number: "0.5", ".5", "19.1", "5.", "5e-03", "2E+3" (round 4's pattern plus a trailing-dot form)
+LEAK = re.compile(r"\.\d|\d\.(?!\w)|\d[eE][-+]?\d")
 
 
 # ---------------------------------------------------------------- synthetic helpers (also used by test_r5_fusion)
@@ -126,10 +127,10 @@ def synth_bundle(n=24, rows=50, seed=0, bundle_seed=SMOKE_SEED, smoke=True):
     return b
 
 
-def make_ge(tmp_path, monkeypatch, bundle, seed=7, rows=None, name=None):
+def make_ge(tmp_path, monkeypatch, bundle, seed=7, rows=None, name=None, n_rows=None):
     """A synthetic GE file for the bundle's rows (default: its selection rows), minted by r5_guard.ge_from_file with
-    r5_common.GE_POST_SHA, N_ROWS and N_SELECTION patched to it."""
-    n_rows = int(bundle.post["affect"]["img"].shape[0])
+    r5_common.GE_POST_SHA, N_ROWS (default: the bundle's row count) and N_SELECTION patched to it."""
+    n_rows = int(bundle.post["affect"]["img"].shape[0]) if n_rows is None else int(n_rows)
     rows = np.asarray(bundle.ctx.selection if rows is None else rows, dtype=np.int64)
     rng = np.random.default_rng(seed)
     p = tmp_path / (name or f"ge_{seed}.npz")
@@ -264,6 +265,20 @@ def test_positive_check_with_the_clip_placement_is_not_a_pass():
     assert out["affect_slice_differs_from_bundle_on_an_episode"] is False
 
 
+def test_positive_check_refuses_a_ge_placement_with_a_clip_extension_before_release(tmp_path, monkeypatch):
+    """positive_check's own placement guard (review I2): the CLIP extension passes require_ext, so only the guard on
+    the placement argument stops the Q_GE einsum before release."""
+    b = synth_bundle(seed=4)
+    clip_ext = R5B.extend(b, R5G.clip_from_bundle(b))
+    pl = make_ge(tmp_path, monkeypatch, b, seed=13)                         # minted; the guard stays closed
+    called = []
+    real = np.einsum
+    monkeypatch.setattr(R5B.np, "einsum", lambda *a, **k: called.append(1) or real(*a, **k))
+    with pytest.raises(R5G.GuardError, match=re.escape("r5_bundle.positive_check")):
+        R5B.positive_check(b, clip_ext, pl)
+    assert not called, "the Q_GE einsum was computed before release"
+
+
 def test_positive_check_refuses_an_extension_of_another_placement(tmp_path, monkeypatch):
     b = synth_bundle(seed=4)
     clip_ext = R5B.extend(b, R5G.clip_from_bundle(b))
@@ -346,6 +361,100 @@ def test_the_extension_holds_no_reference_into_post_q_and_leaves_post_as_it_was(
     assert not np.shares_memory(b.post["affect"]["txt"], pl.Q)
     assert set(vars(ext)) == {"kind", "placement", "placement_sha256", "seed", "smoke", "n", "stack", "F", "Bp", "pBp",
                               "Bp_picks", "checks", "from_cache"}
+
+
+@pytest.mark.parametrize("what", ["bundle_post_itself", "shared_affect_dict", "other_order"])
+def test_extend_refuses_a_post_q_that_is_not_a_new_a0_dict(monkeypatch, what):
+    """extend's own post_Q assertion (review minor 3): each variant would otherwise run to the end unnoticed."""
+    b = synth_bundle(seed=22)
+    pl = R5G.clip_from_bundle(b)
+
+    def mutant(post, Q):
+        if what == "bundle_post_itself":
+            return post
+        if what == "shared_affect_dict":
+            return {"affect": post["affect"], "image": post["image"], "caption": post["caption"]}
+        return {"caption": post["caption"], "image": post["image"], "affect": {"img": post["affect"]["img"], "txt": Q}}
+
+    monkeypatch.setattr(R5B, "post_q", mutant)
+    with pytest.raises(AssertionError, match="new dict in A0 order"):
+        R5B.extend(b, pl)
+
+
+def test_extend_refuses_a_placement_with_another_row_count(tmp_path, monkeypatch):
+    """_check_q's shape check (review minor 3): a GE file minted for more rows than the bundle has."""
+    b = synth_bundle(seed=23)
+    pl = make_ge(tmp_path, monkeypatch, b, seed=24, n_rows=int(b.post["affect"]["img"].shape[0]) + 5)
+    release_guard(tmp_path)
+    with pytest.raises(ValueError, match=re.escape("must be float32")):
+        R5B.extend(b, pl)
+
+
+# ---------------------------------------------------------------- features=False (rule §4 item 5, §6.4)
+
+def test_extend_without_features_never_computes_F_Q(tmp_path, monkeypatch):
+    b = synth_bundle(seed=25)
+    pl = make_ge(tmp_path, monkeypatch, b, seed=26)
+    release_guard(tmp_path)
+    full = R5B.extend(b, pl)
+    calls = []
+    real = rbe.seed42_features
+    monkeypatch.setattr(rbe, "seed42_features", lambda *a, **k: calls.append(1) or real(*a, **k))
+    nf = R5B.extend(b, pl, features=False)
+    assert calls == [], "seed42_features was called on post_Q with features=False"
+    assert nf.F is None and R5B.has_features(nf) is False and nf.checks["F_Q_computed"] is False
+    assert R5B.has_features(full) is True and full.checks["F_Q_computed"] is True
+    for d in DIRECTIONS:                                                     # stack_G and B'_G as with features
+        np.testing.assert_array_equal(nf.stack[d], full.stack[d])
+    for c in CONDITIONS:
+        for d in DIRECTIONS:
+            np.testing.assert_array_equal(nf.Bp[c][d], full.Bp[c][d])
+    assert nf.Bp_picks == full.Bp_picks
+    assert all(v is True for k, v in R5B.validate_ext(nf).items())
+    assert set(R5B.check_pair(b, nf)) == {"stack_image_caption_slices_equal_bundle"}
+    eq = R5B.exts_equal(nf, full)
+    assert eq["has_F"] is False and eq["F__a"] is False and eq["stack__i2t"] is True
+    for fn in (lambda: R5B.same_as_bundle(b, nf), lambda: R5B.positive_check(b, nf, pl)):
+        with pytest.raises(ValueError, match="F_Q"):
+            fn()
+    with pytest.raises(ValueError, match="features"):
+        R5B.extend(b, pl, features=1)
+
+
+def test_ext_cache_round_trip_without_features(tmp_path, monkeypatch):
+    b = synth_bundle(seed=27)
+    pl = make_ge(tmp_path, monkeypatch, b, seed=28)
+    release_guard(tmp_path)
+    nf = R5B.extend(b, pl, features=False)
+    r4 = _dummy_r4(R5.res_dir(True), "nofeatures")
+    try:
+        sha = R5B.save_ext(nf, r4["path"], r4["shas"])
+        got = R5B.load_ext(r4["path"], r4["shas"], sha, pl, b)
+        assert got.F is None and got.cache_meta["has_F"] is False
+        eq = R5B.exts_equal(nf, got)
+        assert all(eq.values()) and not any(k.startswith("F__") for k in eq), eq
+        p = R5B.ext_path(r4["path"], "ge")
+        with np.load(p) as z:                                                # a record that claims F it lacks
+            arrays = {k: z[k] for k in z.files}
+        assert not any(k.startswith("F__") for k in arrays)
+        meta = json.loads(str(arrays["meta"][()]))
+        meta["has_F"] = True
+        arrays["meta"] = np.array(json.dumps(meta))
+        np.savez_compressed(p, **arrays)
+        with pytest.raises(SystemExit, match="has_F"):
+            R5B.load_ext(r4["path"], r4["shas"], R5.sha256_file(p), pl, b)
+    finally:
+        _cleanup(r4)
+
+
+def test_leak_pattern_catches_any_decimal_number():
+    for s in ("bar 0.5", ".5", "x .5 y", "19.1", "-1.25", "5e-03", "1e-12", "2E+3", "[0.4, 0.9]", "margin 5.",
+              "0.5%"):
+        assert LEAK.search(s), s
+    for s in ("[16:10:03] [r5_bundle] clip extension done: stack (192, 3, 13), F (192, 18)",
+              "[r5_bundle] ge extension done: stack (192, 3, 13), F not computed", "CHECK item4 PASS",
+              "dev_seed42.json written", "r5_bundle.extend"):
+        assert not LEAK.search(s), s
 
 
 # ---------------------------------------------------------------- D11: the guard
@@ -642,7 +751,7 @@ def test_smoke_clip_extension_is_the_bundles_own_and_prints_no_value(smoke_build
         ext = R5B.extend(b, pl)
     lines = [ln for ln in out.getvalue().splitlines() if ln.strip()]
     assert all("[r5_bundle]" in ln for ln in lines) and len(lines) >= 1, "extend printed a foreign line or none"
-    assert not any(DECIMAL.search(ln) for ln in lines), "extend printed a decimal number"
+    assert not any(LEAK.search(ln) for ln in lines), "extend printed a decimal number"
     assert R5B.shared_state(b) == before, "round 3's or round 4's fields, bundle.post or _HEADS changed"
     assert b.post["affect"] is RB3._HEADS[60000]["post"], "bundle.post['affect'] is no longer the cached head dict"
     same = R5B.same_as_bundle(b, ext)

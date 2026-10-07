@@ -1,8 +1,10 @@
 """Round 5: the placement extension of a bundle (DECISION_RULE.md of this folder: D5, D11; §4 item 3; §5 items 4 and 5;
 §10 list A item 4).
 
-  extend(bundle, placement)               D5: post_Q (a new dict), stack_Q, F_Q, B'_Q and its per-anchor arrays, from a
-                                          freshly built round-4 bundle (r4_bundle.build_bundle) and a placement object
+  extend(bundle, placement, features=True)
+                                          D5: post_Q (a new dict), stack_Q, F_Q (only with features=True; rule §4 item
+                                          5, §6.4), B'_Q and its per-anchor arrays, from a freshly built round-4 bundle
+                                          (r4_bundle.build_bundle) and a placement object
   positive_check(bundle, ext, placement)  D5's positive check (with Q_GE, §5 item 5): booleans only
   same_as_bundle(bundle, ext)             §5 item 4's first bullet (with Q_CLIP the extension is the bundle's own stack,
                                           F and B'(A0)): booleans only
@@ -113,19 +115,23 @@ def _check_q(Q, bundle):
         raise ValueError("the placement must be NaN outside the selection rows (D4)")
 
 
-def extend(bundle, placement) -> SimpleNamespace:
+def extend(bundle, placement, features=True) -> SimpleNamespace:
     """D5 for a placement object (r5_guard.require first: a 'ge' placement is refused before release). From a freshly
     built round-4 bundle: post_Q = post_q(bundle.post, Q) (a new dict), then exactly as round 3's build_bundle forms
     its own fields,
       stack = common.grouping_stack(post_Q, ep, A0)                       {d: (n, 3, 13) float32}
-      F     = rb_eval.seed42_features(ns(ctx, post_Q), A0)[0]             {c: (n, 18) float64}
+      F     = rb_eval.seed42_features(ns(ctx, post_Q), A0)[0]             {c: (n, 18) float64}   (features=True only)
       Bp    = crossfit_condition_free(ctx.cos, t_n1u, uniform_probe_scores(post_Q, ep, A0), ctx.parity)[0]
       pBp   = per_anchor(Bp)
-    Asserted: the image and caption slices of stack and columns 6 to 17 of F equal the bundle's exactly; Delta^b =
-    -Delta^a; Bp condition-free with condition gain 0 on every episode; round 3's and round 4's fields, the whole of
-    bundle.post, _HEADS and the shared identities unchanged. -> SimpleNamespace(kind, placement, placement_sha256,
-    seed, smoke, n, stack, F, Bp, pBp, Bp_picks, checks)."""
+    features=False (rule §4 items 3 and 5, §6.4: on a test seed F_G is computed only if G-TF is carried; stack_G and
+    B'_G always): F is None and seed42_features is never called on post_Q; G-TF refuses such an extension.
+    Asserted: the image and caption slices of stack (and, with F, columns 6 to 17 of F) equal the bundle's exactly;
+    Delta^b = -Delta^a; Bp condition-free with condition gain 0 on every episode; round 3's and round 4's fields, the
+    whole of bundle.post, _HEADS and the shared identities unchanged. -> SimpleNamespace(kind, placement,
+    placement_sha256, seed, smoke, n, stack, F (None without features), Bp, pBp, Bp_picks, checks, from_cache)."""
     R5G.require(placement, "r5_bundle.extend")
+    if not isinstance(features, bool):
+        raise ValueError("features must be True or False")
     _check_bundle(bundle, "r5_bundle.extend")
     Q = placement.Q
     _check_q(Q, bundle)
@@ -134,10 +140,12 @@ def extend(bundle, placement) -> SimpleNamespace:
     pq = post_q(bundle.post, Q)
     if tuple(pq) != A0 or pq is bundle.post or pq["affect"] is bundle.post["affect"]:
         raise AssertionError("post_Q must be a new dict in A0 order (D5)")
-    checks = {"post_Q_new_dict_in_A0_order": True}
+    checks = {"post_Q_new_dict_in_A0_order": True, "F_Q_computed": features}
     stack = C.grouping_stack(pq, ep, A0)
-    F, fchecks = rbe.seed42_features(SimpleNamespace(ctx=ctx, post=pq), A0)
-    checks.update({f"F_{k}": v for k, v in fchecks.items()})
+    F = None
+    if features:
+        F, fchecks = rbe.seed42_features(SimpleNamespace(ctx=ctx, post=pq), A0)
+        checks.update({f"F_{k}": v for k, v in fchecks.items()})
     Bp, Bp_picks = crossfit_condition_free(ctx.cos, bundle.t_n1u, uniform_probe_scores(pq, ep, A0), ctx.parity)
     pBp = per_anchor(Bp)
     del pq
@@ -149,8 +157,14 @@ def extend(bundle, placement) -> SimpleNamespace:
                           checks=checks, from_cache=False)
     checks.update(validate_ext(ext))
     checks.update(check_pair(bundle, ext))
-    log(f"{placement.kind} extension done: stack {tuple(stack['i2t'].shape)}, F {tuple(F['a'].shape)}")
+    log(f"{placement.kind} extension done: stack {tuple(stack['i2t'].shape)}, "
+        f"F {tuple(F['a'].shape) if features else 'not computed'}")
     return ext
+
+
+def has_features(ext) -> bool:
+    """The extension carries F_Q (extend(..., features=True))."""
+    return getattr(ext, "F", None) is not None
 
 
 # ---------------------------------------------------------------- the extension's guard and invariants
@@ -166,9 +180,9 @@ def require_ext(ext, what):
 
 
 def validate_ext(ext) -> dict:
-    """Shapes, dtypes and D5's identities of an extension: stack {d: (n, 3, 13) finite float32}; F {c: (n, 18) finite
-    float64} with Delta^b = -Delta^a for every grouping; Bp finite float32 (n, 13), condition-free; pBp = per_anchor(Bp)
-    with condition gain 0 on every episode. Raises ValueError."""
+    """Shapes, dtypes and D5's identities of an extension: stack {d: (n, 3, 13) finite float32}; F None (no features)
+    or {c: (n, 18) finite float64} with Delta^b = -Delta^a for every grouping; Bp finite float32 (n, 13),
+    condition-free; pBp = per_anchor(Bp) with condition gain 0 on every episode. Raises ValueError."""
     require_ext(ext, "r5_bundle.validate_ext")
     n = int(ext.n)
     if set(ext.stack) != set(DIRECTIONS):
@@ -177,15 +191,16 @@ def validate_ext(ext) -> dict:
         x = np.asarray(ext.stack[d])
         if x.shape != (n, len(A0), K_CAND) or x.dtype != np.float32 or not np.isfinite(x).all():
             raise ValueError(f"stack/{d}: must be finite float32 of shape ({n}, {len(A0)}, {K_CAND})")
-    if set(ext.F) != set(CONDITIONS):
-        raise ValueError("F: keys must be the conditions")
-    for c in CONDITIONS:
-        x = np.asarray(ext.F[c])
-        if x.shape != (n, N_FEATURES) or x.dtype != np.float64 or not np.isfinite(x).all():
-            raise ValueError(f"F/{c}: must be finite float64 of shape ({n}, {N_FEATURES})")
-    for j in range(len(A0)):
-        if not np.array_equal(ext.F["b"][:, 6 * j + 2], -ext.F["a"][:, 6 * j + 2]):
-            raise ValueError(f"F: Delta^b != -Delta^a for {A0[j]} (D5)")
+    if has_features(ext):
+        if not isinstance(ext.F, dict) or set(ext.F) != set(CONDITIONS):
+            raise ValueError("F: keys must be the conditions")
+        for c in CONDITIONS:
+            x = np.asarray(ext.F[c])
+            if x.shape != (n, N_FEATURES) or x.dtype != np.float64 or not np.isfinite(x).all():
+                raise ValueError(f"F/{c}: must be finite float64 of shape ({n}, {N_FEATURES})")
+        for j in range(len(A0)):
+            if not np.array_equal(ext.F["b"][:, 6 * j + 2], -ext.F["a"][:, 6 * j + 2]):
+                raise ValueError(f"F: Delta^b != -Delta^a for {A0[j]} (D5)")
     RB3._scores_ok(ext.Bp, n, "Bp")
     _require_condition_free(ext.Bp, "B'_Q")                               # ValueError
     if set(ext.pBp) != set(METRICS) or any(np.asarray(ext.pBp[m]).shape != (n,) for m in METRICS):
@@ -200,8 +215,8 @@ def validate_ext(ext) -> dict:
 
 
 def check_pair(bundle, ext) -> dict:
-    """The extension belongs to this bundle: same seed, smoke flag and n; the image and caption slices of the stack and
-    columns 6 to 17 of F equal the bundle's exactly (D5). Raises AssertionError."""
+    """The extension belongs to this bundle: same seed, smoke flag and n; the image and caption slices of the stack
+    and, when the extension carries F_Q, columns 6 to 17 of F equal the bundle's exactly (D5). Raises AssertionError."""
     require_ext(ext, "r5_bundle.check_pair")
     if (int(ext.seed), bool(ext.smoke), int(ext.n)) != (int(bundle.seed), bool(bundle.smoke), int(bundle.n)):
         raise AssertionError("the extension was built for another seed, smoke flag or episode count")
@@ -209,11 +224,19 @@ def check_pair(bundle, ext) -> dict:
         x, y = np.asarray(ext.stack[d])[:, 1:], np.asarray(bundle.stack[d])[:, 1:]
         if x.dtype != y.dtype or not np.array_equal(x, y):
             raise AssertionError(f"stack_Q/{d}: the image and caption slices differ from the bundle's (D5)")
-    for c in CONDITIONS:
-        x, y = np.asarray(ext.F[c])[:, OTHER_COLS], np.asarray(bundle.F[c])[:, OTHER_COLS]
-        if x.dtype != y.dtype or not np.array_equal(x, y):
-            raise AssertionError(f"F_Q/{c}: columns 6 to 17 differ from the bundle's (D5)")
-    return {"stack_image_caption_slices_equal_bundle": True, "F_columns_6_to_17_equal_bundle": True}
+    out = {"stack_image_caption_slices_equal_bundle": True}
+    if has_features(ext):
+        for c in CONDITIONS:
+            x, y = np.asarray(ext.F[c])[:, OTHER_COLS], np.asarray(bundle.F[c])[:, OTHER_COLS]
+            if x.dtype != y.dtype or not np.array_equal(x, y):
+                raise AssertionError(f"F_Q/{c}: columns 6 to 17 differ from the bundle's (D5)")
+        out["F_columns_6_to_17_equal_bundle"] = True
+    return out
+
+
+def _require_features(ext, what):
+    if not has_features(ext):
+        raise ValueError(f"{what} needs an extension with F_Q (extend(..., features=True))")
 
 
 def _equal(x, y) -> bool:
@@ -223,8 +246,9 @@ def _equal(x, y) -> bool:
 
 def same_as_bundle(bundle, ext) -> dict:
     """§5 item 4's first bullet: {name: bool} that stack_Q, F_Q, B'_Q and its per-anchor arrays equal the bundle's
-    stack, F, B'(A0) and pBp exactly (value, shape and dtype), and "all_pass". Booleans only."""
+    stack, F, B'(A0) and pBp exactly (value, shape and dtype), and "all_pass". Booleans only. Needs F_Q."""
     require_ext(ext, "r5_bundle.same_as_bundle")
+    _require_features(ext, "r5_bundle.same_as_bundle")
     out = {}
     for d in DIRECTIONS:
         out[f"stack.{d}"] = _equal(ext.stack[d], bundle.stack[d])
@@ -243,9 +267,11 @@ def positive_check(bundle, ext, placement) -> dict:
     and the extension was built from it; the affect slice of stack_Q equals, exactly, the independent recomputation
     einsum('nc,nkc->nk', p_img[anchor], Q[candidates]) (i2t) and einsum('nc,nkc->nk', Q[anchor], p_img[candidates])
     (t2i), p_img being the affect image posterior; it differs from the bundle's affect slice on at least one episode;
-    F_Q's columns 0 to 5 differ from F's on at least one episode; "all_pass". Booleans only; nothing is printed."""
+    F_Q's columns 0 to 5 differ from F's on at least one episode; "all_pass". Booleans only; nothing is printed.
+    Needs F_Q."""
     R5G.require(placement, "r5_bundle.positive_check")
     require_ext(ext, "r5_bundle.positive_check")
+    _require_features(ext, "r5_bundle.positive_check")
     ep = bundle.ctx.pooled
     p_img, Q = bundle.post["affect"]["img"], placement.Q
     ind = {"i2t": np.einsum("nc,nkc->nk", p_img[ep.anchor], Q[ep.candidates]),
@@ -292,7 +318,8 @@ def _check_r4_files(r4_path, r4_shas):
 
 def _ext_arrays(ext) -> dict:
     out = {f"stack__{d}": np.asarray(ext.stack[d]) for d in DIRECTIONS}
-    out.update({f"F__{c}": np.asarray(ext.F[c]) for c in CONDITIONS})
+    if has_features(ext):
+        out.update({f"F__{c}": np.asarray(ext.F[c]) for c in CONDITIONS})
     for c in CONDITIONS:
         for d in DIRECTIONS:
             out[f"Bp__{c}__{d}"] = np.asarray(ext.Bp[c][d])
@@ -301,10 +328,11 @@ def _ext_arrays(ext) -> dict:
 
 
 def save_ext(ext, r4_path, r4_shas) -> str:
-    """Write the extension (stack, F, Bp, pBp) with a JSON record to ext_path(r4_path, ext.kind), beside round 4's two
-    cache files, which must already be in this round's results/ (smoke: results/smoke/) and have the SHA-256s
-    ``r4_shas`` (r4_bundle.save_bundle's {"r3", "a1"}); the record holds both SHA-256s and the placement's, which bind
-    the three files. A non-smoke file is never overwritten. Returns the file's SHA-256."""
+    """Write the extension (stack, F if it has one, Bp, pBp) with a JSON record (has_F among it) to
+    ext_path(r4_path, ext.kind), beside round 4's two cache files, which must already be in this round's results/
+    (smoke: results/smoke/) and have the SHA-256s ``r4_shas`` (r4_bundle.save_bundle's {"r3", "a1"}); the record holds
+    both SHA-256s and the placement's, which bind the three files. A non-smoke file is never overwritten. Returns the
+    file's SHA-256."""
     require_ext(ext, "r5_bundle.save_ext")
     validate_ext(ext)
     r4_path = Path(r4_path)
@@ -316,7 +344,8 @@ def save_ext(ext, r4_path, r4_shas) -> str:
     R5.refuse_existing([pg], ext.smoke)
     arrays = _ext_arrays(ext)
     meta = {"format": EXT_FORMAT, "kind": ext.kind, "placement_sha256": ext.placement_sha256, "seed": int(ext.seed),
-            "smoke": bool(ext.smoke), "n": int(ext.n), "groupings": list(A0), "rule_sha256": R5.RULE_SHA,
+            "smoke": bool(ext.smoke), "n": int(ext.n), "has_F": has_features(ext), "groupings": list(A0),
+            "rule_sha256": R5.RULE_SHA,
             "r4_rule_sha256": R5.R4C.RULE_SHA, "r3_rule_sha256": R3.RULE_SHA,
             "r3_cache_file": r4_path.name, "r3_cache_sha256": r4_shas["r3"],
             "a1_cache_file": RB4.a1_path(r4_path).name, "a1_cache_sha256": r4_shas["a1"],
@@ -360,10 +389,14 @@ def load_ext(r4_path, r4_shas, sha256, placement, bundle) -> SimpleNamespace:
         raise SystemExit(f"{pg.name}: recorded for other round-4 cache files than {r4_path.name}")
     if (meta["seed"], meta["smoke"], meta["n"]) != (int(bundle.seed), bool(bundle.smoke), int(bundle.n)):
         raise SystemExit(f"{pg.name}: seed, smoke flag or n differ from the bundle's")
+    has_F = meta.get("has_F")
+    f_keys = {f"F__{c}" for c in CONDITIONS}
+    if not isinstance(has_F, bool) or (f_keys <= set(g)) != has_F or (has_F is False and f_keys & set(g)):
+        raise SystemExit(f"{pg.name}: the has_F record and the stored F arrays disagree")
     ext = SimpleNamespace(
         kind=meta["kind"], placement=placement, placement_sha256=meta["placement_sha256"], seed=int(meta["seed"]),
         smoke=bool(meta["smoke"]), n=int(meta["n"]), stack={d: g[f"stack__{d}"] for d in DIRECTIONS},
-        F={c: g[f"F__{c}"] for c in CONDITIONS},
+        F={c: g[f"F__{c}"] for c in CONDITIONS} if has_F else None,
         Bp={c: {d: g[f"Bp__{c}__{d}"] for d in DIRECTIONS} for c in CONDITIONS},
         pBp={m: g[f"pBp__{m}"] for m in METRICS}, Bp_picks={int(h): v for h, v in meta["Bp_picks"].items()},
         checks=meta["checks"], from_cache=True, cache_meta=meta)
@@ -373,12 +406,13 @@ def load_ext(r4_path, r4_shas, sha256, placement, bundle) -> SimpleNamespace:
 
 
 def exts_equal(a, b) -> dict:
-    """{array name: exactly equal (value, shape and dtype)} over two extensions' arrays, plus kind, placement, seed,
-    smoke, n and the B'_Q cross-fit picks."""
+    """{array name: exactly equal (value, shape and dtype)} over two extensions' arrays (the union of both sets of
+    names), plus has_F, kind, placement, seed, smoke, n and the B'_Q cross-fit picks."""
     require_ext(a, "r5_bundle.exts_equal")
     require_ext(b, "r5_bundle.exts_equal")
     x, y = _ext_arrays(a), _ext_arrays(b)
-    out = {k: bool(k in y and _equal(x[k], y[k])) for k in x}
+    out = {k: bool(k in x and k in y and _equal(x[k], y[k])) for k in sorted(set(x) | set(y))}
+    out["has_F"] = has_features(a) == has_features(b)
     out["kind_placement_seed_smoke_n"] = ((a.kind, a.placement_sha256, a.seed, a.smoke, a.n)
                                           == (b.kind, b.placement_sha256, b.seed, b.smoke, b.n))
     out["Bp_picks"] = {int(h): list(v) for h, v in a.Bp_picks.items()} == {int(h): list(v) for h, v in b.Bp_picks.items()}
