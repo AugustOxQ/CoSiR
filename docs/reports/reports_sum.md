@@ -173,6 +173,7 @@ To open an archived line: `git worktree add ../CoSiR-<name> archive/<branch>`.
 | 09-27 | [comprehensive_analysis](stage/2026-09-27_comprehensive_analysis.md) | Comprehensive buddy versus PercepT analysis on ArtELingo |
 | 09-27 | [key_advantages](stage/2026-09-27_key_advantages.md) | Key advantages of buddy-graph topic formation |
 | 10-04 | [aspect_conditioned_similarity_methods](stage/2026-10-04_aspect_conditioned_similarity_methods.md) | CoSiR v2 stage report, 2 to 4 October: the aspect-episode task, protocol and every method attempt (E1 baselines, method A and its NO-GO, A′, MLLM probes, candidates, D0, N1, N2, N6, N6c) on one either-vs-gain frontier; none beats its matched condition-free control (best condition-free score 18.34 R@1 vs RCA 13.38); the condition can be read (N6 label-free reader gain 4.41); exploratory diagnostics show the reader's aspect choice is the blocker (told partition +1.50 [1.22, 1.79] over the best condition-free score) |
+| 10-07 | [cvpr_readiness](stage/2026-10-07_cvpr_readiness.md) | CVPR readiness memo after reader-fix round 4: AFF beats every condition-free comparator on fresh ArtELingo episodes (+0.59 R@1 over B′(A0)) but the plan's K2 bar needs three datasets' held splits; a fine-tuned CLIP as a cheap extra comparator; contributions ranked (task and protocol, analysis, then a modest method); analysis plan; framing A/B/C and the user's decisions |
 
 ## weekly: weekly reports and slides
 
