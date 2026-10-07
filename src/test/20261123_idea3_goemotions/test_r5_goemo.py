@@ -83,8 +83,12 @@ def test_selection_captions_full_size_defaults():
     assert len(rows) == len(caps) == 32_413
 
 
-@pytest.mark.parametrize("mutate", ["unsorted", "duplicate", "short", "overlap_train", "overlap_held", "not_split"])
-def test_selection_row_assertions_fire(mutate):
+@pytest.mark.parametrize("mutate,msg", [
+    ("unsorted", "ascending and unique"), ("duplicate", "ascending and unique"), ("short", "selection has"),
+    ("overlap_train", "overlaps scorer_train"), ("overlap_held", "overlaps held"),
+    ("not_split", "differs from artelingo_splits")])
+def test_selection_row_assertions_fire(mutate, msg):
+    """Each case isolates one guard: splits.selection equals the mutated rows (except not_split), match= names it."""
     ctx, ann, sp, _ = synth()
     sel = ctx.selection.copy()
     if mutate == "unsorted":
@@ -99,12 +103,12 @@ def test_selection_row_assertions_fire(mutate):
     elif mutate == "overlap_held":
         sel[-1] = sp.held[3]
         sel = np.sort(sel)
-    elif mutate == "not_split":
-        sp = SimpleNamespace(**{**vars(sp), "selection": sel[::-1].copy() + 0})
+    other = sel[::-1].copy() if mutate == "not_split" else sel
+    if mutate == "not_split":
+        sel = ctx.selection.copy()
+    sp = SimpleNamespace(**{**vars(sp), "selection": other})
     ctx = SimpleNamespace(selection=sel, data=ctx.data)
-    if mutate in ("overlap_train", "overlap_held"):
-        sp = SimpleNamespace(**{**vars(sp), "selection": sel})      # isolate the disjointness assertion
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match=msg):
         G.selection_captions(ctx, annotations=ann, splits=sp, n_expected=250)
 
 
@@ -269,3 +273,14 @@ def test_token_stats():
     tok = StubTok()
     mx, over = G.token_stats(tok, ["a b", " ".join(["w"] * 70), "x"], limit=64)
     assert mx == 72 and over == 1
+
+
+def test_device_tag_cuda_branch(monkeypatch):
+    class M:
+        def parameters(self):
+            yield SimpleNamespace(device=torch.device("cuda", 1))
+    monkeypatch.setattr(torch.cuda, "get_device_name", lambda idx: f"Fake GPU {idx}")
+    assert G.device_tag((StubTok(), M())) == "cuda:1 Fake GPU 1"
+    G.assert_device((StubTok(), M()), "cuda")
+    with pytest.raises(SystemExit):
+        G.assert_device((StubTok(), M()), "cpu")
