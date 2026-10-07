@@ -5,7 +5,8 @@ session runs it for real, after GOEMO_FILE_SHA and GE_POST_SHA are committed in 
 
     cd src/test/20261123_idea3_goemotions && \\
     CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1 \\
-    /root/miniconda3/envs/CoSiR/bin/python run_r5_seed42.py [--dry | --continue-boundary <sha256> | --sensitivity]
+    /root/miniconda3/envs/CoSiR/bin/python run_r5_seed42.py \\
+        [--dry | --continue-boundary <sha256> | --diagnostics-only | --sensitivity]
 
 Every entry and resume path runs check_inputs() first (§8 T1, T3a-1): this rule's, round 4's and round 3's rule
 SHA-256, every imported module file of rounds 1 to 4 (r5_common.assert_modules), every input this runner reads (D12 and
@@ -25,7 +26,9 @@ stops the run (exit 1) with nothing further computed or written (§5, §9):
   4. item 4: the CLIP placement (r5_guard.clip_from_bundle) through this round's code: extension, G-T's and G-TF's
      reader outputs, tau' = tau, gates, families, development records (bar comparator B'_Q, D10 true, Delta_k = 0), the
      pair-lift code against told_oracle.json and the AUC code against 0.7870951145887375;
-  then results/regression_check.json, and the guard released from it (r5_guard.release; D11). Only then is the GE
+  items 1 and 4 must record exactly the pinned comparison names (PINNED_NAMES; a missing or extra name fails the
+  item before any release); then results/regression_check.json, and the guard released from it (r5_guard.release;
+  D11). Only then is the GE
   placement minted (r5_guard.ge_from_file) and the steps of POST_RELEASE run:
   5. D5's positive check (booleans); item 5: stack_G, F_G, B'_G, G-T and G-TF (candidate, run_candidate with D7's
      check, and this runner's own check of the gates against D6 with an independent numpy.percentile tau'), their
@@ -38,13 +41,21 @@ stops the run (exit 1) with nothing further computed or written (§5, §9):
 
 --continue-boundary <SHA-256 of boundary_seed42.json>: after the boundary was reported to the user. The input check,
 the given SHA-256 and the recorded SHA-256s of regression_check.json, seed42_arrays.npz and dev_seed42.json; the guard
-released from regression_check.json; the carry recomputed from dev_seed42.json must equal the boundary record's;
-carry.json and the console line; then the seed-42 state is rebuilt, checked against seed42_arrays.npz and tau', and the
-diagnostics are written.
+released from regression_check.json; the carry recomputed from dev_seed42.json must equal the boundary record's; the
+seed-42 state rebuilt and checked against seed42_arrays.npz and tau' (a refusal writes nothing); carry.json and the
+console line; the diagnostics.
+
+--diagnostics-only: after carry.json exists and diagnostics_seed42.json does not (the diagnostics crashed, or a run
+stopped after the carry). The input check; regression_check.json, dev_seed42.json and seed42_arrays.npz by the SHA-256s
+carry.json records; the guard released; the state rebuilt and checked against seed42_arrays.npz and tau'; the
+diagnostics written once.
 
 --sensitivity (§6.1): refused unless results/carry.json (this rule's SHA-256) names a carried candidate and the run log
-20261123_idea3_goemotions_log.md holds the phase-1 agreement record: a line with "phase-1 agreement" and the SHA-256 of
-results/carry.json, without "pending" (the CARRY console line says "pending the phase-1 agreement" and never counts).
+20261123_idea3_goemotions_log.md holds the phase-1 agreement record in exactly this format:
+    | HH:MM | phase-1 agreement reached: carry.json <64-hex SHA-256 of results/carry.json> |
+(found by AGREEMENT_RE; a line holding "not", "fail", "disagree" or "pending" never counts, so the CARRY console line,
+which says "pending the phase-1 agreement", never opens the gate). regression_check.json's SHA-256 must equal
+carry.json's before the release.
 The nine checks of §6.5 in its order (SENS_ORDER) through round 3's r3_stats.sensitivity on the saved seed-42 arrays
 (SHA-256s chained from carry.json) -> results/sensitivity.json and the console.
 
@@ -54,6 +65,9 @@ regression record goes to results/smoke/regression_check_dry.json and the run st
 counts and file names only; every line holding a decimal number is withheld and fails the dry run. A passing dry run
 deletes its regression record after checking it and keeps results/smoke/seed42_dry.json (booleans and counts).
 Non-smoke outputs are never overwritten.
+
+Exit codes (main): 0 done; 1 a failed regression item or a failed dry run; 3 stopped at a boundary; 4 an uncaught
+exception (SystemExit included) after the guard was released.
 """
 import argparse
 import contextlib
@@ -124,6 +138,117 @@ SENS_ORDER = ("r1_vs_cosine", "r1_vs_rca", "r1_vs_B", "r1_vs_Bprime_A0", "r1_vs_
               "gain_statistic", "gain_vs_rca", "r1_vs_AFF")          # rule §6.5's nine checks, its order
 # any decimal number, one-decimal numbers (0.5, 19.1), ".5" and scientific notation ("5e-03") included (round 4's)
 LEAK = re.compile(r"\.\d|\d[eE][-+]?\d")
+
+# The comparison names items 1 and 4 record on seed 42 (names, not values): taken from the passing --dry run of
+# 2026-10-07 17:30 (183 and 135 comparisons), with item 4's tie-order row replaced in fix round 1. The real run stops
+# before the release if an item records a missing or an extra name; the dry run fails on the same check.
+PINNED_ITEM1 = (
+    'r3.episodes.aspect_a', 'r3.episodes.aspect_b', 'r3.episodes.anchor', 'r3.episodes.candidates',
+    'r3.episodes.pairs_a_img', 'r3.episodes.pairs_a_txt', 'r3.episodes.pairs_b_img', 'r3.episodes.pairs_b_txt',
+    'r3.episodes.sha256', 'r3.anchor', 'r3.parity', 'r3.anchor_paintings', 'r3.pair_index', 'r3.cos.a.i2t',
+    'r3.B.a.i2t', 'r3.Bprime_A0.a.i2t', 'r3.T_N1u.a.i2t', 'r3.cos.a.t2i', 'r3.B.a.t2i', 'r3.Bprime_A0.a.t2i',
+    'r3.T_N1u.a.t2i', 'r3.cos.b.i2t', 'r3.B.b.i2t', 'r3.Bprime_A0.b.i2t', 'r3.T_N1u.b.i2t', 'r3.cos.b.t2i',
+    'r3.B.b.t2i', 'r3.Bprime_A0.b.t2i', 'r3.T_N1u.b.t2i', 'r3.pB.r1', 'r3.pBprime_A0.r1', 'r3.pB.gain',
+    'r3.pBprime_A0.gain', 'r3.pB.other', 'r3.pBprime_A0.other', 'r3.pB.swap', 'r3.pBprime_A0.swap',
+    'r3.pB.strict', 'r3.pBprime_A0.strict', 'r3.post.affect.img', 'r3.post.affect.txt', 'r3.post.image.img',
+    'r3.post.image.txt', 'r3.post.caption.img', 'r3.post.caption.txt', 'r3.stack.i2t', 'r3.stack.t2i',
+    'r3.features.a', 'r3.features.b', 'r3.affect_head', 'r3.round1_load_bundle_own_checks',
+    'r3.external_per_anchor_seed42_aligned', 'r3.redundancy.affect.i2t_equals_rule',
+    'r3.redundancy.affect.t2i_equals_rule', 'r3.redundancy.image.i2t_equals_rule',
+    'r3.redundancy.image.t2i_equals_rule', 'r3.redundancy.caption.i2t_equals_rule',
+    'r3.redundancy.caption.t2i_equals_rule', 'r3.redundancy.affect_least_redundant_both_directions',
+    'a1.post.csd.img', 'a1.post.csd.txt', 'a1.Bprime_A1.a.i2t', 'a1.Bprime_A1.a.t2i', 'a1.Bprime_A1.b.i2t',
+    'a1.Bprime_A1.b.t2i', 'a1.pBprime_A1.r1', 'a1.pBprime_A1.gain', 'a1.pBprime_A1.other', 'a1.pBprime_A1.swap',
+    'a1.pBprime_A1.strict', 'a1.features_A1.a', 'a1.features_A1.a.first18_equal_A0', 'a1.features_A1.b',
+    'a1.features_A1.b.first18_equal_A0', 'a1.v_equals_round1_image_S_C', 'a1.round1_load_bundle_own_checks',
+    'a1.Bprime_A1_mean_r1_equals_rule', 'D7.affect.i2t', 'D7.affect.t2i', 'D7.image.i2t', 'D7.image.t2i',
+    'D7.caption.i2t', 'D7.caption.t2i', 'D7.affect_least_redundant_both_directions', 'Bprime_A1_mean_r1',
+    'external_cosine_rca_loaded', 'R1.T__a__i2t', 'R1.T__a__t2i', 'R1.margin__a', 'R1.pick__a', 'R1.T__b__i2t',
+    'R1.T__b__t2i', 'R1.margin__b', 'R1.pick__b', 'R1.n_margins', 'R1.tau_recomputed_equals_rc_tau',
+    'R1.stored_extra_taus_equal_rc_tau', 'R1.gates__a', 'R1.gates__b', 'R1.fused_cells', 'R1.cf_cells',
+    'R1.sigma_star', 'R1.cell_116_is_the_rule_text', 'R1.cell_119_is_the_rule_text',
+    'R1.cell_58_is_the_rule_text', 'R1.cell_123_is_the_rule_text', 'R1.fused__r1', 'R1.cf__r1',
+    'R1.fused__gain', 'R1.cf__gain', 'R1.fused__other', 'R1.cf__other', 'R1.fused__swap', 'R1.cf__swap',
+    'R1.fused__strict', 'R1.cf__strict', 'R1.cf_gain_exactly_0', 'R1.bar_v', 'R1.comparator', 'R1.fused_r1',
+    'R1.cf_r1', 'R1.bar_margin', 'R1.gain_statistic', 'R1.bar_margin_equals_stored_json',
+    'R1.gain_statistic_equals_stored_json', 'AFF.r5_constants_equal_round3s', 'AFF.r5_cells_equal_round3s',
+    'AFF.rule_constants_equal_bs_04_readers.json', 'AFF.rule_constants_equal_bs_05_aff.json', 'AFF.fused_cells',
+    'AFF.cf_cells', 'AFF.sigma_star', 'AFF.cell_39_is_the_rule_text', 'AFF.cell_119_is_the_rule_text',
+    'AFF.cell_149_is_the_rule_text', 'AFF.cell_10_is_the_rule_text', 'AFF.cf_gain_exactly_0', 'AFF.fused_r1',
+    'AFF.cf_r1', 'AFF.comparator', 'AFF.bar_margin', 'AFF.margin_vs_counterpart', 'AFF.gain_statistic',
+    'AFF.either_vs_counterpart', 'AFF.per_pair_bar_margin.emotion__style',
+    'AFF.per_pair_bar_margin.emotion__genre', 'AFF.per_pair_bar_margin.style__genre',
+    'AFF.aff_minus_r1_fused_r1', 'AFF.aff_minus_r1_bar_margin', 'AFF.tau0_open_count.a',
+    'AFF.tau0_open_count.b', 'round4_arrays.r1_fused__r1', 'round4_arrays.r1_fused__gain',
+    'round4_arrays.r1_fused__other', 'round4_arrays.r1_fused__swap', 'round4_arrays.r1_fused__strict',
+    'round4_arrays.r1_cf__r1', 'round4_arrays.r1_cf__gain', 'round4_arrays.r1_cf__other',
+    'round4_arrays.r1_cf__swap', 'round4_arrays.r1_cf__strict', 'round4_arrays.r1_gate__a',
+    'round4_arrays.r1_gate__b', 'round4_arrays.r1_fused_cells', 'round4_arrays.r1_cf_cells',
+    'round4_arrays.r1_sigma', 'round4_arrays.aff_fused__r1', 'round4_arrays.aff_fused__gain',
+    'round4_arrays.aff_fused__other', 'round4_arrays.aff_fused__swap', 'round4_arrays.aff_fused__strict',
+    'round4_arrays.aff_cf__r1', 'round4_arrays.aff_cf__gain', 'round4_arrays.aff_cf__other',
+    'round4_arrays.aff_cf__swap', 'round4_arrays.aff_cf__strict', 'round4_arrays.aff_gate__a',
+    'round4_arrays.aff_gate__b', 'round4_arrays.aff_fused_cells', 'round4_arrays.aff_cf_cells',
+    'round4_arrays.aff_sigma', 'AFF_minus_Bprime_A1_constant_equals_round4_dev_seed42', 'AFF_minus_Bprime_A1',
+)
+
+PINNED_ITEM4 = (
+    'clip_placement_kind', 'clip_ext.stack.i2t', 'clip_ext.stack.t2i', 'clip_ext.F.a', 'clip_ext.Bp.a.i2t',
+    'clip_ext.Bp.a.t2i', 'clip_ext.F.b', 'clip_ext.Bp.b.i2t', 'clip_ext.Bp.b.t2i', 'clip_ext.pBp.r1',
+    'clip_ext.pBp.gain', 'clip_ext.pBp.other', 'clip_ext.pBp.swap', 'clip_ext.pBp.strict', 'clip_ext.all_pass',
+    'G-T.P.a_equals_AFF', 'G-T.m.a_equals_AFF', 'G-T.pick.a_equals_AFF', 'G-T.T.a.i2t_equals_AFF',
+    'G-T.T.a.t2i_equals_AFF', 'G-T.P.b_equals_AFF', 'G-T.m.b_equals_AFF', 'G-T.pick.b_equals_AFF',
+    'G-T.T.b.i2t_equals_AFF', 'G-T.T.b.t2i_equals_AFF', 'G-T.taus_equal_D1_each_element',
+    'G-T.gate.tau0.a_equals_AFF', 'G-T.gate.tau0.b_equals_AFF', 'G-T.gate.tau1.a_equals_AFF',
+    'G-T.gate.tau1.b_equals_AFF', 'G-T.gate.tau2.a_equals_AFF', 'G-T.gate.tau2.b_equals_AFF',
+    'G-T.gate.tau3.a_equals_AFF', 'G-T.gate.tau3.b_equals_AFF', 'G-T.fused_cells', 'G-T.cf_cells',
+    'G-T.sigma_star', 'G-T.fused__r1_equals_item1', 'G-T.fused__r1_equals_round4_aff',
+    'G-T.fused__gain_equals_item1', 'G-T.fused__gain_equals_round4_aff', 'G-T.fused__other_equals_item1',
+    'G-T.fused__other_equals_round4_aff', 'G-T.fused__swap_equals_item1', 'G-T.fused__swap_equals_round4_aff',
+    'G-T.fused__strict_equals_item1', 'G-T.fused__strict_equals_round4_aff', 'G-T.cf__r1_equals_item1',
+    'G-T.cf__r1_equals_round4_aff', 'G-T.cf__gain_equals_item1', 'G-T.cf__gain_equals_round4_aff',
+    'G-T.cf__other_equals_item1', 'G-T.cf__other_equals_round4_aff', 'G-T.cf__swap_equals_item1',
+    'G-T.cf__swap_equals_round4_aff', 'G-T.cf__strict_equals_item1', 'G-T.cf__strict_equals_round4_aff',
+    'G-T.dev.fused_r1', 'G-T.dev.cf_r1', 'G-T.dev.bar_comparator_is_Bprime_Q',
+    'G-T.dev.Bprime_Q_mean_equals_Bprime_A0_mean', 'G-T.dev.Bprime_Q_has_the_largest_comparator_mean',
+    'G-T.dev.bar_margin', 'G-T.dev.margin_vs_counterpart', 'G-T.dev.gain_statistic', 'G-T.dev.either_change',
+    'G-T.dev.per_pair_bar_margin.emotion__style', 'G-T.dev.per_pair_bar_margin.emotion__genre',
+    'G-T.dev.per_pair_bar_margin.style__genre', 'G-T.dev.d10_all_three_clauses',
+    'G-T.dev.delta_int_zero_against_AFF', 'G-T.dev.beside_AFF_minus_Bprime_A1',
+    'G-T.dev.Bprime_Q_minus_Bprime_A0_zero', 'G-TF.P.a_equals_AFF', 'G-TF.m.a_equals_AFF',
+    'G-TF.pick.a_equals_AFF', 'G-TF.T.a.i2t_equals_AFF', 'G-TF.T.a.t2i_equals_AFF', 'G-TF.P.b_equals_AFF',
+    'G-TF.m.b_equals_AFF', 'G-TF.pick.b_equals_AFF', 'G-TF.T.b.i2t_equals_AFF', 'G-TF.T.b.t2i_equals_AFF',
+    'G-TF.taus_equal_D1_each_element', 'G-TF.gate.tau0.a_equals_AFF', 'G-TF.gate.tau0.b_equals_AFF',
+    'G-TF.gate.tau1.a_equals_AFF', 'G-TF.gate.tau1.b_equals_AFF', 'G-TF.gate.tau2.a_equals_AFF',
+    'G-TF.gate.tau2.b_equals_AFF', 'G-TF.gate.tau3.a_equals_AFF', 'G-TF.gate.tau3.b_equals_AFF',
+    'G-TF.fused_cells', 'G-TF.cf_cells', 'G-TF.sigma_star', 'G-TF.fused__r1_equals_item1',
+    'G-TF.fused__r1_equals_round4_aff', 'G-TF.fused__gain_equals_item1', 'G-TF.fused__gain_equals_round4_aff',
+    'G-TF.fused__other_equals_item1', 'G-TF.fused__other_equals_round4_aff', 'G-TF.fused__swap_equals_item1',
+    'G-TF.fused__swap_equals_round4_aff', 'G-TF.fused__strict_equals_item1',
+    'G-TF.fused__strict_equals_round4_aff', 'G-TF.cf__r1_equals_item1', 'G-TF.cf__r1_equals_round4_aff',
+    'G-TF.cf__gain_equals_item1', 'G-TF.cf__gain_equals_round4_aff', 'G-TF.cf__other_equals_item1',
+    'G-TF.cf__other_equals_round4_aff', 'G-TF.cf__swap_equals_item1', 'G-TF.cf__swap_equals_round4_aff',
+    'G-TF.cf__strict_equals_item1', 'G-TF.cf__strict_equals_round4_aff', 'G-TF.dev.fused_r1', 'G-TF.dev.cf_r1',
+    'G-TF.dev.bar_comparator_is_Bprime_Q', 'G-TF.dev.Bprime_Q_mean_equals_Bprime_A0_mean',
+    'G-TF.dev.Bprime_Q_has_the_largest_comparator_mean', 'G-TF.dev.bar_margin',
+    'G-TF.dev.margin_vs_counterpart', 'G-TF.dev.gain_statistic', 'G-TF.dev.either_change',
+    'G-TF.dev.per_pair_bar_margin.emotion__style', 'G-TF.dev.per_pair_bar_margin.emotion__genre',
+    'G-TF.dev.per_pair_bar_margin.style__genre', 'G-TF.dev.d10_all_three_clauses',
+    'G-TF.dev.delta_int_zero_against_AFF', 'G-TF.dev.beside_AFF_minus_Bprime_A1',
+    'G-TF.dev.Bprime_Q_minus_Bprime_A0_zero', 'pair_lift.heads_equal_told_oracle_arms_L_pairs_heads',
+    'pair_lift.ratios_equal_rule', 'auc_constant_equals_bs_07_detector', 'auc_emotion_AFF',
+)
+
+PINNED_NAMES = {1: PINNED_ITEM1, 4: PINNED_ITEM4}
+PIN_ROW = "comparison_names_equal_the_pin"
+
+
+def pinned_names_check(rec, item) -> dict:
+    """{"missing": [...], "extra": [...]} of the item's comparison names against PINNED_NAMES (the pin row itself and
+    nothing else excluded); both empty when the set is the pinned one."""
+    got = {r["name"] for r in rec.rows if r["item"] == item and r["name"] != PIN_ROW}
+    want = set(PINNED_NAMES[item])
+    return {"missing": sorted(want - got), "extra": sorted(got - want)}
 
 
 class Stop(Exception):
@@ -647,8 +772,8 @@ def item4(rec, st):
         rec.add(4, f"{name}.dev.bar_comparator_is_Bprime_Q", "Bprime_G", dr["bar_comparator"])
         rec.add(4, f"{name}.dev.Bprime_Q_mean_equals_Bprime_A0_mean", True,
                 dr["comparator_means"]["Bprime_G"] == dr["comparator_means"]["Bprime_A0"])
-        rec.add(4, f"{name}.dev.Bprime_Q_first_in_D8_tie_order", "Bprime_G",
-                R5S.comparators(b.pB, b.pBp, ext.pBp, fam["cf"])[0][0])
+        rec.add(4, f"{name}.dev.Bprime_Q_has_the_largest_comparator_mean", True,
+                dr["comparator_means"]["Bprime_G"] == max(dr["comparator_means"].values()))
         rec.add(4, f"{name}.dev.bar_margin", list(A["bar"]), _ci3(dr["bar_margin"]))
         rec.add(4, f"{name}.dev.margin_vs_counterpart", list(A["margin"]), _ci3(dr["margin_vs_counterpart"]))
         rec.add(4, f"{name}.dev.gain_statistic", list(A["gain_statistic"]), _ci3(dr["gain_statistic"]))
@@ -967,14 +1092,51 @@ def continue_boundary(sha) -> int:
     cy = R5S.carry(recs, R5.sha256_file(P["dev"]))
     if C.jsonable(cy) != bnd["carry_by_the_stated_inequalities"]:
         raise SystemExit("the carry recomputed from dev_seed42.json differs from the boundary record's; refusing")
+    st, dv = rebuild_and_verify(P, ge, dev)               # before carry.json: a refused rebuild records nothing
     ack = {"boundary_seed42_sha256": sha, "boundaries": bnd["boundaries"], "acknowledged_amsterdam": R5.now_ams()}
     finish_carry(P, cy, ge, ack)
+    diag = diagnostics(st, dv, recs, ge, P["carry"])
+    write_ge_json(P["diag"], diag, ge)
+    print(f"{P['diag'].name} written", flush=True)
+    return 0
+
+
+def rebuild_and_verify(P, ge, dev):
+    """The seed-42 state rebuilt in this process (rebuild_state, develop_core with Q_GE) and checked against the saved
+    files: every key of seed42_arrays.npz exactly (verify_saved) and tau' equal to dev_seed42.json's. -> (st, dv)."""
+    R5G.require(ge, "run_r5_seed42.rebuild_and_verify")
     st = rebuild_state()
     dv = develop_core(st, ge)
     verify_saved(st, dv, P)
     if list(dv["cand"]["G-TF"]["taus"]) != dev["tau_prime"]:
         raise SystemExit("the rebuilt tau' differs from dev_seed42.json's; refusing")
-    diag = diagnostics(st, dv, recs, ge, P["carry"])
+    return st, dv
+
+
+def diagnostics_only() -> int:
+    """--diagnostics-only: the measured diagnostics after results/carry.json exists and diagnostics_seed42.json does
+    not (a crash after the carry was recorded, or a continuation that stopped). The input check; the SHA chain from
+    carry.json (regression_check.json, dev_seed42.json, seed42_arrays.npz); the guard released from
+    regression_check.json; the state rebuilt and checked against seed42_arrays.npz exactly; the diagnostics, once."""
+    check_inputs(False)                                  # the full input check first (T3a-1)
+    P = paths(False)
+    missing = [P[k].name for k in ("reg", "arr", "dev", "carry") if not P[k].exists()]
+    if missing:
+        raise SystemExit(f"--diagnostics-only: {missing} missing; nothing to resume")
+    R5.refuse_existing([P["diag"]], False)
+    cy = R5G.require_carry(P["carry"])                   # this rule's SHA-256, else GuardError
+    if R5.sha256_file(P["reg"]) != cy.get("regression_check_sha256"):
+        raise SystemExit("regression_check.json: SHA-256 differs from carry.json's; refusing")
+    if R5.sha256_file(P["dev"]) != cy.get("dev_seed42_sha256"):
+        raise SystemExit("dev_seed42.json: SHA-256 differs from carry.json's; refusing")
+    dev = json.loads(P["dev"].read_text())
+    arr_sha = R5.sha256_file(P["arr"])
+    if arr_sha != cy.get("seed42_arrays_sha256") or arr_sha != dev.get("seed42_arrays_sha256"):
+        raise SystemExit("seed42_arrays.npz: SHA-256 differs from carry.json's or dev_seed42.json's; refusing")
+    R5G.release(P["reg"])                                # only a record of items 1 to 4 passed releases
+    ge = R5G.ge_from_file(ge_npz())
+    st, dv = rebuild_and_verify(P, ge, dev)
+    diag = diagnostics(st, dv, dev["candidates"], ge, P["carry"])
     write_ge_json(P["diag"], diag, ge)
     print(f"{P['diag'].name} written", flush=True)
     return 0
@@ -982,16 +1144,33 @@ def continue_boundary(sha) -> int:
 
 # ---------------------------------------------------------------- --sensitivity (§6.1)
 
+# the phase-1 agreement record (rule §6.1, §8): the controller logs exactly
+#     | HH:MM | phase-1 agreement reached: carry.json <64-hex SHA-256 of results/carry.json> |
+AGREEMENT_RE = re.compile(r"phase-1 agreement reached: carry\.json ([0-9a-f]{64})(?![0-9A-Fa-f])")
+AGREEMENT_FORBIDDEN = ("not", "fail", "disagree", "pending")
+
+
 def agreement_line(carry_sha) -> str:
-    """The phase-1 agreement record of this round's run log: a line holding 'phase-1 agreement' and the SHA-256 of
-    results/carry.json, without 'pending' (the CARRY/KILL console line never counts). The last such line."""
+    """The phase-1 agreement record of this round's run log, in exactly this format:
+
+        | HH:MM | phase-1 agreement reached: carry.json <64-hex SHA-256 of results/carry.json> |
+
+    A line counts only if AGREEMENT_RE ("phase-1 agreement reached: carry.json <sha>") finds the SHA-256 of the current
+    results/carry.json in it and the line holds none of "not", "fail", "disagree" or "pending" (case-insensitive; the
+    CARRY/KILL console line says "pending the phase-1 agreement" and never counts). Returns the last such line."""
     text = Path(RUN_LOG).read_text() if Path(RUN_LOG).is_file() else ""
-    hits = [ln for ln in text.splitlines()
-            if "phase-1 agreement" in ln.lower() and "pending" not in ln.lower() and carry_sha in ln]
+    hits = []
+    for ln in text.splitlines():
+        m = AGREEMENT_RE.search(ln)
+        if m is None or m.group(1) != carry_sha:
+            continue
+        if any(w in ln.lower() for w in AGREEMENT_FORBIDDEN):
+            continue
+        hits.append(ln)
     if not hits:
-        raise SystemExit("--sensitivity: the run log holds no phase-1 agreement record for this carry (a line with "
-                         f"'phase-1 agreement' and carry.json's SHA-256 {carry_sha}, not 'pending'); refused "
-                         "(rule §6.1, §8)")
+        raise SystemExit("--sensitivity: the run log holds no phase-1 agreement record for this carry; the line must "
+                         f"read '| HH:MM | phase-1 agreement reached: carry.json {carry_sha} |' (without 'not', "
+                         "'fail', 'disagree' or 'pending'); refused (rule §6.1, §8)")
     return hits[-1]
 
 
@@ -1032,6 +1211,8 @@ def sensitivity() -> int:
     carry_sha = R5.sha256_file(P["carry"])
     line = agreement_line(carry_sha)
     R5.refuse_existing([P["sens"]], False)
+    if R5.sha256_file(P["reg"]) != cy.get("regression_check_sha256"):
+        raise SystemExit("regression_check.json: SHA-256 differs from carry.json's; refusing")
     R5G.release(P["reg"])
     ge = R5G.ge_from_file(ge_npz())
     R5G.require(ge, "run_r5_seed42.sensitivity")
@@ -1139,6 +1320,8 @@ def dry_finish(P, rec, order, t0, before, counter) -> int:
     except Exception:                                    # noqa: BLE001  a missing or malformed record is a failure
         ok["regression_record"] = False
     ok["items_1_and_4_passed"] = items.get("1") == "pass" and items.get("4") == "pass"
+    ok["comparison_names_pinned"] = all(pinned_names_check(rec, k) == {"missing": [], "extra": []}
+                                        for k in PINNED_NAMES)
     ok["guard_closed"] = not R5G.is_released()
     ok["no_non_smoke_output"] = _non_smoke_listing() == before
     ok["console_holds_no_decimal_number"] = counter[0] == 0
@@ -1202,6 +1385,9 @@ def _run(dry, counter) -> int:
                 fn(rec, st)
             except Exception as e:                       # noqa: BLE001  an exception is a failed comparison
                 rec.error(k, e, verbose=not dry)
+            if not dry and k in PINNED_NAMES:            # the real run: the pinned names, before any release
+                pin = pinned_names_check(rec, k)
+                rec.add(k, PIN_ROW, {"missing": [], "extra": []}, pin)
             order.mark(k, rec.require(k, allow_skip=dry))
     except Stop as e:
         k = int(e.args[0])
@@ -1231,19 +1417,39 @@ def _run(dry, counter) -> int:
     return rc
 
 
+EXIT_OK, EXIT_REGRESSION, EXIT_BOUNDARY, EXIT_AFTER_RELEASE = 0, 1, 3, 4
+
+
 def main(argv=None):
+    """Exit codes: 0 done; 1 a failed regression item (or a failed dry run); 3 stopped at a rule §8 boundary; 4 an
+    uncaught exception (SystemExit included) after the guard was released. Before the release an exception propagates
+    with Python's own code."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--dry", action="store_true", help="items 1 to 4 with the CLIP placement; stops at the guard")
     g.add_argument("--continue-boundary", metavar="SHA256", default=None,
                    help="after a rule §8 boundary was reported to the user: the SHA-256 of boundary_seed42.json")
+    g.add_argument("--diagnostics-only", action="store_true",
+                   help="the measured diagnostics after carry.json exists and diagnostics_seed42.json does not")
     g.add_argument("--sensitivity", action="store_true", help="rule §6.1, after the carry and the phase-1 agreement")
     args = ap.parse_args(argv)
-    if args.continue_boundary is not None:
-        sys.exit(continue_boundary(args.continue_boundary))
-    if args.sensitivity:
-        sys.exit(sensitivity())
-    sys.exit(run(args.dry))
+    try:
+        if args.continue_boundary is not None:
+            rc = continue_boundary(args.continue_boundary)
+        elif args.diagnostics_only:
+            rc = diagnostics_only()
+        elif args.sensitivity:
+            rc = sensitivity()
+        else:
+            rc = run(args.dry)
+    except (Exception, SystemExit) as e:                 # noqa: BLE001
+        if not R5G.is_released():
+            raise
+        traceback.print_exc()
+        print(f"EXIT {EXIT_AFTER_RELEASE}: {type(e).__name__} after the guard was released; the files written so far "
+              f"stay, nothing is overwritten; trace the cause (rule §9)", flush=True)
+        sys.exit(EXIT_AFTER_RELEASE)
+    sys.exit(rc)
 
 
 if __name__ == "__main__":

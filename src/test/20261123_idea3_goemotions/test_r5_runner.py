@@ -47,6 +47,7 @@ R3, RB3, RB4, RF3, RS3, C = R5.R3, R5.RB3, R5.RB4, R5.RF3, R5.RS3, R5.C
 TAUS = tuple(R3.TAUS)
 # round 4's leak pattern: any decimal number, one-decimal numbers included (0.5, 19.1, .5), and scientific notation
 LEAK = re.compile(r"\.\d|\d[eE][-+]?\d")
+REAL_PINNED = {k: tuple(v) for k, v in S.PINNED_NAMES.items()}   # the runner's pin, before any test patches it
 REAL_OUT = ("regression_check.json", "seed42_arrays.npz", "dev_seed42.json", "boundary_seed42.json", "carry.json",
             "diagnostics_seed42.json", "sensitivity.json")
 
@@ -63,6 +64,7 @@ def isolate(tmp_path, monkeypatch):
     monkeypatch.setattr(R5, "SMOKE", tmp_path / "results" / "smoke")
     monkeypatch.setattr(R5, "CACHE", tmp_path / "cache")
     monkeypatch.setattr(S, "RUN_LOG", tmp_path / "run_log.md")
+    monkeypatch.setattr(S, "PINNED_NAMES", {1: ("stub_comparison_1",), 4: ("stub_comparison_4",)})   # stub items
     (tmp_path / "cache").mkdir()
     yield
     RB3._HEADS.clear()
@@ -453,6 +455,15 @@ def test_the_development_step_stores_and_checks_the_gates_it_used(tmp_path, monk
     keys = [k for k in diag if k[:2] in ("a_", "b_", "c_", "d_")]
     assert keys[:4] == ["a_detection_auc", "b_delta_affect_auc", "c_pair_lift", "d_sharper_term"]   # the rule's order
     assert diag["carry_sha256"] == R5.sha256_file(P["carry"])
+    # diagnostic (d) describes G-TF's chosen cells with tau' and AFF's and G-T's with tau (fix round 1: the
+    # reviewer's mutant passing TAUS for G-TF survived every earlier test)
+    assert all(t != u for t, u in zip(tp, TAUS))
+    for who, taus in (("AFF", TAUS), ("G-T", TAUS), ("G-TF", tp)):
+        cells = diag["d_sharper_term"][who]["cells"]
+        for part in ("fused", "cf"):
+            for half in ("0", "1"):
+                cell = cells[part][half]
+                assert cell["tau"] == taus[cell["tau_index"]], (who, part, half)
 
 
 def test_a_mutated_tau_prime_in_the_shared_function_fires_the_runners_own_check(tmp_path, monkeypatch):
@@ -569,7 +580,7 @@ def test_the_boundary_continuation_with_a_carried_candidate_and_with_a_kill(tmp_
     with pytest.raises(SystemExit, match="exist"):             # a second continuation never overwrites
         S.continue_boundary(sha)
     if carried:                                                # the carried path: sensitivity after the agreement
-        line = f"| 2026-10-08 09:00 | phase-1 agreement on the carry, carry.json {R5.sha256_file(R5.RESULTS / 'carry.json')} |"
+        line = f"| 09:00 | phase-1 agreement reached: carry.json {R5.sha256_file(R5.RESULTS / 'carry.json')} |"
         S.RUN_LOG.write_text(line + "\n")
         assert S.sensitivity() == 0
         sens = json.loads((R5.RESULTS / "sensitivity.json").read_text())
@@ -614,11 +625,13 @@ def test_the_continuation_checks_the_rebuilt_state_against_the_saved_arrays(tmp_
     with pytest.raises(SystemExit, match="saved"):
         S.continue_boundary(sha)
     assert "diagnostics_seed42.json" not in _names(R5.RESULTS)
+    assert "carry.json" not in _names(R5.RESULTS)                # fix round 1: rebuilt and checked before the carry
 
 
 # ---------------------------------------------------------------- every entry and resume path: inputs first (T3a-1)
 
-@pytest.mark.parametrize("argv", [[], ["--dry"], ["--continue-boundary", "a" * 64], ["--sensitivity"]])
+@pytest.mark.parametrize("argv", [[], ["--dry"], ["--continue-boundary", "a" * 64], ["--diagnostics-only"],
+                                  ["--sensitivity"]])
 def test_every_entry_and_resume_path_runs_the_full_input_check_first(tmp_path, monkeypatch, argv):
     seen = []
 
@@ -666,6 +679,8 @@ def test_a_patched_hash_stops_the_input_check_before_any_build(tmp_path, monkeyp
 
 
 def test_the_input_check_is_the_full_one(monkeypatch):
+    monkeypatch.setattr(R5, "GOEMO_FILE_SHA", None)            # independent of the state of the real cache
+    monkeypatch.setattr(R5, "GE_POST_SHA", None)
     seen = {}
     for mod, name in ((R5, "assert_rule"), (R5, "assert_modules"), (R5, "assert_inputs"), (R3, "assert_taus")):
         spy = Spy(getattr(mod, name))
@@ -687,6 +702,11 @@ def test_the_input_check_is_the_full_one(monkeypatch):
     (R5.CACHE / "r5_goemotions_selection.npz").write_bytes(b"not the file")
     with pytest.raises(SystemExit, match="GoEmotions"):
         S.check_inputs(True)                                   # a set constant is checked in the dry run too
+    for name, const in (("r5_goemotions_selection.npz", "GOEMO_FILE_SHA"), ("r5_ge_posterior.npz", "GE_POST_SHA")):
+        (R5.CACHE / name).write_bytes(name.encode())
+        monkeypatch.setattr(R5, const, R5.sha256_file(R5.CACHE / name))
+    info = S.check_inputs(False)                               # both own files at their constants: the real run passes
+    assert info["own_files"] == {"GOEMO_FILE_SHA": R5.GOEMO_FILE_SHA, "GE_POST_SHA": R5.GE_POST_SHA}
 
 
 # ---------------------------------------------------------------- items 2 and 3, re-asserted from their records
@@ -848,12 +868,13 @@ def _sens_files(carried="G-TF", log_line=True, carry_sha_in_line=True):
         {"rule_sha256": R5.RULE_SHA, "seed42_arrays_sha256": R5.sha256_file(R5.RESULTS / "seed42_arrays.npz")}))
     cy = {"rule_sha256": R5.RULE_SHA, "carried": carried, "E": [carried] if carried else [], "kill": carried is None,
           "dev_seed42_sha256": R5.sha256_file(R5.RESULTS / "dev_seed42.json"),
-          "seed42_arrays_sha256": R5.sha256_file(R5.RESULTS / "seed42_arrays.npz")}
+          "seed42_arrays_sha256": R5.sha256_file(R5.RESULTS / "seed42_arrays.npz"),
+          "regression_check_sha256": R5.sha256_file(R5.RESULTS / "regression_check.json")}
     (R5.RESULTS / "carry.json").write_text(json.dumps(cy))
     sha = R5.sha256_file(R5.RESULTS / "carry.json")
     lines = ["| 10:00 | CARRY G-TF (pending the phase-1 agreement, rule §8) |"]
     if log_line:
-        lines.append(f"| 11:00 | phase-1 agreement reached{', carry.json ' + sha if carry_sha_in_line else ''} |")
+        lines.append(f"| 11:00 | phase-1 agreement reached{': carry.json ' + sha if carry_sha_in_line else ''} |")
     S.RUN_LOG.write_text("\n".join(lines) + "\n")
     return arr
 
@@ -866,11 +887,12 @@ def _sens_env(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("case", ["no_carry_json", "kill", "no_agreement_line", "only_the_pending_line",
                                   "pending_line_with_the_carry_sha", "agreement_without_the_carry_sha",
-                                  "sensitivity_exists", "other_rule_carry"])
+                                  "sensitivity_exists", "other_rule_carry", "regression_record_changed"])
 def test_the_sensitivity_path_refusals(tmp_path, monkeypatch, case):
     _sens_env(tmp_path, monkeypatch)
-    spy = Spy(RS3.sensitivity)
+    spy, rel = Spy(RS3.sensitivity), Spy(R5G.release)
     monkeypatch.setattr(RS3, "sensitivity", spy)
+    monkeypatch.setattr(R5G, "release", rel)
     if case == "no_carry_json":
         _sens_files()
         (R5.RESULTS / "carry.json").unlink()
@@ -887,6 +909,10 @@ def test_the_sensitivity_path_refusals(tmp_path, monkeypatch, case):
         S.RUN_LOG.write_text(f"| 10:00 | CARRY G-TF (pending the phase-1 agreement, rule §8); carry.json {sha} |\n")
     elif case == "agreement_without_the_carry_sha":
         _sens_files(carry_sha_in_line=False)
+    elif case == "regression_record_changed":
+        _sens_files()
+        reg = json.loads((R5.RESULTS / "regression_check.json").read_text())
+        (R5.RESULTS / "regression_check.json").write_text(json.dumps(dict(reg, note="changed")))
     elif case == "sensitivity_exists":
         _sens_files()
         (R5.RESULTS / "sensitivity.json").write_text("{}")
@@ -895,10 +921,11 @@ def test_the_sensitivity_path_refusals(tmp_path, monkeypatch, case):
         rec = json.loads((R5.RESULTS / "carry.json").read_text())
         rec["rule_sha256"] = "0" * 64
         (R5.RESULTS / "carry.json").write_text(json.dumps(rec))
-        S.RUN_LOG.write_text(f"| 11:00 | phase-1 agreement, carry.json {R5.sha256_file(R5.RESULTS / 'carry.json')} |\n")
+        S.RUN_LOG.write_text(f"| 11:00 | phase-1 agreement reached: carry.json "
+                             f"{R5.sha256_file(R5.RESULTS / 'carry.json')} |\n")
     with pytest.raises((SystemExit, R5G.GuardError)):
         S.sensitivity()
-    assert not spy.calls
+    assert not spy.calls and not rel.calls                     # refused before the guard is released
     if case != "sensitivity_exists":
         assert "sensitivity.json" not in _names(R5.RESULTS)
 
@@ -1027,3 +1054,219 @@ def test_a_failed_dry_run_keeps_its_regression_record_and_releases_nothing(tmp_p
     assert _names(R5.SMOKE) == ["regression_check_dry.json"] and _names(R5.RESULTS) == []
     assert not R5G.is_released()
     assert not LEAK.search(capsys.readouterr().out)
+
+
+# ---------------------------------------------------------------- fix round 1: the exact phase-1 agreement record
+
+@pytest.mark.parametrize("variant, opens", [
+    ("exact", True), ("exact_with_date", True), ("not_reached", False), ("not_after", False), ("failed", False),
+    ("disagree", False), ("pending", False), ("loose_wording", False), ("wrong_sha", False), ("longer_hex", False)])
+def test_the_agreement_record_has_one_exact_format(variant, opens):
+    sha = "ab" * 32
+    line = {"exact": f"| 18:05 | phase-1 agreement reached: carry.json {sha} |",
+            "exact_with_date": f"| 2026-10-08 09:00 | phase-1 agreement reached: carry.json {sha} |",
+            "not_reached": f"| 18:05 | phase-1 agreement NOT reached: carry.json {sha} |",
+            "not_after": f"| 18:05 | phase-1 agreement reached: carry.json {sha} | NOT confirmed |",
+            "failed": f"| 18:05 | failed: phase-1 agreement reached: carry.json {sha} |",
+            "disagree": f"| 18:05 | phase-1 agreement reached: carry.json {sha} (rederive disagrees) |",
+            "pending": f"| 18:05 | phase-1 agreement reached: carry.json {sha} (pending the review) |",
+            "loose_wording": f"| 18:05 | phase-1 agreement was reached, carry.json {sha} |",
+            "wrong_sha": f"| 18:05 | phase-1 agreement reached: carry.json {'cd' * 32} |",
+            "longer_hex": f"| 18:05 | phase-1 agreement reached: carry.json {sha}0 |"}[variant]
+    S.RUN_LOG.write_text("| 17:00 | CARRY G-T (pending the phase-1 agreement, rule §8) |\n" + line + "\n")
+    if opens:
+        assert S.agreement_line(sha) == line
+    else:
+        with pytest.raises(SystemExit, match="phase-1 agreement reached: carry.json"):
+            S.agreement_line(sha)
+
+
+# ---------------------------------------------------------------- fix round 1: the pinned comparison names
+
+def test_the_pin_holds_183_and_135_unique_names_without_a_decimal():
+    assert set(REAL_PINNED) == {1, 4}
+    assert len(REAL_PINNED[1]) == len(set(REAL_PINNED[1])) == 183
+    assert len(REAL_PINNED[4]) == len(set(REAL_PINNED[4])) == 135
+    for names in REAL_PINNED.values():
+        assert S.PIN_ROW not in names and not any(LEAK.search(n) for n in names)
+    for must in ("auc_emotion_AFF", "G-TF.taus_equal_D1_each_element", "G-T.taus_equal_D1_each_element",
+                 "pair_lift.heads_equal_told_oracle_arms_L_pairs_heads", "G-TF.dev.delta_int_zero_against_AFF"):
+        assert must in REAL_PINNED[4], must
+    for must in ("AFF.tau0_open_count.a", "AFF_minus_Bprime_A1", "R1.tau_recomputed_equals_rc_tau",
+                 "round4_arrays.aff_gate__b", "r3.redundancy.affect_least_redundant_both_directions",
+                 "a1.Bprime_A1_mean_r1_equals_rule"):
+        assert must in REAL_PINNED[1], must
+
+
+def test_item1_records_exactly_the_pinned_names(tmp_path, monkeypatch, capsys):
+    """Item 1 on a synthetic seed-42 bundle (round 3's and round 4's compare functions stubbed with their pinned check
+    names): values fail, but the set of names is the pin, so deleting any comparison fails this test."""
+    monkeypatch.setattr(S, "PINNED_NAMES", REAL_PINNED)
+    st0 = world_fn(tmp_path, monkeypatch)()
+    b = st0["b"]
+    r3n = [n[3:] for n in REAL_PINNED[1] if n.startswith("r3.")]
+    a1n = [n[3:] for n in REAL_PINNED[1] if n.startswith("a1.")]
+    monkeypatch.setattr(RB4, "build_bundle", lambda seed, smoke: b)
+    monkeypatch.setattr(C, "load_bundle", lambda smoke=False: SimpleNamespace())
+    monkeypatch.setattr(RB3, "compare_with_round1",
+                        lambda bb, r1: {"checks": {n: True for n in r3n}, "redundancy": R3.REDUNDANCY_42})
+    monkeypatch.setattr(RB4, "compare_a1_with_round1", lambda bb, r1: {"checks": {n: True for n in a1n}})
+    monkeypatch.setattr(RB3, "load_external", lambda bb: st0["ext"])
+    rec = S.Recorder()
+    S.item1(rec, {"taus": TAUS, "dry": False})
+    names = [r["name"] for r in rec.rows]
+    assert len(names) == len(set(names)) == 183
+    assert S.pinned_names_check(rec, 1) == {"missing": [], "extra": []}
+    assert not LEAK.search(capsys.readouterr().out)
+
+
+def test_item4_records_exactly_the_pinned_names(tmp_path, monkeypatch, capsys):
+    """Item 4 on a synthetic seed-42 bundle with the CLIP placement: deleting the AUC, the tau' == tau comparison or any
+    other comparison fails this test."""
+    monkeypatch.setattr(S, "PINNED_NAMES", REAL_PINNED)
+    st = world_fn(tmp_path, monkeypatch)()
+    monkeypatch.setattr(S, "selection_labels", lambda bb: (st["labS"], st["gS"]))
+    rec = S.Recorder()
+    S.item4(rec, st)
+    names = [r["name"] for r in rec.rows]
+    assert len(names) == len(set(names)) == 135
+    assert S.pinned_names_check(rec, 4) == {"missing": [], "extra": []}
+    assert not R5G.is_released()
+
+
+@pytest.mark.parametrize("pin, which", [(("stub_comparison_1", "a_pinned_name"), "missing"), ((), "extra")])
+def test_a_missing_or_extra_name_stops_the_real_run_before_release(tmp_path, monkeypatch, capsys, pin, which):
+    make = world_fn(tmp_path, monkeypatch)
+    calls = []
+    no_inputs(monkeypatch)
+    monkeypatch.setattr(S, "ITEMS", stub_items(make, calls=calls))
+    monkeypatch.setattr(S, "PINNED_NAMES", {1: pin, 4: ("stub_comparison_4",)})
+    rel = Spy(R5G.release)
+    monkeypatch.setattr(R5G, "release", rel)
+    assert S.run(False) == 1
+    assert calls == [1] and not rel.calls and not R5G.is_released()
+    reg = json.loads((R5.RESULTS / "regression_check.json").read_text())
+    assert reg["stopped_at_item"] == 1 and reg["all_passed"] is False
+    row = [r for r in reg["comparisons"] if r["name"] == S.PIN_ROW][0]
+    assert row["pass"] is False and row["got"][which] == (["a_pinned_name"] if which == "missing"
+                                                         else ["stub_comparison_1"])
+    assert _names(R5.RESULTS) == ["regression_check.json"]
+
+
+def test_a_missing_name_fails_the_dry_run(tmp_path, monkeypatch, capsys):
+    make = world_fn(tmp_path, monkeypatch)
+    no_inputs(monkeypatch)
+    monkeypatch.setattr(S, "ITEMS", stub_items(make, skip=(2, 3)))
+    monkeypatch.setattr(S, "PINNED_NAMES", {1: ("stub_comparison_1",), 4: ("stub_comparison_4", "a_pinned_name")})
+    assert S.run(True) == 1
+    summ = json.loads((R5.SMOKE / "seed42_dry.json").read_text())
+    assert summ["passed"] is False and summ["checks"]["comparison_names_pinned"] is False
+    out = capsys.readouterr().out
+    assert "CHECK dry.comparison_names_pinned FAIL" in out and not LEAK.search(out)
+
+
+# ---------------------------------------------------------------- fix round 1: --diagnostics-only and exit codes
+
+def _crashed_after_carry(tmp_path, monkeypatch, capsys):
+    """A real run (stubbed items) whose diagnostics crash after carry.json was written: exit 4, no diagnostics."""
+    make = world_fn(tmp_path, monkeypatch)
+    no_inputs(monkeypatch)
+    monkeypatch.setattr(S, "ITEMS", stub_items(make))
+    _patch_record(monkeypatch, CARRIED)
+    real = S.diagnostics
+
+    def crash(*a, **k):
+        raise RuntimeError("diagnostics crashed")
+    monkeypatch.setattr(S, "diagnostics", crash)
+    with pytest.raises(SystemExit) as e:
+        S.main([])
+    assert e.value.code == 4
+    assert "carry.json" in _names(R5.RESULTS) and "diagnostics_seed42.json" not in _names(R5.RESULTS)
+    assert "EXIT 4" in capsys.readouterr().out
+    monkeypatch.setattr(S, "diagnostics", real)
+    monkeypatch.setattr(S, "rebuild_state", make)
+    R5G._reset_for_tests()
+    return make
+
+
+def test_diagnostics_only_resumes_after_a_crash_after_the_carry(tmp_path, monkeypatch, capsys):
+    make = _crashed_after_carry(tmp_path, monkeypatch, capsys)
+    calls = []
+    no_inputs(monkeypatch, calls)
+    vs = Spy(S.verify_saved)
+    monkeypatch.setattr(S, "verify_saved", vs)
+    with pytest.raises(SystemExit) as e:
+        S.main(["--diagnostics-only"])
+    assert e.value.code == 0 and calls == [("check_inputs", False)] and len(vs.calls) == 1
+    diag = json.loads((R5.RESULTS / "diagnostics_seed42.json").read_text())
+    assert diag["carry_sha256"] == R5.sha256_file(R5.RESULTS / "carry.json")
+    assert "d_sharper_term" in diag
+    R5G._reset_for_tests()
+    with pytest.raises(SystemExit, match="refusing to overwrite"):   # written once
+        S.main(["--diagnostics-only"])
+
+
+@pytest.mark.parametrize("case", ["regression_changed", "dev_changed", "arrays_changed", "carry_missing",
+                                  "diagnostics_exist", "rebuild_differs"])
+def test_diagnostics_only_refusals(tmp_path, monkeypatch, capsys, case):
+    make = _crashed_after_carry(tmp_path, monkeypatch, capsys)
+    rel = Spy(R5G.release)
+    monkeypatch.setattr(R5G, "release", rel)
+    res = R5.RESULTS
+    if case == "regression_changed":
+        reg = json.loads((res / "regression_check.json").read_text())
+        (res / "regression_check.json").write_text(json.dumps(dict(reg, note="changed")))
+        match = "regression_check.json"
+    elif case == "dev_changed":
+        dev = json.loads((res / "dev_seed42.json").read_text())
+        (res / "dev_seed42.json").write_text(json.dumps(dict(dev, note="changed")))
+        match = "dev_seed42.json"
+    elif case == "arrays_changed":
+        with np.load(res / "seed42_arrays.npz") as z:
+            arr = {k: z[k] for k in z.files}
+        arr["cosine__r1"] = arr["cosine__r1"] + 0.25
+        np.savez_compressed(res / "seed42_arrays.npz", **arr)
+        match = "SHA-256"
+    elif case == "carry_missing":
+        (res / "carry.json").unlink()
+        match = "missing"
+    elif case == "diagnostics_exist":
+        (res / "diagnostics_seed42.json").write_text("{}")
+        match = "refusing to overwrite"
+    else:
+        def other():
+            st = make()
+            st["fam_aff"] = dict(st["fam_aff"], fused={**st["fam_aff"]["fused"],
+                                                       "r1": 1.0 - np.asarray(st["fam_aff"]["fused"]["r1"])})
+            return st
+        monkeypatch.setattr(S, "rebuild_state", other)
+        match = "saved"
+    with pytest.raises(SystemExit, match=match):
+        S.diagnostics_only()
+    if case != "diagnostics_exist":
+        assert "diagnostics_seed42.json" not in _names(res)
+    if case != "rebuild_differs":
+        assert not rel.calls                                   # refused before the guard is released
+
+
+@pytest.mark.parametrize("case, code", [("ok", 0), ("failed_item", 1), ("boundary", 3), ("after_release", 4)])
+def test_exit_codes(tmp_path, monkeypatch, capsys, case, code):
+    make = world_fn(tmp_path, monkeypatch)
+    no_inputs(monkeypatch)
+    monkeypatch.setattr(S, "ITEMS", stub_items(make, fail_at=2 if case == "failed_item" else None))
+    _patch_record(monkeypatch, CARRIED_BOUNDARY if case == "boundary" else CARRIED)
+    if case == "after_release":
+        def boom(*a, **k):
+            raise RuntimeError("crash after the release")
+        monkeypatch.setattr(S, "develop_core", boom)
+    with pytest.raises(SystemExit) as e:
+        S.main([])
+    assert e.value.code == code
+
+
+def test_an_exception_before_the_release_keeps_its_own_type(tmp_path, monkeypatch):
+    def boom(dry=False):
+        raise RuntimeError("before the release")
+    monkeypatch.setattr(S, "check_inputs", boom)
+    with pytest.raises(RuntimeError, match="before the release"):
+        S.main([])
