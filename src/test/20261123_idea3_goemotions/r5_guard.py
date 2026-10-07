@@ -64,15 +64,24 @@ class Placement:
             raise GuardError(f"a placement is a float32 (rows, {R5.N_CLASSES}) array")
 
 
+def _cached_txt_equals(hit, Q) -> bool:
+    """r3_bundle stores _HEADS[key] = {"post": {"img": ..., "txt": ...}, "prov": ..., ...}; any other shape is False."""
+    try:
+        cached = hit["post"]["txt"]
+    except (KeyError, TypeError, IndexError):
+        return False
+    return isinstance(cached, np.ndarray) and np.array_equal(cached, Q, equal_nan=True)
+
+
 def clip_from_bundle(bundle) -> Placement:
     """Q_CLIP = ``bundle.post["affect"]["txt"]`` as a read-only view (shares memory with the bundle's array) with its
     fingerprint; where round 3's cached affect heads exist, Q must equal their caption posterior by value."""
     Q = bundle.post["affect"]["txt"]
     if not isinstance(Q, np.ndarray) or Q.dtype != np.float32 or Q.ndim != 2 or Q.shape[1] != R5.N_CLASSES:
         raise GuardError(f"the bundle's affect caption posterior is not a float32 (rows, {R5.N_CLASSES}) array")
-    if not any(np.array_equal(hit["post"]["affect"]["txt"], Q, equal_nan=True) for hit in R5.RB3._HEADS.values()):
+    if not any(_cached_txt_equals(hit, Q) for hit in R5.RB3._HEADS.values()):
         raise GuardError("the bundle's affect caption posterior equals none of round 3's cached heads "
-                         "(the cache is empty or holds other arrays)")
+                         "(the cache is empty, malformed or holds other arrays)")
     view = Q.view()
     view.flags.writeable = False
     fp = fingerprint(view)

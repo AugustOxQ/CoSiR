@@ -206,13 +206,15 @@ def _post(seed=0):
 
 
 def _cache(Q, key=60000):
-    R5.RB3._HEADS[key] = {"post": {"affect": {"img": _post(1), "txt": Q}}}
+    post = {"img": _post(1), "txt": Q}       # the real shape of r3_bundle._affect_heads' cache entry
+    R5.RB3._HEADS[key] = {"post": post, "prov": {}, "selection": np.arange(5, 25), "scorer_train": np.arange(5),
+                          "n_rows_all": N}
+    return post
 
 
 def _bundle(Q, cached=True):
-    if cached:
-        _cache(Q)
-    return SimpleNamespace(post={"affect": {"img": _post(1), "txt": Q}})
+    post = _cache(Q) if cached else {"img": _post(1), "txt": Q}
+    return SimpleNamespace(post={"affect": post})        # same dict object as the cache's, as in r3_bundle
 
 
 def _ge_file(tmp_path, n_sel=20, rows=None, classes=None, sums=1.0, name="ge.npz", nan=False):
@@ -252,6 +254,30 @@ def test_clip_from_bundle_needs_an_equal_cached_head():
     R5.RB3._HEADS.clear()                                  # an empty cache refuses
     with pytest.raises(G.GuardError):
         G.clip_from_bundle(_bundle(Q, cached=False))
+
+
+def test_malformed_cache_entries_fail_closed():
+    Q = _post()
+    for bad in ({"post": {"affect": {"txt": Q}}}, {"post": None}, {}, {"post": {"txt": "no"}}):
+        R5.RB3._HEADS.clear()
+        R5.RB3._HEADS[1] = bad
+        with pytest.raises(G.GuardError):
+            G.clip_from_bundle(_bundle(Q, cached=False))
+
+
+# slow (about 35 s): builds the real smoke bundle 9001
+def test_clip_from_bundle_on_a_real_smoke_bundle():
+    saved = dict(R5.RB3._HEADS)
+    try:
+        R5.assert_modules()
+        b = R5.RB4.build_bundle(9001, True)
+        pl = G.clip_from_bundle(b)
+        assert pl.kind == "clip" and G.require(pl, "x") is pl
+        assert pl.Q.shape[1] == 41 and np.shares_memory(pl.Q, b.post["affect"]["txt"])
+        assert any(h["post"] is b.post["affect"] for h in R5.RB3._HEADS.values())
+    finally:
+        R5.RB3._HEADS.clear()
+        R5.RB3._HEADS.update(saved)
 
 
 def test_placements_are_minted_only_by_the_two_constructors(tmp_path, monkeypatch):
