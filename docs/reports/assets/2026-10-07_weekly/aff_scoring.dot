@@ -1,0 +1,62 @@
+digraph AFF {
+  graph [rankdir=LR, bgcolor="white", dpi=200, pad=0.35,
+         nodesep=0.45, ranksep=0.60, splines=polyline,
+         fontname="DejaVu Sans", fontsize=20, labelloc=b,
+         label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="10">
+           <TR><TD COLSPAN="4">The two conditions of an episode see mirrored evidence, so the affect pick, and AFF's gate,</TD></TR>
+           <TR><TD COLSPAN="4">opens mostly on one side (about 81% of first sides, 30% of second sides).</TD></TR>
+           <TR><TD BGCOLOR="#F1F3F4"><FONT COLOR="#6B7279">Grey: same as earlier pipeline</FONT></TD>
+               <TD BGCOLOR="#F1EDF8"><FONT COLOR="#8E7CC3">Purple: unchanged from gated reader R1</FONT></TD>
+               <TD BGCOLOR="#FFF2E3"><FONT COLOR="#D9822B">Orange: replaced</FONT></TD>
+               <TD BGCOLOR="#E7F6F2"><FONT COLOR="#1B8A7A">Teal: new in AFF</FONT></TD></TR>
+         </TABLE>>];
+  node [shape=box, style="rounded,filled", fontname="DejaVu Sans",
+        fontsize=19, margin="0.20,0.17", color="#9AA0A6",
+        fillcolor="#F1F3F4", fontcolor="#263444", penwidth=2];
+  edge [color="#9AA0A6", arrowsize=0.8, penwidth=1.7,
+        fontname="DejaVu Sans", fontsize=14];
+  subgraph cluster_pipeline {
+    label="How one-sided affect steering scores a candidate";
+    labelloc=t; fontsize=27; fontname="DejaVu Sans";
+    pencolor="white"; margin=20;
+    query [label="Query\n(image or caption)"];
+    examples [label="4 support pairs\n+ 4 contrast pairs"];
+    candidates [label="13 candidates"];
+    features [label="Frozen CLIP\nViT-B/32 features"];
+    groupings [fontsize=17, label="Three label-free groupings\nof the training rows\n\naffect: Leiden communities of\nGoEmotions caption probabilities\n(41 groups)\n\nimage: k-means on CLIP\nimage features (64)\n\ncaption: k-means on CLIP\ncaption features (64)"];
+    heads [label="Heads: logistic regressions\nplace any image or caption\nin each grouping"];
+    agreement [color="#8E7CC3", fillcolor="#F1EDF8",
+      label="Agreement of support pairs\nminus contrast pairs,\nper grouping"];
+    reader [color="#8E7CC3", fillcolor="#F1EDF8",
+      label="Learned reader: trained on\npractice episodes built\nfrom the groupings\n(no evaluation labels)\n-> probability per grouping"];
+    score_t [color="#8E7CC3", fillcolor="#F1EDF8",
+      label="Weighted grouping\nscore T"];
+    gate_r1 [color="#D9822B", fillcolor="#FFF2E3",
+      label="R1's gate: open if the\nreader is confident\n(top minus second\nprobability >= tau)"];
+    gate_aff [color="#1B8A7A", fillcolor="#E7F6F2",
+      label="AFF: and only if\nthe top grouping\nis affect"];
+    base [label="Condition-free score B:\ncosine + factor term\n+ averaged heads\n(uses the examples,\nignores the aspect)"];
+    output [color="#1B8A7A", fillcolor="#E7F6F2",
+      label="Score = z(B) + λu·z(B)\n+ λa·gate·z(T)\n\ngate closed -> B alone"];
+    {rank=same; query; examples; candidates;}
+    {rank=same; features; groupings;}
+    {rank=same; score_t; base; gate_r1;}
+    query -> features;
+    examples -> features;
+    candidates -> features;
+    groupings -> heads;
+    features -> heads;
+    heads -> agreement;
+    agreement -> reader [color="#8E7CC3"];
+    reader -> score_t [color="#8E7CC3"];
+    heads -> score_t [color="#8E7CC3", label="grouping scores",
+                      tailport=n, headport=n];
+    reader -> gate_r1 [color="#D9822B"];
+    gate_r1 -> gate_aff [color="#1B8A7A"];
+    features -> base;
+    heads -> base;
+    score_t -> output [color="#8E7CC3"];
+    gate_aff -> output [color="#1B8A7A"];
+    base -> output;
+  }
+}

@@ -1,0 +1,67 @@
+flowchart TD
+    N0["Last week's end: repaired factors R3 (30<br/>Sep)"]:::base
+    N1["Factor learning 2×2 (painting agreement,<br/>CLIP-cluster episodes): stopped"]:::fail
+    N2["Affect factor learning (SE): confirmed<br/>on held value episodes"]:::pass
+    N3["Value episodes = recognition → task<br/>redefined as aspect episodes (2 Oct)"]:::reframe
+    N4["CVPR plan + ARS review: condition gain,<br/>matched controls"]:::reframe
+    N5["Metric-from-pairs baselines (E1): none<br/>separates aspects; RCA = GO bar"]:::diag
+    N6["In-context MLLM (Qwen3-VL 2B, 8B): does<br/>not work"]:::fail
+    N7["Method A: factors on pseudo-aspect<br/>episodes (E3): NO-GO"]:::fail
+    N8["Repair A′ (nested score) + label-trained<br/>factors: stopped"]:::fail
+    N9["Centered rule (N1): fails matched<br/>control"]:::fail
+    N10["Find then select (N2): fails"]:::fail
+    N11["Label-probe check (D0): task is<br/>learnable"]:::diag
+    N12["Partition-head reader (N6, N6c): biggest<br/>gain, fusion fails"]:::fail
+    N13["Stage report: told grouping +1.14 vs<br/>reader +0.14 → the reader's pick blocks"]:::diag
+    N14["Leiden affect communities: kept"]:::pass
+    N15["Sibling-aware agreement, Gram style,<br/>Leiden image/caption: dropped"]:::fail
+    N16["CSD style grouping: highest told<br/>ceiling, kept as ablation (A1)"]:::pass
+    N17["Reader round 1 (noise-scaled, learned,<br/>gated): near miss +0.444"]:::fail
+    N18["Reader round 2 (adapted, retrained,<br/>top-k): fails"]:::fail
+    N19["No-caption spike (A1c): exploratory"]:::diag
+    N20["Brainstorm: the margin lives on the<br/>emotion side"]:::diag
+    N21["One-sided affect steering (AFF): GO on<br/>fresh seeds, +0.59 R@1<br/>current best"]:::pass
+    N22["Round 4: three vetoes on AFF: killed"]:::fail
+    N23["Idea 3: GoEmotions placement of captions"]:::running
+    N24["Fine-tuned CLIP comparator (linear<br/>probe, last block, LoRA)"]:::running
+    N25["Held-split paper test (0 of 2 reads<br/>used)"]:::running
+    NB["Condition-free bar B: 12.96 → 18.34<br/>(B′(A1) 18.81)"]:::diag
+    N0 --> N1
+    N0 --> N2
+    N2 --> N3
+    N3 --> N4
+    N4 --> N5
+    N4 --> N6
+    N4 --> N7
+    N7 --> N8
+    N7 --> N9
+    N7 --> N10
+    N4 --> N11
+    N11 --> N12
+    N12 --> N13
+    N13 --> N14
+    N14 --> N15
+    N14 --> N16
+    N13 --> N17
+    N14 --> N17
+    N16 --> N17
+    N17 --> N18
+    N18 --> N19
+    N18 --> N20
+    N20 --> N21
+    N21 --> N22
+    N16 --> N22
+    N21 --> N23
+    N21 --> N24
+    N23 --> N25
+    N24 --> N25
+    N9 -.->|"centered term"| NB
+    N12 -.->|"averaged heads"| NB
+    N16 -.->|"B′(A1)"| NB
+    classDef base fill:#EEEEEE,stroke:#525252,color:#202020;
+    classDef reframe fill:#FFF4CC,stroke:#514A32,color:#202020;
+    classDef pass fill:#1B8A7A,stroke:#14685D,color:white;
+    classDef fail fill:#F2C6A0,stroke:#82502F,color:#202020;
+    classDef diag fill:#DCE3F0,stroke:#5B6C8F,color:#202020;
+    classDef running fill:white,stroke:#808080,color:#333333,stroke-dasharray:5 4;
+    style N21 stroke:#104C44,stroke-width:4px;

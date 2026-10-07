@@ -1,0 +1,86 @@
+digraph history {
+  graph [rankdir=TB, nodesep=0.35, ranksep=0.45, splines=true, newrank=true,
+         fontname="DejaVu Sans", fontsize=22, labelloc=t,
+         label="Experiment history, 30 Sep to 7 Oct"];
+  node [shape=box, style="rounded,filled", fontname="DejaVu Sans", fontsize=13, margin="0.12,0.09"];
+  edge [color="#555555", arrowsize=0.7, fontname="DejaVu Sans", fontsize=10];
+  N0 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N0</FONT><BR/>Last week&#x27;s end:<BR/>repaired factors R3<BR/>(30 Sep)>, fillcolor="#EEEEEE", color="#525252", fontcolor="#202020", group="spine"];
+  N1 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N1</FONT><BR/>Factor learning 2×2 (painting<BR/>agreement, CLIP-cluster episodes):<BR/>stopped>, fillcolor="#F2C6A0", color="#82502F", fontcolor="#202020"];
+  N2 [label=<<FONT POINT-SIZE="10" COLOR="#D8F0EC">N2</FONT><BR/>Affect factor learning (SE):<BR/>confirmed on held value<BR/>episodes>, fillcolor="#1B8A7A", color="#14685D", fontcolor="white", group="spine"];
+  N3 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N3</FONT><BR/>Value episodes = recognition → task<BR/>redefined as aspect episodes (2 Oct)>, fillcolor="#FFF4CC", color="#514A32", fontcolor="#202020", group="spine"];
+  N4 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N4</FONT><BR/>CVPR plan + ARS review:<BR/>condition gain, matched<BR/>controls>, fillcolor="#FFF4CC", color="#514A32", fontcolor="#202020", group="spine"];
+  N5 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N5</FONT><BR/>Metric-from-pairs baselines (E1):<BR/>none separates aspects; RCA = GO<BR/>bar>, fillcolor="#DCE3F0", color="#5B6C8F", fontcolor="#202020"];
+  N6 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N6</FONT><BR/>In-context MLLM<BR/>(Qwen3-VL 2B, 8B): does<BR/>not work>, fillcolor="#F2C6A0", color="#82502F", fontcolor="#202020"];
+  N7 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N7</FONT><BR/>Method A: factors on<BR/>pseudo-aspect episodes (E3):<BR/>NO-GO>, fillcolor="#F2C6A0", color="#82502F", fontcolor="#202020"];
+  N8 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N8</FONT><BR/>Repair A′ (nested score) +<BR/>label-trained factors:<BR/>stopped>, fillcolor="#F2C6A0", color="#82502F", fontcolor="#202020"];
+  N9 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N9</FONT><BR/>Centered rule (N1):<BR/>fails matched control>, fillcolor="#F2C6A0", color="#82502F", fontcolor="#202020"];
+  N10 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N10</FONT><BR/>Find then select<BR/>(N2): fails>, fillcolor="#F2C6A0", color="#82502F", fontcolor="#202020"];
+  N11 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N11</FONT><BR/>Label-probe check<BR/>(D0): task is<BR/>learnable>, fillcolor="#DCE3F0", color="#5B6C8F", fontcolor="#202020", group="spine"];
+  N12 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N12</FONT><BR/>Partition-head reader (N6,<BR/>N6c): biggest gain, fusion<BR/>fails>, fillcolor="#F2C6A0", color="#82502F", fontcolor="#202020", group="spine"];
+  N13 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N13</FONT><BR/>Stage report: told grouping +1.14 vs<BR/>reader +0.14 → the reader&#x27;s pick<BR/>blocks>, fillcolor="#DCE3F0", color="#5B6C8F", fontcolor="#202020", group="spine"];
+  N14 [label=<<FONT POINT-SIZE="10" COLOR="#D8F0EC">N14</FONT><BR/>Leiden affect<BR/>communities: kept>, fillcolor="#1B8A7A", color="#14685D", fontcolor="white"];
+  N15 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N15</FONT><BR/>Sibling-aware agreement, Gram<BR/>style, Leiden image/caption:<BR/>dropped>, fillcolor="#F2C6A0", color="#82502F", fontcolor="#202020"];
+  N16 [label=<<FONT POINT-SIZE="10" COLOR="#D8F0EC">N16</FONT><BR/>CSD style grouping: highest told<BR/>ceiling, kept as ablation (A1)>, fillcolor="#1B8A7A", color="#14685D", fontcolor="white"];
+  N17 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N17</FONT><BR/>Reader round 1 (noise-scaled,<BR/>learned, gated): near miss<BR/>+0.444>, fillcolor="#F2C6A0", color="#82502F", fontcolor="#202020", group="spine"];
+  N18 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N18</FONT><BR/>Reader round 2 (adapted,<BR/>retrained, top-k): fails>, fillcolor="#F2C6A0", color="#82502F", fontcolor="#202020", group="spine"];
+  N19 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N19</FONT><BR/>No-caption spike<BR/>(A1c): exploratory>, fillcolor="#DCE3F0", color="#5B6C8F", fontcolor="#202020"];
+  N20 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N20</FONT><BR/>Brainstorm: the margin<BR/>lives on the emotion<BR/>side>, fillcolor="#DCE3F0", color="#5B6C8F", fontcolor="#202020", group="spine"];
+  N21 [label=<<FONT POINT-SIZE="10" COLOR="#D8F0EC">N21</FONT><BR/>One-sided affect steering<BR/>(AFF): GO on fresh seeds, +0.59<BR/>R@1<BR/><B>current best</B>>, fillcolor="#1B8A7A", color="#14685D", fontcolor="white", group="spine", penwidth=3.5];
+  N22 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N22</FONT><BR/>Round 4: three<BR/>vetoes on AFF:<BR/>killed>, fillcolor="#F2C6A0", color="#82502F", fontcolor="#202020"];
+  N23 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N23</FONT><BR/>Idea 3: GoEmotions<BR/>placement of<BR/>captions>, fillcolor="white", color="#808080", fontcolor="#333333", style="rounded,dashed"];
+  N24 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N24</FONT><BR/>Fine-tuned CLIP comparator<BR/>(linear probe, last block,<BR/>LoRA)>, fillcolor="white", color="#808080", fontcolor="#333333", style="rounded,dashed"];
+  N25 [label=<<FONT POINT-SIZE="10" COLOR="#666666">N25</FONT><BR/>Held-split paper test<BR/>(0 of 2 reads used)>, fillcolor="white", color="#808080", fontcolor="#333333", group="spine", style="rounded,dashed"];
+  NB [label=<<FONT POINT-SIZE="10" COLOR="#666666">NB</FONT><BR/>Condition-free bar B:<BR/>12.96 → 18.34 (B′(A1) 18.81)<BR/><FONT POINT-SIZE="10">from: centered term (N9), averaged heads (N12), style grouping (N16)</FONT>>, fillcolor="#DCE3F0", color="#5B6C8F", fontcolor="#202020"];
+  { rank=same; N1; N2; }
+  { rank=same; N5; N7; N11; N6; }
+  { rank=same; N8; N9; N10; N12; }
+  { rank=same; N13; NB; }
+  { rank=same; N15; N16; }
+  { rank=same; N19; N20; }
+  { rank=same; N21; N22; }
+  { rank=same; N23; N24; }
+  N4 [ordering=out];
+  N18 [ordering=out];
+  N0 -> N1 [style=solid];
+  N0 -> N2 [style=solid, weight=10];
+  N2 -> N3 [style=solid, weight=10];
+  N3 -> N4 [style=solid, weight=10];
+  N4 -> N5 [style=solid];
+  N4 -> N7 [style=solid];
+  N4 -> N11 [style=solid, weight=10];
+  N4 -> N6 [style=solid];
+  N7 -> N8 [style=solid];
+  N7 -> N9 [style=solid];
+  N7 -> N10 [style=solid];
+  N9 -> NB [style=dotted, color="#5B6C8F", fontcolor="#5B6C8F", constraint=false];
+  N11 -> N12 [style=solid, weight=10];
+  N12 -> N13 [style=solid, weight=10];
+  N12 -> NB [style=dotted, color="#5B6C8F", fontcolor="#5B6C8F", constraint=false];
+  N13 -> N14 [style=solid];
+  N13 -> N17 [style=solid, weight=10];
+  N14 -> N15 [style=solid];
+  N14 -> N16 [style=solid];
+  N14 -> N17 [style=solid, tailport=w, headport=n];
+  N16 -> N17 [style=solid];
+  N16 -> N22 [style=solid];
+  N16 -> NB [style=dotted, color="#5B6C8F", fontcolor="#5B6C8F", constraint=false, tailport=se, headport=e];
+  N17 -> N18 [style=solid, weight=10];
+  N18 -> N19 [style=solid];
+  N18 -> N20 [style=solid, weight=10];
+  N20 -> N21 [style=solid, weight=10];
+  N21 -> N22 [style=solid];
+  N21 -> N23 [style=solid];
+  N21 -> N24 [style=solid];
+  N23 -> N25 [style=solid];
+  N24 -> N25 [style=solid];
+  subgraph cluster_legend {
+    label=""; color="#DDDDDD"; margin=10;
+    legend [shape=plain, style="", fontsize=10, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="5"><TR><TD BGCOLOR="#EEEEEE" COLOR="#525252" BORDER="1">  </TD><TD ALIGN="LEFT">Starting point</TD><TD BGCOLOR="#FFF4CC" COLOR="#514A32" BORDER="1">  </TD><TD ALIGN="LEFT">Task / plan reframe</TD><TD BGCOLOR="#1B8A7A" COLOR="#14685D" BORDER="1">  </TD><TD ALIGN="LEFT">Worked / kept</TD></TR><TR><TD BGCOLOR="#F2C6A0" COLOR="#82502F" BORDER="1">  </TD><TD ALIGN="LEFT">Failed / stopped</TD><TD BGCOLOR="#DCE3F0" COLOR="#5B6C8F" BORDER="1">  </TD><TD ALIGN="LEFT">Diagnostic / insight</TD><TD BGCOLOR="white" COLOR="#808080" BORDER="1">  </TD><TD ALIGN="LEFT">In progress / pending</TD></TR><TR><TD COLSPAN="6" ALIGN="LEFT">solid: led to</TD></TR><TR><TD COLSPAN="6" ALIGN="LEFT">dotted: an ingredient survived into the condition-free bar</TD></TR></TABLE>>];
+  }
+  { rank=sink; legend; }
+  // Invisible constraints are layout only, not experiment-history edges.
+  N13 -> NB [style=invis, weight=100];
+  N15 -> N16 [style=invis, weight=100];
+  N19 -> N20 [style=invis, weight=100];
+  N25 -> legend [style=invis, weight=10];
+}
