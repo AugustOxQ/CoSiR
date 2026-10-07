@@ -109,6 +109,13 @@ retrieval (never on aspect episodes), and scored by cosine on the development ep
 comparators. The runs use the DAS6 nodes 404, 405 and 411 (up to 9 GPUs). The design details are in the experiment's
 spec.
 
+**Outcome (7 October; report `docs/reports/auto/v2/2026-11-24_clip_lightweight_ft.md`, final-reviewed).** Each variant
+was selected on val retrieval only. Pooled over the fresh seeds 49 to 51, the fine-tuned cosine reached R@1 15.00
+(linear probe), 14.97 (last block) and 15.14 (LoRA), against 13.04 for plain CLIP, 18.29 for B′(A0) and 18.88 for AFF.
+Fine-tuning added about 2 points over plain CLIP, mostly through the genre candidate, and stayed about 3.2 points below
+B′(A0); AFF beat every variant by +3.7 to +3.9 with intervals far from 0. Our reading: a lightweight fine-tuned CLIP is
+a reported baseline for the held test, not the strongest condition-free comparator; B′(A0) and B′(A1) remain the floors.
+
 *Sources: CVPR plan §8, §9; `docs/reports/auto/v2/2026-10-25_backbone_check.md`.*
 
 ## 3. Question 2: how close are we to the CVPR GO bar?
@@ -228,8 +235,9 @@ Part of this exists in rounds 3 and 4; the new items are marked **new**, with a 
 1. **The paper's framing** (§3): A, B or C. **On hold** (the user, 7 October). Our view: target B, keep C as the
    fallback, and decide before the ArtELingo held read, because the framing decides which comparators and claims the
    held test must carry and whether CUB and SemArt work starts now.
-2. **The fine-tuned CLIP comparator** (§2): **decided** (the user, 7 October): three lightweight variants (linear
-   probe, last block, LoRA), no full fine-tuning, started on DAS6.
+2. **The fine-tuned CLIP comparator** (§2): **decided and done** (the user, 7 October): three lightweight variants
+   (linear probe, last block, LoRA), no full fine-tuning. Outcome: about 2 points over plain CLIP, about 3.2 below
+   B′(A0); a reported baseline, not a floor (§2).
 3. **B′(A1) in the held test**: as a GO check, a reported comparator, or not at all (open since round 4).
 4. **Which new analyses to fund** (§5): our short list is per-emotion with GoEmotions coverage, the ladder figure,
    the flip analysis and the qualitative episodes (all cheap), then the number of example pairs.
