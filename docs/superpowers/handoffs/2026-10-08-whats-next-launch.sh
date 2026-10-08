@@ -23,6 +23,12 @@ PANE=$(printf '%s' "$TAB_JSON" | json "d['result']['root_pane']['pane_id']")
 TAB=$(printf '%s' "$TAB_JSON" | json "d['result']['tab']['tab_id']")
 echo "tab $TAB, pane $PANE"
 
-herdr agent start "$AGENT" --kind claude --pane "$PANE" --timeout 90000
+# `herdr agent start` refuses a fresh fish pane ("not an available shell", 2026-10-08), so start claude as a
+# command, wait for its banner, then name the detected agent.
+herdr pane wait-output "$PANE" --regex '[#$>] *$|╰─' --timeout 30000 >/dev/null
+herdr pane run "$PANE" "claude" >/dev/null
+herdr pane wait-output "$PANE" --match "Claude Code" --timeout 90000 >/dev/null
+sleep 3
+herdr agent rename "$PANE" "$AGENT" >/dev/null
 herdr agent prompt "$AGENT" "$(cat "$PROMPT_FILE")"
 echo "agent '$AGENT' started in tab '$LABEL' ($TAB) with the handoff prompt; focus it with: herdr tab focus $TAB"
