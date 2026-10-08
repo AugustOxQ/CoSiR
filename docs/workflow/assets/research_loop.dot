@@ -1,0 +1,92 @@
+// Fixed positions and explicit Bezier paths keep both return edges clear.
+// Render: /root/miniconda3/bin/dot -Kneato -n2 -Tpng -Gdpi=200 research_loop.dot -o research_loop.png
+// Render: /root/miniconda3/bin/dot -Kneato -n2 -Tsvg research_loop.dot -o research_loop.svg
+digraph ResearchLoop {
+  graph [
+    charset="UTF-8", layout=neato, notranslate=true,
+    fontname="DejaVu Sans", fontsize=16, fontcolor="#111827",
+    bgcolor="white", pad=0.20, splines=true, outputorder=edgesfirst, dpi=200
+  ];
+  node [
+    shape=box, style="rounded,filled", fontname="DejaVu Sans",
+    fontsize=14, fontcolor="#111827", margin="0.18,0.15",
+    height=0.78, fixedsize=true, pin=true, penwidth=1.7,
+    fillcolor="#f3f4f6", color="#6b7280"
+  ];
+  edge [
+    fontname="DejaVu Sans", fontsize=12, fontcolor="#111827",
+    color="#475569", penwidth=1.55, arrowsize=0.8
+  ];
+
+  read [label=<<FONT POINT-SIZE="14">1&#160;&#160;Read results</FONT><BR/><FONT POINT-SIZE="11">you decide what they mean</FONT>>,
+        pos="145,420!", width=2.6,
+        fillcolor="#ccfbf1", color="#0f766e"];
+
+  wrapup [label=<<FONT POINT-SIZE="14">Wrap up and hand off</FONT><BR/><FONT POINT-SIZE="11">handoff and context for the next chat</FONT>>,
+          pos="145,310!", width=3.6, style="rounded,filled,dashed"];
+
+  subgraph cluster_decide {
+    graph [label="Decide what to do (repeat until you decide)",
+           fontsize=17, fontname="DejaVu Sans", fontcolor="#111827",
+           style="rounded", color="#d1d5db", penwidth=1.2,
+           bb="344,243,1425,403", lp="884.5,386"];
+    discuss [label=<<FONT POINT-SIZE="14">2&#160;&#160;Discuss and decide next</FONT><BR/><FONT POINT-SIZE="11">you decide the direction</FONT>>, pos="480,310!", width=3.1,
+             fillcolor="#ede9fe", color="#6d28d9"];
+    knowledge [label=<<FONT POINT-SIZE="14">3&#160;&#160;Gain knowledge</FONT><BR/><FONT POINT-SIZE="11">brainstorm or deep research</FONT>>,
+               pos="715,310!", width=2.65];
+    choose [label=<<FONT POINT-SIZE="14">4&#160;&#160;Choose the idea</FONT><BR/><FONT POINT-SIZE="11">you decide the idea</FONT>>, pos="920,310!", width=2.3,
+            fillcolor="#ccfbf1", color="#0f766e"];
+    grill [label=<<FONT POINT-SIZE="14">5&#160;&#160;Grill the idea</FONT><BR/><FONT POINT-SIZE="11">grill-with-docs</FONT>>,
+           pos="1100,310!", width=2.0, fillcolor="#ede9fe", color="#6d28d9"];
+    decisions [label="All decisions\nmade by you?", pos="1300,310!",
+               shape=diamond, style=filled, fillcolor="white", color="#d97706",
+               width=2.7, height=1.25, margin="0.12,0.07"];
+  }
+
+  subgraph cluster_experiment {
+    graph [label="Do it (experiment)", fontsize=17,
+           fontname="DejaVu Sans", fontcolor="#111827",
+           style="rounded", color="#d1d5db", penwidth=1.2,
+           bb="280,70,1135,215", lp="707.5,198"];
+    spec [label=<<FONT POINT-SIZE="14">6&#160;&#160;Spec</FONT><BR/><FONT POINT-SIZE="11">you approve its brief</FONT>>,
+          pos="1010,125!", width=2.15];
+    build [label="7  Plan and build", pos="810,125!", width=2.2];
+    run [label="8  Run", pos="630,125!", width=1.45];
+    report [label="9  Verify and report", pos="395,125!", width=2.4];
+  }
+
+  read -> wrapup [pos="e,145,338.08 145,391.92 145,378 145,363 145,347.08"];
+  wrapup -> discuss [
+    label="next chat", lp="321.5,328",
+    pos="e,368.4,310 274.6,310 302,310 330,310 359.4,310"
+  ];
+  discuss -> knowledge [pos="e,619.6,310 591.6,310 598,310 604,310 610.6,310"];
+  knowledge -> choose [pos="e,837.2,310 810.4,310 816,310 822,310 828.2,310"];
+  choose -> grill [pos="e,1028,310 1002.8,310 1008,310 1013,310 1019,310"];
+  grill -> decisions [pos="e,1202.8,310 1172,310 1179,310 1186,310 1193.8,310"];
+  decisions -> discuss [
+    label="no: discuss again", lp="890,457",
+    pos="e,480,338.08 1300,355 1300,402 1300,440 1265,440 1005,440 775,440 515,440 480,440 480,390 480,347.08"
+  ];
+  decisions -> spec [
+    label="yes", lp="1321,230",
+    pos="e,1010,153.08 1300,265 1300,245 1300,230 1270,230 1190,230 1120,230 1040,230 1010,230 1010,195 1010,162.08"
+  ];
+  spec -> build [pos="e,889.2,125 932.6,125 921,125 909,125 898.2,125"];
+  build -> run [pos="e,682.2,125 730.8,125 718,125 705,125 691.2,125"];
+  run -> report [pos="e,481.4,125 577.8,125 548,125 517,125 490.4,125"];
+  report -> read [
+    label="new results", lp="35,213",
+    pos="e,51.4,420 308.6,125 230,125 120,125 15,125 -20,125 -20,150 -20,170 -20,245 -20,330 -20,385 -20,420 10,420 42.4,420"
+  ];
+
+  legend [shape=plain, style="", fixedsize=false, margin=0, pos="707.5,25!", label=<
+    <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="8" CELLPADDING="0">
+      <TR>
+        <TD WIDTH="18" HEIGHT="15" BGCOLOR="#ccfbf1" BORDER="1" COLOR="#0f766e">&#160;</TD><TD><FONT POINT-SIZE="12">you</FONT></TD>
+        <TD WIDTH="18" HEIGHT="15" BGCOLOR="#ede9fe" BORDER="1" COLOR="#6d28d9">&#160;</TD><TD><FONT POINT-SIZE="12">together</FONT></TD>
+        <TD WIDTH="18" HEIGHT="15" BGCOLOR="#f3f4f6" BORDER="1" COLOR="#6b7280">&#160;</TD><TD><FONT POINT-SIZE="12">agents</FONT></TD>
+      </TR>
+    </TABLE>
+  >];
+}
