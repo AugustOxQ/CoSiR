@@ -16,6 +16,20 @@ fresh seeds 49 to 51 in round 3. Rounds 4 and 5 tried to improve it and were kil
 is the user's: the held-split paper test with AFF frozen (deciding B′(A1)'s role first), or more method work. CVPR
 abstract due 2026-11-10. Seeds 52 and later are free.
 
+## Parked ideas
+
+Candidates proposed since 2026-10-02 but neither chosen nor tried; step 3 reads this list first. Tried-and-killed ideas
+stay in the entries below.
+
+- A grouping redesign so that style stops leaking into genre ("design L") (deferred by the user, 2026-10-06; [proposed in](handoffs/2026-10-06-reader-fix-round2-handoff.md), option (b) in [whats-next](handoffs/2026-10-08-whats-next-handoff.md))
+- A 30-minute label-free check of a de-genred style grouping, the first step of design L (never tried; [proposed in](direction_log_raw_2026-10.md))
+- Dropping the CLIP caption grouping, keeping the affect, image and CSD groupings (deferred by the user after a spike, 2026-10-06; [proposed in](handoffs/2026-10-06-round3-affect-gate-handoff.md))
+- Caption-to-caption agreement to detect the emotion side, with retrained readers for idea 3 (never tried; option (c) in [whats-next](handoffs/2026-10-08-whats-next-handoff.md))
+- Separate gate weights for image and caption queries (never tried, ranked low; [proposed in](../reports/auto/v2/2026-11-20_r1_levers_brainstorm.md), §4 idea 5)
+- Practice-bank detectors with richer negatives or a "none" class (never tried, judged low value; [proposed in](../reports/auto/v2/2026-11-20_r1_levers_brainstorm.md), §4 idea 9)
+- A grouped concept basis (N3) and "infer the aspect name, then embed" (N5) (never tried; their privileged references were never run; [proposed in](../../src/test/20261107_new_method_candidates/synthesis.md), §4.2)
+- Other datasets and paper framings, CUB and SemArt (deferred by the user, 2026-10-07; [proposed in](../reports/stage/2026-10-07_cvpr_readiness.md), §3)
+
 ## 2026-10-07 · Idea 3 killed at development; next step open
 
 - **Read:** placing captions by their own GoEmotions scores placed them far better (86% against 36%), but neither
