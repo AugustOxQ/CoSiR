@@ -21,10 +21,12 @@ abstract due 2026-11-10. Seeds 52 and later are free.
 - **Read:** placing captions by their own GoEmotions scores placed them far better (86% against 36%), but neither
   candidate cleared the +0.5 bar (G-T +0.356, G-TF +0.427 over B′(A0)) and both lost to AFF on seed 42. The weak
   image head caps every image-caption agreement.
+- **Meaning (C):** open; the user read the briefing on 2026-10-07, and the next chat asks for their reading first.
 - **Decided:** open, awaiting the user. Options: the held-split paper test with AFF frozen; idea 3 variants; design L
   for style.
 - **Links:** report `docs/reports/auto/v2/2026-11-23_idea3_goemotions.md`; user-read
-  `docs/user_read/2026-10-07_idea3_goemotions.md`.
+  `docs/user_read/2026-10-07_idea3_goemotions.md`; handoff `docs/superpowers/handoffs/2026-10-08-whats-next-handoff.md`
+  (new Herdr tab `whats-next`).
 
 ## 2026-10-07 · A CLIP fine-tuning comparator
 
