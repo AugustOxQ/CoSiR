@@ -201,3 +201,6 @@ cursor_tmp_file/**/*.npy
 
 # Record of reports gathered from other branches (scripts/promote_reports.py)
 !docs/reports/.promoted.json
+
+# Codex agent profiles from the claude-code-harness setup; local only
+codex/
