@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""Read Codex ChatGPT plan limits without starting a model turn."""
+
+import argparse
+from datetime import datetime
+import json
+import math
+import os
+import selectors
+import signal
+import subprocess
+import sys
+import time
+
+
+def read_limits(timeout):
+    deadline = time.monotonic() + timeout
+    try:
+        process = subprocess.Popen(
+            ["codex", "app-server"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            start_new_session=True,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError("codex CLI not found; install Codex and add it to PATH") from exc
+
+    try:
+        with selectors.DefaultSelector() as selector:
+            selector.register(process.stdout, selectors.EVENT_READ)
+            buffer = b""
+
+            def send(message):
+                process.stdin.write((json.dumps(message) + "\n").encode())
+                process.stdin.flush()
+
+            def receive(request_id):
+                nonlocal buffer
+                while True:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise RuntimeError(f"Codex usage query timed out after {timeout:g}s")
+                    if b"\n" not in buffer:
+                        if not selector.select(remaining):
+                            continue
+                        chunk = os.read(process.stdout.fileno(), 65536)
+                        if not chunk:
+                            raise RuntimeError("Codex app-server closed before replying")
+                        buffer += chunk
+                        if len(buffer) > 4 * 1024 * 1024:
+                            raise RuntimeError("Codex app-server response is too large")
+                        continue
+                    line, buffer = buffer.split(b"\n", 1)
+                    try:
+                        message = json.loads(line)
+                    except (ValueError, UnicodeError) as exc:
+                        raise RuntimeError("Codex app-server returned invalid JSON") from exc
+                    if not isinstance(message, dict):
+                        raise RuntimeError("Codex app-server returned an invalid response")
+                    if "method" in message or message.get("id") != request_id:
+                        continue
+                    if "error" in message:
+                        error = message["error"]
+                        detail = error.get("message", "RPC failed") if isinstance(error, dict) else "RPC failed"
+                        raise RuntimeError(f"Codex: {detail}")
+                    result = message.get("result")
+                    if not isinstance(result, dict):
+                        raise RuntimeError("Codex app-server reply has no result object")
+                    return result
+
+            send({"id": 0, "method": "initialize", "params": {
+                "clientInfo": {"name": "codex-usage", "version": "1.0.0"}
+            }})
+            receive(0)
+            send({"method": "initialized"})
+            send({"id": 1, "method": "account/rateLimits/read"})
+            return receive(1)
+    finally:
+        # Let cleanup finish even if a second interrupt arrives during the wait.
+        handlers = {sig: signal.signal(sig, signal.SIG_IGN)
+                    for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)}
+        try:
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                pass
+            # A launcher may exit before its native app-server child does.
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait()
+            process.stdin.close()
+            process.stdout.close()
+        finally:
+            for sig, handler in handlers.items():
+                signal.signal(sig, handler)
+
+
+def print_summary(result):
+    buckets = result.get("rateLimitsByLimitId") or {}
+    if not isinstance(buckets, dict):
+        raise RuntimeError("Codex returned an invalid quota bucket map")
+    limits = buckets.get("codex") or result.get("rateLimits") or {}
+    if not isinstance(limits, dict):
+        raise RuntimeError("Codex returned an invalid quota bucket")
+    windows = [limits.get("primary"), limits.get("secondary")]
+    lines = []
+    for label, duration in [("5h", 300), ("Weekly", 10080)]:
+        window = next((w for w in windows if isinstance(w, dict)
+                       and w.get("windowDurationMins") == duration), None)
+        used = window.get("usedPercent") if window else None
+        if not isinstance(used, (int, float)) or isinstance(used, bool):
+            lines.append(f"{label}: unavailable")
+            continue
+        reset = window.get("resetsAt")
+        try:
+            reset_text = datetime.fromtimestamp(reset).astimezone().isoformat(timespec="seconds")
+        except (TypeError, ValueError, OSError, OverflowError):
+            reset_text = "unavailable"
+        lines.append(f"{label}: {100 - used:g}% remaining ({used:g}% used); reset {reset_text}")
+    print("\n".join(lines))
+
+
+def positive_timeout(value):
+    number = float(value)
+    if not math.isfinite(number) or number <= 0:
+        raise argparse.ArgumentTypeError("timeout must be positive and finite")
+    return number
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Read Codex five-hour and weekly usage from any agent or shell.",
+        epilog="Requires Python 3 and codex on PATH, signed in to ChatGPT. Uses the "
+               "current user's Codex environment (including CODEX_HOME). Linux/macOS; "
+               "no model turn is started. Reset times use the local timezone. "
+               "Child cleanup may take up to 2 seconds beyond the RPC timeout.",
+    )
+    parser.add_argument("--json", action="store_true", help="print the complete API result as JSON")
+    parser.add_argument("--timeout", type=positive_timeout, default=30.0,
+                        metavar="SECONDS", help="total RPC timeout (default: 30)")
+    args = parser.parse_args()
+
+    def interrupt(_signum, _frame):
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, interrupt)
+    signal.signal(signal.SIGHUP, interrupt)
+    try:
+        result = read_limits(args.timeout)
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            print_summary(result)
+        return 0
+    except KeyboardInterrupt:
+        print("codex-usage: interrupted", file=sys.stderr)
+        return 130
+    except (RuntimeError, OSError, ValueError, OverflowError) as exc:
+        print(f"codex-usage: {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
