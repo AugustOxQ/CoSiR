@@ -1,6 +1,6 @@
 # CoSiR direction log
 
-One entry per loop of the research loop (`docs/workflow/research_loop.md`): what we read, what the user decided, why,
+One entry per loop of the research loop (`/project/claude-config/docs/research_loop.md`): what we read, what the user decided, why,
 and where the files are. Newest first. The wrap-up step after reading results adds the next entry. Details live in the
 linked reports and handoffs, not here.
 
