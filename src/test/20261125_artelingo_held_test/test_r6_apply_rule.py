@@ -9,6 +9,7 @@ import hashlib
 import importlib.util
 import json
 import re
+import sys
 from fractions import Fraction
 from pathlib import Path
 
@@ -35,6 +36,11 @@ def load_module(path: Path, name: str):
     spec.loader.exec_module(mod)
     return mod
 
+
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+import r6_common  # noqa: E402,F401  first, before anything that imports src (contracts section 1 amendment)
+import r6_stats as ST  # noqa: E402
 
 AR = load_module(SCRIPT, "run_r6_apply_rule")
 
@@ -99,6 +105,10 @@ def make_sens() -> dict:
     return rec
 
 
+AGREEMENT_OF = {"held_pass.json": "rederive_agreement.json", "held_pass_fix1.json": "rederive_agreement_fix1.json",
+                "held_pass_reserve.json": "rederive_agreement_reserve.json"}     # contracts §8 as amended
+
+
 class Env:
     """A tmp results tree wired into a module (the real one or a mutated copy)."""
 
@@ -111,24 +121,28 @@ class Env:
         monkeypatch.setattr(mod, "SMOKE", self.smoke)
         monkeypatch.setattr(mod, "RULE_PATH", RULE)
 
-    def out(self, smoke=False) -> Path:
-        return self.smoke if smoke else self.results
+    def out(self, smoke=False, subdir=None) -> Path:
+        d = (self.smoke if smoke else self.results) / (subdir or "")
+        d.mkdir(parents=True, exist_ok=True)
+        return d
 
-    def write(self, name, obj, smoke=False) -> bytes:
+    def write(self, name, obj, smoke=False, subdir=None) -> bytes:
         raw = (json.dumps(obj, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
-        (self.out(smoke) / name).write_bytes(raw)
+        (self.out(smoke, subdir) / name).write_bytes(raw)
         return raw
 
-    def stage(self, rec, smoke=False, pass_file="held_pass.json", agreement=None, sens=True, reserve=False,
-              agreement_flag=None) -> dict:
-        raw = self.write(pass_file, rec, smoke)
+    def stage(self, rec, smoke=False, pass_file="held_pass.json", agreement=None, sens=True, agreement_flag=None,
+              agreement_name=None, subdir=None) -> dict:
+        """A pass file, its agreement record (the file of its pair unless named) and the sensitivity file."""
+        raw = self.write(pass_file, rec, smoke, subdir)
         agr = {"phase": 2, "smoke": smoke if agreement_flag is None else agreement_flag, "all_agree": True,
                "held_pass_sha256": sha(raw), "pass_file": pass_file, "n_quantities": 61, "disagreements": [],
                "time": "2026-10-12 05:00:00"}
         agr.update(agreement or {})
-        self.write("rederive_agreement_reserve.json" if reserve else "rederive_agreement.json", agr, smoke)
+        self.write(agreement_name or AGREEMENT_OF.get(pass_file, "rederive_agreement.json"), agr, smoke, subdir)
         if sens:
-            self.write("sensitivity_held.json", make_sens(), smoke)
+            name = "sensitivity_held_reserve.json" if pass_file == "held_pass_reserve.json" else "sensitivity_held.json"
+            self.write(name, make_sens(), smoke, subdir)
         return agr
 
     def run(self, *argv):
@@ -137,8 +151,8 @@ class Env:
         except SystemExit as e:
             return e.code
 
-    def verdict(self, smoke=False, name="held_verdict.json") -> dict:
-        return json.loads((self.out(smoke) / name).read_text(encoding="utf-8"))
+    def verdict(self, smoke=False, name="held_verdict.json", subdir=None) -> dict:
+        return json.loads((self.out(smoke, subdir) / name).read_text(encoding="utf-8"))
 
 
 @pytest.fixture
@@ -150,25 +164,31 @@ def go_rec(**kw):
     return make_pass([0] * 7, **kw)
 
 
-# ---------------------------------------------------------------- the private Holm copy and the fixed texts
+# ---------------------------------------------------------------- the Holm recomputation and the fixed texts
 
 @pytest.mark.parametrize("m,nstars,names", [(7, NSTAR_P, P), (2, NSTAR_S, S)])
-def test_private_holm_matches_the_exact_form_at_every_boundary(m, nstars, names):
-    assert [AR.n_star(k, m) for k in range(1, m + 1)] == list(nstars)
+def test_holm_ranks_match_the_exact_form_at_every_boundary(m, nstars, names):
+    assert [ST.boundary(k, m) for k in range(1, m + 1)] == list(nstars)
     for k in range(1, m + 1):
         for n, want in ((nstars[k - 1], True), (nstars[k - 1] + 1, False)):
             counts = {nm: (0 if i < k - 1 else n if i == k - 1 else 5000) for i, nm in enumerate(names)}
-            got = {e["name"]: e for e in AR.holm(counts, names, m)}
+            got = {e["name"]: e for e in AR.holm_ranks(counts, names, m)}
             ref = ref_holm(counts, names, m)
             assert got[names[k - 1]]["k"] == k and got[names[k - 1]]["own_count_passes"] is want
+            assert got[names[k - 1]]["n_star"] == nstars[k - 1] and got[names[k - 1]]["near_boundary"] is True
             for nm in names:
-                assert (got[nm]["passes"], got[nm]["own_count_passes"], got[nm]["k"]) == \
-                       (ref[nm]["passes"], ref[nm]["own_count_passes"], ref[nm]["k"])
+                assert (got[nm]["passes"], got[nm]["own_count_passes"], got[nm]["k"], got[nm]["near_boundary"]) == \
+                       (ref[nm]["passes"], ref[nm]["own_count_passes"], ref[nm]["k"], ref[nm]["near_boundary"])
 
 
 def test_ties_keep_the_rule_order():
-    assert [e["name"] for e in AR.holm({nm: 7 for nm in P}, P, 7)] == list(P)
-    assert [e["name"] for e in AR.holm({"S1": 70, "S2": 70}, S, 2)] == ["S1", "S2"]
+    assert [e["name"] for e in AR.holm_ranks({nm: 7 for nm in P}, P, 7)] == list(P)
+    assert [e["name"] for e in AR.holm_ranks({"S1": 70, "S2": 70}, S, 2)] == ["S1", "S2"]
+
+
+def test_the_step_uses_r6_common_and_r6_stats():
+    assert AR.CM is r6_common and AR.ST is ST
+    assert AR.RESULTS == r6_common.RESULTS and AR.SMOKE == r6_common.SMOKE
 
 
 def test_the_claim_is_rule_section_4_verbatim():
@@ -354,32 +374,59 @@ def test_smoke_mode_writes_only_under_smoke_and_prints_no_number(env, capsys):
     assert not DECIMAL.search(out) and "verdict" not in out.replace("held_verdict.json", "")
 
 
-def test_fix1_pass_named_by_the_agreement_decides(env):
-    env.write("held_pass.json", make_pass([17] * 7))                 # the kept original (NO-GO)
-    env.stage(go_rec(), pass_file="held_pass_fix1.json")
+def test_a_repeated_smoke_runs_in_its_own_subfolder(env, capsys):
+    (env.smoke / "held_verdict.json").write_text("{}\n")             # the first smoke's verdict stays
+    env.stage(go_rec(smoke=True), smoke=True, subdir="fix1")
+    assert env.run("--smoke") == 4                                   # the first folder still refuses
+    capsys.readouterr()
+    assert env.run("--smoke", "--smoke-subdir", "fix1") == 0
+    assert env.verdict(smoke=True, subdir="fix1")["verdict"] == "GO"
+    assert (env.smoke / "held_verdict.json").read_text() == "{}\n"
+    assert not DECIMAL.search(capsys.readouterr().out)
+
+
+@pytest.mark.parametrize("argv", [("--smoke-subdir", "fix1"), ("--smoke", "--smoke-subdir", "../x"),
+                                  ("--smoke", "--smoke-subdir", "a/b"), ("--smoke", "--smoke-subdir", "")])
+def test_the_smoke_subfolder_is_a_plain_name_under_smoke(env, argv):
+    assert env.run(*argv) == 4
+    assert not list(env.results.rglob("held_verdict*.json"))
+
+
+def test_fix1_pair_decides_when_its_pass_exists(env):
+    env.stage(make_pass([17] * 7))                                   # the first pair (a NO-GO), kept
+    env.stage(go_rec(), pass_file="held_pass_fix1.json", sens=False)  # the corrected pass and its own agreement
     assert env.run() == 0
     v = env.verdict()
-    assert v["verdict"] == "GO" and v["pass_file"] == "held_pass_fix1.json"
+    assert v["verdict"] == "GO" and (v["pass_file"], v["agreement_file"]) == ("held_pass_fix1.json",
+                                                                              "rederive_agreement_fix1.json")
     assert v["held_pass_sha256"] == sha((env.results / "held_pass_fix1.json").read_bytes())
+    assert v["agreement_sha256"] == sha((env.results / "rederive_agreement_fix1.json").read_bytes())
     assert v["sensitivity_file"] == "sensitivity_held.json"
 
 
-def test_fix1_uses_its_own_sensitivity_file_when_present(env):
-    env.write("held_pass.json", make_pass([17] * 7))
-    env.stage(make_pass([17] * 7), pass_file="held_pass_fix1.json")
+def test_a_fix1_pass_reuses_sensitivity_held_and_never_looks_for_a_fix1_copy(env):
+    env.stage(make_pass([17] * 7))
+    env.stage(make_pass([17] * 7), pass_file="held_pass_fix1.json", sens=False)
     sens = make_sens()
     sens["P1"]["x"] = 0.5
-    env.write("sensitivity_held_fix1.json", sens)
+    env.write("sensitivity_held_fix1.json", sens)                    # not a contract file: ignored
     assert env.run() == 0
     v = env.verdict()
-    assert v["sensitivity_file"] == "sensitivity_held_fix1.json" and v["checks"]["P1"]["x"] == 0.5
+    assert v["sensitivity_file"] == "sensitivity_held.json" and v["checks"]["P1"]["x"] == 0.3532
 
 
-def test_reserve_writes_its_own_verdict_and_keeps_the_original(env):
+def test_reserve_writes_its_own_verdict_from_its_own_sensitivity_and_keeps_the_original(env):
     (env.results / "held_verdict.json").write_text('{"verdict": "NO-GO"}\n')
-    env.stage(go_rec(), pass_file="held_pass_reserve.json", reserve=True)
+    env.write("sensitivity_held.json", make_sens())
+    env.stage(make_pass([17] * 7), pass_file="held_pass_reserve.json")
+    sens = make_sens()
+    sens["P1"]["x"] = 0.5
+    env.write("sensitivity_held_reserve.json", sens)
     assert env.run("--reserve") == 0
-    assert env.verdict(name="held_verdict_reserve.json")["verdict"] == "GO"
+    v = env.verdict(name="held_verdict_reserve.json")
+    assert v["verdict"] == "NO-GO" and v["checks"]["P1"]["x"] == 0.5
+    assert (v["pass_file"], v["agreement_file"], v["sensitivity_file"]) == (
+        "held_pass_reserve.json", "rederive_agreement_reserve.json", "sensitivity_held_reserve.json")
     assert (env.results / "held_verdict.json").read_text() == '{"verdict": "NO-GO"}\n'
 
 
@@ -466,12 +513,12 @@ def _seeds(e):
     e.stage(rec)
 
 
-def _pass_file_not_allowed(e):
-    e.stage(go_rec(), pass_file="seed42_pass_counts.json")
+def _agreement_names_another_pass(e):
+    e.stage(go_rec(), pass_file="seed42_pass_counts.json", agreement_name="rederive_agreement.json")
 
 
-def _reserve_pass_in_real_mode(e):
-    e.stage(go_rec(), pass_file="held_pass_reserve.json")
+def _first_agreement_names_reserve_pass(e):
+    e.stage(go_rec(), pass_file="held_pass_reserve.json", agreement_name="rederive_agreement.json")
 
 
 def _pass_file_missing(e):
@@ -483,6 +530,17 @@ def _fix1_without_original(e):
     e.stage(go_rec(), pass_file="held_pass_fix1.json")
 
 
+def _fix1_with_first_agreement_only(e):              # the first agreement is not accepted for a fix-1 pass
+    e.stage(make_pass([17] * 7))
+    e.write("held_pass_fix1.json", go_rec())
+
+
+def _fix1_agreement_names_first_pass(e):
+    first = e.stage(make_pass([17] * 7))
+    e.write("held_pass_fix1.json", go_rec())
+    e.write("rederive_agreement_fix1.json", first)     # names held_pass.json, with its SHA-256
+
+
 def _sensitivity_missing(e):
     e.stage(go_rec(), sens=False)
 
@@ -492,6 +550,19 @@ def _sensitivity_incomplete(e):
     sens = make_sens()
     del sens["P3"]["x"]
     e.write("sensitivity_held.json", sens)
+
+
+def _sensitivity_without_se(e):
+    e.stage(go_rec())
+    sens = make_sens()
+    del sens["S2"]["SE"]
+    e.write("sensitivity_held.json", sens)
+
+
+def _reserve_sensitivity_missing(e):                 # a reserve read needs its own file, no fallback
+    (e.results / "held_verdict.json").write_text("{}\n")
+    e.stage(go_rec(), pass_file="held_pass_reserve.json", sens=False)
+    e.write("sensitivity_held.json", make_sens())
 
 
 def _malformed_count(e):
@@ -542,12 +613,22 @@ REFUSALS = {
     "mode_regression": (_mode_regression, (), "its mode is not 'held'"),
     "held_pass_in_smoke_mode": (_held_pass_in_smoke_mode, ("--smoke",), "its mode is not 'smoke'"),
     "seeds": (_seeds, (), "its seeds are not [52, 53, 54]"),
-    "pass_file_not_allowed": (_pass_file_not_allowed, (), "pass_file is not one of"),
-    "reserve_pass_in_real_mode": (_reserve_pass_in_real_mode, (), "pass_file is not one of"),
+    "agreement_names_another_pass": (_agreement_names_another_pass, (),
+                                     "rederive_agreement.json: its pass_file is not held_pass.json"),
+    "first_agreement_names_reserve_pass": (_first_agreement_names_reserve_pass, (),
+                                           "rederive_agreement.json: its pass_file is not held_pass.json"),
     "pass_file_missing": (_pass_file_missing, (), "held_pass.json, named by rederive_agreement.json, is missing"),
-    "fix1_without_original": (_fix1_without_original, (), "the original held_pass.json it corrects is missing"),
+    "fix1_without_original": (_fix1_without_original, (),
+                              "held_pass_fix1.json exists, but the original held_pass.json it corrects is missing"),
+    "fix1_with_first_agreement_only": (_fix1_with_first_agreement_only, (),
+                                       "rederive_agreement_fix1.json is missing"),
+    "fix1_agreement_names_first_pass": (_fix1_agreement_names_first_pass, (),
+                                        "rederive_agreement_fix1.json: its pass_file is not held_pass_fix1.json"),
     "sensitivity_missing": (_sensitivity_missing, (), "sensitivity_held.json is missing"),
-    "sensitivity_incomplete": (_sensitivity_incomplete, (), "P3 lacks a finite non-negative x and x95"),
+    "sensitivity_incomplete": (_sensitivity_incomplete, (), "P3 lacks a finite non-negative SE, x, x95"),
+    "sensitivity_without_se": (_sensitivity_without_se, (), "S2 lacks a finite non-negative SE, x2, x95"),
+    "reserve_sensitivity_missing": (_reserve_sensitivity_missing, ("--reserve",),
+                                    "sensitivity_held_reserve.json is missing"),
     "malformed_count": (_malformed_count, (), "P2 does not have the fields and types of contracts"),
     "missing_check": (_missing_check, (), "checks are not exactly P1 to P7"),
     "not_json": (_not_json, (), "rederive_agreement.json is not valid JSON"),
@@ -575,13 +656,13 @@ def test_refusal(env, capsys, name):
 
 
 def test_refusals_on_the_reserve_path(env, capsys):
-    env.stage(go_rec(), pass_file="held_pass_reserve.json", reserve=True)
+    env.stage(go_rec(), pass_file="held_pass_reserve.json")
     assert env.run("--reserve") == 4                                  # the original verdict is missing
     (env.results / "held_verdict.json").write_text("{}\n")
     (env.results / "held_verdict_reserve.json").write_text("{}\n")
     assert env.run("--reserve") == 4                                  # the reserve verdict exists
     (env.results / "held_verdict_reserve.json").unlink()
-    env.stage(go_rec(), pass_file="held_pass.json", reserve=True)
+    env.stage(go_rec(), pass_file="held_pass.json", agreement_name="rederive_agreement_reserve.json")
     assert env.run("--reserve") == 4                                  # a reserve record must name the reserve pass
     assert not (env.results / "held_verdict_reserve.json").exists()
     with pytest.raises(SystemExit):
@@ -626,6 +707,8 @@ GUARDS = {
     "all-agree": ("False", ("all_agree_false", "all_agree_string")),
     "pass-rule-sha": ("False", ("rule_sha",)),
     "pass-mode": ("False", ("mode_regression", "held_pass_in_smoke_mode")),
+    "pass-file-name": ("False", ("agreement_names_another_pass", "fix1_agreement_names_first_pass")),
+    "fix1-pair": ("False", ("fix1_with_first_agreement_only",)),
 }
 
 

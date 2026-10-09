@@ -1,17 +1,22 @@
 """Round 6: the verdict step (DECISION_RULE.md §4, §8.3, §8.5, §9), run only after the phase-2 agreement of §8.4.
 
     PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= \
-    /root/miniconda3/envs/CoSiR/bin/python src/test/20261125_artelingo_held_test/run_r6_apply_rule.py [--smoke | --reserve]
+    /root/miniconda3/envs/CoSiR/bin/python src/test/20261125_artelingo_held_test/run_r6_apply_rule.py \
+        [--reserve | --smoke [--smoke-subdir NAME]]
 
-Reads, in results/ (results/smoke/ with --smoke), all parsed as JSON:
-  - rederive_agreement.json (--reserve: rederive_agreement_reserve.json): the re-derivation's phase-2 record
-    (contracts §8). It must say phase 2, all_agree true, no disagreements, and carry the smoke flag of this mode.
-  - the pass file it names: held_pass.json or held_pass_fix1.json (--smoke: held_pass.json; --reserve:
-    held_pass_reserve.json), bound to the record by its SHA-256 (the bytes hashed are the bytes parsed). Its
-    rule_sha256 must be this rule's, its mode "held" ("smoke" with --smoke), its seeds 52, 53, 54 (9001 to 9003).
-  - sensitivity_held<suffix>.json, <suffix> the pass file's ("", "_fix1", "_reserve"), else sensitivity_held.json:
-    x and x95 of P1 to P7, x2 and x95 of S1 and S2 (rule §8.2), used only to read a failed check.
-Writes held_verdict.json (--reserve: held_verdict_reserve.json) once; an existing verdict file is never replaced.
+One agreement file per pass, never overwritten (rule §9; contracts §8 as amended). In results/ (with --smoke,
+results/smoke/ or results/smoke/NAME/, e.g. NAME = fix1 for a repeated smoke), all parsed as JSON:
+  - the pair: held_pass_fix1.json with rederive_agreement_fix1.json if held_pass_fix1.json exists (the first
+    agreement is then not accepted), otherwise held_pass.json with rederive_agreement.json; --reserve:
+    held_pass_reserve.json with rederive_agreement_reserve.json.
+  - the agreement: the re-derivation's phase-2 record. It must say phase 2, all_agree true, no disagreements, carry
+    this mode's smoke flag, name its own pair's pass file and give that file's SHA-256 (the bytes hashed are the
+    bytes parsed). The pass file's rule_sha256 must be this rule's, its mode "held" ("smoke"), its seeds 52, 53, 54
+    (9001 to 9003).
+  - sensitivity_held.json (a fix-1 pass reuses it; --reserve: sensitivity_held_reserve.json, required): SE, x and x95
+    of P1 to P7, SE, x2 and x95 of S1 and S2 (rule §8.2), used only to read a failed check.
+Writes held_verdict.json (--reserve: held_verdict_reserve.json) once; an existing verdict file (smoke included) is
+never replaced.
 
 The rule, applied here from the pass file's integer counts n_j:
   - Holm across P1 to P7 (rule §3) is recomputed from the counts; the pass file's flags, ranks, levels, order and
@@ -29,61 +34,27 @@ rule's recomputation, or this script's fixed texts are not the rule's (stop and 
 Smoke mode prints no value, only the path written.
 """
 import argparse
-import hashlib
 import json
 import math
 import os
 import re
 import sys
-from datetime import datetime
 from pathlib import Path
-from types import SimpleNamespace
-from zoneinfo import ZoneInfo
 
-
-def _local_common() -> SimpleNamespace:
-    """Stand-in for the few r6_common names (contracts §1) this step uses, until ticket 01 is merged."""
-    here = Path(__file__).resolve().parent
-    results = here / "results"
-
-    def sha256_bytes(b: bytes) -> str:
-        return hashlib.sha256(b).hexdigest()
-
-    def sha256_file(path) -> str:
-        h = hashlib.sha256()
-        with open(path, "rb") as f:
-            for block in iter(lambda: f.read(1 << 20), b""):
-                h.update(block)
-        return h.hexdigest()
-
-    def amsterdam_now() -> str:
-        return datetime.now(ZoneInfo("Europe/Amsterdam")).strftime("%Y-%m-%d %H:%M:%S")
-
-    def r6_module_shas() -> dict:
-        root = here.parents[2]
-        files = sorted(set(here.glob("r6_*.py")) | set(here.glob("run_r6_*.py")))
-        files += [p for p in [here / "dts_settings.json"] if p.is_file()]
-        files += sorted((root / "scripts").glob("run_r6_*.sh"))
-        files += [p for p in [root / "scripts" / "das6_sync_r6.py"] if p.is_file()]
-        return {str(p.relative_to(root)): sha256_file(p) for p in files}
-
-    return SimpleNamespace(
-        HERE=here, RESULTS=results, SMOKE=results / "smoke",
-        RULE_SHA256="7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
-        HELD_SEEDS=(52, 53, 54), SMOKE_SEEDS=(9001, 9002, 9003),
-        sha256_bytes=sha256_bytes, sha256_file=sha256_file, amsterdam_now=amsterdam_now,
-        r6_module_shas=r6_module_shas)
-
-
-CM = _local_common()  # once ticket 01 is merged, this one line becomes: import r6_common as CM
+_HERE = Path(__file__).resolve().parent
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
+import r6_common as CM  # noqa: E402  first, before anything that imports src (contracts §1 amendment)
+import r6_stats as ST  # noqa: E402  the integer Holm and n*_k (ticket 04)
 
 RULE_PATH = CM.HERE / "DECISION_RULE.md"
 RESULTS = CM.RESULTS
 SMOKE = CM.SMOKE
 
-N_BOOT = 5000
+N_BOOT = ST.N_BOOT
 P_CHECKS = ("P1", "P2", "P3", "P4", "P5", "P6", "P7")
 S_CHECKS = ("S1", "S2")
+assert (P_CHECKS, S_CHECKS, N_BOOT) == (tuple(ST.CHECKS), tuple(ST.SECONDARY), 5000)
 # Rule §4's <name> for "AFF did not beat <name> on new paintings".
 NAMES = {"P1": "cosine", "P2": "RCA", "P3": "B", "P4": "B′(A0)", "P5": "its matched control",
          "P6": "the condition-free scorers on condition gain", "P7": "RCA on condition gain",
@@ -103,9 +74,8 @@ RULE_PHRASES = (CLAIM_GO, '"AFF also beats B′(A1)"', '"AFF also beats R1"', '"
                 '"inconclusive at a detectable margin of x"', "the condition-free scorers on condition gain",
                 '"RCA on condition gain"', '"not reached: the Holm procedure stopped at <earlier check>"',
                 "cosine, RCA, B, B′(A0), its matched control")
-PASS_FILES = {"real": ("held_pass.json", "held_pass_fix1.json"), "smoke": ("held_pass.json",),
-              "reserve": ("held_pass_reserve.json",)}
 SHA_RE = re.compile(r"[0-9a-f]{64}")
+SUBDIR_RE = re.compile(r"[A-Za-z0-9_]+")
 
 
 class Stop(Exception):
@@ -124,26 +94,16 @@ def contradiction(msg):
     raise Stop(5, msg)
 
 
-# ---------------------------------------------------------------- the rule's integer Holm (private copies)
-# Ticket 04 owns the shared versions (r6_stats.holm, r6_stats.boundary); these copies decide nothing the pass file
-# has not already recorded: they recompute it, and any difference stops the step.
+# ---------------------------------------------------------------- the rule's integer Holm (ticket 04's functions)
+# The pass file already records Holm; it is recomputed here from the counts with r6_stats, and any difference
+# stops the step (exit 5).
 
-def n_star(k: int, m: int) -> int:
-    """Rule §8.5: the largest passing count at Holm rank k of m, floor(5001 / (40 (m + 1 - k))) - 1."""
-    return (N_BOOT + 1) // (40 * (m + 1 - k)) - 1
-
-
-def holm(counts: dict, names: tuple, m: int) -> list:
-    """Rule §3 (m = 7) and §4 (m = 2): order by n ascending, ties in the given order; the k-th passes iff it and
-    every earlier one pass and 40 (n + 1) (m + 1 - k) <= 5001."""
-    order = sorted(names, key=lambda nm: (counts[nm], names.index(nm)))
-    out, ok = [], True
-    for k, nm in enumerate(order, start=1):
-        own = 40 * (counts[nm] + 1) * (m + 1 - k) <= N_BOOT + 1
-        ok = ok and own
-        out.append({"name": nm, "k": k, "n": counts[nm], "passes": ok, "own_count_passes": own,
-                    "level_two_sided": 1.0 - 0.05 / (m + 1 - k), "n_star": n_star(k, m),
-                    "near_boundary": abs(counts[nm] - n_star(k, m)) <= 1})
+def holm_ranks(counts: dict, names: tuple, m: int) -> list:
+    """Rule §3 (m = 7) and §4 (m = 2) by r6_stats.holm, with n*_k and the §8.5 boundary flag of each rank."""
+    out = ST.holm(counts, names, m)
+    for e in out:
+        e["n_star"] = ST.boundary(e["k"], m)
+        e["near_boundary"] = ST.near_boundary(e["n"], e["k"], m)
     return out
 
 
@@ -184,8 +144,8 @@ def assert_rule() -> None:
         contradiction(f"{len(missing)} fixed phrase(s) of this script are not in rule §4 verbatim")
 
 
-def load_agreement(path: Path, smoke: bool, allowed: tuple) -> tuple:
-    """Rule §8.3, §6.7: the phase-2 agreement record, or refuse."""
+def load_agreement(path: Path, smoke: bool, pass_name: str) -> tuple:
+    """Rule §8.3, §6.7: the phase-2 agreement record of the pass file `pass_name`, or refuse."""
     if not path.is_file():  # GUARD: agreement-missing
         refuse(f"{path.name} is missing: the verdict is written only after the phase-2 agreement (rule §8.3)")
     raw = path.read_bytes()
@@ -203,8 +163,8 @@ def load_agreement(path: Path, smoke: bool, allowed: tuple) -> tuple:
         refuse(f"{path.name}: its disagreements list is not empty")
     if not (_is_int(agr.get("n_quantities")) and agr["n_quantities"] >= 1):
         refuse(f"{path.name}: n_quantities is not a positive integer")
-    if agr.get("pass_file") not in allowed:
-        refuse(f"{path.name}: pass_file is not one of {', '.join(allowed)}")
+    if agr.get("pass_file") != pass_name:  # GUARD: pass-file-name
+        refuse(f"{path.name}: its pass_file is not {pass_name} (one agreement file per pass, contracts §8)")
     if not (isinstance(agr.get("held_pass_sha256"), str) and SHA_RE.fullmatch(agr["held_pass_sha256"])):
         refuse(f"{path.name}: held_pass_sha256 is not a SHA-256")
     return agr, CM.sha256_bytes(raw)
@@ -250,21 +210,18 @@ def load_pass(raw: bytes, name: str, smoke: bool) -> dict:
     return rec
 
 
-def load_sensitivity(out: Path, suffix: str) -> tuple:
-    """Rule §8.2: x, x95 (P) and x2, x95 (S), finite and non-negative."""
-    path = out / f"sensitivity_held{suffix}.json"
-    if not path.is_file():
-        path = out / "sensitivity_held.json"
+def load_sensitivity(path: Path) -> tuple:
+    """Rule §8.2 (contracts §7 as amended): SE, x, x95 (P) and SE, x2, x95 (S) at top level, finite, non-negative."""
     if not path.is_file():
         refuse(f"{path.name} is missing (rule §8.2)")
     raw = path.read_bytes()
     rec = _parse(raw, path.name)
     for nm in P_CHECKS + S_CHECKS:
-        xkey = "x" if nm in P_CHECKS else "x2"
+        keys = ("SE", "x" if nm in P_CHECKS else "x2", "x95")
         c = rec.get(nm)
-        if not (isinstance(c, dict) and all(_is_num(c.get(k)) and c[k] >= 0 for k in (xkey, "x95"))):
-            refuse(f"{path.name}: {nm} lacks a finite non-negative {xkey} and x95")
-    return rec, path, CM.sha256_bytes(raw)
+        if not (isinstance(c, dict) and all(_is_num(c.get(k)) and c[k] >= 0 for k in keys)):
+            refuse(f"{path.name}: {nm} lacks a finite non-negative {', '.join(keys)}")
+    return rec, CM.sha256_bytes(raw)
 
 
 # ---------------------------------------------------------------- the rule (pure)
@@ -324,11 +281,11 @@ def read_family(family: dict, names: tuple, recomputed: list, sens: dict, xkey: 
 def decide(rec: dict, sens: dict) -> dict:
     """Rule §4 and §8.5 on a validated pass record and sensitivity record."""
     checks, sec = rec["checks"], rec["secondary"]
-    hp = holm({nm: checks[nm]["n"] for nm in P_CHECKS}, P_CHECKS, 7)
+    hp = holm_ranks({nm: checks[nm]["n"] for nm in P_CHECKS}, P_CHECKS, 7)
     assert_consistent(checks, hp, "check", with_flags=True)
     if rec["holm_order"] != [e["name"] for e in hp]:
         contradiction("holm_order differs from the order recomputed from the counts (ties P1 to P7)")
-    hs = holm({nm: sec[nm]["n"] for nm in S_CHECKS}, S_CHECKS, 2)
+    hs = holm_ranks({nm: sec[nm]["n"] for nm in S_CHECKS}, S_CHECKS, 2)
     assert_consistent(sec, hs, "secondary", with_flags=False)
 
     go = all(e["passes"] for e in hp)
@@ -376,33 +333,53 @@ def write_once(path: Path, obj: dict) -> None:
         tmp.unlink()
 
 
-def apply(smoke: bool = False, reserve: bool = False) -> tuple:
+def out_dir(smoke: bool, subdir) -> Path:
+    """results/, or results/smoke/ (or results/smoke/<subdir>/ for a repeated smoke, contracts §8)."""
+    if subdir is None:
+        return SMOKE if smoke else RESULTS
+    if not smoke:
+        refuse("--smoke-subdir is for the smoke chain only")
+    if not SUBDIR_RE.fullmatch(str(subdir)):
+        refuse("--smoke-subdir must be a plain folder name (letters, digits, underscore)")
+    return SMOKE / subdir
+
+
+def pair_suffix(out: Path, reserve: bool) -> str:
+    """Contracts §8 (amended): one agreement file per pass. "_reserve" with --reserve; "_fix1" whenever
+    held_pass_fix1.json exists (its own agreement is then required); "" otherwise."""
+    if reserve:
+        return "_reserve"
+    if (out / "held_pass_fix1.json").exists():  # GUARD: fix1-pair
+        return "_fix1"
+    return ""
+
+
+def apply(smoke: bool = False, reserve: bool = False, subdir=None) -> tuple:
     """Every refusal, then the verdict record written once. -> (path, record)."""
     smoke, reserve = bool(smoke), bool(reserve)
     if smoke and reserve:
         refuse("--smoke and --reserve exclude each other")
-    out = SMOKE if smoke else RESULTS
-    sfx = "_reserve" if reserve else ""
-    vpath = out / f"held_verdict{sfx}.json"
+    out = out_dir(smoke, subdir)
+    vpath = out / f"held_verdict{'_reserve' if reserve else ''}.json"
     if vpath.exists():  # GUARD: verdict-exists
         refuse(f"{vpath.name} exists; a verdict is never overwritten (rule §8.1, §9)")
     if reserve and not (out / "held_verdict.json").is_file():
         refuse("a reserve verdict follows the original held_verdict.json, which is missing (rule §9)")
     assert_rule()
-    apath = out / f"rederive_agreement{sfx}.json"
-    agr, agr_sha = load_agreement(apath, smoke, PASS_FILES["smoke" if smoke else "reserve" if reserve else "real"])
-    ppath = out / agr["pass_file"]
+    sfx = pair_suffix(out, reserve)
+    ppath, apath = out / f"held_pass{sfx}.json", out / f"rederive_agreement{sfx}.json"
+    agr, agr_sha = load_agreement(apath, smoke, ppath.name)
     if not ppath.is_file():
         refuse(f"{ppath.name}, named by {apath.name}, is missing")
     raw = ppath.read_bytes()
     pass_sha = CM.sha256_bytes(raw)
     if agr["held_pass_sha256"] != pass_sha:  # GUARD: sha-binding
         refuse(f"{apath.name} checked another pass: its held_pass_sha256 is not the SHA-256 of {ppath.name}")
-    if ppath.name == "held_pass_fix1.json" and not (out / "held_pass.json").is_file():
-        refuse("held_pass_fix1.json is named, but the original held_pass.json it corrects is missing (rule §8.1)")
+    if sfx == "_fix1" and not (out / "held_pass.json").is_file():
+        refuse("held_pass_fix1.json exists, but the original held_pass.json it corrects is missing (rule §8.1)")
     rec = load_pass(raw, ppath.name, smoke)
-    suffix = ppath.name[len("held_pass"):-len(".json")]
-    sens, spath, sens_sha = load_sensitivity(out, suffix)
+    spath = out / ("sensitivity_held_reserve.json" if reserve else "sensitivity_held.json")
+    sens, sens_sha = load_sensitivity(spath)
 
     v = decide(rec, sens)
     v.update({
@@ -427,9 +404,11 @@ def main(argv=None) -> int:
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--smoke", action="store_true", help="the smoke chain (results/smoke/, smoke agreement only)")
     g.add_argument("--reserve", action="store_true", help="the reserve read of rule §9 (_reserve files)")
+    ap.add_argument("--smoke-subdir", default=None, metavar="NAME",
+                    help="with --smoke: read and write results/smoke/NAME/ (a repeated smoke, e.g. fix1)")
     args = ap.parse_args(argv)
     try:
-        path, v = apply(smoke=args.smoke, reserve=args.reserve)
+        path, v = apply(smoke=args.smoke, reserve=args.reserve, subdir=args.smoke_subdir)
     except Stop as e:
         say(("REFUSED: " if e.code == 4 else "STOP, report to the user: ") + e.msg)
         raise SystemExit(e.code)
