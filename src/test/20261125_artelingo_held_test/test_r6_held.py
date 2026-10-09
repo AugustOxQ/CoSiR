@@ -1279,3 +1279,75 @@ def test_guard_smoke_verdict(case, monkeypatch, capsys):
     install(monkeypatch, mod, stop_at={"inputs"})
     with pytest.raises(Reached):
         mod.run_smoke(results=case.res, here=HERE)
+
+
+# ---------------------------------------------------------------- contracts section 7, amendment 16:22 (ticket 13)
+
+def test_arrays_layout_and_names(case, monkeypatch, capsys):
+    """held_arrays*.npz: named after the pass file; <scorer>__<metric> float64 (n,) for exactly CORE_SCORERS and
+    score_seed's metrics; cl, pair_index, seed_index int64; seed_index the seed's position; seeds in order."""
+    names = {k: RH.read_names(k) for k in ("held", "fix1", "reserve", "smoke")}
+    assert {k: (n.pass_, n.arrays) for k, n in names.items()} == {
+        "held": ("held_pass.json", "held_arrays.npz"), "fix1": ("held_pass_fix1.json", "held_arrays_fix1.npz"),
+        "reserve": ("held_pass_reserve.json", "held_arrays_reserve.npz"),
+        "smoke": ("held_pass.json", "held_arrays.npz")}
+    ns = install(monkeypatch)
+    assert held(case) == 0
+    n = 3 * R.N_PER_PAIR
+    with np.load(case.res / "held_arrays.npz") as z:
+        assert set(z.files) == {f"{s}__{m}" for s in S.CORE_SCORERS for m in METRICS} | {
+            "cl", "pair_index", "seed_index"}
+        assert not any(k.split("__")[0] in S.PM_SCORERS + ("r1_cf",) for k in z.files)
+        for k in z.files:
+            want = np.int64 if k in ("cl", "pair_index", "seed_index") else np.float64
+            assert z[k].dtype == want and z[k].shape == (3 * n,), k
+        assert np.array_equal(z["seed_index"], np.repeat(np.arange(3, dtype=np.int64), n))       # not 52, 53, 54
+        for i, s in enumerate(SEEDS):
+            for m in METRICS:
+                assert np.array_equal(z[f"B1__{m}"][i * n:(i + 1) * n], ns.scored[s]["B1"][m])
+            assert np.array_equal(z["pair_index"][i * n:(i + 1) * n], ns.scored[s]["pair_index"])
+    sc = [fake_scored(s, 3 * R.N_SMOKE) for s in R.SMOKE_SEEDS]
+    sc[1]["cl"] = sc[1]["cl"].astype(np.int32)
+    got = RH.read_arrays(sc)
+    assert got["cl"].dtype == np.int64 and np.array_equal(got["cl"], np.concatenate([x["cl"] for x in sc]))
+    sc[2]["aff_fused"]["r1"] = sc[2]["aff_fused"]["r1"].astype(np.float32)
+    with pytest.raises(AssertionError, match="float64"):
+        RH.read_arrays(sc)
+    sc = [fake_scored(s, 3 * R.N_SMOKE) for s in R.SMOKE_SEEDS]
+    del sc[0]["rca"]["strict"]
+    with pytest.raises(AssertionError, match="metrics"):
+        RH.read_arrays(sc)
+
+
+def test_seed_bundle_keeps_its_signature_and_writes_nothing(tmp_path, monkeypatch):
+    """Ticket 13 builds held bundles after the verdict with seed_bundle(env, "held", seed, 4096): it only builds the
+    context and the bundle; the started-file recording lives in the read's on_episodes callback."""
+    import builtins
+    import inspect
+    import io
+    import os
+    sig = inspect.signature(RH.seed_bundle)
+    assert list(sig.parameters) == ["env", "mode", "seed", "n_per_pair", "on_episodes"]
+    assert sig.parameters["on_episodes"].default is None
+    calls = [n.func for n in ast.walk(ast.parse(inspect.getsource(RH.seed_bundle))) if isinstance(n, ast.Call)]
+    assert sorted(ast.unparse(f) for f in calls) == ["B.build_bundle_r6", "X.RowContext"]
+    writes, seen = [], []
+    real_open, real_io_open, real_replace = builtins.open, io.open, os.replace
+
+    def opener(real):
+        def f(file, mode="r", *a, **k):
+            if any(c in mode for c in "wax+"):
+                writes.append(str(file))
+            return real(file, mode, *a, **k)
+        return f
+
+    monkeypatch.setattr(builtins, "open", opener(real_open))
+    monkeypatch.setattr(io, "open", opener(real_io_open))
+    monkeypatch.setattr(os, "replace", lambda *a, **k: writes.append(a) or real_replace(*a, **k))
+    monkeypatch.setattr(RH.X, "RowContext", lambda *a, **k: seen.append(("ctx", a[:3], k)) or "ctx")
+    monkeypatch.setattr(RH.B, "build_bundle_r6", lambda ctx, readers, pm: seen.append(("bundle", ctx)) or "bundle")
+    env = SimpleNamespace(data="d", split="s", labels="l", heads="h", value_sets="v", readers="r", pm="p")
+    monkeypatch.chdir(tmp_path)
+    assert RH.seed_bundle(env, "held", 52, R.N_PER_PAIR) == "bundle"
+    assert seen == [("ctx", ("held", 52, "d"), {"on_episodes": None}), ("bundle", "ctx")] and writes == []
+    assert list(tmp_path.iterdir()) == []

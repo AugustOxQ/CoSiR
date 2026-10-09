@@ -975,12 +975,26 @@ def sensitivity_held(bundles, seeds, sigma, n_per_pair) -> dict:
 
 
 def read_arrays(scored) -> dict:
-    """held_arrays.npz (contracts section 7): <scorer>__<metric> for the eight scorers of rule section 8 item 3, the
-    seeds concatenated in the read's order, with cl, pair_index and seed_index (the seed's position in the read)."""
-    out = {f"{name}__{m}": np.concatenate([np.asarray(sc[name][m]) for sc in scored])
-           for name in READ_SCORERS for m in METRICS}
-    out["cl"] = np.concatenate([np.asarray(sc["cl"]) for sc in scored])
-    out["pair_index"] = np.concatenate([np.asarray(sc["pair_index"]) for sc in scored])
+    """held_arrays.npz (contracts section 7, amendment 16:22; ticket 13's r6_descriptive.arrays_from_scored reads and
+    builds the same layout): <scorer>__<metric> (float64, (n,)) for exactly r6_score.CORE_SCORERS and every metric
+    score_seed returns for them; cl and pair_index (int64); seed_index (int64, the seed's position 0, 1, 2 in the
+    pass's seed order, not the seed). Seeds concatenated in that order, each seed's rows in score_seed's order. No PM
+    or r1_cf key. The file is named after its pass file (read_names: held_arrays, _fix1, _reserve)."""
+    _require(len(scored) >= 1, "no seed scored")
+    out = {}
+    for name in READ_SCORERS:
+        metrics = tuple(scored[0][name])
+        _require(metrics == tuple(METRICS) and all(tuple(sc[name]) == metrics for sc in scored),
+                 f"{name}: metrics {metrics}, not score_seed's {tuple(METRICS)} in every seed")
+        for m in metrics:
+            parts = [np.asarray(sc[name][m]) for sc in scored]
+            _require(all(p.dtype == np.float64 and p.shape == (len(sc["cl"]),) for p, sc in zip(parts, scored)),
+                     f"{name}__{m}: per-anchor values must be float64 of the seed's episode count")
+            out[f"{name}__{m}"] = np.concatenate(parts)
+    for k in ("cl", "pair_index"):
+        parts = [np.asarray(sc[k]) for sc in scored]
+        _require(all(p.dtype.kind in "iu" and p.ndim == 1 for p in parts), f"{k}: a 1-d integer array per seed")
+        out[k] = np.concatenate(parts).astype(np.int64)
     out["seed_index"] = np.concatenate([np.full(len(sc["cl"]), i, dtype=np.int64) for i, sc in enumerate(scored)])
     return out
 
