@@ -382,6 +382,11 @@ def test_refuses_without_a_verdict(smoke_fx, tmp_path, capsys):
     code, text = run(smoke_fx, out, capsys)
     assert _refused(code, text, "held_verdict.json is missing")
     assert not (out / "descriptive.json").exists()
+
+    def boom(seed):
+        raise Reached("a bundle was built before the refusal")
+    assert run(smoke_fx, out, bundle_fn=boom, env=None, picks=None, lambdas=None)[0] == RD.EXIT_REFUSE   # nothing
+    # loaded: no setup, no picks, no bundle
     mut = mutant(tmp_path, "run_r6_descriptive.py", "verdict_missing")
     with pytest.raises(FileNotFoundError):                   # without the guard the run cannot refuse cleanly
         run(smoke_fx, out, module=mut)
@@ -402,6 +407,10 @@ def test_real_mode_refuses_a_smoke_verdict(smoke_fx, held_fx, tmp_path, capsys, 
     out = copy_dir(held_fx, tmp_path)
     shutil.copy2(smoke_fx.out / "held_verdict.json", out / "held_verdict.json")
     assert _refused(*run(held_fx, out, capsys), "'smoke' verdict")
+
+    def boom(seed):
+        raise Reached("a held bundle was built before the refusal")
+    assert run(held_fx, out, bundle_fn=boom)[0] == RD.EXIT_REFUSE                # no held bundle, no PM score
     # the mode field alone: everything else of the real folder consistent
     out2 = copy_dir(held_fx, tmp_path, "res2")
     edit_json(out2 / "held_verdict.json", lambda v: v.update(mode="smoke"))
