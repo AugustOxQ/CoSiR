@@ -205,3 +205,7 @@ cursor_tmp_file/**/*.npy
 
 # Codex agent profiles from the claude-code-harness setup; local only
 codex/
+
+# Ongoing papers never go public (public repo, double-blind; user, 2026-10-09)
+docs/paper/
+.DS_Store
