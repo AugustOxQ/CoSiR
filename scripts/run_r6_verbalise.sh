@@ -8,6 +8,11 @@
 # overrides; give each shard run from one checkout its own R6_OUT) and are fetched with `cluster pull --tag`.
 # `--check-only` checks the inputs, loads the model and runs two episodes; `--check-only --no-model` stops before the
 # model (no GPU). The job reads no label, aspect name or candidate order and prints no metric.
+# Resume on DAS6: every launch gets a new tag and worktree, so its outputs start empty. Launch shards small enough to
+# finish (--start/--stop), and relaunch a stopped shard with the same arguments plus
+#   --prior /local/wding/jobs/<earlier tag>/code/outputs/r6_verbalise/<job>
+# (read only, same fingerprint): its answers for the shard's keys are copied, only the rest run. The CPU side merges
+# the outputs of several tags and refuses two different answers for one key. Locally, rerun into the same R6_OUT.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."

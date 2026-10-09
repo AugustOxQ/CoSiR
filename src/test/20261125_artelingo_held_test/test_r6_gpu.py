@@ -23,6 +23,7 @@ import subprocess
 import sys
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -67,25 +68,31 @@ FORBIDDEN = forbidden_words()
 
 # ---------------------------------------------------------------- mutation helpers
 
-def mutant_source(module, guard):
+def mutant_source(module, guard=None, replace=()):
     src = (HERE / module).read_text()
     assert src.count(HERE_LINE) == 1, module
     lines = src.splitlines(keepends=True)
-    hits = [n for n in ast.walk(ast.parse(src))
-            if isinstance(n, ast.Expr) and f"# guard:{guard}" in lines[n.end_lineno - 1]]
-    assert hits, f"no statement of {module} carries # guard:{guard}"
-    for n in hits:
-        indent = lines[n.lineno - 1][:len(lines[n.lineno - 1]) - len(lines[n.lineno - 1].lstrip())]
-        lines[n.lineno - 1] = f"{indent}pass\n"
-        for i in range(n.lineno, n.end_lineno):
-            lines[i] = "\n"
-    return "".join(lines).replace(HERE_LINE, f"HERE = Path({str(HERE)!r})\n")
+    if guard is not None:
+        hits = [n for n in ast.walk(ast.parse(src))
+                if isinstance(n, ast.Expr) and f"# guard:{guard}" in lines[n.end_lineno - 1]]
+        assert hits, f"no statement of {module} carries # guard:{guard}"
+        for n in hits:
+            indent = lines[n.lineno - 1][:len(lines[n.lineno - 1]) - len(lines[n.lineno - 1].lstrip())]
+            lines[n.lineno - 1] = f"{indent}pass\n"
+            for i in range(n.lineno, n.end_lineno):
+                lines[i] = "\n"
+    src = "".join(lines).replace(HERE_LINE, f"HERE = Path({str(HERE)!r})\n")
+    for old, new in replace:
+        assert src.count(old) == 1, old
+        src = src.replace(old, new)
+    return src
 
 
-def load_copy(tmp_path, module, guard):
-    """Import a copy of ``module`` with the `# guard:<guard>` statements replaced by `pass`."""
+def load_copy(tmp_path, module, guard=None, replace=()):
+    """Import a copy of ``module`` with the `# guard:<guard>` statements replaced by `pass` and the ``replace``
+    pairs (old, new) applied."""
     path = tmp_path / f"{Path(module).stem}_copy{next(_COUNT)}.py"
-    path.write_text(mutant_source(module, guard))
+    path.write_text(mutant_source(module, guard, replace))
     spec = importlib.util.spec_from_file_location(path.stem, path)
     mod = importlib.util.module_from_spec(spec)
     sys.modules[path.stem] = mod
@@ -489,6 +496,252 @@ def test_provenance_of_other_inputs_fires_and_the_guard_matters(tmp_path):
     assert len(mut.begin_provenance(tmp_path, other, {"args": {}})["runs"]) == 3
 
 
+# ---------------------------------------------------------------- answers with Unicode line separators
+
+def test_answers_with_unicode_line_separators_resume(tuning_job, tmp_path):
+    odd = ["a\u2028b", "c\u2029d", "e\x85f", "g\x0bh", "i\x1cj", "k\x0cl", "\u00e9t\u00e9"]
+
+    class OddModel(FakeModel):
+        def __call__(self, messages):
+            return super().__call__(messages) + odd[self.n % len(odd)]
+
+    run_v(tuning_job, tmp_path, OddModel(), 0, 10, max_calls=20)
+    m2 = OddModel()
+    res = run_v(tuning_job, tmp_path, m2, 0, 10)
+    assert res["n_done_before"] == 20 and m2.n == 40 - 20 and res["complete"]
+    for w in ("W1", "W3"):
+        raw = (tmp_path / f"phrases_{w}.jsonl").read_bytes()
+        assert raw.isascii() and raw.count(b"\n") == 20
+        st = G.KeyedJsonl(tmp_path / f"phrases_{w}.jsonl", V.FIELDS, V.KEY_FIELDS)
+        assert st.load() == 20 and sum(any(o in r["answer"] for o in odd) for r in st.records()) == 20
+
+
+def test_splitlines_and_raw_unicode_would_break_resume(tuning_job, tmp_path):
+    mut = load_copy(tmp_path, "r6_gpu_common.py", replace=(
+        ('json.dumps(rec, ensure_ascii=True)', 'json.dumps(rec, ensure_ascii=False)'),
+        ('for line in text.split("\\n")[:-1]:', 'for line in text.splitlines():')))
+    st = mut.KeyedJsonl(tmp_path / "x.jsonl", V.FIELDS, V.KEY_FIELDS)
+    st.add({"seed": 52, "episode_index": 0, "condition": "a", "wording": "W1", "answer": "light\u2028and shade"})
+    st.save()
+    with pytest.raises(json.JSONDecodeError):
+        mut.KeyedJsonl(tmp_path / "x.jsonl", V.FIELDS, V.KEY_FIELDS).load()
+
+
+# ---------------------------------------------------------------- --prior: an earlier launch's outputs (DAS6 resume)
+
+def verbaliser_fingerprint(job, **change):
+    fp = {"job": "r6_gpu_verbalise", "model_id": SETTINGS["model"]["id"], "snapshot": SNAP,
+          "settings_sha256": SETTINGS_SHA,
+          "scripts_sha256": G.script_shas(HERE / "r6_gpu_verbalise.py", HERE / "r6_gpu_common.py"),
+          "inputs_sha256": {f: G.sha256_file(job["job"] / f) for f in ("rows_manifest.npz", "verbalise_input.npz")}}
+    fp.update(change)
+    return fp
+
+
+def test_prior_outputs_are_copied_not_recomputed_and_left_unchanged(tuning_job, tmp_path):
+    fp = verbaliser_fingerprint(tuning_job)
+    first = tmp_path / "launch1"
+    G.begin_provenance(first, fp, {"args": {}})
+    with pytest.raises(RuntimeError, match="simulated crash"):            # the first launch died after 75 calls
+        run_v(tuning_job, first, FakeModel(crash_at=76), 100, 140)
+    before = {f.name: G.sha256_file(f) for f in first.iterdir()}
+    prior = V.load_prior([first], fp, ["W1", "W3"])
+    m = FakeModel()
+    res = run_v(tuning_job, tmp_path / "launch2", m, 100, 140, prior=prior)
+    assert res["n_prior"] == 50 and m.n == 160 - 50 and res["complete"]  # 50 were checkpointed by the first launch
+    check_outputs(tuning_job, tmp_path / "launch2", 100, 140)
+    assert {f.name: G.sha256_file(f) for f in first.iterdir()} == before   # read only
+
+
+def test_prior_of_another_fingerprint_fires_and_the_guard_matters(tuning_job, tmp_path):
+    first = tmp_path / "launch1"
+    G.begin_provenance(first, verbaliser_fingerprint(tuning_job, settings_sha256="0" * 64), {"args": {}})
+    run_v(tuning_job, first, FakeModel(), 0, 4)
+    with pytest.raises(AssertionError, match="not reusable"):
+        V.load_prior([first], verbaliser_fingerprint(tuning_job), ["W1", "W3"])
+    mut = load_copy(tmp_path, "r6_gpu_verbalise.py", guard="prior_fingerprint")
+    assert len(mut.load_prior([first], verbaliser_fingerprint(tuning_job), ["W1", "W3"])["W1"]) == 8
+
+
+def test_priors_that_disagree_raise(tuning_job, tmp_path):
+    fp = verbaliser_fingerprint(tuning_job)
+    for name, model in (("a", FakeModel()), ("b", lambda msgs: "another answer")):
+        G.begin_provenance(tmp_path / name, fp, {"args": {}})
+        run_v(tuning_job, tmp_path / name, model, 0, 2)
+    with pytest.raises(AssertionError, match="disagree"):
+        V.load_prior([tmp_path / "a", tmp_path / "b"], fp, ["W1", "W3"])
+
+
+# ---------------------------------------------------------------- generation through stub model and processor
+
+EOS, PAD, VOCAB = (2, 3), 3, 50
+
+
+class BatchLike(dict):
+    def to(self, device):
+        return self
+
+
+class StubTokenizer:
+    """Prompt ids 10..39 (length from the text), pads on its padding_side; new tokens decode as w<id>."""
+
+    def __init__(self):
+        self.padding_side, self.calls = "right", []
+
+    @staticmethod
+    def encode(text):
+        return [10 + ord(ch) % 30 for ch in text[:4 + len(text) % 11]]
+
+    def __call__(self, texts, return_tensors=None, padding=False, add_special_tokens=True):
+        import torch
+        self.calls.append({"padding_side": self.padding_side, "padding": padding,
+                           "add_special_tokens": add_special_tokens, "return_tensors": return_tensors})
+        seqs = [self.encode(t) for t in texts]
+        n = max(len(x) for x in seqs)
+        ids, mask = [], []
+        for x in seqs:
+            fill = [PAD] * (n - len(x))
+            ids.append(fill + x if self.padding_side == "left" else x + fill)
+            ones = [1] * len(x)
+            mask.append([0] * len(fill) + ones if self.padding_side == "left" else ones + [0] * len(fill))
+        return BatchLike(input_ids=torch.tensor(ids), attention_mask=torch.tensor(mask))
+
+    def decode(self, ids, skip_special_tokens=True):
+        return " ".join(f"w{i}" for i in ids if not (skip_special_tokens and i in (*EOS, PAD)))
+
+
+class StubProcessor:
+    def __init__(self):
+        self.tokenizer, self.calls = StubTokenizer(), []
+
+    def apply_chat_template(self, conv, tokenize=False, add_generation_prompt=False, return_dict=False,
+                            return_tensors=None):
+        import torch
+        self.calls.append({"tokenize": tokenize, "add_generation_prompt": add_generation_prompt,
+                           "return_dict": return_dict, "return_tensors": return_tensors})
+        text = "|".join(p.get("text", "<image>") for m in conv for p in m["content"])
+        if not tokenize:
+            return text
+        ids = self.tokenizer.encode(text)
+        return BatchLike(input_ids=torch.tensor([ids]), attention_mask=torch.ones(1, len(ids), dtype=torch.long))
+
+
+class StubModel:
+    """generate(): greedy decoding of fixed logits (row b, step t: token 40 + (t + b) % 9, end-of-sequence at step
+    stops[b]), through the given logits processors; records its arguments. With ``off_step`` row 0 takes a token
+    that is not the argmax at that step (what sampling would do)."""
+    device = "cpu"
+
+    def __init__(self, stops=(10_000,), off_step=None):
+        self.generation_config = SimpleNamespace(eos_token_id=list(EOS), pad_token_id=PAD)
+        self.stops, self.off_step, self.calls = stops, off_step, []
+
+    def generate(self, input_ids=None, attention_mask=None, max_new_tokens=None, logits_processor=None, **kwargs):
+        import torch
+        self.calls.append(dict(kwargs, max_new_tokens=max_new_tokens, input_ids=input_ids.clone(),
+                               attention_mask=attention_mask.clone()))
+        b_n = input_ids.shape[0]
+        seq, done = input_ids.clone(), torch.zeros(b_n, dtype=torch.bool)
+        for t in range(max_new_tokens):
+            logits = torch.zeros(b_n, VOCAB)
+            for b in range(b_n):
+                logits[b, EOS[0] if t == self.stops[b % len(self.stops)] else 40 + (t + b) % 9] = 1.0
+            for proc in logits_processor or []:
+                logits = proc(seq, logits)
+            nxt = logits.argmax(-1)
+            if self.off_step == t:
+                nxt[0] = 49
+            nxt = torch.where(done, torch.full_like(nxt, PAD), nxt)
+            seq = torch.cat([seq, nxt[:, None]], 1)
+            done |= torch.isin(nxt, torch.tensor(EOS))
+            if bool(done.all()):
+                break
+        return seq
+
+
+def words(b, n):
+    return " ".join(f"w{40 + (t + b) % 9}" for t in range(n))
+
+
+def greedy_kwargs_ok(call):
+    return (call.get("do_sample") is False and call.get("num_beams") == 1
+            and all(k in call and call[k] is None for k in ("temperature", "top_p", "top_k")))
+
+
+def check_verbaliser_generation(vmod):
+    """make_generate on a stub: greedy kwargs, 32 new tokens at most, only the new tokens decoded."""
+    model, proc = StubModel(), StubProcessor()
+    msgs = V.build_messages([("i.jpg", "c")] * 4, [("j.jpg", "d")] * 4, "a wording", SETTINGS)
+    text = vmod.make_generate(proc, model, SETTINGS)(msgs)
+    call = model.calls[0]
+    assert greedy_kwargs_ok(call), call
+    assert call["max_new_tokens"] == 32 and text == words(0, 32)            # the limit applied; prompt not decoded
+    assert proc.calls == [{"tokenize": True, "add_generation_prompt": True, "return_dict": True,
+                           "return_tensors": "pt"}]
+    model, proc = StubModel(stops=(5,)), StubProcessor()
+    assert vmod.make_generate(proc, model, SETTINGS)(msgs) == words(0, 5)    # stops at end-of-sequence
+
+
+def check_listing_generation(lmod):
+    """make_generate_batch on a stub: greedy kwargs, 128 new tokens at most, left padding, one text per row."""
+    model, proc = StubModel(stops=(5, 9, 10_000)), StubProcessor()
+    convs = [L.listing_messages(p, k, SETTINGS) for p, k in (("light", 8), ("brushwork and texture", 16), ("x", 8))]
+    texts = lmod.make_generate_batch(proc, model, SETTINGS)(convs)
+    call = model.calls[0]
+    assert greedy_kwargs_ok(call), call
+    assert call["max_new_tokens"] == 128
+    tc = proc.tokenizer.calls[0]
+    assert tc["padding_side"] == "left" and tc["padding"] is True and tc["add_special_tokens"] is False
+    mask = call["attention_mask"]
+    assert bool((mask[:, -1] == 1).all()) and bool((mask[:, 0] == 0).any())   # left padding reached generate
+    assert texts == [words(0, 5), words(1, 9), words(2, 128)]
+    assert all(c["tokenize"] is False and c["add_generation_prompt"] is True for c in proc.calls)
+
+
+def test_generation_settings_reach_generate():
+    check_verbaliser_generation(V)
+    check_listing_generation(L)
+
+
+def test_a_non_greedy_token_from_generate_raises():
+    model, proc = StubModel(off_step=2), StubProcessor()
+    msgs = V.build_messages([("i.jpg", "c")] * 4, [("j.jpg", "d")] * 4, "a wording", SETTINGS)
+    with pytest.raises(RuntimeError, match="not the greedy choice"):
+        V.make_generate(proc, model, SETTINGS)(msgs)
+    with pytest.raises(RuntimeError, match="not the greedy choice"):
+        L.make_generate_batch(StubProcessor(), StubModel(off_step=0), SETTINGS)([L.listing_messages("x", 8, SETTINGS)])
+
+
+@pytest.mark.parametrize("module, old, new, fails", [
+    ("r6_gpu_common.py", "logits_processor=LogitsProcessorList([rec]),\n                             **kwargs)",
+     "logits_processor=LogitsProcessorList([rec]))", {"verbaliser", "listing"}),            # no greedy kwargs
+    ("r6_gpu_verbalise.py", 'max_new = settings["generation"]["verbaliser"]["max_new_tokens"]', "max_new = 128",
+     {"verbaliser"}),
+    ("r6_gpu_listing.py", 'tok.padding_side = settings["generation"]["listing"]["padding_side"]', "pass",
+     {"listing"}),
+    ("r6_gpu_listing.py", 'max_new = settings["generation"]["listing"]["max_new_tokens"]', "max_new = 32",
+     {"listing"}),
+    ("r6_gpu_common.py", "new = seq[:, inputs[\"input_ids\"].shape[1]:].cpu().numpy()", "new = seq.cpu().numpy()",
+     {"verbaliser", "listing"}),                                                            # prompt kept
+])
+def test_generation_mutations_fail_the_checks(tmp_path, module, old, new, fails):
+    mut = load_copy(tmp_path, module, replace=((old, new),))
+    if module == "r6_gpu_common.py":                        # the verbaliser and listing copies use the mutant
+        vmod, lmod = load_copy(tmp_path, "r6_gpu_verbalise.py"), load_copy(tmp_path, "r6_gpu_listing.py")
+        vmod.G = lmod.G = mut
+    else:
+        vmod = mut if module == "r6_gpu_verbalise.py" else V
+        lmod = mut if module == "r6_gpu_listing.py" else L
+    failed = set()
+    for name, check, mod in (("verbaliser", check_verbaliser_generation, vmod),
+                             ("listing", check_listing_generation, lmod)):
+        try:
+            check(mod)
+        except (AssertionError, RuntimeError):
+            failed.add(name)
+    assert failed == fails
+
+
 # ---------------------------------------------------------------- greedy check and snapshot
 
 def test_greedy_check():
@@ -821,10 +1074,14 @@ def test_sync_refuses_wikiart_paths_in_a_job_folder(tmp_path, plant, match):
     job = tmp_path / "job_with_path"
     inp = synthetic_input(tuning_index())
     man = synthetic_manifest(inp)
+    neutral = sorted(set(man["image_name"].tolist()))
     if plant == "npz":                                          # a path inside a compressed unicode array
         man["image_name"] = man["image_name"].astype("<U64")
         man["image_name"][7] = "Baroque/rembrandt_the-night-watch.jpg"
     write_job(job, inp, man)
+    if plant == "npz":                                          # images.txt stays neutral: only the npz holds it
+        (job / "images.txt").write_text("\n".join(neutral) + "\n")
+        match = "rows_manifest.npz (image_name.npy): a WikiArt path"
     if plant == "json":
         (job / "job_record.json").write_text(json.dumps({"note": "Ukiyo_e/hokusai_the-great-wave.jpg"}))
     if plant == "images":
@@ -834,6 +1091,30 @@ def test_sync_refuses_wikiart_paths_in_a_job_folder(tmp_path, plant, match):
         (job / "s.image_map.json").write_text("{}")
     r = run([SYS_PY, "scripts/das6_sync_r6.py", "--node", "node401", "--job-dir", str(job)])
     assert r.returncode != 0 and "REFUSING" in r.stderr and match in r.stderr, r.stderr[-800:]
+
+
+@needs_sys_py
+@pytest.mark.skipif(not Path("/data/PDD/wikiart_proj/wikiart").is_dir(), reason="no local WikiArt tree")
+def test_utf32_search_finds_a_path_in_a_compressed_unicode_array(tmp_path):
+    """The npz case above passes only through the UTF-32-LE search: without it a copy of the sync script ships the
+    folder."""
+    job = tmp_path / "job_with_path"
+    inp = synthetic_input(tuning_index())
+    man = synthetic_manifest(inp)
+    neutral = sorted(set(man["image_name"].tolist()))
+    man["image_name"] = man["image_name"].astype("<U64")
+    man["image_name"][7] = "Baroque/rembrandt_the-night-watch.jpg"
+    write_job(job, inp, man)
+    (job / "images.txt").write_text("\n".join(neutral) + "\n")
+    src = (CHECKOUT / "scripts/das6_sync_r6.py").read_text()
+    line = '    alts += [re.escape((f + "/").encode("utf-32-le")) for f in folders]\n'
+    assert src.count(line) == 1
+    copy = tmp_path / "das6_sync_r6_no_utf32.py"
+    copy.write_text(src.replace(line, ""))
+    r = run([SYS_PY, str(copy), "--node", "node401", "--job-dir", str(job)])
+    assert r.returncode == 0 and "Plan only" in r.stdout, r.stderr[-800:]       # the path would be shipped
+    r = run([SYS_PY, "scripts/das6_sync_r6.py", "--node", "node401", "--job-dir", str(job)])
+    assert r.returncode != 0 and "rows_manifest.npz (image_name.npy): a WikiArt path" in r.stderr
 
 
 def test_wrapper_refuses_a_name_that_is_not_neutral(cli_job, tmp_path):

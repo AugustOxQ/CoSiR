@@ -180,12 +180,13 @@ class KeyedJsonl:
         return k
 
     def load(self, allowed=None) -> int:
-        """Read an existing file (each line one record); ``allowed`` (a set of keys) refuses foreign records."""
+        """Read an existing file (records separated by "\\n" only: an answer may hold U+2028 or U+0085, which
+        str.splitlines would split on); ``allowed`` (a set of keys) refuses foreign records."""
         if not self.path.exists():
             return 0
         text = self.path.read_text(encoding="utf-8")
         _require(text == "" or text.endswith("\n"), f"{self.path}: the last record is incomplete")
-        for line in text.splitlines():
+        for line in text.split("\n")[:-1]:
             rec = json.loads(line)
             self._keys.add(self._check(rec, allowed))
             self._records.append(rec)
@@ -213,7 +214,7 @@ class KeyedJsonl:
         tmp = self.path.with_name(self.path.name + ".tmp")
         with open(tmp, "w", encoding="utf-8") as f:
             for rec in self._records:
-                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                f.write(json.dumps(rec, ensure_ascii=True) + "\n")       # ASCII lines (non-ASCII as \u escapes)
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp, self.path)

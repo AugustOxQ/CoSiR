@@ -45,7 +45,9 @@ def load_listing_input(path, settings) -> list:
     """[(phrase, K)] in file order; every phrase a non-empty single normalised line, K one of the rule's, no repeats."""
     path = Path(path)
     items, seen = [], set()
-    for i, line in enumerate(path.read_text(encoding="utf-8").splitlines()):
+    text = path.read_text(encoding="utf-8")
+    G._require(text.endswith("\n"), f"{path}: the last line is incomplete")
+    for i, line in enumerate(text.split("\n")[:-1]):          # split on newline only, as KeyedJsonl
         rec = json.loads(line)
         G._require(isinstance(rec, dict) and sorted(rec) == ["K", "phrase"], f"{path}:{i + 1}: keys must be phrase, K")
         p, K = rec["phrase"], rec["K"]

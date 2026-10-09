@@ -12,16 +12,19 @@ names of the manifest (the processor loads the pixels; no path is ever in the te
 Inputs and outputs. The job folder holds rows_manifest.npz and verbalise_input.npz (r6_gpu_inputs.py); nothing else is
 read. Each call writes one line {"seed", "episode_index", "condition", "wording", "answer"} (the raw answer,
 unnormalised) to <out>/phrases_<wording>.jsonl; the files are rewritten atomically every 50 calls, and a rerun into the
-same folder resumes, skipping the keys already written (provenance.json's fingerprint must match). No metric is
-computed or printed.
+same folder resumes, skipping the keys already written (provenance.json's fingerprint must match). On DAS6 each
+launch has its own worktree, so a relaunch passes the earlier launch's output folder as --prior (read only, same
+fingerprint): its answers for this run's keys are copied, not recomputed. No metric is computed or printed.
 
 Run (DAS6 through scripts/run_r6_verbalise.sh; the local GPU only under its lock):
     python r6_gpu_verbalise.py --job-dir <job folder> --out <output folder> --wordings W1,W2 [--start i] [--stop j]
     ... --check-only            inputs, images, snapshot, then the first wording on two episodes, both conditions
     ... --check-only --no-model the same without loading the model (no GPU)
+    ... --prior <earlier output folder>   (repeatable) reuse an earlier launch's answers for this run's keys
 --start/--stop are positions in verbalise_input.npz (a shard is [start, stop)).
 """
 import argparse
+import json
 import os
 import sys
 import time
@@ -81,19 +84,46 @@ def call_key(inp, pos, wording, condition) -> tuple:
     return (int(inp["seed"]), int(inp["episode_index"][pos]), condition, wording)
 
 
+def load_prior(dirs, fingerprint, wordings) -> dict:
+    """{wording: {key: answer}} from earlier output folders (read only) of the same fingerprint."""
+    out = {w: {} for w in wordings}
+    for d in dirs:
+        d = Path(d)
+        prov = json.loads((d / "provenance.json").read_text())
+        G._require(prov.get("fingerprint") == fingerprint,
+                   f"{d}: written by another model, settings, script or input; not reusable")  # guard:prior_fingerprint
+        for w in wordings:
+            st = G.KeyedJsonl(d / f"phrases_{w}.jsonl", FIELDS, KEY_FIELDS)
+            st.load()
+            for rec in st.records():
+                k = st.key(rec)
+                G._require(out[w].get(k, rec["answer"]) == rec["answer"], f"earlier outputs disagree on {k}")
+                out[w][k] = rec["answer"]
+    return out
+
+
 def run_calls(inp, manifest, settings, out_dir, wordings, start, stop, generate, image_dir,
-              every=G.CHECKPOINT_EVERY, max_calls=None, log=print) -> dict:
-    """Call ``generate(messages) -> str`` for every planned key not yet in <out_dir>/phrases_<w>.jsonl; checkpoint
-    every ``every`` calls. ``max_calls`` stops early (tests)."""
+              every=G.CHECKPOINT_EVERY, max_calls=None, log=print, prior=None) -> dict:
+    """Call ``generate(messages) -> str`` for every planned key not yet in <out_dir>/phrases_<w>.jsonl nor in
+    ``prior`` (load_prior; copied); checkpoint every ``every`` calls. ``max_calls`` stops early (tests)."""
     out_dir = Path(out_dir)
     calls = plan(inp, start, stop, wordings)
     allowed = {w: {call_key(inp, p, w, c) for p, ww, c in calls if ww == w} for w in wordings}
     stores = {w: G.KeyedJsonl(out_dir / f"phrases_{w}.jsonl", FIELDS, KEY_FIELDS) for w in wordings}
     for w, st in stores.items():
         st.load(allowed[w])
+    n_before, n_prior = sum(len(st) for st in stores.values()), 0
+    for p, w, c in calls:
+        k = call_key(inp, p, w, c)
+        if prior and k not in stores[w] and k in prior.get(w, {}):
+            stores[w].add(dict(zip(FIELDS, (*k[:2], c, w, prior[w][k]))), allowed[w])
+            n_prior += 1
+    if n_prior:
+        for st in stores.values():
+            st.save()
     todo = [(p, w, c) for p, w, c in calls if call_key(inp, p, w, c) not in stores[w]]
-    log(f"verbaliser: {len(calls)} calls planned in [{start}, {stop}), {len(calls) - len(todo)} already written, "
-        f"{len(todo)} to run")
+    log(f"verbaliser: {len(calls)} calls planned in [{start}, {stop}), {n_before} already written, {n_prior} copied "
+        f"from earlier outputs, {len(todo)} to run")
     n, t0 = 0, time.time()
     for p, w, c in todo:
         answer = generate(episode_messages(inp, manifest, p, c, w, settings, image_dir))
@@ -110,8 +140,8 @@ def run_calls(inp, manifest, settings, out_dir, wordings, start, stop, generate,
     for st in stores.values():
         st.save()
     complete = all(len(stores[w]) == len(allowed[w]) for w in wordings)
-    return {"n_planned": len(calls), "n_done_before": len(calls) - len(todo), "n_called": n, "complete": complete,
-            "s_per_call": (time.time() - t0) / n if n else None}
+    return {"n_planned": len(calls), "n_done_before": n_before, "n_prior": n_prior, "n_called": n,
+            "complete": complete, "s_per_call": (time.time() - t0) / n if n else None}
 
 
 def make_generate(processor, model, settings):
@@ -148,6 +178,8 @@ def parse_args(argv=None):
     ap.add_argument("--check-only", action="store_true",
                     help="check inputs, images and snapshot, then run the first wording on two episodes")
     ap.add_argument("--no-model", action="store_true", help="with --check-only: stop before loading the model")
+    ap.add_argument("--prior", action="append", default=[],
+                    help="an earlier output folder of this job (read only, same fingerprint) whose answers are reused")
     ap.add_argument("--hub-cache", default=None, help="HF hub cache (default $HF_HUB_CACHE)")
     ap.add_argument("--image-dir", default=os.environ.get("R6_IMAGE_DIR") or G.DEFAULT_IMAGE_DIR,
                     help="folder of the images under their neutral names (default $R6_IMAGE_DIR, else the node's)")
@@ -182,8 +214,12 @@ def main(argv=None) -> int:
     print(f"verbaliser inputs ok: seed {inp['seed']}, {n} episodes, range [{args.start}, {stop}), "
           f"{len(manifest.rows)} manifest rows, {n_images} images, snapshot {snap_info['files']} files, "
           f"settings {settings_sha[:12]}", flush=True)
+    prior = load_prior(args.prior, fingerprint, args.wordings)
     run = {"args": {k: v for k, v in vars(args).items()}, "stop": stop, "seed": inp["seed"], "n_input": n,
-           "snapshot": snap_info}
+           "snapshot": snap_info, "prior_sha256": {str(d): {w: G.sha256_file(Path(d) / f"phrases_{w}.jsonl")
+                                                          for w in args.wordings
+                                                          if (Path(d) / f"phrases_{w}.jsonl").is_file()}
+                                                   for d in args.prior}}
     if args.check_only:
         first = min(args.start + 2, stop)
         for p, w, c in plan(inp, args.start, first, args.wordings[:1]):
@@ -213,7 +249,7 @@ def main(argv=None) -> int:
     load_s = time.time() - t0
     G.update_provenance(out, prov, model_load_s=load_s, versions=G.versions())
     res = run_calls(inp, manifest, settings, out, args.wordings, args.start, stop,
-                    make_generate(processor, model, settings), args.image_dir)
+                    make_generate(processor, model, settings), args.image_dir, prior=prior)
     import torch
     G.end_provenance(out, prov, status="complete" if res["complete"] else "partial",
                      peak_gpu_mem_bytes=int(torch.cuda.max_memory_allocated()), **res)
