@@ -175,7 +175,10 @@ def test_images_list_and_the_gpu_loaders(real):
     man = G.Manifest(job / "rows_manifest.npz")
     inp = G.load_verbalise_input(job / "verbalise_input.npz", man)
     images = (job / "images.txt").read_text().splitlines()
-    assert images == sorted(set(man.image_relpath.tolist())) and all((WIKIART / p).is_file() for p in images)
+    img_rows = np.unique(np.concatenate([inp[f].ravel() for f in ("pairs_a_img", "pairs_b_img")]))
+    want = sorted({real["annotations"][int(real["data"].sample_ids[r])]["image"] for r in img_rows.tolist()})
+    assert images == want and all((WIKIART / p).is_file() for p in images)
+    assert len(images) < len(set(man.image_relpath.tolist()))         # caption rows' paintings are not shipped
     s, _ = G.load_settings()
     import r6_gpu_verbalise as V
     eps, ann, d = real["eps"], real["annotations"], real["data"]

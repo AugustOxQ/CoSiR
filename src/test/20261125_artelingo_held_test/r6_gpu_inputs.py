@@ -8,7 +8,8 @@ The folder (written whole into <out>.partial, then renamed to <out>; an existing
   fields read. The join is asserted against the data's own: each image file's stem is data.paintings[row].
 - verbalise_input.npz: `seed`, `episode_index` (n,) (positions in the seed's concatenated episodes), `pairs_a_img`,
   `pairs_a_txt`, `pairs_b_img`, `pairs_b_txt` (n, 4) row ids. No anchor, candidates, pair names or labels.
-- images.txt: the sorted unique image paths, relative to the WikiArt root, for scripts/das6_sync_r6.py.
+- images.txt: the sorted unique paths (relative to the WikiArt root) of the images the job shows, those of the
+  pairs' image rows, for scripts/das6_sync_r6.py (a caption row's painting is not copied).
 - job_record.json: SHA-256 of each file and of the source episodes file, the seed, counts, `first_per_pair`, module
   SHA-256s and the time (no aspect name, label or path).
 `image_relpath` begins with WikiArt's style folder (the tree's layout). The job uses it only to open the file; the
@@ -106,7 +107,8 @@ def write_job(eps, sample_ids, paintings, annotations, out, first_per_pair=None,
     tmp.mkdir(parents=True)
     np.savez_compressed(tmp / "rows_manifest.npz", **man)
     np.savez(tmp / "verbalise_input.npz", **vin)
-    images = sorted(set(man["image_relpath"].tolist()))
+    img_rows = np.unique(np.concatenate([vin[f].ravel() for f in ("pairs_a_img", "pairs_b_img")]))
+    images = sorted(set(man["image_relpath"][np.searchsorted(rows, img_rows)].tolist()))
     (tmp / "images.txt").write_text("\n".join(images) + "\n", encoding="utf-8")
     manifest = G.Manifest(tmp / "rows_manifest.npz")
     back = G.load_verbalise_input(tmp / "verbalise_input.npz", manifest)
