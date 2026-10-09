@@ -318,7 +318,7 @@ def load_model(snap, settings):
 # ---------------------------------------------------------------- greedy generation
 
 def check_greedy(new_tokens, argmax_steps, eos_ids, pad_id):
-    """new_tokens (B, T): tokens generated after the prompt; argmax_steps (T, B): the argmax of each step's scores.
+    """new_tokens (B, T): tokens generated after the prompt; argmax_steps (T, B): the argmax of each step's logits.
     Up to and including a row's first end-of-sequence token each token must be its step's argmax; after it, padding."""
     new_tokens, am = np.asarray(new_tokens), np.asarray(argmax_steps)
     eos = {int(e) for e in (eos_ids if isinstance(eos_ids, (list, tuple, set)) else [eos_ids])}
@@ -345,9 +345,9 @@ def generate_texts(model, processor, inputs, max_new_tokens, settings) -> list:
         def __init__(self):
             self.steps = []
 
-        def __call__(self, input_ids, scores):
-            self.steps.append(scores.argmax(dim=-1))
-            return scores
+        def __call__(self, input_ids, logits):
+            self.steps.append(logits.argmax(dim=-1))
+            return logits
 
     rec = ArgmaxRecorder()
     kwargs = dict(settings["generation"]["generate_kwargs"])

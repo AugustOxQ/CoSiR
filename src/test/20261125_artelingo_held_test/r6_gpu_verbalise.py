@@ -102,7 +102,7 @@ def run_calls(inp, manifest, settings, out_dir, wordings, start, stop, generate,
         n += 1
         if n % every == 0:
             for st in stores.values():
-                st.save()  # guard:checkpoint
+                st.save()  # guard:verbalise_checkpoint
             log(f"verbaliser: {n}/{len(todo)} calls, {(time.time() - t0) / n:.2f} s per call")
         if max_calls is not None and n >= max_calls:
             break

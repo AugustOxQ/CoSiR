@@ -1,0 +1,830 @@
+"""Tests of the round-6 DTS GPU side (ticket 10) without a GPU and without real data: the settings file against the
+rule's text, the verbaliser's message builder, the keyed jsonl outputs with checkpoint and resume, the listing job,
+the greedy check, the snapshot check, the command lines and wrappers up to the model (--check-only --no-model), the
+sync script's plan, and the absence of metric code.
+
+Synthetic job inputs use the real shapes and dtypes: global row ids in [0, 308,723), int64 (n, 4) example pairs, a full
+seed of 12,288 episodes or the tuning subset of 3,072 (the first 1,024 of each pair, episode_index 0..1023,
+4096..5119, 8192..9215). Mutation tests load a copy of a module from tmp_path with one `# guard:<name>` statement
+replaced by `pass`, and show that the guard's scenario then passes.
+
+    CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1 \
+    /root/miniconda3/envs/CoSiR/bin/python -m pytest -q -p no:cacheprovider \
+        src/test/20261125_artelingo_held_test/test_r6_gpu.py
+"""
+import ast
+import hashlib
+import importlib.util
+import itertools
+import json
+import os
+import re
+import subprocess
+import sys
+import zipfile
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+HERE = Path(__file__).resolve().parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+import r6_common as R  # noqa: E402  (first: it puts MAIN's src in front and checks it)
+import r6_gpu_common as G  # noqa: E402
+import r6_gpu_listing as L  # noqa: E402
+import r6_gpu_verbalise as V  # noqa: E402
+
+CHECKOUT = HERE.parents[2]
+PY = sys.executable
+SYS_PY = "/usr/bin/python3"
+HERE_LINE = "HERE = Path(__file__).resolve().parent\n"
+_COUNT = itertools.count()
+SETTINGS, SETTINGS_SHA = G.load_settings()
+SNAP = SETTINGS["model"]["snapshot"]
+ENV = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="8", MKL_NUM_THREADS="8")
+GPU_MODULES = ("r6_gpu_common.py", "r6_gpu_verbalise.py", "r6_gpu_listing.py")
+GPU_SCRIPTS = ("scripts/run_r6_verbalise.sh", "scripts/run_r6_listing.sh", "scripts/das6_sync_r6.py")
+
+# names a GPU job must never show the model (aspect names, ArtELingo's emotions, WikiArt's styles and genres)
+ASPECT_WORDS = ["emotion", "emotions", "style", "styles", "art style", "art_style", "genre", "genres", "aspect"]
+EMOTIONS = ["amusement", "awe", "contentment", "excitement", "anger", "disgust", "fear", "sadness", "something else"]
+STYLES = ["Abstract_Expressionism", "Action_painting", "Analytical_Cubism", "Art_Nouveau_Modern", "Baroque",
+          "Color_Field_Painting", "Contemporary_Realism", "Cubism", "Early_Renaissance", "Expressionism", "Fauvism",
+          "High_Renaissance", "Impressionism", "Mannerism_Late_Renaissance", "Minimalism", "Naive_Art_Primitivism",
+          "New_Realism", "Northern_Renaissance", "Pointillism", "Pop_Art", "Post_Impressionism", "Realism", "Rococo",
+          "Romanticism", "Symbolism", "Synthetic_Cubism", "Ukiyo_e"]
+
+
+def forbidden_words():
+    from src.data.wikiart_genre import GENRE_NAMES
+    names = ASPECT_WORDS + EMOTIONS + STYLES + list(GENRE_NAMES)
+    return sorted({n.lower() for n in names} | {n.lower().replace("_", " ") for n in names})
+
+
+FORBIDDEN = forbidden_words()
+
+
+# ---------------------------------------------------------------- mutation helpers
+
+def mutant_source(module, guard):
+    src = (HERE / module).read_text()
+    assert src.count(HERE_LINE) == 1, module
+    lines = src.splitlines(keepends=True)
+    hits = [n for n in ast.walk(ast.parse(src))
+            if isinstance(n, ast.Expr) and f"# guard:{guard}" in lines[n.end_lineno - 1]]
+    assert hits, f"no statement of {module} carries # guard:{guard}"
+    for n in hits:
+        indent = lines[n.lineno - 1][:len(lines[n.lineno - 1]) - len(lines[n.lineno - 1].lstrip())]
+        lines[n.lineno - 1] = f"{indent}pass\n"
+        for i in range(n.lineno, n.end_lineno):
+            lines[i] = "\n"
+    return "".join(lines).replace(HERE_LINE, f"HERE = Path({str(HERE)!r})\n")
+
+
+def load_copy(tmp_path, module, guard):
+    """Import a copy of ``module`` with the `# guard:<guard>` statements replaced by `pass`."""
+    path = tmp_path / f"{Path(module).stem}_copy{next(_COUNT)}.py"
+    path.write_text(mutant_source(module, guard))
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[path.stem] = mod
+    saved = list(sys.path)
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.modules.pop(path.stem, None)
+        sys.path[:] = saved
+    return mod
+
+
+def test_every_marked_guard_has_a_mutation_test():
+    marked = set()
+    for m in GPU_MODULES:
+        marked |= set(re.findall(r"# guard:(\w+)", (HERE / m).read_text()))
+    tested = set(re.findall(r"guard=\"(\w+)\"", Path(__file__).read_text()))
+    assert marked == tested, (marked - tested, tested - marked)
+
+
+# ---------------------------------------------------------------- the settings file against the rule (section 7)
+
+def rule_text():
+    return (HERE / "DECISION_RULE.md").read_text(encoding="utf-8")
+
+
+def test_settings_copy_the_rule_verbatim():
+    t = rule_text()
+    flat = re.sub(r"\s+", " ", t)
+    wordings = dict(re.findall(r'^\s*\| (W\d) \| "(.*)" \|$', t, re.M))
+    assert sorted(wordings) == ["W1", "W2", "W3", "W4"]
+    assert SETTINGS["verbaliser"]["wordings"] == wordings
+    prompt = re.search(r'is asked: "(List K .*?)" \(K written as a number\)', flat).group(1)
+    assert SETTINGS["listing"]["prompt"].format(K="K", phrase="<phrase>") == prompt
+    assert L.listing_prompt("brushwork", 16, SETTINGS) == prompt.replace("List K", "List 16").replace("<phrase>",
+                                                                                                    "brushwork")
+    marker = re.search(r"A leading list marker \(`(.*?)`\)", flat).group(1)
+    assert SETTINGS["listing"]["marker_regex"] == marker
+    assert "Basis size K ∈ {8, 16}" in flat and SETTINGS["listing"]["K"] == [8, 16]
+    assert "greedy, at most 32 new tokens" in flat and SETTINGS["generation"]["verbaliser"]["max_new_tokens"] == 32
+    assert "greedy, at most 128 new tokens" in flat and SETTINGS["generation"]["listing"]["max_new_tokens"] == 128
+    assert "Qwen3-VL-8B-Instruct" in flat and SETTINGS["model"]["id"] == "Qwen/Qwen3-VL-8B-Instruct"
+    assert SETTINGS["model"]["processor_kwargs"] == {"max_pixels": 256 * 28 * 28}
+    assert SETTINGS["rule_sha256"] == R.RULE_SHA256 == G.sha256_file(HERE / "DECISION_RULE.md")
+    assert SETTINGS["stop"]["aff_hits_seed42"] == R.AFF_HITS_SEED42 and "greater than 9,406" in flat
+    assert SETTINGS["stop"]["n_rankings_seed42"] == R.N_RANKINGS_SEED42
+    assert SETTINGS["seed42_order"]["tuning_subset_first_per_pair"] == 1024 and "first 1,024 episodes" in flat
+    assert SETTINGS["seed42_order"]["tuning_settings"] == [f"W{w} K{k}" for w in range(1, 5) for k in (8, 16)]
+    assert SETTINGS["budget"]["hours"] == 24 and "24 hours of wall time from the first DTS commit" in flat
+    assert SETTINGS["controls"]["DTS-N"]["phrase_of_target_aspect"] == {"emotion": "emotion", "style": "style",
+                                                                       "genre": "genre"}
+    assert SETTINGS["listing"]["min_values"] == 2 and "fewer than 2 values" in flat
+
+
+def test_settings_pin_the_probes_snapshot_and_greedy_decoding():
+    assert SNAP == "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b"
+    probe_log = (R.TEST / "20261106_mllm_probe_8b/20261106_mllm_probe_8b_log.md")
+    if probe_log.is_file():
+        assert SNAP in probe_log.read_text()
+    kw = SETTINGS["generation"]["generate_kwargs"]
+    assert kw == {"do_sample": False, "num_beams": 1, "temperature": None, "top_p": None, "top_k": None}
+    assert SETTINGS["generation"]["verbaliser"]["batch_size"] == 1
+    assert SETTINGS["generation"]["listing"] == {"max_new_tokens": 128, "batch_size": 16, "padding_side": "left"}
+
+
+def test_settings_file_is_in_the_module_shas():
+    shas = R.r6_module_shas()
+    rel = "src/test/20261125_artelingo_held_test/"
+    for f in ("dts_settings.json", *GPU_MODULES, "r6_gpu_inputs.py"):
+        assert shas[rel + f] == G.sha256_file(HERE / f)
+    for f in GPU_SCRIPTS:
+        assert shas[f] == G.sha256_file(CHECKOUT / f)
+
+
+def settings_copy(tmp_path, edit):
+    s = json.loads(G.SETTINGS_PATH.read_text())
+    edit(s)
+    p = tmp_path / f"settings{next(_COUNT)}.json"
+    p.write_text(json.dumps(s))
+    return p
+
+
+def test_sampling_settings_fire_and_the_guard_matters(tmp_path):
+    p = settings_copy(tmp_path, lambda s: s["generation"]["generate_kwargs"].update(do_sample=True, temperature=0.7))
+    with pytest.raises(AssertionError, match="generation is not greedy"):
+        G.load_settings(p)
+    mut = load_copy(tmp_path, "r6_gpu_common.py", guard="settings_greedy")
+    assert mut.load_settings(p)[0]["generation"]["generate_kwargs"]["do_sample"] is True
+
+
+def test_unswapped_conditions_fire_and_the_guard_matters(tmp_path):
+    p = settings_copy(tmp_path, lambda s: s["verbaliser"]["conditions"].update(b={"group_a": "pairs_a",
+                                                                                  "group_b": "pairs_b"}))
+    with pytest.raises(AssertionError, match="condition b must swap"):
+        G.load_settings(p)
+    mut = load_copy(tmp_path, "r6_gpu_common.py", guard="settings_swap")
+    assert mut.load_settings(p)[0]["verbaliser"]["conditions"]["b"]["group_a"] == "pairs_a"
+
+
+# ---------------------------------------------------------------- synthetic job inputs of the real shapes
+
+def tuning_index():
+    return np.concatenate([np.arange(k * R.N_PER_PAIR, k * R.N_PER_PAIR + 1024) for k in range(3)]).astype(np.int64)
+
+
+def synthetic_input(episode_index, seed=52, rng_seed=0):
+    rng = np.random.default_rng(rng_seed)
+    n = len(episode_index)
+    d = {"seed": np.int64(seed), "episode_index": np.asarray(episode_index, dtype=np.int64)}
+    for f in G.PAIR_FIELDS:
+        d[f] = rng.integers(0, R.N_ROWS, size=(n, G.NUM_PAIRS), dtype=np.int64)
+    return d
+
+
+def caption_of(r):
+    return f"a caption written for row {r}"
+
+
+def relpath_of(r):
+    return f"Synthetic_folder_{r % 7}/item-{r}.jpg"
+
+
+def synthetic_manifest(inp):
+    rows = np.unique(np.concatenate([inp[f].ravel() for f in G.PAIR_FIELDS]))
+    sid = (rows * 7 + 3) % R.N_ROWS            # a stand-in sample id per row (unique: 7 and 308,723 are coprime)
+    return {"rows": rows, "sample_id": sid.astype(np.int64),
+            "image_relpath": np.asarray([relpath_of(r) for r in rows.tolist()], dtype=str),
+            "caption": np.asarray([caption_of(r) for r in rows.tolist()], dtype=str)}
+
+
+def write_job(folder, inp, manifest=None, images=True):
+    folder.mkdir(parents=True, exist_ok=True)
+    manifest = synthetic_manifest(inp) if manifest is None else manifest
+    np.savez_compressed(folder / "rows_manifest.npz", **manifest)
+    np.savez(folder / "verbalise_input.npz", **inp)
+    if images:
+        (folder / "images.txt").write_text("\n".join(sorted(set(manifest["image_relpath"].tolist()))) + "\n")
+    return folder
+
+
+@pytest.fixture(scope="module")
+def tuning_job(tmp_path_factory):
+    """The tuning subset's shape: 3,072 episodes (the first 1,024 of each pair), seed 52."""
+    inp = synthetic_input(tuning_index())
+    job = write_job(tmp_path_factory.mktemp("job") / "tune", inp)
+    man = G.Manifest(job / "rows_manifest.npz")
+    return dict(job=job, man=man, inp=G.load_verbalise_input(job / "verbalise_input.npz", man))
+
+
+@pytest.fixture(scope="module")
+def full_job(tmp_path_factory):
+    """A full seed: 12,288 episodes, seed 52."""
+    inp = synthetic_input(np.arange(3 * R.N_PER_PAIR), rng_seed=1)
+    job = write_job(tmp_path_factory.mktemp("job") / "full", inp)
+    man = G.Manifest(job / "rows_manifest.npz")
+    return dict(job=job, man=man, inp=G.load_verbalise_input(job / "verbalise_input.npz", man))
+
+
+ROOT = Path("/wikiart_root_for_tests")
+
+
+# ---------------------------------------------------------------- the message builder (rule section 7 item 1)
+
+def expected_content(inp, pos, condition, wording_id):
+    first, second = ("pairs_a", "pairs_b") if condition == "a" else ("pairs_b", "pairs_a")
+    parts = []
+    for name, g in (("A", first), ("B", second)):
+        parts.append({"type": "text", "text": f"Group {name}:\n"})
+        for k in range(4):
+            r_img, r_txt = int(inp[f"{g}_img"][pos, k]), int(inp[f"{g}_txt"][pos, k])
+            parts += [{"type": "text", "text": f"Pair {k + 1}: image"},
+                      {"type": "image", "image": str(ROOT / relpath_of(r_img))},
+                      {"type": "text", "text": f"\ncaption: {caption_of(r_txt)}\n"}]
+    parts.append({"type": "text", "text": "\n" + SETTINGS["verbaliser"]["wordings"][wording_id]})
+    return parts
+
+
+@pytest.mark.parametrize("pos", [0, 1, 1023, 1024, 3071])
+def test_message_order_swap_and_wording_last(full_job, tuning_job, pos):
+    for job in (full_job, tuning_job):
+        inp, man = job["inp"], job["man"]
+        for w in G.WORDING_IDS:
+            for c in G.CONDITIONS:
+                msgs = V.episode_messages(inp, man, pos, c, w, SETTINGS, ROOT)
+                assert len(msgs) == 1 and msgs[0]["role"] == "user" and set(msgs[0]) == {"role", "content"}
+                content = msgs[0]["content"]
+                assert content == expected_content(inp, pos, c, w)
+                assert len(content) == 2 * (1 + 4 * 3) + 1 and sum(p["type"] == "image" for p in content) == 8
+                assert content[-1]["text"].endswith(SETTINGS["verbaliser"]["wordings"][w])
+        a = V.episode_messages(inp, man, pos, "a", "W1", SETTINGS, ROOT)[0]["content"]
+        b = V.episode_messages(inp, man, pos, "b", "W1", SETTINGS, ROOT)[0]["content"]
+        assert a[1:13] == b[14:26] and a[14:26] == b[1:13] and a[-1] == b[-1]     # condition b swaps the groups
+
+
+def test_pairs_keep_episode_column_order_and_cross_item_rows(tuning_job):
+    inp, man = tuning_job["inp"], tuning_job["man"]
+    content = V.episode_messages(inp, man, 7, "a", "W2", SETTINGS, ROOT)[0]["content"]
+    imgs = [p["image"] for p in content if p["type"] == "image"]
+    caps = [p["text"] for p in content if p["type"] == "text" and p["text"].startswith("\ncaption: ")]
+    want_img = [str(ROOT / relpath_of(int(r))) for r in (*inp["pairs_a_img"][7], *inp["pairs_b_img"][7])]
+    want_cap = [f"\ncaption: {caption_of(int(r))}\n" for r in (*inp["pairs_a_txt"][7], *inp["pairs_b_txt"][7])]
+    assert imgs == want_img and caps == want_cap
+
+
+def test_no_aspect_name_label_or_path_in_any_message_text(full_job):
+    inp, man = full_job["inp"], full_job["man"]
+    pattern = re.compile(r"\b(" + "|".join(re.escape(w) for w in FORBIDDEN) + r")\b", re.I)
+    rng = np.random.default_rng(3)
+    for pos in rng.choice(len(inp["episode_index"]), 64, replace=False).tolist():
+        for w in G.WORDING_IDS:
+            for c in G.CONDITIONS:
+                for p in V.episode_messages(inp, man, pos, c, w, SETTINGS, ROOT)[0]["content"]:
+                    if p["type"] == "text":
+                        assert not pattern.search(p["text"]), (p["text"], pattern.search(p["text"]).group(0))
+                        assert "Synthetic_folder" not in p["text"] and ".jpg" not in p["text"]
+                    else:
+                        assert set(p) == {"type", "image"} and p["type"] == "image"
+    for w in SETTINGS["verbaliser"]["wordings"].values():
+        assert not pattern.search(w)
+
+
+def test_bad_condition_and_wrong_pair_count_raise(tuning_job):
+    with pytest.raises(ValueError, match="not a or b"):
+        V.group_rows(tuning_job["inp"], 0, "c", SETTINGS)
+    with pytest.raises(AssertionError, match="Group A has 3 pairs"):
+        V.build_messages([("x", "y")] * 3, [("x", "y")] * 4, "w", SETTINGS)
+
+
+# ---------------------------------------------------------------- job input files
+
+def test_manifest_with_an_extra_key_fires_and_the_guard_matters(tuning_job, tmp_path):
+    man = synthetic_manifest(synthetic_input(tuning_index()))
+    np.savez(tmp_path / "m.npz", **man, emotion=np.zeros(len(man["rows"]), dtype=np.int64))
+    with pytest.raises(AssertionError, match="keys"):
+        G.Manifest(tmp_path / "m.npz")
+    mut = load_copy(tmp_path, "r6_gpu_common.py", guard="manifest_keys")
+    assert len(mut.Manifest(tmp_path / "m.npz").rows) == len(man["rows"])
+
+
+def test_row_missing_from_the_manifest_fires_and_the_guard_matters(tuning_job, tmp_path):
+    man = tuning_job["man"]
+    absent = int(np.setdiff1d(np.arange(R.N_ROWS), man.rows)[5])
+    with pytest.raises(AssertionError, match="not in the manifest"):
+        man.index([int(man.rows[0]), absent])
+    mut = load_copy(tmp_path, "r6_gpu_common.py", guard="manifest_rows")
+    got = mut.Manifest(tuning_job["job"] / "rows_manifest.npz").index([int(man.rows[0]), absent])
+    assert int(man.rows[got[1]]) != absent                       # guard deleted: the wrong row's item is used
+
+
+def test_input_with_episode_fields_fires_and_the_guard_matters(tmp_path):
+    inp = synthetic_input(tuning_index())
+    np.savez(tmp_path / "v.npz", **inp, candidates=np.zeros((len(inp["episode_index"]), 13), dtype=np.int64))
+    with pytest.raises(AssertionError, match="keys"):
+        G.load_verbalise_input(tmp_path / "v.npz")
+    mut = load_copy(tmp_path, "r6_gpu_common.py", guard="input_keys")
+    assert mut.load_verbalise_input(tmp_path / "v.npz")["seed"] == 52
+
+
+@pytest.mark.parametrize("bad, match", [
+    (lambda d: d.update(episode_index=d["episode_index"][::-1].copy()), "increasing"),
+    (lambda d: d.update(pairs_a_img=d["pairs_a_img"].astype(np.int32)), "int64"),
+    (lambda d: d.update(pairs_b_txt=d["pairs_b_txt"][:, :3].copy()), r"\(n, 4\)"),
+])
+def test_malformed_input_raises(tmp_path, bad, match):
+    inp = synthetic_input(tuning_index())
+    bad(inp)
+    np.savez(tmp_path / "v.npz", **inp)
+    with pytest.raises(AssertionError, match=match):
+        G.load_verbalise_input(tmp_path / "v.npz")
+
+
+# ---------------------------------------------------------------- keyed jsonl, checkpoints and resume
+
+def fake_answer(messages) -> str:
+    return "phrase " + hashlib.sha256(json.dumps(messages, sort_keys=True).encode()).hexdigest()[:16] + "\nmore"
+
+
+class FakeModel:
+    def __init__(self, crash_at=None):
+        self.crash_at, self.n = crash_at, 0
+
+    def __call__(self, messages):
+        self.n += 1
+        if self.crash_at is not None and self.n == self.crash_at:
+            raise RuntimeError("simulated crash")
+        return fake_answer(messages)
+
+
+def read_jsonl(path):
+    return [json.loads(line) for line in Path(path).read_text().splitlines()]
+
+
+def run_v(job, out, model, start, stop, wordings=("W1", "W3"), **kw):
+    return V.run_calls(job["inp"], job["man"], SETTINGS, out, list(wordings), start, stop, model, ROOT,
+                       log=lambda *_: None, **kw)
+
+
+def check_outputs(job, out, start, stop, wordings=("W1", "W3")):
+    inp = job["inp"]
+    for w in wordings:
+        recs = read_jsonl(out / f"phrases_{w}.jsonl")
+        keys = [(r["seed"], r["episode_index"], r["condition"], r["wording"]) for r in recs]
+        want = {(52, int(inp["episode_index"][p]), c, w) for p in range(start, stop) for c in "ab"}
+        assert len(keys) == len(set(keys)) == len(want) and set(keys) == want     # nothing repeated, nothing skipped
+        pos = {int(e): p for p, e in enumerate(inp["episode_index"].tolist())}
+        for r in recs:
+            assert list(r) == ["seed", "episode_index", "condition", "wording", "answer"]
+            assert type(r["seed"]) is int and type(r["episode_index"]) is int and isinstance(r["answer"], str)
+            msgs = V.episode_messages(inp, job["man"], pos[r["episode_index"]], r["condition"], w, SETTINGS, ROOT)
+            assert r["answer"] == fake_answer(msgs)                              # the answer sits under its own key
+
+
+def test_stopped_after_50_calls_resumes_without_repeating_or_skipping(tuning_job, tmp_path):
+    start, stop = 1000, 1040                    # crosses the pair boundary (episode 1023 -> 4096)
+    m1 = FakeModel()
+    res1 = run_v(tuning_job, tmp_path, m1, start, stop, max_calls=50)
+    assert m1.n == 50 and res1["n_called"] == 50 and not res1["complete"]
+    assert sum(len(read_jsonl(tmp_path / f"phrases_{w}.jsonl")) for w in ("W1", "W3")) == 50
+    m2 = FakeModel()
+    res2 = run_v(tuning_job, tmp_path, m2, start, stop)
+    assert res2["n_done_before"] == 50 and m2.n == 160 - 50 and res2["complete"]
+    check_outputs(tuning_job, tmp_path, start, stop)
+    m3 = FakeModel()
+    assert run_v(tuning_job, tmp_path, m3, start, stop)["n_called"] == 0 and m3.n == 0
+
+
+def test_a_crash_between_checkpoints_loses_only_the_unsaved_calls(tuning_job, tmp_path):
+    start, stop = 1000, 1040
+    with pytest.raises(RuntimeError, match="simulated crash"):
+        run_v(tuning_job, tmp_path, FakeModel(crash_at=76), start, stop)             # calls 1..75 returned
+    assert sum(len(read_jsonl(tmp_path / f"phrases_{w}.jsonl")) for w in ("W1", "W3")) == 50
+    m2 = FakeModel()
+    assert run_v(tuning_job, tmp_path, m2, start, stop)["complete"] and m2.n == 110
+    check_outputs(tuning_job, tmp_path, start, stop)
+
+
+def test_without_checkpoints_a_crash_loses_everything(tuning_job, tmp_path):
+    mut = load_copy(tmp_path, "r6_gpu_verbalise.py", guard="verbalise_checkpoint")
+    out = tmp_path / "out"
+    with pytest.raises(RuntimeError, match="simulated crash"):
+        mut.run_calls(tuning_job["inp"], tuning_job["man"], SETTINGS, out, ["W1", "W3"], 1000, 1040,
+                      FakeModel(crash_at=76), ROOT, log=lambda *_: None)
+    assert not (out / "phrases_W1.jsonl").exists()         # guard deleted: the 75 answers are lost, 75 calls repeat
+
+
+def test_jsonl_with_a_duplicate_fires_and_the_guard_matters(tuning_job, tmp_path):
+    run_v(tuning_job, tmp_path, FakeModel(), 0, 3, wordings=("W2",))
+    p = tmp_path / "phrases_W2.jsonl"
+    lines = p.read_text().splitlines()
+    p.write_text("\n".join(lines + lines[:1]) + "\n")
+    with pytest.raises(AssertionError, match="duplicate record"):
+        run_v(tuning_job, tmp_path, FakeModel(), 0, 3, wordings=("W2",))
+    mut = load_copy(tmp_path, "r6_gpu_common.py", guard="jsonl_unique")
+    st = mut.KeyedJsonl(p, V.FIELDS, V.KEY_FIELDS)
+    assert st.load() == 7                                          # guard deleted: 6 calls stored as 7 records
+
+
+def test_record_of_another_shard_fires_and_the_guard_matters(tuning_job, tmp_path):
+    run_v(tuning_job, tmp_path, FakeModel(), 10, 12, wordings=("W2",))
+    with pytest.raises(AssertionError, match="not one this run plans"):
+        run_v(tuning_job, tmp_path, FakeModel(), 0, 3, wordings=("W2",))
+    mut = load_copy(tmp_path, "r6_gpu_common.py", guard="jsonl_planned")
+    st = mut.KeyedJsonl(tmp_path / "phrases_W2.jsonl", V.FIELDS, V.KEY_FIELDS)
+    assert st.load(allowed={(52, 0, "a", "W2")}) == 4               # guard deleted: foreign records accepted
+
+
+def test_incomplete_or_malformed_records_raise(tuning_job, tmp_path):
+    run_v(tuning_job, tmp_path, FakeModel(), 0, 2, wordings=("W4",))
+    p = tmp_path / "phrases_W4.jsonl"
+    good = p.read_text()
+    p.write_text(good[:-5])
+    with pytest.raises(AssertionError, match="incomplete"):
+        G.KeyedJsonl(p, V.FIELDS, V.KEY_FIELDS).load()
+    rec = json.loads(good.splitlines()[0])
+    rec["label"] = "x"
+    p.write_text(json.dumps(rec) + "\n")
+    with pytest.raises(AssertionError, match="record fields"):
+        G.KeyedJsonl(p, V.FIELDS, V.KEY_FIELDS).load()
+
+
+def test_provenance_of_other_inputs_fires_and_the_guard_matters(tmp_path):
+    fp = {"job": "r6_gpu_verbalise", "settings_sha256": SETTINGS_SHA, "inputs_sha256": {"a": "1"}}
+    G.begin_provenance(tmp_path, fp, {"args": {}})
+    G.begin_provenance(tmp_path, fp, {"args": {}})                                 # the same fingerprint resumes
+    assert len(json.loads((tmp_path / "provenance.json").read_text())["runs"]) == 2
+    other = dict(fp, inputs_sha256={"a": "2"})
+    with pytest.raises(AssertionError, match="inputs_sha256"):
+        G.begin_provenance(tmp_path, other, {"args": {}})
+    mut = load_copy(tmp_path, "r6_gpu_common.py", guard="fingerprint")
+    assert len(mut.begin_provenance(tmp_path, other, {"args": {}})["runs"]) == 3
+
+
+# ---------------------------------------------------------------- greedy check and snapshot
+
+def test_greedy_check():
+    am = np.array([[5, 7], [6, 9], [2, 9]])                     # (T=3 steps, B=2 rows); eos 2, pad 0
+    assert G.check_greedy(np.array([[5, 6, 2], [7, 9, 9]]), am, [2, 3], 0)
+    assert G.check_greedy(np.array([[5, 2, 0], [7, 9, 9]]), np.array([[5, 7], [2, 9], [4, 9]]), [2, 3], 0)
+    with pytest.raises(RuntimeError, match="after|greedy"):
+        G.check_greedy(np.array([[5, 2, 4], [7, 9, 9]]), np.array([[5, 7], [2, 9], [4, 9]]), [2, 3], 0)
+    with pytest.raises(AssertionError, match="do not match"):
+        G.check_greedy(np.array([[5, 6]]), am, [2], 0)
+
+
+def test_non_greedy_token_fires_and_the_guard_matters(tmp_path):
+    tokens, am = np.array([[5, 8, 2]]), np.array([[5], [6], [2]])           # step 1 sampled 8, argmax was 6
+    with pytest.raises(RuntimeError, match="not the greedy choice"):
+        G.check_greedy(tokens, am, [2], 0)
+    mut = load_copy(tmp_path, "r6_gpu_common.py", guard="greedy")
+    assert mut.check_greedy(tokens, am, [2], 0)
+
+
+def fake_hub(root, shards=2, drop_shard=False, dangling=False):
+    snap = G.snapshot_dir(root, SETTINGS["model"]["id"], SNAP)
+    snap.mkdir(parents=True)
+    names = [f"model-0000{i + 1}-of-0000{shards}.safetensors" for i in range(shards)]
+    for f in G.SNAPSHOT_FILES:
+        (snap / f).write_text("{}")
+    (snap / "model.safetensors.index.json").write_text(json.dumps({"weight_map": {f"w{i}": n
+                                                                                  for i, n in enumerate(names)}}))
+    for n in names[:-1] if drop_shard else names:
+        (snap / n).write_bytes(b"")
+    if dangling:
+        os.symlink(root / "blobs/missing", snap / "vocab.json")
+    (snap.parent.parent / "refs").mkdir()
+    (snap.parent.parent / "refs/main").write_text(SNAP)
+    return snap
+
+
+def test_snapshot_check(tmp_path):
+    info = G.check_snapshot(fake_hub(tmp_path / "ok"))
+    assert info["shards"] == 2 and info["refs_main"] == SNAP
+    with pytest.raises(AssertionError, match="missing blobs"):
+        G.check_snapshot(fake_hub(tmp_path / "dangling", dangling=True))
+    with pytest.raises(AssertionError, match="model snapshot missing"):
+        G.check_snapshot(tmp_path / "nothing")
+
+
+def test_missing_shard_fires_and_the_guard_matters(tmp_path):
+    snap = fake_hub(tmp_path / "hub", drop_shard=True)
+    with pytest.raises(AssertionError, match="weight shards missing"):
+        G.check_snapshot(snap)
+    mut = load_copy(tmp_path, "r6_gpu_common.py", guard="snapshot_shards")
+    assert mut.check_snapshot(snap)["shards"] == 2
+
+
+def test_local_snapshot_is_the_pinned_one():
+    snap = G.snapshot_dir("/data/SSD2/HF_home/hub", SETTINGS["model"]["id"], SNAP)
+    if not snap.is_dir():
+        pytest.skip("no local copy of the 8B model")
+    info = G.check_snapshot(snap)
+    assert info["refs_main"] == SNAP and info["shards"] == 4
+
+
+# ---------------------------------------------------------------- the listing job (rule section 7 item 2)
+
+PHRASES = [f"synthetic criterion {i}" for i in range(200)]
+
+
+def listing_job(folder, items):
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / L.INPUT_NAME).write_text("".join(json.dumps({"phrase": p, "K": k}) + "\n" for p, k in items))
+    return folder
+
+
+class FakeLister:
+    def __init__(self, crash_at_batch=None):
+        self.batches, self.crash_at_batch = [], crash_at_batch
+
+    def __call__(self, conversations):
+        if self.crash_at_batch is not None and len(self.batches) + 1 == self.crash_at_batch:
+            raise RuntimeError("simulated crash")
+        self.batches.append(len(conversations))
+        return [fake_answer(c) for c in conversations]
+
+
+def run_l(items, out, model, cache=None, **kw):
+    return L.run_listing(items, SETTINGS, out, model, cache or {}, 16, log=lambda *_: None, **kw)
+
+
+def check_listing(items, out, cache=None):
+    recs = read_jsonl(out / "listings.jsonl")
+    keys = [(r["phrase"], r["K"]) for r in recs]
+    assert len(keys) == len(set(keys)) and set(keys) == set(items)
+    for r in recs:
+        assert list(r) == ["phrase", "K", "answer"]
+        want = (cache or {}).get((r["phrase"], r["K"])) or fake_answer(L.listing_messages(r["phrase"], r["K"],
+                                                                                          SETTINGS))
+        assert r["answer"] == want
+
+
+def test_listing_prompt_and_message():
+    msgs = L.listing_messages("brushwork and texture", 8, SETTINGS)
+    assert msgs == [{"role": "user", "content": [{"type": "text", "text": (
+        "List 8 distinct values of the following criterion for describing paintings: brushwork and texture. "
+        "One value per line, no numbering.")}]}]
+
+
+def test_listing_resumes_without_repeating_or_skipping(tmp_path):
+    items = [(p, k) for p in PHRASES for k in (8, 16)]
+    m1 = FakeLister()
+    res1 = run_l(items, tmp_path, m1, max_calls=50)
+    assert m1.batches == [16] * 4 and len(read_jsonl(tmp_path / "listings.jsonl")) == 64 and not res1["complete"]
+    m2 = FakeLister()
+    res2 = run_l(items, tmp_path, m2)
+    assert res2["n_done_before"] == 64 and sum(m2.batches) == 400 - 64 and res2["complete"]
+    check_listing(items, tmp_path)
+
+
+def test_listing_crash_keeps_the_checkpoint_and_the_guard_matters(tmp_path):
+    items = [(p, k) for p in PHRASES[:60] for k in (8, 16)]
+    with pytest.raises(RuntimeError, match="simulated crash"):
+        run_l(items, tmp_path / "a", FakeLister(crash_at_batch=6))               # batches 1..5 returned (80)
+    assert len(read_jsonl(tmp_path / "a/listings.jsonl")) == 64                  # saved after batch 4 (>= 50)
+    mut = load_copy(tmp_path, "r6_gpu_listing.py", guard="listing_checkpoint")
+    with pytest.raises(RuntimeError, match="simulated crash"):
+        mut.run_listing(items, SETTINGS, tmp_path / "b", FakeLister(crash_at_batch=6), {}, 16, log=lambda *_: None)
+    assert not (tmp_path / "b/listings.jsonl").exists()                          # guard deleted: all 80 lost
+
+
+def test_cached_listings_are_copied_not_recomputed(tmp_path):
+    items = [(p, k) for p in PHRASES[:40] for k in (8, 16)]
+    cache = {k: f"cached answer for {k}" for k in items[::3]}
+    m = FakeLister()
+    res = run_l(items, tmp_path, m, cache=cache)
+    assert res["n_cached"] == len(cache) and sum(m.batches) == len(items) - len(cache)
+    check_listing(items, tmp_path, cache)
+
+
+def listing_fingerprint():
+    return {"job": "r6_gpu_listing", "model_id": SETTINGS["model"]["id"], "snapshot": SNAP,
+            "settings_sha256": SETTINGS_SHA,
+            "scripts_sha256": G.script_shas(HERE / "r6_gpu_listing.py", HERE / "r6_gpu_common.py")}
+
+
+def test_cache_of_another_fingerprint_fires_and_the_guard_matters(tmp_path):
+    items = [(p, 8) for p in PHRASES[:5]]
+    run_l(items, tmp_path / "old", FakeLister())
+    G.begin_provenance(tmp_path / "old", dict(listing_fingerprint(), settings_sha256="0" * 64), {"args": {}})
+    with pytest.raises(AssertionError, match="cannot be reused"):
+        L.load_caches([tmp_path / "old"], listing_fingerprint())
+    mut = load_copy(tmp_path, "r6_gpu_listing.py", guard="cache_fingerprint")
+    assert len(mut.load_caches([tmp_path / "old"], listing_fingerprint())) == 5
+
+
+def test_cache_of_the_same_fingerprint_is_read(tmp_path):
+    items = [(p, 16) for p in PHRASES[:5]]
+    run_l(items, tmp_path / "old", FakeLister())
+    G.begin_provenance(tmp_path / "old", listing_fingerprint(), {"args": {}})
+    got = L.load_caches([tmp_path / "old"], listing_fingerprint())
+    assert set(got) == set(items)
+
+
+def test_repeated_listing_input_fires_and_the_guard_matters(tmp_path):
+    job = listing_job(tmp_path / "j", [("brushwork", 8), ("light", 8), ("brushwork", 8)])
+    with pytest.raises(AssertionError, match="repeated"):
+        L.load_listing_input(job / L.INPUT_NAME, SETTINGS)
+    mut = load_copy(tmp_path, "r6_gpu_listing.py", guard="input_unique")
+    assert len(mut.load_listing_input(job / L.INPUT_NAME, SETTINGS)) == 3
+
+
+@pytest.mark.parametrize("line, match", [
+    ({"phrase": "light", "K": 12}, "is not 8 or 16"),
+    ({"phrase": "light", "K": "8"}, "is not 8 or 16"),
+    ({"phrase": "Light", "K": 8}, "normalised"),
+    ({"phrase": " light", "K": 8}, "normalised"),
+    ({"phrase": "", "K": 8}, "normalised"),
+    ({"phrase": "light", "K": 8, "aspect": "style"}, "keys"),
+])
+def test_malformed_listing_input_raises(tmp_path, line, match):
+    p = tmp_path / L.INPUT_NAME
+    p.write_text(json.dumps(line) + "\n")
+    with pytest.raises(AssertionError, match=match):
+        L.load_listing_input(p, SETTINGS)
+
+
+# ---------------------------------------------------------------- command lines and wrappers, no GPU
+
+def run(cmd, env=None, cwd=None):
+    return subprocess.run(cmd, capture_output=True, text=True, env=env or ENV, cwd=cwd or CHECKOUT, timeout=600)
+
+
+@pytest.fixture(scope="module")
+def cli_job(tmp_path_factory):
+    """A tuning-shaped job folder whose first two episodes' images exist (empty files), a fake hub."""
+    base = tmp_path_factory.mktemp("cli")
+    inp = synthetic_input(tuning_index(), rng_seed=4)
+    man = synthetic_manifest(inp)
+    needed = np.unique(np.concatenate([inp[f][:2].ravel() for f in ("pairs_a_img", "pairs_b_img")]))
+    images = base / "wikiart"
+    for r in needed.tolist():
+        (images / relpath_of(r)).parent.mkdir(parents=True, exist_ok=True)
+        (images / relpath_of(r)).write_bytes(b"")
+    job = write_job(base / "jobs" / "s52_tune", inp, man, images=False)
+    (job / "images.txt").write_text("\n".join(sorted(relpath_of(r) for r in needed.tolist())) + "\n")
+    hub = base / "hub"
+    fake_hub(hub)
+    listing_job(base / "jobs" / "list1", [(p, k) for p in PHRASES[:20] for k in (8, 16)])
+    return dict(base=base, job=job, images=images, hub=hub)
+
+
+def test_verbaliser_check_only_without_a_gpu(cli_job):
+    out = cli_job["base"] / "out_v"
+    r = run([PY, str(HERE / "r6_gpu_verbalise.py"), "--job-dir", str(cli_job["job"]), "--out", str(out),
+             "--wordings", "W1,W2", "--stop", "2", "--check-only", "--no-model", "--hub-cache", str(cli_job["hub"]),
+             "--image-root", str(cli_job["images"])])
+    assert r.returncode == 0, r.stderr[-2000:]
+    assert "verbaliser inputs ok: seed 52, 3072 episodes, range [0, 2)" in r.stdout
+    assert "stopping before the model" in r.stdout and not out.exists()
+    assert "torch" not in r.stdout + r.stderr
+
+
+def test_verbaliser_check_only_finds_a_missing_image_and_the_guard_matters(cli_job, tmp_path):
+    args = ["--job-dir", str(cli_job["job"]), "--out", str(tmp_path / "o"), "--wordings", "W1", "--start", "2",
+            "--stop", "3", "--check-only", "--no-model", "--hub-cache", str(cli_job["hub"]),
+            "--image-root", str(cli_job["images"])]
+    r = run([PY, str(HERE / "r6_gpu_verbalise.py"), *args])
+    assert r.returncode != 0 and "images missing under" in r.stderr
+    mut = load_copy(tmp_path, "r6_gpu_verbalise.py", guard="images")
+    assert mut.main(args) == 0                                     # guard deleted: missing images go unnoticed
+
+
+@pytest.mark.parametrize("extra, match", [
+    (["--wordings", "W5"], "--wordings must be distinct ids"),
+    (["--wordings", "W1,W1"], "--wordings must be distinct ids"),
+    (["--wordings", "W1", "--no-model"], "--no-model needs --check-only"),
+    (["--wordings", "W1", "--start", "4", "--stop", "4"], "need 0 <= --start < --stop"),
+    ([], "required: --wordings"),
+])
+def test_verbaliser_argument_errors(cli_job, extra, match):
+    r = run([PY, str(HERE / "r6_gpu_verbalise.py"), "--job-dir", str(cli_job["job"]), "--out", "x", *extra])
+    assert r.returncode == 2 and match in r.stderr, r.stderr[-500:]
+
+
+def test_listing_check_only_without_a_gpu(cli_job):
+    out = cli_job["base"] / "out_l"
+    r = run([PY, str(HERE / "r6_gpu_listing.py"), "--job-dir", str(cli_job["base"] / "jobs/list1"), "--out",
+             str(out), "--check-only", "--no-model", "--hub-cache", str(cli_job["hub"])])
+    assert r.returncode == 0, r.stderr[-2000:]
+    assert "listing inputs ok: 40 (phrase, K) pairs, 0 cached in 0 folders, batch size 16" in r.stdout
+    assert "stopping before the model" in r.stdout and not out.exists()
+    r = run([PY, str(HERE / "r6_gpu_listing.py"), "--job-dir", "x", "--out", "y", "--no-model"])
+    assert r.returncode == 2 and "--no-model needs --check-only" in r.stderr
+
+
+def wrapper_env(cli_job, **extra):
+    env = dict(ENV, R6_JOB_ROOT=str(cli_job["base"] / "jobs"), COSIR_WIKIART_DIR=str(cli_job["images"]),
+               HF_HUB_CACHE_OVERRIDE=str(cli_job["hub"]), R6_PYTHON=PY)
+    env.update(extra)
+    return env
+
+
+def test_wrappers_check_only_no_model(cli_job):
+    r = run(["bash", "scripts/run_r6_verbalise.sh", "s52_tune", "--wordings", "W1", "--stop", "2", "--check-only",
+             "--no-model"], env=wrapper_env(cli_job, R6_OUT=str(cli_job["base"] / "wo")))
+    assert r.returncode == 0, (r.stdout[-1500:], r.stderr[-1500:])
+    for line in ("model snapshot ok", "images: ", "inputs ok", "stopping before the model"):
+        assert line in r.stdout
+    r = run(["bash", "scripts/run_r6_listing.sh", "list1", "--check-only", "--no-model"],
+            env=wrapper_env(cli_job, R6_OUT=str(cli_job["base"] / "lo")))
+    assert r.returncode == 0, (r.stdout[-1500:], r.stderr[-1500:])
+    assert "listing input: 40 lines" in r.stdout and "stopping before the model" in r.stdout
+
+
+def test_wrappers_refuse_missing_inputs(cli_job, tmp_path):
+    r = run(["bash", "scripts/run_r6_verbalise.sh", "no_such_job", "--wordings", "W1"], env=wrapper_env(cli_job))
+    assert r.returncode == 2 and "job input missing" in r.stderr
+    r = run(["bash", "scripts/run_r6_verbalise.sh", "../s52_tune", "--wordings", "W1"], env=wrapper_env(cli_job))
+    assert r.returncode == 2 and "bad job name" in r.stderr
+    env = wrapper_env(cli_job, HF_HUB_CACHE_OVERRIDE=str(tmp_path / "empty_hub"))
+    r = run(["bash", "scripts/run_r6_listing.sh", "list1", "--check-only", "--no-model"], env=env)
+    assert r.returncode == 2 and "pinned snapshot missing" in r.stderr
+    env = wrapper_env(cli_job, COSIR_WIKIART_DIR=str(tmp_path / "no_images"))
+    r = run(["bash", "scripts/run_r6_verbalise.sh", "s52_tune", "--wordings", "W1", "--check-only", "--no-model"],
+            env=env)
+    assert r.returncode == 2 and "job images missing" in r.stderr
+
+
+def test_wrappers_follow_the_probe_template():
+    for f in GPU_SCRIPTS[:2]:
+        text = (CHECKOUT / f).read_text()
+        for needle in ("set -euo pipefail", "HF_HUB_OFFLINE=1", "TRANSFORMERS_OFFLINE=1", "PYTHONDONTWRITEBYTECODE=1",
+                       "OMP_NUM_THREADS=8", "/local/wding/r6_jobs", 'exec "$PY"'):
+            assert needle in text, (f, needle)
+        assert "/tmp" not in text
+
+
+# ---------------------------------------------------------------- the sync script (plan only, nothing copied)
+
+needs_sys_py = pytest.mark.skipif(not Path(SYS_PY).is_file() or not Path("/root/.claude/skills/cluster-run").is_dir(),
+                                  reason="system python3 or the cluster-run skill is missing")
+
+
+@needs_sys_py
+def test_sync_plan_for_a_job_folder(cli_job):
+    r = run([SYS_PY, "scripts/das6_sync_r6.py", "--node", "node401", "--job-dir", str(cli_job["job"])])
+    assert r.returncode == 0, r.stderr[-1500:]
+    assert f"r6_job_s52_tune: dir, " in r.stdout and "-> /local/wding/r6_jobs/s52_tune" in r.stdout
+    assert "Plan only; pass --run to copy." in r.stdout
+
+
+@needs_sys_py
+def test_sync_refuses_episode_or_label_data(cli_job, tmp_path):
+    job = tmp_path / "bad_job"
+    write_job(job, synthetic_input(tuning_index()))
+    np.savez(job / "extra.npz", candidates=np.zeros((2, 13), dtype=np.int64))
+    r = run([SYS_PY, "scripts/das6_sync_r6.py", "--node", "node401", "--job-dir", str(job)])
+    assert r.returncode != 0 and "REFUSING" in r.stderr and "candidates" in r.stderr
+    (job / "extra.npz").unlink()
+    (job / "episodes_seed52.npz").write_bytes(b"")
+    r = run([SYS_PY, "scripts/das6_sync_r6.py", "--node", "node401", "--job-dir", str(job)])
+    assert r.returncode != 0 and "an episodes file" in r.stderr
+    r = run([SYS_PY, "scripts/das6_sync_r6.py", "--node", "node999x", "--job-dir", str(cli_job["job"])])
+    assert r.returncode != 0
+
+
+def test_sync_script_runs_on_python_3_10():
+    ast.parse((CHECKOUT / "scripts/das6_sync_r6.py").read_text(), feature_version=(3, 10))
+
+
+# ---------------------------------------------------------------- no metric, no labels in the GPU code
+
+def test_gpu_code_imports_neither_src_nor_r6_common():
+    allowed = {"argparse", "hashlib", "json", "os", "platform", "re", "socket", "sys", "time", "datetime",
+               "pathlib", "zoneinfo", "numpy", "torch", "transformers", "r6_gpu_common", "zipfile", "cluster"}
+    for f in [HERE / m for m in GPU_MODULES] + [CHECKOUT / "scripts/das6_sync_r6.py"]:
+        for node in ast.walk(ast.parse(f.read_text())):
+            if isinstance(node, ast.Import):
+                names = [a.name.split(".")[0] for a in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                names = [(node.module or "").split(".")[0]]
+            else:
+                continue
+            assert set(names) <= allowed, (f.name, names)
+
+
+def test_no_metric_code_in_the_gpu_scripts():
+    pattern = re.compile(r"R@1|\br1\b|recall|accuracy|per_anchor|summarize|cosine_scores|as_int4|aspect_metrics|"
+                         r"\bgain\b|hits?\b|rank\b|argsort|np\.mean\(|\.mean\(\)|(?<!then-)score", re.I)
+    for f in [HERE / m for m in GPU_MODULES] + [CHECKOUT / s for s in GPU_SCRIPTS]:
+        found = sorted({m.group(0) for m in pattern.finditer(f.read_text())})
+        assert not found, (f.name, found)
