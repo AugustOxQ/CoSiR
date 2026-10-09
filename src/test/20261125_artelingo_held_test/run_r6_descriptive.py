@@ -16,6 +16,11 @@ In this order (results/, or results/smoke/ with --smoke, results/smoke/NAME/ wit
        - the pass file (the verdict's "pass_file") is missing, or its SHA-256 differs from the verdict's and the
          agreement's held_pass_sha256, or it is of another rule, mode or seed list;
        - descriptive.json (descriptive_reserve.json) exists: it is written once.
+       - the head-coefficient records (rule section 5 item 5) are missing or unusable: refit_check.json (always
+         results/, the stage-1a record) has not passed or holds no coef_sha256; in real and reserve mode also
+         held_started.json (held_started_reserve.json) of this folder holds no attempt of this rule that produced the
+         pass (the last attempt whose "fix" flag matches the pass file: set for held_pass_fix1.json, unset otherwise)
+         with its coef_sha256.
   2. Inputs, bound to the pass the verdict rests on (exit 5 on a contradiction; nothing written):
        - held_arrays<sfx>.npz (sfx of the pass file: "", "_fix1", "_reserve"; contracts section 7) reproduces the
          pass file's n_j, point and 95% interval of P1 to P7, S1, S2 exactly (r6_descriptive.check_pass);
@@ -23,18 +28,23 @@ In this order (results/, or results/smoke/ with --smoke, results/smoke/NAME/ wit
          episodes_sha256;
        - picks_seed42.json (always results/, a passed stage-1a record) and the frozen lambdas (baselines_seed42.json).
   3. Setup: run_r6_held.setup() (inputs asserted, data, split, heads refit and checked bit for bit, PM fits, readers);
-     a head check that did not pass is a contradiction.
-  4. Per seed: the seed's bundle (real: held_bundle(env, seed), the one call site of the held runner's held-bundle
-     function; smoke: run_r6_held.seed_bundle in selection mode, 64 per pair), then r6_descriptive.seed_inputs:
-     score_seed(..., include_pm=True) (the nine PM scorers and R1's counterpart are scored only here, after the
-     verdict, rule section 8 item 3), the bundle's episodes equal to the file's, its eight core scorers equal to
-     held_arrays.npz bit for bit.
-  5. r6_descriptive.describe (with external_rows(): ticket 14's DTS, FT and MLLM rows) -> descriptive.json, written
-     once, with the verdict's and the inputs' SHA-256s, module_sha256, the frozen picks, the time.
-Prints only pass words and file paths (no metric, no decimal number), in both modes.
+     a head check that did not pass is a contradiction (exit 5). The heads' coefficient SHA-256s must equal
+     refit_check.json's and, in real and reserve mode, the producing attempt's in held_started.json (rule section 5
+     item 5); otherwise refused (exit 4) before any bundle is built. All three are recorded in descriptive.json.
+  4. Per seed: the seed's context and bundle (held: held_bundle(env, seed); smoke: selection mode, 64 per pair; both
+     by seed_ctx_bundle, run_r6_held.seed_bundle's two calls keeping the RowContext), then
+     r6_descriptive.seed_inputs: score_seed(..., include_pm=True) (the nine PM scorers and R1's counterpart are
+     scored only here, after the verdict, rule section 8 item 3), the bundle's episodes equal to the file's, its
+     eight core scorers equal to held_arrays.npz bit for bit; then ticket 14's per-seed hook external_seed_rows(env,
+     seed, ctx, bundle, episodes, out, smoke) while ctx and bundle exist. Both are dropped before the next seed.
+  5. r6_descriptive.describe (with the hook's rows, through external_rows) -> descriptive.json, written once, with
+     the verdict's and the inputs' SHA-256s, the coefficient SHA-256s, module_sha256, the frozen picks, the time, and
+     the development figure of plan section 10's item-reuse rate (seed 42, selection rows) beside the held one.
+Prints only pass words and file paths (no metric, no decimal number), in both modes; in smoke mode a refusal or stop
+message has every decimal number replaced by "#".
 
 Exit codes: 0 written; 4 refused; 5 the held arrays, the episode files or a rebuilt bundle contradict the pass the
-verdict rests on (stop and report to the user).
+verdict rests on, or another assertion failed (stop and report to the user).
 
 Guards carry a `# guard:<name>` marker; test_r6_descriptive.py deletes each on a copy and shows that its scenario then
 goes through.
@@ -53,6 +63,8 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 import r6_common as R  # noqa: E402  (first, before anything that imports src)
+import r6_bundle as B  # noqa: E402
+import r6_context as X  # noqa: E402
 import r6_descriptive as D  # noqa: E402
 import r6_episodes as E  # noqa: E402
 import r6_picks as P  # noqa: E402
@@ -67,6 +79,8 @@ VERDICTS = ("GO", "NO-GO")
 AGREEMENT_RE = re.compile(r"rederive_agreement(_fix1|_reserve)?\.json")
 PASS_RE = re.compile(r"held_pass(_fix1|_reserve)?\.json")
 SUBDIR_RE = re.compile(r"[A-Za-z0-9_]+")
+DECIMAL = re.compile(r"\d*\.\d+")
+REFIT_NAME = RH.REFIT_NAME                          # refit_check.json (stage 1a, results/)
 
 
 class Refused(Exception):
@@ -83,6 +97,16 @@ def refuse(msg):
 
 def say(msg):
     print(f"[run_r6_descriptive] {msg}", flush=True)
+
+
+def numberless(msg) -> str:
+    """A message with every decimal number replaced by "#" (smoke paths print no decimal number)."""
+    return DECIMAL.sub("#", str(msg))
+
+
+def _plain(x):
+    """The value as JSON reads it back (keys strings, tuples lists, numpy scalars plain)."""
+    return json.loads(json.dumps(R.C.jsonable(x)))
 
 
 def runner_sha256() -> str:
@@ -175,7 +199,56 @@ def check_verdict(out, smoke: bool, reserve: bool) -> SimpleNamespace:
         refuse(f"{output.name} exists; it is written once")  # guard:output_exists
     return SimpleNamespace(verdict=v, sha256=R.sha256_bytes(vraw), path=vpath, agreement=agr, agreement_path=apath,
                            agreement_sha256=v["agreement_sha256"], pass_rec=prec, pass_path=ppath, pass_sha256=psha,
-                           suffix=suffix, output=output)
+                           suffix=suffix, output=output, reserve=reserve)
+
+
+def coef_records(out, smoke: bool, vr, records) -> SimpleNamespace:
+    """Step 1's last refusals: the records the heads' coefficient SHA-256s are checked against (rule section 5 item 5).
+    refit_check.json (in ``records``, results/ by default) passed and holds coef_sha256; in real and reserve mode the
+    started file of this folder holds this rule's attempt that produced the pass, with its coef_sha256. Raises
+    Refused. -> SimpleNamespace(refit, refit_path, refit_sha256, attempt, started_path, started_sha256)."""
+    rpath = Path(records) / REFIT_NAME
+    if not rpath.is_file():
+        refuse(f"{REFIT_NAME} is missing: the heads' coefficient SHA-256s cannot be checked (rule section 5 item "
+               f"5)")  # guard:refit_missing
+    rraw = rpath.read_bytes()
+    refit = _parse(rraw, REFIT_NAME)
+    if not (refit.get("passed") is True and isinstance(refit.get("coef_sha256"), dict) and refit["coef_sha256"]):
+        refuse(f"{REFIT_NAME} did not pass or holds no coef_sha256 (rule section 6 item 2)")  # guard:refit_passed
+    res = SimpleNamespace(refit=refit, refit_path=rpath, refit_sha256=R.sha256_bytes(rraw), attempt=None,
+                          started_path=None, started_sha256=None)
+    if smoke:
+        return res
+    spath = Path(out) / f"held_started{'_reserve' if vr.reserve else ''}.json"
+    if not spath.is_file():
+        refuse(f"{spath.name} is missing: the read's coefficient SHA-256s cannot be checked")  # guard:started_missing
+    sraw = spath.read_bytes()
+    st = _parse(sraw, spath.name)
+    fix = vr.suffix == "_fix1"
+    atts = st.get("attempts") if isinstance(st.get("attempts"), list) else []
+    mine = [a for a in atts if isinstance(a, dict) and isinstance(a.get("flags"), dict)
+            and bool(a["flags"].get("fix")) is fix]
+    if not (st.get("rule_sha256") == R.RULE_SHA256 and mine and isinstance(mine[-1].get("coef_sha256"), dict)
+            and mine[-1]["coef_sha256"]):
+        refuse(f"{spath.name} holds no attempt of this rule that produced {vr.pass_path.name}, with its "
+               f"coef_sha256")  # guard:started_attempt
+    res.attempt, res.started_path, res.started_sha256 = mine[-1], spath, R.sha256_bytes(sraw)
+    return res
+
+
+def coef_guard(env, coef) -> dict:
+    """Step 3 (rule section 5 item 5): the heads' coefficient SHA-256s equal refit_check.json's and, in real and
+    reserve mode, the producing attempt's. Raises Refused (before any bundle). -> the record for descriptive.json."""
+    got = _plain(getattr(env, "coef_sha256", None))
+    if got != _plain(coef.refit["coef_sha256"]):
+        refuse(f"the heads' coefficient SHA-256s differ from {REFIT_NAME}'s (rule section 5 item 5)")  # guard:coef_refit
+    if coef.attempt is not None and got != _plain(coef.attempt["coef_sha256"]):
+        refuse(f"the heads' coefficient SHA-256s differ from those of attempt {coef.attempt.get('attempt')} in "
+               f"{coef.started_path.name} (rule section 5 item 5)")  # guard:coef_started
+    return {"heads": got, "refit_check": {"file": REFIT_NAME, "sha256": coef.refit_sha256, "equal": True},
+            "held_started": (None if coef.attempt is None else
+                             {"file": coef.started_path.name, "sha256": coef.started_sha256,
+                              "attempt": coef.attempt.get("attempt"), "equal": True})}
 
 
 # ---------------------------------------------------------------- 2. inputs bound to the pass
@@ -207,30 +280,68 @@ def load_inputs(out, smoke: bool, vr) -> SimpleNamespace:
                                 f"file's")  # guard:episodes_pass
         eps[s] = ep
         sha[path.name] = R.sha256_file(path)
-    return SimpleNamespace(core=core, episodes=eps, sha256=sha, arrays_reproduce_pass=agree,
-                           extra_keys=core["extra_keys"])
+    return SimpleNamespace(core=core, episodes=eps, sha256=sha, arrays_reproduce_pass=agree)
 
 
-# ---------------------------------------------------------------- 4. bundles
+# ---------------------------------------------------------------- 4. contexts, bundles and ticket 14's hooks
+
+def seed_ctx_bundle(env, mode, seed, n_per_pair):
+    """run_r6_held.seed_bundle's two calls (the same RowContext on env's data, split, labels, heads and value sets,
+    then build_bundle_r6 with env's readers and PM fits; a test pins the calls to seed_bundle's source), keeping the
+    RowContext for ticket 14's per-seed hook (DTS needs its masked img, txt and its cos). -> (ctx, bundle)."""
+    ctx = X.RowContext(mode, seed, env.data, env.split, env.labels, env.heads, env.value_sets, n_per_pair)
+    return ctx, B.build_bundle_r6(ctx, env.readers, env.pm)
+
 
 def held_bundle(env, seed):
-    """THE ONE CALL SITE of the held runner's held-bundle function (ticket 08): one held seed's bundle, rebuilt after
-    the verdict on the same held rows, heads, readers and PM fits as the held pass. Until ticket 08's function is
-    wired here, run_r6_held.seed_bundle in held mode (RowContext on split.held, 4,096 per pair) builds it."""
-    return RH.seed_bundle(env, "held", seed, R.N_PER_PAIR)
+    """One held seed's RowContext and bundle, rebuilt after the verdict on the same held rows (split.held, 4,096 per
+    pair), heads, readers and PM fits as the held pass, as run_r6_held builds the read's bundles (seed_bundle(env,
+    "held", seed, 4096, on_episodes=...)); no episode recorder here. The descriptive pass never calls held mode's entry
+    of run_r6_held (no started file, no ledger, no pass). -> (ctx, bundle)."""
+    return seed_ctx_bundle(env, "held", seed, R.N_PER_PAIR)
 
 
 def bundle_factory(env, smoke: bool):
+    """seed -> (ctx, bundle): held seeds in real mode, selection rows at 64 per pair in smoke mode."""
     if smoke:
-        return lambda seed: RH.seed_bundle(env, "selection", seed, R.N_SMOKE)
+        return lambda seed: seed_ctx_bundle(env, "selection", seed, R.N_SMOKE)
     return lambda seed: held_bundle(env, seed)
 
 
-def external_rows(env, per_seed, out, smoke: bool) -> dict:
-    """Ticket 14's hook: {name: {"pa": {seed: per_anchor}, "label": str, "info": dict}} for DTS, DTS-CF, DTS-N,
-    FT-LP, FT-LB, FT-LoRA and MLLM (seed 52 only), joined to the held GPU outputs here (rule section 8 item 3). The
-    core pass has none."""
+def external_seed_rows(env, seed, ctx, bundle, episodes, out, smoke: bool) -> dict:
+    """Ticket 14's per-seed hook, called inside the seed loop after seed_inputs, while the seed's RowContext ``ctx``
+    (masked img and txt, cos, pooled, parity, pair_index: what r6_dts.held_dts_scores takes) and its bundle exist;
+    ``episodes`` is the seed's episode file (r6_episodes.load_episodes), ``env`` the setup (env.data for FT's
+    features), ``out`` the results folder (the GPU outputs to join). -> {name: {"pa": per_anchor dict of this seed
+    (or None: no row this seed), "label": str, "info": dict}}; a scorer absent on a seed (MLLM beyond seed 52) is left
+    out. The core pass has none."""
     return {}
+
+
+def collect_external(collected, seed, rows) -> dict:
+    """Adds one seed's hook output to describe's external argument {name: {"pa": {seed: per_anchor}, "label", "info":
+    {"per_seed": {seed: info}}}}."""
+    for name, x in (rows or {}).items():
+        e = collected.setdefault(name, {"pa": {}, "label": x.get("label", name), "info": {"per_seed": {}}})
+        if x.get("pa") is not None:
+            e["pa"][int(seed)] = x["pa"]
+        if x.get("info"):
+            e["info"]["per_seed"][str(seed)] = dict(x["info"])
+    return collected
+
+
+def external_rows(env, per_seed, out, smoke: bool, collected) -> dict:
+    """Ticket 14's final hook: describe's external argument from the per-seed rows ``collected`` (and anything ticket
+    14 adds once every seed is done, e.g. totals of parsing failures). The core pass returns ``collected``."""
+    return collected
+
+
+def development_reuse(groups) -> dict:
+    """Plan section 10's item-reuse rate "per split", the development split's figure: seed 42's selection episodes
+    (r6_descriptive.development_episodes: AB's episodes_seed42.npz, SHA-256 and per-pair hashes asserted)."""
+    ep = D.development_episodes()
+    return {"split": "selection rows, seed 42 (development)",
+            **D.item_reuse(ep.anchor, ep.candidates, D.member_rows(ep), groups)}
 
 
 # ---------------------------------------------------------------- the run
@@ -253,14 +364,17 @@ def write_once(path: Path, rec: dict) -> None:
         tmp.unlink()
 
 
-def after_verdict(out, smoke, vr, env=None, bundle_fn=None, picks=None, lambdas=None) -> Path:
-    """Steps 2 to 5 (module docstring). -> the written path."""
+def after_verdict(out, smoke, vr, env=None, bundle_fn=None, picks=None, lambdas=None, records=None) -> Path:
+    """Steps 1 (coefficient records) to 5 (module docstring). records: the folder of refit_check.json and
+    picks_seed42.json (results/ by default). -> the written path."""
     t0 = time.time()
     md = mode_of(smoke)
+    records = Path(records or R.RESULTS)
+    coef = coef_records(out, smoke, vr, records)
     inp = load_inputs(out, smoke, vr)
     picks_sha = None
     if picks is None:
-        picks_path = R.RESULTS / P.PICKS_NAME
+        picks_path = records / P.PICKS_NAME
         picks = P.load_picks(picks_path)
         picks_sha = R.sha256_file(picks_path)
     lambdas = P.frozen_lambdas() if lambdas is None else lambdas
@@ -268,35 +382,40 @@ def after_verdict(out, smoke, vr, env=None, bundle_fn=None, picks=None, lambdas=
     if not (isinstance(getattr(env, "head_check", None), dict) and env.head_check.get("passed") is True):
         raise Contradiction("the refit heads' selection posteriors differ from the stored ones (rule section 6 item "
                             "2): the bundles cannot be the read's")  # guard:head_check
+    coef_rec = coef_guard(env, coef)
     bundle_fn = bundle_fn or bundle_factory(env, smoke)
-    per_seed = []
+    per_seed, collected = [], {}
     for s in md.seeds:
-        bundle = bundle_fn(s)
+        ctx, bundle = bundle_fn(s)
         try:
-            per_seed.append(D.seed_inputs(bundle, picks, lambdas, env.readers, inp.core[s], inp.episodes[s],
-                                          env.split.groups))
+            d = D.seed_inputs(bundle, picks, lambdas, env.readers, inp.core[s], inp.episodes[s], env.split.groups)
         except AssertionError as e:
             raise Contradiction(f"seed {s}: {e}") from None
-        del bundle
+        per_seed.append(d)
+        collect_external(collected, s, external_seed_rows(env, s, ctx, bundle, inp.episodes[s], out, smoke))
+        del ctx, bundle
         gc.collect()
         say(f"seed {s}: rebuilt bundle reproduces the held arrays; descriptive inputs done")
-    rec = {"mode": md.name, **D.describe(per_seed, external=external_rows(env, per_seed, out, smoke))}
+    rec = {"mode": md.name,
+           **D.describe(per_seed, external=external_rows(env, per_seed, out, smoke, collected))}
+    rec["item_reuse"]["development_seed42"] = development_reuse(env.split.groups)
     rec.update({
         "n_per_pair": md.n_per_pair,
         "verdict": {"file": vr.path.name, "sha256": vr.sha256, "verdict": vr.verdict["verdict"],
                     "kind": vr.verdict.get("kind"), "pass_file": vr.pass_path.name,
                     "held_pass_sha256": vr.pass_sha256, "agreement_file": vr.agreement_path.name,
                     "agreement_sha256": vr.agreement_sha256},
+        "coef_sha256": coef_rec,
         "consistency": {"arrays_reproduce_pass": inp.arrays_reproduce_pass,
                         "bundle_reproduces_arrays": {str(d.seed): d.checks["bundle_reproduces_arrays"]
                                                      for d in per_seed},
-                        "episodes_match_files": {str(d.seed): d.checks["episodes_match_file"] for d in per_seed},
-                        "held_arrays_extra_keys": inp.extra_keys},
+                        "episodes_match_files": {str(d.seed): d.checks["episodes_match_file"] for d in per_seed}},
         "frozen": {"cells": {who: {part: list(c) for part, c in v.items()} for who, v in S.CELLS.items()},
                    "picks": {name: {str(h): [float(x) for x in picks[name][h]] for h in (0, 1)} for name in P.NESTED},
                    "lambdas": _lambdas_json(lambdas)},
         "input_sha256": {**dict(getattr(env, "inputs", {}) or {}), **inp.sha256,
-                         **({P.PICKS_NAME: picks_sha} if picks_sha else {})},
+                         **({P.PICKS_NAME: picks_sha} if picks_sha else {}),
+                         D.DEV_EPISODES_REL: R.assert_input(D.DEV_EPISODES_REL)},
         "rule_sha256": R.RULE_SHA256, "module_sha256": R.r6_module_shas(), "runner_sha256": runner_sha256(),
         "time": R.amsterdam_now(), "runtime_s": round(time.time() - t0, 1),
     })
@@ -304,20 +423,27 @@ def after_verdict(out, smoke, vr, env=None, bundle_fn=None, picks=None, lambdas=
     return vr.output
 
 
-def run(smoke=False, reserve=False, subdir=None, out=None, env=None, bundle_fn=None, picks=None, lambdas=None) -> int:
-    """The whole pass. out, env, bundle_fn, picks, lambdas may be given by a test. -> exit code."""
+def run(smoke=False, reserve=False, subdir=None, out=None, env=None, bundle_fn=None, picks=None, lambdas=None,
+        records=None) -> int:
+    """The whole pass. out, env, bundle_fn (seed -> (ctx, bundle)), picks, lambdas and records (the folder of
+    refit_check.json and picks_seed42.json) may be given by a test. -> exit code. In smoke mode a refusal or stop
+    message prints no decimal number."""
     smoke, reserve = bool(smoke), bool(reserve)
+    shown = numberless if smoke else str
     try:
         if smoke and reserve:
             refuse("--smoke and --reserve exclude each other")
         out = out_dir(smoke, subdir, out)
         vr = check_verdict(out, smoke, reserve)
-        path = after_verdict(out, smoke, vr, env, bundle_fn, picks, lambdas)
+        path = after_verdict(out, smoke, vr, env, bundle_fn, picks, lambdas, records)
     except Refused as e:
-        say(f"REFUSED: {e}")
+        say(f"REFUSED: {shown(e)}")
         return EXIT_REFUSE
     except Contradiction as e:
-        say(f"STOP, report to the user: {e}")
+        say(f"STOP, report to the user: {shown(e)}")
+        return EXIT_CONTRADICTION
+    except AssertionError as e:
+        say(f"STOP, report to the user: an assertion failed: {shown(e)}")
         return EXIT_CONTRADICTION
     say(f"written: {path}")
     return 0

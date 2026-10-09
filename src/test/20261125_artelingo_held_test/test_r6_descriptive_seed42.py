@@ -49,6 +49,7 @@ import r6_descriptive as D  # noqa: E402
 import r6_episodes as E  # noqa: E402
 import r6_picks as P  # noqa: E402
 import r6_stats as ST  # noqa: E402
+import run_r6_descriptive as RD  # noqa: E402
 import run_r6_held as RH  # noqa: E402
 import run_r6_picks as RP  # noqa: E402
 
@@ -96,7 +97,9 @@ def real(tmp_path_factory):
     episodes = E.load_episodes(tmp / "held_episodes_seed42.npz")
     d = D.seed_inputs(bundle, picks, lambdas, env.readers, core[R.DEV_SEED], episodes, env.split.groups)
     rec = json.loads(json.dumps(D.describe([d])))        # through JSON, as descriptive.json stores it
-    return SimpleNamespace(rec=rec, prec=prec, agree=agree, d=d, scored=scored, episodes=episodes, bundle=bundle)
+    dev = RD.development_reuse(env.split.groups)
+    return SimpleNamespace(rec=rec, prec=prec, agree=agree, d=d, scored=scored, episodes=episodes, bundle=bundle,
+                           dev=json.loads(json.dumps(dev)))
 
 
 def test_stand_in_binds_to_its_pass_record(real):
@@ -223,3 +226,5 @@ def test_rows_two_way_and_reuse_shapes(real):
     assert ir["anchors"]["slots"] == N and ir["candidates"]["slots"] == 13 * N and ir["members"]["slots"] == 30 * N
     assert ir == rec["item_reuse"]["per_seed"]["42"]
     assert 0 < ir["candidates"]["painting_reuse_pct"] < 100 and ir["candidates"]["distinct_paintings"] <= 6451
+    # the development figure the runner adds (AB's episodes_seed42.npz) is this seed's own figure
+    assert {k: v for k, v in real.dev.items() if k != "split"} == ir

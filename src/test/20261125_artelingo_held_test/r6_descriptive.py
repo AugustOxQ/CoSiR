@@ -59,12 +59,15 @@ Definitions (agent defaults where the rule and the plan leave them open):
   - Item reuse: over the pooled episodes (and per seed), slots = episodes x 13 candidate slots (and x 30 member slots:
     anchor, 13 candidates, 4 + 4 example pairs in both modalities); reuse = 100 x (1 - distinct / slots), for rows
     (items) and for paintings, with the mean uses per distinct row and painting; anchors likewise (12,288 slots per
-    seed).
+    seed). Plan section 10 asks for it per split: the runner adds the development split's figure (seed 42's
+    selection episodes, development_episodes) beside the held one.
 
 descriptive.json (smoke: results/smoke/descriptive.json; --reserve: descriptive_reserve.json), proposed for contracts:
   {"what", "mode": "held"|"smoke", "seeds", "n_per_pair", "n_episodes", "n_clusters",
    "verdict": {"file", "sha256", "verdict", "kind", "pass_file", "held_pass_sha256", "agreement_file",
                "agreement_sha256"},
+   "coef_sha256": {"heads": {head: {"img", "txt"}}, "refit_check": {"file", "sha256", "equal"},
+                   "held_started": {"file", "sha256", "attempt", "equal"} | null (smoke)},
    "consistency": {"arrays_reproduce_pass": {check: bool}, "bundle_reproduces_arrays": {seed: true},
                    "episodes_match_files": {seed: true}},
    "scorers": [names], "labels": {name: text},
@@ -82,12 +85,12 @@ descriptive.json (smoke: results/smoke/descriptive.json; --reserve: descriptive_
                          "n_candidate_clusters", "n_target_clusters", "n_episodes", "quantities": {P1..S2:
                          {"quantity", "point", "ci95_anchor", "ci95_two_way", "half_width_ratio",
                          "ci95_two_way_targets", "half_width_ratio_targets"}}},
-   "item_reuse": {"definition", "pooled": IR, "per_seed": {seed: IR}},
+   "item_reuse": {"definition", "pooled": IR, "per_seed": {seed: IR}, "development_seed42": {"split", **IR}},
    "gate_open_shares": {"AFF"|"R1": {"pooled": open_shares, "per_seed": {seed: open_shares}}},
    "pick_accuracy": {"told_mapping", "pooled": {"pick_accuracy", "pick_share"}, "per_seed": {seed: {...}}},
    "redundancy_D7": {seed: {"redundancy": {h: {d: float}}, "affect_least_redundant_both_directions": bool}},
    "frozen": {"cells", "picks", "lambdas"},
-   "external": {name: info} (ticket 14),
+   "external": {name: {"seeds", **info}} (ticket 14; the runner's per-seed hook gives info = {"per_seed": {...}}),
    "rule_sha256", "module_sha256", "runner_sha256", "input_sha256", "time", "runtime_s"}
   seeds are string keys ("52"); pairs are r6_common.PAIR_NAMES.
 
@@ -108,6 +111,7 @@ import r6_stats as ST  # noqa: E402
 
 import numpy as np  # noqa: E402
 
+from src.eval.aspect_episodes import AspectEpisodes, concat_episodes, episodes_sha256  # noqa: E402
 from src.eval.aspect_metrics import CONDITIONS, METRICS, cluster_bootstrap  # noqa: E402
 
 C, RF, RS, R3 = R.C, R.RF, R.RS, R.R3
@@ -174,29 +178,27 @@ def arrays_from_scored(scored, seeds) -> dict:
 
 def load_core(path, seeds, n_per_pair) -> dict:
     """held_arrays.npz split per seed: {seed: {"cl", "pair_index", "pa": {scorer: {metric: (n,) float64}}}} for the
-    CORE scorers. seed_index may hold each seed's position (0, 1, 2) or the seed itself; either way the seeds are
-    consecutive blocks of 3 x n_per_pair episodes in the given order, and each block's pair_index is the pairs'
-    blocks of n_per_pair. Keys beyond the layout are ignored (listed in "extra_keys"). A position-coded block is
-    bound to its seed later: check_pass (the pass file's pooled numbers, seeds in its order) and seed_inputs (cl =
-    groups[anchor] of that seed's episode file)."""
+    CORE scorers. The layout of contracts section 7 (amendment 16:22), exactly: the keys of array_keys() and no other
+    (a PM or r1_cf key would be a metric computed before the verdict, rule section 8 item 3); seed_index (int64) the
+    seed's position 0, 1, 2 in the given order, the seeds consecutive blocks of 3 x n_per_pair episodes, each block's
+    pair_index the pairs' blocks of n_per_pair. A block is bound to its seed later: check_pass (the pass file's pooled
+    numbers, seeds in its order) and seed_inputs (cl = groups[anchor] of that seed's episode file)."""
     seeds = [int(s) for s in seeds]
     n_seed = len(R.PAIRS) * int(n_per_pair)
     want = array_keys()
     with np.load(path, allow_pickle=False) as z:
-        missing = sorted(set(want) - set(z.files))
-        _require(not missing, f"{Path(path).name} lacks {missing} (contracts section 7)")  # guard:arrays_keys
+        missing, extra = sorted(set(want) - set(z.files)), sorted(set(z.files) - set(want))
+        _require(not missing and not extra, f"{Path(path).name}: keys missing {missing[:4]}, keys not in the layout "
+                                            f"{extra[:4]} (contracts section 7)")  # guard:arrays_keys
         d = {k: z[k] for k in want}
-        extra = sorted(set(z.files) - set(want))
     n = len(seeds) * n_seed
     for k in want:
         _require(d[k].shape == (n,), f"{k}: shape {d[k].shape}, not ({n},) = {len(seeds)} seeds x {n_seed}")
     si = d["seed_index"]
-    _require(np.issubdtype(si.dtype, np.integer) and np.issubdtype(d["cl"].dtype, np.integer)
-             and np.issubdtype(d["pair_index"].dtype, np.integer), "cl, pair_index, seed_index must be integers")
-    by_pos = np.repeat(np.arange(len(seeds), dtype=np.int64), n_seed)
-    by_seed = np.repeat(np.asarray(seeds, dtype=np.int64), n_seed)
-    _require(np.array_equal(si, by_pos) or np.array_equal(si, by_seed),
-             f"seed_index is not {len(seeds)} consecutive blocks of {n_seed} in the order {seeds}")
+    _require(si.dtype == np.int64 and d["cl"].dtype == np.int64 and d["pair_index"].dtype == np.int64,
+             "cl, pair_index, seed_index must be int64")
+    _require(np.array_equal(si, np.repeat(np.arange(len(seeds), dtype=np.int64), n_seed)),
+             f"seed_index is not the positions of {len(seeds)} consecutive blocks of {n_seed}")
     pi_seed = np.repeat(np.arange(len(R.PAIRS), dtype=np.int64), int(n_per_pair))
     out = {}
     for i, seed in enumerate(seeds):
@@ -211,7 +213,6 @@ def load_core(path, seeds, n_per_pair) -> dict:
                 pa[s][m] = np.ascontiguousarray(x)
         out[seed] = {"cl": np.ascontiguousarray(d["cl"][sl]), "pair_index": np.ascontiguousarray(d["pair_index"][sl]),
                      "pa": pa}
-    out["extra_keys"] = extra
     return out
 
 
@@ -275,8 +276,7 @@ def seed_inputs(bundle, picks, lambdas, readers, core, episodes, groups) -> Simp
              for who in GATE_SETS}
     frozen_b = S.frozen_nested(bundle.cos, bundle.t_n1u, bundle.t6u_B, picks["B"], bundle.parity)
     red = R3B.redundancy(SimpleNamespace(B=frozen_b, stack=bundle.stack))
-    members = np.stack([ep.anchor, *ep.candidates.T, *ep.pairs_a_img.T, *ep.pairs_a_txt.T, *ep.pairs_b_img.T,
-                        *ep.pairs_b_txt.T], axis=1)
+    members = member_rows(ep)
     return SimpleNamespace(
         seed=seed, cl=cl, pair_index=np.asarray(core["pair_index"]), pa=pa, gates=gates,
         pick={c: np.asarray(scored["reader"]["pick"][c], dtype=np.int64) for c in CONDITIONS},
@@ -483,6 +483,33 @@ def two_way_bootstrap(values, anchor_cl, cand_cl, names=None, n_boot=N_BOOT, see
     if return_draws:
         rec["draws"] = draws
     return rec
+
+
+def member_rows(ep) -> np.ndarray:
+    """(n, 30) int64: anchor, the 13 candidates, then pairs_a_img, pairs_a_txt, pairs_b_img, pairs_b_txt (4 each)."""
+    return np.stack([ep.anchor, *ep.candidates.T, *ep.pairs_a_img.T, *ep.pairs_a_txt.T, *ep.pairs_b_img.T,
+                     *ep.pairs_b_txt.T], axis=1).astype(np.int64)
+
+
+DEV_EPISODES_REL = "20261030_aspect_baselines/results/episodes_seed42.npz"    # R3 rule D15 input (SHA-256 asserted)
+
+
+def development_episodes():
+    """Seed 42's selection episodes (the development split, 4,096 per pair) from AB's episodes_seed42.npz: its
+    SHA-256 asserted (rule section 6 item 1), each pair rebuilt as AspectEpisodes and its episodes_sha256 asserted
+    equal to baselines_seed42.json's (r6_episodes.identity_targets). -> the pooled AspectEpisodes, PAIRS order."""
+    R.assert_input(DEV_EPISODES_REL)
+    want = E.identity_targets()[R.DEV_SEED]["episodes_sha256"]
+    parts = []
+    with np.load(R.INPUT_PATHS[DEV_EPISODES_REL], allow_pickle=False) as z:
+        _require(tuple(str(p) for p in z["pair_order"]) == R.PAIR_NAMES, "episodes_seed42.npz: pair order differs")
+        for p in R.PAIR_NAMES:
+            a, b = p.split("__")
+            ep = AspectEpisodes(a, b, *(np.ascontiguousarray(z[f"{p}__{f}"], dtype=np.int64) for f in E.FIELDS))
+            _require(len(ep.anchor) == R.N_PER_PAIR and episodes_sha256(ep) == want[p],
+                     f"episodes_seed42.npz: {p} differs from baselines_seed42.json's episodes")
+            parts.append(ep)
+    return concat_episodes(parts)
 
 
 def _reuse(rows, groups) -> dict:

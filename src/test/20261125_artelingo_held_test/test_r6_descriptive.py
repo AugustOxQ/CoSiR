@@ -38,11 +38,13 @@ import r6_score as S  # noqa: E402
 import r6_stats as ST  # noqa: E402
 import run_r6_apply_rule as RA  # noqa: E402
 import run_r6_descriptive as RD  # noqa: E402
+import run_r6_held as RH  # noqa: E402
 
 import numpy as np  # noqa: E402
 
 from src.eval.aspect_episodes import AspectEpisodes, concat_episodes, episodes_sha256  # noqa: E402
-from src.eval.aspect_metrics import CONDITIONS, DIRECTIONS, METRICS  # noqa: E402
+from src.eval.aspect_metrics import CONDITIONS, DIRECTIONS, METRICS, per_anchor  # noqa: E402
+from src.eval.aspect_scorers import fused_scores  # noqa: E402
 
 C = R.C
 K = 13
@@ -144,20 +146,44 @@ def write_json(path, rec):
     Path(path).write_text(json.dumps(rec, indent=1))
 
 
+COEF = {h: {"img": f"{i}a" * 32, "txt": f"{i}b" * 32}
+        for i, h in enumerate(("affect", "affect_km", "image", "caption", "csd"))}
+
+
+def synth_ctx(eps, b, rng):
+    """A RowContext's fields that ticket 14's DTS hook reads (masked img and txt shrunk to a placeholder)."""
+    return SimpleNamespace(seed=eps.seed, n=eps.n, pooled=eps.pooled, img=rng.standard_normal((8, 4)),
+                           txt=rng.standard_normal((8, 4)), cos=b.cos, parity=b.parity, pair_index=b.pair_index)
+
+
+def started_record(shas, coef=COEF, attempts=None):
+    """held_started.json as ticket 08 writes it: this rule, attempts with flags, coef_sha256 and episode hashes."""
+    att = attempts or [{"attempt": 1, "time": "2026-10-10 09:00:00", "mode": "held",
+                        "flags": {"after_crash": False, "fix": None, "reserve": False, "smoke": False},
+                        "coef_sha256": coef, "episodes_sha256": {str(s): h for s, h in shas.items()}}]
+    return {"rule_sha256": R.RULE_SHA256, "attempts": att}
+
+
 def build_dir(out, smoke, readers, rng_seed):
-    """A complete results folder of one mode (module docstring). -> namespace for RD.run."""
+    """A complete results folder of one mode (module docstring), the stage records (refit_check.json) in a sibling
+    folder. -> namespace for RD.run."""
     out.mkdir(parents=True, exist_ok=True)
+    records = out.parent / "records"
+    records.mkdir(exist_ok=True)
+    write_json(records / RD.REFIT_NAME, {"passed": True, "coef_sha256": COEF})
     md = RD.mode_of(smoke)
     rng = np.random.default_rng(rng_seed)
     groups = rng.integers(0, N_GROUPS, R.N_ROWS).astype(np.int64)
-    bundles, scored, shas = {}, [], {}
+    bundles, ctx, scored, shas = {}, {}, [], {}
     for s in md.seeds:
         eps = synth_episodes(s, md.n_per_pair, rng)
         E.save_episodes(out / f"held_episodes_seed{s}.npz", eps)
         b = synth_bundle(eps, groups, "selection" if smoke else "held", rng)
-        bundles[s] = b
+        bundles[s], ctx[s] = b, synth_ctx(eps, b, rng)
         scored.append(S.score_seed(b, NESTED_PICKS, lambdas_all(), readers, include_pm=False))
         shas[s] = dict(eps.sha)
+    if not smoke:
+        write_json(out / "held_started.json", started_record(shas))
     np.savez(out / "held_arrays.npz", **D.arrays_from_scored(scored, md.seeds))
     extra = {"episodes_sha256": shas, "runner_sha256": "0" * 64, "module_sha256": {"run_r6_held.py": "1" * 64}}
     write_json(out / "held_pass.json", ST.pass_record(scored, md.name, md.seeds, extra))
@@ -171,8 +197,9 @@ def build_dir(out, smoke, readers, rng_seed):
         mp.setattr(RA, "SMOKE" if smoke else "RESULTS", out)
         RA.apply(smoke=smoke)
     env = SimpleNamespace(readers=readers, split=SimpleNamespace(groups=groups), head_check={"passed": True},
-                          inputs={})
-    return SimpleNamespace(out=out, smoke=smoke, env=env, bundles=bundles, groups=groups, md=md, scored=scored)
+                          inputs={}, coef_sha256=json.loads(json.dumps(COEF)))
+    return SimpleNamespace(out=out, records=records, smoke=smoke, env=env, bundles=bundles, ctx=ctx, groups=groups,
+                           md=md, scored=scored, shas=shas)
 
 
 def copy_dir(fx, tmp_path, name="res"):
@@ -181,9 +208,15 @@ def copy_dir(fx, tmp_path, name="res"):
     return dst
 
 
+def copy_records(fx, tmp_path, name="records_copy"):
+    dst = tmp_path / name
+    shutil.copytree(fx.records, dst)
+    return dst
+
+
 def run(fx, out, capsys=None, module=RD, **kw):
-    args = dict(smoke=fx.smoke, out=out, env=fx.env, bundle_fn=lambda s: fx.bundles[s], picks=NESTED_PICKS,
-                lambdas=lambdas_all())
+    args = dict(smoke=fx.smoke, out=out, env=fx.env, bundle_fn=lambda s: (fx.ctx[s], fx.bundles[s]),
+                picks=NESTED_PICKS, lambdas=lambdas_all(), records=fx.records)
     args.update(kw)
     code = module.run(**args)
     text = ""
@@ -252,6 +285,12 @@ GUARD_TESTS = {
     "output_exists": "test_refuses_when_the_output_exists",
     "episodes_pass": "test_episode_file_hashes_must_be_the_pass_files",
     "head_check": "test_head_check_must_have_passed",
+    "refit_missing": "test_refuses_without_refit_check",
+    "refit_passed": "test_refuses_a_refit_check_that_did_not_pass",
+    "started_missing": "test_refuses_without_the_started_file",
+    "started_attempt": "test_refuses_without_the_producing_attempt",
+    "coef_refit": "test_refuses_coefficients_unlike_refit_check",
+    "coef_started": "test_refuses_coefficients_unlike_the_started_attempt",
     "arrays_keys": "test_load_core_layout",
     "pass_counts": "test_check_pass_counts",
     "arrays_reproduce_pass": "test_arrays_must_reproduce_the_pass",
@@ -277,7 +316,7 @@ def test_every_marked_guard_has_a_mutation_test():
 TOP_KEYS = {"what", "mode", "seeds", "n_per_pair", "n_episodes", "n_clusters", "verdict", "consistency", "scorers",
             "labels", "rows", "checks_by_scope", "bar_margin", "aff_minus_b1", "r1_checks", "two_way_bootstrap",
             "item_reuse", "gate_open_shares", "pick_accuracy", "redundancy_D7", "frozen", "external", "rule_sha256",
-            "module_sha256", "runner_sha256", "input_sha256", "time", "runtime_s"}
+            "module_sha256", "runner_sha256", "input_sha256", "time", "runtime_s", "coef_sha256"}
 
 
 def test_smoke_run_end_to_end_prints_no_decimal(smoke_fx, tmp_path, capsys):
@@ -303,6 +342,12 @@ def test_smoke_run_end_to_end_prints_no_decimal(smoke_fx, tmp_path, capsys):
     assert set(rec["redundancy_D7"]) == {str(s) for s in R.SMOKE_SEEDS}
     assert set(rec["gate_open_shares"]) == {"AFF", "R1"}
     assert rec["module_sha256"] == R.r6_module_shas()
+    assert rec["coef_sha256"]["heads"] == COEF and rec["coef_sha256"]["held_started"] is None
+    assert rec["coef_sha256"]["refit_check"]["sha256"] == sha(smoke_fx.records / RD.REFIT_NAME)
+    dev = rec["item_reuse"]["development_seed42"]
+    assert dev["split"].startswith("selection rows, seed 42") and dev["anchors"]["slots"] == 3 * R.N_PER_PAIR
+    assert dev["candidates"]["slots"] == 13 * 3 * R.N_PER_PAIR and dev["members"]["slots"] == 30 * 3 * R.N_PER_PAIR
+    assert rec["input_sha256"][D.DEV_EPISODES_REL] == R.INPUT_SHA256[D.DEV_EPISODES_REL]
 
 
 def test_smoke_rows_are_the_scored_arrays(smoke_fx, tmp_path):
@@ -351,6 +396,9 @@ def test_held_run_real_shapes(held_fx, held_record):
         assert set(g) == {f"tau_{t}" for t in range(4)} and g["tau_0"]["n_episodes"] == 36864
     assert rec["pick_accuracy"]["pooled"]["pick_accuracy"]["chance"] == 100 / 3
     assert set(rec["r1_checks"]["pooled"]["checks"]) == set(R.RS.GO_CHECKS)
+    hs = rec["coef_sha256"]["held_started"]
+    assert rec["coef_sha256"]["heads"] == COEF and hs["attempt"] == 1 and hs["file"] == "held_started.json"
+    assert hs["sha256"] == sha(held_fx.out / "held_started.json")
 
 
 def test_held_pm_needs_the_real_verdict_file(held_fx, tmp_path, capsys):
@@ -640,22 +688,26 @@ def test_load_core_layout(smoke_fx, tmp_path):
         for name in D.CORE:
             for m in METRICS:
                 assert np.array_equal(core[s]["pa"][name][m], smoke_fx.scored[i][name][m])
-    # seed_index may hold the seeds themselves; extra keys are listed, not refused
-    b = {**a, "seed_index": np.repeat(np.asarray(seeds, dtype=np.int64), 3 * R.N_SMOKE), "meta": np.array("x")}
-    np.savez(tmp_path / "b.npz", **b)
-    assert D.load_core(tmp_path / "b.npz", seeds, R.N_SMOKE)["extra_keys"] == ["meta"]
-    # seeds out of order (seed_index holding the seeds; position-coded blocks are bound to their seed later, by the
-    # pass file's check and seed_inputs' cl check); blocks not consecutive; a missing key
-    with pytest.raises(AssertionError, match="consecutive blocks"):
-        D.load_core(tmp_path / "b.npz", [9002, 9001, 9003], R.N_SMOKE)
+    # contracts section 7 (amendment 16:22): seed_index holds positions, not seeds; blocks consecutive; the keys
+    # exactly the layout (a PM or r1_cf key, a metric before the verdict, is refused); int64 indices
+    np.savez(tmp_path / "b.npz", **{**a, "seed_index": np.repeat(np.asarray(seeds, dtype=np.int64), 3 * R.N_SMOKE)})
+    with pytest.raises(AssertionError, match="positions"):
+        D.load_core(tmp_path / "b.npz", seeds, R.N_SMOKE)
     np.savez(tmp_path / "d.npz", **{**a, "seed_index": np.tile(np.arange(3, dtype=np.int64), 3 * R.N_SMOKE)})
-    with pytest.raises(AssertionError, match="consecutive blocks"):
+    with pytest.raises(AssertionError, match="positions"):
         D.load_core(tmp_path / "d.npz", seeds, R.N_SMOKE)
+    np.savez(tmp_path / "e.npz", **{**a, "cl": a["cl"].astype(np.int32)})
+    with pytest.raises(AssertionError, match="int64"):
+        D.load_core(tmp_path / "e.npz", seeds, R.N_SMOKE)
     np.savez(tmp_path / "c.npz", **{k: v for k, v in a.items() if k != "r1_fused__swap"})
-    with pytest.raises(AssertionError, match="lacks"):
+    with pytest.raises(AssertionError, match="keys missing"):
         D.load_core(tmp_path / "c.npz", seeds, R.N_SMOKE)
+    np.savez(tmp_path / "f.npz", **a, wang__r1=a["cosine__r1"])
+    with pytest.raises(AssertionError, match="not in the layout"):
+        D.load_core(tmp_path / "f.npz", seeds, R.N_SMOKE)
     mut = mutant(tmp_path, "r6_descriptive.py", "arrays_keys")
-    with pytest.raises(KeyError):                         # without the guard: an unexplained crash, not a refusal
+    assert set(mut.load_core(tmp_path / "f.npz", seeds, R.N_SMOKE)) == set(seeds)       # goes through
+    with pytest.raises(KeyError):                         # and a missing key crashes unexplained, not refused
         mut.load_core(tmp_path / "c.npz", seeds, R.N_SMOKE)
 
 
@@ -712,7 +764,8 @@ def test_rebuilt_bundle_must_reproduce_the_arrays(smoke_fx, tmp_path, capsys):
     mut = mutant(tmp_path, "r6_descriptive.py", "core_reproduced")
     assert mut.seed_inputs(**{**args, "bundle": bad}).seed == 9001
     out = copy_dir(smoke_fx, tmp_path)
-    code, text = run(smoke_fx, out, capsys, bundle_fn=lambda s: bad if s == 9001 else smoke_fx.bundles[s])
+    code, text = run(smoke_fx, out, capsys,
+                     bundle_fn=lambda s: (smoke_fx.ctx[s], bad if s == 9001 else smoke_fx.bundles[s]))
     assert code == RD.EXIT_CONTRADICTION and "seed 9001" in text and not (out / "descriptive.json").exists()
 
 
@@ -853,3 +906,188 @@ def test_external_rows_hook(smoke_fx):
     assert set(rec["checks_by_scope"]["pooled"]) == set(ST.CHECKS + ST.SECONDARY)
     with pytest.raises(AssertionError, match="collides"):
         D.describe(per_seed, external={"wang": {"pa": dts}})
+
+
+# ---------------------------------------------------------------- head coefficients (rule section 5 item 5)
+
+def _boom(seed):
+    raise Reached("a bundle was built")
+
+
+def test_refuses_without_refit_check(smoke_fx, tmp_path, capsys):
+    out, rec = copy_dir(smoke_fx, tmp_path), copy_records(smoke_fx, tmp_path)
+    (rec / RD.REFIT_NAME).unlink()
+    assert _refused(*run(smoke_fx, out, capsys, records=rec, bundle_fn=_boom), "refit_check.json is missing")
+    mut = mutant(tmp_path, "run_r6_descriptive.py", "refit_missing")
+    with pytest.raises(FileNotFoundError):                   # without the guard: an unexplained crash
+        run(smoke_fx, out, module=mut, records=rec)
+
+
+def test_refuses_a_refit_check_that_did_not_pass(smoke_fx, tmp_path, capsys):
+    out, rec = copy_dir(smoke_fx, tmp_path), copy_records(smoke_fx, tmp_path)
+    edit_json(rec / RD.REFIT_NAME, lambda r: r.update(passed=False))
+    assert _refused(*run(smoke_fx, out, capsys, records=rec, bundle_fn=_boom), "did not pass")
+    mut = mutant(tmp_path, "run_r6_descriptive.py", "refit_passed")
+    assert run(smoke_fx, out, module=mut, records=rec)[0] == 0                 # goes through
+
+
+def test_refuses_coefficients_unlike_refit_check(smoke_fx, tmp_path, capsys):
+    """Smoke mode checks refit_check.json only; a heads' coefficient SHA-256 that differs: refused before any bundle."""
+    out, rec = copy_dir(smoke_fx, tmp_path), copy_records(smoke_fx, tmp_path)
+    edit_json(rec / RD.REFIT_NAME, lambda r: r["coef_sha256"]["csd"].update(txt="f" * 64))
+    assert _refused(*run(smoke_fx, out, capsys, records=rec, bundle_fn=_boom), "differ from refit_check.json's")
+    assert not (out / "descriptive.json").exists()
+    mut = mutant(tmp_path, "run_r6_descriptive.py", "coef_refit")
+    assert run(smoke_fx, out, module=mut, records=rec)[0] == 0                 # goes through
+
+
+def test_refuses_without_the_started_file(held_fx, tmp_path, capsys):
+    out = copy_dir(held_fx, tmp_path)
+    (out / "held_started.json").unlink()
+    assert _refused(*run(held_fx, out, capsys, bundle_fn=_boom), "held_started.json is missing")
+    mut = mutant(tmp_path, "run_r6_descriptive.py", "started_missing")
+    with pytest.raises(FileNotFoundError):
+        run(held_fx, out, module=mut, bundle_fn=_boom)
+
+
+def test_refuses_without_the_producing_attempt(held_fx, tmp_path, capsys):
+    """No attempt of this rule whose fix flag matches the pass file: refused (here: another rule's started file; and a
+    started file holding only a --fix 1 attempt for held_pass.json)."""
+    out = copy_dir(held_fx, tmp_path)
+    edit_json(out / "held_started.json", lambda r: r.update(rule_sha256="0" * 64))
+    assert _refused(*run(held_fx, out, capsys, bundle_fn=_boom), "holds no attempt of this rule")
+    mut = mutant(tmp_path, "run_r6_descriptive.py", "started_attempt")
+    with pytest.raises(Reached):                             # goes through, to the first bundle
+        run(held_fx, out, module=mut, bundle_fn=_boom)
+    out2 = copy_dir(held_fx, tmp_path, "res2")
+    edit_json(out2 / "held_started.json", lambda r: r["attempts"][0]["flags"].update(fix=1))
+    assert _refused(*run(held_fx, out2, capsys, bundle_fn=_boom), "holds no attempt of this rule")
+
+
+def test_refuses_coefficients_unlike_the_started_attempt(held_fx, tmp_path, capsys):
+    out = copy_dir(held_fx, tmp_path)
+    edit_json(out / "held_started.json", lambda r: r["attempts"][0]["coef_sha256"]["affect"].update(img="e" * 64))
+    assert _refused(*run(held_fx, out, capsys, bundle_fn=_boom), "differ from those of attempt 1 in held_started.json")
+    mut = mutant(tmp_path, "run_r6_descriptive.py", "coef_started")
+    with pytest.raises(Reached):
+        run(held_fx, out, module=mut, bundle_fn=_boom)
+
+
+def test_producing_attempt_is_chosen_by_the_fix_flag(held_fx, tmp_path):
+    """held_pass.json: the last attempt without a fix flag (an --after-crash rerun after a crash); held_pass_fix1.json:
+    the last --fix 1 attempt; held_pass_reserve.json: the last attempt of held_started_reserve.json."""
+    other = {h: {"img": "c" * 64, "txt": "d" * 64} for h in COEF}
+
+    def att(k, fix, coef, crash=False):
+        return {"attempt": k, "flags": {"after_crash": crash, "fix": fix, "reserve": False, "smoke": False},
+                "coef_sha256": coef, "episodes_sha256": {}}
+    env = held_fx.env
+    for attempts, suffix, ok in (([att(1, None, other), att(2, None, COEF, True)], "", True),
+                                 ([att(1, None, COEF), att(2, 1, other)], "", True),
+                                 ([att(1, None, COEF), att(2, 1, other)], "_fix1", False),
+                                 ([att(1, None, other), att(2, 1, COEF)], "_fix1", True)):
+        out = tmp_path / f"o{next(_COUNT)}"
+        out.mkdir()
+        write_json(out / "held_started.json", started_record({}, attempts=attempts))
+        vr = SimpleNamespace(suffix=suffix, reserve=False, pass_path=out / f"held_pass{suffix}.json")
+        coef = RD.coef_records(out, False, vr, held_fx.records)
+        if ok:
+            assert RD.coef_guard(env, coef)["held_started"]["attempt"] == coef.attempt["attempt"]
+        else:
+            with pytest.raises(RD.Refused):
+                RD.coef_guard(env, coef)
+    out = tmp_path / "reserve"
+    out.mkdir()
+    write_json(out / "held_started_reserve.json", started_record({}, attempts=[att(1, None, COEF)]))
+    vr = SimpleNamespace(suffix="_reserve", reserve=True, pass_path=out / "held_pass_reserve.json")
+    assert RD.coef_guard(env, RD.coef_records(out, False, vr, held_fx.records))["held_started"]["file"] == \
+        "held_started_reserve.json"
+
+
+# ---------------------------------------------------------------- ticket 14's per-seed hook, with the RowContext
+
+def test_per_seed_hook_receives_the_context_and_adds_rows(smoke_fx, tmp_path, monkeypatch):
+    """A DTS-like stub: it reads the seed's RowContext (masked img and txt, cos, pooled, parity, pair_index) and
+    returns a fused per-anchor dict; an MLLM-like stub answers on seed 9001 only; a missing job gives info only. Each
+    becomes an external row of descriptive.json (the runner's loop drops ctx and bundle after the hook)."""
+    seen, made = [], {}
+
+    def hook(env, seed, ctx, bundle, episodes, out, smoke):
+        assert all(hasattr(ctx, f) for f in ("img", "txt", "cos", "pooled", "parity", "pair_index"))
+        assert ctx.seed == seed == episodes.seed and np.array_equal(ctx.pooled.anchor, episodes.pooled.anchor)
+        assert env is smoke_fx.env and smoke is True and Path(out).is_dir()
+        seen.append(seed)
+        pa = per_anchor(fused_scores(ctx.cos, bundle.pm_terms["wang"], 1.0))
+        made[seed] = pa
+        rows = {"DTS": {"pa": pa, "label": "describe-then-score (stub)", "info": {"parsing_failures": {"a": 1}}},
+                "FT-LoRA": {"pa": None, "label": "FT-LoRA", "info": {"missing": "job not run"}}}
+        if seed == 9001:
+            rows["MLLM"] = {"pa": per_anchor(ctx.cos), "label": "reranker (stub)", "info": {}}
+        return rows
+    monkeypatch.setattr(RD, "external_seed_rows", hook)
+    out = copy_dir(smoke_fx, tmp_path)
+    assert run(smoke_fx, out)[0] == 0
+    assert seen == list(R.SMOKE_SEEDS)
+    rec = json.loads((out / "descriptive.json").read_text())
+    cl = np.concatenate([np.asarray(s["cl"]) for s in smoke_fx.scored])
+    aff = np.concatenate([s["aff_fused"]["r1"] for s in smoke_fx.scored])
+    dts = np.concatenate([made[s]["r1"] for s in R.SMOKE_SEEDS])
+    assert rec["rows"]["DTS"]["pooled"]["r1"] == C.point_ci(dts, cl)
+    assert rec["rows"]["DTS"]["pooled"]["aff_minus"]["r1"] == C.point_ci(aff - dts, cl)
+    assert rec["external"]["DTS"] == {"seeds": list(R.SMOKE_SEEDS),
+                                      "per_seed": {str(s): {"parsing_failures": {"a": 1}} for s in R.SMOKE_SEEDS}}
+    assert set(rec["rows"]["MLLM"]["per_seed"]) == {"9001"} and rec["external"]["MLLM"]["seeds"] == [9001]
+    assert "FT-LoRA" not in rec["rows"] and rec["external"]["FT-LoRA"]["seeds"] == []
+    assert rec["external"]["FT-LoRA"]["per_seed"]["9001"] == {"missing": "job not run"}
+    assert rec["labels"]["DTS"] == "describe-then-score (stub)" and rec["scorers"][-2:] == ["DTS", "MLLM"]
+
+
+def test_seed_ctx_bundle_is_run_r6_helds_seed_bundle():
+    """The descriptive pass builds each bundle with run_r6_held.seed_bundle's own two calls (same RowContext and
+    build_bundle_r6 arguments, same modules), only keeping the context and passing no episode recorder."""
+    def calls(path, name):
+        fn = next(n for n in ast.walk(ast.parse(Path(path).read_text()))
+                  if isinstance(n, ast.FunctionDef) and n.name == name)
+        return {n.func.attr: n for n in ast.walk(fn) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                and n.func.attr in ("RowContext", "build_bundle_r6")}
+    mine, theirs = calls(RD.__file__, "seed_ctx_bundle"), calls(RH.__file__, "seed_bundle")
+    assert set(mine) == set(theirs) == {"RowContext", "build_bundle_r6"}
+    for k in mine:
+        assert ast.dump(mine[k].func) == ast.dump(theirs[k].func)
+        assert [ast.dump(a) for a in mine[k].args] == [ast.dump(a) for a in theirs[k].args], k
+    assert [kw.arg for kw in theirs["RowContext"].keywords] == ["on_episodes"] and not mine["RowContext"].keywords
+    assert not mine["build_bundle_r6"].keywords and not theirs["build_bundle_r6"].keywords
+    assert RD.X is RH.X and RD.B is RH.B
+    src = Path(RD.__file__).read_text()
+    assert not re.search(r"RH\.(run_|main\b|start_attempt|write_started|EpisodeRecorder)", src)   # never held mode
+
+
+# ---------------------------------------------------------------- smoke messages without decimal numbers
+
+def test_smoke_stop_messages_print_no_decimal(smoke_fx, tmp_path, capsys, monkeypatch):
+    out = copy_dir(smoke_fx, tmp_path)
+    with np.load(out / "held_arrays.npz") as z:
+        a = {k: z[k] for k in z.files}
+    a["aff_fused__r1"][0] = 0.3                              # not a quarter: r6_stats says "multiple of 0.25"
+    np.savez(out / "held_arrays.npz", **a)
+    code, text = run(smoke_fx, out, capsys)
+    assert code == RD.EXIT_CONTRADICTION and "multiple of #" in text and DECIMAL.search(text) is None, text
+
+    def bad(*a, **k):
+        raise AssertionError("a planted check failed at 18.3 against .5")
+    out2 = copy_dir(smoke_fx, tmp_path, "res2")
+    monkeypatch.setattr(RD.D, "describe", bad)
+    code, text = run(smoke_fx, out2, capsys)
+    assert code == RD.EXIT_CONTRADICTION and "at # against #" in text and DECIMAL.search(text) is None, text
+    assert RD.numberless("x 0.25 y 12 z .5") == "x # y 12 z #"
+
+
+# ---------------------------------------------------------------- the development figure of item reuse
+
+def test_development_reuse_is_seed42s_selection_episodes():
+    ep = D.development_episodes()
+    assert len(ep.anchor) == 3 * R.N_PER_PAIR and D.member_rows(ep).shape == (3 * R.N_PER_PAIR, 30)
+    groups = np.arange(R.N_ROWS, dtype=np.int64) // 5
+    rec = RD.development_reuse(groups)
+    want = D.item_reuse(ep.anchor, ep.candidates, D.member_rows(ep), groups)
+    assert {k: v for k, v in rec.items() if k != "split"} == want
