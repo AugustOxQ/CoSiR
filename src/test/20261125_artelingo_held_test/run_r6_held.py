@@ -21,7 +21,9 @@ Regression mode, in this order:
      Otherwise it refuses (exit 4) before any input or data is loaded.
   2. Inputs (rule section 6 item 1) and the rule's targets against round 3's constants and dev_seed42.json.
   3. Shared setup: data, split (rule section 5 item 1), labels, development value sets, the five heads refit and
-     checked bit for bit on selection rows, the PM fits, the A0 half-readers.
+     checked bit for bit on selection rows, the PM fits, the A0 half-readers. The development value sets are written
+     to results/value_sets.json (codes with their names, r6_common.write_value_sets; rule section 5 item 2) and its
+     SHA-256 goes in regression_seed42.json as value_sets_sha256 (final review B1).
   4. The seed-42 selection bundle (RowContext + build_bundle_r6) and score_seed(..., include_pm=True) with B, B0, B1
      from picks_seed42.json and RCA and the nine PM lambdas from frozen_lambdas() (the cells are r6_score's).
   5. Items (each {"equal", "got", "want"}, compared exactly):
@@ -84,8 +86,12 @@ before step 5):
      current bytes of what run_r6_dts.py ran and of dts_settings.json (rule section 9: a section 7 stop, or DTS not
      built within its budget, stops the work before the read; final review, 2026-10-09). Its SHA-256 is recorded in
      the attempt. Smoke mode does not read it (the smoke chain checks it and runs the stop stage for its own seed).
+     In every mode and flag: results/value_sets.json exists and is the file regression_seed42.json records
+     (value_sets_sha256) (rule section 5 item 2; final review B1).
   4. setup(): the heads refit on scorer-train rows, their selection posteriors rechecked bit for bit; refuses unless
-     the check passed and every coefficient SHA-256 equals refit_check.json's (rule section 5 item 5).
+     the check passed and every coefficient SHA-256 equals refit_check.json's (rule section 5 item 5). Then
+     results/value_sets.json must hold the development value sets setup() recomputed (codes and names) with the
+     bytes step 3 checked; its {"file", "sha256"} goes in the attempt and the pass record as "value_sets".
   5. First write: the attempt (time, SHA-256s, flags, coefficient SHA-256s) appended to held_started.json and its
      copy in this folder. Only now are held features, held posteriors and held episodes touched.
   6. Per seed (52, 53, 54 in order), from the context's on_episodes, before cosine or any posterior: the per-pair
@@ -150,6 +156,7 @@ ORDER_FILES = {REFIT_NAME: "run_r6_refit.py", PICKS_NAME: "run_r6_picks.py"}
 REGRESSION_NAME = "regression_seed42.json"
 COUNTS_NAME = "seed42_pass_counts.json"
 PER_EPISODE_NAME = "seed42_per_episode.npz"
+VALUE_SETS_NAME = "value_sets.json"             # rule section 5 item 2 (r6_common.write_value_sets; final review B1)
 R3_ARRAYS_REL = "20261121_round3_affect_gate/results/seed42_arrays.npz"
 PER_ANCHOR42_REL = "20261030_aspect_baselines/results/per_anchor_seed42.npz"
 DEV42_REL = "20261122_round4_aff_vetoes/results/dev_seed42.json"
@@ -528,6 +535,8 @@ def run_regression(results=None, here=None, env=None, bundle=None) -> int:
     lambdas = P.frozen_lambdas()
     target_inputs = check_targets()
     env = env or setup()
+    value_sets = results / VALUE_SETS_NAME
+    R.write_value_sets(value_sets, env.value_sets, env.data)          # rule section 5 item 2: before the read
     bundle = bundle or seed_bundle(env, "selection", R.DEV_SEED, R.N_PER_PAIR)
     P.check_seed42(bundle)
     scored = score_bundle(env, bundle, picks, lambdas, include_pm=True)
@@ -541,7 +550,8 @@ def run_regression(results=None, here=None, env=None, bundle=None) -> int:
            "lambdas": {name: {str(h): ("inf" if np.isinf(v) else v) for h, v in lam.items()}
                        for name, lam in lambdas.items()},
            "cells": {who: {part: list(S.CELLS[who][part]) for part in PARTS} for who in WHO},
-           "order_inputs": orders["sha256"], "fit_rows_sha256": bundle.fit_rows_sha256}
+           "order_inputs": orders["sha256"], "fit_rows_sha256": bundle.fit_rows_sha256,
+           "value_sets_sha256": R.sha256_file(value_sets)}
     rec.update(_meta(env, {"input_sha256": {**env.inputs, **target_inputs}}))
     code = 0
     if not passed:
@@ -816,6 +826,51 @@ def seed42_guard(results, here=None) -> dict:
     return out
 
 
+def value_sets_problem(results):
+    """Rule section 5 item 2 (final review B1): None when results/value_sets.json exists and is the file the
+    regression wrote (its SHA-256 the value_sets_sha256 of regression_seed42.json); otherwise the reason. Read by held
+    mode's step 3 (every flag), smoke mode's step 3 and run_r6_smoke.py's step 1 (with the regression)."""
+    results = Path(results)
+    path, reg = results / VALUE_SETS_NAME, results / REGRESSION_NAME
+    if not path.is_file():
+        return f"{path.name} does not exist: run --mode regression, which writes it (rule section 5 item 2)"
+    try:
+        want = _read_json(reg).get("value_sets_sha256")
+    except (OSError, ValueError, AttributeError) as e:
+        return f"{reg.name} cannot be read ({type(e).__name__})"
+    if want != R.sha256_file(path):
+        return (f"{path.name} is not the file {reg.name} records (value_sets_sha256): rerun the regression (rule "
+                f"section 5 item 2)")
+    return None
+
+
+def value_sets_file_guard(results) -> dict:
+    """Step 3: value_sets_problem finds nothing, refused (exit 4) otherwise, before any data is loaded. -> {"file",
+    "sha256"} of results/value_sets.json."""
+    why = value_sets_problem(results)
+    _refuse_unless(why is None, str(why))  # guard:value_sets_file
+    path = Path(results) / VALUE_SETS_NAME
+    return {"file": path.name, "sha256": R.sha256_file(path)}
+
+
+def value_sets_guard(results, env, checked) -> dict:
+    """Step 4, after setup() and before the first write (rule section 5 item 2; final review B1): results/value_sets.json
+    still has the bytes step 3 checked (``checked``) and holds the development value sets setup() recomputed, codes and
+    names (r6_common.value_sets_record). Refused otherwise. -> {"file", "sha256"}, kept in the attempt and the pass
+    record."""
+    path = Path(results) / VALUE_SETS_NAME
+    raw = path.read_bytes() if path.is_file() else b""
+    try:
+        got = json.loads(raw)
+    except ValueError:
+        got = None
+    want = _plain(R.value_sets_record(env.value_sets, env.data))
+    _refuse_unless(R.sha256_bytes(raw) == checked["sha256"] and got == want,
+                   f"{path.name} does not hold the development value sets recomputed now, or changed since step 3 "
+                   f"(rule section 5 item 2): rerun the regression")  # guard:value_sets_equal
+    return {"file": path.name, "sha256": checked["sha256"]}
+
+
 def dts_stop_problem(results, here=None) -> tuple:
     """Rule section 9 ("section 7 stop, or DTS not built within its budget: stop before the read") and section 6 item
     7: -> (None, False) when results/dts_stop.json is seed 42's stop record, built within the budget, with no stop,
@@ -1087,6 +1142,7 @@ def run_read(spec, results, here=None, env=None) -> int:
     inputs = R.assert_inputs()
     recorded = E.recorded_hashes()
     s42 = seed42_guard(results, here)
+    vs_file = value_sets_file_guard(results)                                   # rule section 5 item 2 (every mode)
     dts_stop = dts_stop_guard(results, here) if spec.mode == "held" else None   # rule section 9 (not the smoke)
     picks = P.load_picks(results / PICKS_NAME)
     lambdas = P.frozen_lambdas()
@@ -1094,12 +1150,13 @@ def run_read(spec, results, here=None, env=None) -> int:
     # step 4: heads refit and checked (rule section 5 item 5)
     env = env or setup()
     coef = head_guard(env, s42["refit"])
-    log("heads checked")
+    value_sets = value_sets_guard(results, env, vs_file)
+    log("heads and value sets checked")
     # step 5: the first write
     started = out / n.started
     record = {"mode": spec.mode, "runner_sha256": runner_sha256(), "module_sha256": R.r6_module_shas(here),
               "input_sha256": dict(inputs), "seed42_records_sha256": s42["sha256"], "coef_sha256": coef,
-              "dts_stop": dts_stop, **spec.record}
+              "dts_stop": dts_stop, "value_sets": value_sets, **spec.record}
     k = start_attempt(started, spec.copy_to, spec.attempts, spec.flags, record, spec.overwrite)
     log(f"attempt {k} recorded in {started}")
     # step 6: per seed, episodes first (recorded, compared, distinct, saved), then the bundle
@@ -1139,7 +1196,7 @@ def run_read(spec, results, here=None, env=None) -> int:
              "module_sha256": R.r6_module_shas(here)}
     pr = ST.pass_record(scored, spec.mode, list(spec.seeds), extra)
     pr.update({"kind": n.kind, "attempt": k, "input_sha256": dict(inputs), "coef_sha256": coef,
-               "seed42_records_sha256": s42["sha256"], "dts_stop": dts_stop,
+               "seed42_records_sha256": s42["sha256"], "dts_stop": dts_stop, "value_sets": value_sets,
                "outputs": {p.name: R.sha256_file(p) for p in (out / n.arrays, out / n.sensitivity)},
                "runtime_s": round(time.time() - t0)})
     path = out / n.pass_

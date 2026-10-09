@@ -34,6 +34,7 @@ import r6_picks as P  # noqa: E402
 import r6_stats as ST  # noqa: E402
 import run_r6_held as RH  # noqa: E402
 import run_r6_sensitivity as RS6  # noqa: E402
+import test_r6_held as TH  # noqa: E402  (stand-in value sets and names)
 
 import numpy as np  # noqa: E402
 
@@ -397,7 +398,8 @@ def synthetic_scored(rng_seed=3):
 def stub_run(mod, monkeypatch, failing=(), seen=None):
     """Stubs for the heavy steps of ``mod.run_regression`` (setup, bundle, scoring, items)."""
     scored = synthetic_scored()
-    env = SimpleNamespace(inputs={"x": "c" * 64}, coef_sha256=COEF, readers=None, head_check={"passed": True})
+    env = SimpleNamespace(inputs={"x": "c" * 64}, coef_sha256=COEF, readers=None, head_check={"passed": True},
+                          value_sets=TH.VALUE_SETS, data=None)
     bundle = SimpleNamespace(mode="selection", seed=R.DEV_SEED, smoke=False, n=N_EP, parity=np.arange(N_EP) % 2,
                              episodes_sha256={p: "d" * 64 for p in R.PAIR_NAMES}, fit_rows_sha256="e" * 64)
     seen = {} if seen is None else seen
@@ -410,6 +412,7 @@ def stub_run(mod, monkeypatch, failing=(), seen=None):
         return {f"item{i}": {"equal": f"item{i}" not in failing, "got": 1, "want": 1} for i in range(4)}, None
 
     monkeypatch.setattr(mod, "setup", lambda: env)
+    monkeypatch.setattr(R, "value_names", TH.value_names)                 # the stand-in names of value_sets.json
     monkeypatch.setattr(mod, "seed_bundle", lambda *a, **k: bundle)
     monkeypatch.setattr(mod, "score_bundle", score)
     monkeypatch.setattr(mod, "regression_items", items)
@@ -432,6 +435,9 @@ def test_stubbed_regression_writes_its_outputs(tmp_path, monkeypatch, capsys):
     assert rec["order_inputs"] == {n: R.sha256_file(res / n) for n in (RH.REFIT_NAME, RH.PICKS_NAME)}
     npz, counts = res / RH.PER_EPISODE_NAME, res / RH.COUNTS_NAME
     assert rec["outputs"] == {RH.PER_EPISODE_NAME: R.sha256_file(npz), RH.COUNTS_NAME: R.sha256_file(counts)}
+    vs = res / RH.VALUE_SETS_NAME                       # rule section 5 item 2 (final review B1): codes with names
+    assert json.loads(vs.read_text()) == TH.value_sets_json() and rec["value_sets_sha256"] == R.sha256_file(vs)
+    assert RH.value_sets_problem(res) is None                              # the file the held read accepts
     with np.load(npz) as z:
         assert set(z.files) == {"cl", "pair_index", "meta"} | {f"diff__{c}" for c in ST.CHECKS + ST.SECONDARY}
         for c, (metric, comp, _) in ST.QUANTITIES.items():
@@ -455,6 +461,7 @@ def test_stubbed_regression_with_a_differing_item_exits_3(tmp_path, monkeypatch,
     assert "item2: FAIL" in out and "item1: pass" in out and "FAILED (4 items, 1 failed)" in out
     rec = json.loads((res / RH.REGRESSION_NAME).read_text())
     assert rec["passed"] is False and rec["n_failed"] == 1 and "outputs" not in rec
+    assert rec["value_sets_sha256"] == R.sha256_file(res / RH.VALUE_SETS_NAME)     # written before the items
     assert json.loads((res / "regression_seed42_failed.json").read_text()) == rec           # the kept copy
     for name in (RH.PER_EPISODE_NAME, RH.COUNTS_NAME):
         assert not (res / name).exists(), name

@@ -123,7 +123,8 @@ def write_ft_out(d, job_shas, rows, rng):
 def world(tmp_path_factory):
     env = RH.setup()                                                   # real data, heads, check, PM, readers
     base = tmp_path_factory.mktemp("smoke_e2e")
-    res = TH.write_records(base / "results", coef=env.coef_sha256, smoke_names=())
+    res = TH.write_records(base / "results", coef=env.coef_sha256, smoke_names=(), value_sets=env.value_sets,
+                           data=env.data)
     (res / RH.REFIT_NAME).write_text(json.dumps(RR.record(env.head_check, env.heads, env.inputs)))
     TS.write_dts42(res)
     (base / "folder").mkdir()

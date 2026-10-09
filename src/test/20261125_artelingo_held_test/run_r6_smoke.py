@@ -54,7 +54,9 @@ Stages, in this order:
               script's own): no decimal number, no R@1 value, no metric key with a value. Step 7, the smoke record.
 Step 1 (every stage): refused (exit 4) unless the earlier stage outputs exist and are current (rule section 6 item 7):
   refit_check.json, picks_seed42.json, regression_seed42.json (passed, written by the current bytes of every r6 module
-  their runners ran), sensitivity_seed42.json (from the current regression file, current bytes), and the seed-42 DTS
+  their runners ran) with results/value_sets.json, the file it records (value_sets_sha256; rule section 5 item 2,
+  run_r6_held.value_sets_problem; otherwise the regression reruns), sensitivity_seed42.json (from the current
+  regression file, current bytes), and the seed-42 DTS
   records: dts_stop.json by run_r6_held.dts_stop_problem (the held read's own check: built, no stop, evaluated on the
   current bytes of every input it names, current DTS bytes), dts_sanity.json (passed), dts_tune.json, dts_seed42.json,
   each by the current bytes of what run_r6_dts.py ran and of dts_settings.json, their GPU outputs by the current GPU
@@ -294,6 +296,10 @@ def _chain_problem(results, here, name, file, runner) -> str | None:
     stale = RH.stale_modules(rec, runner, here)
     if stale:
         return f"{file} was written by other bytes of {stale}"
+    if name == "regression":                    # rule section 5 item 2: the value sets file the regression wrote
+        why = RH.value_sets_problem(results)  # guard:value_sets
+        if why is not None:
+            return why
     return None
 
 
@@ -348,7 +354,7 @@ def stage_problems(results, here=None) -> SimpleNamespace:
     why, stops = _dts_problem(results, here)
     if why is not None and not stops:
         rerun.append(("DTS seed 42", DTS42_COMMAND, why))
-    files = [f for _, f, _, _ in SEED42_CHAIN] + list(DTS42)
+    files = [f for _, f, _, _ in SEED42_CHAIN] + [RH.VALUE_SETS_NAME] + list(DTS42)
     sha = {f: R.sha256_file(Path(results) / f) for f in files if (Path(results) / f).is_file()}
     return SimpleNamespace(rerun=rerun, stops=why if stops else None, sha256=sha)
 

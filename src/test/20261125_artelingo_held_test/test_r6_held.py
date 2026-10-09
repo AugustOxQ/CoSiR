@@ -58,6 +58,20 @@ LEDGER_HEAD = ["# Held-out ledger", "",
                "| H4 | 2026-10-02 | CUB standard test split | backbone check | n/a | see report | [backbone](x.md) |"]
 SIGMA = {c: {"quantity": ST.QUANTITIES[c][2], "sigma_a2": 4.0 + i, "sigma_eps2": 1500.0 + 10 * i}
          for i, c in enumerate(ST.CHECKS + ST.SECONDARY)}
+# Stand-in development value sets of the rule's sizes (8, 23, 10) and stand-in names; install() puts value_names on
+# r6_common, so the runner's recomputed value_sets.json (r6_common.value_sets_record) is this one.
+VALUE_SETS = {"emotion": list(range(8)), "style": list(range(23)), "genre": list(range(10))}
+VALUE_NAMES = {x: [f"{x} value {i}" for i in range(30)] for x in R.ASPECTS}
+
+
+def value_names(data):
+    return VALUE_NAMES
+
+
+def value_sets_json(value_sets=None) -> dict:
+    """The content of value_sets.json for the stand-in names."""
+    vs = value_sets or VALUE_SETS
+    return {x: [{"code": int(c), "name": VALUE_NAMES[x][int(c)]} for c in vs[x]] for x in R.ASPECTS}
 
 
 class Reached(Exception):
@@ -103,9 +117,10 @@ def seed_hashes(seed, salt="") -> dict:
 
 # ---------------------------------------------------------------- records, ledger, started files in tmp_path
 
-def write_records(res, shas=None, coef=COEF, smoke_names=("smoke_record.json",)):
-    """The seed-42 records (refit, picks, regression, sensitivity, the DTS stop) and the smoke record(s), as their
-    runners write them: passed, with the current module SHA-256s."""
+def write_records(res, shas=None, coef=COEF, smoke_names=("smoke_record.json",), value_sets=None, data=None):
+    """The seed-42 records (refit, picks, value sets, regression, sensitivity, the DTS stop) and the smoke record(s),
+    as their runners write them: passed, with the current module SHA-256s. value_sets.json holds the stand-in value
+    sets and names, or, with ``data`` (a real setup()'s), r6_common.write_value_sets of ``value_sets`` and ``data``."""
     shas = dict(shas or R.r6_module_shas())
     res.mkdir(parents=True, exist_ok=True)
     meta = {"module_sha256": shas, "time": "2026-10-10 09:00:00"}
@@ -114,7 +129,13 @@ def write_records(res, shas=None, coef=COEF, smoke_names=("smoke_record.json",))
     (res / RH.PICKS_NAME).write_text(json.dumps({**PICKS, "mean_r1": dict(P.MEAN_R1_TARGETS),
                                                  "targets": dict(P.MEAN_R1_TARGETS), "passed": True,
                                                  "coef_sha256": coef, **meta}))
-    (res / RH.REGRESSION_NAME).write_text(json.dumps({"passed": True, "items": {}, "coef_sha256": coef, **meta}))
+    vs_path = res / RH.VALUE_SETS_NAME
+    if data is None:
+        vs_path.write_text(json.dumps(value_sets_json(value_sets), indent=1))
+    else:
+        R.write_value_sets(vs_path, value_sets, data)
+    (res / RH.REGRESSION_NAME).write_text(json.dumps({"passed": True, "items": {}, "coef_sha256": coef,
+                                                      "value_sets_sha256": R.sha256_file(vs_path), **meta}))
     (res / RH.SENS42_NAME).write_text(json.dumps({**SIGMA, "seed": 42, "N": 12288, "n_paintings": 3000,
                                                   "regression_sha256": R.sha256_file(res / RH.REGRESSION_NAME),
                                                   **meta}))
@@ -204,7 +225,8 @@ def fake_post(rows, extra_rows=()):
 
 def make_env(coef=COEF, head_ok=True):
     split = SimpleNamespace(held=HELD, selection=SELECTION, groups=np.arange(R.N_ROWS, dtype=np.int64) // 4)
-    return SimpleNamespace(inputs={"x": "c" * 64}, data=None, split=split, labels=None, value_sets=None,
+    return SimpleNamespace(inputs={"x": "c" * 64}, data=None, split=split, labels=None,
+                           value_sets={x: list(v) for x, v in VALUE_SETS.items()},
                            heads=None, head_check={"passed": head_ok}, coef_sha256=coef, pm=None, readers=None)
 
 
@@ -284,6 +306,7 @@ def install(monkeypatch, mod=RH, stop_at=(), salt="", salts=None, recorded=None,
         return real_write(path, data)
 
     monkeypatch.setattr(R, "assert_inputs", assert_inputs)
+    monkeypatch.setattr(R, "value_names", value_names)               # the stand-in names of value_sets.json
     monkeypatch.setattr(E, "recorded_hashes", recorded_hashes)
     monkeypatch.setattr(E, "save_episodes", save_episodes)
     monkeypatch.setattr(E, "load_episodes", load_episodes)
@@ -691,6 +714,146 @@ def test_seed42_records_missing_refuse(case, at_picks, capsys):
     assert refused(held(case), capsys, says="run run_r6_picks.py first")
 
 
+# ---------------------------------------------------------------- value_sets.json (rule section 5 item 2; final review B1)
+
+READ_KINDS = ("first", "after_crash", "fix", "reserve", "smoke")
+
+
+def ready(case, kind) -> dict:
+    """The results folder of a first read, an --after-crash rerun, a --fix 1 pass, a --reserve read or a smoke;
+    -> run_held's flags."""
+    if kind == "after_crash":
+        started_file(case.res / "held_started.json", ({}, {}))
+    elif kind == "fix":
+        fix_ready(case)
+    elif kind == "reserve":
+        reserve_ready(case)
+    return {"after_crash": {"after_crash": True}, "fix": {"fix": 1}, "reserve": {"reserve": True}}.get(kind, {})
+
+
+def run_kind(case, kind, flags) -> int:
+    return RH.run_smoke(results=case.res, here=HERE) if kind == "smoke" else held(case, **flags)
+
+
+def snapshot(c) -> dict:
+    return {p: p.read_bytes() for p in c.tmp.rglob("*") if p.is_file()}
+
+
+def vs_change(res, text):
+    """value_sets.json rewritten as ``text``, and the regression record naming its new bytes (so that only the
+    content is wrong)."""
+    path = res / RH.VALUE_SETS_NAME
+    path.write_text(text)
+    edit_regression(res, value_sets_sha256=R.sha256_file(path))
+
+
+def changed_value_sets(change) -> str:
+    rec = value_sets_json()
+    if change == "one value fewer":
+        rec["style"] = rec["style"][:-1]
+    elif change == "a name changed":
+        rec["emotion"][0] = {**rec["emotion"][0], "name": "another name"}
+    else:
+        return "{"
+    return json.dumps(rec, indent=1)
+
+
+def test_value_sets_record_is_the_rule_file_format():
+    """r6_common.value_sets_record: codes with their names (the stand-in names here; the real names in
+    test_r6_common's real-data test of write_value_sets)."""
+    names = {x: [f"n{i}" for i in range(30)] for x in R.ASPECTS}
+    orig = R.value_names
+    try:
+        R.value_names = lambda data: names
+        rec = R.value_sets_record(VALUE_SETS, None)
+    finally:
+        R.value_names = orig
+    assert {x: len(v) for x, v in rec.items()} == R.VALUE_COUNTS
+    assert rec["style"][22] == {"code": 22, "name": "n22"}
+
+
+@pytest.mark.parametrize("kind", READ_KINDS)
+def test_value_sets_file_missing_or_not_the_regressions_refuses_before_any_load(case, monkeypatch, capsys, kind):
+    ns = install(monkeypatch, stop_at={"picks"})
+    flags = ready(case, kind)
+    path = case.res / RH.VALUE_SETS_NAME
+    keep = path.read_bytes()
+    path.unlink()
+    before = snapshot(case)
+    assert refused(run_kind(case, kind, flags), capsys, says="value_sets.json does not exist: run --mode regression")
+    assert snapshot(case) == before and "setup" not in [e[0] for e in ns.events]
+    path.write_bytes(keep)                                                 # the regression's file again
+    with pytest.raises(Reached):
+        run_kind(case, kind, flags)
+    for sha in ("0" * 64, None):                    # another file's SHA-256; a regression record of before the fix
+        edit_regression(case.res, value_sets_sha256=sha)
+        before = snapshot(case)
+        assert refused(run_kind(case, kind, flags), capsys,
+                       says="value_sets.json is not the file regression_seed42.json records")
+        assert snapshot(case) == before
+
+
+@pytest.mark.parametrize("kind", READ_KINDS)
+@pytest.mark.parametrize("change", ("one value fewer", "a name changed", "not JSON", "other recomputed sets"))
+def test_value_sets_other_than_the_recomputed_refuse_before_the_first_write(case, monkeypatch, capsys, kind, change):
+    ns = install(monkeypatch)
+    flags = ready(case, kind)
+    if change == "other recomputed sets":
+        ns.env.value_sets["genre"] = list(range(1, 10))                    # setup() recomputes other sets
+    else:
+        vs_change(case.res, changed_value_sets(change))
+    before = snapshot(case)
+    assert refused(run_kind(case, kind, flags), capsys,
+                   says="value_sets.json does not hold the development value sets recomputed now")
+    assert snapshot(case) == before and ns.events[-1] == ("head_guard",)   # after setup, before the first write
+
+
+def test_value_sets_changed_after_step_3_refuses(case, monkeypatch, capsys):
+    install(monkeypatch)
+    stub = RH.head_guard
+
+    def head_guard(env, refit):                     # the file is rewritten during setup(): same content, other bytes
+        (case.res / RH.VALUE_SETS_NAME).write_text(json.dumps(value_sets_json()))
+        return stub(env, refit)
+
+    monkeypatch.setattr(RH, "head_guard", head_guard)
+    assert refused(held(case), capsys, says="or changed since step 3") and nothing_started(case)
+
+
+def test_the_value_sets_sha_is_kept_in_the_attempt_and_the_pass(case, monkeypatch, capsys):
+    install(monkeypatch)
+    want = {"file": RH.VALUE_SETS_NAME, "sha256": R.sha256_file(case.res / RH.VALUE_SETS_NAME)}
+    assert held(case) == 0
+    assert json.loads((case.res / "held_started.json").read_text())["attempts"][0]["value_sets"] == want
+    assert json.loads((case.res / "held_pass.json").read_text())["value_sets"] == want
+    assert RH.run_smoke(results=case.res, here=HERE) == 0
+    smoke = case.res / "smoke"
+    assert json.loads((smoke / "held_started.json").read_text())["attempts"][0]["value_sets"] == want
+    assert json.loads((smoke / "held_pass.json").read_text())["value_sets"] == want
+    assert RH.VALUE_SETS_NAME == "value_sets.json"                         # rule section 5 item 2's name
+
+
+def test_guard_value_sets_file(case, monkeypatch, capsys):
+    edit_regression(case.res, value_sets_sha256="0" * 64)
+    install(monkeypatch, stop_at={"picks"})
+    assert refused(held(case), capsys, says="is not the file regression_seed42.json records")
+    mod = mut_case(case, mutant(case.tmp, "run_r6_held.py", "value_sets_file"))
+    install(monkeypatch, mod, stop_at={"picks"})
+    with pytest.raises(Reached):                                           # the mutant goes past step 3
+        held(case, mod)
+
+
+def test_guard_value_sets_equal(case, monkeypatch, capsys):
+    vs_change(case.res, changed_value_sets("one value fewer"))
+    install(monkeypatch, stop_at={"context"})
+    assert refused(held(case), capsys, says="does not hold the development value sets") and nothing_started(case)
+    mod = mut_case(case, mutant(case.tmp, "run_r6_held.py", "value_sets_equal"))
+    install(monkeypatch, mod, stop_at={"context"})
+    with pytest.raises(Reached):                                           # the read starts on the wrong value sets
+        held(case, mod)
+    assert (case.res / "held_started.json").is_file()
+
+
 # ---------------------------------------------------------------- step 4: the head checks (rule section 5 item 5)
 
 def test_refuses_unless_the_head_check_passed(case, monkeypatch, capsys):
@@ -720,7 +883,7 @@ def test_a_stubbed_read_writes_every_file_and_no_verdict(case, monkeypatch, caps
     assert ns.include_pm == [False, False, False]                          # rule section 8 item 3
     names = sorted(p.name for p in case.res.iterdir())
     assert names == sorted([RH.REFIT_NAME, RH.PICKS_NAME, RH.REGRESSION_NAME, RH.SENS42_NAME, RH.DTS_STOP_NAME,
-                            RH.DTS_CHOSEN_NAME, "smoke_record.json",
+                            RH.DTS_CHOSEN_NAME, RH.VALUE_SETS_NAME, "smoke_record.json",
                             "held_started.json", "held_episodes_seed52.npz", "held_episodes_seed53.npz",
                             "held_episodes_seed54.npz", "sensitivity_held.json", "held_arrays.npz",
                             "held_pass.json"])

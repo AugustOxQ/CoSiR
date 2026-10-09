@@ -421,14 +421,21 @@ def value_names(data) -> dict:
     return {"emotion": list(emotion), "style": list(style), "genre": list(GENRE_NAMES)}
 
 
-def write_value_sets(path, value_sets, data) -> dict:
-    """JSON {aspect: [{"code": int, "name": str}]} (rule section 5 item 2's results/value_sets.json)."""
+def value_sets_record(value_sets, data) -> dict:
+    """{aspect: [{"code": int, "name": str}]}: the content of rule section 5 item 2's results/value_sets.json. The held
+    runner writes it in regression mode and compares it in held and smoke mode (fix wave, final review B1)."""
     names = value_names(data)
     rec = {}
     for x in ASPECTS:
         codes = [int(c) for c in value_sets[x]]
         _require(all(0 <= c < len(names[x]) for c in codes), f"{x}: a code outside the name list")
         rec[x] = [{"code": c, "name": str(names[x][c])} for c in codes]
+    return rec
+
+
+def write_value_sets(path, value_sets, data) -> dict:
+    """JSON {aspect: [{"code": int, "name": str}]} (rule section 5 item 2's results/value_sets.json)."""
+    rec = value_sets_record(value_sets, data)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(rec, indent=1))
