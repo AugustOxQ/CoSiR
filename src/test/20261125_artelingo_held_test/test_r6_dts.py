@@ -1002,7 +1002,7 @@ def test_stop_stage_9406_continues_and_9407_stops(tmp_path, capsys):
     assert mut.stage_stop(stop_args(res)) == 0                              # the mutation is caught above
 
 
-def test_stop_stage_budget(tmp_path):
+def test_stop_stage_budget(tmp_path, monkeypatch):
     res = stop_world(tmp_path / "late", 100, chosen_time="2026-10-10 12:30:00")
     assert RD.stage_stop(stop_args(res)) == RD.EXIT_FAIL
     rec = json.loads((res / RD.STOP).read_text())
@@ -1016,12 +1016,88 @@ def test_stop_stage_budget(tmp_path):
     assert RD.stage_stop(stop_args(ok)) == 0 and json.loads((ok / RD.STOP).read_text())["built"] is True
     empty = tmp_path / "empty"
     empty.mkdir()
+    now = R.amsterdam_now()[:16]
+    monkeypatch.setattr(RD, "DTS_CLOCK_START", now)                         # seed 42's clock start is pinned
     with pytest.raises(RD.Refused, match="not built yet"):                 # before the deadline: not evaluable
-        RD.stage_stop(stop_args(empty, clock=R.amsterdam_now()[:16]))
+        RD.stage_stop(stop_args(empty, clock=now))
+    monkeypatch.setattr(RD, "DTS_CLOCK_START", "2026-01-01 00:00")
     assert RD.stage_stop(stop_args(empty, clock="2026-01-01 00:00")) == RD.EXIT_FAIL
     assert json.loads((empty / RD.STOP).read_text())["built"] is False
     with pytest.raises(RD.Refused, match="clock-start"):
         RD.stage_stop(RD.parse_args(["--stage", "stop", "--out", str(res)]))
+
+
+def first_built_world(tmp_path, chosen_time="2026-10-10 09:00:00"):
+    """A seed-42 build in time whose chosen stage recorded dts_first_built.json (record_first_built, as the chosen
+    stage calls it), with GPU output fingerprints in the sanity and chosen records."""
+    res = stop_world(tmp_path, 100, chosen_time=chosen_time)
+    fps = {"verbaliser": {"v": {"job": "r6_gpu_verbalise", "inputs_sha256": {"a": "1" * 64}}},
+           "listing": {"l": {"job": "r6_gpu_listing"}}}
+    for name in (RD.SANITY, RD.chosen_name(42)):
+        rec = json.loads((res / name).read_text())
+        rec["gpu_fingerprints"] = fps
+        G.write_json(res / name, rec)
+    chosen = json.loads((res / RD.chosen_name(42)).read_text())
+    return res, chosen
+
+
+def rerun_chosen(res, **changes):
+    """The chosen record rewritten as a rerun after a module change writes it: a later time, the rest unchanged unless
+    ``changes`` say otherwise."""
+    rec = json.loads((res / RD.chosen_name(42)).read_text())
+    rec.update({"time": "2026-10-12 09:00:00", **changes})
+    G.write_json(res / RD.chosen_name(42), rec)
+
+
+def test_a_rerun_past_the_deadline_keeps_the_first_build_time(tmp_path):
+    """Rule section 7 items 5 and 7 (final review C): "built" is a one-time event; a rerun forced by a module change
+    (rule section 6 item 7) re-evaluates the stop from the first build's time when the setting, the settings SHA-256
+    and the GPU outputs are unchanged, and from its own time otherwise."""
+    res, chosen = first_built_world(tmp_path / "a")
+    assert RD.record_first_built(res, 42, chosen) == "written"
+    assert RD.record_first_built(res, 42, chosen) == "kept"                  # once, never overwritten
+    assert RD.record_first_built(res, 9001, chosen) is None                  # seed 42 only
+    fb = json.loads((res / RD.FIRST_BUILT).read_text())
+    assert fb["time"] == "2026-10-10 09:00:00" and fb["setting"] == "W1 K8" and fb["clock_start"] == R.DTS_CLOCK_START
+    rerun_chosen(res)
+    assert RD.stage_stop(stop_args(res)) == 0
+    rec = json.loads((res / RD.STOP).read_text())
+    assert rec["built"] is True and rec["stop"] is False and rec["budget_time_source"] == RD.FIRST_BUILT
+    assert rec["budget"]["built_time"] == "2026-10-10 09:00:00"
+    assert rec["first_built_sha256"] == G.sha256_file(res / RD.FIRST_BUILT)
+    for name, change in (("setting", {"setting": "W2 K8"}), ("settings", {"settings_sha256": "0" * 64}),
+                         ("outputs", {"gpu_fingerprints": {"verbaliser": {}, "listing": {}}})):
+        res2, chosen2 = first_built_world(tmp_path / name)
+        RD.record_first_built(res2, 42, chosen2)
+        rerun_chosen(res2, **change)
+        if name == "setting":
+            tune = json.loads((res2 / RD.TUNE).read_text())
+            tune["chosen"] = {"wording_id": "W2", "K": 8}
+            G.write_json(res2 / RD.TUNE, tune)
+        assert RD.stage_stop(stop_args(res2)) == RD.EXIT_FAIL, name
+        rec = json.loads((res2 / RD.STOP).read_text())
+        assert rec["reason"] == "not built within the 24-hour budget", name
+        assert rec["budget_time_source"] == "this run's sanity and chosen records", name
+    res3, chosen3 = first_built_world(tmp_path / "mut")
+    RD.record_first_built(res3, 42, chosen3)
+    rerun_chosen(res3, gpu_fingerprints={"verbaliser": {}, "listing": {}})
+    mut = mutant(tmp_path, "run_r6_dts.py", guard="first_built_match")
+    assert mut.stage_stop(stop_args(res3)) == 0                              # without the match: other outputs pass
+
+
+def test_no_first_build_record_outside_the_budget(tmp_path):
+    res, chosen = first_built_world(tmp_path / "late", chosen_time="2026-10-10 12:30:00")
+    assert RD.record_first_built(res, 42, chosen) is None and not (res / RD.FIRST_BUILT).exists()
+
+
+def test_the_seed42_stop_requires_the_pinned_clock_start(tmp_path):
+    res = stop_world(tmp_path / "a", 100)
+    with pytest.raises(RD.Refused, match="not the first DTS commit's"):
+        RD.stage_stop(stop_args(res, clock="2026-10-09 18:00"))
+    assert not (res / RD.STOP).exists()
+    assert RD.DTS_CLOCK_START == R.DTS_CLOCK_START == "2026-10-09 12:29"
+    assert mutant(tmp_path, "run_r6_dts.py", guard="clock_start").stage_stop(stop_args(res, clock="2026-10-09 "
+                                                                                             "18:00")) == 0
 
 
 def test_stop_refuses_records_of_other_dts_code_and_existing_outputs(tmp_path):

@@ -69,14 +69,21 @@ before step 5):
      whose row H5 does not hold the nine episode SHA-256s of the first read, and a --reserve without
      held_verdict.json (or without the nine episode SHA-256s in held_started.json) refuse too.
   2. The latest smoke record passed ("passed": true) and its module_sha256 equals r6_module_shas() (this runner,
-     every r6_ module, the DTS settings and the r6 scripts): results/smoke_record.json; smoke_record_fix1.json for
-     --fix 1 or when it exists; smoke_record_crash1.json for --after-crash when it exists; smoke_record_reserve.json
-     for --reserve (contracts section 8 amendment 12:20).
+     every r6_ module, the DTS settings and the r6 scripts): smoke_record_fix1.json for --fix 1,
+     smoke_record_reserve.json for --reserve, otherwise r6_common.latest_smoke_record (smoke_record_fix1.json when it
+     exists, else smoke_record_crash1.json when it exists, else smoke_record.json; the apply step and the descriptive
+     pass read the same one) (contracts section 8 amendment 12:20; final review, 2026-10-09).
   3. Inputs, rerun on every attempt: assert_inputs(), recorded_hashes() (the non-smoke episode hashes, read now and
      handed to assert_distinct later), and the seed-42 records: refit_check.json and picks_seed42.json passed and
      current (the order guard), regression_seed42.json passed and current, sensitivity_seed42.json current (its
      regression_sha256 the current regression file's) with every check's sigma parts (agent default: rule section 6
-     item 7 asks these items to have run on the current bytes).
+     item 7 asks these items to have run on the current bytes); in held mode (every flag) also dts_stop.json: seed
+     42's stop record, built within the budget from r6_common.DTS_CLOCK_START, no stop, evaluated on the current
+     bytes of every input it names
+     (dts_seed42.json among them: the sanity, tune and chosen records and the per-anchor arrays), written by the
+     current bytes of what run_r6_dts.py ran and of dts_settings.json (rule section 9: a section 7 stop, or DTS not
+     built within its budget, stops the work before the read; final review, 2026-10-09). Its SHA-256 is recorded in
+     the attempt. Smoke mode does not read it (the smoke chain checks it and runs the stop stage for its own seed).
   4. setup(): the heads refit on scorer-train rows, their selection posteriors rechecked bit for bit; refuses unless
      the check passed and every coefficient SHA-256 equals refit_check.json's (rule section 5 item 5).
   5. First write: the attempt (time, SHA-256s, flags, coefficient SHA-256s) appended to held_started.json and its
@@ -572,9 +579,11 @@ def run_regression(results=None, here=None, env=None, bundle=None) -> int:
 
 LEDGER = R.MAIN / "docs/superpowers/held_ledger.md"
 SENS42_NAME = "sensitivity_seed42.json"                 # run_r6_sensitivity.OUT_NAME (asserted in the tests)
-SMOKE_RECORD_CRASH = "smoke_record_crash1.json"        # the smoke of code corrected after a crash (ticket 15)
-SMOKE_RECORDS = {"held": "smoke_record.json", "fix1": "smoke_record_fix1.json",
-                 "reserve": "smoke_record_reserve.json"}
+SMOKE_RECORD_CRASH = R.SMOKE_RECORDS["crash1"]          # the smoke of code corrected after a crash (ticket 15)
+SMOKE_RECORDS = {"held": R.SMOKE_RECORDS["smoke"], "fix1": R.SMOKE_RECORDS["fix1"],
+                 "reserve": R.SMOKE_RECORDS["reserve"]}
+DTS_STOP_NAME = "dts_stop.json"                         # run_r6_dts.STOP (asserted in the tests)
+DTS_CHOSEN_NAME = "dts_seed42.json"                     # run_r6_dts.chosen_name(42) (asserted in the tests)
 LEDGER_ROWS = {"held": "H5", "fix1": "H5", "reserve": "H5-R"}
 LEDGER_CELLS = ("#", "Date", "Dataset and split", "Purpose", "Episode / data SHA-256", "Script SHA-256", "Report")
 EPISODE_CELL, SCRIPT_CELL, REPORT_CELL = 4, 5, 6
@@ -742,17 +751,14 @@ def refuse_or_go(results, ledger, kind, after_crash=False, folder=None) -> Simpl
 # ---------------------------------------------------------------- steps 2 to 4: smoke record, inputs, heads
 
 def latest_smoke_record(results, kind, after_crash=False) -> Path:
-    """smoke_record_fix1.json for --fix 1, smoke_record_reserve.json for --reserve; for --after-crash
-    smoke_record_crash1.json when it exists (code corrected after a crash gets its own smoke, controller 2026-10-09),
-    else smoke_record.json; for the first read smoke_record.json, or smoke_record_fix1.json when it exists (contracts
-    section 8 amendment 12:20)."""
-    res = Path(results)
-    if kind == "held" and after_crash:
-        crash = res / SMOKE_RECORD_CRASH
-        return crash if crash.is_file() else res / SMOKE_RECORDS["held"]
-    if kind == "held" and (res / SMOKE_RECORDS["fix1"]).is_file():
-        return res / SMOKE_RECORDS["fix1"]
-    return res / SMOKE_RECORDS[kind]
+    """smoke_record_fix1.json for --fix 1 (its own smoke, required); otherwise r6_common.latest_smoke_record, the one
+    rule the apply step and the descriptive pass share: smoke_record_reserve.json for --reserve; for the read and its
+    --after-crash rerun smoke_record_fix1.json when it exists, else smoke_record_crash1.json when it exists (code
+    corrected after a crash gets its own smoke), else smoke_record.json (contracts section 8 amendment 12:20; final
+    review, 2026-10-09). ``after_crash`` is kept for the callers; the order covers it."""
+    if kind == "fix1":
+        return Path(results) / SMOKE_RECORDS["fix1"]
+    return R.latest_smoke_record(results, reserve=kind == "reserve")
 
 
 def smoke_guard(results, kind, here=None, after_crash=False) -> dict:
@@ -808,6 +814,54 @@ def seed42_guard(results, here=None) -> dict:
     out["sigma"] = sigma
     out["sha256"] = {**out["sha256"], reg_path.name: reg_sha, sens_path.name: R.sha256_file(sens_path)}
     return out
+
+
+def dts_stop_problem(results, here=None) -> tuple:
+    """Rule section 9 ("section 7 stop, or DTS not built within its budget: stop before the read") and section 6 item
+    7: -> (None, False) when results/dts_stop.json is seed 42's stop record, built within the budget, with no stop,
+    evaluated on the current bytes of every input its input_sha256 names (dts_seed42.json among them), and written by
+    the current bytes of every r6 module run_r6_dts.py ran and of dts_settings.json; otherwise (reason, fired), fired
+    true when the record itself stops the work (the user decides; not a rerun). run_r6_smoke.py's step 1 uses the same
+    check."""
+    here = Path(here or HERE)
+    path = Path(results) / DTS_STOP_NAME
+    if not path.is_file():
+        return f"{path.name} does not exist: the describe-then-score stop (rule section 6 item 6) comes first", False
+    try:
+        rec = _read_json(path)
+    except (OSError, ValueError) as e:
+        return f"{path.name} cannot be read ({type(e).__name__})", False
+    if not (isinstance(rec, dict) and rec.get("stage") == "stop" and rec.get("seed") == R.DEV_SEED):
+        return f"{path.name} is not seed 42's stop record", False
+    if rec.get("stop") is not False or rec.get("built") is not True:
+        return (f"{path.name} records a stop, or no build within the budget (rule section 7 items 5 to 7, section 9): "
+                f"the user decides"), True
+    clock = (rec.get("budget") or {}).get("clock_start") if isinstance(rec.get("budget"), dict) else None
+    if clock != R.DTS_CLOCK_START:
+        return (f"{path.name} was evaluated from the clock start {clock!r}, not the first DTS commit's "
+                f"{R.DTS_CLOCK_START!r}: rerun the stop (rule section 7 item 7)"), False
+    inputs = rec.get("input_sha256") if isinstance(rec.get("input_sha256"), dict) else {}
+    other = sorted(n for n, sha in inputs.items()
+                   if not (Path(results) / n).is_file() or R.sha256_file(Path(results) / n) != sha)
+    if DTS_CHOSEN_NAME not in inputs or other:
+        return (f"{path.name} was not evaluated on the current bytes of {other or [DTS_CHOSEN_NAME]}: rerun the stop "
+                f"(rule section 7 item 5)"), False
+    stale = stale_modules(rec, "run_r6_dts.py", here)
+    key = _key("dts_settings.json", here)
+    if (rec.get("module_sha256") or {}).get(key) != R.sha256_file(here / "dts_settings.json"):
+        stale.append(key)
+    if stale:
+        return f"{path.name} was written by other bytes of {stale}: rerun the DTS stages (rule section 6 item 7)", False
+    return None, False
+
+
+def dts_stop_guard(results, here=None) -> dict:
+    """Held mode's step 3 (every flag): dts_stop_problem, refused (exit 4, before anything is written) unless it finds
+    nothing. -> {"file", "sha256"} of the stop record, kept in the attempt."""
+    why, _ = dts_stop_problem(results, here)
+    _refuse_unless(why is None, str(why))  # guard:dts_stop
+    path = Path(results) / DTS_STOP_NAME
+    return {"file": path.name, "sha256": R.sha256_file(path) if path.is_file() else None}
 
 
 def head_guard(env, refit) -> dict:
@@ -1033,6 +1087,7 @@ def run_read(spec, results, here=None, env=None) -> int:
     inputs = R.assert_inputs()
     recorded = E.recorded_hashes()
     s42 = seed42_guard(results, here)
+    dts_stop = dts_stop_guard(results, here) if spec.mode == "held" else None   # rule section 9 (not the smoke)
     picks = P.load_picks(results / PICKS_NAME)
     lambdas = P.frozen_lambdas()
     log("inputs and seed-42 records checked")
@@ -1044,7 +1099,7 @@ def run_read(spec, results, here=None, env=None) -> int:
     started = out / n.started
     record = {"mode": spec.mode, "runner_sha256": runner_sha256(), "module_sha256": R.r6_module_shas(here),
               "input_sha256": dict(inputs), "seed42_records_sha256": s42["sha256"], "coef_sha256": coef,
-              **spec.record}
+              "dts_stop": dts_stop, **spec.record}
     k = start_attempt(started, spec.copy_to, spec.attempts, spec.flags, record, spec.overwrite)
     log(f"attempt {k} recorded in {started}")
     # step 6: per seed, episodes first (recorded, compared, distinct, saved), then the bundle
@@ -1084,7 +1139,7 @@ def run_read(spec, results, here=None, env=None) -> int:
              "module_sha256": R.r6_module_shas(here)}
     pr = ST.pass_record(scored, spec.mode, list(spec.seeds), extra)
     pr.update({"kind": n.kind, "attempt": k, "input_sha256": dict(inputs), "coef_sha256": coef,
-               "seed42_records_sha256": s42["sha256"],
+               "seed42_records_sha256": s42["sha256"], "dts_stop": dts_stop,
                "outputs": {p.name: R.sha256_file(p) for p in (out / n.arrays, out / n.sensitivity)},
                "runtime_s": round(time.time() - t0)})
     path = out / n.pass_

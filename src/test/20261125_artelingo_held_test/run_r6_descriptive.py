@@ -23,6 +23,10 @@ In this order (results/, or results/smoke/ with --smoke, results/smoke/NAME/ wit
          with its coef_sha256.
        - in real and reserve mode, external_sources.json of the results folder is missing or lacks one of its four
          entries dts, ft_lp, ft, mllm (a job not run is written {"missing": "<reason>"}; r6_external.require_sources).
+       - in real and reserve mode, the latest smoke record of the results folder did not pass or its module_sha256
+         is not r6_common.r6_module_shas() now (rule section 6 item 7 smokes the descriptive pass too; ticket 15):
+         smoke_record_reserve.json with --reserve; otherwise smoke_record_fix1.json when it exists, else
+         smoke_record_crash1.json when it exists, else smoke_record.json.
   2. Inputs, bound to the pass the verdict rests on (exit 5 on a contradiction; nothing written):
        - held_arrays<sfx>.npz (sfx of the pass file: "", "_fix1", "_reserve"; contracts section 7) reproduces the
          pass file's n_j, point and 95% interval of P1 to P7, S1, S2 exactly (r6_descriptive.check_pass);
@@ -87,6 +91,8 @@ PASS_RE = re.compile(r"held_pass(_fix1|_reserve)?\.json")
 SUBDIR_RE = re.compile(r"[A-Za-z0-9_]+")
 DECIMAL = re.compile(r"\d*\.\d+")
 REFIT_NAME = RH.REFIT_NAME                          # refit_check.json (stage 1a, results/)
+SMOKE_RECORDS = R.SMOKE_RECORDS                     # run_r6_smoke.py's records (ticket 15)
+SHA_HERE = None                     # the folder whose r6 files count (None: this one; a test points it at a tmp copy)
 
 
 class Refused(Exception):
@@ -255,6 +261,36 @@ def coef_guard(env, coef) -> dict:
             "held_started": (None if coef.attempt is None else
                              {"file": coef.started_path.name, "sha256": coef.started_sha256,
                               "attempt": coef.attempt.get("attempt"), "equal": True})}
+
+
+def latest_smoke_record(out, reserve: bool) -> Path:
+    """r6_common.latest_smoke_record (shared with the held runner and the apply step), in the results folder:
+    --reserve: smoke_record_reserve.json; otherwise smoke_record_fix1.json when it exists, else
+    smoke_record_crash1.json when it exists, else smoke_record.json."""
+    return R.latest_smoke_record(out, reserve=reserve)
+
+
+def smoke_guard(out, smoke: bool, reserve: bool, here=None):
+    """Step 1 in real and reserve mode (rule section 6 item 7; contracts section 8 amendment 12:20, ticket 15): the
+    latest smoke record passed and its module_sha256 equals r6_module_shas(), key for key. Raises Refused; -> {"file",
+    "sha256"} of the record (None in smoke mode)."""
+    if smoke:
+        return None
+    path = latest_smoke_record(out, reserve)
+    if not path.is_file():
+        refuse(f"{path.name} is missing: the descriptive pass runs only on code that passed the smoke (rule section 6 "
+               f"item 7)")  # guard:smoke_record
+    raw = path.read_bytes()
+    rec = _parse(raw, path.name)
+    if rec.get("passed") is not True:
+        refuse(f"{path.name} records a smoke that did not pass (rule section 6 item 7)")  # guard:smoke_record
+    mods = rec.get("module_sha256") if isinstance(rec.get("module_sha256"), dict) else {}
+    cur = R.r6_module_shas(here or SHA_HERE)
+    diff = sorted(k for k in set(mods) | set(cur) if mods.get(k) != cur.get(k))
+    if not mods or diff:
+        refuse(f"{path.name}: the SHA-256s of {diff or 'every module'} differ from the smoke's: a new smoke is needed "
+               f"(rule section 6 item 7)")  # guard:smoke_shas
+    return {"file": path.name, "sha256": R.sha256_bytes(raw)}
 
 
 # ---------------------------------------------------------------- 2. inputs bound to the pass
@@ -441,6 +477,7 @@ def after_verdict(out, smoke, vr, env=None, bundle_fn=None, picks=None, lambdas=
         "input_sha256": {**dict(getattr(env, "inputs", {}) or {}), **inp.sha256,
                          **({P.PICKS_NAME: picks_sha} if picks_sha else {}),
                          D.DEV_EPISODES_REL: R.assert_input(D.DEV_EPISODES_REL)},
+        "smoke_record": getattr(vr, "smoke_record", None),
         "rule_sha256": R.RULE_SHA256, "module_sha256": R.r6_module_shas(), "runner_sha256": runner_sha256(),
         "time": R.amsterdam_now(), "runtime_s": round(time.time() - t0, 1),
     })
@@ -460,6 +497,7 @@ def run(smoke=False, reserve=False, subdir=None, out=None, env=None, bundle_fn=N
             refuse("--smoke and --reserve exclude each other")
         out = out_dir(smoke, subdir, out)
         vr = check_verdict(out, smoke, reserve)
+        vr.smoke_record = smoke_guard(out, smoke, reserve)
         path = after_verdict(out, smoke, vr, env, bundle_fn, picks, lambdas, records)
     except Refused as e:
         say(f"REFUSED: {shown(e)}")

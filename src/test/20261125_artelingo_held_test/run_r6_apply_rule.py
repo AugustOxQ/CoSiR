@@ -18,6 +18,11 @@ results/smoke/ or results/smoke/NAME/, e.g. NAME = fix1 for a repeated smoke), a
 Writes held_verdict.json (--reserve: held_verdict_reserve.json) once; an existing verdict file (smoke included) is
 never replaced.
 
+In real mode (and --reserve) the step also refuses unless the latest smoke record of results/ passed and its
+module_sha256 equals r6_common.r6_module_shas() now (rule §6.7, §8.1; contracts §8 amendment 12:20; ticket 15):
+smoke_record_reserve.json with --reserve; otherwise smoke_record_fix1.json when it exists, else
+smoke_record_crash1.json when it exists, else smoke_record.json.
+
 The rule, applied here from the pass file's integer counts n_j:
   - Holm across P1 to P7 (rule §3) is recomputed from the counts; the pass file's flags, ranks, levels, order and
     boundary flags must equal the recomputation, else the step stops (exit 5) without a verdict.
@@ -354,6 +359,37 @@ def pair_suffix(out: Path, reserve: bool) -> str:
     return ""
 
 
+# The smoke records of run_r6_smoke.py (ticket 15), one per kind of smoke, in results/.
+SMOKE_RECORDS = CM.SMOKE_RECORDS
+SHA_HERE = None                     # the folder whose r6 files count (None: this one; a test points it at a tmp copy)
+
+
+def latest_smoke_record(results: Path, reserve: bool) -> Path:
+    """r6_common.latest_smoke_record (shared with the held runner and the descriptive pass): --reserve:
+    smoke_record_reserve.json; otherwise smoke_record_fix1.json when it exists, else smoke_record_crash1.json when it
+    exists, else smoke_record.json."""
+    return CM.latest_smoke_record(results, reserve=reserve)
+
+
+def smoke_guard(results: Path, reserve: bool) -> dict:
+    """Real mode (rule §6.7, §8.1; contracts §8 amendment 12:20): the latest smoke record passed and its
+    module_sha256 equals r6_module_shas() key for key, or refuse. -> {"name", "sha256"} of the record."""
+    path = latest_smoke_record(results, reserve)
+    if not path.is_file():  # GUARD: smoke-record
+        refuse(f"{path.name} is missing: the step runs only on code that passed the smoke (rule §6.7)")
+    raw = path.read_bytes()
+    rec = _parse(raw, path.name)
+    if rec.get("passed") is not True:
+        refuse(f"{path.name} records a smoke that did not pass (rule §6.7)")
+    mods = rec.get("module_sha256") if isinstance(rec.get("module_sha256"), dict) else {}
+    cur = CM.r6_module_shas(SHA_HERE)
+    diff = sorted(k for k in set(mods) | set(cur) if mods.get(k) != cur.get(k))
+    if not mods or diff:  # GUARD: smoke-shas
+        refuse(f"{path.name}: the SHA-256s of {diff or 'every module'} differ from the smoke's: a new smoke is needed "
+               f"(rule §6.7)")
+    return {"name": path.name, "sha256": CM.sha256_bytes(raw)}
+
+
 def apply(smoke: bool = False, reserve: bool = False, subdir=None) -> tuple:
     """Every refusal, then the verdict record written once. -> (path, record)."""
     smoke, reserve = bool(smoke), bool(reserve)
@@ -365,6 +401,7 @@ def apply(smoke: bool = False, reserve: bool = False, subdir=None) -> tuple:
         refuse(f"{vpath.name} exists; a verdict is never overwritten (rule §8.1, §9)")
     if reserve and not (out / "held_verdict.json").is_file():
         refuse("a reserve verdict follows the original held_verdict.json, which is missing (rule §9)")
+    smoke_record = None if smoke else smoke_guard(out, reserve)
     assert_rule()
     sfx = pair_suffix(out, reserve)
     ppath, apath = out / f"held_pass{sfx}.json", out / f"rederive_agreement{sfx}.json"
@@ -389,7 +426,7 @@ def apply(smoke: bool = False, reserve: bool = False, subdir=None) -> tuple:
         "pass_file": ppath.name, "agreement_file": apath.name,
         "agreement": {k: agr.get(k) for k in ("phase", "smoke", "all_agree", "pass_file", "held_pass_sha256",
                                               "n_quantities", "time")},
-        "sensitivity_file": spath.name, "sensitivity_sha256": sens_sha,
+        "sensitivity_file": spath.name, "sensitivity_sha256": sens_sha, "smoke_record": smoke_record,
     })
     write_once(vpath, v)
     return vpath, v

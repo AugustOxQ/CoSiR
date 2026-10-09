@@ -104,8 +104,8 @@ def seed_hashes(seed, salt="") -> dict:
 # ---------------------------------------------------------------- records, ledger, started files in tmp_path
 
 def write_records(res, shas=None, coef=COEF, smoke_names=("smoke_record.json",)):
-    """The seed-42 records (refit, picks, regression, sensitivity) and the smoke record(s), as their runners write
-    them: passed, with the current module SHA-256s."""
+    """The seed-42 records (refit, picks, regression, sensitivity, the DTS stop) and the smoke record(s), as their
+    runners write them: passed, with the current module SHA-256s."""
     shas = dict(shas or R.r6_module_shas())
     res.mkdir(parents=True, exist_ok=True)
     meta = {"module_sha256": shas, "time": "2026-10-10 09:00:00"}
@@ -118,6 +118,11 @@ def write_records(res, shas=None, coef=COEF, smoke_names=("smoke_record.json",))
     (res / RH.SENS42_NAME).write_text(json.dumps({**SIGMA, "seed": 42, "N": 12288, "n_paintings": 3000,
                                                   "regression_sha256": R.sha256_file(res / RH.REGRESSION_NAME),
                                                   **meta}))
+    (res / RH.DTS_CHOSEN_NAME).write_text(json.dumps({"stage": "chosen", "seed": 42, **meta}))
+    (res / RH.DTS_STOP_NAME).write_text(json.dumps({"stage": "stop", "seed": 42, "built": True, "stop": False,
+                                                    "budget": {"clock_start": R.DTS_CLOCK_START},
+                                                    "input_sha256": {RH.DTS_CHOSEN_NAME: R.sha256_file(
+                                                        res / RH.DTS_CHOSEN_NAME)}, **meta}))
     for name in smoke_names:
         (res / name).write_text(json.dumps({"passed": True, "module_sha256": shas, "time": "2026-10-10 09:30:00"}))
     return res
@@ -617,6 +622,66 @@ def test_seed42_records_must_be_passed_and_current(case, at_picks, capsys):
     assert nothing_started(case)
 
 
+def test_held_mode_refuses_without_a_passed_current_dts_stop(case, at_picks, capsys):
+    """Rule section 9 (final review, 2026-10-09): every held read refuses (exit 4, nothing started) unless
+    dts_stop.json is seed 42's stop record, built, with no stop, written by the current DTS bytes."""
+    stop = case.res / RH.DTS_STOP_NAME
+    keep = stop.read_text()
+    with pytest.raises(Reached):
+        held(case)
+    stop.unlink()
+    assert refused(held(case), capsys, says="dts_stop.json does not exist")
+    for change, says in (({"stop": True}, "the user decides"), ({"built": False}, "the user decides"),
+                         ({"seed": 9001}, "not seed 42's stop record"), ({"stage": "chosen"}, "not seed 42's stop"),
+                         ({"module_sha256": stale("r6_dts.py")}, "rerun the DTS stages"),
+                         ({"module_sha256": stale("dts_settings.json")}, "rerun the DTS stages"),
+                         ({"input_sha256": {}}, "not evaluated on the current bytes of ['dts_seed42.json']"),
+                         ({"budget": {"clock_start": "2026-10-10 12:29"}}, "not the first DTS commit's"),
+                         ({"budget": None}, "the clock start None"),
+                         ({"input_sha256": {RH.DTS_CHOSEN_NAME: "0" * 64}}, "rerun the stop"),
+                         ({"input_sha256": {RH.DTS_CHOSEN_NAME: R.sha256_file(case.res / RH.DTS_CHOSEN_NAME),
+                                            "dts_tune.json": "1" * 64}}, "bytes of ['dts_tune.json']")):
+        stop.write_text(keep)
+        edit(stop, **change)
+        assert refused(held(case), capsys, says=says), change
+    assert RH.dts_stop_problem(case.res, HERE)[1] is False                  # a stale record is a rerun
+    stop.write_text(keep)
+    edit(stop, stop=True)
+    assert RH.dts_stop_problem(case.res, HERE)[1] is True                   # a stop goes to the user, not a rerun
+    assert nothing_started(case)
+
+
+def test_dts_stop_refuses_every_flag_but_not_the_smoke(case, monkeypatch, capsys):
+    install(monkeypatch, stop_at={"picks"})
+    started_file(case.res / "held_started.json", ({}, {}))                 # --after-crash: a read has started
+    (case.res / RH.DTS_STOP_NAME).unlink()
+    assert refused(held(case, after_crash=True), capsys, says="dts_stop.json does not exist")
+    fix_ready(case)
+    (case.res / RH.DTS_STOP_NAME).unlink()
+    assert refused(held(case, fix=1), capsys, says="dts_stop.json does not exist")
+    reserve_ready(case)
+    (case.res / RH.DTS_STOP_NAME).unlink()
+    assert refused(held(case, reserve=True), capsys, says="dts_stop.json does not exist")
+    # the smoke does not read it (the smoke chain runs its own seed's stop)
+    with pytest.raises(Reached):
+        RH.run_smoke(results=case.res, here=HERE)
+
+
+def test_the_dts_stop_sha_is_kept_in_the_attempt_and_the_pass(case, monkeypatch, capsys):
+    install(monkeypatch)
+    assert held(case) == 0
+    want = {"file": RH.DTS_STOP_NAME, "sha256": R.sha256_file(case.res / RH.DTS_STOP_NAME)}
+    att = json.loads((case.res / "held_started.json").read_text())["attempts"][0]
+    assert att["dts_stop"] == want
+    assert json.loads((case.res / "held_pass.json").read_text())["dts_stop"] == want
+    assert RH.DTS_STOP_NAME == "dts_stop.json"                               # run_r6_dts.STOP
+
+
+def test_guard_dts_stop(case, monkeypatch, capsys):
+    seed42_mut(case, monkeypatch, capsys, mutant(case.tmp, "run_r6_held.py", "dts_stop"),
+               lambda res: (res / RH.DTS_STOP_NAME).unlink(), Reached)
+
+
 def test_seed42_records_missing_refuse(case, at_picks, capsys):
     (case.res / RH.SENS42_NAME).unlink()
     assert refused(held(case), capsys, says="run run_r6_sensitivity.py first")
@@ -654,7 +719,8 @@ def test_a_stubbed_read_writes_every_file_and_no_verdict(case, monkeypatch, caps
     out = capsys.readouterr().out
     assert ns.include_pm == [False, False, False]                          # rule section 8 item 3
     names = sorted(p.name for p in case.res.iterdir())
-    assert names == sorted([RH.REFIT_NAME, RH.PICKS_NAME, RH.REGRESSION_NAME, RH.SENS42_NAME, "smoke_record.json",
+    assert names == sorted([RH.REFIT_NAME, RH.PICKS_NAME, RH.REGRESSION_NAME, RH.SENS42_NAME, RH.DTS_STOP_NAME,
+                            RH.DTS_CHOSEN_NAME, "smoke_record.json",
                             "held_started.json", "held_episodes_seed52.npz", "held_episodes_seed53.npz",
                             "held_episodes_seed54.npz", "sensitivity_held.json", "held_arrays.npz",
                             "held_pass.json"])
@@ -1478,7 +1544,7 @@ def test_after_crash_reads_the_crash_smoke_record(case, monkeypatch, capsys):
     edit(case.res / "smoke_record_crash1.json", module_sha256=stale)
     edit(case.res / "smoke_record.json", module_sha256=R.r6_module_shas())
     assert refused(held(case, after_crash=True), capsys, says="smoke_record_crash1.json: the SHA-256s")
-    assert RH.latest_smoke_record(case.res, "held").name == "smoke_record.json"           # not for a first read
+    assert RH.latest_smoke_record(case.res, "held").name == "smoke_record_crash1.json"    # the latest, for every read
     assert RH.latest_smoke_record(case.res, "fix1").name == "smoke_record_fix1.json"
 
 

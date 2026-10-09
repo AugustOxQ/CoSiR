@@ -184,6 +184,9 @@ def build_dir(out, smoke, readers, rng_seed):
         shas[s] = dict(eps.sha)
     if not smoke:
         write_json(out / "held_started.json", started_record(shas))
+        # ticket 15: real mode (apply and descriptive) requires a passed smoke record of today's bytes
+        write_json(out / "smoke_record.json", {"passed": True, "module_sha256": R.r6_module_shas(),
+                                               "time": R.amsterdam_now()})
         # ticket 14: real mode requires every external job listed; here none was run
         write_json(out / RD.XT.SOURCES_NAME, {k: {"missing": "not run in this test"} for k in RD.XT.SOURCE_KEYS})
     np.savez(out / "held_arrays.npz", **D.arrays_from_scored(scored, md.seeds))
@@ -301,6 +304,8 @@ GUARD_TESTS = {
     "core_reproduced": "test_rebuilt_bundle_must_reproduce_the_arrays",
     "two_way_weight": "test_two_way_resample_means_by_hand",
     "two_way_anchor_stream": "test_two_way_anchor_stream_is_cluster_bootstraps",
+    "smoke_record": "test_real_mode_refuses_without_a_passed_smoke_record",
+    "smoke_shas": "test_real_mode_refuses_module_shas_unlike_the_smoke_record",
 }
 
 
@@ -318,7 +323,7 @@ def test_every_marked_guard_has_a_mutation_test():
 TOP_KEYS = {"what", "mode", "seeds", "n_per_pair", "n_episodes", "n_clusters", "verdict", "consistency", "scorers",
             "labels", "rows", "checks_by_scope", "bar_margin", "aff_minus_b1", "r1_checks", "two_way_bootstrap",
             "item_reuse", "gate_open_shares", "pick_accuracy", "redundancy_D7", "frozen", "external", "rule_sha256",
-            "module_sha256", "runner_sha256", "input_sha256", "time", "runtime_s", "coef_sha256"}
+            "module_sha256", "runner_sha256", "input_sha256", "time", "runtime_s", "coef_sha256", "smoke_record"}
 
 
 def test_smoke_run_end_to_end_prints_no_decimal(smoke_fx, tmp_path, capsys):
@@ -918,6 +923,72 @@ def test_external_rows_hook(smoke_fx):
 
 def _boom(seed):
     raise Reached("a bundle was built")
+
+
+def r6_copy(tmp_path) -> Path:
+    """A copy of the files r6_module_shas() hashes, at their paths relative to a tmp checkout root (ticket 15)."""
+    root = HERE.parents[2]
+    here = tmp_path / "checkout" / HERE.relative_to(root)
+    (here.parents[2] / "scripts").mkdir(parents=True)
+    here.mkdir(parents=True)
+    for f in sorted(HERE.glob("r6_*.py")) + sorted(HERE.glob("run_r6_*.py")) + [HERE / "dts_settings.json"]:
+        shutil.copy2(f, here / f.name)
+    for f in sorted((root / "scripts").glob("run_r6_*.sh")) + [root / "scripts/das6_sync_r6.py"]:
+        shutil.copy2(f, here.parents[2] / "scripts" / f.name)
+    assert R.r6_module_shas(here) == R.r6_module_shas()
+    return here
+
+
+def test_real_mode_refuses_without_a_passed_smoke_record(held_fx, tmp_path, capsys):
+    """Ticket 15 (contracts section 8 amendment 12:20): real mode refuses (exit 4, before any bundle) unless the latest
+    smoke record exists and passed; smoke mode does not read one. The fix-1 and crash-1 records count when they exist,
+    --reserve reads smoke_record_reserve.json."""
+    out = copy_dir(held_fx, tmp_path)
+    with pytest.raises(Reached):                                       # the record of build_dir: past the refusals
+        run(held_fx, out, bundle_fn=_boom)
+    (out / "smoke_record.json").rename(tmp_path / "kept.json")
+    assert _refused(*run(held_fx, out, capsys, bundle_fn=_boom), "smoke_record.json is missing")
+    write_json(out / "smoke_record.json", {"passed": False, "module_sha256": R.r6_module_shas()})
+    assert _refused(*run(held_fx, out, capsys, bundle_fn=_boom), "records a smoke that did not pass")
+    write_json(out / "smoke_record.json", {"passed": True, "module_sha256": R.r6_module_shas()})
+    write_json(out / "smoke_record_crash1.json", {"passed": False, "module_sha256": R.r6_module_shas()})
+    assert RD.latest_smoke_record(out, False).name == "smoke_record_crash1.json"
+    assert _refused(*run(held_fx, out, capsys, bundle_fn=_boom), "smoke_record_crash1.json records a smoke")
+    write_json(out / "smoke_record_fix1.json", {"passed": True, "module_sha256": R.r6_module_shas()})
+    assert RD.latest_smoke_record(out, False).name == "smoke_record_fix1.json"
+    with pytest.raises(Reached):
+        run(held_fx, out, bundle_fn=_boom)
+    assert RD.latest_smoke_record(out, True).name == "smoke_record_reserve.json"
+    with pytest.raises(RD.Refused, match="smoke_record_reserve.json is missing"):
+        RD.smoke_guard(out, False, True)
+    assert RD.smoke_guard(out, True, False) is None                     # smoke mode reads no record
+    (out / "smoke_record_fix1.json").unlink()
+    (out / "smoke_record_crash1.json").unlink()
+    (out / "smoke_record.json").unlink()
+    mut = mutant(tmp_path, "run_r6_descriptive.py", "smoke_record")
+    with pytest.raises(FileNotFoundError):                              # without the guard: an unexplained crash
+        run(held_fx, out, module=mut, bundle_fn=_boom)
+
+
+def test_real_mode_refuses_module_shas_unlike_the_smoke_record(held_fx, tmp_path, capsys, monkeypatch):
+    """Ticket 15: the record's module_sha256 must equal r6_module_shas() now. A tmp copy of every r6 file stands in for
+    this folder (RD.SHA_HERE); one changed byte in the copy's r6_bundle.py is refused, in real and reserve mode."""
+    out, here = copy_dir(held_fx, tmp_path), r6_copy(tmp_path)
+    monkeypatch.setattr(RD, "SHA_HERE", here)
+    with pytest.raises(Reached):                                       # the copy unchanged: past the refusals
+        run(held_fx, out, bundle_fn=_boom)
+    with open(here / "r6_bundle.py", "a") as f:
+        f.write("# changed after the smoke\n")
+    key = (here / "r6_bundle.py").relative_to(here.parents[2]).as_posix()
+    assert _refused(*run(held_fx, out, capsys, bundle_fn=_boom), f"the SHA-256s of ['{key}'] differ from the smoke's")
+    write_json(out / "smoke_record_reserve.json", {"passed": True, "module_sha256": R.r6_module_shas()})
+    with pytest.raises(RD.Refused, match="smoke_record_reserve.json: the SHA-256s"):
+        RD.smoke_guard(out, False, True)
+    assert RD.smoke_guard(out, False, True, here=HERE)["file"] == "smoke_record_reserve.json"
+    mut = mutant(tmp_path, "run_r6_descriptive.py", "smoke_shas")
+    monkeypatch.setattr(mut, "SHA_HERE", here)
+    with pytest.raises(Reached):                                       # without the guard: on to the first bundle
+        run(held_fx, out, module=mut, bundle_fn=_boom)
 
 
 def test_refuses_without_refit_check(smoke_fx, tmp_path, capsys):

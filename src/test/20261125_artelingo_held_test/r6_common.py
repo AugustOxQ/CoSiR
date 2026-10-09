@@ -199,6 +199,10 @@ N_PER_PAIR = 4096
 N_SMOKE = 64
 AFF_HITS_SEED42 = 9406
 N_RANKINGS_SEED42 = 49152
+# rule section 7 item 7: the DTS budget's clock start, the first DTS commit (6beb360, 2026-10-09 12:29:20 Amsterdam
+# time, run log line 32); the seed-42 stop stage requires it and the held read checks it in the stop record (final
+# review C)
+DTS_CLOCK_START = "2026-10-09 12:29"
 N_ROWS = 308_723
 MIN_PAINTINGS = 30
 VALUE_COUNTS = {"emotion": 8, "style": 23, "genre": 10}    # rule section 5 item 2
@@ -302,6 +306,25 @@ def r6_module_shas(here=None) -> dict:
     files += sorted((root / "scripts").glob("run_r6_*.sh"))
     files += [p for p in (root / "scripts/das6_sync_r6.py",) if p.is_file()]
     return {p.relative_to(root).as_posix(): sha256_file(p) for p in files}
+
+
+# The smoke records of run_r6_smoke.py (rule section 6 item 7; ticket 15), one per kind of smoke, in results/.
+SMOKE_RECORDS = {"smoke": "smoke_record.json", "crash1": "smoke_record_crash1.json",
+                 "fix1": "smoke_record_fix1.json", "reserve": "smoke_record_reserve.json"}
+
+
+def latest_smoke_record(results, reserve=False) -> Path:
+    """The smoke record that covers the code run now against ``results`` (rule section 6 item 7, section 8 item 1),
+    shared by the held runner, the apply step and the descriptive pass: with ``reserve`` smoke_record_reserve.json;
+    otherwise the latest smoke of the read's code, smoke_record_fix1.json when it exists, else
+    smoke_record_crash1.json when it exists, else smoke_record.json."""
+    results = Path(results)
+    if reserve:
+        return results / SMOKE_RECORDS["reserve"]
+    for kind in ("fix1", "crash1"):
+        if (results / SMOKE_RECORDS[kind]).is_file():
+            return results / SMOKE_RECORDS[kind]
+    return results / SMOKE_RECORDS["smoke"]
 
 
 # ---------------------------------------------------------------- the held split (rule section 5 item 1)
