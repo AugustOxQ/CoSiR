@@ -184,6 +184,8 @@ def build_dir(out, smoke, readers, rng_seed):
         shas[s] = dict(eps.sha)
     if not smoke:
         write_json(out / "held_started.json", started_record(shas))
+        # ticket 14: real mode requires every external job listed; here none was run
+        write_json(out / RD.XT.SOURCES_NAME, {k: {"missing": "not run in this test"} for k in RD.XT.SOURCE_KEYS})
     np.savez(out / "held_arrays.npz", **D.arrays_from_scored(scored, md.seeds))
     extra = {"episodes_sha256": shas, "runner_sha256": "0" * 64, "module_sha256": {"run_r6_held.py": "1" * 64}}
     write_json(out / "held_pass.json", ST.pass_record(scored, md.name, md.seeds, extra))
@@ -328,7 +330,11 @@ def test_smoke_run_end_to_end_prints_no_decimal(smoke_fx, tmp_path, capsys):
     rec = json.loads((out / "descriptive.json").read_text())
     assert set(rec) == TOP_KEYS
     assert rec["mode"] == "smoke" and rec["seeds"] == list(R.SMOKE_SEEDS) and rec["n_episodes"] == 9 * R.N_SMOKE
-    assert rec["scorers"] == list(S.ALL_SCORERS) and rec["external"] == {}
+    assert rec["scorers"] == list(S.ALL_SCORERS)
+    # ticket 14: without external_sources.json every external row is reported "missing", with no number
+    assert list(rec["external"]) == list(RD.XT.NAMES)
+    for name, e in rec["external"].items():
+        assert e["seeds"] == [] and "external_sources.json" in e["missing"] and name not in rec["rows"], name
     for name in S.ALL_SCORERS:
         r = rec["rows"][name]
         assert set(r["per_seed"]) == {str(s) for s in R.SMOKE_SEEDS} and set(r["per_pair"]) == set(R.PAIR_NAMES)

@@ -21,6 +21,8 @@ In this order (results/, or results/smoke/ with --smoke, results/smoke/NAME/ wit
          held_started.json (held_started_reserve.json) of this folder holds no attempt of this rule that produced the
          pass (the last attempt whose "fix" flag matches the pass file: set for held_pass_fix1.json, unset otherwise)
          with its coef_sha256.
+       - in real and reserve mode, external_sources.json of the results folder is missing or lacks one of its four
+         entries dts, ft_lp, ft, mllm (a job not run is written {"missing": "<reason>"}; r6_external.require_sources).
   2. Inputs, bound to the pass the verdict rests on (exit 5 on a contradiction; nothing written):
        - held_arrays<sfx>.npz (sfx of the pass file: "", "_fix1", "_reserve"; contracts section 7) reproduces the
          pass file's n_j, point and 95% interval of P1 to P7, S1, S2 exactly (r6_descriptive.check_pass);
@@ -36,7 +38,10 @@ In this order (results/, or results/smoke/ with --smoke, results/smoke/NAME/ wit
      r6_descriptive.seed_inputs: score_seed(..., include_pm=True) (the nine PM scorers and R1's counterpart are
      scored only here, after the verdict, rule section 8 item 3), the bundle's episodes equal to the file's, its
      eight core scorers equal to held_arrays.npz bit for bit; then ticket 14's per-seed hook external_seed_rows(env,
-     seed, ctx, bundle, episodes, out, smoke) while ctx and bundle exist. Both are dropped before the next seed.
+     seed, ctx, bundle, episodes, out, smoke) while ctx and bundle exist: the external rows DTS, DTS-CF, DTS-N,
+     FT-LP, FT-LB, FT-LoRA and (first seed only) MLLM, from the GPU outputs named by external_sources.json in the
+     results folder, joined to the episodes by their keys only here (r6_external.py: sources, joins, "missing" rows).
+     Both are dropped before the next seed.
   5. r6_descriptive.describe (with the hook's rows, through external_rows) -> descriptive.json, written once, with
      the verdict's and the inputs' SHA-256s, the coefficient SHA-256s, module_sha256, the frozen picks, the time, and
      the development figure of plan section 10's item-reuse rate (seed 42, selection rows) beside the held one.
@@ -67,6 +72,7 @@ import r6_bundle as B  # noqa: E402
 import r6_context as X  # noqa: E402
 import r6_descriptive as D  # noqa: E402
 import r6_episodes as E  # noqa: E402
+import r6_external as XT  # noqa: E402
 import r6_picks as P  # noqa: E402
 import r6_score as S  # noqa: E402
 import run_r6_held as RH  # noqa: E402
@@ -308,14 +314,30 @@ def bundle_factory(env, smoke: bool):
     return lambda seed: held_bundle(env, seed)
 
 
+def sources_check(out, smoke: bool) -> None:
+    """Step 1's last refusal (controller, ticket 14's review): in real and reserve mode external_sources.json and its
+    four entries must exist (r6_external.require_sources); refused (exit 4) before any input is loaded."""
+    try:
+        XT.require_sources(out, smoke)
+    except XT.SourcesRefused as e:
+        refuse(str(e))
+
+
 def external_seed_rows(env, seed, ctx, bundle, episodes, out, smoke: bool) -> dict:
     """Ticket 14's per-seed hook, called inside the seed loop after seed_inputs, while the seed's RowContext ``ctx``
     (masked img and txt, cos, pooled, parity, pair_index: what r6_dts.held_dts_scores takes) and its bundle exist;
-    ``episodes`` is the seed's episode file (r6_episodes.load_episodes), ``env`` the setup (env.data for FT's
-    features), ``out`` the results folder (the GPU outputs to join). -> {name: {"pa": per_anchor dict of this seed
-    (or None: no row this seed), "label": str, "info": dict}}; a scorer absent on a seed (MLLM beyond seed 52) is left
-    out. The core pass has none."""
-    return {}
+    ``episodes`` is the seed's episode file (r6_episodes.load_episodes), ``out`` the results folder (its
+    external_sources.json names the GPU outputs to join). -> {name: {"pa": per_anchor dict of this seed (or None: no
+    row this seed), "label": str, "info": dict}} for DTS, DTS-CF, DTS-N, FT-LP, FT-LB, FT-LoRA and, on the mode's
+    first seed only, MLLM (r6_external.seed_rows). Prints the names only."""
+    try:
+        rows = XT.seed_rows(env, seed, ctx, episodes, out, smoke)
+    except XT.SourcesRefused as e:
+        refuse(str(e))
+    have = [n for n, x in rows.items() if x.get("pa") is not None]
+    say(f"seed {seed}: external rows {', '.join(have) or 'none'}; missing "
+        f"{', '.join(n for n in rows if n not in have) or 'none'}")
+    return rows
 
 
 def collect_external(collected, seed, rows) -> dict:
@@ -331,9 +353,11 @@ def collect_external(collected, seed, rows) -> dict:
 
 
 def external_rows(env, per_seed, out, smoke: bool, collected) -> dict:
-    """Ticket 14's final hook: describe's external argument from the per-seed rows ``collected`` (and anything ticket
-    14 adds once every seed is done, e.g. totals of parsing failures). The core pass returns ``collected``."""
-    return collected
+    """Ticket 14's final hook: describe's external argument from the per-seed rows ``collected``
+    (r6_external.finish): the seven external rows in order, a row not computed on every seed it is reported on marked
+    "missing" with its reason and no number, and each row's sources and inputs (totals of parsing failures, the
+    phrases' most frequent wordings, checkpoints, files and their SHA-256s)."""
+    return XT.finish(env, out, smoke, collected)
 
 
 def development_reuse(groups) -> dict:
@@ -371,6 +395,7 @@ def after_verdict(out, smoke, vr, env=None, bundle_fn=None, picks=None, lambdas=
     md = mode_of(smoke)
     records = Path(records or R.RESULTS)
     coef = coef_records(out, smoke, vr, records)
+    sources_check(out, smoke)
     inp = load_inputs(out, smoke, vr)
     picks_sha = None
     if picks is None:
