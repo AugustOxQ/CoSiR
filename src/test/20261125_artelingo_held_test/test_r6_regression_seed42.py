@@ -12,7 +12,7 @@ stage-1a and stage-1b functions (run_r6_refit.record, run_r6_picks.run). Then:
     items while the comparators' items still pass.
 Nothing of a held row is read; F/results is never written. Prints no metric.
 
-About 15 minutes on CPU:
+About 6 to 10 minutes on CPU:
 
     CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1 \
     /root/miniconda3/envs/CoSiR/bin/python -m pytest -q -p no:cacheprovider \
