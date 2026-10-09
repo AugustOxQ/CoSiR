@@ -20,7 +20,9 @@
 - Everything in the spec's §4 and the rule (approved 2026-10-09 04:53 from the brief). The secondary checks are
   tested only after a GO, with Holm across the two (user, after seeing the recommendation).
 - "r7 decide can be later, first go with the build chat and run overnight" (user, 04:55): build and run now,
-  unattended; design L's decide chat is opened later, as the run chat's usual next decide chat.
+  unattended. Amended 05:10: the user starts design L's decide chat (`r7 decide`, handoff
+  `2026-10-09-r7-decide-handoff.md`) by hand, so the run chat's closing decide chat is `r6 read` (decision C on
+  round 6's results), not r7.
 
 ## 3. Where things stand
 
@@ -38,7 +40,7 @@
 - **Run (next chat, `r6 run`, opened with `loop-next` at the end of the build, no `--notify`):** the rule's §6 in
   order (inputs, refits, picks, regression, sensitivity input, the describe-then-score seed-42 tuning and its stop,
   the smoke last), then §8 (the read, phase-2 re-derivation, verdict), then §10.5, the auto report and the user-read
-  report, then it opens the next decide chat with `--notify`.
+  report, then it opens the `r6 read` decide chat with `--notify` (label `r6 read`; it reads round 6's results).
 - The describe-then-score budget clock (rule §7) starts at the first commit of its code.
 - Pre-read stops (rule §9) end the run's read part only: the run chat writes everything up, leaves the read for the
   user, and still reports what it has.
