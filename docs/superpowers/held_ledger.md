@@ -1,7 +1,9 @@
 # Held-read ledger (CVPR plan spec §10)
 
 Every read of a final test split is one row. Final scripts check this file and refuse to run a second time.
-Budget: 1 main + 1 reserve read per dataset for the CVPR paper.
+Budget: 1 main + 1 reserve read per dataset for the CVPR paper; since 2026-10-09 (constitution C5, amendment 2;
+plan §16) one read per pre-registered final method and backbone, plus one reserve read for a fix after a
+final-review finding. Nothing is tuned on held data.
 
 | # | Date | Dataset and split | Purpose | Episode / data SHA-256 | Script SHA-256 | Report |
 |---|---|---|---|---|---|---|

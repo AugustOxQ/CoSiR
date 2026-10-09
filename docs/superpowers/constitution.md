@@ -1,6 +1,6 @@
 # CoSiR constitution
 
-> Version 1 · Adopted 2026-10-08 by the user · Last amended 2026-10-08
+> Version 2 · Adopted 2026-10-08 by the user · Last amended 2026-10-09
 > Scope: CoSiR v2 experiments on `main` (aspect episodes on ArtELingo and the paper tests)
 
 This constitution outranks any single spec. When a spec conflicts with it, the spec changes, or the user amends the
@@ -33,9 +33,14 @@ row under Amendments and raises the version. Specs written earlier are not rewri
   seeds (9001 to 9003) are wiring checks, never results. *Why:* fresh seeds are enough protection; more ceremony costs
   attention without changing decisions. *Source:* memory `feedback_seed-handling-light`; the ledger.
 - **C5 Held data.** Held rows and final test splits (ArtELingo held rows, CUB test, SemArt, GeneCIS) MUST be read only by
-  a paper test. Every read is one row in `docs/superpowers/held_ledger.md`, within its budget (one main and one reserve
-  read per dataset), and final scripts refuse a second read. *Why:* the paper claims rest on data no selection has
-  seen. *Source:* the held ledger; CVPR plan spec §10.
+  a paper test, and nothing is ever tuned or picked on them: checkpoints, fusion weights and settings are frozen from
+  development. Each split may be read once per pre-registered final method and backbone, plus one reserve read for a
+  pre-registered fix after a final-review finding (never a second attempt at a better number). Every read is one row in
+  `docs/superpowers/held_ledger.md` with a committed rule, final scripts refuse a second read of the same method, every
+  read is reported in the paper (none dropped), and the paper discloses how many reads each split had and that later
+  designs were made after earlier reads. *Why:* the paper claims rest on data no tuning has seen; reusing a test set for
+  a few pre-registered reads is common practice and costs little (Recht et al., ICML 2019; Roelofs et al., NeurIPS
+  2019), while tuning on it does not. *Source:* the held ledger; CVPR plan spec §10 and §16; amendment 2.
 - **C6 Sample IDs.** Data joins MUST follow the "Sample ID consistency" section of the project's `.claude/CLAUDE.md`.
   *Why:* mismatched sample IDs are the project's most frequent and most dangerous bug. *Source:* `.claude/CLAUDE.md`.
 
@@ -91,3 +96,4 @@ row under Amendments and raises the version. Specs written earlier are not rewri
 | Version | Date | Change | Why | Decided by |
 |---------|------|--------|-----|------------|
 | 1 | 2026-10-08 | Drafted from memories, rules and the rounds 2 to 5 specs and rules | Specs restated these every round | user (adopted as drafted) |
+| 2 | 2026-10-09 | C5: one held read per pre-registered final method and backbone (was one main and one reserve read per dataset); never tuned on; every read ledgered, reported and disclosed | Testing AFF now must not cost design L and the second backbone their ArtELingo held read; the line is not tuning on the test set (user: "we have the full held-out test set anyway, and the line is not to tune on it") | user, after seeing the recommendation (ours: split the held paintings in two) |

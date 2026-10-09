@@ -751,6 +751,11 @@ time/judge to go for a full paper I won't hesitate."
   label-free method with an ArtELingo held test. K2 and its remaining items (CUB, SemArt, the second backbone) stay the
   route to the full paper, taken up as soon as time and results allow.
 - **Resources** (user, 2026-10-09): three DAS6 nodes with nine GPUs in total, beside the local RTX 3090 (§1).
+- **Held reads (amends §10's budget; user, 2026-10-09, after seeing the recommendation):** each held split may be read
+  once per pre-registered final method and backbone, not once per dataset. Nothing is tuned or picked on held data
+  (§8's frozen weights stand), the reserve read stays a fix after a final-review finding, every read is ledgered and
+  reported, and the paper discloses the number of reads. So AFF reads the full ArtELingo held split now, and design L
+  or the second backbone may read it later as their own pre-registered tests (constitution C5, amendment 2).
 - §1 to §15 and Figure 1 are unchanged and remain the record of the plan as approved.
 
 ## Appendix B. Sources
