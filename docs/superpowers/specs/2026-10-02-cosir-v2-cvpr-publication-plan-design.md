@@ -6,6 +6,9 @@ panel (Major Revision, two repairable blocks) and revised with the user's approv
 **Revision 3 (2026-10-03, after the E3 NO-GO):** the user chose a method repair (A′) before giving up branch 1;
 §15 defines A′, its diagnostics stage and its single GO test. §1 to §14 are unchanged and remain the record of
 method A and its go/no-go.
+**Revision 4 (2026-10-09, after affect steering's GO on fresh seeds):** the user moved the go/no-go one week, to
+Fri Oct 16, and set the target: an ArtELingo-centred paper first, the full method paper when time and results allow
+(§16).
 **Replaces:** the archived conditional-buddies plan (`docs/archive/buddy_publication_plan/`) as the project's
 publication target.
 
@@ -725,6 +728,30 @@ z-score over the 13 candidates (`zscore_rows`). λ_u ∈ {0, 0.5, 1, 2, 4, 8, 16
 profile that included the spent seed-43 draw; the number of development looks at seed 42; that seed 45 draws its
 episodes from the same 6,451 selection paintings as seeds 42 and 43 (a fresh-episode result, not a fresh-painting
 one); and H3 as a label-trained upper bound only.
+
+## 16. Revision 4: the paper target after affect steering (2026-10-09)
+
+**Why.** Method A′ (§15) gave way to the reader line. Its current best, affect steering (AFF: round 1's learned reader,
+with its grouping term added only when it picks the affect grouping), passed its pre-registered test on fresh seeds 49
+to 51 in round 3: +0.591 [+0.462, +0.729] R@1 over B′(A0), the strongest condition-free scorer of that round
+([round 3 report](../../reports/auto/v2/2026-11-21_round3_affect_gate.md)). Rounds 4 and 5 tried to improve it and
+were killed at development. The go/no-go of §6 and §11 (Fri Oct 9) was settled early, by E3's NO-GO on 2026-10-03.
+The [CVPR readiness memo](../../reports/stage/2026-10-07_cvpr_readiness.md) (§3) judged K2 on three datasets
+unlikely by the deadline and an ArtELingo-centred paper feasible.
+
+**The user's decision (2026-10-09), in their words:** "I will move the go-no-go date one week later. [...] I see hopes
+from the affect steering and hope to do more. So we still first aiming for a ArtELingo-centred paper, but if there's
+time/judge to go for a full paper I won't hesitate."
+
+**What changes.**
+- **The go/no-go moves one week, to Fri Oct 16** (user). It decides whether to go for the full method paper (K2 on the
+  ArtELingo, CUB and SemArt held splits, plus K4) or to stay with the ArtELingo-centred paper (agent default reading of
+  what it decides; the user may restate it).
+- **The first target is an ArtELingo-centred paper** (user): the task and its protocol, the analysis, and AFF as a
+  label-free method with an ArtELingo held test. K2 and its remaining items (CUB, SemArt, the second backbone) stay the
+  route to the full paper, taken up as soon as time and results allow.
+- **Resources** (user, 2026-10-09): three DAS6 nodes with nine GPUs in total, beside the local RTX 3090 (§1).
+- §1 to §15 and Figure 1 are unchanged and remain the record of the plan as approved.
 
 ## Appendix B. Sources
 

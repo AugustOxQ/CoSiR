@@ -35,7 +35,9 @@ stay in the entries below.
 - **Read:** placing captions by their own GoEmotions scores placed them far better (86% against 36%), but neither
   candidate cleared the +0.5 bar (G-T +0.356, G-TF +0.427 over B′(A0)) and both lost to AFF on seed 42. The weak
   image head caps every image-caption agreement.
-- **Meaning (C):** open; the user read the briefing on 2026-10-07, and the next chat asks for their reading first.
+- **Meaning (C):** "a normal idea test, and it's going a bit narrow": an ordinary failed idea, and work on the affect
+  score is narrowing (2026-10-09; user, after seeing ours, since the briefing showed our advice openly). Ours: the image
+  head caps every agreement, so stop work on the affect score. Both readings stop the affect line.
 - **Decided:** open, awaiting the user. Options: the held-split paper test with AFF frozen; idea 3 variants; design L
   for style.
 - **Links:** report `docs/reports/auto/v2/2026-11-23_idea3_goemotions.md`; user-read
