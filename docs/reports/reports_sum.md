@@ -2,6 +2,8 @@
 
 This file is the index to every report in `docs/reports/`. Keep it current: every new report gets one row here (see [Adding a report](#adding-a-report)). All dates are 2026 unless marked otherwise.
 
+**The date in a report's name is a sequence number, not when it was written.** Up to late September 2026 it was the real date. Since then each new report takes the day after the previous one, so the names sort in writing order and run ahead of the calendar: `auto/v2/2026-11-24_clip_lightweight_ft.md` was written on 2026-10-07. The round folders in `src/test/` share the counter (`20261124_clip_lightweight_ft/` goes with that report). The real date is in the report's git history (`git log --diff-filter=A -- <file>`). User-read reports in `docs/user_read/` use real dates.
+
 ## Layout
 
 | Folder | What goes there |
@@ -41,7 +43,7 @@ To open an archived line: `git worktree add ../CoSiR-<name> archive/<branch>`.
 
 ## Adding a report
 
-1. **Name:** `YYYY-MM-DD_<topic>.md`. Leave out words the folder already says: no `weekly_`, `stage_report`, `_report` or `cosir_v2_`.
+1. **Name:** `YYYY-MM-DD_<topic>.md`, where the date is the next number in the sequence (the day after the highest date used so far by a report or a round folder in `src/test/`), not today's date. Leave out words the folder already says: no `weekly_`, `stage_report`, `_report` or `cosir_v2_`.
 2. **Place:** put it in `auto/<line>/`, `stage/` or `weekly/`. Slide markdown sits next to its report. Decks go in `pptx/`, and their build script goes in `assets/build_<date>_<topic>_slides.py`.
 3. **Index:** add one row to the matching table below, oldest first, with a one-line description. Starting a new research line means adding `auto/<line>/`, a table here and a row in the tables above.
 4. **Reports on other branches:** these stay on their branch until a stage report or comparison needs them. Gather them with `python scripts/promote_reports.py <branch>`, adding `--line <name>` for a branch it doesn't know yet, and `--dry-run` to preview. It copies new or changed reports, pilots and local decks into this layout, adds rows here using each report's title, and runs the check. Polish the new rows, then commit. `.promoted.json` records what came from where.
