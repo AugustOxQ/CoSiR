@@ -8,6 +8,7 @@ import importlib.util
 import inspect
 import json
 import math
+import re
 import sys
 from fractions import Fraction
 from pathlib import Path
@@ -484,6 +485,60 @@ def test_pass_record_refuses_a_cf_gain_that_is_not_zero():
         S.pass_record([s42], "regression", [42], _extra([42]))
 
 
+# ------------------------------------------------------------------------- the nine quantities against the rule
+# Final review A (fix wave item 2): QUANTITIES pinned to rule §3's table and §4's S1, S2, read from the rule's text, and
+# check_diffs run on scores where every scorer and metric differ, so a swapped comparator, metric or sign fails.
+RULE = HERE / "DECISION_RULE.md"
+RULE_KEY = {"COS": "cosine", "RCA": "rca", "B": "B", "B0": "B0", "CF": "aff_cf", "B1": "B1", "R1": "r1_fused"}
+PINNED = {"P1": ("r1", "cosine", "COS"), "P2": ("r1", "rca", "RCA"), "P3": ("r1", "B", "B"), "P4": ("r1", "B0", "B0"),
+          "P5": ("r1", "aff_cf", "CF"), "P6": ("gain", "aff_cf", "CF"), "P7": ("gain", "rca", "RCA"),
+          "S1": ("r1", "B1", "B1"), "S2": ("r1", "r1_fused", "R1")}
+
+
+def _rule_quantities() -> dict:
+    """{check: (metric, comparator key, the rule's comparator name)} from the rule's text: the rows P1 to P7 of §3's
+    table and §4's "S1 = R@1, AFF − B1; S2 = R@1, AFF − R1". Every quantity is AFF minus the comparator; a quantity
+    that starts with "R@1," is the R@1 difference, one that names the condition gain the gain difference."""
+    text = RULE.read_text(encoding="utf-8")
+    out = {}
+    for c, q in re.findall(r"^\| (P[1-7]) \| (.+?) \|$", text, re.M):
+        m = re.search(r"AFF − (?:that of )?(\w+)", q)
+        metric = "r1" if q.startswith("R@1,") else ("gain" if "condition gain" in q else None)
+        out[c] = (metric, RULE_KEY.get(m.group(1)) if m else None, m.group(1) if m else None)
+    for c, comp in re.findall(r"\b(S[12]) = R@1, AFF − (\w+)", " ".join(text.split())):
+        out[c] = ("r1", RULE_KEY.get(comp), comp)
+    return out
+
+
+def _check_quantities(mod):
+    want = _rule_quantities()
+    assert tuple(want) == mod.CHECKS + mod.SECONDARY == tuple(mod.QUANTITIES)
+    assert {c: (m, k) for c, (m, k, _) in want.items()} == {c: tuple(v[:2]) for c, v in mod.QUANTITIES.items()}
+    for c, (metric, _, name) in want.items():                  # the quantity text names the same comparator
+        text = mod.QUANTITIES[c][2]
+        assert re.search(rf"AFF - {re.escape(name)}\b", text), (c, text)
+        assert text.startswith("R@1, ") if metric == "r1" else "condition gain" in text, (c, text)
+    assert (mod.AFF, mod.CF) == ("aff_fused", "aff_cf")
+    rng = np.random.default_rng(6)
+    sc = _seed_scores(rng, _clusters(rng, N_SEED, pool=4000))
+    keys = sorted({k for _, k, _ in want.values()})
+    arrays = [sc[k][m] for k in keys for m in ("r1", "gain") if (k, m) != ("aff_cf", "gain")]
+    assert all(not np.array_equal(a, b) for i, a in enumerate(arrays) for b in arrays[i + 1:])   # all distinct
+    diffs = mod.check_diffs([sc])
+    for c, (metric, key, _) in want.items():
+        d, cl = diffs[c]
+        assert np.array_equal(d, sc["aff_fused"][metric] - sc[key][metric]), c                # AFF minus the comparator
+        assert np.array_equal(cl, sc["cl"]), c
+
+
+def test_the_rule_table_reads_as_the_pinned_nine_checks():
+    assert _rule_quantities() == PINNED
+
+
+def test_quantities_are_the_rule_table():
+    _check_quantities(S)
+
+
 # ----------------------------------------------------------------------------------------------------- sensitivity
 def _hand_sigma(d_pp, cl):
     groups = {}
@@ -554,10 +609,21 @@ MUTANTS = {
                             "le0.append(sums[draws].sum(axis=1) / counts[draws].sum(axis=1) <= 0)", "hair"),
     "quarter assertion removed": ("if np.abs(4.0 * v - q).max() > QUARTER_TOL:", "if False:", "quarter"),
     "CF refusal removed": ('if not np.all(np.asarray(s[CF]["gain"], dtype=np.float64) == 0):', "if False:", "cf"),
+    # final review A: these two survived the suite before _check_quantities
+    "P7 comparator rca -> cosine": ('"P7": ("gain", "rca",', '"P7": ("gain", "cosine",', "quantities"),
+    "S2 comparator r1_fused -> B": ('"S2": ("r1", "r1_fused",', '"S2": ("r1", "B",', "quantities"),
+    "P6 metric gain -> r1": ('"P6": ("gain", CF,', '"P6": ("r1", CF,', "quantities"),
+    "P1 and P2 comparators swapped": ('"P1": ("r1", "cosine", "R@1, AFF - COS"),\n    "P2": ("r1", "rca",',
+                                      '"P1": ("r1", "rca", "R@1, AFF - COS"),\n    "P2": ("r1", "cosine",',
+                                      "quantities"),
+    "difference reversed": ("np.asarray(s[AFF][metric], dtype=np.float64) - np.asarray(s[key][metric], "
+                            "dtype=np.float64)",
+                            "np.asarray(s[key][metric], dtype=np.float64) - np.asarray(s[AFF][metric], "
+                            "dtype=np.float64)", "quantities"),
 }
 CHECKERS = {"ci95": _check_ci95_guard, "ties": _check_ties, "boundary": _check_boundary_counts,
             "source": _check_integer_form_in_source, "hair": _check_rounding_hair, "quarter": _check_quarter_guard,
-            "cf": _check_cf_refusal}
+            "cf": _check_cf_refusal, "quantities": _check_quantities}
 
 
 def _load_mutant(tmp_path, name, old, new):

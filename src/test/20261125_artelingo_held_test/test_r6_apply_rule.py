@@ -467,6 +467,35 @@ def _disagreements(e):
     e.stage(go_rec(), agreement={"disagreements": [{"quantity": "P3 n", "runner": 3, "rederive": 4}]})
 
 
+def _without(key):
+    """A staged GO whose agreement record lacks ``key`` (final review A, fix wave item 2)."""
+    def setup(e):
+        agr = e.stage(go_rec())
+        agr.pop(key)
+        e.write("rederive_agreement.json", agr)
+    return setup
+
+
+def _disagreements_null(e):
+    e.stage(go_rec(), agreement={"disagreements": None})
+
+
+def _disagreements_dict(e):
+    e.stage(go_rec(), agreement={"disagreements": {}})
+
+
+def _n_quantities_zero(e):
+    e.stage(go_rec(), agreement={"n_quantities": 0})
+
+
+def _n_quantities_string(e):
+    e.stage(go_rec(), agreement={"n_quantities": "9"})
+
+
+def _n_quantities_bool(e):
+    e.stage(go_rec(), agreement={"n_quantities": True})
+
+
 def _phase_1(e):
     e.stage(go_rec(), agreement={"phase": 1})
 
@@ -635,6 +664,13 @@ REFUSALS = {
     "all_agree_false": (_all_agree_false, (), "all_agree is not true"),
     "all_agree_string": (_all_agree_string, (), "all_agree is not true"),
     "disagreements": (_disagreements, (), "disagreements list is not empty"),
+    "disagreements_missing": (_without("disagreements"), (), "disagreements list is not empty"),
+    "disagreements_null": (_disagreements_null, (), "disagreements list is not empty"),
+    "disagreements_dict": (_disagreements_dict, (), "disagreements list is not empty"),
+    "n_quantities_zero": (_n_quantities_zero, (), "n_quantities is not a positive integer"),
+    "n_quantities_missing": (_without("n_quantities"), (), "n_quantities is not a positive integer"),
+    "n_quantities_string": (_n_quantities_string, (), "n_quantities is not a positive integer"),
+    "n_quantities_bool": (_n_quantities_bool, (), "n_quantities is not a positive integer"),
     "phase_1": (_phase_1, (), "not a phase-2 record"),
     "sha_unbound": (_sha_unbound, (), "checked another pass"),
     "sha_other_pass": (_sha_other_pass, (), "checked another pass"),
@@ -785,3 +821,79 @@ def test_dropping_the_gatekeeping_makes_its_test_fail(tmp_path, monkeypatch, cap
         check_secondary_untested(Env(tmp_path / "run", monkeypatch, mod=mutant), capsys)
 
 
+# ---------------------------------------------------------------- final review A, fix wave item 2 (tests only)
+# Two clauses carry no GUARD tag; their weakenings (the "present" half of the disagreements check, n_quantities >= 1)
+# survived the suite. Each weakening, on a copy, must make one of the refusal tests above fail.
+TEXT_MUTANTS = {
+    "disagreements_present": ('if agr.get("disagreements") != []:', 'if agr.get("disagreements"):',
+                              ("disagreements_missing", "disagreements_null", "disagreements_dict")),
+    "n_quantities_positive": ('agr["n_quantities"] >= 1', 'agr["n_quantities"] >= 0', ("n_quantities_zero",)),
+}
+
+
+def load_text_mutant(tmp_path: Path, tag: str, old: str, new: str):
+    src = SCRIPT.read_text(encoding="utf-8")
+    assert src.count(old) == 1, tag
+    mdir = tmp_path / f"text_mutant_{tag}"
+    mdir.mkdir()
+    (mdir / SCRIPT.name).write_text(src.replace(old, new), encoding="utf-8")
+    return load_module(mdir / SCRIPT.name, f"text_mutant_{tag}")
+
+
+@pytest.mark.parametrize("tag", sorted(TEXT_MUTANTS))
+def test_weakening_an_agreement_clause_makes_its_refusal_test_fail(tmp_path, monkeypatch, capsys, tag):
+    old, new, scenarios = TEXT_MUTANTS[tag]
+    mutant = load_text_mutant(tmp_path, tag, old, new)
+    for i, name in enumerate(scenarios):
+        expect_refused(Env(tmp_path / f"real{i}", monkeypatch), name, capsys)         # the real script refuses
+        with pytest.raises(AssertionError):                                           # the copy writes a verdict
+            expect_refused(Env(tmp_path / f"run{i}", monkeypatch, mod=mutant), name, capsys)
+
+
+def rule_names() -> dict:
+    """Rule §4's <name> of each check, read from the rule's text: P1 to P5 from the list after "(<name>:", P6 and P7
+    from their quoted phrases, S1 and S2 from "with <name> = ... or ..."."""
+    flat = " ".join(RULE.read_text(encoding="utf-8").split())
+    m = re.search(r'\(<name>: ([^;]+); "([^"]+)" for P6; "([^"]+)" for P7\)', flat)
+    s = re.search(r"with <name> = (\S+) or (\S+) and x₂", flat)
+    first = m.group(1).split(", ")
+    assert len(first) == 5, first
+    return {**dict(zip(P[:5], first)), "P6": m.group(2), "P7": m.group(3), "S1": s.group(1), "S2": s.group(2)}
+
+
+def did_not_beat_reading(e: Env, nm: str) -> str:
+    """The verdict's reading of check ``nm`` when it alone fails with a point below 0 (a P check: a NO-GO; S1 or S2:
+    after a GO)."""
+    if nm in P:
+        counts = {c: 0 for c in P}
+        counts[nm] = 2600                                   # last in the Holm order, its own count fails
+        e.stage(make_pass(counts, points={nm: -0.05}))
+        assert e.run() == 0
+        v = e.verdict()
+        assert (v["verdict"], v["failed"]) == ("NO-GO", [nm])
+        return v["checks"][nm]["reading"]
+    s_counts, s_points = ((3000, 0), (-0.1, 0.33)) if nm == "S1" else ((0, 3000), (0.33, -0.1))
+    e.stage(go_rec(s_counts=s_counts, s_points=s_points))
+    assert e.run() == 0
+    v = e.verdict()
+    assert v["verdict"] == "GO" and v["secondary"]["tested"] is True
+    return v["secondary"][nm]["reading"]
+
+
+def test_rule_names_are_read_from_section_4():
+    assert rule_names() == {"P1": "cosine", "P2": "RCA", "P3": "B", "P4": "B′(A0)", "P5": "its matched control",
+                            "P6": "the condition-free scorers on condition gain", "P7": "RCA on condition gain",
+                            "S1": "B′(A1)", "S2": "R1"}
+
+
+@pytest.mark.parametrize("nm", P + S)
+def test_did_not_beat_names_follow_rule_section_4(env, nm):
+    assert did_not_beat_reading(env, nm) == f"AFF did not beat {rule_names()[nm]} on new paintings"
+
+
+@pytest.mark.parametrize("nm,wrong", [("P1", "COS"), ("P5", "CF"), ("S2", "R1 fused")])
+def test_a_wrong_name_makes_the_names_test_fail(tmp_path, monkeypatch, nm, wrong):
+    old = f'"{nm}": "{AR.NAMES[nm]}"'
+    mutant = load_text_mutant(tmp_path, f"name_{nm}", old, f'"{nm}": "{wrong}"')
+    got = did_not_beat_reading(Env(tmp_path / "run", monkeypatch, mod=mutant), nm)
+    assert got != f"AFF did not beat {rule_names()[nm]} on new paintings"
