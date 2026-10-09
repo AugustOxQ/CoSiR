@@ -85,6 +85,21 @@ def to_front(paths):
 
 to_front((MAIN, R3D, R2D, R1D))
 
+
+def check_src_loaded_early():
+    """A `src` package already imported (before r6_common) must be MAIN's; otherwise later imports would silently
+    use it, so stop here with a clear message."""
+    mod = sys.modules.get("src")
+    if mod is None:
+        return
+    f = getattr(mod, "__file__", None)
+    if not f or not Path(f).resolve().is_relative_to((MAIN / "src").resolve()):
+        raise ImportError(f"package 'src' was imported from {f} before r6_common; it must come from {MAIN / 'src'}"
+                          " (import r6_common before anything from src)")
+
+
+check_src_loaded_early()  # guard:src_early
+
 import r3_common as R3  # noqa: E402  (puts round 1, round 2 and MAIN on sys.path; imports round 1 and round 2)
 import r3_fusion as RF  # noqa: E402
 import r3_stats as RS  # noqa: E402
@@ -326,14 +341,14 @@ def load_split(data) -> SimpleNamespace:
 
     groups, scorer_train, selection, val and held come from artelingo_splits (which asserts the sizes); train is
     grouped_split(groups, seed=42).train (artelingo_splits keeps none). All are int64 row positions (C6)."""
+    assert_input(PREPARE_REL)  # guard:split_inputs
+    assert_input(HELD_CODES_REL)  # guard:split_inputs
     _require(len(data.paintings) == len(data.sample_ids) == N_ROWS, "data does not have ArtELingo's 308,723 rows")
     sp = artelingo_splits(data)
     gs = grouped_split(sp.groups, seed=SPLIT_SEED)
     _require(len(gs.train) == EXPECTED_SIZES["train"], "train size differs from the stage (d) split")
     _require(np.array_equal(gs.val, sp.val) and np.array_equal(gs.held, sp.held),
              "grouped_split and artelingo_splits disagree on val or held")
-    assert_input(PREPARE_REL)
-    assert_input(HELD_CODES_REL)
     prepared = _read_npz_keys(INPUT_PATHS[PREPARE_REL], PREPARE_KEYS)
     held_rows = _read_npz_keys(INPUT_PATHS[HELD_CODES_REL], ("held_rows",))["held_rows"]
     train = np.asarray(gs.train, dtype=np.int64)
