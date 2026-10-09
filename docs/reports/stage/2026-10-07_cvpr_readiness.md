@@ -156,7 +156,7 @@ heads, a condition-free B, practice banks and episodes, which is days to a week 
 
 *Sources: CVPR plan §4 (claims table, branches), §10, §11; `docs/reports/stage/2026-10-04_aspect_conditioned_similarity_methods.md`
 Table 6 (MLLM probes); `docs/reports/auto/v2/2026-10-30_aspect_baselines.md` (E1); `2026-10-23_aspect_episode_spike.md`;
-`2026-10-21_cvpr_literature_review.md` (deadlines in its header); `docs/superpowers/held_ledger.md`.*
+`docs/reports/literature/2026-10-21_cvpr_literature_review.md` (deadlines in its header); `docs/superpowers/held_ledger.md`.*
 
 ## 4. Question 3: what novelty and contributions do we have?
 
@@ -195,7 +195,7 @@ Ranked by how well they would survive review (our view).
 | "Only one dataset" | CUB and SemArt not done | framing decision (§6) |
 | "A fine-tuned CLIP would do as well" | untested | §2's cheap comparator |
 
-*Sources: `docs/reports/auto/v2/2026-10-21_cvpr_literature_review.md` (verdict), `2026-10-24_aspect_task_novelty_check.md`,
+*Sources: `docs/reports/literature/2026-10-21_cvpr_literature_review.md` (verdict), `docs/reports/literature/2026-10-24_aspect_task_novelty_check.md`,
 `2026-10-22_support_baseline_spike.md` (K1), `2026-10-25_backbone_check.md`, `2026-11-08_new_method_quick_checks.md` (N1);
 CVPR plan §4 (C2's supervision statement); project memory note on the matched-control lesson.*
 
@@ -253,5 +253,5 @@ Part of this exists in rounds 3 and 4; the new items are marked **new**, with a 
 - Baselines and spikes: `2026-10-30_aspect_baselines.md` (E1), `2026-11-01_aspect_factor_gonogo.md` (E3),
   `2026-10-22_support_baseline_spike.md`, `2026-10-23_aspect_episode_spike.md`, `2026-10-25_backbone_check.md`,
   `docs/reports/stage/2026-10-04_aspect_conditioned_similarity_methods.md` (MLLM probes, Table 6).
-- Literature: `2026-10-21_cvpr_literature_review.md`, `2026-10-24_aspect_task_novelty_check.md`.
+- Literature: `docs/reports/literature/2026-10-21_cvpr_literature_review.md`, `docs/reports/literature/2026-10-24_aspect_task_novelty_check.md`.
 - Held budget: `docs/superpowers/held_ledger.md`.

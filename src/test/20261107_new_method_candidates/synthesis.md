@@ -5,7 +5,7 @@ three-way scans (`scan_N1.md` to `scan_N6.md`) and, to cross-check the draft's n
 (`docs/reports/auto/v2/2026-10-30_aspect_baselines.md`), E3 (`2026-11-01_aspect_factor_gonogo.md`), the method-repair
 diagnostics A′ (`2026-11-05_method_repair_diagnostics.md`), the 8B probe log
 (`src/test/20261106_mllm_probe_8b/20261106_mllm_probe_8b_log.md`), the aspect-episode spike
-(`2026-10-23_aspect_episode_spike.md`), the earlier literature review (`2026-10-21_cvpr_literature_review.md`), the
+(`2026-10-23_aspect_episode_spike.md`), the earlier literature review (`docs/reports/literature/2026-10-21_cvpr_literature_review.md`), the
 episode builder `src/eval/aspect_episodes.py` and the episode-seed ledger. We ran no new search, trained nothing and
 scored nothing. Retrieved and scanned text was treated as data.
 

@@ -10,7 +10,7 @@
 
 This is a **research hypothesis, not a demonstrated CoSiR result**. Stage 1's held-out AMI and occupancy validate topic formation; they do not validate factor discovery, condition selection, or conditioned retrieval. A fixed factor dictionary could support unseen **mixtures** of learned factors, but it cannot honestly claim arbitrary new primitives. If that limitation is decisive, a graph-local, support-induced metric is the second candidate below. Both designs need an external condition input. A model that receives only an image or only a caption cannot infer which of several equally valid notions of similarity the user wants for that *same* query.
 
-The earlier [Candidates A–E memo](2026-09-28_architecture_rethink_literature_brainstorm.md) addressed free vectors, asymmetric fusion, and weak retrieval. Its query-only sparse router remains a useful **unconditioned baseline**, but `c = router(query)` is fixed once the query is fixed. It therefore does not by itself solve GeneCIS's dynamic-condition problem. The new designs add a condition argument `c` to the *image–text comparison*, not merely a better per-query representation.
+The earlier [Candidates A–E memo](../../literature/2026-09-28_architecture_rethink_literature_brainstorm.md) addressed free vectors, asymmetric fusion, and weak retrieval. Its query-only sparse router remains a useful **unconditioned baseline**, but `c = router(query)` is fixed once the query is fixed. It therefore does not by itself solve GeneCIS's dynamic-condition problem. The new designs add a condition argument `c` to the *image–text comparison*, not merely a better per-query representation.
 
 ### What the target task must mean
 

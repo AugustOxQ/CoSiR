@@ -4,8 +4,8 @@
 **Mode:** ARS v3.22.2, `academic-paper` citation-check mode (`citation_compliance_agent`), run read-only. We did not edit the checked documents, so the agent's auto-correction step became a list of proposed corrections.
 **Checked documents:**
 - the plan, `docs/superpowers/specs/2026-10-02-cosir-v2-cvpr-publication-plan-design.md`;
-- the [CVPR literature review](2026-10-21_cvpr_literature_review.md) (the "review");
-- the [aspect task novelty check](2026-10-24_aspect_task_novelty_check.md) (the "novelty report").
+- the [CVPR literature review](../../literature/2026-10-21_cvpr_literature_review.md) (the "review");
+- the [aspect task novelty check](../../literature/2026-10-24_aspect_task_novelty_check.md) (the "novelty report").
 
 ## 1. Verdict
 

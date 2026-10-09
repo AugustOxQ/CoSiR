@@ -295,8 +295,8 @@ handoff `docs/superpowers/handoffs/2026-09-30-candidate-a-factor-learning-handof
 [affect factor learning](../auto/v2/2026-10-18_candidate_a_affect_factor_learning_selection.md) and its
 [held test](../auto/v2/2026-10-19_candidate_a_affect_factor_learning_held.md); `src/train/train_factors.py`;
 [support-baseline spike](../auto/v2/2026-10-22_support_baseline_spike.md);
-[aspect-episode spike](../auto/v2/2026-10-23_aspect_episode_spike.md); [novelty check](../auto/v2/2026-10-24_aspect_task_novelty_check.md);
-[backbone check](../auto/v2/2026-10-25_backbone_check.md); [literature review](../auto/v2/2026-10-21_cvpr_literature_review.md).*
+[aspect-episode spike](../auto/v2/2026-10-23_aspect_episode_spike.md); [novelty check](../literature/2026-10-24_aspect_task_novelty_check.md);
+[backbone check](../auto/v2/2026-10-25_backbone_check.md); [literature review](../literature/2026-10-21_cvpr_literature_review.md).*
 
 ## 4. Baselines: nine ways to read pairs, none separates the aspects (E1)
 

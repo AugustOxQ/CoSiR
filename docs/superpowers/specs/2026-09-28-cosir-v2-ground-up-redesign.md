@@ -3,7 +3,7 @@
 **Date:** 2026-09-28
 **Status:** foundation decisions settled by user; architecture (§3) explicitly open, pending literature review + brainstorm
 **Motivates from:**
-- `docs/reports/auto/v2/2026-09-28_architecture_rethink_literature_brainstorm.md` (tonight's earlier clean-slate candidate survey, Candidates A-E)
+- `docs/reports/literature/2026-09-28_architecture_rethink_literature_brainstorm.md` (tonight's earlier clean-slate candidate survey, Candidates A-E)
 - `docs/reports/auto/percept/2026-09-26_artelingo_buddy_vs_percept_stage1.md` (the buddy-vs-PercepT Stage1/Stage2 investigation)
 - Experiment 18's real result (`docs/reports/stage/2026-09-16_prototype_conditioning.md`, on `experiment/buddy_prototype_conditioning`): patching the existing free-vector + combiner architecture found a genuine, seed-replicated interpretability/retrieval trade-off, never resolved
 - Tonight's live baseline runs on ArtELingo (`/project/CoSiR-exp18_artelingo`): confirmed the current architecture's conditioning is weak, asymmetric (i2t >> t2i under `combine_side="img"`), and that the condition-predictor's training-order coupling, while real, isn't the dominant bottleneck (verified via a controlled A/B — see session transcript, 2026-09-28)

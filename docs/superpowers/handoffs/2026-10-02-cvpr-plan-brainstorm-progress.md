@@ -20,10 +20,10 @@ brainstorm (superpowers:brainstorming, architectural path) wrote it before a con
 
 | Report | Finding |
 |---|---|
-| [CVPR literature review](../../reports/auto/v2/2026-10-21_cvpr_literature_review.md) | No prior example-conditioned cross-item image–text similarity (to our knowledge). The naive rule is Rocchio and the factor term a CSN mask. "Unsupervised condition discovery" is taken (SCE-Net, DiscoverNet, EmotionCLIP). PercepT itself uses ModernBERT-GoEmotions and CLIP ViT-L/14, so do not call our RoBERTa "PercepT's teacher". |
+| [CVPR literature review](../../reports/literature/2026-10-21_cvpr_literature_review.md) | No prior example-conditioned cross-item image–text similarity (to our knowledge). The naive rule is Rocchio and the factor term a CSN mask. "Unsupervised condition discovery" is taken (SCE-Net, DiscoverNet, EmotionCLIP). PercepT itself uses ModernBERT-GoEmotions and CLIP ViT-L/14, so do not call our RoBERTa "PercepT's teacher". |
 | [Support-baseline spike](../../reports/auto/v2/2026-10-22_support_baseline_spike.md) | On value episodes, raw-CLIP support baselines beat SE (probe 24.10 vs 21.22 pooled R@1). A prototype that ignores the query reaches 22.83, so value episodes are few-shot classification. SE wins only cross-modally (style i2t, emotion t2i). |
 | [Aspect-episode spike](../../reports/auto/v2/2026-10-23_aspect_episode_spike.md) | On aspect episodes no factor model beats CLIP (SE 11.32 vs CLIP 11.13). The label-probe ceiling is about 23, so the task is learnable. Emotion lives in captions and style in images, which caps cross-modal matching on ArtELingo. |
-| [Aspect novelty check](../../reports/auto/v2/2026-10-24_aspect_task_novelty_check.md) | No paper defines the task, though every property exists separately. Closest: Contextual Visual Similarity, metric learning from pairs (Xing, RCA, KISSME), MARS, in-context text embedders. Expect the reviewer line "a few-shot cross-modal diagonal KISSME". |
+| [Aspect novelty check](../../reports/literature/2026-10-24_aspect_task_novelty_check.md) | No paper defines the task, though every property exists separately. Closest: Contextual Visual Similarity, metric learning from pairs (Xing, RCA, KISSME), MARS, in-context text embedders. Expect the reviewer line "a few-shot cross-modal diagonal KISSME". |
 
 ## Decisions (the user's)
 

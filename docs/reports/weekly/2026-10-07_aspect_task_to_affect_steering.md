@@ -128,7 +128,7 @@ condition gain, without using labels of the evaluated respects. The target venue
 | **C3. Analysis** | emotion in captions and style in images across four backbones; why reading the condition costs either rate (R@1 = (either + gain) / 2); told ceilings; label-free reading reduces to choosing a side | the same analysis across annotation protocols (ArtEmis captions against SemArt catalogue text), and whether showing the respect by examples beats naming it, per respect (K3) |
 
 > Sources: CVPR plan [§3, §4](../../superpowers/specs/2026-10-02-cosir-v2-cvpr-publication-plan-design.md#3-problem-definition-approved),
-> [literature review](../auto/v2/2026-10-21_cvpr_literature_review.md) §1, [novelty check](../auto/v2/2026-10-24_aspect_task_novelty_check.md),
+> [literature review](../literature/2026-10-21_cvpr_literature_review.md) §1, [novelty check](../literature/2026-10-24_aspect_task_novelty_check.md),
 > [readiness memo](../stage/2026-10-07_cvpr_readiness.md) §3, §4.
 
 ## How we got here
@@ -850,8 +850,8 @@ that choosing the side carries the gain and AFF chooses it without labels. Label
 DiscoverNet) and distant emotion supervision (EmotionCLIP) are prior art, and the GoEmotions classifier behind the
 affect grouping is external and frozen; its 28 categories name 6 of the 8 evaluation emotions.
 
-> Sources: [CVPR literature review](../auto/v2/2026-10-21_cvpr_literature_review.md),
-> [novelty check](../auto/v2/2026-10-24_aspect_task_novelty_check.md), readiness memo §4.
+> Sources: [CVPR literature review](../literature/2026-10-21_cvpr_literature_review.md),
+> [novelty check](../literature/2026-10-24_aspect_task_novelty_check.md), readiness memo §4.
 
 **Verdict (reference).** AFF counts as a GO under the rule written for it: it beat every pre-registered condition-free
 comparator on fresh episodes, by a margin that held up better than predicted. The stronger, style-aware B′(A1) was not

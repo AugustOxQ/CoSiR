@@ -3,9 +3,9 @@
 **Report date:** 2026-10-27 (sequence date in this folder; the review ran on 2026-10-02 and 2026-10-03).
 **What was reviewed:** the CVPR publication plan
 ([spec](../../../superpowers/specs/2026-10-02-cosir-v2-cvpr-publication-plan-design.md), revision 1). Five evidence
-reports were appended to it: the [literature review](2026-10-21_cvpr_literature_review.md), the
+reports were appended to it: the [literature review](../../literature/2026-10-21_cvpr_literature_review.md), the
 [support-baseline spike](2026-10-22_support_baseline_spike.md), the [aspect-episode spike](2026-10-23_aspect_episode_spike.md),
-the [novelty check](2026-10-24_aspect_task_novelty_check.md) and the [backbone check](2026-10-25_backbone_check.md).
+the [novelty check](../../literature/2026-10-24_aspect_task_novelty_check.md) and the [backbone check](2026-10-25_backbone_check.md).
 The [citation check](2026-10-28_citation_check.md) ran beside the review.
 **Full record:** `src/test/20261027_ars_plan_review/`. It holds the reviewer configuration, the blind Phase 1 scoring
 plans, the Phase 2 cards, the editorial decision, the 58-item revision roadmap and the provenance artifact.

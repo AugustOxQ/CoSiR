@@ -182,7 +182,7 @@ search).
 - Multiplex and multilayer community detection (Mucha et al. 2010; leidenalg's multiplex optimisation), and
   layer-specific community structure.
 - Condition discovery from mixed similarities: Conditional Similarity Networks (Veit et al. 2017), SCE-Net (Tan et al.
-  2019), DiscoverNet (named in `docs/reports/auto/v2/2026-10-21_cvpr_literature_review.md`).
+  2019), DiscoverNet (named in `docs/reports/literature/2026-10-21_cvpr_literature_review.md`).
 - Consensus or ensemble clustering (Strehl and Ghosh 2002) as the contrast case we dropped.
 - Deliverable: for each fusion point (groupings, graphs, edges), the evidence that splitting afterwards recovers
   single-property structure, the split mechanism, and failure modes (in particular dominance of the strongest source).
