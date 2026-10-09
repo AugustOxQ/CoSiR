@@ -8,9 +8,11 @@ worktree need not hold, and a GPU job needs none of them. torch and transformers
 that load or run the model, so the CPU paths (argument parsing, file checks, message building, the tests) run without
 them.
 
-What a job sees. Its job folder only: the row manifest (row id, sample id, image path, caption) and its own input file.
-Never the episode file, labels, aspect names (DTS-N listings excepted) or candidate order. A job writes raw outputs
-keyed by (seed, episode index, condition, wording) or by (phrase, K), and computes and prints no metric.
+What a job sees. Its job folder only: the row manifest (row id, neutral image file name, caption) and its own input
+file, plus the images under neutral names (<first 20 hex of SHA-256 of the WikiArt path>.<ext>) in one image folder.
+Never the episode file, labels, aspect names (DTS-N listings excepted), WikiArt paths (they begin with the style
+folder), sample ids or candidate order. A job writes raw outputs keyed by (seed, episode index, condition, wording) or
+by (phrase, K), and computes and prints no metric.
 
 Guards carry a `# guard:<name>` marker; the tests delete each on a copy and show that its scenario then passes.
 """
@@ -31,7 +33,9 @@ SETTINGS_PATH = HERE / "dts_settings.json"
 CONDITIONS = ("a", "b")
 NUM_PAIRS = 4
 CHECKPOINT_EVERY = 50
-MANIFEST_KEYS = ("rows", "sample_id", "image_relpath", "caption")
+MANIFEST_KEYS = ("rows", "image_name", "caption")
+IMAGE_NAME = re.compile(r"[0-9a-f]{20}\.[a-z0-9]{1,5}")
+DEFAULT_IMAGE_DIR = "/local/wding/r6_jobs/images"   # the node's image folder (scripts/das6_sync_r6.py fills it)
 PAIR_FIELDS = ("pairs_a_img", "pairs_a_txt", "pairs_b_img", "pairs_b_txt")
 VERBALISE_KEYS = ("seed", "episode_index", *PAIR_FIELDS)
 WORDING_IDS = ("W1", "W2", "W3", "W4")
@@ -97,7 +101,7 @@ def load_settings(path=None):
 # ---------------------------------------------------------------- job inputs (contracts section 9)
 
 class Manifest:
-    """rows_manifest.npz: global row id -> (sample id, image path relative to the WikiArt root, caption)."""
+    """rows_manifest.npz: global row id -> (neutral image file name, caption). No WikiArt path, no sample id."""
 
     def __init__(self, path):
         self.path = Path(path)
@@ -105,18 +109,15 @@ class Manifest:
             _require(sorted(z.files) == sorted(MANIFEST_KEYS),
                      f"{self.path}: keys {sorted(z.files)} differ from {sorted(MANIFEST_KEYS)}")  # guard:manifest_keys
             d = {k: z[k] for k in MANIFEST_KEYS}
-        self.rows, self.sample_id = d["rows"], d["sample_id"]
-        self.image_relpath, self.caption = d["image_relpath"], d["caption"]
+        self.rows, self.image_name, self.caption = d["rows"], d["image_name"], d["caption"]
         n = len(self.rows)
-        _require(self.rows.dtype == np.int64 and self.sample_id.dtype == np.int64, f"{self.path}: ids must be int64")
-        _require(self.image_relpath.dtype.kind == "U" and self.caption.dtype.kind == "U",
-                 f"{self.path}: image_relpath and caption must be unicode arrays")
+        _require(self.rows.dtype == np.int64, f"{self.path}: rows must be int64")
+        _require(self.image_name.dtype.kind == "U" and self.caption.dtype.kind == "U",
+                 f"{self.path}: image_name and caption must be unicode arrays")
         _require(all(x.shape == (n,) for x in d.values()) and n > 0, f"{self.path}: arrays of unequal length")
         _require(bool((np.diff(self.rows) > 0).all()), f"{self.path}: rows must be sorted and unique")
-        _require(len(np.unique(self.sample_id)) == n, f"{self.path}: sample ids must be unique")
-        for rel in self.image_relpath.tolist():
-            _require(rel and not rel.startswith("/") and ".." not in Path(rel).parts,
-                     f"{self.path}: image path {rel!r} is not a plain relative path")
+        bad = [x for x in self.image_name.tolist() if not IMAGE_NAME.fullmatch(x)]
+        _require(not bad, f"{self.path}: image names must be neutral (<20 hex>.<ext>), e.g. {bad[:2]}")  # guard:neutral_names
 
     def index(self, rows) -> np.ndarray:
         """Positions of ``rows`` in the manifest; every row must be listed."""
@@ -127,11 +128,12 @@ class Manifest:
                  f"{self.path}: {int((self.rows[pos_c] != rows).sum())} rows are not in the manifest")  # guard:manifest_rows
         return pos_c
 
-    def items(self, img_rows, txt_rows, image_root):
-        """[(image path, caption)] of pairs whose image is row img_rows[k] and caption row txt_rows[k]."""
+    def items(self, img_rows, txt_rows, image_dir):
+        """[(image file, caption)] of pairs whose image is row img_rows[k] and caption row txt_rows[k]; the image
+        file is <image_dir>/<image_name>."""
         ii, tt = self.index(img_rows), self.index(txt_rows)
-        root = Path(image_root)
-        return [(str(root / self.image_relpath[i]), str(self.caption[t])) for i, t in zip(ii.tolist(), tt.tolist())]
+        root = Path(image_dir)
+        return [(str(root / self.image_name[i]), str(self.caption[t])) for i, t in zip(ii.tolist(), tt.tolist())]
 
 
 def load_verbalise_input(path, manifest=None) -> dict:

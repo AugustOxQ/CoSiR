@@ -204,15 +204,14 @@ def caption_of(r):
     return f"a caption written for row {r}"
 
 
-def relpath_of(r):
-    return f"Synthetic_folder_{r % 7}/item-{r}.jpg"
+def name_of(r):
+    """A neutral image name per row (two rows of one painting would share it; here each row has its own)."""
+    return hashlib.sha256(f"synthetic painting {r}".encode()).hexdigest()[:20] + ".jpg"
 
 
 def synthetic_manifest(inp):
     rows = np.unique(np.concatenate([inp[f].ravel() for f in G.PAIR_FIELDS]))
-    sid = (rows * 7 + 3) % R.N_ROWS            # a stand-in sample id per row (unique: 7 and 308,723 are coprime)
-    return {"rows": rows, "sample_id": sid.astype(np.int64),
-            "image_relpath": np.asarray([relpath_of(r) for r in rows.tolist()], dtype=str),
+    return {"rows": rows, "image_name": np.asarray([name_of(r) for r in rows.tolist()], dtype=str),
             "caption": np.asarray([caption_of(r) for r in rows.tolist()], dtype=str)}
 
 
@@ -222,7 +221,7 @@ def write_job(folder, inp, manifest=None, images=True):
     np.savez_compressed(folder / "rows_manifest.npz", **manifest)
     np.savez(folder / "verbalise_input.npz", **inp)
     if images:
-        (folder / "images.txt").write_text("\n".join(sorted(set(manifest["image_relpath"].tolist()))) + "\n")
+        (folder / "images.txt").write_text("\n".join(sorted(set(manifest["image_name"].tolist()))) + "\n")
     return folder
 
 
@@ -257,7 +256,7 @@ def expected_content(inp, pos, condition, wording_id):
         for k in range(4):
             r_img, r_txt = int(inp[f"{g}_img"][pos, k]), int(inp[f"{g}_txt"][pos, k])
             parts += [{"type": "text", "text": f"Pair {k + 1}: image"},
-                      {"type": "image", "image": str(ROOT / relpath_of(r_img))},
+                      {"type": "image", "image": str(ROOT / name_of(r_img))},
                       {"type": "text", "text": f"\ncaption: {caption_of(r_txt)}\n"}]
     parts.append({"type": "text", "text": "\n" + SETTINGS["verbaliser"]["wordings"][wording_id]})
     return parts
@@ -285,7 +284,7 @@ def test_pairs_keep_episode_column_order_and_cross_item_rows(tuning_job):
     content = V.episode_messages(inp, man, 7, "a", "W2", SETTINGS, ROOT)[0]["content"]
     imgs = [p["image"] for p in content if p["type"] == "image"]
     caps = [p["text"] for p in content if p["type"] == "text" and p["text"].startswith("\ncaption: ")]
-    want_img = [str(ROOT / relpath_of(int(r))) for r in (*inp["pairs_a_img"][7], *inp["pairs_b_img"][7])]
+    want_img = [str(ROOT / name_of(int(r))) for r in (*inp["pairs_a_img"][7], *inp["pairs_b_img"][7])]
     want_cap = [f"\ncaption: {caption_of(int(r))}\n" for r in (*inp["pairs_a_txt"][7], *inp["pairs_b_txt"][7])]
     assert imgs == want_img and caps == want_cap
 
@@ -300,9 +299,10 @@ def test_no_aspect_name_label_or_path_in_any_message_text(full_job):
                 for p in V.episode_messages(inp, man, pos, c, w, SETTINGS, ROOT)[0]["content"]:
                     if p["type"] == "text":
                         assert not pattern.search(p["text"]), (p["text"], pattern.search(p["text"]).group(0))
-                        assert "Synthetic_folder" not in p["text"] and ".jpg" not in p["text"]
-                    else:
+                        assert ".jpg" not in p["text"] and str(ROOT) not in p["text"]
+                    else:                                     # images are loaded by their neutral name only
                         assert set(p) == {"type", "image"} and p["type"] == "image"
+                        assert re.fullmatch(re.escape(str(ROOT)) + r"/[0-9a-f]{20}\.jpg", p["image"]), p["image"]
     for w in SETTINGS["verbaliser"]["wordings"].values():
         assert not pattern.search(w)
 
@@ -323,6 +323,17 @@ def test_manifest_with_an_extra_key_fires_and_the_guard_matters(tuning_job, tmp_
         G.Manifest(tmp_path / "m.npz")
     mut = load_copy(tmp_path, "r6_gpu_common.py", guard="manifest_keys")
     assert len(mut.Manifest(tmp_path / "m.npz").rows) == len(man["rows"])
+
+
+def test_manifest_with_a_wikiart_path_fires_and_the_guard_matters(tmp_path):
+    man = synthetic_manifest(synthetic_input(tuning_index()))
+    man["image_name"] = man["image_name"].astype("<U64")
+    man["image_name"][3] = "Impressionism/claude-monet_water-lilies.jpg"
+    np.savez(tmp_path / "m.npz", **man)
+    with pytest.raises(AssertionError, match="must be neutral"):
+        G.Manifest(tmp_path / "m.npz")
+    mut = load_copy(tmp_path, "r6_gpu_common.py", guard="neutral_names")
+    assert mut.Manifest(tmp_path / "m.npz").image_name[3].startswith("Impressionism/")   # guard deleted: path kept
 
 
 def test_row_missing_from_the_manifest_fires_and_the_guard_matters(tuning_job, tmp_path):
@@ -675,12 +686,12 @@ def cli_job(tmp_path_factory):
     inp = synthetic_input(tuning_index(), rng_seed=4)
     man = synthetic_manifest(inp)
     needed = np.unique(np.concatenate([inp[f][:2].ravel() for f in ("pairs_a_img", "pairs_b_img")]))
-    images = base / "wikiart"
+    images = base / "images"
+    images.mkdir()
     for r in needed.tolist():
-        (images / relpath_of(r)).parent.mkdir(parents=True, exist_ok=True)
-        (images / relpath_of(r)).write_bytes(b"")
+        (images / name_of(r)).write_bytes(b"")
     job = write_job(base / "jobs" / "s52_tune", inp, man, images=False)
-    (job / "images.txt").write_text("\n".join(sorted(relpath_of(r) for r in needed.tolist())) + "\n")
+    (job / "images.txt").write_text("\n".join(sorted(name_of(r) for r in needed.tolist())) + "\n")
     hub = base / "hub"
     fake_hub(hub)
     listing_job(base / "jobs" / "list1", [(p, k) for p in PHRASES[:20] for k in (8, 16)])
@@ -691,7 +702,7 @@ def test_verbaliser_check_only_without_a_gpu(cli_job):
     out = cli_job["base"] / "out_v"
     r = run([PY, str(HERE / "r6_gpu_verbalise.py"), "--job-dir", str(cli_job["job"]), "--out", str(out),
              "--wordings", "W1,W2", "--stop", "2", "--check-only", "--no-model", "--hub-cache", str(cli_job["hub"]),
-             "--image-root", str(cli_job["images"])])
+             "--image-dir", str(cli_job["images"])])
     assert r.returncode == 0, r.stderr[-2000:]
     assert "verbaliser inputs ok: seed 52, 3072 episodes, range [0, 2)" in r.stdout
     assert "imports ok: torch" in r.stdout and "stopping before the model" in r.stdout and not out.exists()
@@ -700,7 +711,7 @@ def test_verbaliser_check_only_without_a_gpu(cli_job):
 def test_verbaliser_check_only_finds_a_missing_image_and_the_guard_matters(cli_job, tmp_path):
     args = ["--job-dir", str(cli_job["job"]), "--out", str(tmp_path / "o"), "--wordings", "W1", "--start", "2",
             "--stop", "3", "--check-only", "--no-model", "--hub-cache", str(cli_job["hub"]),
-            "--image-root", str(cli_job["images"])]
+            "--image-dir", str(cli_job["images"])]
     r = run([PY, str(HERE / "r6_gpu_verbalise.py"), *args])
     assert r.returncode != 0 and "images missing under" in r.stderr
     mut = load_copy(tmp_path, "r6_gpu_verbalise.py", guard="images")
@@ -731,7 +742,7 @@ def test_listing_check_only_without_a_gpu(cli_job):
 
 
 def wrapper_env(cli_job, **extra):
-    env = dict(ENV, R6_JOB_ROOT=str(cli_job["base"] / "jobs"), COSIR_WIKIART_DIR=str(cli_job["images"]),
+    env = dict(ENV, R6_JOB_ROOT=str(cli_job["base"] / "jobs"), R6_IMAGE_DIR=str(cli_job["images"]),
                HF_HUB_CACHE_OVERRIDE=str(cli_job["hub"]), R6_PYTHON=PY)
     env.update(extra)
     return env
@@ -757,7 +768,7 @@ def test_wrappers_refuse_missing_inputs(cli_job, tmp_path):
     env = wrapper_env(cli_job, HF_HUB_CACHE_OVERRIDE=str(tmp_path / "empty_hub"))
     r = run(["bash", "scripts/run_r6_listing.sh", "list1", "--check-only", "--no-model"], env=env)
     assert r.returncode == 2 and "pinned snapshot missing" in r.stderr
-    env = wrapper_env(cli_job, COSIR_WIKIART_DIR=str(tmp_path / "no_images"))
+    env = wrapper_env(cli_job, R6_IMAGE_DIR=str(tmp_path / "no_images"))
     r = run(["bash", "scripts/run_r6_verbalise.sh", "s52_tune", "--wordings", "W1", "--check-only", "--no-model"],
             env=env)
     assert r.returncode == 2 and "job images missing" in r.stderr
@@ -801,6 +812,39 @@ def test_sync_refuses_episode_or_label_data(cli_job, tmp_path):
     assert r.returncode != 0
 
 
+@needs_sys_py
+@pytest.mark.skipif(not Path("/data/PDD/wikiart_proj/wikiart").is_dir(), reason="no local WikiArt tree")
+@pytest.mark.parametrize("plant, match", [
+    ("npz", "a WikiArt path"), ("json", "a WikiArt path"), ("images", "not neutral"), ("map", "an image map"),
+])
+def test_sync_refuses_wikiart_paths_in_a_job_folder(tmp_path, plant, match):
+    job = tmp_path / "job_with_path"
+    inp = synthetic_input(tuning_index())
+    man = synthetic_manifest(inp)
+    if plant == "npz":                                          # a path inside a compressed unicode array
+        man["image_name"] = man["image_name"].astype("<U64")
+        man["image_name"][7] = "Baroque/rembrandt_the-night-watch.jpg"
+    write_job(job, inp, man)
+    if plant == "json":
+        (job / "job_record.json").write_text(json.dumps({"note": "Ukiyo_e/hokusai_the-great-wave.jpg"}))
+    if plant == "images":
+        with open(job / "images.txt", "a") as f:
+            f.write("Realism/ivan-shishkin_morning.jpg\n")
+    if plant == "map":
+        (job / "s.image_map.json").write_text("{}")
+    r = run([SYS_PY, "scripts/das6_sync_r6.py", "--node", "node401", "--job-dir", str(job)])
+    assert r.returncode != 0 and "REFUSING" in r.stderr and match in r.stderr, r.stderr[-800:]
+
+
+def test_wrapper_refuses_a_name_that_is_not_neutral(cli_job, tmp_path):
+    job = cli_job["base"] / "jobs" / "s52_bad_name"
+    write_job(job, synthetic_input(tuning_index()), images=False)
+    (job / "images.txt").write_text("Romanticism/caspar-david-friedrich_wanderer.jpg\n")
+    r = run(["bash", "scripts/run_r6_verbalise.sh", "s52_bad_name", "--wordings", "W1", "--check-only", "--no-model"],
+            env=wrapper_env(cli_job))
+    assert r.returncode == 2 and "not neutral" in r.stderr
+
+
 def test_sync_script_runs_on_python_3_10():
     ast.parse((CHECKOUT / "scripts/das6_sync_r6.py").read_text(), feature_version=(3, 10))
 
@@ -809,7 +853,7 @@ def test_sync_script_runs_on_python_3_10():
 
 def test_gpu_code_imports_neither_src_nor_r6_common():
     allowed = {"argparse", "hashlib", "json", "os", "platform", "re", "socket", "sys", "time", "datetime",
-               "pathlib", "zoneinfo", "numpy", "torch", "transformers", "r6_gpu_common", "zipfile", "cluster"}
+               "pathlib", "zoneinfo", "numpy", "torch", "transformers", "r6_gpu_common", "zipfile", "cluster", "tempfile"}
     for f in [HERE / m for m in GPU_MODULES] + [CHECKOUT / "scripts/das6_sync_r6.py"]:
         for node in ast.walk(ast.parse(f.read_text())):
             if isinstance(node, ast.Import):

@@ -2,16 +2,17 @@
 # Round 6 describe-then-score verbaliser (src/test/20261125_artelingo_held_test/DECISION_RULE.md section 7 item 1) on a
 # DAS6 node, or on the local GPU under its lock. Launch from the CoSiR checkout:
 #   cluster launch --node node401 -- bash scripts/run_r6_verbalise.sh <job> --wordings W1,W2,W3,W4 [--start i --stop j]
-# <job> is a job-input folder written by r6_gpu_inputs.py, under $R6_JOB_ROOT (default /local/wding/r6_jobs), shipped
-# to the node by scripts/das6_sync_r6.py. Outputs go to outputs/r6_verbalise/<job> (R6_OUT overrides; give each shard
-# run from one checkout its own R6_OUT) and are fetched with `cluster pull --tag`.
+# <job> is a job-input folder written by r6_gpu_inputs.py, under $R6_JOB_ROOT (default /local/wding/r6_jobs); its
+# images are read by their neutral names from $R6_IMAGE_DIR (default /local/wding/r6_jobs/images; locally the staging
+# folder of r6_gpu_inputs.py). scripts/das6_sync_r6.py ships both. Outputs go to outputs/r6_verbalise/<job> (R6_OUT
+# overrides; give each shard run from one checkout its own R6_OUT) and are fetched with `cluster pull --tag`.
 # `--check-only` checks the inputs, loads the model and runs two episodes; `--check-only --no-model` stops before the
 # model (no GPU). The job reads no label, aspect name or candidate order and prints no metric.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-export COSIR_WIKIART_DIR="${COSIR_WIKIART_DIR:-/local/wding/Dataset/wikiart_proj/wikiart}"
+R6_IMAGE_DIR="${R6_IMAGE_DIR:-/local/wding/r6_jobs/images}"
 export HF_HUB_CACHE="${HF_HUB_CACHE_OVERRIDE:-/var/scratch/wding/cache/hub}"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 export OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1
@@ -47,16 +48,17 @@ for entry in "$snapshot"/*; do [[ -e "$entry" ]] || { echo "dangling: $entry" >&
 echo "model snapshot ok: $snapshot ($(ls "$snapshot" | wc -l) files)"
 
 total=0 missing=0
-while IFS= read -r rel; do
-    [[ -n "$rel" ]] || continue
+while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
     total=$((total + 1))
-    if [[ ! -f "$COSIR_WIKIART_DIR/$rel" ]]; then
+    [[ "$name" =~ ^[0-9a-f]{20}\.[a-z0-9]{1,5}$ ]] || fail "images.txt holds a name that is not neutral: $name"
+    if [[ ! -f "$R6_IMAGE_DIR/$name" ]]; then
         missing=$((missing + 1))
-        (( missing <= 5 )) && echo "missing image: $COSIR_WIKIART_DIR/$rel" >&2
+        (( missing <= 5 )) && echo "missing image: $R6_IMAGE_DIR/$name" >&2
     fi
 done < "$JOB_DIR/images.txt"
-echo "images: $total listed, $missing missing under $COSIR_WIKIART_DIR"
-(( total > 0 && missing == 0 )) || fail "$missing of $total job images missing under $COSIR_WIKIART_DIR"
+echo "images: $total listed, $missing missing under $R6_IMAGE_DIR"
+(( total > 0 && missing == 0 )) || fail "$missing of $total job images missing under $R6_IMAGE_DIR"
 echo "inputs ok"
 
-exec "$PY" "$F/r6_gpu_verbalise.py" --job-dir "$JOB_DIR" --out "$OUT" --image-root "$COSIR_WIKIART_DIR" "$@"
+exec "$PY" "$F/r6_gpu_verbalise.py" --job-dir "$JOB_DIR" --out "$OUT" --image-dir "$R6_IMAGE_DIR" "$@"

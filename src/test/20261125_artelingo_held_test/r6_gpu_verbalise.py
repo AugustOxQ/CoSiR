@@ -5,8 +5,9 @@ wording), at most 32 new tokens, batch size 1.
 The message. One user turn: "Group A:", its 4 pairs, "Group B:", its 4 pairs, then the wording (settings
 verbaliser.message). Pair i of a group is the image of row pairs_x_img[e, i-1] and the caption of row
 pairs_x_txt[e, i-1], in episode column order. Condition a shows pairs_a as Group A (the supports) and pairs_b as Group B
-(the contrasts); condition b swaps them. Images reach the processor as file paths under the WikiArt root (the processor
-loads the pixels; the path is never in the text).
+(the contrasts); condition b swaps them. Images reach the processor as files <image dir>/<image_name>, the neutral
+names of the manifest (the processor loads the pixels; no path is ever in the text). The image dir is
+/local/wding/r6_jobs/images on a node, the local staging folder of r6_gpu_inputs.py here.
 
 Inputs and outputs. The job folder holds rows_manifest.npz and verbalise_input.npz (r6_gpu_inputs.py); nothing else is
 read. Each call writes one line {"seed", "episode_index", "condition", "wording", "answer"} (the raw answer,
@@ -33,7 +34,7 @@ import r6_gpu_common as G  # noqa: E402
 
 FIELDS = ("seed", "episode_index", "condition", "wording", "answer")
 KEY_FIELDS = FIELDS[:4]
-DEFAULT_IMAGE_ROOT = "/data/PDD/wikiart_proj/wikiart"
+
 
 
 # ---------------------------------------------------------------- the message (rule section 7 item 1)
@@ -63,9 +64,9 @@ def build_messages(group_a, group_b, wording, settings) -> list:
     return [{"role": tm["role"], "content": content}]
 
 
-def episode_messages(inp, manifest, pos, condition, wording_id, settings, image_root) -> list:
+def episode_messages(inp, manifest, pos, condition, wording_id, settings, image_dir) -> list:
     (ai, at), (bi, bt) = group_rows(inp, pos, condition, settings)
-    return build_messages(manifest.items(ai, at, image_root), manifest.items(bi, bt, image_root),
+    return build_messages(manifest.items(ai, at, image_dir), manifest.items(bi, bt, image_dir),
                           settings["verbaliser"]["wordings"][wording_id], settings)
 
 
@@ -80,7 +81,7 @@ def call_key(inp, pos, wording, condition) -> tuple:
     return (int(inp["seed"]), int(inp["episode_index"][pos]), condition, wording)
 
 
-def run_calls(inp, manifest, settings, out_dir, wordings, start, stop, generate, image_root,
+def run_calls(inp, manifest, settings, out_dir, wordings, start, stop, generate, image_dir,
               every=G.CHECKPOINT_EVERY, max_calls=None, log=print) -> dict:
     """Call ``generate(messages) -> str`` for every planned key not yet in <out_dir>/phrases_<w>.jsonl; checkpoint
     every ``every`` calls. ``max_calls`` stops early (tests)."""
@@ -95,7 +96,7 @@ def run_calls(inp, manifest, settings, out_dir, wordings, start, stop, generate,
         f"{len(todo)} to run")
     n, t0 = 0, time.time()
     for p, w, c in todo:
-        answer = generate(episode_messages(inp, manifest, p, c, w, settings, image_root))
+        answer = generate(episode_messages(inp, manifest, p, c, w, settings, image_dir))
         G._require(isinstance(answer, str), f"the model returned {type(answer).__name__}, not text")
         seed, ep, _, _ = call_key(inp, p, w, c)
         stores[w].add({"seed": seed, "episode_index": ep, "condition": c, "wording": w, "answer": answer}, allowed[w])
@@ -125,16 +126,16 @@ def make_generate(processor, model, settings):
 
 # ---------------------------------------------------------------- command line
 
-def check_images(inp, manifest, start, stop, image_root) -> int:
-    """Every image the calls of [start, stop) show exists under ``image_root``."""
+def check_images(inp, manifest, start, stop, image_dir) -> int:
+    """Every image the calls of [start, stop) show exists as <image_dir>/<image_name>."""
     rows = set()
     for k in ("pairs_a_img", "pairs_b_img"):
         rows.update(inp[k][start:stop].ravel().tolist())
-    rels = sorted({str(manifest.image_relpath[i]) for i in manifest.index(sorted(rows)).tolist()})
-    missing = [r for r in rels if not (Path(image_root) / r).is_file()]
-    G._require(not missing, f"{len(missing)} of {len(rels)} images missing under {image_root}, "
+    names = sorted({str(manifest.image_name[i]) for i in manifest.index(sorted(rows)).tolist()})
+    missing = [r for r in names if not (Path(image_dir) / r).is_file()]
+    G._require(not missing, f"{len(missing)} of {len(names)} images missing under {image_dir}, "
                             f"e.g. {missing[:3]}")  # guard:images
-    return len(rels)
+    return len(names)
 
 
 def parse_args(argv=None):
@@ -148,7 +149,8 @@ def parse_args(argv=None):
                     help="check inputs, images and snapshot, then run the first wording on two episodes")
     ap.add_argument("--no-model", action="store_true", help="with --check-only: stop before loading the model")
     ap.add_argument("--hub-cache", default=None, help="HF hub cache (default $HF_HUB_CACHE)")
-    ap.add_argument("--image-root", default=os.environ.get("COSIR_WIKIART_DIR") or DEFAULT_IMAGE_ROOT)
+    ap.add_argument("--image-dir", default=os.environ.get("R6_IMAGE_DIR") or G.DEFAULT_IMAGE_DIR,
+                    help="folder of the images under their neutral names (default $R6_IMAGE_DIR, else the node's)")
     args = ap.parse_args(argv)
     args.wordings = [w for w in args.wordings.split(",") if w]
     if not args.wordings or len(set(args.wordings)) != len(args.wordings) \
@@ -170,7 +172,7 @@ def main(argv=None) -> int:
     n = len(inp["episode_index"])
     stop = n if args.stop is None else args.stop
     G._require(stop <= n, f"--stop {stop} is beyond the input's {n} episodes")
-    n_images = check_images(inp, manifest, args.start, stop, args.image_root)
+    n_images = check_images(inp, manifest, args.start, stop, args.image_dir)
     snap = G.snapshot_dir(G.hub_cache(args.hub_cache), settings["model"]["id"], settings["model"]["snapshot"])
     snap_info = G.check_snapshot(snap)
     fingerprint = {"job": "r6_gpu_verbalise", "model_id": settings["model"]["id"],
@@ -185,7 +187,7 @@ def main(argv=None) -> int:
     if args.check_only:
         first = min(args.start + 2, stop)
         for p, w, c in plan(inp, args.start, first, args.wordings[:1]):
-            episode_messages(inp, manifest, p, c, w, settings, args.image_root)
+            episode_messages(inp, manifest, p, c, w, settings, args.image_dir)
         v = G.check_imports()
         print(f"imports ok: torch {v['torch']}, transformers {v['transformers']}", flush=True)
         if args.no_model:
@@ -197,7 +199,7 @@ def main(argv=None) -> int:
         processor, model = G.load_model(snap, settings)
         load_s = time.time() - t0
         res = run_calls(inp, manifest, settings, out, args.wordings[:1], args.start, first,
-                        make_generate(processor, model, settings), args.image_root, every=1)
+                        make_generate(processor, model, settings), args.image_dir, every=1)
         import torch
         G.end_provenance(out, prov, status="check-only", model_load_s=load_s, versions=G.versions(),
                          peak_gpu_mem_bytes=int(torch.cuda.max_memory_allocated()), **res)
@@ -211,7 +213,7 @@ def main(argv=None) -> int:
     load_s = time.time() - t0
     G.update_provenance(out, prov, model_load_s=load_s, versions=G.versions())
     res = run_calls(inp, manifest, settings, out, args.wordings, args.start, stop,
-                    make_generate(processor, model, settings), args.image_root)
+                    make_generate(processor, model, settings), args.image_dir)
     import torch
     G.end_provenance(out, prov, status="complete" if res["complete"] else "partial",
                      peak_gpu_mem_bytes=int(torch.cuda.max_memory_allocated()), **res)
