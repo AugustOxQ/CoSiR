@@ -1,0 +1,105 @@
+{
+  "what": "Round 6 describe-then-score (DTS) settings: every setting of DECISION_RULE.md section 7 (the rule with rule_sha256), plus the details the rule leaves open, listed under agent_defaults. The GPU jobs (r6_gpu_verbalise.py, r6_gpu_listing.py) and the CPU scorer read this file; its SHA-256 is recorded in every output.",
+  "rule_sha256": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+  "model": {
+    "id": "Qwen/Qwen3-VL-8B-Instruct",
+    "snapshot": "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
+    "dtype": "bfloat16",
+    "device": "cuda",
+    "processor_kwargs": {"max_pixels": 200704},
+    "max_pixels_source": "256*28*28, the 8B probe's processor setting (src/eval/mllm_reranker.py, src/test/20261106_mllm_probe_8b/)",
+    "loading": "AutoProcessor.from_pretrained(<snapshot dir>, max_pixels=200704); Qwen3VLForConditionalGeneration.from_pretrained(<snapshot dir>, torch_dtype=torch.bfloat16).to('cuda').eval(); library-default attention, as src/eval/mllm_reranker.py"
+  },
+  "generation": {
+    "decoding": "greedy",
+    "generate_kwargs": {"do_sample": false, "num_beams": 1, "temperature": null, "top_p": null, "top_k": null},
+    "why_explicit": "the snapshot's generation_config.json samples by default (do_sample true, temperature 0.7, top_k 20, top_p 0.8)",
+    "greedy_check": "every generated token up to and including the first end-of-sequence token equals the argmax of the scores of its step (recorded by a logits processor); every later position is the pad token",
+    "decode": "tokenizer.decode(the tokens generated after the prompt, skip_special_tokens=True); stored raw, unnormalised",
+    "verbaliser": {"max_new_tokens": 32, "batch_size": 1},
+    "listing": {"max_new_tokens": 128, "batch_size": 16, "padding_side": "left"}
+  },
+  "verbaliser": {
+    "calls": "one call per (episode, condition, wording)",
+    "conditions": {
+      "a": {"group_a": "pairs_a", "group_b": "pairs_b"},
+      "b": {"group_a": "pairs_b", "group_b": "pairs_a"}
+    },
+    "pair": "pair i (1 to 4) of a group is (the image of row pairs_x_img[e, i-1], the caption of row pairs_x_txt[e, i-1]), in episode column order",
+    "message": {
+      "role": "user",
+      "layout": "one user turn: Group A header, its 4 pairs (each: pair label, image, pair caption), Group B header, its 4 pairs, then the wording; text parts are joined by the chat template with no separator",
+      "group_header": "Group {group}:\n",
+      "pair_label": "Pair {i}: image",
+      "pair_caption": "\ncaption: {caption}\n",
+      "wording": "\n{wording}"
+    },
+    "wordings": {
+      "W1": "Each pair is a painting and a caption. What do the pairs in Group A share that the pairs in Group B lack? Answer with a short phrase.",
+      "W2": "In each pair of Group A, the painting and the caption match in one respect. In each pair of Group B, they match in a different respect. In a short phrase, name the respect in which the pairs of Group A match.",
+      "W3": "The pairs in Group A count as similar; the pairs in Group B do not count as similar under the same criterion. In a short phrase, state the criterion.",
+      "W4": "In at most five words, name the property that links the two items of each pair in Group A but not those in Group B."
+    },
+    "phrase": "the first line of the answer (first_line), normalised (normalisation)"
+  },
+  "first_line": "s = answer.strip(); the first element of s.splitlines(), or '' when s is empty (Python str.strip, str.splitlines)",
+  "normalisation": {
+    "steps": [
+      "lower-case: s.lower()",
+      "whitespace: every run matched by re.sub(r'\\s+', ' ', s) (Unicode whitespace) becomes one space",
+      "ends: repeatedly remove the first and the last character while it is whitespace (c.isspace()) or Unicode punctuation (unicodedata.category(c) starts with 'P')"
+    ],
+    "applies_to": "the phrase (the first line of the verbaliser's answer) and every listing line after its list marker is removed"
+  },
+  "listing": {
+    "prompt": "List {K} distinct values of the following criterion for describing paintings: {phrase}. One value per line, no numbering.",
+    "K": [8, 16],
+    "K_format": "K written as a number (str(int(K)))",
+    "phrase": "the normalised phrase",
+    "message": "one user turn whose content is one text part, the prompt; text only, no image",
+    "marker_regex": "^\\s*(\\d+[.)]|[-*•])\\s*",
+    "parse": "for each line of answer.splitlines(): remove one leading list marker (re.sub(marker_regex, '', line, count=1)), then normalise; drop empty lines and repeated lines (the first occurrence kept); keep the first K",
+    "min_values": 2,
+    "cache": "one listing per (normalised phrase, K), reused across runs"
+  },
+  "parsing_failure": "a phrase that is empty, or whose listing gives fewer than 2 values, gives T_DTS^c = 0 on that episode and condition (the fused score is then cosine); counted per setting and condition and reported",
+  "scorer": {
+    "name": "CRL (Liu et al., NeurIPS 2025)",
+    "embedding": "each value as written (the normalised string, no template) through the CLIP B/32 text encoder of the feature cache (openai/clip-vit-base-patch32; src/data/feature_extract.ClipB32), unit-normalised; the K embeddings form the basis",
+    "projection": "each item maps to the vector of its cosines with the K value embeddings: image items through the cached CLIP image features, caption items through the cached text features (R = I T^T on unit vectors)",
+    "term": "T_DTS^c(query, candidate) = the cosine of the two vectors, with the phrase of condition c"
+  },
+  "fusion": "T_DTS^c fused with cosine by fused_scores (zfuse); lambda by crossfit_lambda (LAMBDA_GRID with its edge extension)",
+  "controls": {
+    "DTS-CF": "the mean of z(T_DTS^a) and z(T_DTS^b) per ranking row, averaged in float64 then cast to float32, equal in both conditions (asserted), z-scored again inside zfuse, fused by crossfit_lambda",
+    "DTS-N": {
+      "rule": "the phrase replaced by the target aspect's name (privileged), then listed and scored as DTS",
+      "phrase_of_target_aspect": {"emotion": "emotion", "style": "style", "genre": "genre"}
+    }
+  },
+  "seed42_order": {
+    "rows": "selection rows only, seed 42, 4,096 episodes per pair (12,288)",
+    "sanity": "first DTS-N at K 8 and K 16 on all 12,288 episodes; its pooled condition gain point (cross-fitted fused) must be above 0 at each K",
+    "tuning_settings": ["W1 K8", "W1 K16", "W2 K8", "W2 K16", "W3 K8", "W3 K16", "W4 K8", "W4 K16"],
+    "tuning_subset_first_per_pair": 1024,
+    "tuning_score": "(R@1 + condition gain) / 2 of the cross-fitted fused scores on the 3,072 tuning episodes; ties go to the first setting in tuning_settings order",
+    "chosen": "the chosen setting runs on all 12,288 episodes; its lambda picks per half, DTS-CF's and DTS-N's (at the chosen K), the wordings, the model revision, the parsing-failure counts and every setting's score go to results/dts_seed42.json; held episodes use the chosen setting and these picks"
+  },
+  "built": "DTS counts as built when the sanity has passed and the chosen setting has run on all 12,288 seed-42 episodes",
+  "stop": {
+    "rule": "DTS's hit count is the sum over the 12,288 seed-42 episodes, pooled over the three pairs, of 4*R@1 of its cross-fitted fused scores (r2_fusion.as_int4); if it is greater than AFF's, the build stops before the read and the user decides; only DTS counts",
+    "aff_hits_seed42": 9406,
+    "n_rankings_seed42": 49152
+  },
+  "budget": {"hours": 24, "from": "the first commit of DTS code (Amsterdam time in the round log)"},
+  "agent_defaults": [
+    "verbaliser.message: the group headers 'Group A:' and 'Group B:', each pair as the 8B probe's pair block ('Pair i: image', the image, '\\ncaption: <caption>\\n'), pair numbers restarting at 1 in Group B, and one blank line before the wording",
+    "first_line: the answer stripped of surrounding whitespace, then split by str.splitlines",
+    "normalisation: the Python operations of its steps (lower(), \\s+ runs, Unicode category P* and whitespace stripped at both ends)",
+    "generation.verbaliser.batch_size 1 (no padding)",
+    "generation.listing.batch_size 16 with left padding, inputs in the listing input's order",
+    "generation.generate_kwargs and greedy_check (the rule says greedy; the snapshot's defaults sample)",
+    "generation.decode: skip_special_tokens=True",
+    "model.loading from the pinned snapshot directory of the hub cache"
+  ]
+}
