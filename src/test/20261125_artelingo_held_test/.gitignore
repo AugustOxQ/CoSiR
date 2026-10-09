@@ -1,0 +1,11 @@
+# Round 6: run outputs stay local; the committed copies (dts_settings.json, smoke_record.json,
+# smoke_record_fix1.json, held_started.json) are .json files in this folder, so .json is re-included here
+# (the repo root ignores *.json). Files under results/ and cache/ stay ignored whatever their type.
+results/
+cache/
+__pycache__/
+*.npz
+*.npy
+*.pt
+*.log
+!*.json
