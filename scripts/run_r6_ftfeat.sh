@@ -7,7 +7,8 @@
 # $R6_FT_CACHE (r6_ft_cache.py; optional) or are decoded from the neutral images in $R6_IMAGE_DIR (default
 # /local/wding/r6_jobs/images; scripts/das6_sync_r6.py --images ships them). The checkpoints are the selected clipft
 # runs' best_params.pt: $R6_FT_CKPT_DIR/LB_lr3e-5.pt and $R6_FT_CKPT_DIR/LoRA_lr1e-4.pt (default
-# /local/wding/r6_jobs/ckpt; das6_sync_r6.py does not ship them: copy them there first, 42 MB and 7.6 MB).
+# /local/wding/r6_jobs/ckpt; scripts/das6_sync_r6.py --ckpt LB_lr3e-5=<run>/best_params.pt --ckpt LoRA_lr1e-4=<run>/best_params.pt ships them,
+# 42 MB and 7.6 MB, with the images and job folder in one call).
 # Outputs go to outputs/r6_ft/<job> (R6_OUT overrides) and are fetched with `cluster pull --tag`: features_<variant>.npz
 # with rows, img, txt (raw projections, float32). `--check-only` checks the inputs and checkpoints and encodes 4 rows.
 # The job reads no label, aspect name or candidate order and prints no metric.
