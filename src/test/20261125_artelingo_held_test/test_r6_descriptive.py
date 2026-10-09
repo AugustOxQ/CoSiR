@@ -184,6 +184,8 @@ def build_dir(out, smoke, readers, rng_seed):
         shas[s] = dict(eps.sha)
     if not smoke:
         write_json(out / "held_started.json", started_record(shas))
+        # ticket 14: real mode requires every external job listed; here none was run
+        write_json(out / RD.XT.SOURCES_NAME, {k: {"missing": "not run in this test"} for k in RD.XT.SOURCE_KEYS})
     np.savez(out / "held_arrays.npz", **D.arrays_from_scored(scored, md.seeds))
     extra = {"episodes_sha256": shas, "runner_sha256": "0" * 64, "module_sha256": {"run_r6_held.py": "1" * 64}}
     write_json(out / "held_pass.json", ST.pass_record(scored, md.name, md.seeds, extra))

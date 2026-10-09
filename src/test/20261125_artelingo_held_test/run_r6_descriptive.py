@@ -21,6 +21,8 @@ In this order (results/, or results/smoke/ with --smoke, results/smoke/NAME/ wit
          held_started.json (held_started_reserve.json) of this folder holds no attempt of this rule that produced the
          pass (the last attempt whose "fix" flag matches the pass file: set for held_pass_fix1.json, unset otherwise)
          with its coef_sha256.
+       - in real and reserve mode, external_sources.json of the results folder is missing or lacks one of its four
+         entries dts, ft_lp, ft, mllm (a job not run is written {"missing": "<reason>"}; r6_external.require_sources).
   2. Inputs, bound to the pass the verdict rests on (exit 5 on a contradiction; nothing written):
        - held_arrays<sfx>.npz (sfx of the pass file: "", "_fix1", "_reserve"; contracts section 7) reproduces the
          pass file's n_j, point and 95% interval of P1 to P7, S1, S2 exactly (r6_descriptive.check_pass);
@@ -312,6 +314,15 @@ def bundle_factory(env, smoke: bool):
     return lambda seed: held_bundle(env, seed)
 
 
+def sources_check(out, smoke: bool) -> None:
+    """Step 1's last refusal (controller, ticket 14's review): in real and reserve mode external_sources.json and its
+    four entries must exist (r6_external.require_sources); refused (exit 4) before any input is loaded."""
+    try:
+        XT.require_sources(out, smoke)
+    except XT.SourcesRefused as e:
+        refuse(str(e))
+
+
 def external_seed_rows(env, seed, ctx, bundle, episodes, out, smoke: bool) -> dict:
     """Ticket 14's per-seed hook, called inside the seed loop after seed_inputs, while the seed's RowContext ``ctx``
     (masked img and txt, cos, pooled, parity, pair_index: what r6_dts.held_dts_scores takes) and its bundle exist;
@@ -319,7 +330,10 @@ def external_seed_rows(env, seed, ctx, bundle, episodes, out, smoke: bool) -> di
     external_sources.json names the GPU outputs to join). -> {name: {"pa": per_anchor dict of this seed (or None: no
     row this seed), "label": str, "info": dict}} for DTS, DTS-CF, DTS-N, FT-LP, FT-LB, FT-LoRA and, on the mode's
     first seed only, MLLM (r6_external.seed_rows). Prints the names only."""
-    rows = XT.seed_rows(env, seed, ctx, episodes, out, smoke)
+    try:
+        rows = XT.seed_rows(env, seed, ctx, episodes, out, smoke)
+    except XT.SourcesRefused as e:
+        refuse(str(e))
     have = [n for n, x in rows.items() if x.get("pa") is not None]
     say(f"seed {seed}: external rows {', '.join(have) or 'none'}; missing "
         f"{', '.join(n for n in rows if n not in have) or 'none'}")
@@ -381,6 +395,7 @@ def after_verdict(out, smoke, vr, env=None, bundle_fn=None, picks=None, lambdas=
     md = mode_of(smoke)
     records = Path(records or R.RESULTS)
     coef = coef_records(out, smoke, vr, records)
+    sources_check(out, smoke)
     inp = load_inputs(out, smoke, vr)
     picks_sha = None
     if picks is None:

@@ -11,9 +11,9 @@ per seed, per pair):
                       failures per seed and condition (and totals), the phrases' most frequent wordings (per seed and
                       pooled, overall and per pair and condition), the setting, wording, K and picks.
   FT-LP               the LP lr 3e-4 epoch 9 maps (best_params.pt of the clipft run, SHA-256 pinned) applied on the
-                      CPU to the seed's cached CLIP features (the RowContext's masked img and txt) as nn.Linear without bias,
-                      x W^T, computed in float64 and rounded to float32 (batch-independent; within float32 rounding of
-                      the run's own GPU features, test_r6_external.py).
+                      CPU to the seed's cached CLIP features (the RowContext's masked img and txt) as nn.Linear
+                      without bias, x W^T, computed in float64 and rounded to float32 (batch-independent; within
+                      float32 rounding of the run's own GPU features, test_r6_external.py).
   FT-LB, FT-LoRA      features_<variant>.npz of the FT feature job (r6_gpu_ft_features.py), joined by row id.
                       FT rows are scored as ft_eval.score_features: per_anchor(cosine_scores(EvalInputs(img, txt), ep))
                       with the features placed by row id in arrays of all rows (NaN elsewhere, as ft_eval
@@ -31,8 +31,11 @@ entry are recorded with every row):
    "ft":    {"job": path, "out": [paths]},
    "mllm":  {"job": path, "out": [paths]}}
   Relative paths resolve against the main checkout (r6_common.MAIN). Any entry may instead be {"missing": "<reason>"}.
-  An absent entry (or an absent file) marks its rows "missing" with the reason; so do an FT variant whose features file
-  no listed folder holds, and a seed with no listed verbaliser job or output. A missing row has no number: its pa is
+  In real and reserve mode the file and all four entries must exist: a job not run is written as {"missing":
+  "<reason>"}, and an absent file or entry is refused (SourcesRefused: run_r6_descriptive exits 4 before any bundle,
+  writing nothing; controller, ticket 14's review). In smoke mode an absent entry (or file) marks its rows "missing".
+  A {"missing"} entry marks its rows "missing" with the reason; so do an FT variant whose features file no listed
+  folder holds, and a seed with no listed verbaliser job or output. A missing row has no number: its pa is
   dropped, and so is that of a scorer that was not computed on every seed it is reported on (MLLM: the first seed;
   the others: every seed). A listed path that does not exist, an unknown key, or any failed join stops the pass
   (AssertionError, exit 5): descriptive.json is written once, so nothing is guessed.
@@ -49,7 +52,13 @@ Joins (C6; rule section 8 item 3: the GPU outputs are joined to the episodes onl
   - MLLM: the job holds every episode of the seed (episode_index 0 .. n - 1) with the episode file's query row, pairs
     and candidates in the shown order of its permutations; the permutations are the probe's formula and the job
     record's SHA-256; the merged scores hold each episode index exactly once (twice in one file, or twice across
-    folders with different scores, raises; an index the job does not hold raises; one missing raises).
+    folders with different scores, raises; an index the job does not hold raises; one missing raises). The listed
+    folders agree on model_id, snapshot, max_pixels and instruction_sha256, which equal the probe's recorded setting
+    (dts_settings.json, mllm_reranker.INSTRUCTION); their fingerprints are recorded with the row.
+  - FT's fingerprint image_source (the r6 uint8 cache or decoded images) is recorded with the row, for the report.
+  - DTS's value embeddings: the encoder's identity (r6_dts.encoder_meta) equals the tuning record's "embedder", checked
+    for a loaded cache and before the first encode; the tuning stages' own cache (dts_value_embeddings.npz beside the
+    record, or in results/) is refused as the descriptive cache (save() would rewrite a file the record hashes).
 
 Guards carry a `# guard:<name>` marker; test_r6_external.py deletes each on a copy and shows that its scenario then
 goes through.
@@ -70,6 +79,7 @@ import r6_episodes as E  # noqa: E402
 import r6_gpu_common as G  # noqa: E402
 import r6_gpu_ft_features as FF  # noqa: E402
 import r6_gpu_inputs as I  # noqa: E402
+import r6_gpu_rerank as RR  # noqa: E402  (imports neither src nor torch)
 import r6_gpu_t12 as T  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -106,14 +116,27 @@ N_CAND = 13
 DIM = 512
 TOP_N, TOP_N_CELL = 10, 5
 STATE = "_r6_external"                 # the run's state, kept on env between the two hooks
-RERANK_CONDITIONS, RERANK_DIRECTIONS = G.CONDITIONS, I.DIRECTIONS     # the reranker's (cond, dir) axis order
+RERANK_CONDITIONS, RERANK_DIRECTIONS = G.CONDITIONS, RR.DIRECTIONS    # the reranker's (cond, dir) axis order
+TUNING_EMB = "dts_value_embeddings.npz"                                # run_r6_dts.EMBEDDINGS: the tuning stages' cache
 SCORING = "plain cosine of L2-normalised features placed by row id (ft_eval.score_features), per_anchor"
+RR_MODEL_KEYS = ("model_id", "snapshot", "max_pixels", "instruction_sha256")
 encoder_factory = None                 # the value-string encoder of DTS (None: r6_dts.clip_cpu); tests set a fake
 
 if not (all(FF.SELECTED[v] == {"lr": FT_CKPTS[v]["lr"], "epoch": FT_CKPTS[v]["epoch"]} for v in FT_VARIANTS)
-        and set(RERANK_CONDITIONS) == set(CONDITIONS) and set(RERANK_DIRECTIONS) == set(DIRECTIONS)
+        and tuple(RERANK_CONDITIONS) == tuple(CONDITIONS)
+        and tuple(RERANK_DIRECTIONS) == tuple(I.DIRECTIONS) == tuple(DIRECTIONS)
         and set(DTS_ROWS) == set(DT.SCORERS)):
     raise ImportError("r6_external: the selected fine-tunes, the reranker's axes or DTS's scorers differ")
+
+
+class SourcesRefused(Exception):
+    """Real and reserve mode: external_sources.json, or one of its four entries, is absent (run_r6_descriptive
+    refuses: exit 4, nothing written)."""
+
+
+def _plain(x):
+    """The value as JSON reads it back."""
+    return json.loads(json.dumps(x))
 
 
 def _require(cond, msg, exc=AssertionError):
@@ -161,8 +184,25 @@ def load_sources(out) -> SimpleNamespace:
     return SimpleNamespace(path=path, present=True, sha256=R.sha256_bytes(raw), entries=rec)
 
 
+def require_sources(out, smoke) -> SimpleNamespace:
+    """load_sources, and in real and reserve mode (not smoke) the file and each of its four entries must exist: a job
+    not run is written as {"missing": "<reason>"}, never left out (controller, ticket 14's review). Raises
+    SourcesRefused (run_r6_descriptive: exit 4, before any bundle, nothing written)."""
+    src = load_sources(out)
+    if not smoke:
+        _require(src.present, f"{SOURCES_NAME} is missing in {Path(out).name}/: in real and reserve mode every "
+                              f"external job ({', '.join(SOURCE_KEYS)}) is listed, a job not run as "
+                              f"{{\"missing\": \"<reason>\"}}", SourcesRefused)  # guard:sources_required
+        absent = [k for k in SOURCE_KEYS if k not in src.entries]
+        _require(not absent, f"{SOURCES_NAME} has no {', '.join(absent)} entry: in real and reserve mode a job not "
+                             f"run is written as {{\"missing\": \"<reason>\"}}",
+                 SourcesRefused)  # guard:sources_required
+    return src
+
+
 def missing_reason(src, key):
-    """The reason the family ``key`` has no rows (None: its entry lists outputs to join)."""
+    """The reason the family ``key`` has no rows (None: its entry lists outputs to join). An absent file or entry
+    reaches here only in smoke mode (require_sources)."""
     if not src.present:
         return f"no {SOURCES_NAME} in the results folder: no output of the {key} job was given (job not run)"
     e = src.entries.get(key)
@@ -190,6 +230,18 @@ def _keys(entry, need, allowed, what):
 
 # ---------------------------------------------------------------- DTS, DTS-CF, DTS-N
 
+def checked_encoder(factory, want):
+    """The value encoder's factory, its identity (r6_dts.encoder_meta: model commit, library versions, ...) asserted
+    equal to the tuning record's "embedder" before its first encode."""
+    def make():
+        enc = (factory or DT.clip_cpu)()
+        meta = _plain(DT.encoder_meta(enc))
+        _require(meta == want, f"the value encoder {meta} is not the tuning record's {want} (the values must be "
+                               f"embedded as on seed 42)")  # guard:dts_encoder_meta
+        return enc
+    return make
+
+
 def load_dts(entry, out, smoke) -> SimpleNamespace:
     """The frozen record (and its passed stop record), the listings, the value embedder, and the verbaliser jobs and
     output folders, each output joined to its listed job by its fingerprint's input SHA-256s."""
@@ -203,7 +255,8 @@ def load_dts(entry, out, smoke) -> SimpleNamespace:
     _require(rec.get("stage") == "chosen" and rec.get("rule_sha256") == R.RULE_SHA256 and seed_ok
              and rec.get("n_episodes") == n_want and rec.get("settings_sha256") == settings_sha
              and rec.get("wording_id") in DT.WORDINGS and rec.get("K") in DT.KS
-             and rec.get("setting") == DT.setting_name(rec.get("wording_id"), rec.get("K") or 0),
+             and rec.get("setting") == DT.setting_name(rec.get("wording_id"), rec.get("K") or 0)
+             and isinstance(rec.get("embedder"), dict) and bool(rec["embedder"]),
              f"{rpath.name}: not the chosen stage's record of this rule on "
              f"{'a smoke seed' if smoke else 'seed 42'} ({n_want} episodes) with this "
              f"dts_settings.json")  # guard:dts_record
@@ -234,7 +287,15 @@ def load_dts(entry, out, smoke) -> SimpleNamespace:
         outs[d] = jobs[key]
     listings = DT.merge_listings(_paths(entry, "listing_out", "a listing output"), settings_sha)
     emb_path = resolve(entry["embeddings"]) if "embeddings" in entry else Path(out) / EMB_DEFAULT
-    embedder = DT.ValueEmbedder(emb_path, encoder_factory=encoder_factory)
+    tuning = {(rpath.parent / TUNING_EMB).resolve(), (R.RESULTS / TUNING_EMB).resolve()}
+    _require(emb_path.resolve() not in tuning,
+             f"{emb_path}: the tuning stages' value-embedding cache (its SHA-256 is in {rpath.name}; save() would "
+             f"rewrite it); give a copy or another path")  # guard:dts_tuning_cache
+    want = _plain(rec["embedder"])
+    embedder = DT.ValueEmbedder(emb_path, encoder_factory=checked_encoder(encoder_factory, want))
+    _require(embedder.meta is None or _plain(embedder.meta) == want,
+             f"{emb_path}: a cache made by the encoder {embedder.meta}, not the tuning record's "
+             f"{want}")  # guard:dts_cache_meta
     return SimpleNamespace(record=rec, record_path=rpath, record_sha256=R.sha256_bytes(raw), stop_path=spath,
                            stop_sha256=G.sha256_file(spath), settings=settings, settings_sha=settings_sha, jobs=jobs,
                            outs=outs, listings=listings, embedder=embedder, emb_path=emb_path, counts=Counter(),
@@ -408,7 +469,8 @@ def load_ft_features(folder, variant, job, job_rows, job_shas) -> SimpleNamespac
     _require(img.dtype == txt.dtype == np.float32 and img.shape == txt.shape == (len(rows), DIM)
              and bool(np.isfinite(img).all() and np.isfinite(txt).all()), f"{path}: img, txt not finite float32 "
                                                                          f"({len(rows)}, {DIM})")
-    return SimpleNamespace(folder=folder, path=path, sha256=sha, rows=rows, img=img, txt=txt)
+    return SimpleNamespace(folder=folder, path=path, sha256=sha, rows=rows, img=img, txt=txt,
+                           image_source=fp.get("image_source"), fingerprint=fp)
 
 
 def load_ft(entry, out, smoke) -> SimpleNamespace:
@@ -453,6 +515,8 @@ def ft_info(lp_or_ft, name) -> dict:
     f = lp_or_ft.variants[v]
     return {"checkpoint": {"sha256": FT_CKPTS[v]["sha256"], "lr": FT_CKPTS[v]["lr"], "epoch": FT_CKPTS[v]["epoch"]},
             "features": {"file": str(f.path), "sha256": f.sha256, "n_rows": int(len(f.rows))},
+            "image_source": f.image_source,         # disclosed with the row: the r6 uint8 cache or decoded images
+            "fingerprint": f.fingerprint,
             "job": {"folder": str(lp_or_ft.job), "files_sha256": dict(lp_or_ft.shas)}, "scoring": SCORING}
 
 
@@ -510,11 +574,22 @@ def load_mllm(entry, out, smoke) -> SimpleNamespace:
              and all((rec.get("files_sha256") or {}).get(f) == s for f, s in shas.items()),
              f"{pp.name}: not the job's recorded permutations (the probe's formula, job_record.json's "
              f"SHA-256s)")  # guard:mllm_perms
-    merged, files = {}, {}
-    for d in _paths(entry, "out", "a reranker output"):
+    merged, files, fps = {}, {}, {}
+    outs = _paths(entry, "out", "a reranker output")
+    for d in outs:
         fp = _json(d / "provenance.json").get("fingerprint") or {}
         _require(fp.get("job") == "r6_gpu_rerank" and fp.get("inputs_sha256") == shas,
                  f"{d}: not an output of the reranker job {job.name}")  # guard:mllm_out_job
+        fps[str(d)] = fp
+    models = {json.dumps([fp.get(k) for k in RR_MODEL_KEYS]) for fp in fps.values()}
+    _require(len(models) == 1, f"the listed reranker folders differ in {', '.join(RR_MODEL_KEYS)}: "
+                               f"{sorted(models)}")  # guard:mllm_same_model
+    model = rerank_model()
+    first = next(iter(fps.values()))
+    _require({k: first.get(k) for k in RR_MODEL_KEYS} == model,
+             f"the reranker outputs were made with {[first.get(k) for k in RR_MODEL_KEYS]}, not the probe's recorded "
+             f"setting {list(model.values())} (dts_settings.json, mllm_reranker.INSTRUCTION)")  # guard:mllm_model
+    for d in outs:
         idx, sc = load_rerank_scores(d / "scores.npz", inp["episode_index"])
         files[str(d)] = G.sha256_file(d / "scores.npz")
         for i, s in zip(idx.tolist(), sc):
@@ -522,7 +597,16 @@ def load_mllm(entry, out, smoke) -> SimpleNamespace:
                      f"{d}: episode {i} is held twice with different scores")  # guard:mllm_conflict
             merged[i] = s
     return SimpleNamespace(seed=seed, job=job, inp=inp, shas=shas, perms=perms, merged=merged, files=files,
-                           perms_sha256=rec["perms_sha256"])
+                           perms_sha256=rec["perms_sha256"], model=model, fingerprints=fps)
+
+
+def rerank_model() -> dict:
+    """The probe's recorded setting the reranker job reads (r6_gpu_rerank.main's fingerprint fields): the model id,
+    snapshot and max_pixels of dts_settings.json and the SHA-256 of mllm_reranker.INSTRUCTION."""
+    mm = G.load_settings()[0]["model"]
+    return {"model_id": mm["id"], "snapshot": mm["snapshot"],
+            "max_pixels": int(mm["processor_kwargs"]["max_pixels"]),
+            "instruction_sha256": RR.sha_text(RR.load_reranker_module().INSTRUCTION)}
 
 
 def mllm_seed(m, episodes, seed) -> dict:
@@ -530,8 +614,8 @@ def mllm_seed(m, episodes, seed) -> dict:
     p, n = episodes.pooled, len(episodes.pooled.anchor)
     inp = m.inp
     _require(int(seed) == m.seed and np.array_equal(inp["episode_index"], np.arange(n)),
-             f"{m.job}: holds {len(inp['episode_index'])} episodes, not the {n} of seed {seed} in "
-             f"order")  # guard:mllm_cover_job
+             f"{m.job}: a job of seed {m.seed} holding {len(inp['episode_index'])} episodes, not the {n} episodes of "
+             f"seed {seed} in order")  # guard:mllm_cover_job
     shown_rows = np.take_along_axis(np.broadcast_to(np.asarray(p.candidates)[:, None, None, :], m.perms.shape),
                                     m.perms, axis=-1)
     _require(np.array_equal(inp["query_row"], p.anchor) and np.array_equal(inp["cand_shown"], shown_rows)
@@ -549,7 +633,8 @@ def mllm_seed(m, episodes, seed) -> dict:
 
 def mllm_info(m) -> dict:
     return {"seed": m.seed, "job": {"folder": str(m.job), "files_sha256": dict(m.shas)},
-            "outputs_sha256": dict(m.files), "permutations_sha256": m.perms_sha256,
+            "outputs_sha256": dict(m.files), "permutations_sha256": m.perms_sha256, "model": dict(m.model),
+            "fingerprints": dict(m.fingerprints),
             "permutation": "default_rng([seed, i]).permuted(tile(arange(13), (2, 2, 1)), axis=-1), i the episode "
                            "index; letter j showed candidate column perm[j]"}
 
@@ -561,7 +646,7 @@ LOADERS = {"dts": load_dts, "ft_lp": load_lp, "ft": load_ft, "mllm": load_mllm}
 
 def new_state(out, smoke) -> SimpleNamespace:
     """Sources read and every listed family loaded and joined once (a str: the reason the family is missing)."""
-    src = load_sources(out)
+    src = require_sources(out, smoke)
     st = SimpleNamespace(out=Path(out), smoke=bool(smoke), seeds=mode_seeds(smoke), src=src, fam={}, seen=[])
     for key in SOURCE_KEYS:
         reason = missing_reason(src, key)
@@ -584,17 +669,25 @@ def _missing(reason) -> dict:
 
 def seed_rows(env, seed, ctx, episodes, out, smoke) -> dict:
     """run_r6_descriptive.external_seed_rows: {name: {"pa", "label", "info"}} of one seed (MLLM on the first seed
-    only). A listed input that cannot be read (a missing file in a listed folder, a malformed JSON or npz) stops the
-    pass like a failed join (AssertionError: exit 5), never a crash."""
+    only). Stops like a failed join (AssertionError: exit 5), never a crash: a listed input that cannot be read while
+    the sources are loaded (a missing file in a listed folder, a malformed JSON or npz) is reported as such, an error
+    while the rows are computed as a computation error. SourcesRefused passes through (exit 4)."""
+    seed = int(seed)
     try:
-        return _seed_rows(env, int(seed), ctx, episodes, out, smoke)
+        st = run_state(env, seed, out, smoke)
     except (OSError, KeyError, ValueError, TypeError) as e:
         raise AssertionError(f"external rows of seed {seed}: a listed input could not be read: "
                              f"{type(e).__name__}: {e}") from e
+    try:
+        return _seed_rows(st, seed, ctx, episodes)
+    except OSError as e:
+        raise AssertionError(f"external rows of seed {seed}: a file could not be read or written: "
+                             f"{type(e).__name__}: {e}") from e
+    except (KeyError, ValueError, TypeError) as e:
+        raise AssertionError(f"external rows of seed {seed}: the computation failed: {type(e).__name__}: {e}") from e
 
 
-def _seed_rows(env, seed, ctx, episodes, out, smoke) -> dict:
-    st = run_state(env, seed, out, smoke)
+def _seed_rows(st, seed, ctx, episodes) -> dict:
     st.seen.append(seed)
     p = episodes.pooled
     _require(int(ctx.seed) == seed == int(episodes.seed) and int(ctx.n) == len(p.anchor)

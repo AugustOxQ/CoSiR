@@ -15,6 +15,7 @@ same rows. Guards are removed on copies in tmp_path, never in place.
         src/test/20261125_artelingo_held_test/test_r6_external.py
 """
 import ast
+import hashlib
 import importlib.util
 import inspect
 import itertools
@@ -49,7 +50,7 @@ import torch  # noqa: E402
 from src.eval.aspect_episodes import AspectEpisodes, concat_episodes, episodes_sha256  # noqa: E402
 from src.eval.aspect_metrics import CONDITIONS, DIRECTIONS, METRICS, per_anchor  # noqa: E402
 from src.eval.aspect_scorers import EvalInputs, cosine_scores  # noqa: E402
-from src.eval.mllm_reranker import unpermute  # noqa: E402
+from src.eval.mllm_reranker import INSTRUCTION, unpermute  # noqa: E402
 
 SETTINGS, SETTINGS_SHA = DT.load_settings()
 W, K = "W2", 8
@@ -160,7 +161,8 @@ def failures_of(seed, n):
 def write_record(d, seed, n_episodes):
     """A chosen-stage record (run_r6_dts.stage_chosen's fields the descriptive pass reads) and its passed stop."""
     rec = {"stage": "chosen", "seed": seed, "rule_sha256": R.RULE_SHA256, "settings_sha256": SETTINGS_SHA,
-           "setting": f"{W} K{K}", "wording_id": W, "K": K, "n_episodes": n_episodes, "picks": PICKS}
+           "setting": f"{W} K{K}", "wording_id": W, "K": K, "n_episodes": n_episodes, "picks": PICKS,
+           "embedder": dict(FakeEncoder.meta)}
     path = Path(d) / RDTS.chosen_name(seed)
     write_json(path, rec)
     write_json(Path(d) / RDTS.STOP, {"stage": "stop", "seed": seed, "built": True, "stop": False,
@@ -222,7 +224,7 @@ def write_ft_out(d, job_shas, feats, ckpt=None):
         done[v] = G.sha256_file(d / f"features_{v}.npz")
     fp = {"job": "r6_gpu_ft_features", "variants": list(feats), "selected": FF.SELECTED,
           "ckpt_sha256": ckpt or {v: XT.FT_CKPTS[v]["sha256"] for v in XT.FT_VARIANTS},
-          "scripts_sha256": {"x.py": "0" * 64}, "inputs_sha256": job_shas}
+          "scripts_sha256": {"x.py": "0" * 64}, "inputs_sha256": job_shas, "image_source": "r6_ft_cache"}
     G.write_json(d / "provenance.json", {"fingerprint": fp, "runs": [{"status": "complete",
                                                                        "features_sha256": done}]})
     return d
@@ -249,12 +251,18 @@ def write_rr_job(d, eps) -> SimpleNamespace:
     return SimpleNamespace(path=d, shas=js, perms=perms, arrays=arrays)
 
 
-def write_rr_out(d, job_shas, index, shown):
+RR_MODEL = {"model_id": SETTINGS["model"]["id"], "snapshot": SETTINGS["model"]["snapshot"],
+            "max_pixels": 256 * 28 * 28, "instruction_sha256": hashlib.sha256(INSTRUCTION.encode("utf-8")).hexdigest()}
+
+
+def write_rr_out(d, job_shas, index, shown, **model):
+    """scores.npz and provenance.json as r6_gpu_rerank writes them (its fingerprint's fields)."""
     d.mkdir(parents=True)
     with open(d / "scores.npz", "wb") as f:
         np.savez(f, episode_index=np.asarray(index, dtype=np.int64), scores_shown=np.asarray(shown, np.float32))
-    G.write_json(d / "provenance.json", {"fingerprint": {"job": "r6_gpu_rerank", "inputs_sha256": job_shas},
-                                         "runs": []})
+    fp = {"job": "r6_gpu_rerank", **RR_MODEL, **model, "scripts_sha256": {"x.py": "0" * 64},
+          "inputs_sha256": job_shas}
+    G.write_json(d / "provenance.json", {"fingerprint": fp, "runs": []})
     return d
 
 
@@ -416,6 +424,12 @@ GUARD_TESTS = {
     "mllm_cover_job": "test_mllm_job_must_hold_every_episode",
     "mllm_episodes": "test_mllm_job_must_be_the_seeds_episodes",
     "ctx_episodes": "test_context_must_hold_the_episode_files_episodes",
+    "sources_required": "test_real_mode_requires_the_sources_file_and_its_four_entries",
+    "dts_tuning_cache": "test_dts_refuses_the_tuning_cache_as_its_cache",
+    "dts_encoder_meta": "test_dts_encoder_must_be_the_tuning_records",
+    "dts_cache_meta": "test_dts_cache_must_be_made_by_the_tuning_records_encoder",
+    "mllm_same_model": "test_mllm_folders_must_agree_on_the_model",
+    "mllm_model": "test_mllm_model_must_be_the_probes_recorded_setting",
 }
 
 
@@ -499,6 +513,7 @@ def test_smoke_end_to_end_every_external_row_present_no_decimal(sm, tmp_path, ca
         pa = {s: by_hand_cosine(rows, img, txt, sm.eps[s].pooled) for s in seeds}
         assert rec["rows"][f"FT-{v}"] == expected_row(sm, pa), v
         assert rec["external"][f"FT-{v}"]["features"]["sha256"] == R.sha256_file(w.ft_out / f"features_{v}.npz")
+        assert rec["external"][f"FT-{v}"]["image_source"] == "r6_ft_cache"                 # disclosed with the row
     lp = XT.lp_maps(XT.resolve(XT.FT_CKPTS["LP"]["path"]))
     pa = {}
     for s in seeds:
@@ -516,6 +531,9 @@ def test_smoke_end_to_end_every_external_row_present_no_decimal(sm, tmp_path, ca
     assert rec["rows"]["MLLM"] == expected_row(sm, {9001: per_anchor(sc)})
     assert rec["external"]["MLLM"]["per_seed"] == {"9001": {"n_episodes": n}}
     assert rec["external"]["MLLM"]["permutations_sha256"] == G.sha256_bytes(perms.tobytes())
+    assert rec["external"]["MLLM"]["model"] == RR_MODEL
+    assert set(rec["external"]["MLLM"]["fingerprints"]) == set(src["mllm"]["out"])
+    assert all(fp["snapshot"] == RR_MODEL["snapshot"] for fp in rec["external"]["MLLM"]["fingerprints"].values())
     assert not hasattr(sm.fx.env, XT.STATE)                                     # the run's state is dropped
 
 
@@ -928,7 +946,11 @@ def test_mllm_job_must_hold_every_episode(sm, tmp_path):
     rr = write_rr_job(tmp_path / "rrjob_sub", sub)
     out = write_rr_out(tmp_path / "rro_sub", rr.shas, np.arange(100), w.shown[:100])
     caught_then_not(tmp_path, "mllm_cover_job", lambda m: mllm_one(m, sm, mllm_entry(sm, [out], rr.path)),
-                    "holds 100 episodes, not the 192 of seed 9001")
+                    "a job of seed 9001 holding 100 episodes, not the 192 episodes of seed 9001")
+    m = XT.load_mllm(mllm_entry(sm), sm.fx.out, True)                               # the full job, another seed
+    with pytest.raises(AssertionError, match="a job of seed 9001 holding 192 episodes, not the 192 episodes of "
+                                             "seed 9002"):
+        XT.mllm_seed(m, sm.eps[9002], 9002)
 
 
 def test_mllm_job_must_be_the_seeds_episodes(sm, tmp_path):
@@ -1054,7 +1076,8 @@ def test_held_path_real_shapes(tmp_path):
     want = by_hand_cosine(rows_lb, img_lb, txt_lb, eps[52].pooled)
     assert same_hits(pa, want)
     info = XT.family_info(getattr(env, XT.STATE), "DTS")
-    assert info["record"]["sha256"] == R.sha256_file(w.record) and info["parsing_failures"] == {"52": failures_of(52, n)}
+    assert info["record"]["sha256"] == R.sha256_file(w.record)
+    assert info["parsing_failures"] == {"52": failures_of(52, n)}
     assert info["setting"] == "W2 K8" and XT.family_info(getattr(env, XT.STATE), "MLLM")["seed"] == 52
     collected = RD.collect_external({}, 52, rows)
     ext = XT.finish(env, out, False, collected)                 # the hook saw seed 52 only: its state is not used
@@ -1063,3 +1086,123 @@ def test_held_path_real_shapes(tmp_path):
         assert ext[name]["pa"] == {} and ext[name]["info"]["seeds_computed_but_dropped"] == [52], name
         assert ext[name]["info"]["missing"] == "not computed on every seed it is reported on"
     assert not hasattr(env, XT.STATE)
+
+
+# ---------------------------------------------------------------- fix round (ticket 14's review)
+
+@pytest.fixture(scope="module")
+def held_res(tmp_path_factory, readers):
+    """Ticket 13's held results folder (real shapes; its external_sources.json lists all four jobs as missing)."""
+    return TD.build_dir(tmp_path_factory.mktemp("xheld") / "results", False, readers, 41)
+
+
+def test_real_mode_requires_the_sources_file_and_its_four_entries(held_res, tmp_path, capsys, monkeypatch):
+    """Item 2 (controller): in real (and reserve) mode an absent external_sources.json, or an absent entry, is refused
+    with exit 4 before any bundle and nothing is written; a job not run is written {"missing": reason}. Smoke mode
+    keeps an absent file or entry as a "missing" row."""
+    full = TD.copy_dir(held_res, tmp_path, "full")
+    with pytest.raises(TD.Reached):                                  # all four listed: past the refusals
+        TD.run(held_res, full, bundle_fn=TD._boom)
+    gone = TD.copy_dir(held_res, tmp_path, "gone")
+    (gone / XT.SOURCES_NAME).unlink()
+    code, text = TD.run(held_res, gone, capsys, bundle_fn=TD._boom)
+    assert code == RD.EXIT_REFUSE and "external_sources.json is missing" in text, text
+    assert sorted(p.name for p in gone.iterdir()) == sorted(p.name for p in full.iterdir() if p.name !=
+                                                            XT.SOURCES_NAME)  # nothing written
+    part = TD.copy_dir(held_res, tmp_path, "part")
+    edit_json(part / XT.SOURCES_NAME, lambda s: s.pop("ft_lp"))
+    code, text = TD.run(held_res, part, capsys, bundle_fn=TD._boom)
+    assert code == RD.EXIT_REFUSE and "has no ft_lp entry" in text and not (part / "descriptive.json").exists()
+    with pytest.raises(XT.SourcesRefused, match="is missing"):       # the hook refuses too (exit 4 in the runner)
+        XT.seed_rows(SimpleNamespace(), 52, None, None, gone, False)
+    with pytest.raises(RD.Refused, match="is missing"):
+        RD.external_seed_rows(SimpleNamespace(), 52, None, None, None, gone, False)
+    assert XT.require_sources(gone, True).present is False             # smoke: not refused
+    mut = mutant(tmp_path, guard="sources_required")
+    monkeypatch.setattr(RD, "XT", mut)
+    with pytest.raises(TD.Reached):                                  # without the guard: on to the first bundle
+        TD.run(held_res, gone, bundle_fn=TD._boom)
+    with pytest.raises(TD.Reached):
+        TD.run(held_res, part, bundle_fn=TD._boom)
+
+
+class OtherEncoder(FakeEncoder):
+    """The same vectors under another identity (another model commit or library version)."""
+    meta = {"class": "fake", "batch_size": 1, "transformers": "another version"}
+
+
+def test_dts_refuses_the_tuning_cache_as_its_cache(sm, tmp_path):
+    """Item 1: the tuning stages' cache (beside the record, or results/dts_value_embeddings.npz), whose SHA-256 the
+    record holds and which save() would rewrite, is not the descriptive cache; a copy elsewhere is."""
+    tuning = sm.world.record.parent / XT.TUNING_EMB
+    caught_then_not(tmp_path, "dts_tuning_cache",
+                    lambda m: m.load_dts(dts_entry(sm, tmp_path, embeddings=str(tuning)), sm.fx.out, True),
+                    "the tuning stages' value-embedding cache")
+    with pytest.raises(AssertionError, match="the tuning stages' value-embedding cache"):
+        XT.load_dts(dts_entry(sm, tmp_path, embeddings=str(R.RESULTS / XT.TUNING_EMB)), sm.fx.out, True)
+    assert XT.TUNING_EMB == RDTS.EMBEDDINGS
+
+
+def test_dts_encoder_must_be_the_tuning_records(sm, tmp_path, monkeypatch):
+    """Item 1: before the first encode the encoder's identity must equal the record's "embedder"."""
+    def scenario(m):
+        m.encoder_factory = OtherEncoder
+        return dts_one(m, sm, dts_entry(sm, tmp_path))
+    monkeypatch.setattr(XT, "encoder_factory", OtherEncoder)
+    caught_then_not(tmp_path, "dts_encoder_meta", scenario, "is not the tuning record's")
+
+
+def test_dts_cache_must_be_made_by_the_tuning_records_encoder(sm, tmp_path):
+    """Item 1: a cache whose meta names another encoder, even one holding every string the seed needs (so nothing
+    would be encoded and its meta never compared), is refused when loaded."""
+    path = tmp_path / "other_cache.npz"
+    emb = DT.ValueEmbedder(path, encoder_factory=OtherEncoder)
+    values = {v for (p, k), a in sm.world.listings.items() if k == K for v in DT.parse_listing(a, K)}
+    emb.embed(sorted(values))
+    emb.save()
+    caught_then_not(tmp_path, "dts_cache_meta", lambda m: dts_one(m, sm, dts_entry(sm, tmp_path,
+                                                                                   embeddings=str(path))),
+                    "a cache made by the encoder")
+
+
+def mllm_folders(sm, tmp_path, second_model):
+    """Two shard folders of the job: the first with the probe's setting, the second with ``second_model``."""
+    n = sm.eps[9001].n
+    a = rr_with(sm, tmp_path, np.arange(0, 100), sm.world.shown[:100])
+    b = write_rr_out(tmp_path / f"rr{next(_COUNT)}", sm.world.rr.shas, np.arange(100, n), sm.world.shown[100:],
+                     **second_model)
+    return mllm_entry(sm, [a, b])
+
+
+def test_mllm_folders_must_agree_on_the_model(sm, tmp_path):
+    """Item 3: the listed reranker folders agree on model_id, snapshot, max_pixels and instruction_sha256 (without the
+    guard a second shard of another snapshot would pass, the first folder alone being compared with the setting)."""
+    entry = mllm_folders(sm, tmp_path, {"snapshot": "f" * 40})
+    caught_then_not(tmp_path, "mllm_same_model", lambda m: m.load_mllm(entry, sm.fx.out, True),
+                    "the listed reranker folders differ in")
+    entry = mllm_folders(sm, tmp_path, {"instruction_sha256": "5" * 64})
+    with pytest.raises(AssertionError, match="the listed reranker folders differ in"):
+        XT.load_mllm(entry, sm.fx.out, True)
+
+
+def test_mllm_model_must_be_the_probes_recorded_setting(sm, tmp_path):
+    """Item 3: and they equal the probe's recorded setting (dts_settings.json's model and max_pixels, the SHA-256 of
+    mllm_reranker.INSTRUCTION)."""
+    n = sm.eps[9001].n
+    d = write_rr_out(tmp_path / "rr_px", sm.world.rr.shas, np.arange(n), sm.world.shown, max_pixels=512 * 28 * 28)
+    caught_then_not(tmp_path, "mllm_model", lambda m: m.load_mllm(mllm_entry(sm, [d]), sm.fx.out, True),
+                    "not the probe's recorded setting")
+    assert XT.rerank_model() == RR_MODEL
+
+
+def test_errors_while_computing_are_computation_errors(sm, tmp_path, monkeypatch):
+    """Nit: a ValueError or TypeError while the rows are computed stops as a computation error (exit 5), not as an
+    unreadable input (that one is shown by test_an_unreadable_listed_input_stops_with_exit_5)."""
+    out = TD.copy_dir(sm.fx, tmp_path)
+    write_json(out / XT.SOURCES_NAME, fresh_sources(sm, tmp_path))
+
+    def boom(*a, **k):
+        raise ValueError("planted")
+    monkeypatch.setattr(XT, "lp_seed", boom)
+    with pytest.raises(AssertionError, match="the computation failed: ValueError: planted"):
+        XT.seed_rows(SimpleNamespace(), 9001, sm.ctx[9001], sm.eps[9001], out, True)
