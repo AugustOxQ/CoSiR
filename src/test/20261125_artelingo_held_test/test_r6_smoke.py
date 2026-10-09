@@ -242,6 +242,27 @@ def test_step1_refuses_a_sensitivity_file_of_another_regression_and_failed_recor
     assert "not evaluated on the current bytes of ['dts_seed42.json']" in out, out
 
 
+def test_step1_lists_the_value_sets_file_with_the_regression(tmp_path, capsys):
+    """Rule section 5 item 2 (final review B1): step 1 lists results/value_sets.json with the regression record (its
+    SHA-256 among the records' SHA-256s); a missing file, or one the regression record does not name, reruns the
+    regression and what follows it. The guard dropped on a copy: the check passes."""
+    res = records(tmp_path)
+    vs = res / RH.VALUE_SETS_NAME
+    assert SM.stage_problems(res).sha256[RH.VALUE_SETS_NAME] == R.sha256_file(vs)
+    keep = vs.read_bytes()
+    vs.unlink()
+    code, out = check(res, capsys)
+    assert code == SM.EXIT_REFUSE and rerun_list(out) == CHAIN[CHAIN.index("regression"):], out
+    assert "value_sets.json does not exist" in out
+    vs.write_text("{}")
+    code, out = check(res, capsys)
+    assert code == SM.EXIT_REFUSE and rerun_list(out) == CHAIN[CHAIN.index("regression"):], out
+    assert "value_sets.json is not the file regression_seed42.json records" in out
+    assert smoke_mutant(tmp_path, "value_sets", "why = None").run("check", results=res, here=HERE) == 0
+    vs.write_bytes(keep)
+    assert check(res, capsys)[0] == 0
+
+
 def test_step1_a_dts_stop_goes_to_the_user(tmp_path, capsys):
     res = write_dts42(records(tmp_path), stop=True)
     code, out = check(res, capsys)
@@ -561,6 +582,11 @@ def test_the_mutation_fires_only_with_the_condition_free_message(tmp_path, monke
     monkeypatch.setattr(mut, "DRIVER", other)
     assert mut.wiring_mutation(p, HERE)["fired"] is True                   # without the check: any crash "fires"
     assert (p.smoke / "mutation" / "code" / "r6_score.py").read_text().count(SM.WIRING_TO) == 1
+    for d in ("mutation", "mutation_control"):      # the records its read checks, value_sets.json among them
+        res = p.smoke / d / "results"
+        for f in [f for _, f, _, _ in SM.SEED42_CHAIN] + [RH.VALUE_SETS_NAME]:
+            assert (res / f).read_bytes() == (p.results / f).read_bytes(), (d, f)
+        assert RH.value_sets_problem(res) is None
 
 
 # ---------------------------------------------------------------- the DTS stages: retry, kept records

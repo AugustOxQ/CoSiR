@@ -41,7 +41,7 @@ DECIMAL = re.compile(r"\d*\.\d+")
 def test_smoke_on_real_selection_rows(tmp_path, capfd, monkeypatch):
     res = tmp_path / "results"
     env = RH.setup()                                                   # real data, heads, check, PM, readers
-    TH.write_records(res, coef=env.coef_sha256, smoke_names=())
+    TH.write_records(res, coef=env.coef_sha256, smoke_names=(), value_sets=env.value_sets, data=env.data)
     (res / RH.REFIT_NAME).write_text(json.dumps(RR.record(env.head_check, env.heads, env.inputs)))
     edit_sens = json.loads((res / RH.SENS42_NAME).read_text())         # the regression record was not changed
     assert edit_sens["regression_sha256"] == R.sha256_file(res / RH.REGRESSION_NAME)
@@ -67,7 +67,7 @@ def test_smoke_on_real_selection_rows(tmp_path, capfd, monkeypatch):
                             "held_pass.json"] + [f"held_episodes_seed{s}.npz" for s in R.SMOKE_SEEDS])
     assert sorted(p.name for p in res.iterdir()) == sorted(
         ["smoke", RH.REFIT_NAME, RH.PICKS_NAME, RH.REGRESSION_NAME, RH.SENS42_NAME, RH.DTS_STOP_NAME,
-         RH.DTS_CHOSEN_NAME])
+         RH.DTS_CHOSEN_NAME, RH.VALUE_SETS_NAME])
     assert not any("verdict" in p.name or p.name.endswith(".partial") for p in tmp_path.rglob("*"))
 
     # the episodes are the stored smoke episodes of AB (rule section 6 item 4), on selection rows

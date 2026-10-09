@@ -5,7 +5,9 @@ condition, wording) and (phrase, K), every needed key present exactly once after
 
 Order (rule section 7 item 4):
   1. --stage list-input --for sanity --job-out <job>        the listing job of DTS-N: the three aspect names x K 8, 16
-     (listing job)
+     (listing job). The first seed-42 GPU input: every seed-42 list-input refuses unless results/dts_settings.json
+     holds this folder's dts_settings.json byte for byte (rule section 7: the copy committed before the first seed-42
+     call; settings_copy_guard); the smoke seeds are exempt.
   2. --stage sanity --listing-out <dir>...                  DTS-N at K 8 and 16 on all 12,288 episodes; its pooled
      condition gain (cross-fitted fused) must be above 0 at each K, else exit 3 (the pipeline is debugged)
      (verbaliser job on the tuning subset: r6_gpu_inputs.py --first-per-pair 1024, wordings W1 to W4)
@@ -73,6 +75,7 @@ SANITY, TUNE, STOP = "dts_sanity.json", "dts_tune.json", "dts_stop.json"
 FIRST_BUILT = "dts_first_built.json"
 DTS_CLOCK_START = R.DTS_CLOCK_START                     # seed 42's clock start (a test may set another)
 EMBEDDINGS = "dts_value_embeddings.npz"
+SETTINGS_COPY = "dts_settings.json"                     # rule section 7: <out>/dts_settings.json, F's committed bytes
 LISTING_INPUT, JOB_RECORD = "listing_input.jsonl", "job_record.json"
 # the files whose bytes the DTS stages ran; the stop refuses stage records made by other bytes
 DTS_FILES = tuple(f"src/test/20261125_artelingo_held_test/{f}" for f in
@@ -235,12 +238,27 @@ def require_sanity(args):
 
 # ---------------------------------------------------------------- stages
 
+def settings_copy_guard(args):
+    """Rule section 7 (contracts section 9, amendment 13:05; final review C4): a seed-42 listing input (--for sanity,
+    the first seed-42 GPU input, then tune and chosen) is written only when <out>/dts_settings.json (results/ for seed
+    42) exists with the bytes of this folder's committed dts_settings.json: the copy the run chat commits before the
+    first seed-42 call. The smoke seeds are exempt (agent default: the smoke reads this folder's file, whose SHA-256
+    every stage record and the smoke record hold); held seeds come after seed 42. Raises Refused."""
+    if int(args.seed) != R.DEV_SEED:
+        return
+    copy = Path(args.out) / SETTINGS_COPY
+    _require(copy.is_file() and copy.read_bytes() == Path(G.SETTINGS_PATH).read_bytes(),
+             f"{copy} is missing or differs from {G.SETTINGS_PATH}: copy that file byte for byte and commit the copy "
+             f"before the first seed-42 call (rule section 7)", Refused)  # guard:settings_copy
+
+
 def stage_list_input(args, settings, settings_sha) -> int:
     """The listing job folder: listing_input.jsonl ({"phrase", "K"} per distinct pair) and job_record.json."""
     import r6_gpu_listing as L
     _require(args.job_out is not None and args.for_stage is not None, "--for and --job-out are required", Refused)
     job = Path(args.job_out)
     _require(not job.exists(), f"{job} exists; job folders are never overwritten", Refused)
+    settings_copy_guard(args)                       # seed 42: results/dts_settings.json first (rule section 7)
     ver, jobs, eps_sha = None, {}, None
     names = list(D.TARGET_NAME.values())
     if args.for_stage == "sanity":

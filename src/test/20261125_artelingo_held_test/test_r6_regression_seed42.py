@@ -85,6 +85,10 @@ def test_regression_passes_every_item(real, tmp_path, capsys):
     for seed in (42, 9001, 9002, 9003):
         assert all(f"episodes_seed{seed}__{p}" in names for p in R.PAIR_NAMES)
     assert f"PASSED ({len(names)} items, 0 failed)" in out
+    vs = json.loads((res / RH.VALUE_SETS_NAME).read_text())       # rule section 5 item 2 (final review B1)
+    assert vs == R.value_sets_record(real.env.value_sets, real.env.data)
+    assert {x: len(v) for x, v in vs.items()} == R.VALUE_COUNTS
+    assert rec["value_sets_sha256"] == R.sha256_file(res / RH.VALUE_SETS_NAME)
     counts = json.loads((res / RH.COUNTS_NAME).read_text())
     assert counts["mode"] == "regression" and counts["seeds"] == [42] and counts["n_episodes"] == 3 * R.N_PER_PAIR
     assert counts["episodes_sha256"] == {"42": rec["episodes_sha256"]}

@@ -152,6 +152,7 @@ def read(env, tmp_path_factory):
     led = TH.write_ledger(tmp / "held_ledger.md", TH.ledger_line())
     mp = pytest.MonkeyPatch()
     try:
+        mp.setattr(R, "value_names", TH.value_names)              # the stand-in names of value_sets.json
         ev = instrument(mp, tmp)
         code = RH.run_held(results=res, ledger=led, here=HERE, folder=tmp / "folder", env=env)
     finally:
@@ -165,7 +166,7 @@ def test_the_read_completes_and_writes_every_file_of_contracts_7(read):
     outputs = ["held_started.json", "held_episodes_seed52.npz", "held_episodes_seed53.npz",
                "held_episodes_seed54.npz", "sensitivity_held.json", "held_arrays.npz", "held_pass.json"]
     assert names == sorted(outputs + [RH.REFIT_NAME, RH.PICKS_NAME, RH.REGRESSION_NAME, RH.SENS42_NAME,
-                                      RH.DTS_STOP_NAME, RH.DTS_CHOSEN_NAME, "smoke_record.json"])
+                                      RH.DTS_STOP_NAME, RH.DTS_CHOSEN_NAME, RH.VALUE_SETS_NAME, "smoke_record.json"])
     assert not any("verdict" in p.name for p in read.tmp.rglob("*"))                # no verdict anywhere
     assert (read.tmp / "folder/held_started.json").read_bytes() == (read.res / "held_started.json").read_bytes()
 
