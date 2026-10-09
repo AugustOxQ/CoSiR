@@ -9,12 +9,12 @@ and who made each decision. Entries before 2026-10-08 were moved from project me
 fields; their verbatim notes are in `direction_log_raw_2026-10.md`. Older history (before the CVPR plan) is in the
 weekly and stage reports.
 
-## Now (2026-10-08)
+## Now (2026-10-09)
 
 AFF (round 1's learned reader, with its gate open only when it picks the affect grouping) is the current best: GO on
-fresh seeds 49 to 51 in round 3. Rounds 4 and 5 tried to improve it and were killed at development. The next decision
-is the user's: the held-split paper test with AFF frozen (deciding B′(A1)'s role first), or more method work. CVPR
-abstract due 2026-11-10. Seeds 52 and later are free.
+fresh seeds 49 to 51 in round 3; rounds 4 and 5 were killed at development. In progress: the ArtELingo held-split paper
+test with AFF frozen (claim test, design chat). Next: design L (a grouping redesign for a real style signal) in its own
+loop. Go/no-go on Fri 2026-10-16 (ArtELingo-centred paper first, full paper if time allows); CVPR abstract 2026-11-10.
 
 ## Parked ideas
 
@@ -38,8 +38,12 @@ stay in the entries below.
 - **Meaning (C):** "a normal idea test, and it's going a bit narrow": an ordinary failed idea, and work on the affect
   score is narrowing (2026-10-09; user, after seeing ours, since the briefing showed our advice openly). Ours: the image
   head caps every agreement, so stop work on the affect score. Both readings stop the affect line.
-- **Decided:** open, awaiting the user. Options: the held-split paper test with AFF frozen; idea 3 variants; design L
-  for style.
+- **Decided (A):** the ArtELingo held-split paper test with AFF frozen, now; type claim test, full loop. Design L
+  follows in its own loop and chat. The go/no-go moves to Fri 2026-10-16 (plan revision 4, §16): an ArtELingo-centred
+  paper first, the full paper when time and results allow (user, after seeing the recommendation; the go/no-go move and
+  the paper target are the user's own).
+- **Why:** the held test is required by every paper option with a method and is cheap (a day, mostly safeguards); the
+  user sees hope in affect steering and wants more, through design L. Three DAS6 nodes (nine GPUs) are now available.
 - **Links:** report `docs/reports/auto/v2/2026-11-23_idea3_goemotions.md`; user-read
   `docs/user_read/2026-10-07_idea3_goemotions.md`; handoff `docs/superpowers/handoffs/2026-10-08-whats-next-handoff.md`
   (new Herdr tab `whats-next`).
