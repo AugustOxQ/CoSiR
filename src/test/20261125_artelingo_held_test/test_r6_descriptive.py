@@ -328,7 +328,11 @@ def test_smoke_run_end_to_end_prints_no_decimal(smoke_fx, tmp_path, capsys):
     rec = json.loads((out / "descriptive.json").read_text())
     assert set(rec) == TOP_KEYS
     assert rec["mode"] == "smoke" and rec["seeds"] == list(R.SMOKE_SEEDS) and rec["n_episodes"] == 9 * R.N_SMOKE
-    assert rec["scorers"] == list(S.ALL_SCORERS) and rec["external"] == {}
+    assert rec["scorers"] == list(S.ALL_SCORERS)
+    # ticket 14: without external_sources.json every external row is reported "missing", with no number
+    assert list(rec["external"]) == list(RD.XT.NAMES)
+    for name, e in rec["external"].items():
+        assert e["seeds"] == [] and "external_sources.json" in e["missing"] and name not in rec["rows"], name
     for name in S.ALL_SCORERS:
         r = rec["rows"][name]
         assert set(r["per_seed"]) == {str(s) for s in R.SMOKE_SEEDS} and set(r["per_pair"]) == set(R.PAIR_NAMES)

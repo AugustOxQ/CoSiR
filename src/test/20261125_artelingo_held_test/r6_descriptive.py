@@ -90,7 +90,16 @@ descriptive.json (smoke: results/smoke/descriptive.json; --reserve: descriptive_
    "pick_accuracy": {"told_mapping", "pooled": {"pick_accuracy", "pick_share"}, "per_seed": {seed: {...}}},
    "redundancy_D7": {seed: {"redundancy": {h: {d: float}}, "affect_least_redundant_both_directions": bool}},
    "frozen": {"cells", "picks", "lambdas"},
-   "external": {name: {"seeds", **info}} (ticket 14; the runner's per-seed hook gives info = {"per_seed": {...}}),
+   "external": {name: {"seeds": [int], "per_seed": {seed: {...}}, "sources": {"file", "sha256", "entry"},
+                       "missing": str and "seeds_computed_but_dropped" (only for a row without numbers), and the
+                       family's inputs: DTS rows "setting", "wording_id", "wording", "K", "picks", "pick_convention",
+                       "record", "stop_record", "settings_sha256" (DTS also "parsing_failures" {seed: {c: {kind: n}}},
+                       "parsing_failures_total", "phrases" {"top", "by_pair_condition", "n_distinct", "n_phrases"},
+                       "listings_sha256", "embeddings"; DTS-N its own failures; DTS-N, DTS-CF a "role"); FT rows
+                       "checkpoint", "features", "job", "scoring"; MLLM "seed", "job", "outputs_sha256",
+                       "permutations_sha256", "permutation"}}
+       (ticket 14, r6_external.py): DTS, DTS-CF, DTS-N, FT-LP, FT-LB, FT-LoRA, MLLM in this order, each in "labels";
+       a row with numbers is also in "rows" and "scorers" (MLLM: the first seed only, its pooled scope that seed),
    "rule_sha256", "module_sha256", "runner_sha256", "input_sha256", "time", "runtime_s"}
   seeds are string keys ("52"); pairs are r6_common.PAIR_NAMES.
 
