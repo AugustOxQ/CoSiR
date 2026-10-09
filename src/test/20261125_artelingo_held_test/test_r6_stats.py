@@ -11,6 +11,7 @@ import math
 import sys
 from fractions import Fraction
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -97,7 +98,9 @@ def held_record():
 
 # ------------------------------------------------------------------------------------------------ paths and imports
 def test_main_and_earlier_modules_resolve_under_the_main_checkout():
-    assert S.MAIN == Path("/project/CoSiR").resolve()
+    import r6_common
+    assert S.R6C is r6_common and S.MAIN == r6_common.MAIN == Path("/project/CoSiR").resolve()
+    assert S.RS is r6_common.RS and S.C is r6_common.C and S.RULE == HERE / "DECISION_RULE.md"
     assert Path(S._AM.__file__).resolve() == S.MAIN / "src/eval/aspect_metrics.py"
     assert Path(S.RS.__file__).resolve().parent == S.MAIN / "src/test/20261121_round3_affect_gate"
     assert Path(S.C.__file__).resolve().parent == S.MAIN / "src/test/20261117_reader_fix_csd"
@@ -213,6 +216,27 @@ def test_guards_on_the_values():
     with pytest.raises(ValueError):
         S.bootstrap_draws(v, np.zeros_like(cl))
     S.bootstrap_draws(v + 1e-12 * (np.arange(N_SEED) % 2), cl)   # float noise within QUARTER_TOL is accepted
+    assert S.QUARTER_TOL == 1e-9
+    off = v.copy()
+    off[77] = 0.25 + 1e-6                                     # 4e-6 from a quarter: refused
+    with pytest.raises(AssertionError, match="multiple of 0.25"):
+        S.bootstrap_draws(off, cl)
+    off[77] = 0.25 + 2e-10                                    # 8e-10 from a quarter: within the tolerance
+    S.bootstrap_draws(off, cl)
+
+
+def test_integer_cluster_sums_guard_fires(monkeypatch):
+    """rint(4·cluster sum) must equal the integer sum of the episodes' quarters. With the tolerance widened to 0.2,
+    four episodes of one painting at 0.29 (4v = 1.16, each rounds to 1) sum to 4.64, which rounds to 5, not 4."""
+    rng = np.random.default_rng(13)
+    cl = _clusters(rng, N_SEED, pool=4000)
+    v = _quarters(rng, N_SEED, 0.3) - _quarters(rng, N_SEED, 0.2)
+    u, cnt = np.unique(cl, return_counts=True)
+    rows = np.flatnonzero(cl == u[np.flatnonzero(cnt >= 4)[0]])[:4]
+    v[rows] = 0.29
+    monkeypatch.setattr(S, "QUARTER_TOL", 0.2)
+    with pytest.raises(AssertionError, match="integer sum of the episodes' quarters"):
+        S.bootstrap_draws(v, cl)
 
 
 # ------------------------------------------------------------------------------------------------------------ Holm
@@ -411,6 +435,36 @@ def test_pass_record_regression_and_smoke_modes():
         S.pass_record([s42], "regression", [42], {**_extra([42]), "time": "now"})
 
 
+def test_pass_record_point_ci_cross_check_fires(monkeypatch):
+    rng = np.random.default_rng(14)
+    s42 = _seed_scores(rng, _clusters(rng, N_SEED, pool=4000))
+    real = S.C.point_ci
+
+    def shifted(values, clusters):
+        r = real(values, clusters)
+        return {**r, "ci95": [r["ci95"][0], float(np.nextafter(r["ci95"][1], np.inf))]}
+
+    monkeypatch.setattr(S, "C", SimpleNamespace(point_ci=shifted))
+    with pytest.raises(AssertionError, match="common.point_ci"):
+        S.pass_record([s42], "regression", [42], _extra([42]))
+
+
+def test_rule_sha_guard_fires(tmp_path, monkeypatch):
+    copy = tmp_path / "DECISION_RULE.md"
+    data = bytearray(S.RULE.read_bytes())
+    copy.write_bytes(bytes(data))
+    monkeypatch.setattr(S, "RULE", copy)
+    assert S.rule_sha256() == S.R6C.RULE_SHA256
+    data[100] ^= 1                                            # one bit of one byte
+    copy.write_bytes(bytes(data))
+    with pytest.raises(AssertionError, match="DECISION_RULE.md SHA-256"):
+        S.rule_sha256()
+    rng = np.random.default_rng(15)
+    s42 = _seed_scores(rng, _clusters(rng, N_SEED, pool=4000))
+    with pytest.raises(AssertionError, match="DECISION_RULE.md SHA-256"):
+        S.pass_record([s42], "regression", [42], _extra([42]))
+
+
 def _check_cf_refusal(mod):
     rng = np.random.default_rng(1)
     per_seed = [_seed_scores(rng, _clusters(rng, N_SEED, pool=4000))]
@@ -464,26 +518,27 @@ def test_detectable_matches_a_hand_computation_with_unequal_counts(held_like):
     sig = {"sigma_a2": 2.0, "sigma_eps2": 100.0}
     M = np.array([1, 2, 3], dtype=np.int64)              # sum M^2 = 14, N = 6
     se = math.sqrt((2.0 * 14 + 100.0 * 6) / 36)
-    assert S.detectable(sig, M, 6) == {"SE": se, "x": 3.532 * se, "x95": 2.80 * se}
+    assert S.detectable(sig, M, 6, "P") == {"SE": se, "x": 3.532 * se, "x95": 2.80 * se}
     assert S.detectable(sig, M, 6, family="S") == {"SE": se, "x2": 3.083 * se, "x95": 2.80 * se}
     _, cl = held_like
     M = np.unique(cl, return_counts=True)[1]
     assert M.min() != M.max() and M.sum() == N_HELD
     sig = {"sigma_a2": 3.7, "sigma_eps2": 1234.5}
     se = math.sqrt((3.7 * sum(int(m) ** 2 for m in M) + 1234.5 * N_HELD) / N_HELD ** 2)
-    got = S.detectable(sig, M, N_HELD)
+    got = S.detectable(sig, M, N_HELD, "P")
     assert got["SE"] == pytest.approx(se, rel=1e-12) and got["x"] == pytest.approx(3.532 * se, rel=1e-12)
     assert got["x95"] == pytest.approx(2.80 * se, rel=1e-12)
     with pytest.raises(AssertionError):
-        S.detectable(sig, M, N_HELD - 1)
+        S.detectable(sig, M, N_HELD - 1, "P")
     with pytest.raises(ValueError):
-        S.detectable(sig, M.astype(float), N_HELD)
+        S.detectable(sig, M.astype(float), N_HELD, "P")
     with pytest.raises(ValueError):
         S.detectable(sig, M, N_HELD, family="Q")
+    with pytest.raises(TypeError):
+        S.detectable(sig, M, N_HELD)                          # no default family: S1, S2 cannot get x silently
 
 
 # --------------------------------------------------------------------------------------------- mutations (copies)
-_HARNESS = "HERE = Path(__file__).resolve().parent"
 MUTANTS = {
     "ci95 assertion removed": (
         'if got != ref["ci95"] or ref["n_clusters"] != k or b.shape != (n_boot,) or float(v.mean()) != ref["point"]:',
@@ -508,8 +563,7 @@ CHECKERS = {"ci95": _check_ci95_guard, "ties": _check_ties, "boundary": _check_b
 def _load_mutant(tmp_path, name, old, new):
     src = Path(S.__file__).read_text()
     assert src.count(old) == 1, f"mutation site of {name!r} not found exactly once"
-    assert src.count(_HARNESS) == 1
-    src = src.replace(old, new).replace(_HARNESS, f"HERE = Path({str(HERE)!r})")
+    src = src.replace(old, new)
     path = tmp_path / "r6_stats_mutant.py"
     path.write_text(src)
     spec = importlib.util.spec_from_file_location(f"r6_stats_mutant_{abs(hash(name))}", path)
