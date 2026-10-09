@@ -16,9 +16,12 @@ Convention everywhere (hazard 7): the pick of tune half h scores the episodes of
                                                contracts section 5's dict of per-anchor results, gates, reader, cl,
                                                pair_index
 
-include_pm (keyword, no default): rule section 8 item 3 allows no PM metric on held episodes before
-held_verdict.json exists. score_seed(..., include_pm=False) neither reads a PM term or lambda nor returns a PM key;
-include_pm=True on a held bundle is refused unless held_verdict.json exists (the descriptive pass, ticket 13).
+include_pm (keyword, no default): rule section 8 item 3 allows, on held episodes before held_verdict.json exists,
+only AFF fused, CF, COS, RCA, B, B0, B1 and R1 fused (CORE_SCORERS). score_seed(..., include_pm=False) scores those
+alone: it reads no PM term or lambda, never reads R1's counterpart cells or builds its G_cf, and returns no PM key and
+no r1_cf. include_pm=True adds the descriptive extras, the nine PM scorers and R1's counterpart r1_cf with its gain-0
+check (contracts section 5, amendment 14:50); on a held bundle it is refused unless held_verdict.json exists (the
+descriptive pass, ticket 13). The regression (ticket 07) and the descriptive pass call it with True.
 
 Guards carry a `# guard:<name>` marker; test_r6_score.py deletes each on a copy and shows that its scenario then goes
 through.
@@ -49,10 +52,11 @@ CELLS = {"aff": {"fused": (39, 119), "cf": (149, 10)}, "r1": {"fused": (116, 119
 CELL_TEXT = {39: (0, 4.0, 16.0), 119: (2, 0.0, 16.0), 149: (2, 4.0, 4.0), 10: (0, 0.5, 0.5), 116: (2, 0.0, 2.0),
              58: (1, 0.0, 0.5), 123: (2, 0.5, 1.0)}
 PM_SCORERS = B.PM_NAMES
-CORE_SCORERS = ("cosine", "rca", "B", "B0", "B1", "aff_fused", "aff_cf", "r1_fused", "r1_cf")
+CORE_SCORERS = ("cosine", "rca", "B", "B0", "B1", "aff_fused", "aff_cf", "r1_fused")    # rule section 8 item 3
+DESCRIPTIVE_EXTRAS = PM_SCORERS + ("r1_cf",)                                         # include_pm=True only
 ALL_SCORERS = ("cosine", "rca") + PM_SCORERS + ("B", "B0", "B1", "aff_fused", "aff_cf", "r1_fused", "r1_cf")
 EXTRA_KEYS = ("gates", "reader", "cl", "pair_index")
-CONDITION_FREE = ("cosine", "B", "B0", "B1", "aff_cf", "r1_cf")    # condition gain 0 on every episode
+CONDITION_FREE = ("cosine", "B", "B0", "B1", "aff_cf", "r1_cf")    # gain 0 on every episode (when scored)
 GATE_SETS = ("aff", "r1")
 HALVES = (0, 1)
 N_TAU = len(R3.TAUS)
@@ -62,7 +66,8 @@ if not (CELLS["aff"]["fused"] == tuple(R3.AFF_CELLS["fused"]) and CELLS["aff"]["
         and CELLS["r1"]["fused"] == tuple(R3.RC_CELLS["fused"]) and CELLS["r1"]["cf"] == tuple(R3.RC_CELLS["cf"])
         and all(F2.cell_values(c) == (13, *CELL_TEXT[c]) for c in CELL_TEXT)
         and sorted(CELL_TEXT) == sorted({c for w in CELLS.values() for p in w.values() for c in p})
-        and set(CORE_SCORERS) <= set(ALL_SCORERS) and len(ALL_SCORERS) == len(CORE_SCORERS) + len(PM_SCORERS)):
+        and set(ALL_SCORERS) == set(CORE_SCORERS) | set(DESCRIPTIVE_EXTRAS)
+        and len(ALL_SCORERS) == len(CORE_SCORERS) + len(DESCRIPTIVE_EXTRAS)):
     raise ImportError("r6_score: the frozen cells differ from the rule's table or round 3's constants")
 
 
@@ -123,26 +128,29 @@ def _cell_picks(cells) -> dict:
     return picks
 
 
-def frozen_cells(base, parity, T, gates, fused_cells, cf_cells):
+def frozen_cells(base, parity, T, gates, fused_cells, cf_cells=None):
     """Round 3's frozen-cell line (r3_fusion.score_frozen) returning the scores: z(B) + lu*z(B) + la*term of the cell
     of tune half h on the episodes of parity 1 - h. Fused term: gate x z(T) (z first); CF term: G_cf of the same
     gate set, asserted condition-free for each CF cell used. base: the frozen B. -> (fused, cf), {c: {d: (n, 13)
-    float64}}, finite (asserted)."""
+    float64}}, finite (asserted). cf_cells=None: the fused scores alone, no G_cf built, cf is None."""
     _require(len(gates) == N_TAU, f"{len(gates)} gate sets, expected {N_TAU}")
     parity = np.asarray(parity)
     _apply_masks(parity)
-    fp, cp = _cell_picks(fused_cells), _cell_picks(cf_cells)
+    fp = _cell_picks(fused_cells)
     zB, zT = _zdict(base), _zdict(T)
     gated = {t: RC.gated_terms(zT, gates[t]) for t in range(len(gates))}
-    G = cf_terms(gated)
     info = F2.rank_info(base)                                  # asserts B condition-free
     fused = F2.assemble(zB, info, gated, fp, parity)
+    C._assert_finite(fused, "frozen fused")
+    if cf_cells is None:
+        return fused, None
+    cp = _cell_picks(cf_cells)
+    G = cf_terms(gated)
     for h in HALVES:
         t = F2.decode_cell(cp[h])[1]
         _require_condition_free({c: {d: np.asarray(G[t][c][d]) for d in DIRECTIONS} for c in CONDITIONS},
                                 f"the CF term of cell {cp[h]} (tune half {h})")  # guard:cf_cell
     cf = F2.assemble(zB, info, G, cp, parity)
-    C._assert_finite(fused, "frozen fused")
     C._assert_finite(cf, "frozen counterpart")
     return fused, cf
 
@@ -153,7 +161,8 @@ def score_seed(bundle, picks, lambdas, readers, *, include_pm) -> dict:
     """Contracts section 5. picks: {"B", "B0", "B1": {half: [lu, la]}} (load_picks or picks_seed42; "0"/"1" keys
     accepted); lambdas: {scorer: {half: lam}} (frozen_lambdas; rca always read, the nine PM only with include_pm);
     readers: round 1's A0 half-readers (r6_bundle.load_readers).
-    -> {scorer: per_anchor dict} for CORE_SCORERS (ALL_SCORERS with include_pm), in that order, then "gates" {"aff",
+    -> {scorer: per_anchor dict} for CORE_SCORERS (ALL_SCORERS with include_pm: the nine PM scorers and r1_cf
+    added), in that order, then "gates" {"aff",
     "r1": {c: (4, n) float32}}, "reader" {"P", "m", "pick": {c: ...}}, "cl", "pair_index"."""
     msg = f"include_pm must be True or False, not {include_pm!r} (rule section 8 item 3)"
     _require(isinstance(include_pm, bool), msg)  # guard:include_pm_bool
@@ -185,9 +194,13 @@ def score_seed(bundle, picks, lambdas, readers, *, include_pm) -> dict:
     taus = R3.assert_taus()                                 # D6
     gates = {"aff": RF.gates_aff(rd["m"], rd["pick"], taus), "r1": RF.gates_r1(rd["m"], taus)}
     for who in GATE_SETS:
-        fused, cf = frozen_cells(frozen["B"], parity, rd["T"], gates[who], CELLS[who]["fused"], CELLS[who]["cf"])
-        out[f"{who}_fused"], out[f"{who}_cf"] = per_anchor(fused), per_anchor(cf)
-    moved = [k for k in CONDITION_FREE if not bool((np.asarray(out[k]["gain"]) == 0).all())]
+        with_cf = who == "aff" or include_pm               # R1's counterpart: descriptive only (rule section 8.3)
+        fused, cf = frozen_cells(frozen["B"], parity, rd["T"], gates[who], CELLS[who]["fused"],
+                                 CELLS[who]["cf"] if with_cf else None)
+        out[f"{who}_fused"] = per_anchor(fused)
+        if with_cf:
+            out[f"{who}_cf"] = per_anchor(cf)
+    moved = [k for k in CONDITION_FREE if k in out and not bool((np.asarray(out[k]["gain"]) == 0).all())]
     _require(not moved, f"condition gain must be 0 on every episode for {moved} (CF and the R1 counterpart "
                         f"condition-free, hazard 10)")  # guard:cf_gain
 

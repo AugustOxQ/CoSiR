@@ -213,7 +213,8 @@ def test_cells_are_the_rule_table():
 
 def test_scorer_names():
     assert S.PM_SCORERS == B.PM_NAMES
-    assert S.CORE_SCORERS == ("cosine", "rca", "B", "B0", "B1", "aff_fused", "aff_cf", "r1_fused", "r1_cf")
+    assert S.CORE_SCORERS == ("cosine", "rca", "B", "B0", "B1", "aff_fused", "aff_cf", "r1_fused")   # rule 8.3
+    assert S.DESCRIPTIVE_EXTRAS == B.PM_NAMES + ("r1_cf",)
     assert S.ALL_SCORERS == ("cosine", "rca") + B.PM_NAMES + ("B", "B0", "B1", "aff_fused", "aff_cf", "r1_fused",
                                                                "r1_cf")
     assert P.NESTED == ("B", "B0", "B1") and P.TERM_OF == {"B": "t6u_B", "B0": "t6u_B0", "B1": "t6u_B1"}
@@ -339,13 +340,15 @@ def test_score_seed_keys_and_shapes(held, scored_held):
         assert rd["P"][c].shape == (N_EP, 3) and rd["P"][c].dtype == np.float64
         assert rd["m"][c].shape == (N_EP,) and rd["pick"][c].dtype == np.int64
     assert np.array_equal(out["cl"], held.cl) and np.array_equal(out["pair_index"], held.pair_index)
-    for k in ("cosine", "B", "B0", "B1", "aff_cf", "r1_cf"):
+    for k in ("cosine", "B", "B0", "B1", "aff_cf"):
         assert (out[k]["gain"] == 0).all(), k
+    assert "r1_cf" not in out
 
 
 def test_score_seed_assembly(held, readers, reader_gates, scored_held):
     """Each scorer as the rule's assembly: COS = per_anchor(cos); B, B0, B1 nested with their own picks; RCA fused at
-    its lambdas; AFF, CF, R1 the frozen cells on z(B) of the frozen B (hazard 1), not of B0 or cosine."""
+    its lambdas; AFF, CF, R1 fused the frozen cells on z(B) of the frozen B (hazard 1), not of B0 or cosine. Without
+    include_pm, R1's counterpart is not scored (rule section 8 item 3)."""
     b, out = held, scored_held
     assert pa_bits(out["cosine"], per_anchor(b.cos))
     frozen = {name: S.frozen_nested(b.cos, b.t_n1u, getattr(b, P.TERM_OF[name]), NESTED_PICKS[name], b.parity)
@@ -356,7 +359,8 @@ def test_score_seed_assembly(held, readers, reader_gates, scored_held):
     T = reader_gates.rd["T"]
     for who, g in (("aff", reader_gates.g_aff), ("r1", reader_gates.g_r1)):
         fused, cf = S.frozen_cells(frozen["B"], b.parity, T, g, S.CELLS[who]["fused"], S.CELLS[who]["cf"])
-        assert pa_bits(out[f"{who}_fused"], per_anchor(fused)) and pa_bits(out[f"{who}_cf"], per_anchor(cf)), who
+        assert pa_bits(out[f"{who}_fused"], per_anchor(fused)), who
+        assert pa_bits(out["aff_cf"], per_anchor(cf)) if who == "aff" else "r1_cf" not in out
         other, _ = S.frozen_cells(frozen["B0"], b.parity, T, g, S.CELLS[who]["fused"], S.CELLS[who]["cf"])
         assert not pa_bits(out[f"{who}_fused"], per_anchor(other))
         for c in CONDITIONS:
@@ -372,6 +376,69 @@ def test_score_seed_picks_take_string_or_int_halves(held, readers, scored_held):
     out = S.score_seed(held, as_json, lams, readers, include_pm=False)
     for k in S.CORE_SCORERS:
         assert pa_bits(out[k], scored_held[k]), k
+
+
+class CellPoison(Mapping):
+    """CELLS[who] whose "cf" entry raises when read."""
+
+    def __init__(self, cells):
+        self._c = dict(cells)
+
+    def __getitem__(self, k):
+        if k == "cf":
+            raise Reached("R1's counterpart cells were read")
+        return self._c[k]
+
+    def __iter__(self):
+        return iter(self._c)
+
+    def __len__(self):
+        return len(self._c)
+
+
+def test_frozen_cells_without_cf(held, reader_gates, monkeypatch):
+    """cf_cells=None: the fused scores alone, bit-identical, and no G_cf is built."""
+    b = held
+    Bs = S.frozen_nested(b.cos, b.t_n1u, b.t6u_B, NESTED_PICKS["B"], b.parity)
+    T, g = reader_gates.rd["T"], reader_gates.g_r1
+    fused, _ = S.frozen_cells(Bs, b.parity, T, g, S.CELLS["r1"]["fused"], S.CELLS["r1"]["cf"])
+    monkeypatch.setattr(S, "cf_terms", lambda gated: (_ for _ in ()).throw(Reached("G_cf built")))
+    alone, cf = S.frozen_cells(Bs, b.parity, T, g, S.CELLS["r1"]["fused"], None)
+    assert cf is None and scores_bits(alone, fused)
+
+
+def test_without_pm_r1_counterpart_neither_assembled_nor_scored(held, sel42, readers, monkeypatch):
+    """Rule section 8 item 3 (contracts section 5, amendment 14:50): with include_pm=False, R1's counterpart cells
+    are never read, its G_cf never built (G_cf is built once, for CF), and no r1_cf key is returned. The poison is
+    live: with include_pm=True the same scoring reads the cells and raises."""
+    monkeypatch.setattr(S, "CELLS", {"aff": S.CELLS["aff"], "r1": CellPoison(S.CELLS["r1"])})
+    calls = []
+    real_cf_terms = S.cf_terms
+
+    def counting(gated):
+        calls.append(1)
+        return real_cf_terms(gated)
+
+    monkeypatch.setattr(S, "cf_terms", counting)
+    out = S.score_seed(held, NESTED_PICKS, {"rca": lambdas_all()["rca"]}, readers, include_pm=False)
+    assert "r1_cf" not in out and tuple(out) == S.CORE_SCORERS + S.EXTRA_KEYS
+    assert len(calls) == 1
+    with pytest.raises(Reached, match="counterpart"):
+        S.score_seed(sel42, NESTED_PICKS, lambdas_all(), readers, include_pm=True)
+
+
+def test_with_pm_r1_counterpart_scored(sel42, readers):
+    """include_pm=True (the regression, the descriptive pass): r1_cf is the frozen counterpart cells (58, 123) on the
+    frozen B, gain 0 on every episode."""
+    b = sel42
+    out = S.score_seed(b, NESTED_PICKS, lambdas_all(), readers, include_pm=True)
+    assert tuple(out) == S.ALL_SCORERS + S.EXTRA_KEYS
+    rd = RF.reader(b, readers)
+    g = RF.gates_r1(rd["m"], R3.assert_taus())
+    Bs = S.frozen_nested(b.cos, b.t_n1u, b.t6u_B, NESTED_PICKS["B"], b.parity)
+    fused, cf = S.frozen_cells(Bs, b.parity, rd["T"], g, S.CELLS["r1"]["fused"], S.CELLS["r1"]["cf"])
+    assert pa_bits(out["r1_fused"], per_anchor(fused)) and pa_bits(out["r1_cf"], per_anchor(cf))
+    assert (out["r1_cf"]["gain"] == 0).all()
 
 
 # ---------------------------------------------------------------- PM before the verdict (rule section 8 item 3)
