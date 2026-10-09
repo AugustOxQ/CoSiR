@@ -118,9 +118,9 @@ def test_every_marked_guard_has_a_mutation_test():
     names = set()
     for module in GUARDED:
         names |= {(module, g) for g in re.findall(r"# guard:([a-z_0-9]+)", (HERE / module).read_text())}
-    text = Path(__file__).read_text()
+    text = Path(__file__).read_text() + (HERE / "test_r6_held.py").read_text()      # ticket 08's guards there
     covered = set()
-    for module, args in re.findall(r'mutant\(tmp_path, "(run_r6_held\.py|run_r6_sensitivity\.py)", ([^)]*)\)', text):
+    for module, args in re.findall(r'mutant\([^,()]+, "(run_r6_held\.py|run_r6_sensitivity\.py)", ([^)]*)\)', text):
         covered |= {(module, g) for g in re.findall(r'"([a-z_0-9]+)"', args)}
     assert names and names <= covered, sorted(names - covered)
 
@@ -487,9 +487,11 @@ def test_guard_exit_code(tmp_path, monkeypatch, capsys):
     assert mod.run_regression(results=res, here=HERE) == 0                  # the difference no longer stops the run
 
 
-def test_main_has_only_the_regression_mode():
+def test_main_modes():
+    """Ticket 08 added --mode held and --mode smoke (their tests: test_r6_held.py); an unknown mode or none exits."""
+    assert RH.MODES == ("regression", "held", "smoke")
     with pytest.raises(SystemExit):
-        RH.main(["--mode", "held"])
+        RH.main(["--mode", "verdict"])
     with pytest.raises(SystemExit):
         RH.main([])
 
