@@ -8,8 +8,12 @@ whitespace or Unicode punctuation (category P*) removed at both ends until none 
 str.splitlines(); one leading list marker (^\\s*(\\d+[.)]|[-*•])\\s*) is removed from each line, which is then
 normalised as a phrase; empty and repeated lines are dropped (the first occurrence kept) and the first K kept. A phrase
 that is empty, or whose listing gives fewer than 2 values, is a parsing failure: T_DTS^c = 0 on that episode and
-condition, counted per setting and condition. With a finite lambda the fused score of such a row is z(cos) exactly;
-with lambda = inf (never picked so far) it would be the all-zero row, a miss.
+condition, counted per setting and condition, and the fused score of that row is cosine's (rule section 7 item 2): at
+every lambda, inf included, the failed (episode, condition) rows take the lambda = 0 rows, z(cos) (fused_r6). With a
+finite lambda that changes no bit (z(cos) + lambda * 0); with lambda = inf, LAMBDA_GRID's last entry, plain zfuse
+would give the all-zero row, a miss. crossfit_lambda_r6 is crossfit_lambda with fused_r6 in place of fused_scores
+(bit for bit crossfit_lambda when nothing failed); frozen_fused uses it too; DTS-CF's rows fall back where both
+conditions failed (where one failed, the other's z(T) remains).
 
 GPU outputs, joined by key (C6). Verbaliser answers are keyed (seed, episode_index, condition, wording), listings
 (phrase, K). Outputs of several folders (DAS6 tags, shards) are merged: a key seen twice must carry the identical raw
@@ -28,9 +32,10 @@ caption items through the text features); T_DTS^c(query, candidate) = cos(R_quer
 zero (a failed parse has an empty basis, so its row is 0). Directions as cosine_scores: i2t queries the anchor's image
 against the candidates' captions, t2i the anchor's caption against their images. Computed in float64, stored float32.
 
-Scores. DTS: fused_scores(cos, T, lambda) with crossfit_lambda (LAMBDA_GRID, edge extension). DTS-CF: the mean of
-z(T^a) and z(T^b) per ranking row (zscore_rows in float32, averaged in float64, cast to float32), equal under both
-conditions (asserted, and its gain asserted 0 on every episode), fused by crossfit_lambda. DTS-N: the phrase replaced
+Scores. DTS: fused_scores(cos, T, lambda) with crossfit_lambda (LAMBDA_GRID, edge extension), failed rows as
+above. DTS-CF: the mean of z(T^a) and z(T^b) per ranking row (zscore_rows in float32, averaged in float64, cast to
+float32), equal under both conditions (asserted, and its gain asserted 0 on every episode), fused by crossfit_lambda
+(failed rows: where both conditions failed). DTS-N: the phrase replaced
 by the target aspect's name (condition a: the pair's first aspect), listed and scored as DTS. Frozen picks (held): the
 pick of tune half h scores the episodes of parity 1 - h, exactly what crossfit_lambda does on seed 42.
 
@@ -63,7 +68,7 @@ import torch  # noqa: E402
 from src.eval.aspect_episodes import AspectEpisodes  # noqa: E402
 from src.eval.aspect_metrics import CONDITIONS, DIRECTIONS, per_anchor  # noqa: E402
 from src.eval.aspect_quick_checks import _require_condition_free  # noqa: E402
-from src.eval.aspect_scorers import EDGE_EXTENSION, LAMBDA_GRID, crossfit_lambda, fused_scores  # noqa: E402
+from src.eval.aspect_scorers import EDGE_EXTENSION, LAMBDA_GRID, _criterion, fused_scores  # noqa: E402
 from src.model.aspect_rule import zscore_rows  # noqa: E402
 
 RULE_MARKER = r"^\s*(\d+[.)]|[-*•])\s*"          # rule section 7 item 2, verbatim
@@ -461,14 +466,17 @@ def crl_term(img, txt, pooled, vidx, emb, chunk=CHUNK) -> dict:
 
 def dts_term(ctx, phrases_by_cond, K, listings, embedder) -> SimpleNamespace:
     """T^c of ``ctx``'s episodes for the given phrases (per condition, one per episode). -> SimpleNamespace(T,
-    fail {c: {...}}, below_K {c: n}, n_values)."""
+    fail {c: {...}}, below_K {c: n}, failed {c: (n,) bool, the parsing failures}, n_values)."""
     b = {c: bases(phrases_by_cond[c], K, listings) for c in CONDITIONS}
     for c in CONDITIONS:
         _require(len(b[c].values) == ctx.n, f"{len(b[c].values)} phrases for {ctx.n} episodes")
     vidx, emb = value_index({c: b[c].values for c in CONDITIONS}, K, embedder)
     T = crl_term(ctx.img, ctx.txt, ctx.pooled, vidx, emb)
+    failed = {c: np.array([v is None for v in b[c].values], dtype=bool) for c in CONDITIONS}
+    for c in CONDITIONS:
+        _require(int(failed[c].sum()) == sum(b[c].fail.values()), "failure mask and counts disagree")
     return SimpleNamespace(T=T, fail={c: b[c].fail for c in CONDITIONS}, below_K={c: b[c].below_K for c in CONDITIONS},
-                           n_values=int(len(emb)))
+                           failed=failed, n_values=int(len(emb)))
 
 
 # ---------------------------------------------------------------- fusion, controls, frozen picks
@@ -482,6 +490,59 @@ def cf_term(T) -> dict:
     return {c: {d: m[d].copy() for d in DIRECTIONS} for c in CONDITIONS}
 
 
+def _masks(failed, n):
+    if failed is None:
+        return None
+    m = {c: np.asarray(failed[c]) for c in CONDITIONS}
+    _require(all(x.dtype == bool and x.shape == (n,) for x in m.values()), f"failure masks must be ({n},) bool")
+    return m
+
+
+def fused_r6(cos, term, lam, failed=None) -> dict:
+    """fused_scores, with the failed (episode, condition) rows replaced by the lambda = 0 rows, z(cos): rule section 7
+    item 2's "the fused score is then cosine" at every lambda (inf included)."""
+    f = fused_scores(cos, term, lam)
+    m = _masks(failed, len(cos["a"]["i2t"]))
+    if m is None or not any(x.any() for x in m.values()):
+        return f
+    zero = fused_scores(cos, term, 0.0)
+    for c in CONDITIONS:
+        for d in DIRECTIONS:
+            f[c][d][m[c]] = zero[c][d][m[c]]  # guard:failed_rows
+    return f
+
+
+def crossfit_lambda_r6(cos, term, parity, failed=None):
+    """src.eval.aspect_scorers.crossfit_lambda with fused_r6 in place of fused_scores (the same grid, criterion, edge
+    extension, ties and convention; bit for bit crossfit_lambda when nothing failed).
+    -> (scores, {tune half: lambda})."""
+    n = len(cos["a"]["i2t"])
+    parity = np.asarray(parity)
+    if parity.shape != (n,) or not np.isin(parity, (0, 1)).all() or not ((parity == 0).any() and (parity == 1).any()):
+        raise ValueError(f"parity must be a length-{n} array of 0/1 with both halves non-empty")
+    cache = {}
+
+    def fused(lam):
+        if lam not in cache:
+            cache[lam] = fused_r6(cos, term, lam, failed)
+        return cache[lam]
+
+    picks = {}
+    out = {c: {d: np.empty_like(cos[c][d]) for d in DIRECTIONS} for c in CONDITIONS}
+    for half in (0, 1):
+        tune, apply = parity == half, parity != half
+        candidates = list(LAMBDA_GRID)
+        best = max(candidates, key=lambda lam: _criterion(fused(lam), tune))
+        if best == LAMBDA_GRID[-2]:                                  # 16 picked: extend this half's grid once
+            candidates += EDGE_EXTENSION
+            best = max(candidates, key=lambda lam: _criterion(fused(lam), tune))
+        picks[half] = best
+        for c in CONDITIONS:
+            for d in DIRECTIONS:
+                out[c][d][apply] = fused(best)[c][d][apply]
+    return out, picks
+
+
 def require_cf(scores, what):
     """Identical under both conditions (ValueError otherwise)."""
     _require_condition_free(scores, what)
@@ -491,33 +552,36 @@ def scored(scores, picks) -> SimpleNamespace:
     return SimpleNamespace(scores=scores, picks=picks, pa=per_anchor(scores))
 
 
-def score_crossfit(cos, term, parity) -> SimpleNamespace:
-    """DTS or DTS-N: crossfit_lambda's scores and picks {tune half: lambda}, and per_anchor."""
-    return scored(*crossfit_lambda(cos, term, parity))
+def score_crossfit(cos, term, parity, failed=None) -> SimpleNamespace:
+    """DTS or DTS-N: crossfit_lambda_r6's scores and picks {tune half: lambda}, and per_anchor."""
+    return scored(*crossfit_lambda_r6(cos, term, parity, failed))
 
 
-def score_cf(cos, T, parity, picks=None) -> SimpleNamespace:
+def score_cf(cos, T, parity, picks=None, failed=None) -> SimpleNamespace:
     """DTS-CF from T: its term and its fused scores asserted condition-free and its gain 0 on every episode;
-    cross-fitted, or with frozen ``picks``."""
+    cross-fitted, or with frozen ``picks``. Rows where both conditions failed take cosine's rows."""
     term = cf_term(T)
     require_cf(term, "DTS-CF term")  # guard:cf
+    m = _masks(failed, len(cos["a"]["i2t"]))
+    both = None if m is None else {c: m["a"] & m["b"] for c in CONDITIONS}
     if picks is None:
-        s = score_crossfit(cos, term, parity)
+        s = score_crossfit(cos, term, parity, both)
     else:
-        s = scored(frozen_fused(cos, term, picks, parity), dict(picks))
+        s = scored(frozen_fused(cos, term, picks, parity, both), dict(picks))
     require_cf(s.scores, "DTS-CF scores")  # guard:cf
     _require(bool((s.pa["gain"] == 0).all()), "DTS-CF has a non-zero gain on some episode")  # guard:cf
     return s
 
 
-def frozen_fused(cos, term, picks, parity) -> dict:
-    """The pick of tune half h scores the episodes of parity 1 - h (crossfit_lambda's own convention)."""
+def frozen_fused(cos, term, picks, parity, failed=None) -> dict:
+    """The pick of tune half h scores the episodes of parity 1 - h (crossfit_lambda's own convention); failed rows
+    as fused_r6."""
     parity = np.asarray(parity)
     _require(sorted(picks) == [0, 1] and all(picks[h] in LAMBDAS for h in (0, 1)), f"picks {picks}")
     out = {c: {d: np.empty_like(np.asarray(cos[c][d])) for d in DIRECTIONS} for c in CONDITIONS}
     for h in (0, 1):
         apply = parity == 1 - h
-        f = fused_scores(cos, term, picks[h])
+        f = fused_r6(cos, term, picks[h], failed)
         for c in CONDITIONS:
             for d in DIRECTIONS:
                 out[c][d][apply] = f[c][d][apply]
@@ -624,14 +688,14 @@ def run_setting(ctx, answers, wording, K, listings, embedder) -> SimpleNamespace
     """DTS of one setting on ``ctx``'s episodes, cross-fitted. -> SimpleNamespace(s (scored), term, fail, below_K,
     score (tune_score))."""
     t = dts_term(ctx, phrases_for(ctx, answers, wording), K, listings, embedder)
-    s = score_crossfit(ctx.cos, t.T, ctx.parity)
+    s = score_crossfit(ctx.cos, t.T, ctx.parity, t.failed)
     return SimpleNamespace(s=s, term=t, fail=t.fail, below_K=t.below_K, score=tune_score(s.pa))
 
 
 def run_names(ctx, K, listings, embedder) -> SimpleNamespace:
     """DTS-N at K, cross-fitted."""
     t = dts_term(ctx, name_phrases(ctx.pair_index), K, listings, embedder)
-    s = score_crossfit(ctx.cos, t.T, ctx.parity)
+    s = score_crossfit(ctx.cos, t.T, ctx.parity, t.failed)
     return SimpleNamespace(s=s, term=t, fail=t.fail, below_K=t.below_K, gain_int4=int4_sum(s.pa["gain"], "gain"))
 
 
@@ -648,9 +712,9 @@ def held_dts_scores(ctx, answers, listings, record, embedder) -> dict:
     _require(ctx.cos["a"]["i2t"].shape == (ctx.n, N_CANDIDATES), "cos does not match the episodes")
     t = dts_term(ctx, phrases_for(ctx, answers, w), K, listings, embedder)
     tn = dts_term(ctx, name_phrases(ctx.pair_index), K, listings, embedder)
-    dts = per_anchor(frozen_fused(ctx.cos, t.T, picks["dts"], ctx.parity))
-    cf = score_cf(ctx.cos, t.T, ctx.parity, picks["dts_cf"]).pa
-    dn = per_anchor(frozen_fused(ctx.cos, tn.T, picks["dts_n"], ctx.parity))
+    dts = per_anchor(frozen_fused(ctx.cos, t.T, picks["dts"], ctx.parity, t.failed))
+    cf = score_cf(ctx.cos, t.T, ctx.parity, picks["dts_cf"], t.failed).pa
+    dn = per_anchor(frozen_fused(ctx.cos, tn.T, picks["dts_n"], ctx.parity, tn.failed))
     return {"dts": dts, "dts_cf": cf, "dts_n": dn, "failures": {"dts": t.fail, "dts_n": tn.fail},
             "below_K": {"dts": t.below_K, "dts_n": tn.below_K}, "setting": record["setting"],
             "picks": {s: record["picks"][s] for s in SCORERS}}

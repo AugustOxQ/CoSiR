@@ -356,14 +356,14 @@ def stage_chosen(args, ctx, settings, settings_sha) -> int:
     lis = listings_of(args, settings_sha)
     emb = D.ValueEmbedder(args.embeddings)
     r = D.run_setting(ctx, ver.answers, w, K, lis.answers, emb)
-    cf = D.score_cf(ctx.cos, r.term.T, ctx.parity)
+    cf = D.score_cf(ctx.cos, r.term.T, ctx.parity, failed=r.term.failed)
     rn = D.run_names(ctx, K, lis.answers, emb)
-    for s, term in ((r.s, r.term.T), (rn.s, rn.term.T)):
-        fz = D.frozen_fused(ctx.cos, term, s.picks, ctx.parity)
+    for s, t in ((r.s, r.term), (rn.s, rn.term)):
+        fz = D.frozen_fused(ctx.cos, t.T, s.picks, ctx.parity, t.failed)
         _require(all(np.array_equal(fz[c][d], s.scores[c][d]) for c in D.CONDITIONS for d in D.DIRECTIONS),
                  "frozen picks do not reproduce the cross-fitted scores")  # guard:frozen_convention
     _require(D.picks_to_json(rn.s.picks) == sanity["per_K"][str(K)]["picks"],
-             "DTS-N's picks differ from the sanity stage's at the chosen K")
+             "DTS-N's picks differ from the sanity stage's at the chosen K")  # guard:names_picks
     arrays = {"pair_index": np.asarray(ctx.pair_index, dtype=np.int64),
               "parity": np.asarray(ctx.parity, dtype=np.int64),
               "anchor_group": np.asarray(ctx.anchor_group, dtype=np.int64)}
@@ -429,21 +429,23 @@ def stage_stop(args) -> int:
         print(f"dts stop: STOP (not built within the budget); record {out}", flush=True)
         return EXIT_FAIL
     _require(chosen["setting"] == D.setting_name(recs[TUNE]["chosen"]["wording_id"], recs[TUNE]["chosen"]["K"]),
-             "the chosen stage ran another setting than the tuning chose")
+             "the chosen stage ran another setting than the tuning chose")  # guard:stop_setting
     now_shas = {f: R.r6_module_shas().get(f) for f in DTS_FILES}
     changed = [k for k, v in recs.items() if dts_shas(v) != now_shas]
     _require(not changed, f"stage records made by other DTS code bytes: {changed}; rerun them (rule section 6 item "
                           f"7)", Refused)  # guard:same_modules
     npz = Path(args.out) / chosen["per_anchor_file"]
-    _require(G.sha256_file(npz) == chosen["per_anchor_sha256"], f"{npz} is not the chosen stage's file")
+    _require(G.sha256_file(npz) == chosen["per_anchor_sha256"],
+             f"{npz} is not the chosen stage's file")  # guard:npz_sha
     with np.load(npz, allow_pickle=False) as z:
         r1 = z["dts__r1"]
     dec = D.stop_decision(r1, n_total)
     b = D.budget(start, max((sanity["time"], chosen["time"]), key=D.parse_amsterdam))
-    stop = bool(dec["dts_above_aff"] or not b["within_budget"])
-    reason = ("DTS's hit count is above AFF's" if dec["dts_above_aff"] else
-              "not built within the 24-hour budget" if not b["within_budget"] else None)
-    rec = {"stage": "stop", "seed": int(args.seed), "built": True, "setting": chosen["setting"], **dec,
+    stop = bool(not b["within_budget"] or dec["dts_above_aff"])
+    reason = ("not built within the 24-hour budget" if not b["within_budget"] else          # the budget first
+              "DTS's hit count is above AFF's" if dec["dts_above_aff"] else None)
+    rec = {"stage": "stop", "seed": int(args.seed), "built": bool(b["within_budget"]),       # built within the budget
+           "setting": chosen["setting"], **dec,
            "budget": b, "stop": stop, "reason": reason, "rule_sha256": R.RULE_SHA256,
            "settings_sha256": chosen["settings_sha256"], "module_sha256": R.r6_module_shas(),
            "input_sha256": {name: G.sha256_file(Path(args.out) / name) for name in recs} | {npz.name:

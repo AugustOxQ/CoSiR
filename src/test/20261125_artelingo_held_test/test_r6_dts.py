@@ -62,7 +62,7 @@ def mutant(tmp_path, fname, guard=None, replace=None):
     assert src.count(HERE_LINE) == 1
     if guard is not None:
         lines = src.splitlines(keepends=True)
-        hits = [n for n in ast.walk(ast.parse(src)) if isinstance(n, (ast.Expr, ast.Return))
+        hits = [n for n in ast.walk(ast.parse(src)) if isinstance(n, (ast.Expr, ast.Return, ast.Assign))
                 and f"# guard:{guard}" in lines[n.end_lineno - 1]]
         assert hits, guard
         for n in hits:
@@ -502,7 +502,8 @@ def test_dts_cf_is_condition_free_with_zero_gain_and_a_differing_term_raises(tmp
     for d in DIRECTIONS:
         za = zscore_rows(torch.as_tensor(T["a"][d])).numpy().astype(np.float64)
         zb = zscore_rows(torch.as_tensor(T["b"][d])).numpy().astype(np.float64)
-        assert np.array_equal(cf["a"][d], ((za + zb) * 0.5).astype(np.float32)) and np.array_equal(cf["a"][d], cf["b"][d])
+        assert np.array_equal(cf["a"][d], ((za + zb) * 0.5).astype(np.float32))
+        assert np.array_equal(cf["a"][d], cf["b"][d])
         assert cf["a"][d].dtype == np.float32
     s = D.score_cf(cos, T, np.arange(N) % 2)
     assert (s.pa["gain"] == 0).all()
@@ -533,6 +534,108 @@ def test_frozen_picks_reproduce_crossfit_lambda_on_the_tuning_seed():
     assert D.picks_from_json({"0": "inf", "1": 0.25}) == {0: float("inf"), 1: 0.25}
     with pytest.raises(AssertionError):
         D.picks_from_json({"0": 3.0, "1": 0.25})
+
+
+def failure_masks(n, seed=21, rate=0.1):
+    rng = np.random.default_rng(seed)
+    return {c: rng.random(n) < rate for c in CONDITIONS}
+
+
+def test_failed_rows_take_the_lambda_zero_rows_at_every_lambda(tmp_path):
+    cos, T = synth_terms(seed=13)
+    failed = failure_masks(N)
+    for c in CONDITIONS:
+        for d in DIRECTIONS:
+            T[c][d][failed[c]] = 0                           # a parsing failure: T = 0 on that episode and condition
+    zero = fused_scores(cos, T, 0.0)
+    for lam in D.LAMBDAS:
+        f, plain = D.fused_r6(cos, T, lam, failed), fused_scores(cos, T, lam)
+        for c in CONDITIONS:
+            for d in DIRECTIONS:
+                assert np.array_equal(f[c][d][failed[c]], zero[c][d][failed[c]]), lam
+                assert np.array_equal(f[c][d][~failed[c]], plain[c][d][~failed[c]]), lam
+    inf = fused_scores(cos, T, float("inf"))
+    assert (inf["a"]["i2t"][failed["a"]] == 0).all()                          # what crossfit_lambda would score
+    mut = mutant(tmp_path, "r6_dts.py", guard="failed_rows")
+    assert (mut.fused_r6(cos, T, float("inf"), failed)["a"]["i2t"][failed["a"]] == 0).all()
+
+
+def test_the_r6_crossfit_equals_crossfit_lambda_bit_for_bit_when_nothing_failed():
+    for seed in (14, 15):
+        cos, T = synth_terms(seed=seed)
+        parity = np.arange(N) % 2
+        s0, p0 = crossfit_lambda(cos, T, parity)
+        for failed in (None, {c: np.zeros(N, bool) for c in CONDITIONS}):
+            s1, p1 = D.crossfit_lambda_r6(cos, T, parity, failed)
+            assert p1 == p0 and all(np.array_equal(s1[c][d], s0[c][d]) and s1[c][d].dtype == s0[c][d].dtype
+                                    for c in CONDITIONS for d in DIRECTIONS)
+            fz = D.frozen_fused(cos, T, p0, parity, failed)
+            assert all(np.array_equal(fz[c][d], s0[c][d]) for c in CONDITIONS for d in DIRECTIONS)
+    with pytest.raises(ValueError):
+        D.crossfit_lambda_r6(cos, T, np.zeros(N, int))
+
+
+def inf_world(n=N, seed=16):
+    """Every row: cosine prefers a competitor by a wide margin, T prefers the target by a hair, so only lambda = inf
+    (z(T) alone) ranks the target first; condition c's target is column c."""
+    rng = np.random.default_rng(seed)
+    cosr = rng.random((n, NC)).astype(np.float32) * 0.1
+    cosr[:, 5] = 1.0
+    cos = as_scores({c: {d: cosr for d in DIRECTIONS} for c in CONDITIONS})
+    T = {}
+    for j, c in enumerate(CONDITIONS):
+        t = rng.random((n, NC)).astype(np.float32) * 0.01
+        t[:, 5] = 0.999
+        t[:, j] = 1.0
+        T[c] = {d: t.copy() for d in DIRECTIONS}
+    return cos, as_scores(T)
+
+
+def test_lambda_inf_with_failures_scores_failed_rows_by_cosine():
+    cos, T = inf_world()
+    parity = np.arange(N) % 2
+    failed = failure_masks(N, seed=22)
+    for c in CONDITIONS:
+        for d in DIRECTIONS:
+            T[c][d][failed[c]] = 0
+    s_old, p_old = crossfit_lambda(cos, T, parity)
+    s, picks = D.crossfit_lambda_r6(cos, T, parity, failed)
+    assert picks == p_old == {0: float("inf"), 1: float("inf")}
+    zc = fused_scores(cos, T, 0.0)
+    for c in CONDITIONS:
+        for d in DIRECTIONS:
+            assert np.array_equal(s[c][d][failed[c]], zc[c][d][failed[c]])
+            assert (s_old[c][d][failed[c]] == 0).all()                         # the bug: an all-zero row, a miss
+            assert np.array_equal(s[c][d][~failed[c]], s_old[c][d][~failed[c]])
+    both = failed["a"] & failed["b"]
+    pa, pc = per_anchor(s), per_anchor(cos)
+    assert np.array_equal(pa["r1"][both], pc["r1"][both]) and both.any()      # both failed: cosine's own R@1
+    fz = D.frozen_fused(cos, T, picks, parity, failed)
+    assert all(np.array_equal(fz[c][d], s[c][d]) for c in CONDITIONS for d in DIRECTIONS)
+    # held path: the frozen inf picks fall back to cosine on failed rows too
+    fz_inf = D.frozen_fused(cos, T, {0: float("inf"), 1: float("inf")}, parity, failed)
+    assert all(np.array_equal(fz_inf[c][d][failed[c]], zc[c][d][failed[c]]) for c in CONDITIONS for d in DIRECTIONS)
+
+
+def test_dts_cf_rows_where_both_conditions_failed_take_cosine():
+    cos, T = inf_world(seed=17)
+    parity = np.arange(N) % 2
+    failed = failure_masks(N, seed=23, rate=0.3)
+    for c in CONDITIONS:
+        for d in DIRECTIONS:
+            T[c][d][failed[c]] = 0
+    both, one = failed["a"] & failed["b"], failed["a"] ^ failed["b"]
+    s = D.score_cf(cos, T, parity, picks={0: float("inf"), 1: float("inf")}, failed=failed)
+    zc = fused_scores(cos, T, 0.0)
+    plain = fused_scores(cos, D.cf_term(T), float("inf"))
+    for c in CONDITIONS:
+        for d in DIRECTIONS:
+            assert np.array_equal(s.scores[c][d][both], zc[c][d][both])
+            assert np.array_equal(s.scores[c][d][one], plain[c][d][one])        # one condition left: its z(T)
+    assert (s.pa["gain"] == 0).all()
+    s2 = D.score_cf(cos, T, parity, failed=failed)                              # cross-fitted, same masks
+    assert all(np.array_equal(s2.scores[c][d][both], fused_scores(cos, T, 0.0)[c][d][both])
+               for c in CONDITIONS for d in DIRECTIONS)
 
 
 def test_frozen_picks_tie_tune_half_h_to_parity_1_minus_h():
@@ -664,6 +767,13 @@ def test_held_dts_scores_on_synthetic_held_shapes(synth_world, tmp_path):
     by_hand = {c: {d: np.where((w.ctx.parity == 1)[:, None], fused_scores(w.ctx.cos, t.T, 1.0)[c][d],
                                fused_scores(w.ctx.cos, t.T, 0.5)[c][d]) for d in DIRECTIONS} for c in CONDITIONS}
     assert all(np.array_equal(out["dts"][m], per_anchor(by_hand)[m]) for m in D.METRICS)
+    # frozen inf picks: the failed (episode, condition) rows are scored by cosine (rule section 7 item 2)
+    rec_inf = dict(w.record, picks=dict(w.record["picks"], dts={"0": "inf", "1": "inf"}))
+    got = D.held_dts_scores(w.ctx, w.answers, w.listings, rec_inf, emb)["dts"]
+    inf, zc = fused_scores(w.ctx.cos, t.T, float("inf")), fused_scores(w.ctx.cos, t.T, 0.0)
+    want = {c: {d: np.where(t.failed[c][:, None], zc[c][d], inf[c][d]) for d in DIRECTIONS} for c in CONDITIONS}
+    assert all(t.failed[c].sum() == n_empty[c] + n_single[c] for c in CONDITIONS)
+    assert all(np.array_equal(got[m], per_anchor(want)[m]) for m in D.METRICS)
     # a missing key refuses, as does a listing missing for a phrase the episodes need
     gone = dict(w.answers)
     del gone[(52, 4321, "b", "W3")]
@@ -836,8 +946,8 @@ def test_the_frozen_pick_convention_is_checked_in_the_chosen_stage(tmp_path, fak
     assert run_stage(w, "sanity") == 0 and run_stage(w, "tune") == 0
     real = D.frozen_fused
 
-    def wrong(cos, term, picks, parity):                    # a slip in the frozen assembly
-        f = real(cos, term, picks, parity)
+    def wrong(cos, term, picks, parity, failed=None):       # a slip in the frozen assembly
+        f = real(cos, term, picks, parity, failed)
         return {c: {d: -f[c][d] for d in DIRECTIONS} for c in CONDITIONS}
     monkeypatch.setattr(D, "frozen_fused", wrong)
     with pytest.raises(AssertionError, match="do not reproduce"):
@@ -886,7 +996,7 @@ def test_stop_stage_9406_continues_and_9407_stops(tmp_path, capsys):
     assert rec["stop"] is True and rec["reason"] == "DTS's hit count is above AFF's"
     out = re.sub(r"record \S+", "", capsys.readouterr().out)               # the paths hold the test's name
     assert not DECIMAL.search(out) and "9406" not in out and "9407" not in out
-    mut = mutant(tmp_path, "run_r6_dts.py", replace=('stop = bool(dec["dts_above_aff"] or not b["within_budget"])',
+    mut = mutant(tmp_path, "run_r6_dts.py", replace=('stop = bool(not b["within_budget"] or dec["dts_above_aff"])',
                                                       'stop = bool(not b["within_budget"])'))
     res = stop_world(tmp_path / "c", 9407)
     assert mut.stage_stop(stop_args(res)) == 0                              # the mutation is caught above
@@ -897,6 +1007,13 @@ def test_stop_stage_budget(tmp_path):
     assert RD.stage_stop(stop_args(res)) == RD.EXIT_FAIL
     rec = json.loads((res / RD.STOP).read_text())
     assert rec["reason"] == "not built within the 24-hour budget" and rec["budget"]["within_budget"] is False
+    assert rec["built"] is False and rec["stop"] is True
+    late = stop_world(tmp_path / "late_above", 9407, chosen_time="2026-10-10 12:30:00")
+    assert RD.stage_stop(stop_args(late)) == RD.EXIT_FAIL                  # both: the budget's reason comes first
+    rec = json.loads((late / RD.STOP).read_text())
+    assert rec["reason"] == "not built within the 24-hour budget" and rec["built"] is False
+    ok = stop_world(tmp_path / "in_time", 100)
+    assert RD.stage_stop(stop_args(ok)) == 0 and json.loads((ok / RD.STOP).read_text())["built"] is True
     empty = tmp_path / "empty"
     empty.mkdir()
     with pytest.raises(RD.Refused, match="not built yet"):                 # before the deadline: not evaluable
@@ -916,6 +1033,40 @@ def test_stop_refuses_records_of_other_dts_code_and_existing_outputs(tmp_path):
     assert mutant(tmp_path, "run_r6_dts.py", guard="same_modules").stage_stop(stop_args(res)) == 0
     with pytest.raises(RD.Refused, match="never overwritten"):
         RD.stage_stop(stop_args(res))
+
+
+def test_stop_refuses_another_setting_than_the_tunings(tmp_path):
+    res = stop_world(tmp_path / "a", 9000)
+    tune = json.loads((res / RD.TUNE).read_text())
+    tune["chosen"] = {"wording_id": "W2", "K": 16}
+    (res / RD.TUNE).write_text(json.dumps(tune))
+    with pytest.raises(AssertionError, match="another setting"):
+        RD.stage_stop(stop_args(res))
+    assert mutant(tmp_path, "run_r6_dts.py", guard="stop_setting").stage_stop(stop_args(res)) == 0
+
+
+def test_stop_refuses_a_per_anchor_file_other_than_the_chosen_stages(tmp_path):
+    res = stop_world(tmp_path / "a", 9000)
+    np.savez(res / RD.per_anchor_name(42), dts__r1=r1_with_hits(9407))        # replaced after the chosen stage
+    with pytest.raises(AssertionError, match="not the chosen stage's file"):
+        RD.stage_stop(stop_args(res))
+    assert mutant(tmp_path, "run_r6_dts.py", guard="npz_sha").stage_stop(stop_args(res)) == RD.EXIT_FAIL
+
+
+def test_chosen_refuses_dts_n_picks_other_than_the_sanitys(tmp_path, fake_clip):
+    w = make_stage_world(tmp_path)
+    assert run_stage(w, "sanity") == 0 and run_stage(w, "tune") == 0
+    path = tmp_path / "res" / RD.SANITY
+    rec = json.loads(path.read_text())
+    for k in rec["per_K"]:
+        rec["per_K"][k]["picks"] = {"0": 64.0, "1": 64.0} if rec["per_K"][k]["picks"] != {"0": 64.0, "1": 64.0} \
+            else {"0": 0.0, "1": 0.0}
+    path.write_text(json.dumps(rec))
+    with pytest.raises(AssertionError, match="DTS-N's picks differ"):
+        run_stage(w, "chosen", **w.full)
+    mut = mutant(tmp_path, "run_r6_dts.py", guard="names_picks")
+    assert mut.stage_chosen(SimpleNamespace(**{**vars(w.args), "stage": "chosen", **w.full}), w.ctx, SETTINGS,
+                            SETTINGS_SHA) == 0
 
 
 # ---------------------------------------------------------------- listing input
