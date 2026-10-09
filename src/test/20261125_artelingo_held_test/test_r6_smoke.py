@@ -80,6 +80,7 @@ def write_dts42(res, shas=None, here=HERE, stop=False):
     chosen = res / RDTS.chosen_name(R.DEV_SEED)
     write_json(chosen, {**base, "stage": "chosen", "gpu_fingerprints": {"verbaliser": ver, "listing": lis}})
     write_json(res / RDTS.STOP, {**base, "stage": "stop", "stop": stop, "built": True,
+                                 "budget": {"clock_start": R.DTS_CLOCK_START},
                                  "input_sha256": {chosen.name: R.sha256_file(chosen)}})
     return res
 

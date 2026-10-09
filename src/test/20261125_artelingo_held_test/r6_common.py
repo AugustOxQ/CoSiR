@@ -199,6 +199,10 @@ N_PER_PAIR = 4096
 N_SMOKE = 64
 AFF_HITS_SEED42 = 9406
 N_RANKINGS_SEED42 = 49152
+# rule section 7 item 7: the DTS budget's clock start, the first DTS commit (6beb360, 2026-10-09 12:29:20 Amsterdam
+# time, run log line 32); the seed-42 stop stage requires it and the held read checks it in the stop record (final
+# review C)
+DTS_CLOCK_START = "2026-10-09 12:29"
 N_ROWS = 308_723
 MIN_PAINTINGS = 30
 VALUE_COUNTS = {"emotion": 8, "style": 23, "genre": 10}    # rule section 5 item 2

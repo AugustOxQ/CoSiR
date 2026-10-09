@@ -19,12 +19,19 @@ Order (rule section 7 item 4):
      (listing job)
   6. --stage chosen --verbalise-out ... --verbalise-job ... --listing-out ...
      the chosen setting on all 12,288: its lambda picks per half, DTS-CF's and DTS-N's at the chosen K, the
-     parsing-failure counts and every setting's score -> results/dts_seed42.json (+ dts_seed42_per_anchor.npz)
+     parsing-failure counts and every setting's score -> results/dts_seed42.json (+ dts_seed42_per_anchor.npz).
+     "Built" is a one-time event (rule section 7 items 5 and 7): the first seed-42 chosen stage built within the
+     budget also writes results/dts_first_built.json, once, never overwritten (its built time = the later of the
+     sanity and chosen records' times, the clock start, the setting, the settings SHA-256, the GPU output
+     fingerprints of the sanity and chosen records).
   7. --stage stop --clock-start "2026-10-09 12:29"
      hits = sum of int64 as_int4(R@1) of DTS's cross-fitted fused scores over the 12,288; the build stops iff hits
      > 9,406 (AFF's); DTS must have been built (sanity passed, chosen run) within 24 hours of the clock start (the first
-     DTS commit, Amsterdam time, given here, never parsed from the log) -> results/dts_stop.json. Exit 0: no stop;
-     exit 3: stop (the user decides).
+     DTS commit, Amsterdam time; for seed 42 it must be r6_common.DTS_CLOCK_START, never parsed from the log) ->
+     results/dts_stop.json. The built time is dts_first_built.json's when the current chosen record has its setting,
+     settings SHA-256 and GPU output fingerprints (a rerun forced by a module change, rule section 6 item 7,
+     re-evaluates the stop, not the budget), else the later of this run's sanity and chosen times; the record says
+     which ("budget_time_source"). Exit 0: no stop; exit 3: stop (the user decides).
 
 Held phrases (after the held runner wrote results/held_episodes_seed<s>.npz and the verbaliser ran on them, rule section
 8 item 3; no metric): --stage list-input --for held --seed 52|53|54 --episodes <that file> --verbalise-out ...
@@ -63,6 +70,8 @@ EXIT_REFUSED = 2
 ADMITTED = {R.DEV_SEED: R.N_PER_PAIR, **{s: R.N_SMOKE for s in R.SMOKE_SEEDS}}
 LIST_FOR = ("sanity", "tune", "chosen", "held")
 SANITY, TUNE, STOP = "dts_sanity.json", "dts_tune.json", "dts_stop.json"
+FIRST_BUILT = "dts_first_built.json"
+DTS_CLOCK_START = R.DTS_CLOCK_START                     # seed 42's clock start (a test may set another)
 EMBEDDINGS = "dts_value_embeddings.npz"
 LISTING_INPUT, JOB_RECORD = "listing_input.jsonl", "job_record.json"
 # the files whose bytes the DTS stages ran; the stop refuses stage records made by other bytes
@@ -392,8 +401,52 @@ def stage_chosen(args, ctx, settings, settings_sha) -> int:
                        "per_anchor_sha256": G.sha256_file(npz), "embedder": emb.meta,
                        "gpu_fingerprints": fingerprints(ver, lis)})
     write_new(out, rec)
-    print(f"dts chosen ({D.setting_name(w, K)}): pass; record {out}, per-anchor arrays {npz}", flush=True)
+    first = record_first_built(args.out, args.seed, rec)
+    print(f"dts chosen ({D.setting_name(w, K)}): pass; record {out}, per-anchor arrays {npz}"
+          + (f"; first build recorded in {Path(args.out) / FIRST_BUILT}" if first == "written" else ""), flush=True)
     return 0
+
+
+def built_fingerprints(sanity, chosen) -> dict:
+    """The GPU outputs a build used: the sanity and chosen records' fingerprints."""
+    return {"sanity": (sanity or {}).get("gpu_fingerprints"), "chosen": (chosen or {}).get("gpu_fingerprints")}
+
+
+def record_first_built(out, seed, chosen):
+    """Seed 42 only: the first chosen stage built within the budget from DTS_CLOCK_START writes
+    dts_first_built.json, once. -> "written", "kept" (it exists), or None (not seed 42, or not within the budget)."""
+    if int(seed) != R.DEV_SEED:
+        return None
+    path = Path(out) / FIRST_BUILT
+    if path.exists():
+        return "kept"
+    sanity = read_record(out, SANITY, seed)
+    built = max((sanity["time"], chosen["time"]), key=D.parse_amsterdam)
+    b = D.budget(DTS_CLOCK_START, built)
+    if not b["within_budget"]:
+        return None
+    write_new(path, {"seed": int(seed), "time": built, "clock_start": DTS_CLOCK_START, "budget": b,
+                     "setting": chosen["setting"], "settings_sha256": chosen["settings_sha256"],
+                     "gpu_fingerprints": built_fingerprints(sanity, chosen),
+                     "records_sha256": {n: G.sha256_file(Path(out) / n) for n in (SANITY, chosen_name(seed))},
+                     "rule_sha256": R.RULE_SHA256, "module_sha256": R.r6_module_shas(), "written": R.amsterdam_now()})
+    return "written"
+
+
+def first_built(out, seed, start, sanity, chosen):
+    """dts_first_built.json when it holds this build: seed 42, the same clock start, setting, settings SHA-256 and
+    GPU output fingerprints as the current sanity and chosen records; else None (the rerun's own time counts)."""
+    path = Path(out) / FIRST_BUILT
+    if int(seed) != R.DEV_SEED or not path.is_file():
+        return None
+    fb = json.loads(path.read_text())
+    same = (fb.get("seed") == R.DEV_SEED and fb.get("clock_start") == start
+            and fb.get("setting") == chosen.get("setting")
+            and fb.get("settings_sha256") == chosen.get("settings_sha256")
+            and fb.get("gpu_fingerprints") == built_fingerprints(sanity, chosen))
+    if not same:
+        return None  # guard:first_built_match
+    return dict(fb, sha256=G.sha256_file(path))
 
 
 def dts_shas(rec) -> dict:
@@ -407,6 +460,9 @@ def stage_stop(args) -> int:
     _require(not out.exists(), f"{out} exists; outputs are never overwritten", Refused)  # guard:no_overwrite
     start = str(args.clock_start)
     D.parse_amsterdam(start)
+    if int(args.seed) == R.DEV_SEED:
+        _require(start == DTS_CLOCK_START, f"--clock-start {start} is not the first DTS commit's {DTS_CLOCK_START} "
+                                           f"(seed 42, rule section 7 item 7)", Refused)  # guard:clock_start
     recs = {name: read_record(args.out, name, args.seed) for name in (SANITY, TUNE, chosen_name(args.seed))}
     sanity, chosen = recs[SANITY], recs[chosen_name(args.seed)]
     n_total = len(R.PAIRS) * ADMITTED[int(args.seed)]
@@ -440,13 +496,17 @@ def stage_stop(args) -> int:
     with np.load(npz, allow_pickle=False) as z:
         r1 = z["dts__r1"]
     dec = D.stop_decision(r1, n_total)
-    b = D.budget(start, max((sanity["time"], chosen["time"]), key=D.parse_amsterdam))
+    fb = first_built(args.out, args.seed, start, sanity, chosen)
+    built_time = fb["time"] if fb else max((sanity["time"], chosen["time"]), key=D.parse_amsterdam)
+    b = D.budget(start, built_time)
     stop = bool(not b["within_budget"] or dec["dts_above_aff"])
     reason = ("not built within the 24-hour budget" if not b["within_budget"] else          # the budget first
               "DTS's hit count is above AFF's" if dec["dts_above_aff"] else None)
     rec = {"stage": "stop", "seed": int(args.seed), "built": bool(b["within_budget"]),       # built within the budget
            "setting": chosen["setting"], **dec,
            "budget": b, "stop": stop, "reason": reason, "rule_sha256": R.RULE_SHA256,
+           "budget_time_source": (FIRST_BUILT if fb else "this run's sanity and chosen records"),
+           "first_built_sha256": fb["sha256"] if fb else None,
            "settings_sha256": chosen["settings_sha256"], "module_sha256": R.r6_module_shas(),
            "input_sha256": {name: G.sha256_file(Path(args.out) / name) for name in recs} | {npz.name:
                                                                                         G.sha256_file(npz)},

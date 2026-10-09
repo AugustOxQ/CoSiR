@@ -120,6 +120,7 @@ def write_records(res, shas=None, coef=COEF, smoke_names=("smoke_record.json",))
                                                   **meta}))
     (res / RH.DTS_CHOSEN_NAME).write_text(json.dumps({"stage": "chosen", "seed": 42, **meta}))
     (res / RH.DTS_STOP_NAME).write_text(json.dumps({"stage": "stop", "seed": 42, "built": True, "stop": False,
+                                                    "budget": {"clock_start": R.DTS_CLOCK_START},
                                                     "input_sha256": {RH.DTS_CHOSEN_NAME: R.sha256_file(
                                                         res / RH.DTS_CHOSEN_NAME)}, **meta}))
     for name in smoke_names:
@@ -635,6 +636,8 @@ def test_held_mode_refuses_without_a_passed_current_dts_stop(case, at_picks, cap
                          ({"module_sha256": stale("r6_dts.py")}, "rerun the DTS stages"),
                          ({"module_sha256": stale("dts_settings.json")}, "rerun the DTS stages"),
                          ({"input_sha256": {}}, "not evaluated on the current bytes of ['dts_seed42.json']"),
+                         ({"budget": {"clock_start": "2026-10-10 12:29"}}, "not the first DTS commit's"),
+                         ({"budget": None}, "the clock start None"),
                          ({"input_sha256": {RH.DTS_CHOSEN_NAME: "0" * 64}}, "rerun the stop"),
                          ({"input_sha256": {RH.DTS_CHOSEN_NAME: R.sha256_file(case.res / RH.DTS_CHOSEN_NAME),
                                             "dts_tune.json": "1" * 64}}, "bytes of ['dts_tune.json']")):

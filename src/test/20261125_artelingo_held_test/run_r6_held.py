@@ -78,7 +78,8 @@ before step 5):
      current (the order guard), regression_seed42.json passed and current, sensitivity_seed42.json current (its
      regression_sha256 the current regression file's) with every check's sigma parts (agent default: rule section 6
      item 7 asks these items to have run on the current bytes); in held mode (every flag) also dts_stop.json: seed
-     42's stop record, built within the budget, no stop, evaluated on the current bytes of every input it names
+     42's stop record, built within the budget from r6_common.DTS_CLOCK_START, no stop, evaluated on the current
+     bytes of every input it names
      (dts_seed42.json among them: the sanity, tune and chosen records and the per-anchor arrays), written by the
      current bytes of what run_r6_dts.py ran and of dts_settings.json (rule section 9: a section 7 stop, or DTS not
      built within its budget, stops the work before the read; final review, 2026-10-09). Its SHA-256 is recorded in
@@ -835,6 +836,10 @@ def dts_stop_problem(results, here=None) -> tuple:
     if rec.get("stop") is not False or rec.get("built") is not True:
         return (f"{path.name} records a stop, or no build within the budget (rule section 7 items 5 to 7, section 9): "
                 f"the user decides"), True
+    clock = (rec.get("budget") or {}).get("clock_start") if isinstance(rec.get("budget"), dict) else None
+    if clock != R.DTS_CLOCK_START:
+        return (f"{path.name} was evaluated from the clock start {clock!r}, not the first DTS commit's "
+                f"{R.DTS_CLOCK_START!r}: rerun the stop (rule section 7 item 7)"), False
     inputs = rec.get("input_sha256") if isinstance(rec.get("input_sha256"), dict) else {}
     other = sorted(n for n, sha in inputs.items()
                    if not (Path(results) / n).is_file() or R.sha256_file(Path(results) / n) != sha)
