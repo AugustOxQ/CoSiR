@@ -12,9 +12,10 @@ weekly and stage reports.
 ## Now (2026-10-09)
 
 AFF (round 1's learned reader, with its gate open only when it picks the affect grouping) is the current best: GO on
-fresh seeds 49 to 51 in round 3; rounds 4 and 5 were killed at development. In progress: the ArtELingo held-split paper
-test with AFF frozen (claim test, design chat). Next: design L (a grouping redesign for a real style signal) in its own
-loop. Go/no-go on Fri 2026-10-16 (ArtELingo-centred paper first, full paper if time allows); CVPR abstract 2026-11-10.
+fresh seeds 49 to 51 in round 3; rounds 4 and 5 were killed at development. In progress: the ArtELingo held-split
+paper test with AFF frozen (claim test; spec and rule approved 2026-10-09, build and run unattended). Next: design L
+(a grouping redesign for a real style signal) in its own loop. Go/no-go on Fri 2026-10-16 (ArtELingo-centred paper
+first, full paper if time allows); CVPR abstract 2026-11-10.
 
 ## Parked ideas
 
