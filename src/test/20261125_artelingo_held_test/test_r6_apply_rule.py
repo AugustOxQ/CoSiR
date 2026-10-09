@@ -120,6 +120,10 @@ class Env:
         monkeypatch.setattr(mod, "RESULTS", self.results)
         monkeypatch.setattr(mod, "SMOKE", self.smoke)
         monkeypatch.setattr(mod, "RULE_PATH", RULE)
+        # ticket 15: real mode requires a passed smoke record of today's bytes (the reserve read its own)
+        shas = r6_common.r6_module_shas()
+        for name in ("smoke_record.json", "smoke_record_reserve.json"):
+            (self.results / name).write_text(json.dumps({"passed": True, "module_sha256": shas}))
 
     def out(self, smoke=False, subdir=None) -> Path:
         d = (self.smoke if smoke else self.results) / (subdir or "")
@@ -595,6 +599,35 @@ def _rule_file_changed(e):
     e.mod.RULE_PATH = copy                             # monkeypatch restores it (set in Env)
 
 
+def _smoke_record_missing(e):                         # ticket 15: no smoke of the code that applies the rule
+    e.stage(go_rec())
+    (e.results / "smoke_record.json").unlink()
+
+
+def _smoke_record_failed(e):
+    e.stage(go_rec())
+    (e.results / "smoke_record.json").write_text(json.dumps({"passed": False,
+                                                             "module_sha256": r6_common.r6_module_shas()}))
+
+
+def _smoke_shas_stale(e):                             # one r6 file changed since the smoke
+    e.stage(go_rec())
+    shas = r6_common.r6_module_shas()
+    shas[sorted(shas)[0]] = "0" * 64
+    (e.results / "smoke_record.json").write_text(json.dumps({"passed": True, "module_sha256": shas}))
+
+
+def _fix1_smoke_record_counts(e):                     # the fix-1 smoke is the latest one when it exists
+    e.stage(go_rec())
+    (e.results / "smoke_record_fix1.json").write_text(json.dumps({"passed": True, "module_sha256": {}}))
+
+
+def _reserve_smoke_record_missing(e):
+    (e.results / "held_verdict.json").write_text("{}\n")
+    e.stage(go_rec(), pass_file="held_pass_reserve.json")
+    (e.results / "smoke_record_reserve.json").unlink()
+
+
 # name -> (setup, argv, the fragment of the one clause that must refuse it)
 REFUSALS = {
     "verdict_exists": (_verdict_exists, (), "held_verdict.json exists; a verdict is never overwritten (rule"),
@@ -634,6 +667,12 @@ REFUSALS = {
     "not_json": (_not_json, (), "rederive_agreement.json is not valid JSON"),
     "nan_point": (_nan_point, (), "held_pass.json is not valid JSON"),
     "rule_file_changed": (_rule_file_changed, (), "DECISION_RULE.md: its SHA-256 is not the committed rule's"),
+    "smoke_record_missing": (_smoke_record_missing, (), "smoke_record.json is missing"),
+    "smoke_record_failed": (_smoke_record_failed, (), "smoke_record.json records a smoke that did not pass"),
+    "smoke_shas_stale": (_smoke_shas_stale, (), "differ from the smoke's: a new smoke is needed"),
+    "fix1_smoke_record_counts": (_fix1_smoke_record_counts, (), "smoke_record_fix1.json: the SHA-256s of"),
+    "reserve_smoke_record_missing": (_reserve_smoke_record_missing, ("--reserve",),
+                                     "smoke_record_reserve.json is missing"),
 }
 
 
@@ -709,6 +748,8 @@ GUARDS = {
     "pass-mode": ("False", ("mode_regression", "held_pass_in_smoke_mode")),
     "pass-file-name": ("False", ("agreement_names_another_pass", "fix1_agreement_names_first_pass")),
     "fix1-pair": ("False", ("fix1_with_first_agreement_only",)),
+    "smoke-record": ("False", ("smoke_record_missing", "reserve_smoke_record_missing")),
+    "smoke-shas": ("False", ("smoke_shas_stale", "fix1_smoke_record_counts")),
 }
 
 
