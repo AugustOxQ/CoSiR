@@ -6,7 +6,7 @@
 > the grill's facts `src/test/20261125_artelingo_held_test/design/facts.md`, the
 > [literature check](../../reports/literature/2026-11-25_held_claim_check.md) · Constitution:
 > `docs/superpowers/constitution.md` (version 2)
-> Decision rule: `src/test/20261125_artelingo_held_test/DECISION_RULE.md` @ <commit> (governs where it differs)
+> Decision rule: `src/test/20261125_artelingo_held_test/DECISION_RULE.md` @ c394b60 (governs where it differs)
 
 ## Brief (for the user; agents read and decide from §1 onward)
 
@@ -229,7 +229,7 @@ after its re-review.
 
 ## 6. Success criteria
 
-**Decision mode.** Binding rule: `src/test/20261125_artelingo_held_test/DECISION_RULE.md` @ <commit>, committed
+**Decision mode.** Binding rule: `src/test/20261125_artelingo_held_test/DECISION_RULE.md` @ c394b60, committed
 before any code; it governs where it differs from this spec.
 
 - SC1 (stage 1b): round 3's seed-42 numbers, per-anchor arrays and episode hashes reproduced exactly (rule §6
