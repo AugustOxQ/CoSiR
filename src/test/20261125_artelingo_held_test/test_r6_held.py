@@ -23,6 +23,7 @@ import importlib.util
 import itertools
 import json
 import re
+import subprocess
 import sys
 from datetime import date, datetime
 from pathlib import Path
@@ -833,6 +834,35 @@ def test_the_value_sets_sha_is_kept_in_the_attempt_and_the_pass(case, monkeypatc
     assert json.loads((smoke / "held_started.json").read_text())["attempts"][0]["value_sets"] == want
     assert json.loads((smoke / "held_pass.json").read_text())["value_sets"] == want
     assert RH.VALUE_SETS_NAME == "value_sets.json"                         # rule section 5 item 2's name
+
+
+# ---------------------------------------------------------------- git provenance (final review B; fix wave item 4)
+
+def git(*args) -> str:
+    p = subprocess.run(["git", "-C", str(HERE.parents[2]), *args], capture_output=True, text=True, check=True)
+    return p.stdout.rstrip("\n")
+
+
+def test_the_started_file_records_git_head_and_status_of_src(case, monkeypatch, capsys):
+    install(monkeypatch)
+    assert held(case) == 0
+    att = json.loads((case.res / "held_started.json").read_text())["attempts"][0]
+    assert att["git"] == {"head": git("rev-parse", "HEAD"), "status_src": git("status", "--porcelain", "--", "src")}
+    assert re.fullmatch(r"[0-9a-f]{40}", att["git"]["head"])
+    assert RH.run_smoke(results=case.res, here=HERE) == 0                  # the smoke's started file too
+    assert json.loads((case.res / "smoke/held_started.json").read_text())["attempts"][0]["git"]["head"] == \
+        att["git"]["head"]
+
+
+def test_git_errors_are_recorded_never_refused(case, monkeypatch, capsys):
+    install(monkeypatch)
+    monkeypatch.setattr(RH, "GIT", str(case.tmp / "no_such_git"))
+    assert held(case) == 0                                                  # provenance only: the read goes on
+    g = json.loads((case.res / "held_started.json").read_text())["attempts"][0]["git"]
+    assert g["head"].startswith("error: FileNotFoundError") and g["status_src"].startswith("error: FileNotFoundError")
+    monkeypatch.setattr(RH, "GIT", "git")
+    g = RH.git_provenance(case.tmp / "a/b/c")                             # its checkout root is not a repository
+    assert set(g) == {"head", "status_src"} and all(v.startswith("error: exit ") for v in g.values()), g
 
 
 # ---------------------------------------------------------------- the time-box (rule section 9; fix wave item 3)

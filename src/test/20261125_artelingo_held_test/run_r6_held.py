@@ -96,8 +96,9 @@ before step 5):
      the check passed and every coefficient SHA-256 equals refit_check.json's (rule section 5 item 5). Then
      results/value_sets.json must hold the development value sets setup() recomputed (codes and names) with the
      bytes step 3 checked; its {"file", "sha256"} goes in the attempt and the pass record as "value_sets".
-  5. First write: the attempt (time, SHA-256s, flags, coefficient SHA-256s) appended to held_started.json and its
-     copy in this folder. Only now are held features, held posteriors and held episodes touched.
+  5. First write: the attempt (time, SHA-256s, flags, coefficient SHA-256s, and as provenance only "git": git
+     rev-parse HEAD and git status --porcelain -- src of the checkout, or the error string; final review B) appended
+     to held_started.json and its copy in this folder. Only now are held features, held posteriors and held episodes touched.
   6. Per seed (52, 53, 54 in order), from the context's on_episodes, before cosine or any posterior: the per-pair
      episode SHA-256s appended to this attempt at once; on --after-crash, --fix 1 or --reserve compared with the
      hashes recorded before (refusal on a difference); assert_distinct over every held seed so far against the
@@ -126,6 +127,7 @@ import json
 import math
 import os
 import re
+import subprocess
 import sys
 import time
 from datetime import date, datetime
@@ -606,6 +608,7 @@ EPISODE_CELL, SCRIPT_CELL, REPORT_CELL = 4, 5, 6
 PENDING = "(pending)"
 MAX_ATTEMPTS = 2                                        # the read and one --after-crash rerun (rule section 8 item 1)
 READ_DEADLINE = date(2026, 10, 15)                      # rule section 9: not started by Thu 2026-10-15, no read starts
+GIT = "git"                                             # the git executable of git_provenance (a test sets a missing one)
 HEX64 = re.compile(r"(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])")
 SUBDIR_RE = re.compile(r"[A-Za-z0-9_]+")                # run_r6_apply_rule's --smoke-subdir names
 SMOKE_COPY_DIR = "folder"                               # the smoke's stand-in for this folder's committed copy
@@ -952,6 +955,23 @@ def head_guard(env, refit) -> dict:
 
 # ---------------------------------------------------------------- writes of the read
 
+def git_provenance(here=None) -> dict:
+    """Provenance only, never a refusal (final review B, nit 3: code outside the r6 folder is not hashed): {"head":
+    `git rev-parse HEAD`, "status_src": `git status --porcelain -- src`} of the checkout that holds ``here``. A
+    command that fails or cannot run leaves "error: <reason>" in its field."""
+    root = Path(here or HERE).resolve().parents[2]
+    out = {}
+    for key, args in (("head", ("rev-parse", "HEAD")), ("status_src", ("status", "--porcelain", "--", "src"))):
+        try:
+            p = subprocess.run([GIT, "--no-optional-locks", "-C", str(root), *args], capture_output=True, text=True,
+                               timeout=300)
+            out[key] = (p.stdout.rstrip("\n") if p.returncode == 0
+                        else f"error: exit {p.returncode}: {p.stderr.strip()}")
+        except (OSError, subprocess.SubprocessError) as e:
+            out[key] = f"error: {type(e).__name__}: {e}"
+    return out
+
+
 def _write_bytes(path, data: bytes):
     """Atomic: a .partial file beside ``path``, then os.replace, so a crash never leaves a half-written file."""
     path = Path(path)
@@ -1173,7 +1193,7 @@ def run_read(spec, results, here=None, env=None) -> int:
     started = out / n.started
     record = {"mode": spec.mode, "runner_sha256": runner_sha256(), "module_sha256": R.r6_module_shas(here),
               "input_sha256": dict(inputs), "seed42_records_sha256": s42["sha256"], "coef_sha256": coef,
-              "dts_stop": dts_stop, "value_sets": value_sets, **spec.record}
+              "dts_stop": dts_stop, "value_sets": value_sets, "git": git_provenance(here), **spec.record}
     k = start_attempt(started, spec.copy_to, spec.attempts, spec.flags, record, spec.overwrite)
     log(f"attempt {k} recorded in {started}")
     # step 6: per seed, episodes first (recorded, compared, distinct, saved), then the bundle
