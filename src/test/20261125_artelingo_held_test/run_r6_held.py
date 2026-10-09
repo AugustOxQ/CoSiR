@@ -69,7 +69,11 @@ before step 5):
      results/held_started.json (controller, 2026-10-09). Agent defaults, stricter than the rule: a
      --after-crash without a recorded attempt, a --fix 1 without held_pass.json, a second --fix 1 attempt, a --fix 1
      whose row H5 does not hold the nine episode SHA-256s of the first read, and a --reserve without
-     held_verdict.json (or without the nine episode SHA-256s in held_started.json) refuse too.
+     held_verdict.json (or without the nine episode SHA-256s in held_started.json) refuse too. Time-box (rule section
+     9, "The read has not started by Thu 2026-10-15: no read starts"): a first read (no flag) refuses, before it
+     reads anything, when amsterdam_today() is after READ_DEADLINE (2026-10-15). Agent default (fix wave, final
+     review A): --after-crash and --fix 1 continue a started read and --reserve is the user's call, so they are not
+     boxed; nor is the smoke.
   2. The latest smoke record passed ("passed": true) and its module_sha256 equals r6_module_shas() (this runner,
      every r6_ module, the DTS settings and the r6 scripts): smoke_record_fix1.json for --fix 1,
      smoke_record_reserve.json for --reserve, otherwise r6_common.latest_smoke_record (smoke_record_fix1.json when it
@@ -124,8 +128,10 @@ import os
 import re
 import sys
 import time
+from datetime import date, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
@@ -599,12 +605,18 @@ LEDGER_CELLS = ("#", "Date", "Dataset and split", "Purpose", "Episode / data SHA
 EPISODE_CELL, SCRIPT_CELL, REPORT_CELL = 4, 5, 6
 PENDING = "(pending)"
 MAX_ATTEMPTS = 2                                        # the read and one --after-crash rerun (rule section 8 item 1)
+READ_DEADLINE = date(2026, 10, 15)                      # rule section 9: not started by Thu 2026-10-15, no read starts
 HEX64 = re.compile(r"(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])")
 SUBDIR_RE = re.compile(r"[A-Za-z0-9_]+")                # run_r6_apply_rule's --smoke-subdir names
 SMOKE_COPY_DIR = "folder"                               # the smoke's stand-in for this folder's committed copy
 READ_SCORERS = S.CORE_SCORERS                           # rule section 8 item 3: AFF, CF, COS, RCA, B, B0, B1, R1 fused
 READ_KEYS = S.CORE_SCORERS + S.EXTRA_KEYS
 SIGMA_KEYS = ("sigma_a2", "sigma_eps2")
+
+
+def amsterdam_today() -> date:
+    """Today's date in Europe/Amsterdam: the time-box's clock (a module-level function, so that a test sets it)."""
+    return datetime.now(ZoneInfo("Europe/Amsterdam")).date()
 
 
 def read_names(kind) -> SimpleNamespace:
@@ -700,6 +712,11 @@ def refuse_or_go(results, ledger, kind, after_crash=False, folder=None) -> Simpl
     res = Path(results)
     copy = Path(folder or HERE) / n.started
     first = kind == "reserve" or (kind == "held" and not after_crash)
+    if kind == "held" and not after_crash:          # the time-box boxes the first read only (agent default)
+        today = amsterdam_today()
+        _refuse_unless(today <= READ_DEADLINE, f"the Amsterdam date is {today.isoformat()}: the read has not started "
+                                               f"by Thu {READ_DEADLINE.isoformat()}, so no read starts; the user "
+                                               f"decides (rule section 9)")  # guard:time_box
     _refuse_unless(not (res / n.verdict).exists(), f"{n.verdict} exists: the read is over (rule section 8 item "
                                                    f"1)")  # guard:verdict_exists
     _refuse_unless(not (res / n.pass_).exists(),

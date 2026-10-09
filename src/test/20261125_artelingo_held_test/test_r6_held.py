@@ -24,8 +24,10 @@ import itertools
 import json
 import re
 import sys
+from datetime import date, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -831,6 +833,51 @@ def test_the_value_sets_sha_is_kept_in_the_attempt_and_the_pass(case, monkeypatc
     assert json.loads((smoke / "held_started.json").read_text())["attempts"][0]["value_sets"] == want
     assert json.loads((smoke / "held_pass.json").read_text())["value_sets"] == want
     assert RH.VALUE_SETS_NAME == "value_sets.json"                         # rule section 5 item 2's name
+
+
+# ---------------------------------------------------------------- the time-box (rule section 9; fix wave item 3)
+
+def at_date(monkeypatch, d, mod=RH):
+    monkeypatch.setattr(mod, "amsterdam_today", lambda: d)
+
+
+def test_the_time_box_clock_and_deadline():
+    assert RH.READ_DEADLINE == date(2026, 10, 15) and RH.READ_DEADLINE.strftime("%a") == "Thu"
+    assert RH.amsterdam_today() == datetime.now(ZoneInfo("Europe/Amsterdam")).date()
+
+
+def test_a_first_read_starts_until_2026_10_15_and_not_after(case, monkeypatch, capsys):
+    ns = install(monkeypatch, stop_at={"inputs"})
+    at_date(monkeypatch, date(2026, 10, 15))
+    with pytest.raises(Reached):                               # the last day: the read goes on to step 3
+        held(case)
+    for d in (date(2026, 10, 16), date(2027, 1, 1)):
+        at_date(monkeypatch, d)
+        ns.events.clear()
+        before = snapshot(case)
+        assert refused(held(case), capsys, says=f"the Amsterdam date is {d.isoformat()}: the read has not started by "
+                                               f"Thu 2026-10-15, so no read starts")
+        assert snapshot(case) == before and nothing_started(case) and ns.events == []
+
+
+@pytest.mark.parametrize("kind", ("after_crash", "fix", "reserve", "smoke"))
+def test_the_flags_and_the_smoke_are_not_time_boxed(case, monkeypatch, capsys, kind):
+    install(monkeypatch, stop_at={"inputs"})
+    flags = ready(case, kind)
+    at_date(monkeypatch, date(2026, 10, 16))
+    with pytest.raises(Reached):                               # past step 1 to the inputs of step 3
+        run_kind(case, kind, flags)
+
+
+def test_guard_time_box(case, monkeypatch, capsys):
+    install(monkeypatch, stop_at={"inputs"})
+    at_date(monkeypatch, date(2026, 10, 16))
+    assert refused(held(case), capsys, says="so no read starts")
+    mod = mut_case(case, mutant(case.tmp, "run_r6_held.py", "time_box"))
+    install(monkeypatch, mod, stop_at={"inputs"})
+    at_date(monkeypatch, date(2026, 10, 16), mod)
+    with pytest.raises(Reached):                               # the mutant starts the read after the deadline
+        held(case, mod)
 
 
 def test_guard_value_sets_file(case, monkeypatch, capsys):
