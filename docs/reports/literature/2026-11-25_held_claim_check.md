@@ -2,8 +2,8 @@
 
 > Searched 2026-10-09 (Amsterdam), read-only: web search and the arXiv API (2024 to 2026-10-09), each work then
 > checked on a primary page. Builds on the
-> [2026-10-21 review](../../../../docs/reports/auto/v2/2026-10-21_cvpr_literature_review.md) and the
-> [2026-10-24 novelty check](../../../../docs/reports/auto/v2/2026-10-24_aspect_task_novelty_check.md); their rows are not
+> [2026-10-21 review](2026-10-21_cvpr_literature_review.md) and the
+> [2026-10-24 novelty check](2026-10-24_aspect_task_novelty_check.md); their rows are not
 > repeated. Project numbers come from the round 3 report, the backbone check and the 8B probe log.
 
 ## 1. Verdict
