@@ -242,13 +242,20 @@ def begin_provenance(out_dir, fingerprint: dict, run: dict) -> dict:
     path = Path(out_dir) / "provenance.json"
     if path.exists():
         prov = json.loads(path.read_text())
-        _require(prov.get("fingerprint") == fingerprint,
-                 f"{path}: written by another model, settings, script or input; use a new output folder "
-                 f"(differs in {sorted(k for k in set(fingerprint) | set(prov.get('fingerprint', {})) if prov.get('fingerprint', {}).get(k) != fingerprint.get(k))})")  # guard:fingerprint
+        old = prov.get("fingerprint", {})
+        differ = sorted(k for k in set(fingerprint) | set(old) if old.get(k) != fingerprint.get(k))
+        _require(old == fingerprint, f"{path}: written by another model, settings, script or input (differs in "
+                                     f"{differ}); use a new output folder")  # guard:fingerprint
     else:
         prov = {"fingerprint": fingerprint, "runs": []}
     prov["runs"].append(dict(run, start=amsterdam_now(), host=socket.gethostname(), status="running"))
     write_json(path, prov)
+    return prov
+
+
+def update_provenance(out_dir, prov: dict, **fields) -> dict:
+    prov["runs"][-1].update(fields)
+    write_json(Path(out_dir) / "provenance.json", prov)
     return prov
 
 
@@ -300,6 +307,14 @@ def check_snapshot(path) -> dict:
             "refs_main": refs.read_text().strip() if refs.is_file() else None,
             "chat_template_sha256": sha256_file(path / "chat_template.json"),
             "generation_config_sha256": sha256_file(path / "generation_config.json")}
+
+
+def check_imports() -> dict:
+    """The model code imports in this env (no weights loaded, no GPU needed); -> versions."""
+    import torch  # noqa: F401
+    import transformers  # noqa: F401
+    from transformers import AutoProcessor, LogitsProcessor, Qwen3VLForConditionalGeneration  # noqa: F401
+    return versions()
 
 
 def load_model(snap, settings):

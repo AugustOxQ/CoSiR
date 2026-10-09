@@ -9,12 +9,12 @@ Actions (each chosen by its flag):
 - --images: the WikiArt images listed in DIR/images.txt (or --image-list FILE), a 'selected' action into the node's
   WikiArt tree (DATA_MAP). A list larger than DATA_MAX_GB is split into consecutive chunks of the sorted list, each at
   most DATA_MAX_GB; the plan shows them and --chunk K copies one (rsync skips files already on the node).
-- --model: the Qwen3-VL-8B-Instruct hub repo into the node HF cache (HF_HUB_REMOTE, via DATA_MAP), only when the
-  wrapper's snapshot check finds it missing (the cache is shared by the nodes and already holds it from the 8B probe).
-Every remote path except the model's lies under /local/wding/ (asserted); nothing goes to a node's /tmp.
+Every remote path lies under /local/wding/ (asserted); nothing goes to a node's /tmp. The 8B model is not copied here:
+the wrappers read it from the node HF cache (/var/scratch/wding/cache/hub, which already holds the pinned snapshot from
+the 8B probe) and stop if it is missing; scripts/das6_sync_mllm_probe_8b.py's model action copies it.
 
 Run with the system Python, NOT the CoSiR conda env (conda's OpenSSL breaks the system ssh that rsync calls):
-    /usr/bin/python3 scripts/das6_sync_r6.py --node node401 --job-dir <dir> [--images [--chunk K]] [--model]   # plan
+    /usr/bin/python3 scripts/das6_sync_r6.py --node node401 --job-dir <dir> [--images [--chunk K]]   # plan
     /usr/bin/python3 scripts/das6_sync_r6.py --node node401 --job-dir <dir> --images --chunk 0 --run           # copy
 """
 import argparse
@@ -32,7 +32,6 @@ REMOTE_ROOT = "/local/wding/"
 JOBS_REMOTE = "/local/wding/r6_jobs"
 WIKIART = "/local/wding/Dataset/wikiart_proj/wikiart"
 WIKIART_LOCAL = "/data/PDD/wikiart_proj/wikiart"
-HF_REPO = "models--Qwen--Qwen3-VL-8B-Instruct"
 JOB_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 JOB_INPUTS = ("rows_manifest.npz", "verbalise_input.npz", "listing_input.jsonl", "rerank_input.npz", "ft_rows.npz")
 FORBIDDEN_ARRAYS = {"anchor", "candidates", "pair_names", "pair_index", "labels", "label", "emotion", "style", "genre",
@@ -125,18 +124,8 @@ def build_actions(cfg, args):
             actions.append({"key": f"wikiart_r6_images_chunk{k}", "kind": "selected", "remote": WIKIART,
                             "local": local_images, "files": chunks[k], "bytes": sum(size_of[f] for f in chunks[k]),
                             "from_list": str(listing)})
-    if args.model:
-        remote = f"{cfg['HF_HUB_REMOTE'].rstrip('/')}/{HF_REPO}"
-        mapped = {"hf_model_qwen3_vl_8b": remote}
-        planned, unresolved = cluster.plan_data_sync(cfg, mapped, mapped)
-        if unresolved:
-            sys.exit(f"UNRESOLVED: {unresolved}")
-        actions += planned
     for a in actions:
-        if a["key"] == "hf_model_qwen3_vl_8b":
-            if not a["remote"].startswith(cfg["HF_HUB_REMOTE"].rstrip("/") + "/"):
-                sys.exit(f"REFUSING: model remote {a['remote']} outside HF_HUB_REMOTE")
-        elif not a["remote"].startswith(REMOTE_ROOT) or ".." in Path(a["remote"]).parts:
+        if not a["remote"].startswith(REMOTE_ROOT) or ".." in Path(a["remote"]).parts:
             sys.exit(f"REFUSING: remote {a['remote']} outside {REMOTE_ROOT}")
     return actions, notes
 
@@ -148,11 +137,10 @@ def main():
     ap.add_argument("--images", action="store_true", help="also copy the images listed in <job-dir>/images.txt")
     ap.add_argument("--image-list", help="an image list (relative to the WikiArt root) in place of <job-dir>/images.txt")
     ap.add_argument("--chunk", type=int, default=None, help="copy only this chunk of the image list")
-    ap.add_argument("--model", action="store_true", help="also copy the 8B model repo into the node HF cache")
     ap.add_argument("--run", action="store_true", help="perform the copy (default: print the plan only)")
     args = ap.parse_args()
-    if not (args.job_dir or args.images or args.image_list or args.model):
-        ap.error("nothing to copy: give --job-dir, --images / --image-list or --model")
+    if not (args.job_dir or args.images or args.image_list):
+        ap.error("nothing to copy: give --job-dir and/or --images / --image-list")
     cfg = cluster.load_config(SKILL / "cluster.conf", project="CoSiR")
     node = cluster.validate_node(args.node, cfg)
     actions, notes = build_actions(cfg, args)

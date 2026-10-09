@@ -166,6 +166,8 @@ def main(argv=None) -> int:
         sample = items[:min(4, len(items))]
         for p, K in sample:
             listing_messages(p, K, settings)
+        v = G.check_imports()
+        print(f"imports ok: torch {v['torch']}, transformers {v['transformers']}", flush=True)
         if args.no_model:
             print("check-only --no-model: prompts built; stopping before the model", flush=True)
             return 0
@@ -195,14 +197,15 @@ def main(argv=None) -> int:
         t0 = time.time()
         processor, model = G.load_model(snap, settings)
         load_s = time.time() - t0
+        G.update_provenance(out, prov, model_load_s=load_s, versions=G.versions())
     gen = make_generate_batch(processor, model, settings) if model is not None else None
     res = run_listing(items, settings, out, gen, cache, batch_size)
     extra = {}
     if model is not None:
         import torch
         extra["peak_gpu_mem_bytes"] = int(torch.cuda.max_memory_allocated())
-    G.end_provenance(out, prov, status="complete" if res["complete"] else "partial", model_load_s=load_s,
-                     versions=G.versions(), **extra, **res)
+    G.end_provenance(out, prov, status="complete" if res["complete"] else "partial", model_load_s=load_s, **extra,
+                     **res)
     print(f"listing: {'complete' if res['complete'] else 'partial'}, outputs in {out}", flush=True)
     return 0 if res["complete"] else 1
 

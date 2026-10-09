@@ -186,6 +186,8 @@ def main(argv=None) -> int:
         first = min(args.start + 2, stop)
         for p, w, c in plan(inp, args.start, first, args.wordings[:1]):
             episode_messages(inp, manifest, p, c, w, settings, args.image_root)
+        v = G.check_imports()
+        print(f"imports ok: torch {v['torch']}, transformers {v['transformers']}", flush=True)
         if args.no_model:
             print("check-only --no-model: messages built; stopping before the model", flush=True)
             return 0
@@ -207,11 +209,12 @@ def main(argv=None) -> int:
     t0 = time.time()
     processor, model = G.load_model(snap, settings)
     load_s = time.time() - t0
+    G.update_provenance(out, prov, model_load_s=load_s, versions=G.versions())
     res = run_calls(inp, manifest, settings, out, args.wordings, args.start, stop,
                     make_generate(processor, model, settings), args.image_root)
     import torch
-    G.end_provenance(out, prov, status="complete" if res["complete"] else "partial", model_load_s=load_s,
-                     versions=G.versions(), peak_gpu_mem_bytes=int(torch.cuda.max_memory_allocated()), **res)
+    G.end_provenance(out, prov, status="complete" if res["complete"] else "partial",
+                     peak_gpu_mem_bytes=int(torch.cuda.max_memory_allocated()), **res)
     print(f"verbaliser: {'complete' if res['complete'] else 'partial'}, outputs in {out}", flush=True)
     return 0 if res["complete"] else 1
 

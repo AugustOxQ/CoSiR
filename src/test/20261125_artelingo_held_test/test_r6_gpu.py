@@ -694,8 +694,7 @@ def test_verbaliser_check_only_without_a_gpu(cli_job):
              "--image-root", str(cli_job["images"])])
     assert r.returncode == 0, r.stderr[-2000:]
     assert "verbaliser inputs ok: seed 52, 3072 episodes, range [0, 2)" in r.stdout
-    assert "stopping before the model" in r.stdout and not out.exists()
-    assert "torch" not in r.stdout + r.stderr
+    assert "imports ok: torch" in r.stdout and "stopping before the model" in r.stdout and not out.exists()
 
 
 def test_verbaliser_check_only_finds_a_missing_image_and_the_guard_matters(cli_job, tmp_path):
