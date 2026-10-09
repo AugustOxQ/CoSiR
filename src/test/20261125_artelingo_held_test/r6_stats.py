@@ -11,58 +11,25 @@ loading.
 Units: per-episode differences go in as FRACTIONS (as `per_anchor` returns them); points and intervals come out in R@1
 points, scaled ×100 after the percentile, as round 1's `common.point_ci` does (hazard 8).
 """
-import hashlib
 import re
-import subprocess
-import sys
-from datetime import datetime
-from pathlib import Path
-from types import SimpleNamespace
-from zoneinfo import ZoneInfo
 
 import numpy as np
 
-HERE = Path(__file__).resolve().parent
-
 
 def _r6c():
-    """The pieces of contracts §1 this module uses, under r6_common's own names. Local until ticket 01's r6_common is
-    merged; then this body becomes `import r6_common; return r6_common`."""
-    out = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=HERE,
-                         capture_output=True, text=True, check=True).stdout.strip()
-    main = Path(out).resolve().parent
-    if not (main / "src/test").is_dir():
-        raise AssertionError(f"MAIN {main} has no src/test")
-
-    def amsterdam_now() -> str:
-        return datetime.now(ZoneInfo("Europe/Amsterdam")).strftime("%Y-%m-%d %H:%M:%S")
-
-    def sha256_file(path) -> str:
-        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-
-    return SimpleNamespace(
-        MAIN=main, HERE=HERE, amsterdam_now=amsterdam_now, sha256_file=sha256_file,
-        RULE_SHA256="7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
-        PAIR_NAMES=("emotion__style", "emotion__genre", "style__genre"),
-        DEV_SEED=42, HELD_SEEDS=(52, 53, 54), SMOKE_SEEDS=(9001, 9002, 9003), N_PER_PAIR=4096, N_SMOKE=64)
+    """Contracts §1's shared module: MAIN, the constants, the sys.path setup and the import-location guards."""
+    import r6_common
+    return r6_common
 
 
-R6C = _r6c()
-MAIN = R6C.MAIN
-R3D = MAIN / "src/test/20261121_round3_affect_gate"
-R1D = MAIN / "src/test/20261117_reader_fix_csd"
-for _p in (str(R3D), str(MAIN)):     # to the front even if present: the env's editable install lists MAIN last,
-    while _p in sys.path:             # behind the cwd, so a worktree's own src/ would win otherwise
-        sys.path.remove(_p)
-    sys.path.insert(0, _p)
+R6C = _r6c()     # first, before anything that imports src: r6_common puts MAIN at the front of sys.path and checks
+MAIN = R6C.MAIN  # that src.*, r3_stats and round 1's common (r3_stats brings src.eval.aspect_metrics) come from MAIN
+RS = R6C.RS      # round 3's statistics (σ split)
+C = R6C.C        # round 1's common (point_ci)
+RULE = R6C.HERE / "DECISION_RULE.md"
 
-import src.eval.aspect_metrics as _AM  # noqa: E402
-import r3_stats as RS  # noqa: E402  round 3's statistics (σ split); brings round 1's common as RS.C
+import src.eval.aspect_metrics as _AM  # noqa: E402  (already loaded and location-checked by r6_common)
 
-C = RS.C
-for _mod, _want in ((_AM, MAIN / "src/eval/aspect_metrics.py"), (RS, R3D / "r3_stats.py"), (C, R1D / "common.py")):
-    if Path(_mod.__file__).resolve() != _want:
-        raise ImportError(f"'{_mod.__name__}' resolved to {_mod.__file__}, not {_want}")
 _cluster_bootstrap = _AM.cluster_bootstrap
 
 # ---------------------------------------------------------------------------------------------------------------- bar
@@ -259,7 +226,7 @@ def _extra_ok(extra, seeds) -> dict:
 
 def rule_sha256() -> str:
     """SHA-256 of this folder's DECISION_RULE.md, asserted equal to the committed rule's."""
-    got = R6C.sha256_file(HERE / "DECISION_RULE.md")
+    got = R6C.sha256_file(RULE)
     if got != R6C.RULE_SHA256:
         raise AssertionError(f"DECISION_RULE.md SHA-256 {got} differs from the committed rule's {R6C.RULE_SHA256}")
     return got
@@ -318,7 +285,7 @@ def sigma_split(diff, cl) -> dict:
     return {"sigma_a2": float(r["sigma_a2"]), "sigma_eps2": float(r["sigma_e2"])}
 
 
-def detectable(sig: dict, M_p, N: int, family: str = "P") -> dict:
+def detectable(sig: dict, M_p, N: int, family: str) -> dict:
     """Rule §8.2: SE² = (σ_a²·Σ_p M_p² + σ_ε²·N) / N², M_p the pooled episode count of anchor painting p, N = Σ M_p.
     family "P" -> {"SE", "x" (3.532·SE), "x95" (2.80·SE)}; "S" -> {"SE", "x2" (3.083·SE), "x95"}. R@1 points."""
     if family not in ("P", "S"):
