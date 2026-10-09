@@ -139,4 +139,7 @@ open `r6 read`.
 - Running: nothing. No subagent, no GPU job, no DAS6 job.
 - Uncommitted: nothing; `.scratch/` is local by design.
 - Storage (nothing deleted; for the next storage summary): `pending_deletions.md` gained the fix wave's worktree and
-  branch (70 MB) and this chat's session scratchpad (1.2 GB, almost all the re-reviewer's `rr/`: suite logs, crafted worlds, mutation copies).
+  branch (70 MB), this chat's session scratchpad (1.2 GB, almost all the re-reviewer's `rr/`), and `/project/CoSiR-r6`
+  with `r6-held-test` (13 GB; keep until the run report is written). 10.2 GB of that worktree is not round 6's:
+  `res/coca_pr`, `res/siglip_pr`, `res/siglip2_pr` (dated 2025-12-15, host user, untracked); the storage summary asks
+  the user where they belong.
