@@ -165,7 +165,7 @@ def test_the_read_completes_and_writes_every_file_of_contracts_7(read):
     outputs = ["held_started.json", "held_episodes_seed52.npz", "held_episodes_seed53.npz",
                "held_episodes_seed54.npz", "sensitivity_held.json", "held_arrays.npz", "held_pass.json"]
     assert names == sorted(outputs + [RH.REFIT_NAME, RH.PICKS_NAME, RH.REGRESSION_NAME, RH.SENS42_NAME,
-                                      "smoke_record.json"])
+                                      RH.DTS_STOP_NAME, "smoke_record.json"])
     assert not any("verdict" in p.name for p in read.tmp.rglob("*"))                # no verdict anywhere
     assert (read.tmp / "folder/held_started.json").read_bytes() == (read.res / "held_started.json").read_bytes()
 
