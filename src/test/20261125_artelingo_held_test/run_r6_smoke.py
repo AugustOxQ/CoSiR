@@ -5,52 +5,68 @@ main session (this script only writes their inputs, prints their commands and ch
     cd /project/CoSiR && CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1 \
     /root/miniconda3/envs/CoSiR/bin/python src/test/20261125_artelingo_held_test/run_r6_smoke.py \
         --stage check|gpu-inputs|list-input|finish [--after-crash | --fix 1 | --reserve] [GPU output folders]
+        [--waive <family>=<reason> ...]
 
 Kinds (one smoke folder and one record each; the held runner and the apply and descriptive steps read the record):
   (no flag)      results/smoke/          results/smoke_record.json          the smoke before the read
   --after-crash  results/smoke/crash1/   results/smoke_record_crash1.json   code corrected after a crash (rule 8.1)
   --fix 1        results/smoke/fix1/     results/smoke_record_fix1.json     the corrected runner of a --fix 1 pass
   --reserve      results/smoke/reserve/  results/smoke_record_reserve.json  the corrected code of the reserve read
-The record is written once, outside results/smoke/, never replaced or deleted (a passed one is refused at the start;
-to smoke again, the run chat moves the record and the smoke folder aside); its copy in this folder is committed.
+The record is written once, outside results/smoke/, and never replaced or deleted: an existing record of the kind,
+passed or not, is refused at the start of gpu-inputs and finish. To smoke again, the run chat moves the record and the
+kind's smoke folder aside to *.failed<N> names (never deleting them): results/smoke_record.json ->
+results/smoke_record.failed1.json and results/smoke/ -> results/smoke.failed1/ (results/smoke/fix1/ ->
+results/smoke/fix1.failed1/, ...). The record's copy in this folder (committed by the run chat) is replaced only when
+it does not exist or has the bytes of a moved-aside record results/<record stem>.failed<N>.json; otherwise the stage
+refuses, so that no record's last copy is lost (agent default).
 
 Stages, in this order:
   check       step 1 alone.
   gpu-inputs  step 1; step 2, run_r6_held.run_smoke (smoke seeds 9001 to 9003, 64 episodes per pair, selection rows,
               results/smoke[/<kind>]/); step 3, the GPU job inputs of round 1 under <smoke>/gpu/ (r6_gpu_inputs'
-              writers): a verbaliser job per smoke seed (all 192 episodes; run with the four wordings, so that the
+              writers): a verbaliser job per smoke seed (all 192 episodes; run with the four wordings, so that each
               smoke seed's own DTS tuning and every seed's chosen wording are covered), the reranker job of seed 9001,
               the FT feature job of every member row; then it prints the GPU commands and stops.
   list-input  step 1; the round-1 verbaliser outputs checked (every key of every seed and wording exactly once, of the
               listed jobs, by the current GPU script bytes); the one listing job of round 2: every distinct phrase of
               those answers and the three aspect names, at K 8 and 16. Prints the GPU command and stops.
-  finish      step 1; step 4: the GPU outputs checked (keys, counts, script bytes); the DTS stages sanity, tune, chosen
-              and stop (run_r6_dts.py) on smoke seed 9001 into <smoke>/dts/ (the stop's clock start: --dts-clock-start,
-              default the gpu-inputs stage's start, agent default); <smoke>/external_sources.json with all four entries
-              (a family whose outputs were not given, or whose DTS sanity or stop did not pass at smoke scale, is
-              {"missing": reason}, and the record says so); the smoke agreement record ("smoke": true, bound to the
-              smoke pass's bytes); run_r6_apply_rule --smoke; run_r6_descriptive --smoke, in which every external
-              row whose family's outputs were given (and passed their check) must be present. Step 5, the wiring
-              mutation: a copy of r6_score.py in <smoke>/mutation/code/ with AFF's gated term passed where CF
-              expects G_cf (`G = gated` for `G = cf_terms(gated)`), and the smoke scoring (run_r6_held.run_smoke)
-              run on it in a subprocess (results in <smoke>/mutation/results/): the per-cell condition-free assertion
-              must fire (non-zero exit, its message in the log). Step 6, the leak check of every log under
-              <smoke>/logs/ (the steps' captured output and this script's own): no decimal number, no R@1 value, no
-              metric key with a
-              value. Step 7, the smoke record.
+  finish      step 1; step 4: the GPU outputs checked (keys, counts, script bytes). Rule section 6 item 7 runs the GPU
+              job scripts on the smoke episodes, so a family whose outputs are not given (dts: the verbaliser and the
+              listing outputs; mllm: the reranker's; ft: the FT features; ft_lp: the pinned LP checkpoint on this
+              machine) fails the smoke unless --waive <family>=<reason> is given; each waiver is printed and recorded
+              and the family is {"missing": "waived: <reason>"}. The DTS stages sanity, tune, chosen and stop
+              (run_r6_dts.py) run on smoke seed 9001 into <smoke>/dts/seed9001/ (the stop's clock start:
+              --dts-clock-start, default the gpu-inputs stage's start, agent default); a smoke-scale outcome (the
+              sanity or the stop exits 3) retries them on 9002, then 9003 (their outputs already exist), and only then
+              is DTS {"missing": reason}, allowed without a waiver and recorded. A stage record an earlier attempt
+              wrote is kept and read (a kept sanity that did not pass, or a kept stop that stops, counts as that
+              outcome). The held read's listing writer is smoked: run_r6_dts.py --stage list-input --for chosen on the
+              DTS seed into a scratch job <smoke>/gpu/<prefix>_listing_chosen_<seed>/, whose items must lie in the
+              round-2 listing job's. Then <smoke>/external_sources.json with all four entries; the smoke agreement
+              record ("smoke": true, bound to the smoke pass's bytes); run_r6_apply_rule --smoke; run_r6_descriptive
+              --smoke, in which every external row whose family's outputs were given (and passed their check) must be
+              present. Step 5, the wiring mutation: a copy of r6_score.py in <smoke>/mutation/code/ (kept as evidence;
+              r6_module_shas globs this folder only, not results/, so the copy is never hashed) with AFF's gated term
+              passed where CF expects G_cf (`G = gated` for `G = cf_terms(gated)`), and the smoke scoring
+              (run_r6_held.run_smoke) run on it in a subprocess (results in <smoke>/mutation/results/): the per-cell
+              condition-free assertion must fire (non-zero exit and its message in the log; another error does not
+              count). Step 6, the leak check of every log under <smoke>/logs/ (the steps' captured output and this
+              script's own): no decimal number, no R@1 value, no metric key with a value. Step 7, the smoke record.
 Step 1 (every stage): refused (exit 4) unless the earlier stage outputs exist and are current (rule section 6 item 7):
   refit_check.json, picks_seed42.json, regression_seed42.json (passed, written by the current bytes of every r6 module
   their runners ran), sensitivity_seed42.json (from the current regression file, current bytes), and the seed-42 DTS
-  records dts_sanity.json (passed), dts_tune.json, dts_seed42.json, dts_stop.json (built, no stop, bound to the chosen
-  record's bytes), each by the current bytes of what run_r6_dts.py ran and of dts_settings.json, their GPU outputs by
-  the current GPU script bytes. Every stage that must rerun is listed, in order (a stale refit, picks or regression
-  also reruns what follows it). A DTS stop that stops is not rerun: the user decides (rule section 9). The later stages
-  also refuse unless the smoke pass of step 2 was made by today's bytes of every r6 file.
+  records: dts_stop.json by run_r6_held.dts_stop_problem (the held read's own check: built, no stop, evaluated on the
+  current bytes of every input it names, current DTS bytes), dts_sanity.json (passed), dts_tune.json, dts_seed42.json,
+  each by the current bytes of what run_r6_dts.py ran and of dts_settings.json, their GPU outputs by the current GPU
+  script bytes. Every stage that must rerun is listed, in order (a stale refit, picks or regression also reruns what
+  follows it). A DTS stop that stops is not rerun: the user decides (rule section 9). The later stages also refuse
+  unless the smoke pass of step 2 was made by today's bytes of every r6 file.
 
-The record (results/<record>.json and its copy here): "passed" (true only when every step passed, the mutation fired
-and the leak check found nothing), the kind, the SHA-256 of the held runner, of this script, module_sha256 =
-r6_common.r6_module_shas() (every r6_*.py and run_r6_*.py here, dts_settings.json, the r6 scripts), asserted equal to
-the smoke pass's, the time, each step's pass and log, the mutation's result, the leak check, the external rows.
+The record (results/<record>.json and its copy here): "passed" (true only when every step passed, every family was
+given or waived, the mutation fired and the leak check found nothing), the kind, the waivers, the SHA-256 of the held
+runner, of this script, module_sha256 = r6_common.r6_module_shas() (every r6_*.py and run_r6_*.py here,
+dts_settings.json, the r6 scripts), asserted equal to the smoke pass's, the time, each step's pass and log, the
+mutation's result, the leak check, the external rows.
 
 Exit codes: 0 passed (a stage done); 3 a step failed (finish: the record is written with "passed": false); 4 refused.
 Prints step names, pass or FAIL, file paths and SHA-256s; never a metric, never a decimal number.
@@ -98,7 +114,7 @@ KINDS = {"smoke": SimpleNamespace(kind="smoke", subdir=None, record="smoke_recor
 assert (RH.SMOKE_RECORDS == {"held": KINDS["smoke"].record, "fix1": KINDS["fix1"].record,
                              "reserve": KINDS["reserve"].record} and RH.SMOKE_RECORD_CRASH == KINDS["crash1"].record
         and AR.SMOKE_RECORDS == RD.SMOKE_RECORDS == R.SMOKE_RECORDS == {k: v.record for k, v in KINDS.items()}
-        and RH.DTS_STOP_NAME == RDTS.STOP)
+        and RH.DTS_STOP_NAME == RDTS.STOP and RH.DTS_CHOSEN_NAME == RDTS.chosen_name(R.DEV_SEED))
 DTS_SEED = R.SMOKE_SEEDS[0]                    # the smoke seed whose DTS stages run (and the reranker's seed)
 SEED42_CHAIN = (("refit", RH.REFIT_NAME, "run_r6_refit.py", "run_r6_refit.py"),
                 ("picks", RH.PICKS_NAME, "run_r6_picks.py", "run_r6_picks.py"),
@@ -300,11 +316,8 @@ def _dts_problem(results, here) -> tuple:
             return f"{name} is not a seed-42 record", False
     if why is not None:
         return why, False
-    stop, chosen = recs[RDTS.STOP], RDTS.chosen_name(R.DEV_SEED)
     if recs[RDTS.SANITY].get("passed") is not True:
         return f"{RDTS.SANITY} did not pass", False
-    if (stop.get("input_sha256") or {}).get(chosen) != R.sha256_file(Path(results) / chosen):
-        return f"{RDTS.STOP} was not evaluated on the current {chosen}", False
     settings_key = RH._key("dts_settings.json", here)
     settings_sha = R.sha256_file(Path(here) / "dts_settings.json")
     for name, rec in recs.items():
@@ -449,7 +462,8 @@ def print_round1(paths, jobs, staging, say):
 
 def stage_gpu_inputs(paths, here, env, staging, image_root, say) -> int:
     _require(not paths.record.exists(), f"{paths.record} exists: a smoke record is never replaced; move it and "
-                                        f"{paths.smoke} aside to smoke again", Refused)
+                                        f"{paths.smoke} aside to *.failed<N> names to smoke again", Refused)
+    require_copy_free(paths)
     _require(not (paths.smoke / "held_verdict.json").exists(),
              f"{paths.smoke} holds a smoke verdict: move it (and {paths.record.name}, if any) aside to smoke again",
              Refused)
@@ -646,37 +660,94 @@ def check_ft(paths, state, outs, here) -> dict:
 
 # ---------------------------------------------------------------- stage finish (steps 4 to 7)
 
-def dts_stages(paths, ver, listing_outs, clock_start, say) -> tuple:
-    """run_r6_dts.py's sanity, tune, chosen and stop on smoke seed 9001 into <smoke>/dts/ (a stage whose record an
-    earlier attempt wrote is kept). -> (passed: bool, missing reason or None, {stage: {...}})."""
-    v = ver[DTS_SEED]
-    eps_path = paths.smoke / RH.episodes_name(DTS_SEED)
-    common = ["--seed", str(DTS_SEED), "--episodes", str(eps_path), "--out", str(paths.dts)]
+def _kept_outcome(name, rec) -> int:
+    """A stage record an earlier attempt wrote, read: the exit its stage gave (a sanity that did not pass, or a stop
+    that stops, is run_r6_dts's exit 3)."""
+    if name == "sanity" and rec.get("passed") is not True:
+        return RDTS.EXIT_FAIL
+    if name == "stop" and not (rec.get("stop") is False and rec.get("built") is True):
+        return RDTS.EXIT_FAIL
+    return 0
+
+
+def dts_seed_stages(paths, ver, listing_outs, seed, clock_start, say) -> tuple:
+    """run_r6_dts.py's sanity, tune, chosen and stop on one smoke seed into <smoke>/dts/seed<seed>/ (a stage whose
+    record an earlier attempt wrote is kept and read). -> (code: 0 built and no stop, 3 a smoke-scale outcome (sanity
+    or stop exit 3), other a failure; {stage: {...}})."""
+    v, out_dir = ver[seed], paths.dts / f"seed{seed}"
+    eps_path = paths.smoke / RH.episodes_name(seed)
+    common = ["--seed", str(seed), "--episodes", str(eps_path), "--out", str(out_dir)]
     va = [x for d in v.dirs for x in ("--verbalise-out", str(d))] + ["--verbalise-job", str(v.job)]
     la = [x for d in listing_outs for x in ("--listing-out", str(d))]
     plan = (("sanity", RDTS.SANITY, ["--stage", "sanity", *la, *common]),
             ("tune", RDTS.TUNE, ["--stage", "tune", *va, *la, *common]),
-            ("chosen", RDTS.chosen_name(DTS_SEED), ["--stage", "chosen", *va, *la, *common]),
-            ("stop", RDTS.STOP, ["--stage", "stop", "--seed", str(DTS_SEED), "--out", str(paths.dts),
+            ("chosen", RDTS.chosen_name(seed), ["--stage", "chosen", *va, *la, *common]),
+            ("stop", RDTS.STOP, ["--stage", "stop", "--seed", str(seed), "--out", str(out_dir),
                                  "--clock-start", clock_start]))
     steps = {}
     for name, out, argv in plan:
-        if (paths.dts / out).is_file():
-            steps[name] = {"passed": True, "kept": True}
-            say(f"DTS {name} (seed {DTS_SEED}): kept {paths.dts / out}")
-            continue
-        log = next_log(paths, f"dts_{name}")
-        code = run_step(log, lambda argv=argv: RDTS.main(argv))
-        steps[name] = {"passed": code == 0, "exit": code, "log": rel(log)}
-        say(f"DTS {name} (seed {DTS_SEED}): {'pass' if code == 0 else f'exit {code}'}; log {log}")
+        if (out_dir / out).is_file():
+            rec = _read_json(out_dir / out)
+            _require(rec.get("seed") == seed, f"{out_dir / out}: a record of seed {rec.get('seed')}, not {seed}")
+            code = _kept_outcome(name, rec)
+            steps[name] = {"passed": code == 0, "kept": True, "exit": code}
+            say(f"DTS {name} (seed {seed}): kept {out_dir / out} ({'pass' if code == 0 else f'exit {code}'})")
+        else:
+            log = next_log(paths, f"dts_{name}_{seed}")
+            code = run_step(log, lambda argv=argv: RDTS.main(argv))
+            steps[name] = {"passed": code == 0, "exit": code, "log": rel(log)}
+            say(f"DTS {name} (seed {seed}): {'pass' if code == 0 else f'exit {code}'}; log {log}")
         if code == RDTS.EXIT_FAIL and name in ("sanity", "stop"):          # a smoke-scale outcome, not a wiring fault
-            why = {"sanity": "the smoke seed's DTS-N sanity did not pass at 64 episodes per pair",
-                   "stop": "the smoke seed's DTS stop record stops (rule section 7 items 5 to 7)"}[name]
-            steps[name]["passed"] = True
-            return True, why, steps
+            return RDTS.EXIT_FAIL, steps
         if code:
-            return False, f"DTS {name} failed (exit {code})", steps
-    return True, None, steps
+            return code, steps
+    return 0, steps
+
+
+def dts_family(paths, ver, listing_outs, clock_start, say) -> SimpleNamespace:
+    """The DTS stages on 9001; after a smoke-scale outcome on 9002, then 9003 (their verbaliser and listing outputs
+    exist already). -> namespace(passed, seed (the seed whose record the descriptive pass uses, or None), missing
+    (the reason DTS is missing, allowed without a waiver), seeds {seed: {stage: ...}})."""
+    seeds, why = {}, []
+    for seed in R.SMOKE_SEEDS:
+        code, seeds[seed] = dts_seed_stages(paths, ver, listing_outs, seed, clock_start, say)
+        if code == 0:
+            return SimpleNamespace(passed=True, seed=seed, missing=None, seeds=seeds)
+        if code != RDTS.EXIT_FAIL:
+            return SimpleNamespace(passed=False, seed=None, missing=f"the DTS stages of seed {seed} failed (exit "
+                                                                    f"{code})", seeds=seeds)
+        stage = "sanity" if seeds[seed]["sanity"]["exit"] == RDTS.EXIT_FAIL else "stop"
+        why.append(f"seed {seed}: {'the DTS-N sanity did not pass' if stage == 'sanity' else 'the stop stops'}")
+    return SimpleNamespace(passed=True, seed=None, seeds=seeds,
+                           missing="a smoke-scale outcome on every smoke seed at 64 episodes per pair (" +
+                                   "; ".join(why) + ")")
+
+
+def listing_writer_check(paths, ver, state, seed, say) -> dict:
+    """The held read's listing writer smoked (rule section 8 item 3): run_r6_dts.py --stage list-input --for chosen on
+    the DTS seed (the chosen wording's phrases at the chosen K and the three names, as --for held lists them) into a
+    scratch job <smoke>/gpu/<prefix>_listing_chosen_<seed>/; its items must lie in the round-2 listing job's."""
+    settings = DT.load_settings()[0]
+    v = ver[seed]
+    job = paths.gpu / f"{paths.prefix}_listing_chosen_{seed}"
+    log = next_log(paths, f"listing_writer_{seed}")
+    code = 0
+    if not job.exists():
+        argv = ["--stage", "list-input", "--for", "chosen", "--seed", str(seed), "--episodes",
+                str(paths.smoke / RH.episodes_name(seed)), "--out", str(paths.dts / f"seed{seed}"),
+                "--job-out", str(job), *[x for d in v.dirs for x in ("--verbalise-out", str(d))],
+                "--verbalise-job", str(v.job)]
+        code = run_step(log, lambda: RDTS.main(argv))
+    ok, n, inside = code == 0 and job.is_dir(), 0, False
+    if ok:
+        items = L.load_listing_input(job / RDTS.LISTING_INPUT, settings)
+        combined = set(L.load_listing_input(paths.gpu / state["listing_job"] / RDTS.LISTING_INPUT, settings))
+        n, inside = len(items), set(items) <= combined
+    rec = {"passed": bool(ok and inside and n > 0), "exit": code, "job": rel(job), "n_items": n,
+           "inside_the_listing_job": inside, "log": rel(log)}
+    say(f"held listing writer (run_r6_dts.py --stage list-input --for chosen, seed {seed}): "
+        f"{'pass' if rec['passed'] else 'FAIL'}; job {job}")
+    return rec
 
 
 def write_agreement(paths) -> dict:
@@ -727,7 +798,7 @@ def wiring_mutation(paths, here, control=False, timeout=3600) -> dict:
     if control:
         out["passed"] = p.returncode == 0 and "smoke held pass written" in text and not found
     else:
-        out["fired"] = out["passed"] = p.returncode != 0 and found
+        out["fired"] = out["passed"] = p.returncode != 0 and found  # guard:mutation_fired
     return out
 
 
@@ -756,21 +827,58 @@ def external_rows(path) -> dict:
             for name, e in (rec.get("external") or {}).items()}
 
 
-def stage_finish(paths, here, env, outs, clock_start, say) -> int:
-    here = Path(here or HERE)
-    _require(not paths.record.exists(), f"{paths.record} exists: a smoke record is never replaced", Refused)
+def lp_checkpoint() -> Path:
+    """The pinned LP checkpoint FT-LP's rows read on the CPU (r6_external.FT_CKPTS)."""
+    return XT.resolve(XT.FT_CKPTS["LP"]["path"])
+
+
+def require_copy_free(paths):
+    """This folder's copy of the record is replaced only when it does not exist or has the bytes of a moved-aside
+    record results/<record stem>.failed<N>.json (module docstring); refused otherwise."""
+    copy = paths.folder / paths.kind.record
+    if not copy.exists():
+        return
+    stem = Path(paths.kind.record).stem
+    moved = sorted(paths.results.glob(f"{stem}.failed*.json"))
+    _require(any(m.read_bytes() == copy.read_bytes() for m in moved),
+             f"{copy} exists and no moved-aside record {stem}.failed<N>.json in {paths.results} holds its bytes: "
+             f"move the record aside first (never delete it)", Refused)
+
+
+def stage_finish(paths, here, env, outs, clock_start, say, waive=None) -> int:
+    here, waive = Path(here or HERE), dict(waive or {})
+    _require(not paths.record.exists(), f"{paths.record} exists: a smoke record is never replaced; move it and "
+                                        f"{paths.smoke} aside to *.failed<N> names to smoke again", Refused)
     _require(not (paths.smoke / "held_verdict.json").exists(),
              f"{paths.smoke} holds a smoke verdict already: move it aside and smoke again from --stage gpu-inputs",
              Refused)
+    require_copy_free(paths)
+    given = {"dts": bool(outs["verbalise"]) and bool(outs["listing"]), "mllm": bool(outs["rerank"]),
+             "ft": bool(outs["ft"]), "ft_lp": lp_checkpoint().is_file()}
+    _require(set(waive) <= set(XT.SOURCE_KEYS), f"--waive names {sorted(set(waive) - set(XT.SOURCE_KEYS))}, not "
+                                                f"one of {list(XT.SOURCE_KEYS)}", Refused)
+    both = sorted(k for k in waive if given[k])
+    _require(not both, f"--waive {both}: their outputs are given too", Refused)
     seed42 = require_stages(paths.results, here, say)
     state = require_smoke_current(paths, here, say)
     steps, external, box = {}, {}, {}
 
-    # step 4: the GPU outputs (keys, counts, script bytes)
-    def gpu_check(name, fn, given):
-        if not given:
-            say(f"GPU outputs {name}: none given; marked missing")
-            return None, f"no {name} output folder was given to the smoke (job not run)"
+    # step 4: every family's GPU outputs given (or waived) and checked (keys, counts, script bytes)
+    for fam in XT.SOURCE_KEYS:
+        if given[fam]:
+            continue
+        what = {"dts": "the verbaliser and listing output folders", "mllm": "the reranker output folders",
+                "ft": "the FT feature output folders", "ft_lp": f"the LP checkpoint {rel(lp_checkpoint())}"}[fam]
+        if fam in waive:
+            external[fam] = {"missing": f"waived: {waive[fam]}"}
+            steps[f"given_{fam}"] = {"passed": True, "waived": waive[fam]}
+            say(f"GPU outputs {fam}: not given; WAIVED ({waive[fam]})")
+        else:
+            external[fam] = {"missing": f"{what} not given to the smoke"}
+            steps[f"given_{fam}"] = {"passed": False, "missing": what}  # guard:not_given
+            say(f"GPU outputs {fam}: {what} not given and not waived: FAIL (rule section 6 item 7)")
+
+    def gpu_check(name, fn):
         log, res = next_log(paths, f"gpu_outputs_{name}"), {}
 
         def work():
@@ -779,26 +887,35 @@ def stage_finish(paths, here, env, outs, clock_start, say) -> int:
         code = run_step(log, work)
         steps[f"gpu_outputs_{name}"] = {"passed": code == 0, "log": rel(log)}
         say(f"GPU outputs {name}: {'pass' if code == 0 else 'FAIL'}; log {log}")
-        return (res["v"], None) if code == 0 else (None, f"the {name} outputs failed their check (log {rel(log)})")
+        return res["v"] if code == 0 else None
 
-    ver, ver_why = gpu_check("verbaliser", lambda: check_verbaliser(paths, state, outs["verbalise"], here),
-                             outs["verbalise"])
-    lis, lis_why = gpu_check("listing", lambda: check_listings(paths, state, outs["listing"], here), outs["listing"])
-    mllm, mllm_why = gpu_check("reranker", lambda: check_rerank(paths, state, outs["rerank"], here), outs["rerank"])
-    ft, ft_why = gpu_check("FT", lambda: check_ft(paths, state, outs["ft"], here), outs["ft"])
-    external["mllm"] = mllm if mllm is not None else {"missing": mllm_why}
-    external["ft"] = ft if ft is not None else {"missing": ft_why}
-    lp = XT.resolve(XT.FT_CKPTS["LP"]["path"])
-    external["ft_lp"] = {} if lp.is_file() else {"missing": f"the LP checkpoint {rel(lp)} is not on this machine"}
+    ver = lis = None
+    if given["dts"]:
+        ver = gpu_check("verbaliser", lambda: check_verbaliser(paths, state, outs["verbalise"], here))
+        lis = gpu_check("listing", lambda: check_listings(paths, state, outs["listing"], here))
+        if ver is None or lis is None:
+            external["dts"] = {"missing": "the DTS GPU outputs failed their check"}
+    if given["mllm"]:
+        m = gpu_check("reranker", lambda: check_rerank(paths, state, outs["rerank"], here))
+        external["mllm"] = m if m is not None else {"missing": "the reranker outputs failed their check"}
+    if given["ft"]:
+        f = gpu_check("FT", lambda: check_ft(paths, state, outs["ft"], here))
+        external["ft"] = f if f is not None else {"missing": "the FT outputs failed their check"}
+    if given["ft_lp"]:
+        external["ft_lp"] = {}
     if ver is not None and lis is not None:
-        ok, why, dsteps = dts_stages(paths, ver, lis, clock_start or state["started"][:16], say)
-        steps["dts_stages"] = {"passed": ok, "stages": dsteps, "missing": why}
-        external["dts"] = ({"record": str(paths.dts / RDTS.chosen_name(DTS_SEED)),
-                            "verbalise_job": [str(ver[s].job) for s in sorted(ver)],
-                            "verbalise_out": [str(d) for s in sorted(ver) for d in ver[s].dirs],
-                            "listing_out": [str(d) for d in lis]} if ok and why is None else {"missing": why})
-    else:
-        external["dts"] = {"missing": "; ".join(x for x in (ver_why, lis_why) if x)}
+        dts = dts_family(paths, ver, lis, clock_start or state["started"][:16], say)
+        steps["dts_stages"] = {"passed": dts.passed, "seed": dts.seed, "missing": dts.missing,
+                               "seeds": {str(s): v for s, v in dts.seeds.items()}}
+        if dts.seed is not None:
+            steps["listing_writer"] = listing_writer_check(paths, ver, state, dts.seed, say)
+            external["dts"] = {"record": str(paths.dts / f"seed{dts.seed}" / RDTS.chosen_name(dts.seed)),
+                               "verbalise_job": [str(ver[s].job) for s in sorted(ver)],
+                               "verbalise_out": [str(d) for s in sorted(ver) for d in ver[s].dirs],
+                               "listing_out": [str(d) for d in lis]}
+        else:
+            external["dts"] = {"missing": dts.missing}
+            say(f"DTS: missing ({dts.missing}); recorded")
     sources = {k: external[k] for k in XT.SOURCE_KEYS}
     _write_json(paths.smoke / XT.SOURCES_NAME, sources)
     say(f"external sources {paths.smoke / XT.SOURCES_NAME}: "
@@ -827,7 +944,8 @@ def stage_finish(paths, here, env, outs, clock_start, say) -> int:
         steps["descriptive"] = {"passed": False, "skipped": "the rule application failed"}
     rows = external_rows(paths.smoke / "descriptive.json") if steps["descriptive"]["passed"] else {}
     if rows:                    # a row whose family's outputs were given and passed their check must be present
-        bad = sorted(n for n, v in rows.items() if v != "present" and "missing" not in sources[XT.FAMILY[n]])
+        bad = sorted(n for n, v in rows.items()
+                     if v != "present" and "missing" not in sources[XT.FAMILY[n]])  # guard:rows_given
         steps["external_rows"] = {"passed": not bad, "missing_although_given": bad}
         say(f"external rows: {', '.join(n for n, v in rows.items() if v == 'present') or 'none'} present"
             + (f"; FAIL, missing although given: {', '.join(bad)}" if bad else ""))
@@ -850,14 +968,15 @@ def stage_finish(paths, here, env, outs, clock_start, say) -> int:
     cur = R.r6_module_shas(here)
     pass_rec = _read_json(paths.smoke / "held_pass.json")
     same = pass_rec.get("module_sha256") == cur
-    passed = bool(all(s["passed"] for s in steps.values()) and mut.get("fired") is True
-                  and leak["passed"] and same)
+    passed = bool(all(s["passed"] for s in steps.values()) and mut.get("fired") is True and leak["passed"]
+                  and same)  # guard:record_passed
     outputs = {n: R.sha256_file(paths.smoke / n) for n in ("held_pass.json", "held_arrays.npz", "held_verdict.json",
                                                            "rederive_agreement.json", "descriptive.json",
                                                            XT.SOURCES_NAME) if (paths.smoke / n).is_file()}
     settings_key = RH._key("dts_settings.json", here)
+    copy = paths.folder / paths.kind.record
     rec = {"passed": passed, "kind": paths.kind.kind, "flag": flag_text(paths) or None,
-           "smoke_folder": rel(paths.smoke), "rule_sha256": R.RULE_SHA256,
+           "smoke_folder": rel(paths.smoke), "rule_sha256": R.RULE_SHA256, "waivers": waive,
            "runner_sha256": R.sha256_file(here / "run_r6_held.py"),
            "smoke_runner_sha256": R.sha256_file(here / "run_r6_smoke.py"),
            "dts_settings_sha256": cur.get(settings_key),
@@ -867,13 +986,15 @@ def stage_finish(paths, here, env, outs, clock_start, say) -> int:
                      "scripts/run_r6_*.sh and scripts/das6_sync_r6.py",
            "same_bytes_as_the_smoke_pass": same, "started": state.get("started"), "time": R.amsterdam_now(),
            "seed42_records_sha256": seed42, "steps": steps, "mutation": mut, "leak_check": leak,
-           "external_sources": sources, "external_rows": rows, "outputs_sha256": outputs}
+           "external_sources": sources, "external_rows": rows, "outputs_sha256": outputs,
+           "replaced_copy_sha256": R.sha256_file(copy) if copy.is_file() else None}
     data = (json.dumps(rec, indent=1) + "\n").encode()
     with open(paths.record, "xb") as f:                    # written once, never replaced
         f.write(data)
-    (paths.folder / paths.kind.record).write_bytes(data)
-    say(f"step 7, smoke record {paths.record} {R.sha256_file(paths.record)} and its copy "
-        f"{paths.folder / paths.kind.record}")
+    copy.write_bytes(data)
+    say(f"step 7, smoke record {paths.record} {R.sha256_file(paths.record)} and its copy {copy}")
+    for fam, why in waive.items():
+        say(f"waived: {fam} ({why})")
     missing = sorted(k for k, v in sources.items() if "missing" in v)
     if missing:
         say(f"external families marked missing (see the record): {', '.join(missing)}")
@@ -889,16 +1010,29 @@ def kind_of(after_crash=False, fix=None, reserve=False) -> str:
     return "crash1" if after_crash else "fix1" if fix else "reserve" if reserve else "smoke"
 
 
+def parse_waivers(items) -> dict:
+    """--waive <family>=<reason> -> {family: reason}; each family once, a non-empty reason."""
+    out = {}
+    for it in items or []:
+        fam, sep, why = str(it).partition("=")
+        _require(sep and fam.strip() and why.strip() and fam.strip() not in out,
+                 f"--waive {it!r}: give <family>=<reason>, each family once", Refused)
+        out[fam.strip()] = why.strip()
+    return out
+
+
 def run(stage, kind="smoke", outs=None, clock_start=None, results=None, folder=None, here=None, env=None,
-        staging=None, image_root=None) -> int:
+        staging=None, image_root=None, waive=None) -> int:
     """One stage (module docstring). results, folder (where the record's copy goes), here (the folder whose r6 files
-    count), env (run_r6_held.setup()'s namespace), staging and image_root (r6_gpu_inputs) may be given by a test."""
+    count), env (run_r6_held.setup()'s namespace), staging and image_root (r6_gpu_inputs) may be given by a test.
+    waive: {family: reason} (finish only)."""
     here = Path(here or HERE)
     paths = paths_of(kind, results or R.RESULTS, folder)
     outs = {k: [Path(d) for d in (outs or {}).get(k) or []] for k in ("verbalise", "listing", "rerank", "ft")}
     say = Say(paths.logs / f"run_r6_smoke_{stage}.log")
     say(f"run_r6_smoke --stage {stage} ({paths.kind.kind}) {R.amsterdam_now()}: smoke folder {paths.smoke}")
     try:
+        _require(not waive or stage == "finish", "--waive belongs to --stage finish", Refused)
         if stage == "check":
             require_stages(paths.results, here, say)
             return 0
@@ -906,7 +1040,7 @@ def run(stage, kind="smoke", outs=None, clock_start=None, results=None, folder=N
             return stage_gpu_inputs(paths, here, env, Path(staging or I.IMAGE_STAGING), image_root or I.WIKIART, say)
         if stage == "list-input":
             return stage_list_input(paths, here, outs["verbalise"], say)
-        return stage_finish(paths, here, env, outs, clock_start, say)
+        return stage_finish(paths, here, env, outs, clock_start, say, waive)
     except Refused as e:
         say(f"refused: {e}")
         return EXIT_REFUSE
@@ -923,17 +1057,20 @@ def main(argv=None) -> int:
     ap.add_argument("--listing-out", type=Path, action="append", default=[], help="a listing output folder")
     ap.add_argument("--rerank-out", type=Path, action="append", default=[], help="a reranker output folder")
     ap.add_argument("--ft-out", type=Path, action="append", default=[], help="an FT feature output folder")
+    ap.add_argument("--waive", action="append", default=[], metavar="FAMILY=REASON",
+                    help="finish: a GPU family (dts, ft_lp, ft, mllm) whose outputs are not given, with the reason")
     ap.add_argument("--dts-clock-start", default=None,
                     help="finish: the smoke DTS stop's clock start 'YYYY-MM-DD HH:MM' (default the gpu-inputs start)")
     args = ap.parse_args(argv)
     try:
         kind = kind_of(args.after_crash, args.fix, args.reserve)
+        waive = parse_waivers(args.waive)
     except Refused as e:
         print(f"refused: {e}")
         return EXIT_REFUSE
     outs = {"verbalise": args.verbalise_out, "listing": args.listing_out, "rerank": args.rerank_out,
             "ft": args.ft_out}
-    return run(args.stage, kind, outs, args.dts_clock_start)
+    return run(args.stage, kind, outs, args.dts_clock_start, waive=waive)
 
 
 if __name__ == "__main__":

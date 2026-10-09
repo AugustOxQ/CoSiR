@@ -78,10 +78,11 @@ before step 5):
      current (the order guard), regression_seed42.json passed and current, sensitivity_seed42.json current (its
      regression_sha256 the current regression file's) with every check's sigma parts (agent default: rule section 6
      item 7 asks these items to have run on the current bytes); in held mode (every flag) also dts_stop.json: seed
-     42's stop record, built within the budget, no stop, written by the current bytes of what run_r6_dts.py ran and
-     of dts_settings.json (rule section 9: a section 7 stop, or DTS not built within its budget, stops the work
-     before the read; final review, 2026-10-09). Its SHA-256 is recorded in the attempt. Smoke mode does not read it
-     (the smoke chain checks it and runs the stop stage for its own smoke seed).
+     42's stop record, built within the budget, no stop, evaluated on the current bytes of every input it names
+     (dts_seed42.json among them: the sanity, tune and chosen records and the per-anchor arrays), written by the
+     current bytes of what run_r6_dts.py ran and of dts_settings.json (rule section 9: a section 7 stop, or DTS not
+     built within its budget, stops the work before the read; final review, 2026-10-09). Its SHA-256 is recorded in
+     the attempt. Smoke mode does not read it (the smoke chain checks it and runs the stop stage for its own seed).
   4. setup(): the heads refit on scorer-train rows, their selection posteriors rechecked bit for bit; refuses unless
      the check passed and every coefficient SHA-256 equals refit_check.json's (rule section 5 item 5).
   5. First write: the attempt (time, SHA-256s, flags, coefficient SHA-256s) appended to held_started.json and its
@@ -581,6 +582,7 @@ SMOKE_RECORD_CRASH = R.SMOKE_RECORDS["crash1"]          # the smoke of code corr
 SMOKE_RECORDS = {"held": R.SMOKE_RECORDS["smoke"], "fix1": R.SMOKE_RECORDS["fix1"],
                  "reserve": R.SMOKE_RECORDS["reserve"]}
 DTS_STOP_NAME = "dts_stop.json"                         # run_r6_dts.STOP (asserted in the tests)
+DTS_CHOSEN_NAME = "dts_seed42.json"                     # run_r6_dts.chosen_name(42) (asserted in the tests)
 LEDGER_ROWS = {"held": "H5", "fix1": "H5", "reserve": "H5-R"}
 LEDGER_CELLS = ("#", "Date", "Dataset and split", "Purpose", "Episode / data SHA-256", "Script SHA-256", "Report")
 EPISODE_CELL, SCRIPT_CELL, REPORT_CELL = 4, 5, 6
@@ -815,10 +817,11 @@ def seed42_guard(results, here=None) -> dict:
 
 def dts_stop_problem(results, here=None) -> tuple:
     """Rule section 9 ("section 7 stop, or DTS not built within its budget: stop before the read") and section 6 item
-    7: -> (None, False) when results/dts_stop.json is seed 42's stop record, built within the budget, with no stop, and
-    was written by the current bytes of every r6 module run_r6_dts.py ran and of dts_settings.json; otherwise (reason,
-    fired), fired true when the record itself stops the work (the user decides; not a rerun). run_r6_smoke.py's step
-    1 uses the same check."""
+    7: -> (None, False) when results/dts_stop.json is seed 42's stop record, built within the budget, with no stop,
+    evaluated on the current bytes of every input its input_sha256 names (dts_seed42.json among them), and written by
+    the current bytes of every r6 module run_r6_dts.py ran and of dts_settings.json; otherwise (reason, fired), fired
+    true when the record itself stops the work (the user decides; not a rerun). run_r6_smoke.py's step 1 uses the same
+    check."""
     here = Path(here or HERE)
     path = Path(results) / DTS_STOP_NAME
     if not path.is_file():
@@ -832,6 +835,12 @@ def dts_stop_problem(results, here=None) -> tuple:
     if rec.get("stop") is not False or rec.get("built") is not True:
         return (f"{path.name} records a stop, or no build within the budget (rule section 7 items 5 to 7, section 9): "
                 f"the user decides"), True
+    inputs = rec.get("input_sha256") if isinstance(rec.get("input_sha256"), dict) else {}
+    other = sorted(n for n, sha in inputs.items()
+                   if not (Path(results) / n).is_file() or R.sha256_file(Path(results) / n) != sha)
+    if DTS_CHOSEN_NAME not in inputs or other:
+        return (f"{path.name} was not evaluated on the current bytes of {other or [DTS_CHOSEN_NAME]}: rerun the stop "
+                f"(rule section 7 item 5)"), False
     stale = stale_modules(rec, "run_r6_dts.py", here)
     key = _key("dts_settings.json", here)
     if (rec.get("module_sha256") or {}).get(key) != R.sha256_file(here / "dts_settings.json"):

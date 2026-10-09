@@ -118,8 +118,10 @@ def write_records(res, shas=None, coef=COEF, smoke_names=("smoke_record.json",))
     (res / RH.SENS42_NAME).write_text(json.dumps({**SIGMA, "seed": 42, "N": 12288, "n_paintings": 3000,
                                                   "regression_sha256": R.sha256_file(res / RH.REGRESSION_NAME),
                                                   **meta}))
+    (res / RH.DTS_CHOSEN_NAME).write_text(json.dumps({"stage": "chosen", "seed": 42, **meta}))
     (res / RH.DTS_STOP_NAME).write_text(json.dumps({"stage": "stop", "seed": 42, "built": True, "stop": False,
-                                                    **meta}))
+                                                    "input_sha256": {RH.DTS_CHOSEN_NAME: R.sha256_file(
+                                                        res / RH.DTS_CHOSEN_NAME)}, **meta}))
     for name in smoke_names:
         (res / name).write_text(json.dumps({"passed": True, "module_sha256": shas, "time": "2026-10-10 09:30:00"}))
     return res
@@ -631,7 +633,11 @@ def test_held_mode_refuses_without_a_passed_current_dts_stop(case, at_picks, cap
     for change, says in (({"stop": True}, "the user decides"), ({"built": False}, "the user decides"),
                          ({"seed": 9001}, "not seed 42's stop record"), ({"stage": "chosen"}, "not seed 42's stop"),
                          ({"module_sha256": stale("r6_dts.py")}, "rerun the DTS stages"),
-                         ({"module_sha256": stale("dts_settings.json")}, "rerun the DTS stages")):
+                         ({"module_sha256": stale("dts_settings.json")}, "rerun the DTS stages"),
+                         ({"input_sha256": {}}, "not evaluated on the current bytes of ['dts_seed42.json']"),
+                         ({"input_sha256": {RH.DTS_CHOSEN_NAME: "0" * 64}}, "rerun the stop"),
+                         ({"input_sha256": {RH.DTS_CHOSEN_NAME: R.sha256_file(case.res / RH.DTS_CHOSEN_NAME),
+                                            "dts_tune.json": "1" * 64}}, "bytes of ['dts_tune.json']")):
         stop.write_text(keep)
         edit(stop, **change)
         assert refused(held(case), capsys, says=says), change
@@ -711,7 +717,7 @@ def test_a_stubbed_read_writes_every_file_and_no_verdict(case, monkeypatch, caps
     assert ns.include_pm == [False, False, False]                          # rule section 8 item 3
     names = sorted(p.name for p in case.res.iterdir())
     assert names == sorted([RH.REFIT_NAME, RH.PICKS_NAME, RH.REGRESSION_NAME, RH.SENS42_NAME, RH.DTS_STOP_NAME,
-                            "smoke_record.json",
+                            RH.DTS_CHOSEN_NAME, "smoke_record.json",
                             "held_started.json", "held_episodes_seed52.npz", "held_episodes_seed53.npz",
                             "held_episodes_seed54.npz", "sensitivity_held.json", "held_arrays.npz",
                             "held_pass.json"])

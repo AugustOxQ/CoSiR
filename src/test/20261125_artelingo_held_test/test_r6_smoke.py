@@ -237,7 +237,8 @@ def test_step1_refuses_a_sensitivity_file_of_another_regression_and_failed_recor
     res = records(tmp_path, name="r4")
     TH.edit(res / RDTS.chosen_name(R.DEV_SEED), time="2026-10-11 09:00:00")   # the stop saw other chosen bytes
     code, out = check(res, capsys)
-    assert rerun_list(out) == ["DTS seed 42"] and "was not evaluated on the current dts_seed42.json" in out, out
+    assert rerun_list(out) == ["DTS seed 42"], out
+    assert "not evaluated on the current bytes of ['dts_seed42.json']" in out, out
 
 
 def test_step1_a_dts_stop_goes_to_the_user(tmp_path, capsys):
@@ -249,20 +250,21 @@ def test_step1_a_dts_stop_goes_to_the_user(tmp_path, capsys):
 def test_later_stages_refuse_a_smoke_made_by_other_bytes(tmp_path, capsys):
     res = records(tmp_path)
     paths = SM.paths_of("smoke", res)
-    code = SM.run("list-input", results=res, outs={"verbalise": [tmp_path / "v"]})
+    folder = tmp_path / "folder"
+    code = SM.run("list-input", results=res, folder=folder, outs={"verbalise": [tmp_path / "v"]})
     out = capsys.readouterr().out
     assert code == SM.EXIT_REFUSE and "run --stage gpu-inputs first" in out, out
     shas = R.r6_module_shas()
     write_json(paths.smoke / "held_pass.json", {"mode": "smoke", "module_sha256": shas})
     write_json(paths.state, {"module_sha256": {**shas, sorted(shas)[0]: "0" * 64}, "started": "x"})
     for stage in ("list-input", "finish"):
-        code = SM.run(stage, results=res)
+        code = SM.run(stage, results=res, folder=folder)
         out = capsys.readouterr().out
         assert code == SM.EXIT_REFUSE and "the r6 files changed since the held smoke" in out, (stage, out)
     write_json(paths.record, {"passed": True})
-    assert SM.run("finish", results=res) == SM.EXIT_REFUSE
+    assert SM.run("finish", results=res, folder=folder) == SM.EXIT_REFUSE
     assert "a smoke record is never replaced" in capsys.readouterr().out
-    assert SM.run("gpu-inputs", results=res) == SM.EXIT_REFUSE              # before any data is loaded
+    assert SM.run("gpu-inputs", results=res, folder=folder) == SM.EXIT_REFUSE              # before any data is loaded
     assert "a smoke record is never replaced" in capsys.readouterr().out
 
 
@@ -406,3 +408,217 @@ def test_the_wiring_mutation_replaces_the_one_cf_line_and_the_copy_compiles(tmp_
     body = inspect.getsource(mod.frozen_cells)
     assert "G = gated" in body and "G = cf_terms(gated)" not in body and "# guard:cf_cell" in body
     assert compile(SM.DRIVER, "smoke_scoring.py", "exec")
+
+
+# ---------------------------------------------------------------- stage finish: what makes a smoke pass (stubbed steps)
+
+ALL_GIVEN = {"verbalise": ["v"], "listing": ["l"], "rerank": ["r"], "ft": ["f"]}
+SOURCES = ("dts", "ft_lp", "ft", "mllm")
+
+
+def smoke_mutant(tmp_path, guard, replacement):
+    """A copy of run_r6_smoke.py in tmp_path whose statement marked `# guard:<guard>` is replaced by ``replacement``
+    (same indentation), imported under its own name. Never mutates in place."""
+    import ast
+    src = (HERE / "run_r6_smoke.py").read_text()
+    lines = src.splitlines(keepends=True)
+    hits = [n for n in ast.walk(ast.parse(src)) if isinstance(n, (ast.Assign, ast.Expr))
+            and f"# guard:{guard}" in lines[n.end_lineno - 1]]
+    assert len(hits) == 1, guard
+    n = hits[0]
+    first = lines[n.lineno - 1]
+    lines[n.lineno - 1] = first[:len(first) - len(first.lstrip())] + replacement + "\n"
+    for i in range(n.lineno, n.end_lineno):
+        lines[i] = "\n"
+    path = tmp_path / f"run_r6_smoke_mut_{guard}.py"
+    path.write_text("".join(lines))
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    mod = importlib.util.module_from_spec(spec)
+    saved = list(sys.path)
+    sys.modules[path.stem] = mod
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.modules.pop(path.stem, None)
+        sys.path[:] = saved
+    return mod
+
+
+def finish_world(tmp_path, monkeypatch, name, mod=SM, apply_code=0, fired=True, rows_missing=(), lp=True):
+    """A results tree past the earlier stages (current stand-in records, the smoke pass and the stage state) with the
+    heavy steps stubbed: the GPU output checks, the DTS stages, the listing writer, the apply step, the descriptive
+    pass (its external rows), the mutation's subprocess."""
+    base = tmp_path / name
+    res = records(base)
+    folder = base / "folder"
+    folder.mkdir()
+    p = mod.paths_of("smoke", res, folder)
+    cur = R.r6_module_shas()
+    write_json(p.smoke / "held_pass.json", {"mode": "smoke", "module_sha256": cur})
+    write_json(p.state, {"kind": "smoke", "started": "2026-10-10 19:00:00", "module_sha256": cur, "listing_job": "l",
+                         "jobs": {"verbalise": {}, "rerank": "r", "ft": "f"}})
+    ver = {s: SimpleNamespace(dirs=[base / f"v{s}"], job=base / f"j{s}") for s in R.SMOKE_SEEDS}
+    monkeypatch.setattr(mod, "check_verbaliser", lambda *a: ver)
+    monkeypatch.setattr(mod, "check_listings", lambda *a: [base / "l"])
+    monkeypatch.setattr(mod, "check_rerank", lambda *a: {"job": "r", "out": ["o"]})
+    monkeypatch.setattr(mod, "check_ft", lambda *a: {"job": "f", "out": ["o"]})
+    monkeypatch.setattr(mod, "dts_family", lambda *a: SimpleNamespace(passed=True, seed=9001, missing=None, seeds={}))
+    monkeypatch.setattr(mod, "listing_writer_check", lambda *a: {"passed": True})
+    monkeypatch.setattr(mod, "lp_checkpoint", lambda: HERE / ("dts_settings.json" if lp else "no_such_checkpoint.pt"))
+    monkeypatch.setattr(mod.AR, "main", lambda argv: apply_code)
+
+    def describe(**kw):
+        write_json(p.smoke / "descriptive.json",
+                   {"external": {n: ({"missing": "x"} if n in rows_missing else {"rows": 1}) for n in XT_NAMES}})
+        return 0
+    monkeypatch.setattr(mod.RD, "run", describe)
+    monkeypatch.setattr(mod, "wiring_mutation", lambda paths, here: {"fired": fired, "passed": fired, "log": None})
+    return SimpleNamespace(res=res, folder=folder, p=p, mod=mod)
+
+
+XT_NAMES = SM.XT.NAMES
+
+
+def finish(w, outs=ALL_GIVEN, waive=None):
+    code = w.mod.run("finish", outs=outs, results=w.res, folder=w.folder, here=HERE, env=SimpleNamespace(),
+                     waive=waive)
+    return code, json.loads(w.p.record.read_text())
+
+
+def test_finish_passes_only_when_every_step_passes(tmp_path, monkeypatch, capsys):
+    code, rec = finish(finish_world(tmp_path, monkeypatch, "ok"))
+    assert code == 0 and rec["passed"] is True and rec["waivers"] == {}, rec["steps"]
+    assert all("missing" not in v for v in rec["external_sources"].values())
+    for name, kw, step in (("apply", {"apply_code": 4}, "apply_rule"), ("unfired", {"fired": False}, None),
+                           ("row", {"rows_missing": ("FT-LB",)}, "external_rows")):
+        code, rec = finish(finish_world(tmp_path, monkeypatch, name, **kw))
+        assert code == SM.EXIT_FAIL and rec["passed"] is False, name
+        if step:
+            assert rec["steps"][step]["passed"] is False, name
+    assert rec["steps"]["external_rows"]["missing_although_given"] == ["FT-LB"]
+    w = finish_world(tmp_path, monkeypatch, "leak")
+    w.p.logs.mkdir(parents=True)
+    (w.p.logs / "00_planted.log").write_text("P3 margin 18.3\n")
+    code, rec = finish(w)
+    assert code == SM.EXIT_FAIL and rec["passed"] is False and rec["leak_check"]["hits"][0]["line"] == 1
+    out = capsys.readouterr().out
+    assert "smoke (smoke): FAILED" in out and "18.3" not in out
+
+
+def test_finish_record_guards_caught_on_copies(tmp_path, monkeypatch, capsys):
+    """Each guard of the record removed on a copy: the scenario it stopped then passes."""
+    mut = smoke_mutant(tmp_path, "record_passed", "passed = True")
+    code, rec = finish(finish_world(tmp_path, monkeypatch, "m1", mod=mut, apply_code=4))
+    assert code == 0 and rec["passed"] is True                           # a failed step no longer fails the smoke
+    mut = smoke_mutant(tmp_path, "rows_given", "bad = []")
+    code, rec = finish(finish_world(tmp_path, monkeypatch, "m2", mod=mut, rows_missing=("FT-LB",)))
+    assert code == 0 and rec["passed"] is True                           # a missing row although given passes
+    mut = smoke_mutant(tmp_path, "not_given", 'steps[f"given_{fam}"] = {"passed": True, "missing": what}')
+    code, rec = finish(finish_world(tmp_path, monkeypatch, "m3", mod=mut, lp=False), outs={})
+    assert code == 0 and rec["passed"] is True                           # no GPU output at all passes
+
+
+def test_a_family_not_given_fails_unless_waived(tmp_path, monkeypatch, capsys):
+    code, rec = finish(finish_world(tmp_path, monkeypatch, "none", lp=False), outs={})
+    assert code == SM.EXIT_FAIL and rec["passed"] is False
+    assert {k for k, v in rec["steps"].items() if k.startswith("given_") and not v["passed"]} == \
+        {f"given_{f}" for f in SOURCES}
+    assert all("not given" in rec["external_sources"][f]["missing"] for f in SOURCES)
+    capsys.readouterr()
+    waive = {"dts": "no GPU tonight", "ft_lp": "checkpoint elsewhere", "ft": "no GPU tonight", "mllm": "no GPU"}
+    code, rec = finish(finish_world(tmp_path, monkeypatch, "waived", lp=False), outs={}, waive=waive)
+    out = capsys.readouterr().out
+    assert code == 0 and rec["passed"] is True and rec["waivers"] == waive
+    assert all(rec["external_sources"][f] == {"missing": f"waived: {waive[f]}"} for f in SOURCES)
+    assert "WAIVED (no GPU tonight)" in out and "waived: mllm (no GPU)" in out
+    w = finish_world(tmp_path, monkeypatch, "both")
+    assert w.mod.run("finish", outs=ALL_GIVEN, results=w.res, folder=w.folder, here=HERE,
+                     waive={"ft": "x"}) == SM.EXIT_REFUSE                  # a waiver for given outputs
+    assert w.mod.run("finish", outs={}, results=w.res, folder=w.folder, here=HERE,
+                     waive={"gpu": "x"}) == SM.EXIT_REFUSE                 # not a family
+    assert SM.main(["--stage", "finish", "--waive", "dts"]) == SM.EXIT_REFUSE    # no reason
+    with pytest.raises(SM.Refused):
+        SM.parse_waivers(["dts=a", "dts=b"])
+    assert SM.parse_waivers(["mllm = no GPU "]) == {"mllm": "no GPU"}
+
+
+def test_the_mutation_fires_only_with_the_condition_free_message(tmp_path, monkeypatch):
+    """The driver of the subprocess replaced by stand-ins: another error is not the assertion firing; the copy of
+    run_r6_smoke.py without the message check takes it for a firing."""
+    p = SM.paths_of("smoke", records(tmp_path), tmp_path / "folder")
+    other = "raise RuntimeError('another error')\n"
+    message = f"print('ValueError: {SM.WIRING_CELL} 149 {SM.WIRING_MESSAGE}'); raise SystemExit(1)\n"
+    passed = "print('smoke held pass written abc')\n"
+    monkeypatch.setattr(SM, "DRIVER", other)
+    out = SM.wiring_mutation(p, HERE)
+    assert out["exit"] != 0 and out["fired"] is False and out["message_found"] is False
+    monkeypatch.setattr(SM, "DRIVER", message)
+    assert SM.wiring_mutation(p, HERE)["fired"] is True
+    monkeypatch.setattr(SM, "DRIVER", passed)
+    assert SM.wiring_mutation(p, HERE, control=True)["passed"] is True
+    mut = smoke_mutant(tmp_path, "mutation_fired", 'out["fired"] = out["passed"] = p.returncode != 0')
+    monkeypatch.setattr(mut, "DRIVER", other)
+    assert mut.wiring_mutation(p, HERE)["fired"] is True                   # without the check: any crash "fires"
+    assert (p.smoke / "mutation" / "code" / "r6_score.py").read_text().count(SM.WIRING_TO) == 1
+
+
+# ---------------------------------------------------------------- the DTS stages: retry, kept records
+
+def test_dts_retries_the_next_smoke_seed_after_a_smoke_scale_outcome(tmp_path, monkeypatch):
+    p = SM.paths_of("smoke", tmp_path / "results")
+    say = SM.Say(tmp_path / "say.log")
+    codes = {}
+
+    def stages(paths, ver, lis, seed, clock, say):
+        code = codes[seed]
+        stage = "sanity" if code == 3 and seed != 9002 else "stop"
+        return code, {"sanity": {"exit": code if stage == "sanity" else 0}, "stop": {"exit": code}}
+    monkeypatch.setattr(SM, "dts_seed_stages", stages)
+    codes.update({9001: 3, 9002: 0, 9003: 0})
+    got = SM.dts_family(p, {}, [], "2026-10-10 19:00", say)
+    assert (got.passed, got.seed, got.missing, sorted(got.seeds)) == (True, 9002, None, [9001, 9002])
+    codes.update({9001: 3, 9002: 3, 9003: 3})
+    got = SM.dts_family(p, {}, [], "2026-10-10 19:00", say)
+    assert got.passed is True and got.seed is None and "every smoke seed" in got.missing
+    assert "seed 9001: the DTS-N sanity did not pass" in got.missing and "seed 9002: the stop stops" in got.missing
+    codes.update({9001: 2})
+    got = SM.dts_family(p, {}, [], "2026-10-10 19:00", say)
+    assert got.passed is False and got.seed is None and "failed (exit 2)" in got.missing
+
+
+def test_a_kept_dts_record_is_read(tmp_path, monkeypatch):
+    p = SM.paths_of("smoke", tmp_path / "results")
+    say = SM.Say(tmp_path / "say.log")
+    ver = {9001: SimpleNamespace(dirs=[tmp_path / "v"], job=tmp_path / "j")}
+    monkeypatch.setattr(SM.RDTS, "main", lambda argv: (_ for _ in ()).throw(AssertionError("ran a stage")))
+    write_json(p.dts / "seed9001" / RDTS.SANITY, {"seed": 9001, "passed": False})
+    code, steps = SM.dts_seed_stages(p, ver, [], 9001, "2026-10-10 19:00", say)
+    assert code == RDTS.EXIT_FAIL and steps["sanity"] == {"passed": False, "kept": True, "exit": RDTS.EXIT_FAIL}
+    for name in (RDTS.SANITY, RDTS.TUNE, RDTS.chosen_name(9001)):
+        write_json(p.dts / "seed9001" / name, {"seed": 9001, "passed": True})
+    write_json(p.dts / "seed9001" / RDTS.STOP, {"seed": 9001, "stop": True, "built": True})
+    code, steps = SM.dts_seed_stages(p, ver, [], 9001, "2026-10-10 19:00", say)
+    assert code == RDTS.EXIT_FAIL and steps["stop"]["exit"] == RDTS.EXIT_FAIL
+    write_json(p.dts / "seed9001" / RDTS.STOP, {"seed": 9001, "stop": False, "built": True})
+    assert SM.dts_seed_stages(p, ver, [], 9001, "2026-10-10 19:00", say)[0] == 0
+    assert SM._kept_outcome("tune", {}) == 0
+
+
+# ---------------------------------------------------------------- the record's committed copy
+
+def test_the_committed_copy_is_replaced_only_after_its_record_was_moved_aside(tmp_path, capsys):
+    res = records(tmp_path)
+    folder = tmp_path / "folder"
+    folder.mkdir()
+    p = SM.paths_of("smoke", res, folder)
+    SM.require_copy_free(p)                                               # no copy: free
+    (folder / "smoke_record.json").write_text('{"passed": false}\n')
+    with pytest.raises(SM.Refused, match="smoke_record.failed<N>.json"):
+        SM.require_copy_free(p)
+    assert SM.run("gpu-inputs", results=res, folder=folder) == SM.EXIT_REFUSE
+    assert "no moved-aside record" in capsys.readouterr().out
+    (res / "smoke_record.failed1.json").write_text('{"passed": true}\n')     # another record's bytes
+    with pytest.raises(SM.Refused):
+        SM.require_copy_free(p)
+    (res / "smoke_record.failed2.json").write_text('{"passed": false}\n')    # this copy's record, moved aside
+    SM.require_copy_free(p)

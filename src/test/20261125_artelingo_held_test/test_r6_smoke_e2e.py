@@ -200,7 +200,12 @@ def test_full_local_smoke_with_crafted_gpu_outputs(world, capsys):
     assert rec["runner_sha256"] == R.sha256_file(HERE / "run_r6_held.py")
     assert rec["dts_settings_sha256"] == R.sha256_file(HERE / "dts_settings.json")
     assert all(s["passed"] for s in rec["steps"].values()), rec["steps"]
-    assert set(rec["steps"]["dts_stages"]["stages"]) == {"sanity", "tune", "chosen", "stop"}
+    dts = rec["steps"]["dts_stages"]
+    assert dts["seed"] == 9001 and dts["missing"] is None and set(dts["seeds"]) == {"9001"}
+    assert set(dts["seeds"]["9001"]) == {"sanity", "tune", "chosen", "stop"}
+    lw = rec["steps"]["listing_writer"]                 # the held read's listing writer, smoked on 9001
+    assert lw["passed"] is True and lw["inside_the_listing_job"] is True and lw["n_items"] > 0
+    assert rec["waivers"] == {} and not any(k.startswith("given_") for k in rec["steps"])
     assert rec["mutation"]["fired"] is True and rec["mutation"]["exit"] != 0 and rec["mutation"]["message_found"]
     assert rec["leak_check"]["passed"] is True and len(rec["leak_check"]["files"]) >= 10
     assert set(rec["external_sources"]) == set(XT.SOURCE_KEYS)
@@ -208,8 +213,8 @@ def test_full_local_smoke_with_crafted_gpu_outputs(world, capsys):
     assert rec["external_rows"] == {n: "present" for n in XT.NAMES}, rec["external_rows"]
     assert rec["steps"]["external_rows"] == {"passed": True, "missing_although_given": []}
     src = json.loads((p.smoke / XT.SOURCES_NAME).read_text())
-    assert src == rec["external_sources"] and src["dts"]["record"].endswith("dts/dts_seed9001.json")
-    stop = json.loads((p.dts / "dts_stop.json").read_text())
+    assert src == rec["external_sources"] and src["dts"]["record"].endswith("dts/seed9001/dts_seed9001.json")
+    stop = json.loads((p.dts / "seed9001" / "dts_stop.json").read_text())
     assert stop["stop"] is False and stop["built"] is True
     agr = json.loads((p.smoke / "rederive_agreement.json").read_text())
     assert agr["smoke"] is True and agr["held_pass_sha256"] == R.sha256_file(p.smoke / "held_pass.json")
