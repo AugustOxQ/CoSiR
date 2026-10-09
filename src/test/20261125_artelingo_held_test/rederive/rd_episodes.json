@@ -1,0 +1,188 @@
+{
+ "value_sets": {
+  "emotion": {
+   "codes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "names": [
+    "amusement",
+    "anger",
+    "awe",
+    "contentment",
+    "disgust",
+    "excitement",
+    "fear",
+    "sadness"
+   ]
+  },
+  "style": {
+   "codes": [
+    0,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    26
+   ],
+   "names": [
+    "Abstract_Expressionism",
+    "Art_Nouveau_Modern",
+    "Baroque",
+    "Color_Field_Painting",
+    "Contemporary_Realism",
+    "Cubism",
+    "Early_Renaissance",
+    "Expressionism",
+    "Fauvism",
+    "High_Renaissance",
+    "Impressionism",
+    "Mannerism_Late_Renaissance",
+    "Minimalism",
+    "Naive_Art_Primitivism",
+    "Northern_Renaissance",
+    "Pointillism",
+    "Pop_Art",
+    "Post_Impressionism",
+    "Realism",
+    "Rococo",
+    "Romanticism",
+    "Symbolism",
+    "Ukiyo_e"
+   ]
+  },
+  "genre": {
+   "codes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "names": [
+    "abstract_painting",
+    "cityscape",
+    "genre_painting",
+    "illustration",
+    "landscape",
+    "nude_painting",
+    "portrait",
+    "religious_painting",
+    "sketch_and_study",
+    "still_life"
+   ]
+  }
+ },
+ "value_set_sizes": {
+  "emotion": 8,
+  "style": 23,
+  "genre": 10
+ },
+ "value_set_sizes_ok": true,
+ "pool_sel_rows": 23580,
+ "seeds": {
+  "42": {
+   "n_per_pair": 4096,
+   "sha256": {
+    "emotion__style": "6932f553e2d15237b4f008d0da2ecb76ad9c96db629a3557afe037290b6dd066",
+    "emotion__genre": "9196a1a80e95af1cd3ebefdd0b07c2ceb5f694579c6221b40157027af041fbe7",
+    "style__genre": "78fbccdce319d07a7f315d6b0b7314d492a8657223fbddbc5dc1c771c4485429"
+   },
+   "recorded": {
+    "emotion__style": "6932f553e2d15237b4f008d0da2ecb76ad9c96db629a3557afe037290b6dd066",
+    "emotion__genre": "9196a1a80e95af1cd3ebefdd0b07c2ceb5f694579c6221b40157027af041fbe7",
+    "style__genre": "78fbccdce319d07a7f315d6b0b7314d492a8657223fbddbc5dc1c771c4485429"
+   },
+   "equal": {
+    "emotion__style": true,
+    "emotion__genre": true,
+    "style__genre": true
+   }
+  },
+  "9001": {
+   "n_per_pair": 64,
+   "sha256": {
+    "emotion__style": "b99f51939a6b941c2f0db34a544771047ea80e3699d9aaec1a9e672caf27f9ae",
+    "emotion__genre": "711da43bee22f5458d12802a4b4d55f890e2aafeccbb311b5ec279709bfc9cb7",
+    "style__genre": "0fc38bdd5ec2058848afd1762e5903b58df1af439e993b5e4067522408f8e05f"
+   },
+   "recorded": {
+    "emotion__style": "b99f51939a6b941c2f0db34a544771047ea80e3699d9aaec1a9e672caf27f9ae",
+    "emotion__genre": "711da43bee22f5458d12802a4b4d55f890e2aafeccbb311b5ec279709bfc9cb7",
+    "style__genre": "0fc38bdd5ec2058848afd1762e5903b58df1af439e993b5e4067522408f8e05f"
+   },
+   "equal": {
+    "emotion__style": true,
+    "emotion__genre": true,
+    "style__genre": true
+   }
+  },
+  "9002": {
+   "n_per_pair": 64,
+   "sha256": {
+    "emotion__style": "1487e171ce73c05d6aaec52c5b864523574fa55b6fe9901165a2a9702fee20fd",
+    "emotion__genre": "84313beb5d24ed8830e88b1bb1cc00750f0b7a2456f40b3d08fb93d86df884c6",
+    "style__genre": "37cc81560375a9a112bf61e574279b16429ae5ac8289396b2363be8667a8889b"
+   },
+   "recorded": {
+    "emotion__style": "1487e171ce73c05d6aaec52c5b864523574fa55b6fe9901165a2a9702fee20fd",
+    "emotion__genre": "84313beb5d24ed8830e88b1bb1cc00750f0b7a2456f40b3d08fb93d86df884c6",
+    "style__genre": "37cc81560375a9a112bf61e574279b16429ae5ac8289396b2363be8667a8889b"
+   },
+   "equal": {
+    "emotion__style": true,
+    "emotion__genre": true,
+    "style__genre": true
+   }
+  },
+  "9003": {
+   "n_per_pair": 64,
+   "sha256": {
+    "emotion__style": "2143acf38e168e4c6f0b41e618feb61af6631065e73f5e3fe7280f92fb7724ef",
+    "emotion__genre": "7a9b06da6cac76b691c1d1eac8574cdaf13b9ce66ab0f8ccdd3b833ae66f5d48",
+    "style__genre": "4c6ad390ab5cf8ea522009abf9e4ec08c1ffb341d6619989741e554d9a1815d9"
+   },
+   "recorded": {
+    "emotion__style": "2143acf38e168e4c6f0b41e618feb61af6631065e73f5e3fe7280f92fb7724ef",
+    "emotion__genre": "7a9b06da6cac76b691c1d1eac8574cdaf13b9ce66ab0f8ccdd3b833ae66f5d48",
+    "style__genre": "4c6ad390ab5cf8ea522009abf9e4ec08c1ffb341d6619989741e554d9a1815d9"
+   },
+   "equal": {
+    "emotion__style": true,
+    "emotion__genre": true,
+    "style__genre": true
+   }
+  }
+ },
+ "seed42_arrays_equal_episodes_seed42_npz": true,
+ "all_equal": true,
+ "time": "2026-10-10 00:01"
+}

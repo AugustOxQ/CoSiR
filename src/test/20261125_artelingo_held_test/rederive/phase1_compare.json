@@ -1,0 +1,3151 @@
+{
+ "n_compared": 389,
+ "n_equal": 389,
+ "diffs": [],
+ "pending_files": [],
+ "tolerance": "discrete exact; points and bounds within 1e-9 R@1 points; arrays exact",
+ "items": [
+  {
+   "quantity": "refit/passed (all bitwise equal)",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/n6_posteriors/affect__img/equal",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/n6_posteriors/affect__img/n_diff",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/n6_posteriors/affect__txt/equal",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/n6_posteriors/affect__txt/n_diff",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/n6_posteriors/image__img/equal",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/n6_posteriors/image__img/n_diff",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/n6_posteriors/image__txt/equal",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/n6_posteriors/image__txt/n_diff",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/n6_posteriors/caption__img/equal",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/n6_posteriors/caption__img/n_diff",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/n6_posteriors/caption__txt/equal",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/n6_posteriors/caption__txt/n_diff",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/step1_heads_style/style_csd__img/equal",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/step1_heads_style/style_csd__img/n_diff",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/step1_heads_style/style_csd__txt/equal",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/step1_heads_style/style_csd__txt/n_diff",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/affect_identity",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/coef_sha256/affect/img",
+   "mine": {
+    "coef": "8204665712d0ce9951087f07d61e635af9098f71e3a36073533a5ef7d9a9cea3",
+    "coef_then_intercept": "7e6fb58c86d8a440615f091c55dc3fa5fb051fef9eb021c5663a5a7683a275d1",
+    "coef_intercept_concat_ravel": "7e6fb58c86d8a440615f091c55dc3fa5fb051fef9eb021c5663a5a7683a275d1",
+    "coef_intercept_hstack": "1b4667c619bd2d3fb47f96fecc854a6c2cf578e6e0a32c2201f78993d5a005d7",
+    "coef_f32": "963332553365ddb22c5dd2230e400f7b4bf69cd6b0064cd8507cbb010b96196d"
+   },
+   "runner": "7e6fb58c86d8a440615f091c55dc3fa5fb051fef9eb021c5663a5a7683a275d1",
+   "kind": "any-variant",
+   "matched_variant": [
+    "coef_then_intercept",
+    "coef_intercept_concat_ravel"
+   ],
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/coef_sha256/affect/txt",
+   "mine": {
+    "coef": "92278bfa8fdc0e16d1bc9431c1bc03424e14a595336c36c6a2b0af7cca80ef36",
+    "coef_then_intercept": "3b82f50db1fb49af9d8720729a0d05d02a66419ed1e519815441c362a5bd3931",
+    "coef_intercept_concat_ravel": "3b82f50db1fb49af9d8720729a0d05d02a66419ed1e519815441c362a5bd3931",
+    "coef_intercept_hstack": "b090f35383eb05a4b5aa7222f70b1b3ce76498640ee9152014f9f81aaa666238",
+    "coef_f32": "e12432b4929c165fc4e63cb6ebe3db533b78c5534fb0698f028aa390d2eb7779"
+   },
+   "runner": "3b82f50db1fb49af9d8720729a0d05d02a66419ed1e519815441c362a5bd3931",
+   "kind": "any-variant",
+   "matched_variant": [
+    "coef_then_intercept",
+    "coef_intercept_concat_ravel"
+   ],
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/coef_sha256/affect_km/img",
+   "mine": {
+    "coef": "43d0debbd6254f9f9df4fb05042db1fd63818ebe8676e1c7660592b962d23561",
+    "coef_then_intercept": "14359290fa176da2370a27a6f8505d615d8d985c68e5f0bf66b62c6b8799d25d",
+    "coef_intercept_concat_ravel": "14359290fa176da2370a27a6f8505d615d8d985c68e5f0bf66b62c6b8799d25d",
+    "coef_intercept_hstack": "5489acbbe5cd74bdfbb176899b48d0ef796491ec73403774db6be79fe3514799",
+    "coef_f32": "11d75befa7af28ac098b3d9f76165b0ae94c77c5692420d335ca4aff152a06b3"
+   },
+   "runner": "14359290fa176da2370a27a6f8505d615d8d985c68e5f0bf66b62c6b8799d25d",
+   "kind": "any-variant",
+   "matched_variant": [
+    "coef_then_intercept",
+    "coef_intercept_concat_ravel"
+   ],
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/coef_sha256/affect_km/txt",
+   "mine": {
+    "coef": "0a3fe3b9f3332e1bab23310e9b1dac10a9e9fed31dc45a471752a0f7559f4bc0",
+    "coef_then_intercept": "69b1c836dc0b337f705aebd2e9ba4003652514a79d1603fc0ecfccaf7d1f4169",
+    "coef_intercept_concat_ravel": "69b1c836dc0b337f705aebd2e9ba4003652514a79d1603fc0ecfccaf7d1f4169",
+    "coef_intercept_hstack": "ad610b526709f010bc1dfbcbd9a010184b120287faac2e760d5a01f47a4dfd79",
+    "coef_f32": "8647b0e438e723b534ff954a26842205f35c937a0b9b7cd490f74a26054753e0"
+   },
+   "runner": "69b1c836dc0b337f705aebd2e9ba4003652514a79d1603fc0ecfccaf7d1f4169",
+   "kind": "any-variant",
+   "matched_variant": [
+    "coef_then_intercept",
+    "coef_intercept_concat_ravel"
+   ],
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/coef_sha256/image/img",
+   "mine": {
+    "coef": "fffee646559c45b4e56af16089c67e687e7fdd76d50e7b84e9bd8e58fd39140c",
+    "coef_then_intercept": "477e96763f3298217fa7dcb4b8c23007b25de1768e55aa0c6617735dfe3de810",
+    "coef_intercept_concat_ravel": "477e96763f3298217fa7dcb4b8c23007b25de1768e55aa0c6617735dfe3de810",
+    "coef_intercept_hstack": "3b6363c5facabd00e1de4efd738efc2c11700ce4bacdf8d57642307fcf7cf64b",
+    "coef_f32": "6e69b54dbcd867bcadb6f773525c1ae7eb1604eaef597ad5859dc8642c87efcc"
+   },
+   "runner": "477e96763f3298217fa7dcb4b8c23007b25de1768e55aa0c6617735dfe3de810",
+   "kind": "any-variant",
+   "matched_variant": [
+    "coef_then_intercept",
+    "coef_intercept_concat_ravel"
+   ],
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/coef_sha256/image/txt",
+   "mine": {
+    "coef": "128f54f856033bf33f94bef0cb71ce7be4b0b68f73d246497af11b5813d8c21b",
+    "coef_then_intercept": "85c0b6120692902c65b201de5bc2d73e9b27aff2d7b287f60f8872a07f074305",
+    "coef_intercept_concat_ravel": "85c0b6120692902c65b201de5bc2d73e9b27aff2d7b287f60f8872a07f074305",
+    "coef_intercept_hstack": "96586b0f14caa357020267e534688d574500160e469bf2d9178c190cbcf53825",
+    "coef_f32": "2c8cd75febb2a6df5be110c0cf4bd91a9d4a7139dcc1c6d3a853817351628010"
+   },
+   "runner": "85c0b6120692902c65b201de5bc2d73e9b27aff2d7b287f60f8872a07f074305",
+   "kind": "any-variant",
+   "matched_variant": [
+    "coef_then_intercept",
+    "coef_intercept_concat_ravel"
+   ],
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/coef_sha256/caption/img",
+   "mine": {
+    "coef": "41f0d840951b2836b86ef5fcc3b4de6e3e2c9acb29104c3082c56fbaa9f34b8a",
+    "coef_then_intercept": "549941611cc2dcccd9d1a172ec6a8a29347107dc435b9bafedb9e66b189b20e1",
+    "coef_intercept_concat_ravel": "549941611cc2dcccd9d1a172ec6a8a29347107dc435b9bafedb9e66b189b20e1",
+    "coef_intercept_hstack": "357d835796e828e60cf3113d09d934da4dfcc9ff6b02b5618efcc9d97da6bc2a",
+    "coef_f32": "4b6387c666de7e3d8389638b42f22d7f710c23c05f96da4461104617a3ee41fa"
+   },
+   "runner": "549941611cc2dcccd9d1a172ec6a8a29347107dc435b9bafedb9e66b189b20e1",
+   "kind": "any-variant",
+   "matched_variant": [
+    "coef_then_intercept",
+    "coef_intercept_concat_ravel"
+   ],
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/coef_sha256/caption/txt",
+   "mine": {
+    "coef": "b761739965a813f703a4fedc84a546c1e7b99f4c87ab5fb47384f6fdeabbde94",
+    "coef_then_intercept": "8b4a197ff6430bb834a69505c0e2ff89b0aceab47632e848b927ec113cbcafec",
+    "coef_intercept_concat_ravel": "8b4a197ff6430bb834a69505c0e2ff89b0aceab47632e848b927ec113cbcafec",
+    "coef_intercept_hstack": "fe08100e36a921b9caab38825ab585c96d2d51d82cb148a8a3710ecfa2f9c13d",
+    "coef_f32": "19bad376a162d5edd415f4083e53cf91c343e7c43b8355a15de6a29395141cea"
+   },
+   "runner": "8b4a197ff6430bb834a69505c0e2ff89b0aceab47632e848b927ec113cbcafec",
+   "kind": "any-variant",
+   "matched_variant": [
+    "coef_then_intercept",
+    "coef_intercept_concat_ravel"
+   ],
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/coef_sha256/csd/img",
+   "mine": {
+    "coef": "f21598a59766f1ee4a8d0e0fefb652e427dd21f4505b5af311972eae8a99c28a",
+    "coef_then_intercept": "d4430d10739171347926168d706d469f56bdc1ab42643e257b02b471d5b980d6",
+    "coef_intercept_concat_ravel": "d4430d10739171347926168d706d469f56bdc1ab42643e257b02b471d5b980d6",
+    "coef_intercept_hstack": "a7a1f0f179a992556e3cfc2c5d0b70f66684e5f814733026d8ba9f4c025b26b5",
+    "coef_f32": "b8450eb8cb99f17d9758f853d145d16b6732347f31b83098e3aa649f7307e388"
+   },
+   "runner": "d4430d10739171347926168d706d469f56bdc1ab42643e257b02b471d5b980d6",
+   "kind": "any-variant",
+   "matched_variant": [
+    "coef_then_intercept",
+    "coef_intercept_concat_ravel"
+   ],
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/coef_sha256/csd/txt",
+   "mine": {
+    "coef": "dc014a8272f982967597b48a77c7c72da60b65532697cb06b686d8e52208c861",
+    "coef_then_intercept": "2a112ba2f0cb0816a6e63ee0eff2dc8ac056b9e4ec3eb926d33fcee683856978",
+    "coef_intercept_concat_ravel": "2a112ba2f0cb0816a6e63ee0eff2dc8ac056b9e4ec3eb926d33fcee683856978",
+    "coef_intercept_hstack": "0e263a302d83082d9c72c0d721a471eb0682d7aeadc08537fdd4f292965219e6",
+    "coef_f32": "5ec7becdfb4f6cf8d0392a660c390ce16c30a4113585b050888f210f26d3e2fe"
+   },
+   "runner": "2a112ba2f0cb0816a6e63ee0eff2dc8ac056b9e4ec3eb926d33fcee683856978",
+   "kind": "any-variant",
+   "matched_variant": [
+    "coef_then_intercept",
+    "coef_intercept_concat_ravel"
+   ],
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/affect/n_classes",
+   "mine": 41,
+   "runner": 41,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/affect/draw_rows_sha256",
+   "mine": "7be956c09bf716547df20264435388bd3645ae963df728636774e80359cdef5c",
+   "runner": "7be956c09bf716547df20264435388bd3645ae963df728636774e80359cdef5c",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/affect/heldout_accuracy",
+   "mine": {
+    "img": 9.81,
+    "txt": 35.72
+   },
+   "runner": {
+    "img": 9.81,
+    "txt": 35.72
+   },
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/affect/check_majority_share",
+   "mine": 6.41,
+   "runner": 6.41,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/affect/uniform",
+   "mine": 2.4390243902439024,
+   "runner": 2.4390243902439024,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/csd/n_classes",
+   "mine": 17,
+   "runner": 17,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/csd/draw_rows_sha256",
+   "mine": "7be956c09bf716547df20264435388bd3645ae963df728636774e80359cdef5c",
+   "runner": "7be956c09bf716547df20264435388bd3645ae963df728636774e80359cdef5c",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/csd/heldout_accuracy",
+   "mine": {
+    "img": 85.1,
+    "txt": 40.410000000000004
+   },
+   "runner": {
+    "img": 85.1,
+    "txt": 40.410000000000004
+   },
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/csd/check_majority_share",
+   "mine": 13.08,
+   "runner": 13.08,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/csd/uniform",
+   "mine": 5.882352941176471,
+   "runner": 5.882352941176471,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/affect_km/n_classes",
+   "mine": 64,
+   "runner": 64,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/affect_km/heldout_accuracy",
+   "mine": {
+    "img": 13.469999999999999,
+    "txt": 34.63
+   },
+   "runner": {
+    "img": 13.469999999999999,
+    "txt": 34.63
+   },
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/affect_km/draw_rows_sha256",
+   "mine": "7be956c09bf716547df20264435388bd3645ae963df728636774e80359cdef5c",
+   "runner": "7be956c09bf716547df20264435388bd3645ae963df728636774e80359cdef5c",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/affect_km/n_draw",
+   "mine": 60000,
+   "runner": 60000,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/image/n_classes",
+   "mine": 64,
+   "runner": 64,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/image/heldout_accuracy",
+   "mine": {
+    "img": 92.74,
+    "txt": 22.93
+   },
+   "runner": {
+    "img": 92.74,
+    "txt": 22.93
+   },
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/image/draw_rows_sha256",
+   "mine": "7be956c09bf716547df20264435388bd3645ae963df728636774e80359cdef5c",
+   "runner": "7be956c09bf716547df20264435388bd3645ae963df728636774e80359cdef5c",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/image/n_draw",
+   "mine": 60000,
+   "runner": 60000,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/caption/n_classes",
+   "mine": 64,
+   "runner": 64,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/caption/heldout_accuracy",
+   "mine": {
+    "img": 21.55,
+    "txt": 89.72
+   },
+   "runner": {
+    "img": 21.55,
+    "txt": 89.72
+   },
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/caption/draw_rows_sha256",
+   "mine": "7be956c09bf716547df20264435388bd3645ae963df728636774e80359cdef5c",
+   "runner": "7be956c09bf716547df20264435388bd3645ae963df728636774e80359cdef5c",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "refit/prov/caption/n_draw",
+   "mine": 60000,
+   "runner": 60000,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/B/tune_half_0",
+   "mine": [
+    16.0,
+    8.0
+   ],
+   "runner": [
+    16.0,
+    8.0
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/B/tune_half_1",
+   "mine": [
+    8.0,
+    2.0
+   ],
+   "runner": [
+    8.0,
+    2.0
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/B/mean_r1",
+   "mine": 18.341064453125,
+   "runner": 18.341064453125,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/B0/tune_half_0",
+   "mine": [
+    16.0,
+    16.0
+   ],
+   "runner": [
+    16.0,
+    16.0
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/B0/tune_half_1",
+   "mine": [
+    16.0,
+    8.0
+   ],
+   "runner": [
+    16.0,
+    8.0
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/B0/mean_r1",
+   "mine": 18.436686197916664,
+   "runner": 18.436686197916664,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/B1/tune_half_0",
+   "mine": [
+    16.0,
+    16.0
+   ],
+   "runner": [
+    16.0,
+    16.0
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/B1/tune_half_1",
+   "mine": [
+    16.0,
+    8.0
+   ],
+   "runner": [
+    16.0,
+    8.0
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/B1/mean_r1",
+   "mine": 18.804931640625,
+   "runner": 18.804931640625,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/rca/0",
+   "mine": 0.5,
+   "runner": 0.5,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/rca/1",
+   "mine": 0.5,
+   "runner": 0.5,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/diag/0",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/diag/1",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/diag_relu/0",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/diag_relu/1",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/bilinear/0",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/bilinear/1",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/kissme/0",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/kissme/1",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/xing/0",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/xing/1",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/wang/0",
+   "mine": 1.0,
+   "runner": 1.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/wang/1",
+   "mine": 1.0,
+   "runner": 1.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/probe/0",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/probe/1",
+   "mine": 0.5,
+   "runner": 0.5,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/tip/0",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/tip/1",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/value_prototype/0",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/lambda/value_prototype/1",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/episodes_sha256/emotion__style",
+   "mine": "6932f553e2d15237b4f008d0da2ecb76ad9c96db629a3557afe037290b6dd066",
+   "runner": "6932f553e2d15237b4f008d0da2ecb76ad9c96db629a3557afe037290b6dd066",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/episodes_sha256/emotion__genre",
+   "mine": "9196a1a80e95af1cd3ebefdd0b07c2ceb5f694579c6221b40157027af041fbe7",
+   "runner": "9196a1a80e95af1cd3ebefdd0b07c2ceb5f694579c6221b40157027af041fbe7",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/episodes_sha256/style__genre",
+   "mine": "78fbccdce319d07a7f315d6b0b7314d492a8657223fbddbc5dc1c771c4485429",
+   "runner": "78fbccdce319d07a7f315d6b0b7314d492a8657223fbddbc5dc1c771c4485429",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "picks/fit_rows_sha256",
+   "mine": "0a0d3b777d88e9f043ab6d4144bac58066e634efeeddd689ad6684e3a1729d31",
+   "runner": "0a0d3b777d88e9f043ab6d4144bac58066e634efeeddd689ad6684e3a1729d31",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "value_sets/emotion/codes",
+   "mine": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "runner": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "value_sets/emotion/names",
+   "mine": [
+    "amusement",
+    "anger",
+    "awe",
+    "contentment",
+    "disgust",
+    "excitement",
+    "fear",
+    "sadness"
+   ],
+   "runner": [
+    "amusement",
+    "anger",
+    "awe",
+    "contentment",
+    "disgust",
+    "excitement",
+    "fear",
+    "sadness"
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "value_sets/style/codes",
+   "mine": [
+    0,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    26
+   ],
+   "runner": [
+    0,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    26
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "value_sets/style/names",
+   "mine": [
+    "Abstract_Expressionism",
+    "Art_Nouveau_Modern",
+    "Baroque",
+    "Color_Field_Painting",
+    "Contemporary_Realism",
+    "Cubism",
+    "Early_Renaissance",
+    "Expressionism",
+    "Fauvism",
+    "High_Renaissance",
+    "Impressionism",
+    "Mannerism_Late_Renaissance",
+    "Minimalism",
+    "Naive_Art_Primitivism",
+    "Northern_Renaissance",
+    "Pointillism",
+    "Pop_Art",
+    "Post_Impressionism",
+    "Realism",
+    "Rococo",
+    "Romanticism",
+    "Symbolism",
+    "Ukiyo_e"
+   ],
+   "runner": [
+    "Abstract_Expressionism",
+    "Art_Nouveau_Modern",
+    "Baroque",
+    "Color_Field_Painting",
+    "Contemporary_Realism",
+    "Cubism",
+    "Early_Renaissance",
+    "Expressionism",
+    "Fauvism",
+    "High_Renaissance",
+    "Impressionism",
+    "Mannerism_Late_Renaissance",
+    "Minimalism",
+    "Naive_Art_Primitivism",
+    "Northern_Renaissance",
+    "Pointillism",
+    "Pop_Art",
+    "Post_Impressionism",
+    "Realism",
+    "Rococo",
+    "Romanticism",
+    "Symbolism",
+    "Ukiyo_e"
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "value_sets/genre/codes",
+   "mine": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "runner": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "value_sets/genre/names",
+   "mine": [
+    "abstract_painting",
+    "cityscape",
+    "genre_painting",
+    "illustration",
+    "landscape",
+    "nude_painting",
+    "portrait",
+    "religious_painting",
+    "sketch_and_study",
+    "still_life"
+   ],
+   "runner": [
+    "abstract_painting",
+    "cityscape",
+    "genre_painting",
+    "illustration",
+    "landscape",
+    "nude_painting",
+    "portrait",
+    "religious_painting",
+    "sketch_and_study",
+    "still_life"
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_fused_r1",
+   "mine": 19.136555989583336,
+   "runner": 19.136555989583336,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_cf_r1",
+   "mine": 18.39599609375,
+   "runner": 18.39599609375,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_bar_comparator",
+   "mine": "B_prime",
+   "runner": "B_prime",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_bar_margin/point",
+   "mine": 0.6998697916666667,
+   "runner": 0.6998697916666667,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_bar_margin/lo95",
+   "mine": 0.4598852740816973,
+   "runner": 0.4598852740816973,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_bar_margin/hi95",
+   "mine": 0.9371680126852968,
+   "runner": 0.9371680126852968,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_gain_statistic/point",
+   "mine": 3.110758463541667,
+   "runner": 3.110758463541667,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_gain_statistic/lo95",
+   "mine": 2.780005709854805,
+   "runner": 2.780005709854805,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_gain_statistic/hi95",
+   "mine": 3.4559584315470384,
+   "runner": 3.4559584315470384,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_minus_r1_fused/point",
+   "mine": 0.21769205729166666,
+   "runner": 0.21769205729166666,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_minus_r1_fused/lo95",
+   "mine": 0.06425880757348419,
+   "runner": 0.06425880757348419,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_minus_r1_fused/hi95",
+   "mine": 0.3709597330984391,
+   "runner": 0.3709597330984391,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/r1_margin_vs_counterpart/point",
+   "mine": 0.4435221354166667,
+   "runner": 0.4435221354166667,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/r1_margin_vs_counterpart/lo95",
+   "mine": 0.21646171563312194,
+   "runner": 0.21646171563312194,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/r1_margin_vs_counterpart/hi95",
+   "mine": 0.6735669710776852,
+   "runner": 0.6735669710776852,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/r1_gain_statistic/point",
+   "mine": 2.667236328125,
+   "runner": 2.667236328125,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/r1_gain_statistic/lo95",
+   "mine": 2.325087836946873,
+   "runner": 2.325087836946873,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/r1_gain_statistic/hi95",
+   "mine": 3.012361650695922,
+   "runner": 3.012361650695922,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_minus_b1/point",
+   "mine": 0.33162434895833337,
+   "runner": 0.33162434895833337,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_minus_b1/lo95",
+   "mine": 0.048231414333532084,
+   "runner": 0.048231414333532084,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_minus_b1/hi95",
+   "mine": 0.6246158772581268,
+   "runner": 0.6246158772581268,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/r1_bar_comparator",
+   "mine": "counterpart",
+   "runner": "counterpart",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/r1_fused_r1",
+   "mine": 18.918863932291664,
+   "runner": 18.918863932291664,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/r1_cf_r1",
+   "mine": 18.475341796875,
+   "runner": 18.475341796875,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/aff_quarter_hits",
+   "mine": 9406,
+   "runner": 9406,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/B_mean_r1",
+   "mine": 18.341064453125,
+   "runner": 18.341064453125,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/picks/B/0",
+   "mine": [
+    16.0,
+    8.0
+   ],
+   "runner": [
+    16.0,
+    8.0
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/picks/B/1",
+   "mine": [
+    8.0,
+    2.0
+   ],
+   "runner": [
+    8.0,
+    2.0
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/B0_mean_r1",
+   "mine": 18.436686197916664,
+   "runner": 18.436686197916664,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/picks/B0/0",
+   "mine": [
+    16.0,
+    16.0
+   ],
+   "runner": [
+    16.0,
+    16.0
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/picks/B0/1",
+   "mine": [
+    16.0,
+    8.0
+   ],
+   "runner": [
+    16.0,
+    8.0
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/B1_mean_r1",
+   "mine": 18.804931640625,
+   "runner": 18.804931640625,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/picks/B1/0",
+   "mine": [
+    16.0,
+    16.0
+   ],
+   "runner": [
+    16.0,
+    16.0
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/picks/B1/1",
+   "mine": [
+    16.0,
+    8.0
+   ],
+   "runner": [
+    16.0,
+    8.0
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/episodes_seed42__emotion__style",
+   "mine": "6932f553e2d15237b4f008d0da2ecb76ad9c96db629a3557afe037290b6dd066",
+   "runner": "6932f553e2d15237b4f008d0da2ecb76ad9c96db629a3557afe037290b6dd066",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/bundle_episodes_seed42__emotion__style",
+   "mine": "6932f553e2d15237b4f008d0da2ecb76ad9c96db629a3557afe037290b6dd066",
+   "runner": "6932f553e2d15237b4f008d0da2ecb76ad9c96db629a3557afe037290b6dd066",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/episodes_seed42__emotion__genre",
+   "mine": "9196a1a80e95af1cd3ebefdd0b07c2ceb5f694579c6221b40157027af041fbe7",
+   "runner": "9196a1a80e95af1cd3ebefdd0b07c2ceb5f694579c6221b40157027af041fbe7",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/bundle_episodes_seed42__emotion__genre",
+   "mine": "9196a1a80e95af1cd3ebefdd0b07c2ceb5f694579c6221b40157027af041fbe7",
+   "runner": "9196a1a80e95af1cd3ebefdd0b07c2ceb5f694579c6221b40157027af041fbe7",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/episodes_seed42__style__genre",
+   "mine": "78fbccdce319d07a7f315d6b0b7314d492a8657223fbddbc5dc1c771c4485429",
+   "runner": "78fbccdce319d07a7f315d6b0b7314d492a8657223fbddbc5dc1c771c4485429",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/bundle_episodes_seed42__style__genre",
+   "mine": "78fbccdce319d07a7f315d6b0b7314d492a8657223fbddbc5dc1c771c4485429",
+   "runner": "78fbccdce319d07a7f315d6b0b7314d492a8657223fbddbc5dc1c771c4485429",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/episodes_seed9001__emotion__style",
+   "mine": "b99f51939a6b941c2f0db34a544771047ea80e3699d9aaec1a9e672caf27f9ae",
+   "runner": "b99f51939a6b941c2f0db34a544771047ea80e3699d9aaec1a9e672caf27f9ae",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/episodes_seed9001__emotion__genre",
+   "mine": "711da43bee22f5458d12802a4b4d55f890e2aafeccbb311b5ec279709bfc9cb7",
+   "runner": "711da43bee22f5458d12802a4b4d55f890e2aafeccbb311b5ec279709bfc9cb7",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/episodes_seed9001__style__genre",
+   "mine": "0fc38bdd5ec2058848afd1762e5903b58df1af439e993b5e4067522408f8e05f",
+   "runner": "0fc38bdd5ec2058848afd1762e5903b58df1af439e993b5e4067522408f8e05f",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/episodes_seed9002__emotion__style",
+   "mine": "1487e171ce73c05d6aaec52c5b864523574fa55b6fe9901165a2a9702fee20fd",
+   "runner": "1487e171ce73c05d6aaec52c5b864523574fa55b6fe9901165a2a9702fee20fd",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/episodes_seed9002__emotion__genre",
+   "mine": "84313beb5d24ed8830e88b1bb1cc00750f0b7a2456f40b3d08fb93d86df884c6",
+   "runner": "84313beb5d24ed8830e88b1bb1cc00750f0b7a2456f40b3d08fb93d86df884c6",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/episodes_seed9002__style__genre",
+   "mine": "37cc81560375a9a112bf61e574279b16429ae5ac8289396b2363be8667a8889b",
+   "runner": "37cc81560375a9a112bf61e574279b16429ae5ac8289396b2363be8667a8889b",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/episodes_seed9003__emotion__style",
+   "mine": "2143acf38e168e4c6f0b41e618feb61af6631065e73f5e3fe7280f92fb7724ef",
+   "runner": "2143acf38e168e4c6f0b41e618feb61af6631065e73f5e3fe7280f92fb7724ef",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/episodes_seed9003__emotion__genre",
+   "mine": "7a9b06da6cac76b691c1d1eac8574cdaf13b9ce66ab0f8ccdd3b833ae66f5d48",
+   "runner": "7a9b06da6cac76b691c1d1eac8574cdaf13b9ce66ab0f8ccdd3b833ae66f5d48",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/episodes_seed9003__style__genre",
+   "mine": "4c6ad390ab5cf8ea522009abf9e4ec08c1ffb341d6619989741e554d9a1815d9",
+   "runner": "4c6ad390ab5cf8ea522009abf9e4ec08c1ffb341d6619989741e554d9a1815d9",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/rca/0",
+   "mine": 0.5,
+   "runner": 0.5,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/rca/1",
+   "mine": 0.5,
+   "runner": 0.5,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/diag/0",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/diag/1",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/diag_relu/0",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/diag_relu/1",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/bilinear/0",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/bilinear/1",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/kissme/0",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/kissme/1",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/xing/0",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/xing/1",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/wang/0",
+   "mine": 1.0,
+   "runner": 1.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/wang/1",
+   "mine": 1.0,
+   "runner": 1.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/probe/0",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/probe/1",
+   "mine": 0.5,
+   "runner": 0.5,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/tip/0",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/tip/1",
+   "mine": 0.25,
+   "runner": 0.25,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/value_prototype/0",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/lambdas/value_prototype/1",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/cells/aff/fused",
+   "mine": [
+    39,
+    119
+   ],
+   "runner": [
+    39,
+    119
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/cells/aff/cf",
+   "mine": [
+    149,
+    10
+   ],
+   "runner": [
+    149,
+    10
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/cells/r1/fused",
+   "mine": [
+    116,
+    119
+   ],
+   "runner": [
+    116,
+    119
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/cells/r1/cf",
+   "mine": [
+    58,
+    123
+   ],
+   "runner": [
+    58,
+    123
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/fit_rows_sha256",
+   "mine": "0a0d3b777d88e9f043ab6d4144bac58066e634efeeddd689ad6684e3a1729d31",
+   "runner": "0a0d3b777d88e9f043ab6d4144bac58066e634efeeddd689ad6684e3a1729d31",
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/cl",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/pair_index",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/parity",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_fused__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_fused__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_fused__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_fused__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_fused__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_cf__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_cf__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_cf__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_cf__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_cf__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_bar_v",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_gate__a",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_gate__b",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_fused_cells",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/aff_cf_cells",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_fused__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_fused__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_fused__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_fused__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_fused__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_cf__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_cf__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_cf__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_cf__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_cf__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_bar_v",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_gate__a",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_gate__b",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_fused_cells",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/r1_cf_cells",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/pick__a",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/margin__a",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/P__a",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/pick__b",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/margin__b",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/seed42_arrays/P__b",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/anchor_group",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/pair_index",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/cosine__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/cosine__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/cosine__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/cosine__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/cosine__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/rca__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/rca__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/rca__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/rca__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/rca__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/diag__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/diag__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/diag__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/diag__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/diag__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/diag_relu__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/diag_relu__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/diag_relu__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/diag_relu__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/diag_relu__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/bilinear__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/bilinear__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/bilinear__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/bilinear__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/bilinear__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/kissme__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/kissme__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/kissme__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/kissme__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/kissme__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/xing__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/xing__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/xing__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/xing__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/xing__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/wang__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/wang__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/wang__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/wang__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/wang__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/probe__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/probe__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/probe__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/probe__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/probe__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/tip__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/tip__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/tip__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/tip__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/tip__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/value_prototype__r1",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/value_prototype__gain",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/value_prototype__other",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/value_prototype__swap",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/array_verdict/per_anchor_seed42/value_prototype__strict",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "regression/heads_selection_bits_equal_stored",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/n_episodes",
+   "mine": 12288,
+   "runner": 12288,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/n_clusters",
+   "mine": 4602,
+   "runner": 4602,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/holm_order_P",
+   "mine": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "runner": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P1/n_j",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P1/point",
+   "mine": 6.174723307291666,
+   "runner": 6.174723307291666,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P1/lo95",
+   "mine": 5.8049022788072735,
+   "runner": 5.8049022788072735,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P1/hi95",
+   "mine": 6.553206911424958,
+   "runner": 6.553206911424958,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P1/holm_k",
+   "mine": 1,
+   "runner": 1,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P1/level_two_sided",
+   "mine": 0.9928571428571429,
+   "runner": 0.9928571428571429,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P1/lo_holm",
+   "mine": 5.699164203167065,
+   "runner": 5.699164203167065,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P1/hi_holm",
+   "mine": 6.699435577819908,
+   "runner": 6.699435577819908,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P1/near_boundary",
+   "mine": false,
+   "runner": false,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P1/pass",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P1/own_count_passes",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P2/n_j",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P2/point",
+   "mine": 5.755615234375,
+   "runner": 5.755615234375,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P2/lo95",
+   "mine": 5.383285738863417,
+   "runner": 5.383285738863417,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P2/hi95",
+   "mine": 6.127255423445974,
+   "runner": 6.127255423445974,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P2/holm_k",
+   "mine": 2,
+   "runner": 2,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P2/level_two_sided",
+   "mine": 0.9916666666666667,
+   "runner": 0.9916666666666667,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P2/lo_holm",
+   "mine": 5.2533173409829,
+   "runner": 5.2533173409829,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P2/hi_holm",
+   "mine": 6.257808904747803,
+   "runner": 6.257808904747803,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P2/near_boundary",
+   "mine": false,
+   "runner": false,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P2/pass",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P2/own_count_passes",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P3/n_j",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P3/point",
+   "mine": 0.7954915364583334,
+   "runner": 0.7954915364583334,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P3/lo95",
+   "mine": 0.5841739875095656,
+   "runner": 0.5841739875095656,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P3/hi95",
+   "mine": 1.0089439787592314,
+   "runner": 1.0089439787592314,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P3/holm_k",
+   "mine": 3,
+   "runner": 3,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P3/level_two_sided",
+   "mine": 0.99,
+   "runner": 0.99,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P3/lo_holm",
+   "mine": 0.5176294673604948,
+   "runner": 0.5176294673604948,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P3/hi_holm",
+   "mine": 1.082827663212187,
+   "runner": 1.082827663212187,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P3/near_boundary",
+   "mine": false,
+   "runner": false,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P3/pass",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P3/own_count_passes",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P4/n_j",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P4/point",
+   "mine": 0.6998697916666667,
+   "runner": 0.6998697916666667,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P4/lo95",
+   "mine": 0.4598852740816973,
+   "runner": 0.4598852740816973,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P4/hi95",
+   "mine": 0.9371680126852968,
+   "runner": 0.9371680126852968,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P4/holm_k",
+   "mine": 4,
+   "runner": 4,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P4/level_two_sided",
+   "mine": 0.9875,
+   "runner": 0.9875,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P4/lo_holm",
+   "mine": 0.39369184926659934,
+   "runner": 0.39369184926659934,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P4/hi_holm",
+   "mine": 0.9997159715339213,
+   "runner": 0.9997159715339213,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P4/near_boundary",
+   "mine": false,
+   "runner": false,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P4/pass",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P4/own_count_passes",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P5/n_j",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P5/point",
+   "mine": 0.7405598958333333,
+   "runner": 0.7405598958333333,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P5/lo95",
+   "mine": 0.5196896694963071,
+   "runner": 0.5196896694963071,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P5/hi95",
+   "mine": 0.9598857494832738,
+   "runner": 0.9598857494832738,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P5/holm_k",
+   "mine": 5,
+   "runner": 5,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P5/level_two_sided",
+   "mine": 0.9833333333333333,
+   "runner": 0.9833333333333333,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P5/lo_holm",
+   "mine": 0.46726299308613883,
+   "runner": 0.46726299308613883,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P5/hi_holm",
+   "mine": 1.010365853172611,
+   "runner": 1.010365853172611,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P5/near_boundary",
+   "mine": false,
+   "runner": false,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P5/pass",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P5/own_count_passes",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P6/n_j",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P6/point",
+   "mine": 3.110758463541667,
+   "runner": 3.110758463541667,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P6/lo95",
+   "mine": 2.780005709854805,
+   "runner": 2.780005709854805,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P6/hi95",
+   "mine": 3.4559584315470384,
+   "runner": 3.4559584315470384,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P6/holm_k",
+   "mine": 6,
+   "runner": 6,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P6/level_two_sided",
+   "mine": 0.975,
+   "runner": 0.975,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P6/lo_holm",
+   "mine": 2.7348861974190113,
+   "runner": 2.7348861974190113,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P6/hi_holm",
+   "mine": 3.4939256025001733,
+   "runner": 3.4939256025001733,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P6/near_boundary",
+   "mine": false,
+   "runner": false,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P6/pass",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P6/own_count_passes",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P7/n_j",
+   "mine": 0,
+   "runner": 0,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P7/point",
+   "mine": 3.006998697916667,
+   "runner": 3.006998697916667,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P7/lo95",
+   "mine": 2.626362352424941,
+   "runner": 2.626362352424941,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P7/hi95",
+   "mine": 3.3926427334703786,
+   "runner": 3.3926427334703786,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P7/holm_k",
+   "mine": 7,
+   "runner": 7,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P7/level_two_sided",
+   "mine": 0.95,
+   "runner": 0.95,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P7/lo_holm",
+   "mine": 2.626362352424941,
+   "runner": 2.626362352424941,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P7/hi_holm",
+   "mine": 3.3926427334703786,
+   "runner": 3.3926427334703786,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P7/near_boundary",
+   "mine": false,
+   "runner": false,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P7/pass",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/P7/own_count_passes",
+   "mine": true,
+   "runner": true,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S1/n_j",
+   "mine": 54,
+   "runner": 54,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S1/point",
+   "mine": 0.33162434895833337,
+   "runner": 0.33162434895833337,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S1/lo95",
+   "mine": 0.048231414333532084,
+   "runner": 0.048231414333532084,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S1/hi95",
+   "mine": 0.6246158772581268,
+   "runner": 0.6246158772581268,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S1/holm_k",
+   "mine": 2,
+   "runner": 2,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S1/level_two_sided",
+   "mine": 0.95,
+   "runner": 0.95,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S1/lo_holm",
+   "mine": 0.048231414333532084,
+   "runner": 0.048231414333532084,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S1/hi_holm",
+   "mine": 0.6246158772581268,
+   "runner": 0.6246158772581268,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S1/near_boundary",
+   "mine": false,
+   "runner": false,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S2/n_j",
+   "mine": 15,
+   "runner": 15,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S2/point",
+   "mine": 0.21769205729166666,
+   "runner": 0.21769205729166666,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S2/lo95",
+   "mine": 0.06425880757348419,
+   "runner": 0.06425880757348419,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S2/hi95",
+   "mine": 0.3709597330984391,
+   "runner": 0.3709597330984391,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S2/holm_k",
+   "mine": 1,
+   "runner": 1,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S2/level_two_sided",
+   "mine": 0.975,
+   "runner": 0.975,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S2/lo_holm",
+   "mine": 0.03878008662621396,
+   "runner": 0.03878008662621396,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S2/hi_holm",
+   "mine": 0.3966234597967842,
+   "runner": 0.3966234597967842,
+   "kind": "tol",
+   "result": "equal"
+  },
+  {
+   "quantity": "pass_counts/S2/near_boundary",
+   "mine": false,
+   "runner": false,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "per_episode/cl",
+   "mine": "array[12288]",
+   "runner": "array[12288]",
+   "kind": "array",
+   "result": "equal"
+  },
+  {
+   "quantity": "per_episode/pair_index",
+   "mine": "array[12288]",
+   "runner": "array[12288]",
+   "kind": "array",
+   "result": "equal"
+  },
+  {
+   "quantity": "per_episode/diff__P1",
+   "mine": "array[12288]",
+   "runner": "array[12288]",
+   "kind": "array",
+   "result": "equal"
+  },
+  {
+   "quantity": "per_episode/diff__P2",
+   "mine": "array[12288]",
+   "runner": "array[12288]",
+   "kind": "array",
+   "result": "equal"
+  },
+  {
+   "quantity": "per_episode/diff__P3",
+   "mine": "array[12288]",
+   "runner": "array[12288]",
+   "kind": "array",
+   "result": "equal"
+  },
+  {
+   "quantity": "per_episode/diff__P4",
+   "mine": "array[12288]",
+   "runner": "array[12288]",
+   "kind": "array",
+   "result": "equal"
+  },
+  {
+   "quantity": "per_episode/diff__P5",
+   "mine": "array[12288]",
+   "runner": "array[12288]",
+   "kind": "array",
+   "result": "equal"
+  },
+  {
+   "quantity": "per_episode/diff__P6",
+   "mine": "array[12288]",
+   "runner": "array[12288]",
+   "kind": "array",
+   "result": "equal"
+  },
+  {
+   "quantity": "per_episode/diff__P7",
+   "mine": "array[12288]",
+   "runner": "array[12288]",
+   "kind": "array",
+   "result": "equal"
+  },
+  {
+   "quantity": "per_episode/diff__S1",
+   "mine": "array[12288]",
+   "runner": "array[12288]",
+   "kind": "array",
+   "result": "equal"
+  },
+  {
+   "quantity": "per_episode/diff__S2",
+   "mine": "array[12288]",
+   "runner": "array[12288]",
+   "kind": "array",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/N",
+   "mine": 12288,
+   "runner": 12288,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/n_paintings",
+   "mine": 4602,
+   "runner": 4602,
+   "kind": "exact",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P1/sigma_a2",
+   "mine": 8.659210753381196,
+   "runner": 8.659210753381196,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P1/sigma_eps2",
+   "mine": 420.1183543738188,
+   "runner": 420.1183543738188,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P2/sigma_a2",
+   "mine": 8.25918251129639,
+   "runner": 8.25918251129639,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P2/sigma_eps2",
+   "mine": 409.1397078992219,
+   "runner": 409.1397078992219,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P3/sigma_a2",
+   "mine": 1.4195629723547245,
+   "runner": 1.4195629723547245,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P3/sigma_eps2",
+   "mine": 139.6118270264445,
+   "runner": 139.6118270264445,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P4/sigma_a2",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P4/sigma_eps2",
+   "mine": 175.6986792481523,
+   "runner": 175.6986792481523,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P5/sigma_a2",
+   "mine": 0.0,
+   "runner": 0.0,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P5/sigma_eps2",
+   "mine": 154.3796488968718,
+   "runner": 154.3796488968718,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P6/sigma_a2",
+   "mine": 3.0884416159446615,
+   "runner": 3.0884416159446615,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P6/sigma_eps2",
+   "mine": 340.70777639034856,
+   "runner": 340.70777639034856,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P7/sigma_a2",
+   "mine": 1.197340532435266,
+   "runner": 1.197340532435266,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/P7/sigma_eps2",
+   "mine": 445.6281213636307,
+   "runner": 445.6281213636307,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/S1/sigma_a2",
+   "mine": 5.169226640209468,
+   "runner": 5.169226640209468,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/S1/sigma_eps2",
+   "mine": 246.9701733704466,
+   "runner": 246.9701733704466,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/S2/sigma_a2",
+   "mine": 0.5386102496918705,
+   "runner": 0.5386102496918705,
+   "kind": "rel",
+   "result": "equal"
+  },
+  {
+   "quantity": "sensitivity/S2/sigma_eps2",
+   "mine": 75.66339567095812,
+   "runner": 75.66339567095812,
+   "kind": "rel",
+   "result": "equal"
+  }
+ ],
+ "time": "2026-10-10 00:05"
+}
