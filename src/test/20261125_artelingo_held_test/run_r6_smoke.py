@@ -791,7 +791,7 @@ def wiring_mutation(paths, here, control=False, timeout=3600) -> dict:
     _require(src.count(WIRING_FROM) == 1, f"r6_score.py does not hold the line {WIRING_FROM.strip()!r} exactly once")
     (code_dir / "r6_score.py").write_text(src if control else src.replace(WIRING_FROM, WIRING_TO), encoding="utf-8")
     (code_dir / "smoke_scoring.py").write_text(DRIVER, encoding="utf-8")
-    for _, f, _, _ in SEED42_CHAIN:
+    for f in [f for _, f, _, _ in SEED42_CHAIN] + [RH.VALUE_SETS_NAME]:     # the value sets: the read checks them
         shutil.copy2(paths.results / f, res / f)
     log = next_log(paths, "wiring_control" if control else "wiring_mutation")
     with open(log, "ab") as f:

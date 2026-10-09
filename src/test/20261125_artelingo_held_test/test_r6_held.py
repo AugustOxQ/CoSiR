@@ -717,7 +717,7 @@ def test_seed42_records_missing_refuse(case, at_picks, capsys):
     assert refused(held(case), capsys, says="run run_r6_picks.py first")
 
 
-# ---------------------------------------------------------------- value_sets.json (rule section 5 item 2; final review B1)
+# ---------------------------------------------------------------- value_sets.json (rule 5.2; final review B1)
 
 READ_KINDS = ("first", "after_crash", "fix", "reserve", "smoke")
 

@@ -582,6 +582,11 @@ def test_the_mutation_fires_only_with_the_condition_free_message(tmp_path, monke
     monkeypatch.setattr(mut, "DRIVER", other)
     assert mut.wiring_mutation(p, HERE)["fired"] is True                   # without the check: any crash "fires"
     assert (p.smoke / "mutation" / "code" / "r6_score.py").read_text().count(SM.WIRING_TO) == 1
+    for d in ("mutation", "mutation_control"):      # the records its read checks, value_sets.json among them
+        res = p.smoke / d / "results"
+        for f in [f for _, f, _, _ in SM.SEED42_CHAIN] + [RH.VALUE_SETS_NAME]:
+            assert (res / f).read_bytes() == (p.results / f).read_bytes(), (d, f)
+        assert RH.value_sets_problem(res) is None
 
 
 # ---------------------------------------------------------------- the DTS stages: retry, kept records

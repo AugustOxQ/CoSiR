@@ -98,7 +98,8 @@ before step 5):
      bytes step 3 checked; its {"file", "sha256"} goes in the attempt and the pass record as "value_sets".
   5. First write: the attempt (time, SHA-256s, flags, coefficient SHA-256s, and as provenance only "git": git
      rev-parse HEAD and git status --porcelain -- src of the checkout, or the error string; final review B) appended
-     to held_started.json and its copy in this folder. Only now are held features, held posteriors and held episodes touched.
+     to held_started.json and its copy in this folder. Only now are held features, held posteriors and held episodes
+     touched.
   6. Per seed (52, 53, 54 in order), from the context's on_episodes, before cosine or any posterior: the per-pair
      episode SHA-256s appended to this attempt at once; on --after-crash, --fix 1 or --reserve compared with the
      hashes recorded before (refusal on a difference); assert_distinct over every held seed so far against the
@@ -608,7 +609,7 @@ EPISODE_CELL, SCRIPT_CELL, REPORT_CELL = 4, 5, 6
 PENDING = "(pending)"
 MAX_ATTEMPTS = 2                                        # the read and one --after-crash rerun (rule section 8 item 1)
 READ_DEADLINE = date(2026, 10, 15)                      # rule section 9: not started by Thu 2026-10-15, no read starts
-GIT = "git"                                             # the git executable of git_provenance (a test sets a missing one)
+GIT = "git"                                             # git_provenance's executable (a test sets a missing one)
 HEX64 = re.compile(r"(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])")
 SUBDIR_RE = re.compile(r"[A-Za-z0-9_]+")                # run_r6_apply_rule's --smoke-subdir names
 SMOKE_COPY_DIR = "folder"                               # the smoke's stand-in for this folder's committed copy
@@ -874,10 +875,10 @@ def value_sets_file_guard(results) -> dict:
 
 
 def value_sets_guard(results, env, checked) -> dict:
-    """Step 4, after setup() and before the first write (rule section 5 item 2; final review B1): results/value_sets.json
-    still has the bytes step 3 checked (``checked``) and holds the development value sets setup() recomputed, codes and
-    names (r6_common.value_sets_record). Refused otherwise. -> {"file", "sha256"}, kept in the attempt and the pass
-    record."""
+    """Step 4, after setup() and before the first write (rule section 5 item 2; final review B1):
+    results/value_sets.json still has the bytes step 3 checked (``checked``) and holds the development value sets
+    setup() recomputed, codes and names (r6_common.value_sets_record). Refused otherwise. -> {"file", "sha256"}, kept
+    in the attempt and the pass record."""
     path = Path(results) / VALUE_SETS_NAME
     raw = path.read_bytes() if path.is_file() else b""
     try:
