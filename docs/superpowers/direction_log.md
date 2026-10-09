@@ -42,6 +42,11 @@ stay in the entries below.
   follows in its own loop and chat. The go/no-go moves to Fri 2026-10-16 (plan revision 4, §16): an ArtELingo-centred
   paper first, the full paper when time and results allow (user, after seeing the recommendation; the go/no-go move and
   the paper target are the user's own).
+- **Idea (B):** AFF frozen as in round 3, read on the full ArtELingo held split; the grill (2026-10-09) settled the
+  rest: round 3's seven pass checks under Holm, 4,096 episodes per pair on seeds 52 to 54, B′(A1) and R1 as secondary
+  checks, a new describe-then-score comparator reported beside (the build stops before the read if it beats AFF on
+  seed 42), a pooled claim on new paintings, constitution C5 amended to one held read per final method and backbone
+  (user; details in the handoff `docs/superpowers/handoffs/2026-10-09-r6-decide-2-handoff.md`).
 - **Why:** the held test is required by every paper option with a method and is cheap (a day, mostly safeguards); the
   user sees hope in affect steering and wants more, through design L. Three DAS6 nodes (nine GPUs) are now available.
 - **Links:** report `docs/reports/auto/v2/2026-11-23_idea3_goemotions.md`; user-read
