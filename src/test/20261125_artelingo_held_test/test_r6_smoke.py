@@ -124,16 +124,17 @@ def test_kinds_name_the_folders_and_records_each_consumer_reads(tmp_path):
     assert RH.latest_smoke_record(res, "held").name == "smoke_record_fix1.json"
     assert RH.latest_smoke_record(res, "fix1").name == "smoke_record_fix1.json"
     assert RH.latest_smoke_record(res, "reserve").name == "smoke_record_reserve.json"
-    for mod in (TA.AR, RD):
+    for mod in (TA.AR, RD, R):                       # one rule (r6_common.latest_smoke_record), three readers
         assert mod.latest_smoke_record(res, False).name == "smoke_record_fix1.json"
         assert mod.latest_smoke_record(res, True).name == "smoke_record_reserve.json"
     (res / "smoke_record_fix1.json").rename(tmp_path / "kept_fix1.json")
     assert RH.latest_smoke_record(res, "held", after_crash=True).name == "smoke_record_crash1.json"
-    for mod in (TA.AR, RD):
+    assert RH.latest_smoke_record(res, "held").name == "smoke_record_crash1.json"
+    for mod in (TA.AR, RD, R):
         assert mod.latest_smoke_record(res, False).name == "smoke_record_crash1.json"
     (res / "smoke_record_crash1.json").rename(tmp_path / "kept_crash1.json")
     assert RH.latest_smoke_record(res, "held", after_crash=True).name == "smoke_record.json"
-    for mod in (TA.AR, RD):
+    for mod in (TA.AR, RD, R):
         assert mod.latest_smoke_record(res, False).name == "smoke_record.json"
 
 

@@ -304,6 +304,25 @@ def r6_module_shas(here=None) -> dict:
     return {p.relative_to(root).as_posix(): sha256_file(p) for p in files}
 
 
+# The smoke records of run_r6_smoke.py (rule section 6 item 7; ticket 15), one per kind of smoke, in results/.
+SMOKE_RECORDS = {"smoke": "smoke_record.json", "crash1": "smoke_record_crash1.json",
+                 "fix1": "smoke_record_fix1.json", "reserve": "smoke_record_reserve.json"}
+
+
+def latest_smoke_record(results, reserve=False) -> Path:
+    """The smoke record that covers the code run now against ``results`` (rule section 6 item 7, section 8 item 1),
+    shared by the held runner, the apply step and the descriptive pass: with ``reserve`` smoke_record_reserve.json;
+    otherwise the latest smoke of the read's code, smoke_record_fix1.json when it exists, else
+    smoke_record_crash1.json when it exists, else smoke_record.json."""
+    results = Path(results)
+    if reserve:
+        return results / SMOKE_RECORDS["reserve"]
+    for kind in ("fix1", "crash1"):
+        if (results / SMOKE_RECORDS[kind]).is_file():
+            return results / SMOKE_RECORDS[kind]
+    return results / SMOKE_RECORDS["smoke"]
+
+
 # ---------------------------------------------------------------- the held split (rule section 5 item 1)
 
 def _read_npz_keys(path, keys) -> dict:

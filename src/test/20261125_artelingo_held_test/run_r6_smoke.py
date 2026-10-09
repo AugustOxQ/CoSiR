@@ -97,7 +97,8 @@ KINDS = {"smoke": SimpleNamespace(kind="smoke", subdir=None, record="smoke_recor
 # the consumers' names (asserted in the tests): run_r6_held, run_r6_apply_rule, run_r6_descriptive
 assert (RH.SMOKE_RECORDS == {"held": KINDS["smoke"].record, "fix1": KINDS["fix1"].record,
                              "reserve": KINDS["reserve"].record} and RH.SMOKE_RECORD_CRASH == KINDS["crash1"].record
-        and AR.SMOKE_RECORDS == RD.SMOKE_RECORDS == {k: v.record for k, v in KINDS.items()})
+        and AR.SMOKE_RECORDS == RD.SMOKE_RECORDS == R.SMOKE_RECORDS == {k: v.record for k, v in KINDS.items()}
+        and RH.DTS_STOP_NAME == RDTS.STOP)
 DTS_SEED = R.SMOKE_SEEDS[0]                    # the smoke seed whose DTS stages run (and the reranker's seed)
 SEED42_CHAIN = (("refit", RH.REFIT_NAME, "run_r6_refit.py", "run_r6_refit.py"),
                 ("picks", RH.PICKS_NAME, "run_r6_picks.py", "run_r6_picks.py"),
@@ -281,7 +282,11 @@ def _chain_problem(results, here, name, file, runner) -> str | None:
 
 
 def _dts_problem(results, here) -> tuple:
-    """-> (problem or None, stops: bool). stops: the seed-42 stop record stops the work (not a rerun)."""
+    """-> (problem or None, stops: bool). stops: the seed-42 stop record stops the work (not a rerun). The stop record
+    is checked by the held runner's own run_r6_held.dts_stop_problem; the other three records here."""
+    why, fired = RH.dts_stop_problem(results, here)
+    if fired:
+        return why, True
     recs = {}
     for name in DTS42:
         path = Path(results) / name
@@ -293,9 +298,9 @@ def _dts_problem(results, here) -> tuple:
             return f"{name} cannot be read ({type(e).__name__})", False
         if recs[name].get("seed") != R.DEV_SEED:
             return f"{name} is not a seed-42 record", False
+    if why is not None:
+        return why, False
     stop, chosen = recs[RDTS.STOP], RDTS.chosen_name(R.DEV_SEED)
-    if stop.get("stage") != "stop" or stop.get("stop") is not False or stop.get("built") is not True:
-        return f"{RDTS.STOP} records a stop or no build (rule section 7, section 9): the user decides", True
     if recs[RDTS.SANITY].get("passed") is not True:
         return f"{RDTS.SANITY} did not pass", False
     if (stop.get("input_sha256") or {}).get(chosen) != R.sha256_file(Path(results) / chosen):

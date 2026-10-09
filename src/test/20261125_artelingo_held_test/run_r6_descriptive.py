@@ -91,8 +91,7 @@ PASS_RE = re.compile(r"held_pass(_fix1|_reserve)?\.json")
 SUBDIR_RE = re.compile(r"[A-Za-z0-9_]+")
 DECIMAL = re.compile(r"\d*\.\d+")
 REFIT_NAME = RH.REFIT_NAME                          # refit_check.json (stage 1a, results/)
-SMOKE_RECORDS = {"smoke": "smoke_record.json", "crash1": "smoke_record_crash1.json",      # run_r6_smoke.py's records
-                 "fix1": "smoke_record_fix1.json", "reserve": "smoke_record_reserve.json"}
+SMOKE_RECORDS = R.SMOKE_RECORDS                     # run_r6_smoke.py's records (ticket 15)
 SHA_HERE = None                     # the folder whose r6 files count (None: this one; a test points it at a tmp copy)
 
 
@@ -265,15 +264,10 @@ def coef_guard(env, coef) -> dict:
 
 
 def latest_smoke_record(out, reserve: bool) -> Path:
-    """--reserve: smoke_record_reserve.json; otherwise smoke_record_fix1.json when it exists, else
-    smoke_record_crash1.json when it exists, else smoke_record.json (all in the results folder)."""
-    out = Path(out)
-    if reserve:
-        return out / SMOKE_RECORDS["reserve"]
-    for kind in ("fix1", "crash1"):
-        if (out / SMOKE_RECORDS[kind]).is_file():
-            return out / SMOKE_RECORDS[kind]
-    return out / SMOKE_RECORDS["smoke"]
+    """r6_common.latest_smoke_record (shared with the held runner and the apply step), in the results folder:
+    --reserve: smoke_record_reserve.json; otherwise smoke_record_fix1.json when it exists, else
+    smoke_record_crash1.json when it exists, else smoke_record.json."""
+    return R.latest_smoke_record(out, reserve=reserve)
 
 
 def smoke_guard(out, smoke: bool, reserve: bool, here=None):

@@ -360,20 +360,15 @@ def pair_suffix(out: Path, reserve: bool) -> str:
 
 
 # The smoke records of run_r6_smoke.py (ticket 15), one per kind of smoke, in results/.
-SMOKE_RECORDS = {"smoke": "smoke_record.json", "crash1": "smoke_record_crash1.json",
-                 "fix1": "smoke_record_fix1.json", "reserve": "smoke_record_reserve.json"}
+SMOKE_RECORDS = CM.SMOKE_RECORDS
 SHA_HERE = None                     # the folder whose r6 files count (None: this one; a test points it at a tmp copy)
 
 
 def latest_smoke_record(results: Path, reserve: bool) -> Path:
-    """--reserve: smoke_record_reserve.json; otherwise the latest smoke of the read's code: smoke_record_fix1.json
-    when it exists, else smoke_record_crash1.json when it exists, else smoke_record.json."""
-    if reserve:
-        return Path(results) / SMOKE_RECORDS["reserve"]
-    for kind in ("fix1", "crash1"):
-        if (Path(results) / SMOKE_RECORDS[kind]).is_file():
-            return Path(results) / SMOKE_RECORDS[kind]
-    return Path(results) / SMOKE_RECORDS["smoke"]
+    """r6_common.latest_smoke_record (shared with the held runner and the descriptive pass): --reserve:
+    smoke_record_reserve.json; otherwise smoke_record_fix1.json when it exists, else smoke_record_crash1.json when it
+    exists, else smoke_record.json."""
+    return CM.latest_smoke_record(results, reserve=reserve)
 
 
 def smoke_guard(results: Path, reserve: bool) -> dict:

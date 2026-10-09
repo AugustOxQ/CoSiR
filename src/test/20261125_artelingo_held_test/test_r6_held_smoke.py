@@ -66,7 +66,7 @@ def test_smoke_on_real_selection_rows(tmp_path, capfd, monkeypatch):
     assert names == sorted(["held_started.json", RH.SMOKE_COPY_DIR, "sensitivity_held.json", "held_arrays.npz",
                             "held_pass.json"] + [f"held_episodes_seed{s}.npz" for s in R.SMOKE_SEEDS])
     assert sorted(p.name for p in res.iterdir()) == sorted(
-        ["smoke", RH.REFIT_NAME, RH.PICKS_NAME, RH.REGRESSION_NAME, RH.SENS42_NAME])
+        ["smoke", RH.REFIT_NAME, RH.PICKS_NAME, RH.REGRESSION_NAME, RH.SENS42_NAME, RH.DTS_STOP_NAME])
     assert not any("verdict" in p.name or p.name.endswith(".partial") for p in tmp_path.rglob("*"))
 
     # the episodes are the stored smoke episodes of AB (rule section 6 item 4), on selection rows
