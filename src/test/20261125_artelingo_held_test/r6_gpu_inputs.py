@@ -40,6 +40,7 @@ if str(HERE) not in sys.path:
 import r6_common as R  # noqa: E402  (before anything that imports src)
 import r6_episodes as E  # noqa: E402
 import r6_gpu_common as G  # noqa: E402
+import r6_gpu_t12 as T  # noqa: E402
 
 import numpy as np  # noqa: E402
 
@@ -201,9 +202,103 @@ def write_job(eps, sample_ids, paintings, annotations, out, first_per_pair=None,
                             record, staging, image_root, check)
 
 
+# ---------------------------------------------------------------- the reranker's and the FT features' jobs (ticket 12)
+
+RERANK_INPUT, FT_ROWS = "rerank_input.npz", "ft_rows.npz"
+DIRECTIONS = ("i2t", "t2i")
+N_CAND = 13
+
+
+def rerank_permutations(seed, episode_index) -> np.ndarray:
+    """(n, 2 cond, 2 dir, 13): the probe's formula (run_probe.py:157-158) for the episodes at ``episode_index`` (their
+    positions i in the seed's concatenated episodes): default_rng([seed, i]).permuted(tile(arange(13), (2, 2, 1)), -1).
+    Letter j of a prompt shows candidate column perm[j]."""
+    return np.stack([np.random.default_rng([int(seed), int(i)]).permuted(
+        np.tile(np.arange(N_CAND), (len(G.CONDITIONS), len(DIRECTIONS), 1)), axis=-1)
+        for i in np.asarray(episode_index).tolist()]).astype(np.int64)
+
+
+def rerank_arrays(eps, positions):
+    """-> (rerank_input arrays, perms). The arrays hold the query row, the example pairs and ``cand_shown`` (n, 2, 2, 13):
+    the candidate row ids already in the order the model sees them. The permutations, and with them the candidate
+    order, stay on the CPU (perms); no unpermuted candidate array, anchor name or target is in the arrays."""
+    positions = np.asarray(positions, dtype=np.int64)
+    perms = rerank_permutations(eps.seed, positions)
+    cand = np.asarray(eps.pooled.candidates, dtype=np.int64)[positions]            # (n, 13) in column order
+    _require(cand.shape[1] == N_CAND, "candidates must have 13 columns")
+    shown = np.take_along_axis(np.broadcast_to(cand[:, None, None, :], perms.shape), perms, axis=-1)
+    out = {"seed": np.int64(eps.seed), "episode_index": positions,
+           "query_row": np.ascontiguousarray(np.asarray(eps.pooled.anchor, dtype=np.int64)[positions]),
+           **{f: np.ascontiguousarray(getattr(eps.pooled, f)[positions], dtype=np.int64) for f in G.PAIR_FIELDS},
+           "cand_shown": np.ascontiguousarray(shown)}
+    return out, perms
+
+
+def perms_path(job) -> Path:
+    """The CPU-only permutation file of a rerank job folder: <job>.perms.npz beside it (never shipped)."""
+    job = Path(job)
+    return job.with_name(job.name + ".perms.npz")
+
+
+def write_rerank_job(eps, sample_ids, paintings, annotations, out, first_per_pair=None, episodes_file_sha256=None,
+                     staging=None, image_root=WIKIART) -> dict:
+    """The reranker's job folder (rows_manifest.npz, rerank_input.npz, images.txt, job_record.json), its CPU-only image
+    map and its CPU-only permutations <out>.perms.npz (seed, episode_index, perms (n, 2, 2, 13)); -> job_record."""
+    pp = perms_path(out)
+    _require(not pp.exists() and not pp.with_name(pp.name + ".partial").exists(),
+             f"{pp} exists; job folders are never overwritten")
+    positions = select_episodes(eps, first_per_pair)
+    arrays, perms = rerank_arrays(eps, positions)
+    rows = np.unique(np.concatenate([arrays[k].ravel() for k in ("query_row", "cand_shown", *G.PAIR_FIELDS)]))
+    img_rows = np.unique(np.concatenate([arrays[k].ravel() for k in ("query_row", "cand_shown", "pairs_a_img",
+                                                                      "pairs_b_img")]))
+
+    def check(folder):
+        back = T.load_rerank_input(folder / RERANK_INPUT, G.Manifest(folder / MANIFEST))
+        _require(back["seed"] == int(eps.seed) and all(np.array_equal(back[k], arrays[k]) for k in back
+                                                       if k != "seed"),
+                 "the job input does not read back as written")
+
+    record = {"what": "round 6 reranker job inputs (r6_gpu_inputs.py)", "seed": int(eps.seed),
+              "n_episodes": int(len(positions)), "first_per_pair": first_per_pair,
+              "episodes_file_sha256": episodes_file_sha256,
+              "episodes_sha256_in_pair_order": [eps.sha[p] for p in R.PAIR_NAMES],
+              "perms_sha256": G.sha256_bytes(np.ascontiguousarray(perms).tobytes())}
+    rec = write_job_folder(out, rows, img_rows, sample_ids, paintings, annotations, {RERANK_INPUT: arrays}, record,
+                           staging, image_root, check)
+    tmp = pp.with_name(pp.name + ".partial")
+    with open(tmp, "wb") as f:
+        np.savez(f, seed=np.int64(eps.seed), episode_index=positions, perms=perms)
+    os.replace(tmp, pp)
+    return rec
+
+
+def episode_rows(eps_list) -> np.ndarray:
+    """Sorted unique row ids of every anchor, candidate and example pair of the episodes of several seeds."""
+    return np.unique(np.concatenate([e.pooled.rows() for e in eps_list])).astype(np.int64)
+
+
+def write_ft_job(rows, sample_ids, paintings, annotations, out, staging=None, image_root=WIKIART,
+                 record=None) -> dict:
+    """The FT feature job's folder: rows_manifest.npz and ft_rows.npz (`rows`) for ``rows``, images.txt, job_record.json."""
+    rows = np.unique(np.asarray(rows, dtype=np.int64))
+    arrays = {FT_ROWS: {"rows": rows}}
+
+    def check(folder):
+        back = T.load_ft_rows(folder / FT_ROWS, G.Manifest(folder / MANIFEST))
+        _require(np.array_equal(back, rows), "the job input does not read back as written")
+
+    return write_job_folder(out, rows, rows, sample_ids, paintings, annotations, arrays,
+                            dict({"what": "round 6 FT feature job inputs (r6_gpu_inputs.py)"}, **(record or {})),
+                            staging, image_root, check)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Round 6 verbaliser job inputs (CPU); prints no metric")
     ap.add_argument("--episodes", required=True, help="a full episodes file (r6_episodes.save_episodes)")
+    ap.add_argument("--job", choices=("verbalise", "rerank", "ft"), default="verbalise",
+                    help="which job folder to write (default verbalise); ft covers --episodes and every --also-episodes")
+    ap.add_argument("--also-episodes", action="append", default=[], help="with --job ft: more episodes files")
     ap.add_argument("--out", required=True, help="the job folder to create")
     ap.add_argument("--first-per-pair", type=int, default=None, help="keep the first N episodes of each pair")
     ap.add_argument("--image-staging", default=str(IMAGE_STAGING), help="the local folder of neutral image links")
@@ -214,8 +309,16 @@ def main(argv=None) -> int:
     data = load_artelingo()
     with open(ANNOTATIONS_PATH, encoding="utf-8") as f:
         annotations = json.load(f)
-    rec = write_job(eps, data.sample_ids, data.paintings, annotations, args.out, args.first_per_pair,
-                    G.sha256_file(args.episodes), args.image_staging, args.image_root)
+    if args.job == "ft":
+        every = [eps] + [E.load_episodes(q) for q in args.also_episodes]
+        rec = write_ft_job(episode_rows(every), data.sample_ids, data.paintings, annotations, args.out,
+                           args.image_staging, args.image_root,
+                           {"episodes_files_sha256": [G.sha256_file(q) for q in [args.episodes, *args.also_episodes]]})
+        print(f"ft job folder {args.out}: {rec['n_rows']} rows, {rec['n_images']} images", flush=True)
+        return 0
+    write = write_rerank_job if args.job == "rerank" else write_job
+    rec = write(eps, data.sample_ids, data.paintings, annotations, args.out, args.first_per_pair,
+                G.sha256_file(args.episodes), args.image_staging, args.image_root)
     print(f"job folder {args.out}: seed {rec['seed']}, {rec['n_episodes']} episodes, {rec['n_rows']} rows, "
           f"{rec['n_images']} images staged in {args.image_staging}; image map {image_map_path(args.out)}",
           flush=True)
