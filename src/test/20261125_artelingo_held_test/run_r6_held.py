@@ -61,13 +61,17 @@ before step 5):
      main checkout) is missing, its latest script SHA-256 (the last 64-hex string of its script cell) is not this
      file's, or its report cell is not exactly "(pending)". --fix 1 also refuses if held_pass_fix1.json exists or
      smoke_record_fix1.json is missing. --reserve reads row H5-R and the _reserve names (it refuses if
-     held_started_reserve.json or held_verdict_reserve.json exists). Agent defaults, stricter than the rule: a
+     held_started_reserve.json or held_verdict_reserve.json exists). A first read (no flag; --reserve for its
+     _reserve files) also refuses if this folder's committed copy of its started file exists or its ledger row's
+     episode cell is not "(pending)"; --after-crash and --fix 1 refuse unless this folder's copy has the bytes of
+     results/held_started.json (controller, 2026-10-09). Agent defaults, stricter than the rule: a
      --after-crash without a recorded attempt, a --fix 1 without held_pass.json, a second --fix 1 attempt, a --fix 1
      whose row H5 does not hold the nine episode SHA-256s of the first read, and a --reserve without
      held_verdict.json (or without the nine episode SHA-256s in held_started.json) refuse too.
-  2. r6_module_shas() (this runner, every r6_ module, the DTS settings and the r6 scripts) equals the module_sha256 of
-     the latest smoke record (results/smoke_record.json; smoke_record_fix1.json for --fix 1 or when it exists;
-     smoke_record_reserve.json for --reserve), contracts section 8 amendment 12:20.
+  2. The latest smoke record passed ("passed": true) and its module_sha256 equals r6_module_shas() (this runner,
+     every r6_ module, the DTS settings and the r6 scripts): results/smoke_record.json; smoke_record_fix1.json for
+     --fix 1 or when it exists; smoke_record_crash1.json for --after-crash when it exists; smoke_record_reserve.json
+     for --reserve (contracts section 8 amendment 12:20).
   3. Inputs, rerun on every attempt: assert_inputs(), recorded_hashes() (the non-smoke episode hashes, read now and
      handed to assert_distinct later), and the seed-42 records: refit_check.json and picks_seed42.json passed and
      current (the order guard), regression_seed42.json passed and current, sensitivity_seed42.json current (its
@@ -568,6 +572,7 @@ def run_regression(results=None, here=None, env=None, bundle=None) -> int:
 
 LEDGER = R.MAIN / "docs/superpowers/held_ledger.md"
 SENS42_NAME = "sensitivity_seed42.json"                 # run_r6_sensitivity.OUT_NAME (asserted in the tests)
+SMOKE_RECORD_CRASH = "smoke_record_crash1.json"        # the smoke of code corrected after a crash (ticket 15)
 SMOKE_RECORDS = {"held": "smoke_record.json", "fix1": "smoke_record_fix1.json",
                  "reserve": "smoke_record_reserve.json"}
 LEDGER_ROWS = {"held": "H5", "fix1": "H5", "reserve": "H5-R"}
@@ -665,12 +670,17 @@ def _complete(hashes) -> bool:
     return set(hashes) == set(R.HELD_SEEDS)
 
 
-def refuse_or_go(results, ledger, kind, after_crash=False) -> SimpleNamespace:
-    """Step 1 (rule section 8 item 1 and section 9): reads only the results folder's file names, the started file
-    and the ledger. Raises Refused; -> SimpleNamespace(names, attempts (earlier attempts of this started file), want
-    ({seed: {pair: sha}} this read must reproduce), ledger (the row))."""
+def refuse_or_go(results, ledger, kind, after_crash=False, folder=None) -> SimpleNamespace:
+    """Step 1 (rule section 8 item 1 and section 9): reads only the results folder's file names, the started file,
+    its committed copy in ``folder`` (this folder) and the ledger. Raises Refused; -> SimpleNamespace(names, attempts
+    (earlier attempts of this started file), want ({seed: {pair: sha}} this read must reproduce), ledger (the row)).
+    A first read (no flag; --reserve for its _reserve files) also refuses if the folder's copy of its started file
+    exists or its ledger row's episode cell is not "(pending)"; --after-crash and --fix 1 refuse unless the folder's
+    copy has the bytes of results/held_started.json (a results folder moved away cannot start the read again)."""
     n = read_names(kind)
     res = Path(results)
+    copy = Path(folder or HERE) / n.started
+    first = kind == "reserve" or (kind == "held" and not after_crash)
     _refuse_unless(not (res / n.verdict).exists(), f"{n.verdict} exists: the read is over (rule section 8 item "
                                                    f"1)")  # guard:verdict_exists
     _refuse_unless(not (res / n.pass_).exists(),
@@ -695,6 +705,12 @@ def refuse_or_go(results, ledger, kind, after_crash=False) -> SimpleNamespace:
     else:
         _refuse_unless(not after_crash, f"--after-crash: {n.started} does not exist, no attempt to "
                                         f"rerun")  # guard:after_crash_needs_start
+    if first:
+        _refuse_unless(not copy.exists(), f"{copy} exists: a read has started (its committed copy); the results "
+                                          f"folder lacks {n.started}: the user decides")  # guard:copy_exists
+    else:
+        _refuse_unless(copy.is_file() and started.is_file() and copy.read_bytes() == started.read_bytes(),
+                       f"{copy} is missing or differs from {started}: the user decides")  # guard:copy_matches
     attempts = read_attempts(started) if started.exists() else []
     if after_crash:
         _refuse_unless(len(attempts) < MAX_ATTEMPTS, f"{n.started} already records {len(attempts)} attempts: the "
@@ -704,6 +720,10 @@ def refuse_or_go(results, ledger, kind, after_crash=False) -> SimpleNamespace:
                        f"{n.started} already records a --fix 1 attempt: anything further goes to the user (rule "
                        f"section 8 item 1)")  # guard:fix_once
     row = ledger_guard(ledger, n.row, runner_sha256())
+    if first:
+        _refuse_unless(row["cells"][EPISODE_CELL] == PENDING,
+                       f"ledger row {n.row}: its episode cell is {row['cells'][EPISODE_CELL]!r}, not {PENDING!r}: "
+                       f"a read has recorded episodes (rule section 8 item 1)")  # guard:episodes_pending
     if kind == "held":
         want = attempt_hashes(attempts)
     elif kind == "fix1":
@@ -721,23 +741,28 @@ def refuse_or_go(results, ledger, kind, after_crash=False) -> SimpleNamespace:
 
 # ---------------------------------------------------------------- steps 2 to 4: smoke record, inputs, heads
 
-def latest_smoke_record(results, kind) -> Path:
-    """smoke_record_fix1.json for --fix 1, smoke_record_reserve.json for --reserve; for the read and its rerun
-    smoke_record.json, or smoke_record_fix1.json when it exists (contracts section 8 amendment 12:20)."""
+def latest_smoke_record(results, kind, after_crash=False) -> Path:
+    """smoke_record_fix1.json for --fix 1, smoke_record_reserve.json for --reserve; for --after-crash
+    smoke_record_crash1.json when it exists (code corrected after a crash gets its own smoke, controller 2026-10-09),
+    else smoke_record.json; for the first read smoke_record.json, or smoke_record_fix1.json when it exists (contracts
+    section 8 amendment 12:20)."""
     res = Path(results)
+    if kind == "held" and after_crash:
+        crash = res / SMOKE_RECORD_CRASH
+        return crash if crash.is_file() else res / SMOKE_RECORDS["held"]
     if kind == "held" and (res / SMOKE_RECORDS["fix1"]).is_file():
         return res / SMOKE_RECORDS["fix1"]
     return res / SMOKE_RECORDS[kind]
 
 
-def smoke_guard(results, kind, here=None) -> dict:
-    """Step 2 (rule section 8 item 1, section 6 item 7): r6_module_shas() equals the latest smoke record's
-    module_sha256, key for key. Refused otherwise; -> {"name", "sha256"} of the record."""
-    path = latest_smoke_record(results, kind)
+def smoke_guard(results, kind, here=None, after_crash=False) -> dict:
+    """Step 2 (rule section 8 item 1, section 6 item 7): the latest smoke record passed ("passed": true) and its
+    module_sha256 equals r6_module_shas(), key for key. Refused otherwise; -> {"name", "sha256"} of the record."""
+    path = latest_smoke_record(results, kind, after_crash)
     _refuse_unless(path.is_file(), f"{path.name} does not exist: the smoke (rule section 6 item 7) comes "
                                    f"first")  # guard:smoke_missing
     rec = _read_json(path)
-    _refuse_unless(isinstance(rec, dict) and rec.get("passed", True) is True,
+    _refuse_unless(isinstance(rec, dict) and rec.get("passed") is True,
                    f"{path.name} records a smoke that did not pass")  # guard:smoke_passed
     mods = rec.get("module_sha256")
     mods = mods if isinstance(mods, dict) else {}
@@ -1080,8 +1105,8 @@ def run_held(after_crash=False, fix=None, reserve=False, results=None, ledger=No
         _refuse_unless(fix in (None, 1) and sum((bool(after_crash), fix is not None, bool(reserve))) <= 1,
                        "at most one of --after-crash, --fix 1, --reserve")
         kind = "reserve" if reserve else ("fix1" if fix else "held")
-        go = refuse_or_go(results, ledger or LEDGER, kind, after_crash)
-        smoke = smoke_guard(results, kind, here)
+        go = refuse_or_go(results, ledger or LEDGER, kind, after_crash, folder)
+        smoke = smoke_guard(results, kind, here, after_crash)
         spec = SimpleNamespace(
             mode="held", names=go.names, ctx_mode="held", seeds=R.HELD_SEEDS, n_per_pair=R.N_PER_PAIR, out=results,
             copy_to=Path(folder or HERE) / go.names.started, overwrite=False,

@@ -140,13 +140,18 @@ def edit(path, **changes):
     Path(path).write_text(json.dumps(rec))
 
 
-def started_file(path, *attempts):
-    """A started file as start_attempt writes it; each attempt given as (flags, {seed: hashes})."""
+def started_file(path, *attempts, copy=True):
+    """A started file as start_attempt writes it, in results/ and (``copy``) the same bytes in the committed copy's
+    folder beside it (tmp/folder, the case's ``folder``); each attempt given as (flags, {seed: hashes})."""
     att = [{"attempt": i + 1, "time": "2026-10-10 10:00:00", "flags": {"after_crash": False, "fix": None,
                                                                      "reserve": False, "smoke": False, **fl},
             "episodes_sha256": {str(s): h for s, h in hs.items()}} for i, (fl, hs) in enumerate(attempts)]
-    Path(path).write_text(json.dumps({"rule_sha256": R.RULE_SHA256, "attempts": att}))
-    return Path(path)
+    path = Path(path)
+    path.write_text(json.dumps({"rule_sha256": R.RULE_SHA256, "attempts": att}))
+    if copy:
+        (path.parent.parent / "folder").mkdir(exist_ok=True)
+        (path.parent.parent / "folder" / path.name).write_bytes(path.read_bytes())
+    return path
 
 
 def nine(salt="") -> dict:
@@ -522,9 +527,12 @@ def test_flags_are_exclusive(case, no_work, capsys):
 
 
 def test_malformed_started_file_refuses(case, no_work, capsys):
-    (case.res / "held_started.json").write_text("{not json")
+    case.folder.mkdir()
+    for p in (case.res, case.folder):
+        (p / "held_started.json").write_text("{not json")
     assert refused(held(case, after_crash=True), capsys, says="cannot be read")
-    (case.res / "held_started.json").write_text(json.dumps({"rule_sha256": "0" * 64, "attempts": []}))
+    for p in (case.res, case.folder):
+        (p / "held_started.json").write_text(json.dumps({"rule_sha256": "0" * 64, "attempts": []}))
     assert refused(held(case, after_crash=True), capsys, says="not a started file of this rule")
 
 
@@ -983,7 +991,7 @@ def test_guard_pass_exists(case, monkeypatch, capsys):
 
 
 def test_guard_started_exists(case, monkeypatch, capsys):
-    started_file(case.res / "held_started.json", ({}, {}))
+    started_file(case.res / "held_started.json", ({}, {}), copy=False)
     mod = mut_case(case, mutant(case.tmp, "run_r6_held.py", "started_exists"))
     install(monkeypatch, mod, stop_at={"inputs"})
     with pytest.raises(Reached):
@@ -993,8 +1001,7 @@ def test_guard_started_exists(case, monkeypatch, capsys):
 def test_guard_after_crash_needs_start(case, monkeypatch, capsys):
     mod = mut_case(case, mutant(case.tmp, "run_r6_held.py", "after_crash_needs_start"))
     install(monkeypatch, mod, stop_at={"inputs"})
-    with pytest.raises(Reached):
-        held(case, mod, after_crash=True)
+    assert refused(held(case, mod, after_crash=True), capsys, says="is missing or differs")    # the copy check's
 
 
 def test_guard_two_attempts(case, monkeypatch, capsys):
@@ -1075,7 +1082,7 @@ def reserve_mut(case, mod):
 
 def test_guard_reserve_started(case, monkeypatch, capsys):
     mod = reserve_mut(case, mutant(case.tmp, "run_r6_held.py", "reserve_started"))
-    started_file(case.res / "held_started_reserve.json", ({"reserve": True}, {}))
+    started_file(case.res / "held_started_reserve.json", ({"reserve": True}, {}), copy=False)
     install(monkeypatch, mod, stop_at={"inputs"})
     with pytest.raises(Reached):
         held(case, mod, reserve=True)
@@ -1225,6 +1232,7 @@ def test_guard_episodes_reported(case, monkeypatch, capsys):
     mod = mutant(case.tmp, "run_r6_held.py", "episodes_reported")
     write_ledger(case.ledger, ledger_line(scripts=[mod.runner_sha256()]))
     (case.res / "held_started.json").rename(case.tmp / "kept.json")
+    (case.folder / "held_started.json").rename(case.tmp / "kept_copy.json")         # a clean first read again
     install(monkeypatch, mod, skip_report=True, stop_at={"eligible"})
     with pytest.raises(Reached):
         held(case, mod)
@@ -1351,3 +1359,154 @@ def test_seed_bundle_keeps_its_signature_and_writes_nothing(tmp_path, monkeypatc
     assert RH.seed_bundle(env, "held", 52, R.N_PER_PAIR) == "bundle"
     assert seen == [("ctx", ("held", 52, "d"), {"on_episodes": None}), ("bundle", "ctx")] and writes == []
     assert list(tmp_path.iterdir()) == []
+
+
+# ---------------------------------------------------------------- fix round (controller, 2026-10-09): the committed
+# copy, the ledger's episode cell, the crash smoke record, "passed" required
+
+def fresh_results(case, name):
+    """Another results folder with current records only (the read's results moved or copied away)."""
+    case.res = write_records(case.tmp / name)
+    return case.res
+
+
+def test_a_moved_results_folder_cannot_start_the_read_again(case, monkeypatch, capsys):
+    install(monkeypatch)
+    assert held(case) == 0
+    copy = (case.folder / "held_started.json").read_bytes()
+    fresh_results(case, "results_moved")                    # no held_started.json, no pass, no verdict
+    install(monkeypatch, stop_at={"inputs"})
+    capsys.readouterr()
+    assert refused(held(case), capsys, says="exists: a read has started (its committed copy)")
+    assert (case.folder / "held_started.json").read_bytes() == copy and nothing_started_in(case.res)
+    write_ledger(case.ledger, ledger_line(episodes=all_hashes()))           # the run chat filled the episode cell
+    (case.folder / "held_started.json").rename(case.tmp / "kept_copy.json")
+    assert refused(held(case), capsys, says="its episode cell is")
+    for cell in ("pending", "-", "", "(pending), x"):
+        write_ledger(case.ledger, ledger_line(episodes=cell))
+        assert refused(held(case), capsys, says="its episode cell is"), cell
+    write_ledger(case.ledger, ledger_line())
+    with pytest.raises(Reached):                            # every first-read check met again
+        held(case)
+
+
+def nothing_started_in(res):
+    return not any(p.name.startswith("held_started") for p in res.iterdir())
+
+
+def test_reserve_checks_its_own_copy_and_row_h5r(case, monkeypatch, capsys):
+    install(monkeypatch, stop_at={"inputs"})
+    reserve_ready(case)
+    (case.folder / "held_started_reserve.json").write_text("{}")
+    assert refused(held(case, reserve=True), capsys, says="held_started_reserve.json exists: a read has started")
+    (case.folder / "held_started_reserve.json").rename(case.tmp / "kept.json")
+    write_ledger(case.ledger, ledger_line(report="abc"), ledger_line("H5-R", episodes=all_hashes()))
+    assert refused(held(case, reserve=True), capsys, says="ledger row H5-R: its episode cell")
+    write_ledger(case.ledger, ledger_line(report="abc", episodes=all_hashes()), ledger_line("H5-R"))
+    with pytest.raises(Reached):                            # H5's filled cell does not matter to the reserve
+        held(case, reserve=True)
+
+
+def test_rerun_needs_the_same_bytes_in_the_committed_copy(case, monkeypatch, capsys):
+    install(monkeypatch, stop_at={"inputs"})
+    started_file(case.res / "held_started.json", ({}, {52: seed_hashes(52)}), copy=False)
+    assert refused(held(case, after_crash=True), capsys, says="is missing or differs")
+    (case.tmp / "other").mkdir()
+    other = started_file(case.tmp / "other/held_started.json", ({}, {52: seed_hashes(52, "x")}), copy=False)
+    case.folder.mkdir(exist_ok=True)
+    (case.folder / "held_started.json").write_bytes(other.read_bytes())
+    assert refused(held(case, after_crash=True), capsys, says="is missing or differs")
+    (case.folder / "held_started.json").write_bytes((case.res / "held_started.json").read_bytes() + b"\n")
+    assert refused(held(case, after_crash=True), capsys, says="is missing or differs")     # bytes, not content
+    (case.folder / "held_started.json").write_bytes((case.res / "held_started.json").read_bytes())
+    with pytest.raises(Reached):
+        held(case, after_crash=True)
+    fix_ready(case)
+    (case.folder / "held_started.json").rename(case.tmp / "kept.json")
+    assert refused(held(case, fix=1), capsys, says="is missing or differs")
+    (case.tmp / "kept.json").rename(case.folder / "held_started.json")
+    with pytest.raises(Reached):
+        held(case, fix=1)
+
+
+def test_guard_copy_exists(case, monkeypatch, capsys):
+    case.folder.mkdir()
+    (case.folder / "held_started.json").write_text("{}")
+    install(monkeypatch, stop_at={"inputs"})
+    assert refused(held(case), capsys, says="its committed copy")
+    mod = mut_case(case, mutant(case.tmp, "run_r6_held.py", "copy_exists"))
+    install(monkeypatch, mod, stop_at={"inputs"})
+    with pytest.raises(Reached):
+        held(case, mod)
+
+
+def test_guard_episodes_pending(case, monkeypatch, capsys):
+    install(monkeypatch, stop_at={"inputs"})
+    write_ledger(case.ledger, ledger_line(episodes=all_hashes()))
+    assert refused(held(case), capsys, says="its episode cell")
+    mod = mutant(case.tmp, "run_r6_held.py", "episodes_pending")
+    write_ledger(case.ledger, ledger_line(scripts=[mod.runner_sha256()], episodes=all_hashes()))
+    install(monkeypatch, mod, stop_at={"inputs"})
+    with pytest.raises(Reached):
+        held(case, mod)
+
+
+def test_guard_copy_matches(case, monkeypatch, capsys):
+    started_file(case.res / "held_started.json", ({}, {}), copy=False)
+    install(monkeypatch, stop_at={"inputs"})
+    assert refused(held(case, after_crash=True), capsys, says="is missing or differs")
+    mod = mut_case(case, mutant(case.tmp, "run_r6_held.py", "copy_matches"))
+    install(monkeypatch, mod, stop_at={"inputs"})
+    with pytest.raises(Reached):
+        held(case, mod, after_crash=True)
+
+
+def test_after_crash_reads_the_crash_smoke_record(case, monkeypatch, capsys):
+    """Code corrected after a crash gets its own smoke: --after-crash checks smoke_record_crash1.json when it exists,
+    else smoke_record.json; the first read never reads it."""
+    install(monkeypatch, stop_at={"inputs"})
+    started_file(case.res / "held_started.json", ({}, {}))
+    stale = {**R.r6_module_shas(), RH._key("r6_score.py", HERE): "0" * 64}
+    edit(case.res / "smoke_record.json", module_sha256=stale)
+    assert RH.latest_smoke_record(case.res, "held", after_crash=True).name == "smoke_record.json"
+    assert refused(held(case, after_crash=True), capsys, says="smoke_record.json: the SHA-256s")
+    write_records(case.res, smoke_names=("smoke_record_crash1.json",))   # the corrected code's smoke, current
+    edit(case.res / "smoke_record.json", module_sha256=stale)
+    assert RH.latest_smoke_record(case.res, "held", after_crash=True).name == "smoke_record_crash1.json"
+    with pytest.raises(Reached):
+        held(case, after_crash=True)
+    edit(case.res / "smoke_record_crash1.json", module_sha256=stale)
+    edit(case.res / "smoke_record.json", module_sha256=R.r6_module_shas())
+    assert refused(held(case, after_crash=True), capsys, says="smoke_record_crash1.json: the SHA-256s")
+    assert RH.latest_smoke_record(case.res, "held").name == "smoke_record.json"           # not for a first read
+    assert RH.latest_smoke_record(case.res, "fix1").name == "smoke_record_fix1.json"
+
+
+def test_crash_then_corrected_code_then_after_crash(case, monkeypatch, capsys):
+    """The legitimate walk: a crash, the corrected runner's SHA appended last in H5's script cell, its smoke record
+    smoke_record_crash1.json, then --after-crash completes and records that smoke."""
+    install(monkeypatch, stop_at={("posteriors", 53)})
+    with pytest.raises(Reached):
+        held(case)
+    me = R.sha256_file(HERE / "run_r6_held.py")
+    write_ledger(case.ledger, ledger_line(scripts=["3" * 64, me]))
+    write_records(case.res, smoke_names=("smoke_record_crash1.json",))
+    install(monkeypatch)
+    capsys.readouterr()
+    assert held(case, after_crash=True) == 0
+    att = json.loads((case.res / "held_started.json").read_text())["attempts"]
+    assert att[1]["smoke_record"]["name"] == "smoke_record_crash1.json" and att[1]["flags"]["after_crash"]
+    assert (case.folder / "held_started.json").read_bytes() == (case.res / "held_started.json").read_bytes()
+
+
+def test_smoke_record_needs_passed_true(case, no_work, capsys):
+    rec = json.loads((case.res / "smoke_record.json").read_text())
+    del rec["passed"]
+    (case.res / "smoke_record.json").write_text(json.dumps(rec))
+    assert refused(held(case), capsys, says="did not pass")
+    for v in ("true", 1, None):
+        edit(case.res / "smoke_record.json", passed=v)
+        assert refused(held(case), capsys, says="did not pass"), v
+    edit(case.res / "smoke_record.json", passed=True)
+    with pytest.raises(Reached):
+        held(case)
