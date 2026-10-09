@@ -111,7 +111,8 @@ def test_swapped_picks_on_a_copy_fail_with_exit_3(real, tmp_path, capsys):
     assert code == RH.EXIT_DIFF == 3 and frec["passed"] is False
     bad = failed(frec)
     assert f"{name}_mean_r1" in bad and "aff_bar_margin" in bad, sorted(bad)
-    assert not (res / RH.REGRESSION_NAME).exists() and not (res / RH.COUNTS_NAME).exists()
+    assert json.loads((res / RH.REGRESSION_NAME).read_text())["passed"] is False
+    assert not (res / RH.COUNTS_NAME).exists() and not (res / RH.PER_EPISODE_NAME).exists()
     for k in ("seed42_arrays/aff_fused__r1", "seed42_arrays/aff_cf__r1", "aff_fused_r1", "episodes_seed42__"
               "emotion__style", "per_anchor_seed42/rca__r1", "B1_mean_r1"):
         assert k not in bad, k
@@ -128,4 +129,4 @@ def test_one_changed_cell_fails_with_exit_3(real, tmp_path, capsys, monkeypatch)
     for k in ("aff_cf_r1", "seed42_arrays/aff_cf__r1", "seed42_arrays/r1_fused__r1", "r1_margin_vs_counterpart",
               "B0_mean_r1", "per_anchor_seed42/cosine__r1"):
         assert k not in bad, k
-    assert not (res / RH.REGRESSION_NAME).exists()
+    assert json.loads((res / RH.REGRESSION_NAME).read_text())["passed"] is False

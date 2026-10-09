@@ -131,7 +131,8 @@ def test_targets_are_the_rule_numbers_and_round3_constants():
     for k, v in RH.TARGETS.items():
         for x in (v if isinstance(v, list) else [v]):
             if isinstance(x, float):
-                assert repr(x) in rule, (k, x)                     # every number is written in the rule's text
+                # every number is written in the rule's text as a whole token (no digit before or after it)
+                assert re.search(r"(?<![\d.])" + re.escape(repr(x)) + r"(?!\d)", rule), (k, x)
     assert RH.TARGETS["aff_bar_margin"] == list(A["bar"]) and RH.TARGETS["r1_margin_vs_counterpart"] == list(N["bar"])
     assert RH.TARGETS["aff_bar_comparator"] == "B_prime" and RH.TARGETS["r1_bar_comparator"] == "counterpart"
     assert RH.EXTRA_TARGETS["aff_quarter_hits"] == 9406
@@ -311,6 +312,70 @@ def test_guard_picks_stale(tmp_path):
     assert mutant(tmp_path, "run_r6_held.py", "picks_stale").order_guard(res, HERE)
 
 
+# ---------------------------------------------------------------- exact comparison (rule section 6 item 4)
+
+def exactness_misses(mod) -> list:
+    """The cases ``mod.item`` / ``mod.array_item`` wrongly call equal (rule section 6 item 4: exactly)."""
+    up = np.nextafter
+    x = 0.6998697916666667
+    a = np.arange(1, 12289, dtype=np.float64) / 4096
+    a1 = a.copy()
+    a1[5000] = up(a1[5000], np.inf)                                     # one element, one ulp
+    cases = {
+        "scalar_1ulp": lambda: mod.item(x, float(up(x, np.inf))),
+        "interval_bound_1ulp": lambda: mod.item([x, 0.4598852740816973, 0.9371680126852968],
+                                                [x, 0.4598852740816973, float(up(0.9371680126852968, -np.inf))]),
+        "array_element_1ulp": lambda: mod.array_item(a1, a),
+        "f32_vs_f64_same_values": lambda: mod.array_item(a.astype(np.float32),
+                                                         a.astype(np.float32).astype(np.float64)),
+        "shape_differs": lambda: mod.array_item(a[None, :], a),
+        "length_differs": lambda: mod.array_item(a[:-1], a),
+    }
+    misses = []
+    for k, f in cases.items():
+        try:
+            if f()["equal"]:
+                misses.append(k)
+        except ValueError:                  # a loosened copy may raise (allclose on unequal lengths): not a miss
+            pass
+    return misses
+
+
+def test_item_and_array_item_are_exact():
+    assert exactness_misses(RH) == []
+    a = np.arange(10, dtype=np.float64)
+    assert RH.array_item(a, a.copy())["equal"] and RH.item([0.1, 0.2], (0.1, 0.2))["equal"]  # equal stays equal
+    assert RH.item("B_prime", "B_prime")["equal"] and not RH.item("B_prime", "counterpart")["equal"]
+
+
+def loose(tmp_path, old, new):
+    """A copy of run_r6_held.py with one comparison loosened (never in place)."""
+    src = (HERE / "run_r6_held.py").read_text()
+    assert src.count(old) == 1, old
+    path = tmp_path / f"run_r6_held_loose{next(_COUNT)}.py"
+    path.write_text(src.replace(old, new))
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    mod = importlib.util.module_from_spec(spec)
+    saved = list(sys.path)
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.path[:] = saved
+    return mod
+
+
+def test_loose_comparisons_are_caught(tmp_path):
+    allclose = loose(tmp_path, "g.shape == w.shape and g.dtype == w.dtype and np.array_equal(g, w)",
+                     "np.allclose(g, w)")                                  # no dtype or shape check, a tolerance
+    assert {"array_element_1ulp", "f32_vs_f64_same_values", "shape_differs"} <= set(exactness_misses(allclose))
+    shape_kept = loose(tmp_path, "g.shape == w.shape and g.dtype == w.dtype and np.array_equal(g, w)",
+                       "g.shape == w.shape and np.allclose(g, w)")
+    assert {"array_element_1ulp", "f32_vs_f64_same_values"} <= set(exactness_misses(shape_kept))
+    isclose = loose(tmp_path, "bool(_norm(want) == _norm(got))",
+                    "bool(np.allclose(np.asarray(_norm(want), float), np.asarray(_norm(got), float), rtol=1e-12))")
+    assert {"scalar_1ulp", "interval_bound_1ulp"} <= set(exactness_misses(isclose))
+
+
 # ---------------------------------------------------------------- a stubbed regression run (output wiring)
 
 def synthetic_scored(rng_seed=3):
@@ -388,10 +453,31 @@ def test_stubbed_regression_with_a_differing_item_exits_3(tmp_path, monkeypatch,
     assert RH.run_regression(results=res, here=HERE) == RH.EXIT_DIFF == 3
     out = capsys.readouterr().out
     assert "item2: FAIL" in out and "item1: pass" in out and "FAILED (4 items, 1 failed)" in out
-    rec = json.loads((res / "regression_seed42_failed.json").read_text())
+    rec = json.loads((res / RH.REGRESSION_NAME).read_text())
     assert rec["passed"] is False and rec["n_failed"] == 1 and "outputs" not in rec
-    for name in (RH.REGRESSION_NAME, RH.PER_EPISODE_NAME, RH.COUNTS_NAME):
+    assert json.loads((res / "regression_seed42_failed.json").read_text()) == rec           # the kept copy
+    for name in (RH.PER_EPISODE_NAME, RH.COUNTS_NAME):
         assert not (res / name).exists(), name
+
+
+def test_a_failed_run_after_a_pass_leaves_no_current_pass(tmp_path, monkeypatch, capsys):
+    """A pass, then a failed run (contracts section 7): regression_seed42.json says "passed": false, the earlier
+    per-episode and counts files are named by no passed record, and the sensitivity runner refuses."""
+    res = write_records(tmp_path / "results")
+    stub_run(RH, monkeypatch)
+    assert RH.run_regression(results=res, here=HERE) == 0
+    assert RS6.run(res, HERE) == 0
+    (res / RS6.OUT_NAME).rename(tmp_path / "sensitivity_from_the_pass.json")
+    stub_run(RH, monkeypatch, failing=("item3",))
+    assert RH.run_regression(results=res, here=HERE) == 3
+    rec = json.loads((res / RH.REGRESSION_NAME).read_text())
+    assert rec["passed"] is False and "outputs" not in rec
+    assert (res / RH.PER_EPISODE_NAME).exists() and (res / RH.COUNTS_NAME).exists()     # left by the pass
+    capsys.readouterr()
+    assert RS6.run(res, HERE) == RH.EXIT_REFUSE
+    assert capsys.readouterr().out.startswith("refused:") and not (res / RS6.OUT_NAME).exists()
+    with pytest.raises(RH.Refused, match="did not pass"):
+        RS6.guard(res, HERE)
 
 
 def test_guard_exit_code(tmp_path, monkeypatch, capsys):

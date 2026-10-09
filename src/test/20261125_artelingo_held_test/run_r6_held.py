@@ -33,8 +33,10 @@ Regression mode, in this order:
   6. Passed: results/seed42_per_episode.npz (cl, pair_index, diff__P1 .. diff__S2 in R@1 fractions),
      results/seed42_pass_counts.json (r6_stats.pass_record on seed 42 alone, mode "regression": the phase-1 target of
      the re-derivation, rule section 8 item 4) and results/regression_seed42.json. Exit 0.
-     Any item differs: results/regression_seed42_failed.json only (nothing else is written; the difference is
-     traced and the user decides). Exit 3.
+     Any item differs: results/regression_seed42.json with "passed": false (it replaces an earlier pass) and a
+     copy, results/regression_seed42_failed.json; no per-episode or counts file is written, and those of an earlier
+     pass are named by no passed record (the sensitivity runner refuses). The difference is traced and the user
+     decides. Exit 3.
 Every output records module_sha256 (r6_module_shas()), input_sha256, the coefficient SHA-256s and the time.
 run_r6_sensitivity.py turns seed42_per_episode.npz into sensitivity_seed42.json (rule section 6 item 5).
 
@@ -495,8 +497,10 @@ def run_regression(results=None, here=None, env=None, bundle=None) -> int:
         write_json(results / COUNTS_NAME, counts)
         rec["outputs"] = {p.name: R.sha256_file(p) for p in (npz, results / COUNTS_NAME)}
     rec["runtime_s"] = round(time.time() - t0, 1)
-    path = results / REGRESSION_NAME if code == 0 else failed_path(results / REGRESSION_NAME)
-    write_json(path, rec)
+    path = results / REGRESSION_NAME
+    write_json(path, rec)                       # passed or not: an earlier pass never survives a failed run
+    if code:
+        write_json(failed_path(path), rec)      # and a kept copy of the failed record
     for name, it in items.items():
         print(f"{name}: {'pass' if it['equal'] else 'FAIL'}")
     print(f"regression seed 42: {'PASSED' if passed else 'FAILED'} ({rec['n_items']} items, {rec['n_failed']} "
