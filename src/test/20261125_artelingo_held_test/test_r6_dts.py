@@ -1154,8 +1154,15 @@ def test_listing_items_are_distinct_sorted_and_skip_empty_phrases():
         D.listing_items(["Awe"], [8])
 
 
+def settings_copy(out, data=None):
+    """<out>/dts_settings.json: this folder's committed bytes (the run chat's copy), or ``data``."""
+    Path(out).mkdir(parents=True, exist_ok=True)
+    (Path(out) / RD.SETTINGS_COPY).write_bytes(G.SETTINGS_PATH.read_bytes() if data is None else data)
+
+
 def test_list_input_for_sanity_writes_a_job_the_listing_job_reads(tmp_path):
     job = tmp_path / "jobs/list_sanity"
+    settings_copy(tmp_path / "res")
     assert RD.main(["--stage", "list-input", "--for", "sanity", "--job-out", str(job), "--out",
                     str(tmp_path / "res")]) == 0
     assert sorted(p.name for p in job.iterdir()) == [RD.JOB_RECORD, RD.LISTING_INPUT]
@@ -1164,6 +1171,42 @@ def test_list_input_for_sanity_writes_a_job_the_listing_job_reads(tmp_path):
     rec = json.loads((job / RD.JOB_RECORD).read_text())
     assert rec["listing_input_sha256"] == G.sha256_file(job / RD.LISTING_INPUT) and rec["n_items"] == 6
     assert RD.main(["--stage", "list-input", "--for", "sanity", "--job-out", str(job)]) == RD.EXIT_REFUSED
+
+
+def test_seed42_listing_inputs_need_the_committed_settings_copy(tmp_path, capsys):
+    """Rule section 7 (contracts section 9 amendment 13:05; final review C4): every seed-42 list-input, the first
+    seed-42 GPU input (--for sanity) first, refuses unless results/dts_settings.json (here <out>) holds this folder's
+    dts_settings.json byte for byte; nothing is written. The smoke seeds are exempt."""
+    res, job = tmp_path / "res", tmp_path / "jobs/list_sanity"
+    argv = ["--stage", "list-input", "--for", "sanity", "--job-out", str(job), "--out", str(res)]
+    raw = G.SETTINGS_PATH.read_bytes()
+    assert G.SETTINGS_PATH == HERE / "dts_settings.json" and RD.SETTINGS_COPY == "dts_settings.json"
+    for other in (None, raw + b"\n", raw.replace(b"8", b"9", 1), b""):        # missing, then three changed copies
+        if other is not None:
+            settings_copy(res, other)
+        assert RD.main(argv) == RD.EXIT_REFUSED
+        assert "dts_settings.json is missing or differs from" in capsys.readouterr().out
+        assert not job.exists() and not job.with_name(job.name + ".partial").exists()
+    (res / RD.SETTINGS_COPY).unlink()
+    for stage in ("tune", "chosen"):                # refused before the episodes or the tuning record are read
+        assert RD.main(["--stage", "list-input", "--for", stage, "--job-out", str(tmp_path / f"jobs/{stage}"),
+                        "--out", str(res)]) == RD.EXIT_REFUSED
+        assert "dts_settings.json is missing or differs from" in capsys.readouterr().out
+    smoke = tmp_path / "smoke_res"                  # a smoke seed needs no copy
+    assert RD.main(["--stage", "list-input", "--for", "sanity", "--seed", str(SEED), "--job-out",
+                    str(tmp_path / "jobs/smoke_sanity"), "--out", str(smoke)]) == 0
+    assert not (smoke / RD.SETTINGS_COPY).exists()
+    settings_copy(res)
+    assert RD.main(argv) == 0 and (job / RD.JOB_RECORD).is_file()
+
+
+def test_guard_settings_copy(tmp_path, capsys):
+    argv = ["--stage", "list-input", "--for", "sanity", "--job-out", str(tmp_path / "job"), "--out",
+            str(tmp_path / "res")]
+    assert RD.main(argv) == RD.EXIT_REFUSED
+    mod = mutant(tmp_path, "run_r6_dts.py", guard="settings_copy")
+    assert mod.main(argv) == 0                      # without the guard the seed-42 input is written with no copy
+    assert not (tmp_path / "res" / RD.SETTINGS_COPY).exists()
 
 
 # ---------------------------------------------------------------- end to end on the real smoke episodes of seed 9001
