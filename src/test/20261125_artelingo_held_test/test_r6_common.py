@@ -60,16 +60,18 @@ def mutant_source(guard=None, here=None, replace=()) -> str:
 
 
 def load_copy(tmp_path, **kw):
-    """Import a (possibly mutated) copy of r6_common from tmp_path under a fresh name."""
+    """Import a (possibly mutated) copy of r6_common from tmp_path under a fresh name (sys.path restored after)."""
     path = tmp_path / f"r6_common_copy{next(_COUNT)}.py"
     path.write_text(mutant_source(**kw))
     spec = importlib.util.spec_from_file_location(path.stem, path)
     mod = importlib.util.module_from_spec(spec)
     sys.modules[path.stem] = mod
+    saved = list(sys.path)
     try:
         spec.loader.exec_module(mod)
     finally:
         sys.modules.pop(path.stem, None)
+        sys.path[:] = saved
     return mod
 
 
@@ -172,6 +174,91 @@ def test_homes_guard_catches_a_shadowing_module(tmp_path):
     copy.write_text(mutant_source(guard="homes"))
     mutated = _shadow_run(fake, copy)
     assert mutated.returncode == 0 and "IMPORTED" in mutated.stdout, mutated.stderr[-2000:]
+
+
+# ---------------------------------------------------------------- run from a worktree: src and sys.path
+
+def _a_worktree():
+    """This checkout when it is a worktree, else another worktree of the repository (None if there is none)."""
+    if R.CHECKOUT.resolve() != R.MAIN.resolve():
+        return R.CHECKOUT
+    trees = _worktrees()
+    return trees[0] if trees else None
+
+
+_FROM_WT = """
+import importlib.util, json, sys
+main = {main!r}
+assert sys.path[0] == "", sys.path[:2]          # python -c: the cwd (a worktree root) comes first
+if main not in sys.path:
+    sys.path.append(main)                       # where the env's editable install lists it: last
+out = {{"main_index_before": sys.path.index(main)}}
+if {pre_import}:
+    import src                                  # a test or runner that imports src before r6_common
+    out["pre_src"] = src.__file__
+print(json.dumps(out), flush=True)
+spec = importlib.util.spec_from_file_location("r6_common", {path!r})
+mod = importlib.util.module_from_spec(spec)
+sys.modules["r6_common"] = mod
+spec.loader.exec_module(mod)
+import src.data.splits
+print(json.dumps({{"src": sys.modules["src"].__file__, "splits": src.data.splits.__file__, "front": sys.path[0],
+                  "count": sys.path.count(main), "homes": [sys.modules[n].__file__ for n in mod.EXPECTED_HOME]}}))
+"""
+
+
+def _run_from_worktree(wt, path, pre_import):
+    code = _FROM_WT.format(main=str(R.MAIN), path=str(path), pre_import=pre_import)
+    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=ENV, cwd=str(wt))
+    return r, [json.loads(line) for line in r.stdout.splitlines() if line.startswith("{")]
+
+
+def _under(f, folder):
+    return Path(f).resolve().is_relative_to(Path(folder).resolve())
+
+
+@pytest.fixture(scope="module")
+def worktree():
+    wt = _a_worktree()
+    if wt is None:
+        pytest.skip("no worktree of the CoSiR repository exists to run from")
+    return wt
+
+
+def test_run_from_a_worktree_takes_src_and_rounds_from_main(worktree):
+    r, out = _run_from_worktree(worktree, HERE / "r6_common.py", False)
+    assert r.returncode == 0, r.stderr[-2000:]
+    assert out[0]["main_index_before"] > 0                      # MAIN was present, behind the cwd
+    got = out[1]
+    assert _under(got["src"], R.MAIN / "src") and _under(got["splits"], R.MAIN / "src")
+    assert all(_under(f, R.MAIN / "src/test") for f in got["homes"])
+    assert got["front"] == str(R.MAIN) and got["count"] == 1    # moved to the front, once
+
+
+def test_src_guard_fires_when_src_came_from_the_worktree(worktree, tmp_path):
+    r, out = _run_from_worktree(worktree, HERE / "r6_common.py", True)
+    assert _under(out[0]["pre_src"], worktree / "src")          # the hazard is real: the cwd's copy wins
+    assert r.returncode != 0 and len(out) == 1
+    last = r.stderr.strip().splitlines()[-1]
+    assert last.startswith("ImportError") and "'src" in last and str(R.MAIN / "src") in last, last
+    copy = tmp_path / "r6_common_nosources.py"
+    copy.write_text(mutant_source(guard="sources"))
+    r, out = _run_from_worktree(worktree, copy, True)
+    assert r.returncode == 0, r.stderr[-2000:]
+    assert _under(out[1]["src"], worktree / "src")              # guard deleted: the worktree's src goes unnoticed
+
+
+def test_without_moving_main_to_the_front_the_worktree_src_is_caught(worktree, tmp_path):
+    """The pattern 'insert only if absent' (MAIN already listed last by the editable install) lets the worktree's
+    src win; the sources guard stops it, and to_front is what makes the import work."""
+    old_path = ("for _p in (R1D, R2D, R3D, MAIN):\n    if str(_p) not in sys.path:\n"
+                "        sys.path.insert(0, str(_p))\n")
+    copy = tmp_path / "r6_common_nofront.py"
+    copy.write_text(mutant_source(replace=(("to_front((MAIN, R3D, R2D, R1D))\n", old_path),
+                                           ("to_front((MAIN,))", "pass"))))
+    r, out = _run_from_worktree(worktree, copy, False)
+    last = r.stderr.strip().splitlines()[-1] if r.stderr.strip() else ""
+    assert r.returncode != 0 and last.startswith("ImportError") and "src" in last, (r.returncode, last)
 
 
 # ---------------------------------------------------------------- constants

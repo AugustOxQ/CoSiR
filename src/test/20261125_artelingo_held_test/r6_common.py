@@ -5,11 +5,14 @@ Paths. HERE is this folder wherever it is checked out (the main checkout or a gi
 found through git's common directory, so a worktree reads the gitignored inputs (earlier rounds' results, caches and
 checkpoints) and imports the earlier round folders from MAIN, while this round's own outputs go under HERE/results.
 
-Imports. At import MAIN and the earlier round folders go to the front of sys.path and round 3's r3_common (which brings
-round 1's common, rc_core, rb_build, rb_eval, rb_features and round 2's r2_fusion), r3_fusion and r3_stats are imported
-under their usual names; run_checks, run_n6 and run_told_oracle are loaded by path through r3_bundle.modules() (one
-instance each). Every one of them must resolve to its folder under MAIN, or the import stops. r3_bundle.build_bundle is
-never used by round 6 (its seed guard and EvalContext admit selection rows only).
+Imports. At import MAIN and the earlier round folders are moved to the front of sys.path (MAIN first, each once, even
+when already present: the env's editable install lists MAIN last, behind the cwd). Round 3's r3_common (which brings
+round 1's common, rc_core, rb_build, rb_eval, rb_features and round 2's r2_fusion), r3_fusion and r3_stats are then
+imported under their usual names; run_checks, run_n6 and run_told_oracle are loaded by path through
+r3_bundle.modules() (one instance each). Every one of them must resolve to its folder under MAIN, `src` and every
+`src.*` module must resolve under MAIN/src, and in a worktree no loaded module may come from the worktree's src/
+outside HERE; otherwise the import stops (ImportError). r3_bundle.build_bundle is never used by round 6 (its seed guard
+and EvalContext admit selection rows only).
 
 Held rows. load_split() reads only the four index keys of prepare.npz and only `held_rows` of held_codes.npz (round 5
 read whole files once; never `dict(np.load(...))` here). No function of this module reads a feature or label of a held
@@ -20,6 +23,7 @@ Guards carry a `# guard:<name>` marker; the tests delete each on a copy and show
 import ast
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -68,8 +72,18 @@ S1 = TEST / "20261116_grouping_step1_style"
 STAGE_D_SEL = TEST / "20261013_stage_d_selection"
 STAGE_D_FINAL = TEST / "20261014_stage_d_final"
 
-for _p in (R1D, R2D, R3D, MAIN):               # MAIN ends up first, then R3D, R2D, R1D
-    sys.path.insert(0, str(_p))
+
+
+def to_front(paths):
+    """Put each of ``paths`` exactly once at the front of sys.path, in the given order, removing any earlier entry
+    for the same folder. The CoSiR env's editable install lists MAIN last, behind the cwd, so in a worktree a bare
+    `import src` would otherwise find the worktree's own copy."""
+    paths = [str(p) for p in paths]
+    real = {os.path.realpath(p) for p in paths}
+    sys.path[:] = paths + [e for e in sys.path if not (e and os.path.realpath(e) in real)]
+
+
+to_front((MAIN, R3D, R2D, R1D))
 
 import r3_common as R3  # noqa: E402  (puts round 1, round 2 and MAIN on sys.path; imports round 1 and round 2)
 import r3_fusion as RF  # noqa: E402
@@ -121,6 +135,26 @@ def check_homes(expected=None):
             raise ImportError(f"module {name!r} resolved to {mod.__file__}, not to {folder}")
 
 
+
+
+def check_sources():
+    """`src` and every `src.*` module come from MAIN/src, and (in a worktree) no loaded module comes from this
+    checkout's src/ tree outside HERE (the worktree's copies of src and of the earlier round folders)."""
+    main_src = (MAIN / "src").resolve()
+    here, own = HERE.resolve(), (CHECKOUT / "src").resolve()
+    if "src" not in sys.modules:
+        raise ImportError("package 'src' is not loaded")
+    for name, mod in list(sys.modules.items()):
+        f = getattr(mod, "__file__", None)
+        if not f:
+            continue
+        f = Path(f).resolve()
+        if (name == "src" or name.startswith("src.")) and not f.is_relative_to(main_src):
+            raise ImportError(f"module {name!r} resolved to {f}, not under {main_src}")
+        if own != main_src and f.is_relative_to(own) and not f.is_relative_to(here):
+            raise ImportError(f"module {name!r} resolved to {f}, in this checkout's src/ instead of MAIN's")
+
+
 check_homes(EXPECTED_HOME)  # guard:homes
 for _m, _name in ((R3, "r3_common"), (RF, "r3_fusion"), (RS, "r3_stats"), (C, "common"), (RC, "rc_core"),
                   (rb, "rb_build"), (rbe, "rb_eval"), (rf, "rb_features"), (F2, "r2_fusion"),
@@ -132,6 +166,9 @@ from src.data.artelingo_splits import (EMOTION_CATCH_ALL, EXPECTED_SIZES, SPLIT_
 from src.data.splits import grouped_split  # noqa: E402
 from src.data.wikiart_genre import GENRE_NAMES  # noqa: E402
 from src.eval.aspect_episodes import eligible_values  # noqa: E402
+
+to_front((MAIN,))           # the earlier modules insert their own folders at the front; MAIN goes back to first
+check_sources()  # guard:sources
 
 # ---------------------------------------------------------------- constants (contracts section 1)
 
