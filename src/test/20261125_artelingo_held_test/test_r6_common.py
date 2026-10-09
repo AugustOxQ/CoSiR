@@ -38,15 +38,15 @@ _COUNT = itertools.count()
 # ---------------------------------------------------------------- mutation helpers
 
 def mutant_source(guard=None, here=None, replace=()) -> str:
-    """r6_common's source with HERE pinned, the `# guard:<guard>` statements replaced by `pass`, and ``replace``
-    (old, new) substitutions applied (each old string must occur exactly once)."""
+    """r6_common's source with HERE pinned, the `# guard:<guard>` statements replaced by `pass` (``guard`` is a name
+    or a tuple of names), and ``replace`` (old, new) substitutions applied (each old string must occur exactly once)."""
     src = (HERE / "r6_common.py").read_text()
     assert src.count(HERE_LINE) == 1
     lines = src.splitlines(keepends=True)
-    if guard is not None:
+    for g in ((guard,) if isinstance(guard, str) else (guard or ())):
         hits = [n for n in ast.walk(ast.parse(src))
-                if isinstance(n, ast.Expr) and f"# guard:{guard}" in lines[n.end_lineno - 1]]
-        assert hits, f"no statement carries # guard:{guard}"
+                if isinstance(n, ast.Expr) and f"# guard:{g}" in lines[n.end_lineno - 1]]
+        assert hits, f"no statement carries # guard:{g}"
         for n in hits:
             indent = lines[n.lineno - 1][:len(lines[n.lineno - 1]) - len(lines[n.lineno - 1].lstrip())]
             lines[n.lineno - 1] = f"{indent}pass\n"
@@ -86,30 +86,37 @@ def raised_message(fn, *a, **kw):
 
 def test_every_marked_guard_has_a_mutation_test():
     marked = set(re.findall(r"# guard:(\w+)", (HERE / "r6_common.py").read_text()))
-    tested = set(re.findall(r"guard=\"(\w+)\"", Path(__file__).read_text()))
-    tested |= {g for g, _ in SPLIT_SCENARIOS}
+    uses = re.findall(r"guard=(\"\w+\"|\([^)]*\))", Path(__file__).read_text())
+    tested = {g for u in uses for g in re.findall(r"\"(\w+)\"", u)} | {g for g, _ in SPLIT_SCENARIOS}
     assert marked == tested, (marked - tested, tested - marked)
 
 
 # ---------------------------------------------------------------- MAIN and the earlier modules
 
-def _worktrees():
-    out = subprocess.run(["git", "-C", str(MAIN_EXPECTED), "worktree", "list", "--porcelain"],
-                         capture_output=True, text=True, check=True).stdout
-    paths = [Path(line.split(" ", 1)[1]) for line in out.splitlines() if line.startswith("worktree ")]
-    return [p for p in paths if p.resolve() != MAIN_EXPECTED.resolve() and (p / "src/test").is_dir()]
+@pytest.fixture(scope="module")
+def worktree(tmp_path_factory):
+    """A temporary worktree of this repository (HEAD of the checkout holding HERE, detached), with the r6_common
+    under test copied into its round folder; removed afterwards. Tests never use another session's worktree."""
+    wt = tmp_path_factory.mktemp("r6wt") / "wt"
+    add = subprocess.run(["git", "-C", str(R.CHECKOUT), "worktree", "add", "-q", "--detach", str(wt), "HEAD"],
+                         capture_output=True, text=True)
+    assert add.returncode == 0, add.stderr
+    try:
+        f = wt / HERE.relative_to(R.CHECKOUT)
+        f.mkdir(parents=True, exist_ok=True)
+        (f / "r6_common.py").write_text((HERE / "r6_common.py").read_text())
+        yield wt
+    finally:
+        subprocess.run(["git", "-C", str(R.CHECKOUT), "worktree", "remove", "--force", str(wt)],
+                       capture_output=True, text=True)
 
 
-def test_main_from_main_checkout_and_worktrees(tmp_path):
+def test_main_from_main_checkout_and_worktrees(tmp_path, worktree):
     assert R.MAIN == MAIN_EXPECTED.resolve()
     assert R.TEST == MAIN_EXPECTED / "src/test"
     assert R.main_checkout(MAIN_EXPECTED / "src/test") == MAIN_EXPECTED
     assert R.main_checkout(R.HERE) == MAIN_EXPECTED
-    trees = _worktrees()
-    if not trees:
-        pytest.skip("no worktree of the CoSiR repository exists to test from")
-    for wt in trees[:3]:
-        assert R.main_checkout(wt / "src/test") == MAIN_EXPECTED, wt
+    assert R.main_checkout(worktree / "src/test") == MAIN_EXPECTED
     with pytest.raises(RuntimeError, match="not inside a git checkout"):
         R.main_checkout(tmp_path)
 
@@ -178,14 +185,6 @@ def test_homes_guard_catches_a_shadowing_module(tmp_path):
 
 # ---------------------------------------------------------------- run from a worktree: src and sys.path
 
-def _a_worktree():
-    """This checkout when it is a worktree, else another worktree of the repository (None if there is none)."""
-    if R.CHECKOUT.resolve() != R.MAIN.resolve():
-        return R.CHECKOUT
-    trees = _worktrees()
-    return trees[0] if trees else None
-
-
 _FROM_WT = """
 import importlib.util, json, sys
 main = {main!r}
@@ -203,62 +202,70 @@ sys.modules["r6_common"] = mod
 spec.loader.exec_module(mod)
 import src.data.splits
 print(json.dumps({{"src": sys.modules["src"].__file__, "splits": src.data.splits.__file__, "front": sys.path[0],
-                  "count": sys.path.count(main), "homes": [sys.modules[n].__file__ for n in mod.EXPECTED_HOME]}}))
+                  "count": sys.path.count(main), "homes": [sys.modules[n].__file__ for n in mod.EXPECTED_HOME],
+                  "main": str(mod.MAIN), "checkout": str(mod.CHECKOUT), "here": str(mod.HERE)}}))
 """
+
+
+def _wt_here(wt):
+    return wt / HERE.relative_to(R.CHECKOUT)
+
+
+def _wt_copy(wt, name, **kw):
+    """A (mutated) copy of r6_common inside the temporary worktree's round folder, its HERE pinned there."""
+    path = _wt_here(wt) / name
+    path.write_text(mutant_source(here=_wt_here(wt), **kw))
+    return path
 
 
 def _run_from_worktree(wt, path, pre_import):
     code = _FROM_WT.format(main=str(R.MAIN), path=str(path), pre_import=pre_import)
     r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=ENV, cwd=str(wt))
-    return r, [json.loads(line) for line in r.stdout.splitlines() if line.startswith("{")]
+    last = r.stderr.strip().splitlines()[-1] if r.stderr.strip() else ""
+    return r, [json.loads(line) for line in r.stdout.splitlines() if line.startswith("{")], last
 
 
 def _under(f, folder):
     return Path(f).resolve().is_relative_to(Path(folder).resolve())
 
 
-@pytest.fixture(scope="module")
-def worktree():
-    wt = _a_worktree()
-    if wt is None:
-        pytest.skip("no worktree of the CoSiR repository exists to run from")
-    return wt
-
-
 def test_run_from_a_worktree_takes_src_and_rounds_from_main(worktree):
-    r, out = _run_from_worktree(worktree, HERE / "r6_common.py", False)
+    r, out, _ = _run_from_worktree(worktree, _wt_here(worktree) / "r6_common.py", False)
     assert r.returncode == 0, r.stderr[-2000:]
     assert out[0]["main_index_before"] > 0                      # MAIN was present, behind the cwd
     got = out[1]
+    assert got["main"] == str(R.MAIN) and got["checkout"] == str(worktree.resolve())
+    assert got["here"] == str(_wt_here(worktree).resolve())
     assert _under(got["src"], R.MAIN / "src") and _under(got["splits"], R.MAIN / "src")
     assert all(_under(f, R.MAIN / "src/test") for f in got["homes"])
     assert got["front"] == str(R.MAIN) and got["count"] == 1    # moved to the front, once
 
 
-def test_src_guard_fires_when_src_came_from_the_worktree(worktree, tmp_path):
-    r, out = _run_from_worktree(worktree, HERE / "r6_common.py", True)
+def test_src_imported_first_from_the_worktree_is_stopped(worktree):
+    r, out, last = _run_from_worktree(worktree, _wt_here(worktree) / "r6_common.py", True)
     assert _under(out[0]["pre_src"], worktree / "src")          # the hazard is real: the cwd's copy wins
     assert r.returncode != 0 and len(out) == 1
-    last = r.stderr.strip().splitlines()[-1]
-    assert last.startswith("ImportError") and "'src" in last and str(R.MAIN / "src") in last, last
-    copy = tmp_path / "r6_common_nosources.py"
-    copy.write_text(mutant_source(guard="sources"))
-    r, out = _run_from_worktree(worktree, copy, True)
+    assert last.startswith("ImportError") and "before r6_common" in last and str(R.MAIN / "src") in last, last
+    # early check deleted: the later full check still stops it, with its own message
+    r, out, last = _run_from_worktree(worktree, _wt_copy(worktree, "r6_mut_early.py", guard="src_early"), True)
+    assert r.returncode != 0 and last.startswith("ImportError") and "'src'" in last, last
+    assert "before r6_common" not in last
+    # both deleted: the worktree's src goes unnoticed
+    copy = _wt_copy(worktree, "r6_mut_both.py", guard=("src_early", "sources"))
+    r, out, _ = _run_from_worktree(worktree, copy, True)
     assert r.returncode == 0, r.stderr[-2000:]
-    assert _under(out[1]["src"], worktree / "src")              # guard deleted: the worktree's src goes unnoticed
+    assert _under(out[1]["src"], worktree / "src")
 
 
-def test_without_moving_main_to_the_front_the_worktree_src_is_caught(worktree, tmp_path):
+def test_without_moving_main_to_the_front_the_worktree_src_is_caught(worktree):
     """The pattern 'insert only if absent' (MAIN already listed last by the editable install) lets the worktree's
     src win; the sources guard stops it, and to_front is what makes the import work."""
     old_path = ("for _p in (R1D, R2D, R3D, MAIN):\n    if str(_p) not in sys.path:\n"
                 "        sys.path.insert(0, str(_p))\n")
-    copy = tmp_path / "r6_common_nofront.py"
-    copy.write_text(mutant_source(replace=(("to_front((MAIN, R3D, R2D, R1D))\n", old_path),
-                                           ("to_front((MAIN,))", "pass"))))
-    r, out = _run_from_worktree(worktree, copy, False)
-    last = r.stderr.strip().splitlines()[-1] if r.stderr.strip() else ""
-    assert r.returncode != 0 and last.startswith("ImportError") and "src" in last, (r.returncode, last)
+    copy = _wt_copy(worktree, "r6_mut_nofront.py", replace=(("to_front((MAIN, R3D, R2D, R1D))\n", old_path),
+                                                            ("to_front((MAIN,))", "pass")))
+    r, out, last = _run_from_worktree(worktree, copy, False)
+    assert r.returncode != 0 and last.startswith("ImportError") and "'src" in last, (r.returncode, last)
 
 
 # ---------------------------------------------------------------- constants
@@ -606,6 +613,23 @@ def test_load_split_reproduces_stage_d(real):
     assert all(getattr(sp, k).dtype == np.int64 for k in keys)
     assert len(sp.groups) == R.N_ROWS
     assert np.intersect1d(sp.held, sp.selection).size == 0 and np.intersect1d(sp.held, sp.scorer_train).size == 0
+
+
+@pytest.mark.parametrize("rel,keys", [(R.PREPARE_REL, R.PREPARE_KEYS), (R.HELD_CODES_REL, ("held_rows",))])
+def test_load_split_asserts_its_own_inputs(real, tmp_path, monkeypatch, rel, keys):
+    """A different file holding the same index arrays is refused by load_split's own SHA checks, and accepted once
+    they are deleted on a copy (only the index keys are read to build it)."""
+    with np.load(R.INPUT_PATHS[rel]) as z:
+        arrays = {k: np.asarray(z[k]) for k in keys}
+    other = tmp_path / Path(rel).name
+    np.savez(other, **arrays)
+    monkeypatch.setitem(R.INPUT_PATHS, rel, other)
+    with pytest.raises(SystemExit, match=re.escape(rel)):
+        R.load_split(real["data"])
+    mut = load_copy(tmp_path, guard="split_inputs")
+    mut.INPUT_PATHS[rel] = other
+    sp = mut.load_split(real["data"])                      # guard deleted: the unverified file goes through
+    assert np.array_equal(sp.held, real["split"].held)
 
 
 def test_development_value_sets_real(real):
