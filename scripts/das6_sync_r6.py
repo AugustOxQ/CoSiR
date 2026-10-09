@@ -13,13 +13,17 @@ Actions (each chosen by its flag):
   must resolve to the map's WikiArt file and its name must be that path's neutral name; rsync follows the links
   (cluster.rsync_argv plus --copy-links), so the node holds plain files under neutral names only. A list over
   DATA_MAX_GB is split into consecutive chunks of the sorted names; --chunk K copies one (rsync skips files present).
+- --ckpt NAME=PATH (repeatable): a fine-tune checkpoint the FT feature job reads (scripts/run_r6_ftfeat.sh). NAME is
+  LB_lr3e-5 or LoRA_lr1e-4, PATH an existing regular file named best_params.pt. The plan prints its SHA-256 and size;
+  --run re-hashes it, then copies it (cluster's 'file' action, rsync of one file) to
+  /local/wding/r6_jobs/ckpt/<NAME>.pt. Combines with --job-dir and --images.
 Every remote path lies under /local/wding/ (asserted); nothing goes to a node's /tmp. The 8B model is not copied
 here: the wrappers read it from the node HF cache (/var/scratch/wding/cache/hub, which holds the pinned snapshot from
 the 8B probe) and stop if it is missing; scripts/das6_sync_mllm_probe_8b.py's model action copies it.
 
 Run with the system Python, NOT the CoSiR conda env (conda's OpenSSL breaks the system ssh that rsync calls):
-    /usr/bin/python3 scripts/das6_sync_r6.py --node node401 --job-dir <dir> [--images [--chunk K]]   # plan
-    /usr/bin/python3 scripts/das6_sync_r6.py --node node401 --job-dir <dir> --images --run           # copy
+    /usr/bin/python3 scripts/das6_sync_r6.py --node node401 --job-dir <dir> [--images [--chunk K]] [--ckpt NAME=PATH ...]   # plan
+    /usr/bin/python3 scripts/das6_sync_r6.py --node node401 --job-dir <dir> --images --ckpt LB_lr3e-5=<dir>/best_params.pt --run   # copy
 """
 import argparse
 import hashlib
@@ -39,6 +43,8 @@ ROOT = Path(__file__).resolve().parents[1]
 REMOTE_ROOT = "/local/wding/"
 JOBS_REMOTE = "/local/wding/r6_jobs"
 IMAGES_REMOTE = "/local/wding/r6_jobs/images"
+CKPT_REMOTE = "/local/wding/r6_jobs/ckpt"
+CKPT_NAMES = ("LB_lr3e-5", "LoRA_lr1e-4")
 WIKIART_LOCAL = "/data/PDD/wikiart_proj/wikiart"
 JOB_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 NEUTRAL = re.compile(r"[0-9a-f]{20}\.[a-z0-9]{1,5}")
@@ -153,6 +159,33 @@ def image_actions(cfg, args, job, notes) -> list:
              "from_map": str(map_file)} for k in pick]
 
 
+def file_sha256(path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for block in iter(lambda: fh.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def ckpt_actions(specs) -> list:
+    """One 'file' action per --ckpt NAME=PATH (cluster.rsync_argv copies a single file to its remote path)."""
+    actions, seen = [], set()
+    for spec in specs:
+        name, sep, path = spec.partition("=")
+        if not sep or name not in CKPT_NAMES:
+            sys.exit(f"REFUSING: --ckpt {spec!r}: expected NAME=PATH with NAME one of {', '.join(CKPT_NAMES)}")
+        if name in seen:
+            sys.exit(f"REFUSING: --ckpt {name} given twice")
+        seen.add(name)
+        p = Path(path)
+        if p.name != "best_params.pt" or p.is_symlink() or not p.is_file():
+            sys.exit(f"REFUSING: --ckpt {name}: {path} is not an existing regular file named best_params.pt")
+        p = p.resolve()
+        actions.append({"key": f"r6_ckpt_{name}", "kind": "file", "remote": f"{CKPT_REMOTE}/{name}.pt",
+                        "local": str(p), "bytes": p.stat().st_size, "sha256": file_sha256(p)})
+    return actions
+
+
 def build_actions(cfg, args):
     actions, notes = [], []
     job = None
@@ -169,6 +202,7 @@ def build_actions(cfg, args):
                         "local": str(job), "bytes": cluster.dir_bytes(job)})
     if args.images or args.image_map:
         actions += image_actions(cfg, args, job, notes)
+    actions += ckpt_actions(args.ckpt or [])
     for a in actions:
         if not a["remote"].startswith(REMOTE_ROOT) or ".." in Path(a["remote"]).parts:
             sys.exit(f"REFUSING: remote {a['remote']} outside {REMOTE_ROOT}")
@@ -199,10 +233,12 @@ def main():
     ap.add_argument("--images", action="store_true", help="also copy the images of <job-dir>.image_map.json")
     ap.add_argument("--image-map", help="an image map in place of <job-dir>.image_map.json")
     ap.add_argument("--chunk", type=int, default=None, help="copy only this chunk of the images")
+    ap.add_argument("--ckpt", action="append", metavar="NAME=PATH",
+                    help="a fine-tune checkpoint (NAME LB_lr3e-5 or LoRA_lr1e-4; PATH a best_params.pt), repeatable")
     ap.add_argument("--run", action="store_true", help="perform the copy (default: print the plan only)")
     args = ap.parse_args()
-    if not (args.job_dir or args.images or args.image_map):
-        ap.error("nothing to copy: give --job-dir and/or --images / --image-map")
+    if not (args.job_dir or args.images or args.image_map or args.ckpt):
+        ap.error("nothing to copy: give --job-dir, --images / --image-map and/or --ckpt")
     cfg = cluster.load_config(SKILL / "cluster.conf", project="CoSiR")
     node = cluster.validate_node(args.node, cfg)
     actions, notes = build_actions(cfg, args)
@@ -211,6 +247,8 @@ def main():
     print(f"Plan for {node} ({len(actions)} actions):")
     for a in actions:
         extra = f", {len(a['files'])} files" if a["kind"] == "selected" else ""
+        if a["kind"] == "file":
+            extra = f", sha256 {a['sha256']}, {a['bytes']} bytes"
         print(f"  {a['key']}: {a['kind']}{extra}, {a['bytes'] / 1024**3:.3f} GB, {a['local']} -> {a['remote']}")
     for line in notes:
         print(line)
@@ -221,6 +259,9 @@ def main():
         return
     if any(a["bytes"] / 1024**3 > max_gb for a in actions) or total_gb > max_gb:
         sys.exit(f"REFUSING: over DATA_MAX_GB={max_gb:g}; copy the actions one at a time")
+    for a in actions:
+        if a["kind"] == "file" and file_sha256(a["local"]) != a["sha256"]:
+            sys.exit(f"REFUSING: {a['local']} changed since the plan")
     done = [copy_images(node, a) if a.get("copy_links") else cluster.run_data_sync(cfg, node, [a])[0]
             for a in actions]
     print("Done:", done)
