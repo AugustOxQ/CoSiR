@@ -24,3 +24,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-10-process-context-handoff.md
 - New chat: tab 'process context', session 9986e9be-d0a9-40eb-9e8d-ad3273d06328
 
+[brief] CoSiR: process context -> process plugins (2026-10-10 23:27 Amsterdam)
+- Done: fixed-context trim built (fresh chat 35.0k tokens, was 50.2k; `worker` subagents 5.2k, were 42.1k); CLAUDE.md read allowed for workers.
+- State: unused plugins and skills are off; ARS only via `claude-paper`.
+- Next: the user names the plugins to weigh; measure each one's fixed cost and recommend install, per-chat only, or skip.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-10-process-plugins-handoff.md
+- New chat: tab 'process plugins', session 98a9e364-c9d5-4302-94b8-fe02deca7777
+
