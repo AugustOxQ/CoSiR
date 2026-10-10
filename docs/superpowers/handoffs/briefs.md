@@ -16,3 +16,11 @@
 - Blocked: nothing.
 - Handoff: docs/superpowers/handoffs/2026-10-10-process-build-close-handoff.md
 - New chat: none; CoSiR main opened beside it
+[brief] CoSiR: process build 2 -> process context (2026-10-10 18:23 Amsterdam)
+- Done: process build closed and extended: run mode (day or night), phone pings from the main chat, Codex column in the routing table.
+- State: about 59 KB of instruction text (global CLAUDE.md, 21 rule files, CoSiR's CLAUDE.md, memory index) loads into every chat; a subagent costs about 55k tokens to start.
+- Next: measure the fixed start context, then discuss with the user what to trim.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-10-process-context-handoff.md
+- New chat: tab 'process context', session 9986e9be-d0a9-40eb-9e8d-ad3273d06328
+
