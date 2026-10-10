@@ -24,6 +24,7 @@
 | Lean research build: unit tests only for verdict code, plumbing proven by one smoke run | `agent-routing.md`, `matt-chain.md` | same fresh-session test (passed after one rule fix) |
 | Brief block on every handoff, sent to the main chat and logged in `briefs.md` | `handoff.md`, `loop-next` | dry run (below) |
 | Per-project main chat in its own workspace; `loop-watch` reports NEW, BLOCKED, SILENT, GONE | `loop-chats.md`, `main_chat_start.md`, `loop-next`, `loop-watch` | 50 unit tests; review (5 findings) fixed by Codex and committed (`154d19a`); dry run |
+| `loop-watch` reports each blocked or silent spell once across runs | `loop-watch` (`9d8188d`), `loop-chats.md` | 6 new tests (56 in all); found after CoSiR main opened: the main chat restarts the watch after every event, so a chat left blocked or silent would have re-alerted every few minutes |
 
 **Dry run** (three Haiku dummy chats in `.scratch/dryrun2`, closed afterwards):
 - The main chat opened in a new workspace (w13).
@@ -70,6 +71,9 @@ which act on the same tokens. Build time should drop with the code written; we d
   has its own `.git`. `loop-next --cwd` into a brand-new folder therefore blocks until the user answers (`loop-watch`
   shows it as BLOCKED). Real project folders are already trusted.
 - `herdr agent read --source recent…` misses Claude's approval prompt; use `--source visible`.
+- **An unattended chat that ends without opening a next chat** (like this one) gets one alert from CoSiR main: SILENT
+  after 60 minutes, or GONE if its tab is closed while the watch runs. Expected for this chat, possibly twice (the
+  watch running now started before the fix); ignore it.
 
 ## 6. State at handoff
 
