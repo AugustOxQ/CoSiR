@@ -1,0 +1,1946 @@
+{
+ "n_items": 249,
+ "n_equal": 249,
+ "n_diff": 0,
+ "diffs": [],
+ "pending": [],
+ "phase2_results_sha256": "8d353218a509d147ef46ee75dec4a5ccec32287e96243d6f03702190a0213661",
+ "tolerance": "discrete exact; points and bounds within 1e-9 R@1 points; arrays exact (shape, dtype, values); sigma^2 within 1e-9 relative",
+ "items": [
+  {
+   "name": "held_started/n_attempts",
+   "result": "equal",
+   "mine": 1,
+   "theirs": 1,
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/episodes_sha256/52/emotion__style",
+   "result": "equal",
+   "mine": "f56c357dbfa4f666daf3f2849ce7a6e77676769f62e18ce704c7c7004f770542",
+   "theirs": "f56c357dbfa4f666daf3f2849ce7a6e77676769f62e18ce704c7c7004f770542",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/episodes_sha256/52/emotion__genre",
+   "result": "equal",
+   "mine": "58798701e01e4a8e20235252bbf985b52735c0de2a54127221178fc0d6da17d0",
+   "theirs": "58798701e01e4a8e20235252bbf985b52735c0de2a54127221178fc0d6da17d0",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/episodes_sha256/52/style__genre",
+   "result": "equal",
+   "mine": "e9c591dca0e082f8c63810430f0ffd0c3262f55f062f1bc33d665423a175db50",
+   "theirs": "e9c591dca0e082f8c63810430f0ffd0c3262f55f062f1bc33d665423a175db50",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/episodes_sha256/53/emotion__style",
+   "result": "equal",
+   "mine": "ae0cb9c34dfe55d99cc54862f48725d8ec7a0bcc42b23f723ac6512994422c57",
+   "theirs": "ae0cb9c34dfe55d99cc54862f48725d8ec7a0bcc42b23f723ac6512994422c57",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/episodes_sha256/53/emotion__genre",
+   "result": "equal",
+   "mine": "850790fbc11995509550bc9cf061ee2868b5253af892ed9aa40cb09623a9fcaf",
+   "theirs": "850790fbc11995509550bc9cf061ee2868b5253af892ed9aa40cb09623a9fcaf",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/episodes_sha256/53/style__genre",
+   "result": "equal",
+   "mine": "88138225cff600134cbd020ba29187afec3bd78062266a795f0156d668595404",
+   "theirs": "88138225cff600134cbd020ba29187afec3bd78062266a795f0156d668595404",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/episodes_sha256/54/emotion__style",
+   "result": "equal",
+   "mine": "dc81db77128edd184df2c55a93529d1873f7f805bac1bbbf297d4b2f6cd34508",
+   "theirs": "dc81db77128edd184df2c55a93529d1873f7f805bac1bbbf297d4b2f6cd34508",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/episodes_sha256/54/emotion__genre",
+   "result": "equal",
+   "mine": "439425c52220b820954ede4c03cc2f94ee4b4ce30f6fc8822f728fb0382d86f6",
+   "theirs": "439425c52220b820954ede4c03cc2f94ee4b4ce30f6fc8822f728fb0382d86f6",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/episodes_sha256/54/style__genre",
+   "result": "equal",
+   "mine": "8d7c415c3d46cf2744891e468d1ac0757a7c11e8aae5a67dc9e75ffa3ac7e6c2",
+   "theirs": "8d7c415c3d46cf2744891e468d1ac0757a7c11e8aae5a67dc9e75ffa3ac7e6c2",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/coef_sha256/affect/img",
+   "result": "equal",
+   "mine": "7e6fb58c86d8a440615f091c55dc3fa5fb051fef9eb021c5663a5a7683a275d1",
+   "theirs": "7e6fb58c86d8a440615f091c55dc3fa5fb051fef9eb021c5663a5a7683a275d1",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/coef_sha256/affect/txt",
+   "result": "equal",
+   "mine": "3b82f50db1fb49af9d8720729a0d05d02a66419ed1e519815441c362a5bd3931",
+   "theirs": "3b82f50db1fb49af9d8720729a0d05d02a66419ed1e519815441c362a5bd3931",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/coef_sha256/affect_km/img",
+   "result": "equal",
+   "mine": "14359290fa176da2370a27a6f8505d615d8d985c68e5f0bf66b62c6b8799d25d",
+   "theirs": "14359290fa176da2370a27a6f8505d615d8d985c68e5f0bf66b62c6b8799d25d",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/coef_sha256/affect_km/txt",
+   "result": "equal",
+   "mine": "69b1c836dc0b337f705aebd2e9ba4003652514a79d1603fc0ecfccaf7d1f4169",
+   "theirs": "69b1c836dc0b337f705aebd2e9ba4003652514a79d1603fc0ecfccaf7d1f4169",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/coef_sha256/image/img",
+   "result": "equal",
+   "mine": "477e96763f3298217fa7dcb4b8c23007b25de1768e55aa0c6617735dfe3de810",
+   "theirs": "477e96763f3298217fa7dcb4b8c23007b25de1768e55aa0c6617735dfe3de810",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/coef_sha256/image/txt",
+   "result": "equal",
+   "mine": "85c0b6120692902c65b201de5bc2d73e9b27aff2d7b287f60f8872a07f074305",
+   "theirs": "85c0b6120692902c65b201de5bc2d73e9b27aff2d7b287f60f8872a07f074305",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/coef_sha256/caption/img",
+   "result": "equal",
+   "mine": "549941611cc2dcccd9d1a172ec6a8a29347107dc435b9bafedb9e66b189b20e1",
+   "theirs": "549941611cc2dcccd9d1a172ec6a8a29347107dc435b9bafedb9e66b189b20e1",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/coef_sha256/caption/txt",
+   "result": "equal",
+   "mine": "8b4a197ff6430bb834a69505c0e2ff89b0aceab47632e848b927ec113cbcafec",
+   "theirs": "8b4a197ff6430bb834a69505c0e2ff89b0aceab47632e848b927ec113cbcafec",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/coef_sha256/csd/img",
+   "result": "equal",
+   "mine": "d4430d10739171347926168d706d469f56bdc1ab42643e257b02b471d5b980d6",
+   "theirs": "d4430d10739171347926168d706d469f56bdc1ab42643e257b02b471d5b980d6",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/coef_sha256/csd/txt",
+   "result": "equal",
+   "mine": "2a112ba2f0cb0816a6e63ee0eff2dc8ac056b9e4ec3eb926d33fcee683856978",
+   "theirs": "2a112ba2f0cb0816a6e63ee0eff2dc8ac056b9e4ec3eb926d33fcee683856978",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/rule_sha256",
+   "result": "equal",
+   "mine": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+   "theirs": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/seed42_records_sha256/picks_seed42.json (file on disk)",
+   "result": "equal",
+   "mine": "df1fff781136c001343ec88264b014ca6a2448d71e8c4f33e230e9821deb47c6",
+   "theirs": "df1fff781136c001343ec88264b014ca6a2448d71e8c4f33e230e9821deb47c6",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/seed42_records_sha256/regression_seed42.json (file on disk)",
+   "result": "equal",
+   "mine": "ca168eb628f6a51e9afe779b0194088d05b293417bac04617a0d8a428d3984be",
+   "theirs": "ca168eb628f6a51e9afe779b0194088d05b293417bac04617a0d8a428d3984be",
+   "kind": "exact"
+  },
+  {
+   "name": "held_started/seed42_records_sha256/sensitivity_seed42.json (file on disk)",
+   "result": "equal",
+   "mine": "bc4b0a92d376b2fdf47da2aa08303a5bb2266a29daf85621ca97ec753bef5661",
+   "theirs": "bc4b0a92d376b2fdf47da2aa08303a5bb2266a29daf85621ca97ec753bef5661",
+   "kind": "exact"
+  },
+  {
+   "name": "frozen/B_picks/B/tune_half_0",
+   "result": "equal",
+   "mine": [
+    16.0,
+    8.0
+   ],
+   "theirs": [
+    16.0,
+    8.0
+   ],
+   "kind": "exact"
+  },
+  {
+   "name": "frozen/B_picks/B/tune_half_1",
+   "result": "equal",
+   "mine": [
+    8.0,
+    2.0
+   ],
+   "theirs": [
+    8.0,
+    2.0
+   ],
+   "kind": "exact"
+  },
+  {
+   "name": "frozen/B_picks/B0/tune_half_0",
+   "result": "equal",
+   "mine": [
+    16.0,
+    16.0
+   ],
+   "theirs": [
+    16.0,
+    16.0
+   ],
+   "kind": "exact"
+  },
+  {
+   "name": "frozen/B_picks/B0/tune_half_1",
+   "result": "equal",
+   "mine": [
+    16.0,
+    8.0
+   ],
+   "theirs": [
+    16.0,
+    8.0
+   ],
+   "kind": "exact"
+  },
+  {
+   "name": "frozen/B_picks/B1/tune_half_0",
+   "result": "equal",
+   "mine": [
+    16.0,
+    16.0
+   ],
+   "theirs": [
+    16.0,
+    16.0
+   ],
+   "kind": "exact"
+  },
+  {
+   "name": "frozen/B_picks/B1/tune_half_1",
+   "result": "equal",
+   "mine": [
+    16.0,
+    8.0
+   ],
+   "theirs": [
+    16.0,
+    8.0
+   ],
+   "kind": "exact"
+  },
+  {
+   "name": "frozen/rca_lambda/tune_half_0",
+   "result": "equal",
+   "mine": 0.5,
+   "theirs": 0.5,
+   "kind": "exact"
+  },
+  {
+   "name": "frozen/rca_lambda/tune_half_1",
+   "result": "equal",
+   "mine": 0.5,
+   "theirs": 0.5,
+   "kind": "exact"
+  },
+  {
+   "name": "frozen/cells/aff_fused",
+   "result": "equal",
+   "mine": [
+    39,
+    119
+   ],
+   "theirs": [
+    39,
+    119
+   ],
+   "kind": "exact"
+  },
+  {
+   "name": "frozen/cells/aff_cf",
+   "result": "equal",
+   "mine": [
+    149,
+    10
+   ],
+   "theirs": [
+    149,
+    10
+   ],
+   "kind": "exact"
+  },
+  {
+   "name": "frozen/cells/r1_fused",
+   "result": "equal",
+   "mine": [
+    116,
+    119
+   ],
+   "theirs": [
+    116,
+    119
+   ],
+   "kind": "exact"
+  },
+  {
+   "name": "frozen/cells/r1_cf",
+   "result": "equal",
+   "mine": [
+    58,
+    123
+   ],
+   "theirs": [
+    58,
+    123
+   ],
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/rule_sha256",
+   "result": "equal",
+   "mine": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+   "theirs": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/seeds",
+   "result": "equal",
+   "mine": [
+    52,
+    53,
+    54
+   ],
+   "theirs": [
+    52,
+    53,
+    54
+   ],
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/n_episodes",
+   "result": "equal",
+   "mine": 36864,
+   "theirs": 36864,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/n_clusters",
+   "result": "equal",
+   "mine": 9519,
+   "theirs": 9519,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/holm_order",
+   "result": "equal",
+   "mine": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "theirs": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/episodes_sha256/52/emotion__style",
+   "result": "equal",
+   "mine": "f56c357dbfa4f666daf3f2849ce7a6e77676769f62e18ce704c7c7004f770542",
+   "theirs": "f56c357dbfa4f666daf3f2849ce7a6e77676769f62e18ce704c7c7004f770542",
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/episodes_sha256/52/emotion__genre",
+   "result": "equal",
+   "mine": "58798701e01e4a8e20235252bbf985b52735c0de2a54127221178fc0d6da17d0",
+   "theirs": "58798701e01e4a8e20235252bbf985b52735c0de2a54127221178fc0d6da17d0",
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/episodes_sha256/52/style__genre",
+   "result": "equal",
+   "mine": "e9c591dca0e082f8c63810430f0ffd0c3262f55f062f1bc33d665423a175db50",
+   "theirs": "e9c591dca0e082f8c63810430f0ffd0c3262f55f062f1bc33d665423a175db50",
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/episodes_sha256/53/emotion__style",
+   "result": "equal",
+   "mine": "ae0cb9c34dfe55d99cc54862f48725d8ec7a0bcc42b23f723ac6512994422c57",
+   "theirs": "ae0cb9c34dfe55d99cc54862f48725d8ec7a0bcc42b23f723ac6512994422c57",
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/episodes_sha256/53/emotion__genre",
+   "result": "equal",
+   "mine": "850790fbc11995509550bc9cf061ee2868b5253af892ed9aa40cb09623a9fcaf",
+   "theirs": "850790fbc11995509550bc9cf061ee2868b5253af892ed9aa40cb09623a9fcaf",
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/episodes_sha256/53/style__genre",
+   "result": "equal",
+   "mine": "88138225cff600134cbd020ba29187afec3bd78062266a795f0156d668595404",
+   "theirs": "88138225cff600134cbd020ba29187afec3bd78062266a795f0156d668595404",
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/episodes_sha256/54/emotion__style",
+   "result": "equal",
+   "mine": "dc81db77128edd184df2c55a93529d1873f7f805bac1bbbf297d4b2f6cd34508",
+   "theirs": "dc81db77128edd184df2c55a93529d1873f7f805bac1bbbf297d4b2f6cd34508",
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/episodes_sha256/54/emotion__genre",
+   "result": "equal",
+   "mine": "439425c52220b820954ede4c03cc2f94ee4b4ce30f6fc8822f728fb0382d86f6",
+   "theirs": "439425c52220b820954ede4c03cc2f94ee4b4ce30f6fc8822f728fb0382d86f6",
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/episodes_sha256/54/style__genre",
+   "result": "equal",
+   "mine": "8d7c415c3d46cf2744891e468d1ac0757a7c11e8aae5a67dc9e75ffa3ac7e6c2",
+   "theirs": "8d7c415c3d46cf2744891e468d1ac0757a7c11e8aae5a67dc9e75ffa3ac7e6c2",
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P1/n_j",
+   "result": "equal",
+   "mine": 0,
+   "theirs": 0,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P1/point",
+   "result": "equal",
+   "mine": 6.189643012152778,
+   "theirs": 6.189643012152778,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P1/lo95",
+   "result": "equal",
+   "mine": 5.961188674549328,
+   "theirs": 5.961188674549328,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P1/hi95",
+   "result": "equal",
+   "mine": 6.403049109446222,
+   "theirs": 6.403049109446222,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P1/holm_k",
+   "result": "equal",
+   "mine": 1,
+   "theirs": 1,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P1/level_two_sided",
+   "result": "equal",
+   "mine": 0.9928571428571429,
+   "theirs": 0.9928571428571429,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P1/lo_holm",
+   "result": "equal",
+   "mine": 5.889742517147998,
+   "theirs": 5.889742517147998,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P1/hi_holm",
+   "result": "equal",
+   "mine": 6.49559896357564,
+   "theirs": 6.49559896357564,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P1/near_boundary",
+   "result": "equal",
+   "mine": false,
+   "theirs": false,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P1/passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P1/own_count_passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P2/n_j",
+   "result": "equal",
+   "mine": 0,
+   "theirs": 0,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P2/point",
+   "result": "equal",
+   "mine": 5.894639756944445,
+   "theirs": 5.894639756944445,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P2/lo95",
+   "result": "equal",
+   "mine": 5.6713780497678785,
+   "theirs": 5.6713780497678785,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P2/hi95",
+   "result": "equal",
+   "mine": 6.111325179513299,
+   "theirs": 6.111325179513299,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P2/holm_k",
+   "result": "equal",
+   "mine": 2,
+   "theirs": 2,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P2/level_two_sided",
+   "result": "equal",
+   "mine": 0.9916666666666667,
+   "theirs": 0.9916666666666667,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P2/lo_holm",
+   "result": "equal",
+   "mine": 5.6153935198259015,
+   "theirs": 5.6153935198259015,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P2/hi_holm",
+   "result": "equal",
+   "mine": 6.191308016163258,
+   "theirs": 6.191308016163258,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P2/near_boundary",
+   "result": "equal",
+   "mine": false,
+   "theirs": false,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P2/passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P2/own_count_passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P3/n_j",
+   "result": "equal",
+   "mine": 0,
+   "theirs": 0,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P3/point",
+   "result": "equal",
+   "mine": 0.6300184461805556,
+   "theirs": 0.6300184461805556,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P3/lo95",
+   "result": "equal",
+   "mine": 0.5076037504208352,
+   "theirs": 0.5076037504208352,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P3/hi95",
+   "result": "equal",
+   "mine": 0.7521316678804376,
+   "theirs": 0.7521316678804376,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P3/holm_k",
+   "result": "equal",
+   "mine": 3,
+   "theirs": 3,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P3/level_two_sided",
+   "result": "equal",
+   "mine": 0.99,
+   "theirs": 0.99,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P3/lo_holm",
+   "result": "equal",
+   "mine": 0.47348612854203226,
+   "theirs": 0.47348612854203226,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P3/hi_holm",
+   "result": "equal",
+   "mine": 0.7945775327663603,
+   "theirs": 0.7945775327663603,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P3/near_boundary",
+   "result": "equal",
+   "mine": false,
+   "theirs": false,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P3/passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P3/own_count_passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P4/n_j",
+   "result": "equal",
+   "mine": 0,
+   "theirs": 0,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P4/point",
+   "result": "equal",
+   "mine": 0.5995008680555556,
+   "theirs": 0.5995008680555556,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P4/lo95",
+   "result": "equal",
+   "mine": 0.4629082315446421,
+   "theirs": 0.4629082315446421,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P4/hi95",
+   "result": "equal",
+   "mine": 0.7337053457802365,
+   "theirs": 0.7337053457802365,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P4/holm_k",
+   "result": "equal",
+   "mine": 4,
+   "theirs": 4,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P4/level_two_sided",
+   "result": "equal",
+   "mine": 0.9875,
+   "theirs": 0.9875,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P4/lo_holm",
+   "result": "equal",
+   "mine": 0.4227739091675922,
+   "theirs": 0.4227739091675922,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P4/hi_holm",
+   "result": "equal",
+   "mine": 0.7747705967943632,
+   "theirs": 0.7747705967943632,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P4/near_boundary",
+   "result": "equal",
+   "mine": false,
+   "theirs": false,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P4/passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P4/own_count_passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P5/n_j",
+   "result": "equal",
+   "mine": 0,
+   "theirs": 0,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P5/point",
+   "result": "equal",
+   "mine": 0.631374782986111,
+   "theirs": 0.631374782986111,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P5/lo95",
+   "result": "equal",
+   "mine": 0.5016325889001421,
+   "theirs": 0.5016325889001421,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P5/hi95",
+   "result": "equal",
+   "mine": 0.7605777175857305,
+   "theirs": 0.7605777175857305,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P5/holm_k",
+   "result": "equal",
+   "mine": 5,
+   "theirs": 5,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P5/level_two_sided",
+   "result": "equal",
+   "mine": 0.9833333333333333,
+   "theirs": 0.9833333333333333,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P5/lo_holm",
+   "result": "equal",
+   "mine": 0.47433298970993143,
+   "theirs": 0.47433298970993143,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P5/hi_holm",
+   "result": "equal",
+   "mine": 0.787140427106075,
+   "theirs": 0.787140427106075,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P5/near_boundary",
+   "result": "equal",
+   "mine": false,
+   "theirs": false,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P5/passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P5/own_count_passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P6/n_j",
+   "result": "equal",
+   "mine": 0,
+   "theirs": 0,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P6/point",
+   "result": "equal",
+   "mine": 3.061930338541667,
+   "theirs": 3.061930338541667,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P6/lo95",
+   "result": "equal",
+   "mine": 2.8690624830718217,
+   "theirs": 2.8690624830718217,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P6/hi95",
+   "result": "equal",
+   "mine": 3.254684099237789,
+   "theirs": 3.254684099237789,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P6/holm_k",
+   "result": "equal",
+   "mine": 6,
+   "theirs": 6,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P6/level_two_sided",
+   "result": "equal",
+   "mine": 0.975,
+   "theirs": 0.975,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P6/lo_holm",
+   "result": "equal",
+   "mine": 2.84529118961385,
+   "theirs": 2.84529118961385,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P6/hi_holm",
+   "result": "equal",
+   "mine": 3.2850172638652806,
+   "theirs": 3.2850172638652806,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P6/near_boundary",
+   "result": "equal",
+   "mine": false,
+   "theirs": false,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P6/passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P6/own_count_passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P7/n_j",
+   "result": "equal",
+   "mine": 0,
+   "theirs": 0,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P7/point",
+   "result": "equal",
+   "mine": 2.918836805555556,
+   "theirs": 2.918836805555556,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P7/lo95",
+   "result": "equal",
+   "mine": 2.702454160973383,
+   "theirs": 2.702454160973383,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P7/hi95",
+   "result": "equal",
+   "mine": 3.137529599086957,
+   "theirs": 3.137529599086957,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P7/holm_k",
+   "result": "equal",
+   "mine": 7,
+   "theirs": 7,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P7/level_two_sided",
+   "result": "equal",
+   "mine": 0.95,
+   "theirs": 0.95,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P7/lo_holm",
+   "result": "equal",
+   "mine": 2.702454160973383,
+   "theirs": 2.702454160973383,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P7/hi_holm",
+   "result": "equal",
+   "mine": 3.137529599086957,
+   "theirs": 3.137529599086957,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/P7/near_boundary",
+   "result": "equal",
+   "mine": false,
+   "theirs": false,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P7/passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/P7/own_count_passes",
+   "result": "equal",
+   "mine": true,
+   "theirs": true,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/S1/n_j",
+   "result": "equal",
+   "mine": 258,
+   "theirs": 258,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/S1/point",
+   "result": "equal",
+   "mine": 0.13563368055555555,
+   "theirs": 0.13563368055555555,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/S1/lo95",
+   "result": "equal",
+   "mine": -0.02792977950817948,
+   "theirs": -0.02792977950817948,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/S1/hi95",
+   "result": "equal",
+   "mine": 0.302507708063068,
+   "theirs": 0.302507708063068,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/S1/holm_k",
+   "result": "equal",
+   "mine": 1,
+   "theirs": 1,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/S1/level_two_sided",
+   "result": "equal",
+   "mine": 0.975,
+   "theirs": 0.975,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/S1/lo_holm",
+   "result": "equal",
+   "mine": -0.057720110281061325,
+   "theirs": -0.057720110281061325,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/S1/hi_holm",
+   "result": "equal",
+   "mine": 0.324216918568266,
+   "theirs": 0.324216918568266,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/S1/near_boundary",
+   "result": "equal",
+   "mine": false,
+   "theirs": false,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/S2/n_j",
+   "result": "equal",
+   "mine": 1611,
+   "theirs": 1611,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/S2/point",
+   "result": "equal",
+   "mine": 0.021701388888888888,
+   "theirs": 0.021701388888888888,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/S2/lo95",
+   "result": "equal",
+   "mine": -0.06282487893626801,
+   "theirs": -0.06282487893626801,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/S2/hi95",
+   "result": "equal",
+   "mine": 0.11178464214618648,
+   "theirs": 0.11178464214618648,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/S2/holm_k",
+   "result": "equal",
+   "mine": 2,
+   "theirs": 2,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/S2/level_two_sided",
+   "result": "equal",
+   "mine": 0.95,
+   "theirs": 0.95,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/S2/lo_holm",
+   "result": "equal",
+   "mine": -0.06282487893626801,
+   "theirs": -0.06282487893626801,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/S2/hi_holm",
+   "result": "equal",
+   "mine": 0.11178464214618648,
+   "theirs": 0.11178464214618648,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "held_pass/S2/near_boundary",
+   "result": "equal",
+   "mine": false,
+   "theirs": false,
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/outputs/held_arrays.npz (file on disk)",
+   "result": "equal",
+   "mine": "c3f48c0ed633d8b96c9bc85fc3c2ceaff927ca8ff91322943e137c2e7ab37074",
+   "theirs": "c3f48c0ed633d8b96c9bc85fc3c2ceaff927ca8ff91322943e137c2e7ab37074",
+   "kind": "exact"
+  },
+  {
+   "name": "held_pass/outputs/sensitivity_held.json (file on disk)",
+   "result": "equal",
+   "mine": "7443ea25df788714df0f0eb86079711975eb14fb364f16f75921cafddecabe73",
+   "theirs": "7443ea25df788714df0f0eb86079711975eb14fb364f16f75921cafddecabe73",
+   "kind": "exact"
+  },
+  {
+   "name": "held_arrays/keys present in mine",
+   "result": "equal",
+   "mine": [],
+   "theirs": [],
+   "kind": "exact"
+  },
+  {
+   "name": "held_arrays/cosine__r1",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/cosine__gain",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/cosine__other",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/cosine__swap",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/cosine__strict",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/rca__r1",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/rca__gain",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/rca__other",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/rca__swap",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/rca__strict",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B__r1",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B__gain",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B__other",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B__swap",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B__strict",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B0__r1",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B0__gain",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B0__other",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B0__swap",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B0__strict",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B1__r1",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B1__gain",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B1__other",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B1__swap",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/B1__strict",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/aff_fused__r1",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/aff_fused__gain",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/aff_fused__other",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/aff_fused__swap",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/aff_fused__strict",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/aff_cf__r1",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/aff_cf__gain",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/aff_cf__other",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/aff_cf__swap",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/aff_cf__strict",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/r1_fused__r1",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/r1_fused__gain",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/r1_fused__other",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/r1_fused__swap",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/r1_fused__strict",
+   "result": "equal",
+   "mine": "array[36864] float64",
+   "theirs": "array[36864] float64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/cl",
+   "result": "equal",
+   "mine": "array[36864] int64",
+   "theirs": "array[36864] int64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/pair_index",
+   "result": "equal",
+   "mine": "array[36864] int64",
+   "theirs": "array[36864] int64",
+   "kind": "array"
+  },
+  {
+   "name": "held_arrays/seed_index",
+   "result": "equal",
+   "mine": "array[36864] int64",
+   "theirs": "array[36864] int64",
+   "kind": "array"
+  },
+  {
+   "name": "sensitivity_held/N",
+   "result": "equal",
+   "mine": 36864,
+   "theirs": 36864,
+   "kind": "exact"
+  },
+  {
+   "name": "sensitivity_held/n_paintings",
+   "result": "equal",
+   "mine": 9519,
+   "theirs": 9519,
+   "kind": "exact"
+  },
+  {
+   "name": "sensitivity_held/seeds",
+   "result": "equal",
+   "mine": [
+    52,
+    53,
+    54
+   ],
+   "theirs": [
+    52,
+    53,
+    54
+   ],
+   "kind": "exact"
+  },
+  {
+   "name": "sensitivity_held/episodes_sha256/52/emotion__style",
+   "result": "equal",
+   "mine": "f56c357dbfa4f666daf3f2849ce7a6e77676769f62e18ce704c7c7004f770542",
+   "theirs": "f56c357dbfa4f666daf3f2849ce7a6e77676769f62e18ce704c7c7004f770542",
+   "kind": "exact"
+  },
+  {
+   "name": "sensitivity_held/episodes_sha256/52/emotion__genre",
+   "result": "equal",
+   "mine": "58798701e01e4a8e20235252bbf985b52735c0de2a54127221178fc0d6da17d0",
+   "theirs": "58798701e01e4a8e20235252bbf985b52735c0de2a54127221178fc0d6da17d0",
+   "kind": "exact"
+  },
+  {
+   "name": "sensitivity_held/episodes_sha256/52/style__genre",
+   "result": "equal",
+   "mine": "e9c591dca0e082f8c63810430f0ffd0c3262f55f062f1bc33d665423a175db50",
+   "theirs": "e9c591dca0e082f8c63810430f0ffd0c3262f55f062f1bc33d665423a175db50",
+   "kind": "exact"
+  },
+  {
+   "name": "sensitivity_held/episodes_sha256/53/emotion__style",
+   "result": "equal",
+   "mine": "ae0cb9c34dfe55d99cc54862f48725d8ec7a0bcc42b23f723ac6512994422c57",
+   "theirs": "ae0cb9c34dfe55d99cc54862f48725d8ec7a0bcc42b23f723ac6512994422c57",
+   "kind": "exact"
+  },
+  {
+   "name": "sensitivity_held/episodes_sha256/53/emotion__genre",
+   "result": "equal",
+   "mine": "850790fbc11995509550bc9cf061ee2868b5253af892ed9aa40cb09623a9fcaf",
+   "theirs": "850790fbc11995509550bc9cf061ee2868b5253af892ed9aa40cb09623a9fcaf",
+   "kind": "exact"
+  },
+  {
+   "name": "sensitivity_held/episodes_sha256/53/style__genre",
+   "result": "equal",
+   "mine": "88138225cff600134cbd020ba29187afec3bd78062266a795f0156d668595404",
+   "theirs": "88138225cff600134cbd020ba29187afec3bd78062266a795f0156d668595404",
+   "kind": "exact"
+  },
+  {
+   "name": "sensitivity_held/episodes_sha256/54/emotion__style",
+   "result": "equal",
+   "mine": "dc81db77128edd184df2c55a93529d1873f7f805bac1bbbf297d4b2f6cd34508",
+   "theirs": "dc81db77128edd184df2c55a93529d1873f7f805bac1bbbf297d4b2f6cd34508",
+   "kind": "exact"
+  },
+  {
+   "name": "sensitivity_held/episodes_sha256/54/emotion__genre",
+   "result": "equal",
+   "mine": "439425c52220b820954ede4c03cc2f94ee4b4ce30f6fc8822f728fb0382d86f6",
+   "theirs": "439425c52220b820954ede4c03cc2f94ee4b4ce30f6fc8822f728fb0382d86f6",
+   "kind": "exact"
+  },
+  {
+   "name": "sensitivity_held/episodes_sha256/54/style__genre",
+   "result": "equal",
+   "mine": "8d7c415c3d46cf2744891e468d1ac0757a7c11e8aae5a67dc9e75ffa3ac7e6c2",
+   "theirs": "8d7c415c3d46cf2744891e468d1ac0757a7c11e8aae5a67dc9e75ffa3ac7e6c2",
+   "kind": "exact"
+  },
+  {
+   "name": "sensitivity_held/P1/sigma_a2",
+   "result": "equal",
+   "mine": 8.659210753381196,
+   "theirs": 8.659210753381196,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P1/sigma_eps2",
+   "result": "equal",
+   "mine": 420.1183543738188,
+   "theirs": 420.1183543738188,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P1/SE",
+   "result": "equal",
+   "mine": 0.11215472086956765,
+   "theirs": 0.11215472086956765,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P1/x95",
+   "result": "equal",
+   "mine": 0.31403321843478943,
+   "theirs": 0.31403321843478943,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P1/x",
+   "result": "equal",
+   "mine": 0.39613047411131297,
+   "theirs": 0.39613047411131297,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P2/sigma_a2",
+   "result": "equal",
+   "mine": 8.25918251129639,
+   "theirs": 8.25918251129639,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P2/sigma_eps2",
+   "result": "equal",
+   "mine": 409.1397078992219,
+   "theirs": 409.1397078992219,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P2/SE",
+   "result": "equal",
+   "mine": 0.11057237778280687,
+   "theirs": 0.11057237778280687,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P2/x95",
+   "result": "equal",
+   "mine": 0.30960265779185925,
+   "theirs": 0.30960265779185925,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P2/x",
+   "result": "equal",
+   "mine": 0.3905416383288739,
+   "theirs": 0.3905416383288739,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P3/sigma_a2",
+   "result": "equal",
+   "mine": 1.4195629723547245,
+   "theirs": 1.4195629723547245,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P3/sigma_eps2",
+   "result": "equal",
+   "mine": 139.6118270264445,
+   "theirs": 139.6118270264445,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P3/SE",
+   "result": "equal",
+   "mine": 0.06309537274995596,
+   "theirs": 0.06309537274995596,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P3/x95",
+   "result": "equal",
+   "mine": 0.17666704369987665,
+   "theirs": 0.17666704369987665,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P3/x",
+   "result": "equal",
+   "mine": 0.22285285655284442,
+   "theirs": 0.22285285655284442,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P4/sigma_a2",
+   "result": "equal",
+   "mine": 0.0,
+   "theirs": 0.0,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P4/sigma_eps2",
+   "result": "equal",
+   "mine": 175.6986792481523,
+   "theirs": 175.6986792481523,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P4/SE",
+   "result": "equal",
+   "mine": 0.06903717626782965,
+   "theirs": 0.06903717626782965,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P4/x95",
+   "result": "equal",
+   "mine": 0.193304093549923,
+   "theirs": 0.193304093549923,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P4/x",
+   "result": "equal",
+   "mine": 0.24383930657797434,
+   "theirs": 0.24383930657797434,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P5/sigma_a2",
+   "result": "equal",
+   "mine": 0.0,
+   "theirs": 0.0,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P5/sigma_eps2",
+   "result": "equal",
+   "mine": 154.3796488968718,
+   "theirs": 154.3796488968718,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P5/SE",
+   "result": "equal",
+   "mine": 0.06471333708403104,
+   "theirs": 0.06471333708403104,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P5/x95",
+   "result": "equal",
+   "mine": 0.1811973438352869,
+   "theirs": 0.1811973438352869,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P5/x",
+   "result": "equal",
+   "mine": 0.22856750658079764,
+   "theirs": 0.22856750658079764,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P6/sigma_a2",
+   "result": "equal",
+   "mine": 3.0884416159446615,
+   "theirs": 3.0884416159446615,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P6/sigma_eps2",
+   "result": "equal",
+   "mine": 340.70777639034856,
+   "theirs": 340.70777639034856,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P6/SE",
+   "result": "equal",
+   "mine": 0.09830541564256559,
+   "theirs": 0.09830541564256559,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P6/x95",
+   "result": "equal",
+   "mine": 0.27525516379918363,
+   "theirs": 0.27525516379918363,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P6/x",
+   "result": "equal",
+   "mine": 0.3472147280495417,
+   "theirs": 0.3472147280495417,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P7/sigma_a2",
+   "result": "equal",
+   "mine": 1.197340532435266,
+   "theirs": 1.197340532435266,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P7/sigma_eps2",
+   "result": "equal",
+   "mine": 445.6281213636307,
+   "theirs": 445.6281213636307,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P7/SE",
+   "result": "equal",
+   "mine": 0.11068834312742672,
+   "theirs": 0.11068834312742672,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P7/x95",
+   "result": "equal",
+   "mine": 0.3099273607567948,
+   "theirs": 0.3099273607567948,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/P7/x",
+   "result": "equal",
+   "mine": 0.3909512279260712,
+   "theirs": 0.3909512279260712,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/S1/sigma_a2",
+   "result": "equal",
+   "mine": 5.169226640209468,
+   "theirs": 5.169226640209468,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/S1/sigma_eps2",
+   "result": "equal",
+   "mine": 246.9701733704466,
+   "theirs": 246.9701733704466,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/S1/SE",
+   "result": "equal",
+   "mine": 0.08605375654447708,
+   "theirs": 0.08605375654447708,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/S1/x95",
+   "result": "equal",
+   "mine": 0.24095051832453582,
+   "theirs": 0.24095051832453582,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/S1/x2",
+   "result": "equal",
+   "mine": 0.2653037314266229,
+   "theirs": 0.2653037314266229,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/S2/sigma_a2",
+   "result": "equal",
+   "mine": 0.5386102496918705,
+   "theirs": 0.5386102496918705,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/S2/sigma_eps2",
+   "result": "equal",
+   "mine": 75.66339567095812,
+   "theirs": 75.66339567095812,
+   "kind": "rel",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/S2/SE",
+   "result": "equal",
+   "mine": 0.046108973121305935,
+   "theirs": 0.046108973121305935,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/S2/x95",
+   "result": "equal",
+   "mine": 0.1291051247396566,
+   "theirs": 0.1291051247396566,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/S2/x2",
+   "result": "equal",
+   "mine": 0.1421539641329862,
+   "theirs": 0.1421539641329862,
+   "kind": "tol",
+   "abs_diff": 0.0
+  },
+  {
+   "name": "sensitivity_held/sigma_source sha (file on disk)",
+   "result": "equal",
+   "mine": "bc4b0a92d376b2fdf47da2aa08303a5bb2266a29daf85621ca97ec753bef5661",
+   "theirs": "bc4b0a92d376b2fdf47da2aa08303a5bb2266a29daf85621ca97ec753bef5661",
+   "kind": "exact"
+  }
+ ],
+ "time": "2026-10-10 03:55"
+}

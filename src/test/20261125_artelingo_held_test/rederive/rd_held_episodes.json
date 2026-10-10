@@ -1,0 +1,177 @@
+{
+ "time_start": "2026-10-10 03:48",
+ "held_checks": {
+  "groups_equal_prepare": true,
+  "scorer_train_equal_prepare": true,
+  "selection_equal_prepare": true,
+  "train_equal_prepare_split_train": true,
+  "train_val_held_partition_all_rows": true,
+  "held_equal_held_codes": true,
+  "held_codes_sha256": "2901f875e7ad59f9f54509b61352a9cecb0eba310b31357f872219f25e2a12e9",
+  "held_groups_disjoint_train": true,
+  "held_groups_disjoint_val": true,
+  "held_disjoint_selection": true,
+  "held_disjoint_scorer_train": true,
+  "n_held": 61744,
+  "held_sorted": true,
+  "all_ok": true
+ },
+ "value_sets": {
+  "emotion": {
+   "codes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "names": [
+    "amusement",
+    "anger",
+    "awe",
+    "contentment",
+    "disgust",
+    "excitement",
+    "fear",
+    "sadness"
+   ]
+  },
+  "style": {
+   "codes": [
+    0,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    26
+   ],
+   "names": [
+    "Abstract_Expressionism",
+    "Art_Nouveau_Modern",
+    "Baroque",
+    "Color_Field_Painting",
+    "Contemporary_Realism",
+    "Cubism",
+    "Early_Renaissance",
+    "Expressionism",
+    "Fauvism",
+    "High_Renaissance",
+    "Impressionism",
+    "Mannerism_Late_Renaissance",
+    "Minimalism",
+    "Naive_Art_Primitivism",
+    "Northern_Renaissance",
+    "Pointillism",
+    "Pop_Art",
+    "Post_Impressionism",
+    "Realism",
+    "Rococo",
+    "Romanticism",
+    "Symbolism",
+    "Ukiyo_e"
+   ]
+  },
+  "genre": {
+   "codes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "names": [
+    "abstract_painting",
+    "cityscape",
+    "genre_painting",
+    "illustration",
+    "landscape",
+    "nude_painting",
+    "portrait",
+    "religious_painting",
+    "sketch_and_study",
+    "still_life"
+   ]
+  }
+ },
+ "value_sets_equal_phase1": true,
+ "value_set_sizes_ok": true,
+ "held_pool_rows": 44385,
+ "dev_values_eligible_on_held": {
+  "emotion": true,
+  "style": true,
+  "genre": true
+ },
+ "held_eligible_outside_dev": {
+  "emotion": [],
+  "style": [
+   "New_Realism"
+  ],
+  "genre": []
+ },
+ "seeds": {
+  "52": {
+   "n_per_pair": 4096,
+   "episodes_sha256": {
+    "emotion__style": "f56c357dbfa4f666daf3f2849ce7a6e77676769f62e18ce704c7c7004f770542",
+    "emotion__genre": "58798701e01e4a8e20235252bbf985b52735c0de2a54127221178fc0d6da17d0",
+    "style__genre": "e9c591dca0e082f8c63810430f0ffd0c3262f55f062f1bc33d665423a175db50"
+   }
+  },
+  "53": {
+   "n_per_pair": 4096,
+   "episodes_sha256": {
+    "emotion__style": "ae0cb9c34dfe55d99cc54862f48725d8ec7a0bcc42b23f723ac6512994422c57",
+    "emotion__genre": "850790fbc11995509550bc9cf061ee2868b5253af892ed9aa40cb09623a9fcaf",
+    "style__genre": "88138225cff600134cbd020ba29187afec3bd78062266a795f0156d668595404"
+   }
+  },
+  "54": {
+   "n_per_pair": 4096,
+   "episodes_sha256": {
+    "emotion__style": "dc81db77128edd184df2c55a93529d1873f7f805bac1bbbf297d4b2f6cd34508",
+    "emotion__genre": "439425c52220b820954ede4c03cc2f94ee4b4ce30f6fc8822f728fb0382d86f6",
+    "style__genre": "8d7c415c3d46cf2744891e468d1ac0757a7c11e8aae5a67dc9e75ffa3ac7e6c2"
+   }
+  }
+ },
+ "distinct_nine": true,
+ "n_recorded_e1_hashes": 24,
+ "e1_files": [
+  "baselines_seed42.json",
+  "baselines_seed43.json",
+  "baselines_seed45.json",
+  "baselines_seed47.json",
+  "baselines_seed48.json",
+  "baselines_seed49.json",
+  "baselines_seed50.json",
+  "baselines_seed51.json"
+ ],
+ "none_in_e1": true,
+ "episodes_npz_sha256": "ee974ce795c4b2ac74e4f2e72ea4ceebdebf3f8bc3875a463d315ecbbe3d5f3d",
+ "time_end": "2026-10-10 03:49"
+}
