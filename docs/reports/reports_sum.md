@@ -141,6 +141,12 @@ To open an archived line: `git worktree add ../CoSiR-<name> archive/<branch>`.
 | 09-03 | [combiner_architecture_fullscale_validation](auto/buddy/2026-09-03_combiner_architecture_fullscale_validation.md) | Does the combiner win survive at 500k scale? |
 | 09-15 | [condition_space_audit](auto/buddy/2026-09-15_condition_space_audit.md) | Condition-space steerability audit (Exp 17.1) |
 
+## auto/process: how we work
+
+| Date | Report | What it is |
+|---|---|---|
+| 11-26 | [engine_switch_check](auto/process/2026-11-26_engine_switch_check.md) | Engine switch check: cost and time of rounds 4 and 5 (Superpowers) against round 6 (Matt's chain); round 6 cost about twice round 5 and took 2.5 times as long, the engine was not the cause; eight proposed changes |
+
 ## Pilots
 
 | Folder | Files | Contents |

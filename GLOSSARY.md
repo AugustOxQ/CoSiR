@@ -26,3 +26,4 @@ method-A era (factors, agreement rule, pseudo-partition, KISSME, …) are in App
 | RCA | relevant component analysis: a classic pair-metric baseline that re-weights CLIP features by the covariance of the episode's example-pair differences (`rca_term`); condition-aware, fused with cosine at a frozen λ like every baseline |
 | DTS, DTS-CF, DTS-N | the describe-then-score comparator, its matched control, and its variant told the true aspect name (a privileged ceiling) |
 | Holm | Holm's step-down correction across a read's checks, holding the family-wise error at the stated level (round 6: one-sided α = 0.025 over P1 to P7) |
+| dollar weight | token use priced at API rates (cache reads, cache writes and output weighted by their price) to compare runs of agent work; not what the Max plan charges ([engine switch check](docs/reports/auto/process/2026-11-26_engine_switch_check.md)) |
