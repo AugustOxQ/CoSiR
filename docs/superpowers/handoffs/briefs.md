@@ -8,3 +8,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-10-process-build-2-handoff.md
 - New chat: tab 'process build 2', session c4e7312f-6c65-42ab-809f-34227a3e32ea
 
+
+[brief] CoSiR: process build 2 -> close (2026-10-10 16:46 Amsterdam)
+- Done: process build closed: model and effort per role, `wait-guard`, lean research build, briefs and the CoSiR main chat (dry run passed: brief delivered, tab placed, BLOCKED caught).
+- State: estimate for a round like round 6: about $440 to $520 instead of $706.
+- Next: round 7 from the `r6 read` chat, under the new rules; after it, the D4 and D5 checks against round 6.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-10-process-build-close-handoff.md
+- New chat: none; CoSiR main opened beside it
