@@ -44,6 +44,10 @@
    `claude-paper` pattern: `claude --settings '{"enabledPlugins":{"<plugin>@<marketplace>":true}}'`); or skip. The user
    decides each; record it in `opt-in/unused/README.md` (or a new "on" list), sync and commit `claude-config`.
 
+4. **Minor, from the last `wrapup-check` (23:28):** propose to the user (a) a chat cleanup of the 25 cleanable
+   sessions (mostly the context chat's probes) and (b) the routing review for Codex CLI 0.161.0 to 0.162.1; our
+   suggestion: no rule edit, then `routing-check --accept`.
+
 ## 5. Code and pitfalls
 
 - **Plugin skills ignore `skillOverrides`**: a plugin's skills come and go with the plugin (tested 2026-10-10).
