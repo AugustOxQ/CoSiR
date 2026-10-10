@@ -71,9 +71,9 @@ What changed where (`claude-config` `df45e1b`, `tools` `2d698cf`):
 - **A path rule delivered by a Write** arrives in the tool result. Haiku flagged a test "codeword" rule as unexpected
   and ignored it, but followed the real `report-writing.md` (and Opus took it plainly). The `docs-layout.md` pointer
   covers a report written before any file is read.
-- **A subagent's Read of a CLAUDE.md file asks for permission** in the default permission mode (`claude -p` denied
-  it); in auto mode, which loop chats inherit, it worked. A chat started in default mode would see a `worker` stop at
-  that read.
+- **A subagent's Read of a CLAUDE.md file asked for permission** in the default permission mode (`claude -p` denied
+  it); in auto mode it worked. Fixed at 23:26 on the user's ok: `settings.json` allows `Read(//project/**/CLAUDE.md)`;
+  a fresh default-mode test then read it with no permission denial.
 - **`/context` in `claude -p` undercounts** Claude Code's own tool schemas; take totals from the first usage record
   (`--output-format json`, or the transcript).
 - **The Bash tool's shell is zsh**: `echo ====` fails (`=` expansion); quote it.
