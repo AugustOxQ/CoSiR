@@ -60,19 +60,18 @@ which act on the same tokens. Build time should drop with the code written; we d
   `loop-next` calls log each brief in `briefs.md`; with no live main chat, tabs open in the caller's workspace.
 - **CoSiR main** was opened at 16:46 and closed at the user's request at 18:07 (the "CoSiR loop" workspace), until
   the user has read `r6 read` and this build. Reopen it with the command in `loop-chats.md`, "The main chat".
-- **Next process changes** (user, 2026-10-10 18:07; not built, the user's answers pending; our recommendation beside
-  each):
-  1. A run mode on the automation, `day` or `night`. Day: the user checks often, so build and run chats may ask when
-     unsure. Night: today's unattended behaviour, aim for results. Ours: a project-level mode the main chat sets on the
-     user's word, read by each phase chat before it asks; in day mode a question carries a default.
-  2. A phone ping from the main chat each time a phase chat closes ("<project>: <chat> closed", with the brief's line).
-     Ours: Claude's push notification (reaches the phone when Remote Control is on), tested once; Slack as fallback.
-  3. Answered: the model and effort rule applies to every chat that calls the Agent tool, not only the loop.
-  4. Codex first when its five-hour window has room (already the rule since 2026-10-10), plus a Claude-to-Codex model
-     mapping. Ours: a Codex column in the routing table of `agent-routing.md`.
-- **After round 7** (D4, D5): compare the engine again; the quality check against round 6 (final-review findings by
-  severity, any defect that reached the run); a silent wrong number from plumbing that reaches the final review sends
-  that kind of code back to unit tests. Then check this estimate with `loop-cost --loop r7`.
+- **Next process changes, built 2026-10-10 18:10 to 18:25** (user's ideas of 18:07; decisions: run mode and its
+  trigger, push always (user); default after 30 minutes and the Codex column (user, after the recommendation)):
+  1. `run-mode` (`/project/tools`): a project is in `day` or `night` (unset: night). In day mode a build or run chat
+     may ask, pushes the question to the phone and goes on with its default after 30 minutes; the main chat sets
+     night or day on the user's words (`loop-chats.md`, `main_chat_start.md`, `research-loop.md`, the user's doc).
+  2. The main chat pushes on every chat close and on BLOCKED, SILENT, GONE, plus a Herdr desktop notification: a test
+     push came back "Not sent — this terminal is active"; Claude Code skips pushes while the user is at the terminal
+     and no setting forces them. A Slack copy would make the phone ping unconditional (the user's call).
+  3. The model and effort rule applies to every chat that calls the Agent tool.
+  4. A Codex column in the routing table of `agent-routing.md`.
+  Fresh-session test (Haiku) passed after naming `run-mode` in `research-loop.md`.
+- **Next:** the user wants to optimize the memory and settings that load into every chat, after this update.
 
 ## 5. Pitfalls found
 
