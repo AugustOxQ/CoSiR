@@ -23,3 +23,6 @@ method-A era (factors, agreement rule, pseudo-partition, KISSME, …) are in App
 | seed 42, fresh seeds | the development episode seed / new episode seeds for a test (constitution C4) |
 | held read | one pre-registered scoring of the held rows by one final method and backbone, ledgered (constitution C5) |
 | describe-then-score comparator | *(new, round 6)* a vision-language model states in a phrase what an episode's supports share and its contrasts lack; CRL (NeurIPS 2025) turns the phrase into a text basis on frozen CLIP, where query and candidates are compared; fused with cosine like every baseline |
+| RCA | relevant component analysis: a classic pair-metric baseline that re-weights CLIP features by the covariance of the episode's example-pair differences (`rca_term`); condition-aware, fused with cosine at a frozen λ like every baseline |
+| DTS, DTS-CF, DTS-N | the describe-then-score comparator, its matched control, and its variant told the true aspect name (a privileged ceiling) |
+| Holm | Holm's step-down correction across a read's checks, holding the family-wise error at the stated level (round 6: one-sided α = 0.025 over P1 to P7) |
