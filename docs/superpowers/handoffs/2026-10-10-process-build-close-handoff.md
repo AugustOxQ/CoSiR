@@ -60,14 +60,13 @@ which act on the same tokens. Build time should drop with the code written; we d
   `loop-next` calls log each brief in `briefs.md`; with no live main chat, tabs open in the caller's workspace.
 - **CoSiR main** was opened at 16:46 and closed at the user's request at 18:07 (the "CoSiR loop" workspace), until
   the user has read `r6 read` and this build. Reopen it with the command in `loop-chats.md`, "The main chat".
-- **Next process changes, built 2026-10-10 18:10 to 18:25** (user's ideas of 18:07; decisions: run mode and its
+- **Next process changes, built 2026-10-10 18:10 to 18:22** (user's ideas of 18:07; decisions: run mode and its
   trigger, push always (user); default after 30 minutes and the Codex column (user, after the recommendation)):
   1. `run-mode` (`/project/tools`): a project is in `day` or `night` (unset: night). In day mode a build or run chat
      may ask, pushes the question to the phone and goes on with its default after 30 minutes; the main chat sets
      night or day on the user's words (`loop-chats.md`, `main_chat_start.md`, `research-loop.md`, the user's doc).
-  2. The main chat pushes on every chat close and on BLOCKED, SILENT, GONE, plus a Herdr desktop notification: a test
-     push came back "Not sent — this terminal is active"; Claude Code skips pushes while the user is at the terminal
-     and no setting forces them. A Slack copy would make the phone ping unconditional (the user's call).
+  2. The main chat pushes on every chat close and on BLOCKED, SILENT, GONE; a test
+     push reached the user's phone although the tool reported "Not sent — this terminal is active".
   3. The model and effort rule applies to every chat that calls the Agent tool.
   4. A Codex column in the routing table of `agent-routing.md`.
   Fresh-session test (Haiku) passed after naming `run-mode` in `research-loop.md`.
