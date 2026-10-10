@@ -27,7 +27,7 @@ Condition gain (correct condition minus swapped, same target): AFF +3.06 [+2.87,
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>
 
-**Our reading.** The pooled claim holds: GO, and the margins over B, B′(A0) and the control are about +0.6 on each of the three seeds (+0.58 to +0.66). The seeds draw on nearly the same paintings, so this agreement is not an independent replication; the pooled interval, clustered on anchor paintings, already accounts for it. The intervals stay above zero when candidate or target paintings are resampled too (P4's lower bound is +0.45, or +0.40 with targets). The size is modest, and it comes from emotion × style and emotion × genre (+0.59 and +1.64 over B′(A0)); style × genre loses. We are fairly sure of the pooled sign over B, B′(A0) and the control, not of any margin over B′(A1) or R1, and less sure the margin would survive another dataset.
+**Our reading.** The pooled claim holds: GO, and the margins over B, B′(A0) and the control are about +0.6 on each of the three seeds (+0.58 to +0.66). The seeds draw on nearly the same paintings, so this agreement is not an independent replication; the pooled interval is clustered on anchor paintings only and does not account for shared candidate and target paintings; the two-way check (Analysis) widens it, and its lower bounds stay above zero. The intervals stay above zero when candidate or target paintings are resampled too (P4's lower bound is +0.45, or +0.40 with targets). The size is modest, and it comes from emotion × style and emotion × genre (+0.59 and +1.64 over B′(A0)); style × genre loses. We are fairly sure of the pooled sign over B, B′(A0) and the control, not of any margin over B′(A1) or R1, and less sure the margin would survive another dataset.
 
 **Our recommendation.** Option (a), design L, since the style × genre loss is the clearest weakness and the Fri 2026-10-16 go/no-go needs to know whether it is fixable, with option (b) drafted in parallel from this report. This is our view; the user decides.
 
@@ -37,7 +37,8 @@ Condition gain (correct condition minus swapped, same target): AFF +3.06 [+2.87,
 
 - **Stages and types:** (1) baseline stage on development seed 42: build and tune the describe-then-score comparator, refit the classifiers, store every scorer's picks, reproduce round 3's seed-42 numbers (preparation, no claim); (2) the claim test on held rows (type: claim test, full loop). Re-derivation by an independent agent, then the descriptive pass.
 - **Data and seeds:** ArtELingo held rows (the held split, 61,744 rows from 12,281 paintings, disjoint from selection and scorer-train rows); episode seeds 52, 53, 54; seed 42 only for the frozen picks, DTS tuning and the regression check. The seeds are ledgered as held seeds of row H5.
-- **Code:** build merged into main at df421a7 (15 tickets, three-part final review, one fix wave, scoped re-review); run commits to b71e7b3. Decision rule SHA-256 prefix 7444a5e338; the runner `run_r6_held.py` a82ca8bc128e equals the SHA recorded in ledger row H5 before the read. The read ran locally on CPU (620 s, one attempt, no flag). DAS6 node401, node402 and node408 ran every GPU job: the seed-42 DTS and smoke jobs (2026-10-09 23:48 to 2026-10-10 03:24), the 40 held jobs (nine GPUs, 03:45 to 07:44: DTS verbaliser and listing, FT features, the seed-52 MLLM reranker) and six rebuilt held listing shards (07:54 to 08:10).
+- **Code:** build merged into main at df421a7 (15 tickets, three-part final review, one fix wave, scoped re-review); run commits to b71e7b3. Decision rule SHA-256 prefix 7444a5e338; the runner `run_r6_held.py` a82ca8bc128e equals the SHA recorded in ledger row H5 before the read. The read ran locally on CPU (620 s, one attempt, no flag).
+- **DAS6 jobs:** node401, node402 and node408 ran every GPU job: the seed-42 DTS and smoke jobs (2026-10-09 23:48 to 2026-10-10 03:24), the 40 held jobs (nine GPUs, 03:45 to 07:44: DTS verbaliser and listing, FT features, the seed-52 MLLM reranker) and six rebuilt held listing shards (07:54 to 08:10).
 - **Pre-read checks (rule §6), all passed:** refit reproduces eight arrays bit for bit; picks equal their targets; regression 131 items, 0 failed; DTS built within its 24-hour budget with no stop; smoke passed; re-derivation phase 1 (seed 42) 389 of 389 agree.
 
 ## Results
@@ -103,9 +104,9 @@ Each of the P3 to P5 per-seed intervals excludes zero (lower bounds +0.35 to +0.
 | DTS-N (told the true aspect name; the rule's ceiling variant, below DTS and cosine on R@1 here) | 12.15 | +7.29 [+7.03, +7.53] |
 | FT-LP / FT-LB / FT-LoRA (fine-tuned CLIP) | 15.45 / 15.32 / 15.80 | +3.99 / +4.11 / +3.64 (each interval lower bound above +3.4) |
 | MLLM (Qwen3-VL-8B reranker; seed 52 only, 12,288 episodes) | 14.50 | +4.94 [+4.56, +5.33] |
-| PM (the nine other condition-free scorers of `run_baselines.py`; gain -0.04 to +0.19) | 12.99 to 13.25 | +6.19 to +6.44 (lower bounds at least +5.96) |
+| PM (the nine other scorers of `run_baselines.py`, each at its seed-42 λ; gain -0.04 to +0.19) | 12.99 to 13.25 | +6.19 to +6.44 (lower bounds at least +5.96) |
 
-**Swap success** (both targets reorder with the condition; the condition-free scorers are 0 by construction). On it the privileged DTS-N and the MLLM reranker are above AFF, and R1 is level with it:
+**Swap success** (both targets reorder with the condition; the condition-free scorers are 0 by construction). On it the privileged DTS-N and the MLLM reranker are above AFF, and R1 is slightly above it (0.17 points):
 
 | Scorer | Swap success (%) | AFF minus it |
 |---|---|---|
@@ -120,7 +121,7 @@ DTS parsing failures: one short listing in all 36,864 episodes (seed 54, conditi
 
 **Diagnostics** (descriptive):
 
-- **Gate shares.** At τ_0, AFF's gate opens on 54.50% of episodes (78.76% for condition a, 30.23% for b) and R1's on 99.99%; at τ_2, 35.27% and 50.01%. AFF's frozen cells use τ_0 on one parity half and τ_2 on the other; R1's use τ_2 on both.
+- **Gate shares.** At τ_0, AFF's gate opens on 54.50% of episodes (78.76% for condition a, 30.23% for b) and R1's on 99.99%; at τ_2, 35.27% and 50.01%. AFF's frozen fused cells use τ_0 on one parity half and τ_2 on the other; R1's fused cells use τ_2 on both.
 - **Pick accuracy** against the told mapping: 51.78% [51.44, 52.15]. Chance is 33.33% for a uniform pick (R3 rule D14); always picking the image grouping, the told answer in four of the six pair and condition cells, would score 66.67% (style × genre condition a: 12.82%).
 - **Redundancy.** Affect is the least redundant grouping in both directions on all three seeds (affect 0.35 to 0.38, image and caption 0.62 to 0.72).
 - **Two-way bootstrap.** It widens each interval by a factor of 1.05 to 1.08 when candidate paintings are resampled (the 13 candidates' weights averaged), and by 1.39 to 1.45 when the two target paintings are resampled. Under both, the lower bounds stay above zero for P1 to P7 (the smallest, P4: +0.45 and +0.40), and the S1 and S2 intervals still include zero.
