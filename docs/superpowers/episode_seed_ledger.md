@@ -12,5 +12,6 @@ pre-registered A′. Held rows have their own ledger (`held_ledger.md`).
 | 46 | spent | Qwen3-VL-8B-Instruct MLLM probe, 600 per pair (2026-10-03, node404; addendum `src/test/20261106_mllm_probe_8b/PREREGISTRATION.md`): works = False |
 | 47, 48 | test (spent) | as seed 45 (2026-10-04) |
 | 49, 50, 51 | test (spent) | Reader-fix round 3 fresh-seed test of AFF (one-sided affect steering on R1) with R1 beside it, built 2026-10-06 21:00 to 21:08 with `run_baselines.py`, hash-checked against seeds 42, 43, 45, 47, 48 (`src/test/20261121_round3_affect_gate/`) |
-| 52 and later | free | none |
-| 9001, 9002, 9003 | smoke | Wiring smoke only (64 episodes per pair, `run_baselines.py --smoke`, written to `results/smoke/`), round 3's end-to-end test (2026-10-06); never results |
+| 52, 53, 54 | held (H5) | Round 6 held read of AFF on held rows (not selection rows), 4,096 episodes per pair, built 2026-10-10 03:35 to 03:43 by `run_r6_held.py --mode held`; the nine per-pair SHA-256s are in `held_ledger.md` row H5; also the held GPU jobs of rule §8.3 (verbaliser and listing on 52 to 54, reranker on 52) (`src/test/20261125_artelingo_held_test/`) |
+| 55 and later | free | none |
+| 9001, 9002, 9003 | smoke | Wiring smoke only (64 episodes per pair, `run_baselines.py --smoke`, written to `results/smoke/`), round 3's end-to-end test (2026-10-06); round 6's smoke (2026-10-10, `run_r6_smoke.py`, under that folder's `results/smoke/`); never results |
