@@ -148,7 +148,23 @@
     "row": "H5",
     "script_sha256": "a82ca8bc128eb344a7bdda623e106701d0c69a6c63894eb1a1b5b2f818775e4d"
    },
-   "episodes_sha256": {}
+   "episodes_sha256": {
+    "52": {
+     "emotion__style": "f56c357dbfa4f666daf3f2849ce7a6e77676769f62e18ce704c7c7004f770542",
+     "emotion__genre": "58798701e01e4a8e20235252bbf985b52735c0de2a54127221178fc0d6da17d0",
+     "style__genre": "e9c591dca0e082f8c63810430f0ffd0c3262f55f062f1bc33d665423a175db50"
+    },
+    "53": {
+     "emotion__style": "ae0cb9c34dfe55d99cc54862f48725d8ec7a0bcc42b23f723ac6512994422c57",
+     "emotion__genre": "850790fbc11995509550bc9cf061ee2868b5253af892ed9aa40cb09623a9fcaf",
+     "style__genre": "88138225cff600134cbd020ba29187afec3bd78062266a795f0156d668595404"
+    },
+    "54": {
+     "emotion__style": "dc81db77128edd184df2c55a93529d1873f7f805bac1bbbf297d4b2f6cd34508",
+     "emotion__genre": "439425c52220b820954ede4c03cc2f94ee4b4ce30f6fc8822f728fb0382d86f6",
+     "style__genre": "8d7c415c3d46cf2744891e468d1ac0757a7c11e8aae5a67dc9e75ffa3ac7e6c2"
+    }
+   }
   }
  ]
 }
