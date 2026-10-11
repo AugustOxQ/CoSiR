@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Design L Plan</title>
+<link rel="stylesheet" href="htmlplan.css">
+<script src="htmlplan.js" defer></script>
+<style data-mock-shared>
+  .ui { font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1c1b19; background: #fff; border: 1px solid #ddd8cc; border-radius: 10px; overflow: hidden; }
+  .ui .hd { padding: 9px 14px; border-bottom: 1px solid #eee9dd; font-weight: 650; display: flex; gap: 8px; align-items: baseline; } .ui .hd small { color: #8a8578; font-weight: 400; }
+  .ui .ln { padding: 8px 14px; border-bottom: 1px solid #f3efe6; color: #5f5a4f; } .ui .ln b { color: #1c1b19; font-weight: 600; }
+  .ui .ok { color: #1f7a52; font-weight: 650; } .ui .bad { color: #b42318; font-weight: 650; } .ui .warn { color: #a15c07; font-weight: 650; } .ui .dim { color: #8a8578; }
+</style>
+<body>
+
+<header>
+  <h1>Design L from the Style Source</h1>
+  <doc-changes new="10" changed="2"></doc-changes>
+  <details class="thread"><summary>Why · 5 quotes</summary>
+    <doc-quote via="doc" from="the user" at="2026-10-11">can we solve style × genre without touching the grouping source?</doc-quote>
+    <doc-quote via="transcript" from="the user" at="2026-10-11">one thing about CSD is that it indeed increase the style performance but it hurts other two, and even after the increase the style x genere is still worse than the condition-free one. So I think we test first whether CSD can be used?</doc-quote>
+    <doc-quote via="transcript" from="the user" at="2026-10-11">we need to keep the encoder selections from "too specific", because otherwise this is not generalizable to other datasets with different aspects.</doc-quote>
+    <doc-quote via="doc" from="the user" at="2026-10-11">we may work beyond the ArtELingo paper, toward a bigger method paper; if the method fails, we drop back to the ArtELingo paper</doc-quote>
+    <doc-quote via="doc" from="step 3 facts brief" at="2026-10-11">B′(A1) is the bar to beat on style × genre: seed 42 R@1 21.42 against AFF 20.74 (computed, -0.68); on held rows AFF minus B′(A1) is -1.24 [-1.51, -0.96] …</doc-quote>
+  </details>
+</header>
+
+<main>
+<doc-plan>
+
+<!-- ═════ 1 · ceiling check ═════ -->
+<doc-claim>
+  <p>We run a ceiling check with the 27 true styles first.</p>
+  <doc-mock frame="terminal" title="r7_ceiling.py · seed 42" w="470" caption="Ceiling check: the scorer is told which grouping each condition uses; the style grouping comes from the 27 true WikiArt styles."><template><span class="dim">$</span> python r7_ceiling.py --seed 42   <span class="dim"># output, sketch</span>
+<b>Ceiling check</b> · style × genre · seed 42
+told: 27 true styles, CLIP heads place items
+margin over matched control  <b>+?.??</b> [?, ?]  R@1
+  <span class="r">stop </span> below +0.5, or lower bound ≤ 0
+  <span class="y">weak </span> +0.5 to +1.0: run goes on, flagged
+  <span class="g">clear</span> +1.0 or more
+<span data-ref="ref"><span class="dim">today, told, over its matched control:</span>
+  CSD grouping            +0.13 [−0.35, +0.60]
+  no style grouping       −0.40 [−0.64, −0.16]</span></template>
+    <doc-pin ref="ref" anchor="tr" title="Source: sp_tables.txt">Seed 42, no-caption spike folder, told rows; R@1 points, 95% interval.</doc-pin>
+  </doc-mock>
+  <doc-ask id="m1">
+    <p>Which ceilings do we run?</p>
+    <label><input type="radio" name="m1" value="probe+true" checked> Main ceiling with probe placement; a second one with true labels on development items, descriptive only</label>
+    <label><input type="radio" name="m1" value="probe"> Probe placement only <small>no second ceiling</small></label>
+    <label><input type="radio" name="m1" value="true"> True labels on development items as the main ceiling <small>a bound no CLIP head can reach</small></label>
+  </doc-ask>
+
+  <doc-claim>
+    <p>The true-style grouping enters as one more grouping.</p>
+    <doc-calls title="Ceiling check" caption="Only the style grouping is new; heads, fusion and matched control are round 2's.">
+<script type="text/plain">
++ **r7_ceiling.main**(seed=42)                          @ src/test/20261126_design_l_style_source/r7_ceiling.py:1
++   artelingo_aspect_labels(data)["style"]              @ src/data/artelingo_splits.py:46   -- 27 styles, scorer-train rows
++   merge_small(labels, X, 200)                         @ src/test/20261111_community_told_oracle/run_told_oracle.py:63
++   fit_one_head(ctx, lab, scorer_train, 60000)         @ src/test/20261111_community_told_oracle/run_told_oracle.py:178   -- CLIP probes
++   **told_probs**(parts, pair_index)                   @ src/test/20261126_design_l_style_source/r7_ceiling.py:1   -- one-hot, as onehot_probs
++   run_one(bundle, "L_true", "told", P, …)             @ src/test/20261119_no_caption_csd_spike/sp_run.py:73   -- fused and matched control
+</script>
+    </doc-calls>
+    <doc-claim at="src/test/20261119_no_caption_csd_spike/sp_run.py:73">
+      <p><b>sp_run.py:73</b> · run_one()</p>
+      <doc-code src="src/test/20261119_no_caption_csd_spike/sp_run.py" lines="73-83" hl="77,81">
+        <doc-pin line="77" title="P: a one-hot on the told grouping"></doc-pin>
+        <doc-pin line="81" tone="ok" title="Fused score and its matched control"></doc-pin>
+      </doc-code>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>The stop rule reads the margin and its 95% lower bound.</p>
+    <doc-code title="r7_ceiling.py · sketch" lang="py">
+<script type="text/plain">
+STOP_BELOW, CLEAR_FROM = 0.5, 1.0     # R@1 points, fixed before the read
+
+def ceiling_zone(margin: float, lo95: float) -> str:
+    """Style x genre, seed 42: told true styles minus its matched control."""
+    if margin < STOP_BELOW or lo95 <= 0:
+        return "stop"     # design L stops here
+    if margin < CLEAR_FROM:
+        return "weak"     # run goes on; flag on top of the report, phone note
+    return "clear"
+</script>
+      <doc-pin line="8" tone="warn" title="Weak zone: +0.5 to +1.0">The run chat flags it and sends a note to the phone.</doc-pin>
+    </doc-code>
+    <doc-note tone="info"><strong>Decided</strong> (user, 2026-10-11): stop below +0.5, with a weak zone from +0.5 to +1.0. Our recommendation was +1.0, so the two differ.</doc-note>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ 2 · new groupings ═════ -->
+<doc-claim>
+  <p>Each new style grouping gets its own reader and two scorers.</p>
+  <doc-flow caption="Green is new. CSD is a published style encoder; Leiden, a graph clustering method, groups each source.">
+<script type="text/plain">
+csd = CSD style / ViT-L [db]
+img = CLIP image / ViT-B/32 [db]
+pt = Patch tokens / new, GPU [db]
++ res = CSD residual / ridge [green]
++ cut = CSD cut / w 0 and 0.5 [green]
++ gen = Generic / 2 kinds [green]
++ hd = CLIP heads / image, caption [green]
++ rd = Reader / round 1 [green]
++ sc = Two scorers / R1, ext. AFF [green]
+| csd | img | pt  |
+| res | cut | gen |
+| .   | hd  | .   |
+| .   | rd  | .   |
+| .   | sc  | .   |
+csd -> res
+img -> res : regress out
+csd -> cut
+img -> cut : groups to cut
+img -> gen
+pt -> gen
+res -> hd
+cut -> hd
+gen -> hd
+hd -> rd : per grouping set
+rd -> sc
+</script>
+  </doc-flow>
+  <doc-note tone="info"><strong>Decided</strong> (user, 2026-10-11): design L from the style source, as a new idea with the full loop. First CSD without its genre part, then generic sources. A wider screen of new style encoders is parked.</doc-note>
+  <doc-ask id="m6">
+    <p>Where does the round's code live?</p>
+    <label><input type="radio" name="m6" value="r7" checked> <code>src/test/20261126_design_l_style_source/</code>, module prefix <code>r7_</code></label>
+    <label><input type="radio" name="m6" value="new"> A new dated folder <small>the step 3 files stay where they are</small></label>
+  </doc-ask>
+
+  <doc-claim>
+    <p>CSD loses its genre part in two label-free ways.</p>
+    <doc-code title="r7_sources.py · sketch" lang="py">
+<script type="text/plain">
+def ridge_residual(csd, clip_img, fit_rows):
+    """CSD minus what the CLIP image embedding predicts."""
+    model = RidgeCV(alphas=np.logspace(-2, 3, 6)).fit(clip_img[fit_rows], csd[fit_rows])
+    return unit(csd - model.predict(clip_img))       # then Leiden at the defaults
+
+def cross_cut_graph(x_p, image_group_p, w_inside, k=20):
+    """kNN graph of one vector per painting; an edge inside one CLIP image
+    group gets weight w_inside (0 removes it, 0.5 halves it)."""
+    graph = knn_union_graph(unit(x_p), k)          # as run_sweep, unweighted
+    a, b = np.array(graph.get_edgelist()).T
+    same = image_group_p[a] == image_group_p[b]
+    graph.es["weight"] = np.where(same, w_inside, 1.0)
+    return graph                                   # Leiden with weights="weight"
+</script>
+      <doc-pin line="3" title="Fit on scorer-train paintings only"></doc-pin>
+      <doc-pin line="7" title="The reader's CLIP image grouping, 64 groups"></doc-pin>
+    </doc-code>
+    <doc-ask id="m2">
+      <p>Which CSD variants enter the screen?</p>
+      <label><input type="checkbox" name="m2" value="residual" checked> Ridge residual, Leiden at the defaults</label>
+      <label><input type="checkbox" name="m2" value="cut0" checked> CSD graph, edges inside one CLIP image group at weight 0</label>
+      <label><input type="checkbox" name="m2" value="cut05" checked> The same at weight 0.5</label>
+      <label><input type="checkbox" name="m2" value="both"> Residual first, then the cut at weight 0 <small>the fourth and last slot</small></label>
+      <p>Raw CSD stays as the reference. Four variants at most.</p>
+    </doc-ask>
+    <doc-claim at="src/test/20261116_grouping_step1_style/run_step1.py:322">
+      <p><b>run_step1.py:322</b> · painting_grouping()</p>
+      <doc-code src="src/test/20261116_grouping_step1_style/run_step1.py" lines="322-336" hl="330,332,335">
+        <doc-pin line="330" title="Residual vectors enter here"></doc-pin>
+        <doc-pin line="332" title="The cut weights go on this graph"></doc-pin>
+        <doc-pin line="335" tone="ok" title="Leiden defaults: resolution 1.0, seed 42"></doc-pin>
+      </doc-code>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Generic sources use only CLIP, with the image direction removed.</p>
+    <doc-code title="r7_sources.py · sketch" lang="py">
+<script type="text/plain">
+def clip_cut(clip_img_p, image_group_p):
+    """A second CLIP image grouping, built to cut across the first."""
+    return leiden(cross_cut_graph(clip_img_p, image_group_p, w_inside=0.0))
+
+def patch_stats(tok, img, P):
+    """tok: (49, 512) projected ViT-B/32 patch tokens; img: (512,) unit image
+    embedding; P: (512, 64) PCA basis fit on scorer-train images."""
+    tok = tok - np.outer(tok @ img, img)   # remove the image direction
+    z = tok @ P
+    mu, sd = z.mean(0), z.std(0)           # colour and tone moments
+    c = z - mu
+    gram = (c.T @ c / len(c))[IU64]        # texture without layout: 2,080 values
+    return unit(np.concatenate([mu, sd, gram]))   # then Leiden at the defaults
+</script>
+      <doc-pin line="8" tone="info" title="One pass over 61,402 images on the local GPU, under the lock"></doc-pin>
+    </doc-code>
+    <doc-note tone="info"><strong>Decided</strong> (user, 2026-10-11): the encoders are fixed in advance and chosen without the target dataset's aspect labels. The grouping step knows nothing of aspects.</doc-note>
+  </doc-claim>
+
+  <doc-claim>
+    <p>CLIP heads place items in each new grouping.</p>
+    <doc-code src="src/test/20261111_community_told_oracle/run_told_oracle.py" lines="178-190" hl="185,187" caption="Round 1's head recipe, unchanged: 60,000 scorer-train rows per grouping.">
+      <doc-pin line="185" title="CLIP image and caption features only"></doc-pin>
+      <doc-pin line="187" tone="info" title="Raw CSD reached 85.10% image, 40.41% caption">Held-out accuracy, 10,000 check rows (step1_heads_style.txt).</doc-pin>
+    </doc-code>
+    <doc-ask id="m3">
+      <p>What places items into the new groupings?</p>
+      <label><input type="radio" name="m3" value="clip" checked> CLIP logistic heads for images and captions; no CSD features at scoring time</label>
+      <label><input type="radio" name="m3" value="csdimg"> A CSD image head, CLIP for captions <small>images 91.67% against 85.10% (step1_heads_style.txt); CSD at scoring</small></label>
+    </doc-ask>
+  </doc-claim>
+
+  <doc-claim>
+    <p>We retrain the reader for each grouping set with round 1's recipe.</p>
+    <doc-calls title="One reader per grouping set" caption="Each set is affect, CLIP image, CLIP caption and one new style grouping.">
+<script type="text/plain">
++ **r7_reader.main**(variant)                           @ src/test/20261126_design_l_style_source/r7_reader.py:1
++   **register**(variant)                               @ src/test/20261126_design_l_style_source/r7_reader.py:1   -- CONFIGS, TOLD, N_GROUPS entries
++   stage_heads(args)                                   @ src/test/20261117_reader_fix_csd/rb_build.py:328
++   stage_bank(args)                                    @ src/test/20261117_reader_fix_csd/rb_build.py:433
++   stage_train(args)                                   @ src/test/20261117_reader_fix_csd/rb_build.py:614
++     fit_half_reader(X, y, epi, n_episodes, 4)         @ src/test/20261117_reader_fix_csd/rb_build.py:561
+</script>
+    </doc-calls>
+    <doc-ask id="m7">
+      <p>How do we train each new reader?</p>
+      <label><input type="radio" name="m7" value="r1" checked> Round 1's recipe, unchanged <small>about 10 min on CPU per reader (round 1 log)</small></label>
+      <label><input type="radio" name="m7" value="retune"> Retune the C grid and bank size <small>more variants to disclose (constitution C8)</small></label>
+    </doc-ask>
+    <doc-claim at="src/test/20261117_reader_fix_csd/rb_build.py:561">
+      <p><b>rb_build.py:561</b> · fit_half_reader()</p>
+      <doc-code src="src/test/20261117_reader_fix_csd/rb_build.py" lines="561-575" hl="562-563">
+        <doc-pin line="562" title="C by 5-fold CV over episodes"></doc-pin>
+      </doc-code>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Extended AFF opens its gate on affect or the new style grouping.</p>
+    <doc-code title="r7_score.py · sketch" lang="py">
+<script type="text/plain">
+def gates_aff_ext(m, pick, taus, style_idx):
+    """Extended AFF: R1's gate times 1[pick is affect or the new style grouping]."""
+    out = []
+    for gt in gates_r1(m, taus):
+        ok = {c: np.isin(np.asarray(pick[c]), (AFFECT, style_idx)) for c in CONDITIONS}
+        out.append({c: (gt[c] * ok[c]).astype(np.float32) for c in CONDITIONS})
+    return out
+</script>
+      <doc-pin line="5" title="The one change from AFF's gate"></doc-pin>
+    </doc-code>
+    <doc-note tone="info"><strong>Decided</strong> (user, 2026-10-11): read both R1 and extended AFF, because AFF's scores are already on record from rounds 5 and 6. Ours was extended AFF alone.</doc-note>
+    <doc-claim at="src/test/20261121_round3_affect_gate/r3_fusion.py:54">
+      <p><b>r3_fusion.py:54</b> · gates_aff()</p>
+      <doc-code src="src/test/20261121_round3_affect_gate/r3_fusion.py" lines="54-60" hl="58" caption="AFF's frozen gate; r7_score.py copies it and does not change it.">
+        <doc-pin line="58" title="Today: open only when the pick is affect"></doc-pin>
+      </doc-code>
+    </doc-claim>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ 3 · seed-42 gate ═════ -->
+<doc-claim>
+  <p>A variant goes on only if it passes the seed-42 gate.</p>
+  <doc-mock frame="terminal" title="r7_score.py · seed 42 board" w="480" caption="Each new grouping gives two rows, one per scorer; the reference rows are today's numbers."><template><b>Seed 42 board</b> · R@1 points · <span class="dim">sketch</span>
+variant · scorer   AMI s/g  bar  s×g  e×s  e×g  gate
+CSD resid  · R1     ·/·      ·    ·    ·    ·    ·
+CSD resid  · ext    ·/·      ·    ·    ·    ·    ·
+CSD cut 0  · R1     ·/·      ·    ·    ·    ·    ·
+CSD cut 0  · ext    ·/·      ·    ·    ·    ·    ·
+CSD cut .5 · R1     ·/·      ·    ·    ·    ·    ·
+CSD cut .5 · ext    ·/·      ·    ·    ·    ·    ·
+CLIP cut   · R1     ·/·      ·    ·    ·    ·    ·
+CLIP cut   · ext    ·/·      ·    ·    ·    ·    ·
+Patch      · R1     ·/·      ·    ·    ·    ·    ·
+Patch      · ext    ·/·      ·    ·    ·    ·    ·
+<span class="dim">s×g: minus matched control; e×s, e×g: minus AFF</span>
+<span data-ref="r1"><span class="dim">reference, R1 minus its own B′:</span>
+  no style grouping  e×s +0.80  e×g +1.33  s×g −0.68
+  raw CSD            e×s +0.25  e×g +0.32  s×g −0.09</span>
+<span data-ref="ami">  raw CSD AMI: style 0.34, genre 0.33</span>
+<span data-ref="aff">  AFF s×g 20.74 against B′(A1) 21.42</span></template>
+    <doc-pin ref="r1" anchor="tr" title="Source: sp_tables.txt">R1 sections, seed 42, no-caption spike folder.</doc-pin>
+    <doc-pin ref="ami" anchor="r" title="Source: step1_describe_style.txt">Line 13; AMI is adjusted mutual information with the true labels.</doc-pin>
+    <doc-pin ref="aff" anchor="br" title="AFF: seed42_arrays.npz; B′(A1): sp_tables.txt">Seed 42; held rows give −1.24 [−1.51, −0.96].</doc-pin>
+  </doc-mock>
+  <doc-ask id="s2">
+    <p>If no variant passes the gate on seed 42, what happens?</p>
+    <label><input type="radio" name="s2" value="stop" checked> Design L stops there; Friday is a no-go</label>
+    <label><input type="radio" name="s2" value="best"> The best variant goes to fresh seeds anyway <small>the report must say it failed the gate</small></label>
+  </doc-ask>
+  <div data-if="s2=stop"><doc-note tone="warn">Then claim 4 does not run, and claim 5 gives a no-go.</doc-note></div>
+
+  <doc-claim>
+    <p>Each variant meets five condition-free comparators, its own B′ included.</p>
+    <doc-code title="r7_score.py · sketch" lang="py">
+<script type="text/plain">
+def comparators(v, bundle):
+    """Condition-free scorers that variant v must beat on seed 42."""
+    return {"B": bundle.B, "B'(A0)": bundle.Bp_A0, "B'(A1)": bundle.Bp_A1,
+            "own B'": bprime(bundle, v.parts),   # B' rebuilt on v's groupings
+            "matched control": v.counterpart}    # same score, condition removed
+</script>
+    </doc-code>
+    <doc-ask id="m5">
+      <p>Which comparators does each variant face?</p>
+      <label><input type="radio" name="m5" value="all" checked> Its own matched control, its own B′, B′(A0) and B′(A1)</label>
+      <label><input type="radio" name="m5" value="two"> Only B′(A1) and its matched control <small>misses a lift that only its own groupings give</small></label>
+    </doc-ask>
+    <doc-claim at="src/test/20261119_no_caption_csd_spike/sp_run.py:28">
+      <p><b>sp_run.py:28</b> · bprime()</p>
+      <doc-code src="src/test/20261119_no_caption_csd_spike/sp_run.py" lines="28-35" hl="34">
+        <doc-pin line="34" title="B′ on any set of groupings"></doc-pin>
+      </doc-code>
+    </doc-claim>
+  </doc-claim>
+
+  <doc-claim>
+    <p>The gate has three checks, and all three must pass.</p>
+    <doc-code title="r7_score.py · sketch" lang="py">
+<script type="text/plain">
+def gate(v, aff, bundle):    # seed 42, R@1 points, paired per anchor, 95% bootstrap
+    bar = v.pooled - max(comparators(v, bundle).values())    # strongest of five
+    dev_bar = bar.point >= 0.5 and bar.lo > 0 and v.gain.lo > 0
+    sxg = v.pair("style__genre").point >= v.counterpart.pair("style__genre").point
+    emo = all((v.pair(p) - aff.pair(p)).point >= -0.3
+              for p in ("emotion__style", "emotion__genre"))
+    return dev_bar and sxg and emo
+</script>
+      <doc-pin line="3" title="The pooled development bar (constitution C10)"></doc-pin>
+      <doc-pin line="5" tone="warn" title="Emotion pairs: at most 0.3 below AFF"></doc-pin>
+    </doc-code>
+    <doc-note tone="info"><strong>Decided</strong> (user, 2026-10-11): the strict gate. Ours was the same.</doc-note>
+  </doc-claim>
+
+  <doc-claim>
+    <p>The highest pooled bar margin picks one variant per family.</p>
+    <doc-code title="r7_score.py · sketch" lang="py">
+<script type="text/plain">
+def pick(passed, family):          # family: "csd" or "generic"
+    rows = [v for v in passed if v.family == family]    # v: one grouping, one scorer
+    return max(rows, key=lambda v: v.bar.point) if rows else None
+</script>
+    </doc-code>
+    <doc-ask id="m9">
+      <p>What picks the variant that goes on?</p>
+      <label><input type="radio" name="m9" value="rule" checked> The highest pooled bar margin among variants that pass, fixed in the rule</label>
+      <label><input type="radio" name="m9" value="hand"> We pick by hand after the board <small>the run then waits for a decision</small></label>
+    </doc-ask>
+    <doc-note tone="info"><strong>Decided</strong> (user, after a table of facts and before our recommendation): seed-42 episode R@1 picks between variants. Ours was the same.</doc-note>
+    <doc-ask id="m11">
+      <p>Does the generic pick use the same rule?</p>
+      <label><input type="radio" name="m11" value="same" checked> Yes, the same rule</label>
+      <label><input type="radio" name="m11" value="own"> No, a separate rule <small>written in the rule file before code</small></label>
+    </doc-ask>
+  </doc-claim>
+
+  <doc-claim>
+    <p>The board shows each variant's AMIs but never gates on them.</p>
+    <doc-code title="r7_groupings.py · sketch" lang="py">
+<script type="text/plain">
+def describe(groups, labels):     # descriptive only; gate() and pick() never read it
+    return {"ami_style": ami(groups, labels["style"]),
+            "ami_genre": ami(groups, labels["genre"], mask=labels["genre"] >= 0),
+            "raw_csd": (0.3413, 0.3302)}   # step1_describe_style.txt line 13
+</script>
+    </doc-code>
+    <doc-ask id="s1">
+      <p>Does a winner go on if its genre AMI is worse than raw CSD's?</p>
+      <label><input type="radio" name="s1" value="yes" checked> Yes; its AMIs stand beside it in the report</label>
+      <label><input type="radio" name="s1" value="no"> No; its genre AMI must stay below 0.33 <small>adds a filter that reads labels</small></label>
+    </doc-ask>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ 4 · fresh seeds ═════ -->
+<doc-claim>
+  <p>Fresh seeds 55 to 57 test each pick in three stages.</p>
+  <doc-machine name="fresh" caption="Tap a state. A stage runs only if the stage before it passed.">
+<script type="text/plain">
+machine fresh initial stage1
+state stage1 "Stage 1"          # Beat B, B′(A0), B′(A1), its own B′ and its matched control, Holm.
+state stage2 "Stage 2"          # A paired win over AFF.
+state stage3 "Stage 3"          # Style × genre above B′(A1), lower bound above 0.
+state fixed "Fix claimed" final # Go; it replaces AFF; style × genre is fixed.
+state nogo "No-go" final        # Friday is a no-go.
+state stay "AFF stays" final    # Go; AFF stays the current best.
+state best "New best" final     # Go; it replaces AFF, no fix claimed.
+
+| stage1 | nogo |
+| stage2 | stay |
+| stage3 | best |
+| fixed  | .    |
+
+stage1 -pass-> stage2
+stage1 -fail-> nogo
+stage2 -pass-> stage3
+stage2 -fail-> stay
+stage3 -pass-> fixed
+stage3 -fail-> best
+</script>
+    <div data-state="stage1"><doc-mock frame="none" w="400"><template><div class="ui"><div class="hd">Stage 1 <small>seeds 55 to 57, pooled</small></div><div class="ln">R@1 against B, B′(A0), B′(A1), its own B′, its matched control</div><div class="ln dim">Holm over five checks, one-sided 0.0125</div></div></template></doc-mock></div>
+    <div data-state="stage2"><doc-mock frame="none" w="400"><template><div class="ui"><div class="hd">Stage 2 <small>paired per anchor</small></div><div class="ln">R@1 against AFF, lower bound above 0</div></div></template></doc-mock></div>
+    <div data-state="stage3"><doc-mock frame="none" w="400"><template><div class="ui"><div class="hd">Stage 3 <small>style × genre</small></div><div class="ln">R@1 against B′(A1), lower bound above 0</div></div></template></doc-mock></div>
+    <div data-state="nogo"><doc-mock frame="none" w="400"><template><div class="ui"><div class="ln"><span class="bad">NO-GO</span> · the ArtELingo paper with AFF</div></div></template></doc-mock></div>
+    <div data-state="stay"><doc-mock frame="none" w="400"><template><div class="ui"><div class="ln"><span class="ok">GO</span> · method paper with design L; AFF stays the current best</div></div></template></doc-mock></div>
+    <div data-state="best"><doc-mock frame="none" w="400"><template><div class="ui"><div class="ln"><span class="ok">GO</span> · the scorer replaces AFF; style × genre not claimed</div></div></template></doc-mock></div>
+    <div data-state="fixed"><doc-mock frame="none" w="400"><template><div class="ui"><div class="ln"><span class="ok">GO</span> · the scorer replaces AFF; style × genre fixed</div></div></template></doc-mock></div>
+  </doc-machine>
+
+  <doc-claim>
+    <p>A reviewed decision rule fixes every number before any code.</p>
+    <doc-code title="DECISION_RULE.md · sketch" lang="md" wrap>
+<script type="text/plain">
+# Round 7 decision rule (committed before code; constitution C7)
+- Prior (C8): written here before any number exists.
+- Disclosure (C8): 5 new groupings x 2 scorers = 10 rows on seed 42, raw CSD as reference.
+- Ceiling: stop below +0.5 or lower bound <= 0; weak +0.5 to +1.0; clear >= +1.0.
+- Gate on seed 42: development bar, s x g >= matched control, e x s and e x g >= AFF - 0.3.
+- Pick: highest pooled bar margin among passes; one CSD-based, one generic.
+- Fresh seeds 55 to 57: three stages per scorer, one-sided 0.0125 each.
+- Review: a fresh reviewer on the most capable model.
+</script>
+    </doc-code>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Seeds 55, 56 and 57 give 4,096 episodes per pair each.</p>
+    <doc-code title="r7_common.py · sketch" lang="py">
+<script type="text/plain">
+FRESH_SEEDS = (55, 56, 57)      # free in episode_seed_ledger.md; hash-check against all used
+EPISODES_PER_PAIR = 4096        # as round 6
+PAIRS = ("emotion__style", "emotion__genre", "style__genre")
+# Standard statistics (C9): paired per anchor; bootstrap over anchor paintings,
+# 5,000 resamples, seed 42; picks fixed before resampling.
+</script>
+    </doc-code>
+    <doc-ask id="m8">
+      <p>Which fresh seeds, and how many episodes?</p>
+      <label><input type="radio" name="m8" value="55-57" checked> Seeds 55, 56, 57; 4,096 episodes per pair per seed; standard statistics</label>
+      <label><input type="radio" name="m8" value="55-59"> Seeds 55 to 59 <small>narrower intervals; two more seeds spent</small></label>
+    </doc-ask>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Each scorer's chain tests three stages at one-sided 0.0125.</p>
+    <doc-code title="r7_fresh.py · sketch" lang="py">
+<script type="text/plain">
+ALPHA = 0.0125                  # one-sided, per scorer chain (0.025 / 2)
+
+def staged(s, ref):             # s: one picked scorer, seeds 55 to 57 pooled
+    cf = [ref.B, ref.Bp_A0, ref.Bp_A1, s.own_bprime, s.counterpart]
+    if not holm_all(s, cf, ALPHA):          # stage 1: beat all five
+        return "no-go"
+    if not paired_win(s, ref.AFF, ALPHA):   # stage 2: replaces AFF
+        return "go, AFF stays"
+    if not stage3(s, ref.Bp_A1, ALPHA):     # stage 3: claim 4.4
+        return "go, new best"
+    return "go, fix claimed"
+</script>
+    </doc-code>
+    <doc-note tone="info"><strong>Decided</strong> (user, 2026-10-11): the staged test. Ours had the condition-free comparators as the main test and AFF as a second test; the stages extend it.</doc-note>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Stage 3 claims the fix only if its lower bound exceeds 0.</p>
+    <doc-code title="r7_fresh.py · sketch" lang="py">
+<script type="text/plain">
+def stage3(s, bp_a1, alpha):
+    d = s.pair("style__genre") - bp_a1.pair("style__genre")   # paired per anchor
+    return d.lower(one_sided=alpha) > 0                        # superiority
+</script>
+    </doc-code>
+    <doc-ask id="m10">
+      <p>What must stage 3 show?</p>
+      <label><input type="radio" name="m10" value="sup" checked> Superiority: lower bound above 0</label>
+      <label><input type="radio" name="m10" value="noninf"> Non-inferiority: lower bound above −0.3 <small>supports "no longer loses", not "fixed"</small></label>
+    </doc-ask>
+  </doc-claim>
+
+  <doc-claim>
+    <p>One CSD-based and one generic scorer go to the fresh seeds.</p>
+    <doc-code title="r7_fresh.py · sketch" lang="py">
+<script type="text/plain">
+picks = {"csd": pick(passed, "csd"), "generic": pick(passed, "generic")}
+going = [p for p in picks.values() if p is not None]
+alpha = 0.025 / len(going)      # 0.0125 each if both go; 0.025 if one goes alone
+</script>
+    </doc-code>
+    <doc-note tone="info"><strong>Decided</strong> (user, after a question about the budget): both scorers go. Our estimate: a few hours of compute, about 10 to 20 minutes of GPU.</doc-note>
+    <doc-ask id="s3">
+      <p>If CSD fails the gate but a generic variant passes?</p>
+      <label><input type="radio" name="s3" value="alone" checked> The generic scorer goes alone, at the full one-sided 0.025</label>
+      <label><input type="radio" name="s3" value="order"> Nothing goes on <small>keeps the idea's order: generic only if CSD works</small></label>
+    </doc-ask>
+    <div data-if="s3=alone"><doc-note tone="warn">This departs from the idea's order, "generic only if CSD works". The user decides.</doc-note></div>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ 5 · Friday ═════ -->
+<doc-claim>
+  <p>On Friday 2026-10-16, stage 1 decides go or no-go.</p>
+  <doc-mock frame="none" w="420" caption="Round 6's held GO for AFF stays fixed in both outcomes."><template>
+<div class="ui">
+  <div class="hd">Friday 2026-10-16 <small>go or no-go</small></div>
+  <div class="ln" data-ref="go"><span class="ok">GO</span> · stage 1 passes for a scorer → <b>the method paper with design L</b></div>
+  <div class="ln" data-ref="nogo"><span class="bad">NO-GO</span> · otherwise → <b>the ArtELingo paper with AFF</b></div>
+  <div class="ln dim" data-ref="held">Round 6 held: AFF +0.60 [+0.46, +0.73] R@1 over B′(A0)</div>
+</div></template>
+    <doc-pin ref="held" anchor="r" title="Source: round 6 report">Held seeds 52 to 54, 36,864 episodes (2026-11-25_artelingo_held_test.md).</doc-pin>
+  </doc-mock>
+  <doc-note tone="info"><strong>Decided</strong> (user, 2026-10-11): by Friday, development plus a pre-registered fresh-seed test. Ours was the same.</doc-note>
+
+  <doc-claim>
+    <p>Labels serve only the ceiling check and descriptive AMIs.</p>
+    <doc-code title="r7_common.py · sketch" lang="py">
+<script type="text/plain">
+LABEL_USES = {"ceiling", "describe"}     # never the grouping, the gate or the pick
+
+def labels_for(purpose, seed, data):
+    if purpose not in LABEL_USES or seed != 42:
+        raise RuntimeError(f"labels refused: {purpose}, seed {seed}")
+    return artelingo_aspect_labels(data)  # rows by extraction sample_ids (C6)
+</script>
+    </doc-code>
+    <doc-ask id="m4">
+      <p>How do we limit the use of labels and data?</p>
+      <label><input type="radio" name="m4" value="strict" checked> Labels only for the ceiling and descriptive AMIs; seed 42 only; no held rows; sample IDs per C6</label>
+      <label><input type="radio" name="m4" value="pick"> Also let labels pick variants <small>breaks the generality principle; selection to disclose</small></label>
+    </doc-ask>
+  </doc-claim>
+
+  <doc-claim>
+    <p>Design L reads no held row in this round.</p>
+    <doc-code title="docs/superpowers/held_ledger.md · later row, sketch" lang="md" wrap>
+<script type="text/plain">
+| H6 | after a GO | ArtELingo held rows, aspect episodes | design L held read, its own pre-registered rule | … | … | … |
+</script>
+    </doc-code>
+  </doc-claim>
+</doc-claim>
+
+<!-- ═════ shared · not changing ═════ -->
+<doc-claim aux="shared">
+  <p>Shared: two new glossary terms that claims 1 to 4 use.</p>
+  <doc-code title="GLOSSARY.md" lang="md" diff file="GLOSSARY.md" wrap>
+<script type="text/plain">
+@@ -17,3 +17,5 @@
+ | R1 | the reader's weighted grouping term, added to the score when the reader is confident |
+ | AFF (affect steering) | R1 with its term added only when the reader picks the affect grouping; the current best method |
++| ceiling check | *(new, round 7)* a scorer told which grouping each condition uses, with the style grouping built from the 27 true WikiArt styles; measured against its matched control on seed 42; a bound, not a method |
++| extended AFF | *(new, round 7)* AFF with its gate also open when the reader picks the new style grouping |
+ | matched control (counterpart) | a scorer's identical score with only the condition removed (constitution C2) |
+</script>
+  </doc-code>
+  <doc-ask id="m12">
+    <p>Do we add these two terms to the glossary?</p>
+    <label><input type="radio" name="m12" value="add" checked> Yes: "ceiling check" and "extended AFF"</label>
+    <label><input type="radio" name="m12" value="plain"> No; describe them in plain words each time</label>
+  </doc-ask>
+</doc-claim>
+
+<doc-claim aux="scope">
+  <p>Not changing: AFF, round 6's held GO, the encoders, the held rows.</p>
+  <ul>
+    <li>AFF's frozen code in <code>src/test/20261121_round3_affect_gate/</code> and its scores from rounds 5 and 6.</li>
+    <li>Round 6's held GO for AFF (held ledger row H5).</li>
+    <li>CLIP ViT-B/32 and CSD stay frozen. No new style encoder: the wider screen is parked.</li>
+    <li>No held row, and no seed other than 42 and 55 to 57.</li>
+  </ul>
+</doc-claim>
+
+</doc-plan>
+</main>
+</body>
+</html>
