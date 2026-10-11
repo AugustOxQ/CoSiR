@@ -32,3 +32,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-10-process-plugins-handoff.md
 - New chat: tab 'process plugins', session 98a9e364-c9d5-4302-94b8-fe02deca7777
 
+[brief] CoSiR: 1 -> r7 decide 2 (2026-10-12 01:59 Amsterdam)
+- Done: step 3 (facts brief, a standard and a deep literature check), decision B and the grill for design L.
+- State: plan settled. A ceiling check from true style labels (stop below +0.5), CSD with its genre part removed and generic token statistics on seed 42, then fresh seeds 55 to 57 in three stages.
+- Next: write the spec and decision rule (step 6), have the rule reviewed on Opus, user approves the brief, cut to `r7 build`.
+- Blocked: nothing; the user approves the brief in that chat.
+- Handoff: docs/superpowers/handoffs/2026-10-12-r7-decide-2-handoff.md
+- New chat: tab 'r7 decide 2', session 7152dbdb-c434-4212-b5c2-24fbc06a2124
+
