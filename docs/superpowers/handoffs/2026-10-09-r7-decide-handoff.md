@@ -1,5 +1,7 @@
 # Handoff: decide round 7, design L (a grouping redesign so that style stops leaking into genre), from step 3, while round 6 runs
 
+> **Superseded** on 2026-10-11 by [2026-10-11-r7-decide-handoff.md](2026-10-11-r7-decide-handoff.md); start there.
+
 > Written 2026-10-09 05:10 by the `r6 decide 2` chat, for the user to start by hand. Loop step reached: decision A
 > made (design L next, in its own loop and chat); type and loop size to confirm; step 3 next. Direction log entry:
 > [2026-10-07 · Idea 3 killed at development; next step open](../direction_log.md) ("Decided (A)").

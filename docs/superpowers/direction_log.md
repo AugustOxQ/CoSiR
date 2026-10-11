@@ -9,20 +9,20 @@ and who made each decision. Entries before 2026-10-08 were moved from project me
 fields; their verbatim notes are in `direction_log_raw_2026-10.md`. Older history (before the CVPR plan) is in the
 weekly and stage reports.
 
-## Now (2026-10-09)
+## Now (2026-10-11)
 
 AFF (round 1's learned reader, with its gate open only when it picks the affect grouping) is the current best: GO on
-fresh seeds 49 to 51 in round 3; rounds 4 and 5 were killed at development. In progress: the ArtELingo held-split
-paper test with AFF frozen (claim test; spec and rule approved 2026-10-09, build and run unattended). Next: design L
-(a grouping redesign for a real style signal) in its own loop. Go/no-go on Fri 2026-10-16 (ArtELingo-centred paper
-first, full paper if time allows); CVPR abstract 2026-11-10.
+fresh seeds 49 to 51 (round 3) and on ArtELingo's held paintings (round 6: +0.60 R@1 over B′(A0), condition gain
++3.06; no margin shown over B′(A1) or over R1; style × genre loses). The user aims beyond the ArtELingo paper, at a
+bigger method paper, with the ArtELingo paper as the fallback. Next: design L, starting from the style source (a told
+ceiling from the style labels, a screen of style sources, then the grouping redesign), in the `r7 decide` chat.
+Go/no-go on Fri 2026-10-16; CVPR abstract 2026-11-10.
 
 ## Parked ideas
 
 Candidates proposed since 2026-10-02 but neither chosen nor tried; step 3 reads this list first. Tried-and-killed ideas
 stay in the entries below.
 
-- A grouping redesign so that style stops leaking into genre ("design L") (deferred by the user, 2026-10-06; [proposed in](handoffs/2026-10-06-reader-fix-round2-handoff.md), option (b) in [whats-next](handoffs/2026-10-08-whats-next-handoff.md))
 - A 30-minute label-free check of a de-genred style grouping, the first step of design L (never tried; [proposed in](direction_log_raw_2026-10.md))
 - Dropping the CLIP caption grouping, keeping the affect, image and CSD groupings (deferred by the user after a spike, 2026-10-06; [proposed in](handoffs/2026-10-06-round3-affect-gate-handoff.md))
 - Caption-to-caption agreement to detect the emotion side, with retrained readers for idea 3 (never tried; option (c) in [whats-next](handoffs/2026-10-08-whats-next-handoff.md))
@@ -30,6 +30,31 @@ stay in the entries below.
 - Practice-bank detectors with richer negatives or a "none" class (never tried, judged low value; [proposed in](../reports/auto/v2/2026-11-20_r1_levers_brainstorm.md), §4 idea 9)
 - A grouped concept basis (N3) and "infer the aspect name, then embed" (N5) (never tried; their privileged references were never run; [proposed in](../../src/test/20261107_new_method_candidates/synthesis.md), §4.2)
 - Other datasets and paper framings, CUB and SemArt (deferred by the user, 2026-10-07; [proposed in](../reports/stage/2026-10-07_cvpr_readiness.md), §3)
+
+## 2026-10-11 · Round 6 held test GO; design L next, from the style source
+
+- **Read:** GO under the rule: all seven checks pass with Holm, pooled over 36,864 held episodes (seeds 52 to 54).
+  AFF 19.44 R@1: +0.60 [+0.46, +0.73] over B′(A0), +0.63 over B and over its matched control, +6.19 over cosine;
+  condition gain +3.06 [+2.87, +3.25]. Not established: a margin over B′(A1) (+0.14 [−0.03, +0.30]) or over R1
+  (+0.02 [−0.06, +0.11]). Style × genre loses (−0.43 [−0.65, −0.21] against B′(A0)).
+- **Meaning (C):** "we may work beyond the ArtELingo paper, toward a bigger method paper; if the method fails, we drop
+  back to the ArtELingo paper" (user, after seeing ours; the user's first reading, before ours, was that the GO already
+  makes an ArtELingo-only paper). Ours: the pooled claim holds, but it is thin for reviewers (small margin, no margin
+  over B′(A1), the affect gate not shown to matter against R1, style × genre loses); design L first, the ArtELingo paper
+  drafted in parallel. The two agree that the GO carries the ArtELingo paper's claim; the user then set that paper as
+  the fallback and aims higher.
+- **Decided (A):** design L next, in its own loop (`r7 decide`; type and loop size set there), starting from the style
+  source. The source question is the user's own ("can we solve style × genre without touching the grouping source?");
+  the order, a told ceiling from ArtELingo's style labels, then a label-free screen of style sources by their match to
+  style against genre, then the grouping redesign on the best source, is our proposal, accepted by the user.
+- **Also decided (user):** the descriptive-pass fix of round 6 is ratified (DTS rows only); the storage summary
+  approved in full (disk ledger, 2026-10-11).
+- **Why:** style × genre is the clearest weakness and the only route past B′(A1) (−1.24 there); round 2's no-caption
+  spike showed a told style × genre gain of only +0.134 with CSD, so the limit is the style signal in the grouping's
+  source, not the reader.
+- **Links:** report `docs/reports/auto/v2/2026-11-25_artelingo_held_test.md`; user-read
+  `docs/user_read/2026-10-10_artelingo_held_test.md`; handoffs `docs/superpowers/handoffs/2026-10-10-r6-read-handoff.md`
+  and `docs/superpowers/handoffs/2026-10-11-r7-decide-handoff.md`.
 
 ## 2026-10-07 · Idea 3 killed at development; next step open
 

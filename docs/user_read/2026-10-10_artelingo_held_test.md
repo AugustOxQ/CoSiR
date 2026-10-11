@@ -156,7 +156,7 @@ the style × genre loss travel with every AFF number.
    5,640 answers, so the DTS rows carry some noise their intervals do not measure; no conclusion depends on it. It
    touches only the DTS rows of the analysis, never the verdict, which was written before any DTS input was read.
 
-   The rule does not cover this, so the call is yours: ratify the fix or not.
+   The rule does not cover this, so the call was yours: you ratified the fix on 2026-10-11.
 3. **What next, before the paper go/no-go on Fri 2026-10-16.** The full report's options:
    - (a) Design L, already chosen as the next loop (you, 2026-10-09): its own spec, a few days of CPU work plus
      cluster jobs. A design-L read on the held paintings would be a new held read, disclosed as designed after this
