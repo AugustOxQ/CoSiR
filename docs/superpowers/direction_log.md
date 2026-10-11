@@ -23,7 +23,11 @@ Go/no-go on Fri 2026-10-16; CVPR abstract 2026-11-10.
 Candidates proposed since 2026-10-02 but neither chosen nor tried; step 3 reads this list first. Tried-and-killed ideas
 stay in the entries below.
 
-- A 30-minute label-free check of a de-genred style grouping, the first step of design L (never tried; [proposed in](direction_log_raw_2026-10.md))
+- A wider screen of new style encoders (ALADIN, DINOv2, SigLIP 2) for design L (not chosen at round 7's idea choice, 2026-10-11, for the user's generality principle; [proposed in](../../src/test/20261126_design_l_style_source/step3_candidates.md), idea 3)
+- X-Cluster criteria (a multimodal LLM proposes criteria such as "style") placed under our reader, the comparator reviewers will ask for (paper stage; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §1)
+- COCO-4c (5,000 COCO images labelled for activity, location, mood and time of day, with COCO captions) as the second dataset for a generality test (never tried; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §6)
+- A learned source that cuts across content: a contrastive head on frozen CLIP whose negatives come from the query's own content group (never tried; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §1)
+- Fair clustering (FCMI) with the content grouping as the protected attribute, as a grouping builder (never tried; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §1)
 - Dropping the CLIP caption grouping, keeping the affect, image and CSD groupings (deferred by the user after a spike, 2026-10-06; [proposed in](handoffs/2026-10-06-round3-affect-gate-handoff.md))
 - Caption-to-caption agreement to detect the emotion side, with retrained readers for idea 3 (never tried; option (c) in [whats-next](handoffs/2026-10-08-whats-next-handoff.md))
 - Separate gate weights for image and caption queries (never tried, ranked low; [proposed in](../reports/auto/v2/2026-11-20_r1_levers_brainstorm.md), §4 idea 5)
