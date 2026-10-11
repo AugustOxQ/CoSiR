@@ -61,7 +61,7 @@
 
 ## 6. State at handoff
 
-- Running: the local server on port 8771 (serves `docs/reports/`); stop it when the user is done.
-- Uncommitted: nothing after this handoff's commit.
-- On disk over 1 GB: nothing. Small leftovers for the user's decision: `.scratch/stage_pages/` (3.9 MB, trial
-  sources, copies and packed files) and this session's scratchpad (5.7 MB).
+- Running: nothing (the local server on port 8771 is stopped).
+- Uncommitted: nothing.
+- On disk over 1 GB: nothing. The trial leftovers (`.scratch/stage_pages/`, 3.9 MB) and the session scratchpad
+  (5.7 MB) were deleted on 2026-10-11 with the user's approval.
