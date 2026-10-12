@@ -21,7 +21,7 @@ CACHE = Path("/data/SSD2/pre_extract/artelingo_clip224")
 FULL_OUT = Path("/data/SSD2/pre_extract/artelingo/r8_clip_views")
 VIEW_ORDER = ("horizontal_flip", "top_left", "top_right", "bottom_left", "bottom_right")
 CHECK_N = 256
-CHECK_THRESHOLD = 0.9999
+CHECK_THRESHOLD = 0.999   # M4, amendment 1 (was 0.9999)
 
 
 def load_clip(device):

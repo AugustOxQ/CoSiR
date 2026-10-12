@@ -232,12 +232,17 @@ count as "user, after seeing the recommendation".
 | D35 | Timeline | Rules on 12 and 13 October; build 13 October; overnight run; gate verdict 14 October; held rule, smoke and read by 16 October | from the facts' timings | agent default | 2026-10-12 19:35 |
 | D36 | Stop before the held read | None: the gate verdict goes as a phone note, and the held read follows under its rule and D34 | the read is guarded by the committed rule and the regression check; the cut-off leaves room | user | 2026-10-12 19:45 |
 
-**Amendments:** none.
+**Amendments** (the rule's header: after its commit, the rule changes only with the user's approval, as a row here):
+
+| # | Before or after results | Change | Why | Who decided | When |
+|---|---|---|---|---|---|
+| 1 | after results (the real M4 view check) | `DECISION_RULE.md` M4: view-check threshold 0.9999 → 0.999; the run restarts from stage 0 under the new rule SHA-256; old records kept in `src/test/20261129_r8_grouping/results_m4_09999/` | the failure looks like noise: 255 of 256 cosines are ≥ 0.9999 and the minimum is 0.99983, where a real fault would give about 0.9 or lower on most paintings; 0.999 is a round value with a margin, not fitted to 0.99983. The same failure showed on the build smoke; no V grouping had a seed-42 number when the change was made | lowering: user; the value 0.999: user, after seeing the recommendation (flagged as a key decision made after the recommendation) | 2026-10-13 01:13 |
 
 ## 5. Assumptions and open questions
 
 - Assumption: the 224 cache holds one image per scorer-train painting, and CLIP on an unchanged cached image gives its
-  cached feature (cosine at least 0.9999). Checked: in the build.
+  cached feature (cosine at least 0.999; amendment 1, was 0.9999). Checked: the build smoke and the real check both
+  failed 0.9999 at min cosine 0.99983 (1 of 256 paintings); hence amendment 1.
 - Assumption: views of the cached centre crop are enough; the border lost to the crop is never seen. Not checked.
 - Assumption: round 7's pipeline is unchanged (stage 0) and H5's stored arrays are intact (held-ledger SHA-256s).
 - Assumption: FCMI's code runs on 512-d vectors with 64 groups. Checked: stage 1.

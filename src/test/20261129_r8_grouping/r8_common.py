@@ -44,9 +44,10 @@ HERE = Path(__file__).resolve().parent
 RESULTS = Path(os.environ["R8_RESULTS"]) if os.environ.get("R8_RESULTS") else RF / "results"
 SMOKE = RESULTS / "smoke"
 RULE = RF / "DECISION_RULE.md"
-# rule gap: the rule has no SHA of its own, so (as R7) this constant is the committed file's SHA-256 (commit 9fb9d68);
+# rule gap: the rule has no SHA of its own, so (as R7) this constant is the committed file's SHA-256 (commit 9fb9d68;
+# since amendment 1 of 2026-10-13, the amended file's);
 # a deliberate edit of DECISION_RULE.md must update it in the same commit.
-RULE_SHA256 = "50eb65addbaeade7cd85b12ea3153da5143fe0f515c1648b8133229088a9d50e"
+RULE_SHA256 = "18b4e06300bf6dfa39edcda1a30d2ddf5ff4fbc335313452f182a42988089830"
 
 R7_NAME = "20261126_design_l_style_source"
 R7D = TEST / R7_NAME

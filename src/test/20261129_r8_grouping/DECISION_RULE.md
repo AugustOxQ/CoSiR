@@ -24,6 +24,10 @@ as such. Stage 3 (A) and B's stage 2 (both held reads) are governed by `HELD_RUL
 its commit this file changes only with the user's approval, as an amendment row in spec A, marked before or after
 results. The controller commits; agent defaults set by this file are marked "(agent default)".
 
+**Amendment 1** (2026-10-13 01:13, after results; user): M4's view-check threshold 0.9999 → 0.999, after the real
+check failed at min cosine 0.99983 (1 of 256 paintings). Spec A §4, "Amendments". Records of the run under the old
+rule are kept in `results_m4_09999/`; the run restarts from stage 0.
+
 **Status.** Seed 42 is development data (C4). No held row and no held image is read under this file (C5; B:ED7).
 
 ## 1. Prior (C8) and disclosure
@@ -104,7 +108,7 @@ openai/clip-vit-base-patch32 (the cached features' weights, §10), float32, loca
 `/data/SSD2/pre_extract/artelingo/r8_clip_views/views.npy`, [36,518, 5, 512] in M1 order, with a `meta.json` (joins,
 hashes, view order, the painting-id string per row, asserted equal to `data.paintings` of p's first scorer-train row).
 View check (agent default): before the views, the unchanged cached image of the first 256 scorer-train paintings must
-give cosine ≥ 0.9999 with its cached feature each; a failure drops V100 to V33 (reported as a fair mechanic), and NB,
+give cosine ≥ 0.999 with its cached feature each (amendment 1: was 0.9999); a failure drops V100 to V33 (reported as a fair mechanic), and NB,
 FC go on.
 
 **M5. Neighbours.** n(p) = argmax of x_p · x_q over scorer-train paintings q with c(q) ≠ c(p) (float64; ties to the
