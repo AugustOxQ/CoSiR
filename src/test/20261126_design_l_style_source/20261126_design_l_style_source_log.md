@@ -47,3 +47,28 @@ stage 0 passed at 2026-10-12 04:42 in the build. Run logs: `results/logs/` (giti
 ## 2026-10-12 06:54 `gate` (S1 to S3, P1)
 
 - Started in the background (`results/logs/gate.log`).
+- Done 06:54: `results/seed42/arrays.npz` (523 arrays), `gate_pending.json`, `taus.json`.
+- Phase A (`rd7_arrays.py --phase A --seed 42`, own process): 243 arrays. `rd7_stats.py --stage gate`: n 0, no picks,
+  promising true. `run_r7.py gate --finalize`: every comparison passed; `gate_verdict.json` written.
+- **Gate: n = 0.** No candidate passes S1 to S3 (Σ(4d) per candidate; S1 bar 246, S2 bar 0, S3 bar −49):
+
+  | Candidate | S1 bar margin (vs) | S1 95% interval | S2 (vs CF) | S3 emotion × style | S3 emotion × genre |
+  |---|---|---|---|---|---|
+  | R1_V1 | −186 (B1) | [−0.60, −0.15] | −15 | −168 | −217 |
+  | XAFF_V1 | −248 (B1) | [−0.74, −0.27] | −30 | −174 | −256 |
+  | R1_V2 | 97 (BX) | [−0.01, 0.41] | 15 | 38 | −189 |
+  | XAFF_V2 | −50 (BX) | [−0.31, 0.10] | 16 | −46 | −235 |
+  | R1_V3 | 122 (B1) | [0.05, 0.46] | 37 | −16 | −153 |
+  | XAFF_V3 | 27 (B1) | [−0.16, 0.27] | 62 | −53 | −200 |
+  | R1_V4 | −215 (B1) | [−0.67, −0.21] | −31 | −170 | −230 |
+  | XAFF_V4 | −233 (B1) | [−0.71, −0.24] | −18 | −166 | −264 |
+  | R1_V5 | −165 (B1) | [−0.58, −0.10] | −14 | −146 | −209 |
+  | XAFF_V5 | −102 (B1) | [−0.47, 0.05] | −31 | −127 | −173 |
+  | R1_V6 | −80 (B1) | [−0.42, 0.09] | −40 | −130 | −172 |
+  | XAFF_V6 | −115 (B1) | [−0.49, 0.01] | 23 | −158 | −206 |
+
+  Per rule §6 and §8: design L ends; FV is NO-GO (the ArtELingo paper with AFF); no sensitivity, rule smoke, seed
+  build or test. "Promising" holds (stated in the report). The L3 fallback cannot change this: V1 and V4 are far from
+  every bar, so dropping them or another projector leaves n = 0.
+- Descriptive pass (`run_r7_descriptive.py ceiling`, `gate`): `results/descriptive_ceiling.json` (06:58),
+  `results/descriptive_gate.json` (07:00). The test part does not apply.
