@@ -114,3 +114,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-r8-build-2-handoff.md
 - New chat: tab 'r8 build 2', session 7e1b6a4a-5d96-45c5-8b09-0b7d6c3f3e13
 
+[brief] CoSiR: 1 -> devlog site (2026-10-12 20:59 Amsterdam)
+- Done: stage report 2 to 12 Oct for outside readers (markdown, HTML page, 10 figures, Slack post and primer), checked and pushed.
+- State: AFF +0.60 [+0.46, +0.73] R@1 over B′(A0) on held paintings; the page is in `docs/reports/stage/`.
+- Next: build a gated static site (Cloudflare Pages + Access) and a `devlog-publish` tool; publish only when the user says so.
+- Blocked: the user makes a Cloudflare account and API token, and names the readers.
+- Handoff: docs/superpowers/handoffs/2026-10-12-devlog-site-handoff.md
+- New chat: tab 'devlog site', session bfce3604-c8bd-44d5-b7a0-473ce63baf32
+
