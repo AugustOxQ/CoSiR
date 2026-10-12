@@ -299,8 +299,7 @@ def finalize(role, stage):
     with np.load(role.root / "rederive" / phase, allow_pickle=False) as z:
         diff.extend(f"{phase}.{k}:missing" for k in sorted(required - set(z.files)))
         for k in sorted(set(z.files) & set(arr)):
-            same = (np.allclose(z[k], arr[k], rtol=0, atol=1e-9) if arr[k].dtype.kind == "f"
-                    and z[k].shape == arr[k].shape else np.array_equal(z[k], arr[k]))
+            same = np.array_equal(z[k], arr[k])  # rule §9: re-derived arrays equal the pipeline's exactly
             if z[k].dtype != arr[k].dtype or not same:
                 diff.append(f"{phase}.{k}")
     if diff:
