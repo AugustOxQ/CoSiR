@@ -147,3 +147,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-r8-build-4-handoff.md
 - New chat: tab 'r8 build 4', session a2a6815b-d465-4226-a802-8b27677ea944
 
+[brief] CoSiR: r8 build 4 -> r8 build 5 (2026-10-12 22:27 Amsterdam)
+- Done: 12 of 13 tickets are merged (08, 11, 12 this chat). The FCMI loader change is merged; FCMI labels did not change.
+- State: FCMI now projects to about 54.5 to 58 min per run against D21's 60. 11 reproduces 65 of R7's arrays exactly.
+- Next: read ticket 13's diff, merge it, run the end-to-end smoke, then the final review on Opus at xhigh.
+- Blocked: nothing. The view-check threshold (M4) still waits for the user in the morning.
+- Handoff: docs/superpowers/handoffs/2026-10-12-r8-build-5-handoff.md
+- New chat: tab 'r8 build 5', session 5eb81ad6-a5c7-4d43-831c-c3e20a7dfce5
+
