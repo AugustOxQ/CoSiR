@@ -29,14 +29,16 @@ def test_refuses_before_gate_verdict(tmp_path, monkeypatch):
         D.require_verdict(tmp_path, smoke=True)
 
 
-def test_harm_smoke_passes_the_painting_count_of_the_groupings_file(tmp_path, monkeypatch):
-    """Smoke: 08 asserts `--smoke N` equals the groupings file's painting count; real mode passes no N."""
+@pytest.mark.parametrize("x, gname", [("NB100", "r8_groupings"), ("NBC", "r8_groupings_nbc")])
+def test_harm_smoke_passes_the_painting_count_of_the_groupings_file(tmp_path, monkeypatch, x, gname):
+    """Smoke: 08 asserts `--smoke N` equals the groupings file's painting count; real mode passes no N.
+    NBC sits in its own grouping file, which 08 finds only by --groupings-name."""
     calls = []
-    monkeypatch.setattr(D, "require_verdict", lambda root, smoke: {"main": {"head_target": {"grouping": "NB100"}}})
+    monkeypatch.setattr(D, "require_verdict", lambda root, smoke: {"main": {"head_target": {"grouping": x}}})
     monkeypatch.setattr(D, "run", lambda cmd, log: calls.append(cmd))
     monkeypatch.setattr(D.R, "SMOKE", tmp_path)
     (tmp_path / "groupings").mkdir()
-    (tmp_path / "groupings" / "r8_groupings.json").write_text(json.dumps({"n_paintings": 1234}))
+    (tmp_path / "groupings" / f"{gname}.json").write_text(json.dumps({"n_paintings": 1234}))
     D.harm(tmp_path.resolve(), True)
     place = next(c for c in calls if "r8_place.py" in c)
-    assert place[-3:] == ["--h-only", "--smoke", "1234"]
+    assert place[-5:] == ["--h-only", "--smoke", "1234", "--groupings-name", gname]
