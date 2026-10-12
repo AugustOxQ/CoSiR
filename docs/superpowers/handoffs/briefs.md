@@ -155,3 +155,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-r8-build-5-handoff.md
 - New chat: tab 'r8 build 5', session 5eb81ad6-a5c7-4d43-831c-c3e20a7dfce5
 
+[brief] CoSiR: r8 build 5 -> r8 run (2026-10-12 23:27 Amsterdam)
+- Done: the r8 build is complete. All 13 tickets are merged into main. The final review passed after one fix wave.
+- State: 244 tests pass. The end-to-end smoke reached the gate verdict, and the C13 re-derivation agreed at both steps.
+- Next: ask the user about the M4 view check first. Then start the GPU and CPU queues from the main checkout.
+- Blocked: the M4 threshold (it fails by 0.00007 on the smoke) waits for the user. No real step runs before the answer.
+- Handoff: docs/superpowers/handoffs/2026-10-12-r8-run-handoff.md
+- New chat: tab 'r8 run', session 1aed5c27-f52c-44e9-bf24-d212aae368ee
+
