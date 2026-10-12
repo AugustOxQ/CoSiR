@@ -13,7 +13,9 @@ Inputs (per-anchor arrays, read by key):
   test     seed{55,56,57}/arrays.npz    the pick's arrays and its CF, B, B0, B1, BX_{X}, AFF (r1 only)
            gate_verdict.json            picks and alpha only
 `--overlay` merges the phase files of ticket 14 (`rederive/phaseK.npz`, `phaseA_seed42.npz`, `phaseB_seed{s}.npz`)
-over the pipeline's files; a key that both hold must be equal.
+over the pipeline's files; a key that both hold must be equal. Each phase file must hold every key its stage's
+statistics read (`required_keys`; checked before the merge). Only the gate takes keys from the pipeline's file, and only
+the reference scorers' (R1, X-AFF, their cf, and BX of R0, N, Z1 to Z6); every other pipeline-only key is dropped.
 
 Conventions. Scenario scopes: pair_index 0 = emotion__style, 1 = emotion__genre, 2 = style__genre. Scorer names are
 the arrays' names: `R1_{X}` and `XAFF_{X}` for X in V1..V6, R0, N, Z1..Z6. A grouping whose scorer arrays are absent
@@ -22,6 +24,7 @@ is dropped (L7, L11). Integers: d is a multiple of 0.25, Sum4d = sum of 4d (L16)
 """
 import argparse
 import json
+import re
 import sys
 from fractions import Fraction
 from math import ceil
@@ -347,34 +350,85 @@ def test_stats(arrays, picks, alphas, verify_copy=True):
 
 # ------------------------------------------------------------------ files and stages
 
-def load_arrays(path, overlay=None):
-    """The npz at `path` as a dict; keys of `overlay` (ticket 14's file) are added, and equal where both have them."""
+IDS = ("cl", "pair_index", "parity")
+REF_KEY = re.compile(r"(?:(?:R1|XAFF)_(?:R0|N|Z[1-6])(?:_cf)?|BX_(?:R0|N|Z[1-6]))__.+")
+SCORER_PARTS = ("{n}__r1", "{n}__gain", "{n}_cf__r1", "{n}_cf__gain")
+
+
+def is_reference_key(key):
+    """The gate's only keys that may come from the pipeline's file: R1/X-AFF (and cf) and BX of R0, N, Z1 to Z6."""
+    return REF_KEY.fullmatch(key) is not None
+
+
+def required_keys(stage, pipeline_keys=(), phase_keys=(), pick_names=()):
+    """The arrays the stage's statistics read from the phase file, plus the episode IDs (cl, pair_index, parity).
+    gate: AFF, B, B0, B1 (r1) and, for each candidate grouping V1..V6 that either file holds, both scorers' r1 and gain,
+    their cf r1 and cf gain, and BX_{V} r1. test: the pick's r1 and cf r1, B, B0, B1, AFF and BX_{V} (r1)."""
+    req = set(IDS)
+    if stage == "ceiling":
+        req |= {"told_T__r1", "told_T_cf__r1"}
+    elif stage == "gate":
+        req |= {f"{n}__r1" for n in ("AFF", "B", "B0", "B1")}
+        seen = set(pipeline_keys) | set(phase_keys)
+        for g in GROUPS:
+            if any(f"{k}_{g}__r1" in seen for k in KINDS):
+                req |= {f"BX_{g}__r1"}
+                for k in KINDS:
+                    req |= {part.format(n=f"{k}_{g}") for part in SCORER_PARTS}
+    elif stage == "test":
+        req |= {f"{n}__r1" for n in ("AFF", "B", "B0", "B1")}
+        for name in pick_names:
+            _, g = parse(name)
+            req |= {f"{name}__r1", f"{name}_cf__r1", f"BX_{g}__r1"}
+    else:
+        raise ValueError(f"unknown stage {stage!r}")
+    return req
+
+
+def load_arrays(path, overlay=None, required=None, pipeline_ok=None):
+    """The npz at `path` as a dict; keys of `overlay` (ticket 14's file) are added, and equal where both have them.
+    With `required`, the overlay must hold every one of those keys (checked before any merge, naming the missing
+    ones). With `pipeline_ok` (a predicate on key names), a key held only by the pipeline's file is kept if it
+    passes and dropped otherwise, so no statistic can read a key the phase file lacks."""
     with np.load(path) as z:
         A = {k: z[k] for k in z.files}
     if overlay is not None:
         with np.load(overlay) as z:
-            for k in z.files:
-                if k in A:
-                    assert np.array_equal(A[k], z[k]), f"{k}: {overlay} differs from {path}"
-                else:
-                    A[k] = z[k]
+            O = {k: z[k] for k in z.files}
+        if required is not None:
+            missing = sorted(set(required) - set(O))
+            assert not missing, f"{overlay}: required keys missing from the phase file: {missing}"
+        for k, v in O.items():
+            if k in A:
+                assert np.array_equal(A[k], v), f"{k}: {overlay} differs from {path}"
+        if pipeline_ok is not None:
+            A = {k: v for k, v in A.items() if k in O or pipeline_ok(k)}
+        A.update(O)
     return A
 
 
-def _arrays(results, rel, overlay_rel, overlay):
-    ov = Path(results) / overlay_rel if overlay else None
-    return load_arrays(Path(results) / rel, ov)
+def _arrays(results, rel, overlay_rel, overlay, stage=None, pick_names=()):
+    results = Path(results)
+    if not overlay:
+        return load_arrays(results / rel)
+    ov = results / overlay_rel
+    with np.load(results / rel) as z:
+        pipe = list(z.files)
+    with np.load(ov) as z:
+        phase = list(z.files)
+    req = required_keys(stage, pipe, phase, pick_names)
+    return load_arrays(results / rel, ov, req, is_reference_key if stage == "gate" else (lambda k: False))
 
 
 def run_stage(stage, results, dev, tests, per_pair=None, overlay=False):
     results = Path(results)
     if stage == "ceiling":
-        A = _arrays(results, f"seed{dev}/arrays_ceiling.npz", "rederive/phaseK.npz", overlay)
+        A = _arrays(results, f"seed{dev}/arrays_ceiling.npz", "rederive/phaseK.npz", overlay, "ceiling")
         rec = ceiling_stats(*ceiling_scope(A, per_pair))
         if per_pair is not None:
             assert rec["n"] == per_pair
     elif stage == "gate":
-        A = _arrays(results, f"seed{dev}/arrays.npz", f"rederive/phaseA_seed{dev}.npz", overlay)
+        A = _arrays(results, f"seed{dev}/arrays.npz", f"rederive/phaseA_seed{dev}.npz", overlay, "gate")
         rec = gate_stats(A, per_pair)
     elif stage == "test":
         gv = json.loads((results / "gate_verdict.json").read_text())
@@ -385,7 +439,8 @@ def run_stage(stage, results, dev, tests, per_pair=None, overlay=False):
         assert all(abs(alphas[f] - (0.0125 if len(fams) == 2 else 0.025)) < 1e-12 for f in fams), "alpha vs n"
         arrays = []
         for s in tests:
-            A = _arrays(results, f"seed{s}/arrays.npz", f"rederive/phaseB_seed{s}.npz", overlay)
+            A = _arrays(results, f"seed{s}/arrays.npz", f"rederive/phaseB_seed{s}.npz", overlay, "test",
+                        [p for p in picks.values() if p is not None])
             assert per_pair is None or len(A["cl"]) == 3 * per_pair, f"seed {s}: {len(A['cl'])} episodes"
             arrays.append(A)
         rec = test_stats(arrays, picks, alphas)

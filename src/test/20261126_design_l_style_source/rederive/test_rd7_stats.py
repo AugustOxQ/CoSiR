@@ -790,3 +790,82 @@ def test_overlay_must_agree_where_both_files_have_a_key(tmp_path):
 def test_name_normalisation():
     assert rd.norm_name("R1[V1]") == "R1_V1" and rd.norm_name("X-AFF[V3]") == "XAFF_V3"
     assert rd.norm_name("XAFF_V6") == "XAFF_V6" and rd.norm_name("R1_V2") == "R1_V2"
+
+
+# ------------------------------------------------------------------ --overlay: required keys per phase (A2)
+
+def is_ref(key):
+    return rd.is_reference_key(key)
+
+
+def gate_files(tmp_path, drop_v6=False):
+    """A pipeline gate file with every array, and a phase A file holding all but the reference scorers' arrays."""
+    A = blank()
+    good(A, "R1_V1")
+    if drop_v6:
+        drop(A, "V6")
+    save(tmp_path / "seed42" / "arrays.npz", A)
+    P = {k: v for k, v in A.items() if not is_ref(k)}
+    save(tmp_path / "rederive" / "phaseA_seed42.npz", P)
+    return A, P
+
+
+def test_overlay_gate_takes_only_reference_keys_from_the_pipeline_file(tmp_path):
+    A, P = gate_files(tmp_path)
+    assert not any(is_ref(k) for k in P) and any(is_ref(k) for k in A)
+    got = rd.run_stage("gate", tmp_path, dev=42, tests=SEEDS, per_pair=NP_, overlay=True)
+    assert got["picks"]["csd"] == "R1_V1" and not got["references"]["R1_R0"]["dropped"]
+    loaded = rd._arrays(tmp_path, "seed42/arrays.npz", "rederive/phaseA_seed42.npz", True, "gate")
+    assert "R1_Z3_cf__gain" in loaded and "BX_N__r1" in loaded and set(P) <= set(loaded)
+    # a pipeline-only key that is not a reference scorer's is not passed on to the statistics
+    A["B__other"] = np.zeros(N)
+    save(tmp_path / "seed42" / "arrays.npz", A)
+    loaded = rd._arrays(tmp_path, "seed42/arrays.npz", "rederive/phaseA_seed42.npz", True, "gate")
+    assert "B__other" not in loaded and "R1_Z3_cf__gain" in loaded
+
+
+@pytest.mark.parametrize("key", ["R1_V1__gain", "XAFF_V3_cf__gain", "R1_V2_cf__r1", "BX_V4__r1", "B1__r1", "B__r1",
+                                 "AFF__r1", "parity", "cl", "pair_index"])
+def test_overlay_gate_refuses_a_phase_file_missing_a_required_key(tmp_path, key):
+    A, P = gate_files(tmp_path)
+    del P[key]
+    save(tmp_path / "rederive" / "phaseA_seed42.npz", P)
+    with pytest.raises(AssertionError, match=key):
+        rd._arrays(tmp_path, "seed42/arrays.npz", "rederive/phaseA_seed42.npz", True, "gate")
+    # the pipeline's file holds the key, so a silent merge would have run
+    assert key in A
+
+
+def test_overlay_gate_does_not_require_a_grouping_both_files_lack(tmp_path):
+    gate_files(tmp_path, drop_v6=True)
+    got = rd.run_stage("gate", tmp_path, dev=42, tests=SEEDS, per_pair=NP_, overlay=True)
+    assert got["candidates"]["R1_V6"]["dropped"] and got["candidates"]["XAFF_V6"]["dropped"]
+
+
+def test_overlay_gate_refuses_a_grouping_the_phase_file_lacks_but_the_pipeline_has(tmp_path):
+    A, P = gate_files(tmp_path)
+    save(tmp_path / "rederive" / "phaseA_seed42.npz", {k: v for k, v in P.items() if "_V6" not in k})
+    with pytest.raises(AssertionError, match="V6"):
+        rd._arrays(tmp_path, "seed42/arrays.npz", "rederive/phaseA_seed42.npz", True, "gate")
+
+
+def test_overlay_ceiling_and_test_take_nothing_from_the_pipeline_file(tmp_path):
+    full = {"cl": CL, "pair_index": PAIR, "parity": np.arange(N) % 2, "told_T__r1": np.zeros(N),
+            "told_T_cf__r1": np.zeros(N)}
+    save(tmp_path / "seed42" / "arrays_ceiling.npz", full)
+    short = {k: v for k, v in full.items() if k != "told_T_cf__r1"}
+    save(tmp_path / "rederive" / "phaseK.npz", short)
+    with pytest.raises(AssertionError, match="told_T_cf__r1"):
+        rd._arrays(tmp_path, "seed42/arrays_ceiling.npz", "rederive/phaseK.npz", True, "ceiling")
+    save(tmp_path / "rederive" / "phaseK.npz", full)
+    assert set(rd._arrays(tmp_path, "seed42/arrays_ceiling.npz", "rederive/phaseK.npz", True, "ceiling")) == set(full)
+    F = fresh(0)
+    F.update({k: np.zeros(NN) for k in ("B__r1", "B0__r1", "B1__r1", "AFF__r1", "R1_V1_cf__r1")})
+    save(tmp_path / "seed55" / "arrays.npz", F)
+    for key in ("R1_V1__r1", "R1_V1_cf__r1", "BX_V1__r1", "B0__r1", "parity"):
+        P = {k: v for k, v in F.items() if k != key}
+        save(tmp_path / "rederive" / "phaseB_seed55.npz", P)
+        with pytest.raises(AssertionError, match=key):
+            rd._arrays(tmp_path, "seed55/arrays.npz", "rederive/phaseB_seed55.npz", True, "test", ["R1_V1"])
+    save(tmp_path / "rederive" / "phaseB_seed55.npz", F)
+    assert rd._arrays(tmp_path, "seed55/arrays.npz", "rederive/phaseB_seed55.npz", True, "test", ["R1_V1"])

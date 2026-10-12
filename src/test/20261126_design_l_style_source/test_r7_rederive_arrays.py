@@ -180,7 +180,9 @@ def synthetic_frozen(tmp_path):
                 for col, h, strength in ((0, ha[i], .9), (1, hb[i], .7)):
                     if position == h and name != "R0":
                         full[ep.candidates[i, col]] = [strength, 1 - strength, 0]
-                if name == "R0":
+                if name == "R0" or name in tuple(f"V{k}" for k in range(2, 7)):
+                    # R0 and V2..V6 move the condition-free score; V1 keeps the old fixture (it does not),
+                    # so test_phase_a_b1_uses_r0_values still tells B1 from a score built on V1
                     full[ep.candidates[i, 2]] = [.95, .05, 0]
                 for bank, h in (("a", ha[i]), ("b", hb[i])):
                     full[getattr(ep, f"pairs_{bank}_img")[i]] = [1, 0, 0]
@@ -213,6 +215,18 @@ def synthetic_frozen(tmp_path):
     return b, tmp_path
 
 
+def assert_bx_on_a0_plus_x(arrays, b, indices):
+    """BX_Vk is the condition-free score on A0 + (Vk,), by the re-derivation's own function, not on A0 alone."""
+    differs = False
+    for idx in indices:
+        want = BU.condition_free(b, (*K.A0, f"V{idx}"))
+        alone = BU.condition_free(b, K.A0)
+        for metric in K.METRICS:
+            np.testing.assert_array_equal(arrays[f"BX_V{idx}__{metric}"], want[metric], err_msg=f"BX_V{idx}/{metric}")
+            differs |= not np.array_equal(want[metric], alone[metric])
+    assert differs, "synthetic data cannot tell A0 + (Vk,) from A0 alone"
+
+
 def test_three_phases_cover_candidates_and_picks_on_smoke(synthetic_frozen):
     import json
     from rederive import rd7_arrays as A
@@ -225,6 +239,7 @@ def test_three_phases_cover_candidates_and_picks_on_smoke(synthetic_frozen):
             assert a[f"{kind}_V{idx}__r1"].shape == (12,)
             assert a[f"{kind}_V{idx}__cf_cells"].shape == (2,)
         assert a[f"BX_V{idx}__r1"].shape == (12,)
+    assert_bx_on_a0_plus_x(a, b, range(1, 7))
     # Same frozen objects, another seed's parity; no seed-42 cells are reused.
     b.ctx.seed = 9002
     b.parity = 1 - b.parity
@@ -235,6 +250,7 @@ def test_three_phases_cover_candidates_and_picks_on_smoke(synthetic_frozen):
     for name in ("B", "B0", "B1", "AFF", "AFF_cf", "BX_V1", "BX_V5", "R1_V1", "R1_V1_cf", "XAFF_V5", "XAFF_V5_cf"):
         assert test[f"{name}__r1"].shape == (12,)
     assert "R1_V2__r1" not in test
+    assert_bx_on_a0_plus_x(test, b, (1, 5))
     np.testing.assert_array_equal(test["parity"], b.parity)
     path = root / A.phase_path("B", 9002)
     A.write_once(path, test)
