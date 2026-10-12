@@ -12,10 +12,11 @@ weekly and stage reports.
 ## Now (2026-10-12)
 
 AFF stays the current best (round 6 held GO: +0.60 R@1 over B′(A0); style × genre loses). Round 7 (design L) ended
-at the seed-42 gate (n = 0; told true styles gain +3.92 on style × genre, the label-free groupings at most +0.38), so
-Friday 2026-10-16 is NO-GO under its rule. Next, in `r8 decide 2`: grouping work, with a learned grouping on frozen
-CLIP that cuts across content as the main line and an encoder screen in parallel; step 3's literature check comes
-first, and the paper plan is still open. CVPR abstract 2026-11-10.
+NO-GO at its seed-42 gate. Round 8 (decision A, 2026-10-12): grouping work beside the ArtELingo paper with AFF, with a
+hard cut-off on Fri 2026-10-23 for a held-read verdict. Main line: a learned grouping head on frozen CLIP with
+content-group negatives (ii) and FCMI (iii) in CSD's place, gallery images placed by the grouping's own assignment;
+the encoder screen (i) is its own track. Step 3 is done (MCL, ECCV 2024, is the closest prior; the positive pair is
+open); next, the grill in `r8 decide 2`. CVPR abstract 2026-11-10.
 
 ## Parked ideas
 
@@ -61,6 +62,23 @@ stay in the entries below.
   told prompts are comparators (user). Still open: FCMI's role (builder, comparator or drop), the paper plan (beside,
   instead of, or after the ArtELingo paper), placement in scope, and the type and loop size (agent default: new
   idea, full loop).
+- **Decided (A), completed in `r8 decide 2`** (2026-10-12; each pick given before our view):
+  - FCMI is a builder beside (ii), with the same tuning budget fixed before any seed-42 result, and is reported as a
+    comparator too (user: the cost difference is small, "we spend a little bit more to gain the whole picture"; our
+    page had said comparator, and we came to agree).
+  - Paper plan: the grouping work runs beside the ArtELingo paper with AFF. Hard cut-off Fri 2026-10-23: the pick's
+    held-read verdict must exist by then; a later verdict stays out of the CVPR paper (user, own pick among three
+    dates; ours agreed).
+  - Placement: gallery images take the new grouping's own assignment; captions keep the CLIP text head; caption
+    placement waits for a later loop (user: "probably image part can gain more"; ours agreed, since the grouping is
+    the first limit). Paired-image reference, told route, seed 42: true styles on style × genre +3.92 to +10.87, raw
+    CSD +0.13 to +0.59 (`src/test/20261129_r8_grouping/step3_caption_ref/`).
+  - Tracks: the encoder screen (i) is its own track with its own spec, report and pick; (ii) and (iii) form the main
+    line (user; ours had leaned to one pool for the cut-off).
+  - Open: which pick takes the held read if both tracks pass; loop sizes (agent default: main line full, screen
+    medium).
+- **Step 3:** literature `docs/reports/literature/2026-11-30_r8_learned_grouping.md` (MCL is the closest prior: the
+  mechanism is not ours to claim; default augmentation positives keep content, not style).
 - **Why:** told true styles gain +3.92 while the label-free groupings reach +0.38; CSD agrees with style and genre
   about equally; a removal approach fights the true styles' own link to content (AMI 0.32), so the user wants a
   better grouping source rather than another cut of CSD.
