@@ -1,0 +1,476 @@
+"""Ticket 10: synthetic per-anchor arrays; no r8_common or real data needed."""
+import json
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
+import numpy as np
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import r8_gate as G
+import run_r8_gate as W
+
+
+class BoundBoot:
+    """Deterministic bootstrap boundary, returning fractions as the real API does."""
+    def __init__(self, lower=None):
+        self.lower = lower
+
+    def __call__(self, values, clusters):
+        point = float(np.mean(values))
+        lower = self.lower if self.lower is not None else (0.001 if point > 0 else -0.001)
+        return {"point": point, "ci95": [lower, 1.0]}
+
+
+def world(spec, n_pair=24):
+    """spec maps names to (three AFF-difference sums in quarter units, gain sum)."""
+    n = 3 * n_pair
+    arr = {"cl": np.arange(n) % 8, "pair_index": np.repeat([0, 1, 2], n_pair),
+           "parity": np.arange(n) % 2, "AFF__r1": np.full(n, 0.5)}
+    for k in ("B", "B0", "B1"):
+        arr[f"{k}__r1"] = np.full(n, 0.25)
+    for name, (sums, gain) in spec.items():
+        s = np.full(n, 0.5)
+        for p, units in enumerate(sums):
+            assert abs(units) <= n_pair
+            s[p * n_pair:p * n_pair + abs(units)] += 0.25 * np.sign(units)
+        arr[f"{name}__r1"] = s
+        arr[f"{name}__gain"] = np.zeros(n)
+        arr[f"{name}__gain"][:abs(gain)] = 0.25 * np.sign(gain)
+        arr[f"{name}_cf__r1"] = np.full(n, 0.25)
+        arr[f"{name}_cf__gain"] = np.zeros(n)
+        arr[f"BX_{name.split('_', 1)[1]}__r1"] = np.full(n, 0.25)
+    return arr
+
+
+@pytest.mark.parametrize("lower, passes", [(0.0, False), (-1e-12, False), (1e-12, True)])
+def test_sc3_lower_bound_is_strict(lower, passes):
+    arr = world({"R1_V100": ((1, 1, 1), 4)})
+    rec = G.evaluate_scorer(arr, "R1_V100", boot=BoundBoot(lower))
+    assert rec["SC3"]["sum4d"] == 3
+    assert rec["SC3"]["point"] == pytest.approx(25 * 3 / 72)
+    assert rec["SC3"]["pass"] is passes
+    assert rec["pass"] is passes
+
+
+@pytest.mark.parametrize("pair", [0, 1])
+@pytest.mark.parametrize("units, passes", [(-49, True), (-50, False)])
+def test_sc4_minus49_passes_minus50_fails_in_each_emotion_pair(pair, units, passes):
+    sums = [0, 0, 200]
+    sums[pair] = units
+    arr = world({"R1_V100": (sums, 8)}, n_pair=4096)
+    rec = G.evaluate_scorer(arr, "R1_V100", boot=BoundBoot())
+    assert rec["SC4"][G.PAIRS[pair]]["sum4d"] == units
+    assert rec["SC4"]["pass"] is passes
+    assert rec["S3"]["pass"] is passes
+    assert rec["pass"] is passes
+
+
+def test_recorded_r7_s3_keeps_its_fields_separate_from_sc4():
+    arr = world({"R1_V100": ((1, 1, 1), 4)})
+    rec = G.evaluate_scorer(arr, "R1_V100", BoundBoot())
+    assert rec["S3"] == {"emotion__style": {"sum4d": 1, "pass": True},
+                         "emotion__genre": {"sum4d": 1, "pass": True}, "pass": True}
+    assert {"n", "point", "ci95"} <= set(rec["SC4"]["emotion__style"])
+    rec["SC4"]["emotion__style"]["pass"] = False
+    assert rec["S3"]["emotion__style"]["pass"] is True
+
+
+def records(spec, lower=None):
+    arr = world(spec)
+    return {name: G.evaluate_scorer(arr, name, BoundBoot(lower)) for name in spec}
+
+
+@pytest.mark.parametrize("track, earlier, later", [
+    ("main", "V100", "V67"), ("main", "V67", "V33"), ("main", "V33", "NB100"),
+    ("main", "NB100", "NB67"), ("main", "NB67", "NB33"), ("main", "NB33", "FC1"),
+    *[("main", f"FC{i}", f"FC{i+1}") for i in range(1, 6)], ("main", "FC6", "NBC"),
+    ("screen", "AL", "DI"), ("screen", "DI", "SG"),
+])
+def test_pick_group_order_precedes_kind_order(track, earlier, later):
+    recs = records({f"R1_{later}": ((1, 1, 1), 4), f"XAFF_{earlier}": ((1, 1, 1), 4)})
+    assert G.select_scorer(recs, track) == f"XAFF_{earlier}"
+
+
+@pytest.mark.parametrize("track, grouping", [("main", "FC2"), ("screen", "DI")])
+def test_pick_final_tie_prefers_r1(track, grouping):
+    recs = records({f"XAFF_{grouping}": ((1, 1, 1), 4), f"R1_{grouping}": ((1, 1, 1), 4)})
+    assert G.select_scorer(recs, track) == f"R1_{grouping}"
+
+
+def test_pick_pooled_aff_margin_then_gain_and_only_passers():
+    recs = records({"R1_V100": ((1, 1, 1), 20), "XAFF_FC6": ((2, 1, 1), 1),
+                    "R1_NB33": ((-1, 0, 24), 40)})  # largest pooled margin, but fails SC4
+    assert G.select_scorer(recs, "main") == "XAFF_FC6"
+    recs = records({"R1_V100": ((1, 1, 1), 4), "XAFF_NBC": ((1, 1, 1), 5)})
+    assert G.select_scorer(recs, "main") == "XAFF_NBC"
+    assert G.select_scorer(records({"R1_V100": ((0, 0, -1), 4)}), "main") is None
+
+
+def opposing_aff_and_bar_orders(first, second, other_names=()):
+    """First beats AFF by more, but its high BX/CF leaves the smaller R7 bar margin."""
+    spec = {name: ((0, 0, 0), 4) for name in other_names}
+    spec.update({first: ((2, 2, 2), 4), second: ((1, 1, 1), 4)})
+    arr = world(spec)
+    arr[f"BX_{first.split('_', 1)[1]}__r1"][:] = 0.5
+    arr[f"{first}_cf__r1"][:] = 0.5
+    return arr
+
+
+def test_pick_uses_aff_sum_when_r7_bar_sum_ranks_the_other_scorer_first():
+    first, second = "R1_V67", "XAFF_V100"
+    arr = opposing_aff_and_bar_orders(first, second)
+    recs = G.evaluate_all(arr, (first, second), boot=BoundBoot())
+    assert recs[first]["SC3"]["sum4d"] == 6 and recs[second]["SC3"]["sum4d"] == 3
+    assert recs[first]["S1"]["sum4d"] == 6 and recs[second]["S1"]["sum4d"] == 75
+    assert all(r["pass"] for r in recs.values())
+    assert G.select_scorer(recs, "main") == first
+
+
+def nb_records(spec=None):
+    base = {f"{kind}_{x}": ((0, 0, 0), 4)
+            for x in ("NB100", "NB67", "NB33") for kind in ("R1", "XAFF")}
+    base.update(spec or {})
+    return records(base, lower=0.0)
+
+
+@pytest.mark.parametrize("spec, source, strength", [
+    ({}, "R1_NB100", 1.0),
+    ({"XAFF_NB33": ((2, 1, 1), 1)}, "XAFF_NB33", 0.33),
+    ({"XAFF_NB67": ((0, 0, 0), 5)}, "XAFF_NB67", 0.67),
+    ({"XAFF_NB67": ((1, 0, 0), 4), "R1_NB33": ((1, 0, 0), 4)}, "XAFF_NB67", 0.67),
+    ({"XAFF_NB100": ((1, 0, 0), 4), "R1_NB67": ((1, 0, 0), 4)}, "XAFF_NB100", 1.0),
+    ({"XAFF_NB33": ((1, 0, 0), 4), "R1_NB33": ((1, 0, 0), 4)}, "R1_NB33", 0.33),
+])
+def test_trigger_strength_uses_every_tie_break(spec, source, strength):
+    out = G.probe_trigger(nb_records(spec))
+    assert out["triggered"] is True
+    assert out["source_scorer"] == source
+    assert out["strength"] == strength
+    assert len(out["nb_records"]) == 6
+
+
+def test_trigger_uses_aff_sum_when_r7_bar_sum_ranks_another_strength_first():
+    first, second = "XAFF_NB33", "R1_NB100"
+    names = G.scorer_names(("NB100", "NB67", "NB33"))
+    arr = opposing_aff_and_bar_orders(first, second, names)
+    recs = G.evaluate_all(arr, names, boot=BoundBoot(lower=0.0))
+    assert recs[first]["SC3"]["sum4d"] == 6 and recs[second]["SC3"]["sum4d"] == 3
+    assert recs[first]["S1"]["sum4d"] == 6 and recs[second]["S1"]["sum4d"] == 75
+    assert all(not r["pass"] for r in recs.values())
+    out = G.probe_trigger(recs)
+    assert out["triggered"] is True
+    assert out["source_scorer"] == first and out["strength"] == 0.33
+
+
+def test_trigger_ignores_nb100_drop_and_uses_remaining_failing_scorers():
+    names = G.scorer_names(("NB100", "NB67", "NB33"))
+    arr = world({"R1_NB67": ((2, 0, 0), 4), "XAFF_NB67": ((0, 0, 0), 4),
+                 "R1_NB33": ((3, 0, 0), 4), "XAFF_NB33": ((0, 0, 0), 4)})
+    recs = G.evaluate_all(arr, names, {"NB100": "missing bank block"}, BoundBoot(lower=0.0))
+    out = G.probe_trigger(recs)
+    assert out["triggered"] is True
+    assert out["source_scorer"] == "R1_NB33" and out["strength"] == 0.33
+    assert all(out["nb_records"][name]["dropped"] for name in ("R1_NB100", "XAFF_NB100"))
+    assert all(not recs[name]["dropped"] and not recs[name]["pass"] for name in names[2:])
+
+
+def test_trigger_suppressed_by_any_nb_pass_or_no_evaluated_nb():
+    recs = nb_records()
+    recs.update(records({"XAFF_NB33": ((1, 0, 0), 4)}))
+    out = G.probe_trigger(recs)
+    assert out["triggered"] is False and out["strength"] is None
+    dropped = G.evaluate_all({}, tuple(recs), {x: "missing bank block" for x in ("NB100", "NB67", "NB33")})
+    out = G.probe_trigger(dropped)
+    assert out["triggered"] is False and out["strength"] is None
+    assert "no NB scorer" in out["reason"]
+    assert all(not r["pass"] and r["reason"] == "missing bank block" for r in dropped.values())
+
+
+@pytest.mark.parametrize("track, grouping", [("main", "V100"), ("screen", "AL")])
+def test_control_flag_uses_pick_kind_and_pick_stands(track, grouping):
+    cands = records({f"XAFF_{grouping}": ((1, 1, 1), 4)})
+    controls = records({f"R1_Z{grouping}": ((2, 2, 2), 5), f"XAFF_Z{grouping}": ((0, 0, 0), 4)})
+    out = G.track_verdict(cands, track, controls=controls)
+    assert out["pick"] == f"XAFF_{grouping}" and out["random_control_flag"] is False
+    controls.update(records({f"XAFF_Z{grouping}": ((1, 1, 1), 4)}))
+    out = G.track_verdict(cands, track, controls=controls)
+    assert out["pick"] == f"XAFF_{grouping}" and out["random_control_flag"] is True
+    controls = G.evaluate_all({}, tuple(controls), {f"Z{grouping}": "missing text head"})
+    out = G.track_verdict(cands, track, controls=controls)
+    assert out["random_control_flag"] == "not evaluable"
+    with pytest.raises(AssertionError, match="control"):
+        G.track_verdict(cands, track)
+
+
+def test_promising_requires_all_r7_checks_and_no_main_passer():
+    # No win over AFF, but B/CF are lower and the gain is positive: S1-S3 all pass.
+    cands = records({"R1_V100": ((0, 0, 0), 4)})
+    out = G.track_verdict(cands, "main")
+    assert out["promising"] is True and out["pick"] is None
+    assert out["head_target"] == {"grouping": "V100", "scorer_kind": "R1",
+                                   "scorer": "R1_HV100", "source_scorer": "R1_V100"}
+    cands.update(records({"XAFF_NB33": ((1, 1, 1), 4)}))
+    out = G.track_verdict(cands, "main", controls=records({"XAFF_ZNB33": ((0, 0, 0), 4)}))
+    assert out["promising"] is False and out["head_target"]["scorer"] == "XAFF_HNB33"
+    assert out["main_line_fails_at_gate"] is False
+    assert G.track_verdict(records({"R1_V100": ((0, 0, 0), 0)}), "main")["promising"] is False
+    arr = world({"R1_V100": ((0, 0, 0), 4)})
+    arr["R1_V100_cf__r1"][:] = 0.5
+    arr["R1_V100_cf__r1"][48] = 0.75  # S2 fails even with positive pooled bar/gain bounds.
+    cands = {"R1_V100": G.evaluate_scorer(arr, "R1_V100", BoundBoot())}
+    assert G.track_verdict(cands, "main")["promising"] is False
+
+
+def test_screen_has_no_promising_and_references_controls_pick_nothing():
+    cands = records({"R1_AL": ((0, 0, 0), 4)})
+    refs = records({"R1_R0own": ((2, 2, 2), 4)})
+    out = G.track_verdict(cands, "screen", references=refs, controls=records({"R1_ZAL": ((3, 3, 3), 4)}))
+    assert out["pick"] is None
+    assert "promising" not in out and "head_target" not in out
+    assert out["references"]["R1_R0own"]["pass"] is True
+    assert out["controls"]["R1_ZAL"]["pass"] is True
+
+
+def test_head_target_uses_pick_ties_when_no_pass_and_handles_all_dropped():
+    cands = records({"XAFF_NBC": ((0, 0, 0), 5), "R1_V33": ((0, 0, 0), 4)})
+    out = G.track_verdict(cands, "main")
+    assert out["head_target"]["scorer"] == "XAFF_HNBC"
+    dropped = G.evaluate_all({}, tuple(cands), {"NBC": "bank block", "V33": "view check"})
+    out = G.track_verdict(dropped, "main")
+    assert out["head_target"] is None and out["promising"] is False
+    assert out["main_line_fails_at_gate"] is True
+
+
+def test_sc3_sc4_gate_does_not_require_r7_s1_or_s2():
+    arr = world({"R1_V100": ((1, 1, 1), 0)})
+    arr["R1_V100_cf__r1"][48:] = 0.75
+    rec = G.evaluate_scorer(arr, "R1_V100", BoundBoot())
+    assert rec["S1"]["pass"] is False and rec["S2"]["pass"] is False
+    assert rec["pass"] is True
+
+
+def write_json_fixture(path, rec):
+    with open(path, "x") as f:
+        json.dump(rec, f)
+    return rec
+
+
+@pytest.fixture
+def publication_files(tmp_path):
+    source = tmp_path / "arrays_main.npz"
+    source.write_bytes(b"synthetic per-anchor file")
+    pending = tmp_path / "gate_pending.json"
+    write_json_fixture(pending, {"step": "gate", "smoke": True,
+                                 "input_sha256": {str(source): W.sha_file(source)}, "main": {}, "screen": {}})
+    check = tmp_path / "gate_rederive.json"
+    write_json_fixture(check, {"step": "gate", "status": "agree", "smoke": True,
+                               "input_sha256": {str(source): W.sha_file(source), str(pending): W.sha_file(pending)}})
+    return SimpleNamespace(source=source, pending=pending, check=check, verdict=tmp_path / "gate_verdict.json")
+
+
+def test_rederivation_other_input_sha_blocks_the_verdict_file(publication_files):
+    source, pending, check, verdict = (publication_files.source, publication_files.pending,
+                                       publication_files.check, publication_files.verdict)
+    record = W.read_json(check)
+    record["input_sha256"][str(source)] = "0" * 64
+    check.write_text(json.dumps(record))
+    with pytest.raises(AssertionError, match="SHA-256"):
+        W.publish_checked(pending, check, verdict, write_json_fixture)
+    assert not verdict.exists()
+    record["input_sha256"][str(source)] = W.sha_file(source)
+    check.write_text(json.dumps(record))
+    W.publish_checked(pending, check, verdict, write_json_fixture)
+    assert json.loads(verdict.read_text())["main"] == {}
+    with pytest.raises(AssertionError, match="overwrite"):
+        W.publish_checked(pending, check, verdict, write_json_fixture)
+
+
+def test_rederivation_without_pending_file_coverage_blocks_the_verdict(publication_files):
+    files = publication_files
+    record = W.read_json(files.check)
+    record["input_sha256"].pop(str(files.pending))
+    files.check.write_text(json.dumps(record))
+    with pytest.raises(AssertionError, match="SHA-256.*gate_pending.json"):
+        W.publish_checked(files.pending, files.check, files.verdict, write_json_fixture)
+    assert not files.verdict.exists()
+
+
+def test_input_changed_after_pending_and_rederivation_blocks_the_verdict(publication_files):
+    files = publication_files
+    files.source.write_bytes(b"changed after pending and agreeing C13 record")
+    with pytest.raises(AssertionError, match="input SHA-256 changed"):
+        W.publish_checked(files.pending, files.check, files.verdict, write_json_fixture)
+    assert not files.verdict.exists()
+
+
+def pending_inputs(tmp_path, *, sc1_pass=True, nbc=False, smoke=True, n_pair=24, main=None):
+    """Complete small inputs so removing a guard would actually write a pending file."""
+    rule = tmp_path / "DECISION_RULE.md"
+    rule.write_text("synthetic rule for file-boundary tests")
+    common = SimpleNamespace(RULE=rule, assert_rule=lambda: None, assert_inputs=lambda: None,
+                             write_json_once=write_json_fixture, MAIN=main)
+    for name in ("stage0_regression.json", "stage1_fcmi.json", "stageE_AL.json", "stageE_DI.json", "stageE_SG.json"):
+        write_json_fixture(tmp_path / name, {"pass": sc1_pass if name == "stage0_regression.json" else True,
+                                             "smoke": smoke, "rule_sha256": W.sha_file(rule)})
+    seed42 = tmp_path / "seed42"
+    seed42.mkdir()
+    arrays = seed42 / "arrays_main.npz"
+    np.savez(arrays, **world({"R1_NBC": ((1, 1, 1), 4)} if nbc else {}, n_pair=n_pair))
+    index = seed42 / "index.json"
+    write_json_fixture(index, {"batches": [{"file": arrays.name, "sha256": W.sha_file(arrays)}]})
+    grouping = tmp_path / "r8_groupings.json"
+    write_json_fixture(grouping, {"groupings": {}, "dropped": {
+        x: "synthetic drop" for x in (*G.MAIN[:-1], *G.SCREEN, "R0own", "NRK", "TP")}})
+    return common, index, grouping
+
+
+def test_prepare_pending_stops_on_sc1_failure(tmp_path):
+    common, index, grouping = pending_inputs(tmp_path, sc1_pass=False)
+    with pytest.raises(AssertionError, match="SC1 failure"):
+        W.prepare_pending(tmp_path, "trigger", True, [index], [grouping], common)
+    assert not (tmp_path / "trigger_pending.json").exists()
+    assert not (tmp_path / "probe_trigger.json").exists()
+    assert not (tmp_path / "gate_verdict.json").exists()
+
+
+def test_prepare_pending_rejects_nbc_arrays_before_checked_trigger(tmp_path):
+    common, index, grouping = pending_inputs(tmp_path, nbc=True)
+    with pytest.raises(AssertionError, match="NBC arrays before a checked trigger"):
+        W.prepare_pending(tmp_path, "trigger", True, [index], [grouping], common)
+    assert not (tmp_path / "trigger_pending.json").exists()
+    assert not (tmp_path / "probe_trigger.json").exists()
+    assert not (tmp_path / "gate_verdict.json").exists()
+
+
+R7_ARRAYS = "src/test/20261126_design_l_style_source/results/seed42/arrays.npz"
+
+
+def real_mode_pending(tmp_path, monkeypatch, *, n_pair, r7_edit=None):
+    """Real-mode (smoke False) pending run against a fake R7 arrays file under a fake main checkout.
+    Reads and writes only tmp_path; the gate statistics are stubbed (they are not under test here)."""
+    main = tmp_path / "fake_main"
+    common, index, grouping = pending_inputs(tmp_path, smoke=False, n_pair=n_pair, main=main)
+    r7 = {k: v.copy() for k, v in world({}, n_pair=n_pair).items() if k in ("cl", "pair_index", "parity")
+          or k.startswith(("AFF__", "B__", "B0__", "B1__"))}
+    r7.update({f"{k}__r1": np.full(3 * n_pair, 0.25) for k in ("B", "B0", "B1")})
+    if r7_edit:
+        r7_edit(r7)
+    (main / R7_ARRAYS).parent.mkdir(parents=True)
+    np.savez(main / R7_ARRAYS, **r7)
+    monkeypatch.setattr(G, "gate_stats", lambda arr, dropped, include_nbc: {"trigger": {}})
+    return lambda: W.prepare_pending(tmp_path, "trigger", False, [index], [grouping], common)
+
+
+def test_real_mode_pending_accepts_12288_episodes_aligned_with_r7(tmp_path, monkeypatch):
+    run = real_mode_pending(tmp_path, monkeypatch, n_pair=4096)
+    run()
+    assert (tmp_path / "trigger_pending.json").exists()
+    assert any(k.endswith("arrays.npz") and "20261126" in k for k in json.loads(
+        (tmp_path / "trigger_pending.json").read_text())["input_sha256"])
+
+
+def test_real_mode_pending_rejects_a_wrong_episode_count_even_when_r7_matches(tmp_path, monkeypatch):
+    run = real_mode_pending(tmp_path, monkeypatch, n_pair=4000)    # 12,000 episodes in both files
+    with pytest.raises(AssertionError, match="12,288"):
+        run()
+    assert not (tmp_path / "trigger_pending.json").exists()
+
+
+@pytest.mark.parametrize("key, edit", [
+    ("cl", lambda r7: r7["cl"].__setitem__(0, r7["cl"][0] + 1)),
+    ("pair_index", lambda r7: r7.update(pair_index=r7["pair_index"][::-1].copy())),
+    ("parity", lambda r7: r7["parity"].__setitem__(5, 1 - r7["parity"][5])),
+    ("AFF__r1", lambda r7: r7["AFF__r1"].__setitem__(7, 0.75)),
+    ("B1__r1", lambda r7: r7["B1__r1"].__setitem__(9, 0.5)),
+])
+def test_real_mode_pending_rejects_an_array_that_differs_from_r7(tmp_path, monkeypatch, key, edit):
+    run = real_mode_pending(tmp_path, monkeypatch, n_pair=4096, r7_edit=edit)
+    with pytest.raises(AssertionError, match=f"alignment mismatch: {key}"):
+        run()
+    assert not (tmp_path / "trigger_pending.json").exists()
+
+
+@pytest.mark.parametrize("status, step, covered", [("disagree", "gate", True), ("agree", "trigger", True),
+                                                  ("agree", "gate", False)])
+def test_rederivation_requires_agreement_step_and_every_input(status, step, covered):
+    expected = {"/stored/arrays.npz": "a" * 64}
+    record = {"status": status, "step": step, "smoke": False,
+              "input_sha256": expected if covered else {}}
+    with pytest.raises(AssertionError):
+        W.require_rederivation(record, expected, "gate", False)
+
+
+def test_batches_union_requires_identical_anchor_alignment_and_shared_arrays():
+    arr = world({"R1_V100": ((1, 1, 1), 4), "XAFF_NB33": ((2, 1, 1), 5)})
+    left = {k: v for k, v in arr.items() if "NB33" not in k}
+    right = {k: v for k, v in arr.items() if "V100" not in k}
+    merged = G.merge_batches([left, right])
+    assert G.evaluate_scorer(merged, "XAFF_NB33", BoundBoot())["SC3"]["sum4d"] == 4
+    for key in ("cl", "pair_index", "parity", "AFF__r1"):
+        changed = {k: v.copy() for k, v in right.items()}
+        changed[key][0] += 1
+        with pytest.raises(AssertionError, match=key):
+            G.merge_batches([left, changed])
+
+
+def test_full_gate_has_separate_roles_and_records_drops_without_common():
+    dropped = {x: "not built in synthetic example" for x in (*G.MAIN[:-1], *G.SCREEN, "NRK", "TP")
+               if x not in ("NB100", "AL")}
+    spec = {f"{kind}_{x}": ((1, 1, 1), 4)
+            for x in ("NB100", "AL", "R0own", "ZNB100", "ZAL") for kind in G.KINDS}
+    out = G.gate_stats(world(spec), dropped=dropped, boot=BoundBoot())
+    assert out["main"]["pick"] == "R1_NB100" and out["screen"]["pick"] == "R1_AL"
+    assert out["trigger"]["triggered"] is False
+    assert out["main"]["candidates"]["R1_FC3"]["reason"] == "not built in synthetic example"
+    assert set(out["main"]["references"]) == {"R1_R0own", "XAFF_R0own", "R1_NRK", "XAFF_NRK", "R1_TP", "XAFF_TP"}
+    assert set(out["screen"]["references"]) == {"R1_R0own", "XAFF_R0own"}
+    assert out["fallback"]["screen_read_if_main_fails"] is True
+    assert out["fallback"]["screen_eligible_at_gate"] is False
+
+
+@pytest.fixture
+def real_boot():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("r8_test_aspect_metrics", "/project/CoSiR/src/eval/aspect_metrics.py")
+    metrics = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(metrics)
+    return metrics.cluster_bootstrap
+
+
+def test_real_cluster_bootstrap_on_small_constant_differences(real_boot):
+    arr = world({"R1_V100": ((24, 24, 24), 72)})
+    rec = G.evaluate_scorer(arr, "R1_V100", real_boot)
+    assert rec["SC3"]["ci95"] == [25.0, 25.0]
+    assert rec["SC3"]["point"] == 25.0 and rec["pass"] is True
+    assert rec["S1"]["ci95"] == [50.0, 50.0]
+    assert rec["S1"]["gain_ci95"] == [25.0, 25.0]
+
+
+def test_sc3_bootstraps_painting_clusters_with_many_anchors(real_boot):
+    arr = world({"R1_V100": ((0, 0, 0), 180)}, n_pair=60)
+    arr["cl"] = np.repeat(np.arange(9), 20)
+    d = np.repeat([-0.25, 0.0, 0.25, 0.25, -0.25, 0.0, 0.5, -0.5, 0.5], 20)
+    arr["R1_V100__r1"] = arr["AFF__r1"] + d
+    expected = 100 * np.asarray(real_boot(d, arr["cl"])["ci95"])
+    per_anchor = 100 * np.asarray(real_boot(d, np.arange(len(d)))["ci95"])
+    assert not np.allclose(expected, per_anchor, rtol=0, atol=1e-12)
+    rec = G.evaluate_scorer(arr, "R1_V100", real_boot)
+    np.testing.assert_allclose(rec["SC3"]["ci95"], expected, rtol=0, atol=1e-12)
+    assert not np.allclose(rec["SC3"]["ci95"], per_anchor, rtol=0, atol=1e-12)
+
+
+@pytest.mark.parametrize("units, passes", [(245, False), (246, True)])
+def test_recorded_r7_s1_integer_bar_boundary(units, passes):
+    arr = world({"R1_V100": ((0, 0, 0), 4)}, n_pair=4096)
+    arr["R1_V100__r1"][:] = 0.25
+    arr["R1_V100__r1"][:units] = 0.5
+    rec = G.evaluate_scorer(arr, "R1_V100", BoundBoot())
+    assert rec["S1"]["sum4d"] == units and rec["S1"]["pass"] is passes
+
+
+def test_promising_rejects_s3_failure_even_when_s1_s2_pass():
+    recs = records({"R1_V100": ((-1, 0, 0), 4)})
+    assert recs["R1_V100"]["S1"]["pass"] is True and recs["R1_V100"]["S2"]["pass"] is True
+    assert G.track_verdict(recs, "main")["promising"] is False
