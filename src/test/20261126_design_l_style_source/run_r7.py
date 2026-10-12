@@ -153,7 +153,7 @@ def prep(role):
 def _ready(role, stage):
     if stage == "ceiling":
         rec = read_record(role.root / "stage0_regression.json")
-        assert rec.get("passed") is True, "stage 0 regression did not pass"
+        assert rec.get("pass") is True, "stage 0 regression did not pass"  # run_r7_stage0 writes "pass"
     else:
         if role.smoke:
             # Smoke never decides: exercise gate wiring even after a smoke K1 STOP.
