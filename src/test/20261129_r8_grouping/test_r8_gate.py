@@ -305,19 +305,19 @@ def test_input_changed_after_pending_and_rederivation_blocks_the_verdict(publica
     assert not files.verdict.exists()
 
 
-def pending_inputs(tmp_path, *, sc1_pass=True, nbc=False):
+def pending_inputs(tmp_path, *, sc1_pass=True, nbc=False, smoke=True, n_pair=24, main=None):
     """Complete small inputs so removing a guard would actually write a pending file."""
     rule = tmp_path / "DECISION_RULE.md"
     rule.write_text("synthetic rule for file-boundary tests")
     common = SimpleNamespace(RULE=rule, assert_rule=lambda: None, assert_inputs=lambda: None,
-                             write_json_once=write_json_fixture)
+                             write_json_once=write_json_fixture, MAIN=main)
     for name in ("stage0_regression.json", "stage1_fcmi.json", "stageE_AL.json", "stageE_DI.json", "stageE_SG.json"):
         write_json_fixture(tmp_path / name, {"pass": sc1_pass if name == "stage0_regression.json" else True,
-                                             "smoke": True, "rule_sha256": W.sha_file(rule)})
+                                             "smoke": smoke, "rule_sha256": W.sha_file(rule)})
     seed42 = tmp_path / "seed42"
     seed42.mkdir()
     arrays = seed42 / "arrays_main.npz"
-    np.savez(arrays, **world({"R1_NBC": ((1, 1, 1), 4)} if nbc else {}))
+    np.savez(arrays, **world({"R1_NBC": ((1, 1, 1), 4)} if nbc else {}, n_pair=n_pair))
     index = seed42 / "index.json"
     write_json_fixture(index, {"batches": [{"file": arrays.name, "sha256": W.sha_file(arrays)}]})
     grouping = tmp_path / "r8_groupings.json"
@@ -342,6 +342,54 @@ def test_prepare_pending_rejects_nbc_arrays_before_checked_trigger(tmp_path):
     assert not (tmp_path / "trigger_pending.json").exists()
     assert not (tmp_path / "probe_trigger.json").exists()
     assert not (tmp_path / "gate_verdict.json").exists()
+
+
+R7_ARRAYS = "src/test/20261126_design_l_style_source/results/seed42/arrays.npz"
+
+
+def real_mode_pending(tmp_path, monkeypatch, *, n_pair, r7_edit=None):
+    """Real-mode (smoke False) pending run against a fake R7 arrays file under a fake main checkout.
+    Reads and writes only tmp_path; the gate statistics are stubbed (they are not under test here)."""
+    main = tmp_path / "fake_main"
+    common, index, grouping = pending_inputs(tmp_path, smoke=False, n_pair=n_pair, main=main)
+    r7 = {k: v.copy() for k, v in world({}, n_pair=n_pair).items() if k in ("cl", "pair_index", "parity")
+          or k.startswith(("AFF__", "B__", "B0__", "B1__"))}
+    r7.update({f"{k}__r1": np.full(3 * n_pair, 0.25) for k in ("B", "B0", "B1")})
+    if r7_edit:
+        r7_edit(r7)
+    (main / R7_ARRAYS).parent.mkdir(parents=True)
+    np.savez(main / R7_ARRAYS, **r7)
+    monkeypatch.setattr(G, "gate_stats", lambda arr, dropped, include_nbc: {"trigger": {}})
+    return lambda: W.prepare_pending(tmp_path, "trigger", False, [index], [grouping], common)
+
+
+def test_real_mode_pending_accepts_12288_episodes_aligned_with_r7(tmp_path, monkeypatch):
+    run = real_mode_pending(tmp_path, monkeypatch, n_pair=4096)
+    run()
+    assert (tmp_path / "trigger_pending.json").exists()
+    assert any(k.endswith("arrays.npz") and "20261126" in k for k in json.loads(
+        (tmp_path / "trigger_pending.json").read_text())["input_sha256"])
+
+
+def test_real_mode_pending_rejects_a_wrong_episode_count_even_when_r7_matches(tmp_path, monkeypatch):
+    run = real_mode_pending(tmp_path, monkeypatch, n_pair=4000)    # 12,000 episodes in both files
+    with pytest.raises(AssertionError, match="12,288"):
+        run()
+    assert not (tmp_path / "trigger_pending.json").exists()
+
+
+@pytest.mark.parametrize("key, edit", [
+    ("cl", lambda r7: r7["cl"].__setitem__(0, r7["cl"][0] + 1)),
+    ("pair_index", lambda r7: r7.update(pair_index=r7["pair_index"][::-1].copy())),
+    ("parity", lambda r7: r7["parity"].__setitem__(5, 1 - r7["parity"][5])),
+    ("AFF__r1", lambda r7: r7["AFF__r1"].__setitem__(7, 0.75)),
+    ("B1__r1", lambda r7: r7["B1__r1"].__setitem__(9, 0.5)),
+])
+def test_real_mode_pending_rejects_an_array_that_differs_from_r7(tmp_path, monkeypatch, key, edit):
+    run = real_mode_pending(tmp_path, monkeypatch, n_pair=4096, r7_edit=edit)
+    with pytest.raises(AssertionError, match=f"alignment mismatch: {key}"):
+        run()
+    assert not (tmp_path / "trigger_pending.json").exists()
 
 
 @pytest.mark.parametrize("status, step, covered", [("disagree", "gate", True), ("agree", "trigger", True),
