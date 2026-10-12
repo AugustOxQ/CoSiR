@@ -15,6 +15,9 @@ Figures reuse these; a method keeps its colour in every figure.
 | B′(A1) | `#cfcdc7` (new, lighter grey) | |
 | matched control of AFF | `#1baf7a` (as above) | |
 | DTS, MLLM, fine-tuned CLIP | not yet assigned | |
+| MLLM (in-context, Qwen3-VL-8B) | `#c4576b` (new, 2026-10-12) | |
+| DTS (describe-then-score) | `#d9a21b` (new, 2026-10-12) | |
+| fine-tuned CLIP (FT-LP, FT-LB, FT-LoRA) | `#3d9fb0` (new, 2026-10-12) | |
 | Reference line / neutral | `#8a8984` | round 3 |
 | Ink, secondary ink, grid | `#0b0b0b`, `#52514e`, `#e4e3df` | round 3 and 4 |
 
