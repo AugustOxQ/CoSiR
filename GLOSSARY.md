@@ -26,4 +26,7 @@ method-A era (factors, agreement rule, pseudo-partition, KISSME, …) are in App
 | RCA | relevant component analysis: a classic pair-metric baseline that re-weights CLIP features by the covariance of the episode's example-pair differences (`rca_term`); condition-aware, fused with cosine at a frozen λ like every baseline |
 | DTS, DTS-CF, DTS-N | the describe-then-score comparator, its matched control, and its variant told the true aspect name (a privileged ceiling) |
 | Holm | Holm's step-down correction across a read's checks, holding the family-wise error at the stated level (round 6: one-sided α = 0.025 over P1 to P7) |
+| ceiling check | *(new, round 7)* a told run that uses true labels to build one grouping, to bound what any label-free grouping in its place could give; it can stop a round, never pick |
+| content grouping | *(new, round 7)* the reader's CLIP image k-means grouping (64 groups), used as the "content" that design L's style groupings are made to cut across |
+| extended AFF | *(new, round 7)* AFF on a reader with a fourth, style grouping, its gate open when the reader picks affect or that style grouping |
 | dollar weight | token use priced at API rates (cache reads, cache writes and output weighted by their price) to compare runs of agent work; not what the Max plan charges ([engine switch check](docs/reports/auto/process/2026-11-26_engine_switch_check.md)) |
