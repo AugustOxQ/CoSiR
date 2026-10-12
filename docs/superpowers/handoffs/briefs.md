@@ -131,3 +131,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-process-main-per-loop-handoff.md
 - New chat: tab 'process main-per-loop', session 9f58ae02-a9d4-485d-b796-ff65938066f1
 
+[brief] CoSiR: r8 build 2 -> r8 build 3 (2026-10-12 21:30 Amsterdam)
+- Done: tickets 01, 02, 03, 05, 06 and 10 are merged on `r8-grouping`; each verdict ticket was reviewed by Opus and fixed. Tickets 07 and 11 are built but not reviewed.
+- State: two build checks hit the rule. The M4 view check fails (1 of 256 paintings at 0.99983, below 0.9999), so V100 to V33 drop. FCMI projects to about 64 min against D21's 60.
+- Next: Opus reviews of 07 and 11, the full stage 0, an FCMI profile, then tickets 04, 08, 09, 12 and 13.
+- Blocked: nothing. The view-check threshold is the user's call (a rule amendment), flagged for the morning.
+- Handoff: docs/superpowers/handoffs/2026-10-12-r8-build-3-handoff.md
+- New chat: tab 'r8 build 3', session 24af8562-2481-40c6-b935-4af155abf921
+
