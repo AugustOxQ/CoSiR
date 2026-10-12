@@ -310,9 +310,10 @@ def core_test(rec):
 
 def required_keys(stage, pending):
     """Arrays the re-derivation must hold and equal, per stage (names of the index)."""
+    ids = {"cl", "pair_index", "parity"}  # rule §9, C6: the episode IDs are compared exactly on every stage
     if stage == "ceiling":
-        return {"told_T__r1", "told_T_cf__r1"}
-    required = {f"{name}__{m}" for name in ("B", "B0", "B1", "AFF") for m in METRICS}
+        return ids | {"told_T__r1", "told_T_cf__r1"}
+    required = ids | {f"{name}__{m}" for name in ("B", "B0", "B1", "AFF") for m in METRICS}
     if stage == "gate":
         names = [n for n in S.CANDIDATES if not pending["candidates"][n]["dropped"]]
     else:
@@ -356,8 +357,8 @@ def finalize(role, stage):
     assert isinstance(stats, dict), f"{stats_path}: expected object"
     core = core_test(pending) if stage == "test" else {k: pending[k] for k in CORE[stage]}
     diff = differences(core, stats, stage)
-    if stage == "test":  # the re-derivation may not hold a key the pipeline lacks
-        diff.extend(f"reverse{p}" for p in differences({k: stats[k] for k in CORE[stage]}, core, ""))
+    # the re-derivation may not hold a key the pipeline lacks, for every stage
+    diff.extend(f"reverse{p}" for p in differences({k: stats[k] for k in CORE[stage] if k in stats}, core, ""))
     required = required_keys(stage, pending)
     if stage == "ceiling":
         items = [(f"seed{role.dev}/arrays_ceiling.npz", "phaseK.npz")]

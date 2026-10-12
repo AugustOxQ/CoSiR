@@ -196,6 +196,15 @@ def _assert_csd(post, selection):
             assert r6.compare_bits(post[m][selection], z[f"style_csd__{m}"])["equal"], f"csd/{m}: differs from step1"
 
 
+def check_stored_head(name, clfs, post, data, selection):
+    """Resume of a build: the stored head_X.pkl, run on the selection rows, must give the stored post_X.npz (no record
+    holds a file SHA-256, and the records are written last, so the files are checked against each other)."""
+    predicted = C.load("r6_heads").predict({"X": clfs}, data, selection)["X"]
+    for m in MODALITIES:
+        assert np.allclose(predicted[m][selection], post[m][selection], rtol=0, atol=1e-6), \
+            f"stored head {name}/{m}: predictions differ from the stored post"
+
+
 def build_heads(name, data, sp, local, halves=None, root=None, smoke=False,
                 head_rows=None, check_rows=None):
     """Build one grouping. Return its head_X.json record, including any L10/L11 drop reason."""
@@ -232,10 +241,6 @@ def build_heads(name, data, sp, local, halves=None, root=None, smoke=False,
                                   ("head_rows", head_rows), ("check_rows", check_rows)):
                 if key in record:
                     assert record[key] == expected, f"{path}: {key} differs"
-            for key, target in (("sha256", paths[kind]), ("head_sha256", paths["head"]),
-                                ("post_sha256", paths["post"]), ("xheads_sha256", paths["xheads"])):
-                if key in record:
-                    assert C.sha_file(target) == record[key], f"{path}: {key} differs"
             existing[kind] = record
     pools = {"standard": st}
     if cross:
@@ -276,6 +281,8 @@ def build_heads(name, data, sp, local, halves=None, root=None, smoke=False,
             assert post[m].dtype == np.float32 and post[m].shape == (n, n_cls), f"stored post {m}: shape/dtype"
             assert np.isfinite(post[m][selection]).all() and np.isnan(post[m][outside]).all(), f"stored post {m}: selection mask"
             assert np.allclose(post[m][selection].sum(1), 1, rtol=0, atol=1e-5), f"stored post {m}: sums"
+    if clfs is not None and post is not None:
+        check_stored_head(name, clfs, post, data, selection)
     if clfs is None:
         clfs, predicted, prov = fit_standard(data, local, st, selection, head_rows, check_rows)
         if post is None:

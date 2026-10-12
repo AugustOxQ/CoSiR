@@ -91,12 +91,27 @@ def build_banks(name, labels, halves, bank_n=BANK_N):
         assert np.array_equal(st[rows], halves[f"global_rows_half{j}"]), "bank: local/global alignment"
         ep = builder.build_episode_bank(partitions, paint, rows, n_per_pair=bank_n,
                                         seed=BANK_SEEDS[j], min_paintings=MIN_PAINTINGS)
-        validate_bank(ep, j, halves, bank_n)
+        validate_bank(ep, j, halves, bank_n, partitions, blocks)
         banks[j] = ep
     return banks, blocks
 
 
-def validate_bank(ep, half, halves, bank_n):
+def check_layout(arrays, partitions, blocks, bank_n, half):
+    """L11, round 1's `stage_bank` check on every episode: block i holds episodes i*n to (i+1)*n - 1, and its pairs share
+    the block's two groupings (pair images and texts agree within a group, the anchor's own group is excluded, and the
+    first two candidates carry the anchor's groups)."""
+    for i, (a, b) in enumerate(blocks):
+        sl = slice(i * bank_n, (i + 1) * bank_n)
+        la, lb = partitions[a], partitions[b]
+        ok = bool((la[arrays["pairs_a_img"][sl]] == la[arrays["pairs_a_txt"][sl]]).all()
+                  and (lb[arrays["pairs_b_img"][sl]] == lb[arrays["pairs_b_txt"][sl]]).all()
+                  and (la[arrays["pairs_a_img"][sl]] != la[arrays["anchor"][sl]][:, None]).all()
+                  and (la[arrays["candidates"][sl, 0]] == la[arrays["anchor"][sl]]).all()
+                  and (lb[arrays["candidates"][sl, 1]] == lb[arrays["anchor"][sl]]).all())
+        assert ok, f"bank half {half} block {i} ({a}, {b}): episodes do not follow the block layout"
+
+
+def validate_bank(ep, half, halves, bank_n, partitions=None, blocks=None):
     n = 6 * bank_n
     arrays = ep if isinstance(ep, dict) else {f: getattr(ep, f) for f in EPISODE_FIELDS}
     for f in EPISODE_FIELDS:
@@ -106,6 +121,9 @@ def validate_bank(ep, half, halves, bank_n):
     rows = np.concatenate([arrays[f].ravel() for f in EPISODE_FIELDS])
     assert rows.min() >= 0 and rows.max() < len(halves["scorer_train"]), "bank: row out of bounds"
     assert (halves["half_of_local_row"][rows] == half).all(), "bank: row outside half"
+    if partitions is not None:
+        assert blocks is not None and len(blocks) == 6, "bank: blocks"
+        check_layout(arrays, partitions, blocks, bank_n, half)
 
 
 def bank_features(name, post, banks, blocks, bank_n):
@@ -145,6 +163,9 @@ def validate_reader(name, labels, halves, root, smoke):
     assert tuple(pk["groupings"]) == BASE + (name,), f"{path}: grouping order differs"
     assert pk["feature_names"] == C.load("rb_features").feature_names(BASE + (name,)), f"{path}: feature order differs"
     assert len(pk["halves"]) == 2, f"{path}: half count differs"
+    partitions = {**{h: labels[h] for h in BASE}, "csd": labels[name]}  # as build_banks: X is named csd in the blocks
+    blocks = C.load("rb_features").bank_blocks(partitions)
+    assert blocks == C.load("rb_build").BLOCKS["A1"], f"{path}: blocks differ from round-1 A1"
     for h in (0, 1):
         half = pk["halves"][h]
         assert half["C"] == rec["halves"][str(h)]["chosen_C"], f"{path}: chosen C differs"
@@ -152,7 +173,7 @@ def validate_reader(name, labels, halves, root, smoke):
         bank = root / "readers" / f"bank_{name}_half{h}.npz"
         with np.load(bank, allow_pickle=False) as z:
             assert set(EPISODE_FIELDS) <= set(z.files), f"{bank}: episode keys differ"
-            validate_bank({k: z[k] for k in EPISODE_FIELDS}, h, halves, bank_n)
+            validate_bank({k: z[k] for k in EPISODE_FIELDS}, h, halves, bank_n, partitions, blocks)
         if "banks_sha256" in rec:
             assert C.sha_file(bank) == rec["banks_sha256"][str(h)], f"{bank}: SHA differs"
     for key, target in (("reader_sha256", path.with_suffix(".pkl")), ("arrays_sha256", path.with_suffix(".npz"))):

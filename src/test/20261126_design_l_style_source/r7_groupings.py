@@ -292,7 +292,9 @@ def build(only=IDS, out=None, tokstats=TOKSTATS, trial=False):
         painting_labels(t, g_full)
         assert len(np.unique(t)) == 27 and np.bincount(t).min() >= 200, 'L9 T count/min rows'
         arrays['T'] = np.unique(t[mask], return_inverse=True)[1].astype(np.int64) if trial else t
-        records['T'] = {**describe(arrays['T'], g, c), 'dropped': False}
+        # T is the true style code: its content AMIs are label AMIs, so none is written before the gate verdict (rule §6)
+        records['T'] = {**describe(arrays['T'], g, c), 'dropped': False,
+                        'ami_content_paintings': None, 'ami_content_rows': None}
     C.write_npz_once(targets[0], **arrays)
     return C.write_json_once(targets[1], {'trial': trial, 'requested': sorted(only), 'groupings': records,
         'sources': provenance, 'transforms': transforms, 'scorer_train_sha256': sha_array(st),
