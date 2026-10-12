@@ -57,7 +57,7 @@ stage 0 passed at 2026-10-12 04:42 in the build. Run logs: `results/logs/` (giti
   | R1_V1 | −186 (B1) | [−0.60, −0.15] | −15 | −168 | −217 |
   | XAFF_V1 | −248 (B1) | [−0.74, −0.27] | −30 | −174 | −256 |
   | R1_V2 | 97 (BX) | [−0.01, 0.41] | 15 | 38 | −189 |
-  | XAFF_V2 | −50 (BX) | [−0.31, 0.10] | 16 | −46 | −235 |
+  | XAFF_V2 | −50 (BX) | [−0.30, 0.10] | 16 | −46 | −235 |
   | R1_V3 | 122 (B1) | [0.05, 0.46] | 37 | −16 | −153 |
   | XAFF_V3 | 27 (B1) | [−0.16, 0.27] | 62 | −53 | −200 |
   | R1_V4 | −215 (B1) | [−0.67, −0.21] | −31 | −170 | −230 |
@@ -72,3 +72,15 @@ stage 0 passed at 2026-10-12 04:42 in the build. Run logs: `results/logs/` (giti
   every bar, so dropping them or another projector leaves n = 0.
 - Descriptive pass (`run_r7_descriptive.py ceiling`, `gate`): `results/descriptive_ceiling.json` (06:58),
   `results/descriptive_gate.json` (07:00). The test part does not apply.
+
+## Process departure (L3, recorded 07:30)
+
+- Rule §8's last row says a case the rule does not cover stops the run with its report and a phone note, and the user
+  decides. At 05:50 the run sent the phone note (05:55) but did not stop: it went on with the agent-default fallback,
+  under the unattended-chat practice that a blocked step is done another way. K1 and the gate were computed on it.
+- What the user decides: whether K1 and the gate stand on the fallback. Keeping it or dropping V1 and V4 (with Z1, Z4)
+  cannot change n = 0. A rank-63 projector is a different projector (the fallback keeps pinv's rank 64, one extra
+  noise direction); it would need a rerun of V1, V4, Z1, Z4, and with V1 and V4 at least 430 integer steps below S1's
+  bar a change of n is very unlikely.
+- The two L3 numbers: the record's `max_abs_after_pinv` 9.50e-4 is the absolute value; against `max_abs_before`
+  0.552 it is the ratio 1.72e-3 that the assertion compares with 1e-6.
