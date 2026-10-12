@@ -122,3 +122,12 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-devlog-site-handoff.md
 - New chat: tab 'devlog site', session bfce3604-c8bd-44d5-b7a0-473ce63baf32
 
+[brief] CoSiR: r8 build -> process main-per-loop (2026-10-12 21:00 Amsterdam)
+- Done: the user decided one main chat per loop, each in its own new Herdr workspace with that loop's tabs.
+- State: decided, not built. The rule still says one main chat per project; round 8 runs under the old setup.
+- Next: change `loop-chats.md`, `research-loop.md`, the main chat's start file, `loop-next` and `loop-watch`; show the
+  user the diff.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-12-process-main-per-loop-handoff.md
+- New chat: tab 'process main-per-loop', session 9f58ae02-a9d4-485d-b796-ff65938066f1
+
