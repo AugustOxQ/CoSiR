@@ -64,3 +64,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-r7-build-3-handoff.md
 - New chat: tab 'r7 build 3', session 100aa9bf-c579-4218-b5df-592f156e55a8
 
+[brief] CoSiR: r7 build 3 -> r7 build 4 (2026-10-12 05:04 Amsterdam)
+- Done: all 16 tickets merged into `r7-design-l` (d956740); the real stage 0 passed (G1 to G4, 04:42).
+- State: no stage 1, 2 or 3 number computed.
+- Next: the chain smoke on the merged branch, the verdict-code tests, then the final review (Opus `xhigh`).
+- Blocked: nothing. Night mode.
+- Handoff: docs/superpowers/handoffs/2026-10-12-r7-build-4-handoff.md
+- New chat: tab 'r7 build 4', session c88455ef-b05b-4974-8b16-228a8302ef55
+
