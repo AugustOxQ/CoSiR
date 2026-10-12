@@ -48,3 +48,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-r7-build-handoff.md
 - New chat: tab 'r7 build', session 13a279e4-f6c9-4e59-8113-5a2347e0f83c
 
+[brief] CoSiR: r7 build -> r7 build 2 (2026-10-12 03:37 Amsterdam)
+- Done: 16 tickets written from the rule; 01 (foundation) merged; 09 and 10 (verdict statistics) built, tests first.
+- State: integration branch `r7-design-l`; no stage 1, 2 or 3 number computed. Codex launches are sometimes refused by the auto-mode check.
+- Next: Opus reviews of 09 and 10, merge, then the frontier 02, 03, 05, 07, 14, 15.
+- Blocked: nothing. Night mode.
+- Handoff: docs/superpowers/handoffs/2026-10-12-r7-build-2-handoff.md
+- New chat: tab 'r7 build 2', session a0b2f759-7284-4174-a414-a13ad0dd9383
+
