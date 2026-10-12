@@ -3,6 +3,7 @@
 Synthetic data throughout. Run from the round folder:
 python -m pytest -q -p no:cacheprovider --rootdir=. test_r8_place.py
 """
+import json
 from types import SimpleNamespace
 
 import numpy as np
@@ -138,6 +139,35 @@ def test_image_side_rows_and_format():
     assert 0 <= out["agreement_fit"] <= 1 and 0 <= out["agreement_crossfit"] <= 1
 
 
+def test_image_side_places_selection_rows_with_all_painting_centres():
+    # M11: selection images use the centres of ALL scorer-train paintings, not a half's. The points are spread over the
+    # whole sphere (many near group boundaries), so each half's centres give a different map on some rows.
+    phi, labels, halves = toy(n_p=40, seed=6)
+    g_st = np.repeat(np.arange(40), 2)
+    sel = unit(np.random.default_rng(11).normal(size=(400, 4)))
+    mu_all = P.unit_centres(phi, labels, 3)
+    exp = np.argmax(sel.astype(np.float64) @ mu_all.T, axis=1)
+    for h in (0, 1):                                                # the precondition: a half-centre map would differ
+        mu_h = P.unit_centres(phi, labels, 3, members=halves == h)
+        assert (np.argmax(sel.astype(np.float64) @ mu_h.T, axis=1) != exp).any()
+    out = P.image_side(phi, labels, halves, g_st, sel)
+    assert np.array_equal(out["img_sel"].argmax(1), exp)
+    assert np.array_equal(out["img_sel"], P.onehot(exp, 3))
+
+
+def test_painting_halves_must_agree_with_the_row_halves():
+    # C6: halves per painting (indexed by the g_st code) and halves per scorer-train row must be the same halves; with
+    # both swapped, every bank one-hot would use same-half centres and still look fine.
+    halves_p = np.array([0, 1, 1, 0, 1])
+    g_st = np.array([0, 0, 1, 2, 2, 3, 4, 4])
+    half_row = halves_p[g_st]
+    P.assert_halves_agree(halves_p, g_st, half_row)
+    with pytest.raises(AssertionError):
+        P.assert_halves_agree(1 - halves_p, g_st, half_row)
+    with pytest.raises(AssertionError):
+        P.assert_halves_agree(halves_p, g_st, half_row[:-1])
+
+
 def test_tp_space_is_one_hot_so_own_map_reproduces_the_labels():
     labels = np.random.default_rng(0).integers(0, 5, 100)
     labels[:5] = np.arange(5)
@@ -147,19 +177,40 @@ def test_tp_space_is_one_hot_so_own_map_reproduces_the_labels():
     assert np.array_equal(mu, np.eye(5))
 
 
+# ---------------------------------------------------------------- C6: selection rows to space rows
+
+def test_join_selection_matches_each_row_to_its_own_image():
+    space_idx = np.array([2, 5, 9, 14, 20, 31])                     # sorted image ids of the space file
+    sel = np.array([700, 701, 702, 703, 704, 705, 706])             # selection rows (ascending)
+    img = np.array([20, 5, 31, 5, 2, 14, 9])                        # their images, NOT sorted
+    rows, pos = P.join_selection(space_idx, sel, img, smoke=False)
+    assert np.array_equal(rows, sel) and np.array_equal(space_idx[pos], img)
+    assert pos.tolist() == [4, 1, 5, 1, 0, 3, 2]
+    # smoke: only the rows whose image is in the space file; a real run refuses a missing image
+    part = np.array([2, 9, 20])
+    rows, pos = P.join_selection(part, sel, img, smoke=True)
+    assert rows.tolist() == [700, 704, 706]
+    assert np.array_equal(part[pos], img[np.isin(img, part)]) and np.array_equal(rows, sel[np.isin(img, part)])
+    with pytest.raises(AssertionError):
+        P.join_selection(part, sel, img, smoke=False)
+    with pytest.raises(AssertionError):
+        P.join_selection(part, sel, np.array([1, 3, 4, 6, 7, 8, 10]), smoke=True)      # nothing in the space file
+
+
 # ---------------------------------------------------------------- M13: random controls
 
 def test_control_draws_follow_shares_and_seeds():
     labels_p = np.repeat(np.arange(4), [400, 300, 200, 100])
     g_st = np.repeat(np.arange(1000), 2)
-    sel_codes = np.repeat([5, 9, 12, 40], [3, 1, 2, 2])             # 4 paintings in ascending code, 8 rows
+    sel_codes = np.array([40, 5, 5, 12, 9, 40, 5, 12])              # 4 paintings, 8 rows, NOT in ascending code order
     i = 5
     train_rows, sel_rows = P.control_image_labels(labels_p, i, g_st, sel_codes)
     shares = np.bincount(labels_p, minlength=4) / 1000
     exp_train = np.random.default_rng(7200 + i).choice(4, size=1000, p=shares)
     exp_sel = np.random.default_rng(7300 + i).choice(4, size=4, p=shares)
     assert np.array_equal(train_rows, exp_train[g_st])              # same draw for every row of a painting
-    assert np.array_equal(sel_rows, exp_sel[[0, 0, 0, 1, 2, 2, 3, 3]])
+    # the draws go to the paintings in ascending code (5, 9, 12, 40); a row takes its painting's draw
+    assert np.array_equal(sel_rows, exp_sel[[3, 0, 0, 2, 1, 3, 0, 2]])
     # it is r8_groupings.control_draws that makes the draws (the two cannot drift)
     tr, se = G.control_draws(labels_p, i, 4)
     assert np.array_equal(exp_train, tr) and np.array_equal(exp_sel, se)
@@ -182,7 +233,7 @@ def test_control_draw_streams_differ_by_index_and_by_side():
 def test_control_side_arrays():
     labels_p = np.repeat(np.arange(3), 20)
     g_st = np.repeat(np.arange(60), 2)
-    out = P.control_side(labels_p, 4, g_st, np.repeat([2, 8, 9], 2))
+    out = P.control_side(labels_p, 4, g_st, np.array([9, 2, 8, 2, 9, 8]))
     assert out["img_cf"].shape == (120, 3) and out["img_sel"].shape == (6, 3)
     assert out["img_cf"].dtype == np.float32 and (out["img_sel"].sum(1) == 1).all()
 
@@ -226,3 +277,115 @@ def test_post_matches_r7_posterior_ok_and_xheads_match_the_reader_checks(tmp_pat
     assert set(got) == {"img", "txt"}
     with pytest.raises(AssertionError):
         P.xheads_arrays(img_cf * 0.5, txt_cf, half, k)              # rows must sum to 1
+
+
+# ---------------------------------------------------------------- M12, M13, M16: which grouping is dropped, and why
+
+def _no_draw():
+    raise AssertionError("the head draw must not be checked once X is dropped")
+
+
+def test_x_drop_by_m12_and_its_control_inherit_the_drop():
+    phi, labels, halves = toy(n_p=40, seed=4)
+    halves = np.where(labels == 2, 1, halves)                       # group 2 has no member in half 0
+    _, rx = P.x_drop("V100", False, labels, halves, 3, _no_draw)
+    assert rx == P.m12_reason(labels, halves, 3) and "M12" in rx
+    _, rz = P.x_drop("V100", True, labels, halves, 3, _no_draw)     # Z<X>: same reason, "control of dropped X:" prefix
+    assert rz == f"control of dropped V100: {rx}"
+
+
+def test_x_drop_by_a_head_draw_and_no_drop():
+    phi, labels, halves = toy(n_p=40, seed=4)
+    draws, reason = P.x_drop("V100", False, labels, halves, 3, lambda: ({"d": 1}, "missing groups in a head draw"))
+    assert reason == "missing groups in a head draw" and draws == {"d": 1}
+    assert P.x_drop("V100", True, labels, halves, 3, lambda: ({"d": 1}, "missing groups in a head draw"))[1] == \
+        "control of dropped V100: missing groups in a head draw"
+    assert P.x_drop("V100", True, labels, halves, 3, lambda: ({"d": 1}, None)) == ({"d": 1}, None)
+    # R0own takes R7's heads: no draw check (the draw function must not be called)
+    assert P.x_drop("R0own", False, labels, halves, 3, _no_draw) == (None, None)
+
+
+def test_listed_drop_reasons():
+    listed = {"V100": "a group is too small", "ZV33": "no control: V33 is dropped (x)"}
+    # X dropped by ticket 07: X's own reason; the control gets the control prefix
+    assert P.listed_drop("V100", "V100", False, False, False, listed, "g") == "a group is too small"
+    assert P.listed_drop("ZV100", "V100", True, False, False, listed, "g") == "control of dropped V100: a group is too small"
+    # 07's own record for Z<X> wins and is kept as written
+    assert P.listed_drop("ZV33", "V33", True, False, False, listed, "g") == "no control: V33 is dropped (x)"
+    # only Z<X> missing, X present: Z's own reason, or "not in the file"
+    assert P.listed_drop("ZV100", "V100", True, True, False, {"ZV100": "z reason"}, "g") == "z reason"
+    assert P.listed_drop("ZV100", "V100", True, True, False, {}, "gf") == "ZV100 is not in gf"
+    assert P.listed_drop("V100", "V100", False, False, False, {}, "gf") == "V100 is not in gf"
+    assert P.listed_drop("ZV100", "V100", True, False, False, {}, "gf") == "control of dropped V100: V100 is not in gf"
+    assert P.listed_drop("V100", "V100", False, True, False, {}, "gf") is None
+    assert P.listed_drop("ZV100", "V100", True, True, True, {}, "gf") is None
+
+
+def test_tp_agreement_must_be_exact():
+    P.assert_tp_agreement({"agreement_fit": 1.0, "agreement_crossfit": 1.0})
+    for bad in ({"agreement_fit": 1.0, "agreement_crossfit": 0.9999}, {"agreement_fit": 0.9999, "agreement_crossfit": 1.0}):
+        with pytest.raises(AssertionError):
+            P.assert_tp_agreement(bad)
+
+
+# ---------------------------------------------------------------- --h-only: the H<X> arm after X is placed
+
+def _placed(root, X="V100", dropped=False, txt=None, txt_cf=None, rows=None):
+    d = root / "heads"
+    d.mkdir(parents=True, exist_ok=True)
+    txt = np.full((6, 3), np.nan, dtype=np.float32) if txt is None else txt
+    np.savez(d / f"post_{X}.npz", img=txt, txt=txt, rows=np.arange(2) if rows is None else rows)
+    np.savez(d / f"xheads_{X}.npz", img=txt_cf if txt_cf is not None else txt, txt=txt_cf if txt_cf is not None else txt)
+    (d / f"head_{X}.json").write_text(json.dumps({"grouping": X, "dropped": dropped, "reason": "r" if dropped else None,
+                                                  "smoke": True}))
+
+
+def test_h_only_refuses_when_x_is_missing_or_dropped(tmp_path):
+    with pytest.raises(SystemExit):
+        P.require_placed(tmp_path, "V100")                          # nothing there
+    _placed(tmp_path)
+    assert P.require_placed(tmp_path, "V100")["dropped"] is False
+    for stem, ext in (("post", "npz"), ("xheads", "npz"), ("head", "json")):
+        p = tmp_path / "heads" / f"{stem}_V100.{ext}"
+        keep = p.read_bytes()
+        p.unlink()
+        with pytest.raises(SystemExit):
+            P.require_placed(tmp_path, "V100")                      # any one of X's three files missing
+        p.write_bytes(keep)
+    _placed(tmp_path, X="V67", dropped=True)
+    with pytest.raises(SystemExit):
+        P.require_placed(tmp_path, "V67")                           # X is dropped
+
+
+def test_h_only_text_must_equal_x_text_bit_for_bit():
+    rng = np.random.default_rng(0)
+    g = rng.random((6, 3)).astype(np.float32)
+    g[3:] = np.nan                                                  # global txt: finite on the selection only
+    cf = rng.random((8, 3)).astype(np.float32)
+    P.assert_same_text(g.copy(), g, cf.copy(), cf)                  # equal, NaN where NaN
+    g2 = g.copy()
+    g2[0, 0] = np.nextafter(g2[0, 0], np.float32(2))                # one ulp
+    with pytest.raises(AssertionError):
+        P.assert_same_text(g2, g, cf, cf)
+    cf2 = cf.copy()
+    cf2[7, 2] = np.nextafter(cf2[7, 2], np.float32(2))
+    with pytest.raises(AssertionError):
+        P.assert_same_text(g, g, cf2, cf)
+    g3 = g.copy()
+    g3[4] = 0.5                                                     # NaN pattern differs
+    with pytest.raises(AssertionError):
+        P.assert_same_text(g3, g, cf, cf)
+
+
+def test_h_record_has_its_own_image_side_keys():
+    x_rec = {"grouping": "V100", "smoke": True, "dropped": False, "reason": None, "n_groups": 17, "label_sha256": "ab",
+             "image_side": "M11/M12 own map", "space": "s.npz", "space_sha256": "cd", "phi_shape": [5, 4],
+             "agreement_fit": 0.9, "agreement_crossfit": 0.8, "sizes_cf_paintings": [1, 2], "sizes_paintings": [1, 2],
+             "text": {"source": "fit"}, "draws": {"standard": {}}}
+    h = P.h_record(x_rec, "V100", {"source": "refit"}, {"standard": {"d": 1}})
+    assert h["grouping"] == "HV100" and h["matched_grouping"] == "V100" and h["label_sha256"] == "ab"
+    for key in ("space", "space_sha256", "phi_shape", "agreement_fit", "agreement_crossfit", "sizes_cf_paintings"):
+        assert key not in h
+    assert "CLIP image head" in h["image_side"] and h["image_side"] != x_rec["image_side"]
+    assert h["text"] == {"source": "refit"} and h["draws"] == {"standard": {"d": 1}}
+    assert x_rec["grouping"] == "V100" and "space" in x_rec         # the input record is not changed

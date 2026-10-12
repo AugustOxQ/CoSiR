@@ -19,6 +19,7 @@ CPU only. `--smoke [N]` uses the first N paintings of the smoke grouping file (m
 
   python r8_place.py --grouping V100            # also AL, ..., R0own, NRK, TP, ZV100, ...
   python r8_place.py --grouping V100 --h-arm    # plus post/xheads/head_HV100
+  python r8_place.py --grouping V100 --h-only   # after V100 is placed: only post/xheads/head_HV100 (ticket 12, after the verdict)
   python r8_place.py --grouping NBC --groupings-name r8_groupings_nbc
 """
 import argparse
@@ -143,6 +144,82 @@ def control_side(labels_p, i, g_st, sel_codes):
     return {'img_sel': onehot(sel_rows, k), 'img_cf': onehot(train_rows, k)}
 
 
+def assert_halves_agree(halves_p, g_st, half_of_local_row):
+    """C6: the half of each painting (indexed by the `g_st` code) equals the half of each scorer-train row."""
+    halves_p, g_st, half_row = np.asarray(halves_p), np.asarray(g_st), np.asarray(half_of_local_row)
+    assert g_st.shape == half_row.shape and g_st.max() < len(halves_p), 'halves: painting codes / row halves shape'
+    assert np.array_equal(halves_p[g_st], half_row), 'halves: painting halves differ from the scorer-train row halves (C6)'
+
+
+def join_selection(space_idx, sel, sel_img, smoke):
+    """C6: each selection row's row in the space file (`space_idx`: sorted image ids). All of them; in smoke only the rows
+    whose image is in the space file. Returns (selection rows, space rows)."""
+    # rule gap: a smoke space file may hold only some images; smoke then places the selection rows whose image is there
+    # (a real run asserts all of them).
+    space_idx, sel, sel_img = np.asarray(space_idx), np.asarray(sel), np.asarray(sel_img)
+    assert sel.shape == sel_img.shape and (np.diff(space_idx) > 0).all(), 'selection join: shapes / space ids not sorted'
+    pos = np.searchsorted(space_idx, sel_img)
+    ok = (pos < len(space_idx)) & (space_idx[np.minimum(pos, len(space_idx) - 1)] == sel_img)
+    assert smoke or ok.all(), 'a selection image is not in the space file'
+    assert ok.any(), 'no selection image is in the space file'
+    return sel[ok], pos[ok]
+
+
+def listed_drop(name, X, control, x_in_file, name_in_file, listed, gname):
+    """M16: the reason when ticket 07 left X (or Z<X>) out of the grouping file, else None. A control of a dropped X has
+    no control (M13): 07's own record for Z<X> is kept as written, else X's reason gets run_r8.split_dropped's prefix."""
+    if x_in_file and (not control or name_in_file):
+        return None
+    if not x_in_file:
+        why = listed.get(X) or f'{X} is not in {gname}'
+        return (listed.get(name) or f'control of dropped {X}: {why}') if control else why
+    return listed.get(name) or f'{name} is not in {gname}'
+
+
+def x_drop(X, control, labels_p, halves_p, k, draw_fn):
+    """The drops that decide X and its control alike: M12 (centres), then R7 L10/L11 (head draws on X's labels, `draw_fn()`
+    -> (draws, reason or None); R0own takes R7's heads, so none). Returns (draws, reason or None); a control's reason gets
+    the prefix `control of dropped X:` (as run_r8.split_dropped)."""
+    # rule gap: M13 says a dropped X has no control; read as every drop of X (ticket 07, M12, a head draw of X), so Z<X> is
+    # dropped with X's reason. Z<X>'s own head draw (R7 L10/L11 on Z's labels) can drop Z<X> alone; Z has no centres, so
+    # M12 does not apply to it.
+    reason, draws = m12_reason(labels_p, halves_p, k), None
+    if reason is None and X != 'R0own':
+        draws, reason = draw_fn()
+    if reason is not None and control:
+        reason = f'control of dropped {X}: {reason}'
+    return draws, reason
+
+
+def assert_tp_agreement(side):
+    """M9: TP's images are its own map; the one-hot space gives that only if every painting maps to its own label, in the
+    fit and cross-fitted."""
+    assert side['agreement_fit'] == 1.0 and side['agreement_crossfit'] == 1.0, \
+        f"TP: own map differs from the TP labels (agreement {side['agreement_fit']}, cross-fitted {side['agreement_crossfit']})"
+
+
+X_IMAGE_SIDE_KEYS = ('space', 'space_sha256', 'phi_shape', 'agreement_fit', 'agreement_crossfit', 'sizes_cf_paintings')
+
+
+def h_record(x_rec, X, text_rec, draws):
+    """head_H<X>.json: X's record without X's own-map image-side keys (H<X>'s image side is the CLIP image head), with the
+    text record and draws of the fit that gave H<X>."""
+    rec = {k: v for k, v in x_rec.items() if k not in X_IMAGE_SIDE_KEYS + ('rule_sha256', 'written')}
+    rec.update(grouping=f'H{X}', matched_grouping=X, text=text_rec, draws=draws,
+               image_side='R7 L10 CLIP image head on X labels (CLIP image features, not the own map)')
+    return rec
+
+
+def assert_same_text(txt_g, stored_g, txt_cf, stored_cf):
+    """--h-only: the refit text heads equal X's stored ones bit for bit (global: NaN where NaN; cross-fitted rows)."""
+    for what, a, b in (('post txt', txt_g, stored_g), ('xheads txt', txt_cf, stored_cf)):
+        a, b = np.asarray(a), np.asarray(b)
+        assert a.dtype == b.dtype and a.shape == b.shape, f'--h-only: refit {what} dtype/shape differs from X\'s'
+        same_nan = np.array_equal(np.isnan(a), np.isnan(b))
+        assert same_nan and a[~np.isnan(a)].tobytes() == b[~np.isnan(b)].tobytes(), \
+            f'--h-only: refit {what} differs from X\'s stored one (bytes of the finite values, NaN places)'
+
+
 def post_arrays(n_all, selection, img_sel, txt):
     """post_<ID>.npz arrays (R7 format): img one-hot on the selection rows, NaN elsewhere; txt is the head's global
     posterior (finite on the selection, NaN elsewhere); rows = selection."""
@@ -240,14 +317,7 @@ def load_grouping(root, gname, names, smoke):
 def selection_for(space_idx, smoke):
     """The selection rows (all of them; in smoke only those whose image is in the space file) and each row's space row."""
     import r8_common as C
-    # rule gap: a smoke space file may hold only some images; smoke then places the selection rows whose image is there
-    # (a real run asserts all of them).
-    sel, img = C.ctx().selection, C.selection_image()
-    pos = np.searchsorted(space_idx, img)
-    ok = (pos < len(space_idx)) & (space_idx[np.minimum(pos, len(space_idx) - 1)] == img)
-    assert smoke or ok.all(), 'a selection image is not in the space file'
-    assert ok.any(), 'no selection image is in the space file'
-    return sel[ok], pos[ok]
+    return join_selection(space_idx, C.ctx().selection, C.selection_image(), smoke)
 
 
 def head_sizes(smoke, head_rows=None, check_rows=None):
@@ -312,6 +382,76 @@ def assert_free(root, names):
                 raise SystemExit(f'{p} exists; refusing to overwrite (use fix_path for a corrected run)')
 
 
+def require_placed(root, X):
+    """--h-only: X's post, xheads and head record must exist and X must not be dropped. Returns X's head record."""
+    d = root / 'heads'
+    for stem, e in (('post', 'npz'), ('xheads', 'npz'), ('head', 'json')):
+        if not (d / f'{stem}_{X}.{e}').is_file():
+            raise SystemExit(f'--h-only: {d / f"{stem}_{X}.{e}"} is missing; place {X} first (r8_place.py --grouping {X})')
+    rec = json.loads((d / f'head_{X}.json').read_text())
+    if rec.get('dropped') is not False:
+        raise SystemExit(f'--h-only: {X} is dropped ({rec.get("reason")}); there is no H{X}')
+    return rec
+
+
+def halves_for(c, st, g_st, n_p):
+    """Round 1's halves dict for the scorer-train rows of the first n_p paintings, and the rows kept (all in a real run)."""
+    if n_p == c.n_paintings:
+        halves, keep = c.halves_dict, np.arange(len(st))
+    else:
+        halves, keep = sub_halves(c.halves_dict, g_st)
+    assert np.array_equal(halves['scorer_train'], st), 'halves: scorer-train rows differ'
+    return halves, keep
+
+
+def write_h(root, X, x_rec, post_h, cross_h, text_rec, draws, selection, halves, k, n_all, built_by):
+    """post/xheads/head_H<X>: R7's CLIP image and text heads on X's labels (the fit that gave X's text side)."""
+    import r8_common as C
+    import r8_bundle as B
+    hname = f'H{X}'
+    hpost = post_arrays(n_all, selection, post_h['img'][selection], post_h['txt'])
+    hx = xheads_arrays(cross_h['img'], cross_h['txt'], halves['half_of_local_row'], k)
+    B._posterior_ok({m: hpost[m] for m in ('img', 'txt')}, SimpleNamespace(groups=C.ctx().groups, selection=selection), hname)
+    return write_outputs(root, hname, hpost, hx, {**h_record(x_rec, X, text_rec, draws), 'built_by': built_by})
+
+
+def build_h_only(X, smoke=False, n_smoke=None, gname='r8_groupings', head_rows=None, check_rows=None):
+    """H<X> after X is placed (rule 6.6, after the verdict): refit X's CLIP heads (the same `fit_clip_heads` call as X's),
+    assert the text heads equal X's stored ones bit for bit, and write only post/xheads/head_H<X>."""
+    import r8_common as C
+    import r8_recipe as RC
+    import r8_scoring_io as S
+    C.assert_rule()
+    C.assert_threads()
+    assert parse_id(X) == (X, False) and f'H{X}' in S.GROUPINGS, f'no H arm for {X}'
+    root = C.SMOKE if smoke else C.RESULTS
+    assert_free(root, [f'H{X}'])
+    x_rec = require_placed(root, X)                   # SystemExit when X's files are missing or X is dropped
+    assert bool(x_rec['smoke']) == bool(smoke), f'head_{X}.json: smoke flag differs'
+    c = C.ctx()
+    labels, st, g_st, _, grec, n_p = load_grouping(root, gname, [X], smoke)
+    if smoke:
+        assert n_smoke in (None, n_p), f'--smoke {n_smoke}, but {gname} holds {n_p} paintings'
+    local = labels[X]
+    assert local is not None, f'{X} is not in {gname}'
+    assert x_rec['label_sha256'] == C.load_prior('rb_build').sha_array(local), f'{X}: labels differ from the placed ones'
+    k = int(G.painting_labels(local, g_st).max()) + 1
+    halves, _ = halves_for(c, st, g_st, n_p)
+    hr, cr = head_sizes(smoke, head_rows, check_rows)
+    assert (x_rec['head_rows'], x_rec['check_rows']) == (hr, cr), f'head_{X}.json: head sizes differ'
+    with np.load(root / 'heads' / f'post_{X}.npz', allow_pickle=False) as z:
+        selection, stored_g = np.asarray(z['rows']), np.asarray(z['txt'])
+    with np.load(root / 'heads' / f'xheads_{X}.npz', allow_pickle=False) as z:
+        stored_cf = np.asarray(z['txt'])
+    assert smoke or np.array_equal(selection, c.selection), f'post_{X}: rows differ from the selection'
+    post_h, cross_h, prov = RC.fit_clip_heads(c.data, local, st, selection, halves, smoke=smoke, head_rows=hr, check_rows=cr)
+    assert_same_text(post_h['txt'], stored_g, cross_h['txt'], stored_cf)
+    text_rec = {'source': 'r8_recipe.fit_clip_heads (R7 L10/L11, M14)', 'standard': prov['standard'], 'halves': prov['halves']}
+    out = write_h(root, X, x_rec, post_h, cross_h, text_rec, prov['draws'], selection, halves, k, len(c.groups), 'h-only')
+    print(f'H{X}: placed (K={k}, smoke={smoke}; text heads equal {X}\'s stored ones)')
+    return out
+
+
 def build(name, smoke=False, n_smoke=None, gname='r8_groupings', h_arm=False, head_rows=None, check_rows=None):
     """Place one grouping ID. Returns the head_<ID>.json record (written), dropped or not."""
     import r8_common as C
@@ -338,30 +478,19 @@ def build(name, smoke=False, n_smoke=None, gname='r8_groupings', h_arm=False, he
         print(f'{name}: dropped ({reason})')
         return rec
 
-    if labels[X] is None or (control and labels[name] is None):
-        # dropped by ticket 07 (M16); a dropped X has no control
-        gone = X if labels[X] is None else name
-        reason = listed.get(gone) or f'{gone} is not in {gname}'
+    reason = listed_drop(name, X, control, labels[X] is not None, labels.get(name) is not None, listed, gname)
+    if reason is not None:                           # dropped by ticket 07 (M16); a dropped X has no control
         return drop(reason)
     labels_p = G.painting_labels(labels[X], g_st)
     k = int(labels_p.max()) + 1
     halves_p = c.halves[:n_p]
-    if n_p == c.n_paintings:
-        halves, keep = c.halves_dict, np.arange(len(st))
-    else:
-        halves, keep = sub_halves(c.halves_dict, g_st)
-    assert np.array_equal(halves['scorer_train'], st), 'halves: scorer-train rows differ'
+    halves, keep = halves_for(c, st, g_st, n_p)
+    assert_halves_agree(halves_p, g_st, halves['half_of_local_row'])
     hr, cr = head_sizes(smoke, head_rows, check_rows)
     # drops that decide X and its control alike: M12 (centres) and R7 L10/L11 (head draws on X's labels)
-    x_reason = m12_reason(labels_p, halves_p, k)
-    draws = None
-    if x_reason is None and X != 'R0own':
-        draws, x_reason = draw_check(labels[X], st, halves, hr, cr)
-    # rule gap: M13 says a dropped X has no control; read as every drop of X (ticket 07, M12, a head draw of X), so Z<X> is
-    # dropped with X's reason. Z<X>'s own head draw (R7 L10/L11 on Z's labels) can drop Z<X> alone; Z has no centres, so
-    # M12 does not apply to it.
+    draws, x_reason = x_drop(X, control, labels_p, halves_p, k, lambda: draw_check(labels[X], st, halves, hr, cr))
     if x_reason is not None:
-        return drop(f'no control: {X} is dropped ({x_reason})' if control else x_reason)
+        return drop(x_reason)
     local = labels[name]
     if control:
         assert np.array_equal(local, G.random_control_labels(labels[X], g_st, G.CONTROL_INDEX[X])), \
@@ -380,11 +509,13 @@ def build(name, smoke=False, n_smoke=None, gname='r8_groupings', h_arm=False, he
         phi_p = G.painting_vectors(phi, idx, n_p)
         side = image_side(phi_p, labels_p, halves_p, g_st, phi[spos])
         assert 'dropped' not in side
+        if X == 'TP':
+            assert_tp_agreement(side)
         space_rec = {'space': str(sp), 'space_sha256': C.sha_file(sp), 'phi_shape': list(phi.shape),
                      'agreement_fit': side['agreement_fit'], 'agreement_crossfit': side['agreement_crossfit'],
                      'sizes_cf_paintings': side['sizes_cf_paintings']}
     # --- text side
-    fit = None
+    fit = (None, None)
     if X == 'R0own' and not control:
         txt_g, txt_cf, r7_shas = r0own_text(labels[X], keep, selection)
         text_rec = {'source': 'R7 post_R0 / xheads_R0 txt (M11, M12)', 'input_sha256': r7_shas}
@@ -415,12 +546,7 @@ def build(name, smoke=False, n_smoke=None, gname='r8_groupings', h_arm=False, he
     # rule gap: the rule defines H<X> only as "the CLIP-head arm" (§2, §6.6); built as R7 L10/L11 on X's labels, image and
     # text heads both, from the fit that gave X's text side (no second fit).
     if h_arm:                                          # R7's CLIP image and text heads on X's labels (descriptive arm)
-        hname, (post_h, cross_h) = f'H{X}', fit
-        hpost = post_arrays(n_all, selection, post_h['img'][selection], post_h['txt'])
-        hx = xheads_arrays(cross_h['img'], cross_h['txt'], halves['half_of_local_row'], k)
-        B._posterior_ok({m: hpost[m] for m in ('img', 'txt')}, SimpleNamespace(groups=c.groups, selection=selection), hname)
-        write_outputs(root, hname, hpost, hx, {**rec, 'grouping': hname, 'matched_grouping': X,
-                                               'image_side': 'R7 L10 CLIP image head on X labels'})
+        write_h(root, X, rec, *fit, text_rec, draws, selection, halves, k, n_all, 'h-arm')
     print(f'{name}: placed (K={k}, smoke={smoke})')
     return out
 
@@ -431,9 +557,15 @@ def main():
     ap.add_argument('--smoke', nargs='?', const=SMOKE_PAINTINGS, type=int, metavar='N',
                     help=f'first N paintings of the smoke grouping file (default {SMOKE_PAINTINGS}); writes under results/smoke/')
     ap.add_argument('--groupings-name', default='r8_groupings', help='grouping file stem (NBC: r8_groupings_nbc)')
-    ap.add_argument('--h-arm', action='store_true', help='also write post/xheads/head_H<X> (CLIP-head arm, ticket 12)')
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument('--h-arm', action='store_true', help='place X and also write post/xheads/head_H<X> (CLIP-head arm, ticket 12)')
+    mode.add_argument('--h-only', action='store_true',
+                      help='X is placed already: refit its CLIP heads, check the text equals X\'s stored text, write only post/xheads/head_H<X>')
     a = ap.parse_args()
-    build(a.grouping, a.smoke is not None, a.smoke, a.groupings_name, a.h_arm)
+    if a.h_only:
+        build_h_only(a.grouping, a.smoke is not None, a.smoke, a.groupings_name)
+    else:
+        build(a.grouping, a.smoke is not None, a.smoke, a.groupings_name, a.h_arm)
 
 
 if __name__ == '__main__':
