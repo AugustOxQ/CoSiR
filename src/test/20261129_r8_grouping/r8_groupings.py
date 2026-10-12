@@ -45,6 +45,8 @@ assert CONTROL_INDEX['V100'] == 1 and CONTROL_INDEX['FC1'] == 7 and CONTROL_INDE
 ENCODER_DIR = {'AL': 'aladin', 'DI': 'dinov2l', 'SG': 'siglip2'}
 ENCODER_ROOT = Path('/data/SSD2/pre_extract/artelingo')
 N_IMAGES = 49_121
+VIEWS_META = Path('/data/SSD2/pre_extract/artelingo/r8_clip_views/meta.json')      # ticket 03 (index: "Views file")
+VIEW_IDS = ('V100', 'V67', 'V33')
 
 
 # ---------------------------------------------------------------- small helpers
@@ -113,11 +115,18 @@ def _key(r):
     return round(float(r), 9)
 
 
+def _dist(r):
+    """|r - 1.0| rounded to 9 decimals: float noise must not break M3's ties (abs(1.4 - 1.0) = 0.3999999999999999
+    but abs(0.6 - 1.0) = 0.4; the rule's tie is exact)."""
+    return round(abs(float(r) - 1.0), 9)
+
+
 def search_resolution(k_of_r, target=TARGET_K):
     """M3's search on k_of_r(r) -> K or None (None = merge_small raised SystemExit: that r is skipped and recorded).
+    Distances from 1.0 are rounded (`_dist`) before any comparison.
     (1) r = 1.0, stop if K = target. (2) grid r = j/10, j = 1..30: among K = target the point nearest 1.0, ties to the
-    smaller r. (3) else the adjacent grid pair whose K values bracket the target with midpoint nearest 1.0 (ties to the
-    smaller) is bisected at most 10 times, keeping the half that still brackets; stop at the first K = target.
+    smaller r. (3) else the consecutive grid pair (j/10, (j+1)/10, both K defined) whose K values bracket the target
+    with midpoint nearest 1.0 (ties to the smaller) is bisected at most 10 times, keeping the half that still brackets; stop at the first K = target.
     (4) else the nearest count: smallest |K - target| over everything evaluated, ties to r nearest 1.0, then smaller r.
     Returns {'evaluated': [{r, K, [reason]}] in call order, 'chosen_r', 'K', 'stage', 'dropped', 'reason'}."""
     seen, order = {}, []
@@ -138,7 +147,7 @@ def search_resolution(k_of_r, target=TARGET_K):
             return {'evaluated': evaluated, 'chosen_r': None, 'K': None, 'stage': 'none', 'dropped': True,
                     'reason': 'merge_small is undefined at every evaluated resolution'}
         if r is None:                                                           # (4)
-            r = min(valid, key=lambda k: (abs(int(seen[k]) - target), abs(k - 1.0), k))
+            r = min(valid, key=lambda k: (abs(int(seen[k]) - target), _dist(k), k))
             stage = 'nearest'
         return {'evaluated': evaluated, 'chosen_r': r, 'K': int(seen[r]), 'stage': stage, 'dropped': False,
                 'reason': None}
@@ -150,20 +159,21 @@ def search_resolution(k_of_r, target=TARGET_K):
         ev(r)
     hits = [r for r in grid if seen[r] == target]                               # (2)
     if hits:
-        return result('grid', min(hits, key=lambda k: (abs(k - 1.0), k)))
-    # (3) rule gap: "adjacent grid pair" is read as adjacent among the grid points whose K is defined
-    valid = [r for r in grid if seen[r] is not None]
-    brackets = [(a, b) for a, b in zip(valid, valid[1:])
-                if (seen[a] - target) * (seen[b] - target) < 0]
+        return result('grid', min(hits, key=lambda k: (_dist(k), k)))
+    # (3) rule gap 1 (decided by the controller after review): "adjacent grid pair" is the consecutive grid points
+    # j/10 and (j+1)/10 with both K defined; an undefined point removes the pairs it belongs to, it does not join its
+    # two neighbours. Strictly opposite sides of the target bracket.
+    brackets = [(a, b) for a, b in zip(grid, grid[1:])
+                if seen[a] is not None and seen[b] is not None and (seen[a] - target) * (seen[b] - target) < 0]
     if brackets:
-        lo, hi = min(brackets, key=lambda ab: (abs((ab[0] + ab[1]) / 2 - 1.0), ab[0]))
+        lo, hi = min(brackets, key=lambda ab: (_dist((ab[0] + ab[1]) / 2), ab[0]))
         for _ in range(MAX_BISECT):
             mid = _key((lo + hi) / 2)
             k = ev(mid)
             if k == target:
                 return result('bisect', mid)
-            if k is None:        # rule gap: no half can be kept when K(mid) is undefined; bisection stops
-                break
+            if k is None:        # rule gap 2 (accepted after review): no half can be kept when K(mid) is undefined;
+                break            # bisection stops and step (4) runs
             if (seen[lo] - target) * (k - target) < 0:
                 hi = mid
             else:
@@ -398,9 +408,11 @@ def tp_apply(x, t, mmap, centres=None):
     cls = tp_argmax(x, t)
     out = np.asarray(mmap)[cls]
     missing = out < 0
-    # rule gap: a class that no scorer-train painting has as its argmax has no merged group; M9 does not say where a
-    # gallery image of that class goes. With `centres` the image takes the nearest merged-group centre in x's space
-    # (merge_small's own criterion, applied to the image); without them the call stops.
+    # rule gap 4 (decided by the controller after review): a class that no scorer-train painting has as its argmax has
+    # no merged group, and M9 does not say where a gallery image of that class goes. The real run passes no `centres`,
+    # so such an image stops it (on the real data 0 of 49,121 images do). Smoke passes `centres`: the image then takes
+    # the merged group whose unit, painting-weighted centre in x's space has the largest dot product with it (not
+    # merge_small's criterion, which uses Euclidean distance to row-weighted centroids of the raw classes).
     if missing.any():
         assert centres is not None, 'a gallery image has a TP class without scorer-train paintings'
         out = out.copy()
@@ -519,24 +531,42 @@ def write_space(path, record_path, phi, image_index, record):
     return C.write_json_once(record_path, {**record, 'space_sha256': C.sha_file(path), 'phi_shape': list(phi.shape)})
 
 
-def encoder_space(name, smoke, spaces):
-    """AL/DI/SG: raw embeddings -> unit space file (written once; reused when it is there and its input matches)."""
+def encoder_space(name, smoke, spaces, enc_root=None):
+    """AL/DI/SG: raw embeddings -> unit space file (written once; reused when it is there and its input matches).
+    Ticket 04's files are checked at this boundary: meta keys, embeddings shape/dtype/finiteness, `image_index.npy`
+    equals nonheld_images()[:n] as int64 (the embeddings' row order), and both SHA-256 against meta.json.
+    `enc_root` (a directory holding r8_enc_<name>/) overrides the default: the real extraction root, or in smoke
+    `results/smoke/enc` (ticket 04's smoke output, n images only)."""
     import r8_common as C
-    d = ENCODER_ROOT / f'r8_enc_{ENCODER_DIR[name]}'
-    emb_path, meta_path = d / 'embeddings.npy', d / 'meta.json'
-    assert emb_path.is_file() and meta_path.is_file(), f'{name}: {d} is not extracted (ticket 04)'
+    root = Path(enc_root) if enc_root else (C.SMOKE / 'enc' if smoke else ENCODER_ROOT)
+    d = root / f'r8_enc_{ENCODER_DIR[name]}'
+    emb_path, idx_path, meta_path = d / 'embeddings.npy', d / 'image_index.npy', d / 'meta.json'
+    assert emb_path.is_file() and idx_path.is_file() and meta_path.is_file(), f'{name}: {d} is not extracted (ticket 04)'
+    meta = json.loads(meta_path.read_text())
+    need = {'image_index_sha256', 'embeddings_sha256', 'n', 'smoke'}
+    assert need <= meta.keys(), f'{name}: {meta_path} lacks {sorted(need - meta.keys())}'
+    assert meta['smoke'] is smoke, f'{name}: {meta_path}: smoke is {meta["smoke"]}, run smoke is {smoke}'
     emb = np.load(emb_path, mmap_mode='r', allow_pickle=False)
-    assert emb.ndim == 2 and emb.shape[0] == N_IMAGES and emb.dtype == np.float32, f'{name}: embeddings shape/dtype'
+    n = emb.shape[0]
+    assert emb.ndim == 2 and emb.dtype == np.float32 and n == meta['n'], f'{name}: embeddings shape/dtype/n'
+    assert (0 < n <= N_IMAGES) if smoke else n == N_IMAGES, f'{name}: {n} embeddings rows'
     assert np.isfinite(emb).all(), f'{name}: embeddings not finite'
+    image_index = np.load(idx_path, allow_pickle=False)
+    nh = C.nonheld_images().astype(np.int64)[:n]
+    assert image_index.dtype == np.int64 and np.array_equal(image_index, nh), \
+        f'{name}: image_index.npy differs from nonheld_images()[:{n}] (the embeddings are in another image order)'
+    assert sha_array(image_index) == meta['image_index_sha256'], f'{name}: image_index SHA-256 differs from meta.json'
     sha, meta_sha = C.sha_file(emb_path), C.sha_file(meta_path)
+    assert sha == meta['embeddings_sha256'], f'{name}: embeddings SHA-256 differs from meta.json'
     space, rec_path = spaces / f'{name}.npz', spaces / f'{name}.json'
     if space.exists():
         assert json.loads(rec_path.read_text())['input_sha256']['embeddings.npy'] == sha, f'{space}: other input'
         return space
     phi = unit(emb)
-    write_space(space, rec_path, phi, C.nonheld_images(),
+    write_space(space, rec_path, phi, nh.astype(np.int32),
                 {'builder': 'r8_groupings', 'setting': name, 'smoke': smoke, 'source': str(emb_path),
-                 'input_sha256': {'embeddings.npy': sha, 'meta.json': meta_sha}, 'transform': 'unit'})
+                 'input_sha256': {'embeddings.npy': sha, 'meta.json': meta_sha,
+                                  'image_index': meta['image_index_sha256']}, 'transform': 'unit'})
     return space
 
 
@@ -544,38 +574,76 @@ def read_record(path):
     return json.loads(Path(path).read_text()) if Path(path).is_file() else None
 
 
-def record_pass(rec):
-    """The `pass` of a stage/D21 record (ticket 06 writes `passed`, the gate index says `pass`): None if absent."""
-    if rec is None:
-        return None
-    return rec['pass'] if 'pass' in rec else rec.get('passed')
+def read_stage(path, label):
+    """A real-run stage / D21 record (stageE_<AL|DI|SG>.json, stage1_fcmi.json, fcmi/FC<n>/d21.json): it must exist,
+    `pass` must be a bool, `smoke` must be false and `rule_sha256` the rule's. A record that is not there is an error,
+    never a drop: the part file is write-once."""
+    import r8_common as C
+    rec = read_record(path)
+    assert rec is not None, f'{label}: record {path} is missing (its ticket has not run)'
+    assert isinstance(rec.get('pass'), bool), f'{label}: {path}: `pass` is not a bool'
+    assert rec.get('smoke') is False, f'{label}: {path}: smoke is not false'
+    assert rec.get('rule_sha256') == C.sha_file(C.RULE), f'{label}: {path}: rule SHA-256 differs'
+    return rec
 
 
 def fail_reason(rec, label):
-    """Why a stage/D21 record failed: its failed tests and its error text."""
+    """Why a stage/D21 record failed: its failed tests, failed ESC1 items and its reason / error text."""
     failed = [k for k, v in (rec.get('tests') or {}).items() if not v]
-    return f"{label} failed: tests {failed or 'n/a'}; {rec.get('error') or rec.get('reason') or 'no error text'}"
+    esc1 = [k for k, v in (rec.get('esc1') or {}).items() if isinstance(v, dict) and v.get('ok') is False]
+    text = f"{label} failed: tests {failed or 'n/a'}"
+    if 'esc1' in rec:
+        text += f'; failed esc1 items {esc1 or "none"}'
+    return text + f"; {rec.get('error') or rec.get('reason') or 'no error text'}"
 
 
-def stage_pass(name, smoke):
-    """The stage record's pass (stageE_<AL|DI|SG>.json, stage1_fcmi.json): None when the record does not exist."""
+def check_views_meta():
+    """Ticket 03's views meta.json (index: "Views file"), with the keys ticket 05's `read_views` asserts. Returns the
+    `view_check` dict (its `passed` is a bool)."""
+    path = Path(VIEWS_META)
+    assert path.is_file(), f'{path} is missing (ticket 03)'
+    meta = json.loads(path.read_text())
+    need = {'painting_ids', 'views_sha256', 'view_check'}
+    assert need <= meta.keys(), f'views meta keys: {path} lacks {sorted(need - meta.keys())}'
+    vc = meta['view_check']
+    assert isinstance(vc, dict) and isinstance(vc.get('passed'), bool), f'{path}: view_check.passed is not a bool'
+    return vc
+
+
+def assert_trigger(path):
+    """NBC runs only after the controller's trigger record (rule 6.3): `triggered` true, the rule's SHA-256."""
     import r8_common as C
-    return record_pass(read_record((C.SMOKE / 'gate' if smoke else C.RESULTS) / name))
+    rec = read_record(path)
+    assert rec is not None, f'{path}: probe_trigger.json is missing (NBC needs the gate trigger first)'
+    assert rec.get('triggered') is True, f'{path}: triggered is not true'
+    assert rec.get('rule_sha256') == C.sha_file(C.RULE), f'{path}: rule SHA-256 differs'
+    assert rec.get('strength') in (1.0, 0.67, 0.33), f'{path}: strength {rec.get("strength")}'
 
 
-def part_search(name, smoke, n, strength_note=None):
+def part_search(name, smoke, n, enc_root=None):
     import r8_common as C
     root, parts, spaces = _paths(smoke)
+    if name == 'NBC':
+        assert_trigger(root / 'probe_trigger.json')
     st, g, content, n = subset(n)
+    if name in VIEW_IDS:
+        vc = check_views_meta()
+        if vc['passed'] is False:          # M16 / rule 7: the V100 to V33 drop on M4's check (ticket 05 builds no V space)
+            return None, {'dropped': True, 'view_check': vc,
+                          'reason': f'M4 view check failed (views meta.json view_check.passed is false): '
+                                    f'{json.dumps(vc, sort_keys=True)}'}, n
     if name in ENCODER_DIR:
-        if not smoke and stage_pass(f'stageE_{name}.json', smoke) is not True:
-            return None, {'dropped': True, 'reason': f'ESC1 not passed for {name} (stageE_{name}.json: '
-                                                    f'{stage_pass(f"stageE_{name}.json", smoke)})'}, n
-        encoder_space(name, smoke, spaces)
-    phi, idx = read_space(spaces / f'{name}.npz', smoke)
+        if not smoke:      # smoke runs wire the files only; ticket 04's smoke stage record is not a decision
+            stage = read_stage(root / f'stageE_{name}.json', f'ESC1 of {name}')
+            if stage['pass'] is False:
+                return None, {'dropped': True, 'reason': fail_reason(stage, f'ESC1 of {name} (stageE_{name}.json)')}, n
+        encoder_space(name, smoke, spaces, enc_root)
+    sp = spaces / f'{name}.npz'
+    assert sp.is_file(), f'{name}: space file {sp} missing (ticket 05 / 04 builds it)'
+    phi, idx = read_space(sp, smoke)
     local, rec = group_space(painting_vectors(phi, idx, n), g, content)
-    rec['space'] = str(spaces / f'{name}.npz')
-    rec['space_sha256'] = C.sha_file(spaces / f'{name}.npz')
+    rec['space'] = str(sp)
+    rec['space_sha256'] = C.sha_file(sp)
     return local, rec, n
 
 
@@ -599,15 +667,16 @@ def part_fc(name, smoke, labels_path=None, space_path=None):
     lp, sp, vp = fc_paths(name, smoke)
     sp = Path(space_path or sp)
     if not smoke:
-        stage1 = read_record(C.RESULTS / 'stage1_fcmi.json')
-        assert stage1 is not None, 'stage1_fcmi.json is missing: run stage 1 (ticket 06) first'
-        if record_pass(stage1) is False:
+        # the records are always read in a real run, whether or not the space file is there (m-2): ticket 06 publishes
+        # the space only after its own D21 check, but this is the file boundary
+        stage1 = read_stage(C.RESULTS / 'stage1_fcmi.json', 'SC2 (FC3, stage1_fcmi.json)')
+        if stage1['pass'] is False:
             return None, {'dropped': True, 'reason': fail_reason(stage1, 'SC2 (FC3, stage1_fcmi.json)') +
                           '; FC1 to FC6 drop out'}, None
-    if not sp.is_file():
-        v = read_record(vp)
-        if v is not None and record_pass(v) is False:
-            return None, {'dropped': True, 'reason': fail_reason(v, f'D21 test of {name} ({vp})')}, None
+        if name != 'FC3':
+            v = read_stage(vp, f'D21 test of {name}')
+            if v['pass'] is False:
+                return None, {'dropped': True, 'reason': fail_reason(v, f'D21 test of {name} ({vp})')}, None
     assert sp.is_file(), f'{name}: space file {sp} missing (ticket 06)'
     meta = read_record(sp.with_suffix('.json'))
     assert meta is not None and 'native_labels' in meta, f'{sp.with_suffix(".json")}: no native_labels field'
@@ -665,6 +734,9 @@ def part_nrk(smoke, n, timeout_seconds=TIMEOUT_SECONDS):
     fit, rec = fit_child(x, out, timeout_seconds)
     if fit is None:
         return None, rec, n
+    fit_path = parts / 'NRK_fit.npz'          # M8: V_ and P_ are kept, with both clusterings' labels (write-once)
+    C.write_npz_once(fit_path, labels=fit['labels'], V=fit['V'], P0=fit['P0'], P1=fit['P1'])
+    rec.update(fit_file=str(fit_path), fit_sha256=C.sha_file(fit_path))
     P = [fit['P0'], fit['P1']]
     s, info = nrk_choose(fit['labels'], content, g)
     rec.update(info, subspace_dims=[len(p) for p in P])
@@ -719,13 +791,15 @@ def text_check(n_rows=256, device='cpu'):
 
 def part_tp(smoke, n, device='cpu'):
     import r8_common as C
+    # the smallest top-1 to top-2 score gap over the real paintings is 1.2e-7, about the size of CPU/CUDA differences
+    assert smoke or device == 'cpu', 'TP real run: the text features must come from the CPU'
     root, parts, spaces = _paths(smoke)
     C.assert_inputs(keys=('/data/SSD2/pre_extract/artelingo_clip224/paintings.json',), r7=False)
     paintings = json.loads((C.path_of('/data/SSD2/pre_extract/artelingo_clip224/paintings.json')).read_text())['paintings']
     names, prompts = tp_prompts(paintings)
     t, weight = clip_text(prompts, device)
     check = text_check(256, device)
-    rec = {'style_names': names, 'prompts': prompts, 'text_check': check, 'clip_weights': weight}
+    rec = {'style_names': names, 'prompts': prompts, 'text_check': check, 'clip_weights': weight, 'device': device}
     if not check['passed']:
         rec.update(dropped=True, reason=f"text check failed: min cosine {check['min_cosine']:.6f} < 0.9999")
         return None, rec, None
@@ -735,7 +809,8 @@ def part_tp(smoke, n, device='cpu'):
     rec.update(trec)
     if local is None:
         return None, rec, n
-    images, n_fallback = tp_apply(C.x_images(), t, mmap, tp_centres(x, painting_labels(local, g)))
+    # real run: no centres, so a gallery image whose class has no scorer-train painting stops the run (rule gap 4)
+    images, n_fallback = tp_apply(C.x_images(), t, mmap, tp_centres(x, painting_labels(local, g)) if smoke else None)
     rec['gallery_images_without_class_paintings'] = n_fallback
     k = int(local.max()) + 1
     phi = np.zeros((len(images), k), dtype=np.float32)
@@ -743,7 +818,7 @@ def part_tp(smoke, n, device='cpu'):
     sp = spaces / 'TP.npz'
     write_space(sp, spaces / 'TP.json', phi, C.nonheld_images(),
                 {'builder': 'r8_groupings', 'setting': 'TP', 'smoke': smoke, 'transform': 'one-hot of the TP map',
-                 'prompts': prompts, 'merge_map': mmap.tolist(), 'text_check': check, 'clip_weights': weight,
+                 'prompts': prompts, 'merge_map': mmap.tolist(), 'text_check': check, 'device': device, 'clip_weights': weight,
                  'gallery_group_sizes': np.bincount(images, minlength=k).tolist()})
     rec.update(space=str(sp), space_sha256=C.sha_file(sp), dropped=False, reason=None)
     return local, rec, n
@@ -760,13 +835,15 @@ def write_part(name, labels, rec, n, smoke):
     return C.write_json_once(parts / f'{name}.json', rec)
 
 
-def run_part(name, smoke=False, n=None, labels=None, space=None, timeout_seconds=TIMEOUT_SECONDS, device='cpu'):
+def run_part(name, smoke=False, n=None, labels=None, space=None, timeout_seconds=TIMEOUT_SECONDS, device='cpu',
+             enc_root=None):
     import r8_common as C
     C.assert_rule()
     C.assert_threads()
     assert name in ALL_IDS, f'unknown grouping ID {name}'
-    n = (n or 2048) if smoke else None
+    n_smoke = (n or 2048) if smoke else None
     assert smoke or n is None
+    n = n_smoke
     if name in FC_IDS:
         lab, rec, n = part_fc(name, smoke, labels, space)
     elif name == 'R0own':
@@ -776,13 +853,23 @@ def run_part(name, smoke=False, n=None, labels=None, space=None, timeout_seconds
     elif name == 'TP':
         lab, rec, n = part_tp(smoke, n, device)
     else:
-        lab, rec, n = part_search(name, smoke, n)
-    if n is None:
-        n = C.ctx().n_paintings
+        lab, rec, n = part_search(name, smoke, n, enc_root)
+    if n is None:                               # dropped before n was known: the smoke n, or all paintings
+        n = n_smoke if smoke else C.ctx().n_paintings
     if lab is not None and lab.max() < 1:
         rec = {**rec, 'dropped': True, 'reason': 'fewer than 2 groups'}
         lab = None
+    # every part records the scorer-train rows it was built on; collect asserts they agree
+    rec = {**rec, 'scorer_train_sha256': sha_array(subset(n)[0])}
     return write_part(name, lab, rec, n, smoke)
+
+
+def assert_same_scorer_train(parts, st):
+    """Every part was built on the collected scorer-train rows (its stored SHA-256 of them)."""
+    want = sha_array(st)
+    for name, part in parts.items():
+        got = part['record'].get('scorer_train_sha256')
+        assert got == want, f'{name}: part built on other scorer-train rows ({got} vs {want})'
 
 
 def collect(ids, smoke=False, name='r8_groupings'):
@@ -807,6 +894,7 @@ def collect(ids, smoke=False, name='r8_groupings'):
     assert len(ns) == 1, f'parts cover different painting counts: {ns}'
     st, g, _, n = subset(ns.pop() if smoke else None)
     assert smoke or n == C.ctx().n_paintings
+    assert_same_scorer_train(loaded, st)
     arrays, rec = assemble(loaded, st, g, ids)
     C.write_npz_once(targets[0], **arrays)
     return C.write_json_once(targets[1], {**rec, 'smoke': smoke, 'name': name, 'n_rows': len(st), 'n_paintings': n,
@@ -825,7 +913,9 @@ def main():
     p.add_argument('--labels', type=Path, help='FC*: native labels npz (default: ticket 06 paths)')
     p.add_argument('--space', type=Path, help='FC*: space file (default: ticket 06 paths)')
     p.add_argument('--timeout-seconds', type=int, default=TIMEOUT_SECONDS, help='NRK; shorter only with --smoke')
-    p.add_argument('--device', default='cpu', help='TP text encoder')
+    p.add_argument('--device', default='cpu', help='TP text encoder (real run: cpu only)')
+    p.add_argument('--enc-root', type=Path, help='AL/DI/SG: directory holding r8_enc_<name>/ (default: the real '
+                   'extraction; with --smoke: results/smoke/enc, ticket 04\'s smoke output)')
     c = sub.add_parser('collect', help='write r8_groupings.npz/.json once')
     c.add_argument('--ids', nargs='+', default=[i for i in ALL_IDS if i != 'NBC'])
     c.add_argument('--name', default='r8_groupings')
@@ -835,7 +925,8 @@ def main():
     if args.worker is not None:
         worker(args.worker)
     elif args.cmd == 'part':
-        run_part(args.id, args.smoke is not None, args.smoke, args.labels, args.space, args.timeout_seconds, args.device)
+        run_part(args.id, args.smoke is not None, args.smoke, args.labels, args.space, args.timeout_seconds, args.device,
+                 args.enc_root)
     elif args.cmd == 'collect':
         collect(args.ids, args.smoke, args.name)
     else:
