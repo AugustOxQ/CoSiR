@@ -38,3 +38,12 @@ stage 0 passed at 2026-10-12 04:42 in the build. Run logs: `results/logs/` (giti
 ## 2026-10-12 06:52 `ceiling` (K1)
 
 - Started in the background (`results/logs/ceiling.log`).
+- Done 06:51: `results/seed42/arrays_ceiling.npz` (12,288 episodes; 4,096 style × genre), `ceiling_pending.json`.
+- Phase K (`rederive/rd7_arrays.py --phase K --seed 42`, own process): 18 arrays. `rd7_stats.py --stage ceiling`:
+  Σ(4d) 643, zone CLEAR. `run_r7.py ceiling --finalize`: every comparison passed; `ceiling_verdict.json` written 06:52.
+- **K1: CLEAR.** Told T on style × genre, fused minus counterpart: Σ(4d) = 643 (CLEAR bar 164), point +3.92 R@1,
+  95% interval [3.35, 4.49]. The run goes on to stage 2.
+
+## 2026-10-12 06:54 `gate` (S1 to S3, P1)
+
+- Started in the background (`results/logs/gate.log`).
