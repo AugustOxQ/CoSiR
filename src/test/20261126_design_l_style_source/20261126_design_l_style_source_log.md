@@ -73,7 +73,7 @@ stage 0 passed at 2026-10-12 04:42 in the build. Run logs: `results/logs/` (giti
 - Descriptive pass (`run_r7_descriptive.py ceiling`, `gate`): `results/descriptive_ceiling.json` (06:58),
   `results/descriptive_gate.json` (07:00). The test part does not apply.
 
-## Process departure (L3, recorded 07:30)
+## Process departure (L3, recorded 07:14)
 
 - Rule §8's last row says a case the rule does not cover stops the run with its report and a phone note, and the user
   decides. At 05:50 the run sent the phone note (05:55) but did not stop: it went on with the agent-default fallback,
