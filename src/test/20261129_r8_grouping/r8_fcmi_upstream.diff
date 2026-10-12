@@ -1,0 +1,145 @@
+--- FCMI@9750ccf/networkExplicitDecoupleShuffle.py (copied functions)
++++ r8_fcmi_net.py (copied functions)
+@@ -6,2 +6,2 @@
+-            x = x.cuda()
+-            g = g.cuda()
++            x = x.to(net.args.device)
++            g = g.to(net.args.device)
+@@ -30,5 +30 @@
+-    res = faiss.StandardGpuResources()
+-    cfg = faiss.GpuIndexFlatConfig()
+-    cfg.useFloat16 = False
+-    cfg.device = 0
+-    index = faiss.GpuIndexFlatL2(res, d, cfg)
++    index = faiss.IndexFlatL2(d)
+@@ -81 +77 @@
+-        ).cuda()
++        ).to(args.device)
+@@ -134 +130 @@
+-        center = torch.from_numpy(center).cuda()
++        center = torch.from_numpy(center).to(self.args.device)
+@@ -147 +143 @@
+-            hh = torch.zeros((len(x), self.encoder_out_dim), device='cuda')
++            hh = torch.zeros((len(x), self.encoder_out_dim), device=self.args.device)
+@@ -199 +195 @@
+-            x_ = torch.zeros((len(z), 1, 28, 28), device='cuda')
++            x_ = torch.zeros((len(z), 1, 28, 28), device=self.args.device)
+@@ -217 +213,3 @@
+-    def run(self, epochs, train_dataloader, test_dataloader, args):
++    def run(self, epochs, train_dataloader, test_dataloader, args, d21):
++        epoch_times = []
++        assert not args.loss_self_cons, "M7 default: dataset-based self-consistency is disabled"
+@@ -238,5 +236,2 @@
+-        mse_loss = nn.MSELoss().cuda()
+-        ce_loss = nn.CrossEntropyLoss().cuda()
+-        timer_all = TimeOperator.TimeOperator()
+-        timer_train = TimeOperator.TimeOperator()
+-        timer_infer = TimeOperator.TimeOperator()
++        mse_loss = nn.MSELoss().to(args.device)
++        ce_loss = nn.CrossEntropyLoss().to(args.device)
+@@ -267,0 +263 @@
++            epoch_start = time.monotonic()
+@@ -275 +271 @@
+-                save_checkpoint(dct, epoch=epoch)
++                save_checkpoint(dct, epoch=epoch, output_dir=args.output_dir)
+@@ -297,2 +292,0 @@
+-            timer_all.time()
+-            timer_infer.time()
+@@ -312,2 +305,0 @@
+-            pred_adjusted = evaluate2(feature_vec, pred_vec, type_vec, group_vec)
+-            # print('eva-time', time.time() - t_tmp)
+@@ -315,52 +307,3 @@
+-                np_dir = '../NpPoints/Np{:03d}'.format(epoch)
+-                DirectoryOperator.FoldOperator(directory=np_dir).make_fold()
+-                np.savez(np_dir, feature_vec=feature_vec, type_vec=type_vec,
+-                         group_vec=group_vec, pred_vec=pred_adjusted, epoch=epoch)
+-            if epoch == 3:
+-                evaluate.BestBalance = 0.0
+-                evaluate.BestEntropy = 0.0
+-                evaluate.BestFairness = 0.0
+-                evaluate.BestNmiFair = 0.0
+-            print('Clu\\g ', end='')
+-            show_distribution(cluster_vec=pred_adjusted, group_vec=group_vec, class_num=self.class_num,
+-                              group_num=self.group_num)
+-            if not type_detail_shown:
+-                type_detail_shown = True
+-                print('Typ\\g ', end='')
+-                show_distribution(cluster_vec=type_vec, group_vec=group_vec, class_num=self.class_num,
+-                                  group_num=self.group_num)
+-            show_distribution_ct(type_vec=type_vec, group_vec=group_vec, pred_vec=pred_adjusted,
+-                                 class_num=self.class_num,
+-                                 group_num=self.group_num)
+-
+-            if (epoch + 1) % args.VisualFreq == 0:
+-                # if (epoch + 1) % args.VisualFreq == 0 or (epoch + 1) == args.VisualFreq // 2 + 1 or \
+-                #         args.VisualFreq - 5 <= (epoch + 1) <= args.VisualFreq + 10:
+-                if len(feature_vec) > DrawMax:
+-                    it = np.arange(len(feature_vec))
+-                    np.random.shuffle(it)
+-                    ind = it[:DrawMax]
+-                    feature_vec_visual = feature_vec[ind]
+-                    type_vec_visual = type_vec[ind]
+-                    group_vec_visual = group_vec[ind]
+-                    pred_vec_visual = pred_adjusted[ind]
+-                else:
+-                    feature_vec_visual = feature_vec
+-                    type_vec_visual = type_vec
+-                    group_vec_visual = group_vec
+-                    pred_vec_visual = pred_adjusted
+-                if args.DrawTSNE:
+-                    visualize(feature_vec=feature_vec_visual, type_vec=type_vec_visual, group_vec=group_vec_visual,
+-                              pred_vec=pred_vec_visual, epoch=epoch)
+-                if args.DrawUmap:
+-                    UMAP(
+-                        feature_vec_visual,
+-                        type_vec_visual,
+-                        group_vec_visual,
+-                        pred_vec_visual,
+-                        self.class_num,
+-                        self.group_num,
+-                        args,
+-                        epoch=epoch,
+-                    )
+-                loss_model.PrintedGlobalDiversityLoss = False
++                C.write_npz_once(Path(args.output_dir) / 'NpPoints' / 'Np{:03d}.npz'.format(epoch),
++                                 feature_vec=feature_vec, type_vec=type_vec,
++                                 group_vec=group_vec, pred_vec=pred_vec, epoch=epoch)
+@@ -371 +314 @@
+-            pred_vec = torch.from_numpy(pred_vec).cuda()
++            pred_vec = torch.from_numpy(pred_vec).to(args.device)
+@@ -373,2 +315,0 @@
+-            timer_infer.time()
+-            timer_train.time()
+@@ -396,2 +337,2 @@
+-                x = x.cuda()
+-                g = g.cuda()
++                x = x.to(args.device)
++                g = g.to(args.device)
+@@ -512,2 +453,2 @@
+-                        O = torch.zeros((self.class_num, self.group_num)).cuda()
+-                        E = torch.zeros((self.class_num, self.group_num)).cuda()
++                        O = torch.zeros((self.class_num, self.group_num)).to(args.device)
++                        E = torch.zeros((self.class_num, self.group_num)).to(args.device)
+@@ -523 +464 @@
+-                            O_Hard = torch.zeros((self.class_num, self.group_num)).cuda()
++                            O_Hard = torch.zeros((self.class_num, self.group_num)).to(args.device)
+@@ -642 +583 @@
+-                            hot = torch.eye(self.class_num).cuda()
++                            hot = torch.eye(self.class_num).to(args.device)
+@@ -666,0 +608 @@
++                d21.step(loss, epoch, iter)
+@@ -722,6 +664,3 @@
+-            timer_train.time()
+-            timer_all.time()
+-            if (epoch + 1) % args.VisualFreq == 0:
+-                timer_train.show_process(process_now=epoch + 1, process_total=args.train_epoch, name='Train')
+-                timer_infer.show_process(process_now=epoch + 1, process_total=args.train_epoch, name='Infer')
+-                timer_all.show_process(process_now=epoch + 1, process_total=args.train_epoch, name='All')
++            epoch_seconds = time.monotonic() - epoch_start
++            epoch_times.append(epoch_seconds)
++            print('epoch_wall_seconds={:.6f}'.format(epoch_seconds), flush=True)
+@@ -729,0 +669 @@
++        return epoch_times
+@@ -881 +821 @@
+-            x_ = torch.zeros((len(z), self.input_dim), device='cuda')
++            x_ = torch.zeros((len(z), self.input_dim), device=self.args.device)
