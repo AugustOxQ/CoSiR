@@ -297,7 +297,7 @@ def build(only=('NB100',), strength=None, smoke=False, out=None, views_path=VIEW
         view_array, hashes = read_views(views_path, painting_ids)
         inputs.update(hashes)
     if 'NBC' in only:
-        inputs.update(check_nbc_trigger(Path(C.RESULTS) / 'probe_trigger.json', strength))
+        inputs.update(check_nbc_trigger(Path(C.SMOKE if is_smoke else C.RESULTS) / 'probe_trigger.json', strength))
     neighbour_arrays = {}
     if any(name != 'NBC' for name in only):
         neighbour_arrays['CLIP'] = neighbours(x, ctx.content)
