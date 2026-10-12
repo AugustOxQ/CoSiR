@@ -96,3 +96,12 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-r8-decide-2-handoff.md
 - New chat: tab 'r8 decide 2', session ee7bf5e9-5d73-4879-a8d5-229a01261595
 
+[brief] CoSiR: r8 decide 2 -> r8 build (2026-10-12 19:55 Amsterdam)
+- Done: r8 decide finished steps 1 to 6: grouping work beside the AFF paper, the grill, and two approved specs.
+- State: main line, (ii) learned head and FCMI in CSD's slot, 24 candidate scorers; encoder screen, 6. Nothing is
+  built yet. The hard cut-off for a held verdict is Fri 2026-10-23.
+- Next: `to-tickets` on both specs, then `implement-spec`, one build for both tracks, ready for one overnight run.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-12-r8-build-handoff.md
+- New chat: tab 'r8 build', session 40df7d3e-0329-40c5-b03b-46cdce6cadbc
+
