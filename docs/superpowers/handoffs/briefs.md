@@ -105,3 +105,12 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-r8-build-handoff.md
 - New chat: tab 'r8 build', session 40df7d3e-0329-40c5-b03b-46cdce6cadbc
 
+[brief] CoSiR: r8 build -> r8 build 2 (2026-10-12 20:35 Amsterdam)
+- Done: the gate decision rule for both tracks, written, reviewed by a fresh Opus reviewer (1 blocker, 6 major, 11
+  minor, all fixed), re-reviewed and committed; 13 tickets written.
+- State: no code yet. Outside code and weights checked: FCMI, ALADIN (ViT weights only), DINOv2-L, SigLIP 2 all load.
+- Next: branch `r8-grouping`, then implementers for tickets 01, 05 and 10 first.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-12-r8-build-2-handoff.md
+- New chat: tab 'r8 build 2', session 7e1b6a4a-5d96-45c5-8b09-0b7d6c3f3e13
+
