@@ -389,8 +389,9 @@ def write_json_once(path, rec):
     if "rule_sha256" in rec or "written" in rec:
         raise AssertionError("record already has rule_sha256 or written")
     rec = {**jsonable(rec), "rule_sha256": sha_file(RULE), "written": now_ams()}
+    payload = json.dumps(rec, indent=1).encode()  # serialise first: a failure must not leave an empty write-once file
     with _open_once(path) as f:
-        f.write(json.dumps(rec, indent=1).encode())
+        f.write(payload)
     return rec
 
 
