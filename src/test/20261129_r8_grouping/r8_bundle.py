@@ -119,9 +119,7 @@ def build_bundle(seed, smoke, extra=("R0",), root=None):
     t0 = time.time()
     ctx = M.rg.EvalContext(seed, smoke)
     ep = ctx.pooled
-    # rule gap: M14's copy-only whitelist edit conflicts with the ticket's shared-join
-    # contract. Take the identical scorer-train rows from r8_common (do not recompute).
-    scorer_train = R.R.ctx().scorer_train
+    scorer_train = np.asarray(M.rg.artelingo_splits(ctx.data).scorer_train)
     inp = M.rc.model_inputs(ctx, "A3", scorer_train, False)[0]  # never the smoke checkpoint
     t_n1u = quick.centered_term(inp, ep, uniform=True)
     del inp

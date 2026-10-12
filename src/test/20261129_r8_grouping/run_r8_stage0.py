@@ -17,10 +17,10 @@ import r8_common as R
 import r8_bundle as B
 import r8_reader as Q
 import r8_recipe as H
+import r8_scoring_io as IO
 
 CHECKS = ("SC1a", "SC1b", "SC1c", "SC1d", "SC1e")
 METRICS = ("r1", "gain", "other", "strict", "swap")
-HEADS = B.A1
 TOL = 1e-12
 R7_ROOT = R.MAIN / "src/test/20261126_design_l_style_source/results"
 
@@ -38,7 +38,8 @@ class Comparison:
             return
         b = np.asarray(reference)
         if exact is None:
-            exact = a.dtype.kind in "biuUS" or key.rsplit("/", 1)[-1].endswith(("__r1", "r1"))
+            exact = (a.dtype.kind in "biuUS" or key.rsplit("/", 1)[-1] == "r1" or
+                     key.endswith(tuple(f"__{m}" for m in METRICS)))
         ok, diff = False, None
         if a.shape == b.shape and a.dtype == b.dtype:
             if a.dtype.kind in "US":
@@ -158,11 +159,8 @@ def sc1a(state):
 def sc1b(state):
     bundle, smoke, refs, root = (state[k] for k in ("bundle", "smoke", "refs", "root"))
     c = Comparison(smoke)
-    context = R.ctx()
-    labels = Q.C.load_groupings(B.A0)
-    labels["R0"] = state["r0_labels"]
-    post = {name: Q.load_crossfit(name, labels[name], context.halves_dict, R7_ROOT) for name in HEADS}
-    rec = Q.build_reader("R0", labels, context.halves_dict, root=root, smoke=smoke,
+    labels, halves, post = IO.reader_inputs("R0", R7_ROOT)
+    rec = Q.build_reader("R0", labels, halves, root=root, smoke=smoke,
                          bank_n=32 if smoke else Q.BANK_N, post=post)
     assert not rec["dropped"], f"R0 reader dropped: {rec.get('reason')}"
     fields = Q.EPISODE_FIELDS + ("block_pairs", "block_size", "seed", "half")

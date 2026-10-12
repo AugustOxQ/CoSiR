@@ -30,7 +30,7 @@ EPISODE_FIELDS = ("anchor", "candidates", "pairs_a_img", "pairs_a_txt", "pairs_b
 
 
 def _root(root, smoke):
-    return C.reader_root(root, smoke)
+    return Path(root) if root is not None else (C.SMOKE_CHAIN if smoke else C.RESULTS)
 
 
 def _record(path, smoke):
@@ -199,7 +199,7 @@ def build_reader(name, labels, halves, root=None, smoke=False, bank_n=None, post
     import sklearn
     C.assert_rule()
     C.assert_threads()
-    assert name in GROUPINGS, f"unsupported reader {name}"
+    assert name in GROUPINGS, f"unsupported reader {name} (T has no reader)"
     root = _root(root, smoke)
     bank_n = (SMOKE_BANK_N if smoke else BANK_N) if bank_n is None else bank_n
     assert bank_n > 0 and (smoke or bank_n == BANK_N), "real bank size is fixed"
@@ -267,39 +267,3 @@ def build_reader(name, labels, halves, root=None, smoke=False, bank_n=None, post
             assert old[key] == rec[key], f"{paths[1]}: {key} differs"
         return old
     return C.write_json_once(paths[1], rec)
-
-
-def _run_one(task):
-    name, root, smoke, bank_n = task
-    # rule gap: M14's whitelist-only edit also needs r8 paths and r8_common joins
-    # here: R7's CLI loads r7_groupings and rebuilds the shared halves/join.
-    C.assert_rule()
-    C.assert_threads()
-    root = _root(root, smoke)
-    context = C.R.ctx()
-    halves = context.halves_dict
-    labels = C.load_groupings(BASE + (name,), root)
-    return build_reader(name, labels, halves, root, smoke, bank_n)
-
-
-def main():
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--grouping", nargs="+", required=True, choices=GROUPINGS)
-    p.add_argument("--root", type=Path)
-    p.add_argument("--smoke", action="store_true")
-    p.add_argument("--bank-n", type=int, help="smoke size override only")
-    p.add_argument("--jobs", type=int, choices=(1, 2, 3), default=1)
-    args = p.parse_args()
-    assert len(set(args.grouping)) == len(args.grouping), "duplicate readers"
-    tasks = [(name, args.root, args.smoke, args.bank_n) for name in args.grouping]
-    if args.jobs == 1:
-        records = [_run_one(task) for task in tasks]
-    else:
-        with ProcessPoolExecutor(max_workers=args.jobs, mp_context=multiprocessing.get_context("spawn")) as pool:
-            records = list(pool.map(_run_one, tasks))
-    for rec in records:
-        print(f"{rec['grouping']}: {'dropped' if rec['dropped'] else 'reader written'}")
-
-
-if __name__ == "__main__":
-    main()

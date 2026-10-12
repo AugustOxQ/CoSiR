@@ -39,12 +39,6 @@ def check_seed(seed, smoke):
     return seed
 
 
-def reader_root(root, smoke):
-    root = Path(root) if root is not None else (SMOKE_CHAIN if smoke else RESULTS)
-    assert not smoke or R.in_smoke(root), "smoke reader outputs must be under results/smoke"
-    return root
-
-
 def load_groupings(names, root=None):
     """Aligned reader labels: R7's frozen A0 sources plus the r8 grouping file."""
     context = R.ctx()
@@ -69,3 +63,32 @@ def load_groupings(names, root=None):
                 assert np.array_equal(local[context.first_rows][context.g_st], local), f"{name}: painting alignment"
                 out[name] = local
     return out
+
+
+def reader_inputs(name, root=None):
+    """Shared SC1/ticket-09 reader boundary: return (labels, frozen halves, post).
+
+    A0 labels use R7's frozen sources and A0 xheads always come from R7 results
+    (rule §10, all readers). X labels/xheads come from root, default r8 RESULTS.
+    SC1 passes name='R0', root=R7_RESULTS, using its r7_groupings.npz instead.
+    No head JSON is needed. Pass all three returned objects to build_reader with
+    post=post; the old post=None convenience path is not the r8 assembly path.
+    """
+    import r8_reader as Q
+
+    assert name in GROUPINGS, f"unknown reader grouping {name!r}"
+    root = Path(root) if root is not None else RESULTS
+    context = R.ctx()
+    labels = load_groupings(Q.BASE)
+    if name == "R0":
+        labels.update(R.load_r7("r7_heads").load_groupings(
+            (name,), context.scorer_train, context.g_st, root=root))
+        assert np.array_equal(np.unique(labels[name]), np.arange(17)), "R0: frozen 17 classes"
+    else:
+        labels.update(load_groupings((name,), root=root))
+    keys = tuple(f"20261126_design_l_style_source/results/heads/xheads_{h}.npz" for h in Q.BASE)
+    R.assert_inputs(keys=keys, r7=False)
+    halves = context.halves_dict
+    post = {h: Q.load_crossfit(h, labels[h], halves, R7_RESULTS) for h in Q.BASE}
+    post[name] = Q.load_crossfit(name, labels[name], halves, root)
+    return labels, halves, post

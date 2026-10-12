@@ -1,21 +1,9 @@
 """Ticket 02: the posterior boundary specified by rule M14 and the ticket."""
 import json
-from pathlib import Path
-import tempfile
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
-
-
-@pytest.fixture
-def tmp_path():
-    # Keep fixtures inside the worktree and retain them: this task permits no deletion.
-    # rule gap: the first red/green runs used pytest's default /tmp fixture directory;
-    # subsequent runs retain fixtures here to respect the task's write boundary.
-    root = Path(__file__).resolve().parent / "results/smoke/unit"
-    root.mkdir(parents=True, exist_ok=True)
-    return Path(tempfile.mkdtemp(dir=root))
 
 
 def test_new_grouping_loads_and_unknown_grouping_is_refused(tmp_path):
@@ -32,8 +20,9 @@ def test_new_grouping_loads_and_unknown_grouping_is_refused(tmp_path):
     loaded = load_posteriors(context, "V100", root=tmp_path)
     assert np.array_equal(loaded["txt"], posterior, equal_nan=True)
     assert np.array_equal(loaded["img"], posterior, equal_nan=True)
-    with pytest.raises(AssertionError, match="unknown extra grouping"):
-        load_posteriors(context, "V99", root=tmp_path)
+    for name in ("V99", "T", "N", "V1", "Z1"):
+        with pytest.raises(AssertionError, match="unknown extra grouping"):
+            load_posteriors(context, name, root=tmp_path)
 
 
 def test_stage0_comparisons_use_exact_r1_and_absolute_float_tolerance():
@@ -51,6 +40,43 @@ def test_stage0_comparisons_use_exact_r1_and_absolute_float_tolerance():
     assert c.keys["masked"]["pass"]
     assert not c.keys["invalid"]["pass"]
     assert len(c.result()["failures"]) == 3
+
+
+@pytest.mark.parametrize("metric", ("r1", "gain", "other", "strict", "swap"))
+def test_all_per_anchor_metrics_are_compared_exactly(metric):
+    from run_r8_stage0 import Comparison
+
+    c = Comparison()
+    c.compare(f"AFF__{metric}", np.array([0.25 + 1e-14]), np.array([0.25]))
+    assert not c.result()["pass"]
+    assert c.keys[f"AFF__{metric}"]["rule"] == "exact"
+
+
+def test_reader_inputs_use_r7_a0_and_only_x_from_r8(tmp_path):
+    import r8_common as R
+    import r8_scoring_io as IO
+    from r8_reader import BASE, load_crossfit
+
+    context = R.ctx()
+    source = IO.R7_RESULTS
+    with np.load(source / "groupings/r7_groupings.npz", allow_pickle=False) as z:
+        local = z["R0"]
+    groups = tmp_path / "groupings"
+    groups.mkdir()
+    np.savez(groups / "r8_groupings.npz", V100=local, scorer_train=context.scorer_train, g_st=context.g_st)
+    heads = tmp_path / "heads"
+    heads.mkdir()
+    with np.load(source / "heads/xheads_R0.npz", allow_pickle=False) as z:
+        extra = {key: z[key] for key in z.files}
+    extra["img"] = extra["img"][:, ::-1].copy()
+    np.savez(heads / "xheads_V100.npz", **extra)
+    labels, halves, post = IO.reader_inputs("V100", tmp_path)
+    assert halves is context.halves_dict
+    assert np.array_equal(labels["V100"], local)
+    assert np.array_equal(post["V100"]["img"], extra["img"])
+    for name in BASE:
+        old = load_crossfit(name, labels[name], halves, source)
+        assert all(np.array_equal(post[name][side], old[side]) for side in ("img", "txt"))
 
 
 def test_shared_head_path_matches_r7_fits_on_a_small_fixture():
