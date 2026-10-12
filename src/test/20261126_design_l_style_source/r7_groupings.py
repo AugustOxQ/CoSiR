@@ -124,10 +124,21 @@ def orth(x, content):
     residual = centered - (m @ (np.linalg.pinv(m) @ centered.T)).T
     before = float(np.abs(m.T @ centered.T).max())
     after = float(np.abs(m.T @ residual.T).max())
+    extra = {'projector': 'pinv'}
+    if after > 1e-6 * before:
+        # Run fix 2026-10-12: M has rank 63 in exact arithmetic (the size-weighted means sum to zero), but on CSD its
+        # 64th singular value (8e-15 of the first) clears pinv's cutoff, and the 1/sigma round trip amplifies rounding.
+        # Same projector M.pinv(M) = U_k U_k^T at pinv's own cutoff, from the SVD's orthonormal basis; only when the
+        # literal form fails L3's assertion.
+        u, s, _ = np.linalg.svd(m, full_matrices=False)
+        q = u[:, s > 1e-15 * s[0]]
+        residual = centered - (q @ (q.T @ centered.T)).T
+        extra = {'projector': 'svd_basis_fallback', 'basis_rank': int(q.shape[1]), 'max_abs_after_pinv': after}
+        after = float(np.abs(m.T @ residual.T).max())
     assert after <= 1e-6 * before, 'L3 Orth projection assertion'
     return residual.astype(np.float32), {'singular_values': singular.tolist(),
         'pinv_rank': int(np.sum(singular > 1e-15 * singular[0])), 'pinv_rcond': 1e-15,
-        'max_abs_before': before, 'max_abs_after': after}
+        'max_abs_before': before, 'max_abs_after': after, **extra}
 
 
 def preprocess_u(x):
