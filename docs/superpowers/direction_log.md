@@ -16,7 +16,8 @@ NO-GO at its seed-42 gate. Round 8 (decision A, 2026-10-12): grouping work besid
 hard cut-off on Fri 2026-10-23 for a held-read verdict. Main line: a learned grouping head on frozen CLIP with
 content-group negatives (ii) and FCMI (iii) in CSD's place, gallery images placed by the grouping's own assignment;
 the encoder screen (i) is its own track. Step 3 is done (MCL, ECCV 2024, is the closest prior; the positive pair is
-open); next, the grill in `r8 decide 2`. CVPR abstract 2026-11-10.
+open); the grill is done (direction log, 2026-10-12 entry); next, the two specs and one build chat. CVPR abstract
+2026-11-10.
 
 ## Parked ideas
 
@@ -75,10 +76,30 @@ stay in the entries below.
     CSD +0.13 to +0.59 (`src/test/20261129_r8_grouping/step3_caption_ref/`).
   - Tracks: the encoder screen (i) is its own track with its own spec, report and pick; (ii) and (iii) form the main
     line (user; ours had leaned to one pool for the cut-off).
-  - Open: which pick takes the held read if both tracks pass; loop sizes (agent default: main line full, screen
-    medium).
+  - Type and size (agent default, accepted by the user): main line, new idea, full loop; encoder screen, medium loop.
 - **Step 3:** literature `docs/reports/literature/2026-11-30_r8_learned_grouping.md` (MCL is the closest prior: the
   mechanism is not ours to claim; default augmentation positives keep content, not style).
+- **Idea (B) and the grill** (`r8 decide 2`, 2026-10-12; spec to follow):
+  - Positives for (ii): both forms, views of the same painting (a flip and four corner crops, no colour change) and the
+    nearest CLIP neighbour outside the query's content group (user, own pick: no prior knowledge settles it). A
+    CSD-space probe runs only if the CLIP form fails, as an extra candidate (user).
+  - Settings: six per builder, (ii) two forms × three strengths (share of own-group negatives 100, 67, 33%), FCMI six
+    fairness weights; 12 groupings of 17 groups, R1 and extended AFF, 24 candidate scorers, one overnight run (user,
+    own pick, "an overnight run"; ours had been four each, for a smaller selection). The grid is not extended in this
+    loop.
+  - Seed-42 gate: beats AFF pooled (lower bound above 0) and S3 holds; round 7's gate is reported as the weaker goal
+    ("promising" for work after the cut-off) (user, own pick; ours agreed).
+  - Held read (seeds 52 to 54, the same episodes as AFF's H5): AFF's seven checks plus "beats AFF" under Holm at a
+    family-wise one-sided 0.0125 (halved for two tracks); Tier 1, all eight pass: replaces AFF; Tier 2, beats AFF but
+    fails P6 or P7: AFF stays; Tier 3, the seven pass but not AFF: AFF stays; the grouping goes to the analysis in 2
+    and 3 (**user, after seeing the recommendation**; the user had first put "beats AFF only" as replacing AFF).
+  - Priority: main line first; the screen's pick takes the held read only if the main line fails and the screen
+    passes (user, own pick; Holm across the two added by us, accepted).
+  - Agent defaults accepted: 17 groups; comparators raw CSD, random groupings, NrKmeans and told prompts (privileged);
+    X-Cluster at the paper stage; MCL cited, not run; a CLIP-head placement arm as description; groupings on the
+    scorer-train rows; FCMI drops out if its smoke run fails at 64 groups; the screen (ALADIN, DINOv2, SigLIP 2; 17
+    groups as raw CSD; 6 candidate scorers) on the local GPU; one build chat and one overnight run for both tracks; no
+    plan page.
 - **Why:** told true styles gain +3.92 while the label-free groupings reach +0.38; CSD agrees with style and genre
   about equally; a removal approach fights the true styles' own link to content (AMI 0.32), so the user wants a
   better grouping source rather than another cut of CSD.

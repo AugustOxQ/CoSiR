@@ -29,4 +29,8 @@ method-A era (factors, agreement rule, pseudo-partition, KISSME, …) are in App
 | ceiling check | *(new, round 7)* a told run that uses true labels to build one grouping, to bound what any label-free grouping in its place could give; it can stop a round, never pick |
 | content grouping | *(new, round 7)* the reader's CLIP image k-means grouping (64 groups), used as the "content" that design L's style groupings are made to cut across |
 | extended AFF | *(new, round 7)* AFF on a reader with a fourth, style grouping, its gate open when the reader picks affect or that style grouping |
+| own assignment | *(new, round 8)* placing a gallery image into a grouping by the grouping's own map (its head or nearest centroid), not by a CLIP head fitted to copy the grouping |
+| paired-image reference | *(new, round 8)* a privileged ceiling on caption placement: each caption takes its own painting's image-head posterior; no real caption has this, so it is not a method ([step 3](src/test/20261129_r8_grouping/step3_caption_ref/step3_caption_ref.md)) |
+| positive pair | *(new, round 8)* two items a contrastive grouping head pulls together; in round 8, views of one painting or the nearest CLIP neighbour outside the query's content group |
+| held tiers | *(new, round 8)* the reading of a held read with AFF's seven checks plus "beats AFF": Tier 1, all eight pass (replaces AFF); Tier 2, beats AFF but fails a condition-gain check; Tier 3, the seven pass but not AFF (AFF stays in 2 and 3) |
 | dollar weight | token use priced at API rates (cache reads, cache writes and output weighted by their price) to compare runs of agent work; not what the Max plan charges ([engine switch check](docs/reports/auto/process/2026-11-26_engine_switch_check.md)) |
