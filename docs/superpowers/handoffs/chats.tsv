@@ -23,3 +23,5 @@ opened	loop	label	session	opened from	first read
 2026-10-11 14:51	r7	r7 decide	fb0e8783-4024-4d5c-9398-ea9cd92cb51b	eb2b1504-c50b-4cf9-aef4-a63753755532	docs/superpowers/handoffs/2026-10-11-r7-decide-handoff.md
 2026-10-11 14:57	process	process plain-english	2b387618-7f75-4604-912f-c4b6f6148274	by hand	(none)
 2026-10-12 01:59	r7	r7 decide 2	7152dbdb-c434-4212-b5c2-24fbc06a2124	fb0e8783-4024-4d5c-9398-ea9cd92cb51b	docs/superpowers/handoffs/2026-10-12-r7-decide-2-handoff.md
+2026-10-12 02:39	main	main	070be173-c38c-4a09-886d-449f8ec683a6	7152dbdb-c434-4212-b5c2-24fbc06a2124	../../root/.claude/templates/main_chat_start.md
+2026-10-12 02:39	r7	r7 build	13a279e4-f6c9-4e59-8113-5a2347e0f83c	7152dbdb-c434-4212-b5c2-24fbc06a2124	docs/superpowers/handoffs/2026-10-12-r7-build-handoff.md
