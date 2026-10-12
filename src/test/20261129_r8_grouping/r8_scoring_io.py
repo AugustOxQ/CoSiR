@@ -50,18 +50,27 @@ def load_groupings(names, root=None):
     extras = tuple(n for n in names if n not in base)
     if extras:
         assert set(extras) <= set(GROUPINGS), "unknown grouping labels"
-        path = root / "groupings/r8_groupings.npz"
-        with np.load(path, allow_pickle=False) as z:
-            assert {"scorer_train", "g_st", *extras} <= set(z.files), f"{path}: missing keys"
-            assert np.array_equal(z["scorer_train"], context.scorer_train), f"{path}: scorer-train differs"
-            assert np.array_equal(z["g_st"], context.g_st), f"{path}: painting codes differ"
-            for name in extras:
-                local = z[name]
-                assert local.dtype == np.int64 and local.shape == context.scorer_train.shape, f"{name}: labels"
-                assert np.array_equal(np.unique(local), np.arange(len(np.unique(local)))), f"{name}: classes"
-                assert len(np.unique(local)) >= 2, f"{name}: fewer than 2 groups"
-                assert np.array_equal(local[context.first_rows][context.g_st], local), f"{name}: painting alignment"
-                out[name] = local
+        # H<X> (rule §6.6, the CLIP-head arm) groups by X's labels; only its heads differ (ticket 08 --h-arm).
+        source = {n: n[1:] if n.startswith("H") and n[1:] in CANDIDATES else n for n in extras}
+        # NBC and ZNBC are collected after the trigger into their own file (ticket 07 `collect --name r8_groupings_nbc`).
+        paths = [root / "groupings/r8_groupings.npz", root / "groupings/r8_groupings_nbc.npz"]
+        for path in paths[:1] + [p for p in paths[1:] if p.is_file()]:
+            with np.load(path, allow_pickle=False) as z:
+                assert {"scorer_train", "g_st"} <= set(z.files), f"{path}: missing keys"
+                assert np.array_equal(z["scorer_train"], context.scorer_train), f"{path}: scorer-train differs"
+                assert np.array_equal(z["g_st"], context.g_st), f"{path}: painting codes differ"
+                for name in extras:
+                    if source[name] not in z.files:
+                        continue
+                    assert name not in out, f"{name}: labels in more than one grouping file"
+                    local = z[source[name]]
+                    assert local.dtype == np.int64 and local.shape == context.scorer_train.shape, f"{name}: labels"
+                    assert np.array_equal(np.unique(local), np.arange(len(np.unique(local)))), f"{name}: classes"
+                    assert len(np.unique(local)) >= 2, f"{name}: fewer than 2 groups"
+                    assert np.array_equal(local[context.first_rows][context.g_st], local), f"{name}: painting alignment"
+                    out[name] = local
+        missing = [n for n in extras if n not in out]
+        assert not missing, f"{root / 'groupings'}: no labels for {missing}"
     return out
 
 
