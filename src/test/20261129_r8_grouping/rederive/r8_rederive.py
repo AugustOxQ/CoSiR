@@ -8,6 +8,7 @@ import argparse
 import hashlib
 import json
 import re
+from fractions import Fraction
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -20,6 +21,13 @@ import r8_common as R
 
 MAIN_GROUPS = ["V100", "V67", "V33", "NB100", "NB67", "NB33"] + [f"FC{i}" for i in range(1, 7)] + ["NBC"]
 SCREEN_GROUPS = ["AL", "DI", "SG"]
+REFERENCES = ("R0own", "NRK", "TP")
+NB_GROUPS = ("NB100", "NB67", "NB33")
+STRENGTH = {"NB100": 1.0, "NB67": 0.67, "NB33": 0.33}
+PAIRS = ("emotion__style", "emotion__genre", "style__genre")
+BAR_ORDER = ("B1", "BX", "CF", "B0", "B")
+STAGE_DIM = {"AL": 256, "DI": 1024, "SG": 1152}
+R7_RESULTS = R.MAIN / "src/test/20261126_design_l_style_source/results"
 CONTROL_INDEX = {g: i + 1 for i, g in enumerate(MAIN_GROUPS + SCREEN_GROUPS)}
 KINDS = ("R1", "XAFF")
 METRICS = ("r1", "gain", "other", "strict", "swap")
@@ -28,7 +36,8 @@ A0 = ("affect", "image", "caption")
 
 
 def placements(phi, labels, halves, selection_phi):
-    """M11/M12 in painting order, with float32 unit centres and float64 dots."""
+    """M11/M12 in painting order. Centres follow the index convention: float64 mean of the float32 phi, float64 unit
+    vector, float64 dot, argmax ties to the lowest group."""
     phi, selection_phi = np.asarray(phi), np.asarray(selection_phi)
     labels, halves = np.asarray(labels), np.asarray(halves)
     assert phi.ndim == 2 and selection_phi.ndim == 2 and phi.shape[1] == selection_phi.shape[1]
@@ -43,14 +52,14 @@ def placements(phi, labels, halves, selection_phi):
         for g in range(k):
             members = phi[mask & (labels == g)]
             assert len(members), f"empty half/group {g}"
-            mu = members.mean(axis=0, dtype=np.float32)
+            mu = members.astype(np.float64).mean(axis=0)
             norm = np.linalg.norm(mu)
             assert norm > 0 and np.isfinite(norm), "zero centre"
             mus.append(mu / norm)
-        return np.asarray(mus, np.float32)
+        return np.asarray(mus, np.float64)
 
     def assign(x, mu):
-        return np.eye(k, dtype=np.float32)[np.argmax(x.astype(np.float64) @ mu.astype(np.float64).T, axis=1)]
+        return np.eye(k, dtype=np.float32)[np.argmax(x.astype(np.float64) @ mu.T, axis=1)]
 
     own = assign(selection_phi, centres(np.ones(len(phi), bool)))
     bank = np.empty((len(phi), k), np.float32)
@@ -122,7 +131,7 @@ def _audit_open(event, args):
     mode = args[1]
     if mode is not None and any(c in mode for c in "wax+"):
         return
-    p = Path(args[0].decode() if isinstance(args[0], bytes) else args[0]).absolute()
+    p = Path(args[0].decode() if isinstance(args[0], bytes) else args[0]).resolve()
     if not any(p.is_relative_to(base) for base in (R.MAIN, Path("/data"), Path(__file__).resolve().parents[4])):
         return
     if p.is_file():
@@ -157,11 +166,11 @@ class Files:
                 p = Path(name)
                 if not p.is_absolute():
                     p = R.MAIN / "src/test" / (name if "/" in name else "20261126_design_l_style_source/" + name)
-                self.known[str(p)] = digest
+                self.known[str(p.resolve())] = digest
         self.touch(R.RULE)
 
     def touch(self, path, expected=None):
-        p = Path(path).absolute()
+        p = Path(path).resolve()
         key = str(p)
         if key not in self.hashes:
             self.hashes[key] = sha(p)
@@ -171,12 +180,19 @@ class Files:
             self.disagreements.append({"where": key, "reason": "input SHA-256 differs", "expected": expected, "actual": self.hashes[key]})
         return p
 
-    def npz(self, path):
-        with np.load(self.touch(path), allow_pickle=False) as z:
+    def npz(self, path, expected=None):
+        with np.load(self.touch(path, expected), allow_pickle=False) as z:
             return {k: z[k] for k in z.files}
 
-    def json(self, path):
-        return json.loads(self.touch(path).read_text())
+    def json(self, path, expected=None):
+        return json.loads(self.touch(path, expected).read_text())
+
+    def declared(self, declared, path):
+        """Touch a file the pending record must list; its SHA-256 must be the listed one."""
+        key = str(Path(path).resolve())
+        if key not in declared:
+            self.disagreements.append({"where": key, "reason": "input is not listed in the pending record's input_sha256"})
+        return self.touch(path, declared.get(key))
 
     def compare(self, where, got, want, atol=0):
         ga, wa = np.asarray(got), np.asarray(want)
@@ -294,54 +310,73 @@ def random_inputs(parent, selection_codes, index):
     return labels, {"bank": onehot[bank], "selection": onehot[draw[inverse]]}
 
 
-def derive_files(root, *, fixture=None, smoke=False, groupings=None, files=None, aff_reader=None, tp_map=None, keep_counts=False):
-    """Read stored φ, labels, halves, posteriors, reader probabilities and taus."""
+def merge_groupings(files, paths):
+    """All grouping JSONs first (as ticket 10 does): the records, the drops, and which files carry groupings.
+    A drop overrides a grouping; a drops-only file has no NPZ."""
+    records, dropped, with_groupings = {}, {}, []
+    for path in paths:
+        rec = files.json(path)
+        assert isinstance(rec.get("groupings"), dict) and isinstance(rec.get("dropped"), dict), f"grouping file shape {path}"
+        assert all(isinstance(v, str) and v.strip() for v in rec["dropped"].values()), "drop reasons"
+        for target, source in ((records, rec["groupings"]), (dropped, rec["dropped"])):
+            for g, value in source.items():
+                assert g not in target or target[g] == value, f"conflicting grouping record {g}"
+                target[g] = value
+        if rec["groupings"]:
+            with_groupings.append((Path(path), list(rec["groupings"])))
+    return records, dropped, with_groupings
+
+
+def read_labels(files, c, with_groupings, dropped):
+    """Painting labels of every grouping that is not dropped. An NPZ is read only for a file that has groupings."""
+    labels = {}
+    first = np.unique(c.g_st, return_index=True)[1]
+    for path, ids in with_groupings:
+        z = files.npz(path.with_suffix(".npz"))
+        assert np.array_equal(z["scorer_train"], c.scorer_train) and np.array_equal(z["g_st"], c.g_st), "grouping alignment"
+        for g in ids:
+            parent = g[1:] if g.startswith("Z") and g[1:] in CONTROL_INDEX else None
+            if g in dropped or (parent in dropped and g not in dropped):
+                continue    # a drop overrides a grouping; Z<X> is skipped when X is dropped (Z<X> not recorded dropped)
+            assert g in z and z[g].shape == c.scorer_train.shape and z[g].dtype == np.int64, f"labels {g}"
+            lab = z[g][first]
+            assert np.array_equal(lab[c.g_st], z[g]), "labels constant within painting"
+            assert len(np.unique(lab)) >= 2 and np.array_equal(np.unique(lab), np.arange(lab.max() + 1)), "grouping classes"
+            if g in labels:
+                files.compare(f"duplicate grouping {g}", labels[g], lab)
+            labels[g] = lab
+    return labels
+
+
+def derive_files(root, *, fixture=None, smoke=False, groupings=None, files=None, aff_reader=None, sources=None,
+                 keep_counts=False):
+    """Read stored φ, labels, halves, posteriors, reader probabilities and taus.
+    `sources` maps each scored grouping to its tau file and reader file (from the seed-42 index entries)."""
     global _ACTIVE_LEDGER
-    files, root = files or Files(), Path(root)
+    files, root = files or Files(), Path(root).resolve()
     previous, _ACTIVE_LEDGER = _ACTIVE_LEDGER, files
     try:
         files.touch(R.RULE)
         c, ep, cos, tu, e2, arrays = inputs(files, fixture, smoke)
         grouping_paths = groupings or [root / "groupings/r8_groupings.json"]
-        labels, records, dropped = {}, {}, {}
-        for path in grouping_paths:
-            rec = files.json(path)
-            assert {"groupings", "dropped"} <= set(rec)
-            assert all(isinstance(v, str) and v for v in rec["dropped"].values()), "drop reasons"
-            for g, value in rec["groupings"].items():
-                assert g not in records or records[g] == value, f"duplicate grouping record {g}"
-                records[g] = value
-            dropped.update(rec["dropped"])
-            z = files.npz(Path(path).with_suffix(".npz"))
-            assert np.array_equal(z["scorer_train"], c.scorer_train) and np.array_equal(z["g_st"], c.g_st), "grouping alignment"
-            for g in rec["groupings"]:
-                if g in dropped:
-                    continue
-                assert g in z and z[g].shape == c.scorer_train.shape and z[g].dtype == np.int64
-                first = np.unique(c.g_st, return_index=True)[1]
-                lab = z[g][first]
-                assert np.array_equal(lab[c.g_st], z[g]), "labels constant within painting"
-                assert len(np.unique(lab)) >= 2 and np.array_equal(np.unique(lab), np.arange(lab.max() + 1)), "grouping classes"
-                if g in labels:
-                    files.compare(f"duplicate grouping {g}", labels[g], lab)
-                labels[g] = lab
+        records, dropped, with_groupings = merge_groupings(files, grouping_paths)
+        labels = read_labels(files, c, with_groupings, dropped)
         assert not set(labels) & set(dropped), "evaluated and dropped grouping"
-        assert set(labels) <= set(MAIN_GROUPS + SCREEN_GROUPS + ["R0own", "NRK", "TP"] + ["Z" + g for g in CONTROL_INDEX]), "grouping ID"
+        assert set(labels) <= set(MAIN_GROUPS + SCREEN_GROUPS + list(REFERENCES) + ["Z" + g for g in CONTROL_INDEX]), "grouping ID"
         if not smoke:
             accounted = set(records) | set(dropped)
-            assert set(MAIN_GROUPS[:-1] + SCREEN_GROUPS + ["R0own", "NRK", "TP"]) <= accounted, "unrecorded candidate/reference drop"
+            assert set(MAIN_GROUPS[:-1] + SCREEN_GROUPS + list(REFERENCES)) <= accounted, "unrecorded candidate/reference drop"
             assert {"Z" + g for g in labels if g in CONTROL_INDEX} <= accounted, "unrecorded control drop"
-        posts = {g: read_post(files, root / f"heads/post_{g}.npz", c) for g in A0}
-        legacy = root / "heads/post_R0.npz" if fixture else R.MAIN / "src/test/20261126_design_l_style_source/results/heads/post_R0.npz"
-        posts["legacy_R0"] = read_post(files, legacy, c)
+        # A0 heads and the legacy R0 head are R7's frozen files (fixture: beside the stored files).
+        a0_dir = root / "heads" if fixture else R7_RESULTS / "heads"
+        posts = {g: read_post(files, a0_dir / f"post_{g}.npz", c) for g in A0}
+        posts["legacy_R0"] = read_post(files, a0_dir / "post_R0.npz", c)
         B = condition_free(cos, tu, e2, ep, A0, arrays["parity"])
         for name, score in (("B", B), ("B0", condition_free(cos, tu, posts, ep, A0, arrays["parity"])),
                             ("B1", condition_free(cos, tu, posts, ep, (*A0, "legacy_R0"), arrays["parity"]))):
             arrays.update({f"{name}__{m}": v for m, v in metrics(counts(score)).items()})
-        tau_table = files.json(root / "taus.json")
-        # rule gap: the shared reader contract does not name AFF's A0 reader;
-        # default to reader_A0.npz and accept --aff-reader for its stored path.
-        az = files.npz(aff_reader or root / "seed42/reader_A0.npz")
+        # AFF's A0 reader is R7's frozen file (fixture: beside the stored files).
+        az = files.npz(aff_reader or (root / "seed42/reader_A0.npz" if fixture else R7_RESULTS / "seed42/reader_A0.npz"))
         AP = {cond: az[f"P__{cond}"] for cond in CONDS}
         aff_tau = [3.8684538364530674e-05, .21702129490553143, .47973989883399526, .7502585816077211]
         out, detail = family(B, stack_post(posts, ep, A0), AP, aff_tau, arrays["parity"], "AFF")
@@ -355,21 +390,8 @@ def derive_files(root, *, fixture=None, smoke=False, groupings=None, files=None,
                 assert parent in labels and parent in CONTROL_INDEX, "control without evaluated parent"
                 rl, placement = random_inputs(labels[parent], c.groups[c.selection], CONTROL_INDEX[parent])
                 files.compare(f"M13 labels {g}", rl, labels[g])
-            elif g == "TP":
-                # rule gap: M9's stored text-vector and merge-map schema is
-                # unspecified. --tp-map supplies text_vectors and merge_map.
-                assert tp_map, "TP requires --tp-map (text_vectors, merge_map)"
-                tp = files.npz(tp_map)
-                assert {"text_vectors", "merge_map"} <= set(tp)
-                xp = R.x_paintings()
-                xs = R.x_rows(c.selection)
-                vec, merge = tp["text_vectors"], tp["merge_map"]
-                assert vec.dtype == np.float32 and vec.ndim == 2 and merge.shape == (len(vec),) and merge.dtype.kind in "iu"
-                assert np.isfinite(vec).all() and merge.min() >= 0 and merge.max() < k
-                onehot = np.eye(k, dtype=np.float32)
-                placement = {"bank": onehot[merge[(xp @ vec.T).argmax(1)]], "selection": onehot[merge[(xs @ vec.T).argmax(1)]]}
-                files.compare("TP painting labels", placement["bank"].argmax(1), labels[g])
             else:
+                # Every other grouping, TP included (its space file is the one-hot of its final map), goes through M11/M12.
                 space = files.npz(root / f"spaces/{g}.npz")
                 assert {"phi", "image_index"} <= set(space)
                 phi, images = space["phi"], space["image_index"]
@@ -384,8 +406,9 @@ def derive_files(root, *, fixture=None, smoke=False, groupings=None, files=None,
             posts[g]["img"] = posts[g]["img"].copy()
             posts[g]["img"][c.selection] = placement["selection"]
             bank = files.npz(root / f"heads/xheads_{g}.npz")
-            assert {"rows", "img", "txt", "classes_half0", "classes_half1", "filled_by_half"} <= set(bank)
-            assert np.array_equal(bank["rows"], c.scorer_train), "bank row alignment"
+            # R7's format: no `rows` key; the rows are the scorer-train rows, in order.
+            assert {"img", "txt", "classes_half0", "classes_half1", "filled_by_half"} <= set(bank), f"xheads keys {g}"
+            assert len(bank["img"]) == len(c.scorer_train), f"xheads row count {g}"
             assert bank["img"].shape == bank["txt"].shape == (len(c.scorer_train), k)
             assert bank["img"].dtype == bank["txt"].dtype == np.float32 and np.isfinite(bank["txt"]).all()
             assert np.allclose(bank["txt"].sum(1), 1, atol=1e-6, rtol=0)
@@ -394,7 +417,10 @@ def derive_files(root, *, fixture=None, smoke=False, groupings=None, files=None,
             for h in (0, 1):
                 files.compare(f"M12 classes_half{h} {g}", np.arange(k), bank[f"classes_half{h}"])
             parts = (*A0, g)
-            reader = files.npz(root / f"seed42/reader_{g}.npz")
+            assert sources and g in sources, f"no seed-42 index entry lists {g}"
+            src = sources[g]
+            tau_table = files.json(src["taus"], src["taus_sha256"])["taus"]
+            reader = files.npz(src["reader"], src["reader_sha256"])
             assert {f"{key}__{cond}" for cond in CONDS for key in ("P", "m", "pick")} <= set(reader)
             P = {cond: reader[f"P__{cond}"] for cond in CONDS}
             pm = reader_values(P)
@@ -409,9 +435,8 @@ def derive_files(root, *, fixture=None, smoke=False, groupings=None, files=None,
             for kind in KINDS:
                 out, detail = family(B, stack_post(posts, ep, parts), P, tau_table[g], arrays["parity"], kind)
                 add_family(arrays, f"{kind}_{g}", out, detail, keep_counts)
-        stats = statistics(arrays, set(labels), dropped)
-        stats["groupings"] = records
-        return {"arrays": arrays, "statistics": stats, "input_sha256": files.hashes, "disagreements": files.disagreements}
+        return {"arrays": arrays, "evaluated": set(labels), "records": records, "dropped": dropped,
+                "image_index": c.image_index, "input_sha256": files.hashes, "disagreements": files.disagreements}
     finally:
         _ACTIVE_LEDGER = previous
 
@@ -425,148 +450,181 @@ def add_family(arrays, name, values, detail, keep_counts=False):
             arrays[name + "__" + key] = value
 
 
-def compare_json(files, path, got, want):
-    """Exact discrete fields; only intervals have the C13 1e-9 tolerance."""
+def compare_json(files, path, got, want, tol=0.0):
+    """Exact discrete fields; only intervals (keys ending ci95) have the C13 1e-9 tolerance.
+    `got` is what RD derived, `want` what the pipeline stored. A key on one side only is a disagreement."""
     if isinstance(got, dict) and isinstance(want, dict):
         for key in sorted(set(got) | set(want)):
             where = f"{path}.{key}"
-            if key not in got or key not in want:
+            if key not in want:
                 files.disagreements.append({"where": where, "reason": "missing record key"})
+            elif key not in got:
+                files.disagreements.append({"where": where, "reason": "extra record key"})
             else:
-                compare_json(files, where, got[key], want[key])
+                compare_json(files, where, got[key], want[key], 1e-9 if key.endswith("ci95") else tol)
+    elif isinstance(got, list) and isinstance(want, list):
+        if len(got) != len(want):
+            files.disagreements.append({"where": path, "reason": "list length differs", "derived": len(got), "stored": len(want)})
+        else:
+            for i, (g, w) in enumerate(zip(got, want)):
+                compare_json(files, f"{path}[{i}]", g, w, tol)
     elif isinstance(got, bool) or isinstance(want, bool):
         if type(got) is not type(want) or got != want:
-            files.disagreements.append({"where": path, "reason": "boolean differs"})
+            files.disagreements.append({"where": path, "reason": "boolean differs", "derived": got, "stored": want})
+    elif got is None or want is None or isinstance(got, (str, dict, list)) or isinstance(want, (str, dict, list)):
+        if type(got) is not type(want) or got != want:
+            files.disagreements.append({"where": path, "reason": "values differ", "derived": got, "stored": want})
     else:
-        files.compare(path, got, want, atol=1e-9 if path.endswith("ci95") else 0)
+        same = abs(got - want) <= tol if tol else got == want
+        if not same:
+            files.disagreements.append({"where": path, "reason": "values differ", "derived": got, "stored": want})
 
 
-def read_declared_inputs(files, pending, base):
-    """Cover the pending record's explicit input manifest, including unscored files."""
-    # rule gap: index specifies coverage but no pending-file input schema.
-    # Accept inputs/input_sha256 as path->SHA, path records or a list of paths.
-    for field in ("inputs", "input_sha256"):
-        values = pending.get(field, {})
-        if isinstance(values, dict):
-            values = [(k, v) for k, v in values.items()]
-        else:
-            assert isinstance(values, list), "pending input manifest"
-            values = [(v, None) if isinstance(v, str) else (v["path"], v.get("sha256")) for v in values]
-        for key, value in values:
-            if isinstance(value, dict):
-                path, expected = value.get("path", key), value.get("sha256")
-            else:
-                path, expected = key, value
-            p = Path(path)
-            files.touch(p if p.is_absolute() else base / p, expected)
+def stage_checks(files, root, declared, expected_index, smoke):
+    """Rule 7(d): the recomputable ESC1 b to d and SC2 checks, from the evidence the stage records list
+    (stageE_<X>.json: evidence.embeddings, evidence.image_index; stage1_fcmi.json: loss_log, labels_before_merge).
+    Returns (checks, {stage record name: SHA-256})."""
+    out, stage_sha = {}, {}
 
-
-def stage_checks(files, path, root, smoke):
-    """Rule 7(d): only recomputable ESC1 b--d and SC2 finite/count checks."""
-    if path is None:
-        assert smoke, "real C13 requires --stage-evidence (ESC1 b--d and SC2 stored evidence)"
-        return {}
-    evidence = files.json(path)
-    out = {}
-    # rule gap: no file/key contract is given for raw ESC1/SC2 evidence or
-    # stage-record subkeys. This explicit manifest maps stored paths and keys;
-    # its expected flags are read from the pipeline stage record, never guessed.
-    def resolve(p):
-        p = Path(p)
-        return p if p.is_absolute() else Path(path).parent / p
-
-    def field(rec, key):
-        for part in key.split("."):
-            rec = rec[part]
+    def record(name):
+        path = files.declared(declared, root / name)
+        rec = files.json(path)
+        stage_sha[name] = files.hashes[str(Path(path).resolve())]
+        assert isinstance(rec.get("pass"), bool) and rec.get("smoke") is smoke, f"{name}: pass/smoke"
         return rec
 
-    for name, item in evidence.get("encoders", {}).items():
-        assert name in SCREEN_GROUPS
-        record = files.json(resolve(item["record"]))
-        if item.get("not_produced"):
-            assert record["pass"] is False and isinstance(item["not_produced"], str)
-            out[name] = {"status": "not produced", "reason": item["not_produced"]}
+    rec0 = record("stage0_regression.json")
+    assert rec0["pass"] is True or (smoke and rec0.get("wiring_pass") is True), "SC1 did not pass"
+    for name in SCREEN_GROUPS:
+        rec = record(f"stageE_{name}.json")
+        evidence = rec.get("evidence") or {}
+        if not {"embeddings", "image_index"} <= set(evidence):
+            assert rec["pass"] is False, f"stageE_{name}: no evidence files but pass is true"
+            out[name] = {"status": "not produced", "reason": rec.get("reason")}
             continue
-        assert "fixture" not in item or smoke, "synthetic stage joins are smoke only"
-        emb = np.load(files.touch(resolve(item["embeddings"])), mmap_mode="r", allow_pickle=False)
-        ix = np.load(files.touch(resolve(item["image_index"])), allow_pickle=False)
-        expected = (files.npz(resolve(item["fixture"]))["image_index"] if "fixture" in item else R.nonheld_images()).astype(np.int64)
-        dims = {"AL": 256, "DI": 1024, "SG": 1152}
-        n = len(expected) if smoke else 49121
-        flags = {"shape": bool(emb.shape == (n, dims[name])), "finite": bool(np.isfinite(emb).all()),
-                 "index": bool(ix.shape == expected.shape and np.array_equal(ix, expected)
-                               and hashlib.sha256(np.ascontiguousarray(ix, dtype=np.int64).tobytes()).hexdigest() == item["index_sha256"])}
-        assert set(item["keys"]) == set(flags), "ESC1 evidence keys"
+        emb = np.load(files.touch(evidence["embeddings"]["path"], evidence["embeddings"]["sha256"]), mmap_mode="r", allow_pickle=False)
+        ix = np.load(files.touch(evidence["image_index"]["path"], evidence["image_index"]["sha256"]), allow_pickle=False)
+        n = int(rec["n"]) if smoke else len(expected_index)
+        assert n <= len(expected_index)
+        want_index = np.ascontiguousarray(expected_index[:n], dtype=np.int64)
+        flags = {"b_shape": bool(emb.shape == (n, STAGE_DIM[name])), "c_finite": bool(np.isfinite(emb).all()),
+                 "d_index_hash": bool(ix.dtype == np.int64 and ix.shape == want_index.shape and
+                                      hashlib.sha256(np.ascontiguousarray(ix).tobytes()).hexdigest()
+                                      == hashlib.sha256(want_index.tobytes()).hexdigest())}
         for check, value in flags.items():
-            compare_json(files, f"ESC1 {name}.{check}", value, field(record, item["keys"][check]))
+            compare_json(files, f"ESC1 {name}.{check}", value, rec["esc1"][check]["ok"])
         out[name] = flags
-    item = evidence.get("fcmi")
-    if item:
-        record = files.json(resolve(item["record"]))
-        if item.get("not_produced"):
-            assert record["pass"] is False and isinstance(item["not_produced"], str)
-            out["FCMI"] = {"status": "not produced", "reason": item["not_produced"]}
-        else:
-            labels = np.load(files.touch(resolve(item["labels"])), allow_pickle=False)
-            losses = np.load(files.touch(resolve(item["losses"])), allow_pickle=False)
-            assert labels.ndim == 1 and labels.dtype.kind in "iu" and losses.ndim == 1 and len(losses)
-            if not smoke:
-                assert len(labels) == 36518
-            flags = {"label_count": bool(len(np.unique(labels)) >= 2), "finite_loss": bool(np.isfinite(losses).all())}
-            assert set(item["keys"]) == set(flags), "SC2 evidence keys"
-            for check, value in flags.items():
-                compare_json(files, f"SC2.{check}", value, field(record, item["keys"][check]))
-            out["FCMI"] = {**flags, "n_labels": int(len(np.unique(labels)))}
-    if not smoke:
-        assert set(evidence["encoders"]) == set(SCREEN_GROUPS) and item, "all stages need evidence or a recorded non-production reason"
-    return out
+    rec = record("stage1_fcmi.json")
+    log = Path(rec["loss_log"])
+    if not log.is_file():
+        assert rec["pass"] is False, "stage1_fcmi: no loss log but pass is true"
+        out["FCMI"] = {"status": "not produced", "reason": rec.get("error")}
+        return out, stage_sha
+    entries = []
+    for line in files.touch(log, rec["loss_log_sha256"]).read_text().splitlines():
+        try:
+            entries.append(json.loads(line))
+        except json.JSONDecodeError:
+            break   # an abrupt death can leave an incomplete last line
+    # "finite" is recomputed from the loss values, never read from the stored flag.
+    finite = all(e["total_loss"] is not None and np.isfinite(e["total_loss"]) for e in entries)
+    if rec["labels_before_merge"] is None:
+        assert rec["labels_sha256"] is None
+        clusters = 0
+    else:
+        z = files.npz(rec["labels_before_merge"], rec["labels_sha256"])
+        lab = z["labels"]
+        assert lab.ndim == 1 and lab.dtype.kind in "iu"
+        if not smoke:
+            assert len(lab) == 36518
+        clusters = int(len(np.unique(lab)))
+    compare_json(files, "SC2.finite_loss", finite, rec["tests"]["finite_loss"])
+    compare_json(files, "SC2.clusters", clusters >= 2, rec["tests"]["clusters"])
+    compare_json(files, "SC2.clusters_before_merge", clusters, rec["clusters_before_merge"])
+    compare_json(files, "SC2.steps", len(entries), rec["steps"])
+    out["FCMI"] = {"finite_loss": finite, "clusters": clusters >= 2, "clusters_before_merge": clusters}
+    return out, stage_sha
 
 
-def check_files(root, pending, step, *, indexes=None, fixture=None, smoke=False,
-                groupings=None, stage_evidence=None, aff_reader=None, tp_map=None):
-    """Public stored-file seam. Disagreements prevent the CLI's successful exit."""
-    assert step in ("trigger", "gate")
-    files, root = Files(), Path(root).absolute()
-    pending = Path(pending).absolute()
-    rec = files.json(pending)
-    assert isinstance(rec, dict)
-    read_declared_inputs(files, rec, pending.parent)
-    if "smoke" in rec:
-        assert rec["smoke"] is smoke, "pending smoke role"
-    if "rule_sha256" in rec:
-        files.compare("pending rule SHA", sha(R.RULE), rec["rule_sha256"])
-    stored = {}
-    for index_path in indexes or [root / "seed42/index.json"]:
-        index = files.json(index_path)
+def read_indexes(files, declared, index_paths):
+    """The seed-42 indexes: every batch's arrays (hash checked, duplicates must agree) and, per scored grouping, the
+    tau file and reader file its index entry names (09's layout: taus_file, readers_sha256, groupings)."""
+    stored, sources = {}, {}
+    for index_path in index_paths:
+        index_path = Path(index_path).resolve()
+        index = files.json(files.declared(declared, index_path))
         assert isinstance(index["batches"], list) and index["batches"], "seed42 index batches"
-        for batch in index["batches"]:
-            assert {"file", "sha256"} <= set(batch)
-            path = Path(batch["file"])
-            path = path if path.is_absolute() else Path(index_path).parent / path
-            files.touch(path, batch["sha256"])
+        base = index_path.parent
+        for entry in index["batches"]:
+            assert {"file", "sha256", "groupings", "taus_file", "taus_sha256", "readers_sha256"} <= set(entry), "index entry keys"
+            path = (base / entry["file"]).resolve()
+            assert path.parent == base, "batch file outside the index folder"
+            files.touch(files.declared(declared, path), entry["sha256"])
             arrays = files.npz(path)
             for k in ("cl", "pair_index", "parity", "AFF__r1", "B__r1", "B0__r1", "B1__r1"):
                 assert k in arrays, f"batch lacks {k}"
             assert all(arrays[k].dtype == np.int64 and arrays[k].ndim == 1 for k in ("cl", "pair_index", "parity")), "batch ID dtypes/shapes"
             assert all(arrays[k].shape == arrays["cl"].shape for k in ("pair_index", "parity")), "batch ID row counts"
+            for x in entry["groupings"]:
+                assert x not in sources, f"{x} is listed by two index entries"
+                assert x in entry["readers_sha256"], f"index entry lacks the reader SHA-256 of {x}"
+                sources[x] = {"taus": base / entry["taus_file"], "taus_sha256": entry["taus_sha256"],
+                              "reader": base / f"reader_{x}.npz", "reader_sha256": entry["readers_sha256"][x]}
             for k, a in arrays.items():
                 if k in stored:
                     files.compare(f"duplicate batch key {k}", stored[k], a)
                 else:
                     stored[k] = a
-    derived = derive_files(root, fixture=fixture, smoke=smoke, groupings=groupings, files=files,
-                           aff_reader=aff_reader, tp_map=tp_map,
-                           keep_counts=any(k.endswith(("__f_cnt", "__c_cnt")) for k in stored))
+    return stored, sources
+
+
+PENDING_COMPARED = ("main", "screen", "trigger", "groupings", "dropped", "fallback")
+PENDING_METADATA = ("step", "smoke", "rule_sha256", "written", "stage_sha256", "probe_trigger_sha256", "input_sha256",
+                    "report_flags")
+FALLBACK_CONSTANT_STRINGS = ("main_failure_after_held", "held_start_cutoff")
+
+
+def compare_pending(files, derived, rec):
+    """Ticket 10's pending layout: stats at the top level (main, screen, trigger, fallback) plus groupings and dropped.
+    Skipped: report_flags, the two constant fallback strings (only checked to be strings) and written."""
+    for key in PENDING_COMPARED:
+        if key not in rec:
+            files.disagreements.append({"where": f"pending.{key}", "reason": "missing pending key"})
+    for key in sorted(set(rec) - set(PENDING_COMPARED) - set(PENDING_METADATA)):
+        files.disagreements.append({"where": f"pending.{key}", "reason": "extra pending key"})
+    for key in PENDING_COMPARED:
+        if key not in rec:
+            continue
+        stored = rec[key]
+        if key == "fallback":
+            assert isinstance(stored, dict) and all(isinstance(stored.get(k), str) for k in FALLBACK_CONSTANT_STRINGS), "fallback strings"
+            stored = {k: v for k, v in stored.items() if k not in FALLBACK_CONSTANT_STRINGS}
+        compare_json(files, f"pending.{key}", derived[key], stored)
+
+
+def check_files(root, pending, step, *, indexes=None, fixture=None, smoke=False, groupings=None, aff_reader=None):
+    """Public stored-file seam. Disagreements prevent the CLI's successful exit."""
+    assert step in ("trigger", "gate")
+    files, root = Files(), Path(root).resolve()
+    pending = Path(pending).resolve()
+    rec = files.json(pending)
+    assert isinstance(rec, dict)
+    assert rec.get("step") == step and rec.get("smoke") is smoke, "pending step/smoke role"
+    assert rec.get("rule_sha256") == files.hashes[str(R.RULE.resolve())], "pending rule SHA-256"
+    declared = rec["input_sha256"]
+    assert isinstance(declared, dict) and declared, "pending input_sha256"
+    for path, digest in declared.items():     # every declared input is read and hashed, used or not
+        assert Path(path).is_absolute(), "pending input paths are absolute"
+        files.touch(path, digest)
+    stored, sources = read_indexes(files, declared, indexes or [root / "seed42/index.json"])
+    grouping_paths = [Path(p).resolve() for p in (groupings or [root / "groupings/r8_groupings.json"])]
+    for path in grouping_paths:
+        files.declared(declared, path)
+    derived = derive_files(root, fixture=fixture, smoke=smoke, groupings=grouping_paths, files=files, aff_reader=aff_reader,
+                           sources=sources, keep_counts=any(k.endswith(("__f_cnt", "__c_cnt")) for k in stored))
     full = derived["arrays"]
-    if not smoke:
-        available = set(derived["statistics"]["groupings"])
-        if step == "trigger":
-            assert "NBC" not in available and "ZNBC" not in available, "NBC ran before its trigger C13"
-        elif derived["statistics"]["trigger"]["triggered"]:
-            assert "NBC" in available or "NBC" in derived["statistics"]["main"]["dropped"], "triggered NBC has neither a result nor a recorded drop"
-        else:
-            assert "NBC" not in available and "ZNBC" not in available, "NBC evaluated without trigger"
-    optional = {name + "__" + detail for name in ["AFF"] + [f"{kind}_{g}" for g in derived["statistics"]["groupings"] for kind in KINDS]
+    stats = statistics(full, derived["evaluated"], derived["dropped"], nbc_allowed=step == "gate", strict=not smoke)
+    optional = {name + "__" + detail for name in ["AFF"] + [f"{kind}_{g}" for g in derived["evaluated"] for kind in KINDS]
                 for detail in ("rho_f", "gam_f", "rho_c", "crit_f", "ctrl_rho", "f_cnt", "c_cnt")}
     for k in sorted(set(full) - optional):
         if k not in stored:
@@ -577,35 +635,38 @@ def check_files(root, pending, step, *, indexes=None, fixture=None, smoke=False,
         files.disagreements.append({"where": k, "reason": "pipeline array was not independently derived"})
     for k in sorted(optional & set(stored)):
         files.compare(k, full[k], stored[k])
-    computed = derived["statistics"]["trigger"] if step == "trigger" else derived["statistics"]
-    # rule gap: the index specifies the C13 result but no pending verdict key
-    # layout. The documented canonical layout is `expected`, or the same
-    # fields at top level with inputs/rule/time metadata removed.
-    expected = rec.get("expected", {k: v for k, v in rec.items() if k not in ("inputs", "input_sha256", "smoke", "rule_sha256", "written", "step")})
-    compare_json(files, "pending", computed, expected)
-    stages = stage_checks(files, stage_evidence, root, smoke)
+    payload = {**stats, "groupings": derived["records"], "dropped": derived["dropped"]}
+    compare_pending(files, payload, rec)
+    stages, stage_sha = stage_checks(files, root, declared, derived["image_index"], smoke)
+    compare_json(files, "pending.stage_sha256", stage_sha, rec["stage_sha256"])
+    probe = root / "probe_trigger.json"
+    if step == "gate":
+        probe_rec = files.json(files.declared(declared, probe))
+        compare_json(files, "pending.probe_trigger_sha256", files.hashes[str(probe.resolve())], rec["probe_trigger_sha256"])
+        compare_json(files, "probe_trigger.json", stats["trigger"], {k: probe_rec.get(k, "<absent>") for k in stats["trigger"]})
+    else:
+        compare_json(files, "pending.probe_trigger_sha256", None, rec["probe_trigger_sha256"])
     files.finish()
     return {"status": "agree" if not files.disagreements else "disagree", "step": step, "smoke": bool(smoke),
-            "disagreements": files.disagreements, "input_sha256": files.hashes, "rederived": computed, "stage_checks": stages}
+            "disagreements": files.disagreements, "input_sha256": files.hashes, "rederived": stats, "stage_checks": stages}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--step", choices=("trigger", "gate"), required=True)
-    parser.add_argument("--root", type=Path, default=R.RESULTS)
+    parser.add_argument("--root", type=Path, help="results root (default results/, or results/smoke/gate with --smoke)")
     parser.add_argument("--pending", type=Path, required=True)
-    parser.add_argument("--index", type=Path, action="append")
-    parser.add_argument("--groupings", type=Path, action="append")
-    parser.add_argument("--aff-reader", type=Path)
-    parser.add_argument("--tp-map", type=Path)
-    parser.add_argument("--stage-evidence", type=Path)
+    parser.add_argument("--index", type=Path, nargs="+", help="one or more immutable seed42 indices (as ticket 10)")
+    parser.add_argument("--groupings", type=Path, nargs="+", help="one or more grouping/drop files (as ticket 10)")
+    parser.add_argument("--aff-reader", type=Path, help="AFF's A0 reader (default: R7's results/seed42/reader_A0.npz)")
     parser.add_argument("--fixture", type=Path)
     parser.add_argument("--smoke", action="store_true")
     args = parser.parse_args()
-    assert args.root.resolve().is_relative_to(R.SMOKE.resolve()) if args.smoke else not args.root.resolve().is_relative_to(R.SMOKE.resolve()), "output smoke role (set R8_RESULTS for worktree tests)"
-    record = check_files(args.root, args.pending, args.step, indexes=args.index, fixture=args.fixture, smoke=args.smoke,
-                         groupings=args.groupings, stage_evidence=args.stage_evidence, aff_reader=args.aff_reader, tp_map=args.tp_map)
-    path = args.root / f"rederive/{args.step}_rederive.json"
+    root = args.root or (R.SMOKE / "gate" if args.smoke else R.RESULTS)
+    assert root.resolve().is_relative_to(R.SMOKE.resolve()) if args.smoke else not root.resolve().is_relative_to(R.SMOKE.resolve()), "output smoke role (set R8_RESULTS for worktree tests)"
+    record = check_files(root, args.pending, args.step, indexes=args.index, fixture=args.fixture, smoke=args.smoke,
+                         groupings=args.groupings, aff_reader=args.aff_reader)
+    path = root / f"rederive/{args.step}_rederive.json"
     R.write_json_once(path, record)
     print(f"{args.step}: {record['status']}; {len(record['disagreements'])} disagreements; {path}")
     return 0 if record["status"] == "agree" else 1
@@ -695,84 +756,145 @@ def q4(a):
     return np.rint(a).astype(np.int64)
 
 
+def need(a, n):
+    """L16's integer bar ceil(a * n / 25), exact (a is its decimal text): -0.3 -> -49, 0.5 -> 246, 0 -> 0 at n = 12,288."""
+    f = Fraction(a) * n / 25
+    return -((-f.numerator) // f.denominator)
+
+
 def interval(a, cl):
-    """Own C9 call; never consumes the pipeline's interval or resamples."""
-    lo, hi = library("src.eval.aspect_metrics").cluster_bootstrap(a, cl, n_boot=5000, seed=42, chunk=250)["ci95"]
-    return [100 * lo, 100 * hi]
+    """Own C9 call (point, [lo, hi] in R@1 points); never consumes the pipeline's interval or resamples."""
+    r = library("src.eval.aspect_metrics").cluster_bootstrap(a, cl, n_boot=5000, seed=42, chunk=250)
+    lo, hi = r["ci95"]
+    return 100 * float(r["point"]), [100 * float(lo), 100 * float(hi)]
 
 
-def statistics(a, present, dropped):
-    """Rule 6.1--6.5 (and the deterministic descriptive H target of 6.6)."""
+def dropped_record(reason):
+    return {"dropped": True, "reason": reason, "pass": False, "r7_pass": False, "SC3": None, "SC4": None, "S1": None,
+            "S2": None, "S3": None, "gain_sum4d": None, "bar_comparator": None}
+
+
+def scorer_record(a, name, cl, masks):
+    """Rule 6.1 for one scorer: SC3, SC4 and the recorded R7 S1 to S3, in ticket 10's record shape."""
+    kind, x = name.split("_", 1)
+    n, n_pair = len(cl), len(cl) // 3
+    for key in (f"{name}__r1", f"{name}__gain", f"{name}_cf__r1", f"{name}_cf__gain", "AFF__r1", "B1__r1", "B0__r1",
+                "B__r1", f"BX_{x}__r1"):
+        assert key in a, f"missing array {key}"
+        assert a[key].shape == (n,) and np.isfinite(a[key]).all(), f"{key}: shape or nonfinite values"
+        q4(a[key])
+        assert ((a[key] >= 0) & (a[key] <= 1)).all() if key.endswith("__r1") else ((a[key] >= -1) & (a[key] <= 1)).all(), key
+    s, gain = a[f"{name}__r1"], a[f"{name}__gain"]
+    cf, cf_gain = a[f"{name}_cf__r1"], a[f"{name}_cf__gain"]
+    assert not cf_gain.any(), f"{name}: the counterpart's condition gain must be 0 everywhere"
+    aff = a["AFF__r1"]
+    comps = [("B1", a["B1__r1"]), ("BX", a[f"BX_{x}__r1"]), ("CF", cf), ("B0", a["B0__r1"]), ("B", a["B__r1"])]
+    bar_name, bar = max(comps, key=lambda kv: int(q4(kv[1]).sum()))    # ties to the earliest in BAR_ORDER
+    d_aff, d_bar, d_gain = s - aff, s - bar, gain - cf_gain
+    sd, sb, sg = int(q4(d_aff).sum()), int(q4(d_bar).sum()), int(q4(d_gain).sum())
+    point, ci = interval(d_aff, cl)
+    assert abs(point - 25 * sd / n) < 1e-9, "bootstrap point differs from the integer point"
+    sc3 = {"sum4d": sd, "n": n, "point": 25 * sd / n, "ci95": ci, "pass": bool(ci[0] > 0)}
+    s3, sc4 = {}, {}
+    for p in (0, 1):
+        scoped = d_aff[masks[p]]
+        total = int(q4(scoped).sum())
+        ok = bool(total >= need("-0.3", n_pair))
+        s3[PAIRS[p]] = {"sum4d": total, "pass": ok}
+        sc4[PAIRS[p]] = {"sum4d": total, "pass": ok, "n": n_pair, "point": 25 * total / n_pair,
+                         "ci95": interval(scoped, cl[masks[p]])[1]}
+    s3["pass"] = sc4["pass"] = bool(s3[PAIRS[0]]["pass"] and s3[PAIRS[1]]["pass"])
+    bar_ci, gain_ci = interval(d_bar, cl)[1], interval(d_gain, cl)[1]
+    s1 = {"sum4d": sb, "ci95": bar_ci, "gain_sum4d": sg, "gain_ci95": gain_ci, "n": n, "point": 25 * sb / n,
+          "gain_point": 25 * sg / n, "pass": bool(sb >= need("0.5", n) and bar_ci[0] > 0 and gain_ci[0] > 0)}
+    scope = masks[2]    # S2 is the style x genre pair (pair_index 2) only
+    s2_sum = int(q4((s - cf)[scope]).sum())
+    s2 = {"sum4d": s2_sum, "pass": bool(s2_sum >= need("0", n_pair)), "n": n_pair, "point": 25 * s2_sum / n_pair,
+          "ci95": interval((s - cf)[scope], cl[scope])[1]}
+    r7_pass = bool(s1["pass"] and s2["pass"] and s3["pass"])
+    return {"bar_comparator": bar_name, "S1": s1, "S2": s2, "S3": s3, "SC3": sc3, "SC4": sc4, "dropped": False,
+            "gain_sum4d": sg, "r7_pass": r7_pass, "pass": bool(sc3["pass"] and sc4["pass"])}
+
+
+def select(records, order, passing_only):
+    """Rule 6.4: largest SC3 sum, then largest gain sum, then the rule's list order, then R1 before X-AFF."""
+    keys = [k for k, r in records.items() if not r["dropped"] and (r["pass"] or not passing_only)]
+    if not keys:
+        return None
+    return min(keys, key=lambda k: (-records[k]["SC3"]["sum4d"], -records[k]["gain_sum4d"],
+                                    order.index(k.split("_", 1)[1]), KINDS.index(k.split("_", 1)[0])))
+
+
+def statistics(a, evaluated, dropped, *, nbc_allowed, strict=True):
+    """Rules 6.1 to 6.5 (and the deterministic H target of 6.6) in ticket 10's pending layout.
+    `evaluated`: groupings with derived arrays; `dropped`: {grouping: reason}. NBC is part of the roster only when
+    `nbc_allowed` (the gate step) and the trigger fires. `strict` (real runs): every roster scorer is evaluated or dropped."""
     cl, pair = a["cl"], a["pair_index"]
     n = len(cl)
-    assert n > 0 and pair.shape == (n,) and np.array_equal(np.bincount(pair, minlength=3), [n // 3] * 3)
+    assert n > 0 and n % 3 == 0 and pair.shape == (n,)
+    masks = [pair == p for p in range(3)]
+    assert all(int(m.sum()) == n // 3 for m in masks), "three equal pairs"
     assert len(np.unique(cl)) >= 2
-    all_stats = {}
-    for g in sorted(present):
-        for kind in KINDS:
-            name = f"{kind}_{g}"
-            s, cf = a[name + "__r1"], a[name + "_cf__r1"]
-            assert s.shape == cf.shape == (n,)
-            dg = a[name + "__gain"] - a[name + "_cf__gain"]
-            assert not a[name + "_cf__gain"].any(), "CF gain"
-            d = s - a["AFF__r1"]
-            sd = int(q4(d).sum())
-            ci = interval(d, cl)
-            sc3 = {"sum4d": sd, "n": n, "point": 25 * sd / n, "ci95": ci, "pass": ci[0] > 0}
-            sc4 = {}
-            for p, label in enumerate(("emotion__style", "emotion__genre")):
-                sel = pair == p
-                total = int(q4(d[sel]).sum())
-                sc4[label] = {"sum4d": total, "n": int(sel.sum()), "point": 25 * total / int(sel.sum()), "pass": total >= -49}
-            sc4["pass"] = all(sc4[label]["pass"] for label in ("emotion__style", "emotion__genre"))
-            comps = [("B1", a["B1__r1"]), ("BX", a[f"BX_{g}__r1"]), ("CF", cf), ("B0", a["B0__r1"]), ("B", a["B__r1"])]
-            bar_name, bar = max(comps, key=lambda kv: int(q4(kv[1]).sum()))
-            db, sg = s - bar, pair == 2
-            sb, gg = int(q4(db).sum()), int(q4(dg).sum())
-            bci, gci = interval(db, cl), interval(dg, cl)
-            s1 = {"sum4d": sb, "point": 25 * sb / n, "ci95": bci,
-                  "gain_sum4d": gg, "gain_point": 25 * gg / n, "gain_ci95": gci,
-                  "pass": bool(sb >= 246 and bci[0] > 0 and gci[0] > 0)}
-            s2sum = int(q4((s - cf)[sg]).sum())
-            s2 = {"sum4d": s2sum, "pass": s2sum >= 0}
-            all_stats[name] = {"SC3": sc3, "SC4": sc4, "S1": s1, "S2": s2, "S3": sc4,
-                               "bar_comparator": bar_name, "pass": bool(sc3["pass"] and sc4["pass"]), "dropped": False}
+    cache = {}
 
-    def ordered(groups, passing=False):
-        rows = []
-        for i, g in enumerate(groups):
-            for j, k in enumerate(KINDS):
-                nm = f"{k}_{g}"
-                if nm in all_stats and (not passing or all_stats[nm]["pass"]):
-                    rec = all_stats[nm]
-                    rows.append((-rec["SC3"]["sum4d"], -rec["S1"]["gain_sum4d"], i, j, nm))
-        return [r[-1] for r in sorted(rows)]
+    def of(x):
+        """Both kinds' records of grouping x (none when x has neither arrays nor a recorded drop, smoke only)."""
+        if x not in cache:
+            cache[x] = {}
+            for kind in KINDS:
+                if x in dropped:
+                    cache[x][f"{kind}_{x}"] = dropped_record(dropped[x])
+                elif x in evaluated:
+                    cache[x][f"{kind}_{x}"] = scorer_record(a, f"{kind}_{x}", cl, masks)
+                else:
+                    assert not strict, f"{x}: neither arrays nor a recorded drop"
+        return cache[x]
 
-    nb = ordered(["NB100", "NB67", "NB33"])
-    triggered = bool(nb) and not any(all_stats[nm]["pass"] for nm in nb)
-    # rule gap: 6.3 does not define the no-evaluated-NB record; ticket 11
-    # explicitly fixes this reason and null strength (matching ticket 10).
-    reason = "no NB scorer was evaluated" if not nb else ("no NB scorer passed" if triggered else "an NB scorer passed")
-    trigger = {"triggered": triggered, "strength": {"NB100": 1., "NB67": .67, "NB33": .33}[nb[0].split("_", 1)[1]] if triggered else None,
-               "reason": reason, "NB": {nm: all_stats[nm] for nm in sorted(nb)}}
-    out = {"trigger": trigger}
-    for track, groups in (("main", MAIN_GROUPS), ("screen", SCREEN_GROUPS)):
-        passes = ordered(groups, passing=True)
-        pick = passes[0] if passes else None
+    nb = {k: v for x in NB_GROUPS for k, v in of(x).items()}
+    assert not strict or len(nb) == 6, "all six NB scorers must be evaluated or dropped"
+    available = {k: v for k, v in nb.items() if not v["dropped"]}
+    source, reason = None, "an NB scorer passes"
+    if not any(v["pass"] for v in nb.values()):
+        if available:
+            source, reason = select(available, MAIN_GROUPS, False), "none of the six NB scorers passes"
+        else:
+            reason = "no NB scorer was evaluated; NBC does not run"    # rule gap: as ticket 10 (6.3 literal would trigger)
+    trigger = {"nb_records": nb, "triggered": source is not None, "source_scorer": source,
+               "strength": STRENGTH[source.split("_", 1)[1]] if source else None, "reason": reason}
+    include_nbc = nbc_allowed and trigger["triggered"]
+    main = MAIN_GROUPS if include_nbc else MAIN_GROUPS[:-1]
+    controls = [f"Z{x}" for x in (*main, *SCREEN_GROUPS) if x not in dropped or f"Z{x}" in dropped]
+    roster = {*main, *SCREEN_GROUPS, *REFERENCES, *controls}
+    assert not set(evaluated) - roster, f"evaluated outside the roster: {sorted(set(evaluated) - roster)}"
+    if include_nbc:
+        assert "NBC" in evaluated or "NBC" in dropped, "triggered NBC has neither a result nor a recorded drop"
+    out = {}
+    for track, xs in (("main", main), ("screen", SCREEN_GROUPS)):
+        cands = {k: v for x in xs for k, v in of(x).items()}
+        refs = {k: v for x in (REFERENCES if track == "main" else ("R0own",)) for k, v in of(x).items()}
+        ctls = {k: v for x in xs if f"Z{x}" in controls for k, v in of(f"Z{x}").items()}
+        pick = select(cands, MAIN_GROUPS if track == "main" else SCREEN_GROUPS, True)
         flag = None
         if pick:
-            kind, g = pick.split("_", 1)
-            ctl = f"{kind}_Z{g}"
-            flag = bool(all_stats[ctl]["pass"]) if ctl in all_stats else "not evaluable"
-        cands = {nm: rec for nm, rec in all_stats.items() if nm.split("_", 1)[1] in groups}
-        out[track] = {"candidates": cands, "pick": pick, "random_control_flag": flag,
-                      "dropped": {g: reason for g, reason in dropped.items() if g in groups}}
+            kind, x = pick.split("_", 1)
+            assert f"{kind}_Z{x}" in ctls, f"missing random control for {pick}"
+            flag = "not evaluable" if ctls[f"{kind}_Z{x}"]["dropped"] else bool(ctls[f"{kind}_Z{x}"]["pass"])
+        out[track] = {"candidates": cands, "references": refs, "controls": ctls, "pick": pick, "random_control_flag": flag}
         if track == "main":
-            out[track]["promising"] = not pick and any(rec["S1"]["pass"] and rec["S2"]["pass"] and rec["S3"]["pass"] for rec in cands.values())
-            ranks = ordered(groups)
-            out[track]["H_target"] = pick or (ranks[0] if ranks else None)
-    out["references"] = {nm: rec for nm, rec in all_stats.items() if nm.split("_", 1)[1] in ("R0own", "NRK", "TP")}
-    out["controls"] = {nm: rec for nm, rec in all_stats.items() if nm.split("_", 1)[1].startswith("Z")}
+            promising = pick is None and any(not r["dropped"] and all(r[s]["pass"] for s in ("S1", "S2", "S3")) for r in cands.values())
+            target = pick or select(cands, MAIN_GROUPS, False)
+            head = None    # rule gap: no H target when every main candidate is dropped
+            if target:
+                kind, x = target.split("_", 1)
+                head = {"grouping": x, "scorer_kind": kind, "scorer": f"{kind}_H{x}", "source_scorer": target}
+            out[track].update(promising=bool(promising), head_target=head, main_line_fails_at_gate=pick is None)
+    out["trigger"] = trigger
+    out["fallback"] = {"main_has_pick": out["main"]["pick"] is not None,
+                       "main_line_fails_at_gate": out["main"]["pick"] is None,
+                       "screen_has_pick": out["screen"]["pick"] is not None,
+                       "screen_read_if_main_fails": out["screen"]["pick"] is not None,
+                       "screen_eligible_at_gate": out["main"]["pick"] is None and out["screen"]["pick"] is not None,
+                       "held_rule_required": True}
     return out
 
 
