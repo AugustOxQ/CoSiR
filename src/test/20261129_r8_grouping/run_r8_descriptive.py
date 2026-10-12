@@ -450,7 +450,14 @@ def harm(root, smoke):
     if not (root / "heads" / f"post_{hx}.npz").is_file():
         # interface: ticket 08 `r8_place.py --grouping X --h-only [--smoke [N]]` (X is placed already) writes only
         # heads/post_H<X>, xheads_H<X>, head_H<X>; it refuses when X's files are missing or X is dropped.
-        run([py, "r8_place.py", "--grouping", x, "--h-only", *flag], log)
+        # smoke: 08 asserts `--smoke N` equals the painting count of the groupings file (default N is 8,192), so pass that
+        # count, read from the file (queue smoke groupings hold every painting). Real mode passes no N.
+        n_flag = []
+        if smoke:
+            gjson = root / "groupings" / "r8_groupings.json"
+            assert gjson.is_file(), f"smoke harm: {gjson} missing (08 reads it)"
+            n_flag = [str(int(json.loads(gjson.read_text())["n_paintings"]))]
+        run([py, "r8_place.py", "--grouping", x, "--h-only", *flag, *n_flag], log)
     seed42 = root / "seed42"
     root_flag = ["--root", str(root)] if smoke else []
     if not (seed42 / f"reader_{hx}.npz").is_file():

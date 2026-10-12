@@ -27,3 +27,16 @@ def test_refuses_before_gate_verdict(tmp_path, monkeypatch):
     (tmp_path / "gate_verdict.json").write_text(json.dumps({"smoke": False, "main": {}, "screen": {}}))
     with pytest.raises(AssertionError, match="smoke role differs"):
         D.require_verdict(tmp_path, smoke=True)
+
+
+def test_harm_smoke_passes_the_painting_count_of_the_groupings_file(tmp_path, monkeypatch):
+    """Smoke: 08 asserts `--smoke N` equals the groupings file's painting count; real mode passes no N."""
+    calls = []
+    monkeypatch.setattr(D, "require_verdict", lambda root, smoke: {"main": {"head_target": {"grouping": "NB100"}}})
+    monkeypatch.setattr(D, "run", lambda cmd, log: calls.append(cmd))
+    monkeypatch.setattr(D.R, "SMOKE", tmp_path)
+    (tmp_path / "groupings").mkdir()
+    (tmp_path / "groupings" / "r8_groupings.json").write_text(json.dumps({"n_paintings": 1234}))
+    D.harm(tmp_path.resolve(), True)
+    place = next(c for c in calls if "r8_place.py" in c)
+    assert place[-3:] == ["--h-only", "--smoke", "1234"]
