@@ -19,18 +19,11 @@ OWN_COUNTS = {100: 128, 67: 86, 33: 42}
 VIEWS = Path('/data/SSD2/pre_extract/artelingo/r8_clip_views/views.npy')
 CSD = Path('/data/SSD2/pre_extract/artelingo/style_csd_vitl/embeddings.npy')
 CSD_SHA256 = '7eefe522383b753bad32f404651103471f9d5b6c41926ee57bfc7386c84818ad'
-SHARED_INPUTS = {
-    '/data/SSD2/pre_extract/artelingo/features/metadata.json':
-        '43963ca92f46ee638ace94f8ff72807de29ec87471aa5b68904bdc4afb7e8011',
-    '/data/SSD2/pre_extract/artelingo/style_csd_vitl/meta.json':
-        '6013b2f801eb1e6ae104e9fb3c71a377890bb9aab58e4cb27991c269febdf13b',
-    '/data/SSD2/pre_extract/artelingo/style_csd_vitl/row_to_image.npy':
-        '914f4e621ffecd4f0bcb7bc13465544553f7d48646668f02a0ffe9438050ab10',
-    'src/test/20261031_pseudo_partitions/results/partitions.npz':
-        'cfd57dbb21216cdc9d1c2e42d1b408648bc18147f62354b52202ade4ab8a9caa',
-    'src/test/20261117_reader_fix_csd/results/rb_halves.npz':
-        'ed2d359e6517b4237f8aa4de5e78f787699b366a975ac993eaef0e7c4491c7da',
-}
+HEAD_INPUT_KEYS = (
+    '/data/SSD2/pre_extract/artelingo/features/metadata.json',
+    '20261031_pseudo_partitions/results/partitions.npz',
+    '20261117_reader_fix_csd/results/rb_halves.npz',
+)
 
 
 def neighbours(x, content, block_size=512):
@@ -238,19 +231,17 @@ def check_nbc_trigger(path, strength):
 def build(only=('NB100',), strength=None, smoke=False, out=None, views_path=VIEWS,
           time_one_epoch=False):
     """Write spaces and their training/provenance records through r8_common."""
-    # rule gap: ticket 01 was unavailable for this ticket's file-level smoke
-    # and real-epoch timing; the controller must run both after integration.
     import r8_common as C
 
     start = perf_counter()
     C.assert_rule()
-    C.assert_inputs()
-    input_hashes = {}
-    for key, expected in SHARED_INPUTS.items():
-        path = Path(key) if key.startswith('/') else Path(C.MAIN) / key
-        digest = sha_file(path)
-        assert digest == expected, f'{path}: section 10 SHA-256'
-        input_hashes[str(path)] = digest
+    input_keys = HEAD_INPUT_KEYS
+    if 'NBC' in only:
+        input_keys += tuple(str(CSD.with_name(name))
+                            for name in ('embeddings.npy', 'meta.json', 'row_to_image.npy'))
+    input_hashes = C.assert_inputs(keys=input_keys)
+    # New view outputs are outside section 10's fixed input table; read_views
+    # checks their file hash against ticket 03's meta.json when V is requested.
     assert only and len(set(only)) == len(only) and set(only) <= set(IDS)
     assert not (smoke and time_one_epoch)
     assert ('NBC' in only) == (strength is not None), 'NBC requires --strength; others do not'
@@ -290,8 +281,10 @@ def build(only=('NB100',), strength=None, smoke=False, out=None, views_path=VIEW
     row_image = C.row_to_image()
     assert row_image.dtype == np.int32 and row_image.shape == (308723,)
     assert np.array_equal(painting_image, row_image[ctx.scorer_train[ctx.first_rows]])
-    pos = np.searchsorted(image_index, painting_image)
-    assert np.all(pos < len(image_index)) and np.array_equal(image_index[pos], painting_image)
+    pos = C.painting_pos()
+    assert pos.dtype == np.int64 and pos.shape == (36518,)
+    assert np.all((pos >= 0) & (pos < len(image_index)))
+    assert np.array_equal(image_index[pos], painting_image)
     images = C.x_images()
     assert_unit(images, (49121, 512))
     assert np.array_equal(images[pos], x), 'CLIP painting/image first-row alignment'

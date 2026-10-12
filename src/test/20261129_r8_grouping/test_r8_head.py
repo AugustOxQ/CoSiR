@@ -27,10 +27,10 @@ def test_neighbours_compare_in_float64():
 def test_negative_sets_have_exact_counts_without_query_or_positive(n_own):
     content = np.repeat(np.arange(3, dtype=np.int64), 130)
     n = (np.arange(390, dtype=np.int64) + 130) % 390
-    batch = np.array([0, 129, 130, 259, 389])
+    batch = np.arange(390)
     views, negative = batch_draws(np.random.default_rng(0), batch, content, n, n_own)
-    assert views.shape == (5,) and np.all((views >= 0) & (views < 5))
-    assert negative.shape == (5, 128)
+    assert views.shape == (390,) and np.all((views >= 0) & (views < 5))
+    assert negative.shape == (390, 128)
     for p, row in zip(batch, negative):
         assert len(np.unique(row)) == 128
         assert p not in row and n[p] not in row
@@ -88,3 +88,73 @@ def test_seed_zero_training_is_identical_including_partial_batch(view_positive):
     assert records[0]['epoch_losses'] == records[1]['epoch_losses']
     assert records[0]['batches_per_epoch'] == 2
     assert records[0]['last_epoch_mean_loss'] == records[0]['epoch_losses'][-1]
+
+
+def reference_m6_phi(x, content, views):
+    """Separate M5/M6 transcription; no r8_head computation is reused."""
+    scores = x.astype(np.float64) @ x.astype(np.float64).T
+    nearest = np.array([
+        max((q for q in range(len(x)) if content[q] != content[p]),
+            key=lambda q: scores[p, q])
+        for p in range(len(x))], dtype=np.int64)
+    torch.set_num_threads(8)
+    torch.use_deterministic_algorithms(True)
+    torch.manual_seed(0)
+    model = torch.nn.Sequential(torch.nn.Linear(512, 512), torch.nn.ReLU(),
+                                torch.nn.Linear(512, 128))
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    rng = np.random.default_rng(0)
+    features = torch.tensor(x)
+    view_features = torch.tensor(views) if views is not None else None
+    for _ in range(2):
+        order = rng.permutation(len(x))
+        for start in range(0, len(x), 512):
+            batch = order[start:start + 512]
+            selected_views = rng.integers(0, 5, size=len(batch))
+            draws = []
+            for p in batch:
+                own = [q for q in range(len(x)) if content[q] == content[p]
+                       and q != p and q != nearest[p]]
+                other = [q for q in range(len(x)) if content[q] != content[p]
+                         and q != p and q != nearest[p]]
+                draws.append(np.concatenate((rng.choice(own, 86, replace=False),
+                                             rng.choice(other, 42, replace=False))))
+            negative_ids = np.array(draws)
+            optimizer.zero_grad()
+            query = torch.nn.functional.normalize(model(features[batch]), dim=1)
+            positive_input = (view_features[batch, selected_views] if views is not None
+                              else features[nearest[batch]])
+            positive = torch.nn.functional.normalize(model(positive_input), dim=1)
+            negatives = torch.nn.functional.normalize(
+                model(features[negative_ids.ravel()]), dim=1).reshape(len(batch), 128, 128)
+            losses = []
+            for i in range(len(batch)):
+                logits = torch.cat(((query[i] @ positive[i]).reshape(1),
+                                    negatives[i] @ query[i])) / 0.1
+                losses.append(-torch.log_softmax(logits, dim=0)[0])
+            torch.stack(losses).mean().backward()
+            optimizer.step()
+    with torch.no_grad():
+        return torch.nn.functional.normalize(model(features), dim=1).numpy()
+
+
+@pytest.mark.parametrize('view_positive', [False, True])
+def test_training_phi_matches_independent_m6_reference(view_positive):
+    rng = np.random.default_rng(456)
+    x = rng.normal(size=(840, 512)).astype(np.float32)
+    x /= np.linalg.norm(x, axis=1, keepdims=True)
+    content = np.arange(840, dtype=np.int64) % 6
+    views = rng.normal(size=(840, 5, 512)).astype(np.float32)
+    views /= np.linalg.norm(views, axis=2, keepdims=True)
+    assert np.all(np.linalg.norm(views[:, 0] - views[:, 1], axis=1) > 1)
+    views = views if view_positive else None
+    expected = reference_m6_phi(x, content, views)
+    n = neighbours(x, content)
+    # Start from conflicting settings so omitting M6's setup is observable.
+    torch.set_num_threads(1)
+    torch.use_deterministic_algorithms(False)
+    head, record = train_head(x, content, n, n_own=86, views=views, epochs=2)
+    assert torch.get_num_threads() == 8
+    assert torch.are_deterministic_algorithms_enabled()
+    assert record['batches_per_epoch'] == 2
+    np.testing.assert_allclose(embed(head, x), expected, atol=1e-4, rtol=0)
