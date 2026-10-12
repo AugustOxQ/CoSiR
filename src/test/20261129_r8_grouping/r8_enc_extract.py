@@ -241,7 +241,7 @@ def main():
         assert torch.cuda.is_available()
     batch = a.batch_size or spec["batch"]
     started = C.now_ams()
-    state = dict(files={}, items={}, reason=None)
+    state = dict(files={}, items={}, reason=None, phase="setup")
     t_start = time.time()
     try:
         C.assert_rule()
@@ -249,9 +249,11 @@ def main():
         torch.backends.cudnn.allow_tf32 = False
         torch.set_grad_enabled(False)
         # ESC1 (a): the weight SHA-256 of section 10 (assert_inputs stops on a difference), then the strict load
+        state["phase"] = "load"
         sha = C.assert_inputs(keys=spec["inputs"], r7=False)
         weight_sha = sha[spec["checkpoint"]]
         state["items"]["a_weights_sha256"] = dict(path=spec["checkpoint"], sha256=weight_sha, ok=True)
+        state["phase"] = "setup"
         # the images: only non-held ones, in CSD ascending order
         nh = C.nonheld_images()
         paths = json.loads((C.STYLE / "meta.json").read_text())["images"]["image_paths"]
@@ -269,8 +271,10 @@ def main():
         assert np.array_equal(from_r2i[:n], images)
         start_hash = index_sha(from_r2i[:n])
         dev = torch.device(a.device)
+        state["phase"] = "load"
         load, embed = BUILD[name](spec, dev)
         state["items"]["a_strict_load"] = dict(ok=True)
+        state["phase"] = "run"
         print(f"[{name}] loaded; n={n} batch={batch} device={a.device}", flush=True)
 
         t0 = time.time()
@@ -330,7 +334,11 @@ def main():
         ok = esc1_ok
         extra = dict(n=int(n), dim=spec["dim"], embeddings_sha256=emb_sha, image_index_sha256=stored_hash,
                      seconds_full_pass=full_seconds, images_per_second=n / full_seconds)
-    except BaseException as ex:                                          # B:ED4: a failed load or item drops the encoder
+    except BaseException as ex:
+        # B:ED4 (user): only weights that do not load drop the encoder (ESC1 b-e failures are recorded above). Any
+        # other crash (OOM, I/O, interrupt) is a bug to fix: no write-once record, so a rerun is possible.
+        if state["phase"] != "load" or isinstance(ex, KeyboardInterrupt):
+            raise
         traceback.print_exc()
         ok, extra = False, {}
         state["reason"] = f"{type(ex).__name__}: {ex}"
