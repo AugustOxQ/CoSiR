@@ -16,6 +16,9 @@ Images (M10). nonheld_images() = the ascending CSD image indices of rows outside
 the 224 cache's image set. The *_pos maps give positions in that array, i.e. rows of a space file (phi[j] belongs to
 image nonheld_images()[j]).
 
+The 224 cache (images_uint8.npy, paintings.json) is in painting-id string order; cache224_index() (per non-held
+image) and painting_cache_row() (per painting p) are the only maps to its rows.
+
 Everything returned from a cached function is read-only (shared inside the process); copy before changing.
 """
 import hashlib
@@ -50,6 +53,8 @@ R7D = TEST / R7_NAME
 R1D = TEST / "20261117_reader_fix_csd"
 STYLE = Path("/data/SSD2/pre_extract/artelingo/style_csd_vitl")
 CACHE224 = Path("/data/SSD2/pre_extract/artelingo_clip224")
+FEATURES_DIR = Path("/data/SSD2/pre_extract/artelingo/features")
+FEATURES_META = str(FEATURES_DIR / "metadata.json")
 N_ROWS = 308_723
 N_PAINTINGS = 36_518
 N_SCORER_TRAIN = 183_694
@@ -193,7 +198,8 @@ def assert_inputs(keys=None, fresh=False, r7=True, clip=False):
     file. A file already verified in this process is not hashed again unless fresh=True (the end-of-stage-0 pass).
     With keys=None also: the ten reused R7 modules (R7_CODE), R7's own section-10 tables (r7_common.assert_inputs,
     unless r7=False) and one matching CLIP weight file (clip=True is implied). Returns {key: sha256} for INPUTS and
-    R7_CODE keys, plus the CLIP weight actually matched under ``clip_weight``."""
+    R7_CODE keys, plus (clip) ``clip_weight`` (first existing CLIP file) and ``clip_weights`` ({path: sha256} of every
+    existing CLIP file; all are checked)."""
     if fresh:
         _CHECKED.clear()
         _R7_VERIFIED.clear()
@@ -206,20 +212,42 @@ def assert_inputs(keys=None, fresh=False, r7=True, clip=False):
         clip = True
     if clip:
         out["clip_weight"] = _clip_weight()
+        out["clip_weights"] = {k: _CHECKED[k] for k in CLIP_WEIGHTS if k in _CHECKED}
     return out
 
 
+def _clip_check(key):
+    """SHA-256 of one CLIP weight file against the rule's (cached for the process); SystemExit on a difference."""
+    if key not in _CHECKED:
+        got = sha_file(key)
+        if got != CLIP_WEIGHTS[key]:
+            raise SystemExit(f"clip {key}: SHA-256 {got} differs from the rule's {CLIP_WEIGHTS[key]}")
+        _CHECKED[key] = got
+    return _CHECKED[key]
+
+
 def _clip_weight():
-    """The CLIP B/32 weight file that exists and matches (recorded); SystemExit if none does."""
-    for key, want in CLIP_WEIGHTS.items():
-        if Path(key).is_file():
-            if key not in _CHECKED:
-                got = sha_file(key)
-                if got != want:
-                    raise SystemExit(f"clip {key}: SHA-256 {got} differs from the rule's {want}")
-                _CHECKED[key] = got
-            return key
-    raise SystemExit("no CLIP B/32 weight file of rule section 10 exists")
+    """Hashes every CLIP B/32 weight file that exists (two do: pytorch_model.bin and model.safetensors; which one
+    loads is decided by transformers, so all must be right), SystemExit if none exists or one differs. Returns the key
+    of the first existing one; the per-file hashes are in assert_inputs()['clip_weights']. The file that actually
+    loads is recorded with clip_weight_record(path)."""
+    existing = [k for k in CLIP_WEIGHTS if Path(k).is_file()]
+    if not existing:
+        raise SystemExit("no CLIP B/32 weight file of rule section 10 exists")
+    for k in existing:
+        _clip_check(k)
+    return existing[0]
+
+
+def clip_weight_record(path):
+    """For the CLIP B/32 weight file that was actually loaded (the path transformers resolved: the snapshot file or the
+    blob behind it): assert it is one of the rule's CLIP_WEIGHTS files and that its SHA-256 matches; returns
+    {"path": <the rule's snapshot path>, "sha256": ...} to record (M4, M9)."""
+    p = Path(path)
+    for key in CLIP_WEIGHTS:
+        if str(p) == key or (p.exists() and Path(key).exists() and p.resolve() == Path(key).resolve()):
+            return {"path": key, "sha256": _clip_check(key)}
+    raise SystemExit(f"{path} is not a CLIP B/32 weight file of rule section 10: {sorted(CLIP_WEIGHTS)}")
 
 
 # ---------------------------------------------------------------- the reused modules
@@ -247,13 +275,14 @@ def _front(path):
 
 def load_r7(name):
     """Round-7 module ``name`` (stem, e.g. 'r7_heads'), imported by absolute path from the main checkout's R7 folder,
-    once per process, after its SHA-256 matched rule section 10. Read only: R7's folder is never written. Only the
+    once per process, after the SHA-256 of all ten R7 modules matched rule section 10 (they import each other). Read only: R7's folder is never written. Only the
     ten modules of the rule's table; earlier rounds' modules come through load_prior."""
-    if name in _R7_LOADED:
-        return _R7_LOADED[name]
     if f"{name}.py" not in R7_CODE:
         raise KeyError(f"{name!r} is not an R7 module of rule section 10's table")
-    _check_r7(f"{name}.py")
+    for n in R7_CODE:                 # all ten, not only ``name``: R7 modules import each other by bare name
+        _check_r7(n)
+    if name in _R7_LOADED:
+        return _R7_LOADED[name]
     _front(R7D)                       # the R7 modules import each other (r7_common, ...) by bare name
     path = (R7D / f"{name}.py").resolve()
     mod = sys.modules.get(name)
@@ -325,6 +354,15 @@ def _prepare(path):
     return path
 
 
+def _open_once(path):
+    """Binary file for writing: exclusive create ("xb") outside smoke, so a file made by a parallel job between the
+    check and the open is never overwritten (rule section 9: up to 3 reader jobs); smoke files are overwritten."""
+    try:
+        return open(path, "wb" if in_smoke(path) else "xb")
+    except FileExistsError:
+        raise SystemExit(f"{path} exists; refusing to overwrite (use fix_path for a corrected run)") from None
+
+
 def jsonable(x):
     if isinstance(x, dict):
         return {str(k): jsonable(v) for k, v in x.items()}
@@ -351,20 +389,21 @@ def write_json_once(path, rec):
     if "rule_sha256" in rec or "written" in rec:
         raise AssertionError("record already has rule_sha256 or written")
     rec = {**jsonable(rec), "rule_sha256": sha_file(RULE), "written": now_ams()}
-    path.write_text(json.dumps(rec, indent=1))
+    with _open_once(path) as f:
+        f.write(json.dumps(rec, indent=1).encode())
     return rec
 
 
 def write_npz_once(path, **arrays):
     path = _prepare(path)
-    with open(path, "wb") as f:
+    with _open_once(path) as f:
         np.savez(f, **arrays)
     return path
 
 
 def write_pickle_once(path, obj):
     path = _prepare(path)
-    with open(path, "wb") as f:
+    with _open_once(path) as f:
         pickle.dump(obj, f, protocol=4)
     return path
 
@@ -400,8 +439,13 @@ def ctx():
 def _build_ctx():
     assert_rule()
     assert_inputs(keys=("20261031_pseudo_partitions/results/partitions.npz",
-                        "20261117_reader_fix_csd/results/rb_halves.npz"), r7=False)
+                        "20261117_reader_fix_csd/results/rb_halves.npz", FEATURES_META), r7=False)
     rs = load_prior("run_step1")
+    # the CLIP features (img_features) are read from load_artelingo()'s default dir, which COSIR_ARTELINGO_FEATURES
+    # can redirect: the dir must be the one whose metadata.json was hashed above
+    art = importlib.import_module("src.data.artelingo")
+    assert Path(art.FEATURE_DIR) == FEATURES_DIR and Path(art.load_artelingo.__defaults__[0]) == FEATURES_DIR, \
+        f"CLIP features dir is {art.FEATURE_DIR!r} (COSIR_ARTELINGO_FEATURES set?), not {FEATURES_DIR}"
     data, sp, st, groups, g_st = rs.base_data()
     st, groups, g_st = (np.asarray(a) for a in (st, groups, g_st))
     n_rows = len(groups)
@@ -568,3 +612,46 @@ def nonheld_first_rows():
 def x_images():
     """float32 [49,121, 512]: x of each non-held image's first non-held row, in nonheld_images() order."""
     return _once("x_images", lambda: _ro(x_rows(nonheld_first_rows())))
+
+
+# ---------------------------------------------------------------- the 224 cache (M4 joins)
+
+def cache224_index():
+    """int64 [49,121]: for each non-held image (nonheld_images() order, i.e. a space-file row) its row in the 224
+    cache (images_uint8.npy; paintings.json "index"). The cache is in painting-id string order ("order": "painting id,
+    sorted"), so a cache row is neither a painting index p nor a nonheld_images() position: take every cache row
+    through this map or painting_cache_row(). Joined by image path, and checked against the painting id (the cache's key
+    must be data.paintings of the image's first non-held row); the SHA-256 of paintings.json is asserted here."""
+    def build():
+        assert_inputs(keys=("/data/SSD2/pre_extract/artelingo_clip224/paintings.json",
+                            "/data/SSD2/pre_extract/artelingo/style_csd_vitl/meta.json"), r7=False)
+        c, nh = ctx(), nonheld_images()
+        rec = json.loads((CACHE224 / "paintings.json").read_text())
+        assert rec["order"] == "painting id, sorted", "224 cache order"
+        keys = list(rec["paintings"])
+        entries = list(rec["paintings"].values())
+        assert keys == sorted(keys) and [e["index"] for e in entries] == list(range(len(keys))), "224 cache index"
+        row_of_image = {e["image"]: i for i, e in enumerate(entries)}
+        assert len(row_of_image) == len(keys) == N_NONHELD_IMAGES, "224 cache: images not one-to-one with rows"
+        paths = json.loads((STYLE / "meta.json").read_text())["images"]["image_paths"]
+        ci = np.asarray([row_of_image[paths[i]] for i in nh.tolist()], dtype=np.int64)
+        assert np.array_equal(np.sort(ci), np.arange(N_NONHELD_IMAGES)), "224 cache rows are not a permutation"
+        ids = np.asarray(c.data.paintings)[nonheld_first_rows()]
+        assert [keys[i] for i in ci.tolist()] == [str(s) for s in ids], "224 cache painting ids differ from data.paintings"
+        return _ro(ci)
+    return _once("cache224_index", build)
+
+
+def painting_cache_row():
+    """int64 [36,518]: for each painting p its row in the 224 cache, found by painting id (the cache's key) and
+    asserted equal to cache224_index()[painting_pos()] (found by image). The views of ticket 03 read
+    images_uint8.npy[painting_cache_row()[p]]."""
+    def build():
+        c, ci = ctx(), cache224_index()
+        keys = list(json.loads((CACHE224 / "paintings.json").read_text())["paintings"])
+        row_of_id = {k: i for i, k in enumerate(keys)}
+        pcr = np.asarray([row_of_id[s] for s in c.painting_ids.tolist()], dtype=np.int64)
+        assert np.array_equal(pcr, ci[painting_pos()]), "painting id and image joins to the 224 cache disagree"
+        assert len(np.unique(pcr)) == N_PAINTINGS
+        return _ro(pcr)
+    return _once("painting_cache_row", build)

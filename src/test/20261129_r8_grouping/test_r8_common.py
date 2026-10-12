@@ -48,19 +48,71 @@ def test_assert_rule_returns_sha_and_refuses_a_changed_rule(monkeypatch):
         R.assert_rule()
 
 
-def test_inputs_table_is_rule_section_10_exactly():
+def _rule_rows():
+    """Rule section 10 read row by row: {path as r8_common keys it: [sha256, ...]}. The rule writes `...` for the R7
+    results folder, bare names for R7 code, a prose label for the HF files and ClustPy."""
     text = R.RULE.read_text()
     sec = text[text.index("## 10. Inputs"):text.index("## 11.")]
-    in_rule = set(HEX.findall(sec))
-    mine = set(R.INPUTS.values()) | set(R.R7_CODE.values()) | set(R.CLIP_WEIGHTS.values())
-    assert in_rule == mine, (sorted(in_rule - mine), sorted(mine - in_rule))
+    rows = {}
+    for line in sec.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if not line.startswith("|") or len(cells) < 2 or not HEX.search(cells[1]):
+            continue
+        hashes = HEX.findall(cells[1])
+        toks = re.findall(r"`([^`]+)`", cells[0])
+        label = cells[0]
+        if label.startswith("`") and len(hashes) == len(toks):
+            first_dir = os.path.dirname(toks[0]) if toks[0].startswith("/") else ""
+            for t, h in zip(toks, hashes):
+                if t.startswith("\u2026/"):
+                    t = R.R7_NAME + "/" + t[2:]
+                elif "/" not in t and first_dir:
+                    t = first_dir + "/" + t
+                rows[t] = [h]
+        else:                                                    # HF / ClustPy rows, keyed by their own label
+            rows[label] = hashes
+    return rows
+
+
+def test_inputs_table_is_rule_section_10_exactly():
+    rows = _rule_rows()
+    mine = {**{k: [v] for k, v in R.INPUTS.items()}, **{k: [v] for k, v in R.R7_CODE.items()}}
+    labelled = {k: v for k, v in rows.items() if k.startswith("HF") or k.startswith("ClustPy")}
+    plain = {k: v for k, v in rows.items() if k not in labelled}
     assert len(R.R7_CODE) == 10 and len(R.CLIP_WEIGHTS) == 2
+    # every path-keyed row of the rule is one row of mine with the same hash, and the reverse
+    hf = {k for k in mine if k.startswith(str(R._HF)) or "clustpy" in k}
+    assert set(plain) == set(mine) - hf, (sorted(set(plain) - set(mine)), sorted(set(mine) - hf - set(plain)))
+    for k, v in plain.items():
+        assert mine[k] == v, k
+    # the five labelled rows, each against its own path
+    by_label = {"dinov2-large": "dinov2-large", "siglip2-so400m": "siglip2-so400m", "nrkmeans.py": "nrkmeans.py"}
+    assert len(labelled) == 4
+    for frag, keyfrag in by_label.items():
+        (lab,) = [k for k in labelled if frag in k]
+        (key,) = [k for k in hf if keyfrag in k]
+        assert labelled[lab] == mine[key], lab
+    (clip,) = [k for k in labelled if "clip-vit-base-patch32" in k]
+    assert len(labelled[clip]) == 2
+    for key, h in R.CLIP_WEIGHTS.items():                         # (bin, safetensors) in the rule's order
+        assert h in labelled[clip]
+        assert ("pytorch_model.bin" in key) == (labelled[clip].index(h) == 0), key
+    assert [k for k in mine if k in R.CLIP_WEIGHTS] == []
 
 
-def test_assert_inputs_subset_checks_and_caches():
+def test_assert_inputs_subset_checks_and_caches(monkeypatch):
     got = R.assert_inputs(keys=CHEAP, r7=False)
     assert set(got) == set(CHEAP) and all(len(v) == 64 for v in got.values())
+    calls = []
+    real = R.sha_file
+    monkeypatch.setattr(R, "sha_file", lambda p: calls.append(p) or real(p))
     assert R.assert_inputs(keys=CHEAP, r7=False) == got
+    assert calls == [], "a verified file was hashed again"
+    monkeypatch.setattr(R, "_CHECKED", {})                       # an empty cache hashes every file once
+    assert R.assert_inputs(keys=CHEAP, r7=False) == got
+    assert len(calls) == len(CHEAP)
+    R.assert_inputs(keys=CHEAP, r7=False, fresh=True)           # fresh=True hashes again
+    assert len(calls) == 2 * len(CHEAP)
 
 
 def test_assert_inputs_stops_on_a_wrong_hash_or_a_missing_file(monkeypatch):
@@ -82,6 +134,31 @@ def test_assert_inputs_full_table():
     assert set(R.INPUTS) <= set(got) and set(R.R7_CODE) <= set(got)
 
 
+def test_clip_weight_hashes_every_existing_file_and_the_record_helper(monkeypatch):
+    existing = [k for k in R.CLIP_WEIGHTS if Path(k).is_file()]
+    assert existing, "no CLIP weight file on this machine"
+    calls = []
+    real = R.sha_file
+    monkeypatch.setattr(R, "sha_file", lambda p: calls.append(str(p)) or real(p))
+    monkeypatch.setattr(R, "_CHECKED", {})
+    got = R.assert_inputs(keys=(), r7=False, clip=True)
+    assert sorted(calls) == sorted(existing), "every existing CLIP weight file is hashed, not the first one"
+    assert got["clip_weight"] in existing and set(got["clip_weights"]) == set(existing)
+    for k in existing:
+        assert got["clip_weights"][k] == R.CLIP_WEIGHTS[k]
+        rec = R.clip_weight_record(k)                                  # the path transformers resolved
+        assert rec == {"path": k, "sha256": R.CLIP_WEIGHTS[k]}
+        blob = Path(k).resolve()                                       # the blob behind the snapshot link
+        assert blob.name == R.CLIP_WEIGHTS[k] and R.clip_weight_record(blob)["path"] == k
+    with pytest.raises(SystemExit):
+        R.clip_weight_record("/some/other/model.safetensors")
+    # a file that exists but is not the rule's: stop
+    monkeypatch.setitem(R.CLIP_WEIGHTS, existing[0], "0" * 64)
+    monkeypatch.setattr(R, "_CHECKED", {})
+    with pytest.raises(SystemExit):
+        R.clip_weight_record(existing[0])
+
+
 # ---------------------------------------------------------------- R7 module loader
 
 def test_load_r7_returns_the_main_copy_once():
@@ -99,9 +176,24 @@ def test_load_r7_refuses_unknown_names_and_changed_files(monkeypatch):
     monkeypatch.setitem(R.R7_CODE, "r7_gate.py", "0" * 64)
     monkeypatch.delitem(sys.modules, "r7_gate", raising=False)
     monkeypatch.setattr(R, "_R7_LOADED", {})
-    monkeypatch.setattr(R, "_CHECKED", {})
+    monkeypatch.setattr(R, "_R7_VERIFIED", {})      # independent of test order (the full-table test fills it)
     with pytest.raises(SystemExit):
         R.load_r7("r7_gate")
+
+
+def test_load_r7_verifies_all_ten_modules_on_the_first_call(monkeypatch):
+    # a module R7 code imports by bare name must be checked too: a changed r7_bundle.py stops a load of r7_heads
+    monkeypatch.setitem(R.R7_CODE, "r7_bundle.py", "0" * 64)
+    monkeypatch.setattr(R, "_R7_LOADED", {})
+    monkeypatch.setattr(R, "_R7_VERIFIED", {})
+    monkeypatch.delitem(sys.modules, "r7_heads", raising=False)
+    with pytest.raises(SystemExit):
+        R.load_r7("r7_heads")
+    assert "r7_heads" not in sys.modules
+    monkeypatch.undo()
+    monkeypatch.setattr(R, "_R7_VERIFIED", {})
+    R.load_r7("r7_heads")
+    assert set(R._R7_VERIFIED) == set(R.R7_CODE)
 
 
 def test_load_prior_gives_the_round_modules_through_r7_common():
@@ -140,6 +232,16 @@ def test_write_once_helpers(tmp_path, monkeypatch):
     assert pickle.loads(p.read_bytes()) == {"k": [1, 2]}
     with pytest.raises(SystemExit):
         R.write_pickle_once(p, 1)
+    # the check-then-write race (up to 3 parallel readers): even if the exists-check passed, a file made in between
+    # is never overwritten
+    monkeypatch.setattr(R, "_prepare", lambda path: Path(path))
+    for write, arg in ((R.write_json_once, {"x": 2}), (R.write_npz_once, None), (R.write_pickle_once, 2)):
+        before = (j if write is R.write_json_once else n if write is R.write_npz_once else p).read_bytes()
+        tgt = j if write is R.write_json_once else n if write is R.write_npz_once else p
+        with pytest.raises(SystemExit):
+            write(tgt, arg) if arg is not None else write(tgt, a=np.arange(9))
+        assert tgt.read_bytes() == before
+    monkeypatch.undo()
     # smoke outputs may be overwritten, nothing else may
     monkeypatch.setattr(R, "SMOKE", tmp_path / "smoke")
     s = R.SMOKE / "s.npz"
@@ -284,4 +386,75 @@ def test_x_images_is_x_of_the_first_nonheld_row(ctx):
         assert first[j] == nonheld_rows[np.argmax(r2i[nonheld_rows] == img[j])]
     assert np.array_equal(xi, R.x_rows(first))
     # a painting's two sources of x agree: its first scorer-train row and its image's first non-held row
-    assert np.allclose(xi[R.painting_pos()], R.x_paintings(), atol=1e-6)
+    assert np.array_equal(xi[R.painting_pos()], R.x_paintings())
+
+
+# ---------------------------------------------------------------- the 224 cache (M4 joins) and the CLIP feature dir
+
+CACHE_JSON = Path("/data/SSD2/pre_extract/artelingo_clip224/paintings.json")
+STYLE_META = Path("/data/SSD2/pre_extract/artelingo/style_csd_vitl/meta.json")
+
+
+def test_cache224_rows_are_in_painting_id_order_so_the_join_is_needed(ctx):
+    cache = json.loads(CACHE_JSON.read_text())
+    assert cache["order"] == "painting id, sorted"
+    keys = list(cache["paintings"])
+    assert keys == sorted(keys) and [v["index"] for v in cache["paintings"].values()] == list(range(49_121))
+    # a cache row is neither p (round 1's order) nor a position in nonheld_images()
+    assert not np.array_equal(np.asarray(keys)[:5], ctx.painting_ids[:5])
+    ci = R.cache224_index()
+    assert not np.array_equal(ci, np.arange(49_121))
+
+
+def test_cache224_index_joins_images_to_cache_rows(ctx):
+    ci, nh = R.cache224_index(), R.nonheld_images()
+    assert ci.dtype == np.int64 and ci.shape == (49_121,) and np.array_equal(np.sort(ci), np.arange(49_121))
+    assert R.cache224_index() is ci
+    cache = json.loads(CACHE_JSON.read_text())["paintings"]
+    keys = list(cache)
+    paths = json.loads(STYLE_META.read_text())["images"]["image_paths"]
+    entries = list(cache.values())
+    first = R.nonheld_first_rows()
+    for j in list(range(0, 49_121, 997)) + [49_120]:                         # by image path ...
+        assert entries[ci[j]]["image"] == paths[nh[j]], j
+        assert keys[ci[j]] == str(ctx.data.paintings[first[j]]), j            # ... and by painting id
+    # all of them, vectorised
+    assert [entries[i]["image"] for i in ci.tolist()] == [paths[i] for i in nh.tolist()]
+    assert [keys[i] for i in ci.tolist()] == [str(s) for s in np.asarray(ctx.data.paintings)[first]]
+
+
+def test_painting_cache_row_gives_each_painting_its_cache_row(ctx):
+    pcr = R.painting_cache_row()
+    assert pcr.dtype == np.int64 and pcr.shape == (36_518,) and len(np.unique(pcr)) == 36_518
+    keys = np.asarray(list(json.loads(CACHE_JSON.read_text())["paintings"]))
+    assert (keys[pcr] == ctx.painting_ids).all()                              # through painting ids
+    assert np.array_equal(pcr, R.cache224_index()[R.painting_pos()])          # and through images
+    assert not np.array_equal(pcr, np.arange(36_518))
+    assert R.painting_cache_row() is pcr
+
+
+def test_cache224_join_asserts_the_cache_file_sha(monkeypatch):
+    assert str(CACHE_JSON) in R.INPUTS
+    monkeypatch.setattr(R, "_CHECKED", {})
+    monkeypatch.setitem(R.INPUTS, str(CACHE_JSON), "0" * 64)
+    monkeypatch.setattr(R, "_CACHE", {k: v for k, v in R._CACHE.items() if k != "cache224_index"})
+    with pytest.raises(SystemExit):
+        R.cache224_index()
+
+
+def test_ctx_asserts_the_clip_feature_row_and_the_default_feature_dir(monkeypatch):
+    key = "/data/SSD2/pre_extract/artelingo/features/metadata.json"
+    assert key in R.INPUTS and key in R.assert_inputs(keys=(key,), r7=False)
+    R.load_prior("run_step1")
+    import importlib
+    art = importlib.import_module("src.data.artelingo")
+    assert Path(art.FEATURE_DIR) == Path("/data/SSD2/pre_extract/artelingo/features")
+    # the build stops, before reading any feature, when the feature dir is redirected
+    monkeypatch.setattr(art, "FEATURE_DIR", "/tmp/elsewhere")
+    with pytest.raises(AssertionError):
+        R._build_ctx()
+    monkeypatch.undo()
+    monkeypatch.setattr(R, "_CHECKED", {})
+    monkeypatch.setitem(R.INPUTS, key, "0" * 64)                               # and when its SHA differs
+    with pytest.raises(SystemExit):
+        R._build_ctx()
