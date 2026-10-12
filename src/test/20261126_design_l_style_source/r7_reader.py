@@ -9,6 +9,7 @@ probabilities in round 1's layout. R0 is A1, with csd renamed R0 in feature meta
 --smoke uses 256 episodes per block; real banks use 16,384. --jobs permits at most
 three parallel reader processes, each with OMP_NUM_THREADS=8 and MKL_NUM_THREADS=8.
 The controller must budget 24 threads for --jobs 3. No evaluation seed is scored.
+Preserved reader/bank files are checked before completing missing outputs.
 """
 import r7_common as C
 
@@ -16,6 +17,7 @@ import argparse
 from concurrent.futures import ProcessPoolExecutor
 import json
 import multiprocessing
+import pickle
 from pathlib import Path
 
 import numpy as np
@@ -96,11 +98,12 @@ def build_banks(name, labels, halves, bank_n=BANK_N):
 
 def validate_bank(ep, half, halves, bank_n):
     n = 6 * bank_n
+    arrays = ep if isinstance(ep, dict) else {f: getattr(ep, f) for f in EPISODE_FIELDS}
     for f in EPISODE_FIELDS:
-        a = getattr(ep, f)
+        a = arrays[f]
         shape = (n,) if f == "anchor" else (n, 13 if f == "candidates" else 4)
         assert a.dtype == np.int64 and a.shape == shape, f"bank half {half}: {f} shape/dtype"
-    rows = ep.rows()
+    rows = np.concatenate([arrays[f].ravel() for f in EPISODE_FIELDS])
     assert rows.min() >= 0 and rows.max() < len(halves["scorer_train"]), "bank: row out of bounds"
     assert (halves["half_of_local_row"][rows] == half).all(), "bank: row outside half"
 
@@ -124,8 +127,54 @@ def bank_features(name, post, banks, blocks, bank_n):
     return out
 
 
+def validate_reader(name, labels, halves, root, smoke):
+    """Validate preserved stage-0 reader files before prep skips them."""
+    root = Path(root)
+    path = root / "readers" / f"reader_{name}.json"
+    rec = _record(path, smoke)
+    assert rec["grouping"] == name, f"{path}: grouping differs"
+    if rec["dropped"]:
+        return rec
+    bank_n = SMOKE_BANK_N if smoke else BANK_N
+    assert rec["bank_n"] == bank_n, f"{path}: bank size differs"
+    with path.with_suffix(".pkl").open("rb") as f:
+        pk = pickle.load(f)
+    import sklearn
+    assert pk["sklearn_version"] == sklearn.__version__, f"{path}: sklearn differs"
+    assert pk["rule_sha256"] == C.rule_sha() and pk["smoke"] == smoke, f"{path}: pickle role/rule differs"
+    assert tuple(pk["groupings"]) == BASE + (name,), f"{path}: grouping order differs"
+    assert pk["feature_names"] == C.load("rb_features").feature_names(BASE + (name,)), f"{path}: feature order differs"
+    assert len(pk["halves"]) == 2, f"{path}: half count differs"
+    for h in (0, 1):
+        half = pk["halves"][h]
+        assert half["C"] == rec["halves"][str(h)]["chosen_C"], f"{path}: chosen C differs"
+        assert np.array_equal(half["model"].classes_, np.arange(4)), f"{path}: classes differ"
+        bank = root / "readers" / f"bank_{name}_half{h}.npz"
+        with np.load(bank, allow_pickle=False) as z:
+            assert set(EPISODE_FIELDS) <= set(z.files), f"{bank}: episode keys differ"
+            validate_bank({k: z[k] for k in EPISODE_FIELDS}, h, halves, bank_n)
+        if "banks_sha256" in rec:
+            assert C.sha_file(bank) == rec["banks_sha256"][str(h)], f"{bank}: SHA differs"
+    for key, target in (("reader_sha256", path.with_suffix(".pkl")), ("arrays_sha256", path.with_suffix(".npz"))):
+        if key in rec:
+            assert C.sha_file(target) == rec[key], f"{target}: SHA differs"
+    if "label_sha256" in rec:
+        for h in BASE + (name,):
+            assert rec["label_sha256"][h] == C.load("rb_build").sha_array(labels[h]), f"{path}: {h} labels differ"
+    return rec
+
+
+def _save_arrays(path, arrays):
+    if path.exists():
+        with np.load(path, allow_pickle=False) as z:
+            assert set(arrays) <= set(z.files), f"{path}: missing keys"
+            assert all(z[k].dtype == a.dtype and np.array_equal(z[k], a) for k, a in arrays.items()), f"{path}: existing arrays differ"
+    else:
+        C.write_npz_once(path, **arrays)
+
+
 def build_reader(name, labels, halves, root=None, smoke=False, bank_n=None, post=None):
-    """Build one reader; return its JSON record. post permits synthetic chain-smoke inputs."""
+    """Build one reader; return its JSON record. post accepts preloaded cross-fitted posteriors."""
     import sklearn
     C.assert_rule()
     C.assert_threads()
@@ -135,8 +184,7 @@ def build_reader(name, labels, halves, root=None, smoke=False, bank_n=None, post
     assert bank_n > 0 and (smoke or bank_n == BANK_N), "real bank size is fixed"
     paths = [root / "readers" / f"reader_{name}.{ext}" for ext in ("pkl", "json", "npz")]
     bank_paths = [root / "readers" / f"bank_{name}_half{j}.npz" for j in (0, 1)]
-    for p in paths + bank_paths:
-        assert not p.exists() or C.in_smoke(p), f"{p}: refusing to overwrite"
+
     rec = {"grouping": name, "config": "A1" if name == "R0" else f"A0+{name}",
            "groupings": list(BASE + (name,)), "smoke": bool(smoke), "bank_n": bank_n, "dropped": False}
     if post is None:
@@ -164,20 +212,39 @@ def build_reader(name, labels, halves, root=None, smoke=False, bank_n=None, post
         records[str(j)] = record
         arrays.update({f"half{j}__{k}": d[k] for k in ("X", "y", "episode")})
         arrays.update({f"half{j}__oof_proba": oof, f"half{j}__fold": rf.episode_folds(d["n_episodes"])})
-        C.write_npz_once(bank_paths[j], **{f: getattr(banks[j], f) for f in EPISODE_FIELDS},
-                         block_pairs=np.array([f"{a}__{b}" for a, b in blocks]),
-                         block_size=np.array(bank_n), seed=np.array(BANK_SEEDS[j]), half=np.array(j))
+        _save_arrays(bank_paths[j], {**{f: getattr(banks[j], f) for f in EPISODE_FIELDS},
+                         "block_pairs": np.array([f"{a}__{b}" for a, b in blocks]),
+                         "block_size": np.array(bank_n), "seed": np.array(BANK_SEEDS[j]), "half": np.array(j)})
     names = rf.feature_names(BASE + (name,))
     pk = {"config": rec["config"], "groupings": rec["groupings"], "feature_names": names,
           "halves": readers, "sklearn_version": sklearn.__version__, "rule_sha256": C.RULE_SHA256, "smoke": bool(smoke)}
-    C.write_pickle_once(paths[0], pk)
-    C.write_npz_once(paths[2], **arrays)
+    if paths[0].exists():
+        with paths[0].open("rb") as f:
+            old = pickle.load(f)
+        for key in ("groupings", "feature_names", "sklearn_version", "rule_sha256", "smoke"):
+            assert old[key] == pk[key], f"{paths[0]}: {key} differs"
+        assert len(old["halves"]) == 2, "stored reader: half count differs"
+        for j in (0, 1):
+            saved, fitted = old["halves"][j], pk["halves"][j]
+            assert saved["C"] == fitted["C"], "stored reader: chosen C differs"
+            X = feats[j]["X"]
+            assert np.allclose(saved["model"].predict_proba(saved["scaler"].transform(X)),
+                               fitted["model"].predict_proba(fitted["scaler"].transform(X)),
+                               rtol=0, atol=1e-12), "stored reader: probabilities differ"
+    else:
+        C.write_pickle_once(paths[0], pk)
+    _save_arrays(paths[2], arrays)
     rec.update(feature_names=names, halves=records, sklearn_version=sklearn.__version__, numpy_version=np.__version__,
                scorer_train_sha256=rb.sha_array(halves["scorer_train"]),
                paintings_sha256=rb.sha_array(halves["painting_of_local_row"]),
                label_sha256={h: rb.sha_array(labels[h]) for h in BASE + (name,)},
                banks_sha256={str(j): C.sha_file(p) for j, p in enumerate(bank_paths)},
                reader_sha256=C.sha_file(paths[0]), arrays_sha256=C.sha_file(paths[2]))
+    if paths[1].exists():
+        old = _record(paths[1], smoke)
+        for key in ("grouping", "bank_n", "reader_sha256", "arrays_sha256", "banks_sha256", "label_sha256"):
+            assert old[key] == rec[key], f"{paths[1]}: {key} differs"
+        return old
     return C.write_json_once(paths[1], rec)
 
 
