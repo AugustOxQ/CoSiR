@@ -132,42 +132,68 @@ def test_reader_uses_checked_stored_probabilities_and_rejects_mutation(legacy, t
 
 @pytest.fixture
 def synthetic_frozen(tmp_path):
-    """Small selection-masked heads and frozen sklearn readers; smoke only."""
+    """Known rankings: R0 reinforces a negative; X can steer to either target.
+
+    Reader examples pick all four positions, so closing image/caption gates
+    changes hits. The fitted margins exceed AFF's taus and define L12's taus.
+    """
     import json
     import pickle
     from types import SimpleNamespace
     from sklearn.linear_model import LogisticRegression
     from sklearn.preprocessing import StandardScaler
-    rng = np.random.default_rng(9001)
-    n, rows = 12, np.arange(2, 38, 2)
-    ep = SimpleNamespace(anchor=rng.choice(rows, n), candidates=rng.choice(rows, (n, 13)),
-                         pairs_a_img=rng.choice(rows, (n, 4)), pairs_a_txt=rng.choice(rows, (n, 4)),
-                         pairs_b_img=rng.choice(rows, (n, 4)), pairs_b_txt=rng.choice(rows, (n, 4)))
-    inside = np.zeros(40, bool)
+    n = 12
+    # Distinct, sparse global row IDs for queries, candidates and both banks.
+    rows = np.arange(2, 2 + 30 * n * 2, 2, dtype=np.int64)
+    blocks = rows.reshape(n, 30)
+    ep = SimpleNamespace(anchor=blocks[:, 0], candidates=blocks[:, 1:14],
+                         pairs_a_img=blocks[:, 14:18], pairs_a_txt=blocks[:, 18:22],
+                         pairs_b_img=blocks[:, 22:26], pairs_b_txt=blocks[:, 26:30])
+    inside = np.zeros(rows[-1] + 2, bool)
     inside[rows] = True
-    def condition_free_scores():
-        values = {d: rng.normal(size=(n, 13)).astype(np.float32) for d in K.DIRS}
+    def condition_free_scores(negative=False):
+        values = {d: np.zeros((n, 13), np.float32) for d in K.DIRS}
+        if negative:
+            for v in values.values():
+                v[:, 2] = 1
         return {c: values for c in K.COND}
-    ctx = SimpleNamespace(n=n, seed=9001, selection=rows, groups=np.zeros(40, np.int64),
-                          in_sel=inside, pooled=ep, cos=condition_free_scores())
-    b = SimpleNamespace(ctx=ctx, B=condition_free_scores(), t_n1u=condition_free_scores(),
+    ctx = SimpleNamespace(n=n, seed=9001, selection=rows, groups=np.zeros(len(inside), np.int64),
+                          in_sel=inside, pooled=ep, cos=condition_free_scores(True))
+    b = SimpleNamespace(ctx=ctx, B=condition_free_scores(True), t_n1u=condition_free_scores(),
                         parity=np.arange(n) % 2, cl=np.arange(n) // 2,
                         pair_index=np.repeat(np.arange(3), 4), post={})
     (tmp_path / "heads").mkdir()
     (tmp_path / "readers").mkdir()
     seed_dir = tmp_path / "seed9001"
     seed_dir.mkdir()
+    dev_dir = tmp_path / "seed42"
+    dev_dir.mkdir()
+    ha, hb = np.arange(n) % 4, (np.arange(n) + 1) % 4
     for name in (*K.A0, "R0", "T", *(f"V{k}" for k in range(1, 7))):
+        position = K.A0.index(name) if name in K.A0 else 3
         post = {}
         for m in ("img", "txt"):
-            full = np.full((40, 3), np.nan, np.float32)
-            full[rows] = rng.dirichlet(np.ones(3), len(rows)).astype(np.float32)
+            full = np.full((len(inside), 3), np.nan, np.float32)
+            full[rows] = [0, 1, 0]
+            full[ep.anchor] = [1, 0, 0]
+            for i in range(n):
+                for col, h, strength in ((0, ha[i], .9), (1, hb[i], .7)):
+                    if position == h and name != "R0":
+                        full[ep.candidates[i, col]] = [strength, 1 - strength, 0]
+                if name == "R0":
+                    full[ep.candidates[i, 2]] = [.95, .05, 0]
+                for bank, h in (("a", ha[i]), ("b", hb[i])):
+                    full[getattr(ep, f"pairs_{bank}_img")[i]] = [1, 0, 0]
+                    strength = .55 + .15 * (i // 4)
+                    full[getattr(ep, f"pairs_{bank}_txt")[i]] = [strength, 1 - strength, 0] if position == h else [0, 1, 0]
             post[m] = full
         b.post[name] = post
         np.savez(tmp_path / f"heads/post_{name}.npz", rows=rows, **post)
-    train = rng.normal(size=(64, 24))
+    feats = K.features_both(b.post, (*K.A0, "V1"), ep)
+    train = np.concatenate([feats[c] for c in K.COND])
     scaler = StandardScaler().fit(train)
-    model = LogisticRegression(C=1, max_iter=300).fit(scaler.transform(train), np.tile(np.arange(4), 16))
+    model = LogisticRegression(C=100, max_iter=300).fit(scaler.transform(train), np.concatenate([ha, hb]))
+    taus = {}
     for name in ("A0", *(f"V{k}" for k in range(1, 7))):
         parts = K.A0 if name == "A0" else (*K.A0, name)
         pk = BU.legacy_reader("A0") if name == "A0" else {
@@ -177,9 +203,13 @@ def synthetic_frozen(tmp_path):
             with (tmp_path / f"readers/reader_{name}.pkl").open("wb") as f:
                 pickle.dump(pk, f)
         reader = BU.read(b, parts, pk)
-        np.savez(seed_dir / f"reader_{name}.npz", **{
-            f"{field}__{c}": reader[field][c] for field in ("P", "m", "pick") for c in K.COND})
-    (tmp_path / "taus.json").write_text(json.dumps({f"V{k}": [0., .25, .5, .75] for k in range(1, 7)}))
+        arrays = {f"{field}__{c}": reader[field][c] for field in ("P", "m", "pick") for c in K.COND}
+        np.savez(seed_dir / f"reader_{name}.npz", **arrays)
+        if name != "A0":
+            # A synthetic stored development snapshot; no seed-42 scoring.
+            np.savez(dev_dir / f"reader_{name}.npz", **arrays)
+            taus[name] = K.thresholds(reader["m"]["a"], reader["m"]["b"])
+    (tmp_path / "taus.json").write_text(json.dumps(taus))
     return b, tmp_path
 
 
@@ -212,8 +242,12 @@ def test_three_phases_cover_candidates_and_picks_on_smoke(synthetic_frozen):
     assert set(saved) == set(test)
     for key in test:
         np.testing.assert_array_equal(saved[key], test[key])
-    with pytest.raises(FileExistsError):
-        A.write_once(path, test)
+    original = path.read_bytes()
+    fixed = A.write_once(path, test)
+    assert fixed.name == "phaseB_seed9002_fix1.npz"
+    assert path.read_bytes() == original
+    for key, value in BU.checked_npz(fixed).items():
+        np.testing.assert_array_equal(value, test[key])
     # Deliberate wiring mutation must fail the named posterior-row assertion.
     z = BU.checked_npz(root / "heads/post_T.npz")
     z["rows"] = z["rows"][::-1]
@@ -226,9 +260,144 @@ def test_threshold_table_accepts_write_once_metadata_and_checks_rule(tmp_path):
     import json
     from rederive import rd7_arrays as A
     path = tmp_path / "taus.json"
+    dev = tmp_path / "seed42"
+    dev.mkdir()
+    margins = np.array([0., 1 / 3, 2 / 3, 1.])
+    np.savez(dev / "reader_V1.npz", m__a=margins, m__b=margins)
     path.write_text(json.dumps({"V1": [0., .25, .5, .75], "rule_sha256": R.RULE_SHA256, "written": "2026-10-12 03:00"}))
     got = A.thresholds(tmp_path)
     assert set(got) == {"V1"} and got["V1"].tolist() == [0., .25, .5, .75]
     path.write_text(json.dumps({"V1": [0., .25, .5, .75], "rule_sha256": "wrong"}))
     with pytest.raises(AssertionError, match="threshold rule SHA"):
         A.thresholds(tmp_path)
+
+
+def test_real_build_keeps_r3_a0_posteriors_and_arrays(legacy, tmp_path):
+    # No RESULTS A0 heads exist here: the real path must use R3 D2's recipe.
+    actual = BU.build(42, tmp_path)
+    for name in K.A0:
+        for modality in ("img", "txt"):
+            got, want = actual.post[name][modality], legacy.post[name][modality]
+            assert got.shape == want.shape and got.dtype == want.dtype
+            assert np.array_equal(got[actual.ctx.selection], want[legacy.ctx.selection])
+            assert np.isnan(got[~actual.ctx.in_sel]).all()
+    for name, got, want in (
+        ("B", K.metrics(actual.B), K.metrics(legacy.B)),
+        ("B0", BU.condition_free(actual, K.A0), BU.condition_free(legacy, K.A0)),
+    ):
+        for metric in K.METRICS:
+            np.testing.assert_array_equal(got[metric], want[metric], err_msg=f"{name}/{metric}")
+    pk = BU.legacy_reader("A0")
+    got = BU.score(actual, BU.read(actual, K.A0, pk), K.RULE_TAUS, "AFF")
+    want = BU.score(legacy, BU.read(legacy, K.A0, pk), K.RULE_TAUS, "AFF")
+    for who in ("fused", "cf"):
+        for metric in K.METRICS:
+            np.testing.assert_array_equal(got[who][metric], want[who][metric])
+    assert got["record"] == want["record"]
+
+
+def test_phase_a_b1_uses_r0_values(synthetic_frozen):
+    from rederive import rd7_arrays as A
+    b, root = synthetic_frozen
+    actual = A.derive("A", b, root)
+    correct = BU.condition_free(b, (*K.A0, "R0"))
+    wrong = BU.condition_free(b, (*K.A0, "V1"))
+    assert not correct["r1"].any()
+    assert np.all(wrong["r1"] == .5)
+    for metric in K.METRICS:
+        np.testing.assert_array_equal(actual[f"B1__{metric}"], correct[metric])
+
+
+def test_phase_a_xaff_uses_only_affect_and_x_values(synthetic_frozen):
+    import json
+    from rederive import rd7_arrays as A
+    b, root = synthetic_frozen
+    actual = A.derive("A", b, root)
+    tau = json.loads((root / "taus.json").read_text())["V1"]
+    reader = BU.read(b, (*K.A0, "V1"), BU.fitted_reader(root, "V1"), root / "seed9001/reader_V1.npz")
+    gates = F.gates_x_aff(reader["m"], reader["pick"], tau, (0, 3))
+    rec, fused, cf, _ = F.run_family(b.B, reader["T"], gates, tau, b.parity)
+    for c in K.COND:
+        np.testing.assert_array_equal(actual[f"XAFF_V1__gate_{c}"], np.stack([g[c] for g in gates]))
+        excluded = np.isin(reader["pick"][c], (1, 2)) & (reader["m"][c] >= tau[0])
+        assert excluded.any()
+        assert actual[f"R1_V1__gate_{c}"][0, excluded].all()
+        assert not actual[f"XAFF_V1__gate_{c}"][0, excluded].any()
+    for name, expected in (("XAFF_V1", fused), ("XAFF_V1_cf", cf)):
+        for metric in K.METRICS:
+            np.testing.assert_array_equal(actual[f"{name}__{metric}"], expected[metric])
+    np.testing.assert_array_equal(actual["XAFF_V1__fused_cells"], [rec["fused_cells"][h]["cell"] for h in "01"])
+    assert not np.array_equal(actual["R1_V1__r1"], actual["XAFF_V1__r1"])
+
+
+def test_phase_a_each_candidate_uses_its_frozen_taus(synthetic_frozen):
+    import json
+    from rederive import rd7_arrays as A
+    b, root = synthetic_frozen
+    actual = A.derive("A", b, root)
+    table = json.loads((root / "taus.json").read_text())
+    for x, tau in table.items():
+        reader = BU.read(b, (*K.A0, x), BU.fitted_reader(root, x), root / f"seed9001/reader_{x}.npz")
+        gates = F.gates_r1(reader["m"], tau)
+        aff_gates = F.gates_r1(reader["m"], BU.aff_taus())
+        assert any(not np.array_equal(g["a"], wrong["a"]) for g, wrong in zip(gates, aff_gates))
+        for kind, selected in (("R1", gates), ("XAFF", F.gates_x_aff(reader["m"], reader["pick"], tau, (0, 3)))):
+            for c in K.COND:
+                np.testing.assert_array_equal(actual[f"{kind}_{x}__gate_{c}"], np.stack([g[c] for g in selected]))
+
+
+def test_thresholds_rederived_from_frozen_development_margins(tmp_path):
+    import json
+    from rederive import rd7_arrays as A
+    dev = tmp_path / "seed42"
+    dev.mkdir()
+    margins = np.array([0., 1 / 3, 2 / 3, 1.])
+    table = {x: [0., .25, .5, .75] for x in ("V1", "Z6", "R0", "N")}
+    for x in table:
+        np.savez(dev / f"reader_{x}.npz", m__a=margins, m__b=margins)
+    path = tmp_path / "taus.json"
+    path.write_text(json.dumps(table))
+    assert set(A.thresholds(tmp_path)) == set(table)
+    # A different, still sorted threshold cannot pass merely a range check.
+    table["V1"][1] = .2
+    path.write_text(json.dumps(table))
+    with pytest.raises(AssertionError, match="frozen development thresholds: V1"):
+        A.thresholds(tmp_path)
+
+
+@pytest.mark.parametrize("chain,seed", [(False, 9001), (False, 9002), (False, 9003), (True, 9002)])
+def test_smoke_reads_frozen_objects_and_writes_its_own_outputs(synthetic_frozen, monkeypatch, chain, seed):
+    import json
+    import shutil
+    from rederive import rd7_arrays as A
+    b, results = synthetic_frozen
+    rule_root, chain_root = results / "smoke/rule", results / "smoke/chain"
+    monkeypatch.setattr(R, "RESULTS", results)
+    monkeypatch.setattr(R, "SMOKE_RULE", rule_root)
+    monkeypatch.setattr(R, "SMOKE_CHAIN", chain_root)
+    objects, output = (chain_root, chain_root) if chain else (results, rule_root)
+    output.mkdir(parents=True)
+    if chain:
+        for folder in ("heads", "readers"):
+            shutil.copytree(results / folder, objects / folder)
+        shutil.copyfile(results / "taus.json", objects / "taus.json")
+        shutil.copytree(results / "seed9001", objects / "seed9001")
+    runtime = output / f"seed{seed}"
+    if not runtime.exists():
+        shutil.copytree(results / "seed9001", runtime)
+    (objects / "gate_verdict.json").write_text(json.dumps({
+        "picks": {"csd": "XAFF_V1", "generic": None}, "n": 1}))
+    b.ctx.seed = seed
+    # Replace only the expensive input boundary; run the real derivation.
+    def built(got_seed, root, smoke):
+        assert got_seed == seed and root == objects and smoke
+        return b
+    monkeypatch.setattr(BU, "build", built)
+    path = A.run("B", seed, chain)
+    assert path == output / "rederive" / f"phaseB_seed{seed}.npz"
+    actual = BU.checked_npz(path)
+    assert "XAFF_V1__r1" in actual and "R1_V1__r1" not in actual
+    fixed = A.run("B", seed, chain)
+    assert fixed == output / "rederive" / f"phaseB_seed{seed}_fix1.npz"
+    for key, value in BU.checked_npz(fixed).items():
+        np.testing.assert_array_equal(value, actual[key])

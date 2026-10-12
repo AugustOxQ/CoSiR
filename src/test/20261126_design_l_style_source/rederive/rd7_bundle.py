@@ -15,6 +15,10 @@ from rederive import rd7_core as K
 
 # R3 D15, retained when copying its independent re-derivation.
 LEGACY_SHA = {
+    "20261111_community_told_oracle/results/per_anchor_told_oracle.npz":
+        "27e8101161607da2d6936aa5a8c84f8c296629fe08e37a68c8418c9356af1366",
+    "20261111_community_told_oracle/results/told_oracle.json":
+        "76d9ec896b941a518e7db6684805fe0bc329f6afe4a48e1993992fbb221d70d2",
     "20261116_grouping_step1_style/results/step1_heads_style.npz":
         "898a37017d82d3e130b20155e90f69e51f82f30892e04316dcb56d7aaaf8df8b",
     "20261108_new_method_quick_checks/results/n6_posteriors.npz":
@@ -183,10 +187,22 @@ def load_post(b, root, name):
 
 
 def build(seed, root, smoke=False):
-    """R7 fitted objects; no import, cache or array from the R7 scorer pipeline."""
+    """L10: A0 keeps R3 D2's heads; RESULTS heads serve only R0/X (in derive).
+
+    Recipe copied from rd3_bundle.build, using only R3 §8's permitted pieces.
+    """
     b = context(seed, smoke)
-    for h in K.A0:
-        load_post(b, root, h)
+    from src.data.artelingo_splits import artelingo_splits
+    st = np.asarray(artelingo_splits(b.ctx.data).scorer_train)
+    rto = R.load("run_told_oracle")
+    z = checked_npz(R.TEST / "20261111_community_told_oracle/results/per_anchor_told_oracle.npz")
+    assert z["partition_L"].shape == st.shape, "affect partition scorer-train rows"
+    lab = rto.global_labels(z["partition_L"], st, len(b.ctx.groups))
+    affect, provenance = rto.fit_one_head(b.ctx, lab, st, R.load("run_n6").HEAD_ROWS)
+    record = json.loads(checked_path(R.TEST / "20261111_community_told_oracle/results/told_oracle.json").read_text())
+    assert json.loads(json.dumps(provenance)) == record["arms"]["L"]["head"], "affect head equals R3 D2"
+    b.post = {"affect": affect, "image": b.e2["image"], "caption": b.e2["caption"]}
+    validate_post(b.post, b.ctx)
     return b
 
 
