@@ -111,6 +111,11 @@ def read_groupings(root, frame):
                 labels[x] = lab
         records.update(rec["groupings"])
         dropped.update({k: str(v) for k, v in rec["dropped"].items()})
+    # Late drops (index "Late drops": 08's M12/M16 and 09's reader drops), one drops-only file per batch.
+    for js in sorted((root / "groupings").glob("r8_drops_*.json")):
+        rec = read_json(js)
+        assert rec.get("groupings") == {} and isinstance(rec.get("dropped"), dict), f"{js}: shape"
+        dropped.update({k: str(v) for k, v in rec["dropped"].items()})
     return labels, records, dropped
 
 
@@ -229,6 +234,10 @@ def label_diagnostics(root, frame, smoke):
             assert m.any(), f"{k}: no labelled scorer-train rows"
             info["ami"][k] = {"n_rows": int(m.sum()), "value": ami(v[m], y[m])}
         hp = root / "heads" / f"head_{x}.json"
+        if x in dropped:    # dropped after its grouping was built: labels exist, heads may not
+            info["dropped"] = dropped[x]
+            out[x] = info
+            continue
         head = read_json(hp)
         assert head.get("grouping") == x and head.get("dropped") is False, f"{hp}: grouping/drop status"
         text = head["text"]
@@ -436,6 +445,8 @@ def harm(root, smoke):
     py = sys.executable
     flag = ["--smoke"] if smoke else []
     log = []
+    # interface: in smoke, r8_place.py writes under results/smoke/ (R.SMOKE), so the H<X> arm needs that root too.
+    assert not smoke or root == R.SMOKE.resolve(), f"smoke harm needs --root {R.SMOKE} (where r8_place.py writes)"
     if not (root / "heads" / f"post_{hx}.npz").is_file():
         # interface: ticket 08 `r8_place.py --grouping X --h-arm [--smoke [N]]` writes heads/post_H<X>, xheads_H<X>, head_H<X>.
         run([py, "r8_place.py", "--grouping", x, "--h-arm", *flag], log)
