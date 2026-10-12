@@ -9,25 +9,24 @@ and who made each decision. Entries before 2026-10-08 were moved from project me
 fields; their verbatim notes are in `direction_log_raw_2026-10.md`. Older history (before the CVPR plan) is in the
 weekly and stage reports.
 
-## Now (2026-10-11)
+## Now (2026-10-12)
 
-AFF (round 1's learned reader, with its gate open only when it picks the affect grouping) is the current best: GO on
-fresh seeds 49 to 51 (round 3) and on ArtELingo's held paintings (round 6: +0.60 R@1 over B′(A0), condition gain
-+3.06; no margin shown over B′(A1) or over R1; style × genre loses). The user aims beyond the ArtELingo paper, at a
-bigger method paper, with the ArtELingo paper as the fallback. Next: design L, starting from the style source (a told
-ceiling from the style labels, a screen of style sources, then the grouping redesign), in the `r7 decide` chat.
-Go/no-go on Fri 2026-10-16; CVPR abstract 2026-11-10.
+AFF stays the current best (round 6 held GO: +0.60 R@1 over B′(A0); style × genre loses). Round 7 (design L) ended
+at the seed-42 gate (n = 0; told true styles gain +3.92 on style × genre, the label-free groupings at most +0.38), so
+Friday 2026-10-16 is NO-GO under its rule. Next, in `r8 decide 2`: grouping work, with a learned grouping on frozen
+CLIP that cuts across content as the main line and an encoder screen in parallel; step 3's literature check comes
+first, and the paper plan is still open. CVPR abstract 2026-11-10.
 
 ## Parked ideas
 
 Candidates proposed since 2026-10-02 but neither chosen nor tried; step 3 reads this list first. Tried-and-killed ideas
 stay in the entries below.
 
-- A wider screen of new style encoders (ALADIN, DINOv2, SigLIP 2) for design L (not chosen at round 7's idea choice, 2026-10-11, for the user's generality principle; [proposed in](../../src/test/20261126_design_l_style_source/step3_candidates.md), idea 3)
+- A wider screen of new style encoders (ALADIN, DINOv2, SigLIP 2) for design L (not chosen at round 7's idea choice, 2026-10-11, for the user's generality principle; taken up as r8's parallel engineering screen, decision A, 2026-10-12; [proposed in](../../src/test/20261126_design_l_style_source/step3_candidates.md), idea 3)
 - X-Cluster criteria (a multimodal LLM proposes criteria such as "style") placed under our reader, the comparator reviewers will ask for (paper stage; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §1)
 - COCO-4c (5,000 COCO images labelled for activity, location, mood and time of day, with COCO captions) as the second dataset for a generality test (never tried; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §6)
-- A learned source that cuts across content: a contrastive head on frozen CLIP whose negatives come from the query's own content group (never tried; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §1)
-- Fair clustering (FCMI) with the content grouping as the protected attribute, as a grouping builder (never tried; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §1)
+- A learned source that cuts across content: a contrastive head on frozen CLIP whose negatives come from the query's own content group (never tried; taken up as r8's main line, decision A, 2026-10-12; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §1)
+- Fair clustering (FCMI) with the content grouping as the protected attribute, as a grouping builder (never tried; its role is open in r8, explainer `docs/user_read/2026-10-12_fcmi_intro.html`; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §1)
 - Dropping the CLIP caption grouping, keeping the affect, image and CSD groupings (deferred by the user after a spike, 2026-10-06; [proposed in](handoffs/2026-10-06-round3-affect-gate-handoff.md))
 - Caption-to-caption agreement to detect the emotion side, with retrained readers for idea 3 (never tried; option (c) in [whats-next](handoffs/2026-10-08-whats-next-handoff.md))
 - Separate gate weights for image and caption queries (never tried, ranked low; [proposed in](../reports/auto/v2/2026-11-20_r1_levers_brainstorm.md), §4 idea 5)
@@ -35,7 +34,7 @@ stay in the entries below.
 - A grouped concept basis (N3) and "infer the aspect name, then embed" (N5) (never tried; their privileged references were never run; [proposed in](../../src/test/20261107_new_method_candidates/synthesis.md), §4.2)
 - Other datasets and paper framings, CUB and SemArt (deferred by the user, 2026-10-07; [proposed in](../reports/stage/2026-10-07_cvpr_readiness.md), §3)
 
-## 2026-10-12 · Round 7 design L: ceiling CLEAR, gate n = 0, Friday NO-GO; next step open
+## 2026-10-12 · Round 7 design L: ceiling CLEAR, gate n = 0, Friday NO-GO; next, a learned grouping across content
 
 - **Read:** K1 CLEAR: told true styles gain +3.92 [+3.35, +4.49] R@1 on style × genre over the matched counterpart
   (Σ(4d) 643, bar 164; prior +0.9). Seed-42 gate n = 0 of 12 candidate scorers: S1 fails 12 of 12 (best +0.25 against
@@ -54,12 +53,21 @@ stay in the entries below.
   work now where we recommended the paper first.
 - **Also decided (user, own pick, before seeing ours):** the L3 departure: keep the fallback, "this evidence stays in
   the record without the rank-63 re-run". Ours agreed. Any later reuse of L3 names the rank (groups − 1).
-- **Decided (A):** open, step 2 in this chat. Raised: which grouping idea (parked: style encoders, a learned source
-  across content, fair clustering, X-Cluster criteria), and what happens to the ArtELingo paper (CVPR abstract
-  2026-11-10).
+- **Decided (A), in part; step 2 continues in `r8 decide 2`:** grouping work, "which every other part of this
+  project is based on" (user). Main line: a learned grouping head on frozen CLIP whose negatives come from the query's
+  own content group, as the reader's fourth grouping in CSD's place (user: "I think this is a good one", before any
+  recommendation of ours). In parallel: a screen of fixed encoders (ALADIN, DINOv2, SigLIP 2) on the round 7
+  pipeline, run on the cluster, read as an engineering finding, not a method claim (user). X-Cluster criteria and
+  told prompts are comparators (user). Still open: FCMI's role (builder, comparator or drop), the paper plan (beside,
+  instead of, or after the ArtELingo paper), placement in scope, and the type and loop size (agent default: new
+  idea, full loop).
+- **Why:** told true styles gain +3.92 while the label-free groupings reach +0.38; CSD agrees with style and genre
+  about equally; a removal approach fights the true styles' own link to content (AMI 0.32), so the user wants a
+  better grouping source rather than another cut of CSD.
 - **Links:** report `docs/reports/auto/v2/2026-11-26_design_l_style_source.md`; user-read
   `docs/user_read/2026-10-12_design_l_style_source.md`; spec `docs/superpowers/specs/2026-10-12-r7-design-l-design.md`;
-  handoff `docs/superpowers/handoffs/2026-10-12-r8-decide-handoff.md`.
+  handoffs `docs/superpowers/handoffs/2026-10-12-r8-decide-handoff.md` and
+  `docs/superpowers/handoffs/2026-10-12-r8-decide-2-handoff.md`; FCMI explainer `docs/user_read/2026-10-12_fcmi_intro.html`.
 
 ## 2026-10-11 · Round 6 held test GO; design L next, from the style source
 
