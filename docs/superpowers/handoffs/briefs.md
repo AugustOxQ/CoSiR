@@ -72,3 +72,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-r7-build-4-handoff.md
 - New chat: tab 'r7 build 4', session c88455ef-b05b-4974-8b16-228a8302ef55
 
+[brief] CoSiR: r7 build 4 -> r7 run (2026-10-12 05:49 Amsterdam)
+- Done: the r7 build is merged into main (ddbb600). The final review found no critical defect; one fix wave, re-review PASS.
+- State: no stage 1, 2 or 3 number computed. Stage 0 passed (G1 to G4).
+- Next: `run_r7.py prep` on real data (about 4 CPU hours with the 14 readers), then ceiling, gate, test.
+- Blocked: nothing. Night mode.
+- Handoff: docs/superpowers/handoffs/2026-10-12-r7-run-handoff.md
+- New chat: tab 'r7 run', session 420f613a-9620-4785-b996-bc04bd3b6a53
+
