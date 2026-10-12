@@ -6,10 +6,13 @@ Full standard fits reuse r6_heads; cross-fits reuse rb_build.fit_head_pair (neve
 build_heads writes heads/{post,head,xheads}_X and JSON records through r7_common. A missing
 draw class writes only head_X.json with dropped=True, before fitting anything. T has no cross-fit
 or reader. Smoke uses 5,000 draw / 1,000 check rows and never asserts stored full-head equality.
+Existing stage-0 files are validated and preserved; only missing files are built.
 """
 import r7_common as C
 
 import argparse
+import json
+import pickle
 from pathlib import Path
 
 import numpy as np
@@ -219,8 +222,21 @@ def build_heads(name, data, sp, local, halves=None, root=None, smoke=False,
     paths = {k: root / "heads" / f"{k}_{name}.{ext}" for k, ext in
              (("head", "pkl"), ("post", "npz"), ("xheads", "npz"))}
     records = {k: p.with_suffix(".json") for k, p in paths.items()}
-    for p in (*paths.values(), *records.values()):
-        assert not p.exists() or C.in_smoke(p), f"{p}: refusing to overwrite"
+    existing = {}
+    for kind, path in records.items():
+        if path.exists():
+            record = json.loads(path.read_text())
+            assert record.get("rule_sha256") == C.rule_sha(), f"{path}: rule differs"
+            assert record.get("grouping") == name and record.get("smoke") == bool(smoke), f"{path}: role/grouping differs"
+            for key, expected in (("n_groups", n_cls), ("label_sha256", r6.rg.sha_array(local)),
+                                  ("head_rows", head_rows), ("check_rows", check_rows)):
+                if key in record:
+                    assert record[key] == expected, f"{path}: {key} differs"
+            for key, target in (("sha256", paths[kind]), ("head_sha256", paths["head"]),
+                                ("post_sha256", paths["post"]), ("xheads_sha256", paths["xheads"])):
+                if key in record:
+                    assert C.sha_file(target) == record[key], f"{path}: {key} differs"
+            existing[kind] = record
     pools = {"standard": st}
     if cross:
         pools.update({f"half{k}": halves[f"global_rows_half{k}"] for k in (0, 1)})
@@ -233,26 +249,65 @@ def build_heads(name, data, sp, local, halves=None, root=None, smoke=False,
     rec = {"grouping": name, "smoke": bool(smoke), "head_rows": head_rows, "check_rows": check_rows,
            "n_groups": n_cls, "label_sha256": r6.rg.sha_array(local), "draws": draws,
            "dropped": any(not d["all_groups_in_draw"] for d in draws.values())}
+    if "head" in existing:
+        assert existing["head"]["dropped"] == rec["dropped"], "head drop status changed"
     if rec["dropped"]:
         rec["reason"] = "missing groups in standard or cross-fitted draw (L10/L11)"
-        C.write_json_once(records["head"], rec)
-        return rec
-    clfs, post, prov = fit_standard(data, local, st, selection, head_rows, check_rows)
+        if "head" not in existing:
+            C.write_json_once(records["head"], rec)
+        return existing.get("head", rec)
+    clfs, post = None, None
+    prov = existing.get("head", {}).get("standard", existing.get("post", {}))
+    if paths["head"].exists():
+        with paths["head"].open("rb") as f:
+            clfs = pickle.load(f)
+        assert set(clfs) == set(MODALITIES), "stored head: modality keys differ"
+        for m in MODALITIES:
+            assert np.array_equal(clfs[m].classes_, np.arange(n_cls)), f"stored head {m}: classes differ"
+            assert clfs[m].n_features_in_ == F[m].shape[1], f"stored head {m}: feature count differs"
+    if paths["post"].exists():
+        with np.load(paths["post"], allow_pickle=False) as z:
+            assert {"img", "txt", "rows"} <= set(z.files), "stored post: keys differ"
+            assert np.array_equal(z["rows"], selection), "stored post: selection differs"
+            post = {m: z[m] for m in MODALITIES}
+        outside = np.ones(n, dtype=bool)
+        outside[selection] = False
+        for m in MODALITIES:
+            assert post[m].dtype == np.float32 and post[m].shape == (n, n_cls), f"stored post {m}: shape/dtype"
+            assert np.isfinite(post[m][selection]).all() and np.isnan(post[m][outside]).all(), f"stored post {m}: selection mask"
+            assert np.allclose(post[m][selection].sum(1), 1, rtol=0, atol=1e-5), f"stored post {m}: sums"
+    if clfs is None:
+        clfs, predicted, prov = fit_standard(data, local, st, selection, head_rows, check_rows)
+        if post is None:
+            post = predicted
+        else:
+            assert all(np.array_equal(post[m], predicted[m], equal_nan=True) for m in MODALITIES), "stored post differs from fitted head"
+        C.write_pickle_once(paths["head"], clfs)
+    if post is None:
+        post = r6.predict({"X": clfs}, data, selection)["X"]
     if name in ("R0", "csd") and not smoke:
         _assert_csd(post, selection)
         rec["csd_equals_step1"] = True
-    rec["standard"] = prov
-    cf = None
+    rec["standard"] = {k: v for k, v in prov.items() if k not in ("rule_sha256", "written", "grouping", "smoke")}
+    if not paths["post"].exists():
+        C.write_npz_once(paths["post"], **post, rows=selection)
+    if "post" not in existing:
+        C.write_json_once(records["post"], {"grouping": name, "smoke": bool(smoke), **rec["standard"]})
     if cross:
-        cf, rec["halves"] = fit_crossfit(data, local, st, halves, head_rows, check_rows)
-    C.write_pickle_once(paths["head"], clfs)
-    C.write_npz_once(paths["post"], **post, rows=selection)
-    C.write_json_once(records["post"], {"grouping": name, "smoke": bool(smoke), **prov})
-    if cross:
-        C.write_npz_once(paths["xheads"], **cf)
-        C.write_json_once(records["xheads"], {"grouping": name, "smoke": bool(smoke), "halves": rec["halves"]})
-    C.write_json_once(records["head"], rec)
-    return rec
+        if paths["xheads"].exists():
+            # Import before any further reused-module load; this is the reader's
+            # full class/row/half validation for the stage-0 cross-fitted file.
+            import r7_reader
+            r7_reader.load_crossfit(name, local, halves, root)
+            rec["halves"] = existing.get("xheads", {}).get("halves", existing.get("head", {}).get("halves", {}))
+        else:
+            cf, rec["halves"] = fit_crossfit(data, local, st, halves, head_rows, check_rows)
+            C.write_npz_once(paths["xheads"], **cf)
+        if "xheads" not in existing:
+            C.write_json_once(records["xheads"], {"grouping": name, "smoke": bool(smoke), "halves": rec["halves"]})
+    if "head" not in existing:
+        C.write_json_once(records["head"], rec)
+    return existing.get("head", rec)
 
 
 def main():
