@@ -1,6 +1,6 @@
 # Round 8, a screen of fixed style encoders (own track): design
 
-> Date: 2026-10-12 19:50 · Status: draft · Kind: experiment
+> Date: 2026-10-12 19:47 · Status: approved (2026-10-12 19:52, user) · Kind: experiment
 > Builds on: [spec A, the main line](2026-10-12-r8-learned-grouping-design.md) (cited as "A:" plus its ID, for example
 > A:SC3); the grill's record ([direction log, entry 2026-10-12](../direction_log.md)); [round 7
 > report](../../reports/auto/v2/2026-11-26_design_l_style_source.md) · Constitution: [version 2](../constitution.md)

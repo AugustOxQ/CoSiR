@@ -1,14 +1,13 @@
 # Handoff: r8 build: turn the two approved round 8 specs into tickets and build both tracks in one build
 
 ## Brief
-- Done: r8 decide finished steps 1 to 6: grouping work beside the AFF paper, the grill, spec A approved, spec B written.
+- Done: r8 decide finished steps 1 to 6: grouping work beside the AFF paper, the grill, and two approved specs.
 - State: main line, (ii) learned head and FCMI in CSD's slot, 24 candidate scorers; encoder screen, 6. Nothing is
   built yet. The hard cut-off for a held verdict is Fri 2026-10-23.
 - Next: `to-tickets` on both specs, then `implement-spec`, one build for both tracks, ready for one overnight run.
-- Blocked: spec B's brief awaits the user's approval; ask before its tickets.
+- Blocked: nothing.
 
-> Written 2026-10-12 by the `r8 decide 2` chat. Loop step reached: step 6 (spec A approved; spec B awaits approval),
-> before step 7.
+> Written 2026-10-12 by the `r8 decide 2` chat. Loop step reached: step 6 done (both spec briefs approved), before step 7.
 > Direction log entry: [2026-10-12 · Round 7 design L](../direction_log.md) ("Decided (A), completed" and "Idea (B)
 > and the grill").
 
@@ -16,7 +15,7 @@
 
 1. The main-line spec (approved) `docs/superpowers/specs/2026-10-12-r8-learned-grouping-design.md`, from §1 (the brief is the
    user's page).
-2. The screen spec `docs/superpowers/specs/2026-10-12-r8-encoder-screen-design.md`; it cites the main spec for
+2. The screen spec (approved) `docs/superpowers/specs/2026-10-12-r8-encoder-screen-design.md`; it cites the main spec for
    everything shared.
 3. `~/.claude/references/matt-chain.md` before step 7 (verdict code, ticket size, the lean research build).
 4. `src/test/20261129_r8_grouping/step3_facts.md`: the plug-in path for a new grouping, the content grouping file, the
@@ -37,8 +36,7 @@ recommendation); main line first, the screen as fallback; captions keep the CLIP
 
 ## 4. Open points for the next step
 
-- **Key, first:** the user approves spec B's brief (paste it from the spec with the file link). Spec A's tickets may
-  start meanwhile; spec B's wait for the approval.
+- None for the user: both briefs are approved (2026-10-12).
 - The specs' "Check these" items carry agent defaults; the user may still answer them.
 - The user chose no stop before the held read (spec A, D36).
 
