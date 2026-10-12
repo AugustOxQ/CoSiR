@@ -80,3 +80,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-r7-run-handoff.md
 - New chat: tab 'r7 run', session 420f613a-9620-4785-b996-bc04bd3b6a53
 
+[brief] CoSiR: r7 run -> r8 decide (2026-10-12 07:19 Amsterdam)
+- Done: round 7 ran. K1 CLEAR (+3.92 R@1, bar +1.0); the seed-42 gate found no pass (n = 0), so design L ends.
+- State: Friday verdict NO-GO: the paper is the ArtELingo paper with AFF, which stays the current best.
+- Next: step 1, decision C, on the auto report's results brief; then the wrap-up and step 2.
+- Blocked: the user decides the L3 departure. The run went on with an agent fix where rule §8 said stop. It cannot change n = 0.
+- Handoff: docs/superpowers/handoffs/2026-10-12-r8-decide-handoff.md
+- New chat: tab 'r8 decide', session 682f5b9a-7f06-445c-8e83-03cc190a32c5
+
