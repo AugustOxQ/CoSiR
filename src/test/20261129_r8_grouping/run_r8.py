@@ -96,10 +96,19 @@ def end_check(smoke, keys, shas):
 
 
 def grouping_records(root):
-    path = root / "groupings" / "r8_groupings.json"
-    rec = json.loads(path.read_text())
-    assert isinstance(rec.get("groupings"), dict) and isinstance(rec.get("dropped"), dict), f"{path}: shape"
-    return rec
+    """r8_groupings.json, plus r8_groupings_nbc.json once NBC is collected (ticket 07 `collect --name r8_groupings_nbc`)."""
+    out = {"groupings": {}, "dropped": {}}
+    for stem in ("r8_groupings", "r8_groupings_nbc"):
+        path = root / "groupings" / f"{stem}.json"
+        if stem != "r8_groupings" and not path.is_file():
+            continue
+        rec = json.loads(path.read_text())
+        assert isinstance(rec.get("groupings"), dict) and isinstance(rec.get("dropped"), dict), f"{path}: shape"
+        assert not (set(rec["groupings"]) | set(rec["dropped"])) & (set(out["groupings"]) | set(out["dropped"])), \
+            f"{path}: an ID is also in an earlier grouping file"
+        out["groupings"].update(rec["groupings"])
+        out["dropped"].update(rec["dropped"])
+    return out
 
 
 def wanted(args):
@@ -118,10 +127,16 @@ def split_dropped(root, names):
     out = {}
     for x in names:
         base = x[1:] if x.startswith("Z") and x[1:] in IO.CANDIDATES else None
+        harm = x[1:] if x.startswith("H") and x[1:] in IO.CANDIDATES else None   # H<X> uses X's labels (rule §6.6)
         if x in dropped:
             out[x] = dropped[x]
         elif base is not None and base in dropped:
             out[x] = f"control of dropped {base}: {dropped[base]}"
+        elif harm is not None:
+            assert harm in rec["groupings"] and harm not in dropped, f"{x}: H arm of a grouping that is not built"
+            hp = root / "heads" / f"head_{x}.json"
+            if hp.is_file() and json.loads(hp.read_text()).get("dropped") is True:
+                out[x] = str(json.loads(hp.read_text()).get("reason", "dropped by head record"))
         else:
             hp = root / "heads" / f"head_{x}.json"
             if hp.is_file():
