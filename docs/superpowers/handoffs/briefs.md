@@ -88,3 +88,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-r8-decide-handoff.md
 - New chat: tab 'r8 decide', session 682f5b9a-7f06-445c-8e83-03cc190a32c5
 
+[brief] CoSiR: r8 decide -> r8 decide 2 (2026-10-12 17:42 Amsterdam)
+- Done: decision C and the L3 pick (keep the fallback) are recorded; the storage summary is done (11.8 GB deleted); step 2 is half done.
+- State: the user picked grouping work. Main line: a learned grouping head on frozen CLIP that cuts across content. In parallel: a screen of fixed encoders on the cluster.
+- Next: settle the four open points with the user, then run step 3 (literature check on the learned grouping).
+- Blocked: the open points wait for the user.
+- Handoff: docs/superpowers/handoffs/2026-10-12-r8-decide-2-handoff.md
+- New chat: tab 'r8 decide 2', session ee7bf5e9-5d73-4879-a8d5-229a01261595
+
