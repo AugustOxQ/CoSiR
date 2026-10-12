@@ -597,10 +597,10 @@ def fail_reason(rec, label):
     return text + f"; {rec.get('error') or rec.get('reason') or 'no error text'}"
 
 
-def check_views_meta():
+def check_views_meta(path=None):
     """Ticket 03's views meta.json (index: "Views file"), with the keys ticket 05's `read_views` asserts. Returns the
-    `view_check` dict (its `passed` is a bool)."""
-    path = Path(VIEWS_META)
+    `view_check` dict (its `passed` is a bool). `path` (ticket 13): the smoke views meta in a smoke run."""
+    path = Path(VIEWS_META if path is None else path)
     assert path.is_file(), f'{path} is missing (ticket 03)'
     meta = json.loads(path.read_text())
     need = {'painting_ids', 'views_sha256', 'view_check'}
@@ -627,7 +627,7 @@ def part_search(name, smoke, n, enc_root=None):
         assert_trigger(root / 'probe_trigger.json')
     st, g, content, n = subset(n)
     if name in VIEW_IDS:
-        vc = check_views_meta()
+        vc = check_views_meta(C.SMOKE / 'views' / 'meta.json' if smoke else None)
         if vc['passed'] is False:          # M16 / rule 7: the V100 to V33 drop on M4's check (ticket 05 builds no V space)
             return None, {'dropped': True, 'view_check': vc,
                           'reason': f'M4 view check failed (views meta.json view_check.passed is false): '
