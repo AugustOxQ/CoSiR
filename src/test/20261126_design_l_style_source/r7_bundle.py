@@ -3,7 +3,8 @@
 Diff-able changes from r3_bundle.py's build path:
   imports/modules: reused modules come through r7_common.load, from MAIN only;
   build_bundle guard: r7_common.check_seed and assert_rule replace R3's guards;
-  build_bundle: after the unchanged A0 sequence, load R0 and requested X from heads/post_{X}.npz;
+  build_bundle: after the unchanged A0 sequence, load R0 and requested X from root/heads/post_{X}.npz;
+  heads root: default to SMOKE_CHAIN for smoke, RESULTS otherwise; X class counts match head_{X}.json;
   stack_and_features: expose R3's grouping_stack/seed42_features for any parts tuple;
   condition_free: expose L14's per-seed cross-fit, returning (per-anchor dict, picks).
 R3's affect-head fit, input hashes, B, Bp, A0 stack/features and A0 readers keep their call sequence.
@@ -12,7 +13,9 @@ R3's cache, CLI and writers are omitted. This module writes nothing.
 """
 import r7_common as R
 
+import json
 import time
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -46,11 +49,12 @@ def _posterior_ok(post, ctx, name):
         assert np.isnan(x[~inside]).all(), f"{name}/{side}: posterior is not NaN outside selection"
 
 
-def load_posteriors(ctx, name):
+def load_posteriors(ctx, name, root=None):
     """Read one standard head at the global-row boundary, rejecting misaligned or unmasked arrays."""
     assert name in ("R0", "T", "N") or name in tuple(f"{p}{k}" for p in ("V", "Z") for k in range(1, 7)), \
         f"unknown extra grouping {name!r}"
-    path = R.RESULTS / "heads" / f"post_{name}.npz"
+    root = Path(root) if root is not None else R.RESULTS
+    path = root / "heads" / f"post_{name}.npz"
     with np.load(path, allow_pickle=False) as z:
         assert {"img", "txt", "rows"} <= set(z.files), f"{path}: missing posterior keys"
         rows = z["rows"]
@@ -59,6 +63,12 @@ def load_posteriors(ctx, name):
     _posterior_ok(post, ctx, name)
     if name == "R0":
         assert post["img"].shape[1] == 17, "R0 must have its frozen 17 classes"
+    else:
+        record_path = root / "heads" / f"head_{name}.json"
+        record = json.loads(record_path.read_text())
+        assert isinstance(record, dict) and "n_groups" in record, f"{record_path}: missing n_groups"
+        assert type(record["n_groups"]) is int and record["n_groups"] >= 2, f"{record_path}: invalid n_groups"
+        assert post["img"].shape[1] == record["n_groups"], f"{path}: class count differs from head record"
     return post
 
 
@@ -87,15 +97,17 @@ def stack_and_features(bundle, parts):
     return stack, F
 
 
-def build_bundle(seed, smoke, extra=("R0",)):
+def build_bundle(seed, smoke, extra=("R0",), root=None):
     """R3's exact A0 sequence, then R0 and ``extra``. B/Bp are scores; pB/pBp are per-anchor B/B0.
 
     stack/F/readers remain A0's; call stack_and_features for an extra configuration and condition_free for B1/BX.
     No reader is fitted and no file is written. Seed-42 inputs are hashed by the unchanged R3 checks.
+    Extra heads are read from ``root`` (default: SMOKE_CHAIN for smoke, RESULTS otherwise).
     """
     seed, smoke = int(seed), bool(smoke)
     R.check_seed(seed, smoke)  # before any rule or input read
     R.assert_rule()
+    root = Path(root) if root is not None else (R.SMOKE_CHAIN if smoke else R.RESULTS)
     R3, old = (R.load(name) for name in ("r3_common", "r3_bundle"))
     C, rb, rbe, rf = (R.load(name) for name in ("common", "rb_build", "rb_eval", "rb_features"))
     metrics = R.load("src.eval.aspect_metrics")
@@ -140,9 +152,12 @@ def build_bundle(seed, smoke, extra=("R0",)):
     # The only extension to the evaluation sequence: posteriors, with no new seed-42 scoring.
     for name in dict.fromkeys(("R0",) + tuple(extra)):
         assert name not in A0, f"extra {name!r} would replace an A0 head"
-        path = R.RESULTS / "heads" / f"post_{name}.npz"
+        path = root / "heads" / f"post_{name}.npz"
         shas[str(path)] = R.sha_file(path)
-        post[name] = load_posteriors(ctx, name)
+        if name != "R0":
+            record_path = root / "heads" / f"head_{name}.json"
+            shas[str(record_path)] = R.sha_file(record_path)
+        post[name] = load_posteriors(ctx, name, root=root)
         checks[f"posterior_{name}_rows_shape_mask_ok"] = True
     bundle.build_s = time.time() - t0
     C.log(f"[r7_bundle] seed {seed}: n {bundle.n}, stack {stack['i2t'].shape}, features {F['a'].shape} "

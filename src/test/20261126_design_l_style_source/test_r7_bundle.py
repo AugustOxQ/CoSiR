@@ -1,12 +1,11 @@
 """Ticket 07: seed guards, L14 comparators and posterior/feature boundaries (§7.3, G4).
 
-Only the frozen A0/A1 configurations are evaluated on seed 42. Temporary head archives live in this worktree.
-Run from this folder (preload MAIN/src before pytest imports this worktree's test package):
-  PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= \
-  /root/miniconda3/envs/CoSiR/bin/python -c 'import r7_common as R; R.load("src.eval.aspect_metrics"); \
-import pytest; raise SystemExit(pytest.main(["-q", "-p", "no:cacheprovider", "--import-mode=importlib", \
-"--basetemp=results/smoke/ticket07_tmp", "test_r7_bundle.py"]))'
+Only the frozen A0/A1 configurations are evaluated on seed 42. Head archives use pytest's temporary folders.
+Run from this folder:
+  OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1 \
+  /root/miniconda3/envs/CoSiR/bin/python -m pytest -q -p no:cacheprovider --rootdir=. test_r7_bundle.py
 """
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -43,7 +42,8 @@ def test_build_refuses_other_seeds_before_reading(seed, smoke, monkeypatch):
         B.build_bundle(seed, smoke)
 
 
-@pytest.mark.parametrize("damage", [None, "shape", "mask", "rows", "finite", "dtype", "keys"])
+@pytest.mark.parametrize("damage", [None, "shape", "mask", "rows", "finite", "dtype", "keys",
+                                  "class_count", "record_keys"])
 def test_extra_posterior_boundary(tmp_path, monkeypatch, damage):
     ctx = SimpleNamespace(groups=np.zeros(8), selection=np.array([1, 3, 5, 7], dtype=np.int64))
     post = np.full((8, 2), np.nan, dtype=np.float32)
@@ -63,6 +63,8 @@ def test_extra_posterior_boundary(tmp_path, monkeypatch, damage):
         del arrays["rows"]
     (tmp_path / "heads").mkdir()
     np.savez(tmp_path / "heads/post_V1.npz", **arrays)
+    record = {} if damage == "record_keys" else {"n_groups": 3 if damage == "class_count" else 2}
+    (tmp_path / "heads/head_V1.json").write_text(json.dumps(record))
     monkeypatch.setattr(R, "RESULTS", tmp_path)
     if damage is not None:
         with pytest.raises(AssertionError):
@@ -137,6 +139,7 @@ def frozen_heads(tmp_path_factory):
     np.savez(root / "heads/post_R0.npz", **arrays)
     # Synthetic extra used ONLY on smoke seeds; seed 42 always builds frozen A0/A1.
     np.savez(root / "heads/post_V1.npz", **arrays)
+    (root / "heads/head_V1.json").write_text(json.dumps({"n_groups": 17}))
     return root
 
 
@@ -169,11 +172,19 @@ def test_seed42_condition_free_regressions(seed42):
         assert np.array_equal(r3["aff_fused__r1"] - b1["r1"], r6["diff__S1"]), "G4 per-anchor B1 differs"
 
 
-def test_smoke_extra_uses_same_generalised_path(frozen_heads):
+@pytest.mark.parametrize("explicit_root", [False, True])
+def test_smoke_extra_reads_smoke_or_explicit_root(frozen_heads, tmp_path, explicit_root):
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(R, "RESULTS", frozen_heads)
-        b = B.build_bundle(9001, True, extra=("V1",))
+        mp.setattr(R, "RESULTS", tmp_path / "unused_real")
+        mp.setattr(R, "SMOKE_CHAIN", tmp_path / "unused_smoke" if explicit_root else frozen_heads)
+        if explicit_root:
+            b = B.build_bundle(9001, True, extra=("V1",), root=str(frozen_heads))
+        else:
+            b = B.build_bundle(9001, True, extra=("V1",))
     assert set(b.post) == {"affect", "image", "caption", "R0", "V1"}, "R0 or requested X missing"
+    assert str(frozen_heads / "heads/post_R0.npz") in b.input_sha256, "R0 read outside requested root"
+    assert str(frozen_heads / "heads/post_V1.npz") in b.input_sha256, "X read outside requested root"
+    assert str(frozen_heads / "heads/head_V1.json") in b.input_sha256, "X record read outside requested root"
     assert b.readers["feature_names"] == R.load("rb_features").feature_names(B.A0), "A0 reader layout changed"
     parts = B.A0 + ("V1",)
     stack, features = B.stack_and_features(b, parts)
