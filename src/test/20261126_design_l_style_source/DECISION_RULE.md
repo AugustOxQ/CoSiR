@@ -1,6 +1,6 @@
 # Decision rule: round 7, design L from the style source (ceiling check, seed-42 screen, fresh-seed test), committed before any code
 
-> Spec: `docs/superpowers/specs/2026-10-12-r7-design-l-design.md` @ (spec commit) · Written 2026-10-12 from 02:20
+> Spec: `docs/superpowers/specs/2026-10-12-r7-design-l-design.md` @ c95b6ea (approved 2026-10-12 02:34) · Written 2026-10-12 from 02:20
 > (Amsterdam) before any implementation script of this round exists; the review's fix wave applied from 02:24, the
 > re-review's fixes and the NrKmeans reference (N) from 02:32 · Reviewers: a fresh Opus reviewer
 > (`rule_check/opus_rule_check.md`) and a fresh Sonnet re-reviewer (`rule_check/rereview.md`)

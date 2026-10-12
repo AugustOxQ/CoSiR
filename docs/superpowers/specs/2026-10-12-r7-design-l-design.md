@@ -1,6 +1,6 @@
 # Round 7, design L from the style source: design
 
-> Date: 2026-10-12 02:10 · Status: draft · Kind: experiment
+> Date: 2026-10-12 02:10 · Status: approved 2026-10-12 02:34 (user: "Yeah thats good") · Kind: experiment
 > Builds on: [round 6 held read](../../reports/auto/v2/2026-11-25_artelingo_held_test.md); the grill's record
 > ([handoff §2](../handoffs/2026-10-12-r7-decide-2-handoff.md)); [plan page](2026-10-11-r7-design-l-plan.html);
 > [facts brief](../../../src/test/20261126_design_l_style_source/step3_facts.md); literature notes
@@ -8,7 +8,7 @@
 > [design L novelty](../../reports/literature/2026-11-28_design_l_novelty.md) · Constitution:
 > [version 2](../constitution.md)
 > Decision rule: [`src/test/20261126_design_l_style_source/DECISION_RULE.md`](../../../src/test/20261126_design_l_style_source/DECISION_RULE.md)
-> @ (commit at approval) · binding; it governs where it differs from this spec
+> @ c95b6ea · binding; it governs where it differs from this spec
 
 ## Brief (for the user; agents read and decide from §1 onward)
 
@@ -229,7 +229,7 @@ No open questions: the grill settled the bar, the data and the scope.
 
 ## 6. Success criteria
 
-**Decision mode.** Binding rule: `src/test/20261126_design_l_style_source/DECISION_RULE.md` @ (commit at approval),
+**Decision mode.** Binding rule: `src/test/20261126_design_l_style_source/DECISION_RULE.md` @ c95b6ea,
 committed before any code; it governs where it differs from this spec. Its criteria:
 
 - G1 to G4: the regression checks (stage 0).
