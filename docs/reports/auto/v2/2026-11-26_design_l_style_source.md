@@ -5,6 +5,8 @@
 > **Flag, L3: a process departure (the user decides).** The rule's own recipe for removing the content part (L3: `numpy.linalg.pinv`, default `rcond`) failed its own assertion on the CSD vectors, so groupings V1 and V4 could not be built as written. Rule §8's last row says a case the rule does not cover stops the run with its report and a phone note, and the user decides. The run sent the note (05:55) but did not stop: it went on with an agent-default fallback, so K1 and the gate were computed on it. The user decides whether K1 and the gate stand on it.
 >
 > The fallback is the same projector built from the SVD's orthonormal basis, only where the literal form fails (CSD only). Its `basis_rank` 64 includes one rounding-noise direction (the true rank is 63), so it removes one arbitrary extra direction from the CSD vectors of V1 and V4. Keeping it, or dropping V1 and V4 (with Z1, Z4), cannot change n = 0 (certain). A rank-63 projector needs a rerun of V1, V4, Z1, Z4; a change is very unlikely (an inference, since V1 and V4 were never built that way): they are at least 432 integer steps below S1's bar and at least 168 below S3's on emotion × genre (117 on emotion × style). Numbers are in Deviations.
+>
+> **Decided (user, 2026-10-12 16:49): keep the fallback.** K1 and the gate stand as reported (run log, "Process departure").
 
 ## Results brief
 

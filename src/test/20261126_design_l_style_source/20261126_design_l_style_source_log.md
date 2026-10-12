@@ -84,3 +84,7 @@ stage 0 passed at 2026-10-12 04:42 in the build. Run logs: `results/logs/` (giti
   bar a change of n is very unlikely.
 - The two L3 numbers: the record's `max_abs_after_pinv` 9.50e-4 is the absolute value; against `max_abs_before`
   0.552 it is the ratio 1.72e-3 that the assertion compares with 1e-6.
+- **Decided (user, 2026-10-12 16:49, in the `r8 decide` chat, before seeing our recommendation): keep the fallback.**
+  The user's why: the V1 and V4 evidence (their AMIs) stays in the record without the rank-63 rerun. K1 and the gate
+  stand as reported; no `_fix` files. Our held recommendation was the same. For any later reuse of L3, the spec names
+  the rank (groups − 1): the centred, size-weighted group means always sum to zero, so the risk is not CSD's alone.

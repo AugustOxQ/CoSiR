@@ -35,6 +35,32 @@ stay in the entries below.
 - A grouped concept basis (N3) and "infer the aspect name, then embed" (N5) (never tried; their privileged references were never run; [proposed in](../../src/test/20261107_new_method_candidates/synthesis.md), §4.2)
 - Other datasets and paper framings, CUB and SemArt (deferred by the user, 2026-10-07; [proposed in](../reports/stage/2026-10-07_cvpr_readiness.md), §3)
 
+## 2026-10-12 · Round 7 design L: ceiling CLEAR, gate n = 0, Friday NO-GO; next step open
+
+- **Read:** K1 CLEAR: told true styles gain +3.92 [+3.35, +4.49] R@1 on style × genre over the matched counterpart
+  (Σ(4d) 643, bar 164; prior +0.9). Seed-42 gate n = 0 of 12 candidate scorers: S1 fails 12 of 12 (best +0.25 against
+  the bar +0.5; AFF itself +0.33), S3 emotion × genre fails 12 of 12 (−0.93 to −1.61 against AFF), S2 passes 5 of 12.
+  Design L ends; Friday verdict NO-GO by the rule; AFF stays the current best. "Promising" for R1 on V2 and V3 and
+  extended AFF on V3 is weak: two references meet it too, and the random controls beat the candidates on margin and
+  gain. AMI: raw CSD style 0.34, genre 0.33; the cuts kept both, the projections removed both.
+- **Meaning (C):** "the ceiling is far better than our expectation, which means, if working towards the correct
+  direction, we could gain a lot on style × genre"; genre and style are "entangled so close that they cannot be set
+  apart from CSD, so CSD almost treats them equally as a single aspect", so "we might need to find another encoder
+  that disentangles better"; "go back to the parked idea to gain more on the grouping", on which every other part of
+  the project rests (user, before seeing ours). Ours: the verdict is sure, its cause is not; the label-free groupings
+  reach about a tenth of the ceiling, and the flag does not show that the removal step helped; recommended the
+  ArtELingo paper with AFF, and if design L returns, the told route with V3 first. The two agree on the verdict and
+  that the grouping is the likely limit; the user names a cause we hold consistent but not shown, and wants grouping
+  work now where we recommended the paper first.
+- **Also decided (user, own pick, before seeing ours):** the L3 departure: keep the fallback, "this evidence stays in
+  the record without the rank-63 re-run". Ours agreed. Any later reuse of L3 names the rank (groups − 1).
+- **Decided (A):** open, step 2 in this chat. Raised: which grouping idea (parked: style encoders, a learned source
+  across content, fair clustering, X-Cluster criteria), and what happens to the ArtELingo paper (CVPR abstract
+  2026-11-10).
+- **Links:** report `docs/reports/auto/v2/2026-11-26_design_l_style_source.md`; user-read
+  `docs/user_read/2026-10-12_design_l_style_source.md`; spec `docs/superpowers/specs/2026-10-12-r7-design-l-design.md`;
+  handoff `docs/superpowers/handoffs/2026-10-12-r8-decide-handoff.md`.
+
 ## 2026-10-11 · Round 6 held test GO; design L next, from the style source
 
 - **Read:** GO under the rule: all seven checks pass with Holm, pooled over 36,864 held episodes (seeds 52 to 54).
