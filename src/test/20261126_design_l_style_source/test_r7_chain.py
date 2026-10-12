@@ -1,7 +1,7 @@
 """Synthetic checks of DECISION_RULE.md §7.1, §7.5–§7.7 and §11."""
-import ast
+import r7_common as R
+
 import json
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -44,22 +44,8 @@ def test_holm_rejects_non_counts(count):
         C.holm(dict.fromkeys(("B", "B0", "B1", "BX", "CF"), count), 0.025)
 
 
-def source_function(path, name, **namespace):
-    """Read the exact reference function, without importing a reused module or its loaders.
-
-    Ticket 01's r7_common is not present on this independent branch. Compiling only
-    the named pure function lets the copy check run without importing worktree code.
-    """
-    path = Path("/project/CoSiR") / path
-    tree = ast.parse(path.read_text())
-    node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
-    scope = {"np": np, **namespace}
-    exec(compile(ast.Module(body=[node], type_ignores=[]), str(path), "exec"), scope)
-    return scope[name]
-
-
 def reference_bootstrap():
-    return source_function("src/eval/aspect_metrics.py", "cluster_bootstrap")
+    return R.load("src.eval.aspect_metrics").cluster_bootstrap
 
 
 def test_draw_copy_matches_cluster_bootstrap_with_unequal_clusters():
@@ -113,9 +99,7 @@ def test_draws_assert_bad_boundaries(values, cl, match):
 def test_sensitivity_copies_r3_decomposition_and_uses_chain_multiplier(alpha, stage, n, mult):
     d = np.resize([0, 0.25, -0.5, 0.5, -0.25, 0.75], n)
     cl = np.resize([100, 100, 200, 200, 300, 300], n)
-    reference = source_function("src/test/20261121_round3_affect_gate/r3_stats.py", "sensitivity",
-                                cluster_bootstrap=reference_bootstrap(), Z_HALF=1.96, K_DETECT=2.80)
-    old = reference(d, cl)
+    old = R.load("r3_stats").sensitivity(d, cl)
     new = C.sensitivity(d, cl, alpha, stage)
     for key in ("SE", "half_width", "seed42_half_width", "sigma_a2", "sigma_e2", "n0", "n", "P"):
         assert new[key] == pytest.approx(old[key], abs=1e-12)
@@ -170,14 +154,12 @@ def test_fixed_sequence_reports_only_reached_stages(fail, stage, fv):
     assert record["F1"]["checks"]["BX"]["sum4d"] == 18
     assert record["F1"]["checks"]["BX"]["point"] == 25
     assert record["F1"]["checks"]["BX"]["ci95"] == [25, 25]
+    assert "not_tested" not in record
     if stage == "none":
-        assert record["F2"] == record["F3"] == "not tested"
-        assert record["not_tested"] == {"F2": {"point": 25, "ci95": [25, 25]},
-                                        "F3": {"point": 25, "ci95": [25, 25]}}
+        assert record["F2"] == record["F3"] == {"status": "not tested", "point": 25, "ci95": [25, 25]}
     elif stage == "F1":
         assert record["F2"]["pass"] is False
-        assert record["F3"] == "not tested"
-        assert record["not_tested"] == {"F3": {"point": 25, "ci95": [25, 25]}}
+        assert record["F3"] == {"status": "not tested", "point": 25, "ci95": [25, 25]}
     else:
         assert record["F2"]["pass"] is True
         assert record["F3"]["pass"] is (stage == "F3")
@@ -255,8 +237,9 @@ def test_sensitivity_record_uses_each_comparator_and_f3_scope():
 
 
 def test_test_record_pools_in_seed_order_with_shared_painting_ids():
-    arrays = {57: synthetic_arrays(value=0.75), 55: synthetic_arrays(value=0.25),
-              56: synthetic_arrays(value=0.5)}
+    seed_a, seed_b, seed_c = R.TEST_SEEDS
+    arrays = {seed_c: synthetic_arrays(value=0.75), seed_a: synthetic_arrays(value=0.25),
+              seed_b: synthetic_arrays(value=0.5)}
     picks = {"csd": "R1_V1", "generic": None}
     # Real-size synthetic inputs avoid a smoke bypass of the real seed-role guard.
     large = {seed: dict(record) for seed, record in arrays.items()}
@@ -268,7 +251,7 @@ def test_test_record_pools_in_seed_order_with_shared_painting_ids():
                 record[key] = np.tile([10, 20, 30, 10], 3072)
             else:
                 record[key] = np.full(12288, arrays[seed][key][0])
-    sens = C.sensitivity_record(large[56], picks)
+    sens = C.sensitivity_record(large[seed_b], picks)
     result = C.test_record(large, picks, sens)
     chain = result["chains"]["csd"]
     expected = C.chain_record({name: np.repeat([0, 0.25, 0.5], 12288)
@@ -290,11 +273,12 @@ def test_two_picks_get_two_chains_at_half_level_on_smoke_seeds():
     sens = C.sensitivity_record(arrays, picks, smoke=True)
     assert all(chain["alpha"] == 0.0125 for chain in sens["chains"].values())
     assert sens["chains"]["generic"]["F1"]["CF"]["mult"] == 3.649
-    result = C.test_record({9003: arrays, 9001: arrays, 9002: arrays}, picks, sens, smoke=True)
+    rule = R.roles("rule")
+    result = C.test_record({seed: arrays for seed in reversed((rule.dev,) + rule.tests)}, picks, sens, smoke=True)
     assert result["FV"] == "GO"
     assert all(chain["alpha"] == 0.0125 for chain in result["chains"].values())
     # Chain smoke uses development 9001 and fresh 9002, 9003 (index, Seed roles).
-    assert C.test_record({9003: arrays, 9002: arrays}, picks, sens, smoke=True)["FV"] == "GO"
+    assert C.test_record({seed: arrays for seed in reversed(R.roles("chain").tests)}, picks, sens, smoke=True)["FV"] == "GO"
 
 
 def test_no_picks_returns_no_go_without_reading_arrays():
@@ -307,11 +291,12 @@ def test_runner_boundary_assertions_reject_bad_inputs(bad):
     picks = {"csd": "R1_V1"}
     arrays = synthetic_arrays()
     sens = C.sensitivity_record(arrays, picks, smoke=True)
-    per_seed = {9001: arrays, 9002: arrays, 9003: arrays}
+    rule = R.roles("rule")
+    per_seed = {seed: arrays for seed in (rule.dev,) + rule.tests}
     if bad == "seed42":
-        per_seed[42] = per_seed.pop(9001)
+        per_seed[R.DEV_SEED] = per_seed.pop(rule.dev)
     elif bad == "missing_seed":
-        per_seed.pop(9002)
+        per_seed.pop(rule.tests[0])
     elif bad == "shape":
         arrays["B__r1"] = np.zeros(17)
     elif bad == "pair":
@@ -338,15 +323,18 @@ def test_secondary_intervals_use_their_own_level():
 
 @pytest.mark.parametrize("alpha", (0.0125, 0.025))
 def test_all_holm_ranks_report_their_own_intervals(alpha):
-    diffs, cl, pi, sens = synthetic_chain()
-    for name in C.CHECKS:
-        diffs[name] = np.tile([-0.25, 0.25, 0.25], 6)
+    _, _, _, sens = synthetic_chain()
+    rng = np.random.default_rng(9001)
+    cl = np.repeat(np.arange(97), 1 + np.arange(97) % 5)
+    pi = np.resize([0, 1, 2], len(cl))
+    values = rng.integers(-4, 5, size=len(cl)) / 4
+    diffs = {name: values for name in C.CHECKS + ("AFF",)}
     result = C.chain_record(diffs, cl, pi, "R1_V1", alpha, sens)
     draws, _ = C.bootstrap_draws(diffs["B"], cl)
     for k, name in enumerate(("B", "B0", "B1", "BX", "CF"), 1):
         level = alpha / (6 - k)
-        assert result["F1"]["checks"][name]["ci_level"] == pytest.approx([
-            100 * np.percentile(draws, 100 * level), 100 * np.percentile(draws, 100 * (1 - level))])
+        assert result["F1"]["checks"][name]["ci_level"] == [
+            100 * np.percentile(draws, 100 * level), 100 * np.percentile(draws, 100 * (1 - level))]
 
 
 def test_chain_record_accepts_sequence_values():
@@ -362,4 +350,28 @@ def test_runner_asserts_missing_sensitivity_stage():
     sens = C.sensitivity_record(arrays, picks, smoke=True)
     del sens["chains"]["csd"]["F2"]
     with pytest.raises(AssertionError, match="sensitivity keys"):
-        C.test_record({9001: arrays, 9002: arrays, 9003: arrays}, picks, sens, smoke=True)
+        C.test_record({seed: arrays for seed in R.roles("chain").tests}, picks, sens, smoke=True)
+
+
+@pytest.mark.parametrize("check", ("B", "B0", "B1", "BX", "CF", "AFF", "F3"))
+@pytest.mark.parametrize("field", ("point", "ci95", "n_clusters"))
+def test_runtime_copy_assert_checks_every_column_and_f3_subset(monkeypatch, check, field):
+    diffs, cl, pi, sens = synthetic_chain()
+    names = C.CHECKS + ("AFF",)
+    for j, name in enumerate(names):
+        diffs[name][:] = (j + 1) * 0.25
+    ref_module = R.load("src.eval.aspect_metrics")
+    original = ref_module.cluster_bootstrap
+
+    def disagree(values, clusters, **kwargs):
+        record = original(values, clusters, **kwargs)
+        target = (len(values) == 6 if check == "F3" else
+                  len(values) == 18 and float(np.mean(values)) == (names.index(check) + 1) * 0.25)
+        if target:
+            record[field] = ([record[field][0] + 0.25, record[field][1]] if field == "ci95"
+                             else record[field] + 1)
+        return record
+
+    monkeypatch.setattr(ref_module, "cluster_bootstrap", disagree)
+    with pytest.raises(AssertionError, match="bootstrap copy"):
+        C.chain_record(diffs, cl, pi, "R1_V1", 0.025, sens)

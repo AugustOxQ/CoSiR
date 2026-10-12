@@ -3,6 +3,8 @@
 Pure functions; fractions in, R@1 points out. No scoring, data loading or writes.
 R6's draw loop and R3's sensitivity decomposition are copied, not imported.
 """
+import r7_common as R
+
 from statistics import NormalDist
 
 import numpy as np
@@ -59,7 +61,7 @@ def bootstrap_draws(values, clusters, n_boot=N_BOOT, seed=BOOT_SEED, chunk=CHUNK
 
     Returns (means, integer_le0), each (n_boot,) for a vector or (n_boot, checks)
     for a matrix. IDs stay painting IDs across seeds; no seed-specific relabeling.
-    The copy check against cluster_bootstrap lives in test_r7_chain.py.
+    Every column is checked exactly against the reused cluster_bootstrap at runtime.
     """
     v, cl, q = _values(values, clusters)
     assert n_boot > 0 and chunk > 0, "positive bootstrap size and chunk required"
@@ -86,6 +88,13 @@ def bootstrap_draws(values, clusters, n_boot=N_BOOT, seed=BOOT_SEED, chunk=CHUNK
         for j in range(v.shape[1]):
             b[start:stop, j] = sums[:, j][draws].sum(axis=1) / denom
             le0[start:stop, j] = isums[:, j][draws].sum(axis=1) <= 0
+    reference = R.load("src.eval.aspect_metrics").cluster_bootstrap
+    for j in range(v.shape[1]):
+        ref = reference(v[:, j], cl, n_boot=n_boot, seed=seed, chunk=chunk)
+        ci95 = [float(np.percentile(b[:, j], p)) for p in (2.5, 97.5)]
+        assert (float(v[:, j].mean()) == ref["point"] and ci95 == ref["ci95"]
+                and ref["n_clusters"] == k and b[:, j].shape == (n_boot,)), (
+                    f"bootstrap copy column {j} differs from cluster_bootstrap")
     return (b[:, 0], le0[:, 0]) if vector else (b, le0)
 
 
@@ -133,13 +142,12 @@ def single_pass(count, alpha):
     return bool(coefficient(alpha) * (int(count) + 1) <= 5001)
 
 
-def _stats(values, draws, le0, level):
+def _stats(values, draws, le0, a):
     sum4d = int(np.rint(4 * np.asarray(values)).astype(np.int64).sum())
-    a = (1 - level) / 2
     return {"n_j": int(le0.sum()), "sum4d": sum4d, "point": 25 * sum4d / len(values),
             "ci95": [100 * float(np.percentile(draws, p)) for p in (2.5, 97.5)],
             "ci_level": [100 * float(np.percentile(draws, p)) for p in (100 * a, 100 * (1 - a))],
-            "level_two_sided": level}
+            "level_two_sided": 1 - 2 * a}
 
 
 def _reading(record, pick, comparator, sens):
@@ -155,8 +163,8 @@ def chain_record(differences, clusters, pair_index, pick, alpha, sens):
     """§7.5–§7.7 on already pooled differences (CHECKS plus AFF), fractions.
 
     sens = {F1: {comparator: {x: ...}}, F2: {x: ...}, F3: {x: ...}}.
-    F2/F3 use the index's literal "not tested" when unreached; `not_tested`
-    holds ONLY point and ci95 for those stages, as §7.6 requires.
+    Unreached F2/F3 hold status "not tested", point and ci95 in the stage slot
+    itself, as §7.6 requires.
     """
     coefficient(alpha)
     assert set(differences) == set(CHECKS) | {"AFF"}, "six paired differences required"
@@ -174,7 +182,7 @@ def chain_record(differences, clusters, pair_index, pick, alpha, sens):
     checks, stopped_at = {}, None
     for rank in ranks:
         name, j = rank["name"], CHECKS.index(rank["name"])
-        r = _stats(values[:, j], draws[:, j], le0[:, j], rank["level_two_sided"])
+        r = _stats(values[:, j], draws[:, j], le0[:, j], alpha / (6 - rank["k"]))
         r["status"] = (f"not reached: Holm stopped at {stopped_at}" if stopped_at
                        else "passed" if rank["passes"] else "failed")
         if not rank["passes"]:
@@ -186,9 +194,9 @@ def chain_record(differences, clusters, pair_index, pick, alpha, sens):
     f1 = {"checks": {name: checks[name] for name in CHECKS},
           "holm_order": [r["name"] for r in ranks],
           "passes": {r["name"]: r["passes"] for r in ranks}, "pass": f1_pass}
-    f2 = _stats(values[:, 5], draws[:, 5], le0[:, 5], 1 - 2 * alpha)
-    f3 = _stats(values[mask, 2], f3_draws, f3_le0, 1 - 2 * alpha)
-    stages, not_tested, last = {}, {}, "F1" if f1_pass else "none"
+    f2 = _stats(values[:, 5], draws[:, 5], le0[:, 5], alpha)
+    f3 = _stats(values[mask, 2], f3_draws, f3_le0, alpha)
+    stages, last = {}, "F1" if f1_pass else "none"
     reached = f1_pass
     for stage, r, comparator in (("F2", f2, "AFF"), ("F3", f3, "B1")):
         if reached:
@@ -201,9 +209,8 @@ def chain_record(differences, clusters, pair_index, pick, alpha, sens):
             stages[stage] = r
             reached = r["pass"]
         else:
-            stages[stage] = "not tested"
-            not_tested[stage] = {key: r[key] for key in ("point", "ci95")}
-    return {"pick": pick, "alpha": alpha, "F1": f1, **stages, "not_tested": not_tested,
+            stages[stage] = {"status": "not tested", **{key: r[key] for key in ("point", "ci95")}}
+    return {"pick": pick, "alpha": alpha, "F1": f1, **stages,
             "last_stage_passed": last, "replaces_AFF": last in ("F2", "F3")}
 
 
@@ -279,7 +286,8 @@ def test_record(arrays_by_seed, picks, detectable, *, smoke=False):
     if not chosen:
         return {"chains": {}, "FV": "NO-GO"}
     seeds = tuple(sorted(arrays_by_seed))
-    want = ((9001, 9002, 9003), (9002, 9003)) if smoke else ((55, 56, 57),)
+    rule = R.roles("rule")
+    want = ((rule.dev,) + rule.tests, R.roles("chain").tests) if smoke else (R.TEST_SEEDS,)
     assert seeds in want, f"fresh-seed roles: expected {want}, got {seeds}"
     assert "chains" in detectable and set(detectable["chains"]) == set(chosen), "sensitivity families differ"
     chains = {}
