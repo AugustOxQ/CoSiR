@@ -632,3 +632,59 @@ def test_smoke_cli_writes_c13_contract_and_disagreement_exit(tmp_path):
     completed = subprocess.run(command, env=env, capture_output=True, text=True, timeout=200)
     assert completed.returncode == 1, completed.stdout + completed.stderr
     assert json.loads((root / "rederive/trigger_rederive.json").read_text())["status"] == "disagree"
+
+
+# ------------------------------------------------------------------------------------------------ X-AFF admission (review m3)
+
+def test_xaff_admits_only_pick_kinds_0_and_3_while_aff_admits_0_and_r1_admits_all():
+    n = 8
+    B = {c: {d: np.zeros((n, 13), np.float32) for d in RD.DIRS} for c in RD.CONDS}
+    rows = np.array([[.7, .1, .1, .1], [.1, .7, .1, .1], [.1, .1, .7, .1], [.1, .1, .1, .7]])    # picks 0, 1, 2, 3
+    P = {c: np.tile(rows, (2, 1)) for c in RD.CONDS}
+    stack = {d: np.zeros((n, 4, 13), np.float32) for d in RD.DIRS}
+    parity = np.arange(n) % 2
+    gate = {kind: RD.family(B, stack, P, [0.] * 4, parity, kind)[0]["gate_a"] for kind in ("XAFF", "AFF", "R1")}
+    assert gate["XAFF"][0].tolist() == [1., 0., 0., 1.] * 2    # kind 1 and kind 2 rows are out
+    assert gate["AFF"][0].tolist() == [1., 0., 0., 0.] * 2
+    assert gate["R1"][0].tolist() == [1.] * n
+
+
+def test_known_answer_family_reproduces_r7_stored_seed42_arrays_exactly(monkeypatch):
+    """Review m3: RD's family and comparators on R7's own R0 inputs equal R7's stored arrays (65 arrays).
+    Data test (about 25 s); skipped when R7's stored files are absent. Writes nothing."""
+    r7 = RD.R7_RESULTS
+    needed = [r7 / f"heads/post_{g}.npz" for g in (*RD.A0, "R0")] + [
+        r7 / "seed42/arrays.npz", r7 / "seed42/reader_A0.npz", r7 / "seed42/reader_R0.npz", r7 / "taus.json"]
+    absent = [str(p) for p in needed if not p.exists()]
+    if absent:
+        pytest.skip(f"R7's stored files are absent: {absent[0]} ...")
+    files = RD.Files()
+    monkeypatch.setattr(RD, "_ACTIVE_LEDGER", files)
+    c, ep, cos, tu, e2, ids = RD.inputs(files, None, False)
+    heads = {g: RD.read_post(files, r7 / f"heads/post_{g}.npz", c) for g in (*RD.A0, "R0")}
+    legacy = heads["R0"]
+    posts = {g: heads[g] for g in RD.A0}
+    stored = files.npz(r7 / "seed42/arrays.npz")
+    got = {}
+    B = RD.condition_free(cos, tu, e2, ep, RD.A0, ids["parity"])
+    for name, score in (("B", B), ("B0", RD.condition_free(cos, tu, posts, ep, RD.A0, ids["parity"])),
+                        ("B1", RD.condition_free(cos, tu, {**posts, "legacy_R0": legacy}, ep, (*RD.A0, "legacy_R0"), ids["parity"]))):
+        got.update({f"{name}__{m}": v for m, v in RD.metrics(RD.counts(score)).items()})
+    az = files.npz(r7 / "seed42/reader_A0.npz")
+    aff_tau = [3.8684538364530674e-05, .21702129490553143, .47973989883399526, .7502585816077211]
+    out, detail = RD.family(B, RD.stack_post(posts, ep, RD.A0), {k: az[f"P__{k}"] for k in "ab"}, aff_tau, ids["parity"], "AFF")
+    RD.add_family(got, "AFF", out, detail)
+    posts["R0"] = legacy
+    rd = files.npz(r7 / "seed42/reader_R0.npz")
+    P = {k: rd[f"P__{k}"] for k in "ab"}
+    tau = json.loads(files.touch(r7 / "taus.json").read_text())["R0"]
+    parts = (*RD.A0, "R0")
+    got.update({f"BX_R0__{m}": v for m, v in RD.metrics(RD.counts(RD.condition_free(cos, tu, posts, ep, parts, ids["parity"]))).items()})
+    for kind in RD.KINDS:
+        out, detail = RD.family(B, RD.stack_post(posts, ep, parts), P, tau, ids["parity"], kind)
+        RD.add_family(got, f"{kind}_R0", out, detail)
+    differ = [k for k, v in sorted(got.items())
+              if k in stored and not (v.shape == stored[k].shape and np.array_equal(v, stored[k]))]
+    compared = sum(k in stored for k in got)
+    assert differ == []
+    assert compared == 65
