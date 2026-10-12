@@ -10,6 +10,8 @@ Every step whose output exists is skipped (resume). A failed step is logged; ste
 SC1 missing or failed: STOP marker, both queues end. Dependencies on GPU outputs are waited for by file presence (poll 60 s).
 D21 quiet CPU (rule M7): each heavy CPU job passes `flock -s TURN true`, then runs under `flock -s QUIET`; each FCMI run runs
 under `flock -x TURN flock -x QUIET`, waits for the 1-minute load average < 4.0 and logs it. CPU jobs run under nice -n 10.
+The load wait is capped (env R8_LOAD_WAIT_MAX, default 7200 s): at the cap the FCMI step exits 4, the GPU queue writes the state
+"stopped: load cap", prints it in its summary line and exits 4; the CPU queue counts that state as "GPU done". A restart resumes.
 At most 3 CPU slots of 8 threads (readers use all 3).
 Smoke: R8_RESULTS (default /data/SSD2/cosir_r8/e2e_smoke/results) must differ from the real results; every step runs on smoke
 settings under <R8_RESULTS>/smoke; nothing is written to the real results.
@@ -42,6 +44,10 @@ SMOKE_ENC_N = int(os.environ.get('R8_SMOKE_ENC_N', 256))               # 07 need
 LOAD_MAX = float(os.environ.get('R8_LOAD_MAX', 4.0))
 GPU_WAIT = int(os.environ.get('R8_GPU_WAIT', 8 * 3600))               # seconds `flock -w` waits for the GPU lock
 SLOTS = 3
+LOAD_WAIT_MAX_DEFAULT = 7200                  # seconds one FCMI run may wait for the load average (env R8_LOAD_WAIT_MAX)
+LOAD_CAP_EXIT = 4                             # exit code of the load-wait guard and of the GPU queue that stopped on it
+STATE_CAP = 'stopped: load cap'               # GPU state-file value; the CPU queue counts it as "GPU done"
+STATE_GRACE = 300                             # seconds a state file older than the CPU queue's start is ignored (restart race)
 
 V_IDS, NB_IDS = ('V100', 'V67', 'V33'), ('NB100', 'NB67', 'NB33')
 FC_IDS = tuple(f'FC{i}' for i in range(1, 7))
@@ -116,6 +122,9 @@ class Cfg:
     def gpu_state(self):
         return self.logs / 'gpu_queue_state.json'
 
+    def load_cap_file(self):
+        return self.logs / 'load_cap.json'
+
     def candidates(self):
         # rule gap: 06's smoke labels cover 2,048 paintings, 07/09 need all: in smoke FC1 to FC6 are wired (06, 07 part) but
         # leave the gate as dropped (drops file), so the gate smoke runs without them.
@@ -125,14 +134,29 @@ class Cfg:
         return list(V_IDS) + list(NB_IDS) + list(FC_IDS) + list(ENC)
 
 
+def write_state(cfg, state, **extra):
+    """The GPU state file, written atomically (temp file, then os.replace): gpu_done() never reads a half-written file."""
+    cfg.logs.mkdir(parents=True, exist_ok=True)
+    p = cfg.gpu_state()
+    tmp = p.with_name(f'{p.name}.tmp{os.getpid()}')
+    tmp.write_text(json.dumps({'state': state, 'at': now(), **extra}))
+    os.replace(tmp, p)
+
+
 # ------------------------------------------------------------------------------------------------ the engine
 class Task:
+    """ready(): input files are there. cond(): None, or ('skip'|'fail', why); it may read files that ready() guards, so it runs
+    after ready(). verify(): checked on resume when the outputs exist; returns None or a failure text. rule_check(): after exit 1
+    with the record written, returns the text of a rule-covered outcome (the step still counts as failed; the summary
+    lists it as "dropped under the rule" and it alone does not make the exit code 1)."""
+
     def __init__(self, name, kind, build=None, fn=None, deps=(), after=(), slots=1, outputs=(), ready=None, ready_doc='',
-                 cond=None, cond_doc=''):
+                 cond=None, cond_doc='', verify=None, rule_check=None):
         self.name, self.kind, self.build, self.fn = name, kind, build, fn
         self.deps, self.after, self.slots = list(deps), list(after), (0 if kind in ('light', 'gpu', 'fcmi') else slots)
         self.outputs = [Path(p) for p in outputs]
         self.ready, self.ready_doc, self.cond, self.cond_doc = ready, ready_doc, cond, cond_doc
+        self.verify, self.rule_check, self.rule_dropped = verify, rule_check, None
         self.state, self.why, self.t0, self.t1 = 'pending', '', None, None
 
 
@@ -146,6 +170,10 @@ class Engine:
         self.wake = threading.Event()
         self.lock = threading.Lock()
         self.stopped = False
+        self.cap_written = False
+        self.cap = None                      # set when an FCMI run hit the load-wait cap (GPU queue)
+        self.seen_errors = {}
+        self.t_start = time.time()
         self.poll = 2 if cfg.smoke else 60
 
     # -- logging
@@ -193,6 +221,8 @@ class Engine:
         if t.kind == 'gpu':
             return ['flock', '-o', '-w', str(GPU_WAIT), '-E', '75', GPU_LOCK] + pre + cmd
         if t.kind == 'fcmi':
+            # read_13 #11, accepted: lock order GPU, TURN, QUIET holds the GPU lock while the run waits for running CPU jobs
+            # (no deadlock: CPU jobs never ask for the GPU lock).
             inner = [PY, str(HERE / 'run_r8_queue.py'), '_loadwait', '--'] + pre + cmd
             return ['flock', '-o', '-w', str(GPU_WAIT), '-E', '75', GPU_LOCK, 'flock', '-x', TURN, 'flock', '-x', QUIET] + inner
         raise AssertionError(t.kind)
@@ -200,7 +230,7 @@ class Engine:
     def run_cmd(self, t):
         b = t.build(False)
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', OMP_NUM_THREADS='8', MKL_NUM_THREADS='8',
-                   R8_LOAD_POLL='5' if self.cfg.smoke else '60')
+                   R8_LOAD_POLL='5' if self.cfg.smoke else '60', R8_LOAD_CAP_FILE=str(self.cfg.load_cap_file()))
         argv = self.wrap(t, b['cmd'], b.get('env', {}), False)
         logp = self.cfg.logs / f'{self.queue}_{t.name}.log'
         with open(logp, 'a') as lf:
@@ -227,7 +257,14 @@ class Engine:
                 rc, logp = self.run_cmd(t)
                 if rc == 75 and t.kind in ('gpu', 'fcmi'):
                     return self.finish(t, 'failed', f'GPU lock not obtained in {GPU_WAIT}s (exit 75); see {logp}')
+                if rc == LOAD_CAP_EXIT and t.kind == 'fcmi':
+                    return self.load_cap_hit(t, logp)
                 if rc != 0:
+                    if t.rule_check and rc == 1:        # exit 1 after the record was written: a rule-covered outcome
+                        why = self.guarded(t, 'rule_check', t.rule_check, None)[0]
+                        if why:
+                            t.rule_dropped = why
+                            return self.finish(t, 'failed', f'exit 1; recorded outcome covered by the rule ({why}); see {logp}')
                     return self.finish(t, 'failed', f'exit {rc}; see {logp}')
             else:
                 t.fn()
@@ -237,9 +274,32 @@ class Engine:
         except BaseException as e:      # a step that raises is a failed step; the queue goes on
             self.finish(t, 'failed', f'{type(e).__name__}: {e}')
 
+    def guarded(self, t, what, fn, default):
+        """(value, error text). An exception in fn is logged once per distinct text and returns (default, text)."""
+        try:
+            return fn(), None
+        except Exception as e:
+            msg = f'{what}() raised {type(e).__name__}: {e}'
+            if self.seen_errors.get((t.name if t else None, what)) != msg:
+                self.seen_errors[(t.name if t else None, what)] = msg
+                self.log(f'{t.name if t else "queue"}: {msg} (counted as not ready yet)')
+            return default, msg
+
+    def load_cap_hit(self, t, logp):
+        info = self.guarded(t, 'load_cap_file', lambda: jread(self.cfg.load_cap_file()), {})[0] or {}
+        with self.lock:
+            self.cap = info or {'note': f'see {logp}'}
+        self.finish(t, 'failed', f'load cap: the 1-minute load stayed >= {LOAD_MAX} ({info}); see {logp}')
+
     def gpu_done(self):
+        """The GPU queue ended: state done, or stopped on the load cap. A state file written before this CPU queue started
+        counts only after STATE_GRACE seconds (a restart of both queues: the GPU queue rewrites it as running first)."""
         p = self.cfg.gpu_state()
-        return p.is_file() and jread(p).get('state') == 'done'
+        if not p.is_file():
+            return False
+        if jread(p).get('state') not in ('done', STATE_CAP):
+            return False
+        return p.stat().st_mtime >= self.t_start - 2 or time.time() - self.t_start >= STATE_GRACE
 
     def run(self):
         self.cfg.logs.mkdir(parents=True, exist_ok=True)
@@ -250,14 +310,21 @@ class Engine:
                 states = {t.name: t.state for t in self.tasks}
             if all(s in ('ok', 'skipped', 'failed', 'blocked') for s in states.values()):
                 break
-            if not self.stopped and self.cfg.stop_marker().is_file() and self.queue == 'gpu':
+            if not self.stopped and self.cfg.stop_marker().is_file():      # both queues stop on the SC1 marker
                 self.stopped = True
                 self.log('STOP marker found (SC1 failed or missing): no further steps')
+            if self.cap is not None and not self.cap_written:
+                self.cap_written = True
+                write_state(self.cfg, STATE_CAP, load_cap=self.cap)
+                self.log(f'{STATE_CAP}: no further GPU steps; restart both queues to resume ({self.cap})')
             for t in self.tasks:
                 if t.state != 'pending':
                     continue
                 if self.stopped:
                     self.finish(t, 'blocked', 'stopped by SC1')
+                    continue
+                if self.cap is not None:
+                    self.finish(t, 'blocked', STATE_CAP)
                     continue
                 if any(states[d] in ('failed', 'blocked') for d in t.deps):
                     self.finish(t, 'blocked', 'needs ' + ', '.join(d for d in t.deps if states[d] in ('failed', 'blocked')))
@@ -265,19 +332,33 @@ class Engine:
                 if not all(states[d] in ('ok', 'skipped') for d in t.deps) or \
                         not all(states[d] in ('ok', 'skipped', 'failed', 'blocked') for d in t.after):
                     continue
+                # order: outputs exist (resume), then ready() (the input files), then cond() (which may read those files).
+                # An exception in verify()/ready()/cond() is "not ready yet" (logged once) in the CPU queue; once the GPU queue
+                # is done it fails that one step with the text. The GPU queue has nothing to wait for: it fails the step at once.
+                if t.outputs and all(p.exists() for p in t.outputs):
+                    bad, err = self.guarded(t, 'verify', t.verify, None) if t.verify else (None, None)
+                    bad = bad or err
+                    self.finish(t, 'failed' if bad else 'skipped', bad or 'outputs exist')
+                    continue
+                err = None
+                if t.ready:
+                    ok, err = self.guarded(t, 'ready', t.ready, False)
+                    if not ok:
+                        if self.queue == 'gpu' and err:
+                            self.finish(t, 'failed', err)
+                        elif self.queue == 'cpu' and self.guarded(None, 'gpu_done', self.gpu_done, False)[0]:
+                            self.finish(t, 'failed', err or 'its input never appeared and the GPU queue is done: ' + t.ready_doc)
+                        continue
                 if t.cond:
-                    r = t.cond()
+                    r, err = self.guarded(t, 'cond', t.cond, None)
+                    if err:
+                        if self.queue == 'gpu' or self.guarded(None, 'gpu_done', self.gpu_done, False)[0]:
+                            self.finish(t, 'failed', err)
+                        continue
                     if r:
                         kind, why = r
                         self.finish(t, 'skipped' if kind == 'skip' else 'failed', why)
                         continue
-                if t.outputs and all(p.exists() for p in t.outputs):
-                    self.finish(t, 'skipped', 'outputs exist')
-                    continue
-                if t.ready and not t.ready():
-                    if self.queue == 'cpu' and self.gpu_done() and not t.ready():
-                        self.finish(t, 'failed', 'its input never appeared and the GPU queue is done: ' + t.ready_doc)
-                    continue
                 with self.lock:
                     used = sum(x.slots for x in self.tasks if x.state == 'running')
                     if used + t.slots > SLOTS:
@@ -297,8 +378,10 @@ class Engine:
     def summary(self):
         cnt = {}
         for t in self.tasks:
-            cnt[t.state] = cnt.get(t.state, 0) + 1
-        bad = [t.name for t in self.tasks if t.state in ('failed', 'blocked')]
+            k = 'dropped under the rule' if t.rule_dropped else t.state
+            cnt[k] = cnt.get(k, 0) + 1
+        bad = [t.name for t in self.tasks if t.state in ('failed', 'blocked') and not t.rule_dropped]
+        rule = [t.name for t in self.tasks if t.rule_dropped]
         extra = ''
         if self.queue == 'gpu':
             walls = []
@@ -309,10 +392,12 @@ class Engine:
             extra = ' FCMI wall (D21 limit 3600s): ' + (', '.join(walls) or 'none') + '.'
         line = (f'r8 queue {self.queue} [{"smoke" if self.cfg.smoke else "real"}] done {now()}: {len(self.tasks)} steps, '
                 + ', '.join(f'{v} {k}' for k, v in sorted(cnt.items())) + (f'; not ok: {", ".join(bad)}' if bad else '; all ok')
+                + (f'; dropped under the rule: {", ".join(rule)}' if rule else '')
+                + (f'; {STATE_CAP} ({self.cap}); restart both queues to resume' if self.cap is not None else '')
                 + '.' + extra + f' Logs: {self.cfg.logs}')
         self.log(line)
         (self.cfg.logs / f'queue_{self.queue}_summary.txt').write_text(line + '\n')
-        return line, (3 if self.cfg.stop_marker().is_file() else (1 if bad else 0))
+        return line, (3 if self.cfg.stop_marker().is_file() else (LOAD_CAP_EXIT if self.cap is not None else (1 if bad else 0)))
 
 
 
@@ -360,8 +445,7 @@ def gpu_tasks(cfg):
 
     def state(s):
         def fn():
-            cfg.logs.mkdir(parents=True, exist_ok=True)
-            cfg.gpu_state().write_text(json.dumps({'state': s, 'at': now()}))
+            write_state(cfg, s)
         fn.__name__ = f'write_gpu_state_{s}'
         return fn
 
@@ -370,7 +454,11 @@ def gpu_tasks(cfg):
              cond_doc='stage0_regression.json pass (real); no STOP marker'))
     # views (03)
     vcmd = [PY, 'r8_views.py', '--batch-size', '128'] + (['--smoke', str(cfg.views_n)] if sm else [])
-    add(Task('views', 'gpu', build=lambda plan: {'cmd': vcmd}, outputs=[cfg.views / 'meta.json'], deps=[]))
+    def views_failed_recorded():
+        m = cfg.views / 'meta.json'
+        return 'M4 view check failed, recorded in meta.json' if m.is_file() and jread(m)['view_check']['passed'] is False else None
+    add(Task('views', 'gpu', build=lambda plan: {'cmd': vcmd}, outputs=[cfg.views / 'meta.json'], deps=[],
+             rule_check=views_failed_recorded))
     # FCMI FC3 (stage 1), then the others if SC2 passed
     def fc_cmd(name):
         return [PY, 'r8_fcmi.py', '--weight', FC_WEIGHTS[name], '--device', 'cuda'] + (['--smoke'] if sm else [])
@@ -394,7 +482,11 @@ def gpu_tasks(cfg):
         if x == 'AL':
             env['PYTHONPATH'] = '/data/SSD2/third_party/pydeps'
         cmd = [PY, 'r8_enc_extract.py', '--encoder', e] + (['--smoke', str(cfg.enc_n)] if sm else [])
-        add(Task(f'enc_{x}', 'gpu', build=lambda plan, c=cmd, v=env: {'cmd': c, 'env': v}, outputs=[cfg.enc_record(x)]))
+        def esc1_failed_recorded(x=x):
+            r = cfg.enc_record(x)
+            return f'ESC1 failed, recorded in {r.name}' if r.is_file() and jread(r).get('pass') is False else None
+        add(Task(f'enc_{x}', 'gpu', build=lambda plan, c=cmd, v=env: {'cmd': c, 'env': v}, outputs=[cfg.enc_record(x)],
+                 rule_check=esc1_failed_recorded))
     add(Task('gpu_done', 'light', fn=state('done')))
     return T
 
@@ -432,9 +524,10 @@ def write_drops(cfg, batch, names, extra, grouping_files):
             if base in dropped:
                 dropped[x] = f'control of dropped {base}: {dropped[base]}'
     assert all(isinstance(v, str) and v.strip() for v in dropped.values())
+    payload = json.dumps({'groupings': {}, 'dropped': dropped}, indent=1, sort_keys=True)   # dump first, write once
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, 'x') as f:
-        json.dump({'groupings': {}, 'dropped': dropped}, f, indent=1, sort_keys=True)
+        f.write(payload)
     return dropped
 
 
@@ -452,10 +545,33 @@ def write_smoke_gate_records(cfg):
         assert src.get('smoke') is True, f'{raw}: not a smoke record'
         ok = src['wiring_pass'] if 'wiring_pass' in src else src['pass']
         assert isinstance(ok, bool)
-        rec = {'pass': ok, 'smoke': True, 'wiring_pass': ok, 'rule_sha256': rule, 'written': now(),
+        # a full copy of the source record (11 reads evidence, esc1, n, loss_log, labels... as 04 and 06 wrote them; its paths are
+        # absolute, so they stay valid) with `pass` set to the wiring result
+        rec = {**src, 'pass': ok, 'smoke': True, 'wiring_pass': ok, 'rule_sha256': rule, 'written': now(),
                'source': str(raw), 'source_sha256': sha_file(raw), 'note': 'smoke gate record from the wiring result (ticket 13)'}
+        payload = json.dumps(rec, indent=1)          # one write of a prepared string
         with open(out, 'x') as f:
-            json.dump(rec, f, indent=1)
+            f.write(payload)
+
+
+def nbc_dropped(cfg):
+    """The reason when NBC is recorded dropped (M16), else None: 07 (r8_groupings_nbc.json), 08 (heads/head_NBC.json),
+    09 (readers/reader_NBC.json) or the late-drops file."""
+    def read(p):
+        return jread(p) if Path(p).is_file() else {}
+    g = read(cfg.root / 'groupings' / 'r8_groupings_nbc.json').get('dropped', {})
+    if 'NBC' in g:
+        return f'07: {g["NBC"]}'
+    h = read(cfg.head('NBC'))
+    if h.get('dropped') is True:
+        return f'08: {h.get("reason")}'
+    r = read(cfg.root / 'readers' / 'reader_NBC.json')
+    if r.get('dropped'):
+        return f'09: {r.get("reason")}'
+    d = read(cfg.root / 'groupings' / 'r8_drops_nbc.json').get('dropped', {})
+    if 'NBC' in d:
+        return f'drops file: {d["NBC"]}'
+    return None
 
 
 def cpu_tasks(cfg):
@@ -516,6 +632,8 @@ def cpu_tasks(cfg):
         for x in V_IDS:      # head_<V> is skipped when the view check failed; 07 then records the drop
             T.append(Task(f'part_{x}', 'heavy', build=cmd('r8_groupings.py', 'part', '--id', x, *part_flag), deps=[f'head_{x}'],
                           outputs=[cfg.part(x)]))
+    # read_13 #8, by design (rule section 8, last row: not covered, stop): one crashed FCMI or encoder run (no d21.json or
+    # stageE_*.json) fails its part_<X> wait once the GPU queue ends, and collect then blocks the chain. A re-run of both resumes.
     for i, x in enumerate(FC_IDS, 1):
         def fready(x=x, i=i):
             v = cfg.fc_verdict(x)
@@ -583,7 +701,10 @@ def cpu_tasks(cfg):
     rg = ['--smoke', '--results', str(R)] if sm else []
 
     def gate_args(step, plan, triggered):
-        idx = inx_main + ([R / 'seed42' / 'index_nbc.json'] if triggered else [])
+        # M16: a triggered NBC that was dropped has no index_nbc.json; 10 and 11 get NBC from the drops/groupings files only
+        # (r8_gate.gate_stats and r8_rederive.statistics take a fired trigger with NBC in `dropped`). In the plan: shown with it.
+        nbc_idx = triggered and (plan or not nbc_dropped(cfg))
+        idx = inx_main + ([R / 'seed42' / 'index_nbc.json'] if nbc_idx else [])
         grp = gr_main + ([R / 'groupings' / 'r8_groupings_nbc.json', R / 'groupings' / 'r8_drops_nbc.json'] if triggered else [])
         return idx, grp
 
@@ -602,15 +723,23 @@ def cpu_tasks(cfg):
             t = (not plan) and trig()
             idx, grp = gate_args(step, plan, t if not plan else (step == 'gate'))
             return {'cmd': [PY, 'rederive/r8_rederive.py', '--step', step, '--pending', str(R / f'{step}_pending.json'),   # interface: 11
-                            *(['--smoke', '--root', str(R)] if sm else []), '--index', *map(str, idx), '--groupings', *map(str, grp)]}
+                            *(['--smoke', '--root', str(R), '--aff-reader', str(R / 'seed42' / 'reader_A0.npz')] if sm else []),   # smoke: 09's own A0
+                            '--index', *map(str, idx), '--groupings', *map(str, grp)]}
         return b
 
     fin = lambda step: cmd('run_r8_gate.py', 'finalize', '--step', step, *rg)
     # trigger step
     T.append(Task('trigger_pending', 'heavy', build=pend_cmd('trigger', lambda: False), deps=gate_dep0,
                   outputs=[R / 'trigger_pending.json'], ready=gate_ready, ready_doc=gate_ready_doc))
+    def c13_ok(step):
+        p = R / 'rederive' / f'{step}_rederive.json'
+
+        def v():       # 11 writes the record also when it disagrees (exit 1): on a resume only "agree" counts as done
+            st = jread(p).get('status')
+            return None if st == 'agree' else f'{p.name} says status {st!r}, not "agree" (C13 disagreement): the step failed'
+        return v
     T.append(Task('trigger_c13', 'heavy', build=c13_cmd('trigger', lambda: False), deps=['trigger_pending'],
-                  outputs=[R / 'rederive' / 'trigger_rederive.json']))
+                  outputs=[R / 'rederive' / 'trigger_rederive.json'], verify=c13_ok('trigger')))
     T.append(Task('trigger_final', 'heavy', build=fin('trigger'), deps=['trigger_c13'], outputs=[R / 'probe_trigger.json']))
     # NBC chain (if triggered)
     def ntrig_cond():
@@ -631,20 +760,41 @@ def cpu_tasks(cfg):
                                                             *(['--smoke', str(SMOKE_N)] if sm else [])),
                       deps=['nbc_collect'], outputs=[cfg.head(x)], **nc))
     nb = ['--batch', 'nbc', '--groupings', 'NBC', 'ZNBC']
+    sd = R / 'seed42'
+
+    def readers_cond():       # read_13 #10: as readers_main, a finished earlier run is not validated again
+        r = ntrig_cond()
+        if r:
+            return r
+        if (sd / 'arrays_nbc.npz').is_file() or (sd / 'taus_nbc.json').is_file() or \
+                all((R / 'readers' / f'reader_{x}.json').is_file() for x in ('NBC', 'ZNBC')):
+            return ('skip', 'NBC readers output exists (arrays_nbc.npz, taus_nbc.json or both reader records)')
+        return None
+
+    def undropped_cond():     # final_review M1: NBC dropped after the trigger fired (M16) -> nothing to tau or score
+        r = ntrig_cond()
+        if r:
+            return r
+        why = nbc_dropped(cfg)
+        return ('skip', f'NBC is dropped under M16, nothing to score; the drop counts as not passing, 10 and 11 get no index_nbc.json ({why})') if why else None
     T.append(Task('nbc_readers', 'heavy', slots=SLOTS, build=cmd('run_r8.py', 'readers', *nb, '--jobs', '3', *rflag),
-                  deps=['nbc_place_NBC', 'nbc_place_ZNBC'], **nc))
+                  deps=['nbc_place_NBC', 'nbc_place_ZNBC'], cond=readers_cond,
+                  cond_doc='probe_trigger.json triggered; no NBC readers output yet'))
+    ud = dict(cond=undropped_cond, cond_doc='probe_trigger.json triggered and NBC not recorded dropped (M16)')
     T.append(Task('nbc_taus', 'heavy', build=cmd('run_r8.py', 'taus', *nb, *rflag), deps=['nbc_readers'],
-                  outputs=[R / 'seed42' / 'taus_nbc.json'], **nc))
+                  outputs=[sd / 'taus_nbc.json'], **ud))
     T.append(Task('nbc_score', 'heavy', build=cmd('run_r8.py', 'score', *nb, *rflag), deps=['nbc_taus'],
-                  outputs=[R / 'seed42' / 'arrays_nbc.npz', R / 'seed42' / 'index_nbc.json'], **nc))
+                  outputs=[sd / 'arrays_nbc.npz', sd / 'index_nbc.json'], **ud))
 
     def drops_nbc():
         write_drops(cfg, 'nbc', ['NBC', 'ZNBC'], {}, [R / 'groupings' / 'r8_groupings_nbc.json'])
-    T.append(Task('drops_nbc', 'light', fn=drops_nbc, deps=['nbc_score'], outputs=[R / 'groupings' / 'r8_drops_nbc.json'], **nc))
+    # after the readers (not after the score): a dropped NBC has no score step, and the reader records are final here
+    T.append(Task('drops_nbc', 'light', fn=drops_nbc, deps=['nbc_readers'], outputs=[R / 'groupings' / 'r8_drops_nbc.json'], **nc))
     # gate step
     T.append(Task('gate_pending', 'heavy', build=pend_cmd('gate', triggered), deps=['trigger_final', 'nbc_score', 'drops_nbc'],
                   outputs=[R / 'gate_pending.json']))
-    T.append(Task('gate_c13', 'heavy', build=c13_cmd('gate', triggered), deps=['gate_pending'], outputs=[R / 'rederive' / 'gate_rederive.json']))
+    T.append(Task('gate_c13', 'heavy', build=c13_cmd('gate', triggered), deps=['gate_pending'], outputs=[R / 'rederive' / 'gate_rederive.json'],
+                  verify=c13_ok('gate')))
     T.append(Task('gate_final', 'heavy', build=fin('gate'), deps=['gate_c13'], outputs=[R / 'gate_verdict.json']))
     # descriptive (12)
     T.append(Task('desc_labelfree', 'heavy', build=cmd('run_r8_descriptive.py', 'labelfree', *rflag), deps=['gate_final'],
@@ -658,19 +808,33 @@ def cpu_tasks(cfg):
     return T
 
 
+def read_load():
+    return float(open('/proc/loadavg').read().split()[0])
+
+
 def loadwait(argv):
-    """FCMI start guard: wait (inside the locks, before model construction) for the 1-minute load average < LOAD_MAX."""
+    """FCMI start guard: wait (inside the locks, before model construction) for the 1-minute load average < LOAD_MAX, at most
+    R8_LOAD_WAIT_MAX seconds (default 2 h). At the cap: log the load, write R8_LOAD_CAP_FILE and return LOAD_CAP_EXIT (4)."""
     assert argv and argv[0] == '--', argv
     cmd = argv[1:]
     poll = int(os.environ.get('R8_LOAD_POLL', 60))
-    waited = 0
+    cap = float(os.environ.get('R8_LOAD_WAIT_MAX', LOAD_WAIT_MAX_DEFAULT))
+    waited = 0.0
     while True:
-        load = float(open('/proc/loadavg').read().split()[0])
+        load = read_load()
         if load < LOAD_MAX:
             break
-        print(f'{now()} load average {load:.2f} >= {LOAD_MAX}: waiting {poll}s (outside D21 wall time)', flush=True)
-        time.sleep(poll)
-        waited += poll
+        if waited >= cap:
+            print(f'{now()} LOAD CAP: 1-min load {load:.2f} still >= {LOAD_MAX} after {waited:.0f}s (cap {cap:.0f}s): FCMI run not started, exit {LOAD_CAP_EXIT}',
+                  flush=True)
+            if os.environ.get('R8_LOAD_CAP_FILE'):
+                Path(os.environ['R8_LOAD_CAP_FILE']).write_text(json.dumps(
+                    {'load': load, 'load_max': LOAD_MAX, 'waited_seconds': waited, 'cap_seconds': cap, 'at': now(), 'cmd': cmd}))
+            return LOAD_CAP_EXIT
+        print(f'{now()} load average {load:.2f} >= {LOAD_MAX}: waiting {poll}s (outside D21 wall time; cap {cap:.0f}s, waited {waited:.0f}s)', flush=True)
+        step = min(poll, max(cap - waited, 0.0)) if cap - waited < poll else poll
+        time.sleep(step)
+        waited += step
     print(f'{now()} FCMI start: 1-min load {load:.2f}, waited {waited}s: {" ".join(cmd)}', flush=True)
     env = dict(os.environ)
     i = 0
@@ -681,7 +845,7 @@ def loadwait(argv):
             env[k] = v
             i += 1
     r = subprocess.run(cmd[i:], env=env)
-    print(f'{now()} FCMI end: exit {r.returncode}, 1-min load {float(open("/proc/loadavg").read().split()[0]):.2f}', flush=True)
+    print(f'{now()} FCMI end: exit {r.returncode}, 1-min load {read_load():.2f}', flush=True)
     return r.returncode
 
 
