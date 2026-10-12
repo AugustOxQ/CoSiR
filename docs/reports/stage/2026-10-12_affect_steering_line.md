@@ -6,6 +6,8 @@
 > [1 to 7 October](../weekly/2026-10-07_aspect_task_to_affect_steering.md), which this report updates and extends.
 > Every number comes from the report linked in its section. Lines marked **Our reading** are our interpretation; they
 > decide nothing. A page with the same claims, for a first read: [HTML page](2026-10-12_affect_steering_line.html).
+> File names of the auto reports carry sequence numbers, not dates: they run ahead of the calendar (for example
+> `2026-11-25_artelingo_held_test.md` was written on 10 October 2026).
 
 ## Summary
 
@@ -15,8 +17,9 @@
 - **The method.** One-sided affect steering (AFF) adds a label-free affect term to a strong score that ignores the
   respect, and only when a learned reader is confident that the examples share the affect grouping (§4).
 - **The result.** On 36,864 episodes from paintings never used to build it, AFF reached 19.44 R@1 against 18.84 for
-  B′(A0), the strongest condition-free score among the pre-registered checks: +0.60 [+0.46, +0.73] R@1 points, all seven
-  pre-registered checks passed with a Holm correction (§3.1).
+  B′(A0), the strongest condition-free score among the seven pre-registered checks: +0.60 [+0.46, +0.73] R@1 points.
+  This interval resamples anchor paintings; resampling the target paintings too widens it to [+0.40, +0.79]. The
+  stronger B′(A1) (19.30) was a secondary check. All seven pre-registered checks passed with a Holm correction (§3.1).
 - **The external baselines are far behind.** CLIP cosine scored 13.25, a fine-tuned CLIP at most 15.80 and an
   in-context Qwen3-VL-8B 14.50; neither the in-context model nor a describe-then-score pipeline chose the shown respect
   reliably (§3.1, §5).
@@ -40,7 +43,7 @@ but not a style. Work on *conditional similarity* lets the respect vary:
 - early methods learn one mask or subspace per respect from labelled examples (conditional similarity networks);
 - later ones infer the respects from labelled triplets without condition labels, on images only (SCE-Net,
   DiscoverNet);
-- recent ones take the respect as a text phrase, with a fine-tuned CLIP (GeneCIS) or on a frozen vision and language
+- recent ones take the respect as a text phrase, with a fine-tuned CLIP (GeneCIS, a benchmark and baseline for text-conditioned image similarity) or on a frozen vision and language
   encoder (CLAY, CRL).
 
 All of them need a name for the respect or supervision tied to it, and nearly all compare images with images.
@@ -194,6 +197,9 @@ We compare each method with external baselines and with the strongest scores we 
 | **matched control** | AFF with only the condition removed: its steering term is averaged over the two conditions | no |
 | R1 | AFF's parent: the same gated reader, steering whatever grouping it picks | yes |
 
+B′(A1) was not among the seven pre-registered checks of the held read; it was tested as a secondary check (round 6
+spec).
+
 Two rules hold for every method. It must beat its **matched control**, the same score with *only* the condition
 removed. And it must beat the **condition-free bar**: B and B′ rebuilt on its own groupings. Without these rules a score
 that ignores the condition looks strong: B reaches 18.34 R@1 on development episodes against cosine's 12.96.
@@ -203,7 +209,7 @@ that ignores the condition looks strong: B reaches 18.34 R@1 on development epis
 Every test follows a decision rule committed before its episodes are built.
 
 1. **Development bar.** On development episodes, a method needs a margin of at least +0.5 R@1 over the strongest of B,
-   B′ and its matched control, with a lower bound above 0, to earn a test.
+   B′ rebuilt on the method's groupings and its matched control (for designs that use the CSD grouping, B′(A1)), with a lower bound above 0, to earn a test.
 2. **Fresh test.** Three never-used seeds; GO needs seven checks with lower bounds above 0: five R@1 checks (against
    cosine, RCA, B, B′(A0), the matched control) and two condition-gain checks (against the condition-free scores and
    against RCA).
@@ -329,8 +335,8 @@ choosing (condition gain), shown in Figure 8.
 - **R1 and AFF** keep most of B's finding and add a condition gain of about 3 points.
 
 A method that reads the condition pays for it in either rate: when it moves the shown aspect's candidate up, it also
-moves some aspect-sharing candidates down. On fresh episodes AFF lost about 0.52 points of either rate per point of
-gain. Our reading: AFF gains in R@1 because it spends that cost mostly where B is weakest (§3.4).
+moves some aspect-sharing candidates down. On fresh episodes AFF gave up about 0.52 points of either rate for each
+point of condition gain (round 3 report). Our reading: AFF gains in R@1 because it spends that cost mostly where B is weakest (§3.4).
 
 ### 3.4 The gain sits on the two emotion pairs
 
@@ -343,7 +349,7 @@ paintings alike (Figure 9).
 
 *Table 3. AFF minus B′(A0) per aspect pair, R@1 points (12,288 episodes per pair in each read; descriptive).*
 
-| Pair | Fresh | Held | Condition gain, held (over the control) |
+| Pair | Fresh | Held | Condition gain, held (AFF minus its matched control, whose gain is 0) |
 |---|---|---|---|
 | emotion × style | +0.81 [+0.58, +1.04] | +0.59 [+0.35, +0.83] | +0.86 [+0.56, +1.15] |
 | emotion × genre | +1.54 [+1.30, +1.79] | +1.64 [+1.40, +1.90] | +6.05 [+5.68, +6.41] |
@@ -354,8 +360,8 @@ The pairs differ in how first places moved (fresh episodes):
 - **Emotion × style:** AFF moved first places to the emotion target mostly from negatives, so its either rate rose.
 - **Emotion × genre:** it took 4.6 points of first place from the other aspect's candidate and gained 1.5 R@1.
 - **Style × genre:** it also took first places from the other candidate (3.3 points), but they went to negatives, not
-  to the target. There the first condition shows style, and the reader picked affect in 77.6% of those
-  conditions. The affect grouping is not built to carry style.
+  to the target. There condition a shows style, and the reader picked affect in 77.6% of that pair's
+  condition-a rankings. The affect grouping is not built to carry style.
 
 On development episodes the condition-free score puts the emotion target first only 10 to 13% of the time, against
 32 to 33% for a genre target. So steering towards emotion pays where B is weakest. On held paintings AFF is also below B′(A1) on style ×
@@ -417,16 +423,17 @@ AFF has a condition-free base that is always on and a steering branch that is ad
 4. **Heads.** For each grouping and modality, a logistic regression on CLIP features places an image or a caption in the
    grouping and gives a posterior p_h. The grouping score of candidate k for query q is s_h(q, k) = p_h(q) · p_h(k).
 5. **Reader.** From 18 numbers per episode and condition (for each grouping: how much the support pairs agree, how much
-   the contrast pairs agree, their difference and spreads), a multinomial logistic regression gives a probability P(h)
+   the contrast pairs agree, their difference and spreads, and the share of support pairs whose image and caption fall in the same top group; 6 numbers for each of the 3 groupings), a multinomial logistic regression gives a probability P(h)
    that the supports share grouping h. It is trained on **practice episodes** built from the groupings themselves (the
    supports share a group of one grouping, the contrasts a group of another), so the answer is known without labels.
    The steering term is T = Σ_h P(h) · s_h.
 6. **Confidence gate.** Open when the reader's top probability leads the second by at least a threshold fixed on
    development episodes.
-7. **One-sided rule.** The gate also requires the top grouping to be affect. Swapping supports and contrasts flips the
-   sign of the evidence, so the gate opens mostly on one side of each episode.
-8. **Fused score.** (1 + λ_u) · z(B) + λ_a · gate · z(T), with z a z-score over the 13 candidates. When the gate is
-   closed, the score is B alone. The weights and threshold come from 224 settings; the setting chosen on one half of the
+7. **One-sided rule.** The gate also requires the top grouping to be affect. Swapping supports and contrasts swaps the
+   two agreement values, so evidence for affect in condition a is evidence against it in condition b. The gate therefore
+   opens mostly in one of the two conditions of an episode.
+8. **Fused score.** (1 + λ_u) · z(B) + λ_a · gate · z(T). Here λ_u and λ_a are fusion weights; z is a z-score over the 13 candidates. When the gate is
+   closed, the score is B alone. The weights and threshold come from 224 settings (4 thresholds × 7 values of λ_u × 8 values of λ_a); the setting chosen on one half of the
    episodes scores the other half.
 
 The **matched control** uses the same 224 settings with the gated term replaced by its average over the two conditions,
@@ -550,7 +557,7 @@ only (12,288 episodes); its AFF-minus value is computed on those episodes. Every
 
 On swap success the in-context MLLM, the privileged DTS and R1 (by 0.17) are above AFF. **Our reading.** Swap success
 asks only that the two aspect candidates are in the right order under both conditions, wherever they rank. A scorer
-that ordered the two independently at random in each condition (ties ignored) would reach 25%, and every scorer in
+that ordered the two independently at random in each condition (ties ignored) would reach 25% (one half in each condition, so one quarter for both), and every scorer in
 Table 7 is below that, AFF included. So swap success alone does not show that a scorer reads the aspect; R@1 and
 condition gain do, and on those no MLLM comparator comes near AFF. The paper must still report the swap-success row.
 
@@ -650,7 +657,8 @@ with edges inside one content group removed or halved, and CLIP token statistics
 out. Each was scored by R1 and by an extended AFF that also steers on the style grouping, on development episodes only.
 
 A ceiling check came first: told the true styles, the score beat its matched control on style × genre by +3.92 [+3.35,
-+4.49], far above the expected +0.9. But none of the 12 candidate scorers passed the gate. The best pooled margin was
++4.49], a ceiling on style × genre alone, so it is larger than the pooled told margins of §4.2, and far above the
+expected +0.9. But none of the 12 candidate scorers passed the gate. The best pooled margin was
 +0.25 [+0.05, +0.46] against a bar of +0.5 over the strongest comparator, B′(A1), which AFF itself clears by only
 +0.33 there. Every candidate also lost 0.93 to 1.61 points to AFF on emotion × genre (bar: at most 0.3). The
 label-free groupings reached about a tenth of the ceiling on style × genre (Figure 14).
@@ -707,7 +715,7 @@ cut-off on Friday 23 October for a held-read verdict.
 
 ## Glossary
 
-| Term | Meaning | Name in the auto reports |
+| Term | Meaning | Name in the auto reports (for cross-reference) |
 |---|---|---|
 | aspect, value | a respect in which items can be similar (emotion, style, genre) / one setting of it (sad, Baroque, landscape) | aspect, value |
 | aspect episode | a query, 4 support pairs, 4 contrast pairs and 13 candidates in the other modality; the aspect is never named | aspect episode |
@@ -726,6 +734,7 @@ cut-off on Friday 23 October for a held-read verdict.
 | reader | a classifier that says which grouping the support pairs share | reader, R-c |
 | practice episode | an episode built from a grouping, not a label, to train the reader | bank episode |
 | told | given the right grouping from the labels; a ceiling, not a method | told oracle |
+| told ceiling | a scorer given the right grouping from the evaluation labels; an upper reference, not a method | told oracle |
 | R1 | the gated reader: steers whenever confident, whatever grouping it picks | R1 |
 | AFF | one-sided affect steering: R1, steering only when the pick is affect | AFF |
 | random one-sided gate | a control that steers at random with AFF's open share per condition; it knows the condition, so it is not a method | random-share control |
