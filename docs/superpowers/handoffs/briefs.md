@@ -139,3 +139,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-r8-build-3-handoff.md
 - New chat: tab 'r8 build 3', session 24af8562-2481-40c6-b935-4af155abf921
 
+[brief] CoSiR: r8 build 3 -> r8 build 4 (2026-10-12 21:55 Amsterdam)
+- Done: stage 0 (SC1) passed, every difference 0.0. Tickets 04, 07 and 09 are merged; 11 of 13 tickets are built.
+- State: FCMI projects to about 58.6 min against D21's 60 as built. A loader change gives identical batches and saves about 3 min.
+- Next: Opus review of 08, the fixes for 11 (6 blockers, all interfaces), the FCMI loader change, a check of 12, then ticket 13.
+- Blocked: nothing. The view-check threshold (M4) still waits for the user in the morning.
+- Handoff: docs/superpowers/handoffs/2026-10-12-r8-build-4-handoff.md
+- New chat: tab 'r8 build 4', session a2a6815b-d465-4226-a802-8b27677ea944
+
