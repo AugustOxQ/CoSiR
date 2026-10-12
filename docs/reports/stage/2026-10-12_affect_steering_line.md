@@ -26,8 +26,9 @@
 - **The limits.** The gain sits on the two pairs that involve emotion; AFF is below B′(A0) on style × genre (−0.43 on held
   paintings), and also below its matched control and B′(A1) there. Its margin over the strongest condition-free score (+0.14) and over its own parent without the affect
   restriction (+0.02) are not established (§3, §7).
-- **After the held test.** Three attempts to improve AFF (vetoes on its gate, a better caption placement, style
-  groupings without content) all failed their development bar; AFF stays the current best (§6).
+- **After the held test.** We made three attempts to improve AFF (vetoes on its gate, a better caption placement,
+  style groupings without content). None both passed its development bar and beat AFF, so AFF stays the current best
+  (§6).
 
 **Where to find the important parts.** The main comparison table is in §3.1; the method in one figure is §4.1; the MLLM
 experiments are §5; the limits are §7.
@@ -666,7 +667,7 @@ label-free groupings reached about a tenth of the ceiling on style × genre (Fig
 ![Round 7](../../user_read/assets/2026-10-12_design_l_style_source/fig1_ceiling_vs_candidates.png)
 
 *Figure 14. Round 7 on style × genre, development episodes: the told ceiling against the label-free candidates and
-random-grouping controls.*
+random-grouping controls. V2 and V3: CSD's neighbour graph with the edges inside one content group removed (V2) or halved (V3).*
 
 The pre-registered consequence: the paper is the ArtELingo paper with AFF, and AFF stays the current best.
 Source: [round 7](../auto/v2/2026-11-26_design_l_style_source.md).
