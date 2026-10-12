@@ -1,7 +1,8 @@
 """Ticket 10: synthetic per-anchor arrays; no r8_common or real data needed."""
+import json
 import sys
-import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -66,6 +67,16 @@ def test_sc4_minus49_passes_minus50_fails_in_each_emotion_pair(pair, units, pass
     assert rec["pass"] is passes
 
 
+def test_recorded_r7_s3_keeps_its_fields_separate_from_sc4():
+    arr = world({"R1_V100": ((1, 1, 1), 4)})
+    rec = G.evaluate_scorer(arr, "R1_V100", BoundBoot())
+    assert rec["S3"] == {"emotion__style": {"sum4d": 1, "pass": True},
+                         "emotion__genre": {"sum4d": 1, "pass": True}, "pass": True}
+    assert {"n", "point", "ci95"} <= set(rec["SC4"]["emotion__style"])
+    rec["SC4"]["emotion__style"]["pass"] = False
+    assert rec["S3"]["emotion__style"]["pass"] is True
+
+
 def records(spec, lower=None):
     arr = world(spec)
     return {name: G.evaluate_scorer(arr, name, BoundBoot(lower)) for name in spec}
@@ -97,6 +108,26 @@ def test_pick_pooled_aff_margin_then_gain_and_only_passers():
     assert G.select_scorer(records({"R1_V100": ((0, 0, -1), 4)}), "main") is None
 
 
+def opposing_aff_and_bar_orders(first, second, other_names=()):
+    """First beats AFF by more, but its high BX/CF leaves the smaller R7 bar margin."""
+    spec = {name: ((0, 0, 0), 4) for name in other_names}
+    spec.update({first: ((2, 2, 2), 4), second: ((1, 1, 1), 4)})
+    arr = world(spec)
+    arr[f"BX_{first.split('_', 1)[1]}__r1"][:] = 0.5
+    arr[f"{first}_cf__r1"][:] = 0.5
+    return arr
+
+
+def test_pick_uses_aff_sum_when_r7_bar_sum_ranks_the_other_scorer_first():
+    first, second = "R1_V67", "XAFF_V100"
+    arr = opposing_aff_and_bar_orders(first, second)
+    recs = G.evaluate_all(arr, (first, second), boot=BoundBoot())
+    assert recs[first]["SC3"]["sum4d"] == 6 and recs[second]["SC3"]["sum4d"] == 3
+    assert recs[first]["S1"]["sum4d"] == 6 and recs[second]["S1"]["sum4d"] == 75
+    assert all(r["pass"] for r in recs.values())
+    assert G.select_scorer(recs, "main") == first
+
+
 def nb_records(spec=None):
     base = {f"{kind}_{x}": ((0, 0, 0), 4)
             for x in ("NB100", "NB67", "NB33") for kind in ("R1", "XAFF")}
@@ -118,6 +149,31 @@ def test_trigger_strength_uses_every_tie_break(spec, source, strength):
     assert out["source_scorer"] == source
     assert out["strength"] == strength
     assert len(out["nb_records"]) == 6
+
+
+def test_trigger_uses_aff_sum_when_r7_bar_sum_ranks_another_strength_first():
+    first, second = "XAFF_NB33", "R1_NB100"
+    names = G.scorer_names(("NB100", "NB67", "NB33"))
+    arr = opposing_aff_and_bar_orders(first, second, names)
+    recs = G.evaluate_all(arr, names, boot=BoundBoot(lower=0.0))
+    assert recs[first]["SC3"]["sum4d"] == 6 and recs[second]["SC3"]["sum4d"] == 3
+    assert recs[first]["S1"]["sum4d"] == 6 and recs[second]["S1"]["sum4d"] == 75
+    assert all(not r["pass"] for r in recs.values())
+    out = G.probe_trigger(recs)
+    assert out["triggered"] is True
+    assert out["source_scorer"] == first and out["strength"] == 0.33
+
+
+def test_trigger_ignores_nb100_drop_and_uses_remaining_failing_scorers():
+    names = G.scorer_names(("NB100", "NB67", "NB33"))
+    arr = world({"R1_NB67": ((2, 0, 0), 4), "XAFF_NB67": ((0, 0, 0), 4),
+                 "R1_NB33": ((3, 0, 0), 4), "XAFF_NB33": ((0, 0, 0), 4)})
+    recs = G.evaluate_all(arr, names, {"NB100": "missing bank block"}, BoundBoot(lower=0.0))
+    out = G.probe_trigger(recs)
+    assert out["triggered"] is True
+    assert out["source_scorer"] == "R1_NB33" and out["strength"] == 0.33
+    assert all(out["nb_records"][name]["dropped"] for name in ("R1_NB100", "XAFF_NB100"))
+    assert all(not recs[name]["dropped"] and not recs[name]["pass"] for name in names[2:])
 
 
 def test_trigger_suppressed_by_any_nb_pass_or_no_evaluated_nb():
@@ -195,32 +251,97 @@ def test_sc3_sc4_gate_does_not_require_r7_s1_or_s2():
     assert rec["pass"] is True
 
 
-def test_rederivation_other_input_sha_blocks_the_verdict_file():
-    import json
-    root = Path(__file__).resolve().parent / "results" / "smoke" / "ticket10"
-    root.mkdir(parents=True, exist_ok=True)
-    folder = Path(tempfile.mkdtemp(prefix="c13_", dir=root))
-    source = folder / "arrays_main.npz"
+def write_json_fixture(path, rec):
+    with open(path, "x") as f:
+        json.dump(rec, f)
+    return rec
+
+
+@pytest.fixture
+def publication_files(tmp_path):
+    source = tmp_path / "arrays_main.npz"
     source.write_bytes(b"synthetic per-anchor file")
-    pending = folder / "gate_pending.json"
-    pending.write_text(json.dumps({"step": "gate", "smoke": True,
-                                   "input_sha256": {str(source): W.sha_file(source)}, "main": {}, "screen": {}}))
-    check = folder / "gate_rederive.json"
-    check.write_text(json.dumps({"step": "gate", "status": "agree", "smoke": True,
-                                 "input_sha256": {str(source): "0" * 64, str(pending): W.sha_file(pending)}}))
-    verdict = folder / "gate_verdict.json"
-    def writer(path, rec):
-        with open(path, "x") as f:
-            json.dump(rec, f)
+    pending = tmp_path / "gate_pending.json"
+    write_json_fixture(pending, {"step": "gate", "smoke": True,
+                                 "input_sha256": {str(source): W.sha_file(source)}, "main": {}, "screen": {}})
+    check = tmp_path / "gate_rederive.json"
+    write_json_fixture(check, {"step": "gate", "status": "agree", "smoke": True,
+                               "input_sha256": {str(source): W.sha_file(source), str(pending): W.sha_file(pending)}})
+    return SimpleNamespace(source=source, pending=pending, check=check, verdict=tmp_path / "gate_verdict.json")
+
+
+def test_rederivation_other_input_sha_blocks_the_verdict_file(publication_files):
+    source, pending, check, verdict = (publication_files.source, publication_files.pending,
+                                       publication_files.check, publication_files.verdict)
+    record = W.read_json(check)
+    record["input_sha256"][str(source)] = "0" * 64
+    check.write_text(json.dumps(record))
     with pytest.raises(AssertionError, match="SHA-256"):
-        W.publish_checked(pending, check, verdict, writer)
+        W.publish_checked(pending, check, verdict, write_json_fixture)
     assert not verdict.exists()
-    check.write_text(json.dumps({"step": "gate", "status": "agree", "smoke": True,
-                                 "input_sha256": {str(source): W.sha_file(source), str(pending): W.sha_file(pending)}}))
-    W.publish_checked(pending, check, verdict, writer)
+    record["input_sha256"][str(source)] = W.sha_file(source)
+    check.write_text(json.dumps(record))
+    W.publish_checked(pending, check, verdict, write_json_fixture)
     assert json.loads(verdict.read_text())["main"] == {}
     with pytest.raises(AssertionError, match="overwrite"):
-        W.publish_checked(pending, check, verdict, writer)
+        W.publish_checked(pending, check, verdict, write_json_fixture)
+
+
+def test_rederivation_without_pending_file_coverage_blocks_the_verdict(publication_files):
+    files = publication_files
+    record = W.read_json(files.check)
+    record["input_sha256"].pop(str(files.pending))
+    files.check.write_text(json.dumps(record))
+    with pytest.raises(AssertionError, match="SHA-256.*gate_pending.json"):
+        W.publish_checked(files.pending, files.check, files.verdict, write_json_fixture)
+    assert not files.verdict.exists()
+
+
+def test_input_changed_after_pending_and_rederivation_blocks_the_verdict(publication_files):
+    files = publication_files
+    files.source.write_bytes(b"changed after pending and agreeing C13 record")
+    with pytest.raises(AssertionError, match="input SHA-256 changed"):
+        W.publish_checked(files.pending, files.check, files.verdict, write_json_fixture)
+    assert not files.verdict.exists()
+
+
+def pending_inputs(tmp_path, *, sc1_pass=True, nbc=False):
+    """Complete small inputs so removing a guard would actually write a pending file."""
+    rule = tmp_path / "DECISION_RULE.md"
+    rule.write_text("synthetic rule for file-boundary tests")
+    common = SimpleNamespace(RULE=rule, assert_rule=lambda: None, assert_inputs=lambda: None,
+                             write_json_once=write_json_fixture)
+    for name in ("stage0_regression.json", "stage1_fcmi.json", "stageE_AL.json", "stageE_DI.json", "stageE_SG.json"):
+        write_json_fixture(tmp_path / name, {"pass": sc1_pass if name == "stage0_regression.json" else True,
+                                             "smoke": True, "rule_sha256": W.sha_file(rule)})
+    seed42 = tmp_path / "seed42"
+    seed42.mkdir()
+    arrays = seed42 / "arrays_main.npz"
+    np.savez(arrays, **world({"R1_NBC": ((1, 1, 1), 4)} if nbc else {}))
+    index = seed42 / "index.json"
+    write_json_fixture(index, {"batches": [{"file": arrays.name, "sha256": W.sha_file(arrays)}]})
+    grouping = tmp_path / "r8_groupings.json"
+    write_json_fixture(grouping, {"groupings": {}, "dropped": {
+        x: "synthetic drop" for x in (*G.MAIN[:-1], *G.SCREEN, "R0own", "NRK", "TP")}})
+    return common, index, grouping
+
+
+def test_prepare_pending_stops_on_sc1_failure(tmp_path):
+    common, index, grouping = pending_inputs(tmp_path, sc1_pass=False)
+    with pytest.raises(AssertionError, match="SC1 failure"):
+        W.prepare_pending(tmp_path, "trigger", True, [index], [grouping], common)
+    assert not (tmp_path / "trigger_pending.json").exists()
+    assert not (tmp_path / "probe_trigger.json").exists()
+    assert not (tmp_path / "gate_verdict.json").exists()
+
+
+def test_prepare_pending_rejects_nbc_arrays_before_checked_trigger(tmp_path):
+    common, index, grouping = pending_inputs(tmp_path, nbc=True)
+    with pytest.raises(AssertionError, match="NBC arrays before a checked trigger"):
+        W.prepare_pending(tmp_path, "trigger", True, [index], [grouping], common)
+    assert not (tmp_path / "trigger_pending.json").exists()
+    assert not (tmp_path / "probe_trigger.json").exists()
+    assert not (tmp_path / "gate_verdict.json").exists()
 
 
 @pytest.mark.parametrize("status, step, covered", [("disagree", "gate", True), ("agree", "trigger", True),
@@ -261,17 +382,35 @@ def test_full_gate_has_separate_roles_and_records_drops_without_common():
     assert out["fallback"]["screen_eligible_at_gate"] is False
 
 
-def test_real_cluster_bootstrap_on_small_constant_differences():
+@pytest.fixture
+def real_boot():
     import importlib.util
     spec = importlib.util.spec_from_file_location("r8_test_aspect_metrics", "/project/CoSiR/src/eval/aspect_metrics.py")
     metrics = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(metrics)
+    return metrics.cluster_bootstrap
+
+
+def test_real_cluster_bootstrap_on_small_constant_differences(real_boot):
     arr = world({"R1_V100": ((24, 24, 24), 72)})
-    rec = G.evaluate_scorer(arr, "R1_V100", metrics.cluster_bootstrap)
+    rec = G.evaluate_scorer(arr, "R1_V100", real_boot)
     assert rec["SC3"]["ci95"] == [25.0, 25.0]
     assert rec["SC3"]["point"] == 25.0 and rec["pass"] is True
     assert rec["S1"]["ci95"] == [50.0, 50.0]
     assert rec["S1"]["gain_ci95"] == [25.0, 25.0]
+
+
+def test_sc3_bootstraps_painting_clusters_with_many_anchors(real_boot):
+    arr = world({"R1_V100": ((0, 0, 0), 180)}, n_pair=60)
+    arr["cl"] = np.repeat(np.arange(9), 20)
+    d = np.repeat([-0.25, 0.0, 0.25, 0.25, -0.25, 0.0, 0.5, -0.5, 0.5], 20)
+    arr["R1_V100__r1"] = arr["AFF__r1"] + d
+    expected = 100 * np.asarray(real_boot(d, arr["cl"])["ci95"])
+    per_anchor = 100 * np.asarray(real_boot(d, np.arange(len(d)))["ci95"])
+    assert not np.allclose(expected, per_anchor, rtol=0, atol=1e-12)
+    rec = G.evaluate_scorer(arr, "R1_V100", real_boot)
+    np.testing.assert_allclose(rec["SC3"]["ci95"], expected, rtol=0, atol=1e-12)
+    assert not np.allclose(rec["SC3"]["ci95"], per_anchor, rtol=0, atol=1e-12)
 
 
 @pytest.mark.parametrize("units, passes", [(245, False), (246, True)])

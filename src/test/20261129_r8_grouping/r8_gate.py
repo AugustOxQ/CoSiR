@@ -8,6 +8,7 @@ to run independently of r8_common; the default loads R7's checked C9 bootstrap.
 Small synthetic scopes scale integer bars with R7's ``need``; file-level real
 runs assert M15's 12,288 pooled anchors and 4,096 anchors per pair.
 """
+from copy import deepcopy
 from fractions import Fraction
 
 import numpy as np
@@ -143,7 +144,7 @@ def evaluate_scorer(arr, name, boot=None):
     assert np.isfinite(ci).all() and ci[0] <= ci[1], "invalid bootstrap interval"
     rec["SC3"] = {"sum4d": s4, "n": n, "point": point_of(s4, n), "ci95": ci,
                   "pass": bool(ci[0] > 0)}
-    rec["SC4"] = rec["S3"]
+    rec["SC4"] = deepcopy(rec["S3"])
     for p in (0, 1):
         scoped = d[masks[p]]
         _, pair_ci = interval(scoped, cl[masks[p]], boot)
@@ -207,6 +208,9 @@ def probe_trigger(records):
             source = select_scorer(available, "main", passing_only=False)
             reason = "none of the six NB scorers passes"
         else:
+            # rule gap: section 6.3's literal "none passes" would trigger even
+            # when all six NB scorers drop. Keep triggered=False/no NBC run in
+            # that case, preserving ticket 05's trigger/strength contract.
             reason = "no NB scorer was evaluated; NBC does not run"
     strength = {"NB100": 1.0, "NB67": 0.67, "NB33": 0.33}
     return {"nb_records": nb, "triggered": source is not None, "source_scorer": source,
