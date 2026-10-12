@@ -19,3 +19,4 @@ Figure 2: `docs/reports/assets/2026-10-12_affect_steering_line/per_pair_fresh_he
 *Implications:* the ArtELingo claim holds on held paintings, but the gain sits on the two emotion pairs, and AFF is below B′(A0) on style × genre (−0.43).
 *Next:* a learned style grouping on frozen CLIP (round 8), with a held-read verdict by Friday 23 October.
 *Feedback requested:* should the paper lead with the task and protocol, with AFF as a modest method, or with AFF?
+*Full update:* <link to the page on the dev-log site; kept out of this public repo, see /project/cosir-devlog/deploys.log>
