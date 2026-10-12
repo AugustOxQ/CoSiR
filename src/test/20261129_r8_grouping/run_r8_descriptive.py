@@ -448,8 +448,9 @@ def harm(root, smoke):
     # interface: in smoke, r8_place.py writes under results/smoke/ (R.SMOKE), so the H<X> arm needs that root too.
     assert not smoke or root == R.SMOKE.resolve(), f"smoke harm needs --root {R.SMOKE} (where r8_place.py writes)"
     if not (root / "heads" / f"post_{hx}.npz").is_file():
-        # interface: ticket 08 `r8_place.py --grouping X --h-arm [--smoke [N]]` writes heads/post_H<X>, xheads_H<X>, head_H<X>.
-        run([py, "r8_place.py", "--grouping", x, "--h-arm", *flag], log)
+        # interface: ticket 08 `r8_place.py --grouping X --h-only [--smoke [N]]` (X is placed already) writes only
+        # heads/post_H<X>, xheads_H<X>, head_H<X>; it refuses when X's files are missing or X is dropped.
+        run([py, "r8_place.py", "--grouping", x, "--h-only", *flag], log)
     seed42 = root / "seed42"
     root_flag = ["--root", str(root)] if smoke else []
     if not (seed42 / f"reader_{hx}.npz").is_file():
