@@ -98,6 +98,55 @@ def test_search_bracket_choice_prefers_midpoint_nearest_one():
     assert [e['r'] for e in rec['evaluated']][30] == pytest.approx(0.75)
 
 
+def test_search_grid_tie_is_decided_after_rounding_the_distance_from_one():
+    # 0.6 and 1.4 are both 0.4 from 1.0; in floats abs(1.4 - 1.0) = 0.3999999999999999 would win. Rule: smaller r.
+    table = {r: 15 for r in GRID}
+    table.update({0.6: 17, 1.4: 17})
+    rec = G.search_resolution(stub(table))
+    assert rec['stage'] == 'grid' and rec['chosen_r'] == 0.6
+    # the other grid pairs that float noise breaks: (0.1, 1.9), (0.4, 1.6), (0.9, 1.1)
+    for lo, hi in ((0.1, 1.9), (0.4, 1.6), (0.9, 1.1)):
+        t = {r: 15 for r in GRID}
+        t.update({lo: 17, hi: 17})
+        assert G.search_resolution(stub(t))['chosen_r'] == lo, (lo, hi)
+
+
+def test_search_bracket_midpoint_tie_goes_to_the_smaller_pair_after_rounding():
+    # brackets only (0.3, 0.4) mid 0.35 and (1.6, 1.7) mid 1.65: both 0.65 from 1.0 (floats: the larger would win);
+    # the rule's tie goes to the smaller midpoint, so the first bisection point is 0.35
+    f = stub({}, default=lambda r: 19 if 0.35 < r < 1.65 else 15)
+    rec = G.search_resolution(f)
+    assert [e['r'] for e in rec['evaluated']][30] == pytest.approx(0.35)
+    f2 = stub({}, default=lambda r: 19 if 0.35 < r < 1.65 else 15)
+    # the tie is between exactly these two pairs: the other pairs (e.g. (0.2, 0.3)) are not brackets
+    assert G.search_resolution(f2)['stage'] == 'nearest'
+
+
+def test_search_nearest_count_tie_is_decided_after_rounding_the_distance_from_one():
+    table = {r: 25 for r in GRID}
+    table.update({0.6: 19, 1.4: 19})                  # no bracket; |K - 17| = 2 at both; 0.4 from 1.0 at both
+    rec = G.search_resolution(stub(table))
+    assert rec['stage'] == 'nearest' and rec['chosen_r'] == 0.6 and rec['K'] == 19
+
+
+def test_search_bracket_needs_consecutive_grid_points_with_both_k_defined():
+    # rule gap 1 (decided): 0.6 and 0.7 are undefined, so 0.5 (K 15) and 0.8 (K 19) are not an adjacent grid pair
+    # (they were under the first reading): no bisection at 0.65, the nearest count decides
+    table = {r: 15 for r in GRID}
+    table.update({0.6: None, 0.7: None, **{r: 19 for r in GRID if r >= 0.8}})
+    rec = G.search_resolution(stub(table))
+    assert rec['stage'] == 'nearest' and len(rec['evaluated']) == 30
+    assert [e['r'] for e in rec['evaluated'] if e['K'] is None] == [0.6, 0.7]
+
+
+def test_search_bisection_stops_when_k_of_the_midpoint_is_undefined():
+    # rule gap 2 (accepted): the only bracket is (1.2, 1.3); K(1.25) is undefined, so bisection stops and step (4) runs
+    f = stub({}, default=lambda r: None if abs(r - 1.25) < 1e-9 else (16 if r < 1.25 else 18))
+    rec = G.search_resolution(f)
+    assert [e['r'] for e in rec['evaluated']][30:] == [1.25] and rec['evaluated'][30]['K'] is None
+    assert rec['stage'] == 'nearest' and rec['K'] in (16, 18)
+
+
 def test_search_nearest_count_when_k_never_brackets():
     table = {r: 20 for r in GRID}
     table.update({0.8: 19, 1.2: 19, 2.0: 19})        # |K-17| = 2 at three points; 0.8 and 1.2 tie, smaller r wins
@@ -361,28 +410,206 @@ def test_control_draws_exact_calls_and_seeds():
     assert np.array_equal(t2, train) and np.array_equal(s2, sel)
 
 
-# ---------------------------------------------------------------- M16: FC drops from ticket 06's records
+# ---------------------------------------------------------------- M16: stage and D21 records
 
-def test_fc_drops_from_stage1_and_d21_records(tmp_path, monkeypatch):
+def write_rec(path, **kw):
+    """A stage record as ticket 04 / 06 write it: pass, smoke, rule_sha256."""
     import json
     import r8_common as C
+    rec = {'pass': True, 'smoke': False, 'rule_sha256': C.sha_file(C.RULE), **kw}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({k: v for k, v in rec.items() if v is not Ellipsis}))
+    return path
+
+
+def test_fc_drops_from_stage1_and_d21_records(tmp_path, monkeypatch):
+    import r8_common as C
     monkeypatch.setattr(C, 'RESULTS', tmp_path)
-    (tmp_path / 'fcmi' / 'FC2').mkdir(parents=True)
     # FC3 (stage 1) failed SC2: every FC goes, with that record's reason
-    (tmp_path / 'stage1_fcmi.json').write_text(json.dumps(
-        {'passed': False, 'tests': {'process': True, 'finite_loss': False}, 'error': 'non-finite total loss'}))
+    write_rec(tmp_path / 'stage1_fcmi.json', **{'pass': False, 'tests': {'process': True, 'finite_loss': False},
+                                                 'error': 'non-finite total loss'})
     for name in G.FC_IDS:
         lab, rec, n = G.part_fc(name, smoke=False)
         assert lab is None and rec['dropped'] and 'finite_loss' in rec['reason'] and 'non-finite' in rec['reason']
     # stage 1 passed; FC2 failed D21 and published no space file: only FC2 drops, reason from its d21.json
-    (tmp_path / 'stage1_fcmi.json').write_text(json.dumps({'pass': True}))
-    (tmp_path / 'fcmi' / 'FC2' / 'd21.json').write_text(json.dumps(
-        {'passed': False, 'tests': {'wall_time': False}, 'error': 'construction-to-labels exceeded 60 minutes'}))
+    (tmp_path / 'stage1_fcmi.json').unlink()
+    write_rec(tmp_path / 'stage1_fcmi.json')
+    write_rec(tmp_path / 'fcmi' / 'FC2' / 'd21.json', **{'pass': False, 'tests': {'wall_time': False},
+                                                         'error': 'construction-to-labels exceeded 60 minutes'})
     lab, rec, n = G.part_fc('FC2', smoke=False)
     assert lab is None and rec['dropped'] and 'wall_time' in rec['reason'] and 'FC2' in rec['reason']
-    # no record and no space: the call stops instead of guessing
-    with pytest.raises(AssertionError):
+    # a stray space file does not rescue a failed D21 (m-2): the record is read whether or not the space is there
+    (tmp_path / 'spaces').mkdir()
+    (tmp_path / 'spaces' / 'FC2.npz').write_bytes(b'stray')
+    lab, rec, n = G.part_fc('FC2', smoke=False)
+    assert lab is None and rec['dropped'] and 'wall_time' in rec['reason']
+    # no D21 record: the call stops instead of guessing; D21 passed but no space: stops
+    with pytest.raises(AssertionError, match='is missing'):
         G.part_fc('FC4', smoke=False)
+    write_rec(tmp_path / 'fcmi' / 'FC4' / 'd21.json')
+    with pytest.raises(AssertionError, match='space file'):
+        G.part_fc('FC4', smoke=False)
+
+
+def test_fc_stage1_record_needs_bool_pass_not_smoke_and_the_rules_sha(tmp_path, monkeypatch):
+    import r8_common as C
+    monkeypatch.setattr(C, 'RESULTS', tmp_path)
+    p = tmp_path / 'stage1_fcmi.json'
+    with pytest.raises(AssertionError, match='is missing'):
+        G.part_fc('FC1', smoke=False)
+    write_rec(p, **{'pass': Ellipsis, 'passed': True})                    # the removed `passed` key is not read
+    with pytest.raises(AssertionError, match='is not a bool'):
+        G.part_fc('FC1', smoke=False)
+    p.unlink()
+    write_rec(p, **{'pass': None})
+    with pytest.raises(AssertionError, match='is not a bool'):
+        G.part_fc('FC1', smoke=False)
+    p.unlink()
+    write_rec(p, smoke=True)
+    with pytest.raises(AssertionError, match='smoke is not false'):
+        G.part_fc('FC1', smoke=False)
+    p.unlink()
+    write_rec(p, rule_sha256='0' * 64)
+    with pytest.raises(AssertionError, match='rule SHA-256 differs'):
+        G.part_fc('FC1', smoke=False)
+
+
+def test_encoder_stage_record_missing_raises_false_drops(tmp_path, monkeypatch):
+    import r8_common as C
+    monkeypatch.setattr(C, 'RESULTS', tmp_path)
+    p = tmp_path / 'stageE_AL.json'
+    with pytest.raises(AssertionError, match='is missing'):
+        G.part_search('AL', smoke=False, n=None)               # no record: never a silent, write-once drop
+    write_rec(p, **{'pass': False, 'reason': 'weight load failed',
+                    'esc1': {'a_strict_load': {'ok': False}, 'c_finite': {'ok': True}, 'e_repeat': {'ok': False}}})
+    lab, rec, n = G.part_search('AL', smoke=False, n=None)
+    assert lab is None and rec['dropped'] and 'weight load failed' in rec['reason']
+    assert 'a_strict_load' in rec['reason'] and 'e_repeat' in rec['reason'] and 'c_finite' not in rec['reason']
+    for bad, match in (({'pass': None}, 'is not a bool'), ({'pass': 'true'}, 'is not a bool'),
+                       ({'smoke': True}, 'smoke is not false'), ({'rule_sha256': 'f' * 64}, 'rule SHA-256 differs')):
+        p.unlink()
+        write_rec(p, **bad)
+        with pytest.raises(AssertionError, match=match):
+            G.part_search('AL', smoke=False, n=None)
+
+
+def test_views_meta_check_failure_drops_v_spaces_with_the_cosines(tmp_path, monkeypatch):
+    import json
+    import r8_common as C
+    monkeypatch.setattr(C, 'RESULTS', tmp_path)
+    meta = tmp_path / 'meta.json'
+    monkeypatch.setattr(G, 'VIEWS_META', meta)
+    cosines = {'passed': False, 'mean_cosine': 0.123, 'min_cosine': 0.0456}
+    meta.write_text(json.dumps({'painting_ids': [], 'views_sha256': 'x', 'view_check': cosines}))
+    for name in ('V100', 'V67', 'V33'):
+        lab, rec, n = G.part_search(name, smoke=False, n=None)
+        assert lab is None and rec['dropped'] and rec['reason'].startswith('M4 view check failed')
+        assert '0.123' in rec['reason'] and '0.0456' in rec['reason'] and rec['view_check'] == cosines
+    # a passing check requires the space file (ticket 05 publishes it)
+    meta.write_text(json.dumps({'painting_ids': [], 'views_sha256': 'x', 'view_check': {**cosines, 'passed': True}}))
+    with pytest.raises(AssertionError, match='space file'):
+        G.part_search('V100', smoke=False, n=None)
+    # keys ticket 05 asserts, and a bool `passed`
+    meta.write_text(json.dumps({'painting_ids': [], 'view_check': {'passed': True}}))
+    with pytest.raises(AssertionError, match='views meta keys'):
+        G.part_search('V100', smoke=False, n=None)
+    meta.write_text(json.dumps({'painting_ids': [], 'views_sha256': 'x', 'view_check': {'passed': 1}}))
+    with pytest.raises(AssertionError, match='is not a bool'):
+        G.part_search('V100', smoke=False, n=None)
+
+
+def test_nbc_part_needs_a_triggered_probe_record(tmp_path, monkeypatch):
+    import r8_common as C
+    monkeypatch.setattr(C, 'RESULTS', tmp_path)
+    with pytest.raises(AssertionError, match='probe_trigger.json is missing'):
+        G.part_search('NBC', smoke=False, n=None)
+    p = write_rec(tmp_path / 'probe_trigger.json', triggered=False, strength=None)
+    with pytest.raises(AssertionError, match='triggered is not true'):
+        G.part_search('NBC', smoke=False, n=None)
+    p.unlink()
+    write_rec(p, triggered=True, strength=0.67)
+    with pytest.raises(AssertionError, match='space file'):          # passes the trigger, then needs NBC's space
+        G.part_search('NBC', smoke=False, n=None)
+
+
+# ---------------------------------------------------------------- encoder files, painting join (C6)
+
+def fake_encoder(tmp_path, order='ok', dim=8):
+    """An encoder directory as ticket 04 writes it (real 49,121 image order, small dim)."""
+    import json
+    import r8_common as C
+    d = tmp_path / 'enc' / 'r8_enc_aladin'
+    d.mkdir(parents=True)
+    nh = C.nonheld_images().astype(np.int64)
+    emb = np.random.default_rng(0).normal(size=(len(nh), dim)).astype(np.float32)
+    stored = nh if order == 'ok' else nh[::-1].copy()
+    np.save(d / 'embeddings.npy', emb)
+    np.save(d / 'image_index.npy', stored)
+    meta = {'image_index_file': str(d / 'image_index.npy'), 'image_index_sha256': G.sha_array(nh),
+            'embeddings_sha256': C.sha_file(d / 'embeddings.npy'), 'n': len(nh), 'smoke': False}
+    (d / 'meta.json').write_text(json.dumps(meta))
+    return tmp_path / 'enc', d, meta
+
+
+def test_encoder_space_asserts_image_order_and_both_sha256(tmp_path):
+    import json
+    import r8_common as C
+    root, d, meta = fake_encoder(tmp_path)
+    space = G.encoder_space('AL', False, tmp_path / 'spaces', enc_root=root)
+    with np.load(space) as z:
+        assert np.array_equal(z['image_index'], C.nonheld_images()) and z['phi'].shape == (49121, 8)
+        assert np.allclose(np.linalg.norm(z['phi'], axis=1), 1, atol=1e-5)
+    root2, d2, _ = fake_encoder(tmp_path / 'rev', order='reversed')                   # other image order
+    with pytest.raises(AssertionError, match='another image order'):
+        G.encoder_space('AL', False, tmp_path / 'spaces2', enc_root=root2)
+    root3, d3, m3 = fake_encoder(tmp_path / 'badimg')                                  # meta image SHA differs
+    (d3 / 'meta.json').write_text(json.dumps({**m3, 'image_index_sha256': '0' * 64}))
+    with pytest.raises(AssertionError, match='image_index SHA-256 differs'):
+        G.encoder_space('AL', False, tmp_path / 'spaces3', enc_root=root3)
+    root4, d4, m4 = fake_encoder(tmp_path / 'bademb')                                  # meta embeddings SHA differs
+    (d4 / 'meta.json').write_text(json.dumps({**m4, 'embeddings_sha256': '0' * 64}))
+    with pytest.raises(AssertionError, match='embeddings SHA-256 differs'):
+        G.encoder_space('AL', False, tmp_path / 'spaces4', enc_root=root4)
+
+
+def test_painting_vectors_joins_paintings_to_their_image_rows(monkeypatch):
+    import r8_common as C
+    rng = np.random.default_rng(0)
+    idx = np.sort(rng.choice(1000, size=200, replace=False)).astype(np.int32)         # sorted superset of the images
+    phi = rng.normal(size=(200, 5)).astype(np.float32)
+    img = rng.permutation(idx)[:40].astype(np.int32)                                   # non-monotone painting -> image
+    assert not np.all(np.diff(img) > 0)
+    monkeypatch.setattr(C, 'painting_image', lambda: img)
+    out = G.painting_vectors(phi, idx, 25)
+    assert out.shape == (25, 5)
+    for p in range(25):
+        assert np.array_equal(out[p], phi[np.flatnonzero(idx == img[p])[0]])
+    assert not np.array_equal(out, phi[:25])
+    # a painting whose image is not in the space file stops the call
+    idx2 = np.delete(idx, np.flatnonzero(idx == img[3]))
+    with pytest.raises(AssertionError, match='not in the space file'):
+        G.painting_vectors(phi[:len(idx2)], idx2, 25)
+    G.painting_vectors(phi[:len(idx2)], idx2, 3)                                       # paintings 0..2 are fine
+
+
+def test_assert_same_scorer_train_names_the_part():
+    st = np.arange(10, dtype=np.int64)
+    parts = {'V100': {'record': {'scorer_train_sha256': G.sha_array(st)}},
+             'AL': {'record': {'scorer_train_sha256': G.sha_array(st[::-1])}}}
+    G.assert_same_scorer_train({'V100': parts['V100']}, st)
+    with pytest.raises(AssertionError, match='AL'):
+        G.assert_same_scorer_train(parts, st)
+    with pytest.raises(AssertionError, match='AL'):
+        G.assert_same_scorer_train({'AL': {'record': {}}}, st)
+
+
+def test_tp_apply_fallback_only_with_centres_and_real_runs_pass_none():
+    # rule gap 4 (decided): the real run calls tp_apply without centres, so an image of a class without paintings stops it
+    mmap = np.array([0, -1, 1])
+    t = np.eye(3, dtype=np.float32)
+    x = np.array([[0, 1, 0]], dtype=np.float32)
+    with pytest.raises(AssertionError, match='without scorer-train'):
+        G.tp_apply(x, t, mmap)
 
 
 # ---------------------------------------------------------------- M16 drops, collect
