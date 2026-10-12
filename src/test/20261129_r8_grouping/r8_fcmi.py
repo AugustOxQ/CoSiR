@@ -38,8 +38,8 @@ class D21:
         k = len(np.unique(labels)) if labels is not None else 0
         tests = dict(process=exit_code == 0, finite_loss=all(e['finite'] for e in self.losses),
                      clusters=k >= 2, wall_time=wall_seconds <= 3600)
-        return dict(passed=all(tests.values()), tests=tests, exit_code=exit_code,
-                    wall_seconds=wall_seconds, clusters_before_merge=k, steps=len(self.losses))
+        return {'pass': all(tests.values()), 'tests': tests, 'exit_code': exit_code,
+                'wall_seconds': wall_seconds, 'clusters_before_merge': k, 'steps': len(self.losses)}
 
 
 def painting_loaders(x=None, context=None, batch_size=512, smoke=False):
@@ -53,14 +53,16 @@ def painting_loaders(x=None, context=None, batch_size=512, smoke=False):
     n = min(2048, len(x)) if smoke else len(x)
     dataset = TensorDataset(torch.from_numpy(x[:n].copy()), torch.from_numpy(c[:n].copy()),
                             torch.zeros(n, dtype=torch.long), torch.arange(n))
-    train = DataLoader(dataset, batch_size=batch_size, shuffle=True,
+    # Controller default (fix round): M7 is silent here; follow upstream
+    # DataSetMaster/dataset.py:424–427, including drop_last and the 100x test batch.
+    train = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True,
                        generator=torch.Generator().manual_seed(0))
-    test = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    test = DataLoader(dataset, batch_size=batch_size * 100, shuffle=False)
     return train, test
 
 
-def default_args(weight, device='cuda', smoke=False, output_dir=None):
-    """main.py lines 20–82 defaults, then only M7 overrides."""
+def default_args(weight, device='cuda', smoke=False, output_dir=None, time_epochs=None):
+    """main.py lines 20–82 defaults; M7 and explicit controller smoke/timing overrides."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default='Office')  # MNISTUSPS ReverseMNIST Office HAR MTFL
     parser.add_argument("--MnistTrain", default=1, type=int)
@@ -135,7 +137,17 @@ def default_args(weight, device='cuda', smoke=False, output_dir=None):
     args.InfoFairLoss = args.LambdaFair
     args.device = device
     args.train_epoch = 2 if smoke else 300
+    assert not (smoke and time_epochs is not None)
+    if time_epochs is not None:
+        assert isinstance(time_epochs, int) and time_epochs > 0
+        args.train_epoch = time_epochs
+        args.WarmAll = 1  # controller timing mode: post-warm epochs exercise fairness
+    if smoke:
+        # Controller smoke-only overrides: epoch 2 must exercise clustering/fairness.
+        args.WarmAll = 1
+        args.VisualFreq = 2
     args.output_dir = str(output_dir) if output_dir is not None else None
+    args.time_epochs = time_epochs
     return args
 
 
@@ -172,6 +184,7 @@ def image_space(net, x):
 
 WEIGHTS = (0.05, 0.10, 0.20, 0.40, 0.80, 1.60)
 SOURCE = '/data/SSD2/third_party/FCMI/'
+CHECKPOINT_ROOT = Path('/data/SSD2/cosir_r8/fcmi')
 
 
 # R7 r7_common.sha_file, copied to stay within 00-index's r8_common interface.
@@ -183,18 +196,25 @@ def sha_file(path):
     return h.hexdigest()
 
 
-def run_paths(weight, smoke):
+def run_paths(weight, smoke, time_epochs=None):
     name = f'FC{WEIGHTS.index(weight) + 1}'
-    root = C.SMOKE / 'fcmi' / name if smoke else C.RESULTS
-    directory = root if smoke else root / 'fcmi' / name
+    trial = smoke or time_epochs is not None
+    root = C.SMOKE / 'fcmi' / name if trial else C.RESULTS
+    if time_epochs is not None:
+        root = C.SMOKE / 'fcmi' / f'time_epochs{time_epochs}' / name
+    directory = root if trial else root / 'fcmi' / name
     # Section 5: FC3's loss ledger and pre-merge labels sit beside the stage-1 record.
     prefix = root / 'stage1_fcmi' if weight == 0.2 else directory / 'd21'
-    checkpoint = directory if smoke else Path('/data/SSD2/cosir_r8/fcmi') / name
+    # Fix-round controller instruction: large smoke checkpoints stay off /project.
+    # The output-root hash separates CPU/GPU smokes and timing runs without overwriting.
+    run = name + '-' + hashlib.sha256(str(directory.resolve()).encode()).hexdigest()[:12]
+    checkpoint = CHECKPOINT_ROOT / 'smoke' / run if trial else CHECKPOINT_ROOT / name
     return dict(name=name, directory=directory, checkpoint=checkpoint,
                 verdict=prefix.with_suffix('.json'), losses=prefix.with_name(prefix.name + '_losses.jsonl'),
                 labels=prefix.with_name(prefix.name + '_labels.npz'),
                 started=directory / 'started.json', labels_done=directory / 'labels_done.json',
                 status=directory / 'worker.json', log=directory / 'worker.log',
+                timing=directory / 'timing.json',
                 space=root / 'spaces' / f'{name}.npz', meta=root / 'spaces' / f'{name}.json')
 
 
@@ -221,9 +241,9 @@ def configure(device):
         assert torch.cuda.is_available(), 'real runs require the controller GPU lock'
 
 
-def worker(weight, device, smoke):
+def worker(weight, device, smoke, time_epochs=None):
     """Child writes a loss ledger even if a later step or process fails."""
-    paths = run_paths(weight, smoke)
+    paths = run_paths(weight, smoke, time_epochs)
     started = None
     labels_finished = None
     error = None
@@ -240,16 +260,22 @@ def worker(weight, device, smoke):
         assert len(test.dataset) == (2048 if smoke else 36518)
         # Record all already-verified common inputs, without deriving any common join.
         # nonheld_images() also verifies the image boundary before model construction.
-        images = C.nonheld_images()
-        assert images.dtype == np.int32 and images.shape == (49121,) and (np.diff(images) > 0).all()
-        painting_images = C.painting_image()
-        args = default_args(weight, device, smoke, paths['checkpoint'])
+        if time_epochs is None:
+            images = C.nonheld_images()
+            assert images.dtype == np.int32 and images.shape == (49121,) and (np.diff(images) > 0).all()
+            painting_images = C.painting_image()
+        args = default_args(weight, device, smoke, paths['checkpoint'], time_epochs)
         with open_once(paths['losses']) as loss_file:
             guard = D21(loss_file)
             started = time.monotonic()
             C.write_json_once(paths['started'], dict(monotonic=started))
             net = NetFCN(input_dim=512, class_num=17, group_num=64, args=args).to(device)
             epoch_seconds = net.run(args.train_epoch, train, test, args, guard)
+            if time_epochs is not None:
+                C.write_json_once(paths['timing'], dict(smoke=True, time_epochs=time_epochs,
+                    n_paintings=len(test.dataset), training_batches=len(train), test_batch_size=test.batch_size,
+                    settings=vars(args), epoch_seconds=epoch_seconds, input_sha256=input_shas))
+                return 0  # timing only: no final labels, image space, or stage evidence
             # Refit centres on the final encoder, then assign using those updated centres.
             _, _, _, _, centers = inference(net, test)
             net.update_cluster_center(centers)
@@ -262,7 +288,7 @@ def worker(weight, device, smoke):
                              painting_image=painting_images[:len(labels)])
             C.write_json_once(paths['labels_done'], dict(monotonic=labels_finished,
                                                        epoch_seconds=epoch_seconds))
-            if not smoke and not guard.record(0, labels, labels_finished - started)['passed']:
+            if not smoke and not guard.record(0, labels, labels_finished - started)['pass']:
                 return 0  # parent records the failed D21; no space is published
             # rule gap: M7 says "then merge_small", but 00-index assigns the native-label
             # merge and r8_groupings files to ticket 07. Deliver pre-merge labels + phi here;
@@ -311,43 +337,59 @@ def read_json(path, keys):
     return record
 
 
-def build(weight=0.2, device='cuda', smoke=False):
+def build(weight=0.2, device='cuda', smoke=False, time_epochs=None):
     """Controller entry point; external flock wait is outside the timed child."""
     assert weight in WEIGHTS
-    assert device == 'cuda' or smoke, 'CPU is for tests / wiring smoke only'
+    trial = smoke or time_epochs is not None
+    assert not (smoke and time_epochs is not None)
+    assert time_epochs is None or (isinstance(time_epochs, int) and time_epochs > 0)
+    assert device == 'cuda' or trial, 'CPU is for tests / smoke modes only'
     C.assert_rule()
-    paths = run_paths(weight, smoke)
-    if not smoke and weight != 0.2:
-        stage1 = read_json(C.RESULTS / 'stage1_fcmi.json', ('passed', 'tests', 'smoke', 'weight', 'device'))
-        assert stage1['passed'] and not stage1['smoke'] and stage1['weight'] == 0.2
+    paths = run_paths(weight, smoke, time_epochs)
+    if not trial and weight != 0.2:
+        stage1 = read_json(C.RESULTS / 'stage1_fcmi.json', ('pass', 'tests', 'smoke', 'weight', 'device'))
+        assert isinstance(stage1['pass'], bool), 'SC2 pass must be bool'
+        assert stage1['pass'] and not stage1['smoke'] and stage1['weight'] == 0.2
         assert stage1['device'] == 'cuda' and all(stage1['tests'].values()), 'SC2 failed: all FC runs drop'
     # Require fresh smoke evidence too: stale child markers must never mask a failure.
-    targets = [paths[k] for k in ('verdict', 'losses', 'labels', 'started', 'labels_done', 'status', 'log', 'space', 'meta')]
+    targets = [paths[k] for k in ('verdict', 'losses', 'labels', 'started', 'labels_done', 'status', 'log', 'space', 'meta', 'timing')]
     assert all(not p.exists() for p in targets), 'FCMI output exists (use a fresh smoke RESULTS root for another smoke)'
-    assert smoke or not paths['checkpoint'].exists(), 'checkpoint run directory exists (write once)'
+    assert not paths['checkpoint'].exists(), 'checkpoint run directory exists (write once)'
     paths['directory'].mkdir(parents=True, exist_ok=True)
     command = [sys.executable, str(Path(__file__).resolve()), '--weight', str(weight), '--device', device, '--worker']
     if smoke:
         command.append('--smoke')
+    if time_epochs is not None:
+        command.extend(['--time-epochs', str(time_epochs)])
     timed_out = False
     started = None
+    printed_epochs = 0
     with open_once(paths['log']) as log:
-        process = subprocess.Popen(command, stdout=log, stderr=log)
-        while process.poll() is None:
-            try:
-                process.wait(timeout=1)
-            except subprocess.TimeoutExpired:
-                if paths['started'].exists() and started is None:
-                    # A writer may still be serialising the tiny marker; retry next tick.
-                    try:
-                        started = read_json(paths['started'], ('monotonic',))['monotonic']
-                    except json.JSONDecodeError:
-                        continue
-                if started is not None and not paths['labels_done'].exists() and time.monotonic() - started > 3600:
-                    timed_out = True
-                    process.kill()
-                    process.wait(timeout=30)
-        exit_code = process.returncode
+        with paths['log'].open() as live_log:
+            process = subprocess.Popen(command, stdout=log, stderr=log)
+            pending = ''
+            while process.poll() is None:
+                try:
+                    process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    pending += live_log.read()
+                    lines = pending.split('\n')
+                    pending = lines.pop()
+                    for line in lines:
+                        if line.startswith('epoch_wall_seconds='):
+                            printed_epochs += 1
+                            print(f'epoch={printed_epochs} {line}', flush=True)
+                    if paths['started'].exists() and started is None:
+                        # A writer may still be serialising the tiny marker; retry next tick.
+                        try:
+                            started = read_json(paths['started'], ('monotonic',))['monotonic']
+                        except json.JSONDecodeError:
+                            continue
+                    if started is not None and not paths['labels_done'].exists() and time.monotonic() - started > 3600:
+                        timed_out = True
+                        process.kill()
+                        process.wait(timeout=30)
+            exit_code = process.returncode
     guard = D21()
     if paths['losses'].exists():
         for line in paths['losses'].read_text().splitlines():
@@ -360,10 +402,19 @@ def build(weight=0.2, device='cuda', smoke=False):
             assert entry['finite'] == (entry['total_loss'] is not None and np.isfinite(entry['total_loss']))
             guard.losses.append(entry)
     if exit_code == 0:
-        epochs, batches = (2, 4) if smoke else (300, 72)
+        epochs, batches = (2, 4) if smoke else (time_epochs or 300, 71)
         assert len(guard.losses) == epochs * batches, 'loss ledger step count'
         assert [(e['epoch'], e['batch']) for e in guard.losses] == [
             (epoch, batch) for epoch in range(epochs) for batch in range(batches)], 'loss ledger step alignment'
+    if time_epochs is not None:
+        if paths['timing'].exists():
+            timing = read_json(paths['timing'], ('epoch_seconds', 'n_paintings', 'settings'))
+            assert timing['n_paintings'] == 36518 and len(timing['epoch_seconds']) == time_epochs
+            for epoch, seconds in enumerate(timing['epoch_seconds'], 1):
+                if epoch > printed_epochs:
+                    print(f'epoch={epoch} epoch_wall_seconds={seconds:.6f}', flush=True)
+        print(f"{paths['name']} timing_epochs={time_epochs} exit={exit_code}", flush=True)
+        return exit_code if exit_code != 0 else (0 if all(e['finite'] for e in guard.losses) else 1)
     labels = None
     if paths['labels'].exists() and paths['labels_done'].exists() and not timed_out:
         with np.load(paths['labels'], allow_pickle=False) as z:
@@ -387,20 +438,27 @@ def build(weight=0.2, device='cuda', smoke=False):
         wall_seconds = max(wall_seconds, 3600.000001)
     result = guard.record(exit_code, labels, wall_seconds)
     # A wiring smoke is evidence for the wiring only, and never an SC2 decision.
-    result.update(passed=None if smoke else result['passed'], smoke=smoke, weight=weight, device=device,
+    wiring_pass = result['pass']
+    result['pass'] = wiring_pass and not smoke
+    if smoke:
+        result['wiring_pass'] = wiring_pass
+    result.update(smoke=smoke, weight=weight, device=device,
+        settings=vars(default_args(weight, device, smoke, paths['checkpoint'])),
+        training_batches=4 if smoke else 71, test_batch_size=51200,
         grouping=paths['name'], error='construction-to-labels exceeded 60 minutes' if timed_out else
         (status['error'] if status else 'worker ended without status'),
         loss_log=str(paths['losses']), labels_before_merge=str(paths['labels']) if labels is not None else None,
         loss_log_sha256=sha_file(paths['losses']) if paths['losses'].exists() else None,
         labels_sha256=sha_file(paths['labels']) if labels is not None else None,
-        drops=list(f'FC{i}' for i in range(1, 7)) if not smoke and weight == 0.2 and not result['passed'] else [])
+        drops=list(f'FC{i}' for i in range(1, 7)) if not smoke and weight == 0.2 and not result['pass'] else [])
     C.write_json_once(paths['verdict'], result)
-    print(f"{paths['name']} smoke={smoke} D21={result['passed']} exit={exit_code} wall_seconds={wall_seconds:.3f}", flush=True)
+    print(f"{paths['name']} smoke={smoke} D21={result['pass']} exit={exit_code} wall_seconds={wall_seconds:.3f}", flush=True)
     if paths['labels_done'].exists():
         timing = read_json(paths['labels_done'], ('epoch_seconds',))
         for epoch, seconds in enumerate(timing['epoch_seconds'], 1):
-            print(f'epoch={epoch} epoch_wall_seconds={seconds:.6f}', flush=True)
-    return exit_code if exit_code != 0 else (0 if smoke or result['passed'] else 1)
+            if epoch > printed_epochs:
+                print(f'epoch={epoch} epoch_wall_seconds={seconds:.6f}', flush=True)
+    return exit_code if exit_code != 0 else (0 if wiring_pass else 1)
 
 
 def main():
@@ -409,12 +467,15 @@ def main():
     parser.add_argument('--device', choices=('cpu', 'cuda'))
     # rule gap: ticket 06 explicitly calls its --smoke CPU; M7 / the task also mention
     # a GPU wiring smoke. Default smoke to CPU and allow --device cuda for controller lock runs.
-    parser.add_argument('--smoke', action='store_true', help='2 epochs, first 2048 paintings, no SC2; default CPU')
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument('--smoke', action='store_true', help='2 epochs, first 2048 paintings, no SC2; default CPU')
+    modes.add_argument('--time-epochs', type=int, metavar='N', help='N full-painting epochs, WarmAll=1, smoke outputs only; default CUDA')
     parser.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
     device = args.device or ('cpu' if args.smoke else 'cuda')
-    assert args.smoke or device == 'cuda', 'real runs require CUDA'
-    return worker(args.weight, device, args.smoke) if args.worker else build(args.weight, device, args.smoke)
+    assert args.smoke or args.time_epochs is not None or device == 'cuda', 'real runs require CUDA'
+    run = worker if args.worker else build
+    return run(args.weight, device, args.smoke, args.time_epochs)
 
 
 if __name__ == '__main__':
