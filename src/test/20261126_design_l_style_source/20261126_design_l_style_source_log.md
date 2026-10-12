@@ -88,3 +88,9 @@ stage 0 passed at 2026-10-12 04:42 in the build. Run logs: `results/logs/` (giti
   The user's why: the V1 and V4 evidence (their AMIs) stays in the record without the rank-63 rerun. K1 and the gate
   stand as reported; no `_fix` files. Our held recommendation was the same. For any later reuse of L3, the spec names
   the rank (groups − 1): the centred, size-weighted group means always sum to zero, so the risk is not CSD's alone.
+
+## 2026-10-12 storage summary (r8 decide wrap-up)
+
+- User-approved: `results/` (3.5 GB without `smoke/`) and the token cache on SSD2 (1.1 GB) kept; the build's scratchpads,
+  Codex trial outputs, `results/smoke/chain/`, the r7 worktrees and branches (11.8 GB on the system disk) deleted.
+  Rows in `/project/claude-config/storage/disk_ledger.md`.
