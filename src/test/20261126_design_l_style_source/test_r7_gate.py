@@ -469,10 +469,11 @@ def test_dropped_variant_with_its_control_still_reported():
 
 # ------------------------------------------------------------------------------------------------- "promising"
 @pytest.mark.parametrize("sg, cf, bar, expect", [
-    (50, 0, 1, True), (49, 0, 1, False), (50, -1, 1, False), (50, 0, 0, False), (500, 3, 300, True),
+    (50, 0, 1, True), (49, 0, 1, False), (50, -1, 1, False), (50, 0, 0, False), (500, 3, 300, False),
 ])
 def test_promising_boundaries(sg, cf, bar, expect):
-    # a candidate that fails S1 may still be promising: bar > 0 but below 246 is enough
+    # a candidate that fails S1 may still be promising: bar > 0 but below 246 is enough; a passer (bar 300) makes
+    # n = 1, and "promising" is stated only at n = 0 (rule §6)
     out = _pick({"R1_V1": good(sg=sg, cf=cf, bar=bar)})
     assert out["promising"] is expect
 

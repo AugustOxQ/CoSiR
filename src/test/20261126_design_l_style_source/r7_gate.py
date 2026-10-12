@@ -36,9 +36,6 @@ ZONES = ("STOP", "WEAK", "CLEAR")
 # rule numbers at the real sizes, checked at import (L16)
 _REAL = {(0.5, 12288): 246, (0.5, 4096): 82, (1.0, 4096): 164, (0.3, 4096): 50, (0, 4096): 0, (-0.3, 4096): -49}
 
-AM_PATH = Path("/project/CoSiR/src/eval/aspect_metrics.py")
-AM_SHA = "ad95485ef887089d74bb685e2cdb1aab7057b87ad62d926f5c252219f4c6c2f1"     # rule §10
-_BOOT = []
 
 
 # ------------------------------------------------------------------------------------------------ L16 integer form
@@ -62,14 +59,9 @@ def point_of(s4, n):
 
 
 def _cluster_bootstrap():
-    """`cluster_bootstrap` of src/eval/aspect_metrics.py, loaded from MAIN by path after its SHA-256 (rule §10)."""
-    if not _BOOT:
-        assert hashlib.sha256(AM_PATH.read_bytes()).hexdigest() == AM_SHA, "aspect_metrics.py changed"
-        spec = importlib.util.spec_from_file_location("r7_gate_aspect_metrics", AM_PATH)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        _BOOT.append(mod.cluster_bootstrap)
-    return _BOOT[0]
+    """`cluster_bootstrap` of src/eval/aspect_metrics.py, through `r7_common`'s loader (SHA-256 asserted, rule §10)."""
+    import r7_common
+    return r7_common.load("src.eval.aspect_metrics").cluster_bootstrap
 
 
 def interval(d, clusters, boot=None):
@@ -201,13 +193,13 @@ def gate_stats(arr, candidates=CANDIDATES, references=(), dropped=(), boot=None,
     chosen = {f: p for f, p in picks.items() if p}
     n = len(chosen)
     alpha = {f: ALPHA[n] for f in chosen}
-    promising = False
+    promising = False                                       # §6: stated only at n = 0 (spec §6: no scorer passes)
     for c in candidates:
         if recs[c]["dropped"]:
             continue
         e = extras[c]
         n_pair = e["n_pair"]
-        if (e["sg_vs_aff_sum4d"] >= need(0.3, n_pair) and recs[c]["S2"]["sum4d"] >= 0
+        if (n == 0 and e["sg_vs_aff_sum4d"] >= need(0.3, n_pair) and recs[c]["S2"]["sum4d"] >= 0
                 and recs[c]["S1"]["sum4d"] > 0):
             promising = True
     flag = {}
