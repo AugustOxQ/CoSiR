@@ -28,6 +28,9 @@ def sha_array(a):
 def record(path, smoke=None):
     path = Path(path)
     assert path.is_file(), f"{path}: required file missing"
+    fixes = sorted(path.parent.glob(f"{path.stem}_fix*{path.suffix}")) if path.stem.endswith("_verdict") else []
+    assert not fixes, f"{path}: a corrected verdict exists ({[f.name for f in fixes]}); rule §8 needs the user's " \
+                      "decision on which verdict the descriptive pass describes"
     rec = json.loads(path.read_text())
     assert isinstance(rec, dict), f"{path}: expected object"
     assert rec.get("rule_sha256") == R.rule_sha(), f"{path}: rule SHA differs"

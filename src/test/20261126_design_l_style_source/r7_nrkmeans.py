@@ -99,7 +99,10 @@ def select_and_merge(labels, x, g, content, rs, rec):
     clusterings = [np.unique(labels[:, k], return_inverse=True)[1].astype(np.int64) for k in (0, 1)]
     scores = [float(ami(content, p)) for p in clusterings]
     chosen = 0 if scores[0] <= scores[1] else 1
-    rec.update(ami_content_paintings_both=scores, chosen_clustering=chosen,
+    # L7 does not say rows or paintings: N is chosen at painting level; the row-level AMIs are recorded beside it
+    rows = [float(ami(content[g], p[g])) for p in clusterings]
+    rec.update(ami_content_paintings_both=scores, ami_content_rows_both=rows, chosen_clustering=chosen,
+               choice_level='paintings', choice_row_level_would_pick=0 if rows[0] <= rows[1] else 1,
                raw_sizes_paintings_both=[np.bincount(p).tolist() for p in clusterings],
                raw_sizes_rows_both=[np.bincount(p[g]).tolist() for p in clusterings],
                merge_min_rows=200)
