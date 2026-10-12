@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FCMI: a clustering made blind to a known grouping</title>
+<style>
+  :root { --ink:#1d2330; --muted:#5b6475; --line:#d9dee7; --bg:#ffffff; --soft:#f4f6fa;
+          --teal:#0f8b8d; --orange:#d9822b; --purple:#6b4fa0; --grey:#8a93a3; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:16px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:28px 20px 60px; }
+  h1 { font-size:1.55em; line-height:1.25; margin:0 0 12px; }
+  h2 { font-size:1.2em; margin:34px 0 8px; padding-top:10px; border-top:1px solid var(--line); }
+  blockquote { margin:10px 0; padding:8px 14px; background:var(--soft); border-left:4px solid var(--grey);
+               color:var(--muted); font-size:0.92em; }
+  table { border-collapse:collapse; width:100%; margin:10px 0; font-size:0.94em; }
+  th, td { border:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; }
+  th { background:var(--soft); }
+  .term { font-weight:600; }
+  details { margin:14px 0; padding:8px 14px; border:1px solid var(--line); border-radius:6px; background:var(--soft); }
+  summary { cursor:pointer; font-weight:600; }
+  figure { margin:16px 0; }
+  figcaption { font-size:0.88em; color:var(--muted); margin-top:4px; }
+  svg text { font-family:inherit; }
+  code { background:var(--soft); padding:1px 4px; border-radius:3px; font-size:0.92em; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>FCMI makes a clustering blind to a grouping we already know; for us that grouping would be content</h1>
+
+<blockquote>12 October 2026, for idea (iii) of the step-2 discussion.
+Sources: the FCMI paper (Zeng et al., CVPR 2023; main text only, its supplement not read); our literature note
+<code>2026-11-28_design_l_novelty.md</code>; round 7's report <code>2026-11-26_design_l_style_source.md</code>.</blockquote>
+
+<h2>Summary</h2>
+<ul>
+  <li>FCMI is a deep clustering method from "fair clustering". It is given a known grouping of the data and builds clusters that are independent of it.</li>
+  <li>We would give it our content grouping as the known grouping. Its clusters would then have to follow something other than content, we hope style.</li>
+  <li>Our literature note names it, with one older method, as the closest prior work for "a grouping that cuts across content".</li>
+  <li>Round 7 suggests a caution: the true styles are not independent of content either, so full independence may also push away from style.</li>
+  <li>The choice for this idea is yours: a grouping builder, a comparator, or drop it for now.</li>
+</ul>
+
+<h2>How we got here</h2>
+<p>Our method steers an image–caption score by one of a few groupings of the paintings. A learned <span class="term">reader</span> picks the grouping from the example pairs.
+One of the groupings should follow style. Today it comes from <span class="term">CSD</span>, a style encoder, but CSD groups paintings by genre and content about as much as by style.</p>
+<p>Round 7 ("design L") tried to build a better style grouping without labels, with the content part removed. No candidate passed the test on development data.
+Some removal methods kept genre (the graph cuts). Others removed style together with genre (the projections).</p>
+<p>On 12 October we discussed four ideas for the next grouping. Idea (ii) is a small learned head on frozen <span class="term">CLIP</span> features
+(CLIP is our image–text backbone), trained so that content cannot separate the pairs. FCMI is idea (iii).</p>
+
+<h2>1. The problem FCMI solves</h2>
+<p><span class="term">Problem.</span> A clustering follows the strongest structure in the data. Sometimes that structure is one we do not want.
+For example, a plain clustering of digits from two data sets (MNIST and USPS) may split by data set, not by digit.</p>
+<p><span class="term">Idea.</span> The FCMI paper calls the unwanted grouping the <span class="term">protected attribute</span>, a term from fairness work
+(gender, race, a data source). A clustering is <span class="term">fair</span> when every cluster holds the protected groups in the same
+proportions as the whole data set. Then the clusters cannot follow the protected grouping, so they must follow something else.</p>
+<p>In the paper's single-cell test, the protected attribute is the lab technique used to measure cells; as we read it, the clusters should follow the cell type.
+Its digit test reads, to us, as data set protected and digit as the target. Its main text does not name the setup of its other four tests.</p>
+<p>Fairness alone is easy and useless: put everything in one cluster. So FCMI also asks for clusters that are compact and balanced in size,
+and for features that keep the data's information.</p>
+
+<h2>2. How FCMI works</h2>
+<p>FCMI trains a small auto-encoder with a clustering head. Below, X is the input, C the cluster and G the protected group.
+"Mutual information" I(·;·) means how much knowing one thing tells you about another; it is zero when the two are independent.</p>
+
+<table>
+  <tr><th>Part of the loss</th><th>What it does</th><th>Goal</th></tr>
+  <tr><td>Clustering: raise I(X; C | G)</td>
+      <td>Each item commits to one cluster, and the clusters have similar sizes</td>
+      <td>Compact, balanced clusters</td></tr>
+  <tr><td>Fairness: lower I(G; C)</td>
+      <td>The cluster says nothing about the protected group; zero exactly when every cluster holds the global proportions</td>
+      <td>Clusters independent of the known grouping</td></tr>
+  <tr><td>Reconstruction</td>
+      <td>The decoder rebuilds each input; it has one branch per protected group, and the item's group picks the branch</td>
+      <td>Features keep their information</td></tr>
+</table>
+<p>The per-group decoder branch has a purpose. The fairness term pushes group information out of the clusters.
+The decoder gets the group back from its branch, so the hidden features do not have to drop it.</p>
+<p>On two of its six data sets, the paper's input is precomputed ResNet-50 features, not raw images. We have not checked whether its code takes our feature vectors.</p>
+
+<figure>
+<svg viewBox="0 0 720 270" width="100%" role="img" aria-label="FCMI diagram">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b6475"/></marker></defs>
+  <rect x="10" y="40" width="120" height="56" rx="6" fill="#f4f6fa" stroke="#8a93a3"/>
+  <text x="70" y="63" text-anchor="middle" font-size="13">Input x</text>
+  <text x="70" y="81" text-anchor="middle" font-size="11" fill="#5b6475">(for us: CSD or CLIP)</text>
+  <rect x="170" y="40" width="100" height="56" rx="6" fill="#e6f4f4" stroke="#0f8b8d"/>
+  <text x="220" y="72" text-anchor="middle" font-size="13">Encoder</text>
+  <rect x="310" y="40" width="90" height="56" rx="6" fill="#e6f4f4" stroke="#0f8b8d"/>
+  <text x="355" y="66" text-anchor="middle" font-size="13">Hidden</text>
+  <text x="355" y="83" text-anchor="middle" font-size="13">features</text>
+  <rect x="450" y="10" width="160" height="56" rx="6" fill="#e6f4f4" stroke="#0f8b8d"/>
+  <text x="530" y="34" text-anchor="middle" font-size="13">Soft assignment to</text>
+  <text x="530" y="52" text-anchor="middle" font-size="13">cluster centres: C</text>
+  <rect x="450" y="96" width="160" height="56" rx="6" fill="#e6f4f4" stroke="#0f8b8d"/>
+  <text x="530" y="120" text-anchor="middle" font-size="13">Decoder branch</text>
+  <text x="530" y="138" text-anchor="middle" font-size="13">for group g: x′</text>
+  <rect x="170" y="196" width="230" height="56" rx="6" fill="#fbeedd" stroke="#d9822b"/>
+  <text x="285" y="220" text-anchor="middle" font-size="13">Protected group g</text>
+  <text x="285" y="238" text-anchor="middle" font-size="11" fill="#5b6475">(for us: the 64 content groups)</text>
+  <line x1="130" y1="68" x2="168" y2="68" stroke="#5b6475" marker-end="url(#a)"/>
+  <line x1="270" y1="68" x2="308" y2="68" stroke="#5b6475" marker-end="url(#a)"/>
+  <line x1="400" y1="60" x2="448" y2="40" stroke="#5b6475" marker-end="url(#a)"/>
+  <line x1="400" y1="76" x2="448" y2="120" stroke="#5b6475" marker-end="url(#a)"/>
+  <line x1="400" y1="222" x2="520" y2="154" stroke="#d9822b" marker-end="url(#a)"/>
+  <line x1="400" y1="232" x2="620" y2="62" stroke="#d9822b" stroke-dasharray="4 3"/>
+  <text x="630" y="34" font-size="12" fill="#6b4fa0">clustering</text>
+  <text x="630" y="52" font-size="12" fill="#d9822b">fairness</text>
+  <text x="630" y="128" font-size="12" fill="#6b4fa0">reconstruction</text>
+</svg>
+<figcaption>Figure 1. FCMI in one picture. Teal: the learned parts. Orange: the known grouping, which picks the decoder branch and enters the fairness term (dashed).
+Labels in brackets show what each part would be in our setting.</figcaption>
+</figure>
+<blockquote>FCMI paper: Section 3 (the loss) and the experiment setup. Code: the paper points to its authors' page; our literature note lists a public repository.</blockquote>
+
+<h2>3. How we would use it</h2>
+<p><span class="term">Idea.</span> Run FCMI with the roles turned around:</p>
+<ul>
+  <li><span class="term">Input:</span> one vector per painting, from CSD or from CLIP.</li>
+  <li><span class="term">Protected group:</span> the painting's content group, from our 64-group CLIP image grouping (the "content grouping").</li>
+  <li><span class="term">Output:</span> a new grouping in which every group mixes all content groups. It would replace the CSD style grouping among the reader's four groupings.</li>
+</ul>
+<p>In the two FCMI tests we could read, what is protected is a nuisance: the data source or the lab technique. Ours is the inverse: content is protected, and the target is style.
+Our literature note found no work that does this on frozen CLIP features or on art. That is "to our knowledge", from a limited search, at medium-low confidence.</p>
+<p><span class="term">Your generality principle.</span> It says: encoders fixed in advance and chosen without the data set's aspect labels; the grouping step knows nothing of aspects.
+FCMI fits if its number of clusters and its fairness weight are also fixed in advance, or picked by episode R@1 as in round 7. Tuning them against the style labels would break it.</p>
+
+<h2>4. What round 7 suggests about it</h2>
+<p><span class="term">The caution.</span> Full fairness asks the new groups to share nothing with content. But the true style labels themselves share something with content.
+The table shows how much each grouping agrees with the true styles and with the content grouping. The measure is AMI: 0 is chance, 1 is identical.
+These numbers are descriptive.</p>
+<table>
+  <tr><th>Grouping</th><th>Agrees with true styles</th><th>Agrees with content grouping</th></tr>
+  <tr><td>True style labels</td><td>1.00</td><td>0.32</td></tr>
+  <tr><td>Raw CSD</td><td>0.34</td><td>0.40</td></tr>
+  <tr><td>CSD, graph cut (V3)</td><td>0.33</td><td>0.38</td></tr>
+  <tr><td>CSD, graph cut (V2)</td><td>0.32</td><td>0.33</td></tr>
+  <tr><td>CSD, content projected out (V1)</td><td>0.10</td><td>0.11</td></tr>
+</table>
+<ul>
+  <li>The true styles agree with the content grouping at 0.32. So a grouping with zero agreement with content cannot match the true styles fully.</li>
+  <li>The graph cuts lowered content a little (from 0.40 to 0.38 and 0.33) and kept style.</li>
+  <li>The projection lowered content a lot (to 0.11), and style fell with it (to 0.10).</li>
+  <li>No round 7 grouping reached low agreement with content while it kept style.</li>
+</ul>
+<p>The projection is a different tool from FCMI: it removes linear content directions and is not a fair clustering. So this is a caution, not a test of FCMI.
+FCMI aims at full independence. Its fairness weight could aim lower. The FCMI paper reports results that are stable across its two weights on its digit test,
+so we do not know how much that setting changes. Our reading: only a partial setting could keep style, if any.</p>
+<p><span class="term">What the input brings.</span> FCMI can only regroup what its input carries. On CSD, it would inherit the mix of style and genre that you suspected.
+On CLIP, groupings of CLIP image features already agree with the true styles to some degree: 0.32 for the 64-group content grouping, and 0.28 in round 7's step-3 notes. Their group counts differ from raw CSD's, so compare them with its 0.34 only loosely. So CLIP carries some style, mixed with content.
+Our reading: whether FCMI can pull the two apart is open.</p>
+<p><span class="term">How it relates to idea (ii).</span> Both ignore content. Idea (ii) does it when it learns the features, with negatives from the same content group.
+FCMI does it when it forms the clusters, with an independence target. Both face the caution above.</p>
+<blockquote>Round 7 report, Analysis, "Groupings" (descriptive AMIs; V1 was built with the L3 fallback that you kept, which also removes one extra noise direction). Literature note: §1, §2 table, §4 and §5.</blockquote>
+
+<h2>5. Cost and role</h2>
+<ul>
+  <li><span class="term">Code:</span> public. We have not checked its input format; we estimate a day or two to make it take our vectors.</li>
+  <li><span class="term">Compute:</span> a small auto-encoder on about 36,500 painting vectors. We estimate minutes to an hour on the local GPU.</li>
+  <li><span class="term">Role in a paper:</span> our literature note names FCMI and Cui et al.'s orthogonal re-clustering (2007) as the closest prior work for this step.
+      It lists FCMI among the cheap label-free comparators for the grouping step. Its must-run comparators are other methods: X-Cluster (idea (iv)) and a method that names the aspect, then retrieves with it.</li>
+</ul>
+
+<details>
+<summary>Our view (open after you form yours)</summary>
+<p>As our main grouping builder, FCMI is the idea that the round 7 caution hits hardest. It aims at full independence from content, and the true styles are not independent of content.</p>
+<p>As a comparator, it is useful. Suppose idea (ii) goes ahead. Then FCMI on the same input is a natural comparator at the grouping step: the same goal, reached when the clusters are formed.</p>
+<p>So we would keep (iii) as a comparator in the same loop as (ii), not as a line of its own. This is our view; the choice is yours.</p>
+</details>
+
+<h2>Next</h2>
+<p>Your decision for idea (iii) has three options:</p>
+<ul>
+  <li>a grouping builder of its own, beside (ii);</li>
+  <li>a comparator for (ii);</li>
+  <li>drop it for now.</li>
+</ul>
+
+<h2>Glossary</h2>
+<ul>
+  <li><span class="term">Fair clustering:</span> clustering whose clusters each hold a known grouping's groups in the global proportions.</li>
+  <li><span class="term">Protected attribute (protected group):</span> the known grouping that the clusters must not follow.</li>
+  <li><span class="term">Mutual information:</span> how much knowing one variable tells you about another; zero when they are independent.</li>
+  <li><span class="term">Content grouping:</span> our 64-group k-means grouping of CLIP image features; one of the reader's groupings.</li>
+  <li><span class="term">AMI:</span> adjusted mutual information between two groupings; 0 is chance, 1 is identical.</li>
+  <li><span class="term">CSD:</span> the style encoder behind round 7's groupings. <span class="term">CLIP:</span> our frozen image–text backbone.</li>
+  <li><span class="term">V1, V2, V3:</span> round 7's groupings: content projected out of CSD (V1), and two graph cuts of CSD across the content grouping (V2, V3).</li>
+  <li><span class="term">Idea (ii):</span> a learned grouping head on frozen CLIP, trained with negatives from the query's own content group.</li>
+</ul>
+
+</main>
+</body>
+</html>
