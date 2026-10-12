@@ -150,6 +150,8 @@ def score_x_aff(bundle, parts, reader_pkl, taus, allowed=None, *, name=None):
     """
     parts = tuple(parts)
     if allowed is None:
+        assert len(parts) == 4 and tuple(parts[:3]) == ("affect", "image", "caption"), \
+            "default allowed set requires A0 followed by X"
         allowed = {parts.index("affect"), len(parts) - 1}
     allowed = set(allowed)
     assert all(isinstance(i, (int, np.integer)) and 0 <= i < len(parts) for i in allowed), \

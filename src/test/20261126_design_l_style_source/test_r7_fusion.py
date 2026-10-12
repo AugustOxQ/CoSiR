@@ -142,14 +142,40 @@ def test_x_aff_all_positions_equals_r1_including_counterparts():
 
 
 def test_x_aff_default_uses_affect_and_x_positions_and_closes_other_picks():
-    b, parts = synthetic_bundle(), ("image", "affect", "caption", "V1")
-    out = F.score_x_aff(b, parts, uniform_reader(parts), [0.] * 4)
-    for c in ("a", "b"):
-        assert np.array_equal(out["reader"]["pick"][c], np.zeros(b.n, dtype=np.int64))
-        assert np.array_equal(out[f"gate_{c}"], np.zeros((4, b.n), dtype=np.float32))
-    assert out["fpick"] == out["cpick"] == {0: 0, 1: 0}
-    assert all(np.array_equal(x, np.zeros(b.n)) for x in out["fused"].values())
-    assert all(np.array_equal(x, np.zeros(b.n)) for x in out["cf"].values())
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.preprocessing import StandardScaler
+    b, parts = synthetic_bundle(), B.A0 + ("V1",)
+    b.ctx.groups = np.zeros(10)
+    b.ctx.selection = np.array([1, 3, 5, 7, 9], dtype=np.int64)
+    # Each support row agrees with exactly one grouping, in parts order.
+    for j, h in enumerate(parts):
+        p = np.full((10, 2), np.nan, dtype=np.float32)
+        p[b.ctx.selection] = [0, 1]
+        p[1] = [1, 0]
+        b.post[h] = {"img": p.copy(), "txt": p.copy()}
+        b.post[h]["txt"][3 + 2 * j] = [1, 0]
+    b.ctx.pooled.pairs_a_txt = np.repeat(np.array([3, 5, 7, 9, 3, 7])[:, None], 4, axis=1)
+    b.ctx.pooled.pairs_b_txt = np.repeat(np.array([9, 7, 5, 3, 9, 5])[:, None], 4, axis=1)
+    # A real reader learns to select the grouping whose support feature is 1.
+    y = np.tile(np.arange(4), 2)
+    X = np.zeros((8, 24))
+    X[np.arange(8), 6 * y] = 1
+    scaler = StandardScaler().fit(X)
+    model = LogisticRegression(C=10).fit(scaler.transform(X), y)
+    pk = uniform_reader(parts)
+    pk["halves"] = [{"scaler": scaler, "model": model}] * 2
+    out = F.score_x_aff(b, parts, pk, [0., .1, .2, .3])
+    for c, picks, gates in (("a", [0, 1, 2, 3, 0, 2], [1, 0, 0, 1, 1, 0]),
+                            ("b", [3, 2, 1, 0, 3, 1], [1, 0, 0, 1, 1, 0])):
+        assert np.array_equal(out["reader"]["pick"][c], picks)
+        assert (out["reader"]["m"][c] > .3).all(), "R1 gates must be open for every pick"
+        assert np.array_equal(out[f"gate_{c}"], np.tile(gates, (4, 1)))
+
+
+@pytest.mark.parametrize("parts", [B.A0, ("image", "affect", "caption", "V1")])
+def test_x_aff_default_rejects_layouts_other_than_a0_plus_x(parts):
+    with pytest.raises(AssertionError, match="default allowed set requires A0 followed by X"):
+        F.score_x_aff(synthetic_bundle(), parts, uniform_reader(parts), [0.] * 4)
 
 
 def checked_archive(key):
@@ -163,6 +189,12 @@ def test_seed42_aff_matches_round3_per_anchor_cells_sigma_and_gates(seed42):
     assert out["fpick"] == {0: 39, 1: 119}
     assert out["cpick"] == {0: 149, 1: 10}
     assert out["sigma"] == {0: 0., 1: 0.}
+    arrays = out["arrays"]
+    assert arrays["AFF__fused_cells"].dtype == np.int64
+    assert arrays["AFF__cf_cells"].dtype == np.int64
+    assert np.array_equal(arrays["AFF__fused_cells"], [39, 119])
+    assert np.array_equal(arrays["AFF__cf_cells"], [149, 10])
+    assert np.array_equal(arrays["AFF__sigma"], [0, 0])
     with checked_archive("20261121_round3_affect_gate/results/seed42_arrays.npz") as z:
         assert np.array_equal(seed42.cl, z["cl"])
         assert np.array_equal(seed42.pair_index, z["pair_index"])
