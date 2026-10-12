@@ -190,3 +190,56 @@ def test_full_painting_timing_mode_has_no_stage_or_space(results_root, monkeypat
     output = capsys.readouterr().out
     for epoch, seconds in [(1, 2), (2, 3), (3, 4)]:
         assert f'epoch={epoch} epoch_wall_seconds={seconds:.6f}' in output
+
+
+def _old_loaders(x, c, batch_size):
+    """Upstream-style loaders: plain TensorDataset, default collate (what M7 was written against)."""
+    from torch.utils.data import DataLoader, TensorDataset
+    n = len(x)
+    ds = TensorDataset(torch.from_numpy(x.copy()), torch.from_numpy(c.copy()),
+                       torch.zeros(n, dtype=torch.long), torch.arange(n))
+    train = DataLoader(ds, batch_size=batch_size, shuffle=True, drop_last=True,
+                       generator=torch.Generator().manual_seed(0))
+    return train, DataLoader(ds, batch_size=batch_size * 100, shuffle=False)
+
+
+def _assert_same_epochs(old, new, epochs=3):
+    (o_train, o_test), (n_train, n_test) = old, new
+    for _ in range(epochs):
+        ob, nb = list(o_train) + list(o_test), list(n_train) + list(n_test)
+        assert len(ob) == len(nb)
+        for a, b in zip(ob, nb):
+            assert type(a) is type(b) and len(a) == len(b) == 4
+            for u, v in zip(a, b):
+                assert u.dtype == v.dtype and u.shape == v.shape and torch.equal(u, v)
+
+
+def _synthetic(n=3001, batch_size=64):
+    rng = np.random.default_rng(1)
+    x = rng.standard_normal((n, 512)).astype(np.float32)
+    x /= np.linalg.norm(x, axis=1, keepdims=True)
+    c = rng.integers(0, 64, n).astype(np.int64)
+    return x, c, SimpleNamespace(n_paintings=n, content=c), batch_size
+
+
+def test_batched_loaders_give_the_same_batches_as_the_plain_loaders_for_several_epochs():
+    x, c, context, bs = _synthetic()
+    assert len(x) % bs != 0
+    old = _old_loaders(x, c, bs)
+    new = fcmi.painting_loaders(x, context, batch_size=bs)
+    assert isinstance(new[0].dataset, fcmi.BatchedTensorDataset)
+    assert new[0].collate_fn is fcmi.identity_collate
+    _assert_same_epochs(old, new, epochs=4)
+
+
+@pytest.mark.parametrize('fault', ['no_drop_last', 'other_seed'])
+def test_same_batches_check_catches_a_changed_drop_last_or_generator_seed(fault):
+    from torch.utils.data import DataLoader
+    x, c, context, bs = _synthetic()
+    good_train, good_test = fcmi.painting_loaders(x, context, batch_size=bs)
+    kw = dict(drop_last=fault != 'no_drop_last')
+    seed = 1 if fault == 'other_seed' else 0
+    bad_train = DataLoader(good_train.dataset, batch_size=bs, shuffle=True, collate_fn=fcmi.identity_collate,
+                           generator=torch.Generator().manual_seed(seed), **kw)
+    with pytest.raises(AssertionError):
+        _assert_same_epochs(_old_loaders(x, c, bs), (bad_train, good_test), epochs=3)
