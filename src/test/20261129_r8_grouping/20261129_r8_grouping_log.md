@@ -12,6 +12,7 @@ git); the run handoff is `docs/superpowers/handoffs/2026-10-12-r8-run-handoff.md
 |---|---|---|---|
 | 2026-10-12 23:28 | (Superseded at 01:13 by amendment 1.) M4 view check: keep the rule as written (handoff choice a). V100, V67 and V33 drop if the real check fails; NB and FC go on. | agent default, night mode, no question asked | `run-mode` was night. Rule §9 says the run chat does not wait for the user, and M4 covers this outcome ("a failure drops V100 to V33, reported as a fair mechanic"). Choice b is a rule change after a check result (C7), which only the user makes. On the smoke, 1 of 256 paintings failed (min cosine 0.99983 against 0.9999). |
 | 2026-10-13 01:13 | Amendment 1: M4's view-check threshold 0.9999 → 0.999, and a restart of the whole run from stage 0 under the new rule SHA-256 (18b4e063…). Recorded in spec A §4 "Amendments" and the rule header. | lowering: user; 0.999: user, after seeing the recommendation (flagged) | The user, in the `r8 build 5` chat (relayed to this chat at 01:13, confirmed by the user here): "I guess we lower the threshold, because this looks like noise to me." 255 of 256 cosines are ≥ 0.9999 and the minimum is 0.99983, where a real fault would give about 0.9 or lower on most paintings; 0.999 is a round value with a margin, not fitted to 0.99983. |
+| 2026-10-13 01:27 | Start the restarted run at once and let its CPU tail run past 11:00 (the 11:00 preference, `shared-resources.md`, added 2026-10-13) | agent default (run chat) | Estimate: the GPU queue ends about 09:15 (views about 10 min, FC3 stage 1 about 80 min with its waits, five FCMI runs about 5.5 h, encoders about 40 min); the CPU tail after the last GPU output (encoder parts, collect, placement, readers, scoring, C13 twice, NBC if triggered, descriptive) adds about 3 to 4.5 h, so the end falls about 12:30 to 14:00. A split over two nights would put the gate verdict a day later (D35 plans it for 14 October; held read by 16 October; cut-off 23 October). The GPU is free from about 09:15; if the CPU is needed earlier, the CPU queue can be stopped at a step boundary and restarted in the evening (finished steps are skipped). |
 
 ## Timeline
 
@@ -27,6 +28,10 @@ git); the run handoff is `docs/superpowers/handoffs/2026-10-12-r8-run-handoff.md
 | 2026-10-13 01:15 | Old real outputs moved, not deleted: `results/` → `results_m4_09999/` (2.1 GB), `/data/SSD2/pre_extract/artelingo/r8_clip_views` → `r8_clip_views_m4_09999` (2.4 MB, the write-once `meta.json`), `/data/SSD2/cosir_r8/fcmi/FC1` → `FC1_m4_09999` (3.2 GB, partial), `FC3` → `FC3_m4_09999` (4.8 GB); no encoder output existed. Listed on `.scratch/pending_deletions.md` |
 | 2026-10-13 01:16 | Amendment edits: `DECISION_RULE.md` M4 and header; `RULE_SHA256` in `r8_common.py`; `CHECK_THRESHOLD` in `r8_views.py`; spec A amendment row. Checked in the archived record: 1 of 256 cosines below 0.9999, 0 below 0.999. `test_r8_common.py` 28 passed, 1 skipped; `test_r8_stage0.py` 10 passed. Stage 0 restarted under the new rule; fresh Opus review of the amendment dispatched (C7) |
 | 2026-10-13 01:20 | Fresh Opus review of amendment 1 (C7): approve with minors, no rule edit needed (`.scratch/r8-grouping/notes/review_amendment1.md`). Minors fixed outside the rule: spec A §5 assumption line, row 1 wording, the `r8_common.py` comment, this log's header |
+
+| 2026-10-13 01:25 | Stage 0 under the amended rule: pass (SC1a to SC1e), rule SHA-256 18b4e063… at start and end, inputs unchanged, 538 s |
+| 2026-10-13 01:26 | Dry-runs: 13 GPU and 81 CPU steps; GPU free; load 5.0 (stage 0 just ended); run mode night |
+| 2026-10-13 01:27 | Both queues restarted from the main checkout (fdaee39) |
 
 ## For the report
 
