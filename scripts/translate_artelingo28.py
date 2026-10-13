@@ -107,8 +107,6 @@ def validate_rows(frame, data):
 
 def save_parquet(path, frame):
     frame = frame.sort_values("csv_row").reset_index(drop=True)
-    # Keep the shared seven-column schema and the legacy translation-reader interface.
-    frame["Translation output"] = frame.translation
     frame.index = pd.Index(frame.csv_row, name="index")
     frame.to_parquet(path)
 
@@ -239,7 +237,7 @@ def main():
     parser.add_argument("--proxy", action="append", default=[], metavar="NAME=CODE")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit-per-language", type=int)
-    parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--device", choices=["cpu", "cuda"], default="cuda")
     parser.add_argument("--merge", nargs="+")
     args = parser.parse_args()
