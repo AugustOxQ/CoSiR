@@ -40,6 +40,7 @@ import run_r6_dts as D
 
 NAMES = ('cosine', 'RCA', 'B', 'B0', 'AFF', 'CF')
 PAIR_FIELDS = ('pairs_a_img', 'pairs_a_txt', 'pairs_b_img', 'pairs_b_txt')
+SPREAD_COLUMNS = np.array([6*j+i for j in range(len(B.A0)) for i in (3, 4)])
 
 
 def prefix(ep, k):
@@ -48,7 +49,7 @@ def prefix(ep, k):
     The full arrays have r6's validated episode SHA; prefixing inherits their
     painting/value constraints, including exclusion of the anchor's value.
     """
-    assert k in (2, 3, 4)
+    assert k in (1, 2, 3, 4)
     out = replace(ep, **{f: np.ascontiguousarray(getattr(ep, f)[:, :k]) for f in PAIR_FIELDS})
     assert np.array_equal(out.anchor, ep.anchor)
     assert np.array_equal(out.candidates, ep.candidates) and out.candidates.shape == (len(ep.anchor), 13)
@@ -79,14 +80,39 @@ def features(post, ep, k):
             con = np.einsum('nsc,nsc->ns', pi[ci], pt[ct])
             assert sup.shape == con.shape == (len(ep.anchor), k)
             s, c = sup.mean(axis=1), con.mean(axis=1)
-            cols += [s, c, s-c, sup.astype(np.float64).std(axis=1, ddof=1),
-                     con.astype(np.float64).std(axis=1, ddof=1),
+            # At k=1 these are placeholders only: each half-reader replaces
+            # them with its own scaler means inside the reader call below.
+            sd_sup = np.zeros(s.shape) if k == 1 else sup.astype(np.float64).std(axis=1, ddof=1)
+            sd_con = np.zeros(c.shape) if k == 1 else con.astype(np.float64).std(axis=1, ddof=1)
+            cols += [s, c, s-c, sd_sup, sd_con,
                      (ai.argmax(axis=-1) == at.argmax(axis=-1)).mean(axis=1)]
         out[cond] = np.stack([np.asarray(x, dtype=np.float64) for x in cols], axis=1)
         assert out[cond].shape == (len(ep.anchor), 18) and np.isfinite(out[cond]).all()
     for j in range(len(B.A0)):
         assert np.array_equal(out['b'][:, 6*j+2], -out['a'][:, 6*j+2])
     return out
+
+
+def reader(b, readers):
+    """Original reader, with half-specific spread neutralisation only at k=1."""
+    if b.pooled.pairs_a_img.shape[1] != 1:
+        return R.RF.reader(b, readers)
+
+    def half_probs(pk, features, n_classes):
+        out = []
+        for half in pk['halves']:
+            assert np.array_equal(half['model'].classes_, np.arange(n_classes))
+            raw = features.copy()
+            raw[:, SPREAD_COLUMNS] = half['scaler'].mean_[SPREAD_COLUMNS]
+            scaled = half['scaler'].transform(raw)
+            assert np.all(scaled[:, SPREAD_COLUMNS] == 0), 'C4 k=1 spread columns must scale to exactly zero'
+            p = half['model'].predict_proba(scaled)
+            assert np.allclose(p.sum(axis=1), 1.0, rtol=0, atol=1e-12)
+            out.append(p)
+        return out
+
+    with patch.object(R.rbe, 'half_reader_probs', half_probs):
+        return R.RF.reader(b, readers)
 
 
 def load():
@@ -186,7 +212,7 @@ def score(env, b):
     """Six-scorer subset of score_seed, using the original frozen functions."""
     frozen = {n: S.frozen_nested(b.cos, b.t_n1u, getattr(b, P.TERM_OF[n]), env.picks[n], b.parity)
               for n in ('B', 'B0')}
-    rd = R.RF.reader(b, env.readers)
+    rd = reader(b, env.readers)
     gates = R.RF.gates_aff(rd['m'], rd['pick'], R.R3.assert_taus())
     aff, cf = S.frozen_cells(frozen['B'], b.parity, rd['T'], gates,
                             S.CELLS['aff']['fused'], S.CELLS['aff']['cf'])

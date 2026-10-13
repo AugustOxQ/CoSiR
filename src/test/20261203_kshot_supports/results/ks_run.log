@@ -15,3 +15,10 @@ k=4 scored; pair dimensions checked
 k=3 scored; pair dimensions checked
 k=2 scored; pair dimensions checked
 C1/C2/C3 PASS; runtime 32.5s; results: /project/CoSiR/src/test/20261203_kshot_supports/results/kshot_seed42.json
+Starting k=1 extension; loading frozen development inputs
+C1 PASS: k=4 exact reproduction
+k=4 scored; pair dimensions checked
+k=3 scored; pair dimensions checked
+k=2 scored; pair dimensions checked
+k=1 scored; pair dimensions checked
+C1/C2/C3/C4/C5 PASS; runtime 42.9s; results: /project/CoSiR/src/test/20261203_kshot_supports/results/kshot_seed42.json
