@@ -267,3 +267,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-6-handoff.md
 - New chat: tab 'r9 build 6', session 2f29e134-1907-458c-b32a-999b8c5a13f7
 
+[brief] CoSiR: r9 build 6 -> r9 build 7 (2026-10-13 20:53 Amsterdam)
+- Done: 25d, 10, 09, 18 and 11 merged; each CLIP check equals the round 6 pins byte for byte.
+- State: 25 of 33 tickets merged; 20a built, stage 0a passed on it, review asks 2 small fixes.
+- Next: 20a's fix round and merge; then 21a (new) and 20b; LOW fixers to Codex after 21:37.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-7-handoff.md
+- New chat: tab 'r9 build 7', session 25a99a82-13d8-48cb-b089-1693ca800aaa
+
