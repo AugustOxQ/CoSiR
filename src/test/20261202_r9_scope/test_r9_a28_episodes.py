@@ -124,14 +124,54 @@ class Faulty:
         return self.real(**kw)
 
 
+def prep(mod, table):
+    """mod.prepare with the table's own language names as the expected names (the synthetic tables are not the 27)."""
+    return mod.prepare(table, expected_languages=tuple(sorted(set(table.language))))
+
+
 def run(mod, table, faulty=None, monkeypatch=None, seed=9001, n=N, **kw):
     """mod.build_seed_a28 on ``table`` with the faulty wrapper installed in the E module r9_a28_episodes uses."""
     if faulty is not None:
         monkeypatch.setattr(mod.E, "build_aspect_episodes_r6", faulty)
-    return mod.build_seed_a28(mod.prepare(table), V, seed, n_per_pair=n, **kw)
+    return mod.build_seed_a28(prep(mod, table), V, seed, n_per_pair=n, **kw)
 
 
 # ---------------------------------------------------------------- languages and shares
+
+RULE_LANGUAGES = ("Burmese", "Darija", "Emakhuwa", "Hausa", "Hindi", "Igbo", "Indonesian", "IsiNdebele", "IsiXhosa",
+                  "IsiZulu", "Kazakh", "Kinyarwanda", "Korean", "Kyrgyz", "Malay", "Setswana", "Swahili", "Tagalog",
+                  "Tamil", "Thai", "Turkish", "Urdu", "Uzbek", "Vietnamese", "Yoruba", "arabic", "chinese")
+
+
+def table_27(rename=None):
+    t = make_table(sizes=(14,) * 27, langs=RULE_LANGUAGES, per=1)
+    if rename:
+        t["language"] = t["language"].replace(rename)
+    return t
+
+
+def test_the_rule_names_are_the_27_in_sort_order():
+    assert A.LANGUAGES == RULE_LANGUAGES and list(A.LANGUAGES) == sorted(A.LANGUAGES)
+
+
+def test_prepare_accepts_the_27_rule_names():
+    assert A.prepare(table_27()).languages == list(RULE_LANGUAGES)
+
+
+@pytest.mark.parametrize("rename", [{"Hindi": "Hindhi"}, {"Zzz": "x"}, {"arabic": "Arabic"}])
+def test_prepare_refuses_a_wrong_language_name(rename):
+    t = table_27(rename if "Zzz" not in rename else None)
+    if "Zzz" in rename:
+        t = t[t.language != "chinese"]               # a missing language
+    with pytest.raises(AssertionError, match="language names"):
+        A.prepare(t)
+
+
+def test_prepare_refuses_an_extra_language():
+    t = table_27()
+    t.loc[t.index[0], "language"] = "Klingon"
+    with pytest.raises(AssertionError, match="language names"):
+        A.prepare(t)
 
 def test_languages_are_in_python_sort_order():
     assert A.languages_of(pd.Series(["arabic", "Zulu", "Burmese", "chinese", "Hindi", "Burmese"])) == \
@@ -168,13 +208,13 @@ def test_shares_sum_is_total_and_exact_on_large_pools():
 
 def test_a_language_with_no_episodes_is_refused():
     with pytest.raises(AssertionError, match="no episodes"):
-        A.build_seed_a28(A.prepare(make_table()), V, 9001, n_per_pair=2)
+        A.build_seed_a28(prep(A, make_table()), V, 9001, n_per_pair=2)
 
 
 def test_sum_guard_fires_when_shares_do_not_add_up(monkeypatch):
     monkeypatch.setattr(A, "shares", lambda sizes, total: [total - 1] + [0] * (len(sizes) - 1))
     with pytest.raises(AssertionError, match="4,096|sum"):
-        A.build_seed_a28(A.prepare(make_table()), V, 9001, n_per_pair=N)
+        A.build_seed_a28(prep(A, make_table()), V, 9001, n_per_pair=N)
 
 
 # ---------------------------------------------------------------- the builder calls
@@ -191,7 +231,7 @@ def test_builder_called_with_the_rule_arguments(table, monkeypatch):
     res = run(A, t, f, monkeypatch, seed=9002)
     langs = A.languages_of(t.language)
     assert len(f.calls) == 3 * len(langs)
-    ctx = A.prepare(t)
+    ctx = prep(A, t)
     for c in f.calls:
         lang = langs[c["lang"] - 1]
         R_l = np.flatnonzero((t.language == lang).to_numpy())
@@ -212,22 +252,38 @@ def test_builder_called_with_the_rule_arguments(table, monkeypatch):
     assert sum(len(c["rows"]) for c in f.calls[:len(langs)]) == len(t) - 7
 
 
-def test_shares_use_pool_sizes_after_drops_with_labels_known(table, monkeypatch):
-    t = table.copy()
+def pool_table():
+    """Seven dropped rows, ten unknown emotions, and about half of Burmese's rows dropped (its share must move)."""
+    t = make_table()
     t.loc[t.index[:7], "dropped"] = True
     t.loc[t.index[20:30], "emotion"] = -1
+    burmese = np.flatnonzero((t.language == "Burmese").to_numpy())
+    t.loc[t.index[burmese[::2]], "dropped"] = True
+    return t
+
+
+def scn_pool_after_drops(mod, monkeypatch):
+    """True when the shares come from the kept rows with all labels known (and differ from the all-rows shares)."""
+    t = pool_table()
     f = Faulty({})
-    res = run(A, t, f, monkeypatch)
-    langs = A.languages_of(t.language)
-    keep = (~t.dropped.to_numpy()) & (t[list(R.ASPECTS)].to_numpy() >= 0).all(axis=1)
+    res = run(mod, t, f, monkeypatch)
+    langs = mod.languages_of(t.language)
+    known = (t[list(R.ASPECTS)].to_numpy() >= 0).all(axis=1)
+    keep = (~t.dropped.to_numpy()) & known
     sizes = [int((keep & (t.language == l).to_numpy()).sum()) for l in langs]
-    for p in PAIRS:
-        assert [res.shares[p][l] for l in langs] == A.shares(sizes, N)
-    assert [c["n_episodes"] for c in f.calls[:len(langs)]] == A.shares(sizes, N)
+    all_rows = [int((known & (t.language == l).to_numpy()).sum()) for l in langs]
+    want = mod.shares(sizes, N)
+    assert want != mod.shares(all_rows, N)       # the data tell the two apart
+    return all([res.shares[p][l] for l in langs] == want for p in PAIRS) and \
+        [c["n_episodes"] for c in f.calls[:len(langs)]] == want
+
+
+def test_shares_use_pool_sizes_after_drops_with_labels_known(monkeypatch):
+    assert scn_pool_after_drops(A, monkeypatch) is True
 
 
 def test_global_rows_are_the_sub_array_rows_mapped_by_R(table):
-    res = A.build_seed_a28(A.prepare(table), V, 9001, n_per_pair=N)
+    res = A.build_seed_a28(prep(A, table), V, 9001, n_per_pair=N)
     langs = A.languages_of(table.language)
     labels = {a: table[a].to_numpy() for a in R.ASPECTS}
     cl = np.unique(table.painting.to_numpy(), return_inverse=True)[1]
@@ -254,7 +310,7 @@ def test_global_rows_are_the_sub_array_rows_mapped_by_R(table):
 
 
 def test_assembly_shapes_and_bookkeeping(table):
-    res = A.build_seed_a28(A.prepare(table), V, 9003, n_per_pair=N)
+    res = A.build_seed_a28(prep(A, table), V, 9003, n_per_pair=N)
     assert res.n == 3 * N and len(res.per_pair) == 3 and tuple(res.sha) == PAIRS
     assert np.array_equal(res.pair_index, np.repeat(np.arange(3), N))
     assert np.array_equal(res.parity, np.arange(3 * N) % 2)
@@ -275,7 +331,7 @@ def test_every_part_is_validated(table, monkeypatch):
     monkeypatch.setattr(A, "validate_aspect_episodes",
                         lambda ep, labels, groups, index, third=None: (seen.append(len(ep.anchor)),
                                                                       real(ep, labels, groups, index, third=third))[1])
-    A.build_seed_a28(A.prepare(table), V, 9001, n_per_pair=N)
+    A.build_seed_a28(prep(A, table), V, 9001, n_per_pair=N)
     assert len(seen) == 3 * 4 and sum(seen) == 3 * N
 
 
@@ -283,7 +339,7 @@ def test_every_part_is_validated(table, monkeypatch):
 
 def test_real_values_subset_failure_sets_the_language_aside_for_the_pairs_it_touches(monkeypatch):
     t = make_table(genre_missing=("Zulu",))
-    res = A.build_seed_a28(A.prepare(t), V, 9001, n_per_pair=N)
+    res = A.build_seed_a28(prep(A, t), V, 9001, n_per_pair=N)
     assert res.set_aside["emotion__style"] == []
     assert res.set_aside["emotion__genre"] == ["Zulu"] and res.set_aside["style__genre"] == ["Zulu"]
     assert "Zulu" not in res.shares["emotion__genre"] and "Zulu" in res.shares["emotion__style"]
@@ -293,7 +349,7 @@ def test_real_values_subset_failure_sets_the_language_aside_for_the_pairs_it_tou
 
 def test_real_failed_draw_sets_the_language_aside_and_the_rest_are_re_split():
     t = make_table(tiny=("arabic",))
-    res = A.build_seed_a28(A.prepare(t), V, 9001, n_per_pair=N)
+    res = A.build_seed_a28(prep(A, t), V, 9001, n_per_pair=N)
     langs = A.languages_of(t.language)
     keep = [l for l in langs if l != "arabic"]
     sizes = [int(((t.language == l)).sum()) for l in keep]
@@ -384,8 +440,28 @@ def test_a_validation_failure_stops_the_step_and_sets_nothing_aside(monkeypatch)
 
     monkeypatch.setattr(A, "validate_aspect_episodes", bad)
     with pytest.raises(AssertionError):
-        A.build_seed_a28(A.prepare(t), V, 9001, n_per_pair=N)
+        A.build_seed_a28(prep(A, t), V, 9001, n_per_pair=N)
     assert len(calls) == 1
+
+
+def test_a_bad_part_of_an_earlier_pass_stops_the_step(monkeypatch):
+    """Hindi fails its draws in pass 1; Burmese (13 episodes in pass 1, 18 in pass 2) is built in both passes. A bad
+    pass-1 part of Burmese must stop the step although its pass-2 part is fine (rule section 5.1 item 6)."""
+    t = make_table()
+    monkeypatch.setattr(A.E, "build_aspect_episodes_r6", Faulty({(2, None): RuntimeError(FAILED_DRAW)}))
+    real = AE.validate_aspect_episodes
+    first = []
+
+    def check(ep, labels, groups, index, third=None):
+        first.append(len(ep.anchor))
+        if len(ep.anchor) == 13:                   # Burmese's pass-1 share
+            raise AssertionError("episode 3: a painting appears twice")
+        return real(ep, labels, groups, index, third=third)
+
+    monkeypatch.setattr(A, "validate_aspect_episodes", check)
+    with pytest.raises(AssertionError, match="appears twice"):
+        A.build_seed_a28(prep(A, t), V, 9001, n_per_pair=N)
+    assert first[0] == 13
 
 
 def member_in_dropped_row(mod, monkeypatch):
@@ -403,7 +479,7 @@ def member_in_dropped_row(mod, monkeypatch):
 
     monkeypatch.setattr(mod.E, "build_aspect_episodes_r6", leak)
     monkeypatch.setattr(mod, "validate_aspect_episodes", lambda *a, **k: None)
-    return mod.build_seed_a28(mod.prepare(t), V, 9001, n_per_pair=N)
+    return mod.build_seed_a28(prep(mod, t), V, 9001, n_per_pair=N)
 
 
 def test_member_row_on_a_dropped_row_fires(monkeypatch):
@@ -414,7 +490,7 @@ def test_member_row_on_a_dropped_row_fires(monkeypatch):
 def test_the_exception_classes_match_the_real_builder_messages():
     """The two set-aside exceptions are told from the others by message; the real builder's messages must match."""
     t = make_table(genre_missing=("Zulu",), tiny=("arabic",))
-    ctx = A.prepare(t)
+    ctx = prep(A, t)
     with pytest.raises(AssertionError) as e1:
         E.build_aspect_episodes_r6(**ctx_kwargs(ctx, "Zulu", "emotion", "genre", "style"))
     assert A.set_aside_reason(e1.value) == "values_subset"
@@ -468,17 +544,22 @@ def ledgers(tmp_path):
     return s, h
 
 
-def new_hashes(chars="ghijklmno"):
+FRESH = (56, 57, 58)        # read seeds whose builder seeds (n_languages = 3) sit in no row of the test ledger
+
+
+def new_hashes(chars="ghijklmno", read_seeds=(55, 56, 57)):
     cs = iter(chars)
-    return {s: {p: H(next(cs)) for p in PAIRS} for s in (55, 56, 57)}
+    return {s: {p: H(next(cs)) for p in PAIRS} for s in read_seeds}
 
 
 RECORDED = {42: {p: H("p") for p in PAIRS}, 43: {p: H("q") for p in PAIRS}}
 
 
-def guard(mod, new, seeds, ledgers, recorded=RECORDED):
+def guard(mod, new, seeds, ledgers, recorded=RECORDED, n_languages=3):
+    """``seeds`` None: the builder seeds of ``new``'s read seeds, as the read passes them."""
     s, h = ledgers
-    return mod.hash_guard(new, seeds, held_ledger=h, seed_ledger=s, recorded=recorded)
+    seeds = mod.builder_seeds(sorted(new), n_languages) if seeds is None else seeds
+    return mod.hash_guard(new, seeds, held_ledger=h, seed_ledger=s, recorded=recorded, n_languages=n_languages)
 
 
 def test_builder_seeds_are_1000s_plus_l():
@@ -488,8 +569,8 @@ def test_builder_seeds_are_1000s_plus_l():
 
 
 def test_guard_passes_on_fresh_hashes_and_seeds(ledgers):
-    out = guard(A, new_hashes(), [s for s in A.builder_seeds((56, 57), 3)], ledgers)
-    assert out["passed"] and out["h5_hashes"] == 9
+    out = guard(A, new_hashes(read_seeds=FRESH), None, ledgers)
+    assert out["passed"] and out["h5_hashes"] == 9 and out["builder_seeds"] == 9
 
 
 def test_h5_nine_are_parsed_from_the_ledger(ledgers):
@@ -508,9 +589,9 @@ def test_h5_with_other_than_nine_hashes_is_refused(tmp_path):
 
 
 def scn_h5(mod, ledgers):
-    new = new_hashes()
-    new[55]["emotion__genre"] = H("d")          # H5 seed 53 emotion x style
-    return raised(lambda: guard(mod, new, [], ledgers))
+    new = new_hashes(read_seeds=FRESH)
+    new[56]["emotion__genre"] = H("d")          # H5 seed 53 emotion x style
+    return raised(lambda: guard(mod, new, None, ledgers))
 
 
 def raised(fn):
@@ -522,35 +603,35 @@ def raised(fn):
 
 
 def scn_recorded(mod, ledgers):
-    new = new_hashes()
-    new[56]["style__genre"] = H("q")            # recorded seed 43
-    return raised(lambda: guard(mod, new, [], ledgers))
+    new = new_hashes(read_seeds=FRESH)
+    new[57]["style__genre"] = H("q")            # recorded seed 43
+    return raised(lambda: guard(mod, new, None, ledgers))
 
 
 def scn_distinct_new(mod, ledgers):
-    new = new_hashes()
-    new[57]["emotion__style"] = new[55]["emotion__style"]
-    return raised(lambda: guard(mod, new, [], ledgers))
+    new = new_hashes(read_seeds=FRESH)
+    new[58]["emotion__style"] = new[56]["emotion__style"]
+    return raised(lambda: guard(mod, new, None, ledgers))
 
 
 def scn_seed_in_other_row(mod, ledgers):
-    return raised(lambda: guard(mod, new_hashes(), [55001, 55002], ledgers))        # 55002 sits in another round's row
+    return raised(lambda: guard(mod, new_hashes(), None, ledgers))        # 55002 sits in another round's row
 
 
 def scn_seed_in_plain_row(mod, ledgers):
-    return raised(lambda: guard(mod, new_hashes(), [49], ledgers))
+    return raised(lambda: mod.assert_seeds_free([49], ledgers[0]))
 
 
 def scn_round9_row_is_allowed(mod, ledgers):
-    return raised(lambda: guard(mod, new_hashes(), [55001, 9001001, 55, 58], ledgers))
+    return raised(lambda: mod.assert_seeds_free([55001, 9001001, 55, 58], ledgers[0]))
 
 
 def scn_free_row_is_allowed(mod, ledgers):
-    return raised(lambda: guard(mod, new_hashes(), [58], ledgers))
+    return raised(lambda: mod.assert_seeds_free([58], ledgers[0]))
 
 
 def scn_repeated_seed(mod, ledgers):
-    return raised(lambda: guard(mod, new_hashes(), [60001, 60001], ledgers))
+    return raised(lambda: mod.assert_seeds_free([60001, 60001], ledgers[0]))
 
 
 @pytest.mark.parametrize("scn, text", [(scn_h5, "H5"), (scn_recorded, "recorded"), (scn_distinct_new, "repeats"),
@@ -579,12 +660,32 @@ def test_the_real_ledgers_pass_for_the_read_and_the_smoke_seeds():
 
 def test_the_real_recorded_hashes_include_h5_in_the_guard():
     new = new_hashes()
-    A.hash_guard(new, [])
+    seeds = A.builder_seeds(sorted(new), 27)
+    A.hash_guard(new, seeds)
     h5 = A.h5_hashes()
     bad = {55: dict(new[55]), 56: new[56], 57: new[57]}
     bad[55]["emotion__style"] = h5[53]["emotion__style"]
     with pytest.raises(AssertionError, match="H5"):
-        A.hash_guard(bad, [])
+        A.hash_guard(bad, seeds)
+
+
+def scn_seed_list_is_the_reads(mod, ledgers):
+    """The seed list must be the read's own 1000 s + l: an empty, short, shifted or foreign list is refused."""
+    new = new_hashes(read_seeds=FRESH)
+    ok = mod.builder_seeds(sorted(new), 3)
+    msgs = [raised(lambda: guard(mod, new, bad, ledgers)) for bad in
+            ([], ok[:-1], ok[1:] + [ok[-1] + 1], list(reversed(ok)), mod.builder_seeds((56, 57, 59), 3))]
+    return all(m is not None and "builder seed list" in m for m in msgs) and raised(lambda: guard(mod, new, ok, ledgers)) is None
+
+
+def test_the_guard_refuses_a_seed_list_that_is_not_the_reads(ledgers):
+    assert scn_seed_list_is_the_reads(A, ledgers) is True
+
+
+def test_the_guard_refuses_the_empty_list_on_the_real_ledgers():
+    new = new_hashes()
+    with pytest.raises(AssertionError, match="builder seed list"):
+        A.hash_guard(new, [])
 
 
 # ---------------------------------------------------------------- mutants
@@ -592,7 +693,7 @@ def test_the_real_recorded_hashes_include_h5_in_the_guard():
 def scn_values_subset(mod, tmp_path=None):
     t = make_table(genre_missing=("Zulu",))
     try:
-        res = mod.build_seed_a28(mod.prepare(t), V, 9001, n_per_pair=N)
+        res = mod.build_seed_a28(prep(mod, t), V, 9001, n_per_pair=N)
     except BaseException:
         return False
     return res.set_aside["emotion__genre"] == ["Zulu"] and sum(res.shares["emotion__genre"].values()) == N
@@ -601,7 +702,7 @@ def scn_values_subset(mod, tmp_path=None):
 def scn_failed_draw(mod):
     t = make_table(tiny=("arabic",))
     try:
-        res = mod.build_seed_a28(mod.prepare(t), V, 9001, n_per_pair=N)
+        res = mod.build_seed_a28(prep(mod, t), V, 9001, n_per_pair=N)
     except BaseException:
         return False
     return res.set_aside["emotion__style"] == ["arabic"] and sum(res.shares["emotion__style"].values()) == N
@@ -610,7 +711,7 @@ def scn_failed_draw(mod):
 def _faulty_run(mod, rules, monkeypatch):
     f = Faulty(rules)
     monkeypatch.setattr(mod.E, "build_aspect_episodes_r6", f)
-    return mod.build_seed_a28(mod.prepare(make_table()), V, 9001, n_per_pair=N)
+    return mod.build_seed_a28(prep(mod, make_table()), V, 9001, n_per_pair=N)
 
 
 def scn_other_assertion_propagates(mod, monkeypatch):
@@ -670,7 +771,7 @@ def scn_later_pass_set_aside(mod, monkeypatch):
 def scn_original_seeds(mod, monkeypatch):
     f = Faulty({(2, None): RuntimeError(FAILED_DRAW)})
     monkeypatch.setattr(mod.E, "build_aspect_episodes_r6", f)
-    mod.build_seed_a28(mod.prepare(make_table()), V, 9001, n_per_pair=N)
+    mod.build_seed_a28(prep(mod, make_table()), V, 9001, n_per_pair=N)
     return [c["seed"] for c in f.calls if c["pair"] == "emotion__style"] == \
         [9001001, 9001002, 9001003, 9001004, 9001001, 9001003, 9001004]
 
@@ -690,6 +791,10 @@ def scn_recorded_clash(mod, tmp_path):
 
 def scn_new_repeat(mod, tmp_path):
     return scn_distinct_new(mod, ledger_files(tmp_path)) is not None
+
+
+def scn_seed_list_mutant(mod, tmp_path):
+    return scn_seed_list_is_the_reads(mod, ledger_files(tmp_path))
 
 
 def scn_seed_clash(mod, tmp_path):
@@ -742,6 +847,11 @@ MUTANTS = [
     ("renumbered_seeds", "seed = 1000 * int(s) + l", "seed = 1000 * int(s) + active.index(l) + 1", scn_original_seeds, "mp"),
     ("member_check_removed", "_require(in_kept[every].all(), ", "_require(True or in_kept[every].all(), ",
      scn_member_in_dropped_row, "mp"),
+    ("pool_counts_dropped_rows", "out.pool_size.append(int(known.sum()))",
+     'out.pool_size.append(int(((sub["emotion"] >= 0) & (sub["style"] >= 0) & (sub["genre"] >= 0)).sum()))',
+     scn_pool_after_drops, "mp"),
+    ("seed_list_not_checked", "_require(list(builder_seed_list) == expected_seeds,",
+     "_require(True or list(builder_seed_list) == expected_seeds,", scn_seed_list_mutant, "tmp"),
     ("h5_not_checked", "_require(not h5_clash, ", "_require(True or not h5_clash, ", scn_h5_clash, "tmp"),
     ("recorded_not_used", "distinct = E.assert_distinct(new, recorded)  # guard:recorded",
      "distinct = E.assert_distinct(new, h5)  # guard:recorded", scn_recorded_clash, "tmp"),

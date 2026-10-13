@@ -49,6 +49,10 @@ LEDGER_DIR = R.MAIN / "docs/superpowers"
 SEED_LEDGER = LEDGER_DIR / "episode_seed_ledger.md"
 HELD_LEDGER = LEDGER_DIR / "held_ledger.md"
 H5_SEEDS = (52, 53, 54)
+LANGUAGES = ("Burmese", "Darija", "Emakhuwa", "Hausa", "Hindi", "Igbo", "Indonesian", "IsiNdebele", "IsiXhosa",
+             "IsiZulu", "Kazakh", "Kinyarwanda", "Korean", "Kyrgyz", "Malay", "Setswana", "Swahili", "Tagalog",
+             "Tamil", "Thai", "Turkish", "Urdu", "Uzbek", "Vietnamese", "Yoruba", "arabic", "chinese")  # rule 5.1 item 1
+N_LANGUAGES = len(LANGUAGES)
 
 
 def _require(cond, msg, exc=AssertionError):
@@ -95,10 +99,12 @@ def set_aside_reason(exc):
 
 # ---------------------------------------------------------------- the row space
 
-def prepare(table, dropped=None) -> SimpleNamespace:
+def prepare(table, dropped=None, expected_languages=LANGUAGES) -> SimpleNamespace:
     """Per-language sub-arrays of the ArtELingo-28 table (read_set_a28.parquet or a frame with its columns).
 
-    ``dropped`` overrides the table's column (the feasibility run passes all False). -> SimpleNamespace(languages,
+    ``dropped`` overrides the table's column (the feasibility run passes all False). ``expected_languages``: the
+    language names the table must hold, exactly (the rule's 27; the unit tests pass their synthetic names).
+    -> SimpleNamespace(languages,
     R (global positions per language), labels, groups, index, kept (local positions of kept rows), pool_size,
     cl, n_rows)."""
     _require(set(TABLE_COLUMNS) <= set(table.columns), f"table columns {list(table.columns)}")
@@ -109,6 +115,8 @@ def prepare(table, dropped=None) -> SimpleNamespace:
     _require(drop.shape == (n,), f"dropped has shape {drop.shape}, not ({n},)")
     lang = table["language"].to_numpy().astype(str)
     languages = languages_of(lang)
+    _require(languages == sorted(expected_languages),
+             f"language names {languages} are not the expected {sorted(expected_languages)}")
     lab = {a: table[a].to_numpy(dtype=np.int64) for a in R.ASPECTS}
     cl = np.unique(table["painting"].to_numpy().astype(str), return_inverse=True)[1].astype(np.int64)
     out = SimpleNamespace(languages=languages, R=[], labels=[], groups=[], index=[], kept=[], pool_size=[], cl=cl,
@@ -152,6 +160,10 @@ def _build_pair(ctx, aspects, name, value_sets, s, n_per_pair) -> SimpleNamespac
                 if reason is None:
                     raise
                 failed[l] = reason
+                continue
+            # every part of every pass is validated, not only the last pass's (rule 5.1 item 6: a validation failure
+            # stops the step)
+            validate_aspect_episodes(built[l], ctx.labels[l - 1], ctx.groups[l - 1], ctx.index[l - 1], third=third)
         if not failed:  # mut:last_pass
             break
         set_aside += [(ctx.languages[l - 1], r) for l, r in failed.items()]
@@ -163,8 +175,6 @@ def _build_pair(ctx, aspects, name, value_sets, s, n_per_pair) -> SimpleNamespac
     for l, n in zip(active, share):
         ep = built[l]
         r = ctx.R[l - 1]
-        sub = ctx.labels[l - 1]
-        validate_aspect_episodes(ep, sub, ctx.groups[l - 1], ctx.index[l - 1], third=third)
         every = E.members(ep)
         in_kept = np.zeros(len(r), dtype=bool)
         in_kept[ctx.kept[l - 1]] = True
@@ -261,10 +271,17 @@ def assert_seeds_free(seeds, path=None) -> dict:
     return {"passed": True, "n_seeds": len(seeds)}
 
 
-def hash_guard(new: dict, builder_seed_list, held_ledger=None, seed_ledger=None, recorded=None) -> dict:
+def hash_guard(new: dict, builder_seed_list, held_ledger=None, seed_ledger=None, recorded=None,
+               n_languages=N_LANGUAGES) -> dict:
     """Rule section 5.1 item 5 (R6 rule section 5 item 3): the per-pair hashes ``new`` ({seed: {pair: sha}}, nine for
     the read) differ from each other, from H5's nine and from every recorded non-smoke hash; the builder seeds are
-    absent from every ledger row except round 9's. ``recorded`` defaults to r9_episodes.recorded_hashes()."""
+    absent from every ledger row except round 9's. ``builder_seed_list`` must be exactly the read's own
+    builder_seeds(sorted(new), n_languages) (an empty or partial list would check nothing). ``recorded`` defaults to
+    r9_episodes.recorded_hashes()."""
+    expected_seeds = builder_seeds(sorted(new), n_languages)
+    _require(list(builder_seed_list) == expected_seeds,
+             f"the builder seed list ({len(list(builder_seed_list))} seeds) is not the read's 1000 s + l for read "
+             f"seeds {sorted(new)} and {n_languages} languages ({len(expected_seeds)} seeds)")  # guard:seed_list
     h5 = h5_hashes(held_ledger)
     recorded = E.recorded_hashes() if recorded is None else recorded
     seeds = assert_seeds_free(builder_seed_list, seed_ledger)  # guard:seeds
