@@ -135,7 +135,7 @@ while emotion × style stays at about +0.9. These are points without intervals.
   supports share the query's value of aspect A. In the code (`src/eval/aspect_episodes.py`), each pair is an image and
   a caption from two paintings that share one value of aspect A. The pairs show k different values, never the
   query's own. The episodes used are the real ones, so no number is affected. Their order within an episode is a
-  random draw, so the first k pairs are a random subset.
+  random draw, so the first k pairs are a random subset. The glossary line was corrected on 2026-10-14.
 - **k = 1 was added after the first read** (user, 2026-10-14), by a resume of the same Codex session. The rule for the
   spread features is an agent default (see "What ran").
 - **RCA's PCA basis was rebuilt** from the frozen 60,000-row scorer-train draw, since no basis was saved. C1 shows it
