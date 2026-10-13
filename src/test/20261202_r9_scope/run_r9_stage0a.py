@@ -17,7 +17,8 @@ Steps (the order guard of round 6 is replaced by the reference SHA-256s and the 
   3. setup (rows, heads refit and checked against the stored posteriors, PM fits, readers), the seed-42 bundle,
      score_seed(include_pm=True), the 131 items, r9_stats.pass_record, finish().
 Writes results/stage0a_regression.json (passed or not; a failed run replaces an earlier pass and also writes
-stage0a_regression_failed.json), and, on a pass, results/stage0a_pass_counts.json. Exit 0 pass, 3 a difference.
+stage0a_regression_failed.json; it holds pins_sha256, the SHA-256 of pins_clip.json), and, on a pass,
+results/stage0a_pass_counts.json. Exit 0 pass, 3 a difference (also a wrong item count).
 
     cd /project/CoSiR && CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1 \
     /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/run_r9_stage0a.py \
@@ -421,6 +422,7 @@ def run(results=None, check_only=False) -> int:
     _require(not gate_references(refs[REGRESSION_NAME], refs[COUNTS_NAME]), "reference files are not a pass")
     _require(refs[REGRESSION_NAME]["n_items"] == N_ITEMS, f"the reference holds {N_ITEMS} items")
     check_pins()
+    pins_sha256 = R.sha256_file(R.pins_path(BACKBONE))
     parts = backbone_parts(BACKBONE)
     picks = P.load_picks(parts["picks_seed42"], BACKBONE)              # passed, means equal the rule's targets
     lambdas = P.frozen_lambdas(BACKBONE)
@@ -435,13 +437,14 @@ def run(results=None, check_only=False) -> int:
     scored = S.score_seed(bundle, picks, lambdas, env.readers, include_pm=True)
     log("scored")
     items, _ = regression_items(env, bundle, scored, orders)
-    _require(len(items) == N_ITEMS, f"{len(items)} items, not {N_ITEMS}")
+    # no count assertion here: compare_items reports a missing or extra item, finish() writes the failing record, exit 3
     extra = {"episodes_sha256": {R.DEV_SEED: dict(bundle.episodes_sha256)}, "runner_sha256": runner_sha256(),
              "module_sha256": R.r9_module_shas()}
     counts = ST.pass_record([scored], "regression", [R.DEV_SEED], extra)
     counts.update({"input_sha256": {**env.inputs, **target_inputs}, "coef_sha256": env.coef_sha256})
     meta = _meta(env, {"seed": R.DEV_SEED, "n_per_pair": R.N_PER_PAIR, "backbone": BACKBONE,
-                       "episodes_sha256": dict(bundle.episodes_sha256), "fit_rows_sha256": bundle.fit_rows_sha256,
+                       "pins_sha256": pins_sha256, "episodes_sha256": dict(bundle.episodes_sha256),
+                       "fit_rows_sha256": bundle.fit_rows_sha256,
                        "input_sha256": counts["input_sha256"], "runtime_s": round(time.time() - t0, 1)})
     return finish(items, counts, refs, results, meta)
 

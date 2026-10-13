@@ -1,0 +1,98 @@
+{
+ "written": "2026-10-13 19:27:10",
+ "backbones": [
+  "clip_b32",
+  "qwen3vl_emb_2b",
+  "siglip2_so400m"
+ ],
+ "files": {
+  "translations/shard_0/translations.parquet": {
+   "path": "/project/CoSiR/res/r9/a28_translate/shard_0/translations.parquet",
+   "sha256": "583bc84a0ddb74d03c5e8fc917938ecabe4cfb4caf5b0ea7fd1cb90d32acb4ad"
+  },
+  "translations/shard_0/coverage.json": {
+   "path": "/project/CoSiR/res/r9/a28_translate/shard_0/coverage.json",
+   "sha256": "1bb7e9546818587b202666e1516d0f32b8452740b094b4d7537e47d596a3d268"
+  },
+  "translations/shard_1/translations.parquet": {
+   "path": "/project/CoSiR/res/r9/a28_translate/shard_1/translations.parquet",
+   "sha256": "8e57fbc3ae8511b5f6d67d1cc1acdf04c349fcf0b821fa79aabb4a4ddd547624"
+  },
+  "translations/shard_1/coverage.json": {
+   "path": "/project/CoSiR/res/r9/a28_translate/shard_1/coverage.json",
+   "sha256": "b6d5313b3d5d52d94a290621e2be1105909f1c6306e285e56b8c89d878a0dafe"
+  },
+  "translations/shard_2/translations.parquet": {
+   "path": "/project/CoSiR/res/r9/a28_translate/shard_2/translations.parquet",
+   "sha256": "0e26f4be3b055de3f51030b84461ca81d8f24479792d9acaf46a15a01721a633"
+  },
+  "translations/shard_2/coverage.json": {
+   "path": "/project/CoSiR/res/r9/a28_translate/shard_2/coverage.json",
+   "sha256": "21c12aada490d14e285b5a4d7c2f7ee226e98c7cc41b67998d6a688572e51776"
+  },
+  "translations/shard_3/translations.parquet": {
+   "path": "/project/CoSiR/res/r9/a28_translate/shard_3/translations.parquet",
+   "sha256": "a40fb90badeddd6a3683eeffa53042b4eb14c28600564ebd58facc4be294903f"
+  },
+  "translations/shard_3/coverage.json": {
+   "path": "/project/CoSiR/res/r9/a28_translate/shard_3/coverage.json",
+   "sha256": "81744554d9e8b54aa8b7cec3b49cc8d49365e7821cc6a5f13c5a3d4561b4ef60"
+  },
+  "translations/nllb200_3.3b_en/translations.parquet": {
+   "path": "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/translations.parquet",
+   "sha256": "99872926e43890ad8fd9b7883b6be255fbc145eb33d9f3ff28a059b42f6012ac"
+  },
+  "translations/nllb200_3.3b_en/coverage.json": {
+   "path": "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/coverage.json",
+   "sha256": "dfc396a3fd67cded9e7e84d65c429e2c201c49998c4049702ce0bc4492e1d9db"
+  },
+  "store/clip_b32/img.npy": {
+   "path": "/data/SSD2/pre_extract/artelingo28/clip_b32/img.npy",
+   "sha256": "2f686f66b39209a0b4ad9dd8a2b58f9a9d76494f5a797130acf90b5bb15476fc"
+  },
+  "store/clip_b32/txt.npy": {
+   "path": "/data/SSD2/pre_extract/artelingo28/clip_b32/txt.npy",
+   "sha256": "0e99850132fe1daddbc761bd0eb42eba454dcdf67a0d729e8f7c7e9904a6b77a"
+  },
+  "store/clip_b32/index.json": {
+   "path": "/data/SSD2/pre_extract/artelingo28/clip_b32/index.json",
+   "sha256": "4a31fa88f75b2b0a8296ebc1d6fba0e938d00d7edf3447c51cbf7672a0e75795"
+  },
+  "store/qwen3vl_emb_2b/img.npy": {
+   "path": "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/img.npy",
+   "sha256": "edf26c0f0031d434b8fd0af30d40583dbe82a53df4128611ace25a485b0c073e"
+  },
+  "store/qwen3vl_emb_2b/txt.npy": {
+   "path": "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/txt.npy",
+   "sha256": "49d14c25ae2abece83dd808501697d26805761a1367fe3b8bf78b251d72196c2"
+  },
+  "store/qwen3vl_emb_2b/index.json": {
+   "path": "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/index.json",
+   "sha256": "4288f968f382e5869d89f6a3bc6f678de8f2d303b1cc71a64e4d730bcb80aa5d"
+  },
+  "store/siglip2_so400m/img.npy": {
+   "path": "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/img.npy",
+   "sha256": "856f07f503aa10e8fa891c2eb41535471871eecaf6e66349e1c2eb896f0b3452"
+  },
+  "store/siglip2_so400m/txt.npy": {
+   "path": "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/txt.npy",
+   "sha256": "13b004da07f069990b7291aaeafc672d2c34d39de0ff177a7c9a7a43c20d5674"
+  },
+  "store/siglip2_so400m/index.json": {
+   "path": "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/index.json",
+   "sha256": "6e5dc8839515c3874d75ceaf958cf5b67022ab10ba70635b88fc89518040d481"
+  },
+  "results/value_sets_a28.json": {
+   "path": "/project/CoSiR/src/test/20261202_r9_scope/results/value_sets_a28.json",
+   "sha256": "85a0d0daaee73d70804cb8491c8e5433303ff6d47abacc03d35e3e4647fccb3e"
+  },
+  "results/language_flags_a28.json": {
+   "path": "/project/CoSiR/src/test/20261202_r9_scope/results/language_flags_a28.json",
+   "sha256": "3cb3c45719d1e8a3e207bd293bd987928cc1c614da76f5d38ba77fc51b94c0dd"
+  },
+  "results/read_set_a28.parquet": {
+   "path": "/project/CoSiR/src/test/20261202_r9_scope/results/read_set_a28.parquet",
+   "sha256": "97c0ea0e7f98dbe1e79da898e8734122a9956640bdb0073e541cc2bad7c7fa95"
+  }
+ }
+}

@@ -1,6 +1,6 @@
 """Tests of r9_picks and r9_score on synthetic bundles of the real shapes (ticket 06; rule section 5
-item 4, section 6 item 3, section 8 item 3, section 11). The real-data tests (selection rows, seed 42) are in
-test_r9_picks_seed42.py.
+item 4, section 6 item 3, section 8 item 3, section 11). The real-data tests (selection rows, seed 42) are the stage 0a run
+(run_r9_stage0a.py); round 6's real-data picks and bundle tests were not ported.
 
 Synthetic bundles: 12,288 episodes (3 x 4,096), 13 candidates, float32 score terms (cosine, T_N1u and the three T_6u
 condition-free), stack (n, 3, 13) float32, reader features (n, 18) float64, the ten RCA and PM terms; held seed 52 and
