@@ -681,7 +681,7 @@ def test_new_backbone_sha_is_taken_from_pins_not_current_file(tmp_path, monkeypa
     manifest = tmp_path / "pins.json"
     shas = dict(R.INPUT_SHA256)
     for key, resolved in paths.items():
-        if resolved != R.INPUT_PATHS[key]:
+        if resolved != R.INPUT_PATHS.get(key):
             shas[key] = R.sha256_bytes(b"recipe output")
     manifest.write_text(json.dumps({"input_sha256": shas}))
     monkeypatch.setattr(R, "pins_path", lambda b: manifest)

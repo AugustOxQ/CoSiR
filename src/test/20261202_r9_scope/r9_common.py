@@ -1,4 +1,4 @@
-"""Round 6 foundation (DECISION_RULE.md of this folder: section 5 items 1 and 2, section 6 item 1, section 10 items 1
+"""Round 9 foundation (DECISION_RULE.md of this folder: section 5 items 1 and 2, section 6 item 1, section 10 items 1
 and 2): paths, the earlier rounds' modules, the input SHA-256s, the held split and the development value sets.
 
 Paths. HERE is this folder wherever it is checked out (the main checkout or a git worktree). MAIN is the main checkout,
@@ -273,7 +273,11 @@ def input_paths(backbone="clip_b32") -> dict:
     from r9_backbone import parts, RECIPE_ROLES
     clip, resolved = parts("clip_b32"), parts(backbone)
     replacements = {clip[role]: resolved[role] for role in RECIPE_ROLES}
-    return {rel: replacements.get(TEST / rel, TEST / rel) for rel in INPUT_SHA256}
+    paths = {rel: replacements.get(TEST / rel, TEST / rel) for rel in INPUT_SHA256}
+    if backbone != "clip_b32":
+        rel = "20261108_new_method_quick_checks/results/n6_posteriors.npz"
+        paths[rel + ".record.json"] = Path(str(paths[rel]) + ".record.json")
+    return paths
 
 
 INPUT_PATHS = {rel: TEST / rel for rel in INPUT_SHA256}
@@ -282,7 +286,7 @@ INPUT_PATHS = {rel: TEST / rel for rel in INPUT_SHA256}
 def pins_path(backbone) -> Path:
     from r9_backbone import BACKBONES
     _require(backbone in BACKBONES, f"unknown backbone: {backbone}")
-    return RESULTS / ("pins_clip.json" if backbone == "clip_b32" else f"pins_{backbone}.json")
+    return HERE / ("pins_clip.json" if backbone == "clip_b32" else f"pins_{backbone}.json")
 
 
 def input_pins(backbone="clip_b32") -> dict:
@@ -340,7 +344,7 @@ def assert_inputs(backbone="clip_b32") -> dict:
 
 
 def r9_module_shas(here=None) -> dict:
-    """SHA-256 of every r9_*.py and run_r9_*.py in this folder (tests excluded), dts_settings.json, and every
+    """SHA-256 of every r9_*.py and run_r9_*.py in this folder (tests excluded), and every
     scripts/run_r9_*.sh and scripts/das6_sync_r9.py of the checkout that holds this folder. Keys are paths relative
     to that checkout."""
     here = Path(here or HERE).resolve()

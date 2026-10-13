@@ -1,3 +1,5 @@
+**Historical initial hand-back.** The review fixes and current interfaces are recorded in [T05_REVIEW_FIXES.md](T05_REVIEW_FIXES.md).
+
 Ticket 05: Generic chain I: common, heads, and the backbone-free modules.
 
 Built `r9_common.py`, `r9_heads.py`, `r9_stats.py`, `r9_episodes.py`, `r9_score.py`, `r9_check_heads.py` and the five corresponding `test_r9_*.py` files. Completed `r9_backbone.parts()` and extended the round's `.gitignore` while preserving its existing entry. No earlier-round file was edited.

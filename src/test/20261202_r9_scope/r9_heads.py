@@ -26,7 +26,7 @@ Rules (cpu_path §4 and hazards 2, 18):
   `style_csd__img_src`. This refit was never checked before round 6; a difference is a stage-1a stop (rule §6.2),
   reported, never "fixed".
 
-Guards carry a `# guard:<name>` marker; test_r6_heads.py deletes each on a copy and shows that its scenario then goes
+Guards carry a `# guard:<name>` marker; test_r9_heads.py deletes each on a copy and shows that its scenario then goes
 through.
 """
 import hashlib
@@ -65,6 +65,9 @@ E2_PARTITIONS_REL = "20261031_pseudo_partitions/results/partitions.npz"
 CSD_GROUP_REL = "20261116_grouping_step1_style/results/step1_group_style.npz"
 N6_REL = "20261108_new_method_quick_checks/results/n6_posteriors.npz"
 CSD_HEADS_REL = "20261116_grouping_step1_style/results/step1_heads_style.npz"
+AFFECT_KM_REL = "affect_km"
+FROZEN_HEAD_INPUTS = {PARTITION_L_REL: PARTITION_L_REL, CSD_GROUP_REL: CSD_GROUP_REL,
+                      TOLD_REL: TOLD_REL, AFFECT_KM_REL: E2_PARTITIONS_REL}
 
 # rule §6.2's stored selection-row posteriors: file -> {stored key: (head, modality)}. n6's "affect" is affect-km
 # (E2), not D1's affect (hazard 9); the csd targets are the CLIP heads, not `style_csd__img_src`.
@@ -156,6 +159,16 @@ def fit_one_head_r6(data, lab, scorer_train, n_rows=HEAD_ROWS):
 
 def _head_input(rel, backbone, input_pins=None):
     """Declared read-time pins, or explicit upstream pins supplied by a producer."""
+    if rel in FROZEN_HEAD_INPUTS:
+        canonical = FROZEN_HEAD_INPUTS[rel]
+        frozen = (R.INPUT_PATHS[canonical], R.INPUT_SHA256[canonical])
+        if input_pins is not None:
+            _require(input_pins[rel] == frozen, f"{rel}: explicit frozen pin differs from R6")
+        if rel == AFFECT_KM_REL:
+            from r9_backbone import parts
+            _require(parts(backbone)["affect_km"] == frozen[0], "frozen affect path differs from R6")
+        _require(R.sha256_file(frozen[0]) == frozen[1], f"{rel}: frozen SHA-256 differs from R6", SystemExit)
+        return frozen[0]
     if input_pins is None:
         R.assert_input(rel, backbone)
         return R.input_pins(backbone)[rel][0]
@@ -171,13 +184,16 @@ def head_labels(groups, scorer_train, backbone="clip_b32", *, input_pins=None) -
     with np.load(_head_input(PARTITION_L_REL, backbone, input_pins), allow_pickle=False) as z:
         partition_L = np.asarray(z["partition_L"], dtype=np.int64)
     out = {"affect": rto.global_labels(partition_L, scorer_train, n)}
+    with np.load(_head_input(AFFECT_KM_REL, backbone, input_pins), allow_pickle=False) as z:
+        frozen_affect = z["affect"]
     with np.load(_head_input(E2_PARTITIONS_REL, backbone, input_pins), allow_pickle=False) as z:
         _require({"local_groups", *n6.PARTS} <= set(z.files), "partitions.npz columns")
         _require(np.array_equal(z["local_groups"], np.unique(groups[scorer_train], return_inverse=True)[1]),
                  "E2 partitions are not aligned with scorer_train")
         e2 = {}
+        _require(np.array_equal(z["affect"], frozen_affect), "recipe affect differs from frozen affect")
         for part in n6.PARTS:
-            local = z[part]
+            local = frozen_affect if part == "affect" else z[part]
             _require(local.shape == np.asarray(scorer_train).shape and local.dtype == np.int64,
                      f"partitions.npz {part}: row count or dtype differs")
             e2[part] = rto.global_labels(local, scorer_train, n)
@@ -229,8 +245,23 @@ def fit_all(data, scorer_train, labels, n_rows=HEAD_ROWS) -> dict:
 def fit_heads_r9(data, groups, scorer_train, n_rows=HEAD_ROWS, *, backbone="clip_b32", input_pins=None) -> dict:
     """Contracts §3: the five heads of rule §6.2 refit on the real partitions (60,000-row draw)."""
     require_threads()
-    _head_input(TOLD_REL, backbone, input_pins)
-    return fit_all(data, scorer_train, head_labels(groups, scorer_train, backbone, input_pins=input_pins), n_rows)
+    _require(n_rows == HEAD_ROWS, "head draw must contain 60000 rows")
+    supplied = R.input_pins(backbone) if input_pins is None else input_pins
+    pins = {rel: supplied[rel] for rel in (PARTITION_L_REL, E2_PARTITIONS_REL, CSD_GROUP_REL, TOLD_REL)}
+    pins[AFFECT_KM_REL] = supplied.get(AFFECT_KM_REL, (R.INPUT_PATHS[E2_PARTITIONS_REL], R.INPUT_SHA256[E2_PARTITIONS_REL]))
+    _head_input(TOLD_REL, backbone, pins)
+    labels = head_labels(groups, scorer_train, backbone, input_pins=pins)
+    fit_inputs = {"backbone": backbone, "input_pins": dict(pins),
+                  "input_sha256": recipe_input_shas(backbone, pins), "feature_sha256": feature_shas(data)}
+    heads = fit_all(data, scorer_train, labels, n_rows)
+    for head in heads.values():
+        head["fit_inputs"] = fit_inputs
+    return heads
+
+
+def feature_shas(data):
+    return {m: hashlib.sha256(memoryview(np.ascontiguousarray(array)).cast("B")).hexdigest()
+            for m, array in _features(data).items()}
 
 
 # ---------------------------------------------------------------- prediction and coefficients
@@ -301,7 +332,8 @@ def affect_identity(prov, backbone="clip_b32") -> bool:
 def check_selection(heads, data, selection, backbone="clip_b32") -> dict:
     """Rule §6.2: the refit posteriors on ``selection`` (one predict call, float32) against n6_posteriors.npz's six
     arrays and step1_heads_style.npz's `style_csd__img`, `style_csd__txt`, bit for bit; and the affect heads' prov
-    against told_oracle arm L. {"passed", "items": {"<file stem>/<key>": compare_bits}, "affect_identity"}."""
+    against told_oracle arm L for CLIP; new backbones also compare the pinned n6 record's
+    coefficient hashes and affect provenance. {"passed", "items": {"<file stem>/<key>": compare_bits}, "affect_identity"}."""
     _require(tuple(heads) == HEADS, f"heads {tuple(heads)} are not {HEADS}")
     selection = np.asarray(selection)
     post = predict(heads, data, selection)
@@ -313,22 +345,37 @@ def check_selection(heads, data, selection, backbone="clip_b32") -> dict:
                      f"{rel} was computed on another selection row set")  # guard:stored_selection
             for key, (h, m) in keys.items():
                 items[f"{Path(rel).stem}/{key}"] = compare_bits(post[h][m][selection], z[key])
-    identity = affect_identity(heads["affect"]["prov"], backbone) if backbone == "clip_b32" else None
+    coef_identity = True
+    if backbone == "clip_b32":
+        identity = affect_identity(heads["affect"]["prov"], backbone)
+    else:
+        rel = N6_REL + ".record.json"
+        R.assert_input(rel, backbone)
+        stored = json.loads(Path(R.input_pins(backbone)[rel][0]).read_text())
+        _require(stored["backbone"] == backbone, "n6 record names another backbone")
+        coef_identity = stored["coef_sha256"] == coef_sha256(heads)
+        identity = stored["affect_prov"] == rto.roundtrip(heads["affect"]["prov"])
     _require(tuple(items) == ITEM_KEYS, "the checked items differ from rule §6.2's eight arrays")
-    return {"passed": bool(all(it["equal"] for it in items.values()) and identity is not False), "items": items,
-            "affect_identity": identity}
+    return {"passed": bool(all(it["equal"] for it in items.values()) and identity and coef_identity), "items": items,
+            "affect_identity": identity, "coef_identity": coef_identity}
 
 
 def recipe_head_pins(backbone):
     """Snapshot upstream parts before a recipe fit, when stage-2 pins do not exist yet."""
     from r9_backbone import parts
     resolved = parts(backbone)
-    roles = {PARTITION_L_REL: "partition_L", E2_PARTITIONS_REL: "partitions",
+    roles = {PARTITION_L_REL: "partition_L", E2_PARTITIONS_REL: "partitions", AFFECT_KM_REL: "affect_km",
              CSD_GROUP_REL: "step1_group_style", TOLD_REL: "told_oracle"}
     pins = {}
     for rel, role in roles.items():
         path = resolved[role]
-        sha = R.assert_input(rel) if path == R.INPUT_PATHS[rel] else R.sha256_file(path)
+        if rel in FROZEN_HEAD_INPUTS:
+            canonical = FROZEN_HEAD_INPUTS[rel]
+            _require(path == R.INPUT_PATHS[canonical], f"{rel}: frozen recipe path differs from R6")
+            sha = R.INPUT_SHA256[canonical]
+            _require(R.sha256_file(path) == sha, f"{rel}: frozen recipe SHA-256 differs from R6", SystemExit)
+        else:
+            sha = R.sha256_file(path)
         pins[rel] = (path, sha)
     return pins
 
@@ -356,8 +403,9 @@ def write_posteriors(out, heads=None, data=None, selection=None, *, backbone="cl
     """Refit if needed, write CLIP's two schemas and a provenance record per file.
 
     Optional fitted heads/data avoid a second fit in recipe callers. Only the eight
-    carried posterior arrays are made; selection and the unused style arrays are
-    copied. All destination names are checked before fitting or writing.
+    carried posterior arrays are made. For new backbones, unused feature heads
+    are NaN; only selection and the CSD-feature source head are copied. Input
+    hashes come from the fitted heads' captured fit inputs. All destination names are checked before fitting or writing.
     """
     out = Path(out)
     destinations = [out / Path(rel).name for rel in TARGETS]
@@ -375,6 +423,21 @@ def write_posteriors(out, heads=None, data=None, selection=None, *, backbone="cl
         heads = fit_heads_r9(data, rows.split.groups, rows.split.scorer_train, backbone=backbone, input_pins=upstream)
     _require(data is not None and selection is not None, "provide heads, data and selection together")
     _require(tuple(heads) == HEADS, f"heads {tuple(heads)} are not {HEADS}")
+    from r9_backbone import DIMENSIONS
+    _require(data.img_features.shape[1] == data.txt_features.shape[1] == DIMENSIONS[backbone],
+             "data differs from backbone width")
+    _require(all(head[m].coef_.shape[1] == DIMENSIONS[backbone] for head in heads.values() for m in MODALITIES),
+             "head coefficient width differs from backbone")
+    fit_inputs = heads["affect"]["fit_inputs"]
+    _require(all(head["fit_inputs"] == fit_inputs for head in heads.values())
+             and fit_inputs["backbone"] == backbone, "heads differ in fit inputs or backbone")
+    if input_sha256 is not None:
+        _require(input_sha256 == fit_inputs["input_sha256"], "caller hashes differ from fit inputs")
+    for rel, pin in fit_inputs["input_pins"].items():
+        _head_input(rel, backbone, {rel: pin})
+    _require(feature_shas(data) == fit_inputs["feature_sha256"], "data features differ from fit inputs")
+    for path, sha in fit_inputs["input_sha256"].items():
+        _require(R.sha256_file(path) == sha, f"{path}: SHA-256 differs from fit inputs", SystemExit)
     selection = np.asarray(selection)
     post = predict(heads, data, selection)
     # Read only the arrays that are copied; never reuse one of the carried heads.
@@ -384,7 +447,10 @@ def write_posteriors(out, heads=None, data=None, selection=None, *, backbone="cl
         unused = {key: z[key] for key in z.files if key not in TARGETS[CSD_HEADS_REL] and key != "selection"}
     _require(all(array.shape[0] == len(selection) and np.isfinite(array).all() for array in unused.values()),
              "copied style arrays have wrong rows or non-finite values")
-    shas = recipe_input_shas(backbone, upstream) if input_sha256 is None else dict(input_sha256)
+    unrefit = [key for key in unused if backbone != "clip_b32" and key != "style_csd__img_src"]
+    for key in unrefit:
+        unused[key] = np.full_like(unused[key], np.nan)
+    shas = dict(fit_inputs["input_sha256"])
     _require(all(isinstance(sha, str) and len(sha) == 64
                  and all(c in "0123456789abcdef" for c in sha) for sha in shas.values()), "invalid input SHA-256")
     script = Path(script_path or __file__)
@@ -395,9 +461,14 @@ def write_posteriors(out, heads=None, data=None, selection=None, *, backbone="cl
         arrays = {"selection": selection, **made, **{k: v for k, v in copied.items() if k != "selection"}}
         name = Path(rel).name
         records[name] = {"backbone": backbone, "input_sha256": shas, "script": str(script),
+                         "input_pins": {rel: [str(path), sha] for rel, (path, sha) in fit_inputs["input_pins"].items()},
+                         "feature_sha256": fit_inputs["feature_sha256"],
                          "script_sha256": R.sha256_file(script), "keys_made": list(made),
-                         "keys_copied": list(copied)}
+                         "keys_copied": [key for key in copied if key not in unrefit],
+                         "keys_unrefit": unrefit if rel == CSD_HEADS_REL else []}
         outputs[name] = arrays
+    records[Path(N6_REL).name].update(coef_sha256=coef_sha256(heads),
+                                    affect_prov=rto.roundtrip(heads["affect"]["prov"]))
     out.mkdir(parents=True, exist_ok=True)
     for name, arrays in outputs.items():
         # Exclusive creation also refuses a file appearing after the preflight.

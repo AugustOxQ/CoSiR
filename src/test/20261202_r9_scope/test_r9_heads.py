@@ -395,13 +395,20 @@ def test_head_labels_use_backbone_partitions_and_frozen_labels(tmp_path, monkeyp
     with np.load(clip["partitions"]) as z:
         frozen_affect = z["affect"]
     path = tmp_path / "partitions.npz"
-    np.savez(path, local_groups=local, affect=frozen_affect,
+    np.savez(path, local_groups=local, affect=(frozen_affect + 1) % 64,
              image=(np.arange(len(st)) + 3) % 64, caption=(np.arange(len(st)) + 7) % 64)
     paths = R.input_paths(backbone)
     paths[H.E2_PARTITIONS_REL] = path
     shas = {rel: R.sha256_file(paths[rel]) for rel in (
         H.PARTITION_L_REL, H.E2_PARTITIONS_REL, H.CSD_GROUP_REL, H.TOLD_REL)}
-    monkeypatch.setattr(R, "input_pins", lambda b: {rel: (paths[rel], sha) for rel, sha in shas.items()})
+    original_pins = R.input_pins
+    monkeypatch.setattr(R, "input_pins", lambda b="clip_b32": original_pins(b) if b == "clip_b32" else
+                        {rel: (paths[rel], sha) for rel, sha in shas.items()})
+    with pytest.raises(AssertionError, match="frozen affect"):
+        H.head_labels(groups, st, backbone)
+    np.savez(path, local_groups=local, affect=frozen_affect,
+             image=(np.arange(len(st)) + 3) % 64, caption=(np.arange(len(st)) + 7) % 64)
+    shas[H.E2_PARTITIONS_REL] = R.sha256_file(path)
     labels = H.head_labels(groups, st, backbone)
     for head, shift in (("image", 3), ("caption", 7)):
         assert np.array_equal(labels[head][st], (np.arange(len(st)) + shift) % 64)
@@ -419,8 +426,16 @@ def test_head_labels_use_backbone_partitions_and_frozen_labels(tmp_path, monkeyp
 def test_write_posteriors_preserves_keys_records_and_refuses_overwrite(synth, post_sel, tmp_path, monkeypatch):
     _write_stored(tmp_path, monkeypatch, synth, post_sel)
     out = tmp_path / "recipe"
-    records = H.write_posteriors(out, synth.heads, synth.data, synth.selection,
-                               input_sha256={"feature-store/img.npy": "a" * 64})
+    pins = {rel: (R.INPUT_PATHS[rel], R.INPUT_SHA256[rel]) for rel in (
+        H.PARTITION_L_REL, H.E2_PARTITIONS_REL, H.CSD_GROUP_REL, H.TOLD_REL)}
+    pins[H.AFFECT_KM_REL] = pins[H.E2_PARTITIONS_REL]
+    fit_inputs = {"backbone": "clip_b32", "input_pins": pins,
+                  "input_sha256": {str(p): sha for p, sha in pins.values()},
+                  "feature_sha256": H.feature_shas(synth.data)}
+    fit_inputs["input_sha256"][str(R.INPUT_PATHS[H.CSD_HEADS_REL])] = R.INPUT_SHA256[H.CSD_HEADS_REL]
+    for head in synth.heads.values():
+        head["fit_inputs"] = fit_inputs
+    records = H.write_posteriors(out, synth.heads, synth.data, synth.selection)
     for rel, targets in H.TARGETS.items():
         path = out / Path(rel).name
         with np.load(path) as z:
@@ -431,7 +446,7 @@ def test_write_posteriors_preserves_keys_records_and_refuses_overwrite(synth, po
                 assert np.array_equal(z[key], post_sel[h][m][synth.selection])
         record = json.loads(Path(str(path) + ".record.json").read_text())
         assert record == records[path.name]
-        assert record["input_sha256"] == {"feature-store/img.npy": "a" * 64}
+        assert record["input_sha256"] == fit_inputs["input_sha256"]
         assert record["script_sha256"] == R.sha256_file(H.__file__)
         copied = ["selection", "style_csd__img_src"] if rel == H.CSD_HEADS_REL else ["selection"]
         assert record["keys_made"] == list(targets) and record["keys_copied"] == copied
@@ -449,7 +464,7 @@ def test_writer_checks_all_outputs_before_writing(synth, tmp_path, occupied):
     assert [p.name for p in tmp_path.iterdir()] == [occupied]
 
 
-def test_recipe_label_loading_precedes_stage2_pins(tmp_path):
+def test_recipe_label_loading_precedes_stage2_pins(tmp_path, monkeypatch):
     st = np.array([0, 2, 4], dtype=np.int64)
     groups = np.array([1, 9, 2, 8, 3], dtype=np.int64)
     files = {}
@@ -464,6 +479,14 @@ def test_recipe_label_loading_precedes_stage2_pins(tmp_path):
         path = tmp_path / Path(rel).name
         np.savez(path, **arrays)
         files[rel] = (path, R.sha256_file(path))
+    from r9_backbone import parts
+    import r9_backbone as B
+    for rel in (H.PARTITION_L_REL, H.CSD_GROUP_REL, H.E2_PARTITIONS_REL):
+        monkeypatch.setitem(R.INPUT_PATHS, rel, files[rel][0])
+        monkeypatch.setitem(R.INPUT_SHA256, rel, files[rel][1])
+    files[H.AFFECT_KM_REL] = files[H.E2_PARTITIONS_REL]
+    original_parts = parts
+    monkeypatch.setattr(B, "parts", lambda b: {**original_parts(b), "affect_km": files[H.AFFECT_KM_REL][0]})
     labels = H.head_labels(groups, st, "qwen3vl_emb_2b", input_pins=files)
     assert labels["image"].tolist() == [0, -1, 2, -1, 1]
     assert labels["affect"].tolist() == [2, -1, 0, -1, 1]
