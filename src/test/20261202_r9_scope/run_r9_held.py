@@ -298,23 +298,6 @@ class EpisodeRecorder:
             E.save_episodes(path, eps)
 
 
-def sensitivity_held(bundles, seeds, sigma, n_per_pair) -> dict:
-    """R6's sensitivity writer restricted to P1 to P7 (rule 7.4).
-    ST.detectable uses ST.Z_P and ST.Z_95; no second copy of either z value lives here.
-    """
-    cl = np.concatenate([np.asarray(b.cl) for b in bundles])
-    n = len(seeds) * len(R.PAIRS) * int(n_per_pair)
-    _require(len(bundles) == len(seeds) and cl.shape == (n,), f"{cl.shape} pooled anchors, not ({n},)")
-    _, m_p = np.unique(cl, return_counts=True)
-    rec = {}
-    for c in ST.CHECKS:
-        sig = {k: float(sigma[c][k]) for k in SIGMA_KEYS}
-        rec[c] = {"quantity": ST.QUANTITIES[c][2], **sig,
-                  **ST.detectable(sig, m_p, n, "P")}
-    rec.update({"N": n, "n_paintings": int(m_p.size), "seeds": [int(s) for s in seeds]})
-    return rec
-
-
 def read_arrays(scored) -> dict:
     """Primary per-anchor arrays, cluster/pair/seed indices and raw gates/reader inputs.
     Seeds are concatenated in pass order. No aggregate rate, B1, R1 or PM is computed.
@@ -377,11 +360,11 @@ def ledger_row(path, row_id):
             if line.strip().startswith("|") and line.strip().endswith("|")]
     rows = [c for c in rows if c[0] == row_id]
     _refuse_unless(bool(rows), f"ledger row {row_id} is missing")  # guard:ledger_row
-    _refuse_unless(len(rows) <= 1, f"ledger row {row_id} appears twice")
+    _refuse_unless(len(rows) <= 1, f"ledger row {row_id} appears twice")  # guard:ledger_duplicate
     if not rows:
         return None
     cells = rows[0]
-    _refuse_unless(len(cells) == len(LEDGER_CELLS), f"ledger row {row_id} needs eight cells")
+    _refuse_unless(len(cells) == len(LEDGER_CELLS), f"ledger row {row_id} needs eight cells")  # guard:ledger_cells
     return {"row": row_id, "cells": cells, "episodes": HEX64.findall(cells[EPISODE_CELL]),
             "scripts": HEX64.findall(cells[SCRIPT_CELL]), "report": cells[REPORT_CELL]}
 
@@ -448,7 +431,8 @@ def refuse_or_go(results, ledger, read, backbone, variant="held", after_crash=Fa
     first = variant == "reserve" or (variant == "held" and not after_crash)
     # Ledger before any read inputs. The pins file itself is hashed, not a pick or a cell.
     row = ledger_guard(ledger, n.row, backbone, runner_sha256())
-    if variant == "held" and not after_crash:
+    # A reserve starts another read; a fix or crash rerun continues one already started (§10).
+    if first:
         today = amsterdam_today()
         _refuse_unless(today <= READ_DEADLINE, f"Amsterdam date {today}: not started by {READ_DEADLINE}, no read starts")  # guard:time_box
     _refuse_unless(not (res / n.verdict).exists(), f"{n.verdict} exists: the read is over")  # guard:verdict_exists
@@ -652,7 +636,17 @@ def run_read(spec, results, here=None, env=None):
         bundles.append(bundle)
     rows = env.split.held if spec.ctx_mode == 'held' else env.split.selection
     R.assert_held_eligible(env.labels, env.split.groups, rows, env.value_sets)
-    sens = sensitivity_held(bundles, spec.seeds, sigma['sigma'], spec.n_per_pair)
+    cl = np.concatenate([np.asarray(b.cl) for b in bundles])
+    n_episodes = len(spec.seeds) * len(R.PAIRS) * int(spec.n_per_pair)
+    _require(len(bundles) == len(spec.seeds) and cl.shape == (n_episodes,),
+             f'{cl.shape} pooled anchors, not ({n_episodes},)')
+    _, m_p = np.unique(cl, return_counts=True)
+    sens = ST.sensitivity_record(sigma['sigma'], m_p, n_episodes, 'seven')
+    # Keep the previous provenance/schema; all SE and z arithmetic belongs to ST and its shared Z table.
+    for c in ST.CHECKS:
+        sens[c] = {'quantity': ST.QUANTITIES[c][2],
+                   **{k: float(sigma['sigma'][c][k]) for k in SIGMA_KEYS}, **sens[c]}
+    sens.update({'N': n_episodes, 'n_paintings': int(m_p.size), 'seeds': [int(s) for s in spec.seeds]})
     same = list(sens)
     sens.update({"episodes_sha256": {str(s): rec.hashes[s] for s in spec.seeds},
                  "sigma_source": {k: sigma[k] for k in ('file', 'sha256')},
