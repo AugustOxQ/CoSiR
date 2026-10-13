@@ -106,7 +106,7 @@ def main():
         print("  " + " ".join(f"{x:7.3f}" for x in RULE_B_ROW[p]) + f"   {p} (rule)")
         print(f"  max abs difference {np.abs(got - np.array(RULE_B_ROW[p])).max():.4f}")
     new = {s: results[s].sha for s in results}
-    seeds = [x for s in results for x in A.builder_seeds([s], len(langs))]
+    seeds = A.builder_seeds(sorted(results), len(langs))
     print("\nper-pair hashes:", {s: {p: h[:12] for p, h in hs.items()} for s, hs in new.items()})
     # the smoke builder seeds are in the ledger's round 9 smoke row; the hashes must be new
     print("hash guard:", A.hash_guard(new, seeds))
