@@ -1,0 +1,523 @@
+{
+  "created_at": "2026-10-13 17:14",
+  "seed": 42,
+  "minimum_scoring_units": 30,
+  "stage": "development exploration; no bar or claim",
+  "datasets": {
+    "cub": {
+      "unit": "image",
+      "splits": {
+        "fit": {
+          "units": 7071,
+          "rows": 70710,
+          "groups": 120
+        },
+        "scoring": {
+          "units": 1750,
+          "rows": 17500,
+          "groups": 30
+        }
+      },
+      "aspects": {
+        "primary_colour": {
+          "rule": "Per image and aspect, each annotation with presence=1 and certainty>=3 casts one vote for its attribute value. Accept the unique highest vote count; no qualifying votes or a tied maximum means no value (-1). In these data each image/attribute occurs once, so multiple present values tie. No species aggregation or certainty weighting.",
+          "values": [
+            {
+              "code": 0,
+              "value": "blue",
+              "count": 56
+            },
+            {
+              "code": 1,
+              "value": "brown",
+              "count": 120
+            },
+            {
+              "code": 5,
+              "value": "grey",
+              "count": 152
+            },
+            {
+              "code": 6,
+              "value": "yellow",
+              "count": 57
+            },
+            {
+              "code": 11,
+              "value": "black",
+              "count": 70
+            },
+            {
+              "code": 12,
+              "value": "white",
+              "count": 65
+            },
+            {
+              "code": 14,
+              "value": "buff",
+              "count": 82
+            }
+          ],
+          "scoring_missing_units": 1082
+        },
+        "bill_shape": {
+          "rule": "Per image and aspect, each annotation with presence=1 and certainty>=3 casts one vote for its attribute value. Accept the unique highest vote count; no qualifying votes or a tied maximum means no value (-1). In these data each image/attribute occurs once, so multiple present values tie. No species aggregation or certainty weighting.",
+          "values": [
+            {
+              "code": 0,
+              "value": "curved_(up_or_down)",
+              "count": 40
+            },
+            {
+              "code": 1,
+              "value": "dagger",
+              "count": 227
+            },
+            {
+              "code": 3,
+              "value": "needle",
+              "count": 56
+            },
+            {
+              "code": 4,
+              "value": "hooked_seabird",
+              "count": 42
+            },
+            {
+              "code": 6,
+              "value": "all-purpose",
+              "count": 677
+            },
+            {
+              "code": 7,
+              "value": "cone",
+              "count": 508
+            }
+          ],
+          "scoring_missing_units": 169
+        },
+        "wing_colour": {
+          "rule": "Per image and aspect, each annotation with presence=1 and certainty>=3 casts one vote for its attribute value. Accept the unique highest vote count; no qualifying votes or a tied maximum means no value (-1). In these data each image/attribute occurs once, so multiple present values tie. No species aggregation or certainty weighting.",
+          "values": [
+            {
+              "code": 0,
+              "value": "blue",
+              "count": 33
+            },
+            {
+              "code": 1,
+              "value": "brown",
+              "count": 114
+            },
+            {
+              "code": 5,
+              "value": "grey",
+              "count": 147
+            },
+            {
+              "code": 11,
+              "value": "black",
+              "count": 79
+            },
+            {
+              "code": 12,
+              "value": "white",
+              "count": 45
+            },
+            {
+              "code": 14,
+              "value": "buff",
+              "count": 52
+            }
+          ],
+          "scoring_missing_units": 1218
+        }
+      },
+      "pairs": [
+        [
+          "primary_colour",
+          "bill_shape"
+        ],
+        [
+          "primary_colour",
+          "wing_colour"
+        ],
+        [
+          "bill_shape",
+          "wing_colour"
+        ]
+      ],
+      "split_rule": "xlsa17 trainval; dev_species(n_dev=30, seed=42) defaults",
+      "fit_species": [
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        14,
+        16,
+        17,
+        18,
+        19,
+        21,
+        22,
+        24,
+        25,
+        27,
+        29,
+        30,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        44,
+        46,
+        47,
+        48,
+        50,
+        51,
+        53,
+        54,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        66,
+        68,
+        69,
+        71,
+        73,
+        75,
+        76,
+        78,
+        80,
+        81,
+        83,
+        86,
+        89,
+        90,
+        92,
+        93,
+        95,
+        96,
+        99,
+        100,
+        101,
+        106,
+        107,
+        108,
+        109,
+        110,
+        112,
+        114,
+        116,
+        117,
+        118,
+        120,
+        122,
+        128,
+        129,
+        131,
+        134,
+        135,
+        137,
+        140,
+        142,
+        145,
+        146,
+        147,
+        149,
+        151,
+        152,
+        154,
+        155,
+        158,
+        159,
+        162,
+        166,
+        170,
+        172,
+        175,
+        176,
+        177,
+        178,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        189,
+        192,
+        193,
+        194,
+        196,
+        197,
+        198,
+        199
+      ],
+      "scoring_species": [
+        13,
+        15,
+        20,
+        32,
+        34,
+        65,
+        67,
+        74,
+        79,
+        82,
+        85,
+        88,
+        102,
+        105,
+        115,
+        121,
+        125,
+        126,
+        133,
+        141,
+        144,
+        150,
+        153,
+        160,
+        167,
+        171,
+        174,
+        179,
+        187,
+        195
+      ],
+      "excluded_test_species": 50,
+      "join_check": "All 8821 selected index paths equal images.txt paths; class IDs match path prefixes; ten caption rows per image in first-ten nonempty caption-file order.",
+      "asserted_attribute_rows": 2752152,
+      "annotation_field_counts": {
+        "5": 2751546,
+        "6": 606
+      },
+      "feature_files": {
+        "img.npy": {
+          "path": "/data/SSD2/pre_extract/backbone_check/cub/clip/img.npy",
+          "sha256": "0169282e127086941eec078884b3c7a1a0885e6d2a6eb21df9c8ecd1b73c7661"
+        },
+        "txt.npy": {
+          "path": "/data/SSD2/pre_extract/backbone_check/cub/clip/txt.npy",
+          "sha256": "0fe8e23846721e1a65a3435ed3a315fc03797e267cc744ea6e2f04b2ad13e5d6"
+        },
+        "index.json": {
+          "path": "/data/SSD2/pre_extract/backbone_check/cub/clip/index.json",
+          "sha256": "772b12f6bf1e936e97368c4de3466b1dcea4f2c0e44f0458c87c814fad8c5802"
+        }
+      }
+    },
+    "semart": {
+      "unit": "painting",
+      "splits": {
+        "fit": {
+          "units": 19244,
+          "rows": 19244,
+          "groups": 19244
+        },
+        "scoring": {
+          "units": 1069,
+          "rows": 1069,
+          "groups": 1069
+        }
+      },
+      "aspects": {
+        "type": {
+          "rule": "Metadata TYPE verbatim, no parsing or binning; empty string means no value (-1).",
+          "values": [
+            {
+              "code": 0,
+              "value": "genre",
+              "count": 94
+            },
+            {
+              "code": 1,
+              "value": "historical",
+              "count": 34
+            },
+            {
+              "code": 2,
+              "value": "interior",
+              "count": 30
+            },
+            {
+              "code": 3,
+              "value": "landscape",
+              "count": 127
+            },
+            {
+              "code": 4,
+              "value": "mythological",
+              "count": 94
+            },
+            {
+              "code": 5,
+              "value": "other",
+              "count": 32
+            },
+            {
+              "code": 6,
+              "value": "portrait",
+              "count": 180
+            },
+            {
+              "code": 7,
+              "value": "religious",
+              "count": 426
+            },
+            {
+              "code": 8,
+              "value": "still-life",
+              "count": 50
+            }
+          ],
+          "scoring_missing_units": 0
+        },
+        "school": {
+          "rule": "Metadata SCHOOL verbatim, no parsing or binning; empty string means no value (-1).",
+          "values": [
+            {
+              "code": 6,
+              "value": "Dutch",
+              "count": 158
+            },
+            {
+              "code": 9,
+              "value": "Flemish",
+              "count": 127
+            },
+            {
+              "code": 10,
+              "value": "French",
+              "count": 155
+            },
+            {
+              "code": 11,
+              "value": "German",
+              "count": 59
+            },
+            {
+              "code": 15,
+              "value": "Italian",
+              "count": 429
+            },
+            {
+              "code": 23,
+              "value": "Spanish",
+              "count": 46
+            }
+          ],
+          "scoring_missing_units": 0
+        },
+        "timeframe": {
+          "rule": "Metadata TIMEFRAME verbatim, no parsing or binning; empty string means no value (-1).",
+          "values": [
+            {
+              "code": 10,
+              "value": "1301-1350",
+              "count": 33
+            },
+            {
+              "code": 12,
+              "value": "1401-1450",
+              "count": 44
+            },
+            {
+              "code": 13,
+              "value": "1451-1500",
+              "count": 102
+            },
+            {
+              "code": 14,
+              "value": "1501-1550",
+              "count": 145
+            },
+            {
+              "code": 15,
+              "value": "1551-1600",
+              "count": 92
+            },
+            {
+              "code": 16,
+              "value": "1601-1650",
+              "count": 205
+            },
+            {
+              "code": 17,
+              "value": "1651-1700",
+              "count": 109
+            },
+            {
+              "code": 18,
+              "value": "1701-1750",
+              "count": 80
+            },
+            {
+              "code": 19,
+              "value": "1751-1800",
+              "count": 62
+            },
+            {
+              "code": 20,
+              "value": "1801-1850",
+              "count": 63
+            },
+            {
+              "code": 21,
+              "value": "1851-1900",
+              "count": 95
+            }
+          ],
+          "scoring_missing_units": 0
+        }
+      },
+      "pairs": [
+        [
+          "type",
+          "school"
+        ],
+        [
+          "type",
+          "timeframe"
+        ],
+        [
+          "school",
+          "timeframe"
+        ]
+      ],
+      "split_rule": "official train fit; official val scoring",
+      "join_check": "All 20313 selected IMAGE_FILE IDs unique; each caption index img equals its source image row; split, TYPE, SCHOOL and TIMEFRAME agree with metadata by IMAGE_FILE.",
+      "feature_files": {
+        "img.npy": {
+          "path": "/data/SSD2/pre_extract/semart/clip_b32/img.npy",
+          "sha256": "59039cbc24dd485e7e509e8e0a222c94f525858c2eef57bd7b7f200e5829df9e"
+        },
+        "txt.npy": {
+          "path": "/data/SSD2/pre_extract/semart/clip_b32/txt.npy",
+          "sha256": "c840ea5c309d91088e97bef4aa19d0e6850703aea39f2ce773ca7a7296f491e3"
+        },
+        "index.json": {
+          "path": "/data/SSD2/pre_extract/semart/clip_b32/index.json",
+          "sha256": "971ef5b0119c25b52d73fda1fdc6b4eaaede9921315f81d62bbe0276a889282c"
+        }
+      }
+    }
+  }
+}
