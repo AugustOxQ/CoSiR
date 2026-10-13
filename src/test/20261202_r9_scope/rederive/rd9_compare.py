@@ -3,11 +3,15 @@
 Writes one JSON per read. Missing quantities are differences, never agreements.
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import numpy as np
 from rd9_inputs import RD,T,save_json,sha_file
 from rd9_stats import CHECK_IDS
+
+
+MISSING=object()    # a key absent from the runner's record; never equal to anything, None included
 
 
 def compare_value(ours,theirs,key):
@@ -34,14 +38,18 @@ class Comparison:
         if isinstance(ours,dict):
             if not isinstance(theirs,dict):
                 self.items.append(dict(key=key,equal=False,reason='missing object'));return
-            for k,v in ours.items(): self.value(f'{key}.{k}',v,theirs.get(k))
+            for k,v in ours.items(): self.value(f'{key}.{k}',v,theirs.get(k,MISSING))
         elif isinstance(ours,(list,tuple)):
             if not isinstance(theirs,(list,tuple)) or len(ours)!=len(theirs):
                 self.items.append(dict(key=key,equal=False,reason='sequence length/type'));return
             for j,(a,b) in enumerate(zip(ours,theirs)): self.value(f'{key}.{j}',a,b)
         else:
-            equal=theirs is not None and compare_value(ours,theirs,key)
-            self.items.append(dict(key=key,equal=bool(equal),ours=ours,theirs=theirs))
+            if theirs is MISSING: equal=False
+            elif ours is None and theirs is None: equal=True    # present on both sides, both None (e.g. an untested level)
+            elif ours is None or theirs is None: equal=False
+            else: equal=compare_value(ours,theirs,key)
+            self.items.append(dict(key=key,equal=bool(equal),ours=ours,theirs=None if theirs is MISSING else theirs,
+                                   **(dict(reason='missing key') if theirs is MISSING else {})))
     def arrays(self,ours_path,theirs_path,required=None):
         with np.load(ours_path,allow_pickle=False) as ours,np.load(theirs_path,allow_pickle=False) as theirs:
             for key in required or ours.files:
@@ -54,26 +62,49 @@ class Comparison:
 
 
 def compare_stats(comparison,ours,theirs):
-    comparison.value('n_episodes',ours['n_episodes'],theirs.get('n_episodes'))
-    comparison.value('n_clusters',ours['n_clusters'],theirs.get('n_clusters'))
-    comparison.value('seeds',ours['seeds'],theirs.get('seeds'))
-    comparison.value('episodes_sha256',ours['episodes_sha256'],theirs.get('episodes_sha256'))
+    comparison.value('n_episodes',ours['n_episodes'],theirs.get('n_episodes',MISSING))
+    comparison.value('n_clusters',ours['n_clusters'],theirs.get('n_clusters',MISSING))
+    comparison.value('seeds',ours['seeds'],theirs.get('seeds',MISSING))
+    comparison.value('episodes_sha256',ours['episodes_sha256'],theirs.get('episodes_sha256',MISSING))
     for j in CHECK_IDS:
         o=ours['checks'][j]
         t=theirs.get('checks',{}).get(j,{})
         for k in ('n','point','ci95','tested'):
             if k=='tested':
                 # A seven-check record always tests all seven. A28 records must specify this flag.
-                target=t.get('tested',True if 'holm_order' in theirs else None)
+                target=t.get('tested',True if 'holm_order' in theirs else MISSING)
             else:
-                target=t.get(k,t.get('n_j') if k=='n' else None)
+                target=t.get(k,t.get('n_j',MISSING) if k=='n' else MISSING)
             comparison.value('checks.'+j+'.'+k,o[k],target)
         if o['tested']:
             for k in ('holm_k','ci_holm','passes','own_count_passes','near_boundary','level_two_sided'):
                 alias={'passes':'pass','near_boundary':'within_one_of_boundary','level_two_sided':'holm_level_two_sided'}.get(k)
-                comparison.value('checks.'+j+'.'+k,o[k],t.get(k,t.get(alias) if alias else None))
-    for key in ('holm_order','holm_order_level1','holm_order_level2'):
-        if key in ours: comparison.value(key,ours[key],theirs.get(key))
+                comparison.value('checks.'+j+'.'+k,o[k],t.get(k,t.get(alias,MISSING) if alias else MISSING))
+    # The runner's form: a list of seven, or {"level1": [...], "level2": [...]} for the two-level reads.
+    if 'holm_order' in ours: comparison.value('holm_order',ours['holm_order'],theirs.get('holm_order',MISSING))
+
+
+PASS_MODES={'held':False,'regression':False,'smoke':True}
+
+
+def provenance(own,reported_path,raw,report):
+    """Fields the apply-rule step reads from a per-read agreement file (ticket 19). Missing input crashes.
+
+    smoke comes from the reported pass file's own mode field, held_pass_sha256 from its exact bytes,
+    rederived_counts from the independent pass's n_j (the same keys for the two-level A28 reads).
+    """
+    top=report.get('mode')
+    mode=top if top is not None else report.get('stats',{}).get('mode') if isinstance(report.get('stats'),dict) else None
+    if mode not in PASS_MODES: raise ValueError(f'{reported_path.name}: mode field {mode!r} is not one of {sorted(PASS_MODES)}')
+    checks=own['stats']['checks']
+    if set(checks)!=set(CHECK_IDS): raise ValueError('derived record: checks are not exactly '+','.join(CHECK_IDS))
+    counts={}
+    for j in CHECK_IDS:
+        n=checks[j]['n']
+        if isinstance(n,bool) or not isinstance(n,int): raise ValueError(f'derived record: n of {j} is not an integer: {n!r}')
+        counts[j]=n
+    return dict(phase=2,smoke=PASS_MODES[mode],pass_file=reported_path.name,
+                held_pass_sha256=hashlib.sha256(raw).hexdigest(),rederived_counts=counts)
 
 
 def main():
@@ -95,6 +126,7 @@ def main():
     identity=dict(record_sha256=sha_file(args.derived),arrays_sha256=sha_file(args.derived_arrays))
     own=json.loads(args.derived.read_text())
     c=Comparison()
+    extra={}
     if args.phase1:
         from rd9_inputs import Inputs
         assert args.backbone==own['backbone'], 'phase-1 backbone mismatch'
@@ -126,7 +158,9 @@ def main():
         c.arrays(args.derived_arrays,r3,required)
     else:
         assert args.reported and args.reported_arrays, 'per-read agreement requires runner scalars AND arrays'
-        report=json.loads(args.reported.read_text())
+        raw=args.reported.read_bytes()
+        report=json.loads(raw)
+        extra=provenance(own,args.reported,raw,report)
         compare_stats(c,own['stats'],report.get('stats',report))
         required=[f'{name}__{m}' for name in ('aff_fused','aff_cf','cosine','rca','B','B0')
                   for m in ('r1','gain','other','swap','strict')]+['cl','pair_index']
@@ -136,7 +170,7 @@ def main():
             assert args.derived_episodes and args.reported_episodes
             c.arrays(args.derived_episodes,args.reported_episodes)
     result=c.record()
-    result.update(independent_identity=identity,read=own.get('read','seed42'),backbone=own['backbone'])
+    result.update(independent_identity=identity,read=own.get('read','seed42'),backbone=own['backbone'],**extra)
     save_json(args.out,result)
     print('agreement:',result['agreement'],'compared:',result['compared'],'differences:',result['failed'])
     if not result['agreement']: raise SystemExit(1)

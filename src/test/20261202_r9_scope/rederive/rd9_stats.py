@@ -124,13 +124,17 @@ def pass_record(arrays,a28=False,sensitivity=False):
             assert draws.k>1 and len(clusters)>draws.k
             variance[j]=variance_split(100*difference,clusters)
     decision=decide(counts,a28)
-    for family in decision['families'].values():
-        if family is None: continue
+    families=dict(decision['families'])
+    if a28 and families['level2'] is None:
+        # The runner computes level 2's Holm (m = 5) even when level 1 fails; the verdict step decides what is tested.
+        # decision keeps level2 None (nothing tested); the quantities below exist for all seven checks.
+        families['level2']=holm(counts,['P1','P2','P3','P5','P7'])
+    for family in families.values():
         for j,details in family['checks'].items():
             row=checks[j]
             alpha=details['alpha']
             row.update(details)
-            row['tested']=True
+            row['tested']=True    # 'computed': all seven in every record; the runner's schema carries no such flag
             row['passes']=row.pop('pass')
             row['near_boundary']=row.pop('within_one_of_boundary')
             row['ci_holm']=(100*np.percentile(boots_of[j],[100*alpha,100*(1-alpha)])).tolist()
@@ -138,7 +142,6 @@ def pass_record(arrays,a28=False,sensitivity=False):
     out=dict(n_episodes=len(clusters),n_clusters=draws.k,checks=checks,decision=decision)
     if not a28: out['holm_order']=decision['families']['seven']['order']
     else:
-        out['holm_order_level1']=decision['families']['level1']['order']
-        out['holm_order_level2']=decision['families']['level2']['order'] if decision['families']['level2'] else None
+        out['holm_order']={'level1':families['level1']['order'],'level2':families['level2']['order']}
     if sensitivity: out['sensitivity']=variance
     return out

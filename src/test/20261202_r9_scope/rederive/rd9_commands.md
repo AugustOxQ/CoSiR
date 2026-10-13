@@ -55,11 +55,23 @@ PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVIC
 PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/rederive/rd9_phase2.py --read H10
 ```
 
-One agreement JSON per read (replace H8 with H6/H7/H9/H10 as appropriate; add `_fix1` input suffixes if needed):
+One agreement JSON per pass file (replace H8 with H6/H7/H9/H10 as appropriate). The output names are
+`rd9_<Hn>_agreement.json` (original pass), `rd9_<Hn>_agreement_fix1.json` (fix pass) and
+`rd9_<Hn>_agreement_reserve.json` (reserve read); the apply-rule step (ticket 19) looks for exactly these names in
+`rederive/rd9_out/`. Give `--reported` the pass file that the agreement belongs to (`held_pass_<Hn>[_fix1|_reserve].json`).
+The file holds `agreement`, `compared`, `failed`, `items`, `independent_identity`, `read`, `backbone` and the provenance
+the apply-rule step reads: `phase` (2), `smoke` (bool, from the `mode` field of the `--reported` file: "smoke" is true,
+"held" and "regression" are false, anything else or no field is a crash), `pass_file` (the name of the `--reported`
+file), `held_pass_sha256` (SHA-256 of that file's bytes) and `rederived_counts` ({P1..P7: n_j of the independent pass,
+from `--derived`; the same keys for the two-level reads}). The phase-1 modes do not write the provenance fields.
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/rederive/rd9_compare.py --derived src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_read.json --derived-arrays src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_read_arrays.npz --reported src/test/20261202_r9_scope/results/held_pass_H8.json --reported-arrays src/test/20261202_r9_scope/results/held_arrays_H8.npz --out src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_agreement.json
 ```
+
+The fix pass and the reserve read use the same command with the `_fix1` / `_reserve` file names, for example
+`--reported .../held_pass_H8_fix1.json ... --out .../rd9_H8_agreement_fix1.json`. A synthetic smoke pass is compared
+the same way, with `--out` in `rd9_out/` (the comparator writes only below `rederive/`; ticket 19 reads a smoke agreement from `results/smoke/`, so the controller copies it there); its agreement file then says `smoke: true`.
 
 Comparison checks counts, points, both intervals, ordering and pass flags, episode hashes, and all 30 relevant
 scorer/metric arrays plus clusters/pair/seed indices. Missing keys fail. R9 pass files must use the R6 field names
