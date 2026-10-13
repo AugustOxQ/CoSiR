@@ -226,7 +226,7 @@ Decided in the grill on 2026-10-13 between 13:05 and 15:00 unless marked.
 
 ## 6. Success criteria
 
-**Decision mode.** Binding rule: `src/test/20261202_r9_scope/DECISION_RULE.md` @ (commit), committed before any
+**Decision mode.** Binding rule: `src/test/20261202_r9_scope/DECISION_RULE.md` @ a443902, committed before any
 scoring code; it governs where it differs from this spec.
 
 | ID | What is measured | Compared against | Bar | On which data |
