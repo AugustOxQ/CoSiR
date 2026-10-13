@@ -2009,30 +2009,10 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 </section>
 </details>
 
-<details class="part" open><summary><h2 id="limits">Limits</h2></summary>
+<details class="part" open><summary><h2 id="next">Next</h2></summary>
 <section>
-<ul>
-  <li>We used one dataset (ArtELingo, English), one backbone (CLIP ViT-B/32) and three aspects.</li>
-  <li>Each method had one model seed; all picks used one development draw.</li>
-  <li>New episodes reuse the same 6,451 paintings; the paintings for the final test stay unread.</li>
-  <li>The affect clusters come from a classifier trained on outside emotion labels, so they are not fully label-free. It has categories for 6 of the 8 emotions we test, so it knows most of them.</li>
-  <li>We chose both head-reader sums after we saw development results. Our notes said to build no more methods overnight after the first failed; we overrode that note for the second.</li>
-  <li>Two rules were not fully set in advance. We wrote one two minutes after computing its numbers, before we read them. For another, we knew its margin over a first control (+0.55).</li>
-  <li>Only the candidates are controlled on the third aspect.</li>
-  <li>Emotion labels are per viewer; we did not measure how mixed they are.</li>
-</ul>
+<p>Next, we improve the reader, the step that picks the grouping. We will try a learned reader that acts only when confident, and an image grouping aimed at style, each tested against its matched control.</p>
 </section>
-</details>
-
-<p class="muted">Give your reading first: use the comment button on any entry, then press Respond.</p>
-<details>
-  <summary>Our advice (open after giving your reading)</summary>
-<ul>
-  <li><b>Caveat.</b> The next point rests on one exploratory check on seed 42. We told the grouping from the labels, and its gain on style × genre is 0.</li>
-  <li><b>Our reading.</b> The heads are good enough, but the reader's choice of grouping is not. Wrong picks put candidates that share neither aspect above the target. Even a right pick costs some either rate.</li>
-  <li><b>Untested.</b> The example items come from the same pool as the candidates that share neither aspect. A query centered on them may lift both aspect candidates together. So the condition-free bar needs its own control.</li>
-  <li><b>Next, from the handoff.</b> We need a reader that picks the aspect correctly and a grouping that separates style from genre. Each needs a matched control and a test on fresh seeds.</li>
-</ul>
 </details>
 
 <h2 id="glossary">Glossary</h2>
