@@ -75,8 +75,8 @@ def load_data(backbone) -> ArtelingoData:
 def load_split(data) -> SimpleNamespace:
     """Read pinned CLIP indices, with the round-6 recomputation check on CLIP only.
 
-    ArtelingoData has no backbone field: the three supported dimensions identify
-    CLIP (512), Qwen (2048), and SigLIP 2 (1152). New features never form groups.
+    ArtelingoData has no backbone field: equality with the canonical CLIP image
+    features identifies CLIP. New features never form groups.
     Validation rows are the complement of the stored train and held arrays.
     """
     assert all(getattr(data, field).shape == (N_ROWS,) for field in (
@@ -88,6 +88,7 @@ def load_split(data) -> SimpleNamespace:
     reference = load_artelingo()
     assert np.array_equal(data.sample_ids, reference.sample_ids), "sample_id row order differs from CLIP"
     assert np.array_equal(data.paintings, reference.paintings), "painting row order differs from CLIP"
+    is_clip = np.array_equal(data.img_features, reference.img_features)
     del reference
     for role, path in SPLIT_PATHS.items():
         digest = hashlib.sha256()
@@ -117,7 +118,7 @@ def load_split(data) -> SimpleNamespace:
         np.union1d(scorer_train, selection), train), "scorer_train and selection do not partition train"
     for left, right in ((train, val), (train, held), (val, held), (scorer_train, selection)):
         assert np.intersect1d(groups[left], groups[right]).size == 0, "a leakage group spans split parts"
-    if dim == DIMENSIONS["clip_b32"]:
+    if is_clip:
         recomputed = artelingo_splits(data)
         gs = grouped_split(recomputed.groups, seed=SPLIT_SEED)
         for name, mine, frozen in (

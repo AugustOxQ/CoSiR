@@ -75,16 +75,19 @@ def test_caption_rows_join_their_images_and_keep_clip_labels(store, backbone, di
 
 
 @pytest.mark.parametrize("backbone", ["qwen3vl_emb_2b", "siglip2_so400m"])
-@pytest.mark.parametrize("change", ["permuted", "painting"])
+@pytest.mark.parametrize("change", ["permuted", "same_painting", "painting"])
 def test_store_rows_must_match_clip_sample_ids_and_paintings(store, backbone, change):
     path = store[backbone] / "index.json"
     index = json.loads(path.read_text())
     if change == "permuted":
         index["texts"][1], index["texts"][2] = index["texts"][2], index["texts"][1]
+    elif change == "same_painting":
+        index["texts"][0], index["texts"][1] = index["texts"][1], index["texts"][0]
     else:
         index["texts"][0]["painting"] = "p1"
     path.write_text(json.dumps(index))
-    with pytest.raises(AssertionError, match="sample_id|painting"):
+    message = "sample_id" if change == "same_painting" else "sample_id|painting"
+    with pytest.raises(AssertionError, match=message):
         R.load_data(backbone)
 
 
@@ -207,12 +210,42 @@ def test_split_file_hash_must_match_the_pin(frozen_split, role):
         R.load_split(reference)
 
 
-def test_clip_recomputation_must_match_the_frozen_groups(frozen_split):
+def test_clip_recomputation_must_match_the_frozen_groups(frozen_split, monkeypatch):
     reference, _, _, _ = frozen_split
     features = reference.img_features.copy()
     features[1] = features[0]  # Same image vector now links two distinct paintings.
+    changed_clip = replace(reference, img_features=features)
+    monkeypatch.setattr(R, "load_artelingo", lambda: changed_clip)
     with pytest.raises(AssertionError):
-        R.load_split(replace(reference, img_features=features))
+        R.load_split(changed_clip)
+
+
+def test_features_different_from_clip_do_not_recompute_its_split(frozen_split):
+    reference, _, arrays, held = frozen_split
+    # Equal dimensions do not establish that these are the canonical CLIP features.
+    data = replace(reference, img_features=np.ones((20, 512), dtype=np.float32))
+    split = R.load_split(data)
+    assert np.array_equal(split.groups, arrays["groups"])
+    assert np.array_equal(split.train, arrays["split_train"])
+    assert np.array_equal(split.scorer_train, arrays["scorer_train"])
+    assert np.array_equal(split.selection, arrays["selection"])
+    assert split.val.tolist() == [2, 4]
+    assert np.array_equal(split.held, held)
+
+
+def test_clip_recomputation_checks_train_subsplit_when_val_and_held_match(frozen_split, monkeypatch):
+    reference, paths, arrays, held = frozen_split
+    payload = {key: rows.copy() for key, rows in arrays.items()}
+    # Swap one train row between the two training parts; keep train, val and held.
+    payload["scorer_train"] = np.array([3, 5, 6, 7, 9, 10, 11, 14, 15, 16, 18, 19])
+    payload["selection"] = np.array([0, 12])
+    np.savez(paths["prepare"], **payload)
+    monkeypatch.setitem(R.SPLIT_SHA256, "prepare", hashlib.sha256(paths["prepare"].read_bytes()).hexdigest())
+    recomputed = S.artelingo_splits(reference)
+    assert recomputed.val.tolist() == [2, 4]
+    assert np.array_equal(recomputed.held, held)
+    with pytest.raises(AssertionError, match="recomputed scorer_train"):
+        R.load_split(reference)
 
 
 @pytest.mark.parametrize("change", ["ids", "paintings", "cut"])
