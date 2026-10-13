@@ -544,6 +544,18 @@ def test_not_run_ledger_row_is_matched_by_its_own_name(tmp_path):
     refused(4, "H6", d, "row H6 is not in", not_run="switched_off")
 
 
+def test_not_run_ledger_status_must_be_a_whole_cell(tmp_path):
+    """Rule 7.1: the wording is a cell of its own; a note that quotes it does not count (build 4 re-review)."""
+    d = tmp_path / "results"
+    d.mkdir()
+    ledger(d, {"H6": "note: not run: switched off was proposed"})
+    refused(4, "H6", d, "does not read exactly", not_run="switched_off")
+    ledger(d, {"H6": "Not run: switched off"})
+    refused(4, "H6", d, "does not read exactly", not_run="switched_off")
+    ledger(d, {"H6": " not run: switched off "})          # padding is not part of the cell
+    assert call("H6", d, not_run="switched_off")[1]["status"] == "not run: switched off"
+
+
 def test_not_run_refuses_clip_switched_off(tmp_path):
     d = tmp_path / "results"
     d.mkdir()

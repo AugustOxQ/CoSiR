@@ -568,14 +568,14 @@ def smoke_guard(results: Path, variant) -> dict:
     return {"name": path.name, "sha256": CM.sha256_bytes(raw)}
 
 
-def ledger_row(ledger: Path, read: str) -> str:
-    """The text of ledger row `read` (all its cells), or refuse."""
+def ledger_row(ledger: Path, read: str) -> list:
+    """The cells of ledger row `read` (stripped), or refuse."""
     if not ledger.is_file():
         refuse(f"{ledger.name} is missing")
     for line in ledger.read_text(encoding="utf-8").splitlines():
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if line.lstrip().startswith("|") and cells and cells[0] == read:
-            return " | ".join(cells)
+            return cells
     refuse(f"row {read} is not in {ledger.name}: a not-run verdict is written only after its ledger row (rule 7.1)")
 
 
@@ -596,9 +596,9 @@ def apply_not_run(read: str, not_run: str, out: Path, smoke: bool, ledger: Path,
                 refuse(f"{read} is switched off only if {SIBLING[read]} was (D30); {sib.name} does not read "
                        f"'{NOT_RUN['switched_off']}'")
     if not smoke:
-        row = ledger_row(ledger, read)
+        cells = ledger_row(ledger, read)
         other = NOT_RUN["dropped" if not_run == "switched_off" else "switched_off"]
-        if NOT_RUN[not_run] not in row or other in row:
+        if NOT_RUN[not_run] not in cells or any(other in c for c in cells):      # a whole cell, never a quote
             refuse(f"ledger row {read} does not read exactly '{NOT_RUN[not_run]}'")
     v = {**base, "verdict": None, "kind": None, "status": NOT_RUN[not_run], "claim": None}
     write_once(vpath, v)
