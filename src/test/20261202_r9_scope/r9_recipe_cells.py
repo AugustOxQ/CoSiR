@@ -22,10 +22,15 @@ The rule (R3 rule D8 item 5, D9; round 2's integer criteria, `r2_fusion.select_f
 `bs_05_aff.py` calls too): per tune half h, over the 224 cells (cell number (t*7 + u)*8 + a, t = tau index from
 `parts(backbone)["rc_tau"]`), AFF's fused cell is the one with the largest min(rho(S) - rho_ctrl, gamma(S)) (integers
 over the tune half's episodes), the counterpart cell the one with the largest rho of the matched counterpart; ties go
-to the lowest cell number. `pick_cells` is that step on integer tables; the tests run it on synthetic tables and
-compare `family_picks` with `r3_fusion.run_family` and with `bs_lib.Family` on the same scores.
+to the lowest cell number. `pick_cells` is that step on integer tables (the tests run it on synthetic tables);
+`family_picks` is `r3_fusion.run_family` itself (no copy), whose picks the tests compare with `bs_lib.Family`'s.
 The brainstorm scored in float64, this module (as round 3, D8) in float32 on z-scored terms: the CLIP run asserts the
-cells equal the brainstorm's recorded ones, in (tau index, lambda_u, lambda_a) form.
+cells equal the brainstorm's recorded ones, in (tau index, lambda_u, lambda_a) form. For every backbone the record's
+`details.float64_tied_family` says whether `bs_lib.Family(..., tied=True)` (float64) gives the same integer tables and
+picks, and names the cells that differ; it decides nothing.
+Checks that hold for every backbone (compute_cells): the thresholds are those of the bundle's own R1 margins
+(`rc_core.thresholds`, the function that made rc_tau.json); the cross-fitted B and its mean R@1 equal the backbone's
+picks_seed42.json (the B that the held read rebuilds). The CLI also asserts the seed-42 episode hashes equal the frozen ones.
 
 Switched off (D4): both halves' AFF cells have lambda_a = 0 (`F2.cell_values(cell)[3] == 0`); recorded here, the stage
 2 driver (ticket 13) acts on it. The gate share is r9_pins.gate_share at AFF's chosen cells (the gates of AFF's tau on
@@ -33,8 +38,8 @@ the other parity, conditions a and b, both tune halves).
 
 The bundle: the CLI builds the seed-42 selection bundle on the refit heads, as `run_r9_stage0a.py` does, but only the
 fields the cells need (`cells_bundle`: T_N1u, B's T_6u, the A0 posteriors, the grouping stack and the 18 features;
-`r9_bundle.build_bundle_r6` steps 2, 3, 4, 5, 7 and 8) and no PM fit or PM term (about 150 s of the full bundle). B is
-cross-fitted (D10). `compute_cells(bundle, readers, taus)` takes any bundle with these fields (ticket 12 passes its own).
+`r9_bundle.build_bundle_r6` steps 2, 3, 4, 5, 7 and 8, then validate's stack/F/Delta checks) and no PM fit or PM term
+(about 150 s of the full bundle). B is cross-fitted (D10). `compute_cells(bundle, readers, taus)` takes any bundle with these fields (ticket 12 passes its own).
 For CLIP the CLI also asserts B's mean R@1 (18.341064453125) and that the record equals CLIP's `cells_seed42_clip.json`
 and `bs_05_aff.json`'s cells.
 """
@@ -51,6 +56,7 @@ if str(HERE) not in sys.path:
 import r9_common as R  # noqa: E402  (first, before anything that imports src)
 import r9_bundle as RB  # noqa: E402
 import r9_context as X  # noqa: E402
+import r9_episodes as E  # noqa: E402
 import r9_heads as H  # noqa: E402
 import r9_picks as P  # noqa: E402
 import r9_pins as PINS  # noqa: E402
@@ -101,23 +107,11 @@ def pick_cells(fri, fgi, cri, ctrl, parity) -> dict:
 
 
 def family_picks(base, T, gates, parity) -> dict:
-    """The 224 cells of one gate set on B's scores ``base`` ({c: {d: (n, 13)}}, the cross-fitted B) and the reader's T
-    ({c: {d: (n, 13)}}): z-scores before the gate (D8 item 1), the gated terms, G_cf (D9), the integer statistics,
-    sigma* by tune half, then pick_cells. Same steps as r3_fusion.run_family up to its picks (that function also
-    assembles the scores, which the cells do not need). -> {"fpick", "cpick", "sigma" {half: sigma*}, "ctrl", "details"}."""
+    """The 224 cells of one gate set on B's scores ``base`` ({c: {d: (n, 13)}}, the cross-fitted B) and the reader's T:
+    r3_fusion.run_family itself (z-scores before the gate, the gated terms, G_cf, the integer statistics, sigma* by tune
+    half, the picks of pick_cells' rule; D8, D9). -> its dict: "fpick", "cpick", "sigma", "ctrl", "details", ..."""
     _require(len(gates) == N_TAU, f"{len(gates)} gate sets, expected {N_TAU}")
-    parity = np.asarray(parity)
-    zB, zT = _zdict(base), _zdict(T)
-    gated = {t: RC.gated_terms(zT, gates[t]) for t in range(len(gates))}
-    G = {t: RC.g_cf(gated[t]) for t in gated}
-    info = F2.rank_info(base)                                  # asserts B condition-free
-    fri, fgi, cri = F2.cell_statistics(zB, info, gated, G, 1)
-    _require(fri.shape[0] == N_CELLS, f"{fri.shape[0]} cells, expected {N_CELLS}")
-    ctrl = F2.control_choice(zB, parity)
-    picks = pick_cells(fri, fgi, cri, ctrl, parity)
-    details = F2.pick_details(fri, fgi, cri, ctrl, parity, picks["fpick"], picks["cpick"])
-    return {**picks, "sigma": {h: ctrl[h][0] for h in HALVES}, "ctrl": {h: {"sigma": ctrl[h][0], "rho_ctrl": ctrl[h][1]}
-                                                                          for h in HALVES}, "details": details}
+    return RF.run_family(SimpleNamespace(B=base, parity=np.asarray(parity)), T, gates)
 
 
 def sigma_star(aff, r1) -> list:
@@ -143,15 +137,70 @@ def cells_record(aff, cf, r1_fused, r1_counterpart, sigma, gates_aff, parity) ->
     return rec
 
 
-def compute_cells(bundle, readers, taus):
+def check_taus(margins, taus, n):
+    """M1: the thresholds are those of the bundle's own R1 margins (rc_core.thresholds made rc_tau.json from them)."""
+    got = RC.thresholds(margins)
+    _require(got == (list(taus), 2 * n),
+             f"tau: the thresholds {list(taus)} are not those of the bundle's R1 margins {got[0]} (over {got[1]} "
+             f"margins, expected {2 * n})")
+
+
+def check_b_picks(bpick, b_mean_r1, backbone):
+    """M2: the cross-fitted B equals the B of the backbone's picks_seed42.json (what the held read rebuilds), and its mean
+    R@1 equals the file's exactly."""
+    path = Path(parts(backbone)["picks_seed42"])
+    want = P.load_picks(path, backbone)["B"]
+    got = P.as_nested_pick(bpick, "B")
+    _require(got == want, f"B: the cross-fitted picks {got} are not those of {path}: {want}")
+    mean = json.loads(path.read_text())["mean_r1"]["B"]
+    _require(b_mean_r1 == mean, f"B: the mean R@1 {b_mean_r1!r} is not {path}'s {mean!r}; the mean R@1 must be equal")
+
+
+def differing_cells(x, y) -> list:
+    """The cell numbers (rows) where two (224, n) integer tables differ."""
+    x, y = np.asarray(x), np.asarray(y)
+    _require(x.shape == y.shape, f"tables of shape {x.shape} and {y.shape}")
+    return [int(i) for i in np.flatnonzero((x != y).any(axis=1))]
+
+
+def float64_tied_check(base, T, gates, parity, run) -> dict:
+    """L4, decides nothing: does bs_lib.Family(..., tied=True) (the brainstorm's float64 scoring, which picked CLIP's
+    cells) give the same integer tables and picks as this module's float32 ones? run: the family's run_family result.
+    -> {"tables_equal", "fused_cells_differ", "cf_cells_differ", "fpick_equal", "cpick_equal"}."""
+    sys.path.insert(0, str(R.TEST / "20261120_r1_levers_brainstorm"))
+    import bs_lib as L
+    parity = np.asarray(parity)
+    zB32, zT32 = _zdict(base), _zdict(T)
+    gated = {t: RC.gated_terms(zT32, gates[t]) for t in range(len(gates))}
+    fri, fgi, cri = F2.cell_statistics(zB32, F2.rank_info(base), gated, {t: RC.g_cf(gated[t]) for t in gated}, 1)
+    ctrl = F2.control_choice(zB32, parity)
+    again = pick_cells(fri, fgi, cri, ctrl, parity)                    # this module's float32 picks, from its own tables
+    _require(again["fpick"] == run["fpick"] and again["cpick"] == run["cpick"],
+             "the float32 picks of the recomputed tables differ from run_family's")
+    zB = {c: {d: L.zrows(base[c][d]) for d in L.DIRECTIONS} for c in L.CONDITIONS}
+    data = SimpleNamespace(zB=zB, E=len(parity), parity=parity, ctrl=F2.control_choice(zB, parity))
+    fam = L.Family(data, [L.MD(L.zterm(T), g) for g in gates], tied=True).stats()
+    fp, cp = fam.crossfit()
+    fused_differ = sorted(set(differing_cells(fri, fam.fri)) | set(differing_cells(fgi, fam.fgi)))
+    cf_differ = differing_cells(cri, fam.cri)
+    return {"tables_equal": not fused_differ and not cf_differ, "fused_cells_differ": fused_differ,
+            "cf_cells_differ": cf_differ, "fpick_equal": {h: int(fp[h]) for h in HALVES} == run["fpick"],
+            "cpick_equal": {h: int(cp[h]) for h in HALVES} == run["cpick"]}
+
+
+def compute_cells(bundle, readers, taus, backbone):
     """The cells record of one seed-42 bundle. bundle: cos, t_n1u, t6u_B, parity, stack, F (r9_bundle's fields); readers:
-    round 1's A0 half-readers; taus: the backbone's four thresholds. -> (record, details); details holds each family's
-    integer criteria at the chosen cells and the B scores' mean R@1."""
+    round 1's A0 half-readers; taus: the backbone's four thresholds (asserted to be the bundle's own R1 margins');
+    backbone: whose picks_seed42.json B must equal. -> (record, details); details holds each family's integer criteria at
+    the chosen cells, the B scores' mean R@1, the thresholds and the float64 tied-family comparison (L4)."""
     taus = [float(t) for t in taus]
     _require(len(taus) == N_TAU, f"{len(taus)} thresholds, expected {N_TAU}")
     parity = np.asarray(bundle.parity)
-    base, _ = crossfit_condition_free(bundle.cos, bundle.t_n1u, bundle.t6u_B, parity)         # D10
+    base, bpick = crossfit_condition_free(bundle.cos, bundle.t_n1u, bundle.t6u_B, parity)    # D10
+    b_mean_r1 = 100 * float(np.mean(per_anchor(base)["r1"]))
+    check_b_picks(bpick, b_mean_r1, backbone)                                                  # M2
     rd = RF.reader(bundle, readers)                                                            # D5
+    check_taus(rd["m"], taus, len(parity))                                                     # M1
     g_aff, g_r1 = RF.gates_aff(rd["m"], rd["pick"], taus), RF.gates_r1(rd["m"], taus)          # D6
     t0 = time.time()
     aff = family_picks(base, rd["T"], g_aff, parity)
@@ -162,9 +211,21 @@ def compute_cells(bundle, readers, taus):
     rec = cells_record([aff["fpick"][h] for h in HALVES], [aff["cpick"][h] for h in HALVES],
                        [r1["fpick"][h] for h in HALVES], [r1["cpick"][h] for h in HALVES],
                        sigma_star(aff, r1), gates, parity)
-    details = {"aff": aff["details"], "r1": r1["details"], "ctrl": aff["ctrl"],
-               "b_mean_r1": 100 * float(np.mean(per_anchor(base)["r1"])), "taus": taus}
+    f64 = {"aff": float64_tied_check(base, rd["T"], g_aff, parity, aff),
+           "r1": float64_tied_check(base, rd["T"], g_r1, parity, r1)}
+    f64["equal"] = all(f64[k]["tables_equal"] and f64[k]["fpick_equal"] and f64[k]["cpick_equal"] for k in ("aff", "r1"))
+    log(f"float64 tied family (bs_lib) gives the same tables and picks: {f64['equal']} [{time.time() - t0:.0f}s]")
+    details = {"aff": aff["details"], "r1": r1["details"], "ctrl": aff["ctrl"], "b_mean_r1": b_mean_r1, "taus": taus,
+               "float64_tied_family": {"equal": f64["equal"], "aff": f64["aff"], "r1": f64["r1"]}}
     return rec, details
+
+
+def check_episode_sha(sha):
+    """L6: the bundle's seed-42 episode hashes equal the frozen ones (rule section 11; the hashes of AB's baselines file)."""
+    want = E.identity_targets()[R.DEV_SEED]["episodes_sha256"]
+    for pair in R.PAIR_NAMES:
+        _require(sha.get(pair) == want[pair], f"episodes: the hash of pair {pair} is {sha.get(pair)!r}, the frozen one "
+                                              f"is {want[pair]!r}")
 
 
 # ---------------------------------------------------------------- the CLIP checks
@@ -240,6 +301,7 @@ def cells_bundle(ctx, backbone) -> SimpleNamespace:
     for k in ("cos", "t_n1u", "t6u_B"):
         RB.check_scores(getattr(b, k), n, k, np.float32)
         _require_condition_free(getattr(b, k), k)
+    RB.check_stack_f(b)                                                                    # validate's stack, F, Delta
     P.check_seed42(b)                                                                      # selection rows, seed 42
     return b
 
@@ -285,9 +347,10 @@ def main(argv=None) -> int:
     env = setup(a.backbone)
     ctx = X.RowContext("selection", R.DEV_SEED, env.data, env.split, env.labels, env.heads, env.value_sets,
                        R.N_PER_PAIR)
+    check_episode_sha(ctx.episode_sha)                                                     # L6
     bundle = cells_bundle(ctx, a.backbone)
     log(f"bundle [{time.time() - t0:.0f}s]")
-    rec, details = compute_cells(bundle, env.readers, taus)
+    rec, details = compute_cells(bundle, env.readers, taus, a.backbone)
     if a.backbone == "clip_b32":
         _require(details["b_mean_r1"] == P.MEAN_R1_TARGETS["B"],
                  f"B's seed-42 mean R@1 {details['b_mean_r1']!r} is not the rule's {P.MEAN_R1_TARGETS['B']!r}")

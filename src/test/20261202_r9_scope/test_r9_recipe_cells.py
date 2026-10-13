@@ -17,6 +17,8 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 import r9_common as R  # noqa: E402  (first, before anything that imports src)
+import r9_bundle as RB  # noqa: E402
+import r9_episodes as E  # noqa: E402
 import r9_picks as P  # noqa: E402
 import r9_recipe_cells as RCELLS  # noqa: E402
 
@@ -24,6 +26,7 @@ import numpy as np  # noqa: E402
 
 F2, RF = R.F2, R.RF
 N = 8
+AFFECT = 0                                     # the grouping index of affect in A0 (rule D1)
 PARITY = np.arange(N) % 2                      # tune half 0 = episodes 0, 2, 4, 6; half 1 = 1, 3, 5, 7
 H0, H1 = np.flatnonzero(PARITY == 0), np.flatnonzero(PARITY == 1)
 CTRL = {0: (0.0, 4), 1: (0.0, 4)}              # (sigma*, rho_ctrl) per tune half
@@ -160,19 +163,8 @@ def synth_bundle(n=128, seed=0):
     return SimpleNamespace(B=B, parity=parity, n=n), T, gates
 
 
-def test_family_picks_equal_round_3_run_family():
-    """R3's run_family is the rule's code (D8, D9); this module's picks on the same scores must equal it exactly."""
-    for seed in (0, 1, 2):
-        bundle, T, gates = synth_bundle(seed=seed)
-        ours = RCELLS.family_picks(bundle.B, T, gates, bundle.parity)
-        theirs = RF.run_family(bundle, T, gates)
-        assert ours["fpick"] == theirs["fpick"] and ours["cpick"] == theirs["cpick"]
-        assert ours["sigma"] == theirs["sigma"]
-        assert ours["details"] == theirs["details"]
-
-
 def test_family_picks_equal_the_brainstorm_family():
-    """bs_05_aff.py (CLIP's cells were picked there) runs L.Family(...).crossfit() on the tied family: the same cells,
+    """family_picks is r3_fusion.run_family (L2). bs_05_aff.py (CLIP's cells were picked there) runs L.Family(...).crossfit() on the tied family: the same cells,
     in (tau index, lambda_u, lambda_a) form, on the same z-scored terms (float64 there, float32 here)."""
     sys.path.insert(0, str(R.TEST / "20261120_r1_levers_brainstorm"))
     import bs_lib as L
@@ -198,6 +190,193 @@ def test_aff_and_r1_sigma_must_agree():
     with pytest.raises(AssertionError, match="sigma"):
         RCELLS.sigma_star(fam, other)
     assert RCELLS.sigma_star(fam, fam) == [fam["sigma"][0], fam["sigma"][1]]
+
+
+# ---------------------------------------------------------------- compute_cells wiring (L3, M1, M2, L4)
+
+BACKBONE = "qwen3vl_emb_2b"                    # any backbone but CLIP: the CLIP constants are not in play
+
+
+class World:
+    """A fixed {T, m, pick} reader, a fake cross-fit and a picks_seed42.json, wired into compute_cells."""
+
+    def __init__(self, monkeypatch, tmp_path, seed, n=128, b_mean_shift=0.0, bpick_in_file=None):
+        bundle, self.T, _ = synth_bundle(n=n, seed=seed)
+        self.B, self.parity, self.n = bundle.B, bundle.parity, n
+        rng = np.random.default_rng(100 + seed)
+        self.m = {c: rng.uniform(size=n) for c in "ab"}
+        self.pick = {c: rng.integers(0, 3, size=n) for c in "ab"}
+        self.taus = [float(x) for x in RCELLS.RC.thresholds(self.m)[0]]
+        self.bpick = {0: [0.5, 0.25], 1: [0.0, 0.0]}
+        self.mean = 100 * float(np.mean(RCELLS.per_anchor(self.B)["r1"])) + b_mean_shift
+        file_pick = bpick_in_file or self.bpick
+        rec = {name: {str(h): list(file_pick[h]) for h in (0, 1)} for name in ("B", "B0", "B1")}
+        rec.update({"mean_r1": {"B": self.mean, "B0": 1.5, "B1": 2.5}, "passed": True})
+        self.picks_file = tmp_path / "picks_seed42.json"
+        self.picks_file.write_text(json.dumps(rec))
+        monkeypatch.setattr(RF, "reader", lambda bundle, readers: {"T": self.T, "m": self.m, "pick": self.pick})
+        monkeypatch.setattr(RCELLS, "crossfit_condition_free", lambda cos, tu, t6, parity: (self.B, self.bpick))
+        monkeypatch.setattr(RCELLS, "parts", lambda backbone: {"picks_seed42": self.picks_file})
+        self.bundle = SimpleNamespace(parity=self.parity, cos=None, t_n1u=None, t6u_B=None)
+
+    def run(self, taus=None):
+        return RCELLS.compute_cells(self.bundle, None, self.taus if taus is None else taus, BACKBONE)
+
+    def family(self, gates):
+        return RF.run_family(SimpleNamespace(B=self.B, parity=self.parity), self.T, gates)
+
+
+@pytest.fixture(params=[0, 2, 3, 4, 5])
+def world(request, monkeypatch, tmp_path):
+    return World(monkeypatch, tmp_path, request.param)
+
+
+def test_compute_cells_wiring_aff_on_aff_gates_r1_on_r1_gates_and_the_gate_share_at_aff_cells(world):
+    rec, details = world.run()
+    aff = world.family(RF.gates_aff(world.m, world.pick, world.taus))
+    r1 = world.family(RF.gates_r1(world.m, world.taus))
+    assert rec["aff"] == [aff["fpick"][h] for h in (0, 1)] and rec["cf"] == [aff["cpick"][h] for h in (0, 1)]
+    assert rec["r1_fused"] == [r1["fpick"][h] for h in (0, 1)]
+    assert rec["r1_counterpart"] == [r1["cpick"][h] for h in (0, 1)]
+    assert rec["sigma_star"] == [aff["sigma"][0], aff["sigma"][1]]
+    # the hand count: AFF's gate of the tau of AFF's cell of tune half h, on the episodes of parity 1 - h, conditions a, b
+    want = 0
+    for h in (0, 1):
+        tau = world.taus[rec["aff"][h] // 56]
+        for c in "ab":
+            want += int(((world.m[c] >= tau) & (world.pick[c] == AFFECT))[world.parity == 1 - h].sum())
+    assert rec["gate_open"] == want and rec["gate_total"] == 2 * world.n
+    assert rec["switched_off"] is RCELLS.switched_off(rec["aff"])
+    assert details["taus"] == world.taus and details["b_mean_r1"] == world.mean
+
+
+def test_the_wiring_test_can_tell_the_mutants_apart(world):
+    """The data of this fixture must make the four wirings differ, or the test above would not notice a swap."""
+    rec, _ = world.run()
+    cf_cells = rec["cf"]
+    hand = lambda cells: sum(int(((world.m[c] >= world.taus[cells[h] // 56]) & (world.pick[c] == AFFECT))
+                                 [world.parity == 1 - h].sum()) for h in (0, 1) for c in "ab")   # noqa: E731
+    r1_on_aff = world.family(RF.gates_aff(world.m, world.pick, world.taus))
+    aff_on_r1 = world.family(RF.gates_r1(world.m, world.taus))
+    differs = [rec["aff"] != [aff_on_r1["fpick"][h] for h in (0, 1)] or rec["cf"] != [aff_on_r1["cpick"][h] for h in (0, 1)],
+               rec["r1_fused"] != [r1_on_aff["fpick"][h] for h in (0, 1)]
+               or rec["r1_counterpart"] != [r1_on_aff["cpick"][h] for h in (0, 1)],
+               hand(rec["aff"]) != hand(cf_cells)]
+    assert all(differs), differs
+
+
+def test_compute_cells_rejects_taus_that_are_not_the_bundles_own_margins(world):
+    """M1: the gates are cut at the thresholds of the bundle's R1 margins (rc_core.thresholds), whatever file they came from."""
+    world.run()                                                                 # the right taus pass
+    with pytest.raises(AssertionError, match="tau"):
+        world.run(taus=world.taus[::-1])
+    with pytest.raises(AssertionError, match="tau"):
+        world.run(taus=[world.taus[0], world.taus[1], world.taus[2], world.taus[3] + 1e-9])
+
+
+def test_load_taus_keeps_the_files_order_and_feeds_compute_cells(world, monkeypatch, tmp_path):
+    """The thresholds are read in the file's order (tau index 0 is the lowest); a reversed list is not the bundle's own."""
+    f = tmp_path / "rc_tau.json"
+    f.write_text(json.dumps({"taus": world.taus}))
+    monkeypatch.setattr(RCELLS, "parts", lambda backbone: {"rc_tau": f, "picks_seed42": world.picks_file})
+    taus = RCELLS.load_taus(BACKBONE)
+    assert taus == world.taus and taus == sorted(taus)
+    world.run(taus=taus)
+    f.write_text(json.dumps({"taus": world.taus[:3]}))
+    with pytest.raises(AssertionError):
+        RCELLS.load_taus(BACKBONE)
+
+
+def test_compute_cells_rejects_a_b_that_is_not_the_one_of_picks_seed42(monkeypatch, tmp_path):
+    """M2: B cross-fitted here must be the B that the held read will rebuild from picks_seed42.json."""
+    World(monkeypatch, tmp_path, 0).run()
+    with pytest.raises(AssertionError, match="B"):
+        World(monkeypatch, tmp_path, 0, bpick_in_file={0: [0.5, 0.25], 1: [0.5, 0.0]}).run()
+    with pytest.raises(AssertionError, match="mean R@1"):
+        World(monkeypatch, tmp_path, 0, b_mean_shift=1e-9).run()
+
+
+def test_check_b_picks_reads_the_backbones_file(monkeypatch, tmp_path):
+    w = World(monkeypatch, tmp_path, 0)
+    RCELLS.check_b_picks(w.bpick, w.mean, BACKBONE)
+    with pytest.raises(AssertionError, match="B"):
+        RCELLS.check_b_picks({0: [0.5, 0.25], 1: [0.5, 0.0]}, w.mean, BACKBONE)
+    with pytest.raises(AssertionError, match="mean R@1"):
+        RCELLS.check_b_picks(w.bpick, w.mean + 1e-6, BACKBONE)
+
+
+def test_the_float64_tied_family_check_is_recorded_and_decides_nothing(world):
+    """L4: details say whether bs_lib's float64 tied family gives the same integer tables and picks."""
+    _, details = world.run()
+    chk = details["float64_tied_family"]
+    assert set(chk) == {"equal", "aff", "r1"} and isinstance(chk["equal"], bool)
+    for fam in ("aff", "r1"):
+        assert set(chk[fam]) == {"tables_equal", "fused_cells_differ", "cf_cells_differ", "fpick_equal", "cpick_equal"}
+    assert chk["equal"] == all(chk[f]["tables_equal"] and chk[f]["fpick_equal"] and chk[f]["cpick_equal"]
+                               for f in ("aff", "r1"))
+
+
+def test_differing_cells_names_the_rows_that_differ():
+    x = np.zeros((224, 6), np.int8)
+    y = x.copy()
+    y[77, 3] = 1
+    y[5, 0] = -1
+    assert RCELLS.differing_cells(x, x) == [] and RCELLS.differing_cells(x, y) == [5, 77]
+    with pytest.raises(AssertionError):
+        RCELLS.differing_cells(x, y[:, :5])
+
+
+# ---------------------------------------------------------------- the CLIP checks fail on a changed cell (L3)
+
+def test_check_brainstorm_names_a_changed_cell():
+    rec = good_clip_record()
+    RCELLS.check_brainstorm(rec)
+    for key in ("aff", "cf", "r1_fused", "r1_counterpart"):
+        bad = dict(rec, **{key: [rec[key][0], (rec[key][1] + 8) % 224]})
+        with pytest.raises(AssertionError, match=key):
+            RCELLS.check_brainstorm(bad)
+
+
+# ---------------------------------------------------------------- the episodes and the stack checks (L6, L1)
+
+def test_check_episode_sha_compares_with_the_frozen_hashes(monkeypatch):
+    want = {pair: f"{i:064x}" for i, pair in enumerate(R.PAIR_NAMES)}
+    monkeypatch.setattr(E, "identity_targets", lambda: {R.DEV_SEED: {"n_per_pair": 4096, "episodes_sha256": dict(want)}})
+    RCELLS.check_episode_sha(dict(want))
+    bad = dict(want, **{R.PAIR_NAMES[0]: "f" * 64})
+    with pytest.raises(AssertionError, match=R.PAIR_NAMES[0]):
+        RCELLS.check_episode_sha(bad)
+
+
+def stack_f(n=6, seed=0):
+    rng = np.random.default_rng(seed)
+    stack = {d: rng.normal(size=(n, len(RB.A0), RB.K_CAND)).astype(np.float32) for d in RB.DIRECTIONS}
+    fa = rng.normal(size=(n, RB.N_FEATURES))
+    fb = rng.normal(size=(n, RB.N_FEATURES))
+    for j in range(len(RB.A0)):
+        fb[:, 6 * j + 2] = -fa[:, 6 * j + 2]
+    return SimpleNamespace(n=n, stack=stack, F={"a": fa, "b": fb})
+
+
+def test_check_stack_f_is_the_stack_f_and_delta_part_of_validate():
+    b = stack_f()
+    RB.check_stack_f(b)
+    bad = stack_f()
+    bad.stack["i2t"][2, 1, 3] = np.nan
+    with pytest.raises(AssertionError, match="stack"):
+        RB.check_stack_f(bad)
+    bad = stack_f()
+    bad.F["a"][1, 4] = np.inf
+    with pytest.raises(AssertionError, match="F/a"):
+        RB.check_stack_f(bad)
+    bad = stack_f()
+    bad.F["b"][0, 2] += 1.0
+    with pytest.raises(AssertionError, match="Delta"):
+        RB.check_stack_f(bad)
+    bad = stack_f()
+    bad.F["a"] = bad.F["a"].astype(np.float32)
+    with pytest.raises(AssertionError, match="F/a"):
+        RB.check_stack_f(bad)
 
 
 # ---------------------------------------------------------------- the CLIP check (inside the script)
