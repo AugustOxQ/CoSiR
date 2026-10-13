@@ -1,6 +1,6 @@
 """Frozen-backbone feature extraction for the later CVPR experiments (plan Task 16, E4).
 
-    python scripts/extract_features.py --dataset NAME --backbone {clip_b32,qwen3vl_emb_2b} [--limit N]
+    python scripts/extract_features.py --dataset NAME --backbone {clip_b32,qwen3vl_emb_2b,siglip2_so400m} [--limit N]
 
 Writes /data/SSD2/pre_extract/<dataset>/<backbone>/{img.npy, txt.npy, index.json} (float16, L2-normalised) with a
 progress.json resume file. With --limit the output goes to /data/SSD2/pre_extract/_smoke/... instead, so a smoke run
@@ -35,7 +35,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 PRE_EXTRACT = Path("/data/SSD2/pre_extract")
-CLIP, QWEN = "clip_b32", "qwen3vl_emb_2b"
+CLIP, QWEN, SIGLIP2 = "clip_b32", "qwen3vl_emb_2b", "siglip2_so400m"
 ARTELINGO_ANN = Path("/data/PDD/artelingo/artelingo_train.json")
 ARTELINGO_FEATURES = "/data/SSD2/pre_extract/artelingo/features"
 ARTELINGO_IMAGES = Path("/data/PDD/wikiart_proj/wikiart")
@@ -52,14 +52,14 @@ DILATION = 0.7        # GeneCIS datasets/vaw_dataset.py
 PAD_CROP = True
 
 ALLOWED = {
-    "artelingo_full": [QWEN],
-    "semart": [CLIP, QWEN],
+    "artelingo_full": [QWEN, SIGLIP2],
+    "semart": [CLIP, QWEN, SIGLIP2],
     "coco_train2014": [CLIP, QWEN],
     "genecis_vg_crops": [CLIP, QWEN],
     "genecis_coco": [QWEN],
 }
 # batch sizes chosen to fit well under ~20 GB on an otherwise idle 24 GB GPU
-BATCH = {CLIP: dict(img=256, txt=512), QWEN: dict(img=32, txt=128)}
+BATCH = {CLIP: dict(img=256, txt=512), QWEN: dict(img=32, txt=128), SIGLIP2: dict(img=32, txt=256)}
 IMG_CHUNK, TXT_CHUNK = 256, 4096
 
 
@@ -132,7 +132,9 @@ def adapter_artelingo_full(annotations_path=ARTELINGO_ANN, image_dir=ARTELINGO_I
     if sample_ids is None:
         from src.utils import FeatureManager
         sample_ids = np.asarray(FeatureManager(storage_dir=ARTELINGO_FEATURES).get_all_sample_ids())
-    sample_ids = np.asarray(sample_ids, dtype=np.int64)
+    sample_ids = np.asarray(sample_ids)
+    assert sample_ids.ndim == 1 and sample_ids.dtype == np.int64
+    assert ((sample_ids >= 0) & (sample_ids < len(ann))).all()
     if expected is not None and len(sample_ids) != expected[1]:
         raise ValueError(f"expected {expected[1]} captions, got {len(sample_ids)}")
     img_row: dict = {}
@@ -147,6 +149,7 @@ def adapter_artelingo_full(annotations_path=ARTELINGO_ANN, image_dir=ARTELINGO_I
         tmeta.append({"sample_id": sid, "painting": p, "img": img_row[p]})
     if expected is not None and len(images) != expected[0]:
         raise ValueError(f"expected {expected[0]} paintings, got {len(images)}")
+    assert len(texts) == len(tmeta) == len(sample_ids)
     image_dir = Path(image_dir)
     return Spec(images, lambda i: _open_rgb(image_dir / images[i]["image"]), texts, tmeta)
 
@@ -277,11 +280,14 @@ def apply_limit(spec: Spec, limit: Optional[int]) -> Spec:
 
 # ---------------------------------------------------------------- extraction
 def count_truncated(enc, texts) -> int:
-    """Texts that the encoder's tokenizer would cut: more than 77 CLIP tokens, or more than 512 tokens of the full
-    Qwen prompt (chat template included, so the generation suffix is lost for these)."""
+    """Texts that the encoder's tokenizer would cut: more than 77 CLIP tokens, 64 lower-cased SigLIP 2 tokens, or
+    512 tokens of the full Qwen prompt (chat template included, so the generation suffix is lost for these)."""
     if enc.name == CLIP:
         tok, limit, wrap = enc.p.tokenizer, 77, (lambda t: t)
+    elif enc.name == SIGLIP2:
+        tok, limit, wrap = enc.p.tokenizer, 64, str.lower
     else:
+        assert enc.name == QWEN
         tok, limit, wrap = enc.p.tokenizer, 512, (lambda t: enc._prompt([{"type": "text", "text": t}]))
     n = 0
     for i in range(0, len(texts), 2048):
@@ -328,7 +334,8 @@ def verify(dataset, backbone, root=PRE_EXTRACT) -> dict:
     return res
 
 
-def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset="", log=print) -> dict:
+def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset="", log=print,
+            batch_img=None, batch_txt=None) -> dict:
     out = Path(out)
     index_path, prog_path = out / "index.json", out / "progress.json"
     if index_path.exists() and not (overwrite or smoke):
@@ -347,7 +354,8 @@ def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset=""
     mode = "r+" if resume else "w+"
     img = open_memmap(out / "img.npy", mode=mode, dtype=np.float16, shape=(n_img, dim))
     txt = open_memmap(out / "txt.npy", mode=mode, dtype=np.float16, shape=(n_txt, dim))
-    bs = BATCH[enc.name]
+    bs = dict(img=batch_img or BATCH[enc.name]["img"], txt=batch_txt or BATCH[enc.name]["txt"])
+    assert bs["img"] > 0 and bs["txt"] > 0
 
     def save():
         img.flush(); txt.flush()
@@ -392,7 +400,7 @@ def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset=""
     del img, txt
     index = {"dataset": dataset, "backbone": enc.name, "smoke": smoke, "dtype": "float16", "dim": dim,
              "n_images": n_img, "n_texts": n_txt, "n_texts_truncated": prog["n_truncated"],
-             "truncation_limit": 77 if enc.name == CLIP else 512, "extra": spec.extra,
+             "truncation_limit": {CLIP: 77, SIGLIP2: 64, QWEN: 512}[enc.name], "extra": spec.extra,
              "images": spec.images, "texts": spec.text_meta}
     with open(index_path, "w") as f:
         json.dump(index, f)
@@ -404,29 +412,47 @@ def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset=""
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--dataset", choices=sorted(ADAPTERS))
-    ap.add_argument("--backbone", choices=[CLIP, QWEN])
+    ap.add_argument("--backbone", choices=[CLIP, QWEN, SIGLIP2])
     ap.add_argument("--verify", nargs=2, metavar=("DATASET", "BACKBONE"),
                     help="read-only finite/norm gate on a sealed output")
     ap.add_argument("--limit", type=int, default=None, help="first N images (smoke; writes under _smoke/)")
     ap.add_argument("--overwrite", action="store_true")
     ap.add_argument("--device", default="cuda")
+    ap.add_argument("--out-root", type=Path, default=PRE_EXTRACT)
+    ap.add_argument("--artelingo-ann", type=Path, default=ARTELINGO_ANN)
+    ap.add_argument("--artelingo-images", type=Path, default=ARTELINGO_IMAGES)
+    ap.add_argument("--semart-dir", type=Path, default=SEMART_DIR)
+    ap.add_argument("--sample-ids", type=Path, help="int64 ArtELingo caption row order (.npy)")
+    ap.add_argument("--batch-img", type=int)
+    ap.add_argument("--batch-txt", type=int)
     a = ap.parse_args(argv)
+    assert a.limit is None or a.limit > 0
+    assert a.batch_img is None or a.batch_img > 0
+    assert a.batch_txt is None or a.batch_txt > 0
+    assert a.sample_ids is None or a.dataset == "artelingo_full"
     if a.verify:
-        res = verify(*a.verify)
+        root = a.out_root / "_smoke" if a.limit is not None else a.out_root
+        res = verify(*a.verify, root=root)
         print(json.dumps(res))
         raise SystemExit(0 if res["ok"] else 1)
     if not (a.dataset and a.backbone):
         ap.error("--dataset and --backbone are required")
     if a.backbone not in ALLOWED[a.dataset]:
         raise SystemExit(f"{a.dataset} is extracted with {ALLOWED[a.dataset]} only")
-    spec = apply_limit(ADAPTERS[a.dataset](), a.limit)
+    kw = {}
+    if a.dataset == "artelingo_full":
+        kw = dict(annotations_path=a.artelingo_ann, image_dir=a.artelingo_images,
+                  sample_ids=np.load(a.sample_ids, allow_pickle=False) if a.sample_ids is not None else None)
+    elif a.dataset == "semart":
+        kw = dict(semart_dir=a.semart_dir)
+    spec = apply_limit(ADAPTERS[a.dataset](**kw), a.limit)
     print(f"{a.dataset}: {len(spec.images)} images, {len(spec.texts)} texts", flush=True)
     from src.data.feature_extract import load_encoder
     enc = load_encoder(a.backbone, a.device)
-    out = out_dir_for(a.dataset, a.backbone, smoke=a.limit is not None)
+    out = out_dir_for(a.dataset, a.backbone, smoke=a.limit is not None, root=a.out_root)
     t = time.time()
     prog = extract(spec, enc, out, overwrite=a.overwrite, smoke=a.limit is not None, dataset=a.dataset,
-                   log=lambda s: print(s, flush=True))
+                   log=lambda s: print(s, flush=True), batch_img=a.batch_img, batch_txt=a.batch_txt)
     print(json.dumps({k: prog[k] for k in ("n_img", "n_txt", "n_truncated", "img_seconds", "txt_seconds",
                                            "index_sha256")}), flush=True)
     print(f"done {out} in {time.time() - t:.0f}s")
