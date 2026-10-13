@@ -75,8 +75,9 @@ the same way, with `--out` in `rd9_out/` (the comparator writes only below `rede
 
 Comparison checks counts, points, both intervals, ordering and pass flags, episode hashes, and all 30 relevant
 scorer/metric arrays plus clusters/pair/seed indices. Missing keys fail. R9 pass files must use the R6 field names
-(or the documented aliases in the comparator); two-level files need `tested`, `holm_order_level1`,
-`holm_order_level2`. An optional pair of `--derived-episodes`/`--reported-episodes` compares aggregate NPZ arrays.
+(or the documented aliases in the comparator); two-level files carry `holm_order` as the runner's
+`{level1, level2}` dict (level 2's Holm is computed even after a level-1 fail); a check's `tested` defaults to true
+when `holm_order` is present. An optional pair of `--derived-episodes`/`--reported-episodes` compares aggregate NPZ arrays.
 
 For the already-completed phase-2 selection regression, use `rd9_phase2.py --read H8 --mode selection`; compare its
 JSON to R6's `seed42_pass_counts.json` and its arrays to the independently validated phase-1 array archive. The
