@@ -158,6 +158,14 @@ def provenance(own,reported_path,raw,report):
                 held_pass_sha256=hashlib.sha256(raw).hexdigest(),rederived_counts=counts)
 
 
+def phase1_certificate(own,pins_path):
+    """Bind the independently produced phase-1 inputs to the pins compared now."""
+    from rd9_inputs import verify_reads
+    assert own['inputs'].get(str(pins_path),{}).get('sha256')==sha_file(pins_path), 'phase-1 pins binding missing'  # guard:preread_compare_pins
+    verify_reads(own['inputs'])  # guard:preread_compare_sources
+    return dict(phase=1,pins_sha256=sha_file(pins_path))
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--derived',type=Path,required=True)
@@ -181,7 +189,11 @@ def main():
     own=json.loads(args.derived.read_text())
     c=Comparison()
     extra={}
-    if args.phase1:
+    if args.phase1 or args.clip_phase1:
+        pins_path=args.pins or HERE/('pins_clip.json' if own['backbone']=='clip_b32' else f"pins_{own['backbone']}.json")
+        extra.update(phase1_certificate(own,pins_path))
+        extra['independent_files']={'record':str(args.derived.resolve()),'arrays':str(args.derived_arrays.resolve())}
+    if args.phase1 and args.backbone!='clip_b32':
         from rd9_inputs import Inputs
         assert args.backbone==own['backbone'], 'phase-1 backbone mismatch'
         inputs=Inputs(args.backbone,args.pins)
@@ -190,7 +202,7 @@ def main():
         seed42=inputs.pin_record.get('seed42',inputs.pin_record.get('seed42_record',{}))
         compare_phase1(c,own,arrays,inputs.json('cells_seed42'),inputs.json('picks_seed42'),
                        inputs.json('baselines_seed42'),inputs.json('rc_tau'),seed42)
-    elif args.clip_phase1:
+    elif args.clip_phase1 or (args.phase1 and args.backbone=='clip_b32'):
         assert own['backbone']=='clip_b32'
         pass_path=T/'20261125_artelingo_held_test/results/seed42_pass_counts.json'
         report=json.loads(pass_path.read_text())
@@ -207,6 +219,10 @@ def main():
         c.value('picks.taus',own['picks']['taus'],tau)
         r3=T/'20261121_round3_affect_gate/results/seed42_arrays.npz'
         with np.load(args.derived_arrays) as arrays:
+            for name in ('B','B0','B1'):
+                values=arrays.get(name+'__r1')
+                got=None if values is None else 100*float(np.mean(values))
+                c.value('seed42.mean_r1.'+name,got,picked.get('mean_r1',{}).get(name))
             required=[k for k in arrays.files if k.startswith(('aff_fused__','aff_cf__','aff_gate__','P__','margin__','pick__'))]
             required+=['cl','pair_index','parity','taus','aff_fused_cells','aff_cf_cells','aff_sigma']
         c.arrays(args.derived_arrays,r3,required)
@@ -279,10 +295,24 @@ def compare_phase1(c,own,arrays,cells,picks,baselines,tau,seed42):
         c.value('seed42.checks.'+j+'.point',own['stats']['checks'][j]['point'],target.get('point'))
         c.value('seed42.checks.'+j+'.n',own['stats']['checks'][j]['n'],target.get('n_j',target.get('n')))
     hashes=seed42.get('array_hashes',{})
+    if not hashes and 'arrays' in seed42:
+        # Stage 2 records the 96 stage-0a keys with their archive namespaces.
+        # Phase 1 independently exposes the primary scorers and reader inputs;
+        # R1 and PM belong to the post-verdict phase, not this comparison.
+        hashes={}
+        for key,entry in seed42['arrays'].items():
+            prefix,_,name=key.partition('/')
+            if prefix=='per_anchor_seed42' and name=='anchor_group': name='cl'
+            if name in arrays: hashes[name]=entry
+        required={f'{arm}__{metric}' for arm in ('aff_fused','aff_cf','cosine','rca')
+                  for metric in ('r1','gain','other','swap','strict')}
+        required|={'cl','pair_index','parity','aff_fused_cells','aff_cf_cells'}
+        required|={f'{prefix}__{side}' for prefix in ('aff_gate','P','margin','pick') for side in ('a','b')}
+    else:
+        required={f'{arm}__{metric}' for arm in ('B','B0','aff_fused','aff_cf','cosine','rca')
+                  for metric in ('r1','gain','other','swap','strict')}
     # Every recorded per-anchor array, plus all primary scorer arrays, must be present.
     assert hashes, 'pins must include seed42.array_hashes'
-    required={f'{arm}__{metric}' for arm in ('B','B0','aff_fused','aff_cf','cosine','rca')
-              for metric in ('r1','gain','other','swap','strict')}
     for key in sorted(set(hashes)|required):
         entry=hashes.get(key)
         if entry is None:

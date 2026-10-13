@@ -61,8 +61,7 @@ SUBDIR_RE = re.compile(r"[A-Za-z0-9_]+")
 READ_SCORERS = S.PRIMARY_SCORERS
 READ_KEYS = READ_SCORERS + S.EXTRA_KEYS
 SIGMA_KEYS = ("sigma_a2", "sigma_eps2")
-SMOKE_RECORDS = {k: "smoke_record" + ("" if k == "smoke" else "_" + k) + ".json"
-                 for k in ("smoke", "fix1", "crash1", "reserve")}
+SMOKE_RECORDS = AR.SMOKE_RECORDS
 VALUE_SETS_PATH = R.R6D / "results/value_sets.json"
 VALUE_SETS_SHA = "4ea6d33853e5516adc57a868194a03ab20963bcfe6f646df355a7e72d1970369"
 SIGMA_CLIP_SHA = "bc4b0a92d376b2fdf47da2aa08303a5bb2266a29daf85621ca97ec753bef5661"
@@ -704,9 +703,16 @@ class A28EpisodeRecorder(EpisodeRecorder):
         write_started(self.started, self.copy_to, rec)
 
 
-def setup_a28(env, backbone, smoke):
+def setup_a28(env, backbone, smoke, inputs_only=False):
     """One pinned row space. The smoke checks real A28 inputs without constructing an episode on them."""
-    real = AD.load_a28(backbone)
+    if inputs_only or smoke:
+        # Keep the real loader's joins/masks, projecting no label column from disk.
+        from run_r9_preread import input_read_set
+        from unittest.mock import patch
+        with patch.object(AD, 'load_read_set', input_read_set):
+            real = AD.load_a28(backbone)
+    else:
+        real = AD.load_a28(backbone)
     if smoke:
         inputs = AC.A28Inputs(real, env.heads)
         B.model_inputs(inputs, backbone)  # A3 codes and their NaN masks; no label, episode or score
@@ -725,6 +731,12 @@ def setup_a28(env, backbone, smoke):
                                read_set_sha256=R.sha256_bytes(rows.tobytes()),
                                **{a: env.labels[a][rows] for a in R.ASPECTS})
     else:
+        if inputs_only:
+            for a in R.ASPECTS:
+                delattr(real, a)
+            ctx = AC.A28Inputs(real, env.heads)
+            codes = B.model_inputs(ctx, backbone)
+            return SimpleNamespace(inputs=ctx, codes=codes)
         tab = AD.load_read_set()
     files = _read_json(AD.PINS_PATH)['files']
     vrec = _read_json(files['results/value_sets_a28.json']['path'])
@@ -884,6 +896,8 @@ def run_held(backbone, read, after_crash=False, fix=None, reserve=False, results
                        'at most one of --after-crash, --fix 1, --reserve')
         variant = 'reserve' if reserve else 'fix1' if fix else 'held'
         go = refuse_or_go(results, ledger or LEDGER, read, backbone, variant, after_crash, folder)
+        from run_r9_preread import preread_guard
+        preread_guard(results, read, variant, after_crash, here)  # guard:preread_launch
         smoke = smoke_guard(results, variant, here)
         a28 = read in A28_READS
         spec = SimpleNamespace(backbone=backbone, read=read, mode='a28' if a28 else 'held', names=go.names,

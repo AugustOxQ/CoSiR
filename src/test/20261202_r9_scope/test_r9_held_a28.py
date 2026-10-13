@@ -208,9 +208,10 @@ def test_a28_guard_mutant(guard, case, monkeypatch, tmp_path):
 
 def test_a28_guard_table_covers_all_new_markers():
     from test_r9_held import GUARDS as HELD_GUARDS, HERE
+    from test_r9_preread import HELD_GUARDS as PREREAD_GUARDS
     markers = re.findall(r'# guard:(\w+)', (HERE / 'run_r9_held.py').read_text())
     assert len(markers) == len(set(markers))
-    assert set(markers) - set(HELD_GUARDS) == set(GUARDS)
+    assert set(markers) - set(HELD_GUARDS) - PREREAD_GUARDS == set(GUARDS)
 
 
 @pytest.mark.parametrize('read', ['H8', 'H9', 'H10'])

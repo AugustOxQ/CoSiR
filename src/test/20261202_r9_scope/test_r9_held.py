@@ -90,6 +90,9 @@ def case(tmp_path, monkeypatch):
 
 
 def configure(mod, c, monkeypatch):
+    # These scenarios isolate held guards; ticket 22 tests the new launch gate.
+    import run_r9_preread
+    monkeypatch.setattr(run_r9_preread, 'preread_guard', lambda *a: {})
     monkeypatch.setattr(mod, "runner_sha256", lambda: "a" * 64)
     monkeypatch.setattr(mod.R, "pins_path", lambda b: c.pins)
     monkeypatch.setattr(mod, "amsterdam_today", lambda: date(2026, 10, 18))
@@ -282,7 +285,8 @@ def test_guard_table_covers_every_marker():
     markers = re.findall(r"# guard:(\w+)", (HERE / "run_r9_held.py").read_text())
     assert len(markers) == len(set(markers))
     from test_r9_held_a28 import GUARDS as A28_GUARDS
-    assert set(markers) == set(GUARDS) | set(A28_GUARDS)
+    from test_r9_preread import HELD_GUARDS as PREREAD_GUARDS
+    assert set(markers) == set(GUARDS) | set(A28_GUARDS) | PREREAD_GUARDS
 
 
 @pytest.mark.parametrize("read", ["H6", "H7"])
