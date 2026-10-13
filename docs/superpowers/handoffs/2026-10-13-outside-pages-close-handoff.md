@@ -34,7 +34,7 @@ after the first page; publish all three pages.
 
 ## 4. Open points for the next step
 
-- Minor: should box 2 of the head-reader figure (first page) show the heads? Not answered.
+- Settled: the head-reader figure (first page) stays as it is (user, 2026-10-13).
 - The next outside-view report would cover round 8 (ended 2026-10-13 with no pick) and round 9, once a stage report
   covers them.
 
