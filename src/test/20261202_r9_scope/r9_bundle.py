@@ -184,18 +184,20 @@ def check_readers(readers):
 
 def check_context(ctx):
     """The context fields the bundle relies on: n, pair index and parity as EvalContext's; every episode member a row
-    of the context (rule section 5 item 5); cl = groups[anchor] (round 3's final review N11)."""
+    of the context (rule section 5 item 5); cl = groups[anchor] (round 3's final review N11). A context may carry its own
+    ``admitted`` table of (mode, seed) -> episodes per pair (A28Context's), RowContext's is X.ADMITTED; the row space's
+    size is len(ctx.in_rows) (ticket 18)."""
     n = int(ctx.n)
     ep = ctx.pooled
     _require(n == len(R.PAIRS) * int(ctx.n_per_pair) == len(ep.anchor) and ep is ctx.eps.pooled
-             and X.ADMITTED.get((ctx.mode, int(ctx.seed))) == int(ctx.n_per_pair),
+             and getattr(ctx, "admitted", X.ADMITTED).get((ctx.mode, int(ctx.seed))) == int(ctx.n_per_pair),
              f"{n} episodes of {ctx.mode} seed {ctx.seed}: one seed's pooled episodes (3 x its admitted "
              f"episodes per pair) are expected")  # guard:per_seed
     _require(np.array_equal(ctx.pair_index, np.repeat(np.arange(len(R.PAIRS)), ctx.n_per_pair))
              and np.array_equal(ctx.parity, np.arange(n) % 2),
              "pair_index or parity is not EvalContext's")
     _require(np.array_equal(ctx.anchor, ep.anchor), "ctx.anchor is not the pooled episodes' anchor")
-    in_rows = np.zeros(R.N_ROWS, dtype=bool)
+    in_rows = np.zeros(len(ctx.in_rows), dtype=bool)         # R.N_ROWS for RowContext; the A28 row space's n for A28Context
     in_rows[np.asarray(ctx.rows)] = True
     _require(np.array_equal(in_rows, ctx.in_rows) and np.array_equal(ctx.selection, ctx.rows),
              "ctx.in_rows or ctx.selection is not ctx.rows")
@@ -297,6 +299,25 @@ def build_bundle_r6(ctx, readers, pm, backbone="clip_b32") -> SimpleNamespace:
     bundle.checks.update(validate(bundle))
     bundle.build_s = time.time() - t0
     log(f"bundle done [{bundle.build_s:.0f}s]")
+    return bundle
+
+
+# ---------------------------------------------------------------- the ArtELingo-28 bundle (ticket 18)
+
+def build_bundle_a28(ctx, readers, pm, backbone) -> SimpleNamespace:
+    """build_bundle_r6 on an r9_a28_context.A28Context (mode "a28", episodes of ticket 17 in A28 row positions), with
+    the backbone's pinned files and everything fitted on ArtELingo (the heads inside the context, ``pm`` from fit_pm,
+    ``readers`` from load_readers). Adds backbone, read_set_sha256 and the episodes' language / part-hash / set-aside
+    records (None when the episodes carry none) to the bundle. Scoring (picks, cells, tau, lambdas) is the held runner's."""
+    _require(getattr(ctx, "mode", None) == "a28" and getattr(ctx, "backbone", None) == backbone,
+             f"build_bundle_a28 needs an a28 context of {backbone}, got mode {getattr(ctx, 'mode', None)!r} of "
+             f"{getattr(ctx, 'backbone', None)!r}")
+    bundle = build_bundle_r6(ctx, readers, pm, backbone)
+    eps = ctx.eps
+    bundle.backbone = backbone
+    bundle.read_set_sha256 = ctx.read_set_sha256
+    for name in ("language", "part_sha", "shares", "set_aside", "set_aside_reasons"):
+        setattr(bundle, name, getattr(eps, name, None))
     return bundle
 
 
