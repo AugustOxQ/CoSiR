@@ -42,6 +42,7 @@ git); the run handoff is `docs/superpowers/handoffs/2026-10-12-r8-run-handoff.md
 | 2026-10-13 11:20 | `gate_verdict.json` written (rule SHA-256 18b4e063…, smoke false). C13: `rederive/trigger_rederive.json` and `rederive/gate_rederive.json` both agree, 0 disagreements. NBC triggered (none of the six NB scorers passed; source R1_NB33, strength 0.33) and ran |
 | 2026-10-13 11:20 | Gate verdict: no main pick, not promising (main line fails at the gate, D31); no screen pick. All 20 main scorers below AFF on SC3 (points −0.47 to −0.80, every upper bound below 0); FC4 to FC6 dropped (D21). Screen: best R1_DI +0.285 [−0.012, +0.592], SC4 style −63 against −49; R1_SG +0.059; AL below. Rule §8: no pick in either track, round 8 ends at the gate, AFF stays current best; no held read, no `HELD_RULE.md` |
 | 2026-10-13 11:31 | CPU queue done: 81 of 81 steps ok (descriptive, label-free and harm steps included). Gate phone note sent 11:33 |
+| 2026-10-13 11:54 | Reports checked in the `r8 run 2` chat. Auto report: claim review (Sonnet, `.scratch/r8-grouping/notes/claim_review.md`): every number re-derived, no wrong number; 3 must-fix (non-neutral options in the brief, a wrong stray paragraph, "DINOv2 alone is near the bar") and 17 minor items, fixed. User-read report: cold read (Haiku) and fidelity check (Sonnet); readings moved into the folded block, "after repeated selection" added, one wave of fixes. Both reports now say the verdict does not depend on amendment 1 (all six view-grouping scorers fail the gate) |
 
 ## For the report
 
