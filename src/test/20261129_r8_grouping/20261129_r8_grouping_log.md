@@ -39,6 +39,9 @@ git); the run handoff is `docs/superpowers/handoffs/2026-10-12-r8-run-handoff.md
 | 2026-10-13 07:11 and 08:11 | FC5 (w 0.80) and FC6 (w 1.60) failed D21 at 3,601 s (297 and 299 of 300 epochs done, median 12.3 and 12.2 s per epoch); dropped under the rule, as predicted at 06:15 |
 | 2026-10-13 08:14 to 09:06 | Encoders: AL ok (08:14), DI ok (08:23), SG ok (09:06); `stageE_{AL,DI,SG}.json` pass true (ESC1) |
 | 2026-10-13 09:06 | GPU queue done (exit 1: 10 ok; FC4, FC5, FC6 not ok, all D21 drops under the rule). GPU free from here; the CPU queue runs on (part_SG, then collect, placement, readers, scoring, C13) |
+| 2026-10-13 11:20 | `gate_verdict.json` written (rule SHA-256 18b4e063…, smoke false). C13: `rederive/trigger_rederive.json` and `rederive/gate_rederive.json` both agree, 0 disagreements. NBC triggered (none of the six NB scorers passed; source R1_NB33, strength 0.33) and ran |
+| 2026-10-13 11:20 | Gate verdict: no main pick, not promising (main line fails at the gate, D31); no screen pick. All 20 main scorers below AFF on SC3 (points −0.47 to −0.80, every upper bound below 0); FC4 to FC6 dropped (D21). Screen: best R1_DI +0.285 [−0.012, +0.592], SC4 style −63 against −49; R1_SG +0.059; AL below. Rule §8: no pick in either track, round 8 ends at the gate, AFF stays current best; no held read, no `HELD_RULE.md` |
+| 2026-10-13 11:31 | CPU queue done: 81 of 81 steps ok (descriptive, label-free and harm steps included). Gate phone note sent 11:33 |
 
 ## For the report
 
