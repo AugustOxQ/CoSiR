@@ -5,7 +5,9 @@ loading.
   and, per resample, whether the integer form 4·Σ cluster sums is ≤ 0. Every call asserts that the copy gives
   `cluster_bootstrap`'s own `ci95` exactly (rule §3).
 - `holm`, `boundary`: Holm's step-down in the rule's integer form, 40·(n + 1)·(m + 1 − k) ≤ 5,001.
-- `pass_record`: the content of `held_pass.json` (and of the regression's seed-42 counts file), contracts §6.
+- `pass_record`: the seven-check content of `held_pass.json` (and the regression's seed-42 counts), contracts §6.
+- `pass_record_a28`: r9's two-level H8 to H10 record (rule §4.2); no secondary checks.
+- `sensitivity_record`: r9's per-read P1 to P7 SE, x, x95 (rule §7.4), for either design.
 - `sigma_split`, `detectable`: the sensitivity inputs and the detectable margins of rule §6.5 and §8.2.
 
 Units: per-episode differences go in as FRACTIONS (as `per_anchor` returns them); points and intervals come out in R@1
@@ -40,6 +42,11 @@ QUARTER_TOL = 1e-9     # |4·v − rint(4·v)| allowed per episode (float noise)
 MAX_ABS_DIFF = 2.0     # a paired per-episode difference of R@1 or gain fractions lies in [−2, 2] (catches ×100 inputs)
 
 CHECKS = ("P1", "P2", "P3", "P4", "P5", "P6", "P7")      # rule §3; Holm ties in this order
+FAMILIES = {
+    "seven": (("all", CHECKS, 7, "seven"),),
+    "two_level": (("level1", ("P4", "P6"), 2, "level1"),
+                  ("level2", ("P1", "P2", "P3", "P5", "P7"), 5, "level2")),
+}  # r9 rule §4.1, §4.2: (label, names in tie order, m, sensitivity kind); shared with the verdict consumer
 SECONDARY = ("S1", "S2")                                   # rule §4; Holm ties S1 first, tested only after a GO
 M_P, M_S = len(CHECKS), len(SECONDARY)
 AFF = "aff_fused"
@@ -58,11 +65,12 @@ QUANTITIES = {
 }
 assert tuple(QUANTITIES) == CHECKS + SECONDARY
 
-Z_P = 3.532    # rule §8.2: z at one-sided 0.025/7 plus z at 0.8
-Z_S = 3.083    # rule §8.2: z at one-sided 0.025/2 (2.2414) plus z at 0.8 (0.8416)
+Z = {"seven": 3.532, "level1": 3.083, "level2": 3.417}  # r9 rule §7.4: strictest Holm z plus z at 0.8
+Z_P = Z["seven"]     # R6-compatible names (secondary family also has m = 2)
+Z_S = Z["level1"]
 Z_95 = 2.80    # rule §8.2: x95
 
-MODES = ("held", "regression", "smoke")
+MODES = ("held", "regression", "smoke", "a28")
 _HEX64 = re.compile(r"[0-9a-f]{64}")
 
 
@@ -204,7 +212,8 @@ def check_diffs(per_seed, secondary: bool = True) -> dict:
 
 
 def _seed_ok(mode, seeds, per_seed):
-    want = {"held": tuple(R6C.HELD_SEEDS), "regression": (R6C.DEV_SEED,), "smoke": tuple(R6C.SMOKE_SEEDS)}[mode]
+    want = {"held": tuple(R6C.HELD_SEEDS), "regression": (R6C.DEV_SEED,), "smoke": tuple(R6C.SMOKE_SEEDS),
+            "a28": (55, 56, 57)}[mode]
     if tuple(seeds) != want:
         raise AssertionError(f"mode {mode!r} reads seeds {want}, got {tuple(seeds)}")
     if len(per_seed) != len(seeds):
@@ -247,8 +256,29 @@ def pass_record(per_seed, mode: str, seeds, extra: dict, secondary: bool = True)
     smoke's pass file ("smoke"); contracts §6. per_seed: score_seed dicts in seed order (see check_diffs); extra:
     {"episodes_sha256": {seed: {pair: sha}}, "runner_sha256": sha, "module_sha256": {file: sha}}. No verdict.
     secondary=False: no S1 and S2 are computed and the record has no "secondary" key (see check_diffs)."""
+    return _pass_record(per_seed, mode, seeds, extra, secondary, "seven")
+
+
+def pass_record_a28(per_seed, mode: str, seeds, extra: dict, *, set_aside: list,
+                    flagged_languages: list, near_duplicates: dict) -> dict:
+    """Content of held_pass_H8/H9/H10.json; no verdict and no secondary checks.
+
+    Inputs are score_seed dicts and provenance as in pass_record. mode="a28" requires seeds 55,56,57 and writes
+    mode="held"; mode="smoke" requires 9001,9002,9003. Both write design="two_level". Each level's Holm fields
+    are computed even if level 1 fails; the consumer gates level 2. Claim disclosures are supplied by the runner:
+    set_aside [{language, pair, seed}], flagged_languages [str], near_duplicates {cos_099, cos_098}.
+    The caller serializes the returned record under its per-read filename (rule §7.2).
+    """
+    rec = _pass_record(per_seed, mode, seeds, extra, False, "two_level")
+    return {**rec, "set_aside": [dict(s) for s in set_aside], "flagged_languages": list(flagged_languages),
+            "near_duplicates": dict(near_duplicates)}
+
+
+def _pass_record(per_seed, mode, seeds, extra, secondary, design):
     if mode not in MODES:
         raise ValueError(f"mode must be one of {MODES}, got {mode!r}")
+    if mode not in (("a28", "smoke") if design == "two_level" else ("held", "regression", "smoke")):
+        raise ValueError(f"mode {mode!r} does not fit design {design!r}")
     seeds = [int(s) for s in seeds]
     _seed_ok(mode, seeds, per_seed)
     ext = _extra_ok(extra, seeds)
@@ -278,15 +308,50 @@ def pass_record(per_seed, mode: str, seeds, extra: dict, secondary: bool = True)
             out[c] = rec
         return {c: out[c] for c in names}, [r["name"] for r in ranks]
 
-    checks, order = fill(CHECKS, M_P, True)
-    rec = {"rule_sha256": rule, "mode": mode, "seeds": seeds, "n_episodes": int(len(cl)),
+    checks, orders = {}, {}
+    for label, names, m, _ in FAMILIES[design]:
+        entries, orders[label] = fill(names, m, True)
+        if design == "two_level":
+            for entry in entries.values():
+                entry["level"] = 1 if label == "level1" else 2
+        checks.update(entries)
+    checks = {c: checks[c] for c in CHECKS}
+    order = orders if design == "two_level" else orders["all"]
+    rec = {"rule_sha256": rule, "mode": "held" if mode == "a28" else mode, "seeds": seeds, "n_episodes": int(len(cl)),
            "n_clusters": int(len(np.unique(cl))), "checks": checks, "holm_order": order}
+    if design == "two_level":
+        rec["design"] = design
     if secondary:
         rec["secondary"], _ = fill(SECONDARY, M_S, False)   # no pass field: tested only after a GO, by the apply step
     return {**rec, **ext, "time": R6C.amsterdam_now()}
 
 
 # ----------------------------------------------------------------------------------------------------- sensitivity
+def sensitivity_record(sig: dict, M_p, N: int, design: str) -> dict:
+    """Content of sensitivity_<Hn>.json: {P1..P7: {SE, x, x95}}, in R@1 points, including untested checks.
+
+    sig maps each check to the seed-42 {sigma_a2, sigma_eps2} from sigma_split; M_p is the pooled read's positive
+    integer episode counts per anchor painting, N = sum(M_p). design="seven" serves H6/H7; "two_level" serves
+    H8 to H10. Uses the same FAMILIES and Z tables as the apply step. The caller serializes this record under
+    its per-read filename (rule §7.2); it computes no margin or count itself.
+    """
+    if design not in FAMILIES:
+        raise ValueError(f"unknown sensitivity design {design!r}")
+    if set(sig) != set(CHECKS):
+        raise ValueError("sensitivity needs exactly P1 to P7")
+    if isinstance(N, (bool, np.bool_)) or not isinstance(N, (int, np.integer)) or N <= 0:
+        raise ValueError("N must be a positive integer episode count")
+    for c in CHECKS:
+        if not all(np.isfinite(sig[c][key]) and sig[c][key] >= 0 for key in ("sigma_a2", "sigma_eps2")):
+            raise ValueError(f"{c}: variance components must be finite and non-negative")
+    out = {}
+    for _, names, _, kind in FAMILIES[design]:
+        for c in names:
+            se = detectable(sig[c], M_p, N, "P")["SE"]
+            out[c] = {"SE": se, "x": Z[kind] * se, "x95": Z_95 * se}
+    return {c: out[c] for c in CHECKS}
+
+
 def sigma_split(diff, cl) -> dict:
     """Rule §6.5: σ_a² and σ_ε² of a seed's per-episode difference (FRACTIONS in, as round 3), in R@1 points squared,
     taken from round 3's `r3_stats.sensitivity` (R3 rule §6.1's one-way split)."""

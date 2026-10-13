@@ -578,13 +578,17 @@ def routed(monkeypatch):
     return calls
 
 
-def _fake_a3(tmp_path, monkeypatch, *, sha=None, run="A3", picked_sha=None):
+def _fake_a3(tmp_path, monkeypatch, *, sha=None, run="A3", picked_sha=None, smoke=False):
     """A small stand-in A3 checkpoint, its pin and a picked.json; -> the recording ctx."""
     ckpt = tmp_path / "A3.pt"
     ckpt.write_bytes(b"stand-in checkpoint")
     real = R.sha256_file(ckpt)
     picked = tmp_path / "picked.json"
-    picked.write_text(json.dumps({"run": run, "smoke": False, "checkpoint_sha256": picked_sha or real}))
+    rec = {"run": run, "smoke": smoke, "checkpoint_sha256": picked_sha or real}
+    if smoke is None:                       # the picked.json 08 writes for a recipe run: no "smoke" key
+        rec = {"run": run, "backbone": BACKBONE, "seed": 42, "checkpoint": str(ckpt),
+               "checkpoint_sha256": picked_sha or real}
+    picked.write_text(json.dumps(rec))
     calls = {"pins": [], "parts": [], "encoded": []}
     monkeypatch.setattr(R, "input_pins", lambda backbone="clip_b32": calls["pins"].append(backbone)
                         or {B.A3_REL: (ckpt, sha or real)})
@@ -613,6 +617,20 @@ def test_model_inputs_refuses_a_checkpoint_that_is_not_the_pick(tmp_path, monkey
     with pytest.raises(AssertionError, match="not E3's pick"):
         B.model_inputs(ctx, BACKBONE)
     ctx, calls, _ = _fake_a3(tmp_path, monkeypatch, run="A2")
+    with pytest.raises(AssertionError, match="not E3's pick"):
+        B.model_inputs(ctx, BACKBONE)
+    assert calls["encoded"] == []
+
+
+def test_model_inputs_accepts_the_recipe_picked_json_without_a_smoke_key(tmp_path, monkeypatch):
+    """08's r9_recipe_a3 writes picked.json without "smoke" (stage 0b replay, 2026-10-13: KeyError at the cells
+    step); an absent key counts as not smoke, as in 10b's a3_picked_run guard."""
+    ctx, calls, ckpt = _fake_a3(tmp_path, monkeypatch, smoke=None)
+    assert isinstance(B.model_inputs(ctx, BACKBONE), EvalInputs) and calls["encoded"] == [ckpt]
+
+
+def test_model_inputs_refuses_a_smoke_pick(tmp_path, monkeypatch):
+    ctx, calls, _ = _fake_a3(tmp_path, monkeypatch, smoke=True)
     with pytest.raises(AssertionError, match="not E3's pick"):
         B.model_inputs(ctx, BACKBONE)
     assert calls["encoded"] == []

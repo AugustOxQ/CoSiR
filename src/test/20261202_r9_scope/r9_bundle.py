@@ -169,7 +169,9 @@ def model_inputs(ctx, backbone="clip_b32") -> EvalInputs:
     path, sha = R.input_pins(backbone)[A3_REL]
     got = R.assert_input(A3_REL, backbone)
     picked = json.loads(Path(parts(backbone)["picked"]).read_text())
-    _require(got == sha == picked["checkpoint_sha256"] and picked["run"] == "A3" and picked["smoke"] is False,
+    # 08's recipe picked.json has no "smoke" key (absent = not smoke, as 10b's guard:a3_picked_run); E3's has False
+    _require(got == sha == picked["checkpoint_sha256"] and picked["run"] == "A3"
+             and picked.get("smoke", False) is False,
              "A3 checkpoint is not E3's pick (pin, picked.json run and checkpoint_sha256)")
     ic, tc = ctx.encode(path)
     return EvalInputs(ctx.img, ctx.txt, ic, tc)

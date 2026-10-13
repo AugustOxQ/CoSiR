@@ -88,12 +88,12 @@ RESULTS = CM.RESULTS
 SMOKE = CM.SMOKE
 
 P_CHECKS = tuple(ST.CHECKS)
-L1 = ("P4", "P6")                       # level 1, ties P4 first (rule 4.2)
-L2 = ("P1", "P2", "P3", "P5", "P7")     # level 2, ties in this order
+L1 = ST.FAMILIES["two_level"][0][1]       # level 1, ties P4 first (rule 4.2)
+L2 = ST.FAMILIES["two_level"][1][1]       # level 2, ties in the rule's order
 assert P_CHECKS == ("P1", "P2", "P3", "P4", "P5", "P6", "P7") and sorted(L1 + L2) == sorted(P_CHECKS)
 N_BOOT = ST.N_BOOT
 N_LANGUAGES = 27
-Z = {"seven": 3.532, "level1": 3.083, "level2": 3.417}      # rule 7.4: z at the strictest Holm level plus z at 0.8
+Z = ST.Z                     # rule 7.4: one table for the producer and consumer
 Z95 = ST.Z_95
 assert (Z["seven"], Z["level1"], Z95) == (ST.Z_P, ST.Z_S, 2.80)
 
@@ -171,9 +171,7 @@ def contradiction(msg):
 
 def families(read: str) -> list:
     """[(label, names, m, kind)]: one family for H6, H7; two for H8 to H10."""
-    if READS[read]["design"] == "seven":
-        return [("all", P_CHECKS, 7, "seven")]
-    return [("level1", L1, 2, "level1"), ("level2", L2, 5, "level2")]
+    return list(ST.FAMILIES[READS[read]["design"]])
 
 
 def kind_of(read: str, name: str) -> str:
@@ -428,7 +426,8 @@ def decide(rec: dict, sens: dict, read: str, rederived: dict = None) -> dict:
                         for e in recomputed if e["near_boundary"])
 
     if READS[read]["design"] == "seven":
-        hp = holm_ranks({nm: checks[nm]["n"] for nm in P_CHECKS}, P_CHECKS, 7)
+        _, names, m, _ = families(read)[0]
+        hp = holm_ranks({nm: checks[nm]["n"] for nm in names}, names, m)
         assert_consistent(checks, hp, "check")
         if rec["holm_order"] != [e["name"] for e in hp]:
             contradiction("holm_order differs from the order recomputed from the counts (ties P1 to P7)")
@@ -440,8 +439,8 @@ def decide(rec: dict, sens: dict, read: str, rederived: dict = None) -> dict:
              "checks": out, "holm_order": [e["name"] for e in hp], "failed": failed,
              "claim": (CLAIM7_A + short + CLAIM7_B + ". " + CLAIM7_NOT) if go else None}
     else:
-        h1 = holm_ranks({nm: checks[nm]["n"] for nm in L1}, L1, 2)
-        h2 = holm_ranks({nm: checks[nm]["n"] for nm in L2}, L2, 5)
+        h1, h2 = [holm_ranks({nm: checks[nm]["n"] for nm in names}, names, m)
+                  for _, names, m, _ in families(read)]
         assert_consistent(checks, h1, "level-1 check")
         assert_consistent(checks, h2, "level-2 check")
         if rec["holm_order"] != {"level1": [e["name"] for e in h1], "level2": [e["name"] for e in h2]}:
