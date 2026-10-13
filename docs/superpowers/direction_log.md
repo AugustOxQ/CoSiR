@@ -9,32 +9,81 @@ and who made each decision. Entries before 2026-10-08 were moved from project me
 fields; their verbatim notes are in `direction_log_raw_2026-10.md`. Older history (before the CVPR plan) is in the
 weekly and stage reports.
 
-## Now (2026-10-12)
+## Now (2026-10-13)
 
-AFF stays the current best (round 6 held GO: +0.60 R@1 over B′(A0); style × genre loses). Round 7 (design L) ended
-NO-GO at its seed-42 gate. Round 8 (decision A, 2026-10-12): grouping work beside the ArtELingo paper with AFF, with a
-hard cut-off on Fri 2026-10-23 for a held-read verdict. Main line: a learned grouping head on frozen CLIP with
-content-group negatives (ii) and FCMI (iii) in CSD's place, gallery images placed by the grouping's own assignment;
-the encoder screen (i) is its own track. Step 3 is done (MCL, ECCV 2024, is the closest prior; the positive pair is
-open); the grill is done (direction log, 2026-10-12 entry); next, the two specs and one build chat. CVPR abstract
-2026-11-10.
+AFF stays the current best (round 6 held GO: +0.60 R@1 over B′(A0); style × genre loses). Round 8 (learned groupings
+and an encoder screen) ended at its seed-42 gate with no pick; the DINOv2 reader is parked. r9 (decisions A and B,
+2026-10-13): AFF stays frozen and its scope grows for the CVPR paper: backbones Qwen3-VL-Embedding-2B, then SigLIP 2;
+CUB and SemArt as scope runs; Affection (with a COCO-category join, after a feasibility check) and ArtELingo-28 as a
+language check; the paper runs in a `claude-paper` chat with ARS review rounds. Next: the grill and the spec in the
+r9 decide chat. CVPR abstract 2026-11-10, paper 2026-11-16.
 
 ## Parked ideas
 
 Candidates proposed since 2026-10-02 but neither chosen nor tried; step 3 reads this list first. Tried-and-killed ideas
 stay in the entries below.
 
-- A wider screen of new style encoders (ALADIN, DINOv2, SigLIP 2) for design L (not chosen at round 7's idea choice, 2026-10-11, for the user's generality principle; taken up as r8's parallel engineering screen, decision A, 2026-10-12; [proposed in](../../src/test/20261126_design_l_style_source/step3_candidates.md), idea 3)
+- The DINOv2 reader as AFF's fourth grouping (r8 screen: +0.285 [−0.012, +0.592] R@1 over AFF, emotion × style −0.38; its lead sits on style × genre, where it is level with its own matched control, −0.07 [−0.43, +0.30]) (deferred by the user, 2026-10-13, "maybe after the main finished if we have time"; [proposed in](../reports/auto/v2/2026-11-29_learned_grouping.md))
 - X-Cluster criteria (a multimodal LLM proposes criteria such as "style") placed under our reader, the comparator reviewers will ask for (paper stage; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §1)
-- COCO-4c (5,000 COCO images labelled for activity, location, mood and time of day, with COCO captions) as the second dataset for a generality test (never tried; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §6)
-- A learned source that cuts across content: a contrastive head on frozen CLIP whose negatives come from the query's own content group (never tried; taken up as r8's main line, decision A, 2026-10-12; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §1)
-- Fair clustering (FCMI) with the content grouping as the protected attribute, as a grouping builder (never tried; its role is open in r8, explainer `docs/user_read/2026-10-12_fcmi_intro.html`; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §1)
+- COCO-4c (5,000 COCO images labelled for activity, location, mood and time of day, with COCO captions) as the second dataset for a generality test (never tried; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §6; r9 step 3: mood is close to affect, but COCO captions rarely state mood, [2026-12-01 note](../reports/literature/2026-12-01_affect_caption_datasets.md))
+- FCMI weights 0.40 to 1.60 with a longer time cap (r8 scored only 0.05 to 0.20, all below AFF; not chosen at r9 step 2, 2026-10-13; [proposed in](../reports/auto/v2/2026-11-29_learned_grouping.md))
 - Dropping the CLIP caption grouping, keeping the affect, image and CSD groupings (deferred by the user after a spike, 2026-10-06; [proposed in](handoffs/2026-10-06-round3-affect-gate-handoff.md))
 - Caption-to-caption agreement to detect the emotion side, with retrained readers for idea 3 (never tried; option (c) in [whats-next](handoffs/2026-10-08-whats-next-handoff.md))
 - Separate gate weights for image and caption queries (never tried, ranked low; [proposed in](../reports/auto/v2/2026-11-20_r1_levers_brainstorm.md), §4 idea 5)
 - Practice-bank detectors with richer negatives or a "none" class (never tried, judged low value; [proposed in](../reports/auto/v2/2026-11-20_r1_levers_brainstorm.md), §4 idea 9)
 - A grouped concept basis (N3) and "infer the aspect name, then embed" (N5) (never tried; their privileged references were never run; [proposed in](../../src/test/20261107_new_method_candidates/synthesis.md), §4.2)
-- Other datasets and paper framings, CUB and SemArt (deferred by the user, 2026-10-07; [proposed in](../reports/stage/2026-10-07_cvpr_readiness.md), §3)
+
+## 2026-10-13 · Round 8: no pick in either track, AFF stays best; next, AFF on more backbones and datasets, and the paper
+
+- **Read:** gate (`results/gate_verdict.json`, 2026-10-13 11:20): no main pick and not promising; no screen pick. Rule
+  §8: round 8 ends at the gate, AFF stays current best, no held read, no `HELD_RULE.md`. Main line: 20 scored scorers,
+  SC3 from −0.466 to −0.802 R@1 points against AFF, every upper bound below 0; the best is extended AFF on FCMI weight
+  0.20, −0.466 [−0.651, −0.288]. FCMI weights 0.40 to 1.60 were dropped by the 60-minute cap (D21), 1 to 3 epochs
+  short. NBC triggered and did not pass. Screen (each encoder in CSD's place): the DINOv2 reader +0.285 [−0.012,
+  +0.592], emotion × style Σ(4d) −63 against the bar −49, genre +19; the SigLIP 2 reader +0.059, style −35 (passes),
+  genre −64 (fails). Reference: raw CSD under own placement, R1 −0.173. Both C13 re-derivations agree (0
+  disagreements).
+- **Amendment 1** (2026-10-13 01:13, made after a result): M4's view-check threshold 0.9999 → 0.999 and a full
+  restart. Lowering: user; the value 0.999: **user, after seeing the recommendation**. The verdict does not depend on
+  it: all six view-grouping scorers fail the gate.
+- **Meaning (C):** "learned groupings on frozen CLIP failed with basically no hope"; DINOv2 is "below the line but seems
+  worth a little digging (not too much)" (user, before seeing ours). The user first read FCMI as having no results
+  because of the cap; after our note that weights 0.05 to 0.20 were scored and all lose to AFF, the user accepted it
+  ("that solved my mis-read of FCMI results"). Ours: the learned groupings fail clearly; DINOv2 is a narrow miss, not a
+  pass; the completed FCMI weights give no trend towards a pass; we recommended closing the round and writing the
+  paper with AFF, with DINOv2 as a later question. The two agree on the verdict; the user wants a little DINOv2 work
+  now, where we would park it.
+- **Asked before A:** does AFF alone pass the CVPR line? Ours: enough to submit (held read passed; external baselines
+  far behind), main-track acceptance doubtful; the first attack is scope (one dataset, one backbone), then the small
+  margin, the mechanism (+0.02 over R1), style × genre and the GoEmotions overlap. The user: AFF "depends too much on
+  the selected encoder and selected dataset. Reviewers will easily attack this point."
+- **Decided (A)** (2026-10-13): stay with AFF, frozen; the grouping line closes. Work on AFF's scope for the CVPR
+  paper:
+  - Backbones: Qwen3-VL-Embedding-2B first, then SigLIP 2; each a claim test with its own held read (user, own pick).
+  - Datasets: both routes, CUB and SemArt as scope runs (the task, the comparators and AFF; no gain expected, a small
+    loss likely, as on style × genre), and a search for a second dataset with affective captions (user, own pick
+    among our three routes, no recommendation shown). The user added ArtELingo-28 as a candidate.
+  - Paper: a `claude-paper` chat with round-by-round ARS review and revision (user, own pick).
+  - DINOv2 reader: parked, "maybe after the main finished if we have time" (**user, after seeing the
+    recommendation**). FCMI with a longer cap: parked (agent default; the user did not take it up).
+  - Type and loop size: open, set at the grill (agent default to propose: a claim test per backbone and dataset, full
+    loop, with step 3 reduced to the dataset search).
+- **Step 3:** literature `docs/reports/literature/2026-12-01_affect_caption_datasets.md`: Affection (85,007 real photos,
+  ArtEmis-style explanations) is the only cross-domain fit, but its release has no second label (a COCO-category join
+  is unverified); EmoSet has many aspects and no captions; ArtELingo-28 is the same domain (1,430 to 2,000 paintings;
+  AFF needs translation or a multilingual emotion classifier there).
+- **Idea (B), the datasets** (2026-10-13; user, own pick, no recommendation shown): both, Affection with a COCO-category
+  join as the second aspect, after a feasibility check (the COCO share of its images, the leakage of object words into
+  explanations, access by the request form, sent by the user), and ArtELingo-28 as a language check. CUB and SemArt
+  stay as scope runs (decision A).
+- **Why:** the paper's first weakness is scope; a frozen AFF on more backbones and datasets answers it without changing
+  the method that the held read tested.
+- **Links:** report `docs/reports/auto/v2/2026-11-29_learned_grouping.md`; user-read
+  `docs/user_read/2026-10-13_learned_grouping.md`; specs `docs/superpowers/specs/2026-10-12-r8-learned-grouping-design.md`
+  and `docs/superpowers/specs/2026-10-12-r8-encoder-screen-design.md`; rule
+  `src/test/20261129_r8_grouping/DECISION_RULE.md` @ fdaee39; run log
+  `src/test/20261129_r8_grouping/20261129_r8_grouping_log.md`; handoffs
+  `docs/superpowers/handoffs/2026-10-12-r8-build-handoff.md` and `docs/superpowers/handoffs/2026-10-13-r9-decide-handoff.md`.
 
 ## 2026-10-12 · Round 7 design L: ceiling CLEAR, gate n = 0, Friday NO-GO; next, a learned grouping across content
 

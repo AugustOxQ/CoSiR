@@ -52,3 +52,9 @@ git); the run handoff is `docs/superpowers/handoffs/2026-10-12-r8-run-handoff.md
   and 04 → 07 run at full size for the first time in this run.
 - FC4 dropped by D21 by about 7 s; run time grows with the FCMI weight (above), so FC5 and FC6 dropped too: the FC sweep
   holds only w 0.05 to 0.20 (FC1 to FC3). Each dropped run missed the cap by 1 to 3 epochs. The build's 54.5 min estimate came from the stage 1 weight only.
+
+## Storage (r9 decide wrap-up, 2026-10-13)
+
+The user approved the storage summary: the FCMI checkpoints, smokes and the old run's bulk files were deleted (about
+109 GB); `results/readers/` and `results/heads/` moved to `/data/SSD2/cosir_r8/results_r8/` with links left in place;
+the old run's records (28 MB) and the rest of `results/` stay. Rows: `/project/claude-config/storage/disk_ledger.md`.
