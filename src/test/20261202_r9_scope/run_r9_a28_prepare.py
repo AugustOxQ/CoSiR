@@ -61,7 +61,7 @@ def main():
            "train_side": info["n_train_side"], "rows": info["n_rows"], "languages": info["n_languages"],
            "english_dropped": info["n_english_dropped"], "style_differs": len(info["style_differs"])}
     assert got == A.EXPECTED, f"counts {got} differ from the rule's {A.EXPECTED}"
-    assert df.held.sum() == int(df[df.held].shape[0]) and df[df.held].painting.nunique() == 248
+    assert df[df.held].painting.nunique() == 248
     assert (df.row_id.diff().dropna() > 0).all()
     assert df.drop(columns="painting").notna().all().all()
 

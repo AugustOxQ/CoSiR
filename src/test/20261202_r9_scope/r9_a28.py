@@ -116,6 +116,8 @@ def build_read_set(csv, trans, held, train_side, names, genre_codes, our_style):
         "style_differs": differs,
     }
     assert info["n_held"] + info["n_new"] == info["n_paintings"], "held and new do not add up to the read paintings"
+    nan = sorted(k for k, v in info["words_median"].items() if not np.isfinite(v))
+    assert not nan, f"no kept row left for {nan}: the median word count is not finite"
     return df, info
 
 
@@ -137,6 +139,7 @@ def language_flags(coverage, words_median, english_median) -> dict:
         rows = c["rows"]
         failed = c["empty_outputs"] + c["outputs_equal_to_source"] + c["hit_max_new_tokens"]
         script = c["code"].rsplit("_", 1)[1]
+        assert np.isfinite(words_median[lang]), f"{lang}: the median word count is not finite"
         ratio = words_median[lang] / english_median
         crit = {
             "proxy": _criterion(bool(c["proxy"]), True, c["proxy"]),

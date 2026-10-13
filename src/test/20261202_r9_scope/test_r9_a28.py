@@ -116,6 +116,23 @@ def test_median_words_after_empty_drops():
     assert info["english_median_words"] == 3.0                        # English rows on read paintings: 4 and 2 words
 
 
+def test_whitespace_only_translation_is_dropped():
+    extra = ("new1", "Hausa", "awe", "Realism", "landscape", "x", "  ")
+    df, info = build(rows=ROWS + [extra])
+    assert df.dropped.tolist() == [False, False, True, False, True]    # the empty and the blank output
+    assert info["dropped_by_language"] == {"Hausa": 2, "chinese": 0}
+
+
+def test_language_with_every_row_dropped_crashes():
+    rows = [r[:6] + ("  ",) if r[1] == "chinese" else r for r in ROWS]
+    with pytest.raises(AssertionError, match="not finite"):
+        build(rows=rows)
+    with pytest.raises(AssertionError, match="not finite"):
+        A.language_flags({"Hausa": {"rows": 10, "code": "hau_Latn", "proxy": False, "empty_outputs": 0,
+                                    "outputs_equal_to_source": 0, "hit_max_new_tokens": 0,
+                                    "outputs_still_in_source_script": 0}}, {"Hausa": float("nan")}, 10.0)
+
+
 # ---------------------------------------------------------------- language flags
 
 def cov(rows=1000, code="xxx_Latn", proxy=False, empty=0, equal=0, maxtok=0, still=0):
@@ -195,6 +212,16 @@ def test_value_sets_are_development_values_eligible_on_kept_rows():
     # an eligible value that is not a development value crashes
     with pytest.raises(AssertionError, match="development"):
         A.value_sets(df, {"emotion": [0], "style": [0], "genre": [3]}, min_paintings=30)
+
+
+def test_value_sets_pool_needs_all_three_labels_known():
+    n = 40
+    paint = [f"p{i}" for i in range(n)] + [f"q{i}" for i in range(n)]
+    # p*: style 0, emotion known; q*: style 1 only on rows whose emotion is unknown (-1)
+    df = pd.DataFrame({"painting": paint, "emotion": [0] * n + [-1] * n, "style": [0] * n + [1] * n,
+                       "genre": 3, "dropped": False})
+    dev = {"emotion": [0], "style": [0, 1], "genre": [3]}
+    assert A.value_sets(df, dev, min_paintings=30) == {"emotion": [0], "style": [0], "genre": [3]}
 
 
 def test_value_sets_record_names():
