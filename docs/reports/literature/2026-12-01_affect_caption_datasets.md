@@ -92,6 +92,19 @@ ARI, AMI, homogeneity, completeness and V-measure, but the text does not name th
 intro calls ArtELingo-28 "about 1.2M art images", which conflicts with the image count in the ArtELingo-28 paper;
 unresolved.
 
+## Addendum: three more datasets from a list the user received (controller, 2026-10-13)
+
+None fits: none has image captions that express affect.
+
+- **WikiArt Emotions** (Mohammad and Kiritchenko, LREC 2018): 4,105 art pieces, mostly paintings, annotated for the
+  emotions evoked by the image, the title and both, a liking score (−3 to +3), and whether a face or body is shown. The
+  only text is the title (checked on https://saifmohammad.com/WebPages/wikiartemotions.html). Paintings again, small,
+  no captions.
+- **EMOTIC** (Kosti et al., CVPR 2017): people in context, 26 emotion categories plus valence, arousal and dominance,
+  per person box. No captions, and the emotion is the depicted person's, not the viewer's (not re-checked here).
+- **MELD** (Poria et al., ACL 2019): emotion and sentiment of utterances in TV dialogue (video, audio, text). The text
+  is speech, not an image caption (not re-checked here).
+
 ## Ranked recommendation
 
 1. **Affection**, with a COCO-category join as the second aspect. Before committing: request the data and check that
