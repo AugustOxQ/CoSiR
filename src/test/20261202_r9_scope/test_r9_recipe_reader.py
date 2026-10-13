@@ -151,9 +151,15 @@ def test_clip_sources_are_round_1s_pins():
     assert src["affect"][2] == "partition_L" and src["csd"][2] == "style_csd" and src["rand"][2] == "style_rand"
 
 
+def write_part_record(part, backbone):
+    """07's `write_part` record next to a partitions file (only the field 09 reads)."""
+    Path(str(part) + ".record.json").write_text(json.dumps({"backbone": backbone}))
+
+
 def test_a_new_backbones_sources_are_its_parts_and_clips_frozen_files(tmp_path):
     part = tmp_path / "partitions.npz"
     np.savez(part, image=np.arange(3), caption=np.arange(3))
+    write_part_record(part, "qwen3vl_emb_2b")
     src = RR.source_pins("qwen3vl_emb_2b", tmp_path)
     for name in ("image", "caption"):
         assert src[name][0] == part and src[name][1] == RR.sha256_file(part) and src[name][2] == name
@@ -243,7 +249,8 @@ def heads(corpus):
         lab = RR.rto_labels(corpus.lab[g], corpus.split.scorer_train, len(corpus.split.groups))
         arrays, prov = RR.fit_crossfit_heads(
             {"img": corpus.data.img_features, "txt": corpus.data.txt_features}, lab, corpus.halves, g,
-            corpus.n_groups[g], n_rows=corpus.params["head_rows"], check_rows=corpus.params["check_rows"])
+            corpus.n_groups[g], n_rows=corpus.params["head_rows"], check_rows=corpus.params["check_rows"],
+            backbone=corpus.backbone)
         out[g] = SimpleNamespace(arrays=arrays, prov=prov, lab=lab)
     return out
 
@@ -284,7 +291,8 @@ def test_a_group_missing_from_a_draw_stops_the_run(corpus):
     lab[lab == 0] = 1                                           # group 0 has no row at all
     with pytest.raises(SystemExit, match="missing"):
         RR.fit_crossfit_heads({"img": corpus.data.img_features, "txt": corpus.data.txt_features}, lab,
-                              corpus.halves, "image", KK, n_rows=corpus.params["head_rows"], check_rows=10_000)
+                              corpus.halves, "image", KK, n_rows=corpus.params["head_rows"], check_rows=10_000,
+                              backbone=corpus.backbone)
 
 
 def test_the_recipe_copy_equals_the_original_head_fit(corpus):
@@ -501,13 +509,14 @@ def test_stages_write_files_with_records_and_never_overwrite(corpus, tmp_path):
          "rb_bank_A0_half0.npz.record.json", "rb_bank_A0_half1.npz", "rb_bank_A0_half1.npz.record.json"])
     rec = json.loads((out / "rb_heads_image.npz.record.json").read_text())
     assert rec["backbone"] == "qwen3vl_emb_2b" and rec["script_sha256"] == R.sha256_file(RR.__file__)
-    assert rec["keys_made"] == ["img", "txt", "filled_by_half", "classes_half0", "classes_half1"]
-    assert rec["keys_copied"] == []
+    assert rec["keys_made"] == ["img", "txt"]                       # the posteriors; the rest equals CLIP's (L8)
+    assert rec["keys_copied"] == ["filled_by_half", "classes_half0", "classes_half1"]
     assert str(corpus.sources["image"][0]) in rec["input_sha256"]
     assert rec["input_sha256"][str(corpus.sources["image"][0])] == corpus.sources["image"][1]
     assert rec["halves_sha256"] == corpus.halves_sha256
     brec = json.loads((out / "rb_bank_A0_half0.npz.record.json").read_text())
-    assert brec["keys_made"] and "block_size" in brec["keys_made"]
+    assert brec["keys_made"] == list(RR.rb.EPISODE_FIELDS)
+    assert brec["keys_copied"] == ["block_pairs", "block_size", "seed", "half"]
     with pytest.raises(FileExistsError):
         RR.stage_heads(corpus, out, ["image"])
     with pytest.raises(FileExistsError):
@@ -528,12 +537,12 @@ def test_the_chain_through_train_and_tau_on_the_synthetic_corpus(corpus, tmp_pat
     import r9_bundle as B
     B.check_readers(pkl)
     F = synthetic_f42(SMALL["n_tau_values"] // 2)
-    RR.stage_tau(corpus, out, F)
+    RR.stage_tau(corpus, out, F, tau_checks(corpus))
     tau = json.loads((out / "rc_tau.json").read_text())
     assert len(tau["taus"]) == 4 and tau["n_values"] == SMALL["n_tau_values"]
     assert json.loads((out / "rc_tau.json.record.json").read_text())["keys_made"] == ["taus"]
     with pytest.raises(FileExistsError):
-        RR.stage_tau(corpus, out, F)
+        RR.stage_tau(corpus, out, F, tau_checks(corpus))
 
 
 def test_train_needs_the_heads_of_this_halves_and_banks(corpus, tmp_path):
@@ -551,6 +560,202 @@ def test_heads_of_other_halves_are_refused_by_train(corpus, tmp_path):
     other = SimpleNamespace(**{**vars(corpus), "halves_sha256": "f" * 64})
     with pytest.raises(AssertionError, match="halves"):
         RR.stage_train(other, out)
+
+
+# ---------------------------------------------------------------- fix round: review of ticket 09
+
+def fake_parts(monkeypatch, backbone, **paths):
+    real = RR.parts
+    monkeypatch.setattr(RR, "parts", lambda b: {**real(b), **paths} if b == backbone else real(b))
+
+
+def tau_checks(corpus, **over):
+    """What `seed42_features` hands to `stage_tau`: the groupings the n6 heads were fit on, and the head inputs."""
+    chk = {"head_groupings": {"partitions_path": str(corpus.sources["image"][0]),
+                              "partitions_sha256": corpus.sources["image"][1],
+                              "label_sha256": {g: RR.rb.sha_array(corpus.lab[g]) for g in RR.A0}},
+           "head_input_sha256": {"/inputs/partitions.npz": corpus.sources["image"][1], "/inputs/prepare.npz": "ab" * 32},
+           "upstream_posterior_sha256": {"/inputs/n6_posteriors.npz": "cd" * 32,
+                                         "/inputs/step1_heads_style.npz": "ef" * 32}}
+    chk.update(over)
+    return chk
+
+
+def trained(corpus, out):
+    RR.stage_heads(corpus, out, list(RR.A0))
+    RR.stage_bank(corpus, out)
+    RR.stage_train(corpus, out)
+
+
+# L1: the default source path of a new backbone
+
+def test_a_new_backbone_without_upstream_reads_its_own_partitions(tmp_path, monkeypatch):
+    part = tmp_path / "own" / "partitions.npz"
+    part.parent.mkdir()
+    np.savez(part, image=np.arange(3), caption=np.arange(3))
+    write_part_record(part, "qwen3vl_emb_2b")
+    fake_parts(monkeypatch, "qwen3vl_emb_2b", partitions=part)
+    src = RR.source_pins("qwen3vl_emb_2b")
+    for name in ("image", "caption"):
+        assert src[name][0] == part and src[name][1] == RR.sha256_file(part) and src[name][2] == name
+        assert src[name][0] != RR.rb.SOURCES[name][0]                  # not CLIP's partitions
+
+
+# L4: --upstream belongs to the backbone
+
+def test_an_upstream_made_for_another_backbone_is_refused(tmp_path):
+    np.savez(tmp_path / "partitions.npz", image=np.arange(3), caption=np.arange(3))
+    write_part_record(tmp_path / "partitions.npz", "siglip2_so400m")
+    with pytest.raises(AssertionError, match="siglip2_so400m"):
+        RR.source_pins("qwen3vl_emb_2b", tmp_path)
+
+
+def test_an_upstream_without_a_record_is_refused(tmp_path):
+    np.savez(tmp_path / "partitions.npz", image=np.arange(3), caption=np.arange(3))
+    with pytest.raises(AssertionError, match="record"):
+        RR.source_pins("qwen3vl_emb_2b", tmp_path)
+
+
+def test_clips_replay_upstream_needs_clips_record_and_clips_pinned_files_need_none(tmp_path):
+    np.savez(tmp_path / "partitions.npz", image=np.arange(3), caption=np.arange(3))
+    write_part_record(tmp_path / "partitions.npz", "clip_b32")
+    assert RR.source_pins("clip_b32", tmp_path)["image"][0] == tmp_path / "partitions.npz"
+    write_part_record(tmp_path / "partitions.npz", "qwen3vl_emb_2b")
+    with pytest.raises(AssertionError, match="clip_b32"):
+        RR.source_pins("clip_b32", tmp_path)
+    assert RR.source_pins("clip_b32")["image"][0] == RR.rb.SOURCES["image"][0]
+
+
+# L6: the standard heads' accuracies are CLIP's
+
+@pytest.mark.parametrize("backbone", ["clip_b32", "qwen3vl_emb_2b"])
+def test_clips_standard_accuracies_are_written_for_clip_only(corpus, backbone):
+    lab = RR.rto_labels(corpus.lab["image"], corpus.split.scorer_train, len(corpus.split.groups))
+    _, prov = RR.fit_crossfit_heads({"img": corpus.data.img_features, "txt": corpus.data.txt_features}, lab,
+                                    corpus.halves, "image", KK, n_rows=corpus.params["head_rows"],
+                                    check_rows=corpus.params["check_rows"], backbone=backbone)
+    for k in ("0", "1"):
+        if backbone == "clip_b32":
+            assert prov[k]["standard_heldout_accuracy"] == {"img": 92.7, "txt": 22.9}
+            assert "standard_heldout_accuracy_unavailable" not in prov[k]
+        else:
+            assert prov[k]["standard_heldout_accuracy"] is None
+            assert "CLIP" in prov[k]["standard_heldout_accuracy_unavailable"]
+
+
+# M1: tau uses the groupings the readers were trained on
+
+def test_tau_refuses_groupings_other_than_the_ones_the_readers_were_trained_on(corpus, tmp_path):
+    out = tmp_path / "m1"
+    trained(corpus, out)
+    F = synthetic_f42(SMALL["n_tau_values"] // 2)
+    other = tau_checks(corpus)
+    other["head_groupings"]["label_sha256"]["image"] = RR.rb.sha_array((corpus.lab["image"] + 1) % KK)
+    with pytest.raises(AssertionError, match="image.*labels"):
+        RR.stage_tau(corpus, out, F, other)
+    assert not (out / "rc_tau.json").exists()
+    RR.stage_tau(corpus, out, F, tau_checks(corpus))                    # the same groupings: accepted
+
+
+def test_tau_refuses_a_partitions_file_other_than_the_heads(corpus, tmp_path):
+    out = tmp_path / "m1b"
+    trained(corpus, out)
+    F = synthetic_f42(SMALL["n_tau_values"] // 2)
+    other = tau_checks(corpus)
+    other["head_groupings"]["partitions_sha256"] = "0" * 64
+    with pytest.raises(AssertionError, match="partitions"):
+        RR.stage_tau(corpus, out, F, other)
+    assert not (out / "rc_tau.json").exists()
+
+
+# L3: the tau record lists the head inputs, with stable keys
+
+def test_tau_record_lists_the_head_inputs_with_absolute_keys(corpus, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    out = Path("relative_out")                                          # --out given relative to the working folder
+    trained(corpus, out)
+    RR.stage_tau(corpus, out, synthetic_f42(SMALL["n_tau_values"] // 2), tau_checks(corpus))
+    rec = json.loads((out / "rc_tau.json.record.json").read_text())
+    shas = rec["input_sha256"]
+    assert all(Path(k).is_absolute() for k in shas), [k for k in shas if not Path(k).is_absolute()]
+    pkl = tmp_path / "relative_out" / "rb_reader_A0.pkl"
+    assert shas[str(pkl)] == RR.sha256_file(pkl)
+    for k, v in {**tau_checks(corpus)["head_input_sha256"], **tau_checks(corpus)["upstream_posterior_sha256"]}.items():
+        assert shas[k] == v
+    for g in RR.A0:                                                     # the heads files the groupings were checked on
+        head = tmp_path / "relative_out" / f"rb_heads_{g}.npz"
+        assert shas[str(head)] == RR.sha256_file(head)
+    for rec_path in out.glob("*.record.json"):                          # every record of the run: no relative key
+        assert all(Path(k).is_absolute() for k in json.loads(rec_path.read_text())["input_sha256"]), rec_path
+
+
+def test_a_relative_upstream_becomes_an_absolute_path(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    Path("up").mkdir()
+    np.savez("up/partitions.npz", image=np.arange(3), caption=np.arange(3))
+    write_part_record(Path("up/partitions.npz"), "qwen3vl_emb_2b")
+    assert RR.source_pins("qwen3vl_emb_2b", Path("up"))["image"][0] == tmp_path / "up" / "partitions.npz"
+
+
+# L2: guards without a test
+
+def test_train_refuses_heads_and_banks_made_from_different_labels(corpus, tmp_path):
+    out = tmp_path / "labels"
+    RR.stage_heads(corpus, out, list(RR.A0))
+    RR.stage_bank(corpus, out)
+    rec_path = out / "rb_bank_A0_half1.npz.record.json"
+    rec = json.loads(rec_path.read_text())
+    rec["label_sha256"]["caption"] = "0" * 64
+    rec_path.write_text(json.dumps(rec))
+    with pytest.raises(AssertionError, match="rb_heads_caption and bank half 1.*different caption labels"):
+        RR.stage_train(corpus, out)
+
+
+def test_a_part_made_for_another_backbone_is_refused(corpus, tmp_path):
+    out = tmp_path / "backbone"
+    RR.stage_heads(corpus, out, list(RR.A0))
+    RR.stage_bank(corpus, out)
+    other = SimpleNamespace(**{**vars(corpus), "backbone": "siglip2_so400m"})
+    with pytest.raises(AssertionError, match="made for qwen3vl_emb_2b, not siglip2_so400m"):
+        RR.stage_train(other, out)
+
+
+def fake_stored(tmp_path, monkeypatch, *, change=None, coef="same"):
+    """A stand-in for the heads, `H.predict` and the upstream posterior files of a new backbone."""
+    rng = np.random.default_rng(0)
+    selection = np.arange(0, 70, 7)
+    post = {h: {m: rng.random((70, 4)).astype(np.float32) for m in ("img", "txt")} for h in RR.H.HEADS}
+    monkeypatch.setattr(RR.H, "predict", lambda heads, data, rows: post)
+    monkeypatch.setattr(RR.H, "coef_sha256", lambda heads: {"affect": {"img": "aa"}})
+    for rel, keys in RR.H.TARGETS.items():
+        arrays = {key: post[h][m][selection].copy() for key, (h, m) in keys.items()}
+        if change and rel == change[0]:
+            arrays[change[1]][0, 0] += np.float32(1e-3)
+        path = tmp_path / RR.parts("qwen3vl_emb_2b")["n6_posteriors" if rel == RR.H.N6_REL else "step1_heads_style"].name
+        np.savez(path, selection=selection, **arrays)
+        if rel == RR.H.N6_REL:
+            Path(str(path) + ".record.json").write_text(json.dumps(
+                {"coef_sha256": {"affect": {"img": "aa" if coef == "same" else "bb"}}}))
+    return selection
+
+
+def test_stored_posteriors_equal_the_refit_heads(tmp_path, monkeypatch):
+    selection = fake_stored(tmp_path, monkeypatch)
+    out = RR.check_stored_posteriors(object(), object(), selection, "qwen3vl_emb_2b", tmp_path)
+    assert len(out["items"]) == 8 and all(v["equal"] for v in out["items"].values())
+
+
+@pytest.mark.parametrize("rel,key", [(RR.H.N6_REL, "image__img"), (RR.H.CSD_HEADS_REL, "style_csd__txt")])
+def test_a_changed_stored_posterior_is_refused(tmp_path, monkeypatch, rel, key):
+    selection = fake_stored(tmp_path, monkeypatch, change=(rel, key))
+    with pytest.raises(AssertionError, match=key):
+        RR.check_stored_posteriors(object(), object(), selection, "qwen3vl_emb_2b", tmp_path)
+
+
+def test_changed_n6_coefficients_are_refused_for_a_new_backbone(tmp_path, monkeypatch):
+    selection = fake_stored(tmp_path, monkeypatch, coef="other")
+    with pytest.raises(AssertionError, match="coefficients"):
+        RR.check_stored_posteriors(object(), object(), selection, "qwen3vl_emb_2b", tmp_path)
 
 
 # ---------------------------------------------------------------- bookkeeping: guards and the mutation helper

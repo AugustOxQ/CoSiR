@@ -27,10 +27,13 @@ folder, are re-run here in the same order with the same arguments):
 
 Sources of the group labels (`source_pins`): `partition_L`, `style_csd`, `style_rand` stay CLIP's (frozen roles, round
 1's SHA-256); `image` and `caption` are the backbone's `partitions.npz` (ticket 07's output; a pin is that file's
-SHA-256 at the time the stage starts, kept in the record, and the later stages compare it with the heads' record).
+SHA-256 at the time the stage starts, kept in the record; the train stage compares the heads' and the banks' label
+hashes, the tau stage compares the label hashes and the partitions SHA-256 of the groupings its refit heads are fit on
+with the `rb_heads_<G>` records of the readers' heads).
 `--upstream DIR` names the folder that holds `partitions.npz`, `n6_posteriors.npz` and `step1_heads_style.npz`
 (default: the backbone's parts; for the CLIP replay: `results/replay/clip_b32`). Every source is checked against its
-pin before it is read (`# guard:source_pin`).
+pin before it is read (`# guard:source_pin`). Any `partitions.npz` that is not CLIP's pinned original must have a
+record whose `backbone` field is `--backbone` (ticket 07 writes it).
 
 rb_build's size constants are PARAMS, asserted equal to rb_build's, rb_features' and run_rc's at import and at the
 start of a run (`check_params`); the functions take them as arguments.
@@ -51,6 +54,7 @@ import argparse
 import functools
 import importlib
 import json
+import os
 import pickle
 import sys
 import time
@@ -140,10 +144,23 @@ def clip_pinned_sha(role) -> str:
     return json.loads((HERE / "pins_clip.json").read_text())["parts"][role]["sha256"]
 
 
+def abs_path(p) -> Path:
+    """``p`` as an absolute path (against the working folder; symbolic links kept): record keys never depend on it."""
+    return Path(os.path.abspath(p))
+
+
 def upstream_part(backbone, upstream, role) -> Path:
-    """``role``'s file: the backbone's part, or the same file name in the ``upstream`` folder."""
+    """``role``'s file: the backbone's part, or the same file name in the ``upstream`` folder (absolute)."""
     path = parts(backbone)[role]
-    return Path(path) if upstream is None else Path(upstream) / path.name
+    return Path(path) if upstream is None else abs_path(upstream) / path.name
+
+
+def check_part_backbone(path, backbone):
+    """A partitions file that is not CLIP's pinned original has a record (ticket 07's) that names this backbone."""
+    rec_path = Path(str(path) + ".record.json")
+    assert rec_path.is_file(), f"{path}: no record {rec_path.name} next to it, cannot tell which backbone it was made for"
+    made_for = json.loads(rec_path.read_text()).get("backbone")
+    assert made_for == backbone, f"{path} was made for {made_for}, not {backbone}"
 
 
 def source_pins(backbone, upstream=None) -> dict:
@@ -153,6 +170,7 @@ def source_pins(backbone, upstream=None) -> dict:
     src = {name: tuple(entry) for name, entry in rb.SOURCES.items()}
     if backbone != "clip_b32" or upstream is not None:
         path = upstream_part(backbone, upstream, "partitions")
+        check_part_backbone(path, backbone)
         for name in ("image", "caption"):
             clip_path, clip_sha, _ = src[name]
             src[name] = (path, clip_sha if Path(path) == Path(clip_path) else sha256_file(path), name)
@@ -245,10 +263,10 @@ def load_halves(backbone="clip_b32") -> dict:
 
 # ---------------------------------------------------------------- heads (item 2)
 
-def fit_crossfit_heads(F, lab, halves, grouping, n_groups, *, n_rows, check_rows):
+def fit_crossfit_heads(F, lab, halves, grouping, n_groups, *, n_rows, check_rows, backbone):
     """rb_build.stage_heads' loop: per half k, `fit_head_pair` on a ``n_rows`` draw of half k's global rows, posteriors
     of the other half's rows. -> ({img, txt: (n_st, G) float32, filled_by_half, classes_half0, classes_half1}, {"0":
-    provenance, "1": ...})."""
+    provenance, "1": ...}). ``backbone`` decides whether CLIP's reference accuracies are written."""
     n_st = len(halves["half_of_local_row"])
     cf = {m: np.full((n_st, n_groups), np.nan, dtype=np.float32) for m in ("img", "txt")}
     filled_by = np.full(n_st, -1, dtype=np.int8)
@@ -258,9 +276,16 @@ def fit_crossfit_heads(F, lab, halves, grouping, n_groups, *, n_rows, check_rows
         other_l = halves[f"local_rows_half{1 - k}"]
         post, prov, classes = rb.fit_head_pair(F, lab, own_g, n_rows, other_g, other_rows=other_g, check_rows=check_rows)
         missing = sorted(set(range(n_groups)) - set(classes.tolist()))
-        prov.update(n_groups=n_groups, all_groups_in_draw=not missing, missing_groups=missing,
-                    standard_heldout_accuracy={"img": rb.STANDARD_ACC[grouping][0], "txt": rb.STANDARD_ACC[grouping][1]},
-                    posteriors_on=f"all rows of half {1 - k}")
+        prov.update(n_groups=n_groups, all_groups_in_draw=not missing, missing_groups=missing)
+        if backbone == "clip_b32":      # rb_build.STANDARD_ACC: the accuracies of CLIP's standard heads (a reference)
+            prov["standard_heldout_accuracy"] = {"img": rb.STANDARD_ACC[grouping][0],
+                                                 "txt": rb.STANDARD_ACC[grouping][1]}
+        else:                           # the code does not compute the backbone's own standard heads
+            prov["standard_heldout_accuracy"] = None
+            prov["standard_heldout_accuracy_unavailable"] = (
+                "rb_build.STANDARD_ACC holds CLIP's standard heads' accuracies; they do not describe this backbone, "
+                "and no standard head is fitted for it")
+        prov["posteriors_on"] = f"all rows of half {1 - k}"
         if missing:
             raise SystemExit(f"{grouping}, half {k}: groups {missing} are missing from the {n_rows}-row draw; stopping "
                              "(DECISION_RULE.md §4.2 item 2: the step goes to the user)")
@@ -496,7 +521,7 @@ def write_file(env, out, name, kind, payload, *, inputs, made, copied=(), extra=
             pickle.dump(payload, f, protocol=pickle.HIGHEST_PROTOCOL)
     sha = sha256_file(path)
     script = Path(__file__)
-    rec = {"backbone": env.backbone, "file_sha256": sha, "input_sha256": {**env.input_sha256, **dict(inputs)},
+    rec = {"backbone": env.backbone, "file_sha256": sha, "input_sha256": {str(abs_path(k)): v for k, v in {**env.input_sha256, **dict(inputs)}.items()},
            "halves_sha256": env.halves_sha256, "params": C.jsonable(env.params), "script": str(script),
            "script_sha256": sha256_file(script), "code": code_record(), "keys_made": list(made),
            "keys_copied": list(copied), **(extra or {})}
@@ -506,9 +531,9 @@ def write_file(env, out, name, kind, payload, *, inputs, made, copied=(), extra=
     return rec
 
 
-def load_part(env, out, name, *, kind="npz"):
-    """(arrays or object, record) of an earlier stage's file: both exist, the file's SHA-256 is its record's, the record
-    names this backbone and these halves."""
+def load_record(env, out, name):
+    """The record of an earlier stage's file: both exist, the file's SHA-256 is its record's, the record names this
+    backbone and these halves."""
     out = Path(out)
     path, rec_path = out / name, out / (name + ".record.json")
     assert path.is_file() and rec_path.is_file(), f"missing {name} (or its record) in {out}: run the earlier stage"
@@ -516,6 +541,14 @@ def load_part(env, out, name, *, kind="npz"):
     assert sha256_file(path) == rec["file_sha256"], f"{name}: SHA-256 differs from its record"
     assert rec["backbone"] == env.backbone, f"{name}: made for {rec['backbone']}, not {env.backbone}"
     assert rec["halves_sha256"] == env.halves_sha256, f"{name}: built on other halves"
+    return rec
+
+
+def load_part(env, out, name, *, kind="npz"):
+    """(arrays or object, record) of an earlier stage's file (checked as `load_record` does)."""
+    out = Path(out)
+    path = out / name
+    rec = load_record(env, out, name)
     if kind == "npz":
         with np.load(path) as z:
             return {k: np.asarray(z[k]) for k in z.files}, rec
@@ -552,14 +585,17 @@ def stage_heads(env, out, groupings):
         check_head_copy(env.data, env.split, lab, n_rows=env.params["copy_check_rows"])
         log(f"{g}: recipe copy equals fit_one_head")
         arrays, prov = fit_crossfit_heads(F, lab, env.halves, g, env.n_groups[g], n_rows=env.params["head_rows"],
-                                          check_rows=env.params["check_rows"])
+                                          check_rows=env.params["check_rows"], backbone=env.backbone)
         for k in ("0", "1"):
             log(f"{g} half {k}: img own/other {prov[k]['heldout_accuracy_own_half']['img']:.2f}/"
                 f"{prov[k]['accuracy_other_half']['img']:.2f}, txt {prov[k]['heldout_accuracy_own_half']['txt']:.2f}/"
                 f"{prov[k]['accuracy_other_half']['txt']:.2f}")
-        write_file(env, out, f"rb_heads_{g}.npz", "npz", arrays, inputs=_source_inputs(env, [g]), made=list(arrays),
+        # filled_by_half (1 - the frozen half index) and classes_half0/1 (0..G-1, as all groups are in the draw) are
+        # CLIP's values for every backbone: copied; the posteriors are made
+        write_file(env, out, f"rb_heads_{g}.npz", "npz", arrays, inputs=_source_inputs(env, [g]),
+                   made=["img", "txt"], copied=["filled_by_half", "classes_half0", "classes_half1"],
                    extra={"grouping": g, "n_groups": env.n_groups[g], "head_rows": env.params["head_rows"],
-                          "label_sha256": rb.sha_array(local), "source": [str(env.sources[g][0]), env.sources[g][2]],
+                          "label_sha256": rb.sha_array(local), "source": [str(abs_path(env.sources[g][0])), env.sources[g][2]],
                           "heads": prov, "recipe_copy_equals_fit_one_head": True,
                           "runtime_s": round(time.time() - t0, 1)})
         log(f"{g} heads done [{time.time() - t0:.0f}s]")
@@ -572,8 +608,11 @@ def stage_bank(env, out):
     for j in (0, 1):
         t0 = time.time()
         bank = fit_bank_half(labels, env.halves, j, params=env.params)
+        # block layout, block size, seed and half are the rule's constants (CLIP's values for every backbone): copied;
+        # the episodes are made
         write_file(env, out, f"rb_bank_{CONFIG}_half{j}.npz", "npz", bank.arrays,
-                   inputs=_source_inputs(env, A0), made=list(bank.arrays), extra=bank.prov)
+                   inputs=_source_inputs(env, A0), made=list(rb.EPISODE_FIELDS),
+                   copied=["block_pairs", "block_size", "seed", "half"], extra=bank.prov)
         log(f"bank half {j} done ({bank.prov['n_episodes']:,} episodes) [{time.time() - t0:.0f}s]")
 
 
@@ -633,16 +672,41 @@ def load_reader(env, out):
     return pk, prec["file_sha256"]
 
 
-def stage_tau(env, out, F42):
-    """run_rc's thresholds from the seed-42 features ``F42`` = {a, b} (n episodes x 18): `rc_tau.json`."""
+def check_tau_groupings(env, out, head_groupings):
+    """The groupings the tau stage's refit (n6) heads are fit on are the ones the readers' heads were trained on: for
+    each grouping of A0, the label hash equals the `rb_heads_<G>` record's, and for image and caption the SHA-256 of the
+    partitions file equals the one the record lists for its source. -> {heads file: SHA-256} (inputs of the tau
+    record)."""
+    out = Path(out)
+    inputs = {}
+    for g in A0:
+        name = f"rb_heads_{g}.npz"
+        rec = load_record(env, out, name)
+        assert rec["label_sha256"] == head_groupings["label_sha256"][g], \
+            f"tau stage: the {g} labels of the refit heads are not the ones {name} was trained on"
+        if g in ("image", "caption"):
+            trained_on = rec["input_sha256"][rec["source"][0]]
+            assert trained_on == head_groupings["partitions_sha256"], \
+                f"tau stage: partitions {head_groupings['partitions_path']} (SHA-256 {head_groupings['partitions_sha256']}) " \
+                f"are not the file {name} was trained on ({rec['source'][0]}, SHA-256 {trained_on})"
+        inputs[str(out / name)] = rec["file_sha256"]
+    return inputs
+
+
+def stage_tau(env, out, F42, checks):
+    """run_rc's thresholds from the seed-42 features ``F42`` = {a, b} (n episodes x 18): `rc_tau.json`. ``checks`` =
+    `seed42_features`' second result (the groupings and the input hashes of the refit heads)."""
     _refuse(out, output_names("tau"))
     pk, pkl_sha = load_reader(env, out)
     assert pk["feature_names"] == rf.feature_names(A0), "the readers were trained on another feature layout"
+    heads_inputs = check_tau_groupings(env, out, checks["head_groupings"])
     margins, _ = reader_margins(pk, F42)
     taus, n_vals = thresholds(margins, n_expected=env.params["n_tau_values"])
     rec = tau_record(env.backbone, taus, n_vals, reader_sha256=pkl_sha)
-    write_file(env, out, "rc_tau.json", "json", rec, inputs={str(Path(out) / f"rb_reader_{CONFIG}.pkl"): pkl_sha},
-               made=["taus"], extra={"seed42_feature_checks": getattr(env, "feature_checks", None)})
+    inputs = {str(Path(out) / f"rb_reader_{CONFIG}.pkl"): pkl_sha, **heads_inputs, **checks["head_input_sha256"],
+              **checks["upstream_posterior_sha256"]}
+    write_file(env, out, "rc_tau.json", "json", rec, inputs=inputs, made=["taus"],
+               extra={"seed42_feature_checks": checks})
     reread = json.loads((Path(out) / "rc_tau.json").read_text())["taus"]
     assert reread == taus, "tau did not round-trip at full precision"
     log(f"tau_0..3 written: {taus}")
@@ -675,14 +739,33 @@ def check_stored_posteriors(heads, data, selection, backbone, upstream):
     return {"items": items, "files": {k: str(v) for k, v in files.items()}}
 
 
-def seed42_features(backbone, upstream):
+def rows_from(data, split) -> SimpleNamespace:
+    """r9_common.load_rows' result (but the value index, which the tau stage does not use) from the ``data`` and
+    ``split`` that are already loaded: the stage loads the features once."""
+    from src.data.artelingo_splits import artelingo_aspect_labels
+    labels = artelingo_aspect_labels(data)
+    assert set(labels) == set(R.ASPECTS) and all(np.asarray(v).shape == (R.N_ROWS,) for v in labels.values()), \
+        "aspect label columns or rows differ from ArtELingo"
+    values = R.development_value_sets(labels, split.groups, split.selection)
+    return SimpleNamespace(data=data, split=split, labels=labels, value_sets=values)
+
+
+def seed42_features(backbone, upstream, data, split):
     """(F = {a, b}: (12288, 18), checks): the refit heads of this backbone (checked against the upstream posterior
     files), the seed-42 selection-row context, and `rb_eval.seed42_features` on its A0 posteriors, as
-    r9_bundle.build_bundle_r6 calls it (without the A3 and PM terms)."""
-    rows = R.load_rows(backbone)
-    pins = H.recipe_head_pins(backbone, None if upstream is None else Path(upstream))
+    r9_bundle.build_bundle_r6 calls it (without the A3 and PM terms). ``data`` and ``split`` are the loaded features
+    and split of the run. ``checks`` also holds what the tau record needs: `head_groupings` (label hash of each A0
+    grouping, partitions file and SHA-256: compared with the readers' heads), `head_input_sha256` (every input of the
+    head fit) and `upstream_posterior_sha256`."""
+    rows = rows_from(data, split)
+    pins = H.recipe_head_pins(backbone, None if upstream is None else abs_path(upstream))
     heads = H.fit_heads_r9(rows.data, rows.split.groups, rows.split.scorer_train, backbone=backbone, input_pins=pins)
     log("heads refit")
+    st = np.asarray(rows.split.scorer_train)
+    head_labels = H.head_labels(rows.split.groups, st, backbone, input_pins=pins)      # the labels the heads were fit on
+    part_path, part_sha = pins[H.E2_PARTITIONS_REL]
+    head_groupings = {"partitions_path": str(part_path), "partitions_sha256": part_sha,
+                      "label_sha256": {g: rb.sha_array(head_labels[g][st]) for g in A0}}
     stored = check_stored_posteriors(heads, rows.data, rows.split.selection, backbone, upstream)
     ctx = X.RowContext("selection", R.DEV_SEED, rows.data, rows.split, rows.labels, heads, rows.value_sets,
                        R.N_PER_PAIR)
@@ -691,7 +774,9 @@ def seed42_features(backbone, upstream):
     assert all(F[c].shape == (ctx.n, 6 * len(A0)) for c in CONDITIONS)
     log(f"seed-42 features ({ctx.n} episodes)")
     return F, {**checks, "stored_posteriors_equal": True, "episodes_sha256": dict(ctx.episode_sha),
-               "stored_posterior_files": stored["files"]}
+               "stored_posterior_files": stored["files"], "head_groupings": head_groupings,
+               "head_input_sha256": dict(heads["affect"]["fit_inputs"]["input_sha256"]),
+               "upstream_posterior_sha256": {v: sha256_file(v) for v in stored["files"].values()}}
 
 
 # ---------------------------------------------------------------- main
@@ -721,8 +806,7 @@ def build_env(backbone, upstream, stage):
     reads = dict(_store_shas(backbone)) if needs_features else {}
     reads[halves["path"]] = HALVES_SHA256
     return SimpleNamespace(backbone=backbone, data=data, split=split, halves=halves, sources=sources, params=params,
-                           n_groups=dict(rb.N_GROUPS), e2=e2, input_sha256=reads, halves_sha256=HALVES_SHA256,
-                           feature_checks=None)
+                           n_groups=dict(rb.N_GROUPS), e2=e2, input_sha256=reads, halves_sha256=HALVES_SHA256)
 
 
 def main(argv=None):
@@ -749,8 +833,8 @@ def main(argv=None):
     if args.stage in ("train", "all"):
         stage_train(env, out)
     if args.stage in ("tau", "all"):
-        F42, env.feature_checks = seed42_features(args.backbone, args.upstream)
-        stage_tau(env, out, F42)
+        F42, checks = seed42_features(args.backbone, args.upstream, env.data, env.split)
+        stage_tau(env, out, F42, checks)
     log(f"done -> {out}")
     return 0
 
