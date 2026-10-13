@@ -307,3 +307,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-14-aff-questions-handoff.md
 - New chat: tab 'AFF questions 2', session f8e5aee2-8d30-4a4a-9b25-7044a814a226
 
+[brief] CoSiR: AFF questions 2 -> leiden groupings (2026-10-14 01:05 Amsterdam)
+- Done: the k-shot check, reported (AFF needs 3 example pairs). The glossary is fixed. Records searched for two Leiden checks.
+- State: CLIP Leiden at resolution 1.0 already lost (reader margin −0.32). Old attention-H1 labels exist, but H1 saw the held paintings.
+- Next: show the cost table (section 3), let the user pick a route per check, then build and run.
+- Blocked: the user's route choice, and which grouping slot the H1 communities replace.
+- Handoff: docs/superpowers/handoffs/2026-10-14-leiden-groupings-handoff.md
+- New chat: tab 'leiden groupings', session 59ceca52-ce8c-4df2-b403-802bd42bc472
+
