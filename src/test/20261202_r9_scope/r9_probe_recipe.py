@@ -35,7 +35,8 @@ from src.model.communities import detect_communities
 
 A0, rb, rf = RR.A0, RR.rb, RR.rf
 SEED = 42
-SELECTION_FRACTION = 0.15
+SELECTION_FRACTION = {"semart": 0.15, "cub": 0.30}    # CUB: 15% (about 1,000 images, 240 with all three labels) leaves
+# under 5 eligible values per aspect for the episode builder; 30% gives 6 per aspect (see r9_probe_score.CONFIG)
 AFFECT_KM = {"n_clusters": 64, "random_state": SEED, "n_init": 3, "batch_size": 4096}   # run_affect.KMEANS_SETTINGS
 T0 = time.monotonic()
 
@@ -78,7 +79,7 @@ def load_rows(dataset, limit=None):
     assert len(fit_rows) + len(scoring_rows) == len(keep) and not np.intersect1d(fit_rows, scoring_rows).size
     if dataset == "cub":     # species never shared between fit and scoring
         assert not np.intersect1d(species[fit_rows], species[scoring_rows]).size
-    scorer_train, selection = grouped_subsplit(leak, fit_rows, SELECTION_FRACTION, seed=SEED)
+    scorer_train, selection = grouped_subsplit(leak, fit_rows, SELECTION_FRACTION[dataset], seed=SEED)
     assert not np.intersect1d(leak[scorer_train], leak[selection]).size
     return SimpleNamespace(
         name=dataset, plan=c.plan, data=data, captions=[c.captions[i] for i in keep], groups=unit, leak=leak,
