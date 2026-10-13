@@ -3,6 +3,7 @@
 Writes one JSON per read. Missing quantities are differences, never agreements.
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import numpy as np
@@ -76,6 +77,29 @@ def compare_stats(comparison,ours,theirs):
         if key in ours: comparison.value(key,ours[key],theirs.get(key))
 
 
+PASS_MODES={'held':False,'regression':False,'smoke':True}
+
+
+def provenance(own,reported_path,raw,report):
+    """Fields the apply-rule step reads from a per-read agreement file (ticket 19). Missing input crashes.
+
+    smoke comes from the reported pass file's own mode field, held_pass_sha256 from its exact bytes,
+    rederived_counts from the independent pass's n_j (the same keys for the two-level A28 reads).
+    """
+    top=report.get('mode')
+    mode=top if top is not None else report.get('stats',{}).get('mode') if isinstance(report.get('stats'),dict) else None
+    if mode not in PASS_MODES: raise ValueError(f'{reported_path.name}: mode field {mode!r} is not one of {sorted(PASS_MODES)}')
+    checks=own['stats']['checks']
+    if set(checks)!=set(CHECK_IDS): raise ValueError('derived record: checks are not exactly '+','.join(CHECK_IDS))
+    counts={}
+    for j in CHECK_IDS:
+        n=checks[j]['n']
+        if isinstance(n,bool) or not isinstance(n,int): raise ValueError(f'derived record: n of {j} is not an integer: {n!r}')
+        counts[j]=n
+    return dict(phase=2,smoke=PASS_MODES[mode],pass_file=reported_path.name,
+                held_pass_sha256=hashlib.sha256(raw).hexdigest(),rederived_counts=counts)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--derived',type=Path,required=True)
@@ -95,6 +119,7 @@ def main():
     identity=dict(record_sha256=sha_file(args.derived),arrays_sha256=sha_file(args.derived_arrays))
     own=json.loads(args.derived.read_text())
     c=Comparison()
+    extra={}
     if args.phase1:
         from rd9_inputs import Inputs
         assert args.backbone==own['backbone'], 'phase-1 backbone mismatch'
@@ -126,7 +151,9 @@ def main():
         c.arrays(args.derived_arrays,r3,required)
     else:
         assert args.reported and args.reported_arrays, 'per-read agreement requires runner scalars AND arrays'
-        report=json.loads(args.reported.read_text())
+        raw=args.reported.read_bytes()
+        report=json.loads(raw)
+        extra=provenance(own,args.reported,raw,report)
         compare_stats(c,own['stats'],report.get('stats',report))
         required=[f'{name}__{m}' for name in ('aff_fused','aff_cf','cosine','rca','B','B0')
                   for m in ('r1','gain','other','swap','strict')]+['cl','pair_index']
@@ -136,7 +163,7 @@ def main():
             assert args.derived_episodes and args.reported_episodes
             c.arrays(args.derived_episodes,args.reported_episodes)
     result=c.record()
-    result.update(independent_identity=identity,read=own.get('read','seed42'),backbone=own['backbone'])
+    result.update(independent_identity=identity,read=own.get('read','seed42'),backbone=own['backbone'],**extra)
     save_json(args.out,result)
     print('agreement:',result['agreement'],'compared:',result['compared'],'differences:',result['failed'])
     if not result['agreement']: raise SystemExit(1)
