@@ -163,3 +163,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-12-r8-run-handoff.md
 - New chat: tab 'r8 run', session 1aed5c27-f52c-44e9-bf24-d212aae368ee
 
+[brief] CoSiR: r8 run -> r8 run 2 (2026-10-13 11:45 Amsterdam)
+- Done: the r8 run ended at 11:31. The gate verdict says no pick in either track, so AFF stays the current best.
+- State: all 20 main-line scorers are below AFF. The best screen scorer is R1_DI at +0.29 R@1 points [−0.01, +0.59], which misses the bar.
+- Next: claim-review the auto report and check the user-read report. Then commit both and open r9 decide.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r8-run-2-handoff.md
+- New chat: tab 'r8 run 2', session e07e023c-b740-420e-97e9-164573311ce2
+
