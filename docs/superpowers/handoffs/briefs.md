@@ -227,3 +227,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-3-handoff.md
 - New chat: tab 'r9 build 3', session a175987c-d8fe-4725-8d27-7c2084eb81cb
 
+[brief] CoSiR: paper r1 2 -> paper r1 3 (2026-10-13 17:44 Amsterdam)
+- Done: v1 has all eight sections and Table 1. It passed a number check (301 of 306 matched, all fixes made) and a humanizer pass.
+- State: 6,852 words by the counter against a 6,450 target (the counter counts keys and math). Tag `r1-v1-pre-review`.
+- Next: the full ARS review of v1, then our answer and one revision.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-paper-r1-3-handoff.md
+- New chat: tab 'paper r1 3', session 6e86a2e7-84d1-4280-8bf5-f683e04ee789
+
