@@ -61,14 +61,27 @@ def clip_checks(spec, images, read):
         first.setdefault(p, i)
     assert all(p in first for p in held_read | set(train_names))
     held_positions = [i for i, p in enumerate(read_names) if p in held_read]
-    joined = cosines(images[held_positions], data.img_features[[first[read_names[i]] for i in held_positions]])
-    painting_join = [{"painting": read_names[i], "cosine": float(c)} for i, c in zip(held_positions, joined)]
-    assert len(painting_join) == 248 and (joined >= 0.99).all(), "held painting image join failed"
+    # Rule 3.3 (user, 2026-10-13): each held zip image's nearest image among all our ArtELingo paintings is its own.
+    every = sorted(first)
+    assert len(every) == 61_402, len(every)
+    column = {p: j for j, p in enumerate(every)}
+    sims = unit(images[held_positions]) @ unit(data.img_features[[first[p] for p in every]]).T
+    assert sims.shape == (248, len(every)) and np.isfinite(sims).all()
+    own = np.array([column[read_names[i]] for i in held_positions])
+    own_cos = sims[np.arange(len(own)), own]
+    others = sims.copy()
+    others[np.arange(len(own)), own] = -np.inf
+    next_j = others.argmax(axis=1)
+    painting_join = [{"painting": read_names[i], "cosine": float(c), "next_painting": every[j],
+                      "margin": float(c - others[r, j])}
+                     for r, (i, c, j) in enumerate(zip(held_positions, own_cos, next_j))]
+    assert len(painting_join) == 248 and (sims.argmax(axis=1) == own).all(), "held painting image join failed"
     sim = unit(images) @ unit(data.img_features[[first[p] for p in train_names]]).T
     assert sim.shape == (746, 912) and np.isfinite(sim).all()
     rr, tt = np.where(sim >= 0.99)
     near = {"cos_099": int((sim.max(axis=1) >= 0.99).sum()),
-            "cos_098": int((sim.max(axis=1) >= 0.98).sum()), "train_side": 912, "read_paintings": 746,
+            "cos_098": int((sim.max(axis=1) >= 0.98).sum()), "cos_092": int((sim.max(axis=1) >= 0.92).sum()),
+            "train_side": 912, "read_paintings": 746,
             "pairs_099": [[read_names[r], train_names[t], float(sim[r, t])] for r, t in zip(rr, tt)]}
     assert near["pairs_099"] == sorted(near["pairs_099"], key=lambda p: (p[0], p[1]))
     return painting_join, near

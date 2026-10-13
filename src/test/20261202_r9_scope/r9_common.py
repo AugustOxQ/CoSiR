@@ -189,7 +189,7 @@ check_sources()  # guard:sources
 # ---------------------------------------------------------------- constants (contracts section 1)
 
 R6_RULE_SHA256 = "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724"
-RULE_SHA256 = "69a365c3035211e0162ddaf18dce96a87477e09e1eccf6294148ccf3d1332a4f"
+RULE_SHA256 = "f9b07b34e645bc8e881fb13c7e7a085eabea6a52f4d93445305944cf1aea030c"
 R3_RULE_SHA256 = "2d311dbeac1a561fc2a719b730075c30819f4f7f3a592041cb64b65821dc5925"
 PAIRS = (("emotion", "style", "genre"), ("emotion", "genre", "style"), ("style", "genre", "emotion"))
 PAIR_NAMES = ("emotion__style", "emotion__genre", "style__genre")

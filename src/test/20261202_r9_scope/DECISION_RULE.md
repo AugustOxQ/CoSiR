@@ -76,7 +76,8 @@ seed-42 regression.
 ### 3.2 Stage 0b: recipe replay on CLIP (D32)
 
 The fixed recipe re-fits every part above CLIP's encoder from scratch.
-1. **CPU-made parts, bit-equal** to CLIP's pinned files: image k-means 64 (`prepare.npz` `clip_image`), caption
+1. **Parts bit-equal** to CLIP's pinned files (all CPU-made except the content graph, which `src/model/graph.py`
+   builds in fp16 on the GPU: it runs locally on the RTX 3090 and is bit-equal only there; user, 2026-10-13): image k-means 64 (`prepare.npz` `clip_image`), caption
    k-means (E2 `partitions.npz`), the content graph (`20261016_factor_learning_grid/cache/graph.npz`, SHA-256
    485cb7fe12b44bd70bf45ae9c131fc347306c76fc7c6cf75704b95edbb393de8), bank AIC
    (`20261031_pseudo_partitions/results/bank_AIC.npz`, SHA-256
@@ -117,11 +118,14 @@ and the value sets read ArtELingo-28 labels only, never a feature or a score. No
   the CSV data-row position. Counts, finite values and the `sample_id` joins are asserted (C6). Qwen's
   `artelingo_full` joins `load_artelingo()` by `sample_id` (308,723 ids).
 - **Spot check.** 20 rows per store, drawn by `numpy.random.default_rng(0)`, re-encoded locally: cosine ≥ 0.99.
-- **Painting join.** For the 248 held paintings, CLIP cosine between the zip image and our store image ≥ 0.99. All
-  248 values are reported.
+- **Painting join.** For each of the 248 held paintings, the zip image's nearest CLIP image among all paintings of our
+  ArtELingo store (61,402) is the same painting. All 248 cosines and each margin to the next painting are reported.
+  (User, 2026-10-13: the zip images are re-encoded copies, 600 px, so the same painting scores 0.92 to 0.99; the
+  first wording, cosine ≥ 0.99, failed on 196 of 248.)
 - **Near-duplicates.** The read paintings whose zip image has a train-side image (the train side is every non-held ArtELingo painting: train and val, 790 + 122 = 912;
   user, 2026-10-13) at CLIP cosine ≥ 0.99 (and ≥ 0.98)
-  are counted. The counts are disclosed with every ArtELingo-28 claim; none is excluded (D7).
+  are counted. The counts are disclosed with every ArtELingo-28 claim; none is excluded (D7). Because of the version
+  gap above, the stage-1 record also counts ≥ 0.92, and the report states it with that gap (user, 2026-10-13).
 - **Read set.** 746 paintings: ArtELingo-28 paintings minus its 912 paintings that lie on our train side (248 held
   and 498 new). Asserted: no painting is both held and train-side; 74,569 non-English rows in 27 languages; the
   2,000 English rows on these paintings dropped (D21).
