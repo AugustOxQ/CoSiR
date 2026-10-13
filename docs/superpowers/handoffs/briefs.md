@@ -299,3 +299,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-14-r9-build-9-handoff.md
 - New chat: tab 'r9 build 9', session 18057a5a-4e60-48cd-83b0-ff14c8a319ae
 
+[brief] CoSiR: 2 -> AFF questions 2 (2026-10-14 00:07 Amsterdam)
+- Done: answered the user's seven questions about AFF; wrote the AFF model card with a training figure (f96acb2).
+- State: the k-shot sweep (k = 2, 3, 4 example pairs, frozen AFF, seed 42) runs in Codex; the CLIP-text check is on hold.
+- Next: check the sweep's three checks and numbers, write a short report, then check why Leiden for GoEmotions but k-means for CLIP.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-14-aff-questions-handoff.md
+- New chat: tab 'AFF questions 2', session f8e5aee2-8d30-4a4a-9b25-7044a814a226
+
