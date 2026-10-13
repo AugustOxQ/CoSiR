@@ -21,9 +21,13 @@ AFF = 'aff_fused'
 ROW_METRICS = ('r1', 'gain', 'swap')
 
 
+class BoundaryError(AssertionError):
+    """An owned, number-free file boundary name, safe for the runner's console."""
+
+
 def require(ok, boundary):
     if not ok:
-        raise AssertionError(boundary)
+        raise BoundaryError(boundary)
 
 
 def absent(reason):
@@ -170,9 +174,13 @@ def compare_backbones(current, other):
     require(np.array_equal(a['cl'], b['cl']) and np.array_equal(a['pair_index'], b['pair_index']), 'paired anchor alignment')
     # Caller must establish equal episode hashes BEFORE reaching this calculation.
     def one(mask):
-        return row({m: b['pa'][AFF][m][mask] for m in ROW_METRICS},
-                   {m: a['pa'][AFF][m][mask] for m in ROW_METRICS}, a['cl'][mask])
-    return {'pooled': one(np.ones(len(a['cl']), dtype=bool)),
+        r = row({m: b['pa'][AFF][m][mask] for m in ROW_METRICS},
+                {m: a['pa'][AFF][m][mask] for m in ROW_METRICS}, a['cl'][mask])
+        return {**{k: v for k, v in r.items() if k not in ROW_METRICS and k != 'aff_minus'},
+                'other_aff': {m: r[m] for m in ROW_METRICS if m in r}, 'aff_minus': r.get('aff_minus', {})}
+    return {'labels': {'other_aff': "AFF on the paired other read",
+                       'aff_minus': "This read's AFF minus the other read's AFF, paired by episode"},
+            'pooled': one(np.ones(len(a['cl']), dtype=bool)),
             'per_pair': {p: one(a['pair_index'] == i) for i, p in enumerate(R.PAIR_NAMES)}}
 
 

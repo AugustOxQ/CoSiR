@@ -646,3 +646,89 @@ def test_picks_target_guard(sel42, tmp_path, monkeypatch):
     mut = mutant(tmp_path, "r9_picks.py", "picks_target")
     monkeypatch.setattr(mut, "MEAN_R1_TARGETS", targets)
     assert mut.load_picks(path)["B"] == picks["B"]
+
+
+# ---------------------------------------------------------------- ticket 23: descriptive callback boundary
+
+def assert_nested_bits(got, want):
+    if isinstance(want, Mapping):
+        assert tuple(got) == tuple(want)
+        for key in want:
+            assert_nested_bits(got[key], want[key])
+    else:
+        assert bits(got, want)
+
+
+def test_on_scores_callable_guard(held, readers, tmp_path, v6):
+    with pytest.raises(AssertionError, match="on_scores must be callable"):
+        S.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=False,
+                     secondary=False, verdict=v6, on_scores="not callable")
+    mut = mutant(tmp_path, "r9_score.py", "on_scores_callable")
+    with pytest.raises(TypeError, match="not callable"):
+        mut.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=False,
+                       secondary=False, verdict=v6, on_scores="not callable")
+
+
+@pytest.mark.parametrize("mode,seed,filename", [("held", 52, "held_verdict_H6.json"),
+                                               ("a28", 55, "held_verdict_H8.json")])
+def test_on_scores_before_verdict_guard(held, readers, tmp_path, mode, seed, filename):
+    bundle = SimpleNamespace(**{**vars(held), "mode": mode, "seed": seed})
+    verdict = tmp_path / filename
+
+    def callback(name, scores):
+        raise Reached("callback ran before the verdict")
+
+    with pytest.raises(AssertionError, match="no direction breakdown before the verdict"):
+        S.score_seed(bundle, NESTED_PICKS, lambdas_all(), readers, include_pm=False,
+                     secondary=False, verdict=verdict, on_scores=callback)
+    mut = mutant(tmp_path, "r9_score.py", "on_scores_before_verdict")
+    with pytest.raises(Reached):
+        mut.score_seed(bundle, NESTED_PICKS, lambdas_all(), readers, include_pm=False,
+                       secondary=False, verdict=verdict, on_scores=callback)
+
+
+@pytest.mark.parametrize("mode,seed,filename", [("held", 52, "held_verdict_H6.json"),
+                                               ("a28", 55, "held_verdict_H8.json")])
+def test_on_scores_after_verdict_runs(held, readers, tmp_path, mode, seed, filename):
+    bundle = SimpleNamespace(**{**vars(held), "mode": mode, "seed": seed})
+    verdict = tmp_path / filename
+    verdict.write_text("{}")
+    received = {}
+
+    def callback(name, scores):
+        received[name] = per_anchor(scores)
+
+    out = S.score_seed(bundle, NESTED_PICKS, lambdas_all(), readers, include_pm=True,
+                       verdict=verdict, on_scores=callback)
+    assert set(received) == set(S.ALL_SCORERS)
+    for name in S.ALL_SCORERS:
+        assert pa_bits(received[name], out[name])
+
+
+def test_on_scores_reading_preserves_all_output_bits(held, readers, v6):
+    args = (held, NESTED_PICKS, lambdas_all(), readers)
+    default = S.score_seed(*args, include_pm=True, verdict=v6)
+    explicit_none = S.score_seed(*args, include_pm=True, verdict=v6, on_scores=None)
+    received = {}
+
+    def callback(name, scores):
+        received[name] = per_anchor(scores)
+
+    reading = S.score_seed(*args, include_pm=True, verdict=v6, on_scores=callback)
+    assert set(received) == set(S.ALL_SCORERS)
+    assert_nested_bits(explicit_none, default)
+    assert_nested_bits(reading, explicit_none)
+
+
+def test_on_scores_readonly_guard(held, readers, tmp_path, v6):
+    def write(name, scores):
+        scores["a"]["i2t"][0, 0] = scores["a"]["i2t"][0, 0]
+
+    with pytest.raises(ValueError, match="read-only"):
+        S.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=False,
+                     secondary=False, verdict=v6, on_scores=write)
+    assert held.cos["a"]["i2t"].flags.writeable  # The view must not freeze its source.
+    mut = mutant(tmp_path, "r9_score.py", "on_scores_readonly")
+    out = mut.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=False,
+                         secondary=False, verdict=v6, on_scores=write)
+    assert tuple(out) == S.PRIMARY_SCORERS + S.EXTRA_KEYS

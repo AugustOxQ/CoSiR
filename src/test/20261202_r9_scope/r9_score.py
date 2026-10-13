@@ -264,13 +264,20 @@ def score_seed(bundle, picks, lambdas, readers, *, include_pm, cells=None, taus=
         _require(verdict_file.is_file(), f"no B1 or R1 metric on {bundle.mode} episodes before {verdict_file.name} "
                                          f"exists (rule section 7.4)")  # guard:secondary_before_verdict
     # Ticket 23's direction breakdown consumes the existing scores, never another scoring formula.
-    _require(on_scores is None or callable(on_scores), "on_scores must be callable")
+    _require(on_scores is None or callable(on_scores), "on_scores must be callable")  # guard:on_scores_callable
     _require(on_scores is None or not gated_read or verdict_file.is_file(),
-             "no direction breakdown before the verdict (rule section 7.4)")
+             "no direction breakdown before the verdict (rule section 7.4)")  # guard:on_scores_before_verdict
 
     def summarize(name, scores):
         if on_scores is not None:
-            on_scores(name, scores)
+            readonly = {}
+            for condition, directions in scores.items():
+                readonly[condition] = {}
+                for direction, x in directions.items():
+                    a = np.asarray(x).view()
+                    a.flags.writeable = False  # guard:on_scores_readonly
+                    readonly[condition][direction] = a
+            on_scores(name, readonly)
         return per_anchor(scores)
 
     cells = CELLS if cells is None else cells

@@ -1,11 +1,12 @@
 """Ticket 23: rule §8 after a verdict, never a decision or an overwrite.
 
     python run_r9_descriptive.py --read H6
-    python run_r9_descriptive.py --read H8 --smoke --smoke-dir /path/to/held/smoke
+    python run_r9_descriptive.py --read H8 --smoke --smoke-dir /path/to/held/smoke [--smoke-tag NAME]
 
 Real mode requires the verdict's phase-2 agreement and its exact pass. Smoke
 requires a smoke pass, uses selection rows and writes only to this worktree's
-results/smoke/descriptive. Fix paths come from the verdict; --reserve selects
+results/smoke/descriptive. --smoke-tag adds a fresh output suffix, never replacing
+an earlier file. Fix paths come from the verdict; --reserve selects
 the reserve verdict and writes descriptive_<read>_reserve.json. Missing paired
 reads are absent. All input hashes and reproduction checks precede the write.
 Exit 4: refused; exit 5: contradictory inputs. Console: file names and hashes only.
@@ -34,7 +35,10 @@ import run_r9_apply_rule as AR
 import run_r9_held as RH
 import numpy as np
 
-Refused = RH.Refused
+class Refused(RH.Refused):
+    """An owned refusal boundary name, safe for the console."""
+
+
 require = D.require
 
 
@@ -80,8 +84,8 @@ def bind_read(out, read, smoke, reserve=False):
         suffix = '_fix1' if names.kind == 'fix1' else '_reserve' if reserve else ''
         aname = f'rd9_{read}_agreement{suffix}.json'
         refuse_unless(verdict.get('agreement_file') == aname, 'verdict agreement filename')
-        # The apply-rule consumer stores the agreement's basename; real records normally live in rederive/.
-        candidates = [out / aname, HERE / 'rederive' / aname]
+        # Share the apply step's canonical location; its verdict stores only the basename.
+        candidates = [out / aname, AR.AGREEMENT_DIR / aname]
         apath = next((p for p in candidates if p.is_file() and R.sha256_file(p) == verdict.get('agreement_sha256')), None)
         refuse_unless(apath is not None, 'agreement missing or SHA mismatch')
         agr, sha = AR.load_agreement(apath, False, names.pass_, read)
@@ -303,7 +307,7 @@ def paired_reads(bound, inputs):
         # Never pair merely by array position: the entire episodes (all members) must be identical.
         require(other.rec['seeds'] == bound.rec['seeds'] and
                 other.rec['episodes_sha256'] == bound.rec['episodes_sha256'], 'cross-backbone episode hashes')
-        out[read] = {'episode_hashes_equal': True, 'this_aff_minus_other_aff': D.compare_backbones(inputs, other.inputs),
+        out[read] = {'episode_hashes_equal': True, 'aff_paired': D.compare_backbones(inputs, other.inputs),
                      'sources': other.sources}
     return out
 
@@ -369,7 +373,11 @@ def a28_report(bound, inputs, env, data, episodes):
     if h5 is not None:
         groups = np.asarray(env.split.groups)
         require(all(np.array_equal(x['cl'], groups[ep.pooled.anchor]) for x, ep in zip(h5.inputs, h5.eps)), 'H5 anchor row join')
-    return {'per_language': languages, 'without_flagged_languages': {'excluded': flags['flagged'], **unflagged},
+    return {'per_language': languages,
+            'per_language_note': ('Smoke episodes use the synthetic language column (ArtELingo selection row ID mod 27); '
+                                  'median rows, thin values, flags and translation coverage use real stage-1 data.'
+                                  if bound.smoke else 'Episodes use each language\'s real read rows; metadata come from stage-1 files.'),
+            'without_flagged_languages': {'excluded': flags['flagged'], **unflagged},
             'new_against_held': {'painting_universe': {'new': 498, 'held': 248},
                                 'note': 'synthetic selection fixture: held=False' if bound.smoke else 'episodes by anchor painting',
                                 'new': D.scope(inputs, [~x for x in hmask]), 'held': D.scope(inputs, hmask)},
@@ -415,12 +423,15 @@ def stage0b(bound):
     return {'source': source(path), 'case': rec['case'], 'passed': rec['passed'], 'chains': counts}
 
 
-def run(read, smoke=False, smoke_dir=None, reserve=False, on_file=None):
+def run(read, smoke=False, smoke_dir=None, reserve=False, on_file=None, smoke_tag=None):
     refuse_unless(smoke == (smoke_dir is not None), '--smoke requires --smoke-dir; held mode does not take it')
     refuse_unless(not (smoke and reserve), 'reserve is a held mode')
+    refuse_unless(smoke_tag is None or (smoke and RH.SUBDIR_RE.fullmatch(smoke_tag)),
+                  'smoke tag requires smoke mode and a plain name')
     out = Path(smoke_dir).resolve() if smoke else R.RESULTS
     target_dir = R.RESULTS / 'smoke/descriptive' if smoke else R.RESULTS
-    target = target_dir / f'descriptive_{read}{"_reserve" if reserve else ""}.json'
+    suffix = f'_{smoke_tag}' if smoke_tag is not None else '_reserve' if reserve else ''
+    target = target_dir / f'descriptive_{read}{suffix}.json'
     refuse_unless(not target.exists(), 'output exists: ' + str(target))
     bound = bind_read(out, read, smoke, reserve)
     loaded = load_bound_inputs(bound)
@@ -453,6 +464,7 @@ def main(argv=None):
     p.add_argument('--smoke', action='store_true')
     p.add_argument('--smoke-dir', type=Path)
     p.add_argument('--reserve', action='store_true')
+    p.add_argument('--smoke-tag', help='fresh output suffix under results/smoke/descriptive; smoke only')
     args = p.parse_args(argv)
     console = sys.stdout
 
@@ -462,13 +474,19 @@ def main(argv=None):
     # Upstream setup/bundle functions log durations and diagnostics. Keep those off the console.
     try:
         with open(os.devnull, 'w') as quiet, contextlib.redirect_stdout(quiet), contextlib.redirect_stderr(quiet):
-            path, sources = run(args.read, args.smoke, args.smoke_dir, args.reserve, on_file)
+            path, sources = run(args.read, args.smoke, args.smoke_dir, args.reserve, on_file, smoke_tag=args.smoke_tag)
     except AR.Stop as stop:
         print(f'{"refused" if stop.code == 4 else "contradictory inputs"} descriptive_{args.read}.json', flush=True)
         return stop.code
-    except (Refused, FileExistsError):
+    except Refused as refusal:
+        print(f'refused descriptive_{args.read}.json: {refusal}', flush=True)
+        return 4
+    except (RH.Refused, FileExistsError):
         print(f'refused descriptive_{args.read}.json', flush=True)
         return 4
+    except D.BoundaryError as boundary:
+        print(f'contradictory inputs descriptive_{args.read}.json: {boundary}', flush=True)
+        return 5
     except (Exception, SystemExit):
         print(f'contradictory inputs descriptive_{args.read}.json', flush=True)
         return 5
