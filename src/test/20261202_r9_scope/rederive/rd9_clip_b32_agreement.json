@@ -1,0 +1,821 @@
+{
+  "agreement": true,
+  "compared": 143,
+  "failed": 0,
+  "items": [
+    {
+      "key": "n_episodes",
+      "equal": true,
+      "ours": 12288,
+      "theirs": 12288
+    },
+    {
+      "key": "n_clusters",
+      "equal": true,
+      "ours": 4602,
+      "theirs": 4602
+    },
+    {
+      "key": "seeds.0",
+      "equal": true,
+      "ours": 42,
+      "theirs": 42
+    },
+    {
+      "key": "episodes_sha256.42.emotion__style",
+      "equal": true,
+      "ours": "6932f553e2d15237b4f008d0da2ecb76ad9c96db629a3557afe037290b6dd066",
+      "theirs": "6932f553e2d15237b4f008d0da2ecb76ad9c96db629a3557afe037290b6dd066"
+    },
+    {
+      "key": "episodes_sha256.42.emotion__genre",
+      "equal": true,
+      "ours": "9196a1a80e95af1cd3ebefdd0b07c2ceb5f694579c6221b40157027af041fbe7",
+      "theirs": "9196a1a80e95af1cd3ebefdd0b07c2ceb5f694579c6221b40157027af041fbe7"
+    },
+    {
+      "key": "episodes_sha256.42.style__genre",
+      "equal": true,
+      "ours": "78fbccdce319d07a7f315d6b0b7314d492a8657223fbddbc5dc1c771c4485429",
+      "theirs": "78fbccdce319d07a7f315d6b0b7314d492a8657223fbddbc5dc1c771c4485429"
+    },
+    {
+      "key": "checks.P1.n",
+      "equal": true,
+      "ours": 0,
+      "theirs": 0
+    },
+    {
+      "key": "checks.P1.point",
+      "equal": true,
+      "ours": 6.174723307291666,
+      "theirs": 6.174723307291666
+    },
+    {
+      "key": "checks.P1.ci95.0",
+      "equal": true,
+      "ours": 5.8049022788072735,
+      "theirs": 5.8049022788072735
+    },
+    {
+      "key": "checks.P1.ci95.1",
+      "equal": true,
+      "ours": 6.553206911424958,
+      "theirs": 6.553206911424958
+    },
+    {
+      "key": "checks.P1.tested",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P1.holm_k",
+      "equal": true,
+      "ours": 1,
+      "theirs": 1
+    },
+    {
+      "key": "checks.P1.ci_holm.0",
+      "equal": true,
+      "ours": 5.699164203167065,
+      "theirs": 5.699164203167065
+    },
+    {
+      "key": "checks.P1.ci_holm.1",
+      "equal": true,
+      "ours": 6.699435577819908,
+      "theirs": 6.699435577819908
+    },
+    {
+      "key": "checks.P1.passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P1.own_count_passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P1.near_boundary",
+      "equal": true,
+      "ours": false,
+      "theirs": false
+    },
+    {
+      "key": "checks.P1.level_two_sided",
+      "equal": true,
+      "ours": 0.9928571428571429,
+      "theirs": 0.9928571428571429
+    },
+    {
+      "key": "checks.P2.n",
+      "equal": true,
+      "ours": 0,
+      "theirs": 0
+    },
+    {
+      "key": "checks.P2.point",
+      "equal": true,
+      "ours": 5.755615234375,
+      "theirs": 5.755615234375
+    },
+    {
+      "key": "checks.P2.ci95.0",
+      "equal": true,
+      "ours": 5.383285738863417,
+      "theirs": 5.383285738863417
+    },
+    {
+      "key": "checks.P2.ci95.1",
+      "equal": true,
+      "ours": 6.127255423445974,
+      "theirs": 6.127255423445974
+    },
+    {
+      "key": "checks.P2.tested",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P2.holm_k",
+      "equal": true,
+      "ours": 2,
+      "theirs": 2
+    },
+    {
+      "key": "checks.P2.ci_holm.0",
+      "equal": true,
+      "ours": 5.2533173409829,
+      "theirs": 5.2533173409829
+    },
+    {
+      "key": "checks.P2.ci_holm.1",
+      "equal": true,
+      "ours": 6.257808904747803,
+      "theirs": 6.257808904747803
+    },
+    {
+      "key": "checks.P2.passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P2.own_count_passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P2.near_boundary",
+      "equal": true,
+      "ours": false,
+      "theirs": false
+    },
+    {
+      "key": "checks.P2.level_two_sided",
+      "equal": true,
+      "ours": 0.9916666666666667,
+      "theirs": 0.9916666666666667
+    },
+    {
+      "key": "checks.P3.n",
+      "equal": true,
+      "ours": 0,
+      "theirs": 0
+    },
+    {
+      "key": "checks.P3.point",
+      "equal": true,
+      "ours": 0.7954915364583334,
+      "theirs": 0.7954915364583334
+    },
+    {
+      "key": "checks.P3.ci95.0",
+      "equal": true,
+      "ours": 0.5841739875095656,
+      "theirs": 0.5841739875095656
+    },
+    {
+      "key": "checks.P3.ci95.1",
+      "equal": true,
+      "ours": 1.0089439787592314,
+      "theirs": 1.0089439787592314
+    },
+    {
+      "key": "checks.P3.tested",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P3.holm_k",
+      "equal": true,
+      "ours": 3,
+      "theirs": 3
+    },
+    {
+      "key": "checks.P3.ci_holm.0",
+      "equal": true,
+      "ours": 0.5176294673604948,
+      "theirs": 0.5176294673604948
+    },
+    {
+      "key": "checks.P3.ci_holm.1",
+      "equal": true,
+      "ours": 1.082827663212187,
+      "theirs": 1.082827663212187
+    },
+    {
+      "key": "checks.P3.passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P3.own_count_passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P3.near_boundary",
+      "equal": true,
+      "ours": false,
+      "theirs": false
+    },
+    {
+      "key": "checks.P3.level_two_sided",
+      "equal": true,
+      "ours": 0.99,
+      "theirs": 0.99
+    },
+    {
+      "key": "checks.P4.n",
+      "equal": true,
+      "ours": 0,
+      "theirs": 0
+    },
+    {
+      "key": "checks.P4.point",
+      "equal": true,
+      "ours": 0.6998697916666667,
+      "theirs": 0.6998697916666667
+    },
+    {
+      "key": "checks.P4.ci95.0",
+      "equal": true,
+      "ours": 0.4598852740816973,
+      "theirs": 0.4598852740816973
+    },
+    {
+      "key": "checks.P4.ci95.1",
+      "equal": true,
+      "ours": 0.9371680126852968,
+      "theirs": 0.9371680126852968
+    },
+    {
+      "key": "checks.P4.tested",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P4.holm_k",
+      "equal": true,
+      "ours": 4,
+      "theirs": 4
+    },
+    {
+      "key": "checks.P4.ci_holm.0",
+      "equal": true,
+      "ours": 0.39369184926659934,
+      "theirs": 0.39369184926659934
+    },
+    {
+      "key": "checks.P4.ci_holm.1",
+      "equal": true,
+      "ours": 0.9997159715339213,
+      "theirs": 0.9997159715339213
+    },
+    {
+      "key": "checks.P4.passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P4.own_count_passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P4.near_boundary",
+      "equal": true,
+      "ours": false,
+      "theirs": false
+    },
+    {
+      "key": "checks.P4.level_two_sided",
+      "equal": true,
+      "ours": 0.9875,
+      "theirs": 0.9875
+    },
+    {
+      "key": "checks.P5.n",
+      "equal": true,
+      "ours": 0,
+      "theirs": 0
+    },
+    {
+      "key": "checks.P5.point",
+      "equal": true,
+      "ours": 0.7405598958333333,
+      "theirs": 0.7405598958333333
+    },
+    {
+      "key": "checks.P5.ci95.0",
+      "equal": true,
+      "ours": 0.5196896694963071,
+      "theirs": 0.5196896694963071
+    },
+    {
+      "key": "checks.P5.ci95.1",
+      "equal": true,
+      "ours": 0.9598857494832738,
+      "theirs": 0.9598857494832738
+    },
+    {
+      "key": "checks.P5.tested",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P5.holm_k",
+      "equal": true,
+      "ours": 5,
+      "theirs": 5
+    },
+    {
+      "key": "checks.P5.ci_holm.0",
+      "equal": true,
+      "ours": 0.46726299308613883,
+      "theirs": 0.46726299308613883
+    },
+    {
+      "key": "checks.P5.ci_holm.1",
+      "equal": true,
+      "ours": 1.010365853172611,
+      "theirs": 1.010365853172611
+    },
+    {
+      "key": "checks.P5.passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P5.own_count_passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P5.near_boundary",
+      "equal": true,
+      "ours": false,
+      "theirs": false
+    },
+    {
+      "key": "checks.P5.level_two_sided",
+      "equal": true,
+      "ours": 0.9833333333333333,
+      "theirs": 0.9833333333333333
+    },
+    {
+      "key": "checks.P6.n",
+      "equal": true,
+      "ours": 0,
+      "theirs": 0
+    },
+    {
+      "key": "checks.P6.point",
+      "equal": true,
+      "ours": 3.110758463541667,
+      "theirs": 3.110758463541667
+    },
+    {
+      "key": "checks.P6.ci95.0",
+      "equal": true,
+      "ours": 2.780005709854805,
+      "theirs": 2.780005709854805
+    },
+    {
+      "key": "checks.P6.ci95.1",
+      "equal": true,
+      "ours": 3.4559584315470384,
+      "theirs": 3.4559584315470384
+    },
+    {
+      "key": "checks.P6.tested",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P6.holm_k",
+      "equal": true,
+      "ours": 6,
+      "theirs": 6
+    },
+    {
+      "key": "checks.P6.ci_holm.0",
+      "equal": true,
+      "ours": 2.7348861974190113,
+      "theirs": 2.7348861974190113
+    },
+    {
+      "key": "checks.P6.ci_holm.1",
+      "equal": true,
+      "ours": 3.4939256025001733,
+      "theirs": 3.4939256025001733
+    },
+    {
+      "key": "checks.P6.passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P6.own_count_passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P6.near_boundary",
+      "equal": true,
+      "ours": false,
+      "theirs": false
+    },
+    {
+      "key": "checks.P6.level_two_sided",
+      "equal": true,
+      "ours": 0.975,
+      "theirs": 0.975
+    },
+    {
+      "key": "checks.P7.n",
+      "equal": true,
+      "ours": 0,
+      "theirs": 0
+    },
+    {
+      "key": "checks.P7.point",
+      "equal": true,
+      "ours": 3.006998697916667,
+      "theirs": 3.006998697916667
+    },
+    {
+      "key": "checks.P7.ci95.0",
+      "equal": true,
+      "ours": 2.626362352424941,
+      "theirs": 2.626362352424941
+    },
+    {
+      "key": "checks.P7.ci95.1",
+      "equal": true,
+      "ours": 3.3926427334703786,
+      "theirs": 3.3926427334703786
+    },
+    {
+      "key": "checks.P7.tested",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P7.holm_k",
+      "equal": true,
+      "ours": 7,
+      "theirs": 7
+    },
+    {
+      "key": "checks.P7.ci_holm.0",
+      "equal": true,
+      "ours": 2.626362352424941,
+      "theirs": 2.626362352424941
+    },
+    {
+      "key": "checks.P7.ci_holm.1",
+      "equal": true,
+      "ours": 3.3926427334703786,
+      "theirs": 3.3926427334703786
+    },
+    {
+      "key": "checks.P7.passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P7.own_count_passes",
+      "equal": true,
+      "ours": true,
+      "theirs": true
+    },
+    {
+      "key": "checks.P7.near_boundary",
+      "equal": true,
+      "ours": false,
+      "theirs": false
+    },
+    {
+      "key": "checks.P7.level_two_sided",
+      "equal": true,
+      "ours": 0.95,
+      "theirs": 0.95
+    },
+    {
+      "key": "holm_order.0",
+      "equal": true,
+      "ours": "P1",
+      "theirs": "P1"
+    },
+    {
+      "key": "holm_order.1",
+      "equal": true,
+      "ours": "P2",
+      "theirs": "P2"
+    },
+    {
+      "key": "holm_order.2",
+      "equal": true,
+      "ours": "P3",
+      "theirs": "P3"
+    },
+    {
+      "key": "holm_order.3",
+      "equal": true,
+      "ours": "P4",
+      "theirs": "P4"
+    },
+    {
+      "key": "holm_order.4",
+      "equal": true,
+      "ours": "P5",
+      "theirs": "P5"
+    },
+    {
+      "key": "holm_order.5",
+      "equal": true,
+      "ours": "P6",
+      "theirs": "P6"
+    },
+    {
+      "key": "holm_order.6",
+      "equal": true,
+      "ours": "P7",
+      "theirs": "P7"
+    },
+    {
+      "key": "picks.B.0.0",
+      "equal": true,
+      "ours": 16.0,
+      "theirs": 16.0
+    },
+    {
+      "key": "picks.B.0.1",
+      "equal": true,
+      "ours": 8.0,
+      "theirs": 8.0
+    },
+    {
+      "key": "picks.B.1.0",
+      "equal": true,
+      "ours": 8.0,
+      "theirs": 8.0
+    },
+    {
+      "key": "picks.B.1.1",
+      "equal": true,
+      "ours": 2.0,
+      "theirs": 2.0
+    },
+    {
+      "key": "picks.B0.0.0",
+      "equal": true,
+      "ours": 16.0,
+      "theirs": 16.0
+    },
+    {
+      "key": "picks.B0.0.1",
+      "equal": true,
+      "ours": 16.0,
+      "theirs": 16.0
+    },
+    {
+      "key": "picks.B0.1.0",
+      "equal": true,
+      "ours": 16.0,
+      "theirs": 16.0
+    },
+    {
+      "key": "picks.B0.1.1",
+      "equal": true,
+      "ours": 8.0,
+      "theirs": 8.0
+    },
+    {
+      "key": "picks.rca_lambda.0",
+      "equal": true,
+      "ours": 0.5,
+      "theirs": 0.5
+    },
+    {
+      "key": "picks.rca_lambda.1",
+      "equal": true,
+      "ours": 0.5,
+      "theirs": 0.5
+    },
+    {
+      "key": "picks.aff.0",
+      "equal": true,
+      "ours": 39,
+      "theirs": 39
+    },
+    {
+      "key": "picks.aff.1",
+      "equal": true,
+      "ours": 119,
+      "theirs": 119
+    },
+    {
+      "key": "picks.cf.0",
+      "equal": true,
+      "ours": 149,
+      "theirs": 149
+    },
+    {
+      "key": "picks.cf.1",
+      "equal": true,
+      "ours": 10,
+      "theirs": 10
+    },
+    {
+      "key": "picks.sigma_star.0",
+      "equal": true,
+      "ours": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "key": "picks.sigma_star.1",
+      "equal": true,
+      "ours": 0.0,
+      "theirs": 0.0
+    },
+    {
+      "key": "picks.switched_off",
+      "equal": true,
+      "ours": false,
+      "theirs": false
+    },
+    {
+      "key": "picks.taus.0",
+      "equal": true,
+      "ours": 3.8684538364530674e-05,
+      "theirs": 3.8684538364530674e-05
+    },
+    {
+      "key": "picks.taus.1",
+      "equal": true,
+      "ours": 0.21702129490553143,
+      "theirs": 0.21702129490553143
+    },
+    {
+      "key": "picks.taus.2",
+      "equal": true,
+      "ours": 0.47973989883399526,
+      "theirs": 0.47973989883399526
+    },
+    {
+      "key": "picks.taus.3",
+      "equal": true,
+      "ours": 0.7502585816077211,
+      "theirs": 0.7502585816077211
+    },
+    {
+      "key": "arrays.aff_fused__r1",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_fused__gain",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_fused__other",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_fused__swap",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_fused__strict",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_cf__r1",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_cf__gain",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_cf__other",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_cf__swap",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_cf__strict",
+      "equal": true
+    },
+    {
+      "key": "arrays.P__a",
+      "equal": true
+    },
+    {
+      "key": "arrays.P__b",
+      "equal": true
+    },
+    {
+      "key": "arrays.margin__a",
+      "equal": true
+    },
+    {
+      "key": "arrays.margin__b",
+      "equal": true
+    },
+    {
+      "key": "arrays.pick__a",
+      "equal": true
+    },
+    {
+      "key": "arrays.pick__b",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_gate__a",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_gate__b",
+      "equal": true
+    },
+    {
+      "key": "arrays.cl",
+      "equal": true
+    },
+    {
+      "key": "arrays.pair_index",
+      "equal": true
+    },
+    {
+      "key": "arrays.parity",
+      "equal": true
+    },
+    {
+      "key": "arrays.taus",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_fused_cells",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_cf_cells",
+      "equal": true
+    },
+    {
+      "key": "arrays.aff_sigma",
+      "equal": true
+    }
+  ],
+  "independent_identity": {
+    "record_sha256": "d98f9e7e9622d6ca45337aa497e6e3667d5505cd01fb16820b48d0768a4e64c2",
+    "arrays_sha256": "baa65aa56cf0759a26cb2c88c8462a7e2c498e136c88f08a5ee65d2af7bc9423"
+  },
+  "read": "seed42",
+  "backbone": "clip_b32"
+}
