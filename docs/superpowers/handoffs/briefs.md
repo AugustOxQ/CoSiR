@@ -171,3 +171,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-r8-run-2-handoff.md
 - New chat: tab 'r8 run 2', session e07e023c-b740-420e-97e9-164573311ce2
 
+[brief] CoSiR: r8 run 2 -> r9 decide (2026-10-13 11:55 Amsterdam)
+- Done: round 8's two reports are checked and committed. No pick in either track, so AFF stays the current best.
+- State: all 20 main-line scorers are below AFF (best −0.47 R@1 points). The DINOv2 reader is +0.29 [−0.01, +0.59] and misses the bar.
+- Next: step 1, decision C, on the auto report's results brief. Then the wrap-up and step 2.
+- Blocked: nothing. The user's reading comes first.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-decide-handoff.md
+- New chat: tab 'r9 decide', session 347d0b89-e31b-45e0-99c6-172e32722282
+
