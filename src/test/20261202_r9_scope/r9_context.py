@@ -48,11 +48,14 @@ from src.eval.aspect_episodes import PaintingValueIndex  # noqa: E402
 from src.eval.aspect_scorers import EvalInputs, cosine_scores  # noqa: E402
 from src.train.train_factors import encode_rows, load_factor_checkpoint  # noqa: E402
 
-MODES = ("selection", "held")
-# (mode, seed) -> episodes per pair
+MODES = ("selection", "held")            # RowContext's modes; mode "a28" is r9_a28_context.A28Context's
+A28_READ_SEEDS = (55, 56, 57)            # the ArtELingo-28 read seeds (rule section 5.1 item 4)
+# (mode, seed) -> episodes per pair, for RowContext (selection, held), A28Context (a28) and the bundle/scoring guards
 ADMITTED = {("selection", R.DEV_SEED): R.N_PER_PAIR,
             **{("selection", s): R.N_SMOKE for s in R.SMOKE_SEEDS},
-            **{("held", s): R.N_PER_PAIR for s in R.HELD_SEEDS}}
+            **{("held", s): R.N_PER_PAIR for s in R.HELD_SEEDS},
+            **{("a28", s): R.N_PER_PAIR for s in A28_READ_SEEDS},
+            **{("a28", s): R.N_SMOKE for s in R.SMOKE_SEEDS}}   # the smoke of rule section 6 item 5
 SPLIT_FIELDS = ("groups", "train", "val", "held", "scorer_train", "selection")
 
 

@@ -51,9 +51,8 @@ from src.train.train_factors import encode_rows, load_factor_checkpoint  # noqa:
 D = 512
 N_A28 = 6_000                 # synthetic A28 rows
 N_FIT = 2_000
-SEED = 9001                   # the synthetic runs: admitted below as ("a28", 9001) -> 64
+SEED = 9001                   # the synthetic runs: the smoke seed, admitted as ("a28", 9001) -> 64 in r9_context.ADMITTED
 N_EP = R.N_SMOKE
-ADMIT_TEST = {("a28", SEED): N_EP}
 A3 = R.TEST / B.A3_REL
 _COUNT = itertools.count()
 MUTATED = set()
@@ -119,11 +118,14 @@ def _head_labels(rng, img, scorer_train, k):
 def stand_in_heads(data, scorer_train, seed=1):
     rng = np.random.default_rng(seed)
     labels = {h: _head_labels(rng, data.img_features, scorer_train, H.N_CLASSES[h]) for h in H.HEADS}
-    return H.fit_all(data, scorer_train, labels, N_FIT)
+    heads = H.fit_all(data, scorer_train, labels, N_FIT)
+    for head in heads.values():                       # the pinned heads carry their fit inputs; the stand-ins say CLIP
+        head["fit_inputs"] = {"backbone": "clip_b32"}
+    return heads
 
 
 def ctx_args(s, **over):
-    a = dict(a28=s.a28, eps=s.eps, seed=SEED, n_per_pair=N_EP, heads=s.heads, admitted=ADMIT_TEST)
+    a = dict(a28=s.a28, eps=s.eps, seed=SEED, n_per_pair=N_EP, heads=s.heads)
     a.update(over)
     return a
 
@@ -151,8 +153,10 @@ def syn():
     txt = rng.standard_normal((n, D), dtype=np.float32)
     img[dropped] = np.nan
     txt[dropped] = np.nan
+    language = np.arange(n, dtype=np.int64) % 3 + 1           # l = 1 to 3 in LANGS' sort order (as load_a28's language)
+    assert [LANGS[l - 1] for l in language[:3]] == sorted(LANGS)
     a28 = SimpleNamespace(backbone="clip_b32", n=n, img=img, txt=txt, kept=kept, dropped=dropped,
-                          painting_index=pidx, read_set_sha256="0" * 64, **labels)
+                          painting_index=pidx, language=language, read_set_sha256="0" * 64, **labels)
     train = np.flatnonzero(kept)
     raw = SimpleNamespace(img_features=np.nan_to_num(img), txt_features=np.nan_to_num(txt))   # stand-in ArtELingo
     heads = stand_in_heads(raw, train[:4_000])
@@ -177,8 +181,17 @@ def test_every_marked_guard_has_a_mutation_test():
 
 
 def test_admitted_seeds():
-    assert AC.A28_ADMITTED == {("a28", 55): 4096, ("a28", 56): 4096, ("a28", 57): 4096}
-    assert AC.MODE == "a28"
+    """The a28 seeds live in the one shared table (r9_context.ADMITTED): the read seeds at 4,096, the smoke at 64."""
+    a28 = {k: v for k, v in X.ADMITTED.items() if k[0] == "a28"}
+    assert a28 == {("a28", 55): 4096, ("a28", 56): 4096, ("a28", 57): 4096,
+                   ("a28", 9001): 64, ("a28", 9002): 64, ("a28", 9003): 64}
+    assert AC.MODE == "a28" and not hasattr(AC, "A28_ADMITTED")
+    assert "admitted" not in inspect.signature(AC.A28Context.__init__).parameters
+
+
+def test_row_context_still_refuses_mode_a28():
+    with pytest.raises(AssertionError, match="mode 'a28' is not one of"):
+        X.RowContext("a28", 55, None, None, None, None, None, R.N_PER_PAIR)
 
 
 def test_inputs_only_takes_no_label_episode_or_score():
@@ -252,14 +265,15 @@ def test_inputs_only_has_features_codes_posteriors_and_masks_only(syn):
 
 def test_seed_mode_guard(syn, tmp_path, monkeypatch):
     monkeypatch.setattr(AC.X, "check_masked", _reach)      # anything past the guard stops here
-    for over in ({"seed": 42}, {"seed": 52}, {"seed": 56}, {"n_per_pair": 4096}, {"seed": 9002}):
+    for over in ({"seed": 42}, {"seed": 52}, {"seed": 56}, {"n_per_pair": 4096}, {"seed": 9004}, {"seed": 58}):
         with pytest.raises(AssertionError, match="admits"):
             AC.A28Context(**ctx_args(syn, **over))
-    for s in (55, 56, 57):                                 # the default table: the read seeds only
+    for s in (55, 56, 57):                                 # the read seeds: 4,096 per pair, not 64
         with pytest.raises(AssertionError, match="admits"):
-            AC.A28Context(**{**ctx_args(syn, seed=s), "admitted": AC.A28_ADMITTED})   # 64 per pair is not 4096
-    with pytest.raises(AssertionError, match="admits"):
-        AC.A28Context(**{**ctx_args(syn), "admitted": AC.A28_ADMITTED})
+            AC.A28Context(**ctx_args(syn, seed=s))
+    for s in (9001, 9002, 9003):                           # the smoke seeds: 64 per pair, not 4,096
+        with pytest.raises(AssertionError, match="admits"):
+            AC.A28Context(**ctx_args(syn, seed=s, n_per_pair=4096))
     mut = mutant(tmp_path, "r9_a28_context.py", "a28_seed_mode")
     monkeypatch.setattr(mut.X, "check_masked", _reach)
     with pytest.raises(Reached):
@@ -351,6 +365,66 @@ def test_member_row_outside_the_read_rows_fails(syn, tmp_path, monkeypatch):
         mut.A28Context(**ctx_args(syn, eps=tampered))
 
 
+def _shifted(eps, rows):
+    """The episodes with every member row moved to the next read row (a row space that differs from the features')."""
+    nxt = np.zeros(int(rows.max()) + 1, dtype=np.int64)
+    nxt[rows] = np.roll(rows, -1)
+    per_pair = [AE.AspectEpisodes(ep.aspect_a, ep.aspect_b, *(nxt[getattr(ep, f)] for f in E.FIELDS))
+                for ep in eps.per_pair]
+    return SimpleNamespace(**{**vars(eps), "per_pair": per_pair, "pooled": AE.concat_episodes(per_pair)})
+
+
+def test_synthetic_episodes_are_language_homogeneous(syn):
+    lang = np.concatenate([syn.eps.language[p] for p in R.PAIR_NAMES])
+    for f in E.FIELDS:
+        members = getattr(syn.eps.pooled, f).reshape(len(lang), -1)
+        assert (syn.a28.language[members] == lang[:, None]).all(), f
+    assert len(set(lang.tolist())) == 3                    # all three languages occur
+
+
+def test_episodes_in_another_row_space_fail_the_language_join(syn, tmp_path, monkeypatch):
+    """Episodes moved to the next read row are still read rows, but many members then have another language."""
+    moved = _shifted(syn.eps, syn.rows)
+    assert syn.a28.kept[moved.pooled.rows()].all()          # the member-row guard alone cannot see this
+    with pytest.raises(AssertionError, match="language"):
+        AC.A28Context(**ctx_args(syn, eps=moved))
+    single = _other_language_member(syn)                    # one example row of one episode in another language
+    with pytest.raises(AssertionError, match="language"):
+        AC.A28Context(**ctx_args(syn, eps=single))
+    mut = mutant(tmp_path, "r9_a28_context.py", "a28_language_join")
+    monkeypatch.setattr(mut, "cosine_scores", _reach)      # the next step after the guard
+    for bad in (moved, single):
+        with pytest.raises(Reached):
+            mut.A28Context(**ctx_args(syn, eps=bad))
+
+
+def _other_language_member(syn):
+    """The episodes with the first image row of example pair 0 (aspect a) of episode 0 replaced by a read row of
+    another language (still a read row, so the member-row guard passes)."""
+    lang0 = int(syn.eps.language[R.PAIR_NAMES[0]][0])
+    other = int(syn.rows[syn.a28.language[syn.rows] != lang0][0])
+    pa = syn.eps.pooled.pairs_a_img.copy()
+    pa[0, 0] = other
+    return SimpleNamespace(**{**vars(syn.eps), "pooled": dataclasses.replace(syn.eps.pooled, pairs_a_img=pa)})
+
+
+def test_inputs_and_episodes_without_a_language_are_refused(syn):
+    no_col = SimpleNamespace(**{k: v for k, v in vars(syn.a28).items() if k != "language"})
+    with pytest.raises(AssertionError, match="language"):
+        AC.A28Inputs(no_col, syn.heads)
+    no_eps = SimpleNamespace(**{k: v for k, v in vars(syn.eps).items() if k != "language"})
+    with pytest.raises(AssertionError, match="language"):
+        AC.A28Context(**ctx_args(syn, eps=no_eps))
+
+
+def test_bundle_check_context_reads_the_shared_admitted_table(ctx):
+    """check_context looks (mode, seed) up in r9_context.ADMITTED: an a28 seed outside it, or the wrong size, fails."""
+    B.check_context(ctx)
+    for over in ({"seed": 9004}, {"seed": 55}, {"seed": 58}):
+        with pytest.raises(AssertionError, match="admitted episodes per pair"):
+            B.check_context(SimpleNamespace(**{**vars(ctx), **over}))
+
+
 def test_bundle_check_context_fails_on_a_member_outside_the_read_rows(ctx):
     """The bundle's own check (guard bundle_rows of r9_bundle) on an A28Context whose episodes were tampered with
     after construction."""
@@ -388,10 +462,18 @@ def test_heads_dim_guard(syn, tmp_path, monkeypatch):
         mut.A28Inputs(small, syn.heads)
 
 
-def test_heads_fitted_on_another_backbone_are_refused(syn):
+def test_heads_fitted_on_another_backbone_or_without_fit_inputs_are_refused(syn, tmp_path, monkeypatch):
     other = {h: {**v, "fit_inputs": {"backbone": "qwen3vl_emb_2b"}} for h, v in syn.heads.items()}
-    with pytest.raises(AssertionError, match="heads"):
-        AC.A28Inputs(syn.a28, other)
+    bare = {h: {k: x for k, x in v.items() if k != "fit_inputs"} for h, v in syn.heads.items()}   # as H.fit_all makes
+    assert all("fit_inputs" in v for v in syn.heads.values())
+    for bad in (other, bare):
+        with pytest.raises(AssertionError, match="heads"):
+            AC.A28Inputs(syn.a28, bad)
+    mut = mutant(tmp_path, "r9_a28_context.py", "a28_heads_backbone")
+    monkeypatch.setattr(mut.H, "predict", _reach)
+    for bad in (other, bare):
+        with pytest.raises(Reached):
+            mut.A28Inputs(syn.a28, bad)
 
 
 def test_module_does_not_fit_anything():
@@ -426,25 +508,36 @@ def equiv():
     readers = B.load_readers("clip_b32")
     ref = B.build_bundle_r6(ref_ctx, readers, pm, "clip_b32")
 
-    # the A28-shaped row space: position k = index of the row in the selection rows
+    # the A28-shaped row space: position k = index of the row in the selection rows. The rows that no episode uses are
+    # dropped (NaN features, not kept), as most of the real read set's dropped rows are: the A28 path must be NaN-safe
     groups_sel = rows.split.groups[sel]
     painting_index = np.unique(groups_sel, return_inverse=True)[1].astype(np.int64)
-    a28 = SimpleNamespace(
-        backbone="clip_b32", n=len(sel), img=rows.data.img_features[sel], txt=rows.data.txt_features[sel],
-        kept=np.ones(len(sel), dtype=bool), dropped=np.zeros(len(sel), dtype=bool), painting_index=painting_index,
-        read_set_sha256="0" * 64)
 
     def to_a28(ep):
         return AE.AspectEpisodes(ep.aspect_a, ep.aspect_b,
                                  *(np.searchsorted(sel, getattr(ep, f)) for f in E.FIELDS))
 
     mapped = [to_a28(ep) for ep in ref_ctx.eps.per_pair]
+    kept = np.zeros(len(sel), dtype=bool)
+    kept[AE.concat_episodes(mapped).rows()] = True
+    assert 0 < kept.sum() < 0.5 * len(sel)                    # most positions are dropped, some are read rows
+    img, txt = rows.data.img_features[sel].copy(), rows.data.txt_features[sel].copy()
+    img[~kept] = np.nan
+    txt[~kept] = np.nan
+    a28 = SimpleNamespace(
+        backbone="clip_b32", n=len(sel), img=img, txt=txt, kept=kept, dropped=~kept, painting_index=painting_index,
+        language=np.ones(len(sel), dtype=np.int64), read_set_sha256="a1" * 32)
     for old, new in zip(ref_ctx.eps.per_pair, mapped):
         assert np.array_equal(sel[new.anchor], old.anchor) and np.array_equal(sel[new.candidates], old.candidates)
     eps = SimpleNamespace(seed=SEED, per_pair=mapped, pooled=AE.concat_episodes(mapped),
                           sha={p: AE.episodes_sha256(ep) for p, ep in zip(R.PAIR_NAMES, mapped)}, n=3 * N_EP,
-                          pair_index=ref_ctx.pair_index.copy(), parity=ref_ctx.parity.copy())
-    a28_ctx = AC.A28Context(a28, eps, SEED, N_EP, heads, admitted=ADMIT_TEST)
+                          pair_index=ref_ctx.pair_index.copy(), parity=ref_ctx.parity.copy(),
+                          language={p: np.ones(N_EP, dtype=np.int64) for p in R.PAIR_NAMES},
+                          part_sha={p: {"L1": f"{i:02x}" * 32} for i, p in enumerate(R.PAIR_NAMES)},
+                          shares={p: {"L1": N_EP} for p in R.PAIR_NAMES},
+                          set_aside={p: [] for p in R.PAIR_NAMES},
+                          set_aside_reasons={p: {} for p in R.PAIR_NAMES})
+    a28_ctx = AC.A28Context(a28, eps, SEED, N_EP, heads)
     out = B.build_bundle_a28(a28_ctx, readers, pm, "clip_b32")
     return SimpleNamespace(rows=rows, sel=sel, ref_ctx=ref_ctx, ref=ref, a28_ctx=a28_ctx, out=out, heads=heads,
                            readers=readers, painting_index=painting_index)
@@ -460,9 +553,12 @@ def test_equivalence_bundle_fields(equiv):
     assert np.array_equal(np.unique(equiv.rows.split.groups[sel])[out.cl], ref.cl)
     for k in ("cos", "t_n1u", "t6u_B", "t6u_B0", "t6u_B1"):
         assert scores_bits(getattr(out, k), getattr(ref, k)), k
+    kept = equiv.a28_ctx.in_rows
+    assert out.n == 3 * N_EP and 0 < kept.sum() < len(sel)
     for h in ref.post:
         for m in H.MODALITIES:
-            assert bits(out.post[h][m][np.isfinite(out.post[h][m]).all(axis=1)], ref.post[h][m][sel]), (h, m)
+            assert np.isnan(out.post[h][m][~kept]).all() and np.isfinite(out.post[h][m][kept]).all(), (h, m)
+            assert bits(out.post[h][m][kept], ref.post[h][m][sel][kept]), (h, m)
     for d in DIRECTIONS:
         assert bits(out.stack[d], ref.stack[d]), d
     for c in CONDITIONS:
@@ -470,6 +566,29 @@ def test_equivalence_bundle_fields(equiv):
     for name in B.PM_TERM_NAMES:
         assert scores_bits(out.pm_terms[name], ref.pm_terms[name]), name
     assert out.coef_sha256 == ref.coef_sha256 and out.fit_rows_sha256 == ref.fit_rows_sha256
+
+
+def test_equivalence_records_added_by_build_bundle_a28(equiv):
+    """The records of ticket 17 and the read set that the A28 bundle adds to build_bundle_r6's (rule section 8 item 5:
+    the per-language report and held_started_H8.json read them from the bundle)."""
+    out, eps = equiv.out, equiv.a28_ctx.eps
+    assert out.read_set_sha256 == "a1" * 32 == equiv.a28_ctx.a28.read_set_sha256
+    assert out.language is eps.language and set(out.language) == set(R.PAIR_NAMES)
+    assert all((out.language[p] == 1).all() and len(out.language[p]) == N_EP for p in R.PAIR_NAMES)
+    for name in ("part_sha", "shares", "set_aside", "set_aside_reasons"):
+        assert getattr(out, name) is getattr(eps, name), name
+    assert out.part_sha[R.PAIR_NAMES[1]] == {"L1": "01" * 32} and out.shares[R.PAIR_NAMES[2]] == {"L1": N_EP}
+    assert out.set_aside == {p: [] for p in R.PAIR_NAMES}
+
+
+def test_equivalence_a_real_a28_bundle_passes_score_seed_admitted_guard(equiv):
+    """r9_context.ADMITTED holds the a28 seeds, so the scorer's seed/size guard accepts an a28 bundle as it is."""
+    out = equiv.out
+    assert out.mode == "a28" and out.smoke
+    assert len(R.PAIRS) * X.ADMITTED.get((out.mode, int(out.seed)), -1) == out.n         # guard:admitted's test
+    picks = P.load_picks(backbone="clip_b32")
+    got = S.score_seed(out, picks, P.frozen_lambdas("clip_b32"), equiv.readers, include_pm=False)
+    assert got["pair_index"].shape == (out.n,)
 
 
 def test_equivalence_frozen_scores(equiv):

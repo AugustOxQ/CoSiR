@@ -189,7 +189,10 @@ def test_every_marked_guard_has_a_mutation_test():
 
 def test_admitted_seeds_and_names():
     assert X.ADMITTED == {("selection", 42): 4096, ("selection", 9001): 64, ("selection", 9002): 64,
-                          ("selection", 9003): 64, ("held", 52): 4096, ("held", 53): 4096, ("held", 54): 4096}
+                          ("selection", 9003): 64, ("held", 52): 4096, ("held", 53): 4096, ("held", 54): 4096,
+                          ("a28", 55): 4096, ("a28", 56): 4096, ("a28", 57): 4096,
+                          ("a28", 9001): 64, ("a28", 9002): 64, ("a28", 9003): 64}
+    assert X.MODES == ("selection", "held")                # RowContext does not take mode "a28" (A28Context's)
     assert B.A0 == ("affect", "image", "caption") and B.A1 == ("affect", "image", "caption", "csd")
     assert B.E2_PARTS == B.n6.PARTS and B.E2_FROM["affect"] == "affect_km"            # B uses affect-km (hazard 9)
     assert B.PM_NAMES == ("diag", "diag_relu", "bilinear", "kissme", "xing", "wang", "probe", "tip",
@@ -309,7 +312,8 @@ def test_episodes_are_built_and_reported_before_the_posteriors(syn, monkeypatch)
 def test_seed_mode_guard(syn, tmp_path, monkeypatch):
     monkeypatch.setattr(E, "build_seed", _reach)            # anything past the guard stops here
     for over in ({"seed": 42}, {"mode": "selection", "seed": SEED}, {"n_per_pair": R.N_SMOKE},
-                 {"mode": "selection", "seed": 42, "n_per_pair": R.N_SMOKE}, {"mode": "test"}):
+                 {"mode": "selection", "seed": 42, "n_per_pair": R.N_SMOKE}, {"mode": "test"},
+                 {"mode": "a28", "seed": 55, "n_per_pair": R.N_PER_PAIR}, {"mode": "a28", "seed": 9001, "n_per_pair": R.N_SMOKE}):
         with pytest.raises(AssertionError, match="admits|mode"):
             X.RowContext(**ctx_args(syn, **over))
     mut = mutant(tmp_path, "r9_context.py", "seed_mode")

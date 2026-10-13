@@ -1,7 +1,8 @@
 """Round 9 bundle, copied from round 6 (r6_bundle.py) with the changes listed at the end of this docstring
 (DECISION_RULE.md of this folder: section 5 items 4 and 5, section 6 items 1 and 4, section 11;
 contracts section 4; ticket 05): every scorer's terms for one seed's episodes, on a RowContext (r9_context), held or
-selection. No pick is made here (ticket 06 assembles the frozen picks).
+selection, or on an A28Context (r9_a28_context, mode a28; build_bundle_a28). No pick is made here (ticket 06
+assembles the frozen picks).
 
   fit_pm(data, scorer_train, backbone) the PCA basis and pair scaler of run_baselines.py, refit on the same 60,000
                                       scorer-train rows (rule section 11; fit_rows_sha256 asserted against
@@ -184,13 +185,12 @@ def check_readers(readers):
 
 def check_context(ctx):
     """The context fields the bundle relies on: n, pair index and parity as EvalContext's; every episode member a row
-    of the context (rule section 5 item 5); cl = groups[anchor] (round 3's final review N11). A context may carry its own
-    ``admitted`` table of (mode, seed) -> episodes per pair (A28Context's), RowContext's is X.ADMITTED; the row space's
-    size is len(ctx.in_rows) (ticket 18)."""
+    of the context (rule section 5 item 5); cl = groups[anchor] (round 3's final review N11). (mode, seed) -> episodes per
+    pair is X.ADMITTED's, for the a28 mode too; the row space's size is len(ctx.in_rows) (ticket 18)."""
     n = int(ctx.n)
     ep = ctx.pooled
     _require(n == len(R.PAIRS) * int(ctx.n_per_pair) == len(ep.anchor) and ep is ctx.eps.pooled
-             and getattr(ctx, "admitted", X.ADMITTED).get((ctx.mode, int(ctx.seed))) == int(ctx.n_per_pair),
+             and X.ADMITTED.get((ctx.mode, int(ctx.seed))) == int(ctx.n_per_pair),
              f"{n} episodes of {ctx.mode} seed {ctx.seed}: one seed's pooled episodes (3 x its admitted "
              f"episodes per pair) are expected")  # guard:per_seed
     _require(np.array_equal(ctx.pair_index, np.repeat(np.arange(len(R.PAIRS)), ctx.n_per_pair))
