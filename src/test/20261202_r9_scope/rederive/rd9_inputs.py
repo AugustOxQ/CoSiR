@@ -93,6 +93,20 @@ def resolve_pin(relative):
     return (MAIN/path) if str(path).startswith('src/') else HERE/path
 
 
+def read_pinned(path,entries):
+    """The bytes of `path`, after checking their SHA-256 against its one entry in `entries` (path -> SHA-256).
+
+    The entry is found by file name, so a copy kept in another folder is accepted only if it is byte-equal.
+    Callers parse these bytes, not the file again, so the checked bytes are the parsed bytes.
+    """
+    path=Path(path)
+    matches=[digest for key,digest in entries.items() if Path(key).name==path.name]
+    assert len(matches)==1, f'{path.name}: expected exactly one pins entry, found {len(matches)}'
+    raw=path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest()==matches[0], f'{path.name}: SHA-256 differs from its pins entry ({path})'
+    return raw
+
+
 def pin_entries(record):
     """Accept explicit {path,sha256} entries or path→SHA maps; no implicit recipe lookup."""
     entries = {}

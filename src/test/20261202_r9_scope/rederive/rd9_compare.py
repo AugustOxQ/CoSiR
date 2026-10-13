@@ -7,7 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import numpy as np
-from rd9_inputs import HERE,RD,T,save_json,sha_file
+from rd9_inputs import HERE,RD,T,pin_entries,read_pinned,save_json,sha_file
 from rd9_stats import CHECK_IDS
 
 
@@ -168,6 +168,7 @@ def main():
     p.add_argument('--reported-episodes',type=Path)
     p.add_argument('--language-flags',type=Path,default=HERE/'results/language_flags_a28.json')
     p.add_argument('--near-duplicates',type=Path,default=HERE/'results/near_duplicates_a28.json')
+    p.add_argument('--a28-pins',type=Path,default=HERE/'pins_a28.json')
     p.add_argument('--clip-phase1',action='store_true')
     p.add_argument('--phase1',action='store_true')
     p.add_argument('--backbone',choices=('clip_b32','qwen3vl_emb_2b','siglip2_so400m'))
@@ -217,11 +218,17 @@ def main():
         compare_stats(c,own['stats'],report.get('stats',report))
         if own.get('read') in ('H8','H9','H10') and own.get('mode')!='selection':
             c.value('set_aside',derived_set_aside(own),reported_set_aside(report.get('set_aside',MISSING)))
-            flags=json.loads(args.language_flags.read_text())
+            # The flags file must be the pinned stage-1 file; the near-duplicates file is not in pins_a28.json, so only
+            # its SHA-256 is recorded. Each file is parsed from the bytes that were hashed.
+            flags_raw=read_pinned(args.language_flags,pin_entries(json.loads(args.a28_pins.read_text())))
+            duplicates_raw=args.near_duplicates.read_bytes()
+            extra.update(language_flags_sha256=hashlib.sha256(flags_raw).hexdigest(),
+                         near_duplicates_sha256=hashlib.sha256(duplicates_raw).hexdigest())
+            flags=json.loads(flags_raw)
             assert isinstance(flags,dict), 'language flags must be an object'
             c.value('flagged_languages',sorted_languages(flags.get('flagged',MISSING)),
                     sorted_languages(report.get('flagged_languages',MISSING)))
-            duplicates=json.loads(args.near_duplicates.read_text())
+            duplicates=json.loads(duplicates_raw)
             assert isinstance(duplicates,dict), 'near duplicates must be an object'
             assert duplicates.get('train_side')==912, 'near duplicates: train_side must be 912'
             assert duplicates.get('read_paintings')==746, 'near duplicates: read_paintings must be 746'
