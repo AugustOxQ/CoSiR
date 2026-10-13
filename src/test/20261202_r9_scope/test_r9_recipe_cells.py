@@ -211,7 +211,7 @@ class World:
         self.mean = 100 * float(np.mean(RCELLS.per_anchor(self.B)["r1"])) + b_mean_shift
         file_pick = bpick_in_file or self.bpick
         rec = {name: {str(h): list(file_pick[h]) for h in (0, 1)} for name in ("B", "B0", "B1")}
-        rec.update({"mean_r1": {"B": self.mean, "B0": 1.5, "B1": 2.5}, "passed": True})
+        rec.update({"mean_r1": {"B": self.mean, "B0": 1.5, "B1": 2.5}, "passed": True, "backbone": BACKBONE, "targets": None})
         self.picks_file = tmp_path / "picks_seed42.json"
         self.picks_file.write_text(json.dumps(rec))
         monkeypatch.setattr(RF, "reader", lambda bundle, readers: {"T": self.T, "m": self.m, "pick": self.pick})

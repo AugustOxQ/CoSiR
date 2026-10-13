@@ -64,8 +64,8 @@ EXIT_DIFF = 3
 FILES = ("baselines_seed42.json", "picks_seed42.json")
 FAILED = "picks_seed42_failed.json"
 CODE_MODULES = ("r9_recipe_baselines", "r9_bundle", "r9_picks", "r9_context", "r9_heads", "r9_episodes", "r9_data",
-                "r9_common", "r9_score", "src.eval.aspect_quick_checks", "src.eval.aspect_scorers",
-                "src.eval.aspect_nested", "src.eval.pair_metric_baselines")
+                "r9_common", "r9_score", "r9_backbone", "r9_recipe_groups", "src.eval.aspect_quick_checks",
+                "src.eval.aspect_scorers", "src.eval.aspect_nested", "src.eval.pair_metric_baselines")
 BASELINES_MADE = ["scorers", "lambda_picks", "convention"]
 BASELINES_COPIED = ["episodes_seed", "n_per_pair", "pair_order", "episodes_sha256", "fit_rows_sha256", "fit_rows"]
 T0 = time.monotonic()
@@ -134,6 +134,17 @@ def clip_baselines() -> dict:
     """CLIP's baselines_seed42.json (SHA-256 asserted): the frozen episode hashes, fit-row hash and lambdas."""
     R.assert_input(B.BASELINES42_REL, CLIP)
     return json.loads(Path(R.input_pins(CLIP)[B.BASELINES42_REL][0]).read_text())
+
+
+def clip_pinned_picks(path=None) -> dict:
+    """CLIP's pinned picks_seed42.json (round 6) as {"B", "B0", "B1": {0: [lu, la], 1: [...]}}: the file's SHA-256 is
+    asserted against `parts.picks_seed42.sha256` of pins_clip.json (SystemExit), then `load_picks` reads it."""
+    path = Path(path or parts(CLIP)["picks_seed42"])
+    want = json.loads(R.pins_path(CLIP).read_text())["parts"]["picks_seed42"]["sha256"]
+    got = R.sha256_file(path)
+    _require(got == want, f"{path}: SHA-256 {got} differs from {want} (pins_clip.json, picks_seed42)",
+             SystemExit)  # guard:pinned_picks_sha
+    return P.load_picks(path, CLIP)
 
 
 def baselines_record(bundle, lams) -> dict:
@@ -214,6 +225,9 @@ def finish(bundle, out, backbone, input_sha256) -> int:
     if backbone == CLIP:
         pinned = P.frozen_lambdas(CLIP)
         checks["lambda_equals_pinned"] = {name: parsed[name] == pinned[name] for name in P.LAMBDA_SCORERS}
+        pinned_picks = clip_pinned_picks()                                   # the rule names the picks, not the means
+        checks["picks_equal_pinned"] = {name: P.as_nested_pick(picks[name], name) == pinned_picks[name]
+                                        for name in P.NESTED}  # guard:picks_equal_pinned
     rec = P.picks_record(picks, checks)
     if backbone != CLIP:                                                     # the targets are CLIP's
         del rec["checks"]["mean_r1_equal_target"]
@@ -249,9 +263,11 @@ def a3_inputs(ctx, backbone, a3_dir=None) -> EvalInputs:
     ckpt, picked_path = ((Path(a3_dir) / "A3_seed42.pt", Path(a3_dir) / "picked.json") if a3_dir is not None
                          else (parts(backbone)["A3_seed42"], parts(backbone)["picked"]))
     picked = json.loads(Path(picked_path).read_text())
-    _require(picked["run"] == "A3" and picked["checkpoint_sha256"] == R.sha256_file(ckpt)
-             and picked.get("backbone", backbone) == backbone and picked.get("smoke", False) is False,
-             f"{picked_path} does not describe {ckpt} (run A3, its SHA-256, this backbone)")
+    what = f"{picked_path} does not describe {ckpt} (run A3, its SHA-256, this backbone)"
+    _require(picked["run"] == "A3" and picked.get("smoke", False) is False, what)  # guard:a3_picked_run
+    _require(picked["checkpoint_sha256"] == R.sha256_file(ckpt), what)  # guard:a3_picked_sha
+    _require(picked.get("backbone") == backbone,
+             what + "; picked.json names no backbone or another one")  # guard:a3_picked_backbone
     ic, tc = ctx.encode(ckpt)
     return EvalInputs(ctx.img, ctx.txt, ic, tc)
 
@@ -269,8 +285,11 @@ def head_fit(rows, backbone, partitions_dir):
     root = Path(partitions_dir) if partitions_dir is not None else Path(parts(backbone)["partitions"]).parent
     record = root / (Path(H.N6_REL).name + ".record.json")
     stored = json.loads(record.read_text())
-    _require(stored["backbone"] == backbone and stored["coef_sha256"] == H.coef_sha256(heads),
-             f"the refit heads differ from the ones {record} holds (coefficient hashes)", SystemExit)
+    _require(stored["backbone"] == backbone, f"{record} is the record of {stored['backbone']}, not of {backbone}",
+             SystemExit)  # guard:head_record_backbone
+    _require(stored["coef_sha256"] == H.coef_sha256(heads),
+             f"the refit heads differ from the ones {record} holds (coefficient hashes)",
+             SystemExit)  # guard:head_record_coef
     shas = dict(heads["affect"]["fit_inputs"]["input_sha256"])
     shas[str(record)] = R.sha256_file(record)
     return heads, shas, {"coef_sha256_equals_record": str(record)}
