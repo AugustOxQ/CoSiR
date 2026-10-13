@@ -27,21 +27,50 @@ def test_mode_must_fit_design(producer, mode, seeds):
         getattr(ST, producer)(scores(), mode, seeds, extra(seeds), **kw)
 
 
-@pytest.mark.parametrize("bad,regex", [
-    ("missing", "exactly P1 to P7"), ("float_N", "positive integer"),
-    ("negative", "finite and non-negative"), ("nan", "finite and non-negative"),
-])
-def test_sensitivity_input_checks(bad, regex):
+def sensitivity_input(bad):
+    """(sig, M_p, N, design) with one bad part; the good one is the 6-episode, 3-painting case."""
     sig = {nm: {"sigma_a2": 2., "sigma_eps2": 100.} for nm in P}
-    N = 6
+    M_p, N, design = np.array([1, 2, 3]), 6, "two_level"
     if bad == "missing":
         sig.pop("P1")
     elif bad == "float_N":
         N = 6.0
-    else:
-        sig["P1"]["sigma_a2" if bad == "negative" else "sigma_eps2"] = -1. if bad == "negative" else np.nan
+    elif bad == "bool_N":
+        M_p, N = np.array([1]), True  # Σ M_p = 1 = int(True): only the bool check can refuse it
+    elif bad == "zero_N":
+        M_p, N = np.array([], dtype=np.int64), 0  # an empty read, Σ M_p = 0 = N
+    elif bad == "negative_N":
+        N = -6
+    elif bad == "negative":
+        sig["P1"]["sigma_a2"] = -1.
+    elif bad == "nan":
+        sig["P1"]["sigma_eps2"] = np.nan
+    elif bad == "inf":
+        sig["P1"]["sigma_a2"] = np.inf
+    elif bad == "unknown_design":
+        design = "three_level"
+    elif bad != "good":
+        raise AssertionError(bad)
+    return sig, M_p, N, design
+
+
+SENSITIVITY_BAD = [
+    ("missing", "exactly P1 to P7"), ("float_N", "positive integer"), ("bool_N", "positive integer"),
+    ("zero_N", "positive integer"), ("negative_N", "positive integer"),
+    ("negative", "finite and non-negative"), ("nan", "finite and non-negative"),
+    ("inf", "finite and non-negative"), ("unknown_design", "unknown sensitivity design"),
+]
+
+
+def test_sensitivity_good_input_is_accepted():
+    got = ST.sensitivity_record(*sensitivity_input("good"))
+    assert set(got) == set(P)
+
+
+@pytest.mark.parametrize("bad,regex", SENSITIVITY_BAD)
+def test_sensitivity_input_checks(bad, regex):
     with pytest.raises(ValueError, match=regex):
-        ST.sensitivity_record(sig, np.array([1, 2, 3]), N, "two_level")
+        ST.sensitivity_record(*sensitivity_input(bad))
 
 
 def scores(smoke=False):
@@ -263,30 +292,53 @@ def test_mode_design_guard_mutant_exposes_wrong_record(tmp_path, monkeypatch, pr
     assert rec['seeds'] == seeds  # removing the guard now accepts the invalid mode/design combination
 
 
-@pytest.mark.parametrize('bad,old,new', [
-    ('missing', 'if set(sig) != set(CHECKS):', 'if False:'),
-    ('float_N', 'if isinstance(N, (bool, np.bool_)) or not isinstance(N, (int, np.integer)) or N <= 0:', 'if False:'),
-    ('negative', 'if not all(np.isfinite(sig[c][key]) and sig[c][key] >= 0 for key in ("sigma_a2", "sigma_eps2")):', 'if False:'),
-    ('nan', 'if not all(np.isfinite(sig[c][key]) and sig[c][key] >= 0 for key in ("sigma_a2", "sigma_eps2")):', 'if False:'),
-])
-def test_sensitivity_input_guard_mutants(tmp_path, bad, old, new):
-    src = Path(ST.__file__).read_text()
-    assert src.count(old) == 1
-    path = tmp_path / f'r9_stats_input_{bad}.py'
-    path.write_text(src.replace(old, new))
+def stats_without_clause(tmp_path, message, clause=None):
+    """A copy of r9_stats in which the ``if`` that raises ValueError(message) is switched off (``clause`` None), or
+    only its ``clause``-th term of the and/or is made neutral. Found by the raised message, not by the source text."""
+    import ast
+    tree = ast.parse(Path(ST.__file__).read_text())
+    hits = [n for n in ast.walk(tree) if isinstance(n, ast.If) and len(n.body) == 1 and isinstance(n.body[0], ast.Raise)
+            and message in ast.unparse(n.body[0])]
+    assert len(hits) == 1, f"no single check that raises {message!r}: the producer's check was edited"
+    node = hits[0]
+    if clause is None:
+        node.test = ast.Constant(False)
+    else:
+        boolops = [n for n in ast.walk(node.test) if isinstance(n, ast.BoolOp)]
+        assert boolops, "the check has no and/or terms to drop"
+        op = boolops[0]
+        op.values[clause] = ast.Constant(isinstance(op.op, ast.And))  # neutral term
+    path = tmp_path / f"r9_stats_input_{abs(hash((message, clause)))}.py"
+    path.write_text(ast.unparse(tree))
     spec = importlib.util.spec_from_file_location(path.stem, path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    sig = {nm: {'sigma_a2': 2., 'sigma_eps2': 100.} for nm in P}
-    N = 6
-    if bad == 'missing':
-        sig.pop('P1')
-        with pytest.raises(KeyError):  # the clean input refusal is lost
-            mod.sensitivity_record(sig, np.array([1, 2, 3]), N, 'two_level')
-        return
-    if bad == 'float_N':
-        N = 6.0
-    else:
-        sig['P1']['sigma_a2' if bad == 'negative' else 'sigma_eps2'] = -1. if bad == 'negative' else np.nan
-    rec = mod.sensitivity_record(sig, np.array([1, 2, 3]), N, 'two_level')
-    assert set(rec) == set(P)  # the original refusal tests fail against this permissive mutant
+    return mod
+
+
+@pytest.mark.parametrize("bad,message,clause", [
+    ("missing", "exactly P1 to P7", None),
+    ("unknown_design", "unknown sensitivity design", None),
+    ("float_N", "N must be a positive integer", None),
+    ("bool_N", "N must be a positive integer", 0),
+    ("float_N", "N must be a positive integer", 1),
+    ("zero_N", "N must be a positive integer", 2),
+    ("negative", "finite and non-negative", None),
+    ("nan", "finite and non-negative", None),
+    ("inf", "finite and non-negative", 0),
+    ("negative", "finite and non-negative", 1),
+])
+def test_sensitivity_input_guard_mutants(tmp_path, bad, message, clause):
+    # Right reason first: the real producer refuses this input with this message. If the check was deleted from
+    # r9_stats, this line fails ("DID NOT RAISE"), not a source-text assertion.
+    with pytest.raises(ValueError, match=message):
+        ST.sensitivity_record(*sensitivity_input(bad))
+    mod = stats_without_clause(tmp_path, message, clause)
+    try:
+        mod.sensitivity_record(*sensitivity_input(bad))
+    except ValueError as e:
+        assert message not in str(e), "the mutant still refuses this input with the clean message"
+    except Exception:
+        pass  # the clean refusal is lost; the bad input fails (or passes) somewhere else
+    # the good input still works in the mutant, so only the dropped check differs
+    assert set(mod.sensitivity_record(*sensitivity_input("good"))) == set(P)
