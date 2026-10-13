@@ -323,19 +323,10 @@ def build_bundle_a28(ctx, readers, pm, backbone) -> SimpleNamespace:
 
 # ---------------------------------------------------------------- invariants
 
-def validate(b) -> dict:
-    """Shapes, dtypes and identities of a bundle (round 3's validate for the fields kept): cos, T_N1u and the three
-    T_6u terms finite float32 and condition-free; stack (n, 3, 13) float32; F (n, 18) float64 with Delta^b =
-    -Delta^a (D3); pm_terms the ten terms, finite; per-episode fields of length n."""
+def check_stack_f(b) -> None:
+    """The stack/F/Delta part of validate (also run by r9_recipe_cells.cells_bundle): stack (n, 3, 13) float32 and finite;
+    F (n, 18) float64 and finite; Delta^b = -Delta^a (D3). Needs b.n, b.stack, b.F."""
     n = int(b.n)
-    _require(all(hasattr(b, f) for f in FIELDS), f"bundle lacks {[f for f in FIELDS if not hasattr(b, f)]}")
-    for k in ("cl", "parity", "pair_index", "anchor"):
-        _require(np.asarray(getattr(b, k)).shape == (n,), f"{k}: shape must be ({n},)")
-    _require(np.array_equal(np.asarray(b.parity), np.arange(n) % 2), "parity must be the episode-index parity")
-    for k in ("cos", "t_n1u", "t6u_B", "t6u_B0", "t6u_B1"):
-        check_scores(getattr(b, k), n, k, np.float32)
-        _require_condition_free(getattr(b, k), k)                                   # ValueError
-    _require(set(b.post) == set(A0), f"post must hold A0's groupings, not {sorted(b.post)}")
     _require(set(b.stack) == set(DIRECTIONS), "stack: keys must be the directions")
     for d in DIRECTIONS:
         x = np.asarray(b.stack[d])
@@ -349,6 +340,22 @@ def validate(b) -> dict:
     for j in range(len(A0)):
         _require(np.array_equal(b.F["b"][:, 6 * j + 2], -b.F["a"][:, 6 * j + 2]),
                  f"F: Delta^b != -Delta^a for {A0[j]} (D3)")
+
+
+def validate(b) -> dict:
+    """Shapes, dtypes and identities of a bundle (round 3's validate for the fields kept): cos, T_N1u and the three
+    T_6u terms finite float32 and condition-free; stack (n, 3, 13) float32; F (n, 18) float64 with Delta^b =
+    -Delta^a (D3); pm_terms the ten terms, finite; per-episode fields of length n."""
+    n = int(b.n)
+    _require(all(hasattr(b, f) for f in FIELDS), f"bundle lacks {[f for f in FIELDS if not hasattr(b, f)]}")
+    for k in ("cl", "parity", "pair_index", "anchor"):
+        _require(np.asarray(getattr(b, k)).shape == (n,), f"{k}: shape must be ({n},)")
+    _require(np.array_equal(np.asarray(b.parity), np.arange(n) % 2), "parity must be the episode-index parity")
+    for k in ("cos", "t_n1u", "t6u_B", "t6u_B0", "t6u_B1"):
+        check_scores(getattr(b, k), n, k, np.float32)
+        _require_condition_free(getattr(b, k), k)                                   # ValueError
+    _require(set(b.post) == set(A0), f"post must hold A0's groupings, not {sorted(b.post)}")
+    check_stack_f(b)
     _require(tuple(b.pm_terms) == PM_TERM_NAMES, f"pm_terms must be {PM_TERM_NAMES}")
     for k, t in b.pm_terms.items():
         check_scores(t, n, f"pm term {k}")
