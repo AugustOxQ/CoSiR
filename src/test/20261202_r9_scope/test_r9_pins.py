@@ -240,15 +240,18 @@ def test_no_r9_module_imports_an_r6_module():
     files = sorted(HERE.glob("r9_*.py")) + sorted(HERE.glob("run_r9_*.py"))
     assert {f.name for f in files} >= {"r9_context.py", "r9_bundle.py", "r9_picks.py", "r9_pins.py", "r9_score.py",
                                        "r9_common.py", "run_r9_stage0a.py"}
-    found = {f.name: r6_names(f) for f in files if r6_names(f)}
+    # Ticket 13 explicitly calls the original R6 statistical producers. The
+    # generic chain remains independent; this driver is its sole exception.
+    found = {f.name: r6_names(f) for f in files if f.name != "run_r9_stage2.py" and r6_names(f)}
     assert not found, found
+    assert r6_names(HERE / "run_r9_stage2.py") == {"run_r6_held", "run_r6_sensitivity", "r6_stats"}
 
 
 def test_importing_the_r9_modules_loads_no_r6_module():
     code = (
         "import sys; sys.path.insert(0, %r)\n"
         "import r9_common, r9_backbone, r9_data, r9_heads, r9_episodes, r9_stats, r9_context, r9_bundle, "
-        "r9_picks, r9_score, r9_pins, run_r9_stage0a\n"
+        "r9_picks, r9_score, r9_pins, run_r9_stage0a, run_r9_stage2\n"
         "bad = sorted(m for m in sys.modules if m.startswith(('r6_', 'run_r6_')))\n"
         "path = [p for p in sys.path if p.endswith('20261125_artelingo_held_test')]\n"
         "print(bad, path)\n"

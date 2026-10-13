@@ -291,3 +291,19 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-8-handoff.md
 - New chat: tab 'r9 build 8', session cda2cded-f6bb-4d80-865b-f7ae496f77d5
 
+[brief] CoSiR: r9 build 8 -> r9 build 9 (2026-10-14 00:05 Amsterdam)
+- Done: stage 0b PASSED (case 1, 131 items exact) after a user-confirmed r9_bundle fix; 20b fix, 21, 21c merged.
+- State: 13 and 23 are built and reviewed; each needs one small Codex fix round (briefs ready). GPU idle.
+- Next: launch both fix rounds, merge, rerun the stage 0b compare, CLIP dry run, the two stage 2 chains; build 22.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-14-r9-build-9-handoff.md
+- New chat: tab 'r9 build 9', session 18057a5a-4e60-48cd-83b0-ff14c8a319ae
+
+[brief] CoSiR: 2 -> AFF questions 2 (2026-10-14 00:07 Amsterdam)
+- Done: answered the user's seven questions about AFF; wrote the AFF model card with a training figure (f96acb2).
+- State: the k-shot sweep (k = 2, 3, 4 example pairs, frozen AFF, seed 42) runs in Codex; the CLIP-text check is on hold.
+- Next: check the sweep's three checks and numbers, write a short report, then check why Leiden for GoEmotions but k-means for CLIP.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-14-aff-questions-handoff.md
+- New chat: tab 'AFF questions 2', session f8e5aee2-8d30-4a4a-9b25-7044a814a226
+

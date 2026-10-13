@@ -117,17 +117,30 @@ def rel_path(path) -> str:
     return path.relative_to(base).as_posix()
 
 
-def build_pins(backbone="clip_b32") -> dict:
-    """The record of pins_<backbone>.json (see the module docstring). Every part must exist."""
+def build_pins(backbone="clip_b32", *, part_paths=None, stage2_results=None, stage0b_path=None, dry_run=False) -> dict:
+    """Every part must exist; new backbones also require ticket 13's passed stage
+    2, unchanged producer records, passed picks, seed-42 record and sensitivity.
+    The extra arguments serve the read-only CLIP replay dry run; default CLIP
+    pins retain ticket 06's exact schema for the stage 0a regression.
+    """
     import run_r9_stage0a as RS                                # the gate's reference files (imports this module)
-    parts = BB.parts(backbone)
+    parts = BB.parts(backbone) if part_paths is None else part_paths
+    _require(set(parts) == set(BB.CLIP_PARTS), "pins: incomplete part roles")
     missing = sorted(role for role, path in parts.items() if not Path(path).is_file())
     _require(not missing, f"{backbone}: parts missing: {missing}")
-    if backbone == "clip_b32":
+    evidence = {}
+    if backbone != "clip_b32" or dry_run:
+        from run_r9_stage2 import pins_evidence
+        evidence = pins_evidence(backbone, parts, stage2_results, stage0b_path, dry_run=dry_run)
+    if backbone == "clip_b32" and not dry_run:
         input_sha = R.assert_inputs(backbone)                  # the R6 set, 51 files, each at its pin
+    elif dry_run:
+        replacements = {BB.CLIP_PARTS[role]: parts[role] for role in BB.RECIPE_ROLES}
+        input_sha = {rel: R.sha256_file(replacements.get(R.TEST / rel, R.TEST / rel)) for rel in R.INPUT_SHA256}
     else:
         input_sha = {rel: R._sha_cached(p) for rel, p in R.input_paths(backbone).items()}
-    part_rec = {role: {"path": rel_path(path), "sha256": R.sha256_file(path)} for role, path in parts.items()}
+    part_rec = {role: {"path": (str(Path(path).resolve()) if dry_run else rel_path(path)),
+                       "sha256": R.sha256_file(path)} for role, path in parts.items()}
     picks = json.loads(Path(parts["picks_seed42"]).read_text())
     base = json.loads(Path(parts["baselines_seed42"]).read_text())
     P.parse_lambda_picks(base)                                 # keys, grid
@@ -144,6 +157,7 @@ def build_pins(backbone="clip_b32") -> dict:
                   "lambda": {name: base["scorers"][name]["lambda_picks"] for name in P.LAMBDA_SCORERS},
                   "cells": cells, "taus": taus},
         "gate_references": {name: sha for name, (_, sha) in RS.REFERENCES.items()},
+        **evidence,
     }
 
 
