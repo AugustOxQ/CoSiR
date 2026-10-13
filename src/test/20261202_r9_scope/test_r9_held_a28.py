@@ -100,8 +100,9 @@ def stub_a28(mod, c, mp, read='H8', variant='held', bad=None, record_bad='eps'):
     mp.setattr(mod.ST.R6C, 'N_PER_PAIR', 1)
     env.heads, env.pm = {}, object()
     data = NS(a28=NS(read_set_sha256='c'*64, **{a: np.array([0, 1]) for a in mod.R.ASPECTS}),
-              prepared=object(), values={}, value_record={}, flagged_languages=[np.str_('Urdu')],
-              near_duplicates={'cos_099': np.int64(3), 'cos_098': np.int64(7)}, near_source={})
+              prepared=object(), values={}, value_record={'a28': 'value record'}, flagged_languages=[np.str_('Urdu')],
+              near_duplicates={'cos_099': np.int64(3), 'cos_098': np.int64(7)},
+              near_source={'file': 'near_duplicates_a28.json', 'sha256': 'e' * 64})
     pins = c.res / 'pins_a28.json'
     put(pins, {})
     mp.setattr(mod.AD, 'PINS_PATH', pins)
@@ -514,6 +515,10 @@ def test_smoke_builds_selection_space_and_checks_real_inputs_without_episodes(ca
     for a in U.R.ASPECTS:
         assert np.array_equal(getattr(out.a28, a), env.labels[a][rows])
     assert out.near_duplicates == {'cos_099': 3, 'cos_098': 7}
+    # LOW-5 (ticket 21c): near_duplicates_a28.json is in no pin, so this source SHA is its only trace
+    path = case.res / 'near_duplicates_a28.json'
+    assert out.near_source == {'file': str(path), 'sha256': U.R.sha256_file(path)}
+    assert out.flagged_languages == ['Urdu'] and out.value_record == values
 
 
 @pytest.mark.parametrize('read', ['H8', 'H9', 'H10'])
@@ -614,3 +619,295 @@ def test_a28_smoke_uses_two_level_writers_and_smoke_consumer(case, monkeypatch):
     assert sensitivities[0][2] == 'two_level'
     assert all(kw['verdict'] == case.res / spec.names.verdict for kw in scores)
     U.AR.load_pass((case.res / spec.names.pass_).read_bytes(), spec.names.pass_, 'H8', True)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Ticket 21c: the LOW test gaps of the check of ticket 21 (review_t21.md LOW-1 to LOW-5 and LOW-7).
+# ---------------------------------------------------------------------------------------------------------------
+def sha_of(mod, path):
+    return mod.R.sha256_file(path)
+
+
+def a28_row(mod, c, mp, row, label_sha='good', label=True):
+    """One ledger row ``row`` with the runner and pins labels and, for ``label``, a pins_a28.json label."""
+    configure(mod, c, mp)
+    base = row.removesuffix('-R')
+    backbone = mod.READ_BACKBONES[base]
+    from test_r9_held import ledger
+    c.a28pins = c.res / 'pins_a28.json'
+    put(c.a28pins, {'files': {}})
+    mp.setattr(mod.AD, 'PINS_PATH', c.a28pins)
+    scripts = f"run_r9_held.py {'a' * 64}; {c.pins.name} {sha_of(mod, c.pins)}"
+    if label:
+        shown = sha_of(mod, c.a28pins) if label_sha == 'good' else label_sha
+        scripts += f"; pins_a28.json {shown}"
+    ledger(c, row=row, backbone=mod.LEDGER_NAMES[backbone], scripts=scripts)
+    return backbone
+
+
+def guard_row(mod, c, row, backbone):
+    return mod.ledger_guard(c.ledger, row, backbone, 'a' * 64, sha_of(mod, c.pins))
+
+
+# LOW-1: the pins_a28.json SHA check of the ledger row, for every A28 read and its reserve row.
+A28_ROWS = ['H8', 'H9', 'H10', 'H8-R', 'H9-R', 'H10-R']
+
+
+@pytest.mark.parametrize('row', A28_ROWS)
+def test_ledger_a28_sha_good_row_passes(case, monkeypatch, row):
+    backbone = a28_row(U, case, monkeypatch, row)
+    assert guard_row(U, case, row, backbone)['row'] == row
+
+
+@pytest.mark.parametrize('row', A28_ROWS)
+@pytest.mark.parametrize('bad', ['wrong_sha', 'no_label', 'missing_file', 'stale_last'])
+def test_ledger_a28_sha_refuses_every_a28_row(case, monkeypatch, row, bad):
+    backbone = a28_row(U, case, monkeypatch, row, label_sha={'wrong_sha': 'b' * 64, 'no_label': 'x',
+                                                             'missing_file': 'c' * 64,
+                                                             'stale_last': 'good'}[bad], label=bad != 'no_label')
+    if bad == 'missing_file':
+        monkeypatch.setattr(U.AD, 'PINS_PATH', case.res / 'absent_pins_a28.json')
+    if bad == 'stale_last':  # the last labelled entry wins: a stale entry after the good one refuses
+        text = case.ledger.read_text().replace(f"{sha_of(U, case.a28pins)} |",
+                                               f"{sha_of(U, case.a28pins)}; pins_a28.json {'d' * 64} |")
+        case.ledger.write_text(text)
+    with pytest.raises(U.Refused, match='pins_a28.json SHA differs'):
+        guard_row(U, case, row, backbone)
+
+
+@pytest.mark.parametrize('row', A28_ROWS)
+def test_ledger_a28_sha_last_entry_wins(case, monkeypatch, row):
+    backbone = a28_row(U, case, monkeypatch, row)
+    good = sha_of(U, case.a28pins)
+    text = case.ledger.read_text().replace(f"pins_a28.json {good}", f"pins_a28.json {'d' * 64}; pins_a28.json {good}")
+    assert text != case.ledger.read_text()
+    case.ledger.write_text(text)
+    assert guard_row(U, case, row, backbone)['row'] == row  # a stale first entry, a good last entry
+
+
+@pytest.mark.parametrize('row', ['H6', 'H7', 'H6-R', 'H7-R'])
+def test_ledger_a28_sha_not_asked_of_held_rows(case, monkeypatch, row):
+    configure(U, case, monkeypatch)
+    from test_r9_held import ledger
+    backbone = U.READ_BACKBONES[row.removesuffix('-R')]
+    ledger(case, row=row, backbone=U.LEDGER_NAMES[backbone])
+    monkeypatch.setattr(U.AD, 'PINS_PATH', case.res / 'absent_pins_a28.json')
+    assert guard_row(U, case, row, backbone)['row'] == row
+
+
+# LOW-2: the A28 order guard runs for the reserve, after-crash and fix1 variants too.
+def continuation(mod, c, mp, read, variant):
+    preflight(mod, c, mp, read)
+    base = mod.read_names(read)
+    hs = {str(s): hashes(s) for s in (55, 56, 57)}
+    att = {'attempt': 1, 'flags': {}, 'episodes_sha256': hs,
+           'a28_episodes': {str(s): mod.a28_episode_record(eps_of(mod, s)) for s in (55, 56, 57)}}
+    started = {'rule_sha256': mod.R.RULE_SHA256, 'attempts': [att]}
+    put(c.res / base.started, started)
+    put(c.folder / base.started, started)
+    if variant == 'reserve':
+        verdict(mod, c, read)
+        c.ledger.write_text(c.ledger.read_text().replace(f'| {read} |', f'| {read}-R |'))
+    elif variant == 'fix1':
+        put(c.res / base.pass_, {})
+        put(c.res / 'smoke_record_fix1.json', {})
+        c.ledger.write_text(c.ledger.read_text().replace('| (pending) |',
+                            '| ' + '; '.join(h for hsp in hs.values() for h in hsp.values()) + ' |', 1))
+
+
+def go_continuation(mod, c, read, variant):
+    return mod.refuse_or_go(c.res, c.ledger, read, mod.READ_BACKBONES[read],
+                            'held' if variant == 'after_crash' else variant, variant == 'after_crash', c.folder)
+
+
+@pytest.mark.parametrize('variant', ['after_crash', 'fix1', 'reserve'])
+@pytest.mark.parametrize('read,missing', [('H8', 'H6'), ('H8', 'H7'), ('H9', 'H6'), ('H9', 'H7'), ('H9', 'H8'),
+                                          ('H10', 'H6'), ('H10', 'H7'), ('H10', 'H8')])
+def test_order_guard_runs_for_continuations(case, monkeypatch, read, missing, variant):
+    continuation(U, case, monkeypatch, read, variant)
+    assert go_continuation(U, case, read, variant).names.read == read  # every verdict present: the variant is fine
+    (case.res / U.read_names(missing).verdict).unlink()
+    with pytest.raises(U.Refused, match='H8 real verdict' if missing == 'H8' else 'H6.*H7'):
+        go_continuation(U, case, read, variant)
+
+
+# LOW-3: prior_verdict, branch by branch.
+def edit_row(c, read, **cells):
+    out = []
+    for line in c.ledger.read_text().splitlines():
+        if line.startswith(f'| {read} |'):
+            parts = [p.strip() for p in line.strip()[1:-1].split('|')]
+            for name, value in cells.items():
+                parts[U.LEDGER_CELLS.index(name)] = value
+            line = '| ' + ' | '.join(parts) + ' |'
+        out.append(line)
+    c.ledger.write_text('\n'.join(out) + '\n')
+
+
+def not_run_case(c, mp, read, status='not run: switched off'):
+    preflight(U, c, mp, 'H8')
+    edit_row(c, read, Report=status)
+    verdict(U, c, read, status=status)
+
+
+def pv(c, read, allow=True):
+    return U.prior_verdict(c.res, c.ledger, read, allow)
+
+
+@pytest.mark.parametrize('status', ['not run: switched off', 'dropped under the rule'])
+@pytest.mark.parametrize('read', ['H6', 'H7', 'H8'])
+def test_prior_verdict_null_needs_not_run_allowance_and_wording(case, monkeypatch, read, status):
+    not_run_case(case, monkeypatch, read, status)
+    assert pv(case, read, True) is True
+    assert pv(case, read, False) is False  # H8 as the reference of H9 and H10 is never a null verdict
+
+
+@pytest.mark.parametrize('read', ['H9', 'H10'])
+def test_h8_null_verdict_does_not_open_h9_or_h10(case, monkeypatch, read):
+    preflight(U, case, monkeypatch, read)
+    with case.ledger.open('a') as f:
+        f.write(f'| H8 | date | held | {U.LEDGER_NAMES["clip_b32"]} | AFF | pending | script | '
+                f'not run: switched off |\n')
+    verdict(U, case, 'H8', status='not run: switched off')
+    assert pv(case, 'H8', True) is True  # the same file and row would open stage 3
+    with pytest.raises(U.Refused, match='H8 real verdict'):
+        U.a28_order_guard(case.res, case.ledger, read)
+
+
+@pytest.mark.parametrize('read', ['H6', 'H7'])
+def test_prior_verdict_file_without_verdict_key(case, monkeypatch, read):
+    not_run_case(case, monkeypatch, read)
+    assert pv(case, read) is True
+    path = case.res / U.read_names(read).verdict
+    v = json.loads(path.read_text())
+    del v['verdict']
+    put(path, v)
+    assert pv(case, read) is False
+
+
+@pytest.mark.parametrize('read', ['H6', 'H7'])
+@pytest.mark.parametrize('status,other', [('not run: switched off', 'dropped under the rule'),
+                                          ('dropped under the rule', 'not run: switched off')])
+@pytest.mark.parametrize('cell', ['Script SHA-256', 'Purpose'])
+def test_prior_verdict_other_wording_in_another_cell(case, monkeypatch, read, status, other, cell):
+    not_run_case(case, monkeypatch, read, status)
+    assert pv(case, read) is True
+    edit_row(case, read, **{cell: other})
+    assert pv(case, read) is False
+
+
+@pytest.mark.parametrize('read', ['H6', 'H7'])
+def test_prior_verdict_status_must_be_a_rule_wording(case, monkeypatch, read):
+    not_run_case(case, monkeypatch, read, 'not run: because')  # verdict file and ledger agree, wording is not the rule's
+    assert pv(case, read) is False
+
+
+@pytest.mark.parametrize('read', ['H6', 'H7'])
+def test_prior_verdict_null_with_a_missing_ledger_row(case, monkeypatch, read):
+    not_run_case(case, monkeypatch, read)
+    assert pv(case, read) is True
+    case.ledger.write_text(''.join(line for line in case.ledger.read_text().splitlines(keepends=True)
+                                   if not line.startswith(f'| {read} |')))
+    assert pv(case, read) is False
+    with pytest.raises(U.Refused, match='H6.*H7'):
+        U.a28_order_guard(case.res, case.ledger, 'H8')
+
+
+@pytest.mark.parametrize('read', ['H6', 'H7', 'H8'])
+@pytest.mark.parametrize('content', ['[]', '"GO"', 'null', '3', '[{"verdict": "GO"}]'])
+def test_prior_verdict_non_dict_file_is_not_a_verdict(case, monkeypatch, read, content):
+    preflight(U, case, monkeypatch, 'H8')
+    (case.res / U.read_names(read).verdict).write_text(content)
+    assert pv(case, read) is False
+    assert pv(case, read, False) is False
+
+
+@pytest.mark.parametrize('read,word,ok', [
+    ('H6', 'GO', True), ('H6', 'NO-GO', True), ('H6', 'full claim', False), ('H6', 'small claim', False),
+    ('H7', 'GO', True), ('H7', 'NO-GO', True), ('H7', 'full claim', False), ('H7', 'small claim', False),
+    ('H8', 'GO', False), ('H8', 'NO-GO', True), ('H8', 'full claim', True), ('H8', 'small claim', True)])
+def test_prior_verdict_words_of_each_stage(case, monkeypatch, read, word, ok):
+    preflight(U, case, monkeypatch, 'H8')
+    verdict(U, case, read, word)
+    assert pv(case, read, False) is ok
+
+
+# LOW-4: a28_reference, each clause alone.
+def h8_started(c, mutate=None):
+    hs = {str(s): hashes(s) for s in (55, 56, 57)}
+    records = {str(s): U.a28_episode_record(eps_of(U, s)) for s in (55, 56, 57)}
+    att = {'attempt': 1, 'flags': {}, 'episodes_sha256': hs, 'a28_episodes': records}
+    if mutate:
+        mutate(att)
+    put(c.res / U.read_names('H8').started, {'rule_sha256': U.R.RULE_SHA256, 'attempts': [att]})
+
+
+def test_a28_reference_control_is_complete(case):
+    h8_started(case)
+    assert set(U.a28_reference(case.res).records) == {55, 56, 57}
+
+
+REFERENCE_SHORT = {
+    'hash_seed_missing': lambda a: a['episodes_sha256'].pop('57'),
+    'record_seed_missing': lambda a: a['a28_episodes'].pop('57'),
+    'no_records_at_all': lambda a: a.pop('a28_episodes'),
+    'record_not_a_dict': lambda a: a['a28_episodes'].update({'56': ['part_sha']}),
+    **{f'{k}_missing': (lambda k: lambda a: a['a28_episodes']['55'].pop(k))(k)
+       for k in ('part_sha', 'shares', 'set_aside', 'language')},
+    **{f'{k}_not_a_dict': (lambda k: lambda a: a['a28_episodes']['55'].update({k: list(U.R.PAIR_NAMES)}))(k)
+       for k in ('part_sha', 'shares', 'set_aside', 'language')},
+    **{f'{k}_pair_missing': (lambda k: lambda a: a['a28_episodes']['56'][k].pop(U.R.PAIR_NAMES[2]))(k)
+       for k in ('part_sha', 'shares', 'set_aside', 'language')},
+    **{f'{k}_pair_extra': (lambda k: lambda a: a['a28_episodes']['56'][k].update({'extra__pair': {}}))(k)
+       for k in ('part_sha', 'shares', 'set_aside', 'language')},
+}
+
+
+@pytest.mark.parametrize('short', REFERENCE_SHORT)
+def test_a28_reference_refuses_each_short_file(case, short):
+    h8_started(case, REFERENCE_SHORT[short])
+    with pytest.raises(U.Refused, match='H8 started file needs all nine hashes and A28 part records'):
+        U.a28_reference(case.res)
+
+
+# LOW-5: provenance in the started and pass files.
+@pytest.mark.parametrize('read', ['H8', 'H9', 'H10'])
+def test_a28_started_and_pass_files_carry_provenance(case, monkeypatch, read):
+    spec, env, *_ = stub_a28(U, case, monkeypatch, read)
+    monkeypatch.setattr(U, 'value_sets_guard', lambda *a: {'clip': 'value sets'})  # the CLIP value sets, not A28's
+    assert U.run_read(spec, case.res, env=env) == 0
+    pins = sha_of(U, case.res / 'pins_a28.json')
+    started = U.read_attempts(case.res / spec.names.started)[-1]
+    passed = json.loads((case.res / spec.names.pass_).read_text())
+    for rec in (started, passed):
+        assert rec['pins_a28_sha256'] == pins
+        assert rec['input_sha256'] == {'pins_a28.json': pins}
+        assert rec['read_set_sha256'] == 'c' * 64
+        assert rec['near_duplicates_source'] == {'file': 'near_duplicates_a28.json', 'sha256': 'e' * 64}
+        assert rec['value_sets'] == {'a28': 'value record'}
+
+
+def test_held_started_and_pass_files_have_no_a28_provenance(case, monkeypatch):
+    spec, env, *_ = stub_read(U, case, monkeypatch, 'H6', 'held')
+    assert U.run_read(spec, case.res, env=env) == 0
+    started = U.read_attempts(case.res / spec.names.started)[-1]
+    absent = {'pins_a28_sha256', 'read_set_sha256', 'near_duplicates_source'}
+    assert not absent & set(started)
+    assert 'pins_a28.json' not in started['input_sha256']
+
+
+# LOW-7: READ_BACKBONES against the rule's table (section 7.1), not against the code.
+RULE_LEDGER_NAMES = {'CLIP ViT-B/32': 'clip_b32', 'Qwen3-VL-Embedding-2B': 'qwen3vl_emb_2b',
+                     'SigLIP 2 so400m/14-384': 'siglip2_so400m'}
+
+
+def test_read_backbones_equal_the_rules_table():
+    from test_r9_held import HERE
+    text = (HERE / 'DECISION_RULE.md').read_text()
+    rule = dict(re.findall(r'^\s*\| (H\d+) \| [^|]*\| ([^|]*?) \| [^|]*\| [^|]*\|$', text, re.M))
+    assert set(rule) == {'H6', 'H7', 'H8', 'H9', 'H10'}
+    assert {read: RULE_LEDGER_NAMES[name] for read, name in rule.items()} == U.READ_BACKBONES
+    # and literally, so a wrong table edit is not mirrored
+    assert U.READ_BACKBONES == {'H6': 'qwen3vl_emb_2b', 'H7': 'siglip2_so400m', 'H8': 'clip_b32',
+                                'H9': 'qwen3vl_emb_2b', 'H10': 'siglip2_so400m'}
+    assert {k: U.LEDGER_NAMES[v] for k, v in U.READ_BACKBONES.items()} == dict(rule)
