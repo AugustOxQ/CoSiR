@@ -674,14 +674,20 @@ def load_reader(env, out):
 
 def check_tau_groupings(env, out, head_groupings):
     """The groupings the tau stage's refit (n6) heads are fit on are the ones the readers' heads were trained on: for
-    each grouping of A0, the label hash equals the `rb_heads_<G>` record's, and for image and caption the SHA-256 of the
-    partitions file equals the one the record lists for its source. -> {heads file: SHA-256} (inputs of the tau
+    each grouping of A0, the `rb_heads_<G>` file is the one the reader pickle's record lists as an input (SHA-256), the
+    label hash equals the `rb_heads_<G>` record's, and for image and caption the SHA-256 of the partitions file equals
+    the one the record lists for its source. -> {heads file: SHA-256} (inputs of the tau
     record)."""
     out = Path(out)
     inputs = {}
+    trained_heads = load_record(env, out, f"rb_reader_{CONFIG}.pkl")["input_sha256"]   # what `train` read, file by file
     for g in A0:
         name = f"rb_heads_{g}.npz"
         rec = load_record(env, out, name)
+        read_by_train = [v for k, v in trained_heads.items() if Path(k).name == name]
+        assert read_by_train == [rec["file_sha256"]], (  # guard:heads_are_the_trained_ones
+            f"tau stage: {name} is not the file the readers were trained on (SHA-256 {rec['file_sha256']}; "
+            f"the reader pickle's record lists {read_by_train})")
         assert rec["label_sha256"] == head_groupings["label_sha256"][g], \
             f"tau stage: the {g} labels of the refit heads are not the ones {name} was trained on"
         if g in ("image", "caption"):
@@ -750,22 +756,33 @@ def rows_from(data, split) -> SimpleNamespace:
     return SimpleNamespace(data=data, split=split, labels=labels, value_sets=values)
 
 
-def seed42_features(backbone, upstream, data, split):
+def head_groupings(pins, head_labels, scorer_train) -> dict:
+    """What the tau stage compares with the readers' heads (`check_tau_groupings`): the SHA-256 of each A0 grouping's
+    labels at the scorer-train rows (``head_labels`` = `H.head_labels`' result), and the partitions file and its SHA-256
+    from the head ``pins``."""
+    st = np.asarray(scorer_train)
+    part_path, part_sha = pins[H.E2_PARTITIONS_REL]
+    return {"partitions_path": str(part_path), "partitions_sha256": part_sha,
+            "label_sha256": {g: rb.sha_array(head_labels[g][st]) for g in A0}}
+
+
+def seed42_features(backbone, upstream, data, split, precheck=None):
     """(F = {a, b}: (12288, 18), checks): the refit heads of this backbone (checked against the upstream posterior
     files), the seed-42 selection-row context, and `rb_eval.seed42_features` on its A0 posteriors, as
     r9_bundle.build_bundle_r6 calls it (without the A3 and PM terms). ``data`` and ``split`` are the loaded features
-    and split of the run. ``checks`` also holds what the tau record needs: `head_groupings` (label hash of each A0
-    grouping, partitions file and SHA-256: compared with the readers' heads), `head_input_sha256` (every input of the
-    head fit) and `upstream_posterior_sha256`."""
+    and split of the run. ``precheck(head_groupings)``, if given, runs before the heads are refit (the tau stage's
+    `check_tau_groupings`: a mismatch stops the run before the minutes of the refit). ``checks`` also holds what the
+    tau record needs: `head_groupings` (label hash of each A0 grouping, partitions file and SHA-256: compared with the
+    readers' heads), `head_input_sha256` (every input of the head fit) and `upstream_posterior_sha256`."""
     rows = rows_from(data, split)
     pins = H.recipe_head_pins(backbone, None if upstream is None else abs_path(upstream))
+    st = np.asarray(rows.split.scorer_train)
+    head_labels = H.head_labels(rows.split.groups, st, backbone, input_pins=pins)      # the labels the heads are fit on
+    groupings = head_groupings(pins, head_labels, st)
+    if precheck is not None:
+        precheck(groupings)
     heads = H.fit_heads_r9(rows.data, rows.split.groups, rows.split.scorer_train, backbone=backbone, input_pins=pins)
     log("heads refit")
-    st = np.asarray(rows.split.scorer_train)
-    head_labels = H.head_labels(rows.split.groups, st, backbone, input_pins=pins)      # the labels the heads were fit on
-    part_path, part_sha = pins[H.E2_PARTITIONS_REL]
-    head_groupings = {"partitions_path": str(part_path), "partitions_sha256": part_sha,
-                      "label_sha256": {g: rb.sha_array(head_labels[g][st]) for g in A0}}
     stored = check_stored_posteriors(heads, rows.data, rows.split.selection, backbone, upstream)
     ctx = X.RowContext("selection", R.DEV_SEED, rows.data, rows.split, rows.labels, heads, rows.value_sets,
                        R.N_PER_PAIR)
@@ -774,7 +791,7 @@ def seed42_features(backbone, upstream, data, split):
     assert all(F[c].shape == (ctx.n, 6 * len(A0)) for c in CONDITIONS)
     log(f"seed-42 features ({ctx.n} episodes)")
     return F, {**checks, "stored_posteriors_equal": True, "episodes_sha256": dict(ctx.episode_sha),
-               "stored_posterior_files": stored["files"], "head_groupings": head_groupings,
+               "stored_posterior_files": stored["files"], "head_groupings": groupings,
                "head_input_sha256": dict(heads["affect"]["fit_inputs"]["input_sha256"]),
                "upstream_posterior_sha256": {v: sha256_file(v) for v in stored["files"].values()}}
 
@@ -833,7 +850,8 @@ def main(argv=None):
     if args.stage in ("train", "all"):
         stage_train(env, out)
     if args.stage in ("tau", "all"):
-        F42, checks = seed42_features(args.backbone, args.upstream, env.data, env.split)
+        F42, checks = seed42_features(args.backbone, args.upstream, env.data, env.split,
+                                      precheck=lambda groupings: check_tau_groupings(env, out, groupings))
         stage_tau(env, out, F42, checks)
     log(f"done -> {out}")
     return 0
