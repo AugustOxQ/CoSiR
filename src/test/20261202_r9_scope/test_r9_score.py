@@ -181,8 +181,16 @@ def reader_gates(held, readers):
 
 
 @pytest.fixture(scope="module")
-def scored_held(held, readers):
-    return S.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=False)
+def v6(tmp_path_factory):
+    """H6's verdict file, present: a held run that scores B1 and R1 (ticket 20a: a held run names its verdict file)."""
+    path = tmp_path_factory.mktemp("verdict") / "held_verdict_H6.json"
+    path.write_text("{}")
+    return path
+
+
+@pytest.fixture(scope="module")
+def scored_held(held, readers, v6):
+    return S.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=False, verdict=v6)
 
 
 # ---------------------------------------------------------------- bookkeeping
@@ -191,7 +199,7 @@ def test_every_marked_guard_has_a_mutation_test():
     names = set()
     for module in GUARDED:
         names |= {(module, g) for g in re.findall(r"# guard:([a-z_0-9]+)", (HERE / module).read_text())}
-    text = Path(__file__).read_text()
+    text = Path(__file__).read_text() + (HERE / "test_r9_held_shared.py").read_text()   # ticket 20a's guards
     covered = set()
     for module, args in re.findall(r'mutant\(tmp_path, "((?:r9_picks|r9_score)\.py)", ([^)]*)\)', text):
         covered |= {(module, g) for g in re.findall(r'"([a-z_0-9]+)"', args)}
@@ -306,16 +314,16 @@ def test_cf_term_that_differs_between_conditions_raises(held, reader_gates, tmp_
     assert not (per_anchor(cf)["gain"] == 0).all()
 
 
-def test_cf_gain_guard(held, readers, tmp_path, monkeypatch):
+def test_cf_gain_guard(held, readers, tmp_path, monkeypatch, v6):
     """score_seed asserts gain == 0 on every episode of CF and R1's counterpart: with the per-cell guard deleted and
     the gated term wired in, the gain guard fires; with both deleted, the scoring goes through."""
     mut = mutant(tmp_path, "r9_score.py", "cf_cell")
     monkeypatch.setattr(mut, "cf_terms", lambda gated: gated)
     with pytest.raises(AssertionError, match="gain"):
-        mut.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=False)
+        mut.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=False, verdict=v6)
     mut2 = mutant(tmp_path, "r9_score.py", "cf_cell", "cf_gain")
     monkeypatch.setattr(mut2, "cf_terms", lambda gated: gated)
-    out = mut2.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=False)
+    out = mut2.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=False, verdict=v6)
     assert not (out["aff_cf"]["gain"] == 0).all()
 
 
@@ -369,10 +377,10 @@ def test_score_seed_assembly(held, readers, reader_gates, scored_held):
             assert bits(out["reader"][k][c], reader_gates.rd[k][c])
 
 
-def test_score_seed_picks_take_string_or_int_halves(held, readers, scored_held):
+def test_score_seed_picks_take_string_or_int_halves(held, readers, scored_held, v6):
     as_json = {name: {str(h): v for h, v in p.items()} for name, p in NESTED_PICKS.items()}
     lams = {name: {str(h): ("inf" if math.isinf(v) else v) for h, v in p.items()} for name, p in lambdas_all().items()}
-    out = S.score_seed(held, as_json, lams, readers, include_pm=False)
+    out = S.score_seed(held, as_json, lams, readers, include_pm=False, verdict=v6)
     for k in S.CORE_SCORERS:
         assert pa_bits(out[k], scored_held[k]), k
 
@@ -406,7 +414,7 @@ def test_frozen_cells_without_cf(held, reader_gates, monkeypatch):
     assert cf is None and scores_bits(alone, fused)
 
 
-def test_without_pm_r1_counterpart_neither_assembled_nor_scored(held, sel42, readers, monkeypatch):
+def test_without_pm_r1_counterpart_neither_assembled_nor_scored(held, sel42, readers, monkeypatch, v6):
     """Rule section 8 item 3 (contracts section 5, amendment 14:50): with include_pm=False, R1's counterpart cells
     are never read, its G_cf never built (G_cf is built once, for CF), and no r1_cf key is returned. The poison is
     live: with include_pm=True the same scoring reads the cells and raises."""
@@ -419,7 +427,7 @@ def test_without_pm_r1_counterpart_neither_assembled_nor_scored(held, sel42, rea
         return real_cf_terms(gated)
 
     monkeypatch.setattr(S, "cf_terms", counting)
-    out = S.score_seed(held, NESTED_PICKS, {"rca": lambdas_all()["rca"]}, readers, include_pm=False)
+    out = S.score_seed(held, NESTED_PICKS, {"rca": lambdas_all()["rca"]}, readers, include_pm=False, verdict=v6)
     assert "r1_cf" not in out and tuple(out) == S.CORE_SCORERS + S.EXTRA_KEYS
     assert len(calls) == 1
     with pytest.raises(Reached, match="counterpart"):
@@ -447,64 +455,59 @@ def test_include_pm_has_no_default(held, readers):
         S.score_seed(held, NESTED_PICKS, lambdas_all(), readers)
 
 
-def test_include_pm_must_be_a_bool(held, readers, tmp_path):
+def test_include_pm_must_be_a_bool(held, readers, tmp_path, v6):
     with pytest.raises(AssertionError, match="include_pm"):
         S.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=None)
     mut = mutant(tmp_path, "r9_score.py", "include_pm_bool")
-    out = mut.score_seed(held, NESTED_PICKS, {"rca": lambdas_all()["rca"]}, readers, include_pm=None)
+    out = mut.score_seed(held, NESTED_PICKS, {"rca": lambdas_all()["rca"]}, readers, include_pm=None, verdict=v6)
     assert not set(B.PM_NAMES) & set(out)
 
 
-def test_held_without_pm_scores_no_pm_key(held, readers):
+def test_held_without_pm_scores_no_pm_key(held, readers, v6):
     """The held pass before the verdict: no PM key is scored, no PM term or lambda is read."""
     b = SimpleNamespace(**{**vars(held), "pm_terms": PMPoison(held.pm_terms)})
-    out = S.score_seed(b, NESTED_PICKS, {"rca": lambdas_all()["rca"]}, readers, include_pm=False)
+    out = S.score_seed(b, NESTED_PICKS, {"rca": lambdas_all()["rca"]}, readers, include_pm=False, verdict=v6)
     assert tuple(out) == S.CORE_SCORERS + S.EXTRA_KEYS
     assert not set(B.PM_NAMES) & set(out)
     with pytest.raises(Reached):                       # the poison is live: a PM read would have raised
         b.pm_terms["probe"]
 
 
-def test_held_pm_refused_before_the_verdict(held, readers, tmp_path, monkeypatch):
-    monkeypatch.setattr(S, "VERDICT", tmp_path / "held_verdict.json")
-    with pytest.raises(AssertionError, match="held_verdict.json"):
-        S.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=True)
-    mut = mutant(tmp_path, "r9_score.py", "pm_before_verdict")
-    monkeypatch.setattr(mut, "VERDICT", tmp_path / "held_verdict.json")
-    out = mut.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=True)
+def test_held_pm_refused_before_the_verdict(held, readers, tmp_path):
+    verdict = tmp_path / "held_verdict_H6.json"                        # the read's own file, not there yet
+    with pytest.raises(AssertionError, match="held_verdict_H6.json"):
+        S.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=True, verdict=verdict)
+    mut = mutant(tmp_path, "r9_score.py", "pm_before_verdict", "secondary_before_verdict")   # the B1/R1 guard sits behind it
+    out = mut.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=True, verdict=verdict)
     assert set(B.PM_NAMES) <= set(out)
 
 
-def test_held_pm_after_the_verdict_and_selection_pm(held, sel42, readers, tmp_path, monkeypatch):
-    verdict = tmp_path / "held_verdict.json"
-    verdict.write_text("{}")
-    monkeypatch.setattr(S, "VERDICT", verdict)
-    out = S.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=True)
+def test_held_pm_after_the_verdict_and_selection_pm(held, sel42, readers, v6):
+    out = S.score_seed(held, NESTED_PICKS, lambdas_all(), readers, include_pm=True, verdict=v6)
     assert tuple(out) == S.ALL_SCORERS + S.EXTRA_KEYS
     for name in B.PM_NAMES:
         want = per_anchor(S.frozen_fused(held.cos, held.pm_terms[name], lambdas_all()[name], held.parity))
         assert pa_bits(out[name], want), name
-    monkeypatch.setattr(S, "VERDICT", tmp_path / "absent.json")
     out = S.score_seed(sel42, NESTED_PICKS, lambdas_all(), readers, include_pm=True)   # selection: no verdict needed
     assert tuple(out) == S.ALL_SCORERS + S.EXTRA_KEYS
 
 
 # ---------------------------------------------------------------- score_seed's other guards
 
-def test_admitted_guard(held, readers, tmp_path):
+def test_admitted_guard(held, readers, tmp_path, v6):
     b = SimpleNamespace(**{**vars(held), "seed": 49})              # round 3's test seed: not a round-6 seed
     with pytest.raises(AssertionError, match="admitted"):
-        S.score_seed(b, NESTED_PICKS, lambdas_all(), readers, include_pm=False)
+        S.score_seed(b, NESTED_PICKS, lambdas_all(), readers, include_pm=False, verdict=v6)
     mut = mutant(tmp_path, "r9_score.py", "admitted")
-    assert "aff_fused" in mut.score_seed(b, NESTED_PICKS, lambdas_all(), readers, include_pm=False)
+    assert "aff_fused" in mut.score_seed(b, NESTED_PICKS, lambdas_all(), readers, include_pm=False, verdict=v6)
 
 
-def test_parity_guard(held, readers, tmp_path):
+def test_parity_guard(held, readers, tmp_path, v6):
     b = SimpleNamespace(**{**vars(held), "parity": 1 - held.parity})
     with pytest.raises(AssertionError, match="parity"):
-        S.score_seed(b, NESTED_PICKS, lambdas_all(), readers, include_pm=False)
+        S.score_seed(b, NESTED_PICKS, lambdas_all(), readers, include_pm=False, verdict=v6)
     mut = mutant(tmp_path, "r9_score.py", "parity")
-    assert "aff_fused" in mut.score_seed(b, NESTED_PICKS, lambdas_all(), readers, include_pm=False)
+    assert "aff_fused" in mut.score_seed(b, NESTED_PICKS, lambdas_all(), readers, include_pm=False, verdict=v6)
 
 
 # ---------------------------------------------------------------- pick conventions
