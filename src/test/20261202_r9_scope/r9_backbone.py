@@ -1,4 +1,4 @@
-"""Round 9 backbone names and paths; recipe roles are filled by tickets 06/07."""
+"""Round 9 backbone names, frozen CLIP inputs and recipe part paths."""
 
 import os
 from pathlib import Path
@@ -36,7 +36,44 @@ STORE_PATHS = {
 }
 
 
+# CLIP file names are the shared interface, including both reader formats.
+CLIP_PARTS = {
+    "prepare": TEST / "20261013_stage_d_selection/cache/prepare.npz",
+    "held_codes": TEST / "20261014_stage_d_final/cache/held_codes.npz",
+    "partition_L": TEST / "20261111_community_told_oracle/results/per_anchor_told_oracle.npz",
+    "told_oracle": TEST / "20261111_community_told_oracle/results/told_oracle.json",
+    "step1_group_style": TEST / "20261116_grouping_step1_style/results/step1_group_style.npz",
+    "partitions": TEST / "20261031_pseudo_partitions/results/partitions.npz",
+    "affect_km": TEST / "20261031_pseudo_partitions/results/partitions.npz",
+    "graph": TEST / "20261016_factor_learning_grid/cache/graph.npz",
+    "bank_AIC": TEST / "20261031_pseudo_partitions/results/bank_AIC.npz",
+    "n6_posteriors": TEST / "20261108_new_method_quick_checks/results/n6_posteriors.npz",
+    "step1_heads_style": TEST / "20261116_grouping_step1_style/results/step1_heads_style.npz",
+    "A3_seed42": TEST / "20261101_aspect_factor_gonogo/checkpoints/A3_seed42.pt",
+    "picked": TEST / "20261101_aspect_factor_gonogo/results/picked.json",
+    "rb_halves": TEST / "20261117_reader_fix_csd/results/rb_halves.npz",
+    "rb_reader_A0": TEST / "20261117_reader_fix_csd/results/rb_reader_A0.pkl",
+    "rb_reader_A0_json": TEST / "20261117_reader_fix_csd/results/rb_reader_A0.json",
+    "rc_tau": TEST / "20261117_reader_fix_csd/results/rc_tau.json",
+    "baselines_seed42": TEST / "20261030_aspect_baselines/results/baselines_seed42.json",
+    "pm_fit_rows": TEST / "20261030_aspect_baselines/results/baselines_seed42.json",
+    "episodes_seed42": TEST / "20261030_aspect_baselines/results/episodes_seed42.npz",
+    "picks_seed42": TEST / "20261125_artelingo_held_test/results/picks_seed42.json",
+    # Ticket 06 materialises CLIP's constants here; no R6 cells file exists.
+    "cells_seed42": RESULTS / "recipe/clip_b32/cells_seed42.json",
+    **{f"rb_heads_{group}": TEST / f"20261117_reader_fix_csd/results/rb_heads_{group}.npz"
+       for group in ("affect", "image", "caption", "csd", "rand")},
+    **{f"rb_bank_A0_half{half}": TEST / f"20261117_reader_fix_csd/results/rb_bank_A0_half{half}.npz"
+       for half in (0, 1)},
+}
+FROZEN_ROLES = frozenset(("prepare", "held_codes", "partition_L", "told_oracle", "affect_km",
+                          "step1_group_style", "rb_halves", "pm_fit_rows", "episodes_seed42"))
+RECIPE_ROLES = frozenset(CLIP_PARTS) - FROZEN_ROLES
+
+
 def parts(backbone) -> dict[str, Path]:
-    """Role resolver stub: tickets 06 and 07 supply the pinned and recipe roles."""
+    """CLIP's stored parts or the same file names under results/recipe/<backbone>."""
     assert backbone in BACKBONES, f"unknown backbone: {backbone}"
-    raise NotImplementedError("backbone roles are supplied by tickets 06 and 07")
+    return {role: (path if backbone == "clip_b32" or role in FROZEN_ROLES
+                   else RESULTS / "recipe" / backbone / path.name)
+            for role, path in CLIP_PARTS.items()}
