@@ -203,3 +203,11 @@
 - Blocked: nothing. The r9 results (about 10-16) come later, at R2.
 - Handoff: docs/superpowers/handoffs/2026-10-13-paper-r1-handoff.md
 - New chat: started by the user with claude-paper, session 2cc044a2-ddd3-4c94-b15d-4728b96bc0d4
+[brief] CoSiR: r9 build -> r9 build 2 (2026-10-13 16:26 Amsterdam)
+- Done: decision rule committed (a443902) after a fresh Opus review and a re-review; SigLIP 2 features of ArtELingo and SemArt; NLLB translation of ArtELingo-28.
+- State: ArtELingo-28 episodes per language (option B), agent default after no answer in 30 minutes; nodes idle.
+- Next: stage tickets 04 onward (to-tickets), then the build; 0a and 0b gate every use of the chain.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-2-handoff.md
+- New chat: tab 'r9 build 2', session 817e6dbb-9657-4cbd-8ac2-f1785f663c3f
+
