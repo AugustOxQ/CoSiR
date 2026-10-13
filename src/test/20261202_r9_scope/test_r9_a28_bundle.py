@@ -616,3 +616,18 @@ def _same(a, b):
     if isinstance(a, dict):
         return set(a) == set(b) and all(_same(a[k], b[k]) for k in a)
     return bits(a, b)
+
+
+def test_language_codes_must_be_one_integer_per_row(syn, tmp_path, monkeypatch):
+    """The shape and dtype check of `a28.language` (ticket 18 review item L-B): a float array and a short array fail."""
+    as_float = SimpleNamespace(**{**vars(syn.a28), "language": syn.a28.language.astype(np.float64)})
+    short = SimpleNamespace(**{**vars(syn.a28), "language": syn.a28.language[:-1]})
+    monkeypatch.setattr(H, "predict", _reach)
+    for bad in (as_float, short):
+        with pytest.raises(AssertionError, match="language"):
+            AC.A28Inputs(bad, syn.heads)
+    mut = mutant(tmp_path, "r9_a28_context.py", "a28_language_shape")
+    monkeypatch.setattr(mut.H, "predict", _reach)
+    for bad in (as_float, short):
+        with pytest.raises(Reached):
+            mut.A28Inputs(bad, syn.heads)

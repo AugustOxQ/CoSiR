@@ -19,6 +19,16 @@ from src.eval.aspect_episodes import episodes_sha256,AspectEpisodes
 READ_BACKBONE={'H6':'qwen3vl_emb_2b','H7':'siglip2_so400m','H8':'clip_b32','H9':'qwen3vl_emb_2b','H10':'siglip2_so400m'}
 
 
+def load_a28_inputs(entries,folder):
+    """The A28 read set and value sets, parsed from the bytes whose SHA-256 matches their pins entry (per-load check)."""
+    import io
+    import pandas as pd
+    from rd9_inputs import read_pinned
+    table=pd.read_parquet(io.BytesIO(read_pinned(Path(folder)/'read_set_a28.parquet',entries)))
+    values=json.loads(read_pinned(Path(folder)/'value_sets_a28.json',entries))
+    return table,values
+
+
 def a28_data(backbone,table,root=None):
     folder=Path(root or '/data/SSD2/pre_extract/artelingo28')/backbone
     index=json.loads((folder/'index.json').read_text())['texts']
@@ -98,17 +108,13 @@ def main():
     seeds=[42] if args.mode=='selection' else ([55,56,57] if a28 else [52,53,54])
     if a28:
         # All pins are verified without importing the dataset loader of the chain.
-        from rd9_inputs import pin_entries,read_pinned,resolve_pin
+        from rd9_inputs import pin_entries,resolve_pin
         entries=pin_entries(json.loads(args.a28_pins.read_text()))
         assert entries
         for rel,digest in entries.items():
             path=resolve_pin(rel)
             assert path.suffix!='.py' and sha_file(path)==digest
-        import pandas as pd
-        # Per-load check: the bytes that are parsed are the bytes that match the pins entry.
-        import io
-        table=pd.read_parquet(io.BytesIO(read_pinned(HERE/'results/read_set_a28.parquet',entries)))
-        values=json.loads(read_pinned(HERE/'results/value_sets_a28.json',entries))
+        table,values=load_a28_inputs(entries,HERE/'results')
         labels,groups,_=table_arrays(table)
         data,rows=a28_data(backbone,table)
     else:
