@@ -11,6 +11,9 @@ from rd9_inputs import RD,T,save_json,sha_file
 from rd9_stats import CHECK_IDS
 
 
+MISSING=object()    # a key absent from the runner's record; never equal to anything, None included
+
+
 def compare_value(ours,theirs,key):
     if isinstance(ours,bool) or isinstance(theirs,bool):
         return type(ours)==type(theirs) and ours==theirs
@@ -35,14 +38,18 @@ class Comparison:
         if isinstance(ours,dict):
             if not isinstance(theirs,dict):
                 self.items.append(dict(key=key,equal=False,reason='missing object'));return
-            for k,v in ours.items(): self.value(f'{key}.{k}',v,theirs.get(k))
+            for k,v in ours.items(): self.value(f'{key}.{k}',v,theirs.get(k,MISSING))
         elif isinstance(ours,(list,tuple)):
             if not isinstance(theirs,(list,tuple)) or len(ours)!=len(theirs):
                 self.items.append(dict(key=key,equal=False,reason='sequence length/type'));return
             for j,(a,b) in enumerate(zip(ours,theirs)): self.value(f'{key}.{j}',a,b)
         else:
-            equal=theirs is not None and compare_value(ours,theirs,key)
-            self.items.append(dict(key=key,equal=bool(equal),ours=ours,theirs=theirs))
+            if theirs is MISSING: equal=False
+            elif ours is None and theirs is None: equal=True    # present on both sides, both None (e.g. an untested level)
+            elif ours is None or theirs is None: equal=False
+            else: equal=compare_value(ours,theirs,key)
+            self.items.append(dict(key=key,equal=bool(equal),ours=ours,theirs=None if theirs is MISSING else theirs,
+                                   **(dict(reason='missing key') if theirs is MISSING else {})))
     def arrays(self,ours_path,theirs_path,required=None):
         with np.load(ours_path,allow_pickle=False) as ours,np.load(theirs_path,allow_pickle=False) as theirs:
             for key in required or ours.files:
@@ -55,26 +62,26 @@ class Comparison:
 
 
 def compare_stats(comparison,ours,theirs):
-    comparison.value('n_episodes',ours['n_episodes'],theirs.get('n_episodes'))
-    comparison.value('n_clusters',ours['n_clusters'],theirs.get('n_clusters'))
-    comparison.value('seeds',ours['seeds'],theirs.get('seeds'))
-    comparison.value('episodes_sha256',ours['episodes_sha256'],theirs.get('episodes_sha256'))
+    comparison.value('n_episodes',ours['n_episodes'],theirs.get('n_episodes',MISSING))
+    comparison.value('n_clusters',ours['n_clusters'],theirs.get('n_clusters',MISSING))
+    comparison.value('seeds',ours['seeds'],theirs.get('seeds',MISSING))
+    comparison.value('episodes_sha256',ours['episodes_sha256'],theirs.get('episodes_sha256',MISSING))
     for j in CHECK_IDS:
         o=ours['checks'][j]
         t=theirs.get('checks',{}).get(j,{})
         for k in ('n','point','ci95','tested'):
             if k=='tested':
                 # A seven-check record always tests all seven. A28 records must specify this flag.
-                target=t.get('tested',True if 'holm_order' in theirs else None)
+                target=t.get('tested',True if 'holm_order' in theirs else MISSING)
             else:
-                target=t.get(k,t.get('n_j') if k=='n' else None)
+                target=t.get(k,t.get('n_j',MISSING) if k=='n' else MISSING)
             comparison.value('checks.'+j+'.'+k,o[k],target)
         if o['tested']:
             for k in ('holm_k','ci_holm','passes','own_count_passes','near_boundary','level_two_sided'):
                 alias={'passes':'pass','near_boundary':'within_one_of_boundary','level_two_sided':'holm_level_two_sided'}.get(k)
-                comparison.value('checks.'+j+'.'+k,o[k],t.get(k,t.get(alias) if alias else None))
-    for key in ('holm_order','holm_order_level1','holm_order_level2'):
-        if key in ours: comparison.value(key,ours[key],theirs.get(key))
+                comparison.value('checks.'+j+'.'+k,o[k],t.get(k,t.get(alias,MISSING) if alias else MISSING))
+    # The runner's form: a list of seven, or {"level1": [...], "level2": [...]} for the two-level reads.
+    if 'holm_order' in ours: comparison.value('holm_order',ours['holm_order'],theirs.get('holm_order',MISSING))
 
 
 PASS_MODES={'held':False,'regression':False,'smoke':True}

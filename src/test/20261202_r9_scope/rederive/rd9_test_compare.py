@@ -14,7 +14,7 @@ ARMS = ('aff_fused', 'aff_cf', 'cosine', 'rca', 'B', 'B0')
 METRICS = ('r1', 'gain', 'other', 'swap', 'strict')
 
 
-def make_arrays(a28=False):    # a28: level 1 passes, so level 2 is a real object
+def make_arrays(a28=False):    # a28 True: level 1 passes; a28 'nogo': level 1 fails (P4 count is high)
     n = 40
     rng = np.random.default_rng(3)
     arrays = {'cl': np.repeat(np.arange(10), 4), 'pair_index': np.tile(np.arange(4), 10), 'seed_index': np.zeros(n, int)}
@@ -23,14 +23,14 @@ def make_arrays(a28=False):    # a28: level 1 passes, so level 2 is a real objec
             arrays[f'{arm}__{m}'] = np.zeros(n)
     arrays['aff_fused__r1'] = rng.integers(0, 3, n) / 4
     arrays['aff_fused__gain'] = rng.integers(0, 3, n) / 4
-    for arm, hi in (('cosine', 2), ('rca', 3), ('B', 4), ('B0', 1 if a28 else 3), ('aff_cf', 3)):    # other counts per check
+    for arm, hi in (('cosine', 2), ('rca', 3), ('B', 4), ('B0', 4 if a28 == 'nogo' else 1 if a28 else 3), ('aff_cf', 3)):    # other counts per check
         arrays[f'{arm}__r1'] = rng.integers(0, hi, n) / 4
     arrays['rca__gain'] = rng.integers(0, 2, n) / 4
     return arrays
 
 
 def make_stats(a28=False):
-    stats = S.pass_record(make_arrays(a28), a28=a28)
+    stats = S.pass_record(make_arrays(a28), a28=bool(a28))
     stats.update(seeds=[55, 56, 57] if a28 else [52, 53, 54], episodes_sha256={'x': 'a' * 64})
     return stats
 
@@ -151,3 +151,63 @@ def test_derived_counts_must_be_seven_integers(work, monkeypatch, bad):
     with pytest.raises((ValueError, KeyError, AssertionError)):
         run(work, own, rep, monkeypatch)
     assert not (work / 'agr.json').exists()
+
+
+TWO_LEVEL = dict(a28=True, read='H8', name='held_pass_H8.json')
+NO_GO = dict(a28='nogo', read='H8', name='held_pass_H8.json')
+
+
+def test_two_level_no_go_reaches_agreement(work, monkeypatch):
+    stats, own, rep = stage(work, **NO_GO)
+    assert stats['decision']['outcome'] == 'NO-GO'                 # level 1 fails
+    assert stats['holm_order']['level1'] == ['P6', 'P4'] and sorted(stats['holm_order']['level2']) == ['P1', 'P2', 'P3', 'P5', 'P7']
+    for j in ('P1', 'P2', 'P3', 'P5', 'P7'):                       # level 2 exists although level 1 failed, as the runner writes it
+        c = stats['checks'][j]
+        assert c['holm_k'] in range(1, 6) and c['level_two_sided'] >= 0.95 and len(c['ci_holm']) == 2
+        assert isinstance(c['passes'], bool) and isinstance(c['near_boundary'], bool)
+    got = run(work, own, rep, monkeypatch)
+    assert got['agreement'] is True and got['failed'] == 0
+    keys = {i['key'] for i in got['items']}
+    assert 'holm_order.level1.0' in keys and 'holm_order.level2.4' in keys and 'checks.P1.holm_k' in keys
+
+
+def test_two_level_pass_still_agrees(work, monkeypatch):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    assert run(work, own, rep, monkeypatch)['agreement'] is True
+
+
+def test_runner_level_two_order_is_read_as_a_dict(work, monkeypatch):
+    _, own, rep = stage(work, **NO_GO, tweak=lambda r: r['holm_order'].update(level2=r['holm_order']['level2'][::-1]))
+    with pytest.raises(SystemExit):
+        run(work, own, rep, monkeypatch)
+    assert not json.loads((work / 'agr.json').read_text())['agreement']
+
+
+def test_missing_key_is_a_difference(work, monkeypatch):
+    _, own, rep = stage(work, **NO_GO, tweak=lambda r: r['checks']['P1'].pop('holm_k'))
+    with pytest.raises(SystemExit):
+        run(work, own, rep, monkeypatch)
+    got = json.loads((work / 'agr.json').read_text())
+    assert got['agreement'] is False
+    assert [i['key'] for i in got['items'] if not i['equal']] == ['checks.P1.holm_k']
+
+
+def test_none_on_one_side_only_is_a_difference(work, monkeypatch):
+    _, own, rep = stage(work, **NO_GO, tweak=lambda r: r['checks']['P1'].update(holm_k=None))
+    with pytest.raises(SystemExit):
+        run(work, own, rep, monkeypatch)
+    got = json.loads((work / 'agr.json').read_text())
+    assert [i['key'] for i in got['items'] if not i['equal']] == ['checks.P1.holm_k']
+
+
+@pytest.mark.parametrize('ours,theirs,equal', [(None, None, True), (None, 3, False), (3, None, False)])
+def test_value_none_rule(ours, theirs, equal):
+    c = C.Comparison()
+    c.value('k', ours, theirs)
+    assert c.items[0]['equal'] is equal
+
+
+def test_value_missing_key_is_a_difference_even_when_ours_is_none():
+    c = C.Comparison()
+    c.value('o', {'a': None, 'b': 1}, {'b': 1})
+    assert {i['key']: i['equal'] for i in c.items} == {'o.a': False, 'o.b': True}
