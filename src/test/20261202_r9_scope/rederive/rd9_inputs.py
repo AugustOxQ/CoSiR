@@ -245,4 +245,4 @@ def store_data(folder,clip):
     from src.data.artelingo import ArtelingoData
     return ArtelingoData(img,txt,clip.sample_ids,clip.emotions,clip.paintings,clip.art_styles)
 
-R9_RULE_SHA = '7e2a6dde2adfdcbd8197bab7136ceaac031e4f933212bd2e2a70a7297d93e68b'
+R9_RULE_SHA = '69a365c3035211e0162ddaf18dce96a87477e09e1eccf6294148ccf3d1332a4f'
