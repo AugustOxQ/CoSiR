@@ -95,11 +95,33 @@ def make_sens(read, se=0.1) -> dict:
     return rec
 
 
+# Items as ticket 25's rd9_compare.py wrote them (a real run of its code on a small synthetic pass, 2026-10-14): a
+# value entry has key, equal, ours, theirs; an array entry has key and equal. This is a shortened list of the 130 real
+# entries; "compared" is len(items) here, as in the real file.
+REAL_ITEMS = [
+    {"key": "n_episodes", "equal": True, "ours": 40, "theirs": 40},
+    {"key": "n_clusters", "equal": True, "ours": 10, "theirs": 10},
+    {"key": "seeds.0", "equal": True, "ours": 52, "theirs": 52},
+    {"key": "episodes_sha256.x", "equal": True, "ours": "a" * 64, "theirs": "a" * 64},
+    {"key": "checks.P1.n", "equal": True, "ours": 30, "theirs": 30},
+    {"key": "checks.P1.point", "equal": True, "ours": 10.0, "theirs": 10.0},
+    {"key": "checks.P1.ci95.0", "equal": True, "ours": 2.5, "theirs": 2.5},
+    {"key": "checks.P1.tested", "equal": True, "ours": True, "theirs": True},
+    {"key": "checks.P1.passes", "equal": True, "ours": False, "theirs": False},
+    {"key": "holm_order.0", "equal": True, "ours": "P6", "theirs": "P6"},
+    {"key": "arrays.cl", "equal": True},
+    {"key": "arrays.seed_index", "equal": True},
+]
+
+
 def write_agreement(d, read, sfx="", smoke=False, over=None):
-    """The phase-2 agreement of ticket 25's schema, bound to the pass file as it is now."""
+    """The phase-2 agreement in ticket 25's names (rd9_compare.py per-read output), bound to the pass file as it is now."""
     raw = (d / f"held_pass_{read}{sfx}.json").read_bytes()
     checks = json.loads(raw)["checks"]
-    rec = {"phase": 2, "smoke": smoke, "all_agree": True, "disagreements": [], "n_quantities": 129, "read": read,
+    items = [dict(x) for x in REAL_ITEMS]
+    rec = {"agreement": True, "compared": len(items), "failed": 0, "items": items,
+           "independent_identity": {"record_sha256": "1" * 64, "arrays_sha256": "2" * 64},
+           "read": read, "backbone": "clip_b32", "phase": 2, "smoke": smoke,
            "pass_file": f"held_pass_{read}{sfx}.json", "held_pass_sha256": CM.sha256_bytes(raw),
            "rederived_counts": {nm: checks.get(nm, {}).get("n", 0) for nm in P}}
     rec.update(over or {})
@@ -621,8 +643,17 @@ def test_no_verdict_without_the_agreement(tmp_path):
 @pytest.mark.parametrize("over,match", [
     ({"phase": 1}, "not a phase-2 record"), ({"phase": True}, "not a phase-2 record"),
     ({"smoke": True}, "agreement record is refused"), ({"smoke": "no"}, "smoke flag"),
-    ({"all_agree": False}, "all_agree is not true"), ({"all_agree": "yes"}, "all_agree is not true"),
-    ({"disagreements": ["P3"]}, "disagreements"), ({"n_quantities": 0}, "n_quantities"),
+    ({"agreement": False}, "agreement is not true"), ({"agreement": "yes"}, "agreement is not true"),
+    ({"agreement": 1}, "agreement is not true"),
+    ({"items": REAL_ITEMS[:-1] + [{"key": "arrays.seed_index", "equal": False}]}, "not equal"),
+    ({"items": REAL_ITEMS[:-1] + [{"key": "arrays.seed_index", "equal": False}], "agreement": False}, "agreement is not true"),
+    ({"items": REAL_ITEMS[:-1] + [{"key": "arrays.seed_index"}]}, "boolean equal"),
+    ({"items": REAL_ITEMS[:-1] + [{"key": "arrays.seed_index", "equal": 1}]}, "boolean equal"),
+    ({"items": None}, "items is not a list"), ({"items": "x"}, "items is not a list"),
+    ({"failed": 1}, "failed is not 0"), ({"failed": False}, "failed is not 0"), ({"failed": None}, "failed is not 0"),
+    ({"compared": 0, "items": []}, "compared"), ({"compared": len(REAL_ITEMS) + 1}, "compared"),
+    ({"compared": True, "items": REAL_ITEMS[:1]}, "compared"),
+    ({"all_agree": True, "agreement": None}, "agreement is not true"),
     ({"read": "H7"}, "its read is not H6"), ({"pass_file": "held_pass_H6_fix1.json"}, "its pass_file is not"),
     ({"held_pass_sha256": "0" * 64}, "checked another pass"), ({"held_pass_sha256": "xyz"}, "not a SHA-256"),
     ({"rederived_counts": {"P1": 0}}, "rederived_counts"), ({"rederived_counts": None}, "rederived_counts"),
@@ -634,7 +665,7 @@ def test_bad_agreement_refuses(tmp_path, over, match):
 
 
 def test_agreement_missing_keys_refuse(tmp_path):
-    for key in ("phase", "smoke", "all_agree", "disagreements", "n_quantities", "read", "pass_file",
+    for key in ("phase", "smoke", "agreement", "compared", "failed", "items", "read", "pass_file",
                 "held_pass_sha256", "rederived_counts"):
         d = stage(tmp_path / key, "H6", ALL0)
         f = d / "rd9_H6_agreement.json"
@@ -660,6 +691,24 @@ def test_smoke_agreement_is_refused_in_real_mode_and_real_in_smoke(tmp_path):
     refused(4, "H8", d, "real agreement record is refused in smoke mode", smoke=True)
 
 
+def test_the_old_names_are_not_accepted_and_the_unread_keys_are_not_needed(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    f = d / "rd9_H6_agreement.json"
+    r = json.loads(f.read_text())
+    for key in ("independent_identity", "backbone"):          # written by ticket 25, not read here
+        r.pop(key)
+    f.write_text(json.dumps(r))
+    assert call("H6", d)[1]["status"] == "run"
+    d = tmp_path / "old"
+    d = stage(d, "H6", ALL0)
+    r = json.loads((d / "rd9_H6_agreement.json").read_text())
+    for k in ("agreement", "compared", "failed", "items", "independent_identity", "backbone"):
+        r.pop(k)
+    r.update(all_agree=True, disagreements=[], n_quantities=129)
+    (d / "rd9_H6_agreement.json").write_text(json.dumps(r))
+    refused(4, "H6", d, "agreement is not true")
+
+
 def test_rederived_counts_must_equal_the_pass_counts(tmp_path):
     d = stage(tmp_path, "H6", ALL0)
     rc = {nm: 0 for nm in P}
@@ -674,7 +723,9 @@ def test_boundary_report_carries_the_rederivation_count(tmp_path):
     d = stage(tmp_path, "H6", counts)
     v = call("H6", d)[1]
     assert v["boundary_report"] and all(b["rederivation_n"] == counts[b["check"]] for b in v["boundary_report"])
-    assert v["agreement_file"] == "rd9_H6_agreement.json" and v["agreement"]["all_agree"] is True
+    assert v["agreement_file"] == "rd9_H6_agreement.json"
+    assert v["agreement"] == {"phase": 2, "smoke": False, "agreement": True, "read": "H6", "pass_file": "held_pass_H6.json",
+                              "held_pass_sha256": CM.sha256_file(d / "held_pass_H6.json"), "compared": len(REAL_ITEMS)}
     assert v["agreement_sha256"] == CM.sha256_file(d / v["agreement_file"])
 
 

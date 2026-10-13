@@ -9,7 +9,7 @@ existing file is never replaced). Before any verdict (R6 rule 8.1, 8.3; this rul
   - the latest smoke record (results/smoke_record_fix1.json if it exists, else smoke_record_crash1.json if it exists,
     else smoke_record.json; --variant reserve: smoke_record_reserve.json) says "passed": true and its module_sha256
     equals r9_common.r9_module_shas() key for key (a changed file needs a new smoke); not in --smoke mode;
-  - the phase-2 agreement of the pass file exists, all_agree, bound to the pass file's SHA-256 (see AGREEMENT below).
+  - the phase-2 agreement of the pass file exists, agreement true, bound to the pass file's SHA-256 (see AGREEMENT below).
 One pass file per verdict (R6 rule 8.1): when held_pass_<Hn>_fix1.json exists it is the pass (its agreement, and the
 original held_pass_<Hn>.json must exist) and the original is not read; the verdict is the unsuffixed
 held_verdict_<Hn>.json either way. There is no --variant fix1. --variant reserve reads the _reserve names (pass,
@@ -61,11 +61,13 @@ is finite (no NaN).
     read kind (see detectable_margins), x95 = 2.80 * SE; other top-level keys are ignored. The step recomputes x and x95
     from SE and stops (exit 5) on a difference.
   AGREEMENT: rd9_<Hn>_agreement[_fix1|_reserve].json, one per pass file, in rederive/rd9_out/ (results/smoke/ with
-    --smoke), written by rederive/rd9_compare.py (ticket 25). Fields read: phase (2), smoke (bool, = --smoke),
-    all_agree (true), disagreements ([]), n_quantities (int >= 1), read (<Hn>), pass_file (the pass file's name),
-    held_pass_sha256 (= the SHA-256 of that pass file), rederived_counts {P1..P7: int} (the re-derivation's n_j, equal
-    to the pass file's). Ticket 25's first version wrote "agreement" instead of "all_agree" and none of phase, smoke,
-    disagreements, n_quantities, pass_file, held_pass_sha256, rederived_counts.
+    --smoke), written by rederive/rd9_compare.py (ticket 25), in ticket 25's names. Fields read: phase (2),
+    smoke (bool, = --smoke; the comparator takes it from the pass file's own "mode"), agreement (true), compared (int >= 1,
+    = len(items)), failed (0, = the number of items that are not equal), items (a list of {key, equal (bool), ...}; none
+    may have equal false), read (<Hn>), pass_file (the pass file's name), held_pass_sha256 (= the SHA-256 of that pass
+    file's bytes), rederived_counts {P1..P7: int} (the independent pass's n_j, equal to the pass file's). Other keys
+    (independent_identity, backbone) are not read. Earlier drafts of this step expected other names (all_agree,
+    disagreements, n_quantities); they are not accepted.
 """
 import argparse
 import json
@@ -502,12 +504,17 @@ def load_agreement(path: Path, smoke: bool, pass_name: str, read: str) -> tuple:
     if agr["smoke"] is not smoke:  # GUARD: smoke-flag
         refuse(f"{path.name}: a {'real' if agr['smoke'] is False else 'smoke'} agreement record is refused in "
                f"{'smoke' if smoke else 'real'} mode")
-    if agr.get("all_agree") is not True:  # GUARD: all-agree
-        refuse(f"{path.name}: all_agree is not true; trace the disagreement first (rule 7.5)")
-    if agr.get("disagreements") != []:
-        refuse(f"{path.name}: its disagreements list is not empty")
-    if not (_is_int(agr.get("n_quantities")) and agr["n_quantities"] >= 1):
-        refuse(f"{path.name}: n_quantities is not a positive integer")
+    if agr.get("agreement") is not True:  # GUARD: agreement-true
+        refuse(f"{path.name}: agreement is not true; trace the disagreement first (rule 7.5)")
+    items, compared, failed = agr.get("items"), agr.get("compared"), agr.get("failed")
+    if not (isinstance(items, list) and all(isinstance(x, dict) and type(x.get("equal")) is bool for x in items)):
+        refuse(f"{path.name}: items is not a list of entries with a boolean equal")
+    if [x for x in items if not x["equal"]]:  # GUARD: failing-items
+        refuse(f"{path.name}: its items list has entries that are not equal")
+    if not (_is_int(failed) and failed == 0):  # GUARD: failed-zero
+        refuse(f"{path.name}: failed is not 0")
+    if not (_is_int(compared) and compared >= 1 and compared == len(items)):  # GUARD: compared-count
+        refuse(f"{path.name}: compared is not a positive integer equal to the length of items")
     if agr.get("read") != read:  # GUARD: read-name
         refuse(f"{path.name}: its read is not {read}")
     if agr.get("pass_file") != pass_name:  # GUARD: pass-file-name
@@ -639,7 +646,7 @@ def apply(read: str, smoke: bool = False, variant=None, not_run=None, results=No
     rd = agr["rederived_counts"]
     for nm in P_CHECKS:
         if rd[nm] != rec["checks"][nm]["n"]:  # GUARD: counts-equal
-            contradiction(f"{apath.name}: all_agree, but the re-derived count of {nm} ({rd[nm]}) is not the pass "
+            contradiction(f"{apath.name}: agreement is true, but the re-derived count of {nm} ({rd[nm]}) is not the pass "
                           f"file's ({rec['checks'][nm]['n']})")
     spath = out / f"sensitivity_{read}{sfx}.json"
     if sfx == "_fix1" and not spath.is_file():             # a fix pass reuses the original sensitivity (as R6)
@@ -650,8 +657,8 @@ def apply(read: str, smoke: bool = False, variant=None, not_run=None, results=No
     v = {**base, **decide(rec, sens, read, rd), "status": "run", "seeds": rec["seeds"],
          "held_pass_sha256": pass_sha, "pass_file": ppath.name, "fix_pass": sfx == "_fix1",
          "agreement_file": apath.name, "agreement_sha256": agr_sha,
-         "agreement": {k: agr.get(k) for k in ("phase", "smoke", "all_agree", "read", "pass_file", "held_pass_sha256",
-                                               "n_quantities")},
+         "agreement": {k: agr.get(k) for k in ("phase", "smoke", "agreement", "read", "pass_file", "held_pass_sha256",
+                                               "compared")},
          "sensitivity_file": spath.name, "sensitivity_sha256": sens_sha, "smoke_record": smoke_record}
     write_once(vpath, v)
     return vpath, v
