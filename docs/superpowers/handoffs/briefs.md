@@ -243,3 +243,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-4-handoff.md
 - New chat: tab 'r9 build 4', session b3272558-c238-443c-b3a5-6380d6a36e6c
 
+[brief] CoSiR: paper r1 3 -> paper r1 4 (2026-10-13 18:54 Amsterdam)
+- Done: the full ARS review of v1. Verdict Major Revision: one repairable block on methodology rigor, warn on the other five dimensions, no Critical issue.
+- State: 11 required and 28 suggested items. A fact check shows all 11 premises right, with 4 reviewer errors.
+- Next: the user reads the review and answers the five decisions in `reviews/r1/03_open_decisions.md`.
+- Blocked: waiting for the user's read.
+- Handoff: docs/superpowers/handoffs/2026-10-13-paper-r1-4-handoff.md
+- New chat: tab 'paper r1 4', session 5def5363-2b8d-4f15-ba05-1366da77b077
+
