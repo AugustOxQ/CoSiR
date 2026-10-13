@@ -17,6 +17,33 @@ L1, L2 = ("P4", "P6"), ("P1", "P2", "P3", "P5", "P7")
 BOUNDARY_COUNTS = dict(zip(P, (24, 30, 40, 61, 61, 124, 124)))
 
 
+@pytest.mark.parametrize("producer,mode,seeds", [
+    ("pass_record", "a28", [55, 56, 57]),
+    ("pass_record_a28", "held", [52, 53, 54]),
+])
+def test_mode_must_fit_design(producer, mode, seeds):
+    kw = {} if producer == "pass_record" else dict(set_aside=[], flagged_languages=[], near_duplicates={})
+    with pytest.raises(ValueError, match="does not fit design"):
+        getattr(ST, producer)(scores(), mode, seeds, extra(seeds), **kw)
+
+
+@pytest.mark.parametrize("bad,regex", [
+    ("missing", "exactly P1 to P7"), ("float_N", "positive integer"),
+    ("negative", "finite and non-negative"), ("nan", "finite and non-negative"),
+])
+def test_sensitivity_input_checks(bad, regex):
+    sig = {nm: {"sigma_a2": 2., "sigma_eps2": 100.} for nm in P}
+    N = 6
+    if bad == "missing":
+        sig.pop("P1")
+    elif bad == "float_N":
+        N = 6.0
+    else:
+        sig["P1"]["sigma_a2" if bad == "negative" else "sigma_eps2"] = -1. if bad == "negative" else np.nan
+    with pytest.raises(ValueError, match=regex):
+        ST.sensitivity_record(sig, np.array([1, 2, 3]), N, "two_level")
+
+
 def scores(smoke=False):
     n = 192 if smoke else 12288
     cl = np.arange(n) % 12
@@ -213,3 +240,53 @@ def test_each_table_mutant_fails_the_producer_check(tmp_path, monkeypatch, name)
     spec.loader.exec_module(mod)
     with pytest.raises((AssertionError, ValueError)):
         check_mutation_target(mod, which, monkeypatch)
+
+
+@pytest.mark.parametrize('producer,mode,seeds', [
+    ('pass_record', 'a28', [55, 56, 57]),
+    ('pass_record_a28', 'held', [52, 53, 54]),
+])
+def test_mode_design_guard_mutant_exposes_wrong_record(tmp_path, monkeypatch, producer, mode, seeds):
+    src = Path(ST.__file__).read_text()
+    old = 'if mode not in (("a28", "smoke") if design == "two_level" else ("held", "regression", "smoke")):'
+    assert src.count(old) == 1
+    path = tmp_path / 'r9_stats_mode_mutant.py'
+    path.write_text(src.replace(old, 'if False:'))
+    spec = importlib.util.spec_from_file_location('r9_stats_mode_mutant', path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    draws = np.zeros(5000)
+    monkeypatch.setattr(mod, 'bootstrap_draws', lambda *a: (draws, np.ones(5000, dtype=bool)))
+    monkeypatch.setattr(mod.C, 'point_ci', lambda d, cl: mod.point_ci_from_draws(d, draws))
+    kw = {'secondary': False} if producer == 'pass_record' else dict(set_aside=[], flagged_languages=[], near_duplicates={})
+    rec = getattr(mod, producer)(scores(), mode, seeds, extra(seeds), **kw)
+    assert rec['seeds'] == seeds  # removing the guard now accepts the invalid mode/design combination
+
+
+@pytest.mark.parametrize('bad,old,new', [
+    ('missing', 'if set(sig) != set(CHECKS):', 'if False:'),
+    ('float_N', 'if isinstance(N, (bool, np.bool_)) or not isinstance(N, (int, np.integer)) or N <= 0:', 'if False:'),
+    ('negative', 'if not all(np.isfinite(sig[c][key]) and sig[c][key] >= 0 for key in ("sigma_a2", "sigma_eps2")):', 'if False:'),
+    ('nan', 'if not all(np.isfinite(sig[c][key]) and sig[c][key] >= 0 for key in ("sigma_a2", "sigma_eps2")):', 'if False:'),
+])
+def test_sensitivity_input_guard_mutants(tmp_path, bad, old, new):
+    src = Path(ST.__file__).read_text()
+    assert src.count(old) == 1
+    path = tmp_path / f'r9_stats_input_{bad}.py'
+    path.write_text(src.replace(old, new))
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    sig = {nm: {'sigma_a2': 2., 'sigma_eps2': 100.} for nm in P}
+    N = 6
+    if bad == 'missing':
+        sig.pop('P1')
+        with pytest.raises(KeyError):  # the clean input refusal is lost
+            mod.sensitivity_record(sig, np.array([1, 2, 3]), N, 'two_level')
+        return
+    if bad == 'float_N':
+        N = 6.0
+    else:
+        sig['P1']['sigma_a2' if bad == 'negative' else 'sigma_eps2'] = -1. if bad == 'negative' else np.nan
+    rec = mod.sensitivity_record(sig, np.array([1, 2, 3]), N, 'two_level')
+    assert set(rec) == set(P)  # the original refusal tests fail against this permissive mutant

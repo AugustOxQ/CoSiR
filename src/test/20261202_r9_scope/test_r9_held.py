@@ -281,7 +281,8 @@ def test_c5_mutation(guard, case, monkeypatch, tmp_path):
 def test_guard_table_covers_every_marker():
     markers = re.findall(r"# guard:(\w+)", (HERE / "run_r9_held.py").read_text())
     assert len(markers) == len(set(markers))
-    assert set(markers) == set(GUARDS)
+    from test_r9_held_a28 import GUARDS as A28_GUARDS
+    assert set(markers) == set(GUARDS) | set(A28_GUARDS)
 
 
 @pytest.mark.parametrize("read", ["H6", "H7"])
@@ -782,3 +783,94 @@ def test_reserve_deadline_scope_mutation_is_detected(case, monkeypatch, tmp_path
                                         '    if variant == "held" and not after_crash:\n        today = amsterdam_today()'))
     prepare_variant(mod, case, monkeypatch, 'reserve', date(2026, 10, 19))
     assert mod.refuse_or_go(case.res, case.ledger, 'H6', case.backbone, 'reserve', folder=case.folder).names.kind == 'reserve'
+
+
+def short_ledger(mod, c, mp):
+    configure(mod, c, mp)
+    cells = c.ledger.read_text().strip().strip('|').split('|')
+    c.ledger.write_text('|' + '|'.join(cells[:-1]) + '|\n')
+    return mod.ledger_row(c.ledger, 'H6')
+
+
+def test_seven_cell_ledger_is_a_clean_refusal(case, monkeypatch):
+    with pytest.raises(U.Refused, match='eight cells'):
+        short_ledger(U, case, monkeypatch)
+
+
+def test_seven_cell_ledger_mutant_is_detected(case, monkeypatch, tmp_path):
+    mod = mutant(tmp_path, replacement=('len(cells) == len(LEDGER_CELLS)', 'len(cells) <= len(LEDGER_CELLS)'))
+    with pytest.raises(IndexError):
+        short_ledger(mod, case, monkeypatch)
+
+
+def h5_collision(mod, c, mp):
+    configure(mod, c, mp)
+    append_h5(c, mod)
+    text = c.ledger.read_text().replace(hashes(53)[mod.R.PAIR_NAMES[0]], hashes(52)[mod.R.PAIR_NAMES[0]])
+    c.ledger.write_text(text)
+    return mod.h5_hashes(c.ledger)
+
+
+def test_h5_parser_calls_distinctness(case, monkeypatch):
+    with pytest.raises(AssertionError, match='repeats the episode hash'):
+        h5_collision(U, case, monkeypatch)
+
+
+def test_h5_distinctness_call_mutant(case, monkeypatch, tmp_path):
+    mod = mutant(tmp_path, replacement=('    E.assert_distinct(out, recorded={})', '    pass'))
+    assert len(h5_collision(mod, case, monkeypatch)) == 3
+
+
+@pytest.mark.parametrize('name', ['started_guard', 'sensitivity_guard'])
+def test_read_calls_order_guard(case, monkeypatch, name):
+    order_guard_site(U, case, monkeypatch, name)
+
+
+def order_guard_site(mod, c, mp, name):
+    spec, env, *_ = stub_read(mod, c, mp)
+    calls = []
+    real = getattr(mod, name)
+    def spy(*a):
+        calls.append(name)
+        return real(*a)
+    mp.setattr(mod, name, spy)
+    assert mod.run_read(spec, c.res, env=env) == 0
+    assert calls == [name], f'{name} call missing'
+
+
+@pytest.mark.parametrize('name,line', [
+    ('started_guard', '    started_guard(started, spec.copy_to)'),
+    ('sensitivity_guard', '    sensitivity_guard(out / n.sensitivity)'),
+])
+def test_order_guard_call_mutant(case, monkeypatch, tmp_path, name, line):
+    mod = mutant(tmp_path, replacement=(line, '    pass'))
+    with pytest.raises(AssertionError, match='call missing'):
+        order_guard_site(mod, case, monkeypatch, name)
+
+
+def changed_sensitivity_rerun(mod, c, mp):
+    spec, env, *_ = stub_read(mod, c, mp)
+    score = mod.S.score_seed
+    def crash(*a, **kw):
+        raise RuntimeError('after sensitivity')
+    mp.setattr(mod.S, 'score_seed', crash)
+    with pytest.raises(RuntimeError, match='after sensitivity'):
+        mod.run_read(spec, c.res, env=env)
+    path = c.res / spec.names.sensitivity
+    rec = json.loads(path.read_text())
+    rec['P4']['SE'] += 1.
+    put(path, rec)
+    spec.attempts = mod.read_attempts(c.res / spec.names.started)
+    spec.want = mod.attempt_hashes(spec.attempts)
+    mp.setattr(mod.S, 'score_seed', score)
+    return mod.run_read(spec, c.res, env=env)
+
+
+def test_changed_sensitivity_stops_after_crash_rerun(case, monkeypatch):
+    with pytest.raises(AssertionError, match='differs.*P4.*user decides'):
+        changed_sensitivity_rerun(U, case, monkeypatch)
+
+
+def test_sensitivity_rerun_comparison_mutant(case, monkeypatch, tmp_path):
+    mod = mutant(tmp_path, replacement=("same + ['episodes_sha256', 'sigma_source']", "['N']"))
+    assert changed_sensitivity_rerun(mod, case, monkeypatch) == 0

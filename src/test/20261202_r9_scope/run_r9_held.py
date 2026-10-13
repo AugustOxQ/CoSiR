@@ -1,11 +1,13 @@
-"""Held runner for r9 H6 (Qwen) and H7 (SigLIP 2), DECISION_RULE sections 4.1, 7 and 10.
+"""Held runner for r9 H6 to H10, DECISION_RULE sections 4.1, 4.2, 5, 7 and 10.
 
-Ledger first, pinned inputs, local head refits, started file and its folder copy, H5's episodes,
-sensitivity, primary arrays and pooled P1 to P7. Writes no verdict and prints no metric.
+Ledger first, pinned inputs, local head refits, started file and its folder copy, episodes,
+sensitivity, primary arrays and pooled P1 to P7. H6/H7 rebuild H5; H8 builds language parts
+in A28 row positions and H9/H10 assert H8's hashes. Writes no verdict and prints no metric.
 The run chat commits the started copy. Smoke uses selection rows, seeds 9001 to 9003 and
 64 episodes per pair under results/smoke; ticket 22 writes the smoke record.
 
     python run_r9_held.py --backbone clip_b32 --read H6 --smoke
+    python run_r9_held.py --backbone clip_b32 --read H8 --smoke
 """
 import argparse
 import io
@@ -34,6 +36,10 @@ import r9_picks as P
 import r9_pins as PINS
 import r9_score as S
 import r9_stats as ST
+import r9_a28_context as AC
+import r9_a28_data as AD
+import r9_a28_episodes as AE
+import run_r9_apply_rule as AR
 import numpy as np
 from src.eval.aspect_metrics import CONDITIONS, METRICS
 
@@ -42,7 +48,9 @@ LEDGER_NAMES = BB.LEDGER_NAMES
 LEDGER_CELLS = ("#", "Date", "Dataset and split", "Backbone", "Purpose",
                 "Episode / data SHA-256", "Script SHA-256", "Report")
 BACKBONE_CELL, EPISODE_CELL, SCRIPT_CELL, REPORT_CELL = 3, 5, 6, 7
-READ_BACKBONES = {"H6": "qwen3vl_emb_2b", "H7": "siglip2_so400m"}
+READ_BACKBONES = {"H6": "qwen3vl_emb_2b", "H7": "siglip2_so400m",
+                  "H8": "clip_b32", "H9": "qwen3vl_emb_2b", "H10": "siglip2_so400m"}
+A28_READS = ("H8", "H9", "H10")
 PENDING = "(pending)"
 MAX_ATTEMPTS = 2
 READ_DEADLINE = date(2026, 10, 18)
@@ -83,6 +91,8 @@ def runner_sha256() -> str:
 
 
 def _norm(x):
+    if isinstance(x, np.ndarray):
+        return _norm(x.tolist())
     if isinstance(x, (list, tuple)):
         return [_norm(v) for v in x]
     if isinstance(x, dict):
@@ -130,8 +140,8 @@ def attempt_hashes(attempts) -> dict:
     return out
 
 
-def _complete(hashes) -> bool:
-    return set(hashes) == set(R.HELD_SEEDS)
+def _complete(hashes, seeds=R.HELD_SEEDS) -> bool:
+    return set(hashes) == set(seeds)
 
 
 def git_provenance(here=None) -> dict:
@@ -389,6 +399,10 @@ def ledger_guard(path, row_id, backbone, runner_sha, pins_sha=None):
                    f"ledger row {row_id}: runner SHA is not this runner's")  # guard:ledger_runner_sha
     _refuse_unless(bool(pins) and pins[-1] == pins_sha,
                    f"ledger row {row_id}: pins SHA is not {pins_name}'s")  # guard:ledger_pins_sha
+    if row_id.removesuffix('-R') in A28_READS:
+        a28 = re.findall(r"(?<![\w.])pins_a28\.json\s+([0-9a-f]{64})(?![0-9a-fA-F])", cells[SCRIPT_CELL])
+        _refuse_unless(AD.PINS_PATH.is_file() and bool(a28) and a28[-1] == R.sha256_file(AD.PINS_PATH),
+                       f"ledger row {row_id}: pins_a28.json SHA differs")  # guard:ledger_a28_sha
     _refuse_unless(row['report'] == PENDING, f"ledger row {row_id}: report cell is not (pending)")  # guard:ledger_report
     return row
 
@@ -431,6 +445,8 @@ def refuse_or_go(results, ledger, read, backbone, variant="held", after_crash=Fa
     first = variant == "reserve" or (variant == "held" and not after_crash)
     # Ledger before any read inputs. The pins file itself is hashed, not a pick or a cell.
     row = ledger_guard(ledger, n.row, backbone, runner_sha256())
+    if read in A28_READS:
+        a28_order_guard(res, ledger, read)
     # A reserve starts another read; a fix or crash rerun continues one already started (§10).
     if first:
         today = amsterdam_today()
@@ -463,13 +479,14 @@ def refuse_or_go(results, ledger, read, backbone, variant="held", after_crash=Fa
         _refuse_unless(row['cells'][EPISODE_CELL] == PENDING,
                        f"ledger row {n.row}: episode cell is not (pending)")  # guard:episodes_pending
     want = attempt_hashes(attempts)
+    seeds = X.A28_READ_SEEDS if read in A28_READS else R.HELD_SEEDS
     if variant == "fix1":
-        _refuse_unless(_complete(want) and set(row['episodes']) == {h for hs in want.values() for h in hs.values()},
+        _refuse_unless(_complete(want, seeds) and set(row['episodes']) == {h for hs in want.values() for h in hs.values()},
                        f"--fix 1: ledger row {n.row} needs exactly the nine episode hashes")  # guard:fix_episodes
     elif variant == "reserve":
         first_started = res / base.started
         want = attempt_hashes(read_attempts(first_started)) if first_started.is_file() else {}
-        _refuse_unless(_complete(want), "--reserve: first read needs nine held episode hashes")  # guard:reserve_hashes
+        _refuse_unless(_complete(want, seeds), "--reserve: first read needs nine held episode hashes")  # guard:reserve_hashes
     return SimpleNamespace(names=n, attempts=attempts, want=want, ledger=row)
 
 
@@ -597,14 +614,163 @@ def sensitivity_guard(path):
 
 
 
+def prior_verdict(results, ledger, read, allow_not_run):
+    """A completed read, or the consumer's null verdict bound to an exact ledger status cell."""
+    path = Path(results) / read_names(read).verdict
+    try:
+        v = _read_json(path)
+    except (OSError, ValueError):
+        return False
+    if not isinstance(v, dict) or (v.get('read'), v.get('mode'), v.get('rule_sha256'), v.get('backbone')) != (
+            read, 'held', R.RULE_SHA256, LEDGER_NAMES[READ_BACKBONES[read]]):
+        return False
+    real = ('GO', 'NO-GO') if read in ('H6', 'H7') else ('full claim', 'small claim', 'NO-GO')
+    if v.get('verdict') in real:
+        return True
+    status = v.get('status')
+    if not allow_not_run or v.get('verdict', 'missing') is not None or status not in AR.NOT_RUN.values():
+        return False
+    try:
+        cells = ledger_row(ledger, read)['cells']
+    except Refused:
+        return False
+    return status in cells and not any(other in c for other in AR.NOT_RUN.values() if other != status for c in cells)
+
+
+def a28_order_guard(results, ledger, read):
+    _refuse_unless(all(prior_verdict(results, ledger, r, True) for r in ('H6', 'H7')),
+                   'H8 to H10 need real H6 and H7 verdicts or matching not-run ledger statuses')  # guard:a28_stage3
+    if read in ('H9', 'H10'):
+        _refuse_unless(prior_verdict(results, ledger, 'H8', False),
+                       'H9 and H10 need H8 real verdict')  # guard:a28_h8_verdict
+
+
+def a28_records_guard(obj):
+    _require(all(getattr(obj, k, None) is not None for k in ('language', 'part_sha', 'shares', 'set_aside')),
+             'A28 language, part_sha, shares and set_aside records must exist before recording')  # guard:a28_records
+
+
+def a28_label_guard(a28, eps):
+    for (a, b, _), ep in zip(R.PAIRS, eps.per_pair):
+        _require(np.array_equal(getattr(a28, a)[ep.candidates[:, 0]], getattr(a28, a)[ep.anchor])
+                 and np.array_equal(getattr(a28, b)[ep.candidates[:, 1]], getattr(a28, b)[ep.anchor]),
+                 f'A28 {a}/{b}: candidate columns do not share anchor labels; row space differs')  # guard:a28_label_join
+
+
+def a28_attempt_records(attempts):
+    out = {}
+    for att in attempts:
+        for s, rec in att.get('a28_episodes', {}).items():
+            _require(out.setdefault(int(s), rec) == rec, f'A28 attempts disagree on seed {s} part records')
+    return out
+
+
+def a28_reference(results):
+    attempts = read_attempts(Path(results) / read_names('H8').started)
+    hashes = attempt_hashes(attempts)
+    records = a28_attempt_records(attempts)
+    _refuse_unless(_complete(hashes, X.A28_READ_SEEDS) and set(records) == set(X.A28_READ_SEEDS)
+                   and all(isinstance(rec, dict) and all(isinstance(rec.get(k), dict)
+                           and set(rec[k]) == set(R.PAIR_NAMES) for k in ('part_sha', 'shares', 'set_aside', 'language'))
+                           for rec in records.values()),
+                   'H8 started file needs all nine hashes and A28 part records')  # guard:a28_h8_started
+    return SimpleNamespace(hashes=hashes, records=records)
+
+
+def a28_episode_record(eps):
+    return _plain({k: getattr(eps, k) for k in ('part_sha', 'shares', 'set_aside', 'language', 'set_aside_reasons')})
+
+
+class A28EpisodeRecorder(EpisodeRecorder):
+    """Use the held recorder, adding language-part records and H8's reference at the same episode boundary."""
+
+    def __init__(self, *args, reference=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.reference = reference
+        self.parts = a28_attempt_records(read_attempts(self.started)[:-1])
+
+    def __call__(self, eps):
+        s, part = int(eps.seed), a28_episode_record(eps)
+        if self.reference is not None:
+            _refuse_unless(dict(eps.sha) == self.reference.hashes.get(s)
+                           and part == self.reference.records.get(s),
+                           f'seed {s}: rebuilt A28 hashes or part records differ from H8')  # guard:a28_h8_hashes
+        if s in self.parts:
+            _refuse_unless(part == self.parts[s], f'seed {s}: A28 part records differ from earlier attempt')  # guard:a28_rerun_parts
+        super().__call__(eps)
+        self.parts[s] = part
+        rec = _read_json(self.started)
+        rec['attempts'][-1].setdefault('a28_episodes', {})[str(s)] = part
+        write_started(self.started, self.copy_to, rec)
+
+
+def setup_a28(env, backbone, smoke):
+    """One pinned row space. The smoke checks real A28 inputs without constructing an episode on them."""
+    real = AD.load_a28(backbone)
+    if smoke:
+        inputs = AC.A28Inputs(real, env.heads)
+        B.model_inputs(inputs, backbone)  # A3 codes and their NaN masks; no label, episode or score
+        import pandas as pd
+        rows = np.asarray(env.split.selection)
+        names = np.asarray(AE.LANGUAGES)[rows % len(AE.LANGUAGES)]
+        painting = np.asarray(env.data.paintings)[rows].astype(str)
+        tab = pd.DataFrame({'row_id': rows, 'painting': painting, 'language': names,
+                            **{a: env.labels[a][rows] for a in R.ASPECTS},
+                            'held': False, 'dropped': False})
+        paintings, groups = np.unique(painting, return_inverse=True)
+        real = SimpleNamespace(backbone=backbone, n=len(rows), row_id=rows, painting=painting, paintings=paintings,
+                               language=np.searchsorted(np.asarray(AE.LANGUAGES), names) + 1,
+                               painting_index=groups.astype(np.int64), kept=np.ones(len(rows), dtype=bool),
+                               img=env.data.img_features[rows], txt=env.data.txt_features[rows],
+                               read_set_sha256=R.sha256_bytes(rows.tobytes()),
+                               **{a: env.labels[a][rows] for a in R.ASPECTS})
+    else:
+        tab = AD.load_read_set()
+    files = _read_json(AD.PINS_PATH)['files']
+    vrec = _read_json(files['results/value_sets_a28.json']['path'])
+    values = {a: [int(v['code']) for v in vrec[a]] for a in R.ASPECTS}
+    flags = _read_json(files['results/language_flags_a28.json']['path'])['flagged']
+    near_path = AD.results_dir() / 'near_duplicates_a28.json'
+    near = _read_json(near_path)
+    return SimpleNamespace(a28=real, prepared=AE.prepare(tab), values=values,
+                           value_record=vrec, flagged_languages=[str(x) for x in flags],
+                           near_duplicates={k: int(near[k]) for k in ('cos_099', 'cos_098')},
+                           near_source={'file': str(near_path), 'sha256': R.sha256_file(near_path)})
+
+
+def a28_seed_episodes(data, seed, n_per_pair, recorder):
+    """Labels only: finish every seed's set-aside passes before any context computes cosine."""
+    eps = AE.build_seed_a28(data.prepared, data.values, seed, n_per_pair)
+    a28_records_guard(eps)
+    _require(all(len(languages) <= AE.MAX_SET_ASIDE for languages in eps.set_aside.values()),
+             f'seed {seed}: more than two languages set aside; stop before any score', AE.SetAsideStop)  # guard:a28_set_aside
+    a28_label_guard(data.a28, eps)
+    recorder(eps)  # hashes and parts before cosine or posteriors
+    return eps
+
+
+def a28_seed_bundle(env, data, eps, n_per_pair, backbone, coef, smoke):
+    ctx = AC.A28Context(data.a28, eps, eps.seed, n_per_pair, env.heads)
+    bundle = B.build_bundle_a28(ctx, env.readers, env.pm, backbone)
+    a28_records_guard(bundle)
+    _require(smoke or bundle.smoke is False, 'A28 read bundle must not be smoke')  # guard:a28_not_smoke
+    _require(_plain(bundle.coef_sha256) == _plain(coef),
+             'A28 bundle coefficients differ from checked pinned heads')  # guard:a28_coef
+    return bundle
+
+
 def run_read(spec, results, here=None, env=None):
     """Every attempt checks pins before picks/cells, then follows rule 7.4's computation order.
     Per-anchor inputs are saved; only pass_record computes aggregate checks, pooling all seeds/pairs.
     """
     t0 = time.time()
     out, n, backbone = Path(spec.out), spec.names, spec.backbone
+    a28 = spec.read in A28_READS
     inputs = R.assert_inputs(backbone)
     check_pins(backbone)
+    if a28:
+        AD.check_pins(AD.PINS_PATH, backbones=(backbone,))  # guard:a28_pins
+        inputs = {**inputs, 'pins_a28.json': R.sha256_file(AD.PINS_PATH)}
     paths = BB.parts(backbone)
     picks = P.load_picks(paths['picks_seed42'], backbone)
     lambdas = P.frozen_lambdas(backbone)
@@ -617,31 +783,55 @@ def run_read(spec, results, here=None, env=None):
     env = env or setup(backbone)
     coef = head_guard(env, refit_reference(backbone))
     values = value_sets_guard(env, vs_file)
+    data = setup_a28(env, backbone, spec.mode == 'smoke') if a28 else None
+    if a28:
+        AE.assert_seeds_free(AE.builder_seeds(spec.seeds, AE.N_LANGUAGES))  # guard:a28_seeds
+        recorded = {**recorded, **spec.h5}
+        values = data.value_record
     started = out / n.started
     record = {"mode": spec.mode, "read": spec.read, "backbone": backbone,
               "runner_sha256": runner_sha256(), "module_sha256": R.r9_module_shas(here),
               "input_sha256": dict(inputs), "pins_sha256": R.sha256_file(R.pins_path(backbone)),
               "sigma_source": {k: sigma[k] for k in ('file', 'sha256')}, "coef_sha256": coef,
               "value_sets": values, "git": git_provenance(here), **spec.record}
+    if a28:
+        record.update({'pins_a28_sha256': inputs['pins_a28.json'],
+                       'read_set_sha256': data.a28.read_set_sha256, 'near_duplicates_source': data.near_source})
     k = start_attempt(started, spec.copy_to, spec.attempts, spec.flags, record, spec.overwrite)
     started_guard(started, spec.copy_to)
-    rec = EpisodeRecorder(started, spec.copy_to, k, spec.want, recorded, out, spec.overwrite,
-                          read=spec.read, h5=spec.h5)
+    if a28:
+        rec = A28EpisodeRecorder(started, spec.copy_to, k, spec.want, recorded, out, spec.overwrite,
+                                 read=spec.read, reference=spec.reference)
+    else:
+        rec = EpisodeRecorder(started, spec.copy_to, k, spec.want, recorded, out, spec.overwrite,
+                              read=spec.read, h5=spec.h5)
+    episodes = {}
+    if a28:
+        for seed in spec.seeds:
+            rec.expect(seed)
+            episodes[seed] = a28_seed_episodes(data, seed, spec.n_per_pair, rec)
     bundles = []
     for seed in spec.seeds:
-        rec.expect(seed)
-        bundle = read_seed_bundle(env, spec.ctx_mode, seed, spec.n_per_pair, backbone, on_episodes=rec)
+        if a28:
+            bundle = a28_seed_bundle(env, data, episodes[seed], spec.n_per_pair, backbone, coef, spec.mode == 'smoke')
+        else:
+            rec.expect(seed)
+            bundle = read_seed_bundle(env, spec.ctx_mode, seed, spec.n_per_pair, backbone, on_episodes=rec)
         _require(seed in rec.hashes and dict(bundle.episodes_sha256) == rec.hashes[seed],
                  f'seed {seed}: episodes not reported to recorder')  # guard:episodes_reported
         bundles.append(bundle)
     rows = env.split.held if spec.ctx_mode == 'held' else env.split.selection
-    R.assert_held_eligible(env.labels, env.split.groups, rows, env.value_sets)
+    if not a28:
+        R.assert_held_eligible(env.labels, env.split.groups, rows, env.value_sets)
     cl = np.concatenate([np.asarray(b.cl) for b in bundles])
     n_episodes = len(spec.seeds) * len(R.PAIRS) * int(spec.n_per_pair)
     _require(len(bundles) == len(spec.seeds) and cl.shape == (n_episodes,),
              f'{cl.shape} pooled anchors, not ({n_episodes},)')
     _, m_p = np.unique(cl, return_counts=True)
-    sens = ST.sensitivity_record(sigma['sigma'], m_p, n_episodes, 'seven')
+    if a28:
+        sens = ST.sensitivity_record(sigma['sigma'], m_p, n_episodes, 'two_level')
+    else:
+        sens = ST.sensitivity_record(sigma['sigma'], m_p, n_episodes, 'seven')
     # Keep the previous provenance/schema; all SE and z arithmetic belongs to ST and its shared Z table.
     for c in ST.CHECKS:
         sens[c] = {'quantity': ST.QUANTITIES[c][2],
@@ -662,12 +852,23 @@ def run_read(spec, results, here=None, env=None):
     keep_or_write_npz(out / n.arrays, read_arrays(scored), spec.overwrite)
     extra = {"episodes_sha256": {s: rec.hashes[s] for s in spec.seeds}, "runner_sha256": runner_sha256(),
              "module_sha256": R.r9_module_shas(here)}
-    pr = ST.pass_record(scored, spec.mode, list(spec.seeds), extra, secondary=False)
+    if a28:
+        set_aside = [{'language': str(language), 'pair': str(pair), 'seed': int(bundle.seed)}
+                     for bundle in bundles for pair, languages in bundle.set_aside.items() for language in languages]
+        pr = ST.pass_record_a28(scored, spec.mode, list(spec.seeds), extra,
+                                set_aside=_plain(set_aside), flagged_languages=_plain(data.flagged_languages),
+                                near_duplicates=_plain(data.near_duplicates))
+    else:
+        pr = ST.pass_record(scored, spec.mode, list(spec.seeds), extra, secondary=False)
     pr.update({"read": spec.read, "backbone": backbone, "kind": n.kind, "attempt": k,
                "input_sha256": dict(inputs), "coef_sha256": coef, "pins_sha256": record['pins_sha256'],
                "sigma_source": record['sigma_source'], "value_sets": values,
                "outputs": {p.name: R.sha256_file(p) for p in (out / n.arrays, out / n.sensitivity)},
                "runtime_s": round(time.time() - t0)})
+    if a28:
+        pr.update({'pins_a28_sha256': record['pins_a28_sha256'], 'read_set_sha256': record['read_set_sha256'],
+                   'near_duplicates_source': data.near_source})
+        AR.load_pass(_json_bytes(pr), n.pass_, spec.read, spec.mode == 'smoke')  # guard:a28_pass_shape
     path = out / n.pass_
     write_new(path, _json_bytes(pr), spec.overwrite)
     print(f'held pass written {path.name} {R.sha256_file(path)}')
@@ -684,11 +885,14 @@ def run_held(backbone, read, after_crash=False, fix=None, reserve=False, results
         variant = 'reserve' if reserve else 'fix1' if fix else 'held'
         go = refuse_or_go(results, ledger or LEDGER, read, backbone, variant, after_crash, folder)
         smoke = smoke_guard(results, variant, here)
-        spec = SimpleNamespace(backbone=backbone, read=read, mode='held', names=go.names, ctx_mode='held',
-                               seeds=R.HELD_SEEDS, n_per_pair=R.N_PER_PAIR, out=results,
+        a28 = read in A28_READS
+        spec = SimpleNamespace(backbone=backbone, read=read, mode='a28' if a28 else 'held', names=go.names,
+                               ctx_mode='a28' if a28 else 'held',
+                               seeds=X.A28_READ_SEEDS if a28 else R.HELD_SEEDS, n_per_pair=R.N_PER_PAIR, out=results,
                                copy_to=Path(folder or HERE) / go.names.started, overwrite=False,
                                flags={"after_crash": bool(after_crash), "fix": fix, "reserve": bool(reserve), "smoke": False},
                                attempts=go.attempts, want=go.want, h5=h5_hashes(ledger or LEDGER),
+                               reference=a28_reference(results) if read in ('H9', 'H10') else None,
                                record={"smoke_record": smoke, "ledger": go.ledger})
         return run_read(spec, results, here, env)
     except Refused as e:
@@ -705,11 +909,13 @@ def run_smoke(backbone, read, results=None, subdir=None, here=None, env=None):
         out = results / 'smoke' / (subdir or '')
         names = read_names(read, 'smoke')
         _refuse_unless(not (out / names.verdict).exists(), 'verdict exists: repeated smoke needs --smoke-subdir')  # guard:smoke_verdict
-        spec = SimpleNamespace(backbone=backbone, read=read, mode='smoke', names=names, ctx_mode='selection',
+        spec = SimpleNamespace(backbone=backbone, read=read, mode='smoke', names=names,
+                               ctx_mode='a28' if read in A28_READS else 'selection',
                                seeds=R.SMOKE_SEEDS, n_per_pair=R.N_SMOKE, out=out,
                                copy_to=out / 'folder' / names.started, overwrite=True,
                                flags={"after_crash": False, "fix": None, "reserve": False, "smoke": True},
-                               attempts=[], want={}, h5=None, record={"smoke_subdir": subdir})
+                               attempts=[], want={}, h5={} if read in A28_READS else None, reference=None,
+                               record={"smoke_subdir": subdir})
         return run_read(spec, results, here, env)
     except Refused as e:
         print(f'refused: {e}')
