@@ -214,7 +214,8 @@ class World:
         other = {"B0": {0: [0.5, 0.5], 1: [0.0, 0.25]}, "B1": {0: [0.0, 0.5], 1: [0.5, 0.0]}}
         rec = {"B": {str(h): list(file_pick[h]) for h in (0, 1)},
                **{name: {str(h): list(pick[h]) for h in (0, 1)} for name, pick in other.items()}}
-        rec.update({"mean_r1": {"B": self.mean, "B0": 1.5, "B1": 2.5}, "passed": True})
+        rec.update({"mean_r1": {"B": self.mean, "B0": 1.5, "B1": 2.5}, "passed": True,
+                    "backbone": BACKBONE, "targets": None})
         self.picks_file = tmp_path / "picks_seed42.json"
         self.picks_file.write_text(json.dumps(rec))
         monkeypatch.setattr(RF, "reader", lambda bundle, readers: {"T": self.T, "m": self.m, "pick": self.pick})

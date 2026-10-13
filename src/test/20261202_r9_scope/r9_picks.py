@@ -167,8 +167,9 @@ def picks_record(picks, checks) -> dict:
 
 def load_picks(path=None, backbone="clip_b32") -> dict:
     """{"B", "B0", "B1": {0: [lu, la], 1: [...]}} from a picks_seed42.json (default parts(backbone)["picks_seed42"])
-    that passed. CLIP's mean R@1 must equal the rule's targets exactly; another backbone's record needs `passed` and
-    the three means (its targets are its own; ticket 10 may tighten this)."""
+    that passed. CLIP's mean R@1 must equal the rule's targets exactly; another backbone's record needs `passed`, the
+    three means, `backbone` equal to the backbone and `targets: null` (its targets are its own; ticket 10 writes
+    both keys)."""
     path = Path(path or parts(backbone)["picks_seed42"])
     rec = json.loads(path.read_text())
     if backbone == "clip_b32":
@@ -178,6 +179,10 @@ def load_picks(path=None, backbone="clip_b32") -> dict:
     _require(rec.get("passed") is True and all(ok.values()),
              f"{path}: not a passed record, or its mean R@1 differs from the rule's target ({ok}); "
              f"rule section 6 item 3")  # guard:picks_target
+    if backbone != "clip_b32":
+        _require(rec.get("backbone") == backbone and "targets" in rec and rec["targets"] is None,
+                 f"{path}: a record of {backbone} needs backbone == {backbone!r} (got {rec.get('backbone')!r}) and "
+                 f"targets: null (got {rec.get('targets', 'no targets key')!r})")  # guard:picks_new_backbone
     return {name: as_nested_pick(rec[name], f"{path.name} {name}") for name in NESTED}
 
 
