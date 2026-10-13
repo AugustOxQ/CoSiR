@@ -195,3 +195,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-handoff.md
 - New chat: tab 'r9 build', session 9be763ef-3a11-43a1-9938-43dfc67d003a
 
+
+[brief] CoSiR: paper start -> paper r1 (2026-10-13 16:02 Amsterdam)
+- Done: R0. Framing (task and protocol first), title, four ARS rounds, the Phase 0 record and the outline, all approved by the user.
+- State: the outline's numbers were checked by Codex (60 of 62 match; the one error is fixed). No draft text yet.
+- Next: the R1 literature gap-fill (in-context learning, backbones, 18 unverified citations), then draft v1 and its full ARS review by 2026-10-19.
+- Blocked: nothing. The r9 results (about 10-16) come later, at R2.
+- Handoff: docs/superpowers/handoffs/2026-10-13-paper-r1-handoff.md
+- New chat: started by the user with claude-paper, session 2cc044a2-ddd3-4c94-b15d-4728b96bc0d4
