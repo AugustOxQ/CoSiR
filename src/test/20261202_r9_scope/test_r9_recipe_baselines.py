@@ -11,7 +11,9 @@ test_r9_context.py. The real-data checks (CLIP's pinned lambdas, picks and means
 """
 import json
 import math
+import shutil
 import sys
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -21,10 +23,11 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 import r9_common as R  # noqa: E402  (first, before anything that imports src)
 import r9_bundle as B  # noqa: E402
+import r9_heads as H  # noqa: E402
 import r9_picks as P  # noqa: E402
 import r9_recipe_baselines as RB  # noqa: E402
 from test_r9_context import held, pm_syn, readers, scores_bits, syn  # noqa: E402,F401  (fixtures)
-from test_r9_score import make_bundle  # noqa: E402
+from test_r9_score import make_bundle, mutant  # noqa: E402
 
 import numpy as np  # noqa: E402
 
@@ -137,7 +140,10 @@ def test_clip_run_passes_when_the_pins_are_the_computed_values(sel42, lams, cros
     """The CLIP success branch, with the pinned values replaced by the synthetic ones."""
     monkeypatch.setattr(P, "MEAN_R1_TARGETS", dict(crossfit[0]["mean_r1"]))
     monkeypatch.setattr(P, "frozen_lambdas", lambda backbone="clip_b32": lams)
+    monkeypatch.setattr(RB, "clip_pinned_picks", lambda *a: {n: crossfit[0][n] for n in P.NESTED})
     assert RB.finish(sel42, tmp_path, "clip_b32", FAKE_INPUTS) == 0
+    rec = json.loads((tmp_path / "picks_seed42.json").read_text())
+    assert rec["checks"]["picks_equal_pinned"] == {n: True for n in P.NESTED}
     assert sorted(p.name for p in tmp_path.iterdir()) == [
         "baselines_seed42.json", "baselines_seed42.json.record.json",
         "picks_seed42.json", "picks_seed42.json.record.json"]
@@ -149,6 +155,7 @@ def test_a_lambda_differing_from_the_pin_fails_clip(sel42, lams, crossfit, tmp_p
     other = {n: dict(v) for n, v in lams.items()}
     other["kissme"][0] = 32.0 if other["kissme"][0] != 32.0 else 0.0
     monkeypatch.setattr(P, "frozen_lambdas", lambda backbone="clip_b32": other)
+    monkeypatch.setattr(RB, "clip_pinned_picks", lambda *a: {n: crossfit[0][n] for n in P.NESTED})
     assert RB.finish(sel42, tmp_path, "clip_b32", FAKE_INPUTS) == RB.EXIT_DIFF
     rec = json.loads((tmp_path / "picks_seed42_failed.json").read_text())
     assert rec["checks"]["lambda_equals_pinned"] == {n: n != "kissme" for n in P.LAMBDA_SCORERS}
@@ -224,3 +231,176 @@ def test_light_bundle_refuses_codes_that_are_not_the_contexts(held, pm_syn):
     other = EvalInputs(held.img, held.txt)                              # no A3 codes
     with pytest.raises(AssertionError):
         RB.build_baseline_bundle(held, pm_syn, other)
+
+
+# ---------------------------------------------------------------- t10b: L1 (picks, not only means, equal the pins)
+
+def _clip_world(monkeypatch, lams, crossfit, pinned):
+    """CLIP's means and lambdas replaced by the synthetic ones, so that only the picks can differ."""
+    monkeypatch.setattr(P, "MEAN_R1_TARGETS", dict(crossfit[0]["mean_r1"]))
+    monkeypatch.setattr(P, "frozen_lambdas", lambda backbone="clip_b32": lams)
+    monkeypatch.setattr(RB, "clip_pinned_picks", lambda *a: pinned)
+
+
+def test_clip_picks_must_equal_the_pinned_picks_not_only_the_means(sel42, lams, crossfit, tmp_path, monkeypatch):
+    """Equal means, another pick for B (a tie in the grid): exit 3, the failed record only. The guard removed passes."""
+    pinned = {n: crossfit[0][n] for n in P.NESTED}
+    pinned["B"] = {0: [-1.0, -1.0], 1: crossfit[0]["B"][1]}
+    _clip_world(monkeypatch, lams, crossfit, pinned)
+    assert RB.finish(sel42, tmp_path, "clip_b32", FAKE_INPUTS) == RB.EXIT_DIFF
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["picks_seed42_failed.json"]
+    rec = json.loads((tmp_path / "picks_seed42_failed.json").read_text())
+    assert rec["checks"]["picks_equal_pinned"] == {"B": False, "B0": True, "B1": True}
+    assert all(rec["checks"]["mean_r1_equal_target"].values()) and rec["passed"] is False
+    mut = mutant(tmp_path, "r9_recipe_baselines.py", "picks_equal_pinned")
+    monkeypatch.setattr(mut, "code_record", lambda: {})
+    monkeypatch.setattr(mut, "clip_pinned_picks", lambda *a: pinned)
+    assert mut.finish(sel42, tmp_path / "mut", "clip_b32", FAKE_INPUTS) == 0     # the mutant passes the other pick
+
+
+def test_the_pinned_picks_file_is_tied_to_pins_clip(tmp_path, monkeypatch):
+    assert RB.clip_pinned_picks() == P.load_picks(backbone="clip_b32")
+    want = json.loads(R.pins_path("clip_b32").read_text())["parts"]["picks_seed42"]["sha256"]
+    assert R.sha256_file(RB.parts("clip_b32")["picks_seed42"]) == want
+    copy = tmp_path / "picks_seed42.json"
+    shutil.copy(RB.parts("clip_b32")["picks_seed42"], copy)
+    assert RB.clip_pinned_picks(copy) == RB.clip_pinned_picks()
+    copy.write_text(copy.read_text() + "\n")                              # same picks, other bytes
+    with pytest.raises(SystemExit):
+        RB.clip_pinned_picks(copy)
+    mut = mutant(tmp_path, "r9_recipe_baselines.py", "pinned_picks_sha")
+    assert mut.clip_pinned_picks(copy) == RB.clip_pinned_picks()
+
+
+# ---------------------------------------------------------------- t10b: L2 (the failure branch of a new backbone)
+
+def test_a_new_backbone_with_a_failed_check_writes_only_the_failed_record(sel42, tmp_path, monkeypatch):
+    monkeypatch.setattr(P, "frozen_equals_crossfit", lambda *a: {"B": False, "B0": True, "B1": True})
+    assert RB.finish(sel42, tmp_path, OTHER, FAKE_INPUTS) == RB.EXIT_DIFF
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["picks_seed42_failed.json"]
+    rec = json.loads((tmp_path / "picks_seed42_failed.json").read_text())
+    assert rec["passed"] is False and rec["targets"] is None and rec["backbone"] == OTHER
+    assert rec["checks"]["frozen_equals_crossfit"] == {"B": False, "B0": True, "B1": True}
+
+
+# ---------------------------------------------------------------- t10b: L3 and L5 (a3_inputs and head_fit guards)
+
+class Reached(Exception):
+    """The stub context's encode was called: every check before it passed."""
+
+
+class StubContext:
+    def encode(self, ckpt):
+        raise Reached(str(ckpt))
+
+
+def _a3_folder(tmp_path, **override):
+    folder = tmp_path / "a3"
+    folder.mkdir()
+    ckpt = folder / "A3_seed42.pt"
+    ckpt.write_bytes(b"not a checkpoint")
+    picked = {"run": "A3", "backbone": OTHER, "seed": 42, "checkpoint": str(ckpt),
+              "checkpoint_sha256": R.sha256_file(ckpt), **override}
+    picked = {k: v for k, v in picked.items() if v is not Ellipsis}
+    (folder / "picked.json").write_text(json.dumps(picked))
+    return folder
+
+
+A3_BAD = {"sha": ("a3_picked_sha", {"checkpoint_sha256": "0" * 64}),
+          "backbone_other": ("a3_picked_backbone", {"backbone": "qwen3vl_emb_2b"}),
+          "backbone_absent": ("a3_picked_backbone", {"backbone": ...}),
+          "run": ("a3_picked_run", {"run": "A2"}),
+          "smoke": ("a3_picked_run", {"smoke": True})}
+
+
+def test_a3_inputs_accepts_a_matching_picked_json(tmp_path):
+    with pytest.raises(Reached):                                        # the checks pass; encode is reached
+        RB.a3_inputs(StubContext(), OTHER, _a3_folder(tmp_path))
+
+
+@pytest.mark.parametrize("case", sorted(A3_BAD))
+def test_a3_inputs_refuses_a_picked_json_that_does_not_describe_the_checkpoint(case, tmp_path):
+    guard, override = A3_BAD[case]
+    folder = _a3_folder(tmp_path, **override)
+    with pytest.raises(AssertionError, match="does not describe"):      # before ctx.encode
+        RB.a3_inputs(StubContext(), OTHER, folder)
+    mut = mutant(tmp_path, "r9_recipe_baselines.py", guard)
+    with pytest.raises(Reached):                                        # the mutant reaches encode
+        mut.a3_inputs(StubContext(), OTHER, folder)
+
+
+HEAD_COEF = {"affect": {"img": "1" * 64, "txt": "2" * 64}}
+
+
+def _head_world(monkeypatch, tmp_path, **record):
+    heads = {"affect": {"fit_inputs": {"input_sha256": {"/x/y.npy": "d" * 64}}}}
+    monkeypatch.setattr(H, "recipe_head_pins", lambda backbone, root=None: {})
+    monkeypatch.setattr(H, "fit_heads_r9", lambda *a, **k: heads)
+    monkeypatch.setattr(H, "coef_sha256", lambda h: HEAD_COEF)
+    rec = {"backbone": OTHER, "coef_sha256": HEAD_COEF, **record}
+    (tmp_path / (Path(H.N6_REL).name + ".record.json")).write_text(json.dumps(rec))
+    return SimpleNamespace(data=None, split=SimpleNamespace(groups=None, scorer_train=None, selection=None))
+
+
+def test_head_fit_of_a_new_backbone_ties_the_refit_to_the_record(tmp_path, monkeypatch):
+    rows = _head_world(monkeypatch, tmp_path)
+    heads, shas, check = RB.head_fit(rows, OTHER, tmp_path)
+    assert check == {"coef_sha256_equals_record": str(tmp_path / "n6_posteriors.npz.record.json")}
+    record = check["coef_sha256_equals_record"]
+    assert "/x/y.npy" in shas and shas[record] == R.sha256_file(record)
+
+
+@pytest.mark.parametrize("guard,record", [("head_record_coef", {"coef_sha256": {"affect": {"img": "9" * 64,
+                                                                                         "txt": "2" * 64}}}),
+                                          ("head_record_backbone", {"backbone": "qwen3vl_emb_2b"})])
+def test_head_fit_of_a_new_backbone_refuses_another_record(guard, record, tmp_path, monkeypatch):
+    rows = _head_world(monkeypatch, tmp_path, **record)
+    with pytest.raises(SystemExit):
+        RB.head_fit(rows, OTHER, tmp_path)
+    mut = mutant(tmp_path, "r9_recipe_baselines.py", guard)
+    assert mut.head_fit(rows, OTHER, tmp_path)[2]                       # the mutant lets the record through
+
+
+# ---------------------------------------------------------------- t10b: L5 (load_picks of a new backbone)
+
+def _new_backbone_picks(tmp_path, crossfit, **override):
+    rec = {n: {str(h): list(crossfit[0][n][h]) for h in (0, 1)} for n in P.NESTED}
+    rec.update({"mean_r1": dict(crossfit[0]["mean_r1"]), "passed": True, "backbone": OTHER, "targets": None})
+    for k, v in override.items():
+        if v is Ellipsis:
+            rec.pop(k, None)
+        else:
+            rec[k] = v
+    path = tmp_path / f"picks_{len(list(tmp_path.iterdir()))}.json"
+    path.write_text(json.dumps(rec))
+    return path
+
+
+def test_load_picks_of_a_new_backbone_needs_its_own_backbone_and_no_targets(crossfit, tmp_path):
+    good = _new_backbone_picks(tmp_path, crossfit)
+    assert P.load_picks(good, OTHER) == {n: crossfit[0][n] for n in P.NESTED}
+    mut = mutant(tmp_path, "r9_picks.py", "picks_new_backbone")
+    for bad in (_new_backbone_picks(tmp_path, crossfit, backbone="clip_b32"),       # CLIP's file copied over
+                _new_backbone_picks(tmp_path, crossfit, backbone=...),
+                _new_backbone_picks(tmp_path, crossfit, backbone="qwen3vl_emb_2b"),
+                _new_backbone_picks(tmp_path, crossfit, targets=dict(crossfit[0]["mean_r1"])),
+                _new_backbone_picks(tmp_path, crossfit, targets=...)):
+        with pytest.raises(AssertionError, match="backbone"):
+            P.load_picks(bad, OTHER)
+        assert mut.load_picks(bad, OTHER)["B"] == crossfit[0]["B"]                  # the mutant reads them
+
+
+def test_load_picks_of_clip_keeps_its_rules():
+    """CLIP's pinned file has no backbone key and non-null targets: it still loads for CLIP, never for a new one."""
+    P.load_picks(backbone="clip_b32")
+    with pytest.raises(AssertionError, match="backbone"):
+        P.load_picks(RB.parts("clip_b32")["picks_seed42"], OTHER)
+
+
+# ---------------------------------------------------------------- t10b: L6 (the code record)
+
+def test_the_code_record_names_the_modules_that_decide_the_parts():
+    assert {"r9_backbone", "r9_recipe_groups"} <= set(RB.CODE_MODULES)
+    mods = RB.code_record()["modules"]
+    for name in ("r9_backbone", "r9_recipe_groups"):
+        assert mods[name]["sha256"] == R.sha256_file(mods[name]["file"])

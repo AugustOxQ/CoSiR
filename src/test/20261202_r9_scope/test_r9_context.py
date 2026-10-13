@@ -705,13 +705,15 @@ def test_frozen_lambdas_reads_the_pinned_baselines_of_the_backbone(tmp_path, mon
     assert P.frozen_lambdas(BACKBONE)["rca"][0] == rec["scorers"]["rca"]["lambda_picks"]["0"]
 
 
-def test_load_picks_defaults_to_the_backbones_picks_part(monkeypatch):
+def test_load_picks_defaults_to_the_backbones_picks_part(monkeypatch, tmp_path):
     got = P.load_picks()
     assert got == P.load_picks(backbone="clip_b32") == P.load_picks(R.R6D / "results/picks_seed42.json")
+    other = tmp_path / "picks_seed42.json"      # another backbone's file: `passed`, float means, its name, no targets
+    other.write_text(json.dumps({**json.loads((R.R6D / "results/picks_seed42.json").read_text()),
+                                 "backbone": BACKBONE, "targets": None}))
     asked = []
-    real = P.parts
-    monkeypatch.setattr(P, "parts", lambda b: asked.append(b) or real("clip_b32"))
-    P.load_picks(backbone=BACKBONE)       # another backbone: only `passed` and float means are required
+    monkeypatch.setattr(P, "parts", lambda b: asked.append(b) or {"picks_seed42": other})
+    assert P.load_picks(backbone=BACKBONE) == got
     assert asked == [BACKBONE]
 
 
