@@ -34,3 +34,9 @@ method-A era (factors, agreement rule, pseudo-partition, KISSME, …) are in App
 | positive pair | *(new, round 8)* two items a contrastive grouping head pulls together; in round 8, views of one painting or the nearest CLIP neighbour outside the query's content group |
 | held tiers | *(new, round 8)* the reading of a held read with AFF's seven checks plus "beats AFF": Tier 1, all eight pass (replaces AFF); Tier 2, beats AFF but fails a condition-gain check; Tier 3, the seven pass but not AFF (AFF stays in 2 and 3) |
 | dollar weight | token use priced at API rates (cache reads, cache writes and output weighted by their price) to compare runs of agent work; not what the Max plan charges ([engine switch check](docs/reports/auto/process/2026-11-26_engine_switch_check.md)) |
+| fixed recipe | *(new, round 9)* AFF re-fitted on a new backbone or dataset with the same code and settings: every part above the frozen encoder is fitted again, and the same automatic seed-42 pick is re-run; no human choice |
+| recipe replay | *(new, round 9)* the fixed recipe run on CLIP from scratch; it must give back CLIP's frozen files and picks, which shows the recipe is the procedure AFF went through |
+| switched off | *(new, round 9)* the fixed recipe's seed-42 pick sets λ_a = 0 in both halves, so AFF equals B on that backbone; its held reads are then not run |
+| language check | *(new, round 9)* the ArtELingo-28 read: AFF trained on English ArtELingo, scored on captions from 27 other languages, machine-translated to English, on 746 paintings (248 held + 498 new) |
+| two-level test | *(new, round 9)* a read whose rule tests P4 and P6 first (Holm over two) and the other five checks only if both pass (Holm over five); serial gatekeeping keeps the family-wise error at α |
+| development probe | *(new, round 9)* CLIP AFF re-fitted on a new dataset and scored on its development split only, to see whether its aspect episodes work; no claim |
