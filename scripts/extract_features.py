@@ -25,6 +25,7 @@ import re
 import shutil
 import sys
 import time
+import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -39,6 +40,11 @@ CLIP, QWEN, SIGLIP2 = "clip_b32", "qwen3vl_emb_2b", "siglip2_so400m"
 ARTELINGO_ANN = Path("/data/PDD/artelingo/artelingo_train.json")
 ARTELINGO_FEATURES = "/data/SSD2/pre_extract/artelingo/features"
 ARTELINGO_IMAGES = Path("/data/PDD/wikiart_proj/wikiart")
+A28_DIR = Path("/data/PDD/artelingo/ArtELingo/semeval-artelingo28")
+A28_CSV = A28_DIR / "artelingo28_public_noworkerid_split.csv"
+A28_ZIP = A28_DIR / "images.zip"
+A28_TRANSLATIONS = PRE_EXTRACT / "artelingo28/nllb200_3.3b_en/translations.parquet"
+A28_READ_SET = Path(__file__).resolve().parents[1] / "src/test/20261202_r9_scope/results/read_set_a28.parquet"
 SEMART_DIR = Path("/data/SSD/semart/SemArt")
 COCO_ROOT = Path("/data/SSD/coco")
 COCO_TRAIN_IMAGES = COCO_ROOT / "images" / "train2014"
@@ -52,6 +58,7 @@ DILATION = 0.7        # GeneCIS datasets/vaw_dataset.py
 PAD_CROP = True
 
 ALLOWED = {
+    "artelingo28": [CLIP, QWEN, SIGLIP2],
     "artelingo_full": [QWEN, SIGLIP2],
     "semart": [CLIP, QWEN, SIGLIP2],
     "coco_train2014": [CLIP, QWEN],
@@ -119,6 +126,54 @@ def scrub_semart(description: str, author: str, title: str, date: str) -> str:
 
 
 # ---------------------------------------------------------------- adapters
+def adapter_artelingo28(read_set=A28_READ_SET, csv_path=A28_CSV, translations=A28_TRANSLATIONS,
+                       images_zip=A28_ZIP, **_) -> Spec:
+    """C6: CSV positions, translated kept rows and unique zip paintings, checked before encoding."""
+    import pandas as pd
+    read = pd.read_parquet(read_set)
+    csv = pd.read_csv(csv_path)
+    trans = pd.read_parquet(translations)
+    assert list(read.columns) == ["row_id", "painting", "language", "emotion", "style", "genre", "held", "dropped"]
+    assert list(csv.columns) == ["image_id", "genre", "emotion", "caption", "art_style", "painting", "language",
+                                 "image_name", "split"]
+    assert list(trans.columns) == ["csv_row", "painting", "language", "nllb_src", "proxy", "source", "translation"]
+    assert (len(read), len(csv), len(trans)) == (74_569, 173_745, 167_230)
+    assert read.notna().all().all() and read.row_id.dtype == np.int64
+    assert read.held.dtype == read.dropped.dtype == bool
+    assert (np.diff(read.row_id) > 0).all() and read.row_id.between(0, len(csv) - 1).all()
+    assert read.painting.nunique() == 746 and read[read.held].painting.nunique() == 248
+    assert read.groupby("painting").held.nunique().eq(1).all()
+    rows = csv.iloc[read.row_id.to_numpy()]
+    t = trans[trans.csv_row.isin(read.row_id)].sort_values("csv_row")
+    assert trans.csv_row.is_unique and len(t) == len(read)
+    assert np.array_equal(t.csv_row, read.row_id)
+    for col in ("painting", "language"):
+        assert np.array_equal(rows[col], read[col]) and np.array_equal(t[col], read[col]), col
+    assert not read.language.eq("english").any()
+    assert all(isinstance(s, str) for s in t.translation)
+    assert np.array_equal(read.dropped, [not s.strip() for s in t.translation])
+    names = rows.groupby("painting").image_name
+    assert names.nunique().eq(1).all()
+    images = [{"painting": p, "image": "images/" + name} for p, name in sorted(names.first().items())]
+    with zipfile.ZipFile(images_zip) as z:
+        members = z.namelist()
+        assert all(members.count(im["image"]) == 1 for im in images), "missing/duplicate zip image"
+    image_rows = {im["painting"]: i for i, im in enumerate(images)}
+    keep = ~read.dropped.to_numpy()
+    texts = t.translation.to_numpy()[keep].tolist()
+    meta = [{"row_id": int(r.row_id), "painting": r.painting, "img": image_rows[r.painting]}
+            for r in read[keep].itertuples()]
+    assert len(texts) == len(meta) == int(keep.sum())
+
+    def load_image(i):
+        from PIL import Image
+        # Each worker opens its own archive: no shared ZipFile cursor across extraction threads.
+        with zipfile.ZipFile(images_zip) as z, z.open(images[i]["image"]) as f, Image.open(f) as im:
+            return im.convert("RGB")
+
+    return Spec(images, load_image, texts, meta)
+
+
 def _open_rgb(path):
     from PIL import Image
     with Image.open(path) as im:
@@ -264,7 +319,7 @@ def adapter_genecis_vg_crops(focus_path=GENECIS_FOCUS_ATTRIBUTE, image_dir=VG_IM
     return Spec(images, lambda i: load_cropped_image(image_dir, images[i]["image_id"], images[i]["bbox"]))
 
 
-ADAPTERS = {"artelingo_full": adapter_artelingo_full, "semart": adapter_semart,
+ADAPTERS = {"artelingo28": adapter_artelingo28, "artelingo_full": adapter_artelingo_full, "semart": adapter_semart,
             "coco_train2014": adapter_coco_train2014, "genecis_coco": adapter_genecis_coco,
             "genecis_vg_crops": adapter_genecis_vg_crops}
 
@@ -302,6 +357,11 @@ def _sha256(path):
         for b in iter(lambda: f.read(1 << 20), b""):
             h.update(b)
     return h.hexdigest()
+
+
+def a28_item_sha256(spec):
+    return hashlib.sha256(json.dumps([spec.images, spec.text_meta, spec.texts],
+                                     ensure_ascii=False).encode()).hexdigest()
 
 
 def out_dir_for(dataset, backbone, smoke, root=PRE_EXTRACT):
@@ -350,6 +410,11 @@ def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset=""
                                                           txt_seconds=0.0)
     if resume and (prog["n_img"], prog["n_txt"]) != (n_img, n_txt):
         raise SystemExit("progress.json belongs to a different item list; use --overwrite")
+    if dataset == "artelingo28":
+        # Same counts alone cannot establish C6 on a resumed extraction.
+        item_sha = a28_item_sha256(spec)
+        assert not resume or prog.get("item_sha256") == item_sha, "C6 resumed A28 item list differs"
+        prog["item_sha256"] = item_sha
     prog.update(n_img=n_img, n_txt=n_txt)
     mode = "r+" if resume else "w+"
     img = open_memmap(out / "img.npy", mode=mode, dtype=np.float16, shape=(n_img, dim))
@@ -421,6 +486,10 @@ def main(argv=None):
     ap.add_argument("--out-root", type=Path, default=PRE_EXTRACT)
     ap.add_argument("--artelingo-ann", type=Path, default=ARTELINGO_ANN)
     ap.add_argument("--artelingo-images", type=Path, default=ARTELINGO_IMAGES)
+    ap.add_argument("--a28-read-set", type=Path, default=A28_READ_SET)
+    ap.add_argument("--a28-csv", type=Path, default=A28_CSV)
+    ap.add_argument("--a28-translations", type=Path, default=A28_TRANSLATIONS)
+    ap.add_argument("--a28-images-zip", type=Path, default=A28_ZIP)
     ap.add_argument("--semart-dir", type=Path, default=SEMART_DIR)
     ap.add_argument("--sample-ids", type=Path, help="int64 ArtELingo caption row order (.npy)")
     ap.add_argument("--batch-img", type=int)
@@ -440,7 +509,10 @@ def main(argv=None):
     if a.backbone not in ALLOWED[a.dataset]:
         raise SystemExit(f"{a.dataset} is extracted with {ALLOWED[a.dataset]} only")
     kw = {}
-    if a.dataset == "artelingo_full":
+    if a.dataset == "artelingo28":
+        kw = dict(read_set=a.a28_read_set, csv_path=a.a28_csv, translations=a.a28_translations,
+                  images_zip=a.a28_images_zip)
+    elif a.dataset == "artelingo_full":
         kw = dict(annotations_path=a.artelingo_ann, image_dir=a.artelingo_images,
                   sample_ids=np.load(a.sample_ids, allow_pickle=False) if a.sample_ids is not None else None)
     elif a.dataset == "semart":
