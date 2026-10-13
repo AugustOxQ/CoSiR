@@ -6,8 +6,8 @@
 #   cd <integration checkout>
 #   nohup bash src/test/20261202_r9_scope/run_r9_stage0b_replay.sh > src/test/20261202_r9_scope/results/stage0b_replay.log 2>&1 &
 #
-# Steps (the GPU steps run under `flock -n -o -E 75 /tmp/gpu0.lock`; exit 75 = another session holds the GPU, nothing
-# is retried; the rest is CPU, CUDA_VISIBLE_DEVICES empty):
+# Steps (the two GPU steps run under one `flock -n` on /tmp/gpu0.lock, taken once before 07 and released after 08; exit
+# 75 = another session holds the GPU, nothing is run or retried; the rest is CPU, CUDA_VISIBLE_DEVICES empty):
 #   1 07  r9_recipe_groups.py   GPU  partitions, content graph (GPU, fp16), bank AIC, heads         ~12 min
 #   2 08  r9_recipe_a3.py       GPU  A3 run L1 (--inputs = the replay), identity gates, state_equal   ~12 min
 #   3 09  r9_recipe_reader.py   CPU  heads, banks, half-readers, tau (--upstream = the replay)       ~14 min
@@ -22,6 +22,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PY="${R9_PYTHON:-/root/miniconda3/envs/CoSiR/bin/python}"
 OUT="${OUT:-$HERE/results/replay/clip_b32}"
+GPU_LOCK="${GPU_LOCK:-/tmp/gpu0.lock}"
 A3_RUN="${A3_RUN:-L1}"
 export OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1
 
@@ -43,19 +44,23 @@ echo "host $(hostname), checkout $(cd "$HERE/../../.." && pwd), commit $(git -C 
 echo "output $OUT, A3 run $A3_RUN, started $(TZ=Europe/Amsterdam date '+%F %H:%M')"
 echo "GPU compute apps now: $(nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader | tr '\n' ';')"
 
-gpu() {    # a GPU step: the lock, or exit 75
-    local rc=0
-    flock -n -o -E 75 /tmp/gpu0.lock "$@" || rc=$?
-    if [[ $rc -eq 75 ]]; then echo "run_r9_stage0b_replay: the GPU lock /tmp/gpu0.lock is held by another session" >&2; fi
-    return $rc
-}
 step() { echo "== $1 [$(( $(date +%s) - T0 )) s] $(TZ=Europe/Amsterdam date '+%H:%M')"; }
 
+# The GPU lock is taken once for both GPU steps (07 and 08), so no other session can take the GPU between them and make
+# 08 exit 75 on a half-made $OUT. fd 9 holds the lock (the same flock(2) lock as `flock -n -o /tmp/gpu0.lock cmd`); the
+# children run with fd 9 closed, and it is released before the CPU steps.
+exec 9>"$GPU_LOCK"
+if ! flock -n 9; then
+    echo "run_r9_stage0b_replay: the GPU lock $GPU_LOCK is held by another session" >&2
+    exit 75
+fi
+
 step "1/5 07 groups, graph, bank, heads"
-gpu "$PY" "$HERE/r9_recipe_groups.py" --backbone clip_b32 --out "$OUT"
+"$PY" "$HERE/r9_recipe_groups.py" --backbone clip_b32 --out "$OUT" 9>&-
 
 step "2/5 08 A3 $A3_RUN"
-gpu "$PY" "$HERE/r9_recipe_a3.py" --backbone clip_b32 --run "$A3_RUN" --inputs "$OUT" --out "$OUT/a3_$A3_RUN" ${A3_ARGS[@]+"${A3_ARGS[@]}"}
+"$PY" "$HERE/r9_recipe_a3.py" --backbone clip_b32 --run "$A3_RUN" --inputs "$OUT" --out "$OUT/a3_$A3_RUN" ${A3_ARGS[@]+"${A3_ARGS[@]}"} 9>&-
+exec 9>&-                                            # the GPU is free again
 
 export CUDA_VISIBLE_DEVICES=
 step "3/5 09 reader and tau"
