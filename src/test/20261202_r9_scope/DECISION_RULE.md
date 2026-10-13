@@ -119,7 +119,8 @@ and the value sets read ArtELingo-28 labels only, never a feature or a score. No
 - **Spot check.** 20 rows per store, drawn by `numpy.random.default_rng(0)`, re-encoded locally: cosine ≥ 0.99.
 - **Painting join.** For the 248 held paintings, CLIP cosine between the zip image and our store image ≥ 0.99. All
   248 values are reported.
-- **Near-duplicates.** The read paintings whose zip image has a train-side image (our scorer-train and selection paintings) at CLIP cosine ≥ 0.99 (and ≥ 0.98)
+- **Near-duplicates.** The read paintings whose zip image has a train-side image (the train side is every non-held ArtELingo painting: train and val, 790 + 122 = 912;
+  user, 2026-10-13) at CLIP cosine ≥ 0.99 (and ≥ 0.98)
   are counted. The counts are disclosed with every ArtELingo-28 claim; none is excluded (D7).
 - **Read set.** 746 paintings: ArtELingo-28 paintings minus its 912 paintings that lie on our train side (248 held
   and 498 new). Asserted: no painting is both held and train-side; 74,569 non-English rows in 27 languages; the
@@ -334,7 +335,8 @@ fixed and rerun. Round 6's arm-L head identity (its §6 item 2) applies to CLIP 
 
 ## 7. The read: ledger first, one runner
 
-1. **Ledger.** `docs/superpowers/held_ledger.md` gains a backbone column (D17). Rows H1 to H5 read "CLIP ViT-B/32".
+1. **Ledger.** `docs/superpowers/held_ledger.md` gains a backbone column (D17). Rows H1 to H3 and H5 read "CLIP ViT-B/32"; H4 reads "CLIP ViT-B/32,
+   SigLIP 2, PE-Core, Qwen3-VL-Embedding-2B (backbone check)" (user, 2026-10-13).
    New rows:
 
    | Row | Dataset and split | Backbone | Seeds | Bar |
