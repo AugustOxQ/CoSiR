@@ -79,8 +79,41 @@ def store(tmp_path):
     return write_store(tmp_path, table()), tmp_path
 
 
-def load(tmp_path, tab=None):
-    return D.load_a28(BACKBONE, store_root=tmp_path, read_set=table() if tab is None else tab)
+LANGS = ("Hausa", "Korean", "arabic")                        # the synthetic names (the rule's 27 are the default)
+
+
+def make_aux(root, tab, backbones=(BACKBONE,)):
+    """Everything the pins list besides the stores, under ``root``: the merged translation folder, its four shards
+    (as the merged meta.json names them) and the three results files (the read set is ``tab``)."""
+    root = Path(root)
+    shards = [f"res/r9/a28_translate/{s}" for s in D.SHARD_NAMES]
+    for name, d in [(D.MERGED_NAME, root / D.MERGED_NAME)] + [(s, root / "res/r9/a28_translate" / s)
+                                                              for s in D.SHARD_NAMES]:
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "translations.parquet").write_bytes(b"parquet " + name.encode())
+        (d / "coverage.json").write_text('{"x": 1}')
+    (root / D.MERGED_NAME / "meta.json").write_text(json.dumps({"merged_from": shards}))
+    res = root / "results"
+    res.mkdir(exist_ok=True)
+    tab.to_parquet(res / "read_set_a28.parquet")
+    for name in D.RESULT_FILES:
+        if not (res / name).exists():
+            (res / name).write_bytes(b"content of " + name.encode())
+    return res
+
+
+def pin(root, tab=None, backbones=(BACKBONE,)):
+    """Write ``root``/pins.json for the tree (the read set is ``tab``); -> the pins path."""
+    res = make_aux(root, table() if tab is None else tab, backbones)
+    out = Path(root) / "pins.json"
+    if out.exists():
+        out.unlink()
+    D.write_pins(out, root, res, backbones=backbones, main_root=root)
+    return out
+
+
+def load(root, tab=None, **kw):
+    return D.load_a28(BACKBONE, pins=pin(root, tab), expected_languages=LANGS, **kw)
 
 
 # ---------------------------------------------------------------- the loader
@@ -112,6 +145,62 @@ def test_loader_places_features_by_row_id_and_painting(store):
     assert a.language.tolist() == [2, 2, 1, 1, 3, 3, 1, 2, 3, 1, 2, 3] and a.language.dtype == np.int64
 
 
+def test_loader_returns_the_sha_of_the_pinned_read_set(store):
+    (d, img, txt), root = store
+    pins = pin(root)
+    a = D.load_a28(BACKBONE, pins=pins, expected_languages=LANGS)
+    assert a.read_set_sha256 == json.loads(pins.read_text())["files"]["results/read_set_a28.parquet"]["sha256"]
+
+
+def test_loader_reads_only_the_pinned_bytes(store):
+    """M1: a runner that passed check_pins must not load other bytes. A read-set or store file whose bytes differ
+    from its pin fails load_a28 (and so does a backbone the pins do not name)."""
+    (d, img, txt), root = store
+    pins = pin(root)
+    D.load_a28(BACKBONE, pins=pins, expected_languages=LANGS)                    # passes as pinned
+    res = root / "results" / "read_set_a28.parquet"
+    old = res.read_bytes()
+    table().assign(emotion=0).to_parquet(res)                                    # a different read set
+    with pytest.raises(SystemExit, match="SHA-256"):
+        D.load_a28(BACKBONE, pins=pins, expected_languages=LANGS)
+    res.write_bytes(old)
+    for f in ("img.npy", "txt.npy", "index.json"):
+        target = d / f
+        old = target.read_bytes()
+        target.write_bytes(old + b" " if f == "index.json" else old + b"x")
+        with pytest.raises(SystemExit, match="SHA-256"):
+            D.load_a28(BACKBONE, pins=pins, expected_languages=LANGS)
+        target.write_bytes(old)
+    D.load_a28(BACKBONE, pins=pins, expected_languages=LANGS)
+    with pytest.raises(SystemExit, match="qwen3vl_emb_2b"):
+        D.load_a28("qwen3vl_emb_2b", pins=pins, expected_languages=LANGS)
+
+
+def test_load_read_set_checks_the_table_and_the_language_names(tmp_path):
+    """L2 and L3: load_read_set asserts columns, order and the language names itself."""
+    write_store(tmp_path, table())
+    pins = pin(tmp_path, table().iloc[::-1].reset_index(drop=True))
+    with pytest.raises(AssertionError, match="row_id"):
+        D.load_read_set(pins, expected_languages=LANGS)
+    pins = pin(tmp_path, table().drop(columns=["held"]))
+    with pytest.raises(AssertionError, match="columns"):
+        D.load_read_set(pins, expected_languages=LANGS)
+    pins = pin(tmp_path)
+    assert list(D.load_read_set(pins, expected_languages=LANGS).columns) == list(D.TABLE_COLUMNS)
+    with pytest.raises(AssertionError, match="language names"):                  # default: the rule's 27
+        D.load_read_set(pins)
+    one_less = table()[lambda t: t.language != "Hausa"].reset_index(drop=True)
+    pins = pin(tmp_path, one_less)
+    with pytest.raises(AssertionError, match="language names"):
+        D.load_read_set(pins, expected_languages=LANGS)
+    with pytest.raises(AssertionError, match="language names"):                  # load_a28 passes it on
+        D.load_a28(BACKBONE, pins=pins, expected_languages=LANGS)
+
+
+def test_default_languages_are_the_episode_builders():
+    assert D.AE.LANGUAGES is D.LANGUAGES and len(D.LANGUAGES) == 27
+
+
 def test_loader_without_dropped_rows(tmp_path):
     tab = table().assign(dropped=False)
     write_store(tmp_path, tab)
@@ -130,11 +219,14 @@ def test_swapped_row_id_fails(tmp_path):
 
 
 def test_painting_mismatch_fails(tmp_path):
+    """The caption's painting AND its image pointer both name p_d, the row's painting is p_a: a store that is wrong
+    in a self-consistent way. Only the caption-painting guard can catch it (the pointer guard is satisfied)."""
     def other(index, img, txt):
         index["texts"][3]["painting"] = "p_d"                   # the row's painting is p_a
+        index["texts"][3]["img"] = [im["painting"] for im in index["images"]].index("p_d")
         return index, img, txt
     write_store(tmp_path, table(), edit=other)
-    with pytest.raises(AssertionError, match="painting"):
+    with pytest.raises(AssertionError, match="read row's painting"):
         load(tmp_path)
 
 
@@ -228,32 +320,33 @@ def test_store_with_a_painting_not_in_the_read_set_fails(tmp_path):
 # ---------------------------------------------------------------- the pins
 
 def make_tree(tmp_path, backbones=(BACKBONE,)):
-    stores = tmp_path / "artelingo28"
+    """Stores, merged translation folder, the four shards and the results files under tmp_path.
+    -> (store_root, results folder); write_pins needs main_root=tmp_path."""
     for i, b in enumerate(backbones):
-        write_store(stores, table(), seed=i, backbone=b)
-    for shard in ("nllb200_3.3b_en",):
-        (stores / shard).mkdir(parents=True, exist_ok=True)
-        (stores / shard / "translations.parquet").write_bytes(b"parquet " + shard.encode())
-        (stores / shard / "coverage.json").write_text('{"x": 1}')
-        (stores / shard / "meta.json").write_text('{"not": "pinned"}')
-    res = tmp_path / "results"
-    res.mkdir()
-    for name in D.RESULT_FILES:
-        (res / name).write_bytes(b"content of " + name.encode())
-    return stores, res
+        write_store(tmp_path, table(), seed=i, backbone=b)
+    return tmp_path, make_aux(tmp_path, table(), backbones)
+
+
+def pins_of(tmp_path, stores, res, backbones=(BACKBONE,), out=None):
+    return D.write_pins(out or tmp_path / "pins_a28.json", stores, res, backbones=backbones, main_root=tmp_path)
 
 
 def test_pins_cover_every_listed_file_and_check_passes(tmp_path):
     stores, res = make_tree(tmp_path, ("clip_b32", "qwen3vl_emb_2b"))
+    (stores / "nllb200_other").mkdir()                                           # a later folder nothing reads
+    (stores / "nllb200_other" / "translations.parquet").write_bytes(b"x")
     out = tmp_path / "pins_a28.json"
-    pins = D.write_pins(out, stores, res, backbones=("clip_b32", "qwen3vl_emb_2b"))
+    pins = pins_of(tmp_path, stores, res, ("clip_b32", "qwen3vl_emb_2b"), out)
     on_disk = json.loads(out.read_text())
     assert on_disk == pins
     keys = set(pins["files"])
-    want = {f"translations/nllb200_3.3b_en/{f}" for f in ("translations.parquet", "coverage.json")}
+    want = {f"translations/{s}/{f}" for s in (D.MERGED_NAME, "shard_0", "shard_1", "shard_2", "shard_3")
+            for f in ("translations.parquet", "coverage.json")}
     want |= {f"store/{b}/{f}" for b in ("clip_b32", "qwen3vl_emb_2b") for f in ("img.npy", "txt.npy", "index.json")}
     want |= {f"results/{n}" for n in ("value_sets_a28.json", "language_flags_a28.json", "read_set_a28.parquet")}
-    assert keys == want                                          # meta.json is not pinned
+    assert keys == want                                          # meta.json and nllb200_other are not pinned
+    assert pins["files"]["translations/shard_2/coverage.json"]["path"] == str(
+        tmp_path / "res/r9/a28_translate/shard_2/coverage.json")
     assert all(len(v["sha256"]) == 64 for v in pins["files"].values())
     assert D.check_pins(out) == {k: v["sha256"] for k, v in pins["files"].items()}
     D.check_pins(out, backbones=("qwen3vl_emb_2b",))
@@ -262,38 +355,50 @@ def test_pins_cover_every_listed_file_and_check_passes(tmp_path):
 def test_pins_refuse_a_missing_store(tmp_path):
     stores, res = make_tree(tmp_path, ("clip_b32",))
     with pytest.raises((AssertionError, FileNotFoundError)):
-        D.write_pins(tmp_path / "pins_a28.json", stores, res, backbones=("clip_b32", "qwen3vl_emb_2b"))
+        pins_of(tmp_path, stores, res, ("clip_b32", "qwen3vl_emb_2b"))
     assert not (tmp_path / "pins_a28.json").exists()
     (stores / "clip_b32" / "txt.npy").unlink()
     with pytest.raises((AssertionError, FileNotFoundError)):
-        D.write_pins(tmp_path / "pins_a28.json", stores, res, backbones=("clip_b32",))
+        pins_of(tmp_path, stores, res)
 
 
 def test_pins_refuse_a_missing_result_file_or_shard_file(tmp_path):
     stores, res = make_tree(tmp_path)
     (res / "value_sets_a28.json").unlink()
     with pytest.raises((AssertionError, FileNotFoundError)):
-        D.write_pins(tmp_path / "pins_a28.json", stores, res, backbones=(BACKBONE,))
+        pins_of(tmp_path, stores, res)
     (res / "value_sets_a28.json").write_text("{}")
-    (stores / "nllb200_3.3b_en" / "coverage.json").unlink()
-    with pytest.raises((AssertionError, FileNotFoundError)):
-        D.write_pins(tmp_path / "pins_a28.json", stores, res, backbones=(BACKBONE,))
+    for gone in (stores / D.MERGED_NAME / "coverage.json",
+                 tmp_path / "res/r9/a28_translate/shard_1/translations.parquet"):
+        old = gone.read_bytes()
+        gone.unlink()
+        with pytest.raises((AssertionError, FileNotFoundError)):
+            pins_of(tmp_path, stores, res)
+        assert not (tmp_path / "pins_a28.json").exists()
+        gone.write_bytes(old)
 
 
-def test_pins_need_at_least_one_translation_shard(tmp_path):
+def test_pins_take_the_shards_from_the_merged_meta(tmp_path):
+    """M2: the shards are the merged folder's meta.json["merged_from"], as an explicit list; any other list stops."""
     stores, res = make_tree(tmp_path)
-    for f in (stores / "nllb200_3.3b_en").iterdir():
-        f.unlink()
-    (stores / "nllb200_3.3b_en").rmdir()
-    with pytest.raises(AssertionError, match="shard"):
-        D.write_pins(tmp_path / "pins_a28.json", stores, res, backbones=(BACKBONE,))
+    meta = stores / D.MERGED_NAME / "meta.json"
+    good = json.loads(meta.read_text())
+    for bad in (good["merged_from"][:3], good["merged_from"][::-1][:3] + ["res/r9/a28_translate/shard_9"],
+                good["merged_from"] + ["res/r9/a28_translate/shard_4"]):
+        meta.write_text(json.dumps({"merged_from": bad}))
+        with pytest.raises(AssertionError, match="merged_from"):
+            pins_of(tmp_path, stores, res)
+    meta.unlink()
+    with pytest.raises((AssertionError, FileNotFoundError)):
+        pins_of(tmp_path, stores, res)
 
 
 def test_check_pins_stops_on_a_changed_or_missing_file(tmp_path):
     stores, res = make_tree(tmp_path)
     out = tmp_path / "pins_a28.json"
-    D.write_pins(out, stores, res, backbones=(BACKBONE,))
-    for target in (stores / BACKBONE / "img.npy", stores / "nllb200_3.3b_en" / "coverage.json",
+    pins_of(tmp_path, stores, res, out=out)
+    for target in (stores / BACKBONE / "img.npy", stores / D.MERGED_NAME / "coverage.json",
+                   tmp_path / "res/r9/a28_translate/shard_3/translations.parquet",
                    res / "read_set_a28.parquet"):
         old = target.read_bytes()
         target.write_bytes(old + b"x")
@@ -312,7 +417,7 @@ def test_check_pins_stops_on_a_changed_or_missing_file(tmp_path):
 def test_check_pins_requires_the_backbones_asked_for(tmp_path):
     stores, res = make_tree(tmp_path)
     out = tmp_path / "pins_a28.json"
-    D.write_pins(out, stores, res, backbones=(BACKBONE,))
+    pins_of(tmp_path, stores, res, out=out)
     with pytest.raises(SystemExit, match="qwen3vl_emb_2b"):
         D.check_pins(out, backbones=("qwen3vl_emb_2b",))
 
@@ -320,10 +425,12 @@ def test_check_pins_requires_the_backbones_asked_for(tmp_path):
 def test_check_pins_rejects_a_malformed_file(tmp_path):
     stores, res = make_tree(tmp_path)
     out = tmp_path / "pins_a28.json"
-    pins = D.write_pins(out, stores, res, backbones=(BACKBONE,))
+    pins = pins_of(tmp_path, stores, res, out=out)
     for edit in (lambda p: p["files"].pop(f"store/{BACKBONE}/txt.npy"),          # a store file left out
                  lambda p: p["files"].pop("results/value_sets_a28.json"),
-                 lambda p: p["files"].pop("translations/nllb200_3.3b_en/coverage.json"),
+                 lambda p: p["files"].pop(f"translations/{D.MERGED_NAME}/coverage.json"),
+                 lambda p: p["files"].pop("translations/shard_2/coverage.json"),  # one shard file left out
+                 lambda p: [p["files"].pop(f"translations/shard_0/{f}") for f in D.SHARD_FILES],  # a whole shard
                  lambda p: p["files"][f"store/{BACKBONE}/img.npy"].update(sha256="zz")):
         bad = copy.deepcopy(pins)
         edit(bad)
@@ -335,6 +442,6 @@ def test_check_pins_rejects_a_malformed_file(tmp_path):
 def test_write_pins_refuses_to_overwrite(tmp_path):
     stores, res = make_tree(tmp_path)
     out = tmp_path / "pins_a28.json"
-    D.write_pins(out, stores, res, backbones=(BACKBONE,))
+    pins_of(tmp_path, stores, res, out=out)
     with pytest.raises(AssertionError, match="exists"):
-        D.write_pins(out, stores, res, backbones=(BACKBONE,))
+        pins_of(tmp_path, stores, res, out=out)

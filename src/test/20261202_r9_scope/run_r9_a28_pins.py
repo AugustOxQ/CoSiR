@@ -2,7 +2,8 @@
 
     python src/test/20261202_r9_scope/run_r9_a28_pins.py [--backbones clip_b32 qwen3vl_emb_2b siglip2_so400m]
 
-SHA-256 of every translation shard's translations.parquet and coverage.json, of each backbone's ArtELingo-28 image
+SHA-256 of translations.parquet and coverage.json of each of the four DAS6 translation shards (shard_0 to shard_3 of
+res/r9/a28_translate, the list in the merged folder's meta.json) and of the merged folder nllb200_3.3b_en, of each backbone's ArtELingo-28 image
 store, caption store and index.json, and of value_sets_a28.json, language_flags_a28.json and read_set_a28.parquet.
 A missing store or file fails before anything is written; an existing pins file is never overwritten. The file is
 checked back with check_pins, the function every read runner calls (rule section 6 item 1).
