@@ -251,3 +251,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-paper-r1-4-handoff.md
 - New chat: tab 'paper r1 4', session 5def5363-2b8d-4f15-ba05-1366da77b077
 
+[brief] CoSiR: r9 build 4 -> r9 build 5 (2026-10-13 19:08 Amsterdam)
+- Done: 05, 07, 14, 15, 17, 19, 25b merged; ArtELingo-28 stores built and stage-1 checks passed on three backbones.
+- State: 06 built (stage 0a PASSED, 131 items, 0 differences), awaiting its Opus review; 25c built, awaiting one fix.
+- Next: Opus review of 06, then merge; fix 25's `value_codes` bug inside 25c, then its Opus review; 17's LOW fixes.
+- Blocked: nothing. The user approved two rule wording changes (painting join by nearest match; graph GPU-made).
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-5-handoff.md
+- New chat: tab 'r9 build 5', session a7a46306-497b-475e-8254-b03a5330311d
+
