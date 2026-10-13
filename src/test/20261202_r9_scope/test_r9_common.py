@@ -648,7 +648,8 @@ def test_write_value_sets_real(real, tmp_path):
             assert set(names[sel][lab[x][sel] == e["code"]].tolist()) == {e["name"]}, (x, e)
 
 
-def test_clip_input_pins_equal_round6():
+def test_clip_input_pins_equal_round6(monkeypatch):
+    monkeypatch.syspath_prepend(str(R.R6D))        # r9_common no longer puts round 6 on sys.path
     import r6_common as old
     assert R.input_pins("clip_b32") == {
         rel: (old.INPUT_PATHS[rel], sha) for rel, sha in old.INPUT_SHA256.items()

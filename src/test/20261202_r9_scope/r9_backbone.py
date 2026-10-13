@@ -59,8 +59,9 @@ CLIP_PARTS = {
     "pm_fit_rows": TEST / "20261030_aspect_baselines/results/baselines_seed42.json",
     "episodes_seed42": TEST / "20261030_aspect_baselines/results/episodes_seed42.npz",
     "picks_seed42": TEST / "20261125_artelingo_held_test/results/picks_seed42.json",
-    # Ticket 06 materialises CLIP's constants here; no R6 cells file exists.
-    "cells_seed42": RESULTS / "recipe/clip_b32/cells_seed42.json",
+    # Ticket 06 materialises CLIP's constants in the round folder (no R6 cells file exists); the other backbones'
+    # cells_seed42.json are recipe outputs under results/recipe/<backbone>.
+    "cells_seed42": HERE / "cells_seed42_clip.json",
     **{f"rb_heads_{group}": TEST / f"20261117_reader_fix_csd/results/rb_heads_{group}.npz"
        for group in ("affect", "image", "caption", "csd", "rand")},
     **{f"rb_bank_A0_half{half}": TEST / f"20261117_reader_fix_csd/results/rb_bank_A0_half{half}.npz"
@@ -75,5 +76,5 @@ def parts(backbone) -> dict[str, Path]:
     """CLIP's stored parts or the same file names under results/recipe/<backbone>."""
     assert backbone in BACKBONES, f"unknown backbone: {backbone}"
     return {role: (path if backbone == "clip_b32" or role in FROZEN_ROLES
-                   else RESULTS / "recipe" / backbone / path.name)
+                   else RESULTS / "recipe" / backbone / ("cells_seed42.json" if role == "cells_seed42" else path.name))
             for role, path in CLIP_PARTS.items()}

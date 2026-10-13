@@ -1,5 +1,5 @@
-"""Round 6 frozen-pick scoring (DECISION_RULE.md of this folder: section 5 item 4, section 8 item 3, section 11;
-contracts section 5; ticket 06): every scorer of one seed's bundle (r6_bundle) with the picks frozen from seed 42. No
+"""Frozen-pick scoring of round 9 (DECISION_RULE.md of this folder: section 5 item 4, section 8 item 3, section 11;
+contracts section 5; ticket 06): every scorer of one seed's bundle (r9_bundle) with the picks frozen from seed 42. No
 pick, sigma*, tau or lambda is computed here.
 
 Convention everywhere (hazard 7): the pick of tune half h scores the episodes of parity 1 - h.
@@ -23,7 +23,7 @@ no r1_cf. include_pm=True adds the descriptive extras, the nine PM scorers and R
 check (contracts section 5, amendment 14:50); on a held bundle it is refused unless held_verdict.json exists (the
 descriptive pass, ticket 13). The regression (ticket 07) and the descriptive pass call it with True.
 
-Guards carry a `# guard:<name>` marker; test_r6_score.py deletes each on a copy and shows that its scenario then goes
+Guards carry a `# guard:<name>` marker; test_r9_score.py deletes each on a copy and shows that its scenario then goes
 through.
 """
 import sys
@@ -33,9 +33,9 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 import r9_common as R  # noqa: E402  (first, before anything that imports src)
-import r6_bundle as B  # noqa: E402
-import r6_context as X  # noqa: E402
-import r6_picks as P  # noqa: E402
+import r9_bundle as B  # noqa: E402
+import r9_context as X  # noqa: E402
+import r9_picks as P  # noqa: E402
 
 import numpy as np  # noqa: E402
 
@@ -68,7 +68,7 @@ if not (CELLS["aff"]["fused"] == tuple(R3.AFF_CELLS["fused"]) and CELLS["aff"]["
         and sorted(CELL_TEXT) == sorted({c for w in CELLS.values() for p in w.values() for c in p})
         and set(ALL_SCORERS) == set(CORE_SCORERS) | set(DESCRIPTIVE_EXTRAS)
         and len(ALL_SCORERS) == len(CORE_SCORERS) + len(DESCRIPTIVE_EXTRAS)):
-    raise ImportError("r6_score: the frozen cells differ from the rule's table or round 3's constants")
+    raise ImportError("r9_score: the frozen cells differ from the rule's table or round 3's constants")
 
 
 def _require(cond, msg, exc=AssertionError):
@@ -160,7 +160,7 @@ def frozen_cells(base, parity, T, gates, fused_cells, cf_cells=None):
 def score_seed(bundle, picks, lambdas, readers, *, include_pm) -> dict:
     """Contracts section 5. picks: {"B", "B0", "B1": {half: [lu, la]}} (load_picks or picks_seed42; "0"/"1" keys
     accepted); lambdas: {scorer: {half: lam}} (frozen_lambdas; rca always read, the nine PM only with include_pm);
-    readers: round 1's A0 half-readers (r6_bundle.load_readers).
+    readers: round 1's A0 half-readers (r9_bundle.load_readers).
     -> {scorer: per_anchor dict} for CORE_SCORERS (ALL_SCORERS with include_pm: the nine PM scorers and r1_cf
     added), in that order, then "gates" {"aff",
     "r1": {c: (4, n) float32}}, "reader" {"P", "m", "pick": {c: ...}}, "cl", "pair_index"."""

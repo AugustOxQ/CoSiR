@@ -1,0 +1,26 @@
+{
+ "aff": [
+  39,
+  119
+ ],
+ "cf": [
+  149,
+  10
+ ],
+ "r1_fused": [
+  116,
+  119
+ ],
+ "r1_counterpart": [
+  58,
+  123
+ ],
+ "sigma_star": [
+  0.0,
+  0.0
+ ],
+ "switched_off": false,
+ "gate_share": 0.4504801432291667,
+ "gate_open": 11071,
+ "gate_total": 24576
+}
