@@ -7,7 +7,7 @@ method-A era (factors, agreement rule, pseudo-partition, KISSME, …) are in App
 | Term | Meaning |
 |---|---|
 | aspect, value | a respect in which items can be similar (emotion, style, genre) / one setting of it (sad, Baroque, landscape) |
-| aspect episode | one ranking problem: a query (image or caption), 4 support pairs that share its value of aspect A, 4 contrast pairs that share its value of aspect B, and 13 candidates in the other modality; the target is the candidate sharing the aspect the supports show |
+| aspect episode | one ranking problem: a query (image or caption), 4 support pairs, 4 contrast pairs, and 13 candidates in the other modality. Each support pair is an image and a caption from two paintings that share one value of aspect A; the 4 pairs show 4 different values, never the query's own (value-disjoint). Contrast pairs are built the same way for aspect B. The target is the candidate that shares the query's value of the aspect the supports show |
 | aspect pair | the two aspects of an episode: emotion × style, emotion × genre or style × genre |
 | condition a / b | supports show aspect A (target p_A) / supports and contrasts swapped (target p_B) |
 | R@1 | share of rankings where the target ranks strictly first, in percentage points |
