@@ -581,13 +581,14 @@ def test_equivalence_records_added_by_build_bundle_a28(equiv):
     assert out.set_aside == {p: [] for p in R.PAIR_NAMES}
 
 
-def test_equivalence_a_real_a28_bundle_passes_score_seed_admitted_guard(equiv):
+def test_equivalence_a_real_a28_bundle_passes_score_seed_admitted_guard(equiv, tmp_path):
     """r9_context.ADMITTED holds the a28 seeds, so the scorer's seed/size guard accepts an a28 bundle as it is."""
     out = equiv.out
     assert out.mode == "a28" and out.smoke
     assert len(R.PAIRS) * X.ADMITTED.get((out.mode, int(out.seed)), -1) == out.n         # guard:admitted's test
     picks = P.load_picks(backbone="clip_b32")
-    got = S.score_seed(out, picks, P.frozen_lambdas("clip_b32"), equiv.readers, include_pm=False)
+    got = S.score_seed(out, picks, P.frozen_lambdas("clip_b32"), equiv.readers, include_pm=False, secondary=False,
+                       verdict=tmp_path / "held_verdict_H8.json")          # the pre-verdict path (ticket 20a)
     assert got["pair_index"].shape == (out.n,)
 
 

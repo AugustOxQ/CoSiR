@@ -110,10 +110,17 @@ def sel42():
 
 
 @pytest.fixture
-def a28(held, monkeypatch):
-    """A stand-in a28 bundle (the synthetic held bundle relabelled); X.ADMITTED patched as ticket 18's fix will."""
-    monkeypatch.setitem(X.ADMITTED, ("a28", A28_SEED), R.N_PER_PAIR)
+def a28(held):
+    """A stand-in a28 bundle (the synthetic held bundle relabelled; ("a28", 55) is in X.ADMITTED since ticket 18)."""
     return SimpleNamespace(**{**vars(held), "mode": "a28", "seed": A28_SEED})
+
+
+@pytest.fixture
+def v6(tmp_path):
+    """An existing H6 verdict file: the held scoring that is allowed after the verdict."""
+    path = tmp_path / "held_verdict_H6.json"
+    path.write_text("{}")
+    return path
 
 
 def run(bundle, readers, **kw):
@@ -125,8 +132,8 @@ def run(bundle, readers, **kw):
 
 def test_every_guard_of_r9_score_has_a_mutation_test_in_this_file_or_in_test_r9_score():
     names = {g for g in re.findall(r"# guard:([a-z_0-9]+)", (HERE / "r9_score.py").read_text())}
-    new = {"secondary_bool", "secondary_no_pm", "a28_verdict_path", "secondary_before_verdict"}
-    assert new <= names
+    new = {"secondary_bool", "secondary_no_pm", "read_verdict_path", "read_verdict_name", "secondary_before_verdict"}
+    assert new <= names and "a28_verdict_path" not in names
     text = Path(__file__).read_text()
     covered = set()
     for args in re.findall(r'mutant\(tmp_path, "r9_score\.py", ([^)]*)\)', text):
@@ -186,10 +193,36 @@ def test_taus_of_new_backbone_refuses_a_changed_file_or_bad_taus(tmp_path, monke
     rc.write_text(json.dumps({"taus": [0.01, 0.2, 0.45, 0.9]}))               # edited after the pin
     with pytest.raises(SystemExit, match="SHA-256"):
         S.taus_of("qwen3vl_emb_2b")
-    for bad in ([0.01, 0.2, 0.45], [0.3, 0.2, 0.45, 0.8], [0.1, 0.2, 0.3, 1], [0.1, 0.2, 0.3, float("nan")]):
+    for bad in ([0.01, 0.2, 0.45], [0.3, 0.2, 0.45, 0.8], [0.1, 0.2, 0.3, 1], [0.1, 0.2, 0.3, float("nan")],
+                [0.1, 0.2, 0.3, float("inf")]):
         _new_backbone_pins(tmp_path, monkeypatch, bad)
         with pytest.raises(AssertionError, match="taus"):
             S.taus_of("qwen3vl_emb_2b")
+
+
+def test_taus_of_hashes_and_parses_the_same_bytes(tmp_path, monkeypatch):
+    """L2: one read of the file; its bytes are hashed and the same bytes parsed (no second read_text or hash pass)."""
+    rc = _new_backbone_pins(tmp_path, monkeypatch, [0.01, 0.2, 0.45, 0.8])
+    reads = []
+    real_bytes, real_text, real_sha = Path.read_bytes, Path.read_text, R.sha256_file
+
+    def counting(self):
+        reads.append(self)
+        return real_bytes(self)
+
+    def text(self, *a, **k):
+        assert self != rc, "second read of the file"
+        return real_text(self, *a, **k)
+
+    def sha(path):
+        assert Path(path) != rc, "second read of the file"
+        return real_sha(path)
+
+    monkeypatch.setattr(Path, "read_bytes", counting)
+    monkeypatch.setattr(Path, "read_text", text)
+    monkeypatch.setattr(R, "sha256_file", sha)
+    assert S.taus_of("qwen3vl_emb_2b") == (0.01, 0.2, 0.45, 0.8)
+    assert [p for p in reads if p == rc] == [rc]
 
 
 def test_taus_of_refuses_a_path_that_is_not_the_recipe_part(tmp_path, monkeypatch):
@@ -200,12 +233,12 @@ def test_taus_of_refuses_a_path_that_is_not_the_recipe_part(tmp_path, monkeypatc
 
 # ---------------------------------------------------------------- score_seed: cells and taus
 
-def test_score_seed_uses_the_given_cells_and_taus(held, readers):
+def test_score_seed_uses_the_given_cells_and_taus(held, readers, v6):
     cells = S.cells_from_record({"aff": [119, 39], "cf": [10, 149], "r1_fused": [119, 116],
                                  "r1_counterpart": [123, 58]})
     taus = (0.01, 0.2, 0.45, 0.8)
-    default = run(held, readers)
-    out = run(held, readers, cells=cells, taus=taus)
+    default = run(held, readers, verdict=v6)
+    out = run(held, readers, cells=cells, taus=taus, verdict=v6)
     rd = RF.reader(held, readers)
     gates = RF.gates_aff(rd["m"], rd["pick"], taus)
     want_gates = {c: np.stack([gates[t][c] for t in range(4)]) for c in CONDITIONS}
@@ -220,27 +253,28 @@ def test_score_seed_uses_the_given_cells_and_taus(held, readers):
     assert T.pa_bits(out["cosine"], default["cosine"]) and T.pa_bits(out["B"], default["B"])
 
 
-def test_score_seed_refuses_bad_taus_and_incomplete_cells(held, readers):
-    for bad in ((0.1, 0.2, 0.3), (0.3, 0.2, 0.1, 0.0), [1, 2, 3, 4]):
+def test_score_seed_refuses_bad_taus_and_incomplete_cells(held, readers, v6):
+    for bad in ((0.1, 0.2, 0.3), (0.3, 0.2, 0.1, 0.0), [1, 2, 3, 4], (0.1, 0.2, 0.3, float("inf"))):
         with pytest.raises(AssertionError, match="taus"):
-            run(held, readers, taus=bad)
+            run(held, readers, taus=bad, verdict=v6)
     with pytest.raises(AssertionError, match="cells"):
-        run(held, readers, cells={"aff": {"fused": (39, 119), "cf": (149, 10)}})
-    out = run(held, readers, cells={"aff": S.CELLS["aff"]}, secondary=False, verdict=None)   # aff alone is enough
+        run(held, readers, cells={"aff": {"fused": (39, 119), "cf": (149, 10)}}, verdict=v6)
+    out = run(held, readers, cells={"aff": S.CELLS["aff"]}, secondary=False, verdict=v6)   # aff alone is enough
     assert tuple(out) == S.PRIMARY_SCORERS + S.EXTRA_KEYS
 
 
 # ---------------------------------------------------------------- score_seed: secondary=False
 
-def test_secondary_false_scores_only_what_p1_to_p7_read(held, readers):
+def test_secondary_false_scores_only_what_p1_to_p7_read(held, readers, v6):
     poisoned = SimpleNamespace(**{**vars(held), "pm_terms": T.PMPoison(held.pm_terms)})
     del poisoned.t6u_B1                                   # B1's term must not be read
     picks = {k: v for k, v in T.NESTED_PICKS.items() if k != "B1"}   # nor its pick
-    out = S.score_seed(poisoned, picks, {"rca": T.lambdas_all()["rca"]}, readers, include_pm=False, secondary=False)
+    out = S.score_seed(poisoned, picks, {"rca": T.lambdas_all()["rca"]}, readers, include_pm=False, secondary=False,
+                       verdict=v6)
     assert tuple(out) == S.PRIMARY_SCORERS + S.EXTRA_KEYS
     assert S.PRIMARY_SCORERS == ("cosine", "rca", "B", "B0", "aff_fused", "aff_cf")
     assert tuple(out["gates"]) == ("aff",)
-    full = run(held, readers)
+    full = run(held, readers, verdict=v6)
     for k in S.PRIMARY_SCORERS:
         assert T.pa_bits(out[k], full[k]), k
     assert same(out["gates"]["aff"], full["gates"]["aff"]) and same(out["reader"], full["reader"])
@@ -256,25 +290,26 @@ def test_secondary_false_refuses_include_pm(held, sel42, readers, tmp_path):
         mut.score_seed(sel42, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=True, secondary=False)
 
 
-def test_secondary_must_be_a_bool(held, readers, tmp_path):
+def test_secondary_must_be_a_bool(held, readers, tmp_path, v6):
     for bad in (None, 0, "no"):
         with pytest.raises(AssertionError, match="secondary must be"):
             run(held, readers, secondary=bad)
     mut = mutant(tmp_path, "r9_score.py", "secondary_bool")
-    out = mut.score_seed(held, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=False, secondary=None)
+    out = mut.score_seed(held, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=False, secondary=None, verdict=v6)
     assert tuple(out) == S.PRIMARY_SCORERS + S.EXTRA_KEYS
 
 
 # ---------------------------------------------------------------- score_seed: the verdict file
 
-def test_held_default_keeps_round_sixs_one_file(held, readers, tmp_path, monkeypatch):
-    """verdict=None on a held bundle: only include_pm=True waits for held_verdict.json (today's behaviour)."""
-    monkeypatch.setattr(S, "VERDICT", tmp_path / "held_verdict.json")
-    assert tuple(run(held, readers)) == S.CORE_SCORERS + S.EXTRA_KEYS                  # B1 and R1 allowed, as today
-    with pytest.raises(AssertionError, match="held_verdict.json"):
-        run(held, readers, include_pm=True)
-    (tmp_path / "held_verdict.json").write_text("{}")
-    assert tuple(run(held, readers, include_pm=True)) == S.ALL_SCORERS + S.EXTRA_KEYS
+def test_held_without_a_verdict_path_is_refused_whatever_the_other_arguments(held, readers, tmp_path):
+    """Both read modes name their read's verdict file (rule 7.2, 7.4). Round 6's one-file default is gone: a held run
+    that copies round 6's call (secondary left True) can no longer reach B1, R1 or PM before a verdict."""
+    for kw in ({}, {"include_pm": True}, {"secondary": False}, {"verdict": None}):
+        with pytest.raises(AssertionError, match="needs the read's held_verdict_<Hn>.json path as verdict="):
+            run(held, readers, **kw)
+    mut = mutant(tmp_path, "r9_score.py", "read_verdict_path")
+    out = mut.score_seed(held, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=False, secondary=False)
+    assert tuple(out) == S.PRIMARY_SCORERS + S.EXTRA_KEYS             # the guard gone: it goes through
 
 
 def test_held_with_a_verdict_path_scores_no_pm_b1_or_r1_before_it(held, readers, tmp_path):
@@ -290,28 +325,24 @@ def test_held_with_a_verdict_path_scores_no_pm_b1_or_r1_before_it(held, readers,
     assert tuple(run(held, readers, include_pm=True, verdict=v)) == S.ALL_SCORERS + S.EXTRA_KEYS
 
 
-def test_held_verdict_file_of_another_read_does_not_count(held, readers, tmp_path, monkeypatch):
-    (tmp_path / "held_verdict_H7.json").write_text("{}")
-    monkeypatch.setattr(S, "VERDICT", tmp_path / "held_verdict.json")
-    (tmp_path / "held_verdict.json").write_text("{}")                # round 6's file exists, H6's does not
+def test_held_verdict_file_of_another_read_does_not_count(held, readers, tmp_path):
+    (tmp_path / "held_verdict_H7.json").write_text("{}")             # H7's file exists, H6's does not
     with pytest.raises(AssertionError, match="held_verdict_H6.json"):
         run(held, readers, include_pm=True, verdict=tmp_path / "held_verdict_H6.json")
 
 
-def test_pm_before_verdict_guard_held_and_a28(held, a28, readers, tmp_path, monkeypatch):
-    v = tmp_path / "held_verdict_H8.json"
-    monkeypatch.setattr(S, "VERDICT", tmp_path / "held_verdict.json")
+def test_pm_before_verdict_guard_held_and_a28(held, a28, readers, tmp_path):
     mut = mutant(tmp_path, "r9_score.py", "pm_before_verdict")
-    monkeypatch.setattr(mut, "VERDICT", tmp_path / "held_verdict.json")
-    for b in (held, a28):
+    for b, name in ((held, "held_verdict_H6.json"), (a28, "held_verdict_H8.json")):
+        v = tmp_path / name
         with pytest.raises(AssertionError, match="PM metric"):
             run(b, readers, include_pm=True, verdict=v)
-        # the PM guard alone gone: the B1/R1 guard still refuses a28 and a held run with a verdict path (depth)
+        # the PM guard alone gone: the B1/R1 guard still refuses a28 and a held run (depth)
         with pytest.raises(AssertionError, match="B1 or R1"):
             mut.score_seed(b, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=True, verdict=v)
     both = mutant(tmp_path, "r9_score.py", "pm_before_verdict", "secondary_before_verdict")
-    for b in (held, a28):
-        out = both.score_seed(b, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=True, verdict=v)
+    for b, name in ((held, "held_verdict_H6.json"), (a28, "held_verdict_H8.json")):
+        out = both.score_seed(b, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=True, verdict=tmp_path / name)
         assert set(B.PM_NAMES) <= set(out)
 
 
@@ -322,9 +353,29 @@ def test_a28_needs_the_verdict_path(a28, readers, tmp_path):
         run(a28, readers, secondary=False, verdict=None)
     out = run(a28, readers, secondary=False, verdict=tmp_path / "held_verdict_H8.json")   # absent file: fine pre-verdict
     assert tuple(out) == S.PRIMARY_SCORERS + S.EXTRA_KEYS
-    mut = mutant(tmp_path, "r9_score.py", "a28_verdict_path")
+    mut = mutant(tmp_path, "r9_score.py", "read_verdict_path")
     out = mut.score_seed(a28, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=False, secondary=False)
     assert tuple(out) == S.PRIMARY_SCORERS + S.EXTRA_KEYS
+
+
+def test_verdict_names_a_verdict_file_of_this_reads_family(held, a28, readers, tmp_path):
+    """L1: a cheap name check (held: H6, H7; a28: H8 to H10; an optional _reserve). Which read, and that it is this
+    one, is ticket 20b's job."""
+    good = {"held": ("held_verdict_H6.json", "held_verdict_H7_reserve.json"),
+            "a28": ("held_verdict_H8.json", "held_verdict_H10.json", "held_verdict_H9_reserve.json")}
+    bad = {"held": ("held_verdict_H8.json", "held_verdict.json", "held_verdict_H6.json.bak", "verdict_H6.json",
+                    "held_verdict_H5.json"),
+           "a28": ("held_verdict_H6.json", "held_verdict_H11.json", "held_verdict.json", "xheld_verdict_H8.json")}
+    mut = mutant(tmp_path, "r9_score.py", "read_verdict_name")
+    for b in (held, a28):
+        for name in good[b.mode]:
+            assert "gates" in run(b, readers, secondary=False, verdict=tmp_path / name)
+        for name in bad[b.mode]:
+            with pytest.raises(AssertionError, match="verdict file"):
+                run(b, readers, secondary=False, verdict=tmp_path / name)
+            assert "gates" in mut.score_seed(b, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=False,
+                                             secondary=False, verdict=tmp_path / name)
+    run(held, readers, secondary=False, verdict=str(tmp_path / "held_verdict_H6.json"))     # a str path is fine
 
 
 def test_a28_refuses_b1_and_r1_before_the_verdict_and_scores_them_after(a28, readers, tmp_path):
@@ -349,24 +400,27 @@ def test_held_with_a_verdict_path_secondary_guard_mutant(held, readers, tmp_path
 
 
 def test_a28_bundle_is_checked_against_the_admitted_table(held, readers, tmp_path):
-    b = SimpleNamespace(**{**vars(held), "mode": "a28", "seed": A28_SEED})      # X.ADMITTED not patched
+    b = SimpleNamespace(**{**vars(held), "mode": "a28", "seed": 52})            # 52 is a held seed, not an a28 seed
+    assert ("a28", 52) not in X.ADMITTED and ("a28", A28_SEED) in X.ADMITTED
     with pytest.raises(AssertionError, match="admitted"):
-        run(b, readers, secondary=False, verdict=tmp_path / "v.json")
+        run(b, readers, secondary=False, verdict=tmp_path / "held_verdict_H8.json")
 
 
 # ---------------------------------------------------------------- default arguments equal today's
 
-def test_default_arguments_give_the_results_of_before_20a(held, sel42, readers, tmp_path, monkeypatch):
+def test_default_arguments_give_the_results_of_before_20a(held, sel42, readers, tmp_path, v6):
+    """Selection (stage 0a) is untouched. A held bundle no longer runs on defaults (see the refusal test above); with
+    its verdict file named and present, the numbers are those of before 20a."""
     old = old_module(tmp_path, "r9_score.py")
-    monkeypatch.setattr(S, "VERDICT", tmp_path / "held_verdict.json")
-    monkeypatch.setattr(old, "VERDICT", tmp_path / "held_verdict.json")
-    for bundle, pm in ((held, False), (sel42, True)):
-        new = S.score_seed(bundle, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=pm)
+    for bundle, pm, kw in ((held, False, {"verdict": v6}), (sel42, True, {})):
+        new = S.score_seed(bundle, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=pm, **kw)
         was = old.score_seed(bundle, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=pm)
         explicit = S.score_seed(bundle, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=pm, cells=S.CELLS,
-                                taus=R3.assert_taus(), secondary=True, verdict=None)
+                                taus=R3.assert_taus(), secondary=True, **{"verdict": None, **kw})
         assert list(new) == list(was) == list(explicit)
         assert same(was, new) and same(new, explicit)
+    with pytest.raises(AssertionError, match="verdict="):
+        S.score_seed(held, T.NESTED_PICKS, T.lambdas_all(), readers, include_pm=False)       # was allowed before 20a
 
 
 # ---------------------------------------------------------------- r9_stats

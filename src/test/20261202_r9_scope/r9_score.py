@@ -16,25 +16,29 @@ Convention everywhere (hazard 7): the pick of tune half h scores the episodes of
                                                contracts section 5's dict of per-anchor results, gates, reader, cl,
                                                pair_index
 
-include_pm (keyword, no default): rule section 8 item 3 allows, on held episodes before held_verdict.json exists,
-only AFF fused, CF, COS, RCA, B, B0, B1 and R1 fused (CORE_SCORERS). score_seed(..., include_pm=False) scores those
+include_pm (keyword, no default): rule section 8 item 3 of round 6 allowed, on held episodes before the verdict, only
+AFF fused, CF, COS, RCA, B, B0, B1 and R1 fused (CORE_SCORERS); round 9 (sections 4.1, 7.4) allows only the six of
+PRIMARY_SCORERS there (secondary=False, below). score_seed(..., include_pm=False) scores those
 alone: it reads no PM term or lambda, never reads R1's counterpart cells or builds its G_cf, and returns no PM key and
 no r1_cf. include_pm=True adds the descriptive extras, the nine PM scorers and R1's counterpart r1_cf with its gain-0
-check (contracts section 5, amendment 14:50); on a held bundle it is refused unless held_verdict.json exists (the
-descriptive pass, ticket 13). The regression (ticket 07) and the descriptive pass call it with True.
+check (contracts section 5, amendment 14:50); on a held or a28 bundle it is refused unless the read's verdict file
+exists (the descriptive pass, ticket 13). The regression (ticket 07) and the descriptive pass call it with True.
 
 Ticket 20a (held reads H6/H7 and the ArtELingo-28 reads H8 to H10, rule sections 4.1, 4.2, 7.4):
   cells=None / taus=None      CLIP's CELLS and R3.assert_taus(); otherwise the backbone's (cells_from_record, taus_of)
   secondary=False             scores only what P1 to P7 read: cosine, rca, B, B0, aff_fused, aff_cf. No B1, no R1 gate set
                               or cell, no PM (include_pm=True is refused). Rule section 7.4: no B1, R1 or PM metric
                               before held_verdict_<Hn>.json exists; section 4.1: no secondary checks.
-  verdict=<path>              the read's held_verdict_<Hn>.json. Mode "a28" requires it. A given path (or mode "a28")
-                              refuses B1/R1 (secondary=True) as well as PM until the file exists. verdict=None on a held
-                              bundle keeps round 6's one file, VERDICT, which gates only include_pm=True.
+  verdict=<path>              the read's held_verdict_<Hn>.json (held: H6, H7; a28: H8 to H10; _reserve allowed; only
+                              the name is checked here, which read it is, is the runner's). Modes "held" and "a28"
+                              require it (a held run has no round 6 default any more). B1/R1 (secondary=True) and PM
+                              are refused until the file exists. Mode "selection" (stage 0a) takes no verdict.
 
 Guards carry a `# guard:<name>` marker; test_r9_score.py and test_r9_held_shared.py delete each on a copy and shows that its scenario then goes
 through.
 """
+import hashlib
+import re
 import sys
 from pathlib import Path
 
@@ -68,12 +72,14 @@ DESCRIPTIVE_EXTRAS = PM_SCORERS + ("r1_cf",)                                    
 ALL_SCORERS = ("cosine", "rca") + PM_SCORERS + ("B", "B0", "B1", "aff_fused", "aff_cf", "r1_fused", "r1_cf")
 PRIMARY_SCORERS = ("cosine", "rca", "B", "B0", "aff_fused", "aff_cf")     # secondary=False: what P1 to P7 read
 READ_MODES = ("held", "a28")                                              # bundle modes with a verdict file (rule 7.4)
+# the verdict file a read of each mode may name (rule 7.2): held H6, H7; ArtELingo-28 H8 to H10; reserve reads too
+VERDICT_NAME = {"held": re.compile(r"held_verdict_H(6|7)(_reserve)?\.json"),
+                "a28": re.compile(r"held_verdict_H(8|9|10)(_reserve)?\.json")}
 EXTRA_KEYS = ("gates", "reader", "cl", "pair_index")
 CONDITION_FREE = ("cosine", "B", "B0", "B1", "aff_cf", "r1_cf")    # gain 0 on every episode (when scored)
 GATE_SETS = ("aff", "r1")
 HALVES = (0, 1)
 N_TAU = len(R3.TAUS)
-VERDICT = R.RESULTS / "held_verdict.json"                          # rule section 8 item 3
 
 if not (CELLS["aff"]["fused"] == tuple(R3.AFF_CELLS["fused"]) and CELLS["aff"]["cf"] == tuple(R3.AFF_CELLS["cf"])
         and CELLS["r1"]["fused"] == tuple(R3.RC_CELLS["fused"]) and CELLS["r1"]["cf"] == tuple(R3.RC_CELLS["cf"])
@@ -113,14 +119,20 @@ def cells_from_record(rec) -> dict:
 
 def taus_of(backbone) -> tuple:
     """The four gate thresholds of a backbone. CLIP: round 3's rule values (R3.assert_taus). Others: the backbone's
-    pinned rc_tau.json (recipe output; SHA-256 asserted against the backbone's pins, path asserted to be parts's)."""
+    pinned rc_tau.json (recipe output; SHA-256 asserted against the backbone's pins, path asserted to be parts's).
+    The file is read once: the bytes that are hashed are the bytes that are parsed.
+    The other reader of this file is r9_recipe_cells.load_taus (unpinned: the recipe stage writes the pin's input);
+    this one is pinned and serves the scoring stages (20b, 21, 23). Keep the two in step."""
     if backbone == "clip_b32":
         return tuple(R3.assert_taus())
     from r9_backbone import parts
-    R.assert_input(RC_TAU_REL, backbone)
-    path = Path(R.input_pins(backbone)[RC_TAU_REL][0])
+    path, want = R.input_pins(backbone)[RC_TAU_REL]
+    path = Path(path)
     _require(path == Path(parts(backbone)["rc_tau"]), f"{backbone}: pinned rc_tau path {path} is not the recipe part")
-    return _check_taus(json.loads(path.read_text())["taus"], f"{backbone} rc_tau.json")
+    raw = path.read_bytes()
+    got = hashlib.sha256(raw).hexdigest()
+    _require(got == want, f"input {RC_TAU_REL}: SHA-256 {got} differs from {want}", SystemExit)
+    return _check_taus(json.loads(raw)["taus"], f"{backbone} rc_tau.json")
 
 
 def _check_taus(taus, what) -> tuple:
@@ -236,13 +248,17 @@ def score_seed(bundle, picks, lambdas, readers, *, include_pm, cells=None, taus=
     msg = "secondary=False scores no PM metric: include_pm must be False (rule sections 4.1, 7.4)"
     _require(secondary or not include_pm, msg)  # guard:secondary_no_pm
     gated_read = bundle.mode in READ_MODES
-    msg = f"mode {bundle.mode!r} needs the read's held_verdict_<Hn>.json path as verdict= (rule section 7.2)"
-    _require(bundle.mode != "a28" or verdict is not None, msg)  # guard:a28_verdict_path
-    verdict_file = Path(VERDICT if verdict is None else verdict)
+    msg = f"mode {bundle.mode!r} needs the read's held_verdict_<Hn>.json path as verdict= (rule sections 7.2, 7.4)"
+    _require(not gated_read or verdict is not None, msg)  # guard:read_verdict_path
+    verdict_file = None if verdict is None else Path(verdict)
+    if gated_read and verdict_file is not None:
+        msg = (f"verdict file {verdict_file.name!r} is not one a {bundle.mode} read may name "
+               f"({VERDICT_NAME[bundle.mode].pattern})")
+        _require(VERDICT_NAME[bundle.mode].fullmatch(verdict_file.name), msg)  # guard:read_verdict_name
     if include_pm and gated_read:
         _require(verdict_file.is_file(), f"no PM metric on {bundle.mode} episodes before {verdict_file.name} exists "
                                          f"(rule sections 7.4, 8 item 3)")  # guard:pm_before_verdict
-    if secondary and gated_read and (verdict is not None or bundle.mode == "a28"):
+    if secondary and gated_read:
         _require(verdict_file.is_file(), f"no B1 or R1 metric on {bundle.mode} episodes before {verdict_file.name} "
                                          f"exists (rule section 7.4)")  # guard:secondary_before_verdict
     cells = CELLS if cells is None else cells
