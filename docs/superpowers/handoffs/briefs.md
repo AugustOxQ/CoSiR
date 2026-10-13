@@ -291,3 +291,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-8-handoff.md
 - New chat: tab 'r9 build 8', session cda2cded-f6bb-4d80-865b-f7ae496f77d5
 
+[brief] CoSiR: r9 build 8 -> r9 build 9 (2026-10-14 00:05 Amsterdam)
+- Done: stage 0b PASSED (case 1, 131 items exact) after a user-confirmed r9_bundle fix; 20b fix, 21, 21c merged.
+- State: 13 and 23 are built and reviewed; each needs one small Codex fix round (briefs ready). GPU idle.
+- Next: launch both fix rounds, merge, rerun the stage 0b compare, CLIP dry run, the two stage 2 chains; build 22.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-14-r9-build-9-handoff.md
+- New chat: tab 'r9 build 9', session 18057a5a-4e60-48cd-83b0-ff14c8a319ae
+
