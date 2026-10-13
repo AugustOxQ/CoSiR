@@ -14,6 +14,7 @@ def case(name,module,before,after,test):
     CASES.append((name,module,before,after,test))
 A='rd9_test_arithmetic.py::'
 E='rd9_test_a28.py::'
+C='rd9_test_compare.py::'
 case('P5 uses CF','rd9_stats.py',"'P5':('r1','aff_cf')","'P5':('r1','B')",A+'test_pass_record_nonzero_counts_comparators_zero_inclusion_and_holm_level')
 case('P7 uses RCA gain','rd9_stats.py',"'P7':('gain','rca')","'P7':('gain','aff_cf')",A+'test_pass_record_nonzero_counts_comparators_zero_inclusion_and_holm_level')
 case('zero integer sums count','rd9_stats.py','np.count_nonzero(ints<=0)','np.count_nonzero(ints<0)',A+'test_pass_record_nonzero_counts_comparators_zero_inclusion_and_holm_level')
@@ -56,6 +57,28 @@ case('pin-name ambiguity','rd9_inputs.py','assert len(candidates)<=1','assert le
 case('backbone recipe preference','rd9_inputs.py','if preferred: candidates=preferred','if False: candidates=preferred',A+'test_pin_roles_reject_ambiguous_names_and_choose_backbone_recipe')
 case('round9 paths use checkout','rd9_inputs.py','return HERE.parents[2]/path','return MAIN/path',A+'test_pin_paths_keep_round9_outputs_in_the_running_worktree')
 case('library source hash','rd9_inputs.py','result[relative]=sha_file(path)',"result[relative]='0'*64",A+'test_library_provenance_is_sha256_of_loaded_src_files')
+case('claim set-aside comparison','rd9_compare.py',
+     "c.value('set_aside',derived_set_aside(own),reported_set_aside(report.get('set_aside',MISSING)))",
+     'pass',C+'test_set_aside_difference_fails_agreement')
+case('set-aside read seed mapping','rd9_compare.py','entries.append((language,pair,seed))',
+     "entries.append((language,pair,entry['seed']))",C+'test_set_aside_compares_language_pair_and_read_seed_as_a_set')
+case('missing derived set-asides','rd9_compare.py',"part.get('set_aside',MISSING)",
+     "part.get('set_aside',[])",C+'test_missing_set_aside_fails_even_when_empty')
+case('claim language flags comparison','rd9_compare.py',
+     "c.value('flagged_languages',sorted_languages(flags.get('flagged',MISSING)),\n                    sorted_languages(report.get('flagged_languages',MISSING)))",
+     'pass',C+'test_flagged_language_difference_fails_agreement')
+case('claim language flags sorted','rd9_compare.py','return sorted(value)','return value',
+     C+'test_flagged_languages_compare_as_sorted_lists')
+case('claim near duplicates cos_099','rd9_compare.py',"for key in ('cos_099','cos_098'):",
+     "for key in ('cos_098',):",C+'test_near_duplicate_difference_fails_agreement')
+case('claim near duplicates cos_098','rd9_compare.py',"for key in ('cos_099','cos_098'):",
+     "for key in ('cos_099',):",C+'test_near_duplicate_difference_fails_agreement')
+case('near duplicates train-side population','rd9_compare.py',"duplicates.get('train_side')==912",'True',
+     C+'test_near_duplicate_population_is_asserted')
+case('near duplicates read population','rd9_compare.py',"duplicates.get('read_paintings')==746",'True',
+     C+'test_near_duplicate_population_is_asserted')
+case('missing either comparison side','rd9_compare.py','if ours is MISSING or theirs is MISSING:',
+     'if theirs is MISSING:',C+'test_missing_either_side_is_a_serializable_difference')
 
 
 def main():
