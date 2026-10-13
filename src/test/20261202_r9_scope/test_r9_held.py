@@ -8,7 +8,7 @@ import itertools
 import json
 import re
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace as NS
 
@@ -68,13 +68,14 @@ def ledger(c, **change):
                           cells['backbone'], 'AFF', cells['episodes'], cells['scripts'], cells['report']]) + " |\n")
 
 
-def start(c, mod, count=1, fix=False, complete=True):
+def start(c, mod, count=1, fix=False, complete=True, copy=True):
     attempts = [{"attempt": i + 1, "flags": {"fix": 1 if fix else None},
                  "episodes_sha256": {str(s): hashes(s) for s in mod.R.HELD_SEEDS} if complete else {}}
                 for i in range(count)]
     rec = {"rule_sha256": mod.R.RULE_SHA256, "attempts": attempts}
     put(c.res / mod.read_names("H6", "held").started, rec)
-    put(c.folder / mod.read_names("H6", "held").started, rec)
+    if copy:
+        put(c.folder / mod.read_names("H6", "held").started, rec)
     return rec
 
 
@@ -97,7 +98,8 @@ def configure(mod, c, monkeypatch):
 
 # guard -> (exception, regex). scenario() supplies the individual bad boundary.
 REFUSALS = {
-    "ledger_row": "row H6 is missing", "ledger_backbone": "another backbone",
+    "ledger_row": "row H6 is missing", "ledger_duplicate": "appears twice", "ledger_cells": "eight cells",
+    "ledger_backbone": "another backbone",
     "ledger_runner_sha": "runner SHA", "ledger_pins_sha": "pins SHA", "ledger_report": "report cell",
     "ledger_not_run": "not run", "episodes_pending": "episode cell", "read_backbone": "requires",
     "time_box": "Amsterdam date", "verdict_exists": "verdict.*exists", "pass_exists": "pass.*exists",
@@ -125,6 +127,10 @@ def scenario(g, mod, c, mp):
     if g == "ledger_row":
         ledger(c, row="H7")
         return mod.ledger_row(c.ledger, "H6")
+    if g in {"ledger_duplicate", "ledger_cells"}:
+        row = c.ledger.read_text()
+        c.ledger.write_text(row + row if g == "ledger_duplicate" else row.rstrip() + " extra |\n")
+        return mod.ledger_row(c.ledger, "H6")
     if g.startswith("ledger_"):
         change = {"ledger_backbone": {"backbone": "CLIP ViT-B/32"},
                   "ledger_runner_sha": {"scripts": f"run_r9_held.py {'b'*64}; {c.pins.name} {mod.R.sha256_file(c.pins)}"},
@@ -145,10 +151,8 @@ def scenario(g, mod, c, mp):
         if g in {"verdict_exists", "pass_exists"}:
             (c.res / (n.verdict if g == "verdict_exists" else n.pass_)).touch()
         if g in {"started_exists", "copy_matches", "two_attempts"}:
-            start(c, mod, count=2 if g == "two_attempts" else 1)
+            start(c, mod, count=2 if g == "two_attempts" else 1, copy=g != "started_exists")
             crash = g != "started_exists"
-            if g == "started_exists":
-                (c.folder / n.started).unlink()  # isolate the results-file refusal from the copy refusal
         if g == "after_crash_needs_start":
             crash = True
         if g == "copy_exists":
@@ -253,7 +257,6 @@ def scenario(g, mod, c, mp):
             mp.setattr(mod, "read_seed_bundle", lambda env, mode, seed, *a, **kw:
                        NS(seed=seed, cl=np.array([0, 1, 0]), episodes_sha256={}))
             # The assertion after the callback is the boundary under test.
-            mp.setattr(mod, "sensitivity_held", lambda *a: {"P1": {}})
             mp.setattr(mod, "EpisodeRecorder", lambda *a, **kw: NS(hashes={s: hashes(s) for s in spec.seeds}, expect=lambda s: None))
         else:
             base = mod.S.score_seed
@@ -436,3 +439,346 @@ def test_after_crash_rerun_reproduces_hashes(case, monkeypatch):
     assert {s: attempts[1]['episodes_sha256'][str(s)] for s in before} == before
     assert U.attempt_hashes(attempts) == {s: hashes(s) for s in spec.seeds}
     assert (case.res / spec.names.started).read_bytes() == spec.copy_to.read_bytes()
+
+
+BAD_INPUTS = {
+    'ledger_runner': 'runner SHA', 'ledger_pins': 'pins SHA', 'ledger_backbone': 'another backbone',
+    'ledger_report': 'report cell', 'h5': 'ledger H5', 'smoke': 'smoke.*missing',
+    'read_backbone': 'requires', 'switched_off': 'switched off', 'sigma': 'sigma parts',
+    'value_sets_file': 'frozen R6 value_sets', 'value_sets_equal': 'recomputed',
+    'head': 'selection posteriors',
+}
+
+
+def append_h5(c, mod, wrong=False):
+    records = {s: hashes(s) for s in mod.R.HELD_SEEDS}
+    if wrong:
+        records[52][mod.R.PAIR_NAMES[0]] = hashes(99)[mod.R.PAIR_NAMES[0]]
+    cell = '; '.join(f"seed {s}: " + ', '.join(f"{p.replace('__', ' × ')} {h}" for p, h in hs.items())
+                     for s, hs in records.items())
+    with c.ledger.open('a') as f:
+        f.write(f'| H5 | 2026-10-10 | ArtELingo held | CLIP ViT-B/32 | AFF | {cell} | old runner | GO |\n')
+
+
+def held_bad_input(mod, c, mp, bad):
+    """Exercise real guards at their production call sites, without loading data or fitting heads."""
+    guards = {n: getattr(mod, n) for n in ('sigma_guard', 'value_sets_file_guard', 'value_sets_guard', 'head_guard')}
+    clock = mod.amsterdam_today
+    configure(mod, c, mp)
+    spec, env, events, *_ = stub_read(mod, c, mp)
+    for name, guard in guards.items():
+        mp.setattr(mod, name, guard)
+    mp.setattr(mod.R, 'N_PER_PAIR', 1)
+    sigma = {k: {'sigma_a2': 1., 'sigma_eps2': 1.} for k in mod.ST.CHECKS}
+    if bad == 'sigma':
+        sigma['P1']['sigma_a2'] = -1.
+    put(c.res / f'sensitivity_seed42_{c.backbone}.json', sigma)
+    values = {'development': [1, 2]}
+    vs_path = c.res / 'value_sets.json'
+    put(vs_path, values)
+    mp.setattr(mod, 'VALUE_SETS_PATH', vs_path)
+    mp.setattr(mod, 'VALUE_SETS_SHA', mod.R.sha256_file(vs_path))
+    mp.setattr(mod.R, 'value_sets_record', lambda *a: values if bad != 'value_sets_equal' else {})
+    if bad == 'value_sets_file':
+        # Equivalent parsed data with different bytes: isolate the file-pin call from the recomputation check.
+        vs_path.write_text(json.dumps(values, indent=2))
+    env.head_check = {'passed': bad != 'head'}
+    env.coef_sha256 = {'head': 'a'}
+    mp.setattr(mod, 'refit_reference', lambda b: {'coef_sha256': {'head': 'a'}})
+    if bad.startswith('ledger_'):
+        changes = {
+            'ledger_runner': {'scripts': f"run_r9_held.py {'b'*64}; {c.pins.name} {mod.R.sha256_file(c.pins)}"},
+            'ledger_pins': {'scripts': f"run_r9_held.py {'a'*64}; {c.pins.name} {'b'*64}"},
+            'ledger_backbone': {'backbone': 'CLIP ViT-B/32'},
+            'ledger_report': {'report': '(pending) extra'},
+        }
+        ledger(c, **changes[bad])
+    append_h5(c, mod, wrong=bad == 'h5')
+    if bad != 'smoke':
+        put(c.res / 'smoke_record.json', {'passed': True, 'module_sha256': mod.R.r9_module_shas()})
+    if bad == 'read_backbone':
+        # Ledger and inputs name SigLIP correctly; H6 still requires Qwen.
+        c.backbone = 'siglip2_so400m'
+        ledger(c)
+        append_h5(c, mod)
+        put(c.res / f'sensitivity_seed42_{c.backbone}.json', sigma)
+    if bad == 'switched_off':
+        mp.setattr(mod.P, 'read_cells', lambda path: {'switched_off': True})
+    if bad == 'time_zone':
+        mp.setattr(mod, 'amsterdam_today', clock)  # configure normally patches this; test the real clock here
+        mp.setattr(mod, 'datetime', BoundaryDatetime)
+    code = mod.run_held(c.backbone, 'H6', results=c.res, ledger=c.ledger, folder=c.folder, env=env)
+    assert code == 4, f'{bad}: invalid input reached a completed read'
+    assert not (c.res / spec.names.pass_).exists()
+    if bad not in ('h5', 'time_zone'):
+        assert not (c.res / spec.names.started).exists()
+    return code
+
+
+@pytest.mark.parametrize('bad', BAD_INPUTS)
+def test_run_held_bad_input_reaches_its_guard(case, monkeypatch, capsys, bad):
+    held_bad_input(U, case, monkeypatch, bad)
+    assert re.search(BAD_INPUTS[bad], capsys.readouterr().out)
+
+
+CALL_SITE_MUTATIONS = [
+    ('ledger_runner', ('ledger_guard(ledger, n.row, backbone, runner_sha256())', 'ledger_row(ledger, n.row)')),
+    ('h5', ('h5=h5_hashes(ledger or LEDGER)', 'h5=None')),
+    ('h5', ('read=spec.read, h5=spec.h5', 'read=spec.read, h5=None')),
+    ('smoke', ('smoke = smoke_guard(results, variant, here)', 'smoke = {}')),
+    ('read_backbone', ("    read_guard(spec.read, backbone, cell_record, smoke=spec.mode == 'smoke')", '    pass')),
+    ('sigma', ('sigma = sigma_guard(backbone, results)',
+               "sigma = {'sigma': {c: {'sigma_a2': 1., 'sigma_eps2': 1.} for c in ST.CHECKS}, 'file': 'stub', 'sha256': 'a'*64}")),
+    ('value_sets_file', ('vs_file = value_sets_file_guard()',
+                        "vs_file = {'file': str(VALUE_SETS_PATH), 'sha256': R.sha256_file(VALUE_SETS_PATH)}")),
+    ('value_sets_equal', ('values = value_sets_guard(env, vs_file)', 'values = {}')),
+    ('head', ('coef = head_guard(env, refit_reference(backbone))', 'coef = {}')),
+]
+
+
+@pytest.mark.parametrize('bad,replacement', CALL_SITE_MUTATIONS)
+def test_guard_call_site_deletion_is_detected(case, monkeypatch, tmp_path, bad, replacement):
+    mod = mutant(tmp_path, replacement=replacement)
+    # When the call is deleted its bad input completes a read: the production regression assertion fails.
+    with pytest.raises(AssertionError, match='invalid input reached a completed read'):
+        held_bad_input(mod, case, monkeypatch, bad)
+
+
+def recorder_collision(mod, c, mp):
+    configure(mod, c, mp)
+    start(c, mod, complete=False)
+    n = mod.read_names('H6')
+    rec = mod.EpisodeRecorder(c.res / n.started, c.folder / n.started, 1, {}, {42: hashes(52)},
+                             c.res, read='H6', h5={52: hashes(52)})
+    rec.expect(52)
+    mp.setattr(mod.E, 'save_episodes', lambda *a: None)
+    try:
+        rec(NS(seed=52, sha=hashes(52)))
+    except AssertionError as e:
+        assert 'episode hashes equal recorded ones' in str(e)
+        return
+    pytest.fail('recorded episode hash was accepted')
+
+
+def test_recorder_refuses_an_already_recorded_hash(case, monkeypatch):
+    recorder_collision(U, case, monkeypatch)
+
+
+def test_recorder_distinctness_call_deletion_is_detected(case, monkeypatch, tmp_path):
+    mod = mutant(tmp_path, replacement=('        E.assert_distinct(dict(self.hashes), recorded=self.recorded)',
+                                        '        pass'))
+    with pytest.raises(pytest.fail.Exception, match='recorded episode hash was accepted'):
+        recorder_collision(mod, case, monkeypatch)
+
+
+def labelled_ledger(mod, c, mp, label, correct_last):
+    configure(mod, c, mp)
+    runner, pins = 'a' * 64, mod.R.sha256_file(c.pins)
+    entries = [f'run_r9_held.py {runner}', f'{c.pins.name} {pins}']
+    expected = runner if label == 'runner' else pins
+    name = 'run_r9_held.py' if label == 'runner' else c.pins.name
+    ordered = ['b' * 64, expected] if correct_last else [expected, 'b' * 64]
+    entries[label == 'pins'] = '; '.join(f'{name} {sha}' for sha in ordered)
+    ledger(c, scripts='; '.join(entries))
+    return mod.ledger_guard(c.ledger, 'H6', c.backbone, runner, pins)
+
+
+@pytest.mark.parametrize('label', ['runner', 'pins'])
+@pytest.mark.parametrize('correct_last', [True, False])
+def test_ledger_uses_last_entry_for_each_label(case, monkeypatch, label, correct_last):
+    if correct_last:
+        assert labelled_ledger(U, case, monkeypatch, label, True)['row'] == 'H6'
+    else:
+        with pytest.raises(U.Refused, match=f'{label} SHA'):
+            labelled_ledger(U, case, monkeypatch, label, False)
+
+
+@pytest.mark.parametrize('label', ['runner', 'pins'])
+def test_first_label_entry_mutation_is_detected(case, monkeypatch, tmp_path, label):
+    mod = mutant(tmp_path, replacement=(f'{label}[-1]', f'{label}[0]'))
+    with pytest.raises(mod.Refused, match=f'{label} SHA'):
+        labelled_ledger(mod, case, monkeypatch, label, True)
+
+
+class BoundaryDatetime(datetime):
+    """A UTC date still on the deadline when Amsterdam has passed it, without patching amsterdam_today."""
+    @classmethod
+    def now(cls, tz=None):
+        instant = datetime(2026, 10, 18, 22, 30, tzinfo=timezone.utc)
+        return instant.astimezone(tz) if tz is not None else instant.replace(tzinfo=None)
+
+    @classmethod
+    def utcnow(cls):
+        return datetime(2026, 10, 18, 22, 30)
+
+
+def test_amsterdam_clock_refuses_first_read_at_utc_boundary(case, monkeypatch, capsys):
+    held_bad_input(U, case, monkeypatch, 'time_zone')
+    assert U.amsterdam_today() == date(2026, 10, 19)
+    assert 'Amsterdam date 2026-10-19' in capsys.readouterr().out
+
+
+def test_utc_clock_mutation_is_detected(case, monkeypatch, tmp_path):
+    mod = mutant(tmp_path, replacement=('datetime.now(ZoneInfo("Europe/Amsterdam")).date()',
+                                        'datetime.utcnow().date()'))
+    with pytest.raises(AssertionError, match='invalid input reached a completed read'):
+        held_bad_input(mod, case, monkeypatch, 'time_zone')
+
+
+@pytest.mark.parametrize('report', ['(pending) extra', '(pending?)', '(pend', '(pending)\u00a0x'])
+def test_report_cell_requires_exact_pending(case, monkeypatch, report):
+    configure(U, case, monkeypatch)
+    ledger(case, report=report)
+    with pytest.raises(U.Refused, match='report cell'):
+        U.ledger_guard(case.ledger, 'H6', case.backbone, 'a'*64, U.R.sha256_file(case.pins))
+
+
+def prepare_variant(mod, c, mp, variant, today=date(2026, 10, 18)):
+    configure(mod, c, mp)
+    mp.setattr(mod, 'amsterdam_today', lambda: today)
+    rec = start(c, mod)
+    base = mod.read_names('H6')
+    if variant == 'reserve':
+        ledger(c, row='H6-R')
+        put(c.res / base.verdict, {})
+    elif variant == 'fix1':
+        put(c.res / base.pass_, {})
+        put(c.res / 'smoke_record_fix1.json', {})
+        ledger(c, episodes='; '.join(h for hs in rec['attempts'][0]['episodes_sha256'].values() for h in hs.values()))
+    return rec
+
+
+def fix_missing_hash(mod, c, mp):
+    rec = prepare_variant(mod, c, mp, 'fix1')
+    values = [h for hs in rec['attempts'][0]['episodes_sha256'].values() for h in hs.values()]
+    ledger(c, episodes='; '.join(values[:-1]))
+    return mod.refuse_or_go(c.res, c.ledger, 'H6', c.backbone, 'fix1', folder=c.folder)
+
+
+def test_fix_requires_exactly_all_nine_ledger_hashes(case, monkeypatch):
+    with pytest.raises(U.Refused, match='nine episode hashes'):
+        fix_missing_hash(U, case, monkeypatch)
+
+
+def test_fix_hash_subset_mutation_is_detected(case, monkeypatch, tmp_path):
+    mod = mutant(tmp_path, replacement=("set(row['episodes']) ==", "set(row['episodes']) <="))
+    assert fix_missing_hash(mod, case, monkeypatch).names.kind == 'fix1'
+
+
+def bad_reserve_first(mod, c, mp, bad):
+    prepare_variant(mod, c, mp, 'reserve')
+    if bad == 'copy':
+        put(c.folder / mod.read_names('H6', 'reserve').started, {})
+    else:
+        ledger(c, row='H6-R', episodes='already read')
+    return mod.refuse_or_go(c.res, c.ledger, 'H6', c.backbone, 'reserve', folder=c.folder)
+
+
+@pytest.mark.parametrize('bad,regex', [('copy', 'committed copy'), ('episodes', 'episode cell')])
+def test_reserve_enforces_first_read_checks(case, monkeypatch, bad, regex):
+    with pytest.raises(U.Refused, match=regex):
+        bad_reserve_first(U, case, monkeypatch, bad)
+
+
+@pytest.mark.parametrize('bad', ['copy', 'episodes'])
+def test_reserve_not_first_mutation_is_detected(case, monkeypatch, tmp_path, bad):
+    mod = mutant(tmp_path, replacement=("first = variant == \"reserve\" or (variant == \"held\" and not after_crash)",
+                                        'first = variant == "held" and not after_crash'))
+    assert bad_reserve_first(mod, case, monkeypatch, bad).names.kind == 'reserve'
+
+
+@pytest.mark.parametrize('variant', ['reserve', 'fix1', 'after_crash'])
+@pytest.mark.parametrize('today', [date(2026, 10, 18), date(2026, 10, 19)])
+def test_deadline_boxes_reserve_but_continues_fix_and_crash(case, monkeypatch, variant, today):
+    kind = 'held' if variant == 'after_crash' else variant
+    prepare_variant(U, case, monkeypatch, kind, today)
+    kwargs = dict(folder=case.folder, after_crash=variant == 'after_crash')
+    if variant == 'reserve' and today.day == 19:
+        with pytest.raises(U.Refused, match='Amsterdam date'):
+            U.refuse_or_go(case.res, case.ledger, 'H6', case.backbone, kind, **kwargs)
+    else:
+        assert U.refuse_or_go(case.res, case.ledger, 'H6', case.backbone, kind, **kwargs).names.kind == kind
+
+
+def shared_sensitivity_case(mod, case, monkeypatch):
+    spec, env, *_ = stub_read(mod, case, monkeypatch)
+    sigma = {c: {'sigma_a2': float(i + 1), 'sigma_eps2': float(i + 2)} for i, c in enumerate(mod.ST.CHECKS)}
+    source = {'file': 'synthetic_sigma.json', 'sha256': 'b' * 64}
+    monkeypatch.setattr(mod, 'sigma_guard', lambda *a: {'sigma': sigma, **source})
+    calls = []
+    shared = mod.ST.sensitivity_record
+    def sensitivity(sig, M_p, N, design):
+        calls.append((sig, M_p.copy(), N, design))
+        return shared(sig, M_p, N, design)
+    monkeypatch.setattr(mod.ST, 'sensitivity_record', sensitivity)
+    assert mod.run_read(spec, case.res, env=env) == 0
+    assert len(calls) == 1, 'run_read must use the shared sensitivity writer'
+    sig, M_p, N, design = calls[0]
+    assert sig == sigma and np.array_equal(M_p, np.array([6, 3])) and N == 9
+    got = json.loads((case.res / spec.names.sensitivity).read_text())
+    # The removed R6 writer took these same synthetic pooled painting counts and sigma parts.
+    # Independent reference expression fixes its exact arithmetic and both multipliers.
+    for c in mod.ST.CHECKS:
+        SE = float(np.sqrt((sigma[c]['sigma_a2'] * float(np.sum(M_p ** 2)) + sigma[c]['sigma_eps2'] * N) / float(N) ** 2))
+        old = {'SE': SE, 'x': 3.532 * SE, 'x95': 2.80 * SE}
+        assert {k: got[c][k] for k in old} == old
+        assert got[c]['quantity'] == mod.ST.QUANTITIES[c][2]
+        assert {k: got[c][k] for k in mod.SIGMA_KEYS} == sigma[c]
+    assert got['N'] == N and got['n_paintings'] == 2 and got['seeds'] == list(spec.seeds)
+    assert got['episodes_sha256'] == {str(s): hashes(s) for s in spec.seeds}
+    assert got['sigma_source'] == source and got['module_sha256'] == mod.R.r9_module_shas()
+    assert isinstance(got['time'], str)
+    assert design == 'seven'
+
+
+def test_run_read_uses_shared_sensitivity_and_preserves_old_values(case, monkeypatch):
+    shared_sensitivity_case(U, case, monkeypatch)
+
+
+def test_wrong_sensitivity_family_mutation_is_detected(case, monkeypatch, tmp_path):
+    mod = mutant(tmp_path, replacement=("ST.sensitivity_record(sigma['sigma'], m_p, n_episodes, 'seven')",
+                                        "ST.sensitivity_record(sigma['sigma'], m_p, n_episodes, 'two_level')"))
+    with pytest.raises(AssertionError):
+        shared_sensitivity_case(mod, case, monkeypatch)
+
+
+def test_loose_report_cell_mutation_is_detected(case, monkeypatch, tmp_path):
+    mod = mutant(tmp_path, replacement=("row['report'] == PENDING", "row['report'].startswith('(pend')"))
+    with pytest.raises(AssertionError, match='invalid input reached a completed read'):
+        held_bad_input(mod, case, monkeypatch, 'ledger_report')
+
+
+def pass_write_collision(mod, c, mp):
+    spec, env, *_ = stub_read(mod, c, mp)
+    path = c.res / spec.names.pass_
+    before = b'existing pass: never overwrite'
+    passed = mod.ST.pass_record
+    def competing_write(*a, **kw):
+        path.write_bytes(before)  # file appears after the preflight, just before the final write
+        return passed(*a, **kw)
+    mp.setattr(mod.ST, 'pass_record', competing_write)
+    try:
+        mod.run_read(spec, c.res, env=env)
+    except AssertionError as e:
+        assert 'never overwritten' in str(e)
+        assert path.read_bytes() == before
+        return
+    pytest.fail('existing pass was overwritten')
+
+
+def test_run_read_pass_write_never_overwrites(case, monkeypatch):
+    pass_write_collision(U, case, monkeypatch)
+
+
+def test_pass_write_guard_call_deletion_is_detected(case, monkeypatch, tmp_path):
+    mod = mutant(tmp_path, replacement=('write_new(path, _json_bytes(pr), spec.overwrite)',
+                                        '_write_bytes(path, _json_bytes(pr))'))
+    with pytest.raises(pytest.fail.Exception, match='existing pass was overwritten'):
+        pass_write_collision(mod, case, monkeypatch)
+
+
+def test_reserve_deadline_scope_mutation_is_detected(case, monkeypatch, tmp_path):
+    mod = mutant(tmp_path, replacement=('    if first:\n        today = amsterdam_today()',
+                                        '    if variant == "held" and not after_crash:\n        today = amsterdam_today()'))
+    prepare_variant(mod, case, monkeypatch, 'reserve', date(2026, 10, 19))
+    assert mod.refuse_or_go(case.res, case.ledger, 'H6', case.backbone, 'reserve', folder=case.folder).names.kind == 'reserve'
