@@ -219,3 +219,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-paper-r1-2-handoff.md
 - New chat: tab 'paper r1 2', session 844278df-7731-4314-80c3-53b1e3370ce0
 
+[brief] CoSiR: r9 build 2 -> r9 build 3 (2026-10-13 17:10 Amsterdam)
+- Done: stage tickets 04 to 28 written; 04 (backbone loader, Opus-reviewed), 24 (ledgers) and 28 (licence) merged.
+- State: 25 (independent re-derivation, Codex) is built on branch r9-t25: 17 tests, CLIP check 272 comparisons, 0 differences; not yet reviewed.
+- Next: 25's Opus review and merge; 05 (generic chain I) and 26 (probe corpora); then 06, 07, 14, 19.
+- Blocked: nothing. For the user: ask ArtELingo-28's authors for its data terms; H4's ledger cell differs from rule §7.1.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-3-handoff.md
+- New chat: tab 'r9 build 3', session a175987c-d8fe-4725-8d27-7c2084eb81cb
+
