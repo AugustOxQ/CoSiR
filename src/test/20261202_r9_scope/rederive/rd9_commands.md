@@ -1,6 +1,8 @@
 # Controller commands
 
-Run from `/project/CoSiR-wt/r9-t25c` (or the integration checkout). Every output is write-once. The CLIP preparation,
+Run from the integration checkout (`/project/CoSiR`). The default inputs under `results/` (the read set, the value sets,
+the two stage-1 claim files) are gitignored and exist only there; in a worktree the commands crash on the missing files
+(no agreement is written), unless `--language-flags` and `--near-duplicates` point to the main checkout. Every output is write-once. The CLIP preparation,
 phase 1, and selection replay are ignored outputs in `rederive/rd9_out/`; a fresh checkout needs
 CLIP prepare/score first. New-backbone/real-read commands below are handed back, not launched in this ticket.
 They may exceed four minutes, particularly head preparation on wider features and the three-seed read.
@@ -71,6 +73,12 @@ H8 to H10 also require two stage-1 JSON inputs, read by the comparer itself (git
 its `flagged` list is compared with the pass's `flagged_languages`, both sorted. `--near-duplicates` defaults
 to `src/test/20261202_r9_scope/results/near_duplicates_a28.json`; its `cos_099` and `cos_098` counts are compared
 with the pass's `near_duplicates`, and its `train_side == 912` and `read_paintings == 746` are asserted.
+The comparer reads the flags file from the bytes it hashes and asserts that its SHA-256 equals its entry in
+`--a28-pins` (default `src/test/20261202_r9_scope/pins_a28.json`; found by file name, so a copy elsewhere passes only if
+byte-equal). `near_duplicates_a28.json` is not in `pins_a28.json` by decision, so only its SHA-256 is recorded. The
+agreement file holds both digests as `language_flags_sha256` and `near_duplicates_sha256` (H8 to H10 only).
+`rd9_phase2.py` for H8 to H10 also checks `read_set_a28.parquet` and `value_sets_a28.json` against `pins_a28.json` at
+the moment it loads them (it parses the bytes it hashed).
 Use the two arguments for inputs in another folder. A missing file crashes; a missing compared field on
 either side writes a failed agreement. H6/H7 and the H8 selection replay skip these inputs and claim fields.
 

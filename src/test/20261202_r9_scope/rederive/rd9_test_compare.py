@@ -70,7 +70,18 @@ def stage(work, mode='held', a28=False, read='H6', name='held_pass_H6.json', twe
     return stats, own, rep
 
 
-def run(work, own, rep, monkeypatch, out='agr.json', extra=(), input_paths=True):
+def write_pins(work, flags=None, name='pins_a28.json'):
+    """A pins file naming the flags file the way pins_a28.json does (a path under results/ and its SHA-256)."""
+    flags = flags or work / 'language_flags_a28.json'
+    digest = hashlib.sha256(flags.read_bytes()).hexdigest() if flags.exists() else '0' * 64
+    return write(work / name, dict(files={'results/language_flags_a28.json': dict(
+        path=str(work / 'results/language_flags_a28.json'), sha256=digest)}))
+
+
+def run(work, own, rep, monkeypatch, out='agr.json', extra=(), input_paths=True, pins=True):
+    # The pins file is built at call time: several tests rewrite the flags file after stage().
+    if pins and '--a28-pins' not in extra and (work / 'language_flags_a28.json').exists():
+        extra = [*extra, '--a28-pins', str(write_pins(work))]
     argv = ['rd9_compare.py', '--derived', str(own), '--derived-arrays', str(work / 'own.npz'), '--reported', str(rep),
             '--reported-arrays', str(work / 'rep.npz'), '--out', str(work / out)]
     if input_paths:
@@ -424,3 +435,92 @@ def test_claim_inputs_default_to_the_round_results(work, monkeypatch, read):
 def test_every_a28_read_requires_each_claim_field(work, monkeypatch, read, field):
     _, own, rep = stage(work, a28=True, read=read, name=f'held_pass_{read}.json', tweak=lambda r: r.pop(field))
     assert all(i['key'].startswith(field) for i in disagreement(work, own, rep, monkeypatch))
+
+
+def test_empty_derived_set_aside_against_a_reported_entry_is_a_difference(work, monkeypatch):
+    # Real data: the builders most likely set nothing aside, so the live comparison is [] against the runner's list.
+    _, own, rep = stage(work, **TWO_LEVEL,
+                        tweak=lambda r: r.update(set_aside=[dict(language='IsiXhosa', pair='emotion__genre', seed=56)]))
+    failed = disagreement(work, own, rep, monkeypatch)
+    assert [i['key'] for i in failed] == ['set_aside']
+    assert failed[0]['reason'] == 'sequence length/type'
+
+
+def test_reported_empty_set_aside_against_a_derived_entry_is_a_difference(work, monkeypatch):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    record = json.loads(own.read_text())
+    record['episode_records']['56']['emotion__genre']['set_aside'] = [dict(language='IsiXhosa', reason='failed-draw', seed=56004)]
+    write(own, record)
+    assert [i['key'] for i in disagreement(work, own, rep, monkeypatch)] == ['set_aside']
+
+
+def test_empty_flagged_list_in_the_input_against_a_reported_language_is_a_difference(work, monkeypatch):
+    _, own, rep = stage(work, **TWO_LEVEL, tweak=lambda r: r.update(flagged_languages=['Emakhuwa']))
+    write(work / 'language_flags_a28.json', dict(flagged=[]))
+    failed = disagreement(work, own, rep, monkeypatch)
+    assert [i['key'] for i in failed] == ['flagged_languages']
+    assert failed[0]['reason'] == 'sequence length/type'
+
+
+def test_reported_empty_flagged_list_against_an_input_language_is_a_difference(work, monkeypatch):
+    _, own, rep = stage(work, **TWO_LEVEL, tweak=lambda r: r.update(flagged_languages=[]))
+    assert [i['key'] for i in disagreement(work, own, rep, monkeypatch)] == ['flagged_languages']
+
+
+def test_agreement_records_the_sha256_of_both_claim_inputs(work, monkeypatch):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    got = run(work, own, rep, monkeypatch)
+    for field, name in (('language_flags_sha256', 'language_flags_a28.json'),
+                        ('near_duplicates_sha256', 'near_duplicates_a28.json')):
+        assert got[field] == hashlib.sha256((work / name).read_bytes()).hexdigest()
+
+
+@pytest.mark.parametrize('read', ['H6', 'H7'])
+def test_reads_without_claim_fields_record_no_claim_input_sha(work, monkeypatch, read):
+    _, own, rep = stage(work, read=read, name=f'held_pass_{read}.json')
+    got = run(work, own, rep, monkeypatch, input_paths=False)
+    assert 'language_flags_sha256' not in got and 'near_duplicates_sha256' not in got
+
+
+def test_flags_file_must_equal_its_pins_entry(work, monkeypatch):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    pins = write_pins(work)
+    # a stale copy: same shape, different bytes; the runner and the comparer would both read it and agree
+    write(work / 'language_flags_a28.json', dict(flagged=['Emakhuwa', 'IsiNdebele'], thresholds={'stale': 1}))
+    with pytest.raises(AssertionError, match='language_flags_a28.json'):
+        run(work, own, rep, monkeypatch, extra=['--a28-pins', str(pins)])
+    assert not (work / 'agr.json').exists()
+
+
+def test_flags_file_without_a_pins_entry_is_refused(work, monkeypatch):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    pins = write(work / 'pins_other.json', dict(files={'results/other.json': dict(path='/x/other.json', sha256='0' * 64)}))
+    with pytest.raises(AssertionError, match='language_flags_a28.json'):
+        run(work, own, rep, monkeypatch, extra=['--a28-pins', str(pins)])
+    assert not (work / 'agr.json').exists()
+
+
+def test_missing_pins_file_crashes(work, monkeypatch):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    with pytest.raises(FileNotFoundError):
+        run(work, own, rep, monkeypatch, extra=['--a28-pins', str(work / 'nope.json')])
+    assert not (work / 'agr.json').exists()
+
+
+def test_near_duplicates_file_is_not_pinned_only_recorded(work, monkeypatch):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    pins = json.loads(write_pins(work).read_text())
+    assert not any('near_duplicates' in key for key in pins['files'])
+    assert run(work, own, rep, monkeypatch)['agreement'] is True
+
+
+def test_pinned_bytes_are_the_bytes_that_are_parsed(work):
+    path = write(work / 'x.json', dict(a=1))
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    assert rd9_inputs.read_pinned(path, {'results/x.json': digest}) == path.read_bytes()
+    with pytest.raises(AssertionError, match='x.json'):
+        rd9_inputs.read_pinned(path, {'results/x.json': '1' * 64})
+    with pytest.raises(AssertionError, match='x.json'):
+        rd9_inputs.read_pinned(path, {'results/y.json': digest})
+    with pytest.raises(AssertionError, match='x.json'):
+        rd9_inputs.read_pinned(path, {'a/x.json': digest, 'b/x.json': digest})

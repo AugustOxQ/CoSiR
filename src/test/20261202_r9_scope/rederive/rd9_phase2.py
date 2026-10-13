@@ -98,15 +98,17 @@ def main():
     seeds=[42] if args.mode=='selection' else ([55,56,57] if a28 else [52,53,54])
     if a28:
         # All pins are verified without importing the dataset loader of the chain.
-        from rd9_inputs import pin_entries,resolve_pin
+        from rd9_inputs import pin_entries,read_pinned,resolve_pin
         entries=pin_entries(json.loads(args.a28_pins.read_text()))
         assert entries
         for rel,digest in entries.items():
             path=resolve_pin(rel)
             assert path.suffix!='.py' and sha_file(path)==digest
         import pandas as pd
-        table=pd.read_parquet(HERE/'results/read_set_a28.parquet')
-        values=json.loads((HERE/'results/value_sets_a28.json').read_text())
+        # Per-load check: the bytes that are parsed are the bytes that match the pins entry.
+        import io
+        table=pd.read_parquet(io.BytesIO(read_pinned(HERE/'results/read_set_a28.parquet',entries)))
+        values=json.loads(read_pinned(HERE/'results/value_sets_a28.json',entries))
         labels,groups,_=table_arrays(table)
         data,rows=a28_data(backbone,table)
     else:

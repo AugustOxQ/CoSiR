@@ -80,6 +80,29 @@ case('near duplicates read population','rd9_compare.py',"duplicates.get('read_pa
 case('missing either comparison side','rd9_compare.py','if ours is MISSING or theirs is MISSING:',
      'if theirs is MISSING:',C+'test_missing_either_side_is_a_serializable_difference')
 
+case('length check skipped when ours is empty','rd9_compare.py',
+     "if not isinstance(theirs,(list,tuple)) or len(ours)!=len(theirs):",
+     "if not isinstance(theirs,(list,tuple)) or (ours and len(ours)!=len(theirs)):",
+     C+'test_empty_derived_set_aside_against_a_reported_entry_is_a_difference')
+case('length check skipped when ours is empty (flags)','rd9_compare.py',
+     "if not isinstance(theirs,(list,tuple)) or len(ours)!=len(theirs):",
+     "if not isinstance(theirs,(list,tuple)) or (ours and len(ours)!=len(theirs)):",
+     C+'test_empty_flagged_list_in_the_input_against_a_reported_language_is_a_difference')
+case('value_codes without code unwrap','rd9_episodes.py',"v = [x['code'] for x in v]",'v = v',
+     E+'test_value_codes_reads_list_of_code_name_records')
+case('value_codes without key check','rd9_episodes.py',"assert all(set(x) == {'code','name'} for x in v), a",'pass',
+     E+'test_value_codes_rejects_malformed_aspects')
+case('flags file pin check','rd9_compare.py',"flags_raw=read_pinned(args.language_flags,pin_entries(json.loads(args.a28_pins.read_text())))",
+     "flags_raw=args.language_flags.read_bytes()",C+'test_flags_file_must_equal_its_pins_entry')
+case('flags SHA recorded','rd9_compare.py',"language_flags_sha256=hashlib.sha256(flags_raw).hexdigest()",
+     "language_flags_sha256=hashlib.sha256(duplicates_raw).hexdigest()",C+'test_agreement_records_the_sha256_of_both_claim_inputs')
+case('near duplicates SHA recorded','rd9_compare.py',"near_duplicates_sha256=hashlib.sha256(duplicates_raw).hexdigest()",
+     "near_duplicates_sha256=hashlib.sha256(flags_raw).hexdigest()",C+'test_agreement_records_the_sha256_of_both_claim_inputs')
+case('pins entry compared to the SHA','rd9_inputs.py',"assert hashlib.sha256(raw).hexdigest()==matches[0]","assert True",
+     C+'test_pinned_bytes_are_the_bytes_that_are_parsed')
+case('exactly one pins entry','rd9_inputs.py',"assert len(matches)==1,","assert len(matches)<=1,",
+     C+'test_pinned_bytes_are_the_bytes_that_are_parsed')
+
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
