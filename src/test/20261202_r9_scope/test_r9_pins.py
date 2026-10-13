@@ -10,6 +10,7 @@ picks_seed42.json, rc_tau.json. No feature, label or episode.
 """
 import ast
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -254,7 +255,8 @@ def test_importing_the_r9_modules_loads_no_r6_module():
     ) % str(HERE)
     out = subprocess.run([PY, "-c", code], capture_output=True, text=True, cwd=str(HERE.parents[2]),
                          env={"PYTHONDONTWRITEBYTECODE": "1", "CUDA_VISIBLE_DEVICES": "", "OMP_NUM_THREADS": "8",
-                              "MKL_NUM_THREADS": "8", "PATH": "/usr/bin:/bin"})
+                              "MKL_NUM_THREADS": "8", "PATH": "/usr/bin:/bin",
+                              "HOME": os.environ.get("HOME", "/root")})  # git reads safe.directory from HOME
     assert out.returncode == 0, out.stderr[-2000:]
     assert out.stdout.strip().splitlines()[-1] == "[] []", out.stdout
 
