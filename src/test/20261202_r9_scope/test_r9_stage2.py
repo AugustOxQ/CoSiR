@@ -472,6 +472,92 @@ def test_input_files_reject_clip_recipe_hash_and_unknown(world, monkeypatch):
         D._input_files({'input_sha256': {'unknown-input': '0' * 64}}, w.paths)
 
 
+def test_input_files_replay_accepts_clip_logical_file_only(world, monkeypatch):
+    w = world
+    rel = w.pinned['baselines_seed42'].name
+    clip_sha = D.R.sha256_file(w.pinned['baselines_seed42'])
+    w.paths['baselines_seed42'].write_text(json.dumps(D.read_json(w.paths['baselines_seed42']), indent=2))
+    own_sha = D.R.sha256_file(w.paths['baselines_seed42'])
+    assert own_sha != clip_sha
+    monkeypatch.setattr(D.R, 'TEST', w.pinned['baselines_seed42'].parent)
+    monkeypatch.setattr(D.R, 'INPUT_SHA256', {rel: clip_sha})
+    rec = {'input_sha256': {rel: clip_sha}}
+    assert D._input_files(rec, w.paths, replay=True) == rec['input_sha256']
+    with pytest.raises(AssertionError, match='logical input changed'):
+        D._input_files(rec, w.paths)
+    for replay in (False, True):
+        assert D._input_files({'input_sha256': {rel: own_sha}}, w.paths, replay=replay) == {rel: own_sha}
+        with pytest.raises(AssertionError, match='logical input changed'):
+            D._input_files({'input_sha256': {rel: '0' * 64}}, w.paths, replay=replay)
+    with pytest.raises(AssertionError, match='unknown input'):
+        D._input_files({'input_sha256': {'unknown-input': clip_sha}}, w.paths, replay=True)
+
+
+def replay_world(w, monkeypatch):
+    # Byte-equal partitions name their frozen source as an input. Cells name
+    # frozen baselines, while the replay baselines have different JSON bytes.
+    np.savez(w.pinned['partitions'], fit=np.array([1.], np.float32),
+             rows=np.array([1, 2]), unused=np.array([np.nan]))
+    for role in D.BB.RECIPE_ROLES:
+        w.paths[role].write_bytes(w.pinned[role].read_bytes())
+    w.paths['baselines_seed42'].write_text(json.dumps(D.read_json(w.paths['baselines_seed42']), indent=2))
+    rel = w.pinned['baselines_seed42'].name
+    clip_sha = D.R.sha256_file(w.pinned['baselines_seed42'])
+    monkeypatch.setattr(D.R, 'TEST', w.pinned['baselines_seed42'].parent)
+    monkeypatch.setattr(D.R, 'INPUT_SHA256', {rel: clip_sha})
+    for role, key, sha in (('partitions', 'partitions', D.R.sha256_file(w.paths['partitions'])),
+                           ('cells_seed42', rel, clip_sha)):
+        rec = copy.deepcopy(w.records[role])
+        rec['input_sha256'] = {**w.stores, key: sha}
+        rewrite(str(w.paths[role]) + '.record.json', rec)
+    monkeypatch.setattr(D.S0B, 'routed', lambda *args, **kw: contextlib.nullcontext())
+    monkeypatch.setattr(D, 'clip_exact', lambda *args: None)
+
+
+def test_replay_self_hash_and_logical_input_reach_record_and_pins(world, monkeypatch):
+    w = world
+    replay_world(w, monkeypatch)
+    stage = D.run_record(w.b, w.paths, w.out, w.gate_path, dry_run=True)
+    skipped = {'partitions': D.R.sha256_file(w.paths['partitions'])}
+    assert stage['provenance']['partitions']['skipped_self_input_sha256'] == skipped
+    assert stage['provenance']['cells_seed42']['skipped_self_input_sha256'] == {}
+    evidence = D.pins_evidence(w.b, w.paths, w.out, w.gate_path, dry_run=True)
+    assert evidence['provenance'] == stage['provenance']
+
+
+def test_self_hash_still_refuses_live_provenance(world, monkeypatch):
+    w = world
+    replay_world(w, monkeypatch)
+    # Remove the unrelated replay-only baseline input to reach the live cycle.
+    rewrite(str(w.paths['cells_seed42']) + '.record.json', w.records['cells_seed42'])
+    with pytest.raises(AssertionError, match='partitions: cyclic input provenance'):
+        D.provenance(w.b, w.paths, w.gate)
+
+
+@pytest.mark.parametrize('entry', ['run_step', 'run_record'])
+def test_receipts_checked_at_step_and_record_call_sites(world, monkeypatch, entry):
+    w = world
+    rewrite(w.paths['rc_tau'], {'taus': [2., 3., 4., 5.]})
+    if entry == 'run_step':
+        (w.recipe / 'stage2_baselines_files.json').unlink()
+        monkeypatch.setattr(D.subprocess, 'run', lambda *args, **kw: pytest.fail('ran after an earlier output changed'))
+    else:
+        monkeypatch.setattr(D, '_score', lambda *args: pytest.fail('scored after an earlier output changed'))
+    with pytest.raises(AssertionError, match='rc_tau: output changed since it was made'):
+        if entry == 'run_step':
+            D.run_step(w.b, 'baselines', stage0b_path=w.gate_path)
+        else:
+            record_world(w)
+    assert not (w.out / f'stage2_{w.b}.json').exists()
+
+
+def test_closure_module_missing_from_stage0b_refuses(world):
+    module = next(m for m in world.gate['module_sha256'] if Path(m).name == 'r9_common.py')
+    del world.gate['module_sha256'][module]
+    with pytest.raises(AssertionError, match='r9_common.py differs from the bytes stage 0b passed on: rerun the stage 0b compare'):
+        D.assert_modules(world.gate)
+
+
 def test_frozen_pin_also_requires_round6_hash(world, monkeypatch):
     w = world
     monkeypatch.setattr(D.R, 'TEST', w.paths['prepare'].parent)

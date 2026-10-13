@@ -253,8 +253,8 @@ def assert_part(role, path, clip, rec, *, replay=False, parts=None):
             'keys_unrefit': rec.get('keys_unrefit', [])}
 
 
-def _input_files(record, parts):
-    """Resolve every declared input hash; recipe logical keys resolve only to B.
+def _input_files(record, parts, *, replay=False):
+    """Resolve declared inputs to B; replay also admits frozen CLIP logical files.
 
     A3 additionally declares the hash of its build record and of local_groups
     (C-contiguous int64 bytes). Those explicit array/file keys are checked too.
@@ -308,7 +308,9 @@ def _input_files(record, parts):
                     require(sha == value, 'local_groups input array changed')
                 else:
                     p, message = resolve(key)
-                    require(p.is_file() and R._sha_cached(p) == value, f'{message}: {key}')
+                    candidates = (p, R.TEST / key) if replay and message == 'logical input changed' else (p,)
+                    require(any(q.is_file() and R._sha_cached(q) == value for q in candidates),
+                            f'{message}: {key}')
                 yield key, value
             else:
                 raise AssertionError(f'unknown input or invalid SHA-256: {key}')
@@ -320,7 +322,9 @@ def provenance(backbone, parts, stage0b, *, replay=False):
     assert_modules(stage0b)
     stores = store_shas(backbone)
     records = {r: read_json(str(parts[r]) + '.record.json') for r in BB.RECIPE_ROLES}
-    by_hash = {R._sha_cached(parts[r]): r for r in BB.RECIPE_ROLES}
+    file_hashes = {r: R._sha_cached(parts[r]) for r in BB.RECIPE_ROLES}
+    by_hash = {sha: r for r, sha in file_hashes.items()}
+    skipped_self_inputs = {r: {} for r in BB.RECIPE_ROLES}
 
     def feature_lineage(role, seen=frozenset()):
         require(role not in seen, f'{role}: cyclic input provenance')
@@ -335,6 +339,10 @@ def provenance(backbone, parts, stage0b, *, replay=False):
                         if key in stores:
                             require(value == stores[key], f'{role}: feature store hash differs: {key}')
                             observed[key] = value
+                        elif replay and value == file_hashes[role]:
+                            # A byte-equal replay can name its frozen source as
+                            # an input. This is not an upstream recipe edge.
+                            skipped_self_inputs[role][key] = value
                         elif value in by_hash:
                             observed.update(feature_lineage(by_hash[value], seen | {role}))
         visit(records[role].get('input_sha256', {}))
@@ -356,7 +364,7 @@ def provenance(backbone, parts, stage0b, *, replay=False):
         require(Path(rec.get('script', '')).name == expected_script, f'{role}: record names the wrong producer')
         script = assert_script(rec, stage0b)
         require(bool(rec.get('input_sha256')), f'{role}: record has no inputs')
-        inputs = _input_files(rec, parts)
+        inputs = _input_files(rec, parts, replay=replay)
         for upstream, want in rec.get('upstream_sha256', {}).items():
             require(upstream in parts and R._sha_cached(parts[upstream]) == want,
                     f'{role}: upstream {upstream} changed')
@@ -366,7 +374,8 @@ def provenance(backbone, parts, stage0b, *, replay=False):
         out[role] = {**path_record(path), 'record': path_record(recpath),
                      'feature_store_sha256': features, 'script': Path(rec['script']).name,
                      'script_sha256': script, 'input_sha256': rec['input_sha256'],
-                     'checked_file_inputs': inputs, **keys}
+                     'checked_file_inputs': inputs,
+                     'skipped_self_input_sha256': skipped_self_inputs[role], **keys}
     return out
 
 
@@ -564,7 +573,7 @@ def pins_evidence(backbone, paths, results=None, stage0b_path=None, *, dry_run=F
         require(path_record(str(paths[role]) + '.record.json') == p['record'], f'{role}: stage 2 record changed')
         for file, sha in p['feature_store_sha256'].items():
             require(R._sha_cached(file) == sha, f'feature store changed: {file}')
-        _input_files(read_json(str(paths[role]) + '.record.json'), paths)
+        _input_files(read_json(str(paths[role]) + '.record.json'), paths, replay=dry_run)
     for role in BB.FROZEN_ROLES:
         require(path_record(paths[role]) == stage['frozen_parts'][role], f'{role}: frozen file changed')
         assert_frozen(role, paths[role], BB.CLIP_PARTS[role])

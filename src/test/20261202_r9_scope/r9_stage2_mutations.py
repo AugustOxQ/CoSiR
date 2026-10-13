@@ -67,6 +67,17 @@ MUTATIONS = {
     'm39': (DRIVER, 'for key in copied:\n            require(key in a', 'for key in []:\n            require(key in a'),
     'm40': (DRIVER, "metadata = [k for k in a if k.endswith(('/n_iter_', '/n_samples_seen_'))]", 'metadata = []'),
     'm41': (DRIVER, "require(means == read_json(paths['picks_seed42'])['mean_r1'], 'picks file mean_r1 differs from seed-42 means')", 'pass'),
+    # Second fix: the re-review's three surviving mutants and replay guards.
+    'o5': (DRIVER, 'check_receipts(backbone, before=step, module_sha256=modules)', 'pass'),
+    'o6': (DRIVER, "stage0b.get('module_sha256', {}).get(module) == sha", "stage0b.get('module_sha256', {}).get(module, sha) == sha"),
+    'o8': (DRIVER, 'if not dry_run:\n        check_receipts(backbone, module_sha256=modules)\n    prov =', 'if not dry_run:\n        pass\n    prov ='),
+    'n1a': (DRIVER, "if replay and message == 'logical input changed' else (p,)", 'if False else (p,)'),
+    'n1b': (DRIVER, "if replay and message == 'logical input changed' else (p,)", "if message == 'logical input changed' else (p,)"),
+    'n1c': (DRIVER, 'inputs = _input_files(rec, parts, replay=replay)', 'inputs = _input_files(rec, parts, replay=False)'),
+    'n1d': (DRIVER, "_input_files(read_json(str(paths[role]) + '.record.json'), paths, replay=dry_run)", "_input_files(read_json(str(paths[role]) + '.record.json'), paths, replay=False)"),
+    'n2a': (DRIVER, 'elif replay and value == file_hashes[role]:', 'elif False:'),
+    'n2b': (DRIVER, 'elif replay and value == file_hashes[role]:', 'elif value == file_hashes[role]:'),
+    'n2c': (DRIVER, 'skipped_self_inputs[role][key] = value', 'pass'),
 }
 
 

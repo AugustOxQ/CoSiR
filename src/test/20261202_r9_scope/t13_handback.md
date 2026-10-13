@@ -1,6 +1,7 @@
 # Ticket 13 hand-back
 
-Updated by the review fix round; see `t13_fix_handback.md` for finding-by-finding changes, the mutation table, and current commands.
+Updated by two review fix rounds; see `t13_fix_handback.md` for M1–M5/L1–L7 and `t13_fix2_handback.md` for N1–N4,
+the real replay check, current mutation results and controller commands.
 
 Built `run_r9_stage2.py` and `test_r9_stage2.py`; extended `r9_pins.build_pins` for the new-backbone evidence. Default
 CLIP pins retain their original schema. The existing independence test now allows exactly the three original R6
