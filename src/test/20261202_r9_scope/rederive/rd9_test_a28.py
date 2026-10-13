@@ -100,3 +100,40 @@ def test_episode_hash_guard_rejects_duplicates_and_prior_collisions(hashes,prior
     from rd9_phase2 import hash_guard
     with pytest.raises(AssertionError): hash_guard(hashes,prior)
     hash_guard({'55':{'a':'x','b':'y'}},{'older'})
+
+
+# --- value_codes reads ticket 14's record list: each aspect is [{"code": int, "name": str}, ...] ---
+def _records(codes): return [dict(code=c,name=f'n{c}') for c in codes]
+
+
+def test_value_codes_reads_list_of_code_name_records():
+    rec={'emotion':_records([3,0,1]),'style':_records([9,12]),'genre':_records([7,2])}
+    assert E.value_codes(rec)=={'emotion':[0,1,3],'style':[9,12],'genre':[2,7]}
+
+
+def test_value_codes_still_reads_plain_code_lists():
+    assert E.value_codes(VALUES)=={a:list(range(5)) for a in VALUES}
+
+
+@pytest.mark.parametrize('bad',[
+    _records([1,1]),                          # duplicate code
+    [dict(code=-1,name='x')],                 # negative
+    [dict(code=1.0,name='x')],                # not an int
+    [dict(code=1)],                           # name missing
+    [dict(code=1,name='x',extra=2)],          # extra key
+    [dict(code=1,name='x'),2],                # mixed forms
+    {'codes':[1],'names':['x']},              # the old dict form is gone
+])
+def test_value_codes_rejects_malformed_aspects(bad):
+    rec={'emotion':[0],'style':bad,'genre':[0]}  # only `style` is bad; plain lists elsewhere
+    with pytest.raises((AssertionError,TypeError)): E.value_codes(rec)
+
+
+def test_value_codes_on_real_ticket14_file():
+    import json
+    path=E.MAIN/'src/test/20261202_r9_scope/results/value_sets_a28.json'
+    if not path.exists(): pytest.skip('ticket 14 file absent')
+    got=E.value_codes(json.loads(path.read_text()))
+    assert got['emotion']==list(range(8))
+    assert got['style']==[9,12,17,20,21,23,24]
+    assert got['genre']==[0,1,2,4,6,7,8,9]
