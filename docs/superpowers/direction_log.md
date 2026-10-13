@@ -18,12 +18,16 @@ backbones (746 paintings, captions translated to English, a two-level test), and
 development splits. Stage 3 (the CUB, SemArt and Affection reads) gets its own decide chat about 2026-10-17; Affection
 is dropped if no data comes by 2026-10-24. Next: the r9 build, after the user's container restart (day run); the paper
 chat opens beside it. Results enter the paper body by 2026-11-06; CVPR abstract 2026-11-10, paper 2026-11-16.
+Side check (2026-10-14, outside r9): AFF as it is needs at least 3 example pairs; with 1 pair it is below B′(A0)
+([k-shot report](../reports/auto/v2/2026-12-03_kshot_supports.md)).
 
 ## Parked ideas
 
 Candidates proposed since 2026-10-02 but neither chosen nor tried; step 3 reads this list first. Tried-and-killed ideas
 stay in the entries below.
 
+- More example pairs (k = 5 to 7, new episodes) and a re-fit of the reader and gate at 1 or 2 pairs (not chosen by the user, 2026-10-14; [proposed in](../reports/auto/v2/2026-12-03_kshot_supports.md))
+- Leiden image and caption groupings at a group count matched to k-means 64 (the 2026-11-16 descriptive arm used 17 and 30 groups and lost: reader margin −0.32 [−0.57, −0.06]; offered 2026-10-14, no answer yet; [records](../../src/test/20261116_grouping_step1_style/20261116_grouping_step1_style_log.md))
 - The DINOv2 reader as AFF's fourth grouping (r8 screen: +0.285 [−0.012, +0.592] R@1 over AFF, emotion × style −0.38; its lead sits on style × genre, where it is level with its own matched control, −0.07 [−0.43, +0.30]) (deferred by the user, 2026-10-13, "maybe after the main finished if we have time"; [proposed in](../reports/auto/v2/2026-11-29_learned_grouping.md))
 - X-Cluster criteria (a multimodal LLM proposes criteria such as "style") placed under our reader, the comparator reviewers will ask for (paper stage; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §1)
 - COCO-4c (5,000 COCO images labelled for activity, location, mood and time of day, with COCO captions) as the second dataset for a generality test (never tried; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §6; r9 step 3: mood is close to affect, but COCO captions rarely state mood, [2026-12-01 note](../reports/literature/2026-12-01_affect_caption_datasets.md))
@@ -33,6 +37,20 @@ stay in the entries below.
 - Separate gate weights for image and caption queries (never tried, ranked low; [proposed in](../reports/auto/v2/2026-11-20_r1_levers_brainstorm.md), §4 idea 5)
 - Practice-bank detectors with richer negatives or a "none" class (never tried, judged low value; [proposed in](../reports/auto/v2/2026-11-20_r1_levers_brainstorm.md), §4 idea 9)
 - A grouped concept basis (N3) and "infer the aspect name, then embed" (N5) (never tried; their privileged references were never run; [proposed in](../../src/test/20261107_new_method_candidates/synthesis.md), §4.2)
+
+## 2026-10-14 · K-shot side check: AFF needs at least 3 example pairs; stop there
+
+- **Read:** frozen AFF with the first k support and contrast pairs of the 12,288 seed-42 development episodes. AFF −
+  B′(A0): +0.70 [+0.46, +0.94] at 4 pairs, +0.63 [+0.40, +0.87] at 3, +0.19 [−0.06, +0.44] at 2, −1.73 [−2.05, −1.41]
+  at 1. Condition gain 3.11, 3.10, 2.58, 1.99. At 1 pair the gate opens in 62% of condition-b values (30% at 4).
+- **Meaning (C):** not given at the wrap-up; after the first read the user asked for k = 1, then to stop.
+- **Decided (A):** no k = 5 to 7 (user, after seeing the options); add k = 1, then stop (user). Exploration, small loop,
+  side chat outside r9. The k = 1 rule for the reader's spread features: agent default.
+- **Why:** a cheap check of how many example pairs AFF needs, in the spirit of k-shot learning (user).
+- **Also answered:** why Leiden for affect and k-means for the CLIP groupings. k-means 64 was inherited from stage (d);
+  Leiden on CLIP features lost in the 2026-11-16 descriptive arm (17 and 30 groups). The matched-count check is parked.
+- **Links:** [report](../reports/auto/v2/2026-12-03_kshot_supports.md) ·
+  [user-read](../user_read/2026-10-14_kshot_supports.md) · [handoff in](handoffs/2026-10-14-aff-questions-handoff.md)
 
 ## 2026-10-13 · Round 8: no pick in either track, AFF stays best; next, AFF on more backbones and datasets, and the paper
 
