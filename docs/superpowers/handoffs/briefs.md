@@ -179,3 +179,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-r9-decide-handoff.md
 - New chat: tab 'r9 decide', session 347d0b89-e31b-45e0-99c6-172e32722282
 
+[brief] CoSiR: r9 decide -> r9 decide 2 (2026-10-13 13:01 Amsterdam)
+- Done: decisions C, A and B. AFF stays frozen; the grouping line is closed. Scope: Qwen3-VL-Embedding-2B, then SigLIP 2; CUB and SemArt; Affection and ArtELingo-28.
+- State: the facts brief is ready. ArtELingo-28 is on disk in full (1,658 paintings, 28 languages). Qwen features cover every ArtELingo row.
+- Next: the grill, key questions answer-first; then the spec.
+- Blocked: Affection's data waits for the user's access request.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-decide-2-handoff.md
+- New chat: tab 'r9 decide 2', session c4d522ed-2388-457a-b411-919bcfe578e6
+
