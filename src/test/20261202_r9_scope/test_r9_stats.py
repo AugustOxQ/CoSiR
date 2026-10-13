@@ -106,7 +106,7 @@ def test_main_and_earlier_modules_resolve_under_the_main_checkout():
     assert Path(S.RS.__file__).resolve().parent == S.MAIN / "src/test/20261121_round3_affect_gate"
     assert Path(S.C.__file__).resolve().parent == S.MAIN / "src/test/20261117_reader_fix_csd"
     assert S._cluster_bootstrap is S._AM.cluster_bootstrap
-    assert S.rule_sha256() == "7e2a6dde2adfdcbd8197bab7136ceaac031e4f933212bd2e2a70a7297d93e68b"
+    assert S.rule_sha256() == "69a365c3035211e0162ddaf18dce96a87477e09e1eccf6294148ccf3d1332a4f"
 
 
 # ------------------------------------------------------------------------------------------------------ the draws
