@@ -11,12 +11,13 @@ weekly and stage reports.
 
 ## Now (2026-10-13)
 
-AFF stays the current best (round 6 held GO: +0.60 R@1 over B′(A0); style × genre loses). Round 8 (learned groupings
-and an encoder screen) ended at its seed-42 gate with no pick; the DINOv2 reader is parked. r9 (decisions A and B,
-2026-10-13): AFF stays frozen and its scope grows for the CVPR paper: backbones Qwen3-VL-Embedding-2B, then SigLIP 2;
-CUB and SemArt as scope runs; Affection (with a COCO-category join, after a feasibility check) and ArtELingo-28 as a
-language check; the paper runs in a `claude-paper` chat with ARS review rounds. Next: the grill and the spec in the
-r9 decide chat. CVPR abstract 2026-11-10, paper 2026-11-16.
+AFF stays the current best (round 6 held GO: +0.60 R@1 over B′(A0); style × genre loses). r9's spec is approved
+(2026-10-13 15:05, [spec](specs/2026-10-13-r9-aff-scope-design.md)): AFF as a fixed recipe on Qwen3-VL-Embedding-2B and SigLIP 2
+(held reads H6 and H7, round 6's seven checks per backbone), then the ArtELingo-28 language check on all three
+backbones (746 paintings, captions translated to English, a two-level test), and CLIP AFF probes on the CUB and SemArt
+development splits. Stage 3 (the CUB, SemArt and Affection reads) gets its own decide chat about 2026-10-17; Affection
+is dropped if no data comes by 2026-10-24. Next: the r9 build, after the user's container restart (day run); the paper
+chat opens beside it. Results enter the paper body by 2026-11-06; CVPR abstract 2026-11-10, paper 2026-11-16.
 
 ## Parked ideas
 
@@ -78,6 +79,15 @@ stay in the entries below.
   stay as scope runs (decision A).
 - **Why:** the paper's first weakness is scope; a frozen AFF on more backbones and datasets answers it without changing
   the method that the held read tested.
+- **Grill (step 5)** (2026-10-13, `r9 decide 2`): the key answers are spec §4 D1 to D13, each with who decided. Order:
+  backbones on ArtELingo, then ArtELingo-28 on all backbones, then CUB, SemArt and Affection (user). "Frozen" means
+  the fixed recipe: every part above the encoder re-fitted, the same automatic seed-42 pick re-run (user); if the pick
+  sets λ_a = 0 in both halves, the backbone's reads are not run (user). Bar: round 6's seven checks per backbone
+  (user). ArtELingo-28: translated to English (user), 746 paintings (user), the two-level test (**user, after seeing
+  the recommendation**; the idea was the user's). Paper chat opens now, cut-off 2026-11-06. Held reads stay local
+  (user, after seeing the recommendation). Terms added to `GLOSSARY.md`.
+- **Spec (step 6):** [2026-10-13-r9-aff-scope-design.md](specs/2026-10-13-r9-aff-scope-design.md), approved 2026-10-13 15:05; handoffs
+  [r9 build](handoffs/2026-10-13-r9-build-handoff.md) and [paper start](handoffs/2026-10-13-paper-start-handoff.md).
 - **Links:** report `docs/reports/auto/v2/2026-11-29_learned_grouping.md`; user-read
   `docs/user_read/2026-10-13_learned_grouping.md`; specs `docs/superpowers/specs/2026-10-12-r8-learned-grouping-design.md`
   and `docs/superpowers/specs/2026-10-12-r8-encoder-screen-design.md`; rule
