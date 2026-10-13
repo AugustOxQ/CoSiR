@@ -187,3 +187,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-r9-decide-2-handoff.md
 - New chat: tab 'r9 decide 2', session c4d522ed-2388-457a-b411-919bcfe578e6
 
+[brief] CoSiR: r9 decide 2 -> r9 build (2026-10-13 15:12 Amsterdam)
+- Done: grill and spec approved: AFF as a fixed recipe on Qwen and SigLIP 2, the ArtELingo-28 language check, CUB and SemArt probes.
+- State: nothing built. node406 and node408 reserved, 3 GPUs each, until 10-18 14:40. Day run: ask the user when unsure.
+- Next: the decision rule, checked by Opus and committed; then tickets; cluster wave 1 at once.
+- Blocked: Affection waits for the user's access request (dropped if no data by 10-24); not part of this build.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-handoff.md
+- New chat: tab 'r9 build', session 9be763ef-3a11-43a1-9938-43dfc67d003a
+
