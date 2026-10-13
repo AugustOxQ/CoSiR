@@ -191,7 +191,7 @@ def test_every_marked_guard_has_a_mutation_test():
     names = set()
     for module in GUARDED:
         names |= {(module, g) for g in re.findall(r"# guard:([a-z_0-9]+)", (HERE / module).read_text())}
-    text = Path(__file__).read_text()
+    text = Path(__file__).read_text() + (HERE / "test_r9_held_shared.py").read_text()   # ticket 20a's guards
     covered = set()
     for module, args in re.findall(r'mutant\(tmp_path, "((?:r9_picks|r9_score)\.py)", ([^)]*)\)', text):
         covered |= {(module, g) for g in re.findall(r'"([a-z_0-9]+)"', args)}

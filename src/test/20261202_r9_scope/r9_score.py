@@ -23,7 +23,16 @@ no r1_cf. include_pm=True adds the descriptive extras, the nine PM scorers and R
 check (contracts section 5, amendment 14:50); on a held bundle it is refused unless held_verdict.json exists (the
 descriptive pass, ticket 13). The regression (ticket 07) and the descriptive pass call it with True.
 
-Guards carry a `# guard:<name>` marker; test_r9_score.py deletes each on a copy and shows that its scenario then goes
+Ticket 20a (held reads H6/H7 and the ArtELingo-28 reads H8 to H10, rule sections 4.1, 4.2, 7.4):
+  cells=None / taus=None      CLIP's CELLS and R3.assert_taus(); otherwise the backbone's (cells_from_record, taus_of)
+  secondary=False             scores only what P1 to P7 read: cosine, rca, B, B0, aff_fused, aff_cf. No B1, no R1 gate set
+                              or cell, no PM (include_pm=True is refused). Rule section 7.4: no B1, R1 or PM metric
+                              before held_verdict_<Hn>.json exists; section 4.1: no secondary checks.
+  verdict=<path>              the read's held_verdict_<Hn>.json. Mode "a28" requires it. A given path (or mode "a28")
+                              refuses B1/R1 (secondary=True) as well as PM until the file exists. verdict=None on a held
+                              bundle keeps round 6's one file, VERDICT, which gates only include_pm=True.
+
+Guards carry a `# guard:<name>` marker; test_r9_score.py and test_r9_held_shared.py delete each on a copy and shows that its scenario then goes
 through.
 """
 import sys
@@ -36,6 +45,8 @@ import r9_common as R  # noqa: E402  (first, before anything that imports src)
 import r9_bundle as B  # noqa: E402
 import r9_context as X  # noqa: E402
 import r9_picks as P  # noqa: E402
+
+import json  # noqa: E402
 
 import numpy as np  # noqa: E402
 
@@ -55,6 +66,8 @@ PM_SCORERS = B.PM_NAMES
 CORE_SCORERS = ("cosine", "rca", "B", "B0", "B1", "aff_fused", "aff_cf", "r1_fused")    # rule section 8 item 3
 DESCRIPTIVE_EXTRAS = PM_SCORERS + ("r1_cf",)                                         # include_pm=True only
 ALL_SCORERS = ("cosine", "rca") + PM_SCORERS + ("B", "B0", "B1", "aff_fused", "aff_cf", "r1_fused", "r1_cf")
+PRIMARY_SCORERS = ("cosine", "rca", "B", "B0", "aff_fused", "aff_cf")     # secondary=False: what P1 to P7 read
+READ_MODES = ("held", "a28")                                              # bundle modes with a verdict file (rule 7.4)
 EXTRA_KEYS = ("gates", "reader", "cl", "pair_index")
 CONDITION_FREE = ("cosine", "B", "B0", "B1", "aff_cf", "r1_cf")    # gain 0 on every episode (when scored)
 GATE_SETS = ("aff", "r1")
@@ -74,6 +87,47 @@ if not (CELLS["aff"]["fused"] == tuple(R3.AFF_CELLS["fused"]) and CELLS["aff"]["
 def _require(cond, msg, exc=AssertionError):
     if not cond:
         raise exc(msg)
+
+
+# ---------------------------------------------------------------- the backbone's cells and taus (ticket 20a)
+
+RC_TAU_REL = "20261117_reader_fix_csd/results/rc_tau.json"          # the key of R.INPUT_SHA256
+CELL_RECORD_KEYS = {"aff": ("aff", "fused"), "cf": ("aff", "cf"),
+                    "r1_fused": ("r1", "fused"), "r1_counterpart": ("r1", "cf")}
+
+
+def cells_from_record(rec) -> dict:
+    """A cells_seed42.json record (r9_picks.read_cells' keys aff, cf, r1_fused, r1_counterpart: two cell numbers, one
+    per tune half) -> CELLS' shape {"aff": {"fused": (a, b), "cf": (c, d)}, "r1": {...}} of Python ints."""
+    _require(isinstance(rec, dict) and all(k in rec for k in CELL_RECORD_KEYS),
+             f"cells record needs the keys {tuple(CELL_RECORD_KEYS)}")
+    out = {"aff": {}, "r1": {}}
+    for key, (who, kind) in CELL_RECORD_KEYS.items():
+        pair = rec[key]
+        _require(isinstance(pair, (list, tuple)) and len(pair) == len(HALVES)
+                 and all(type(c) is int and 0 <= c < F2.CELLS_PER_KAPPA for c in pair),
+                 f"cells record {key}: two cell numbers in 0..{F2.CELLS_PER_KAPPA - 1}, got {pair!r}")
+        out[who][kind] = (int(pair[0]), int(pair[1]))
+    return out
+
+
+def taus_of(backbone) -> tuple:
+    """The four gate thresholds of a backbone. CLIP: round 3's rule values (R3.assert_taus). Others: the backbone's
+    pinned rc_tau.json (recipe output; SHA-256 asserted against the backbone's pins, path asserted to be parts's)."""
+    if backbone == "clip_b32":
+        return tuple(R3.assert_taus())
+    from r9_backbone import parts
+    R.assert_input(RC_TAU_REL, backbone)
+    path = Path(R.input_pins(backbone)[RC_TAU_REL][0])
+    _require(path == Path(parts(backbone)["rc_tau"]), f"{backbone}: pinned rc_tau path {path} is not the recipe part")
+    return _check_taus(json.loads(path.read_text())["taus"], f"{backbone} rc_tau.json")
+
+
+def _check_taus(taus, what) -> tuple:
+    _require(isinstance(taus, (list, tuple)) and len(taus) == N_TAU and all(type(t) is float for t in taus)
+             and all(np.isfinite(t) for t in taus) and all(a < b for a, b in zip(taus, taus[1:])),
+             f"{what}: taus must be {N_TAU} increasing finite floats, got {taus!r}")
+    return tuple(taus)
 
 
 # ---------------------------------------------------------------- assembly by parity
@@ -157,13 +211,17 @@ def frozen_cells(base, parity, T, gates, fused_cells, cf_cells=None):
 
 # ---------------------------------------------------------------- one seed
 
-def score_seed(bundle, picks, lambdas, readers, *, include_pm) -> dict:
+def score_seed(bundle, picks, lambdas, readers, *, include_pm, cells=None, taus=None, secondary=True,
+               verdict=None) -> dict:
     """Contracts section 5. picks: {"B", "B0", "B1": {half: [lu, la]}} (load_picks or picks_seed42; "0"/"1" keys
     accepted); lambdas: {scorer: {half: lam}} (frozen_lambdas; rca always read, the nine PM only with include_pm);
     readers: round 1's A0 half-readers (r9_bundle.load_readers).
     -> {scorer: per_anchor dict} for CORE_SCORERS (ALL_SCORERS with include_pm: the nine PM scorers and r1_cf
     added), in that order, then "gates" {"aff",
-    "r1": {c: (4, n) float32}}, "reader" {"P", "m", "pick": {c: ...}}, "cl", "pair_index"."""
+    "r1": {c: (4, n) float32}}, "reader" {"P", "m", "pick": {c: ...}}, "cl", "pair_index".
+    cells: CELLS' shape (cells_from_record) or None for CLIP's; taus: four floats (taus_of) or None for round 3's.
+    secondary=False: only cosine, rca, B, B0, aff_fused, aff_cf (+ EXTRA_KEYS, "gates" with "aff" alone); needs
+    include_pm=False; picks["B1"] is not read. verdict: this read's held_verdict_<Hn>.json (see the module text)."""
     msg = f"include_pm must be True or False, not {include_pm!r} (rule section 8 item 3)"
     _require(isinstance(include_pm, bool), msg)  # guard:include_pm_bool
     n = int(bundle.n)
@@ -173,11 +231,28 @@ def score_seed(bundle, picks, lambdas, readers, *, include_pm) -> dict:
     parity = np.asarray(bundle.parity)
     _require(parity.shape == (n,) and np.array_equal(parity, np.arange(n) % 2),
              "parity must be the episode-index parity (rule section 5 item 3)")  # guard:parity
-    if include_pm and bundle.mode == "held":
-        _require(Path(VERDICT).is_file(), f"no PM metric on held episodes before {Path(VERDICT).name} exists (rule "
-                                          f"section 8 item 3)")  # guard:pm_before_verdict
+    msg = f"secondary must be True or False, not {secondary!r} (rule section 7.4)"
+    _require(isinstance(secondary, bool), msg)  # guard:secondary_bool
+    msg = "secondary=False scores no PM metric: include_pm must be False (rule sections 4.1, 7.4)"
+    _require(secondary or not include_pm, msg)  # guard:secondary_no_pm
+    gated_read = bundle.mode in READ_MODES
+    msg = f"mode {bundle.mode!r} needs the read's held_verdict_<Hn>.json path as verdict= (rule section 7.2)"
+    _require(bundle.mode != "a28" or verdict is not None, msg)  # guard:a28_verdict_path
+    verdict_file = Path(VERDICT if verdict is None else verdict)
+    if include_pm and gated_read:
+        _require(verdict_file.is_file(), f"no PM metric on {bundle.mode} episodes before {verdict_file.name} exists "
+                                         f"(rule sections 7.4, 8 item 3)")  # guard:pm_before_verdict
+    if secondary and gated_read and (verdict is not None or bundle.mode == "a28"):
+        _require(verdict_file.is_file(), f"no B1 or R1 metric on {bundle.mode} episodes before {verdict_file.name} "
+                                         f"exists (rule section 7.4)")  # guard:secondary_before_verdict
+    cells = CELLS if cells is None else cells
+    need = [("aff", "fused"), ("aff", "cf")] + ([("r1", "fused")] if secondary else [])    # r1's cf: include_pm only
+    _require(all(kind in cells.get(who, {}) for who, kind in need),
+             "cells needs aff fused and cf and, with secondary, r1 fused (r1 cf with include_pm)")
+    taus = R3.assert_taus() if taus is None else _check_taus(taus, "taus")                    # D6
     B.check_readers(readers)
-    nested = {name: P.as_nested_pick(picks[name], name) for name in P.NESTED}
+    scored = P.NESTED if secondary else ("B", "B0")
+    nested = {name: P.as_nested_pick(picks[name], name) for name in scored}
     lam_names = ("rca",) + (PM_SCORERS if include_pm else ())
     lams = {name: P.as_lambda_pick(lambdas[name], name) for name in lam_names}
 
@@ -186,17 +261,18 @@ def score_seed(bundle, picks, lambdas, readers, *, include_pm) -> dict:
     for name in lam_names:
         out[name] = per_anchor(frozen_fused(cos, bundle.pm_terms[name], lams[name], parity))
     frozen = {}
-    for name in P.NESTED:
+    for name in scored:
         frozen[name] = frozen_nested(cos, bundle.t_n1u, getattr(bundle, P.TERM_OF[name]), nested[name], parity)
         out[name] = per_anchor(frozen[name])
 
     rd = RF.reader(bundle, readers)                         # D5: P, T, m, pick from bundle.F and bundle.stack
-    taus = R3.assert_taus()                                 # D6
-    gates = {"aff": RF.gates_aff(rd["m"], rd["pick"], taus), "r1": RF.gates_r1(rd["m"], taus)}
-    for who in GATE_SETS:
+    gates = {"aff": RF.gates_aff(rd["m"], rd["pick"], taus)}
+    if secondary:
+        gates["r1"] = RF.gates_r1(rd["m"], taus)
+    for who in gates:
         with_cf = who == "aff" or include_pm               # R1's counterpart: descriptive only (rule section 8.3)
-        fused, cf = frozen_cells(frozen["B"], parity, rd["T"], gates[who], CELLS[who]["fused"],
-                                 CELLS[who]["cf"] if with_cf else None)
+        fused, cf = frozen_cells(frozen["B"], parity, rd["T"], gates[who], cells[who]["fused"],
+                                 cells[who]["cf"] if with_cf else None)
         out[f"{who}_fused"] = per_anchor(fused)
         if with_cf:
             out[f"{who}_cf"] = per_anchor(cf)
@@ -205,9 +281,9 @@ def score_seed(bundle, picks, lambdas, readers, *, include_pm) -> dict:
                         f"condition-free, hazard 10)")  # guard:cf_gain
 
     out["gates"] = {who: {c: np.stack([gates[who][t][c] for t in range(N_TAU)]) for c in CONDITIONS}
-                    for who in GATE_SETS}
+                    for who in gates}
     out["reader"] = {k: rd[k] for k in ("P", "m", "pick")}
     out["cl"] = np.asarray(bundle.cl)
     out["pair_index"] = np.asarray(bundle.pair_index)
-    order = (ALL_SCORERS if include_pm else CORE_SCORERS) + EXTRA_KEYS
+    order = (ALL_SCORERS if include_pm else CORE_SCORERS if secondary else PRIMARY_SCORERS) + EXTRA_KEYS
     return {k: out[k] for k in order}
