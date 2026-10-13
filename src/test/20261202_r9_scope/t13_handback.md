@@ -1,5 +1,7 @@
 # Ticket 13 hand-back
 
+Updated by the review fix round; see `t13_fix_handback.md` for finding-by-finding changes, the mutation table, and current commands.
+
 Built `run_r9_stage2.py` and `test_r9_stage2.py`; extended `r9_pins.build_pins` for the new-backbone evidence. Default
 CLIP pins retain their original schema. The existing independence test now allows exactly the three original R6
 statistics producers in the stage 2 driver, as required by this ticket.
@@ -16,12 +18,12 @@ producer script against the passed `stage0b.json`. It checks feature-store prove
 then scores only seed-42 selection episodes. R6's actual `pass_record`, `per_episode_arrays`, and
 `sensitivity_record` functions produce the counts and sigma components; stage 0a's functions produce the means
 and 96 array keys. The pins contain all shared roles, these numbers/hashes, the sigma file's path/hash, records,
-receipts, gate share, and switched-off status. Switched-off backbones are marked `not run: switched off` and no
-held runner is invoked.
+receipts and gate share for running backbones. A switched-off backbone gets only a stage 2 status record with
+`not run: switched off` and its gate share; scoring and numerical pins stop there. No held runner is invoked.
 
 Choices beyond the fixed ticket: `--step record` and `--step all` are added; record is separate so it can be run
 without repeating fits. Scipy graph NPZ `shape` and `format` are checked as copied container metadata; `data`,
-`indices`, and `indptr` are checked as made arrays. Reader pickle classes/sample counts are copied metadata;
+`indices`, and `indptr` are checked as made arrays. Reader pickle classes are copied metadata; iteration/sample counts are un-compared metadata;
 learned coefficients/scaler arrays are made. Unused style-head arrays follow 07's `keys_unrefit` NaN contract.
 Picks, cells, `picked.json`, and `baselines_seed42.json` are exempt from differing from CLIP. All output creation
 is exclusive. The live recipe directory is fixed; only dry-run record/pins take `--out`, within this round folder.
@@ -35,20 +37,15 @@ Run from `/project/CoSiR-wt/r9-t13`:
 PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python -m pytest -q -p no:cacheprovider --basetemp=src/test/20261202_r9_scope/results/t13_pytest_final src/test/20261202_r9_scope/test_r9_stage2.py src/test/20261202_r9_scope/test_r9_pins.py
 ```
 
-Result: **33 passed in 15.73 seconds**. The tests include each of the three provenance refusals, the pins step's missing-record/failed-stage/failed-picks
+Original build: **33 passed in 15.73 seconds**. The review fix adds call-site coverage and a mutation sweep; current counts are in `t13_fix_handback.md`. The tests include each of the three provenance refusals, the pins step's missing-record/failed-stage/failed-picks
 refusals, and exact equality of R6's sigma producer against all of CLIP's stored sigma components. CLI help is
 smoke-checked. No GPU was run by the implementer.
 
 ## Controller commands (each long command is intentionally left to the controller)
 
-The external CLIP replay was incomplete at implementation time (its log had reached reader fitting, with no
-`replay done:` summary). It is read-only for this ticket. Once its log ends with that summary, run the stage 0b
-comparison using this worktree's code and write its pass here (8–12 minutes, CPU; requires successful case 1 or 2):
-
-```bash
-cd /project/CoSiR-wt/r9-t13
-PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/run_r9_stage0b.py --replay /project/CoSiR-wt/r9-replay/src/test/20261202_r9_scope/results/replay/clip_b32/ --out src/test/20261202_r9_scope/results/stage0b.json
-```
+The controller's merge `f900a7f` brings the completed replay and passed stage 0b case 1. The commands below
+explicitly read `/project/CoSiR/src/test/20261202_r9_scope/results/stage0b.json`; this worktree has no local copy.
+The runtime recipe import closure is checked against that certificate. The external replay is read-only.
 
 Then the required CLIP dry run, writing only here. `record` takes 8–12 minutes, CPU; `pins` takes under a minute.
 The record step asserts exact equality of the five means, every non-run-specific pass-count field, all 96 arrays,
@@ -57,8 +54,8 @@ After that computation/equality check, the dry run writes CLIP's original sensit
 provenance fields and formatting as well; the dry-run sigma file is therefore byte-for-byte CLIP's stored file.
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/run_r9_stage2.py --backbone clip_b32 --step record --dry-run --replay /project/CoSiR-wt/r9-replay/src/test/20261202_r9_scope/results/replay/clip_b32/ --out src/test/20261202_r9_scope/results/t13_clip_dryrun
-PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/run_r9_stage2.py --backbone clip_b32 --step pins --dry-run --replay /project/CoSiR-wt/r9-replay/src/test/20261202_r9_scope/results/replay/clip_b32/ --out src/test/20261202_r9_scope/results/t13_clip_dryrun
+PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/run_r9_stage2.py --backbone clip_b32 --step record --dry-run --replay /project/CoSiR-wt/r9-replay/src/test/20261202_r9_scope/results/replay/clip_b32/ --stage0b /project/CoSiR/src/test/20261202_r9_scope/results/stage0b.json --out src/test/20261202_r9_scope/results/t13_clip_dryrun
+PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/run_r9_stage2.py --backbone clip_b32 --step pins --dry-run --replay /project/CoSiR-wt/r9-replay/src/test/20261202_r9_scope/results/replay/clip_b32/ --stage0b /project/CoSiR/src/test/20261202_r9_scope/results/stage0b.json --out src/test/20261202_r9_scope/results/t13_clip_dryrun
 ```
 
 After that, the two live chains (approximately 65–90 minutes each; estimates from the CLIP replay, the larger
@@ -68,8 +65,8 @@ propagates failure/lock exit codes and stops immediately on any failed step. A c
 use explicit `--step reader`, etc. to continue from successful preceding receipts.
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/run_r9_stage2.py --backbone qwen3vl_emb_2b --step all
-PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/run_r9_stage2.py --backbone siglip2_so400m --step all
+PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/run_r9_stage2.py --backbone qwen3vl_emb_2b --step all --stage0b /project/CoSiR/src/test/20261202_r9_scope/results/stage0b.json
+PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/run_r9_stage2.py --backbone siglip2_so400m --step all --stage0b /project/CoSiR/src/test/20261202_r9_scope/results/stage0b.json
 ```
 
 The driver sets `CUDA_VISIBLE_DEVICES=0` only in the two locked GPU subprocesses. No held row is scored by these

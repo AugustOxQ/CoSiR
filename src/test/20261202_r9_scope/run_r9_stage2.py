@@ -12,6 +12,7 @@ Dry run scores the read-only replay through the same chain and requires exact
 CLIP numbers, counts, arrays and sensitivity components. Writes go only to TMP.
 """
 import argparse
+import ast
 import contextlib
 import hashlib
 import json
@@ -89,6 +90,14 @@ FROZEN_KEYS = {'prepare': ('groups', 'split_train', 'scorer_train', 'selection')
 
 
 def assert_frozen(role, path, clip):
+    # Frozen roles resolve to CLIP itself; comparison with the path alone is
+    # vacuous. Bind its bytes to the committed CLIP pins and the R6 input pins.
+    pins = read_json(R.pins_path('clip_b32'))['parts']
+    sha = R.sha256_file(path)
+    require(role in pins and sha == pins[role]['sha256'], f'frozen {role} differs from pins_clip.json')
+    for rel, want in R.INPUT_SHA256.items():
+        if R.TEST / rel == Path(clip):
+            require(sha == want, f'frozen {role} differs from its round 6 pin')
     if Path(path).suffix == '.npz':
         with np.load(path, allow_pickle=False) as a, np.load(clip, allow_pickle=False) as b:
             keys = FROZEN_KEYS.get(role, b.files)
@@ -113,7 +122,48 @@ def assert_script(record, stage0b, scripts_dir=HERE):
     return want
 
 
-def require_pinnable(backbone, parts, stage, *, recipe_roles=BB.RECIPE_ROLES):
+def recipe_module_shas(here=None, roots=None):
+    """Runtime import closure of the recipe, confined to round-folder modules.
+
+    The lazy pins -> driver import is the post-recipe consumer boundary, not a
+    fit dependency. Exclude that boundary so unrelated held runners and this
+    driver's orchestration changes do not invalidate the certified recipe.
+    """
+    here = Path(here or HERE)
+    local = {p.stem: p for p in here.glob('*.py') if not p.name.startswith('test_')}
+    pending = list(roots or STEP_SCRIPTS.values())
+    seen = set()
+    while pending:
+        name = Path(pending.pop()).stem
+        if name in seen or name == 'run_r9_stage2':
+            continue
+        require(name in local, f'recipe import missing: {name}')
+        seen.add(name)
+        for node in ast.walk(ast.parse(local[name].read_text())):
+            imports = []
+            if isinstance(node, ast.Import):
+                imports = [a.name.split('.')[0] for a in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imports = [node.module.split('.')[0]]
+            elif isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value in local:
+                # Literal names in import_module calls and CODE_MODULES lists.
+                imports = [node.value]
+            pending.extend(n for n in imports if n in local)
+    prefix = R.HERE.relative_to(R.CHECKOUT)
+    return {(prefix / local[n].name).as_posix(): R.sha256_file(local[n]) for n in sorted(seen)}
+
+
+def assert_modules(stage0b, *, here=None, roots=None):
+    require(stage0b.get('passed') is True, 'stage 0b has not passed')
+    current = recipe_module_shas(here, roots)
+    for module, sha in current.items():
+        require(stage0b.get('module_sha256', {}).get(module) == sha,
+                f'{Path(module).name} differs from the bytes stage 0b passed on: rerun the stage 0b compare')
+    return current
+
+
+def require_pinnable(backbone, parts, stage, *, recipe_roles=None):
+    recipe_roles = BB.RECIPE_ROLES if recipe_roles is None else recipe_roles
     for role in recipe_roles:
         path = Path(parts[role])
         require(path.is_file() and Path(str(path) + '.record.json').is_file(), f'{role}: file or record missing')
@@ -139,18 +189,20 @@ def _arrays(obj, prefix=''):
         yield from _arrays(vars(obj), prefix)
 
 
-def assert_part(role, path, clip, rec, *, replay=False):
-    made, copied = rec['keys_made'], rec['keys_copied']
+def assert_part(role, path, clip, rec, *, replay=False, parts=None):
+    producer_made, producer_copied = rec['keys_made'], rec['keys_copied']
+    made, copied, metadata = [], [], []
+    backbone_metadata = []
     if path.suffix == '.npz':
         with np.load(path, allow_pickle=False) as a, np.load(clip, allow_pickle=False) as b:
             unrefit = rec.get('keys_unrefit', [])
-            require(set(a.files) == set(made) | set(copied) | set(unrefit), f'{role}: incomplete provenance keys')
+            require(set(a.files) == set(producer_made) | set(producer_copied) | set(unrefit),
+                    f'{role}: incomplete provenance keys')
             for k in unrefit:
                 require(np.isnan(a[k]).all(), f'{role}/{k}: unused head must be NaN')
-            # scipy's sparse container shape/format describe the frozen row space,
-            # rather than a fitted array; the three numerical graph arrays are fitted.
+            made, copied = list(producer_made), list(producer_copied)
             if role == 'graph':
-                copied = list(copied) + [k for k in made if k in ('shape', 'format')]
+                copied += [k for k in made if k in ('shape', 'format')]
                 made = [k for k in made if k not in ('shape', 'format')]
             assert_array_provenance(a, b, made, copied, replay=replay)
     elif role == 'A3_seed42' or path.suffix == '.pkl':
@@ -162,51 +214,110 @@ def assert_part(role, path, clip, rec, *, replay=False):
                 a, b = pickle.load(f), pickle.load(g)
         a, b = dict(_arrays(a)), dict(_arrays(b))
         require(a and set(a) == set(b), f'{role}: fitted array names differ')
-        # classes and sample counts describe the frozen target/layout, not a fit.
-        copied = [k for k in a if k.endswith(('/classes_', '/n_samples_seen_'))]
-        made = [k for k in a if k not in copied and a[k].ndim > 0]
+        copied = [k for k in a if k.endswith('/classes_')]
+        metadata = [k for k in a if k.endswith(('/n_iter_', '/n_samples_seen_'))]
+        made = [k for k in a if k not in copied and k not in metadata]
         assert_array_provenance(a, b, made, copied, replay=replay)
     elif role == 'rc_tau':
+        made = [] if role in EXEMPT else ['taus']
         assert_array_provenance({'taus': read_json(path)['taus']}, {'taus': read_json(clip)['taus']},
-                                ['taus'], [], replay=replay)
+                                made, [], replay=replay)
     elif role == 'rb_reader_A0_json':
-        # Coefficients and scaler arrays are checked in the paired pickle; this
-        # JSON carries the fit's CV summaries and provenance.
         require(read_json(path)['feature_names'] == read_json(clip)['feature_names'], 'reader feature layout differs')
+        copied = ['feature_names']
+        metadata = [k for k in set(producer_made) | set(producer_copied) if k != 'feature_names']
     else:
         require(role in EXEMPT, f'no provenance comparison for {role}')
-    return {'keys_made': list(made), 'keys_copied': list(copied), 'exempt': role in EXEMPT,
+        a, b = read_json(path), read_json(clip)
+        copied = list(producer_copied)
+        if role == 'picks_seed42' and not replay:
+            # Ticket 10's producer classifies targets as copied, but its new-
+            # backbone schema explicitly makes it null (r9_picks.load_picks).
+            # Check that schema here, without claiming equality to CLIP targets.
+            require('targets' in a and a['targets'] is None, 'new-backbone picks targets must be null')
+            copied = [k for k in copied if k != 'targets']
+            backbone_metadata = ['targets']
+        for key in copied:
+            require(key in a and key in b and not S0B.deep_diff(a[key], b[key]),
+                    f'copied {role}/{key} differs from CLIP')
+        if role == 'picked':
+            require(parts is not None and a['checkpoint_sha256'] == R.sha256_file(parts['A3_seed42']),
+                    'picked checkpoint_sha256 differs from the A3 part')
+            backbone_metadata = ['checkpoint_sha256']
+    return {'keys_made': list(producer_made), 'keys_copied': list(producer_copied),
+            'keys_tested_made': made, 'keys_tested_copied': copied,
+            'keys_tested_equal': copied + (made if replay else []),
+            'keys_tested_differ': [] if replay else made, 'keys_metadata_not_compared': sorted(metadata),
+            'keys_tested_backbone_metadata': backbone_metadata,
+            'keys_tested_nan': rec.get('keys_unrefit', []), 'exempt': role in EXEMPT,
             'keys_unrefit': rec.get('keys_unrefit', [])}
 
 
 def _input_files(record, parts):
-    """Validate actual file inputs, including A3's nested store/upstream schema."""
+    """Resolve every declared input hash; recipe logical keys resolve only to B.
+
+    A3 additionally declares the hash of its build record and of local_groups
+    (C-contiguous int64 bytes). Those explicit array/file keys are checked too.
+    """
+    def resolve(key):
+        p = Path(key)
+        if p.is_absolute():
+            recipe_roles = [r for r in BB.RECIPE_ROLES if BB.CLIP_PARTS[r] == p]
+            frozen_source = any(BB.CLIP_PARTS[r] == p for r in BB.FROZEN_ROLES)
+            # The CLIP CSD-source posterior arrays are copied by 07; this
+            # explicit source path is different from the logical refitted role.
+            style_source = p == BB.CLIP_PARTS.get('step1_heads_style')
+            if recipe_roles and not frozen_source and not style_source:
+                require(any(Path(parts[r]).resolve() == p.resolve() for r in recipe_roles),
+                        f'CLIP recipe input path is not this backbone: {key}')
+            return p, 'input changed'
+        if key in R.INPUT_SHA256 or (key.endswith('.record.json') and key[:-12] in R.INPUT_SHA256):
+            p = R.TEST / key
+            recipe = [Path(parts[r]) for r in BB.RECIPE_ROLES if BB.CLIP_PARTS[r] == p]
+            if not recipe and key.endswith('.record.json'):
+                recipe = [Path(str(parts[r]) + '.record.json') for r in BB.RECIPE_ROLES
+                          if str(BB.CLIP_PARTS[r]) + '.record.json' == str(p)]
+            return (recipe[0] if recipe else p), 'logical input changed'
+        if key in parts:
+            return Path(parts[key]), 'upstream input changed'
+        candidates = {Path(v) for v in parts.values() if Path(v).name == key}
+        require(len(candidates) <= 1, f'ambiguous input key: {key}')
+        if candidates:
+            return candidates.pop(), 'upstream input changed'
+        if key == 'build_record.json':
+            return Path(parts['partitions']).parent / key, 'upstream input changed'
+        raise AssertionError(f'unknown input hash key: {key}')
+
     def visit(obj):
-        if isinstance(obj, dict):
-            for key, value in obj.items():
-                if isinstance(value, dict):
+        require(isinstance(obj, dict), 'input hashes must be mappings')
+        for key, value in obj.items():
+            if isinstance(value, dict):
+                if key == 'parts':
+                    # A3 records input paths next to its part_sha256 map.
+                    for role, declared in value.items():
+                        name = {'bank': 'bank_AIC', 'build_record': 'build_record.json'}.get(role, role)
+                        path, _ = resolve(name)
+                        require(isinstance(declared, str) and Path(declared).resolve() == path.resolve(),
+                                f'A3 input path differs: {role}')
+                else:
                     yield from visit(value)
-                elif isinstance(value, str) and len(value) == 64:
-                    p = Path(key)
-                    if p.is_absolute():
-                        require(p.is_file() and R._sha_cached(p) == value, f'input changed: {p}')
-                        yield str(p), value
-                    elif key in R.INPUT_SHA256:
-                        p = R.TEST / key
-                        candidates = [p] + [Path(v) for r, v in parts.items() if BB.CLIP_PARTS[r] == p]
-                        require(any(q.is_file() and R._sha_cached(q) == value for q in candidates),
-                                f'logical input changed: {key}')
-                        yield key, value
-                    elif key in parts or key in {Path(v).name for v in parts.values()}:
-                        candidates = [Path(v) for r, v in parts.items() if key in (r, Path(v).name)]
-                        require(any(q.is_file() and R._sha_cached(q) == value for q in candidates),
-                                f'upstream input changed: {key}')
-                        yield key, value
+            elif isinstance(value, str) and len(value) == 64 and all(c in '0123456789abcdef' for c in value):
+                if key == 'local_groups':
+                    with np.load(parts['partitions'], allow_pickle=False) as z:
+                        sha = hashlib.sha256(np.ascontiguousarray(z[key], dtype=np.int64).tobytes()).hexdigest()
+                    require(sha == value, 'local_groups input array changed')
+                else:
+                    p, message = resolve(key)
+                    require(p.is_file() and R._sha_cached(p) == value, f'{message}: {key}')
+                yield key, value
+            else:
+                raise AssertionError(f'unknown input or invalid SHA-256: {key}')
     return dict(visit(record.get('input_sha256', {})))
 
 
 def provenance(backbone, parts, stage0b, *, replay=False):
     from r9_recipe_groups import store_shas
+    assert_modules(stage0b)
     stores = store_shas(backbone)
     records = {r: read_json(str(parts[r]) + '.record.json') for r in BB.RECIPE_ROLES}
     by_hash = {R._sha_cached(parts[r]): r for r in BB.RECIPE_ROLES}
@@ -251,7 +362,7 @@ def provenance(backbone, parts, stage0b, *, replay=False):
                     f'{role}: upstream {upstream} changed')
         features = feature_lineage(role)
         require(features == stores, f'{role}: feature-store provenance is incomplete')
-        keys = assert_part(role, path, BB.CLIP_PARTS[role], rec, replay=replay)
+        keys = assert_part(role, path, BB.CLIP_PARTS[role], rec, replay=replay, parts=parts)
         out[role] = {**path_record(path), 'record': path_record(recpath),
                      'feature_store_sha256': features, 'script': Path(rec['script']).name,
                      'script_sha256': script, 'input_sha256': rec['input_sha256'],
@@ -325,6 +436,7 @@ def seed42_record(env, bundle, scored, paths):
     hashes = {k: {'sha256': hashlib.sha256(np.ascontiguousarray(a).tobytes()).hexdigest(),
                   'dtype': str(a.dtype), 'shape': list(a.shape)} for k, a in arrays.items()}
     means = {n: nums[f'{n}_mean_r1']['got'] for n in P.NESTED}
+    require(means == read_json(paths['picks_seed42'])['mean_r1'], 'picks file mean_r1 differs from seed-42 means')
     means.update(AFF=nums['aff_fused_r1']['got'], CF=nums['aff_cf_r1']['got'])
     record = {'seed': 42, 'mean_r1': means, 'checks': {c: {'point': counts['checks'][c]['point'],
                 'n_j': counts['checks'][c]['n']} for c in ST.CHECKS}, 'arrays': hashes,
@@ -377,11 +489,25 @@ def run_record(backbone, paths, results, stage0b_path, *, dry_run=False):
     for path in (stage_path, seed_path, sigma_path):
         require(not path.exists(), f'refusing to overwrite {path}')
     stage0b = read_json(stage0b_path)
+    modules = assert_modules(stage0b)
     require_pinnable(backbone, paths, {'passed': True, 'backbone': backbone})
     if not dry_run:
-        check_receipts(backbone)
+        check_receipts(backbone, module_sha256=modules)
     prov = provenance(backbone, paths, stage0b, replay=dry_run)
     cells = P.read_cells(paths['cells_seed42'])
+    stage = {'backbone': backbone, 'passed': True, 'dry_run': dry_run,
+             'status': 'not run: switched off' if cells['switched_off'] else 'ready',
+             'switched_off': cells['switched_off'], 'gate_share': cells['gate_share'],
+             'provenance': prov, 'frozen_parts': {r: path_record(paths[r]) for r in sorted(BB.FROZEN_ROLES)},
+             'stage0b': path_record(stage0b_path), 'module_sha256': modules,
+             'runner_sha256': R.sha256_file(__file__), 'rule_sha256': R.RULE_SHA256, 'time': R.amsterdam_now()}
+    if not dry_run:
+        stage['recipe_receipts'] = {step: path_record(paths['partitions'].parent / f'stage2_{step}_files.json')
+                                    for step in STEP_SCRIPTS}
+    if cells['switched_off']:
+        write_new(stage_path, stage)
+        print(f"stage 2 {backbone}: {stage['status']}; gate share {stage['gate_share']}; record {stage_path}", flush=True)
+        return stage
     if dry_run:
         with S0B.routed(paths, cells=S.cells_from_record(cells)):
             seed, sigma, arrays = _score(backbone, paths)
@@ -403,16 +529,7 @@ def run_record(backbone, paths, results, stage0b_path, *, dry_run=False):
             f.write((R.R6D / 'results/sensitivity_seed42.json').read_bytes())
     else:
         write_new(sigma_path, sigma)
-    stage = {'backbone': backbone, 'passed': True, 'dry_run': dry_run,
-             'status': 'not run: switched off' if cells['switched_off'] else 'ready',
-             'switched_off': cells['switched_off'], 'gate_share': cells['gate_share'],
-             'provenance': prov, 'frozen_parts': {r: path_record(paths[r]) for r in sorted(BB.FROZEN_ROLES)},
-             'stage0b': path_record(stage0b_path), 'seed42_record': path_record(seed_path),
-             'sensitivity_seed42': path_record(sigma_path), 'runner_sha256': R.sha256_file(__file__),
-             'rule_sha256': R.RULE_SHA256, 'time': R.amsterdam_now()}
-    if not dry_run:
-        stage['recipe_receipts'] = {step: path_record(paths['partitions'].parent / f'stage2_{step}_files.json')
-                                    for step in STEP_SCRIPTS}
+    stage.update(seed42_record=path_record(seed_path), sensitivity_seed42=path_record(sigma_path))
     write_new(stage_path, stage)
     print(f"stage 2 {backbone}: {stage['status']}; record {stage_path}", flush=True)
     return stage
@@ -424,12 +541,18 @@ def pins_evidence(backbone, paths, results=None, stage0b_path=None, *, dry_run=F
     require(stage_path.is_file(), f'{backbone}: stage 2 record missing')
     stage = read_json(stage_path)
     require_pinnable(backbone, paths, stage)
+    require(not stage.get('switched_off'), 'not run: switched off; no pins of numbers')
     require(stage.get('runner_sha256') == R.sha256_file(__file__) and stage.get('rule_sha256') == R.RULE_SHA256,
             'stage 2 runner or rule changed: rerun the record')
     require(stage['dry_run'] is dry_run, 'dry-run stage 2 cannot authorise a real backbone')
+    stage0b_path = Path(stage0b_path or stage['stage0b']['path'])
+    require(path_record(stage0b_path) == stage['stage0b'], 'stage 0b changed')
+    gate = read_json(stage0b_path)
+    modules = assert_modules(gate)
+    require(stage['module_sha256'] == modules, 'stage 2 recipe module closure changed')
     recipe_files = {}
     if not dry_run:
-        check_receipts(backbone)
+        check_receipts(backbone, module_sha256=modules)
         for step, receipt in stage['recipe_receipts'].items():
             require(path_record(receipt['path']) == receipt, f'{step}: receipt changed after stage 2')
             recipe_files[step] = read_json(receipt['path'])
@@ -444,9 +567,7 @@ def pins_evidence(backbone, paths, results=None, stage0b_path=None, *, dry_run=F
         _input_files(read_json(str(paths[role]) + '.record.json'), paths)
     for role in BB.FROZEN_ROLES:
         require(path_record(paths[role]) == stage['frozen_parts'][role], f'{role}: frozen file changed')
-    stage0b_path = Path(stage0b_path or stage['stage0b']['path'])
-    require(path_record(stage0b_path) == stage['stage0b'], 'stage 0b changed')
-    gate = read_json(stage0b_path)
+        assert_frozen(role, paths[role], BB.CLIP_PARTS[role])
     for role in BB.RECIPE_ROLES:
         assert_script(read_json(str(paths[role]) + '.record.json'), gate)
     for name in ('seed42_record', 'sensitivity_seed42'):
@@ -455,7 +576,7 @@ def pins_evidence(backbone, paths, results=None, stage0b_path=None, *, dry_run=F
                       'switched_off': stage['switched_off'], 'gate_share': stage['gate_share']},
             'provenance': stage['provenance'], 'seed42': read_json(stage['seed42_record']['path']),
             'seed42_record': stage['seed42_record'], 'sensitivity_seed42': stage['sensitivity_seed42'],
-            'recipe_files': recipe_files}
+            'recipe_files': recipe_files, 'module_sha256': modules}
 
 
 def run_pins(backbone, paths, results, stage0b_path, *, dry_run=False):
@@ -496,14 +617,23 @@ def step_command(backbone, step):
     return args
 
 
-def run_step(backbone, step):
+def run_step(backbone, step, *, stage0b_path=None):
+    gate = read_json(stage0b_path or R.RESULTS / 'stage0b.json')
+    modules = assert_modules(gate)
+    script = STEP_SCRIPTS[step]
+    assert_script({'script': script, 'script_sha256': R.sha256_file(HERE / script)}, gate)
     out = R.RESULTS / 'recipe' / backbone
     receipt = out / f'stage2_{step}_files.json'
     require(not receipt.exists(), f'refusing to overwrite {receipt}')
-    check_receipts(backbone, before=step)
+    check_receipts(backbone, before=step, module_sha256=modules)
     if step == 'cells':
         # The cells CLI consumes these hashes before final pins exist.
-        write_new(out / 'stage2_inputs.json', recipe_input_manifest(backbone))
+        manifest_path = out / 'stage2_inputs.json'
+        manifest = recipe_input_manifest(backbone)
+        if manifest_path.exists():
+            require(read_json(manifest_path) == manifest, 'existing stage 2 input manifest differs')
+        else:
+            write_new(manifest_path, manifest)
     env = dict(os.environ, OMP_NUM_THREADS='8', MKL_NUM_THREADS='8', PYTHONDONTWRITEBYTECODE='1',
                CUDA_VISIBLE_DEVICES='0' if step in ('groups', 'a3') else '')
     code = subprocess.run(step_command(backbone, step), env=env).returncode
@@ -525,18 +655,20 @@ def run_step(backbone, step):
                                 'record': path_record(out / (name + '.record.json'))}
     elif step == 'cells':
         extras['stage2_inputs.json'] = {'file': path_record(out / 'stage2_inputs.json')}
-    write_new(receipt, {**rec, 'extra_files': extras})
+    write_new(receipt, {**rec, 'extra_files': extras, 'module_sha256': modules})
     return 0
 
 
-def check_receipts(backbone, before=None):
+def check_receipts(backbone, before=None, *, module_sha256=None):
     """File and record hashes captured when each preceding CLI finished."""
+    modules = module_sha256 if module_sha256 is not None else assert_modules(read_json(R.RESULTS / 'stage0b.json'))
     steps = list(STEP_SCRIPTS)
     for step in steps[:steps.index(before)] if before is not None else steps:
         receipt = R.RESULTS / 'recipe' / backbone / f'stage2_{step}_files.json'
         require(receipt.is_file(), f'{step}: driver receipt missing')
         rec = read_json(receipt)
-        require(set(rec) == set(STEP_ROLES[step]) | {'extra_files'}, f'{step}: receipt roles differ')
+        require(set(rec) == set(STEP_ROLES[step]) | {'extra_files', 'module_sha256'}, f'{step}: receipt roles differ')
+        require(rec['module_sha256'] == modules, f'{step}: receipt recipe module closure differs')
         for role in STEP_ROLES[step]:
             entry = rec[role]
             path = BB.parts(backbone)[role]
@@ -571,12 +703,15 @@ def main(argv=None):
         for name in S0B.RECIPE_SCRIPTS:
             assert_script({'script': name, 'script_sha256': R.sha256_file(HERE / name)}, gate)
     for step in STEPS if a.step == 'all' else (a.step,):
+        assert_modules(read_json(a.stage0b))
         if step in STEP_SCRIPTS:
-            code = run_step(a.backbone, step)
+            code = run_step(a.backbone, step, stage0b_path=a.stage0b)
             if code:
                 return code
         elif step == 'record':
-            run_record(a.backbone, paths, results, a.stage0b, dry_run=a.dry_run)
+            stage = run_record(a.backbone, paths, results, a.stage0b, dry_run=a.dry_run)
+            if stage['switched_off']:
+                return 0
         else:
             run_pins(a.backbone, paths, results, a.stage0b, dry_run=a.dry_run)
     return 0

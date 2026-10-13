@@ -251,7 +251,7 @@ def test_importing_the_r9_modules_loads_no_r6_module():
     code = (
         "import sys; sys.path.insert(0, %r)\n"
         "import r9_common, r9_backbone, r9_data, r9_heads, r9_episodes, r9_stats, r9_context, r9_bundle, "
-        "r9_picks, r9_score, r9_pins, run_r9_stage0a\n"
+        "r9_picks, r9_score, r9_pins, run_r9_stage0a, run_r9_stage2\n"
         "bad = sorted(m for m in sys.modules if m.startswith(('r6_', 'run_r6_')))\n"
         "path = [p for p in sys.path if p.endswith('20261125_artelingo_held_test')]\n"
         "print(bad, path)\n"

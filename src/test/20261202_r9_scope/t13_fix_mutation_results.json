@@ -1,0 +1,551 @@
+{
+ "review_mutants": {
+  "caught": 33,
+  "survived": 0
+ },
+ "additional_probes": {
+  "caught": 8,
+  "survived": 0
+ },
+ "source_sha256": {
+  "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+  "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+  "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+  "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+ },
+ "results": {
+  "m01": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "3 failed, 86 passed in 34.93s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m01.log"
+  },
+  "m02": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "3 failed, 86 passed in 33.66s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m02.log"
+  },
+  "m03": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 21.64s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m03.log"
+  },
+  "m04": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 30.50s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m04.log"
+  },
+  "m05": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "5 failed, 84 passed in 32.77s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m05.log"
+  },
+  "m06": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 22.64s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m06.log"
+  },
+  "m07": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 20.91s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m07.log"
+  },
+  "m08": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "5 failed, 84 passed in 26.35s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m08.log"
+  },
+  "m09": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "12 failed, 77 passed in 29.68s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m09.log"
+  },
+  "m10": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 21.69s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m10.log"
+  },
+  "m11": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "2 failed, 87 passed in 25.37s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m11.log"
+  },
+  "m12": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 34.28s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m12.log"
+  },
+  "m13": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "12 failed, 77 passed in 31.98s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m13.log"
+  },
+  "m14": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 26.67s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m14.log"
+  },
+  "m15": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 20.96s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m15.log"
+  },
+  "m16": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 30.63s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m16.log"
+  },
+  "m17": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 25.66s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m17.log"
+  },
+  "m18": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 21.18s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m18.log"
+  },
+  "m19": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "2 failed, 87 passed in 31.00s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m19.log"
+  },
+  "m20": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "3 failed, 86 passed in 32.31s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m20.log"
+  },
+  "m21": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 33.89s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m21.log"
+  },
+  "m22": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 31.32s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m22.log"
+  },
+  "m23": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 29.81s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m23.log"
+  },
+  "m24": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 35.50s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-hx4l4ag7",
+   "log": "/tmp/r9-t13-mutations-hx4l4ag7/m24.log"
+  },
+  "m25": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 39.25s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-_w6ynduz",
+   "log": "/tmp/r9-t13-mutations-_w6ynduz/m25.log"
+  },
+  "m26": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 27.81s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-_w6ynduz",
+   "log": "/tmp/r9-t13-mutations-_w6ynduz/m26.log"
+  },
+  "m27": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "3 failed, 86 passed in 21.86s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-_w6ynduz",
+   "log": "/tmp/r9-t13-mutations-_w6ynduz/m27.log"
+  },
+  "m28": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 35.69s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m28.log"
+  },
+  "m29": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 31.91s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m29.log"
+  },
+  "m30": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 21.80s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m30.log"
+  },
+  "m31": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 30.95s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-_w6ynduz",
+   "log": "/tmp/r9-t13-mutations-_w6ynduz/m31.log"
+  },
+  "m32": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 32.23s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-_w6ynduz",
+   "log": "/tmp/r9-t13-mutations-_w6ynduz/m32.log"
+  },
+  "m33": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "2 failed, 87 passed in 22.75s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-_w6ynduz",
+   "log": "/tmp/r9-t13-mutations-_w6ynduz/m33.log"
+  },
+  "m34": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 29.91s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m34.log"
+  },
+  "m35": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "2 failed, 87 passed in 32.46s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m35.log"
+  },
+  "m36": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 21.31s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-4b6ey3nu",
+   "log": "/tmp/r9-t13-mutations-4b6ey3nu/m36.log"
+  },
+  "m37": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 21.69s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-_w6ynduz",
+   "log": "/tmp/r9-t13-mutations-_w6ynduz/m37.log"
+  },
+  "m38": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 27.05s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-_w6ynduz",
+   "log": "/tmp/r9-t13-mutations-_w6ynduz/m38.log"
+  },
+  "m39": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "2 failed, 87 passed in 33.90s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-_w6ynduz",
+   "log": "/tmp/r9-t13-mutations-_w6ynduz/m39.log"
+  },
+  "m40": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 38.47s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-_w6ynduz",
+   "log": "/tmp/r9-t13-mutations-_w6ynduz/m40.log"
+  },
+  "m41": {
+   "result": "caught",
+   "returncode": 1,
+   "summary": "1 failed, 88 passed in 22.57s",
+   "source_sha256": {
+    "run_r9_stage2.py": "a3625c349f30aaf4b06be2969406c978b9274d2240ce9e46d224624484f37fab",
+    "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "test_r9_stage2.py": "0016c7dca261e7458a1686f9f78ff7be296d5babcba94bd4853a588b7ac2b716",
+    "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+   },
+   "scratch": "/tmp/r9-t13-mutations-_w6ynduz",
+   "log": "/tmp/r9-t13-mutations-_w6ynduz/m41.log"
+  }
+ }
+}
