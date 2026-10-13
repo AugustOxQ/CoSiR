@@ -224,7 +224,7 @@ def frozen_cells(base, parity, T, gates, fused_cells, cf_cells=None):
 # ---------------------------------------------------------------- one seed
 
 def score_seed(bundle, picks, lambdas, readers, *, include_pm, cells=None, taus=None, secondary=True,
-               verdict=None) -> dict:
+               verdict=None, on_scores=None) -> dict:
     """Contracts section 5. picks: {"B", "B0", "B1": {half: [lu, la]}} (load_picks or picks_seed42; "0"/"1" keys
     accepted); lambdas: {scorer: {half: lam}} (frozen_lambdas; rca always read, the nine PM only with include_pm);
     readers: round 1's A0 half-readers (r9_bundle.load_readers).
@@ -233,7 +233,9 @@ def score_seed(bundle, picks, lambdas, readers, *, include_pm, cells=None, taus=
     "r1": {c: (4, n) float32}}, "reader" {"P", "m", "pick": {c: ...}}, "cl", "pair_index".
     cells: CELLS' shape (cells_from_record) or None for CLIP's; taus: four floats (taus_of) or None for round 3's.
     secondary=False: only cosine, rca, B, B0, aff_fused, aff_cf (+ EXTRA_KEYS, "gates" with "aff" alone); needs
-    include_pm=False; picks["B1"] is not read. verdict: this read's held_verdict_<Hn>.json (see the module text)."""
+    include_pm=False; picks["B1"] is not read. verdict: this read's held_verdict_<Hn>.json (see the module text).
+    on_scores: optional descriptive callback(name, scores), before per_anchor averages directions;
+    on held/a28 episodes it requires the verdict, even when secondary=False."""
     msg = f"include_pm must be True or False, not {include_pm!r} (rule section 8 item 3)"
     _require(isinstance(include_pm, bool), msg)  # guard:include_pm_bool
     n = int(bundle.n)
@@ -261,6 +263,16 @@ def score_seed(bundle, picks, lambdas, readers, *, include_pm, cells=None, taus=
     if secondary and gated_read:
         _require(verdict_file.is_file(), f"no B1 or R1 metric on {bundle.mode} episodes before {verdict_file.name} "
                                          f"exists (rule section 7.4)")  # guard:secondary_before_verdict
+    # Ticket 23's direction breakdown consumes the existing scores, never another scoring formula.
+    _require(on_scores is None or callable(on_scores), "on_scores must be callable")
+    _require(on_scores is None or not gated_read or verdict_file.is_file(),
+             "no direction breakdown before the verdict (rule section 7.4)")
+
+    def summarize(name, scores):
+        if on_scores is not None:
+            on_scores(name, scores)
+        return per_anchor(scores)
+
     cells = CELLS if cells is None else cells
     need = [("aff", "fused"), ("aff", "cf")] + ([("r1", "fused")] if secondary else [])    # r1's cf: include_pm only
     _require(all(kind in cells.get(who, {}) for who, kind in need),
@@ -273,13 +285,13 @@ def score_seed(bundle, picks, lambdas, readers, *, include_pm, cells=None, taus=
     lams = {name: P.as_lambda_pick(lambdas[name], name) for name in lam_names}
 
     cos = bundle.cos
-    out = {"cosine": per_anchor(cos)}
+    out = {"cosine": summarize("cosine", cos)}
     for name in lam_names:
-        out[name] = per_anchor(frozen_fused(cos, bundle.pm_terms[name], lams[name], parity))
+        out[name] = summarize(name, frozen_fused(cos, bundle.pm_terms[name], lams[name], parity))
     frozen = {}
     for name in scored:
         frozen[name] = frozen_nested(cos, bundle.t_n1u, getattr(bundle, P.TERM_OF[name]), nested[name], parity)
-        out[name] = per_anchor(frozen[name])
+        out[name] = summarize(name, frozen[name])
 
     rd = RF.reader(bundle, readers)                         # D5: P, T, m, pick from bundle.F and bundle.stack
     gates = {"aff": RF.gates_aff(rd["m"], rd["pick"], taus)}
@@ -289,9 +301,9 @@ def score_seed(bundle, picks, lambdas, readers, *, include_pm, cells=None, taus=
         with_cf = who == "aff" or include_pm               # R1's counterpart: descriptive only (rule section 8.3)
         fused, cf = frozen_cells(frozen["B"], parity, rd["T"], gates[who], cells[who]["fused"],
                                  cells[who]["cf"] if with_cf else None)
-        out[f"{who}_fused"] = per_anchor(fused)
+        out[f"{who}_fused"] = summarize(f"{who}_fused", fused)
         if with_cf:
-            out[f"{who}_cf"] = per_anchor(cf)
+            out[f"{who}_cf"] = summarize(f"{who}_cf", cf)
     moved = [k for k in CONDITION_FREE if k in out and not bool((np.asarray(out[k]["gain"]) == 0).all())]
     _require(not moved, f"condition gain must be 0 on every episode for {moved} (CF and the R1 counterpart "
                         f"condition-free, hazard 10)")  # guard:cf_gain
