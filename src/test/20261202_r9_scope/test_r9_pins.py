@@ -240,8 +240,11 @@ def test_no_r9_module_imports_an_r6_module():
     files = sorted(HERE.glob("r9_*.py")) + sorted(HERE.glob("run_r9_*.py"))
     assert {f.name for f in files} >= {"r9_context.py", "r9_bundle.py", "r9_picks.py", "r9_pins.py", "r9_score.py",
                                        "r9_common.py", "run_r9_stage0a.py"}
-    found = {f.name: r6_names(f) for f in files if r6_names(f)}
+    # Ticket 13 explicitly calls the original R6 statistical producers. The
+    # generic chain remains independent; this driver is its sole exception.
+    found = {f.name: r6_names(f) for f in files if f.name != "run_r9_stage2.py" and r6_names(f)}
     assert not found, found
+    assert r6_names(HERE / "run_r9_stage2.py") == {"run_r6_held", "run_r6_sensitivity", "r6_stats"}
 
 
 def test_importing_the_r9_modules_loads_no_r6_module():
