@@ -170,15 +170,24 @@ def holm(counts: dict, names, m: int) -> list:
 
 
 # ----------------------------------------------------------------------------------------------------- pass record
-def check_diffs(per_seed) -> dict:
+def _secondary_flag(secondary):
+    if not isinstance(secondary, bool):
+        raise ValueError(f"secondary must be True or False, got {secondary!r}")
+    return CHECKS + SECONDARY if secondary else CHECKS
+
+
+def check_diffs(per_seed, secondary: bool = True) -> dict:
     """{check: (diff (E,) float64 fractions, cl (E,))} for P1..P7, S1, S2, the seeds concatenated in the given order.
     per_seed: score_seed dicts (contracts §5) with "cl" and the per-anchor dicts of aff_fused, aff_cf, cosine, rca, B,
-    B0, B1, r1_fused. Raises AssertionError if CF's condition gain is not exactly 0 on every episode."""
+    B0, B1, r1_fused. Raises AssertionError if CF's condition gain is not exactly 0 on every episode.
+    secondary=False (r9 rule §4.1, §7.4: no secondary checks, no B1 or R1 metric before the verdict): P1..P7 only; the
+    dicts need not hold B1 or r1_fused."""
+    names = _secondary_flag(secondary)
     if len(per_seed) == 0:
         raise ValueError("no seeds")
     for s in per_seed:
         n = len(np.asarray(s["cl"]))
-        for key in {AFF} | {QUANTITIES[c][1] for c in QUANTITIES}:
+        for key in {AFF} | {QUANTITIES[c][1] for c in names}:
             for metric in ("r1", "gain"):
                 if np.asarray(s[key][metric]).shape != (n,):
                     raise ValueError(f"{key}[{metric}] does not have the shape of cl ({n},)")
@@ -186,7 +195,8 @@ def check_diffs(per_seed) -> dict:
             raise AssertionError("CF's condition gain is not exactly 0 on every episode (rule §3, P6)")
     cl = np.concatenate([np.asarray(s["cl"]) for s in per_seed])
     out = {}
-    for c, (metric, key, _) in QUANTITIES.items():
+    for c in names:
+        metric, key, _ = QUANTITIES[c]
         d = np.concatenate([np.asarray(s[AFF][metric], dtype=np.float64) - np.asarray(s[key][metric], dtype=np.float64)
                             for s in per_seed])
         out[c] = (d, cl)
@@ -232,17 +242,18 @@ def rule_sha256() -> str:
     return got
 
 
-def pass_record(per_seed, mode: str, seeds, extra: dict) -> dict:
+def pass_record(per_seed, mode: str, seeds, extra: dict, secondary: bool = True) -> dict:
     """The content of held_pass.json (mode "held"), of the regression's seed-42 counts file ("regression") or of the
     smoke's pass file ("smoke"); contracts §6. per_seed: score_seed dicts in seed order (see check_diffs); extra:
-    {"episodes_sha256": {seed: {pair: sha}}, "runner_sha256": sha, "module_sha256": {file: sha}}. No verdict."""
+    {"episodes_sha256": {seed: {pair: sha}}, "runner_sha256": sha, "module_sha256": {file: sha}}. No verdict.
+    secondary=False: no S1 and S2 are computed and the record has no "secondary" key (see check_diffs)."""
     if mode not in MODES:
         raise ValueError(f"mode must be one of {MODES}, got {mode!r}")
     seeds = [int(s) for s in seeds]
     _seed_ok(mode, seeds, per_seed)
     ext = _extra_ok(extra, seeds)
     rule = rule_sha256()
-    diffs = check_diffs(per_seed)
+    diffs = check_diffs(per_seed, secondary)
     cl = diffs["P1"][1]
     stats = {}
     for c, (d, cl_c) in diffs.items():
@@ -268,10 +279,11 @@ def pass_record(per_seed, mode: str, seeds, extra: dict) -> dict:
         return {c: out[c] for c in names}, [r["name"] for r in ranks]
 
     checks, order = fill(CHECKS, M_P, True)
-    secondary, _ = fill(SECONDARY, M_S, False)     # no pass field: tested only after a GO, by the apply step
-    return {"rule_sha256": rule, "mode": mode, "seeds": seeds, "n_episodes": int(len(cl)),
-            "n_clusters": int(len(np.unique(cl))), "checks": checks, "holm_order": order, "secondary": secondary,
-            **ext, "time": R6C.amsterdam_now()}
+    rec = {"rule_sha256": rule, "mode": mode, "seeds": seeds, "n_episodes": int(len(cl)),
+           "n_clusters": int(len(np.unique(cl))), "checks": checks, "holm_order": order}
+    if secondary:
+        rec["secondary"], _ = fill(SECONDARY, M_S, False)   # no pass field: tested only after a GO, by the apply step
+    return {**rec, **ext, "time": R6C.amsterdam_now()}
 
 
 # ----------------------------------------------------------------------------------------------------- sensitivity

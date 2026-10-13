@@ -210,7 +210,10 @@ class World:
         self.bpick = {0: [0.5, 0.25], 1: [0.0, 0.0]}
         self.mean = 100 * float(np.mean(RCELLS.per_anchor(self.B)["r1"])) + b_mean_shift
         file_pick = bpick_in_file or self.bpick
-        rec = {name: {str(h): list(file_pick[h]) for h in (0, 1)} for name in ("B", "B0", "B1")}
+        # B0 and B1 differ from B (and from each other), so that reading another entry of the file is a failure (F1)
+        other = {"B0": {0: [0.5, 0.5], 1: [0.0, 0.25]}, "B1": {0: [0.0, 0.5], 1: [0.5, 0.0]}}
+        rec = {"B": {str(h): list(file_pick[h]) for h in (0, 1)},
+               **{name: {str(h): list(pick[h]) for h in (0, 1)} for name, pick in other.items()}}
         rec.update({"mean_r1": {"B": self.mean, "B0": 1.5, "B1": 2.5}, "passed": True})
         self.picks_file = tmp_path / "picks_seed42.json"
         self.picks_file.write_text(json.dumps(rec))
@@ -305,6 +308,72 @@ def test_check_b_picks_reads_the_backbones_file(monkeypatch, tmp_path):
         RCELLS.check_b_picks(w.bpick, w.mean + 1e-6, BACKBONE)
 
 
+def text_mutant(tmp_path, old, new, count=1):
+    """An import of r9_recipe_cells.py with ``old`` replaced by ``new`` (``count`` places), for a mutation test."""
+    import importlib.util
+    src = (HERE / "r9_recipe_cells.py").read_text()
+    assert src.count(old) == count, (old, src.count(old))
+    path = tmp_path / f"cells_mut_{abs(hash(old + new))}.py"
+    path.write_text(src.replace(old, new))
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_the_fixture_gives_b_b0_and_b1_different_picks_and_means(world):
+    picks = P.load_picks(world.picks_file, BACKBONE)
+    assert picks["B"] != picks["B0"] and picks["B"] != picks["B1"] and picks["B0"] != picks["B1"]
+    means = json.loads(world.picks_file.read_text())["mean_r1"]
+    assert len({means["B"], means["B0"], means["B1"]}) == 3
+
+
+@pytest.mark.parametrize("old,new", [('P.load_picks(path, backbone)["B"]', 'P.load_picks(path, backbone)["B0"]'),
+                                     ('P.load_picks(path, backbone)["B"]', 'P.load_picks(path, backbone)["B1"]'),
+                                     ('["mean_r1"]["B"]', '["mean_r1"]["B0"]')])
+def test_check_b_picks_must_read_the_b_entry_of_the_file(monkeypatch, tmp_path, old, new):
+    """F1: a version that reads the B0 or B1 entry (the picks or the mean R@1) is refused on a file whose three differ."""
+    w = World(monkeypatch, tmp_path, 0)
+    RCELLS.check_b_picks(w.bpick, w.mean, BACKBONE)
+    mut = text_mutant(tmp_path, old, new)
+    monkeypatch.setattr(mut, "parts", lambda backbone: {"picks_seed42": w.picks_file})
+    with pytest.raises(AssertionError, match="B"):
+        mut.check_b_picks(w.bpick, w.mean, BACKBONE)
+
+
+def force_other_float64_picks(monkeypatch):
+    """bs_lib's tied family (the float64 check) answers other picks than the float32 family does."""
+    sys.path.insert(0, str(R.TEST / "20261120_r1_levers_brainstorm"))
+    import bs_lib as L
+    real = L.Family.crossfit
+    monkeypatch.setattr(L.Family, "crossfit", lambda self: tuple({0: 223, 1: 223} for _ in real(self)))
+
+
+def test_float64_check_leaves_its_run_untouched(world, monkeypatch):
+    """F3 (unit): `float64_tied_check` reads the family's picks and writes none of them."""
+    import copy
+    gates = RF.gates_r1(world.m, world.taus)
+    run = world.family(gates)
+    before = copy.deepcopy(run)
+    force_other_float64_picks(monkeypatch)
+    out = RCELLS.float64_tied_check(world.B, world.T, gates, world.parity, run)
+    assert out["fpick_equal"] is False and out["cpick_equal"] is False       # the forced answer is seen ...
+    assert set(run) == set(before)
+    for key in ("fpick", "cpick", "sigma", "ctrl"):
+        assert run[key] == before[key], key                                  # ... and changes nothing in the run
+
+
+def test_a_different_float64_answer_changes_no_pick_and_no_output(world, monkeypatch):
+    """F3: the float64 table is recorded, never used: another float64 answer gives the same record and details."""
+    rec, details = world.run()
+    force_other_float64_picks(monkeypatch)
+    rec2, details2 = world.run()
+    assert details2["float64_tied_family"]["equal"] is False        # the other answer is seen and recorded ...
+    assert rec2 == rec
+    assert {k: v for k, v in details2.items() if k != "float64_tied_family"} == \
+        {k: v for k, v in details.items() if k != "float64_tied_family"}
+
+
 def test_the_float64_tied_family_check_is_recorded_and_decides_nothing(world):
     """L4: details say whether bs_lib's float64 tied family gives the same integer tables and picks."""
     _, details = world.run()
@@ -377,6 +446,61 @@ def test_check_stack_f_is_the_stack_f_and_delta_part_of_validate():
     bad.F["a"] = bad.F["a"].astype(np.float32)
     with pytest.raises(AssertionError, match="F/a"):
         RB.check_stack_f(bad)
+
+
+def scores_n(n, seed=0):
+    """Finite float32 scores {c: {d: (n, 13)}}, condition-free (a and b equal)."""
+    rng = np.random.default_rng(seed)
+    one = {d: rng.normal(size=(n, RB.K_CAND)).astype(np.float32) for d in RB.DIRECTIONS}
+    return {c: {d: x.copy() for d, x in one.items()} for c in RB.CONDITIONS}
+
+
+def test_validate_runs_check_stack_f():
+    """F2: a NaN in `stack` and a broken Delta are refused by `validate` itself, not only by `check_stack_f`."""
+    n = 6
+    sf = stack_f(n)
+    ep = np.arange(n)
+    b = SimpleNamespace(n=n, cl=ep.copy(), parity=ep % 2, pair_index=ep // 2, anchor=ep.copy(),
+                        cos=scores_n(n, 1), t_n1u=scores_n(n, 2), t6u_B=scores_n(n, 3), t6u_B0=scores_n(n, 4),
+                        t6u_B1=scores_n(n, 5), post={h: None for h in RB.A0}, stack=sf.stack, F=sf.F,
+                        pm_terms={k: scores_n(n, 7 + i) for i, k in enumerate(RB.PM_TERM_NAMES)},
+                        episodes_sha256={pair: "0" * 64 for pair in R.PAIR_NAMES}, module_sha256={})
+    assert RB.validate(b)["delta_b_equals_minus_delta_a"] is True
+    nan = SimpleNamespace(**vars(b))
+    nan.stack = {d: x.copy() for d, x in b.stack.items()}
+    nan.stack["t2i"][3, 0, 5] = np.nan
+    with pytest.raises(AssertionError, match="stack"):
+        RB.validate(nan)
+    bad_delta = SimpleNamespace(**vars(b))
+    bad_delta.F = {c: x.copy() for c, x in b.F.items()}
+    bad_delta.F["b"][0, 2] += 1.0
+    with pytest.raises(AssertionError, match="Delta"):
+        RB.validate(bad_delta)
+
+
+def test_cells_bundle_runs_check_stack_f(monkeypatch):
+    """F2: `cells_bundle` refuses a bundle whose `stack` has a NaN (its other steps are replaced by stand-ins)."""
+    n = 6
+    sf = stack_f(n)
+    state = {"stack": sf.stack}
+    ctx = SimpleNamespace(pooled=SimpleNamespace(), n=n, post={h: {"img": np.ones((n, 2)), "txt": np.ones((n, 2))}
+                                                               for h in (*RB.A0, "affect_km")}, rows=np.arange(n), parity=np.arange(n) % 2,
+                          pair_index=np.arange(n) // 2, cos=scores_n(n, 1), mode="selection", seed=42, smoke=False)
+    monkeypatch.setattr(RB, "check_context", lambda c: {})
+    monkeypatch.setattr(RB, "model_inputs", lambda c, backbone: None)
+    monkeypatch.setattr(RCELLS, "centered_term", lambda inp, ep, uniform: scores_n(n, 2))
+    monkeypatch.setattr(RCELLS, "uniform_probe_scores", lambda post, ep, parts_: scores_n(n, 3))
+    monkeypatch.setattr(RCELLS.C, "grouping_stack", lambda post, ep, groupings: state["stack"])
+    monkeypatch.setattr(RCELLS.rbe, "seed42_features", lambda c, groupings: (sf.F, {}))
+    reached = []
+    monkeypatch.setattr(RCELLS.P, "check_seed42", lambda b: reached.append(b))
+    assert RCELLS.cells_bundle(ctx, BACKBONE).stack is sf.stack and len(reached) == 1       # the good one passes
+    bad = {d: x.copy() for d, x in sf.stack.items()}
+    bad["i2t"][2, 1, 3] = np.nan
+    state["stack"] = bad
+    with pytest.raises(AssertionError, match="stack"):
+        RCELLS.cells_bundle(ctx, BACKBONE)
+    assert len(reached) == 1                                                                 # refused before check_seed42
 
 
 # ---------------------------------------------------------------- the CLIP check (inside the script)

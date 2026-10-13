@@ -668,6 +668,163 @@ def test_tau_refuses_a_partitions_file_other_than_the_heads(corpus, tmp_path):
     assert not (out / "rc_tau.json").exists()
 
 
+# L-a: the heads files on disk are the ones `train` read
+
+def redo_heads_with_other_image_labels(corpus, out, tmp_path):
+    """Review of ticket 09, L-a: after `train`, the image and caption heads and their records are deleted and made
+    again from another partitions file (a rerun of ticket 07; the image labels differ). Returns the tau checks that
+    match the new heads."""
+    for name in ("rb_heads_image.npz", "rb_heads_image.npz.record.json",
+                 "rb_heads_caption.npz", "rb_heads_caption.npz.record.json"):    # both come from partitions.npz
+        (out / name).unlink()
+    new_labels = (corpus.lab["image"] + 1) % KK
+    path = tmp_path / "partitions_other.npz"
+    np.savez(path, affect=corpus.lab["affect"], image=new_labels, caption=corpus.lab["caption"],
+             local_groups=corpus.halves["g_st"])
+    sha = RR.sha256_file(path)
+    env2 = SimpleNamespace(**{**vars(corpus), "sources": {**corpus.sources, "image": (path, sha, "image"),
+                                                           "caption": (path, sha, "caption")}})
+    RR.stage_heads(env2, out, ["image", "caption"])
+    other = tau_checks(corpus)
+    other["head_groupings"].update(partitions_path=str(path), partitions_sha256=sha)
+    other["head_groupings"]["label_sha256"]["image"] = RR.rb.sha_array(new_labels)
+    return other
+
+
+def test_tau_refuses_heads_made_again_after_train(corpus, tmp_path):
+    out = tmp_path / "la"
+    trained(corpus, out)
+    other = redo_heads_with_other_image_labels(corpus, out, tmp_path)
+    with pytest.raises(AssertionError, match="rb_heads_image.npz is not the file the readers were trained on"):
+        RR.stage_tau(corpus, out, synthetic_f42(SMALL["n_tau_values"] // 2), other)
+    assert not (out / "rc_tau.json").exists()
+
+
+def test_the_trained_heads_guard_is_the_only_stop_for_heads_made_again(corpus, tmp_path):
+    out = tmp_path / "la_mut"
+    trained(corpus, out)
+    other = redo_heads_with_other_image_labels(corpus, out, tmp_path)
+    mut = mutant(tmp_path, "r9_recipe_reader.py", "heads_are_the_trained_ones")
+    inputs = mut.check_tau_groupings(corpus, out, other["head_groupings"])      # without the guard the new heads pass
+    assert set(Path(k).name for k in inputs) == {f"rb_heads_{g}.npz" for g in RR.A0}
+
+
+def test_tau_accepts_the_heads_the_readers_were_trained_on_after_the_folder_moved(corpus, tmp_path):
+    out = tmp_path / "la_moved"
+    trained(corpus, out)
+    moved = tmp_path / "la_moved_elsewhere"
+    out.rename(moved)                                                   # the pickle's record names the old folder
+    inputs = RR.check_tau_groupings(corpus, moved, tau_checks(corpus)["head_groupings"])
+    assert sorted(Path(k).name for k in inputs) == sorted(f"rb_heads_{g}.npz" for g in RR.A0)
+
+
+# L-b: the groupings the tau stage compares (`head_groupings`) and the order in `seed42_features` (L-d)
+
+def test_head_groupings_hash_each_grouping_at_the_scorer_train_rows():
+    rng = np.random.default_rng(5)
+    n = 50
+    st = np.arange(3, 43, dtype=np.int64)
+    labels = {g: np.where(np.isin(np.arange(n), st), rng.integers(0, KK, size=n), -1).astype(np.int64)
+              for g in RR.A0}
+    pins = {RR.H.E2_PARTITIONS_REL: (Path("/x/partitions.npz"), "ab" * 32)}
+    got = RR.head_groupings(pins, labels, st)
+    assert got["partitions_path"] == "/x/partitions.npz" and got["partitions_sha256"] == "ab" * 32
+    assert list(got["label_sha256"]) == list(RR.A0)
+    for g in RR.A0:
+        assert got["label_sha256"][g] == RR.rb.sha_array(labels[g][st]), g
+    assert len(set(got["label_sha256"].values())) == len(RR.A0)           # one hash per grouping, not one for all
+    labels["caption"] = labels["caption"].copy()
+    labels["caption"][st[0]] = (labels["caption"][st[0]] + 1) % KK
+    again = RR.head_groupings(pins, labels, st)
+    assert again["label_sha256"]["caption"] != got["label_sha256"]["caption"]
+    assert again["label_sha256"]["image"] == got["label_sha256"]["image"]
+
+
+class Stop(Exception):
+    pass
+
+
+def fake_seed42(monkeypatch, corpus, calls):
+    """`seed42_features` with the heavy parts replaced: rows, pins, labels, and a refit that stops the run."""
+    labels = {g: corpus.lab[g] for g in RR.A0}
+    pins = {RR.H.E2_PARTITIONS_REL: (Path("/x/partitions.npz"), "ab" * 32)}
+    monkeypatch.setattr(RR, "rows_from", lambda data, split: SimpleNamespace(data=data, split=split))
+    monkeypatch.setattr(RR.H, "recipe_head_pins", lambda backbone, root=None: pins)
+    monkeypatch.setattr(RR.H, "head_labels", lambda groups, st, backbone, input_pins=None: labels)
+
+    def fit(*args, **kw):
+        calls.append("fit")
+        raise Stop("fit")
+    monkeypatch.setattr(RR.H, "fit_heads_r9", fit)
+    return pins, labels
+
+
+def test_seed42_features_hands_the_groupings_to_the_precheck_before_the_refit(corpus, monkeypatch):
+    calls = []
+    pins, labels = fake_seed42(monkeypatch, corpus, calls)
+    seen = []
+
+    def precheck(groupings):
+        calls.append("precheck")
+        seen.append(groupings)
+        raise AssertionError("stop here")
+    with pytest.raises(AssertionError, match="stop here"):
+        RR.seed42_features("qwen3vl_emb_2b", None, corpus.data, corpus.split, precheck=precheck)
+    assert calls == ["precheck"]                                         # the refit never started
+    assert seen == [RR.head_groupings(pins, labels, corpus.split.scorer_train)]
+    calls.clear()
+    with pytest.raises(Stop):                                            # without a precheck the refit starts
+        RR.seed42_features("qwen3vl_emb_2b", None, corpus.data, corpus.split)
+    assert calls == ["fit"]
+
+
+def test_the_tau_stage_checks_the_groupings_before_the_refit(corpus, tmp_path, monkeypatch):
+    got = {}
+    monkeypatch.setattr(RR, "build_env", lambda backbone, upstream, stage: corpus)
+    monkeypatch.setattr(RR, "preflight", lambda *a, **k: None)
+    monkeypatch.setattr(RR.H, "require_threads", lambda: None)
+
+    def fake(backbone, upstream, data, split, precheck=None):
+        got["precheck"] = precheck
+        return "F42", "checks"
+    monkeypatch.setattr(RR, "seed42_features", fake)
+    monkeypatch.setattr(RR, "stage_tau", lambda env, out, F, checks: got.update(stage=(F, checks)))
+    out = tmp_path / "ld"
+    trained(corpus, out)
+    assert RR.main(["--backbone", "qwen3vl_emb_2b", "--out", str(out), "--stage", "tau"]) == 0
+    assert got["stage"] == ("F42", "checks")
+    got["precheck"](tau_checks(corpus)["head_groupings"])                # the right groupings pass
+    wrong = tau_checks(corpus)["head_groupings"]
+    wrong["label_sha256"]["caption"] = "0" * 64
+    with pytest.raises(AssertionError, match="caption.*labels"):
+        got["precheck"](wrong)
+
+
+# L-c: `rows_from` equals `r9_common.load_rows`
+
+def test_rows_from_equals_load_rows_on_what_tau_uses(corpus, monkeypatch):
+    import src.data.artelingo_splits as AS
+    n = N
+    rng = np.random.default_rng(11)
+    lab = {"emotion": rng.integers(0, 3, size=n), "style": rng.integers(0, 4, size=n),
+           "genre": rng.integers(0, 2, size=n)}
+    lab["genre"][::13] = -1                                              # some rows unlabelled
+    monkeypatch.setattr(AS, "artelingo_aspect_labels", lambda data: {k: v.copy() for k, v in lab.items()})
+    monkeypatch.setattr(R, "N_ROWS", n)
+    monkeypatch.setattr(R, "VALUE_COUNTS", {"emotion": 3, "style": 4, "genre": 2})
+    monkeypatch.setattr(R, "MIN_PAINTINGS", 5)
+    monkeypatch.setattr(R, "load_data", lambda backbone="clip_b32": corpus.data)
+    monkeypatch.setattr(R, "load_split", lambda data: corpus.split)
+    want = R.load_rows("qwen3vl_emb_2b")
+    got = RR.rows_from(corpus.data, corpus.split)
+    assert got.data is want.data and got.split is want.split
+    assert list(got.labels) == list(want.labels)
+    for k in want.labels:
+        assert np.array_equal(got.labels[k], want.labels[k]), k
+    assert got.value_sets == want.value_sets
+    assert all(len(v) for v in got.value_sets.values())                  # a real comparison, not two empty sets
+
+
 # L3: the tau record lists the head inputs, with stable keys
 
 def test_tau_record_lists_the_head_inputs_with_absolute_keys(corpus, tmp_path, monkeypatch):
@@ -765,7 +922,7 @@ def mutant(tmp_path, module, guard):
     src = (HERE / module).read_text()
     lines = src.splitlines(keepends=True)
     hits = [n for n in ast.walk(ast.parse(src))
-            if isinstance(n, (ast.Expr, ast.Assign, ast.If)) and f"# guard:{guard}" in lines[n.lineno - 1]]
+            if isinstance(n, (ast.Expr, ast.Assign, ast.If, ast.Assert)) and f"# guard:{guard}" in lines[n.lineno - 1]]
     assert hits, f"no statement of {module} carries # guard:{guard}"
     for n in hits:
         first = lines[n.lineno - 1]

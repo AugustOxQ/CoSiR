@@ -102,6 +102,12 @@ case('pins entry compared to the SHA','rd9_inputs.py',"assert hashlib.sha256(raw
      C+'test_pinned_bytes_are_the_bytes_that_are_parsed')
 case('exactly one pins entry','rd9_inputs.py',"assert len(matches)==1,","assert len(matches)<=1,",
      C+'test_pinned_bytes_are_the_bytes_that_are_parsed')
+case('phase 2 loads without the per-load pin check','rd9_phase2.py',
+     "    table=pd.read_parquet(io.BytesIO(read_pinned(Path(folder)/'read_set_a28.parquet',entries)))\n"
+     "    values=json.loads(read_pinned(Path(folder)/'value_sets_a28.json',entries))\n",
+     "    table=pd.read_parquet(Path(folder)/'read_set_a28.parquet')\n"
+     "    values=json.loads((Path(folder)/'value_sets_a28.json').read_text())\n",
+     E+'test_phase2_a28_inputs_refuse_a_file_that_differs_from_its_pins_entry')
 
 
 def main():

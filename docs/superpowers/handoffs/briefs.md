@@ -275,3 +275,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-7-handoff.md
 - New chat: tab 'r9 build 7', session 25a99a82-13d8-48cb-b089-1693ca800aaa
 
+[brief] CoSiR: 2 -> outside pages (2026-10-13 20:59 Amsterdam)
+- Done: the dev-log start page (primer) and the first stage page (2026-10-04) are rebuilt for outside readers; the user's rules are collected in a draft.
+- State: both pages are committed; the start page is built in the site repo, not deployed; nothing else is online.
+- Next: open the 2026-10-12 page for the user, apply the draft's rules, then take the user's comments one by one.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-outside-pages-handoff.md
+- New chat: tab 'outside pages', session b154104e-b186-4f2e-9c19-d4bfeaadfbf5
+

@@ -258,6 +258,8 @@ def check_brainstorm(rec):
 
 def load_taus(backbone) -> list:
     """The four thresholds of parts(backbone)["rc_tau"]; CLIP's must equal the rule's (R3 rule D6)."""
+    # The other reader of this file is r9_score.taus_of (pinned: SHA-256 against the backbone's pins). This one is
+    # unpinned: the recipe stage runs before the pins exist. Scoring stages use taus_of; keep the two in step.
     taus = json.loads(Path(parts(backbone)["rc_tau"]).read_text())["taus"]
     _require(len(taus) == N_TAU and all(type(t) is float for t in taus), f"rc_tau.json taus: {taus!r}")
     if backbone == "clip_b32":

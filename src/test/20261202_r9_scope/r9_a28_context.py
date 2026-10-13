@@ -72,7 +72,7 @@ class A28Inputs:
         _require(kept.shape == (n,) and kept.any(), "a28.kept must be a boolean (n,) array with a read row")
         _require(np.asarray(a28.painting_index).shape == (n,), "a28.painting_index must have one entry per row")
         _require(np.asarray(a28.language).shape == (n,) and np.asarray(a28.language).dtype.kind in "iu",
-                 "a28.language must have one integer language code (l = 1 to L) per row")
+                 "a28.language must have one integer language code (l = 1 to L) per row")  # guard:a28_language_shape
         self.a28, self.backbone, self.n_rows, self.heads = a28, a28.backbone, n, heads
         self.rows = np.flatnonzero(kept).astype(np.int64)
         self.in_rows = kept.copy()

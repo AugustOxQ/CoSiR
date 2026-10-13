@@ -581,13 +581,14 @@ def test_equivalence_records_added_by_build_bundle_a28(equiv):
     assert out.set_aside == {p: [] for p in R.PAIR_NAMES}
 
 
-def test_equivalence_a_real_a28_bundle_passes_score_seed_admitted_guard(equiv):
+def test_equivalence_a_real_a28_bundle_passes_score_seed_admitted_guard(equiv, tmp_path):
     """r9_context.ADMITTED holds the a28 seeds, so the scorer's seed/size guard accepts an a28 bundle as it is."""
     out = equiv.out
     assert out.mode == "a28" and out.smoke
     assert len(R.PAIRS) * X.ADMITTED.get((out.mode, int(out.seed)), -1) == out.n         # guard:admitted's test
     picks = P.load_picks(backbone="clip_b32")
-    got = S.score_seed(out, picks, P.frozen_lambdas("clip_b32"), equiv.readers, include_pm=False)
+    got = S.score_seed(out, picks, P.frozen_lambdas("clip_b32"), equiv.readers, include_pm=False, secondary=False,
+                       verdict=tmp_path / "held_verdict_H8.json")          # the pre-verdict path (ticket 20a)
     assert got["pair_index"].shape == (out.n,)
 
 
@@ -616,3 +617,18 @@ def _same(a, b):
     if isinstance(a, dict):
         return set(a) == set(b) and all(_same(a[k], b[k]) for k in a)
     return bits(a, b)
+
+
+def test_language_codes_must_be_one_integer_per_row(syn, tmp_path, monkeypatch):
+    """The shape and dtype check of `a28.language` (ticket 18 review item L-B): a float array and a short array fail."""
+    as_float = SimpleNamespace(**{**vars(syn.a28), "language": syn.a28.language.astype(np.float64)})
+    short = SimpleNamespace(**{**vars(syn.a28), "language": syn.a28.language[:-1]})
+    monkeypatch.setattr(H, "predict", _reach)
+    for bad in (as_float, short):
+        with pytest.raises(AssertionError, match="language"):
+            AC.A28Inputs(bad, syn.heads)
+    mut = mutant(tmp_path, "r9_a28_context.py", "a28_language_shape")
+    monkeypatch.setattr(mut.H, "predict", _reach)
+    for bad in (as_float, short):
+        with pytest.raises(Reached):
+            mut.A28Inputs(bad, syn.heads)
