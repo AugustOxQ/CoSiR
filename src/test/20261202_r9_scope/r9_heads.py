@@ -360,8 +360,11 @@ def check_selection(heads, data, selection, backbone="clip_b32") -> dict:
             "affect_identity": identity, "coef_identity": coef_identity}
 
 
-def recipe_head_pins(backbone):
-    """Snapshot upstream parts before a recipe fit, when stage-2 pins do not exist yet."""
+def recipe_head_pins(backbone, root=None):
+    """Snapshot upstream parts before a recipe fit, when stage-2 pins do not exist yet.
+
+    ``root`` (default: the backbone's ``results/recipe/<B>`` folder) is where the recipe's own ``partitions.npz`` is.
+    Ticket 07 passes its ``--out`` folder; the frozen inputs never move."""
     from r9_backbone import parts
     resolved = parts(backbone)
     roles = {PARTITION_L_REL: "partition_L", E2_PARTITIONS_REL: "partitions", AFFECT_KM_REL: "affect_km",
@@ -369,6 +372,8 @@ def recipe_head_pins(backbone):
     pins = {}
     for rel, role in roles.items():
         path = resolved[role]
+        if root is not None and role == "partitions":
+            path = Path(root) / path.name
         if rel in FROZEN_HEAD_INPUTS:
             canonical = FROZEN_HEAD_INPUTS[rel]
             _require(path == R.INPUT_PATHS[canonical], f"{rel}: frozen recipe path differs from R6")
