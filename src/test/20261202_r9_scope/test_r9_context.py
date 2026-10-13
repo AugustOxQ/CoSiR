@@ -543,3 +543,164 @@ def test_held_bundle_terms(held, held_bundle, pm_syn):
     assert not scores_bits(b.t6u_B, b.t6u_B0) and not scores_bits(b.t6u_B0, b.t6u_B1)
     assert scores_bits(b.cos, held.cos)
     assert scores_bits(b.pm_terms["rca"], rca_term(EvalInputs(held.img, held.txt), ep, pm_syn.basis))
+
+
+# ---------------------------------------------------------------- backbone routing (ticket 06a)
+
+import json  # noqa: E402
+import shutil  # noqa: E402
+
+import r9_picks as P  # noqa: E402
+
+BACKBONE = "qwen3vl_emb_2b"
+
+
+@pytest.fixture
+def routed(monkeypatch):
+    """R.input_pins recording the backbone it is asked for; B.parts likewise. Everything else is CLIP's."""
+    calls = {"pins": [], "parts": []}
+    real_pins, real_parts = R.input_pins, B.parts
+
+    def pins(backbone="clip_b32"):
+        calls["pins"].append(backbone)
+        return real_pins("clip_b32")
+
+    def parts(backbone):
+        calls["parts"].append(backbone)
+        return real_parts("clip_b32")
+
+    monkeypatch.setattr(R, "input_pins", pins)
+    monkeypatch.setattr(B, "parts", parts)
+    return calls
+
+
+def _fake_a3(tmp_path, monkeypatch, *, sha=None, run="A3", picked_sha=None):
+    """A small stand-in A3 checkpoint, its pin and a picked.json; -> the recording ctx."""
+    ckpt = tmp_path / "A3.pt"
+    ckpt.write_bytes(b"stand-in checkpoint")
+    real = R.sha256_file(ckpt)
+    picked = tmp_path / "picked.json"
+    picked.write_text(json.dumps({"run": run, "smoke": False, "checkpoint_sha256": picked_sha or real}))
+    calls = {"pins": [], "parts": [], "encoded": []}
+    monkeypatch.setattr(R, "input_pins", lambda backbone="clip_b32": calls["pins"].append(backbone)
+                        or {B.A3_REL: (ckpt, sha or real)})
+    monkeypatch.setattr(B, "parts", lambda backbone: calls["parts"].append(backbone) or {"picked": picked})
+    ctx = SimpleNamespace(img=np.full((2, 3), 2, np.float32), txt=np.ones((2, 3), np.float32),
+                          encode=lambda p: calls["encoded"].append(p) or (np.full((2, 4), 2, np.float32),
+                                                                         np.full((2, 4), 3, np.float32)))
+    return ctx, calls, ckpt
+
+
+def test_model_inputs_reads_the_pinned_a3_of_the_backbone(tmp_path, monkeypatch):
+    ctx, calls, ckpt = _fake_a3(tmp_path, monkeypatch)
+    inp = B.model_inputs(ctx, BACKBONE)
+    assert isinstance(inp, EvalInputs)
+    assert calls["pins"] and set(calls["pins"]) == {BACKBONE} and calls["parts"] == [BACKBONE]
+    assert calls["encoded"] == [ckpt]
+    assert np.allclose(inp.img, 3 ** -0.5) and np.allclose(inp.txt, 3 ** -0.5)      # EvalInputs unit-normalises
+    assert inp.img_codes[0, 0] == 2 and inp.txt_codes[0, 0] == 3
+
+
+def test_model_inputs_refuses_a_checkpoint_that_is_not_the_pick(tmp_path, monkeypatch):
+    ctx, calls, _ = _fake_a3(tmp_path, monkeypatch, sha="0" * 64)           # file differs from its pin
+    with pytest.raises(SystemExit, match="SHA-256"):
+        B.model_inputs(ctx, BACKBONE)
+    ctx, calls, _ = _fake_a3(tmp_path, monkeypatch, picked_sha="1" * 64)    # pin differs from picked.json
+    with pytest.raises(AssertionError, match="not E3's pick"):
+        B.model_inputs(ctx, BACKBONE)
+    ctx, calls, _ = _fake_a3(tmp_path, monkeypatch, run="A2")
+    with pytest.raises(AssertionError, match="not E3's pick"):
+        B.model_inputs(ctx, BACKBONE)
+    assert calls["encoded"] == []
+
+
+def test_model_inputs_is_the_a3_codes_of_run_checks_for_clip(held):
+    inp = B.model_inputs(held)                                          # default clip_b32
+    ic, tc = held.encode(A3)
+    assert bits(inp.img, EvalInputs(held.img, held.txt).img)
+    assert bits(inp.img_codes, ic) and bits(inp.txt_codes, tc)
+    ref = B.rc.model_inputs(held, "A3", np.asarray(held.split.scorer_train), False)[0]
+    assert bits(ref.img_codes, inp.img_codes) and bits(ref.txt_codes, inp.txt_codes)
+
+
+def test_fit_pm_routes_through_the_backbone(syn, real_scorer_train, routed):
+    pm = B.fit_pm(syn.data, real_scorer_train, BACKBONE)
+    assert set(routed["pins"]) == {BACKBONE} and routed["parts"] == [BACKBONE]
+    assert pm.fit_rows_sha256 == B.fit_pm(syn.data, real_scorer_train).fit_rows_sha256
+
+
+def test_fit_pm_reads_the_pm_fit_rows_part(syn, real_scorer_train, monkeypatch, tmp_path):
+    bad = tmp_path / "baselines_seed42.json"
+    shutil.copy(R.input_pins()[B.BASELINES42_REL][0], bad)
+    monkeypatch.setattr(B, "parts", lambda backbone: {"pm_fit_rows": bad})   # a copy is not the pinned path
+    with pytest.raises(AssertionError, match="not the pinned"):
+        B.fit_pm(syn.data, real_scorer_train)
+
+
+def test_load_readers_routes_through_the_backbone_and_equals_clip(routed, readers):
+    got = B.load_readers(BACKBONE)
+    assert set(routed["pins"]) == {BACKBONE}
+    assert got["config"] == "A0" and got["rule_sha256"] == readers["rule_sha256"]
+    assert list(got["feature_names"]) == list(readers["feature_names"])
+
+
+def _reader_copy(tmp_path, monkeypatch, *, smoke=False, rule=None, pkl_sha=None, pin_pkl=None):
+    pkl_rel, json_rel = B.READER_RELS
+    pkl = tmp_path / "rb_reader_A0.pkl"
+    js = tmp_path / "rb_reader_A0.json"
+    shutil.copy(R.input_pins()[pkl_rel][0], pkl)
+    rec = json.loads(Path(R.input_pins()[json_rel][0]).read_text())
+    rec["smoke"] = smoke
+    rec["rule_sha256"] = rule or rec["rule_sha256"]
+    rec["provenance"]["pkl_sha256"] = pkl_sha or rec["provenance"]["pkl_sha256"]
+    js.write_text(json.dumps(rec))
+    pins = {pkl_rel: (pkl, pin_pkl or R.sha256_file(pkl)), json_rel: (js, R.sha256_file(js))}
+    monkeypatch.setattr(R, "input_pins", lambda backbone="clip_b32": pins)
+    return pins
+
+
+def test_load_readers_checks_the_json_and_the_pickle(tmp_path, monkeypatch, readers):
+    _reader_copy(tmp_path, monkeypatch)
+    assert list(B.load_readers("siglip2_so400m")["feature_names"]) == list(readers["feature_names"])
+    for name, kw in (("smoke", {"smoke": True}), ("rule", {"rule": "0" * 64}), ("json pkl sha", {"pkl_sha": "0" * 64}),
+                     ("pin", {"pin_pkl": "0" * 64})):
+        sub = tmp_path / name.replace(" ", "_")
+        sub.mkdir()
+        _reader_copy(sub, monkeypatch, **kw)
+        with pytest.raises(SystemExit):
+            B.load_readers("siglip2_so400m")
+
+
+def test_frozen_lambdas_reads_the_pinned_baselines_of_the_backbone(tmp_path, monkeypatch):
+    rel = B.BASELINES42_REL
+    real = P.frozen_lambdas()
+    assert tuple(real) == P.LAMBDA_SCORERS and P.frozen_lambdas("clip_b32") == real
+    path = tmp_path / "baselines_seed42.json"
+    rec = json.loads(Path(R.input_pins()[rel][0]).read_text())
+    rec["scorers"]["rca"]["lambda_picks"]["0"] = 12345.0
+    path.write_text(json.dumps(rec))
+    asked = []
+    monkeypatch.setattr(R, "input_pins", lambda backbone="clip_b32": asked.append(backbone)
+                        or {rel: (path, R.sha256_file(path))})
+    with pytest.raises(AssertionError, match="grid"):                   # 12345 is off crossfit_lambda's grid
+        P.frozen_lambdas(BACKBONE)
+    assert set(asked) == {BACKBONE}
+    rec["scorers"]["rca"]["lambda_picks"]["0"] = 64.0 if real["rca"][0] != 64.0 else 0.0
+    path.write_text(json.dumps(rec))
+    assert P.frozen_lambdas(BACKBONE)["rca"][0] == rec["scorers"]["rca"]["lambda_picks"]["0"]
+
+
+def test_load_picks_defaults_to_the_backbones_picks_part(monkeypatch):
+    got = P.load_picks()
+    assert got == P.load_picks(backbone="clip_b32") == P.load_picks(R.R6D / "results/picks_seed42.json")
+    asked = []
+    real = P.parts
+    monkeypatch.setattr(P, "parts", lambda b: asked.append(b) or real("clip_b32"))
+    P.load_picks(backbone=BACKBONE)       # another backbone: only `passed` and float means are required
+    assert asked == [BACKBONE]
+
+
+def test_module_shas_cover_context_bundle_and_picks():
+    shas = R.r9_module_shas()
+    for name in ("r9_context.py", "r9_bundle.py", "r9_picks.py", "r9_score.py"):
+        assert shas[f"src/test/20261202_r9_scope/{name}"] == R.sha256_file(HERE / name)

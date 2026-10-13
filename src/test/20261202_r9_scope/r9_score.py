@@ -33,9 +33,9 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 import r9_common as R  # noqa: E402  (first, before anything that imports src)
-import r6_bundle as B  # noqa: E402
-import r6_context as X  # noqa: E402
-import r6_picks as P  # noqa: E402
+import r9_bundle as B  # noqa: E402
+import r9_context as X  # noqa: E402
+import r9_picks as P  # noqa: E402
 
 import numpy as np  # noqa: E402
 

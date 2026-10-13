@@ -1,6 +1,6 @@
-"""Tests of r6_picks, r9_score and run_r6_picks on synthetic bundles of the real shapes (ticket 06; rule section 5
+"""Tests of r9_picks and r9_score on synthetic bundles of the real shapes (ticket 06; rule section 5
 item 4, section 6 item 3, section 8 item 3, section 11). The real-data tests (selection rows, seed 42) are in
-test_r6_picks_seed42.py.
+test_r9_picks_seed42.py.
 
 Synthetic bundles: 12,288 episodes (3 x 4,096), 13 candidates, float32 score terms (cosine, T_N1u and the three T_6u
 condition-free), stack (n, 3, 13) float32, reader features (n, 18) float64, the ten RCA and PM terms; held seed 52 and
@@ -30,10 +30,9 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 import r9_common as R  # noqa: E402  (first, before anything that imports src)
-import r6_bundle as B  # noqa: E402
-import r6_picks as P  # noqa: E402
+import r9_bundle as B  # noqa: E402
+import r9_picks as P  # noqa: E402
 import r9_score as S  # noqa: E402
-import run_r6_picks as RP  # noqa: E402
 
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
@@ -47,7 +46,7 @@ RF, RC, F2, R3 = R.RF, R.RC, R.F2, R.R3
 N_EP = 3 * R.N_PER_PAIR
 K = 13
 _COUNT = itertools.count()
-GUARDED = ("r6_picks.py", "r9_score.py", "run_r6_picks.py")
+GUARDED = ("r9_picks.py", "r9_score.py")
 
 
 class Reached(Exception):
@@ -59,7 +58,7 @@ class Reached(Exception):
 def mutant(tmp_path, module, *guards):
     """Import a copy of ``module`` (file name in HERE) with its `# guard:<g>` statements replaced by `pass`, for each
     g in ``guards``."""
-    src = (HERE / module if (HERE / module).exists() else R.TEST / "20261125_artelingo_held_test" / module).read_text()
+    src = (HERE / module).read_text()
     lines = src.splitlines(keepends=True)
     for guard in guards:
         hits = [n for n in ast.walk(ast.parse(src))
@@ -191,10 +190,10 @@ def scored_held(held, readers):
 def test_every_marked_guard_has_a_mutation_test():
     names = set()
     for module in GUARDED:
-        names |= {(module, g) for g in re.findall(r"# guard:([a-z_0-9]+)", (HERE / module if (HERE / module).exists() else R.TEST / "20261125_artelingo_held_test" / module).read_text())}
+        names |= {(module, g) for g in re.findall(r"# guard:([a-z_0-9]+)", (HERE / module).read_text())}
     text = Path(__file__).read_text()
     covered = set()
-    for module, args in re.findall(r'mutant\(tmp_path, "((?:r6_picks|r9_score|run_r6_picks)\.py)", ([^)]*)\)', text):
+    for module, args in re.findall(r'mutant\(tmp_path, "((?:r9_picks|r9_score)\.py)", ([^)]*)\)', text):
         covered |= {(module, g) for g in re.findall(r'"([a-z_0-9]+)"', args)}
     assert names and names <= covered, sorted(names - covered)
 
@@ -522,7 +521,7 @@ def test_as_nested_pick():
 def test_nested_cell_guard(tmp_path):
     with pytest.raises(AssertionError, match="nested cell"):
         P.as_nested_pick({0: [3.0, 16.0], 1: [0.0, 0.0]}, "B")          # 3 is not in NESTED_U
-    mut = mutant(tmp_path, "r6_picks.py", "nested_cell")
+    mut = mutant(tmp_path, "r9_picks.py", "nested_cell")
     assert mut.as_nested_pick({0: [3.0, 16.0], 1: [0.0, 0.0]}, "B") == {0: [3.0, 16.0], 1: [0.0, 0.0]}
 
 
@@ -548,7 +547,7 @@ def test_lambda_grid_guard(tmp_path):
     rec["scorers"]["xing"]["lambda_picks"] = {"0": 3.0, "1": 0.5}              # not a lambda of the grid
     with pytest.raises(AssertionError, match="grid"):
         P.parse_lambda_picks(rec)
-    mut = mutant(tmp_path, "r6_picks.py", "lambda_grid")
+    mut = mutant(tmp_path, "r9_picks.py", "lambda_grid")
     assert mut.parse_lambda_picks(rec)["xing"] == {0: 3.0, 1: 0.5}
 
 
@@ -572,7 +571,7 @@ def test_lambda_rerun_guard(sel42, tmp_path):
     bad["kissme"][1] = 64.0 if bad["kissme"][1] != 64.0 else 0.0
     with pytest.raises(AssertionError, match="kissme"):
         P.assert_lambda_convention(b, bad)
-    mut = mutant(tmp_path, "r6_picks.py", "lambda_rerun")
+    mut = mutant(tmp_path, "r9_picks.py", "lambda_rerun")
     mut.assert_lambda_convention(b, bad)
 
 
@@ -580,7 +579,7 @@ def test_seed42_guard(held, sel42, tmp_path):
     for fn in (P.crossfit_seed42, lambda b: P.assert_lambda_convention(b, {})):
         with pytest.raises(AssertionError, match="seed-42"):
             fn(held)
-    mut = mutant(tmp_path, "r6_picks.py", "seed42")
+    mut = mutant(tmp_path, "r9_picks.py", "seed42")
     picks, _ = mut.crossfit_seed42(held)
     assert set(picks) == {"B", "B0", "B1", "mean_r1"}
 
@@ -615,7 +614,7 @@ def test_picks_record_and_load(sel42, tmp_path, monkeypatch):
     assert rec["passed"] is True
     for name in P.NESTED:
         assert rec[name] == {"0": picks[name][0], "1": picks[name][1]}
-    assert rec["mean_r1"] == picks["mean_r1"] and rec["module_sha256"] == P.R.r6_module_shas()
+    assert rec["mean_r1"] == picks["mean_r1"] and rec["module_sha256"] == P.R.r9_module_shas()
     assert re.fullmatch(r"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d", rec["time"])
     path = tmp_path / "picks_seed42.json"
     path.write_text(json.dumps(rec, indent=1))
@@ -640,46 +639,6 @@ def test_picks_target_guard(sel42, tmp_path, monkeypatch):
     (tmp_path / "failed.json").write_text(json.dumps(failed))
     with pytest.raises(AssertionError, match="target"):
         P.load_picks(tmp_path / "failed.json")
-    mut = mutant(tmp_path, "r6_picks.py", "picks_target")
+    mut = mutant(tmp_path, "r9_picks.py", "picks_target")
     monkeypatch.setattr(mut, "MEAN_R1_TARGETS", targets)
     assert mut.load_picks(path)["B"] == picks["B"]
-
-
-# ---------------------------------------------------------------- the runner
-
-def test_run_writes_the_record_or_exits_3(sel42, tmp_path, monkeypatch, capsys):
-    b = sel42
-    picks, _ = P.crossfit_seed42(b)
-    lams = {name: {h: float(v) for h, v in crossfit_lambda(b.cos, b.pm_terms[name], b.parity)[1].items()}
-            for name in P.LAMBDA_SCORERS}
-    monkeypatch.setattr(P, "frozen_lambdas", lambda: lams)
-    out = tmp_path / "picks_seed42.json"
-    # the real targets cannot hold on synthetic data: exit 3, the canonical file not written, the failed record kept
-    assert RP.run(b, out) == RP.EXIT_DIFF == 3
-    assert not out.exists()
-    failed = json.loads((tmp_path / "picks_seed42_failed.json").read_text())
-    assert failed["passed"] is False and failed["checks"]["mean_r1_equal_target"] == {n: False for n in P.NESTED}
-    # with the synthetic means as targets: exit 0 and the record
-    monkeypatch.setattr(P, "MEAN_R1_TARGETS", _targets_of(picks))
-    assert RP.run(b, out) == 0
-    rec = json.loads(out.read_text())
-    assert rec["passed"] is True and rec["checks"]["lambda_convention"] == {n: True for n in P.LAMBDA_SCORERS}
-    assert rec["checks"]["frozen_equals_crossfit"] == {n: True for n in P.NESTED}
-    assert P.load_picks(out) == {name: picks[name] for name in P.NESTED}
-    printed = capsys.readouterr().out
-    for name in P.NESTED:                                          # no metric printed
-        assert repr(picks["mean_r1"][name]) not in printed and f"{picks['mean_r1'][name]:.2f}" not in printed
-    # a lambda disagreement is a difference too
-    bad = {name: dict(p) for name, p in lams.items()}
-    bad["rca"][0] = 64.0 if bad["rca"][0] != 64.0 else 0.0
-    monkeypatch.setattr(P, "frozen_lambdas", lambda: bad)
-    assert RP.run(b, tmp_path / "again.json") == 3 and not (tmp_path / "again.json").exists()
-
-
-def test_exit_code_guard(sel42, tmp_path, monkeypatch):
-    b = sel42
-    lams = {name: {h: float(v) for h, v in crossfit_lambda(b.cos, b.pm_terms[name], b.parity)[1].items()}
-            for name in P.LAMBDA_SCORERS}
-    monkeypatch.setattr(P, "frozen_lambdas", lambda: lams)
-    mut = mutant(tmp_path, "run_r6_picks.py", "exit_code")
-    assert mut.run(b, tmp_path / "picks_seed42.json") == 0             # the difference goes through unnoticed

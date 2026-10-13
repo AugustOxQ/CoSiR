@@ -494,7 +494,3 @@ def parse_baselines_pairs(path=None):
         if isinstance(node, ast.Assign) and any(getattr(t, "id", None) == "PAIRS" for t in node.targets):
             return ast.literal_eval(node.value)
     raise LookupError("run_baselines.py assigns no PAIRS")
-
-# Ticket 06 replaces the upstream bundle/context/picks imports.
-if str(R6D) not in sys.path:
-    sys.path.append(str(R6D))
