@@ -2,7 +2,7 @@
 
 > Date: 2026-10-13 15:05 · Status: approved 2026-10-13 15:05 · Kind: experiment
 > Builds on: [round 6 held test](../../reports/auto/v2/2026-11-25_artelingo_held_test.md) (AFF GO on CLIP), [round 8 report](../../reports/auto/v2/2026-11-29_learned_grouping.md) (no pick, AFF stays best), [direction log 2026-10-13](../direction_log.md), [literature note](../../reports/literature/2026-12-01_affect_caption_datasets.md) · Constitution: `docs/superpowers/constitution.md`
-> Decision rule: `src/test/20261202_r9_scope/DECISION_RULE.md` @ (written first in the build, reviewed, committed before any scoring code)
+> Decision rule: `src/test/20261202_r9_scope/DECISION_RULE.md` @ a443902 (written first in the build, reviewed, committed before any scoring code)
 > Length: body about 255 lines against a target of about 240; the grill settled 34 decisions, all kept in §4.
 
 ## Brief (for the user; agents read and decide from §1 onward)
