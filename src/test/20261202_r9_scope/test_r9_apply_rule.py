@@ -1,4 +1,4 @@
-"""Tests of run_r9_apply_rule.py (ticket 19): rule 4.1, 4.2, 7.4 (detectable margins), 7.6, 10 on hand-built files.
+"""Tests of run_r9_apply_rule.py (ticket 19): rule 4.1, 4.2, 7.3, 7.4 (detectable margins), 7.6, 10 on hand-built files.
 
 Every file is built here in tmp_path with the real names and the real counts' range (5,000 draws); nothing is read from
 or written to results/. The Holm flags of the hand-built pass files come from an independent exact form (fractions:
@@ -82,6 +82,7 @@ def make_pass(read, counts, points=None, smoke=False, set_aside=(), flagged=()) 
         rec["design"] = "two_level"
         rec["set_aside"] = [dict(s) for s in set_aside]
         rec["flagged_languages"] = list(flagged)
+        rec["near_duplicates"] = {"cos_099": 3, "cos_098": 7}
     return rec
 
 
@@ -94,13 +95,57 @@ def make_sens(read, se=0.1) -> dict:
     return rec
 
 
-def stage(tmp_path, read, counts, points=None, smoke=False, sfx="", sens=True, **kw):
+def write_agreement(d, read, sfx="", smoke=False, over=None):
+    """The phase-2 agreement of ticket 25's schema, bound to the pass file as it is now."""
+    raw = (d / f"held_pass_{read}{sfx}.json").read_bytes()
+    checks = json.loads(raw)["checks"]
+    rec = {"phase": 2, "smoke": smoke, "all_agree": True, "disagreements": [], "n_quantities": 129, "read": read,
+           "pass_file": f"held_pass_{read}{sfx}.json", "held_pass_sha256": CM.sha256_bytes(raw),
+           "rederived_counts": {nm: checks.get(nm, {}).get("n", 0) for nm in P}}
+    rec.update(over or {})
+    (d / f"rd9_{read}_agreement{sfx}.json").write_text(json.dumps(rec))
+
+
+def write_smoke_record(d, name="smoke_record.json", **over):
+    rec = {"passed": True, "module_sha256": CM.r9_module_shas()}
+    rec.update(over)
+    (d / name).write_text(json.dumps(rec))
+
+
+def stage(tmp_path, read, counts, points=None, smoke=False, sfx="", sens=True, agree=True, **kw):
     d = tmp_path / ("smoke" if smoke else "results")
     d.mkdir(parents=True, exist_ok=True)
     (d / f"held_pass_{read}{sfx}.json").write_text(json.dumps(make_pass(read, counts, points, smoke, **kw)))
     if sens:
         (d / f"sensitivity_{read}{sfx}.json").write_text(json.dumps(make_sens(read)))
+    if agree:
+        write_agreement(d, read, sfx, smoke)
+    if not smoke and not (d / "smoke_record.json").exists():
+        write_smoke_record(d)
     return d
+
+
+def edit_pass(d, read, fn, sfx=""):
+    """Edit the pass file, then rewrite its agreement (so that only the edit is wrong)."""
+    p = d / f"held_pass_{read}{sfx}.json"
+    r = json.loads(p.read_text())
+    fn(r)
+    p.write_text(json.dumps(r))
+    write_agreement(d, read, sfx)
+
+
+def call(read, d, **kw):
+    """AR.apply with the agreement files in d (as staged) and a ledger that is not the real one."""
+    kw.setdefault("agreement_dir", d)
+    kw.setdefault("ledger", d / "ledger.md")
+    return AR.apply(read, results=d, **kw)
+
+
+def ledger(d, rows):
+    """A ledger with the header and the given {read: text} rows."""
+    lines = ["| # | Date | Dataset | Backbone | Purpose | Episode | Script | Report |", "|---|---|---|---|---|---|---|---|"]
+    lines += [f"| {r} | 2026-10-14 | x | y | z | (pending) | abc | {t} |" for r, t in rows.items()]
+    (d / "ledger.md").write_text("\n".join(lines) + "\n")
 
 
 ALL0 = dict.fromkeys(P, 0)
@@ -108,7 +153,7 @@ ALL0 = dict.fromkeys(P, 0)
 
 def run(tmp_path, read, counts, points=None, **kw):
     d = stage(tmp_path, read, counts, points, **{k: v for k, v in kw.items() if k in ("set_aside", "flagged")})
-    return AR.apply(read, results=d)[1]
+    return call(read, d)[1]
 
 
 # ---------------------------------------------------------------- n* tables from the inequality
@@ -219,7 +264,8 @@ def test_level2_fail_gives_small_claim_and_reads_with_level2_x(tmp_path):
     assert v["checks"]["P3"]["reading_kind"] == "did not beat"
     assert v["checks"]["P1"]["x"] == pytest.approx(3.417 * 0.1)              # level-2 x
     assert v["checks"]["P4"]["passes"] and v["checks"]["P6"]["passes"]
-    assert v["claim"].startswith("beats B′(A0) on R@1 with a positive condition gain over its matched control")
+    assert v["claim"].startswith("AFF on SigLIP 2 so400m/14-384 beats B′(A0) on R@1 with a positive condition gain "
+                                 "over its matched control")
 
 
 def test_level_two_ties_and_order(tmp_path):
@@ -255,7 +301,7 @@ def test_boundary_lists_counts_within_one_of_nstar(tmp_path):
             exp[nm] = (counts[nm], nstar(7, order[nm]["k"]))
     assert exp and {nm: (b["n"], b["n_star"]) for nm, b in got.items()} == exp
     for b in got.values():
-        assert b["rederivation_n"] is None and "integer rule decides" in b["note"]
+        assert b["rederivation_n"] == b["n"] and "integer rule decides" in b["note"]
 
 
 def test_boundary_untested_level2_not_listed_tested_listed(tmp_path):
@@ -305,7 +351,7 @@ def test_wrong_x_in_sensitivity_file_stops(tmp_path):
     s["P1"]["x"] = 3.083 * 0.1               # level-1 z on a level-2 check
     (d / "sensitivity_H8.json").write_text(json.dumps(s))
     with pytest.raises(AR.Stop) as e:
-        AR.apply("H8", results=d)
+        call("H8", d)
     assert e.value.code == 5 and not (d / "held_verdict_H8.json").exists()
 
 
@@ -313,28 +359,24 @@ def test_wrong_x_in_sensitivity_file_stops(tmp_path):
 
 def test_verdict_is_never_overwritten(tmp_path):
     d = stage(tmp_path, "H6", ALL0)
-    path, _ = AR.apply("H6", results=d)
+    path, _ = call("H6", d)
     assert path.name == "held_verdict_H6.json"
     first = path.read_bytes()
     with pytest.raises(AR.Stop) as e:
-        AR.apply("H6", results=d)
+        call("H6", d)
     assert e.value.code == 4 and path.read_bytes() == first
 
 
 def test_pass_file_holm_flags_must_match_recomputation(tmp_path):
     d = stage(tmp_path, "H6", dict(ALL0, P3=500))
-    r = json.loads((d / "held_pass_H6.json").read_text())
-    r["checks"]["P3"]["passes"] = True
-    (d / "held_pass_H6.json").write_text(json.dumps(r))
+    edit_pass(d, "H6", lambda r: r["checks"]["P3"].update(passes=True))
     with pytest.raises(AR.Stop) as e:
-        AR.apply("H6", results=d)
+        call("H6", d)
     assert e.value.code == 5
     d = stage(tmp_path / "two", "H8", ALL0)
-    r = json.loads((d / "held_pass_H8.json").read_text())
-    r["checks"]["P1"]["holm_k"] = 1 + r["checks"]["P1"]["holm_k"]      # a level-2 rank that is not the recomputed one
-    (d / "held_pass_H8.json").write_text(json.dumps(r))
+    edit_pass(d, "H8", lambda r: r["checks"]["P1"].update(holm_k=1 + r["checks"]["P1"]["holm_k"]))   # not the recomputed rank
     with pytest.raises(AR.Stop) as e:
-        AR.apply("H8", results=d)
+        call("H8", d)
     assert e.value.code == 5
 
 
@@ -347,61 +389,199 @@ def test_pass_file_holm_flags_must_match_recomputation(tmp_path):
 ])
 def test_bad_pass_files_refuse(tmp_path, edit, read):
     d = stage(tmp_path, read, ALL0)
-    p = d / f"held_pass_{read}.json"
-    r = json.loads(p.read_text())
-    edit(r)
-    p.write_text(json.dumps(r))
+    edit_pass(d, read, edit)
     with pytest.raises(AR.Stop) as e:
-        AR.apply(read, results=d)
+        call(read, d)
     assert e.value.code == 4 and not (d / f"held_verdict_{read}.json").exists()
 
 
 def test_missing_inputs_refuse(tmp_path):
     d = stage(tmp_path, "H6", ALL0, sens=False)
     with pytest.raises(AR.Stop) as e:
-        AR.apply("H6", results=d)
+        call("H6", d)
     assert e.value.code == 4
     with pytest.raises(AR.Stop):
-        AR.apply("H7", results=d)
+        call("H7", d)
     with pytest.raises(AR.Stop):
-        AR.apply("H11", results=d)
+        call("H11", d)
 
 
-def test_variants_fix1_and_reserve(tmp_path):
+def refused(code, read, d, match=None, **kw):
+    """call() must stop with `code`, say `match`, and leave no verdict file of its name behind."""
+    before = sorted(p.name for p in d.glob("held_verdict_*.json"))
+    with pytest.raises(AR.Stop) as e:
+        call(read, d, **kw)
+    assert e.value.code == code, e.value.msg
+    if match is not None:
+        assert match in e.value.msg, e.value.msg
+    assert sorted(p.name for p in d.glob("held_verdict_*.json")) == before
+    return e.value
+
+
+def test_fix_pass_replaces_the_original_and_the_verdict_is_unsuffixed(tmp_path):
+    # R6 rule 8.1: when held_pass_<Hn>_fix1.json exists it is the pass; two verdicts for one read are impossible
+    d = stage(tmp_path, "H6", dict(ALL0, P1=500))                            # the original pass: NO-GO
+    stage(tmp_path, "H6", ALL0, sfx="_fix1", sens=False)                     # the fix pass (GO) reuses the sensitivity
+    refused(4, "H6", d, "fix pass needs no variant", variant="fix1")
+    path, v = call("H6", d)
+    assert path.name == "held_verdict_H6.json" and not (d / "held_verdict_H6_fix1.json").exists()
+    assert v["verdict"] == "GO" and v["pass_file"] == "held_pass_H6_fix1.json" and v["fix_pass"] is True
+    assert v["agreement_file"] == "rd9_H6_agreement_fix1.json" and v["sensitivity_file"] == "sensitivity_H6.json"
+    refused(4, "H6", d, "never overwritten")                                 # one verdict per read
+
+
+def test_fix_pass_needs_its_own_agreement_and_the_original_pass(tmp_path):
+    d = stage(tmp_path, "H6", dict(ALL0, P1=500))
+    stage(tmp_path, "H6", ALL0, sfx="_fix1", sens=False, agree=False)
+    refused(4, "H6", d, "rd9_H6_agreement_fix1.json is missing")             # the original's agreement does not count
+    write_agreement(d, "H6", "_fix1")
+    (d / "held_pass_H6.json").rename(d / "held_pass_H6.moved")
+    refused(4, "H6", d, "original held_pass_H6.json")
+    (d / "held_pass_H6.moved").rename(d / "held_pass_H6.json")
+    assert call("H6", d)[1]["verdict"] == "GO"
+
+
+def test_fix_pass_uses_its_own_sensitivity_when_it_has_one(tmp_path):
+    d = stage(tmp_path, "H6", dict(ALL0, P1=500))
+    stage(tmp_path, "H6", ALL0, sfx="_fix1")
+    assert call("H6", d)[1]["sensitivity_file"] == "sensitivity_H6_fix1.json"
+
+
+def test_reserve_needs_the_original_verdict_and_its_own_files(tmp_path):
     d = stage(tmp_path, "H6", ALL0)
-    stage(tmp_path, "H6", dict(ALL0, P1=500), sfx="_fix1", sens=False)       # the fix pass reuses the sensitivity file
-    path, v = AR.apply("H6", variant="fix1", results=d)
-    assert path.name == "held_verdict_H6_fix1.json" and v["verdict"] == "NO-GO" and v["variant"] == "fix1"
-    assert v["sensitivity_file"] == "sensitivity_H6.json"
-    with pytest.raises(AR.Stop):                                             # reserve needs the original verdict
-        AR.apply("H6", variant="reserve", results=d)
-    AR.apply("H6", results=d)
     stage(tmp_path, "H6", ALL0, sfx="_reserve")
-    path, v = AR.apply("H6", variant="reserve", results=d)
-    assert path.name == "held_verdict_H6_reserve.json" and v["sensitivity_file"] == "sensitivity_H6_reserve.json"
+    write_smoke_record(d, "smoke_record_reserve.json")
+    refused(4, "H6", d, "original held_verdict_H6.json", variant="reserve")   # every other input is in place
+    call("H6", d)
+    path, v = call("H6", d, variant="reserve")
+    assert path.name == "held_verdict_H6_reserve.json" and v["variant"] == "reserve"
+    assert v["sensitivity_file"] == "sensitivity_H6_reserve.json" and v["pass_file"] == "held_pass_H6_reserve.json"
+    assert v["agreement_file"] == "rd9_H6_agreement_reserve.json"
+    assert v["smoke_record"]["name"] == "smoke_record_reserve.json"
+
+
+def test_reserve_needs_its_own_agreement_and_smoke_record(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    stage(tmp_path, "H6", ALL0, sfx="_reserve", agree=False)
+    call("H6", d)
+    write_smoke_record(d, "smoke_record_reserve.json")
+    refused(4, "H6", d, "rd9_H6_agreement_reserve.json is missing", variant="reserve")
+    write_agreement(d, "H6", "_reserve")
+    (d / "smoke_record_reserve.json").unlink()
+    refused(4, "H6", d, "smoke_record_reserve.json is missing", variant="reserve")
 
 
 def test_smoke_mode_needs_smoke_files(tmp_path):
     d = stage(tmp_path, "H8", ALL0, smoke=True)
-    path, v = AR.apply("H8", smoke=True, results=d)
+    path, v = call("H8", d, smoke=True)
     assert v["mode"] == "smoke" and v["seeds"] == [9001, 9002, 9003]
     d2 = stage(tmp_path / "r", "H8", ALL0, smoke=True)
     with pytest.raises(AR.Stop):                                             # a smoke pass file in real mode
-        AR.apply("H8", results=d2)
+        call("H8", d2)
 
 
 def test_not_run_wordings(tmp_path):
     d = tmp_path / "results"
     d.mkdir()
-    path, v = AR.apply("H7", not_run="switched_off", results=d)
+    ledger(d, {"H6": "not run: switched off", "H7": "not run: switched off", "H9": "dropped under the rule"})
+    path, v = call("H7", d, not_run="switched_off")
     assert v["verdict"] is None and v["status"] == "not run: switched off" and v["claim"] is None
-    path2, v2 = AR.apply("H9", not_run="dropped", results=d)
+    assert path.name == "held_verdict_H7.json" and v["variant"] is None
+    path2, v2 = call("H9", d, not_run="dropped")
     assert v2["status"] == "dropped under the rule" and json.loads(path2.read_text())["status"] == v2["status"]
     d2 = stage(tmp_path / "w", "H6", ALL0)
-    with pytest.raises(AR.Stop):                                             # a read that has a pass file was run
-        AR.apply("H6", not_run="dropped", results=d2)
-    with pytest.raises(AR.Stop):
-        AR.apply("H6", not_run="failed", results=d)
+    ledger(d2, {"H6": "dropped under the rule"})
+    refused(4, "H6", d2, "was run", not_run="dropped")                       # a read that has a pass file was run
+    refused(4, "H6", d, "--not-run takes", not_run="failed")
+
+
+def test_not_run_needs_the_ledger_row_with_the_same_status(tmp_path):
+    d = tmp_path / "results"
+    d.mkdir()
+    refused(4, "H6", d, "ledger.md is missing", not_run="switched_off")
+    ledger(d, {"H7": "not run: switched off"})
+    refused(4, "H6", d, "row H6 is not in", not_run="switched_off")          # no row yet
+    ledger(d, {"H6": "(pending)"})
+    refused(4, "H6", d, "does not read exactly", not_run="switched_off")
+    ledger(d, {"H6": "dropped under the rule"})
+    refused(4, "H6", d, "does not read exactly", not_run="switched_off")     # the other wording
+    refused(4, "H8", d, "row H8 is not in", not_run="dropped")
+    ledger(d, {"H6": "not run: switched off"})
+    refused(4, "H6", d, "does not read exactly", not_run="dropped")
+    ledger(d, {"H6": "not run: switched off; dropped under the rule"})
+    refused(4, "H6", d, "does not read exactly", not_run="dropped")         # both wordings: ambiguous
+    refused(4, "H6", d, "does not read exactly", not_run="switched_off")
+    ledger(d, {"H6": "not run: switched off"})
+    assert call("H6", d, not_run="switched_off")[1]["status"] == "not run: switched off"
+
+
+def test_not_run_ledger_row_is_matched_by_its_own_name(tmp_path):
+    d = tmp_path / "results"
+    d.mkdir()
+    ledger(d, {"H60": "not run: switched off", "H6-R": "not run: switched off", "H7": "not run: switched off"})
+    refused(4, "H6", d, "row H6 is not in", not_run="switched_off")
+
+
+def test_not_run_refuses_clip_switched_off(tmp_path):
+    d = tmp_path / "results"
+    d.mkdir()
+    ledger(d, {"H8": "not run: switched off"})
+    refused(4, "H8", d, "cannot be switched off", not_run="switched_off")
+    ledger(d, {"H8": "dropped under the rule"})
+    assert call("H8", d, not_run="dropped")[1]["status"] == "dropped under the rule"
+
+
+@pytest.mark.parametrize("read,kind", [("H6", "switched_off"), ("H9", "dropped"), ("H7", "dropped")])
+def test_not_run_refuses_after_the_read_started(tmp_path, read, kind):
+    d = tmp_path / "results"
+    d.mkdir()
+    ledger(d, {read: NOT_RUN_TEXT[kind]})
+    (d / f"held_started_{read}.json").write_text("{}")
+    refused(4, read, d, f"held_started_{read}.json exists", not_run=kind)
+
+
+NOT_RUN_TEXT = {"switched_off": "not run: switched off", "dropped": "dropped under the rule"}
+
+
+def test_not_run_refuses_when_a_fix_pass_exists(tmp_path):
+    d = stage(tmp_path, "H6", ALL0, sfx="_fix1")
+    ledger(d, {"H6": "dropped under the rule"})
+    refused(4, "H6", d, "was run", not_run="dropped")
+
+
+@pytest.mark.parametrize("read,sibling", [("H9", "H6"), ("H10", "H7")])
+def test_switched_off_new_backbone_rows_follow_the_artelingo_row(tmp_path, read, sibling):
+    d = tmp_path / "results"
+    d.mkdir()
+    ledger(d, {read: "not run: switched off", sibling: "not run: switched off"})
+    refused(4, read, d, f"only if {sibling} was", not_run="switched_off")    # no sibling verdict yet
+    (d / f"held_verdict_{sibling}.json").write_text(json.dumps({"status": "run", "verdict": "GO"}))
+    refused(4, read, d, f"only if {sibling} was", not_run="switched_off")    # the sibling ran
+    (d / f"held_verdict_{sibling}.json").write_text(json.dumps({"status": "dropped under the rule"}))
+    refused(4, read, d, f"only if {sibling} was", not_run="switched_off")    # dropped is not switched off
+    (d / f"held_verdict_{sibling}.json").write_text(json.dumps({"status": "not run: switched off"}))
+    assert call(read, d, not_run="switched_off")[1]["status"] == "not run: switched off"
+
+
+def test_dropped_new_backbone_rows_need_no_sibling(tmp_path):
+    d = tmp_path / "results"
+    d.mkdir()
+    ledger(d, {"H10": "dropped under the rule"})
+    assert call("H10", d, not_run="dropped")[1]["status"] == "dropped under the rule"
+
+
+def test_not_run_with_a_variant_is_refused(tmp_path):
+    d = tmp_path / "results"
+    d.mkdir()
+    ledger(d, {"H6": "not run: switched off"})
+    refused(4, "H6", d, "--not-run takes", not_run="switched_off", variant="reserve")
+    assert not list(d.glob("held_verdict_*"))
+
+
+def test_not_run_in_smoke_mode_needs_no_ledger(tmp_path):
+    d = tmp_path / "smoke"
+    d.mkdir()
+    assert call("H6", d, smoke=True, not_run="switched_off")[1]["mode"] == "smoke"
 
 
 def test_fixed_phrases_are_in_the_rule():
@@ -414,15 +594,335 @@ def test_fixed_phrases_are_in_the_rule():
 def test_main_exit_codes_and_output(tmp_path, capsys, monkeypatch):
     d = stage(tmp_path, "H8", dict(ALL0, P4=500), points={"P4": 0.3})
     monkeypatch.setattr(AR, "RESULTS", d)
+    monkeypatch.setattr(AR, "AGREEMENT_DIR", d)
     assert AR.main(["--read", "H8"]) == 0
     out = capsys.readouterr().out
     assert "NO-GO" in out and "written" in out
     with pytest.raises(SystemExit) as e:
         AR.main(["--read", "H8"])
     assert e.value.code == 4
+    with pytest.raises(SystemExit):                      # there is no --variant fix1
+        AR.main(["--read", "H8", "--variant", "fix1"])
 
 
 def test_point_exactly_zero_reads_did_not_beat(tmp_path):
     v = run(tmp_path, "H6", dict(ALL0, P1=500), points={"P1": 0.0})
     assert v["checks"]["P1"]["reading_kind"] == "did not beat" and "x" not in v["checks"]["P1"]
     assert v["checks"]["P1"]["reading"] == "AFF did not beat cosine on new paintings" and v["kind"] == "did not beat"
+
+
+# ---------------------------------------------------------------- the phase-2 agreement (rule 7.4, as R6 rule 8.3)
+
+def test_no_verdict_without_the_agreement(tmp_path):
+    d = stage(tmp_path, "H6", ALL0, agree=False)
+    refused(4, "H6", d, "rd9_H6_agreement.json is missing")
+
+
+@pytest.mark.parametrize("over,match", [
+    ({"phase": 1}, "not a phase-2 record"), ({"phase": True}, "not a phase-2 record"),
+    ({"smoke": True}, "agreement record is refused"), ({"smoke": "no"}, "smoke flag"),
+    ({"all_agree": False}, "all_agree is not true"), ({"all_agree": "yes"}, "all_agree is not true"),
+    ({"disagreements": ["P3"]}, "disagreements"), ({"n_quantities": 0}, "n_quantities"),
+    ({"read": "H7"}, "its read is not H6"), ({"pass_file": "held_pass_H6_fix1.json"}, "its pass_file is not"),
+    ({"held_pass_sha256": "0" * 64}, "checked another pass"), ({"held_pass_sha256": "xyz"}, "not a SHA-256"),
+    ({"rederived_counts": {"P1": 0}}, "rederived_counts"), ({"rederived_counts": None}, "rederived_counts"),
+])
+def test_bad_agreement_refuses(tmp_path, over, match):
+    d = stage(tmp_path, "H6", ALL0)
+    write_agreement(d, "H6", over=over)
+    refused(4, "H6", d, match)
+
+
+def test_agreement_missing_keys_refuse(tmp_path):
+    for key in ("phase", "smoke", "all_agree", "disagreements", "n_quantities", "read", "pass_file",
+                "held_pass_sha256", "rederived_counts"):
+        d = stage(tmp_path / key, "H6", ALL0)
+        f = d / "rd9_H6_agreement.json"
+        r = json.loads(f.read_text())
+        r.pop(key)
+        f.write_text(json.dumps(r))
+        refused(4, "H6", d)
+
+
+def test_agreement_is_bound_to_the_pass_file_bytes(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    p = d / "held_pass_H6.json"
+    p.write_text(p.read_text() + "\n")                    # the same record, other bytes
+    refused(4, "H6", d, "checked another pass")
+
+
+def test_smoke_agreement_is_refused_in_real_mode_and_real_in_smoke(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    write_agreement(d, "H6", smoke=True)
+    refused(4, "H6", d, "smoke agreement record is refused in real mode")
+    d = stage(tmp_path / "s", "H8", ALL0, smoke=True)
+    write_agreement(d, "H8", smoke=False)
+    refused(4, "H8", d, "real agreement record is refused in smoke mode", smoke=True)
+
+
+def test_rederived_counts_must_equal_the_pass_counts(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    rc = {nm: 0 for nm in P}
+    rc["P5"] = 1
+    write_agreement(d, "H6", over={"rederived_counts": rc})
+    e = refused(5, "H6", d)
+    assert "P5" in e.msg
+
+
+def test_boundary_report_carries_the_rederivation_count(tmp_path):
+    counts = dict(ALL0, P3=25, P4=39, P5=40, P6=60, P7=100)
+    d = stage(tmp_path, "H6", counts)
+    v = call("H6", d)[1]
+    assert v["boundary_report"] and all(b["rederivation_n"] == counts[b["check"]] for b in v["boundary_report"])
+    assert v["agreement_file"] == "rd9_H6_agreement.json" and v["agreement"]["all_agree"] is True
+    assert v["agreement_sha256"] == CM.sha256_file(d / v["agreement_file"])
+
+
+# ---------------------------------------------------------------- the smoke guard (rule 4.1 "6 passed", 6 item 5)
+
+def test_no_verdict_without_a_passed_smoke_of_these_files(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    (d / "smoke_record.json").unlink()
+    refused(4, "H6", d, "smoke_record.json is missing")
+    write_smoke_record(d, passed=False)
+    refused(4, "H6", d, "did not pass")
+    write_smoke_record(d, passed="yes")
+    refused(4, "H6", d, "did not pass")
+    mods = CM.r9_module_shas()
+    key = "src/test/20261202_r9_scope/run_r9_apply_rule.py"
+    assert key in mods
+    write_smoke_record(d, module_sha256=dict(mods, **{key: "0" * 64}))              # a changed file
+    refused(4, "H6", d, "a new smoke is needed")
+    write_smoke_record(d, module_sha256={k: v for k, v in mods.items() if k != key})   # a file the smoke lacks
+    refused(4, "H6", d, "a new smoke is needed")
+    write_smoke_record(d, module_sha256=dict(mods, extra_file_py="0" * 64))            # a file the code lacks
+    refused(4, "H6", d, "a new smoke is needed")
+    write_smoke_record(d, module_sha256={})
+    refused(4, "H6", d, "a new smoke is needed")
+    write_smoke_record(d, module_sha256=None)
+    refused(4, "H6", d, "a new smoke is needed")
+    write_smoke_record(d)
+    v = call("H6", d)[1]
+    assert v["smoke_record"] == {"name": "smoke_record.json", "sha256": CM.sha256_file(d / "smoke_record.json")}
+
+
+def test_the_latest_smoke_record_counts(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    write_smoke_record(d, "smoke_record_crash1.json", passed=False)                 # crash1 outranks the first smoke
+    refused(4, "H6", d, "smoke_record_crash1.json")
+    write_smoke_record(d, "smoke_record_fix1.json", module_sha256={"x": "0" * 64})  # fix1 outranks crash1
+    refused(4, "H6", d, "smoke_record_fix1.json")
+    write_smoke_record(d, "smoke_record_fix1.json")
+    assert call("H6", d)[1]["smoke_record"]["name"] == "smoke_record_fix1.json"
+
+
+def test_smoke_mode_needs_no_smoke_record(tmp_path):
+    d = stage(tmp_path, "H8", ALL0, smoke=True)
+    assert not (d / "smoke_record.json").exists()
+    assert call("H8", d, smoke=True)[1]["smoke_record"] is None
+
+
+# ---------------------------------------------------------------- the set-aside list (rule 5.1 item 1, 6)
+
+def sa(language, pair="emotion__style", seed=55):
+    return {"language": language, "pair": pair, "seed": seed}
+
+
+def test_set_aside_cap_is_two_per_pair_and_seed(tmp_path):
+    d = stage(tmp_path / "ok", "H8", ALL0, set_aside=[sa("Hindi"), sa("Urdu"), sa("Hindi", seed=56), sa("Thai", seed=56),
+                                                       sa("Igbo", "style__genre", 55)])
+    v = call("H8", d)[1]
+    assert v["n_languages"] == 23 and v["verdict"] == "full claim"
+    d = stage(tmp_path / "three", "H8", ALL0, set_aside=[sa("Hindi"), sa("Urdu"), sa("Thai")])
+    e = refused(5, "H8", d)
+    assert "more than 2" in e.msg and "emotion__style" in e.msg
+    d = stage(tmp_path / "late", "H9", ALL0, set_aside=[sa("Hindi", seed=57), sa("Urdu", seed=57), sa("Thai", seed=57)])
+    refused(5, "H9", d, "more than 2")
+
+
+def test_set_aside_duplicates_and_unknown_names_stop(tmp_path):
+    d = stage(tmp_path / "dup", "H8", ALL0, set_aside=[sa("Hindi"), sa("Hindi")])
+    refused(5, "H8", d, "duplicate")
+    d = stage(tmp_path / "unk", "H8", ALL0, set_aside=[sa("Klingon")])
+    refused(5, "H8", d, "Klingon")
+    d = stage(tmp_path / "case", "H8", ALL0, set_aside=[sa("hindi")])             # 'arabic' and 'chinese' are lower-case
+    refused(5, "H8", d, "hindi")
+    d = stage(tmp_path / "lc", "H8", ALL0, set_aside=[sa("arabic"), sa("chinese")])
+    assert call("H8", d)[1]["n_languages"] == 25
+
+
+def test_the_language_list_is_the_rules_27(tmp_path):
+    assert len(AR.LANGUAGES) == 27 and "arabic, chinese" in AR.LANGUAGE_LIST
+    text = " ".join(CM.HERE.joinpath("DECISION_RULE.md").read_text(encoding="utf-8").split())
+    assert AR.LANGUAGE_LIST in text
+
+
+# ---------------------------------------------------------------- claims: backbone name and near-duplicates
+
+@pytest.mark.parametrize("read,counts,want", [
+    ("H8", ALL0, "full claim"), ("H9", ALL0, "full claim"), ("H10", ALL0, "full claim"),
+    ("H8", dict(ALL0, P1=25, P2=25, P3=25, P5=25, P7=25), "small claim"),
+    ("H9", dict(ALL0, P1=25, P2=25, P3=25, P5=25, P7=25), "small claim"),
+    ("H10", dict(ALL0, P1=25, P2=25, P3=25, P5=25, P7=25), "small claim")])
+def test_a28_claims_start_with_the_ledger_backbone_and_carry_the_near_duplicates(tmp_path, read, counts, want):
+    d = stage(tmp_path, read, counts, set_aside=[sa("Hindi")], flagged=["Thai"])
+    r = json.loads((d / f"held_pass_{read}.json").read_text())
+    edit_pass(d, read, lambda r: r.update(near_duplicates={"cos_099": 11, "cos_098": 29}))
+    v = call(read, d)[1]
+    assert v["verdict"] == want
+    assert v["claim"].startswith(f"AFF on {AR.READS[read]['backbone']}")
+    assert "Near-duplicates (" in v["claim"] and "11 / 29 of 746" in v["claim"] and "Flagged languages: Thai" in v["claim"]
+    assert "Hindi (emotion__style, seed 55)" in v["claim"] and "26 languages that entered the read" in v["claim"]
+    assert v["claim"].endswith("Not native-language text, not any single language.")
+    assert v["near_duplicates"] == {"cos_099": 11, "cos_098": 29}
+    assert ("keeps the same sentence on that backbone." in v["claim"]) is (want == "full claim")
+
+
+def test_the_ledger_names_are_the_backbone_names():
+    names = {AR.READS[r]["backbone"] for r in AR.READS}
+    assert names == {"CLIP ViT-B/32", "Qwen3-VL-Embedding-2B", "SigLIP 2 so400m/14-384"}
+
+
+@pytest.mark.parametrize("nd", [None, {}, {"cos_099": 1}, {"cos_099": 5, "cos_098": 4}, {"cos_099": -1, "cos_098": 2},
+                                {"cos_099": 1, "cos_098": 747}, {"cos_099": 1.0, "cos_098": 2},
+                                {"cos_099": True, "cos_098": 2}, {"cos_099": 1, "cos_098": 2, "x": 3}, [1, 2]])
+def test_bad_near_duplicates_refuse(tmp_path, nd):
+    d = stage(tmp_path, "H8", ALL0)
+    edit_pass(d, "H8", lambda r: r.update(near_duplicates=nd))
+    refused(4, "H8", d, "near_duplicates")
+
+
+def test_missing_near_duplicates_refuses(tmp_path):
+    d = stage(tmp_path, "H8", ALL0)
+    edit_pass(d, "H8", lambda r: r.pop("near_duplicates"))
+    refused(4, "H8", d, "near_duplicates")
+
+
+# ---------------------------------------------------------------- mutants that survived the first round
+
+def test_x95_in_the_sensitivity_file_is_checked(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    s = json.loads((d / "sensitivity_H6.json").read_text())
+    s["P3"]["x95"] = 2.0 * 0.1                              # not 2.80 * SE
+    (d / "sensitivity_H6.json").write_text(json.dumps(s))
+    e = refused(5, "H6", d)
+    assert "2.80" in e.msg and "P3" in e.msg
+
+
+def test_sensitivity_x_of_the_seven_kind_and_non_finite_values(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    s = json.loads((d / "sensitivity_H6.json").read_text())
+    s["P2"]["x"] = 3.083 * 0.1
+    (d / "sensitivity_H6.json").write_text(json.dumps(s))
+    refused(5, "H6", d, "P2 x")
+    s["P2"]["x"] = -1.0
+    (d / "sensitivity_H6.json").write_text(json.dumps(s))
+    refused(4, "H6", d, "P2 lacks")
+
+
+def test_holm_order_of_seven_must_match_the_counts(tmp_path):
+    d = stage(tmp_path, "H6", dict(ALL0, P3=5))             # recomputed: P1 P2 P4 P5 P6 P7 P3
+    edit_pass(d, "H6", lambda r: r.update(holm_order=list(P)))     # a valid ordering of P1..P7, not by count
+    e = refused(5, "H6", d)
+    assert "holm_order" in e.msg
+
+
+def test_holm_order_of_two_levels_must_match_the_counts(tmp_path):
+    d = stage(tmp_path / "a", "H8", dict(ALL0, P4=5))       # level 1 recomputed: P6 P4
+    edit_pass(d, "H8", lambda r: r["holm_order"].update(level1=["P4", "P6"]))
+    assert "holm_order" in refused(5, "H8", d).msg
+    d = stage(tmp_path / "b", "H8", dict(ALL0, P1=5))       # level 2 recomputed: P2 P3 P5 P7 P1
+    edit_pass(d, "H8", lambda r: r["holm_order"].update(level2=["P1", "P2", "P3", "P5", "P7"]))
+    assert "holm_order" in refused(5, "H8", d).msg
+
+
+def test_near_boundary_flag_must_match_the_counts(tmp_path):
+    d = stage(tmp_path, "H6", dict(ALL0, P3=41, P5=50, P7=51))      # P3 is rank 5 (n* 40)
+    r = json.loads((d / "held_pass_H6.json").read_text())
+    nm = next(n for n in P if r["checks"][n]["near_boundary"])
+    edit_pass(d, "H6", lambda r: r["checks"][nm].update(near_boundary=not r["checks"][nm]["near_boundary"]))
+    e = refused(5, "H6", d)
+    assert "near_boundary" in e.msg
+    d = stage(tmp_path / "two", "H9", ALL0)
+    edit_pass(d, "H9", lambda r: r["checks"]["P1"].update(near_boundary=not r["checks"]["P1"]["near_boundary"]))
+    assert "near_boundary" in refused(5, "H9", d).msg
+
+
+@pytest.mark.parametrize("field,val", [("level_two_sided", 0.99), ("own_count_passes", False), ("passes", False)])
+def test_every_holm_field_is_checked_on_both_designs(tmp_path, field, val):
+    for read in ("H6", "H8"):
+        d = stage(tmp_path / read, read, ALL0)
+        edit_pass(d, read, lambda r: r["checks"]["P2"].update({field: val}))
+        assert field in refused(5, read, d).msg
+
+
+def test_untested_level2_checks_do_not_leak_into_the_boundary_list(tmp_path):
+    # level 1 fails (P4 at 62 = n* + 1, P6 at 124 = n*); level 2 has counts at their n* (61 for k=4, 124 for k=5)
+    counts = dict(ALL0, P4=62, P6=124, P2=61, P1=124)
+    v = run(tmp_path, "H8", counts)
+    assert v["level2"]["tested"] is False
+    assert {b["check"] for b in v["boundary_report"]} == {"P4", "P6"}
+    # the same level-2 counts are listed when level 1 passes
+    v = run(tmp_path / "pass", "H8", dict(counts, P4=61, P6=124))
+    assert {"P1", "P2"} <= {b["check"] for b in v["boundary_report"]}
+
+
+def test_boundary_report_of_both_designs_lists_the_rank_and_pass(tmp_path):
+    v = run(tmp_path, "H6", dict(ALL0, P3=41, P5=50, P7=51))
+    b = {x["check"]: x for x in v["boundary_report"]}["P3"]
+    assert (b["holm_k"], b["n"], b["n_star"], b["passes"]) == (5, 41, 40, False)
+
+
+# ---------------------------------------------------------------- the overwrite guards, each on its own
+
+def test_verdict_exists_guard_fires_before_any_other_check(tmp_path):
+    d = tmp_path / "results"
+    d.mkdir()
+    (d / "held_verdict_H6.json").write_text("{}")                  # nothing else exists: no pass, no agreement, no smoke
+    e = refused(4, "H6", d)
+    assert "never overwritten" in e.msg and (d / "held_verdict_H6.json").read_text() == "{}"
+    (d / "held_verdict_H6_reserve.json").write_text("{}")
+    assert "never overwritten" in refused(4, "H6", d, variant="reserve").msg
+    ledger(d, {"H7": "not run: switched off"})
+    (d / "held_verdict_H7.json").write_text("{}")
+    assert "never overwritten" in refused(4, "H7", d, not_run="switched_off").msg
+
+
+def test_write_once_refuses_an_existing_file_and_leaves_no_temp_file(tmp_path):
+    f = tmp_path / "held_verdict_H6.json"
+    f.write_text("first")
+    with pytest.raises(AR.Stop) as e:
+        AR.write_once(f, {"a": 1})
+    assert e.value.code == 4 and "never overwritten" in e.value.msg and f.read_text() == "first"
+    assert [p.name for p in tmp_path.iterdir()] == ["held_verdict_H6.json"]
+    g = tmp_path / "new.json"
+    AR.write_once(g, {"a": 1})
+    assert json.loads(g.read_text()) == {"a": 1} and sorted(p.name for p in tmp_path.iterdir()) == [
+        "held_verdict_H6.json", "new.json"]
+
+
+def test_write_once_wins_a_race_against_the_early_guard(tmp_path, monkeypatch):
+    # the verdict appears after the early exists() check (another process): the atomic link still refuses
+    d = stage(tmp_path, "H6", ALL0)
+    real = AR.write_once
+
+    def late(path, obj):
+        path.write_text("other process")
+        return real(path, obj)
+    monkeypatch.setattr(AR, "write_once", late)
+    refused_msg = pytest.raises(AR.Stop, call, "H6", d)
+    assert refused_msg.value.code == 4 and (d / "held_verdict_H6.json").read_text() == "other process"
+
+
+def test_reserve_does_not_fall_back_to_the_original_sensitivity(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    stage(tmp_path, "H6", ALL0, sfx="_reserve", sens=False)
+    call("H6", d)
+    write_smoke_record(d, "smoke_record_reserve.json")
+    refused(4, "H6", d, "sensitivity_H6_reserve.json is missing", variant="reserve")
+
+
+def test_smoke_agreement_is_read_from_the_smoke_folder_by_default(tmp_path):
+    d = stage(tmp_path, "H8", ALL0, smoke=True)
+    path, v = AR.apply("H8", smoke=True, results=d)           # no agreement_dir, no ledger
+    assert v["agreement_file"] == "rd9_H8_agreement.json" and path.parent == d

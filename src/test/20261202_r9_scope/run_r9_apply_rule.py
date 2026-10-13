@@ -2,14 +2,21 @@
 
     PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= \
     /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/run_r9_apply_rule.py --read H8 \
-        [--variant fix1|reserve] [--smoke] [--not-run switched_off|dropped]
+        [--variant reserve] [--smoke] [--not-run switched_off|dropped]
 
 Reads results/held_pass_<Hn>.json and results/sensitivity_<Hn>.json, writes results/held_verdict_<Hn>.json once (an
-existing file is never replaced). With --variant fix1 or reserve every name takes the suffix _fix1 or _reserve (rule
-7.2); a fix1 pass without its own sensitivity file reuses sensitivity_<Hn>.json (as R6); a reserve verdict needs the
-original verdict. With --smoke the files are read from and written to results/smoke/ and must be smoke files (seeds
-9001 to 9003, mode "smoke"). Exit codes: 0 verdict written; 4 refused (a precondition failed; nothing written); 5 the
-files contradict the rule's recomputation (stop and report; nothing written).
+existing file is never replaced). Before any verdict (R6 rule 8.1, 8.3; this rule 4.1 "6 passed", 6 item 5, 7.4):
+  - the latest smoke record (results/smoke_record_fix1.json if it exists, else smoke_record_crash1.json if it exists,
+    else smoke_record.json; --variant reserve: smoke_record_reserve.json) says "passed": true and its module_sha256
+    equals r9_common.r9_module_shas() key for key (a changed file needs a new smoke); not in --smoke mode;
+  - the phase-2 agreement of the pass file exists, all_agree, bound to the pass file's SHA-256 (see AGREEMENT below).
+One pass file per verdict (R6 rule 8.1): when held_pass_<Hn>_fix1.json exists it is the pass (its agreement, and the
+original held_pass_<Hn>.json must exist) and the original is not read; the verdict is the unsuffixed
+held_verdict_<Hn>.json either way. There is no --variant fix1. --variant reserve reads the _reserve names (pass,
+sensitivity, agreement, smoke record), writes held_verdict_<Hn>_reserve.json and needs held_verdict_<Hn>.json.
+With --smoke the files are read from and written to results/smoke/ (agreement too) and must be smoke files (seeds
+9001 to 9003, mode "smoke", agreement smoke true). Exit codes: 0 verdict written; 4 refused (a precondition failed;
+nothing written); 5 the files contradict the rule's recomputation (stop and report; nothing written).
 
 The rule applied, from the integer counts n_j of the pass file (Holm in R6 rule 3's integer form,
 40 * (n + 1) * (m + 1 - k) <= 5,001, order by n ascending, ties in the order of the names):
@@ -17,18 +24,21 @@ The rule applied, from the integer counts n_j of the pass file (Holm in R6 rule 
   - H8 to H10 (design "two_level"): level 1 = (P4, P6) with m = 2; level 2 = (P1, P2, P3, P5, P7) with m = 5, tested
     only if both level-1 checks pass. "full claim" = both levels pass; "small claim" = level 1 passes, level 2 does
     not; "NO-GO" = level 1 fails (the level-2 checks are then reported with point and 95% interval, not tested, not
-    read).
+    read). Both claims start "AFF on <backbone's ledger name>" and carry the set-aside and flagged languages and the
+    near-duplicate counts of rule 3.3.
   - A failed tested check is read as R6 rule 4 (C11): point > 0 "inconclusive at a detectable margin of x", point <= 0
     "AFF did not beat <name> on new paintings"; a check that fails only because an earlier one in its Holm order
     failed is "not reached". A NO-GO is "inconclusive" if every failed check reads inconclusive, else "did not beat".
     x = z * SE with z = 3.532 (design seven), 3.083 (level 1), 3.417 (level 2); x95 = 2.80 * SE.
-  - 7.6: a tested check whose count is within one of its n* goes to boundary_report with its count and n*
-    (rederivation_n is null: the re-derivation's count is added by the controller from rd_compare); the integer rule
-    decides.
-  - --not-run switched_off | dropped (D25, no pass file may exist) writes a verdict file whose status reads
-    "not run: switched off" or "dropped under the rule" and whose verdict is null.
+  - 7.6: a tested check whose count is within one of its n* goes to boundary_report with its count, n* and the
+    re-derivation's count (rederivation_n, from the agreement file); the integer rule decides.
+  - --not-run switched_off | dropped (D25, no pass file and no held_started_<Hn>.json may exist, no variant) writes a
+    verdict file whose status reads "not run: switched off" or "dropped under the rule" and whose verdict is null. The
+    ledger row <Hn> must read the same wording (not in --smoke mode). switched_off is refused for H8 (CLIP cannot be
+    switched off) and, for H9 and H10, unless held_verdict_H6.json / H7.json reads "not run: switched off" (D30).
 
-INPUT SCHEMAS (what runners 20 and 21 write). All numbers are R@1 points; every JSON is finite (no NaN).
+INPUT SCHEMAS (what runners 20 and 21 and the re-derivation (ticket 25) write). All numbers are R@1 points; every JSON
+is finite (no NaN).
   held_pass_<Hn>.json, H6 and H7: exactly r9_stats.pass_record's output (R6's schema): rule_sha256 (= r9_common.
     RULE_SHA256), mode "held", seeds [52, 53, 54], n_episodes 36864, n_clusters, checks {P1..P7: {quantity, n (0..5000),
     point, ci95 [lo, hi], holm_k, ci_holm [lo, hi], level_two_sided, passes (bool), own_count_passes (bool),
@@ -42,11 +52,20 @@ INPUT SCHEMAS (what runners 20 and 21 write). All numbers are R@1 points; every 
       decides whether they are tested);
     holm_order is {"level1": [P4, P6 in count order], "level2": [five names in count order]};
     no `secondary`;
-    "set_aside": [{"language": str, "pair": a pair name, "seed": one of the seeds}, ...] (rule 5.1 item 6; [] if none);
-    "flagged_languages": [str, ...] (rule 3.3; [] if none).
+    "set_aside": [{"language": one of the 27 names of rule 5.1 item 1, "pair": a pair name, "seed": one of the seeds},
+      ...] ([] if none; no duplicate entry; at most two per (pair, seed): else exit 5, rule 5.1 item 6);
+    "flagged_languages": [str, ...] (rule 3.3; [] if none);
+    "near_duplicates": {"cos_099": int, "cos_098": int} (rule 3.3: read paintings whose zip image has a train-side
+      image at CLIP cosine >= 0.99 and >= 0.98; 0 <= cos_099 <= cos_098 <= 746). NEW: the runner (ticket 21) fills it.
   sensitivity_<Hn>.json (all seven, also the untested): {P1..P7: {"SE", "x", "x95"}} with x = z * SE for the check's
     read kind (see detectable_margins), x95 = 2.80 * SE; other top-level keys are ignored. The step recomputes x and x95
     from SE and stops (exit 5) on a difference.
+  AGREEMENT: rd9_<Hn>_agreement[_fix1|_reserve].json, one per pass file, in rederive/rd9_out/ (results/smoke/ with
+    --smoke), written by rederive/rd9_compare.py (ticket 25). Fields read: phase (2), smoke (bool, = --smoke),
+    all_agree (true), disagreements ([]), n_quantities (int >= 1), read (<Hn>), pass_file (the pass file's name),
+    held_pass_sha256 (= the SHA-256 of that pass file), rederived_counts {P1..P7: int} (the re-derivation's n_j, equal
+    to the pass file's). Ticket 25's first version wrote "agreement" instead of "all_agree" and none of phase, smoke,
+    disagreements, n_quantities, pass_file, held_pass_sha256, rederived_counts.
 """
 import argparse
 import json
@@ -85,7 +104,20 @@ READS = {
 }
 SEEDS = {"seven": (52, 53, 54), "two_level": (55, 56, 57)}
 SMOKE_SEEDS = tuple(CM.SMOKE_SEEDS)
-VARIANTS = {None: "", "fix1": "_fix1", "reserve": "_reserve"}
+VARIANTS = {None: "", "reserve": "_reserve"}      # a fix pass has no variant: held_pass_<Hn>_fix1.json is used when it exists
+SMOKE_RECORDS = {"smoke": "smoke_record.json", "crash1": "smoke_record_crash1.json",
+                 "fix1": "smoke_record_fix1.json", "reserve": "smoke_record_reserve.json"}      # as R6
+SHA_HERE = None                 # the folder whose r9 files count (None: this one; a test points it at a tmp copy)
+AGREEMENT_DIR = CM.HERE / "rederive" / "rd9_out"      # ticket 25's output folder (real mode)
+LEDGER = CM.CHECKOUT / "docs/superpowers/held_ledger.md"
+SIBLING = {"H9": "H6", "H10": "H7"}      # D30: the backbone's ArtELingo row decides its ArtELingo-28 row
+# Rule 5.1 item 1: the 27 CSV names in Python sort order.
+LANGUAGES = ("Burmese", "Darija", "Emakhuwa", "Hausa", "Hindi", "Igbo", "Indonesian", "IsiNdebele", "IsiXhosa", "IsiZulu",
+             "Kazakh", "Kinyarwanda", "Korean", "Kyrgyz", "Malay", "Setswana", "Swahili", "Tagalog", "Tamil", "Thai",
+             "Turkish", "Urdu", "Uzbek", "Vietnamese", "Yoruba", "arabic", "chinese")
+assert len(LANGUAGES) == N_LANGUAGES == 27 and list(LANGUAGES) == sorted(LANGUAGES)
+MAX_SET_ASIDE = 2               # per pair and seed (rule 5.1 item 6)
+N_READ_PAINTINGS = 746
 NOT_RUN = {"switched_off": "not run: switched off", "dropped": "dropped under the rule"}      # D25
 
 # Rule 4: <name> of "AFF did not beat <name> on new paintings".
@@ -105,14 +137,16 @@ CLAIM_FULL_B = ("machine-translated to English, AFF trained on English ArtELingo
 CLAIM_FULL = CLAIM_FULL_A + ", " + CLAIM_FULL_B
 CLAIM_SMALL = "beats B′(A0) on R@1 with a positive condition gain over its matched control"
 CLAIM_A28_NOT = "Not native-language text, not any single language."
+LANGUAGE_LIST = ", ".join(LANGUAGES)      # rule 5.1 item 1, verbatim
 RULE_PHRASES = (CLAIM7_A + "Qwen (or SigLIP 2)" + CLAIM7_B, CLAIM7_NOT, CLAIM_FULL_A.replace("{N}", "N"), CLAIM_FULL_B,
-                CLAIM_SMALL, CLAIM_A28_NOT, NOT_RUN["switched_off"], NOT_RUN["dropped"])      # in this folder's rule
+                CLAIM_SMALL, CLAIM_A28_NOT, NOT_RUN["switched_off"], NOT_RUN["dropped"], LANGUAGE_LIST)      # in this folder's rule
 # Fixed phrases of R6 rule 4 (C11), which this rule cites for every reading.
 R6_PHRASES = ('"AFF did not beat <name> on new paintings"', '"inconclusive at a detectable margin of x"',
               "the condition-free scorers on condition gain", '"RCA on condition gain"',
               '"not reached: the Holm procedure stopped at <earlier check>"',
               "cosine, RCA, B, B′(A0), its matched control")
 HEX64 = re.compile(r"[0-9a-f]{64}")
+SHA_RE = HEX64
 
 
 class Stop(Exception):
@@ -256,9 +290,30 @@ def load_pass(raw: bytes, name: str, read: str, smoke: bool) -> dict:
             refuse(f"{name}: set_aside is not a list of {{language, pair, seed}}")
         if not (isinstance(fl, list) and all(isinstance(s, str) for s in fl)):
             refuse(f"{name}: flagged_languages is not a list of strings")
-        if len({s["language"] for s in sa}) > N_LANGUAGES - 1:
-            refuse(f"{name}: set_aside leaves no language")
+        nd = rec.get("near_duplicates")
+        if not (isinstance(nd, dict) and set(nd) == {"cos_099", "cos_098"} and _is_int(nd["cos_099"])
+                and _is_int(nd["cos_098"]) and 0 <= nd["cos_099"] <= nd["cos_098"] <= N_READ_PAINTINGS):
+            refuse(f"{name}: near_duplicates is not {{cos_099, cos_098}} with 0 <= cos_099 <= cos_098 <= "
+                   f"{N_READ_PAINTINGS} (rule 3.3)")
+        check_set_aside(sa, name)
     return rec
+
+
+def check_set_aside(sa: list, name: str) -> None:
+    """Rule 5.1 item 6: names among the 27, no duplicate entry, at most two languages per (pair, seed); else exit 5."""
+    keys = [(s["language"], s["pair"], s["seed"]) for s in sa]
+    outside = sorted({s["language"] for s in sa} - set(LANGUAGES))
+    if outside:
+        contradiction(f"{name}: set_aside names {outside}, which are not among the 27 languages of rule 5.1 item 1")
+    if len(set(keys)) != len(keys):
+        contradiction(f"{name}: set_aside has a duplicate (language, pair, seed) entry")
+    per = {}
+    for _, pair, seed in keys:
+        per[(pair, seed)] = per.get((pair, seed), 0) + 1
+    over = sorted(k for k, v in per.items() if v > MAX_SET_ASIDE)
+    if over:
+        contradiction(f"{name}: more than {MAX_SET_ASIDE} languages set aside for {over} (rule 5.1 item 6: the read "
+                      f"stops before any score)")
 
 
 def load_sensitivity(path: Path, read: str) -> tuple:
@@ -344,26 +399,31 @@ def _kind_of_failures(read_checks: dict, failed: list) -> str:
 
 
 def claim_a28(rec: dict, read: str, full: bool) -> tuple:
-    """-> (claim text, N): rule 4.3 with N, the set-aside languages (with pair and seed) and the flagged ones."""
+    """-> (claim text, N): rule 4.3 with N, the set-aside languages (with pair and seed), the flagged ones and the
+    near-duplicate counts (rule 3.3). Both claims start "AFF on <backbone's ledger name>"."""
     sa = rec["set_aside"]
     n = N_LANGUAGES - len({s["language"] for s in sa})
     named = "; ".join(f"{s['language']} ({s['pair']}, seed {s['seed']})" for s in sa) or "none"
     flagged = ", ".join(rec["flagged_languages"]) or "none"
+    nd = rec["near_duplicates"]
     bb = READS[read]["backbone"]
-    head = CLAIM_FULL.replace("{N}", str(n)) if full else (
-        f"{CLAIM_SMALL} (captions from the {n} languages that entered the read, machine-translated to English).")
-    return (f"{head} Backbone: {bb}. Set-aside languages: {named}. Flagged languages: {flagged}. "
-            f"{CLAIM_A28_NOT}"), n
+    head = f"AFF on {bb}: " + CLAIM_FULL.replace("{N}", str(n)) if full else (
+        f"AFF on {bb} {CLAIM_SMALL} (captions from the {n} languages that entered the read, machine-translated to "
+        f"English).")
+    return (f"{head} Set-aside languages: {named}. Flagged languages: {flagged}. Near-duplicates (read paintings whose "
+            f"image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): {nd['cos_099']} / {nd['cos_098']} of "
+            f"{N_READ_PAINTINGS}, none excluded. {CLAIM_A28_NOT}"), n
 
 
-def decide(rec: dict, sens: dict, read: str) -> dict:
-    """Rule 4.1, 4.2 and 7.6 on a validated pass record and sensitivity record."""
+def decide(rec: dict, sens: dict, read: str, rederived: dict = None) -> dict:
+    """Rule 4.1, 4.2 and 7.6 on a validated pass record and sensitivity record; `rederived` = the agreement's counts."""
     checks, short = rec["checks"], READS[read]["short"]
     boundary = []
 
     def tested_boundary(recomputed):
         boundary.extend({"check": e["name"], "holm_k": e["k"], "n": e["n"], "n_star": e["n_star"],
-                         "passes": e["passes"], "rederivation_n": None} for e in recomputed if e["near_boundary"])
+                         "passes": e["passes"], "rederivation_n": None if rederived is None else rederived[e["name"]]}
+                        for e in recomputed if e["near_boundary"])
 
     if READS[read]["design"] == "seven":
         hp = holm_ranks({nm: checks[nm]["n"] for nm in P_CHECKS}, P_CHECKS, 7)
@@ -406,10 +466,9 @@ def decide(rec: dict, sens: dict, read: str) -> dict:
              "level2": {"names": list(L2), "holm_order": rec["holm_order"]["level2"], "tested": l1_pass,
                         "passes": l2_pass},
              "claim": claim, "n_languages": n_lang, "set_aside": rec["set_aside"],
-             "flagged_languages": rec["flagged_languages"]}
+             "flagged_languages": rec["flagged_languages"], "near_duplicates": rec["near_duplicates"]}
     for b in boundary:
-        b["note"] = ("rule 7.6: reported to the user with the count and its n*; the integer rule decides; the "
-                     "re-derivation's count is added from rd_compare")
+        b["note"] = ("rule 7.6: reported to the user with the count and its n*; the integer rule decides")
     v["boundary_report"] = boundary
     return v
 
@@ -429,45 +488,171 @@ def write_once(path: Path, obj: dict) -> None:
         tmp.unlink()
 
 
-def apply(read: str, smoke: bool = False, variant=None, not_run=None, results=None) -> tuple:
+def load_agreement(path: Path, smoke: bool, pass_name: str, read: str) -> tuple:
+    """Rule 7.4 ("as R6 rule 8.3"), 7.5: the phase-2 agreement record of the pass file `pass_name`, or refuse.
+    -> (record, SHA-256 of the record file)."""
+    if not path.is_file():  # GUARD: agreement-missing
+        refuse(f"{path.name} is missing: the verdict is written only after the phase-2 agreement (rule 7.4)")
+    raw = path.read_bytes()
+    agr = _parse(raw, path.name)
+    if not (_is_int(agr.get("phase")) and agr["phase"] == 2):  # GUARD: phase-2
+        refuse(f"{path.name}: not a phase-2 record (rule 7.5)")
+    if type(agr.get("smoke")) is not bool:
+        refuse(f"{path.name}: its smoke flag is not a boolean")
+    if agr["smoke"] is not smoke:  # GUARD: smoke-flag
+        refuse(f"{path.name}: a {'real' if agr['smoke'] is False else 'smoke'} agreement record is refused in "
+               f"{'smoke' if smoke else 'real'} mode")
+    if agr.get("all_agree") is not True:  # GUARD: all-agree
+        refuse(f"{path.name}: all_agree is not true; trace the disagreement first (rule 7.5)")
+    if agr.get("disagreements") != []:
+        refuse(f"{path.name}: its disagreements list is not empty")
+    if not (_is_int(agr.get("n_quantities")) and agr["n_quantities"] >= 1):
+        refuse(f"{path.name}: n_quantities is not a positive integer")
+    if agr.get("read") != read:  # GUARD: read-name
+        refuse(f"{path.name}: its read is not {read}")
+    if agr.get("pass_file") != pass_name:  # GUARD: pass-file-name
+        refuse(f"{path.name}: its pass_file is not {pass_name} (one agreement file per pass)")
+    if not (isinstance(agr.get("held_pass_sha256"), str) and SHA_RE.fullmatch(agr["held_pass_sha256"])):
+        refuse(f"{path.name}: held_pass_sha256 is not a SHA-256")
+    rc = agr.get("rederived_counts")
+    if not (isinstance(rc, dict) and set(rc) == set(P_CHECKS)
+            and all(_is_int(rc[nm]) and 0 <= rc[nm] <= N_BOOT for nm in P_CHECKS)):  # GUARD: rederived-counts
+        refuse(f"{path.name}: rederived_counts is not {{P1..P7: count}}")
+    return agr, CM.sha256_bytes(raw)
+
+
+def pair_suffix(out: Path, read: str, variant) -> str:
+    """One pass file per verdict (R6 rule 8.1): "_reserve" for the reserve read; "_fix1" whenever
+    held_pass_<Hn>_fix1.json exists (the fix pass replaces the original, which is then not read); "" otherwise."""
+    if variant == "reserve":
+        return "_reserve"
+    if (out / f"held_pass_{read}_fix1.json").exists():  # GUARD: fix1-pair
+        return "_fix1"
+    return ""
+
+
+def latest_smoke_record(results: Path, variant) -> Path:
+    """The smoke record covering the code run now (as R6): reserve: smoke_record_reserve.json; otherwise
+    smoke_record_fix1.json if it exists, else smoke_record_crash1.json if it exists, else smoke_record.json."""
+    if variant == "reserve":
+        return results / SMOKE_RECORDS["reserve"]
+    for kind in ("fix1", "crash1"):
+        if (results / SMOKE_RECORDS[kind]).is_file():
+            return results / SMOKE_RECORDS[kind]
+    return results / SMOKE_RECORDS["smoke"]
+
+
+def smoke_guard(results: Path, variant) -> dict:
+    """Real mode (rule 4.1 "6 passed", 6 item 5): the latest smoke record passed and its module_sha256 equals
+    r9_module_shas() key for key, or refuse. -> {"name", "sha256"} of the record."""
+    path = latest_smoke_record(results, variant)
+    if not path.is_file():  # GUARD: smoke-record
+        refuse(f"{path.name} is missing: the step runs only on code that passed the smoke (rule 6 item 5)")
+    raw = path.read_bytes()
+    rec = _parse(raw, path.name)
+    if rec.get("passed") is not True:  # GUARD: smoke-passed
+        refuse(f"{path.name} records a smoke that did not pass (rule 6 item 5)")
+    mods = rec.get("module_sha256") if isinstance(rec.get("module_sha256"), dict) else {}
+    cur = CM.r9_module_shas(SHA_HERE)
+    diff = sorted(k for k in set(mods) | set(cur) if mods.get(k) != cur.get(k))
+    if not mods or diff:  # GUARD: smoke-shas
+        refuse(f"{path.name}: the SHA-256s of {diff or 'every module'} differ from the smoke's: a new smoke is needed "
+               f"(rule 6 item 5)")
+    return {"name": path.name, "sha256": CM.sha256_bytes(raw)}
+
+
+def ledger_row(ledger: Path, read: str) -> str:
+    """The text of ledger row `read` (all its cells), or refuse."""
+    if not ledger.is_file():
+        refuse(f"{ledger.name} is missing")
+    for line in ledger.read_text(encoding="utf-8").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if line.lstrip().startswith("|") and cells and cells[0] == read:
+            return " | ".join(cells)
+    refuse(f"row {read} is not in {ledger.name}: a not-run verdict is written only after its ledger row (rule 7.1)")
+
+
+def apply_not_run(read: str, not_run: str, out: Path, smoke: bool, ledger: Path, base: dict, vpath: Path) -> tuple:
+    """D25, D30, rule 7.1, 7.3: a not-run verdict only with its evidence."""
+    ppath = out / f"held_pass_{read}.json"
+    if ppath.exists() or (out / f"held_pass_{read}_fix1.json").exists():
+        refuse(f"{ppath.name} exists: the read was run, it is not '{NOT_RUN[not_run]}'")
+    if (out / f"held_started_{read}.json").exists():
+        refuse(f"held_started_{read}.json exists: the read was started, it is not '{NOT_RUN[not_run]}'")
+    if not_run == "switched_off":
+        if read == "H8":
+            refuse("H8 reads CLIP, which cannot be switched off (D30)")
+        if read in SIBLING:
+            sib = out / f"held_verdict_{SIBLING[read]}.json"
+            sv = _parse(sib.read_bytes(), sib.name) if sib.is_file() else {}
+            if sv.get("status") != NOT_RUN["switched_off"]:
+                refuse(f"{read} is switched off only if {SIBLING[read]} was (D30); {sib.name} does not read "
+                       f"'{NOT_RUN['switched_off']}'")
+    if not smoke:
+        row = ledger_row(ledger, read)
+        other = NOT_RUN["dropped" if not_run == "switched_off" else "switched_off"]
+        if NOT_RUN[not_run] not in row or other in row:
+            refuse(f"ledger row {read} does not read exactly '{NOT_RUN[not_run]}'")
+    v = {**base, "verdict": None, "kind": None, "status": NOT_RUN[not_run], "claim": None}
+    write_once(vpath, v)
+    return vpath, v
+
+
+def apply(read: str, smoke: bool = False, variant=None, not_run=None, results=None, agreement_dir=None,
+          ledger=None) -> tuple:
     """Every refusal, then the verdict record written once. -> (path, record)."""
     if read not in READS:
         refuse(f"unknown read {read!r}; expected one of {sorted(READS)}")
     if variant not in VARIANTS:
-        refuse(f"unknown variant {variant!r}")
+        refuse(f"unknown variant {variant!r}; a fix pass needs no variant (held_pass_<Hn>_fix1.json is used when it "
+               f"exists)")
     if not_run is not None and (not_run not in NOT_RUN or variant is not None):
         refuse(f"--not-run takes {sorted(NOT_RUN)} and no variant")
     out = Path(results) if results is not None else (SMOKE if smoke else RESULTS)
-    sfx = VARIANTS[variant]
-    vpath = out / f"held_verdict_{read}{sfx}.json"
-    if vpath.exists():
+    vpath = out / f"held_verdict_{read}{VARIANTS[variant]}.json"
+    if vpath.exists():  # GUARD: verdict-exists
         refuse(f"{vpath.name} exists; a verdict is never overwritten (rule 7.2)")
-    if variant == "reserve" and not (out / f"held_verdict_{read}.json").is_file():
+    if variant == "reserve" and not (out / f"held_verdict_{read}.json").is_file():  # GUARD: reserve-needs-original
         refuse(f"a reserve verdict follows the original held_verdict_{read}.json, which is missing")
-    assert_rule()
     base = {"read": read, "backbone": READS[read]["backbone"], "design": READS[read]["design"], "variant": variant,
             "mode": "smoke" if smoke else "held", "rule_sha256": CM.RULE_SHA256, "module_sha256": CM.r9_module_shas(),
             "time": CM.amsterdam_now()}
-    ppath = out / f"held_pass_{read}{sfx}.json"
     if not_run is not None:
-        if ppath.exists():
-            refuse(f"{ppath.name} exists: the read was run, it is not '{NOT_RUN[not_run]}'")
-        v = {**base, "verdict": None, "kind": None, "status": NOT_RUN[not_run], "claim": None}
-        write_once(vpath, v)
-        return vpath, v
+        assert_rule()
+        return apply_not_run(read, not_run, out, smoke, Path(ledger) if ledger is not None else LEDGER, base, vpath)
+    smoke_record = None if smoke else smoke_guard(out, variant)
+    assert_rule()
+    sfx = pair_suffix(out, read, variant)
+    ppath = out / f"held_pass_{read}{sfx}.json"
+    adir = Path(agreement_dir) if agreement_dir is not None else (out if smoke else AGREEMENT_DIR)
+    apath = adir / f"rd9_{read}_agreement{sfx}.json"
+    agr, agr_sha = load_agreement(apath, smoke, ppath.name, read)
     if not ppath.is_file():
-        refuse(f"{ppath.name} is missing")
+        refuse(f"{ppath.name}, named by {apath.name}, is missing")
     raw = ppath.read_bytes()
+    pass_sha = CM.sha256_bytes(raw)
+    if agr["held_pass_sha256"] != pass_sha:  # GUARD: sha-binding
+        refuse(f"{apath.name} checked another pass: its held_pass_sha256 is not the SHA-256 of {ppath.name}")
+    if sfx == "_fix1" and not (out / f"held_pass_{read}.json").is_file():  # GUARD: fix1-original
+        refuse(f"{ppath.name} exists, but the original held_pass_{read}.json it corrects is missing (rule 7.3)")
     rec = load_pass(raw, ppath.name, read, smoke)
+    rd = agr["rederived_counts"]
+    for nm in P_CHECKS:
+        if rd[nm] != rec["checks"][nm]["n"]:  # GUARD: counts-equal
+            contradiction(f"{apath.name}: all_agree, but the re-derived count of {nm} ({rd[nm]}) is not the pass "
+                          f"file's ({rec['checks'][nm]['n']})")
     spath = out / f"sensitivity_{read}{sfx}.json"
-    if variant == "fix1" and not spath.is_file():          # a fix pass reuses the original sensitivity (as R6)
+    if sfx == "_fix1" and not spath.is_file():             # a fix pass reuses the original sensitivity (as R6)
         spath = out / f"sensitivity_{read}.json"
     if not spath.is_file():
         refuse(f"{spath.name} is missing (rule 7.4)")
     sens, sens_sha = load_sensitivity(spath, read)
-    v = {**base, **decide(rec, sens, read), "status": "run", "seeds": rec["seeds"],
-         "held_pass_sha256": CM.sha256_bytes(raw), "pass_file": ppath.name, "sensitivity_file": spath.name,
-         "sensitivity_sha256": sens_sha}
+    v = {**base, **decide(rec, sens, read, rd), "status": "run", "seeds": rec["seeds"],
+         "held_pass_sha256": pass_sha, "pass_file": ppath.name, "fix_pass": sfx == "_fix1",
+         "agreement_file": apath.name, "agreement_sha256": agr_sha,
+         "agreement": {k: agr.get(k) for k in ("phase", "smoke", "all_agree", "read", "pass_file", "held_pass_sha256",
+                                               "n_quantities")},
+         "sensitivity_file": spath.name, "sensitivity_sha256": sens_sha, "smoke_record": smoke_record}
     write_once(vpath, v)
     return vpath, v
 
@@ -479,7 +664,7 @@ def say(msg: str) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--read", required=True, choices=sorted(READS, key=lambda r: int(r[1:])))
-    ap.add_argument("--variant", choices=("fix1", "reserve"), default=None)
+    ap.add_argument("--variant", choices=("reserve",), default=None, help="the reserve read (_reserve names)")
     ap.add_argument("--smoke", action="store_true", help="read and write results/smoke/ (smoke files only)")
     ap.add_argument("--not-run", choices=sorted(NOT_RUN), default=None, dest="not_run")
     args = ap.parse_args(argv)
