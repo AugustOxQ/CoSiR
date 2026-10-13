@@ -137,3 +137,28 @@ def test_value_codes_on_real_ticket14_file():
     assert got['emotion']==list(range(8))
     assert got['style']==[9,12,17,20,21,23,24]
     assert got['genre']==[0,1,2,4,6,7,8,9]
+
+
+# --- phase 2 loads the read set and the value sets through the pinned reader (ticket 25d review, LOW A) ---
+def _a28_input_files(folder):
+    import hashlib,json
+    folder.mkdir(exist_ok=True)
+    pd.DataFrame(dict(row_id=[1,2],painting=['w0','w1'])).to_parquet(folder/'read_set_a28.parquet')
+    (folder/'value_sets_a28.json').write_text(json.dumps({'emotion':[{'code':0,'name':'n0'}]}))
+    return {f'results/{p.name}':hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(folder.iterdir())}
+
+
+def test_phase2_a28_inputs_are_loaded_from_the_pinned_bytes(tmp_path):
+    from rd9_phase2 import load_a28_inputs
+    entries=_a28_input_files(tmp_path)
+    table,values=load_a28_inputs(entries,tmp_path)
+    assert list(table.row_id)==[1,2] and values['emotion'][0]['code']==0
+
+
+@pytest.mark.parametrize('name',['read_set_a28.parquet','value_sets_a28.json'])
+def test_phase2_a28_inputs_refuse_a_file_that_differs_from_its_pins_entry(tmp_path,name):
+    from rd9_phase2 import load_a28_inputs
+    entries=_a28_input_files(tmp_path)
+    entries[f'results/{name}']='0'*64
+    with pytest.raises(AssertionError,match=name):
+        load_a28_inputs(entries,tmp_path)
