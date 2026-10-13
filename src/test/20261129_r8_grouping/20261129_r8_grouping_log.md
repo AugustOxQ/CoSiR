@@ -32,6 +32,10 @@ git); the run handoff is `docs/superpowers/handoffs/2026-10-12-r8-run-handoff.md
 | 2026-10-13 01:25 | Stage 0 under the amended rule: pass (SC1a to SC1e), rule SHA-256 18b4e063… at start and end, inputs unchanged, 538 s |
 | 2026-10-13 01:26 | Dry-runs: 13 GPU and 81 CPU steps; GPU free; load 5.0 (stage 0 just ended); run mode night |
 | 2026-10-13 01:27 | Both queues restarted from the main checkout (fdaee39) |
+| 2026-10-13 01:29 | Views step ok under amendment 1: check passed (256 paintings, min cosine 0.99983 ≥ 0.999); `views.npy` [36,518, 5, 512], 374 MB, in 3 min; V100, V67, V33 stay in the run |
+| 2026-10-13 02:50 to 05:03 | FC3 stage 1 ok (SC2 pass, 3,330 s); FC1 ok (3,096 s); FC2 ok (3,133 s) |
+| 2026-10-13 06:07 | FC4 (w 0.40) failed D21: killed at 3,600.9 s after 299 of 300 epochs (`results/fcmi/FC4/d21.json`, pass false, "construction-to-labels exceeded 60 minutes"). Dropped under the rule (M7 D21 test, M16); `r8_groupings.py part` records the drop, so the chain goes on. The queue logs it as "failed" (exit 247), not as a rule drop |
+| 2026-10-13 06:15 | Cause read from the step logs: run time grows with the FCMI weight (w 0.05: 3,096 s, 10.3 s per epoch; 0.10: 3,133 s; 0.20: 3,330 s; 0.40: over 3,600 s, 9.7 s per epoch for epochs 0 to 18, then 11.5 to 12.6 s). During FC4 no heavy CPU step ran (the V parts waited on the turnstile until 06:07) and the 1-minute load was 2.6 at start and 2.0 at end. So FC5 (0.80) and FC6 (1.60) will likely fail D21 too. Decision: run on under the rule as written (agent default, night mode); raising D21's cap would be an amendment, which only the user makes, and would restart the whole run (every record carries the rule SHA-256). Phone note sent |
 
 ## For the report
 
@@ -39,3 +43,5 @@ git); the run handoff is `docs/superpowers/handoffs/2026-10-12-r8-run-handoff.md
   flags do not list amendments; review of amendment 1).
 - From the run handoff: D2 "also reported as a comparator" and ED18 "at most 3 h" are not enforced in code; 06 → 07
   and 04 → 07 run at full size for the first time in this run.
+- FC4 dropped by D21 by about 7 s; run time grows with the FCMI weight (above), so the FC sweep may hold only
+  w 0.05 to 0.20. The build's 54.5 min estimate came from the stage 1 weight only.
