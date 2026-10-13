@@ -235,3 +235,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-paper-r1-3-handoff.md
 - New chat: tab 'paper r1 3', session 6e86a2e7-84d1-4280-8bf5-f683e04ee789
 
+[brief] CoSiR: r9 build 3 -> r9 build 4 (2026-10-13 18:16 Amsterdam)
+- Done: 25 (C13 re-derivation) and 26 (probe corpora) merged; 05, 07, 14, 19 built and Opus-reviewed; two rule wording changes approved by the user.
+- State: fix rounds done for 05, 19 and 25b; 14 ready; 07 needs one fix round (GPU guard for the content graph, records, tests).
+- Next: Sonnet re-reviews of 05, then 19 with 25b; merge 05, 14, 19, 25b; 07's fix round; then 06 (Codex if the window allows).
+- Blocked: nothing. For the user (minor): rule §3.2 calls the content graph "CPU-made"; it is GPU fp16 (bit-equal on the GPU only).
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-4-handoff.md
+- New chat: tab 'r9 build 4', session b3272558-c238-443c-b3a5-6380d6a36e6c
+
