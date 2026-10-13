@@ -259,3 +259,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-5-handoff.md
 - New chat: tab 'r9 build 5', session a7a46306-497b-475e-8254-b03a5330311d
 
+[brief] CoSiR: r9 build 5 -> r9 build 6 (2026-10-13 19:57 Amsterdam)
+- Done: 06, 08, 16, 17b, 25c merged; stage 0a passed on 06's fixed code; 08's L1 passed both identity gates on the GPU.
+- State: 09, 10, 11, 18 built and checked on CLIP; 11 needs one fix round; 20 split into 20a and 20b.
+- Next: Opus reviews of 09, 10, 18; 11's fix round; then 20a, 20b and 25c's LOW follow-ups (25d).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-6-handoff.md
+- New chat: tab 'r9 build 6', session 2f29e134-1907-458c-b32a-999b8c5a13f7
+
