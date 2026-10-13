@@ -111,12 +111,13 @@ def fit_pm(data, scorer_train, backbone="clip_b32") -> SimpleNamespace:
     """run_baselines.py:126-132: the PCA basis and pair scaler on the unit-normalised raw features of the 60,000-row
     draw. The draw's SHA-256 (int64 bytes of the unsorted draw) must equal baselines_seed42.json's fit_rows_sha256.
     The record is parts(backbone)["pm_fit_rows"] (a frozen part: the same file for every backbone), checked against
-    the pin of BASELINES42_REL. -> SimpleNamespace(basis, scaler, fit_rows_sha256)."""
+    CLIP's pin of BASELINES42_REL (the backbone's own lambda baselines are another file).
+    -> SimpleNamespace(basis, scaler, fit_rows_sha256)."""
     H.require_threads()
-    R.assert_input(BASELINES42_REL, backbone)
+    R.assert_input(BASELINES42_REL, "clip_b32")       # frozen role: CLIP's record, whatever the backbone
     fit_path = parts(backbone)["pm_fit_rows"]
-    _require(Path(fit_path) == Path(R.input_pins(backbone)[BASELINES42_REL][0]),
-             f"pm_fit_rows {fit_path} is not the pinned {BASELINES42_REL}")
+    _require(Path(fit_path) == Path(R.input_pins("clip_b32")[BASELINES42_REL][0]),
+             f"pm_fit_rows {fit_path} is not CLIP's pinned {BASELINES42_REL}")
     rec = json.loads(Path(fit_path).read_text())
     rows = fit_rows(scorer_train)
     sha = R.sha256_bytes(np.ascontiguousarray(rows, dtype=np.int64).tobytes())

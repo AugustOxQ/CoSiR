@@ -9,8 +9,12 @@ The full run (data, heads, bundle) is not run here; see the module docstring of 
     /root/miniconda3/envs/CoSiR/bin/python -m pytest -q -p no:cacheprovider \
         src/test/20261202_r9_scope/test_r9_stage0a.py
 """
+import ast
 import copy
+import importlib.util
+import itertools
 import json
+import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -353,3 +357,137 @@ def test_regression_items_follow_the_stored_item_list(stored, monkeypatch):
         assert set(it) == set(stored.reg["items"][key]), key       # the same fields (arrays carry n_diff and so on)
     for key in ("seed42_arrays/aff_fused__r1", "per_anchor_seed42/cosine__r1"):
         assert items[key]["got"] == stored.reg["items"][key]["got"]    # dtype and shape of ours equal the record's
+
+
+# ---------------------------------------------------------------- run(): a wrong item count (review M1)
+
+@pytest.fixture
+def fake_run(stored, tmp_path, monkeypatch):
+    """run() with everything heavy replaced: the references are the real ones, the items our run makes are
+    ``make_items(copy of the reference items)``. -> a function (make_items) -> (exit code, results folder)."""
+    picks_file = tmp_path / "picks_seed42.json"
+    picks_file.write_text("{}")
+    refs = {RS.REGRESSION_NAME: stored.reg, RS.COUNTS_NAME: stored.counts, RS.REFIT_NAME: {}}
+    for name, value in dict(load_references=lambda: refs, check_pins=lambda: {}, check_targets=lambda: {},
+                            backbone_parts=lambda b: {"picks_seed42": picks_file},
+                            setup=lambda: SimpleNamespace(inputs={}, readers=None, coef_sha256=stored.counts["coef_sha256"]),
+                            seed_bundle=lambda *a, **k: SimpleNamespace(episodes_sha256={}, fit_rows_sha256="x")
+                            ).items():
+        monkeypatch.setattr(RS, name, value)
+    monkeypatch.setattr(RS.P, "load_picks", lambda *a: None)
+    monkeypatch.setattr(RS.P, "frozen_lambdas", lambda *a: None)
+    monkeypatch.setattr(RS.P, "check_seed42", lambda *a: None)
+    monkeypatch.setattr(RS.S, "score_seed", lambda *a, **k: None)
+    monkeypatch.setattr(RS.ST, "pass_record", lambda *a: copy.deepcopy(stored.counts))
+    results = tmp_path / "results"
+
+    def go(make_items):
+        monkeypatch.setattr(RS, "regression_items",
+                            lambda *a: (make_items(copy.deepcopy(stored.reg["items"])), None))
+        return RS.run(results=results), results
+    return go
+
+
+def _drop_last(items):
+    items.popitem()
+    return items
+
+
+def _add_one(items):
+    items["an_extra_item"] = RS.item(1.0, 1.0)
+    return items
+
+
+@pytest.mark.parametrize("wrong", [_drop_last, _add_one], ids=["130", "132"])
+def test_a_wrong_item_count_writes_a_failing_record_over_a_pass_and_exits_3(fake_run, wrong):
+    code, results = fake_run(lambda items: items)
+    assert code == 0 and json.loads((results / RS.OUT_NAME).read_text())["passed"] is True
+    code, results = fake_run(wrong)                          # no AssertionError before finish(): exit 3, a record
+    rec = json.loads((results / RS.OUT_NAME).read_text())
+    assert code == RS.EXIT_DIFF == 3
+    assert rec["passed"] is False and rec["differences"]["items"]
+    assert json.loads((results / "stage0a_regression_failed.json").read_text())["passed"] is False
+
+
+def test_the_record_names_the_pins_it_ran_with(fake_run):
+    code, results = fake_run(lambda items: items)
+    rec = json.loads((results / RS.OUT_NAME).read_text())
+    assert code == 0 and rec["pins_sha256"] == R.sha256_file(R.pins_path(RS.BACKBONE))
+
+
+# ---------------------------------------------------------------- check_pins and its two guards (review L3)
+
+@pytest.fixture
+def changed_pins(tmp_path):
+    """A copy of pins_clip.json with one part's SHA-256 changed (made before R.pins_path is replaced)."""
+    rec = json.loads(R.pins_path(RS.BACKBONE).read_text())
+    rec["parts"][next(iter(rec["parts"]))]["sha256"] = "0" * 64
+    bad = tmp_path / "pins_clip.json"
+    bad.write_text(json.dumps(rec))
+    return bad
+
+
+def test_check_pins_passes_on_the_committed_pins():
+    assert RS.check_pins() == json.loads(R.pins_path(RS.BACKBONE).read_text())
+
+
+def test_check_pins_fails_when_one_pin_is_changed(changed_pins, monkeypatch):
+    monkeypatch.setattr(R, "pins_path", lambda backbone: changed_pins)
+    with pytest.raises(SystemExit, match="differs from the files it names"):
+        RS.check_pins()
+
+
+def test_check_pins_fails_when_the_pins_file_is_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr(R, "pins_path", lambda backbone: tmp_path / "nope.json")
+    with pytest.raises(SystemExit, match="does not exist"):
+        RS.check_pins()
+
+
+_COPIES = itertools.count()
+
+
+def runner_mutant(tmp_path, guard):
+    """run_r9_stage0a imported from a copy in which the statement carrying `# guard:<guard>` is replaced by `pass`."""
+    src = (HERE / "run_r9_stage0a.py").read_text()
+    lines = src.splitlines(keepends=True)
+    hits = [n for n in ast.walk(ast.parse(src)) if isinstance(n, ast.Expr) and f"# guard:{guard}" in lines[n.end_lineno - 1]]
+    assert len(hits) == 1, f"no single statement carries # guard:{guard}"
+    n = hits[0]
+    indent = lines[n.lineno - 1][:len(lines[n.lineno - 1]) - len(lines[n.lineno - 1].lstrip())]
+    lines[n.lineno - 1] = f"{indent}pass\n"
+    for i in range(n.lineno, n.end_lineno):
+        lines[i] = "\n"
+    text = "".join(lines)
+    old = "HERE = Path(__file__).resolve().parent"
+    assert text.count(old) == 1
+    path = tmp_path / f"run_r9_stage0a_copy{next(_COPIES)}.py"
+    path.write_text(text.replace(old, f"HERE = Path({str(HERE)!r})"))
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_every_marked_guard_of_the_runner_has_a_mutation_test():
+    marked = set(re.findall(r"# guard:(\w+)", (HERE / "run_r9_stage0a.py").read_text()))
+    covered = set(re.findall(r'runner_mutant\(tmp_path, "(\w+)"\)', Path(__file__).read_text()))
+    assert marked and marked == covered, (marked - covered, covered - marked)
+
+
+def test_guard_pins_matters(tmp_path, changed_pins, monkeypatch):
+    monkeypatch.setattr(R, "pins_path", lambda backbone: changed_pins)
+    with pytest.raises(SystemExit, match="differs from the files it names"):
+        RS.check_pins()
+    mutant = runner_mutant(tmp_path, "pins")                  # the guard line deleted: the changed pin gets through
+    assert mutant.check_pins()["parts"]
+
+
+def test_guard_cells_matters(tmp_path, monkeypatch):
+    # PINS.clip_cells() also compares r9_score.CELLS with round 3's; leave it out so that only this guard sees the change
+    file_cells = RS.P.read_cells(RS.backbone_parts(RS.BACKBONE)["cells_seed42"])
+    monkeypatch.setattr(RS.PINS, "clip_cells", lambda: file_cells)
+    monkeypatch.setitem(RS.S.CELLS["aff"], "fused", (39, 118))          # the scorer's cell differs from the cells part
+    with pytest.raises(AssertionError, match="r9_score.CELLS differ from the cells part"):
+        RS.check_pins()
+    mutant = runner_mutant(tmp_path, "cells")                 # the guard line deleted: the changed cell gets through
+    assert mutant.check_pins()["parts"]

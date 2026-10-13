@@ -625,7 +625,18 @@ def test_model_inputs_is_the_a3_codes_of_run_checks_for_clip(held):
 
 def test_fit_pm_routes_through_the_backbone(syn, real_scorer_train, routed):
     pm = B.fit_pm(syn.data, real_scorer_train, BACKBONE)
-    assert set(routed["pins"]) == {BACKBONE} and routed["parts"] == [BACKBONE]
+    assert set(routed["pins"]) == {"clip_b32"} and routed["parts"] == [BACKBONE]   # frozen role: CLIP's pin only
+    assert pm.fit_rows_sha256 == B.fit_pm(syn.data, real_scorer_train).fit_rows_sha256
+
+
+def test_fit_pm_runs_for_a_new_backbone_on_real_paths(syn, real_scorer_train):
+    """No mock: the recipe parts of a new backbone do not exist yet (no pins file, no results/recipe/<B>/), and the
+    PM fit rows are CLIP's frozen record, so fit_pm must still run (review H1)."""
+    new = "siglip2_so400m"
+    assert not R.pins_path(new).exists()
+    assert Path(B.parts(new)["pm_fit_rows"]) == Path(R.INPUT_PATHS[B.BASELINES42_REL])    # frozen: CLIP's file
+    assert Path(R.input_paths(new)[B.BASELINES42_REL]) != Path(R.INPUT_PATHS[B.BASELINES42_REL])  # lambda file: recipe
+    pm = B.fit_pm(syn.data, real_scorer_train, new)
     assert pm.fit_rows_sha256 == B.fit_pm(syn.data, real_scorer_train).fit_rows_sha256
 
 
@@ -633,7 +644,7 @@ def test_fit_pm_reads_the_pm_fit_rows_part(syn, real_scorer_train, monkeypatch, 
     bad = tmp_path / "baselines_seed42.json"
     shutil.copy(R.input_pins()[B.BASELINES42_REL][0], bad)
     monkeypatch.setattr(B, "parts", lambda backbone: {"pm_fit_rows": bad})   # a copy is not the pinned path
-    with pytest.raises(AssertionError, match="not the pinned"):
+    with pytest.raises(AssertionError, match="not CLIP.s pinned"):
         B.fit_pm(syn.data, real_scorer_train)
 
 
