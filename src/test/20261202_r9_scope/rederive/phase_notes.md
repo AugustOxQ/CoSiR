@@ -25,7 +25,8 @@ index and code-map sections 1.6–1.10 and 3 were read. R6's independent `rd_com
   exact-name role mapping. Earlier rounds use MAIN; round-9 paths use the running checkout. CLIP's absent pins file
   is bridged by R6's independent digest constants. Source digests stay metadata because opening those files would
   break the ticket's independence restriction.
-- Values JSON accepts plain code arrays or per-aspect `{codes, names}`, optionally wrapped in `values`. No label
+- Values JSON: each aspect is a list of `{code, name}` records (ticket 14's file) or a plain code list (smoke, tests,
+  H8 standard mode). No label
   name is re-encoded. Canonical R9 language indices survive set-asides; Hindi stays index 5, for example.
 - A28 part hashes are computed **after mapping back to the full table's row positions**, before concatenation.
   Largest-remainder arithmetic uses integers throughout; ties retain canonical language order. Zero-share languages

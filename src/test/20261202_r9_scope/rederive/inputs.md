@@ -58,7 +58,7 @@ with `episodes_sha256` in every non-smoke `20261030_aspect_baselines/results/bas
 
 For ArtELingo-28: `read_set_a28.parquet` has exactly `row_id`, `painting`, `language`, `emotion`, `style`, `genre`,
 `held`, `dropped`, in increasing CSV row-ID order. Row positions, rather than sparse CSV IDs, index episode arrays.
-`value_sets_a28.json` supplies per-aspect code arrays or `{codes, names}` records. The complete `pins_a28.json` is
+`value_sets_a28.json` supplies, per aspect (`emotion`, `style`, `genre`), a list of `{code, name}` records (exactly those two keys). The complete `pins_a28.json` is
 hashed against its data files; the stores are `/data/SSD2/pre_extract/artelingo28/<backbone>/`, with
 `index.json.texts[*].{row_id,painting,img}` in kept-row order. The full table stays the 74,569-position row space;
 features, codes and posteriors are finite on kept rows and NaN elsewhere.

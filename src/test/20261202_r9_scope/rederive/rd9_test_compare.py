@@ -48,20 +48,35 @@ def work(tmp_path, monkeypatch):
 
 def stage(work, mode='held', a28=False, read='H6', name='held_pass_H6.json', tweak=None):
     stats = make_stats(a28)
-    own = write(work / 'own.json', dict(read=read, backbone='clip_b32', stats=stats))
+    record = dict(read=read, backbone='clip_b32', mode='read', stats=stats)
+    if a28:
+        record['episode_records'] = {str(s): {pair: {'set_aside': []} for pair in
+                                    ('emotion__style', 'emotion__genre', 'style__genre')} for s in stats['seeds']}
+    own = write(work / 'own.json', record)
     arrays = make_arrays(a28)
     np.savez(work / 'own.npz', **arrays)
     np.savez(work / 'rep.npz', **arrays)
     reported = copy.deepcopy(stats)
+    if a28:
+        reported.update(set_aside=[], flagged_languages=['Emakhuwa', 'IsiNdebele'],
+                        near_duplicates=dict(cos_099=3, cos_098=7))
+        write(work / 'language_flags_a28.json', dict(flagged=['Emakhuwa', 'IsiNdebele'], thresholds={},
+                                                   english_median_words=10, languages={}))
+        write(work / 'near_duplicates_a28.json', dict(cos_099=3, cos_098=7, train_side=912,
+                                                    read_paintings=746, pairs_099=[]))
     if mode is not None: reported['mode'] = mode
     if tweak: tweak(reported)
     rep = write(work / name, reported)
     return stats, own, rep
 
 
-def run(work, own, rep, monkeypatch, out='agr.json', extra=()):
+def run(work, own, rep, monkeypatch, out='agr.json', extra=(), input_paths=True):
     argv = ['rd9_compare.py', '--derived', str(own), '--derived-arrays', str(work / 'own.npz'), '--reported', str(rep),
-            '--reported-arrays', str(work / 'rep.npz'), '--out', str(work / out), *extra]
+            '--reported-arrays', str(work / 'rep.npz'), '--out', str(work / out)]
+    if input_paths:
+        argv += ['--language-flags', str(work / 'language_flags_a28.json'),
+                 '--near-duplicates', str(work / 'near_duplicates_a28.json')]
+    argv += list(extra)
     monkeypatch.setattr(sys, 'argv', argv)
     C.main()
     return json.loads((work / out).read_text())
@@ -211,3 +226,201 @@ def test_value_missing_key_is_a_difference_even_when_ours_is_none():
     c = C.Comparison()
     c.value('o', {'a': None, 'b': 1}, {'b': 1})
     assert {i['key']: i['equal'] for i in c.items} == {'o.a': False, 'o.b': True}
+
+
+def set_aside_example(own, rep):
+    record = json.loads(own.read_text())
+    record['episode_records']['55']['emotion__style']['set_aside'] = [
+        dict(language='Emakhuwa', reason='values-subset', seed=55003),
+        dict(language='IsiNdebele', reason='failed-draw', seed=55008)]
+    record['episode_records']['56']['style__genre']['set_aside'] = [
+        dict(language='Emakhuwa', reason='failed-draw', seed=56003)]
+    write(own, record)
+    reported = json.loads(rep.read_text())
+    reported['set_aside'] = [dict(language='Emakhuwa', pair='style__genre', seed=56),
+                             dict(language='IsiNdebele', pair='emotion__style', seed=55),
+                             dict(language='Emakhuwa', pair='emotion__style', seed=55)]
+    write(rep, reported)
+
+
+def disagreement(work, own, rep, monkeypatch):
+    with pytest.raises(SystemExit) as error:
+        run(work, own, rep, monkeypatch)
+    assert error.value.code == 1
+    got = json.loads((work / 'agr.json').read_text())
+    assert got['agreement'] is False
+    return [i for i in got['items'] if not i['equal']]
+
+
+def test_set_aside_compares_language_pair_and_read_seed_as_a_set(work, monkeypatch):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    set_aside_example(own, rep)
+    got = run(work, own, rep, monkeypatch)
+    assert got['agreement'] is True
+    assert any(i['key'].startswith('set_aside') for i in got['items'])
+
+
+@pytest.mark.parametrize('field,value', [('language', 'IsiXhosa'), ('pair', 'emotion__genre'), ('seed', 57)])
+def test_set_aside_difference_fails_agreement(work, monkeypatch, field, value):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    set_aside_example(own, rep)
+    reported = json.loads(rep.read_text())
+    reported['set_aside'][0][field] = value
+    write(rep, reported)
+    failed = disagreement(work, own, rep, monkeypatch)
+    assert all(i['key'].startswith('set_aside') for i in failed)
+
+
+@pytest.mark.parametrize('missing', ['reported', 'records', 'seed', 'pair', 'derived_set_aside',
+                                    'language', 'reported_pair', 'reported_seed'])
+def test_missing_set_aside_fails_even_when_empty(work, monkeypatch, missing):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    record, reported = json.loads(own.read_text()), json.loads(rep.read_text())
+    if missing == 'reported': del reported['set_aside']
+    elif missing == 'records': del record['episode_records']
+    elif missing == 'seed': del record['episode_records']['56']
+    elif missing == 'pair': del record['episode_records']['56']['emotion__genre']
+    elif missing == 'derived_set_aside': del record['episode_records']['56']['emotion__genre']['set_aside']
+    else:
+        entry = dict(language='Emakhuwa', pair='emotion__style', seed=55)
+        del entry[{'language': 'language', 'reported_pair': 'pair', 'reported_seed': 'seed'}[missing]]
+        reported['set_aside'] = [entry]
+    write(own, record)
+    write(rep, reported)
+    assert all(i['key'].startswith('set_aside') for i in disagreement(work, own, rep, monkeypatch))
+
+
+@pytest.mark.parametrize('read', ['H6', 'H7'])
+def test_artelingo_reads_skip_a28_claim_fields(work, monkeypatch, read):
+    _, own, rep = stage(work, read=read, name=f'held_pass_{read}.json')
+    got = run(work, own, rep, monkeypatch)
+    assert got['agreement'] is True
+    assert not any(i['key'].startswith(('set_aside', 'flagged_languages', 'near_duplicates')) for i in got['items'])
+
+
+def test_h8_selection_replay_skips_a28_claim_fields(work, monkeypatch):
+    _, own, rep = stage(work, read='H8', name='seed42_pass_counts.json')
+    record = json.loads(own.read_text())
+    record['mode'] = 'selection'
+    write(own, record)
+    assert run(work, own, rep, monkeypatch)['agreement'] is True
+
+
+@pytest.mark.parametrize('ours,theirs', [(C.MISSING, []), (C.MISSING, C.MISSING), ([], C.MISSING)])
+def test_missing_either_side_is_a_serializable_difference(ours, theirs):
+    c = C.Comparison()
+    c.value('claim', ours, theirs)
+    assert c.record()['agreement'] is False
+    json.dumps(c.record())
+
+
+@pytest.mark.parametrize('side', ['reported', 'input', 'both'])
+def test_flagged_languages_compare_as_sorted_lists(work, monkeypatch, side):
+    _, own, rep = stage(work, **TWO_LEVEL,
+                        tweak=(lambda r: r.update(flagged_languages=['IsiNdebele', 'Emakhuwa']))
+                        if side in ('reported', 'both') else None)
+    flags = json.loads((work / 'language_flags_a28.json').read_text())
+    if side in ('input', 'both'): flags['flagged'].reverse()
+    write(work / 'language_flags_a28.json', flags)
+    got = run(work, own, rep, monkeypatch)
+    assert got['agreement'] is True
+    assert any(i['key'].startswith('flagged_languages') for i in got['items'])
+
+
+@pytest.mark.parametrize('side', ['reported', 'input'])
+def test_flagged_language_difference_fails_agreement(work, monkeypatch, side):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    path, key = (rep, 'flagged_languages') if side == 'reported' else (work / 'language_flags_a28.json', 'flagged')
+    record = json.loads(path.read_text())
+    record[key] = ['Emakhuwa']
+    write(path, record)
+    assert all(i['key'].startswith('flagged_languages') for i in disagreement(work, own, rep, monkeypatch))
+
+
+@pytest.mark.parametrize('side', ['reported', 'input', 'both'])
+def test_missing_flagged_languages_fails_agreement(work, monkeypatch, side):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    for which, path, key in [('reported', rep, 'flagged_languages'), ('input', work / 'language_flags_a28.json', 'flagged')]:
+        if side in (which, 'both'):
+            record = json.loads(path.read_text())
+            del record[key]
+            write(path, record)
+    assert all(i['key'].startswith('flagged_languages') for i in disagreement(work, own, rep, monkeypatch))
+
+
+def test_no_flagged_languages_is_an_explicit_agreement(work, monkeypatch):
+    _, own, rep = stage(work, **TWO_LEVEL, tweak=lambda r: r.update(flagged_languages=[]))
+    write(work / 'language_flags_a28.json', dict(flagged=[]))
+    got = run(work, own, rep, monkeypatch)
+    assert got['agreement'] is True
+    assert any(i['key'] == 'flagged_languages' and i['equal'] for i in got['items'])
+
+
+def test_near_duplicate_counts_are_compared(work, monkeypatch):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    got = run(work, own, rep, monkeypatch)
+    assert got['agreement'] is True
+    assert {i['key']: i['ours'] for i in got['items'] if i['key'].startswith('near_duplicates')} == {
+        'near_duplicates.cos_099': 3, 'near_duplicates.cos_098': 7}
+
+
+@pytest.mark.parametrize('field', ['cos_099', 'cos_098'])
+@pytest.mark.parametrize('side', ['reported', 'input'])
+def test_near_duplicate_difference_fails_agreement(work, monkeypatch, field, side):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    path = rep if side == 'reported' else work / 'near_duplicates_a28.json'
+    record = json.loads(path.read_text())
+    counts = record['near_duplicates'] if side == 'reported' else record
+    counts[field] += 1
+    write(path, record)
+    assert [i['key'] for i in disagreement(work, own, rep, monkeypatch)] == ['near_duplicates.' + field]
+
+
+@pytest.mark.parametrize('field', ['cos_099', 'cos_098'])
+@pytest.mark.parametrize('side', ['reported', 'input', 'both'])
+def test_missing_near_duplicate_count_fails_agreement(work, monkeypatch, field, side):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    for which, path in [('reported', rep), ('input', work / 'near_duplicates_a28.json')]:
+        if side in (which, 'both'):
+            record = json.loads(path.read_text())
+            counts = record['near_duplicates'] if which == 'reported' else record
+            del counts[field]
+            write(path, record)
+    assert [i['key'] for i in disagreement(work, own, rep, monkeypatch)] == ['near_duplicates.' + field]
+
+
+def test_missing_near_duplicates_object_fails_agreement(work, monkeypatch):
+    _, own, rep = stage(work, **TWO_LEVEL, tweak=lambda r: r.pop('near_duplicates'))
+    assert all(i['key'].startswith('near_duplicates') for i in disagreement(work, own, rep, monkeypatch))
+
+
+@pytest.mark.parametrize('field,value', [('train_side', 911), ('read_paintings', 745),
+                                        ('train_side', None), ('read_paintings', None)])
+def test_near_duplicate_population_is_asserted(work, monkeypatch, field, value):
+    _, own, rep = stage(work, **TWO_LEVEL)
+    path = work / 'near_duplicates_a28.json'
+    record = json.loads(path.read_text())
+    if value is None: del record[field]
+    else: record[field] = value
+    write(path, record)
+    with pytest.raises(AssertionError, match=field):
+        run(work, own, rep, monkeypatch)
+    assert not (work / 'agr.json').exists()
+
+
+@pytest.mark.parametrize('read', ['H8', 'H9', 'H10'])
+def test_claim_inputs_default_to_the_round_results(work, monkeypatch, read):
+    _, own, rep = stage(work, a28=True, read=read, name=f'held_pass_{read}.json')
+    results = work / 'results'
+    results.mkdir()
+    for name in ('language_flags_a28.json', 'near_duplicates_a28.json'):
+        write(results / name, json.loads((work / name).read_text()))
+    monkeypatch.setattr(C, 'HERE', work)
+    assert run(work, own, rep, monkeypatch, input_paths=False)['agreement'] is True
+
+
+@pytest.mark.parametrize('read', ['H8', 'H9', 'H10'])
+@pytest.mark.parametrize('field', ['set_aside', 'flagged_languages', 'near_duplicates'])
+def test_every_a28_read_requires_each_claim_field(work, monkeypatch, read, field):
+    _, own, rep = stage(work, a28=True, read=read, name=f'held_pass_{read}.json', tweak=lambda r: r.pop(field))
+    assert all(i['key'].startswith(field) for i in disagreement(work, own, rep, monkeypatch))

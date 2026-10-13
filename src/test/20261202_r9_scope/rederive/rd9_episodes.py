@@ -68,15 +68,16 @@ def concat(parts, a='mixed', b='mixed'):
 
 
 def value_codes(record):
-    # R6 writes per-aspect {codes, names}; accept plain code arrays for synthetic callers.
-    if 'values' in record:
-        record = record['values']
+    # Ticket 14's file: each aspect is a list of {"code": int, "name": str} records.
+    # Plain code lists are kept for the synthetic callers (smoke, tests) and the H8 standard mode.
     result = {}
     for a in ('emotion','style','genre'):
         v = record[a]
-        if isinstance(v, dict):
-            v = v['codes']
-        assert len(v) == len(set(v)) and all(isinstance(x, int) and x >= 0 for x in v)
+        assert isinstance(v, list) and v, a
+        if all(isinstance(x, dict) for x in v):
+            assert all(set(x) == {'code','name'} for x in v), a
+            v = [x['code'] for x in v]
+        assert len(v) == len(set(v)) and all(type(x) is int and x >= 0 for x in v), a
         result[a] = sorted(v)
     return result
 

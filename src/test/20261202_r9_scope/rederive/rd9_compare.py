@@ -7,11 +7,11 @@ import hashlib
 import json
 from pathlib import Path
 import numpy as np
-from rd9_inputs import RD,T,save_json,sha_file
+from rd9_inputs import HERE,RD,T,save_json,sha_file
 from rd9_stats import CHECK_IDS
 
 
-MISSING=object()    # a key absent from the runner's record; never equal to anything, None included
+MISSING=object()    # a key absent from either record; never equal to anything, None included
 
 
 def compare_value(ours,theirs,key):
@@ -35,6 +35,10 @@ def compare_array(ours,theirs):
 class Comparison:
     def __init__(self): self.items=[]
     def value(self,key,ours,theirs):
+        if ours is MISSING or theirs is MISSING:
+            self.items.append(dict(key=key,equal=False,reason='missing key',
+                                   ours=None if ours is MISSING else ours,
+                                   theirs=None if theirs is MISSING else theirs));return
         if isinstance(ours,dict):
             if not isinstance(theirs,dict):
                 self.items.append(dict(key=key,equal=False,reason='missing object'));return
@@ -42,6 +46,8 @@ class Comparison:
         elif isinstance(ours,(list,tuple)):
             if not isinstance(theirs,(list,tuple)) or len(ours)!=len(theirs):
                 self.items.append(dict(key=key,equal=False,reason='sequence length/type'));return
+            if not ours:
+                self.items.append(dict(key=key,equal=True,ours=ours,theirs=theirs));return
             for j,(a,b) in enumerate(zip(ours,theirs)): self.value(f'{key}.{j}',a,b)
         else:
             if theirs is MISSING: equal=False
@@ -84,6 +90,51 @@ def compare_stats(comparison,ours,theirs):
     if 'holm_order' in ours: comparison.value('holm_order',ours['holm_order'],theirs.get('holm_order',MISSING))
 
 
+def derived_set_aside(own):
+    """Flatten every seed/pair's exclusions; the outer seed is the read seed, not the builder seed."""
+    records=own.get('episode_records',MISSING)
+    if records is MISSING: return MISSING
+    assert isinstance(records,dict)
+    entries=[]
+    for seed in own['stats']['seeds']:
+        parts=records.get(str(seed),MISSING)
+        if parts is MISSING: return MISSING
+        assert isinstance(parts,dict)
+        for pair in ('emotion__style','emotion__genre','style__genre'):
+            part=parts.get(pair,MISSING)
+            if part is MISSING: return MISSING
+            assert isinstance(part,dict)
+            excluded=part.get('set_aside',MISSING)
+            if excluded is MISSING: return MISSING
+            assert isinstance(excluded,list)
+            for entry in excluded:
+                assert isinstance(entry,dict)
+                language=entry.get('language',MISSING)
+                if language is MISSING: return MISSING
+                assert isinstance(language,str) and type(seed) is int
+                entries.append((language,pair,seed))
+    return sorted(set(entries))
+
+
+def reported_set_aside(value):
+    if value is MISSING: return MISSING
+    assert isinstance(value,list)
+    entries=[]
+    for entry in value:
+        assert isinstance(entry,dict)
+        if any(key not in entry for key in ('language','pair','seed')): return MISSING
+        assert isinstance(entry['language'],str) and isinstance(entry['pair'],str) and type(entry['seed']) is int
+        entries.append((entry['language'],entry['pair'],entry['seed']))
+    assert len(entries)==len(set(entries)), 'duplicate set-aside entry'
+    return sorted(set(entries))
+
+
+def sorted_languages(value):
+    if value is MISSING: return MISSING
+    assert isinstance(value,list) and all(isinstance(language,str) for language in value)
+    return sorted(value)
+
+
 PASS_MODES={'held':False,'regression':False,'smoke':True}
 
 
@@ -115,6 +166,8 @@ def main():
     p.add_argument('--reported-arrays',type=Path)
     p.add_argument('--derived-episodes',type=Path)
     p.add_argument('--reported-episodes',type=Path)
+    p.add_argument('--language-flags',type=Path,default=HERE/'results/language_flags_a28.json')
+    p.add_argument('--near-duplicates',type=Path,default=HERE/'results/near_duplicates_a28.json')
     p.add_argument('--clip-phase1',action='store_true')
     p.add_argument('--phase1',action='store_true')
     p.add_argument('--backbone',choices=('clip_b32','qwen3vl_emb_2b','siglip2_so400m'))
@@ -162,6 +215,24 @@ def main():
         report=json.loads(raw)
         extra=provenance(own,args.reported,raw,report)
         compare_stats(c,own['stats'],report.get('stats',report))
+        if own.get('read') in ('H8','H9','H10') and own.get('mode')!='selection':
+            c.value('set_aside',derived_set_aside(own),reported_set_aside(report.get('set_aside',MISSING)))
+            flags=json.loads(args.language_flags.read_text())
+            assert isinstance(flags,dict), 'language flags must be an object'
+            c.value('flagged_languages',sorted_languages(flags.get('flagged',MISSING)),
+                    sorted_languages(report.get('flagged_languages',MISSING)))
+            duplicates=json.loads(args.near_duplicates.read_text())
+            assert isinstance(duplicates,dict), 'near duplicates must be an object'
+            assert duplicates.get('train_side')==912, 'near duplicates: train_side must be 912'
+            assert duplicates.get('read_paintings')==746, 'near duplicates: read_paintings must be 746'
+            reported_duplicates=report.get('near_duplicates',{})
+            assert isinstance(reported_duplicates,dict), 'reported near duplicates must be an object'
+            for key in ('cos_099','cos_098'):
+                a,b=duplicates.get(key,MISSING),reported_duplicates.get(key,MISSING)
+                for value in (a,b):
+                    if value is not MISSING:
+                        assert type(value) is int and 0<=value<=746, 'near duplicates: counts must be integers in 0..746'
+                c.value('near_duplicates.'+key,a,b)
         required=[f'{name}__{m}' for name in ('aff_fused','aff_cf','cosine','rca','B','B0')
                   for m in ('r1','gain','other','swap','strict')]+['cl','pair_index']
         if own.get('mode')!='selection': required.append('seed_index')

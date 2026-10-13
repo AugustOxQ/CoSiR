@@ -1,7 +1,7 @@
 # Controller commands
 
-Run from `/project/CoSiR-wt/r9-t25` (or the integration checkout). Every output is write-once. The CLIP preparation,
-phase 1, and selection replay already exist in this worktree's ignored `rederive/rd9_out/`; a fresh checkout needs
+Run from `/project/CoSiR-wt/r9-t25c` (or the integration checkout). Every output is write-once. The CLIP preparation,
+phase 1, and selection replay are ignored outputs in `rederive/rd9_out/`; a fresh checkout needs
 CLIP prepare/score first. New-backbone/real-read commands below are handed back, not launched in this ticket.
 They may exceed four minutes, particularly head preparation on wider features and the three-seed read.
 Do not score an A28 read before its official pass is available for the independent comparison.
@@ -10,6 +10,7 @@ Do not score an A28 read before its official pass is available for the independe
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python -m pytest -q src/test/20261202_r9_scope/rederive/rd9_test_arithmetic.py
+PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python -m pytest -q src/test/20261202_r9_scope/rederive/rd9_test_compare.py src/test/20261202_r9_scope/rederive/rd9_test_arithmetic.py src/test/20261202_r9_scope/rederive/rd9_test_a28.py
 PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/rederive/rd9_smoke.py
 ```
 
@@ -65,8 +66,22 @@ the apply-rule step reads: `phase` (2), `smoke` (bool, from the `mode` field of 
 file), `held_pass_sha256` (SHA-256 of that file's bytes) and `rederived_counts` ({P1..P7: n_j of the independent pass,
 from `--derived`; the same keys for the two-level reads}). The phase-1 modes do not write the provenance fields.
 
+H8 to H10 also require two stage-1 JSON inputs, read by the comparer itself (gitignored run outputs):
+`--language-flags` defaults to this checkout's `src/test/20261202_r9_scope/results/language_flags_a28.json`;
+its `flagged` list is compared with the pass's `flagged_languages`, both sorted. `--near-duplicates` defaults
+to `src/test/20261202_r9_scope/results/near_duplicates_a28.json`; its `cos_099` and `cos_098` counts are compared
+with the pass's `near_duplicates`, and its `train_side == 912` and `read_paintings == 746` are asserted.
+Use the two arguments for inputs in another folder. A missing file crashes; a missing compared field on
+either side writes a failed agreement. H6/H7 and the H8 selection replay skip these inputs and claim fields.
+
+Set-asides come from `episode_records[read_seed][pair]["set_aside"]` in the derived JSON. Each entry's language,
+the enclosing pair (`emotion__style`, `emotion__genre`, `style__genre`) and the enclosing read seed form
+`(language, pair, seed)`, compared as a set with the pass's entries. The entry's builder seed (e.g. 55003) and
+reason are not pass-file claim fields; the pass uses the read seed (e.g. 55). All three pairs must have an explicit
+`set_aside` list for every derived read seed, even when empty. H8 to H10 must carry all three claim fields.
+
 ```bash
-PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/rederive/rd9_compare.py --derived src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_read.json --derived-arrays src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_read_arrays.npz --reported src/test/20261202_r9_scope/results/held_pass_H8.json --reported-arrays src/test/20261202_r9_scope/results/held_arrays_H8.npz --out src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_agreement.json
+PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/rederive/rd9_compare.py --derived src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_read.json --derived-arrays src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_read_arrays.npz --reported src/test/20261202_r9_scope/results/held_pass_H8.json --reported-arrays src/test/20261202_r9_scope/results/held_arrays_H8.npz --language-flags src/test/20261202_r9_scope/results/language_flags_a28.json --near-duplicates src/test/20261202_r9_scope/results/near_duplicates_a28.json --out src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_agreement.json
 ```
 
 The fix pass and the reserve read use the same command with the `_fix1` / `_reserve` file names, for example
