@@ -25,7 +25,8 @@ Phase 1 rebuilds episodes from labels and development value sets. It does **not*
 compute scores. The manifest adapter requires that frozen episode file to be present in a pins file because it is
 a shared frozen role, but it is not used as an arithmetic input. The reader pickle already contains both fitted
 half-readers; `rb_heads_*`, `rb_bank_A0_half0/1`, `rb_halves`, `rb_reader_A0.npz`, graph and bank AIC are recipe
-inputs rather than inputs to this re-derivation. CSD, B1, R1 and PM are outside the ticket's P1–P7 computation.
+inputs rather than inputs to this re-derivation. R1 and PM are outside the ticket's P1–P7 computation. The review fix adds B1
+for the full phase-1 mean/hash audit, as described below.
 
 Feature/label loader inputs: CLIP's `src.data.artelingo.load_artelingo()` uses the default shard store
 `/data/SSD2/pre_extract/artelingo/features` (`img_features`, `txt_features`, extraction `sample_ids`) and the annotation
@@ -65,3 +66,33 @@ features, codes and posteriors are finite on kept rows and NaN elsewhere.
 Comparison-only inputs (opened once our quantities exist): R6 `picks_seed42.json`, `seed42_pass_counts.json`, R3
 `seed42_arrays.npz`, and a controller-specified per-read pass JSON/array archive. These never supply computed picks,
 metrics or bootstrap differences.
+
+## Review fix: all-backbone phase-1 agreement
+
+`rd9_compare.py --phase1 --backbone B --pins FILE` reads the file-pinned `cells_seed42.json`, `picks_seed42.json`,
+`baselines_seed42.json`, `rc_tau.json` **after** the independent record and array archive exist. It compares cells,
+sigma, switched-off state and gate share; B/B0 picks; `lambda_picks.rca` (the original CLIP `scorers.rca.lambda_picks`
+layout is also accepted); thresholds; and all five seed-42 means, seven check points/counts and every recorded array
+hash with its dtype and shape. A disagreement gets an output JSON and a failing exit status, including switched-off
+backbones; the phase-2 refusal no longer serves as the only check of that flag.
+
+The pins' seed-42 record is `seed42` (or `seed42_record`) with:
+
+```json
+{
+  "mean_r1": {"B": 0.0, "B0": 0.0, "B1": 0.0, "AFF": 0.0, "CF": 0.0},
+  "checks": {"P1": {"point": 0.0, "n_j": 0}},
+  "array_hashes": {"B__r1": {"sha256": "64 hex characters", "dtype": "float64", "shape": [12288]}}
+}
+```
+
+All P1–P7 entries and all 30 primary per-anchor metric arrays are mandatory; any additional recorded arrays are
+also compared. Numbers shown above illustrate the schema only. The five means are percentages. B1 is independently
+cross-fitted in **phase 1 only**, from the pinned `step1_heads_style.npz` keys `selection`, `style_csd__img`,
+`style_csd__txt` and the already-derived uniform A3 term. B1 remains absent from the pre-verdict read computation.
+These three keys are additional phase-1 input keys. CSD labels need not be fitted or re-encoded for this calculation.
+
+A recipe role with several entries sharing its file name prefers exactly one entry under
+`results/recipe/<backbone>/`; otherwise ambiguity asserts. Frozen-role resolution is unchanged. Phase-1 prepare,
+phase-1 scoring and phase-2 records now include `library_sha256`: SHA-256s of loaded `src` Python library modules,
+keyed by repository-relative path. `src/test` is excluded, preserving implementation-chain independence.

@@ -68,3 +68,90 @@ and worktree path resolution were tightened after these runs; scoring arithmetic
 suite covers those changes. No H6–H10 real read was performed. The real A28 table/values and new-backbone pins were
 unavailable here; their commands are handed to the controller. The accepted pins schema needs matching at integration
 if tickets 13/16 choose a different serialization.
+
+
+## Ticket 25 review fix round
+
+1. Added `--phase1 --backbone B` for every backbone, reading file-pinned cells, B/B0 picks, RCA lambda and tau after
+   independent results exist. It compares switched-off state instead of relying on the phase-2 refusal. It also checks
+   all five means, P1–P7 points/counts, and every pinned array digest/dtype/shape, with mandatory primary arrays.
+   The accepted pins seed-42 schema is documented in `inputs.md`. B1 is now scored in phase 1 from pinned CSD
+   posteriors; no B1 score was added to phase 2. A tau disagreement is recorded by the comparer instead of causing
+   phase-1 scoring to stop before an agreement record can be produced.
+2. Committed the actual synthetic set-aside/re-split case in `rd9_test_a28.py`. Tests run real frozen episode
+   primitives on a 750-row table, with explicit expected language seeds and post-drop shares. Added both exclusion
+   causes, the third exclusion stop, pre-drop indices/lacks, subset/minimum guards, language-order assembly and hashes.
+   Arithmetic tests use nonzero integer bootstrap counts (P5=133, P7=3575); zero-sum draws matter, and the Holm
+   interval differs from the 95% interval. Natural ranking fixtures exercise RCA 32/64 extension, B/sigma ties,
+   inclusive affect gates, opposite parity, both-halves switching, and percentile thresholds.
+3. Real A28 smoke CLI defaults to 4,096 per pair, matching ticket 17; 64 remains available explicitly.
+4. Recipe-role resolution prefers exactly one `results/recipe/<backbone>/` entry; ambiguity otherwise asserts.
+   Its test includes ambiguous names and the backbone-specific preference.
+5. Phase-1 prepare, phase-1 score and phase-2 output records include repository-relative SHA-256s of the loaded
+   `src` library modules (`src/test` excluded). The path test uses independent temporary main/checkout roots.
+
+Validation: **36 passed**, using the two test files and `pytest -q` command in `rd9_commands.md`. Every new test
+has a discriminating mutation listed below; parameterized cases run together against that mutation. This is our
+explicit 42-mutation inventory, rather than a claim to have rerun the reviewer's unavailable 35-mutation script.
+**42 killed, 0 survived, 0 infrastructure errors.** Each mutation was applied alone, its selected pytest case run,
+and the source restored in `finally`. Invalid syntax/infrastructure exit statuses do not count as kills. The
+executable definitions and test selectors are committed in `rd9_mutations.py`; the JSON execution evidence is
+`rd9_review_mutations.json`. This mutation run completed within the four-minute command limit.
+
+CLIP scoring reran on the existing cache with `--output-suffix _review`, preserving the original results.
+The 143 legacy comparison items still agree; B1's mean is exactly 18.804931640625; the new score output records
+11 imported library source hashes. A separate use of the generic comparer against earlier pinned data checks
+146 items, zero differences, including all five means and 35 metric array hashes. Expected B/B0/B1 arrays come
+from the pinned R3 AFF array minus R6's pinned per-episode comparator differences; expected condition-free gain,
+swap and strict are zero. RCA's five arrays come from pinned `per_anchor_seed42.npz`.
+
+That generic-validation reference initially used float32 `mean()` on the pinned gate arrays. It disagreed by
+9.93e-9 with the independent float64 gate share. The reference was corrected to integer open counts divided by
+integer total; scoring code was unchanged. The first JSON is retained beside `_fix1`, which records the count,
+denominator, source hash and cause. Neither reference-validation JSON replaces the controller's real file-pins
+agreement; the three-backbone synthetic tests cover the new interface until those pins exist here.
+
+| Mutation | Module | Result |
+|---|---|---|
+| P5 uses CF | `rd9_stats.py` | killed |
+| P7 uses RCA gain | `rd9_stats.py` | killed |
+| zero integer sums count | `rd9_stats.py` | killed |
+| Holm interval quantiles | `rd9_stats.py` | killed |
+| bootstrap seed 42 | `rd9_stats.py` | killed |
+| switched off needs both | `rd9_scores.py` | killed |
+| sigma ascending tie order | `rd9_scores.py` | killed |
+| sigma first argmax | `rd9_scores.py` | killed |
+| B first tied cell | `rd9_scores.py` | killed |
+| gate inclusive margin | `rd9_scores.py` | killed |
+| gate affect restriction | `rd9_scores.py` | killed |
+| opposite parity | `rd9_scores.py` | killed |
+| tau 75th percentile | `rd9_scores.py` | killed |
+| RCA extension trigger | `rd9_scores.py` | killed |
+| RCA extends to 32 | `rd9_scores.py` | killed |
+| RCA extends to 64 | `rd9_scores.py` | killed |
+| RCA extension first tie | `rd9_scores.py` | killed |
+| language seed multiplier | `rd9_episodes.py` | killed |
+| canonical language index | `rd9_episodes.py` | killed |
+| post-drop shares | `rd9_episodes.py` | killed |
+| kept rows only | `rd9_episodes.py` | killed |
+| pre-drop value index | `rd9_episodes.py` | killed |
+| global row mapping | `rd9_episodes.py` | killed |
+| language-order assembly | `rd9_episodes.py` | killed |
+| values subset guard | `rd9_episodes.py` | killed |
+| minimum passed to primitive | `rd9_episodes.py` | killed |
+| A28 minimum is one | `rd9_episodes.py` | killed |
+| subset set-aside catch | `rd9_episodes.py` | killed |
+| failed-draw catch | `rd9_episodes.py` | killed |
+| re-split remaining languages | `rd9_episodes.py` | killed |
+| record set-asides | `rd9_episodes.py` | killed |
+| third set-aside stops | `rd9_episodes.py` | killed |
+| hash within-read uniqueness | `rd9_phase2.py` | killed |
+| hash prior collision | `rd9_phase2.py` | killed |
+| phase1 switched-off comparison | `rd9_compare.py` | killed |
+| phase1 n_j comparison | `rd9_compare.py` | killed |
+| phase1 array hash comparison | `rd9_compare.py` | killed |
+| phase1 B1 mean comparison | `rd9_compare.py` | killed |
+| pin-name ambiguity | `rd9_inputs.py` | killed |
+| backbone recipe preference | `rd9_inputs.py` | killed |
+| round9 paths use checkout | `rd9_inputs.py` | killed |
+| library source hash | `rd9_inputs.py` | killed |

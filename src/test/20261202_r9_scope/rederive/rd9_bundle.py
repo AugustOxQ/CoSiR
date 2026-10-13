@@ -99,10 +99,13 @@ def score_block(bundle,ep,readers,basis,frozen=None,taus=None):
     cos=cosine(img,txt,ep)
     inputs=EvalInputs(img,txt,bundle['img_codes'],bundle['txt_codes'])
     tu=centered_term(inputs,ep,uniform=True)
-    P={g:{m:bundle[f'{g}__{m}'] for m in ('img','txt')} for g in GROUPS}
+    groups=GROUPS+(('csd',) if 'csd__img' in bundle else ())
+    P={g:{m:bundle[f'{g}__{m}'] for m in ('img','txt')} for g in groups}
     scores={'cosine':cos}
     picks={}
-    for name,groups in (('B',('affect_km','image','caption')),('B0',('affect','image','caption'))):
+    arms=[('B',('affect_km','image','caption')),('B0',('affect','image','caption'))]
+    if 'csd' in P: arms.append(('B1',('affect','image','caption','csd')))
+    for name,groups in arms:
         tc=uniform_probe_scores(P,ep,groups)
         scores[name],picks[name]=baseline(cos,tu,tc,parity,None if frozen is None else frozen[name])
     gated,cf,taus,extra=reader_state(P,ep,readers,taus)

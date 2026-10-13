@@ -14,6 +14,9 @@ T = MAIN/'src/test'
 sys.path.insert(0,str(MAIN))
 BACKBONES = ('clip_b32','qwen3vl_emb_2b','siglip2_so400m')
 ROLES = {
+    'cells_seed42': '20261202_r9_scope/results/cells_seed42.json',
+    'picks_seed42': '20261125_artelingo_held_test/results/picks_seed42.json',
+    'step1_heads_style': '20261116_grouping_step1_style/results/step1_heads_style.npz',
     'prepare': '20261013_stage_d_selection/cache/prepare.npz',
     'held_codes': '20261014_stage_d_final/cache/held_codes.npz',
     'partition_L': '20261111_community_told_oracle/results/per_anchor_told_oracle.npz',
@@ -109,18 +112,52 @@ def pin_entries(record):
     return entries
 
 
+def role_paths(originals,entries,backbone,here):
+    result=dict(originals)
+    for role,old in originals.items():
+        if role in FROZEN: continue
+        candidates=[p for p in entries if p.name==old.name]
+        if len(candidates)>1:
+            recipe=Path(here)/'results/recipe'/backbone
+            preferred=[p for p in candidates if p.is_relative_to(recipe)]
+            if preferred: candidates=preferred
+        assert len(candidates)<=1, f'ambiguous pin role {role}: {candidates}'
+        if candidates: result[role]=candidates[0]
+    return result
+
+
+def library_sha256():
+    result={}
+    for module in tuple(sys.modules.values()):
+        name=getattr(module,'__name__','')
+        filename=getattr(module,'__file__',None)
+        if not name.startswith('src.') or name.startswith('src.test.') or not filename: continue
+        path=Path(filename).resolve()
+        if path.suffix!='.py': continue
+        roots=(MAIN/'src',HERE.parents[1])
+        root=next((r for r in roots if path.is_relative_to(r)),None)
+        if root is not None:
+            relative='src/'+str(path.relative_to(root))
+            assert not relative.startswith('src/test/')
+            result[relative]=sha_file(path)
+    assert result, 'no loaded src libraries'
+    return dict(sorted(result.items()))
+
+
 class Inputs:
     def __init__(self,backbone='clip_b32',pins=None):
         assert backbone in BACKBONES
         self.backbone, self.reads = backbone, {}
         self.paths = {role:T/relative for role,relative in ROLES.items()}
         self.hashes = {}
+        self.pin_record = None
         if pins is None:
             name = 'clip' if backbone=='clip_b32' else backbone
             pins = HERE/f'pins_{name}.json'
         pins = Path(pins)
         if pins.exists():
-            entries = pin_entries(json.loads(pins.read_text()))
+            self.pin_record=json.loads(pins.read_text())
+            entries = pin_entries(self.pin_record)
             assert entries, 'pins schema must contain path and sha256 entries'
             self.reads[str(pins)] = dict(sha256=sha_file(pins), keys=['file pins'])
             for relative,digest in entries.items():
@@ -129,9 +166,7 @@ class Inputs:
                     continue  # source digests are metadata; never opened
                 assert sha_file(path)==digest, f'pin mismatch: {path}'
                 self.hashes[path.resolve()] = digest
-                for role,old in self.paths.items():
-                    if role not in FROZEN and old.name==path.name:
-                        self.paths[role] = path
+            self.paths=role_paths(self.paths,list(self.hashes),backbone,HERE)
             assert all(self.paths[r].resolve() in self.hashes for r in ROLES), 'missing phase-1 pin'
         else:
             assert backbone=='clip_b32', 'new backbones require pins_<backbone>.json'

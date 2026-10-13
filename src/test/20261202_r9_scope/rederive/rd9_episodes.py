@@ -184,7 +184,7 @@ def main():
     p.add_argument('--table', type=Path, default=HERE/'results/read_set_a28.parquet')
     p.add_argument('--values', type=Path, default=HERE/'results/value_sets_a28.json')
     p.add_argument('--seeds', type=int, nargs='+', default=[9001,9002,9003])
-    p.add_argument('--total', type=int, default=64)
+    p.add_argument('--total', type=int, default=4096)
     p.add_argument('--out', type=Path, required=True)
     args = p.parse_args()
     import pandas as pd

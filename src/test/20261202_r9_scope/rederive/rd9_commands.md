@@ -35,10 +35,10 @@ PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVIC
 
 ## Real A28 labels-only smoke, once tickets 14/16 provide the table and values
 
-This writes hashes for seeds 9001–9003, 64 episodes per pair, for comparison with ticket 17. It scores no feature.
+This writes hashes for seeds 9001–9003, 4,096 episodes per pair, for comparison with ticket 17. It scores no feature.
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/rederive/rd9_episodes.py --seeds 9001 9002 9003 --total 64 --out src/test/20261202_r9_scope/rederive/rd9_out/rd9_a28_smoke
+PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/rederive/rd9_episodes.py --seeds 9001 9002 9003 --total 4096 --out src/test/20261202_r9_scope/rederive/rd9_out/rd9_a28_smoke
 ```
 
 ## Phase 2, after each official pass
@@ -69,3 +69,17 @@ scorer/metric arrays plus clusters/pair/seed indices. Missing keys fail. R9 pass
 For the already-completed phase-2 selection regression, use `rd9_phase2.py --read H8 --mode selection`; compare its
 JSON to R6's `seed42_pass_counts.json` and its arrays to the independently validated phase-1 array archive. The
 committed proof for this job is `rd9_H8_selection_agreement.json`.
+
+## Review fix: generic phase-1 agreement (each backbone)
+
+Run after that backbone's independent phase-1 output and pinned seed-42 record exist. This includes switched-off
+backbones. Use `clip_b32`, `qwen3vl_emb_2b` or `siglip2_so400m`; the example shows Qwen.
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/rederive/rd9_compare.py --phase1 --backbone qwen3vl_emb_2b --derived src/test/20261202_r9_scope/rederive/rd9_out/rd9_qwen3vl_emb_2b_phase1.json --derived-arrays src/test/20261202_r9_scope/rederive/rd9_out/rd9_qwen3vl_emb_2b_seed42_arrays.npz --out src/test/20261202_r9_scope/rederive/rd9_out/rd9_qwen3vl_emb_2b_phase1_agreement.json
+PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python -m pytest -q src/test/20261202_r9_scope/rederive/rd9_test_arithmetic.py src/test/20261202_r9_scope/rederive/rd9_test_a28.py -o cache_dir=src/test/20261202_r9_scope/rederive/rd9_out/rd9_pytest_cache --basetemp src/test/20261202_r9_scope/rederive/rd9_out/rd9_test_temp
+```
+
+The real A28 labels-only smoke now defaults to 4,096 episodes per pair, matching ticket 17. `--total 64` remains
+available for smaller wiring runs. The exact mutation recipe and selected pytest cases are in `rd9_mutations.py`;
+its output is write-once and every edited source is restored in a `finally` block.

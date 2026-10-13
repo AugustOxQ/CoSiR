@@ -85,6 +85,9 @@ def main():
     p.add_argument('--derived-episodes',type=Path)
     p.add_argument('--reported-episodes',type=Path)
     p.add_argument('--clip-phase1',action='store_true')
+    p.add_argument('--phase1',action='store_true')
+    p.add_argument('--backbone',choices=('clip_b32','qwen3vl_emb_2b','siglip2_so400m'))
+    p.add_argument('--pins',type=Path)
     p.add_argument('--out',type=Path,required=True)
     args=p.parse_args()
     assert args.derived.exists() and args.derived_arrays.exists()
@@ -92,7 +95,16 @@ def main():
     identity=dict(record_sha256=sha_file(args.derived),arrays_sha256=sha_file(args.derived_arrays))
     own=json.loads(args.derived.read_text())
     c=Comparison()
-    if args.clip_phase1:
+    if args.phase1:
+        from rd9_inputs import Inputs
+        assert args.backbone==own['backbone'], 'phase-1 backbone mismatch'
+        inputs=Inputs(args.backbone,args.pins)
+        assert inputs.pin_record is not None, '--phase1 requires a pins file with seed42 record'
+        with np.load(args.derived_arrays) as archive: arrays={k:archive[k] for k in archive.files}
+        seed42=inputs.pin_record.get('seed42',inputs.pin_record.get('seed42_record',{}))
+        compare_phase1(c,own,arrays,inputs.json('cells_seed42'),inputs.json('picks_seed42'),
+                       inputs.json('baselines_seed42'),inputs.json('rc_tau'),seed42)
+    elif args.clip_phase1:
         assert own['backbone']=='clip_b32'
         pass_path=T/'20261125_artelingo_held_test/results/seed42_pass_counts.json'
         report=json.loads(pass_path.read_text())
@@ -128,6 +140,44 @@ def main():
     save_json(args.out,result)
     print('agreement:',result['agreement'],'compared:',result['compared'],'differences:',result['failed'])
     if not result['agreement']: raise SystemExit(1)
+
+
+
+
+def compare_phase1(c,own,arrays,cells,picks,baselines,tau,seed42):
+    """Compare independently computed quantities against data pins, including switched-off runs."""
+    from rd9_inputs import sha_bytes
+    for key in ('aff','cf','sigma_star','switched_off','gate_share'):
+        c.value('picks.'+key,own['picks'][key],cells.get(key))
+    for key in ('B','B0'):
+        v=picks.get(key)
+        if isinstance(v,dict): v=[v.get(str(h)) for h in (0,1)]
+        c.value('picks.'+key,own['picks'][key],v)
+    lambdas=baselines.get('lambda_picks',{}).get('rca')
+    if lambdas is None:
+        lambdas=baselines.get('scorers',{}).get('rca',{}).get('lambda_picks')
+    if isinstance(lambdas,dict): lambdas=[lambdas.get(str(h)) for h in (0,1)]
+    c.value('picks.rca_lambda',own['picks']['rca_lambda'],lambdas)
+    c.value('picks.taus',own['picks']['taus'],tau.get('taus'))
+    for name,arm in (('B','B'),('B0','B0'),('B1','B1'),('AFF','aff_fused'),('CF','aff_cf')):
+        got=100*float(np.mean(arrays[arm+'__r1'])) if arm+'__r1' in arrays else None
+        c.value('seed42.mean_r1.'+name,got,seed42.get('mean_r1',{}).get(name))
+    for j in CHECK_IDS:
+        target=seed42.get('checks',{}).get(j,{})
+        c.value('seed42.checks.'+j+'.point',own['stats']['checks'][j]['point'],target.get('point'))
+        c.value('seed42.checks.'+j+'.n',own['stats']['checks'][j]['n'],target.get('n_j',target.get('n')))
+    hashes=seed42.get('array_hashes',{})
+    # Every recorded per-anchor array, plus all primary scorer arrays, must be present.
+    assert hashes, 'pins must include seed42.array_hashes'
+    required={f'{arm}__{metric}' for arm in ('B','B0','aff_fused','aff_cf','cosine','rca')
+              for metric in ('r1','gain','other','swap','strict')}
+    for key in sorted(set(hashes)|required):
+        entry=hashes.get(key)
+        if entry is None:
+            c.value('seed42.arrays.'+key+'.present',True,False);continue
+        v=arrays.get(key)
+        observed=None if v is None else {'sha256':sha_bytes(v),'dtype':str(v.dtype),'shape':list(v.shape)}
+        c.value('seed42.arrays.'+key,observed,entry)
 
 
 if __name__=='__main__': main()

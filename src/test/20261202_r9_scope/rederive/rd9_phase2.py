@@ -9,7 +9,7 @@ import pickle
 from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
-from rd9_inputs import Inputs,RD,OUT,HERE,T,feature_data,save_json,save_npz,sha_file,verify_reads
+from rd9_inputs import Inputs,RD,OUT,HERE,T,feature_data,save_json,save_npz,sha_file,verify_reads,library_sha256
 from rd9_bundle import split,encoded,prepare_arrays,score_block
 from rd9_scores import unit32
 from rd9_episodes import PAIRS,FIELDS,concat,value_codes,build_standard,build_a28,table_arrays
@@ -165,7 +165,7 @@ def main():
     suffix=f'rd9_{args.read}_{args.mode}'
     save_npz(OUT/f'{suffix}_arrays.npz',arrays)
     save_npz(OUT/f'{suffix}_episodes.npz',episodes_out)
-    save_json(OUT/f'{suffix}.json',dict(read=args.read,backbone=backbone,mode=args.mode,
+    save_json(OUT/f'{suffix}.json',dict(library_sha256=library_sha256(),read=args.read,backbone=backbone,mode=args.mode,
                                     phase1_sha256=sha_file(str(prefix)+'_phase1.json'),picks=frozen,stats=stats,
                                     episode_records=episode_records,inputs=inputs.reads))
     print('phase 2 complete:',args.read,args.mode)
