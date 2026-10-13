@@ -211,3 +211,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-2-handoff.md
 - New chat: tab 'r9 build 2', session 817e6dbb-9657-4cbd-8ac2-f1785f663c3f
 
+[brief] CoSiR: paper-write-2 -> paper r1 2 (2026-10-13 16:37 Amsterdam)
+- Done: the literature gap-fill (two notes, `refs.bib` with 96 checked entries), the Figure 6 drawing rule, draft v1 of §3 to §6 with Tables 2 and 3, and a private repo for `docs/paper/`.
+- State: v1 has 4 of 8 sections, 4,276 words by the counter. Every number has a TRACE line.
+- Next: the §2 writer, then the writer for the abstract, §1, §7 and §8; then the number check and the ARS review.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-paper-r1-2-handoff.md
+- New chat: tab 'paper r1 2', session 844278df-7731-4314-80c3-53b1e3370ce0
+
