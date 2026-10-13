@@ -283,3 +283,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-outside-pages-handoff.md
 - New chat: tab 'outside pages', session b154104e-b186-4f2e-9c19-d4bfeaadfbf5
 
+[brief] CoSiR: r9 build 7 -> r9 build 8 (2026-10-13 22:16 Amsterdam)
+- Done: 20a, 12, 21a, 20b and 27 merged, plus four LOW rounds; every review passed.
+- State: the stage 0b replay and the CUB/SemArt probes run detached; 13 and 20b's fix are built, not yet checked.
+- Next: run the stage 0b compare on the replay, then 13's Opus review and dry run, 20b's smoke and re-check, ticket 21.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-8-handoff.md
+- New chat: tab 'r9 build 8', session cda2cded-f6bb-4d80-865b-f7ae496f77d5
+
