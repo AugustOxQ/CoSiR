@@ -371,3 +371,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-14-weekly-report-handoff.md
 - New chat: tab 'weekly report', session 296fd8b6-6c3e-4b51-960c-4fb31e9e0412
 
+[brief] CoSiR: weekly report -> weekly slides (2026-10-14 10:16 Amsterdam)
+- Done: weekly slides v1, 12 slides in the three parts the user set; a new AFF design figure; a Codex fidelity check and a cold read, with fixes.
+- State: no written report this week (user). The r9 results are in as preliminary: H6 Qwen GO (+0.63 over B′(A0)), H7 SigLIP 2 GO (+0.51), H8 CLIP ArtELingo-28 NO-GO, inconclusive.
+- Next: the user reads v1 and comments (meeting 11:00); then one fix wave.
+- Blocked: the user's comments.
+- Handoff: docs/superpowers/handoffs/2026-10-14-weekly-slides-handoff.md
+- New chat: tab 'weekly slides', session 57ed02b5-2778-4c68-b6a1-998328ebe831
+
