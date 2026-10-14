@@ -68,7 +68,8 @@ is finite (no NaN).
     = len(items)), failed (0, = the number of items that are not equal), items (a list of {key, equal (bool), ...}; none
     may have equal false), read (<Hn>), pass_file (the pass file's name), held_pass_sha256 (= the SHA-256 of that pass
     file's bytes), sensitivity_sha256 (= the SHA-256 of the sensitivity file this step reads), rederived_counts
-    {P1..P7: int} (the independent pass's n_j, equal to the pass file's). Other keys
+    {P1..P7: int} (the independent pass's n_j, equal to the pass file's). An agreement that carries the key
+    margins_not_compared (written only by the C13 selection replay) is refused. Other keys
     (independent_identity, backbone) are not read. Earlier drafts of this step expected other names (all_agree,
     disagreements, n_quantities); they are not accepted.
 """
@@ -532,6 +533,9 @@ def load_agreement(path: Path, smoke: bool, pass_name: str, read: str) -> tuple:
     if not (isinstance(rc, dict) and set(rc) == set(P_CHECKS)
             and all(_is_int(rc[nm]) and 0 <= rc[nm] <= N_BOOT for nm in P_CHECKS)):  # GUARD: rederived-counts
         refuse(f"{path.name}: rederived_counts is not {{P1..P7: count}}")
+    if "margins_not_compared" in agr:  # GUARD: margins-compared
+        refuse(f"{path.name}: it carries margins_not_compared (only the selection replay writes it); a held read's "
+               f"agreement must have compared its margins (SE, x, x95)")
     return agr, CM.sha256_bytes(raw)
 
 

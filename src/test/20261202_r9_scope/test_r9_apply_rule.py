@@ -720,6 +720,33 @@ def test_fix_pass_agreement_is_bound_to_the_sensitivity_file_it_uses(tmp_path):
     refused(4, "H6", d, "another sensitivity file")
 
 
+def test_fix_pass_with_its_own_sensitivity_file_is_bound_to_that_file(tmp_path):
+    d = stage(tmp_path, "H6", dict(ALL0, P1=500))
+    stage(tmp_path, "H6", ALL0, sfx="_fix1", sens=False)
+    # a _fix1 sensitivity file with other bytes (another SE, still consistent)
+    (d / "sensitivity_H6_fix1.json").write_text(json.dumps(make_sens("H6", se=0.2)))
+    sha_orig = CM.sha256_file(d / "sensitivity_H6.json")
+    sha_fix = CM.sha256_file(d / "sensitivity_H6_fix1.json")
+    assert sha_orig != sha_fix
+    write_agreement(d, "H6", "_fix1", over={"sensitivity_sha256": sha_orig})   # compared with the original file
+    refused(4, "H6", d, "another sensitivity file")
+    write_agreement(d, "H6", "_fix1", over={"sensitivity_sha256": sha_fix})    # compared with the file it uses
+    path, v = call("H6", d)
+    assert v["sensitivity_file"] == "sensitivity_H6_fix1.json" and v["sensitivity_sha256"] == sha_fix
+
+
+def test_agreement_that_carries_margins_not_compared_is_refused(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    f = d / "rd9_H6_agreement.json"
+    r = json.loads(f.read_text())
+    r["margins_not_compared"] = "SE, x and x95 not compared, selection replay"      # as rd9_compare writes it
+    f.write_text(json.dumps(r))
+    refused(4, "H6", d, "margins_not_compared")
+    del r["margins_not_compared"]
+    f.write_text(json.dumps(r))
+    assert call("H6", d)[1]["verdict"] == "GO"
+
+
 def test_agreement_is_bound_to_the_pass_file_bytes(tmp_path):
     d = stage(tmp_path, "H6", ALL0)
     p = d / "held_pass_H6.json"
