@@ -1,0 +1,1674 @@
+{
+  "passed": true,
+  "read": "H8",
+  "backbone": "clip_b32",
+  "kind": "fix2",
+  "runner_sha256": "55caf787734aef50b15843015de488560c556be6ca366aa446985ac2173bcd4f",
+  "preread_runner_sha256": "6b89c1e74cb1a00c79c2e0b1465e74ecfb4c9aa5e60138e01cd0fa6c31709890",
+  "module_sha256": {
+    "src/test/20261202_r9_scope/r9_a28.py": "87e4e9cfac7aa82ecd6f162d84773486e7e0383d7d5475d3e9cc244e62542a93",
+    "src/test/20261202_r9_scope/r9_a28_context.py": "6814650ffd611b5539bc798812707c0ffac6deef2bf7d94b870d317e6b566c5e",
+    "src/test/20261202_r9_scope/r9_a28_data.py": "60a46b40077b98ee96ba6ed49f969e7c37b23852083a24c0b1b3e327a663499a",
+    "src/test/20261202_r9_scope/r9_a28_episodes.py": "d4a3f836881e498b2558a0476d50661136d2fc04357f8ec411650e67af8ad1e0",
+    "src/test/20261202_r9_scope/r9_backbone.py": "9ddd23a0dcbe3abcbaf1a47ff060b30f76e1195d16f080844c2fdb800590ff84",
+    "src/test/20261202_r9_scope/r9_bundle.py": "0e194af001353a78214cba5ce3c21f5a76db2783394873e50ad9f42112c6515b",
+    "src/test/20261202_r9_scope/r9_check_data.py": "a448fa880d998f737989bfb74a91cc53584a1c4311e6cfc5e14a22d554c29f13",
+    "src/test/20261202_r9_scope/r9_check_groups.py": "f5960b4154c8764ade54c22b7ae5a99142a558fd1d11896ddb03c916dba340a1",
+    "src/test/20261202_r9_scope/r9_check_heads.py": "79ab673ac9b51dbd8db77f1ab2dd1d6d28ed4d6ab0d0f2699afcfca4ca286020",
+    "src/test/20261202_r9_scope/r9_common.py": "69e450bea3819b335bada1c8492c41f7350e97e5cd7264ad1e373ef5d27ab3bd",
+    "src/test/20261202_r9_scope/r9_context.py": "18f9a4501212a68940faf54f1951253a75fc913ec68dbb4148449859faae00b3",
+    "src/test/20261202_r9_scope/r9_data.py": "9b9d3fe521d4d5728ffdc0899451e5dd984b1b8cc774c6ffe903030dcbc0ac0c",
+    "src/test/20261202_r9_scope/r9_descriptive.py": "e96fc731f9faca53befca1f1e645bb921cd9e4ca185387e787fe43623835d2da",
+    "src/test/20261202_r9_scope/r9_episodes.py": "eec7611153e58191ffc57066018ec64ff04c6f33467fc9f6796f71b3be84ccde",
+    "src/test/20261202_r9_scope/r9_heads.py": "097a40bbedaf702032c48789b11028b862ca9727e5e79921e02c4aedd7e2e6b2",
+    "src/test/20261202_r9_scope/r9_picks.py": "7a0f08e3564a369f24bf17708ae751975447e261abab66d882b325b5763899b6",
+    "src/test/20261202_r9_scope/r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "src/test/20261202_r9_scope/r9_probe_data.py": "d79edbee6564df70f7cba79a3971939289bbd5b7bce57c8b1d69dc5e1a1c7a44",
+    "src/test/20261202_r9_scope/r9_probe_plan.py": "156afdd6e2f69287b66c681ba100d3187142ce2933a35137c0c0b203fa0208d2",
+    "src/test/20261202_r9_scope/r9_probe_recipe.py": "573ac7e7c1cd16da2fad3ad3c6f2aec3d1052ef7845d9c717a0cf3d47586260a",
+    "src/test/20261202_r9_scope/r9_probe_score.py": "834670e7f9d734cd2a2bd73bb94d50970d2bc07e7afce7a3f0db7e8e46457bc8",
+    "src/test/20261202_r9_scope/r9_recipe_a3.py": "36947bc6cb6818059020c5414f34841273f60dc9fea3e1c969a64997f759fcb3",
+    "src/test/20261202_r9_scope/r9_recipe_baselines.py": "6c4aa102401fdc8df3085dd1bc6d9d4df44402b2408eb4722a81064f724afe91",
+    "src/test/20261202_r9_scope/r9_recipe_cells.py": "de6bd56ea874b331b11a0ba17e7c0163b287b251dea94aed90e0c7e20743e601",
+    "src/test/20261202_r9_scope/r9_recipe_groups.py": "919202a1e77b5fa893c0161d9c669f9dc1f91277cddb0780800f31ff058e3154",
+    "src/test/20261202_r9_scope/r9_recipe_reader.py": "ffb9166b65c85307d72e2ecb5fb3d5e4cedad5ec39e5d67478a01091927be71a",
+    "src/test/20261202_r9_scope/r9_score.py": "e708160828f13983e7e17b8ef7333381fc773345ae50796f4203dc99fae1736f",
+    "src/test/20261202_r9_scope/r9_stage2_mutations.py": "ddce871a903c059c2725cefc00a543e061bdb114a6f357b81fd7fdff7e9221e5",
+    "src/test/20261202_r9_scope/r9_stats.py": "7ec21a05062a5ef567e99edf6f8c168229959441a91106138eae13e81b592d7b",
+    "src/test/20261202_r9_scope/run_r9_a28_feasibility.py": "fa492387333e6ff6114f27453833c5011bcfdd6078c0be6c4be79dc650be0529",
+    "src/test/20261202_r9_scope/run_r9_a28_pins.py": "96e20d0e4aa6f75685efce7eb838d1304c264fb7f067197f64ca9b5b81b552f6",
+    "src/test/20261202_r9_scope/run_r9_a28_prepare.py": "acfacaf4d13466ee3259917ab9f433523fd6545b01117cf143811d81010aef4b",
+    "src/test/20261202_r9_scope/run_r9_apply_rule.py": "e778f6ed6616138e9a444d45c392733e8f4ca3281ff060b18ef1484c36874e4e",
+    "src/test/20261202_r9_scope/run_r9_descriptive.py": "1d662f437e1b6931cbeb15275d0b8805b0db74b1a42d2caf3642147a9e5b78ad",
+    "src/test/20261202_r9_scope/run_r9_held.py": "55caf787734aef50b15843015de488560c556be6ca366aa446985ac2173bcd4f",
+    "src/test/20261202_r9_scope/run_r9_preread.py": "6b89c1e74cb1a00c79c2e0b1465e74ecfb4c9aa5e60138e01cd0fa6c31709890",
+    "src/test/20261202_r9_scope/run_r9_probe.py": "2ce2866bd99206aab5b8985edf2736ee8995674b593b936d271732920dfadf2b",
+    "src/test/20261202_r9_scope/run_r9_stage0a.py": "0023407b2b51cdae0e41d66044e188b32f4fcdae565f7f49eafc31ddd409798f",
+    "src/test/20261202_r9_scope/run_r9_stage0b.py": "f8907860850f206994a1cf7e435833cc92475267c3f92a9252348c7f809957b4",
+    "src/test/20261202_r9_scope/run_r9_stage1_checks.py": "c19c3d282bf63b3fd3f7b7601d9f51e850b894c98e7415541b20ef47908aba0c",
+    "src/test/20261202_r9_scope/run_r9_stage2.py": "0b4348d7a7d2a2a6aeecfebc4761b20b69ca91e92a01ea17899ff7704b2aae60",
+    "scripts/run_r9_a3.sh": "39dddf16a8361c152840c122e1f6b225465d88897a8a58458f32b45b94e4aeb1",
+    "scripts/run_r9_extract.sh": "2f2a574228890d48df1374f8afeaecfb86127f8c52ccc053ff71dd093331afb8",
+    "scripts/run_r9_translate.sh": "b9fe725b11ec8f434065932663b6c33a18a07053e0479c66edf35de2da565281",
+    "scripts/das6_sync_r9.py": "fea3b678f13d3436e7af87e17be1cec19ecbbf09f1d8e1554dd6c64ca40ed832"
+  },
+  "input_file_sha256": {
+    "/project/CoSiR/src/test/20261125_artelingo_held_test/DECISION_RULE.md": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+    "/project/CoSiR/src/test/20261121_round3_affect_gate/DECISION_RULE.md": "2d311dbeac1a561fc2a719b730075c30819f4f7f3a592041cb64b65821dc5925",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/DECISION_RULE.md": "613d8c9d13fb7d4787ec0fb91dc65cfd4a192d07c88ab8f961da3adc1c35d23c",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/common.py": "99496dcf859ff0b0f746266125c975c5e2f9632e0c2c91d74df17102c65c10a7",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/rc_core.py": "e649fff5d8253c8ba7aae0dbfff7a68321cef5fe3caa06d7b325a27fe904185c",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_build.py": "63c7310c890675cc63e49838feb364cdd1c5c68aafdfb0f0f7972128476cba7b",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_eval.py": "1826e65fd73b8c6cecae33b5df48503bf2cf33e067fc291d5c078c51184e0b14",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_features.py": "1e758f6d5de1b1dd246592f4045e0ae1dcc520c1d6012540a9e69b3314fb6caf",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.pkl": "6387b469662446734e650571c88a152651da3d66bcade28fb6cdd7828f58d34c",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.json": "cd90da922967cf1b62e437d3927c97cd9cfdae2c139ee392744538d3e3e5c6a8",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.npz": "628b21aeaf6d306f82bd9abb68e6c257348535c3aff0fad0a2d065fc48302981",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.json": "c6e2f83b73c47b9c054e6381a5d020a05618728cb820861b89f0b80de5a8a16e",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rc_tau.json": "e10cf52b2e81ea5b5f7243363d7ddf226440c3a95512cbc7e0b9ed18c5e702bf",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rule_application.txt": "9a074850e70db8075e85bc5475e9361905182d6f0815f0023eaf380ccdee9785",
+    "/project/CoSiR/src/test/20261118_reader_fix_round2/DECISION_RULE.md": "368bec11363b222d348622a37a6e3aedcfe795d772781d7a255d79b60fab265c",
+    "/project/CoSiR/src/test/20261118_reader_fix_round2/r2_fusion.py": "1406e8e71629e74c468f8b009a110e49aa05c481ed52cc1b8d99b59f87016027",
+    "/project/CoSiR/src/test/20261118_reader_fix_round2/results/rule_application.txt": "cf1ec3852e334b1d56920bd8ab25c2db858bf97ab46ea36a7f65ebdd0916741f",
+    "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_lib.py": "45cc5abd941ca1cd7e47f415cdf0e11d440fd9c703b99516e23eb6e41d49bf88",
+    "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_04_readers.py": "0260fe5ad61e3d4a664cbb921f7d84efed8c9329716229310651712697a372b8",
+    "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_05_aff.py": "4c947b1d42df1caa7fb7f769f245e7df9a59bce22ca2611413c6a5a7fd45d734",
+    "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_10_subsets.py": "b00d9ed0b18e65e1e2be4dd8cdc5e05e277f673dbec5c826ddce4e18669cd7b4",
+    "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_04_readers.json": "42bf6f204598c011bfada46e5eabf42dc7759fc6f6750721527d16239141691e",
+    "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_05_aff.json": "a96719ba505b72883bfa2eeaca66ab872da128314654ba8f74580998b2a72b10",
+    "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_10_subsets.json": "c9d64815c1c6dba9e84177f7a33fb4e917a326f801ed9b115ae770ce1a1988f1",
+    "/project/CoSiR/src/test/20261030_aspect_baselines/run_baselines.py": "26508dde35f77850c4a80e98d08b0ea6576638577c84d3e96c39660ef02e63c4",
+    "/project/CoSiR/src/test/20261030_aspect_baselines/results/per_anchor_seed42.npz": "a4818ba0fa5f7249355afe2d2483404dcd34d22cae26984b76be787bb6e9e59d",
+    "/project/CoSiR/src/test/20261030_aspect_baselines/results/codes_provenance.json": "8e6a517b73610d4d21b42e2eb39f6fd4118dc4132049364c8e89eecb7716bfaf",
+    "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed42.json": "ce42c81e8eec256496454e88fc07dc4fcfb02e2d5f1b043f2274ba6008564ce6",
+    "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed43.json": "b250e89caadb1f5ad5937fb36b92ccf1f0f3b63a82b71056dc1ce2b9cc7e2859",
+    "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed45.json": "ecbcf5e900a5f844af9a3e986d1154d2764bb10ba2e2123aba2aaf77917c9890",
+    "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed47.json": "56e5c0661ad20372cd1c9976d2e48f07c995e44ce33f0649da5cc351f8652386",
+    "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed48.json": "feed925f3eddbf2957b4bce284e1bbf5e9d85132b760f94f6d2c76cb08654286",
+    "/project/CoSiR/src/test/20261111_community_told_oracle/results/told_oracle.json": "76d9ec896b941a518e7db6684805fe0bc329f6afe4a48e1993992fbb221d70d2",
+    "/project/CoSiR/src/test/20261030_aspect_baselines/results/episodes_seed42.npz": "12af979432ff1a20c88b614ab9e672f203eeeed9c2465bff305e72d01e6c0986",
+    "/project/CoSiR/src/test/20261111_community_told_oracle/results/per_anchor_told_oracle.npz": "27e8101161607da2d6936aa5a8c84f8c296629fe08e37a68c8418c9356af1366",
+    "/project/CoSiR/src/test/20261031_pseudo_partitions/results/partitions.npz": "cfd57dbb21216cdc9d1c2e42d1b408648bc18147f62354b52202ade4ab8a9caa",
+    "/project/CoSiR/src/test/20261108_new_method_quick_checks/results/n6_posteriors.npz": "2ad75026e5869c461fed156ffcdcf207c66f04a59dae514358522fbbaa9df2e0",
+    "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/checkpoints/A3_seed42.pt": "dadfef1bed95bbd647c39fa0ea483edea78627d440a23b5a032083e76dd469e2",
+    "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_group_style.npz": "b04d96b4798acdfdbc9ca87436012755a681c931ac4f7612fa5683350b7a20e2",
+    "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_heads_style.npz": "898a37017d82d3e130b20155e90f69e51f82f30892e04316dcb56d7aaaf8df8b",
+    "/project/CoSiR/src/test/20261122_round4_aff_vetoes/results/dev_seed42.json": "fd7b3f480d5997284f9d8cfe29fe25275ff3edd38c1ada0a9392d8396ba9e01f",
+    "/project/CoSiR/src/test/20261013_stage_d_selection/cache/prepare.npz": "d30f0281bb521d18c7a4d4adca1a7938689e2789db7fd528ce0322b90ac44c8b",
+    "/project/CoSiR/src/test/20261014_stage_d_final/cache/held_codes.npz": "2901f875e7ad59f9f54509b61352a9cecb0eba310b31357f872219f25e2a12e9",
+    "/project/CoSiR/src/test/20261121_round3_affect_gate/results/seed42_arrays.npz": "5ea4b09a4161a5eac6ca78942cf0f4b99b9c634edca651fba4c2689c7c24ab8a",
+    "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9001.json": "729cb5653cbcf2ea97da6dad65da9eaddf5d1b4bbace5c9d551f9c1d4fe8c517",
+    "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9002.json": "8e86b7e6da2411743d09c28154c2189ad50b11fd4a04f2bd76e53e80808ba352",
+    "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9003.json": "e7e0ac0ed30cd170d0de1ccda56d9e6a2f6a663576725dcd6306b46e3429aada",
+    "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_common.py": "b1a60b1fd801bf9147d0bd58ae6da806d12fbcc982796135454f31dce3836f86",
+    "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_bundle.py": "bef50cbbef17f6c40d53c705a060967950d0690168c4b046b1cc3f0dd9fa0e9d",
+    "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_fusion.py": "ce51a819157842035fdfde488f042c25fa4764ed1b1c363728d5e3837e314637",
+    "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_stats.py": "846a4f5b3175302280c20fa415cfff4b0652522d06aa4fc46290f1a1db5de54d",
+    "/project/CoSiR/src/test/20261202_r9_scope/DECISION_RULE.md": "f9b07b34e645bc8e881fb13c7e7a085eabea6a52f4d93445305944cf1aea030c",
+    "/project/CoSiR/src/test/20261202_r9_scope/results/stage0a_regression.json": "e3c660eae3502044713b9092fe4f9656ba7ba1cf158ba8200e869a3fab2f7e54",
+    "/project/CoSiR/src/test/20261202_r9_scope/pins_clip.json": "b78dd5efebc632feffc1b8edf0be3de2e66b0cb4e7380e7738901999f227c353",
+    "/project/CoSiR/src/test/20261016_factor_learning_grid/cache/graph.npz": "485cb7fe12b44bd70bf45ae9c131fc347306c76fc7c6cf75704b95edbb393de8",
+    "/project/CoSiR/src/test/20261031_pseudo_partitions/results/bank_AIC.npz": "b6c662ef4b79684bc86ee422056782b8cfec278c8c6c164044b9cffbcd59fc41",
+    "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/results/picked.json": "77173a38d526936e8fb0b081f8bae68979a2d9f6cc7b2efa3ba6ae984385ff0e",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_halves.npz": "ed2d359e6517b4237f8aa4de5e78f787699b366a975ac993eaef0e7c4491c7da",
+    "/project/CoSiR/src/test/20261125_artelingo_held_test/results/picks_seed42.json": "df1fff781136c001343ec88264b014ca6a2448d71e8c4f33e230e9821deb47c6",
+    "/project/CoSiR/src/test/20261202_r9_scope/cells_seed42_clip.json": "85ee9eb22232ce2a9a338b89e887919780ea82920397d5a5f113a2612e401c85",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_affect.npz": "e21e846be8b9e565a7443c5e7ecd4135a04def709ce64bef6dceae6545823324",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_image.npz": "3743b3fe9c8942cddf399b8ffc7ef47806d8d2a8d4a6ec8ea474473010f3c46f",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_caption.npz": "00782ea90b9dcccea8ad164ce21f48792d7422adba89bebf9acaf7705168cea8",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_csd.npz": "97906e87bade9756272b2120cfd3dcabaf2dae52305833554886868bcb96d028",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_rand.npz": "3c197542655aec1f5f9a4c9cf0c190aed3d98eb4f8b3dd4c036b6facd3af928d",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half0.npz": "f0711629d18d795f357368ac080c9f816e480cec44c3ec0d057e13eac9e8a1e2",
+    "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half1.npz": "edd48914d8db50e492e21ad725619464a655098f77651e7226c200c86db8ca80",
+    "/project/CoSiR/src/test/20261202_r9_scope/pins_a28.json": "a225f32708e84a218996ff344ccc77ac186614c253fb27e10d4d482bba81c4c1",
+    "/project/CoSiR/res/r9/a28_translate/shard_0/translations.parquet": "583bc84a0ddb74d03c5e8fc917938ecabe4cfb4caf5b0ea7fd1cb90d32acb4ad",
+    "/project/CoSiR/res/r9/a28_translate/shard_0/coverage.json": "1bb7e9546818587b202666e1516d0f32b8452740b094b4d7537e47d596a3d268",
+    "/project/CoSiR/res/r9/a28_translate/shard_1/translations.parquet": "8e57fbc3ae8511b5f6d67d1cc1acdf04c349fcf0b821fa79aabb4a4ddd547624",
+    "/project/CoSiR/res/r9/a28_translate/shard_1/coverage.json": "b6d5313b3d5d52d94a290621e2be1105909f1c6306e285e56b8c89d878a0dafe",
+    "/project/CoSiR/res/r9/a28_translate/shard_2/translations.parquet": "0e26f4be3b055de3f51030b84461ca81d8f24479792d9acaf46a15a01721a633",
+    "/project/CoSiR/res/r9/a28_translate/shard_2/coverage.json": "21c12aada490d14e285b5a4d7c2f7ee226e98c7cc41b67998d6a688572e51776",
+    "/project/CoSiR/res/r9/a28_translate/shard_3/translations.parquet": "a40fb90badeddd6a3683eeffa53042b4eb14c28600564ebd58facc4be294903f",
+    "/project/CoSiR/res/r9/a28_translate/shard_3/coverage.json": "81744554d9e8b54aa8b7cec3b49cc8d49365e7821cc6a5f13c5a3d4561b4ef60",
+    "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/translations.parquet": "99872926e43890ad8fd9b7883b6be255fbc145eb33d9f3ff28a059b42f6012ac",
+    "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/coverage.json": "dfc396a3fd67cded9e7e84d65c429e2c201c49998c4049702ce0bc4492e1d9db",
+    "/data/SSD2/pre_extract/artelingo28/clip_b32/img.npy": "2f686f66b39209a0b4ad9dd8a2b58f9a9d76494f5a797130acf90b5bb15476fc",
+    "/data/SSD2/pre_extract/artelingo28/clip_b32/txt.npy": "0e99850132fe1daddbc761bd0eb42eba454dcdf67a0d729e8f7c7e9904a6b77a",
+    "/data/SSD2/pre_extract/artelingo28/clip_b32/index.json": "4a31fa88f75b2b0a8296ebc1d6fba0e938d00d7edf3447c51cbf7672a0e75795",
+    "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/img.npy": "edf26c0f0031d434b8fd0af30d40583dbe82a53df4128611ace25a485b0c073e",
+    "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/txt.npy": "49d14c25ae2abece83dd808501697d26805761a1367fe3b8bf78b251d72196c2",
+    "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/index.json": "4288f968f382e5869d89f6a3bc6f678de8f2d303b1cc71a64e4d730bcb80aa5d",
+    "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/img.npy": "856f07f503aa10e8fa891c2eb41535471871eecaf6e66349e1c2eb896f0b3452",
+    "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/txt.npy": "13b004da07f069990b7291aaeafc672d2c34d39de0ff177a7c9a7a43c20d5674",
+    "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/index.json": "6e5dc8839515c3874d75ceaf958cf5b67022ab10ba70635b88fc89518040d481",
+    "/project/CoSiR/src/test/20261202_r9_scope/results/value_sets_a28.json": "85a0d0daaee73d70804cb8491c8e5433303ff6d47abacc03d35e3e4647fccb3e",
+    "/project/CoSiR/src/test/20261202_r9_scope/results/language_flags_a28.json": "3cb3c45719d1e8a3e207bd293bd987928cc1c614da76f5d38ba77fc51b94c0dd",
+    "/project/CoSiR/src/test/20261202_r9_scope/results/read_set_a28.parquet": "97c0ea0e7f98dbe1e79da898e8734122a9956640bdb0073e541cc2bad7c7fa95",
+    "/project/CoSiR/src/test/20261125_artelingo_held_test/results/refit_check.json": "aebc840fa26266754370e01ae690d120d483cc86a4090b6130feb39be679736d",
+    "/project/CoSiR/src/test/20261125_artelingo_held_test/results/regression_seed42.json": "ca168eb628f6a51e9afe779b0194088d05b293417bac04617a0d8a428d3984be",
+    "/project/CoSiR/src/test/20261125_artelingo_held_test/results/seed42_pass_counts.json": "5618c59a3907af67bbcced0f29e0db8462b12ca4fb2e40a69e4be537de29d5e5",
+    "/project/CoSiR/src/test/20261125_artelingo_held_test/results/sensitivity_seed42.json": "bc4b0a92d376b2fdf47da2aa08303a5bb2266a29daf85621ca97ec753bef5661",
+    "/project/CoSiR/src/test/20261202_r9_scope/rederive/rd9_out/rd9_clip_b32_phase1_agreement.json": "f28c31843a5051fb6a52799f004453302daddc54d968d1619a8e21daee9ac259",
+    "/project/CoSiR/src/test/20261202_r9_scope/rederive/rd9_out/rd9_clip_b32_phase1.json": "0986af4f1e55d428669e94a2fef3082499ae18d87363e0e518e4a11082b9dd9f",
+    "/project/CoSiR/src/test/20261202_r9_scope/rederive/rd9_out/rd9_clip_b32_seed42_arrays.npz": "4f562f94ac98b3d63f9466d276b36169ce11eb6284493e158ae8e22026860e21",
+    "/project/CoSiR/src/test/20261125_artelingo_held_test/results/value_sets.json": "4ea6d33853e5516adc57a868194a03ab20963bcfe6f646df355a7e72d1970369",
+    "/project/CoSiR/src/test/20261202_r9_scope/results/near_duplicates_a28.json": "ba92530d433dded1c8d2b2a2037e23d015aed5361fb1249d1caa631e40da2206"
+  },
+  "checks": {
+    "inputs": {
+      "passed": true,
+      "status": "passed",
+      "sha256": {
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/DECISION_RULE.md": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/DECISION_RULE.md": "2d311dbeac1a561fc2a719b730075c30819f4f7f3a592041cb64b65821dc5925",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/DECISION_RULE.md": "613d8c9d13fb7d4787ec0fb91dc65cfd4a192d07c88ab8f961da3adc1c35d23c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/common.py": "99496dcf859ff0b0f746266125c975c5e2f9632e0c2c91d74df17102c65c10a7",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rc_core.py": "e649fff5d8253c8ba7aae0dbfff7a68321cef5fe3caa06d7b325a27fe904185c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_build.py": "63c7310c890675cc63e49838feb364cdd1c5c68aafdfb0f0f7972128476cba7b",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_eval.py": "1826e65fd73b8c6cecae33b5df48503bf2cf33e067fc291d5c078c51184e0b14",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_features.py": "1e758f6d5de1b1dd246592f4045e0ae1dcc520c1d6012540a9e69b3314fb6caf",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.pkl": "6387b469662446734e650571c88a152651da3d66bcade28fb6cdd7828f58d34c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.json": "cd90da922967cf1b62e437d3927c97cd9cfdae2c139ee392744538d3e3e5c6a8",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.npz": "628b21aeaf6d306f82bd9abb68e6c257348535c3aff0fad0a2d065fc48302981",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.json": "c6e2f83b73c47b9c054e6381a5d020a05618728cb820861b89f0b80de5a8a16e",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rc_tau.json": "e10cf52b2e81ea5b5f7243363d7ddf226440c3a95512cbc7e0b9ed18c5e702bf",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rule_application.txt": "9a074850e70db8075e85bc5475e9361905182d6f0815f0023eaf380ccdee9785",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/DECISION_RULE.md": "368bec11363b222d348622a37a6e3aedcfe795d772781d7a255d79b60fab265c",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/r2_fusion.py": "1406e8e71629e74c468f8b009a110e49aa05c481ed52cc1b8d99b59f87016027",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/results/rule_application.txt": "cf1ec3852e334b1d56920bd8ab25c2db858bf97ab46ea36a7f65ebdd0916741f",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_lib.py": "45cc5abd941ca1cd7e47f415cdf0e11d440fd9c703b99516e23eb6e41d49bf88",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_04_readers.py": "0260fe5ad61e3d4a664cbb921f7d84efed8c9329716229310651712697a372b8",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_05_aff.py": "4c947b1d42df1caa7fb7f769f245e7df9a59bce22ca2611413c6a5a7fd45d734",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_10_subsets.py": "b00d9ed0b18e65e1e2be4dd8cdc5e05e277f673dbec5c826ddce4e18669cd7b4",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_04_readers.json": "42bf6f204598c011bfada46e5eabf42dc7759fc6f6750721527d16239141691e",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_05_aff.json": "a96719ba505b72883bfa2eeaca66ab872da128314654ba8f74580998b2a72b10",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_10_subsets.json": "c9d64815c1c6dba9e84177f7a33fb4e917a326f801ed9b115ae770ce1a1988f1",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/run_baselines.py": "26508dde35f77850c4a80e98d08b0ea6576638577c84d3e96c39660ef02e63c4",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/per_anchor_seed42.npz": "a4818ba0fa5f7249355afe2d2483404dcd34d22cae26984b76be787bb6e9e59d",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/codes_provenance.json": "8e6a517b73610d4d21b42e2eb39f6fd4118dc4132049364c8e89eecb7716bfaf",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed42.json": "ce42c81e8eec256496454e88fc07dc4fcfb02e2d5f1b043f2274ba6008564ce6",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed43.json": "b250e89caadb1f5ad5937fb36b92ccf1f0f3b63a82b71056dc1ce2b9cc7e2859",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed45.json": "ecbcf5e900a5f844af9a3e986d1154d2764bb10ba2e2123aba2aaf77917c9890",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed47.json": "56e5c0661ad20372cd1c9976d2e48f07c995e44ce33f0649da5cc351f8652386",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed48.json": "feed925f3eddbf2957b4bce284e1bbf5e9d85132b760f94f6d2c76cb08654286",
+        "/project/CoSiR/src/test/20261111_community_told_oracle/results/told_oracle.json": "76d9ec896b941a518e7db6684805fe0bc329f6afe4a48e1993992fbb221d70d2",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/episodes_seed42.npz": "12af979432ff1a20c88b614ab9e672f203eeeed9c2465bff305e72d01e6c0986",
+        "/project/CoSiR/src/test/20261111_community_told_oracle/results/per_anchor_told_oracle.npz": "27e8101161607da2d6936aa5a8c84f8c296629fe08e37a68c8418c9356af1366",
+        "/project/CoSiR/src/test/20261031_pseudo_partitions/results/partitions.npz": "cfd57dbb21216cdc9d1c2e42d1b408648bc18147f62354b52202ade4ab8a9caa",
+        "/project/CoSiR/src/test/20261108_new_method_quick_checks/results/n6_posteriors.npz": "2ad75026e5869c461fed156ffcdcf207c66f04a59dae514358522fbbaa9df2e0",
+        "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/checkpoints/A3_seed42.pt": "dadfef1bed95bbd647c39fa0ea483edea78627d440a23b5a032083e76dd469e2",
+        "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_group_style.npz": "b04d96b4798acdfdbc9ca87436012755a681c931ac4f7612fa5683350b7a20e2",
+        "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_heads_style.npz": "898a37017d82d3e130b20155e90f69e51f82f30892e04316dcb56d7aaaf8df8b",
+        "/project/CoSiR/src/test/20261122_round4_aff_vetoes/results/dev_seed42.json": "fd7b3f480d5997284f9d8cfe29fe25275ff3edd38c1ada0a9392d8396ba9e01f",
+        "/project/CoSiR/src/test/20261013_stage_d_selection/cache/prepare.npz": "d30f0281bb521d18c7a4d4adca1a7938689e2789db7fd528ce0322b90ac44c8b",
+        "/project/CoSiR/src/test/20261014_stage_d_final/cache/held_codes.npz": "2901f875e7ad59f9f54509b61352a9cecb0eba310b31357f872219f25e2a12e9",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/results/seed42_arrays.npz": "5ea4b09a4161a5eac6ca78942cf0f4b99b9c634edca651fba4c2689c7c24ab8a",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9001.json": "729cb5653cbcf2ea97da6dad65da9eaddf5d1b4bbace5c9d551f9c1d4fe8c517",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9002.json": "8e86b7e6da2411743d09c28154c2189ad50b11fd4a04f2bd76e53e80808ba352",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9003.json": "e7e0ac0ed30cd170d0de1ccda56d9e6a2f6a663576725dcd6306b46e3429aada",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_common.py": "b1a60b1fd801bf9147d0bd58ae6da806d12fbcc982796135454f31dce3836f86",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_bundle.py": "bef50cbbef17f6c40d53c705a060967950d0690168c4b046b1cc3f0dd9fa0e9d",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_fusion.py": "ce51a819157842035fdfde488f042c25fa4764ed1b1c363728d5e3837e314637",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_stats.py": "846a4f5b3175302280c20fa415cfff4b0652522d06aa4fc46290f1a1db5de54d",
+        "/project/CoSiR/src/test/20261202_r9_scope/DECISION_RULE.md": "f9b07b34e645bc8e881fb13c7e7a085eabea6a52f4d93445305944cf1aea030c",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/stage0a_regression.json": "e3c660eae3502044713b9092fe4f9656ba7ba1cf158ba8200e869a3fab2f7e54",
+        "/project/CoSiR/src/test/20261202_r9_scope/pins_clip.json": "b78dd5efebc632feffc1b8edf0be3de2e66b0cb4e7380e7738901999f227c353",
+        "/project/CoSiR/src/test/20261016_factor_learning_grid/cache/graph.npz": "485cb7fe12b44bd70bf45ae9c131fc347306c76fc7c6cf75704b95edbb393de8",
+        "/project/CoSiR/src/test/20261031_pseudo_partitions/results/bank_AIC.npz": "b6c662ef4b79684bc86ee422056782b8cfec278c8c6c164044b9cffbcd59fc41",
+        "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/results/picked.json": "77173a38d526936e8fb0b081f8bae68979a2d9f6cc7b2efa3ba6ae984385ff0e",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_halves.npz": "ed2d359e6517b4237f8aa4de5e78f787699b366a975ac993eaef0e7c4491c7da",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/picks_seed42.json": "df1fff781136c001343ec88264b014ca6a2448d71e8c4f33e230e9821deb47c6",
+        "/project/CoSiR/src/test/20261202_r9_scope/cells_seed42_clip.json": "85ee9eb22232ce2a9a338b89e887919780ea82920397d5a5f113a2612e401c85",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_affect.npz": "e21e846be8b9e565a7443c5e7ecd4135a04def709ce64bef6dceae6545823324",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_image.npz": "3743b3fe9c8942cddf399b8ffc7ef47806d8d2a8d4a6ec8ea474473010f3c46f",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_caption.npz": "00782ea90b9dcccea8ad164ce21f48792d7422adba89bebf9acaf7705168cea8",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_csd.npz": "97906e87bade9756272b2120cfd3dcabaf2dae52305833554886868bcb96d028",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_rand.npz": "3c197542655aec1f5f9a4c9cf0c190aed3d98eb4f8b3dd4c036b6facd3af928d",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half0.npz": "f0711629d18d795f357368ac080c9f816e480cec44c3ec0d057e13eac9e8a1e2",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half1.npz": "edd48914d8db50e492e21ad725619464a655098f77651e7226c200c86db8ca80",
+        "/project/CoSiR/src/test/20261202_r9_scope/pins_a28.json": "a225f32708e84a218996ff344ccc77ac186614c253fb27e10d4d482bba81c4c1",
+        "/project/CoSiR/res/r9/a28_translate/shard_0/translations.parquet": "583bc84a0ddb74d03c5e8fc917938ecabe4cfb4caf5b0ea7fd1cb90d32acb4ad",
+        "/project/CoSiR/res/r9/a28_translate/shard_0/coverage.json": "1bb7e9546818587b202666e1516d0f32b8452740b094b4d7537e47d596a3d268",
+        "/project/CoSiR/res/r9/a28_translate/shard_1/translations.parquet": "8e57fbc3ae8511b5f6d67d1cc1acdf04c349fcf0b821fa79aabb4a4ddd547624",
+        "/project/CoSiR/res/r9/a28_translate/shard_1/coverage.json": "b6d5313b3d5d52d94a290621e2be1105909f1c6306e285e56b8c89d878a0dafe",
+        "/project/CoSiR/res/r9/a28_translate/shard_2/translations.parquet": "0e26f4be3b055de3f51030b84461ca81d8f24479792d9acaf46a15a01721a633",
+        "/project/CoSiR/res/r9/a28_translate/shard_2/coverage.json": "21c12aada490d14e285b5a4d7c2f7ee226e98c7cc41b67998d6a688572e51776",
+        "/project/CoSiR/res/r9/a28_translate/shard_3/translations.parquet": "a40fb90badeddd6a3683eeffa53042b4eb14c28600564ebd58facc4be294903f",
+        "/project/CoSiR/res/r9/a28_translate/shard_3/coverage.json": "81744554d9e8b54aa8b7cec3b49cc8d49365e7821cc6a5f13c5a3d4561b4ef60",
+        "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/translations.parquet": "99872926e43890ad8fd9b7883b6be255fbc145eb33d9f3ff28a059b42f6012ac",
+        "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/coverage.json": "dfc396a3fd67cded9e7e84d65c429e2c201c49998c4049702ce0bc4492e1d9db",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/img.npy": "2f686f66b39209a0b4ad9dd8a2b58f9a9d76494f5a797130acf90b5bb15476fc",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/txt.npy": "0e99850132fe1daddbc761bd0eb42eba454dcdf67a0d729e8f7c7e9904a6b77a",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/index.json": "4a31fa88f75b2b0a8296ebc1d6fba0e938d00d7edf3447c51cbf7672a0e75795",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/img.npy": "edf26c0f0031d434b8fd0af30d40583dbe82a53df4128611ace25a485b0c073e",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/txt.npy": "49d14c25ae2abece83dd808501697d26805761a1367fe3b8bf78b251d72196c2",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/index.json": "4288f968f382e5869d89f6a3bc6f678de8f2d303b1cc71a64e4d730bcb80aa5d",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/img.npy": "856f07f503aa10e8fa891c2eb41535471871eecaf6e66349e1c2eb896f0b3452",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/txt.npy": "13b004da07f069990b7291aaeafc672d2c34d39de0ff177a7c9a7a43c20d5674",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/index.json": "6e5dc8839515c3874d75ceaf958cf5b67022ab10ba70635b88fc89518040d481",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/value_sets_a28.json": "85a0d0daaee73d70804cb8491c8e5433303ff6d47abacc03d35e3e4647fccb3e",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/language_flags_a28.json": "3cb3c45719d1e8a3e207bd293bd987928cc1c614da76f5d38ba77fc51b94c0dd",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/read_set_a28.parquet": "97c0ea0e7f98dbe1e79da898e8734122a9956640bdb0073e541cc2bad7c7fa95"
+      }
+    },
+    "heads": {
+      "passed": true,
+      "coef_sha256": {
+        "affect": {
+          "img": "7e6fb58c86d8a440615f091c55dc3fa5fb051fef9eb021c5663a5a7683a275d1",
+          "txt": "3b82f50db1fb49af9d8720729a0d05d02a66419ed1e519815441c362a5bd3931"
+        },
+        "affect_km": {
+          "img": "14359290fa176da2370a27a6f8505d615d8d985c68e5f0bf66b62c6b8799d25d",
+          "txt": "69b1c836dc0b337f705aebd2e9ba4003652514a79d1603fc0ecfccaf7d1f4169"
+        },
+        "image": {
+          "img": "477e96763f3298217fa7dcb4b8c23007b25de1768e55aa0c6617735dfe3de810",
+          "txt": "85c0b6120692902c65b201de5bc2d73e9b27aff2d7b287f60f8872a07f074305"
+        },
+        "caption": {
+          "img": "549941611cc2dcccd9d1a172ec6a8a29347107dc435b9bafedb9e66b189b20e1",
+          "txt": "8b4a197ff6430bb834a69505c0e2ff89b0aceab47632e848b927ec113cbcafec"
+        },
+        "csd": {
+          "img": "d4430d10739171347926168d706d469f56bdc1ab42643e257b02b471d5b980d6",
+          "txt": "2a112ba2f0cb0816a6e63ee0eff2dc8ac056b9e4ec3eb926d33fcee683856978"
+        }
+      },
+      "selection": {
+        "passed": true,
+        "items": {
+          "n6_posteriors/affect__img": {
+            "equal": true,
+            "n_diff": 0,
+            "max_abs_diff": 0.0
+          },
+          "n6_posteriors/affect__txt": {
+            "equal": true,
+            "n_diff": 0,
+            "max_abs_diff": 0.0
+          },
+          "n6_posteriors/image__img": {
+            "equal": true,
+            "n_diff": 0,
+            "max_abs_diff": 0.0
+          },
+          "n6_posteriors/image__txt": {
+            "equal": true,
+            "n_diff": 0,
+            "max_abs_diff": 0.0
+          },
+          "n6_posteriors/caption__img": {
+            "equal": true,
+            "n_diff": 0,
+            "max_abs_diff": 0.0
+          },
+          "n6_posteriors/caption__txt": {
+            "equal": true,
+            "n_diff": 0,
+            "max_abs_diff": 0.0
+          },
+          "step1_heads_style/style_csd__img": {
+            "equal": true,
+            "n_diff": 0,
+            "max_abs_diff": 0.0
+          },
+          "step1_heads_style/style_csd__txt": {
+            "equal": true,
+            "n_diff": 0,
+            "max_abs_diff": 0.0
+          }
+        },
+        "affect_identity": true,
+        "coef_identity": true
+      },
+      "status": "passed",
+      "sha256": {
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/DECISION_RULE.md": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/DECISION_RULE.md": "2d311dbeac1a561fc2a719b730075c30819f4f7f3a592041cb64b65821dc5925",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/DECISION_RULE.md": "613d8c9d13fb7d4787ec0fb91dc65cfd4a192d07c88ab8f961da3adc1c35d23c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/common.py": "99496dcf859ff0b0f746266125c975c5e2f9632e0c2c91d74df17102c65c10a7",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rc_core.py": "e649fff5d8253c8ba7aae0dbfff7a68321cef5fe3caa06d7b325a27fe904185c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_build.py": "63c7310c890675cc63e49838feb364cdd1c5c68aafdfb0f0f7972128476cba7b",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_eval.py": "1826e65fd73b8c6cecae33b5df48503bf2cf33e067fc291d5c078c51184e0b14",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_features.py": "1e758f6d5de1b1dd246592f4045e0ae1dcc520c1d6012540a9e69b3314fb6caf",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.pkl": "6387b469662446734e650571c88a152651da3d66bcade28fb6cdd7828f58d34c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.json": "cd90da922967cf1b62e437d3927c97cd9cfdae2c139ee392744538d3e3e5c6a8",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.npz": "628b21aeaf6d306f82bd9abb68e6c257348535c3aff0fad0a2d065fc48302981",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.json": "c6e2f83b73c47b9c054e6381a5d020a05618728cb820861b89f0b80de5a8a16e",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rc_tau.json": "e10cf52b2e81ea5b5f7243363d7ddf226440c3a95512cbc7e0b9ed18c5e702bf",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rule_application.txt": "9a074850e70db8075e85bc5475e9361905182d6f0815f0023eaf380ccdee9785",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/DECISION_RULE.md": "368bec11363b222d348622a37a6e3aedcfe795d772781d7a255d79b60fab265c",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/r2_fusion.py": "1406e8e71629e74c468f8b009a110e49aa05c481ed52cc1b8d99b59f87016027",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/results/rule_application.txt": "cf1ec3852e334b1d56920bd8ab25c2db858bf97ab46ea36a7f65ebdd0916741f",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_lib.py": "45cc5abd941ca1cd7e47f415cdf0e11d440fd9c703b99516e23eb6e41d49bf88",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_04_readers.py": "0260fe5ad61e3d4a664cbb921f7d84efed8c9329716229310651712697a372b8",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_05_aff.py": "4c947b1d42df1caa7fb7f769f245e7df9a59bce22ca2611413c6a5a7fd45d734",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_10_subsets.py": "b00d9ed0b18e65e1e2be4dd8cdc5e05e277f673dbec5c826ddce4e18669cd7b4",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_04_readers.json": "42bf6f204598c011bfada46e5eabf42dc7759fc6f6750721527d16239141691e",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_05_aff.json": "a96719ba505b72883bfa2eeaca66ab872da128314654ba8f74580998b2a72b10",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_10_subsets.json": "c9d64815c1c6dba9e84177f7a33fb4e917a326f801ed9b115ae770ce1a1988f1",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/run_baselines.py": "26508dde35f77850c4a80e98d08b0ea6576638577c84d3e96c39660ef02e63c4",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/per_anchor_seed42.npz": "a4818ba0fa5f7249355afe2d2483404dcd34d22cae26984b76be787bb6e9e59d",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/codes_provenance.json": "8e6a517b73610d4d21b42e2eb39f6fd4118dc4132049364c8e89eecb7716bfaf",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed42.json": "ce42c81e8eec256496454e88fc07dc4fcfb02e2d5f1b043f2274ba6008564ce6",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed43.json": "b250e89caadb1f5ad5937fb36b92ccf1f0f3b63a82b71056dc1ce2b9cc7e2859",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed45.json": "ecbcf5e900a5f844af9a3e986d1154d2764bb10ba2e2123aba2aaf77917c9890",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed47.json": "56e5c0661ad20372cd1c9976d2e48f07c995e44ce33f0649da5cc351f8652386",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed48.json": "feed925f3eddbf2957b4bce284e1bbf5e9d85132b760f94f6d2c76cb08654286",
+        "/project/CoSiR/src/test/20261111_community_told_oracle/results/told_oracle.json": "76d9ec896b941a518e7db6684805fe0bc329f6afe4a48e1993992fbb221d70d2",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/episodes_seed42.npz": "12af979432ff1a20c88b614ab9e672f203eeeed9c2465bff305e72d01e6c0986",
+        "/project/CoSiR/src/test/20261111_community_told_oracle/results/per_anchor_told_oracle.npz": "27e8101161607da2d6936aa5a8c84f8c296629fe08e37a68c8418c9356af1366",
+        "/project/CoSiR/src/test/20261031_pseudo_partitions/results/partitions.npz": "cfd57dbb21216cdc9d1c2e42d1b408648bc18147f62354b52202ade4ab8a9caa",
+        "/project/CoSiR/src/test/20261108_new_method_quick_checks/results/n6_posteriors.npz": "2ad75026e5869c461fed156ffcdcf207c66f04a59dae514358522fbbaa9df2e0",
+        "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/checkpoints/A3_seed42.pt": "dadfef1bed95bbd647c39fa0ea483edea78627d440a23b5a032083e76dd469e2",
+        "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_group_style.npz": "b04d96b4798acdfdbc9ca87436012755a681c931ac4f7612fa5683350b7a20e2",
+        "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_heads_style.npz": "898a37017d82d3e130b20155e90f69e51f82f30892e04316dcb56d7aaaf8df8b",
+        "/project/CoSiR/src/test/20261122_round4_aff_vetoes/results/dev_seed42.json": "fd7b3f480d5997284f9d8cfe29fe25275ff3edd38c1ada0a9392d8396ba9e01f",
+        "/project/CoSiR/src/test/20261013_stage_d_selection/cache/prepare.npz": "d30f0281bb521d18c7a4d4adca1a7938689e2789db7fd528ce0322b90ac44c8b",
+        "/project/CoSiR/src/test/20261014_stage_d_final/cache/held_codes.npz": "2901f875e7ad59f9f54509b61352a9cecb0eba310b31357f872219f25e2a12e9",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/results/seed42_arrays.npz": "5ea4b09a4161a5eac6ca78942cf0f4b99b9c634edca651fba4c2689c7c24ab8a",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9001.json": "729cb5653cbcf2ea97da6dad65da9eaddf5d1b4bbace5c9d551f9c1d4fe8c517",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9002.json": "8e86b7e6da2411743d09c28154c2189ad50b11fd4a04f2bd76e53e80808ba352",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9003.json": "e7e0ac0ed30cd170d0de1ccda56d9e6a2f6a663576725dcd6306b46e3429aada",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_common.py": "b1a60b1fd801bf9147d0bd58ae6da806d12fbcc982796135454f31dce3836f86",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_bundle.py": "bef50cbbef17f6c40d53c705a060967950d0690168c4b046b1cc3f0dd9fa0e9d",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_fusion.py": "ce51a819157842035fdfde488f042c25fa4764ed1b1c363728d5e3837e314637",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_stats.py": "846a4f5b3175302280c20fa415cfff4b0652522d06aa4fc46290f1a1db5de54d",
+        "/project/CoSiR/src/test/20261202_r9_scope/DECISION_RULE.md": "f9b07b34e645bc8e881fb13c7e7a085eabea6a52f4d93445305944cf1aea030c",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/stage0a_regression.json": "e3c660eae3502044713b9092fe4f9656ba7ba1cf158ba8200e869a3fab2f7e54",
+        "/project/CoSiR/src/test/20261202_r9_scope/pins_clip.json": "b78dd5efebc632feffc1b8edf0be3de2e66b0cb4e7380e7738901999f227c353",
+        "/project/CoSiR/src/test/20261016_factor_learning_grid/cache/graph.npz": "485cb7fe12b44bd70bf45ae9c131fc347306c76fc7c6cf75704b95edbb393de8",
+        "/project/CoSiR/src/test/20261031_pseudo_partitions/results/bank_AIC.npz": "b6c662ef4b79684bc86ee422056782b8cfec278c8c6c164044b9cffbcd59fc41",
+        "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/results/picked.json": "77173a38d526936e8fb0b081f8bae68979a2d9f6cc7b2efa3ba6ae984385ff0e",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_halves.npz": "ed2d359e6517b4237f8aa4de5e78f787699b366a975ac993eaef0e7c4491c7da",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/picks_seed42.json": "df1fff781136c001343ec88264b014ca6a2448d71e8c4f33e230e9821deb47c6",
+        "/project/CoSiR/src/test/20261202_r9_scope/cells_seed42_clip.json": "85ee9eb22232ce2a9a338b89e887919780ea82920397d5a5f113a2612e401c85",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_affect.npz": "e21e846be8b9e565a7443c5e7ecd4135a04def709ce64bef6dceae6545823324",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_image.npz": "3743b3fe9c8942cddf399b8ffc7ef47806d8d2a8d4a6ec8ea474473010f3c46f",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_caption.npz": "00782ea90b9dcccea8ad164ce21f48792d7422adba89bebf9acaf7705168cea8",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_csd.npz": "97906e87bade9756272b2120cfd3dcabaf2dae52305833554886868bcb96d028",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_rand.npz": "3c197542655aec1f5f9a4c9cf0c190aed3d98eb4f8b3dd4c036b6facd3af928d",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half0.npz": "f0711629d18d795f357368ac080c9f816e480cec44c3ec0d057e13eac9e8a1e2",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half1.npz": "edd48914d8db50e492e21ad725619464a655098f77651e7226c200c86db8ca80",
+        "/project/CoSiR/src/test/20261202_r9_scope/pins_a28.json": "a225f32708e84a218996ff344ccc77ac186614c253fb27e10d4d482bba81c4c1",
+        "/project/CoSiR/res/r9/a28_translate/shard_0/translations.parquet": "583bc84a0ddb74d03c5e8fc917938ecabe4cfb4caf5b0ea7fd1cb90d32acb4ad",
+        "/project/CoSiR/res/r9/a28_translate/shard_0/coverage.json": "1bb7e9546818587b202666e1516d0f32b8452740b094b4d7537e47d596a3d268",
+        "/project/CoSiR/res/r9/a28_translate/shard_1/translations.parquet": "8e57fbc3ae8511b5f6d67d1cc1acdf04c349fcf0b821fa79aabb4a4ddd547624",
+        "/project/CoSiR/res/r9/a28_translate/shard_1/coverage.json": "b6d5313b3d5d52d94a290621e2be1105909f1c6306e285e56b8c89d878a0dafe",
+        "/project/CoSiR/res/r9/a28_translate/shard_2/translations.parquet": "0e26f4be3b055de3f51030b84461ca81d8f24479792d9acaf46a15a01721a633",
+        "/project/CoSiR/res/r9/a28_translate/shard_2/coverage.json": "21c12aada490d14e285b5a4d7c2f7ee226e98c7cc41b67998d6a688572e51776",
+        "/project/CoSiR/res/r9/a28_translate/shard_3/translations.parquet": "a40fb90badeddd6a3683eeffa53042b4eb14c28600564ebd58facc4be294903f",
+        "/project/CoSiR/res/r9/a28_translate/shard_3/coverage.json": "81744554d9e8b54aa8b7cec3b49cc8d49365e7821cc6a5f13c5a3d4561b4ef60",
+        "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/translations.parquet": "99872926e43890ad8fd9b7883b6be255fbc145eb33d9f3ff28a059b42f6012ac",
+        "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/coverage.json": "dfc396a3fd67cded9e7e84d65c429e2c201c49998c4049702ce0bc4492e1d9db",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/img.npy": "2f686f66b39209a0b4ad9dd8a2b58f9a9d76494f5a797130acf90b5bb15476fc",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/txt.npy": "0e99850132fe1daddbc761bd0eb42eba454dcdf67a0d729e8f7c7e9904a6b77a",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/index.json": "4a31fa88f75b2b0a8296ebc1d6fba0e938d00d7edf3447c51cbf7672a0e75795",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/img.npy": "edf26c0f0031d434b8fd0af30d40583dbe82a53df4128611ace25a485b0c073e",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/txt.npy": "49d14c25ae2abece83dd808501697d26805761a1367fe3b8bf78b251d72196c2",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/index.json": "4288f968f382e5869d89f6a3bc6f678de8f2d303b1cc71a64e4d730bcb80aa5d",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/img.npy": "856f07f503aa10e8fa891c2eb41535471871eecaf6e66349e1c2eb896f0b3452",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/txt.npy": "13b004da07f069990b7291aaeafc672d2c34d39de0ff177a7c9a7a43c20d5674",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/index.json": "6e5dc8839515c3874d75ceaf958cf5b67022ab10ba70635b88fc89518040d481",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/value_sets_a28.json": "85a0d0daaee73d70804cb8491c8e5433303ff6d47abacc03d35e3e4647fccb3e",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/language_flags_a28.json": "3cb3c45719d1e8a3e207bd293bd987928cc1c614da76f5d38ba77fc51b94c0dd",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/read_set_a28.parquet": "97c0ea0e7f98dbe1e79da898e8734122a9956640bdb0073e541cc2bad7c7fa95",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/refit_check.json": "aebc840fa26266754370e01ae690d120d483cc86a4090b6130feb39be679736d"
+      }
+    },
+    "regression": {
+      "passed": true,
+      "episodes": {
+        "passed": true,
+        "items": {
+          "episodes_seed42__emotion__style": {
+            "equal": true,
+            "got": "6932f553e2d15237b4f008d0da2ecb76ad9c96db629a3557afe037290b6dd066",
+            "want": "6932f553e2d15237b4f008d0da2ecb76ad9c96db629a3557afe037290b6dd066"
+          },
+          "episodes_seed42__emotion__genre": {
+            "equal": true,
+            "got": "9196a1a80e95af1cd3ebefdd0b07c2ceb5f694579c6221b40157027af041fbe7",
+            "want": "9196a1a80e95af1cd3ebefdd0b07c2ceb5f694579c6221b40157027af041fbe7"
+          },
+          "episodes_seed42__style__genre": {
+            "equal": true,
+            "got": "78fbccdce319d07a7f315d6b0b7314d492a8657223fbddbc5dc1c771c4485429",
+            "want": "78fbccdce319d07a7f315d6b0b7314d492a8657223fbddbc5dc1c771c4485429"
+          },
+          "episodes_seed9001__emotion__style": {
+            "equal": true,
+            "got": "b99f51939a6b941c2f0db34a544771047ea80e3699d9aaec1a9e672caf27f9ae",
+            "want": "b99f51939a6b941c2f0db34a544771047ea80e3699d9aaec1a9e672caf27f9ae"
+          },
+          "episodes_seed9001__emotion__genre": {
+            "equal": true,
+            "got": "711da43bee22f5458d12802a4b4d55f890e2aafeccbb311b5ec279709bfc9cb7",
+            "want": "711da43bee22f5458d12802a4b4d55f890e2aafeccbb311b5ec279709bfc9cb7"
+          },
+          "episodes_seed9001__style__genre": {
+            "equal": true,
+            "got": "0fc38bdd5ec2058848afd1762e5903b58df1af439e993b5e4067522408f8e05f",
+            "want": "0fc38bdd5ec2058848afd1762e5903b58df1af439e993b5e4067522408f8e05f"
+          },
+          "episodes_seed9002__emotion__style": {
+            "equal": true,
+            "got": "1487e171ce73c05d6aaec52c5b864523574fa55b6fe9901165a2a9702fee20fd",
+            "want": "1487e171ce73c05d6aaec52c5b864523574fa55b6fe9901165a2a9702fee20fd"
+          },
+          "episodes_seed9002__emotion__genre": {
+            "equal": true,
+            "got": "84313beb5d24ed8830e88b1bb1cc00750f0b7a2456f40b3d08fb93d86df884c6",
+            "want": "84313beb5d24ed8830e88b1bb1cc00750f0b7a2456f40b3d08fb93d86df884c6"
+          },
+          "episodes_seed9002__style__genre": {
+            "equal": true,
+            "got": "37cc81560375a9a112bf61e574279b16429ae5ac8289396b2363be8667a8889b",
+            "want": "37cc81560375a9a112bf61e574279b16429ae5ac8289396b2363be8667a8889b"
+          },
+          "episodes_seed9003__emotion__style": {
+            "equal": true,
+            "got": "2143acf38e168e4c6f0b41e618feb61af6631065e73f5e3fe7280f92fb7724ef",
+            "want": "2143acf38e168e4c6f0b41e618feb61af6631065e73f5e3fe7280f92fb7724ef"
+          },
+          "episodes_seed9003__emotion__genre": {
+            "equal": true,
+            "got": "7a9b06da6cac76b691c1d1eac8574cdaf13b9ce66ab0f8ccdd3b833ae66f5d48",
+            "want": "7a9b06da6cac76b691c1d1eac8574cdaf13b9ce66ab0f8ccdd3b833ae66f5d48"
+          },
+          "episodes_seed9003__style__genre": {
+            "equal": true,
+            "got": "4c6ad390ab5cf8ea522009abf9e4ec08c1ffb341d6619989741e554d9a1815d9",
+            "want": "4c6ad390ab5cf8ea522009abf9e4ec08c1ffb341d6619989741e554d9a1815d9"
+          }
+        }
+      },
+      "per_anchor": {
+        "seed42_arrays/cl": {
+          "equal": true,
+          "got": "array (12288,) int64",
+          "want": "array (12288,) int64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/pair_index": {
+          "equal": true,
+          "got": "array (12288,) int64",
+          "want": "array (12288,) int64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/parity": {
+          "equal": true,
+          "got": "array (12288,) int64",
+          "want": "array (12288,) int64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_fused__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_fused__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_fused__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_fused__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_fused__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_cf__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_cf__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_cf__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_cf__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_cf__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_bar_v": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_gate__a": {
+          "equal": true,
+          "got": "array (4, 12288) float32",
+          "want": "array (4, 12288) float32",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_gate__b": {
+          "equal": true,
+          "got": "array (4, 12288) float32",
+          "want": "array (4, 12288) float32",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_fused_cells": {
+          "equal": true,
+          "got": "array (2,) int64",
+          "want": "array (2,) int64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/aff_cf_cells": {
+          "equal": true,
+          "got": "array (2,) int64",
+          "want": "array (2,) int64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_fused__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_fused__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_fused__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_fused__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_fused__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_cf__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_cf__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_cf__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_cf__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_cf__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_bar_v": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_gate__a": {
+          "equal": true,
+          "got": "array (4, 12288) float32",
+          "want": "array (4, 12288) float32",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_gate__b": {
+          "equal": true,
+          "got": "array (4, 12288) float32",
+          "want": "array (4, 12288) float32",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_fused_cells": {
+          "equal": true,
+          "got": "array (2,) int64",
+          "want": "array (2,) int64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/r1_cf_cells": {
+          "equal": true,
+          "got": "array (2,) int64",
+          "want": "array (2,) int64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/pick__a": {
+          "equal": true,
+          "got": "array (12288,) int64",
+          "want": "array (12288,) int64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/margin__a": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/P__a": {
+          "equal": true,
+          "got": "array (12288, 3) float64",
+          "want": "array (12288, 3) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/pick__b": {
+          "equal": true,
+          "got": "array (12288,) int64",
+          "want": "array (12288,) int64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/margin__b": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "seed42_arrays/P__b": {
+          "equal": true,
+          "got": "array (12288, 3) float64",
+          "want": "array (12288, 3) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/anchor_group": {
+          "equal": true,
+          "got": "array (12288,) int64",
+          "want": "array (12288,) int64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/pair_index": {
+          "equal": true,
+          "got": "array (12288,) int64",
+          "want": "array (12288,) int64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/cosine__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/cosine__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/cosine__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/cosine__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/cosine__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/rca__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/rca__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/rca__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/rca__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/rca__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/diag__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/diag__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/diag__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/diag__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/diag__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/diag_relu__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/diag_relu__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/diag_relu__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/diag_relu__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/diag_relu__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/bilinear__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/bilinear__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/bilinear__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/bilinear__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/bilinear__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/kissme__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/kissme__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/kissme__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/kissme__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/kissme__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/xing__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/xing__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/xing__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/xing__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/xing__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/wang__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/wang__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/wang__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/wang__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/wang__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/probe__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/probe__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/probe__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/probe__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/probe__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/tip__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/tip__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/tip__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/tip__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/tip__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/value_prototype__r1": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/value_prototype__gain": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/value_prototype__other": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/value_prototype__swap": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        },
+        "per_anchor_seed42/value_prototype__strict": {
+          "equal": true,
+          "got": "array (12288,) float64",
+          "want": "array (12288,) float64",
+          "n_diff": 0,
+          "max_abs_diff": 0.0
+        }
+      },
+      "status": "passed",
+      "sha256": {
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/DECISION_RULE.md": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/DECISION_RULE.md": "2d311dbeac1a561fc2a719b730075c30819f4f7f3a592041cb64b65821dc5925",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/DECISION_RULE.md": "613d8c9d13fb7d4787ec0fb91dc65cfd4a192d07c88ab8f961da3adc1c35d23c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/common.py": "99496dcf859ff0b0f746266125c975c5e2f9632e0c2c91d74df17102c65c10a7",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rc_core.py": "e649fff5d8253c8ba7aae0dbfff7a68321cef5fe3caa06d7b325a27fe904185c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_build.py": "63c7310c890675cc63e49838feb364cdd1c5c68aafdfb0f0f7972128476cba7b",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_eval.py": "1826e65fd73b8c6cecae33b5df48503bf2cf33e067fc291d5c078c51184e0b14",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_features.py": "1e758f6d5de1b1dd246592f4045e0ae1dcc520c1d6012540a9e69b3314fb6caf",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.pkl": "6387b469662446734e650571c88a152651da3d66bcade28fb6cdd7828f58d34c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.json": "cd90da922967cf1b62e437d3927c97cd9cfdae2c139ee392744538d3e3e5c6a8",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.npz": "628b21aeaf6d306f82bd9abb68e6c257348535c3aff0fad0a2d065fc48302981",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.json": "c6e2f83b73c47b9c054e6381a5d020a05618728cb820861b89f0b80de5a8a16e",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rc_tau.json": "e10cf52b2e81ea5b5f7243363d7ddf226440c3a95512cbc7e0b9ed18c5e702bf",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rule_application.txt": "9a074850e70db8075e85bc5475e9361905182d6f0815f0023eaf380ccdee9785",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/DECISION_RULE.md": "368bec11363b222d348622a37a6e3aedcfe795d772781d7a255d79b60fab265c",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/r2_fusion.py": "1406e8e71629e74c468f8b009a110e49aa05c481ed52cc1b8d99b59f87016027",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/results/rule_application.txt": "cf1ec3852e334b1d56920bd8ab25c2db858bf97ab46ea36a7f65ebdd0916741f",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_lib.py": "45cc5abd941ca1cd7e47f415cdf0e11d440fd9c703b99516e23eb6e41d49bf88",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_04_readers.py": "0260fe5ad61e3d4a664cbb921f7d84efed8c9329716229310651712697a372b8",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_05_aff.py": "4c947b1d42df1caa7fb7f769f245e7df9a59bce22ca2611413c6a5a7fd45d734",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_10_subsets.py": "b00d9ed0b18e65e1e2be4dd8cdc5e05e277f673dbec5c826ddce4e18669cd7b4",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_04_readers.json": "42bf6f204598c011bfada46e5eabf42dc7759fc6f6750721527d16239141691e",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_05_aff.json": "a96719ba505b72883bfa2eeaca66ab872da128314654ba8f74580998b2a72b10",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_10_subsets.json": "c9d64815c1c6dba9e84177f7a33fb4e917a326f801ed9b115ae770ce1a1988f1",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/run_baselines.py": "26508dde35f77850c4a80e98d08b0ea6576638577c84d3e96c39660ef02e63c4",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/per_anchor_seed42.npz": "a4818ba0fa5f7249355afe2d2483404dcd34d22cae26984b76be787bb6e9e59d",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/codes_provenance.json": "8e6a517b73610d4d21b42e2eb39f6fd4118dc4132049364c8e89eecb7716bfaf",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed42.json": "ce42c81e8eec256496454e88fc07dc4fcfb02e2d5f1b043f2274ba6008564ce6",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed43.json": "b250e89caadb1f5ad5937fb36b92ccf1f0f3b63a82b71056dc1ce2b9cc7e2859",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed45.json": "ecbcf5e900a5f844af9a3e986d1154d2764bb10ba2e2123aba2aaf77917c9890",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed47.json": "56e5c0661ad20372cd1c9976d2e48f07c995e44ce33f0649da5cc351f8652386",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed48.json": "feed925f3eddbf2957b4bce284e1bbf5e9d85132b760f94f6d2c76cb08654286",
+        "/project/CoSiR/src/test/20261111_community_told_oracle/results/told_oracle.json": "76d9ec896b941a518e7db6684805fe0bc329f6afe4a48e1993992fbb221d70d2",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/episodes_seed42.npz": "12af979432ff1a20c88b614ab9e672f203eeeed9c2465bff305e72d01e6c0986",
+        "/project/CoSiR/src/test/20261111_community_told_oracle/results/per_anchor_told_oracle.npz": "27e8101161607da2d6936aa5a8c84f8c296629fe08e37a68c8418c9356af1366",
+        "/project/CoSiR/src/test/20261031_pseudo_partitions/results/partitions.npz": "cfd57dbb21216cdc9d1c2e42d1b408648bc18147f62354b52202ade4ab8a9caa",
+        "/project/CoSiR/src/test/20261108_new_method_quick_checks/results/n6_posteriors.npz": "2ad75026e5869c461fed156ffcdcf207c66f04a59dae514358522fbbaa9df2e0",
+        "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/checkpoints/A3_seed42.pt": "dadfef1bed95bbd647c39fa0ea483edea78627d440a23b5a032083e76dd469e2",
+        "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_group_style.npz": "b04d96b4798acdfdbc9ca87436012755a681c931ac4f7612fa5683350b7a20e2",
+        "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_heads_style.npz": "898a37017d82d3e130b20155e90f69e51f82f30892e04316dcb56d7aaaf8df8b",
+        "/project/CoSiR/src/test/20261122_round4_aff_vetoes/results/dev_seed42.json": "fd7b3f480d5997284f9d8cfe29fe25275ff3edd38c1ada0a9392d8396ba9e01f",
+        "/project/CoSiR/src/test/20261013_stage_d_selection/cache/prepare.npz": "d30f0281bb521d18c7a4d4adca1a7938689e2789db7fd528ce0322b90ac44c8b",
+        "/project/CoSiR/src/test/20261014_stage_d_final/cache/held_codes.npz": "2901f875e7ad59f9f54509b61352a9cecb0eba310b31357f872219f25e2a12e9",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/results/seed42_arrays.npz": "5ea4b09a4161a5eac6ca78942cf0f4b99b9c634edca651fba4c2689c7c24ab8a",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9001.json": "729cb5653cbcf2ea97da6dad65da9eaddf5d1b4bbace5c9d551f9c1d4fe8c517",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9002.json": "8e86b7e6da2411743d09c28154c2189ad50b11fd4a04f2bd76e53e80808ba352",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9003.json": "e7e0ac0ed30cd170d0de1ccda56d9e6a2f6a663576725dcd6306b46e3429aada",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_common.py": "b1a60b1fd801bf9147d0bd58ae6da806d12fbcc982796135454f31dce3836f86",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_bundle.py": "bef50cbbef17f6c40d53c705a060967950d0690168c4b046b1cc3f0dd9fa0e9d",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_fusion.py": "ce51a819157842035fdfde488f042c25fa4764ed1b1c363728d5e3837e314637",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_stats.py": "846a4f5b3175302280c20fa415cfff4b0652522d06aa4fc46290f1a1db5de54d",
+        "/project/CoSiR/src/test/20261202_r9_scope/DECISION_RULE.md": "f9b07b34e645bc8e881fb13c7e7a085eabea6a52f4d93445305944cf1aea030c",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/stage0a_regression.json": "e3c660eae3502044713b9092fe4f9656ba7ba1cf158ba8200e869a3fab2f7e54",
+        "/project/CoSiR/src/test/20261202_r9_scope/pins_clip.json": "b78dd5efebc632feffc1b8edf0be3de2e66b0cb4e7380e7738901999f227c353",
+        "/project/CoSiR/src/test/20261016_factor_learning_grid/cache/graph.npz": "485cb7fe12b44bd70bf45ae9c131fc347306c76fc7c6cf75704b95edbb393de8",
+        "/project/CoSiR/src/test/20261031_pseudo_partitions/results/bank_AIC.npz": "b6c662ef4b79684bc86ee422056782b8cfec278c8c6c164044b9cffbcd59fc41",
+        "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/results/picked.json": "77173a38d526936e8fb0b081f8bae68979a2d9f6cc7b2efa3ba6ae984385ff0e",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_halves.npz": "ed2d359e6517b4237f8aa4de5e78f787699b366a975ac993eaef0e7c4491c7da",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/picks_seed42.json": "df1fff781136c001343ec88264b014ca6a2448d71e8c4f33e230e9821deb47c6",
+        "/project/CoSiR/src/test/20261202_r9_scope/cells_seed42_clip.json": "85ee9eb22232ce2a9a338b89e887919780ea82920397d5a5f113a2612e401c85",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_affect.npz": "e21e846be8b9e565a7443c5e7ecd4135a04def709ce64bef6dceae6545823324",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_image.npz": "3743b3fe9c8942cddf399b8ffc7ef47806d8d2a8d4a6ec8ea474473010f3c46f",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_caption.npz": "00782ea90b9dcccea8ad164ce21f48792d7422adba89bebf9acaf7705168cea8",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_csd.npz": "97906e87bade9756272b2120cfd3dcabaf2dae52305833554886868bcb96d028",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_rand.npz": "3c197542655aec1f5f9a4c9cf0c190aed3d98eb4f8b3dd4c036b6facd3af928d",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half0.npz": "f0711629d18d795f357368ac080c9f816e480cec44c3ec0d057e13eac9e8a1e2",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half1.npz": "edd48914d8db50e492e21ad725619464a655098f77651e7226c200c86db8ca80",
+        "/project/CoSiR/src/test/20261202_r9_scope/pins_a28.json": "a225f32708e84a218996ff344ccc77ac186614c253fb27e10d4d482bba81c4c1",
+        "/project/CoSiR/res/r9/a28_translate/shard_0/translations.parquet": "583bc84a0ddb74d03c5e8fc917938ecabe4cfb4caf5b0ea7fd1cb90d32acb4ad",
+        "/project/CoSiR/res/r9/a28_translate/shard_0/coverage.json": "1bb7e9546818587b202666e1516d0f32b8452740b094b4d7537e47d596a3d268",
+        "/project/CoSiR/res/r9/a28_translate/shard_1/translations.parquet": "8e57fbc3ae8511b5f6d67d1cc1acdf04c349fcf0b821fa79aabb4a4ddd547624",
+        "/project/CoSiR/res/r9/a28_translate/shard_1/coverage.json": "b6d5313b3d5d52d94a290621e2be1105909f1c6306e285e56b8c89d878a0dafe",
+        "/project/CoSiR/res/r9/a28_translate/shard_2/translations.parquet": "0e26f4be3b055de3f51030b84461ca81d8f24479792d9acaf46a15a01721a633",
+        "/project/CoSiR/res/r9/a28_translate/shard_2/coverage.json": "21c12aada490d14e285b5a4d7c2f7ee226e98c7cc41b67998d6a688572e51776",
+        "/project/CoSiR/res/r9/a28_translate/shard_3/translations.parquet": "a40fb90badeddd6a3683eeffa53042b4eb14c28600564ebd58facc4be294903f",
+        "/project/CoSiR/res/r9/a28_translate/shard_3/coverage.json": "81744554d9e8b54aa8b7cec3b49cc8d49365e7821cc6a5f13c5a3d4561b4ef60",
+        "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/translations.parquet": "99872926e43890ad8fd9b7883b6be255fbc145eb33d9f3ff28a059b42f6012ac",
+        "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/coverage.json": "dfc396a3fd67cded9e7e84d65c429e2c201c49998c4049702ce0bc4492e1d9db",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/img.npy": "2f686f66b39209a0b4ad9dd8a2b58f9a9d76494f5a797130acf90b5bb15476fc",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/txt.npy": "0e99850132fe1daddbc761bd0eb42eba454dcdf67a0d729e8f7c7e9904a6b77a",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/index.json": "4a31fa88f75b2b0a8296ebc1d6fba0e938d00d7edf3447c51cbf7672a0e75795",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/img.npy": "edf26c0f0031d434b8fd0af30d40583dbe82a53df4128611ace25a485b0c073e",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/txt.npy": "49d14c25ae2abece83dd808501697d26805761a1367fe3b8bf78b251d72196c2",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/index.json": "4288f968f382e5869d89f6a3bc6f678de8f2d303b1cc71a64e4d730bcb80aa5d",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/img.npy": "856f07f503aa10e8fa891c2eb41535471871eecaf6e66349e1c2eb896f0b3452",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/txt.npy": "13b004da07f069990b7291aaeafc672d2c34d39de0ff177a7c9a7a43c20d5674",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/index.json": "6e5dc8839515c3874d75ceaf958cf5b67022ab10ba70635b88fc89518040d481",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/value_sets_a28.json": "85a0d0daaee73d70804cb8491c8e5433303ff6d47abacc03d35e3e4647fccb3e",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/language_flags_a28.json": "3cb3c45719d1e8a3e207bd293bd987928cc1c614da76f5d38ba77fc51b94c0dd",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/read_set_a28.parquet": "97c0ea0e7f98dbe1e79da898e8734122a9956640bdb0073e541cc2bad7c7fa95",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/refit_check.json": "aebc840fa26266754370e01ae690d120d483cc86a4090b6130feb39be679736d",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/regression_seed42.json": "ca168eb628f6a51e9afe779b0194088d05b293417bac04617a0d8a428d3984be",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/seed42_pass_counts.json": "5618c59a3907af67bbcced0f29e0db8462b12ca4fb2e40a69e4be537de29d5e5"
+      }
+    },
+    "sensitivity": {
+      "passed": true,
+      "source": {
+        "sigma": {
+          "P1": {
+            "sigma_a2": 8.659210753381196,
+            "sigma_eps2": 420.1183543738188
+          },
+          "P2": {
+            "sigma_a2": 8.25918251129639,
+            "sigma_eps2": 409.1397078992219
+          },
+          "P3": {
+            "sigma_a2": 1.4195629723547245,
+            "sigma_eps2": 139.6118270264445
+          },
+          "P4": {
+            "sigma_a2": 0.0,
+            "sigma_eps2": 175.6986792481523
+          },
+          "P5": {
+            "sigma_a2": 0.0,
+            "sigma_eps2": 154.3796488968718
+          },
+          "P6": {
+            "sigma_a2": 3.0884416159446615,
+            "sigma_eps2": 340.70777639034856
+          },
+          "P7": {
+            "sigma_a2": 1.197340532435266,
+            "sigma_eps2": 445.6281213636307
+          }
+        },
+        "file": "/project/CoSiR/src/test/20261125_artelingo_held_test/results/sensitivity_seed42.json",
+        "sha256": "bc4b0a92d376b2fdf47da2aa08303a5bb2266a29daf85621ca97ec753bef5661"
+      },
+      "seed42_margins": {
+        "P1": {
+          "SE": 0.19154729577653945,
+          "x": 0.6545171096684352,
+          "x95": 0.5363324281743104
+        },
+        "P2": {
+          "SE": 0.1888951600215227,
+          "x": 0.6454547617935431,
+          "x95": 0.5289064480602635
+        },
+        "P3": {
+          "SE": 0.10849724958609024,
+          "x": 0.3707351018356703,
+          "x95": 0.30379229884105263
+        },
+        "P4": {
+          "SE": 0.11957589690696928,
+          "x": 0.36865249016418633,
+          "x95": 0.33481251133951395
+        },
+        "P5": {
+          "SE": 0.11208678775687293,
+          "x": 0.3830005537652348,
+          "x95": 0.3138430057192442
+        },
+        "P6": {
+          "SE": 0.16917123597413297,
+          "x": 0.521554920508252,
+          "x95": 0.4736794607275723
+        },
+        "P7": {
+          "SE": 0.19134037277892504,
+          "x": 0.6538100537855869,
+          "x95": 0.5357530437809901
+        }
+      },
+      "status": "passed",
+      "sha256": {
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/DECISION_RULE.md": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/DECISION_RULE.md": "2d311dbeac1a561fc2a719b730075c30819f4f7f3a592041cb64b65821dc5925",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/DECISION_RULE.md": "613d8c9d13fb7d4787ec0fb91dc65cfd4a192d07c88ab8f961da3adc1c35d23c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/common.py": "99496dcf859ff0b0f746266125c975c5e2f9632e0c2c91d74df17102c65c10a7",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rc_core.py": "e649fff5d8253c8ba7aae0dbfff7a68321cef5fe3caa06d7b325a27fe904185c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_build.py": "63c7310c890675cc63e49838feb364cdd1c5c68aafdfb0f0f7972128476cba7b",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_eval.py": "1826e65fd73b8c6cecae33b5df48503bf2cf33e067fc291d5c078c51184e0b14",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_features.py": "1e758f6d5de1b1dd246592f4045e0ae1dcc520c1d6012540a9e69b3314fb6caf",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.pkl": "6387b469662446734e650571c88a152651da3d66bcade28fb6cdd7828f58d34c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.json": "cd90da922967cf1b62e437d3927c97cd9cfdae2c139ee392744538d3e3e5c6a8",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.npz": "628b21aeaf6d306f82bd9abb68e6c257348535c3aff0fad0a2d065fc48302981",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.json": "c6e2f83b73c47b9c054e6381a5d020a05618728cb820861b89f0b80de5a8a16e",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rc_tau.json": "e10cf52b2e81ea5b5f7243363d7ddf226440c3a95512cbc7e0b9ed18c5e702bf",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rule_application.txt": "9a074850e70db8075e85bc5475e9361905182d6f0815f0023eaf380ccdee9785",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/DECISION_RULE.md": "368bec11363b222d348622a37a6e3aedcfe795d772781d7a255d79b60fab265c",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/r2_fusion.py": "1406e8e71629e74c468f8b009a110e49aa05c481ed52cc1b8d99b59f87016027",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/results/rule_application.txt": "cf1ec3852e334b1d56920bd8ab25c2db858bf97ab46ea36a7f65ebdd0916741f",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_lib.py": "45cc5abd941ca1cd7e47f415cdf0e11d440fd9c703b99516e23eb6e41d49bf88",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_04_readers.py": "0260fe5ad61e3d4a664cbb921f7d84efed8c9329716229310651712697a372b8",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_05_aff.py": "4c947b1d42df1caa7fb7f769f245e7df9a59bce22ca2611413c6a5a7fd45d734",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_10_subsets.py": "b00d9ed0b18e65e1e2be4dd8cdc5e05e277f673dbec5c826ddce4e18669cd7b4",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_04_readers.json": "42bf6f204598c011bfada46e5eabf42dc7759fc6f6750721527d16239141691e",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_05_aff.json": "a96719ba505b72883bfa2eeaca66ab872da128314654ba8f74580998b2a72b10",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_10_subsets.json": "c9d64815c1c6dba9e84177f7a33fb4e917a326f801ed9b115ae770ce1a1988f1",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/run_baselines.py": "26508dde35f77850c4a80e98d08b0ea6576638577c84d3e96c39660ef02e63c4",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/per_anchor_seed42.npz": "a4818ba0fa5f7249355afe2d2483404dcd34d22cae26984b76be787bb6e9e59d",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/codes_provenance.json": "8e6a517b73610d4d21b42e2eb39f6fd4118dc4132049364c8e89eecb7716bfaf",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed42.json": "ce42c81e8eec256496454e88fc07dc4fcfb02e2d5f1b043f2274ba6008564ce6",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed43.json": "b250e89caadb1f5ad5937fb36b92ccf1f0f3b63a82b71056dc1ce2b9cc7e2859",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed45.json": "ecbcf5e900a5f844af9a3e986d1154d2764bb10ba2e2123aba2aaf77917c9890",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed47.json": "56e5c0661ad20372cd1c9976d2e48f07c995e44ce33f0649da5cc351f8652386",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed48.json": "feed925f3eddbf2957b4bce284e1bbf5e9d85132b760f94f6d2c76cb08654286",
+        "/project/CoSiR/src/test/20261111_community_told_oracle/results/told_oracle.json": "76d9ec896b941a518e7db6684805fe0bc329f6afe4a48e1993992fbb221d70d2",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/episodes_seed42.npz": "12af979432ff1a20c88b614ab9e672f203eeeed9c2465bff305e72d01e6c0986",
+        "/project/CoSiR/src/test/20261111_community_told_oracle/results/per_anchor_told_oracle.npz": "27e8101161607da2d6936aa5a8c84f8c296629fe08e37a68c8418c9356af1366",
+        "/project/CoSiR/src/test/20261031_pseudo_partitions/results/partitions.npz": "cfd57dbb21216cdc9d1c2e42d1b408648bc18147f62354b52202ade4ab8a9caa",
+        "/project/CoSiR/src/test/20261108_new_method_quick_checks/results/n6_posteriors.npz": "2ad75026e5869c461fed156ffcdcf207c66f04a59dae514358522fbbaa9df2e0",
+        "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/checkpoints/A3_seed42.pt": "dadfef1bed95bbd647c39fa0ea483edea78627d440a23b5a032083e76dd469e2",
+        "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_group_style.npz": "b04d96b4798acdfdbc9ca87436012755a681c931ac4f7612fa5683350b7a20e2",
+        "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_heads_style.npz": "898a37017d82d3e130b20155e90f69e51f82f30892e04316dcb56d7aaaf8df8b",
+        "/project/CoSiR/src/test/20261122_round4_aff_vetoes/results/dev_seed42.json": "fd7b3f480d5997284f9d8cfe29fe25275ff3edd38c1ada0a9392d8396ba9e01f",
+        "/project/CoSiR/src/test/20261013_stage_d_selection/cache/prepare.npz": "d30f0281bb521d18c7a4d4adca1a7938689e2789db7fd528ce0322b90ac44c8b",
+        "/project/CoSiR/src/test/20261014_stage_d_final/cache/held_codes.npz": "2901f875e7ad59f9f54509b61352a9cecb0eba310b31357f872219f25e2a12e9",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/results/seed42_arrays.npz": "5ea4b09a4161a5eac6ca78942cf0f4b99b9c634edca651fba4c2689c7c24ab8a",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9001.json": "729cb5653cbcf2ea97da6dad65da9eaddf5d1b4bbace5c9d551f9c1d4fe8c517",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9002.json": "8e86b7e6da2411743d09c28154c2189ad50b11fd4a04f2bd76e53e80808ba352",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9003.json": "e7e0ac0ed30cd170d0de1ccda56d9e6a2f6a663576725dcd6306b46e3429aada",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_common.py": "b1a60b1fd801bf9147d0bd58ae6da806d12fbcc982796135454f31dce3836f86",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_bundle.py": "bef50cbbef17f6c40d53c705a060967950d0690168c4b046b1cc3f0dd9fa0e9d",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_fusion.py": "ce51a819157842035fdfde488f042c25fa4764ed1b1c363728d5e3837e314637",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_stats.py": "846a4f5b3175302280c20fa415cfff4b0652522d06aa4fc46290f1a1db5de54d",
+        "/project/CoSiR/src/test/20261202_r9_scope/DECISION_RULE.md": "f9b07b34e645bc8e881fb13c7e7a085eabea6a52f4d93445305944cf1aea030c",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/stage0a_regression.json": "e3c660eae3502044713b9092fe4f9656ba7ba1cf158ba8200e869a3fab2f7e54",
+        "/project/CoSiR/src/test/20261202_r9_scope/pins_clip.json": "b78dd5efebc632feffc1b8edf0be3de2e66b0cb4e7380e7738901999f227c353",
+        "/project/CoSiR/src/test/20261016_factor_learning_grid/cache/graph.npz": "485cb7fe12b44bd70bf45ae9c131fc347306c76fc7c6cf75704b95edbb393de8",
+        "/project/CoSiR/src/test/20261031_pseudo_partitions/results/bank_AIC.npz": "b6c662ef4b79684bc86ee422056782b8cfec278c8c6c164044b9cffbcd59fc41",
+        "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/results/picked.json": "77173a38d526936e8fb0b081f8bae68979a2d9f6cc7b2efa3ba6ae984385ff0e",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_halves.npz": "ed2d359e6517b4237f8aa4de5e78f787699b366a975ac993eaef0e7c4491c7da",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/picks_seed42.json": "df1fff781136c001343ec88264b014ca6a2448d71e8c4f33e230e9821deb47c6",
+        "/project/CoSiR/src/test/20261202_r9_scope/cells_seed42_clip.json": "85ee9eb22232ce2a9a338b89e887919780ea82920397d5a5f113a2612e401c85",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_affect.npz": "e21e846be8b9e565a7443c5e7ecd4135a04def709ce64bef6dceae6545823324",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_image.npz": "3743b3fe9c8942cddf399b8ffc7ef47806d8d2a8d4a6ec8ea474473010f3c46f",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_caption.npz": "00782ea90b9dcccea8ad164ce21f48792d7422adba89bebf9acaf7705168cea8",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_csd.npz": "97906e87bade9756272b2120cfd3dcabaf2dae52305833554886868bcb96d028",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_rand.npz": "3c197542655aec1f5f9a4c9cf0c190aed3d98eb4f8b3dd4c036b6facd3af928d",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half0.npz": "f0711629d18d795f357368ac080c9f816e480cec44c3ec0d057e13eac9e8a1e2",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half1.npz": "edd48914d8db50e492e21ad725619464a655098f77651e7226c200c86db8ca80",
+        "/project/CoSiR/src/test/20261202_r9_scope/pins_a28.json": "a225f32708e84a218996ff344ccc77ac186614c253fb27e10d4d482bba81c4c1",
+        "/project/CoSiR/res/r9/a28_translate/shard_0/translations.parquet": "583bc84a0ddb74d03c5e8fc917938ecabe4cfb4caf5b0ea7fd1cb90d32acb4ad",
+        "/project/CoSiR/res/r9/a28_translate/shard_0/coverage.json": "1bb7e9546818587b202666e1516d0f32b8452740b094b4d7537e47d596a3d268",
+        "/project/CoSiR/res/r9/a28_translate/shard_1/translations.parquet": "8e57fbc3ae8511b5f6d67d1cc1acdf04c349fcf0b821fa79aabb4a4ddd547624",
+        "/project/CoSiR/res/r9/a28_translate/shard_1/coverage.json": "b6d5313b3d5d52d94a290621e2be1105909f1c6306e285e56b8c89d878a0dafe",
+        "/project/CoSiR/res/r9/a28_translate/shard_2/translations.parquet": "0e26f4be3b055de3f51030b84461ca81d8f24479792d9acaf46a15a01721a633",
+        "/project/CoSiR/res/r9/a28_translate/shard_2/coverage.json": "21c12aada490d14e285b5a4d7c2f7ee226e98c7cc41b67998d6a688572e51776",
+        "/project/CoSiR/res/r9/a28_translate/shard_3/translations.parquet": "a40fb90badeddd6a3683eeffa53042b4eb14c28600564ebd58facc4be294903f",
+        "/project/CoSiR/res/r9/a28_translate/shard_3/coverage.json": "81744554d9e8b54aa8b7cec3b49cc8d49365e7821cc6a5f13c5a3d4561b4ef60",
+        "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/translations.parquet": "99872926e43890ad8fd9b7883b6be255fbc145eb33d9f3ff28a059b42f6012ac",
+        "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/coverage.json": "dfc396a3fd67cded9e7e84d65c429e2c201c49998c4049702ce0bc4492e1d9db",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/img.npy": "2f686f66b39209a0b4ad9dd8a2b58f9a9d76494f5a797130acf90b5bb15476fc",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/txt.npy": "0e99850132fe1daddbc761bd0eb42eba454dcdf67a0d729e8f7c7e9904a6b77a",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/index.json": "4a31fa88f75b2b0a8296ebc1d6fba0e938d00d7edf3447c51cbf7672a0e75795",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/img.npy": "edf26c0f0031d434b8fd0af30d40583dbe82a53df4128611ace25a485b0c073e",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/txt.npy": "49d14c25ae2abece83dd808501697d26805761a1367fe3b8bf78b251d72196c2",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/index.json": "4288f968f382e5869d89f6a3bc6f678de8f2d303b1cc71a64e4d730bcb80aa5d",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/img.npy": "856f07f503aa10e8fa891c2eb41535471871eecaf6e66349e1c2eb896f0b3452",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/txt.npy": "13b004da07f069990b7291aaeafc672d2c34d39de0ff177a7c9a7a43c20d5674",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/index.json": "6e5dc8839515c3874d75ceaf958cf5b67022ab10ba70635b88fc89518040d481",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/value_sets_a28.json": "85a0d0daaee73d70804cb8491c8e5433303ff6d47abacc03d35e3e4647fccb3e",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/language_flags_a28.json": "3cb3c45719d1e8a3e207bd293bd987928cc1c614da76f5d38ba77fc51b94c0dd",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/read_set_a28.parquet": "97c0ea0e7f98dbe1e79da898e8734122a9956640bdb0073e541cc2bad7c7fa95",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/refit_check.json": "aebc840fa26266754370e01ae690d120d483cc86a4090b6130feb39be679736d",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/regression_seed42.json": "ca168eb628f6a51e9afe779b0194088d05b293417bac04617a0d8a428d3984be",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/seed42_pass_counts.json": "5618c59a3907af67bbcced0f29e0db8462b12ca4fb2e40a69e4be537de29d5e5",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/sensitivity_seed42.json": "bc4b0a92d376b2fdf47da2aa08303a5bb2266a29daf85621ca97ec753bef5661"
+      }
+    },
+    "phase1": {
+      "passed": true,
+      "agreement": "/project/CoSiR/src/test/20261202_r9_scope/rederive/rd9_out/rd9_clip_b32_phase1_agreement.json",
+      "sha256": {
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/DECISION_RULE.md": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/DECISION_RULE.md": "2d311dbeac1a561fc2a719b730075c30819f4f7f3a592041cb64b65821dc5925",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/DECISION_RULE.md": "613d8c9d13fb7d4787ec0fb91dc65cfd4a192d07c88ab8f961da3adc1c35d23c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/common.py": "99496dcf859ff0b0f746266125c975c5e2f9632e0c2c91d74df17102c65c10a7",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rc_core.py": "e649fff5d8253c8ba7aae0dbfff7a68321cef5fe3caa06d7b325a27fe904185c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_build.py": "63c7310c890675cc63e49838feb364cdd1c5c68aafdfb0f0f7972128476cba7b",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_eval.py": "1826e65fd73b8c6cecae33b5df48503bf2cf33e067fc291d5c078c51184e0b14",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_features.py": "1e758f6d5de1b1dd246592f4045e0ae1dcc520c1d6012540a9e69b3314fb6caf",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.pkl": "6387b469662446734e650571c88a152651da3d66bcade28fb6cdd7828f58d34c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.json": "cd90da922967cf1b62e437d3927c97cd9cfdae2c139ee392744538d3e3e5c6a8",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.npz": "628b21aeaf6d306f82bd9abb68e6c257348535c3aff0fad0a2d065fc48302981",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.json": "c6e2f83b73c47b9c054e6381a5d020a05618728cb820861b89f0b80de5a8a16e",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rc_tau.json": "e10cf52b2e81ea5b5f7243363d7ddf226440c3a95512cbc7e0b9ed18c5e702bf",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rule_application.txt": "9a074850e70db8075e85bc5475e9361905182d6f0815f0023eaf380ccdee9785",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/DECISION_RULE.md": "368bec11363b222d348622a37a6e3aedcfe795d772781d7a255d79b60fab265c",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/r2_fusion.py": "1406e8e71629e74c468f8b009a110e49aa05c481ed52cc1b8d99b59f87016027",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/results/rule_application.txt": "cf1ec3852e334b1d56920bd8ab25c2db858bf97ab46ea36a7f65ebdd0916741f",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_lib.py": "45cc5abd941ca1cd7e47f415cdf0e11d440fd9c703b99516e23eb6e41d49bf88",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_04_readers.py": "0260fe5ad61e3d4a664cbb921f7d84efed8c9329716229310651712697a372b8",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_05_aff.py": "4c947b1d42df1caa7fb7f769f245e7df9a59bce22ca2611413c6a5a7fd45d734",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_10_subsets.py": "b00d9ed0b18e65e1e2be4dd8cdc5e05e277f673dbec5c826ddce4e18669cd7b4",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_04_readers.json": "42bf6f204598c011bfada46e5eabf42dc7759fc6f6750721527d16239141691e",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_05_aff.json": "a96719ba505b72883bfa2eeaca66ab872da128314654ba8f74580998b2a72b10",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_10_subsets.json": "c9d64815c1c6dba9e84177f7a33fb4e917a326f801ed9b115ae770ce1a1988f1",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/run_baselines.py": "26508dde35f77850c4a80e98d08b0ea6576638577c84d3e96c39660ef02e63c4",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/per_anchor_seed42.npz": "a4818ba0fa5f7249355afe2d2483404dcd34d22cae26984b76be787bb6e9e59d",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/codes_provenance.json": "8e6a517b73610d4d21b42e2eb39f6fd4118dc4132049364c8e89eecb7716bfaf",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed42.json": "ce42c81e8eec256496454e88fc07dc4fcfb02e2d5f1b043f2274ba6008564ce6",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed43.json": "b250e89caadb1f5ad5937fb36b92ccf1f0f3b63a82b71056dc1ce2b9cc7e2859",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed45.json": "ecbcf5e900a5f844af9a3e986d1154d2764bb10ba2e2123aba2aaf77917c9890",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed47.json": "56e5c0661ad20372cd1c9976d2e48f07c995e44ce33f0649da5cc351f8652386",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed48.json": "feed925f3eddbf2957b4bce284e1bbf5e9d85132b760f94f6d2c76cb08654286",
+        "/project/CoSiR/src/test/20261111_community_told_oracle/results/told_oracle.json": "76d9ec896b941a518e7db6684805fe0bc329f6afe4a48e1993992fbb221d70d2",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/episodes_seed42.npz": "12af979432ff1a20c88b614ab9e672f203eeeed9c2465bff305e72d01e6c0986",
+        "/project/CoSiR/src/test/20261111_community_told_oracle/results/per_anchor_told_oracle.npz": "27e8101161607da2d6936aa5a8c84f8c296629fe08e37a68c8418c9356af1366",
+        "/project/CoSiR/src/test/20261031_pseudo_partitions/results/partitions.npz": "cfd57dbb21216cdc9d1c2e42d1b408648bc18147f62354b52202ade4ab8a9caa",
+        "/project/CoSiR/src/test/20261108_new_method_quick_checks/results/n6_posteriors.npz": "2ad75026e5869c461fed156ffcdcf207c66f04a59dae514358522fbbaa9df2e0",
+        "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/checkpoints/A3_seed42.pt": "dadfef1bed95bbd647c39fa0ea483edea78627d440a23b5a032083e76dd469e2",
+        "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_group_style.npz": "b04d96b4798acdfdbc9ca87436012755a681c931ac4f7612fa5683350b7a20e2",
+        "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_heads_style.npz": "898a37017d82d3e130b20155e90f69e51f82f30892e04316dcb56d7aaaf8df8b",
+        "/project/CoSiR/src/test/20261122_round4_aff_vetoes/results/dev_seed42.json": "fd7b3f480d5997284f9d8cfe29fe25275ff3edd38c1ada0a9392d8396ba9e01f",
+        "/project/CoSiR/src/test/20261013_stage_d_selection/cache/prepare.npz": "d30f0281bb521d18c7a4d4adca1a7938689e2789db7fd528ce0322b90ac44c8b",
+        "/project/CoSiR/src/test/20261014_stage_d_final/cache/held_codes.npz": "2901f875e7ad59f9f54509b61352a9cecb0eba310b31357f872219f25e2a12e9",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/results/seed42_arrays.npz": "5ea4b09a4161a5eac6ca78942cf0f4b99b9c634edca651fba4c2689c7c24ab8a",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9001.json": "729cb5653cbcf2ea97da6dad65da9eaddf5d1b4bbace5c9d551f9c1d4fe8c517",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9002.json": "8e86b7e6da2411743d09c28154c2189ad50b11fd4a04f2bd76e53e80808ba352",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9003.json": "e7e0ac0ed30cd170d0de1ccda56d9e6a2f6a663576725dcd6306b46e3429aada",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_common.py": "b1a60b1fd801bf9147d0bd58ae6da806d12fbcc982796135454f31dce3836f86",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_bundle.py": "bef50cbbef17f6c40d53c705a060967950d0690168c4b046b1cc3f0dd9fa0e9d",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_fusion.py": "ce51a819157842035fdfde488f042c25fa4764ed1b1c363728d5e3837e314637",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_stats.py": "846a4f5b3175302280c20fa415cfff4b0652522d06aa4fc46290f1a1db5de54d",
+        "/project/CoSiR/src/test/20261202_r9_scope/DECISION_RULE.md": "f9b07b34e645bc8e881fb13c7e7a085eabea6a52f4d93445305944cf1aea030c",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/stage0a_regression.json": "e3c660eae3502044713b9092fe4f9656ba7ba1cf158ba8200e869a3fab2f7e54",
+        "/project/CoSiR/src/test/20261202_r9_scope/pins_clip.json": "b78dd5efebc632feffc1b8edf0be3de2e66b0cb4e7380e7738901999f227c353",
+        "/project/CoSiR/src/test/20261016_factor_learning_grid/cache/graph.npz": "485cb7fe12b44bd70bf45ae9c131fc347306c76fc7c6cf75704b95edbb393de8",
+        "/project/CoSiR/src/test/20261031_pseudo_partitions/results/bank_AIC.npz": "b6c662ef4b79684bc86ee422056782b8cfec278c8c6c164044b9cffbcd59fc41",
+        "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/results/picked.json": "77173a38d526936e8fb0b081f8bae68979a2d9f6cc7b2efa3ba6ae984385ff0e",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_halves.npz": "ed2d359e6517b4237f8aa4de5e78f787699b366a975ac993eaef0e7c4491c7da",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/picks_seed42.json": "df1fff781136c001343ec88264b014ca6a2448d71e8c4f33e230e9821deb47c6",
+        "/project/CoSiR/src/test/20261202_r9_scope/cells_seed42_clip.json": "85ee9eb22232ce2a9a338b89e887919780ea82920397d5a5f113a2612e401c85",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_affect.npz": "e21e846be8b9e565a7443c5e7ecd4135a04def709ce64bef6dceae6545823324",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_image.npz": "3743b3fe9c8942cddf399b8ffc7ef47806d8d2a8d4a6ec8ea474473010f3c46f",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_caption.npz": "00782ea90b9dcccea8ad164ce21f48792d7422adba89bebf9acaf7705168cea8",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_csd.npz": "97906e87bade9756272b2120cfd3dcabaf2dae52305833554886868bcb96d028",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_rand.npz": "3c197542655aec1f5f9a4c9cf0c190aed3d98eb4f8b3dd4c036b6facd3af928d",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half0.npz": "f0711629d18d795f357368ac080c9f816e480cec44c3ec0d057e13eac9e8a1e2",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half1.npz": "edd48914d8db50e492e21ad725619464a655098f77651e7226c200c86db8ca80",
+        "/project/CoSiR/src/test/20261202_r9_scope/pins_a28.json": "a225f32708e84a218996ff344ccc77ac186614c253fb27e10d4d482bba81c4c1",
+        "/project/CoSiR/res/r9/a28_translate/shard_0/translations.parquet": "583bc84a0ddb74d03c5e8fc917938ecabe4cfb4caf5b0ea7fd1cb90d32acb4ad",
+        "/project/CoSiR/res/r9/a28_translate/shard_0/coverage.json": "1bb7e9546818587b202666e1516d0f32b8452740b094b4d7537e47d596a3d268",
+        "/project/CoSiR/res/r9/a28_translate/shard_1/translations.parquet": "8e57fbc3ae8511b5f6d67d1cc1acdf04c349fcf0b821fa79aabb4a4ddd547624",
+        "/project/CoSiR/res/r9/a28_translate/shard_1/coverage.json": "b6d5313b3d5d52d94a290621e2be1105909f1c6306e285e56b8c89d878a0dafe",
+        "/project/CoSiR/res/r9/a28_translate/shard_2/translations.parquet": "0e26f4be3b055de3f51030b84461ca81d8f24479792d9acaf46a15a01721a633",
+        "/project/CoSiR/res/r9/a28_translate/shard_2/coverage.json": "21c12aada490d14e285b5a4d7c2f7ee226e98c7cc41b67998d6a688572e51776",
+        "/project/CoSiR/res/r9/a28_translate/shard_3/translations.parquet": "a40fb90badeddd6a3683eeffa53042b4eb14c28600564ebd58facc4be294903f",
+        "/project/CoSiR/res/r9/a28_translate/shard_3/coverage.json": "81744554d9e8b54aa8b7cec3b49cc8d49365e7821cc6a5f13c5a3d4561b4ef60",
+        "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/translations.parquet": "99872926e43890ad8fd9b7883b6be255fbc145eb33d9f3ff28a059b42f6012ac",
+        "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/coverage.json": "dfc396a3fd67cded9e7e84d65c429e2c201c49998c4049702ce0bc4492e1d9db",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/img.npy": "2f686f66b39209a0b4ad9dd8a2b58f9a9d76494f5a797130acf90b5bb15476fc",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/txt.npy": "0e99850132fe1daddbc761bd0eb42eba454dcdf67a0d729e8f7c7e9904a6b77a",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/index.json": "4a31fa88f75b2b0a8296ebc1d6fba0e938d00d7edf3447c51cbf7672a0e75795",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/img.npy": "edf26c0f0031d434b8fd0af30d40583dbe82a53df4128611ace25a485b0c073e",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/txt.npy": "49d14c25ae2abece83dd808501697d26805761a1367fe3b8bf78b251d72196c2",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/index.json": "4288f968f382e5869d89f6a3bc6f678de8f2d303b1cc71a64e4d730bcb80aa5d",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/img.npy": "856f07f503aa10e8fa891c2eb41535471871eecaf6e66349e1c2eb896f0b3452",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/txt.npy": "13b004da07f069990b7291aaeafc672d2c34d39de0ff177a7c9a7a43c20d5674",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/index.json": "6e5dc8839515c3874d75ceaf958cf5b67022ab10ba70635b88fc89518040d481",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/value_sets_a28.json": "85a0d0daaee73d70804cb8491c8e5433303ff6d47abacc03d35e3e4647fccb3e",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/language_flags_a28.json": "3cb3c45719d1e8a3e207bd293bd987928cc1c614da76f5d38ba77fc51b94c0dd",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/read_set_a28.parquet": "97c0ea0e7f98dbe1e79da898e8734122a9956640bdb0073e541cc2bad7c7fa95",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/refit_check.json": "aebc840fa26266754370e01ae690d120d483cc86a4090b6130feb39be679736d",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/regression_seed42.json": "ca168eb628f6a51e9afe779b0194088d05b293417bac04617a0d8a428d3984be",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/seed42_pass_counts.json": "5618c59a3907af67bbcced0f29e0db8462b12ca4fb2e40a69e4be537de29d5e5",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/sensitivity_seed42.json": "bc4b0a92d376b2fdf47da2aa08303a5bb2266a29daf85621ca97ec753bef5661",
+        "/project/CoSiR/src/test/20261202_r9_scope/rederive/rd9_out/rd9_clip_b32_phase1_agreement.json": "f28c31843a5051fb6a52799f004453302daddc54d968d1619a8e21daee9ac259",
+        "/project/CoSiR/src/test/20261202_r9_scope/rederive/rd9_out/rd9_clip_b32_phase1.json": "0986af4f1e55d428669e94a2fef3082499ae18d87363e0e518e4a11082b9dd9f",
+        "/project/CoSiR/src/test/20261202_r9_scope/rederive/rd9_out/rd9_clip_b32_seed42_arrays.npz": "4f562f94ac98b3d63f9466d276b36169ce11eb6284493e158ae8e22026860e21"
+      },
+      "status": "passed"
+    },
+    "smoke": {
+      "passed": true,
+      "runs": {
+        "H6": {
+          "passed": true,
+          "agreement": {
+            "copy": "/project/CoSiR/src/test/20261202_r9_scope/results/smoke/H8_fix2_H6/rd9_H6_agreement.json",
+            "sha256": "3690f5a816f612f2ea7c4c4602327cc2cc757e63da9f04a5cfb9c27d0820890f"
+          },
+          "outputs": {
+            "/project/CoSiR/src/test/20261202_r9_scope/results/smoke/H8_fix2_H6/held_pass_H6.json": "deec2058c3cc15c5c0d92f463e65230fe7805d12610ed7a31a6d93ac58b2f61a",
+            "/project/CoSiR/src/test/20261202_r9_scope/results/smoke/H8_fix2_H6/held_arrays_H6.npz": "55930a735a99d3ad827c3a50b96e74e6ba060753969d1858ae5b22e8599aff50",
+            "/project/CoSiR/src/test/20261202_r9_scope/results/smoke/H8_fix2_H6/held_verdict_H6.json": "3804ae3b1332c6b5dc136a958f863299fcc276500fdbb072a8019a0346cb016e",
+            "/project/CoSiR/src/test/20261202_r9_scope/results/smoke/descriptive/descriptive_H6_H8_fix2_H6.json": "9ecfe21883ae2fd4e818b7a049a54b730af55f2a792ef3c4b32b3fd9f7d601e9"
+          }
+        },
+        "H8": {
+          "passed": true,
+          "agreement": {
+            "copy": "/project/CoSiR/src/test/20261202_r9_scope/results/smoke/H8_fix2_H8/rd9_H8_agreement.json",
+            "sha256": "30622abb1a3fe4c836844061615735616feb201e035ffc2ae2679c9643c68efd"
+          },
+          "outputs": {
+            "/project/CoSiR/src/test/20261202_r9_scope/results/smoke/H8_fix2_H8/held_pass_H8.json": "a09fe6cb7531f89fcc91e6bb0da680626fd6ce6a60fc6976986815c9f57877ed",
+            "/project/CoSiR/src/test/20261202_r9_scope/results/smoke/H8_fix2_H8/held_arrays_H8.npz": "055397593d180df6f873444f23eaa67b7c26bd9e8f7cba9636ad80375f34a0ea",
+            "/project/CoSiR/src/test/20261202_r9_scope/results/smoke/H8_fix2_H8/held_verdict_H8.json": "c80ccb904d5c593a4b8453e218d7fd8ded83c2def2071e169b7b6863f8e53a61",
+            "/project/CoSiR/src/test/20261202_r9_scope/results/smoke/descriptive/descriptive_H8_H8_fix2_H8.json": "63a2daf8593b023405310de24d8b689653b085ef1bbdb00d05ea01065f0503b3"
+          }
+        }
+      },
+      "real_inputs_only": true,
+      "mutation": {
+        "passed": true,
+        "fired": true,
+        "source": "/project/CoSiR/src/test/20261202_r9_scope/results/smoke/H8_fix2_mutation/r9_score.py",
+        "sha256": "944f1f52539b234b29374d4c184364eab74ba5bb86b2531ea7556d6df7567731"
+      },
+      "status": "passed",
+      "sha256": {
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/DECISION_RULE.md": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/DECISION_RULE.md": "2d311dbeac1a561fc2a719b730075c30819f4f7f3a592041cb64b65821dc5925",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/DECISION_RULE.md": "613d8c9d13fb7d4787ec0fb91dc65cfd4a192d07c88ab8f961da3adc1c35d23c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/common.py": "99496dcf859ff0b0f746266125c975c5e2f9632e0c2c91d74df17102c65c10a7",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rc_core.py": "e649fff5d8253c8ba7aae0dbfff7a68321cef5fe3caa06d7b325a27fe904185c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_build.py": "63c7310c890675cc63e49838feb364cdd1c5c68aafdfb0f0f7972128476cba7b",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_eval.py": "1826e65fd73b8c6cecae33b5df48503bf2cf33e067fc291d5c078c51184e0b14",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/rb_features.py": "1e758f6d5de1b1dd246592f4045e0ae1dcc520c1d6012540a9e69b3314fb6caf",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.pkl": "6387b469662446734e650571c88a152651da3d66bcade28fb6cdd7828f58d34c",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.json": "cd90da922967cf1b62e437d3927c97cd9cfdae2c139ee392744538d3e3e5c6a8",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.npz": "628b21aeaf6d306f82bd9abb68e6c257348535c3aff0fad0a2d065fc48302981",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.json": "c6e2f83b73c47b9c054e6381a5d020a05618728cb820861b89f0b80de5a8a16e",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rc_tau.json": "e10cf52b2e81ea5b5f7243363d7ddf226440c3a95512cbc7e0b9ed18c5e702bf",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rule_application.txt": "9a074850e70db8075e85bc5475e9361905182d6f0815f0023eaf380ccdee9785",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/DECISION_RULE.md": "368bec11363b222d348622a37a6e3aedcfe795d772781d7a255d79b60fab265c",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/r2_fusion.py": "1406e8e71629e74c468f8b009a110e49aa05c481ed52cc1b8d99b59f87016027",
+        "/project/CoSiR/src/test/20261118_reader_fix_round2/results/rule_application.txt": "cf1ec3852e334b1d56920bd8ab25c2db858bf97ab46ea36a7f65ebdd0916741f",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_lib.py": "45cc5abd941ca1cd7e47f415cdf0e11d440fd9c703b99516e23eb6e41d49bf88",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_04_readers.py": "0260fe5ad61e3d4a664cbb921f7d84efed8c9329716229310651712697a372b8",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_05_aff.py": "4c947b1d42df1caa7fb7f769f245e7df9a59bce22ca2611413c6a5a7fd45d734",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/bs_10_subsets.py": "b00d9ed0b18e65e1e2be4dd8cdc5e05e277f673dbec5c826ddce4e18669cd7b4",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_04_readers.json": "42bf6f204598c011bfada46e5eabf42dc7759fc6f6750721527d16239141691e",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_05_aff.json": "a96719ba505b72883bfa2eeaca66ab872da128314654ba8f74580998b2a72b10",
+        "/project/CoSiR/src/test/20261120_r1_levers_brainstorm/results/bs_10_subsets.json": "c9d64815c1c6dba9e84177f7a33fb4e917a326f801ed9b115ae770ce1a1988f1",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/run_baselines.py": "26508dde35f77850c4a80e98d08b0ea6576638577c84d3e96c39660ef02e63c4",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/per_anchor_seed42.npz": "a4818ba0fa5f7249355afe2d2483404dcd34d22cae26984b76be787bb6e9e59d",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/codes_provenance.json": "8e6a517b73610d4d21b42e2eb39f6fd4118dc4132049364c8e89eecb7716bfaf",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed42.json": "ce42c81e8eec256496454e88fc07dc4fcfb02e2d5f1b043f2274ba6008564ce6",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed43.json": "b250e89caadb1f5ad5937fb36b92ccf1f0f3b63a82b71056dc1ce2b9cc7e2859",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed45.json": "ecbcf5e900a5f844af9a3e986d1154d2764bb10ba2e2123aba2aaf77917c9890",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed47.json": "56e5c0661ad20372cd1c9976d2e48f07c995e44ce33f0649da5cc351f8652386",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/baselines_seed48.json": "feed925f3eddbf2957b4bce284e1bbf5e9d85132b760f94f6d2c76cb08654286",
+        "/project/CoSiR/src/test/20261111_community_told_oracle/results/told_oracle.json": "76d9ec896b941a518e7db6684805fe0bc329f6afe4a48e1993992fbb221d70d2",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/episodes_seed42.npz": "12af979432ff1a20c88b614ab9e672f203eeeed9c2465bff305e72d01e6c0986",
+        "/project/CoSiR/src/test/20261111_community_told_oracle/results/per_anchor_told_oracle.npz": "27e8101161607da2d6936aa5a8c84f8c296629fe08e37a68c8418c9356af1366",
+        "/project/CoSiR/src/test/20261031_pseudo_partitions/results/partitions.npz": "cfd57dbb21216cdc9d1c2e42d1b408648bc18147f62354b52202ade4ab8a9caa",
+        "/project/CoSiR/src/test/20261108_new_method_quick_checks/results/n6_posteriors.npz": "2ad75026e5869c461fed156ffcdcf207c66f04a59dae514358522fbbaa9df2e0",
+        "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/checkpoints/A3_seed42.pt": "dadfef1bed95bbd647c39fa0ea483edea78627d440a23b5a032083e76dd469e2",
+        "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_group_style.npz": "b04d96b4798acdfdbc9ca87436012755a681c931ac4f7612fa5683350b7a20e2",
+        "/project/CoSiR/src/test/20261116_grouping_step1_style/results/step1_heads_style.npz": "898a37017d82d3e130b20155e90f69e51f82f30892e04316dcb56d7aaaf8df8b",
+        "/project/CoSiR/src/test/20261122_round4_aff_vetoes/results/dev_seed42.json": "fd7b3f480d5997284f9d8cfe29fe25275ff3edd38c1ada0a9392d8396ba9e01f",
+        "/project/CoSiR/src/test/20261013_stage_d_selection/cache/prepare.npz": "d30f0281bb521d18c7a4d4adca1a7938689e2789db7fd528ce0322b90ac44c8b",
+        "/project/CoSiR/src/test/20261014_stage_d_final/cache/held_codes.npz": "2901f875e7ad59f9f54509b61352a9cecb0eba310b31357f872219f25e2a12e9",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/results/seed42_arrays.npz": "5ea4b09a4161a5eac6ca78942cf0f4b99b9c634edca651fba4c2689c7c24ab8a",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9001.json": "729cb5653cbcf2ea97da6dad65da9eaddf5d1b4bbace5c9d551f9c1d4fe8c517",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9002.json": "8e86b7e6da2411743d09c28154c2189ad50b11fd4a04f2bd76e53e80808ba352",
+        "/project/CoSiR/src/test/20261030_aspect_baselines/results/smoke/baselines_seed9003.json": "e7e0ac0ed30cd170d0de1ccda56d9e6a2f6a663576725dcd6306b46e3429aada",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_common.py": "b1a60b1fd801bf9147d0bd58ae6da806d12fbcc982796135454f31dce3836f86",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_bundle.py": "bef50cbbef17f6c40d53c705a060967950d0690168c4b046b1cc3f0dd9fa0e9d",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_fusion.py": "ce51a819157842035fdfde488f042c25fa4764ed1b1c363728d5e3837e314637",
+        "/project/CoSiR/src/test/20261121_round3_affect_gate/r3_stats.py": "846a4f5b3175302280c20fa415cfff4b0652522d06aa4fc46290f1a1db5de54d",
+        "/project/CoSiR/src/test/20261202_r9_scope/DECISION_RULE.md": "f9b07b34e645bc8e881fb13c7e7a085eabea6a52f4d93445305944cf1aea030c",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/stage0a_regression.json": "e3c660eae3502044713b9092fe4f9656ba7ba1cf158ba8200e869a3fab2f7e54",
+        "/project/CoSiR/src/test/20261202_r9_scope/pins_clip.json": "b78dd5efebc632feffc1b8edf0be3de2e66b0cb4e7380e7738901999f227c353",
+        "/project/CoSiR/src/test/20261016_factor_learning_grid/cache/graph.npz": "485cb7fe12b44bd70bf45ae9c131fc347306c76fc7c6cf75704b95edbb393de8",
+        "/project/CoSiR/src/test/20261031_pseudo_partitions/results/bank_AIC.npz": "b6c662ef4b79684bc86ee422056782b8cfec278c8c6c164044b9cffbcd59fc41",
+        "/project/CoSiR/src/test/20261101_aspect_factor_gonogo/results/picked.json": "77173a38d526936e8fb0b081f8bae68979a2d9f6cc7b2efa3ba6ae984385ff0e",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_halves.npz": "ed2d359e6517b4237f8aa4de5e78f787699b366a975ac993eaef0e7c4491c7da",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/picks_seed42.json": "df1fff781136c001343ec88264b014ca6a2448d71e8c4f33e230e9821deb47c6",
+        "/project/CoSiR/src/test/20261202_r9_scope/cells_seed42_clip.json": "85ee9eb22232ce2a9a338b89e887919780ea82920397d5a5f113a2612e401c85",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_affect.npz": "e21e846be8b9e565a7443c5e7ecd4135a04def709ce64bef6dceae6545823324",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_image.npz": "3743b3fe9c8942cddf399b8ffc7ef47806d8d2a8d4a6ec8ea474473010f3c46f",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_caption.npz": "00782ea90b9dcccea8ad164ce21f48792d7422adba89bebf9acaf7705168cea8",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_csd.npz": "97906e87bade9756272b2120cfd3dcabaf2dae52305833554886868bcb96d028",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_heads_rand.npz": "3c197542655aec1f5f9a4c9cf0c190aed3d98eb4f8b3dd4c036b6facd3af928d",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half0.npz": "f0711629d18d795f357368ac080c9f816e480cec44c3ec0d057e13eac9e8a1e2",
+        "/project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_bank_A0_half1.npz": "edd48914d8db50e492e21ad725619464a655098f77651e7226c200c86db8ca80",
+        "/project/CoSiR/src/test/20261202_r9_scope/pins_a28.json": "a225f32708e84a218996ff344ccc77ac186614c253fb27e10d4d482bba81c4c1",
+        "/project/CoSiR/res/r9/a28_translate/shard_0/translations.parquet": "583bc84a0ddb74d03c5e8fc917938ecabe4cfb4caf5b0ea7fd1cb90d32acb4ad",
+        "/project/CoSiR/res/r9/a28_translate/shard_0/coverage.json": "1bb7e9546818587b202666e1516d0f32b8452740b094b4d7537e47d596a3d268",
+        "/project/CoSiR/res/r9/a28_translate/shard_1/translations.parquet": "8e57fbc3ae8511b5f6d67d1cc1acdf04c349fcf0b821fa79aabb4a4ddd547624",
+        "/project/CoSiR/res/r9/a28_translate/shard_1/coverage.json": "b6d5313b3d5d52d94a290621e2be1105909f1c6306e285e56b8c89d878a0dafe",
+        "/project/CoSiR/res/r9/a28_translate/shard_2/translations.parquet": "0e26f4be3b055de3f51030b84461ca81d8f24479792d9acaf46a15a01721a633",
+        "/project/CoSiR/res/r9/a28_translate/shard_2/coverage.json": "21c12aada490d14e285b5a4d7c2f7ee226e98c7cc41b67998d6a688572e51776",
+        "/project/CoSiR/res/r9/a28_translate/shard_3/translations.parquet": "a40fb90badeddd6a3683eeffa53042b4eb14c28600564ebd58facc4be294903f",
+        "/project/CoSiR/res/r9/a28_translate/shard_3/coverage.json": "81744554d9e8b54aa8b7cec3b49cc8d49365e7821cc6a5f13c5a3d4561b4ef60",
+        "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/translations.parquet": "99872926e43890ad8fd9b7883b6be255fbc145eb33d9f3ff28a059b42f6012ac",
+        "/data/SSD2/pre_extract/artelingo28/nllb200_3.3b_en/coverage.json": "dfc396a3fd67cded9e7e84d65c429e2c201c49998c4049702ce0bc4492e1d9db",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/img.npy": "2f686f66b39209a0b4ad9dd8a2b58f9a9d76494f5a797130acf90b5bb15476fc",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/txt.npy": "0e99850132fe1daddbc761bd0eb42eba454dcdf67a0d729e8f7c7e9904a6b77a",
+        "/data/SSD2/pre_extract/artelingo28/clip_b32/index.json": "4a31fa88f75b2b0a8296ebc1d6fba0e938d00d7edf3447c51cbf7672a0e75795",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/img.npy": "edf26c0f0031d434b8fd0af30d40583dbe82a53df4128611ace25a485b0c073e",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/txt.npy": "49d14c25ae2abece83dd808501697d26805761a1367fe3b8bf78b251d72196c2",
+        "/data/SSD2/pre_extract/artelingo28/qwen3vl_emb_2b/index.json": "4288f968f382e5869d89f6a3bc6f678de8f2d303b1cc71a64e4d730bcb80aa5d",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/img.npy": "856f07f503aa10e8fa891c2eb41535471871eecaf6e66349e1c2eb896f0b3452",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/txt.npy": "13b004da07f069990b7291aaeafc672d2c34d39de0ff177a7c9a7a43c20d5674",
+        "/data/SSD2/pre_extract/artelingo28/siglip2_so400m/index.json": "6e5dc8839515c3874d75ceaf958cf5b67022ab10ba70635b88fc89518040d481",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/value_sets_a28.json": "85a0d0daaee73d70804cb8491c8e5433303ff6d47abacc03d35e3e4647fccb3e",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/language_flags_a28.json": "3cb3c45719d1e8a3e207bd293bd987928cc1c614da76f5d38ba77fc51b94c0dd",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/read_set_a28.parquet": "97c0ea0e7f98dbe1e79da898e8734122a9956640bdb0073e541cc2bad7c7fa95",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/refit_check.json": "aebc840fa26266754370e01ae690d120d483cc86a4090b6130feb39be679736d",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/regression_seed42.json": "ca168eb628f6a51e9afe779b0194088d05b293417bac04617a0d8a428d3984be",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/seed42_pass_counts.json": "5618c59a3907af67bbcced0f29e0db8462b12ca4fb2e40a69e4be537de29d5e5",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/sensitivity_seed42.json": "bc4b0a92d376b2fdf47da2aa08303a5bb2266a29daf85621ca97ec753bef5661",
+        "/project/CoSiR/src/test/20261202_r9_scope/rederive/rd9_out/rd9_clip_b32_phase1_agreement.json": "f28c31843a5051fb6a52799f004453302daddc54d968d1619a8e21daee9ac259",
+        "/project/CoSiR/src/test/20261202_r9_scope/rederive/rd9_out/rd9_clip_b32_phase1.json": "0986af4f1e55d428669e94a2fef3082499ae18d87363e0e518e4a11082b9dd9f",
+        "/project/CoSiR/src/test/20261202_r9_scope/rederive/rd9_out/rd9_clip_b32_seed42_arrays.npz": "4f562f94ac98b3d63f9466d276b36169ce11eb6284493e158ae8e22026860e21",
+        "/project/CoSiR/src/test/20261125_artelingo_held_test/results/value_sets.json": "4ea6d33853e5516adc57a868194a03ab20963bcfe6f646df355a7e72d1970369",
+        "/project/CoSiR/src/test/20261202_r9_scope/results/near_duplicates_a28.json": "ba92530d433dded1c8d2b2a2037e23d015aed5361fb1249d1caa631e40da2206"
+      }
+    }
+  },
+  "time": "2026-10-14 07:35:45"
+}
