@@ -271,11 +271,12 @@ def smoke_agreement(out, read, tag):
     rec = json.loads((out / names.pass_).read_text())
     agr = {'phase': 2, 'smoke': True, 'agreement': True, 'read': read, 'pass_file': names.pass_,
            'held_pass_sha256': R.sha256_file(out / names.pass_),
+           'sensitivity_sha256': R.sha256_file(out / names.sensitivity),   # the apply step binds it to its own file
            'rederived_counts': {c: rec['checks'][c]['n'] for c in RH.ST.CHECKS},
            'items': [{'key': 'smoke_chain_stand_in', 'equal': True}], 'compared': 1, 'failed': 0,
            'what': 'R6-style smoke stand-in; no independent phase-2 re-derivation ran'}
-    # Only the smoke output folder is written (the apply step and the descriptive pass read it from there), so a
-    # scratch --results run leaves nothing inside the re-derivation's folder.
+    # Only the smoke output folder is written (in smoke mode only the apply step reads this stand-in; the descriptive
+    # pass reads no agreement), so a scratch --results run leaves nothing inside the re-derivation's folder.
     copy = out / f'rd9_{read}_agreement.json'
     write_once(copy, agr)
     return {'copy': str(copy), 'sha256': R.sha256_file(copy)}

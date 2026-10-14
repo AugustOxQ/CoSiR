@@ -109,6 +109,8 @@ def record(monkeypatch, counts, smoke=False, mod=ST):
 
 
 def load_record(tmp_path, rec, read="H8", smoke=False):
+    # the apply step requires the pass file to name its read and backbone (fx-held L3)
+    rec = {**rec, "read": read, "backbone": AR.READ_BACKBONE_IDS[read]}
     path = tmp_path / f"held_pass_{read}.json"
     path.write_text(json.dumps(rec, allow_nan=False))
     return AR.load_pass(path.read_bytes(), path.name, read, smoke)

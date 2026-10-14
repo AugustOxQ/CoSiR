@@ -91,17 +91,19 @@ reason are not pass-file claim fields; the pass uses the read seed (e.g. 55). Al
 `set_aside` list for every derived read seed, even when empty. H8 to H10 must carry all three claim fields.
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/rederive/rd9_compare.py --derived src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_read.json --derived-arrays src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_read_arrays.npz --reported src/test/20261202_r9_scope/results/held_pass_H8.json --reported-arrays src/test/20261202_r9_scope/results/held_arrays_H8.npz --language-flags src/test/20261202_r9_scope/results/language_flags_a28.json --near-duplicates src/test/20261202_r9_scope/results/near_duplicates_a28.json --out src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_agreement.json
+PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVICES= /root/miniconda3/envs/CoSiR/bin/python src/test/20261202_r9_scope/rederive/rd9_compare.py --derived src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_read.json --derived-arrays src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_read_arrays.npz --reported src/test/20261202_r9_scope/results/held_pass_H8.json --reported-arrays src/test/20261202_r9_scope/results/held_arrays_H8.npz --reported-sensitivity src/test/20261202_r9_scope/results/sensitivity_H8.json --language-flags src/test/20261202_r9_scope/results/language_flags_a28.json --near-duplicates src/test/20261202_r9_scope/results/near_duplicates_a28.json --out src/test/20261202_r9_scope/rederive/rd9_out/rd9_H8_agreement.json
 ```
 
 The fix pass and the reserve read use the same command with the `_fix1` / `_reserve` file names, for example
 `--reported .../held_pass_H8_fix1.json ... --out .../rd9_H8_agreement_fix1.json`. A synthetic smoke pass is compared
 the same way, with `--out` in `rd9_out/` (the comparator writes only below `rederive/`; ticket 19 reads a smoke agreement from `results/smoke/`, so the controller copies it there); its agreement file then says `smoke: true`.
 
-Add `--reported-sensitivity .../results/sensitivity_H8.json` (the runner's `sensitivity_<Hn>[_fix1|_reserve].json`) to
-the same command. The comparer then compares SE, x and x95 of P1 to P7 with the derived record's; without the file those
+The command carries `--reported-sensitivity .../results/sensitivity_H8.json` (the runner's `sensitivity_<Hn>[_fix1|_reserve].json`;
+for the fix pass and the reserve read, the file of that pass). The comparer then compares SE, x and x95 of P1 to P7 with the derived record's; without the file those
 keys are differences, and the agreement records the file's SHA-256 as `sensitivity_sha256`. The pass file's `quantity`
 label of each check is compared with the rule's text too, and a repeated `set_aside` entry is a difference.
+The H8 selection replay (`--mode selection`) does not compare SE, x and x95: round 6's seed-42 sensitivity file holds only the
+variance components, so there is nothing to compare with. The agreement then carries `margins_not_compared` with this reason.
 
 Comparison checks counts, points, both intervals, ordering and pass flags, episode hashes, and all 30 relevant
 scorer/metric arrays plus clusters/pair/seed indices. Missing keys fail. R9 pass files must use the R6 field names
@@ -111,7 +113,8 @@ when `holm_order` is present. An optional pair of `--derived-episodes`/`--report
 
 For the already-completed phase-2 selection regression, use `rd9_phase2.py --read H8 --mode selection`; compare its
 JSON to R6's `seed42_pass_counts.json` and its arrays to the independently validated phase-1 array archive. The
-committed proof for this job is `rd9_H8_selection_agreement.json`.
+committed proof for this job is `rd9_H8_selection_agreement.json`. That file was made before the margins and quantity
+labels were compared and is not rewritten; a rerun now adds the seven quantity labels (136 items) and skips the margins.
 
 ## Review fix: generic phase-1 agreement (each backbone)
 

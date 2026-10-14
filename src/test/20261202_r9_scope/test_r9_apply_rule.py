@@ -124,6 +124,12 @@ def write_agreement(d, read, sfx="", smoke=False, over=None):
            "read": read, "backbone": "clip_b32", "phase": 2, "smoke": smoke,
            "pass_file": f"held_pass_{read}{sfx}.json", "held_pass_sha256": CM.sha256_bytes(raw),
            "rederived_counts": {nm: checks.get(nm, {}).get("n", 0) for nm in P}}
+    # rd9_compare records the SHA-256 of the sensitivity file it compared (--reported-sensitivity); a fix pass without
+    # its own sensitivity file uses the original's, as the apply step does.
+    for sens in (d / f"sensitivity_{read}{sfx}.json", d / f"sensitivity_{read}.json"):
+        if sens.is_file():
+            rec["sensitivity_sha256"] = CM.sha256_bytes(sens.read_bytes())
+            break
     rec.update(over or {})
     (d / f"rd9_{read}_agreement{sfx}.json").write_text(json.dumps(rec))
 
@@ -685,6 +691,33 @@ def test_agreement_missing_keys_refuse(tmp_path):
         r.pop(key)
         f.write_text(json.dumps(r))
         refused(4, "H6", d)
+
+
+def test_agreement_is_bound_to_the_sensitivity_file_bytes(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    s = json.loads((d / "sensitivity_H6.json").read_text())
+    s["P1"]["SE"] *= 1.0                                  # same values, other bytes (a margin file the agreement never saw)
+    (d / "sensitivity_H6.json").write_text(json.dumps(s, indent=2))
+    refused(4, "H6", d, "another sensitivity file")
+
+
+def test_agreement_without_a_sensitivity_sha_is_refused(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    f = d / "rd9_H6_agreement.json"
+    r = json.loads(f.read_text())
+    del r["sensitivity_sha256"]
+    f.write_text(json.dumps(r))
+    refused(4, "H6", d, "another sensitivity file")
+
+
+def test_fix_pass_agreement_is_bound_to_the_sensitivity_file_it_uses(tmp_path):
+    d = stage(tmp_path, "H6", ALL0)
+    stage(tmp_path, "H6", ALL0, sfx="_fix1", sens=False)          # the fix pass has no sensitivity file of its own
+    assert json.loads((d / "rd9_H6_agreement_fix1.json").read_text())["sensitivity_sha256"] == \
+        CM.sha256_file(d / "sensitivity_H6.json")
+    s = json.loads((d / "sensitivity_H6.json").read_text())
+    (d / "sensitivity_H6.json").write_text(json.dumps(s, indent=2))
+    refused(4, "H6", d, "another sensitivity file")
 
 
 def test_agreement_is_bound_to_the_pass_file_bytes(tmp_path):
