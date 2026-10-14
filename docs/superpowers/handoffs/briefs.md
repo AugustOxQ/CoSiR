@@ -363,3 +363,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-14-r9-run-2-handoff.md
 - New chat: tab 'r9 run 2', session 0ad149d4-6172-4d41-93d8-42c825fd2f37
 
+[brief] CoSiR: outside weekly -> weekly report (2026-10-14 09:21 Amsterdam)
+- Done: the outside-view card "Where Our Method's Gain Comes From" is published (dev-log update #2).
+- State: weekly report draft v1 is written, uncommitted and unchecked; its checks, figures and slides were stopped.
+- Next: discuss draft v1 with the user first; then figures, the two checks and one fix wave.
+- Blocked: the user's comments on draft v1; slides wait for the user's word.
+- Handoff: docs/superpowers/handoffs/2026-10-14-weekly-report-handoff.md
+- New chat: tab 'weekly report', session 296fd8b6-6c3e-4b51-960c-4fb31e9e0412
+
