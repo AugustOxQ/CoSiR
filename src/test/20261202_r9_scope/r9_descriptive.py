@@ -75,6 +75,25 @@ def check_pass(core, record, a28):
     return {c: True for c in ST.CHECKS}
 
 
+def check_rebuilt(got, arrays, sl, n):
+    """The re-scored primary and raw arrays of one seed equal the read's saved arrays: shape, dtype, every value.
+
+    got: read_arrays of the re-scored seed; arrays: the saved arrays of all seeds; sl: the seed's slice; n: its episodes."""
+    for k, value in got.items():
+        want = arrays[k][:, sl] if k.startswith('aff_gate__') else arrays[k][sl]
+        if k == 'seed_index':
+            want = np.zeros(n, dtype=np.int64)
+        value, want = np.asarray(value), np.asarray(want)
+        require(value.shape == want.shape and value.dtype == want.dtype and np.array_equal(value, want),
+                'rebuilt primary/raw array: ' + k)
+
+
+def check_directions(sc, directions):
+    """The per-direction rows (rule §8 item 1) average to the core metrics of every scorer, exactly."""
+    require(all(np.array_equal(sc[s][m], .5 * (directions[s]['i2t'][m] + directions[s]['t2i'][m]))
+                for s in S.ALL_SCORERS for m in ROW_METRICS), 'direction averages reproduce core')
+
+
 def direction_rows():
     """Return a score_seed callback and its collected direction metrics."""
     rows = {}

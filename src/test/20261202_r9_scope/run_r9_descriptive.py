@@ -29,6 +29,7 @@ import r9_descriptive as D
 import r9_episodes as E
 import r9_picks as P
 import r9_score as S
+import r9_stats as ST
 import r9_a28_data as AD
 import r9_a28_episodes as AE
 import run_r9_apply_rule as AR
@@ -40,6 +41,8 @@ class Refused(RH.Refused):
 
 
 require = D.require
+# Stage 1's near_duplicates_a28.json: in no pins file; the same value as rederive/rd9_inputs.py (fx-c13) and run_r9_held.py.
+NEAR_DUPLICATES_SHA256 = 'ba92530d433dded1c8d2b2a2037e23d015aed5361fb1249d1caa631e40da2206'
 
 
 def refuse_unless(ok, boundary):
@@ -73,7 +76,9 @@ def bind_read(out, read, smoke, reserve=False):
         refuse_unless(verdict.get('status') == 'run' and verdict.get('verdict') in allowed,
                       'read has no run verdict: ' + str(vpath))
         refuse_unless(verdict.get('rule_sha256') == R.RULE_SHA256 and verdict.get('read') == read
-                      and verdict.get('backbone') == RH.READ_BACKBONES[read] and verdict.get('mode') == 'held'
+                      # The apply step writes the ledger name (run_r9_apply_rule.READS), the pass the code name.
+                      and verdict.get('backbone') == RH.LEDGER_NAMES[RH.READ_BACKBONES[read]]
+                      and verdict.get('mode') == 'held'
                       and verdict.get('variant') == ('reserve' if reserve else None), 'verdict identity')
         variants = ('reserve',) if reserve else ('held', 'fix1')
         matched = [RH.read_names(read, kind) for kind in variants
@@ -171,7 +176,6 @@ def score_inputs(bound, loaded, on_file=None):
         require(checked == bound.rec['value_sets'], 'ArtELingo value sets/pass binding')
         data = None
     if data is not None:
-        require(R.sha256_file(AD.PINS_PATH) == bound.rec['pins_a28_sha256'], 'A28 pins/pass binding')
         require(data.a28.read_set_sha256 == bound.rec['read_set_sha256'], 'A28 row space/pass binding')
     inputs = []
     for seed, ep, core in zip(bound.rec['seeds'], loaded.eps, loaded.core):
@@ -202,14 +206,8 @@ def score_inputs(bound, loaded, on_file=None):
                         'cl': sc['cl'], 'pair_index': sc['pair_index']})
         got = RH.read_arrays([primary])
         i = bound.rec['seeds'].index(seed)
-        sl = slice(i * ep.n, (i + 1) * ep.n)
-        for k, value in got.items():
-            want = loaded.arrays[k][:, sl] if k.startswith('aff_gate__') else loaded.arrays[k][sl]
-            if k == 'seed_index':
-                want = np.zeros(ep.n, dtype=np.int64)
-            require(RH.array_item(value, want)['equal'], 'rebuilt primary/raw array: ' + k)
-        require(all(np.array_equal(sc[s][m], .5 * (directions[s]['i2t'][m] + directions[s]['t2i'][m]))
-                    for s in S.ALL_SCORERS for m in D.ROW_METRICS), 'direction averages reproduce core')
+        D.check_rebuilt(got, loaded.arrays, slice(i * ep.n, (i + 1) * ep.n), ep.n)
+        D.check_directions(sc, directions)
         inputs.append({'seed': seed, 'cl': sc['cl'], 'pair_index': sc['pair_index'],
                        'pa': {s: sc[s] for s in S.ALL_SCORERS}, 'directions': directions,
                        'gates': sc['gates'], 'reader': sc['reader']})
@@ -221,12 +219,59 @@ def score_inputs(bound, loaded, on_file=None):
     return inputs, env, data, frozen
 
 
+# H5's R6 held_arrays.npz layout, read without importing any round-6 module (no r9 module may; ticket fx-desc).
+# Copies of r6_score.CORE_SCORERS, r6_descriptive.ARRAY_EXTRA and the two functions below
+# (r6_descriptive.load_core, check_pass); the statistics are r9_stats', a copy of r6_stats' (checked equal on H5's files).
+H5_CORE = ('cosine', 'rca', 'B', 'B0', 'B1', 'aff_fused', 'aff_cf', 'r1_fused')
+H5_EXTRA = ('cl', 'pair_index', 'seed_index')
+
+
+def h5_load_core(path, seeds, n_per_pair):
+    """held_arrays.npz of the R6 read split per seed: {seed: {cl, pair_index, pa {scorer: {metric: float64}}}}."""
+    seeds = [int(s) for s in seeds]
+    n_seed = len(R.PAIRS) * int(n_per_pair)
+    want = tuple(f'{s}__{m}' for s in H5_CORE for m in D.METRICS) + H5_EXTRA
+    with np.load(path, allow_pickle=False) as z:
+        require(set(z.files) == set(want), 'H5 arrays keys')
+        d = {k: z[k] for k in want}
+    n = len(seeds) * n_seed
+    require(all(d[k].shape == (n,) for k in want), 'H5 arrays shape')
+    require(all(d[k].dtype == np.int64 for k in H5_EXTRA), 'H5 arrays index dtype')
+    require(np.array_equal(d['seed_index'], np.repeat(np.arange(len(seeds), dtype=np.int64), n_seed)), 'H5 arrays seed order')
+    pi_seed = np.repeat(np.arange(len(R.PAIRS), dtype=np.int64), int(n_per_pair))
+    out = {}
+    for i, seed in enumerate(seeds):
+        sl = slice(i * n_seed, (i + 1) * n_seed)
+        require(np.array_equal(d['pair_index'][sl], pi_seed), 'H5 arrays pair order')
+        pa = {}
+        for s in H5_CORE:
+            pa[s] = {}
+            for m in D.METRICS:
+                x = d[f'{s}__{m}'][sl]
+                require(x.dtype == np.float64 and bool(np.isfinite(x).all()), 'H5 arrays float64: ' + f'{s}__{m}')
+                pa[s][m] = np.ascontiguousarray(x)
+        out[seed] = {'cl': np.ascontiguousarray(d['cl'][sl]), 'pair_index': np.ascontiguousarray(d['pair_index'][sl]),
+                     'pa': pa}
+    return out
+
+
+def h5_check_pass(core, rec):
+    """The H5 arrays reproduce every P1 to P7, S1 and S2 count, point, interval and quantity of its pass file."""
+    seeds = [int(s) for s in rec['seeds']]
+    diffs = ST.check_diffs([{'cl': core[s]['cl'], **core[s]['pa']} for s in seeds], True)
+    cl = diffs['P1'][1]
+    require(rec.get('n_episodes') == len(cl) and rec.get('n_clusters') == len(np.unique(cl)), 'H5 arrays episode counts')
+    for c in ST.CHECKS + ST.SECONDARY:
+        want = (rec['checks'] if c in ST.CHECKS else rec['secondary'])[c]
+        d, cl_c = diffs[c]
+        b, int_le0 = ST.bootstrap_draws(d, cl_c)
+        pc = ST.point_ci_from_draws(d, b)
+        require(int(int_le0.sum()) == want['n'] and pc['point'] == want['point'] and pc['ci95'] == list(want['ci95'])
+                and ST.QUANTITIES[c][2] == want['quantity'], 'H5 arrays reproduce pass: ' + c)
+
+
 def h5_inputs(smoke):
     """H5's read-only R6 layout, its own rule/agreement/pass reproduction."""
-    if str(R.R6D) not in sys.path:
-        sys.path.append(str(R.R6D))
-    import r6_common as R6
-    import r6_descriptive as D6
     out = R.R6D / 'results'
     if smoke:
         out /= 'smoke'
@@ -234,7 +279,7 @@ def h5_inputs(smoke):
         if not ppath.is_file():
             return None
         rec = read_json(ppath)
-        require(rec.get('mode') == 'smoke' and rec.get('rule_sha256') == R6.RULE_SHA256
+        require(rec.get('mode') == 'smoke' and rec.get('rule_sha256') == R.R6_RULE_SHA256
                 and rec.get('seeds') == list(R.SMOKE_SEEDS), 'H5 smoke pass identity')
         suffix = ''
         sources = {}
@@ -243,7 +288,7 @@ def h5_inputs(smoke):
         if not vpath.is_file():
             return None
         verdict = read_json(vpath)
-        require(verdict.get('mode') == 'held' and verdict.get('rule_sha256') == R6.RULE_SHA256
+        require(verdict.get('mode') == 'held' and verdict.get('rule_sha256') == R.R6_RULE_SHA256
                 and verdict.get('verdict') in ('GO', 'NO-GO'), 'H5 verdict identity')
         allowed = {'held_pass.json': '', 'held_pass_fix1.json': '_fix1'}
         require(verdict.get('pass_file') in allowed, 'H5 pass filename')
@@ -258,13 +303,13 @@ def h5_inputs(smoke):
                 and R.sha256_file(ppath) == verdict.get('held_pass_sha256') == agreement.get('held_pass_sha256'),
                 'H5 phase-2 pass binding')
         rec = read_json(ppath)
-        require(rec.get('mode') == 'held' and rec.get('rule_sha256') == R6.RULE_SHA256
+        require(rec.get('mode') == 'held' and rec.get('rule_sha256') == R.R6_RULE_SHA256
                 and rec.get('seeds') == list(R.HELD_SEEDS), 'H5 pass identity')
         sources = {'verdict': source(vpath), 'agreement': source(apath)}
     apath = out / f'held_arrays{suffix}.npz'
     npp = R.N_SMOKE if smoke else R.N_PER_PAIR
-    core = D6.load_core(apath, rec['seeds'], npp)
-    D6.check_pass(core, rec)
+    core = h5_load_core(apath, rec['seeds'], npp)
+    h5_check_pass(core, rec)
     eps, inputs = [], []
     for seed in rec['seeds']:
         path = out / f'held_episodes_seed{seed}.npz'
@@ -312,6 +357,20 @@ def paired_reads(bound, inputs):
     return out
 
 
+def near_counts(rec):
+    """-> (path, counts) of stage 1's near-duplicates file, bound to the pass and to its pin, counts checked.
+
+    The file is in no pins file (ticket 21c LOW-5): the pass's source SHA and this pin are its only binding."""
+    path = Path(rec['near_duplicates_source']['file'])
+    sha = R.sha256_file(path)
+    require(sha == rec['near_duplicates_source']['sha256'] == NEAR_DUPLICATES_SHA256, 'near-duplicates source binding')
+    near = read_json(path)
+    require(all(type(near[k]) is int for k in ('cos_099', 'cos_098', 'cos_092'))
+            and 0 <= near['cos_099'] <= near['cos_098'] <= near['cos_092'] <= 746
+            and {k: near[k] for k in ('cos_099', 'cos_098')} == rec['near_duplicates'], 'near-duplicate counts')
+    return path, near
+
+
 def a28_report(bound, inputs, env, data, episodes):
     if data is None:
         return {'status': 'not applicable', 'reason': 'ArtELingo read'}
@@ -323,12 +382,7 @@ def a28_report(bound, inputs, env, data, episodes):
     coverage = read_json(cpath)
     require(set(flags['languages']) == set(coverage) == set(AE.LANGUAGES), 'translation language alignment')
     require(flags['flagged'] == bound.rec['flagged_languages'], 'flags/pass binding')
-    near_path = Path(bound.rec['near_duplicates_source']['file'])
-    require(R.sha256_file(near_path) == bound.rec['near_duplicates_source']['sha256'], 'near-duplicates source binding')
-    near = read_json(near_path)
-    require(all(type(near[k]) is int for k in ('cos_099', 'cos_098', 'cos_092'))
-            and 0 <= near['cos_099'] <= near['cos_098'] <= near['cos_092'] <= 746
-            and {k: near[k] for k in ('cos_099', 'cos_098')} == bound.rec['near_duplicates'], 'near-duplicate counts')
+    near_path, near = near_counts(bound.rec)
     prepared = AE.prepare(tab)
     language = [np.asarray(data.a28.language)[ep.pooled.anchor] for ep in episodes]
     require(all(x.shape == d['cl'].shape for x, d in zip(language, inputs)), 'language/episode alignment')
