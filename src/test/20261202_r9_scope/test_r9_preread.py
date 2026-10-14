@@ -514,7 +514,7 @@ def test_comparer_accepts_stage2_namespaces_and_detects_changed_hash():
     assert check()['agreement'] is False
 
 
-@pytest.mark.parametrize('kind', ('fix1', 'crash1', 'reserve'))
+@pytest.mark.parametrize('kind', ('fix1', 'fix2', 'fix3', 'crash1', 'reserve'))
 def test_corrected_preread_names_launch(case, kind):
     rec = launch_record(case)
     put(case.root / U.preread_name('H8'), {'passed': False})
@@ -616,21 +616,24 @@ def test_owner_errors_leave_failed_record(case, error):
     assert rec['checks']['smoke']['status'] == 'not_run'
 
 
-def test_scratch_sigma_is_recorded(case):
+@pytest.mark.parametrize('kind', ('smoke', 'fix1', 'fix2', 'fix3'))
+def test_scratch_sigma_is_recorded(case, kind):
     source = put(case.root / 'source/sensitivity_seed42_qwen3vl_emb_2b.json',
                  {c: {'sigma_a2': 1., 'sigma_eps2': 2.} for c in U.RH.ST.CHECKS})
     state = NS(read='H6', backbone='qwen3vl_emb_2b', env=None,
                sigma={'file': str(source), 'sha256': U.R.sha256_file(source)})
     case.mp.setattr(U.RH, 'VALUE_SETS_PATH', put(case.root / 'values.json', {}))
     case.mp.setattr(U.RH, 'setup_a28', lambda *a, **k: None)
-    case.mp.setattr(U.RH, 'run_smoke', lambda *a, **k: 4)
+    tags = []
+    case.mp.setattr(U.RH, 'run_smoke', lambda *a, **k: tags.append(k['subdir']) or 4)
     evidence = {}
     out = case.root / 'outputs'
     with pytest.raises(U.RH.Refused, match='runner smoke failed'):
-        U.smoke_gate(state, evidence, out, 'smoke')
+        U.smoke_gate(state, evidence, out, kind)
     target = out / source.name
     assert target.read_bytes() == source.read_bytes()
     assert evidence[str(target.resolve())] == U.R.sha256_file(target)
+    assert tags == [f'H6_{kind}_H6']
 
 
 def test_finite_scratch_sigma_change_blocks_launch(case):
@@ -778,7 +781,7 @@ def test_held_fix_preread_is_free_when_fix1_authorised_the_first_launch(case):
 
 
 def test_held_fix_smoke_record_takes_precedence_in_both_latest_functions(case):
-    for kind in ('smoke', 'fix1', 'heldfix1'):
+    for kind in ('smoke', 'crash1', 'fix1', 'fix2', 'fix3', 'heldfix1'):
         put(case.root / U.AR.SMOKE_RECORDS[kind], {'passed': True})
     assert U.AR.latest_smoke_record(case.root, None).name == 'smoke_record_heldfix1.json'
     assert U.RH.latest_smoke_record(case.root, 'held').name == 'smoke_record_heldfix1.json'
@@ -840,3 +843,103 @@ def test_scratch_smoke_record_has_no_committed_copy(case):
     assert not (case.root / 'folder').exists()
     U.publish_smoke(record, case.root, 'smoke')       # the real results folder: the committed copy too
     assert (case.root / 'folder' / U.AR.SMOKE_RECORDS['smoke']).is_file()
+
+
+@pytest.mark.parametrize('generation', (1, 2, 3))
+@pytest.mark.parametrize('read', ('H8', 'H6'))
+def test_numbered_preread_publishes_and_launches(case, generation, read):
+    kind = f'fix{generation}'
+    older = 'smoke' if generation == 1 else f'fix{generation - 1}'
+    old = put(case.root / U.AR.SMOKE_RECORDS[older],
+              {'passed': True, 'module_sha256': {'recipe.py': 'old'}})
+    old_bytes = old.read_bytes()
+    # No earlier pre-read for this read: go straight to the current generation.
+    publish = U.publish_smoke
+    run_stubs(case)
+    case.mp.setattr(U, 'publish_smoke', publish)
+    case.mp.setattr(U, 'inputs_gate', lambda r, evidence: evidence.update(own_files(case)) or NS())
+    assert U.run(read, case.root, kind) == 0
+    rec = json.loads((case.root / f'preread_{read}_{kind}.json').read_text())
+    assert rec['kind'] == kind and rec['passed'] is True
+    assert rec['smoke_record']['name'] == f'smoke_record_{kind}.json'
+    proof = case.root / f'preread_{read}_{kind}_smoke_record.json'
+    assert rec['smoke_proof'] == {'path': str(proof), 'sha256': U.R.sha256_file(proof)}
+    canonical = case.root / f'smoke_record_{kind}.json'
+    assert (case.root / 'folder' / canonical.name).read_bytes() == canonical.read_bytes()
+    assert U.AR.latest_smoke_record(case.root, None) == canonical
+    assert U.RH.latest_smoke_record(case.root, 'held') == canonical
+    assert U.AR.smoke_guard(case.root, None)['name'] == canonical.name
+    assert U.RH.smoke_guard(case.root, 'held')['name'] == canonical.name
+    assert U.preread_guard(case.root, read)['name'] == f'preread_{read}_{kind}.json'
+    assert old.read_bytes() == old_bytes
+    before = {p: p.read_bytes() for p in case.root.rglob('*.json')}
+    with pytest.raises(U.RH.Refused, match='record exists'):
+        U.run(read, case.root, kind)
+    assert all(p.read_bytes() == raw for p, raw in before.items())
+
+
+@pytest.mark.parametrize('kind', ('fix2', 'fix3'))
+@pytest.mark.parametrize('failure', ('failed', 'stale'))
+def test_newer_generation_blocks_older_pass(case, kind, failure):
+    older = f'fix{int(kind[-1]) - 1}'
+    good = {'passed': True, 'module_sha256': U.R.r9_module_shas()}
+    put(case.root / U.AR.SMOKE_RECORDS[older], good)
+    put(case.root / U.preread_name('H8', older), launch_record(case))
+    bad = {**good, **({'passed': False} if failure == 'failed'
+                     else {'module_sha256': {'recipe.py': 'old'}})}
+    put(case.root / U.AR.SMOKE_RECORDS[kind], bad)
+    rec = launch_record(case)
+    rec.update(bad)
+    put(case.root / U.preread_name('H8', kind), rec)
+    assert U.AR.latest_smoke_record(case.root, None).name == U.AR.SMOKE_RECORDS[kind]
+    assert U.RH.latest_smoke_record(case.root, 'held').name == U.AR.SMOKE_RECORDS[kind]
+    with pytest.raises(U.AR.Stop) as stopped:
+        U.AR.smoke_guard(case.root, None)
+    assert stopped.value.code == 4
+    with pytest.raises(U.RH.Refused, match='did not pass' if failure == 'failed' else 'module bytes differ'):
+        U.RH.smoke_guard(case.root, 'held')
+    with pytest.raises(U.RH.Refused, match='successful pre-read' if failure == 'failed' else 'code changed'):
+        U.preread_guard(case.root, 'H8')
+    assert go(case) == (U.RH.EXIT_REFUSE, [])
+
+
+@pytest.mark.parametrize('kind', ('fix2', 'fix3'))
+@pytest.mark.parametrize('target', ('results', 'committed'))
+@pytest.mark.parametrize('field,value', (('module_sha256', {'recipe.py': 'old'}),
+                                        ('runner_sha256', 'old'), ('passed', False)))
+def test_publish_refuses_stale_generation(case, kind, target, field, value):
+    record = {'passed': True, 'module_sha256': U.R.r9_module_shas(),
+              'runner_sha256': U.RH.runner_sha256()}
+    canonical = case.root / U.AR.SMOKE_RECORDS[kind]
+    copy = case.root / 'folder' / canonical.name
+    old = put(canonical if target == 'results' else copy, {**record, field: value})
+    before = old.read_bytes()
+    with pytest.raises(U.RH.Refused, match='canonical smoke stale'):
+        U.publish_smoke(record, case.root, kind)
+    assert old.read_bytes() == before
+
+
+@pytest.mark.parametrize('kind', ('fix1', 'fix2', 'fix3'))
+def test_publish_keeps_current_shared_generation(case, kind):
+    record = {'passed': True, 'module_sha256': U.R.r9_module_shas(),
+              'runner_sha256': U.RH.runner_sha256(), 'read': 'H8'}
+    U.publish_smoke(record, case.root, kind)
+    paths = [case.root / U.AR.SMOKE_RECORDS[kind], case.root / 'folder' / U.AR.SMOKE_RECORDS[kind]]
+    before = [p.read_bytes() for p in paths]
+    U.publish_smoke({**record, 'read': 'H6'}, case.root, kind)
+    assert [p.read_bytes() for p in paths] == before
+
+
+@pytest.mark.parametrize('generation', (1, 2, 3))
+def test_cli_numbered_fix(case, generation):
+    seen = []
+    case.mp.setattr(U, 'run', lambda read, results, kind: seen.append((read, kind)) or 0)
+    assert U.main(['--read', 'H8', '--fix', str(generation), '--results', str(case.root)]) == 0
+    assert seen == [('H8', f'fix{generation}')]
+
+
+def test_cli_refuses_fix4(case):
+    case.mp.setattr(U, 'run', lambda *a: pytest.fail('invalid fix reached runner'))
+    with pytest.raises(SystemExit) as stopped:
+        U.main(['--read', 'H8', '--fix', '4'])
+    assert stopped.value.code == 2

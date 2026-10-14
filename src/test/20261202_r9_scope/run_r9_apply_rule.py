@@ -6,7 +6,8 @@
 
 Reads results/held_pass_<Hn>.json and results/sensitivity_<Hn>.json, writes results/held_verdict_<Hn>.json once (an
 existing file is never replaced). Before any verdict (R6 rule 8.1, 8.3; this rule 4.1 "6 passed", 6 item 5, 7.4):
-  - the latest smoke record (results/smoke_record_heldfix1.json if it exists, else smoke_record_fix1.json, else
+  - the latest smoke record (results/smoke_record_heldfix1.json if it exists, else smoke_record_fix3.json, else
+    smoke_record_fix2.json, else smoke_record_fix1.json, else
     smoke_record_crash1.json, else smoke_record.json; --variant reserve: smoke_record_reserve.json) says "passed":
     true and its module_sha256 equals r9_common.r9_module_shas() key for key (a changed file needs a new smoke); not
     in --smoke mode;
@@ -117,6 +118,7 @@ SMOKE_SEEDS = tuple(CM.SMOKE_SEEDS)
 VARIANTS = {None: "", "reserve": "_reserve"}      # a fix pass has no variant: held_pass_<Hn>_fix1.json is used when it exists
 SMOKE_RECORDS = {"smoke": "smoke_record.json", "crash1": "smoke_record_crash1.json",
                  "fix1": "smoke_record_fix1.json", "reserve": "smoke_record_reserve.json",      # as R6
+                 "fix2": "smoke_record_fix2.json", "fix3": "smoke_record_fix3.json",      # pre-read generations
                  "heldfix1": "smoke_record_heldfix1.json"}      # held --fix 1 (its own name: "fix1" may have served a first launch)
 SHA_HERE = None                 # the folder whose r9 files count (None: this one; a test points it at a tmp copy)
 AGREEMENT_DIR = CM.HERE / "rederive" / "rd9_out"      # ticket 25's output folder (real mode)
@@ -556,11 +558,12 @@ def pair_suffix(out: Path, read: str, variant) -> str:
 
 def latest_smoke_record(results: Path, variant) -> Path:
     """The smoke record covering the code run now (as R6): reserve: smoke_record_reserve.json; otherwise
-    smoke_record_heldfix1.json (a held --fix 1) if it exists, else smoke_record_fix1.json, else smoke_record_crash1.json,
+    smoke_record_heldfix1.json (a held --fix 1) if it exists, else smoke_record_fix3.json, else smoke_record_fix2.json,
+    else smoke_record_fix1.json, else smoke_record_crash1.json,
     else smoke_record.json."""
     if variant == "reserve":
         return results / SMOKE_RECORDS["reserve"]
-    for kind in ("heldfix1", "fix1", "crash1"):
+    for kind in ("heldfix1", "fix3", "fix2", "fix1", "crash1"):
         if (results / SMOKE_RECORDS[kind]).is_file():
             return results / SMOKE_RECORDS[kind]
     return results / SMOKE_RECORDS["smoke"]

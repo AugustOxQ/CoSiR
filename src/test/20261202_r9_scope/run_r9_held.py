@@ -493,11 +493,11 @@ def refuse_or_go(results, ledger, read, backbone, variant="held", after_crash=Fa
 
 
 def latest_smoke_record(results, variant):
-    """Same precedence as run_r9_apply_rule; fix1 specifically requires its own smoke."""
+    """heldfix1, fix3, fix2, fix1, crash1, smoke; held fix1 and reserve require their own smoke."""
     results = Path(results)
     if variant in ("fix1", "reserve"):
         return results / SMOKE_RECORDS["heldfix1" if variant == "fix1" else variant]
-    for kind in ("heldfix1", "fix1", "crash1"):
+    for kind in ("heldfix1", "fix3", "fix2", "fix1", "crash1"):
         if (results / SMOKE_RECORDS[kind]).is_file():
             return results / SMOKE_RECORDS[kind]
     return results / SMOKE_RECORDS['smoke']

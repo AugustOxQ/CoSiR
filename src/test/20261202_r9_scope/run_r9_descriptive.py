@@ -9,6 +9,8 @@ writes only to this worktree's results/smoke/descriptive. --smoke-tag adds a fre
 an earlier file. Fix paths come from the verdict; --reserve selects
 the reserve verdict and writes descriptive_<read>_reserve.json. Missing paired
 reads are absent. All input hashes and reproduction checks precede the write.
+Pre-read fix1/fix2/fix3 are smoke generations only; held pass variants remain held/fix1/reserve.
+Descriptive JSON represents non-finite floats as "inf", "-inf", "nan", as the recipe does.
 Exit 4: refused; exit 5: contradictory inputs. Console: file names and hashes only.
 """
 import argparse
@@ -59,6 +61,12 @@ def read_json(path):
 
 def source(path):
     return {'file': str(path), 'sha256': R.sha256_file(path)}
+
+
+def report_plain(report):
+    """Normal JSON shapes, with recipe-style non-finite strings only in this report."""
+    return json.loads(json.dumps(RH._norm(report)), parse_constant=lambda value:
+                      {'Infinity': 'inf', '-Infinity': '-inf', 'NaN': 'nan'}[value])
 
 
 def bind_read(out, read, smoke, reserve=False):
@@ -516,7 +524,7 @@ def run(read, smoke=False, smoke_dir=None, reserve=False, on_file=None, smoke_ta
               'sources': bound.sources, 'rule_sha256': R.RULE_SHA256,
               'runner_sha256': R.sha256_file(Path(__file__).resolve()), 'module_sha256': R.r9_module_shas(),
               'time': R.amsterdam_now()}
-    payload = json.dumps(RH._plain(report), indent=2, ensure_ascii=False, allow_nan=False) + '\n'
+    payload = json.dumps(report_plain(report), indent=2, ensure_ascii=False, allow_nan=False) + '\n'
     target_dir.mkdir(parents=True, exist_ok=True)
     # Exclusive creation; serialize and validate every boundary before touching the output.
     with target.open('x', encoding='utf-8') as f:

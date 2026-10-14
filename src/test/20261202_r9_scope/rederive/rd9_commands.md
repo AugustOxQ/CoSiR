@@ -98,6 +98,14 @@ The fix pass and the reserve read use the same command with the `_fix1` / `_rese
 `--reported .../held_pass_H8_fix1.json ... --out .../rd9_H8_agreement_fix1.json`. A synthetic smoke pass is compared
 the same way, with `--out` in `rd9_out/` (the comparator writes only below `rederive/`; ticket 19 reads a smoke agreement from `results/smoke/`, so the controller copies it there); its agreement file then says `smoke: true`.
 
+Pre-read `run_r9_preread.py --fix N` accepts N = 1, 2, 3 without an earlier pre-read of that read.
+These smoke generations write `preread_<Hn>_fixN.json`, `preread_<Hn>_fixN_smoke_record.json`,
+`smoke_record_fixN.json` (plus its adjacent-code copy for default results) and smoke folders `<Hn>_fixN_<read>`.
+They do not add held pass or phase-1/phase-2 agreement variants: those keep their existing `_fix1` / `_reserve` names.
+First-launch pre-reads select fix3, fix2, fix1, crash1, base; smoke records select heldfix1, fix3, fix2, fix1, crash1, smoke.
+Reserve and held `--fix 1` keep their own proofs. Never reuse a stale canonical name; run the first publisher of a
+new smoke generation alone before other pre-reads share that current canonical record.
+
 The command carries `--reported-sensitivity .../results/sensitivity_H8.json` (the runner's `sensitivity_<Hn>[_fix1|_reserve].json`;
 for the fix pass and the reserve read, the file of that pass). The comparer then compares SE, x and x95 of P1 to P7 with the derived record's; without the file those
 keys are differences, and the agreement records the file's SHA-256 as `sensitivity_sha256`. The pass file's `quantity`
