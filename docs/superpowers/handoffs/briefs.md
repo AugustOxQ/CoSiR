@@ -323,3 +323,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-14-r9-build-10-handoff.md
 - New chat: tab 'r9 build 10', session 06992efa-c388-41ec-bd52-4b5c99c57e84
 
+[brief] CoSiR: leiden groupings -> Leiden groupings 2 (2026-10-14 02:55 Amsterdam)
+- Done: AFF rebuilt on Leiden at 64 groups; H1 retrained on scorer-train and screened.
+- State: AFF over B′(A0): Leiden +0.50 [+0.30, +0.71] against k-means +0.70; paired −0.20 [−0.44, +0.05]. AFF R@1 paired −0.56 [−0.80, −0.30]. Retrained H1 fails the screen (−0.27).
+- Next: ask the user's reading, then update both reports, run the checks, wrap up.
+- Blocked: the user's reading, and whether "go with Leiden" changes AFF's fixed recipe.
+- Handoff: docs/superpowers/handoffs/2026-10-14-leiden-groupings-2-handoff.md
+- New chat: tab 'Leiden groupings 2', session 5bef08c8-b1c2-4409-a10a-e7cb465e6b78
+
