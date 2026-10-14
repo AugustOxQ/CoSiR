@@ -19,7 +19,9 @@ development splits. Stage 3 (the CUB, SemArt and Affection reads) gets its own d
 is dropped if no data comes by 2026-10-24. Next: the r9 build, after the user's container restart (day run); the paper
 chat opens beside it. Results enter the paper body by 2026-11-06; CVPR abstract 2026-11-10, paper 2026-11-16.
 Side check (2026-10-14, outside r9): AFF as it is needs at least 3 example pairs; with 1 pair it is below B′(A0)
-([k-shot report](../reports/auto/v2/2026-12-03_kshot_supports.md)).
+([k-shot report](../reports/auto/v2/2026-12-03_kshot_supports.md)). Leiden groupings in AFF: 0.20 below k-means on the bar margin, kept
+as a record. Open for the user's weekly meeting (2026-10-14): are aspect labels needed in training to separate style
+from genre (k-shot entry)?
 
 ## Parked ideas
 
@@ -29,6 +31,8 @@ stay in the entries below.
 - More example pairs (k = 5 to 7, new episodes) and a re-fit of the reader and gate at 1 or 2 pairs (not chosen by the user, 2026-10-14; [proposed in](../reports/auto/v2/2026-12-03_kshot_supports.md))
 - ~~Leiden image and caption groupings at a group count matched to k-means 64~~ taken up 2026-10-14 by the Leiden groupings side check (entry "2026-10-14 · Leiden groupings side check").
 - The DINOv2 reader as AFF's fourth grouping (r8 screen: +0.285 [−0.012, +0.592] R@1 over AFF, emotion × style −0.38; its lead sits on style × genre, where it is level with its own matched control, −0.07 [−0.43, +0.30]) (deferred by the user, 2026-10-13, "maybe after the main finished if we have time"; [proposed in](../reports/auto/v2/2026-11-29_learned_grouping.md))
+- Leiden groupings in AFF, for a coherent design (2026-10-14 side check: bar margin −0.20 [−0.44, +0.05] and AFF R@1 −0.56
+  against k-means on seed-42 development; minor, user)
 - X-Cluster criteria (a multimodal LLM proposes criteria such as "style") placed under our reader, the comparator reviewers will ask for (paper stage; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §1)
 - COCO-4c (5,000 COCO images labelled for activity, location, mood and time of day, with COCO captions) as the second dataset for a generality test (never tried; [proposed in](../reports/literature/2026-11-28_design_l_novelty.md), §6; r9 step 3: mood is close to affect, but COCO captions rarely state mood, [2026-12-01 note](../reports/literature/2026-12-01_affect_caption_datasets.md))
 - FCMI weights 0.40 to 1.60 with a longer time cap (r8 scored only 0.05 to 0.20, all below AFF; not chosen at r9 step 2, 2026-10-13; [proposed in](../reports/auto/v2/2026-11-29_learned_grouping.md))
@@ -38,7 +42,7 @@ stay in the entries below.
 - Practice-bank detectors with richer negatives or a "none" class (never tried, judged low value; [proposed in](../reports/auto/v2/2026-11-20_r1_levers_brainstorm.md), §4 idea 9)
 - A grouped concept basis (N3) and "infer the aspect name, then embed" (N5) (never tried; their privileged references were never run; [proposed in](../../src/test/20261107_new_method_candidates/synthesis.md), §4.2)
 
-## 2026-10-14 · Leiden groupings side check: Leiden at 64 ties k-means on the screen; rebuild AFF on Leiden, retrain H1
+## 2026-10-14 · Leiden groupings side check: Leiden at 64 ties k-means on the screen; AFF rebuilt on Leiden 0.20 below on the bar; kept as a record
 
 - **Read:** round 3's told-oracle screen, 12,288 seed-42 development episodes, R@1 margins over the matched control.
   Reference (k-means 64): told +1.64 [+1.37, +1.92], reader +0.35 [+0.15, +0.57]. Leiden at 64 (image r 5.05,
@@ -53,8 +57,19 @@ stay in the entries below.
   retrain H1 on the scorer-train paintings only, then its screen (user; screen first for H1: agent default under the
   user's "cheap is best"). Side experiment outside the loop, no loop protocol (user). Only the one-grouping H1 slot
   (user, after seeing the recommendation).
-- **Open:** if the rebuild ties, does "go with Leiden" change AFF's fixed recipe (r9, the paper, a new held read), or
-  only the model card? To ask with the rebuild's result.
+- **Rebuild read (02:54):** AFF on Leiden at 64 (image and caption replaced everywhere, B and B′(A0) included), seed-42
+  development: bar margin +0.50 [+0.30, +0.71] against k-means +0.70 [+0.46, +0.94], paired −0.20 [−0.44, +0.05];
+  AFF R@1 18.58 against 19.14, paired −0.56 [−0.80, −0.30]. H1 retrained on scorer-train paintings (20 communities):
+  −0.27 [−0.48, −0.07] over its matched control, cross-fit weight 0; fails the screen, no rebuild.
+- **Meaning (C), rebuild:** "I don't think the way we do grouping is that important, given big issue exposed just now"
+  (the labels question, k-shot entry above); keep Leiden as a record that it "can also do the job", a minor open
+  direction, and the H1 one-grouping failure as a record (user, 2026-10-14, before seeing ours). Ours: a tie on the bar
+  margin within the noise; on AFF's own R@1 k-means is better, since the weaker Leiden groupings also lower B and
+  B′(A0); keep k-means, record Leiden as a coherent alternative that costs about 0.2 margin and 0.6 R@1 points. The two
+  agree.
+- **Decided:** AFF's fixed recipe does not change: k-means stays in r9 and the paper; no Leiden held read (user's "keep
+  this just as a record"; the reading of it as "no recipe change" is ours, stated to the user). Leiden in AFF goes to
+  Parked ideas.
 - **Links:** [report](../reports/auto/v2/2026-12-04_leiden_groupings.md) ·
   [user-read](../user_read/2026-10-14_leiden_groupings.md) · [handoff in](handoffs/2026-10-14-leiden-groupings-handoff.md)
 
