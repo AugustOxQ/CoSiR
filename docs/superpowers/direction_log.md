@@ -19,8 +19,8 @@ development splits. Stage 3 (the CUB, SemArt and Affection reads) gets its own d
 is dropped if no data comes by 2026-10-24. Next: the r9 build, after the user's container restart (day run); the paper
 chat opens beside it. Results enter the paper body by 2026-11-06; CVPR abstract 2026-11-10, paper 2026-11-16.
 Side check (2026-10-14, outside r9): AFF as it is needs at least 3 example pairs; with 1 pair it is below B′(A0)
-([k-shot report](../reports/auto/v2/2026-12-03_kshot_supports.md)). Leiden groupings in AFF: 0.20 below k-means on the bar margin, kept
-as a record. Open for the user's weekly meeting (2026-10-14): are aspect labels needed in training to separate style
+([k-shot report](../reports/auto/v2/2026-12-03_kshot_supports.md)). Leiden groupings in AFF: a tie with k-means on the bar margin (−0.20,
+within the noise), 0.56 lower on R@1; kept as a record. Open for the user's weekly meeting (2026-10-14): are aspect labels needed in training to separate style
 from genre (k-shot entry)?
 
 ## Parked ideas
@@ -42,7 +42,7 @@ stay in the entries below.
 - Practice-bank detectors with richer negatives or a "none" class (never tried, judged low value; [proposed in](../reports/auto/v2/2026-11-20_r1_levers_brainstorm.md), §4 idea 9)
 - A grouped concept basis (N3) and "infer the aspect name, then embed" (N5) (never tried; their privileged references were never run; [proposed in](../../src/test/20261107_new_method_candidates/synthesis.md), §4.2)
 
-## 2026-10-14 · Leiden groupings side check: Leiden at 64 ties k-means on the screen; AFF rebuilt on Leiden 0.20 below on the bar; kept as a record
+## 2026-10-14 · Leiden groupings side check: Leiden at 64 ties k-means on the screen; AFF on Leiden ties on the bar margin, 0.56 lower on R@1; kept as a record
 
 - **Read:** round 3's told-oracle screen, 12,288 seed-42 development episodes, R@1 margins over the matched control.
   Reference (k-means 64): told +1.64 [+1.37, +1.92], reader +0.35 [+0.15, +0.57]. Leiden at 64 (image r 5.05,
@@ -65,7 +65,8 @@ stay in the entries below.
   (the labels question, k-shot entry above); keep Leiden as a record that it "can also do the job", a minor open
   direction, and the H1 one-grouping failure as a record (user, 2026-10-14, before seeing ours). Ours: a tie on the bar
   margin within the noise; on AFF's own R@1 k-means is better, since the weaker Leiden groupings also lower B and
-  B′(A0); keep k-means, record Leiden as a coherent alternative that costs about 0.2 margin and 0.6 R@1 points. The two
+  B′(A0); keep k-means, record Leiden as a coherent alternative, 0.20 lower on the bar margin (within the noise) and 0.56 lower on AFF's
+  own R@1. The two
   agree.
 - **Decided:** AFF's fixed recipe does not change: k-means stays in r9 and the paper; no Leiden held read (user's "keep
   this just as a record"; the reading of it as "no recipe change" is ours, stated to the user). Leiden in AFF goes to

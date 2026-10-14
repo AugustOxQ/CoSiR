@@ -12,6 +12,8 @@
 - AFF's reader and gate were fitted for 4 pairs. So each drop mixes less evidence with a reader that no longer fits.
 - The lead comes from the two emotion pairs. On style × genre, AFF is below the bar at every number of pairs.
 - These are development numbers on seed 42, where AFF's settings were picked.
+- Split by the aspect the pairs show, the whole lead is in the emotion episodes. Fewer pairs mostly make AFF steer
+  toward emotion when it should not (added 2026-10-14, after your question).
 
 ## How we got here
 
@@ -58,6 +60,30 @@ intervals:
 
 > Full report: "Results brief" and "Analysis".
 
+## Split by the aspect the pairs show
+
+AFF's whole lead is in the episodes whose pairs show emotion. AFF's gate opens only when its reader picks the affect
+grouping, so its one move is to steer toward emotion. On style and genre, its best result is a tie with the bar.
+
+| Example pairs | pairs show emotion | pairs show style | pairs show genre |
+|---|---|---|---|
+| 4 (today) | +2.88 [+2.40, +3.38] | −0.09 [−0.46, +0.28] | −0.69 [−1.07, −0.31] |
+| 3 | +2.92 [+2.44, +3.42] | +0.04 [−0.34, +0.41] | −1.06 [−1.45, −0.67] |
+| 2 | +2.58 [+2.09, +3.07] | −0.17 [−0.56, +0.20] | −1.84 [−2.27, −1.42] |
+| 1 | +4.41 [+3.83, +5.02] | −1.15 [−1.66, −0.64] | −8.44 [−9.11, −7.73] |
+
+AFF over the bar, R@1 points. Each aspect pools its two aspect pairs (8,192 episodes).
+
+- The emotion gain does not need the pairs. It is largest with 1 pair.
+- The pairs mostly tell AFF when not to steer. Genre pays most when AFF steers wrongly, because the bar already finds
+  the genre match about three times as often as the emotion or style match.
+
+**Your reading** (2026-10-14, after seeing ours; you note it may hold mistakes): "Emotion is so different from style and
+genre that it needs fewer examples; style × genre stays hard at any k. This supports 'the gain is mostly from emotion,
+from the GoEmotions encoders'."
+
+> Full report: "Analysis", its last part, "Split by the aspect the pairs show".
+
 ## Advice
 
 <details>
@@ -73,6 +99,8 @@ This is our view.
 
 The question is answered for development data, for AFF used as it is. You chose to stop after 1 pair. Not run: 5 to 7
 pairs on new episodes, and a re-fit of the reader and gate at 1 or 2 pairs to separate the two causes of the drop.
+One question is open for your weekly meeting (2026-10-14): are aspect labels needed in training to separate style from
+genre? No source without labels has separated them so far.
 
 ## Glossary
 

@@ -83,3 +83,11 @@ over its matched control +0.53 [+0.34, +0.72]
 ```
 
 The k-means reference reproduces AFF's stated development margin (+0.70 [+0.46, +0.94]).
+
+## 2026-10-14 close: the user's reading and storage
+
+The user's reading of the rebuild and the decision are in the direction log entry ("Meaning (C), rebuild", "Decided"):
+kept as a record, AFF's recipe unchanged, Leiden parked. Storage (user approved): deleted the rebuild's intermediates
+(heads, banks, posteriors, graph, partitions, about 400 MB) and the builder's check runs (`_check`, `_check2`, 37 MB);
+`results/rebuild/` keeps the checkpoint, per-episode arrays and JSON records (1.2 MB); `--step result` still works.
+The frozen worktree `/project/CoSiR-lg-r9` (82 MB) removed; recreate at b84db1e if needed. Nothing of 1 GB or more.
