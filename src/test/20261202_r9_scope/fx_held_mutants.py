@@ -45,8 +45,8 @@ MUT = [
     ('heldfix1 cli kind', P, "'heldfix1' if a.held_fix else ", "", TP),
     ('heldfix1 smoke: held read_names', H, '"heldfix1" if variant == "fix1" else "reserve" if variant == "reserve"', '"fix1" if variant == "fix1" else "reserve" if variant == "reserve"', TP + ' ' + TH),
     ('heldfix1 smoke: held latest', H, 'SMOKE_RECORDS["heldfix1" if variant == "fix1" else variant]', 'SMOKE_RECORDS[variant]', TP + ' ' + TH),
-    ('heldfix1 smoke: held precedence', H, 'for kind in ("heldfix1", "fix1", "crash1"):', 'for kind in ("fix1", "crash1"):', TP),
-    ('heldfix1 smoke: apply precedence', A, 'for kind in ("heldfix1", "fix1", "crash1"):', 'for kind in ("fix1", "crash1"):', TP),
+    ('heldfix1 smoke: held precedence', H, 'for kind in ("heldfix1", "fix3", "fix2", "fix1", "crash1"):', 'for kind in ("fix3", "fix2", "fix1", "crash1"):', TP),
+    ('heldfix1 smoke: apply precedence', A, 'for kind in ("heldfix1", "fix3", "fix2", "fix1", "crash1"):', 'for kind in ("fix3", "fix2", "fix1", "crash1"):', TP),
     # C LOW-3
     ('smoke agreement also in rederive dir', P, "    write_once(copy, agr)\n", "    write_once(AR.AGREEMENT_DIR / 'smoke' / tag / copy.name, agr)\n    write_once(copy, agr)\n", TP),
     ('scratch smoke record copy always', P, "targets = (path, HERE / path.name) if Path(results).resolve() == Path(R.RESULTS).resolve() else (path,)", "targets = (path, HERE / path.name)", TP),

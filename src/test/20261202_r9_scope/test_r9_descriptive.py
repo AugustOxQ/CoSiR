@@ -30,7 +30,7 @@ def staged(tmp_path, monkeypatch, read, results=None):
 
     The agreement sits in a custom folder, the apply step's canonical place patched to tmp_path."""
     d = stage(tmp_path, read, ALL0)
-    edit_pass(d, read, lambda r: r.update(kind="held"))           # the held runner's pass carries its variant kind
+    edit_pass(d, read, lambda r: r.update(kind="held", coef_sha256={}))  # held pass schema
     adir = tmp_path / "phase2_custom_location"
     adir.mkdir(exist_ok=True)
     apath = adir / f"rd9_{read}_agreement.json"
@@ -172,6 +172,48 @@ def test_smoke_binding_without_a_verdict_remains_supported(tmp_path):
     s = smoke_on_clip(tmp_path, "H6")
     s.vpath.unlink()  # File created by this test in its tmp_path.
     assert RD.bind_read(s.results, "H6", True).backbone == "clip_b32"
+
+
+@pytest.mark.parametrize("read,smoke", [("H6", True), ("H9", True),
+                                      ("H6", False), ("H9", False),
+                                      ("H7", False), ("H10", False)])
+def test_report_writes_infinite_frozen_lambda(tmp_path, monkeypatch, read, smoke):
+    if smoke:
+        import run_r9_preread as preread
+        out = stage(tmp_path, read, ALL0, smoke=True, agree=False)
+        ppath = out / f"held_pass_{read}.json"
+        ppath.write_text(json.dumps({**json.loads(ppath.read_text()), "kind": "smoke", "coef_sha256": {}}))
+        preread.smoke_agreement(out, read, "inf")
+        RD.AR.apply(read, smoke=True, results=out)
+    else:
+        out = staged(tmp_path, monkeypatch, read).results
+    # Use the actual recipe parser: scoring must retain the numeric infinity.
+    lambdas = {"wang": RD.P.as_lambda_pick({"0": 16.0, "1": "inf"}, "wang")}
+    frozen = {"picks": {"B": {0: [0.0, 0.0], 1: [1.0, 0.0]}},
+              "lambdas": lambdas, "cells": {"aff": {"fused": (1, 2)}},
+              "taus": (-1.0, 0.0, .5, .9)}
+    monkeypatch.setattr(RD, "R", SimpleNamespace(**{**vars(R), "RESULTS": out}))
+    monkeypatch.setattr(RD, "load_bound_inputs", lambda b: SimpleNamespace(checks={}, eps=[]))
+    monkeypatch.setattr(RD, "score_inputs", lambda *a: ([], None, None, frozen))
+    monkeypatch.setattr(RD.D, "describe", lambda *a: {})
+    monkeypatch.setattr(RD, "paired_reads", lambda *a: {})
+    monkeypatch.setattr(RD, "a28_report", lambda *a: {})
+    monkeypatch.setattr(RD, "stage0b", lambda *a: {})
+    before = {p: p.read_bytes() for p in out.rglob("*.json")}
+    path, _ = RD.run(read, smoke=smoke, smoke_dir=out if smoke else None)
+    report = json.loads(path.read_text(), parse_constant=lambda x: pytest.fail(x))
+    assert report["frozen"]["lambdas"]["wang"] == {"0": 16.0, "1": "inf"}
+    assert report["frozen"]["picks"]["B"]["1"] == [1.0, 0.0]
+    assert lambdas["wang"][1] == float("inf")
+    assert all(p.read_bytes() == raw for p, raw in before.items())
+
+
+def test_report_plain_handles_all_nonfinite_shapes_and_keeps_finite_bytes():
+    nonfinite = {1: (np.float64(np.inf), np.float32(-np.inf), np.array([np.nan, 16.0])),
+                 "literal": "Infinity"}
+    assert RD.report_plain(nonfinite) == {"1": ["inf", "-inf", ["nan", 16.0]], "literal": "Infinity"}
+    finite = {0: np.array([1.25, -0.0]), "nested": (np.int64(2), True, None, "inf")}
+    assert json.dumps(RD.report_plain(finite), indent=2, allow_nan=False) == json.dumps(RD.RH._plain(finite), indent=2, allow_nan=False)
 
 
 def test_paired_aff_labels_separate_other_and_difference():

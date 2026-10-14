@@ -2,8 +2,10 @@
 
 CPU only; prints check names, never metrics. --results controls all new outputs;
 stage certificates and recipe files are read from their owners' normal locations.
-A failed run is recorded once too. After a fix, use --fix 1 (R6 naming),
---after-crash, or --reserve; no evidence is overwritten. --held-fix 1 is the pre-read for a held --fix 1 (its own
+A failed run is recorded once too. After a fix, use --fix N (N = 1, 2, 3),
+--after-crash, or --reserve; no evidence is overwritten. Fix generations need no earlier pre-read of the same read.
+They write preread_<Hn>_fixN.json, preread_<Hn>_fixN_smoke_record.json and smoke_record_fixN.json;
+smoke folders use <Hn>_fixN_<read>. --held-fix 1 is the pre-read for a held --fix 1 (its own
 names, preread_<Hn>_heldfix1.json and smoke_record_heldfix1.json).
 
 Phase 1 is read, not launched: run rd9_compare.py --phase1 --backbone B first,
@@ -32,7 +34,7 @@ import run_r9_apply_rule as AR
 import numpy as np
 
 CHECK_ORDER = ('inputs', 'heads', 'regression', 'sensitivity', 'phase1', 'smoke')
-VARIANTS = ('smoke', 'fix1', 'crash1', 'reserve', 'heldfix1')
+VARIANTS = ('smoke', 'fix1', 'fix2', 'fix3', 'crash1', 'reserve', 'heldfix1')
 
 
 def require(cond, msg):
@@ -425,7 +427,7 @@ def preread_guard(results, read, variant='held', after_crash=False, here=None):
     else:
         # A failed pre-read's corrected pass can authorise the first launch too;
         # it is not a held --fix (which requires an already completed held pass).
-        path = next((Path(results) / preread_name(read, k) for k in ('fix1', 'crash1')
+        path = next((Path(results) / preread_name(read, k) for k in ('fix3', 'fix2', 'fix1', 'crash1')
                      if (Path(results) / preread_name(read, k)).is_file()),
                     Path(results) / preread_name(read))
     rec = json.loads(path.read_text()) if path.is_file() else {}
@@ -456,12 +458,12 @@ def main(argv=None):
     ap.add_argument('--read', required=True, choices=tuple(RH.READ_BACKBONES))
     ap.add_argument('--results', type=Path, default=R.RESULTS)
     flags = ap.add_mutually_exclusive_group()
-    flags.add_argument('--fix', type=int, choices=(1,), help='corrected pre-read before the first launch')
+    flags.add_argument('--fix', type=int, choices=(1, 2, 3), help='corrected pre-read generation before the first launch')
     flags.add_argument('--held-fix', type=int, choices=(1,), dest='held_fix', help='pre-read for a held --fix 1')
     flags.add_argument('--after-crash', action='store_true')
     flags.add_argument('--reserve', action='store_true')
     a = ap.parse_args(argv)
-    kind = ('fix1' if a.fix else 'heldfix1' if a.held_fix else 'crash1' if a.after_crash
+    kind = (f'fix{a.fix}' if a.fix else 'heldfix1' if a.held_fix else 'crash1' if a.after_crash
             else 'reserve' if a.reserve else 'smoke')
     try:
         return run(a.read, a.results, kind)

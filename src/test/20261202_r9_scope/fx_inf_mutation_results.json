@@ -1,0 +1,82 @@
+[
+  {
+    "name": "descriptive fix reverted",
+    "file": "run_r9_descriptive.py",
+    "test": "test_r9_descriptive.py::test_report_writes_infinite_frozen_lambda[H6-True]",
+    "caught": true,
+    "exit": 1,
+    "failure": "FAILED test_r9_descriptive.py::test_report_writes_infinite_frozen_lambda[H6-True]",
+    "restored": true,
+    "source_sha256": "1d662f437e1b6931cbeb15275d0b8805b0db74b1a42d2caf3642147a9e5b78ad"
+  },
+  {
+    "name": "apply selection omits fix2",
+    "file": "run_r9_apply_rule.py",
+    "test": "test_r9_preread.py::test_numbered_preread_publishes_and_launches[H8-2]",
+    "caught": true,
+    "exit": 1,
+    "failure": "FAILED test_r9_preread.py::test_numbered_preread_publishes_and_launches[H8-2]",
+    "restored": true,
+    "source_sha256": "e778f6ed6616138e9a444d45c392733e8f4ca3281ff060b18ef1484c36874e4e"
+  },
+  {
+    "name": "held selection omits fix2",
+    "file": "run_r9_held.py",
+    "test": "test_r9_preread.py::test_numbered_preread_publishes_and_launches[H8-2]",
+    "caught": true,
+    "exit": 1,
+    "failure": "FAILED test_r9_preread.py::test_numbered_preread_publishes_and_launches[H8-2]",
+    "restored": true,
+    "source_sha256": "55caf787734aef50b15843015de488560c556be6ca366aa446985ac2173bcd4f"
+  },
+  {
+    "name": "launch selection omits fix2",
+    "file": "run_r9_preread.py",
+    "test": "test_r9_preread.py::test_numbered_preread_publishes_and_launches[H8-2]",
+    "caught": true,
+    "exit": 1,
+    "failure": "FAILED test_r9_preread.py::test_numbered_preread_publishes_and_launches[H8-2]",
+    "restored": true,
+    "source_sha256": "6b89c1e74cb1a00c79c2e0b1465e74ecfb4c9aa5e60138e01cd0fa6c31709890"
+  },
+  {
+    "name": "apply accepts stale fix2",
+    "file": "run_r9_apply_rule.py",
+    "test": "test_r9_preread.py::test_newer_generation_blocks_older_pass[stale-fix2]",
+    "caught": true,
+    "exit": 1,
+    "failure": "FAILED test_r9_preread.py::test_newer_generation_blocks_older_pass[stale-fix2]",
+    "restored": true,
+    "source_sha256": "e778f6ed6616138e9a444d45c392733e8f4ca3281ff060b18ef1484c36874e4e"
+  },
+  {
+    "name": "held accepts stale fix2",
+    "file": "run_r9_held.py",
+    "test": "test_r9_preread.py::test_newer_generation_blocks_older_pass[stale-fix2]",
+    "caught": true,
+    "exit": 1,
+    "failure": "FAILED test_r9_preread.py::test_newer_generation_blocks_older_pass[stale-fix2]",
+    "restored": true,
+    "source_sha256": "55caf787734aef50b15843015de488560c556be6ca366aa446985ac2173bcd4f"
+  },
+  {
+    "name": "launch accepts stale fix2",
+    "file": "run_r9_preread.py",
+    "test": "test_r9_preread.py::test_newer_generation_blocks_older_pass[stale-fix2]",
+    "caught": true,
+    "exit": 1,
+    "failure": "FAILED test_r9_preread.py::test_newer_generation_blocks_older_pass[stale-fix2]",
+    "restored": true,
+    "source_sha256": "6b89c1e74cb1a00c79c2e0b1465e74ecfb4c9aa5e60138e01cd0fa6c31709890"
+  },
+  {
+    "name": "publish accepts stale fix2",
+    "file": "run_r9_preread.py",
+    "test": "test_r9_preread.py::test_publish_refuses_stale_generation[module_sha256-value0-committed-fix2]",
+    "caught": true,
+    "exit": 1,
+    "failure": "FAILED test_r9_preread.py::test_publish_refuses_stale_generation[module_sha256-value0-committed-fix2]",
+    "restored": true,
+    "source_sha256": "6b89c1e74cb1a00c79c2e0b1465e74ecfb4c9aa5e60138e01cd0fa6c31709890"
+  }
+]
