@@ -1,0 +1,266 @@
+[
+ {
+  "i": 0,
+  "name": "launch module_sha256 half",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_launch_stop[launch_modules] - Failed: DID NOT..."
+ },
+ {
+  "i": 1,
+  "name": "launch read field",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_launch_stop[launch_read] - Failed: DID NOT RA..."
+ },
+ {
+  "i": 2,
+  "name": "launch backbone field",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_launch_stop[launch_backbone] - Failed: DID NO..."
+ },
+ {
+  "i": 3,
+  "name": "launch all checks passed",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_launch_stop[launch_check_not_run] - Failed: D..."
+ },
+ {
+  "i": 4,
+  "name": "launch non-empty inputs",
+  "caught": false,
+  "first_failure": ""
+ },
+ {
+  "i": 5,
+  "name": "launch files: whole check",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_launch_stop[launch_other_worktree_inputs] - F..."
+ },
+ {
+  "i": 6,
+  "name": "launch files: pins dropped",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_launch_stop[launch_no_pins] - Failed: DID NOT..."
+ },
+ {
+  "i": 7,
+  "name": "launch files: stage 0a dropped",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_launch_stop[launch_no_stage0a] - Failed: DID ..."
+ },
+ {
+  "i": 8,
+  "name": "launch files: A28 pins dropped",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_launch_stop[launch_no_a28_pins] - Failed: DID..."
+ },
+ {
+  "i": 9,
+  "name": "stage2 switched_off",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_input_stop[stage2_switched_off] - Failed: DID..."
+ },
+ {
+  "i": 10,
+  "name": "stage2 dry_run",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_input_stop[stage2_dry_run] - Failed: DID NOT ..."
+ },
+ {
+  "i": 11,
+  "name": "stage2 backbone",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_input_stop[stage2_backbone] - Failed: DID NOT..."
+ },
+ {
+  "i": 12,
+  "name": "regression fields seed only",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_regression_stop_one_field_wrong[mean_r1] - Fa..."
+ },
+ {
+  "i": 13,
+  "name": "regression field mean_r1 dropped",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_regression_stop_one_field_wrong[mean_r1] - Fa..."
+ },
+ {
+  "i": 14,
+  "name": "regression field coef_sha256 dropped",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_regression_stop_one_field_wrong[coef_sha256]"
+ },
+ {
+  "i": 15,
+  "name": "clip regression items only",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_clip_regression_stop_one_half_wrong[counts]"
+ },
+ {
+  "i": 16,
+  "name": "clip regression counts only",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_clip_regression_stop_one_half_wrong[counts]"
+ },
+ {
+  "i": 17,
+  "name": "clip regression item count dropped",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_clip_regression_stop_one_half_wrong[items_short]"
+ },
+ {
+  "i": 18,
+  "name": "phase1 phase==1",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_phase1_stop[phase1_phase] - Failed: DID NOT R..."
+ },
+ {
+  "i": 19,
+  "name": "phase1 backbone",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_phase1_stop[phase1_backbone] - Failed: DID NO..."
+ },
+ {
+  "i": 20,
+  "name": "phase1 items equal",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_phase1_stop[phase1_item] - Failed: DID NOT RA..."
+ },
+ {
+  "i": 21,
+  "name": "phase1 failed==0",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_phase1_stop[phase1_failed] - Failed: DID NOT ..."
+ },
+ {
+  "i": 22,
+  "name": "phase1 non-empty items",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_phase1_stop[phase1_no_items] - Failed: DID NO..."
+ },
+ {
+  "i": 23,
+  "name": "phase1 compared==len",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_phase1_stop[phase1_compared] - Failed: DID NO..."
+ },
+ {
+  "i": 24,
+  "name": "main: no setdefault",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_script_run_of_held_runner_exits_4_on_a_refused_gate"
+ },
+ {
+  "i": 25,
+  "name": "heldfix1 pre-read name",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_gate_fix_needs_held_fix_preread - AssertionEr..."
+ },
+ {
+  "i": 26,
+  "name": "heldfix1 cli kind",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_cli_held_fix_flag_runs_the_heldfix1_kind - As..."
+ },
+ {
+  "i": 27,
+  "name": "heldfix1 smoke: held read_names",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_held_fix_smoke_record_takes_precedence_in_both_latest_functions"
+ },
+ {
+  "i": 28,
+  "name": "heldfix1 smoke: held latest",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_held_fix_launches_on_its_own_preread_and_smoke"
+ },
+ {
+  "i": 29,
+  "name": "heldfix1 smoke: held precedence",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_held_fix_smoke_record_takes_precedence_in_both_latest_functions"
+ },
+ {
+  "i": 30,
+  "name": "heldfix1 smoke: apply precedence",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_held_fix_preread_is_free_when_fix1_authorised_the_first_launch"
+ },
+ {
+  "i": 31,
+  "name": "smoke agreement also in rederive dir",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_smoke_agreement_writes_only_into_the_smoke_folder"
+ },
+ {
+  "i": 32,
+  "name": "scratch smoke record copy always",
+  "caught": true,
+  "first_failure": "FAILED test_r9_preread.py::test_scratch_smoke_record_has_no_committed_copy - ..."
+ },
+ {
+  "i": 33,
+  "name": "apply: L1 print",
+  "caught": true,
+  "first_failure": "FAILED test_r9_apply_rule.py::test_main_prints_the_rederivation_count_beside_the_runners"
+ },
+ {
+  "i": 34,
+  "name": "apply: L2 quantity",
+  "caught": true,
+  "first_failure": "FAILED test_r9_apply_rule.py::test_pass_quantity_label_is_checked[P1-H6] - Fa..."
+ },
+ {
+  "i": 35,
+  "name": "apply: L3 read",
+  "caught": true,
+  "first_failure": "FAILED test_r9_apply_rule.py::test_pass_file_must_name_its_read_and_backbone[read-H7-H6]"
+ },
+ {
+  "i": 36,
+  "name": "apply: L3 backbone",
+  "caught": true,
+  "first_failure": "FAILED test_r9_apply_rule.py::test_pass_file_must_name_its_read_and_backbone[backbone-clip_b32-H6]"
+ },
+ {
+  "i": 37,
+  "name": "held: L3 pass-file fields",
+  "caught": true,
+  "first_failure": "FAILED test_r9_held.py::test_run_read_order_and_every_score_and_pass_argument[held-H6]"
+ },
+ {
+  "i": 38,
+  "name": "assert_rule: rule sha",
+  "caught": true,
+  "first_failure": "FAILED test_r9_apply_rule.py::test_assert_rule_stops_a_read[rule_sha] - Faile..."
+ },
+ {
+  "i": 39,
+  "name": "assert_rule: r6 sha",
+  "caught": true,
+  "first_failure": "FAILED test_r9_apply_rule.py::test_assert_rule_stops_a_read[r6_sha] - Failed:..."
+ },
+ {
+  "i": 40,
+  "name": "assert_rule: rule phrases",
+  "caught": true,
+  "first_failure": "FAILED test_r9_apply_rule.py::test_assert_rule_stops_a_read[phrase] - Failed:..."
+ },
+ {
+  "i": 41,
+  "name": "assert_rule: r6 phrases",
+  "caught": true,
+  "first_failure": "FAILED test_r9_apply_rule.py::test_assert_rule_stops_a_read[r6_phrase] - Fail..."
+ },
+ {
+  "i": 42,
+  "name": "assert_rule: call in not-run path",
+  "caught": true,
+  "first_failure": "FAILED test_r9_apply_rule.py::test_assert_rule_stops_a_not_run_verdict[rule_sha]"
+ },
+ {
+  "i": 43,
+  "name": "assert_rule: call in read path",
+  "caught": true,
+  "first_failure": "FAILED test_r9_apply_rule.py::test_assert_rule_stops_a_read[rule_sha] - Faile..."
+ }
+]

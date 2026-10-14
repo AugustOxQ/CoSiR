@@ -23,8 +23,7 @@ import run_r9_apply_rule as AR  # noqa: E402
 P = ("P1", "P2", "P3", "P4", "P5", "P6", "P7")
 L1 = ("P4", "P6")
 L2 = ("P1", "P2", "P3", "P5", "P7")
-QUANT = {"P1": "r1 AFF-COS", "P2": "r1 AFF-RCA", "P3": "r1 AFF-B", "P4": "r1 AFF-B0", "P5": "r1 AFF-CF",
-         "P6": "gain AFF-CF", "P7": "gain AFF-RCA"}
+QUANT = {nm: ST.QUANTITIES[nm][2] for nm in ("P1", "P2", "P3", "P4", "P5", "P6", "P7")}      # the pass file's labels
 SEVEN, TWO = ("H6", "H7"), ("H8", "H9", "H10")
 
 
@@ -65,7 +64,8 @@ def make_pass(read, counts, points=None, smoke=False, set_aside=(), flagged=()) 
     seeds = [9001, 9002, 9003] if smoke else ([52, 53, 54] if read in SEVEN else [55, 56, 57])
     n_ep = 9 * (64 if smoke else 4096)
     pt = lambda nm: points.get(nm, 0.5)  # noqa: E731
-    rec = {"rule_sha256": CM.RULE_SHA256, "mode": "smoke" if smoke else "held", "seeds": seeds, "n_episodes": n_ep,
+    rec = {"rule_sha256": CM.RULE_SHA256, "read": read, "backbone": AR.READ_BACKBONE_IDS[read],
+           "mode": "smoke" if smoke else "held", "seeds": seeds, "n_episodes": n_ep,
            "n_clusters": 746, "episodes_sha256": {}, "runner_sha256": "b" * 64, "module_sha256": {"x.py": "c" * 64},
            "time": "2026-10-14 03:14:15"}
     if read in SEVEN:
@@ -989,3 +989,75 @@ def test_smoke_agreement_is_read_from_the_smoke_folder_by_default(tmp_path):
     d = stage(tmp_path, "H8", ALL0, smoke=True)
     path, v = AR.apply("H8", smoke=True, results=d)           # no agreement_dir, no ledger
     assert v["agreement_file"] == "rd9_H8_agreement.json" and path.parent == d
+
+
+# ---------------------------------------------------------------- final-review fixes (A1 L1, L2, L3, assert_rule)
+
+def test_main_prints_the_rederivation_count_beside_the_runners(tmp_path, capsys, monkeypatch):
+    # L1: rule 7.6 / R6 8.5: the user sees both counts (the step requires them equal, so one number shows twice).
+    counts = dict(ALL0, P3=25, P4=39, P5=40, P6=60, P7=100)
+    d = stage(tmp_path, "H6", counts)
+    monkeypatch.setattr(AR, "RESULTS", d)
+    monkeypatch.setattr(AR, "AGREEMENT_DIR", d)
+    assert AR.main(["--read", "H6"]) == 0
+    lines = [x for x in capsys.readouterr().out.splitlines() if "boundary (rule 7.6" in x]
+    assert lines
+    for line in lines:
+        check = line.split("decides): ")[1].split()[0]
+        assert f"{check} count {counts[check]}, re-derivation's count {counts[check]}, largest passing count" in line
+
+
+@pytest.mark.parametrize("read", ["H6", "H8"])
+@pytest.mark.parametrize("check", ["P1", "P4", "P7"])
+def test_pass_quantity_label_is_checked(tmp_path, read, check):      # L2
+    d = stage(tmp_path, read, ALL0)
+    edit_pass(d, read, lambda r: r["checks"][check].update(quantity="R@1, AFF - B0" if check != "P4" else "R@1, AFF - B"))
+    refused(4, read, d, "pass schema")
+
+
+@pytest.mark.parametrize("read", ["H6", "H9"])
+@pytest.mark.parametrize("field,value", [("read", "H7"), ("backbone", "clip_b32"), ("read", None), ("backbone", None)])
+def test_pass_file_must_name_its_read_and_backbone(tmp_path, read, field, value):      # L3
+    d = stage(tmp_path, read, ALL0)
+    edit_pass(d, read, lambda r: r.pop(field) if value is None else r.update({field: value}))
+    refused(4, read, d, "read and backbone")
+
+
+def test_pass_file_of_another_read_with_the_same_backbone_is_refused(tmp_path):
+    d = stage(tmp_path, "H9", ALL0)       # an H6 pass (also Qwen3-VL) under H9's name
+    edit_pass(d, "H9", lambda r: r.update(read="H6"))
+    refused(4, "H9", d, "read and backbone")
+
+
+def alter_rule(tmp_path, monkeypatch, fault):
+    if fault == "rule_sha":
+        edited = tmp_path / "DECISION_RULE.md"
+        edited.write_bytes(AR.RULE_PATH.read_bytes() + b"\nan edit\n")
+        monkeypatch.setattr(AR, "RULE_PATH", edited)
+        return 4, "not the committed rule's"
+    if fault == "r6_sha":
+        monkeypatch.setattr(CM, "R6_RULE_SHA256", "0" * 64)
+        return 4, "of round 6"
+    if fault == "phrase":
+        monkeypatch.setattr(AR, "RULE_PHRASES", AR.RULE_PHRASES + ("a sentence the rule does not contain",))
+        return 5, "fixed phrase"
+    monkeypatch.setattr(AR, "R6_PHRASES", AR.R6_PHRASES + ("a sentence round 6 does not contain",))
+    return 5, "fixed phrase"
+
+
+@pytest.mark.parametrize("fault", ["rule_sha", "r6_sha", "phrase", "r6_phrase"])
+def test_assert_rule_stops_a_read(tmp_path, monkeypatch, fault):
+    d = stage(tmp_path, "H6", ALL0)
+    code, match = alter_rule(tmp_path, monkeypatch, fault)
+    refused(code, "H6", d, match)
+
+
+@pytest.mark.parametrize("fault", ["rule_sha", "r6_sha", "phrase", "r6_phrase"])
+def test_assert_rule_stops_a_not_run_verdict(tmp_path, monkeypatch, fault):
+    d = tmp_path / "smoke"
+    d.mkdir()
+    code, match = alter_rule(tmp_path, monkeypatch, fault)
+    with pytest.raises(AR.Stop) as e:
+        call("H6", d, smoke=True, not_run="switched_off")
+    assert e.value.code == code and match in e.value.msg
+    assert not list(d.glob("held_verdict_*.json"))

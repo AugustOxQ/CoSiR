@@ -562,7 +562,7 @@ def test_a28_continuations_use_all_nine_a28_hashes(case, monkeypatch, read, vari
         case.ledger.write_text(case.ledger.read_text().replace(f'| {read} |', f'| {read}-R |'))
     elif variant == 'fix1':
         put(case.res / base.pass_, {})
-        put(case.res / 'smoke_record_fix1.json', {})
+        put(case.res / 'smoke_record_heldfix1.json', {})
         case.ledger.write_text(case.ledger.read_text().replace('| (pending) |',
                               '| ' + '; '.join(h for hsp in hs.values() for h in hsp.values()) + ' |', 1))
     seen = []
@@ -711,7 +711,7 @@ def continuation(mod, c, mp, read, variant):
         c.ledger.write_text(c.ledger.read_text().replace(f'| {read} |', f'| {read}-R |'))
     elif variant == 'fix1':
         put(c.res / base.pass_, {})
-        put(c.res / 'smoke_record_fix1.json', {})
+        put(c.res / 'smoke_record_heldfix1.json', {})
         c.ledger.write_text(c.ledger.read_text().replace('| (pending) |',
                             '| ' + '; '.join(h for hsp in hs.values() for h in hsp.values()) + ' |', 1))
 

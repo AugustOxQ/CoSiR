@@ -3,11 +3,12 @@
 CPU only; prints check names, never metrics. --results controls all new outputs;
 stage certificates and recipe files are read from their owners' normal locations.
 A failed run is recorded once too. After a fix, use --fix 1 (R6 naming),
---after-crash, or --reserve; no evidence is overwritten.
+--after-crash, or --reserve; no evidence is overwritten. --held-fix 1 is the pre-read for a held --fix 1 (its own
+names, preread_<Hn>_heldfix1.json and smoke_record_heldfix1.json).
 
 Phase 1 is read, not launched: run rd9_compare.py --phase1 --backbone B first,
 writing AR.AGREEMENT_DIR/rd9_<B>_phase1_agreement.json. Smoke agreements are
-explicit R6-style stand-ins, copied from AR.AGREEMENT_DIR to the smoke output.
+explicit R6-style stand-ins, written to the smoke output only.
 CLIP sensitivity is read directly from R6, exactly as the held runner does.
 """
 import argparse
@@ -31,7 +32,7 @@ import run_r9_apply_rule as AR
 import numpy as np
 
 CHECK_ORDER = ('inputs', 'heads', 'regression', 'sensitivity', 'phase1', 'smoke')
-VARIANTS = ('smoke', 'fix1', 'crash1', 'reserve')
+VARIANTS = ('smoke', 'fix1', 'crash1', 'reserve', 'heldfix1')
 
 
 def require(cond, msg):
@@ -273,12 +274,11 @@ def smoke_agreement(out, read, tag):
            'rederived_counts': {c: rec['checks'][c]['n'] for c in RH.ST.CHECKS},
            'items': [{'key': 'smoke_chain_stand_in', 'equal': True}], 'compared': 1, 'failed': 0,
            'what': 'R6-style smoke stand-in; no independent phase-2 re-derivation ran'}
-    # Producer stays under the apply step's owned directory. Every attempt has
-    # a distinct subdirectory; the apply step itself selects the consumer name.
-    src = AR.AGREEMENT_DIR / 'smoke' / tag / f'rd9_{read}_agreement.json'
-    write_once(src, agr)
-    write_once(out / src.name, agr)
-    return {'source': str(src), 'copy': str(out / src.name), 'sha256': R.sha256_file(src)}
+    # Only the smoke output folder is written (the apply step and the descriptive pass read it from there), so a
+    # scratch --results run leaves nothing inside the re-derivation's folder.
+    copy = out / f'rd9_{read}_agreement.json'
+    write_once(copy, agr)
+    return {'copy': str(copy), 'sha256': R.sha256_file(copy)}
 
 
 def smoke_gate(state, evidence, results, kind):
@@ -356,8 +356,9 @@ def smoke_gate(state, evidence, results, kind):
 def publish_smoke(record, results, kind):
     """Keep an existing current canonical record; each read also keeps its own proof."""
     path = Path(results) / AR.SMOKE_RECORDS[kind]
-    copy = HERE / path.name
-    for target in (path, copy):
+    # The committed copy beside the code is written only by a run into the real results folder.
+    targets = (path, HERE / path.name) if Path(results).resolve() == Path(R.RESULTS).resolve() else (path,)
+    for target in targets:
         if target.exists():
             old = json.loads(target.read_text())
             require(old.get('passed') is True and old.get('module_sha256') == record['module_sha256']
@@ -418,7 +419,8 @@ def run(read, results=None, kind='smoke'):
 def preread_guard(results, read, variant='held', after_crash=False, here=None):
     """Held launch gate, with the exact successful proof and its file/code bytes."""
     if variant in ('reserve', 'fix1'):
-        path = Path(results) / preread_name(read, variant)
+        # A held --fix 1 has its own pre-read name: `_fix1` may already have authorised a first launch.
+        path = Path(results) / preread_name(read, 'heldfix1' if variant == 'fix1' else variant)
     else:
         # A failed pre-read's corrected pass can authorise the first launch too;
         # it is not a held --fix (which requires an already completed held pass).
@@ -436,6 +438,11 @@ def preread_guard(results, read, variant='held', after_crash=False, here=None):
     require(bool(rec.get('input_file_sha256'))
             and all(Path(p).is_file() and R.sha256_file(p) == sha for p, sha in rec['input_file_sha256'].items()),
             'pre-read inputs changed')  # guard:preread_launch_inputs
+    # The record is bound to this checkout's own pins and stage 0a record (a record copied from another worktree
+    # names that worktree's files).
+    own = [R.pins_path(RH.READ_BACKBONES[read]), R.RESULTS / S0A.OUT_NAME] + ([RH.AD.PINS_PATH] if read in RH.A28_READS else [])
+    require(all(str(Path(p).resolve()) in rec['input_file_sha256'] for p in own),
+            'pre-read record does not cover this checkout\'s pins and stage 0a record')  # guard:preread_launch_files
     proof = rec.get('smoke_proof', {})
     p = Path(proof.get('path', ''))
     require(p.is_file() and R.sha256_file(p) == proof.get('sha256'),
@@ -448,11 +455,13 @@ def main(argv=None):
     ap.add_argument('--read', required=True, choices=tuple(RH.READ_BACKBONES))
     ap.add_argument('--results', type=Path, default=R.RESULTS)
     flags = ap.add_mutually_exclusive_group()
-    flags.add_argument('--fix', type=int, choices=(1,))
+    flags.add_argument('--fix', type=int, choices=(1,), help='corrected pre-read before the first launch')
+    flags.add_argument('--held-fix', type=int, choices=(1,), dest='held_fix', help='pre-read for a held --fix 1')
     flags.add_argument('--after-crash', action='store_true')
     flags.add_argument('--reserve', action='store_true')
     a = ap.parse_args(argv)
-    kind = 'fix1' if a.fix else 'crash1' if a.after_crash else 'reserve' if a.reserve else 'smoke'
+    kind = ('fix1' if a.fix else 'heldfix1' if a.held_fix else 'crash1' if a.after_crash
+            else 'reserve' if a.reserve else 'smoke')
     try:
         return run(a.read, a.results, kind)
     except (RH.Refused, AR.Stop) as exc:
