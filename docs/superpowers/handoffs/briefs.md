@@ -347,3 +347,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-14-r9-run-handoff.md
 - New chat: tab 'r9 run', session 607c1a73-619b-4244-a0e8-829147963c92
 
+[brief] CoSiR: Leiden groupings 2 -> outside weekly (2026-10-14 08:28 Amsterdam)
+- Done: the Leiden and k-shot side checks closed; readings recorded; labels question logged for the meeting.
+- State: last stage report and outside-view page cover 2 to 12 October; last weekly report 2026-10-07.
+- Next: ask the user which one or two outside-view reports to make, then the weekly report, slides and pptx.
+- Blocked: the user's choice of outside-view reports; the weekly meeting is today (2026-10-14).
+- Handoff: docs/superpowers/handoffs/2026-10-14-outside-weekly-handoff.md
+- New chat: tab 'outside weekly', session c9513f8b-508d-49c1-9d0e-5d92aa0f63d8
+
