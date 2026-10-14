@@ -1,0 +1,128 @@
+{
+ "verdict_backbone_code_name": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_bind_read_real_agreement_directory_and_missing[H6]"
+  ]
+ },
+ "verdict_read_not_checked": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_bind_read_verdict_identity_field_by_field[read-H7]"
+  ]
+ },
+ "verdict_status_not_checked": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_bind_read_refuses_a_not_run_verdict - Ass..."
+  ]
+ },
+ "verdict_rule_sha_not_checked": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_bind_read_verdict_identity_field_by_field[rule_sha256-0000000000000000000000000000000000000000000000000000000000000000]"
+  ]
+ },
+ "pass_sha_binding_159": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_bind_read_refuses_a_pass_changed_after_the_verdict[H6]"
+  ]
+ },
+ "agreement_sha_in_search": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_bind_read_agreement_of_wrong_bytes - Asse..."
+  ]
+ },
+ "agreement_missing_not_refused": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_bind_read_real_agreement_directory_and_missing[H6]"
+  ]
+ },
+ "rebuilt_arrays_191": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_check_rebuilt_accepts_equal_arrays_and_refuses_each_difference"
+  ]
+ },
+ "rebuilt_dtype_not_compared": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_check_rebuilt_accepts_equal_arrays_and_refuses_each_difference"
+  ]
+ },
+ "directions_172": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_check_directions_on_a_real_score_and_with_one_row_changed"
+  ]
+ },
+ "directions_any_not_all": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_check_directions_on_a_real_score_and_with_one_row_changed"
+  ]
+ },
+ "near_source_sha_139": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_near_counts_refuses_a_pass_that_names_another_sha"
+  ]
+ },
+ "near_pin_139": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_near_counts_refuses_a_file_that_is_not_the_pinned_one"
+  ]
+ },
+ "near_cos_092_order": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_near_counts_refuses_bad_counts[content0]"
+  ]
+ },
+ "near_cos_092_int": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_near_counts_refuses_bad_counts[content2]"
+  ]
+ },
+ "near_counts_vs_pass": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_near_counts_refuses_bad_counts[content3]"
+  ]
+ },
+ "stage0b_rule_145": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_stage0b_identity[change0] - Failed: DID N..."
+  ]
+ },
+ "stage0b_scored_145": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_stage0b_identity[change1] - Failed: DID N..."
+  ]
+ },
+ "smoke_tag_plain_name": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_smoke_tag_refusals[True-a/b] - AssertionE..."
+  ]
+ },
+ "smoke_tag_needs_smoke": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_smoke_tag_refusals[False-t1] - AssertionE..."
+  ]
+ },
+ "output_exists": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_smoke_tag_never_replaces_an_earlier_file"
+  ]
+ }
+}
