@@ -36,7 +36,9 @@ not AFF re-fitted for k pairs. One seed, CLIP only, no held rows. We did not tes
 2. Re-fit the reader and re-pick the gate and weights at 1 or 2 pairs. About two hours; a diagnostic only. It separates
    the two effects above.
 
-**Your reading.** *(to be recorded)*
+**Your reading.** "Emotion is so different from style and genre that it needs fewer examples; style × genre stays
+hard at any k. This supports 'the gain is mostly from emotion, from the GoEmotions encoders'" (user, 2026-10-14, after
+seeing our reading and the split by aspect below; the user notes it may hold mistakes).
 
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>
@@ -128,6 +130,23 @@ now does that in most rankings of both conditions. The check cannot separate les
 **Where the loss sits.** At 2 pairs, emotion × genre carries most of it (+1.45 → +0.84 over B′(A0)), and style × genre
 falls further below B′(A0) (−0.33 → −1.10). At 1 pair, emotion × genre and style × genre fall well below B′(A0),
 while emotion × style stays at about +0.9. These are points without intervals.
+
+**Split by the aspect the pairs show** (follow-up, 2026-10-14, user's question; `ks_by_condition.py`,
+`results/ks_by_condition.txt`; k = 4 reproduces the pooled AFF 19.14). Each aspect pools the episodes whose pairs show
+it, across its two aspect pairs (8,192 each). AFF − B′(A0), R@1 points:
+
+| Example pairs | pairs show emotion | pairs show style | pairs show genre |
+|---|---|---|---|
+| 4 | +2.88 [+2.40, +3.38] | −0.09 [−0.46, +0.28] | −0.69 [−1.07, −0.31] |
+| 3 | +2.92 [+2.44, +3.42] | +0.04 [−0.34, +0.41] | −1.06 [−1.45, −0.67] |
+| 2 | +2.58 [+2.09, +3.07] | −0.17 [−0.56, +0.20] | −1.84 [−2.27, −1.42] |
+| 1 | +4.41 [+3.83, +5.02] | −1.15 [−1.66, −0.64] | −8.44 [−9.11, −7.73] |
+
+B′(A0) at 4 pairs: emotion 11.2, style 11.3, genre 32.8. AFF's gate opens only when the reader picks affect, so its
+only move is to steer toward emotion; on style and genre its best is a tie with B (AFF − matched control at 4 pairs:
+style −0.25 [−0.58, +0.09], genre +0.04 [−0.31, +0.39]). The emotion gain does not need the pairs (it is largest at
+1 pair); the pairs mostly tell AFF when not to steer, and genre, the easy aspect for the base scorer, pays most when it
+steers wrongly.
 
 ## Deviations
 

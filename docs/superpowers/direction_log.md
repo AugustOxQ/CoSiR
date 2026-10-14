@@ -63,8 +63,13 @@ stay in the entries below.
 - **Read:** frozen AFF with the first k support and contrast pairs of the 12,288 seed-42 development episodes. AFF −
   B′(A0): +0.70 [+0.46, +0.94] at 4 pairs, +0.63 [+0.40, +0.87] at 3, +0.19 [−0.06, +0.44] at 2, −1.73 [−2.05, −1.41]
   at 1. Condition gain 3.11, 3.10, 2.58, 1.99. At 1 pair the gate opens in 62% of condition-b values (30% at 4).
-- **Meaning (C):** deferred by the user until round 9 ends ("I will discuss more after round 9 finished"); a separate
-  auto report, outside the r9 loop.
+- **Meaning (C):** "Emotion is so different from style and genre that it needs fewer examples; style × genre stays
+  hard at any k. This supports 'the gain is mostly from emotion, from the GoEmotions encoders'" (user, 2026-10-14, after
+  seeing ours; the user notes it may hold mistakes). Ours: AFF as it is needs at least 3 pairs. A follow-up split by the
+  aspect the pairs show (`ks_by_condition.py`): AFF − B′(A0) is +2.88 [+2.40, +3.38] on emotion at 4 pairs and +4.41
+  at 1; style about 0; genre −0.69 [−1.07, −0.31] at 4 and −8.44 [−9.11, −7.73] at 1. AFF only steers toward emotion,
+  so the pairs mostly tell it when not to steer. The two agree that the gain is emotion's; they differ on "needs fewer
+  examples": the emotion gain needs none, the other aspects need the pairs. The GoEmotions source is not tested here.
 - **Decided (A):** no k = 5 to 7 (user, after seeing the options); add k = 1, then stop (user). Exploration, small loop,
   side chat outside r9. The k = 1 rule for the reader's spread features: agent default.
 - **Why:** a cheap check of how many example pairs AFF needs, in the spirit of k-shot learning (user).

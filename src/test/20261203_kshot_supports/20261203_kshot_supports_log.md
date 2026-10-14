@@ -100,3 +100,11 @@ Terminology: the brief describes examples sharing the query’s value. The actua
 Previous completed-run runtime: 32.5 seconds.
 
 Implementation note: the first execution stopped after 13.8 seconds at a wrong module reference in the crossfit verification call (AttributeError, after the k=4 numeric comparisons). The reference was corrected and the complete run restarted. No required numerical check failed. Completed-run runtime is 32.5 seconds; both executions total 46.3 seconds. The raw log retains both attempts.
+
+## 2026-10-14 follow-up: split by the aspect the pairs show
+
+The user asked for results within each aspect. `ks_by_condition.py` re-scores the same frozen path (CPU, under a
+minute) and splits R@1 by condition: emotion, style, genre told, each pooled over its two aspect pairs. k = 4
+reproduces the pooled AFF R@1 (19.14). AFF − B′(A0): emotion +2.88 [+2.40, +3.38] at k = 4, +4.41 at k = 1; style
+−0.09 at k = 4, −1.15 at k = 1; genre −0.69 [−1.07, −0.31] at k = 4, −8.44 [−9.11, −7.73] at k = 1. Table in
+`results/ks_by_condition.txt` and the report. The user's reading is in the report and the direction log.
