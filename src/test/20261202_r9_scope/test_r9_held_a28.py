@@ -479,6 +479,7 @@ def test_smoke_builds_selection_space_and_checks_real_inputs_without_episodes(ca
     put(vp, values)
     put(fp, {'flagged': ['Urdu']})
     put(case.res / 'near_duplicates_a28.json', {'cos_099': 3, 'cos_098': 7, 'cos_092': 20})
+    monkeypatch.setattr(U, 'NEAR_DUPLICATES_SHA256', U.R.sha256_file(case.res / 'near_duplicates_a28.json'))  # the pin
     pins = case.res / 'pins_a28.json'
     put(pins, {'files': {'results/value_sets_a28.json': {'path': str(vp)},
                          'results/language_flags_a28.json': {'path': str(fp)}}})
@@ -520,6 +521,19 @@ def test_smoke_builds_selection_space_and_checks_real_inputs_without_episodes(ca
     path = case.res / 'near_duplicates_a28.json'
     assert out.near_source == {'file': str(path), 'sha256': U.R.sha256_file(path)}
     assert out.flagged_languages == ['Urdu'] and out.value_record == values
+    # B1 LOW-2: the file is read pinned. An edited file (same counts) is refused before anything is taken from it.
+    put(path, {'cos_099': 3, 'cos_098': 7, 'cos_092': 21})
+    with pytest.raises(AssertionError, match='near_duplicates_a28.json'):
+        U.setup_a28(env, 'clip_b32', True)
+
+
+def test_near_duplicates_pin_equals_the_comparers():
+    import hashlib
+    rederive = (U.HERE / 'rederive/rd9_inputs.py').read_text()
+    assert re.search(r"NEAR_DUPLICATES_SHA256\s*=\s*'([0-9a-f]{64})'", rederive).group(1) == U.NEAR_DUPLICATES_SHA256
+    real = U.R.MAIN / 'src/test/20261202_r9_scope/results/near_duplicates_a28.json'
+    if real.exists():    # the stage-1 file exists only in the integration checkout
+        assert hashlib.sha256(real.read_bytes()).hexdigest() == U.NEAR_DUPLICATES_SHA256
 
 
 @pytest.mark.parametrize('read', ['H8', 'H9', 'H10'])

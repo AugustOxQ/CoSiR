@@ -7,7 +7,7 @@ import argparse
 import pickle
 from pathlib import Path
 import numpy as np
-from rd9_inputs import Inputs,RD,OUT,feature_data,save_npz,save_json,check_output,sha_file,verify_reads,library_sha256
+from rd9_inputs import Inputs,RD,OUT,feature_data,save_npz,save_json,check_output,sha_file,verify_reads,library_sha256,unpickle
 from rd9_bundle import split,fit_heads,encoded,prepare_arrays,fit_basis,score_block
 from rd9_episodes import PAIRS,FIELDS,concat,build_standard
 from rd9_stats import pass_record
@@ -57,7 +57,7 @@ def main():
         assert sha_file(str(prefix)+'_bundle.npz')==rec['bundle_sha256']
         assert sha_file(str(prefix)+'_fits.pkl')==rec['fits_sha256']
         with np.load(str(prefix)+'_bundle.npz') as z: bundle={k:z[k] for k in z.files}
-        with Path(str(prefix)+'_fits.pkl').open('rb') as f: fits=pickle.load(f)
+        fits=unpickle(Path(str(prefix)+'_fits.pkl').read_bytes())
         parts=[AspectEpisodes(a,b,*(bundle[f'{a}__{b}__{field}'] for field in FIELDS)) for a,b,_ in PAIRS]
         ep=concat(parts)
         readers=inputs.readers()

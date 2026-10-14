@@ -57,6 +57,7 @@ def stage(work, mode='held', a28=False, read='H6', name='held_pass_H6.json', twe
     np.savez(work / 'own.npz', **arrays)
     np.savez(work / 'rep.npz', **arrays)
     reported = copy.deepcopy(stats)
+    for j, check in reported['checks'].items(): check['quantity'] = S.QUANTITIES[j]    # the pass file's label (A1 L2)
     if a28:
         reported.update(set_aside=[], flagged_languages=['Emakhuwa', 'IsiNdebele'],
                         near_duplicates=dict(cos_099=3, cos_098=7))
@@ -82,6 +83,9 @@ def run(work, own, rep, monkeypatch, out='agr.json', extra=(), input_paths=True,
     # The pins file is built at call time: several tests rewrite the flags file after stage().
     if pins and '--a28-pins' not in extra and (work / 'language_flags_a28.json').exists():
         extra = [*extra, '--a28-pins', str(write_pins(work))]
+    if (work / 'near_duplicates_a28.json').exists():    # the digest is pinned in rd9_inputs; pin the staged file's
+        monkeypatch.setattr(rd9_inputs, 'NEAR_DUPLICATES_SHA256',
+                            hashlib.sha256((work / 'near_duplicates_a28.json').read_bytes()).hexdigest())
     argv = ['rd9_compare.py', '--derived', str(own), '--derived-arrays', str(work / 'own.npz'), '--reported', str(rep),
             '--reported-arrays', str(work / 'rep.npz'), '--out', str(work / out)]
     if input_paths:
@@ -507,11 +511,38 @@ def test_missing_pins_file_crashes(work, monkeypatch):
     assert not (work / 'agr.json').exists()
 
 
-def test_near_duplicates_file_is_not_pinned_only_recorded(work, monkeypatch):
+def test_near_duplicates_file_is_pinned_in_rd9_inputs_not_in_pins_a28(work, monkeypatch):
     _, own, rep = stage(work, **TWO_LEVEL)
     pins = json.loads(write_pins(work).read_text())
     assert not any('near_duplicates' in key for key in pins['files'])
     assert run(work, own, rep, monkeypatch)['agreement'] is True
+
+
+def test_near_duplicates_pin_constant():
+    assert rd9_inputs.NEAR_DUPLICATES_SHA256 == 'ba92530d433dded1c8d2b2a2037e23d015aed5361fb1249d1caa631e40da2206'
+    assert list(rd9_inputs.near_duplicates_entries().values()) == [rd9_inputs.NEAR_DUPLICATES_SHA256]
+
+
+def test_near_duplicates_file_must_equal_its_pin(work, monkeypatch):    # B1 LOW-2
+    _, own, rep = stage(work, **TWO_LEVEL)
+    run(work, own, rep, monkeypatch)    # pins the staged bytes
+    (work / 'agr.json').unlink()
+    # an edited file with the same counts: the claim would carry it and C13 would agree
+    write(work / 'near_duplicates_a28.json', dict(cos_099=3, cos_098=7, train_side=912, read_paintings=746, pairs_099=[1]))
+    argv = ['rd9_compare.py', '--derived', str(own), '--derived-arrays', str(work / 'own.npz'), '--reported', str(rep),
+            '--reported-arrays', str(work / 'rep.npz'), '--out', str(work / 'agr.json'),
+            '--language-flags', str(work / 'language_flags_a28.json'),
+            '--near-duplicates', str(work / 'near_duplicates_a28.json'), '--a28-pins', str(write_pins(work))]
+    monkeypatch.setattr(sys, 'argv', argv)
+    with pytest.raises(AssertionError, match='near_duplicates_a28.json'):
+        C.main()
+    assert not (work / 'agr.json').exists()
+
+
+def test_real_near_duplicates_file_matches_the_pin():
+    path = rd9_inputs.MAIN / 'src/test/20261202_r9_scope/results/near_duplicates_a28.json'
+    if not path.exists(): pytest.skip('the stage-1 file exists only in the integration checkout')
+    rd9_inputs.read_pinned(path, rd9_inputs.near_duplicates_entries())
 
 
 def test_pinned_bytes_are_the_bytes_that_are_parsed(work):
@@ -524,3 +555,85 @@ def test_pinned_bytes_are_the_bytes_that_are_parsed(work):
         rd9_inputs.read_pinned(path, {'results/y.json': digest})
     with pytest.raises(AssertionError, match='x.json'):
         rd9_inputs.read_pinned(path, {'a/x.json': digest, 'b/x.json': digest})
+
+
+# ---- fx-c13: detectable margins (A1 M1), the quantity label (A1 L2), a repeated set-aside entry (B1 nit)
+
+def margins_example(work, own, z=3.532):
+    """Give the derived record SE, x and x95 for all seven checks, and write the runner's matching sensitivity file."""
+    record, sens = json.loads(own.read_text()), {}
+    for k, j in enumerate(S.CHECK_IDS):
+        se = 0.1 + 0.01 * k
+        record['stats']['checks'][j].update(SE=se, x=z * se, x95=2.80 * se)
+        sens[j] = dict(SE=se, x=z * se, x95=2.80 * se)
+    write(own, record)
+    return write(work / 'sensitivity_H6.json', sens), sens
+
+
+def test_margins_agree_and_the_sensitivity_file_is_recorded(work, monkeypatch):
+    _, own, rep = stage(work)
+    path, _ = margins_example(work, own)
+    got = run(work, own, rep, monkeypatch, extra=['--reported-sensitivity', str(path)])
+    assert got['agreement'] is True and got['sensitivity_sha256'] == hashlib.sha256(path.read_bytes()).hexdigest()
+    keys = {i['key'] for i in got['items']}
+    assert {f'checks.{j}.{k}' for j in S.CHECK_IDS for k in ('SE', 'x', 'x95')} <= keys
+
+
+@pytest.mark.parametrize('field,edit', [('SE', lambda v: 2 * v),    # the A1 probe: SE doubled
+                                        ('x', lambda v: v + 1e-6), ('x95', lambda v: 2 * v)])
+def test_a_changed_margin_disagrees(work, monkeypatch, field, edit):
+    _, own, rep = stage(work)
+    path, sens = margins_example(work, own)
+    sens['P4'][field] = edit(sens['P4'][field])
+    if field == 'SE':    # x and x95 kept consistent with the doubled SE, as a runner would write them
+        sens['P4'].update(x=3.532 * sens['P4']['SE'], x95=2.80 * sens['P4']['SE'])
+    write(path, sens)
+    with pytest.raises(SystemExit):
+        run(work, own, rep, monkeypatch, extra=['--reported-sensitivity', str(path)])
+    got = json.loads((work / 'agr.json').read_text())
+    keys = {i['key'] for i in got['items'] if not i['equal']}
+    assert got['agreement'] is False and f'checks.P4.{field}' in keys and all(k.startswith('checks.P4.') for k in keys)
+
+
+def test_margins_without_a_sensitivity_file_disagree(work, monkeypatch):
+    _, own, rep = stage(work)
+    margins_example(work, own)
+    with pytest.raises(SystemExit):
+        run(work, own, rep, monkeypatch)    # no --reported-sensitivity
+    got = json.loads((work / 'agr.json').read_text())
+    assert {i['key'] for i in got['items'] if not i['equal']} == {f'checks.{j}.{k}' for j in S.CHECK_IDS for k in ('SE', 'x', 'x95')}
+    assert 'sensitivity_sha256' not in got
+
+
+def test_a_check_missing_from_the_sensitivity_file_disagrees(work, monkeypatch):
+    _, own, rep = stage(work)
+    path, sens = margins_example(work, own)
+    del sens['P7']
+    write(path, sens)
+    with pytest.raises(SystemExit):
+        run(work, own, rep, monkeypatch, extra=['--reported-sensitivity', str(path)])
+    got = json.loads((work / 'agr.json').read_text())
+    assert {i['key'] for i in got['items'] if not i['equal']} == {f'checks.P7.{k}' for k in ('SE', 'x', 'x95')}
+
+
+def test_the_quantity_label_is_compared(work, monkeypatch):
+    def relabel(reported): reported['checks']['P3']['quantity'] = 'R@1, AFF - B0'
+    _, own, rep = stage(work, tweak=relabel)
+    failed = disagreement(work, own, rep, monkeypatch)
+    assert [i['key'] for i in failed] == ['checks.P3.quantity']
+
+
+def test_a_missing_quantity_label_disagrees(work, monkeypatch):
+    def drop(reported): del reported['checks']['P6']['quantity']
+    _, own, rep = stage(work, tweak=drop)
+    assert [i['key'] for i in disagreement(work, own, rep, monkeypatch)] == ['checks.P6.quantity']
+
+
+def test_a_repeated_set_aside_entry_disagrees(work, monkeypatch):    # B1 nit: both sides were compared as sets
+    _, own, rep = stage(work, **TWO_LEVEL)
+    set_aside_example(own, rep)
+    reported = json.loads(rep.read_text())
+    reported['set_aside'].append(dict(reported['set_aside'][0]))
+    write(rep, reported)
+    failed = disagreement(work, own, rep, monkeypatch)
+    assert [i['key'] for i in failed] == ['set_aside']

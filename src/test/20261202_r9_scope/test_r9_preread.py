@@ -409,7 +409,9 @@ def test_comparer_accepts_stage2_namespaces_and_detects_changed_hash():
     own = {'picks': {'aff': [1, 2], 'cf': [3, 4], 'sigma_star': [0., 0.], 'switched_off': False,
                     'gate_share': .5, 'B': [[0., 0.]] * 2, 'B0': [[0., 0.]] * 2,
                     'rca_lambda': [0., 0.], 'taus': [-1., 0., .5, .9]},
-           'stats': {'checks': {c: {'point': 1., 'n': 0} for c in U.RH.ST.CHECKS}}}
+           'stats': {'checks': {c: {'point': 1., 'n': 0} for c in U.RH.ST.CHECKS}, 'n_episodes': 2, 'n_clusters': 2,
+                     'sensitivity': {c: {'sigma_a2': .5, 'sigma_e2': .25} for c in U.RH.ST.CHECKS}}}
+    sigma = {c: {'sigma_a2': .5, 'sigma_eps2': .25} for c in U.RH.ST.CHECKS} | {'N': 2, 'n_paintings': 2}
     cells = {k: own['picks'][k] for k in ('aff', 'cf', 'sigma_star', 'switched_off', 'gate_share')}
     picks = {k: {'0': [0., 0.], '1': [0., 0.]} for k in ('B', 'B0')}
     seed = {'mean_r1': {k: 37.5 for k in ('B', 'B0', 'B1', 'AFF', 'CF')},
@@ -421,9 +423,12 @@ def test_comparer_accepts_stage2_namespaces_and_detects_changed_hash():
     def check():
         comp = C.Comparison()
         C.compare_phase1(comp, own, arrays, cells, picks, {'scorers': {'rca': {'lambda_picks': {'0': 0., '1': 0.}}}},
-                         {'taus': own['picks']['taus']}, seed)
+                         {'taus': own['picks']['taus']}, seed, sigma)
         return comp.record()
     assert check()['agreement'] is True
+    sigma['P1']['sigma_a2'] = 9.    # fx-c13: the seed-42 sigma inputs are compared
+    assert check()['agreement'] is False
+    sigma['P1']['sigma_a2'] = .5
     seed['arrays']['seed42_arrays/aff_fused__r1']['sha256'] = '0' * 64
     assert check()['agreement'] is False
 

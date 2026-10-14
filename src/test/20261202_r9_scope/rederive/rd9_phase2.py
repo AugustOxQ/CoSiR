@@ -9,7 +9,7 @@ import pickle
 from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
-from rd9_inputs import Inputs,RD,OUT,HERE,T,feature_data,save_json,save_npz,sha_file,verify_reads,library_sha256
+from rd9_inputs import Inputs,RD,OUT,HERE,T,feature_data,save_json,save_npz,sha_file,verify_reads,library_sha256,unpickle
 from rd9_bundle import split,encoded,prepare_arrays,score_block
 from rd9_scores import unit32
 from rd9_episodes import PAIRS,FIELDS,concat,value_codes,build_standard,build_a28,table_arrays
@@ -100,7 +100,7 @@ def main():
     phase1=json.loads(Path(str(prefix)+'_phase1.json').read_text())
     prep=json.loads(Path(str(prefix)+'_prepare.json').read_text())
     assert sha_file(str(prefix)+'_fits.pkl')==prep['fits_sha256']
-    with Path(str(prefix)+'_fits.pkl').open('rb') as f: fits=pickle.load(f)
+    fits=unpickle(Path(str(prefix)+'_fits.pkl').read_bytes())
     verify_reads(phase1['inputs'])
     frozen=phase1['picks']
     assert not frozen['switched_off'], 'not run: switched off'

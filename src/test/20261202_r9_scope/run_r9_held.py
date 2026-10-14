@@ -65,6 +65,7 @@ SMOKE_RECORDS = AR.SMOKE_RECORDS
 VALUE_SETS_PATH = R.R6D / "results/value_sets.json"
 VALUE_SETS_SHA = "4ea6d33853e5516adc57a868194a03ab20963bcfe6f646df355a7e72d1970369"
 SIGMA_CLIP_SHA = "bc4b0a92d376b2fdf47da2aa08303a5bb2266a29daf85621ca97ec753bef5661"
+NEAR_DUPLICATES_SHA256 = "ba92530d433dded1c8d2b2a2037e23d015aed5361fb1249d1caa631e40da2206"  # stage 1 file (rule 3.3 pins it nowhere else)
 
 
 class Refused(Exception):
@@ -743,11 +744,14 @@ def setup_a28(env, backbone, smoke, inputs_only=False):
     values = {a: [int(v['code']) for v in vrec[a]] for a in R.ASPECTS}
     flags = _read_json(files['results/language_flags_a28.json']['path'])['flagged']
     near_path = AD.results_dir() / 'near_duplicates_a28.json'
-    near = _read_json(near_path)
+    near_raw = near_path.read_bytes()
+    _require(R.sha256_bytes(near_raw) == NEAR_DUPLICATES_SHA256,
+             f'{near_path.name}: SHA-256 differs from its pin (same value as rederive/rd9_inputs.py)')
+    near = json.loads(near_raw)
     return SimpleNamespace(a28=real, prepared=AE.prepare(tab), values=values,
                            value_record=vrec, flagged_languages=[str(x) for x in flags],
                            near_duplicates={k: int(near[k]) for k in ('cos_099', 'cos_098')},
-                           near_source={'file': str(near_path), 'sha256': R.sha256_file(near_path)})
+                           near_source={'file': str(near_path), 'sha256': R.sha256_bytes(near_raw)})
 
 
 def a28_seed_episodes(data, seed, n_per_pair, recorder):

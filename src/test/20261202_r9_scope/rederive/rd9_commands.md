@@ -75,7 +75,9 @@ to `src/test/20261202_r9_scope/results/near_duplicates_a28.json`; its `cos_099` 
 with the pass's `near_duplicates`, and its `train_side == 912` and `read_paintings == 746` are asserted.
 The comparer reads the flags file from the bytes it hashes and asserts that its SHA-256 equals its entry in
 `--a28-pins` (default `src/test/20261202_r9_scope/pins_a28.json`; found by file name, so a copy elsewhere passes only if
-byte-equal). `near_duplicates_a28.json` is not in `pins_a28.json` by decision, so only its SHA-256 is recorded. The
+byte-equal). `near_duplicates_a28.json` is not in `pins_a28.json` by decision; its SHA-256 is pinned in `rd9_inputs.py`
+(`NEAR_DUPLICATES_SHA256`, and the same value in `run_r9_held.py`), the comparer reads it with `read_pinned`, and the
+digest is recorded. The
 agreement file holds both digests as `language_flags_sha256` and `near_duplicates_sha256` (H8 to H10 only).
 `rd9_phase2.py` for H8 to H10 also checks `read_set_a28.parquet` and `value_sets_a28.json` against `pins_a28.json` at
 the moment it loads them (it parses the bytes it hashed).
@@ -96,6 +98,11 @@ The fix pass and the reserve read use the same command with the `_fix1` / `_rese
 `--reported .../held_pass_H8_fix1.json ... --out .../rd9_H8_agreement_fix1.json`. A synthetic smoke pass is compared
 the same way, with `--out` in `rd9_out/` (the comparator writes only below `rederive/`; ticket 19 reads a smoke agreement from `results/smoke/`, so the controller copies it there); its agreement file then says `smoke: true`.
 
+Add `--reported-sensitivity .../results/sensitivity_H8.json` (the runner's `sensitivity_<Hn>[_fix1|_reserve].json`) to
+the same command. The comparer then compares SE, x and x95 of P1 to P7 with the derived record's; without the file those
+keys are differences, and the agreement records the file's SHA-256 as `sensitivity_sha256`. The pass file's `quantity`
+label of each check is compared with the rule's text too, and a repeated `set_aside` entry is a difference.
+
 Comparison checks counts, points, both intervals, ordering and pass flags, episode hashes, and all 30 relevant
 scorer/metric arrays plus clusters/pair/seed indices. Missing keys fail. R9 pass files must use the R6 field names
 (or the documented aliases in the comparator); two-level files carry `holm_order` as the runner's
@@ -108,7 +115,11 @@ committed proof for this job is `rd9_H8_selection_agreement.json`.
 
 ## Review fix: generic phase-1 agreement (each backbone)
 
-Run after that backbone's independent phase-1 output and pinned seed-42 record exist. This includes switched-off
+Run after that backbone's independent phase-1 output and pinned seed-42 record exist. The pins file is read through its
+`parts` only (each `{path, sha256}`); the seed-42 sigma file is the pins' `sensitivity_seed42` record, read pinned
+(CLIP: R6's `sensitivity_seed42.json`, SHA-256 in `rd9_inputs.py`). The phase-1 comparison covers the cells, the B and B0
+picks, RCA's lambda, the taus, the five seed-42 means, the P-points and n_j, the sigma inputs (N, clusters, sigma_a2 and
+sigma_e2 of P1 to P7) and the array hashes with their minimum sets. This includes switched-off
 backbones. Use `clip_b32`, `qwen3vl_emb_2b` or `siglip2_so400m`; the example shows Qwen.
 
 ```bash
