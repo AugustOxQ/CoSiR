@@ -1,0 +1,26 @@
+[
+ {
+  "label": "m holm interval level",
+  "killed": true,
+  "rc": 1,
+  "seconds": 32.7,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_pass_record_fills_every_field_of_the_contract",
+  "tail": "128 passed in 7.17s"
+ },
+ {
+  "label": "m near boundary",
+  "killed": true,
+  "rc": 1,
+  "seconds": 20.2,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_boundaries_and_near_boundary",
+  "tail": "128 passed in 7.22s"
+ },
+ {
+  "label": "m L1 tie order",
+  "killed": true,
+  "rc": 1,
+  "seconds": 64.8,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28_stats.py::test_a28_record_at_each_levels_boundaries",
+  "tail": "1 failed, 1 passed in 6.06s"
+ }
+]

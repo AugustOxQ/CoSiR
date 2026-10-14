@@ -1,0 +1,6 @@
+rd9_*.npz
+rd9_*.pkl
+rd9_*.log
+__pycache__/
+.pytest_cache/
+/rd9_out/

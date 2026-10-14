@@ -1,0 +1,98 @@
+[
+ {
+  "label": "u pass design",
+  "killed": false,
+  "rc": 0,
+  "seconds": 11.6,
+  "first_failure": null,
+  "tail": "128 passed in 7.38s"
+ },
+ {
+  "label": "u pass checks set",
+  "killed": false,
+  "rc": 0,
+  "seconds": 10.3,
+  "first_failure": null,
+  "tail": "128 passed in 6.85s"
+ },
+ {
+  "label": "u entry level",
+  "killed": true,
+  "rc": 1,
+  "seconds": 8.7,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_pass_files_refuse[<lambda>-H8_1]",
+  "tail": "1 failed, 28 passed in 5.17s"
+ },
+ {
+  "label": "u holm_order schema seven",
+  "killed": false,
+  "rc": 0,
+  "seconds": 12.7,
+  "first_failure": null,
+  "tail": "128 passed in 8.02s"
+ },
+ {
+  "label": "u near_duplicates schema",
+  "killed": true,
+  "rc": 1,
+  "seconds": 12.7,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_near_duplicates_refuse[None]",
+  "tail": "1 failed, 102 passed in 8.23s"
+ },
+ {
+  "label": "u check_set_aside call",
+  "killed": true,
+  "rc": 1,
+  "seconds": 12.6,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_set_aside_cap_is_two_per_pair_and_seed",
+  "tail": "1 failed, 92 passed in 8.42s"
+ },
+ {
+  "label": "u set-aside cap",
+  "killed": true,
+  "rc": 1,
+  "seconds": 10.5,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_set_aside_cap_is_two_per_pair_and_seed",
+  "tail": "1 failed, 92 passed in 6.60s"
+ },
+ {
+  "label": "u set-aside duplicate",
+  "killed": true,
+  "rc": 1,
+  "seconds": 12.7,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_set_aside_duplicates_and_unknown_names_stop",
+  "tail": "1 failed, 93 passed in 8.14s"
+ },
+ {
+  "label": "u set-aside unknown name",
+  "killed": true,
+  "rc": 1,
+  "seconds": 11.3,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_set_aside_duplicates_and_unknown_names_stop",
+  "tail": "1 failed, 93 passed in 8.14s"
+ },
+ {
+  "label": "u sensitivity x = z SE",
+  "killed": true,
+  "rc": 1,
+  "seconds": 11.1,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_wrong_x_in_sensitivity_file_stops",
+  "tail": "1 failed, 19 passed in 6.54s"
+ },
+ {
+  "label": "u sensitivity finite",
+  "killed": true,
+  "rc": 1,
+  "seconds": 11.8,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_sensitivity_x_of_the_seven_kind_and_non_finite_values",
+  "tail": "1 failed, 114 passed in 7.80s"
+ },
+ {
+  "label": "u assert_consistent",
+  "killed": true,
+  "rc": 1,
+  "seconds": 10.8,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_pass_file_holm_flags_must_match_recomputation",
+  "tail": "1 failed, 21 passed in 6.63s"
+ }
+]

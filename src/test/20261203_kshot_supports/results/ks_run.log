@@ -1,0 +1,24 @@
+Loading frozen development inputs
+Traceback (most recent call last):
+  File "/project/CoSiR/src/test/20261203_kshot_supports/run_ks.py", line 169, in <module>
+    main()
+  File "/project/CoSiR/src/test/20261203_kshot_supports/run_ks.py", line 136, in main
+    checks['C1'] = c1(env, b, data[k], frozen)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/project/CoSiR/src/test/20261203_kshot_supports/run_ks.py", line 49, in c1
+    s, p = K.R.run_checks.crossfit_condition_free(b.cos, b.t_n1u, getattr(b, K.P.TERM_OF[name]), b.parity)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'run_checks' has no attribute 'crossfit_condition_free'
+Loading frozen development inputs
+C1 PASS: k=4 exact reproduction
+k=4 scored; pair dimensions checked
+k=3 scored; pair dimensions checked
+k=2 scored; pair dimensions checked
+C1/C2/C3 PASS; runtime 32.5s; results: /project/CoSiR/src/test/20261203_kshot_supports/results/kshot_seed42.json
+Starting k=1 extension; loading frozen development inputs
+C1 PASS: k=4 exact reproduction
+k=4 scored; pair dimensions checked
+k=3 scored; pair dimensions checked
+k=2 scored; pair dimensions checked
+k=1 scored; pair dimensions checked
+C1/C2/C3/C4/C5 PASS; runtime 42.9s; results: /project/CoSiR/src/test/20261203_kshot_supports/results/kshot_seed42.json

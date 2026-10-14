@@ -1,0 +1,24 @@
+{
+ "summary": {
+  "input_sha256": "51/51",
+  "parts": "29/29",
+  "gate_references": "3/3"
+ },
+ "mismatches": [],
+ "parts_vs_inputs_disagree": [],
+ "parts_not_in_inputs": [
+  "bank_AIC",
+  "cells_seed42",
+  "graph",
+  "picked",
+  "picks_seed42",
+  "rb_bank_A0_half0",
+  "rb_bank_A0_half1",
+  "rb_halves",
+  "rb_heads_affect",
+  "rb_heads_caption",
+  "rb_heads_csd",
+  "rb_heads_image",
+  "rb_heads_rand"
+ ]
+}

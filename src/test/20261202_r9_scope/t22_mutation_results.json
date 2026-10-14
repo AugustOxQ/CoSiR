@@ -1,0 +1,387 @@
+{
+  "date": "2026-10-14",
+  "method": "Actual temporary source edits, immediately restored in finally; targeted pytest must fail on each mutant.",
+  "counts": {
+    "caught": 42,
+    "survived": 0,
+    "stop_mutants": 41,
+    "sigma_binding_mutants": 1
+  },
+  "source_sha256": {
+    "run_r9_preread.py": "10dbc894934b10cdb43e0cc6fdd47fca9b1630fde2a0e792c3a522f8cdc56b18",
+    "run_r9_held.py": "ec3a986dda73866b2d5dcdf70784380b65eebcd1592093d88b6ff1b067e53a69",
+    "rederive/rd9_compare.py": "558477e485aa460adc7f0b96bc290cc80339b45e182ea028a4d994a85af1f8fb"
+  },
+  "protected_recipe_module_sha256": {
+    "src/test/20261202_r9_scope/r9_backbone.py": "9ddd23a0dcbe3abcbaf1a47ff060b30f76e1195d16f080844c2fdb800590ff84",
+    "src/test/20261202_r9_scope/r9_bundle.py": "0e194af001353a78214cba5ce3c21f5a76db2783394873e50ad9f42112c6515b",
+    "src/test/20261202_r9_scope/r9_common.py": "69e450bea3819b335bada1c8492c41f7350e97e5cd7264ad1e373ef5d27ab3bd",
+    "src/test/20261202_r9_scope/r9_context.py": "18f9a4501212a68940faf54f1951253a75fc913ec68dbb4148449859faae00b3",
+    "src/test/20261202_r9_scope/r9_data.py": "9b9d3fe521d4d5728ffdc0899451e5dd984b1b8cc774c6ffe903030dcbc0ac0c",
+    "src/test/20261202_r9_scope/r9_episodes.py": "eec7611153e58191ffc57066018ec64ff04c6f33467fc9f6796f71b3be84ccde",
+    "src/test/20261202_r9_scope/r9_heads.py": "097a40bbedaf702032c48789b11028b862ca9727e5e79921e02c4aedd7e2e6b2",
+    "src/test/20261202_r9_scope/r9_picks.py": "7a0f08e3564a369f24bf17708ae751975447e261abab66d882b325b5763899b6",
+    "src/test/20261202_r9_scope/r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "src/test/20261202_r9_scope/r9_recipe_a3.py": "36947bc6cb6818059020c5414f34841273f60dc9fea3e1c969a64997f759fcb3",
+    "src/test/20261202_r9_scope/r9_recipe_baselines.py": "6c4aa102401fdc8df3085dd1bc6d9d4df44402b2408eb4722a81064f724afe91",
+    "src/test/20261202_r9_scope/r9_recipe_cells.py": "de6bd56ea874b331b11a0ba17e7c0163b287b251dea94aed90e0c7e20743e601",
+    "src/test/20261202_r9_scope/r9_recipe_groups.py": "abc5c550330a00debfce017bf3b1009b46d4184c383d2f11e5a09d1cad4297fd",
+    "src/test/20261202_r9_scope/r9_recipe_reader.py": "ffb9166b65c85307d72e2ecb5fb3d5e4cedad5ec39e5d67478a01091927be71a",
+    "src/test/20261202_r9_scope/r9_score.py": "e708160828f13983e7e17b8ef7333381fc773345ae50796f4203dc99fae1736f",
+    "src/test/20261202_r9_scope/r9_stats.py": "7ec21a05062a5ef567e99edf6f8c168229959441a91106138eae13e81b592d7b",
+    "src/test/20261202_r9_scope/run_r9_stage0a.py": "0023407b2b51cdae0e41d66044e188b32f4fcdae565f7f49eafc31ddd409798f"
+  },
+  "protected_recipe_unchanged": true,
+  "stage2_driver_unchanged": true,
+  "tests": {
+    "total_passed": 653,
+    "preread_passed": 62,
+    "existing_passed": 591
+  },
+  "superseded_probe": {
+    "guard": "preread_scratch_sigma",
+    "initial_log": "src/test/20261202_r9_scope/results/t22_mutant_37.log",
+    "reason": "Later runner refusal masked the deletion; corrected stub lets scoring continue to the next boundary.",
+    "corrected_log": "src/test/20261202_r9_scope/results/t22_mutant_37_fix1.log"
+  },
+  "cases": [
+    {
+      "guard": "preread_stage0a_passed",
+      "file": "run_r9_preread.py",
+      "test": "test_input_stop[stage0a_passed]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_0_owned.log"
+    },
+    {
+      "guard": "preread_stage0a_modules",
+      "file": "run_r9_preread.py",
+      "test": "test_input_stop[stage0a_modules]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_1_owned.log"
+    },
+    {
+      "guard": "preread_stage0a_runner",
+      "file": "run_r9_preread.py",
+      "test": "test_input_stop[stage0a_runner]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_2_owned.log"
+    },
+    {
+      "guard": "preread_parts",
+      "file": "run_r9_preread.py",
+      "test": "test_input_stop[parts]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_3_owned.log"
+    },
+    {
+      "guard": "preread_part_sha",
+      "file": "run_r9_preread.py",
+      "test": "test_input_stop[part_sha]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_4_owned.log"
+    },
+    {
+      "guard": "preread_pins",
+      "file": "run_r9_preread.py",
+      "test": "test_input_stop[pins]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_5_owned.log"
+    },
+    {
+      "guard": "preread_stage0b",
+      "file": "run_r9_preread.py",
+      "test": "test_input_stop[stage0b]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_6_owned.log"
+    },
+    {
+      "guard": "preread_stage2",
+      "file": "run_r9_preread.py",
+      "test": "test_input_stop[stage2]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_7_owned.log"
+    },
+    {
+      "guard": "preread_stage2_evidence",
+      "file": "run_r9_preread.py",
+      "test": "test_input_stop[stage2_evidence]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_8_owned.log"
+    },
+    {
+      "guard": "preread_a28_pins",
+      "file": "run_r9_preread.py",
+      "test": "test_input_stop[a28_pins]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_9_owned.log"
+    },
+    {
+      "guard": "preread_heads",
+      "file": "run_r9_preread.py",
+      "test": "test_head_stop[heads]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_10_final.log"
+    },
+    {
+      "guard": "preread_arm_l",
+      "file": "run_r9_preread.py",
+      "test": "test_head_stop[arm_l]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_11_final.log"
+    },
+    {
+      "guard": "preread_episode_hashes",
+      "file": "run_r9_preread.py",
+      "test": "test_regression_stop[episode_hashes]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_12_final.log"
+    },
+    {
+      "guard": "preread_clip_regression",
+      "file": "run_r9_preread.py",
+      "test": "test_regression_stop[clip_regression]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_13_final.log"
+    },
+    {
+      "guard": "preread_regression",
+      "file": "run_r9_preread.py",
+      "test": "test_regression_stop[regression]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_14_final.log"
+    },
+    {
+      "guard": "preread_sigma",
+      "file": "run_r9_preread.py",
+      "test": "test_sigma_stop",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_15_final.log"
+    },
+    {
+      "guard": "preread_phase1",
+      "file": "run_r9_preread.py",
+      "test": "test_phase1_stop[phase1]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_16_final.log"
+    },
+    {
+      "guard": "preread_phase1_pins",
+      "file": "run_r9_preread.py",
+      "test": "test_phase1_stop[phase1_pins]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_17_final.log"
+    },
+    {
+      "guard": "preread_phase1_identity",
+      "file": "run_r9_preread.py",
+      "test": "test_phase1_stop[phase1_identity]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_18_final.log"
+    },
+    {
+      "guard": "preread_phase1_inputs",
+      "file": "run_r9_preread.py",
+      "test": "test_phase1_stop[phase1_inputs]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_19_final.log"
+    },
+    {
+      "guard": "preread_real_inputs",
+      "file": "run_r9_preread.py",
+      "test": "test_smoke_stop[real_inputs]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_20_owned.log"
+    },
+    {
+      "guard": "preread_smoke_once",
+      "file": "run_r9_preread.py",
+      "test": "test_smoke_stop[smoke_once]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_21_owned.log"
+    },
+    {
+      "guard": "preread_smoke_runner",
+      "file": "run_r9_preread.py",
+      "test": "test_smoke_stop[smoke_runner]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_22_owned.log"
+    },
+    {
+      "guard": "preread_smoke_current",
+      "file": "run_r9_preread.py",
+      "test": "test_smoke_current_stop",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_23_owned.log"
+    },
+    {
+      "guard": "preread_once",
+      "file": "run_r9_preread.py",
+      "test": "test_once_stop",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_24_final.log"
+    },
+    {
+      "guard": "preread_mutation",
+      "file": "run_r9_preread.py",
+      "test": "test_mutation_stop",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_25_final.log"
+    },
+    {
+      "guard": "preread_bytes",
+      "file": "run_r9_preread.py",
+      "test": "test_bytes_stop",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_26_final.log"
+    },
+    {
+      "guard": "preread_launch_passed",
+      "file": "run_r9_preread.py",
+      "test": "test_launch_stop[launch_passed]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_27_final.log"
+    },
+    {
+      "guard": "preread_launch_code",
+      "file": "run_r9_preread.py",
+      "test": "test_launch_stop[launch_code]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_28_final.log"
+    },
+    {
+      "guard": "preread_launch_inputs",
+      "file": "run_r9_preread.py",
+      "test": "test_launch_stop[launch_inputs]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_29_final.log"
+    },
+    {
+      "guard": "preread_launch_smoke",
+      "file": "run_r9_preread.py",
+      "test": "test_launch_stop[launch_smoke]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_30_final.log"
+    },
+    {
+      "guard": "preread_launch",
+      "file": "run_r9_held.py",
+      "test": "test_held_launch_calls_preread_before_read",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_31_final.log"
+    },
+    {
+      "guard": "preread_compare_pins",
+      "file": "rederive/rd9_compare.py",
+      "test": "test_comparer_stop[compare_pins]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_32_final.log"
+    },
+    {
+      "guard": "preread_compare_sources",
+      "file": "rederive/rd9_compare.py",
+      "test": "test_comparer_stop[compare_sources]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_33_final.log"
+    },
+    {
+      "guard": "preread_projection_schema",
+      "file": "run_r9_preread.py",
+      "test": "test_projection_schema_stop",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_34_final.log"
+    },
+    {
+      "guard": "preread_wiring_anchor",
+      "file": "run_r9_preread.py",
+      "test": "test_wiring_anchor_stop",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_35_final.log"
+    },
+    {
+      "guard": "preread_smoke_a28_pins",
+      "file": "run_r9_preread.py",
+      "test": "test_smoke_stop[smoke_a28_pins]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_36_final.log"
+    },
+    {
+      "guard": "preread_scratch_sigma",
+      "file": "run_r9_preread.py",
+      "test": "test_smoke_stop[scratch_sigma]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_37_final.log"
+    },
+    {
+      "guard": "preread_output_scope",
+      "file": "run_r9_preread.py",
+      "test": "test_output_scope_stop",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_38_final.log"
+    },
+    {
+      "guard": "preread_read_identity",
+      "file": "run_r9_preread.py",
+      "test": "test_read_identity_stop",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_39_final.log"
+    },
+    {
+      "guard": "preread_phase1_paths",
+      "file": "run_r9_preread.py",
+      "test": "test_phase1_stop[phase1_paths]",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_40_final.log"
+    }
+  ],
+  "binding_mutations": [
+    {
+      "guard": "preread_active_sigma_binding",
+      "file": "run_r9_preread.py",
+      "test": "test_scratch_sigma_is_recorded",
+      "exit": 1,
+      "caught": true,
+      "log": "src/test/20261202_r9_scope/results/t22_mutant_41_final.log"
+    }
+  ]
+}

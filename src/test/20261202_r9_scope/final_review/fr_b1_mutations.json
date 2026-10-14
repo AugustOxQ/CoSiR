@@ -1,0 +1,485 @@
+{
+ "row_id_join": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 6 passed in 3.81s"
+  },
+  "caught": true
+ },
+ "caption_painting_join": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 7 passed in 3.82s"
+  },
+  "caught": true
+ },
+ "one_image_per_painting": {
+  "test_r9_a28_data.py": {
+   "rc": 0,
+   "tail": "24 passed in 3.74s"
+  },
+  "caught": false
+ },
+ "store_paintings_eq_read": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 15 passed in 3.74s"
+  },
+  "caught": true
+ },
+ "img_pointer_range": {
+  "test_r9_a28_data.py": {
+   "rc": 0,
+   "tail": "24 passed in 3.65s"
+  },
+  "caught": false
+ },
+ "img_pointer_painting": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 8 passed in 3.53s"
+  },
+  "caught": true
+ },
+ "texts_eq_kept_count": {
+  "test_r9_a28_data.py": {
+   "rc": 0,
+   "tail": "24 passed in 3.62s"
+  },
+  "caught": false
+ },
+ "stores_finite": {
+  "test_r9_a28_data.py": {
+   "rc": 0,
+   "tail": "24 passed in 3.65s"
+  },
+  "caught": false
+ },
+ "img_shape": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 13 passed in 3.58s"
+  },
+  "caught": true
+ },
+ "txt_shape": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 13 passed in 3.55s"
+  },
+  "caught": true
+ },
+ "index_header": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 13 passed in 3.53s"
+  },
+  "caught": true
+ },
+ "float16": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 13 passed in 3.68s"
+  },
+  "caught": true
+ },
+ "space_kept_finite": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 11 passed in 3.72s"
+  },
+  "caught": true
+ },
+ "space_dropped_nan": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 10 passed in 3.74s"
+  },
+  "caught": true
+ },
+ "space_kept_is_not_dropped": {
+  "test_r9_a28_data.py": {
+   "rc": 0,
+   "tail": "24 passed in 3.74s"
+  },
+  "caught": false
+ },
+ "space_lengths": {
+  "test_r9_a28_data.py": {
+   "rc": 0,
+   "tail": "24 passed in 3.82s"
+  },
+  "caught": false
+ },
+ "table_row_order": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 3 passed in 3.71s"
+  },
+  "caught": true
+ },
+ "table_columns": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 3 passed in 3.78s"
+  },
+  "caught": true
+ },
+ "table_languages": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 3 passed in 3.60s"
+  },
+  "caught": true
+ },
+ "language_index": {
+  "test_r9_a28_data.py": {
+   "rc": 0,
+   "tail": "24 passed in 3.90s"
+  },
+  "caught": false
+ },
+ "loader_backbone_pinned": {
+  "test_r9_a28_data.py": {
+   "rc": 0,
+   "tail": "24 passed in 3.64s"
+  },
+  "caught": false
+ },
+ "pinned_sha_in_loader": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 2 passed in 3.62s"
+  },
+  "caught": true
+ },
+ "pinned_missing_in_loader": {
+  "test_r9_a28_data.py": {
+   "rc": 0,
+   "tail": "24 passed in 3.72s"
+  },
+  "caught": false
+ },
+ "check_pins_sha": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 20 passed in 3.74s"
+  },
+  "caught": true
+ },
+ "check_pins_missing_file": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 20 passed in 3.79s"
+  },
+  "caught": true
+ },
+ "check_pins_absent_keys": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 22 passed in 3.74s"
+  },
+  "caught": true
+ },
+ "check_pins_uncovered": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 21 passed in 3.71s"
+  },
+  "caught": true
+ },
+ "check_pins_sha_format": {
+  "test_r9_a28_data.py": {
+   "rc": 0,
+   "tail": "24 passed in 3.70s"
+  },
+  "caught": false
+ },
+ "check_pins_needs_results": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 22 passed in 3.79s"
+  },
+  "caught": true
+ },
+ "check_pins_needs_index": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed in 3.73s"
+  },
+  "caught": true
+ },
+ "write_pins_no_overwrite": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 23 passed in 3.80s"
+  },
+  "caught": true
+ },
+ "write_pins_entry_missing": {
+  "test_r9_a28_data.py": {
+   "rc": 0,
+   "tail": "24 passed in 3.81s"
+  },
+  "caught": false
+ },
+ "merged_from": {
+  "test_r9_a28_data.py": {
+   "rc": 1,
+   "tail": "1 failed, 19 passed in 3.83s"
+  },
+  "caught": true
+ },
+ "both_held_and_train": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed in 0.37s"
+  },
+  "caught": true
+ },
+ "translation_cover": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 5 passed in 0.46s"
+  },
+  "caught": true
+ },
+ "translation_painting": {
+  "test_r9_a28.py": {
+   "rc": 0,
+   "tail": "19 passed, 2 warnings in 0.36s"
+  },
+  "caught": false
+ },
+ "translation_language": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 5 passed in 0.38s"
+  },
+  "caught": true
+ },
+ "one_label_per_painting": {
+  "test_r9_a28.py": {
+   "rc": 0,
+   "tail": "19 passed, 2 warnings in 0.35s"
+  },
+  "caught": false
+ },
+ "genre_eq_csv": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 3 passed in 0.38s"
+  },
+  "caught": true
+ },
+ "other_is_unknown": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 1 passed in 0.38s"
+  },
+  "caught": true
+ },
+ "dropped_strip": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 7 passed in 0.61s"
+  },
+  "caught": true
+ },
+ "failed_strict": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 11 passed, 2 warnings in 0.58s"
+  },
+  "caught": true
+ },
+ "script_strict": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 12 passed, 2 warnings in 0.64s"
+  },
+  "caught": true
+ },
+ "script_latin_only": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 12 passed, 2 warnings in 0.75s"
+  },
+  "caught": true
+ },
+ "length_strict_low": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 13 passed, 2 warnings in 0.65s"
+  },
+  "caught": true
+ },
+ "length_strict_high": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 13 passed, 2 warnings in 0.61s"
+  },
+  "caught": true
+ },
+ "median_after_drops": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 6 passed in 0.66s"
+  },
+  "caught": true
+ },
+ "english_on_read_only": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 1 passed in 0.50s"
+  },
+  "caught": true
+ },
+ "v_kept_only": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 15 passed, 2 warnings in 0.51s"
+  },
+  "caught": true
+ },
+ "v_all_known": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 16 passed, 2 warnings in 0.67s"
+  },
+  "caught": true
+ },
+ "v_inside_dev": {
+  "test_r9_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 15 passed, 2 warnings in 0.66s"
+  },
+  "caught": true
+ },
+ "v_min_paintings": {
+  "test_r9_a28.py": {
+   "rc": 0,
+   "tail": "19 passed, 2 warnings in 0.56s"
+  },
+  "caught": false
+ },
+ "v_groups_paintings": {
+  "test_r9_a28.py": {
+   "rc": 0,
+   "tail": "19 passed, 2 warnings in 0.61s"
+  },
+  "caught": false
+ },
+ "expected_rows": {
+  "test_r9_a28.py": {
+   "rc": 0,
+   "tail": "19 passed, 2 warnings in 0.61s"
+  },
+  "caught": false
+ },
+ "expected_v_style": {
+  "test_r9_a28.py": {
+   "rc": 0,
+   "tail": "19 passed, 2 warnings in 0.62s"
+  },
+  "caught": false
+ },
+ "train_side_includes_val": {
+  "test_r9_a28.py": {
+   "rc": 0,
+   "tail": "19 passed, 2 warnings in 0.58s"
+  },
+  "caught": false
+ },
+ "prepare_counts_assert": {
+  "test_r9_a28.py": {
+   "rc": 0,
+   "tail": "19 passed, 2 warnings in 0.59s"
+  },
+  "caught": false
+ },
+ "prepare_v_assert": {
+  "test_r9_a28.py": {
+   "rc": 0,
+   "tail": "19 passed, 2 warnings in 0.52s"
+  },
+  "caught": false
+ },
+ "held_runner_a28_pins": {
+  "test_r9_held_a28.py": {
+   "rc": 1,
+   "tail": "1 failed, 15 passed in 5.09s"
+  },
+  "caught": true
+ },
+ "rc_flagged_compare": {
+  "rederive/rd9_test_compare.py": {
+   "rc": 1,
+   "tail": "1 failed, 44 passed in 1.21s"
+  },
+  "caught": true
+ },
+ "rc_near_compare": {
+  "rederive/rd9_test_compare.py": {
+   "rc": 1,
+   "tail": "1 failed, 53 passed in 1.71s"
+  },
+  "caught": true
+ },
+ "rc_near_only_099": {
+  "rederive/rd9_test_compare.py": {
+   "rc": 1,
+   "tail": "1 failed, 53 passed in 1.43s"
+  },
+  "caught": true
+ },
+ "rc_set_aside_compare": {
+  "rederive/rd9_test_compare.py": {
+   "rc": 1,
+   "tail": "1 failed, 26 passed in 0.83s"
+  },
+  "caught": true
+ },
+ "rc_set_aside_first_seed": {
+  "rederive/rd9_test_compare.py": {
+   "rc": 1,
+   "tail": "1 failed, 26 passed in 0.87s"
+  },
+  "caught": true
+ },
+ "rc_flags_unpinned": {
+  "rederive/rd9_test_compare.py": {
+   "rc": 1,
+   "tail": "1 failed, 88 passed in 2.30s"
+  },
+  "caught": true
+ },
+ "rc_only_h8": {
+  "rederive/rd9_test_compare.py": {
+   "rc": 1,
+   "tail": "1 failed, 73 passed in 1.87s"
+  },
+  "caught": true
+ },
+ "rc_train_side_912": {
+  "rederive/rd9_test_compare.py": {
+   "rc": 1,
+   "tail": "1 failed, 65 passed in 1.68s"
+  },
+  "caught": true
+ },
+ "rc_read_paintings_746": {
+  "rederive/rd9_test_compare.py": {
+   "rc": 1,
+   "tail": "1 failed, 66 passed in 1.90s"
+  },
+  "caught": true
+ },
+ "rc_reported_set_aside_dup": {
+  "rederive/rd9_test_compare.py": {
+   "rc": 0,
+   "tail": "93 passed in 2.61s"
+  },
+  "caught": false
+ }
+}

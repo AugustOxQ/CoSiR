@@ -1,0 +1,26 @@
+[
+ {
+  "label": "s sens names",
+  "killed": true,
+  "rc": 1,
+  "seconds": 78.1,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28_stats.py::test_sensitivity_input_checks[missing-exactly P1 to P7]",
+  "tail": "128 passed in 8.48s"
+ },
+ {
+  "label": "s sens N",
+  "killed": true,
+  "rc": 1,
+  "seconds": 70.4,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28_stats.py::test_sensitivity_input_checks[float_N-positive integer]",
+  "tail": "128 passed in 9.98s"
+ },
+ {
+  "label": "s sens variances",
+  "killed": true,
+  "rc": 1,
+  "seconds": 67.0,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28_stats.py::test_sensitivity_input_checks[negative-finite and non-negative]",
+  "tail": "128 passed in 9.54s"
+ }
+]

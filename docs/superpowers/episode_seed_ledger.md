@@ -13,5 +13,9 @@ pre-registered A′. Held rows have their own ledger (`held_ledger.md`).
 | 47, 48 | test (spent) | as seed 45 (2026-10-04) |
 | 49, 50, 51 | test (spent) | Reader-fix round 3 fresh-seed test of AFF (one-sided affect steering on R1) with R1 beside it, built 2026-10-06 21:00 to 21:08 with `run_baselines.py`, hash-checked against seeds 42, 43, 45, 47, 48 (`src/test/20261121_round3_affect_gate/`) |
 | 52, 53, 54 | held (H5) | Round 6 held read of AFF on held rows (not selection rows), 4,096 episodes per pair, built 2026-10-10 03:35 to 03:43 by `run_r6_held.py --mode held`; the nine per-pair SHA-256s are in `held_ledger.md` row H5; also the held GPU jobs of rule §8.3 (verbaliser and listing on 52 to 54, reranker on 52) (`src/test/20261125_artelingo_held_test/`) |
-| 55 and later | free | none |
+| 55 | reserved | round 9, ArtELingo-28 reads H8 to H10, per-language builder seeds (rule §5.1 item 4): builder seeds 55001 to 55027 (entered 2026-10-13) |
+| 56 | reserved | round 9, ArtELingo-28 reads H8 to H10, per-language builder seeds (rule §5.1 item 4): builder seeds 56001 to 56027 (entered 2026-10-13) |
+| 57 | reserved | round 9, ArtELingo-28 reads H8 to H10, per-language builder seeds (rule §5.1 item 4): builder seeds 57001 to 57027 (entered 2026-10-13) |
+| 58 and later | free | none |
 | 9001, 9002, 9003 | smoke | Wiring smoke only (64 episodes per pair, `run_baselines.py --smoke`, written to `results/smoke/`), round 3's end-to-end test (2026-10-06); round 6's smoke (2026-10-10, `run_r6_smoke.py`, under that folder's `results/smoke/`); never results |
+| 9001, 9002, 9003 (builder seeds 9001001 to 9001027, 9002001 to 9002027, 9003001 to 9003027) | smoke | round 9 smoke builder seeds 9001001 to 9003027 (rule §5.1 item 4, C4; entered 2026-10-13); never results |

@@ -1,0 +1,9 @@
+.pytest_tmp/
+results/
+cache/
+*.npz
+*.npy
+*.pt
+*.log
+__pycache__/
+!*.json

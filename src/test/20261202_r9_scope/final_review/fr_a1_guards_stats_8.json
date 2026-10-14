@@ -1,0 +1,26 @@
+[
+ {
+  "label": "s shapes",
+  "killed": false,
+  "rc": 0,
+  "seconds": 62.9,
+  "first_failure": null,
+  "tail": "128 passed in 11.77s"
+ },
+ {
+  "label": "s seeds",
+  "killed": true,
+  "rc": 1,
+  "seconds": 61.4,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_pass_record_regression_and_smoke_modes",
+  "tail": "128 passed in 11.41s"
+ },
+ {
+  "label": "s per-seed count",
+  "killed": true,
+  "rc": 1,
+  "seconds": 66.2,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_pass_record_regression_and_smoke_modes",
+  "tail": "128 passed in 10.01s"
+ }
+]

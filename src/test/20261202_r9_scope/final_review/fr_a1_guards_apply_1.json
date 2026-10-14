@@ -1,0 +1,98 @@
+[
+ {
+  "label": "G smoke-passed",
+  "killed": true,
+  "rc": 1,
+  "seconds": 9.4,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_no_verdict_without_a_passed_smoke_of_these_files",
+  "tail": "1 failed, 89 passed in 6.50s"
+ },
+ {
+  "label": "G smoke-shas",
+  "killed": true,
+  "rc": 1,
+  "seconds": 8.6,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_no_verdict_without_a_passed_smoke_of_these_files",
+  "tail": "1 failed, 89 passed in 6.26s"
+ },
+ {
+  "label": "G verdict-exists",
+  "killed": true,
+  "rc": 1,
+  "seconds": 9.6,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_verdict_exists_guard_fires_before_any_other_check",
+  "tail": "1 failed, 123 passed in 6.10s"
+ },
+ {
+  "label": "G reserve-needs-original",
+  "killed": true,
+  "rc": 1,
+  "seconds": 10.5,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_reserve_needs_the_original_verdict_and_its_own_files",
+  "tail": "1 failed, 36 passed in 6.24s"
+ },
+ {
+  "label": "G sha-binding",
+  "killed": true,
+  "rc": 1,
+  "seconds": 11.6,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_agreement_refuses[over22-checked another pass]",
+  "tail": "1 failed, 79 passed in 8.25s"
+ },
+ {
+  "label": "G fix1-original",
+  "killed": true,
+  "rc": 1,
+  "seconds": 11.2,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_fix_pass_needs_its_own_agreement_and_the_original_pass",
+  "tail": "1 failed, 34 passed in 6.75s"
+ },
+ {
+  "label": "G counts-equal",
+  "killed": true,
+  "rc": 1,
+  "seconds": 11.8,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_rederived_counts_must_equal_the_pass_counts",
+  "tail": "1 failed, 87 passed in 7.56s"
+ },
+ {
+  "label": "G smoke_guard call",
+  "killed": true,
+  "rc": 1,
+  "seconds": 10.8,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_reserve_needs_the_original_verdict_and_its_own_files",
+  "tail": "1 failed, 36 passed in 6.51s"
+ },
+ {
+  "label": "u pass rule_sha256",
+  "killed": true,
+  "rc": 1,
+  "seconds": 10.6,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_pass_files_refuse[<lambda>-H6_0]",
+  "tail": "1 failed, 22 passed in 6.12s"
+ },
+ {
+  "label": "u pass mode",
+  "killed": true,
+  "rc": 1,
+  "seconds": 11.0,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_pass_files_refuse[<lambda>-H6_1]",
+  "tail": "1 failed, 23 passed in 6.47s"
+ },
+ {
+  "label": "u pass seeds",
+  "killed": true,
+  "rc": 1,
+  "seconds": 10.2,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_pass_files_refuse[<lambda>-H6_2]",
+  "tail": "1 failed, 24 passed in 6.70s"
+ },
+ {
+  "label": "u pass n_episodes",
+  "killed": true,
+  "rc": 1,
+  "seconds": 10.9,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_pass_files_refuse[<lambda>-H8_2]",
+  "tail": "1 failed, 29 passed in 6.71s"
+ }
+]

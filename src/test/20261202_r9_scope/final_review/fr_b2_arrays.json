@@ -1,0 +1,122 @@
+{
+ "regression_sha256": "ca168eb628f6a51e9afe779b0194088d05b293417bac04617a0d8a428d3984be",
+ "regression_split": {
+  "n_items": 131,
+  "n_failed": 0,
+  "seed42_arrays": 39,
+  "per_anchor_seed42": 57,
+  "other": 35,
+  "record_n_items": 131,
+  "record_n_failed": 0
+ },
+ "arrays": {
+  "n_record": 96,
+  "n_equal": 96,
+  "mismatch": [],
+  "record_keys_equal_regression_array_items": true,
+  "regression_array_items_missing_from_record": [],
+  "npz_keys_not_in_record": {
+   "seed42_arrays": [
+    "seed42_arrays/aff_sigma",
+    "seed42_arrays/r1_sigma",
+    "seed42_arrays/taus"
+   ],
+   "per_anchor_seed42": [
+    "per_anchor_seed42/C0__gain",
+    "per_anchor_seed42/C0__other",
+    "per_anchor_seed42/C0__r1",
+    "per_anchor_seed42/C0__strict",
+    "per_anchor_seed42/C0__swap",
+    "per_anchor_seed42/R3__gain",
+    "per_anchor_seed42/R3__other",
+    "per_anchor_seed42/R3__r1",
+    "per_anchor_seed42/R3__strict",
+    "per_anchor_seed42/R3__swap",
+    "per_anchor_seed42/SE__gain",
+    "per_anchor_seed42/SE__other",
+    "per_anchor_seed42/SE__r1",
+    "per_anchor_seed42/SE__strict",
+    "per_anchor_seed42/SE__swap",
+    "per_anchor_seed42/SE_uniform__gain",
+    "per_anchor_seed42/SE_uniform__other",
+    "per_anchor_seed42/SE_uniform__r1",
+    "per_anchor_seed42/SE_uniform__strict",
+    "per_anchor_seed42/SE_uniform__swap"
+   ]
+  }
+ },
+ "gate_share": {
+  "cells": [
+   39,
+   119
+  ],
+  "gate_shape": [
+   4,
+   12288
+  ],
+  "open": 11071,
+  "total": 24576,
+  "share": 0.4504801432291667,
+  "record_stage2": 0.4504801432291667,
+  "aff_cf_cells": [
+   149,
+   10
+  ],
+  "aff_sigma": [
+   0.0,
+   0.0
+  ],
+  "r1_cells": [
+   116,
+   119
+  ],
+  "r1_cf_cells": [
+   58,
+   123
+  ],
+  "r1_sigma": [
+   0.0,
+   0.0
+  ],
+  "taus": [
+   3.8684538364530674e-05,
+   0.21702129490553143,
+   0.47973989883399526,
+   0.7502585816077211
+  ],
+  "same_parity_share_would_be": 0.4553629557291667
+ },
+ "mean_r1": {
+  "mine": {
+   "AFF": 19.136555989583336,
+   "CF": 18.39599609375,
+   "B": 18.341064453125,
+   "B0": 18.436686197916664,
+   "B1": 18.804931640625
+  },
+  "record": {
+   "B": 18.341064453125,
+   "B0": 18.436686197916664,
+   "B1": 18.804931640625,
+   "AFF": 19.136555989583336,
+   "CF": 18.39599609375
+  },
+  "equal": true
+ },
+ "pass_counts_sha256": "5618c59a3907af67bbcced0f29e0db8462b12ca4fb2e40a69e4be537de29d5e5",
+ "pass_counts": {
+  "diff": [],
+  "fields_compared": [
+   "checks",
+   "coef_sha256",
+   "episodes_sha256",
+   "holm_order",
+   "mode",
+   "n_clusters",
+   "n_episodes",
+   "secondary",
+   "seeds"
+  ]
+ },
+ "checks_vs_pc6": []
+}

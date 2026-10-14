@@ -1,0 +1,36 @@
+{
+  "pass_keys_equal": {
+    "checks": true,
+    "episodes_sha256": true,
+    "holm_order": true,
+    "mode": true,
+    "module_sha256": true,
+    "n_clusters": true,
+    "n_episodes": true,
+    "rule_sha256": true,
+    "runner_sha256": true,
+    "seeds": true,
+    "time": false
+  },
+  "all_equal": false,
+  "seeds": [
+    9001,
+    9002,
+    9003
+  ],
+  "mode": "smoke",
+  "n_anchors": 576,
+  "array_keys_with_share_or_rate": [],
+  "array_keys_secondary": [],
+  "started_attempts": 1,
+  "started_copy_equal": true,
+  "checks_n": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 346,
+    "P4": 480,
+    "P5": 833,
+    "P6": 0,
+    "P7": 0
+  }
+}

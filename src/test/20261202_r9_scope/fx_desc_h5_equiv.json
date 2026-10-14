@@ -1,0 +1,41 @@
+{
+ "core_scorers_equal": true,
+ "array_extra_equal": true,
+ "rule_sha_equal": true,
+ "quantities_equal": {
+  "P1": true,
+  "P2": true,
+  "P3": true,
+  "P4": true,
+  "P5": true,
+  "P6": true,
+  "P7": true,
+  "S1": true,
+  "S2": true
+ },
+ "checks_equal": true,
+ "load_core_equal_real_h5_held": true,
+ "check_pass_both_accept_real_h5_held": true,
+ "negative_controls_[r6, r9copy]": {
+  "n_P3": [
+   "refused",
+   "refused"
+  ],
+  "point_S1": [
+   "refused",
+   "refused"
+  ],
+  "ci_P7": [
+   "refused",
+   "refused"
+  ],
+  "quantity_P1": [
+   "refused",
+   "refused"
+  ],
+  "n_clusters": [
+   "refused",
+   "refused"
+  ]
+ }
+}

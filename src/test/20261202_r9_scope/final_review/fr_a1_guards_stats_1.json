@@ -1,0 +1,34 @@
+[
+ {
+  "label": "s k < 2",
+  "killed": false,
+  "rc": 0,
+  "seconds": 75.5,
+  "first_failure": null,
+  "tail": "128 passed in 10.33s"
+ },
+ {
+  "label": "s ci95 copy",
+  "killed": true,
+  "rc": 1,
+  "seconds": 16.1,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_ci95_assertion_fires_when_the_copy_diverges",
+  "tail": "128 passed in 11.26s"
+ },
+ {
+  "label": "s point_ci",
+  "killed": true,
+  "rc": 1,
+  "seconds": 61.3,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_pass_record_point_ci_cross_check_fires",
+  "tail": "128 passed in 10.47s"
+ },
+ {
+  "label": "s CF gain 0",
+  "killed": true,
+  "rc": 1,
+  "seconds": 62.5,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_pass_record_refuses_a_cf_gain_that_is_not_zero",
+  "tail": "128 passed in 8.82s"
+ }
+]

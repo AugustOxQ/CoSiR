@@ -1,0 +1,52 @@
+{
+ "117": {
+  "guard": "fit_rows_sha",
+  "lineno": 125,
+  "test": "test_fit_pm_asserts_the_unsorted_draw_sha",
+  "rc": 1,
+  "caught": true,
+  "first_failure": "FAILED test_r9_context.py::test_fit_pm_asserts_the_unsorted_draw_sha - test_r...",
+  "summary": "1 failed, 40 deselected in 13.54s",
+  "seconds": 15
+ },
+ "118": {
+  "guard": "pm_raw",
+  "lineno": 129,
+  "test": "test_fit_pm_refuses_masked_features",
+  "rc": 1,
+  "caught": true,
+  "first_failure": "FAILED test_r9_context.py::test_fit_pm_refuses_masked_features - numpy.linalg...",
+  "summary": "1 failed, 40 deselected in 8.72s",
+  "seconds": 10
+ },
+ "119": {
+  "guard": "readers",
+  "lineno": 181,
+  "test": "test_readers_guard",
+  "rc": 1,
+  "caught": true,
+  "first_failure": "FAILED test_r9_context.py::test_readers_guard - Failed: DID NOT RAISE <class ...",
+  "summary": "1 failed, 40 deselected in 3.67s",
+  "seconds": 5
+ },
+ "122": {
+  "guard": "cl_groups",
+  "lineno": 209,
+  "test": "test_cl_groups_guard",
+  "rc": 1,
+  "caught": true,
+  "first_failure": "FAILED test_r9_context.py::test_cl_groups_guard - Failed: DID NOT RAISE <clas...",
+  "summary": "1 failed, 40 deselected in 25.25s",
+  "seconds": 27
+ },
+ "123": {
+  "guard": "scores",
+  "lineno": 253,
+  "test": "test_scores_guard",
+  "rc": 1,
+  "caught": true,
+  "first_failure": "FAILED test_r9_context.py::test_scores_guard - Failed: DID NOT RAISE <class '...",
+  "summary": "1 failed, 40 deselected in 25.61s",
+  "seconds": 27
+ }
+}

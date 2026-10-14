@@ -195,3 +195,147 @@
 - Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-handoff.md
 - New chat: tab 'r9 build', session 9be763ef-3a11-43a1-9938-43dfc67d003a
 
+
+[brief] CoSiR: paper start -> paper r1 (2026-10-13 16:02 Amsterdam)
+- Done: R0. Framing (task and protocol first), title, four ARS rounds, the Phase 0 record and the outline, all approved by the user.
+- State: the outline's numbers were checked by Codex (60 of 62 match; the one error is fixed). No draft text yet.
+- Next: the R1 literature gap-fill (in-context learning, backbones, 18 unverified citations), then draft v1 and its full ARS review by 2026-10-19.
+- Blocked: nothing. The r9 results (about 10-16) come later, at R2.
+- Handoff: docs/superpowers/handoffs/2026-10-13-paper-r1-handoff.md
+- New chat: started by the user with claude-paper, session 2cc044a2-ddd3-4c94-b15d-4728b96bc0d4
+[brief] CoSiR: r9 build -> r9 build 2 (2026-10-13 16:26 Amsterdam)
+- Done: decision rule committed (a443902) after a fresh Opus review and a re-review; SigLIP 2 features of ArtELingo and SemArt; NLLB translation of ArtELingo-28.
+- State: ArtELingo-28 episodes per language (option B), agent default after no answer in 30 minutes; nodes idle.
+- Next: stage tickets 04 onward (to-tickets), then the build; 0a and 0b gate every use of the chain.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-2-handoff.md
+- New chat: tab 'r9 build 2', session 817e6dbb-9657-4cbd-8ac2-f1785f663c3f
+
+[brief] CoSiR: paper-write-2 -> paper r1 2 (2026-10-13 16:37 Amsterdam)
+- Done: the literature gap-fill (two notes, `refs.bib` with 96 checked entries), the Figure 6 drawing rule, draft v1 of §3 to §6 with Tables 2 and 3, and a private repo for `docs/paper/`.
+- State: v1 has 4 of 8 sections, 4,276 words by the counter. Every number has a TRACE line.
+- Next: the §2 writer, then the writer for the abstract, §1, §7 and §8; then the number check and the ARS review.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-paper-r1-2-handoff.md
+- New chat: tab 'paper r1 2', session 844278df-7731-4314-80c3-53b1e3370ce0
+
+[brief] CoSiR: r9 build 2 -> r9 build 3 (2026-10-13 17:10 Amsterdam)
+- Done: stage tickets 04 to 28 written; 04 (backbone loader, Opus-reviewed), 24 (ledgers) and 28 (licence) merged.
+- State: 25 (independent re-derivation, Codex) is built on branch r9-t25: 17 tests, CLIP check 272 comparisons, 0 differences; not yet reviewed.
+- Next: 25's Opus review and merge; 05 (generic chain I) and 26 (probe corpora); then 06, 07, 14, 19.
+- Blocked: nothing. For the user: ask ArtELingo-28's authors for its data terms; H4's ledger cell differs from rule §7.1.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-3-handoff.md
+- New chat: tab 'r9 build 3', session a175987c-d8fe-4725-8d27-7c2084eb81cb
+
+[brief] CoSiR: paper r1 2 -> paper r1 3 (2026-10-13 17:44 Amsterdam)
+- Done: v1 has all eight sections and Table 1. It passed a number check (301 of 306 matched, all fixes made) and a humanizer pass.
+- State: 6,852 words by the counter against a 6,450 target (the counter counts keys and math). Tag `r1-v1-pre-review`.
+- Next: the full ARS review of v1, then our answer and one revision.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-paper-r1-3-handoff.md
+- New chat: tab 'paper r1 3', session 6e86a2e7-84d1-4280-8bf5-f683e04ee789
+
+[brief] CoSiR: r9 build 3 -> r9 build 4 (2026-10-13 18:16 Amsterdam)
+- Done: 25 (C13 re-derivation) and 26 (probe corpora) merged; 05, 07, 14, 19 built and Opus-reviewed; two rule wording changes approved by the user.
+- State: fix rounds done for 05, 19 and 25b; 14 ready; 07 needs one fix round (GPU guard for the content graph, records, tests).
+- Next: Sonnet re-reviews of 05, then 19 with 25b; merge 05, 14, 19, 25b; 07's fix round; then 06 (Codex if the window allows).
+- Blocked: nothing. For the user (minor): rule §3.2 calls the content graph "CPU-made"; it is GPU fp16 (bit-equal on the GPU only).
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-4-handoff.md
+- New chat: tab 'r9 build 4', session b3272558-c238-443c-b3a5-6380d6a36e6c
+
+[brief] CoSiR: paper r1 3 -> paper r1 4 (2026-10-13 18:54 Amsterdam)
+- Done: the full ARS review of v1. Verdict Major Revision: one repairable block on methodology rigor, warn on the other five dimensions, no Critical issue.
+- State: 11 required and 28 suggested items. A fact check shows all 11 premises right, with 4 reviewer errors.
+- Next: the user reads the review and answers the five decisions in `reviews/r1/03_open_decisions.md`.
+- Blocked: waiting for the user's read.
+- Handoff: docs/superpowers/handoffs/2026-10-13-paper-r1-4-handoff.md
+- New chat: tab 'paper r1 4', session 5def5363-2b8d-4f15-ba05-1366da77b077
+
+[brief] CoSiR: r9 build 4 -> r9 build 5 (2026-10-13 19:08 Amsterdam)
+- Done: 05, 07, 14, 15, 17, 19, 25b merged; ArtELingo-28 stores built and stage-1 checks passed on three backbones.
+- State: 06 built (stage 0a PASSED, 131 items, 0 differences), awaiting its Opus review; 25c built, awaiting one fix.
+- Next: Opus review of 06, then merge; fix 25's `value_codes` bug inside 25c, then its Opus review; 17's LOW fixes.
+- Blocked: nothing. The user approved two rule wording changes (painting join by nearest match; graph GPU-made).
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-5-handoff.md
+- New chat: tab 'r9 build 5', session a7a46306-497b-475e-8254-b03a5330311d
+
+[brief] CoSiR: r9 build 5 -> r9 build 6 (2026-10-13 19:57 Amsterdam)
+- Done: 06, 08, 16, 17b, 25c merged; stage 0a passed on 06's fixed code; 08's L1 passed both identity gates on the GPU.
+- State: 09, 10, 11, 18 built and checked on CLIP; 11 needs one fix round; 20 split into 20a and 20b.
+- Next: Opus reviews of 09, 10, 18; 11's fix round; then 20a, 20b and 25c's LOW follow-ups (25d).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-6-handoff.md
+- New chat: tab 'r9 build 6', session 2f29e134-1907-458c-b32a-999b8c5a13f7
+
+[brief] CoSiR: r9 build 6 -> r9 build 7 (2026-10-13 20:53 Amsterdam)
+- Done: 25d, 10, 09, 18 and 11 merged; each CLIP check equals the round 6 pins byte for byte.
+- State: 25 of 33 tickets merged; 20a built, stage 0a passed on it, review asks 2 small fixes.
+- Next: 20a's fix round and merge; then 21a (new) and 20b; LOW fixers to Codex after 21:37.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-7-handoff.md
+- New chat: tab 'r9 build 7', session 25a99a82-13d8-48cb-b089-1693ca800aaa
+
+[brief] CoSiR: 2 -> outside pages (2026-10-13 20:59 Amsterdam)
+- Done: the dev-log start page (primer) and the first stage page (2026-10-04) are rebuilt for outside readers; the user's rules are collected in a draft.
+- State: both pages are committed; the start page is built in the site repo, not deployed; nothing else is online.
+- Next: open the 2026-10-12 page for the user, apply the draft's rules, then take the user's comments one by one.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-outside-pages-handoff.md
+- New chat: tab 'outside pages', session b154104e-b186-4f2e-9c19-d4bfeaadfbf5
+
+[brief] CoSiR: r9 build 7 -> r9 build 8 (2026-10-13 22:16 Amsterdam)
+- Done: 20a, 12, 21a, 20b and 27 merged, plus four LOW rounds; every review passed.
+- State: the stage 0b replay and the CUB/SemArt probes run detached; 13 and 20b's fix are built, not yet checked.
+- Next: run the stage 0b compare on the replay, then 13's Opus review and dry run, 20b's smoke and re-check, ticket 21.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-13-r9-build-8-handoff.md
+- New chat: tab 'r9 build 8', session cda2cded-f6bb-4d80-865b-f7ae496f77d5
+
+[brief] CoSiR: r9 build 8 -> r9 build 9 (2026-10-14 00:05 Amsterdam)
+- Done: stage 0b PASSED (case 1, 131 items exact) after a user-confirmed r9_bundle fix; 20b fix, 21, 21c merged.
+- State: 13 and 23 are built and reviewed; each needs one small Codex fix round (briefs ready). GPU idle.
+- Next: launch both fix rounds, merge, rerun the stage 0b compare, CLIP dry run, the two stage 2 chains; build 22.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-14-r9-build-9-handoff.md
+- New chat: tab 'r9 build 9', session 18057a5a-4e60-48cd-83b0-ff14c8a319ae
+
+[brief] CoSiR: 2 -> AFF questions 2 (2026-10-14 00:07 Amsterdam)
+- Done: answered the user's seven questions about AFF; wrote the AFF model card with a training figure (f96acb2).
+- State: the k-shot sweep (k = 2, 3, 4 example pairs, frozen AFF, seed 42) runs in Codex; the CLIP-text check is on hold.
+- Next: check the sweep's three checks and numbers, write a short report, then check why Leiden for GoEmotions but k-means for CLIP.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-14-aff-questions-handoff.md
+- New chat: tab 'AFF questions 2', session f8e5aee2-8d30-4a4a-9b25-7044a814a226
+
+[brief] CoSiR: AFF questions 2 -> leiden groupings (2026-10-14 01:05 Amsterdam)
+- Done: the k-shot check, reported (AFF needs 3 example pairs). The glossary is fixed. Records searched for two Leiden checks.
+- State: CLIP Leiden at resolution 1.0 already lost (reader margin −0.32). Old attention-H1 labels exist, but H1 saw the held paintings.
+- Next: show the cost table (section 3), let the user pick a route per check, then build and run.
+- Blocked: the user's route choice, and which grouping slot the H1 communities replace.
+- Handoff: docs/superpowers/handoffs/2026-10-14-leiden-groupings-handoff.md
+- New chat: tab 'leiden groupings', session 59ceca52-ce8c-4df2-b403-802bd42bc472
+
+[brief] CoSiR: r9 build 9 -> r9 build 10 (2026-10-14 02:48 Amsterdam)
+- Done: 13, 23 and 22 merged; stage 0b re-passed; CLIP dry run passed; final review in 5 areas, all confirmed with fixes.
+- State: Qwen stage 2 passed (pins written). SigLIP stopped: its caption k-means has a 1-row group the heads cannot fit.
+- Next: diagnose the SigLIP stop and ask the user (key); meanwhile the fix wave, its re-review, stage 0a, merge.
+- Blocked: SigLIP's reads (H7, H10) wait for the user's decision on the 1-row caption group.
+- Handoff: docs/superpowers/handoffs/2026-10-14-r9-build-10-handoff.md
+- New chat: tab 'r9 build 10', session 06992efa-c388-41ec-bd52-4b5c99c57e84
+
+[brief] CoSiR: leiden groupings -> Leiden groupings 2 (2026-10-14 02:55 Amsterdam)
+- Done: AFF rebuilt on Leiden at 64 groups; H1 retrained on scorer-train and screened.
+- State: AFF over B′(A0): Leiden +0.50 [+0.30, +0.71] against k-means +0.70; paired −0.20 [−0.44, +0.05]. AFF R@1 paired −0.56 [−0.80, −0.30]. Retrained H1 fails the screen (−0.27).
+- Next: ask the user's reading, then update both reports, run the checks, wrap up.
+- Blocked: the user's reading, and whether "go with Leiden" changes AFF's fixed recipe.
+- Handoff: docs/superpowers/handoffs/2026-10-14-leiden-groupings-2-handoff.md
+- New chat: tab 'Leiden groupings 2', session 5bef08c8-b1c2-4409-a10a-e7cb465e6b78
+
+[brief] CoSiR: r9 build 10 -> r9 build 11 (2026-10-14 03:56 Amsterdam)
+- Done: final-review fix wave (5 tickets) merged and pushed; both re-reviews PASS WITH NOTES; their findings fixed.
+- State: no HIGH; N5 holds (no closure edit). SigLIP stop: a dead k-means centre, not bad data; a fix is pre-built.
+- Next: re-review fx-rr, stage 0a (CPU), merge r9-scope to main, handoff to the run chat.
+- Blocked: SigLIP's reads (H7, H10) wait for the user's pick: refit rule (recommended) or report the stop.
+- Handoff: docs/superpowers/handoffs/2026-10-14-r9-build-11-handoff.md
+- New chat: tab 'r9 build 11', session 0f172dc2-24f9-4491-a3eb-2c13b77a047f
+

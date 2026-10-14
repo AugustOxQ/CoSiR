@@ -1,0 +1,83 @@
+{
+ "H6_run1": {
+  "exit": 0,
+  "stdout": [
+   "[run_r9_apply_rule] H6 verdict: GO",
+   "[run_r9_apply_rule] P1: passed",
+   "[run_r9_apply_rule] P2: passed",
+   "[run_r9_apply_rule] P3: passed",
+   "[run_r9_apply_rule] P4: passed",
+   "[run_r9_apply_rule] P5: passed",
+   "[run_r9_apply_rule] P6: passed",
+   "[run_r9_apply_rule] P7: passed",
+   "[run_r9_apply_rule] written: /tmp/claude-0/-project-CoSiR/18057a5a-4e60-48cd-83b0-ff14c8a319ae/scratchpad/fr_a1/main_seven/held_verdict_H6.json"
+  ],
+  "verdict_sha": "ea076970de47ae90f469464ee042ccc224e0166a6f382b9efb37100de0dc83ca"
+ },
+ "H6_run2": {
+  "exit": 4,
+  "stdout": [
+   "[run_r9_apply_rule] REFUSED: held_verdict_H6.json exists; a verdict is never overwritten (rule 7.2)"
+  ],
+  "verdict_sha": "ea076970de47ae90f469464ee042ccc224e0166a6f382b9efb37100de0dc83ca"
+ },
+ "not_run": [
+  {
+   "read": "H10",
+   "kind": "switched_off",
+   "exit": 4,
+   "stdout": "[run_r9_apply_rule] REFUSED: H10 is switched off only if H7 was (D30); held_verdict_H7.json does not read 'not run: switched off'",
+   "status": null,
+   "verdict": null
+  },
+  {
+   "read": "H7",
+   "kind": "switched_off",
+   "exit": 0,
+   "stdout": "[run_r9_apply_rule] H7: not run: switched off\n[run_r9_apply_rule] written: /tmp/claude-0/-project-CoSiR/18057a5a-4e60-48cd-83b0-ff14c8a319ae/scratchpad/fr_a1/main_notrun/held_verdict_H7.json",
+   "status": "not run: switched off",
+   "verdict": null
+  },
+  {
+   "read": "H10",
+   "kind": "switched_off",
+   "exit": 0,
+   "stdout": "[run_r9_apply_rule] H10: not run: switched off\n[run_r9_apply_rule] written: /tmp/claude-0/-project-CoSiR/18057a5a-4e60-48cd-83b0-ff14c8a319ae/scratchpad/fr_a1/main_notrun/held_verdict_H10.json",
+   "status": "not run: switched off",
+   "verdict": null
+  },
+  {
+   "read": "H8",
+   "kind": "switched_off",
+   "exit": 4,
+   "stdout": "[run_r9_apply_rule] REFUSED: H8 reads CLIP, which cannot be switched off (D30)",
+   "status": null,
+   "verdict": null
+  },
+  {
+   "read": "H9",
+   "kind": "dropped",
+   "exit": 0,
+   "stdout": "[run_r9_apply_rule] H9: dropped under the rule\n[run_r9_apply_rule] written: /tmp/claude-0/-project-CoSiR/18057a5a-4e60-48cd-83b0-ff14c8a319ae/scratchpad/fr_a1/main_notrun/held_verdict_H9.json",
+   "status": "dropped under the rule",
+   "verdict": null
+  },
+  {
+   "read": "H6",
+   "kind": "dropped",
+   "exit": 4,
+   "stdout": "[run_r9_apply_rule] REFUSED: ledger row H6 does not read exactly 'dropped under the rule'",
+   "status": null,
+   "verdict": null
+  },
+  {
+   "read": "H9",
+   "kind": "switched_off",
+   "exit": 4,
+   "stdout": "[run_r9_apply_rule] REFUSED: held_verdict_H9.json exists; a verdict is never overwritten (rule 7.2)",
+   "status": "dropped under the rule",
+   "verdict": null
+  }
+ ],
+ "seconds": 0.9
+}

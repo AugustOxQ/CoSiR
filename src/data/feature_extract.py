@@ -1,6 +1,6 @@
-"""Frozen-backbone feature extraction: CLIP ViT-B/32 and Qwen3-VL-Embedding-2B (CVPR plan Task 6).
+"""Frozen-backbone feature extraction: CLIP ViT-B/32, SigLIP 2 and Qwen3-VL-Embedding-2B.
 
-Ported from src/test/20261025_backbone_check/extract.py (HFClipLike, QwenEmb). Both encoders return float32,
+Ported from src/test/20261025_backbone_check/extract.py (HFClipLike, QwenEmb). All encoders return float32,
 L2-normalised arrays. PIL images and strings in, numpy out; no file paths.
 """
 
@@ -18,6 +18,7 @@ QWEN_INSTRUCTION_DEFAULT = "Represent the user's input."
 QWEN_MAX_PIXELS = 512 * 32 * 32     # caps image tokens at 512 (backbone check setting)
 CLIP_REPO = "openai/clip-vit-base-patch32"
 QWEN_REPO = "Qwen/Qwen3-VL-Embedding-2B"
+SIGLIP2_REPO = "google/siglip2-so400m-patch14-384"
 
 
 def _l2(x) -> np.ndarray:
@@ -108,6 +109,39 @@ class ClipB32(Encoder):
         return np.concatenate(out)
 
 
+class Siglip2So400m(ClipB32):
+    name = "siglip2_so400m"
+    dim = 1152
+
+    def __init__(self, device: str = "cuda"):
+        from transformers import AutoModel, AutoProcessor
+        self.device, self.dtype = device, torch.bfloat16
+        self.m = AutoModel.from_pretrained(SIGLIP2_REPO, dtype=self.dtype).to(device).eval()
+        self.p = AutoProcessor.from_pretrained(SIGLIP2_REPO)
+        assert self.m.config.vision_config.hidden_size == self.dim
+        assert self.m.config.text_config.projection_size == self.dim
+
+    def _check(self, x, n):
+        assert x.shape == (n, self.dim) and np.isfinite(x).all()
+        return x
+
+    @torch.no_grad()
+    def encode_images(self, images, batch_size: int = 64) -> np.ndarray:
+        images = list(images)
+        return self._check(super().encode_images(images, batch_size), len(images))
+
+    @torch.no_grad()
+    def encode_texts(self, texts, batch_size: int = 256) -> np.ndarray:
+        texts = list(texts)
+        out = []
+        for b in _batches(texts, batch_size):
+            t = self.p.tokenizer([s.lower() for s in b], return_tensors="pt", padding="max_length",
+                                 truncation=True, max_length=64).to(self.device)
+            f = self.m.get_text_features(**t)
+            out.append(_l2(getattr(f, "pooler_output", f)))
+        return self._check(np.concatenate(out), len(texts))
+
+
 class Qwen3VLEmb(Encoder):
     name = "qwen3vl_emb_2b"
     dim = 2048
@@ -172,4 +206,6 @@ def load_encoder(name: str, device: str = "cuda", instruction: str = QWEN_INSTRU
         return ClipB32(device)
     if name == "qwen3vl_emb_2b":
         return Qwen3VLEmb(device, instruction)
+    if name == "siglip2_so400m":
+        return Siglip2So400m(device)
     raise KeyError(name)

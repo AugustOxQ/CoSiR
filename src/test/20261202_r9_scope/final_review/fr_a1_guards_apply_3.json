@@ -1,0 +1,98 @@
+[
+ {
+  "label": "u holm_order seven equal",
+  "killed": true,
+  "rc": 1,
+  "seconds": 11.2,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_holm_order_of_seven_must_match_the_counts",
+  "tail": "1 failed, 115 passed in 7.07s"
+ },
+ {
+  "label": "u holm_order levels equal",
+  "killed": true,
+  "rc": 1,
+  "seconds": 12.7,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_holm_order_of_two_levels_must_match_the_counts",
+  "tail": "1 failed, 116 passed in 8.20s"
+ },
+ {
+  "label": "u assert_rule rule sha",
+  "killed": false,
+  "rc": 0,
+  "seconds": 13.9,
+  "first_failure": null,
+  "tail": "128 passed in 9.31s"
+ },
+ {
+  "label": "u assert_rule R6 sha",
+  "killed": false,
+  "rc": 0,
+  "seconds": 6.7,
+  "first_failure": null,
+  "tail": "128 passed in 5.30s"
+ },
+ {
+  "label": "u assert_rule phrases",
+  "killed": false,
+  "rc": 0,
+  "seconds": 6.3,
+  "first_failure": null,
+  "tail": "128 passed in 4.87s"
+ },
+ {
+  "label": "u assert_rule call (read)",
+  "killed": false,
+  "rc": 0,
+  "seconds": 6.9,
+  "first_failure": null,
+  "tail": "128 passed in 5.13s"
+ },
+ {
+  "label": "u gatekeeping level 2",
+  "killed": true,
+  "rc": 1,
+  "seconds": 5.9,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_level1_tie_order_p4_first_and_boundary_of_two",
+  "tail": "1 failed, 10 passed in 4.17s"
+ },
+ {
+  "label": "u NO-GO kind any/all",
+  "killed": true,
+  "rc": 1,
+  "seconds": 5.6,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_seven_one_fail_is_no_go_and_later_checks_not_reached",
+  "tail": "1 failed, 5 passed in 4.06s"
+ },
+ {
+  "label": "u c11 point > 0",
+  "killed": true,
+  "rc": 1,
+  "seconds": 6.1,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_point_exactly_zero_reads_did_not_beat",
+  "tail": "1 failed, 55 passed in 4.47s"
+ },
+ {
+  "label": "u N counts entries",
+  "killed": true,
+  "rc": 1,
+  "seconds": 5.8,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_claim_names_set_aside_and_flagged",
+  "tail": "1 failed, 14 passed in 4.17s"
+ },
+ {
+  "label": "u not-run pass exists",
+  "killed": true,
+  "rc": 1,
+  "seconds": 5.9,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_not_run_wordings",
+  "tail": "1 failed, 39 passed in 4.28s"
+ },
+ {
+  "label": "u not-run started exists",
+  "killed": true,
+  "rc": 1,
+  "seconds": 5.9,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_not_run_refuses_after_the_read_started[H6-switched_off]",
+  "tail": "1 failed, 44 passed in 4.36s"
+ }
+]

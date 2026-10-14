@@ -1,0 +1,140 @@
+{
+ "h5_keys_check": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_load_core_refuses_a_missing_key - KeyE..."
+  ]
+ },
+ "h5_shape_check": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_load_core_refuses_a_bad_array[B__swap-<lambda>-H5 arrays shape]"
+  ]
+ },
+ "h5_index_dtype_check": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_load_core_refuses_a_bad_array[pair_index-<lambda>-H5 arrays index dtype]"
+  ]
+ },
+ "h5_seed_order_check": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_load_core_refuses_a_bad_array[seed_index-<lambda>-H5 arrays seed order]"
+  ]
+ },
+ "h5_pair_order_check": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_load_core_refuses_a_bad_array[pair_index-<lambda>-H5 arrays pair order]"
+  ]
+ },
+ "h5_float64_check": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_load_core_refuses_a_bad_array[cosine__r1-<lambda>-H5 arrays float64]"
+  ]
+ },
+ "h5_float64_only_dtype": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_load_core_refuses_a_bad_array[B__gain-<lambda>-H5 arrays float64]"
+  ]
+ },
+ "h5_episode_count": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_check_pass_refuses_a_changed_count[change0]"
+  ]
+ },
+ "h5_cluster_count": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_check_pass_refuses_a_changed_count[change1]"
+  ]
+ },
+ "h5_n": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_check_pass_refuses_each_changed_item[n-1-checks-P1]"
+  ]
+ },
+ "h5_point": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_check_pass_refuses_each_changed_item[point-0.123456-checks-P1]"
+  ]
+ },
+ "h5_interval": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_check_pass_refuses_each_changed_item[ci95-value2-checks-P1]"
+  ]
+ },
+ "h5_quantity": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_check_pass_refuses_each_changed_item[quantity-R@1, AFF - something else-checks-P1]"
+  ]
+ },
+ "h5_secondary_skipped": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_check_pass_refuses_each_changed_item[n-1-secondary-S1]"
+  ]
+ },
+ "h5_inputs_check_not_called": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_descriptive.py::test_h5_inputs_binds_smoke_pass_arrays_and_episodes"
+  ]
+ },
+ "cmp_selection_compares_margins": {
+  "caught": true,
+  "first_failure": [
+   "FAILED rederive/rd9_test_compare.py::test_selection_replay_does_not_compare_the_margins_and_says_so[False]"
+  ]
+ },
+ "cmp_no_note": {
+  "caught": true,
+  "first_failure": [
+   "FAILED rederive/rd9_test_compare.py::test_selection_replay_does_not_compare_the_margins_and_says_so[False]"
+  ]
+ },
+ "cmp_margins_never_compared": {
+  "caught": true,
+  "first_failure": [
+   "FAILED rederive/rd9_test_compare.py::test_margins_agree_and_the_sensitivity_file_is_recorded"
+  ]
+ },
+ "cmp_margins_skipped_in_every_mode": {
+  "caught": true,
+  "first_failure": [
+   "FAILED rederive/rd9_test_compare.py::test_margins_agree_and_the_sensitivity_file_is_recorded"
+  ]
+ },
+ "apply_sensitivity_sha_not_checked": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_apply_rule.py::test_agreement_is_bound_to_the_sensitivity_file_bytes"
+  ]
+ },
+ "apply_sensitivity_sha_optional": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_apply_rule.py::test_agreement_without_a_sensitivity_sha_is_refused"
+  ]
+ },
+ "preread_stand_in_without_sha": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_preread.py::test_smoke_agreement_writes_only_into_the_smoke_folder"
+  ]
+ },
+ "stage2_prov_overlap": {
+  "caught": true,
+  "first_failure": [
+   "FAILED test_r9_stage2.py::test_a_key_in_both_made_and_copied_fails - Failed: ..."
+  ]
+ }
+}

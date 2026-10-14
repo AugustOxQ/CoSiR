@@ -1,7 +1,7 @@
 <!doctype html>
 <html data-htmlplan-packed lang="en">
 <meta charset="utf-8">
-<title>Affect Steering Stage</title>
+<title>One-Sided Affect Steering in CoSiR v2</title>
 <style data-htmlplan>
 /* htmlplan — one stylesheet for every coding artifact.
    Tokens first; everything else reads from them. Light + dark.
@@ -1877,7 +1877,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
   th { font-weight: 600; color: #5f5a4f; background: #faf8f3; }
   td.n, th.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .sub { color: #8a8578; font-size: 12.5px; }
-  tr.grp td { color: #8a8578; font-style: italic; background: #fdfcf9; padding-top: 4px; padding-bottom: 4px; }
+  .gap { height: 12px; }
 </style>
 <style>
   /* page-level additions only; the runtime files stay as they are */
@@ -1889,495 +1889,168 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
   details.part > :not(summary) { margin-left: 0; margin-right: 0; }
   details.part > section { padding-left: 26px; }
   details.part h3 { margin-top: 22px; }
-  details.more { margin: 0 0 18px; }
   table.gloss td:first-child { white-space: nowrap; font-weight: 550; }
-  table.gloss td:nth-child(2) { font-family: var(--mono); font-size: 13px; color: var(--ink-2); }
 </style>
-<body data-numbers="off">
+
+
 
 <header>
-  <h1>Affect Steering on Held Paintings</h1>
-  <p class="meta"><span>Stage report · CoSiR v2</span><span>Work of 2 to 12 October 2026</span><a href="2026-10-12_affect_steering_line.md">Full report (markdown)</a></p>
+  <h1>One-Sided Affect Steering in CoSiR v2</h1>
+  <p class="meta"><span>Stage report · CoSiR v2</span><span>Work of 5 to 12 October 2026</span><a href="2026-10-12_affect_steering_line.md">Full report (markdown)</a></p>
 </header>
 
 <main>
 
-<!-- ═════ Background ═════ -->
-<details class="part" open><summary><h2 id="background">Background</h2></summary>
+<details class="part"><summary><h2 id="background">Background</h2></summary>
 <section>
-  <p>CoSiR scores how alike an image and a caption are in one aspect, such as emotion, style or genre. Example pairs show the aspect, and nobody names it.</p>
-  <p>CLIP cosine gives one fixed number, so it cannot say "alike in mood, not in style". Earlier conditional-similarity methods need a name for the aspect or supervision tied to it, and nearly all compare images with images.</p>
-  <p>On 28 September we rebuilt CoSiR as v2 on frozen CLIP features. At first the examples showed the query's own value, such as "sad, like these".</p>
-  <p>That gave the answer away. In the earlier task, value episodes, a prototype of the examples that ignored the query scored 22.83 R@1. Our best trained model scored 21.22.</p>
-  <p>So on 2 October we moved to aspect episodes. Now the examples show an aspect through values that the query does not have.</p>
-  <p>This stage asked one question. Can a method that reads the aspect from the examples beat the strongest score that ignores it, on paintings it never saw?</p>
-  <doc-shot src="../assets/2026-10-12_affect_steering_line/chain.png" label="The line of work, 28 September to 12 October (Figure 2 of the full report)" caption="Teal worked, orange did not work, and slate is a comparator or a diagnostic. In box 6, &quot;fusion loses&quot; means that the reader&#39;s score alone lost R@1 against the same heads averaged. Method A (box 5) is in the glossary."></doc-shot>
+<p>CoSiR scores how alike an image and a caption are in one aspect, such as emotion, style or genre. A few pairs show the aspect, and nobody names it. We call the shown aspect the condition.</p>
+<p>The first stage page (2 to 4 October) ended with a head reader, which reads the pairs and picks one of three label-free groupings. It favoured the shown aspect but lost R@1 to its matched control. Told the right grouping from the labels, the same heads won. So the weak step was the reader's choice of grouping.</p>
+<p>This stage asked one question. Can a better reader beat a strong score that ignores the condition, on paintings it never saw?</p>
 </section>
 </details>
 
-<!-- ═════ Preliminaries ═════ -->
-<details class="part" open><summary><h2 id="preliminaries">Preliminaries</h2></summary>
+<details class="part"><summary><h2 id="preliminaries">Preliminaries</h2></summary>
 <section>
-  <h3 id="prelim-task">The task</h3>
-  <p>The test item is an aspect episode. A method sees a query and eight example pairs, then ranks 13 candidates in the other modality. Each episode has two aspects, A and B, such as emotion and genre.</p>
-  <doc-shot src="../assets/2026-10-07_weekly/setup_overview.png" label="The task at a glance (Figure 1 of the full report)" caption="If the example pairs and the contrast pairs swap, the other aspect's candidate must come first."></doc-shot>
-  <ul>
-    <li><b>Query:</b> a painting's image, which ranks captions, or a viewer's caption, which ranks images.</li>
-    <li><b>4 support pairs:</b> an image of one painting with a caption of another, which agree on a value of aspect A. The four values differ; none is the query's.</li>
-    <li><b>4 contrast pairs:</b> the same, for a second aspect B.</li>
-    <li><b>13 candidates:</b> p_A shares the query's value of A, p_B its value of B, and 11 negatives share neither.</li>
-    <li><b>Conditions:</b> in condition a the supports show A, so p_A is the target. In condition b the two blocks swap, so p_B is the target.</li>
-  </ul>
-  <details class="more"><summary>A real episode from the development paintings (Figure 4 of the full report)</summary>
-    <doc-shot src="../assets/2026-10-12_affect_steering_line/example_episode.png" label="An emotion × genre episode, condition a" caption="The supports share an emotion, the contrasts a genre, and neither block shows the query's own values."></doc-shot>
-  </details>
-
-  <h3 id="prelim-data">The data</h3>
-  <p>ArtELingo (English) has 308,723 image and caption rows over 61,402 WikiArt paintings. Every item is a frozen CLIP ViT-B/32 feature.</p>
-  <doc-mock frame="none" w="480" label="The three aspects" caption="Each episode uses one aspect pair: emotion × style, emotion × genre or style × genre."><template>
+<h3 id="the-task">The task</h3>
+<p>The test item is an aspect episode. A method sees a query and eight pairs, then ranks 13 candidates in the other modality.</p>
+<doc-shot src="../assets/2026-10-04_aspect_conditioned_similarity_methods/task_schematic.png" label="One aspect episode (Figure 1 of the full report)" caption="Under condition A the target is p_A. If the example pairs and contrast pairs swap roles, the condition is B and p_B must rank first."></doc-shot>
+<ul>
+  <li><b>Query:</b> the image or the caption of one row, which is one image of a painting with one viewer's caption.</li>
+  <li><b>4 example pairs:</b> each an image and a caption of two paintings that share a value of aspect A. The four values differ, and none is the query's own.</li>
+  <li><b>4 contrast pairs:</b> the same, for a second aspect B.</li>
+  <li><b>13 candidates:</b> p_A shares the query's value of A, p_B its value of B, and 11 negatives share neither. All 13 differ from the query on the third aspect.</li>
+</ul>
+<h3 id="the-data">The data</h3>
+<p>ArtELingo (English) has 308,723 rows over 61,402 paintings. Every item is a frozen CLIP ViT-B/32 feature.</p>
+<doc-mock frame="none" w="520" label="The three aspects of ArtELingo. Each episode uses two aspects: emotion × style, emotion × genre or style × genre."><template>
 <table>
   <thead><tr><th>Aspect</th><th class="n">Values</th><th>Label given per</th></tr></thead>
   <tbody>
-    <tr><td>emotion</td><td class="n">8</td><td>viewer (caption)</td></tr>
+    <tr><td>emotion</td><td class="n">8</td><td>viewer (row)</td></tr>
     <tr><td>style</td><td class="n">23</td><td>painting</td></tr>
-    <tr><td>genre</td><td class="n">10</td><td>painting (about 81% of paintings)</td></tr>
+    <tr><td>genre</td><td class="n">10</td><td>painting</td></tr>
   </tbody>
 </table></template></doc-mock>
-  <doc-mock frame="none" w="520" label="The splits of the paintings" caption="One seed draws 12,288 episodes, 4,096 per aspect pair."><template>
+<p>All development episodes come from 6,451 paintings that no model trained on. Held episodes come from other paintings (see "The held paintings").</p>
+<h3 id="the-metrics">The metrics</h3>
+<p>Each episode gives four ranked lists: two directions times two conditions. Every metric counts the first place of each list.</p>
+<doc-mock frame="none" w="520" label="The metrics, and their values for CLIP cosine on development episodes. R@1 = (either rate + condition gain) / 2."><template>
 <table>
-  <thead><tr><th>Split</th><th class="n">Paintings</th><th>Used for</th></tr></thead>
+  <thead><tr><th>Metric</th><th>What it counts</th><th class="n">Cosine (development)</th></tr></thead>
   <tbody>
-    <tr><td>training</td><td class="n">36,518</td><td>every learned part; no evaluation label is used</td></tr>
-    <tr><td>development</td><td class="n">6,451</td><td><b>development episodes</b> (seed 42), reused to choose methods; <b>fresh episodes</b> (seeds 43 to 51), one test each</td></tr>
-    <tr><td>held</td><td class="n">12,281</td><td><b>held episodes</b> (seeds 52 to 54), read once; nothing in AFF was fitted, chosen or tuned on them</td></tr>
+    <tr><td>R@1</td><td>the target ranks strictly first; a tie is a miss; chance is 7.69%</td><td class="n">12.96</td></tr>
+    <tr><td>other-aspect rate</td><td>the other aspect's candidate ranks first</td><td class="n">same as R@1</td></tr>
+    <tr><td>either rate</td><td>R@1 plus the other-aspect rate: one of the two aspect candidates ranks first, whichever it is</td><td class="n">25.92</td></tr>
+    <tr><td>condition gain</td><td>R@1 minus the other-aspect rate</td><td class="n">0</td></tr>
   </tbody>
 </table></template></doc-mock>
-
-  <h3 id="prelim-metrics">The metrics</h3>
-  <p>Each episode gives four rankings: two conditions times two directions. Every metric counts first places.</p>
-  <doc-mock frame="none" w="520" label="The metrics" caption="R@1 = (either rate + condition gain) / 2."><template>
+<p>R@1 is the mean of the either rate and the condition gain. A score that ignores the condition has a gain of exactly 0. A reader beats such a score only if the gain it adds exceeds the either rate it loses.</p>
+<doc-note tone="info">Numbers are points. Most are on the development episodes (seed 42). New episodes come from a fresh seed, a new draw on the same paintings. Intervals are 95%, over query paintings.</doc-note>
+<h3 id="controls">Controls</h3>
+<ul>
+  <li><b>Matched control:</b> the same score with only the condition removed. For the head reader (first stage page), the averaged heads replace the heads that the reader picks. For our current method (see Experiments), its steering term is averaged over the two conditions.</li>
+  <li><b>Condition-free bar:</b> the best score that ignores the condition, 18.34 R@1 at the end of the first stage (development). We built it ourselves, as a control.</li>
+</ul>
+<h3 id="the-held-paintings">The held paintings</h3>
+<p>The paper's final test uses 12,281 held paintings. No model trained on them, and nothing in our current method was fitted, chosen or tuned on them. Plain CLIP cosine reaches 13.25 R@1 on them.</p>
+<h3 id="the-comparators-of-this-stage">The comparators of this stage</h3>
+<p>A grouping is a clustering of the training rows, made without labels. A head is a classifier on CLIP features that places an image or a caption in a group. This stage uses three groupings: emotion (see Experiments), CLIP image clusters and CLIP caption clusters.</p>
+<doc-mock frame="none" w="600" label="Each comparator, its R@1 on held paintings, and what a method shows when it beats it. Plain CLIP cosine reaches 13.25."><template>
 <table>
-  <thead><tr><th>Metric</th><th>What it counts</th></tr></thead>
+  <thead><tr><th>Comparator</th><th>What it is</th><th class="n">R@1, held</th><th>Beating it shows</th></tr></thead>
   <tbody>
-    <tr><td>R@1</td><td>the target ranks first, in percent; chance is 7.7%</td></tr>
-    <tr><td>other-aspect rate</td><td>the other aspect's candidate ranks first</td></tr>
-    <tr><td>either rate</td><td>R@1 plus the other-aspect rate: a candidate that shares some aspect ranks first</td></tr>
-    <tr><td>condition gain</td><td>R@1 minus the other-aspect rate; exactly 0 for a score that ignores the condition</td></tr>
-    <tr><td>swap success</td><td>p_A is above p_B in condition a, and p_B is above p_A in condition b</td></tr>
+    <tr><td>plain CLIP cosine</td><td>the cosine of frozen CLIP image and caption features</td><td class="n">13.25</td><td>the method adds to CLIP</td></tr>
+    <tr><td>RCA</td><td>the best of nine metrics learned from the example pairs, added to cosine</td><td class="n">13.54</td><td>the method reads the pairs better than a published pair metric</td></tr>
+    <tr><td>fine-tuned CLIP</td><td>CLIP fine-tuned on ArtELingo pairs without labels; best of three ways</td><td class="n">15.80</td><td>the gain does not come from adapting CLIP to paintings</td></tr>
+    <tr><td>language model in context</td><td>Qwen3-VL-8B sees the whole episode in one prompt</td><td class="n">14.50 (one seed; cosine 13.24 there)</td><td>a large ready-made model does not already do the task</td></tr>
+    <tr><td>describe-then-score</td><td>Qwen3-VL-8B says what the example pairs share; CRL, a published method, scores that phrase on CLIP</td><td class="n">13.06</td><td>naming the aspect in words is not enough</td></tr>
+    <tr><td>condition-free bar</td><td>the bar above, rebuilt on our method's three groupings (the 18.34 above was the older version, on development episodes)</td><td class="n">18.84</td><td>the gain comes from reading the condition</td></tr>
+    <tr><td>stronger condition-free score</td><td>the condition-free bar plus a style grouping from CSD, a pretrained style encoder</td><td class="n">19.30</td><td>the same, against the strongest score we built</td></tr>
+    <tr><td>matched control</td><td>our method with its steering term averaged over the two conditions</td><td class="n">18.80</td><td>the method's use of the condition helps</td></tr>
   </tbody>
 </table></template></doc-mock>
-  <p>So R@1 = (either rate + condition gain) / 2. A method can raise R@1 in two ways: find candidates that share some aspect more often, or choose the shown aspect more often.</p>
-  <p>A method that reads the condition loses some either rate. Its R@1 rises only if its condition gain grows by more than that.</p>
-  <doc-note tone="info">Differences are in R@1 points. Intervals are 95% bootstrap intervals over anchor paintings.</doc-note>
-
-  <h3 id="prelim-controls">The comparators</h3>
-  <p>A grouping is a label-free split of the training captions or images into groups. A head is a classifier that places an image or caption in a group. The CSD grouping takes its groups from a pretrained style encoder.</p>
-  <doc-mock frame="none" w="560" label="The scores that AFF must beat" caption="A score that ignores the condition looks strong: on development episodes B reaches 18.34 R@1, against 12.96 for cosine."><template>
-<table>
-  <thead><tr><th>Comparator</th><th>What it is</th><th>Reads the condition?</th></tr></thead>
-  <tbody>
-    <tr><td>cosine</td><td>CLIP ViT-B/32 image and caption cosine</td><td>no</td></tr>
-    <tr><td>RCA</td><td>relevant component analysis: a metric fitted on the episode's own example pairs, fused with cosine</td><td>in principle</td></tr>
-    <tr><td><b>B</b></td><td>the best condition-free score before AFF: cosine, a factor term centred on the episode's 8 example items, and averaged grouping heads</td><td>no: it uses the examples, not the aspect they show</td></tr>
-    <tr><td><b>B′(A0)</b></td><td>B rebuilt on AFF's own three groupings</td><td>no</td></tr>
-    <tr><td><b>B′(A1)</b></td><td>B′ plus a style grouping from the pretrained CSD style encoder; the strongest condition-free score</td><td>no</td></tr>
-    <tr><td><b>matched control</b></td><td>AFF with only the condition removed: its steering term is averaged over the two conditions</td><td>no</td></tr>
-  </tbody>
-</table></template></doc-mock>
-
-  <h3 id="prelim-method">The method: one-sided affect steering (AFF)</h3>
-  <p>AFF adds a label-free affect term to B when a gate opens.</p>
-  <doc-shot src="../assets/2026-10-12_affect_steering_line/aff_pipeline.png" label="AFF in one picture (Figure 11 of the full report)" caption="If the gate stays closed, AFF gives the same score as B."></doc-shot>
-  <ul>
-    <li><b>Groupings:</b> three. Affect clusters the GoEmotions scores of the captions; image and caption use k-means on CLIP features.</li>
-    <li><b>Reader:</b> a classifier that says which grouping the support pairs share. It trains on practice episodes built from the groupings, not from labels.</li>
-    <li><b>Gate:</b> AFF steers only when the reader is confident and picks affect, so mostly on one side of each episode.</li>
-    <li><b>R1, the gated reader:</b> AFF without the restriction to affect. It steers with whatever grouping the reader picks.</li>
-  </ul>
-
-  <h3 id="prelim-protocol">The protocol</h3>
-  <doc-shot src="../assets/2026-10-12_affect_steering_line/protocol.png" label="How a result earns a claim (Figure 5 of the full report)" caption="Each decision rule was in git before its episodes were built; the seven checks are in the bottom box."></doc-shot>
-  <p>A round is one pre-registered experiment with its own decision rule.</p>
-  <ol>
-    <li><b>Development bar:</b> at least +0.5 R@1 over the strongest of B, B′ and the matched control, lower bound above 0.</li>
-    <li><b>Fresh test:</b> three new seeds; GO needs all seven checks with lower bounds above 0.</li>
-    <li><b>Held read:</b> the same checks on the held paintings, every weight frozen, with a Holm correction.</li>
-  </ol>
-  <p>The seven checks are:</p>
-  <ul>
-    <li>AFF minus cosine, RCA, B, B′(A0) and the matched control, on R@1;</li>
-    <li>AFF's condition gain minus that of the condition-free scores, and minus that of RCA.</li>
-  </ul>
-  <p>Each 95% lower bound must be above 0, with Holm on the held read.</p>
+<p>The scores that ignore the condition beat every outside comparator. Our reading: they use the episode's example items, which cosine never sees.</p>
+<p>In this stage, a method first needed a margin of at least 0.5 R@1 on development episodes over the condition-free bar and its matched control. On new episodes and held paintings it then had to clear seven margins set in advance, each with a 95% interval above 0:</p>
+<ul>
+  <li>five margins in R@1: over cosine, RCA, the matched control, the condition-free bar and its older version;</li>
+  <li>two margins in condition gain: over the condition-free scores and over RCA.</li>
+</ul>
+<p>The stronger condition-free score was an extra comparison outside these seven.</p>
 </section>
 </details>
 
-<doc-plan>
+<details class="part" open><summary><h2 id="experiments">Experiments</h2></summary>
+<section>
+<p>The question: can a better reader beat the condition-free bar on paintings it never saw? In part. On held paintings our current method beat the bar by 0.60 R@1, and the gain sits on the two emotion pairs.</p>
+<p>A positive finding beat its test, and a negative finding missed it. A check measures one step of a method, a comparator or an upper limit.</p>
+<div class="exp">
+  <h3 id="exp-an-emotion-grouping-from-a-graph">An emotion grouping from a graph</h3>
+  <p><span class="pill chk">Check</span> The emotion grouping clusters the training captions by their scores from GoEmotions, an outside emotion classifier. Its categories cover 6 of the 8 emotions we test, so the grouping is not fully free of emotion labels. We clustered the scores in two ways: k-means, and Leiden, which finds tightly linked groups in a graph of near-neighbour captions. With Leiden the head reader beat its matched control by 0.35 R@1 on development episodes, against 0.16 with k-means.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-a-learned-reader-that-steers-only-when-confident">A learned reader that steers only when confident</h3>
+  <p><span class="pill neg">Negative finding</span> We replaced the head reader's rule with a learned reader, a classifier that says which grouping the example pairs share. It trains on episodes built from the groupings, so it needs no labels. It steers only when its top pick clearly leads the second. Then it adds a term that ranks higher the candidates in the query's group, in the grouping it picked. On development episodes it beat its matched control by 0.44 R@1, short of the 0.5 set in advance.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-a-style-grouping-from-a-style-encoder">A style grouping from a style encoder</h3>
+  <p><span class="pill neg">Negative finding</span> We added a fourth grouping from CSD, a pretrained style encoder. A ceiling is the score when told the right grouping from the labels, an upper limit for label-free methods. With CSD the heads' ceiling reached 2.23 R@1 over their control, the highest we measured. But CSD lowered every reader's margin. It lifted the condition-free scores as much, and the reader often picked it when the example pairs showed genre.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-our-current-method-one-sided-affect-steering">Our current method: one-sided affect steering</h3>
+  <p><span class="pill pos">Positive finding</span> The confident reader's margin sat almost all on the emotion side of the two emotion pairs. So our current method, one-sided affect steering (AFF), steers only when the reader is confident and picks the emotion grouping. When we swap the example and contrast pairs, evidence that the example pairs share emotion becomes evidence against it. So AFF steers mostly in one of the two conditions.</p>
+  <doc-shot src="../assets/2026-10-12_affect_steering_line/aff_structure.png" label="Our current method (AFF)" caption="Every part is built without ArtELingo labels; the emotion grouping uses an outside emotion classifier."></doc-shot>
+  <p>On new episodes from three fresh seeds, AFF reached 18.88 R@1 against 18.29 for the condition-free bar. All seven margins had 95% intervals above 0. We found AFF among about 50 variants on development episodes, so only the new episodes and the held paintings count.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-a-random-choice-of-the-episodes-to-steer">A random choice of the episodes to steer</h3>
+  <p><span class="pill chk">Check</span> To see what carries AFF's gain, we built a control that knows which condition is which, as no real method can. In each condition it steers random episodes as often as AFF does. On new episodes, AFF and two such random draws differed by at most 0.04 R@1. So AFF's choice of episodes to steer adds nothing we can measure. Our reading: the gain comes mostly from steering one side, and we do not claim that AFF reads emotion from the examples. Held paintings have no such control.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-vetoes-that-stop-the-steering">Vetoes that stop the steering</h3>
+  <p><span class="pill neg">Negative finding</span> We tried three vetoes, extra rules that only stop AFF from steering. The first skips episodes where the example and contrast pairs both agree strongly on the image grouping. It beat the condition-free bar by 0.66 R@1 on development episodes, but put the target first in 18 fewer of 49,152 rankings than AFF. The other two used a second reader that also sees CSD, and missed the 0.5 margin over the stronger condition-free score. Each also stopped emotion-side steering that paid.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-captions-placed-by-their-own-emotion-scores">Captions placed by their own emotion scores</h3>
+  <p><span class="pill neg">Negative finding</span> AFF places each caption in the emotion grouping with a head on CLIP features. We tried the caption's own GoEmotions scores instead, which placed 86.17% of held-out captions correctly, against 35.72% for the CLIP head. Yet the two variants beat the condition-free bar by only 0.36 and 0.43 R@1, below the 0.5 margin, and lost to AFF. Our reading: each example pair joins a caption with an image, so a sharper caption side adds little while the image side stays weak.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-a-fine-tuned-clip">A fine-tuned CLIP</h3>
+  <p><span class="pill chk">Check</span> We fine-tuned CLIP on ArtELingo image and caption pairs without labels, in three ways. On new episodes they gained 1.93 to 2.10 R@1 over plain CLIP. But they stayed 3.15 to 3.32 below the condition-free bar, and their gain came from genre candidates, barely from emotion candidates.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-the-held-test">The held test</h3>
+  <p><span class="pill pos">Positive finding</span> We tested AFF once on the held paintings, with every weight frozen. AFF reached 19.44 R@1 against 18.84 for the condition-free bar, a margin like that on new episodes. All seven margins set in advance held, and its condition gain was 3.06, against 0 for any score that ignores the condition. But AFF is below the condition-free bar on style × genre, by 0.43. In the extra comparison, its margin over the stronger condition-free score is 0.14, and the interval includes 0. A reader that steers with any grouping it picks, with no emotion rule, did about as well.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-language-models-on-held-paintings">Language models on held paintings</h3>
+  <p><span class="pill chk">Check</span> Given the whole episode in one prompt, Qwen3-VL-8B reached 14.50 R@1 against 13.24 for cosine, on one held seed. Its condition gain of 0.12 is not established. Describe-then-score reached 13.06, at cosine's level. Neither chose the shown aspect reliably.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-told-the-true-styles-a-ceiling">Told the true styles: a ceiling</h3>
+  <p><span class="pill chk">Check</span> AFF loses on style × genre, and none of its groupings follows style. So we first measured a ceiling: the same score, told the true styles from the labels. On style × genre it beat its matched control by 3.92 R@1, against the 0.9 we predicted before the test. Our reading: a good style grouping could gain much there.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-style-groupings-without-content">Style groupings without content</h3>
+  <p><span class="pill neg">Negative finding</span> We built six label-free style groupings meant to follow style and ignore image content. We scored each grouping in two ways, giving 12 scorers. None reached the 0.5 margin over the stronger condition-free score, and the best reached 0.25. On style × genre they reached about a tenth of the ceiling, and each lost to AFF on emotion × genre.</p>
+</div>
+</section>
+</details>
 
-<!-- ═════ 1 · the held read ═════ -->
-<doc-claim>
-  <p>On held paintings, AFF passed all seven pre-registered checks.</p>
-  <doc-shot src="../assets/2026-10-12_affect_steering_line/held_comparison.png" label="Every comparator on the held paintings, 36,864 episodes (Figure 7 of the full report)" caption="AFF reaches 19.44 R@1 against 18.84 for B′(A0); B′(A1) and R1 sit within noise of AFF."></doc-shot>
-  <doc-note tone="warn"><strong>Small in R@1, large in condition gain.</strong> The margin over B′(A0) is about 3% relative. AFF was the best of about 50 variants on development episodes; only the fresh and held tests protect it.</doc-note>
-
-  <doc-claim>
-    <p>AFF beat each pre-registered R@1 comparator by +0.60 or more (every lower bound at least +0.46).</p>
-    <doc-mock frame="none" w="480" label="The R@1 checks, held paintings" caption="Seeds 52 to 54 on 9,519 anchor paintings; Holm across the seven checks."><template>
-<table>
-  <thead><tr><th>Comparator</th><th class="n">R@1</th><th class="n">AFF minus it</th></tr></thead>
-  <tbody>
-    <tr><td><b>AFF</b></td><td class="n"><b>19.44</b></td><td class="n"></td></tr>
-    <tr><td>cosine</td><td class="n">13.25</td><td class="n">+6.19 [+5.96, +6.40]</td></tr>
-    <tr><td>RCA</td><td class="n">13.54</td><td class="n">+5.89 [+5.67, +6.11]</td></tr>
-    <tr><td>B</td><td class="n">18.81</td><td class="n">+0.63 [+0.51, +0.75]</td></tr>
-    <tr><td>B′(A0)</td><td class="n">18.84</td><td class="n"><b>+0.60 [+0.46, +0.73]</b><br><span class="sub">[+0.40, +0.79] with targets resampled</span></td></tr>
-    <tr><td>matched control</td><td class="n">18.80</td><td class="n">+0.63 [+0.50, +0.76]</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="info"><strong>Wider intervals.</strong> If the target paintings are resampled too, intervals widen 1.39 to 1.45 times; every lower bound stays above 0.</doc-note>
-  </doc-claim>
-
-  <doc-claim>
-    <p>Its condition gain was 3.06, where condition-free scores have 0.</p>
-    <doc-mock frame="none" w="480" label="The condition-gain checks, held paintings" caption="Both checks passed."><template>
-<table>
-  <thead><tr><th>AFF's condition gain minus that of</th><th class="n">Points</th></tr></thead>
-  <tbody>
-    <tr><td>the condition-free scores (condition gain 0)</td><td class="n">+3.06 [+2.87, +3.25]</td></tr>
-    <tr><td>RCA (condition gain 0.14)</td><td class="n">+2.92 [+2.70, +3.14]</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-
-  <doc-claim>
-    <p>The fresh test, four days earlier, gave the same margin over B′(A0): +0.59 then +0.60.</p>
-    <doc-mock frame="none" w="560" label="AFF minus each comparator, R@1 points" caption="Fresh: seeds 49 to 51 on the development paintings. Held: seeds 52 to 54."><template>
-<table>
-  <thead><tr><th>AFF minus</th><th class="n">Fresh (round 3)</th><th class="n">Held (round 6)</th></tr></thead>
-  <tbody>
-    <tr><td>cosine</td><td class="n">+5.84 [+5.61, +6.07]</td><td class="n">+6.19 [+5.96, +6.40]</td></tr>
-    <tr><td>RCA</td><td class="n">+5.72 [+5.50, +5.95]</td><td class="n">+5.89 [+5.67, +6.11]</td></tr>
-    <tr><td>B</td><td class="n">+0.81 [+0.69, +0.93]</td><td class="n">+0.63 [+0.51, +0.75]</td></tr>
-    <tr><td><b>B′(A0)</b></td><td class="n"><b>+0.59 [+0.46, +0.73]</b></td><td class="n"><b>+0.60 [+0.46, +0.73]</b></td></tr>
-    <tr><td>matched control</td><td class="n">+0.80 [+0.67, +0.92]</td><td class="n">+0.63 [+0.50, +0.76]</td></tr>
-    <tr><td>condition gain over the condition-free scores</td><td class="n">+3.32 [+3.13, +3.52]</td><td class="n">+3.06 [+2.87, +3.25]</td></tr>
-    <tr><td>R1 (secondary)</td><td class="n">+0.20 [+0.09, +0.31]</td><td class="n">+0.02 [−0.06, +0.11]</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="info">The fresh test fitted the blend weights anew on each seed; the held read froze them. The held seeds use nearly the same paintings, so they are not independent replications.</doc-note>
-  </doc-claim>
-
-  <doc-claim>
-    <p>A margin over B′(A1) or over R1 is not established.</p>
-    <doc-mock frame="none" w="480" label="The secondary checks, held paintings" caption="Both intervals include 0."><template>
-<table>
-  <thead><tr><th>Comparator</th><th class="n">R@1</th><th class="n">AFF minus it</th></tr></thead>
-  <tbody>
-    <tr><td>B′(A1), the strongest condition-free score</td><td class="n">19.30</td><td class="n">+0.14 [−0.03, +0.30]</td></tr>
-    <tr><td>R1, AFF without the affect restriction</td><td class="n">19.41</td><td class="n">+0.02 [−0.06, +0.11]</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="warn"><strong>The affect restriction is not shown to matter.</strong> R1 alone also clears all seven checks. On fresh episodes, AFF's lead over R1 was +0.20 with weights fitted anew, and +0.09 with the development weights reused.</doc-note>
-  </doc-claim>
-
-  <doc-claim>
-    <p>Before AFF, the gated reader missed the development bar.</p>
-    <doc-mock frame="none" w="600" label="The steps that built AFF, development episodes" caption="Each row names its comparator; the rows describe our path, not isolated effects."><template>
-<table>
-  <thead><tr><th>Step</th><th>Result</th><th>Against</th></tr></thead>
-  <tbody>
-    <tr><td>three groupings, read by a rule</td><td>condition gain 4.41, but R@1 16.51 against 16.96</td><td>the same heads averaged</td></tr>
-    <tr><td>Leiden affect grouping</td><td>+0.35, against +0.16 for k-means</td><td>matched control</td></tr>
-    <tr><td>learned reader with a confidence gate</td><td><b>+0.44</b>, short of the +0.5 bar</td><td>matched control</td></tr>
-    <tr><td>CSD style grouping in the reader</td><td>lowered every reader's margin</td><td>the readers without CSD</td></tr>
-    <tr><td><b>one-sided rule: AFF</b></td><td><b>+0.70</b> [+0.46, +0.94], the best of about 50 variants</td><td>B′(A0)</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="info">The CSD grouping lifted the condition-free comparators as much as the readers, so it stays only in B′(A1).</doc-note>
-  </doc-claim>
-</doc-claim>
-
-<!-- ═════ 2 · external baselines ═════ -->
-<doc-claim>
-  <p>External baselines, MLLMs included, were far behind and barely chose the shown aspect.</p>
-  <doc-shot src="../assets/2026-10-12_affect_steering_line/frontier.png" label="Finding against choosing, held paintings (Figure 8 of the full report)" caption="The external baselines sit near a condition gain of 0; only R1 and AFF also choose the shown aspect."></doc-shot>
-
-  <doc-claim>
-    <p>Fine-tuned CLIP reached at most 15.80 R@1.</p>
-    <doc-mock frame="none" w="480" label="External baselines, held paintings" caption="CLIP was fine-tuned label-free on ArtELingo image and caption pairs. The pair metrics are fitted on the episode's example pairs. Each row has a condition gain of 0 or close to it."><template>
-<table>
-  <thead><tr><th>Scorer</th><th class="n">R@1</th><th class="n">AFF minus it</th></tr></thead>
-  <tbody>
-    <tr><td>cosine (CLIP)</td><td class="n">13.25</td><td class="n">+6.19</td></tr>
-    <tr><td>fine-tuned CLIP, linear probe</td><td class="n">15.45</td><td class="n">+3.99</td></tr>
-    <tr><td>fine-tuned CLIP, last block</td><td class="n">15.32</td><td class="n">+4.11</td></tr>
-    <tr><td>fine-tuned CLIP, LoRA</td><td class="n">15.80</td><td class="n">+3.64</td></tr>
-    <tr><td>the eight other pair metrics (KISSME, Xing's metric, per-query weights, a probe, a cache of the examples, and others)</td><td class="n">12.99 to 13.21</td><td class="n">+6.23 to +6.44</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="info">On fresh episodes, the lift from fine-tuning went to the genre candidate and barely to the emotion candidate.</doc-note>
-  </doc-claim>
-
-  <doc-claim>
-    <p>In context, Qwen3-VL did not reliably choose the shown aspect.</p>
-    <doc-shot src="../assets/2026-10-12_affect_steering_line/mllm.png" label="The MLLM comparators against cosine (Figure 12 of the full report)" caption="Held: seed 52 only, 12,288 episodes. The 8B model finds aspect candidates a little more often than cosine, but its condition gain stays near 0."></doc-shot>
-    <doc-note tone="info">A model passes this test only if its R@1 and its condition gain over cosine both have lower bounds above 0. Neither Qwen3-VL-2B nor Qwen3-VL-8B passed this test (development-painting episodes).</doc-note>
-    <doc-claim>
-      <p>On held seed 52, the 8B model reached 14.50 R@1 against 13.24 for cosine.</p>
-      <doc-mock frame="none" w="480" label="The in-context 8B model, held: seed 52 only, 12,288 episodes" caption="AFF was +4.94 [+4.56, +5.33] above the model on these episodes."><template>
-  <table>
-    <thead><tr><th>Scorer</th><th class="n">R@1</th><th class="n">Condition gain</th></tr></thead>
-    <tbody>
-      <tr><td>cosine, same seed</td><td class="n">13.24</td><td class="n">0</td></tr>
-      <tr><td>in-context Qwen3-VL-8B</td><td class="n">14.50</td><td class="n">0.12 [−0.17, +0.39]</td></tr>
-    </tbody>
-  </table></template></doc-mock>
-    </doc-claim>
-    <doc-claim>
-      <p>The model saw the whole episode in one prompt.</p>
-      <doc-code title="The prompt, from §5.1 of the full report" lang="text" wrap caption="The answer letters are permuted for each ranking, so a letter preference cannot pass for a choice.">
-<script type="text/plain">
-Each example pair shows an image and a caption of two different artworks that are alike in one respect. The counter-example pairs are alike in a different respect. Pick the candidate that is alike to the query in the same respect as the example pairs. Answer with one letter.
-
-Example pairs:
-Pair 1: image<image>
-caption: <caption of another artwork>
-  ... pairs 2 to 4
-Counter-example pairs:
-Pair 1: image<image>
-caption: <caption of another artwork>
-  ... pairs 2 to 4
-Query:
-<image>
-Candidates:
-A. <caption>
-  ... B to M
-Answer:
-</script>
-      </doc-code>
-    </doc-claim>
-  </doc-claim>
-
-  <doc-claim>
-    <p>Describe-then-score stayed at the level of cosine.</p>
-    <doc-mock frame="none" w="480" label="Describe-then-score (DTS), held paintings" caption="Told the true aspect name, DTS chose a little but fell below cosine."><template>
-<table>
-  <thead><tr><th>Scorer</th><th class="n">R@1</th><th class="n">Condition gain</th></tr></thead>
-  <tbody>
-    <tr><td>cosine</td><td class="n">13.25</td><td class="n">0</td></tr>
-    <tr><td>DTS</td><td class="n">13.06</td><td class="n">0.08 [−0.04, +0.20]</td></tr>
-    <tr><td>DTS told the true aspect name (privileged)</td><td class="n">12.15</td><td class="n">1.17</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="info">Qwen3-VL-8B states what the supports share and the contrasts lack; CRL, a published method, scores that phrase on CLIP.</doc-note>
-  </doc-claim>
-
-  <doc-claim>
-    <p>On swap success, three scorers are above AFF.</p>
-    <doc-mock frame="none" w="480" label="Swap success, held paintings" caption="The MLLM row is on seed 52 only; its AFF-minus value is computed on those episodes; the other rows pool seeds 52 to 54. The paper must still report this measure."><template>
-<table>
-  <thead><tr><th>Scorer</th><th class="n">Swap success (%)</th><th class="n">AFF minus it</th></tr></thead>
-  <tbody>
-    <tr><td><b>AFF</b></td><td class="n"><b>11.50</b> [11.25, 11.76]</td><td class="n"></td></tr>
-    <tr><td>R1</td><td class="n">11.67</td><td class="n">−0.17 [−0.33, −0.01]</td></tr>
-    <tr><td>in-context MLLM (seed 52)</td><td class="n">13.08</td><td class="n">−1.61 [−2.19, −1.01]</td></tr>
-    <tr><td>DTS told the true aspect name</td><td class="n">16.43</td><td class="n">−4.93 [−5.29, −4.57]</td></tr>
-    <tr><td>DTS</td><td class="n">3.93</td><td class="n">+7.57 [+7.28, +7.86]</td></tr>
-    <tr><td>RCA</td><td class="n">3.17</td><td class="n">+8.33 [+8.05, +8.61]</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="info">Swap success counts cases where the two aspect candidates are in the right order under both conditions, wherever they rank. A random order reaches 25%: one half in each condition, so one quarter for both.</doc-note>
-    <doc-note tone="warn"><strong>Our reading.</strong> Every scorer is below 25%, so swap success alone does not show that a scorer reads the aspect.</doc-note>
-  </doc-claim>
-</doc-claim>
-
-<!-- ═════ 3 · per pair ═════ -->
-<doc-claim>
-  <p>AFF's margin over B′(A0) sat on the emotion pairs, same sign in both reads (descriptive).</p>
-  <doc-shot src="../assets/2026-10-12_affect_steering_line/per_pair_fresh_held.png" label="AFF minus B′(A0) per aspect pair (Figure 9 of the full report)" caption="On style × genre, AFF is below B′(A0) in both reads (descriptive)."></doc-shot>
-
-  <doc-claim>
-    <p>Both reads show the same pattern pair by pair (descriptive).</p>
-    <doc-mock frame="none" w="600" label="AFF minus B′(A0) per aspect pair, R@1 points" caption="12,288 episodes per pair in each read; descriptive, so no per-pair claim."><template>
-<table>
-  <thead><tr><th>Pair</th><th class="n">Fresh</th><th class="n">Held</th><th class="n">Condition gain, held<br>(over the control)</th></tr></thead>
-  <tbody>
-    <tr><td>emotion × style</td><td class="n">+0.81 [+0.58, +1.04]</td><td class="n">+0.59 [+0.35, +0.83]</td><td class="n">+0.86 [+0.56, +1.15]</td></tr>
-    <tr><td>emotion × genre</td><td class="n">+1.54 [+1.30, +1.79]</td><td class="n">+1.64 [+1.40, +1.90]</td><td class="n">+6.05 [+5.68, +6.41]</td></tr>
-    <tr><td>style × genre</td><td class="n"><b>−0.58</b> [−0.79, −0.36]</td><td class="n"><b>−0.43</b> [−0.65, −0.21]</td><td class="n">+2.28 [+1.96, +2.59]</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-
-  <doc-claim>
-    <p>On held style × genre, AFF was below B′(A0), its matched control and B′(A1).</p>
-    <doc-mock frame="none" w="420" label="AFF minus each comparator on style × genre, held paintings" caption="The loss is largest against B′(A1), which has the CSD style grouping."><template>
-<table>
-  <thead><tr><th>Comparator</th><th class="n">AFF minus it</th></tr></thead>
-  <tbody>
-    <tr><td>B′(A0)</td><td class="n">−0.43 [−0.65, −0.21]</td></tr>
-    <tr><td>matched control</td><td class="n">−0.28 [−0.48, −0.09]</td></tr>
-    <tr><td>B′(A1)</td><td class="n">−1.24</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-
-  <doc-claim>
-    <p>On style × genre, the first places that AFF took went to negatives.</p>
-    <doc-mock frame="none" w="560" label="How first places moved, fresh episodes" caption="On style × genre, the first places AFF took went to negatives, not to the target."><template>
-<table>
-  <thead><tr><th>Pair</th><th>What AFF did to first places</th></tr></thead>
-  <tbody>
-    <tr><td>emotion × style</td><td>moved them to the emotion target, mostly from negatives, so its either rate rose</td></tr>
-    <tr><td>emotion × genre</td><td>took 4.6 points from the other aspect's candidate; R@1 rose by 1.5</td></tr>
-    <tr><td>style × genre</td><td>took 3.3 points from the other aspect's candidate, but they went to negatives</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="info">On style × genre, condition a shows style. The reader picked affect in 77.6% of those conditions. The affect grouping is built from the captions' emotion scores, so it is not built to carry style.</doc-note>
-  </doc-claim>
-
-  <doc-claim>
-    <p>Our reading: steering toward emotion pays where B is weakest.</p>
-    <doc-mock frame="none" w="420" label="How often the condition-free score puts the target first, development episodes" caption="Our reading rests on this table: the condition-free score ranks the emotion target first far less often than the genre target. On fresh episodes, AFF lost about 0.52 points of either rate per point of condition gain."><template>
-<table>
-  <thead><tr><th>Target</th><th class="n">Ranked first</th></tr></thead>
-  <tbody>
-    <tr><td>emotion target</td><td class="n">10 to 13%</td></tr>
-    <tr><td>genre target</td><td class="n">32 to 33%</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-</doc-claim>
-
-<!-- ═════ 4 · mechanism ═════ -->
-<doc-claim>
-  <p>Our reading: steering one side, not reading emotion, carries the margin.</p>
-  <doc-shot src="../assets/2026-10-12_affect_steering_line/random_gate.png" label="Margin over B′(A0), fresh episodes (Figure 10 of the full report)" caption="Our reading rests on this: a random gate that steers the same side as often matches AFF."></doc-shot>
-  <doc-note tone="warn"><strong>A control, not a method.</strong> The random gate keeps R1's steering and opens each condition as often as AFF does. It knows which condition is which; no method is allowed to know that. It ran on fresh episodes only.</doc-note>
-
-  <doc-claim>
-    <p>AFF was within about 0.1 of both random draws.</p>
-    <doc-mock frame="none" w="420" label="AFF minus the random one-sided gate, fresh episodes" caption="The random gate opened 80.6% of condition a and 29.7% of condition b, as AFF did."><template>
-<table>
-  <thead><tr><th>AFF minus</th><th class="n">R@1 points</th></tr></thead>
-  <tbody>
-    <tr><td>random gate, draw 1</td><td class="n">−0.04 [−0.14, +0.05]</td></tr>
-    <tr><td>random gate, draw 2</td><td class="n">+0.03 [−0.08, +0.13]</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-
-  <doc-claim>
-    <p>Our reading: AFF's affect pick behaves like a visual-contrast rule.</p>
-    <doc-mock frame="none" w="520" label="How often the reader picked affect in condition a, fresh episodes" caption="A label-free diagnostic, run after the verdict and not tested further."><template>
-<table>
-  <thead><tr><th>Pair</th><th class="n">Contrasts agree more<br>on both visual groupings (image and caption)</th><th class="n">Otherwise</th></tr></thead>
-  <tbody>
-    <tr><td>emotion × style</td><td class="n">95.1%</td><td class="n">57.0%</td></tr>
-    <tr><td>emotion × genre</td><td class="n">96.1%</td><td class="n">60.7%</td></tr>
-    <tr><td>style × genre</td><td class="n">93.4%</td><td class="n">50.2%</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="info"><strong>Our reading.</strong> AFF picks affect mostly when both visual groupings agree more on the contrasts. That is the emotion side in the emotion pairs, where steering pays, and the style side in style × genre, where it costs.</doc-note>
-  </doc-claim>
-</doc-claim>
-
-<!-- ═════ 5 · after the GO ═════ -->
-<doc-claim>
-  <p>After the GO, three rounds failed to improve AFF.</p>
-  <doc-shot src="../assets/2026-10-12_affect_steering_line/after_go.png" label="The rounds after the fresh GO, development episodes (Figure 13 of the full report)" caption="No attempt both cleared the +0.5 bar and beat AFF."></doc-shot>
-
-  <doc-claim>
-    <p>Round 4: vetoes on AFF's gate lost rankings to AFF.</p>
-    <doc-mock frame="none" w="520" label="Round 4, three vetoes that can only switch steering off" caption="Each veto lost 18 to 34 net rankings of 49,152 to AFF, and also switched off emotion-side steering that paid."><template>
-<table>
-  <thead><tr><th>Veto</th><th>Development bar</th></tr></thead>
-  <tbody>
-    <tr><td>abstain when supports and contrasts both agree strongly on the image grouping</td><td>cleared: +0.66 [+0.43, +0.89] over B′(A0)</td></tr>
-    <tr><td>steer only if a second reader that also sees CSD picks affect</td><td>failed against B′(A1)</td></tr>
-    <tr><td>both vetoes</td><td>failed against B′(A1)</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-
-  <doc-claim>
-    <p>Round 5: a sharper caption placement still missed the bar.</p>
-    <doc-mock frame="none" w="480" label="Round 5, captions placed in the affect grouping by their own GoEmotions scores" caption="Both variants missed the +0.5 bar and lost 134 to 169 of 49,152 rankings to AFF."><template>
-<table>
-  <thead><tr><th>Variant</th><th class="n">Over B′(A0)</th></tr></thead>
-  <tbody>
-    <tr><td>placement in the steering term only</td><td class="n">+0.36 [+0.12, +0.58]</td></tr>
-    <tr><td>placement also in the reader</td><td class="n">+0.43 [+0.19, +0.67]</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="info">The new placement was far more accurate than the CLIP caption head (86.17% against 35.72%). Likely reason for the miss: every agreement pairs it with the weak image head.</doc-note>
-  </doc-claim>
-
-  <doc-claim>
-    <p>Round 7: on style × genre, label-free style groupings reached about a tenth of the ceiling.</p>
-    <doc-shot src="../../user_read/assets/2026-10-12_design_l_style_source/fig1_ceiling_vs_candidates.png" w="620" label="Round 7 on style × genre, development episodes (Figure 14 of the full report)" caption="Told the true styles, the score reaches a far higher margin than with any of the six label-free style groupings, of which V2 and V3 are two."></doc-shot>
-    <doc-note tone="info">None of the 12 candidate scorers passed the gate. The best pooled margin was +0.25, against the +0.5 bar over B′(A1). AFF itself clears B′(A1) there by only +0.33 on development episodes.</doc-note>
-  </doc-claim>
-</doc-claim>
-
-<doc-claim aux="scope">
-  <p>Limits: what these numbers do not cover.</p>
-  <ul>
-    <li>One dataset (ArtELingo, English) and one backbone (CLIP ViT-B/32). The planned CUB and SemArt held tests and a second backbone did not run.</li>
-    <li>We found AFF among about 50 label-free variants on development episodes. Rounds 4 and 5 read about 10 more there.</li>
-    <li>No per-pair claim: on held style × genre, AFF is below B′(A0), its matched control and B′(A1) (claim 3). The margins over B′(A1) and R1 are not established (claim 1.4).</li>
-        <li>Four readings are ours, not results: claims 2.4 (swap success), 3.4 (emotion steering), 4 (one-sided steering) and 4.2 (a visual-contrast rule). The random-gate control ran on fresh episodes only.</li>
-    <li>The affect grouping uses the external GoEmotions classifier, whose 28 categories name 6 of the 8 evaluation emotions.</li>
-    <li>The held paintings were read before with value episodes, the earlier task. 24 held rows have a training image at CLIP cosine of at least 0.99.</li>
-  </ul>
-</doc-claim>
-
-</doc-plan>
-
-<p class="muted">Give your reading first: use the comment button on any claim, then press Respond.</p>
-<details>
-  <summary>Our advice (open after giving your reading)</summary>
-  <ul>
-    <li><b>Our reading.</b> The task and its protocol are the best-supported contribution: a strong condition-free score beats every external baseline we ran.</li>
-    <li><b>Our reading.</b> Over B′(A0), a modest label-free method still adds about 0.6 R@1 points; over B′(A1) the margin is +0.14 and not established.</li>
-    <li><b>Decided by the user, 12 October.</b> Grouping work goes on beside the ArtELingo paper with AFF. A held-read verdict must come by Friday 23 October.</li>
-    <li><b>Next: round 8.</b> A learned grouping head on frozen CLIP, trained so that its groups cut across a content grouping, in place of CSD. The aim is a real style signal for style × genre.</li>
-    <li><b>Second track.</b> A screen of other style encoders.</li>
-    <li><b>Paper.</b> The CVPR abstract is due on 10 November and the paper on 16 November. If round 8 does not pass by the cut-off, the paper reports AFF as tested here.</li>
-  </ul>
+<details class="part" open><summary><h2 id="next">Next</h2></summary>
+<section>
+<p>We now build a learned grouping on frozen CLIP whose groups cut across the image content groups, so that it can follow style. Beside it, we screen other style encoders, while we write the ArtELingo paper with AFF.</p>
+</section>
 </details>
 
 <h2 id="glossary">Glossary</h2>
 <table class="gloss">
-  <thead><tr><th>Term on this page</th><th>Name in the full report</th><th>Meaning</th></tr></thead>
+  <thead><tr><th>Term on this page</th><th>Meaning</th></tr></thead>
   <tbody>
-    <tr><td>aspect, value</td><td>aspect (respect), value</td><td>A way in which items can be alike (emotion, style, genre); one setting of it (sad, Baroque, landscape).</td></tr>
-    <tr><td>aspect episode</td><td>aspect episode</td><td>A query, 4 support pairs, 4 contrast pairs and 13 candidates in the other modality; the aspect is never named.</td></tr>
-    <tr><td>aspect pair</td><td>aspect pair</td><td>The two aspects of an episode.</td></tr>
-    <tr><td>condition a, b</td><td>condition a / b</td><td>a: the supports show aspect A. b: the supports and contrasts swap.</td></tr>
-    <tr><td>either rate</td><td>either rate</td><td>How often a candidate that shares either aspect ranks first.</td></tr>
-    <tr><td>condition gain</td><td>condition gain</td><td>R@1 minus the other-aspect rate; 0 for any condition-free score.</td></tr>
-    <tr><td>swap success</td><td>swap success</td><td>The order of the two aspect candidates flips correctly with the condition.</td></tr>
-    <tr><td>matched control</td><td>matched control</td><td>The same score with only the condition removed.</td></tr>
-    <tr><td>B, B′(A0), B′(A1)</td><td>B, B′(A0), B′(A1)</td><td>The condition-free scores: the best before AFF; rebuilt on AFF's groupings; with the CSD style grouping added.</td></tr>
-    <tr><td>development bar</td><td>development bar</td><td>A margin of at least +0.5 R@1 with a lower bound above 0 on development episodes; it earns a test.</td></tr>
-    <tr><td>development, fresh, held episodes</td><td>seed 42; seeds 43 to 51; seeds 52 to 54</td><td>Reused to choose methods; new draws on the development paintings, one test each; the held paintings, read once.</td></tr>
-    <tr><td>GO</td><td>GO</td><td>A pass of all seven pre-registered checks.</td></tr>
-    <tr><td>Holm</td><td>Holm</td><td>Holm's step-down correction across the checks of one read.</td></tr>
-    <tr><td>grouping, head</td><td>grouping; head</td><td>A label-free partition of the training rows; a logistic regression that places an image or a caption in it.</td></tr>
-    <tr><td>affect grouping</td><td>affect</td><td>Leiden communities of the GoEmotions scores of the captions, 41 groups.</td></tr>
-    <tr><td>GoEmotions</td><td>GoEmotions</td><td>A public emotion classifier trained on Reddit comments, never on ArtELingo.</td></tr>
-    <tr><td>reader</td><td>reader</td><td>A classifier that says which grouping the support pairs share.</td></tr>
-    <tr><td>practice episode</td><td>bank episode</td><td>An episode built from a grouping, not a label, to train the reader.</td></tr>
-    <tr><td>told</td><td>told</td><td>Given the right grouping or aspect from the labels; a ceiling, not a method.</td></tr>
-    <tr><td>R1</td><td>R1</td><td>The gated reader: it steers whenever it is confident, whatever grouping it picks.</td></tr>
-    <tr><td>AFF</td><td>AFF</td><td>One-sided affect steering: R1 that steers only when its pick is affect.</td></tr>
-    <tr><td>random one-sided gate</td><td>random-share control</td><td>A control that steers at random with AFF's open share per condition; it knows the condition, so it is not a method.</td></tr>
-    <tr><td>RCA</td><td>RCA</td><td>Relevant component analysis, a metric fitted on the example pairs.</td></tr>
-    <tr><td>DTS</td><td>DTS</td><td>Describe-then-score: an MLLM names what the supports share, and CRL scores that on CLIP.</td></tr>
-    <tr><td>DTS-N</td><td>DTS-N</td><td>DTS told the true aspect name, a privileged ceiling.</td></tr>
-    <tr><td>method A</td><td>method A</td><td>Shared image and caption factors trained label-free; it failed (see the report's Appendix A).</td></tr>
-    <tr><td>CSD</td><td>CSD</td><td>A pretrained style encoder (ECCV 2024).</td></tr>
+    <tr><td>condition</td><td>The aspect that the example pairs show; the episode never names it.</td></tr>
+    <tr><td>matched control</td><td>The same score with only the condition removed.</td></tr>
+    <tr><td>condition-free bar</td><td>A strong score we built that ignores the condition; it uses the example items but ignores the aspect they show.</td></tr>
+    <tr><td>condition gain</td><td>R@1 minus the other-aspect rate; exactly 0 for a score that ignores the condition.</td></tr>
+    <tr><td>either rate</td><td>R@1 plus the other-aspect rate: one of the two aspect candidates ranks first, whichever it is.</td></tr>
   </tbody>
 </table>
 </main>

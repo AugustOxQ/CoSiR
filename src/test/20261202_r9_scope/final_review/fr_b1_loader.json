@@ -1,0 +1,39 @@
+{
+ "check_pins_keys": 22,
+ "clip_b32": {
+  "n": 74569,
+  "img": [
+   74569,
+   512
+  ],
+  "kept": 74569,
+  "langs": 27,
+  "paintings": 746,
+  "held_rows": 25055,
+  "sha": "97c0ea0e7f98"
+ },
+ "qwen3vl_emb_2b": {
+  "n": 74569,
+  "img": [
+   74569,
+   2048
+  ],
+  "kept": 74569,
+  "langs": 27,
+  "paintings": 746,
+  "held_rows": 25055,
+  "sha": "97c0ea0e7f98"
+ },
+ "siglip2_so400m": {
+  "n": 74569,
+  "img": [
+   74569,
+   1152
+  ],
+  "kept": 74569,
+  "langs": 27,
+  "paintings": 746,
+  "held_rows": 25055,
+  "sha": "97c0ea0e7f98"
+ }
+}

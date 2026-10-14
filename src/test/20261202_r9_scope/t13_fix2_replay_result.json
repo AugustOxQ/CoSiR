@@ -1,0 +1,36 @@
+{
+  "replay": "/project/CoSiR-wt/r9-replay/src/test/20261202_r9_scope/results/replay/clip_b32",
+  "input_files_passed": 20,
+  "provenance_passed": 20,
+  "roles": [
+    "A3_seed42",
+    "bank_AIC",
+    "baselines_seed42",
+    "cells_seed42",
+    "graph",
+    "n6_posteriors",
+    "partitions",
+    "picked",
+    "picks_seed42",
+    "rb_bank_A0_half0",
+    "rb_bank_A0_half1",
+    "rb_heads_affect",
+    "rb_heads_caption",
+    "rb_heads_csd",
+    "rb_heads_image",
+    "rb_heads_rand",
+    "rb_reader_A0",
+    "rb_reader_A0_json",
+    "rc_tau",
+    "step1_heads_style"
+  ],
+  "skipped_self_input_sha256": {
+    "partitions": {
+      "/project/CoSiR/src/test/20261031_pseudo_partitions/results/partitions.npz": "cfd57dbb21216cdc9d1c2e42d1b408648bc18147f62354b52202ade4ab8a9caa"
+    }
+  },
+  "module_certificate_mismatches": [
+    "src/test/20261202_r9_scope/r9_pins.py"
+  ],
+  "module_check_isolated_for_read_only_diagnostic": true
+}

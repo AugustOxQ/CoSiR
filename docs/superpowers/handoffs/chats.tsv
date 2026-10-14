@@ -45,3 +45,21 @@ opened	loop	label	session	opened from	first read
 2026-10-13 11:55	r9	r9 decide	347d0b89-e31b-45e0-99c6-172e32722282	e07e023c-b740-420e-97e9-164573311ce2	docs/superpowers/handoffs/2026-10-13-r9-decide-handoff.md
 2026-10-13 13:01	r9	r9 decide 2	c4d522ed-2388-457a-b411-919bcfe578e6	347d0b89-e31b-45e0-99c6-172e32722282	docs/superpowers/handoffs/2026-10-13-r9-decide-2-handoff.md
 2026-10-13 15:12	r9	r9 build	9be763ef-3a11-43a1-9938-43dfc67d003a	c4d522ed-2388-457a-b411-919bcfe578e6	docs/superpowers/handoffs/2026-10-13-r9-build-handoff.md
+2026-10-13 16:02	paper	paper r1	2cc044a2-ddd3-4c94-b15d-4728b96bc0d4	440cf7df-02f0-4e75-aae0-0c871dc7d3b0	docs/superpowers/handoffs/2026-10-13-paper-r1-handoff.md
+2026-10-13 16:26	r9	r9 build 2	817e6dbb-9657-4cbd-8ac2-f1785f663c3f	9be763ef-3a11-43a1-9938-43dfc67d003a	docs/superpowers/handoffs/2026-10-13-r9-build-2-handoff.md
+2026-10-13 16:37	paper	paper r1 2	844278df-7731-4314-80c3-53b1e3370ce0	2cc044a2-ddd3-4c94-b15d-4728b96bc0d4	docs/superpowers/handoffs/2026-10-13-paper-r1-2-handoff.md
+2026-10-13 17:10	r9	r9 build 3	a175987c-d8fe-4725-8d27-7c2084eb81cb	817e6dbb-9657-4cbd-8ac2-f1785f663c3f	docs/superpowers/handoffs/2026-10-13-r9-build-3-handoff.md
+2026-10-13 17:44	paper	paper r1 3	6e86a2e7-84d1-4280-8bf5-f683e04ee789	844278df-7731-4314-80c3-53b1e3370ce0	docs/superpowers/handoffs/2026-10-13-paper-r1-3-handoff.md
+2026-10-13 18:16	r9	r9 build 4	b3272558-c238-443c-b3a5-6380d6a36e6c	a175987c-d8fe-4725-8d27-7c2084eb81cb	docs/superpowers/handoffs/2026-10-13-r9-build-4-handoff.md
+2026-10-13 18:54	paper	paper r1 4	5def5363-2b8d-4f15-ba05-1366da77b077	6e86a2e7-84d1-4280-8bf5-f683e04ee789	docs/superpowers/handoffs/2026-10-13-paper-r1-4-handoff.md
+2026-10-13 19:08	r9	r9 build 5	a7a46306-497b-475e-8254-b03a5330311d	b3272558-c238-443c-b3a5-6380d6a36e6c	docs/superpowers/handoffs/2026-10-13-r9-build-5-handoff.md
+2026-10-13 19:57	r9	r9 build 6	2f29e134-1907-458c-b32a-999b8c5a13f7	a7a46306-497b-475e-8254-b03a5330311d	docs/superpowers/handoffs/2026-10-13-r9-build-6-handoff.md
+2026-10-13 20:53	r9	r9 build 7	25a99a82-13d8-48cb-b089-1693ca800aaa	2f29e134-1907-458c-b32a-999b8c5a13f7	docs/superpowers/handoffs/2026-10-13-r9-build-7-handoff.md
+2026-10-13 20:59	outside	outside pages	b154104e-b186-4f2e-9c19-d4bfeaadfbf5	60d8d8e9-c4a5-4613-9280-d6ee05d4f20f	docs/superpowers/handoffs/2026-10-13-outside-pages-handoff.md
+2026-10-13 22:16	r9	r9 build 8	cda2cded-f6bb-4d80-865b-f7ae496f77d5	25a99a82-13d8-48cb-b089-1693ca800aaa	docs/superpowers/handoffs/2026-10-13-r9-build-8-handoff.md
+2026-10-14 00:05	r9	r9 build 9	18057a5a-4e60-48cd-83b0-ff14c8a319ae	cda2cded-f6bb-4d80-865b-f7ae496f77d5	docs/superpowers/handoffs/2026-10-14-r9-build-9-handoff.md
+2026-10-14 00:07	AFF	AFF questions 2	f8e5aee2-8d30-4a4a-9b25-7044a814a226	c364095d-9895-4914-914d-0550c5482f65	docs/superpowers/handoffs/2026-10-14-aff-questions-handoff.md
+2026-10-14 01:05	leiden	leiden groupings	59ceca52-ce8c-4df2-b403-802bd42bc472	f8e5aee2-8d30-4a4a-9b25-7044a814a226	docs/superpowers/handoffs/2026-10-14-leiden-groupings-handoff.md
+2026-10-14 02:48	r9	r9 build 10	06992efa-c388-41ec-bd52-4b5c99c57e84	18057a5a-4e60-48cd-83b0-ff14c8a319ae	docs/superpowers/handoffs/2026-10-14-r9-build-10-handoff.md
+2026-10-14 02:55	Leiden	Leiden groupings 2	5bef08c8-b1c2-4409-a10a-e7cb465e6b78	59ceca52-ce8c-4df2-b403-802bd42bc472	docs/superpowers/handoffs/2026-10-14-leiden-groupings-2-handoff.md
+2026-10-14 03:56	r9	r9 build 11	0f172dc2-24f9-4491-a3eb-2c13b77a047f	06992efa-c388-41ec-bd52-4b5c99c57e84	docs/superpowers/handoffs/2026-10-14-r9-build-11-handoff.md

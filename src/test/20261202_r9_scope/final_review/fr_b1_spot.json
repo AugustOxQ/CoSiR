@@ -1,0 +1,59 @@
+{
+ "clip_b32": {
+  "image_rows_eq_rng0": true,
+  "text_rows_eq_rng0": true,
+  "image_painting_eq_index": true,
+  "text_row_id_eq_index": true,
+  "min_image_cos": 0.9999918937683105,
+  "min_text_cos": 0.9999990463256836,
+  "n": [
+   20,
+   20
+  ],
+  "device": "cpu",
+  "seed": 0,
+  "flags": [
+   true,
+   true,
+   true
+  ]
+ },
+ "qwen3vl_emb_2b": {
+  "image_rows_eq_rng0": true,
+  "text_rows_eq_rng0": true,
+  "image_painting_eq_index": true,
+  "text_row_id_eq_index": true,
+  "min_image_cos": 0.9989330768585205,
+  "min_text_cos": 0.9996697902679443,
+  "n": [
+   20,
+   20
+  ],
+  "device": "cpu",
+  "seed": 0,
+  "flags": [
+   true,
+   true,
+   true
+  ]
+ },
+ "siglip2_so400m": {
+  "image_rows_eq_rng0": true,
+  "text_rows_eq_rng0": true,
+  "image_painting_eq_index": true,
+  "text_row_id_eq_index": true,
+  "min_image_cos": 0.9998099207878113,
+  "min_text_cos": 0.9999467730522156,
+  "n": [
+   20,
+   20
+  ],
+  "device": "cpu",
+  "seed": 0,
+  "flags": [
+   true,
+   true,
+   true
+  ]
+ }
+}

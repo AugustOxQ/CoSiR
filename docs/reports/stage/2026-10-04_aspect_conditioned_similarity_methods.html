@@ -1890,9 +1890,8 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
   details.part > section { padding-left: 26px; }
   details.part h3 { margin-top: 22px; }
   table.gloss td:first-child { white-space: nowrap; font-weight: 550; }
-  table.gloss td:nth-child(2) { font-family: var(--mono); font-size: 13px; color: var(--ink-2); }
 </style>
-<body data-numbers="off">
+
 
 <header>
   <h1>Aspect Readers in CoSiR v2</h1>
@@ -1901,35 +1900,31 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 
 <main>
 
-<!-- ═════ Background ═════ -->
-<details class="part" open><summary><h2 id="background">Background</h2></summary>
+<details class="part"><summary><h2 id="background">Background</h2></summary>
 <section>
-  <p>CoSiR scores how alike an image and a caption are in one aspect, such as emotion, style or genre. Example pairs show the aspect, and nobody names it. We call the shown aspect the condition.</p>
-  <p>The work started with the buddy line (June to mid September). It learned a condition vector for each sample from a graph of near neighbours.</p>
-  <p>The percept line (15 to 28 September) put that graph into PercepT, a published method that groups items into emotion-aware topics. Neither line beat its comparator.</p>
-  <p>On 28 September we rebuilt CoSiR as v2 around example pairs. The first benchmark showed the query's own value, such as "sad". The pairs gave the answer away: a score that ignored the query did almost as well.</p>
-  <p>So we moved to the aspect task. Now the pairs show an aspect through values that the query does not have.</p>
-  <p>This stage asked one question. Can a reader, a rule that finds the aspect from the pairs, beat the same score without the condition?</p>
-  <doc-shot src="../assets/2026-10-04_aspect_conditioned_similarity_methods/chain.png" label="The nine steps of the stage, 2 to 4 October (Figure 2 of the full report)" caption="Orange failed its test or gate, teal is a positive result, and the glossary names the boxes."></doc-shot>
+<p>CoSiR scores how alike an image and a caption are in one aspect, such as emotion, style or genre. A few pairs show the aspect, and nobody names it. We call the shown aspect the condition.</p>
+<p>The work started with the buddy line (June to mid September), our first approach. It learned a small condition vector for each sample, starting from a graph that links each item to its near neighbours.</p>
+<p>The percept line (15 to 28 September) was our second approach. It put that graph into PercepT, a published method that groups items into emotion-aware topics. Neither line beat its comparator.</p>
+<p>On 28 September we rebuilt CoSiR as v2, a new design that gives the condition through pairs. The first benchmark showed the query's own value, such as "sad". The pairs gave the answer away: a score that ignored the query did almost as well.</p>
+<p>So we moved to the aspect task. Now the pairs show an aspect through values that the query does not have.</p>
+<p>This stage asked one question. Can a reader, a rule that finds the aspect from the pairs, beat the same score without the condition?</p>
 </section>
 </details>
 
-<!-- ═════ Preliminaries ═════ -->
-<details class="part" open><summary><h2 id="preliminaries">Preliminaries</h2></summary>
+<details class="part"><summary><h2 id="preliminaries">Preliminaries</h2></summary>
 <section>
-  <h3 id="prelim-task">The task</h3>
-  <p>The test item is an aspect episode. A method sees a query and eight example pairs, then ranks 13 candidates in the other modality.</p>
-  <doc-shot src="../assets/2026-10-04_aspect_conditioned_similarity_methods/task_schematic.png" label="One aspect episode (Figure 1 of the full report)" caption="Under condition A the target is p_A. If the support and contrast pairs swap, the condition is B and p_B must rank first."></doc-shot>
-  <ul>
-    <li><b>Query:</b> the image or the caption of one row, which is one image of a painting with one viewer's caption.</li>
-    <li><b>4 support pairs:</b> each an image and a caption of two paintings that share a value of aspect A. The four values differ, and none is the query's own.</li>
-    <li><b>4 contrast pairs:</b> the same, for a second aspect B.</li>
-    <li><b>13 candidates:</b> p_A shares the query's value of A, p_B its value of B, and 11 negatives share neither. All 13 differ from the query on the third aspect.</li>
-  </ul>
-
-  <h3 id="prelim-data">The data</h3>
-  <p>ArtELingo (English) has 308,723 rows over 61,402 paintings. Every item is a frozen CLIP ViT-B/32 feature.</p>
-  <doc-mock frame="none" w="440" label="The three aspects of ArtELingo" caption="Each episode uses two aspects: emotion × style, emotion × genre or style × genre."><template>
+<h3 id="the-task">The task</h3>
+<p>The test item is an aspect episode. A method sees a query and eight pairs, then ranks 13 candidates in the other modality.</p>
+<doc-shot src="../assets/2026-10-04_aspect_conditioned_similarity_methods/task_schematic.png" label="One aspect episode (Figure 1 of the full report)" caption="Under condition A the target is p_A. If the example pairs and contrast pairs swap roles, the condition is B and p_B must rank first."></doc-shot>
+<ul>
+  <li><b>Query:</b> the image or the caption of one row, which is one image of a painting with one viewer's caption.</li>
+  <li><b>4 example pairs:</b> each an image and a caption of two paintings that share a value of aspect A. The four values differ, and none is the query's own.</li>
+  <li><b>4 contrast pairs:</b> the same, for a second aspect B.</li>
+  <li><b>13 candidates:</b> p_A shares the query's value of A, p_B its value of B, and 11 negatives share neither. All 13 differ from the query on the third aspect.</li>
+</ul>
+<h3 id="the-data">The data</h3>
+<p>ArtELingo (English) has 308,723 rows over 61,402 paintings. Every item is a frozen CLIP ViT-B/32 feature.</p>
+<doc-mock frame="none" w="520" label="The three aspects of ArtELingo. Each episode uses two aspects: emotion × style, emotion × genre or style × genre."><template>
 <table>
   <thead><tr><th>Aspect</th><th class="n">Values</th><th>Label given per</th></tr></thead>
   <tbody>
@@ -1938,11 +1933,10 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
     <tr><td>genre</td><td class="n">10</td><td>painting</td></tr>
   </tbody>
 </table></template></doc-mock>
-  <p>All episodes come from the 6,451 selection paintings, which no model trained on.</p>
-
-  <h3 id="prelim-metrics">The metrics</h3>
-  <p>Each episode gives four ranked lists: two directions times two conditions. Every metric counts the first place of each list.</p>
-  <doc-mock frame="none" w="520" label="The metrics, and their values for CLIP cosine" caption="R@1 = (either rate + condition gain) / 2."><template>
+<p>All episodes come from 6,451 paintings that no model trained on.</p>
+<h3 id="the-metrics">The metrics</h3>
+<p>Each episode gives four ranked lists: two directions times two conditions. Every metric counts the first place of each list.</p>
+<doc-mock frame="none" w="520" label="The metrics, and their values for CLIP cosine. R@1 = (either rate + condition gain) / 2."><template>
 <table>
   <thead><tr><th>Metric</th><th>What it counts</th><th class="n">Cosine</th></tr></thead>
   <tbody>
@@ -1952,345 +1946,84 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
     <tr><td>condition gain</td><td>R@1 minus the other-aspect rate</td><td class="n">0</td></tr>
   </tbody>
 </table></template></doc-mock>
-  <p>So R@1 has two parts. A scorer that ignores the condition has a gain of exactly 0. To beat it, a reader must add more gain than it loses in either rate.</p>
-  <doc-note tone="info">Numbers are points. Most are on seed 42, the development draw. A table names any fresh seed, a new draw on the same paintings. Intervals are 95%, over query paintings.</doc-note>
-
-  <h3 id="prelim-controls">Controls and the pass test</h3>
-  <ul>
-    <li><b>Matched control:</b> the same score with only the condition removed. Parts that ignore the condition lift R@1 too: equal weights on earlier factor codes reach 16.30, against 12.96 for cosine.</li>
-    <li><b>Condition-free bar:</b> the best score that ignores the condition, 18.34 R@1 at the end of the stage (claim 4). It is our own control, not a published baseline.</li>
-    <li><b>Pass test (GO):</b> a rule that we put in git before we read the numbers it governs (two exceptions, see Limits).</li>
-    <li><b>What GO asks:</b> on a fresh seed, a method must beat cosine, RCA (claim 1.1) and its condition-free control. It must do so on R@1 and gain, with lower bounds above 0.</li>
-    <li><b>Gate:</b> a pass check on seed 42 before a method gets a fresh seed.</li>
-  </ul>
+<p>R@1 is the mean of the either rate and the condition gain. A score that ignores the condition has a gain of exactly 0. A reader beats such a score only if the gain it adds exceeds the either rate it loses.</p>
+<doc-note tone="info">Numbers are points. Most are on the development episodes (seed 42). New episodes come from a fresh seed, a new draw on the same paintings. Intervals are 95%, over query paintings.</doc-note>
+<h3 id="controls-and-the-test-rule">Controls and the test rule</h3>
+<ul>
+  <li><b>Matched control:</b> the same score with only the condition removed. For the head reader (see Experiments), the averaged heads replace the heads that the reader picks. Parts that ignore the condition lift R@1 too: equal weights on the codes of an earlier factor model reach 16.30, against 12.96 for cosine.</li>
+  <li><b>Condition-free bar:</b> the best score that ignores the condition, 18.34 R@1 at the end of the stage. We built it ourselves, as a control.</li>
+</ul>
+<p>Before each test we wrote down its rule. On new episodes, a method had to beat cosine, RCA and its own condition-free control, on R@1 and on condition gain. Each of these margins needed a 95% interval above 0. RCA is the best of nine metrics learned from the raw pairs on seed 42 (see Experiments). On seed 43 it fell to cosine level, 13.52 against 13.53 R@1. The two language models had a simpler rule: both margins over cosine above 0. Later methods also needed a good result on seed 42 before they got a fresh seed.</p>
 </section>
 </details>
 
-<doc-plan>
+<details class="part" open><summary><h2 id="experiments">Experiments</h2></summary>
+<section>
+<p>Not yet: no method built without ArtELingo labels beat the same score without the condition by a margin whose 95% interval lies above 0.</p>
+<p>An episode gives a query, 4 example pairs that share one aspect (the condition), 4 contrast pairs that share another, and 13 candidates. The right candidate has the query's value of that aspect. A method must beat its matched control, the same score with the condition removed, on new episodes, with the 95% interval above 0. A positive finding supports the idea. A check measures one step of a method, or a comparator.</p>
+<div class="exp">
+  <h3 id="exp-nine-metrics-learned-from-the-raw-pairs">Nine metrics learned from the raw pairs</h3>
+  <p><span class="pill neg">Negative finding</span> We learned a metric from the pairs on raw CLIP features in nine ways, and added each to cosine. Four are published, such as RCA and KISSME. Condition gain (how much more often the right aspect's candidate ranks first than the other aspect's) stayed within 0.4 points of 0.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-method-a-a-rule-reads-the-pairs">Method A: a rule reads the pairs</h3>
+  <p><span class="pill neg">Negative finding</span> Method A learns 32 factors shared by images and captions, from clusters made without ArtELingo labels. A rule with no training weights the factors where the example pairs agree more than the contrast pairs. On new episodes it ranked the target first (R@1) 2.96 points less often than the same factors with equal weights.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-a-repair-add-method-a-s-rule-to-an-equal-weight-score">A repair: add method A's rule to an equal-weight score</h3>
+  <p><span class="pill neg">Negative finding</span> Alone, method A's rule finds aspect candidates less often than cosine. So we added it to the equal-weight score, which ignores the condition but has a high either rate (a candidate of either aspect ranks first). We chose the weight on half the episodes and scored the rest. The sum reached 16.52 R@1 against 16.55 for its matched control, because every weight that added gain cost at least as much either rate.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-language-models-that-read-the-whole-episode">Language models that read the whole episode</h3>
+  <p><span class="pill neg">Negative finding</span> We hoped a ready-made model could do the task. We put the whole episode in a Qwen3-VL prompt (2B, then 8B) and scored each candidate by how likely the model was to name it. The 8B model ranked the target first a little more often than cosine (+1.07 R@1). But it did not follow the examples: its condition gain, 0.21 [−0.51, 0.94], is not established. The 2B model did no better.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-label-probes-can-the-aspect-be-read">Label probes: can the aspect be read?</h3>
+  <p><span class="pill chk">Check</span> We described each item by class probabilities from probes trained on ArtELingo labels, and let a rule pick the aspect from the pairs. This tests the reading step alone. Probes that picked one aspect kept 63% of the gain of probes told the aspect, above the 50% we set in advance. Whether features learned without labels can do this is open.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-a-centered-rule">A centered rule</h3>
+  <p><span class="pill neg">Negative finding</span> We drafted this rule after method A failed. It weights method A's factors by how the example pairs' codes vary together, and subtracts the mean example item from the query. On new episodes it beat a weaker control (equal weights, no centering) by only 0.07 R@1 [−0.04, 0.17]. Its matched control, equal weights with the same centering, beat it by 1.19 [1.05, 1.33].</p>
+</div>
+<div class="exp">
+  <h3 id="exp-rerank-only-the-top-candidates">Rerank only the top candidates</h3>
+  <p><span class="pill neg">Negative finding</span> We ranked by a score that ignores the condition, then let the condition reorder only the top few candidates. The condition then only has to pick between the two aspect candidates, but both were in the top 5 in only 25.8% of lists. Reordering lost R@1 at every length (0.46 to 4.58 points), because it put candidates that share neither aspect above the right ones.</p>
+</div>
+<div class="exp">
+  <h3 id="exp-a-head-reader-that-picks-a-grouping">A head reader that picks a grouping</h3>
+  <p><span class="pill pos">Positive finding</span> A grouping is a clustering of training items made without labels; a head is a classifier that places an item in a cluster. We made three groupings, trained heads on each, and let the reader pick the grouping where the example pairs agree more than the contrast pairs. Alone it reached a condition gain of 4.41 [3.96, 4.87], against 0.99 for method A's rule. Its either rate was below that of the same heads averaged, so the next entry adds a base score.</p>
+  <doc-shot src="../assets/2026-10-04_aspect_conditioned_similarity_methods/head_reader.png" label="The head reader" caption="Every part is trained without ArtELingo labels; the mood grouping uses an outside emotion classifier."></doc-shot>
+</div>
+<div class="exp">
+  <h3 id="exp-the-head-reader-on-two-base-scores">The head reader on two base scores</h3>
+  <p><span class="pill neg">Negative finding</span> A base score ignores the condition and keeps a high either rate, so the reader only has to add gain. We added the head reader to two base scores and compared each sum with its matched control. The first sum added 1.69 gain but lost 1.23 either rate, a net R@1 margin of +0.23 [−0.01, 0.47]. The second did no better (+0.15 [−0.06, 0.38]).</p>
+</div>
+<div class="exp">
+  <h3 id="exp-the-condition-free-bar-rose">The condition-free bar rose</h3>
+  <p><span class="pill chk">Check</span> We built a score from cosine, method A's equal-weight score on the centered query, and the averaged heads. It uses the example items but ignores the condition. We call it the condition-free bar. A method must beat it, or its lift may come from parts that never read the condition. It rose from 16.55 to 18.34 R@1, though part of the rise may come from how we build episodes (untested).</p>
+</div>
+<div class="exp">
+  <h3 id="exp-the-same-heads-told-the-grouping">The same heads, told the grouping</h3>
+  <p><span class="pill chk">Check</span> After the stage we put the same heads on top of the condition-free bar, but told each condition its grouping from the labels. The reader picks that grouping in only 52% of lists. Over its matched control, the told version gained 1.14 R@1 [0.90, 1.41], against 0.14 [−0.04, 0.32] for the reader's own picks. Our reading: the heads are not too weak; the reader's choice fails.</p>
+</div>
+</section>
+</details>
 
-<!-- ═════ 1 · first methods ═════ -->
-<doc-claim>
-  <p>The first method, its repair and two LLMs failed their pre-registered tests.</p>
-  <doc-mock frame="none" w="640" label="The first attempts against their comparators" caption="Each test needed lower bounds above 0, and every comparator has a gain of 0."><template>
-<table>
-  <thead><tr><th>Attempt</th><th>Seed, result</th><th class="n">R@1 against<br>its comparator</th><th class="n">Condition gain</th></tr></thead>
-  <tbody>
-    <tr><td>method A: learned factors, read by a rule from the pairs</td><td>43, failed</td><td class="n"><b>−2.96</b> [−3.29, −2.64]<br><span class="sub">against its control, 16.72</span></td><td class="n">+0.26 [−0.04, 0.56]</td></tr>
-    <tr><td>repair: method A's conditioned term on top of its control</td><td>42, stopped</td><td class="n">16.52<br><span class="sub">against its control, 16.55</span></td><td class="n">−0.01 [−0.10, 0.07]</td></tr>
-    <tr><td>Qwen3-VL-2B, the episode in its prompt</td><td>44, 900 episodes, failed</td><td class="n">+0.22 [−1.13, 1.53]<br><span class="sub">over cosine</span></td><td class="n">−0.53 [−1.68, 0.66]</td></tr>
-    <tr><td>Qwen3-VL-8B, the episode in its prompt</td><td>46, 1,800 episodes, failed</td><td class="n">+1.07 [0.17, 1.93]<br><span class="sub">over cosine</span></td><td class="n">+0.21 [−0.51, 0.94]</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  <doc-note tone="info"><strong>Pre-registered.</strong> Each rule here was in git before we read its numbers. After method A failed, you chose to try one repair.</doc-note>
-
-  <doc-claim>
-    <p>No metric learned from the raw pairs separated the two aspects.</p>
-    <doc-mock frame="none" w="560" label="Nine raw baselines, each fused with cosine, seed 42" caption="Every gain stayed within 0.4 points of 0. RCA is the best on seed 42 only: on seed 43 it fell to cosine level, 13.52 against 13.53 R@1."><template>
-<table>
-  <thead><tr><th>Scorer</th><th class="n">R@1</th><th class="n">Condition gain</th></tr></thead>
-  <tbody>
-    <tr><td>CLIP cosine</td><td class="n">12.96 [12.67, 13.26]</td><td class="n">0</td></tr>
-    <tr><td><b>RCA</b> (relevant component analysis), the best on seed 42: the bar of the pass test</td><td class="n">13.38 [13.08, 13.69]</td><td class="n">0.10 [−0.08, 0.29]</td></tr>
-    <tr><td>per-query weights (Wang et al., contextual visual similarity)</td><td class="n">12.99</td><td class="n">0.36 [0.06, 0.66]</td></tr>
-    <tr><td>per-episode probe</td><td class="n">12.79</td><td class="n">0.35 [0.04, 0.65]</td></tr>
-    <tr><td>the other six</td><td class="n">12.85 to 13.06</td><td class="n">−0.16 to 0.12</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-
-  <doc-claim>
-    <p>Method A learns 32 shared factors from clusters, not from ArtELingo labels.</p>
-    <doc-shot src="../assets/2026-11-01_aspect_factor_gonogo/method_diagram.png" w="760" label="Method A: two small encoders map CLIP features to 32 shared factors (Figure 3 of the full report)" caption="Teal is new: a rule with no training turns the example pairs into factor weights."></doc-shot>
-    <doc-note tone="warn"><strong>Not label-free in full.</strong> The affect clusters use GoEmotions, a classifier trained on outside emotion labels.</doc-note>
-  </doc-claim>
-
-  <doc-claim>
-    <p>Its rule picks the aspect but finds fewer aspect matches than cosine.</p>
-    <doc-mock frame="none" w="520" label="Method A's terms scored alone, fresh seed 43" caption="At that either rate, the rule needs a gain of about 12 points to beat the control's 16.72."><template>
-<table>
-  <thead><tr><th>Scorer</th><th class="n">Either rate</th><th class="n">Condition gain</th></tr></thead>
-  <tbody>
-    <tr><td>method A's rule alone</td><td class="n">21.4</td><td class="n">0.97 [0.53, 1.41]</td></tr>
-    <tr><td>CLIP cosine</td><td class="n">27.1</td><td class="n">0</td></tr>
-    <tr><td>its control: equal weights, condition ignored</td><td class="n">33.4</td><td class="n">0</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-
-  <doc-claim>
-    <p>In the repair, more gain always cost at least as much either rate.</p>
-    <doc-shot src="../assets/2026-11-05_method_repair_diagnostics/h1_tradeoff.png" label="The weight cells of the repair, seed 42 (Figure 4 of the full report)" caption="Every weight cell with a gain above 0.5 had R@1 at most 14.26."></doc-shot>
-  </doc-claim>
-
-</doc-claim>
-
-<!-- ═════ 2 · the condition can be read ═════ -->
-<doc-claim>
-  <p>A reader without ArtELingo labels picks the right grouping in 52% of lists.</p>
-  <doc-shot src="../assets/2026-10-04_aspect_conditioned_similarity_methods/gain_progression.png" label="Condition gain of each reader scored alone (Figure 7 of the full report)" caption="The head reader has the largest gain without ArtELingo labels; hatched bars use the labels."></doc-shot>
-  <doc-note tone="warn"><strong>Read "without labels" with care.</strong> The affect grouping comes from a GoEmotions classifier trained on outside labels. Its categories name 6 of the 8 evaluation emotions.</doc-note>
-  <doc-note tone="warn">Both picks are right in only 28.1% of episodes, against a cap of 66.7%. The gain in the figure is the reader alone on seed 42. Its fusions failed (claim 3).</doc-note>
-
-  <doc-claim>
-    <p>Hard-pick label probes keep 63% of the told gain.</p>
-    <doc-mock frame="none" w="560" label="Items as the class probabilities of label probes, seed 42" caption="The hard-pick probes find the aspect from the pairs: they keep 63% of the told gain, above the pre-registered 50%. The soft weights keep less."><template>
-<table>
-  <thead><tr><th>Scorer</th><th class="n">R@1</th><th class="n">Gain</th><th class="n">R@1 minus<br>the probe mean</th></tr></thead>
-  <tbody>
-    <tr><td>CLIP cosine</td><td class="n">12.96</td><td class="n">0</td><td class="n">not reported</td></tr>
-    <tr><td>mean of the three probe scores (condition ignored)</td><td class="n">22.54<br><span class="sub">[22.15, 22.93]</span></td><td class="n">0</td><td class="n">the reference</td></tr>
-    <tr><td>probes told the aspect (they never read the pairs)</td><td class="n">30.66<br><span class="sub">[30.16, 31.16]</span></td><td class="n">21.06<br><span class="sub">[20.48, 21.61]</span></td><td class="n">+8.12<br><span class="sub">[7.75, 8.50]</span></td></tr>
-    <tr><td><b>aspect found from the pairs, hard pick</b></td><td class="n"><b>25.02</b><br><span class="sub">[24.58, 25.48]</span></td><td class="n">13.33<br><span class="sub">[12.78, 13.91]</span></td><td class="n"><b>+2.48</b><br><span class="sub">[2.11, 2.84]</span></td></tr>
-    <tr><td>aspect found from the pairs, soft weights</td><td class="n">24.97<br><span class="sub">[24.52, 25.41]</span></td><td class="n">9.62<br><span class="sub">[9.12, 10.11]</span></td><td class="n">not reported</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="warn"><strong>The 63% is the hard pick only.</strong> Soft weights keep less: a gain of 9.62 against the told 21.06. The hard pick is right in 59% of lists, and keeps only 31% of the told gain on emotion × style.</doc-note>
-    <doc-note tone="warn"><strong>The +2.48 is not a matched-control margin.</strong> The probe mean is not the matched control, and we did not compute the matched counterpart for these probes.</doc-note>
-    <doc-note tone="warn"><strong>A check, not a method.</strong> The probes learn the ArtELingo labels, so each aspect has its own block of features. Whether features learned without labels give such blocks is the open question.</doc-note>
-  </doc-claim>
-
-  <doc-claim>
-    <p>The head reader chooses among three groupings made without ArtELingo labels.</p>
-    <doc-mock frame="none" w="560" label="Agreement of each grouping with the evaluation labels (adjusted mutual information), training rows" caption="Each grouping already has the shape of an aspect."><template>
-<table>
-  <thead><tr><th>Grouping</th><th class="n">Emotion</th><th class="n">Style</th><th class="n">Genre</th></tr></thead>
-  <tbody>
-    <tr><td>affect: GoEmotions class probabilities of the captions</td><td class="n"><b>0.204</b></td><td class="n">0.016</td><td class="n">0.023</td></tr>
-    <tr><td>image: CLIP image features</td><td class="n">0.037</td><td class="n"><b>0.318</b></td><td class="n"><b>0.397</b></td></tr>
-    <tr><td>caption: CLIP caption features</td><td class="n">0.057</td><td class="n">0.058</td><td class="n">0.161</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="info">The reader has a logistic head per grouping and modality. It picks the grouping whose heads agree most within the support pairs, minus the contrast pairs.</doc-note>
-  </doc-claim>
-
-  <doc-claim>
-    <p>Alone, the head reader gains 4.41 but finds fewer matches than averaged heads.</p>
-    <doc-mock frame="none" w="600" label="The head reader scored alone, seed 42" caption="To read the condition, the reader gave up part of its either rate."><template>
-<table>
-  <thead><tr><th>Scorer</th><th class="n">R@1</th><th class="n">Gain</th><th class="n">Either</th></tr></thead>
-  <tbody>
-    <tr><td>head reader alone</td><td class="n">16.51 [16.15, 16.87]</td><td class="n"><b>4.41</b> [3.96, 4.87]</td><td class="n">28.61</td></tr>
-    <tr><td>the same heads averaged (condition ignored)</td><td class="n">16.96 [16.60, 17.30]</td><td class="n">0</td><td class="n">33.91</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-
-  <doc-claim>
-    <p>Every reader gains least on emotion × style.</p>
-    <doc-shot src="../assets/2026-10-04_aspect_conditioned_similarity_methods/per_pair.png" w="620" label="Condition gain by aspect pair, seed 42 (Figure 9 of the full report)" caption="Emotion and style are weak in opposite modalities, so their agreement within pairs separates poorly."></doc-shot>
-  </doc-claim>
-</doc-claim>
-
-<!-- ═════ 3 · the wall ═════ -->
-<doc-claim>
-  <p>But no method clearly beat its matched control.</p>
-  <doc-shot src="../assets/2026-10-04_aspect_conditioned_similarity_methods/margins.png" label="Each fused method minus its control (Figure 8 of the full report)" caption="Squares use the matched control, and none has its R@1 interval fully above 0."></doc-shot>
-  <doc-note tone="info"><strong>Fusion.</strong> A fusion adds a reader's score to a score that ignores the condition. We pick its weights on one half of the episodes and score the other half.</doc-note>
-
-  <doc-claim>
-    <p>The centered rule passed the seed-42 gate only, then failed on fresh seeds.</p>
-    <doc-mock frame="none" w="560" label="The centered rule, fused, minus each control" caption="On fresh seeds it failed even against the declared control. The final review then found that this control removed too much."><template>
-<table>
-  <thead><tr><th>R@1 minus</th><th class="n">Seed 42</th><th class="n">Fresh seeds 45, 47, 48</th></tr></thead>
-  <tbody>
-    <tr><td>the declared control: no centering, no condition</td><td class="n">+0.24 [0.09, 0.39]</td><td class="n">+0.07 [−0.04, 0.17]</td></tr>
-    <tr><td>the matched control: centered, no condition</td><td class="n"><b>−1.15</b> [−1.38, −0.92]</td><td class="n"><b>−1.19</b> [−1.33, −1.05]</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="info">The centered rule weights factors by how the support codes vary together. It also subtracts the mean of the example items from the query. The declared control, named before the run, removed both.</doc-note>
-  </doc-claim>
-
-  <doc-claim>
-    <p>A rerank of only the top few candidates lost R@1 at every length.</p>
-    <doc-mock frame="none" w="520" label="Find, then select: rerank the top k of the control" caption="Inside the short list, the conditioned term moved negatives up."><template>
-<table>
-  <thead><tr><th>Measure</th><th class="n">Value</th></tr></thead>
-  <tbody>
-    <tr><td>both aspect candidates in the top 2, 3, 5</td><td class="n">4.7, 10.9, 25.8% of lists</td></tr>
-    <tr><td>R@1 change, method A's rule reorders</td><td class="n">−2.29 to −4.58</td></tr>
-    <tr><td>R@1 change, the centered rule reorders</td><td class="n">−0.46 to −1.91</td></tr>
-    <tr><td>condition gain added</td><td class="n">0.4 to 0.7</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-
-  <doc-claim>
-    <p>Both fusions of the head reader missed their matched controls.</p>
-    <doc-mock frame="none" w="560" label="Head-reader fusions, seed 42" caption="The second fusion failed its gate, so it used no fresh seed."><template>
-<table>
-  <thead><tr><th>Fusion</th><th>Control (its R@1)</th><th class="n">R@1 minus<br>control</th><th class="n">Gain</th></tr></thead>
-  <tbody>
-    <tr><td>reader on cosine and the averaged heads</td><td>matched (17.07)</td><td class="n">+0.23<br><span class="sub">[−0.01, 0.47]</span></td><td class="n">1.69<br><span class="sub">[1.35, 2.02]</span></td></tr>
-    <tr><td>reader on the centered base: cosine plus the centered term</td><td>declared, without the heads (17.94)</td><td class="n">+0.55<br><span class="sub">[0.31, 0.79]</span></td><td class="n">1.19</td></tr>
-    <tr><td>the same</td><td>matched: averaged heads in place of the reader (18.34)</td><td class="n"><b>+0.15</b><br><span class="sub">[−0.06, 0.38]</span></td><td class="n">1.19</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    <doc-note tone="warn"><strong>Disclosure.</strong> We knew the declared margin in advance. An overnight ruling overrode a committed line that said to stop.</doc-note>
-  </doc-claim>
-
-  <doc-claim>
-    <p>A fusion beats its control only if its gain exceeds its either loss.</p>
-    <doc-shot src="../assets/2026-10-04_aspect_conditioned_similarity_methods/frontier.png" label="Every scorer of the stage, seed 42 (Figure 6 of the full report)" caption="Readers move up but also left, so fusions stay near the dotted lines of constant R@1."></doc-shot>
-
-    <doc-claim>
-      <p>Each fusion added about as much gain as it lost either rate.</p>
-      <doc-mock frame="none" w="560" label="Fusions against their matched controls, seed 42" caption="To clear its control by 0.5 R@1, a fusion needs a gain 1 point above its either loss."><template>
-<table>
-  <thead><tr><th>Fusion</th><th class="n">Gain added</th><th class="n">Either lost</th><th class="n">Net R@1</th></tr></thead>
-  <tbody>
-    <tr><td>head reader on the centered base</td><td class="n">1.19</td><td class="n">0.88</td><td class="n">+0.15</td></tr>
-    <tr><td>head reader on the averaged heads</td><td class="n">1.69</td><td class="n">1.23</td><td class="n">+0.23</td></tr>
-    <tr><td>repair of method A</td><td class="n">−0.01</td><td class="n">nothing</td><td class="n">−0.02</td></tr>
-  </tbody>
-</table></template></doc-mock>
-    </doc-claim>
-
-  </doc-claim>
-</doc-claim>
-
-<!-- ═════ 4 · the bar rose ═════ -->
-<doc-claim>
-  <p>The best score that ignores the condition rose from 16.55 to 18.34 R@1.</p>
-  <doc-mock frame="none" w="560" label="Scores that use the example items but not the condition, seed 42" caption="The last row is the condition-free bar; it has no fresh-seed number yet."><template>
-<table>
-  <thead><tr><th>Score</th><th class="n">R@1</th><th class="n">Fresh seeds 45, 47, 48</th></tr></thead>
-  <tbody>
-    <tr><td>CLIP cosine</td><td class="n">12.96</td><td class="n">not reported</td></tr>
-    <tr><td>RCA, the bar of the pass test</td><td class="n">13.38</td><td class="n">not reported</td></tr>
-    <tr><td>method A's control: equal weights</td><td class="n">16.55</td><td class="n">not reported</td></tr>
-    <tr><td>cosine plus the centered term</td><td class="n">17.94</td><td class="n">17.75</td></tr>
-    <tr><td><b>plus the averaged heads: the condition-free bar</b></td><td class="n"><b>18.34</b></td><td class="n">not yet computed</td></tr>
-  </tbody>
-</table></template></doc-mock>
-
-  <doc-claim>
-    <p>The centered term scores higher on the episode's own examples than on random items.</p>
-    <doc-mock frame="none" w="480" label="The centered term, by what it centers on; one probe by the final reviewer, seed 42" caption="If part of the lift comes from how we build episodes, it cancels against a matched control. We have not tested this mechanism, and the probe decides nothing."><template>
-<table>
-  <thead><tr><th>Centered on</th><th class="n">R@1</th></tr></thead>
-  <tbody>
-    <tr><td>8 random items</td><td class="n">16.85</td></tr>
-    <tr><td>the global mean</td><td class="n">17.14</td></tr>
-    <tr><td>the episode's own 8 example items</td><td class="n">17.95</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-</doc-claim>
-
-<!-- ═════ 5 · what passes ═════ -->
-<doc-claim>
-  <p>With the grouping told from the labels, the same heads beat the bar.</p>
-  <doc-mock frame="none" w="520" label="Added on top of the condition-free bar (18.34), seed 42; exploratory, after the stage" caption="The last column is the margin from the condition alone. For the head reader, the lower bound over the bar falls to 0 in another bootstrap, so it is no pass."><template>
-<table>
-  <thead><tr><th>Added term</th><th class="n">R@1 over<br>the bar</th><th class="n">R@1 over its<br>matched control</th></tr></thead>
-  <tbody>
-    <tr><td>head reader: it picks the grouping</td><td class="n">+0.19<br><span class="sub">[0.01, 0.38]</span></td><td class="n">+0.14<br><span class="sub">[−0.04, 0.32]</span></td></tr>
-    <tr><td>same heads, grouping told: emotion to affect; style and genre to image</td><td class="n">+1.50<br><span class="sub">[1.22, 1.79]</span></td><td class="n"><b>+1.14</b><br><span class="sub">[0.90, 1.41]</span></td></tr>
-    <tr><td>label probes, told the aspect (a check, not a bound)</td><td class="n">+12.28<br><span class="sub">[11.81, 12.75]</span></td><td class="n">+6.66<br><span class="sub">[6.31, 7.00]</span></td></tr>
-  </tbody>
-</table></template></doc-mock>
-  <doc-note tone="warn"><strong>An oracle, not a result.</strong> We chose the told groupings with the labels, so no reader reads anything. Their gain on style × genre is exactly 0.</doc-note>
-  <doc-note tone="info">These rows are exploratory, on seed 42. The matched control is the mean of the reader's two condition scores.</doc-note>
-
-  <doc-claim>
-    <p>The head reader picks the told grouping in only 52% of lists.</p>
-    <doc-mock frame="none" w="560" label="Picks of the head reader, seed 42" caption="Style and genre both map to the image grouping, so no style × genre episode can have both picks right."><template>
-<table>
-  <thead><tr><th>Measure</th><th class="n">Reached</th><th class="n">Cap for such a reader</th></tr></thead>
-  <tbody>
-    <tr><td>lists with the told grouping picked</td><td class="n">52.4%</td><td class="n">83.3%</td></tr>
-    <tr><td>episodes with both picks right</td><td class="n">28.1%</td><td class="n">66.7%</td></tr>
-    <tr><td>image grouping picked, style condition of style × genre</td><td class="n">17%</td><td class="n">not reported</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-
-  <doc-claim>
-    <p>A method that passes must gain more than it loses in either rate.</p>
-    <doc-mock frame="none" w="560" label="Against the condition-free bar (R@1 18.34, either 36.68), seed 42" caption="A new method must also beat cosine, RCA, the bar rebuilt with any new condition-free part, and its matched control."><template>
-<table>
-  <thead><tr><th>Added term</th><th class="n">Gain</th><th class="n">Either lost</th><th>Gain outruns the loss?</th></tr></thead>
-  <tbody>
-    <tr><td>same heads, grouping told</td><td class="n">4.56</td><td class="n">1.57</td><td>yes</td></tr>
-    <tr><td>head reader</td><td class="n">0.79</td><td class="n">0.41</td><td>not by a reliable margin</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-
-  <doc-claim>
-    <p>A method that just clears the development bar gets most lift from condition-free parts.</p>
-    <doc-mock frame="none" w="480" label="A method just at the development bar: +0.5 R@1 over the bar or its matched control"><template>
-<table>
-  <thead><tr><th>Part</th><th class="n">R@1</th></tr></thead>
-  <tbody>
-    <tr><td>the method</td><td class="n">about 18.8</td></tr>
-    <tr><td>CLIP cosine</td><td class="n">12.96</td></tr>
-    <tr><td>lift from parts that ignore the condition</td><td class="n">about 5.4</td></tr>
-    <tr><td>lift from the condition</td><td class="n">about 0.5</td></tr>
-  </tbody>
-</table></template></doc-mock>
-  </doc-claim>
-
-</doc-claim>
-
-<doc-claim aux="scope">
-  <p>Limits: what these numbers do not cover.</p>
-  <ul>
-    <li>One dataset (ArtELingo, English), one backbone (CLIP ViT-B/32), three aspects.</li>
-    <li>One model seed per method; one development draw for all picks.</li>
-    <li>Fresh seeds reuse the selection paintings. We did not read the held rows.</li>
-    <li>The groupings without ArtELingo labels have the shape of the aspects (claim 2.2). The affect clusters use a GoEmotions classifier trained on outside emotion labels, and its categories name 6 of the 8 test emotions.</li>
-    <li>We chose both head-reader fusions after we saw development results.</li>
-    <li>Two exceptions to pre-registration: one rule entered git late, and we knew one declared margin in advance. The full report gives the detail.</li>
-    <li>The example pairs have no control on the third aspect.</li>
-    <li>Emotion labels are per viewer, and we did not measure how mixed they are.</li>
-  </ul>
-</doc-claim>
-
-</doc-plan>
-
-<p class="muted">Give your reading first: use the comment button on any claim, then press Respond.</p>
-<details>
-  <summary>Our advice (open after giving your reading)</summary>
-  <ul>
-    <li><b>Caveat.</b> The next line rests on one exploratory oracle on seed 42. We told the grouping from the labels, and its gain on style × genre is 0.</li>
-    <li><b>Our reading.</b> The heads are good enough; the choice of grouping is not. Wrong picks move negatives up, and to read the condition costs either rate even with a right pick.</li>
-    <li><b>Untested.</b> The example items look like the negatives. A query centered on them can lift p_A and p_B together, so the bar needs its own control.</li>
-    <li><b>Next, from the handoff.</b> A reader that picks the aspect correctly, a grouping that separates style from genre, a matched control for each, and fresh seeds.</li>
-  </ul>
+<details class="part" open><summary><h2 id="next">Next</h2></summary>
+<section>
+<p>Next, we improve the reader, the step that picks the grouping. We will try a learned reader that acts only when confident, and an image grouping aimed at style, each tested against its matched control.</p>
+</section>
 </details>
 
 <h2 id="glossary">Glossary</h2>
 <table class="gloss">
-  <thead><tr><th>Term on this page</th><th>Name in the full report</th><th>Meaning</th></tr></thead>
+  <thead><tr><th>Term on this page</th><th>Meaning</th></tr></thead>
   <tbody>
-    <tr><td>condition</td><td>condition</td><td>The aspect that the support pairs show; it has no name in the episode.</td></tr>
-    <tr><td>reader</td><td>reader</td><td>A rule that finds the aspect from the example pairs.</td></tr>
-    <tr><td>aspect episode</td><td>aspect episode</td><td>A query, 4 support pairs, 4 contrast pairs and 13 candidates; four ranked lists.</td></tr>
-    <tr><td>either rate</td><td>either rate</td><td>R@1 plus the other-aspect rate: one of the two aspect candidates ranks first.</td></tr>
-    <tr><td>condition gain</td><td>condition gain</td><td>R@1 minus the other-aspect rate; 0 for a scorer that ignores the condition.</td></tr>
-    <tr><td>matched control</td><td>matched control, counterpart, T_cf</td><td>The same score with only the condition removed.</td></tr>
-    <tr><td>declared control</td><td>declared control</td><td>The control that a rule named before a run; it can remove more than the condition.</td></tr>
-    <tr><td>condition-free bar</td><td>B, B′</td><td>Cosine, the centered term and the averaged heads (R@1 18.34). B′ is B rebuilt with a new condition-free part.</td></tr>
-    <tr><td>pass test</td><td>GO, GO bar</td><td>The pre-registered test of a method on a fresh seed; its bar is RCA.</td></tr>
-    <tr><td>gate</td><td>gate</td><td>A pass check on development episodes before a fresh seed.</td></tr>
-    <tr><td>fusion</td><td>fusion</td><td>A reader's score added to a score that ignores the condition.</td></tr>
-    <tr><td>nested score</td><td>nested score</td><td>Cosine plus a weighted condition-free term and a weighted conditioned term.</td></tr>
-    <tr><td>cross-fit</td><td>cross-fit</td><td>We pick the weights on one half of the episodes and score the other half, so no episode picks its own weights.</td></tr>
-    <tr><td>fresh seed</td><td>episode seed</td><td>A new draw of episodes. Seed 42 is for development. Tests in this stage used seed 43 (method A), seeds 44 and 46 (the LLMs), and seeds 45, 47 and 48 (the centered rule).</td></tr>
-    <tr><td>raw baselines</td><td>E1</td><td>Nine ways to turn example pairs into a metric on raw CLIP features.</td></tr>
-    <tr><td>RCA</td><td>RCA</td><td>Relevant component analysis, a metric learned from pairs.</td></tr>
-    <tr><td>method A</td><td>method A, A3, E3</td><td>32 shared factors from two small encoders, read by a rule with no training.</td></tr>
-    <tr><td>repair</td><td>A′ (A prime)</td><td>Cosine, method A's equal-weight term and its conditioned term, fused.</td></tr>
-    <tr><td>earlier factor codes</td><td>R3, C0, SE</td><td>Factor models before method A; SE added value episodes from affect clusters.</td></tr>
-    <tr><td>label probes</td><td>D0 (Told, Inferred)</td><td>Logistic probes on the ArtELingo labels; told the aspect, or they find it from the pairs. A check, never a method.</td></tr>
-    <tr><td>grouping</td><td>partition, E2</td><td>k-means clusters of the training rows: affect, image or caption.</td></tr>
-    <tr><td>told grouping</td><td>told partition</td><td>Emotion to affect, style and genre to image; chosen with the labels.</td></tr>
-    <tr><td>centered rule</td><td>N1</td><td>Weights from how the codes of the support pairs vary together; the query minus the mean of the example items.</td></tr>
-    <tr><td>rerank of the top k</td><td>N2</td><td>Rank by the condition-free score, then reorder only the top k by the condition.</td></tr>
-    <tr><td>head reader</td><td>N6</td><td>Logistic heads on the three groupings; the pairs choose the grouping.</td></tr>
-    <tr><td>head reader on the centered base</td><td>N6c</td><td>The head reader added to cosine plus the centered term.</td></tr>
-    <tr><td>buddy line, percept line</td><td>buddy, percept</td><td>Earlier CoSiR work: a learned condition vector per sample; then its neighbour graph inside PercepT.</td></tr>
+    <tr><td>condition</td><td>The aspect that the example pairs show; the episode never names it.</td></tr>
+    <tr><td>reader</td><td>A rule that finds the aspect from the pairs.</td></tr>
+    <tr><td>either rate</td><td>R@1 plus the other-aspect rate: one of the two aspect candidates ranks first, whichever it is.</td></tr>
+    <tr><td>condition gain</td><td>R@1 minus the other-aspect rate; exactly 0 for a score that ignores the condition.</td></tr>
+    <tr><td>matched control</td><td>The same score with only the condition removed.</td></tr>
   </tbody>
 </table>
 </main>

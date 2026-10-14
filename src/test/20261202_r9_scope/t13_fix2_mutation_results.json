@@ -1,0 +1,112 @@
+{
+ "o5": {
+  "result": "caught",
+  "returncode": 1,
+  "summary": "1 failed, 94 passed in 21.11s",
+  "source_sha256": {
+   "run_r9_stage2.py": "0b4348d7a7d2a2a6aeecfebc4761b20b69ca91e92a01ea17899ff7704b2aae60",
+   "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+   "test_r9_stage2.py": "ab47f51f86eac98897c3769831fb51a27d41209076c9ea0973df2e36df4b571e",
+   "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+  }
+ },
+ "o6": {
+  "result": "caught",
+  "returncode": 1,
+  "summary": "1 failed, 94 passed in 22.13s",
+  "source_sha256": {
+   "run_r9_stage2.py": "0b4348d7a7d2a2a6aeecfebc4761b20b69ca91e92a01ea17899ff7704b2aae60",
+   "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+   "test_r9_stage2.py": "ab47f51f86eac98897c3769831fb51a27d41209076c9ea0973df2e36df4b571e",
+   "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+  }
+ },
+ "o8": {
+  "result": "caught",
+  "returncode": 1,
+  "summary": "1 failed, 94 passed in 22.01s",
+  "source_sha256": {
+   "run_r9_stage2.py": "0b4348d7a7d2a2a6aeecfebc4761b20b69ca91e92a01ea17899ff7704b2aae60",
+   "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+   "test_r9_stage2.py": "ab47f51f86eac98897c3769831fb51a27d41209076c9ea0973df2e36df4b571e",
+   "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+  }
+ },
+ "n1a": {
+  "result": "caught",
+  "returncode": 1,
+  "summary": "2 failed, 93 passed in 21.11s",
+  "source_sha256": {
+   "run_r9_stage2.py": "0b4348d7a7d2a2a6aeecfebc4761b20b69ca91e92a01ea17899ff7704b2aae60",
+   "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+   "test_r9_stage2.py": "ab47f51f86eac98897c3769831fb51a27d41209076c9ea0973df2e36df4b571e",
+   "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+  }
+ },
+ "n1b": {
+  "result": "caught",
+  "returncode": 1,
+  "summary": "2 failed, 93 passed in 22.07s",
+  "source_sha256": {
+   "run_r9_stage2.py": "0b4348d7a7d2a2a6aeecfebc4761b20b69ca91e92a01ea17899ff7704b2aae60",
+   "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+   "test_r9_stage2.py": "ab47f51f86eac98897c3769831fb51a27d41209076c9ea0973df2e36df4b571e",
+   "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+  }
+ },
+ "n1c": {
+  "result": "caught",
+  "returncode": 1,
+  "summary": "1 failed, 94 passed in 22.17s",
+  "source_sha256": {
+   "run_r9_stage2.py": "0b4348d7a7d2a2a6aeecfebc4761b20b69ca91e92a01ea17899ff7704b2aae60",
+   "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+   "test_r9_stage2.py": "ab47f51f86eac98897c3769831fb51a27d41209076c9ea0973df2e36df4b571e",
+   "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+  }
+ },
+ "n1d": {
+  "result": "caught",
+  "returncode": 1,
+  "summary": "1 failed, 94 passed in 21.63s",
+  "source_sha256": {
+   "run_r9_stage2.py": "0b4348d7a7d2a2a6aeecfebc4761b20b69ca91e92a01ea17899ff7704b2aae60",
+   "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+   "test_r9_stage2.py": "ab47f51f86eac98897c3769831fb51a27d41209076c9ea0973df2e36df4b571e",
+   "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+  }
+ },
+ "n2a": {
+  "result": "caught",
+  "returncode": 1,
+  "summary": "1 failed, 94 passed in 21.37s",
+  "source_sha256": {
+   "run_r9_stage2.py": "0b4348d7a7d2a2a6aeecfebc4761b20b69ca91e92a01ea17899ff7704b2aae60",
+   "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+   "test_r9_stage2.py": "ab47f51f86eac98897c3769831fb51a27d41209076c9ea0973df2e36df4b571e",
+   "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+  }
+ },
+ "n2b": {
+  "result": "caught",
+  "returncode": 1,
+  "summary": "1 failed, 94 passed in 21.35s",
+  "source_sha256": {
+   "run_r9_stage2.py": "0b4348d7a7d2a2a6aeecfebc4761b20b69ca91e92a01ea17899ff7704b2aae60",
+   "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+   "test_r9_stage2.py": "ab47f51f86eac98897c3769831fb51a27d41209076c9ea0973df2e36df4b571e",
+   "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+  }
+ },
+ "n2c": {
+  "result": "caught",
+  "returncode": 1,
+  "summary": "1 failed, 94 passed in 21.44s",
+  "source_sha256": {
+   "run_r9_stage2.py": "0b4348d7a7d2a2a6aeecfebc4761b20b69ca91e92a01ea17899ff7704b2aae60",
+   "r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+   "test_r9_stage2.py": "ab47f51f86eac98897c3769831fb51a27d41209076c9ea0973df2e36df4b571e",
+   "test_r9_pins.py": "b2ac255cdc7d074c1e3c6d5e40d7f79338724e7396ae91570f9687e645a7d89c"
+  }
+ }
+}

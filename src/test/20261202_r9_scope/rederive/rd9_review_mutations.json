@@ -1,0 +1,338 @@
+[
+  {
+    "mutation": "P5 uses CF",
+    "module": "rd9_stats.py",
+    "before": "'P5':('r1','aff_cf')",
+    "after": "'P5':('r1','B')",
+    "test": "rd9_test_arithmetic.py::test_pass_record_nonzero_counts_comparators_zero_inclusion_and_holm_level",
+    "status": "killed"
+  },
+  {
+    "mutation": "P7 uses RCA gain",
+    "module": "rd9_stats.py",
+    "before": "'P7':('gain','rca')",
+    "after": "'P7':('gain','aff_cf')",
+    "test": "rd9_test_arithmetic.py::test_pass_record_nonzero_counts_comparators_zero_inclusion_and_holm_level",
+    "status": "killed"
+  },
+  {
+    "mutation": "zero integer sums count",
+    "module": "rd9_stats.py",
+    "before": "np.count_nonzero(ints<=0)",
+    "after": "np.count_nonzero(ints<0)",
+    "test": "rd9_test_arithmetic.py::test_pass_record_nonzero_counts_comparators_zero_inclusion_and_holm_level",
+    "status": "killed"
+  },
+  {
+    "mutation": "Holm interval quantiles",
+    "module": "rd9_stats.py",
+    "before": "[100*alpha,100*(1-alpha)]",
+    "after": "[2.5,97.5]",
+    "test": "rd9_test_arithmetic.py::test_pass_record_nonzero_counts_comparators_zero_inclusion_and_holm_level",
+    "status": "killed"
+  },
+  {
+    "mutation": "bootstrap seed 42",
+    "module": "rd9_stats.py",
+    "before": "5000, 42, 250",
+    "after": "5000, 43, 250",
+    "test": "rd9_test_arithmetic.py::test_pass_record_nonzero_counts_comparators_zero_inclusion_and_holm_level",
+    "status": "killed"
+  },
+  {
+    "mutation": "switched off needs both",
+    "module": "rd9_scores.py",
+    "before": "switched_off=all(",
+    "after": "switched_off=any(",
+    "test": "rd9_test_arithmetic.py::test_sigma_ties_choose_smallest_and_switched_off_requires_both_halves",
+    "status": "killed"
+  },
+  {
+    "mutation": "sigma ascending tie order",
+    "module": "rd9_scores.py",
+    "before": "sums=sorted({u+a for u in NESTED_U for a in NESTED_A})",
+    "after": "sums=sorted({u+a for u in NESTED_U for a in NESTED_A},reverse=True)",
+    "test": "rd9_test_arithmetic.py::test_sigma_ties_choose_smallest_and_switched_off_requires_both_halves",
+    "status": "killed"
+  },
+  {
+    "mutation": "sigma first argmax",
+    "module": "rd9_scores.py",
+    "before": "sigma_idx=control.argmax(0)",
+    "after": "sigma_idx=control.shape[0]-1-control[::-1].argmax(0)",
+    "test": "rd9_test_arithmetic.py::test_sigma_ties_choose_smallest_and_switched_off_requires_both_halves",
+    "status": "killed"
+  },
+  {
+    "mutation": "B first tied cell",
+    "module": "rd9_scores.py",
+    "before": "if rho[h]>best[h]:",
+    "after": "if rho[h]>=best[h]:",
+    "test": "rd9_test_arithmetic.py::test_baseline_ties_choose_first_cell",
+    "status": "killed"
+  },
+  {
+    "mutation": "gate inclusive margin",
+    "module": "rd9_scores.py",
+    "before": "margins[c]>=tau",
+    "after": "margins[c]>tau",
+    "test": "rd9_test_arithmetic.py::test_reader_tau_percentiles_inclusive_gate_and_affect_pick",
+    "status": "killed"
+  },
+  {
+    "mutation": "gate affect restriction",
+    "module": "rd9_scores.py",
+    "before": "(picks[c]==0)",
+    "after": "(picks[c]==1)",
+    "test": "rd9_test_arithmetic.py::test_reader_tau_percentiles_inclusive_gate_and_affect_pick",
+    "status": "killed"
+  },
+  {
+    "mutation": "opposite parity",
+    "module": "rd9_scores.py",
+    "before": "rows = parity == 1 - h",
+    "after": "rows = parity == h",
+    "test": "rd9_test_arithmetic.py::test_assembly_uses_opposite_parity",
+    "status": "killed"
+  },
+  {
+    "mutation": "tau 75th percentile",
+    "module": "rd9_scores.py",
+    "before": "[0,25,50,75]",
+    "after": "[0,25,50,100]",
+    "test": "rd9_test_arithmetic.py::test_reader_tau_percentiles_inclusive_gate_and_affect_pick",
+    "status": "killed"
+  },
+  {
+    "mutation": "RCA extension trigger",
+    "module": "rd9_scores.py",
+    "before": "if best==16.:",
+    "after": "if best==8.:",
+    "test": "rd9_test_arithmetic.py::test_rca_extends_grid_after_sixteen",
+    "status": "killed"
+  },
+  {
+    "mutation": "RCA extends to 32",
+    "module": "rd9_scores.py",
+    "before": "candidates+[32.,64.]",
+    "after": "candidates+[64.]",
+    "test": "rd9_test_arithmetic.py::test_rca_extends_grid_after_sixteen",
+    "status": "killed"
+  },
+  {
+    "mutation": "RCA extends to 64",
+    "module": "rd9_scores.py",
+    "before": "candidates+[32.,64.]",
+    "after": "candidates+[32.]",
+    "test": "rd9_test_arithmetic.py::test_rca_extends_grid_after_sixteen",
+    "status": "killed"
+  },
+  {
+    "mutation": "RCA extension first tie",
+    "module": "rd9_scores.py",
+    "before": "candidates+[32.,64.]",
+    "after": "candidates+[64.,32.]",
+    "test": "rd9_test_arithmetic.py::test_rca_extends_grid_after_sixteen",
+    "status": "killed"
+  },
+  {
+    "mutation": "language seed multiplier",
+    "module": "rd9_episodes.py",
+    "before": "1000 * seed + LANGUAGES.index(lang) + 1",
+    "after": "100 * seed + LANGUAGES.index(lang) + 1",
+    "test": "rd9_test_a28.py::test_a28_seeds_post_drop_shares_and_language_order",
+    "status": "killed"
+  },
+  {
+    "mutation": "canonical language index",
+    "module": "rd9_episodes.py",
+    "before": "LANGUAGES.index(lang) + 1",
+    "after": "remaining.index(lang) + 1",
+    "test": "rd9_test_a28.py::test_a28_seeds_post_drop_shares_and_language_order",
+    "status": "killed"
+  },
+  {
+    "mutation": "post-drop shares",
+    "module": "rd9_episodes.py",
+    "before": "sizes[lang] = len(pool_rows(sub, rows))",
+    "after": "sizes[lang] = len(pool_rows(sub, np.arange(len(R))))",
+    "test": "rd9_test_a28.py::test_a28_seeds_post_drop_shares_and_language_order",
+    "status": "killed"
+  },
+  {
+    "mutation": "kept rows only",
+    "module": "rd9_episodes.py",
+    "before": "rows = np.flatnonzero(keep[R])",
+    "after": "rows = np.arange(len(R))",
+    "test": "rd9_test_a28.py::test_a28_seeds_post_drop_shares_and_language_order",
+    "status": "killed"
+  },
+  {
+    "mutation": "pre-drop value index",
+    "module": "rd9_episodes.py",
+    "before": "indices[lang] = PaintingValueIndex(sub, groups[R])",
+    "after": "indices[lang] = PaintingValueIndex({a:v[rows] for a,v in sub.items()}, groups[R][rows])",
+    "test": "rd9_test_a28.py::test_a28_dropped_labels_still_count_for_lacks_and_index_precedes_drops",
+    "status": "killed"
+  },
+  {
+    "mutation": "global row mapping",
+    "module": "rd9_episodes.py",
+    "before": "*(R[getattr(part,f)] for f in FIELDS)",
+    "after": "*(getattr(part,f) for f in FIELDS)",
+    "test": "rd9_test_a28.py::test_a28_seeds_post_drop_shares_and_language_order",
+    "status": "killed"
+  },
+  {
+    "mutation": "language-order assembly",
+    "module": "rd9_episodes.py",
+    "before": "combined = concat(parts,a,b)",
+    "after": "combined = concat(parts[::-1],a,b)",
+    "test": "rd9_test_a28.py::test_a28_seeds_post_drop_shares_and_language_order",
+    "status": "killed"
+  },
+  {
+    "mutation": "values subset guard",
+    "module": "rd9_episodes.py",
+    "before": "if not set(wanted) <= set(valid):",
+    "after": "if False:",
+    "test": "rd9_test_a28.py::test_restricted_subset_guard_and_minimum_paintings",
+    "status": "killed"
+  },
+  {
+    "mutation": "minimum passed to primitive",
+    "module": "rd9_episodes.py",
+    "before": "min_paintings=min_paintings, index=index",
+    "after": "min_paintings=1, index=index",
+    "test": "rd9_test_a28.py::test_restricted_subset_guard_and_minimum_paintings",
+    "status": "killed"
+  },
+  {
+    "mutation": "A28 minimum is one",
+    "module": "rd9_episodes.py",
+    "before": "idx,(codes[a],codes[b]),min_paintings=1",
+    "after": "idx,(codes[a],codes[b]),min_paintings=30",
+    "test": "rd9_test_a28.py::test_a28_dropped_labels_still_count_for_lacks_and_index_precedes_drops",
+    "status": "killed"
+  },
+  {
+    "mutation": "subset set-aside catch",
+    "module": "rd9_episodes.py",
+    "before": "except ValuesSubsetError:",
+    "after": "except KeyError:",
+    "test": "rd9_test_a28.py::test_a28_both_set_aside_causes_rebuild_with_new_shares",
+    "status": "killed"
+  },
+  {
+    "mutation": "failed-draw catch",
+    "module": "rd9_episodes.py",
+    "before": "except RuntimeError as error:",
+    "after": "except ValueError as error:",
+    "test": "rd9_test_a28.py::test_a28_both_set_aside_causes_rebuild_with_new_shares",
+    "status": "killed"
+  },
+  {
+    "mutation": "re-split remaining languages",
+    "module": "rd9_episodes.py",
+    "before": "remaining = [l for l in remaining if l not in {f['language'] for f in failed}]",
+    "after": "remaining = [l for l in remaining if l in {f['language'] for f in failed}]",
+    "test": "rd9_test_a28.py::test_a28_both_set_aside_causes_rebuild_with_new_shares",
+    "status": "killed"
+  },
+  {
+    "mutation": "record set-asides",
+    "module": "rd9_episodes.py",
+    "before": "excluded.extend(failed)",
+    "after": "excluded.extend([])",
+    "test": "rd9_test_a28.py::test_a28_both_set_aside_causes_rebuild_with_new_shares",
+    "status": "killed"
+  },
+  {
+    "mutation": "third set-aside stops",
+    "module": "rd9_episodes.py",
+    "before": "assert len(excluded) <= 2",
+    "after": "assert len(excluded) <= 3",
+    "test": "rd9_test_a28.py::test_a28_third_set_aside_stops",
+    "status": "killed"
+  },
+  {
+    "mutation": "hash within-read uniqueness",
+    "module": "rd9_phase2.py",
+    "before": "assert len(current)==len(set(current)), 'repeated episode hash within this read'",
+    "after": "assert True, 'repeated episode hash within this read'",
+    "test": "rd9_test_a28.py::test_episode_hash_guard_rejects_duplicates_and_prior_collisions",
+    "status": "killed"
+  },
+  {
+    "mutation": "hash prior collision",
+    "module": "rd9_phase2.py",
+    "before": "assert not set(current)&set(prior), 'episode hash repeats a prior non-smoke episode'",
+    "after": "assert True, 'episode hash repeats a prior non-smoke episode'",
+    "test": "rd9_test_a28.py::test_episode_hash_guard_rejects_duplicates_and_prior_collisions",
+    "status": "killed"
+  },
+  {
+    "mutation": "phase1 switched-off comparison",
+    "module": "rd9_compare.py",
+    "before": "('aff','cf','sigma_star','switched_off','gate_share')",
+    "after": "('aff','cf','sigma_star','gate_share')",
+    "test": "rd9_test_arithmetic.py::test_phase1_agreement_checks_every_pinned_quantity",
+    "status": "killed"
+  },
+  {
+    "mutation": "phase1 n_j comparison",
+    "module": "rd9_compare.py",
+    "before": "target.get('n_j',target.get('n'))",
+    "after": "target.get('point')",
+    "test": "rd9_test_arithmetic.py::test_phase1_agreement_checks_every_pinned_quantity",
+    "status": "killed"
+  },
+  {
+    "mutation": "phase1 array hash comparison",
+    "module": "rd9_compare.py",
+    "before": "'sha256':sha_bytes(v)",
+    "after": "'sha256':entry['sha256']",
+    "test": "rd9_test_arithmetic.py::test_phase1_agreement_checks_every_pinned_quantity",
+    "status": "killed"
+  },
+  {
+    "mutation": "phase1 B1 mean comparison",
+    "module": "rd9_compare.py",
+    "before": "('B1','B1'),",
+    "after": "",
+    "test": "rd9_test_arithmetic.py::test_phase1_agreement_checks_every_pinned_quantity",
+    "status": "killed"
+  },
+  {
+    "mutation": "pin-name ambiguity",
+    "module": "rd9_inputs.py",
+    "before": "assert len(candidates)<=1",
+    "after": "assert len(candidates)<=2",
+    "test": "rd9_test_arithmetic.py::test_pin_roles_reject_ambiguous_names_and_choose_backbone_recipe",
+    "status": "killed"
+  },
+  {
+    "mutation": "backbone recipe preference",
+    "module": "rd9_inputs.py",
+    "before": "if preferred: candidates=preferred",
+    "after": "if False: candidates=preferred",
+    "test": "rd9_test_arithmetic.py::test_pin_roles_reject_ambiguous_names_and_choose_backbone_recipe",
+    "status": "killed"
+  },
+  {
+    "mutation": "round9 paths use checkout",
+    "module": "rd9_inputs.py",
+    "before": "return HERE.parents[2]/path",
+    "after": "return MAIN/path",
+    "test": "rd9_test_arithmetic.py::test_pin_paths_keep_round9_outputs_in_the_running_worktree",
+    "status": "killed"
+  },
+  {
+    "mutation": "library source hash",
+    "module": "rd9_inputs.py",
+    "before": "result[relative]=sha_file(path)",
+    "after": "result[relative]='0'*64",
+    "test": "rd9_test_arithmetic.py::test_library_provenance_is_sha256_of_loaded_src_files",
+    "status": "killed"
+  }
+]
