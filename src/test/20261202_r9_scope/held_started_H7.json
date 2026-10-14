@@ -1,0 +1,195 @@
+{
+ "rule_sha256": "f9b07b34e645bc8e881fb13c7e7a085eabea6a52f4d93445305944cf1aea030c",
+ "attempts": [
+  {
+   "attempt": 1,
+   "time": "2026-10-14 08:23:21",
+   "flags": {
+    "after_crash": false,
+    "fix": null,
+    "reserve": false,
+    "smoke": false
+   },
+   "mode": "held",
+   "read": "H7",
+   "backbone": "siglip2_so400m",
+   "runner_sha256": "55caf787734aef50b15843015de488560c556be6ca366aa446985ac2173bcd4f",
+   "module_sha256": {
+    "src/test/20261202_r9_scope/r9_a28.py": "87e4e9cfac7aa82ecd6f162d84773486e7e0383d7d5475d3e9cc244e62542a93",
+    "src/test/20261202_r9_scope/r9_a28_context.py": "6814650ffd611b5539bc798812707c0ffac6deef2bf7d94b870d317e6b566c5e",
+    "src/test/20261202_r9_scope/r9_a28_data.py": "60a46b40077b98ee96ba6ed49f969e7c37b23852083a24c0b1b3e327a663499a",
+    "src/test/20261202_r9_scope/r9_a28_episodes.py": "d4a3f836881e498b2558a0476d50661136d2fc04357f8ec411650e67af8ad1e0",
+    "src/test/20261202_r9_scope/r9_backbone.py": "9ddd23a0dcbe3abcbaf1a47ff060b30f76e1195d16f080844c2fdb800590ff84",
+    "src/test/20261202_r9_scope/r9_bundle.py": "0e194af001353a78214cba5ce3c21f5a76db2783394873e50ad9f42112c6515b",
+    "src/test/20261202_r9_scope/r9_check_data.py": "a448fa880d998f737989bfb74a91cc53584a1c4311e6cfc5e14a22d554c29f13",
+    "src/test/20261202_r9_scope/r9_check_groups.py": "f5960b4154c8764ade54c22b7ae5a99142a558fd1d11896ddb03c916dba340a1",
+    "src/test/20261202_r9_scope/r9_check_heads.py": "79ab673ac9b51dbd8db77f1ab2dd1d6d28ed4d6ab0d0f2699afcfca4ca286020",
+    "src/test/20261202_r9_scope/r9_common.py": "69e450bea3819b335bada1c8492c41f7350e97e5cd7264ad1e373ef5d27ab3bd",
+    "src/test/20261202_r9_scope/r9_context.py": "18f9a4501212a68940faf54f1951253a75fc913ec68dbb4148449859faae00b3",
+    "src/test/20261202_r9_scope/r9_data.py": "9b9d3fe521d4d5728ffdc0899451e5dd984b1b8cc774c6ffe903030dcbc0ac0c",
+    "src/test/20261202_r9_scope/r9_descriptive.py": "e96fc731f9faca53befca1f1e645bb921cd9e4ca185387e787fe43623835d2da",
+    "src/test/20261202_r9_scope/r9_episodes.py": "eec7611153e58191ffc57066018ec64ff04c6f33467fc9f6796f71b3be84ccde",
+    "src/test/20261202_r9_scope/r9_heads.py": "097a40bbedaf702032c48789b11028b862ca9727e5e79921e02c4aedd7e2e6b2",
+    "src/test/20261202_r9_scope/r9_picks.py": "7a0f08e3564a369f24bf17708ae751975447e261abab66d882b325b5763899b6",
+    "src/test/20261202_r9_scope/r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "src/test/20261202_r9_scope/r9_probe_data.py": "d79edbee6564df70f7cba79a3971939289bbd5b7bce57c8b1d69dc5e1a1c7a44",
+    "src/test/20261202_r9_scope/r9_probe_plan.py": "156afdd6e2f69287b66c681ba100d3187142ce2933a35137c0c0b203fa0208d2",
+    "src/test/20261202_r9_scope/r9_probe_recipe.py": "573ac7e7c1cd16da2fad3ad3c6f2aec3d1052ef7845d9c717a0cf3d47586260a",
+    "src/test/20261202_r9_scope/r9_probe_score.py": "834670e7f9d734cd2a2bd73bb94d50970d2bc07e7afce7a3f0db7e8e46457bc8",
+    "src/test/20261202_r9_scope/r9_recipe_a3.py": "36947bc6cb6818059020c5414f34841273f60dc9fea3e1c969a64997f759fcb3",
+    "src/test/20261202_r9_scope/r9_recipe_baselines.py": "6c4aa102401fdc8df3085dd1bc6d9d4df44402b2408eb4722a81064f724afe91",
+    "src/test/20261202_r9_scope/r9_recipe_cells.py": "de6bd56ea874b331b11a0ba17e7c0163b287b251dea94aed90e0c7e20743e601",
+    "src/test/20261202_r9_scope/r9_recipe_groups.py": "919202a1e77b5fa893c0161d9c669f9dc1f91277cddb0780800f31ff058e3154",
+    "src/test/20261202_r9_scope/r9_recipe_reader.py": "ffb9166b65c85307d72e2ecb5fb3d5e4cedad5ec39e5d67478a01091927be71a",
+    "src/test/20261202_r9_scope/r9_score.py": "e708160828f13983e7e17b8ef7333381fc773345ae50796f4203dc99fae1736f",
+    "src/test/20261202_r9_scope/r9_stage2_mutations.py": "ddce871a903c059c2725cefc00a543e061bdb114a6f357b81fd7fdff7e9221e5",
+    "src/test/20261202_r9_scope/r9_stats.py": "7ec21a05062a5ef567e99edf6f8c168229959441a91106138eae13e81b592d7b",
+    "src/test/20261202_r9_scope/run_r9_a28_feasibility.py": "fa492387333e6ff6114f27453833c5011bcfdd6078c0be6c4be79dc650be0529",
+    "src/test/20261202_r9_scope/run_r9_a28_pins.py": "96e20d0e4aa6f75685efce7eb838d1304c264fb7f067197f64ca9b5b81b552f6",
+    "src/test/20261202_r9_scope/run_r9_a28_prepare.py": "acfacaf4d13466ee3259917ab9f433523fd6545b01117cf143811d81010aef4b",
+    "src/test/20261202_r9_scope/run_r9_apply_rule.py": "e778f6ed6616138e9a444d45c392733e8f4ca3281ff060b18ef1484c36874e4e",
+    "src/test/20261202_r9_scope/run_r9_descriptive.py": "1d662f437e1b6931cbeb15275d0b8805b0db74b1a42d2caf3642147a9e5b78ad",
+    "src/test/20261202_r9_scope/run_r9_held.py": "55caf787734aef50b15843015de488560c556be6ca366aa446985ac2173bcd4f",
+    "src/test/20261202_r9_scope/run_r9_preread.py": "6b89c1e74cb1a00c79c2e0b1465e74ecfb4c9aa5e60138e01cd0fa6c31709890",
+    "src/test/20261202_r9_scope/run_r9_probe.py": "2ce2866bd99206aab5b8985edf2736ee8995674b593b936d271732920dfadf2b",
+    "src/test/20261202_r9_scope/run_r9_stage0a.py": "0023407b2b51cdae0e41d66044e188b32f4fcdae565f7f49eafc31ddd409798f",
+    "src/test/20261202_r9_scope/run_r9_stage0b.py": "f8907860850f206994a1cf7e435833cc92475267c3f92a9252348c7f809957b4",
+    "src/test/20261202_r9_scope/run_r9_stage1_checks.py": "c19c3d282bf63b3fd3f7b7601d9f51e850b894c98e7415541b20ef47908aba0c",
+    "src/test/20261202_r9_scope/run_r9_stage2.py": "0b4348d7a7d2a2a6aeecfebc4761b20b69ca91e92a01ea17899ff7704b2aae60",
+    "scripts/run_r9_a3.sh": "39dddf16a8361c152840c122e1f6b225465d88897a8a58458f32b45b94e4aeb1",
+    "scripts/run_r9_extract.sh": "2f2a574228890d48df1374f8afeaecfb86127f8c52ccc053ff71dd093331afb8",
+    "scripts/run_r9_translate.sh": "b9fe725b11ec8f434065932663b6c33a18a07053e0479c66edf35de2da565281",
+    "scripts/das6_sync_r9.py": "fea3b678f13d3436e7af87e17be1cec19ecbbf09f1d8e1554dd6c64ca40ed832"
+   },
+   "input_sha256": {
+    "20261125_artelingo_held_test/DECISION_RULE.md": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+    "20261121_round3_affect_gate/DECISION_RULE.md": "2d311dbeac1a561fc2a719b730075c30819f4f7f3a592041cb64b65821dc5925",
+    "20261117_reader_fix_csd/DECISION_RULE.md": "613d8c9d13fb7d4787ec0fb91dc65cfd4a192d07c88ab8f961da3adc1c35d23c",
+    "20261117_reader_fix_csd/common.py": "99496dcf859ff0b0f746266125c975c5e2f9632e0c2c91d74df17102c65c10a7",
+    "20261117_reader_fix_csd/rc_core.py": "e649fff5d8253c8ba7aae0dbfff7a68321cef5fe3caa06d7b325a27fe904185c",
+    "20261117_reader_fix_csd/rb_build.py": "63c7310c890675cc63e49838feb364cdd1c5c68aafdfb0f0f7972128476cba7b",
+    "20261117_reader_fix_csd/rb_eval.py": "1826e65fd73b8c6cecae33b5df48503bf2cf33e067fc291d5c078c51184e0b14",
+    "20261117_reader_fix_csd/rb_features.py": "1e758f6d5de1b1dd246592f4045e0ae1dcc520c1d6012540a9e69b3314fb6caf",
+    "20261117_reader_fix_csd/results/rb_reader_A0.pkl": "a6b85ddc74fcdbe5a40cb3fc13b7253688fc9a53e36525e7bdc5fba611fddcfc",
+    "20261117_reader_fix_csd/results/rb_reader_A0.json": "5dd8fc86631d8ea729e0382a760d9994ec4811e97cd1dbc26e2e108860fcc552",
+    "20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.npz": "628b21aeaf6d306f82bd9abb68e6c257348535c3aff0fad0a2d065fc48302981",
+    "20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.json": "c6e2f83b73c47b9c054e6381a5d020a05618728cb820861b89f0b80de5a8a16e",
+    "20261117_reader_fix_csd/results/rc_tau.json": "f1ecf42f3c2572870537ba798cea63b96ed1939a4d65bc5cf4efa3b5f3aa56ed",
+    "20261117_reader_fix_csd/results/rule_application.txt": "9a074850e70db8075e85bc5475e9361905182d6f0815f0023eaf380ccdee9785",
+    "20261118_reader_fix_round2/DECISION_RULE.md": "368bec11363b222d348622a37a6e3aedcfe795d772781d7a255d79b60fab265c",
+    "20261118_reader_fix_round2/r2_fusion.py": "1406e8e71629e74c468f8b009a110e49aa05c481ed52cc1b8d99b59f87016027",
+    "20261118_reader_fix_round2/results/rule_application.txt": "cf1ec3852e334b1d56920bd8ab25c2db858bf97ab46ea36a7f65ebdd0916741f",
+    "20261120_r1_levers_brainstorm/bs_lib.py": "45cc5abd941ca1cd7e47f415cdf0e11d440fd9c703b99516e23eb6e41d49bf88",
+    "20261120_r1_levers_brainstorm/bs_04_readers.py": "0260fe5ad61e3d4a664cbb921f7d84efed8c9329716229310651712697a372b8",
+    "20261120_r1_levers_brainstorm/bs_05_aff.py": "4c947b1d42df1caa7fb7f769f245e7df9a59bce22ca2611413c6a5a7fd45d734",
+    "20261120_r1_levers_brainstorm/bs_10_subsets.py": "b00d9ed0b18e65e1e2be4dd8cdc5e05e277f673dbec5c826ddce4e18669cd7b4",
+    "20261120_r1_levers_brainstorm/results/bs_04_readers.json": "42bf6f204598c011bfada46e5eabf42dc7759fc6f6750721527d16239141691e",
+    "20261120_r1_levers_brainstorm/results/bs_05_aff.json": "a96719ba505b72883bfa2eeaca66ab872da128314654ba8f74580998b2a72b10",
+    "20261120_r1_levers_brainstorm/results/bs_10_subsets.json": "c9d64815c1c6dba9e84177f7a33fb4e917a326f801ed9b115ae770ce1a1988f1",
+    "20261030_aspect_baselines/run_baselines.py": "26508dde35f77850c4a80e98d08b0ea6576638577c84d3e96c39660ef02e63c4",
+    "20261030_aspect_baselines/results/per_anchor_seed42.npz": "a4818ba0fa5f7249355afe2d2483404dcd34d22cae26984b76be787bb6e9e59d",
+    "20261030_aspect_baselines/results/codes_provenance.json": "8e6a517b73610d4d21b42e2eb39f6fd4118dc4132049364c8e89eecb7716bfaf",
+    "20261030_aspect_baselines/results/baselines_seed42.json": "85336fbf0e41e0bf127a998eb882d9724b06966669812710c0fbb8cffb6206c3",
+    "20261030_aspect_baselines/results/baselines_seed43.json": "b250e89caadb1f5ad5937fb36b92ccf1f0f3b63a82b71056dc1ce2b9cc7e2859",
+    "20261030_aspect_baselines/results/baselines_seed45.json": "ecbcf5e900a5f844af9a3e986d1154d2764bb10ba2e2123aba2aaf77917c9890",
+    "20261030_aspect_baselines/results/baselines_seed47.json": "56e5c0661ad20372cd1c9976d2e48f07c995e44ce33f0649da5cc351f8652386",
+    "20261030_aspect_baselines/results/baselines_seed48.json": "feed925f3eddbf2957b4bce284e1bbf5e9d85132b760f94f6d2c76cb08654286",
+    "20261111_community_told_oracle/results/told_oracle.json": "76d9ec896b941a518e7db6684805fe0bc329f6afe4a48e1993992fbb221d70d2",
+    "20261030_aspect_baselines/results/episodes_seed42.npz": "12af979432ff1a20c88b614ab9e672f203eeeed9c2465bff305e72d01e6c0986",
+    "20261111_community_told_oracle/results/per_anchor_told_oracle.npz": "27e8101161607da2d6936aa5a8c84f8c296629fe08e37a68c8418c9356af1366",
+    "20261031_pseudo_partitions/results/partitions.npz": "e4b92097b473ac66b4067adeebd9790d9f63265687f833a7261165ee0f07fbc7",
+    "20261108_new_method_quick_checks/results/n6_posteriors.npz": "c5130c3ba159bc917265710762a52ff167073ae322461baecc94ddf477cd2902",
+    "20261101_aspect_factor_gonogo/checkpoints/A3_seed42.pt": "6421408af4f4172d81155be608a74923920ea197f90bac31d7b43a87a9a326af",
+    "20261116_grouping_step1_style/results/step1_group_style.npz": "b04d96b4798acdfdbc9ca87436012755a681c931ac4f7612fa5683350b7a20e2",
+    "20261116_grouping_step1_style/results/step1_heads_style.npz": "5a2a3d310ee68e33e659fa5769948e4d737e331dfc9093c5cc8c52149c29c1a7",
+    "20261122_round4_aff_vetoes/results/dev_seed42.json": "fd7b3f480d5997284f9d8cfe29fe25275ff3edd38c1ada0a9392d8396ba9e01f",
+    "20261013_stage_d_selection/cache/prepare.npz": "d30f0281bb521d18c7a4d4adca1a7938689e2789db7fd528ce0322b90ac44c8b",
+    "20261014_stage_d_final/cache/held_codes.npz": "2901f875e7ad59f9f54509b61352a9cecb0eba310b31357f872219f25e2a12e9",
+    "20261121_round3_affect_gate/results/seed42_arrays.npz": "5ea4b09a4161a5eac6ca78942cf0f4b99b9c634edca651fba4c2689c7c24ab8a",
+    "20261030_aspect_baselines/results/smoke/baselines_seed9001.json": "729cb5653cbcf2ea97da6dad65da9eaddf5d1b4bbace5c9d551f9c1d4fe8c517",
+    "20261030_aspect_baselines/results/smoke/baselines_seed9002.json": "8e86b7e6da2411743d09c28154c2189ad50b11fd4a04f2bd76e53e80808ba352",
+    "20261030_aspect_baselines/results/smoke/baselines_seed9003.json": "e7e0ac0ed30cd170d0de1ccda56d9e6a2f6a663576725dcd6306b46e3429aada",
+    "20261121_round3_affect_gate/r3_common.py": "b1a60b1fd801bf9147d0bd58ae6da806d12fbcc982796135454f31dce3836f86",
+    "20261121_round3_affect_gate/r3_bundle.py": "bef50cbbef17f6c40d53c705a060967950d0690168c4b046b1cc3f0dd9fa0e9d",
+    "20261121_round3_affect_gate/r3_fusion.py": "ce51a819157842035fdfde488f042c25fa4764ed1b1c363728d5e3837e314637",
+    "20261121_round3_affect_gate/r3_stats.py": "846a4f5b3175302280c20fa415cfff4b0652522d06aa4fc46290f1a1db5de54d",
+    "20261108_new_method_quick_checks/results/n6_posteriors.npz.record.json": "4fd22823ad5599dd70f720a1079ab9ff3413a2a38133d564ffd298daffde54a9"
+   },
+   "pins_sha256": "45a84e72522cda32845c6315c6c8eb8c947b925a18b9a045722658604557016b",
+   "sigma_source": {
+    "file": "/project/CoSiR/src/test/20261202_r9_scope/results/sensitivity_seed42_siglip2_so400m.json",
+    "sha256": "fa6b8841e5b1d060768c90f3db11a7f4aecb706a300fc8114a059c03d1f02bb2"
+   },
+   "coef_sha256": {
+    "affect": {
+     "img": "6fd3511560db16e7ce56187d2928616ddbf9adab7a6928ac1c1810b5ccfb89af",
+     "txt": "bdca6cce56e9ed008f5f13f71ed612e104839ed72c7e6ddd51e4111b21bf0499"
+    },
+    "affect_km": {
+     "img": "83a89b8df6b9f3491465b19cc84756b55faba76456726461b034b550af8c4839",
+     "txt": "89ab1d082780c14931fbf8ed2805ed06516fa72f1049f2425f55f7d5ef80ff7f"
+    },
+    "image": {
+     "img": "1d4277c7c59d4d3b7ac2584cd3a3e379c1f7dd3a4ab7ff92947e8effcc13cbb4",
+     "txt": "21a5b6b886667bae0c2998f5c264b3e8951e83ddc4b54c36da4deb52d5695576"
+    },
+    "caption": {
+     "img": "b440754be7eb875f3af1670b5d92ecd93b43be5bce200f8da6215269281aab51",
+     "txt": "3e4da3647ab76d0bfd83cd30f0b4f69a82dd2d933120e79adce910ebc1720ac4"
+    },
+    "csd": {
+     "img": "880b15b30cc84ddfef94b5acfac3fe03e0906de73324284cf510994d38fdf943",
+     "txt": "ff937d717cae9d59b7c207c4ac3fb5ac434771fe7d693dff5a502415f59c4864"
+    }
+   },
+   "value_sets": {
+    "file": "/project/CoSiR/src/test/20261125_artelingo_held_test/results/value_sets.json",
+    "sha256": "4ea6d33853e5516adc57a868194a03ab20963bcfe6f646df355a7e72d1970369"
+   },
+   "git": {
+    "head": "fc90917e75fe886ccb5b6526cb1364e74e44aa94",
+    "status_src": "?? src/test/20261129_r8_grouping/results/\n?? src/test/20261129_r8_grouping/results_m4_09999/\n?? src/test/20261204_leiden_groupings/results/h1r_labels.npz\n?? src/test/20261204_leiden_groupings/results/lg_group.npz\n?? src/test/20261204_leiden_groupings/results/lg_heads.npz\n?? src/test/20261204_leiden_groupings/results/rebuild/"
+   },
+   "smoke_record": {
+    "name": "smoke_record_fix2.json",
+    "sha256": "8d0cd629041b4a8781ddf61cafe2a5a64cfc9373afd3bb6a2b833fbd42ade932"
+   },
+   "ledger": {
+    "row": "H7",
+    "cells": [
+     "H7",
+     "2026-10-14",
+     "ArtELingo held rows, aspect episodes, seeds 52 to 54 (H5's episodes), 4,096 per pair",
+     "SigLIP 2 so400m/14-384",
+     "AFF fixed recipe on SigLIP 2 so400m/14-384, round 9 (rule f9b07b34, section 4.1)",
+     "(pending)",
+     "run_r9_held.py 55caf787734aef50b15843015de488560c556be6ca366aa446985ac2173bcd4f pins_siglip2_so400m.json 45a84e72522cda32845c6315c6c8eb8c947b925a18b9a045722658604557016b",
+     "(pending)"
+    ],
+    "episodes": [],
+    "scripts": [
+     "55caf787734aef50b15843015de488560c556be6ca366aa446985ac2173bcd4f",
+     "45a84e72522cda32845c6315c6c8eb8c947b925a18b9a045722658604557016b"
+    ],
+    "report": "(pending)"
+   },
+   "episodes_sha256": {
+    "52": {
+     "emotion__style": "f56c357dbfa4f666daf3f2849ce7a6e77676769f62e18ce704c7c7004f770542",
+     "emotion__genre": "58798701e01e4a8e20235252bbf985b52735c0de2a54127221178fc0d6da17d0",
+     "style__genre": "e9c591dca0e082f8c63810430f0ffd0c3262f55f062f1bc33d665423a175db50"
+    },
+    "53": {
+     "emotion__style": "ae0cb9c34dfe55d99cc54862f48725d8ec7a0bcc42b23f723ac6512994422c57",
+     "emotion__genre": "850790fbc11995509550bc9cf061ee2868b5253af892ed9aa40cb09623a9fcaf",
+     "style__genre": "88138225cff600134cbd020ba29187afec3bd78062266a795f0156d668595404"
+    },
+    "54": {
+     "emotion__style": "dc81db77128edd184df2c55a93529d1873f7f805bac1bbbf297d4b2f6cd34508",
+     "emotion__genre": "439425c52220b820954ede4c03cc2f94ee4b4ce30f6fc8822f728fb0382d86f6",
+     "style__genre": "8d7c415c3d46cf2744891e468d1ac0757a7c11e8aae5a67dc9e75ffa3ac7e6c2"
+    }
+   }
+  }
+ ]
+}
