@@ -379,3 +379,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-14-weekly-slides-handoff.md
 - New chat: tab 'weekly slides', session 57ed02b5-2778-4c68-b6a1-998328ebe831
 
+[brief] CoSiR: r9 run 2 -> r9 run 3 (2026-10-14 12:41 Amsterdam)
+- Done: all five held reads and their descriptive passes. H6 GO, H7 GO, H8 NO-GO (inconclusive), H9 full claim, H10 NO-GO (inconclusive).
+- State: every re-derivation agrees (166 or 171 items, 0 differences). A descriptive-pass bug on ArtELingo-28 reads was fixed (10b5a7b); no verdict touched.
+- Next: Codex fills the last report parts; claim review; commit; open `r10 decide`.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-14-r9-run-3-handoff.md
+- New chat: tab 'r9 run 3', session 22fd6e9c-81ec-4c3c-bf7b-e483bc9faf75
+
