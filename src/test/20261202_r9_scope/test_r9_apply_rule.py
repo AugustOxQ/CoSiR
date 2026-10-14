@@ -1089,6 +1089,47 @@ def test_pass_file_of_another_read_with_the_same_backbone_is_refused(tmp_path):
     refused(4, "H9", d, "read and backbone")
 
 
+@pytest.mark.parametrize("read", SEVEN)
+def test_smoke_pass_on_clip_uses_clip_verdict_and_claim(tmp_path, read):
+    d = stage(tmp_path, read, ALL0, smoke=True)
+    edit_pass(d, read, lambda r: r.update(backbone="clip_b32"))
+    write_agreement(d, read, smoke=True)
+    path, verdict = call(read, d, smoke=True)
+    assert json.loads(path.read_text()) == verdict
+    assert verdict["backbone"] == "CLIP ViT-B/32"
+    assert "on frozen CLIP features" in verdict["claim"]
+
+
+@pytest.mark.parametrize("read", ["H9", "H10"])
+@pytest.mark.parametrize("counts", [ALL0, dict(ALL0, P1=500)])
+def test_smoke_a28_claim_names_actual_backbone(tmp_path, read, counts):
+    d = stage(tmp_path, read, counts, smoke=True)
+    edit_pass(d, read, lambda r: r.update(backbone="clip_b32"))
+    write_agreement(d, read, smoke=True)
+    verdict = call(read, d, smoke=True)[1]
+    assert verdict["backbone"] == "CLIP ViT-B/32"
+    assert verdict["claim"].startswith("AFF on CLIP ViT-B/32")
+
+
+@pytest.mark.parametrize("read", SEVEN)
+def test_held_pass_on_clip_is_still_refused(tmp_path, read):
+    d = stage(tmp_path, read, ALL0)
+    edit_pass(d, read, lambda r: r.update(backbone="clip_b32"))
+    refused(4, read, d, "read and backbone")
+
+
+@pytest.mark.parametrize("read", SEVEN)
+def test_smoke_pass_with_unknown_backbone_is_refused(tmp_path, read):
+    d = stage(tmp_path, read, ALL0, smoke=True)
+    edit_pass(d, read, lambda r: r.update(backbone="unknown_encoder"))
+    write_agreement(d, read, smoke=True)
+    ppath = d / f"held_pass_{read}.json"
+    with pytest.raises(AR.Stop, match="unknown backbone") as exc:
+        AR.load_pass(ppath.read_bytes(), ppath.name, read, True)
+    assert exc.value.code == 4
+    refused(4, read, d, "unknown backbone", smoke=True)
+
+
 def alter_rule(tmp_path, monkeypatch, fault):
     if fault == "rule_sha":
         edited = tmp_path / "DECISION_RULE.md"
