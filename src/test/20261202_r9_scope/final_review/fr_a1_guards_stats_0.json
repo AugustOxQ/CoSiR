@@ -1,0 +1,42 @@
+[
+ {
+  "label": "s finite",
+  "killed": true,
+  "rc": 1,
+  "seconds": 15.6,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_guards_on_the_values",
+  "tail": "1 failed, 5 passed, 2 warnings in 13.23s"
+ },
+ {
+  "label": "s abs <= 2",
+  "killed": true,
+  "rc": 1,
+  "seconds": 17.4,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_guards_on_the_values",
+  "tail": "1 failed, 5 passed in 14.56s"
+ },
+ {
+  "label": "s quarter",
+  "killed": true,
+  "rc": 1,
+  "seconds": 18.7,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_guards_on_the_values",
+  "tail": "1 failed, 5 passed in 15.92s"
+ },
+ {
+  "label": "s exact sums",
+  "killed": true,
+  "rc": 1,
+  "seconds": 22.2,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_integer_cluster_sums_guard_fires",
+  "tail": "1 failed, 6 passed in 18.10s"
+ },
+ {
+  "label": "s k < 2",
+  "killed": false,
+  "rc": 0,
+  "seconds": 79.7,
+  "first_failure": null,
+  "tail": "215 passed in 76.62s (0:01:16)"
+ }
+]

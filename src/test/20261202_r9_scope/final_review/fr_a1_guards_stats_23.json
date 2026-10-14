@@ -1,0 +1,26 @@
+[
+ {
+  "label": "m Holm factor",
+  "killed": true,
+  "rc": 1,
+  "seconds": 15.6,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_holm_exact_boundary_counts_for_every_rank",
+  "tail": "1 failed in 5.57s"
+ },
+ {
+  "label": "m tie order",
+  "killed": true,
+  "rc": 1,
+  "seconds": 11.1,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_holm_ties_follow_the_given_order",
+  "tail": "1 failed in 3.71s"
+ },
+ {
+  "label": "m Z level2",
+  "killed": true,
+  "rc": 1,
+  "seconds": 40.9,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28_stats.py::test_sensitivity_uses_the_rules_z_and_unequal_cluster_counts[two_level]",
+  "tail": "1 failed, 12 passed in 4.34s"
+ }
+]

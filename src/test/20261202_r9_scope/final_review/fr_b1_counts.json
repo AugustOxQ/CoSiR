@@ -1,0 +1,246 @@
+{
+ "csv_rows": 173745,
+ "trans_rows": 167230,
+ "csv_english_rows_all": 6515,
+ "artelingo_paintings": 61402,
+ "held_paintings_artelingo": 12281,
+ "held_and_train_overlap": 0,
+ "a28_paintings": 1658,
+ "a28_train_side": 912,
+ "a28_in_split_train": 790,
+ "a28_train_side_minus_split_train": 122,
+ "read_paintings": 746,
+ "read_held": 248,
+ "read_new": 498,
+ "read_new_in_artelingo": 0,
+ "held_artelingo_not_in_a28": 12033,
+ "read_rows": 74569,
+ "read_languages": 27,
+ "english_rows_on_read": 2000,
+ "translation_missing_read_rows": 0,
+ "translation_painting_mismatch": 0,
+ "translation_language_mismatch": 0,
+ "dropped": 0,
+ "translations_cover_nonenglish_csv": true,
+ "csv_emotion_values": [
+  "amusement",
+  "anger",
+  "awe",
+  "contentment",
+  "disgust",
+  "excitement",
+  "fear",
+  "other",
+  "sadness",
+  "something else"
+ ],
+ "csv_emotion_unmapped": [],
+ "csv_style_unmapped": [],
+ "csv_genre_unmapped": [],
+ "genre_wikiart_eq_csv_paintings": 746,
+ "genre_wikiart_unknown_paintings": 0,
+ "held_with_multiple_our_styles": 0,
+ "style_differs": [
+  {
+   "painting": "georges-braque_the-terrace-1948",
+   "csv_style": "Cubism",
+   "our_style": "Expressionism"
+  },
+  {
+   "painting": "georges-braque_woman-with-book-1945",
+   "csv_style": "Cubism",
+   "our_style": "Expressionism"
+  },
+  {
+   "painting": "joseph-wright_self-portrait-at-the-age-of-about-twenty",
+   "csv_style": "Romanticism",
+   "our_style": "Baroque"
+  },
+  {
+   "painting": "natalia-goncharova_sabbath",
+   "csv_style": "Cubism",
+   "our_style": "Expressionism"
+  },
+  {
+   "painting": "richard-tuttle_between-two-point-8-2001",
+   "csv_style": "Minimalism",
+   "our_style": "Abstract_Expressionism"
+  },
+  {
+   "painting": "salvador-dali_apparuerunt-illis-dispertitae-linguae-acts-1-14-1967",
+   "csv_style": "Symbolism",
+   "our_style": "Abstract_Expressionism"
+  }
+ ],
+ "paintings_multi_style_csv": 0,
+ "read_set_parquet_equal": {
+  "columns_equal": true,
+  "len_equal": true,
+  "row_id": true,
+  "painting": true,
+  "language": true,
+  "emotion": true,
+  "style": true,
+  "genre": true,
+  "held": true,
+  "dropped": true,
+  "dtypes": {
+   "row_id": "int64",
+   "painting": "object",
+   "language": "object",
+   "emotion": "int64",
+   "style": "int64",
+   "genre": "int64",
+   "held": "bool",
+   "dropped": "bool"
+  }
+ },
+ "held_rows": 25055,
+ "v_pool_rows": 68828,
+ "V": {
+  "emotion": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "style": [
+   9,
+   12,
+   17,
+   20,
+   21,
+   23,
+   24
+  ],
+  "genre": [
+   0,
+   1,
+   2,
+   4,
+   6,
+   7,
+   8,
+   9
+  ]
+ },
+ "V_detail": {
+  "emotion": {
+   "eligible": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "outside_dev": [],
+   "near_30": {}
+  },
+  "style": {
+   "eligible": [
+    9,
+    12,
+    17,
+    20,
+    21,
+    23,
+    24
+   ],
+   "outside_dev": [],
+   "near_30": {
+    "0": 25,
+    "3": 25,
+    "4": 29,
+    "17": 32
+   }
+  },
+  "genre": {
+   "eligible": [
+    0,
+    1,
+    2,
+    4,
+    6,
+    7,
+    8,
+    9
+   ],
+   "outside_dev": [],
+   "near_30": {
+    "9": 34
+   }
+  }
+ },
+ "V_record_equal": true,
+ "english_median_words": 13.0,
+ "flagged_mine": [
+  "Emakhuwa",
+  "IsiNdebele"
+ ],
+ "flags_detail": {
+  "Emakhuwa": {
+   "failed_share": 0.015463917525773196,
+   "script": "Latn",
+   "script_share": 0.0,
+   "median": 12.0,
+   "ratio": 0.9230769230769231,
+   "crit": {
+    "proxy": true,
+    "failed_outputs": false,
+    "source_script": false,
+    "length": false
+   },
+   "flagged": true
+  },
+  "IsiNdebele": {
+   "failed_share": 0.0009237875288683603,
+   "script": "Latn",
+   "script_share": 0.0,
+   "median": 17.0,
+   "ratio": 1.3076923076923077,
+   "crit": {
+    "proxy": true,
+    "failed_outputs": false,
+    "source_script": false,
+    "length": false
+   },
+   "flagged": true
+  }
+ },
+ "coverage_recount_bad": {
+  "IsiZulu": [
+   "proxy_codes"
+  ],
+  "Swahili": [
+   "proxy_codes"
+  ]
+ },
+ "proxy_languages": [
+  "Emakhuwa",
+  "IsiNdebele"
+ ],
+ "flags_record_diff": [],
+ "flags_record_flagged": [
+  "Emakhuwa",
+  "IsiNdebele"
+ ],
+ "flags_record_eng_median": 13.0,
+ "flags_record_thresholds": {
+  "failed_outputs": 0.05,
+  "source_script": 0.05,
+  "length_ratio": [
+   0.5,
+   2.0
+  ]
+ },
+ "counts_record_diff": {},
+ "counts_record_extra_keys": [],
+ "style_differs_record_equal": true
+}

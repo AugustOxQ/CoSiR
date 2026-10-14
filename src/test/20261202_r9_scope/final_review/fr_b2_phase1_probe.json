@@ -1,0 +1,50 @@
+{
+ "unchanged": {
+  "ran": false,
+  "error": "FileNotFoundError: [Errno 2] No such file or directory: '/project/CoSiR-wt/r9-fr-b2/src/test/20261202_r9_scope/20261125_artelingo_held_test/DECISION_RULE.md'",
+  "where": "    return io.open(self, mode, buffering, encoding, errors, newline)"
+ },
+ "resolve_pin_patched": {
+  "ran": false,
+  "error": "AssertionError: pin mismatch: /project/CoSiR/src/test/20261117_reader_fix_csd/results/rb_reader_A0.json",
+  "where": "    assert sha_file(path)==digest, f'pin mismatch: {path}'"
+ },
+ "input_sha256_skipped": {
+  "ran": false,
+  "error": "FileNotFoundError: [Errno 2] No such file or directory: '/project/CoSiR-wt/r9-fr-b2/src/test/20261202_r9_scope/regression_seed42.json'",
+  "where": "    return io.open(self, mode, buffering, encoding, errors, newline)"
+ },
+ "parts_only": {
+  "ran": false,
+  "error": "AssertionError: ambiguous pin role partitions: [PosixPath('/project/CoSiR-wt/r9-replay/src/test/20261202_r9_scope/results/replay/clip_b32/partitions.npz'), PosixPath('/project/CoSiR/src/test/20261031_pseudo_partitions/results/partitions.npz')]",
+  "where": "    assert len(candidates)<=1, f'ambiguous pin role {role}: {candidates}'"
+ },
+ "direct_seed42_from_pins": {
+  "ran": false,
+  "error": "AssertionError: pins must include seed42.array_hashes",
+  "items_before": 41,
+  "failed_before": [
+   "seed42.mean_r1.B1"
+  ]
+ },
+ "pins_seed42_keys": [
+  "arrays",
+  "checks",
+  "coef_sha256",
+  "episodes_sha256",
+  "mean_r1",
+  "pass_counts",
+  "seed",
+  "statistics_code"
+ ],
+ "own_array_keys_sample": [
+  "B0__gain",
+  "B0__other",
+  "B0__r1",
+  "B0__strict",
+  "B0__swap",
+  "B__gain",
+  "B__other",
+  "B__r1"
+ ]
+}

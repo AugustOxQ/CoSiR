@@ -1,0 +1,98 @@
+[
+ {
+  "label": "G agreement-missing",
+  "killed": true,
+  "rc": 1,
+  "seconds": 13.0,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_missing_inputs_refuse",
+  "tail": "1 failed, 32 passed in 9.67s"
+ },
+ {
+  "label": "G phase-2",
+  "killed": true,
+  "rc": 1,
+  "seconds": 10.0,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_agreement_refuses[over0-not a phase-2 record]",
+  "tail": "1 failed, 57 passed in 7.37s"
+ },
+ {
+  "label": "G smoke-flag",
+  "killed": true,
+  "rc": 1,
+  "seconds": 11.1,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_agreement_refuses[over2-agreement record is refused]",
+  "tail": "1 failed, 59 passed in 8.52s"
+ },
+ {
+  "label": "G agreement-true",
+  "killed": true,
+  "rc": 1,
+  "seconds": 10.0,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_agreement_refuses[over4-agreement is not true]",
+  "tail": "1 failed, 61 passed in 7.22s"
+ },
+ {
+  "label": "G failing-items",
+  "killed": true,
+  "rc": 1,
+  "seconds": 9.5,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_agreement_refuses[over7-not equal]",
+  "tail": "1 failed, 64 passed in 7.08s"
+ },
+ {
+  "label": "G failed-zero",
+  "killed": true,
+  "rc": 1,
+  "seconds": 9.4,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_agreement_refuses[over13-failed is not 0]",
+  "tail": "1 failed, 70 passed in 6.83s"
+ },
+ {
+  "label": "G compared-count",
+  "killed": true,
+  "rc": 1,
+  "seconds": 9.7,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_agreement_refuses[over16-compared]",
+  "tail": "1 failed, 73 passed in 7.20s"
+ },
+ {
+  "label": "G read-name",
+  "killed": true,
+  "rc": 1,
+  "seconds": 9.4,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_agreement_refuses[over20-its read is not H6]",
+  "tail": "1 failed, 77 passed in 6.86s"
+ },
+ {
+  "label": "G pass-file-name",
+  "killed": true,
+  "rc": 1,
+  "seconds": 9.5,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_agreement_refuses[over21-its pass_file is not]",
+  "tail": "1 failed, 78 passed in 7.01s"
+ },
+ {
+  "label": "G rederived-counts",
+  "killed": true,
+  "rc": 1,
+  "seconds": 9.3,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_agreement_refuses[over24-rederived_counts]",
+  "tail": "1 failed, 81 passed in 6.94s"
+ },
+ {
+  "label": "G fix1-pair",
+  "killed": true,
+  "rc": 1,
+  "seconds": 11.6,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_fix_pass_replaces_the_original_and_the_verdict_is_unsuffixed",
+  "tail": "1 failed, 33 passed in 8.82s"
+ },
+ {
+  "label": "G smoke-record",
+  "killed": true,
+  "rc": 1,
+  "seconds": 9.7,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_reserve_needs_its_own_agreement_and_smoke_record",
+  "tail": "1 failed, 37 passed in 6.39s"
+ }
+]

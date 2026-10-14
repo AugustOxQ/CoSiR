@@ -1,0 +1,1453 @@
+{
+ "cases": 28,
+ "differences": 0,
+ "results": {
+  "all_pass": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "GO",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "on ArtELingo's held paintings, AFF re-fitted by its fixed recipe on frozen Qwen features beats cosine, RCA, B, B′(A0) and its matched control on R@1, with a positive condition gain over its control and RCA, pooled over three aspect pairs. Not each pair, not another dataset, not a margin size.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H6"
+  },
+  "P1_alone_pos": {
+   "specs": {
+    "P1": 200,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 200,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 3.884,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": "inconclusive at a detectable margin of x = 0.898 points (x95 = 0.712; realised half-width 5.336 at 95%, 5.336 at its Holm level)",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H7"
+  },
+  "P1_alone_neg": {
+   "specs": {
+    "P1": 4000,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 4000,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": -4.317,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "AFF did not beat cosine on new paintings",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H6"
+  },
+  "P1_alone_zero": {
+   "specs": {
+    "P1": "zero",
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 2523,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 0.0,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "AFF did not beat cosine on new paintings",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H7"
+  },
+  "P2_alone_pos": {
+   "specs": {
+    "P1": 0,
+    "P2": 200,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 200,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 3.884,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": "passed",
+    "P2": "inconclusive at a detectable margin of x = 0.890 points (x95 = 0.705; realised half-width 5.336 at 95%, 5.336 at its Holm level)",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H6"
+  },
+  "P2_alone_neg": {
+   "specs": {
+    "P1": 0,
+    "P2": 4000,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 4000,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": -4.317,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "passed",
+    "P2": "AFF did not beat RCA on new paintings",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H7"
+  },
+  "P2_alone_zero": {
+   "specs": {
+    "P1": 0,
+    "P2": "zero",
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 2523,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 0.0,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "passed",
+    "P2": "AFF did not beat RCA on new paintings",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H6"
+  },
+  "P3_alone_pos": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 200,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 200,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 3.884,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "inconclusive at a detectable margin of x = 0.892 points (x95 = 0.707; realised half-width 5.336 at 95%, 5.336 at its Holm level)",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H7"
+  },
+  "P3_alone_neg": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 4000,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 4000,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": -4.317,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "AFF did not beat B on new paintings",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H6"
+  },
+  "P3_alone_zero": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": "zero",
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 2523,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 0.0,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "AFF did not beat B on new paintings",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H7"
+  },
+  "P4_alone_pos": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 200,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 200,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 3.884,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "inconclusive at a detectable margin of x = 0.894 points (x95 = 0.709; realised half-width 5.336 at 95%, 5.336 at its Holm level)",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H6"
+  },
+  "P4_alone_neg": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 4000,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 4000,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": -4.317,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "AFF did not beat B′(A0) on new paintings",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H7"
+  },
+  "P4_alone_zero": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": "zero",
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 2523,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 0.0,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "AFF did not beat B′(A0) on new paintings",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H6"
+  },
+  "P5_alone_pos": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 200,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 200,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 3.884,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "inconclusive at a detectable margin of x = 0.892 points (x95 = 0.707; realised half-width 5.336 at 95%, 5.336 at its Holm level)",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H7"
+  },
+  "P5_alone_neg": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 4000,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 4000,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": -4.317,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "AFF did not beat its matched control on new paintings",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H6"
+  },
+  "P5_alone_zero": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": "zero",
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 2523,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 0.0,
+    "P6": 15.992,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "AFF did not beat its matched control on new paintings",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H7"
+  },
+  "P6_alone_pos": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 200,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 200,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 3.884,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "inconclusive at a detectable margin of x = 0.895 points (x95 = 0.710; realised half-width 5.336 at 95%, 5.336 at its Holm level)",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H6"
+  },
+  "P6_alone_neg": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 4000,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 4000,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": -4.317,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "AFF did not beat the condition-free scorers on condition gain on new paintings",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H7"
+  },
+  "P6_alone_zero": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": "zero",
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 2523,
+    "P7": 0
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 0.0,
+    "P7": 15.992
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "AFF did not beat the condition-free scorers on condition gain on new paintings",
+    "P7": "passed"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H6"
+  },
+  "P7_alone_pos": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 200
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 200
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 3.884
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "inconclusive at a detectable margin of x = 2.074 points (x95 = 1.644; realised half-width 5.336 at 95%, 5.336 at its Holm level)"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H7"
+  },
+  "P7_alone_neg": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 4000
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 4000
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": -4.317
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "AFF did not beat RCA on condition gain on new paintings"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H6"
+  },
+  "P7_alone_zero": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": "zero"
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 2523
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 15.992,
+    "P5": 15.992,
+    "P6": 15.992,
+    "P7": 0.0
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "AFF did not beat RCA on condition gain on new paintings"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H7"
+  },
+  "stop_rank1": {
+   "specs": {
+    "P1": 17,
+    "P2": 18,
+    "P3": 20,
+    "P4": 25,
+    "P5": 17,
+    "P6": 35,
+    "P7": 50
+   },
+   "counts": {
+    "P1": 17,
+    "P2": 18,
+    "P3": 20,
+    "P4": 25,
+    "P5": 17,
+    "P6": 35,
+    "P7": 50
+   },
+   "points": {
+    "P1": 10.044,
+    "P2": 6.47,
+    "P3": 8.953,
+    "P4": 8.912,
+    "P5": 10.044,
+    "P6": 5.356,
+    "P7": 6.308
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": "inconclusive at a detectable margin of x = 0.898 points (x95 = 0.712; realised half-width 9.993 at 95%, 12.532 at its Holm level)",
+    "P2": "not reached: the Holm procedure stopped at P1 (R@1 against cosine); its own reading: inconclusive at a detectable margin of x = 0.890 points (x95 = 0.705; realised half-width 6.345 at 95%, 7.860 at its Holm level)",
+    "P3": "not reached: the Holm procedure stopped at P1 (R@1 against cosine); its own reading: inconclusive at a detectable margin of x = 0.892 points (x95 = 0.707; realised half-width 7.732 at 95%, 10.396 at its Holm level)",
+    "P4": "not reached: the Holm procedure stopped at P1 (R@1 against cosine); its own reading: inconclusive at a detectable margin of x = 0.894 points (x95 = 0.709; realised half-width 5.489 at 95%, 6.672 at its Holm level)",
+    "P5": "not reached: the Holm procedure stopped at P1 (R@1 against cosine); its own reading: inconclusive at a detectable margin of x = 0.892 points (x95 = 0.707; realised half-width 9.993 at 95%, 12.264 at its Holm level)",
+    "P6": "not reached: the Holm procedure stopped at P1 (R@1 against cosine); its own reading: inconclusive at a detectable margin of x = 0.895 points (x95 = 0.710; realised half-width 5.485 at 95%, 6.288 at its Holm level)",
+    "P7": "not reached: the Holm procedure stopped at P1 (R@1 against cosine); its own reading: inconclusive at a detectable margin of x = 2.074 points (x95 = 1.644; realised half-width 6.466 at 95%, 6.466 at its Holm level)"
+   },
+   "claim": null,
+   "boundary": [
+    {
+     "check": "P1",
+     "holm_k": 1,
+     "n": 17,
+     "n_star": 16,
+     "passes": false,
+     "rederivation_n": 17,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    }
+   ],
+   "diffs": [],
+   "read": "H6"
+  },
+  "stop_rank2": {
+   "specs": {
+    "P1": 0,
+    "P2": 21,
+    "P3": 25,
+    "P4": 35,
+    "P5": 50,
+    "P6": 60,
+    "P7": 20
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 21,
+    "P3": 25,
+    "P4": 35,
+    "P5": 50,
+    "P6": 60,
+    "P7": 20
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 11.553,
+    "P3": 8.912,
+    "P4": 5.356,
+    "P5": 6.308,
+    "P6": 8.93,
+    "P7": 8.953
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": "passed",
+    "P2": "not reached: the Holm procedure stopped at P7 (condition gain against RCA); its own reading: inconclusive at a detectable margin of x = 0.890 points (x95 = 0.705; realised half-width 11.264 at 95%, 13.033 at its Holm level)",
+    "P3": "not reached: the Holm procedure stopped at P7 (condition gain against RCA); its own reading: inconclusive at a detectable margin of x = 0.892 points (x95 = 0.707; realised half-width 5.489 at 95%, 6.893 at its Holm level)",
+    "P4": "not reached: the Holm procedure stopped at P7 (condition gain against RCA); its own reading: inconclusive at a detectable margin of x = 0.894 points (x95 = 0.709; realised half-width 5.485 at 95%, 6.821 at its Holm level)",
+    "P5": "not reached: the Holm procedure stopped at P7 (condition gain against RCA); its own reading: inconclusive at a detectable margin of x = 0.892 points (x95 = 0.707; realised half-width 6.466 at 95%, 7.567 at its Holm level)",
+    "P6": "not reached: the Holm procedure stopped at P7 (condition gain against RCA); its own reading: inconclusive at a detectable margin of x = 0.895 points (x95 = 0.710; realised half-width 6.611 at 95%, 6.611 at its Holm level)",
+    "P7": "inconclusive at a detectable margin of x = 2.074 points (x95 = 1.644; realised half-width 7.732 at 95%, 10.851 at its Holm level)"
+   },
+   "claim": null,
+   "boundary": [
+    {
+     "check": "P7",
+     "holm_k": 2,
+     "n": 20,
+     "n_star": 19,
+     "passes": false,
+     "rederivation_n": 20,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    }
+   ],
+   "diffs": [],
+   "read": "H7"
+  },
+  "stop_rank4": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 35,
+    "P5": 50,
+    "P6": 31,
+    "P7": 100
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 35,
+    "P5": 50,
+    "P6": 31,
+    "P7": 100
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": 15.992,
+    "P3": 15.992,
+    "P4": 5.356,
+    "P5": 6.308,
+    "P6": 5.578,
+    "P7": 5.903
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "not reached: the Holm procedure stopped at P6 (condition gain against the condition-free scorers); its own reading: inconclusive at a detectable margin of x = 0.894 points (x95 = 0.709; realised half-width 5.485 at 95%, 6.821 at its Holm level)",
+    "P5": "not reached: the Holm procedure stopped at P6 (condition gain against the condition-free scorers); its own reading: inconclusive at a detectable margin of x = 0.892 points (x95 = 0.707; realised half-width 6.466 at 95%, 7.567 at its Holm level)",
+    "P6": "inconclusive at a detectable margin of x = 0.895 points (x95 = 0.710; realised half-width 3.672 at 95%, 4.925 at its Holm level)",
+    "P7": "not reached: the Holm procedure stopped at P6 (condition gain against the condition-free scorers); its own reading: inconclusive at a detectable margin of x = 2.074 points (x95 = 1.644; realised half-width 7.250 at 95%, 7.250 at its Holm level)"
+   },
+   "claim": null,
+   "boundary": [
+    {
+     "check": "P6",
+     "holm_k": 4,
+     "n": 31,
+     "n_star": 30,
+     "passes": false,
+     "rederivation_n": 31,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    }
+   ],
+   "diffs": [],
+   "read": "H6"
+  },
+  "stop_rank2_did_not_beat": {
+   "specs": {
+    "P1": 0,
+    "P2": 4000,
+    "P3": 4000,
+    "P4": 4000,
+    "P5": 4000,
+    "P6": 4000,
+    "P7": 4000
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 4000,
+    "P3": 4000,
+    "P4": 4000,
+    "P5": 4000,
+    "P6": 4000,
+    "P7": 4000
+   },
+   "points": {
+    "P1": 15.992,
+    "P2": -4.317,
+    "P3": -4.317,
+    "P4": -4.317,
+    "P5": -4.317,
+    "P6": -4.317,
+    "P7": -4.317
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": "passed",
+    "P2": "AFF did not beat RCA on new paintings",
+    "P3": "AFF did not beat B on new paintings",
+    "P4": "AFF did not beat B′(A0) on new paintings",
+    "P5": "AFF did not beat its matched control on new paintings",
+    "P6": "AFF did not beat the condition-free scorers on condition gain on new paintings",
+    "P7": "AFF did not beat RCA on condition gain on new paintings"
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H7"
+  },
+  "boundary_all_at_nstar": {
+   "specs": {
+    "P1": 16,
+    "P2": 19,
+    "P3": 24,
+    "P4": 30,
+    "P5": 40,
+    "P6": 61,
+    "P7": 124
+   },
+   "counts": {
+    "P1": 16,
+    "P2": 19,
+    "P3": 24,
+    "P4": 30,
+    "P5": 40,
+    "P6": 61,
+    "P7": 124
+   },
+   "points": {
+    "P1": 14.771,
+    "P2": 7.659,
+    "P3": 11.367,
+    "P4": 5.119,
+    "P5": 10.794,
+    "P6": 9.437,
+    "P7": 4.997
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "GO",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "on ArtELingo's held paintings, AFF re-fitted by its fixed recipe on frozen Qwen features beats cosine, RCA, B, B′(A0) and its matched control on R@1, with a positive condition gain over its control and RCA, pooled over three aspect pairs. Not each pair, not another dataset, not a margin size.",
+   "boundary": [
+    {
+     "check": "P1",
+     "holm_k": 1,
+     "n": 16,
+     "n_star": 16,
+     "passes": true,
+     "rederivation_n": 16,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P2",
+     "holm_k": 2,
+     "n": 19,
+     "n_star": 19,
+     "passes": true,
+     "rederivation_n": 19,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P3",
+     "holm_k": 3,
+     "n": 24,
+     "n_star": 24,
+     "passes": true,
+     "rederivation_n": 24,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P4",
+     "holm_k": 4,
+     "n": 30,
+     "n_star": 30,
+     "passes": true,
+     "rederivation_n": 30,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P5",
+     "holm_k": 5,
+     "n": 40,
+     "n_star": 40,
+     "passes": true,
+     "rederivation_n": 40,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P6",
+     "holm_k": 6,
+     "n": 61,
+     "n_star": 61,
+     "passes": true,
+     "rederivation_n": 61,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P7",
+     "holm_k": 7,
+     "n": 124,
+     "n_star": 124,
+     "passes": true,
+     "rederivation_n": 124,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    }
+   ],
+   "diffs": [],
+   "read": "H6"
+  },
+  "boundary_rank3_plus1": {
+   "specs": {
+    "P1": 16,
+    "P2": 19,
+    "P3": 25,
+    "P4": 30,
+    "P5": 40,
+    "P6": 61,
+    "P7": 124
+   },
+   "counts": {
+    "P1": 16,
+    "P2": 19,
+    "P3": 25,
+    "P4": 30,
+    "P5": 40,
+    "P6": 61,
+    "P7": 124
+   },
+   "points": {
+    "P1": 14.771,
+    "P2": 7.659,
+    "P3": 8.912,
+    "P4": 5.119,
+    "P5": 10.794,
+    "P6": 9.437,
+    "P7": 4.997
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "inconclusive at a detectable margin of x = 0.892 points (x95 = 0.707; realised half-width 5.489 at 95%, 7.061 at its Holm level)",
+    "P4": "not reached: the Holm procedure stopped at P3 (R@1 against B); its own reading: inconclusive at a detectable margin of x = 0.894 points (x95 = 0.709; realised half-width 5.509 at 95%, 6.713 at its Holm level)",
+    "P5": "not reached: the Holm procedure stopped at P3 (R@1 against B); its own reading: inconclusive at a detectable margin of x = 0.892 points (x95 = 0.707; realised half-width 7.822 at 95%, 9.285 at its Holm level)",
+    "P6": "not reached: the Holm procedure stopped at P3 (R@1 against B); its own reading: inconclusive at a detectable margin of x = 0.895 points (x95 = 0.710; realised half-width 6.593 at 95%, 7.373 at its Holm level)",
+    "P7": "not reached: the Holm procedure stopped at P3 (R@1 against B); its own reading: inconclusive at a detectable margin of x = 2.074 points (x95 = 1.644; realised half-width 4.768 at 95%, 4.768 at its Holm level)"
+   },
+   "claim": null,
+   "boundary": [
+    {
+     "check": "P1",
+     "holm_k": 1,
+     "n": 16,
+     "n_star": 16,
+     "passes": true,
+     "rederivation_n": 16,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P2",
+     "holm_k": 2,
+     "n": 19,
+     "n_star": 19,
+     "passes": true,
+     "rederivation_n": 19,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P3",
+     "holm_k": 3,
+     "n": 25,
+     "n_star": 24,
+     "passes": false,
+     "rederivation_n": 25,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P4",
+     "holm_k": 4,
+     "n": 30,
+     "n_star": 30,
+     "passes": false,
+     "rederivation_n": 30,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P5",
+     "holm_k": 5,
+     "n": 40,
+     "n_star": 40,
+     "passes": false,
+     "rederivation_n": 40,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P6",
+     "holm_k": 6,
+     "n": 61,
+     "n_star": 61,
+     "passes": false,
+     "rederivation_n": 61,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P7",
+     "holm_k": 7,
+     "n": 124,
+     "n_star": 124,
+     "passes": false,
+     "rederivation_n": 124,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    }
+   ],
+   "diffs": [],
+   "read": "H7"
+  }
+ },
+ "seconds": 9.4
+}

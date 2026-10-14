@@ -1,0 +1,26 @@
+[
+ {
+  "label": "s extra keys",
+  "killed": true,
+  "rc": 1,
+  "seconds": 65.8,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_pass_record_regression_and_smoke_modes",
+  "tail": "128 passed in 9.65s"
+ },
+ {
+  "label": "s extra seeds",
+  "killed": true,
+  "rc": 1,
+  "seconds": 58.3,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_pass_record_regression_and_smoke_modes",
+  "tail": "128 passed in 8.48s"
+ },
+ {
+  "label": "s rule sha",
+  "killed": true,
+  "rc": 1,
+  "seconds": 79.2,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_rule_sha_guard_fires",
+  "tail": "128 passed in 10.19s"
+ }
+]

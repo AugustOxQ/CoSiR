@@ -1,0 +1,38 @@
+{
+ "train_side_all": 49121,
+ "cos_099": 0,
+ "cos_098": 0,
+ "cos_092": 72,
+ "top": [
+  [
+   0.9739859104156494,
+   "hugo-van-der-goes_st-hippolyte-triptych",
+   "dirk-bouts_st-hippolytus-triptych-1475"
+  ],
+  [
+   0.9532438516616821,
+   "dmitry-levitzky_portrait-of-ursula-mniszech-1782",
+   "dmitry-levitzky_portrait-of-countess-ursula-mniszek-1782"
+  ],
+  [
+   0.9480057954788208,
+   "vincent-van-gogh_wheat-field-with-reaper-and-sun-1889",
+   "vincent-van-gogh_the-reaper-1889"
+  ],
+  [
+   0.9476085901260376,
+   "nicholas-roerich_himalayas-1946-1",
+   "nicholas-roerich_nanda-devi-1944"
+  ],
+  [
+   0.9439806342124939,
+   "gustave-dore_the-death-of-abimelech",
+   "gustave-dore_the-death-of-agag"
+  ],
+  [
+   0.9436447620391846,
+   "hans-hofmann_pastorale-1958",
+   "hans-hofmann_to-miz-pax-vobiscum-1964"
+  ]
+ ]
+}

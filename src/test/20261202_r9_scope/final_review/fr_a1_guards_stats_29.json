@@ -1,0 +1,26 @@
+[
+ {
+  "label": "m a28 set_aside pass-through",
+  "killed": true,
+  "rc": 1,
+  "seconds": 49.1,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28_stats.py::test_round_trip_to_the_real_decision[None-full claim-H8]",
+  "tail": "128 passed in 7.44s"
+ },
+ {
+  "label": "m a28 level field",
+  "killed": true,
+  "rc": 1,
+  "seconds": 58.2,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28_stats.py::test_a28_record_at_each_levels_boundaries",
+  "tail": "128 passed in 6.04s"
+ },
+ {
+  "label": "m sens z kind",
+  "killed": true,
+  "rc": 1,
+  "seconds": 76.1,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28_stats.py::test_round_trip_to_the_real_decision[None-full claim-H8]",
+  "tail": "128 passed in 11.12s"
+ }
+]

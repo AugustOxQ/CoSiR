@@ -1,0 +1,1379 @@
+{
+ "cases": 28,
+ "differences": 0,
+ "results": {
+  "full": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "full claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on CLIP ViT-B/32: with captions from the 27 languages that entered the read, machine-translated to English, AFF trained on English ArtELingo keeps the same sentence on that backbone. Set-aside languages: none. Flagged languages: none. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H8"
+  },
+  "full_at_boundaries": {
+   "specs": {
+    "P1": 24,
+    "P2": 30,
+    "P3": 40,
+    "P4": 61,
+    "P5": 61,
+    "P6": 124,
+    "P7": 124
+   },
+   "counts": {
+    "P1": 24,
+    "P2": 30,
+    "P3": 40,
+    "P4": 61,
+    "P5": 61,
+    "P6": 124,
+    "P7": 124
+   },
+   "points": {
+    "P1": 8.092,
+    "P2": 8.556,
+    "P3": 7.528,
+    "P4": 4.426,
+    "P5": 4.426,
+    "P6": 8.704,
+    "P7": 8.704
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "full claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on Qwen3-VL-Embedding-2B: with captions from the 25 languages that entered the read, machine-translated to English, AFF trained on English ArtELingo keeps the same sentence on that backbone. Set-aside languages: Kyrgyz (emotion__genre, seed 56); Kyrgyz (style__genre, seed 57); Emakhuwa (emotion__genre, seed 56). Flagged languages: Emakhuwa, Igbo. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [
+    {
+     "check": "P4",
+     "holm_k": 1,
+     "n": 61,
+     "n_star": 61,
+     "passes": true,
+     "rederivation_n": 61,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P6",
+     "holm_k": 2,
+     "n": 124,
+     "n_star": 124,
+     "passes": true,
+     "rederivation_n": 124,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P1",
+     "holm_k": 1,
+     "n": 24,
+     "n_star": 24,
+     "passes": true,
+     "rederivation_n": 24,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P2",
+     "holm_k": 2,
+     "n": 30,
+     "n_star": 30,
+     "passes": true,
+     "rederivation_n": 30,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P3",
+     "holm_k": 3,
+     "n": 40,
+     "n_star": 40,
+     "passes": true,
+     "rederivation_n": 40,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P5",
+     "holm_k": 4,
+     "n": 61,
+     "n_star": 61,
+     "passes": true,
+     "rederivation_n": 61,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    },
+    {
+     "check": "P7",
+     "holm_k": 5,
+     "n": 124,
+     "n_star": 124,
+     "passes": true,
+     "rederivation_n": 124,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    }
+   ],
+   "diffs": [],
+   "read": "H9"
+  },
+  "L1_P4_pos": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 200,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 200,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 4.009,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": null,
+    "P2": null,
+    "P3": null,
+    "P4": "inconclusive at a detectable margin of x = 1.313 points (x95 = 1.192; realised half-width 4.639 at 95%, 4.639 at its Holm level)",
+    "P5": null,
+    "P6": "passed",
+    "P7": null
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H10"
+  },
+  "L1_P4_neg": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 4000,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 4000,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": -2.688,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": null,
+    "P2": null,
+    "P3": null,
+    "P4": "AFF did not beat B′(A0) on new paintings",
+    "P5": null,
+    "P6": "passed",
+    "P7": null
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H8"
+  },
+  "L1_P4_zero": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": "zero",
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 2414,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 0.0,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": null,
+    "P2": null,
+    "P3": null,
+    "P4": "AFF did not beat B′(A0) on new paintings",
+    "P5": null,
+    "P6": "passed",
+    "P7": null
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H9"
+  },
+  "L1_P6_pos": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 200,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 200,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 4.009,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": null,
+    "P2": null,
+    "P3": null,
+    "P4": "passed",
+    "P5": null,
+    "P6": "inconclusive at a detectable margin of x = 1.601 points (x95 = 1.454; realised half-width 4.639 at 95%, 4.639 at its Holm level)",
+    "P7": null
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H10"
+  },
+  "L1_P6_neg": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 4000,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 4000,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": -2.688,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": null,
+    "P2": null,
+    "P3": null,
+    "P4": "passed",
+    "P5": null,
+    "P6": "AFF did not beat the condition-free scorers on condition gain on new paintings",
+    "P7": null
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H8"
+  },
+  "L1_P6_zero": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": "zero",
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 2414,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 0.0,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": null,
+    "P2": null,
+    "P3": null,
+    "P4": "passed",
+    "P5": null,
+    "P6": "AFF did not beat the condition-free scorers on condition gain on new paintings",
+    "P7": null
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H9"
+  },
+  "L1_both_fail_pos": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 200,
+    "P5": 0,
+    "P6": 300,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 200,
+    "P5": 0,
+    "P6": 300,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 4.009,
+    "P5": 12.508,
+    "P6": 5.879,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": null,
+    "P2": null,
+    "P3": null,
+    "P4": "inconclusive at a detectable margin of x = 1.313 points (x95 = 1.192; realised half-width 4.639 at 95%, 5.387 at its Holm level)",
+    "P5": null,
+    "P6": "inconclusive at a detectable margin of x = 1.601 points (x95 = 1.454; realised half-width 7.102 at 95%, 7.102 at its Holm level)",
+    "P7": null
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H10"
+  },
+  "L1_both_fail_mixed": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 200,
+    "P5": 0,
+    "P6": 4000,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 200,
+    "P5": 0,
+    "P6": 4000,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 4.009,
+    "P5": 12.508,
+    "P6": -2.688,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "did not beat",
+   "readings": {
+    "P1": null,
+    "P2": null,
+    "P3": null,
+    "P4": "inconclusive at a detectable margin of x = 1.313 points (x95 = 1.192; realised half-width 4.639 at 95%, 5.387 at its Holm level)",
+    "P5": null,
+    "P6": "AFF did not beat the condition-free scorers on condition gain on new paintings",
+    "P7": null
+   },
+   "claim": null,
+   "boundary": [],
+   "diffs": [],
+   "read": "H8"
+  },
+  "L1_fail_L2_also_bad": {
+   "specs": {
+    "P1": 4000,
+    "P2": 4000,
+    "P3": 4000,
+    "P4": 62,
+    "P5": 4000,
+    "P6": 0,
+    "P7": 4000
+   },
+   "counts": {
+    "P1": 4000,
+    "P2": 4000,
+    "P3": 4000,
+    "P4": 62,
+    "P5": 4000,
+    "P6": 0,
+    "P7": 4000
+   },
+   "points": {
+    "P1": -2.688,
+    "P2": -2.688,
+    "P3": -2.688,
+    "P4": 5.49,
+    "P5": -2.688,
+    "P6": 12.508,
+    "P7": -2.688
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "AFF did not beat cosine on new paintings",
+    "P2": "AFF did not beat RCA on new paintings",
+    "P3": "AFF did not beat B on new paintings",
+    "P4": "passed",
+    "P5": "AFF did not beat its matched control on new paintings",
+    "P6": "passed",
+    "P7": "AFF did not beat RCA on condition gain on new paintings"
+   },
+   "claim": "AFF on Qwen3-VL-Embedding-2B beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 25 languages that entered the read, machine-translated to English). Set-aside languages: Kyrgyz (emotion__genre, seed 56); Kyrgyz (style__genre, seed 57); Emakhuwa (emotion__genre, seed 56). Flagged languages: Emakhuwa, Igbo. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H9"
+  },
+  "L1_tie_at_62": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 62,
+    "P5": 0,
+    "P6": 62,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 62,
+    "P5": 0,
+    "P6": 62,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 5.49,
+    "P5": 12.508,
+    "P6": 5.49,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "NO-GO",
+   "kind": "inconclusive",
+   "readings": {
+    "P1": null,
+    "P2": null,
+    "P3": null,
+    "P4": "inconclusive at a detectable margin of x = 1.313 points (x95 = 1.192; realised half-width 5.171 at 95%, 5.887 at its Holm level)",
+    "P5": null,
+    "P6": "not reached: the Holm procedure stopped at P4 (R@1 against B′(A0)); its own reading: inconclusive at a detectable margin of x = 1.601 points (x95 = 1.454; realised half-width 5.171 at 95%, 5.171 at its Holm level)",
+    "P7": null
+   },
+   "claim": null,
+   "boundary": [
+    {
+     "check": "P4",
+     "holm_k": 1,
+     "n": 62,
+     "n_star": 61,
+     "passes": false,
+     "rederivation_n": 62,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    }
+   ],
+   "diffs": [],
+   "read": "H10"
+  },
+  "L2_P1_pos": {
+   "specs": {
+    "P1": 200,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 200,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 4.009,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "inconclusive at a detectable margin of x = 0.868 points (x95 = 0.712; realised half-width 4.639 at 95%, 4.639 at its Holm level)",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on CLIP ViT-B/32 beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 27 languages that entered the read, machine-translated to English). Set-aside languages: none. Flagged languages: none. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H8"
+  },
+  "L2_P1_neg": {
+   "specs": {
+    "P1": 4000,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 4000,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": -2.688,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "AFF did not beat cosine on new paintings",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on Qwen3-VL-Embedding-2B beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 25 languages that entered the read, machine-translated to English). Set-aside languages: Kyrgyz (emotion__genre, seed 56); Kyrgyz (style__genre, seed 57); Emakhuwa (emotion__genre, seed 56). Flagged languages: Emakhuwa, Igbo. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H9"
+  },
+  "L2_P1_zero": {
+   "specs": {
+    "P1": "zero",
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 2414,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 0.0,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "AFF did not beat cosine on new paintings",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on SigLIP 2 so400m/14-384 beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 27 languages that entered the read, machine-translated to English). Set-aside languages: none. Flagged languages: none. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H10"
+  },
+  "L2_P2_pos": {
+   "specs": {
+    "P1": 0,
+    "P2": 200,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 200,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 4.009,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "inconclusive at a detectable margin of x = 0.861 points (x95 = 0.705; realised half-width 4.639 at 95%, 4.639 at its Holm level)",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on CLIP ViT-B/32 beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 27 languages that entered the read, machine-translated to English). Set-aside languages: none. Flagged languages: none. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H8"
+  },
+  "L2_P2_neg": {
+   "specs": {
+    "P1": 0,
+    "P2": 4000,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 4000,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": -2.688,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "AFF did not beat RCA on new paintings",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on Qwen3-VL-Embedding-2B beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 25 languages that entered the read, machine-translated to English). Set-aside languages: Kyrgyz (emotion__genre, seed 56); Kyrgyz (style__genre, seed 57); Emakhuwa (emotion__genre, seed 56). Flagged languages: Emakhuwa, Igbo. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H9"
+  },
+  "L2_P2_zero": {
+   "specs": {
+    "P1": 0,
+    "P2": "zero",
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 2414,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 0.0,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "AFF did not beat RCA on new paintings",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on SigLIP 2 so400m/14-384 beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 27 languages that entered the read, machine-translated to English). Set-aside languages: none. Flagged languages: none. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H10"
+  },
+  "L2_P3_pos": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 200,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 200,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 4.009,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "inconclusive at a detectable margin of x = 0.865 points (x95 = 0.709; realised half-width 4.639 at 95%, 4.639 at its Holm level)",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on CLIP ViT-B/32 beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 27 languages that entered the read, machine-translated to English). Set-aside languages: none. Flagged languages: none. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H8"
+  },
+  "L2_P3_neg": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 4000,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 4000,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": -2.688,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "AFF did not beat B on new paintings",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on Qwen3-VL-Embedding-2B beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 25 languages that entered the read, machine-translated to English). Set-aside languages: Kyrgyz (emotion__genre, seed 56); Kyrgyz (style__genre, seed 57); Emakhuwa (emotion__genre, seed 56). Flagged languages: Emakhuwa, Igbo. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H9"
+  },
+  "L2_P3_zero": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": "zero",
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 2414,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 0.0,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "AFF did not beat B on new paintings",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on SigLIP 2 so400m/14-384 beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 27 languages that entered the read, machine-translated to English). Set-aside languages: none. Flagged languages: none. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H10"
+  },
+  "L2_P5_pos": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 200,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 200,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 4.009,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "inconclusive at a detectable margin of x = 1.489 points (x95 = 1.220; realised half-width 4.639 at 95%, 4.639 at its Holm level)",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on CLIP ViT-B/32 beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 27 languages that entered the read, machine-translated to English). Set-aside languages: none. Flagged languages: none. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H8"
+  },
+  "L2_P5_neg": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 4000,
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 4000,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": -2.688,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "AFF did not beat its matched control on new paintings",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on Qwen3-VL-Embedding-2B beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 25 languages that entered the read, machine-translated to English). Set-aside languages: Kyrgyz (emotion__genre, seed 56); Kyrgyz (style__genre, seed 57); Emakhuwa (emotion__genre, seed 56). Flagged languages: Emakhuwa, Igbo. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H9"
+  },
+  "L2_P5_zero": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": "zero",
+    "P6": 0,
+    "P7": 0
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 2414,
+    "P6": 0,
+    "P7": 0
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 0.0,
+    "P6": 12.508,
+    "P7": 12.508
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "AFF did not beat its matched control on new paintings",
+    "P6": "passed",
+    "P7": "passed"
+   },
+   "claim": "AFF on SigLIP 2 so400m/14-384 beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 27 languages that entered the read, machine-translated to English). Set-aside languages: none. Flagged languages: none. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H10"
+  },
+  "L2_P7_pos": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 200
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 200
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 4.009
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "inconclusive at a detectable margin of x = 0.859 points (x95 = 0.704; realised half-width 4.639 at 95%, 4.639 at its Holm level)"
+   },
+   "claim": "AFF on CLIP ViT-B/32 beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 27 languages that entered the read, machine-translated to English). Set-aside languages: none. Flagged languages: none. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H8"
+  },
+  "L2_P7_neg": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 4000
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 4000
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": -2.688
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "AFF did not beat RCA on condition gain on new paintings"
+   },
+   "claim": "AFF on Qwen3-VL-Embedding-2B beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 25 languages that entered the read, machine-translated to English). Set-aside languages: Kyrgyz (emotion__genre, seed 56); Kyrgyz (style__genre, seed 57); Emakhuwa (emotion__genre, seed 56). Flagged languages: Emakhuwa, Igbo. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H9"
+  },
+  "L2_P7_zero": {
+   "specs": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": "zero"
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 2414
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 12.508,
+    "P3": 12.508,
+    "P4": 12.508,
+    "P5": 12.508,
+    "P6": 12.508,
+    "P7": 0.0
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "passed",
+    "P3": "passed",
+    "P4": "passed",
+    "P5": "passed",
+    "P6": "passed",
+    "P7": "AFF did not beat RCA on condition gain on new paintings"
+   },
+   "claim": "AFF on SigLIP 2 so400m/14-384 beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 27 languages that entered the read, machine-translated to English). Set-aside languages: none. Flagged languages: none. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [],
+   "diffs": [],
+   "read": "H10"
+  },
+  "L2_stop_rank2": {
+   "specs": {
+    "P1": 0,
+    "P2": 35,
+    "P3": 45,
+    "P4": 0,
+    "P5": 60,
+    "P6": 0,
+    "P7": 31
+   },
+   "counts": {
+    "P1": 0,
+    "P2": 35,
+    "P3": 45,
+    "P4": 0,
+    "P5": 60,
+    "P6": 0,
+    "P7": 31
+   },
+   "points": {
+    "P1": 12.508,
+    "P2": 5.107,
+    "P3": 7.202,
+    "P4": 12.508,
+    "P5": 12.157,
+    "P6": 12.508,
+    "P7": 6.875
+   },
+   "agreement": true,
+   "agreement_failed": 0,
+   "verdict": "small claim",
+   "kind": null,
+   "readings": {
+    "P1": "passed",
+    "P2": "not reached: the Holm procedure stopped at P7 (condition gain against RCA); its own reading: inconclusive at a detectable margin of x = 0.861 points (x95 = 0.705; realised half-width 4.399 at 95%, 5.235 at its Holm level)",
+    "P3": "not reached: the Holm procedure stopped at P7 (condition gain against RCA); its own reading: inconclusive at a detectable margin of x = 0.865 points (x95 = 0.709; realised half-width 6.713 at 95%, 7.493 at its Holm level)",
+    "P4": "passed",
+    "P5": "not reached: the Holm procedure stopped at P7 (condition gain against RCA); its own reading: inconclusive at a detectable margin of x = 1.489 points (x95 = 1.220; realised half-width 9.976 at 95%, 9.976 at its Holm level)",
+    "P6": "passed",
+    "P7": "inconclusive at a detectable margin of x = 0.859 points (x95 = 0.704; realised half-width 5.655 at 95%, 6.984 at its Holm level)"
+   },
+   "claim": "AFF on CLIP ViT-B/32 beats B′(A0) on R@1 with a positive condition gain over its matched control (captions from the 27 languages that entered the read, machine-translated to English). Set-aside languages: none. Flagged languages: none. Near-duplicates (read paintings whose image has a train-side image at CLIP cosine >= 0.99 / >= 0.98): 1 / 4 of 746, none excluded. Not native-language text, not any single language.",
+   "boundary": [
+    {
+     "check": "P7",
+     "holm_k": 2,
+     "n": 31,
+     "n_star": 30,
+     "passes": false,
+     "rederivation_n": 31,
+     "note": "rule 7.6: reported to the user with the count and its n*; the integer rule decides"
+    }
+   ],
+   "diffs": [],
+   "read": "H8"
+  }
+ },
+ "seconds": 24.3
+}

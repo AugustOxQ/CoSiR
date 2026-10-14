@@ -1,0 +1,226 @@
+{
+ "seven": {
+  "none": [
+   true,
+   []
+  ],
+  "n+1": [
+   false,
+   [
+    "checks.P3.n"
+   ]
+  ],
+  "passes flip": [
+   false,
+   [
+    "checks.P3.passes"
+   ]
+  ],
+  "own flip": [
+   false,
+   [
+    "checks.P2.own_count_passes"
+   ]
+  ],
+  "holm_k": [
+   false,
+   [
+    "checks.P1.holm_k"
+   ]
+  ],
+  "near_boundary flip": [
+   false,
+   [
+    "checks.P5.near_boundary"
+   ]
+  ],
+  "point sign": [
+   false,
+   [
+    "checks.P3.point"
+   ]
+  ],
+  "point +1e-6": [
+   false,
+   [
+    "checks.P3.point"
+   ]
+  ],
+  "ci95 hi": [
+   false,
+   [
+    "checks.P3.ci95.1"
+   ]
+  ],
+  "ci_holm lo": [
+   false,
+   [
+    "checks.P3.ci_holm.0"
+   ]
+  ],
+  "level_two_sided": [
+   false,
+   [
+    "checks.P3.level_two_sided"
+   ]
+  ],
+  "holm_order swap": [
+   false,
+   [
+    "holm_order.0",
+    "holm_order.1"
+   ]
+  ],
+  "n_clusters": [
+   false,
+   [
+    "n_clusters"
+   ]
+  ],
+  "seeds": [
+   false,
+   [
+    "seeds.1",
+    "seeds.2"
+   ]
+  ],
+  "mode": [
+   true,
+   []
+  ],
+  "rule_sha256": [
+   true,
+   []
+  ],
+  "key quantity": [
+   true,
+   []
+  ]
+ },
+ "two_level": {
+  "none": [
+   true,
+   []
+  ],
+  "n+1": [
+   false,
+   [
+    "checks.P3.n"
+   ]
+  ],
+  "passes flip": [
+   false,
+   [
+    "checks.P3.passes"
+   ]
+  ],
+  "own flip": [
+   false,
+   [
+    "checks.P2.own_count_passes"
+   ]
+  ],
+  "holm_k": [
+   false,
+   [
+    "checks.P1.holm_k"
+   ]
+  ],
+  "near_boundary flip": [
+   false,
+   [
+    "checks.P5.near_boundary"
+   ]
+  ],
+  "point sign": [
+   false,
+   [
+    "checks.P3.point"
+   ]
+  ],
+  "point +1e-6": [
+   false,
+   [
+    "checks.P3.point"
+   ]
+  ],
+  "ci95 hi": [
+   false,
+   [
+    "checks.P3.ci95.1"
+   ]
+  ],
+  "ci_holm lo": [
+   false,
+   [
+    "checks.P3.ci_holm.0"
+   ]
+  ],
+  "level_two_sided": [
+   false,
+   [
+    "checks.P3.level_two_sided"
+   ]
+  ],
+  "holm_order swap": [
+   false,
+   [
+    "holm_order.level2.0",
+    "holm_order.level2.1"
+   ]
+  ],
+  "n_clusters": [
+   false,
+   [
+    "n_clusters"
+   ]
+  ],
+  "seeds": [
+   false,
+   [
+    "seeds.1",
+    "seeds.2"
+   ]
+  ],
+  "mode": [
+   true,
+   []
+  ],
+  "rule_sha256": [
+   true,
+   []
+  ],
+  "key quantity": [
+   true,
+   []
+  ],
+  "level swap": [
+   true,
+   []
+  ],
+  "design drop": [
+   true,
+   []
+  ],
+  "set_aside drop": [
+   false,
+   [
+    "set_aside"
+   ]
+  ],
+  "set_aside add": [
+   false,
+   [
+    "set_aside"
+   ]
+  ],
+  "flagged add": [
+   false,
+   [
+    "flagged_languages"
+   ]
+  ]
+ },
+ "comparer_reads_sensitivity": false,
+ "seconds": 2.4
+}

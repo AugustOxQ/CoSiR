@@ -1,0 +1,66 @@
+[
+ {
+  "label": "u not-run H8",
+  "killed": true,
+  "rc": 1,
+  "seconds": 5.8,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_not_run_refuses_clip_switched_off",
+  "tail": "1 failed, 43 passed in 4.28s"
+ },
+ {
+  "label": "u not-run sibling",
+  "killed": true,
+  "rc": 1,
+  "seconds": 5.8,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_switched_off_new_backbone_rows_follow_the_artelingo_row[H9-H6]",
+  "tail": "1 failed, 48 passed in 4.25s"
+ },
+ {
+  "label": "u not-run ledger wording",
+  "killed": true,
+  "rc": 1,
+  "seconds": 5.6,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_not_run_needs_the_ledger_row_with_the_same_status",
+  "tail": "1 failed, 40 passed in 4.22s"
+ },
+ {
+  "label": "u not-run variant",
+  "killed": true,
+  "rc": 1,
+  "seconds": 6.2,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_not_run_wordings",
+  "tail": "1 failed, 39 passed in 4.57s"
+ },
+ {
+  "label": "u agreement smoke type",
+  "killed": true,
+  "rc": 1,
+  "seconds": 6.5,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_agreement_refuses[over3-smoke flag]",
+  "tail": "1 failed, 60 passed in 4.90s"
+ },
+ {
+  "label": "u agreement sha format",
+  "killed": true,
+  "rc": 1,
+  "seconds": 6.9,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_bad_agreement_refuses[over23-not a SHA-256]",
+  "tail": "1 failed, 80 passed in 5.18s"
+ },
+ {
+  "label": "u write_once link",
+  "killed": true,
+  "rc": 1,
+  "seconds": 7.6,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_write_once_refuses_an_existing_file_and_leaves_no_temp_file",
+  "tail": "1 failed, 124 passed in 5.76s"
+ },
+ {
+  "label": "u level-2 boundary only when tested",
+  "killed": true,
+  "rc": 1,
+  "seconds": 6.3,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_apply_rule.py::test_boundary_untested_level2_not_listed_tested_listed",
+  "tail": "1 failed, 16 passed in 4.63s"
+ }
+]

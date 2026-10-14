@@ -1,0 +1,26 @@
+[
+ {
+  "label": "s M_p ints",
+  "killed": true,
+  "rc": 1,
+  "seconds": 59.4,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_detectable_matches_a_hand_computation_with_unequal_counts",
+  "tail": "128 passed in 7.74s"
+ },
+ {
+  "label": "s sum M_p = N",
+  "killed": true,
+  "rc": 1,
+  "seconds": 80.8,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_detectable_matches_a_hand_computation_with_unequal_counts",
+  "tail": "128 passed in 8.36s"
+ },
+ {
+  "label": "m integer form strict",
+  "killed": true,
+  "rc": 1,
+  "seconds": 14.7,
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stats.py::test_integer_and_float_decisions_agree_away_from_zero",
+  "tail": "128 passed in 9.00s"
+ }
+]

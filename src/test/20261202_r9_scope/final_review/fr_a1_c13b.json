@@ -1,0 +1,74 @@
+{
+ "seven: mode": {
+  "agreement": true,
+  "written": false,
+  "stop": [
+   4,
+   "held_pass_H6.json: its mode is not 'held'"
+  ]
+ },
+ "seven: rule_sha256": {
+  "agreement": true,
+  "written": false,
+  "stop": [
+   4,
+   "held_pass_H6.json: its rule_sha256 is not this rule's"
+  ]
+ },
+ "seven: quantity": {
+  "agreement": true,
+  "written": true,
+  "verdict": "NO-GO",
+  "reading": "inconclusive at a detectable margin of x = 0.892 points (x95 = 0.707; realised half-width 4.843 at 95%, 4.843 at its Holm level)"
+ },
+ "seven: SE x2 (x, x95 consistent)": {
+  "agreement": true,
+  "written": true,
+  "verdict": "NO-GO",
+  "reading": "inconclusive at a detectable margin of x = 1.784 points (x95 = 1.415; realised half-width 4.843 at 95%, 4.843 at its Holm level)"
+ },
+ "two_level: mode": {
+  "agreement": true,
+  "written": false,
+  "stop": [
+   4,
+   "held_pass_H9.json: its mode is not 'held'"
+  ]
+ },
+ "two_level: rule_sha256": {
+  "agreement": true,
+  "written": false,
+  "stop": [
+   4,
+   "held_pass_H9.json: its rule_sha256 is not this rule's"
+  ]
+ },
+ "two_level: quantity": {
+  "agreement": true,
+  "written": true,
+  "verdict": "small claim",
+  "reading": "inconclusive at a detectable margin of x = 0.861 points (x95 = 0.705; realised half-width 7.219 at 95%, 7.219 at its Holm level)"
+ },
+ "two_level: SE x2 (x, x95 consistent)": {
+  "agreement": true,
+  "written": true,
+  "verdict": "small claim",
+  "reading": "inconclusive at a detectable margin of x = 1.721 points (x95 = 1.410; realised half-width 7.219 at 95%, 7.219 at its Holm level)"
+ },
+ "two_level: level swap": {
+  "agreement": true,
+  "written": false,
+  "stop": [
+   4,
+   "held_pass_H9.json: P4 does not have the fields and types of the pass schema"
+  ]
+ },
+ "two_level: design drop": {
+  "agreement": true,
+  "written": false,
+  "stop": [
+   4,
+   "held_pass_H9.json: its design key does not fit H9"
+  ]
+ }
+}

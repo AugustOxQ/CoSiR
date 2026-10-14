@@ -1,0 +1,184 @@
+{
+ "pins_n": 22,
+ "pins_bad": [],
+ "pins_missing_rule_items": [],
+ "pins_extra_items": [
+  "store/clip_b32/index.json",
+  "store/qwen3vl_emb_2b/index.json",
+  "store/siglip2_so400m/index.json"
+ ],
+ "merged_from": [
+  "res/r9/a28_translate/shard_0",
+  "res/r9/a28_translate/shard_1",
+  "res/r9/a28_translate/shard_2",
+  "res/r9/a28_translate/shard_3"
+ ],
+ "shards_equal_merged": true,
+ "stores": {
+  "clip_b32": {
+   "header": [
+    "artelingo28",
+    "clip_b32",
+    false,
+    "float16",
+    512,
+    746,
+    74569
+   ],
+   "img_shape": [
+    746,
+    512
+   ],
+   "txt_shape": [
+    74569,
+    512
+   ],
+   "dtype": [
+    "float16",
+    "float16"
+   ],
+   "n_texts_eq_kept": true,
+   "row_id_order": true,
+   "painting_eq": true,
+   "img_points_own": true,
+   "one_image_per_painting": true,
+   "images_sorted_eq_read": true,
+   "image_path_eq_csv": true,
+   "zip_member_once": true,
+   "img_finite": true,
+   "img_norm_range": [
+    0.9998384714126587,
+    1.0001839399337769
+   ],
+   "txt_finite": true,
+   "txt_norm_range": [
+    0.9996818900108337,
+    1.0003238916397095
+   ],
+   "progress_index_sha_ok": true
+  },
+  "qwen3vl_emb_2b": {
+   "header": [
+    "artelingo28",
+    "qwen3vl_emb_2b",
+    false,
+    "float16",
+    2048,
+    746,
+    74569
+   ],
+   "img_shape": [
+    746,
+    2048
+   ],
+   "txt_shape": [
+    74569,
+    2048
+   ],
+   "dtype": [
+    "float16",
+    "float16"
+   ],
+   "n_texts_eq_kept": true,
+   "row_id_order": true,
+   "painting_eq": true,
+   "img_points_own": true,
+   "one_image_per_painting": true,
+   "images_sorted_eq_read": true,
+   "image_path_eq_csv": true,
+   "zip_member_once": true,
+   "img_finite": true,
+   "img_norm_range": [
+    0.9998264908790588,
+    1.0000876188278198
+   ],
+   "txt_finite": true,
+   "txt_norm_range": [
+    0.9997551441192627,
+    1.0002418756484985
+   ],
+   "progress_index_sha_ok": true
+  },
+  "siglip2_so400m": {
+   "header": [
+    "artelingo28",
+    "siglip2_so400m",
+    false,
+    "float16",
+    1152,
+    746,
+    74569
+   ],
+   "img_shape": [
+    746,
+    1152
+   ],
+   "txt_shape": [
+    74569,
+    1152
+   ],
+   "dtype": [
+    "float16",
+    "float16"
+   ],
+   "n_texts_eq_kept": true,
+   "row_id_order": true,
+   "painting_eq": true,
+   "img_points_own": true,
+   "one_image_per_painting": true,
+   "images_sorted_eq_read": true,
+   "image_path_eq_csv": true,
+   "zip_member_once": true,
+   "img_finite": true,
+   "img_norm_range": [
+    0.9997891187667847,
+    1.000212550163269
+   ],
+   "txt_finite": true,
+   "txt_norm_range": [
+    0.9997063279151917,
+    1.0002720355987549
+   ],
+   "progress_index_sha_ok": true
+  }
+ },
+ "artelingo_image_same_within_painting_maxdev": 1.4841556549072266e-05,
+ "join_n": 248,
+ "join_all_own_nearest": true,
+ "join_cos_min_max": [
+  0.9243035912513733,
+  0.9999969005584717
+ ],
+ "join_cos_below_099": 196,
+ "join_margin_min": 0.0179021954536438,
+ "join_record_maxabs_cos": 0.0,
+ "join_record_maxabs_margin": 0.0,
+ "join_record_paintings_eq": true,
+ "train_side_n": 912,
+ "near_mine": {
+  "cos_099": 0,
+  "cos_098": 0,
+  "cos_092": 3,
+  "top5_max_cos": [
+   0.9313200116157532,
+   0.9241947531700134,
+   0.9215618371963501,
+   0.9158467054367065,
+   0.9140909910202026
+  ],
+  "n_090": 22,
+  "within_1e3_of_092": 0
+ },
+ "near_record": {
+  "cos_099": 0,
+  "cos_098": 0,
+  "cos_092": 3,
+  "train_side": 912,
+  "read_paintings": 746
+ },
+ "near_record_pairs_099": 0,
+ "near_092_held_new": [
+  2,
+  1
+ ]
+}

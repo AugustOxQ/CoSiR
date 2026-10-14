@@ -1,0 +1,7755 @@
+{
+ "design": "seven",
+ "n_paintings": 248,
+ "n_episodes": 36864,
+ "planted": 40,
+ "missing": [],
+ "plant_seconds": 4.3,
+ "scenarios": 49,
+ "field_differences": 0,
+ "results": {
+  "f1_k1_off-1": {
+   "counts": {
+    "P1": 15,
+    "P2": 17,
+    "P3": 19,
+    "P4": 21,
+    "P5": 23,
+    "P6": 25,
+    "P7": 27
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 15,
+     "point": 7.520887586805555,
+     "ci95": [
+      2.385020872896875,
+      12.369307439681487
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      0.12153709532906826,
+      13.81527041052307
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 17,
+     "point": 7.5927734375,
+     "ci95": [
+      2.0250207155361704,
+      12.971722795512358
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.19134160789892435,
+      14.717956986359452
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 19,
+     "point": 8.47439236111111,
+     "ci95": [
+      2.1533239932643373,
+      15.320700233885912
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.13363846173282193,
+      17.399787516075744
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 21,
+     "point": 8.123101128472223,
+     "ci95": [
+      2.041686679034891,
+      14.384558729146876
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.5077943053694988,
+      15.924311868161379
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 23,
+     "point": 8.595784505208332,
+     "ci95": [
+      1.7682089432462416,
+      16.524315999688444
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.5985959088675423,
+      18.558644275523196
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 25,
+     "point": 10.408528645833332,
+     "ci95": [
+      2.4787281663355953,
+      18.849786596604464
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.2702855007144436,
+      19.761435039536128
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 27,
+     "point": 11.423746744791668,
+     "ci95": [
+      2.7528955259333667,
+      20.729956741904996
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      2.7528955259333667,
+      20.729956741904996
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k1_off-1_rev": {
+   "counts": {
+    "P1": 27,
+    "P2": 25,
+    "P3": 23,
+    "P4": 21,
+    "P5": 19,
+    "P6": 17,
+    "P7": 15
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P7",
+    "P6",
+    "P5",
+    "P4",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 27,
+     "point": 11.423746744791668,
+     "ci95": [
+      2.7528955259333667,
+      20.729956741904996
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      2.7528955259333667,
+      20.729956741904996
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 25,
+     "point": 10.408528645833332,
+     "ci95": [
+      2.4787281663355953,
+      18.849786596604464
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.2702855007144436,
+      19.761435039536128
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 23,
+     "point": 8.595784505208332,
+     "ci95": [
+      1.7682089432462416,
+      16.524315999688444
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.5985959088675423,
+      18.558644275523196
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 21,
+     "point": 8.123101128472223,
+     "ci95": [
+      2.041686679034891,
+      14.384558729146876
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.5077943053694988,
+      15.924311868161379
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 19,
+     "point": 8.47439236111111,
+     "ci95": [
+      2.1533239932643373,
+      15.320700233885912
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.13363846173282193,
+      17.399787516075744
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 17,
+     "point": 7.5927734375,
+     "ci95": [
+      2.0250207155361704,
+      12.971722795512358
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.19134160789892435,
+      14.717956986359452
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 15,
+     "point": 7.520887586805555,
+     "ci95": [
+      2.385020872896875,
+      12.369307439681487
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      0.12153709532906826,
+      13.81527041052307
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    }
+   }
+  },
+  "f1_k1_off+0": {
+   "counts": {
+    "P1": 16,
+    "P2": 18,
+    "P3": 20,
+    "P4": 22,
+    "P5": 24,
+    "P6": 26,
+    "P7": 28
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 16,
+     "point": 7.184516059027778,
+     "ci95": [
+      1.9911860762528413,
+      12.183302452429528
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      0.04155061574079803,
+      13.876555662181126
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 18,
+     "point": 10.914442274305555,
+     "ci95": [
+      3.2020331278026988,
+      18.172283057180564
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.2570465482058907,
+      20.60607827661182
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 20,
+     "point": 8.58493381076389,
+     "ci95": [
+      2.2969574830093755,
+      14.970873636873172
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.31036930909577864,
+      17.170399087155932
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 22,
+     "point": 9.050157335069445,
+     "ci95": [
+      2.568130593912231,
+      15.364912413192386
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.6398132400506847,
+      16.891369601214574
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 24,
+     "point": 8.272298177083332,
+     "ci95": [
+      2.071615715000419,
+      14.586635542622822
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.5744780708437752,
+      15.796961796930889
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 26,
+     "point": 11.204020182291668,
+     "ci95": [
+      2.447559406309445,
+      20.08403094458068
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.2350451939656024,
+      21.24146166783668
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 28,
+     "point": 8.814832899305555,
+     "ci95": [
+      1.7387690520089583,
+      16.32512138258081
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.7387690520089583,
+      16.32512138258081
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k1_off+0_rev": {
+   "counts": {
+    "P1": 28,
+    "P2": 26,
+    "P3": 24,
+    "P4": 22,
+    "P5": 20,
+    "P6": 18,
+    "P7": 16
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P7",
+    "P6",
+    "P5",
+    "P4",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 28,
+     "point": 8.814832899305555,
+     "ci95": [
+      1.7387690520089583,
+      16.32512138258081
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.7387690520089583,
+      16.32512138258081
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 26,
+     "point": 11.204020182291668,
+     "ci95": [
+      2.447559406309445,
+      20.08403094458068
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.2350451939656024,
+      21.24146166783668
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 24,
+     "point": 8.272298177083332,
+     "ci95": [
+      2.071615715000419,
+      14.586635542622822
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.5744780708437752,
+      15.796961796930889
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 22,
+     "point": 9.050157335069445,
+     "ci95": [
+      2.568130593912231,
+      15.364912413192386
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.6398132400506847,
+      16.891369601214574
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 20,
+     "point": 8.58493381076389,
+     "ci95": [
+      2.2969574830093755,
+      14.970873636873172
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.31036930909577864,
+      17.170399087155932
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 18,
+     "point": 10.914442274305555,
+     "ci95": [
+      3.2020331278026988,
+      18.172283057180564
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.2570465482058907,
+      20.60607827661182
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 16,
+     "point": 7.184516059027778,
+     "ci95": [
+      1.9911860762528413,
+      12.183302452429528
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      0.04155061574079803,
+      13.876555662181126
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    }
+   }
+  },
+  "f1_k1_off+1": {
+   "counts": {
+    "P1": 17,
+    "P2": 19,
+    "P3": 21,
+    "P4": 23,
+    "P5": 25,
+    "P6": 27,
+    "P7": 29
+   },
+   "diffs": [],
+   "passes": {
+    "P1": false,
+    "P2": false,
+    "P3": false,
+    "P4": false,
+    "P5": false,
+    "P6": false,
+    "P7": false
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 17,
+     "point": 7.5927734375,
+     "ci95": [
+      2.0250207155361704,
+      12.971722795512358
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      0.003836796910102415,
+      15.135283950975337
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 19,
+     "point": 8.47439236111111,
+     "ci95": [
+      2.1533239932643373,
+      15.320700233885912
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.04789554704874977,
+      17.518487651863833
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 21,
+     "point": 8.123101128472223,
+     "ci95": [
+      2.041686679034891,
+      14.384558729146876
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.30331461471562704,
+      16.101188582385678
+     ],
+     "level_two_sided": 0.99,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 23,
+     "point": 8.595784505208332,
+     "ci95": [
+      1.7682089432462416,
+      16.524315999688444
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.3798037383117986,
+      19.028788263312443
+     ],
+     "level_two_sided": 0.9875,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 25,
+     "point": 10.408528645833332,
+     "ci95": [
+      2.4787281663355953,
+      18.849786596604464
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.8276040589493494,
+      20.475616501485256
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 27,
+     "point": 11.423746744791668,
+     "ci95": [
+      2.7528955259333667,
+      20.729956741904996
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.5221836980401322,
+      22.41623913930409
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 29,
+     "point": 8.477105034722223,
+     "ci95": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k1_off+1_rev": {
+   "counts": {
+    "P1": 29,
+    "P2": 27,
+    "P3": 25,
+    "P4": 23,
+    "P5": 21,
+    "P6": 19,
+    "P7": 17
+   },
+   "diffs": [],
+   "passes": {
+    "P1": false,
+    "P2": false,
+    "P3": false,
+    "P4": false,
+    "P5": false,
+    "P6": false,
+    "P7": false
+   },
+   "order": [
+    "P7",
+    "P6",
+    "P5",
+    "P4",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 29,
+     "point": 8.477105034722223,
+     "ci95": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 27,
+     "point": 11.423746744791668,
+     "ci95": [
+      2.7528955259333667,
+      20.729956741904996
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.5221836980401322,
+      22.41623913930409
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 25,
+     "point": 10.408528645833332,
+     "ci95": [
+      2.4787281663355953,
+      18.849786596604464
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.8276040589493494,
+      20.475616501485256
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 23,
+     "point": 8.595784505208332,
+     "ci95": [
+      1.7682089432462416,
+      16.524315999688444
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.3798037383117986,
+      19.028788263312443
+     ],
+     "level_two_sided": 0.9875,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 21,
+     "point": 8.123101128472223,
+     "ci95": [
+      2.041686679034891,
+      14.384558729146876
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.30331461471562704,
+      16.101188582385678
+     ],
+     "level_two_sided": 0.99,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 19,
+     "point": 8.47439236111111,
+     "ci95": [
+      2.1533239932643373,
+      15.320700233885912
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.04789554704874977,
+      17.518487651863833
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 17,
+     "point": 7.5927734375,
+     "ci95": [
+      2.0250207155361704,
+      12.971722795512358
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      0.003836796910102415,
+      15.135283950975337
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    }
+   }
+  },
+  "f1_k2_off-1": {
+   "counts": {
+    "P1": 0,
+    "P2": 18,
+    "P3": 20,
+    "P4": 22,
+    "P5": 24,
+    "P6": 26,
+    "P7": 28
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 18,
+     "point": 10.914442274305555,
+     "ci95": [
+      3.2020331278026988,
+      18.172283057180564
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.2570465482058907,
+      20.60607827661182
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 20,
+     "point": 8.58493381076389,
+     "ci95": [
+      2.2969574830093755,
+      14.970873636873172
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.31036930909577864,
+      17.170399087155932
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 22,
+     "point": 9.050157335069445,
+     "ci95": [
+      2.568130593912231,
+      15.364912413192386
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.6398132400506847,
+      16.891369601214574
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 24,
+     "point": 8.272298177083332,
+     "ci95": [
+      2.071615715000419,
+      14.586635542622822
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.5744780708437752,
+      15.796961796930889
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 26,
+     "point": 11.204020182291668,
+     "ci95": [
+      2.447559406309445,
+      20.08403094458068
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.2350451939656024,
+      21.24146166783668
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 28,
+     "point": 8.814832899305555,
+     "ci95": [
+      1.7387690520089583,
+      16.32512138258081
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.7387690520089583,
+      16.32512138258081
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k2_off-1_rev": {
+   "counts": {
+    "P1": 28,
+    "P2": 26,
+    "P3": 24,
+    "P4": 22,
+    "P5": 20,
+    "P6": 18,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P7",
+    "P6",
+    "P5",
+    "P4",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 28,
+     "point": 8.814832899305555,
+     "ci95": [
+      1.7387690520089583,
+      16.32512138258081
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.7387690520089583,
+      16.32512138258081
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 26,
+     "point": 11.204020182291668,
+     "ci95": [
+      2.447559406309445,
+      20.08403094458068
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.2350451939656024,
+      21.24146166783668
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 24,
+     "point": 8.272298177083332,
+     "ci95": [
+      2.071615715000419,
+      14.586635542622822
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.5744780708437752,
+      15.796961796930889
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 22,
+     "point": 9.050157335069445,
+     "ci95": [
+      2.568130593912231,
+      15.364912413192386
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.6398132400506847,
+      16.891369601214574
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 20,
+     "point": 8.58493381076389,
+     "ci95": [
+      2.2969574830093755,
+      14.970873636873172
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.31036930909577864,
+      17.170399087155932
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 18,
+     "point": 10.914442274305555,
+     "ci95": [
+      3.2020331278026988,
+      18.172283057180564
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.2570465482058907,
+      20.60607827661182
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k2_off+0": {
+   "counts": {
+    "P1": 0,
+    "P2": 19,
+    "P3": 21,
+    "P4": 23,
+    "P5": 25,
+    "P6": 27,
+    "P7": 29
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 19,
+     "point": 8.47439236111111,
+     "ci95": [
+      2.1533239932643373,
+      15.320700233885912
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.04789554704874977,
+      17.518487651863833
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 21,
+     "point": 8.123101128472223,
+     "ci95": [
+      2.041686679034891,
+      14.384558729146876
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.30331461471562704,
+      16.101188582385678
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 23,
+     "point": 8.595784505208332,
+     "ci95": [
+      1.7682089432462416,
+      16.524315999688444
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.3798037383117986,
+      19.028788263312443
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 25,
+     "point": 10.408528645833332,
+     "ci95": [
+      2.4787281663355953,
+      18.849786596604464
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.8276040589493494,
+      20.475616501485256
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 27,
+     "point": 11.423746744791668,
+     "ci95": [
+      2.7528955259333667,
+      20.729956741904996
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.5221836980401322,
+      22.41623913930409
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 29,
+     "point": 8.477105034722223,
+     "ci95": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k2_off+0_rev": {
+   "counts": {
+    "P1": 29,
+    "P2": 27,
+    "P3": 25,
+    "P4": 23,
+    "P5": 21,
+    "P6": 19,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P7",
+    "P6",
+    "P5",
+    "P4",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 29,
+     "point": 8.477105034722223,
+     "ci95": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 27,
+     "point": 11.423746744791668,
+     "ci95": [
+      2.7528955259333667,
+      20.729956741904996
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.5221836980401322,
+      22.41623913930409
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 25,
+     "point": 10.408528645833332,
+     "ci95": [
+      2.4787281663355953,
+      18.849786596604464
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.8276040589493494,
+      20.475616501485256
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 23,
+     "point": 8.595784505208332,
+     "ci95": [
+      1.7682089432462416,
+      16.524315999688444
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.3798037383117986,
+      19.028788263312443
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 21,
+     "point": 8.123101128472223,
+     "ci95": [
+      2.041686679034891,
+      14.384558729146876
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.30331461471562704,
+      16.101188582385678
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 19,
+     "point": 8.47439236111111,
+     "ci95": [
+      2.1533239932643373,
+      15.320700233885912
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.04789554704874977,
+      17.518487651863833
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k2_off+1": {
+   "counts": {
+    "P1": 0,
+    "P2": 20,
+    "P3": 22,
+    "P4": 24,
+    "P5": 26,
+    "P6": 28,
+    "P7": 30
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": false,
+    "P3": false,
+    "P4": false,
+    "P5": false,
+    "P6": false,
+    "P7": false
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 20,
+     "point": 8.58493381076389,
+     "ci95": [
+      2.2969574830093755,
+      14.970873636873172
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.056864766515693985,
+      17.338532523420387
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 22,
+     "point": 9.050157335069445,
+     "ci95": [
+      2.568130593912231,
+      15.364912413192386
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.5585252164303223,
+      17.068291811263794
+     ],
+     "level_two_sided": 0.99,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 24,
+     "point": 8.272298177083332,
+     "ci95": [
+      2.071615715000419,
+      14.586635542622822
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.3915982118255549,
+      16.215415221520743
+     ],
+     "level_two_sided": 0.9875,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 26,
+     "point": 11.204020182291668,
+     "ci95": [
+      2.447559406309445,
+      20.08403094458068
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.5251507984668125,
+      21.76572893461142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 28,
+     "point": 8.814832899305555,
+     "ci95": [
+      1.7387690520089583,
+      16.32512138258081
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.8088345911537516,
+      17.317805956038843
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 30,
+     "point": 8.95114474826389,
+     "ci95": [
+      1.831023504553161,
+      15.671341854828755
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.831023504553161,
+      15.671341854828755
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k2_off+1_rev": {
+   "counts": {
+    "P1": 30,
+    "P2": 28,
+    "P3": 26,
+    "P4": 24,
+    "P5": 22,
+    "P6": 20,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": false,
+    "P2": false,
+    "P3": false,
+    "P4": false,
+    "P5": false,
+    "P6": false,
+    "P7": true
+   },
+   "order": [
+    "P7",
+    "P6",
+    "P5",
+    "P4",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 30,
+     "point": 8.95114474826389,
+     "ci95": [
+      1.831023504553161,
+      15.671341854828755
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.831023504553161,
+      15.671341854828755
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 28,
+     "point": 8.814832899305555,
+     "ci95": [
+      1.7387690520089583,
+      16.32512138258081
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.8088345911537516,
+      17.317805956038843
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 26,
+     "point": 11.204020182291668,
+     "ci95": [
+      2.447559406309445,
+      20.08403094458068
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.5251507984668125,
+      21.76572893461142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 24,
+     "point": 8.272298177083332,
+     "ci95": [
+      2.071615715000419,
+      14.586635542622822
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.3915982118255549,
+      16.215415221520743
+     ],
+     "level_two_sided": 0.9875,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 22,
+     "point": 9.050157335069445,
+     "ci95": [
+      2.568130593912231,
+      15.364912413192386
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.5585252164303223,
+      17.068291811263794
+     ],
+     "level_two_sided": 0.99,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 20,
+     "point": 8.58493381076389,
+     "ci95": [
+      2.2969574830093755,
+      14.970873636873172
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.056864766515693985,
+      17.338532523420387
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k3_off-1": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 23,
+    "P4": 25,
+    "P5": 27,
+    "P6": 29,
+    "P7": 31
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 23,
+     "point": 8.595784505208332,
+     "ci95": [
+      1.7682089432462416,
+      16.524315999688444
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.20641418550379934,
+      19.296346558347196
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 25,
+     "point": 10.408528645833332,
+     "ci95": [
+      2.4787281663355953,
+      18.849786596604464
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.4824045676053356,
+      20.848712865273857
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 27,
+     "point": 11.423746744791668,
+     "ci95": [
+      2.7528955259333667,
+      20.729956741904996
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.8854277205033987,
+      23.31475422438955
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 29,
+     "point": 8.477105034722223,
+     "ci95": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.7134426049520997,
+      17.061242176760352
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 31,
+     "point": 10.080973307291668,
+     "ci95": [
+      2.1684668655465695,
+      17.068957148083605
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      2.1684668655465695,
+      17.068957148083605
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k3_off-1_rev": {
+   "counts": {
+    "P1": 31,
+    "P2": 29,
+    "P3": 27,
+    "P4": 25,
+    "P5": 23,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P6",
+    "P7",
+    "P5",
+    "P4",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 31,
+     "point": 10.080973307291668,
+     "ci95": [
+      2.1684668655465695,
+      17.068957148083605
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      2.1684668655465695,
+      17.068957148083605
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 29,
+     "point": 8.477105034722223,
+     "ci95": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.7134426049520997,
+      17.061242176760352
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 27,
+     "point": 11.423746744791668,
+     "ci95": [
+      2.7528955259333667,
+      20.729956741904996
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.8854277205033987,
+      23.31475422438955
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 25,
+     "point": 10.408528645833332,
+     "ci95": [
+      2.4787281663355953,
+      18.849786596604464
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.4824045676053356,
+      20.848712865273857
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 23,
+     "point": 8.595784505208332,
+     "ci95": [
+      1.7682089432462416,
+      16.524315999688444
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.20641418550379934,
+      19.296346558347196
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k3_off+0": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 24,
+    "P4": 26,
+    "P5": 28,
+    "P6": 30,
+    "P7": 32
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 24,
+     "point": 8.272298177083332,
+     "ci95": [
+      2.071615715000419,
+      14.586635542622822
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.08125132133634691,
+      16.429298520047077
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 26,
+     "point": 11.204020182291668,
+     "ci95": [
+      2.447559406309445,
+      20.08403094458068
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.22259258891155362,
+      22.178650860876964
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 28,
+     "point": 8.814832899305555,
+     "ci95": [
+      1.7387690520089583,
+      16.32512138258081
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.43857005371993146,
+      17.86873943199549
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 30,
+     "point": 8.95114474826389,
+     "ci95": [
+      1.831023504553161,
+      15.671341854828755
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.6851569960455623,
+      16.75623066067009
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 32,
+     "point": 7.625325520833333,
+     "ci95": [
+      1.7895761586756411,
+      13.615013598619624
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.7895761586756411,
+      13.615013598619624
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k3_off+0_rev": {
+   "counts": {
+    "P1": 32,
+    "P2": 30,
+    "P3": 28,
+    "P4": 26,
+    "P5": 24,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P6",
+    "P7",
+    "P5",
+    "P4",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 32,
+     "point": 7.625325520833333,
+     "ci95": [
+      1.7895761586756411,
+      13.615013598619624
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.7895761586756411,
+      13.615013598619624
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 30,
+     "point": 8.95114474826389,
+     "ci95": [
+      1.831023504553161,
+      15.671341854828755
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.6851569960455623,
+      16.75623066067009
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 28,
+     "point": 8.814832899305555,
+     "ci95": [
+      1.7387690520089583,
+      16.32512138258081
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.43857005371993146,
+      17.86873943199549
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 26,
+     "point": 11.204020182291668,
+     "ci95": [
+      2.447559406309445,
+      20.08403094458068
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.22259258891155362,
+      22.178650860876964
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 24,
+     "point": 8.272298177083332,
+     "ci95": [
+      2.071615715000419,
+      14.586635542622822
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.08125132133634691,
+      16.429298520047077
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k3_off+1": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 25,
+    "P4": 27,
+    "P5": 29,
+    "P6": 31,
+    "P7": 33
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": false,
+    "P4": false,
+    "P5": false,
+    "P6": false,
+    "P7": false
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 25,
+     "point": 10.408528645833332,
+     "ci95": [
+      2.4787281663355953,
+      18.849786596604464
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.0006030504624658694,
+      21.05459498051259
+     ],
+     "level_two_sided": 0.99,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 27,
+     "point": 11.423746744791668,
+     "ci95": [
+      2.7528955259333667,
+      20.729956741904996
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.41325935211116593,
+      24.01277676837629
+     ],
+     "level_two_sided": 0.9875,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 29,
+     "point": 8.477105034722223,
+     "ci95": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.248135502803756,
+      17.586902869682465
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 31,
+     "point": 10.080973307291668,
+     "ci95": [
+      2.1684668655465695,
+      17.068957148083605
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.9278405032776771,
+      17.845678804058856
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 33,
+     "point": 6.673177083333333,
+     "ci95": [
+      1.2680089806518817,
+      11.982112549730346
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.2680089806518817,
+      11.982112549730346
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k3_off+1_rev": {
+   "counts": {
+    "P1": 33,
+    "P2": 31,
+    "P3": 29,
+    "P4": 27,
+    "P5": 25,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": false,
+    "P2": false,
+    "P3": false,
+    "P4": false,
+    "P5": false,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P6",
+    "P7",
+    "P5",
+    "P4",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 33,
+     "point": 6.673177083333333,
+     "ci95": [
+      1.2680089806518817,
+      11.982112549730346
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.2680089806518817,
+      11.982112549730346
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 31,
+     "point": 10.080973307291668,
+     "ci95": [
+      2.1684668655465695,
+      17.068957148083605
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.9278405032776771,
+      17.845678804058856
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 29,
+     "point": 8.477105034722223,
+     "ci95": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.248135502803756,
+      17.586902869682465
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 27,
+     "point": 11.423746744791668,
+     "ci95": [
+      2.7528955259333667,
+      20.729956741904996
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.41325935211116593,
+      24.01277676837629
+     ],
+     "level_two_sided": 0.9875,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 25,
+     "point": 10.408528645833332,
+     "ci95": [
+      2.4787281663355953,
+      18.849786596604464
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.0006030504624658694,
+      21.05459498051259
+     ],
+     "level_two_sided": 0.99,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k4_off-1": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 29,
+    "P5": 31,
+    "P6": 33,
+    "P7": 35
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 29,
+     "point": 8.477105034722223,
+     "ci95": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.03528619745327393,
+      18.01801460965416
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 31,
+     "point": 10.080973307291668,
+     "ci95": [
+      2.1684668655465695,
+      17.068957148083605
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.23512731387455355,
+      18.2639229903863
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 33,
+     "point": 6.673177083333333,
+     "ci95": [
+      1.2680089806518817,
+      11.982112549730346
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.4516244707437637,
+      12.891616243960671
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 35,
+     "point": 8.04172092013889,
+     "ci95": [
+      1.5907145509833223,
+      14.679755086790408
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.5907145509833223,
+      14.679755086790408
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k4_off-1_rev": {
+   "counts": {
+    "P1": 35,
+    "P2": 33,
+    "P3": 31,
+    "P4": 29,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P5",
+    "P6",
+    "P7",
+    "P4",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 35,
+     "point": 8.04172092013889,
+     "ci95": [
+      1.5907145509833223,
+      14.679755086790408
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.5907145509833223,
+      14.679755086790408
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 33,
+     "point": 6.673177083333333,
+     "ci95": [
+      1.2680089806518817,
+      11.982112549730346
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.4516244707437637,
+      12.891616243960671
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 31,
+     "point": 10.080973307291668,
+     "ci95": [
+      2.1684668655465695,
+      17.068957148083605
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.23512731387455355,
+      18.2639229903863
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 29,
+     "point": 8.477105034722223,
+     "ci95": [
+      1.3748536307913923,
+      15.84395961917073
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.03528619745327393,
+      18.01801460965416
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k4_off+0": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 30,
+    "P5": 32,
+    "P6": 34,
+    "P7": 36
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 30,
+     "point": 8.95114474826389,
+     "ci95": [
+      1.831023504553161,
+      15.671341854828755
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.10674609938253682,
+      17.412953863567065
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 32,
+     "point": 7.625325520833333,
+     "ci95": [
+      1.7895761586756411,
+      13.615013598619624
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.3617288735423912,
+      14.890336154275932
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 34,
+     "point": 10.316975911458332,
+     "ci95": [
+      2.1396582406326154,
+      18.40945030520837
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.9981260937375261,
+      19.178919043926708
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 36,
+     "point": 6.442599826388889,
+     "ci95": [
+      1.243515218351197,
+      11.729769719568345
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.243515218351197,
+      11.729769719568345
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k4_off+0_rev": {
+   "counts": {
+    "P1": 36,
+    "P2": 34,
+    "P3": 32,
+    "P4": 30,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P5",
+    "P6",
+    "P7",
+    "P4",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 36,
+     "point": 6.442599826388889,
+     "ci95": [
+      1.243515218351197,
+      11.729769719568345
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.243515218351197,
+      11.729769719568345
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 34,
+     "point": 10.316975911458332,
+     "ci95": [
+      2.1396582406326154,
+      18.40945030520837
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.9981260937375261,
+      19.178919043926708
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 32,
+     "point": 7.625325520833333,
+     "ci95": [
+      1.7895761586756411,
+      13.615013598619624
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.3617288735423912,
+      14.890336154275932
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 30,
+     "point": 8.95114474826389,
+     "ci95": [
+      1.831023504553161,
+      15.671341854828755
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.10674609938253682,
+      17.412953863567065
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k4_off+1": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 31,
+    "P5": 33,
+    "P6": 35,
+    "P7": 37
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": false,
+    "P5": false,
+    "P6": false,
+    "P7": false
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 31,
+     "point": 10.080973307291668,
+     "ci95": [
+      2.1684668655465695,
+      17.068957148083605
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.0037199162644080863,
+      18.513709701430294
+     ],
+     "level_two_sided": 0.9875,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 33,
+     "point": 6.673177083333333,
+     "ci95": [
+      1.2680089806518817,
+      11.982112549730346
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.10287812883541726,
+      13.211528478024206
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 35,
+     "point": 8.04172092013889,
+     "ci95": [
+      1.5907145509833223,
+      14.679755086790408
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.7935652840371056,
+      15.700372058984954
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 37,
+     "point": 7.246907552083333,
+     "ci95": [
+      1.4890684727927916,
+      12.83584624963299
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.4890684727927916,
+      12.83584624963299
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k4_off+1_rev": {
+   "counts": {
+    "P1": 37,
+    "P2": 35,
+    "P3": 33,
+    "P4": 31,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": false,
+    "P2": false,
+    "P3": false,
+    "P4": false,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P5",
+    "P6",
+    "P7",
+    "P4",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 37,
+     "point": 7.246907552083333,
+     "ci95": [
+      1.4890684727927916,
+      12.83584624963299
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.4890684727927916,
+      12.83584624963299
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 35,
+     "point": 8.04172092013889,
+     "ci95": [
+      1.5907145509833223,
+      14.679755086790408
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.7935652840371056,
+      15.700372058984954
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 33,
+     "point": 6.673177083333333,
+     "ci95": [
+      1.2680089806518817,
+      11.982112549730346
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.10287812883541726,
+      13.211528478024206
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 31,
+     "point": 10.080973307291668,
+     "ci95": [
+      2.1684668655465695,
+      17.068957148083605
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.0037199162644080863,
+      18.513709701430294
+     ],
+     "level_two_sided": 0.9875,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k5_off-1": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 39,
+    "P6": 41,
+    "P7": 43
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 39,
+     "point": 7.758246527777778,
+     "ci95": [
+      1.6877473117613018,
+      13.55155589993272
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.11740781126020093,
+      14.996535791208299
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 41,
+     "point": 8.478461371527777,
+     "ci95": [
+      1.4458340806137595,
+      15.43821509734431
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.5380233460486565,
+      16.384578680516878
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 43,
+     "point": 9.309217664930555,
+     "ci95": [
+      1.48206853520438,
+      17.180475031343573
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.48206853520438,
+      17.180475031343573
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k5_off-1_rev": {
+   "counts": {
+    "P1": 43,
+    "P2": 41,
+    "P3": 39,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P4",
+    "P5",
+    "P6",
+    "P7",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 43,
+     "point": 9.309217664930555,
+     "ci95": [
+      1.48206853520438,
+      17.180475031343573
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.48206853520438,
+      17.180475031343573
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 41,
+     "point": 8.478461371527777,
+     "ci95": [
+      1.4458340806137595,
+      15.43821509734431
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.5380233460486565,
+      16.384578680516878
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 39,
+     "point": 7.758246527777778,
+     "ci95": [
+      1.6877473117613018,
+      13.55155589993272
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.11740781126020093,
+      14.996535791208299
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k5_off+0": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 40,
+    "P6": 42,
+    "P7": 44
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 40,
+     "point": 6.942409939236111,
+     "ci95": [
+      1.44784328257325,
+      12.70435318397265
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.01296343707071037,
+      13.986163004870129
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 42,
+     "point": 8.39504665798611,
+     "ci95": [
+      1.434762325580828,
+      15.466602281570696
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.40516274392793944,
+      16.38796122796255
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 44,
+     "point": 7.243516710069445,
+     "ci95": [
+      1.405700977012402,
+      12.788805155351238
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.405700977012402,
+      12.788805155351238
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k5_off+0_rev": {
+   "counts": {
+    "P1": 44,
+    "P2": 42,
+    "P3": 40,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P4",
+    "P5",
+    "P6",
+    "P7",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 44,
+     "point": 7.243516710069445,
+     "ci95": [
+      1.405700977012402,
+      12.788805155351238
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.405700977012402,
+      12.788805155351238
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 42,
+     "point": 8.39504665798611,
+     "ci95": [
+      1.434762325580828,
+      15.466602281570696
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.40516274392793944,
+      16.38796122796255
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 40,
+     "point": 6.942409939236111,
+     "ci95": [
+      1.44784328257325,
+      12.70435318397265
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.01296343707071037,
+      13.986163004870129
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k5_off+1": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 41,
+    "P6": 43,
+    "P7": 45
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": false,
+    "P6": false,
+    "P7": false
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 41,
+     "point": 8.478461371527777,
+     "ci95": [
+      1.4458340806137595,
+      15.43821509734431
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.006288567873659293,
+      16.68736481079125
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 43,
+     "point": 9.309217664930555,
+     "ci95": [
+      1.48206853520438,
+      17.180475031343573
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.44207882378282304,
+      18.330158600372037
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 45,
+     "point": 7.639567057291667,
+     "ci95": [
+      1.389042859865575,
+      13.137456324070984
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.389042859865575,
+      13.137456324070984
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k5_off+1_rev": {
+   "counts": {
+    "P1": 45,
+    "P2": 43,
+    "P3": 41,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": false,
+    "P2": false,
+    "P3": false,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P4",
+    "P5",
+    "P6",
+    "P7",
+    "P3",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 45,
+     "point": 7.639567057291667,
+     "ci95": [
+      1.389042859865575,
+      13.137456324070984
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.389042859865575,
+      13.137456324070984
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 43,
+     "point": 9.309217664930555,
+     "ci95": [
+      1.48206853520438,
+      17.180475031343573
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.44207882378282304,
+      18.330158600372037
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 41,
+     "point": 8.478461371527777,
+     "ci95": [
+      1.4458340806137595,
+      15.43821509734431
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.006288567873659293,
+      16.68736481079125
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k6_off-1": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 60,
+    "P7": 62
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 60,
+     "point": 6.740315755208333,
+     "ci95": [
+      0.7384863764374724,
+      12.534742872136034
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.026923492831763006,
+      13.411442916135899
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 62,
+     "point": 7.219102647569445,
+     "ci95": [
+      0.7041914416275054,
+      14.234750836025095
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      0.7041914416275054,
+      14.234750836025095
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k6_off-1_rev": {
+   "counts": {
+    "P1": 62,
+    "P2": 60,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 62,
+     "point": 7.219102647569445,
+     "ci95": [
+      0.7041914416275054,
+      14.234750836025095
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      0.7041914416275054,
+      14.234750836025095
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 60,
+     "point": 6.740315755208333,
+     "ci95": [
+      0.7384863764374724,
+      12.534742872136034
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.026923492831763006,
+      13.411442916135899
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k6_off+0": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 61,
+    "P7": 63
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 61,
+     "point": 7.253011067708333,
+     "ci95": [
+      0.9926865477384197,
+      13.84838870143783
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.01671957448180075,
+      14.892944950803644
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 63,
+     "point": 7.904730902777778,
+     "ci95": [
+      0.7937134990783175,
+      15.927662612629678
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      0.7937134990783175,
+      15.927662612629678
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k6_off+0_rev": {
+   "counts": {
+    "P1": 63,
+    "P2": 61,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 63,
+     "point": 7.904730902777778,
+     "ci95": [
+      0.7937134990783175,
+      15.927662612629678
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      0.7937134990783175,
+      15.927662612629678
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 61,
+     "point": 7.253011067708333,
+     "ci95": [
+      0.9926865477384197,
+      13.84838870143783
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.01671957448180075,
+      14.892944950803644
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k6_off+1": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 62,
+    "P7": 64
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": false,
+    "P7": false
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 62,
+     "point": 7.219102647569445,
+     "ci95": [
+      0.7041914416275054,
+      14.234750836025095
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.00423267528117488,
+      15.4579937714963
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 64,
+     "point": 8.490668402777777,
+     "ci95": [
+      0.9367624452431602,
+      16.30853618335239
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      0.9367624452431602,
+      16.30853618335239
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k6_off+1_rev": {
+   "counts": {
+    "P1": 64,
+    "P2": 62,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": false,
+    "P2": false,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7",
+    "P2",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 64,
+     "point": 8.490668402777777,
+     "ci95": [
+      0.9367624452431602,
+      16.30853618335239
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      0.9367624452431602,
+      16.30853618335239
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 62,
+     "point": 7.219102647569445,
+     "ci95": [
+      0.7041914416275054,
+      14.234750836025095
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.00423267528117488,
+      15.4579937714963
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k7_off-1": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 123
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      4.531597292508439,
+      23.38685701928217
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 123,
+     "point": 5.955674913194445,
+     "ci95": [
+      0.03667194977481154,
+      12.096506431877216
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      0.03667194977481154,
+      12.096506431877216
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    }
+   }
+  },
+  "f1_k7_off-1_rev": {
+   "counts": {
+    "P1": 123,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 123,
+     "point": 5.955674913194445,
+     "ci95": [
+      0.03667194977481154,
+      12.096506431877216
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      0.03667194977481154,
+      12.096506431877216
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      4.531597292508439,
+      23.38685701928217
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k7_off+0": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 124
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      4.531597292508439,
+      23.38685701928217
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 124,
+     "point": 7.304551866319445,
+     "ci95": [
+      0.01568762593631955,
+      14.372587005310136
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      0.01568762593631955,
+      14.372587005310136
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    }
+   }
+  },
+  "f1_k7_off+0_rev": {
+   "counts": {
+    "P1": 124,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 124,
+     "point": 7.304551866319445,
+     "ci95": [
+      0.01568762593631955,
+      14.372587005310136
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      0.01568762593631955,
+      14.372587005310136
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      4.531597292508439,
+      23.38685701928217
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_k7_off+1": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 125
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": false
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      4.531597292508439,
+      23.38685701928217
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 125,
+     "point": 5.124918619791666,
+     "ci95": [
+      0.000305728657764904,
+      10.570683961059297
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      0.000305728657764904,
+      10.570683961059297
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    }
+   }
+  },
+  "f1_k7_off+1_rev": {
+   "counts": {
+    "P1": 125,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": false,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7",
+    "P1"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 125,
+     "point": 5.124918619791666,
+     "ci95": [
+      0.000305728657764904,
+      10.570683961059297
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      0.000305728657764904,
+      10.570683961059297
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      4.531597292508439,
+      23.38685701928217
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_allequal_0": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 0,
+    "P7": 0
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      4.531597292508439,
+      23.38685701928217
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_allequal_15": {
+   "counts": {
+    "P1": 15,
+    "P2": 15,
+    "P3": 15,
+    "P4": 15,
+    "P5": 15,
+    "P6": 15,
+    "P7": 15
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 15,
+     "point": 7.520887586805555,
+     "ci95": [
+      2.385020872896875,
+      12.369307439681487
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      0.12153709532906826,
+      13.81527041052307
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 15,
+     "point": 7.520887586805555,
+     "ci95": [
+      2.385020872896875,
+      12.369307439681487
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.3599608674234269,
+      13.712945374326285
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 15,
+     "point": 7.520887586805555,
+     "ci95": [
+      2.385020872896875,
+      12.369307439681487
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.6350696567350795,
+      13.677290161686932
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 15,
+     "point": 7.520887586805555,
+     "ci95": [
+      2.385020872896875,
+      12.369307439681487
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.7668872510018813,
+      13.559846939554903
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 15,
+     "point": 7.520887586805555,
+     "ci95": [
+      2.385020872896875,
+      12.369307439681487
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      1.0281466199184517,
+      13.295193813656434
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 15,
+     "point": 7.520887586805555,
+     "ci95": [
+      2.385020872896875,
+      12.369307439681487
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.4502898702166367,
+      12.940045835437758
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 15,
+     "point": 7.520887586805555,
+     "ci95": [
+      2.385020872896875,
+      12.369307439681487
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      2.385020872896875,
+      12.369307439681487
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_allequal_16": {
+   "counts": {
+    "P1": 16,
+    "P2": 16,
+    "P3": 16,
+    "P4": 16,
+    "P5": 16,
+    "P6": 16,
+    "P7": 16
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 16,
+     "point": 7.184516059027778,
+     "ci95": [
+      1.9911860762528413,
+      12.183302452429528
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      0.04155061574079803,
+      13.876555662181126
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 16,
+     "point": 7.184516059027778,
+     "ci95": [
+      1.9911860762528413,
+      12.183302452429528
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.14887932370211654,
+      13.703358838564084
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 16,
+     "point": 7.184516059027778,
+     "ci95": [
+      1.9911860762528413,
+      12.183302452429528
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.2862272769901992,
+      13.60574901328302
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 16,
+     "point": 7.184516059027778,
+     "ci95": [
+      1.9911860762528413,
+      12.183302452429528
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.45375386229128095,
+      13.44808408196942
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 16,
+     "point": 7.184516059027778,
+     "ci95": [
+      1.9911860762528413,
+      12.183302452429528
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.9339075781397307,
+      13.310415105520127
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 16,
+     "point": 7.184516059027778,
+     "ci95": [
+      1.9911860762528413,
+      12.183302452429528
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.3914351051625216,
+      12.898051420253708
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 16,
+     "point": 7.184516059027778,
+     "ci95": [
+      1.9911860762528413,
+      12.183302452429528
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.9911860762528413,
+      12.183302452429528
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_allequal_17": {
+   "counts": {
+    "P1": 17,
+    "P2": 17,
+    "P3": 17,
+    "P4": 17,
+    "P5": 17,
+    "P6": 17,
+    "P7": 17
+   },
+   "diffs": [],
+   "passes": {
+    "P1": false,
+    "P2": false,
+    "P3": false,
+    "P4": false,
+    "P5": false,
+    "P6": false,
+    "P7": false
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 17,
+     "point": 7.5927734375,
+     "ci95": [
+      2.0250207155361704,
+      12.971722795512358
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      0.003836796910102415,
+      15.135283950975337
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": true
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 17,
+     "point": 7.5927734375,
+     "ci95": [
+      2.0250207155361704,
+      12.971722795512358
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      0.19134160789892435,
+      14.717956986359452
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 17,
+     "point": 7.5927734375,
+     "ci95": [
+      2.0250207155361704,
+      12.971722795512358
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      0.2556493822611858,
+      14.577101297150369
+     ],
+     "level_two_sided": 0.99,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 17,
+     "point": 7.5927734375,
+     "ci95": [
+      2.0250207155361704,
+      12.971722795512358
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      0.4155582340797295,
+      14.436603114402969
+     ],
+     "level_two_sided": 0.9875,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 17,
+     "point": 7.5927734375,
+     "ci95": [
+      2.0250207155361704,
+      12.971722795512358
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.7221743437545909,
+      14.28417838601845
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 17,
+     "point": 7.5927734375,
+     "ci95": [
+      2.0250207155361704,
+      12.971722795512358
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.261583445482692,
+      13.760689198257865
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 17,
+     "point": 7.5927734375,
+     "ci95": [
+      2.0250207155361704,
+      12.971722795512358
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      2.0250207155361704,
+      12.971722795512358
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_allequal_40": {
+   "counts": {
+    "P1": 40,
+    "P2": 40,
+    "P3": 40,
+    "P4": 40,
+    "P5": 40,
+    "P6": 40,
+    "P7": 40
+   },
+   "diffs": [],
+   "passes": {
+    "P1": false,
+    "P2": false,
+    "P3": false,
+    "P4": false,
+    "P5": false,
+    "P6": false,
+    "P7": false
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 40,
+     "point": 6.942409939236111,
+     "ci95": [
+      1.44784328257325,
+      12.70435318397265
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      -0.6564390907754003,
+      14.969790153059769
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 40,
+     "point": 6.942409939236111,
+     "ci95": [
+      1.44784328257325,
+      12.70435318397265
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      -0.5714324643929433,
+      14.783577610913804
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 40,
+     "point": 6.942409939236111,
+     "ci95": [
+      1.44784328257325,
+      12.70435318397265
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      -0.45955304586361667,
+      14.562970677858894
+     ],
+     "level_two_sided": 0.99,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 40,
+     "point": 6.942409939236111,
+     "ci95": [
+      1.44784328257325,
+      12.70435318397265
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      -0.2574776622233213,
+      14.3702124393486
+     ],
+     "level_two_sided": 0.9875,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 40,
+     "point": 6.942409939236111,
+     "ci95": [
+      1.44784328257325,
+      12.70435318397265
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      0.01296343707071037,
+      13.986163004870129
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": true
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 40,
+     "point": 6.942409939236111,
+     "ci95": [
+      1.44784328257325,
+      12.70435318397265
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      0.5879014437819801,
+      13.513146598452478
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 40,
+     "point": 6.942409939236111,
+     "ci95": [
+      1.44784328257325,
+      12.70435318397265
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      1.44784328257325,
+      12.70435318397265
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_allequal_5000": {
+   "counts": {
+    "P1": 5000,
+    "P2": 5000,
+    "P3": 5000,
+    "P4": 5000,
+    "P5": 5000,
+    "P6": 5000,
+    "P7": 5000
+   },
+   "diffs": [],
+   "passes": {
+    "P1": false,
+    "P2": false,
+    "P3": false,
+    "P4": false,
+    "P5": false,
+    "P6": false,
+    "P7": false
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 5000,
+     "point": -12.97607421875,
+     "ci95": [
+      -20.192904420604396,
+      -5.961389247662764
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      -22.967792770355498,
+      -3.4362300506419237
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 5000,
+     "point": -12.97607421875,
+     "ci95": [
+      -20.192904420604396,
+      -5.961389247662764
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      -22.828204620354953,
+      -3.501703201411592
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 5000,
+     "point": -12.97607421875,
+     "ci95": [
+      -20.192904420604396,
+      -5.961389247662764
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      -22.411955315909225,
+      -3.624388326641201
+     ],
+     "level_two_sided": 0.99,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 5000,
+     "point": -12.97607421875,
+     "ci95": [
+      -20.192904420604396,
+      -5.961389247662764
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      -22.00936629413795,
+      -3.9350575803613106
+     ],
+     "level_two_sided": 0.9875,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 5000,
+     "point": -12.97607421875,
+     "ci95": [
+      -20.192904420604396,
+      -5.961389247662764
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      -21.694573572079655,
+      -4.349545357456156
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 5000,
+     "point": -12.97607421875,
+     "ci95": [
+      -20.192904420604396,
+      -5.961389247662764
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      -21.122334560886756,
+      -4.90326552729851
+     ],
+     "level_two_sided": 0.975,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 5000,
+     "point": -12.97607421875,
+     "ci95": [
+      -20.192904420604396,
+      -5.961389247662764
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      -20.192904420604396,
+      -5.961389247662764
+     ],
+     "level_two_sided": 0.95,
+     "passes": false,
+     "own_count_passes": false,
+     "near_boundary": false
+    }
+   }
+  },
+  "f1_tie_last_two_at_19": {
+   "counts": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0,
+    "P4": 0,
+    "P5": 0,
+    "P6": 19,
+    "P7": 19
+   },
+   "diffs": [],
+   "passes": {
+    "P1": true,
+    "P2": true,
+    "P3": true,
+    "P4": true,
+    "P5": true,
+    "P6": true,
+    "P7": true
+   },
+   "order": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+   ],
+   "pass_record": {
+    "P1": {
+     "quantity": "R@1, AFF - COS",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 1,
+     "ci_holm": [
+      3.143355411306692,
+      25.612314302020767
+     ],
+     "level_two_sided": 0.9928571428571429,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P2": {
+     "quantity": "R@1, AFF - RCA",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 2,
+     "ci_holm": [
+      3.2654133155899925,
+      25.374337271426356
+     ],
+     "level_two_sided": 0.9916666666666667,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P3": {
+     "quantity": "R@1, AFF - B",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 3,
+     "ci_holm": [
+      3.4969675856712232,
+      25.08956648351849
+     ],
+     "level_two_sided": 0.99,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P4": {
+     "quantity": "R@1, AFF - B0",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 4,
+     "ci_holm": [
+      3.741119621404712,
+      24.69421131778892
+     ],
+     "level_two_sided": 0.9875,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P5": {
+     "quantity": "R@1, AFF - CF",
+     "n": 0,
+     "point": 13.368055555555555,
+     "ci95": [
+      5.33443422256316,
+      22.17919301062423
+     ],
+     "holm_k": 5,
+     "ci_holm": [
+      4.15422150744018,
+      24.05529845417142
+     ],
+     "level_two_sided": 0.9833333333333333,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P6": {
+     "quantity": "gain statistic: condition gain, AFF - CF (CF gain 0)",
+     "n": 19,
+     "point": 8.47439236111111,
+     "ci95": [
+      2.1533239932643373,
+      15.320700233885912
+     ],
+     "holm_k": 6,
+     "ci_holm": [
+      1.3387406718173387,
+      16.328416379971937
+     ],
+     "level_two_sided": 0.975,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    },
+    "P7": {
+     "quantity": "condition gain, AFF - RCA",
+     "n": 19,
+     "point": 8.47439236111111,
+     "ci95": [
+      2.1533239932643373,
+      15.320700233885912
+     ],
+     "holm_k": 7,
+     "ci_holm": [
+      2.1533239932643373,
+      15.320700233885912
+     ],
+     "level_two_sided": 0.95,
+     "passes": true,
+     "own_count_passes": true,
+     "near_boundary": false
+    }
+   }
+  }
+ },
+ "seconds": 12.6
+}

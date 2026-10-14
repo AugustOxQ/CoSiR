@@ -1,0 +1,269 @@
+{
+ "partitions": {
+  "keys": 4,
+  "keys_equal": true,
+  "differ": {},
+  "keys_with_nan": [],
+  "file_sha_equal": true
+ },
+ "graph": {
+  "keys": 5,
+  "keys_equal": true,
+  "differ": {},
+  "keys_with_nan": [],
+  "file_sha_equal": true
+ },
+ "bank_AIC": {
+  "keys": 10,
+  "keys_equal": true,
+  "differ": {},
+  "keys_with_nan": [],
+  "file_sha_equal": true
+ },
+ "n6_posteriors": {
+  "keys": 7,
+  "keys_equal": true,
+  "differ": {},
+  "keys_with_nan": [],
+  "file_sha_equal": false
+ },
+ "step1_heads_style": {
+  "keys": 9,
+  "keys_equal": true,
+  "differ": {},
+  "keys_with_nan": [],
+  "file_sha_equal": false
+ },
+ "rb_heads_affect": {
+  "keys": 5,
+  "keys_equal": true,
+  "differ": {},
+  "keys_with_nan": [],
+  "file_sha_equal": true
+ },
+ "rb_heads_image": {
+  "keys": 5,
+  "keys_equal": true,
+  "differ": {},
+  "keys_with_nan": [],
+  "file_sha_equal": true
+ },
+ "rb_heads_caption": {
+  "keys": 5,
+  "keys_equal": true,
+  "differ": {},
+  "keys_with_nan": [],
+  "file_sha_equal": true
+ },
+ "rb_heads_csd": {
+  "keys": 5,
+  "keys_equal": true,
+  "differ": {},
+  "keys_with_nan": [],
+  "file_sha_equal": true
+ },
+ "rb_heads_rand": {
+  "keys": 5,
+  "keys_equal": true,
+  "differ": {},
+  "keys_with_nan": [],
+  "file_sha_equal": true
+ },
+ "rb_bank_A0_half0": {
+  "keys": 10,
+  "keys_equal": true,
+  "differ": {},
+  "keys_with_nan": [],
+  "file_sha_equal": true
+ },
+ "rb_bank_A0_half1": {
+  "keys": 10,
+  "keys_equal": true,
+  "differ": {},
+  "keys_with_nan": [],
+  "file_sha_equal": true
+ },
+ "rb_reader_A0_json": {
+  "n_diff": 30,
+  "diff_paths": [
+   "/heads_files_sha256: only replay",
+   "/banks_files_sha256: only replay",
+   "/exploratory: only pinned",
+   "/halves_npz_sha256: only pinned",
+   "/heads_npz_sha256: only pinned",
+   "/banks_npz_sha256: only pinned",
+   "/runtime_s: only pinned",
+   "/halves/0/cv_table[1]/fit_s: 1.6 != 3.1",
+   "/halves/0/cv_table[2]/fit_s: 1.5 != 3.9",
+   "/halves/0/cv_table[3]/fit_s: 1.5 != 4.2",
+   "/halves/0/cv_table[4]/fit_s: 1.6 != 4.3",
+   "/halves/1/cv_table[0]/fit_s: 1.3 != 3.9",
+   "/halves/1/cv_table[1]/fit_s: 1.5 != 4.1",
+   "/halves/1/cv_table[2]/fit_s: 1.5 != 4.7",
+   "/halves/1/cv_table[3]/fit_s: 1.6 != 4.7",
+   "/halves/1/cv_table[4]/fit_s: 1.6 != 5.0",
+   "/model_spec/scaler: StandardScaler fitted once per half on all of that half's bank features != StandardScaler fitted once per half on all of that half's bank features (both co",
+   "/model_spec/reader: LogisticRegression(solver='lbfgs', max_iter=2000, C from grid, multinomial) != LogisticRegression(solver='lbfgs', max_iter=2000, C from grid, no class weights;",
+   "/model_spec/cv: KFold(5, shuffle=True, random_state=0) over episode indices; both conditions of  != KFold(5, shuffle=True, random_state=0) over episode indices; both conditions of ",
+   "/provenance/rb_features_sha256: only pinned",
+   "/provenance/common_sha256: only pinned",
+   "/provenance/git_head: only pinned",
+   "/provenance/inputs_sha256: only pinned",
+   "/provenance/argv: only pinned",
+   "/provenance/pid: only pinned",
+   "/provenance/started_amsterdam: only pinned",
+   "/provenance/threads: only pinned",
+   "/provenance/npz_sha256: only pinned",
+   "/provenance/script_sha256: ffb9166b65c85307d72e2ecb5fb3d5e4cedad5ec39e5d67478a01091927be71a != 63c7310c890675cc63e49838feb364cdd1c5c68aafdfb0f0f7972128476cba7b",
+   "/provenance/finished_amsterdam: 2026-10-13 22:07:21 != 2026-10-06 03:22"
+  ],
+  "file_sha_equal": false
+ },
+ "rc_tau": {
+  "n_diff": 6,
+  "diff_paths": [
+   "/backbone: only replay",
+   "/reader_pkl_sha256: only replay",
+   "/parent: only pinned",
+   "/parent_npz_sha256: only pinned",
+   "/provenance: only pinned",
+   "/method: numpy.percentile, linear, of the readers' top-two margins on the seed-42 episode != numpy.percentile, linear, of the parent's top-two margins"
+  ],
+  "file_sha_equal": false
+ },
+ "baselines_seed42": {
+  "n_diff": 30,
+  "diff_paths": [
+   "/lambda_picks: only replay",
+   "/convention: only replay",
+   "/go_bar_ranking: only pinned",
+   "/timings_s: only pinned",
+   "/total_s: only pinned",
+   "/scorers/cosine: only pinned",
+   "/scorers/SE: only pinned",
+   "/scorers/C0: only pinned",
+   "/scorers/R3: only pinned",
+   "/scorers/SE_uniform: only pinned",
+   "/scorers/rca/overall: only pinned",
+   "/scorers/rca/per_pair: only pinned",
+   "/scorers/diag/overall: only pinned",
+   "/scorers/diag/per_pair: only pinned",
+   "/scorers/diag_relu/overall: only pinned",
+   "/scorers/diag_relu/per_pair: only pinned",
+   "/scorers/bilinear/overall: only pinned",
+   "/scorers/bilinear/per_pair: only pinned",
+   "/scorers/kissme/overall: only pinned",
+   "/scorers/kissme/per_pair: only pinned",
+   "/scorers/xing/overall: only pinned",
+   "/scorers/xing/per_pair: only pinned",
+   "/scorers/wang/overall: only pinned",
+   "/scorers/wang/per_pair: only pinned",
+   "/scorers/probe/overall: only pinned",
+   "/scorers/probe/per_pair: only pinned",
+   "/scorers/tip/overall: only pinned",
+   "/scorers/tip/per_pair: only pinned",
+   "/scorers/value_prototype/overall: only pinned",
+   "/scorers/value_prototype/per_pair: only pinned"
+  ],
+  "file_sha_equal": false
+ },
+ "picks_seed42": {
+  "n_diff": 151,
+  "diff_paths": [
+   "/backbone: only replay",
+   "/checks/lambda_equals_pinned: only replay",
+   "/checks/picks_equal_pinned: only replay",
+   "/rule_sha256: f9b07b34e645bc8e881fb13c7e7a085eabea6a52f4d93445305944cf1aea030c != 7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+   "/module_sha256/src/test/20261202_r9_scope/r9_a28.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_a28_context.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_a28_data.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_a28_episodes.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_backbone.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_bundle.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_check_data.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_check_groups.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_check_heads.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_common.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_context.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_data.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_episodes.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_heads.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_picks.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_pins.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_probe_data.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_probe_plan.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_recipe_a3.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_recipe_baselines.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_recipe_cells.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_recipe_groups.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_recipe_reader.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_score.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/r9_stats.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/run_r9_a28_feasibility.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/run_r9_a28_pins.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/run_r9_a28_prepare.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/run_r9_apply_rule.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/run_r9_stage0a.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/run_r9_stage0b.py: only replay",
+   "/module_sha256/src/test/20261202_r9_scope/run_r9_stage1_checks.py: only replay",
+   "/module_sha256/scripts/run_r9_a3.sh: only replay",
+   "/module_sha256/scripts/run_r9_extract.sh: only replay",
+   "/module_sha256/scripts/run_r9_translate.sh: only replay",
+   "/module_sha256/scripts/das6_sync_r9.py: only replay",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_bundle.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_common.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_context.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_descriptive.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_dts.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_episodes.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_external.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_ft_cache.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_gpu_common.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_gpu_ft_features.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_gpu_inputs.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_gpu_listing.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_gpu_rerank.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_gpu_t12.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_gpu_verbalise.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_heads.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_picks.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_score.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/r6_stats.py: only pinned",
+   "/module_sha256/src/test/20261125_artelingo_held_test/run_r6_apply_rule.py: only pinned"
+  ],
+  "file_sha_equal": false
+ },
+ "cells_seed42": {
+  "n_diff": 0,
+  "diff_paths": [],
+  "file_sha_equal": true
+ },
+ "rb_reader_A0": {
+  "file_sha_equal": true
+ },
+ "picked": {
+  "n_diff": 8,
+  "diff_paths": [
+   "/backbone: only replay",
+   "/seed: only replay",
+   "/criterion: only pinned",
+   "/criterion_value: only pinned",
+   "/smoke: only pinned",
+   "/table: only pinned",
+   "/checkpoint: /project/CoSiR-wt/r9-replay/src/test/20261202_r9_scope/results/replay/clip_b32/a != src/test/20261101_aspect_factor_gonogo/checkpoints/A3_seed42.pt",
+   "/checkpoint_sha256: 0158af721b519e75b07a4c1112e9126e864b1bc81d684235e24dfca92f77b15a != dadfef1bed95bbd647c39fa0ea483edea78627d440a23b5a032083e76dd469e2"
+  ],
+  "file_sha_equal": false
+ },
+ "A3_seed42": {
+  "top_keys": [
+   "config",
+   "feature_dim",
+   "state_dict"
+  ],
+  "n_state_tensors": 10,
+  "differences": [
+   "/config/aspect_tau_fixed: only replay"
+  ]
+ }
+}
