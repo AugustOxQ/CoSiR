@@ -331,3 +331,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-14-leiden-groupings-2-handoff.md
 - New chat: tab 'Leiden groupings 2', session 5bef08c8-b1c2-4409-a10a-e7cb465e6b78
 
+[brief] CoSiR: r9 build 10 -> r9 build 11 (2026-10-14 03:56 Amsterdam)
+- Done: final-review fix wave (5 tickets) merged and pushed; both re-reviews PASS WITH NOTES; their findings fixed.
+- State: no HIGH; N5 holds (no closure edit). SigLIP stop: a dead k-means centre, not bad data; a fix is pre-built.
+- Next: re-review fx-rr, stage 0a (CPU), merge r9-scope to main, handoff to the run chat.
+- Blocked: SigLIP's reads (H7, H10) wait for the user's pick: refit rule (recommended) or report the stop.
+- Handoff: docs/superpowers/handoffs/2026-10-14-r9-build-11-handoff.md
+- New chat: tab 'r9 build 11', session 0f172dc2-24f9-4491-a3eb-2c13b77a047f
+
