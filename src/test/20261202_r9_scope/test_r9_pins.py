@@ -209,8 +209,11 @@ def test_write_pins_writes_the_built_record(tmp_path):
 
 
 def test_build_pins_names_a_missing_part(tmp_path):
+    # Qwen's real recipe output exists after stage 2, so its fitted parts point at an empty folder here.
+    parts = {role: (path if role in BB.FROZEN_ROLES else tmp_path / Path(path).name)
+             for role, path in BB.parts("qwen3vl_emb_2b").items()}
     with pytest.raises(AssertionError, match="rc_tau"):
-        PINS.build_pins("qwen3vl_emb_2b")                    # no recipe output exists yet
+        PINS.build_pins("qwen3vl_emb_2b", part_paths=parts)
 
 
 def test_write_cells_clip_refuses_to_overwrite(tmp_path):

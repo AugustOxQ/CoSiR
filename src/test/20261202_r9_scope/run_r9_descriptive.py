@@ -42,7 +42,7 @@ class Refused(RH.Refused):
 
 require = D.require
 # Stage 1's near_duplicates_a28.json: in no pins file; the same value as rederive/rd9_inputs.py (fx-c13) and run_r9_held.py.
-NEAR_DUPLICATES_SHA256 = 'ba92530d433dded1c8d2b2a2037e23d015aed5361fb1249d1caa631e40da2206'
+NEAR_DUPLICATES_SHA256 = RH.NEAR_DUPLICATES_SHA256  # one pin, in the held runner (rederive keeps its own copy; a test compares)
 
 
 def refuse_unless(ok, boundary):
