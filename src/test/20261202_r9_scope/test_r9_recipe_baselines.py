@@ -11,6 +11,7 @@ test_r9_context.py. The real-data checks (CLIP's pinned lambdas, picks and means
 """
 import json
 import math
+import re
 import shutil
 import sys
 from types import SimpleNamespace
@@ -404,3 +405,15 @@ def test_the_code_record_names_the_modules_that_decide_the_parts():
     mods = RB.code_record()["modules"]
     for name in ("r9_backbone", "r9_recipe_groups"):
         assert mods[name]["sha256"] == R.sha256_file(mods[name]["file"])
+
+
+# ---- fix wave fx-tests (B2 open item): every `# guard:` marker of r9_recipe_baselines.py has a copy-based mutation test
+
+def test_every_marked_guard_has_a_mutation_test(tmp_path):
+    names = set(re.findall(r"# guard:([a-z_0-9]+)", (HERE / "r9_recipe_baselines.py").read_text()))
+    assert names == {"pinned_picks_sha", "picks_equal_pinned", "a3_picked_run", "a3_picked_sha", "a3_picked_backbone",
+                     "head_record_backbone", "head_record_coef"}, names       # a new marker needs a test and an entry here
+    quoted = set(re.findall(r'"([a-z_0-9]+)"', Path(__file__).read_text().split("def test_every_marked_guard")[0]))
+    assert names <= quoted, names - quoted                                  # every marker is named in a test above
+    for name in sorted(names):
+        mutant(tmp_path, "r9_recipe_baselines.py", name)                    # and a copy without it loads

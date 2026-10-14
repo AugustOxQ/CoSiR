@@ -1033,3 +1033,22 @@ def test_run_case2_with_an_incomplete_l2_chain_is_recorded_not_scored(monkeypatc
     assert rc == S0B.EXIT_MISSING and rec["passed"] is False
     assert any(m.startswith("L2 chain") and "cells_seed42" in m for m in rec["missing_files"])
     assert not [c for c in calls if c.startswith("score_")]
+
+
+# ---- fix wave fx-tests (B2 L-5): deep_diff reports a changed type even when the two values compare equal ----
+
+@pytest.mark.parametrize("a, b", [(1, 1.0), (1.0, 1), (True, 1), ([1.0], [1]), ({"k": 1}, {"k": True}),
+                                  (0, False)])
+def test_deep_diff_type_change_is_a_difference(a, b):
+    assert a == b
+    diff = S0B.deep_diff(a, b)
+    assert len(diff) == 1 and "type" in diff[0]
+
+
+def test_deep_diff_array_against_list_is_a_type_difference():
+    diff = S0B.deep_diff(np.zeros(2), [0.0, 0.0])
+    assert len(diff) == 1 and "type" in diff[0]
+
+
+def test_deep_diff_same_type_same_value_is_empty():
+    assert S0B.deep_diff({"k": [1, 2.0, (3,)]}, {"k": [1, 2.0, (3,)]}) == []

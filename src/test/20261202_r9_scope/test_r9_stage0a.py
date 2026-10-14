@@ -491,3 +491,15 @@ def test_guard_cells_matters(tmp_path, monkeypatch):
         RS.check_pins()
     mutant = runner_mutant(tmp_path, "cells")                 # the guard line deleted: the changed cell gets through
     assert mutant.check_pins()["parts"]
+
+
+# ---- fix wave fx-tests (B2 L-5): array_item judges dtype and shape itself, not only through its description text ----
+
+def test_array_item_equal_flag_needs_dtype_shape_and_values():
+    base = np.arange(6, dtype=np.float64).reshape(2, 3)
+    assert RS.array_item(base, base.copy())["equal"] is True
+    assert RS.array_item(base.astype(np.float32), base)["equal"] is False        # same values, other dtype
+    assert RS.array_item(base.astype(np.int64), base)["equal"] is False
+    assert RS.array_item(base.reshape(3, 2), base)["equal"] is False             # same values and order, other shape
+    assert RS.array_item(base.ravel(), base)["equal"] is False
+    assert RS.array_item(base + 1e-12, base)["equal"] is False                   # one value

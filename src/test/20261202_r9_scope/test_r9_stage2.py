@@ -683,3 +683,115 @@ def test_main_rechecks_closure_between_steps(world, monkeypatch):
     with pytest.raises(AssertionError, match='rerun the stage 0b compare'):
         D.main(['--backbone', w.b, '--step', 'all', '--stage0b', str(w.gate_path)])
     assert seen == ['groups']
+
+
+# ---- fix wave fx-tests (B2 M-3, 13 fix 2 L1): one test per guard the final review's mutations left alive ----
+
+def edit_record(w, role, **changes):
+    path = Path(str(w.paths[role]) + '.record.json')
+    rec = D.read_json(path)
+    rec.update(changes)
+    rewrite(path, rec)
+
+
+@pytest.mark.parametrize('bad, message', [
+    ('other_backbone', 'rc_tau: record names another backbone'),            # run_r9_stage2.py :360
+    ('file_sha', 'rc_tau: file SHA differs from its record'),               # :362
+    ('wrong_producer', 'rc_tau: record names the wrong producer'),          # :364
+    ('upstream_hash', 'baselines_seed42: upstream rc_tau changed'),         # :370
+    ('upstream_unknown_role', 'baselines_seed42: upstream nothing changed'),
+    ('key_missing_from_record', 'partitions: incomplete provenance keys'),  # :200
+    ('key_missing_from_file', 'partitions: incomplete provenance keys'),
+])
+def test_provenance_record_guards_refuse(world, bad, message):
+    w = world
+    if bad == 'other_backbone':
+        edit_record(w, 'rc_tau', backbone='clip_b32')
+    elif bad == 'file_sha':
+        edit_record(w, 'rc_tau', file_sha256='0' * 64)
+    elif bad == 'wrong_producer':
+        edit_record(w, 'rc_tau', script=str(HERE / D.STEP_SCRIPTS['groups']))
+    elif bad == 'upstream_hash':
+        edit_record(w, 'baselines_seed42', upstream_sha256={'rc_tau': '0' * 64})
+    elif bad == 'upstream_unknown_role':
+        edit_record(w, 'baselines_seed42', upstream_sha256={'nothing': D.R.sha256_file(w.paths['rc_tau'])})
+    elif bad == 'key_missing_from_record':
+        edit_record(w, 'partitions', keys_unrefit=[])
+    else:
+        np.savez(w.paths['partitions'], fit=np.array([2.], np.float32), rows=np.array([1, 2]),
+                 unused=np.array([np.nan]), extra=np.array([0.]))
+    with pytest.raises(AssertionError, match=message):
+        D.provenance(w.b, w.paths, w.gate)
+
+
+def test_provenance_accepts_the_correct_upstream_hash(world):
+    w = world
+    edit_record(w, 'baselines_seed42', upstream_sha256={'rc_tau': D.R.sha256_file(w.paths['rc_tau'])})
+    assert set(D.provenance(w.b, w.paths, w.gate)) == set(D.BB.RECIPE_ROLES)
+
+
+def test_reader_json_feature_names_must_equal_clips(tmp_path):
+    a, b = tmp_path / 'reader.json', tmp_path / 'clip.json'
+    rewrite(a, {'feature_names': ['two']})
+    rewrite(b, {'feature_names': ['one']})
+    with pytest.raises(AssertionError, match='reader feature layout differs'):          # :226
+        D.assert_part('rb_reader_A0_json', a, b, {'keys_made': ['feature_names'], 'keys_copied': []})
+
+
+def _stage_world(w):
+    record_world(w)
+    stage_path = w.out / f'stage2_{w.b}.json'
+    return stage_path, D.read_json(stage_path)
+
+
+@pytest.mark.parametrize('bad, message', [
+    ('stage0b_changed', 'stage 0b changed'),                      # :558
+    ('closure_changed', 'recipe module closure changed'),         # :561
+    ('receipt_changed', 'receipt changed after stage 2'),         # :566
+    ('record_changed', 'partitions: stage 2 record changed'),     # :573
+    ('store_changed', 'feature store changed'),                   # :575
+    ('frozen_changed', 'prepare: frozen file changed'),           # :578
+    ('frozen_reassert', 'frozen prepare differs from pins_clip.json'),   # :579
+    ('seed42_changed', 'seed42_record: changed after stage 2'),   # :583
+    ('sensitivity_changed', 'sensitivity_seed42: changed after stage 2'),
+])
+def test_pins_evidence_stage_snapshot_guards_refuse(world, bad, message):
+    w = world
+    stage_path, stage = _stage_world(w)
+    if bad == 'stage0b_changed':
+        stage['stage0b']['sha256'] = '0' * 64
+    elif bad == 'closure_changed':
+        stage['module_sha256'][next(iter(stage['module_sha256']))] = '0' * 64
+    elif bad == 'receipt_changed':
+        step = next(iter(stage['recipe_receipts']))
+        stage['recipe_receipts'][step]['sha256'] = '0' * 64
+    elif bad == 'record_changed':
+        stage['provenance']['partitions']['record']['sha256'] = '0' * 64
+    elif bad == 'store_changed':
+        file = next(iter(stage['provenance']['rc_tau']['feature_store_sha256']))
+        stage['provenance']['rc_tau']['feature_store_sha256'][file] = '0' * 64
+    elif bad == 'frozen_changed':
+        stage['frozen_parts']['prepare']['sha256'] = '0' * 64
+    elif bad == 'frozen_reassert':
+        # The stage snapshot is refreshed, so only the re-assert against pins_clip.json can notice.
+        np.savez(w.paths['prepare'], **{k: np.array([1, 3]) for k in D.FROZEN_KEYS['prepare']})
+        stage['frozen_parts']['prepare'] = D.path_record(w.paths['prepare'])
+    else:
+        name = 'sensitivity_seed42' if bad == 'sensitivity_changed' else 'seed42_record'
+        Path(stage[name]['path']).write_text(json.dumps(D.read_json(stage[name]['path']), indent=3))
+    rewrite(stage_path, stage)
+    with pytest.raises(AssertionError, match=message):
+        D.run_pins(w.b, w.paths, w.out, w.gate_path)
+    assert not D.R.pins_path(w.b).exists()
+
+
+def test_replay_skip_is_only_the_roles_own_file_hash(world, monkeypatch):
+    # rc_tau reaches the feature stores only through another role's file hash (partitions). A replay skip widened
+    # from "this role's own file hash" to "any role's file hash" would cut that edge (13 fix 2 re-review, L1).
+    w = world
+    replay_world(w, monkeypatch)
+    edit_record(w, 'rc_tau', input_sha256={'partitions': D.R.sha256_file(w.paths['partitions'])})
+    out = D.provenance(w.b, w.paths, w.gate, replay=True)
+    assert out['rc_tau']['feature_store_sha256'] == w.stores
+    assert out['rc_tau']['skipped_self_input_sha256'] == {}
+    assert out['partitions']['skipped_self_input_sha256'] == {'partitions': D.R.sha256_file(w.paths['partitions'])}
