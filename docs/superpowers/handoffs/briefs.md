@@ -387,3 +387,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-14-r9-run-3-handoff.md
 - New chat: tab 'r9 run 3', session 22fd6e9c-81ec-4c3c-bf7b-e483bc9faf75
 
+[brief] CoSiR: r9 run 3 -> r10 decide (2026-10-14 13:09 Amsterdam)
+- Done: r9 run closed. Both r9 reports are committed (auto and user-read); the held ledger rows H6 to H10 are filled.
+- State: H6 Qwen and H7 SigLIP 2 GO; H9 Qwen full claim on ArtELingo-28; H8 CLIP and H10 SigLIP 2 inconclusive.
+- Next: show the results brief without our reading; record the user's reading; then the wrap-up and decision A.
+- Blocked: two choices wait for the user: the SigLIP 2 refit (keep or drop) and the wording of H9's claim.
+- Handoff: docs/superpowers/handoffs/2026-10-14-r10-decide-handoff.md
+- New chat: tab 'r10 decide', session 99c60428-8e46-4b1e-9a72-53e9d8e4001b
+

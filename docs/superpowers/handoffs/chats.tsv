@@ -69,3 +69,5 @@ opened	loop	label	session	opened from	first read
 2026-10-14 09:21	weekly	weekly report	296fd8b6-6c3e-4b51-960c-4fb31e9e0412	c9513f8b-508d-49c1-9d0e-5d92aa0f63d8	docs/superpowers/handoffs/2026-10-14-weekly-report-handoff.md
 2026-10-14 10:16	weekly	weekly slides	57ed02b5-2778-4c68-b6a1-998328ebe831	296fd8b6-6c3e-4b51-960c-4fb31e9e0412	docs/superpowers/handoffs/2026-10-14-weekly-slides-handoff.md
 2026-10-14 12:41	r9	r9 run 3	22fd6e9c-81ec-4c3c-bf7b-e483bc9faf75	0ad149d4-6172-4d41-93d8-42c825fd2f37	docs/superpowers/handoffs/2026-10-14-r9-run-3-handoff.md
+2026-10-14 13:09	main	r10 main	17d5e275-a8a7-4cdc-a025-f020ed7c33f7	22fd6e9c-81ec-4c3c-bf7b-e483bc9faf75	../../root/.claude/templates/main_chat_start.md
+2026-10-14 13:09	r10	r10 decide	99c60428-8e46-4b1e-9a72-53e9d8e4001b	22fd6e9c-81ec-4c3c-bf7b-e483bc9faf75	docs/superpowers/handoffs/2026-10-14-r10-decide-handoff.md
