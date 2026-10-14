@@ -339,3 +339,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-14-r9-build-11-handoff.md
 - New chat: tab 'r9 build 11', session 0f172dc2-24f9-4491-a3eb-2c13b77a047f
 
+[brief] CoSiR: r9 build 11 -> r9 run (2026-10-14 04:18 Amsterdam)
+- Done: r9 build closed: all re-reviews pass, suite 2246 passed, stage 0a passed, r9-scope merged to main.
+- State: CLIP and Qwen stage 2 ready; SigLIP stage 2 stopped on a 1-row k-means group (a dead centre, not bad data).
+- Next: SigLIP pick (a2, refit rule, default; or b, report the stop), then agreements, pre-reads, held reads.
+- Blocked: no pre-read or held read before the SigLIP pick; a read not started by 2026-10-18 does not start.
+- Handoff: docs/superpowers/handoffs/2026-10-14-r9-run-handoff.md
+- New chat: tab 'r9 run', session 607c1a73-619b-4244-a0e8-829147963c92
+
