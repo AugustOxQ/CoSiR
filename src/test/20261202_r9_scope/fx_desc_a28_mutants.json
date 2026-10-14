@@ -1,0 +1,43 @@
+{
+  "fixed_runner_sha256": "713f2550f308ec1fdde49f10ce8e3a105223c90a350f403ca20f68d00fa0cb56",
+  "source_unchanged_after_mutations": true,
+  "mutations": [
+    {
+      "mutation": "original_mode_equality",
+      "method": "Replace exact source in imported module memory; no source files written.",
+      "before": "        if k == 'mode' and not bound.smoke and bound.read in RH.A28_READS:\n            # The held runner starts A28 as 'a28'; r9_stats serializes its pass as 'held'.\n            require(attempt.get(k) == 'a28' and r.get(k) == 'held', 'started/pass binding: ' + k)\n        else:\n            require(attempt.get(k) == r.get(k), 'started/pass binding: ' + k)\n",
+      "after": "        require(attempt.get(k) == r.get(k), 'started/pass binding: ' + k)\n",
+      "test": "test_real_started_mode_binding[H8-a28-held-True]",
+      "exit_code": 1,
+      "expected_failure_signal": "started/pass binding: mode",
+      "killed": true,
+      "pytest_output": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_______________ test_real_started_mode_binding[H8-a28-held-True] _______________\nsrc/test/20261202_r9_scope/test_r9_descriptive.py:145: in test_real_started_mode_binding\n    assert RD.load_bound_inputs(bound).attempt[\"mode\"] == started_mode\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/test/20261202_r9_scope/run_r9_descriptive.py:146: in load_bound_inputs\n    if k == 'mode' and not bound.smoke and bound.read in RH.A28_READS:\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/test/20261202_r9_scope/r9_descriptive.py:30: in require\n    raise BoundaryError(boundary)\nE   r9_descriptive.BoundaryError: started/pass binding: mode\n=========================== short test summary info ============================\nFAILED src/test/20261202_r9_scope/test_r9_descriptive.py::test_real_started_mode_binding[H8-a28-held-True]\n1 failed in 0.87s\n"
+    },
+    {
+      "mutation": "remove_a28_read_check",
+      "method": "Replace exact source in imported module memory; no source files written.",
+      "before": "if k == 'mode' and not bound.smoke and bound.read in RH.A28_READS:",
+      "after": "if k == 'mode' and not bound.smoke:",
+      "test": "test_real_started_mode_binding[H6-a28-held-False]",
+      "exit_code": 1,
+      "expected_failure_signal": "an array or score was loaded",
+      "killed": true,
+      "pytest_output": "F                                                                        [100%]\n=================================== FAILURES ===================================\n______________ test_real_started_mode_binding[H6-a28-held-False] _______________\nsrc/test/20261202_r9_scope/test_r9_descriptive.py:123: in test_real_started_mode_binding\n    RD.load_bound_inputs(bound)\nsrc/test/20261202_r9_scope/run_r9_descriptive.py:154: in load_bound_inputs\n    arrays, core = D.load_arrays(apath, r['seeds'], npp)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/test/20261202_r9_scope/test_r9_descriptive.py:47: in boom\n    raise AssertionError(\"an array or score was loaded\")\nE   AssertionError: an array or score was loaded\n=========================== short test summary info ============================\nFAILED src/test/20261202_r9_scope/test_r9_descriptive.py::test_real_started_mode_binding[H6-a28-held-False]\n1 failed in 0.92s\n"
+    },
+    {
+      "mutation": "original_string_part_keys",
+      "method": "Replace exact source in imported module memory; no source files written.",
+      "before": "return {int(s): rec for s, rec in mine[0]['a28_episodes'].items()}",
+      "after": "return mine[0]['a28_episodes']",
+      "test": "test_a28_loaded_parts_bind_h8_disclosures[H9]",
+      "exit_code": 1,
+      "expected_failure_signal": "AssertionError",
+      "killed": true,
+      "pytest_output": "F                                                                        [100%]\n=================================== FAILURES ===================================\n________________ test_a28_loaded_parts_bind_h8_disclosures[H9] _________________\nsrc/test/20261202_r9_scope/test_r9_descriptive.py:159: in test_a28_loaded_parts_bind_h8_disclosures\n    assert RD.loaded_parts(bound) == reference\nE   AssertionError: assert {'55': {'part...'shares': {}}} == {55: {'part_s...'shares': {}}}\nE     \nE     Left contains 3 more items:\nE     {'55': {'part_sha': {'pair': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'},\nE             'set_aside': {},\nE             'shares': {}},\nE      '56': {'part_sha': {'pair': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'},\nE             'set_aside': {},...\nE     \nE     ...Full output truncated (15 lines hidden), use '-vv' to show\n=========================== short test summary info ============================\nFAILED src/test/20261202_r9_scope/test_r9_descriptive.py::test_a28_loaded_parts_bind_h8_disclosures[H9]\n1 failed in 0.91s\n"
+    }
+  ],
+  "pre_fix_regression_run": {
+    "command": "pytest -q -p no:cacheprovider test_r9_descriptive.py -k \"real_started_mode_binding or a28_loaded_parts\"",
+    "result": "7 failed, 4 passed, 91 deselected"
+  }
+}

@@ -143,7 +143,11 @@ def load_bound_inputs(bound):
     attempt = attempt[0]
     for k in ('mode', 'read', 'backbone', 'runner_sha256', 'module_sha256', 'input_sha256',
               'pins_sha256', 'coef_sha256', 'episodes_sha256'):
-        require(attempt.get(k) == r.get(k), 'started/pass binding: ' + k)
+        if k == 'mode' and not bound.smoke and bound.read in RH.A28_READS:
+            # The held runner starts A28 as 'a28'; r9_stats serializes its pass as 'held'.
+            require(attempt.get(k) == 'a28' and r.get(k) == 'held', 'started/pass binding: ' + k)
+        else:
+            require(attempt.get(k) == r.get(k), 'started/pass binding: ' + k)
     require(bool(r.get('coef_sha256')), 'coefficient hashes missing')
     apath = out / names.arrays
     require(R.sha256_file(apath) == r.get('outputs', {}).get(apath.name), 'arrays/pass SHA binding')
@@ -471,7 +475,8 @@ def loaded_parts(bound):
     attempts = RH.read_attempts(bound.out / bound.names.started)
     mine = [a for a in attempts if a['attempt'] == bound.rec['attempt']]
     require(len(mine) == 1 and set(mine[0]['a28_episodes']) == set(map(str, bound.rec['seeds'])), 'A28 started seed records')
-    return mine[0]['a28_episodes']
+    # Match the runner's a28_attempt_records seed keys after validating the JSON keys.
+    return {int(s): rec for s, rec in mine[0]['a28_episodes'].items()}
 
 
 def stage0b(bound):
