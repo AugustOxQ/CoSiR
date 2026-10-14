@@ -79,6 +79,104 @@ def test_bind_read_h8_binding_of_the_two_other_a28_reads(tmp_path, monkeypatch, 
         assert RD.bind_read(d, read, False).rec["read"] == read
 
 
+@pytest.fixture
+def started_bound(tmp_path, monkeypatch):
+    """Validated real-mode verdict/pass, with synthetic inputs for the started boundary."""
+    def make(read, started_mode, pass_mode="held"):
+        s = staged(tmp_path, monkeypatch, read)
+        bound = RD.bind_read(s.results, read, False)
+        rec = bound.rec
+        rec.update(mode=pass_mode, attempt=1, coef_sha256={"head": "d" * 64})
+        apath = s.results / bound.names.arrays
+        apath.write_bytes(b"synthetic arrays")
+        sensitivity = {k: rec[k] for k in ("seeds", "episodes_sha256")}
+        sens_path = s.results / bound.names.sensitivity
+        sens_path.write_text(json.dumps(sensitivity))
+        rec["outputs"] = {p.name: R.sha256_file(p) for p in (apath, sens_path)}
+        bound.verdict.update(sensitivity_file=sens_path.name, sensitivity_sha256=R.sha256_file(sens_path))
+        keys = ("mode", "read", "backbone", "runner_sha256", "module_sha256", "input_sha256",
+                "pins_sha256", "coef_sha256", "episodes_sha256")
+        attempt = {k: rec.get(k) for k in keys}
+        attempt.update(attempt=1, flags={}, mode=started_mode)
+        (s.results / bound.names.started).write_text(json.dumps(
+            {"rule_sha256": R.RULE_SHA256, "attempts": [attempt]}))
+        return bound
+    return make
+
+
+@pytest.mark.parametrize("read,started_mode,pass_mode,accept", [
+    ("H8", "a28", "held", True),
+    ("H9", "a28", "held", True),
+    ("H10", "a28", "held", True),
+    ("H6", "a28", "held", False),
+    ("H7", "a28", "held", False),
+    ("H8", "held", "held", False),
+    ("H8", "a28", "a28", False),
+    ("H6", "held", "held", True),
+    ("H7", "held", "held", True),
+])
+def test_real_started_mode_binding(started_bound, monkeypatch, no_arrays,
+                                   read, started_mode, pass_mode, accept):
+    bound = started_bound(read, started_mode, pass_mode)
+    if not accept:
+        with pytest.raises(D.BoundaryError, match="started/pass binding: mode"):
+            RD.load_bound_inputs(bound)
+        return
+    # Preserve every real binding check; replace only array/statistical loading.
+    pi = np.array([], dtype=np.int64)
+    monkeypatch.setattr(RD.D, "load_arrays", lambda *a: ({}, [{"pair_index": pi}] * len(bound.rec["seeds"])))
+    monkeypatch.setattr(RD.D, "check_pass", lambda *a: {})
+    monkeypatch.setattr(RD.E, "load_episodes", lambda path: SimpleNamespace(
+        seed=int(Path(path).stem.split("seed")[1]), n=len(R.PAIRS) * R.N_PER_PAIR,
+        pair_index=pi, sha=bound.rec["episodes_sha256"].get(Path(path).stem.split("seed")[1])))
+    # The apply-rule helper omits episodes; provide synthetic hashes to both records.
+    hashes = {str(seed): {pair: "e" * 64 for pair in R.PAIR_NAMES} for seed in bound.rec["seeds"]}
+    bound.rec["episodes_sha256"] = hashes
+    spath = bound.out / bound.names.started
+    started = json.loads(spath.read_text())
+    started["attempts"][0]["episodes_sha256"] = hashes
+    spath.write_text(json.dumps(started))
+    sens_path = bound.out / bound.names.sensitivity
+    sens_path.write_text(json.dumps({"seeds": bound.rec["seeds"], "episodes_sha256": hashes}))
+    bound.rec["outputs"][sens_path.name] = R.sha256_file(sens_path)
+    bound.verdict["sensitivity_sha256"] = R.sha256_file(sens_path)
+    for seed in bound.rec["seeds"]:
+        (bound.out / RD.RH.episodes_name(read, seed)).write_bytes(b"synthetic episodes")
+    assert RD.load_bound_inputs(bound).attempt["mode"] == started_mode
+
+
+@pytest.mark.parametrize("read", ["H9", "H10"])
+def test_a28_loaded_parts_bind_h8_disclosures(started_bound, read):
+    bound = started_bound(read, "a28")
+    parts = {str(s): {"part_sha": {"pair": "a" * 64}, "set_aside": {}, "shares": {}}
+             for s in bound.rec["seeds"]}
+    spath = bound.out / bound.names.started
+    started = json.loads(spath.read_text())
+    started["attempts"][0]["a28_episodes"] = parts
+    spath.write_text(json.dumps(started))
+    # Same representation as the runner's H8 reference; all part content remains exact.
+    reference = RD.RH.a28_attempt_records(RD.RH.read_attempts(spath))
+    assert RD.loaded_parts(bound) == reference
+    assert set(RD.loaded_parts(bound)) == set(bound.rec["seeds"])
+    started["attempts"][0]["a28_episodes"][str(bound.rec["seeds"][0])]["part_sha"]["pair"] = "f" * 64
+    spath.write_text(json.dumps(started))
+    assert RD.loaded_parts(bound) != reference
+
+
+@pytest.mark.parametrize("field", ["read", "backbone", "runner_sha256", "module_sha256", "input_sha256",
+                                   "pins_sha256", "coef_sha256", "episodes_sha256"])
+def test_a28_started_binding_keeps_other_fields_exact(started_bound, no_arrays, field):
+    bound = started_bound("H8", "a28")
+    spath = bound.out / bound.names.started
+    started = json.loads(spath.read_text())
+    # Preserve the started schema for its dictionary fields while making each binding unequal.
+    value = started["attempts"][0][field]
+    started["attempts"][0][field] = {"changed": "f" * 64} if isinstance(value, dict) else "changed"
+    spath.write_text(json.dumps(started))
+    with pytest.raises(D.BoundaryError, match="started/pass binding: " + field):
+        RD.load_bound_inputs(bound)
+
+
 def test_bind_read_refuses_another_reads_verdict(tmp_path, monkeypatch, no_arrays):
     s = staged(tmp_path, monkeypatch, "H6")
     s.vpath.write_text(json.dumps({**s.verdict, "read": "H7", "backbone": RD.AR.READS["H7"]["backbone"]}))

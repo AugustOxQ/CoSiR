@@ -1,0 +1,833 @@
+{
+  "main_results": "/project/CoSiR/src/test/20261202_r9_scope/results",
+  "binding_keys": [
+    "mode",
+    "read",
+    "backbone",
+    "runner_sha256",
+    "module_sha256",
+    "input_sha256",
+    "pins_sha256",
+    "coef_sha256",
+    "episodes_sha256"
+  ],
+  "reads": {
+    "H8": {
+      "binding": {
+        "mode": {
+          "equal": false,
+          "left": "a28",
+          "right": "held"
+        },
+        "read": {
+          "equal": true
+        },
+        "backbone": {
+          "equal": true
+        },
+        "runner_sha256": {
+          "equal": true
+        },
+        "module_sha256": {
+          "equal": true
+        },
+        "input_sha256": {
+          "equal": true
+        },
+        "pins_sha256": {
+          "equal": true
+        },
+        "coef_sha256": {
+          "equal": true
+        },
+        "episodes_sha256": {
+          "equal": true
+        }
+      },
+      "sources": {
+        "held_pass_H8.json": "6d6821c1416e1cd16f851394635cf40e42e93c9810a99d24e8c03105a45028bd",
+        "held_started_H8.json": "1bacbec338bfe8aff0299f2f9a1e508bc172d2eeec7fe2d10f70f186acd38731",
+        "held_verdict_H8.json": "b25cf6863dac5f52e84ce5a57ae4864703b4395022bf40f4be424de974a3d23e",
+        "sensitivity_H8.json": "8a83c4847b568f4bc665805d52f5929ae0983fb06b466582a7a5e1ccc23a8298",
+        "rd9_H8_agreement.json": "4c2e9c33c96cf8149c67e7085475dd471558216dc61aa14a2076643d8f26c849",
+        "pins_clip.json": "b78dd5efebc632feffc1b8edf0be3de2e66b0cb4e7380e7738901999f227c353",
+        "pins_a28.json": "a225f32708e84a218996ff344ccc77ac186614c253fb27e10d4d482bba81c4c1"
+      },
+      "other_comparisons": {
+        "bind_read (all verdict/pass/agreement comparisons)": {
+          "equal": true
+        },
+        "verdict status/allowed outcome": {
+          "equal": true
+        },
+        "verdict rule/read/ledger backbone/mode/variant": {
+          "equal": true
+        },
+        "verdict pass filename/fix flag": {
+          "equal": true
+        },
+        "verdict agreement filename/SHA": {
+          "equal": true
+        },
+        "agreement schema/phase/smoke/read/pass": {
+          "equal": true
+        },
+        "embedded agreement": {
+          "equal": true
+        },
+        "pass schema/rule/mode/seeds/design": {
+          "equal": true
+        },
+        "pass read/kind/code backbone": {
+          "equal": true
+        },
+        "verdict/agreement/pass SHA": {
+          "equal": true
+        },
+        "verdict/pass seeds": {
+          "equal": true
+        },
+        "agreement/pass counts": {
+          "equal": true
+        },
+        "coefficient hashes present": {
+          "equal": true
+        },
+        "outputs SHA: held_arrays_H8.npz": {
+          "equal": true
+        },
+        "outputs SHA: sensitivity_H8.json": {
+          "equal": true
+        },
+        "sensitivity/pass: seeds": {
+          "equal": true
+        },
+        "sensitivity/pass: episodes_sha256": {
+          "equal": true
+        },
+        "verdict sensitivity filename": {
+          "equal": true
+        },
+        "verdict sensitivity SHA": {
+          "equal": true
+        },
+        "backbone pins/pass SHA": {
+          "equal": true
+        },
+        "worktree/main backbone pins SHA": {
+          "equal": true
+        },
+        "input pins/pass hashes": {
+          "equal": true
+        },
+        "episodes/pass seed 55": {
+          "equal": true
+        },
+        "episode pair alignment seed 55": {
+          "equal": true
+        },
+        "episodes/pass seed 56": {
+          "equal": true
+        },
+        "episode pair alignment seed 56": {
+          "equal": true
+        },
+        "episodes/pass seed 57": {
+          "equal": true
+        },
+        "episode pair alignment seed 57": {
+          "equal": true
+        },
+        "A28 pins/pass SHA": {
+          "equal": true
+        },
+        "worktree/main A28 pins SHA": {
+          "equal": true
+        },
+        "A28 pinned file: results/value_sets_a28.json": {
+          "equal": true
+        },
+        "A28 pinned file: results/language_flags_a28.json": {
+          "equal": true
+        },
+        "A28 pinned file: results/read_set_a28.parquet": {
+          "equal": true
+        },
+        "A28 pinned file: translations/nllb200_3.3b_en/coverage.json": {
+          "equal": true
+        },
+        "A28 value sets/pass": {
+          "equal": true
+        },
+        "A28 read row-space/pass SHA": {
+          "equal": true
+        },
+        "translation language alignment": {
+          "equal": true
+        },
+        "flags/pass": {
+          "equal": true
+        },
+        "language coverage/rows": {
+          "equal": true
+        },
+        "near-duplicate source SHA and counts": {
+          "equal": true
+        },
+        "A28 started seed records": {
+          "equal": true
+        },
+        "set-aside/pass": {
+          "equal": true
+        },
+        "cross-backbone seeds/episode hashes: H9": {
+          "equal": true
+        },
+        "cross-backbone seeds/episode hashes: H10": {
+          "equal": true
+        },
+        "A28 painting partition": {
+          "equal": true
+        }
+      }
+    },
+    "H9": {
+      "binding": {
+        "mode": {
+          "equal": false,
+          "left": "a28",
+          "right": "held"
+        },
+        "read": {
+          "equal": true
+        },
+        "backbone": {
+          "equal": true
+        },
+        "runner_sha256": {
+          "equal": true
+        },
+        "module_sha256": {
+          "equal": true
+        },
+        "input_sha256": {
+          "equal": true
+        },
+        "pins_sha256": {
+          "equal": true
+        },
+        "coef_sha256": {
+          "equal": true
+        },
+        "episodes_sha256": {
+          "equal": true
+        }
+      },
+      "sources": {
+        "held_pass_H9.json": "0a4e5d0d76a59d9997f1b5a8ed50d8500d64fde99f91ac488e65e32432d65d60",
+        "held_started_H9.json": "7dfcdbf71fd54c68f0452f691849269485d1373161c7f4682b62ca5a8b08e906",
+        "held_verdict_H9.json": "358242a3e5ab903b199d38cc5a6a6d693683d34ef18c36eaf777044d939d7a4e",
+        "sensitivity_H9.json": "a737c6751329ebd0c6cc405d3b15da7de4f3d3647a98dd37213b07cd758bb3f8",
+        "rd9_H9_agreement.json": "b5bc6b2e024330008e4a2d0978eac1ef868caa074de96d184dc52b4e977d61bd",
+        "pins_qwen3vl_emb_2b.json": "57a9cc726c4450e388b0482b090054fe50cffecd12e7b4b2bd2ac05742c5c67a",
+        "pins_a28.json": "a225f32708e84a218996ff344ccc77ac186614c253fb27e10d4d482bba81c4c1"
+      },
+      "other_comparisons": {
+        "bind_read (all verdict/pass/agreement comparisons)": {
+          "equal": true
+        },
+        "verdict status/allowed outcome": {
+          "equal": true
+        },
+        "verdict rule/read/ledger backbone/mode/variant": {
+          "equal": true
+        },
+        "verdict pass filename/fix flag": {
+          "equal": true
+        },
+        "verdict agreement filename/SHA": {
+          "equal": true
+        },
+        "agreement schema/phase/smoke/read/pass": {
+          "equal": true
+        },
+        "embedded agreement": {
+          "equal": true
+        },
+        "pass schema/rule/mode/seeds/design": {
+          "equal": true
+        },
+        "pass read/kind/code backbone": {
+          "equal": true
+        },
+        "verdict/agreement/pass SHA": {
+          "equal": true
+        },
+        "verdict/pass seeds": {
+          "equal": true
+        },
+        "agreement/pass counts": {
+          "equal": true
+        },
+        "coefficient hashes present": {
+          "equal": true
+        },
+        "outputs SHA: held_arrays_H9.npz": {
+          "equal": true
+        },
+        "outputs SHA: sensitivity_H9.json": {
+          "equal": true
+        },
+        "sensitivity/pass: seeds": {
+          "equal": true
+        },
+        "sensitivity/pass: episodes_sha256": {
+          "equal": true
+        },
+        "verdict sensitivity filename": {
+          "equal": true
+        },
+        "verdict sensitivity SHA": {
+          "equal": true
+        },
+        "backbone pins/pass SHA": {
+          "equal": true
+        },
+        "worktree/main backbone pins SHA": {
+          "equal": true
+        },
+        "input pins/pass hashes": {
+          "equal": true
+        },
+        "episodes/pass seed 55": {
+          "equal": true
+        },
+        "episode pair alignment seed 55": {
+          "equal": true
+        },
+        "episodes/pass seed 56": {
+          "equal": true
+        },
+        "episode pair alignment seed 56": {
+          "equal": true
+        },
+        "episodes/pass seed 57": {
+          "equal": true
+        },
+        "episode pair alignment seed 57": {
+          "equal": true
+        },
+        "A28 pins/pass SHA": {
+          "equal": true
+        },
+        "worktree/main A28 pins SHA": {
+          "equal": true
+        },
+        "A28 pinned file: results/value_sets_a28.json": {
+          "equal": true
+        },
+        "A28 pinned file: results/language_flags_a28.json": {
+          "equal": true
+        },
+        "A28 pinned file: results/read_set_a28.parquet": {
+          "equal": true
+        },
+        "A28 pinned file: translations/nllb200_3.3b_en/coverage.json": {
+          "equal": true
+        },
+        "A28 value sets/pass": {
+          "equal": true
+        },
+        "A28 read row-space/pass SHA": {
+          "equal": true
+        },
+        "translation language alignment": {
+          "equal": true
+        },
+        "flags/pass": {
+          "equal": true
+        },
+        "language coverage/rows": {
+          "equal": true
+        },
+        "near-duplicate source SHA and counts": {
+          "equal": true
+        },
+        "A28 started seed records": {
+          "equal": true
+        },
+        "set-aside/pass": {
+          "equal": true
+        },
+        "cross-backbone seeds/episode hashes: H8": {
+          "equal": true
+        },
+        "cross-backbone seeds/episode hashes: H10": {
+          "equal": true
+        },
+        "H8 set-aside disclosure": {
+          "equal": true
+        },
+        "H8 part disclosures (raw int vs JSON str seed keys)": {
+          "equal": false,
+          "left": "{55: {'part_sha': {'emotion__style': {'Burmese': '0bd27f5e2d799931f1c78eb50f811fea1aea8f54865f41c15205ef41bb2ee9dc', 'Da",
+          "right": "{'55': {'part_sha': {'emotion__style': {'Burmese': '0bd27f5e2d799931f1c78eb50f811fea1aea8f54865f41c15205ef41bb2ee9dc', '"
+        },
+        "H8 part disclosures (canonical int seed keys)": {
+          "equal": true
+        },
+        "A28 painting partition": {
+          "equal": true
+        }
+      }
+    },
+    "H10": {
+      "binding": {
+        "mode": {
+          "equal": false,
+          "left": "a28",
+          "right": "held"
+        },
+        "read": {
+          "equal": true
+        },
+        "backbone": {
+          "equal": true
+        },
+        "runner_sha256": {
+          "equal": true
+        },
+        "module_sha256": {
+          "equal": true
+        },
+        "input_sha256": {
+          "equal": true
+        },
+        "pins_sha256": {
+          "equal": true
+        },
+        "coef_sha256": {
+          "equal": true
+        },
+        "episodes_sha256": {
+          "equal": true
+        }
+      },
+      "sources": {
+        "held_pass_H10.json": "a54d9beefa5eb08e2591f78249a374a32d66b62665a99f9f41753389902812d7",
+        "held_started_H10.json": "c3ad54ede6b87b7b2f4aaf0120bfe6eed45e90b58f02166d7d0aaafbe966bc31",
+        "held_verdict_H10.json": "a4bb56d7b8d551653baccf1df99c6f4d13de5f08942fa02ccbbdb34b0cfe53bc",
+        "sensitivity_H10.json": "925345210cc9c0f1f0c8aa5d7e867a5ad0fa7db4cfe6b40ba70a4f6547f7ae54",
+        "rd9_H10_agreement.json": "26094db04cb241e2e155716a6544f46d8c1db8059ea5e4b80ebd194ce41fc775",
+        "pins_siglip2_so400m.json": "45a84e72522cda32845c6315c6c8eb8c947b925a18b9a045722658604557016b",
+        "pins_a28.json": "a225f32708e84a218996ff344ccc77ac186614c253fb27e10d4d482bba81c4c1"
+      },
+      "other_comparisons": {
+        "bind_read (all verdict/pass/agreement comparisons)": {
+          "equal": true
+        },
+        "verdict status/allowed outcome": {
+          "equal": true
+        },
+        "verdict rule/read/ledger backbone/mode/variant": {
+          "equal": true
+        },
+        "verdict pass filename/fix flag": {
+          "equal": true
+        },
+        "verdict agreement filename/SHA": {
+          "equal": true
+        },
+        "agreement schema/phase/smoke/read/pass": {
+          "equal": true
+        },
+        "embedded agreement": {
+          "equal": true
+        },
+        "pass schema/rule/mode/seeds/design": {
+          "equal": true
+        },
+        "pass read/kind/code backbone": {
+          "equal": true
+        },
+        "verdict/agreement/pass SHA": {
+          "equal": true
+        },
+        "verdict/pass seeds": {
+          "equal": true
+        },
+        "agreement/pass counts": {
+          "equal": true
+        },
+        "coefficient hashes present": {
+          "equal": true
+        },
+        "outputs SHA: held_arrays_H10.npz": {
+          "equal": true
+        },
+        "outputs SHA: sensitivity_H10.json": {
+          "equal": true
+        },
+        "sensitivity/pass: seeds": {
+          "equal": true
+        },
+        "sensitivity/pass: episodes_sha256": {
+          "equal": true
+        },
+        "verdict sensitivity filename": {
+          "equal": true
+        },
+        "verdict sensitivity SHA": {
+          "equal": true
+        },
+        "backbone pins/pass SHA": {
+          "equal": true
+        },
+        "worktree/main backbone pins SHA": {
+          "equal": true
+        },
+        "input pins/pass hashes": {
+          "equal": true
+        },
+        "episodes/pass seed 55": {
+          "equal": true
+        },
+        "episode pair alignment seed 55": {
+          "equal": true
+        },
+        "episodes/pass seed 56": {
+          "equal": true
+        },
+        "episode pair alignment seed 56": {
+          "equal": true
+        },
+        "episodes/pass seed 57": {
+          "equal": true
+        },
+        "episode pair alignment seed 57": {
+          "equal": true
+        },
+        "A28 pins/pass SHA": {
+          "equal": true
+        },
+        "worktree/main A28 pins SHA": {
+          "equal": true
+        },
+        "A28 pinned file: results/value_sets_a28.json": {
+          "equal": true
+        },
+        "A28 pinned file: results/language_flags_a28.json": {
+          "equal": true
+        },
+        "A28 pinned file: results/read_set_a28.parquet": {
+          "equal": true
+        },
+        "A28 pinned file: translations/nllb200_3.3b_en/coverage.json": {
+          "equal": true
+        },
+        "A28 value sets/pass": {
+          "equal": true
+        },
+        "A28 read row-space/pass SHA": {
+          "equal": true
+        },
+        "translation language alignment": {
+          "equal": true
+        },
+        "flags/pass": {
+          "equal": true
+        },
+        "language coverage/rows": {
+          "equal": true
+        },
+        "near-duplicate source SHA and counts": {
+          "equal": true
+        },
+        "A28 started seed records": {
+          "equal": true
+        },
+        "set-aside/pass": {
+          "equal": true
+        },
+        "cross-backbone seeds/episode hashes: H8": {
+          "equal": true
+        },
+        "cross-backbone seeds/episode hashes: H9": {
+          "equal": true
+        },
+        "H8 set-aside disclosure": {
+          "equal": true
+        },
+        "H8 part disclosures (raw int vs JSON str seed keys)": {
+          "equal": false,
+          "left": "{55: {'part_sha': {'emotion__style': {'Burmese': '0bd27f5e2d799931f1c78eb50f811fea1aea8f54865f41c15205ef41bb2ee9dc', 'Da",
+          "right": "{'55': {'part_sha': {'emotion__style': {'Burmese': '0bd27f5e2d799931f1c78eb50f811fea1aea8f54865f41c15205ef41bb2ee9dc', '"
+        },
+        "H8 part disclosures (canonical int seed keys)": {
+          "equal": true
+        },
+        "A28 painting partition": {
+          "equal": true
+        }
+      }
+    },
+    "H6": {
+      "binding": {
+        "mode": {
+          "equal": true
+        },
+        "read": {
+          "equal": true
+        },
+        "backbone": {
+          "equal": true
+        },
+        "runner_sha256": {
+          "equal": true
+        },
+        "module_sha256": {
+          "equal": true
+        },
+        "input_sha256": {
+          "equal": true
+        },
+        "pins_sha256": {
+          "equal": true
+        },
+        "coef_sha256": {
+          "equal": true
+        },
+        "episodes_sha256": {
+          "equal": true
+        }
+      },
+      "sources": {
+        "held_pass_H6.json": "5bdf830bdd0c894d7a1462effd433ca8f2c5b5f9c16d1290a46f066b1c9202a1",
+        "held_started_H6.json": "016dad5109ad492d56c1a2fdce81462309b4f624b0d92b5dd30c6b0c54ec6402",
+        "held_verdict_H6.json": "58fb4d21a34eb022f5df61ed8f22dc6915b7abc02416050fd077d66876180ed0",
+        "sensitivity_H6.json": "41144b629c75fa6bb98917f0a958f00e01798cd3f45dba602d1d3ca1cf014322",
+        "rd9_H6_agreement.json": "a2882ce09751be3b1efdb679721f5b1c4364df1de18f53ebef863ddc6c13aa58",
+        "pins_qwen3vl_emb_2b.json": "57a9cc726c4450e388b0482b090054fe50cffecd12e7b4b2bd2ac05742c5c67a"
+      },
+      "other_comparisons": {
+        "bind_read (all verdict/pass/agreement comparisons)": {
+          "equal": true
+        },
+        "verdict status/allowed outcome": {
+          "equal": true
+        },
+        "verdict rule/read/ledger backbone/mode/variant": {
+          "equal": true
+        },
+        "verdict pass filename/fix flag": {
+          "equal": true
+        },
+        "verdict agreement filename/SHA": {
+          "equal": true
+        },
+        "agreement schema/phase/smoke/read/pass": {
+          "equal": true
+        },
+        "embedded agreement": {
+          "equal": true
+        },
+        "pass schema/rule/mode/seeds/design": {
+          "equal": true
+        },
+        "pass read/kind/code backbone": {
+          "equal": true
+        },
+        "verdict/agreement/pass SHA": {
+          "equal": true
+        },
+        "verdict/pass seeds": {
+          "equal": true
+        },
+        "agreement/pass counts": {
+          "equal": true
+        },
+        "coefficient hashes present": {
+          "equal": true
+        },
+        "outputs SHA: held_arrays_H6.npz": {
+          "equal": true
+        },
+        "outputs SHA: sensitivity_H6.json": {
+          "equal": true
+        },
+        "sensitivity/pass: seeds": {
+          "equal": true
+        },
+        "sensitivity/pass: episodes_sha256": {
+          "equal": true
+        },
+        "verdict sensitivity filename": {
+          "equal": true
+        },
+        "verdict sensitivity SHA": {
+          "equal": true
+        },
+        "backbone pins/pass SHA": {
+          "equal": true
+        },
+        "worktree/main backbone pins SHA": {
+          "equal": true
+        },
+        "input pins/pass hashes": {
+          "equal": true
+        },
+        "episodes/pass seed 52": {
+          "equal": true
+        },
+        "episode pair alignment seed 52": {
+          "equal": true
+        },
+        "episodes/pass seed 53": {
+          "equal": true
+        },
+        "episode pair alignment seed 53": {
+          "equal": true
+        },
+        "episodes/pass seed 54": {
+          "equal": true
+        },
+        "episode pair alignment seed 54": {
+          "equal": true
+        }
+      }
+    },
+    "H7": {
+      "binding": {
+        "mode": {
+          "equal": true
+        },
+        "read": {
+          "equal": true
+        },
+        "backbone": {
+          "equal": true
+        },
+        "runner_sha256": {
+          "equal": true
+        },
+        "module_sha256": {
+          "equal": true
+        },
+        "input_sha256": {
+          "equal": true
+        },
+        "pins_sha256": {
+          "equal": true
+        },
+        "coef_sha256": {
+          "equal": true
+        },
+        "episodes_sha256": {
+          "equal": true
+        }
+      },
+      "sources": {
+        "held_pass_H7.json": "f849bad4babe25d238a78a09bc85805914de03a4433fbb5e18a33ce4cc1d5418",
+        "held_started_H7.json": "c3181b395da411e4fad1bf5f236f768cd04ae22feb2752e50bac2b78ec6f3402",
+        "held_verdict_H7.json": "b7f920ba33eda8de069a9d44e7733c30ad462951a68fa1091716a76b1689328d",
+        "sensitivity_H7.json": "71a4368b6ad4605294a790f0e7db223bca3feb4f53adb14b14e5450514ffaa0b",
+        "rd9_H7_agreement.json": "b1395d441a15670f9047cbb395a0d191ce3e5f49928c79d7ac607b6280bccb10",
+        "pins_siglip2_so400m.json": "45a84e72522cda32845c6315c6c8eb8c947b925a18b9a045722658604557016b"
+      },
+      "other_comparisons": {
+        "bind_read (all verdict/pass/agreement comparisons)": {
+          "equal": true
+        },
+        "verdict status/allowed outcome": {
+          "equal": true
+        },
+        "verdict rule/read/ledger backbone/mode/variant": {
+          "equal": true
+        },
+        "verdict pass filename/fix flag": {
+          "equal": true
+        },
+        "verdict agreement filename/SHA": {
+          "equal": true
+        },
+        "agreement schema/phase/smoke/read/pass": {
+          "equal": true
+        },
+        "embedded agreement": {
+          "equal": true
+        },
+        "pass schema/rule/mode/seeds/design": {
+          "equal": true
+        },
+        "pass read/kind/code backbone": {
+          "equal": true
+        },
+        "verdict/agreement/pass SHA": {
+          "equal": true
+        },
+        "verdict/pass seeds": {
+          "equal": true
+        },
+        "agreement/pass counts": {
+          "equal": true
+        },
+        "coefficient hashes present": {
+          "equal": true
+        },
+        "outputs SHA: held_arrays_H7.npz": {
+          "equal": true
+        },
+        "outputs SHA: sensitivity_H7.json": {
+          "equal": true
+        },
+        "sensitivity/pass: seeds": {
+          "equal": true
+        },
+        "sensitivity/pass: episodes_sha256": {
+          "equal": true
+        },
+        "verdict sensitivity filename": {
+          "equal": true
+        },
+        "verdict sensitivity SHA": {
+          "equal": true
+        },
+        "backbone pins/pass SHA": {
+          "equal": true
+        },
+        "worktree/main backbone pins SHA": {
+          "equal": true
+        },
+        "input pins/pass hashes": {
+          "equal": true
+        },
+        "episodes/pass seed 52": {
+          "equal": true
+        },
+        "episode pair alignment seed 52": {
+          "equal": true
+        },
+        "episodes/pass seed 53": {
+          "equal": true
+        },
+        "episode pair alignment seed 53": {
+          "equal": true
+        },
+        "episodes/pass seed 54": {
+          "equal": true
+        },
+        "episode pair alignment seed 54": {
+          "equal": true
+        }
+      }
+    }
+  },
+  "not_checked": [
+    "Current full recipe input/backbone file hashes (input pin declarations checked).",
+    "Refitted coefficient hashes; rebuilt A28 episode parts/hashes/fields and anchor joins.",
+    "Numerical pass reproduction, rebuilt score arrays and direction averages.",
+    "Paired anchor joins; language mask shapes and nonempty kept-row counts.",
+    "Optional H5 reproduction/anchor join and stage0b payload (no A28 mode comparison).",
+    "Full real-mode descriptive run and output write; controller runs after merge."
+  ]
+}
