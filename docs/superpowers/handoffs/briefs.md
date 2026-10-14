@@ -315,3 +315,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-14-leiden-groupings-handoff.md
 - New chat: tab 'leiden groupings', session 59ceca52-ce8c-4df2-b403-802bd42bc472
 
+[brief] CoSiR: r9 build 9 -> r9 build 10 (2026-10-14 02:48 Amsterdam)
+- Done: 13, 23 and 22 merged; stage 0b re-passed; CLIP dry run passed; final review in 5 areas, all confirmed with fixes.
+- State: Qwen stage 2 passed (pins written). SigLIP stopped: its caption k-means has a 1-row group the heads cannot fit.
+- Next: diagnose the SigLIP stop and ask the user (key); meanwhile the fix wave, its re-review, stage 0a, merge.
+- Blocked: SigLIP's reads (H7, H10) wait for the user's decision on the 1-row caption group.
+- Handoff: docs/superpowers/handoffs/2026-10-14-r9-build-10-handoff.md
+- New chat: tab 'r9 build 10', session 06992efa-c388-41ec-bd52-4b5c99c57e84
+
