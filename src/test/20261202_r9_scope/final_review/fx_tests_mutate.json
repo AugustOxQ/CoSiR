@@ -1,0 +1,263 @@
+{
+ "2_record_backbone": {
+  "id": "2_record_backbone",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 74 passed in 17.76s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_provenance_record_guards_refuse[other_backbone-rc_tau: record names another backbone]",
+  "seconds": 19.6
+ },
+ "2_record_file_sha": {
+  "id": "2_record_file_sha",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 75 passed in 19.29s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_provenance_record_guards_refuse[file_sha-rc_tau: file SHA differs from its record]",
+  "seconds": 21.0
+ },
+ "2_wrong_producer": {
+  "id": "2_wrong_producer",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 76 passed in 17.54s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_provenance_record_guards_refuse[wrong_producer-rc_tau: record names the wrong producer]",
+  "seconds": 18.8
+ },
+ "2_upstream": {
+  "id": "2_upstream",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 77 passed in 21.05s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_provenance_record_guards_refuse[upstream_hash-baselines_seed42: upstream rc_tau changed]",
+  "seconds": 23.2
+ },
+ "2_prov_keys_complete": {
+  "id": "2_prov_keys_complete",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 79 passed in 28.68s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_provenance_record_guards_refuse[key_missing_from_record-partitions: incomplete provenance keys]",
+  "seconds": 32.6
+ },
+ "2_reader_feature_names": {
+  "id": "2_reader_feature_names",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 82 passed in 42.47s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_reader_json_feature_names_must_equal_clips",
+  "seconds": 46.3
+ },
+ "2_replay_skip_widened": {
+  "id": "2_replay_skip_widened",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 92 passed in 53.72s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_replay_skip_is_only_the_roles_own_file_hash",
+  "seconds": 57.5
+ },
+ "2_ev_stage0b_changed": {
+  "id": "2_ev_stage0b_changed",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 83 passed in 49.12s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_pins_evidence_stage_snapshot_guards_refuse[stage0b_changed-stage 0b changed]",
+  "seconds": 53.2
+ },
+ "2_ev_closure": {
+  "id": "2_ev_closure",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 84 passed in 47.50s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_pins_evidence_stage_snapshot_guards_refuse[closure_changed-recipe module closure changed]",
+  "seconds": 51.5
+ },
+ "2_ev_receipt": {
+  "id": "2_ev_receipt",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 85 passed in 35.56s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_pins_evidence_stage_snapshot_guards_refuse[receipt_changed-receipt changed after stage 2]",
+  "seconds": 39.1
+ },
+ "2_ev_record_changed": {
+  "id": "2_ev_record_changed",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 86 passed in 39.04s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_pins_evidence_stage_snapshot_guards_refuse[record_changed-partitions: stage 2 record changed]",
+  "seconds": 42.0
+ },
+ "2_ev_store_changed": {
+  "id": "2_ev_store_changed",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 87 passed in 31.93s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_pins_evidence_stage_snapshot_guards_refuse[store_changed-feature store changed]",
+  "seconds": 33.7
+ },
+ "2_ev_frozen_changed": {
+  "id": "2_ev_frozen_changed",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 88 passed in 27.79s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_pins_evidence_stage_snapshot_guards_refuse[frozen_changed-prepare: frozen file changed]",
+  "seconds": 29.6
+ },
+ "2_ev_frozen_assert": {
+  "id": "2_ev_frozen_assert",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 89 passed in 21.71s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_pins_evidence_stage_snapshot_guards_refuse[frozen_reassert-frozen prepare differs from pins_clip.json]",
+  "seconds": 23.0
+ },
+ "2_ev_seed42_changed": {
+  "id": "2_ev_seed42_changed",
+  "file": "run_r9_stage2.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 90 passed in 22.60s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage2.py::test_pins_evidence_stage_snapshot_guards_refuse[seed42_changed-seed42_record: changed after stage 2]",
+  "seconds": 23.9
+ },
+ "0a_array_item_dtype": {
+  "id": "0a_array_item_dtype",
+  "file": "run_r9_stage0a.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 51 passed in 7.13s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage0a.py::test_array_item_equal_flag_needs_dtype_shape_and_values",
+  "seconds": 8.4
+ },
+ "0a_array_item_shape": {
+  "id": "0a_array_item_shape",
+  "file": "run_r9_stage0a.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 51 passed in 6.67s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage0a.py::test_array_item_equal_flag_needs_dtype_shape_and_values",
+  "seconds": 7.9
+ },
+ "0b_deep_type": {
+  "id": "0b_deep_type",
+  "file": "run_r9_stage0b.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 105 passed, 3 warnings in 3.97s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_stage0b.py::test_deep_diff_type_change_is_a_difference[1-1.0]",
+  "seconds": 5.5
+ },
+ "b1_min_paintings": {
+  "id": "b1_min_paintings",
+  "file": "r9_a28.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 22 passed, 2 warnings in 0.38s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28.py::test_value_sets_default_cut_is_30_paintings_not_29_and_not_rows",
+  "seconds": 0.7
+ },
+ "b1_groups_rows": {
+  "id": "b1_groups_rows",
+  "file": "r9_a28.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 22 passed, 2 warnings in 0.39s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28.py::test_value_sets_default_cut_is_30_paintings_not_29_and_not_rows",
+  "seconds": 0.7
+ },
+ "b1_expected_rows": {
+  "id": "b1_expected_rows",
+  "file": "r9_a28.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 23 passed, 2 warnings in 0.40s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28.py::test_expected_counts_and_value_sets_are_the_rules",
+  "seconds": 0.7
+ },
+ "b1_expected_v_style": {
+  "id": "b1_expected_v_style",
+  "file": "r9_a28.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 23 passed, 2 warnings in 0.39s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28.py::test_expected_counts_and_value_sets_are_the_rules",
+  "seconds": 0.7
+ },
+ "b1_expected_v_sizes": {
+  "id": "b1_expected_v_sizes",
+  "file": "r9_a28.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 23 passed, 2 warnings in 0.39s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28.py::test_expected_counts_and_value_sets_are_the_rules",
+  "seconds": 0.7
+ },
+ "b1_train_side_val": {
+  "id": "b1_train_side_val",
+  "file": "run_r9_a28_prepare.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed in 3.26s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28_prepare.py::test_main_runs_and_hands_the_train_and_val_paintings_to_the_read_set",
+  "seconds": 4.5
+ },
+ "b1_prepare_counts": {
+  "id": "b1_prepare_counts",
+  "file": "run_r9_a28_prepare.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 1 passed in 3.36s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28_prepare.py::test_main_stops_when_a_count_differs_from_the_rules",
+  "seconds": 4.5
+ },
+ "b1_prepare_v": {
+  "id": "b1_prepare_v",
+  "file": "run_r9_a28_prepare.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 2 passed in 3.32s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28_prepare.py::test_main_stops_when_V_has_the_right_sizes_but_other_values",
+  "seconds": 4.5
+ },
+ "b1_translation_painting": {
+  "id": "b1_translation_painting",
+  "file": "r9_a28.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 19 passed, 2 warnings in 0.38s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28.py::test_translation_painting_must_equal_the_csv_painting",
+  "seconds": 0.8
+ },
+ "b1_one_label": {
+  "id": "b1_one_label",
+  "file": "r9_a28.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 20 passed, 2 warnings in 0.38s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28.py::test_a_painting_with_two_styles_or_genres_crashes[style-extra0]",
+  "seconds": 0.7
+ },
+ "b1_one_image": {
+  "id": "b1_one_image",
+  "file": "r9_a28_data.py",
+  "rc": 1,
+  "caught": true,
+  "summary": "1 failed, 16 passed in 3.62s",
+  "first_failure": "FAILED src/test/20261202_r9_scope/test_r9_a28_data.py::test_two_images_for_one_painting_fail",
+  "seconds": 4.9
+ }
+}

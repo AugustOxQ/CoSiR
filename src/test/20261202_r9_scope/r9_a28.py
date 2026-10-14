@@ -8,12 +8,19 @@ checks the imports). The runner (run_r9_a28_prepare.py) gives it CLIP's split an
 Row space: `row_id` is the CSV data-row position (= `csv_row` of the translations table). The read set has one row per
 non-English row on a read painting, before the empty-output drops; evaluated rows are those with `dropped` False.
 """
+import sys
+from pathlib import Path
 from types import SimpleNamespace
 
-import numpy as np
-import pandas as pd
+HERE = Path(__file__).resolve().parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+import r9_backbone  # noqa: E402,F401  (before anything that imports src: it puts MAIN's src first and checks it)
 
-from src.eval.aspect_episodes import eligible_values
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+
+from src.eval.aspect_episodes import eligible_values  # noqa: E402
 
 ASPECTS = ("emotion", "style", "genre")
 EMOTION_UNKNOWN = ("something else", "other")           # map to -1 (rule section 3.3 "Labels")

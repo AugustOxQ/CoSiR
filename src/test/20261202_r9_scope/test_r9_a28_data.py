@@ -317,6 +317,16 @@ def test_store_with_a_painting_not_in_the_read_set_fails(tmp_path):
         load(tmp_path)
 
 
+def test_two_images_for_one_painting_fail(tmp_path):                    # r9_a28_data.py :155
+    def twice(index, img, txt):
+        index["images"].append({"painting": "p_a", "image": "images/y/p_a.jpg"})   # a second entry for p_a
+        index["n_images"] += 1
+        return index, np.vstack([img, img[:1]]), txt
+    write_store(tmp_path, table(), edit=twice)
+    with pytest.raises(AssertionError, match="two images for one painting"):
+        load(tmp_path)
+
+
 # ---------------------------------------------------------------- the pins
 
 def make_tree(tmp_path, backbones=(BACKBONE,)):
