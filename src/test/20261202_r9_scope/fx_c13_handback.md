@@ -53,14 +53,20 @@ with the corrected mutant text; each file restored and SHA-checked). Untracked l
 deleted (a hook refused `rm`): `fx_c13_mutations_0_22.json`, `fx_c13_mutations_22_50.json`, `fx_c13_mutations_0_43.json`
 (partial or duplicate runs from a shell-quoting slip); they can go.
 
+## Probe on this commit (fx_c13_phase1_probe.py, output fx_c13_phase1_probe.json)
+
+Derived outputs were made in this worktree by `rd9_phase1.py` (prepare and score, CPU) on the real pins files; the comparer ran
+`--phase1` against the real `pins_clip.json` and `pins_qwen3vl_emb_2b.json`.
+
+- CLIP: ran, agreement true, 169 compared, 0 failed (R6 branch: stats, sigma file, picks, taus, means B/B0/B1, arrays).
+- Qwen: ran, agreement true, 160 compared, 0 failed (cells, B/B0 picks, RCA lambda, taus, five means, P-points and n_j,
+  seed-42 sigma inputs, array hashes of the stage-2 schema).
+- At HEAD both backbones fail earlier: `Inputs(...)` raises FileNotFoundError on the `input_sha256` keys (checked on a HEAD copy).
+
 ## Left
 
-- Qwen phase 1 score: prepare is done (`rd9_out/rd9_qwen3vl_emb_2b_{bundle.npz,fits.pkl,prepare.json}`, this worktree, ignored).
-  The score stage was started in the background at ~03:20 (log `/tmp/claude-0/-project-CoSiR/06992efa-c388-41ec-bd52-4b5c99c57e84/scratchpad/logs/score_qwen.log`;
-  it ends with `phase 1 complete: qwen3vl_emb_2b` and writes `rd9_out/rd9_qwen3vl_emb_2b_phase1.json` and `_seed42_arrays.npz`).
-  If it died, rerun `rd9_phase1.py --backbone qwen3vl_emb_2b --stage score` (CPU).
-  CLIP phase 1 is done (`rd9_out/rd9_clip_b32_phase1.json`, `_seed42_arrays.npz`).
-- Then `python src/test/20261202_r9_scope/fx_c13_phase1_probe.py clip_b32 qwen3vl_emb_2b` (written, not yet run) and report per
-  backbone; fix what still fails. `results/recipe` in this worktree is a symlink to the main checkout's (ignored; I made it).
-- Re-run the committed selection replay `rd9_phase2.py --read H8 --mode selection` needs `--reported-sensitivity` now (controller).
-- The apply step does not yet require the margin items in the agreement (A1's optional part); not done.
+- Nothing in the ticket. For the controller: rerun the committed selection replay (`rd9_phase2.py --read H8 --mode selection`
+  and its compare) with `--reported-sensitivity` (the per-read command in `rd9_commands.md` now needs it for every read whose
+  derived record carries SE/x/x95, else those keys are differences).
+- Not done (A1's optional part): the apply step does not require the margin items in the agreement; the agreement records `sensitivity_sha256`.
+- Not committed: `.claude/20261014_log.md` entry (`.claude` is ignored in this worktree; the entry is in the file).
