@@ -235,34 +235,44 @@ def step_score():
     arrays = {"cl": cl, "pair_index": pi, "aff_fused_r1": aff, "aff_cf_r1": f64(scored["aff_cf"]["r1"]),
               "B0_r1": b0, "B_r1": f64(scored["B"]["r1"]), "B1_r1": f64(scored["B1"]["r1"]), "bar_v_aff": f64(bar_v["aff"])}
     np.savez(REB / "lg_seed42_arrays.npz", **arrays)
-    res = {"leiden": {"aff_fused_r1": nums["aff_fused_r1"]["got"], "aff_cf_r1": nums["aff_cf_r1"]["got"],
-                      "margin_vs_Bprime": [float(x) for x in C.point_ci(aff - b0, cl)],
-                      "bar_comparator": nums["aff_bar_comparator"]["got"],
-                      "bar_margin": nums["aff_bar_margin"]["got"],
-                      **{f"{n}_mean_r1": nums[f"{n}_mean_r1"]["got"] for n in P.NESTED}}}
+    result_from_arrays()
+    return 0
+
+
+def result_from_arrays():
+    """lg_result.json from lg_seed42_arrays.npz and round 3's k-means arrays (no rescoring)."""
+    import run_r9_stage0a as S0A
+    C = S0A.C
+    f64 = lambda x: np.asarray(x, np.float64)  # noqa: E731
+    ci = lambda x, cl: (lambda d: [float(d["point"]), *map(float, d["ci95"])])(C.point_ci(x, cl))  # noqa: E731
+    with np.load(REB / "lg_seed42_arrays.npz") as z:
+        a = {k: f64(z[k]) if k not in ("cl", "pair_index") else np.asarray(z[k]) for k in z.files}
+    cl, pi, aff, b0 = a["cl"], a["pair_index"], a["aff_fused_r1"], a["B0_r1"]
+    means = {k: 100 * float(a[k].mean()) for k in ("aff_fused_r1", "aff_cf_r1", "B0_r1", "B_r1", "B1_r1")}
+    res = {"leiden": {**means, "margin_vs_Bprime": ci(aff - b0, cl), "bar_margin": ci(a["bar_v_aff"], cl),
+                      "margin_vs_matched_control": ci(aff - a["aff_cf_r1"], cl)}}
     ref = R.INPUT_PATHS[S0A.R3_ARRAYS_REL]
     with np.load(ref) as z:
         k_aff, k_bar = f64(z["aff_fused__r1"]), f64(z["aff_bar_v"])
         assert np.array_equal(z["cl"], cl) and np.array_equal(z["pair_index"], pi), "episodes differ from the k-means run"
-    res["kmeans"] = {"aff_fused_r1": 100 * float(k_aff.mean()), "margin_vs_Bprime": [float(x) for x in C.point_ci(k_bar, cl)]}
-    res["paired_leiden_minus_kmeans"] = {"aff_fused_r1": [float(x) for x in C.point_ci(aff - k_aff, cl)],
-                                         "margin_vs_Bprime": [float(x) for x in C.point_ci((aff - b0) - k_bar, cl)]}
+    res["kmeans"] = {"aff_fused_r1": 100 * float(k_aff.mean()), "bar_margin": ci(k_bar, cl)}
+    res["paired_leiden_minus_kmeans"] = {"aff_fused_r1": ci(aff - k_aff, cl), "bar_margin": ci(a["bar_v_aff"] - k_bar, cl)}
     (REB / "lg_result.json").write_text(json.dumps(res, indent=1, default=float) + "\n")
-    return 0
 
 
 def summary():
     r = json.loads((REB / "lg_result.json").read_text())
     f = lambda t: f"{t[0]:+.2f} [{t[1]:+.2f}, {t[2]:+.2f}]"  # noqa: E731
     L, K, D = r["leiden"], r["kmeans"], r["paired_leiden_minus_kmeans"]
-    print(f"AFF over B'(A0), seed-42 dev, R@1 pp: Leiden {f(L['margin_vs_Bprime'])} | k-means {f(K['margin_vs_Bprime'])} "
-          f"| paired Leiden-kmeans margin {f(D['margin_vs_Bprime'])}, AFF R@1 {f(D['aff_fused_r1'])} "
-          f"(AFF R@1 Leiden {L['aff_fused_r1']:.2f}, k-means {K['aff_fused_r1']:.2f}; bar comparator {L['bar_comparator']})")
+    print(f"AFF seed-42 dev, R@1 points: bar margin Leiden {f(L['bar_margin'])} | k-means {f(K['bar_margin'])} | paired "
+          f"{f(D['bar_margin'])}; AFF R@1 Leiden {L['aff_fused_r1']:.2f}, k-means {K['aff_fused_r1']:.2f}, paired "
+          f"{f(D['aff_fused_r1'])}; Leiden over B'(A0) {f(L['margin_vs_Bprime'])}, over its matched control "
+          f"{f(L['margin_vs_matched_control'])}")
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--step", choices=("groups", "a3", "reader", "baselines", "cells", "score", "summary"), required=True)
+    ap.add_argument("--step", choices=("groups", "a3", "reader", "baselines", "cells", "score", "result", "summary"), required=True)
     ap.add_argument("--reb", default=str(HERE / "results/rebuild"))
     ap.add_argument("--stop-after", default="heads", help="groups step only (check runs)")
     a = ap.parse_args()
@@ -274,11 +284,11 @@ def main():
         summary()
         return 0
     return {"a3": step_a3, "reader": step_reader, "baselines": step_baselines, "cells": step_cells,
-            "score": step_score}[a.step]()
+            "score": step_score, "result": lambda: result_from_arrays() or 0}[a.step]()
 
 
 if __name__ == "__main__":
     code = main()
-    if code == 0 and "--step" in sys.argv and sys.argv[sys.argv.index("--step") + 1] == "score":
+    if code == 0 and "--step" in sys.argv and sys.argv[sys.argv.index("--step") + 1] in ("score", "result"):
         summary()
     sys.exit(code)

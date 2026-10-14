@@ -59,3 +59,27 @@ H1:  told -0.46 [-0.63, -0.28]  reader -0.46 [-0.63, -0.28]  bar -0.46 [-0.63, -
 
 `results/` holds 44 MB (`lg_heads.npz` 38 MB, `lg_group.npz` 7 MB, JSON and logs). Kept as the run's outputs; nothing
 of 1 GB or more.
+
+## 2026-10-14 02:00 onward: the user's reading and the follow-ups
+
+The user's reading (01:55): Leiden ties, so take Leiden for coherence; H1 was expected to be bad. Do both: rebuild AFF
+on Leiden, retrain H1 (direction log entry "2026-10-14 · Leiden groupings side check").
+
+**H1 retrained** (`lg_h1r.py`, Sonnet builder; 22 s on GPU under the lock): scorer-train paintings only, 20 communities,
+AMI 0.49 with the old mapped labels. Deviations in `results/h1r.json` (plateau stop on scorer-train recall, ran all
+200 epochs; GoEmotions from the stored per-row `affect_probs`). Screen (`lg_screen.py heads`, `eval`; old eval kept as
+`lg_eval_v1.*`): H1r alone −0.27 [−0.48, −0.07], minus reference −0.63 [−0.94, −0.32]; the cross-fit again gave its
+conditioned term weight 0 in both folds. Fails the bar; no rebuild (the cheap rule).
+
+**AFF rebuilt on Leiden** (`lg_rebuild.py`, Sonnet builder; frozen r9 worktree `/project/CoSiR-lg-r9` at b84db1e):
+image and caption k-means replaced by Leiden at 64 everywhere (B included); picks and τ refit; CLIP's content graph
+reused. Run 02:07 to 02:54 (A3 749 s on GPU, 3.93 GiB). The score step's summary crashed (point_ci returns a dict);
+fixed, and the result recomputed from the saved arrays (`--step result`). τ_0..3 = 0.0001, 0.142, 0.342, 0.611.
+
+```
+AFF seed-42 dev, R@1 points: bar margin Leiden +0.50 [+0.30, +0.71] | k-means +0.70 [+0.46, +0.94] | paired -0.20 [-0.44, +0.05];
+AFF R@1 Leiden 18.58, k-means 19.14, paired -0.56 [-0.80, -0.30]; Leiden over B'(A0) +0.50 [+0.30, +0.71],
+over its matched control +0.53 [+0.34, +0.72]
+```
+
+The k-means reference reproduces AFF's stated development margin (+0.70 [+0.46, +0.94]).
