@@ -106,4 +106,4 @@ Whole round folder: `pytest -q --collect-only src/test/20261202_r9_scope` collec
 - Nothing deleted. Files I created that could go after the round: none besides the tests (the runner and its json are
   committed as evidence).
 
-Commit: 9e38a20 (the hand-back file itself is in this commit; this line was added after it)
+Commit: d2362ed (tests and fixes); a second commit corrects this line only.
