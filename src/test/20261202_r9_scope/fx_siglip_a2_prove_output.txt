@@ -1,0 +1,27 @@
+module /project/CoSiR-wt/r9-siglip-a2/src/test/20261202_r9_scope/r9_recipe_groups.py
+clip_b32 stored from /project/CoSiR/src/test/20261031_pseudo_partitions/results/partitions.npz keys ['affect', 'image', 'caption', 'local_groups']
+ stored smallest: image 1605 caption 635 affect 244
+ restarts log {}
+   affect bit-equal sizes min 
+   image bit-equal sizes min 1605
+   caption bit-equal sizes min 635
+   local_groups bit-equal sizes min 
+ time 11.6 s
+qwen3vl_emb_2b stored from /project/CoSiR/src/test/20261202_r9_scope/results/recipe/qwen3vl_emb_2b/partitions.npz keys ['affect', 'image', 'caption', 'local_groups']
+ stored smallest: image 1549 caption 1510 affect 244
+ restarts log {}
+   affect bit-equal sizes min 
+   image bit-equal sizes min 1549
+   caption bit-equal sizes min 1510
+   local_groups bit-equal sizes min 
+ time 29.0 s
+siglip2_so400m stored from /project/CoSiR/src/test/20261202_r9_scope/results/recipe/siglip2_so400m/partitions.npz keys ['affect', 'image', 'caption', 'local_groups']
+ stored smallest: image 773 caption 1 affect 244
+ restarts log {"caption": {"min_group_rows": 100, "tries": [{"seed": 42, "smallest": 1}, {"seed": 43, "smallest": 939}], "seed_used": 43}}
+   affect bit-equal sizes min 
+   image bit-equal sizes min 773
+   caption DIFFERENT sizes min 939
+   local_groups bit-equal sizes min 
+   image sorted smallest 5 [ 773 1362 1426 1609 1679] max 5400
+   caption sorted smallest 5 [ 939  994 1139 1313 1314] max 6249
+ time 23.8 s

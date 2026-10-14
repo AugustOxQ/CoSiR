@@ -70,6 +70,7 @@ N_SCORER = 183_694                        # build_partitions.N_ROWS
 BANK_SIZE, MIN_PAINTINGS = 65_536, 30     # build_partitions.BANK_SIZE; build_episode_bank(min_paintings=30)
 AIC = ("affect", "image", "caption")      # build_partitions.SETS["AIC"]
 STEPS = ("groups", "graph", "bank", "heads")
+MIN_GROUP_ROWS, MAX_RESTARTS = 100, 10    # restart rule (side branch r9-siglip-a2): refit with seed+1, ... if a group is smaller
 BUILD_RECORD = "build_record.json"
 BANK_CONSTANT_KEYS = ("aspect_a", "aspect_b", "block_sizes", "block_pairs")     # equal to CLIP's, copied not made
 CODE_MODULES = ("src.model.graph", "src.conditional_buddy.buddy_graph", "src.train.condition_sources",
@@ -104,11 +105,40 @@ def load_frozen() -> dict:
         return {key: np.array(z[key]) for key in ("affect", "local_groups")}
 
 
-def fit_partitions(img, txt, groups, scorer_train, frozen, *, k=K, seed=SEED, min_group_rows=200) -> dict:
-    """{affect, image, caption, local_groups} on scorer-train rows (local index = position in scorer_train)."""
+def _check_labels(name, labels, n, k):
+    assert labels.shape == (n,) and labels.dtype == np.int64, f"{name} labels shape or dtype"
+    assert labels.min() >= 0, f"{name}: a scorer-train row has no label (-1)"
+    assert len(np.unique(labels)) == k, f"{name}: not {k} groups on every row"
+
+
+def _restart_small_groups(name, labels, refit, *, n, k, seed, min_rows, restarts):
+    """Restart rule: while the smallest group has fewer than `min_rows` rows, refit with seed + 1, + 2, ... (at most
+    MAX_RESTARTS refits, then assert). `refit(seed)` gives the labels of one k-means fit. Nothing is recorded when the
+    first fit is large enough; otherwise restarts[name] holds the seeds tried, the smallest sizes and the seed used."""
+    smallest = int(np.bincount(labels, minlength=k).min())
+    if smallest >= min_rows:
+        return labels
+    tries = [{"seed": seed, "smallest": smallest}]
+    for step in range(1, MAX_RESTARTS + 1):
+        labels = refit(seed + step)
+        _check_labels(name, labels, n, k)
+        tries.append({"seed": seed + step, "smallest": int(np.bincount(labels, minlength=k).min())})
+        if tries[-1]["smallest"] >= min_rows:
+            restarts[name] = {"min_group_rows": min_rows, "tries": tries, "seed_used": seed + step}
+            return labels
+    raise AssertionError(f"{name}: smallest group under {min_rows} rows after {MAX_RESTARTS} restarts: {tries}")
+
+
+def fit_partitions(img, txt, groups, scorer_train, frozen, *, k=K, seed=SEED, min_group_rows=200,
+                   min_restart_rows=MIN_GROUP_ROWS, restarts=None) -> dict:
+    """{affect, image, caption, local_groups} on scorer-train rows (local index = position in scorer_train).
+
+    Restart rule: a k-means whose smallest group has fewer than `min_restart_rows` rows is refitted with seed + 1, ...
+    (`_restart_small_groups`); the refits go into the dict `restarts`, if given, and only when the rule fires."""
     st = np.asarray(scorer_train, dtype=np.int64)
     assert (np.diff(st) > 0).all(), "scorer_train must be sorted and unique"
     n = len(st)
+    restarts = {} if restarts is None else restarts
     local_groups = np.asarray(frozen["local_groups"], dtype=np.int64)
     affect = np.asarray(frozen["affect"], dtype=np.int64)
     assert np.array_equal(local_groups, np.unique(np.asarray(groups)[st], return_inverse=True)[1]), \
@@ -117,10 +147,16 @@ def fit_partitions(img, txt, groups, scorer_train, frozen, *, k=K, seed=SEED, mi
     source = ClipClusterSource(img, txt, st, n_clusters=k, seed=seed, min_group_rows=min_group_rows)
     image = source.labels_by_view["image"][st].astype(np.int64)
     caption = kmeans_partition(np.asarray(txt)[st], np.arange(n), k=k, seed=seed)
-    for name, labels in (("image", image), ("caption", caption)):
-        assert labels.shape == (n,) and labels.dtype == np.int64, f"{name} labels shape or dtype"
-        assert labels.min() >= 0, f"{name}: a scorer-train row has no label (-1)"
-        assert len(np.unique(labels)) == k, f"{name}: not {k} groups on every row"
+    for name, labels, feats in (("image", image, img), ("caption", caption, txt)):
+        _check_labels(name, labels, n, k)
+        # the source's image view and kmeans_partition run the same fit (same normalisation, same MiniBatchKMeans)
+        labels = _restart_small_groups(
+            name, labels, lambda s, f=feats: kmeans_partition(np.asarray(f)[st], np.arange(n), k=k, seed=s),
+            n=n, k=k, seed=seed, min_rows=min_restart_rows, restarts=restarts)
+        if name == "image":
+            image = labels
+        else:
+            caption = labels
     return {"affect": affect, "image": image, "caption": caption, "local_groups": local_groups}
 
 
@@ -328,10 +364,14 @@ def main(argv=None, *, allow_cpu=False):
 
     frozen = load_frozen()
     frozen_sha = {str(parts("clip_b32")["affect_km"]): R.assert_input(H.E2_PARTITIONS_REL, "clip_b32")}
-    new_partitions = fit_partitions(data.img_features, data.txt_features, split.groups, st, frozen)
+    restarts = {}
+    new_partitions = fit_partitions(data.img_features, data.txt_features, split.groups, st, frozen, restarts=restarts)
+    if restarts:
+        log("k-means restart rule fired:", json.dumps(restarts))
     log("image k-means (ClipClusterSource) and caption k-means (kmeans_partition) done")
     write_part(out, "partitions.npz", new_partitions, backbone=args.backbone, input_sha256={**base, **frozen_sha},
-               made=["image", "caption"], copied=["affect", "local_groups"])
+               made=["image", "caption"], copied=["affect", "local_groups"],
+               extra={"kmeans_restarts": restarts} if restarts else None)
     if last >= 1:
         graph = fit_graph(data.img_features, data.txt_features, st, allow_cpu=allow_cpu)
         write_part(out, "graph.npz", graph, backbone=args.backbone, input_sha256=base,

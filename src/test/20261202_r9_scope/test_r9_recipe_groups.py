@@ -577,3 +577,145 @@ def test_recipe_head_pins_root_is_optional(tmp_path):
     assert pins[H.E2_PARTITIONS_REL] == (mine, R.sha256_file(mine))
     assert pins[H.PARTITION_L_REL][0] == R.INPUT_PATHS[H.PARTITION_L_REL]
     assert H.recipe_head_pins.__defaults__ == (None,)                       # 05's callers keep the old default
+
+
+# ---------------------------------------------------------------- the restart rule (side branch r9-siglip-a2)
+
+def _stub_dead_centre(monkeypatch, bad_seeds, size=1):
+    """kmeans_partition whose fit for a seed in bad_seeds leaves group 0 with `size` rows (a dead centre on one row)."""
+    real, seen = G.kmeans_partition, []
+
+    def fake(x, rows, k, seed):
+        seen.append(seed)
+        labels = real(x, rows, k=k, seed=seed).copy()
+        if seed in bad_seeds:
+            others = np.where(labels != 0)[0]
+            labels[labels == 0] = 1 if k > 1 else 0               # empty group 0 ...
+            labels[others[:size]] = 0                             # ... then give it `size` rows
+        return labels
+    monkeypatch.setattr(G, "kmeans_partition", fake)
+    return seen
+
+
+def test_restart_constants():
+    import inspect
+    assert G.MIN_GROUP_ROWS == 100 and G.MAX_RESTARTS == 10
+    assert inspect.signature(G.fit_partitions).parameters["min_restart_rows"].default == G.MIN_GROUP_ROWS
+
+
+def test_rule_does_not_trigger_on_a_normal_fit_and_changes_nothing(corpus):
+    args = (features(1), features(2), corpus.groups, corpus.scorer_train, corpus.frozen)
+    log = {}
+    with_rule = G.fit_partitions(*args, restarts=log, **SMALL)
+    off = G.fit_partitions(*args, min_restart_rows=0, **SMALL)           # the rule switched off = today's code path
+    assert log == {}
+    assert tuple(with_rule) == tuple(off) == ("affect", "image", "caption", "local_groups")
+    assert all(with_rule[k].tobytes() == off[k].tobytes() and with_rule[k].dtype == off[k].dtype for k in off)
+    for name in ("image", "caption"):                                     # the plain k-means of seed 42, nothing else
+        x = features({"image": 1, "caption": 2}[name])
+        assert np.array_equal(with_rule[name], G.kmeans_partition(x, np.arange(N), k=KK, seed=G.SEED))
+
+
+def test_rule_triggers_on_a_dead_centre_and_refits_with_the_next_seed(corpus, monkeypatch):
+    img, txt = features(1), features(2)
+    seen = _stub_dead_centre(monkeypatch, bad_seeds={42})                 # caption only: image goes through the source
+    log = {}
+    parts = G.fit_partitions(img, txt, corpus.groups, corpus.scorer_train, corpus.frozen, restarts=log,
+                             min_restart_rows=50, **SMALL)
+    assert seen == [42, 43]
+    assert set(log) == {"caption"}
+    assert log["caption"]["tries"] == [{"seed": 42, "smallest": 1}, {"seed": 43, "smallest": log["caption"]["tries"][1]["smallest"]}]
+    assert log["caption"]["seed_used"] == 43 and log["caption"]["min_group_rows"] == 50
+    assert log["caption"]["tries"][1]["smallest"] >= 50
+    ref = G.kmeans_partition(txt, np.arange(N), k=KK, seed=43)
+    assert np.array_equal(parts["caption"], ref)
+    assert np.bincount(parts["caption"], minlength=KK).min() >= 50
+
+
+def test_rule_triggers_on_image_too(corpus, monkeypatch):
+    """A dead centre in the source's image view: the refit is the plain k-means of seed 43 on the image features."""
+    img, txt = features(1), features(2)
+
+    def bad_source(i, t, rows, **kw):
+        real = _REAL_SOURCE(i, t, rows, **kw)
+        image = real.labels_by_view["image"].copy()
+        if kw["seed"] == 42:
+            image[:] = np.where(image == 0, 1, image)
+            image[rows[0]] = 0                                            # group 0 left with one row
+        real.labels_by_view = {**real.labels_by_view, "image": image}
+        return real
+    monkeypatch.setattr(G, "ClipClusterSource", bad_source)
+    log = {}
+    parts = G.fit_partitions(img, txt, corpus.groups, corpus.scorer_train, corpus.frozen, restarts=log,
+                             min_restart_rows=50, **SMALL)
+    assert set(log) == {"image"} and log["image"]["tries"][0] == {"seed": 42, "smallest": 1}
+    assert log["image"]["seed_used"] == log["image"]["tries"][-1]["seed"] == 43
+    assert np.array_equal(parts["image"], G.kmeans_partition(img, np.arange(N), k=KK, seed=43))
+
+
+def test_source_image_view_equals_kmeans_partition_of_the_same_seed(corpus):
+    """The refit of the image view uses kmeans_partition; it is the same fit as the source's image view."""
+    img, txt = features(1), features(2)
+    for seed in (42, 43):
+        src = G.ClipClusterSource(img, txt, corpus.scorer_train, n_clusters=KK, seed=seed, min_group_rows=20)
+        assert np.array_equal(src.labels_by_view["image"], G.kmeans_partition(img, np.arange(N), k=KK, seed=seed))
+
+
+def test_rule_on_a_real_small_fit_logs_the_sizes(corpus):
+    """A threshold just above the real smallest group (both views) forces real refits; the log matches direct fits."""
+    rng = np.random.default_rng(5)                                       # blurred clusters: sizes change with the seed
+    img, txt = (unit(rng.normal(size=(N, D)) + 0.4 * features(i)) for i in (1, 2))
+    sizes = {n: int(np.bincount(G.kmeans_partition(x, np.arange(N), k=KK, seed=42), minlength=KK).min())
+             for n, x in (("image", img), ("caption", txt))}
+    thr = max(sizes.values()) + 1
+    log = {}
+    parts = G.fit_partitions(img, txt, corpus.groups, corpus.scorer_train, corpus.frozen, restarts=log,
+                             min_restart_rows=thr, **SMALL)
+    for name, x in (("image", img), ("caption", txt)):
+        direct = [int(np.bincount(G.kmeans_partition(x, np.arange(N), k=KK, seed=s), minlength=KK).min())
+                  for s in range(42, 53)]
+        if sizes[name] >= thr:
+            assert name not in log
+            continue
+        tries = log[name]["tries"]
+        assert [t["smallest"] for t in tries] == direct[:len(tries)] and tries[0]["seed"] == 42
+        assert [t["seed"] for t in tries] == list(range(42, 42 + len(tries)))
+        assert tries[-1]["smallest"] >= thr and all(t["smallest"] < thr for t in tries[:-1])
+        assert np.array_equal(parts[name], G.kmeans_partition(x, np.arange(N), k=KK, seed=log[name]["seed_used"]))
+
+
+def test_rule_gives_up_after_ten_restarts(corpus, monkeypatch):
+    seen = _stub_dead_centre(monkeypatch, bad_seeds=set(range(42, 100)))
+    with pytest.raises(AssertionError, match="caption.*10"):
+        G.fit_partitions(features(1), features(2), corpus.groups, corpus.scorer_train, corpus.frozen,
+                         min_restart_rows=50, **SMALL)
+    assert seen == list(range(42, 53))                                    # the first fit and ten restarts
+
+
+def test_record_field_only_when_the_rule_fires(run, monkeypatch):
+    assert run_main(run, "--stop-after", "groups") == 0
+    rec = json.loads((run.out / "partitions.npz.record.json").read_text())
+    assert "kmeans_restarts" not in rec
+
+
+def test_record_field_when_the_rule_fires(run, monkeypatch):
+    real = G.fit_partitions
+
+    def fire(*a, restarts=None, **kw):
+        out = real(*a, restarts=restarts, **kw)
+        restarts["caption"] = {"tries": [{"seed": 42, "smallest": 1}, {"seed": 43, "smallest": 939}],
+                               "seed_used": 43, "min_group_rows": 100}
+        return out
+    monkeypatch.setattr(G, "fit_partitions", fire)
+    assert run_main(run, "--stop-after", "groups") == 0
+    rec = json.loads((run.out / "partitions.npz.record.json").read_text())
+    assert rec["kmeans_restarts"]["caption"]["seed_used"] == 43
+
+
+@pytest.mark.parametrize("size, fires", [(49, True), (50, False)])
+def test_rule_boundary_is_strictly_fewer_than_min_rows(corpus, monkeypatch, size, fires):
+    seen = _stub_dead_centre(monkeypatch, bad_seeds={42}, size=size)
+    log = {}
+    G.fit_partitions(features(1), features(2), corpus.groups, corpus.scorer_train, corpus.frozen, restarts=log,
+                     min_restart_rows=50, **SMALL)
+    assert (seen == [42, 43]) == fires and ("caption" in log) == fires
