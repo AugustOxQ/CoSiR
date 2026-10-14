@@ -11,7 +11,8 @@ method-A era (factors, agreement rule, pseudo-partition, KISSME, …) are in App
 | aspect pair | the two aspects of an episode: emotion × style, emotion × genre or style × genre |
 | condition a / b | supports show aspect A (target p_A) / supports and contrasts swapped (target p_B) |
 | R@1 | share of rankings where the target ranks strictly first, in percentage points |
-| condition gain | R@1 under the correct condition minus R@1 for the same target under the swapped one; 0 for any scorer that ignores the examples |
+| condition gain | R@1 under the correct condition minus R@1 for the same target under the swapped one; 0 for any condition-free scorer |
+| condition-free | a scorer whose scores are identical under condition a and b, so its condition gain is 0. It may use the episode's examples (B centres on all 8 example items), but not which side shows which aspect. B, B′(A0), B′(A1) and every matched control are condition-free |
 | grouping, head | a label-free partition of the training rows (affect, image, caption, CSD style) / a classifier on frozen CLIP features predicting an item's group |
 | reader | round 1's learned model that reads an episode's support and contrast pairs and says which grouping they share |
 | R1 | the reader's weighted grouping term, added to the score when the reader is confident |
