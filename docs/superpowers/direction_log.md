@@ -70,6 +70,12 @@ stay in the entries below.
   at 1; style about 0; genre −0.69 [−1.07, −0.31] at 4 and −8.44 [−9.11, −7.73] at 1. AFF only steers toward emotion,
   so the pairs mostly tell it when not to steer. The two agree that the gain is emotion's; they differ on "needs fewer
   examples": the emotion gain needs none, the other aspects need the pairs. The GoEmotions source is not tested here.
+- **Open (for the user's weekly meeting, 2026-10-14):** are aspect labels needed in training to separate style from
+  genre? Every label-free source tried (CLIP k-means and Leiden, CSD, round 8's learned groupings, DINOv2, SigLIP 2)
+  mixes them; told true styles gain +3.92 on style × genre (round 7). The affect grouping already rests on an outside
+  labelled encoder (GoEmotions); CSD, trained with LAION style tags, still mixes style and genre. Options: (1) a paper
+  finding only; (2) a small screen of a style head trained on scorer-train style and genre labels as AFF's style route,
+  seed 42, a few hours; (3) labels in training as a new idea, its own loop. Ours: (2), then (1) or (3) on its result.
 - **Decided (A):** no k = 5 to 7 (user, after seeing the options); add k = 1, then stop (user). Exploration, small loop,
   side chat outside r9. The k = 1 rule for the reader's spread features: agent default.
 - **Why:** a cheap check of how many example pairs AFF needs, in the spirit of k-shot learning (user).
