@@ -104,11 +104,14 @@ READS = {
     "H9": {"design": "two_level", "backbone": "Qwen3-VL-Embedding-2B", "short": "Qwen"},
     "H10": {"design": "two_level", "backbone": "SigLIP 2 so400m/14-384", "short": "SigLIP 2"},
 }
+READ_BACKBONE_IDS = {"H6": "qwen3vl_emb_2b", "H7": "siglip2_so400m", "H8": "clip_b32",
+                     "H9": "qwen3vl_emb_2b", "H10": "siglip2_so400m"}      # run_r9_held.READ_BACKBONES (a test compares)
 SEEDS = {"seven": (52, 53, 54), "two_level": (55, 56, 57)}
 SMOKE_SEEDS = tuple(CM.SMOKE_SEEDS)
 VARIANTS = {None: "", "reserve": "_reserve"}      # a fix pass has no variant: held_pass_<Hn>_fix1.json is used when it exists
 SMOKE_RECORDS = {"smoke": "smoke_record.json", "crash1": "smoke_record_crash1.json",
-                 "fix1": "smoke_record_fix1.json", "reserve": "smoke_record_reserve.json"}      # as R6
+                 "fix1": "smoke_record_fix1.json", "reserve": "smoke_record_reserve.json",      # as R6
+                 "heldfix1": "smoke_record_heldfix1.json"}      # held --fix 1 (its own name: "fix1" may have served a first launch)
 SHA_HERE = None                 # the folder whose r9 files count (None: this one; a test points it at a tmp copy)
 AGREEMENT_DIR = CM.HERE / "rederive" / "rd9_out"      # ticket 25's output folder (real mode)
 LEDGER = CM.CHECKOUT / "docs/superpowers/held_ledger.md"
@@ -243,7 +246,7 @@ def _check_entry(rec: dict, name: str, where: str, level) -> None:
     c = rec.get(name)
     if not isinstance(c, dict):
         refuse(f"{where}: {name} is missing")
-    ok = (isinstance(c.get("quantity"), str) and _is_int(c.get("n")) and 0 <= c["n"] <= N_BOOT
+    ok = (c.get("quantity") == ST.QUANTITIES[name][2] and _is_int(c.get("n")) and 0 <= c["n"] <= N_BOOT
           and _is_num(c.get("point")) and _is_interval(c.get("ci95")) and _is_interval(c.get("ci_holm"))
           and _is_int(c.get("holm_k")) and _is_num(c.get("level_two_sided"))
           and type(c.get("near_boundary")) is bool and type(c.get("passes")) is bool
@@ -260,6 +263,8 @@ def load_pass(raw: bytes, name: str, read: str, smoke: bool) -> dict:
     rec = _parse(raw, name)
     if rec.get("rule_sha256") != CM.RULE_SHA256:
         refuse(f"{name}: its rule_sha256 is not this rule's")
+    if rec.get("read") != read or rec.get("backbone") != READ_BACKBONE_IDS[read]:  # GUARD: pass-read
+        refuse(f"{name}: its read and backbone are not {read} and {READ_BACKBONE_IDS[read]}")
     mode = "smoke" if smoke else "held"
     if rec.get("mode") != mode:
         refuse(f"{name}: its mode is not {mode!r}")
@@ -539,10 +544,11 @@ def pair_suffix(out: Path, read: str, variant) -> str:
 
 def latest_smoke_record(results: Path, variant) -> Path:
     """The smoke record covering the code run now (as R6): reserve: smoke_record_reserve.json; otherwise
-    smoke_record_fix1.json if it exists, else smoke_record_crash1.json if it exists, else smoke_record.json."""
+    smoke_record_heldfix1.json (a held --fix 1) if it exists, else smoke_record_fix1.json, else smoke_record_crash1.json,
+    else smoke_record.json."""
     if variant == "reserve":
         return results / SMOKE_RECORDS["reserve"]
-    for kind in ("fix1", "crash1"):
+    for kind in ("heldfix1", "fix1", "crash1"):
         if (results / SMOKE_RECORDS[kind]).is_file():
             return results / SMOKE_RECORDS[kind]
     return results / SMOKE_RECORDS["smoke"]
@@ -690,7 +696,7 @@ def main(argv=None) -> int:
                              + (f", not reached after {c['not_reached_after']}" if c["not_reached_after"] else "")))
         for b in v["boundary_report"]:
             say(f"boundary (rule 7.6, the integer rule decides): {b['check']} count {b['n']}, "
-                f"largest passing count {b['n_star']}")
+                f"re-derivation's count {b['rederivation_n']}, largest passing count {b['n_star']}")
     say(f"written: {path}")
     return 0
 

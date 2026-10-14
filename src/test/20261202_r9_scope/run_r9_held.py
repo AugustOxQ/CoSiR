@@ -352,7 +352,8 @@ def read_names(read, variant="held") -> SimpleNamespace:
                            verdict=f"held_verdict_{read}{suffix}.json", pass_=f"held_pass_{read}{pass_suffix}.json",
                            arrays=f"held_arrays_{read}{pass_suffix}.npz", sensitivity=f"sensitivity_{read}{suffix}.json",
                            row=read + ("-R" if variant == "reserve" else ""),
-                           smoke_record=SMOKE_RECORDS.get(variant if variant in ("fix1", "reserve") else "smoke"))
+                           smoke_record=SMOKE_RECORDS["heldfix1" if variant == "fix1" else "reserve" if variant == "reserve"
+                                                      else "smoke"])
 
 
 
@@ -494,8 +495,8 @@ def latest_smoke_record(results, variant):
     """Same precedence as run_r9_apply_rule; fix1 specifically requires its own smoke."""
     results = Path(results)
     if variant in ("fix1", "reserve"):
-        return results / SMOKE_RECORDS[variant]
-    for kind in ("fix1", "crash1"):
+        return results / SMOKE_RECORDS["heldfix1" if variant == "fix1" else variant]
+    for kind in ("heldfix1", "fix1", "crash1"):
         if (results / SMOKE_RECORDS[kind]).is_file():
             return results / SMOKE_RECORDS[kind]
     return results / SMOKE_RECORDS['smoke']
@@ -958,4 +959,7 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
+    # Run as a script this file is `__main__`; run_r9_preread imports `run_r9_held` by name. Without this entry that
+    # import loads a second copy whose Refused is not the one run_held catches.
+    sys.modules.setdefault('run_r9_held', sys.modules[__name__])
     sys.exit(main())

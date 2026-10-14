@@ -65,7 +65,8 @@ def case(tmp_path, monkeypatch):
 
 
 INPUT_GUARDS = ('stage0a_passed', 'stage0a_modules', 'stage0a_runner', 'parts', 'part_sha', 'pins',
-                'stage0b', 'stage2', 'stage2_evidence', 'a28_pins')
+                'stage0b', 'stage2', 'stage2_switched_off', 'stage2_dry_run', 'stage2_backbone',
+                'stage2_evidence', 'a28_pins')
 
 
 @pytest.mark.parametrize('guard', INPUT_GUARDS)
@@ -81,6 +82,9 @@ def test_input_stop(case, guard):
     if guard == 'pins': c.mp.setattr(U.RH, 'check_pins', lambda b: fail('pins'))
     if guard == 'stage0b': put(c.root / U.S0B.OUT_NAME, {'passed': False})
     if guard == 'stage2': c.stage['passed'] = False
+    if guard == 'stage2_switched_off': c.stage['switched_off'] = True
+    if guard == 'stage2_dry_run': c.stage['dry_run'] = True
+    if guard == 'stage2_backbone': c.stage['backbone'] = 'siglip2_so400m'
     if guard == 'stage2_evidence': c.stage['seed42_record']['sha256'] = 'bad'
     if guard == 'a28_pins':
         read = 'H8'
@@ -131,6 +135,9 @@ def regression_state(c, clip=False):
     return state
 
 
+SEED42_FIELDS = ('seed', 'mean_r1', 'checks', 'arrays', 'episodes_sha256', 'coef_sha256')
+
+
 @pytest.mark.parametrize('guard', ('episode_hashes', 'clip_regression', 'regression'))
 def test_regression_stop(case, guard):
     state = regression_state(case, guard == 'clip_regression')
@@ -138,6 +145,36 @@ def test_regression_stop(case, guard):
         case.mp.setattr(U.RH.E, 'identity_check', lambda *a: {'passed': False})
         case.mp.setattr(U.S2, 'seed42_record', lambda *a: (state.pins['seed42'], None, None))
     with pytest.raises(U.RH.Refused):
+        U.regression_gate(state, {})
+
+
+@pytest.mark.parametrize('field', SEED42_FIELDS)
+def test_regression_stop_one_field_wrong(case, field):
+    # Only this one pinned seed-42 field differs from the re-run; the other five agree.
+    state = regression_state(case)
+    got = dict(state.pins['seed42'])
+    got[field] = 'wrong'
+    case.mp.setattr(U.S2, 'seed42_record', lambda *a: (got, None, None))
+    with pytest.raises(U.RH.Refused, match='backbone seed-42 regression differs'):
+        U.regression_gate(state, {})
+
+
+def test_regression_all_fields_equal_passes(case):
+    state = regression_state(case)
+    case.mp.setattr(U.S2, 'seed42_record', lambda *a: (dict(state.pins['seed42']), None, None))
+    assert U.regression_gate(state, {})['passed'] is True
+
+
+@pytest.mark.parametrize('wrong', ('items_unequal', 'items_short', 'counts'))
+def test_clip_regression_stop_one_half_wrong(case, wrong):
+    # CLIP: the item comparison and the counts comparison each stop alone.
+    state = regression_state(case, clip=True)
+    items = {str(i): {'equal': True} for i in range(U.S0A.N_ITEMS)}
+    if wrong == 'items_unequal': items['0'] = {'equal': False}
+    if wrong == 'items_short': items.pop('0')
+    case.mp.setattr(U.S0A, 'regression_items', lambda *a: (items, None))
+    case.mp.setattr(U.S0A, 'compare_counts', lambda *a: ['differs'] if wrong == 'counts' else [])
+    with pytest.raises(U.RH.Refused, match='CLIP seed-42 regression differs'):
         U.regression_gate(state, {})
 
 
@@ -165,10 +202,18 @@ def phase1(case):
     return NS(backbone=backbone), agr, derived, source
 
 
-@pytest.mark.parametrize('guard', ('phase1', 'phase1_pins', 'phase1_identity', 'phase1_inputs', 'phase1_paths'))
+@pytest.mark.parametrize('guard', ('phase1', 'phase1_phase', 'phase1_backbone', 'phase1_failed', 'phase1_item',
+                                   'phase1_no_items', 'phase1_compared', 'phase1_pins', 'phase1_identity',
+                                   'phase1_inputs', 'phase1_paths'))
 def test_phase1_stop(case, guard):
     state, agr, derived, source = phase1(case)
     if guard == 'phase1': agr['agreement'] = False
+    if guard == 'phase1_phase': agr['phase'] = 2
+    if guard == 'phase1_backbone': agr['backbone'] = 'qwen3vl_emb_2b'
+    if guard == 'phase1_failed': agr['failed'] = 1
+    if guard == 'phase1_item': agr.update(items=[{'equal': True}, {'equal': False}], compared=2)
+    if guard == 'phase1_no_items': agr.update(items=[], compared=0)
+    if guard == 'phase1_compared': agr['compared'] = 2
     if guard == 'phase1_pins':
         agr['pins_sha256'] = 'bad'
         derived['inputs'][str(case.pins_path)]['sha256'] = 'bad'
@@ -275,26 +320,62 @@ def test_order_stops_and_records_skips(case, stop):
     assert all(rec['checks'][k]['status'] == 'not_run' for k in U.CHECK_ORDER[i + 1:])
 
 
+def own_files(case, a28=True):
+    """This checkout's pins, stage 0a record (and the A28 pins), as a record keys them: resolved path -> SHA-256."""
+    paths = [case.pins_path, case.root / U.S0A.OUT_NAME] + ([case.root / 'pins_a28.json'] if a28 else [])
+    return {str(p.resolve()): U.R.sha256_file(p) for p in paths}
+
+
 def launch_record(case):
     proof = put(case.root / 'proof.json', {'passed': True})
     rec = {'passed': True, 'read': 'H8', 'backbone': 'clip_b32',
            'checks': {k: {'status': 'passed'} for k in U.CHECK_ORDER},
            'module_sha256': U.R.r9_module_shas(), 'runner_sha256': U.RH.runner_sha256(),
-           'input_file_sha256': {str(case.part): U.R.sha256_file(case.part)},
+           'input_file_sha256': {str(case.part): U.R.sha256_file(case.part), **own_files(case)},
            'smoke_proof': {'path': str(proof), 'sha256': U.R.sha256_file(proof)}}
     return rec
 
 
-@pytest.mark.parametrize('guard', ('launch_passed', 'launch_code', 'launch_inputs', 'launch_smoke'))
+LAUNCH_GUARDS = ('launch_passed', 'launch_code', 'launch_inputs', 'launch_smoke', 'launch_modules', 'launch_read',
+                 'launch_backbone', 'launch_check_not_run', 'launch_no_inputs', 'launch_other_worktree_inputs',
+                 'launch_no_pins', 'launch_no_stage0a', 'launch_no_a28_pins')
+
+
+@pytest.mark.parametrize('guard', LAUNCH_GUARDS)
 def test_launch_stop(case, guard):
     rec = launch_record(case)
     if guard == 'launch_passed': rec['passed'] = False
     if guard == 'launch_code': rec['runner_sha256'] = 'bad'
     if guard == 'launch_inputs': case.part.write_text('changed')
     if guard == 'launch_smoke': rec['smoke_proof']['sha256'] = 'bad'
+    # C MEDIUM-1: one sub-condition at a time, each with the others true.
+    if guard == 'launch_modules': rec['module_sha256'] = {'recipe.py': 'older'}
+    if guard == 'launch_read': rec['read'] = 'H6'
+    if guard == 'launch_backbone': rec['backbone'] = 'qwen3vl_emb_2b'
+    if guard == 'launch_check_not_run': rec['checks']['smoke'] = {'status': 'not_run'}
+    if guard == 'launch_no_inputs': rec['input_file_sha256'] = {}
+    # C LOW-4: a passing record copied from another worktree keys that worktree's files.
+    if guard == 'launch_other_worktree_inputs':
+        rec['input_file_sha256'] = {str(case.part): U.R.sha256_file(case.part)}
+        for path, sha in own_files(case).items():
+            other = case.root / 'other_worktree' / Path(path).name
+            put(other, json.loads(Path(path).read_text()))
+            rec['input_file_sha256'][str(other.resolve())] = U.R.sha256_file(other)
+    own = {'launch_no_pins': case.pins_path, 'launch_no_stage0a': case.root / U.S0A.OUT_NAME,
+           'launch_no_a28_pins': case.root / 'pins_a28.json'}
+    if guard in own: rec['input_file_sha256'].pop(str(own[guard].resolve()))
     put(case.root / U.preread_name('H8'), rec)
     with pytest.raises(U.RH.Refused):
         U.preread_guard(case.root, 'H8')
+
+
+def test_launch_a28_pins_not_needed_for_a_held_read(case):
+    # H6 reads no ArtELingo-28 file: its record need not (and does not) list pins_a28.
+    rec = launch_record(case)
+    rec.update(read='H6', backbone='qwen3vl_emb_2b')
+    rec['input_file_sha256'] = {str(case.part): U.R.sha256_file(case.part), **own_files(case, a28=False)}
+    put(case.root / U.preread_name('H6'), rec)
+    assert U.preread_guard(case.root, 'H6')['name'] == U.preread_name('H6')
 
 
 def wiring(case):
@@ -496,6 +577,7 @@ def test_success_records_order_and_hashes(case):
     run_stubs(case)
     def inputs(read, evidence):
         evidence[str(case.part)] = U.R.sha256_file(case.part)
+        evidence.update(own_files(case))
         return NS()
     case.mp.setattr(U, 'inputs_gate', inputs)
     assert U.run('H8', case.root) == 0
@@ -550,7 +632,8 @@ def test_finite_scratch_sigma_change_blocks_launch(case):
     sigma = {c: {'sigma_a2': 1., 'sigma_eps2': 2.} for c in U.RH.ST.CHECKS}
     path = put(case.root / 'sensitivity_seed42_qwen3vl_emb_2b.json', sigma)
     rec = launch_record(case)
-    rec.update(read='H9', backbone='qwen3vl_emb_2b', input_file_sha256={str(path): U.R.sha256_file(path)})
+    rec.update(read='H9', backbone='qwen3vl_emb_2b',
+               input_file_sha256={str(path): U.R.sha256_file(path), **own_files(case)})
     put(case.root / U.preread_name('H9'), rec)
     U.preread_guard(case.root, 'H9')
     sigma['P1']['sigma_a2'] = 9.
@@ -559,3 +642,193 @@ def test_finite_scratch_sigma_change_blocks_launch(case):
     assert U.RH.sigma_guard('qwen3vl_emb_2b', case.root)['sigma']['P1']['sigma_a2'] == 9.
     with pytest.raises(U.RH.Refused, match='inputs changed'):
         U.preread_guard(case.root, 'H9')
+
+
+# ---- the held launch gate through run_held (moved from final_review/fr_c_gate_test.py, C MEDIUM-1) ----
+# Each scenario calls the real RH.run_held with the real preread_guard and smoke_guard; only the ledger step
+# (refuse_or_go), h5_hashes, a28_reference and run_read are stubbed. A launch = run_read called.
+
+def arm(c, read='H8'):
+    launched = []
+    names = U.RH.read_names(read, 'held')
+    c.mp.setattr(U.RH, 'refuse_or_go', lambda *a: NS(names=names, attempts=[], want={}, ledger={}))
+    c.mp.setattr(U.RH, 'h5_hashes', lambda *a: {})
+    c.mp.setattr(U.RH, 'a28_reference', lambda *a: None)
+    c.mp.setattr(U.RH, 'run_read', lambda *a: launched.append(read) or 0)
+    return launched
+
+
+def good_smoke(c, sha=None, kind='smoke'):
+    put(c.root / U.AR.SMOKE_RECORDS[kind], {'passed': True, 'module_sha256': sha or U.R.r9_module_shas()})
+
+
+def go(c, read='H8', **kw):
+    launched = arm(c, read)
+    code = U.RH.run_held(U.RH.READ_BACKBONES[read], read, results=c.root, **kw)
+    return code, launched
+
+
+def test_gate_valid_record_launches(case):
+    put(case.root / U.preread_name('H8'), launch_record(case)); good_smoke(case)
+    code, launched = go(case)
+    assert code == 0 and launched == ['H8']
+
+
+def test_gate_missing_record(case):
+    good_smoke(case)
+    assert go(case) == (U.RH.EXIT_REFUSE, [])
+
+
+def test_gate_failed_record(case):
+    rec = launch_record(case); rec['passed'] = False
+    put(case.root / U.preread_name('H8'), rec); good_smoke(case)
+    assert go(case) == (U.RH.EXIT_REFUSE, [])
+
+
+def test_gate_check_not_run_but_passed_true(case):
+    rec = launch_record(case); rec['checks']['smoke'] = {'status': 'not_run'}
+    put(case.root / U.preread_name('H8'), rec); good_smoke(case)
+    assert go(case) == (U.RH.EXIT_REFUSE, [])
+
+
+def test_gate_stale_module_bytes(case):
+    rec = launch_record(case); rec['module_sha256'] = {'recipe.py': 'older'}
+    put(case.root / U.preread_name('H8'), rec); good_smoke(case)
+    assert go(case) == (U.RH.EXIT_REFUSE, [])
+
+
+def test_gate_other_read_same_backbone(case):
+    # H6's passing record placed under H9's name (both Qwen)
+    rec = launch_record(case); rec.update(read='H6', backbone='qwen3vl_emb_2b')
+    put(case.root / U.preread_name('H9'), rec); good_smoke(case)
+    assert go(case, 'H9') == (U.RH.EXIT_REFUSE, [])
+
+
+def test_gate_other_backbone(case):
+    rec = launch_record(case); rec.update(read='H9', backbone='clip_b32')
+    put(case.root / U.preread_name('H9'), rec); good_smoke(case)
+    assert go(case, 'H9') == (U.RH.EXIT_REFUSE, [])
+
+
+def test_gate_smoke_from_other_bytes(case):
+    put(case.root / U.preread_name('H8'), launch_record(case)); good_smoke(case, {'recipe.py': 'older'})
+    assert go(case) == (U.RH.EXIT_REFUSE, [])
+
+
+def test_gate_smoke_missing(case):
+    put(case.root / U.preread_name('H8'), launch_record(case))
+    assert go(case) == (U.RH.EXIT_REFUSE, [])
+
+
+def test_gate_empty_inputs(case):
+    rec = launch_record(case); rec['input_file_sha256'] = {}
+    put(case.root / U.preread_name('H8'), rec); good_smoke(case)
+    assert go(case) == (U.RH.EXIT_REFUSE, [])
+
+
+def test_gate_reserve_needs_reserve_preread(case):
+    put(case.root / U.preread_name('H8'), launch_record(case)); good_smoke(case, kind='reserve')
+    assert go(case, reserve=True) == (U.RH.EXIT_REFUSE, [])
+
+
+def test_gate_fix_needs_held_fix_preread(case):
+    # The base and the `_fix1` pre-reads pass; neither may serve a held --fix 1.
+    put(case.root / U.preread_name('H8'), launch_record(case))
+    put(case.root / U.preread_name('H8', 'fix1'), launch_record(case))
+    good_smoke(case, kind='heldfix1')
+    assert go(case, fix=1) == (U.RH.EXIT_REFUSE, [])
+
+
+def test_gate_malformed_record_does_not_launch(case):
+    (case.root / U.preread_name('H8')).write_text('[1, 2]'); good_smoke(case)
+    try:
+        code, launched = go(case)
+    except Exception:
+        launched = []
+    assert launched == []
+
+
+# ---- C LOW-2: a held --fix 1 has its own pre-read and smoke names ----
+
+def test_held_fix_launches_on_its_own_preread_and_smoke(case):
+    put(case.root / U.preread_name('H8', 'heldfix1'), launch_record(case)); good_smoke(case, kind='heldfix1')
+    code, launched = go(case, fix=1)
+    assert code == 0 and launched == ['H8']
+
+
+def test_held_fix_preread_is_free_when_fix1_authorised_the_first_launch(case):
+    # Base pre-read failed; `_fix1` passed on older bytes and authorised the first launch, with its own smoke record.
+    put(case.root / U.preread_name('H8'), {'passed': False})
+    put(case.root / U.preread_name('H8', 'fix1'), launch_record(case))
+    put(case.root / U.AR.SMOKE_RECORDS['fix1'], {'passed': True, 'module_sha256': {'recipe.py': 'older'}})
+    # The held fix runs on newer bytes: its smoke record and its pre-read are new files beside the old ones.
+    smoke = {'module_sha256': {'recipe.py': 'a'}, 'runner_sha256': 'a', 'passed': True}
+    assert U.publish_smoke(smoke, case.root, 'heldfix1')['name'] == 'smoke_record_heldfix1.json'
+    with pytest.raises(U.RH.Refused, match='canonical smoke stale'):
+        U.publish_smoke(smoke, case.root, 'fix1')       # the old name stays taken: the very deadlock
+    run_stubs(case)
+    assert U.run('H8', case.root, 'heldfix1') == 0
+    assert (case.root / U.preread_name('H8', 'heldfix1')).is_file()
+    assert json.loads((case.root / U.AR.SMOKE_RECORDS['fix1']).read_text())['module_sha256'] == {'recipe.py': 'older'}
+
+
+def test_held_fix_smoke_record_takes_precedence_in_both_latest_functions(case):
+    for kind in ('smoke', 'fix1', 'heldfix1'):
+        put(case.root / U.AR.SMOKE_RECORDS[kind], {'passed': True})
+    assert U.AR.latest_smoke_record(case.root, None).name == 'smoke_record_heldfix1.json'
+    assert U.RH.latest_smoke_record(case.root, 'held').name == 'smoke_record_heldfix1.json'
+    assert U.RH.latest_smoke_record(case.root, 'fix1').name == 'smoke_record_heldfix1.json'
+    assert U.RH.read_names('H8', 'fix1').smoke_record == 'smoke_record_heldfix1.json'
+    assert U.RH.read_names('H8', 'held').smoke_record == 'smoke_record.json'
+
+
+def test_cli_held_fix_flag_runs_the_heldfix1_kind(case):
+    seen = []
+    case.mp.setattr(U, 'run', lambda read, results, kind: seen.append((read, kind)) or 0)
+    assert U.main(['--read', 'H8', '--held-fix', '1', '--results', str(case.root)]) == 0
+    assert U.main(['--read', 'H8', '--fix', '1', '--results', str(case.root)]) == 0
+    assert seen == [('H8', 'heldfix1'), ('H8', 'fix1')]
+
+
+# ---- C LOW-1: a refused gate, run_r9_held.py as a script, exits 4 ----
+
+def test_script_run_of_held_runner_exits_4_on_a_refused_gate(case):
+    # Execute the runner as `__main__` in its own namespace (the way `python run_r9_held.py` does), with the real
+    # `if __name__ == '__main__':` block. The module run_r9_preread imports by name must be this same namespace.
+    source = (HERE / 'run_r9_held.py').read_text()
+    head, marker, tail = source.partition("if __name__ == '__main__':")
+    assert marker
+    mod = type(sys)('__main__')
+    mod.__file__ = str(HERE / 'run_r9_held.py')
+    case.mp.setitem(sys.modules, '__main__', mod)
+    case.mp.delitem(sys.modules, 'run_r9_held')
+    case.mp.delitem(sys.modules, 'run_r9_preread')
+    case.mp.setattr(sys, 'argv', ['run_r9_held.py', '--backbone', 'clip_b32', '--read', 'H8'])
+    exec(compile(head, mod.__file__, 'exec'), mod.__dict__)
+    mod.refuse_or_go = lambda *a: NS(names=mod.read_names('H8', 'held'), attempts=[], want={}, ledger={})
+    with pytest.raises(SystemExit) as stop:
+        exec(compile('\n' * head.count('\n') + marker + tail, mod.__file__, 'exec'), mod.__dict__)
+    assert stop.value.code == mod.EXIT_REFUSE == 4
+
+
+# ---- C LOW-3: a scratch smoke run writes nothing into committed paths ----
+
+def test_smoke_agreement_writes_only_into_the_smoke_folder(case):
+    out = case.root / 'smoke/tag'
+    names = U.RH.read_names('H8', 'smoke')
+    put(out / names.pass_, {'checks': {c: {'n': 3} for c in U.RH.ST.CHECKS}})
+    rederive_out = case.root / 'rederive_out'
+    case.mp.setattr(U.AR, 'AGREEMENT_DIR', rederive_out)
+    got = U.smoke_agreement(out, 'H8', 'tag')
+    assert Path(got['copy']) == out / 'rd9_H8_agreement.json' and (out / 'rd9_H8_agreement.json').is_file()
+    assert not rederive_out.exists()
+
+
+def test_scratch_smoke_record_has_no_committed_copy(case):
+    record = {'module_sha256': {'recipe.py': 'a'}, 'runner_sha256': 'a', 'passed': True}
+    scratch = case.root / 'scratch'
+    U.publish_smoke(record, scratch, 'smoke')
+    assert (scratch / U.AR.SMOKE_RECORDS['smoke']).is_file()
+    assert not (case.root / 'folder').exists()
+    U.publish_smoke(record, case.root, 'smoke')       # the real results folder: the committed copy too
+    assert (case.root / 'folder' / U.AR.SMOKE_RECORDS['smoke']).is_file()

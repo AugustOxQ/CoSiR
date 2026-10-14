@@ -170,7 +170,7 @@ def scenario(g, mod, c, mp):
             if g != "fix_needs_pass":
                 (c.res / n.pass_).touch()
             if g != "fix_smoke":
-                (c.res / "smoke_record_fix1.json").touch()
+                (c.res / "smoke_record_heldfix1.json").touch()
         if g.startswith("reserve_"):
             variant = "reserve"
             ledger(c, row="H6-R")
@@ -401,6 +401,9 @@ def test_run_read_order_and_every_score_and_pass_argument(case, monkeypatch, cap
                                        f"{U.R.sha256_file(case.res / spec.names.pass_)}\n")
     assert not (case.res / spec.names.verdict).exists()
     assert (case.res / spec.names.pass_).is_file()
+    written = json.loads((case.res / spec.names.pass_).read_text())      # A1 L3: the pass file names its read and backbone
+    assert (written['read'], written['backbone']) == (read, U.READ_BACKBONES[read])
+    assert U.AR.READ_BACKBONE_IDS == U.READ_BACKBONES
     with np.load(case.res / spec.names.arrays) as z:
         assert z['aff_gate__a'].shape == (4, 9)
         assert z['pick__a'].shape == (9,)
@@ -648,7 +651,7 @@ def prepare_variant(mod, c, mp, variant, today=date(2026, 10, 18)):
         put(c.res / base.verdict, {})
     elif variant == 'fix1':
         put(c.res / base.pass_, {})
-        put(c.res / 'smoke_record_fix1.json', {})
+        put(c.res / 'smoke_record_heldfix1.json', {})
         ledger(c, episodes='; '.join(h for hs in rec['attempts'][0]['episodes_sha256'].values() for h in hs.values()))
     return rec
 
