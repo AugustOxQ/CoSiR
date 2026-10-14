@@ -19,6 +19,7 @@ import r9_common as R
 import r9_bundle as B
 import r9_descriptive as D
 import r9_score as S
+import r9_stats as ST
 import run_r9_descriptive as RD
 from test_r9_apply_rule import ALL0, edit_pass, stage
 import test_r9_score as TS
@@ -288,3 +289,153 @@ def test_smoke_tag_never_replaces_an_earlier_file(tmp_path, monkeypatch):
     assert target.read_text() == "earlier"
     with pytest.raises(RD.Refused, match="--smoke requires --smoke-dir"):
         RD.run("H6", smoke=True, smoke_tag="t1")
+
+
+# ---------------------------------------------------------------- H5's copied loader and pass check (rr fixwave 1, M1)
+# A small synthetic held_arrays.npz with a pass file made by r9_stats.pass_record from the same arrays.
+
+H5_SEEDS = list(R.SMOKE_SEEDS)
+H5_NPP = R.N_SMOKE
+H5_NSEED = len(R.PAIRS) * H5_NPP
+
+
+def h5_scores():
+    rng = np.random.default_rng(11)
+    cl = np.tile(np.arange(6, dtype=np.int64), H5_NSEED // 6)
+    out = []
+    for _ in H5_SEEDS:
+        s = {"cl": cl}
+        for key in RD.H5_CORE:
+            m = {k: rng.integers(0, 5, H5_NSEED) / 4 for k in RD.D.METRICS}
+            if key == "aff_cf":
+                m["gain"] = np.zeros(H5_NSEED)
+            s[key] = m
+        out.append(s)
+    return out
+
+
+@pytest.fixture(scope="module")
+def h5_made():
+    scores = h5_scores()
+    extra = {"episodes_sha256": {s: {p: "a" * 64 for p in R.PAIR_NAMES} for s in H5_SEEDS},
+             "runner_sha256": "b" * 64, "module_sha256": {"r9_stats.py": "c" * 64}}
+    rec = ST.pass_record(scores, "smoke", H5_SEEDS, extra, secondary=True)
+    arrays = {"seed_index": np.repeat(np.arange(len(H5_SEEDS), dtype=np.int64), H5_NSEED),
+              "pair_index": np.tile(np.repeat(np.arange(len(R.PAIRS), dtype=np.int64), H5_NPP), len(H5_SEEDS)),
+              "cl": np.concatenate([s["cl"] for s in scores])}
+    for key in RD.H5_CORE:
+        for m in RD.D.METRICS:
+            arrays[f"{key}__{m}"] = np.concatenate([np.asarray(s[key][m], dtype=np.float64) for s in scores])
+    return rec, arrays
+
+
+def h5_write(tmp_path, arrays):
+    path = tmp_path / "held_arrays.npz"
+    np.savez(path, **arrays)
+    return path
+
+
+def h5_core(tmp_path, arrays):
+    return RD.h5_load_core(h5_write(tmp_path, arrays), H5_SEEDS, H5_NPP)
+
+
+def test_h5_arrays_are_accepted_as_built(tmp_path, h5_made):
+    rec, arrays = h5_made
+    core = h5_core(tmp_path, arrays)
+    assert sorted(core) == H5_SEEDS
+    assert set(core[H5_SEEDS[0]]["pa"]) == set(RD.H5_CORE)
+    RD.h5_check_pass(core, rec)                      # raises on any difference
+
+
+def test_h5_load_core_refuses_a_missing_key(tmp_path, h5_made):
+    _, arrays = h5_made
+    with pytest.raises(D.BoundaryError, match="H5 arrays keys"):
+        h5_core(tmp_path, {k: v for k, v in arrays.items() if k != "aff_fused__r1"})
+
+
+def test_h5_load_core_refuses_an_extra_key(tmp_path, h5_made):
+    _, arrays = h5_made
+    with pytest.raises(D.BoundaryError, match="H5 arrays keys"):
+        h5_core(tmp_path, {**arrays, "unexpected": arrays["cl"]})
+
+
+@pytest.mark.parametrize("key, bad, match", [
+    ("cosine__r1", lambda x: x.astype(np.float32), "H5 arrays float64"),
+    ("pair_index", lambda x: x.astype(np.int32), "H5 arrays index dtype"),
+    ("seed_index", lambda x: x.astype(np.int32), "H5 arrays index dtype"),
+    ("cl", lambda x: x.astype(np.int32), "H5 arrays index dtype"),
+    ("B__gain", lambda x: np.where(np.arange(len(x)) == 3, np.nan, x), "H5 arrays float64"),
+    ("B__swap", lambda x: x[:-1], "H5 arrays shape"),
+    ("seed_index", lambda x: x[::-1].copy(), "H5 arrays seed order"),
+    ("pair_index", lambda x: x[::-1].copy(), "H5 arrays pair order"),
+])
+def test_h5_load_core_refuses_a_bad_array(tmp_path, h5_made, key, bad, match):
+    _, arrays = h5_made
+    with pytest.raises(D.BoundaryError, match=match):
+        h5_core(tmp_path, {**arrays, key: bad(arrays[key])})
+
+
+def test_h5_load_core_refuses_other_seeds_or_pair_size(tmp_path, h5_made):
+    _, arrays = h5_made
+    path = h5_write(tmp_path, arrays)
+    with pytest.raises(D.BoundaryError, match="H5 arrays shape"):
+        RD.h5_load_core(path, H5_SEEDS, H5_NPP + 1)
+    with pytest.raises(D.BoundaryError, match="H5 arrays shape"):
+        RD.h5_load_core(path, H5_SEEDS[:2], H5_NPP)
+
+
+def h5_changed(rec, section, check, **change):
+    out = json.loads(json.dumps(rec))
+    out[section][check].update(change)
+    return out
+
+
+@pytest.mark.parametrize("change", [{"n_episodes": 1}, {"n_clusters": 1}])
+def test_h5_check_pass_refuses_a_changed_count(tmp_path, h5_made, change):
+    rec, arrays = h5_made
+    with pytest.raises(D.BoundaryError, match="H5 arrays episode counts"):
+        RD.h5_check_pass(h5_core(tmp_path, arrays), {**rec, **change})
+
+
+@pytest.mark.parametrize("section, check", [("checks", "P1"), ("checks", "P6"), ("secondary", "S1")])
+@pytest.mark.parametrize("field, value", [("n", 1), ("point", 0.123456), ("ci95", [-0.5, 0.5]),
+                                          ("quantity", "R@1, AFF - something else")])
+def test_h5_check_pass_refuses_each_changed_item(tmp_path, h5_made, section, check, field, value):
+    rec, arrays = h5_made
+    core = h5_core(tmp_path, arrays)
+    assert rec[section][check][field] != value
+    with pytest.raises(D.BoundaryError, match="H5 arrays reproduce pass: " + check):
+        RD.h5_check_pass(core, h5_changed(rec, section, check, **{field: value}))
+
+
+def test_h5_check_pass_refuses_changed_arrays(tmp_path, h5_made):
+    rec, arrays = h5_made
+    bumped = arrays["aff_fused__r1"].copy()
+    bumped[:] = np.clip(bumped + 0.5, 0, 1)
+    with pytest.raises(D.BoundaryError, match="H5 arrays reproduce pass|H5 arrays episode counts"):
+        RD.h5_check_pass(h5_core(tmp_path, {**arrays, "aff_fused__r1": bumped}), rec)
+
+
+def test_h5_inputs_binds_smoke_pass_arrays_and_episodes(tmp_path, monkeypatch, h5_made):
+    rec, arrays = h5_made
+    smoke = tmp_path / "results" / "smoke"
+    smoke.mkdir(parents=True)
+    monkeypatch.setattr(RD.R, "R6D", tmp_path)
+    assert RD.h5_inputs(True) is None                # no pass file yet: the read is absent
+    rec = {**rec, "rule_sha256": R.R6_RULE_SHA256}   # H5's pass file carries round 6's rule
+    (smoke / "held_pass.json").write_text(json.dumps(rec))
+    np.savez(smoke / "held_arrays.npz", **arrays)
+    for seed in H5_SEEDS:
+        (smoke / f"held_episodes_seed{seed}.npz").write_bytes(b"x")
+    pair_index = arrays["pair_index"][:H5_NSEED]
+    monkeypatch.setattr(RD.E, "load_episodes", lambda path: SimpleNamespace(
+        seed=int(Path(path).stem.split("seed")[1]), n=H5_NSEED, pair_index=pair_index,
+        sha=rec["episodes_sha256"][Path(path).stem.split("seed")[1]]))
+    got = RD.h5_inputs(True)
+    assert [x["seed"] for x in got.inputs] == H5_SEEDS and set(got.inputs[0]["pa"]) == set(RD.H5_CORE)
+    # a changed point in the pass file stops the read
+    bad = json.loads(json.dumps(rec))
+    bad["checks"]["P2"]["point"] += 0.01
+    (smoke / "held_pass.json").write_text(json.dumps(bad))
+    with pytest.raises(D.BoundaryError, match="H5 arrays reproduce pass: P2"):
+        RD.h5_inputs(True)

@@ -22,6 +22,13 @@ def test_copied_array_changed_fails():
         D.assert_array_provenance({"rows": np.array([1, 3])}, {"rows": np.array([1, 2])}, [], ["rows"])
 
 
+def test_a_key_in_both_made_and_copied_fails():
+    # equal arrays: without the overlap guard the key would count as copied and pass (rr fixwave 2, LOW-5)
+    a = np.arange(4, dtype=np.float32)
+    with pytest.raises(AssertionError, match="made/copied keys overlap"):
+        D.assert_array_provenance({"k": a, "m": a + 1}, {"k": a.copy(), "m": a.copy()}, ["k", "m"], ["k"])
+
+
 def test_frozen_array_changed_fails(tmp_path, monkeypatch):
     a, b = tmp_path / "new.npz", tmp_path / "clip.npz"
     np.savez(a, **{k: np.array([0, 2]) for k in D.FROZEN_KEYS['prepare']})

@@ -822,10 +822,13 @@ def test_smoke_agreement_writes_only_into_the_smoke_folder(case):
     out = case.root / 'smoke/tag'
     names = U.RH.read_names('H8', 'smoke')
     put(out / names.pass_, {'checks': {c: {'n': 3} for c in U.RH.ST.CHECKS}})
+    put(out / names.sensitivity, {'P1': {'SE': 1.0}})
     rederive_out = case.root / 'rederive_out'
     case.mp.setattr(U.AR, 'AGREEMENT_DIR', rederive_out)
     got = U.smoke_agreement(out, 'H8', 'tag')
     assert Path(got['copy']) == out / 'rd9_H8_agreement.json' and (out / 'rd9_H8_agreement.json').is_file()
+    stand_in = json.loads((out / 'rd9_H8_agreement.json').read_text())
+    assert stand_in['sensitivity_sha256'] == U.R.sha256_file(out / names.sensitivity)    # fx-rr N3: the apply step needs it
     assert not rederive_out.exists()
 
 

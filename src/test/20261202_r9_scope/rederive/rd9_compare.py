@@ -67,8 +67,10 @@ class Comparison:
         return dict(agreement=not failures,compared=len(self.items),failed=len(failures),items=self.items)
 
 
-def compare_stats(comparison,ours,theirs,sensitivity=None):
-    """`sensitivity`: the runner's sensitivity file {P1..P7: {SE,x,x95}}; compared when our record carries margins."""
+def compare_stats(comparison,ours,theirs,sensitivity=None,compare_margins=True):
+    """`sensitivity`: the runner's sensitivity file {P1..P7: {SE,x,x95}}; compared when our record carries margins.
+    compare_margins=False (the H8 selection replay): the margins are not compared, because R6's seed-42 file holds only the
+    variance components, so there is no reported SE, x or x95 to compare with (the variance inputs are compared in phase 1)."""
     comparison.value('n_episodes',ours['n_episodes'],theirs.get('n_episodes',MISSING))
     comparison.value('n_clusters',ours['n_clusters'],theirs.get('n_clusters',MISSING))
     comparison.value('seeds',ours['seeds'],theirs.get('seeds',MISSING))
@@ -77,7 +79,7 @@ def compare_stats(comparison,ours,theirs,sensitivity=None):
         o=ours['checks'][j]
         t=theirs.get('checks',{}).get(j,{})
         comparison.value('checks.'+j+'.quantity',QUANTITIES[j],t.get('quantity',MISSING))
-        if any(k in o for k in ('SE','x','x95')):
+        if compare_margins and any(k in o for k in ('SE','x','x95')):
             # The detectable margin of rule §7.4: SE, x and x95 come from the runner's sensitivity file, not the pass file.
             margins=(sensitivity or {}).get(j,{})
             for k in ('SE','x','x95'): comparison.value('checks.'+j+'.'+k,o[k],margins.get(k,MISSING))
@@ -252,7 +254,12 @@ def main():
             sensitivity_raw=args.reported_sensitivity.read_bytes()
             sensitivity=json.loads(sensitivity_raw)
             extra['sensitivity_sha256']=hashlib.sha256(sensitivity_raw).hexdigest()
-        compare_stats(c,own['stats'],report.get('stats',report),sensitivity)
+        selection=own.get('mode')=='selection'
+        if selection:
+            extra['margins_not_compared']=('SE, x and x95 not compared, selection replay: the reported side is round 6 seed-42 pass counts, whose sensitivity '
+                                           'file holds only the variance components (no SE, x or x95); the variance inputs are '
+                                           'compared in phase 1')
+        compare_stats(c,own['stats'],report.get('stats',report),sensitivity,compare_margins=not selection)
         if own.get('read') in ('H8','H9','H10') and own.get('mode')!='selection':
             c.value('set_aside',derived_set_aside(own),reported_set_aside(report.get('set_aside',MISSING)))
             # The flags file must be the pinned stage-1 file. The near-duplicates file is in no pins file; its SHA-256 is

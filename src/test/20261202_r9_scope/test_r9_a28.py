@@ -5,6 +5,7 @@ items 1 and 2) on a small synthetic ArtELingo-28 CSV and translations table. No 
     /root/miniconda3/envs/CoSiR/bin/python -m pytest -q -p no:cacheprovider \
         src/test/20261202_r9_scope/test_r9_a28.py
 """
+import os
 import re
 import subprocess
 import sys
@@ -298,5 +299,6 @@ def test_importing_r9_a28_first_loads_src_from_main_and_r9_common_still_imports(
     code = "import r9_a28, r9_common; print('ok')"
     out = subprocess.run([sys.executable, "-c", code], cwd=root, capture_output=True, text=True,
                          env={"PATH": "/usr/bin", "PYTHONPATH": str(HERE), "PYTHONDONTWRITEBYTECODE": "1",
-                              "CUDA_VISIBLE_DEVICES": ""})
+                              "CUDA_VISIBLE_DEVICES": "",
+                              "HOME": os.environ.get("HOME", "/root")})   # git reads safe.directory from HOME
     assert out.returncode == 0 and out.stdout.strip() == "ok", out.stderr[-600:]

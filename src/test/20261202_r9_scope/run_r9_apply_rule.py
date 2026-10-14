@@ -6,10 +6,12 @@
 
 Reads results/held_pass_<Hn>.json and results/sensitivity_<Hn>.json, writes results/held_verdict_<Hn>.json once (an
 existing file is never replaced). Before any verdict (R6 rule 8.1, 8.3; this rule 4.1 "6 passed", 6 item 5, 7.4):
-  - the latest smoke record (results/smoke_record_fix1.json if it exists, else smoke_record_crash1.json if it exists,
-    else smoke_record.json; --variant reserve: smoke_record_reserve.json) says "passed": true and its module_sha256
-    equals r9_common.r9_module_shas() key for key (a changed file needs a new smoke); not in --smoke mode;
-  - the phase-2 agreement of the pass file exists, agreement true, bound to the pass file's SHA-256 (see AGREEMENT below).
+  - the latest smoke record (results/smoke_record_heldfix1.json if it exists, else smoke_record_fix1.json, else
+    smoke_record_crash1.json, else smoke_record.json; --variant reserve: smoke_record_reserve.json) says "passed":
+    true and its module_sha256 equals r9_common.r9_module_shas() key for key (a changed file needs a new smoke); not
+    in --smoke mode;
+  - the phase-2 agreement of the pass file exists, agreement true, bound to the pass file's SHA-256 and to the SHA-256 of
+    the sensitivity file this step reads (see AGREEMENT below).
 One pass file per verdict (R6 rule 8.1): when held_pass_<Hn>_fix1.json exists it is the pass (its agreement, and the
 original held_pass_<Hn>.json must exist) and the original is not read; the verdict is the unsuffixed
 held_verdict_<Hn>.json either way. There is no --variant fix1. --variant reserve reads the _reserve names (pass,
@@ -65,7 +67,8 @@ is finite (no NaN).
     smoke (bool, = --smoke; the comparator takes it from the pass file's own "mode"), agreement (true), compared (int >= 1,
     = len(items)), failed (0, = the number of items that are not equal), items (a list of {key, equal (bool), ...}; none
     may have equal false), read (<Hn>), pass_file (the pass file's name), held_pass_sha256 (= the SHA-256 of that pass
-    file's bytes), rederived_counts {P1..P7: int} (the independent pass's n_j, equal to the pass file's). Other keys
+    file's bytes), sensitivity_sha256 (= the SHA-256 of the sensitivity file this step reads), rederived_counts
+    {P1..P7: int} (the independent pass's n_j, equal to the pass file's). Other keys
     (independent_identity, backbone) are not read. Earlier drafts of this step expected other names (all_agree,
     disagreements, n_quantities); they are not accepted.
 """
@@ -659,6 +662,9 @@ def apply(read: str, smoke: bool = False, variant=None, not_run=None, results=No
     if not spath.is_file():
         refuse(f"{spath.name} is missing (rule 7.4)")
     sens, sens_sha = load_sensitivity(spath, read)
+    if agr.get("sensitivity_sha256") != sens_sha:  # GUARD: agreement-sensitivity
+        refuse(f"{apath.name} compared the margins with another sensitivity file: its sensitivity_sha256 is not the "
+               f"SHA-256 of {spath.name}")
     v = {**base, **decide(rec, sens, read, rd), "status": "run", "seeds": rec["seeds"],
          "held_pass_sha256": pass_sha, "pass_file": ppath.name, "fix_pass": sfx == "_fix1",
          "agreement_file": apath.name, "agreement_sha256": agr_sha,

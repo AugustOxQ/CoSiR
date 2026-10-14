@@ -539,7 +539,7 @@ def test_heads_step_fits_on_the_new_partitions_file_of_a_non_default_out(tmp_pat
     import r9_heads as H
     out = tmp_path / "o"
     default = R.RESULTS / "recipe" / "qwen3vl_emb_2b" / "partitions.npz"
-    assert not default.exists()                       # the default location is empty: hashing it would crash
+    # The default location may hold a real file (the main checkout after stage 2) or not; the test must not depend on it.
     G.write_part(out, "partitions.npz", corpus.frozen, backbone="qwen3vl_emb_2b", input_sha256={},
                  made=[], copied=list(corpus.frozen))
     seen = {}
@@ -547,7 +547,8 @@ def test_heads_step_fits_on_the_new_partitions_file_of_a_non_default_out(tmp_pat
     split = SimpleNs(groups="g", scorer_train="st", selection="sel")
     G.fit_heads_step(out, "qwen3vl_emb_2b", "DATA", split)
     path, sha = seen["pins"][H.E2_PARTITIONS_REL]
-    assert Path(path) == out / "partitions.npz" and sha == R.sha256_file(out / "partitions.npz")
+    assert Path(path) == out / "partitions.npz" and Path(path) != default
+    assert sha == R.sha256_file(out / "partitions.npz")
     assert seen["pins"][H.PARTITION_L_REL][0] == R.INPUT_PATHS[H.PARTITION_L_REL]      # frozen pins still CLIP's
     assert seen["pins"][H.AFFECT_KM_REL][0] == R.INPUT_PATHS[H.E2_PARTITIONS_REL]
     assert seen["upstream"] == seen["pins"]

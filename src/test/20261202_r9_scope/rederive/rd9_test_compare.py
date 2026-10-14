@@ -602,7 +602,7 @@ def test_margins_without_a_sensitivity_file_disagree(work, monkeypatch):
         run(work, own, rep, monkeypatch)    # no --reported-sensitivity
     got = json.loads((work / 'agr.json').read_text())
     assert {i['key'] for i in got['items'] if not i['equal']} == {f'checks.{j}.{k}' for j in S.CHECK_IDS for k in ('SE', 'x', 'x95')}
-    assert 'sensitivity_sha256' not in got
+    assert 'sensitivity_sha256' not in got and 'margins_not_compared' not in got
 
 
 def test_a_check_missing_from_the_sensitivity_file_disagrees(work, monkeypatch):
@@ -614,6 +614,34 @@ def test_a_check_missing_from_the_sensitivity_file_disagrees(work, monkeypatch):
         run(work, own, rep, monkeypatch, extra=['--reported-sensitivity', str(path)])
     got = json.loads((work / 'agr.json').read_text())
     assert {i['key'] for i in got['items'] if not i['equal']} == {f'checks.P7.{k}' for k in ('SE', 'x', 'x95')}
+
+
+def selection_with_margins(work):
+    """The H8 selection replay: rd9_phase2 writes SE, x and x95 in every mode; R6's seed-42 counts file has none."""
+    _, own, rep = stage(work, read='H8', name='seed42_pass_counts.json')
+    record = json.loads(own.read_text())
+    record['mode'] = 'selection'
+    write(own, record)
+    return own, rep
+
+
+@pytest.mark.parametrize('with_file', [False, True])
+def test_selection_replay_does_not_compare_the_margins_and_says_so(work, monkeypatch, with_file):
+    own, rep = selection_with_margins(work)
+    path, _ = margins_example(work, own)
+    got = run(work, own, rep, monkeypatch, extra=['--reported-sensitivity', str(path)] if with_file else ())
+    assert got['agreement'] is True
+    assert not any(i['key'].startswith('checks.') and i['key'].rsplit('.', 1)[-1] in ('SE', 'x', 'x95') for i in got['items'])
+    assert 'not compared' in got['margins_not_compared'] and 'no SE, x or x95' in got['margins_not_compared']
+
+
+@pytest.mark.parametrize('mode', ['held', 'smoke'])
+def test_held_modes_still_compare_the_margins(work, monkeypatch, mode):
+    _, own, rep = stage(work, mode=mode)
+    path, _ = margins_example(work, own)
+    got = run(work, own, rep, monkeypatch, extra=['--reported-sensitivity', str(path)])
+    assert got['agreement'] is True and 'margins_not_compared' not in got
+    assert {f'checks.{j}.{k}' for j in S.CHECK_IDS for k in ('SE', 'x', 'x95')} <= {i['key'] for i in got['items']}
 
 
 def test_the_quantity_label_is_compared(work, monkeypatch):
