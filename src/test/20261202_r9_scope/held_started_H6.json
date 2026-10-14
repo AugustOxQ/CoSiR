@@ -1,0 +1,179 @@
+{
+ "rule_sha256": "f9b07b34e645bc8e881fb13c7e7a085eabea6a52f4d93445305944cf1aea030c",
+ "attempts": [
+  {
+   "attempt": 1,
+   "time": "2026-10-14 09:05:08",
+   "flags": {
+    "after_crash": false,
+    "fix": null,
+    "reserve": false,
+    "smoke": false
+   },
+   "mode": "held",
+   "read": "H6",
+   "backbone": "qwen3vl_emb_2b",
+   "runner_sha256": "55caf787734aef50b15843015de488560c556be6ca366aa446985ac2173bcd4f",
+   "module_sha256": {
+    "src/test/20261202_r9_scope/r9_a28.py": "87e4e9cfac7aa82ecd6f162d84773486e7e0383d7d5475d3e9cc244e62542a93",
+    "src/test/20261202_r9_scope/r9_a28_context.py": "6814650ffd611b5539bc798812707c0ffac6deef2bf7d94b870d317e6b566c5e",
+    "src/test/20261202_r9_scope/r9_a28_data.py": "60a46b40077b98ee96ba6ed49f969e7c37b23852083a24c0b1b3e327a663499a",
+    "src/test/20261202_r9_scope/r9_a28_episodes.py": "d4a3f836881e498b2558a0476d50661136d2fc04357f8ec411650e67af8ad1e0",
+    "src/test/20261202_r9_scope/r9_backbone.py": "9ddd23a0dcbe3abcbaf1a47ff060b30f76e1195d16f080844c2fdb800590ff84",
+    "src/test/20261202_r9_scope/r9_bundle.py": "0e194af001353a78214cba5ce3c21f5a76db2783394873e50ad9f42112c6515b",
+    "src/test/20261202_r9_scope/r9_check_data.py": "a448fa880d998f737989bfb74a91cc53584a1c4311e6cfc5e14a22d554c29f13",
+    "src/test/20261202_r9_scope/r9_check_groups.py": "f5960b4154c8764ade54c22b7ae5a99142a558fd1d11896ddb03c916dba340a1",
+    "src/test/20261202_r9_scope/r9_check_heads.py": "79ab673ac9b51dbd8db77f1ab2dd1d6d28ed4d6ab0d0f2699afcfca4ca286020",
+    "src/test/20261202_r9_scope/r9_common.py": "69e450bea3819b335bada1c8492c41f7350e97e5cd7264ad1e373ef5d27ab3bd",
+    "src/test/20261202_r9_scope/r9_context.py": "18f9a4501212a68940faf54f1951253a75fc913ec68dbb4148449859faae00b3",
+    "src/test/20261202_r9_scope/r9_data.py": "9b9d3fe521d4d5728ffdc0899451e5dd984b1b8cc774c6ffe903030dcbc0ac0c",
+    "src/test/20261202_r9_scope/r9_descriptive.py": "e96fc731f9faca53befca1f1e645bb921cd9e4ca185387e787fe43623835d2da",
+    "src/test/20261202_r9_scope/r9_episodes.py": "eec7611153e58191ffc57066018ec64ff04c6f33467fc9f6796f71b3be84ccde",
+    "src/test/20261202_r9_scope/r9_heads.py": "097a40bbedaf702032c48789b11028b862ca9727e5e79921e02c4aedd7e2e6b2",
+    "src/test/20261202_r9_scope/r9_picks.py": "7a0f08e3564a369f24bf17708ae751975447e261abab66d882b325b5763899b6",
+    "src/test/20261202_r9_scope/r9_pins.py": "c8b589df7a0978c8f625633faf329816ec65abd35b4ac4c67b7e9b8323337c27",
+    "src/test/20261202_r9_scope/r9_probe_data.py": "d79edbee6564df70f7cba79a3971939289bbd5b7bce57c8b1d69dc5e1a1c7a44",
+    "src/test/20261202_r9_scope/r9_probe_plan.py": "156afdd6e2f69287b66c681ba100d3187142ce2933a35137c0c0b203fa0208d2",
+    "src/test/20261202_r9_scope/r9_probe_recipe.py": "573ac7e7c1cd16da2fad3ad3c6f2aec3d1052ef7845d9c717a0cf3d47586260a",
+    "src/test/20261202_r9_scope/r9_probe_score.py": "834670e7f9d734cd2a2bd73bb94d50970d2bc07e7afce7a3f0db7e8e46457bc8",
+    "src/test/20261202_r9_scope/r9_recipe_a3.py": "36947bc6cb6818059020c5414f34841273f60dc9fea3e1c969a64997f759fcb3",
+    "src/test/20261202_r9_scope/r9_recipe_baselines.py": "6c4aa102401fdc8df3085dd1bc6d9d4df44402b2408eb4722a81064f724afe91",
+    "src/test/20261202_r9_scope/r9_recipe_cells.py": "de6bd56ea874b331b11a0ba17e7c0163b287b251dea94aed90e0c7e20743e601",
+    "src/test/20261202_r9_scope/r9_recipe_groups.py": "919202a1e77b5fa893c0161d9c669f9dc1f91277cddb0780800f31ff058e3154",
+    "src/test/20261202_r9_scope/r9_recipe_reader.py": "ffb9166b65c85307d72e2ecb5fb3d5e4cedad5ec39e5d67478a01091927be71a",
+    "src/test/20261202_r9_scope/r9_score.py": "e708160828f13983e7e17b8ef7333381fc773345ae50796f4203dc99fae1736f",
+    "src/test/20261202_r9_scope/r9_stage2_mutations.py": "ddce871a903c059c2725cefc00a543e061bdb114a6f357b81fd7fdff7e9221e5",
+    "src/test/20261202_r9_scope/r9_stats.py": "7ec21a05062a5ef567e99edf6f8c168229959441a91106138eae13e81b592d7b",
+    "src/test/20261202_r9_scope/run_r9_a28_feasibility.py": "fa492387333e6ff6114f27453833c5011bcfdd6078c0be6c4be79dc650be0529",
+    "src/test/20261202_r9_scope/run_r9_a28_pins.py": "96e20d0e4aa6f75685efce7eb838d1304c264fb7f067197f64ca9b5b81b552f6",
+    "src/test/20261202_r9_scope/run_r9_a28_prepare.py": "acfacaf4d13466ee3259917ab9f433523fd6545b01117cf143811d81010aef4b",
+    "src/test/20261202_r9_scope/run_r9_apply_rule.py": "e778f6ed6616138e9a444d45c392733e8f4ca3281ff060b18ef1484c36874e4e",
+    "src/test/20261202_r9_scope/run_r9_descriptive.py": "1d662f437e1b6931cbeb15275d0b8805b0db74b1a42d2caf3642147a9e5b78ad",
+    "src/test/20261202_r9_scope/run_r9_held.py": "55caf787734aef50b15843015de488560c556be6ca366aa446985ac2173bcd4f",
+    "src/test/20261202_r9_scope/run_r9_preread.py": "6b89c1e74cb1a00c79c2e0b1465e74ecfb4c9aa5e60138e01cd0fa6c31709890",
+    "src/test/20261202_r9_scope/run_r9_probe.py": "2ce2866bd99206aab5b8985edf2736ee8995674b593b936d271732920dfadf2b",
+    "src/test/20261202_r9_scope/run_r9_stage0a.py": "0023407b2b51cdae0e41d66044e188b32f4fcdae565f7f49eafc31ddd409798f",
+    "src/test/20261202_r9_scope/run_r9_stage0b.py": "f8907860850f206994a1cf7e435833cc92475267c3f92a9252348c7f809957b4",
+    "src/test/20261202_r9_scope/run_r9_stage1_checks.py": "c19c3d282bf63b3fd3f7b7601d9f51e850b894c98e7415541b20ef47908aba0c",
+    "src/test/20261202_r9_scope/run_r9_stage2.py": "0b4348d7a7d2a2a6aeecfebc4761b20b69ca91e92a01ea17899ff7704b2aae60",
+    "scripts/run_r9_a3.sh": "39dddf16a8361c152840c122e1f6b225465d88897a8a58458f32b45b94e4aeb1",
+    "scripts/run_r9_extract.sh": "2f2a574228890d48df1374f8afeaecfb86127f8c52ccc053ff71dd093331afb8",
+    "scripts/run_r9_translate.sh": "b9fe725b11ec8f434065932663b6c33a18a07053e0479c66edf35de2da565281",
+    "scripts/das6_sync_r9.py": "fea3b678f13d3436e7af87e17be1cec19ecbbf09f1d8e1554dd6c64ca40ed832"
+   },
+   "input_sha256": {
+    "20261125_artelingo_held_test/DECISION_RULE.md": "7444a5e338838d837673b82b047c82b033eb1e2d1e0c3ed4e388dd8673070724",
+    "20261121_round3_affect_gate/DECISION_RULE.md": "2d311dbeac1a561fc2a719b730075c30819f4f7f3a592041cb64b65821dc5925",
+    "20261117_reader_fix_csd/DECISION_RULE.md": "613d8c9d13fb7d4787ec0fb91dc65cfd4a192d07c88ab8f961da3adc1c35d23c",
+    "20261117_reader_fix_csd/common.py": "99496dcf859ff0b0f746266125c975c5e2f9632e0c2c91d74df17102c65c10a7",
+    "20261117_reader_fix_csd/rc_core.py": "e649fff5d8253c8ba7aae0dbfff7a68321cef5fe3caa06d7b325a27fe904185c",
+    "20261117_reader_fix_csd/rb_build.py": "63c7310c890675cc63e49838feb364cdd1c5c68aafdfb0f0f7972128476cba7b",
+    "20261117_reader_fix_csd/rb_eval.py": "1826e65fd73b8c6cecae33b5df48503bf2cf33e067fc291d5c078c51184e0b14",
+    "20261117_reader_fix_csd/rb_features.py": "1e758f6d5de1b1dd246592f4045e0ae1dcc520c1d6012540a9e69b3314fb6caf",
+    "20261117_reader_fix_csd/results/rb_reader_A0.pkl": "bddfb698cb7d013640ae73c13cc974dc51be454a116396b2de53f88756aa354c",
+    "20261117_reader_fix_csd/results/rb_reader_A0.json": "50b258480c5321f062dbbe109934cbccff5fff6b6d2b397a774993b6d21f8dcd",
+    "20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.npz": "628b21aeaf6d306f82bd9abb68e6c257348535c3aff0fad0a2d065fc48302981",
+    "20261117_reader_fix_csd/results/cand_Rc_Rb_expected_A0.json": "c6e2f83b73c47b9c054e6381a5d020a05618728cb820861b89f0b80de5a8a16e",
+    "20261117_reader_fix_csd/results/rc_tau.json": "caf089e27e6018189f7a065418c37b6a6a7fcaa5f8d2324b72455873a4908024",
+    "20261117_reader_fix_csd/results/rule_application.txt": "9a074850e70db8075e85bc5475e9361905182d6f0815f0023eaf380ccdee9785",
+    "20261118_reader_fix_round2/DECISION_RULE.md": "368bec11363b222d348622a37a6e3aedcfe795d772781d7a255d79b60fab265c",
+    "20261118_reader_fix_round2/r2_fusion.py": "1406e8e71629e74c468f8b009a110e49aa05c481ed52cc1b8d99b59f87016027",
+    "20261118_reader_fix_round2/results/rule_application.txt": "cf1ec3852e334b1d56920bd8ab25c2db858bf97ab46ea36a7f65ebdd0916741f",
+    "20261120_r1_levers_brainstorm/bs_lib.py": "45cc5abd941ca1cd7e47f415cdf0e11d440fd9c703b99516e23eb6e41d49bf88",
+    "20261120_r1_levers_brainstorm/bs_04_readers.py": "0260fe5ad61e3d4a664cbb921f7d84efed8c9329716229310651712697a372b8",
+    "20261120_r1_levers_brainstorm/bs_05_aff.py": "4c947b1d42df1caa7fb7f769f245e7df9a59bce22ca2611413c6a5a7fd45d734",
+    "20261120_r1_levers_brainstorm/bs_10_subsets.py": "b00d9ed0b18e65e1e2be4dd8cdc5e05e277f673dbec5c826ddce4e18669cd7b4",
+    "20261120_r1_levers_brainstorm/results/bs_04_readers.json": "42bf6f204598c011bfada46e5eabf42dc7759fc6f6750721527d16239141691e",
+    "20261120_r1_levers_brainstorm/results/bs_05_aff.json": "a96719ba505b72883bfa2eeaca66ab872da128314654ba8f74580998b2a72b10",
+    "20261120_r1_levers_brainstorm/results/bs_10_subsets.json": "c9d64815c1c6dba9e84177f7a33fb4e917a326f801ed9b115ae770ce1a1988f1",
+    "20261030_aspect_baselines/run_baselines.py": "26508dde35f77850c4a80e98d08b0ea6576638577c84d3e96c39660ef02e63c4",
+    "20261030_aspect_baselines/results/per_anchor_seed42.npz": "a4818ba0fa5f7249355afe2d2483404dcd34d22cae26984b76be787bb6e9e59d",
+    "20261030_aspect_baselines/results/codes_provenance.json": "8e6a517b73610d4d21b42e2eb39f6fd4118dc4132049364c8e89eecb7716bfaf",
+    "20261030_aspect_baselines/results/baselines_seed42.json": "b77d304eb716bac0c2b465869bfad8797b1ed1947f48d53bd7f8d40771d3f9aa",
+    "20261030_aspect_baselines/results/baselines_seed43.json": "b250e89caadb1f5ad5937fb36b92ccf1f0f3b63a82b71056dc1ce2b9cc7e2859",
+    "20261030_aspect_baselines/results/baselines_seed45.json": "ecbcf5e900a5f844af9a3e986d1154d2764bb10ba2e2123aba2aaf77917c9890",
+    "20261030_aspect_baselines/results/baselines_seed47.json": "56e5c0661ad20372cd1c9976d2e48f07c995e44ce33f0649da5cc351f8652386",
+    "20261030_aspect_baselines/results/baselines_seed48.json": "feed925f3eddbf2957b4bce284e1bbf5e9d85132b760f94f6d2c76cb08654286",
+    "20261111_community_told_oracle/results/told_oracle.json": "76d9ec896b941a518e7db6684805fe0bc329f6afe4a48e1993992fbb221d70d2",
+    "20261030_aspect_baselines/results/episodes_seed42.npz": "12af979432ff1a20c88b614ab9e672f203eeeed9c2465bff305e72d01e6c0986",
+    "20261111_community_told_oracle/results/per_anchor_told_oracle.npz": "27e8101161607da2d6936aa5a8c84f8c296629fe08e37a68c8418c9356af1366",
+    "20261031_pseudo_partitions/results/partitions.npz": "3d6288c4b01357ceed6b80bf4615e572b257f0a31d6d9c668052aa066c755ea2",
+    "20261108_new_method_quick_checks/results/n6_posteriors.npz": "21efd3a822f2f52196a1f3b3e6f0ef71c3ddac48e72c710c88dcbe506623d8cc",
+    "20261101_aspect_factor_gonogo/checkpoints/A3_seed42.pt": "76c7ac23d25a09d3553d454784c92f83d7414bc9a438fc02ea735a2270488ccb",
+    "20261116_grouping_step1_style/results/step1_group_style.npz": "b04d96b4798acdfdbc9ca87436012755a681c931ac4f7612fa5683350b7a20e2",
+    "20261116_grouping_step1_style/results/step1_heads_style.npz": "1fbdd712ce58238031125704326bf6a79bebb46663cc13bab04da9c9056144c3",
+    "20261122_round4_aff_vetoes/results/dev_seed42.json": "fd7b3f480d5997284f9d8cfe29fe25275ff3edd38c1ada0a9392d8396ba9e01f",
+    "20261013_stage_d_selection/cache/prepare.npz": "d30f0281bb521d18c7a4d4adca1a7938689e2789db7fd528ce0322b90ac44c8b",
+    "20261014_stage_d_final/cache/held_codes.npz": "2901f875e7ad59f9f54509b61352a9cecb0eba310b31357f872219f25e2a12e9",
+    "20261121_round3_affect_gate/results/seed42_arrays.npz": "5ea4b09a4161a5eac6ca78942cf0f4b99b9c634edca651fba4c2689c7c24ab8a",
+    "20261030_aspect_baselines/results/smoke/baselines_seed9001.json": "729cb5653cbcf2ea97da6dad65da9eaddf5d1b4bbace5c9d551f9c1d4fe8c517",
+    "20261030_aspect_baselines/results/smoke/baselines_seed9002.json": "8e86b7e6da2411743d09c28154c2189ad50b11fd4a04f2bd76e53e80808ba352",
+    "20261030_aspect_baselines/results/smoke/baselines_seed9003.json": "e7e0ac0ed30cd170d0de1ccda56d9e6a2f6a663576725dcd6306b46e3429aada",
+    "20261121_round3_affect_gate/r3_common.py": "b1a60b1fd801bf9147d0bd58ae6da806d12fbcc982796135454f31dce3836f86",
+    "20261121_round3_affect_gate/r3_bundle.py": "bef50cbbef17f6c40d53c705a060967950d0690168c4b046b1cc3f0dd9fa0e9d",
+    "20261121_round3_affect_gate/r3_fusion.py": "ce51a819157842035fdfde488f042c25fa4764ed1b1c363728d5e3837e314637",
+    "20261121_round3_affect_gate/r3_stats.py": "846a4f5b3175302280c20fa415cfff4b0652522d06aa4fc46290f1a1db5de54d",
+    "20261108_new_method_quick_checks/results/n6_posteriors.npz.record.json": "4b80bf942c67dbbebf5e5067c4e039e7ba39f4d038f963bc1599897726291f44"
+   },
+   "pins_sha256": "57a9cc726c4450e388b0482b090054fe50cffecd12e7b4b2bd2ac05742c5c67a",
+   "sigma_source": {
+    "file": "/project/CoSiR/src/test/20261202_r9_scope/results/sensitivity_seed42_qwen3vl_emb_2b.json",
+    "sha256": "1c3c3b530923e71e8cef0a69a19a41ae69ecdb0f4160ce8af02b4ecb863c6a7a"
+   },
+   "coef_sha256": {
+    "affect": {
+     "img": "4eaf9a969ab4e428263616e01e0101f8847d36c678a7d25df3b8750ca4604fa5",
+     "txt": "1b38552b826bb393cfeb57e3fc4d4e6a14c216510c01139d923ae9616d70dfe7"
+    },
+    "affect_km": {
+     "img": "2774f5e8f62cb49a75c85be8e50c83e7cb05df6bf576632d647a55fcabf1f8e9",
+     "txt": "742cb48090a6d90dc2b3182e7d1d876eb76ac1efcdbb554009a02ba943f80f1b"
+    },
+    "image": {
+     "img": "aab8753669c46ea1b56ca85243bb365d15123a590e9a596c3e03ab9b4576f5c5",
+     "txt": "ef773eaaad37991e30367fbbad973d3652e4234717ddfd896e56a2df515cf8f8"
+    },
+    "caption": {
+     "img": "d71551c250e2a73cf94824d29ef28ac785f1321bbfb841aeb17756a4dabb3a2b",
+     "txt": "48573b7fb46343c25deed9b249dbc71838e3a0403b9641ccfee288d7bf767269"
+    },
+    "csd": {
+     "img": "4fb7f50865eb8083717363866bd1848f2b097ac66afb049b3da249a7de95e182",
+     "txt": "98e0a7245b3f54459170a6d724ac293a0c61012ba9fe6887dc7db47e24f9d3ae"
+    }
+   },
+   "value_sets": {
+    "file": "/project/CoSiR/src/test/20261125_artelingo_held_test/results/value_sets.json",
+    "sha256": "4ea6d33853e5516adc57a868194a03ab20963bcfe6f646df355a7e72d1970369"
+   },
+   "git": {
+    "head": "872f6da376375f6e3cfb5a0117f635ff120bcc29",
+    "status_src": "?? src/test/20261129_r8_grouping/results/\n?? src/test/20261129_r8_grouping/results_m4_09999/\n?? src/test/20261204_leiden_groupings/results/h1r_labels.npz\n?? src/test/20261204_leiden_groupings/results/lg_group.npz\n?? src/test/20261204_leiden_groupings/results/lg_heads.npz\n?? src/test/20261204_leiden_groupings/results/rebuild/"
+   },
+   "smoke_record": {
+    "name": "smoke_record_fix2.json",
+    "sha256": "8d0cd629041b4a8781ddf61cafe2a5a64cfc9373afd3bb6a2b833fbd42ade932"
+   },
+   "ledger": {
+    "row": "H6",
+    "cells": [
+     "H6",
+     "2026-10-14",
+     "ArtELingo held rows, aspect episodes, seeds 52 to 54 (H5's episodes), 4,096 per pair",
+     "Qwen3-VL-Embedding-2B",
+     "AFF fixed recipe on Qwen3-VL-Embedding-2B, round 9 (rule f9b07b34, section 4.1)",
+     "(pending)",
+     "run_r9_held.py 55caf787734aef50b15843015de488560c556be6ca366aa446985ac2173bcd4f pins_qwen3vl_emb_2b.json 57a9cc726c4450e388b0482b090054fe50cffecd12e7b4b2bd2ac05742c5c67a",
+     "(pending)"
+    ],
+    "episodes": [],
+    "scripts": [
+     "55caf787734aef50b15843015de488560c556be6ca366aa446985ac2173bcd4f",
+     "57a9cc726c4450e388b0482b090054fe50cffecd12e7b4b2bd2ac05742c5c67a"
+    ],
+    "report": "(pending)"
+   },
+   "episodes_sha256": {}
+  }
+ ]
+}
