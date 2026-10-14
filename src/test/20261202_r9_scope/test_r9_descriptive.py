@@ -114,6 +114,66 @@ def test_bind_read_refuses_a_pass_changed_after_the_verdict(tmp_path, monkeypatc
         RD.bind_read(s.results, read, False)
 
 
+def smoke_on_clip(tmp_path, read):
+    import run_r9_preread as preread
+    d = stage(tmp_path, read, ALL0, smoke=True, agree=False)
+    ppath = d / f"held_pass_{read}.json"
+    rec = json.loads(ppath.read_text())
+    rec.update(backbone="clip_b32", kind="smoke", coef_sha256={})
+    ppath.write_text(json.dumps(rec))
+    preread.smoke_agreement(d, read, "clip")
+    vpath, verdict = RD.AR.apply(read, smoke=True, results=d)
+    return SimpleNamespace(results=d, rec=rec, ppath=ppath, vpath=vpath, verdict=verdict)
+
+
+@pytest.mark.parametrize("read", ["H6", "H7"])
+def test_clip_smoke_binding_and_descriptive_backbone(tmp_path, monkeypatch, read):
+    s = smoke_on_clip(tmp_path, read)
+    bound = RD.bind_read(s.results, read, True)
+    assert bound.backbone == "clip_b32"
+    assert bound.verdict == s.verdict
+    assert bound.sources["verdict"]["sha256"] == R.sha256_file(s.vpath)
+    # Keep the real binding and report writer; numerical reporting is covered separately.
+    monkeypatch.setattr(RD, "R", SimpleNamespace(**{**vars(R), "RESULTS": tmp_path / "reports"}))
+    monkeypatch.setattr(RD, "load_bound_inputs", lambda b: SimpleNamespace(checks={}, eps=[]))
+    monkeypatch.setattr(RD, "score_inputs", lambda *a: ([], None, None, {"cells": {}}))
+    monkeypatch.setattr(RD.D, "describe", lambda *a: {})
+    monkeypatch.setattr(RD, "paired_reads", lambda *a: {})
+    monkeypatch.setattr(RD, "a28_report", lambda *a: {})
+    monkeypatch.setattr(RD, "stage0b", lambda *a: {})
+    path, sources = RD.run(read, smoke=True, smoke_dir=s.results, smoke_tag="clip")
+    report = json.loads(path.read_text())
+    assert report["backbone"] == s.rec["backbone"] == "clip_b32"
+    assert s.verdict["backbone"] == RD.RH.LEDGER_NAMES[report["backbone"]]
+    assert "on frozen CLIP features" in s.verdict["claim"]
+    assert sources["verdict"]["file"] == str(s.vpath)
+
+
+@pytest.mark.parametrize("field,value,boundary", [
+    ("backbone", "Qwen3-VL-Embedding-2B", "smoke verdict identity"),
+    ("read", "H7", "smoke verdict identity"),
+    ("mode", "held", "smoke verdict identity"),
+    ("rule_sha256", "0" * 64, "smoke verdict identity"),
+    ("status", "not run: switched off", "smoke verdict identity"),
+    ("variant", "reserve", "smoke verdict identity"),
+    ("pass_file", "held_pass_H7.json", "smoke verdict identity"),
+    ("fix_pass", True, "smoke verdict identity"),
+    ("held_pass_sha256", "0" * 64, "pass SHA binding"),
+    ("seeds", [52, 53, 54], "verdict seeds"),
+])
+def test_smoke_binding_refuses_inconsistent_verdict(tmp_path, field, value, boundary):
+    s = smoke_on_clip(tmp_path, "H6")
+    s.vpath.write_text(json.dumps({**s.verdict, field: value}))
+    with pytest.raises((RD.Refused, AssertionError), match=boundary):
+        RD.bind_read(s.results, "H6", True)
+
+
+def test_smoke_binding_without_a_verdict_remains_supported(tmp_path):
+    s = smoke_on_clip(tmp_path, "H6")
+    s.vpath.unlink()  # File created by this test in its tmp_path.
+    assert RD.bind_read(s.results, "H6", True).backbone == "clip_b32"
+
+
 def test_paired_aff_labels_separate_other_and_difference():
     cl = np.tile(np.arange(2), 3)
     pi = np.repeat(np.arange(3), 2)

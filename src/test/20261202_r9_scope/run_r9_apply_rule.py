@@ -110,6 +110,8 @@ READS = {
 }
 READ_BACKBONE_IDS = {"H6": "qwen3vl_emb_2b", "H7": "siglip2_so400m", "H8": "clip_b32",
                      "H9": "qwen3vl_emb_2b", "H10": "siglip2_so400m"}      # run_r9_held.READ_BACKBONES (a test compares)
+BACKBONE_NAMES = {backbone: {key: READS[read][key] for key in ("backbone", "short")}
+                  for read, backbone in READ_BACKBONE_IDS.items()}
 SEEDS = {"seven": (52, 53, 54), "two_level": (55, 56, 57)}
 SMOKE_SEEDS = tuple(CM.SMOKE_SEEDS)
 VARIANTS = {None: "", "reserve": "_reserve"}      # a fix pass has no variant: held_pass_<Hn>_fix1.json is used when it exists
@@ -267,8 +269,10 @@ def load_pass(raw: bytes, name: str, read: str, smoke: bool) -> dict:
     rec = _parse(raw, name)
     if rec.get("rule_sha256") != CM.RULE_SHA256:
         refuse(f"{name}: its rule_sha256 is not this rule's")
-    if rec.get("read") != read or rec.get("backbone") != READ_BACKBONE_IDS[read]:  # GUARD: pass-read
+    if rec.get("read") != read or (not smoke and rec.get("backbone") != READ_BACKBONE_IDS[read]):  # GUARD: pass-read
         refuse(f"{name}: its read and backbone are not {read} and {READ_BACKBONE_IDS[read]}")
+    if not isinstance(rec.get("backbone"), str) or rec["backbone"] not in BACKBONE_NAMES:  # GUARD: pass-backbone-known
+        refuse(f"{name}: unknown backbone id")
     mode = "smoke" if smoke else "held"
     if rec.get("mode") != mode:
         refuse(f"{name}: its mode is not {mode!r}")
@@ -415,7 +419,7 @@ def claim_a28(rec: dict, read: str, full: bool) -> tuple:
     named = "; ".join(f"{s['language']} ({s['pair']}, seed {s['seed']})" for s in sa) or "none"
     flagged = ", ".join(rec["flagged_languages"]) or "none"
     nd = rec["near_duplicates"]
-    bb = READS[read]["backbone"]
+    bb = (BACKBONE_NAMES[rec["backbone"]] if rec.get("mode") == "smoke" else READS[read])["backbone"]
     head = f"AFF on {bb}: " + CLAIM_FULL.replace("{N}", str(n)) if full else (
         f"AFF on {bb} {CLAIM_SMALL} (captions from the {n} languages that entered the read, machine-translated to "
         f"English).")
@@ -426,7 +430,8 @@ def claim_a28(rec: dict, read: str, full: bool) -> tuple:
 
 def decide(rec: dict, sens: dict, read: str, rederived: dict = None) -> dict:
     """Rule 4.1, 4.2 and 7.6 on a validated pass record and sensitivity record; `rederived` = the agreement's counts."""
-    checks, short = rec["checks"], READS[read]["short"]
+    checks = rec["checks"]
+    short = (BACKBONE_NAMES[rec["backbone"]] if rec.get("mode") == "smoke" else READS[read])["short"]
     boundary = []
 
     def tested_boundary(recomputed):
@@ -655,6 +660,8 @@ def apply(read: str, smoke: bool = False, variant=None, not_run=None, results=No
     if sfx == "_fix1" and not (out / f"held_pass_{read}.json").is_file():  # GUARD: fix1-original
         refuse(f"{ppath.name} exists, but the original held_pass_{read}.json it corrects is missing (rule 7.3)")
     rec = load_pass(raw, ppath.name, read, smoke)
+    if smoke:
+        base["backbone"] = BACKBONE_NAMES[rec["backbone"]]["backbone"]
     rd = agr["rederived_counts"]
     for nm in P_CHECKS:
         if rd[nm] != rec["checks"][nm]["n"]:  # GUARD: counts-equal

@@ -4,8 +4,8 @@
     python run_r9_descriptive.py --read H8 --smoke --smoke-dir /path/to/held/smoke [--smoke-tag NAME]
 
 Real mode requires the verdict's phase-2 agreement and its exact pass. Smoke
-requires a smoke pass, uses selection rows and writes only to this worktree's
-results/smoke/descriptive. --smoke-tag adds a fresh output suffix, never replacing
+requires a smoke pass and binds any present verdict to it, uses selection rows and
+writes only to this worktree's results/smoke/descriptive. --smoke-tag adds a fresh output suffix, never replacing
 an earlier file. Fix paths come from the verdict; --reserve selects
 the reserve verdict and writes descriptive_<read>_reserve.json. Missing paired
 reads are absent. All input hashes and reproduction checks precede the write.
@@ -104,7 +104,19 @@ def bind_read(out, read, smoke, reserve=False):
     require(rec.get('read') == read and rec.get('kind') == names.kind, 'pass read/kind')
     backbone = rec.get('backbone')
     require(backbone in BB.BACKBONES and (smoke or backbone == RH.READ_BACKBONES[read]), 'pass backbone')
-    if verdict is not None:
+    if smoke and vpath.is_file():
+        verdict = read_json(vpath)
+        allowed = ('full claim', 'small claim', 'NO-GO') if read in RH.A28_READS else ('GO', 'NO-GO')
+        refuse_unless(verdict.get('status') == 'run' and verdict.get('verdict') in allowed
+                      and verdict.get('rule_sha256') == R.RULE_SHA256 and verdict.get('read') == read
+                      and verdict.get('backbone') == RH.LEDGER_NAMES[backbone]
+                      and verdict.get('mode') == 'smoke' and verdict.get('variant') is None
+                      and verdict.get('pass_file') == names.pass_ and verdict.get('fix_pass') is False,
+                      'smoke verdict identity')
+        refuse_unless(R.sha256_file(ppath) == verdict.get('held_pass_sha256'), 'pass SHA binding')
+        require(verdict.get('seeds') == rec['seeds'], 'verdict seeds')
+        sources['verdict'] = source(vpath)
+    if not smoke:
         refuse_unless(R.sha256_file(ppath) == verdict.get('held_pass_sha256') == agr['held_pass_sha256'], 'pass SHA binding')
         require(verdict.get('seeds') == rec['seeds'], 'verdict seeds')
         require(all(agr['rederived_counts'][c] == rec['checks'][c]['n'] for c in AR.P_CHECKS), 'agreement counts')
