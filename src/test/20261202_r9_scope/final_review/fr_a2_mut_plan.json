@@ -1,0 +1,1642 @@
+[
+ {
+  "file": "run_r9_held.py",
+  "guard": "never_overwrite",
+  "kind": "marker",
+  "lineno": 215,
+  "end": 216,
+  "id": 0
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "ledger_row",
+  "kind": "marker",
+  "lineno": 372,
+  "end": 372,
+  "id": 1
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "ledger_duplicate",
+  "kind": "marker",
+  "lineno": 373,
+  "end": 373,
+  "id": 2
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "ledger_cells",
+  "kind": "marker",
+  "lineno": 377,
+  "end": 377,
+  "id": 3
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "ledger_not_run",
+  "kind": "marker",
+  "lineno": 386,
+  "end": 387,
+  "id": 4
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "ledger_backbone",
+  "kind": "marker",
+  "lineno": 388,
+  "end": 389,
+  "id": 5
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "ledger_runner_sha",
+  "kind": "marker",
+  "lineno": 398,
+  "end": 399,
+  "id": 6
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "ledger_pins_sha",
+  "kind": "marker",
+  "lineno": 400,
+  "end": 401,
+  "id": 7
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "ledger_report",
+  "kind": "marker",
+  "lineno": 406,
+  "end": 406,
+  "id": 8
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "E.assert_distinct(out, recorded={})",
+  "kind": "call_site",
+  "lineno": 427,
+  "end": 427,
+  "id": 9
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "read_backbone",
+  "kind": "marker",
+  "lineno": 433,
+  "end": 434,
+  "id": 10
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "switched_off",
+  "kind": "marker",
+  "lineno": 435,
+  "end": 435,
+  "id": 11
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "verdict_exists",
+  "kind": "marker",
+  "lineno": 454,
+  "end": 454,
+  "id": 12
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "pass_exists",
+  "kind": "marker",
+  "lineno": 455,
+  "end": 455,
+  "id": 13
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "smoke_missing",
+  "kind": "marker",
+  "lineno": 508,
+  "end": 508,
+  "id": 14
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "smoke_passed",
+  "kind": "marker",
+  "lineno": 510,
+  "end": 510,
+  "id": 15
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "smoke_stale",
+  "kind": "marker",
+  "lineno": 511,
+  "end": 512,
+  "id": 16
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "pins",
+  "kind": "marker",
+  "lineno": 521,
+  "end": 521,
+  "id": 17
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "sigma",
+  "kind": "marker",
+  "lineno": 541,
+  "end": 542,
+  "id": 18
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "value_sets_file",
+  "kind": "marker",
+  "lineno": 550,
+  "end": 551,
+  "id": 19
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "value_sets_equal",
+  "kind": "marker",
+  "lineno": 559,
+  "end": 560,
+  "id": 20
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "head_check",
+  "kind": "marker",
+  "lineno": 577,
+  "end": 578,
+  "id": 21
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "started_first",
+  "kind": "marker",
+  "lineno": 607,
+  "end": 608,
+  "id": 22
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "sensitivity_first",
+  "kind": "marker",
+  "lineno": 613,
+  "end": 613,
+  "id": 23
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_stage3",
+  "kind": "marker",
+  "lineno": 641,
+  "end": 642,
+  "id": 24
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_records",
+  "kind": "marker",
+  "lineno": 649,
+  "end": 650,
+  "id": 25
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_h8_started",
+  "kind": "marker",
+  "lineno": 672,
+  "end": 676,
+  "id": 26
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_records_guard(eps)",
+  "kind": "call_site",
+  "lineno": 744,
+  "end": 744,
+  "id": 27
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_set_aside",
+  "kind": "marker",
+  "lineno": 745,
+  "end": 746,
+  "id": 28
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_label_guard(data.a28, eps)",
+  "kind": "call_site",
+  "lineno": 747,
+  "end": 747,
+  "id": 29
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_records_guard(bundle)",
+  "kind": "call_site",
+  "lineno": 755,
+  "end": 755,
+  "id": 30
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_not_smoke",
+  "kind": "marker",
+  "lineno": 756,
+  "end": 756,
+  "id": 31
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_coef",
+  "kind": "marker",
+  "lineno": 757,
+  "end": 758,
+  "id": 32
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "check_pins(backbone)",
+  "kind": "call_site",
+  "lineno": 770,
+  "end": 770,
+  "id": 33
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "read_guard(spec.read, backbone, cell_record, smoke=spec.mode",
+  "kind": "call_site",
+  "lineno": 778,
+  "end": 778,
+  "id": 34
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "started_guard(started, spec.copy_to)",
+  "kind": "call_site",
+  "lineno": 801,
+  "end": 801,
+  "id": 35
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "sensitivity_guard(out / n.sensitivity)",
+  "kind": "call_site",
+  "lineno": 845,
+  "end": 845,
+  "id": 36
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "kept_json",
+  "kind": "marker",
+  "lineno": 227,
+  "end": 228,
+  "id": 37
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "kept_npz",
+  "kind": "marker",
+  "lineno": 241,
+  "end": 242,
+  "id": 38
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "E.assert_distinct(dict(self.hashes), recorded=self.recorded)",
+  "kind": "call_site",
+  "lineno": 301,
+  "end": 301,
+  "id": 39
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "ledger_a28_sha",
+  "kind": "marker",
+  "lineno": 404,
+  "end": 405,
+  "id": 40
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_order_guard(res, ledger, read)",
+  "kind": "call_site",
+  "lineno": 449,
+  "end": 449,
+  "id": 41
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "time_box",
+  "kind": "marker",
+  "lineno": 453,
+  "end": 453,
+  "id": 42
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "reserve_started",
+  "kind": "marker",
+  "lineno": 457,
+  "end": 457,
+  "id": 43
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "reserve_needs_verdict",
+  "kind": "marker",
+  "lineno": 458,
+  "end": 458,
+  "id": 44
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "copy_exists",
+  "kind": "marker",
+  "lineno": 468,
+  "end": 468,
+  "id": 45
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "two_attempts",
+  "kind": "marker",
+  "lineno": 474,
+  "end": 474,
+  "id": 46
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "fix_once",
+  "kind": "marker",
+  "lineno": 476,
+  "end": 477,
+  "id": 47
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "episodes_pending",
+  "kind": "marker",
+  "lineno": 479,
+  "end": 480,
+  "id": 48
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "fix_episodes",
+  "kind": "marker",
+  "lineno": 484,
+  "end": 485,
+  "id": 49
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "coef_sha",
+  "kind": "marker",
+  "lineno": 581,
+  "end": 582,
+  "id": 50
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_h8_verdict",
+  "kind": "marker",
+  "lineno": 644,
+  "end": 645,
+  "id": 51
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_label_join",
+  "kind": "marker",
+  "lineno": 655,
+  "end": 657,
+  "id": 52
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_pins",
+  "kind": "marker",
+  "lineno": 772,
+  "end": 772,
+  "id": 53
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_seeds",
+  "kind": "marker",
+  "lineno": 788,
+  "end": 788,
+  "id": 54
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "episodes_reported",
+  "kind": "marker",
+  "lineno": 820,
+  "end": 821,
+  "id": 55
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "R.assert_held_eligible(env.labels, env.split.groups, rows, e",
+  "kind": "call_site",
+  "lineno": 825,
+  "end": 825,
+  "id": 56
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "allowed_keys",
+  "kind": "marker",
+  "lineno": 850,
+  "end": 850,
+  "id": 57
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_pass_shape",
+  "kind": "marker",
+  "lineno": 871,
+  "end": 871,
+  "id": 58
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "smoke_verdict",
+  "kind": "marker",
+  "lineno": 911,
+  "end": 911,
+  "id": 59
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "post_rows",
+  "kind": "marker",
+  "lineno": 268,
+  "end": 270,
+  "id": 60
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "rerun_hashes",
+  "kind": "marker",
+  "lineno": 296,
+  "end": 297,
+  "id": 61
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "h5_hashes",
+  "kind": "marker",
+  "lineno": 299,
+  "end": 299,
+  "id": 62
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "episode_file",
+  "kind": "marker",
+  "lineno": 305,
+  "end": 306,
+  "id": 63
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "fix_needs_pass",
+  "kind": "marker",
+  "lineno": 460,
+  "end": 460,
+  "id": 64
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "fix_smoke",
+  "kind": "marker",
+  "lineno": 461,
+  "end": 461,
+  "id": 65
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "copy_matches",
+  "kind": "marker",
+  "lineno": 470,
+  "end": 471,
+  "id": 66
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "reserve_hashes",
+  "kind": "marker",
+  "lineno": 489,
+  "end": 489,
+  "id": 67
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_h8_hashes",
+  "kind": "marker",
+  "lineno": 695,
+  "end": 697,
+  "id": 68
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "a28_rerun_parts",
+  "kind": "marker",
+  "lineno": 699,
+  "end": 699,
+  "id": 69
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "started_exists",
+  "kind": "marker",
+  "lineno": 464,
+  "end": 464,
+  "id": 70
+ },
+ {
+  "file": "run_r9_held.py",
+  "guard": "after_crash_needs_start",
+  "kind": "marker",
+  "lineno": 466,
+  "end": 466,
+  "id": 71
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "include_pm_bool",
+  "kind": "marker",
+  "lineno": 240,
+  "end": 240,
+  "id": 72
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "admitted",
+  "kind": "marker",
+  "lineno": 242,
+  "end": 244,
+  "id": 73
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "parity",
+  "kind": "marker",
+  "lineno": 246,
+  "end": 247,
+  "id": 74
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "secondary_bool",
+  "kind": "marker",
+  "lineno": 249,
+  "end": 249,
+  "id": 75
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "secondary_no_pm",
+  "kind": "marker",
+  "lineno": 251,
+  "end": 251,
+  "id": 76
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "read_verdict_path",
+  "kind": "marker",
+  "lineno": 254,
+  "end": 254,
+  "id": 77
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "on_scores_callable",
+  "kind": "marker",
+  "lineno": 267,
+  "end": 267,
+  "id": 78
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "on_scores_before_verdict",
+  "kind": "marker",
+  "lineno": 268,
+  "end": 269,
+  "id": 79
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "cf_gain",
+  "kind": "marker",
+  "lineno": 315,
+  "end": 316,
+  "id": 80
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "cf_cell",
+  "kind": "marker",
+  "lineno": 217,
+  "end": 218,
+  "id": 81
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "read_verdict_name",
+  "kind": "marker",
+  "lineno": 259,
+  "end": 259,
+  "id": 82
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "pm_before_verdict",
+  "kind": "marker",
+  "lineno": 261,
+  "end": 262,
+  "id": 83
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "secondary_before_verdict",
+  "kind": "marker",
+  "lineno": 264,
+  "end": 265,
+  "id": 84
+ },
+ {
+  "file": "r9_score.py",
+  "guard": "on_scores_readonly",
+  "kind": "marker_assign",
+  "lineno": 278,
+  "end": 278,
+  "id": 85
+ },
+ {
+  "file": "r9_a28_episodes.py",
+  "guard": "seeds_free",
+  "kind": "marker",
+  "lineno": 269,
+  "end": 270,
+  "id": 86
+ },
+ {
+  "file": "r9_a28_episodes.py",
+  "guard": "seed_list",
+  "kind": "marker",
+  "lineno": 282,
+  "end": 284,
+  "id": 87
+ },
+ {
+  "file": "r9_a28_episodes.py",
+  "guard": "seeds",
+  "kind": "marker_assign",
+  "lineno": 287,
+  "end": 287,
+  "id": 88
+ },
+ {
+  "file": "r9_a28_episodes.py",
+  "guard": "h5",
+  "kind": "marker",
+  "lineno": 291,
+  "end": 291,
+  "id": 89
+ },
+ {
+  "file": "r9_a28_episodes.py",
+  "guard": "recorded",
+  "kind": "marker_assign",
+  "lineno": 292,
+  "end": 292,
+  "id": 90
+ },
+ {
+  "file": "r9_a28_episodes.py",
+  "guard": "stop",
+  "kind": "if_false",
+  "lineno": 170,
+  "end": 170,
+  "id": 91
+ },
+ {
+  "file": "r9_a28_episodes.py",
+  "guard": "members_in_language",
+  "kind": "marker",
+  "lineno": 181,
+  "end": 182,
+  "id": 92
+ },
+ {
+  "file": "r9_a28_episodes.py",
+  "guard": "round9",
+  "kind": "if_false",
+  "lineno": 254,
+  "end": 254,
+  "id": 93
+ },
+ {
+  "file": "r9_a28_episodes.py",
+  "guard": "round9",
+  "kind": "if_true",
+  "lineno": 254,
+  "end": 254,
+  "id": 94
+ },
+ {
+  "file": "r9_a28_episodes.py",
+  "guard": "free",
+  "kind": "if_false",
+  "lineno": 256,
+  "end": 256,
+  "id": 95
+ },
+ {
+  "file": "r9_a28_episodes.py",
+  "guard": "free",
+  "kind": "if_true",
+  "lineno": 256,
+  "end": 256,
+  "id": 96
+ },
+ {
+  "file": "r9_a28_context.py",
+  "guard": "a28_language_shape",
+  "kind": "marker",
+  "lineno": 74,
+  "end": 75,
+  "id": 97
+ },
+ {
+  "file": "r9_a28_context.py",
+  "guard": "a28_masked",
+  "kind": "marker",
+  "lineno": 110,
+  "end": 110,
+  "id": 98
+ },
+ {
+  "file": "r9_a28_context.py",
+  "guard": "a28_seed_mode",
+  "kind": "marker",
+  "lineno": 133,
+  "end": 135,
+  "id": 99
+ },
+ {
+  "file": "r9_a28_context.py",
+  "guard": "a28_eps_shape",
+  "kind": "marker",
+  "lineno": 154,
+  "end": 161,
+  "id": 100
+ },
+ {
+  "file": "r9_a28_context.py",
+  "guard": "a28_episode_rows",
+  "kind": "marker",
+  "lineno": 163,
+  "end": 165,
+  "id": 101
+ },
+ {
+  "file": "r9_a28_context.py",
+  "guard": "a28_language_join",
+  "kind": "marker",
+  "lineno": 170,
+  "end": 172,
+  "id": 102
+ },
+ {
+  "file": "r9_a28_context.py",
+  "guard": "a28_heads_backbone",
+  "kind": "marker",
+  "lineno": 89,
+  "end": 91,
+  "id": 103
+ },
+ {
+  "file": "r9_a28_context.py",
+  "guard": "a28_codes_mask",
+  "kind": "marker",
+  "lineno": 123,
+  "end": 123,
+  "id": 104
+ },
+ {
+  "file": "r9_a28_context.py",
+  "guard": "a28_heads_dim",
+  "kind": "marker",
+  "lineno": 85,
+  "end": 87,
+  "id": 105
+ },
+ {
+  "file": "r9_a28_context.py",
+  "guard": "a28_post_mask",
+  "kind": "marker",
+  "lineno": 103,
+  "end": 103,
+  "id": 106
+ },
+ {
+  "file": "r9_episodes.py",
+  "guard": "recorded_complete",
+  "kind": "marker",
+  "lineno": 246,
+  "end": 248,
+  "id": 107
+ },
+ {
+  "file": "r9_episodes.py",
+  "guard": "distinct_recorded",
+  "kind": "marker",
+  "lineno": 271,
+  "end": 271,
+  "id": 108
+ },
+ {
+  "file": "r9_episodes.py",
+  "guard": "values_subset",
+  "kind": "marker",
+  "lineno": 86,
+  "end": 87,
+  "id": 109
+ },
+ {
+  "file": "r9_episodes.py",
+  "guard": "values_subset",
+  "kind": "marker",
+  "lineno": 88,
+  "end": 89,
+  "id": 110
+ },
+ {
+  "file": "r9_episodes.py",
+  "guard": "validate",
+  "kind": "marker",
+  "lineno": 164,
+  "end": 164,
+  "id": 111
+ },
+ {
+  "file": "r9_episodes.py",
+  "guard": "members_in_rows",
+  "kind": "marker",
+  "lineno": 166,
+  "end": 167,
+  "id": 112
+ },
+ {
+  "file": "r9_episodes.py",
+  "guard": "recorded_file_sha",
+  "kind": "marker",
+  "lineno": 242,
+  "end": 243,
+  "id": 113
+ },
+ {
+  "file": "r9_episodes.py",
+  "guard": "recorded_agree",
+  "kind": "marker",
+  "lineno": 251,
+  "end": 252,
+  "id": 114
+ },
+ {
+  "file": "r9_episodes.py",
+  "guard": "load_sha",
+  "kind": "marker",
+  "lineno": 323,
+  "end": 323,
+  "id": 115
+ },
+ {
+  "file": "r9_episodes.py",
+  "guard": "distinct_new",
+  "kind": "marker",
+  "lineno": 266,
+  "end": 267,
+  "id": 116
+ },
+ {
+  "file": "r9_bundle.py",
+  "guard": "fit_rows_sha",
+  "kind": "marker",
+  "lineno": 125,
+  "end": 127,
+  "id": 117
+ },
+ {
+  "file": "r9_bundle.py",
+  "guard": "pm_raw",
+  "kind": "marker",
+  "lineno": 129,
+  "end": 131,
+  "id": 118
+ },
+ {
+  "file": "r9_bundle.py",
+  "guard": "readers",
+  "kind": "marker",
+  "lineno": 181,
+  "end": 183,
+  "id": 119
+ },
+ {
+  "file": "r9_bundle.py",
+  "guard": "per_seed",
+  "kind": "marker",
+  "lineno": 194,
+  "end": 197,
+  "id": 120
+ },
+ {
+  "file": "r9_bundle.py",
+  "guard": "bundle_rows",
+  "kind": "marker",
+  "lineno": 206,
+  "end": 207,
+  "id": 121
+ },
+ {
+  "file": "r9_bundle.py",
+  "guard": "cl_groups",
+  "kind": "marker",
+  "lineno": 209,
+  "end": 210,
+  "id": 122
+ },
+ {
+  "file": "r9_bundle.py",
+  "guard": "scores",
+  "kind": "marker",
+  "lineno": 253,
+  "end": 255,
+  "id": 123
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(isinstance(rec, dict), 'JSON object: ' + str(path))",
+  "kind": "call_site",
+  "lineno": 53,
+  "end": 53,
+  "id": 124
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(ppath.is_file(), 'pass missing: ' + str(ppath)",
+  "kind": "call_site",
+  "lineno": 97,
+  "end": 97,
+  "id": 125
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(rec.get('read') == read and rec.get('kind') == names",
+  "kind": "call_site",
+  "lineno": 99,
+  "end": 99,
+  "id": 126
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(backbone in BB.BACKBONES and (smoke or backbone == R",
+  "kind": "call_site",
+  "lineno": 101,
+  "end": 101,
+  "id": 127
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(len(attempt) == 1, 'producing started attempt')",
+  "kind": "call_site",
+  "lineno": 117,
+  "end": 117,
+  "id": 128
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(bool(r.get('coef_sha256')), 'coefficient hashes miss",
+  "kind": "call_site",
+  "lineno": 122,
+  "end": 122,
+  "id": 129
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(R.sha256_file(apath) == r.get('outputs', {}).get(apa",
+  "kind": "call_site",
+  "lineno": 124,
+  "end": 124,
+  "id": 130
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(R.sha256_file(sens_path) == r['outputs'].get(sens_pa",
+  "kind": "call_site",
+  "lineno": 136,
+  "end": 136,
+  "id": 131
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(sensitivity.get('seeds') == r['seeds'] and sensitivi",
+  "kind": "call_site",
+  "lineno": 138,
+  "end": 139,
+  "id": 132
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "RH.check_pins(backbone)",
+  "kind": "call_site",
+  "lineno": 151,
+  "end": 151,
+  "id": 133
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(R.sha256_file(R.pins_path(backbone)) == bound.rec['p",
+  "kind": "call_site",
+  "lineno": 152,
+  "end": 152,
+  "id": 134
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(all(bound.rec['input_sha256'].get(k) == v for k, v i",
+  "kind": "call_site",
+  "lineno": 153,
+  "end": 153,
+  "id": 135
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(coef == bound.rec['coef_sha256'] == loaded.attempt['",
+  "kind": "call_site",
+  "lineno": 161,
+  "end": 161,
+  "id": 136
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(set(flags['languages']) == set(coverage) == set(AE.L",
+  "kind": "call_site",
+  "lineno": 324,
+  "end": 324,
+  "id": 137
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(flags['flagged'] == bound.rec['flagged_languages'], ",
+  "kind": "call_site",
+  "lineno": 325,
+  "end": 325,
+  "id": 138
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(R.sha256_file(near_path) == bound.rec['near_duplicat",
+  "kind": "call_site",
+  "lineno": 327,
+  "end": 327,
+  "id": 139
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(all(type(near[k]) is int for k in ('cos_099', 'cos_0",
+  "kind": "call_site",
+  "lineno": 329,
+  "end": 331,
+  "id": 140
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(all(x.shape == d['cl'].shape for x, d in zip(languag",
+  "kind": "call_site",
+  "lineno": 334,
+  "end": 334,
+  "id": 141
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(set_aside == bound.rec['set_aside'], 'set-aside/pass",
+  "kind": "call_site",
+  "lineno": 337,
+  "end": 337,
+  "id": 142
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(len(tab.painting.unique()) == 746 and tab[tab.held].",
+  "kind": "call_site",
+  "lineno": 369,
+  "end": 370,
+  "id": 143
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(len(mine) == 1 and set(mine[0]['a28_episodes']) == s",
+  "kind": "call_site",
+  "lineno": 399,
+  "end": 399,
+  "id": 144
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(rec.get('rule_sha256') == R.RULE_SHA256 and rec.get(",
+  "kind": "call_site",
+  "lineno": 410,
+  "end": 411,
+  "id": 145
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(smoke == (smoke_dir is not None), '--smoke req",
+  "kind": "call_site",
+  "lineno": 427,
+  "end": 427,
+  "id": 146
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(not (smoke and reserve), 'reserve is a held mo",
+  "kind": "call_site",
+  "lineno": 428,
+  "end": 428,
+  "id": 147
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(smoke_tag is None or (smoke and RH.SUBDIR_RE.f",
+  "kind": "call_site",
+  "lineno": 429,
+  "end": 430,
+  "id": 148
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(not target.exists(), 'output exists: ' + str(t",
+  "kind": "call_site",
+  "lineno": 435,
+  "end": 435,
+  "id": 149
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(vpath.is_file(), 'verdict missing: ' + str(vpa",
+  "kind": "call_site",
+  "lineno": 70,
+  "end": 70,
+  "id": 150
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(verdict.get('status') == 'run' and verdict.get",
+  "kind": "call_site",
+  "lineno": 73,
+  "end": 74,
+  "id": 151
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(verdict.get('rule_sha256') == R.RULE_SHA256 an",
+  "kind": "call_site",
+  "lineno": 75,
+  "end": 77,
+  "id": 152
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(len(matched) == 1, 'verdict pass filename')",
+  "kind": "call_site",
+  "lineno": 81,
+  "end": 81,
+  "id": 153
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(verdict.get('fix_pass') is (names.kind == 'fix",
+  "kind": "call_site",
+  "lineno": 83,
+  "end": 83,
+  "id": 154
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(verdict.get('agreement_file') == aname, 'verdi",
+  "kind": "call_site",
+  "lineno": 86,
+  "end": 86,
+  "id": 155
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(apath is not None, 'agreement missing or SHA m",
+  "kind": "call_site",
+  "lineno": 90,
+  "end": 90,
+  "id": 156
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(sha == verdict['agreement_sha256'], 'agreement",
+  "kind": "call_site",
+  "lineno": 92,
+  "end": 92,
+  "id": 157
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(verdict.get('agreement') == {k: agr.get(k) for k in",
+  "kind": "call_site",
+  "lineno": 93,
+  "end": 94,
+  "id": 158
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "refuse_unless(R.sha256_file(ppath) == verdict.get('held_pass",
+  "kind": "call_site",
+  "lineno": 103,
+  "end": 103,
+  "id": 159
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(verdict.get('seeds') == rec['seeds'], 'verdict seeds",
+  "kind": "call_site",
+  "lineno": 104,
+  "end": 104,
+  "id": 160
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(all(agr['rederived_counts'][c] == rec['checks'][c]['",
+  "kind": "call_site",
+  "lineno": 105,
+  "end": 105,
+  "id": 161
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(attempt.get(k) == r.get(k), 'started/pass binding: '",
+  "kind": "call_site",
+  "lineno": 121,
+  "end": 121,
+  "id": 162
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(ep.seed == seed and ep.n == len(R.PAIRS) * npp and e",
+  "kind": "call_site",
+  "lineno": 131,
+  "end": 132,
+  "id": 163
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(bound.verdict.get('sensitivity_file') == sens_path.n",
+  "kind": "call_site",
+  "lineno": 141,
+  "end": 142,
+  "id": 164
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(R.sha256_file(AD.PINS_PATH) == bound.rec['pins_a28_s",
+  "kind": "call_site",
+  "lineno": 163,
+  "end": 163,
+  "id": 165
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(data.value_record == bound.rec['value_sets'], 'A28 v",
+  "kind": "call_site",
+  "lineno": 168,
+  "end": 168,
+  "id": 166
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(checked == bound.rec['value_sets'], 'ArtELingo value",
+  "kind": "call_site",
+  "lineno": 171,
+  "end": 171,
+  "id": 167
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(R.sha256_file(AD.PINS_PATH) == bound.rec['pins_a28_s",
+  "kind": "call_site",
+  "lineno": 174,
+  "end": 174,
+  "id": 168
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(data.a28.read_set_sha256 == bound.rec['read_set_sha2",
+  "kind": "call_site",
+  "lineno": 175,
+  "end": 175,
+  "id": 169
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(bundle.episodes_sha256 == ep.sha and all(np.array_eq",
+  "kind": "call_site",
+  "lineno": 188,
+  "end": 189,
+  "id": 170
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(np.array_equal(core['cl'], np.asarray(groups)[ep.poo",
+  "kind": "call_site",
+  "lineno": 190,
+  "end": 190,
+  "id": 171
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(all(np.array_equal(sc[s][m], .5 * (directions[s]['i2",
+  "kind": "call_site",
+  "lineno": 211,
+  "end": 212,
+  "id": 172
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(rec.get('mode') == 'smoke' and rec.get('rule_sha256'",
+  "kind": "call_site",
+  "lineno": 237,
+  "end": 238,
+  "id": 173
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(verdict.get('mode') == 'held' and verdict.get('rule_",
+  "kind": "call_site",
+  "lineno": 246,
+  "end": 247,
+  "id": 174
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(verdict.get('pass_file') in allowed, 'H5 pass filena",
+  "kind": "call_site",
+  "lineno": 249,
+  "end": 249,
+  "id": 175
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(verdict.get('agreement_file') == f'rederive_agreemen",
+  "kind": "call_site",
+  "lineno": 252,
+  "end": 252,
+  "id": 176
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(R.sha256_file(apath) == verdict.get('agreement_sha25",
+  "kind": "call_site",
+  "lineno": 255,
+  "end": 259,
+  "id": 177
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(rec.get('mode') == 'held' and rec.get('rule_sha256')",
+  "kind": "call_site",
+  "lineno": 261,
+  "end": 262,
+  "id": 178
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(ep.seed == seed and ep.n == len(R.PAIRS) * npp and e",
+  "kind": "call_site",
+  "lineno": 272,
+  "end": 272,
+  "id": 179
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(np.array_equal(core[seed]['pair_index'], ep.pair_ind",
+  "kind": "call_site",
+  "lineno": 273,
+  "end": 273,
+  "id": 180
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(other.rec['seeds'] == bound.rec['seeds'] and",
+  "kind": "call_site",
+  "lineno": 308,
+  "end": 309,
+  "id": 181
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(h8.rec['set_aside'] == set_aside and RH.a28_attempt_",
+  "kind": "call_site",
+  "lineno": 342,
+  "end": 343,
+  "id": 182
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(len(counts) > 0 and coverage[lang]['rows'] == flags[",
+  "kind": "call_site",
+  "lineno": 358,
+  "end": 358,
+  "id": 183
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(all(np.array_equal(x['cl'], groups[ep.pooled.anchor]",
+  "kind": "call_site",
+  "lineno": 375,
+  "end": 375,
+  "id": 184
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(type(count['n_episodes']) is int and count['n_episod",
+  "kind": "call_site",
+  "lineno": 416,
+  "end": 419,
+  "id": 185
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(type(cpu) is int and 0 <= cpu <= sum(count['per_scor",
+  "kind": "call_site",
+  "lineno": 422,
+  "end": 422,
+  "id": 186
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "AD._pinned(files, key)",
+  "kind": "call_site",
+  "lineno": 166,
+  "end": 166,
+  "id": 187
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(part == loaded.attempt['a28_episodes'].get(str(seed)",
+  "kind": "call_site",
+  "lineno": 181,
+  "end": 181,
+  "id": 188
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(rebuilt.sha == ep.sha, 'A28 rebuilt hashes')",
+  "kind": "call_site",
+  "lineno": 182,
+  "end": 182,
+  "id": 189
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(bundle.smoke is True and seed in R.SMOKE_SEEDS, 'syn",
+  "kind": "call_site",
+  "lineno": 195,
+  "end": 195,
+  "id": 190
+ },
+ {
+  "file": "run_r9_descriptive.py",
+  "guard": "require(RH.array_item(value, want)['equal'], 'rebuilt primar",
+  "kind": "call_site",
+  "lineno": 210,
+  "end": 210,
+  "id": 191
+ },
+ {
+  "file": "r9_descriptive.py",
+  "guard": "require(np.array_equal(arrays['seed_index'], np.repeat(np.ar",
+  "kind": "call_site",
+  "lineno": 52,
+  "end": 52,
+  "id": 192
+ },
+ {
+  "file": "r9_descriptive.py",
+  "guard": "require(all(np.asarray(x).shape == cl.shape for x in [*value",
+  "kind": "call_site",
+  "lineno": 110,
+  "end": 110,
+  "id": 193
+ },
+ {
+  "file": "r9_descriptive.py",
+  "guard": "require(bool(inputs), 'no descriptive seed inputs')",
+  "kind": "call_site",
+  "lineno": 118,
+  "end": 118,
+  "id": 194
+ },
+ {
+  "file": "r9_descriptive.py",
+  "guard": "require(mask.dtype == bool and mask.shape == data['cl'].shap",
+  "kind": "call_site",
+  "lineno": 127,
+  "end": 127,
+  "id": 195
+ },
+ {
+  "file": "r9_descriptive.py",
+  "guard": "require(np.array_equal(a['cl'], b['cl']) and np.array_equal(",
+  "kind": "call_site",
+  "lineno": 174,
+  "end": 174,
+  "id": 196
+ },
+ {
+  "file": "r9_descriptive.py",
+  "guard": "require((anchor >= 0).all() and (anchor < len(emotion)).all(",
+  "kind": "call_site",
+  "lineno": 190,
+  "end": 190,
+  "id": 197
+ },
+ {
+  "file": "r9_descriptive.py",
+  "guard": "require(set(z.files) == keys, 'arrays keys')",
+  "kind": "call_site",
+  "lineno": 45,
+  "end": 45,
+  "id": 198
+ },
+ {
+  "file": "r9_descriptive.py",
+  "guard": "require(x.shape == shape and np.isfinite(x).all(), 'arrays s",
+  "kind": "call_site",
+  "lineno": 49,
+  "end": 49,
+  "id": 199
+ },
+ {
+  "file": "r9_descriptive.py",
+  "guard": "require(x.dtype == dtype, 'arrays dtype: ' + k)",
+  "kind": "call_site",
+  "lineno": 51,
+  "end": 51,
+  "id": 200
+ },
+ {
+  "file": "r9_descriptive.py",
+  "guard": "require(np.array_equal(arrays['pair_index'][sl], pi), 'array",
+  "kind": "call_site",
+  "lineno": 57,
+  "end": 57,
+  "id": 201
+ },
+ {
+  "file": "r9_descriptive.py",
+  "guard": "require(name not in rows, 'direction scorer repeated')",
+  "kind": "call_site",
+  "lineno": 83,
+  "end": 83,
+  "id": 202
+ },
+ {
+  "file": "r9_descriptive.py",
+  "guard": "require(len(masks) == len(inputs), 'subset seed alignment')",
+  "kind": "call_site",
+  "lineno": 137,
+  "end": 137,
+  "id": 203
+ },
+ {
+  "file": "r9_descriptive.py",
+  "guard": "require(value == record.get(k), 'arrays reproduce pass: ' + ",
+  "kind": "call_site",
+  "lineno": 74,
+  "end": 74,
+  "id": 204
+ }
+]

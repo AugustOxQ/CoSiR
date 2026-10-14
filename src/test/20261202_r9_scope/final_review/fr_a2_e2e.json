@@ -1,0 +1,38 @@
+{
+  "H6": {
+    "differing_keys": [],
+    "checks": [
+      "P1",
+      "P2",
+      "P3",
+      "P4",
+      "P5",
+      "P6",
+      "P7"
+    ],
+    "n": {
+      "P1": 712,
+      "P2": 1157,
+      "P3": 1451,
+      "P4": 1162,
+      "P5": 1488,
+      "P6": 4241,
+      "P7": 3516
+    },
+    "sens_N": 1152,
+    "sens_n_paintings": 60,
+    "my_n_paintings": 60,
+    "pass_has_secondary": false
+  },
+  "H6_after": {
+    "rerun_without_flag": 4,
+    "after_crash_with_verdict": 4
+  },
+  "H8": {
+    "differing_keys": [],
+    "n_anchors": 9,
+    "levels": [],
+    "design": "two_level",
+    "mode": "held"
+  }
+}

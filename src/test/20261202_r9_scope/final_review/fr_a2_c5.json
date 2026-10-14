@@ -1,0 +1,81 @@
+{
+  "score_seed": {
+    "held bundle, verdict=held_verdict_H7.json (another read's verdict)": {
+      "accepted": true,
+      "pm_keys": [
+        "bilinear",
+        "diag",
+        "diag_relu"
+      ]
+    },
+    "held bundle, held_verdict_H6.json with verdict null (not run)": {
+      "accepted": true,
+      "pm_keys": [
+        "bilinear",
+        "diag",
+        "diag_relu"
+      ]
+    },
+    "held bundle, empty held_verdict_H6.json": {
+      "accepted": true,
+      "pm_keys": [
+        "bilinear",
+        "diag",
+        "diag_relu"
+      ]
+    },
+    "held bundle, held_verdict_H6_reserve.json only": {
+      "accepted": true,
+      "pm_keys": [
+        "bilinear",
+        "diag",
+        "diag_relu"
+      ]
+    },
+    "a28 bundle, verdict=held_verdict_H8.json (H9/H10 bundle)": {
+      "accepted": true,
+      "pm_keys": [
+        "bilinear",
+        "diag",
+        "diag_relu"
+      ]
+    },
+    "held bundle, on_scores with held_verdict_H7.json": {
+      "accepted": true,
+      "pm_keys": [
+        "bilinear",
+        "diag",
+        "diag_relu"
+      ],
+      "on_scores_calls": 18
+    },
+    "held bundle, verdict file missing (control)": {
+      "accepted": false,
+      "error": "no PM metric on held episodes before held_verdict_H6.json exists (rule sections 7.4, 8 item 3)"
+    }
+  },
+  "bind_read": {
+    "H6: verdict written by run_r9_apply_rule.apply": {
+      "verdict_backbone": "Qwen3-VL-Embedding-2B",
+      "verdict": "GO",
+      "RH.READ_BACKBONES": "qwen3vl_emb_2b",
+      "bound": false,
+      "refused": "verdict identity"
+    },
+    "H6: same verdict, backbone set to the code name": {
+      "bound": false,
+      "error": "BoundaryError: pass read/kind"
+    },
+    "H8: verdict written by run_r9_apply_rule.apply": {
+      "verdict_backbone": "CLIP ViT-B/32",
+      "verdict": "full claim",
+      "RH.READ_BACKBONES": "clip_b32",
+      "bound": false,
+      "refused": "verdict identity"
+    },
+    "H8: same verdict, backbone set to the code name": {
+      "bound": false,
+      "error": "BoundaryError: pass read/kind"
+    }
+  }
+}

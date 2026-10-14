@@ -1,0 +1,73 @@
+{
+  "rule_languages_in_python_sort_order": true,
+  "code_languages_equal_rule": true,
+  "builder_seeds_55_57": true,
+  "default_rng_tuple_note": true,
+  "shares_random_2000_mismatches": 0,
+  "draws": {
+    "55": {
+      "code_stop": null,
+      "my_stop": null,
+      "emotion__style": {
+        "sha_equal": true,
+        "shares_equal": true,
+        "part_sha_equal": true,
+        "set_aside_equal": true,
+        "reasons_equal": true,
+        "language_equal": true,
+        "set_aside": [
+          "Kyrgyz"
+        ],
+        "reasons": {
+          "Kyrgyz": "values_subset"
+        },
+        "share_range": [
+          157,
+          159
+        ],
+        "n_languages": 26
+      },
+      "emotion__genre": {
+        "sha_equal": true,
+        "shares_equal": true,
+        "part_sha_equal": true,
+        "set_aside_equal": true,
+        "reasons_equal": true,
+        "language_equal": true,
+        "set_aside": [
+          "Kyrgyz"
+        ],
+        "reasons": {
+          "Kyrgyz": "values_subset"
+        },
+        "share_range": [
+          157,
+          159
+        ],
+        "n_languages": 26
+      },
+      "style__genre": {
+        "sha_equal": true,
+        "shares_equal": true,
+        "part_sha_equal": true,
+        "set_aside_equal": true,
+        "reasons_equal": true,
+        "language_equal": true,
+        "set_aside": [
+          "Kyrgyz"
+        ],
+        "reasons": {
+          "Kyrgyz": "values_subset"
+        },
+        "share_range": [
+          157,
+          159
+        ],
+        "n_languages": 26
+      },
+      "pooled_n": 12288,
+      "parity_is_index_mod2": true
+    },
+    "seconds": 11
+  }
+}

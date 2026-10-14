@@ -1,0 +1,105 @@
+{
+  "pass_sha256": "7549a10bdbcf980e3e9e145cd83da7942dbfbbb2ec52e5f100e60465473a8d3e",
+  "pass_keys_equal": {
+    "checks": true,
+    "design": true,
+    "episodes_sha256": true,
+    "flagged_languages": true,
+    "holm_order": true,
+    "mode": true,
+    "module_sha256": true,
+    "n_clusters": true,
+    "n_episodes": true,
+    "near_duplicates": true,
+    "rule_sha256": true,
+    "runner_sha256": true,
+    "seeds": true,
+    "set_aside": true,
+    "time": false
+  },
+  "all_equal": false,
+  "not_recomputed_keys": [
+    "attempt",
+    "backbone",
+    "coef_sha256",
+    "input_sha256",
+    "kind",
+    "near_duplicates_source",
+    "outputs",
+    "pins_a28_sha256",
+    "pins_sha256",
+    "read",
+    "read_set_sha256",
+    "runtime_s",
+    "sigma_source",
+    "value_sets"
+  ],
+  "mode": "smoke",
+  "design": "two_level",
+  "seeds": [
+    9001,
+    9002,
+    9003
+  ],
+  "read": "H8",
+  "backbone": "clip_b32",
+  "kind": "smoke",
+  "n_anchors": 576,
+  "n_expected": 576,
+  "n_episodes_field": 576,
+  "n_clusters_field": 513,
+  "n_clusters_mine": 513,
+  "sens_N": 576,
+  "sens_n_paintings": 513,
+  "sens_episodes_sha_equal": true,
+  "outputs_sha_equal": {
+    "held_arrays_H8.npz": true,
+    "sensitivity_H8.json": true
+  },
+  "episodes": {
+    "9001": {
+      "sha_equal": true,
+      "n": 192,
+      "pair_index_equal": true
+    },
+    "9002": {
+      "sha_equal": true,
+      "n": 192,
+      "pair_index_equal": true
+    },
+    "9003": {
+      "sha_equal": true,
+      "n": 192,
+      "pair_index_equal": true
+    }
+  },
+  "started_attempts": 1,
+  "started_copy_equal": true,
+  "started_attempt_equal_pass": {
+    "mode": true,
+    "read": true,
+    "backbone": true,
+    "runner_sha256": true,
+    "module_sha256": true,
+    "coef_sha256": true,
+    "pins_sha256": true,
+    "input_sha256": true
+  },
+  "flagged_equal_pinned_source": true,
+  "near_equal_source": {
+    "cos_099": true,
+    "cos_098": true
+  },
+  "near_source_sha_equal": true,
+  "array_keys_with_share_or_rate": [],
+  "array_keys_secondary": [],
+  "checks_n": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 274,
+    "P4": 628,
+    "P5": 82,
+    "P6": 0,
+    "P7": 0
+  }
+}
