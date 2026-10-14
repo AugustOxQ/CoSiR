@@ -52,10 +52,9 @@ Merging changes the SHA of `r9_recipe_groups.py` (stage 0b has `abc5c550...`). T
    `pins_qwen3vl_emb_2b.json` carries the old script/module SHA. The last full run took 00:54 to 02:37 (about 1 h 45, groups
    step 9 min). The outputs should come out the same (partitions bit-equal), which is a check to make. Needs the old files
    moved aside (the driver refuses to overwrite); I moved nothing.
-3. **SigLIP stage 2.** First move aside (I did not) the 8 files in `F/results/recipe/siglip2_so400m/`: `partitions.npz`,
-   `graph.npz`, `bank_AIC.npz`, `build_record.json` and the three `.record.json`... precisely: `partitions.npz`, `graph.npz`,
-   `bank_AIC.npz`, `build_record.json`, and `partitions.npz.record.json`, `graph.npz.record.json`, `bank_AIC.npz.record.json`
-   (7 files; no heads files were written). The graph does not depend on the partitions but the driver refuses a part-filled
+3. **SigLIP stage 2.** First move aside (I did not) the 7 files in `F/results/recipe/siglip2_so400m/`: `partitions.npz`, `graph.npz`,
+   `bank_AIC.npz`, `build_record.json` and the three `.record.json` of the npz files.
+   No heads files were written. The graph does not depend on the partitions but the driver refuses a part-filled
    folder, so all are remade. Estimate about 1 h 45 as for Qwen: groups about 10 min (the failed run reached the heads at
    282 s), then a3, reader, baselines, cells, record, pins. Heads should now pass: smallest caption group 939.
 4. **Stale if merged:** `results/stage0b.json` (and `stage0b_ee7a76d.json`), Qwen's recipe records and stage 2 records and
