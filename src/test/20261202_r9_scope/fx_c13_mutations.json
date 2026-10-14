@@ -1,0 +1,345 @@
+[
+ {
+  "name": "p1_sigma_compare_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[sigma_a2]",
+   "1 failed, 21 passed in 0.54s"
+  ]
+ },
+ {
+  "name": "clip_sigma_compare_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_clip_branch_agrees_on_a_consistent_scenario",
+   "1 failed, 65 passed in 1.27s"
+  ]
+ },
+ {
+  "name": "sigma_N_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[sigma_N]",
+   "1 failed, 23 passed in 0.55s"
+  ]
+ },
+ {
+  "name": "sigma_clusters_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[sigma_clusters]",
+   "1 failed, 24 passed in 0.54s"
+  ]
+ },
+ {
+  "name": "sigma_e2_not_compared",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[sigma_e2]",
+   "1 failed, 22 passed in 0.53s"
+  ]
+ },
+ {
+  "name": "sigma_a2_not_compared",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[sigma_a2]",
+   "1 failed, 21 passed in 0.55s"
+  ]
+ },
+ {
+  "name": "cells_loop_aff_cf_sigma_star",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[sigma_star]",
+   "1 failed, 1 passed in 0.27s"
+  ]
+ },
+ {
+  "name": "cells_gate_share",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[gate_share]",
+   "1 failed, 5 passed in 0.29s"
+  ]
+ },
+ {
+  "name": "B_B0_picks_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[B_pick]",
+   "1 failed, 6 passed in 0.30s"
+  ]
+ },
+ {
+  "name": "B0_pick_only",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[B0_pick]",
+   "1 failed, 7 passed in 0.34s"
+  ]
+ },
+ {
+  "name": "rca_lambda_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[rca_lambda]",
+   "1 failed, 8 passed in 0.37s"
+  ]
+ },
+ {
+  "name": "taus_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[tau] - ...",
+   "1 failed, 9 passed in 0.37s"
+  ]
+ },
+ {
+  "name": "tau_tolerance_exact",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_picks_are_compared_exactly_and_taus_to_a_relative_tolerance",
+   "1 failed, 25 passed in 0.63s"
+  ]
+ },
+ {
+  "name": "tau_tolerance_loose",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[tau] - ...",
+   "1 failed, 9 passed in 0.37s"
+  ]
+ },
+ {
+  "name": "picks_exact_branch_removed",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_picks_are_compared_exactly_and_taus_to_a_relative_tolerance",
+   "1 failed, 25 passed in 0.62s"
+  ]
+ },
+ {
+  "name": "mean_loop_B_only",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[mean_B0]",
+   "1 failed, 11 passed in 0.41s"
+  ]
+ },
+ {
+  "name": "mean_B1_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[mean_B1]",
+   "1 failed, 12 passed in 0.39s"
+  ]
+ },
+ {
+  "name": "P_points_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[P1_point]",
+   "1 failed, 15 passed in 0.47s"
+  ]
+ },
+ {
+  "name": "P_n_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_one_changed_pinned_quantity_disagrees[P4_n_j]",
+   "1 failed, 17 passed in 0.49s"
+  ]
+ },
+ {
+  "name": "floor_cl_etc",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_a_derivation_without_a_floor_array_disagrees[cl]",
+   "1 failed, 27 passed in 0.65s"
+  ]
+ },
+ {
+  "name": "floor_reader_arrays",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_a_derivation_without_a_floor_array_disagrees[aff_gate__a]",
+   "1 failed, 32 passed in 0.73s"
+  ]
+ },
+ {
+  "name": "floor_scorer_arrays",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_a_derivation_without_a_floor_array_disagrees[aff_cf__r1]",
+   "1 failed, 45 passed in 0.89s"
+  ]
+ },
+ {
+  "name": "present_check_removed",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_a_derivation_without_a_floor_array_disagrees[cl]",
+   "1 failed, 27 passed in 0.67s"
+  ]
+ },
+ {
+  "name": "clip_B_means_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_clip_branch_agrees_on_a_consistent_scenario",
+   "1 failed, 65 passed in 1.36s"
+  ]
+ },
+ {
+  "name": "clip_B1_mean_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_clip_branch_agrees_on_a_consistent_scenario",
+   "1 failed, 65 passed in 1.26s"
+  ]
+ },
+ {
+  "name": "clip_floor_explicit_removed",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_clip_branch_derivation_without_a_floor_array_disagrees[cl]",
+   "1 failed, 69 passed in 1.48s"
+  ]
+ },
+ {
+  "name": "clip_floor_taus_etc",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_clip_branch_derivation_without_a_floor_array_disagrees[cl]",
+   "1 failed, 69 passed in 1.48s"
+  ]
+ },
+ {
+  "name": "compare_stats_margins_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_compare.py::test_margins_agree_and_the_sensitivity_file_is_recorded",
+   "1 failed, 96 passed in 2.44s"
+  ]
+ },
+ {
+  "name": "margin_x_only_SE",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_compare.py::test_margins_agree_and_the_sensitivity_file_is_recorded",
+   "1 failed, 96 passed in 2.37s"
+  ]
+ },
+ {
+  "name": "margin_x95_not_compared",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_compare.py::test_margins_agree_and_the_sensitivity_file_is_recorded",
+   "1 failed, 96 passed in 2.43s"
+  ]
+ },
+ {
+  "name": "quantity_deleted",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_compare.py::test_the_quantity_label_is_compared - Failed: DID...",
+   "1 failed, 102 passed in 2.76s"
+  ]
+ },
+ {
+  "name": "set_aside_dup_dedupe",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_compare.py::test_a_repeated_set_aside_entry_disagrees - Faile...",
+   "1 failed, 104 passed in 2.56s"
+  ]
+ },
+ {
+  "name": "near_dup_unpinned",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_compare.py::test_near_duplicates_file_must_equal_its_pin - Fa...",
+   "1 failed, 93 passed in 1.94s"
+  ]
+ },
+ {
+  "name": "sensitivity_sha_not_recorded",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_compare.py::test_margins_agree_and_the_sensitivity_file_is_recorded",
+   "1 failed, 96 passed in 2.06s"
+  ]
+ },
+ {
+  "name": "sigma_pin_unchecked",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_main_refuses_a_sigma_file_that_differs_from_its_pin",
+   "1 failed, 63 passed in 1.11s"
+  ]
+ },
+ {
+  "name": "parts_only_removed",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_inputs_read_the_real_pins_files[clip_b32] - F...",
+   "1 failed, 95 passed in 1.79s"
+  ]
+ },
+ {
+  "name": "named_roles_removed",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_inputs_read_the_real_pins_files[clip_b32] - A...",
+   "1 failed, 95 passed in 2.09s"
+  ]
+ },
+ {
+  "name": "unpickle_check_removed",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_unpickle_refuses_a_pickle_that_imports_an_r9_module",
+   "1 failed, 98 passed in 2.42s"
+  ]
+ },
+ {
+  "name": "unpickle_not_used_by_readers",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_phase1.py::test_the_reader_pickle_is_loaded_through_unpickle",
+   "1 failed, 100 passed in 3.92s"
+  ]
+ },
+ {
+  "name": "near_dup_constant_changed",
+  "caught": true,
+  "detail": [
+   "FAILED rd9_test_compare.py::test_near_duplicates_pin_constant - AssertionErro...",
+   "1 failed, 92 passed in 2.36s"
+  ]
+ },
+ {
+  "name": "near_pin_unchecked_in_held",
+  "caught": true,
+  "detail": [
+   "FAILED ../test_r9_held_a28.py::test_smoke_builds_selection_space_and_checks_real_inputs_without_episodes",
+   "1 failed, 130 passed in 6.93s"
+  ]
+ },
+ {
+  "name": "held_pin_constant_changed",
+  "caught": true,
+  "detail": [
+   "FAILED ../test_r9_held_a28.py::test_near_duplicates_pin_equals_the_comparers",
+   "1 failed, 131 passed in 6.83s"
+  ]
+ },
+ {
+  "name": "phase2_fits_unpickle_plain",
+  "caught": false,
+  "detail": [
+   "102 passed in 4.03s"
+  ]
+ }
+]

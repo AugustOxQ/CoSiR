@@ -93,6 +93,30 @@ def resolve_pin(relative):
     return (MAIN/path) if str(path).startswith('src/') else HERE/path
 
 
+# Files the pins files do not list. near_duplicates_a28.json is a stage-1 fact (rule 3.3 names it in no pin list);
+# its SHA-256 is pinned here, and run_r9_held.py pins the same value. R6's seed-42 sigma file is CLIP's frozen record.
+NEAR_DUPLICATES_SHA256 = 'ba92530d433dded1c8d2b2a2037e23d015aed5361fb1249d1caa631e40da2206'
+R6_SENSITIVITY_SEED42_SHA256 = 'bc4b0a92d376b2fdf47da2aa08303a5bb2266a29daf85621ca97ec753bef5661'
+
+
+def near_duplicates_entries():
+    """One path -> SHA-256 entry for read_pinned; the digest is read from the module at call time."""
+    return {'results/near_duplicates_a28.json':NEAR_DUPLICATES_SHA256}
+
+
+def r6_sensitivity_entries():
+    return {'20261125_artelingo_held_test/results/sensitivity_seed42.json':R6_SENSITIVITY_SEED42_SHA256}
+
+
+def unpickle(raw):
+    """pickle.loads that asserts the bytes imported no r9_* or run_r9* module (this code never imports the chain)."""
+    before=set(sys.modules)
+    value=pickle.loads(raw)
+    imported=sorted(m for m in set(sys.modules)-before if m.startswith(('r9_','run_r9')))
+    assert not imported, f'unpickling imported the chain under test: {imported}'
+    return value
+
+
 def read_pinned(path,entries):
     """The bytes of `path`, after checking their SHA-256 against its one entry in `entries` (path -> SHA-256).
 
@@ -126,13 +150,27 @@ def pin_entries(record):
     return entries
 
 
+def parts_entries(record):
+    """The files a `pins_<backbone>.json` of stage 2 pins: its `parts`, each `{path, sha256}`, and nothing else.
+
+    `input_sha256` keys are logical names (relative to src/test) carrying the SHA-256 of the backbone's own file;
+    they are not paths of the checkout that runs this and are never resolved here.
+    """
+    entries={}
+    for role,part in record['parts'].items():
+        assert isinstance(part,dict) and set(('path','sha256'))<=set(part), f'pins part {role}: needs path and sha256'
+        entries[str(part['path'])]=part['sha256']
+    assert entries, 'pins parts are empty'
+    return entries
+
+
 def role_paths(originals,entries,backbone,here):
     result=dict(originals)
     for role,old in originals.items():
         if role in FROZEN: continue
         candidates=[p for p in entries if p.name==old.name]
         if len(candidates)>1:
-            recipe=Path(here)/'results/recipe'/backbone
+            recipe=(Path(here)/'results/recipe'/backbone).resolve()
             preferred=[p for p in candidates if p.is_relative_to(recipe)]
             if preferred: candidates=preferred
         assert len(candidates)<=1, f'ambiguous pin role {role}: {candidates}'
@@ -171,7 +209,8 @@ class Inputs:
         pins = Path(pins)
         if pins.exists():
             self.pin_record=json.loads(pins.read_text())
-            entries = pin_entries(self.pin_record)
+            # A stage-2 pins file (it has `parts`) is read through its parts alone; older flat schemas keep pin_entries.
+            entries = parts_entries(self.pin_record) if 'parts' in self.pin_record else pin_entries(self.pin_record)
             assert entries, 'pins schema must contain path and sha256 entries'
             self.reads[str(pins)] = dict(sha256=sha_file(pins), keys=['file pins'])
             for relative,digest in entries.items():
@@ -180,7 +219,12 @@ class Inputs:
                     continue  # source digests are metadata; never opened
                 assert sha_file(path)==digest, f'pin mismatch: {path}'
                 self.hashes[path.resolve()] = digest
-            self.paths=role_paths(self.paths,list(self.hashes),backbone,HERE)
+            # A stage-2 pins file names each fitted role by its `parts` key (CLIP's cells file is cells_seed42_clip.json,
+            # so the file name alone would not find it); the other roles resolve by file name.
+            named={r:resolve_pin(self.pin_record['parts'][r]['path']) for r in ROLES
+                   if 'parts' in self.pin_record and r in self.pin_record['parts'] and r not in FROZEN}
+            rest=role_paths({r:p for r,p in self.paths.items() if r not in named},list(self.hashes),backbone,HERE)
+            self.paths={r:named.get(r,rest.get(r)) for r in ROLES}
             assert all(self.paths[r].resolve() in self.hashes for r in ROLES), 'missing phase-1 pin'
         else:
             assert backbone=='clip_b32', 'new backbones require pins_<backbone>.json'
@@ -220,7 +264,7 @@ class Inputs:
     def readers(self):
         import sklearn
         record=self.json('rb_reader_A0_record',['config','groupings','feature_names','sklearn_version'])
-        reader=pickle.loads(self.path('rb_reader_A0',['config','groupings','feature_names','halves.*.scaler','halves.*.model','sklearn_version']).read_bytes())
+        reader=unpickle(self.path('rb_reader_A0',['config','groupings','feature_names','halves.*.scaler','halves.*.model','sklearn_version']).read_bytes())
         assert reader['config']=='A0' and tuple(reader['groupings'])==('affect','image','caption')
         assert record['config']==reader['config'] and record['groupings']==reader['groupings']
         assert record['feature_names']==reader['feature_names'] and len(reader['feature_names'])==18

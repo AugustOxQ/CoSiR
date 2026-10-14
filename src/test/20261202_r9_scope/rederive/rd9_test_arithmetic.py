@@ -134,23 +134,26 @@ def test_phase1_agreement_checks_every_pinned_quantity(backbone):
         arrays[name+'__r1']=np.array(values)
     own={'backbone':backbone,'picks':{'aff':[1,2],'cf':[3,4],'sigma_star':[0.,0.], 'switched_off':False,
         'gate_share':0.25,'B':[[1.,2.],[3.,4.]],'B0':[[2.,4.],[4.,8.]],'rca_lambda':[0.5,1.], 'taus':[0.,0.2,0.4,0.6]},
-        'stats':{'checks':{j:{'point':float(k)+.125,'n':k} for k,j in enumerate(S.CHECK_IDS)}}}
+        'stats':{'checks':{j:{'point':float(k)+.125,'n':k} for k,j in enumerate(S.CHECK_IDS)},'n_episodes':2,'n_clusters':2,
+                 'sensitivity':{j:{'sigma_a2':k+.5,'sigma_e2':k+.25} for k,j in enumerate(S.CHECK_IDS)}}}
+    sigma={j:{'sigma_a2':k+.5,'sigma_eps2':k+.25} for k,j in enumerate(S.CHECK_IDS)}|{'N':2,'n_paintings':2}
     cells={k:own['picks'][k] for k in ('aff','cf','sigma_star','switched_off','gate_share')}
     picks={name:{str(h):own['picks'][name][h] for h in (0,1)} for name in ('B','B0')}
     base={'lambda_picks':{'rca':{'0':0.5,'1':1.}}}
     record={'mean_r1':{'B':25.,'B0':37.5,'B1':50.,'AFF':62.5,'CF':75.},
             'checks':{j:{'point':float(k)+.125,'n_j':k} for k,j in enumerate(S.CHECK_IDS)},
             'array_hashes':{key:{'sha256':sha_bytes(v),'dtype':str(v.dtype),'shape':list(v.shape)} for key,v in arrays.items()}}
-    c=Comparison(); compare_phase1(c,own,arrays,cells,picks,base,{'taus':own['picks']['taus']},record)
+    c=Comparison(); compare_phase1(c,own,arrays,cells,picks,base,{'taus':own['picks']['taus']},record,sigma)
     assert c.record()['agreement']
     # Every required field can independently turn the result into a disagreement.
     cells['switched_off']=True
     record['checks']['P7']['n_j']=999
     record['array_hashes']['B__r1']['sha256']='0'*64
     record['mean_r1']['B1']=38.
-    c=Comparison(); compare_phase1(c,own,arrays,cells,picks,base,{'taus':own['picks']['taus']},record)
+    sigma['P2']['sigma_eps2']=9.
+    c=Comparison(); compare_phase1(c,own,arrays,cells,picks,base,{'taus':own['picks']['taus']},record,sigma)
     failed={i['key'] for i in c.record()['items'] if not i['equal']}
-    assert {'picks.switched_off','seed42.checks.P7.n','seed42.arrays.B__r1.sha256','seed42.mean_r1.B1'} <= failed
+    assert {'picks.switched_off','seed42.checks.P7.n','seed42.arrays.B__r1.sha256','seed42.mean_r1.B1','seed42.sigma.P2.sigma_e2'} <= failed
 
 
 def test_pin_roles_reject_ambiguous_names_and_choose_backbone_recipe():

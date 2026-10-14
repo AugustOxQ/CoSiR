@@ -96,6 +96,12 @@ def variance_split(y, clusters):
             "msb": msb, "msw": msw, "sum_m2": float(np.sum(m ** 2))}
 
 
+# The check labels the pass files carry (rule §4); the comparer checks `quantity` against them.
+QUANTITIES = {'P1':'R@1, AFF - COS', 'P2':'R@1, AFF - RCA', 'P3':'R@1, AFF - B', 'P4':'R@1, AFF - B0',
+              'P5':'R@1, AFF - CF', 'P6':'gain statistic: condition gain, AFF - CF (CF gain 0)',
+              'P7':'condition gain, AFF - RCA'}
+
+
 CHECKS = {'P1':('r1','cosine'), 'P2':('r1','rca'), 'P3':('r1','B'), 'P4':('r1','B0'),
           'P5':('r1','aff_cf'), 'P6':('gain','aff_cf'), 'P7':('gain','rca')}
 

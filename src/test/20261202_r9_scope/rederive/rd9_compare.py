@@ -7,8 +7,8 @@ import hashlib
 import json
 from pathlib import Path
 import numpy as np
-from rd9_inputs import HERE,RD,T,pin_entries,read_pinned,save_json,sha_file
-from rd9_stats import CHECK_IDS
+from rd9_inputs import HERE,RD,T,pin_entries,read_pinned,save_json,sha_file,near_duplicates_entries,r6_sensitivity_entries,resolve_pin
+from rd9_stats import CHECK_IDS,QUANTITIES
 
 
 MISSING=object()    # a key absent from either record; never equal to anything, None included
@@ -67,7 +67,8 @@ class Comparison:
         return dict(agreement=not failures,compared=len(self.items),failed=len(failures),items=self.items)
 
 
-def compare_stats(comparison,ours,theirs):
+def compare_stats(comparison,ours,theirs,sensitivity=None):
+    """`sensitivity`: the runner's sensitivity file {P1..P7: {SE,x,x95}}; compared when our record carries margins."""
     comparison.value('n_episodes',ours['n_episodes'],theirs.get('n_episodes',MISSING))
     comparison.value('n_clusters',ours['n_clusters'],theirs.get('n_clusters',MISSING))
     comparison.value('seeds',ours['seeds'],theirs.get('seeds',MISSING))
@@ -75,6 +76,11 @@ def compare_stats(comparison,ours,theirs):
     for j in CHECK_IDS:
         o=ours['checks'][j]
         t=theirs.get('checks',{}).get(j,{})
+        comparison.value('checks.'+j+'.quantity',QUANTITIES[j],t.get('quantity',MISSING))
+        if any(k in o for k in ('SE','x','x95')):
+            # The detectable margin of rule §7.4: SE, x and x95 come from the runner's sensitivity file, not the pass file.
+            margins=(sensitivity or {}).get(j,{})
+            for k in ('SE','x','x95'): comparison.value('checks.'+j+'.'+k,o[k],margins.get(k,MISSING))
         for k in ('n','point','ci95','tested'):
             if k=='tested':
                 # A seven-check record always tests all seven. A28 records must specify this flag.
@@ -125,8 +131,7 @@ def reported_set_aside(value):
         if any(key not in entry for key in ('language','pair','seed')): return MISSING
         assert isinstance(entry['language'],str) and isinstance(entry['pair'],str) and type(entry['seed']) is int
         entries.append((entry['language'],entry['pair'],entry['seed']))
-    assert len(entries)==len(set(entries)), 'duplicate set-aside entry'
-    return sorted(set(entries))
+    return sorted(entries)    # a repeated entry stays: the derived side is a set, so the lengths then differ
 
 
 def sorted_languages(value):
@@ -172,6 +177,7 @@ def main():
     p.add_argument('--reported',type=Path)
     p.add_argument('--derived-arrays',type=Path,required=True)
     p.add_argument('--reported-arrays',type=Path)
+    p.add_argument('--reported-sensitivity',type=Path,help='sensitivity_<Hn>.json of the runner: SE, x, x95 per check')
     p.add_argument('--derived-episodes',type=Path)
     p.add_argument('--reported-episodes',type=Path)
     p.add_argument('--language-flags',type=Path,default=HERE/'results/language_flags_a28.json')
@@ -200,13 +206,20 @@ def main():
         assert inputs.pin_record is not None, '--phase1 requires a pins file with seed42 record'
         with np.load(args.derived_arrays) as archive: arrays={k:archive[k] for k in archive.files}
         seed42=inputs.pin_record.get('seed42',inputs.pin_record.get('seed42_record',{}))
+        # The seed-42 sigma file is not a pins part: the record names it ({path, sha256}), and it is read pinned.
+        assert 'sensitivity_seed42' in inputs.pin_record, 'pins must name sensitivity_seed42'
+        sigma_record=inputs.pin_record['sensitivity_seed42']
+        sigma_path=resolve_pin(sigma_record['path'])
+        sigma=json.loads(read_pinned(sigma_path,{sigma_record['path']:sigma_record['sha256']}))
         compare_phase1(c,own,arrays,inputs.json('cells_seed42'),inputs.json('picks_seed42'),
-                       inputs.json('baselines_seed42'),inputs.json('rc_tau'),seed42)
+                       inputs.json('baselines_seed42'),inputs.json('rc_tau'),seed42,sigma)
     elif args.clip_phase1 or (args.phase1 and args.backbone=='clip_b32'):
         assert own['backbone']=='clip_b32'
         pass_path=T/'20261125_artelingo_held_test/results/seed42_pass_counts.json'
         report=json.loads(pass_path.read_text())
         compare_stats(c,own['stats'],report)
+        sigma_path=T/'20261125_artelingo_held_test/results/sensitivity_seed42.json'
+        compare_sigma(c,own,json.loads(read_pinned(sigma_path,r6_sensitivity_entries())))
         picked=json.loads((T/'20261125_artelingo_held_test/results/picks_seed42.json').read_text())
         for name in ('B','B0'):
             c.value('picks.'+name,own['picks'][name],[picked[name][str(h)] for h in (0,1)])
@@ -223,21 +236,29 @@ def main():
                 values=arrays.get(name+'__r1')
                 got=None if values is None else 100*float(np.mean(values))
                 c.value('seed42.mean_r1.'+name,got,picked.get('mean_r1',{}).get(name))
-            required=[k for k in arrays.files if k.startswith(('aff_fused__','aff_cf__','aff_gate__','P__','margin__','pick__'))]
-            required+=['cl','pair_index','parity','taus','aff_fused_cells','aff_cf_cells','aff_sigma']
+            # The floor is explicit: a derivation that omits an array must disagree, not shrink the comparison.
+            floor=[f'{arm}__{metric}' for arm in ('aff_fused','aff_cf') for metric in ('r1','gain','other','swap','strict')]
+            floor+=[f'{prefix}__{side}' for prefix in ('aff_gate','P','margin','pick') for side in ('a','b')]
+            floor+=['cl','pair_index','parity','taus','aff_fused_cells','aff_cf_cells','aff_sigma']
+            required=sorted(set(floor)|{k for k in arrays.files if k.startswith(('aff_fused__','aff_cf__','aff_gate__','P__','margin__','pick__'))})
         c.arrays(args.derived_arrays,r3,required)
     else:
         assert args.reported and args.reported_arrays, 'per-read agreement requires runner scalars AND arrays'
         raw=args.reported.read_bytes()
         report=json.loads(raw)
         extra=provenance(own,args.reported,raw,report)
-        compare_stats(c,own['stats'],report.get('stats',report))
+        sensitivity=None
+        if args.reported_sensitivity:
+            sensitivity_raw=args.reported_sensitivity.read_bytes()
+            sensitivity=json.loads(sensitivity_raw)
+            extra['sensitivity_sha256']=hashlib.sha256(sensitivity_raw).hexdigest()
+        compare_stats(c,own['stats'],report.get('stats',report),sensitivity)
         if own.get('read') in ('H8','H9','H10') and own.get('mode')!='selection':
             c.value('set_aside',derived_set_aside(own),reported_set_aside(report.get('set_aside',MISSING)))
-            # The flags file must be the pinned stage-1 file; the near-duplicates file is not in pins_a28.json, so only
-            # its SHA-256 is recorded. Each file is parsed from the bytes that were hashed.
+            # The flags file must be the pinned stage-1 file. The near-duplicates file is in no pins file; its SHA-256 is
+            # pinned in rd9_inputs and recorded. Each file is parsed from the bytes that were hashed.
             flags_raw=read_pinned(args.language_flags,pin_entries(json.loads(args.a28_pins.read_text())))
-            duplicates_raw=args.near_duplicates.read_bytes()
+            duplicates_raw=read_pinned(args.near_duplicates,near_duplicates_entries())
             extra.update(language_flags_sha256=hashlib.sha256(flags_raw).hexdigest(),
                          near_duplicates_sha256=hashlib.sha256(duplicates_raw).hexdigest())
             flags=json.loads(flags_raw)
@@ -272,7 +293,20 @@ def main():
 
 
 
-def compare_phase1(c,own,arrays,cells,picks,baselines,tau,seed42):
+def compare_sigma(c,own,sigma):
+    """Seed-42 sensitivity inputs (R6 rule §8.4): the variance components of the seven differences, N and the clusters."""
+    sigma=sigma or {}
+    stats=own['stats']
+    c.value('seed42.sigma.N',stats['n_episodes'],sigma.get('N',MISSING))
+    c.value('seed42.sigma.n_paintings',stats['n_clusters'],sigma.get('n_paintings',MISSING))
+    variance=stats.get('sensitivity',{})
+    for j in CHECK_IDS:
+        for ours_key,theirs_key in (('sigma_a2','sigma_a2'),('sigma_e2','sigma_eps2')):
+            c.value(f'seed42.sigma.{j}.{ours_key}',variance.get(j,{}).get(ours_key,MISSING),
+                    sigma.get(j,{}).get(theirs_key,MISSING))
+
+
+def compare_phase1(c,own,arrays,cells,picks,baselines,tau,seed42,sigma=None):
     """Compare independently computed quantities against data pins, including switched-off runs."""
     from rd9_inputs import sha_bytes
     for key in ('aff','cf','sigma_star','switched_off','gate_share'):
@@ -294,6 +328,7 @@ def compare_phase1(c,own,arrays,cells,picks,baselines,tau,seed42):
         target=seed42.get('checks',{}).get(j,{})
         c.value('seed42.checks.'+j+'.point',own['stats']['checks'][j]['point'],target.get('point'))
         c.value('seed42.checks.'+j+'.n',own['stats']['checks'][j]['n'],target.get('n_j',target.get('n')))
+    compare_sigma(c,own,sigma)
     hashes=seed42.get('array_hashes',{})
     if not hashes and 'arrays' in seed42:
         # Stage 2 records the 96 stage-0a keys with their archive namespaces.
