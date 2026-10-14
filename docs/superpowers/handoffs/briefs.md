@@ -355,3 +355,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-14-outside-weekly-handoff.md
 - New chat: tab 'outside weekly', session c9513f8b-508d-49c1-9d0e-5d92aa0f63d8
 
+[brief] CoSiR: r9 run -> r9 run 2 (2026-10-14 08:58 Amsterdam)
+- Done: SigLIP pick (a2, agent default); stage 0a, 0b, stage 2 on Qwen and SigLIP; all five pre-reads passed; H7 = GO.
+- State: H7 (SigLIP 2, ArtELingo held): GO, all seven checks pass (every n = 0), re-derivation agrees 166/0.
+- Next: H6 ledger row and read (about 37 min), then H8, then H9 and H10; the reports.
+- Blocked: nothing. Machine work runs to about 12:30, CPU only (agent default; user told, no answer yet).
+- Handoff: docs/superpowers/handoffs/2026-10-14-r9-run-2-handoff.md
+- New chat: tab 'r9 run 2', session 0ad149d4-6172-4d41-93d8-42c825fd2f37
+
