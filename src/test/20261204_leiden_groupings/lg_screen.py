@@ -43,11 +43,12 @@ H1_NPZ = Path("/project/CoSiR-buddy_prototype_conditioning/src/test/20260923_art
               "attention_h1_embedding_snapshot.npz")
 STEP1_GROUP = STEP1 / "results" / "step1_group_descriptive.json"
 TARGET, MAX_BISECT, R_BOUNDS = 64, 8, (1 / 64, 64.0)
-NEW = ("image_leiden64", "caption_leiden64", "h1")
+NEW = ("image_leiden64", "caption_leiden64", "h1", "h1r")
 ARMS = {"A0": {"parts": rs1.BASE, "told": {"emotion": "affect", "style": "image", "genre": "image"}},
         "A3r": {"parts": ("affect", "image_leiden64", "caption_leiden64"),
                 "told": {"emotion": "affect", "style": "image_leiden64", "genre": "image_leiden64"}},
-        "H1": {"parts": ("h1",), "told": {"emotion": "h1", "style": "h1", "genre": "h1"}}}
+        "H1": {"parts": ("h1",), "told": {"emotion": "h1", "style": "h1", "genre": "h1"}},
+        "H1r": {"parts": ("h1r",), "told": {"emotion": "h1r", "style": "h1r", "genre": "h1r"}}}
 
 
 def jdump(path, obj):
@@ -153,11 +154,14 @@ def stage_heads():
     scorer_train = np.asarray(rs1.artelingo_splits(ctx.data).scorer_train)
     if not np.array_equal(scorer_train, gz["scorer_train"]):
         raise AssertionError("scorer_train differs from the group stage's")
+    hr = np.load(RES / "h1r_labels.npz")     # lg_h1r.py output: retrained H1, scorer-train rows
+    if not np.array_equal(hr["scorer_train"], scorer_train):
+        raise AssertionError("h1r_labels.npz scorer_train differs")
     sel = ctx.selection
     heads, npz = {}, {"selection": sel}
     for name in NEW:
         t = time.time()
-        local = np.asarray(gz[name], dtype=np.int64)
+        local = np.asarray(gz[name] if name != "h1r" else hr["h1r"], dtype=np.int64)
         lab = rto.global_labels(local, scorer_train, len(ctx.groups))
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always", ConvergenceWarning)
@@ -205,10 +209,10 @@ def stage_eval():
             entry["reproduces_step1_A0"] = True
         else:
             entry["vs_A0"] = rs1.paired(arr, refs["A0"][0], bar_v, refs["A0"][1], ctx)
-        if arm == "H1":             # one grouping: the reader can only pick it, so reader = told
+        if arm in ("H1", "H1r"):             # one grouping: the reader can only pick it, so reader = told
             same = all(np.array_equal(arr["told"][j][m], arr["reader"][j][m]) for j in (0, 1) for m in METRICS)
             if not same:
-                raise AssertionError("H1: reader and told terms differ with a single grouping")
+                raise AssertionError(f"{arm}: reader and told terms differ with a single grouping")
         refs[arm] = (arr, bar_v)
         entry["runtime_s"] = round(time.time() - t, 1)
         arms[arm] = entry

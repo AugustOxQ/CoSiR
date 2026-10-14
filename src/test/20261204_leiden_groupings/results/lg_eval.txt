@@ -2,3 +2,4 @@ R@1 margins over the condition-free counterpart, points [95% CI]
 A0: told  +1.64 [+1.37, +1.92]  reader  +0.35 [+0.15, +0.57]  bar  +0.31 [+0.10, +0.53] (B_prime)  pick 54.7
 A3r: told  +1.70 [+1.41, +2.01]  reader  +0.22 [+0.06, +0.38]  bar  +0.22 [+0.06, +0.38] (counterpart)  pick 53.8  | minus A0: told  +0.06 [-0.19, +0.31] reader  -0.14 [-0.36, +0.09]
 H1: told  -0.46 [-0.63, -0.28]  reader  -0.46 [-0.63, -0.28]  bar  -0.46 [-0.63, -0.28] (counterpart)  pick 100.0  | minus A0: told  -2.10 [-2.43, -1.78] reader  -0.81 [-1.09, -0.53]
+H1r: told  -0.27 [-0.48, -0.07]  reader  -0.27 [-0.48, -0.07]  bar  -0.40 [-0.61, -0.19] (B_prime)  pick 100.0  | minus A0: told  -1.91 [-2.26, -1.57] reader  -0.63 [-0.94, -0.32]
