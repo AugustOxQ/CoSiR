@@ -37,13 +37,13 @@ Specs written earlier are not rewritten.
   traced. *Why:* a silent change in reused code invalidates every comparison with earlier rounds. *Source:* rounds 2
   to 5.
 - **C13 Independent re-derivation.** Every number that decides a verdict MUST be re-derived by separate code before the
-  rule is applied. *Why:* the final reviews kept finding wrong load-bearing numbers. *Source:* `final-review.md`;
-  memory `feedback_final-review-catches-real-issues`.
+  rule is applied. *Why:* the final reviews kept finding wrong load-bearing numbers. *Source:* the final whole-branch review
+  (`~/.claude/references/matt-chain.md`).
 
 ## Global rules that apply
 
-- `final-review.md`: the whole-branch review on the most capable model, one fix wave and a scoped re-review before a
-  report is committed.
+- The final whole-branch review (`~/.claude/references/matt-chain.md`): on the most capable model, one fix wave and a
+  scoped re-review before a report is committed.
 - `agent-routing.md`: subagents implement; the main session launches every real run.
 - `shared-resources.md`: GPU work under the lock; CPU-heavy work at 8 threads or fewer.
 - `storage.md` and `data-storage.md`: feature caches in `/data/SSD2/pre_extract/`; run folders hold only their own
