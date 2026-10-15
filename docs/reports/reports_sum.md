@@ -175,4 +175,4 @@ Rebuild a deck with `python docs/reports/assets/<build script>`, which needs `py
 | [2026-09-23_percept_topic_pipeline_slides.pptx](pptx/2026-09-23_percept_topic_pipeline_slides.pptx) | weekly/2026-09-23_percept_topic_pipeline_slides.md | `build_2026-09-23_weekly_percept_topic_pipeline_slides.py` |
 | [2026-09-30_percept_buddy_to_v2_slides.pptx](pptx/2026-09-30_percept_buddy_to_v2_slides.pptx) | weekly/2026-09-30_percept_buddy_to_v2_slides.md | `build_2026-09-30_weekly_slides.py` (figures: `build_2026-09-30_weekly_figures.py --slides`) |
 | [2026-10-07_aspect_task_to_affect_steering_slides.pptx](pptx/2026-10-07_aspect_task_to_affect_steering_slides.pptx) | weekly/2026-10-07_aspect_task_to_affect_steering_slides.md | `build_2026-10-07_weekly_slides.py <slides md>` (figures: `build_2026-10-07_weekly_figures.py`) |
-| [2026-10-14_weekly_v2_slides.pptx](pptx/2026-10-14_weekly_v2_slides.pptx) | weekly/2026-10-14_aff_design_and_scope_slides.md | none |
+| [2026-10-14_aff_design_and_scope_slides.pptx](pptx/2026-10-14_aff_design_and_scope_slides.pptx) | weekly/2026-10-14_aff_design_and_scope_slides.md | none |
