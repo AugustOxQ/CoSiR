@@ -1,0 +1,2 @@
+# Hide the archived conditioned line (CoSiR v2) from default search (ripgrep and Grep tools); search it with path archive/.
+archive/

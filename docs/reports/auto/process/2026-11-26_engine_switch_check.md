@@ -1,10 +1,10 @@
 # Engine switch check: round 6 on Matt's chain cost about twice round 5 and took 2.5 times as long, but the engine was not the cause
 
-> 2026-11-26 · Spec: none (process check, descriptive) · Decision rule: none (descriptive) · Run log: none; numbers are extracted from the chat transcripts, scripts and tables are in the scratchpad (see Files and storage) · Round reports: [round 4a](../v2/2026-11-22_round4_aff_vetoes.md), [round 5](../v2/2026-11-23_idea3_goemotions.md), [round 4b](../v2/2026-11-24_clip_lightweight_ft.md), [round 6](../v2/2026-11-25_artelingo_held_test.md) · User-read report: [engine_switch_check](../../../user_read/2026-10-10_engine_switch_check.md)
+> 2026-11-26 · Spec: none (process check, descriptive) · Decision rule: none (descriptive) · Run log: none; numbers are extracted from the chat transcripts, scripts and tables are in the scratchpad (see Files and storage) · Round reports: [round 4a](../../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-22_round4_aff_vetoes.md), [round 5](../../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-23_idea3_goemotions.md), [round 4b](../../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-24_clip_lightweight_ft.md), [round 6](../../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-25_artelingo_held_test.md) · User-read report: [engine_switch_check](../../../user_read/2026-10-10_engine_switch_check.md)
 
 ## Results brief
 
-**What we tried.** We compared the cost (tokens, dollar weight, GPU) and the time of rounds 4 and 5, built on the Superpowers chain, with round 6, the first loop on Matt Pocock's chain ([round 6 spec](../../../superpowers/specs/2026-10-09-r6-held-test-design.md)). The aim: what to change to cut time and cost while keeping quality.
+**What we tried.** We compared the cost (tokens, dollar weight, GPU) and the time of rounds 4 and 5, built on the Superpowers chain, with round 6, the first loop on Matt Pocock's chain ([round 6 spec](../../../../archive/v2_conditioned/docs/superpowers/specs/2026-10-09-r6-held-test-design.md)). The aim: what to change to cut time and cost while keeping quality.
 
 **Outcome against the bar.** There was no pre-set bar. Round 6 cost more and took longer on every measure, and quality did not drop:
 

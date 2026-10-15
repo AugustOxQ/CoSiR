@@ -225,7 +225,7 @@ from pathlib import Path  # noqa: E402
 
 from src.train.train_factors import R3_CONFIG, encode_rows, load_factor_checkpoint  # noqa: E402
 
-_CHECKPOINTS = Path(__file__).resolve().parent / "20261011_factor_repair_grid" / "checkpoints"
+_CHECKPOINTS = Path(__file__).resolve().parents[2] / "archive/v2_conditioned/src/test/20261011_factor_repair_grid/checkpoints"
 
 
 def test_infonce_without_group_ids_raises_and_names_the_explicit_opt_out():

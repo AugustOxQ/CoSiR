@@ -36,7 +36,7 @@ Notes: The bars are top-1 accuracy in percent. In the fair test, label probes to
 
 ## Plan for the CVPR publication
 
-![Timeline of the CVPR plan](../../superpowers/specs/assets/2026-10-02_cvpr_plan_timeline.png)
+![Timeline of the CVPR plan](../../../archive/v2_conditioned/docs/superpowers/specs/assets/2026-10-02_cvpr_plan_timeline.png)
 
 - Revised once after an automated multi-reviewer critique
 - A go or no-go decision chooses between a method paper, a benchmark paper and an analysis paper
@@ -87,7 +87,7 @@ Notes: The figure is deliberately non-mathematical. In the real benchmark the re
 
 ## Setting of the aspect episode
 
-![One aspect episode](../assets/2026-10-04_aspect_conditioned_similarity_methods/task_schematic.png)
+![One aspect episode](../../../archive/v2_conditioned/docs/reports/assets/2026-10-04_aspect_conditioned_similarity_methods/task_schematic.png)
 
 - A query: one painting's image (ranking captions) or one viewer's caption (ranking images)
 - Four support pairs agree on a value of respect A (for example four different emotions); four contrast pairs do the same for respect B

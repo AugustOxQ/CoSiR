@@ -127,9 +127,9 @@ condition gain, without using labels of the evaluated respects. The target venue
 | **C2. Method** | one-sided affect steering (AFF), label-free, beat every pre-registered condition-free comparator on fresh ArtELingo episodes (+0.591 R@1, condition gain +3.3), with its mechanism analysed; it loses on style × genre | a method that passes the plan's main claim (K2): on the held splits of ArtELingo, CUB and SemArt it beats the backbone alone, the best metric from pairs and its own condition-removed control on both R@1 and condition gain, with the plan's correction for testing several comparisons; the same gains on a second backbone (K4). Per-pair results and comparisons with a fine-tuned CLIP and in-context MLLMs are reported beside these, not required |
 | **C3. Analysis** | emotion in captions and style in images across four backbones; why reading the condition costs either rate (R@1 = (either + gain) / 2); told ceilings; label-free reading reduces to choosing a side | the same analysis across annotation protocols (ArtEmis captions against SemArt catalogue text), and whether showing the respect by examples beats naming it, per respect (K3) |
 
-> Sources: CVPR plan [§3, §4](../../superpowers/specs/2026-10-02-cosir-v2-cvpr-publication-plan-design.md#3-problem-definition-approved),
+> Sources: CVPR plan [§3, §4](../../../archive/v2_conditioned/docs/superpowers/specs/2026-10-02-cosir-v2-cvpr-publication-plan-design.md#3-problem-definition-approved),
 > [literature review](../literature/2026-10-21_cvpr_literature_review.md) §1, [novelty check](../literature/2026-10-24_aspect_task_novelty_check.md),
-> [readiness memo](../stage/2026-10-07_cvpr_readiness.md) §3, §4.
+> [readiness memo](../../../archive/v2_conditioned/docs/reports/stage/2026-10-07_cvpr_readiness.md) §3, §4.
 
 ## How we got here
 
@@ -142,11 +142,11 @@ emotion; style and genre belong to the painting) and frozen CLIP ViT-B/32 featur
 stated (the GoEmotions emotion classifier and the CSD style encoder). Evaluation labels only score results, except in
 diagnostics marked as such (label probes, label-trained factors); one check (§2.3) compares other backbones.
 
-![The week, one row per day](../assets/2026-10-07_weekly_draft/timeline.png)
+![The week, one row per day](../../../archive/v2_conditioned/docs/reports/assets/2026-10-07_weekly_draft/timeline.png)
 
 *Figure 2. The week, one row per day (00:00 to 24:00, Amsterdam time). Shape marks the kind of step, colour its
 outcome, black diamonds the user's decisions. Much of the work ran overnight. The full table of steps is in the
-[summary draft](drafts/2026-10-07_summary_draft.md#1-timeline).*
+[summary draft](../../../archive/v2_conditioned/docs/reports/weekly/drafts/2026-10-07_summary_draft.md#1-timeline).*
 
 The rest of the report follows four questions: what happened to the factor line (§1), how the task was reframed (§2),
 which side branches were tried and why they failed (§3), and why the middle line's result counts as a GO, against what,
@@ -191,8 +191,8 @@ caption codes still exceeded the cap):
 | emotion conditions | +2.08 [+1.51, +2.62] |
 | style conditions | +0.65 [+0.07, +1.21] |
 
-> Sources: [factor-learning selection](../auto/v2/2026-10-16_candidate_a_factor_learning_selection.md),
-> [affect factor learning, held test](../auto/v2/2026-10-19_candidate_a_affect_factor_learning_held.md).
+> Sources: [factor-learning selection](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-10-16_candidate_a_factor_learning_selection.md),
+> [affect factor learning, held test](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-10-19_candidate_a_affect_factor_learning_held.md).
 
 ### 1.2 The test measured recognition, not conditional similarity
 
@@ -212,8 +212,8 @@ measured recognition of the value from the supports, the shortcut above.
 The value-episode numbers in this section and the aspect-episode numbers below come from different tasks, so their R@1
 levels are not comparable with each other.
 
-> Sources: [support-set baseline spike](../auto/v2/2026-10-22_support_baseline_spike.md), stage report
-> [§3](../stage/2026-10-04_aspect_conditioned_similarity_methods.md#3-how-the-task-was-arrived-at).
+> Sources: [support-set baseline spike](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-10-22_support_baseline_spike.md), stage report
+> [§3](../../../archive/v2_conditioned/docs/reports/stage/2026-10-04_aspect_conditioned_similarity_methods.md#3-how-the-task-was-arrived-at).
 
 ### 1.3 On a fair test the factors ignored the condition
 
@@ -227,8 +227,8 @@ The factors still raised R@1, but only by finding candidates that share *some* a
 condition removed (uniform weights), SE's factor term reached 16.30 R@1 against cosine's 12.96 on the development
 episodes, at a condition gain of exactly 0.
 
-> Sources: [aspect-episode spike](../auto/v2/2026-10-23_aspect_episode_spike.md),
-> [E1 baselines](../auto/v2/2026-10-30_aspect_baselines.md).
+> Sources: [aspect-episode spike](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-10-23_aspect_episode_spike.md),
+> [E1 baselines](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-10-30_aspect_baselines.md).
 
 ### 1.4 Method A tried to train the factors for aspects, and failed its GO test
 
@@ -246,9 +246,9 @@ repair the same day.
 CLIP level, while label probes show headroom. (c) Method A's GO test: its own condition-free control beats it. Hatched
 bars use evaluation labels and are references, not methods.*
 
-> Sources: [E2 partitions](../auto/v2/2026-10-31_pseudo_partitions.md),
-> [E3 go/no-go](../auto/v2/2026-11-01_aspect_factor_gonogo.md),
-> [repair diagnostics](../auto/v2/2026-11-05_method_repair_diagnostics.md).
+> Sources: [E2 partitions](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-10-31_pseudo_partitions.md),
+> [E3 go/no-go](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-01_aspect_factor_gonogo.md),
+> [repair diagnostics](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-05_method_repair_diagnostics.md).
 
 **Verdict (reference).** As a way to read the condition, the factor line ended on 3 October. Its condition-free part
 survives: a centered version of method A's factor term is one of the three ingredients of B, the condition-free score
@@ -282,7 +282,7 @@ emotions, 23 styles, 10 genres) and three **aspect pairs**: emotion × style, em
 **episode seed** draws 12,288 episodes from the 6,451 selection paintings; seed 42 is the development draw, and later
 seeds are fresh draws for tests. The 12,281 held paintings stay reserved for the paper's final test.
 
-![An aspect episode](../assets/2026-10-04_aspect_conditioned_similarity_methods/task_schematic.png)
+![An aspect episode](../../../archive/v2_conditioned/docs/reports/assets/2026-10-04_aspect_conditioned_similarity_methods/task_schematic.png)
 
 *Figure 4. One aspect episode. Teal: support pairs (aspect A); orange: contrast pairs (aspect B); grey: negatives.
 Swapping supports and contrasts must move p_B to the top. From the stage report of 4 October.*
@@ -334,8 +334,8 @@ episodes, 2.48 [2.11, 2.84] above the same probes with the condition ignored (22
 episodes. Measured by condition gain, the inferred aspect kept 63% of what the probes reach when told the aspect
 (13.33 against 21.06; R@1 30.66 when told).
 
-> Sources: [backbone check](../auto/v2/2026-10-25_backbone_check.md), stage report
-> [§9.1](../stage/2026-10-04_aspect_conditioned_similarity_methods.md#91-d0-the-aspect-can-be-read-from-the-pairs-when-items-carry-aspect-blocks).
+> Sources: [backbone check](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-10-25_backbone_check.md), stage report
+> [§9.1](../../../archive/v2_conditioned/docs/reports/stage/2026-10-04_aspect_conditioned_similarity_methods.md#91-d0-the-aspect-can-be-read-from-the-pairs-when-items-carry-aspect-blocks).
 
 ### 2.4 The plan and its review
 
@@ -359,16 +359,16 @@ original GO rule.
 **Status.** The task framing is settled. The paper's framing (method paper, ArtELingo-centred paper, or benchmark and
 analysis paper) has been on hold since 7 October.
 
-> Sources: [CVPR plan](../../superpowers/specs/2026-10-02-cosir-v2-cvpr-publication-plan-design.md) §3, §4, §10;
-> [ARS plan review](../auto/v2/2026-10-27_ars_plan_review.md).
+> Sources: [CVPR plan](../../../archive/v2_conditioned/docs/superpowers/specs/2026-10-02-cosir-v2-cvpr-publication-plan-design.md) §3, §4, §10;
+> [ARS plan review](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-10-27_ars_plan_review.md).
 
 ## 3. The side branches: three roots that failed
 
-![Experiment history](../assets/2026-10-07_weekly_draft/flowchart.png)
+![Experiment history](../../../archive/v2_conditioned/docs/reports/assets/2026-10-07_weekly_draft/flowchart.png)
 
 *Figure 6. The experiment tree of the week. Teal: worked or kept; orange: failed or stopped; slate: diagnostic; dashed:
 in progress. Dotted arrows show what failed methods left in the condition-free bar B. Node ids (N0 to N25) match the
-[summary draft](drafts/2026-10-07_summary_draft.md#3-what-each-branch-tried-and-why-it-worked-or-failed).*
+[summary draft](../../../archive/v2_conditioned/docs/reports/weekly/drafts/2026-10-07_summary_draft.md#3-what-each-branch-tried-and-why-it-worked-or-failed).*
 
 *Table 2. The three side branches and the middle line of Figure 6, left to right, with the best result of each against its own comparator.*
 
@@ -379,8 +379,8 @@ in progress. Dotted arrows show what failed methods left in the condition-free b
 | **Middle line** | label-free groupings, heads that place images and captions in them, a learned reader, and finally one-sided affect steering | AFF +0.591 [+0.462, +0.729] on fresh episodes | strongest condition-free scorer | **GO** (§4) |
 | In-context MLLM (right) | Qwen3-VL 2B and 8B given the whole episode in the prompt | 8B: R@1 +1.07 [+0.17, +1.93], gain +0.21 [−0.51, +0.94] | cosine | finds aspect-sharing candidates, does not pick the shown aspect |
 
-> Sources: [E1 baselines](../auto/v2/2026-10-30_aspect_baselines.md), stage report
-> [§4 to §10](../stage/2026-10-04_aspect_conditioned_similarity_methods.md#4-baselines-nine-ways-to-read-pairs-none-separates-the-aspects-e1).
+> Sources: [E1 baselines](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-10-30_aspect_baselines.md), stage report
+> [§4 to §10](../../../archive/v2_conditioned/docs/reports/stage/2026-10-04_aspect_conditioned_similarity_methods.md#4-baselines-nine-ways-to-read-pairs-none-separates-the-aspects-e1).
 
 Each side branch is described below at its root only, in a short subsection: the idea, the setting and method, and the
 result. The MLLM probe gets more detail, since its input and output differ most from the other methods. Follow-ups are
@@ -413,7 +413,7 @@ R@1 and condition gain became the plan's GO bar.
 reached 13.38 R@1 against cosine's 12.96. The report's hypothesis: raw CLIP mixes the aspects across its dimensions, so
 four value-disjoint pairs mostly estimate the values shown rather than the aspect they share.
 
-> Sources: [E1 baselines](../auto/v2/2026-10-30_aspect_baselines.md) §1 to §3; `src/eval/pair_metric_baselines.py`.
+> Sources: [E1 baselines](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-10-30_aspect_baselines.md) §1 to §3; `src/eval/pair_metric_baselines.py`.
 
 ### 3.2 Method A: factors trained on pseudo-aspect episodes (E2 and E3, 3 October)
 
@@ -442,7 +442,7 @@ condition-removed control, with every lower bound above 0.
 33.4%), and training barely fitted the pseudo-aspect episodes. Of the follow-ups (a nested repair, a centered rule,
 find then select), none passed both R@1 and condition gain against its matched control.
 
-> Sources: [E2 partitions](../auto/v2/2026-10-31_pseudo_partitions.md), [E3 go/no-go](../auto/v2/2026-11-01_aspect_factor_gonogo.md)
+> Sources: [E2 partitions](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-10-31_pseudo_partitions.md), [E3 go/no-go](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-01_aspect_factor_gonogo.md)
 > §2 to §6; `src/model/factors.py`, `src/train/aspect_loss.py`.
 
 ### 3.3 In-context multimodal LLM (3 October)
@@ -507,8 +507,8 @@ difference against cosine have pooled 95% lower bounds above 0.
 did not reliably choose the shown aspect; the 2B model was within noise of cosine on both measures. With no in-context
 model working, the plan's benchmark-paper branch stayed closed.
 
-> Sources: [E3 go/no-go](../auto/v2/2026-11-01_aspect_factor_gonogo.md) §9, stage report
-> [§7](../stage/2026-10-04_aspect_conditioned_similarity_methods.md#7-in-context-multimodal-llms);
+> Sources: [E3 go/no-go](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-01_aspect_factor_gonogo.md) §9, stage report
+> [§7](../../../archive/v2_conditioned/docs/reports/stage/2026-10-04_aspect_conditioned_similarity_methods.md#7-in-context-multimodal-llms);
 > `src/eval/mllm_reranker.py`, `src/test/20261106_mllm_probe_8b/PREREGISTRATION.md`.
 
 ### 3.4 What the failed roots have in common
@@ -550,7 +550,7 @@ the negatives, so centering on them lifts both aspect-sharing candidates togethe
 8 random items, against 17.95 on the episode's own examples. The effect cancels in a method's margin over its matched
 control, which centers the same way, but not in B's lift over cosine.
 
-> Sources: stage report [§11.3](../stage/2026-10-04_aspect_conditioned_similarity_methods.md#113-the-condition-free-bar-and-its-caveat),
+> Sources: stage report [§11.3](../../../archive/v2_conditioned/docs/reports/stage/2026-10-04_aspect_conditioned_similarity_methods.md#113-the-condition-free-bar-and-its-caveat),
 > round 4 report §5.
 
 **Verdict (reference).** Yes, only the middle line passed. The factor-based branches hit the same wall (condition gain
@@ -617,7 +617,7 @@ Two results limit what the secondary check adds. The gated reader R1 alone also 
 [+0.254, +0.532]). With the blend weights chosen on the development episodes reused unchanged, AFF's lead over R1
 shrank from +0.202 to +0.090 [+0.005, +0.177] (descriptive, not pre-registered).
 
-> Sources: [round 3 report](../auto/v2/2026-11-21_round3_affect_gate.md) §3 to §6, §9.
+> Sources: [round 3 report](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-21_round3_affect_gate.md) §3 to §6, §9.
 
 ### 4.2 The design
 
@@ -666,8 +666,8 @@ The **matched control** uses the same 224 cells with the gated term replaced by 
 so it keeps every ingredient but cannot follow the condition; it picks its cells by R@1, the rule most favourable to a
 control. **B′(A0)** is B rebuilt with the head agreement averaged over AFF's own three groupings.
 
-> Sources: [round 1](../auto/v2/2026-11-18_reader_fix_csd.md) §1, [round 3](../auto/v2/2026-11-21_round3_affect_gate.md)
-> §1 and §3, [grouping report](../auto/v2/2026-11-12_partition_quality_leiden_communities.md) §2 and §4.
+> Sources: [round 1](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-18_reader_fix_csd.md) §1, [round 3](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-21_round3_affect_gate.md)
+> §1 and §3, [grouping report](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-12_partition_quality_leiden_communities.md) §2 and §4.
 
 ### 4.3 Why each component is there
 
@@ -767,10 +767,10 @@ None beat AFF. Every veto also switched off emotion-side steering that paid: tho
 rankings, while all others won back only 24, 11 and 31. AFF itself is only +0.332 [+0.048, +0.625] above B′(A1) on the
 development episodes, and below it on style × genre.
 
-> Sources: stage report [§10, §14](../stage/2026-10-04_aspect_conditioned_similarity_methods.md#10-n6-and-n6c-a-reader-that-works-a-fusion-that-does-not-yet),
-> [grouping report](../auto/v2/2026-11-12_partition_quality_leiden_communities.md) §3 to §9,
-> [round 1](../auto/v2/2026-11-18_reader_fix_csd.md) §3 and §4, [round 2](../auto/v2/2026-11-19_reader_fix_round2.md),
-> [brainstorm](../auto/v2/2026-11-20_r1_levers_brainstorm.md) §2, [round 4](../auto/v2/2026-11-22_round4_aff_vetoes.md) §5 and §6.
+> Sources: stage report [§10, §14](../../../archive/v2_conditioned/docs/reports/stage/2026-10-04_aspect_conditioned_similarity_methods.md#10-n6-and-n6c-a-reader-that-works-a-fusion-that-does-not-yet),
+> [grouping report](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-12_partition_quality_leiden_communities.md) §3 to §9,
+> [round 1](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-18_reader_fix_csd.md) §3 and §4, [round 2](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-19_reader_fix_round2.md),
+> [brainstorm](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-20_r1_levers_brainstorm.md) §2, [round 4](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-22_round4_aff_vetoes.md) §5 and §6.
 
 ### 4.4 Where the gain sits
 
@@ -791,7 +791,7 @@ The pooled GO rests on the two emotion pairs. On style × genre AFF fell below t
   There the first condition shows style, and the reader picked affect in 77.6% of those first conditions, about as
   often as in the first (emotion) condition of emotion × style (78.4%). The affect grouping is not built to carry style.
 
-![Per aspect pair](../../user_read/assets/2026-10-06_reader_fix_affect_steering/fig3_per_pair.png)
+![Per aspect pair](../../../archive/v2_conditioned/docs/user_read/assets/2026-10-06_reader_fix_affect_steering/fig3_per_pair.png)
 
 *Figure 10. AFF's margin over the strongest condition-free comparator per aspect pair, fresh episodes (from the
 6 October briefing).*
@@ -802,7 +802,7 @@ A **random one-sided gate** kept R1's gate on random episodes, opening each cond
 which condition is first, which no method may, so it is a mechanism control. It matched AFF: AFF minus the control was
 −0.042 [−0.138, +0.048] and +0.029 [−0.076, +0.132] for its two random draws (Figure 11).
 
-![Random one-sided gate](../../user_read/assets/2026-10-06_reader_fix_affect_steering/fig4_control.png)
+![Random one-sided gate](../../../archive/v2_conditioned/docs/user_read/assets/2026-10-06_reader_fix_affect_steering/fig4_control.png)
 
 *Figure 11. Margin over the strongest condition-free comparator on the fresh episodes for AFF, the two draws of the
 random one-sided gate, and R1 (from the 6 October briefing).*
@@ -823,8 +823,8 @@ Our reading (not tested further): the affect pick behaves like a visual-contrast
 look alike and the supports do not. In the emotion pairs that is the emotion side, where steering pays; in style ×
 genre it is the style side, where it costs.
 
-> Sources: round 3 report [§7](../auto/v2/2026-11-21_round3_affect_gate.md#7-per-aspect-pair) and
-> [§8](../auto/v2/2026-11-21_round3_affect_gate.md#8-mechanism-the-random-share-control).
+> Sources: round 3 report [§7](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-21_round3_affect_gate.md#7-per-aspect-pair) and
+> [§8](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-21_round3_affect_gate.md#8-mechanism-the-random-share-control).
 
 ### 4.6 What the GO covers, and what it does not
 
@@ -839,7 +839,7 @@ The effect is small in R@1 (+0.59, about 3% relative) and large in condition gai
 only from the two pairs with emotion, the one aspect that is not visual; whether the mechanism transfers to datasets
 whose aspects are visual (CUB: colours and bill shape; SemArt: type, school, timeframe) is untested.
 
-> Sources: [CVPR readiness memo](../stage/2026-10-07_cvpr_readiness.md) §1, §3.
+> Sources: [CVPR readiness memo](../../../archive/v2_conditioned/docs/reports/stage/2026-10-07_cvpr_readiness.md) §1, §3.
 
 ### 4.7 What is new about AFF
 
@@ -891,8 +891,8 @@ checks reported beside it.*
 | benchmark and analysis paper | plan, branch 3 | the release and the analysis; no method needs to pass |
 | benchmark paper with an MLLM as the scorer | plan, branch 2 | not available: no in-context MLLM worked |
 
-> Sources: CVPR plan [§4](../../superpowers/specs/2026-10-02-cosir-v2-cvpr-publication-plan-design.md#4-contributions-and-claims-approved),
-> [readiness memo](../stage/2026-10-07_cvpr_readiness.md) §3 and §6.
+> Sources: CVPR plan [§4](../../../archive/v2_conditioned/docs/superpowers/specs/2026-10-02-cosir-v2-cvpr-publication-plan-design.md#4-contributions-and-claims-approved),
+> [readiness memo](../../../archive/v2_conditioned/docs/reports/stage/2026-10-07_cvpr_readiness.md) §3 and §6.
 
 ## 6. Status at the end of the week
 
@@ -942,13 +942,13 @@ checks reported beside it.*
 
 ## Sources
 
-- Stage report, 2 to 4 October: [aspect-conditioned similarity methods](../stage/2026-10-04_aspect_conditioned_similarity_methods.md)
-- [Grouping quality and Leiden communities](../auto/v2/2026-11-12_partition_quality_leiden_communities.md) (5 October)
-- Reader rounds: [round 1](../auto/v2/2026-11-18_reader_fix_csd.md), [round 2](../auto/v2/2026-11-19_reader_fix_round2.md),
-  [brainstorm](../auto/v2/2026-11-20_r1_levers_brainstorm.md), [round 3](../auto/v2/2026-11-21_round3_affect_gate.md),
-  [round 4](../auto/v2/2026-11-22_round4_aff_vetoes.md)
-- [CVPR readiness memo](../stage/2026-10-07_cvpr_readiness.md) (7 October)
-- Briefings: [reader fix](../../user_read/2026-10-06_reader_fix.md),
-  [affect steering](../../user_read/2026-10-06_reader_fix_affect_steering.md),
-  [round 4](../../user_read/2026-10-07_round4_vetoes.md)
-- Detailed timeline and experiment tree: [summary draft](drafts/2026-10-07_summary_draft.md)
+- Stage report, 2 to 4 October: [aspect-conditioned similarity methods](../../../archive/v2_conditioned/docs/reports/stage/2026-10-04_aspect_conditioned_similarity_methods.md)
+- [Grouping quality and Leiden communities](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-12_partition_quality_leiden_communities.md) (5 October)
+- Reader rounds: [round 1](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-18_reader_fix_csd.md), [round 2](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-19_reader_fix_round2.md),
+  [brainstorm](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-20_r1_levers_brainstorm.md), [round 3](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-21_round3_affect_gate.md),
+  [round 4](../../../archive/v2_conditioned/docs/reports/auto/v2/2026-11-22_round4_aff_vetoes.md)
+- [CVPR readiness memo](../../../archive/v2_conditioned/docs/reports/stage/2026-10-07_cvpr_readiness.md) (7 October)
+- Briefings: [reader fix](../../../archive/v2_conditioned/docs/user_read/2026-10-06_reader_fix.md),
+  [affect steering](../../../archive/v2_conditioned/docs/user_read/2026-10-06_reader_fix_affect_steering.md),
+  [round 4](../../../archive/v2_conditioned/docs/user_read/2026-10-07_round4_vetoes.md)
+- Detailed timeline and experiment tree: [summary draft](../../../archive/v2_conditioned/docs/reports/weekly/drafts/2026-10-07_summary_draft.md)
