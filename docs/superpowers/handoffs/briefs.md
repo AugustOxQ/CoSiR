@@ -403,3 +403,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-15-r10-decide-2-handoff.md
 - New chat: tab 'r10 decide 2', session 4a12c7bd-ee35-4bd3-b3c2-f64cb6fd7049
 
+[brief] CoSiR: 1 -> chat-rule (2026-10-15 22:42 Amsterdam)
+- Done: setup trim committed and pushed; the user decided the new chat rule (goal, Occam's razor, names, reply shape).
+- State: `plain-english.md` is 174 words; the rules loaded in every chat total 5,825 words.
+- Next: rename `plain-english.md` to `occam-razor-chat.md`, write the rule, add names guidance, test, show the user.
+- Blocked: nothing; three small points to confirm with the user (section 4).
+- Handoff: docs/superpowers/handoffs/2026-10-15-chat-rule-handoff.md
+- New chat: tab 'chat-rule', session e9fa4744-e323-4369-b9b3-25391c2e1bd9
+

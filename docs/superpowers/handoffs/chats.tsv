@@ -72,3 +72,4 @@ opened	loop	label	session	opened from	first read
 2026-10-14 13:09	main	r10 main	17d5e275-a8a7-4cdc-a025-f020ed7c33f7	22fd6e9c-81ec-4c3c-bf7b-e483bc9faf75	../../root/.claude/templates/main_chat_start.md
 2026-10-14 13:09	r10	r10 decide	99c60428-8e46-4b1e-9a72-53e9d8e4001b	22fd6e9c-81ec-4c3c-bf7b-e483bc9faf75	docs/superpowers/handoffs/2026-10-14-r10-decide-handoff.md
 2026-10-15 21:03	r10	r10 decide 2	4a12c7bd-ee35-4bd3-b3c2-f64cb6fd7049	99c60428-8e46-4b1e-9a72-53e9d8e4001b	docs/superpowers/handoffs/2026-10-15-r10-decide-2-handoff.md
+2026-10-15 22:42	chat-rule	chat-rule	e9fa4744-e323-4369-b9b3-25391c2e1bd9	2add9a50-405a-4346-821a-0f1f53da2dd3	docs/superpowers/handoffs/2026-10-15-chat-rule-handoff.md
