@@ -411,3 +411,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-15-chat-rule-handoff.md
 - New chat: tab 'chat-rule', session e9fa4744-e323-4369-b9b3-25391c2e1bd9
 
+[brief] CoSiR: chat-rule -> routines rule (2026-10-15 23:47 Amsterdam)
+- Done: chat rule `occam-razor-chat.md` written and tested; routing updated (Opus medium, fit the task best, subagent chats kept).
+- State: the user decided a new rule for chat end, task end and a regular check; nothing of it is built yet.
+- Next: build `routines.md` and `upkeep.md`, trim `wrapup-check`; then the user brings scattered ideas to discuss.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-15-routines-rule-handoff.md
+- New chat: tab 'routines rule', session 78d3c73d-0a78-40d3-8831-f2d9edfb8f18
+
