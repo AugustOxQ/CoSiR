@@ -395,3 +395,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-14-r10-decide-handoff.md
 - New chat: tab 'r10 decide', session 99c60428-8e46-4b1e-9a72-53e9d8e4001b
 
+[brief] CoSiR: r10 decide -> r10 decide 2 (2026-10-15 21:03 Amsterdam)
+- Done: the conditioned line is archived (tags, `archive/v2_conditioned/`, paper archived), disk cleaned (+67 GB), memory and CLAUDE.md point at the new line.
+- State: new line drafted: a condition-free model built from the buddy model, over PercepT; soft CVPR.
+- Next: finish decision A with the user, then step 3: the reuse inventory and the PercepT literature check.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-15-r10-decide-2-handoff.md
+- New chat: tab 'r10 decide 2', session 4a12c7bd-ee35-4bd3-b3c2-f64cb6fd7049
+
