@@ -419,3 +419,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-15-routines-rule-handoff.md
 - New chat: tab 'routines rule', session 78d3c73d-0a78-40d3-8831-f2d9edfb8f18
 
+[brief] CoSiR: routines rule -> r10 decide 3 (2026-10-17 01:03 Amsterdam)
+- Done: step 3 for the new line: PercepT and conditional-similarity literature checks, PercepT code audit, premise checks, three candidate ideas.
+- State: PercepT's own tables show DEC adds little (AMI 0.16 without vs 0.18 with); our PercepT code is not faithful; affect is weak without a supervised encoder (AMI 0.05 vs 0.20).
+- Next: the grill, round 1: decision B (which idea), the meaning of "label-free", the PercepT baseline.
+- Blocked: waiting for the user's answers.
+- Handoff: docs/superpowers/handoffs/2026-10-17-r10-decide-3-handoff.md
+- New chat: tab 'r10 decide 3', session ff521457-393f-48d9-8c4c-b3a3076d5166
+
