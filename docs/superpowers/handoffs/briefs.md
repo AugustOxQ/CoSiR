@@ -427,3 +427,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-17-r10-decide-3-handoff.md
 - New chat: tab 'r10 decide 3', session ff521457-393f-48d9-8c4c-b3a3076d5166
 
+[brief] CoSiR: r10 decide 3 -> r10 decide 4 (2026-10-17 05:26 Amsterdam)
+- Done: premise check of the user's prompted-aspect idea (Qwen3-VL-Embedding-2B, 10 instructions) and its auto report.
+- State: the emotion instruction lifts caption emotion AMI from 0.122 to 0.278 (GoEmotions 0.209). The style instruction lifts image style AMI from 0.222 to 0.395 (CSD 0.317). Image emotion moves only from 0.069 to 0.093.
+- Next: night mode: the image-only transfer pilot (the student premise), then the emotion-word masking check if time allows; end by 11:00; then a user-read report and the grill.
+- Blocked: the grill waits for the user (morning).
+- Handoff: docs/superpowers/handoffs/2026-10-17-r10-decide-4-handoff.md
+- New chat: tab 'r10 decide 4', session 301c2390-ce43-4182-9c28-82e5a0dbc96f
+
