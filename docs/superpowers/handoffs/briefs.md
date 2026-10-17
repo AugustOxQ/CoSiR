@@ -435,3 +435,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-17-r10-decide-4-handoff.md
 - New chat: tab 'r10 decide 4', session 301c2390-ce43-4182-9c28-82e5a0dbc96f
 
+[brief] CoSiR: r10 decide 4 -> r10 decide 5 (2026-10-17 06:38 Amsterdam)
+- Done: both night pilots, their auto report and one user-read report covering the three checks.
+- State: masking 132 affect words keeps most of the emotion instruction's caption lift (AMI 0.187 vs 0.069 default). The image-only student fails its bar (0.074, control 0.074, bar 0.12).
+- Next: show the results brief without our reading, get the user's reading, then the grill (candidate (b), decision B, Q4, Q5).
+- Blocked: the grill waits for the user (morning).
+- Handoff: docs/superpowers/handoffs/2026-10-17-r10-decide-5-handoff.md
+- New chat: tab 'r10 decide 5', session 49c42a7b-8a89-4a25-816b-2232f8f66525
+
