@@ -68,3 +68,35 @@ PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUDA_VISIBLE_DEVIC
 ```
 
 Final source syntax and module-prefix checks passed after the last edits. The fake fixture ID/norm checks and full reference checkpoint reuse were rechecked. `reference_final.log` is also optional cleanup; retained here.
+
+## Full run (controller, 2026-10-17)
+
+- Launched 02:35 by the controller: `setsid nohup ./pav_queue.sh` (extraction under `flock -o -w 3600 -E 75 /tmp/gpu0.lock`, then `pav_score.py`). Ended 05:20: `PAV_DONE extract_exit=0 score_exit=0`. All 10 keys passed the finite and norm gate (`gpu_full.log`); captions ran at about 267 items/s. Scoring took 1,804 s. Only solver ConvergenceWarnings in `score_full.log` (probe, 300 iterations, as in the earlier check).
+- Store: `/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/<key>/` (4.6 GB; disk-ledger row added, decision deferred to the user).
+- The controller read the key numbers below directly from `results.json` (not from `tables.md`); they match `tables.md`. The default instruction is the same one as the stored `qwen3vl_emb_2b` features (`QWEN_INSTRUCTION_DEFAULT`), so those features are the default view for all paintings.
+
+## Results (train side; 99,999 captions, 19,889 paintings; painting level on the 5,000-painting subset; k-means mean of 3 seeds)
+
+| View | Caption emotion AMI k=20 | Image emotion / genre / style AMI k=20 | Mean-caption emotion / genre / style AMI k=20 |
+|---|---:|---|---|
+| CLIP B/32 | 0.047 | 0.065 / 0.412 / 0.300 | 0.067 / 0.330 / 0.110 |
+| CSD (style encoder) | | 0.044 / 0.254 / 0.317 | |
+| GoEmotions (supervised) | 0.209 | | |
+| Qwen default | 0.122 | 0.069 / 0.449 / 0.222 | 0.107 / 0.338 / 0.120 |
+| emotion_focus | **0.278** | 0.093 / 0.410 / 0.168 | **0.217** / 0.244 / 0.101 |
+| emotion_word | 0.274 | 0.094 / 0.414 / 0.180 | 0.211 / 0.247 / 0.106 |
+| emotion_neg | 0.254 | 0.077 / 0.445 / 0.188 | 0.185 / 0.290 / 0.117 |
+| genre_word | 0.169 | 0.070 / **0.496** / 0.264 | 0.138 / 0.353 / 0.140 |
+| style_focus | 0.176 | 0.062 / 0.410 / 0.356 | 0.143 / 0.339 / 0.134 |
+| style_word | 0.215 | 0.063 / 0.349 / **0.395** | 0.178 / 0.310 / 0.135 |
+
+- Probes move little: image emotion 0.392 (default) → 0.409 (emotion_focus), majority 0.352; image style 0.578 → 0.629 (style_word), CSD 0.620; caption emotion 0.564 → 0.586, GoEmotions 0.516.
+- Image partitions differ across aspect prompts: AMI 0.27 (emotion_focus vs style_word) to 0.47; same view, two seeds: 0.61 to 0.69. Forms within an aspect agree (0.52 to 0.60). genre_focus vs default 0.64.
+- Buddy lift (mutual top-20, strict graph): style_word style lift 7.56 vs 4.88 default; emotion_focus mean-caption graph emotion lift 2.37 vs 2.06 default. Graph sizes differ (1,604 to 2,984 strict pairs).
+
+## Caveats
+
+- Any instruction lifts caption emotion AMI (genre and style prompts: 0.17 to 0.22 vs 0.12 default); the emotion-specific part is about +0.06 to +0.11 over them.
+- Captions often name the emotion; the caption lift may come from reading that word. Not checked.
+- Prompt forms are compared with labels (train side); choosing a form by these scores is a label use.
+- One sample, one model size (2B), ArtELingo only; sd is over k-means seeds, not samples. Lift is not at matched graph size.
