@@ -8,7 +8,7 @@
 - Next: tickets and build per the spec, an end-to-end smoke that times each run kind, then open the run chat.
 - Blocked: nothing.
 
-> Written 2026-10-18 23:38 by "r10 follow-up 1". Loop step reached: after the spec's approval (step 6), before step 7.
+> Written 2026-10-18 23:35 by "r10 follow-up 1". Loop step reached: after the spec's approval (step 6), before step 7.
 > Direction log entry: [2026-10-18, aspect graph follow-up](../direction_log.md).
 
 ## 1. Read in this order
@@ -37,7 +37,7 @@ Skills: to-tickets, implement-spec (`~/.claude/references/matt-chain.md`).
 
 ## 3. Where things stand
 
-- GPU check at 23:31 passed (driver, module and library 595.99.02; no process, no lock). Run mode: day at 23:38;
+- GPU check at 23:31 passed (driver, module and library 595.99.02; no process, no lock). Run mode: day at 23:35;
   the main chat switches it when the user says so.
 - Disk: system 260 GB free, SSD2 1.9 TB free.
 - Codex: 5h 97%, weekly 94% left (23:13).
