@@ -14,6 +14,7 @@ from itp_data import atomic_json, default_images, fingerprint, load_frozen, targ
 from pbp_graphs import label_vectors, sha_file
 from pav_score import ami, partitions, summary
 from apc_data import l2, paint_mean
+from pc_fixes import kept_centers, largest_gap
 
 OUTPUTS = HERE / 'outputs'
 LABELS = ('emotion', 'style', 'genre')
@@ -55,7 +56,7 @@ def unit_tests_pass(line):
     return 'passed' in low and 'failed' not in low and 'error' not in low
 
 
-def aggregate_arm(seeds, stage0_pass, tests_pass, fix_tests=None):
+def aggregate_arm(seeds, stage0_pass, tests_pass, fix_tests=None, counts=None):
     assert set(seeds) <= {'0', '1', '2'}
     reasons = []
     if not stage0_pass:
@@ -80,12 +81,14 @@ def aggregate_arm(seeds, stage0_pass, tests_pass, fix_tests=None):
             reasons.append(f'Seed {seed} dev AUC below 0.75')
     result = dict(established=not reasons, reasons=reasons, n_seeds=len(seeds),
                   img=None, native_img=None, native_topic=None, K=None, dev_auc=None)
+    counts = [r['K'] for r in seeds.values()] if counts is None else counts
+    if counts:
+        result['K'] = {g: summary([r[g] for r in counts]) for g in ('1.5', '2', '3', '5')}
     if missing or untrained:
         return result
     result['img'] = {a: summary([r['img'][a]['mean'] for r in seeds.values()]) for a in LABELS}
     for key in ('native_img', 'native_topic'):
         result[key] = {a: summary([r[key][a] for r in seeds.values()]) for a in LABELS}
-    result['K'] = {g: summary([r['K'][g] for r in seeds.values()]) for g in ('1.5', '2', '3', '5')}
     if all(r['dev_auc'] is not None for r in seeds.values()):
         result['dev_auc'] = summary([r['dev_auc'] for r in seeds.values()])
     return result
@@ -135,7 +138,18 @@ def score_seed(stage1, stage2, s, labels):
     assert meta2['K'] == k
     if 'reason' in meta2:  # Ticket 05, K below 2: sidecar only.
         assert k < 2 and meta2['dev_auc'] is None, f'{stage2.name}: reason with K={k}'
-        return dict(reason=meta2['reason'], K=counts, dev_auc=None, source_sha256=hashes,
+        with np.load(stage1, allow_pickle=False) as z:
+            norms = z['center_norms']
+        assert norms.shape == (100,) and norms.dtype == np.float32
+        ordered, index, gap, mean_gap = largest_gap(norms)
+        kept = kept_centers(norms)
+        assert kept.sum() == k and mean_gap > 0
+        at = 'at every γ' if all(v == k for v in counts.values()) else 'at γ = 2'
+        cause = (f'K = {k} {at}: the largest gap ({gap / mean_gap:.2f} x the mean gap) '
+                 f'lies between sorted positions {index + 1} and {index + 2} of {len(ordered)} '
+                 f'(counted from the lowest norm); the {int((~kept).sum())} centers above it '
+                 'are dropped (Algorithm 1)')
+        return dict(reason=meta2['reason'] + '; ' + cause, K=counts, dev_auc=None, source_sha256=hashes,
                     dev_valid_topics=meta2['dev_valid_topics'])
     hashes['stage2'] = sha_file(stage2)
     with np.load(stage1, allow_pickle=False) as z:
@@ -165,9 +179,16 @@ def score_outputs(s, labels, outdir=OUTPUTS):
     arms, missing = {}, {}
     for arm, version in ARMS.items():
         seeds = {}
+        counts = []
         for seed in (0, 1, 2):
             stage1 = outdir / 'stage1' / f'{version}__s{seed}.npz'
             stage2 = outdir / 'stage2' / f'{arm}__s{seed}.npz'
+            if stage1.exists() and stage1.with_suffix('.json').exists():
+                meta1 = json.loads(stage1.with_suffix('.json').read_text())
+                assert meta1['sample_sha256'] == fingerprint(s), 'Stage 1 sample mismatch'
+                assert set(meta1['K']) == {'1.5', '2', '3', '5'}
+                assert all(isinstance(k, int) and 1 <= k <= 100 for k in meta1['K'].values())
+                counts.append(meta1['K'])
             paths = (stage1, stage1.with_suffix('.json'), stage2, stage2.with_suffix('.json'))
             sidecar = stage2.with_suffix('.json')
             if sidecar.exists() and 'reason' in json.loads(sidecar.read_text()):
@@ -178,7 +199,7 @@ def score_outputs(s, labels, outdir=OUTPUTS):
                 continue
             seeds[str(seed)] = score_seed(stage1, stage2, s, labels)
         arms[arm] = dict(version=version, seeds=seeds,
-                         **aggregate_arm(seeds, stage0['status'] == 'PASS', tests_pass, fix_tests))
+                         **aggregate_arm(seeds, stage0['status'] == 'PASS', tests_pass, fix_tests, counts))
     return dict(schema=1, sample_sha256=fingerprint(s), stage0=stage0, arms=arms,
                 comparator=comparators(arms), missing_outputs=missing,
                 conventions='Image only: l2(eval_prob), pav k20 seeds012, y>=0; '
@@ -231,7 +252,9 @@ def markdown(result):
         for key, side in (('native_img', 'Stage 2 image'), ('native_topic', 'Stage 1 painting topic')):
             values = [fmt(r[key][a]) if r[key] else '—' for a in LABELS]
             lines.append(f'| {arm} | {side} | ' + ' | '.join(values) + ' |')
-    lines += ['', '## K per gamma', '', '| Arm | 1.5 | 2 | 3 | 5 |', '|---|---:|---:|---:|---:|']
+    lines += ['', '## K per gamma', '',
+              'Over every available Stage 1 seed, including seeds without a trained mapper.', '',
+              '| Arm | 1.5 | 2 | 3 | 5 |', '|---|---:|---:|---:|---:|']
     for arm, r in result['arms'].items():
         values = [fmt(r['K'][g]) if r['K'] else '—' for g in ('1.5', '2', '3', '5')]
         lines.append(f'| {arm} | ' + ' | '.join(values) + ' |')

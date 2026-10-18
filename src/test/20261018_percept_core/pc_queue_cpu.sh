@@ -48,6 +48,28 @@ else
     skip head_rows blocked
 fi
 step rows_score "${rows[@]}" --score "${smoke_args[@]}"
+gpu_wait_start=$SECONDS
+gpu_wait_limit=${PC_GPU_WAIT:-18000}
+gpu_poll=30
+if [[ -n "$smoke" ]]; then gpu_poll=1; fi
+while :; do
+    gpu_state=$(awk '
+        /^PC_gpu_SUBMIT / {state="pending"}
+        /^PC_gpu_DONE / {if (state) state="ok"}
+        END {print state ? state : "none"}
+    ' "$status")
+    if [[ $gpu_state != pending ]]; then break; fi
+    gpu_elapsed=$((SECONDS - gpu_wait_start))
+    if (( gpu_elapsed >= gpu_wait_limit )); then
+        gpu_state=timeout
+        failed=1
+        break
+    fi
+    gpu_sleep=$((gpu_wait_limit - gpu_elapsed))
+    if (( gpu_sleep > gpu_poll )); then gpu_sleep=$gpu_poll; fi
+    sleep "$gpu_sleep"
+done
+record gpu_wait "$gpu_state" "$((SECONDS - gpu_wait_start))"
 score_args=()
 if [[ -n "$smoke" ]]; then score_args=(--outdir "$smoke"); fi
 step sheet "$python_bin" -u "$here/pc_score.py" "${score_args[@]}"

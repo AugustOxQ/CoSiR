@@ -120,7 +120,7 @@ def test_row1_readers_normalize_captions_before_painting_mean(monkeypatch):
 @pytest.fixture
 def stage_files(tmp_path):
     n, k = 5000, 20
-    groups = np.tile(np.arange(k), n // k)
+    groups = np.random.default_rng(42).permutation(np.arange(n)) % k
     sample = dict(sample_ids=np.arange(99999), pid=np.arange(99999) % 19889,
                   first=np.arange(19889), all_painting_ids=np.arange(19889).astype(str),
                   subset_pid=np.arange(n)[::-1], subset_image_indices=np.arange(n)[::-1])
@@ -196,8 +196,10 @@ def test_results_files_contain_row1_native_counts_auc_and_comparator(stage_files
 def test_default_cli_writes_sheet_with_standin_feature_readers(stage_files, monkeypatch):
     from types import SimpleNamespace
     sample, labels, outdir = stage_files
-    captions = np.eye(23, dtype=np.float32)[sample['pid'] % 20] * 3
-    images = np.eye(23, dtype=np.float32)[np.arange(19889) % 20] * 7
+    groups = np.zeros(19889, dtype=int)
+    groups[sample['subset_pid']] = labels['emotion']
+    captions = np.eye(23, dtype=np.float32)[groups[sample['pid']]] * 3
+    images = np.eye(23, dtype=np.float32)[groups] * 7
     readers = SimpleNamespace(caption_features=lambda s, kind: captions,
                               image_features=lambda s, kind: images)
     monkeypatch.setitem(sys.modules, 'pc_data', readers)
@@ -230,8 +232,9 @@ def test_untrained_seed_reports_its_reason_not_incomplete_files(stage_files):
     stage1 = json.loads(meta.read_text())
     stage1['K'] = {g: 1 for g in ('1.5', '2', '3', '5')}
     meta.write_text(json.dumps(stage1))
-    np.savez(outdir / 'stage1' / 'clip_roberta__s1.npz', center_norms=np.arange(1, 101, dtype=np.float32),
-             kept=np.arange(100) == 99, topic=np.zeros(99999, dtype=np.int16),
+    norms = np.random.default_rng(7).permutation(np.r_[0, np.arange(100, 199)]).astype(np.float32)
+    np.savez(outdir / 'stage1' / 'clip_roberta__s1.npz', center_norms=norms,
+             kept=norms == 0, topic=np.zeros(99999, dtype=np.int16),
              q_paint_eval=np.ones((5000, 1), dtype=np.float32))
     write_stage2_without_training(outdir, 1, 'K below 2: no topics to train')
     result = score.score_outputs(sample, labels, outdir)
@@ -243,6 +246,15 @@ def test_untrained_seed_reports_its_reason_not_incomplete_files(stage_files):
     assert 'P1__s0' not in result['missing_outputs']
     md = score.markdown(dict(result, row1={}))
     assert 'K below 2: no topics to train' in md
+    assert 'K = 1 at every γ' in md
+    assert '50.00 x the mean gap' in md
+    assert 'between sorted positions 1 and 2 of 100 (counted from the lowest norm)' in md
+    assert '99 centers above it are dropped (Algorithm 1)' in md
+    assert arm['K']['2'] == pytest.approx(dict(mean=13.6666666667, sd=8.9566858950))
+    # Stage 1 counts remain available even when no Stage 2 sidecar exists (P2).
+    assert result['arms']['P2']['K']['2'] == arm['K']['2']
+    k_table = md.split('## K per gamma')[1].split('## Dev AUC')[0]
+    assert '| P1 | 7.00000 ± 4.24264 | 13.66667 ± 8.95669 |' in k_table
 
 
 def test_null_dev_auc_is_undefined_not_below_threshold_and_nan_still_asserts():
