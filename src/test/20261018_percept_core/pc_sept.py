@@ -1,4 +1,4 @@
-"""Verbatim September Stage 1 training functions (commit 1b70d7f).
+"""Verbatim September training functions (commit 1b70d7f).
 
 Source: src/test/20260922_percept_topic_pipeline/
   run_percept_stage1_pilot.py:138-186 (autoencoder, pretrain, Q, P)
@@ -11,6 +11,7 @@ import sys
 import numpy as np
 import torch
 from sklearn.cluster import KMeans
+from sklearn.metrics import roc_auc_score
 from torch import nn
 from torch.nn import functional as F
 
@@ -185,3 +186,65 @@ def train_dec_until_stable(
             log(f"Stopping K={n_initial_clusters} DEC at epoch {epoch}: {stop_reason}.")
             return losses, stop_reason, epoch
     raise RuntimeError("DEC training exited without a stopping condition.")
+
+
+N_SURVIVING_CLUSTERS = 40
+
+
+# Source: src/test/20260922_percept_topic_pipeline/run_percept_stage2_sweep_pilot.py:61-78; commit 1b70d7f.
+class AttentionPoolingMapper(nn.Module):
+    """Pool 50 CLIP tokens with one learned query, then score all P-Topics."""
+
+    def __init__(self, d_model: int = 512, n_topics: int = N_SURVIVING_CLUSTERS):
+        super().__init__()
+        self.query = nn.Parameter(torch.randn(1, d_model) * 0.02)
+        self.classifier = nn.Linear(d_model, n_topics)
+
+    def forward(self, patch_tokens: torch.Tensor) -> torch.Tensor:
+        """Return one multi-label logit per frozen topic."""
+        query = self.query.expand(patch_tokens.shape[0], -1, -1)
+        attn_weights = (
+            query @ patch_tokens.transpose(1, 2)
+        ) / (patch_tokens.shape[-1] ** 0.5)
+        attn_weights = attn_weights.softmax(dim=-1)
+        pooled = (attn_weights @ patch_tokens).squeeze(1)
+        return self.classifier(pooled)
+
+
+
+# Source: src/test/20260922_percept_topic_pipeline/run_percept_stage2_sweep_pilot.py:131-165; commit 1b70d7f.
+def evaluate_auc(
+    scores: np.ndarray,
+    targets: np.ndarray,
+    log,
+    scorer_name: str,
+) -> tuple[dict[int, float], list[int]]:
+    """Score valid per-topic held-out AUCs and explicitly log invalid topics."""
+    aucs = {}
+    skipped = []
+    for topic in range(targets.shape[1]):
+        topic_targets = targets[:, topic]
+        positives = int(topic_targets.sum())
+        negatives = len(topic_targets) - positives
+        if positives == 0 or negatives == 0:
+            log(
+                f"Skipping {scorer_name} AUC for topic {topic}: "
+                f"{positives} positives and {negatives} negatives in held-out."
+            )
+            skipped.append(topic)
+            continue
+        aucs[topic] = float(roc_auc_score(topic_targets, scores[:, topic]))
+    if not aucs:
+        raise RuntimeError("No held-out topics have both positive and negative labels.")
+    return aucs, skipped
+
+
+def auc_summary(aucs: dict[int, float]) -> dict[str, float]:
+    """Return macro/min/median/max aggregate statistics."""
+    values = np.asarray(list(aucs.values()))
+    return {
+        "macro": float(np.mean(values)),
+        "min": float(np.min(values)),
+        "median": float(np.median(values)),
+        "max": float(np.max(values)),
+    }
