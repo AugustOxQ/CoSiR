@@ -44,7 +44,9 @@ prompted-input head.
 - c. One more CPU follow-up (about an hour): prompted inputs on the genre image graph, and the effect of coverage
   (the emotion residual graph leaves 57% of paintings without a pair).
 
-**Your reading.** (user, before ours)
+**Your reading.** (user, before ours, 2026-10-18) "I think this is a good sign, so our best graph steadily beat plain
+aspect graph." The user then asked for an ablation table in the user-read report, one part changed at a time, with
+placeholders for missing numbers (see "Ablation view" below).
 
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>
@@ -137,6 +139,30 @@ The views' sd over k-means seeds is at most 0.007. All labels and sides:
 - **The cost of the other labels.** The prompted-input emotion head keeps less genre on the image side than the
   prompted image itself (0.327 vs 0.410), as the default-input residual head did in stage 1 (0.304). The emotion
   residual pairs cross genre (stage 1, lift 0.69), and the head follows them.
+
+### Ablation view (added after the user's reading)
+
+One part changed at a time; target AMI, differences of unrounded means (rows of the results table; the default and
+prompted views are the "no training" rows). Every graph row is built on the prompted view, so default-input heads use
+the instruction in training only. The full row table with placeholders is in the
+[user-read report](../../../user_read/2026-10-18_aspect_graph_followup.md), "Which part of the design does the work?".
+
+| Change | Emotion | Style | Genre |
+|---|---:|---:|---:|
+| Prompted view vs default view, no training | +0.066 | +0.094 | +0.031 |
+| Head on R0, default inputs, vs default view | +0.029 | +0.042 | +0.009 |
+| R1 vs R0, default inputs | +0.005 | +0.008 | +0.002 |
+| Stage 1 pick (Fres1, Fres05, Fside025) vs R0, default inputs | +0.019 | +0.047 | +0.018 |
+| Genre R0o vs R0, default inputs | | | +0.026 |
+| Prompted vs default inputs, R0 | +0.004 | +0.009 | +0.002 |
+| Prompted vs default inputs, stage 1 pick | +0.014 | +0.023 | +0.004 |
+| Best default-input head (genre R0o) vs default view | +0.049 | +0.089 | +0.035 |
+| Best default-input head (genre R0o) vs prompted view | −0.018 | −0.005 | +0.003 |
+| Prompted-input stage 1 pick vs prompted view | −0.004 | +0.018 | 0.000 |
+
+Not yet measured: a head on the default-view graph (D for emotion and genre, I for style; it isolates the instruction
+in the graph), the September encoders clustered directly, PercepT core in both versions, and R0o heads for emotion and
+style or with prompted inputs.
 
 ## Deviations
 

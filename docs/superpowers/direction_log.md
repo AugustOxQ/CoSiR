@@ -14,13 +14,14 @@ The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked idea
 ## Now (2026-10-18)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
-on each view, one shared trunk with emotion, style and genre heads (decision B2). Stage 1 of the aspect graph sweep:
-the plain aspect graph keeps the best label lift for emotion and style, but residual graphs (aspect minus content
-similarity) train the best cross-modal heads (target AMI emotion 0.137 vs 0.120, style 0.260 vs 0.218; genre
-image-weighted 0.420 vs 0.402); no head reaches the prompted view clustered directly yet (emotion 0.155, mean of both
-sides). Next (user): a stage 1 follow-up on CPU, then PercepT core in two versions (CLIP B/32 + RoBERTa, and Qwen),
-then the decision on stage 2. "Something works" by 2026-10-29: per-aspect held-out AMI above PercepT core; by
-2026-11-10: aspect-named retrieval above prompted Qwen.
+on each view, one shared trunk with emotion, style and genre heads (decision B2). The stage 1 follow-up (3 seeds)
+confirms that residual graphs (aspect minus content similarity) train the best heads (target AMI emotion 0.137 vs
+0.118 for the plain aspect graph, style 0.260 vs 0.213) and that the image graph alone is best for genre (0.428);
+without an instruction at test time, the best head is 0.018 (emotion) and 0.005 (style) below the prompted view
+clustered directly and 0.003 above it for genre. Next (user): PercepT core in two versions (CLIP B/32 + RoBERTa, and
+Qwen), whose grill round 1 is open and whose numbers fill the follow-up's ablation table; then the decision on stage
+2. "Something works" by 2026-10-29: per-aspect held-out AMI above PercepT core; by 2026-11-10: aspect-named retrieval
+above prompted Qwen.
 
 ## Parked ideas
 
@@ -32,6 +33,26 @@ then the decision on stage 2. "Something works" by 2026-10-29: per-aspect held-o
   (2026-10-18); [proposed in](handoffs/2026-10-18-r10-decide-6-handoff.md))
 - Within-painting caption variation as a signal (probe 57.3% to 46.6% on the residual) (never tried; deferred by the
   user (2026-10-18); [proposed in](../reports/auto/percept/2026-12-06_new_line_candidates.md))
+
+## 2026-10-18 · Aspect graph follow-up read; the stage 1 order holds on three seeds; PercepT core next, with an ablation table to fill
+
+- **Read:** 31 CPU head runs. Target AMI (mean of both sides, k = 20, 5,000 paintings, 3 seeds): residual graphs stay
+  ahead of the plain aspect graph (emotion 0.137 ± 0.002 vs 0.118 ± 0.002, style 0.260 ± 0.003 vs 0.213 ± 0.005);
+  genre image graph alone 0.428 ± 0.003 vs the image-weighted mix 0.420 and the caption graph 0.402. Prompted inputs
+  raise the residual heads (emotion 0.151, style 0.284) to within 0.003 of the prompted view on its stronger side,
+  not above it. Ablation: the best default-input head vs the default view +0.049, +0.089, +0.035; vs the prompted
+  view −0.018, −0.005, +0.003 (emotion, style, genre).
+- **Meaning (C):** "I think this is a good sign, so our best graph steadily beat plain aspect graph" (user, before
+  ours). Ours: the same, plus the gap on the prompted view's stronger side is mostly the input; development data
+  only, and stage 1 picked these graphs on the same paintings.
+- **Decided (A):** unchanged: PercepT core in two versions next (type baseline, medium loop), then stage 2. First the
+  user asked for an ablation table in the user-read report (one part changed at a time, placeholders for missing
+  numbers), then the grill (user).
+- **Idea (B):** unchanged (B2).
+- **Why:** the table shows which part of the design carries the gain, and PercepT core fills its open rows.
+- **Links:** [follow-up report](../reports/auto/percept/2026-12-12_aspect_graph_followup.md) ·
+  [user-read with the ablation table](../user_read/2026-10-18_aspect_graph_followup.md) ·
+  [run log](../../src/test/20261018_aspect_graph_sheet/20261018_aspect_graph_sheet_log.md)
 
 ## 2026-10-18 · Aspect graph sheet (stages 0 and 1) read; a stage 1 follow-up, then PercepT core in two versions, then stage 2
 
