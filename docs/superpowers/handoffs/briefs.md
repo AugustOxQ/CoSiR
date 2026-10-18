@@ -475,3 +475,13 @@
 - Handoff: docs/superpowers/handoffs/2026-10-18-r10-followup-1-handoff.md
 - New chat: tab 'r10 follow-up 1', session a3bf264f-92cc-43df-a16f-1f6fb0f2917c
 
+[brief] CoSiR: r10 follow-up 1 -> r10 build 1 (2026-10-18 23:35 Amsterdam)
+- Done: follow-up 1 read (decision C recorded); ablation table added to its user-read report; PercepT core grill (two
+  rounds) and spec approved 23:34; no container restart (user).
+- State: the best default-input network vs the prompted embedding: −0.018 emotion, −0.005 style, +0.003 genre. The
+  PercepT rows (4, 5) and rows 1, 6, 10, 13 are empty.
+- Next: tickets and build per the spec, an end-to-end smoke that times each run kind, then open the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-18-r10-build-1-handoff.md
+- New chat: tab 'r10 build 1', session 20ca625b-b0da-40f0-bc14-cc63bc81a8ef
+
