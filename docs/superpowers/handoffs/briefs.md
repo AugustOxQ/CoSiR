@@ -502,3 +502,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-3-handoff.md
 - New chat: tab 'r10 build 3', session 5dd1d425-0f6b-4b8f-bb5d-e320cf751793
 
+[brief] CoSiR: r10 build 3 -> r10 run (2026-10-19 01:31 Amsterdam)
+- Done: the build. Tickets 01 to 09 are merged into main. The final review (Opus `xhigh`) re-derived every load-bearing number; its fix wave passed the re-review.
+- State: stage 0 fails on this machine (emotion 0.1238 vs recorded 0.1225, genre 0.2617 vs 0.2274). Cause: the recorded values come from the DAS6 node node404. This machine reproduces its own September record bit for bit.
+- Next: run both queues (about 1 hour): stage 0, then the 24 head rows. Verify, report, open the decide chat.
+- Blocked: the five PercepT arms, until the user decides on stage 0 (spec §3.5).
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-run-handoff.md
+- New chat: tab 'r10 run', session 482cfe26-f369-448d-99da-12204934cc98
+
