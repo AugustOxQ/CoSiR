@@ -112,3 +112,16 @@ def test_multi_hot_asserts_if_requested_painting_has_no_partition_caption():
     topic = np.array([1, 0, 2, 1], dtype=np.int16)
     with pytest.raises(AssertionError, match='without captions'):
         pc_fixes.multi_hot(pid, topic, np.array([4, 7, 0]), n_topics=3)
+
+
+def test_maps_have_fixed_signs():
+    rng = np.random.default_rng(3)
+    emotion = rng.normal(size=(300, 40)).astype(np.float32)
+    _, projection = pc_fixes.pca_map(emotion, 10)
+    largest = projection[np.abs(projection).argmax(axis=0), np.arange(10)]
+    assert (largest > 0).all()
+    matrix = np.random.default_rng(0).normal(size=(64, 16))
+    q, r = np.linalg.qr(matrix, mode='reduced')
+    expected = q * np.sign(np.diag(r))
+    np.testing.assert_allclose(pc_fixes.orthogonal_map(16, 64, seed=0), expected, atol=1e-6)
+    assert (np.diag(expected.T @ matrix) > 0).all()

@@ -35,15 +35,19 @@ def pca_map(emotion_fit, n_components=512):
     assert 0 < n_components <= min(emotion_fit.shape)
     mean = emotion_fit.mean(axis=0, dtype=np.float64).astype(np.float32)
     _, _, vt = np.linalg.svd(emotion_fit - mean, full_matrices=False)
-    return mean, vt[:n_components].T.copy()
+    vt = vt[:n_components]
+    # Fixed signs (largest-magnitude loading positive), so Eq. 2 does not depend on the LAPACK build.
+    vt = vt * np.sign(vt[np.arange(len(vt)), np.abs(vt).argmax(axis=1)])[:, None]
+    return mean, vt.T.copy()
 
 
 def orthogonal_map(input_dim, output_dim, seed=0):
     """Return (output_dim,input_dim) QR map; normalized E maps as E @ map.T."""
     assert 0 < input_dim <= output_dim
     matrix = np.random.default_rng(seed).normal(size=(output_dim, input_dim))
-    q, _ = np.linalg.qr(matrix, mode='reduced')
-    return q.astype(np.float32)
+    q, r = np.linalg.qr(matrix, mode='reduced')
+    # Unique QR (positive diagonal of R), so the map does not depend on the LAPACK build.
+    return (q * np.sign(np.diag(r))).astype(np.float32)
 
 
 def kept_centers(center_norms, gamma=2):
