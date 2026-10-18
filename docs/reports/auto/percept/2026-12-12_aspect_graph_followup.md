@@ -46,7 +46,9 @@ prompted-input head.
 
 **Your reading.** (user, before ours, 2026-10-18) "I think this is a good sign, so our best graph steadily beat plain
 aspect graph." The user then asked for an ablation table in the user-read report, one part changed at a time, with
-placeholders for missing numbers (see "Ablation view" below).
+placeholders for missing numbers (see "Ablation view" below). After the table (user): "what we applied parts are
+useful, but the biggest gain is still test time instruction ... a semi-good sign"; unsure whether the test-time
+instruction can carry a contribution claim.
 
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>

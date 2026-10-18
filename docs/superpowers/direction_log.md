@@ -44,7 +44,9 @@ above prompted Qwen.
   view −0.018, −0.005, +0.003 (emotion, style, genre).
 - **Meaning (C):** "I think this is a good sign, so our best graph steadily beat plain aspect graph" (user, before
   ours). Ours: the same, plus the gap on the prompted view's stronger side is mostly the input; development data
-  only, and stage 1 picked these graphs on the same paintings.
+  only, and stage 1 picked these graphs on the same paintings. After the ablation table (user): "what we applied
+  parts are useful, but the biggest gain is still test time instruction ... a semi-good sign"; unsure whether the
+  test-time instruction can carry a contribution claim; verify later, or improve our designs for better numbers.
 - **Decided (A):** unchanged: PercepT core in two versions next (type baseline, medium loop), then stage 2. First the
   user asked for an ablation table in the user-read report (one part changed at a time, placeholders for missing
   numbers), then the grill (user).
