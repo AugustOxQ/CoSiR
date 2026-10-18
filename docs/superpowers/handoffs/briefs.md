@@ -451,3 +451,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-18-r10-decide-6-handoff.md
 - New chat: tab 'r10 decide 6', session 433e968c-e5bc-4c83-a2d6-77e39c20ac39
 
+[brief] CoSiR: r10 decide 6 -> r10 sweep 1 (2026-10-18 16:23 Amsterdam)
+- Done: the purification pilot's reports, the direction log entry for r10, the spec draft of the exploration sweep.
+- State: purified pair student 0.094 vs control 0.070 (bar 0.12 fails); the user said "firstly just go for testing different ideas".
+- Next: build and run stage 0 (regression check) and stage 1 (about 60 graph rows: prune, fuse, guided) on CPU and about 50 min GPU.
+- Blocked: decision A, spec approval and the storage summary wait for the user (at a workout).
+- Handoff: docs/superpowers/handoffs/2026-10-18-r10-sweep-1-handoff.md
+- New chat: tab 'r10 sweep 1', session c1d9190f-c197-43c9-bb25-2692e4200e97
+
