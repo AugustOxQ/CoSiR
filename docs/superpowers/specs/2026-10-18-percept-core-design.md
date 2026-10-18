@@ -1,6 +1,6 @@
 # PercepT core in five settings, and the missing rows of the ablation table: design
 
-> Date: 2026-10-18 23:45 · Status: draft · Kind: experiment
+> Date: 2026-10-18 23:33 · Status: approved 2026-10-18 23:34 · Kind: experiment
 > Builds on: [aspect graph follow-up](../../reports/auto/percept/2026-12-12_aspect_graph_followup.md) and its
 > [ablation table](../../user_read/2026-10-18_aspect_graph_followup.md) (rows 1 to 13) · facts brief
 > `.scratch/r10-percept-core/facts.md` · grill record `.scratch/r10-percept-core/grill.md` · Constitution:
@@ -145,13 +145,13 @@ graphs of row 6, and everything PercepT core trains.
 | D6 | Scoring | image side only; K-native measures beside; mean column empty | both sides (PercepT's caption side sees the image); native K only | user | 2026-10-18 23:10 |
 | D7 | Base recipe | the September snapshot configuration; only the four fixes change | the original 67-center or later H2H variants: not the recorded, reproducible numbers | user (minor i), recipe pick agent default | 2026-10-18 23:31 |
 | D8 | Data, seeds, RoBERTa cache | frozen sample splits; seeds 0, 1, 2; per-caption RoBERTa features to `/data/SSD2/pre_extract/artelingo_full/` | — | user, after seeing the recommendation (minor ii to iv) | 2026-10-18 23:10 |
-| D9 | γ | 2; no qualifying gap keeps all 100; K for 1.5, 3, 5 reported | the paper gives no value | agent default (minor v allowed it) | 2026-10-18 23:40 |
+| D9 | γ | 2; no qualifying gap keeps all 100; K for 1.5, 3, 5 reported | the paper gives no value | agent default (minor v allowed it) | 2026-10-18 23:33 |
 | D10 | Eq. 2 dimensions | P1, P2: PCA of RoBERTa to 512 on fit captions; P5: fixed random orthogonal map 768 to 2048 (seed 0) | PCA of Qwen to 768 (drops content) | user, after seeing the recommendation | 2026-10-18 23:28 |
-| D11 | Eq. 2 reading and inputs | the audit's reading; I, T, E l2-normalized first | raw inputs (the paper is silent; September normalized) | agent default | 2026-10-18 23:40 |
+| D11 | Eq. 2 reading and inputs | the audit's reading; I, T, E l2-normalized first | raw inputs (the paper is silent; September normalized) | agent default | 2026-10-18 23:33 |
 | D12 | Stage 2 on a global vector | 2-layer MLP, hidden 1,024; other Stage 2 settings as September | — | user, after seeing the recommendation | 2026-10-18 23:28 |
 | D13 | Rows 1, 6, 10, 13 | as §3.2; 3 seeds; after the GPU part | default graph on one fused content graph | user (rows, order); definitions agent default | 2026-10-18 23:28 |
-| D14 | Stage types | 0 regression, 1 baseline, 2 ablation | exploration for stage 2: row 6 removes one part, so ablation is the first type that fits | agent default | 2026-10-18 23:40 |
-| D15 | The comparator | per aspect, the arm with the highest mean image-side AMI; ties within 0.003 go to the lower arm number | a fixed arm (C1: strongest real comparator) | agent default | 2026-10-18 23:40 |
+| D14 | Stage types | 0 regression, 1 baseline, 2 ablation | exploration for stage 2: row 6 removes one part, so ablation is the first type that fits | agent default | 2026-10-18 23:33 |
+| D15 | The comparator | per aspect, the arm with the highest mean image-side AMI; ties within 0.003 go to the lower arm number | a fixed arm (C1: strongest real comparator) | agent default | 2026-10-18 23:33 |
 
 **Amendments:** none.
 
