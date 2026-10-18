@@ -11,17 +11,52 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now
+## Now (2026-10-18)
 
-The conditioned line (CoSiR v2) was stopped on 2026-10-15 by the supervisors' decision and archived (tag
-`archive/v2-conditioned`, folder `archive/v2_conditioned/`). The new line builds a condition-free model from the
-buddy model, as an improvement over PercepT, on PercepT's task plus retrieval; the goal is a method that discovers
-aspects, label-free if possible. CVPR is a soft target: submit if something works by about 2026-10-29, else keep
-trying until the abstract deadline (2026-11-10), else no submission. Decision A is a draft under discussion.
+The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
+on each view, one shared trunk with emotion, style and genre heads (decision B2: named aspects now, learned aspects
+later). Premise checks: the emotion instruction works on captions (AMI 0.278 vs 0.122) and the style instruction on
+images (0.395 vs 0.222); image-only emotion stays weak (best 0.102; purified pair student 0.094, bar 0.12). Next: an
+exploration sweep with one number sheet, first prune vs fuse of the aspect and content graphs. "Something works" by
+2026-10-29: per-aspect held-out AMI above the PercepT core baseline; by 2026-11-10: aspect-named retrieval above
+prompted Qwen. Decision A (type and loop size) awaits the user's confirmation.
 
 ## Parked ideas
 
-(none yet for the new line; the v2 parked ideas are in the archived log)
+- An aspect list proposed by an LLM from the captions (B3); no way yet to map it back to the three named aspects
+  (deferred by the user (2026-10-18); [proposed in](handoffs/2026-10-18-r10-decide-6-handoff.md))
+- PercepT under a fair protocol as the whole paper, candidate (c); the PercepT baseline stays (deferred by the user
+  (2026-10-18); [proposed in](../reports/auto/percept/2026-12-06_new_line_candidates.md))
+- Culture as the condition (ArtELingo-28: +0.052 Jensen-Shannon on 746 paintings) (never tried; deferred by the user
+  (2026-10-18); [proposed in](handoffs/2026-10-18-r10-decide-6-handoff.md))
+- Within-painting caption variation as a signal (probe 57.3% to 46.6% on the residual) (never tried; deferred by the
+  user (2026-10-18); [proposed in](../reports/auto/percept/2026-12-06_new_line_candidates.md))
+
+## 2026-10-18 · Premise checks and three pilots read; named aspects first (B2); an exploration sweep next
+
+- **Read:** prompted aspects (Qwen3-VL-Embedding-2B, train side): caption emotion AMI 0.278 with the emotion
+  instruction vs 0.122 default and 0.209 GoEmotions; image style 0.395 vs 0.222 default and 0.317 CSD; image emotion
+  0.069 to 0.093. Masking 132 affect words keeps most of the caption lift (0.187 vs 0.069). Image-only students fail
+  their bar (0.12): own-caption target 0.074 vs control 0.074; purified buddy pairs 0.094 vs control 0.070
+  (purification +0.004). Pairs shared with the content graph are the most emotion-consistent (lift 2.55; with CLIP
+  content 2.61 vs 2.42).
+- **Meaning (C):** night pilots: "there are aspects that we should not expect an image-only student model can learn"
+  (user). Purification pilot: "something but not conclusive; the teacher-student net failed on cross-modal emotion
+  transfer; the Stage 1 finding matters: purification lowers content-likeness but does not raise emotion purity;
+  maybe the views of one model share a lot" (user). Ours agreed and added that content and emotion co-occur in art.
+- **Decided (A):** still a draft (the 2026-10-15 entry). The user's guidance on 2026-10-18: "we are still mostly
+  doing exploration jobs … get a basic number sheet to help us decide later" and "firstly just go for testing
+  different ideas" (user). Type exploration sweep, loop size to confirm (agent default).
+- **Idea (B):** B2: named aspects now (emotion, style, genre heads on one shared trunk; each aspect space built on
+  the side where it is visible; cross-modal mappers); learned aspects (b) after aspect-named retrieval beats prompted
+  Qwen (user, after seeing the recommendation). The grill's answers, with who decided each: [decide 6 handoff](handoffs/2026-10-18-r10-decide-6-handoff.md), section 2.
+- **Why:** the premise checks show one instruction per aspect works on the side where the aspect is visible; image-only
+  emotion has a low ceiling in this data, so the design must not rest on it.
+- **Links:** [prompted aspects](../reports/auto/percept/2026-12-08_prompted_aspect_views_check.md) ·
+  [night pilots](../reports/auto/percept/2026-12-09_image_transfer_and_word_masking.md) ·
+  [purification pilot](../reports/auto/percept/2026-12-10_purified_buddy_pilot.md) ·
+  [literature](../reports/literature/2026-12-07_prompted_aspect_views.md) ·
+  [decide 6 handoff](handoffs/2026-10-18-r10-decide-6-handoff.md)
 
 ## 2026-10-15 · Round 9 read; the supervisors stop the conditioned line, archive it and turn to a condition-free model
 

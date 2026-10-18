@@ -143,3 +143,16 @@ The unspecified dev-negative resampling choice was resolved by fixed seeded draw
 - Keep all pbp_ source scripts, this log, real graph artifacts and production results/tables. No other removal is proposed. Nothing was deleted.
 
 Final cache validation: smoke scorer resumed in 21.8 s (input/reference-neighbour loading included); all four completed views were skipped, with no metric recomputation. Final production reference-only scorer completed in 0.1 s. All validation processes exited 0. Final checks again reported PBP_CHECKS PASS (5 groups). No tracked files outside the new folder changed (`git diff --stat` empty). The full queue remains unexecuted.
+
+## Controller run (2026-10-18, r10 decide 5 and 6)
+
+- The controller reviewed the code and ran `pbp_queue.sh` on CPU (the GPU was down before the container restart at
+  15:53). The queue ended 15:49 with every step at exit 0 (`queue_status.txt`). The text above, written by Codex
+  before the run, says the queue was not run; that was true when it was written.
+- Results: `pbp_tables.md`. Bar: FAIL (S_P 0.094 ± 0.002 vs S_D 0.070 ± 0.002; gap passes, level 0.12 fails).
+  Effects: S_E − S_D +0.020, S_P − S_E +0.004, S_PN − S_P +0.001.
+- Every run had its best dev loss at epoch 1 to 3 (S_D 4.79 to 4.81, S_E 5.21 to 5.25, S_P 5.57 to 5.61, S_PN 5.57),
+  then stopped after 15 more epochs.
+- Exploration after the user's reading: `pbp_clip_content.py` (Sonnet worker, 11 s) rebuilt the content graph with
+  CLIP B/32; `clip_content_stats.md`. The shared pairs keep the highest emotion lift (2.61 vs 2.42).
+- Report: `docs/reports/auto/percept/2026-12-10_purified_buddy_pilot.md`.
