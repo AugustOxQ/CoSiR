@@ -44,7 +44,8 @@ pilots also read, so the seed sd does not cover the selection. The image-only ge
 - c. PercepT core first (a few hours; the September code on our features, not checked yet). It tells whether
   clustering the prompted views already beats PercepT core, which sets what the trunk must add.
 
-**Your reading.** (left for the user)
+**Your reading.** (user, before ours, 2026-10-18) "The exploration results are interesting and show a lot of
+potential, so we first do (b) to make the pilot more robust, then go (c), then (a)."
 
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>
@@ -127,6 +128,7 @@ at most 0.007 for the default and prompted views shown).
 | style, captions | 0.120 | 0.135 | 0.172 (Fres05) |
 | genre, images | 0.449 | 0.496 | 0.454 (Fside025) |
 | genre, captions | 0.338 | 0.353 | 0.386 (Fside025) |
+| **mean of both sides** | emotion 0.089, style 0.171, genre 0.393 | emotion 0.155, style 0.265, genre 0.424 | the best target AMI above |
 
 **Verdict under the rule:** none (descriptive). Stage 0: pass.
 

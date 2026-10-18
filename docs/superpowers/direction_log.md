@@ -14,12 +14,13 @@ The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked idea
 ## Now (2026-10-18)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
-on each view, one shared trunk with emotion, style and genre heads (decision B2: named aspects now, learned aspects
-later). Premise checks: the emotion instruction works on captions (AMI 0.278 vs 0.122) and the style instruction on
-images (0.395 vs 0.222); image-only emotion stays weak (best 0.102; purified pair student 0.094, bar 0.12). Next: an
-exploration sweep with one number sheet, first prune vs fuse of the aspect and content graphs. "Something works" by
-2026-10-29: per-aspect held-out AMI above the PercepT core baseline; by 2026-11-10: aspect-named retrieval above
-prompted Qwen. Decision A (type and loop size) awaits the user's confirmation.
+on each view, one shared trunk with emotion, style and genre heads (decision B2). Stage 1 of the aspect graph sweep:
+the plain aspect graph keeps the best label lift for emotion and style, but residual graphs (aspect minus content
+similarity) train the best cross-modal heads (target AMI emotion 0.137 vs 0.120, style 0.260 vs 0.218; genre
+image-weighted 0.420 vs 0.402); no head reaches the prompted view clustered directly yet (emotion 0.155, mean of both
+sides). Next (user): a stage 1 follow-up on CPU, then PercepT core in two versions (CLIP B/32 + RoBERTa, and Qwen),
+then the decision on stage 2. "Something works" by 2026-10-29: per-aspect held-out AMI above PercepT core; by
+2026-11-10: aspect-named retrieval above prompted Qwen.
 
 ## Parked ideas
 
@@ -31,6 +32,31 @@ prompted Qwen. Decision A (type and loop size) awaits the user's confirmation.
   (2026-10-18); [proposed in](handoffs/2026-10-18-r10-decide-6-handoff.md))
 - Within-painting caption variation as a signal (probe 57.3% to 46.6% on the residual) (never tried; deferred by the
   user (2026-10-18); [proposed in](../reports/auto/percept/2026-12-06_new_line_candidates.md))
+
+## 2026-10-18 · Aspect graph sheet (stages 0 and 1) read; a stage 1 follow-up, then PercepT core in two versions, then stage 2
+
+- **Read:** stage 0 matched the pilot exactly. 21 graph rows per aspect, 28 head runs on 16 of them. Own-label lift
+  is best for the plain aspect graph (emotion 2.42, style 7.07); for genre, image-weighted side fusion 5.35 vs the
+  caption graph 4.41 (image graph alone also 5.35). Head target AMI: residual graphs best for emotion (0.137 ± 0.002
+  vs plain 0.120, one seed) and style (0.260 ± 0.003 vs 0.218); genre image-weighted 0.420 ± 0.002 vs 0.402 ± 0.005.
+  The prompted view clustered directly (mean of both sides): emotion 0.155, style 0.265, genre 0.424. Heads pass it
+  on style and genre captions (0.172 vs 0.135, 0.386 vs 0.353).
+- **Meaning (C):** "the exploration results are interesting and show a lot of potential, so we first do (b) to make
+  the pilot more robust then go (c) then (a)" (user, before ours). Ours: a real signal (the graph choice matters; a
+  cross-modal gain on style and genre), more cautious about the gap to the prompted view.
+- **Decided (A):** (b) a stage 1 follow-up: the missing seeds of the plain and purified graph heads, a head on the
+  image-only genre graph, a head that reads the prompted views; type exploration, small loop, local CPU. Then (c)
+  PercepT core in both versions, CLIP B/32 + RoBERTa-GoEmotions and the Qwen default embeddings (user, after seeing
+  the recommendation "both"); type baseline, medium loop. Then decide (a), stage 2 (user). Local runs: DAS6 has no
+  approved reservation (requests on node408 and node406 pending at 18:50). Storage of this run: decided at the end of
+  the loop (user).
+- **Idea (B):** unchanged (B2).
+- **Why:** the residual graphs' gain rests on one seed for the plain-graph references, and no head reaches the
+  prompted view yet; PercepT core sets what the trunk must beat.
+- **Links:** [aspect graph sheet](../reports/auto/percept/2026-12-11_aspect_graph_sheet.md) ·
+  [user-read](../user_read/2026-10-18_aspect_graph_sheet.md) ·
+  [spec (draft)](specs/2026-10-18-aspect-graph-sweep-design.md) ·
+  [follow-up handoff](handoffs/2026-10-18-r10-followup-1-handoff.md)
 
 ## 2026-10-18 · Premise checks and three pilots read; named aspects first (B2); an exploration sweep next
 
