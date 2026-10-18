@@ -443,3 +443,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-17-r10-decide-5-handoff.md
 - New chat: tab 'r10 decide 5', session 49c42a7b-8a89-4a25-816b-2232f8f66525
 
+[brief] CoSiR: r10 decide 5 -> r10 decide 6 (2026-10-18 16:15 Amsterdam)
+- Done: the grill (decision B is B2: named aspects now, learned aspects later), the purification pilot and a CLIP content-graph check.
+- State: the purified buddy-pair image student gets image emotion AMI 0.094 vs control 0.070 (bar 0.12 fails); the shared edges stay the most emotion-consistent with a CLIP content graph (lift 2.61 vs 2.42).
+- Next: the pilot's short auto and user-read report, the wrap-up, then the spec draft for the user's approval.
+- Blocked: the storage summary and the spec brief wait for the user (back after a workout).
+- Handoff: docs/superpowers/handoffs/2026-10-18-r10-decide-6-handoff.md
+- New chat: tab 'r10 decide 6', session 433e968c-e5bc-4c83-a2d6-77e39c20ac39
+
