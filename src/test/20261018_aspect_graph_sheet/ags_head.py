@@ -21,7 +21,7 @@ from itp_train import CONFIG, Student
 from pbp_graphs import label_vectors, sha_file
 from pav_score import ami, partitions, summary
 
-SMOKE = Path('/tmp/claude-0/-project-CoSiR/c1d9190f-c197-43c9-bb25-2692e4200e97/scratchpad/ags_smoke')
+SMOKE = Path('/tmp/claude-0/-project-CoSiR/a3bf264f-92cc-43df-a16f-1f6fb0f2917c/scratchpad/ags_fu_smoke')
 ASPECTS = dict(emotion='emotion_focus', style='style_word', genre='genre_word')
 LABELS = ('emotion', 'style', 'genre')
 LOSS = 'mean(4 weighted symmetric buddy CE)+mean(2 unweighted own-caption CE); v1'
@@ -82,10 +82,10 @@ def selected_rows(base, aspects, picked=False):
     return {aspect: rows[aspect] for aspect in aspects}
 
 
-def make_config(s, manifest, aspect, row, seed, smoke):
+def make_config(s, manifest, aspect, row, seed, smoke, input_key='default'):
     counts = {side: manifest['counts'][aspect][side][row] for side in ('fit', 'dev')}
     return dict(CONFIG, aspect=aspect, row=row, seed=seed, smoke=smoke, device='cpu', threads=8,
-                input_img='default', input_cap='default', sample_sha256=fingerprint(s), loss=LOSS,
+                input_img=input_key, input_cap=input_key, sample_sha256=fingerprint(s), loss=LOSS,
                 graph_identity=manifest['identity'], graph_sha256=manifest['archives'][aspect],
                 fit_pair_count=counts['fit'], dev_pair_count=counts['dev'],
                 fit_pairs_used=min(5000, counts['fit']) if smoke else counts['fit'],
@@ -129,10 +129,11 @@ def pair_loss(models, img, cap, pairs, weights):
     return buddy + own
 
 
-def run(s, inputs, graph, manifest, aspect, row, seed, smoke, time_epoch=False):
-    config = make_config(s, manifest, aspect, row, seed, smoke)
-    name = f'{aspect}__{row}__s{seed}'
-    outdir = root(smoke) / 'outputs'
+def run(s, inputs, graph, manifest, aspect, row, seed, smoke, time_epoch=False,
+        input_key='default', outdir='outputs'):
+    config = make_config(s, manifest, aspect, row, seed, smoke, input_key)
+    name = f'{aspect}__{row}' + ('' if input_key == 'default' else '__prompted') + f'__s{seed}'
+    outdir = root(smoke) / outdir
     outdir.mkdir(parents=True, exist_ok=True)
     path = outdir / f'{name}.npz'
     if not time_epoch:
@@ -378,6 +379,19 @@ def pick_seeds(s, base, aspects, smoke):
     print('Seed rows: ' + json.dumps(picked), flush=True)
 
 
+def load_inputs(s, aspect, input_kind):
+    assert input_kind in ('default', 'prompted')
+    if input_kind == 'default':
+        inputs = dict(img=default_images(s)[0], cap=targets(s, 'default'))
+    else:
+        from ags_trainimg import aspect_images
+        key = ASPECTS[aspect]
+        inputs = dict(img=aspect_images(s, key), cap=targets(s, key))
+    for x in inputs.values():
+        assert x.shape == (19889, 2048) and x.dtype == np.float32 and np.isfinite(x).all()
+    return inputs
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     mode = p.add_mutually_exclusive_group()
@@ -406,9 +420,7 @@ def main():
     else:
         rows = {a: args.rows for a in aspects} if args.rows else selected_rows(base, aspects, args.seed_rows)
         graphs = {a: load_graph(s, base, a, rs) for a, rs in rows.items()}
-        inputs = dict(img=default_images(s)[0], cap=targets(s, 'default'))
-        for x in inputs.values():
-            assert x.shape == (19889, 2048) and x.dtype == np.float32 and np.isfinite(x).all()
+        inputs = load_inputs(s, aspects[0], 'default')
         for aspect, rs in rows.items():
             graph, manifest = graphs[aspect]
             for row in rs:
