@@ -10,6 +10,8 @@ from threadpoolctl import threadpool_limits
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pc_score as score
 
+PASSING = '19 passed in 2.1s'
+
 
 @pytest.fixture(autouse=True)
 def cpu_threads():
@@ -54,21 +56,21 @@ def seed_result(value, auc=.8):
 
 def test_seed_aggregation_uses_population_sd_and_all_seed_auc_gate():
     seeds = {str(s): seed_result(v) for s, v in enumerate((.1, .2, .3))}
-    result = score.aggregate_arm(seeds, stage0_pass=True)
+    result = score.aggregate_arm(seeds, stage0_pass=True, tests_pass=True)
     assert result['established']
     assert result['img']['emotion'] == pytest.approx(dict(mean=.2, sd=.0816496580927726))
     assert result['native_topic']['style']['mean'] == pytest.approx(.1)
     assert result['K']['5'] == dict(mean=100., sd=0.)
     assert result['dev_auc'] == pytest.approx(dict(mean=.8, sd=0.))
     seeds['1']['dev_auc'] = .74
-    assert not score.aggregate_arm(seeds, stage0_pass=True)['established']
+    assert not score.aggregate_arm(seeds, stage0_pass=True, tests_pass=True)['established']
     seeds['1']['dev_auc'] = .75
-    assert score.aggregate_arm(seeds, stage0_pass=True)['established']
+    assert score.aggregate_arm(seeds, stage0_pass=True, tests_pass=True)['established']
     seeds['1']['dev_auc'] = None
-    assert not score.aggregate_arm(seeds, stage0_pass=True)['established']
-    assert not score.aggregate_arm(seeds, stage0_pass=False)['established']
+    assert not score.aggregate_arm(seeds, stage0_pass=True, tests_pass=True)['established']
+    assert not score.aggregate_arm(seeds, stage0_pass=False, tests_pass=True)['established']
     del seeds['1']
-    result = score.aggregate_arm(seeds, stage0_pass=True)
+    result = score.aggregate_arm(seeds, stage0_pass=True, tests_pass=True)
     assert not result['established'] and result['img'] is None
 
 
@@ -139,7 +141,7 @@ def stage_files(tmp_path):
         stage2.with_suffix('.json').write_text(json.dumps(dict(
             config=dict(arm='P1', seed=seed), dev_auc=(.75, .8, .85)[seed],
             dev_valid_topics=k, K=k, stage1_sha256=score.sha_file(path))))
-    (tmp_path / 'stage0.json').write_text(json.dumps(dict(status='PASS')))
+    (tmp_path / 'stage0.json').write_text(json.dumps(dict(status='PASS', fix_tests=PASSING)))
     return sample, labels, tmp_path
 
 
@@ -246,13 +248,13 @@ def test_untrained_seed_reports_its_reason_not_incomplete_files(stage_files):
 def test_null_dev_auc_is_undefined_not_below_threshold_and_nan_still_asserts():
     seeds = {str(s): seed_result(.2) for s in range(3)}
     seeds['1']['dev_auc'] = None
-    reasons = score.aggregate_arm(seeds, stage0_pass=True)['reasons']
+    reasons = score.aggregate_arm(seeds, stage0_pass=True, tests_pass=True)['reasons']
     assert reasons == ['Seed 1 dev AUC undefined']
     seeds['1']['dev_auc'] = .5
-    assert score.aggregate_arm(seeds, stage0_pass=True)['reasons'] == ['Seed 1 dev AUC below 0.75']
+    assert score.aggregate_arm(seeds, stage0_pass=True, tests_pass=True)['reasons'] == ['Seed 1 dev AUC below 0.75']
     seeds['1']['dev_auc'] = float('nan')
     with pytest.raises(AssertionError):
-        score.aggregate_arm(seeds, stage0_pass=True)
+        score.aggregate_arm(seeds, stage0_pass=True, tests_pass=True)
 
 
 def sheet(outdir, sample, labels):
@@ -296,3 +298,42 @@ def test_per_seed_image_ami_table_shows_seeds_of_an_incomplete_arm(stage_files):
     rows = [r for r in '\n'.join(table).splitlines() if r.startswith('| P1 |')]
     assert [r.split('|')[2].strip() for r in rows] == ['0', '1']
     assert '1.00000 ± 0.00000' in rows[0]
+
+
+def test_failed_or_missing_unit_tests_establish_no_arm(stage_files):
+    sample, labels, outdir = stage_files
+    path = outdir / 'stage0.json'
+    for stage0, reason in [
+            (dict(status='PASS', fix_tests='1 failed, 18 passed in 2.1s'),
+             'Unit tests (spec §6) failed: 1 failed, 18 passed in 2.1s'),
+            (dict(status='PASS', fix_tests='2 errors in 0.3s'),
+             'Unit tests (spec §6) failed: 2 errors in 0.3s'),
+            (dict(status='PASS', fix_tests='no tests ran in 0.1s'),
+             'Unit tests (spec §6) failed: no tests ran in 0.1s'),
+            (dict(status='PASS'), 'Unit tests (spec §6) not recorded')]:
+        path.write_text(json.dumps(stage0))
+        result, text = sheet(outdir, sample, labels)
+        arm = result['arms']['P1']
+        assert not arm['established'] and reason in arm['reasons']
+        assert result['stage0']['status'] == 'PASS'
+        assert result['comparator']['emotion']['established'] is None
+        assert reason in text
+    path.write_text(json.dumps(dict(status='PASS', fix_tests='20 Passed in 2.13s')))
+    assert sheet(outdir, sample, labels)[0]['arms']['P1']['established']
+
+
+def test_passing_unit_test_line_still_establishes_and_sheet_lists_condition(stage_files):
+    sample, labels, outdir = stage_files
+    result, text = sheet(outdir, sample, labels)
+    assert result['arms']['P1']['established'] and result['arms']['P1']['reasons'] == []
+    sentence = next(line for line in text.splitlines() if line.startswith('Stage 0:'))
+    assert 'unit tests' in sentence.lower()
+
+
+def test_stage2_reason_with_k_of_two_or_more_names_the_file(stage_files):
+    sample, labels, outdir = stage_files
+    sidecar = outdir / 'stage2' / 'P1__s0.json'
+    meta = json.loads(sidecar.read_text())
+    sidecar.write_text(json.dumps(dict(meta, reason='bogus')))
+    with pytest.raises(AssertionError, match='P1__s0.*reason with K=20'):
+        score.score_outputs(sample, labels, outdir)

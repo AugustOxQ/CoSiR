@@ -47,11 +47,22 @@ def native_ami(prob, labels):
     return {label: float(ami(y[y >= 0], topic[y >= 0])) for label, y in labels.items()}
 
 
-def aggregate_arm(seeds, stage0_pass):
+def unit_tests_pass(line):
+    """Spec section 6 (b): the recorded pytest result line shows passes and no failure."""
+    if not isinstance(line, str):
+        return False
+    low = line.lower()
+    return 'passed' in low and 'failed' not in low and 'error' not in low
+
+
+def aggregate_arm(seeds, stage0_pass, tests_pass, fix_tests=None):
     assert set(seeds) <= {'0', '1', '2'}
     reasons = []
     if not stage0_pass:
         reasons.append('Stage 0 did not PASS')
+    if not tests_pass:
+        reasons.append('Unit tests (spec §6) not recorded' if fix_tests is None
+                       else f'Unit tests (spec §6) failed: {fix_tests}')
     missing = sorted({'0', '1', '2'} - set(seeds))
     if missing:
         reasons.append('Incomplete Stage 1/2 files for seeds ' + ', '.join(missing))
@@ -123,7 +134,7 @@ def score_seed(stage1, stage2, s, labels):
     k = counts['2']
     assert meta2['K'] == k
     if 'reason' in meta2:  # Ticket 05, K below 2: sidecar only.
-        assert k < 2 and meta2['dev_auc'] is None
+        assert k < 2 and meta2['dev_auc'] is None, f'{stage2.name}: reason with K={k}'
         return dict(reason=meta2['reason'], K=counts, dev_auc=None, source_sha256=hashes,
                     dev_valid_topics=meta2['dev_valid_topics'])
     hashes['stage2'] = sha_file(stage2)
@@ -149,6 +160,8 @@ def score_outputs(s, labels, outdir=OUTPUTS):
     outdir = Path(outdir)
     stage0_path = outdir / 'stage0.json'
     stage0 = json.loads(stage0_path.read_text()) if stage0_path.exists() else dict(status='MISSING')
+    fix_tests = stage0.get('fix_tests')
+    tests_pass = unit_tests_pass(fix_tests)
     arms, missing = {}, {}
     for arm, version in ARMS.items():
         seeds = {}
@@ -165,7 +178,7 @@ def score_outputs(s, labels, outdir=OUTPUTS):
                 continue
             seeds[str(seed)] = score_seed(stage1, stage2, s, labels)
         arms[arm] = dict(version=version, seeds=seeds,
-                         **aggregate_arm(seeds, stage0['status'] == 'PASS'))
+                         **aggregate_arm(seeds, stage0['status'] == 'PASS', tests_pass, fix_tests))
     return dict(schema=1, sample_sha256=fingerprint(s), stage0=stage0, arms=arms,
                 comparator=comparators(arms), missing_outputs=missing,
                 conventions='Image only: l2(eval_prob), pav k20 seeds012, y>=0; '
@@ -196,8 +209,8 @@ def markdown(result):
              'PercepT has an image-only path; its caption and both-side mean columns are empty. '
              'Arm spreads use the three PercepT seeds, after averaging three k-means seeds. '
              'Row 1 spreads use the three k-means seeds.', '',
-             f"Stage 0: {result['stage0']['status']}. Established requires Stage 0 PASS, complete "
-             'Stage 1/2 files and dev AUC >= 0.75 on every seed.', '',
+             f"Stage 0: {result['stage0']['status']}. Established requires Stage 0 PASS, the unit tests "
+             'passing (spec section 6 (b), line below), complete Stage 1/2 files and dev AUC >= 0.75 on every seed.', '',
              'Unit tests (spec section 6, `pytest -q test_pc_fixes.py`): '
              + result['stage0'].get('fix_tests', 'not recorded'), '',
              '## Arms: image-side AMI (k=20)', '',
