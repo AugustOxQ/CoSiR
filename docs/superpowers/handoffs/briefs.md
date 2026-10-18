@@ -485,3 +485,12 @@
 - Handoff: docs/superpowers/handoffs/2026-10-18-r10-build-1-handoff.md
 - New chat: tab 'r10 build 1', session 20ca625b-b0da-40f0-bc14-cc63bc81a8ef
 
+[brief] CoSiR: r10 build 1 -> r10 build 2 (2026-10-19 00:19 Amsterdam)
+- Done: tickets 01 (readers), 03 (the four fixes), 06 (scoring) and 07 (rows 6, 10, 13 and the gate), built by Codex,
+  reviewed by Opus, merged into `r10-percept-core`. Cut at 200k context.
+- State: the new scorer reproduces row 2 (PASS). No real runs yet.
+- Next: tickets 02, 04 and 06b on Codex (task files ready), then 05, then 08; smoke; final review; merge.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-2-handoff.md
+- New chat: tab 'r10 build 2', session 2dd1c3e6-64e2-406c-99f2-bf0014118ad1
+
