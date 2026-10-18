@@ -467,3 +467,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-18-r10-decide-7-handoff.md
 - New chat: tab 'r10 decide 7', session b71a79fb-909b-4803-b871-450e59271acd
 
+[brief] CoSiR: r10 decide 7 -> r10 follow-up 1 (2026-10-18 18:57 Amsterdam)
+- Done: the stage 1 reports are checked and committed; the user's reading (C) and direction (A) are recorded; the approved deletes ran.
+- State: residual graphs train the best heads (emotion 0.137 vs 0.120 plain, style 0.260 vs 0.218), but no head reaches the prompted view yet (emotion 0.155).
+- Next: the stage 1 follow-up on CPU (small loop, design in chat), its short report, then the PercepT core spec.
+- Blocked: nothing. DAS6 has no approved reservation, so runs are local.
+- Handoff: docs/superpowers/handoffs/2026-10-18-r10-followup-1-handoff.md
+- New chat: tab 'r10 follow-up 1', session a3bf264f-92cc-43df-a16f-1f6fb0f2917c
+
