@@ -459,3 +459,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-18-r10-sweep-1-handoff.md
 - New chat: tab 'r10 sweep 1', session c1d9190f-c197-43c9-bb25-2692e4200e97
 
+[brief] CoSiR: r10 sweep 1 -> r10 decide 7 (2026-10-18 18:22 Amsterdam)
+- Done: stages 0 and 1 of the aspect graph sweep. Stage 0 matched the pilot exactly; 63 graph rows and 39 head runs are scored.
+- State: the results sit in two tables; no report yet, and nobody has read them.
+- Next: write the short auto report and the half-page user-read report; the user gives the reading first (C), then A and the spec approval.
+- Blocked: nothing. The user is back at about 18:45 (day mode).
+- Handoff: docs/superpowers/handoffs/2026-10-18-r10-decide-7-handoff.md
+- New chat: tab 'r10 decide 7', session b71a79fb-909b-4803-b871-450e59271acd
+
