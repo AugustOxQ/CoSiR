@@ -19,13 +19,13 @@ night mode). Held data: none read; everything is on the frozen train-side sample
 - 17:11 genre_word training images sealed (1,367 s); the CPU queue (`ags_queue.sh`) started by itself.
 - 17:15 genre graphs built. Rows for the head (`graphs/selected.json`): emotion R0, R1, Psim50, Fres1, Gres; style R0,
   R1, Psim50, Fres05, Gres; genre R0, R1, Psim75, Fres025, Gres, Fside025. The best row by target lift was R0 for
-  emotion and style (no sixth row); style's Fres1 was not eligible (16.8% of R0's pairs, under 20%).
+  emotion and style (no sixth row); style's Fres1 was not eligible (14.3% of style R0's pairs, under 20%; corrected in follow-up 1, the first entry said 16.8%, which is the share of emotion's R0).
 - 17:20 heads train at about 35 s per epoch with three processes. Dev loss is lowest at epoch 1 to 4 and then rises;
   every run stops after 16 to 19 epochs (patience 15). The pilot's students did the same (best epoch 1 to 3).
 - 18:00 seed 0 scored. Rows for seeds 1 and 2 (`head_seed_rows.json`, top two by seed-0 target AMI): emotion Fres1,
   Gres; style Fres05, Gres; genre Fside025, R0.
 - 18:20 queue done: `AGS_DONE graphs=0 seed0_emotion=0 seed0_style=0 seed0_genre=0 score0=0 pick_seeds=0
-  seeds12_emotion=0 seeds12_style=0 seeds12_genre=0 score012=0`. 39 head runs, no output missing. Sheets:
+  seeds12_emotion=0 seeds12_style=0 seeds12_genre=0 score012=0`. 28 head runs (16 rows on seed 0, 6 rows on seeds 1 and 2; corrected in follow-up 1, the first entry said 39), no output missing. Sheets:
   [graphs/sheet.md](graphs/sheet.md) (63 graph rows), [ags_head_tables.md](ags_head_tables.md) (heads and the
   per-view references).
 - 18:05 the user approved the storage summary; the unattended guard refused the deletes in this chat, so they are
@@ -50,3 +50,20 @@ The exact definitions: [ags_rows.md](ags_rows.md). Tickets: 01 `ags_graphs.py` (
 6. The head's loss: four buddy terms (image-image, image-caption both ways, caption-caption), weighted per pair, plus
    two own-caption terms, unweighted; the pilot's settings otherwise. Target AMI = mean of the image-side and
    caption-side AMI of the aspect's own label; it picks the two rows per aspect that get seeds 1 and 2.
+
+## Follow-up 1 (chat `r10 follow-up 1`, day mode, small loop)
+
+Design in chat, approved by the user at 19:15: 31 more head runs, same head and scoring.
+(a) seeds 1 and 2 for R0 and R1 (emotion, style) and R1 (genre); (b) genre R0o, 3 seeds; (c) the head reads the
+aspect's prompted image and caption embeddings, on R0 and the best row per aspect (emotion Fres1, style Fres05, genre
+Fside025), 3 seeds. Limit of (c), flagged to the user: prompted inputs need the aspect instruction at test time, so (c)
+measures the gap to the prompted view, not the final design.
+
+- 19:16 Codex job (`gpt-6.1-sol`, medium, worktree `/project/CoSiR-wt-agsfu`): `ags_head.py` gets `load_inputs` and the
+  `input_key` / `outdir` parameters (default config unchanged, checked equal to stage 1's stored config); new
+  `ags_fu.py` (the run list `FU`, training, scoring, and the combined sheet that reads stage 1's scores read-only) and
+  `ags_fu_queue.sh`. Outputs go to `outputs_fu/`, scores to `ags_fu_results.json` and `ags_fu_tables.md`; stage 1
+  files are not written.
+- 19:26 controller diff read; merged to main (`02d0466`). Genre smoke from main (5,000 pairs, 2 epochs): train,
+  score and the combined sheet passed; references equal stage 1's (prompted genre mean 0.424).
+- 19:28 queue started (`ags_fu_queue.sh`, three aspect workers, then scoring).
