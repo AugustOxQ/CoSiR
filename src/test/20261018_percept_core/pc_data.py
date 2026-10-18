@@ -61,7 +61,7 @@ def caption_features(s, kind):
             assert ids['sample_ids'].dtype == np.int64
             assert np.array_equal(ids['sample_ids'], s['sample_ids']), 'RoBERTa ID order mismatch'
             assert np.array_equal(ids['painting_ids'], s['painting_ids']), 'RoBERTa painting mismatch'
-        return check_array(np.load(ROBERTA / 'txt.npy', mmap_mode='r'),
+        return check_array(np.array(np.load(ROBERTA / 'txt.npy', mmap_mode='r')),
                            (len(s['sample_ids']), 768))
     # prompted asserts exact extraction-ID and painting-name order before reading.
     raw = prompted(s, kind.removeprefix('qwen_'))[1]
