@@ -107,6 +107,35 @@ def test_gate_check_requires_a_local_rerun_instead_of_the_archived_output(tmp_pa
     assert not (tmp_path / 'gate.json').exists()
 
 
+def test_train_rechecks_head_without_writing_shared_gate(tmp_path, monkeypatch):
+    marker = tmp_path / 'gate.json'
+    marker.write_text(json.dumps(dict(pass_gate=True)))
+    before = marker.read_bytes(), marker.stat().st_mtime_ns
+    folder = tmp_path / 'heads'
+    folder.mkdir()
+    path = folder / 'genre__R0__s0.npz'
+    np.savez(path, img=np.ones((1, 1)), cap=np.ones((1, 1)))
+    verified, trained = [], []
+
+    def verify(s, base, output, smoke):
+        verified.append(output)
+        return dict(config={}, output_sha256='verified')
+
+    def no_write(*args):
+        pytest.fail('training must not rewrite gate.json')
+
+    monkeypatch.setattr(rows, 'verify_head', verify)
+    monkeypatch.setattr(rows.head, 'label_vectors', lambda *args: {})
+    monkeypatch.setattr(rows.head, 'ami_scores', lambda *args: {'genre': {'mean': rows.GATE_TARGET}})
+    monkeypatch.setattr(rows.head, 'atomic_json', no_write)
+    monkeypatch.setattr(rows.head, 'load_graph', lambda *args: ({}, {}))
+    monkeypatch.setattr(rows.head, 'load_inputs', lambda *args: {})
+    monkeypatch.setattr(rows.head, 'run', lambda *args, **kwargs: trained.append(args))
+    rows.train(dict(subset_pid=np.array([0])), tmp_path, 'row6', ['emotion'], [0])
+    assert verified == [path] and len(trained) == 1
+    assert (marker.read_bytes(), marker.stat().st_mtime_ns) == before
+
+
 def test_score_uses_the_frozen_scorer_on_sealed_heads_and_reports_missing_runs(tmp_path):
     s = rows.head.load_frozen()
     rows.build_graphs(s, tmp_path)

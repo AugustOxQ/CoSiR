@@ -17,14 +17,31 @@ while (( $# )); do
     esac
 done
 root=${smoke:-$here}
+run_locked() {
+    local here=$1 root=$2 lock_wait=$3 code
+    shift 3
+    flock -o -w "$lock_wait" /tmp/gpu0.lock bash "$here/pc_queue_gpu.sh" "$@"
+    code=$?
+    if ! awk '
+        /^PC_gpu_SUBMIT / {done=0}
+        /^PC_gpu_DONE / {done=1}
+        END {exit !done}
+    ' "$root/pc_queue_status.txt"; then
+        printf 'PC_gpu_DONE lock_or_worker=%s failed=1 %s\n' "$code" "$(date -Iseconds)" >> "$root/pc_queue_status.txt"
+    fi
+    return "$code"
+}
 if (( ! worker )); then
     mkdir -p "$root"
+    printf 'PC_gpu_SUBMIT %s\n' "$(date -Iseconds)" >> "$root/pc_queue_status.txt"
     args=(--worker)
     if [[ -n "$smoke" ]]; then args+=(--smoke "$smoke"); fi
     if (( foreground )); then
-        exec flock -o -w "$lock_wait" /tmp/gpu0.lock bash "$here/pc_queue_gpu.sh" "${args[@]}"
+        run_locked "$here" "$root" "$lock_wait" "${args[@]}"
+        exit "$?"
     fi
-    nohup flock -o -w "$lock_wait" /tmp/gpu0.lock bash "$here/pc_queue_gpu.sh" "${args[@]}" > "$root/pc_queue_gpu.log" 2>&1 < /dev/null &
+    export -f run_locked
+    nohup bash -c 'run_locked "$@"' _ "$here" "$root" "$lock_wait" "${args[@]}" > "$root/pc_queue_gpu.log" 2>&1 < /dev/null &
     printf 'GPU queue pid=%s log=%s\n' "$!" "$root/pc_queue_gpu.log"
     exit 0
 fi

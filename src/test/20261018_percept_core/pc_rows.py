@@ -160,7 +160,7 @@ def verify_head(s, base, path, smoke):
     return head.verify_output(path, expected)
 
 
-def gate_check(s, base, smoke=False):
+def gate_check(s, base, smoke=False, *, write=True):
     folder = run_base(base, smoke)
     path = folder / 'heads/genre__R0__s0.npz'
     assert path.exists(), 'local genre R0 seed 0 rerun required before gate-check'
@@ -173,7 +173,8 @@ def gate_check(s, base, smoke=False):
     verdict['cause'] = ('smoke run: full regression not checked' if smoke else
                         None if verdict['pass_gate'] else
                         'target AMI mismatch; numerical cause not established; head rows stopped')
-    head.atomic_json(folder / 'gate.json', verdict)
+    if write:
+        head.atomic_json(folder / 'gate.json', verdict)
     print(f"Gate {verdict['status']}: target={verdict['target_ami']:.12f}; "
           f"difference={verdict['difference']:+.12f}; "
           f"within 0.002: {'yes' if verdict['within_002'] else 'no'}", flush=True)
@@ -186,7 +187,7 @@ def train(s, base, name, aspects=None, seeds=None, smoke=False):
         marker = Path(base) / 'gate.json'
         assert marker.exists(), 'stage 2 gate-check must PASS before head rows'
         assert json.loads(marker.read_text())['pass_gate'], 'stage 2 gate failed; head rows stopped'
-        assert gate_check(s, base)['pass_gate'], 'stage 2 gate failed; head rows stopped'
+        assert gate_check(s, base, write=False)['pass_gate'], 'stage 2 gate failed; head rows stopped'
     inputs, previous = None, None
     for aspect, row, key, seed in selected:
         kind = 'default' if key == 'default' else 'prompted'

@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -47,10 +49,12 @@ args = sys.argv[1:]
 if args[0] == '-u': args.pop(0)
 if args[0].endswith('pc_queue.py') and args[1] == 'times':
     os.execv(sys.executable, [sys.executable, *args])
+kind = Path(args[0]).name
 with open(os.environ['PC_EVENTS'], 'a') as stream:
     stream.write(json.dumps(dict(args=args, cuda=os.environ.get('CUDA_VISIBLE_DEVICES'),
-                                omp=os.environ.get('OMP_NUM_THREADS'))) + '\\n')
-kind = Path(args[0]).name
+                                omp=os.environ.get('OMP_NUM_THREADS'),
+                                status=Path(os.environ['PC_STATUS']).read_text()
+                                if kind == 'pc_score.py' else None)) + '\\n')
 failure = os.environ.get('PC_FAIL', '')
 if failure == 'stage0' and kind == 'pc_stage0.py': sys.exit(7)
 if failure == 'gate' and '--gate-check' in args: sys.exit(8)
@@ -64,7 +68,8 @@ sys.exit(0)
 def queue_run(tmp_path, fake_python, queue, failure='', smoke=True):
     root = tmp_path / 'run'
     env = dict(os.environ, PC_PYTHON=str(fake_python), PC_EVENTS=str(tmp_path / 'events'),
-               PC_FAIL=failure, CUDA_VISIBLE_DEVICES='')
+               PC_FAIL=failure, CUDA_VISIBLE_DEVICES='', PC_GPU_WAIT='2',
+               PC_STATUS=str(root / 'pc_queue_status.txt'))
     args = ['bash', str(HERE / f'pc_queue_{queue}.sh')]
     if queue == 'gpu': args += ['--worker']  # No lock/GPU used by the command stub.
     assert smoke  # Keep all queue writes inside the test's isolated folder.
@@ -123,6 +128,89 @@ def test_failed_cpu_gate_still_scores(tmp_path, fake_python):
     assert times['head_rows']['exit_code'] == 'blocked'
     assert times['rows_score']['exit_code'] == 0
     assert times['sheet']['exit_code'] == 0
+
+
+@pytest.mark.parametrize('gpu_state', ['pending', 'timeout', 'none', 'ok'])
+def test_cpu_sheet_waits_for_the_latest_gpu_submission(tmp_path, fake_python, gpu_state):
+    root = tmp_path / 'run'
+    root.mkdir()
+    status_path = root / 'pc_queue_status.txt'
+    status_path.write_text('PC_gpu_SUBMIT old\nPC_gpu_DONE old\nPC_gpu_SUBMIT new\n'
+                           if gpu_state != 'none' else 'PC_gpu_DONE stale\n')
+    if gpu_state == 'ok':
+        with status_path.open('a') as stream:
+            stream.write('PC_gpu_DONE new\n')
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        job = executor.submit(queue_run, tmp_path, fake_python, 'cpu')
+        if gpu_state == 'pending':
+            deadline = time.monotonic() + 10
+            while 'rows_score=0' not in status_path.read_text() and time.monotonic() < deadline:
+                time.sleep(.05)
+            assert 'rows_score=0' in status_path.read_text()
+            assert 'sheet=' not in status_path.read_text()
+            with status_path.open('a') as stream:
+                stream.write('PC_gpu_DONE new\n')
+        result, events, status, times = job.result(timeout=15)
+    expected = 'ok' if gpu_state == 'pending' else gpu_state
+    assert result.returncode == (1 if expected == 'timeout' else 0), result.stderr
+    assert status.count('gpu_wait=') == 1
+    assert f'gpu_wait={expected} seconds=' in status
+    assert times['gpu_wait']['exit_code'] == expected
+    sheet = next(e for e in events if e['args'][0].endswith('pc_score.py'))
+    if expected == 'ok':
+        assert 'PC_gpu_DONE new' in sheet['status']
+    assert times['sheet']['exit_code'] == 0
+    if expected == 'timeout':
+        assert times['gpu_wait']['seconds'] >= 2
+        assert 'failed=1' in status
+
+
+@pytest.mark.parametrize('foreground', [True, False])
+@pytest.mark.parametrize('outcome,code', [('timeout', 1), ('died', 137), ('ok', 0), ('stage0', 1)])
+def test_gpu_launcher_closes_each_submission_and_preserves_exit_code(
+        tmp_path, fake_python, foreground, outcome, code):
+    # Stub flock rather than touching the shared GPU lock.
+    bindir = tmp_path / 'bin'
+    bindir.mkdir()
+    flock = bindir / 'flock'
+    flock.write_text('''#!/usr/bin/env bash
+status="$PC_STATUS"
+[[ $(tail -n 1 "$status") == PC_gpu_SUBMIT* ]] || exit 99
+case "$PC_FLOCK_OUTCOME" in
+    timeout) exit 1 ;;
+    died) exit 137 ;;
+esac
+while [[ $1 != bash ]]; do shift; done
+exec "$@"
+''')
+    flock.chmod(0o755)
+    root = tmp_path / 'run'
+    root.mkdir()
+    status_path = root / 'pc_queue_status.txt'
+    status_path.write_text('PC_gpu_SUBMIT old\nPC_gpu_DONE old\n')
+    env = dict(os.environ, PATH=str(bindir) + os.pathsep + os.environ['PATH'],
+               PC_PYTHON=str(fake_python), PC_EVENTS=str(tmp_path / 'events'),
+               PC_STATUS=str(status_path), PC_FLOCK_OUTCOME=outcome,
+               PC_FAIL='stage0' if outcome == 'stage0' else '', CUDA_VISIBLE_DEVICES='')
+    args = ['bash', str(HERE / 'pc_queue_gpu.sh'), '--smoke', str(root), '--lock-wait', '0']
+    if foreground:
+        args.append('--foreground')
+    result = subprocess.run(args, env=env, capture_output=True, text=True, timeout=10)
+    assert result.returncode == (code if foreground else 0), result.stderr
+    deadline = time.monotonic() + 10
+    while status_path.read_text().count('PC_gpu_DONE') < 2 and time.monotonic() < deadline:
+        time.sleep(.05)
+    status = status_path.read_text()
+    lines = status.splitlines()
+    assert sum(line.startswith('PC_gpu_SUBMIT ') for line in lines) == 2
+    assert sum(line.startswith('PC_gpu_DONE ') for line in lines) == 2
+    assert lines[2].startswith('PC_gpu_SUBMIT ')
+    assert lines[-1].startswith('PC_gpu_DONE ')
+    if outcome in ('timeout', 'died'):
+        assert f'PC_gpu_DONE lock_or_worker={code} failed=1 ' in lines[-1]
+    else:
+        assert 'lock_or_worker=' not in lines[-1]
+        assert f'failed={code}' in lines[-1]
 
 
 def test_full_gpu_schedule_skips_finished_store(tmp_path, fake_python):

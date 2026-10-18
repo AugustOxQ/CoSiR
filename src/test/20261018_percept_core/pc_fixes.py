@@ -50,15 +50,21 @@ def orthogonal_map(input_dim, output_dim, seed=0):
     return (q * np.sign(np.diag(r))).astype(np.float32)
 
 
-def kept_centers(center_norms, gamma=2):
-    """Algorithm 1 mask in original center order; tied gaps use the first (D9)."""
+def largest_gap(center_norms):
+    """Sorted norms, first largest-gap index, its size and the mean gap (D9)."""
     assert center_norms.ndim == 1 and len(center_norms) >= 2
     assert np.isfinite(center_norms).all() and (center_norms >= 0).all()
-    assert np.isfinite(gamma) and gamma > 0
     ordered = np.sort(center_norms.astype(np.float64))
     gaps = np.diff(ordered)
     index = np.argmax(gaps)
-    if gaps[index] > gamma * gaps.mean():
+    return ordered, index, gaps[index], gaps.mean()
+
+
+def kept_centers(center_norms, gamma=2):
+    """Algorithm 1 mask in original center order; tied gaps use the first (D9)."""
+    assert np.isfinite(gamma) and gamma > 0
+    ordered, index, gap, mean_gap = largest_gap(center_norms)
+    if gap > gamma * mean_gap:
         threshold = (ordered[index] + ordered[index + 1]) / 2
         return center_norms <= threshold
     return np.ones(center_norms.shape, dtype=bool)

@@ -1,14 +1,30 @@
 # PercepT queues
 
-From the repository root, submit one background GPU job (the PID is the `flock`
-process; its log and status are in the round folder):
+From the repository root, start the GPU queue first with `--foreground` inside a
+background shell, then start the CPU queue beside it:
 
 ```bash
-bash src/test/20261018_percept_core/pc_queue_gpu.sh --lock-wait 14400
+round=src/test/20261018_percept_core
+(
+    bash "$round/pc_queue_gpu.sh" --foreground --lock-wait 14400
+) > "$round/pc_queue_gpu.log" 2>&1 &
+(
+    bash "$round/pc_queue_cpu.sh"
+) > "$round/pc_queue_cpu.log" 2>&1 &
 ```
 
-`--foreground` waits for the locked job and returns its exit code. The lock is
+The CPU queue waits for the GPU queue before writing the final sheet. Logs and
+the shared `pc_queue_status.txt` are in the round folder.
+
+`--foreground` waits for the locked job and returns its exit code. The plain
+`bash src/test/20261018_percept_core/pc_queue_gpu.sh` form uses nohup and returns
+at once; its PID is the background launcher shell. The lock is
 `flock -o -w SECONDS /tmp/gpu0.lock`; children do not inherit the lock descriptor.
+`--lock-wait` (default 14400 seconds) limits the wait to acquire the GPU lock.
+On timeout the worker never starts, flock returns nonzero, and the launcher
+records `PC_gpu_DONE lock_or_worker=<code> failed=1`. It also records that line
+if the worker exits without writing DONE. Every launch records `PC_gpu_SUBMIT`
+before waiting for the lock, including the nohup form.
 Stage 0 exports commit `1b70d7f` into `sept_stage0/`, runs both unchanged September
 scripts in fresh interpreters (CM-1–3), checks their measured report columns at
 four decimals, checks row 2, and records the four-fix pytest result. A failed
@@ -27,8 +43,13 @@ It packages graphs, invokes the gate training CLI (including its existing-output
 verification), checks the gate, then launches three aspect workers. Each worker
 runs rows 6, 10, 13 sequentially with eight CPU threads; genre omits row 10, which
 already exists. Scoring runs even after a gate failure so missing rows remain
-visible. The queue does not depend on Stage 0. Run it after GPU training when the
-final sheet should include the PercepT outputs.
+visible. The head jobs do not depend on Stage 0. Before the sheet step, the queue
+polls every 30 seconds for a `PC_gpu_DONE` after the last `PC_gpu_SUBMIT`, for up
+to `PC_GPU_WAIT` seconds (default 18000). It records one
+`gpu_wait=ok|none|timeout seconds=<n>` line: `none` means no GPU submission was
+recorded. A timeout marks the CPU queue failed and still writes the sheet so the
+incomplete run is visible. A completed GPU queue may itself have failed; its
+results and status remain visible on the sheet.
 
 For smoke checks, use a fresh folder within the worktree, the same folder for
 both commands if their timing records and sheet should be combined:
@@ -37,6 +58,9 @@ both commands if their timing records and sheet should be combined:
 bash src/test/20261018_percept_core/pc_queue_gpu.sh --foreground --smoke "$PWD/src/test/20261018_percept_core/outputs/queue_smoke"
 bash src/test/20261018_percept_core/pc_queue_cpu.sh --smoke "$PWD/src/test/20261018_percept_core/outputs/queue_smoke"
 ```
+
+Both smoke queues share that folder's status file; concurrent smoke runs use
+the same GPU wait protocol, polling every second.
 
 GPU smoke runs 512-caption extraction, all three Stage 1 versions, and all five
 Stage 2 arms at seed 0. Stage 1/2 still read the existing full feature stores.
