@@ -1,0 +1,218 @@
+# PercepT core in five settings, and the missing rows of the ablation table: design
+
+> Date: 2026-10-18 23:45 · Status: draft · Kind: experiment
+> Builds on: [aspect graph follow-up](../../reports/auto/percept/2026-12-12_aspect_graph_followup.md) and its
+> [ablation table](../../user_read/2026-10-18_aspect_graph_followup.md) (rows 1 to 13) · facts brief
+> `.scratch/r10-percept-core/facts.md` · grill record `.scratch/r10-percept-core/grill.md` · Constitution:
+> [constitution.md](../constitution.md)
+> Decision rule: none (descriptive; the baseline's "established" checks are in §6)
+
+## Brief (for the user; agents read and decide from §1 onward)
+
+**What and why.** We build PercepT core: PercepT with the four fixes from the code audit, on our own features. It
+fills the PercepT rows of the ablation table. These rows set what our model must beat by 2026-10-29. After that, the
+table's missing rows of our own network run on the CPU.
+
+**Plan.**
+1. Regression check: the unchanged September PercepT reproduces its recorded numbers exactly (Stage 1: emotion
+   0.1225, genre 0.2274; Stage 2: a recorded AUC). Our scoring code reproduces the default-embedding row (row 2) exactly.
+2. Baseline: PercepT core with three Stage 1 versions and five Stage 2 settings, 3 seeds each, on the local GPU.
+   - Stage 1 versions: CLIP + RoBERTa (September encoders); Qwen with the Qwen emotion-instructed caption; Qwen
+     with RoBERTa.
+   - Stage 2 settings: version 1 with CLIP patch tokens, or with a global CLIP vector; version 2 with the Qwen
+     vector, or with CLIP patch tokens (does Stage 1 transfer?); version 3 with the Qwen vector.
+3. Ablation, on the CPU after the GPU part: the September encoders clustered directly (row 1), our network on the
+   default graph (row 6), on the other side's graph (row 10), and with prompted inputs on it (row 13).
+
+**Compared against.** Our network's image side on the same 5,000 paintings (rows 7 to 12, already measured), and
+the Qwen embeddings clustered directly (rows 2 and 3). The PercepT comparator per aspect is the best of its five
+settings on that aspect (constitution C1, strongest real comparator).
+
+**Outcomes.** Descriptive: no go or kill. A setting is "established" when the regression check passed, the fixes
+pass their tests, and Stage 2 learned its topics (dev AUC at least 0.75). The table then shows which encoder and which
+method part carry the score. We expect PercepT core near the Qwen default embedding on the image side. We do not
+expect it near our best network on emotion and style. This is a guess, not a bar.
+
+**Cost.** About 2.5 to 3 GPU hours and 1.5 CPU hours (estimate; the build measures it). The build runs tonight; the
+run follows when the build ends. If the run starts by about 06:00, it ends before 11:00. You hear back with a report
+and an updated ablation table.
+
+**Check these.**
+- γ, the gap threshold of the topic-count algorithm: the paper gives no value; we use 2 and report the topic count
+  for 1.5, 3 and 5 beside it.
+- Eq. 2 as the code audit reads it, on l2-normalized inputs (the paper does not say).
+- The September recipe that the regression check reproduces (60 topics pruned to 40) is the base; only the four
+  fixes change it. So September's balance term stays.
+- Version 3's RoBERTa vector goes up to 2048 dimensions by a fixed random orthogonal map (you confirmed it in the
+  summary; the idea was ours).
+- The comparator is the best PercepT setting per aspect, chosen on the same 5,000 paintings that chose our rows.
+
+## 1. Context and goal
+
+Asked: "Q1: 1b I guess? ... Q2: ... Maybe both 2a and 2b so in total 3 settings. Q3: 3a. minor: yes. So this is still
+exploration, we get as many trails as possible to enlarge the ablation table and then pick. Also afte the percepT
+experiment, do these in the table but still missying experiment." Then "K1b ... K2a yes. All minor: yes", and "yes"
+to the closing summary (2026-10-18, about 23:30).
+
+The stage 1 follow-up showed that our network on the right graph keeps most of the instruction's gain without an
+instruction at test time. The user asked for an ablation table that changes one part at a time. Its PercepT rows (4,
+5) and four of our rows (1, 6, 10, 13) are empty.
+
+Goal: fill the empty rows of the ablation table on the frozen-sample protocol.
+Question this step answers: where does PercepT core stand on the image side, and which encoder and which method
+parts carry the score?
+
+## 2. Scope
+
+In: the regression check; PercepT core with the four fixes in five settings, 3 seeds; image-side scoring at k = 20
+plus PercepT's own topic count; RoBERTa-GoEmotions features per caption; rows 1, 6, 10 and 13; the updated table.
+Out: PercepT faithful (the paper's encoders and training details; later); the paper's split and metrics; held data;
+stage 2 of our own model (decided after this); a caption side for PercepT (it has no caption-only path; the mean
+column stays empty, D6).
+
+## 3. Design
+
+### 3.2 Arms and controls
+
+PercepT core = the September Stage 1 and Stage 2 recipe (the snapshot configuration of 2026-09-24, deterministic)
+with four changes: (1) Stage 1 rows are image-caption pairs, not painting means; (2) the paper's Eq. 2 fusion
+`h = (2·C·‖E‖ + E·‖C‖)/3`, `C = (I + T)/2`; (3) the topic count from Algorithm 1 (start at 100 topics, cut at the
+midpoint of the largest gap in the sorted center norms when that gap exceeds γ times the mean gap); (4) Stage 2
+targets are the multi-hot union of the topics of a painting's captions.
+
+| Arm | Stage 1 input (I, T, E) | Stage 2 image input | Table row | Role |
+|---|---|---|---|---|
+| P1 | CLIP B/32 image, CLIP B/32 caption, RoBERTa-GoEmotions (PCA to 512) | CLIP patch tokens, attention pooling | 4a | comparator, closest to PercepT |
+| P2 | as P1 (the same Stage 1 run) | CLIP global vector, 2-layer MLP | 4b | comparator; differs from P1 in Stage 2 only |
+| P3 | Qwen default image, Qwen default caption, Qwen emotion-instructed caption | Qwen global vector, 2-layer MLP | 5a | comparator; same input as our network |
+| P4 | as P3 (the same Stage 1 run) | CLIP patch tokens, attention pooling | 5b | transfer check; differs from P3 in Stage 2 only |
+| P5 | Qwen default image, Qwen default caption, RoBERTa-GoEmotions (random orthogonal map to 2048) | Qwen global vector, 2-layer MLP | 5c | differs from P3 in E only; from P2 in I and T only |
+
+Ablation rows of our network (the stage 1 head and scoring, unchanged; 3 seeds; default inputs unless stated):
+
+| Row | Graph | Input | Differs from |
+|---|---|---|---|
+| 1 | none: k-means on CLIP image; caption side once with CLIP text, once with RoBERTa | — | row 2 by the encoder |
+| 6 | default graph: mutual top-20 on the default caption embedding (emotion, genre) or default image embedding (style) | default | row 7 by the instruction in the graph |
+| 10 | the other side's aspect graph alone (R0o) for emotion and style (genre exists) | default | row 7 by the graph's side |
+| 13 | R0o for all three aspects | prompted | row 10 by the input |
+
+### 3.3 Data roles
+
+| Data or seeds | Role | Used in stage |
+|---|---|---|
+| Frozen sample, 13,400 fit paintings (their captions as pairs) | development: training | 1, 2 |
+| Frozen sample, 1,489 dev paintings | development: Stage 2 AUC, head early stopping | 1, 2 |
+| Frozen sample, 5,000 evaluation paintings | development: scoring only (they also chose our rows) | 1, 2 |
+| September split (61,402 train, 9,365 val+test paintings) | read to reproduce the recorded numbers; nothing tuned | 0 |
+| ArtELingo test split, other held data | not touched | — |
+| Seeds 0, 1, 2 | PercepT seed s sets Stage 1 and its Stage 2; head seeds as in stage 1 | 1, 2 |
+
+### 3.4 Measurement
+
+- **Image side (headline, D6):** the Stage 2 sigmoid output of the 5,000 evaluation paintings, l2-normalized,
+  k-means at k = 20 with the stage 1 scoring (3 k-means seeds), AMI against emotion, style and genre. Per arm: the
+  mean ± population sd over the 3 PercepT seeds. The column for an aspect is its own label.
+- **Beside it (PercepT's own measures):** the topic count K; AMI of the argmax topic of Stage 2 (image) and of Stage 1
+  (painting = argmax of the mean topic weights of its pairs) at K; Stage 2 dev macro AUC; K for γ = 1.5, 3 and 5 on
+  the same converged centers.
+- **Rows 1, 6, 10, 13:** the stage 1 measures (both sides and their mean).
+- **No significance tests.** Three seeds give a spread, not a test; differences below about 0.01 are read as level.
+
+### 3.5 Stages, gates and the regression check
+
+| Stage | Type | Input | Gate to pass | If it fails |
+|---|---|---|---|---|
+| 0 | regression check | the unchanged September Stage 1 (seed 42, K 60 to 40) and Stage 2 (threshold targets); our scoring on the stored default embeddings | emotion AMI 0.1225 and genre AMI 0.2274 (4 decimals); a recorded per-seed Stage 2 macro AUC of the extended seed pilot (4 decimals); row 2 = 0.088556, 0.170954, 0.393076 to 1e-6 | stop stage 1, trace the cause, note it for the user; stage 2 still runs |
+| 1 | baseline | P1 to P5, seeds 0 to 2 | each arm: "established" checks of §6 | report the arm as not established, with the cause |
+| 2 | ablation | rows 1, 6, 10, 13 | a rerun of stage 1's genre R0 seed 0 head matches its target AMI to 1e-6 (else within 0.002, with the cause stated) | stop the head rows, trace the cause |
+
+### 3.7 Frozen vs rerun
+
+Frozen: the frozen sample and its splits; stage 1's graphs, head code and all existing rows; the per-caption Qwen
+stores; the CLIP features and patch cache. New: RoBERTa features per caption (once, to the shared cache), the default
+graphs of row 6, and everything PercepT core trains.
+
+## 4. Decisions
+
+| ID | Question | Decision | Why (alternative rejected) | Decided by | When |
+|---|---|---|---|---|---|
+| D1 | Which encoders | CLIP B/32 + RoBERTa-GoEmotions, and Qwen default | September's inputs and our network's inputs (one version only) | user, after seeing the recommendation | 2026-10-18 18:45 |
+| D2 | E in the Qwen version | Qwen emotion-instructed caption (P3) | same instruction as our network, in training only (keep RoBERTa; no E) | user | 2026-10-18 23:10 |
+| D3 | Stage 2 image input | P1, P2, P3: close to PercepT and a fair CLIP vs Qwen comparison | 2a or 2b alone | user | 2026-10-18 23:10 |
+| D4 | CLIP Stage 2 on Qwen topics | add P4: "test whether what we learned in stage 1 is transferable" | three arms only | user | 2026-10-18 23:28 |
+| D5 | Qwen with RoBERTa | add P5 | no isolation of E | user (the agent offered it) | 2026-10-18 23:28 |
+| D6 | Scoring | image side only; K-native measures beside; mean column empty | both sides (PercepT's caption side sees the image); native K only | user | 2026-10-18 23:10 |
+| D7 | Base recipe | the September snapshot configuration; only the four fixes change | the original 67-center or later H2H variants: not the recorded, reproducible numbers | user (minor i), recipe pick agent default | 2026-10-18 23:31 |
+| D8 | Data, seeds, RoBERTa cache | frozen sample splits; seeds 0, 1, 2; per-caption RoBERTa features to `/data/SSD2/pre_extract/artelingo_full/` | — | user, after seeing the recommendation (minor ii to iv) | 2026-10-18 23:10 |
+| D9 | γ | 2; no qualifying gap keeps all 100; K for 1.5, 3, 5 reported | the paper gives no value | agent default (minor v allowed it) | 2026-10-18 23:40 |
+| D10 | Eq. 2 dimensions | P1, P2: PCA of RoBERTa to 512 on fit captions; P5: fixed random orthogonal map 768 to 2048 (seed 0) | PCA of Qwen to 768 (drops content) | user, after seeing the recommendation | 2026-10-18 23:28 |
+| D11 | Eq. 2 reading and inputs | the audit's reading; I, T, E l2-normalized first | raw inputs (the paper is silent; September normalized) | agent default | 2026-10-18 23:40 |
+| D12 | Stage 2 on a global vector | 2-layer MLP, hidden 1,024; other Stage 2 settings as September | — | user, after seeing the recommendation | 2026-10-18 23:28 |
+| D13 | Rows 1, 6, 10, 13 | as §3.2; 3 seeds; after the GPU part | default graph on one fused content graph | user (rows, order); definitions agent default | 2026-10-18 23:28 |
+| D14 | Stage types | 0 regression, 1 baseline, 2 ablation | exploration for stage 2: row 6 removes one part, so ablation is the first type that fits | agent default | 2026-10-18 23:40 |
+| D15 | The comparator | per aspect, the arm with the highest mean image-side AMI; ties within 0.003 go to the lower arm number | a fixed arm (C1: strongest real comparator) | agent default | 2026-10-18 23:40 |
+
+**Amendments:** none.
+
+## 5. Assumptions and open questions
+
+- Assumption: per-caption Qwen default and emotion-instructed vectors cover all 99,999 frozen captions. Checked: the
+  stores exist and the stage 1 code read their painting means; the per-caption join not checked.
+- Assumption: CLIP B/32 features and the patch cache (61,402 train paintings) cover the frozen sample. Checked: the
+  sample comes from the CLIP-backed train loader; the name join not checked.
+- Assumption: the snapshot configuration can be recovered from the September branch. Checked: its report shows an
+  exact re-fit; the script not located yet.
+- Assumption: the RoBERTa-GoEmotions and CLIP B/32 weights are in the shared HF cache. Checked: both listed.
+- No open questions.
+
+## 6. Success criteria
+
+**Descriptive mode.** No decision rides on a bar: the user picks from the filled table.
+An arm is **established** when: stage 0 passed; unit tests pass for the four fixes (pair count equals the fit
+captions; Eq. 2 on a hand-worked example; Algorithm 1 on norms with a known gap; the multi-hot target equals the OR
+of the caption topics); and its Stage 2 dev macro AUC is at least 0.75 on every seed (September 0.829 with
+threshold targets; the paper 0.94).
+Reading: an established arm near or above our best network on the image side moves the stage 2 design toward that
+arm's parts; P4 vs P3 says whether topics transfer across Stage 2 readers; P5 vs P3 says which emotion source helps.
+**Licensed claim (stage 1):** "PercepT core, a fair comparator under the frozen-sample protocol (four fixes, our
+features, no tuning on either side), scores X on the image side." Not PercepT as published, not the paper's numbers.
+**Licensed claim (stage 2):** each row's effect as a difference of 3-seed means with both sds, on development data:
+an attribution as strong as the exploration it explains, a direction, never a result.
+
+## 7. Constitution check
+
+| Principle | Pass or exception | Note |
+|---|---|---|
+| C1 strongest comparator | pass | D15, the best arm per aspect |
+| C6 sample IDs | pass | joins by extraction sample IDs and painting names, as the stage 1 code |
+| C7, C8 rule and disclosure | pass | no bar; §8 discloses selection |
+| C12 regression first | pass | stage 0 |
+| C13 re-derivation | pass | the comparator's image-side AMI re-derived by separate code |
+
+Exceptions: none.
+
+## 8. Risks
+
+| What could make the result wrong or misleading | How we would notice | What we do then |
+|---|---|---|
+| A port error in the four fixes | unit tests; stage 0 on the unchanged path | fix before stage 1 |
+| γ = 2 gives K = 100 (no cut) or a very small K | the K table for γ 1.5 to 5 | report; no rerun with another γ in this spec |
+| Selection: stage 1 chose our rows on the 5,000 paintings, and D15 chooses PercepT's arm on them too | stated in the report | carry both picks to fresh data in stage 2 of our model |
+| Qwen's content and emotion vectors come from one model, so Eq. 2 adds little in P3 | P3 vs P5, Stage 1 topic AMI | read as a finding |
+| Captions per painting differ, so Stage 1 weighs some paintings more | pair counts per painting | note in the report |
+
+## 9. Deliverables and review
+
+- At the end: round folder `src/test/20261018_percept_core/` (module prefix `pc_`); RoBERTa cache; a results sheet;
+  the ablation table updated in the user-read report; an auto report with a results brief, a user-read report.
+- Reviews: tickets per `matt-chain.md`; the four fixes and the scoring are verdict code (unit tests and ticket
+  reviews); the final whole-branch review; the comparator's numbers re-derived independently (C13).
+- Stop points: none between approval and the reports (build and run unattended). Time-box: 2026-10-20.
+- **Budget:** local GPU under the lock, about 2.5 to 3 hours (RoBERTa extraction minutes; 9 Stage 1 runs; 15 Stage 2
+  runs; stage 0 about 15 minutes); CPU about 1.5 hours (21 head runs on three processes, scoring). Estimates, not
+  checked: the build's smoke times one run of each kind, and the run chat recomputes the end time. An end after 11:00
+  is weighed as `shared-resources.md` says: the GPU part first, the CPU rows may move to the next evening.
+- GPU check at 23:31: the driver answers; module and library both 595.99.02; no process and no lock on the GPU.
+- Length: the body (about 170 lines) is over the target of about 140, because five arms and 15 grill decisions
+  fill §3.2 and §4; each fact stays in one place.
