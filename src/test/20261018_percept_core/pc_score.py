@@ -47,22 +47,40 @@ def native_ami(prob, labels):
     return {label: float(ami(y[y >= 0], topic[y >= 0])) for label, y in labels.items()}
 
 
-def aggregate_arm(seeds, stage0_pass):
+def unit_tests_pass(line):
+    """Spec section 6 (b): the recorded pytest result line shows passes and no failure."""
+    if not isinstance(line, str):
+        return False
+    low = line.lower()
+    return 'passed' in low and 'failed' not in low and 'error' not in low
+
+
+def aggregate_arm(seeds, stage0_pass, tests_pass, fix_tests=None):
     assert set(seeds) <= {'0', '1', '2'}
     reasons = []
     if not stage0_pass:
         reasons.append('Stage 0 did not PASS')
+    if not tests_pass:
+        reasons.append('Unit tests (spec §6) not recorded' if fix_tests is None
+                       else f'Unit tests (spec §6) failed: {fix_tests}')
     missing = sorted({'0', '1', '2'} - set(seeds))
     if missing:
         reasons.append('Incomplete Stage 1/2 files for seeds ' + ', '.join(missing))
+    untrained = sorted(seed for seed, r in seeds.items() if 'reason' in r)
+    for seed in untrained:
+        reasons.append(f"Seed {seed} not trained: {seeds[seed]['reason']}")
     for seed, result in seeds.items():
+        if seed in untrained:
+            continue
         auc = result['dev_auc']
         assert auc is None or (np.isfinite(auc) and 0 <= auc <= 1)
-        if auc is None or auc < .75:
-            reasons.append(f'Seed {seed} dev AUC below 0.75 or undefined')
+        if auc is None:
+            reasons.append(f'Seed {seed} dev AUC undefined')
+        elif auc < .75:
+            reasons.append(f'Seed {seed} dev AUC below 0.75')
     result = dict(established=not reasons, reasons=reasons, n_seeds=len(seeds),
                   img=None, native_img=None, native_topic=None, K=None, dev_auc=None)
-    if missing:
+    if missing or untrained:
         return result
     result['img'] = {a: summary([r['img'][a]['mean'] for r in seeds.values()]) for a in LABELS}
     for key in ('native_img', 'native_topic'):
@@ -83,11 +101,12 @@ def comparators(arms):
             if not eligible:
                 result[aspect][name] = None
                 continue
-            highest = max(r['img'][aspect]['mean'] for r in eligible.values())
+            highest_arm = min(eligible, key=lambda a: (-eligible[a]['img'][aspect]['mean'], int(a[1:])))
+            highest = eligible[highest_arm]['img'][aspect]['mean']
             tied = [a for a, r in eligible.items() if highest - r['img'][aspect]['mean'] <= .003 + 1e-12]
             arm = min(tied, key=lambda a: int(a[1:]))
             result[aspect][name] = dict(arm=arm, mean=eligible[arm]['img'][aspect]['mean'],
-                                        highest_mean=highest, established=eligible[arm]['established'])
+                                        highest_arm=highest_arm, highest_mean=highest, established=eligible[arm]['established'])
     return result
 
 
@@ -107,13 +126,18 @@ def score_seed(stage1, stage2, s, labels):
     meta1 = json.loads(stage1.with_suffix('.json').read_text())
     meta2 = json.loads(stage2.with_suffix('.json').read_text())
     assert meta1['sample_sha256'] == fingerprint(s), 'Stage 1 sample mismatch'
-    hashes = dict(stage1=sha_file(stage1), stage2=sha_file(stage2))
+    hashes = dict(stage1=sha_file(stage1))
     assert meta2['stage1_sha256'] == hashes['stage1'], 'Stage 2 used a different Stage 1 file'
     counts = meta1['K']
     assert set(counts) == {'1.5', '2', '3', '5'}
     assert all(isinstance(k, int) and 1 <= k <= 100 for k in counts.values())
     k = counts['2']
     assert meta2['K'] == k
+    if 'reason' in meta2:  # Ticket 05, K below 2: sidecar only.
+        assert k < 2 and meta2['dev_auc'] is None, f'{stage2.name}: reason with K={k}'
+        return dict(reason=meta2['reason'], K=counts, dev_auc=None, source_sha256=hashes,
+                    dev_valid_topics=meta2['dev_valid_topics'])
+    hashes['stage2'] = sha_file(stage2)
     with np.load(stage1, allow_pickle=False) as z:
         norms, kept, topic, q = (z[key] for key in ('center_norms', 'kept', 'topic', 'q_paint_eval'))
     assert norms.shape == (100,) and norms.dtype == np.float32 and np.isfinite(norms).all()
@@ -136,6 +160,8 @@ def score_outputs(s, labels, outdir=OUTPUTS):
     outdir = Path(outdir)
     stage0_path = outdir / 'stage0.json'
     stage0 = json.loads(stage0_path.read_text()) if stage0_path.exists() else dict(status='MISSING')
+    fix_tests = stage0.get('fix_tests')
+    tests_pass = unit_tests_pass(fix_tests)
     arms, missing = {}, {}
     for arm, version in ARMS.items():
         seeds = {}
@@ -143,13 +169,16 @@ def score_outputs(s, labels, outdir=OUTPUTS):
             stage1 = outdir / 'stage1' / f'{version}__s{seed}.npz'
             stage2 = outdir / 'stage2' / f'{arm}__s{seed}.npz'
             paths = (stage1, stage1.with_suffix('.json'), stage2, stage2.with_suffix('.json'))
+            sidecar = stage2.with_suffix('.json')
+            if sidecar.exists() and 'reason' in json.loads(sidecar.read_text()):
+                paths = (stage1, stage1.with_suffix('.json'), sidecar)  # Not trained: no npz.
             absent = [str(p.relative_to(outdir)) for p in paths if not p.exists()]
             if absent:
                 missing[f'{arm}__s{seed}'] = absent
                 continue
             seeds[str(seed)] = score_seed(stage1, stage2, s, labels)
         arms[arm] = dict(version=version, seeds=seeds,
-                         **aggregate_arm(seeds, stage0['status'] == 'PASS'))
+                         **aggregate_arm(seeds, stage0['status'] == 'PASS', tests_pass, fix_tests))
     return dict(schema=1, sample_sha256=fingerprint(s), stage0=stage0, arms=arms,
                 comparator=comparators(arms), missing_outputs=missing,
                 conventions='Image only: l2(eval_prob), pav k20 seeds012, y>=0; '
@@ -180,14 +209,22 @@ def markdown(result):
              'PercepT has an image-only path; its caption and both-side mean columns are empty. '
              'Arm spreads use the three PercepT seeds, after averaging three k-means seeds. '
              'Row 1 spreads use the three k-means seeds.', '',
-             f"Stage 0: {result['stage0']['status']}. Established requires Stage 0 PASS, complete "
-             'Stage 1/2 files and dev AUC >= 0.75 on every seed.', '',
+             f"Stage 0: {result['stage0']['status']}. Established requires Stage 0 PASS, the unit tests "
+             'passing (spec section 6 (b), line below), complete Stage 1/2 files and dev AUC >= 0.75 on every seed.', '',
+             'Unit tests (spec section 6, `pytest -q test_pc_fixes.py`): '
+             + result['stage0'].get('fix_tests', 'not recorded'), '',
              '## Arms: image-side AMI (k=20)', '',
              '| Arm | Emotion | Style | Genre | Established |', '|---|---:|---:|---:|---|']
     for arm, r in result['arms'].items():
         values = [fmt(r['img'][a]) if r['img'] else '—' for a in LABELS]
         status = 'yes' if r['established'] else 'not established: ' + '; '.join(r['reasons'])
         lines.append('| ' + arm + ' | ' + ' | '.join(values) + f' | {status} |')
+    lines += ['', '## Per-seed image-side AMI (k=20)', '',
+              '| Arm | Seed | Emotion | Style | Genre |', '|---|---:|---:|---:|---:|']
+    for arm, r in result['arms'].items():
+        for seed, v in r['seeds'].items():
+            if 'img' in v:
+                lines.append(f'| {arm} | {seed} | ' + ' | '.join(fmt(v['img'][a]) for a in LABELS) + ' |')
     lines += ['', '## K-native AMI (argmax)', '',
               '| Arm | Side | Emotion | Style | Genre |', '|---|---|---:|---:|---:|']
     for arm, r in result['arms'].items():
@@ -219,15 +256,18 @@ def markdown(result):
               'D15 per aspect: among established arms, within 0.003 of the highest mean, '
               'choose the lowest arm number. Best of all arms uses the same rule. '
               'Incomplete three-seed arms have no aggregate and cannot be selected.', '',
-              '| Aspect | Established comparator | Best of all arms |', '|---|---|---|']
+              'Highest columns name the arm with the highest mean before the tie rule.', '',
+              '| Aspect | Established: highest | Established comparator | Best of all: highest '
+              '| Best of all arms |', '|---|---|---|---|---|']
     for a, picks in result['comparator'].items():
         cells = []
         for key in ('established', 'best_all'):
             pick = picks[key]
+            top = '—' if pick is None else f"{pick['highest_arm']} ({pick['highest_mean']:.5f})"
             cell = '—' if pick is None else f"{pick['arm']} ({pick['mean']:.5f})"
             if pick is not None and not pick['established']:
                 cell += ' (not established)'
-            cells.append(cell)
+            cells += [top, cell]
         lines.append(f'| {a} | ' + ' | '.join(cells) + ' |')
     if result['missing_outputs']:
         lines += ['', '## Missing outputs', '']

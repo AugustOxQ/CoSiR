@@ -14,7 +14,12 @@ from sklearn.decomposition import PCA
 SEPTEMBER = 'src/test/20260922_percept_topic_pipeline/'
 
 
-def test_september_port_matches_fresh_original_process(tmp_path, monkeypatch):
+@pytest.mark.parametrize('threshold, expected_reason, expected_epoch', [
+    (-1, 'epoch ceiling', 5),
+    (1.0, 'stability criterion', 1),
+], ids=['epoch-ceiling', 'early-stop'])
+def test_september_port_matches_fresh_original_process(
+        tmp_path, monkeypatch, threshold, expected_reason, expected_epoch):
     import pc_sept
 
     for name in ('run_percept_stage1_pilot.py',
@@ -38,7 +43,7 @@ def test_september_port_matches_fresh_original_process(tmp_path, monkeypatch):
         base.PRETRAIN_EPOCHS = 2
         base.PRETRAIN_BATCH_SIZE = 64
         sweep.MAX_DEC_EPOCHS = 5
-        sweep.STABILITY_THRESHOLD = -1
+        sweep.STABILITY_THRESHOLD = float(sys.argv[3])
         x = torch.from_numpy(np.random.default_rng(0).normal(size=(133, 7)).astype(np.float32))
         encoder, decoder = base.build_autoencoder(7)
         losses = base.pretrain_autoencoder(encoder, decoder, x, 'cpu', lambda _: None)
@@ -57,19 +62,21 @@ def test_september_port_matches_fresh_original_process(tmp_path, monkeypatch):
         np.savez(sys.argv[2], pre=pre, post=post, initial=initial,
                  centers=centers.detach().numpy(), q=q, labels=q.argmax(1),
                  heldout_latent=heldout_latent, heldout_q=heldout_q,
+                 reason=reason, epoch=epoch,
                  losses=losses, history=np.array([list(row.values()) for row in history]))
     ''')
     subprocess.run([os.sys.executable, '-c', script,
                     str(tmp_path / 'run_percept_stage1_cluster_count_sweep_pilot.py'),
-                    str(tmp_path / 'reference.npz')], check=True, timeout=180,
+                    str(tmp_path / 'reference.npz'), str(threshold)], check=True, timeout=180,
                    cwd='/project/CoSiR-buddy_prototype_conditioning')
     assert pc_sept.PRETRAIN_EPOCHS == 100 and pc_sept.MAX_DEC_EPOCHS == 500
+    assert pc_sept.PRETRAIN_BATCH_SIZE == 1024
     assert pc_sept.STABILITY_THRESHOLD == .001
     assert pc_sept.LAMBDA_BALANCE == 1000 and pc_sept.LAMBDA_RECONSTRUCTION == 1
     monkeypatch.setattr(pc_sept, 'PRETRAIN_EPOCHS', 2)
     monkeypatch.setattr(pc_sept, 'PRETRAIN_BATCH_SIZE', 64)
     monkeypatch.setattr(pc_sept, 'MAX_DEC_EPOCHS', 5)
-    monkeypatch.setattr(pc_sept, 'STABILITY_THRESHOLD', -1)
+    monkeypatch.setattr(pc_sept, 'STABILITY_THRESHOLD', threshold)
     np.random.seed(0)
     torch.manual_seed(0)
     torch.use_deterministic_algorithms(True, warn_only=True)
@@ -82,7 +89,10 @@ def test_september_port_matches_fresh_original_process(tmp_path, monkeypatch):
     initial = centers.detach().numpy().copy()
     history, reason, epoch = pc_sept.train_dec_until_stable(
         encoder, decoder, centers, x, 'cpu', lambda _: None, 100)
-    assert reason == 'epoch ceiling' and epoch == 5
+    assert reason == expected_reason and epoch == expected_epoch
+    if threshold > 0:
+        assert history[-1]['fraction_changed'] < threshold
+        assert epoch < pc_sept.MAX_DEC_EPOCHS
     with torch.no_grad():
         post = encoder(x).numpy()
         q = pc_sept.soft_assignments(encoder(x), centers).numpy()
@@ -90,12 +100,25 @@ def test_september_port_matches_fresh_original_process(tmp_path, monkeypatch):
         heldout_latent = encoder(heldout).numpy()
         heldout_q = pc_sept.soft_assignments(encoder(heldout), centers).numpy()
     with np.load(tmp_path / 'reference.npz') as expected:
+        assert expected['reason'].item() == expected_reason
+        assert expected['epoch'].item() == expected_epoch
         for name, actual in dict(pre=pre, post=post, initial=initial,
                                  centers=centers.detach().numpy(), q=q,
                                  heldout_latent=heldout_latent, heldout_q=heldout_q,
                                  labels=q.argmax(1), losses=losses,
                                  history=[list(row.values()) for row in history]).items():
             np.testing.assert_allclose(actual, expected[name], rtol=0, atol=1e-6)
+
+
+def test_full_run_preserves_september_batch_and_stop_defaults():
+    import pc_sept
+    import pc_stage1
+
+    s = dict(pid=np.array([0, 1, 0]), first=np.array([0, 1]))
+    config = pc_stage1.make_config(s, 'clip_roberta', 0, False, np.arange(3), 'cuda')
+    assert pc_sept.PRETRAIN_BATCH_SIZE == config['pretrain_batch_size'] == 1024
+    assert pc_sept.STABILITY_THRESHOLD == config['stability_threshold'] == .001
+    assert config['pretrain_epochs'] == 100 and config['max_joint_steps'] == 500
 
 
 def test_clip_inputs_use_fit_pca_mean_for_every_caption(monkeypatch):
@@ -159,8 +182,11 @@ def test_assignment_uses_frozen_kept_centers_and_eval_painting_order():
     assert encoder.weight.grad is None and centers.grad is None
 
 
-def test_smoke_trains_2000_fit_pairs_and_writes_stage1_schema(tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize('controlled_norms', [False, True], ids=['trained-norms', 'gamma-gap'])
+def test_smoke_trains_2000_fit_pairs_and_writes_stage1_schema(
+        tmp_path, monkeypatch, capsys, controlled_norms):
     import pc_data
+    import pc_sept
     import pc_stage1
 
     rng = np.random.default_rng(5)
@@ -178,7 +204,44 @@ def test_smoke_trains_2000_fit_pairs_and_writes_stage1_schema(tmp_path, monkeypa
     monkeypatch.setattr(pc_data, 'image_features', lambda sample, kind: image.copy())
     monkeypatch.setattr(pc_data, 'caption_features',
                         lambda sample, kind: (text if kind == 'clip_text' else emotion).copy())
+    fit_rows = np.flatnonzero(np.isin(pid, [0, 1, 2, 3]))[:2000]
+    prepared, trained = {}, []
+    prepare = pc_stage1.prepare_inputs
+    pretrain = pc_sept.pretrain_autoencoder
+    joint = pc_sept.train_dec_until_stable
+
+    def capture_inputs(sample, version, rows):
+        np.testing.assert_array_equal(rows, fit_rows)
+        h, provenance = prepare(sample, version, rows)
+        prepared['fit'] = h[fit_rows].copy()
+        return h, provenance
+
+    def check_pretrain(encoder, decoder, inputs, *args, **kwargs):
+        assert inputs.shape == (2000, 512), 'pretrain must train only smoke fit pairs'
+        np.testing.assert_array_equal(inputs.cpu().numpy(), prepared['fit'])
+        trained.append('pretrain')
+        return pretrain(encoder, decoder, inputs, *args, **kwargs)
+
+    def check_joint(encoder, decoder, centers, inputs, *args, **kwargs):
+        assert inputs.shape == (2000, 512), 'joint must train only smoke fit pairs'
+        np.testing.assert_array_equal(inputs.cpu().numpy(), prepared['fit'])
+        trained.append('joint')
+        result = joint(encoder, decoder, centers, inputs, *args, **kwargs)
+        if controlled_norms:
+            # Largest gap / mean gap = 2.5 / (100.5 / 99), between 2 and 3.
+            norms = np.arange(100, dtype=np.float32)
+            norms[50:] += 1.5
+            norms = norms[np.random.default_rng(9).permutation(100)]
+            with torch.no_grad():
+                centers.zero_()
+                centers[:, 0].copy_(torch.from_numpy(norms).to(centers.device))
+        return result
+
+    monkeypatch.setattr(pc_stage1, 'prepare_inputs', capture_inputs)
+    monkeypatch.setattr(pc_sept, 'pretrain_autoencoder', check_pretrain)
+    monkeypatch.setattr(pc_sept, 'train_dec_until_stable', check_joint)
     path = pc_stage1.run(s, 'clip_roberta', 0, smoke=tmp_path, device='cpu')
+    assert trained == ['pretrain', 'joint']
     assert path == tmp_path / 'stage1' / 'clip_roberta__s0.npz'
     meta = json.loads(path.with_suffix('.json').read_text())
     assert meta['sample_sha256'] == pc_data.fingerprint(s)
@@ -200,6 +263,21 @@ def test_smoke_trains_2000_fit_pairs_and_writes_stage1_schema(tmp_path, monkeypa
     assert len(meta['maps']['pca_projection_sha256']) == 64
     assert meta['maps']['orthogonal_map_sha256'] is None
     with np.load(path, allow_pickle=False) as z:
+        # Independent Algorithm 1 oracle; never call pc_fixes for expectations.
+        norms = z['center_norms']
+        ordered = np.sort(norms.astype(np.float64))
+        gaps = ordered[1:] - ordered[:-1]
+        largest = int(np.argmax(gaps))
+        for gamma in ('1.5', '2', '3', '5'):
+            expected_kept = np.ones(len(norms), dtype=bool)
+            if gaps[largest] > float(gamma) * gaps.mean():
+                cut = (ordered[largest] + ordered[largest + 1]) / 2
+                expected_kept = norms < cut
+            assert meta['K'][gamma] == int(expected_kept.sum())
+            if gamma == '2':
+                np.testing.assert_array_equal(z['kept'], expected_kept)
+        if controlled_norms:
+            assert meta['K']['2'] == 50 and meta['K']['3'] == 100
         assert set(z.files) == {'center_norms', 'kept', 'topic', 'q_paint_eval'}
         assert z['center_norms'].shape == z['kept'].shape == (100,)
         assert z['center_norms'].dtype == np.float32 and z['kept'].dtype == np.bool_
