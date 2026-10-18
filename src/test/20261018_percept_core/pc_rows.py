@@ -120,7 +120,7 @@ def aggregate(outputs):
         assert len(seeds) == len(set(seeds)), 'duplicate head seed'
         def stats(xs):
             assert np.isfinite(xs).all()
-            return dict(mean=float(np.mean(xs)), sd=float(np.std(xs)))
+            return dict(mean=float(np.mean(xs)), sd=float(np.std(xs)) if len(xs) == 3 else None)
         ami = {side: {label: stats([v['ami'][side][label]['mean'] for v in runs])
                       for label in head.LABELS} for side in ('img', 'cap')}
         ami['mean'] = {label: stats([(v['ami']['img'][label]['mean'] +
@@ -226,7 +226,7 @@ def score(s, base, smoke=False):
     folder = run_base(base, smoke)
     folder.mkdir(parents=True, exist_ok=True)
     identity = dict(sample_sha256=head.fingerprint(s), smoke=smoke, scoring=head.SCORING,
-        aggregation='mean and population sd over available head seeds; v1',
+        aggregation='mean over available head seeds; population sd only with 3 seeds; v2',
         labels_sha256=hashlib.sha256(b''.join(s[k].tobytes() for k in ('emo', 'sty', 'gen'))).hexdigest())
     path = folder / 'pc_rows_results.json'
     result = json.loads(path.read_text()) if path.exists() else dict(

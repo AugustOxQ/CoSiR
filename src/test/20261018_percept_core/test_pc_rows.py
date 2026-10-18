@@ -34,6 +34,10 @@ def test_packaged_graphs_load_unchanged_and_match_both_sources(tmp_path):
 @pytest.mark.parametrize('target,status,within', [
     (0.40609876614182405, 'PASS', True),
     (0.4060995, 'PASS', True),
+    (0.40609876614182405 + 2e-6, 'FAIL', True),
+    (0.40609876614182405 - 2e-6, 'FAIL', True),
+    (0.40609876614182405 + 0.0019, 'FAIL', True),
+    (0.40609876614182405 - 0.0025, 'FAIL', False),
     (0.4075, 'FAIL', True),
     (0.41, 'FAIL', False),
 ])
@@ -71,8 +75,8 @@ def test_aggregation_keeps_rows_separate_and_uses_population_sd_of_seed_means():
     assert r6['ami']['cap']['emotion'] == pytest.approx(dict(mean=.3, sd=.1632993161855452))
     assert r6['ami']['mean']['emotion'] == pytest.approx(dict(mean=.25, sd=.0408248290463863))
     assert r6['target_ami'] == pytest.approx(dict(mean=.25, sd=.0408248290463863))
-    assert result['row10']['emotion']['target_ami'] == pytest.approx(dict(mean=.8, sd=0.))
-    assert result['row13']['emotion']['target_ami'] == pytest.approx(dict(mean=.5, sd=0.))
+    assert result['row10']['emotion']['target_ami'] == dict(mean=pytest.approx(.8), sd=None)
+    assert result['row13']['emotion']['target_ami'] == dict(mean=pytest.approx(.5), sd=None)
     assert result['row10']['emotion']['seeds'] == [0]
     assert not result['row10']['emotion']['complete']
 
