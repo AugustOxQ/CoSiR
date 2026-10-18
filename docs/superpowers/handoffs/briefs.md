@@ -485,3 +485,20 @@
 - Handoff: docs/superpowers/handoffs/2026-10-18-r10-build-1-handoff.md
 - New chat: tab 'r10 build 1', session 20ca625b-b0da-40f0-bc14-cc63bc81a8ef
 
+[brief] CoSiR: r10 build 1 -> r10 build 2 (2026-10-19 00:19 Amsterdam)
+- Done: tickets 01 (readers), 03 (the four fixes), 06 (scoring) and 07 (rows 6, 10, 13 and the gate), built by Codex,
+  reviewed by Opus, merged into `r10-percept-core`. Cut at 200k context.
+- State: the new scorer reproduces row 2 (PASS). No real runs yet.
+- Next: tickets 02, 04 and 06b on Codex (task files ready), then 05, then 08; smoke; final review; merge.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-2-handoff.md
+- New chat: tab 'r10 build 2', session 2dd1c3e6-64e2-406c-99f2-bf0014118ad1
+
+[brief] CoSiR: r10 build 2 -> r10 build 3 (2026-10-19 00:55 Amsterdam)
+- Done: all PercepT core tickets built, reviewed and merged on `r10-percept-core`; RoBERTa store written; stage 2 gate PASS (difference 0); end-to-end smoke PASS.
+- State: stage 0 FAILS. The unchanged September re-fit gives emotion AMI 0.1238 (recorded 0.1225) and genre 0.2617 (0.2274); row 2 and the unit tests pass. As built, the run skips every PercepT arm.
+- Next: trace stage 0 and run the final review in parallel; one fix wave; merge into main; open the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-3-handoff.md
+- New chat: tab 'r10 build 3', session 5dd1d425-0f6b-4b8f-bb5d-e320cf751793
+
