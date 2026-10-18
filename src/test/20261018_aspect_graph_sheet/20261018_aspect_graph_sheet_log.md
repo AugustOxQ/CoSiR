@@ -11,6 +11,25 @@ night mode). Held data: none read; everything is on the frozen train-side sample
 - 16:25 GPU extraction started (`ags_extract_queue.sh`): style_word, then genre_word training images, 14,889 each.
 - 16:30 Codex jobs for tickets 01 (graph rows) and 02 (cross-modal head), `gpt-6.1-sol` at high, each in its own
   worktree (`/project/CoSiR-wt-ags01`, `/project/CoSiR-wt-ags02`).
+- 16:37 and 16:39 tickets 01 and 02 done (about 8 and 10 min); 16:41 both merged to main.
+- 16:49 style_word training images sealed (1,368 s, 10.9 images/s).
+- 16:58 early graph build, emotion and style (`ags_graphs_early.log`): `STAGE0 PASS 2.4204897561 / 2.3849313416 /
+  2.5528809893`, the pilot's D, I, C, E, P, EC pair-identical on fit and dev. Style R0 style lift 7.07 (default image
+  graph 5.37): the style instruction works on the training images, at the graph level (spec §5 assumption).
+- 17:11 genre_word training images sealed (1,367 s); the CPU queue (`ags_queue.sh`) started by itself.
+- 17:15 genre graphs built. Rows for the head (`graphs/selected.json`): emotion R0, R1, Psim50, Fres1, Gres; style R0,
+  R1, Psim50, Fres05, Gres; genre R0, R1, Psim75, Fres025, Gres, Fside025. The best row by target lift was R0 for
+  emotion and style (no sixth row); style's Fres1 was not eligible (16.8% of R0's pairs, under 20%).
+- 17:20 heads train at about 35 s per epoch with three processes. Dev loss is lowest at epoch 1 to 4 and then rises;
+  every run stops after 16 to 19 epochs (patience 15). The pilot's students did the same (best epoch 1 to 3).
+- 18:00 seed 0 scored. Rows for seeds 1 and 2 (`head_seed_rows.json`, top two by seed-0 target AMI): emotion Fres1,
+  Gres; style Fres05, Gres; genre Fside025, R0.
+- 18:20 queue done: `AGS_DONE graphs=0 seed0_emotion=0 seed0_style=0 seed0_genre=0 score0=0 pick_seeds=0
+  seeds12_emotion=0 seeds12_style=0 seeds12_genre=0 score012=0`. 39 head runs, no output missing. Sheets:
+  [graphs/sheet.md](graphs/sheet.md) (63 graph rows), [ags_head_tables.md](ags_head_tables.md) (heads and the
+  per-view references).
+- 18:05 the user approved the storage summary; the unattended guard refused the deletes in this chat, so they are
+  marked approved in `.scratch/pending_deletions.md` for the next chat.
 
 ## Agent defaults set in this chat (within the spec; none read held data)
 
