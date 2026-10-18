@@ -32,12 +32,12 @@ def test_mapper_loss_and_auc_match_fresh_september_process(tmp_path):
         original = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(original)
         torch.manual_seed(0)
-        mapper = original.AttentionPoolingMapper(n_topics=4)
+        mapper = original.AttentionPoolingMapper(n_topics=5)
         rng = np.random.default_rng(17)
         x = torch.from_numpy(rng.normal(size=(9, 50, 512)).astype(np.float32))
-        targets = rng.integers(0, 2, size=(9, 4)).astype(np.float32)
-        targets[:, 2] = 0
-        targets[:, 3] = 1
+        targets = rng.integers(0, 2, size=(9, 5)).astype(np.float32)
+        targets[:, 3] = 0
+        targets[:, 4] = 1
         logits = mapper(x)
         loss = torch.nn.BCEWithLogitsLoss()(logits, torch.from_numpy(targets))
         loss.backward()
@@ -54,18 +54,21 @@ def test_mapper_loss_and_auc_match_fresh_september_process(tmp_path):
                     str(tmp_path / 'reference.npz')], check=True, timeout=90,
                    cwd='/project/CoSiR-buddy_prototype_conditioning')
     torch.manual_seed(0)
-    mapper = pc_sept.AttentionPoolingMapper(n_topics=4)
+    mapper = pc_sept.AttentionPoolingMapper(n_topics=5)
     rng = np.random.default_rng(17)
     x = torch.from_numpy(rng.normal(size=(9, 50, 512)).astype(np.float32))
-    targets = rng.integers(0, 2, size=(9, 4)).astype(np.float32)
-    targets[:, 2] = 0
-    targets[:, 3] = 1
+    targets = rng.integers(0, 2, size=(9, 5)).astype(np.float32)
+    targets[:, 3] = 0
+    targets[:, 4] = 1
     logits = mapper(x)
     loss = torch.nn.BCEWithLogitsLoss()(logits, torch.from_numpy(targets))
     loss.backward()
     aucs, skipped = pc_sept.evaluate_auc(
         logits.detach().sigmoid().numpy(), targets, lambda _: None, 'dev')
-    assert skipped == [2, 3]
+    assert skipped == [3, 4] and len(aucs) == 3
+    # Unequal AUCs over three topics: the macro mean must differ from median.
+    summary = pc_sept.auc_summary(aucs)
+    assert abs(summary['macro'] - summary['median']) > 1e-3
     with np.load(tmp_path / 'reference.npz') as expected:
         for name, actual in dict(logits=logits.detach().numpy(), loss=loss.item(),
                                  query_grad=mapper.query.grad.numpy(),
@@ -245,7 +248,9 @@ def test_no_valid_dev_topics_still_writes_predictions_and_null_auc(tmp_path, mon
     path = pc_stage2.run(s, 'P2', 0, smoke=tmp_path, device='cpu')
     meta = json.loads(path.with_suffix('.json').read_text())
     assert meta['dev_auc'] is None and meta['dev_valid_topics'] == 0
-    assert meta['dev_skipped_topics'] == [0, 1, 2] and meta['reason']
+    assert meta['dev_skipped_topics'] == [0, 1, 2] and meta['dev_auc_note']
+    # `reason` is reserved for a mapper that was not trained (K < 2).
+    assert 'reason' not in meta
     assert len(meta['loss_history']) == 3
     with np.load(path) as z:
         assert z['eval_prob'].shape == (3, 3)
@@ -314,3 +319,78 @@ def test_stage1_identity_must_match_before_training(field, value, message, tmp_p
     sidecar.write_text(json.dumps(meta))
     with pytest.raises(AssertionError, match=message):
         pc_stage2.load_stage1(s, path, 'clip_roberta', 0)
+
+
+def test_predictions_are_sealed_before_the_sidecar(tmp_path, monkeypatch):
+    import pc_data
+    import pc_stage2
+
+    s, topic = smoke_data(monkeypatch)
+    fake_stage1(tmp_path, s, topic)
+    monkeypatch.setattr(pc_data, 'image_features', lambda sample, kind:
+                        np.ones((len(s['first']), 512), dtype=np.float32))
+    seen = []
+    real = pc_stage2.write_sidecar
+    def spy(path, meta):
+        folder = path.parent
+        seen.append((path.with_suffix('.npz').exists(),
+                     (folder / 'P2__s0.pending.npz').exists()))
+        return real(path, meta)
+    monkeypatch.setattr(pc_stage2, 'write_sidecar', spy)
+    pc_stage2.run(s, 'P2', 0, smoke=tmp_path, device='cpu')
+    # A crash during the sidecar write never leaves a new sidecar beside old predictions.
+    assert seen == [(True, False)]
+
+
+class RecordedAdam(torch.optim.Adam):
+    made = []
+
+    def __init__(self, params, **kwargs):
+        params = list(params)
+        self.start = [p.detach().clone() for p in params]
+        super().__init__(params, **kwargs)
+        RecordedAdam.made.append(self)
+
+
+@pytest.mark.parametrize('mapper,x_shape', [('mlp', (6, 8)), ('attention', (6, 50, 512))])
+def test_train_mapper_uses_configured_lr_and_architecture(mapper, x_shape, monkeypatch):
+    import pc_stage2
+
+    RecordedAdam.made = []
+    monkeypatch.setattr(torch.optim, 'Adam', RecordedAdam)
+    k = 3
+    rng = np.random.default_rng(5)
+    inputs = dict(fit=torch.from_numpy(rng.normal(size=x_shape).astype(np.float32)),
+                  dev=torch.from_numpy(rng.normal(size=(2,) + x_shape[1:]).astype(np.float32)),
+                  eval=torch.from_numpy(rng.normal(size=(2,) + x_shape[1:]).astype(np.float32)))
+    targets = dict(fit=rng.integers(0, 2, size=(6, k)).astype(np.float32))
+    config = dict(seed=4, device='cpu', mapper=mapper, input_dim=x_shape[-1],
+                  lr=.003, epochs=1, arm='T')
+    pc_stage2.train_mapper(inputs, targets, config, k)
+    optimizer, = RecordedAdam.made
+    assert optimizer.param_groups[0]['lr'] == .003
+    shapes = [tuple(p.shape) for p in optimizer.start]
+    if mapper == 'mlp':
+        assert shapes == [(1024, 8), (1024,), (k, 1024), (k,)]
+    else:
+        assert (k, 512) in shapes
+
+
+def test_train_mapper_epoch_loss_is_the_mean_bce(monkeypatch):
+    import pc_stage2
+
+    RecordedAdam.made = []
+    monkeypatch.setattr(torch.optim, 'Adam', RecordedAdam)
+    k, d = 3, 5
+    rng = np.random.default_rng(8)
+    x = rng.normal(size=(7, d)).astype(np.float32)
+    y = rng.integers(0, 2, size=(7, k)).astype(np.float32)
+    inputs = dict(fit=torch.from_numpy(x), dev=torch.from_numpy(x[:2]),
+                  eval=torch.from_numpy(x[:2]))
+    config = dict(seed=2, device='cpu', mapper='mlp', input_dim=d, lr=.003,
+                  epochs=1, arm='T')
+    _, _, history, _ = pc_stage2.train_mapper(inputs, dict(fit=y), config, k)
+    w1, b1, w2, b2 = [p.numpy().astype(np.float64) for p in RecordedAdam.made[0].start]
+    z = np.maximum(x @ w1.T + b1, 0) @ w2.T + b2
+    expected = np.mean(np.log1p(np.exp(-np.abs(z))) + np.maximum(z, 0) - y * z)
+    assert history[0] == pytest.approx(expected, rel=1e-5)

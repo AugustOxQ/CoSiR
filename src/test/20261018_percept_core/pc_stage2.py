@@ -203,15 +203,15 @@ def run(s, arm, seed, smoke=None, device=None):
         meta.update(dev_auc=pc_sept.auc_summary(aucs)['macro'], dev_valid_topics=len(aucs),
                     dev_skipped_topics=skipped)
     else:
-        meta.update(reason='No dev topic has both positive and negative labels',
+        meta.update(dev_auc_note='No dev topic has both positive and negative labels',
                     dev_skipped_topics=list(range(k)))
-        print(f"{arm}: {meta['reason']}", flush=True)
+        print(f"{arm}: {meta['dev_auc_note']}", flush=True)
     meta.update(loss_history=history, epoch_seconds=epoch_seconds)
     pending = path.with_name(path.stem + '.pending.npz')
     np.savez_compressed(pending, eval_prob=eval_prob)
     meta['seconds'] = time.perf_counter() - start
-    write_sidecar(path.with_suffix('.json'), meta)
     pending.replace(path)
+    write_sidecar(path.with_suffix('.json'), meta)
     print(f"Wrote {path}; dev_auc={meta['dev_auc']}; seconds={meta['seconds']:.3f}", flush=True)
     return path
 
