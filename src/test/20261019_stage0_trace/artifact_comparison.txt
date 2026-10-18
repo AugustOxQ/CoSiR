@@ -1,0 +1,22 @@
+CODE src/test/20260922_percept_topic_pipeline/run_percept_stage1_embedding_snapshot_pilot.py last=4e4480b same_across_4e4480b,1b70d7f=True worktree_same=True blob=08880e96cda8
+CODE src/test/20260922_percept_topic_pipeline/run_percept_stage2_extended_seed_pilot.py last=3b3ce61 same_across_3b3ce61,4e4480b,1b70d7f=True worktree_same=True blob=3377c3c52241
+CODE src/test/20260922_percept_topic_pipeline/run_percept_stage1_pilot.py last=c4f08e4 same_across_3b3ce61,4e4480b,1b70d7f=True worktree_same=True blob=469e4b72b69f
+CODE src/test/20260922_percept_topic_pipeline/run_percept_stage1_cluster_count_sweep_pilot.py last=c4f08e4 same_across_3b3ce61,4e4480b,1b70d7f=True worktree_same=True blob=b5be880199e4
+CODE src/test/20260922_percept_topic_pipeline/run_percept_stage2_sweep_pilot.py last=c4f08e4 same_across_3b3ce61,4e4480b,1b70d7f=True worktree_same=True blob=d4bb94999900
+CODE src/test/20260923_artelingo_buddy_analysis/run_pipeline.py last=c4f08e4 same_across_3b3ce61,4e4480b,1b70d7f=True worktree_same=True blob=5c5f1c79ef53
+CODE src/test/20260923_artelingo_buddy_analysis/run_affect_pilot.py last=701d204 same_across_3b3ce61,4e4480b,1b70d7f=True worktree_same=True blob=fdbd5015c3a3
+CODE src/test/20260923_artelingo_buddy_analysis/run_cca_audit_pilot.py last=c4f08e4 same_across_3b3ce61,4e4480b,1b70d7f=True worktree_same=True blob=af18c2d4753a
+TRANSITIVE_DIFF ''
+REPORT_ROW stage1_embedding_snapshot September=["held-out emotion AMI", "0.1225", "0.1225", "0.0000", "reproduced"] today=["held-out emotion AMI", "0.1225", "0.1238", "0.0013", "FAILED"]
+REPORT_ROW stage1_embedding_snapshot September=["held-out genre AMI", "0.2274", "0.2274", "0.0000", "reproduced"] today=["held-out genre AMI", "0.2274", "0.2617", "0.0343", "FAILED"]
+REPORT_ROW stage2_extended_seed September=["held-out emotion AMI", "0.1225", "0.1225", "0.0000", "reproduced"] today=["held-out emotion AMI", "0.1225", "0.1238", "0.0013", "FAILED"]
+REPORT_ROW stage2_extended_seed September=["held-out genre AMI", "0.2274", "0.2274", "0.0000", "reproduced"] today=["held-out genre AMI", "0.2274", "0.2617", "0.0343", "FAILED"]
+SNAPSHOT K= 60 40 seed= 42
+NPZ train N= 61402 emotion_AMI= 0.14044843306065932
+NPZ train genre_N= 1144 genre_AMI= 0.317566169224673
+NPZ heldout N= 9365 emotion_AMI= 0.12246902855745419
+NPZ heldout genre_N= 159 genre_AMI= 0.22741920423971046
+SEPT_SURVIVING [46, 29, 19, 33, 42, 8, 45, 31, 51, 5, 49, 35, 13, 26, 15, 34, 43, 40, 4, 2, 41, 38, 7, 0, 20, 32, 11, 22, 27, 36, 18, 59, 30, 21, 10, 24, 54, 37, 14, 52]
+ORIGINAL_LOCAL_CITATION_PRETRAIN [(10, '0.000077'), (20, '0.000056'), (30, '0.000046'), (40, '0.000040'), (50, '0.000036'), (60, '0.000034'), (70, '0.000031'), (80, '0.000030'), (90, '0.000029'), (100, '0.000028')]
+TODAY_PRETRAIN [(10, '0.000077'), (20, '0.000056'), (30, '0.000046'), (40, '0.000040'), (50, '0.000036'), (60, '0.000034'), (70, '0.000031'), (80, '0.000030'), (90, '0.000029'), (100, '0.000028')]
+LOCAL_CITATION_PRETRAIN_MATCH True
