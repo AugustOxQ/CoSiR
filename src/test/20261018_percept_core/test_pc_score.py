@@ -130,7 +130,7 @@ def stage_files(tmp_path):
         path = tmp_path / 'stage1' / f'clip_roberta__s{seed}.npz'
         np.savez(path, center_norms=np.arange(1, 101, dtype=np.float32),
                  kept=np.arange(100) >= 80, topic=(np.arange(99999) % k).astype(np.int16),
-                 q_paint_eval=np.eye(k, dtype=np.float32)[(groups + 1) % k])
+                 q_paint_eval=np.eye(k, dtype=np.float32)[np.zeros(n, dtype=int)])  # one topic: AMI 0
         path.with_suffix('.json').write_text(json.dumps(dict(
             config=dict(version='clip_roberta', seed=seed), K={'1.5': 10, '2': k, '3': 30, '5': 100},
             sample_sha256=score.fingerprint(sample))))
@@ -150,7 +150,9 @@ def test_score_stage_files_establishes_only_complete_arms_and_preserves_metrics(
     assert arm['established']
     assert arm['img']['emotion'] == pytest.approx(dict(mean=1., sd=0.))
     assert arm['native_img']['genre'] == pytest.approx(dict(mean=1., sd=0.))
-    assert arm['native_topic']['style'] == pytest.approx(dict(mean=1., sd=0.))
+    assert arm['native_img']['emotion'] == pytest.approx(dict(mean=1., sd=0.))
+    assert arm['native_topic']['style'] == pytest.approx(dict(mean=0., sd=0.))
+    assert arm['native_topic']['genre'] == pytest.approx(dict(mean=0., sd=0.))
     assert arm['dev_auc'] == pytest.approx(dict(mean=.8, sd=.0408248290463863))
     assert arm['seeds']['0']['K'] == {'1.5': 10, '2': 20, '3': 30, '5': 100}
     assert arm['seeds']['0']['dev_valid_topics'] == 20
@@ -198,10 +200,99 @@ def test_default_cli_writes_sheet_with_standin_feature_readers(stage_files, monk
                               image_features=lambda s, kind: images)
     monkeypatch.setitem(sys.modules, 'pc_data', readers)
     monkeypatch.setattr(score, 'load_frozen', lambda: sample)
-    monkeypatch.setattr(score, 'label_vectors', lambda s, nodes: labels)
+    def stand_in(s, nodes):
+        assert np.array_equal(nodes, s['subset_pid'])
+        return labels
+    monkeypatch.setattr(score, 'label_vectors', stand_in)
     monkeypatch.setattr(sys, 'argv', ['pc_score.py', '--outdir', str(outdir)])
     assert score.main() == 0
     result = json.loads((outdir / 'pc_results.json').read_text())
     assert result['arms']['P1']['established']
     assert result['row1']['clip_text']['both_mean']['emotion'] == pytest.approx(1.)
     assert result['row1']['roberta']['both_mean']['style'] == pytest.approx(1.)
+
+
+def write_stage2_without_training(outdir, seed, reason, k=1):
+    """Ticket 05 for K below 2: sidecar only, dev_auc null, no npz."""
+    stage1 = outdir / 'stage1' / f'clip_roberta__s{seed}.npz'
+    stage2 = outdir / 'stage2' / f'P1__s{seed}'
+    stage2.with_suffix('.npz').unlink()
+    stage2.with_suffix('.json').write_text(json.dumps(dict(
+        config=dict(arm='P1', seed=seed), dev_auc=None, dev_valid_topics=0, K=k,
+        reason=reason, stage1_sha256=score.sha_file(stage1))))
+
+
+def test_untrained_seed_reports_its_reason_not_incomplete_files(stage_files):
+    sample, labels, outdir = stage_files
+    meta = outdir / 'stage1' / 'clip_roberta__s1.json'
+    stage1 = json.loads(meta.read_text())
+    stage1['K'] = {g: 1 for g in ('1.5', '2', '3', '5')}
+    meta.write_text(json.dumps(stage1))
+    np.savez(outdir / 'stage1' / 'clip_roberta__s1.npz', center_norms=np.arange(1, 101, dtype=np.float32),
+             kept=np.arange(100) == 99, topic=np.zeros(99999, dtype=np.int16),
+             q_paint_eval=np.ones((5000, 1), dtype=np.float32))
+    write_stage2_without_training(outdir, 1, 'K below 2: no topics to train')
+    result = score.score_outputs(sample, labels, outdir)
+    arm = result['arms']['P1']
+    assert not arm['established'] and arm['img'] is None
+    text = ' '.join(arm['reasons'])
+    assert 'K below 2: no topics to train' in text and 'Incomplete' not in text
+    assert 'P1__s1' not in result['missing_outputs']
+    assert 'P1__s0' not in result['missing_outputs']
+    md = score.markdown(dict(result, row1={}))
+    assert 'K below 2: no topics to train' in md
+
+
+def test_null_dev_auc_is_undefined_not_below_threshold_and_nan_still_asserts():
+    seeds = {str(s): seed_result(.2) for s in range(3)}
+    seeds['1']['dev_auc'] = None
+    reasons = score.aggregate_arm(seeds, stage0_pass=True)['reasons']
+    assert reasons == ['Seed 1 dev AUC undefined']
+    seeds['1']['dev_auc'] = .5
+    assert score.aggregate_arm(seeds, stage0_pass=True)['reasons'] == ['Seed 1 dev AUC below 0.75']
+    seeds['1']['dev_auc'] = float('nan')
+    with pytest.raises(AssertionError):
+        score.aggregate_arm(seeds, stage0_pass=True)
+
+
+def sheet(outdir, sample, labels):
+    result = score.score_outputs(sample, labels, outdir)
+    result['row1'] = {kind: dict(img={a: dict(mean=.2, sd=.01) for a in score.LABELS},
+                                cap={a: dict(mean=.4, sd=.02) for a in score.LABELS},
+                                both_mean={a: .3 for a in score.LABELS})
+                      for kind in ('clip_text', 'roberta')}
+    return result, score.markdown(result)
+
+
+def test_sheet_states_the_stage0_fix_tests_line(stage_files):
+    sample, labels, outdir = stage_files
+    (outdir / 'stage0.json').write_text(json.dumps(dict(status='PASS', fix_tests='23 passed in 4.56s')))
+    assert '23 passed in 4.56s' in sheet(outdir, sample, labels)[1]
+    (outdir / 'stage0.json').write_text(json.dumps(dict(status='PASS')))
+    assert 'not recorded' in sheet(outdir, sample, labels)[1]
+
+
+def test_comparator_names_the_highest_arm_before_the_tie_rule():
+    arms = {}
+    for arm, value in [('P1', .1930), ('P2', .1975), ('P3', .1985), ('P4', .2)]:
+        arms[arm] = dict(established=True, img={a: dict(mean=value, sd=0.) for a in score.LABELS})
+    pick = score.comparators(arms)['emotion']['established']
+    assert pick['arm'] == 'P2' and pick['highest_arm'] == 'P4' and pick['highest_mean'] == .2
+    text = score.markdown(dict(
+        stage0=dict(status='PASS'), arms={}, row1={}, missing_outputs={},
+        comparator=score.comparators(arms)))
+    line = next(row for row in text.splitlines() if row.startswith('| emotion |') and 'P4' in row)
+    assert 'P4 (0.20000)' in line and 'P2 (0.19750)' in line
+
+
+def test_per_seed_image_ami_table_shows_seeds_of_an_incomplete_arm(stage_files):
+    sample, labels, outdir = stage_files
+    for suffix in ('.npz', '.json'):
+        (outdir / 'stage2' / f'P1__s2{suffix}').unlink()
+    result, text = sheet(outdir, sample, labels)
+    assert result['arms']['P1']['img'] is None
+    head = text.index('## Per-seed image-side AMI')
+    table = text[head:].split('\n\n')[1:3]
+    rows = [r for r in '\n'.join(table).splitlines() if r.startswith('| P1 |')]
+    assert [r.split('|')[2].strip() for r in rows] == ['0', '1']
+    assert '1.00000 ± 0.00000' in rows[0]
