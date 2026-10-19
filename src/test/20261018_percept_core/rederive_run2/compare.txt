@@ -1,0 +1,5 @@
+per-file values compared 90 max abs diff 0.0
+arm aggregates compared 24 max abs diff 0.0
+emotion codex P2 0.035515 ours best_all P2 0.035515 ours established P2 0.0
+style codex P2 0.161855 ours best_all P2 0.161855 ours established P2 0.0
+genre codex P1 0.233993 ours best_all P1 0.233993 ours established P2 0.0
