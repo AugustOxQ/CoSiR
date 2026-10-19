@@ -1,0 +1,16 @@
+MS_STAGE1_START 2026-10-19T21:59:19+02:00
+require_stage0=0
+train_A1=0
+train_T1=0
+train_T2=0
+train_T3=0
+train_T4=0
+train_T5=0
+train_D1=0
+train_D2=0
+train_D3=0
+train_D4=0
+train_D5=0
+score=0
+picks=0
+MS_STAGE1_DONE require_stage0=0 train_A1=0 train_T1=0 train_T2=0 train_T3=0 train_T4=0 train_T5=0 train_D1=0 train_D2=0 train_D3=0 train_D4=0 train_D5=0 score=0 picks=0

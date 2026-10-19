@@ -95,3 +95,37 @@ frozen train-side sample (fit 13,400, dev 1,489, evaluation 5,000 paintings).
 - 21:26 stage 0 (current code): STAGE0 PASS. Genre arrays bitwise equal, 36/36 AMI equal at 6 decimals, 7/7 best
   epochs equal, PercepT 45/45, no stale array; `--require-pass` PASS. 21:27 K = 40 back-fill complete (24/24 cells,
   AMI equal to the report at 3 decimals; `outputs/backfill.md`).
+- 21:59 run chat `r10 run 4`: GPU check (driver 595.99.02 in kernel module and library, GPU free, no lock); stage 1
+  queue started. `require_stage0` PASS. 22:00 K = 40 back-fill folded into both K = 40 reports (`03946d2`; committed
+  copy `ms_backfill_k40.md`).
+- 22:12 stage 1 done (`MS_STAGE1_DONE`, every step 0): 11 rows on seed 0, score, seed picks (A1, T1, T2, T5, D2, D3,
+  D5). 22:12 stage 2 started.
+- 22:30 stage 2 done (every step 0): seeds 1 and 2 of the seven picked rows; D17 fired on form b (T4, seed 0, above
+  T1 mean + sd on emotion 0.0959 > 0.0940 and genre 0.4674 > 0.4648); best D row on seed 0 = D5, so D17 = D5 with
+  `form=b share=trunk`, seed 0.
+- 22:30 stage 3 (I1) by default 17: seed-0 three-aspect means D17 0.315142, D5 0.313963, D2 0.309104, A1 0.307151,
+  T1 0.306738; I1 = `ms_queue_stage3.sh D5 form=b share=trunk`. 22:33 done (every step 0). GPU free after.
+- 22:34 auto report draft to Codex (`gpt-6.1-sol` medium); Claude claim review: 360 table cells checked against
+  `ms_results.json` (0 mismatches), readings and options added. User-read report written by Claude; cold read
+  (`gpt-6-luna`) and fidelity check (`gpt-6.1-sol`) on Codex.
+
+## Results (development data; image-side AMI of each head's own label, k = 20, 5,000 evaluation paintings)
+
+Report: [2026-12-16_model_sheet](../../../docs/reports/auto/percept/2026-12-16_model_sheet.md); full sheet
+[ms_tables_final.md](ms_tables_final.md) (committed copy of `outputs/ms_tables.md`).
+
+| Row | Seeds | Emotion | Style | Genre |
+|---|---:|---:|---:|---:|
+| Target: instructed Qwen image | — | 0.0929 | 0.3952 | 0.4956 |
+| PercepT core bar | 3 | 0.0772 | 0.2286 | 0.4359 |
+| A1 separate heads | 3 | 0.0894 ± 0.0024 | 0.3539 ± 0.0068 | 0.4574 ± 0.0078 |
+| T1 trunk, form a | 3 | 0.0930 ± 0.0010 | 0.3591 ± 0.0072 | 0.4603 ± 0.0045 |
+| D2 trunk + direct distillation 0.5 | 3 | 0.0962 ± 0.0020 | 0.3697 ± 0.0034 | 0.4540 ± 0.0053 |
+| D5 trunk + relational distillation 1 | 3 | 0.0884 ± 0.0046 | 0.3700 ± 0.0081 | 0.4891 ± 0.0002 |
+| D1 direct distillation only | 1 | 0.0825 | 0.2751 | 0.4366 |
+| D17 D5 on form b | 1 | 0.0919 | 0.3692 | 0.4843 |
+| I1 D17 with instructed inputs | 1 | 0.0953 | 0.3835 | 0.4852 |
+
+- §6 line (0.087174): reached by A1, T1, T4, T5, D2 to D5, D17.
+- Outcomes: (a) not reached; (b) reached, emotion only; (c) not reached (D1 far below); (d) not reached (trunk level
+  with or above A1 on all three).
