@@ -534,3 +534,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-5-handoff.md
 - New chat: tab 'r10 build 5', session 85732570-ca3d-412e-bc21-179f939e4e50
 
+[brief] CoSiR: r10 build 5 -> r10 run 2 (2026-10-19 09:50 Amsterdam)
+- Done: builds 4 and 5. Stage 0 now checks only what repeats exactly (A1), and the k-means start runs on one thread (A2). The final review approved with fixes; the fix wave passed its re-review; merged into main (480bcae); 248 round tests pass.
+- State: the GPU smoke passes: every stage 0 check passes, and the Stage 1 repeat is bitwise equal. Rows 1, 6, 10, 13 are done; the five PercepT arms have not run yet.
+- Next: the GPU queue only (about 35 minutes), then the score, the ablation table, the re-derivation and the reports.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-run-2-handoff.md
+- New chat: tab 'r10 run 2', session 224c5df5-d4b9-42a6-bc93-9fe548e609f0
+
