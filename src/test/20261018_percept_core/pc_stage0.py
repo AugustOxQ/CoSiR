@@ -14,13 +14,13 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_mutual_info_score
 
+from pc_fixes import unit_tests_pass
 from pc_stage1 import one_thread
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 COMMIT = '1b70d7f'
 RECORD_COMMITS = ('3b3ce61', '4e4480b')
-FIX_TESTS = 21
 PILOT = 'src/test/20260922_percept_topic_pipeline/'
 BUDDY = 'src/test/20260923_artelingo_buddy_analysis/'
 SNAPSHOT = REPO / 'res/percept/percept_stage1_embedding_snapshot.npz'
@@ -41,11 +41,6 @@ COPY_IMPORTS = ('import sys', 'import numpy as np', 'import torch',
                 'from torch import nn', 'from torch.nn import functional as F')
 SNAPSHOT_EXPECTED = dict(emotion=.12246902855745419, genre=.22741920423971046,
                          heldout_paintings=9365, genre_rows=159)
-
-
-def unit_tests_pass(line):
-    return isinstance(line, str) and re.fullmatch(
-        rf'{FIX_TESTS} passed in \d+(?:\.\d+)?s(?: \([\d:]+\))?', line.strip()) is not None
 
 
 def git(*args):

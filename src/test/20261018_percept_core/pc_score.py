@@ -14,8 +14,7 @@ from itp_data import atomic_json, default_images, fingerprint, load_frozen, targ
 from pbp_graphs import label_vectors, sha_file
 from pav_score import ami, partitions, summary
 from apc_data import l2, paint_mean
-from pc_fixes import kept_centers, largest_gap
-from pc_stage0 import unit_tests_pass
+from pc_fixes import kept_centers, largest_gap, unit_tests_pass
 
 OUTPUTS = HERE / 'outputs'
 LABELS = ('emotion', 'style', 'genre')

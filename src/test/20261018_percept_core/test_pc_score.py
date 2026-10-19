@@ -16,6 +16,7 @@ PASSING = '21 passed in 2.1s'
 @pytest.mark.parametrize('line, expected', [
     ('21 passed in 1.1s', True), ('20 passed in 1s', False),
     ('21 passed, 1 skipped in 1s', False), ('22 passed in 1s', False),
+    ('21 passed, 2 warnings in 1.0s', True),
     ('21 passed, 1 failed in 1s', False), ('21 passed, 1 error in 1s', False),
     ('21 passed, 1 deselected in 1s', False),
 ])
