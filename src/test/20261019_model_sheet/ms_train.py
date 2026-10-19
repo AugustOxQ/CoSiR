@@ -15,7 +15,7 @@ from threadpoolctl import threadpool_limits
 
 HERE = Path(__file__).resolve().parent
 GRAPH_BASE = Path('/project/CoSiR/src/test/20261018_aspect_graph_sheet')
-SMOKE = Path('/tmp/claude-0/-project-CoSiR/56b9b751-6946-4c76-b52d-3761e520be8f/scratchpad/ms_smoke/03')
+SMOKE = Path('/tmp/claude-0/-project-CoSiR/56b9b751-6946-4c76-b52d-3761e520be8f/scratchpad/ms_smoke/fix')
 for folder in ('20261017_image_transfer_pilot', '20261018_purified_buddy_pilot',
                '20261018_aspect_graph_sheet'):
     sys.path.insert(0, str(HERE.parent / folder))
@@ -116,7 +116,8 @@ def distill_loss(z, teacher, ids, kind):
     return (logp.exp() * (logp.masked_fill(same, 0) - logq.masked_fill(same, 0))).sum(1).mean()
 
 
-def head_loss(models, img, cap, pairs, weights, row, aspect, teacher=None, extras=None):
+def head_loss(models, img, cap, pairs, weights, row, aspect, teacher=None, extras=None,
+              include_mask_penalty=True):
     """Graph, teacher and mask terms; leave the original CPU form-a call untouched."""
     if (row['form'] == 'a' and row['graph_terms'] and row['distill'] == 'none'
             and img.device.type == 'cpu'):
@@ -150,7 +151,7 @@ def head_loss(models, img, cap, pairs, weights, row, aspect, teacher=None, extra
         ids = torch.as_tensor(pairs, device=img.device)
         z = models['img'](img[ids])
         loss = row['distill_weight'] * distill_loss(z, teacher[ids], ids, row['distill'])
-    if row['form'] == 'c':
+    if row['form'] == 'c' and include_mask_penalty:
         loss = loss + 5e-4 * F.relu(models['img'].mask).abs().sum()
     return loss
 
@@ -243,6 +244,7 @@ def output_path(outdir, name, aspect, graph_row, seed):
 
 
 def save_output(s, view, inputs, state, path, config, start):
+    replacing = path.exists()
     view.load_state_dict(state['best_state'])
     view.eval()
     outputs = {}
@@ -269,7 +271,7 @@ def save_output(s, view, inputs, state, path, config, start):
     head.atomic_json(path.with_suffix('.json'), info)
     pending.replace(path)
     head.verify_output(path, config)
-    print(f'{path.stem}: saved; best_epoch={info["best_epoch"]}; seconds={info["seconds"]:.2f}', flush=True)
+    print(f'{path}: {"replaced" if replacing else "saved"}; best_epoch={info["best_epoch"]}; seconds={info["seconds"]:.2f}', flush=True)
     return info
 
 
@@ -283,11 +285,13 @@ def run(s, inputs, graphs, manifests, row, name, aspects, seed, device, outdir,
     configs = {a: make_config(s, row, name, a, aspects, manifests, seed, device, smoke, max_epochs)
                for a in aspects}
     paths = {a: output_path(outdir, name, a, configs[a]['graph_row'], seed) for a in aspects}
-    old = {a: head.verify_output(paths[a], configs[a]) for a in aspects}
-    if all(old.values()):
+    # Verify existing files against their recorded config before replacing stale cohorts.
+    old = {a: head.verify_output(paths[a], json.loads(paths[a].with_suffix('.json').read_text())['config'])
+           if paths[a].exists() else None for a in aspects}
+    if all(old[a] is not None and old[a]['config'] == configs[a] for a in aspects):
         print(f'{name} s{seed} {aspects}: verified identical outputs; skip', flush=True)
         return old
-    # A partial shared run replays the whole cohort, preserving its shared-layer trajectory.
+    # A missing or stale head replays and replaces the whole cohort.
     np.random.seed(seed)
     torch.manual_seed(seed)
     rngs = {a: np.random.default_rng(seed if len(aspects) == 1 else [seed, ASPECTS.index(a)])
@@ -392,12 +396,15 @@ def run(s, inputs, graphs, manifests, row, name, aspects, seed, device, outdir,
                         extra_args['extras'] = dev_extras[a:a + batch_size]
                     total += float(head_loss(views[aspect], **tensors[aspect]['dev'],
                                              pairs=ps, weights=ws, row=row, aspect=aspect,
+                                             include_mask_penalty=False,
                                              **extra_args)) * len(ps)
             dev_loss = total / len(st['dev_pairs'])
             assert np.isfinite(dev_loss)
             st['history'].append(dict(epoch=st['epoch'], step=step,
                                       train_loss=st['total'] / len(st['fit_pairs']), dev_loss=dev_loss,
                                       seconds=time.monotonic() - st['tick']))
+            if row['form'] == 'c':
+                st['history'][-1]['mask_penalty'] = float((5e-4 * F.relu(views[aspect]['img'].mask).abs().sum()).detach())
             if dev_loss < st['best']:
                 st['best'], st['best_epoch'], st['stale'] = dev_loss, st['epoch'], 0
                 st['best_state'] = copy.deepcopy(views[aspect].state_dict())
@@ -408,11 +415,10 @@ def run(s, inputs, graphs, manifests, row, name, aspects, seed, device, outdir,
                   f'train={h["train_loss"]:.6f} dev={dev_loss:.6f} seconds={h["seconds"]:.2f}', flush=True)
             st['active'] = st['stale'] < CONFIG['patience'] and st['epoch'] < max_epochs
             st.update(epoch=st['epoch'] + 1, pos=0, total=0., order=None)
-    result = dict(old)
+    result = {}
     for aspect in aspects:
-        if old[aspect] is None:
-            result[aspect] = save_output(s, views[aspect], inputs[aspect], states[aspect],
-                                         paths[aspect], configs[aspect], start)
+        result[aspect] = save_output(s, views[aspect], inputs[aspect], states[aspect],
+                                     paths[aspect], configs[aspect], start)
     return result
 
 
