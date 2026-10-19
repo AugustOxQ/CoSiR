@@ -1,5 +1,7 @@
-"""Run the unchanged September regression in an isolated exported tree (CM-1–3)."""
+"""Check the repeatable September artifacts and source copies (A1)."""
 import argparse
+import ast
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -8,39 +10,124 @@ import subprocess
 import sys
 import time
 
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.metrics import adjusted_mutual_info_score
+
+from pc_stage1 import one_thread
+
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 COMMIT = '1b70d7f'
-PILOT = Path('src/test/20260922_percept_topic_pipeline')
-SCRIPTS = ('run_percept_stage1_embedding_snapshot_pilot',
-           'run_percept_stage2_extended_seed_pilot')
+RECORD_COMMITS = ('3b3ce61', '4e4480b')
+PILOT = 'src/test/20260922_percept_topic_pipeline/'
+BUDDY = 'src/test/20260923_artelingo_buddy_analysis/'
+SNAPSHOT = REPO / 'res/percept/percept_stage1_embedding_snapshot.npz'
+SOURCE_MAP = {
+    **dict.fromkeys(('PRETRAIN_BATCH_SIZE', 'PRETRAIN_EPOCHS', 'MAX_DEC_EPOCHS',
+                     'STABILITY_THRESHOLD', 'PRETRAIN_LEARNING_RATE', 'DEC_LEARNING_RATE',
+                     'build_autoencoder', 'pretrain_autoencoder', 'soft_assignments',
+                     'target_distribution'), 'run_percept_stage1_pilot.py'),
+    **dict.fromkeys(('LAMBDA_RECONSTRUCTION', 'LAMBDA_BALANCE',
+                     'initialize_cluster_centers', 'train_dec_until_stable'),
+                    'run_percept_stage1_cluster_count_sweep_pilot.py'),
+    **dict.fromkeys(('N_SURVIVING_CLUSTERS', 'AttentionPoolingMapper', 'evaluate_auc',
+                     'auc_summary'), 'run_percept_stage2_sweep_pilot.py'),
+}
+ALIASES = ('MAX_DEC_EPOCHS', 'STABILITY_THRESHOLD', 'DEC_LEARNING_RATE')
+SNAPSHOT_EXPECTED = dict(emotion=.12246902855745419, genre=.22741920423971046,
+                         heldout_paintings=9365, genre_rows=159)
 
 
-def export_tree(tree):
-    tree.mkdir(parents=True, exist_ok=True)
-    # Re-export tracked files so a previous diagnostic cannot change the recipe.
-    with subprocess.Popen(['git', 'archive', COMMIT], cwd=REPO,
-                          stdout=subprocess.PIPE) as archive:
-        subprocess.run(['tar', '-x', '-C', str(tree)], stdin=archive.stdout, check=True)
-        archive.stdout.close()
-        assert archive.wait() == 0
+def git(*args):
+    return subprocess.check_output(['git', *args], cwd=REPO).decode()
 
 
-def report_values(text, stage2=False):
-    rows = [line.split('|')[1:-1] for line in text.splitlines() if line.startswith('|')]
-    values = {}
-    for cells in rows:
-        if cells[0].strip() in ('held-out emotion AMI', 'held-out genre AMI'):
-            values[cells[0].strip()] = float(cells[2].strip())
-        if stage2 and cells[0].strip() == '42':
-            values['seed42_macro_auc'] = float(cells[2].strip())
-    return values
+def python_blobs(commit):
+    """A superset of the pilots' import closure, without importing September."""
+    blobs = {}
+    for entry in git('ls-tree', '-r', '-z', commit, '--', 'src/').split('\0'):
+        if not entry:
+            continue
+        metadata, path = entry.split('\t')
+        if path.endswith('.py') and (not path.startswith('src/test/') or
+                                    path.startswith((PILOT, BUDDY))):
+            _, kind, blob = metadata.split()
+            assert kind == 'blob', path
+            blobs[path] = blob
+    assert blobs, commit
+    return blobs
 
 
-def compare(actual, expected, decimals=4):
-    return dict(status='PASS' if actual is not None and
-                f'{actual:.{decimals}f}' == f'{expected:.{decimals}f}' else 'FAIL',
-                expected=expected, actual=actual)
+def compare_blobs(record, reference):
+    """New reference files are allowed; every record blob must still exist."""
+    differences = sorted(path for path, blob in record.items() if reference.get(path) != blob)
+    return dict(status='FAIL' if differences else 'PASS', expected=0,
+                actual=len(differences), files_compared=len(record), differences=differences)
+
+
+def source_segments(source):
+    """Top-level functions, classes and assignments, including their exact text."""
+    segments = {}
+    for node in ast.parse(source).body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names = [node.name]
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            assert all(isinstance(target, ast.Name) for target in targets)
+            names = [target.id for target in targets]
+        else:
+            continue
+        for name in names:
+            assert name not in segments, name
+            segments[name] = ast.get_source_segment(source, node)
+    return segments
+
+
+def check_source_copies(source):
+    copied = source_segments(source)
+    copied.pop('base', None)
+    originals = {path: source_segments(git('show', f'{COMMIT}:{PILOT}{path}'))
+                 for path in set(SOURCE_MAP.values())}
+    differences = sorted(set(copied) ^ set(SOURCE_MAP))
+    for name in sorted(set(copied) & set(SOURCE_MAP)):
+        if copied[name] != originals[SOURCE_MAP[name]].get(name):
+            differences.append(name)
+    sweep = originals['run_percept_stage1_cluster_count_sweep_pilot.py']
+    for name in ALIASES:
+        if sweep.get(name) != f'{name} = base.{name}':
+            differences.append(f'sweep alias {name}')
+    return dict(status='FAIL' if differences else 'PASS', expected=0,
+                actual=len(differences), differences=differences)
+
+
+def score_snapshot(snapshot):
+    emotion, topic, genre = (snapshot[f'heldout_{name}'] for name in ('emotion', 'topic', 'genre'))
+    assert emotion.ndim == topic.ndim == genre.ndim == 1
+    assert len(emotion) == len(topic) == len(genre) == len(snapshot['heldout_paintings'])
+    mask = genre != ''
+    return dict(emotion=float(adjusted_mutual_info_score(emotion, topic)),
+                genre=float(adjusted_mutual_info_score(genre[mask], topic[mask])),
+                heldout_paintings=len(topic), genre_rows=int(mask.sum()))
+
+
+def check_snapshot(snapshot):
+    actual = score_snapshot(snapshot)
+    passed = all(abs(actual[name] - expected) <= (1e-6 if name in ('emotion', 'genre') else 0)
+                 for name, expected in SNAPSHOT_EXPECTED.items())
+    return dict(status='PASS' if passed else 'FAIL', expected=SNAPSHOT_EXPECTED, actual=actual)
+
+
+def check_kmeans(snapshot):
+    assert snapshot['n_initial_clusters'].item() == 60 and snapshot['seed'].item() == 42
+    latents, labels = snapshot['train_latent_pre'], snapshot['train_initial_label']
+    assert latents.shape == (61402, 128) and labels.shape == (len(latents),)
+    start = time.monotonic()
+    with one_thread():
+        fitted = KMeans(n_clusters=60, n_init=10, random_state=42).fit(latents)
+    differences = int(np.count_nonzero(fitted.labels_ != labels))
+    return dict(status='FAIL' if differences else 'PASS', expected=0, actual=differences,
+                seconds=time.monotonic() - start)
 
 
 def run_command(name, command, folder, cwd, env):
@@ -61,29 +148,17 @@ def run(outdir, smoke=False):
     pending.replace(outdir / 'stage0.json')
     temporary = outdir / 'tmp'
     temporary.mkdir(exist_ok=True)
-    tree = (outdir / 'sept_stage0') if smoke else HERE / 'sept_stage0'
-    export_tree(tree)
-    folder = tree / 'stage0_outputs' / str(time.time_ns())
+    folder = outdir / 'stage0_outputs' / str(time.time_ns())
     folder.mkdir(parents=True)
-    env = dict(os.environ, PYTHONPATH=os.pathsep.join((str(tree / PILOT), str(tree))),
-               PERCEPT_OUTPUT_ROOT=str(folder), PYTHONDONTWRITEBYTECODE='1',
-               TMPDIR=str(temporary), OMP_NUM_THREADS='8', MKL_NUM_THREADS='8')
-    checks = {}
-    for index, script in enumerate(SCRIPTS):
-        command = [sys.executable, '-u', str(tree / PILOT / f'{script}.py')]
-        if smoke:
-            command = [sys.executable, '-c',
-                       f'import {script} as m; assert callable(m.main)']
-        checks[f'september_{index + 1}'] = run_command(
-            script, command, folder, tree, env)
-        if not smoke:
-            path = folder / f'{script.removeprefix("run_")}_report.md'
-            values = report_values(path.read_text(), stage2=index == 1) if path.exists() else {}
-            for key, expected in [('held-out emotion AMI', .1225),
-                                  ('held-out genre AMI', .2274)]:
-                checks[f'september_{index + 1}_{key}'] = compare(values.get(key), expected)
-            if index == 1:
-                checks['seed42_macro_auc'] = compare(values.get('seed42_macro_auc'), .8296)
+    reference = python_blobs(COMMIT)
+    checks = {f'september_blobs_{commit}': compare_blobs(python_blobs(commit), reference)
+              for commit in RECORD_COMMITS}
+    checks['source_copies'] = check_source_copies((HERE / 'pc_sept.py').read_text())
+    with SNAPSHOT.open('rb') as stream:
+        snapshot_sha256 = hashlib.file_digest(stream, 'sha256').hexdigest()
+    with np.load(SNAPSHOT, allow_pickle=True) as snapshot:
+        checks['snapshot'] = check_snapshot(snapshot)
+        checks['kmeans_labels'] = check_kmeans(snapshot)
     local_env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', CUDA_VISIBLE_DEVICES='',
                      OMP_NUM_THREADS='8', MKL_NUM_THREADS='8', TMPDIR=str(temporary))
     checks['row2_command'] = run_command('row2', [sys.executable, str(HERE / 'pc_score.py'),
@@ -103,7 +178,11 @@ def run(outdir, smoke=False):
     result = dict(status=('SMOKE' if smoke else 'PASS') if passed else 'FAIL',
                   checks=checks, fix_tests=summary[-1] if summary else 'no pytest result line',
                   smoke=smoke, commit=COMMIT, reports=str(folder),
-                  smoke_scope='September imports only; no numerical regression' if smoke else None)
+                  snapshot_sha256=snapshot_sha256,
+                  files_compared={commit: checks[f'september_blobs_{commit}']['files_compared']
+                                  for commit in RECORD_COMMITS},
+                  kmeans_seconds=checks['kmeans_labels']['seconds'],
+                  kmeans_differing_labels=checks['kmeans_labels']['actual'])
     pending = outdir / 'stage0.pending.json'
     pending.write_text(json.dumps(result, indent=2, allow_nan=False) + '\n')
     pending.replace(outdir / 'stage0.json')
@@ -113,7 +192,7 @@ def run(outdir, smoke=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--smoke', type=Path, help='isolated import/check smoke root')
+    parser.add_argument('--smoke', type=Path, help='run all checks into an isolated output root')
     args = parser.parse_args()
     return run(args.smoke if args.smoke is not None else HERE / 'outputs',
                smoke=args.smoke is not None)

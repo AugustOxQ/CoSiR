@@ -208,6 +208,7 @@ def test_smoke_trains_2000_fit_pairs_and_writes_stage1_schema(
     prepared, trained = {}, []
     prepare = pc_stage1.prepare_inputs
     pretrain = pc_sept.pretrain_autoencoder
+    initialize = pc_sept.initialize_cluster_centers
     joint = pc_sept.train_dec_until_stable
 
     def capture_inputs(sample, version, rows):
@@ -237,11 +238,20 @@ def test_smoke_trains_2000_fit_pairs_and_writes_stage1_schema(
                 centers[:, 0].copy_(torch.from_numpy(norms).to(centers.device))
         return result
 
+    def check_kmeans(encoder, inputs, device, n_clusters, seed):
+        from sklearn.utils._openmp_helpers import _openmp_effective_n_threads
+
+        assert inputs.shape == (2000, 512) and n_clusters == 100 and seed == 0
+        assert _openmp_effective_n_threads() == 1
+        trained.append('kmeans')
+        return initialize(encoder, inputs, device, n_clusters, seed)
+
     monkeypatch.setattr(pc_stage1, 'prepare_inputs', capture_inputs)
     monkeypatch.setattr(pc_sept, 'pretrain_autoencoder', check_pretrain)
+    monkeypatch.setattr(pc_sept, 'initialize_cluster_centers', check_kmeans)
     monkeypatch.setattr(pc_sept, 'train_dec_until_stable', check_joint)
     path = pc_stage1.run(s, 'clip_roberta', 0, smoke=tmp_path, device='cpu')
-    assert trained == ['pretrain', 'joint']
+    assert trained == ['pretrain', 'kmeans', 'joint']
     assert path == tmp_path / 'stage1' / 'clip_roberta__s0.npz'
     meta = json.loads(path.with_suffix('.json').read_text())
     assert meta['sample_sha256'] == pc_data.fingerprint(s)
@@ -256,6 +266,8 @@ def test_smoke_trains_2000_fit_pairs_and_writes_stage1_schema(
     assert meta['config']['smoke'] is True
     assert meta['config']['balance_weight'] == 1000
     assert meta['config']['initial_centers'] == 100
+    assert meta['config']['kmeans_threads'] == 1
+    assert 'outroot' not in meta['config']
     assert meta['config']['fusion'] == 'Eq.2; normalized I,T,E; unnormalized h'
     assert 0 <= meta['final_change_fraction'] <= 1
     assert len(meta['input_sha256s']['emotion']) == 64
@@ -335,3 +347,97 @@ def test_qwen_feature_selection_and_emotion_map(version, monkeypatch):
                                atol=1e-7, rtol=1e-5)
     for key, raw in dict(image=image, text=text, emotion=emotion).items():
         assert provenance['input_sha256s'][key] == hashlib.sha256(raw.tobytes()).hexdigest()
+
+
+def test_one_thread_nested_limit_restores_all_pools_even_on_error():
+    from sklearn.utils._openmp_helpers import _openmp_effective_n_threads
+    from threadpoolctl import threadpool_info, threadpool_limits
+    import pc_stage1
+
+    with threadpool_limits(limits=8):
+        assert _openmp_effective_n_threads() == 8
+        assert all(pool['num_threads'] == 8 for pool in threadpool_info())
+        with pytest.raises(RuntimeError, match='leave context'):
+            with pc_stage1.one_thread():
+                assert _openmp_effective_n_threads() == 1
+                assert all(pool['num_threads'] == 1 for pool in threadpool_info())
+                raise RuntimeError('leave context')
+        assert _openmp_effective_n_threads() == 8
+        assert all(pool['num_threads'] == 8 for pool in threadpool_info())
+
+
+def test_a2_three_kmeans_starts_have_one_center_hash():
+    from threadpoolctl import threadpool_limits
+    import pc_stage0
+    import pc_stage1
+
+    with np.load(pc_stage0.SNAPSHOT, allow_pickle=True) as snapshot:
+        latents = torch.from_numpy(snapshot['train_latent_pre'])
+    hashes = []
+    with threadpool_limits(limits=8):
+        for _ in range(3):
+            centers = pc_stage1.kmeans_start(torch.nn.Identity(), latents, 'cpu', 60, 42)
+            assert centers.shape == (60, 128) and centers.dtype == torch.float32
+            hashes.append(hashlib.sha256(centers.detach().numpy().tobytes()).hexdigest())
+    assert len(set(hashes)) == 1, hashes
+
+
+def test_outroot_cli_routes_full_run_and_rejects_smoke(tmp_path, monkeypatch):
+    import pc_data
+    import pc_stage1
+
+    sample = object()
+    calls = []
+    run = pc_stage1.run
+    monkeypatch.setattr(pc_data, 'load_frozen', lambda: sample)
+    monkeypatch.setattr(pc_stage1, 'run', lambda *args, **kwargs: calls.append((args, kwargs)))
+    args = ['pc_stage1.py', '--version', 'clip_roberta', '--seed', '0']
+    monkeypatch.setattr(os.sys, 'argv', args + ['--outroot', str(tmp_path)])
+    pc_stage1.main()
+    assert calls == [((sample, 'clip_roberta', 0, None), dict(outroot=tmp_path))]
+    monkeypatch.setattr(os.sys, 'argv', args)
+    pc_stage1.main()
+    assert calls[-1] == ((sample, 'clip_roberta', 0, None), dict(outroot=None))
+    monkeypatch.setattr(os.sys, 'argv', args + ['--outroot', str(tmp_path), '--smoke', str(tmp_path)])
+    with pytest.raises(SystemExit) as error:
+        pc_stage1.main()
+    assert error.value.code == 2 and len(calls) == 2
+    with pytest.raises(AssertionError, match='--outroot cannot be used with --smoke'):
+        run(sample, 'clip_roberta', 0, smoke=tmp_path, outroot=tmp_path)
+
+
+def test_full_run_writes_outroot_without_recording_it(tmp_path, monkeypatch):
+    import pc_data
+    import pc_sept
+    import pc_stage1
+
+    sample = dict(pid=np.array([0, 0, 1]), first=np.array([0, 2]), subset_pid=np.array([1]))
+    monkeypatch.setattr(pc_data, 'partitions', lambda sample: np.array(['fit', 'fit']))
+    monkeypatch.setattr(pc_data, 'fingerprint', lambda sample: 'sample hash')
+    monkeypatch.setattr(torch.cuda, 'is_available', lambda: False)
+    monkeypatch.setattr(pc_stage1, 'prepare_inputs', lambda *args: (
+        np.ones((3, 512), dtype=np.float32),
+        dict(seconds={}, input_sha256s={}, maps={})))
+    monkeypatch.setattr(pc_sept, 'build_autoencoder',
+                        lambda width: (torch.nn.Identity(), torch.nn.Identity()))
+    monkeypatch.setattr(pc_sept, 'pretrain_autoencoder', lambda *args: [0.])
+    monkeypatch.setattr(pc_sept, 'train_dec_until_stable',
+                        lambda *args: ([dict(fraction_changed=0.)], 'stability criterion', 1))
+    monkeypatch.setattr(pc_stage1, 'assign_captions', lambda *args: (
+        np.zeros(3, dtype=np.int16), np.full((1, 100), .01, dtype=np.float32)))
+    starts = []
+
+    def initialize(encoder, inputs, device, n_clusters, seed):
+        from sklearn.utils._openmp_helpers import _openmp_effective_n_threads
+
+        assert _openmp_effective_n_threads() == 1
+        starts.append((device, n_clusters, seed))
+        return torch.nn.Parameter(torch.ones((100, 128)))
+
+    monkeypatch.setattr(pc_sept, 'initialize_cluster_centers', initialize)
+    path = pc_stage1.run(sample, 'clip_roberta', 2, device='cuda', outroot=tmp_path)
+    assert starts == [('cuda', 100, 2)]
+    assert path == tmp_path / 'stage1/clip_roberta__s2.npz' and path.exists()
+    meta = json.loads(path.with_suffix('.json').read_text())
+    assert meta['config']['kmeans_threads'] == 1 and meta['config']['smoke'] is False
+    assert 'outroot' not in meta['config'] and str(tmp_path) not in json.dumps(meta)
