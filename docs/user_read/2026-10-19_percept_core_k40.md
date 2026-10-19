@@ -13,6 +13,29 @@
 - The training before the topic cut matched the last run. Development data only.
 - You decide the comparator for 2026-10-29, then the design of our model's next stage.
 
+## The comparison at a glance
+
+You chose option b on 2026-10-19: two bars per aspect. Bar 1 is the best PercepT core setting. Bar 2 is the best
+image encoder clustered directly.
+
+Image-side AMI ↑ (k-means with 20 clusters, 5,000 development paintings, mean over 3 seeds). Bold: best per column.
+
+| Group | Method | Emotion ↑ | Style ↑ | Genre ↑ |
+|---|---|---:|---:|---:|
+| Image encoder, clustered directly | CLIP image | 0.065 | 0.300 | 0.412 |
+| | Qwen default image | 0.070 | 0.222 | 0.449 |
+| PercepT core, 40 topics | P1: September encoders, CLIP patches | 0.053 | 0.167 | 0.356 |
+| | P2: September encoders, CLIP image vector | 0.066 | 0.229 | 0.400 |
+| | P3: Qwen with Qwen emotion captions, Qwen image vector | 0.077 | 0.189 | 0.436 |
+| | P4: as P3, CLIP patches | 0.054 | 0.162 | 0.361 |
+| | P5: Qwen with the emotion text model, Qwen image vector | 0.074 | 0.181 | 0.435 |
+| Ours | Our network, no instruction at test time | **0.081** | **0.348** | **0.458** |
+| Margin | Ours minus bar 1 (P3, P2, P3) | +0.003 (level) | +0.120 | +0.022 |
+| | Ours minus bar 2 (Qwen, CLIP, Qwen) | +0.011 | +0.048 | +0.010 (level) |
+
+Level means a difference below about 0.01. Against bar 2, genre is +0.0097 (level) and emotion +0.0109, at the line.
+So under both bars, our network is clearly ahead only on style. PercepT core seed spreads are at most 0.007.
+
 ## How we got here
 
 This project builds a model that finds aspects of paintings (emotion, style, genre) without conditions. It aims to
