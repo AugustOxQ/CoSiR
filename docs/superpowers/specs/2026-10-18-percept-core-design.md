@@ -44,8 +44,8 @@ and an updated ablation table.
 - γ, the gap threshold of the topic-count algorithm: the paper gives no value; we use 2 and report the topic count
   for 1.5, 3 and 5 beside it.
 - Eq. 2 as the code audit reads it, on l2-normalized inputs (the paper does not say).
-- The September recipe that the regression check reproduces (60 topics pruned to 40) is the base; only the four
-  fixes change it. So September's balance term stays.
+- The September recipe (60 topics pruned to 40), whose saved snapshot the regression check re-scores (A1), is the
+  base; the four fixes and the one-thread k-means start (A2) change it. So September's balance term stays.
 - Version 3's RoBERTa vector goes up to 2048 dimensions by a fixed random orthogonal map (you confirmed it in the
   summary; the idea was ours).
 - The comparator is the best PercepT setting per aspect, chosen on the same 5,000 paintings that chose our rows.
@@ -78,7 +78,8 @@ column stays empty, D6).
 ### 3.2 Arms and controls
 
 PercepT core = the September Stage 1 and Stage 2 recipe (the snapshot configuration of 2026-09-24, deterministic)
-with four changes: (1) Stage 1 rows are image-caption pairs, not painting means; (2) the paper's Eq. 2 fusion
+with four changes (the four fixes) and a one-thread k-means start (A2): (1) Stage 1 rows are image-caption pairs,
+not painting means; (2) the paper's Eq. 2 fusion
 `h = (2·C·‖E‖ + E·‖C‖)/3`, `C = (I + T)/2`; (3) the topic count from Algorithm 1 (start at 100 topics, cut at the
 midpoint of the largest gap in the sorted center norms when that gap exceeds γ times the mean gap); (4) Stage 2
 targets are the multi-hot union of the topics of a painting's captions.
@@ -163,14 +164,19 @@ graphs of row 6, and everything PercepT core trains.
 | A1 | Stage 0 gate (§3.5): the checks that repeat exactly replace the September re-fit (4 decimals) and the Stage 2 macro AUC (0.8296) | the September k-means start sums its centers in a thread order that changes per run, so the re-fit gave three outcomes in eight local runs (load check `src/test/20261019_stage0_load_check/`); script 2 reaches its AUC only after the re-fit. The Stage 2 code is then covered by check (ii) only | user (option a of the r10 run brief; own pick) | 2026-10-19 08:20 |
 | A2 | PercepT core's Stage 1 runs its k-means start (`pc_sept.initialize_cluster_centers`) under a one-thread limit in `pc_stage1.py`; `pc_sept.py` stays verbatim. Checks: three k-means starts on the snapshot latents under the limit give one center hash; the run repeats Stage 1 `clip_roberta` seed 0 once and compares its saved arrays bitwise (reported, not a gate) | with 8 threads, Stage 1 seeds would carry the same last-bit noise; one thread repeated the whole September fit in two of two runs. Cost: the start takes about 2.5 times longer | user, after seeing the recommendation | 2026-10-19 08:20 |
 
+Places the amendments changed: A1 in the brief (plan item 1, "Check these"), §3.5, §5 and §7; A2 in the brief,
+§3.2 and "Check these". §3.2, §5, §7 and "Check these" were brought in line after the final review of build 5
+(2026-10-19), text only.
+
 ## 5. Assumptions and open questions
 
 - Assumption: per-caption Qwen default and emotion-instructed vectors cover all 99,999 frozen captions. Checked: the
   stores exist and the stage 1 code read their painting means; the per-caption join not checked.
 - Assumption: CLIP B/32 features and the patch cache (61,402 train paintings) cover the frozen sample. Checked: the
   sample comes from the CLIP-backed train loader; the name join not checked.
-- Assumption: the snapshot configuration can be recovered from the September branch. Checked: its report shows an
-  exact re-fit; the script not located yet.
+- Assumption: the snapshot configuration can be recovered from the September branch. Checked: recovered as
+  `pc_sept.py`, text-identical to its source (stage 0 check (ii)); the re-fit does not repeat exactly on this
+  machine (load check of 2026-10-19), hence A1.
 - Assumption: the RoBERTa-GoEmotions and CLIP B/32 weights are in the shared HF cache. Checked: both listed.
 - No open questions.
 
@@ -195,10 +201,14 @@ an attribution as strong as the exploration it explains, a direction, never a re
 | C1 strongest comparator | pass | D15, the best arm per aspect |
 | C6 sample IDs | pass | joins by extraction sample IDs and painting names, as the stage 1 code |
 | C7, C8 rule and disclosure | pass | no bar; §8 discloses selection |
-| C12 regression first | pass | stage 0 |
+| C12 regression first | exception (A1) | stage 0, amended; see below |
 | C13 re-derivation | pass | the comparator's image-side AMI re-derived by separate code |
 
-Exceptions: none.
+Exceptions: C12 (A1, the user's decision of 2026-10-19 08:20). Stage 0 reproduces the saved snapshot's numbers by
+re-scoring, shows the reused code byte- and text-identical, and repeats the k-means labels. The September re-fit and
+the Stage 2 AUC are not reproduced, because the September k-means start does not repeat (load check: 0.1238 / 0.2617
+or 0.1287 / 0.2804 against the recorded 0.1225 / 0.2274). Rejected: the 4-decimal re-fit. "Stage 0 passed" in the
+report means these checks.
 
 ## 8. Risks
 
