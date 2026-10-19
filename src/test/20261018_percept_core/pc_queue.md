@@ -28,7 +28,8 @@ before waiting for the lock, including the nohup form.
 Stage 0 checks that the September scripts and every module they could import are
 byte-identical between record commits `3b3ce61`, `4e4480b`, and `1b70d7f`, and that
 every function, class, and constant copied by `pc_sept.py` is text-identical to its
-source at `1b70d7f`. It re-scores the saved September snapshot
+source at `1b70d7f`. Stage 0 no longer re-runs the September scripts (amendment A1).
+It re-scores the saved September snapshot
 (`res/percept/percept_stage1_embedding_snapshot.npz`) to held-out emotion AMI
 0.122469 and genre AMI 0.227419 (tolerance 1e-6). K-means on the snapshot's
 pre-DEC latents (K 60, 10 restarts, seed 42, one CPU thread) must reproduce its
@@ -48,6 +49,8 @@ per-array and per-key agreement and both NPZ SHA-256 hashes. Differences are
 reported, not a gate: the comparison exits 0 and the queue continues. A crash or
 missing file fails the step. If the first run failed or was blocked, both repeat
 steps are recorded as `blocked`.
+If `stage1_repeat` fails, `repeat_check` is recorded as `blocked` so older repeat
+files cannot be compared as a fresh run.
 
 The independent CPU queue runs in the foreground:
 

@@ -8,6 +8,8 @@ import numpy as np
 
 
 def compare(first, second, out):
+    out = Path(out)
+    out.unlink(missing_ok=True)
     first, second = Path(first), Path(second)
     name = 'stage1/clip_roberta__s0.npz'
     first_npz, second_npz = first / name, second / name
@@ -30,7 +32,9 @@ def compare(first, second, out):
                   arrays=arrays, sidecar=sidecar, first=str(first), second=str(second),
                   first_npz_sha256=hashlib.sha256(first_npz.read_bytes()).hexdigest(),
                   second_npz_sha256=hashlib.sha256(second_npz.read_bytes()).hexdigest())
-    Path(out).write_text(json.dumps(result, indent=2, allow_nan=False) + '\n')
+    pending = out.with_suffix('.pending.json')
+    pending.write_text(json.dumps(result, indent=2, allow_nan=False) + '\n')
+    pending.replace(out)
     return result
 
 

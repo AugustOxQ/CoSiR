@@ -82,6 +82,17 @@ def test_missing_file_exits_nonzero(roots, tmp_path, root_index, suffix):
     assert 'FileNotFoundError' in result.stderr
 
 
+def test_missing_input_removes_previous_report(roots, tmp_path):
+    result, report = run_repeat(roots, tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert report['bitwise_equal'] is True
+    (roots[1] / NAME).with_suffix('.json').unlink()
+    result, report = run_repeat(roots, tmp_path)
+    assert result.returncode != 0
+    assert report is None
+    assert not (tmp_path / 'stage1_repeat.json').exists()
+
+
 @pytest.mark.parametrize('change', ['key', 'dtype', 'shape'])
 def test_array_key_dtype_and_shape_must_match(roots, tmp_path, change):
     path = roots[1] / NAME

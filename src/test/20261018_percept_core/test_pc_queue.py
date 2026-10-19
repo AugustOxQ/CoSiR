@@ -151,7 +151,9 @@ def test_repeat_crash_or_missing_files_fail_queue(tmp_path, fake_python, failure
     result, events, status, times = queue_run(tmp_path, fake_python, 'gpu', failure)
     assert result.returncode == 1
     assert times['stage1_repeat']['exit_code'] == (10 if failure == 'repeat' else 0)
-    assert times['repeat_check']['exit_code'] == 11
+    assert times['repeat_check']['exit_code'] == ('blocked' if failure == 'repeat' else 11)
+    if failure == 'repeat':
+        assert not any(e['args'][0].endswith('pc_repeat.py') for e in events)
     assert 'failed=1' in status
 
 
