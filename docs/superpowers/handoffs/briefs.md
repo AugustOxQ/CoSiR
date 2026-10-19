@@ -526,3 +526,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-4-handoff.md
 - New chat: tab 'r10 build 4', session 406d8e2a-01b9-44da-a28f-3b740ede213b
 
+[brief] CoSiR: r10 build 4 -> r10 build 5 (2026-10-19 09:01 Amsterdam)
+- Done: tickets 10 (stage 0 checks that repeat exactly, A1; one-thread k-means start, A2) and 11 (Stage 1 repeat check in the GPU queue) built by Codex, reviewed by Opus, fixed, merged on `r10-stage0-a1`.
+- State: the full stage 0 passes every check on the real data (snapshot AMIs, k-means labels and row 2 exact); the round suite passes on the merged branch (195 passed in 158 s).
+- Next: a GPU smoke of the GPU queue, the final whole-branch review (Opus `xhigh`), fix wave, merge to main, then the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-5-handoff.md
+- New chat: tab 'r10 build 5', session 85732570-ca3d-412e-bc21-179f939e4e50
+
