@@ -195,11 +195,18 @@ def test_kmeans_gate_requires_every_label_to_match(monkeypatch, changed):
     assert result['seconds'] >= 0
 
 
-@pytest.mark.parametrize('smoke, failure', [
-    (False, ''), (True, ''), (True, 'kmeans'), (False, 'row2'), (False, 'fix_tests'),
-    (False, 'source_duplicate'), (False, 'source_target'),
+@pytest.mark.parametrize('smoke, failure, fix_line', [
+    (False, '', None), (True, '', None), (True, 'kmeans', None),
+    (False, 'row2', None), (False, 'fix_tests', None),
+    (False, 'source_duplicate', None), (False, 'source_target', None),
+    (False, '', '21 passed in 1.1s'), (False, 'fix_summary', '20 passed in 1s'),
+    (False, 'fix_summary', '21 passed, 1 skipped in 1s'),
+    (False, 'fix_summary', '22 passed in 1s'),
+    (False, 'fix_summary', '21 passed, 1 failed in 1s'),
+    (False, 'fix_summary', '21 passed, 1 error in 1s'),
+    (False, 'fix_summary', '21 passed, 1 deselected in 1s'),
 ])
-def test_run_schema_commands_and_exit_status(tmp_path, monkeypatch, smoke, failure):
+def test_run_schema_commands_and_exit_status(tmp_path, monkeypatch, smoke, failure, fix_line):
     calls = []
     kmeans = dict(status='FAIL' if failure == 'kmeans' else 'PASS', expected=0,
                   actual=int(failure == 'kmeans'), seconds=.25)
@@ -229,7 +236,7 @@ def test_run_schema_commands_and_exit_status(tmp_path, monkeypatch, smoke, failu
             assert name == 'fix_tests'
             assert command == [sys.executable, '-m', 'pytest', '-q',
                                str(pc_stage0.HERE / 'test_pc_fixes.py')]
-            line = '1 failed in 1.26s' if failure == name else '21 passed in 1.26s'
+            line = fix_line or ('1 failed in 1.26s' if failure == name else '21 passed in 1.26s')
             (folder / 'fix_tests.log').write_text('.....................\n' + line + '\n')
         return dict(status='FAIL' if failure == name == 'fix_tests' else 'PASS',
                     expected=0, actual=int(failure == name == 'fix_tests'), seconds=.01)
@@ -241,8 +248,8 @@ def test_run_schema_commands_and_exit_status(tmp_path, monkeypatch, smoke, failu
     result = json.loads((tmp_path / 'stage0.json').read_text())
     assert code == int(bool(failure))
     assert result['status'] == ('FAIL' if failure else 'SMOKE' if smoke else 'PASS')
-    assert result['fix_tests'] == ('1 failed in 1.26s' if failure == 'fix_tests' else
-                                   '21 passed in 1.26s')
+    assert result['fix_tests'] == (fix_line or ('1 failed in 1.26s' if failure == 'fix_tests'
+                                             else '21 passed in 1.26s'))
     assert calls == ['row2', 'fix_tests']
     assert result['commit'] == pc_stage0.COMMIT and result['smoke'] is smoke
     with pc_stage0.SNAPSHOT.open('rb') as stream:
@@ -261,6 +268,29 @@ def test_run_schema_commands_and_exit_status(tmp_path, monkeypatch, smoke, failu
     assert all({'status', 'expected', 'actual'} <= check.keys()
                for check in result['checks'].values())
     assert not (tmp_path / 'stage0.pending.json').exists()
+
+
+@pytest.mark.parametrize('aspect', ['emotion', 'style', 'genre'])
+@pytest.mark.parametrize('shift, status', [(2e-6, 'FAIL'), (5e-7, 'PASS')])
+def test_run_checks_small_row2_drift(tmp_path, monkeypatch, aspect, shift, status):
+    values = dict(emotion=.08855639551158387, style=.17095358715401665,
+                  genre=.3930761231906966)
+    values[aspect] += shift
+    monkeypatch.setattr(pc_stage0, 'check_kmeans', lambda snapshot: dict(
+        status='PASS', expected=0, actual=0, seconds=.01))
+
+    def command(name, args, folder, cwd, env):
+        if name == 'row2':
+            (tmp_path / 'row2_check.json').write_text(json.dumps(dict(both_mean=values)))
+        else:
+            (folder / 'fix_tests.log').write_text('21 passed in 1.1s\n')
+        return dict(status='PASS', expected=0, actual=0, seconds=.01)
+
+    monkeypatch.setattr(pc_stage0, 'run_command', command)
+    assert pc_stage0.run(tmp_path) == int(status == 'FAIL')
+    result = json.loads((tmp_path / 'stage0.json').read_text())
+    assert result['status'] == status
+    assert result['checks'][f'row2_{aspect}']['status'] == status
 
 
 def test_interrupted_run_replaces_previous_pass(tmp_path, monkeypatch):

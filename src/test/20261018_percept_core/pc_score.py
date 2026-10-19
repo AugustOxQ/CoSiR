@@ -15,6 +15,7 @@ from pbp_graphs import label_vectors, sha_file
 from pav_score import ami, partitions, summary
 from apc_data import l2, paint_mean
 from pc_fixes import kept_centers, largest_gap
+from pc_stage0 import unit_tests_pass
 
 OUTPUTS = HERE / 'outputs'
 LABELS = ('emotion', 'style', 'genre')
@@ -46,14 +47,6 @@ def native_ami(prob, labels):
     assert all(y.shape == (len(prob),) for y in labels.values())
     topic = prob.argmax(axis=1)
     return {label: float(ami(y[y >= 0], topic[y >= 0])) for label, y in labels.items()}
-
-
-def unit_tests_pass(line):
-    """Spec section 6 (b): the recorded pytest result line shows passes and no failure."""
-    if not isinstance(line, str):
-        return False
-    low = line.lower()
-    return 'passed' in low and 'failed' not in low and 'error' not in low
 
 
 def aggregate_arm(seeds, stage0_pass, tests_pass, fix_tests=None, counts=None):
@@ -174,6 +167,15 @@ def score_outputs(s, labels, outdir=OUTPUTS):
     outdir = Path(outdir)
     stage0_path = outdir / 'stage0.json'
     stage0 = json.loads(stage0_path.read_text()) if stage0_path.exists() else dict(status='MISSING')
+    repeat_path = outdir / 'stage1_repeat.json'
+    repeat = dict(status='missing', bitwise_equal=None, arrays=None, sidecar=None)
+    if repeat_path.exists():
+        report = json.loads(repeat_path.read_text())
+        first = outdir / 'stage1/clip_roberta__s0.npz'
+        repeat['status'] = 'stale'
+        if first.exists() and report.get('first_npz_sha256') == sha_file(first):
+            repeat = dict(status='fresh', **{key: report[key]
+                          for key in ('bitwise_equal', 'arrays', 'sidecar')})
     fix_tests = stage0.get('fix_tests')
     tests_pass = unit_tests_pass(fix_tests)
     arms, missing = {}, {}
@@ -200,7 +202,7 @@ def score_outputs(s, labels, outdir=OUTPUTS):
             seeds[str(seed)] = score_seed(stage1, stage2, s, labels)
         arms[arm] = dict(version=version, seeds=seeds,
                          **aggregate_arm(seeds, stage0['status'] == 'PASS', tests_pass, fix_tests, counts))
-    return dict(schema=1, sample_sha256=fingerprint(s), stage0=stage0, arms=arms,
+    return dict(schema=1, sample_sha256=fingerprint(s), stage0=stage0, stage1_repeat=repeat, arms=arms,
                 comparator=comparators(arms), missing_outputs=missing,
                 conventions='Image only: l2(eval_prob), pav k20 seeds012, y>=0; '
                 'population sd over PercepT seeds012; no PercepT caption/mean. '
@@ -224,6 +226,13 @@ def check_row2(s=None, outdir=OUTPUTS):
 
 def markdown(result):
     fmt = lambda v: f"{v['mean']:.5f} ± {v['sd']:.5f}" if v is not None else '—'
+    repeat = result.get('stage1_repeat', dict(status='missing', bitwise_equal=None))
+    equal = '—' if repeat['bitwise_equal'] is None else 'yes' if repeat['bitwise_equal'] else 'no'
+    repeat_line = f"Stage 1 repeat (A2, reported, not a gate): {repeat['status']}; bitwise equal: {equal}"
+    for kind in ('arrays', 'sidecar'):
+        differences = sorted(key for key, same in (repeat.get(kind) or {}).items() if not same)
+        if differences:
+            repeat_line += f"; {kind}: {', '.join(differences)}"
     lines = ['# PercepT core results', '',
              'Development evaluation on 5,000 frozen paintings; selection uses this same sample. '
              'AMI masks missing labels. Spreads are population SD; no significance tests.', '',
@@ -232,6 +241,7 @@ def markdown(result):
              'Row 1 spreads use the three k-means seeds.', '',
              f"Stage 0: {result['stage0']['status']}. Established requires Stage 0 PASS, the unit tests "
              'passing (spec section 6 (b), line below), complete Stage 1/2 files and dev AUC >= 0.75 on every seed.', '',
+             repeat_line, '',
              'Unit tests (spec section 6, `pytest -q test_pc_fixes.py`): '
              + result['stage0'].get('fix_tests', 'not recorded'), '',
              '## Arms: image-side AMI (k=20)', '',

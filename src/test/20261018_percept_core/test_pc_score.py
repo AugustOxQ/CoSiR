@@ -10,7 +10,17 @@ from threadpoolctl import threadpool_limits
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pc_score as score
 
-PASSING = '19 passed in 2.1s'
+PASSING = '21 passed in 2.1s'
+
+
+@pytest.mark.parametrize('line, expected', [
+    ('21 passed in 1.1s', True), ('20 passed in 1s', False),
+    ('21 passed, 1 skipped in 1s', False), ('22 passed in 1s', False),
+    ('21 passed, 1 failed in 1s', False), ('21 passed, 1 error in 1s', False),
+    ('21 passed, 1 deselected in 1s', False),
+])
+def test_unit_tests_require_exactly_all_four_fix_tests(line, expected):
+    assert score.unit_tests_pass(line) is expected
 
 
 @pytest.fixture(autouse=True)
@@ -278,6 +288,60 @@ def sheet(outdir, sample, labels):
     return result, score.markdown(result)
 
 
+@pytest.mark.parametrize('arrays, sidecar, equal, detail', [
+    (dict(topic=True), dict(config=True), True, ''),
+    (dict(topic=False), dict(config=True), False, 'arrays: topic'),
+    (dict(topic=True), dict(config=False), False, 'sidecar: config'),
+])
+def test_sheet_reports_fresh_repeat_without_gating(stage_files, arrays, sidecar, equal, detail):
+    sample, labels, outdir = stage_files
+    report = dict(first_npz_sha256=score.sha_file(outdir / 'stage1/clip_roberta__s0.npz'),
+                  bitwise_equal=equal, arrays=arrays, sidecar=sidecar)
+    path = outdir / 'stage1_repeat.json'
+    path.write_text(json.dumps(report))
+    original = path.read_bytes()
+    result, text = sheet(outdir, sample, labels)
+    assert result['stage1_repeat'] == dict(status='fresh', bitwise_equal=equal,
+                                           arrays=arrays, sidecar=sidecar)
+    line = next(line for line in text.splitlines() if line.startswith('Stage 1 repeat'))
+    assert line.startswith('Stage 1 repeat (A2, reported, not a gate): fresh; bitwise equal: '
+                           + ('yes' if equal else 'no'))
+    assert detail in line
+    assert text.index('Stage 0:') < text.index(line) < text.index('## Arms:')
+    assert result['arms']['P1']['established']
+    score.write_results(result, outdir)
+    assert json.loads((outdir / 'pc_results.json').read_text())['stage1_repeat'] == result['stage1_repeat']
+    assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize('kind, status', [
+    ('missing', 'missing'), ('changed_npz', 'stale'), ('missing_npz', 'stale'),
+])
+def test_sheet_hides_missing_or_stale_repeat_details(stage_files, kind, status):
+    sample, labels, outdir = stage_files
+    report = dict(first_npz_sha256=score.sha_file(outdir / 'stage1/clip_roberta__s0.npz'),
+                  bitwise_equal=False, arrays=dict(topic=False), sidecar=dict(config=False))
+    if kind == 'missing_npz':
+        outdir = outdir / 'empty'
+        outdir.mkdir()
+    elif kind == 'changed_npz':
+        with (outdir / 'stage1/clip_roberta__s0.npz').open('ab') as stream:
+            stream.write(b'changed')
+        stage2 = outdir / 'stage2/P1__s0.json'
+        meta = json.loads(stage2.read_text())
+        meta['stage1_sha256'] = score.sha_file(outdir / 'stage1/clip_roberta__s0.npz')
+        stage2.write_text(json.dumps(meta))
+    path = outdir / 'stage1_repeat.json'
+    if kind != 'missing':
+        path.write_text(json.dumps(report))
+    result, text = sheet(outdir, sample, labels)
+    assert result['stage1_repeat'] == dict(status=status, bitwise_equal=None, arrays=None, sidecar=None)
+    line = next(line for line in text.splitlines() if line.startswith('Stage 1 repeat'))
+    assert line == f'Stage 1 repeat (A2, reported, not a gate): {status}; bitwise equal: —'
+    if kind != 'missing':
+        assert json.loads(path.read_text()) == report
+
+
 def test_sheet_states_the_stage0_fix_tests_line(stage_files):
     sample, labels, outdir = stage_files
     (outdir / 'stage0.json').write_text(json.dumps(dict(status='PASS', fix_tests='23 passed in 4.56s')))
@@ -330,7 +394,7 @@ def test_failed_or_missing_unit_tests_establish_no_arm(stage_files):
         assert result['stage0']['status'] == 'PASS'
         assert result['comparator']['emotion']['established'] is None
         assert reason in text
-    path.write_text(json.dumps(dict(status='PASS', fix_tests='20 Passed in 2.13s')))
+    path.write_text(json.dumps(dict(status='PASS', fix_tests='21 passed in 2.13s')))
     assert sheet(outdir, sample, labels)[0]['arms']['P1']['established']
 
 
