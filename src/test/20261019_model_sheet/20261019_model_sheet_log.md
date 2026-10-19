@@ -48,6 +48,10 @@ frozen train-side sample (fit 13,400, dev 1,489, evaluation 5,000 paintings).
     whatever the fit, and moved T5's best epoch later; CSN also selects on validation fit, not on the penalty.
 16. **D17's best D row (fix wave, review 8):** chosen on seed 0 only, as default 9 says. Why: D rows have one or
     three seeds depending on the picks; one seed for all keeps the comparison fair.
+17. **I1's base row (build 9, for stage 3):** "the best default-input row" (spec §3.2) is the default-input row,
+    D17 included, with the highest mean over the three aspects of seed-0 image-side own-label AMI; a tie goes to the
+    earlier row in A1, T1 to T5, D1 to D5, D17. Why: the same measure and seed as defaults 9 and 16, so the run chat
+    picks without a new judgment.
 
 ## Timeline (Amsterdam time)
 
@@ -88,3 +92,6 @@ frozen train-side sample (fit 13,400, dev 1,489, evaluation 5,000 paintings).
   `outputs/` with other settings; (2) `SCORER_VERSION` hashes `ms_score.py` and `pav_score.py` only (as the brief
   asked), not `pc_score`, `apc_data` or `pc_data`.
 - 21:15 `r10-model-sheet` merged into main (`e066c92`), pushed. 21:16 stage 0 from the main checkout (CPU).
+- 21:26 stage 0 (current code): STAGE0 PASS. Genre arrays bitwise equal, 36/36 AMI equal at 6 decimals, 7/7 best
+  epochs equal, PercepT 45/45, no stale array; `--require-pass` PASS. 21:27 K = 40 back-fill complete (24/24 cells,
+  AMI equal to the report at 3 decimals; `outputs/backfill.md`).
