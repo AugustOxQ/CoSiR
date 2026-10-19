@@ -11,19 +11,17 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-10-19)
+## Now (2026-10-20)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
-on each view, one shared trunk with emotion, style and genre heads (decision B2). Best heads so far (target AMI, 3
-seeds): residual graphs for emotion 0.137 and style 0.260, the image graph for genre 0.428. Comparator (option b,
-user): per aspect, PercepT core with K = 40 (image-side AMI 0.077 / 0.229 / 0.436, all five arms established) and the
-image encoder clustered directly (0.070 / 0.300 / 0.449). Our best default-input network (0.081 / 0.348 / 0.458) is
-clearly ahead of both only on style; emotion is level with PercepT core, genre with Qwen images (development data).
-The instructed Qwen image clustered directly (0.093 / 0.395 / 0.496) beats our network on all three; reaching it
-with one pass on the default image is stage 2's target (user). Next: the stage 2 build (r10 build 7) from the
-[approved spec](specs/2026-10-19-stage2-model-sheet-design.md) (2026-10-19 19:58), then its run. "Something works" by 2026-10-29: held-out AMI at least +0.01 above PercepT core
-and clearly above the other baselines; by 2026-11-10: the instructed Qwen bar and aspect-named retrieval above
-prompted Qwen.
+on each view, one shared trunk with emotion, style and genre heads, read once on the default image. The stage 2 sheet's
+best row for the claim, D2 (trunk + direct distillation 0.5), reaches image-side AMI 0.096 / 0.370 / 0.454
+(development data, 3 seeds) against PercepT core 0.077 / 0.229 / 0.436 and the instructed Qwen image 0.093 / 0.395 /
+0.496: above the instructed target on emotion only. Next, two tracks (user): the claim test spec with D2 (the first
+held read; Leiden beside k-means; PercepT with its own assignment and a "paper settings" version beside PercepT core),
+and step 3 for cluster-level losses (contrast per head, teacher clusters as anchors, DEC started from a good
+partition). Gates: 2026-10-29 held-out emotion AMI at least +0.01 above PercepT core; 2026-11-10 the instructed Qwen
+bar and aspect-named retrieval.
 
 ## Parked ideas
 
@@ -35,6 +33,50 @@ prompted Qwen.
   (2026-10-18); [proposed in](handoffs/2026-10-18-r10-decide-6-handoff.md))
 - Within-painting caption variation as a signal (probe 57.3% to 46.6% on the residual) (never tried; deferred by the
   user (2026-10-18); [proposed in](../reports/auto/percept/2026-12-06_new_line_candidates.md))
+- A short stage 2 loop for style and genre: relational distillation alone (0.5, 2) and combined with direct at 0.5
+  (never tried; not chosen by the user, 2026-10-20; [proposed in](../reports/auto/percept/2026-12-16_model_sheet.md))
+- Align and contrast the three aspect heads of one image (shared part aligned, aspect parts pushed apart) (never tried;
+  not chosen by the user, 2026-10-20: the aspects may not be separable; proposed in the r10 decide 12 chat)
+
+## 2026-10-20 · Stage 2 model sheet read: D2 above the instructed target on emotion only; claim test with D2 next, cluster-level losses as a second track
+
+- **Read:** 13 settings, development data (5,000 evaluation paintings, k = 20). Best per aspect, 3 seeds: emotion D2
+  0.0962 (target 0.0929, PercepT core 0.0772), style D5 0.3700 (target 0.3952), genre D5 0.4891 (target 0.4956). D2
+  (trunk + direct distillation 0.5): 0.0962 / 0.3697 / 0.4540. Trunk T1 0.0930 / 0.3591 / 0.4603 against separate
+  heads A1 0.0894 / 0.3539 / 0.4574. Distillation only, D1 (1 seed): 0.0825 / 0.2751 / 0.4366. Outcomes: (a) no, (b)
+  yes on emotion only, (c) no, (d) no; the emotion line 0.0872 is reached by nine default-input rows. Probe ceiling
+  0.121 / 0.527 / 0.657.
+- **Meaning (C):** "A partly positive result. D2 is the first default-input row above the instructed-image target on
+  emotion. Style and genre stay below the target, but all three stay above PercepT core, so the 10-29 line holds. The
+  gap to the supervised probe (about 20 / 30 / 25%) shows room to improve. The design is open to challenge: the
+  clustering step (Leiden, which finds its own count, against k-means) and cluster-level training losses. One cluster
+  set for many aspects does not scale." (user, before ours). Ours: outcome (b); direct distillation helps emotion and
+  style, relational helps style and genre, no row combines them; the graphs carry most of the result; the trunk costs
+  nothing; with instructed inputs (I1) style and genre still miss, so training limits them. Where they differ: the
+  user measures the gap against the probe, we against the target; the user's best values mix D2 and D5.
+- **Found in the discussion** (agent, shown to the user): k-means at k = 20 entered the new line as an agent default
+  (premise checks 2026-10-17, then the aspect graph spec §3.4) and was never a listed decision; September used Leiden.
+  Under random clusterings AMI and ARI stay at 0 for any count, V and FMI do not (simulation). PercepT states one
+  training set of about 1.2M pairs and no test split; our AMI is on unseen paintings. A Codex comparison of our DEC
+  uses with the paper (spot-checked; `.scratch/r10-cluster-losses/dec_comparison.md`): no September run started DEC
+  from a good partition, and PercepT core differs from the paper beyond the backbone (autoencoder one layer short, no
+  denoising, a balance term of weight 1000, lr 1e-4 full batch, K = 40, our scoring).
+- **Decided (A):** two tracks (user, after seeing the recommendation). Track 1: the claim test spec next; type claim
+  test, full loop. Track 2: step 3 for cluster-level losses; type new idea, full loop. It covers (1) cluster-level
+  contrast per head and (2) teacher clusters as anchors (user, after seeing the recommendation), and (3) DEC started
+  from the good partition of our heads (user). The short style and genre loop (option 1) is not chosen.
+- **Idea (B), claim test:** row D2 (user, after seeing the recommendation). A Leiden reading in all major tests beside
+  k-means (user). PercepT scored both with its own assignment (top topic of 40) and at matched k = 20; the gate is
+  judged against the stronger reading per aspect (user, after seeing the recommendation). A "paper settings" PercepT,
+  where only the backbone differs from the paper, runs beside PercepT core, with a collapse rule (user, after seeing
+  the recommendation; "it can collapse easily, but I tend to give a try"). The grill and the spec follow in the next
+  decide chat.
+- **Why:** emotion clears the line on development data (+0.019 over PercepT core), and the 10-29 gate needs held
+  data. The user challenges the clustering step; Leiden and cluster-level losses test it.
+- **Links:** [auto report](../reports/auto/percept/2026-12-16_model_sheet.md) ·
+  [user-read](../user_read/2026-10-19_model_sheet.md) ·
+  [stage 2 spec](specs/2026-10-19-stage2-model-sheet-design.md) ·
+  [handoff](handoffs/2026-10-20-r10-decide-13-handoff.md)
 
 ## 2026-10-19 · PercepT core with K = 40 read: all five arms established; two bars per aspect (option b); stage 2 next
 
