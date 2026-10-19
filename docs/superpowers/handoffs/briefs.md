@@ -576,3 +576,19 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-decide-10-handoff.md
 - New chat: tab 'r10 decide 10', session 26b5c951-3335-45b7-8f1e-76fe284f88e5
 
+[brief] CoSiR: r10 decide 10 -> r10 decide 11 (2026-10-19 19:11 Amsterdam)
+- Done: decision C (comparator: PercepT core K = 40 plus the encoders clustered directly), an image-side ceiling check, and the grill of stage 2 (four key questions, minor m1 to m6).
+- State: the target is the instructed Qwen image clustered directly, 0.093 / 0.395 / 0.496, with one pass on the default image; our network reaches 0.081 / 0.348 / 0.458.
+- Next: write the stage 2 spec and get the user's approval of its brief; then the build chat.
+- Blocked: nothing. The user restarts the container before this chat opens.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-decide-11-handoff.md
+- New chat: tab 'r10 decide 11', session c90b2d7c-d403-4d60-83b2-b597b18b8e48
+
+[brief] CoSiR: r10 decide 10 -> outside-view qwen-buddy (2026-10-19 19:14 Amsterdam)
+- Done: r10 decide 10 finished (comparator, ceiling check, stage 2 grill); r10 decide 11 now writes the stage 2 spec.
+- State: our best network, default input, 0.081 / 0.348 / 0.458 image-side AMI (emotion / style / genre), against PercepT core 0.077 / 0.229 / 0.436 and the instructed Qwen image 0.093 / 0.395 / 0.496.
+- Next: the stage report of the line, then the outside-view page, its dev-log post, and the upload the user asked for.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-qwen-buddy-outside-view-handoff.md
+- New chat: tab 'outside-view qwen-buddy', session 066201b0-df5d-4151-90a5-aeb3160e6d05
+
