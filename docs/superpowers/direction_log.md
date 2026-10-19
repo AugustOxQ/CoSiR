@@ -15,12 +15,12 @@ The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked idea
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads (decision B2). Best heads so far (target AMI, 3
-seeds): residual graphs for emotion 0.137 and style 0.260, the image graph for genre 0.428; without the instruction in
-the graph our network is below the default embedding clustered directly (row 6). The PercepT core run filled ablation
-rows 1, 6, 10 and 13, but its stage 0 failed because the September fit does not repeat itself; the user amended stage
-0 (option a: only the checks that repeat exactly) and added one-thread k-means to PercepT core. Next: a short build,
-then the PercepT core runs, then the decision on stage 2. "Something works" by 2026-10-29: per-aspect held-out AMI
-above PercepT core; by 2026-11-10: aspect-named retrieval above prompted Qwen.
+seeds): residual graphs for emotion 0.137 and style 0.260, the image graph for genre 0.428; image side with default
+input 0.081 / 0.348 / 0.458. PercepT core run 2 passed stage 0, but Algorithm 1 kept 1 to 3 or 99 topics by seed, so
+its one established arm (P2, image side 0.036 / 0.162 / 0.217) is weak; with 99 topics PercepT core is about level
+with its image encoder clustered directly. The user fixed the count at K = 40 (A3). Next: a short build, the rerun of
+the five arms (about 20 GPU minutes), then the decision on stage 2. "Something works" by 2026-10-29: per-aspect
+held-out AMI above PercepT core; by 2026-11-10: aspect-named retrieval above prompted Qwen.
 
 ## Parked ideas
 
@@ -32,6 +32,31 @@ above PercepT core; by 2026-11-10: aspect-named retrieval above prompted Qwen.
   (2026-10-18); [proposed in](handoffs/2026-10-18-r10-decide-6-handoff.md))
 - Within-painting caption variation as a signal (probe 57.3% to 46.6% on the residual) (never tried; deferred by the
   user (2026-10-18); [proposed in](../reports/auto/percept/2026-12-06_new_line_candidates.md))
+
+## 2026-10-19 · PercepT core arms read: the topic count follows the seed; K fixed at 40 (A3), the five arms rerun
+
+- **Read:** stage 0 (amended) passed; a repeated Stage 1 run was bitwise equal. Algorithm 1 (γ = 2) kept 1, 2, 3 or
+  99 topics by seed: the largest norm gap sat at an end in 9 of 9 Stage 1 runs. Only P2 is established, image-side
+  AMI 0.036 / 0.162 / 0.217 against our best network 0.081 / 0.348 / 0.458. With 99 topics: P3 (2 seeds) 0.072 /
+  0.194 / 0.446 against Qwen default images 0.070 / 0.222 / 0.449; P2 seed 0 0.063 / 0.250 / 0.412 against CLIP
+  images 0.065 / 0.300 / 0.412. P5 kept 1 topic on every seed.
+- **Meaning (C):** first "we found a valid PercepT comparator" (user); after our explanation of the count, "this
+  comparator still seems a bit unstable" (user, after seeing ours). Ours: P2 is valid under the checks but weak, since
+  two of its seeds kept 2 and 3 topics; with 99 topics PercepT core adds nothing over its image encoder clustered
+  directly.
+- **Decided (A):** option b: fix the topic count at K = 40 (A3) and rerun the five arms; type baseline, medium loop,
+  as an amendment of the r10 spec, no grill (the user waived it) (user, after seeing the recommendation). Which 40:
+  the 40 of 100 centers with the most fit pairs (agent default, shown to the user). The stage 2 decision moves to the
+  next decide chat, after the rerun (agent default).
+- **Idea (B):** unchanged (B2).
+- **Why:** γ alone cannot help (the end gap is 4 to 12 times the mean gap). Norm and pair share correlate positively
+  (Spearman 0.40 to 0.44 in the three 99-topic runs), so a norm cut keeps little-used topics. September's
+  faithful-recipe run without the balance term also kept 99 of 100 under the gap rule, so faithful PercepT alone is not
+  expected to fix the count (not checked on today's setup).
+- **Links:** [run report](../reports/auto/percept/2026-12-14_percept_core_arms.md) ·
+  [user-read report](../user_read/2026-10-19_percept_core_arms.md) ·
+  [amended spec (A3)](specs/2026-10-18-percept-core-design.md) ·
+  [handoff](handoffs/2026-10-19-r10-build-6-handoff.md)
 
 ## 2026-10-19 · PercepT core run read: stage 0 fails on September noise, rows 1, 6, 10, 13 filled; stage 0 amended, PercepT core runs next
 
