@@ -1,4 +1,4 @@
-"""Separate and shared-trunk cross-modal heads; CPU stage-1 parity and CUDA training."""
+"""Model-sheet graph heads, masks and image distillation; CPU parity and CUDA training."""
 import argparse
 import copy
 import hashlib
@@ -15,11 +15,12 @@ from threadpoolctl import threadpool_limits
 
 HERE = Path(__file__).resolve().parent
 GRAPH_BASE = Path('/project/CoSiR/src/test/20261018_aspect_graph_sheet')
-SMOKE = Path('/tmp/claude-0/-project-CoSiR/56b9b751-6946-4c76-b52d-3761e520be8f/scratchpad/ms_smoke/02')
+SMOKE = Path('/tmp/claude-0/-project-CoSiR/56b9b751-6946-4c76-b52d-3761e520be8f/scratchpad/ms_smoke/03')
 for folder in ('20261017_image_transfer_pilot', '20261018_purified_buddy_pilot',
                '20261018_aspect_graph_sheet'):
     sys.path.insert(0, str(HERE.parent / folder))
 import ags_head as head
+import ags_trainimg
 import itp_data
 import itp_train
 from ms_rows import ASPECTS, ROWS, validate
@@ -44,12 +45,30 @@ class TrunkHead(nn.Module):
         return F.normalize(self.output(self.trunk(x)), dim=1)
 
 
+class MaskHead(nn.Module):
+    def __init__(self, side, mask):
+        super().__init__()
+        self.net, self.mask = side.net, mask
+
+    def forward(self, x):
+        return F.normalize(self.net(x) * F.relu(self.mask), dim=1)
+
+
 def build_model(row, aspects, device):
     """The only model factory; preserve side/layer creation and optimizer parameter order."""
     if row['share'] == 'separate':
         assert len(aspects) == 1
         models = nn.ModuleDict({side: itp_train.Student().to(device) for side in ('img', 'cap')})
         return models, {aspects[0]: models}
+    if row['share'] == 'mask':
+        models = nn.ModuleDict({side: itp_train.Student().to(device) for side in ('img', 'cap')})
+        models['masks'] = nn.ParameterDict({a: nn.Parameter(torch.empty(2048, device=device))
+                                           for a in aspects})
+        for a in aspects:
+            nn.init.normal_(models['masks'][a], 0.9, 0.7)
+        views = {a: nn.ModuleDict({side: MaskHead(models[side], models['masks'][a])
+                                  for side in ('img', 'cap')}) for a in aspects}
+        return models, views
     assert row['share'] == 'trunk'
     models = nn.ModuleDict({side: TrunkSide(aspects).to(device) for side in ('img', 'cap')})
     views = {a: nn.ModuleDict({side: TrunkHead(models[side], a) for side in ('img', 'cap')})
@@ -67,36 +86,155 @@ def symmetric(x, y, w=None):
     return ce.mean() if w is None else (w * ce).sum() / w.sum()
 
 
-def head_loss(models, img, cap, pairs, weights, row, aspect):
-    """One head's loss; ticket 03 extends forms/teachers here, leaving the loop alone."""
-    assert row['form'] == 'a' and row['graph_terms'] and row['distill'] == 'none'
-    if img.device.type == 'cpu':
+def extra_symmetric(x, y, extra_y, extra_x, valid_a, valid_b, w):
+    """Each anchor gets its own additional column, independently in both directions."""
+    logits = x @ y.T / CONFIG['temperature']
+    forward = (x * extra_y).sum(1) / CONFIG['temperature']
+    backward = (y * extra_x).sum(1) / CONFIG['temperature']
+    forward = torch.cat((logits, forward.masked_fill(~valid_a, -torch.inf)[:, None]), dim=1)
+    backward = torch.cat((logits.T, backward.masked_fill(~valid_b, -torch.inf)[:, None]), dim=1)
+    labels = torch.arange(len(x), device=x.device)
+    ce = (F.cross_entropy(forward, labels, reduction='none') +
+          F.cross_entropy(backward, labels, reduction='none')) / 2
+    return (w * ce).sum() / w.sum()
+
+
+def distill_loss(z, teacher, ids, kind):
+    assert teacher.shape == z.shape and not teacher.requires_grad
+    same = ids[:, None] == ids[None, :]
+    if kind == 'direct':
+        labels = torch.arange(len(z), device=z.device)
+        same.fill_diagonal_(False)
+        logits = (z @ teacher.T / 0.05).masked_fill(same, -torch.inf)
+        return F.cross_entropy(logits, labels)
+    assert kind == 'relational'
+    assert (~same).any(dim=1).all(), 'relational rows need other paintings'
+    student = (z @ z.T / 0.05).masked_fill(same, -torch.inf)
+    target = (teacher @ teacher.T / 0.05).masked_fill(same, -torch.inf)
+    logp, logq = F.log_softmax(target, dim=1), F.log_softmax(student, dim=1)
+    # Zero the excluded log values before multiplication: 0 * -inf would be NaN.
+    return (logp.exp() * (logp.masked_fill(same, 0) - logq.masked_fill(same, 0))).sum(1).mean()
+
+
+def head_loss(models, img, cap, pairs, weights, row, aspect, teacher=None, extras=None):
+    """Graph, teacher and mask terms; leave the original CPU form-a call untouched."""
+    if (row['form'] == 'a' and row['graph_terms'] and row['distill'] == 'none'
+            and img.device.type == 'cpu'):
         return head.pair_loss(models, img, cap, pairs, weights)
-    a = torch.as_tensor(pairs[:, 0].copy(), device=img.device)
-    b = torch.as_tensor(pairs[:, 1].copy(), device=img.device)
-    ia, ib = models['img'](torch.cat((img[a], img[b]))).chunk(2)
-    ca, cb = models['cap'](torch.cat((cap[a], cap[b]))).chunk(2)
-    w = torch.as_tensor(weights, device=img.device)
-    buddy = (symmetric(ia, ib, w) + symmetric(ia, cb, w) +
-             symmetric(ca, ib, w) + symmetric(ca, cb, w)) / 4
-    own = (symmetric(ia, ca) + symmetric(ib, cb)) / 2
-    return buddy + own
+    if row['graph_terms']:
+        a, b = torch.as_tensor(pairs, device=img.device).unbind(1)
+        ids = torch.cat((a, b))
+        z = models['img'](img[ids])
+        ia, ib = z.chunk(2)
+        ca, cb = models['cap'](cap[ids]).chunk(2)
+        w = torch.as_tensor(weights, device=img.device)
+        if row['form'] == 'b':
+            assert extras is not None and extras.shape == (len(a), 2)
+            # The same sampled node per endpoint is embedded on the term's column side.
+            ex = torch.cat((extras[:, 0], extras[:, 1]))
+            ei_a, ei_b = models['img'](img[ex.clamp_min(0)]).chunk(2)
+            ec_a, ec_b = models['cap'](cap[ex.clamp_min(0)]).chunk(2)
+            va, vb = extras[:, 0] >= 0, extras[:, 1] >= 0
+            buddy = (extra_symmetric(ia, ib, ei_a, ei_b, va, vb, w) +
+                     extra_symmetric(ia, cb, ec_a, ei_b, va, vb, w) +
+                     extra_symmetric(ca, ib, ei_a, ec_b, va, vb, w) +
+                     extra_symmetric(ca, cb, ec_a, ec_b, va, vb, w)) / 4
+        else:
+            buddy = (symmetric(ia, ib, w) + symmetric(ia, cb, w) +
+                     symmetric(ca, ib, w) + symmetric(ca, cb, w)) / 4
+        own = (symmetric(ia, ca) + symmetric(ib, cb)) / 2
+        loss = buddy + own
+        if row['distill'] != 'none':
+            loss = loss + row['distill_weight'] * distill_loss(z, teacher[ids], ids, row['distill'])
+    else:
+        ids = torch.as_tensor(pairs, device=img.device)
+        z = models['img'](img[ids])
+        loss = row['distill_weight'] * distill_loss(z, teacher[ids], ids, row['distill'])
+    if row['form'] == 'c':
+        loss = loss + 5e-4 * F.relu(models['img'].mask).abs().sum()
+    return loss
+
+
+def disjoint_split(s):
+    _, fit, dev = itp_data.split(s)
+    evaluation = s['subset_pid']
+    for ids, n in ((fit, 13400), (dev, 1489), (evaluation, 5000)):
+        assert ids.dtype == np.int64 and len(ids) == len(np.unique(ids)) == n
+    assert not np.intersect1d(fit, dev).size
+    assert not np.intersect1d(fit, evaluation).size
+    assert not np.intersect1d(dev, evaluation).size
+    assert len(np.unique(np.concatenate((fit, dev, evaluation)))) == len(s['first'])
+    return fit, dev
+
+
+def negative_candidates(graphs, row, aspect, part):
+    """CSR candidate lists in this head's node order, joined by painting ID."""
+    from scipy.sparse import csr_matrix
+    nodes = graphs[aspect][f'{part}_node_ids']
+    assert len(np.unique(nodes)) == len(nodes)
+    lookup = {int(pid): i for i, pid in enumerate(nodes)}
+    adjacency = {}
+    for other in ASPECTS:
+        graph = graphs[other]
+        other_nodes = graph[f'{part}_node_ids']
+        assert len(np.unique(other_nodes)) == len(nodes)
+        assert set(other_nodes) == set(nodes), f'{part}: different graph node sets'
+        mapping = np.asarray([lookup[int(pid)] for pid in other_nodes], dtype=np.int64)
+        pairs = mapping[graph['rows'][row['graphs'][other]][part][0]]
+        assert pairs.ndim == 2 and pairs.shape[1] == 2
+        src, dst = np.concatenate((pairs[:, 0], pairs[:, 1])), np.concatenate((pairs[:, 1], pairs[:, 0]))
+        adjacency[other] = csr_matrix((np.ones(len(src), dtype=bool), (src, dst)),
+                                      shape=(len(nodes), len(nodes)))
+    own = adjacency[aspect]
+    others = [a for a in ASPECTS if a != aspect]
+    union = adjacency[others[0]].maximum(adjacency[others[1]])
+    candidates = (union.astype(np.int8) - union.multiply(own).astype(np.int8)).tocsr()
+    candidates.setdiag(0)
+    candidates.eliminate_zeros()
+    candidates.sort_indices()
+    assert not candidates.multiply(own).nnz and not candidates.diagonal().any()
+    return candidates.indptr, candidates.indices
+
+
+def draw_extras(csr, pairs, rng, device):
+    """Sample outside the training step, then keep all negative indices on its device."""
+    ptr, nodes = csr
+    starts, counts = ptr[pairs], ptr[pairs + 1] - ptr[pairs]
+    offsets = rng.integers(np.maximum(counts, 1))
+    result = np.full(pairs.shape, -1, dtype=np.int64)
+    valid = counts > 0
+    result[valid] = nodes[(starts + offsets)[valid]]
+    return torch.from_numpy(result).to(device)
 
 
 def code_version():
     paths = (Path(__file__), HERE / 'ms_rows.py', Path(head.__file__),
-             Path(itp_train.__file__), Path(itp_data.__file__))
+             Path(itp_train.__file__), Path(itp_data.__file__), Path(ags_trainimg.__file__))
     return hashlib.sha256(b''.join(p.read_bytes() for p in paths)).hexdigest()
 
 
 def make_config(s, row, name, aspect, aspects, manifests, seed, device, smoke, max_epochs):
-    graph_row = row['graphs'][aspect]
-    manifest = manifests[aspect]
-    config = head.make_config(s, manifest, aspect, graph_row, seed, smoke)
+    graph_row = row['graphs'][aspect] if row['graphs'] is not None else 'none'
+    input_key = head.ASPECTS[aspect] if row['inputs'] == 'instructed' else 'default'
+    if row['graphs'] is None:
+        manifest = dict(identity='none', archives={aspect: 'none'},
+                        counts={aspect: {part: {'none': 0} for part in ('fit', 'dev')}})
+    else:
+        manifest = manifests[aspect]
+    config = head.make_config(s, manifest, aspect, graph_row, seed, smoke, input_key=input_key)
     config.update(row=copy.deepcopy(row), name=name, graph_row=graph_row,
                   active_aspects=list(aspects), device=str(device), max_epochs=max_epochs,
                   code_version=code_version(),
-                  graph_archives={a: manifests[a]['archives'][a] for a in aspects})
+                  graph_archives={a: manifests[a]['archives'][a] for a in manifests})
+    if not row['graph_terms']:
+        config.update(batch_size=1024, fit_painting_count=13400, dev_painting_count=1489)
+    if row['form'] != 'a' or not row['graph_terms'] or row['distill'] != 'none':
+        terms = [f'form {row["form"]} buddy+own-caption'] if row['graph_terms'] else []
+        if row['distill'] != 'none':
+            terms.append(f'{row["distill_weight"]} * {row["distill"]} image distillation T=0.05')
+        if row['form'] == 'c':
+            terms.append('5e-4 * L1(relu(mask))')
+        config['loss'] = ' + '.join(terms)
     return config
 
 
@@ -124,6 +262,10 @@ def save_output(s, view, inputs, state, path, config, start):
     info = dict(config=config, best_epoch=state['best_epoch'], epochs_run=len(state['history']),
                 best_dev_loss=state['best'], history=state['history'],
                 seconds=time.monotonic() - start, output_sha256=head.sha_file(pending))
+    if config['row']['form'] == 'c':
+        mask = F.relu(view['img'].mask).detach().cpu().numpy()
+        assert mask.shape == (2048,) and np.isfinite(mask).all() and (mask >= 0).all()
+        info['mask'] = mask.tolist()
     head.atomic_json(path.with_suffix('.json'), info)
     pending.replace(path)
     head.verify_output(path, config)
@@ -140,7 +282,7 @@ def run(s, inputs, graphs, manifests, row, name, aspects, seed, device, outdir,
     assert 1 <= max_epochs <= CONFIG['max_epochs']
     configs = {a: make_config(s, row, name, a, aspects, manifests, seed, device, smoke, max_epochs)
                for a in aspects}
-    paths = {a: output_path(outdir, name, a, row['graphs'][a], seed) for a in aspects}
+    paths = {a: output_path(outdir, name, a, configs[a]['graph_row'], seed) for a in aspects}
     old = {a: head.verify_output(paths[a], configs[a]) for a in aspects}
     if all(old.values()):
         print(f'{name} s{seed} {aspects}: verified identical outputs; skip', flush=True)
@@ -151,20 +293,50 @@ def run(s, inputs, graphs, manifests, row, name, aspects, seed, device, outdir,
     rngs = {a: np.random.default_rng(seed if len(aspects) == 1 else [seed, ASPECTS.index(a)])
             for a in aspects}
     models, views = build_model(row, aspects, device)
-    opt = torch.optim.AdamW(models.parameters(), lr=CONFIG['lr'], weight_decay=CONFIG['weight_decay'])
+    if row['share'] == 'mask':
+        masks = list(models['masks'].parameters())
+        mask_ids = {id(p) for p in masks}
+        params = [p for p in models.parameters() if id(p) not in mask_ids]
+        opt = torch.optim.AdamW([dict(params=params), dict(params=masks, weight_decay=0.0)],
+                                lr=CONFIG['lr'], weight_decay=CONFIG['weight_decay'])
+    else:
+        opt = torch.optim.AdamW(models.parameters(), lr=CONFIG['lr'], weight_decay=CONFIG['weight_decay'])
     tensors, states = {}, {}
+    batch_size = CONFIG['batch_size'] if row['graph_terms'] else 1024
+    neg_rngs = {a: np.random.default_rng([seed, ASPECTS.index(a), 1]) for a in aspects}
+    if row['distill'] != 'none':
+        fit, dev = disjoint_split(s)  # Before reading any teacher row.
     for aspect in aspects:
         graph = graphs[aspect]
         tensors[aspect] = {
             part: {side: torch.from_numpy(np.ascontiguousarray(x[graph[f'{part}_node_ids']])).to(device)
                    for side, x in inputs[aspect].items()} for part in ('fit', 'dev')}
-        fit_pairs, fit_w = graph['rows'][row['graphs'][aspect]]['fit']
-        dev_pairs, dev_w = graph['rows'][row['graphs'][aspect]]['dev']
-        if smoke:
-            fit_pairs, fit_w = fit_pairs[:5000], fit_w[:5000]
+        if row['distill'] != 'none':
+            for part, ids in (('fit', fit), ('dev', dev)):
+                assert set(graph[f'{part}_node_ids']) == set(ids)
+            teacher = (inputs[aspect]['img'] if row['inputs'] == 'instructed' else
+                       ags_trainimg.aspect_images(s, head.ASPECTS[aspect]))
+            assert teacher.shape == (19889, 2048) and teacher.dtype == np.float32
+            assert np.isfinite(teacher).all()
+            for part in ('fit', 'dev'):
+                ids = graph[f'{part}_node_ids']
+                tensors[aspect][part]['teacher'] = torch.from_numpy(
+                    np.ascontiguousarray(teacher[ids])).to(device)
+            del teacher
+        if row['graph_terms']:
+            fit_pairs, fit_w = graph['rows'][row['graphs'][aspect]]['fit']
+            dev_pairs, dev_w = graph['rows'][row['graphs'][aspect]]['dev']
+            if smoke:
+                fit_pairs, fit_w = fit_pairs[:5000], fit_w[:5000]
+        else:
+            fit_pairs, dev_pairs = np.arange(len(fit)), np.arange(len(dev))
+            fit_w, dev_w = np.ones(len(fit), dtype=np.float32), np.ones(len(dev), dtype=np.float32)
         states[aspect] = dict(fit_pairs=fit_pairs, fit_w=fit_w, dev_pairs=dev_pairs, dev_w=dev_w,
                               history=[], best=float('inf'), best_epoch=0, stale=0, best_state=None,
                               epoch=1, pos=0, total=0., order=None, tick=None, active=True)
+        if row['form'] == 'b' and row['graph_terms']:
+            states[aspect]['candidates'] = {part: negative_candidates(graphs, row, aspect, part)
+                                           for part in ('fit', 'dev')}
     start, step = time.monotonic(), 0
     while any(st['active'] for st in states.values()):
         models.train()
@@ -174,13 +346,20 @@ def run(s, inputs, graphs, manifests, row, name, aspects, seed, device, outdir,
             if st['order'] is None:
                 st['tick'] = time.monotonic()
                 st['order'] = rngs[aspect].permutation(len(st['fit_pairs']))
+                if row['form'] == 'b' and row['graph_terms']:
+                    st['extras'] = draw_extras(st['candidates']['fit'], st['fit_pairs'],
+                                              neg_rngs[aspect], device)
         opt.zero_grad(set_to_none=True)
         losses, sizes = [], {}
         for aspect in active:
             st = states[aspect]
-            ix = st['order'][st['pos']:st['pos'] + CONFIG['batch_size']]
+            ix = st['order'][st['pos']:st['pos'] + batch_size]
+            extra_args = {}
+            if row['form'] == 'b' and row['graph_terms']:
+                extra_args['extras'] = st['extras'][torch.as_tensor(ix, device=device)]
             loss = head_loss(views[aspect], **tensors[aspect]['fit'],
-                             pairs=st['fit_pairs'][ix], weights=st['fit_w'][ix], row=row, aspect=aspect)
+                             pairs=st['fit_pairs'][ix], weights=st['fit_w'][ix], row=row, aspect=aspect,
+                             **extra_args)
             assert torch.isfinite(loss), 'nonfinite train loss'
             losses.append(loss)
             sizes[aspect] = len(ix)
@@ -201,12 +380,19 @@ def run(s, inputs, graphs, manifests, row, name, aspects, seed, device, outdir,
                 continue
             models.eval()
             total = 0.
+            if row['form'] == 'b' and row['graph_terms']:
+                dev_extras = draw_extras(st['candidates']['dev'], st['dev_pairs'],
+                                        np.random.default_rng([10000, ASPECTS.index(aspect)]), device)
             with torch.no_grad():
-                for a in range(0, len(st['dev_pairs']), CONFIG['batch_size']):
-                    ps = st['dev_pairs'][a:a + CONFIG['batch_size']]
-                    ws = st['dev_w'][a:a + CONFIG['batch_size']]
+                for a in range(0, len(st['dev_pairs']), batch_size):
+                    ps = st['dev_pairs'][a:a + batch_size]
+                    ws = st['dev_w'][a:a + batch_size]
+                    extra_args = {}
+                    if row['form'] == 'b' and row['graph_terms']:
+                        extra_args['extras'] = dev_extras[a:a + batch_size]
                     total += float(head_loss(views[aspect], **tensors[aspect]['dev'],
-                                             pairs=ps, weights=ws, row=row, aspect=aspect)) * len(ps)
+                                             pairs=ps, weights=ws, row=row, aspect=aspect,
+                                             **extra_args)) * len(ps)
             dev_loss = total / len(st['dev_pairs'])
             assert np.isfinite(dev_loss)
             st['history'].append(dict(epoch=st['epoch'], step=step,
@@ -283,15 +469,23 @@ def main():
     device = torch.device(args.device)
     s = head.load_frozen()
     assert s['subset_pid'].shape == (5000,) and len(np.unique(s['subset_pid'])) == 5000
+    fit, dev = disjoint_split(s)
     inputs = head.load_inputs(s, aspects[0], 'default')
     for name, row in rows.items():
         graphs, manifests = {}, {}
-        for aspect in aspects:
-            graphs[aspect], manifests[aspect] = head.load_graph(s, GRAPH_BASE, aspect, [row['graphs'][aspect]])
+        graph_aspects = list(ASPECTS) if row['form'] == 'b' else aspects
+        for aspect in graph_aspects:
+            if row['graphs'] is None:
+                graphs[aspect] = dict(fit_node_ids=fit, dev_node_ids=dev)
+            else:
+                graphs[aspect], manifests[aspect] = head.load_graph(
+                    s, GRAPH_BASE, aspect, [row['graphs'][aspect]])
+        row_inputs = ({a: head.load_inputs(s, a, 'prompted') for a in aspects}
+                      if row['inputs'] == 'instructed' else {a: inputs for a in aspects})
         cohorts = [[a] for a in aspects] if row['share'] == 'separate' else [aspects]
         for seed in args.seeds:
             for cohort in cohorts:
-                run(s, {a: inputs for a in cohort}, graphs, manifests, row, name, cohort,
+                run(s, {a: row_inputs[a] for a in cohort}, graphs, manifests, row, name, cohort,
                     seed, device, outdir, args.smoke, max_epochs)
 
 
