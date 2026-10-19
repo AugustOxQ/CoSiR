@@ -609,3 +609,12 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-8-handoff.md
 - New chat: tab 'r10 build 8', session f9fe8466-e514-4f7d-8c29-8372fd321d58
 
+[brief] CoSiR: r10 build 8 -> r10 build 9 (2026-10-19 20:59 Amsterdam)
+- Done: all four tickets merged into `r10-model-sheet`; CUDA smoke of every row type passes; stage 0 pre-check PASS.
+- State: final review (Opus `xhigh`): 3 must-fix items (§6 line counted I1; stage 0 not tied to code version; form c
+  stopped on the mask penalty); scorer, bars, form b, distillation re-derived exactly.
+- Next: launch the prepared Codex fix brief, diff read and smoke, scoped re-review, merge to main, stage 0 from main.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-9-handoff.md
+- New chat: tab 'r10 build 9', session 2d390635-8ef7-4b82-8a82-b40207b721e7
+
