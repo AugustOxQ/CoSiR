@@ -32,8 +32,8 @@ September re-fit (01:32 run, before A1; nothing writes it now).
 From the repository root:
 
 ```bash
-# tests (about 160 s)
-OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1 /root/miniconda3/envs/CoSiR/bin/python -m pytest -q src/test/20261018_percept_core
+# tests (about 160 s; in the main checkout, ignore the gitignored sept_stage0/, whose September tests do not import)
+OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1 /root/miniconda3/envs/CoSiR/bin/python -m pytest -q src/test/20261018_percept_core --ignore=src/test/20261018_percept_core/sept_stage0
 # the run: see pc_queue.md (GPU queue with --foreground in a background shell, CPU queue beside it)
 ```
 
