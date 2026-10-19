@@ -20,8 +20,8 @@ user): per aspect, PercepT core with K = 40 (image-side AMI 0.077 / 0.229 / 0.43
 image encoder clustered directly (0.070 / 0.300 / 0.449). Our best default-input network (0.081 / 0.348 / 0.458) is
 clearly ahead of both only on style; emotion is level with PercepT core, genre with Qwen images (development data).
 The instructed Qwen image clustered directly (0.093 / 0.395 / 0.496) beats our network on all three; reaching it
-with one pass on the default image is stage 2's target (user). Next: the stage 2 spec (r10 decide 11, after a
-container restart), then its build. "Something works" by 2026-10-29: held-out AMI at least +0.01 above PercepT core
+with one pass on the default image is stage 2's target (user). Next: the stage 2 build (r10 build 7) from the
+[approved spec](specs/2026-10-19-stage2-model-sheet-design.md) (2026-10-19 19:58), then its run. "Something works" by 2026-10-29: held-out AMI at least +0.01 above PercepT core
 and clearly above the other baselines; by 2026-11-10: the instructed Qwen bar and aspect-named retrieval above
 prompted Qwen.
 
@@ -71,7 +71,8 @@ prompted Qwen.
 - **Links:** [run report](../reports/auto/percept/2026-12-15_percept_core_k40.md) ·
   [user-read with the two-bar table](../user_read/2026-10-19_percept_core_k40.md) ·
   [spec (A3)](specs/2026-10-18-percept-core-design.md) ·
-  [handoff](handoffs/2026-10-19-r10-decide-10-handoff.md)
+  [handoff](handoffs/2026-10-19-r10-decide-10-handoff.md) ·
+  [stage 2 spec](specs/2026-10-19-stage2-model-sheet-design.md) (approved by the user 2026-10-19 19:58, no changes)
 
 ## 2026-10-19 · PercepT core arms read: the topic count follows the seed; K fixed at 40 (A3), the five arms rerun
 

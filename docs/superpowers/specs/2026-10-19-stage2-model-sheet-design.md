@@ -1,6 +1,6 @@
 # Stage 2 model sheet: one trunk, three heads, toward the instructed image in one pass: design
 
-> Date: 2026-10-19 20:10 · Status: draft · Kind: experiment
+> Date: 2026-10-19 19:17 · Status: approved 2026-10-19 19:58 · Kind: experiment
 > Builds on: [aspect graph spec](2026-10-18-aspect-graph-sweep-design.md) (base; its stage 2 moves here), the grill in
 > the [direction log entry of 2026-10-19](../direction_log.md), the
 > [ceiling check](../../../src/test/20261019_emotion_ceiling/20261019_emotion_ceiling_log.md) · Constitution:
@@ -137,7 +137,7 @@ a stays on a tie).
 
 | ID | Question | Decision | Why (alternative rejected) | Decided by | When |
 |----|----------|----------|----------------------------|------------|------|
-| D1 | Spec form | new spec, base = aspect graph spec | target and inputs changed (an amendment would rewrite most of it) | agent default | 2026-10-19 20:10 |
+| D1 | Spec form | new spec, base = aspect graph spec | target and inputs changed (an amendment would rewrite most of it) | agent default | 2026-10-19 19:17 |
 | D2 | Next step and type | stage 2, exploration, medium loop | after the ceiling check (decision A) | user, after seeing the recommendation | 2026-10-19 |
 | D3 | Target | instructed Qwen image clustered directly, one pass on the default image; one or two loops | the reviewer's first attack is "just prompt Qwen" | user | 2026-10-19 |
 | D4 | Gate timing | 10-29: emotion at least +0.01 over PercepT core, clearly above the other bars; the instructed bar judged with retrieval on 11-10 | gate kept apart from the harder target | user, after seeing the recommendation | 2026-10-19 |
@@ -146,15 +146,15 @@ a stays on a tie).
 | D7 | Extra measures | V, ARI, FMI beside AMI; H and C dropped; SI, CHI, DBI left out | "without DEC I don't think we gain a lot on these" | user, after seeing the recommendation | 2026-10-19 |
 | D8 | Which measure decides | AMI | one measure for every pick | agent default, shown to the user | 2026-10-19 |
 | D9 | Minor m1 to m6 | four bars incl. the probe; V, ARI, FMI; distillation and image-side picks as new rows; no CLIP inputs; one seed, three for the top rows; build after the restart | grill | user, after seeing the recommendation | 2026-10-19 |
-| D10 | Trunk form | first layer shared, second per aspect | matched to stage 1's head, so A1 differs only in sharing | agent default | 2026-10-19 20:10 |
-| D11 | Seeds | §3.4 | tie rule needs T1 on three seeds; caps runs near 30 | agent default | 2026-10-19 20:10 |
-| D12 | Batching and stopping | one batch per aspect per step; each head keeps its own best dev epoch; stop when every head passes patience 15 | heads peak at different epochs (stage 1: 1 to 4) | agent default | 2026-10-19 20:10 |
-| D13 | Graph rows | top two by image-side AMI from the follow-up sheet (3 seeds), plus stage 1's picks | D6 | agent default | 2026-10-19 20:10 |
-| D14 | Form b | other aspects' buddies as extra negatives | the base spec named the form, not the negatives | agent default | 2026-10-19 20:10 |
-| D15 | Form c | learned masks, L1 penalty at the paper's weight | fixed disjoint masks would fix the split in advance | agent default | 2026-10-19 20:10 |
-| D16 | Distillation | direct InfoNCE (weights 0.5, 1, 2) and relational (1); through the trunk; image side only; one row alone | a separate branch would be three models (cosine regression rejected: the batch loss is the head's own form) | agent default | 2026-10-19 20:10 |
-| D17 | Distillation on form b or c | rerun the best D row if b or c wins (§3.2) | keeps form a as default unless beaten | agent default | 2026-10-19 20:10 |
-| D18 | Device | sheet on the GPU under the lock; stage 0 on CPU | stage 1 ran on CPU; A1 is retrained on the GPU so rows share a device | agent default | 2026-10-19 20:10 |
+| D10 | Trunk form | first layer shared, second per aspect | matched to stage 1's head, so A1 differs only in sharing | agent default | 2026-10-19 19:17 |
+| D11 | Seeds | §3.4 | tie rule needs T1 on three seeds; caps runs near 30 | agent default | 2026-10-19 19:17 |
+| D12 | Batching and stopping | one batch per aspect per step; each head keeps its own best dev epoch; stop when every head passes patience 15 | heads peak at different epochs (stage 1: 1 to 4) | agent default | 2026-10-19 19:17 |
+| D13 | Graph rows | top two by image-side AMI from the follow-up sheet (3 seeds), plus stage 1's picks | D6 | agent default | 2026-10-19 19:17 |
+| D14 | Form b | other aspects' buddies as extra negatives | the base spec named the form, not the negatives | agent default | 2026-10-19 19:17 |
+| D15 | Form c | learned masks, L1 penalty at the paper's weight | fixed disjoint masks would fix the split in advance | agent default | 2026-10-19 19:17 |
+| D16 | Distillation | direct InfoNCE (weights 0.5, 1, 2) and relational (1); through the trunk; image side only; one row alone | a separate branch would be three models (cosine regression rejected: the batch loss is the head's own form) | agent default | 2026-10-19 19:17 |
+| D17 | Distillation on form b or c | rerun the best D row if b or c wins (§3.2) | keeps form a as default unless beaten | agent default | 2026-10-19 19:17 |
+| D18 | Device | sheet on the GPU under the lock; stage 0 on CPU | stage 1 ran on CPU; A1 is retrained on the GPU so rows share a device | agent default | 2026-10-19 19:17 |
 
 **Amendments:** none.
 
@@ -197,7 +197,7 @@ optimistic; the claim test on held data protects.
 
 ## 9. Deliverables and review
 
-- At the end: a round folder `src/test/2026102X_model_sheet/` (new module prefix); an auto report in
+- At the end: a round folder `src/test/20261019_model_sheet/` (module prefix `ms_`); an auto report in
   `docs/reports/auto/percept/` and a user-read report; V, ARI and FMI filled into the K = 40 two-bar table.
 - Reviews: the controller's diff read and one smoke run per ticket (no verdict code); the final whole-branch review.
 - Stop points: none between approval and the reports, except a failed stage 0.
