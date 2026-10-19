@@ -1,0 +1,251 @@
+{
+  "names_sha256": "a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876",
+  "rows": 12281,
+  "aspects": {
+    "emotion": {
+      "classes": [
+        {
+          "code": 0,
+          "label": "amusement",
+          "count": 1818
+        },
+        {
+          "code": 1,
+          "label": "anger",
+          "count": 153
+        },
+        {
+          "code": 2,
+          "label": "awe",
+          "count": 2448
+        },
+        {
+          "code": 3,
+          "label": "contentment",
+          "count": 4244
+        },
+        {
+          "code": 4,
+          "label": "disgust",
+          "count": 356
+        },
+        {
+          "code": 5,
+          "label": "excitement",
+          "count": 543
+        },
+        {
+          "code": 6,
+          "label": "fear",
+          "count": 967
+        },
+        {
+          "code": 7,
+          "label": "sadness",
+          "count": 1021
+        },
+        {
+          "code": 8,
+          "label": "something else",
+          "count": 731
+        }
+      ],
+      "masked": 0
+    },
+    "style": {
+      "classes": [
+        {
+          "code": 0,
+          "label": "Abstract_Expressionism",
+          "count": 392
+        },
+        {
+          "code": 1,
+          "label": "Action_painting",
+          "count": 17
+        },
+        {
+          "code": 2,
+          "label": "Analytical_Cubism",
+          "count": 15
+        },
+        {
+          "code": 3,
+          "label": "Art_Nouveau_Modern",
+          "count": 623
+        },
+        {
+          "code": 4,
+          "label": "Baroque",
+          "count": 647
+        },
+        {
+          "code": 5,
+          "label": "Color_Field_Painting",
+          "count": 245
+        },
+        {
+          "code": 6,
+          "label": "Contemporary_Realism",
+          "count": 71
+        },
+        {
+          "code": 7,
+          "label": "Cubism",
+          "count": 331
+        },
+        {
+          "code": 8,
+          "label": "Early_Renaissance",
+          "count": 221
+        },
+        {
+          "code": 9,
+          "label": "Expressionism",
+          "count": 1003
+        },
+        {
+          "code": 10,
+          "label": "Fauvism",
+          "count": 114
+        },
+        {
+          "code": 11,
+          "label": "High_Renaissance",
+          "count": 218
+        },
+        {
+          "code": 12,
+          "label": "Impressionism",
+          "count": 1949
+        },
+        {
+          "code": 13,
+          "label": "Mannerism_Late_Renaissance",
+          "count": 202
+        },
+        {
+          "code": 14,
+          "label": "Minimalism",
+          "count": 188
+        },
+        {
+          "code": 15,
+          "label": "Naive_Art_Primitivism",
+          "count": 397
+        },
+        {
+          "code": 16,
+          "label": "New_Realism",
+          "count": 44
+        },
+        {
+          "code": 17,
+          "label": "Northern_Renaissance",
+          "count": 394
+        },
+        {
+          "code": 18,
+          "label": "Pointillism",
+          "count": 112
+        },
+        {
+          "code": 19,
+          "label": "Pop_Art",
+          "count": 239
+        },
+        {
+          "code": 20,
+          "label": "Post_Impressionism",
+          "count": 1012
+        },
+        {
+          "code": 21,
+          "label": "Realism",
+          "count": 1664
+        },
+        {
+          "code": 22,
+          "label": "Rococo",
+          "count": 313
+        },
+        {
+          "code": 23,
+          "label": "Romanticism",
+          "count": 1074
+        },
+        {
+          "code": 24,
+          "label": "Symbolism",
+          "count": 599
+        },
+        {
+          "code": 25,
+          "label": "Synthetic_Cubism",
+          "count": 22
+        },
+        {
+          "code": 26,
+          "label": "Ukiyo_e",
+          "count": 175
+        }
+      ],
+      "masked": 0
+    },
+    "genre": {
+      "classes": [
+        {
+          "code": 0,
+          "label": "abstract_painting",
+          "count": 738
+        },
+        {
+          "code": 1,
+          "label": "cityscape",
+          "count": 710
+        },
+        {
+          "code": 2,
+          "label": "genre_painting",
+          "count": 1666
+        },
+        {
+          "code": 3,
+          "label": "illustration",
+          "count": 296
+        },
+        {
+          "code": 4,
+          "label": "landscape",
+          "count": 2007
+        },
+        {
+          "code": 5,
+          "label": "nude_painting",
+          "count": 303
+        },
+        {
+          "code": 6,
+          "label": "portrait",
+          "count": 2230
+        },
+        {
+          "code": 7,
+          "label": "religious_painting",
+          "count": 985
+        },
+        {
+          "code": 8,
+          "label": "sketch_and_study",
+          "count": 613
+        },
+        {
+          "code": 9,
+          "label": "still_life",
+          "count": 401
+        }
+      ],
+      "masked": 2332
+    }
+  }
+}
