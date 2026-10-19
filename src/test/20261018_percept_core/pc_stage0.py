@@ -14,6 +14,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_mutual_info_score
 
+from pc_fixes import unit_tests_pass
 from pc_stage1 import one_thread
 
 HERE = Path(__file__).resolve().parent
@@ -202,6 +203,8 @@ def run(outdir, smoke=False):
         str(HERE / 'test_pc_fixes.py')], folder, REPO, local_env)
     lines = (folder / 'fix_tests.log').read_text().splitlines()
     summary = [line for line in lines if re.search(r'\b(?:passed|failed|error)\b', line)]
+    if not summary or not unit_tests_pass(summary[-1]):
+        checks['fix_tests']['status'] = 'FAIL'
     passed = all(check['status'] == 'PASS' for check in checks.values())
     result = dict(status=('SMOKE' if smoke else 'PASS') if passed else 'FAIL',
                   checks=checks, fix_tests=summary[-1] if summary else 'no pytest result line',

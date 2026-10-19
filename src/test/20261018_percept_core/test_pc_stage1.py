@@ -366,6 +366,18 @@ def test_one_thread_nested_limit_restores_all_pools_even_on_error():
         assert all(pool['num_threads'] == 8 for pool in threadpool_info())
 
 
+def test_one_thread_rejects_ineffective_limit(monkeypatch):
+    from contextlib import nullcontext
+    from threadpoolctl import threadpool_limits
+    import pc_stage1
+
+    monkeypatch.setattr(pc_stage1, 'threadpool_limits', lambda **kwargs: nullcontext())
+    with threadpool_limits(limits=8):
+        with pytest.raises(AssertionError):
+            with pc_stage1.one_thread():
+                pass
+
+
 def test_a2_three_kmeans_starts_have_one_center_hash():
     from threadpoolctl import threadpool_limits
     import pc_stage0
