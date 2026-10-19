@@ -69,6 +69,53 @@ def test_source_copy_change_extra_or_missing_name_fails(damage, name):
     assert result['differences'] == [name]
 
 
+@pytest.mark.parametrize('old, new, difference', [
+    ('def build_autoencoder(', '@torch.no_grad()\ndef build_autoencoder(', 'build_autoencoder'),
+    ('class AttentionPoolingMapper(',
+     '@torch.no_grad()\nclass AttentionPoolingMapper(', 'AttentionPoolingMapper'),
+    ('def build_autoencoder(',
+     '@(\n    torch.no_grad()\n)\n@torch.no_grad()\ndef build_autoencoder(', 'build_autoencoder'),
+    ('', '\nLAMBDA_BALANCE += 1\n', 'top-level AugAssign'),
+    ('', '\nif True:\n    LAMBDA_BALANCE = 0\n', 'top-level If'),
+    ('', '\n"extra string outside the module docstring"\n', 'top-level Expr'),
+    ('from sklearn.cluster import KMeans',
+     'from sklearn.cluster import MiniBatchKMeans as KMeans', 'imports'),
+    ('import numpy as np\nimport torch', 'import torch\nimport numpy as np', 'imports'),
+    ('base = sys.modules[__name__]', 'base = __import__("math")', 'base'),
+    ('base = sys.modules[__name__]', '', 'base'),
+    ('', '\nLAMBDA_BALANCE = 1000\n', 'duplicate name LAMBDA_BALANCE'),
+    ('', '\nbase.LAMBDA_BALANCE = 0\n', 'non-name assignment target'),
+    ('', '\nbase.LAMBDA_BALANCE: int = 0\n', 'non-name assignment target'),
+    ('', '\nleft, right = 1, 2\n', 'non-name assignment target'),
+])
+def test_source_behaviour_edits_return_fail_entries(old, new, difference):
+    source = (pc_stage0.HERE / 'pc_sept.py').read_text()
+    changed = source.replace(old, new) if old else source + new
+    result = pc_stage0.check_source_copies(changed)
+    assert result['status'] == 'FAIL' and result['actual'] >= 1
+    assert any(difference in entry for entry in result['differences'])
+
+
+@pytest.mark.parametrize('name, marker, filename', [
+    ('build_autoencoder', 'def build_autoencoder(', 'run_percept_stage1_pilot.py'),
+    ('AttentionPoolingMapper', 'class AttentionPoolingMapper(', 'run_percept_stage2_sweep_pilot.py'),
+])
+def test_source_comparison_includes_september_decorators(monkeypatch, name, marker, filename):
+    source = (pc_stage0.HERE / 'pc_sept.py').read_text()
+    decorated = '@(\n    torch.no_grad()\n)\n' + marker
+    git = pc_stage0.git
+
+    def decorated_git(*args):
+        text = git(*args)
+        return text.replace(marker, decorated) if args[-1].endswith(filename) else text
+
+    monkeypatch.setattr(pc_stage0, 'git', decorated_git)
+    result = pc_stage0.check_source_copies(source)
+    assert result['status'] == 'FAIL' and result['differences'] == [name]
+    result = pc_stage0.check_source_copies(source.replace(marker, decorated))
+    assert result == dict(status='PASS', expected=0, actual=0, differences=[])
+
+
 @pytest.mark.parametrize('alias', pc_stage0.ALIASES)
 def test_sweep_aliases_must_match_verbatim(monkeypatch, alias):
     git = pc_stage0.git
@@ -93,6 +140,21 @@ def test_snapshot_rescores_real_values_and_counts():
     assert result['actual']['genre'] == pytest.approx(.22741920423971046, abs=1e-6)
     assert result['actual']['heldout_paintings'] == 9365
     assert result['actual']['genre_rows'] == 159
+
+
+@pytest.mark.parametrize('field, shift', [
+    ('emotion', 2e-6), ('genre', 2e-6), ('heldout_paintings', 1), ('genre_rows', 1),
+])
+@pytest.mark.parametrize('direction', [-1, 1])
+def test_snapshot_rejects_small_metric_or_single_row_count_drift(monkeypatch, field, shift,
+                                                              direction):
+    expected = dict(pc_stage0.SNAPSHOT_EXPECTED)
+    expected[field] += direction * shift
+    monkeypatch.setattr(pc_stage0, 'SNAPSHOT_EXPECTED', expected)
+    with np.load(pc_stage0.SNAPSHOT, allow_pickle=True) as snapshot:
+        result = pc_stage0.check_snapshot(snapshot)
+    assert result['status'] == 'FAIL'
+    assert result['expected'][field] - result['actual'][field] == pytest.approx(direction * shift)
 
 
 def test_snapshot_genre_ami_masks_unlabelled_paintings():
@@ -135,12 +197,19 @@ def test_kmeans_gate_requires_every_label_to_match(monkeypatch, changed):
 
 @pytest.mark.parametrize('smoke, failure', [
     (False, ''), (True, ''), (True, 'kmeans'), (False, 'row2'), (False, 'fix_tests'),
+    (False, 'source_duplicate'), (False, 'source_target'),
 ])
 def test_run_schema_commands_and_exit_status(tmp_path, monkeypatch, smoke, failure):
     calls = []
     kmeans = dict(status='FAIL' if failure == 'kmeans' else 'PASS', expected=0,
                   actual=int(failure == 'kmeans'), seconds=.25)
     monkeypatch.setattr(pc_stage0, 'check_kmeans', lambda snapshot: kmeans)
+    if failure.startswith('source_'):
+        check_source = pc_stage0.check_source_copies
+        addition = ('\nLAMBDA_BALANCE = 1000\n' if failure == 'source_duplicate' else
+                    '\nbase.LAMBDA_BALANCE = 0\n')
+        monkeypatch.setattr(pc_stage0, 'check_source_copies',
+                            lambda source: check_source(source + addition))
 
     def fake_command(name, command, folder, cwd, env):
         calls.append(name)
@@ -182,6 +251,10 @@ def test_run_schema_commands_and_exit_status(tmp_path, monkeypatch, smoke, failu
         commit: len(pc_stage0.python_blobs(commit)) for commit in pc_stage0.RECORD_COMMITS}
     assert result['kmeans_seconds'] == .25
     assert result['kmeans_differing_labels'] == int(failure == 'kmeans')
+    if failure.startswith('source_'):
+        assert result['checks']['source_copies']['status'] == 'FAIL'
+        assert result['checks']['source_copies']['actual'] == 1
+        assert 'reason' not in result
     assert set(result['checks']) == {
         'september_blobs_3b3ce61', 'september_blobs_4e4480b', 'source_copies', 'snapshot',
         'kmeans_labels', 'row2_command', 'row2_emotion', 'row2_style', 'row2_genre', 'fix_tests'}

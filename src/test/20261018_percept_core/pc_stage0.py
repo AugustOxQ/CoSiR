@@ -35,6 +35,9 @@ SOURCE_MAP = {
                      'auc_summary'), 'run_percept_stage2_sweep_pilot.py'),
 }
 ALIASES = ('MAX_DEC_EPOCHS', 'STABILITY_THRESHOLD', 'DEC_LEARNING_RATE')
+COPY_IMPORTS = ('import sys', 'import numpy as np', 'import torch',
+                'from sklearn.cluster import KMeans', 'from sklearn.metrics import roc_auc_score',
+                'from torch import nn', 'from torch.nn import functional as F')
 SNAPSHOT_EXPECTED = dict(emotion=.12246902855745419, genre=.22741920423971046,
                          heldout_paintings=9365, genre_rows=159)
 
@@ -66,30 +69,55 @@ def compare_blobs(record, reference):
                 actual=len(differences), files_compared=len(record), differences=differences)
 
 
-def source_segments(source):
-    """Top-level functions, classes and assignments, including their exact text."""
-    segments = {}
-    for node in ast.parse(source).body:
+def source_segments(source, strict=False):
+    """Extract exact named segments; validate the copied module's structure."""
+    segments, imports, differences = {}, [], []
+    lines = source.splitlines(keepends=True)
+    for index, node in enumerate(ast.parse(source).body):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             names = [node.name]
         elif isinstance(node, (ast.Assign, ast.AnnAssign)):
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            assert all(isinstance(target, ast.Name) for target in targets)
+            invalid = [type(target).__name__ for target in targets
+                       if not isinstance(target, ast.Name)]
+            if invalid:
+                differences.append(f'non-name assignment target at line {node.lineno}: {invalid}')
+                continue
             names = [target.id for target in targets]
-        else:
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            imports.append(ast.get_source_segment(source, node))
             continue
+        elif (index == 0 and isinstance(node, ast.Expr) and
+              isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)):
+            continue
+        else:
+            if strict:
+                differences.append(f'top-level {type(node).__name__} at line {node.lineno}')
+            continue
+        segment = ast.get_source_segment(source, node)
+        if getattr(node, 'decorator_list', []):
+            first = next(line for line in range(node.decorator_list[0].lineno - 1, -1, -1)
+                         if lines[line].startswith('@'))
+            segment = ''.join(lines[first:node.lineno - 1]) + segment
         for name in names:
-            assert name not in segments, name
-            segments[name] = ast.get_source_segment(source, node)
-    return segments
+            if name in segments:
+                differences.append(f'duplicate name {name} at line {node.lineno}')
+            else:
+                segments[name] = segment
+    if strict and tuple(imports) != COPY_IMPORTS:
+        differences.append('imports')
+    return segments, differences
 
 
 def check_source_copies(source):
-    copied = source_segments(source)
-    copied.pop('base', None)
-    originals = {path: source_segments(git('show', f'{COMMIT}:{PILOT}{path}'))
-                 for path in set(SOURCE_MAP.values())}
-    differences = sorted(set(copied) ^ set(SOURCE_MAP))
+    copied, differences = source_segments(source, strict=True)
+    if copied.pop('base', None) != 'base = sys.modules[__name__]':
+        differences.append('base')
+    originals = {}
+    for path in sorted(set(SOURCE_MAP.values())):
+        originals[path], errors = source_segments(git('show', f'{COMMIT}:{PILOT}{path}'))
+        differences.extend(f'{path}: {error}' for error in errors)
+    differences.extend(sorted(set(copied) ^ set(SOURCE_MAP)))
     for name in sorted(set(copied) & set(SOURCE_MAP)):
         if copied[name] != originals[SOURCE_MAP[name]].get(name):
             differences.append(name)
