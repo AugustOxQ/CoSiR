@@ -19,9 +19,11 @@ seeds): residual graphs for emotion 0.137 and style 0.260, the image graph for g
 user): per aspect, PercepT core with K = 40 (image-side AMI 0.077 / 0.229 / 0.436, all five arms established) and the
 image encoder clustered directly (0.070 / 0.300 / 0.449). Our best default-input network (0.081 / 0.348 / 0.458) is
 clearly ahead of both only on style; emotion is level with PercepT core, genre with Qwen images (development data).
-Next: the stage 2 decision (the model sheet of the aspect graph spec; scoring adds V, ARI and FMI beside AMI).
-"Something works" by 2026-10-29: per-aspect held-out AMI above PercepT core; by 2026-11-10: aspect-named retrieval
-above prompted Qwen.
+The instructed Qwen image clustered directly (0.093 / 0.395 / 0.496) beats our network on all three; reaching it
+with one pass on the default image is stage 2's target (user). Next: the stage 2 spec (r10 decide 11, after a
+container restart), then its build. "Something works" by 2026-10-29: held-out AMI at least +0.01 above PercepT core
+and clearly above the other baselines; by 2026-11-10: the instructed Qwen bar and aspect-named retrieval above
+prompted Qwen.
 
 ## Parked ideas
 
@@ -49,10 +51,23 @@ above prompted Qwen.
   directly (bar 2) (user). Extra metrics: V, ARI and FMI beside AMI, in stage 2's shared scoring code, then filled
   into the two-bar table once; H and C dropped; SI, CHI and DBI set aside for now, "without DEC I don't think we gain
   a lot on these" (user, after seeing the recommendation: ours was ARI, H, C and V, without FMI). Decisions stay on
-  AMI (agent default, shown to the user). Stage 2: open, decided next in this chat.
-- **Idea (B):** unchanged (B2).
-- **Why:** a plain encoder matches or beats PercepT core per aspect, so bar 1 alone is weak. Stage 2 must lift
-  image-side emotion and genre.
+  AMI (agent default, shown to the user). Then an image-side ceiling check before stage 2 (option b; user, after
+  seeing the recommendation): a linear probe with labels reaches 0.121 / 0.527 / 0.657 on default Qwen images
+  (instructed: 0.130 / 0.569 / 0.658); our network closes 21%, 41% and 4% of the gap from raw images
+  ([log](../../src/test/20261019_emotion_ceiling/20261019_emotion_ceiling_log.md)). Next: stage 2, the model sheet of
+  the aspect graph spec; type exploration, medium loop (user, after seeing the recommendation).
+- **Idea (B):** B2 unchanged. Grill of stage 2 (four key questions, answered before ours unless noted):
+  - Emotion at 2026-10-29: at least +0.01 over PercepT core, and clearly above the other baselines (user).
+  - Inputs: default input carries the claim; the instructed input is read as a second result (user).
+  - Rows are picked on image-side AMI now; retrieval's pick waits until stage 3 (user).
+  - Target of stage 2: reach the instructed Qwen image clustered directly (0.093 / 0.395 / 0.496) with one pass on
+    the default image; may take one or two loops (user). The 10-29 gate stays as above and the instructed bar is
+    judged with retrieval on 2026-11-10 (user, after seeing the recommendation).
+  - Minor m1 to m6 accepted as recommended (four bars per table incl. the probe ceiling as reference; V, ARI, FMI
+    reported; instructed-view distillation and image-side picks as new rows; CLIP input rows dropped; one seed, three
+    for the top rows; build after the restart) (user, after seeing the recommendation). No plan page (user).
+- **Why:** a plain encoder matches or beats PercepT core per aspect, so bar 1 alone is weak. The reviewer's first
+  attack is "just prompt Qwen": today the instructed image beats our network on all three aspects.
 - **Links:** [run report](../reports/auto/percept/2026-12-15_percept_core_k40.md) ·
   [user-read with the two-bar table](../user_read/2026-10-19_percept_core_k40.md) ·
   [spec (A3)](specs/2026-10-18-percept-core-design.md) ·
