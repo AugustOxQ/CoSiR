@@ -20,7 +20,7 @@ best row for the claim, D2 (trunk + direct distillation 0.5), reaches image-side
 0.496: above the instructed target on emotion only. Next, two tracks (user): the claim test with D2, grilled on
 2026-10-20 (two claim tests: the developed sample for the 10-29 gate, then the full ArtELingo train side; the bar is
 the strongest uncollapsed PercepT, core or one of two paper settings versions; Leiden reported beside), its spec
-next; and decision B for cluster-level losses (contrast per head, teacher clusters as anchors, DEC started from a
+and decision rule committed 2026-10-20, stage 1 building and running overnight; and decision B for cluster-level losses (contrast per head, teacher clusters as anchors, DEC started from a
 good partition). Gates: 2026-10-29 held-out emotion AMI at least +0.01 above PercepT, with a paired interval above 0;
 2026-11-10 the instructed Qwen bar and aspect-named retrieval.
 
@@ -90,6 +90,10 @@ good partition). Gates: 2026-10-29 held-out emotion AMI at least +0.01 above Per
   the sheet's label rule, a stage 0 regression, held instructed images, arm per aspect fixed from development data,
   diagnostics, validation split for stage 2's early stopping, names, local GPU) accepted (user, after seeing the
   recommendation). The spec and its decision rule follow in r10 decide 14.
+- **Spec and rule (r10 decide 14, 2026-10-20 02:00):** [claim test spec](specs/2026-10-20-claim-test-design.md)
+  and [decision rule](../../src/test/20261020_claim_test/DECISION_RULE.md), reviewed by a fresh Opus `xhigh` reviewer.
+  Approval: the user's instruction to go on overnight (01:27, "automate and hand me the results in the morning"); the
+  user checks the brief in the morning (spec D29). Night mode on; node408 offered for PercepT training (spec D23).
 - **Why:** emotion clears the line on development data (+0.019 over PercepT core), and the 10-29 gate needs held
   data. The user challenges the clustering step; Leiden and cluster-level losses test it.
 - **Links:** [auto report](../reports/auto/percept/2026-12-16_model_sheet.md) ·
