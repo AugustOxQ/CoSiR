@@ -62,7 +62,7 @@ def results():
 def test_arm_tables_and_image_changes_preserve_existing_output(results, capsys):
     ablation.main(*results)
     output = capsys.readouterr().out
-    both, sides, image, changes, image_changes = output.strip().split('\n\n')
+    both, sides, footnote, image_heading, image, changes, changes_heading, image_changes = output.strip().split('\n\n')
     arm_rows = {'4a', '4b', '5a', '5b', '5c'}
 
     def arm_lines(table):
@@ -86,23 +86,23 @@ def test_arm_tables_and_image_changes_preserve_existing_output(results, capsys):
         '| 5b | — | — | — | — | — | — |',
         '| 5c | 0.302* | — | 0.399* | — | 0.501* | — |',
     ]
-    assert sides.endswith('\n* not established (reasons in pc_tables.md)')
-    assert output.count('* not established (reasons in pc_tables.md)') == 1
-    assert image == '''Image side, PercepT arms
-| # | Emotion | Style | Genre |
+    assert footnote == '\\* not established (reasons in pc_tables.md)'
+    assert output.count('\\* not established (reasons in pc_tables.md)') == 1
+    assert image_heading == '### Image side, PercepT arms'
+    assert image == '''| # | Emotion | Style | Genre |
 |---|---:|---:|---:|
 | 4a | 0.100 ± 0.001 | 0.200 ± 0.003 | 0.300 ± 0.003 |
 | 4b | 0.102 ± 0.001 | 0.199 ± 0.003 | 0.301 ± 0.003 |
 | 5a | 0.300 ± 0.001 | 0.400 ± 0.003 | 0.500 ± 0.003 |
 | 5b | — | — | — |
 | 5c | 0.302 ± 0.001* | 0.399 ± 0.003* | 0.501 ± 0.003* |'''
-    assert image_changes == '''Image-side changes
-| Change | Rows | Emotion | Style | Genre |
+    assert changes_heading == '### Image-side changes'
+    assert image_changes == '''| Change | Rows | Emotion | Style | Genre |
 |---|---|---:|---:|---:|
 | Stage 2 reader, CLIP | 4b vs 4a | +0.001 | -0.002 | +0.000 |
 | Stage 2 reader, Qwen topics | 5b vs 5a | — | — | — |
 | E: RoBERTa vs Qwen emotion | 5c vs 5a | +0.001 | -0.002 | +0.000 |
-| I and T: Qwen vs CLIP | 5c vs 4b | +0.200 | +0.200 | +0.200 |'''
+| Qwen vs CLIP: I, T and Stage 2 input (RoBERTa E) | 5c vs 4b | +0.200 | +0.200 | +0.200 |'''
 
     def existing_lines(table):
         return '\n'.join(line for line in table.splitlines()
@@ -191,7 +191,7 @@ def test_qwen_stage_two_reader_change_uses_image_means(results, capsys):
 
 @pytest.mark.parametrize('key,expected', [
     ('P1', '| Stage 2 reader, CLIP | 4b vs 4a | — | — | — |'),
-    ('P2', '| I and T: Qwen vs CLIP | 5c vs 4b | — | — | — |'),
+    ('P2', '| Qwen vs CLIP: I, T and Stage 2 input (RoBERTa E) | 5c vs 4b | — | — | — |'),
     ('P3', '| E: RoBERTa vs Qwen emotion | 5c vs 5a | — | — | — |'),
     ('P5', '| E: RoBERTa vs Qwen emotion | 5c vs 5a | — | — | — |'),
 ])

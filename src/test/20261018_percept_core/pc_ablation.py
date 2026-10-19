@@ -1,8 +1,8 @@
 """The follow-up's ablation table with PercepT image-side arms and rows 1, 6, 10, 13 filled in.
 
 Reads the stored results only: the follow-up's ags_fu_results.json (rows 2, 3, 7 to 12), this round's
-pc_results.json (row 1 and arms) and pc_rows_results.json (rows 6, 10, 13). Prints markdown at 3 decimals; differences use
-the unrounded means.
+pc_results.json (row 1 and arms) and pc_rows_results.json (rows 6, 10, 13). Prints markdown at 3 decimals;
+differences use the unrounded means.
 """
 import json
 from pathlib import Path
@@ -66,7 +66,7 @@ DIFFS = [('Instruction in the graph (default graph to plain aspect graph)', '7',
 IMAGE_DIFFS = [('Stage 2 reader, CLIP', '4b', '4a'),
                ('Stage 2 reader, Qwen topics', '5b', '5a'),
                ('E: RoBERTa vs Qwen emotion', '5c', '5a'),
-               ('I and T: Qwen vs CLIP', '5c', '4b')]
+               ('Qwen vs CLIP: I, T and Stage 2 input (RoBERTa E)', '5c', '4b')]
 
 
 def main(fu=None, result=None, rows=None):
@@ -103,8 +103,8 @@ def main(fu=None, result=None, rows=None):
               f"{by[a][s]:.3f}" + by[a].get('star', '')
               for a in ASPECTS for s in ('img', 'cap')) + ' |')
     if any(r['img'] is not None and not r['established'] for r in arms.values()):
-        print('* not established (reasons in pc_tables.md)')
-    print('\nImage side, PercepT arms\n| # | Emotion | Style | Genre |\n|---|---:|---:|---:|')
+        print('\n\\* not established (reasons in pc_tables.md)')
+    print('\n### Image side, PercepT arms\n\n| # | Emotion | Style | Genre |\n|---|---:|---:|---:|')
     for row in ARM_ROWS:
         by = cells[row]
         print(f'| {row} | ' + ' | '.join('—' if by[a] is None else
@@ -114,7 +114,7 @@ def main(fu=None, result=None, rows=None):
         vals = ['—' if cells[x][a] is None or cells[y][a] is None else
                 f"{cells[x][a]['mean'] - cells[y][a]['mean']:+.3f}" for a in ASPECTS]
         print(f'| {name} | {x} vs {y} | ' + ' | '.join(vals) + ' |')
-    print('\nImage-side changes\n| Change | Rows | Emotion | Style | Genre |\n|---|---|---:|---:|---:|')
+    print('\n### Image-side changes\n\n| Change | Rows | Emotion | Style | Genre |\n|---|---|---:|---:|---:|')
     for name, x, y in IMAGE_DIFFS:
         vals = ['—' if cells[x][a] is None or cells[y][a] is None else
                 f"{cells[x][a]['img'] - cells[y][a]['img']:+.3f}" for a in ASPECTS]
