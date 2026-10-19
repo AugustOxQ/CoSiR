@@ -159,7 +159,7 @@ To open an archived line: `git worktree add ../CoSiR-<name> archive/<branch>`.
 | 09-23 | [artelingo_percept_stage2](stage/2026-09-23_artelingo_percept_stage2.md) | PercepT Stage 2: P-topic mapping |
 | 09-27 | [comprehensive_analysis](stage/2026-09-27_comprehensive_analysis.md) | Comprehensive buddy versus PercepT analysis on ArtELingo |
 | 09-27 | [key_advantages](stage/2026-09-27_key_advantages.md) | Key advantages of buddy-graph topic formation |
-| 10-19 | [qwen_buddy_line](stage/2026-10-19_qwen_buddy_line.md) | Stage report of the condition-free Qwen + buddy line, 2026-10-15 to 2026-10-19 (development data): image-side AMI emotion / style / genre, our network 0.081 / 0.348 / 0.458 vs PercepT core with 40 topics 0.077 / 0.229 / 0.436 and plain image encoders 0.070 / 0.300 / 0.449; clearly ahead only on style; the instructed Qwen image 0.093 / 0.395 / 0.496 leads on all three; two image-only pilots missed their bar; ceiling (linear probe) 0.121 / 0.527 / 0.657 |
+| 10-19 | [qwen_buddy_line](stage/2026-10-19_qwen_buddy_line.md) · [outside-view page](stage/2026-10-19_qwen_buddy_line.html) · [dev-log post](stage/2026-10-19_qwen_buddy_line_devlog.md) | Stage report of the condition-free Qwen + buddy line, 2026-10-15 to 2026-10-19 (development data): image-side AMI emotion / style / genre, our network 0.081 / 0.348 / 0.458 vs PercepT core with 40 topics 0.077 / 0.229 / 0.436 and plain image encoders 0.070 / 0.300 / 0.449; clearly ahead only on style; the instructed Qwen image 0.093 / 0.395 / 0.496 leads on all three; two image-only pilots missed their bar; ceiling (linear probe) 0.121 / 0.527 / 0.657 |
 
 ## weekly: weekly reports and slides
 
