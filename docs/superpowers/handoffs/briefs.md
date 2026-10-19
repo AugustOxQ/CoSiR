@@ -550,3 +550,13 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-decide-9-handoff.md
 - New chat: tab 'r10 decide 9', session d6e06857-8d43-442b-a4e1-9f9a872e30c3
 
+[brief] CoSiR: r10 decide 9 -> r10 build 6 (2026-10-19 15:45 Amsterdam)
+- Done: decision C read; the user chose option b with a fixed K = 40; the spec is amended (A3); wrap-up done.
+- State: run 2's one established arm (P2) scored 0.036 / 0.162 / 0.217, because two of its seeds kept 2 and 3 topics;
+  our network 0.081 / 0.348 / 0.458.
+- Next: one verdict ticket: keep the 40 of 100 centers with the most fit pairs; Algorithm 1 only reported. Then the
+  final review, merge, and the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-6-handoff.md
+- New chat: tab 'r10 build 6', session adc4a462-7d79-45f6-bbae-9d0191d4bf4d
+
