@@ -1872,11 +1872,13 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 
 </script>
 <style data-mock-shared>
+  /* colors come from the page tokens, which reach inside the mockup's shadow root, so tables follow dark mode */
+  .nw-root.none { color: var(--ink); }
   table { border-collapse: collapse; width: 100%; font-size: 13.5px; line-height: 1.4; }
-  th, td { padding: 6px 9px; border-bottom: 1px solid #eee9dd; text-align: left; vertical-align: top; }
-  th { font-weight: 600; color: #5f5a4f; background: #faf8f3; }
+  th, td { padding: 6px 9px; border-bottom: 1px solid var(--line-2); text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-2); background: var(--paper); }
   td.n, th.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .sub { color: #8a8578; font-size: 12.5px; }
+  .sub { color: var(--ink-3); font-size: 12.5px; }
   .gap { height: 12px; }
 </style>
 <style>
