@@ -21,7 +21,7 @@ Our earlier PercepT code also differed from the paper. We therefore began withou
 
 The literature check also limited what we could call new. Aspect prompts already produced aspect-specific features in earlier work. Our reading: the possible contribution lay in graph supervision and a shared image model that preserved several aspects. The immediate attack was “just prompting Qwen.” We needed a measured comparison against an instructed image encoder.
 
-We used AMI, adjusted mutual information between k-means clusters and labels; 0 meant chance. “Image side” meant clusters of image features only. Our network meant a small network trained on aspect graphs and read on the default image. Default input used no aspect instruction at test time. The aspects were named in advance, so this stage did not discover their names. Level means a difference below 0.01.
+All steps used ArtELingo, paintings with captions written by viewers; each painting has an emotion, a style and a genre label. Qwen meant Qwen3-VL-Embedding-2B, and CLIP meant CLIP ViT-B/32. We used AMI, adjusted mutual information between k-means clusters and labels; 0 meant chance. “Image side” meant clusters of image features only. Our network meant a small network trained on aspect graphs and read on the default image. Default input used no aspect instruction at test time. The aspects were named in advance, so this stage did not discover their names. Level means a difference below 0.01.
 
 Sources: [direction log](../../superpowers/direction_log.md), [PercepT literature](../literature/2026-12-05_percept_neighbourhood.md), [prompted-view literature](../literature/2026-12-07_prompted_aspect_views.md), [code audit](../auto/percept/2026-12-04_percept_code_audit.md).
 
