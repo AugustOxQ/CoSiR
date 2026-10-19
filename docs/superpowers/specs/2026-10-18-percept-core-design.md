@@ -1,6 +1,6 @@
 # PercepT core in five settings, and the missing rows of the ablation table: design
 
-> Date: 2026-10-18 23:33 · Status: approved 2026-10-18 23:34; amended 2026-10-19 08:25 (A1, A2 in §4) · Kind: experiment
+> Date: 2026-10-18 23:33 · Status: approved 2026-10-18 23:34; amended 2026-10-19 08:25 (A1, A2 in §4), text brought in line 2026-10-19 09:45 · Kind: experiment
 > Builds on: [aspect graph follow-up](../../reports/auto/percept/2026-12-12_aspect_graph_followup.md) and its
 > [ablation table](../../user_read/2026-10-18_aspect_graph_followup.md) (rows 1 to 13) · facts brief
 > `.scratch/r10-percept-core/facts.md` · grill record `.scratch/r10-percept-core/grill.md` · Constitution:
@@ -165,8 +165,8 @@ graphs of row 6, and everything PercepT core trains.
 | A2 | PercepT core's Stage 1 runs its k-means start (`pc_sept.initialize_cluster_centers`) under a one-thread limit in `pc_stage1.py`; `pc_sept.py` stays verbatim. Checks: three k-means starts on the snapshot latents under the limit give one center hash; the run repeats Stage 1 `clip_roberta` seed 0 once and compares its saved arrays bitwise (reported, not a gate) | with 8 threads, Stage 1 seeds would carry the same last-bit noise; one thread repeated the whole September fit in two of two runs. Cost: the start takes about 2.5 times longer | user, after seeing the recommendation | 2026-10-19 08:20 |
 
 Places the amendments changed: A1 in the brief (plan item 1, "Check these"), §3.5, §5 and §7; A2 in the brief,
-§3.2 and "Check these". §3.2, §5, §7 and "Check these" were brought in line after the final review of build 5
-(2026-10-19), text only.
+§3.2 and "Check these". §3.2, §5, §7 and "Check these", with §6 and §8 (the 21 fix tests), were brought in
+line after the final review of build 5 (2026-10-19), text only.
 
 ## 5. Assumptions and open questions
 
@@ -183,7 +183,7 @@ Places the amendments changed: A1 in the brief (plan item 1, "Check these"), §3
 ## 6. Success criteria
 
 **Descriptive mode.** No decision rides on a bar: the user picks from the filled table.
-An arm is **established** when: stage 0 passed (the amended gate, A1); unit tests pass for the four fixes (pair count equals the fit
+An arm is **established** when: stage 0 passed (the amended gate, A1); unit tests pass for the four fixes (21 tests, none skipped: pair count equals the fit
 captions; Eq. 2 on a hand-worked example; Algorithm 1 on norms with a known gap; the multi-hot target equals the OR
 of the caption topics); and its Stage 2 dev macro AUC is at least 0.75 on every seed (September 0.829 with
 threshold targets; the paper 0.94).
@@ -214,7 +214,7 @@ report means these checks.
 
 | What could make the result wrong or misleading | How we would notice | What we do then |
 |---|---|---|
-| A port error in the four fixes | unit tests; stage 0 on the unchanged path | fix before stage 1 |
+| A port error in the four fixes | unit tests (21, none skipped); stage 0 checks (i) and (ii) | fix before stage 1 |
 | γ = 2 gives K = 100 (no cut) or a very small K | the K table for γ 1.5 to 5 | report; no rerun with another γ in this spec |
 | Selection: stage 1 chose our rows on the 5,000 paintings, and D15 chooses PercepT's arm on them too | stated in the report | carry both picks to fresh data in stage 2 of our model |
 | Qwen's content and emotion vectors come from one model, so Eq. 2 adds little in P3 | P3 vs P5, Stage 1 topic AMI | read as a finding |
