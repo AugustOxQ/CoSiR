@@ -542,3 +542,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-run-2-handoff.md
 - New chat: tab 'r10 run 2', session 224c5df5-d4b9-42a6-bc93-9fe548e609f0
 
+[brief] CoSiR: r10 run 2 -> r10 decide 9 (2026-10-19 10:17 Amsterdam)
+- Done: PercepT core ran: the changed stage 0 check passes, a repeated run is bitwise equal, all 24 GPU steps exit 0. Score, ablation table, exact re-derivation and both reports are committed.
+- State: the topic count keeps 1, 2, 3 or 99 topics by seed. Only P2 passes all checks; as the comparator its image-side AMI is 0.036 / 0.162 / 0.217, against 0.081 / 0.348 / 0.458 for our best network.
+- Next: the user's reading (decision C), then options a to c on the topic count, then the stage 2 decision.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-decide-9-handoff.md
+- New chat: tab 'r10 decide 9', session d6e06857-8d43-442b-a4e1-9f9a872e30c3
+
