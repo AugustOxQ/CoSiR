@@ -1,9 +1,9 @@
-"""Pair rows, Eq. 2 fusion, fit-only maps, gap pruning and caption unions."""
+"""Pair rows, Eq. 2 fusion, fit-only maps, center selection and caption unions."""
 import re
 
 import numpy as np
 
-FIX_TESTS = 21
+FIX_TESTS = 30
 
 
 def unit_tests_pass(line):
@@ -78,6 +78,17 @@ def kept_centers(center_norms, gamma=2):
         threshold = (ordered[index] + ordered[index + 1]) / 2
         return center_norms <= threshold
     return np.ones(center_norms.shape, dtype=bool)
+
+
+def top_used(fit_counts, k=40):
+    """A3 mask in original center order; equal counts favor the lower index."""
+    assert fit_counts.ndim == 1 and np.issubdtype(fit_counts.dtype, np.integer)
+    assert isinstance(k, int) and 0 < k <= len(fit_counts)
+    assert (fit_counts >= 0).all()
+    order = np.lexsort((-np.arange(len(fit_counts)), fit_counts))
+    kept = np.zeros(len(fit_counts), dtype=bool)
+    kept[order[-k:]] = True
+    return kept
 
 
 def multi_hot(pid, topic, painting_ids, n_topics):

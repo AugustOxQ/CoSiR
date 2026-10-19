@@ -159,6 +159,35 @@ def test_clip_inputs_use_fit_pca_mean_for_every_caption(monkeypatch):
         pc_stage1.transform_emotion(emotion, projection=pca.components_.T.copy())
 
 
+def test_fit_counts_match_numpy_nearest_centers_after_encoding():
+    import pc_stage1
+
+    encoder = torch.nn.Sequential(torch.nn.Linear(2, 2), torch.nn.Dropout(.9))
+    with torch.no_grad():
+        encoder[0].weight.copy_(torch.tensor([[2., 0.], [0., -1.]]))
+        encoder[0].bias.copy_(torch.tensor([1., 2.]))
+    centers = torch.nn.Parameter(torch.full((100, 2), 99.))
+    with torch.no_grad():
+        centers[0].copy_(torch.tensor([1., 2.]))
+        centers[45].copy_(torch.tensor([5., 2.]))
+        centers[99].copy_(torch.tensor([1., 0.]))
+    inputs = torch.tensor([[0., 0.], [2., 0.], [0., 2.], [1., 0.], [2., 0.]])
+    encoded = np.array([[1., 2.], [5., 2.], [1., 0.], [3., 2.], [5., 2.]])
+    distances = ((encoded[:, None] - centers.detach().numpy()[None]) ** 2).sum(2)
+    expected = np.bincount(distances.argmin(1), minlength=100)
+    before = {key: value.clone() for key, value in encoder.state_dict().items()}
+    centers_before = centers.detach().clone()
+    counts = pc_stage1.count_fit_pairs(encoder, centers, inputs, 'cpu', block_size=2)
+    np.testing.assert_array_equal(counts, expected)
+    assert counts.shape == (100,) and counts.dtype == np.int64 and counts.sum() == 5
+    assert counts[0] == 2 and counts[45] == 2 and counts[99] == 1
+    assert not encoder.training and all(p.grad is None for p in encoder.parameters())
+    for key, value in encoder.state_dict().items():
+        torch.testing.assert_close(value, before[key], rtol=0, atol=0)
+    torch.testing.assert_close(centers, centers_before, rtol=0, atol=0)
+    assert centers.grad is None
+
+
 def test_assignment_uses_frozen_kept_centers_and_eval_painting_order():
     import pc_stage1
 
@@ -236,6 +265,10 @@ def test_smoke_trains_2000_fit_pairs_and_writes_stage1_schema(
             with torch.no_grad():
                 centers.zero_()
                 centers[:, 0].copy_(torch.from_numpy(norms).to(centers.device))
+        encoder.eval()
+        with torch.no_grad():
+            q = pc_sept.soft_assignments(encoder(inputs.to(centers.device)), centers).cpu().numpy()
+        prepared['counts'] = np.bincount(q.argmax(1), minlength=100)
         return result
 
     def check_kmeans(encoder, inputs, device, n_clusters, seed):
@@ -255,7 +288,10 @@ def test_smoke_trains_2000_fit_pairs_and_writes_stage1_schema(
     assert path == tmp_path / 'stage1' / 'clip_roberta__s0.npz'
     meta = json.loads(path.with_suffix('.json').read_text())
     assert meta['sample_sha256'] == pc_data.fingerprint(s)
-    assert set(meta['K']) == {'1.5', '2', '3', '5'}
+    assert type(meta['K']) is int and meta['K'] == 40
+    assert set(meta['K_gamma']) == {'1.5', '2', '3', '5'}
+    assert meta['config']['pruning'] == 'A3; top 40 of 100 by fit-pair argmax count; ties to lower index'
+    assert 'gamma' not in meta['config']
     assert meta['config']['fit_pairs'] == 2000
     assert meta['config']['fit_rows_sha256'] == hashlib.sha256(
         np.arange(2000, dtype=np.int64).tobytes()).hexdigest()
@@ -285,19 +321,27 @@ def test_smoke_trains_2000_fit_pairs_and_writes_stage1_schema(
             if gaps[largest] > float(gamma) * gaps.mean():
                 cut = (ordered[largest] + ordered[largest + 1]) / 2
                 expected_kept = norms < cut
-            assert meta['K'][gamma] == int(expected_kept.sum())
-            if gamma == '2':
-                np.testing.assert_array_equal(z['kept'], expected_kept)
+            assert meta['K_gamma'][gamma] == int(expected_kept.sum())
         if controlled_norms:
-            assert meta['K']['2'] == 50 and meta['K']['3'] == 100
-        assert set(z.files) == {'center_norms', 'kept', 'topic', 'q_paint_eval'}
+            assert meta['K_gamma']['2'] == 50 and meta['K_gamma']['3'] == 100
+        assert set(z.files) == {'center_norms', 'fit_counts', 'kept', 'topic', 'q_paint_eval'}
+        assert z['fit_counts'].shape == (100,) and z['fit_counts'].dtype == np.int64
+        np.testing.assert_array_equal(z['fit_counts'], prepared['counts'])
+        expected_top = sorted(range(100), key=lambda i: (-int(prepared['counts'][i]), i))[:40]
+        np.testing.assert_array_equal(np.flatnonzero(z['kept']), sorted(expected_top))
+        fit_topics = z['topic'][fit_rows]
+        final_counts = np.bincount(fit_topics, minlength=40)
+        assert meta['kept_topics'] == dict(
+            fit_pairs=2000, with_fit_pair=int((final_counts > 0).sum()),
+            with_1pct=int((final_counts >= 20).sum()),
+            share_before_cut=float(prepared['counts'][expected_top].sum() / 2000))
         assert z['center_norms'].shape == z['kept'].shape == (100,)
         assert z['center_norms'].dtype == np.float32 and z['kept'].dtype == np.bool_
         assert z['topic'].shape == (2024,) and z['topic'].dtype == np.int16
-        assert z['q_paint_eval'].shape == (2, meta['K']['2'])
+        assert z['q_paint_eval'].shape == (2, meta['K'])
         assert z['q_paint_eval'].dtype == np.float32
-        assert z['kept'].sum() == meta['K']['2']
-        assert 0 <= z['topic'].min() <= z['topic'].max() < meta['K']['2']
+        assert z['kept'].sum() == meta['K']
+        assert 0 <= z['topic'].min() <= z['topic'].max() < meta['K']
         np.testing.assert_allclose(z['q_paint_eval'].sum(1), 1, atol=1e-6)
     output = capsys.readouterr().out
     for phase, seconds in meta['seconds'].items():
@@ -436,7 +480,9 @@ def test_full_run_writes_outroot_without_recording_it(tmp_path, monkeypatch):
     monkeypatch.setattr(pc_sept, 'train_dec_until_stable',
                         lambda *args: ([dict(fraction_changed=0.)], 'stability criterion', 1))
     monkeypatch.setattr(pc_stage1, 'assign_captions', lambda *args: (
-        np.zeros(3, dtype=np.int16), np.full((1, 100), .01, dtype=np.float32)))
+        np.zeros(3, dtype=np.int16), np.full((1, 40), .025, dtype=np.float32)))
+    monkeypatch.setattr(pc_stage1, 'count_fit_pairs',
+                        lambda *args: np.array([3] + [0] * 99, dtype=np.int64))
     starts = []
 
     def initialize(encoder, inputs, device, n_clusters, seed):
