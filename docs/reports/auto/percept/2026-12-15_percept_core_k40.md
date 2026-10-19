@@ -156,6 +156,26 @@ shares and 27 Stage 1 argmax values equal ours (max abs difference 0); its top-4
 stored kept mask in 9 of 9 files; its 286 input checks pass. Both comparator picks equal ours. Files:
 `src/test/20261018_percept_core/rederive_run3/`.
 
+Back-fill, added 2026-10-19 22:00 by the stage 2 run chat (stage 2 spec D7, §3.4): V-measure, ARI and FMI on the
+same k = 20 partitions, image side, 3-seed means. Our network's emotion and style cells use stage 0's regenerated
+heads of the stage 2 run. The code asserts each cell's AMI equals the table above at 3 decimals (24/24 cells). Full
+values with spreads: [ms_backfill_k40.md](../../../../src/test/20261019_model_sheet/ms_backfill_k40.md).
+
+| Row | Emo V | Emo ARI | Emo FMI | Style V | Style ARI | Style FMI | Genre V | Genre ARI | Genre FMI |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| CLIP image | 0.071 | **0.030** | 0.139 | 0.313 | 0.120 | 0.180 | 0.417 | 0.225 | 0.321 |
+| Qwen default image | 0.076 | 0.027 | 0.135 | 0.236 | 0.074 | 0.136 | 0.453 | 0.265 | 0.362 |
+| P1 | 0.059 | 0.022 | 0.130 | 0.182 | 0.055 | 0.118 | 0.361 | 0.207 | 0.302 |
+| P2 | 0.072 | 0.026 | **0.142** | 0.243 | 0.084 | 0.150 | 0.405 | 0.251 | 0.344 |
+| P3 | 0.083 | 0.024 | 0.134 | 0.203 | 0.059 | 0.123 | 0.441 | 0.250 | 0.346 |
+| P4 | 0.060 | 0.020 | 0.128 | 0.178 | 0.050 | 0.113 | 0.367 | 0.199 | 0.294 |
+| P5 | 0.080 | 0.021 | 0.134 | 0.195 | 0.057 | 0.123 | 0.440 | 0.263 | 0.357 |
+| Our network | **0.087** | 0.028 | 0.135 | **0.360** | **0.156** | **0.214** | **0.463** | **0.266** | **0.364** |
+
+V ranks the rows as AMI does. ARI and FMI agree on style and genre (genre ARI and FMI level with Qwen, within 0.002).
+On emotion they do not: CLIP image has the highest ARI (0.030 ± 0.005, our network 0.028) and P2 the highest FMI
+(0.142 ± 0.004, ours 0.135). All emotion ARI values lie between 0.020 and 0.030.
+
 ## Analysis
 
 - **A fixed count makes PercepT core stable across the three seeds.** The per-arm population sd is at most 0.007 on

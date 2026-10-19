@@ -3,6 +3,7 @@
 > 2026-10-19 (Amsterdam). Full report:
 > [PercepT core with K = 40](../reports/auto/percept/2026-12-15_percept_core_k40.md). It follows the
 > [PercepT core arms report](2026-10-19_percept_core_arms.md), where the topic count fell to 1 to 3 on some seeds.
+> V-measure, ARI and FMI added later on 2026-10-19 (22:00), from the stage 2 run.
 
 ## Summary
 
@@ -35,6 +36,32 @@ Image-side AMI ↑ (k-means with 20 clusters, 5,000 development paintings, mean 
 
 Level means a difference below about 0.01. Against bar 2, genre is +0.0097 (level) and emotion +0.0109, at the line.
 So under both bars, our network is clearly ahead only on style. PercepT core seed spreads are at most 0.007.
+
+### The same comparison on three other measures
+
+Three other measures agree with AMI on style and genre. On emotion, two of them do not put our network first.
+
+- **V-measure**: the unadjusted form of AMI (no correction for chance).
+- **ARI** (adjusted Rand index): do the clusters and the labels put the same pairs of paintings together?
+- **FMI** (Fowlkes-Mallows index): also about pairs, without a chance correction.
+
+Higher is better for all three. Same clusters, paintings and seeds as the table above. Bold: best per column.
+
+| Method | Emotion V | Emotion ARI | Emotion FMI | Style V | Style ARI | Style FMI | Genre V | Genre ARI | Genre FMI |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| CLIP image | 0.071 | **0.030** | 0.139 | 0.313 | 0.120 | 0.180 | 0.417 | 0.225 | 0.321 |
+| Qwen default image | 0.076 | 0.027 | 0.135 | 0.236 | 0.074 | 0.136 | 0.453 | 0.265 | 0.362 |
+| P1 | 0.059 | 0.022 | 0.130 | 0.182 | 0.055 | 0.118 | 0.361 | 0.207 | 0.302 |
+| P2 | 0.072 | 0.026 | **0.142** | 0.243 | 0.084 | 0.150 | 0.405 | 0.251 | 0.344 |
+| P3 | 0.083 | 0.024 | 0.134 | 0.203 | 0.059 | 0.123 | 0.441 | 0.250 | 0.346 |
+| P4 | 0.060 | 0.020 | 0.128 | 0.178 | 0.050 | 0.113 | 0.367 | 0.199 | 0.294 |
+| P5 | 0.080 | 0.021 | 0.134 | 0.195 | 0.057 | 0.123 | 0.440 | 0.263 | 0.357 |
+| Our network | **0.087** | 0.028 | 0.135 | **0.360** | **0.156** | **0.214** | **0.463** | **0.266** | **0.364** |
+
+- Style: our network is first on all three, by a wide margin.
+- Genre: first on all three, but level with the Qwen image on ARI and FMI.
+- Emotion: first on V only. CLIP image is highest on ARI and P2 on FMI. All emotion ARI values are small (0.020 to
+  0.030).
 
 ## How we got here
 
