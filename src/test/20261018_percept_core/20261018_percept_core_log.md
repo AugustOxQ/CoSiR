@@ -266,3 +266,10 @@ coverage, share, Stage 1 argmax AMI), given the rule, the data, the fit rows and
 per-file values, 60 arm aggregates, 9 shares and 27 Stage 1 argmax values equal ours (max abs difference 0); top-40
 pick equal in 9 of 9; 286 input checks pass. Files: `rederive_run3/` (brief `task.txt`, `rederive_summary.md`,
 `rederive.py`, `compare.txt`).
+
+## Storage (2026-10-19, r10 decide 10)
+
+Deleted with the user's approval: `outputs/heads/*.npz` (977 MB; the JSONs stay), `sept_stage0/` (81 MB; every
+stage 0 run exports it again), the build 6 worktrees and branches `r10-pc-14-k40` and `r10-pc-a3`, and
+`.scratch/r10-percept-core/review_tmp/`. Kept: `outputs/stage1/` and `outputs/stage2/` (run 3; stage 2 reads them to
+add V, ARI and FMI). Ledger: `/project/claude-config/storage/disk_ledger.md`.
