@@ -45,4 +45,4 @@ frozen train-side sample (fit 13,400, dev 1,489, evaluation 5,000 paintings).
 - 20:16 ticket 02 done (`f63f8da`): separate genre R0o seed 0, all fit pairs, 2 epochs on CPU: the four losses and
   both float16 arrays bitwise equal to stage 1's (its best epoch is 1). T1 smoke: three heads, distinct histories.
   Controller diff read; merged (`c7a4087`). The GPU path is not yet smoked.
-- 20:20 cut to chat `r10 build 8` (context meter past 200k); tickets 03 and 04 go on there.
+- 20:18 cut to chat `r10 build 8` (context meter past 200k); tickets 03 and 04 go on there.
