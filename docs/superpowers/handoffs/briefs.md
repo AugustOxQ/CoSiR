@@ -568,3 +568,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-run-3-handoff.md
 - New chat: tab 'r10 run 3', session 724fc430-8911-4bb5-ba46-fe27b9e6c38a
 
+[brief] CoSiR: r10 run 3 -> r10 decide 10 (2026-10-19 17:02 Amsterdam)
+- Done: the five PercepT core arms reran with K = 40; every GPU step exits 0, all five arms are established. Score, ablation table, exact re-derivation and both reports are committed.
+- State: comparator (image-side AMI) emotion P3 0.077, style P2 0.229, genre P3 0.436, against our best network 0.081 / 0.348 / 0.458: level on emotion, above on style and genre.
+- Next: the user's reading (decision C), then options a to c on the comparator, then the stage 2 decision.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-decide-10-handoff.md
+- New chat: tab 'r10 decide 10', session 26b5c951-3335-45b7-8f1e-76fe284f88e5
+
