@@ -17,7 +17,7 @@ September re-fit (01:32 run, before A1; nothing writes it now).
 |---|---|
 | `pc_data.py` | frozen-sample readers, partitions fit / dev / eval (13,400 / 1,489 / 5,000 paintings) |
 | `pc_roberta.py` | RoBERTa-GoEmotions per-caption store (`/data/SSD2/pre_extract/artelingo_full/roberta_go_emotions/`) |
-| `pc_fixes.py` | the four fixes (pair count, Eq. 2 fusion, Algorithm 1 cut, multi-hot targets) |
+| `pc_fixes.py` | the four fixes (pair count, Eq. 2 fusion, the topic count, multi-hot targets): the top-40 rule `top_used` (A3) and Algorithm 1 `kept_centers` (reported only) |
 | `pc_sept.py` | the September training functions, copied without change |
 | `pc_stage1.py`, `pc_stage2.py` | PercepT core Stage 1 (topics) and Stage 2 (image mapper) |
 | `pc_rows.py` | graphs and head rows 6, 10, 13; the head gate (`gate.json`) |
@@ -55,6 +55,16 @@ OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1 /root/miniconda3/e
   threads (labels equal; only the centers' last bits differ), so the A2 hash test, not (iv), shows the limit works.
   Fix wave: ticket 13 (the repeat in the sheet, test gaps, the fix-test count); spec text for A1 and A2 (§3.2, §5,
   §7 C12 exception).
+- Build 6 (A3, fixed K = 40; branch `r10-pc-a3`, 2026-10-19): ticket 14 by Codex: `pc_fixes.top_used` (the 40 of
+  100 centers with the most fit pairs, ties to the lower index), `pc_stage1.count_fit_pairs` (argmax over all 100
+  trained centers, fit rows), Stage 1 npz key `fit_counts`, sidecar `K` = 40, `K_gamma` (Algorithm 1, reported
+  only), `kept_topics`; the K < 2 paths removed. Opus ticket review: merge. Final whole-branch review (Opus
+  `xhigh`): merge after fixes; it re-derived the kept masks, `kept_topics` and `K_gamma` (3 smoke files, 9 run 2
+  sidecars) with its own code. On run 2's three 99-topic runs the top 40 hold 57 to 63% of the fit pairs, with no tie
+  at the cut. Fix wave: ticket 15 (count tests, `kept_topic_stats`, kept-mask asserts in the readers, results schema
+  2 checked by `pc_ablation`, a fix-test collection check, sheet labels). GPU smoke twice (2,000 fit pairs): every
+  Stage 1 keeps 40, all five arms train, stage 0 records 30 fix tests, repeat bitwise equal. Run 2's files are kept
+  as `outputs/*_run2*`, `logs/run2/` and `pc_queue_gpu_run2.log` (copies checked equal).
 
 ## Stage 0 (2026-10-19)
 
