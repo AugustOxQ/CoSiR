@@ -626,3 +626,12 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-run-4-handoff.md
 - New chat: tab 'r10 run 4', session 3340fca4-4c17-4afc-8b74-1fd60babf6d0
 
+[brief] CoSiR: r10 run 4 -> r10 decide 12 (2026-10-19 22:41 Amsterdam)
+- Done: stage 2 model sheet run; stages 0 to 3 all exit 0; auto and user-read reports committed.
+- State: emotion reaches the instructed-image target (best 0.0962 vs 0.0929; PercepT core 0.0772). Style 0.3700 vs
+  0.3952 and genre 0.4891 vs 0.4956 do not.
+- Next: show the results brief without our reading, record the user's reading (C), wrap up, then step 2.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-decide-12-handoff.md
+- New chat: tab 'r10 decide 12', session 764edd3d-d74c-4e9b-9959-dc5de47c6dea
+
