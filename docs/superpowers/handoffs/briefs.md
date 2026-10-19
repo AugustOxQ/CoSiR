@@ -651,3 +651,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-decide-14-handoff.md
 - New chat: tab 'r10 decide 14', session 77f3e52d-0faf-4b00-8774-daff75f215d8
 
+[brief] CoSiR: r10 decide 14 -> r10 build 10 (2026-10-20 01:44 Amsterdam)
+- Done: the claim test spec and its decision rule, reviewed and committed; night mode on (user asleep).
+- State: development emotion AMI, D2 0.096 against PercepT core 0.077 (k-means) and 0.082 (own top topic).
+- Next: tickets and build of stage 0 and stage 1 (held inference, held scorer, paper settings PercepT, bootstrap).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-10-handoff.md
+- New chat: tab 'r10 build 10', session 5b6dbd9b-ccfa-4d91-9a8a-6b6c8dbafac8
+
