@@ -234,6 +234,36 @@ The same evaluation paintings influenced graph choice, instruction choice and co
 
 Sources: [fixed-count auto report](../auto/percept/2026-12-15_percept_core_k40.md), [graph follow-up](../auto/percept/2026-12-12_aspect_graph_followup.md), [two-bar user-read table](../../user_read/2026-10-19_percept_core_k40.md), [ceiling log](../../../src/test/20261019_emotion_ceiling/20261019_emotion_ceiling_log.md).
 
+### All image-side rows
+
+Our main variants beside the comparators. Image-side AMI, k-means with 20 clusters, 5,000 development paintings,
+mean of 3 seeds. **Bold:** the best in each column. <u>Underlined:</u> our best in each column. Source: the image-side
+ablation table, `src/test/20261018_percept_core/outputs/pc_ablation_table.md` (rows 1 to 3, 4b, 5a, 6 to 10, 12, 13),
+also in the [fixed-count auto report](../auto/percept/2026-12-15_percept_core_k40.md) and the
+[follow-up user-read report](../../user_read/2026-10-18_aspect_graph_followup.md).
+
+| Method | Emotion | Style | Genre |
+|---|---:|---:|---:|
+| *Plain encoders, clustered directly* | | | |
+| CLIP image | 0.065 | 0.300 | 0.412 |
+| Qwen default image | 0.070 | 0.222 | 0.449 |
+| Instructed Qwen image (one pass per aspect) | **0.093** | **0.395** | **0.496** |
+| *PercepT core, 40 topics* | | | |
+| September encoders, CLIP image vector | 0.066 | 0.229 | 0.400 |
+| Qwen features, Qwen image vector | 0.077 | 0.189 | 0.436 |
+| *Our network, default input (one pass)* | | | |
+| Default graph (no instruction) | 0.071 | 0.186 | 0.417 |
+| Plain aspect graph | 0.085 | 0.267 | 0.435 |
+| Aspect graph minus content-close pairs | <u>0.089</u> | 0.283 | 0.437 |
+| Picked graphs: residual (emotion, style), image-weighted mix (genre) | 0.081 | 0.348 | 0.454 |
+| The other side's graph alone (for genre, the image graph) | 0.083 | 0.172 | 0.458 |
+| *Our network, instructed input (one pass per aspect)* | | | |
+| Picked graphs | 0.087 | <u>0.393</u> | 0.458 |
+| The other side's graph alone | 0.084 | 0.175 | <u>0.468</u> |
+
+Target AMI, the mean of both sides, picked the graphs. On the image side alone, the aspect graph minus content-close
+pairs gives our best emotion row (0.089), found after the fact on the same paintings.
+
 ## Next
 
 We decided to build the shared model next: one shared trunk with emotion, style and genre heads. It had no results yet. Its target was the instructed Qwen image, reached through one pass on the default image. The best graphs so far were residual for emotion and style, and the image graph alone for genre. The default input carried the claim; instructed input would be a second result.
