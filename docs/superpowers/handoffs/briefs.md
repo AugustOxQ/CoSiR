@@ -618,3 +618,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-9-handoff.md
 - New chat: tab 'r10 build 9', session 2d390635-8ef7-4b82-8a82-b40207b721e7
 
+[brief] CoSiR: r10 build 9 -> r10 run 4 (2026-10-19 21:58 Amsterdam)
+- Done: stage 2 build merged into main (e066c92); the final review's fixes passed the re-review; stage 0 PASS from main; K = 40 back-fill 24/24 cells.
+- State: no sheet row trained yet. Bars to beat, image-side AMI (emotion / style / genre): PercepT core 0.077 / 0.229 / 0.436; instructed Qwen image 0.093 / 0.395 / 0.496.
+- Next: the three GPU queues in order (about 1.5 h with scoring), then the auto and user-read reports.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-run-4-handoff.md
+- New chat: tab 'r10 run 4', session 3340fca4-4c17-4afc-8b74-1fd60babf6d0
+
