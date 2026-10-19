@@ -87,35 +87,37 @@ How to read it:
 - Measure: AMI at 20 clusters on the 5,000 evaluation paintings, mean of the image side and the caption side, for
   the aspect's own label.
 - Rows with a network: mean of 3 seeds, sd at most 0.005. Rows with k-means on an embedding: sd over k-means seeds
-  at most 0.007. Differences below about 0.01 are close to this spread.
+  at most 0.007 (row 1 genre: up to 0.020). Differences below about 0.01 are close to this spread.
 - Every graph except the default graph comes from the prompted embedding. So rows 7 to 10 use the instruction in
   training only.
 - The plain aspect graph uses captions for emotion and genre, and images for style. The default graph is built the
   same way on the default embedding, so it uses no instruction. The stage 1 pick is the residual graph for emotion
   and style, and the image-weighted mix (image 0.75, caption 0.25) for genre. "Other side alone" is the graph from
   the other side only (for genre, the image graph).
-- "ongoing": part of PercepT core, the next step (row 1 needs the RoBERTa caption features that the PercepT core
-  build extracts). "not run": no run planned yet; each is a short CPU run.
+- Updated 2026-10-19 with rows 1, 6, 10 and 13 from the
+  [PercepT core run](2026-10-19_percept_core.md). Rows 4 and 5 (PercepT core) are blocked: the regression check of
+  the September code failed, and you decide how to change it.
 
 | # | Input embedding | Method | Graph the network learns from | Emotion | Style | Genre |
 |---|---|---|---|---:|---:|---:|
 | | **No training** | | | | | |
-| 1 | CLIP B/32 + RoBERTa-GoEmotions | k-means on the embedding | none | ongoing | ongoing | ongoing |
+| 1a | CLIP B/32 image + CLIP text | k-means on the embedding | none | 0.066 | 0.205 | 0.371 |
+| 1b | CLIP B/32 image + RoBERTa-GoEmotions | k-means on the embedding | none | 0.127 | 0.174 | 0.240 |
 | 2 | Qwen default | k-means on the embedding | none | 0.089 | 0.171 | 0.393 |
 | 3 | Qwen prompted | k-means on the embedding | none | 0.155 | 0.265 | 0.424 |
 | | **PercepT core** | | | | | |
-| 4 | CLIP B/32 + RoBERTa-GoEmotions | PercepT core | none | ongoing | ongoing | ongoing |
-| 5 | Qwen default | PercepT core | none | ongoing | ongoing | ongoing |
+| 4 | CLIP B/32 + RoBERTa-GoEmotions | PercepT core | none | blocked | blocked | blocked |
+| 5 | Qwen default | PercepT core | none | blocked | blocked | blocked |
 | | **Our network, default input (no instruction at test time)** | | | | | |
-| 6 | Qwen default | network | default graph | not run | not run | not run |
+| 6 | Qwen default | network | default graph | 0.082 | 0.163 | 0.388 |
 | 7 | Qwen default | network | plain aspect graph | 0.118 | 0.213 | 0.402 |
 | 8 | Qwen default | network | aspect graph minus content pairs | 0.123 | 0.221 | 0.404 |
 | 9 | Qwen default | network | stage 1 pick | 0.137 | 0.260 | 0.420 |
-| 10 | Qwen default | network | other side alone | not run | not run | 0.428 |
+| 10 | Qwen default | network | other side alone | 0.086 | 0.154 | 0.428 |
 | | **Our network, prompted input (instruction at test time)** | | | | | |
 | 11 | Qwen prompted | network | plain aspect graph | 0.122 | 0.222 | 0.404 |
 | 12 | Qwen prompted | network | stage 1 pick | 0.151 | 0.284 | 0.424 |
-| 13 | Qwen prompted | network | other side alone | not run | not run | not run |
+| 13 | Qwen prompted | network | other side alone | 0.089 | 0.156 | 0.434 |
 
 **What each change adds** (differences of the unrounded means, so a difference can be 0.001 off the table's
 rounded numbers):
@@ -124,17 +126,20 @@ rounded numbers):
 |---|---|---:|---:|---:|
 | Instruction at test time, no training | 3 vs 2 | +0.066 | +0.094 | +0.031 |
 | Network on the plain aspect graph, default input | 7 vs 2 | +0.029 | +0.042 | +0.009 |
-| Instruction in the graph (default graph to plain aspect graph) | 7 vs 6 | not run | not run | not run |
+| Network on the default graph vs default embedding | 6 vs 2 | −0.006 | −0.008 | −0.005 |
+| Instruction in the graph (default graph to plain aspect graph) | 7 vs 6 | +0.036 | +0.050 | +0.014 |
 | Remove content pairs from the graph | 8 vs 7 | +0.005 | +0.008 | +0.002 |
 | Stage 1 pick instead of the plain aspect graph | 9 vs 7 | +0.019 | +0.047 | +0.018 |
-| Other side alone instead of the plain aspect graph | 10 vs 7 | not run | not run | +0.026 |
+| Other side alone instead of the plain aspect graph | 10 vs 7 | −0.032 | −0.059 | +0.026 |
+| Prompted input instead of default, other side alone | 13 vs 10 | +0.003 | +0.002 | +0.006 |
 | Prompted input instead of default, plain aspect graph | 11 vs 7 | +0.004 | +0.009 | +0.002 |
 | Prompted input instead of default, stage 1 pick | 12 vs 9 | +0.014 | +0.023 | +0.004 |
 | Best network with default input vs default embedding | 9 (genre 10) vs 2 | +0.049 | +0.089 | +0.035 |
 | Best network with default input vs prompted embedding | 9 (genre 10) vs 3 | −0.018 | −0.005 | +0.003 |
 | Best network with prompted input vs prompted embedding | 12 vs 3 | −0.004 | +0.018 | 0.000 |
-| Encoder: Qwen default vs the September encoders | 2 vs 1 | ongoing | ongoing | ongoing |
-| Method: our network vs PercepT core, same input | 9 (genre 10) vs 5 | ongoing | ongoing | ongoing |
+| Encoder: Qwen default vs CLIP image + CLIP text | 2 vs 1a | +0.023 | −0.034 | +0.022 |
+| Encoder: Qwen default vs CLIP image + RoBERTa-GoEmotions | 2 vs 1b | −0.038 | −0.003 | +0.153 |
+| Method: our network vs PercepT core, same input | 9 (genre 10) vs 5 | blocked | blocked | blocked |
 
 **What the table says:**
 
@@ -144,8 +149,9 @@ rounded numbers):
 - The choice of graph adds more than the removal of content pairs: 0.018 to 0.047, against at most 0.008.
 - A prompted input adds little on the plain aspect graph (at most 0.009). It adds more on the stage 1 pick (0.014
   for emotion, 0.023 for style).
-- Still open: whether the instruction in the graph is what helps (row 6), how the September encoders compare
-  (row 1), and where PercepT core stands (rows 4 and 5).
+- Added 2026-10-19 (our reading, development data only): the instruction in the graph is what helps. On the default graph the network is slightly below
+  the default embedding (row 6 vs row 2). The other side's graph loses most of the gain for emotion and style
+  (row 10). Each September encoder is strong on one side (row 1). Where PercepT core stands (rows 4 and 5) is open.
 
 The September PercepT numbers (emotion 0.123, genre 0.227) used another split, 40 topics and another scoring. They
 are not on this protocol, so the table leaves them out.
@@ -153,19 +159,22 @@ are not on this protocol, so the table leaves them out.
 <details>
 <summary>Image side and caption side for each row</summary>
 
-Same measure and rows; "img" is the image side, "cap" the caption side. Rows 1, 4 and 5 are ongoing; rows 6 and 13
-are not run.
+Same measure and rows; "img" is the image side, "cap" the caption side. Rows 4 and 5 are blocked.
 
 | # | Emotion img | Emotion cap | Style img | Style cap | Genre img | Genre cap |
 |---|---:|---:|---:|---:|---:|---:|
+| 1a | 0.065 | 0.067 | 0.300 | 0.110 | 0.412 | 0.330 |
+| 1b | 0.065 | 0.189 | 0.300 | 0.049 | 0.412 | 0.068 |
 | 2 | 0.070 | 0.107 | 0.222 | 0.120 | 0.449 | 0.338 |
 | 3 | 0.093 | 0.217 | 0.395 | 0.135 | 0.496 | 0.353 |
+| 6 | 0.071 | 0.094 | 0.186 | 0.140 | 0.417 | 0.359 |
 | 7 | 0.085 | 0.151 | 0.267 | 0.160 | 0.435 | 0.369 |
 | 8 | 0.089 | 0.157 | 0.283 | 0.160 | 0.437 | 0.370 |
 | 9 | 0.081 | 0.194 | 0.348 | 0.172 | 0.454 | 0.386 |
-| 10 | not run | not run | not run | not run | 0.458 | 0.397 |
+| 10 | 0.083 | 0.088 | 0.172 | 0.137 | 0.458 | 0.397 |
 | 11 | 0.085 | 0.159 | 0.289 | 0.156 | 0.437 | 0.371 |
 | 12 | 0.087 | 0.216 | 0.393 | 0.175 | 0.458 | 0.390 |
+| 13 | 0.084 | 0.094 | 0.175 | 0.138 | 0.468 | 0.400 |
 
 </details>
 
