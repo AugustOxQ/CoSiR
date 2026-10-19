@@ -36,3 +36,14 @@ Used in `2026-11-26_engine_switch_check/`; a role or phase keeps its colour ther
 | Independent re-derivation; Run to verdict | `#1baf7a` |
 | Reports | `#c4576b` |
 | Idle, waiting for the user | `#e4e3df` (hatched) |
+
+## Condition-free line (new, 2026-10-19)
+
+First used in `2026-10-19_qwen_buddy_line/image_side_ami.png`.
+
+| Method | Hex |
+|---|---|
+| Plain image encoder (Qwen default or CLIP image), clustered directly | `#a6a49e` |
+| PercepT core (our PercepT re-implementation, 40 topics) | `#c98b2e` |
+| Our network (aspect-graph network, default image, one pass) | `#1d6fd1` |
+| Qwen image with the aspect's instruction | `#4a9c5b` |
