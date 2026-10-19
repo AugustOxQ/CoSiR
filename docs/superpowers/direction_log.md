@@ -15,12 +15,13 @@ The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked idea
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads (decision B2). Best heads so far (target AMI, 3
-seeds): residual graphs for emotion 0.137 and style 0.260, the image graph for genre 0.428; image side with default
-input 0.081 / 0.348 / 0.458. PercepT core run 2 passed stage 0, but Algorithm 1 kept 1 to 3 or 99 topics by seed, so
-its one established arm (P2, image side 0.036 / 0.162 / 0.217) is weak; with 99 topics PercepT core is about level
-with its image encoder clustered directly. The user fixed the count at K = 40 (A3). Next: a short build, the rerun of
-the five arms (about 20 GPU minutes), then the decision on stage 2. "Something works" by 2026-10-29: per-aspect
-held-out AMI above PercepT core; by 2026-11-10: aspect-named retrieval above prompted Qwen.
+seeds): residual graphs for emotion 0.137 and style 0.260, the image graph for genre 0.428. Comparator (option b,
+user): per aspect, PercepT core with K = 40 (image-side AMI 0.077 / 0.229 / 0.436, all five arms established) and the
+image encoder clustered directly (0.070 / 0.300 / 0.449). Our best default-input network (0.081 / 0.348 / 0.458) is
+clearly ahead of both only on style; emotion is level with PercepT core, genre with Qwen images (development data).
+Next: the stage 2 decision (the model sheet of the aspect graph spec; scoring adds V, ARI and FMI beside AMI).
+"Something works" by 2026-10-29: per-aspect held-out AMI above PercepT core; by 2026-11-10: aspect-named retrieval
+above prompted Qwen.
 
 ## Parked ideas
 
@@ -32,6 +33,30 @@ held-out AMI above PercepT core; by 2026-11-10: aspect-named retrieval above pro
   (2026-10-18); [proposed in](handoffs/2026-10-18-r10-decide-6-handoff.md))
 - Within-painting caption variation as a signal (probe 57.3% to 46.6% on the residual) (never tried; deferred by the
   user (2026-10-18); [proposed in](../reports/auto/percept/2026-12-06_new_line_candidates.md))
+
+## 2026-10-19 · PercepT core with K = 40 read: all five arms established; two bars per aspect (option b); stage 2 next
+
+- **Read:** with a fixed K = 40, all five arms are established on 3 seeds (seed sd at most 0.007, dev AUC 0.85 to
+  0.96); Stage 1 training bitwise equal to run 2. Image-side AMI, emotion / style / genre: bar 1, the best PercepT core
+  arm, P3 0.077, P2 0.229, P3 0.436; bar 2, the image encoder clustered directly, Qwen 0.070, CLIP 0.300, Qwen 0.449;
+  our best default-input network 0.081 / 0.348 / 0.458. Ours minus bar 1: +0.003, +0.120, +0.022; minus bar 2:
+  +0.011, +0.048, +0.0097. Development data only.
+- **Meaning (C):** "I think this is a good comparator" (user, before ours). Ours: the fixed count removes the seed
+  lottery; PercepT core's topics add little on the image side (level with or below the encoder it reads); emotion is
+  open. Found after the two-bar table (agent, shown to the user): against bar 2, genre is level too, so our network
+  is clearly ahead of both bars only on style.
+- **Decided (A):** comparator option b: per aspect, PercepT core with K = 40 (bar 1) and the image encoder clustered
+  directly (bar 2) (user). Extra metrics: V, ARI and FMI beside AMI, in stage 2's shared scoring code, then filled
+  into the two-bar table once; H and C dropped; SI, CHI and DBI set aside for now, "without DEC I don't think we gain
+  a lot on these" (user, after seeing the recommendation: ours was ARI, H, C and V, without FMI). Decisions stay on
+  AMI (agent default, shown to the user). Stage 2: open, decided next in this chat.
+- **Idea (B):** unchanged (B2).
+- **Why:** a plain encoder matches or beats PercepT core per aspect, so bar 1 alone is weak. Stage 2 must lift
+  image-side emotion and genre.
+- **Links:** [run report](../reports/auto/percept/2026-12-15_percept_core_k40.md) ·
+  [user-read with the two-bar table](../user_read/2026-10-19_percept_core_k40.md) ·
+  [spec (A3)](specs/2026-10-18-percept-core-design.md) ·
+  [handoff](handoffs/2026-10-19-r10-decide-10-handoff.md)
 
 ## 2026-10-19 · PercepT core arms read: the topic count follows the seed; K fixed at 40 (A3), the five arms rerun
 
