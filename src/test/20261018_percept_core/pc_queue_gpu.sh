@@ -91,4 +91,17 @@ for arm in P1 P2 P3 P4 P5; do
         fi
     done
 done
+if (( ${stage1_codes["clip_roberta_0"]} == 0 )); then
+    first_root="$here/outputs"
+    repeat_args=(--outroot "$here/outputs/repeat")
+    if [[ -n "$smoke" ]]; then
+        first_root="$smoke"
+        repeat_args=(--smoke "$smoke/repeat")
+    fi
+    step stage1_repeat "$python_bin" -u "$here/pc_stage1.py" --version clip_roberta --seed 0 "${repeat_args[@]}"
+    step repeat_check "$python_bin" -u "$here/pc_repeat.py" --first "$first_root" --second "$first_root/repeat" --out "$first_root/stage1_repeat.json"
+else
+    skip stage1_repeat blocked
+    skip repeat_check blocked
+fi
 finish
