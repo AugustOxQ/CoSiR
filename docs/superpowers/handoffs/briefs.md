@@ -560,3 +560,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-6-handoff.md
 - New chat: tab 'r10 build 6', session adc4a462-7d79-45f6-bbae-9d0191d4bf4d
 
+[brief] CoSiR: r10 build 6 -> r10 run 3 (2026-10-19 16:33 Amsterdam)
+- Done: build 6 merged into main (bfff3ec). PercepT core now keeps the 40 of 100 topics with the most training pairs; Algorithm 1 is only reported. Reviews passed; two GPU smokes keep 40 topics in every Stage 1 run.
+- State: run 2's one established arm (P2) scored 0.036 / 0.162 / 0.217 on the image side; our network 0.081 / 0.348 / 0.458.
+- Next: the GPU queue only (about 20 minutes), then the score, the ablation table, the re-derivation and both reports.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-run-3-handoff.md
+- New chat: tab 'r10 run 3', session 724fc430-8911-4bb5-ba46-fe27b9e6c38a
+
