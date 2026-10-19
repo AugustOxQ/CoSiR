@@ -116,6 +116,20 @@ def count_fit_pairs(encoder, centers, inputs, device, block_size=BLOCK_SIZE):
     return counts
 
 
+def kept_topic_stats(fit_topics, fit_counts, kept):
+    """Final fit-topic coverage, with the pair share measured before the cut."""
+    assert fit_topics.ndim == fit_counts.ndim == kept.ndim == 1 and len(fit_topics) > 0
+    assert np.issubdtype(fit_topics.dtype, np.integer)
+    assert fit_counts.shape == kept.shape == (100,) and fit_counts.dtype == np.int64
+    assert kept.dtype == np.bool_ and kept.sum() == 40
+    assert (fit_counts >= 0).all() and fit_counts.sum() == len(fit_topics)
+    assert ((fit_topics >= 0) & (fit_topics < 40)).all()
+    final_counts = np.bincount(fit_topics, minlength=40)
+    return dict(fit_pairs=len(fit_topics), with_fit_pair=int((final_counts > 0).sum()),
+                with_1pct=int((final_counts * 100 >= len(fit_topics)).sum()),
+                share_before_cut=float(fit_counts[kept].sum() / len(fit_topics)))
+
+
 def assign_captions(encoder, centers, h, pid, eval_pid, kept, device, block_size=BLOCK_SIZE):
     """Frozen Q over ascending kept centers; average per evaluation painting."""
     assert h.ndim == 2 and h.dtype == np.float32 and len(h) == len(pid)
@@ -255,10 +269,7 @@ def run(s, version, seed, smoke=None, device=None, outroot=None):
                   for gamma in ('1.5', '2', '3', '5')}
         topic, q_paint_eval = assign_captions(
             encoder, centers, h, s['pid'], s['subset_pid'], kept, device)
-        final_counts = np.bincount(topic[fit_rows], minlength=40)
-        kept_topics = dict(fit_pairs=len(fit_rows), with_fit_pair=int((final_counts > 0).sum()),
-                           with_1pct=int((final_counts * 100 >= len(fit_rows)).sum()),
-                           share_before_cut=float(fit_counts[kept].sum() / len(fit_rows)))
+        kept_topics = kept_topic_stats(topic[fit_rows], fit_counts, kept)
         record_seconds(seconds, 'assignment', start)
     folder = (Path(smoke) if smoke is not None else
               Path(outroot) if outroot is not None else HERE / 'outputs') / 'stage1'

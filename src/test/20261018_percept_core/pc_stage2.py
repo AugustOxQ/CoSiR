@@ -39,6 +39,7 @@ def load_stage1(s, path, version, seed):
         assert z['center_norms'].dtype == np.float32 and np.isfinite(z['center_norms']).all()
         assert z['fit_counts'].dtype == np.int64 and (z['fit_counts'] >= 0).all()
         assert z['kept'].dtype == np.bool_ and k == 40 == int(z['kept'].sum())
+        assert np.array_equal(z['kept'], pc_fixes.top_used(z['fit_counts'], 40)), 'Stage 1 kept mask mismatch'
         topic = z['topic']
         assert topic.shape == s['pid'].shape and topic.dtype == np.int16
         assert ((topic >= 0) & (topic < k)).all()

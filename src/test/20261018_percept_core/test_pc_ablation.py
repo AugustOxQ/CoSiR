@@ -1,5 +1,6 @@
 """PercepT arm cells and unchanged ablation rows from stored-result fixtures."""
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -52,11 +53,40 @@ def results():
                        ('P3', (.30049, .40049, .50049)),
                        ('P4', None), ('P5', (.30151, .39851, .50051))):
         arms[arm] = dict(established=arm not in ('P4', 'P5'),
+                         K=None if means is None else dict(mean=40., sd=0.),
                          reasons=['fixture gate failed'] if arm in ('P4', 'P5') else [],
                          img=None if means is None else
                          {a: dict(mean=m, sd=s) for a, m, s in
                           zip(ASPECTS, means, (.0014, .0026, .0034))})
-    return dict(aggregates=aggregates, references=references), dict(row1=row1, arms=arms), rows
+    return dict(aggregates=aggregates, references=references), dict(schema=2, row1=row1, arms=arms), rows
+
+
+@pytest.mark.parametrize('schema,k,accepted', [
+    (1, dict(mean=40., sd=0.), False),
+    (2, dict(mean=40., sd=0.), True),
+    (2, None, True),
+    (2, dict(mean=39., sd=0.), False),
+    (2, dict(mean=40., sd=1.), False),
+    (2, {'1.5': 2, '2': 3, '3': 4, '5': 100}, False),
+])
+def test_load_requires_schema2_and_fixed_k(results, tmp_path, monkeypatch, schema, k, accepted):
+    fu, result, rows = results
+    here = tmp_path / 'percept'
+    outputs = here / 'outputs'
+    outputs.mkdir(parents=True)
+    followup = tmp_path / '20261018_aspect_graph_sheet'
+    followup.mkdir()
+    (followup / 'ags_fu_results.json').write_text(json.dumps(fu))
+    result['schema'] = schema
+    result['arms']['P5']['K'] = k
+    (outputs / 'pc_results.json').write_text(json.dumps(result))
+    (outputs / 'pc_rows_results.json').write_text(json.dumps(dict(aggregates=rows)))
+    monkeypatch.setattr(ablation, 'HERE', here)
+    if accepted:
+        assert ablation.load() == (fu, result, rows)
+    else:
+        with pytest.raises(AssertionError):
+            ablation.load()
 
 
 def test_arm_tables_and_image_changes_preserve_existing_output(results, capsys):
@@ -101,8 +131,8 @@ def test_arm_tables_and_image_changes_preserve_existing_output(results, capsys):
 |---|---|---:|---:|---:|
 | Stage 2 reader, CLIP | 4b vs 4a | +0.001 | -0.002 | +0.000 |
 | Stage 2 reader, Qwen topics | 5b vs 5a | — | — | — |
-| E: RoBERTa vs Qwen emotion | 5c vs 5a | +0.001 | -0.002 | +0.000 |
-| Qwen vs CLIP: I, T and Stage 2 input (RoBERTa E) | 5c vs 4b | +0.200 | +0.200 | +0.200 |'''
+| E: RoBERTa vs Qwen emotion | 5c vs 5a | +0.001* | -0.002* | +0.000* |
+| Qwen vs CLIP: I, T and Stage 2 input (RoBERTa E) | 5c vs 4b | +0.200* | +0.200* | +0.200* |'''
 
     def existing_lines(table):
         return '\n'.join(line for line in table.splitlines()
@@ -144,6 +174,13 @@ def test_arm_tables_and_image_changes_preserve_existing_output(results, capsys):
 | Prompted input instead of default, other side alone | 13 vs 10 | +0.300 | +0.300 | +0.250 |
 | Encoder: Qwen default vs CLIP image + CLIP text | 2 vs 1a | +0.090 | +0.090 | +0.090 |
 | Encoder: Qwen default vs CLIP image + RoBERTa | 2 vs 1b | +0.060 | +0.060 | +0.060 |'''
+
+
+@pytest.mark.parametrize('key', ['P1', 'P2'])
+def test_image_change_marks_either_unestablished_arm(results, capsys, key):
+    results[1]['arms'][key]['established'] = False
+    ablation.main(*results)
+    assert '| Stage 2 reader, CLIP | 4b vs 4a | +0.001* | -0.002* | +0.000* |' in capsys.readouterr().out
 
 
 def test_import_does_not_read_result_files(monkeypatch):

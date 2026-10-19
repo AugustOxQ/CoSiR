@@ -169,6 +169,7 @@ def stage_files(tmp_path):
 def test_score_stage_files_establishes_only_complete_arms_and_preserves_metrics(stage_files):
     sample, labels, outdir = stage_files
     result = score.score_outputs(sample, labels, outdir)
+    assert result['schema'] == 2
     arm = result['arms']['P1']
     assert arm['established']
     assert arm['img']['emotion'] == pytest.approx(dict(mean=1., sd=0.))
@@ -208,8 +209,12 @@ def test_results_files_contain_row1_native_counts_auc_and_comparator(stage_files
         assert value in text
     assert 'reported only (A3)' in text
     assert '## Kept topics' in text and '## Per-seed kept topics' in text
-    assert '| P1 | 40.00000 ± 0.00000 | 40.00000 ± 0.00000 | 40.00000 ± 0.00000 | 1.00000 ± 0.00000 |' in text
+    assert '| P1 | 40 | 40.00000 ± 0.00000 | 40.00000 ± 0.00000 | 1.00000 ± 0.00000 |' in text
     assert '| P1 | 0 | 40 | 40 | 40 | 1.00000 |' in text
+    dev_table = text.split('## Dev AUC')[1].split('## Row 1')[0]
+    assert 'Algorithm 1 K(γ) columns below are reported only (A3); K is the trained count.' in dev_table
+    assert '| Arm | Seed | K | Algorithm 1 K(1.5) | Algorithm 1 K(2) | Algorithm 1 K(3) | Algorithm 1 K(5) | Dev AUC | Valid topics |' in dev_table
+    assert '| P1 | 0 | 40 | 10 | 20 | 30 | 100 | 0.75000 | 40 |' in dev_table
     assert not list(outdir.glob('*.pending.*'))
     # A serialization failure must leave the published reports intact.
     old_json = (outdir / 'pc_results.json').read_bytes()
@@ -397,6 +402,22 @@ def test_passing_unit_test_line_still_establishes_and_sheet_lists_condition(stag
     assert result['arms']['P1']['established'] and result['arms']['P1']['reasons'] == []
     sentence = next(line for line in text.splitlines() if line.startswith('Stage 0:'))
     assert 'unit tests' in sentence.lower()
+
+
+def test_score_seed_rejects_a_wrong_kept_mask_with_40_centers(stage_files):
+    sample, labels, outdir = stage_files
+    stage1 = outdir / 'stage1/clip_roberta__s0.npz'
+    stage2 = outdir / 'stage2/P1__s0.npz'
+    with np.load(stage1) as z:
+        arrays = dict(z)
+    arrays['kept'][60], arrays['kept'][0] = False, True
+    np.savez(stage1, **arrays)
+    sidecar = stage2.with_suffix('.json')
+    meta = json.loads(sidecar.read_text())
+    meta['stage1_sha256'] = score.sha_file(stage1)
+    sidecar.write_text(json.dumps(meta))
+    with pytest.raises(AssertionError, match='kept mask'):
+        score.score_seed(stage1, stage2, sample, labels)
 
 
 def test_stage2_reason_is_rejected_and_names_the_file(stage_files):
