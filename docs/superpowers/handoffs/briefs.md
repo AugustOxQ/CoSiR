@@ -592,3 +592,12 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-qwen-buddy-outside-view-handoff.md
 - New chat: tab 'outside-view qwen-buddy', session 066201b0-df5d-4151-90a5-aeb3160e6d05
 
+[brief] CoSiR: r10 decide 11 -> r10 build 7 (2026-10-19 19:59 Amsterdam)
+- Done: the user approved the stage 2 spec without changes (19:58); no container restart (user).
+- State: target, the instructed Qwen image clustered directly, 0.093 / 0.395 / 0.496 (image-side AMI); our network
+  0.081 / 0.348 / 0.458, with one pass on the default image.
+- Next: tickets from the spec, build, final review, merge; stage 0 (CPU regression check) last; then the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-7-handoff.md
+- New chat: tab 'r10 build 7', session 56b9b751-6946-4c76-b52d-3761e520be8f
+
