@@ -20,9 +20,12 @@ def roots(tmp_path):
         (root / 'stage1').mkdir(parents=True)
         np.savez_compressed(root / NAME,
                             topic=np.array([0., 1., np.nan], dtype=np.float32),
-                            kept=np.array([True, False]))
+                            kept=np.arange(100) < 40,
+                            fit_counts=np.arange(100, dtype=np.int64))
         (root / NAME).with_suffix('.json').write_text(json.dumps(dict(
-            config=dict(version='clip_roberta', seed=0), K={'2': 60},
+            config=dict(version='clip_roberta', seed=0), K=40,
+            K_gamma={'1.5': 60, '2': 60, '3': 100, '5': 100},
+            kept_topics=dict(fit_pairs=4950, with_fit_pair=40, with_1pct=20, share_before_cut=.8),
             seconds=dict(total=12.5))))
     return first, second
 
@@ -41,8 +44,8 @@ def test_identical_arrays_and_sidecars(roots, tmp_path):
     result, report = run_repeat(roots, tmp_path)
     assert result.returncode == 0, result.stderr
     assert report == dict(
-        bitwise_equal=True, arrays=dict(kept=True, topic=True),
-        sidecar=dict(K=True, config=True), first=str(roots[0]), second=str(roots[1]),
+        bitwise_equal=True, arrays=dict(fit_counts=True, kept=True, topic=True),
+        sidecar=dict(K=True, K_gamma=True, kept_topics=True, config=True), first=str(roots[0]), second=str(roots[1]),
         first_npz_sha256=hashlib.sha256((roots[0] / NAME).read_bytes()).hexdigest(),
         second_npz_sha256=hashlib.sha256((roots[1] / NAME).read_bytes()).hexdigest())
 
@@ -56,7 +59,7 @@ def test_one_float32_bit_difference_names_array_and_exits_zero(roots, tmp_path):
     result, report = run_repeat(roots, tmp_path)
     assert result.returncode == 0, result.stderr
     assert report['bitwise_equal'] is False
-    assert report['arrays'] == dict(kept=True, topic=False)
+    assert report['arrays'] == dict(fit_counts=True, kept=True, topic=False)
     assert all(report['sidecar'].values())
     assert report['first_npz_sha256'] != report['second_npz_sha256']
 

@@ -90,6 +90,33 @@ def test_algorithm1_gap_cut_keeps_expected_original_centers(norms, gamma, expect
         np.testing.assert_array_equal(pc_fixes.kept_centers(norms), kept)
 
 
+@pytest.mark.parametrize('counts,k,expected', [
+    ([5] * 100, 40, list(range(40))),
+    ([0] * 50 + [3, 7] + [0] * 48, 40, list(range(38)) + [50, 51]),
+    ([2, 9, 5, 5, 8], 3, [1, 2, 4]),
+])
+def test_top_used_keeps_exactly_k_with_lower_index_ties(counts, k, expected):
+    counts = np.array(counts, dtype=np.int64)
+    before = counts.copy()
+    kept = pc_fixes.top_used(counts) if k == 40 else pc_fixes.top_used(counts, k)
+    np.testing.assert_array_equal(np.flatnonzero(kept), expected)
+    assert kept.shape == counts.shape and kept.dtype == np.bool_ and kept.sum() == k
+    np.testing.assert_array_equal(counts, before)
+
+
+@pytest.mark.parametrize('counts,k', [
+    (np.ones((2, 40), dtype=np.int64), 40),
+    (np.ones(40, dtype=np.float32), 40),
+    (np.array([-1] + [0] * 39), 40),
+    (np.ones(39, dtype=np.int64), 40),
+    (np.ones(40, dtype=np.int64), 0),
+    (np.ones(40, dtype=np.int64), 1.5),
+])
+def test_top_used_asserts_invalid_counts_or_k(counts, k):
+    with pytest.raises(AssertionError):
+        pc_fixes.top_used(counts, k)
+
+
 @pytest.mark.parametrize('seed', [0, 1, 2])
 def test_multi_hot_matches_explicit_caption_or_in_requested_painting_order(seed):
     rng = np.random.default_rng(seed)

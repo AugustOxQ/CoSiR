@@ -1,6 +1,6 @@
 # PercepT core in five settings, and the missing rows of the ablation table: design
 
-> Date: 2026-10-18 23:33 · Status: approved 2026-10-18 23:34; amended 2026-10-19 08:25 (A1, A2 in §4), text brought in line 2026-10-19 09:45; amended 2026-10-19 10:45 (A3 in §4) · Kind: experiment
+> Date: 2026-10-18 23:33 · Status: approved 2026-10-18 23:34; amended 2026-10-19 08:25 (A1, A2 in §4), text brought in line 2026-10-19 09:45; amended 2026-10-19 10:45 (A3 in §4), fix-test count brought in line 2026-10-19 16:26 (build 6) · Kind: experiment
 > Builds on: [aspect graph follow-up](../../reports/auto/percept/2026-12-12_aspect_graph_followup.md) and its
 > [ablation table](../../user_read/2026-10-18_aspect_graph_followup.md) (rows 1 to 13) · facts brief
 > `.scratch/r10-percept-core/facts.md` · grill record `.scratch/r10-percept-core/grill.md` · Constitution:
@@ -176,7 +176,8 @@ graphs of row 6, and everything PercepT core trains.
 
 Places the amendments changed: A1 in the brief (plan item 1, "Check these"), §3.5, §5 and §7; A2 in the brief,
 §3.2 and "Check these"; A3 in the brief ("Amended", "Check these"), §3.2 fix 3, §3.4, D9, §6, §8 and §9. §3.2, §5, §7 and "Check these", with §6 and §8 (the 21 fix tests), were brought in
-line after the final review of build 5 (2026-10-19), text only.
+line after the final review of build 5 (2026-10-19), text only. After build 6, §6 and §8 give the fix-test count after
+A3 (30: the 21, three top-40 cases and six input checks of the top-40 rule), text only.
 
 ## 5. Assumptions and open questions
 
@@ -193,7 +194,7 @@ line after the final review of build 5 (2026-10-19), text only.
 ## 6. Success criteria
 
 **Descriptive mode.** No decision rides on a bar: the user picks from the filled table.
-An arm is **established** when: stage 0 passed (the amended gate, A1); unit tests pass for the four fixes (21 tests, none skipped: pair count equals the fit
+An arm is **established** when: stage 0 passed (the amended gate, A1); unit tests pass for the four fixes (30 tests after A3, 21 before; none skipped: pair count equals the fit
 captions; Eq. 2 on a hand-worked example; Algorithm 1 on norms with a known gap; the multi-hot target equals the OR
 of the caption topics; after A3 also the top-40 pick on known pair counts, ties included); and its Stage 2 dev macro AUC is at least 0.75 on every seed (September 0.829 with
 threshold targets; the paper 0.94).
@@ -225,7 +226,7 @@ report means these checks.
 
 | What could make the result wrong or misleading | How we would notice | What we do then |
 |---|---|---|
-| A port error in the four fixes | unit tests (21, none skipped); stage 0 checks (i) and (ii) | fix before stage 1 |
+| A port error in the four fixes | unit tests (30 after A3, none skipped); stage 0 checks (i) and (ii) | fix before stage 1 |
 | γ = 2 gives K = 100 (no cut) or a very small K | the K table for γ 1.5 to 5 | happened in run 2 (K 1 to 3 or 99); A3 fixes K = 40 |
 | K = 40 by pair share is our choice, not the paper's; another K could move the comparator | the kept topics' pair shares; the γ counts beside it | report K with the claim; no K sweep in this spec |
 | Selection: stage 1 chose our rows on the 5,000 paintings, and D15 chooses PercepT's arm on them too | stated in the report | carry both picks to fresh data in stage 2 of our model |

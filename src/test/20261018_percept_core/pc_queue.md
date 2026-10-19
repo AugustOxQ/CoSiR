@@ -16,6 +16,19 @@ round=src/test/20261018_percept_core
 The CPU queue waits for the GPU queue before writing the final sheet. Logs and
 the shared `pc_queue_status.txt` are in the round folder.
 
+**The A3 rerun (run 3) starts the GPU queue only**: rows 1, 6, 10 and 13 are not
+rerun, and the CPU queue would retrain rows 6, 10 and 13. Run 2's outputs are kept
+as `outputs/*_run2*`, `logs/run2/` and `pc_queue_gpu_run2.log`. After the GPU queue
+exits 0, score and print the table in one chain, so a failed score never leaves
+run 2's sheet in the table:
+
+```bash
+round=src/test/20261018_percept_core
+python=/root/miniconda3/envs/CoSiR/bin/python
+OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1 "$python" "$round/pc_score.py" \
+    && PYTHONDONTWRITEBYTECODE=1 "$python" "$round/pc_ablation.py" > "$round/outputs/pc_ablation_table.md"
+```
+
 `--foreground` waits for the locked job and returns its exit code. The plain
 `bash src/test/20261018_percept_core/pc_queue_gpu.sh` form uses nohup and returns
 at once; its PID is the background launcher shell. The lock is

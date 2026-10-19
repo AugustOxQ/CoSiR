@@ -1,6 +1,8 @@
 """Repeatable September artifact checks, without importing September modules."""
 import hashlib
 import json
+import re
+import subprocess
 import sys
 
 import numpy as np
@@ -8,6 +10,18 @@ import pytest
 from sklearn.utils._openmp_helpers import _openmp_effective_n_threads
 
 import pc_stage0
+from pc_fixes import FIX_TESTS
+
+
+def test_fix_test_count_matches_collected_tests():
+    collected = subprocess.run(
+        [sys.executable, '-m', 'pytest', '--collect-only', '-q',
+         str(pc_stage0.HERE / 'test_pc_fixes.py')],
+        capture_output=True, text=True, timeout=30)
+    assert collected.returncode == 0, collected.stdout + collected.stderr
+    count = re.search(r'(\d+) tests? collected', collected.stdout)
+    assert count is not None, collected.stdout
+    assert int(count.group(1)) == FIX_TESTS
 
 
 @pytest.mark.parametrize('commit', pc_stage0.RECORD_COMMITS)
@@ -199,12 +213,12 @@ def test_kmeans_gate_requires_every_label_to_match(monkeypatch, changed):
     (False, '', None), (True, '', None), (True, 'kmeans', None),
     (False, 'row2', None), (False, 'fix_tests', None),
     (False, 'source_duplicate', None), (False, 'source_target', None),
-    (False, '', '21 passed in 1.1s'), (False, 'fix_summary', '20 passed in 1s'),
-    (False, 'fix_summary', '21 passed, 1 skipped in 1s'),
-    (False, 'fix_summary', '22 passed in 1s'),
-    (False, 'fix_summary', '21 passed, 1 failed in 1s'),
-    (False, 'fix_summary', '21 passed, 1 error in 1s'),
-    (False, 'fix_summary', '21 passed, 1 deselected in 1s'),
+    (False, '', f'{FIX_TESTS} passed in 1.1s'), (False, 'fix_summary', f'{FIX_TESTS - 1} passed in 1s'),
+    (False, 'fix_summary', f'{FIX_TESTS} passed, 1 skipped in 1s'),
+    (False, 'fix_summary', f'{FIX_TESTS + 1} passed in 1s'),
+    (False, 'fix_summary', f'{FIX_TESTS} passed, 1 failed in 1s'),
+    (False, 'fix_summary', f'{FIX_TESTS} passed, 1 error in 1s'),
+    (False, 'fix_summary', f'{FIX_TESTS} passed, 1 deselected in 1s'),
 ])
 def test_run_schema_commands_and_exit_status(tmp_path, monkeypatch, smoke, failure, fix_line):
     calls = []
@@ -236,7 +250,7 @@ def test_run_schema_commands_and_exit_status(tmp_path, monkeypatch, smoke, failu
             assert name == 'fix_tests'
             assert command == [sys.executable, '-m', 'pytest', '-q',
                                str(pc_stage0.HERE / 'test_pc_fixes.py')]
-            line = fix_line or ('1 failed in 1.26s' if failure == name else '21 passed in 1.26s')
+            line = fix_line or ('1 failed in 1.26s' if failure == name else f'{FIX_TESTS} passed in 1.26s')
             (folder / 'fix_tests.log').write_text('.....................\n' + line + '\n')
         return dict(status='FAIL' if failure == name == 'fix_tests' else 'PASS',
                     expected=0, actual=int(failure == name == 'fix_tests'), seconds=.01)
@@ -249,7 +263,7 @@ def test_run_schema_commands_and_exit_status(tmp_path, monkeypatch, smoke, failu
     assert code == int(bool(failure))
     assert result['status'] == ('FAIL' if failure else 'SMOKE' if smoke else 'PASS')
     assert result['fix_tests'] == (fix_line or ('1 failed in 1.26s' if failure == 'fix_tests'
-                                             else '21 passed in 1.26s'))
+                                             else f'{FIX_TESTS} passed in 1.26s'))
     assert calls == ['row2', 'fix_tests']
     assert result['commit'] == pc_stage0.COMMIT and result['smoke'] is smoke
     with pc_stage0.SNAPSHOT.open('rb') as stream:
@@ -283,7 +297,7 @@ def test_run_checks_small_row2_drift(tmp_path, monkeypatch, aspect, shift, statu
         if name == 'row2':
             (tmp_path / 'row2_check.json').write_text(json.dumps(dict(both_mean=values)))
         else:
-            (folder / 'fix_tests.log').write_text('21 passed in 1.1s\n')
+            (folder / 'fix_tests.log').write_text(f'{FIX_TESTS} passed in 1.1s\n')
         return dict(status='PASS', expected=0, actual=0, seconds=.01)
 
     monkeypatch.setattr(pc_stage0, 'run_command', command)

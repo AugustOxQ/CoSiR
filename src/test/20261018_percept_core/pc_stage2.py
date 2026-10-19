@@ -24,29 +24,29 @@ ARMS = dict(P1=('clip_roberta', 'patch', 512), P2=('clip_roberta', 'clip_image',
 
 
 def load_stage1(s, path, version, seed):
-    """Validate the Stage 1 identity and read caption topics at gamma 2."""
+    """Validate the Stage 1 identity and read A3's 40 caption topics."""
     path = Path(path)
     meta = json.loads(path.with_suffix('.json').read_text())
     assert meta['sample_sha256'] == pc_data.fingerprint(s), 'Stage 1 sample mismatch'
     assert meta['config']['version'] == version, 'Stage 1 version mismatch'
     assert meta['config']['seed'] == seed, 'Stage 1 seed mismatch'
-    assert set(meta['K']) == {'1.5', '2', '3', '5'}
-    k = meta['K']['2']
-    assert isinstance(k, int) and 0 <= k <= 100
+    assert set(meta['K_gamma']) == {'1.5', '2', '3', '5'}
+    k = meta['K']
+    assert type(k) is int and k == 40
     with np.load(path, allow_pickle=False) as z:
-        assert set(z.files) == {'center_norms', 'kept', 'topic', 'q_paint_eval'}
-        assert z['center_norms'].shape == z['kept'].shape == (100,)
+        assert set(z.files) == {'center_norms', 'fit_counts', 'kept', 'topic', 'q_paint_eval'}
+        assert z['center_norms'].shape == z['fit_counts'].shape == z['kept'].shape == (100,)
         assert z['center_norms'].dtype == np.float32 and np.isfinite(z['center_norms']).all()
-        assert z['kept'].dtype == np.bool_ and int(z['kept'].sum()) == k
+        assert z['fit_counts'].dtype == np.int64 and (z['fit_counts'] >= 0).all()
+        assert z['kept'].dtype == np.bool_ and k == 40 == int(z['kept'].sum())
+        assert np.array_equal(z['kept'], pc_fixes.top_used(z['fit_counts'], 40)), 'Stage 1 kept mask mismatch'
         topic = z['topic']
         assert topic.shape == s['pid'].shape and topic.dtype == np.int16
-        if k > 0:
-            assert ((topic >= 0) & (topic < k)).all()
+        assert ((topic >= 0) & (topic < k)).all()
         q = z['q_paint_eval']
         assert q.shape == (len(s['subset_pid']), k) and q.dtype == np.float32
         assert np.isfinite(q).all() and ((q >= 0) & (q <= 1)).all()
-        if k > 0:
-            assert np.allclose(q.sum(axis=1), 1, atol=1e-6)
+        assert np.allclose(q.sum(axis=1), 1, atol=1e-6)
     return topic, k
 
 
@@ -99,7 +99,7 @@ def make_config(s, arm, seed, smoke, device):
                 hidden_dim=None if kind == 'patch' else 1024,
                 activation=None if kind == 'patch' else 'ReLU',
                 normalization='stored patches' if kind == 'patch' else 'l2 global vector',
-                targets='multi-hot union of own partition caption topics; gamma 2',
+                targets='multi-hot union of own partition caption topics; A3 K=40',
                 fit_paintings=min(200, counts['fit']) if smoke else counts['fit'],
                 dev_paintings=counts['dev'], eval_paintings=counts['eval'],
                 smoke_fit_selection='first 200 fit paintings in frozen order' if smoke else None,
@@ -177,11 +177,7 @@ def run(s, arm, seed, smoke=None, device=None):
     path = folder / f'{arm}__s{seed}.npz'
     meta = dict(config=config, K=k, stage1_sha256=stage1_sha256,
                 dev_auc=None, dev_valid_topics=0, loss_history=[], seconds=0.)
-    if k < 2:
-        meta.update(reason='K < 2; mapper not trained', seconds=time.perf_counter() - start)
-        write_sidecar(path.with_suffix('.json'), meta)
-        print(f"{arm}: {meta['reason']}", flush=True)
-        return path.with_suffix('.json')
+    assert k == 40
     assert smoke is not None or str(device).startswith('cuda'), 'full Stage 2 requires GPU'
     torch.set_num_threads(8)
     torch.backends.cudnn.deterministic = True

@@ -100,6 +100,36 @@ def prepare_inputs(s, version, fit_rows, block_size=BLOCK_SIZE):
     return h, dict(input_sha256s=inputs, maps=maps, seconds=seconds)
 
 
+def count_fit_pairs(encoder, centers, inputs, device, block_size=BLOCK_SIZE):
+    """Count fit argmax assignments over every trained center, before A3's cut."""
+    assert inputs.ndim == centers.ndim == 2 and len(inputs) > 0 and len(centers) == 100
+    assert inputs.dtype == centers.dtype == torch.float32 and block_size > 0
+    counts = np.zeros(len(centers), dtype=np.int64)
+    encoder.eval()
+    with torch.no_grad():
+        for start in range(0, len(inputs), block_size):
+            z = encoder(inputs[start:start + block_size].to(device))
+            q = pc_sept.soft_assignments(z, centers)
+            assert torch.isfinite(q).all()
+            counts += np.bincount(q.argmax(dim=1).cpu().numpy(), minlength=len(centers))
+    assert counts.sum() == len(inputs)
+    return counts
+
+
+def kept_topic_stats(fit_topics, fit_counts, kept):
+    """Final fit-topic coverage, with the pair share measured before the cut."""
+    assert fit_topics.ndim == fit_counts.ndim == kept.ndim == 1 and len(fit_topics) > 0
+    assert np.issubdtype(fit_topics.dtype, np.integer)
+    assert fit_counts.shape == kept.shape == (100,) and fit_counts.dtype == np.int64
+    assert kept.dtype == np.bool_ and kept.sum() == 40
+    assert (fit_counts >= 0).all() and fit_counts.sum() == len(fit_topics)
+    assert ((fit_topics >= 0) & (fit_topics < 40)).all()
+    final_counts = np.bincount(fit_topics, minlength=40)
+    return dict(fit_pairs=len(fit_topics), with_fit_pair=int((final_counts > 0).sum()),
+                with_1pct=int((final_counts * 100 >= len(fit_topics)).sum()),
+                share_before_cut=float(fit_counts[kept].sum() / len(fit_topics)))
+
+
 def assign_captions(encoder, centers, h, pid, eval_pid, kept, device, block_size=BLOCK_SIZE):
     """Frozen Q over ascending kept centers; average per evaluation painting."""
     assert h.ndim == 2 and h.dtype == np.float32 and len(h) == len(pid)
@@ -165,8 +195,8 @@ def make_config(s, version, seed, smoke, fit_rows, device):
                 p_refresh_steps=1, p_detached=True, student_t_alpha=1,
                 joint_loss='KL(P||Q) batchmean + mean MSE + balance_weight KL(U||mean Q) sum',
                 reconstruction_weight=1, balance_weight=1000, balance_log_clamp=1e-8,
-                gamma=2, reported_gammas=['1.5', '2', '3', '5'],
-                pruning='Algorithm 1; low-norm side; first largest gap; no gap keeps all',
+                reported_gammas=['1.5', '2', '3', '5'],
+                pruning='A3; top 40 of 100 by fit-pair argmax count; ties to lower index',
                 topic_order='ascending original kept center index',
                 heldout_assignment='frozen encoder; Q renormalized over kept centers',
                 painting_q='caption Q mean in subset_pid order',
@@ -228,14 +258,18 @@ def run(s, version, seed, smoke=None, device=None, outroot=None):
         finally:
             for name, value in previous.items():
                 setattr(pc_sept, name, value)
-        del inputs, decoder
+        del decoder
         start = time.perf_counter()
         center_norms = torch.linalg.vector_norm(centers.detach(), dim=1).cpu().numpy()
-        kept = pc_fixes.kept_centers(center_norms, gamma=2)
+        fit_counts = count_fit_pairs(encoder, centers, inputs, device)
+        del inputs
+        kept = pc_fixes.top_used(fit_counts, 40)
+        assert kept.sum() == 40
         counts = {gamma: int(pc_fixes.kept_centers(center_norms, gamma=float(gamma)).sum())
                   for gamma in ('1.5', '2', '3', '5')}
         topic, q_paint_eval = assign_captions(
             encoder, centers, h, s['pid'], s['subset_pid'], kept, device)
+        kept_topics = kept_topic_stats(topic[fit_rows], fit_counts, kept)
         record_seconds(seconds, 'assignment', start)
     folder = (Path(smoke) if smoke is not None else
               Path(outroot) if outroot is not None else HERE / 'outputs') / 'stage1'
@@ -243,12 +277,12 @@ def run(s, version, seed, smoke=None, device=None, outroot=None):
     path = folder / f'{version}__s{seed}.npz'
     start = time.perf_counter()
     pending = path.with_name(path.stem + '.pending.npz')
-    np.savez_compressed(pending, center_norms=center_norms, kept=kept,
+    np.savez_compressed(pending, center_norms=center_norms, fit_counts=fit_counts, kept=kept,
                         topic=topic, q_paint_eval=q_paint_eval)
     pending.replace(path)
     record_seconds(seconds, 'save_arrays', start)
     record_seconds(seconds, 'total', total_start)
-    meta = dict(config=config, K=counts,
+    meta = dict(config=config, K=40, K_gamma=counts, kept_topics=kept_topics,
                 epochs=dict(pretrain=len(pretrain_losses), joint=steps),
                 final_change_fraction=history[-1]['fraction_changed'], stop_reason=stop_reason,
                 pretrain_losses=pretrain_losses, joint_history=history, seconds=seconds,
@@ -258,7 +292,7 @@ def run(s, version, seed, smoke=None, device=None, outroot=None):
     pending_json = sidecar.with_name(sidecar.stem + '.pending.json')
     pending_json.write_text(json.dumps(meta, indent=2, allow_nan=False) + '\n')
     pending_json.replace(sidecar)
-    print(f'Wrote {path}; K={counts}', flush=True)
+    print(f'Wrote {path}; K=40; K_gamma={counts}', flush=True)
     return path
 
 

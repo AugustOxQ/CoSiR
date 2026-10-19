@@ -9,16 +9,17 @@ from threadpoolctl import threadpool_limits
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pc_score as score
+from pc_fixes import FIX_TESTS
 
-PASSING = '21 passed in 2.1s'
+PASSING = f'{FIX_TESTS} passed in 2.1s'
 
 
 @pytest.mark.parametrize('line, expected', [
-    ('21 passed in 1.1s', True), ('20 passed in 1s', False),
-    ('21 passed, 1 skipped in 1s', False), ('22 passed in 1s', False),
-    ('21 passed, 2 warnings in 1.0s', True),
-    ('21 passed, 1 failed in 1s', False), ('21 passed, 1 error in 1s', False),
-    ('21 passed, 1 deselected in 1s', False),
+    (f'{FIX_TESTS} passed in 1.1s', True), (f'{FIX_TESTS - 1} passed in 1s', False),
+    (f'{FIX_TESTS} passed, 1 skipped in 1s', False), (f'{FIX_TESTS + 1} passed in 1s', False),
+    (f'{FIX_TESTS} passed, 2 warnings in 1.0s', True),
+    (f'{FIX_TESTS} passed, 1 failed in 1s', False), (f'{FIX_TESTS} passed, 1 error in 1s', False),
+    (f'{FIX_TESTS} passed, 1 deselected in 1s', False),
 ])
 def test_unit_tests_require_exactly_all_four_fix_tests(line, expected):
     assert score.unit_tests_pass(line) is expected
@@ -62,7 +63,9 @@ def seed_result(value, auc=.8):
     return dict(img={a: dict(mean=value, sd=.99) for a in score.LABELS},
                 native_img={a: value for a in score.LABELS},
                 native_topic={a: value / 2 for a in score.LABELS},
-                K={'1.5': 2, '2': 3, '3': 4, '5': 100}, dev_auc=auc)
+                K=40, K_gamma={'1.5': 2, '2': 3, '3': 4, '5': 100},
+                kept_topics=dict(fit_pairs=1000, with_fit_pair=40, with_1pct=20, share_before_cut=.8),
+                dev_auc=auc)
 
 
 def test_seed_aggregation_uses_population_sd_and_all_seed_auc_gate():
@@ -71,7 +74,10 @@ def test_seed_aggregation_uses_population_sd_and_all_seed_auc_gate():
     assert result['established']
     assert result['img']['emotion'] == pytest.approx(dict(mean=.2, sd=.0816496580927726))
     assert result['native_topic']['style']['mean'] == pytest.approx(.1)
-    assert result['K']['5'] == dict(mean=100., sd=0.)
+    assert result['K_gamma']['5'] == dict(mean=100., sd=0.)
+    assert result['K'] == dict(mean=40., sd=0.)
+    assert result['kept_topics']['with_fit_pair'] == dict(mean=40., sd=0.)
+    assert result['kept_topics']['share_before_cut'] == pytest.approx(dict(mean=.8, sd=0.))
     assert result['dev_auc'] == pytest.approx(dict(mean=.8, sd=0.))
     seeds['1']['dev_auc'] = .74
     assert not score.aggregate_arm(seeds, stage0_pass=True, tests_pass=True)['established']
@@ -130,8 +136,8 @@ def test_row1_readers_normalize_captions_before_painting_mean(monkeypatch):
 
 @pytest.fixture
 def stage_files(tmp_path):
-    n, k = 5000, 20
-    groups = np.random.default_rng(42).permutation(np.arange(n)) % k
+    n, k = 5000, 40
+    groups = np.random.default_rng(42).permutation(np.arange(n)) % 20
     sample = dict(sample_ids=np.arange(99999), pid=np.arange(99999) % 19889,
                   first=np.arange(19889), all_painting_ids=np.arange(19889).astype(str),
                   subset_pid=np.arange(n)[::-1], subset_image_indices=np.arange(n)[::-1])
@@ -142,10 +148,14 @@ def stage_files(tmp_path):
     for seed in range(3):
         path = tmp_path / 'stage1' / f'clip_roberta__s{seed}.npz'
         np.savez(path, center_norms=np.arange(1, 101, dtype=np.float32),
-                 kept=np.arange(100) >= 80, topic=(np.arange(99999) % k).astype(np.int16),
+                 fit_counts=np.r_[np.zeros(60, dtype=np.int64),
+                                  np.bincount(np.arange(99999) % k, minlength=k)],
+                 kept=np.arange(100) >= 60, topic=(np.arange(99999) % k).astype(np.int16),
                  q_paint_eval=np.eye(k, dtype=np.float32)[np.zeros(n, dtype=int)])  # one topic: AMI 0
         path.with_suffix('.json').write_text(json.dumps(dict(
-            config=dict(version='clip_roberta', seed=seed), K={'1.5': 10, '2': k, '3': 30, '5': 100},
+            config=dict(version='clip_roberta', seed=seed), K=k,
+            K_gamma={'1.5': 10, '2': 20, '3': 30, '5': 100},
+            kept_topics=dict(fit_pairs=99999, with_fit_pair=40, with_1pct=40, share_before_cut=1.),
             sample_sha256=score.fingerprint(sample))))
         stage2 = tmp_path / 'stage2' / f'P1__s{seed}.npz'
         np.savez(stage2, eval_prob=.1 + .8 * np.eye(k, dtype=np.float32)[groups])
@@ -159,6 +169,7 @@ def stage_files(tmp_path):
 def test_score_stage_files_establishes_only_complete_arms_and_preserves_metrics(stage_files):
     sample, labels, outdir = stage_files
     result = score.score_outputs(sample, labels, outdir)
+    assert result['schema'] == 2
     arm = result['arms']['P1']
     assert arm['established']
     assert arm['img']['emotion'] == pytest.approx(dict(mean=1., sd=0.))
@@ -167,8 +178,11 @@ def test_score_stage_files_establishes_only_complete_arms_and_preserves_metrics(
     assert arm['native_topic']['style'] == pytest.approx(dict(mean=0., sd=0.))
     assert arm['native_topic']['genre'] == pytest.approx(dict(mean=0., sd=0.))
     assert arm['dev_auc'] == pytest.approx(dict(mean=.8, sd=.0408248290463863))
-    assert arm['seeds']['0']['K'] == {'1.5': 10, '2': 20, '3': 30, '5': 100}
-    assert arm['seeds']['0']['dev_valid_topics'] == 20
+    assert arm['seeds']['0']['K_gamma'] == {'1.5': 10, '2': 20, '3': 30, '5': 100}
+    assert arm['seeds']['0']['dev_valid_topics'] == 40
+    assert arm['seeds']['0']['K'] == 40
+    assert arm['seeds']['0']['kept_topics'] == dict(
+        fit_pairs=99999, with_fit_pair=40, with_1pct=40, share_before_cut=1.)
     assert not result['arms']['P2']['established']
     assert len(result['missing_outputs']) == 12  # Four incomplete arms, three seeds each.
     assert result['missing_outputs']['P2__s0'] == ['stage2/P2__s0.npz', 'stage2/P2__s0.json']
@@ -193,6 +207,14 @@ def test_results_files_contain_row1_native_counts_auc_and_comparator(stage_files
     for value in ('image-side AMI', 'K-native', 'K per gamma', 'Dev AUC', 'Row 1', 'Comparator',
                   'clip_text', 'roberta', '0.30000', '0.75000', '100', 'P5', 'not established'):
         assert value in text
+    assert 'reported only (A3)' in text
+    assert '## Kept topics' in text and '## Per-seed kept topics' in text
+    assert '| P1 | 40 | 40.00000 ± 0.00000 | 40.00000 ± 0.00000 | 1.00000 ± 0.00000 |' in text
+    assert '| P1 | 0 | 40 | 40 | 40 | 1.00000 |' in text
+    dev_table = text.split('## Dev AUC')[1].split('## Row 1')[0]
+    assert 'Algorithm 1 K(γ) columns below are reported only (A3); K is the trained count.' in dev_table
+    assert '| Arm | Seed | K | Algorithm 1 K(1.5) | Algorithm 1 K(2) | Algorithm 1 K(3) | Algorithm 1 K(5) | Dev AUC | Valid topics |' in dev_table
+    assert '| P1 | 0 | 40 | 10 | 20 | 30 | 100 | 0.75000 | 40 |' in dev_table
     assert not list(outdir.glob('*.pending.*'))
     # A serialization failure must leave the published reports intact.
     old_json = (outdir / 'pc_results.json').read_bytes()
@@ -227,45 +249,20 @@ def test_default_cli_writes_sheet_with_standin_feature_readers(stage_files, monk
     assert result['row1']['roberta']['both_mean']['style'] == pytest.approx(1.)
 
 
-def write_stage2_without_training(outdir, seed, reason, k=1):
-    """Ticket 05 for K below 2: sidecar only, dev_auc null, no npz."""
-    stage1 = outdir / 'stage1' / f'clip_roberta__s{seed}.npz'
-    stage2 = outdir / 'stage2' / f'P1__s{seed}'
-    stage2.with_suffix('.npz').unlink()
-    stage2.with_suffix('.json').write_text(json.dumps(dict(
-        config=dict(arm='P1', seed=seed), dev_auc=None, dev_valid_topics=0, K=k,
-        reason=reason, stage1_sha256=score.sha_file(stage1))))
-
-
-def test_untrained_seed_reports_its_reason_not_incomplete_files(stage_files):
+def test_stage1_metrics_survive_missing_stage2_files(stage_files):
     sample, labels, outdir = stage_files
-    meta = outdir / 'stage1' / 'clip_roberta__s1.json'
-    stage1 = json.loads(meta.read_text())
-    stage1['K'] = {g: 1 for g in ('1.5', '2', '3', '5')}
-    meta.write_text(json.dumps(stage1))
-    norms = np.random.default_rng(7).permutation(np.r_[0, np.arange(100, 199)]).astype(np.float32)
-    np.savez(outdir / 'stage1' / 'clip_roberta__s1.npz', center_norms=norms,
-             kept=norms == 0, topic=np.zeros(99999, dtype=np.int16),
-             q_paint_eval=np.ones((5000, 1), dtype=np.float32))
-    write_stage2_without_training(outdir, 1, 'K below 2: no topics to train')
+    for seed in range(3):
+        for suffix in ('.npz', '.json'):
+            (outdir / 'stage2' / f'P1__s{seed}{suffix}').unlink()
     result = score.score_outputs(sample, labels, outdir)
     arm = result['arms']['P1']
     assert not arm['established'] and arm['img'] is None
-    text = ' '.join(arm['reasons'])
-    assert 'K below 2: no topics to train' in text and 'Incomplete' not in text
-    assert 'P1__s1' not in result['missing_outputs']
-    assert 'P1__s0' not in result['missing_outputs']
-    md = score.markdown(dict(result, row1={}))
-    assert 'K below 2: no topics to train' in md
-    assert 'K = 1 at every γ' in md
-    assert '50.00 x the mean gap' in md
-    assert 'between sorted positions 1 and 2 of 100 (counted from the lowest norm)' in md
-    assert '99 centers above it are dropped (Algorithm 1)' in md
-    assert arm['K']['2'] == pytest.approx(dict(mean=13.6666666667, sd=8.9566858950))
-    # Stage 1 counts remain available even when no Stage 2 sidecar exists (P2).
-    assert result['arms']['P2']['K']['2'] == arm['K']['2']
-    k_table = md.split('## K per gamma')[1].split('## Dev AUC')[0]
-    assert '| P1 | 7.00000 ± 4.24264 | 13.66667 ± 8.95669 |' in k_table
+    assert arm['K'] == dict(mean=40., sd=0.)
+    assert arm['K_gamma']['2'] == dict(mean=20., sd=0.)
+    assert arm['kept_topics']['with_fit_pair'] == dict(mean=40., sd=0.)
+    text = score.markdown(dict(result, row1={}))
+    assert '| P1 | 0 | 40 | 40 | 40 | 1.00000 |' in text
+    assert result['arms']['P2']['kept_topics'] == arm['kept_topics']
 
 
 def test_null_dev_auc_is_undefined_not_below_threshold_and_nan_still_asserts():
@@ -395,7 +392,7 @@ def test_failed_or_missing_unit_tests_establish_no_arm(stage_files):
         assert result['stage0']['status'] == 'PASS'
         assert result['comparator']['emotion']['established'] is None
         assert reason in text
-    path.write_text(json.dumps(dict(status='PASS', fix_tests='21 passed in 2.13s')))
+    path.write_text(json.dumps(dict(status='PASS', fix_tests=f'{FIX_TESTS} passed in 2.13s')))
     assert sheet(outdir, sample, labels)[0]['arms']['P1']['established']
 
 
@@ -407,10 +404,26 @@ def test_passing_unit_test_line_still_establishes_and_sheet_lists_condition(stag
     assert 'unit tests' in sentence.lower()
 
 
-def test_stage2_reason_with_k_of_two_or_more_names_the_file(stage_files):
+def test_score_seed_rejects_a_wrong_kept_mask_with_40_centers(stage_files):
+    sample, labels, outdir = stage_files
+    stage1 = outdir / 'stage1/clip_roberta__s0.npz'
+    stage2 = outdir / 'stage2/P1__s0.npz'
+    with np.load(stage1) as z:
+        arrays = dict(z)
+    arrays['kept'][60], arrays['kept'][0] = False, True
+    np.savez(stage1, **arrays)
+    sidecar = stage2.with_suffix('.json')
+    meta = json.loads(sidecar.read_text())
+    meta['stage1_sha256'] = score.sha_file(stage1)
+    sidecar.write_text(json.dumps(meta))
+    with pytest.raises(AssertionError, match='kept mask'):
+        score.score_seed(stage1, stage2, sample, labels)
+
+
+def test_stage2_reason_is_rejected_and_names_the_file(stage_files):
     sample, labels, outdir = stage_files
     sidecar = outdir / 'stage2' / 'P1__s0.json'
     meta = json.loads(sidecar.read_text())
     sidecar.write_text(json.dumps(dict(meta, reason='bogus')))
-    with pytest.raises(AssertionError, match='P1__s0.*reason with K=20'):
+    with pytest.raises(AssertionError, match='P1__s0.*unexpected reason'):
         score.score_outputs(sample, labels, outdir)

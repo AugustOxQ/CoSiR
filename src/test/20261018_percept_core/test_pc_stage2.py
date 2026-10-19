@@ -78,7 +78,7 @@ def test_mapper_loss_and_auc_match_fresh_september_process(tmp_path):
             np.testing.assert_allclose(actual, expected[name], rtol=0, atol=1e-6)
 
 
-def fake_stage1(root, s, topic, version='clip_roberta', seed=0, k=3):
+def fake_stage1(root, s, topic, version='clip_roberta', seed=0, k=40):
     import pc_data
 
     folder = root / 'stage1'
@@ -87,10 +87,12 @@ def fake_stage1(root, s, topic, version='clip_roberta', seed=0, k=3):
     kept = np.arange(100) < k
     q = np.full((len(s['subset_pid']), k), 1 / k if k else 0, dtype=np.float32)
     np.savez(path, center_norms=np.ones(100, dtype=np.float32), kept=kept,
+             fit_counts=np.bincount(topic, minlength=100).astype(np.int64),
              topic=topic, q_paint_eval=q)
     path.with_suffix('.json').write_text(json.dumps(dict(
         config=dict(version=version, seed=seed), sample_sha256=pc_data.fingerprint(s),
-        K={gamma: k for gamma in ('1.5', '2', '3', '5')})))
+        K=k, K_gamma={gamma: 100 for gamma in ('1.5', '2', '3', '5')},
+        kept_topics=dict(fit_pairs=len(topic), with_fit_pair=3, with_1pct=3, share_before_cut=1.))))
     return path
 
 
@@ -110,13 +112,13 @@ def test_fit_and_dev_targets_are_their_own_caption_topic_unions(tmp_path, monkey
     path = fake_stage1(tmp_path, s, topic)
     loaded, k = pc_stage2.load_stage1(s, path, 'clip_roberta', 0)
     np.testing.assert_array_equal(loaded, topic)
-    assert k == 3
+    assert k == 40
     ids, targets = pc_stage2.caption_targets(s, loaded, k)
     np.testing.assert_array_equal(ids['fit'], [0, 4])
     np.testing.assert_array_equal(ids['dev'], [1, 2])
     np.testing.assert_array_equal(ids['eval'], [5, 3])
-    np.testing.assert_array_equal(targets['fit'], [[1, 1, 0], [0, 1, 1]])
-    np.testing.assert_array_equal(targets['dev'], [[0, 1, 0], [1, 0, 1]])
+    np.testing.assert_array_equal(targets['fit'], np.pad([[1, 1, 0], [0, 1, 1]], ((0, 0), (0, 37))))
+    np.testing.assert_array_equal(targets['dev'], np.pad([[0, 1, 0], [1, 0, 1]], ((0, 0), (0, 37))))
     for part in ('fit', 'dev'):
         rows = pc_fixes.pair_rows(s['pid'], partition, part)
         np.testing.assert_array_equal(targets[part], pc_fixes.multi_hot(
@@ -179,7 +181,7 @@ def test_smoke_cli_trains_and_writes_eval_in_subset_order(
     path = tmp_path / 'stage2' / f'{arm}__s1.npz'
     meta = json.loads(path.with_suffix('.json').read_text())
     assert meta['stage1_sha256'] == hashlib.sha256(source.read_bytes()).hexdigest()
-    assert meta['K'] == 3 and meta['dev_valid_topics'] == 3
+    assert meta['K'] == 40 and meta['dev_valid_topics'] == 3
     assert 0 <= meta['dev_auc'] <= 1
     assert len(meta['loss_history']) == 3 and np.isfinite(meta['loss_history']).all()
     assert meta['config']['fit_paintings'] == 200
@@ -193,7 +195,7 @@ def test_smoke_cli_trains_and_writes_eval_in_subset_order(
     with np.load(path, allow_pickle=False) as z:
         assert set(z.files) == {'eval_prob'}
         prob = z['eval_prob']
-        assert prob.shape == (3, 3) and prob.dtype == np.float32
+        assert prob.shape == (3, 40) and prob.dtype == np.float32
         assert np.isfinite(prob).all() and ((prob > 0) & (prob < 1)).all()
     output = capsys.readouterr().out
     for epoch in range(1, 4):
@@ -215,26 +217,27 @@ def test_smoke_cli_trains_and_writes_eval_in_subset_order(
         np.testing.assert_array_equal(z['eval_prob'], prob[[1, 2, 0]])
 
 
-@pytest.mark.parametrize('k', [0, 1])
-def test_fewer_than_two_topics_writes_null_sidecar_without_training(k, tmp_path, monkeypatch):
-    import pc_data
+@pytest.mark.parametrize('k', [1, 39, 41])
+def test_stage1_requires_fixed_k40(k, tmp_path, monkeypatch):
     import pc_stage2
 
-    s, topic = smoke_data(monkeypatch, k=1)
-    source = fake_stage1(tmp_path, s, topic, k=k)
-    def unavailable(*args):
-        pytest.fail('a skipped mapper must not load image features')
-    monkeypatch.setattr(pc_data, 'image_features', unavailable)
-    monkeypatch.setattr(pc_data, 'patch_tokens', unavailable)
-    monkeypatch.setattr(os.sys, 'argv', ['pc_stage2.py', '--arm', 'P1', '--seed', '0',
-                                        '--smoke', str(tmp_path)])
-    pc_stage2.main()
-    path = tmp_path / 'stage2' / 'P1__s0.json'
-    meta = json.loads(path.read_text())
-    assert meta['K'] == k and meta['dev_auc'] is None and meta['dev_valid_topics'] == 0
-    assert meta['reason'] and meta['loss_history'] == []
-    assert meta['stage1_sha256'] == hashlib.sha256(source.read_bytes()).hexdigest()
-    assert not path.with_suffix('.npz').exists()
+    s, topic = smoke_data(monkeypatch)
+    path = fake_stage1(tmp_path, s, topic, k=k)
+    with pytest.raises(AssertionError):
+        pc_stage2.load_stage1(s, path, 'clip_roberta', 0)
+
+
+def test_stage1_rejects_a_wrong_kept_mask_with_40_centers(tmp_path, monkeypatch):
+    import pc_stage2
+
+    s, topic = smoke_data(monkeypatch)
+    path = fake_stage1(tmp_path, s, topic)
+    with np.load(path) as z:
+        arrays = dict(z)
+    arrays['kept'][0], arrays['kept'][99] = False, True
+    np.savez(path, **arrays)
+    with pytest.raises(AssertionError, match='kept mask'):
+        pc_stage2.load_stage1(s, path, 'clip_roberta', 0)
 
 
 def test_no_valid_dev_topics_still_writes_predictions_and_null_auc(tmp_path, monkeypatch):
@@ -248,12 +251,11 @@ def test_no_valid_dev_topics_still_writes_predictions_and_null_auc(tmp_path, mon
     path = pc_stage2.run(s, 'P2', 0, smoke=tmp_path, device='cpu')
     meta = json.loads(path.with_suffix('.json').read_text())
     assert meta['dev_auc'] is None and meta['dev_valid_topics'] == 0
-    assert meta['dev_skipped_topics'] == [0, 1, 2] and meta['dev_auc_note']
-    # `reason` is reserved for a mapper that was not trained (K < 2).
+    assert meta['dev_skipped_topics'] == list(range(40)) and meta['dev_auc_note']
     assert 'reason' not in meta
     assert len(meta['loss_history']) == 3
     with np.load(path) as z:
-        assert z['eval_prob'].shape == (3, 3)
+        assert z['eval_prob'].shape == (3, 40)
 
 
 def test_constant_dev_columns_are_excluded_from_valid_topic_count(tmp_path, monkeypatch):
@@ -261,13 +263,13 @@ def test_constant_dev_columns_are_excluded_from_valid_topic_count(tmp_path, monk
     import pc_stage2
 
     s, topic = smoke_data(monkeypatch, k=2)
-    # Three Stage 1 topics, but dev captions use only topics 0 and 1.
-    fake_stage1(tmp_path, s, topic, k=3)
+    # Dev captions use only topics 0 and 1 of the 40 kept centers.
+    fake_stage1(tmp_path, s, topic)
     monkeypatch.setattr(pc_data, 'image_features', lambda sample, kind:
                         np.ones((len(s['first']), 512), dtype=np.float32))
     path = pc_stage2.run(s, 'P2', 0, smoke=tmp_path, device='cpu')
     meta = json.loads(path.with_suffix('.json').read_text())
-    assert meta['dev_valid_topics'] == 2 and meta['dev_skipped_topics'] == [2]
+    assert meta['dev_valid_topics'] == 2 and meta['dev_skipped_topics'] == list(range(2, 40))
     assert meta['dev_auc'] == .5
 
 

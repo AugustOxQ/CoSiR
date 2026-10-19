@@ -14,7 +14,7 @@ from itp_data import atomic_json, default_images, fingerprint, load_frozen, targ
 from pbp_graphs import label_vectors, sha_file
 from pav_score import ami, partitions, summary
 from apc_data import l2, paint_mean
-from pc_fixes import kept_centers, largest_gap, unit_tests_pass
+from pc_fixes import top_used, unit_tests_pass
 
 OUTPUTS = HERE / 'outputs'
 LABELS = ('emotion', 'style', 'genre')
@@ -59,12 +59,8 @@ def aggregate_arm(seeds, stage0_pass, tests_pass, fix_tests=None, counts=None):
     missing = sorted({'0', '1', '2'} - set(seeds))
     if missing:
         reasons.append('Incomplete Stage 1/2 files for seeds ' + ', '.join(missing))
-    untrained = sorted(seed for seed, r in seeds.items() if 'reason' in r)
-    for seed in untrained:
-        reasons.append(f"Seed {seed} not trained: {seeds[seed]['reason']}")
     for seed, result in seeds.items():
-        if seed in untrained:
-            continue
+        assert result['K'] == 40 and 'reason' not in result
         auc = result['dev_auc']
         assert auc is None or (np.isfinite(auc) and 0 <= auc <= 1)
         if auc is None:
@@ -72,11 +68,17 @@ def aggregate_arm(seeds, stage0_pass, tests_pass, fix_tests=None, counts=None):
         elif auc < .75:
             reasons.append(f'Seed {seed} dev AUC below 0.75')
     result = dict(established=not reasons, reasons=reasons, n_seeds=len(seeds),
-                  img=None, native_img=None, native_topic=None, K=None, dev_auc=None)
-    counts = [r['K'] for r in seeds.values()] if counts is None else counts
+                  img=None, native_img=None, native_topic=None, K=None, K_gamma=None,
+                  kept_topics=None, dev_auc=None)
+    counts = list(seeds.values()) if counts is None else counts
     if counts:
-        result['K'] = {g: summary([r[g] for r in counts]) for g in ('1.5', '2', '3', '5')}
-    if missing or untrained:
+        assert all(r['K'] == 40 for r in counts)
+        result['K'] = summary([r['K'] for r in counts])
+        result['K_gamma'] = {g: summary([r['K_gamma'][g] for r in counts])
+                             for g in ('1.5', '2', '3', '5')}
+        result['kept_topics'] = {key: summary([r['kept_topics'][key] for r in counts])
+                                 for key in ('fit_pairs', 'with_fit_pair', 'with_1pct', 'share_before_cut')}
+    if missing:
         return result
     result['img'] = {a: summary([r['img'][a]['mean'] for r in seeds.values()]) for a in LABELS}
     for key in ('native_img', 'native_topic'):
@@ -123,31 +125,21 @@ def score_seed(stage1, stage2, s, labels):
     assert meta1['sample_sha256'] == fingerprint(s), 'Stage 1 sample mismatch'
     hashes = dict(stage1=sha_file(stage1))
     assert meta2['stage1_sha256'] == hashes['stage1'], 'Stage 2 used a different Stage 1 file'
-    counts = meta1['K']
+    counts = meta1['K_gamma']
     assert set(counts) == {'1.5', '2', '3', '5'}
     assert all(isinstance(k, int) and 1 <= k <= 100 for k in counts.values())
-    k = counts['2']
-    assert meta2['K'] == k
-    if 'reason' in meta2:  # Ticket 05, K below 2: sidecar only.
-        assert k < 2 and meta2['dev_auc'] is None, f'{stage2.name}: reason with K={k}'
-        with np.load(stage1, allow_pickle=False) as z:
-            norms = z['center_norms']
-        assert norms.shape == (100,) and norms.dtype == np.float32
-        ordered, index, gap, mean_gap = largest_gap(norms)
-        kept = kept_centers(norms)
-        assert kept.sum() == k and mean_gap > 0
-        at = 'at every γ' if all(v == k for v in counts.values()) else 'at γ = 2'
-        cause = (f'K = {k} {at}: the largest gap ({gap / mean_gap:.2f} x the mean gap) '
-                 f'lies between sorted positions {index + 1} and {index + 2} of {len(ordered)} '
-                 f'(counted from the lowest norm); the {int((~kept).sum())} centers above it '
-                 'are dropped (Algorithm 1)')
-        return dict(reason=meta2['reason'] + '; ' + cause, K=counts, dev_auc=None, source_sha256=hashes,
-                    dev_valid_topics=meta2['dev_valid_topics'])
+    k = meta1['K']
+    assert type(k) is int and k == 40 == meta2['K']
+    assert 'reason' not in meta2, f'{stage2.name}: unexpected reason'
     hashes['stage2'] = sha_file(stage2)
     with np.load(stage1, allow_pickle=False) as z:
+        assert set(z.files) == {'center_norms', 'fit_counts', 'kept', 'topic', 'q_paint_eval'}
         norms, kept, topic, q = (z[key] for key in ('center_norms', 'kept', 'topic', 'q_paint_eval'))
+        fit_counts = z['fit_counts']
+    assert fit_counts.shape == (100,) and fit_counts.dtype == np.int64 and (fit_counts >= 0).all()
     assert norms.shape == (100,) and norms.dtype == np.float32 and np.isfinite(norms).all()
-    assert kept.shape == (100,) and kept.dtype == bool and kept.sum() == k
+    assert kept.shape == (100,) and kept.dtype == bool and k == 40 == kept.sum()
+    assert np.array_equal(kept, top_used(fit_counts, 40)), 'Stage 1 kept mask mismatch'
     assert topic.shape == (99999,) and topic.dtype == np.int16
     assert ((topic >= 0) & (topic < k)).all()
     assert q.shape == (5000, k) and q.dtype == np.float32
@@ -157,7 +149,8 @@ def score_seed(stage1, stage2, s, labels):
     assert prob.shape == (5000, k) and prob.dtype == np.float32
     assert 0 <= meta2['dev_valid_topics'] <= k
     return dict(img=ami_scores(l2(prob), labels), native_img=native_ami(prob, labels),
-                native_topic=native_ami(q, labels), K=counts, dev_auc=meta2['dev_auc'],
+                native_topic=native_ami(q, labels), K=k, K_gamma=counts,
+                kept_topics=meta1['kept_topics'], dev_auc=meta2['dev_auc'],
                 dev_valid_topics=meta2['dev_valid_topics'], source_sha256=hashes,
                 config=dict(stage1=meta1['config'], stage2=meta2['config']))
 
@@ -180,28 +173,27 @@ def score_outputs(s, labels, outdir=OUTPUTS):
     arms, missing = {}, {}
     for arm, version in ARMS.items():
         seeds = {}
-        counts = []
+        stage1_seeds = {}
         for seed in (0, 1, 2):
             stage1 = outdir / 'stage1' / f'{version}__s{seed}.npz'
             stage2 = outdir / 'stage2' / f'{arm}__s{seed}.npz'
             if stage1.exists() and stage1.with_suffix('.json').exists():
                 meta1 = json.loads(stage1.with_suffix('.json').read_text())
                 assert meta1['sample_sha256'] == fingerprint(s), 'Stage 1 sample mismatch'
-                assert set(meta1['K']) == {'1.5', '2', '3', '5'}
-                assert all(isinstance(k, int) and 1 <= k <= 100 for k in meta1['K'].values())
-                counts.append(meta1['K'])
+                assert type(meta1['K']) is int and meta1['K'] == 40
+                assert set(meta1['K_gamma']) == {'1.5', '2', '3', '5'}
+                assert all(isinstance(k, int) and 1 <= k <= 100 for k in meta1['K_gamma'].values())
+                stage1_seeds[str(seed)] = {key: meta1[key] for key in ('K', 'K_gamma', 'kept_topics')}
             paths = (stage1, stage1.with_suffix('.json'), stage2, stage2.with_suffix('.json'))
-            sidecar = stage2.with_suffix('.json')
-            if sidecar.exists() and 'reason' in json.loads(sidecar.read_text()):
-                paths = (stage1, stage1.with_suffix('.json'), sidecar)  # Not trained: no npz.
             absent = [str(p.relative_to(outdir)) for p in paths if not p.exists()]
             if absent:
                 missing[f'{arm}__s{seed}'] = absent
                 continue
             seeds[str(seed)] = score_seed(stage1, stage2, s, labels)
-        arms[arm] = dict(version=version, seeds=seeds,
-                         **aggregate_arm(seeds, stage0['status'] == 'PASS', tests_pass, fix_tests, counts))
-    return dict(schema=1, sample_sha256=fingerprint(s), stage0=stage0, stage1_repeat=repeat, arms=arms,
+        arms[arm] = dict(version=version, seeds=seeds, stage1_seeds=stage1_seeds,
+                         **aggregate_arm(seeds, stage0['status'] == 'PASS', tests_pass, fix_tests,
+                                         list(stage1_seeds.values())))
+    return dict(schema=2, sample_sha256=fingerprint(s), stage0=stage0, stage1_repeat=repeat, arms=arms,
                 comparator=comparators(arms), missing_outputs=missing,
                 conventions='Image only: l2(eval_prob), pav k20 seeds012, y>=0; '
                 'population sd over PercepT seeds012; no PercepT caption/mean. '
@@ -261,22 +253,43 @@ def markdown(result):
         for key, side in (('native_img', 'Stage 2 image'), ('native_topic', 'Stage 1 painting topic')):
             values = [fmt(r[key][a]) if r[key] else '—' for a in LABELS]
             lines.append(f'| {arm} | {side} | ' + ' | '.join(values) + ' |')
+    lines += ['', '## Kept topics', '',
+              'A3: K = 40, the most-used 40 of 100 centers by fit-pair argmax count. '
+              'Coverage uses final fit-caption topics; share before the cut uses all 100 centers. '
+              'Over every available Stage 1 seed.', '',
+              '| Arm | K | With >= 1 fit pair | With >= 1% | Share before cut |',
+              '|---|---:|---:|---:|---:|']
+    for arm, r in result['arms'].items():
+        values = [str(int(r['K']['mean'])) if r['K'] else '—'] + [
+            fmt(r['kept_topics'][key]) if r['kept_topics'] else '—'
+            for key in ('with_fit_pair', 'with_1pct', 'share_before_cut')]
+        lines.append(f'| {arm} | ' + ' | '.join(values) + ' |')
+    lines += ['', '## Per-seed kept topics', '',
+              '| Arm | Seed | K | With >= 1 fit pair | With >= 1% | Share before cut |',
+              '|---|---:|---:|---:|---:|---:|']
+    for arm, r in result['arms'].items():
+        for seed, v in r['stage1_seeds'].items():
+            coverage = v['kept_topics']
+            lines.append(f"| {arm} | {seed} | {v['K']} | {coverage['with_fit_pair']} | "
+                         f"{coverage['with_1pct']} | {coverage['share_before_cut']:.5f} |")
     lines += ['', '## K per gamma', '',
-              'Over every available Stage 1 seed, including seeds without a trained mapper.', '',
+              'Algorithm 1, reported only (A3). Over every available Stage 1 seed.', '',
               '| Arm | 1.5 | 2 | 3 | 5 |', '|---|---:|---:|---:|---:|']
     for arm, r in result['arms'].items():
-        values = [fmt(r['K'][g]) if r['K'] else '—' for g in ('1.5', '2', '3', '5')]
+        values = [fmt(r['K_gamma'][g]) if r['K_gamma'] else '—' for g in ('1.5', '2', '3', '5')]
         lines.append(f'| {arm} | ' + ' | '.join(values) + ' |')
     lines += ['', '## Dev AUC', '', '| Arm | Macro AUC |', '|---|---:|']
     for arm, r in result['arms'].items():
         lines.append(f"| {arm} | {fmt(r['dev_auc'])} |")
-    lines += ['', '| Arm | Seed | K(1.5) | K(2) | K(3) | K(5) | Dev AUC | Valid topics |',
-              '|---|---:|---:|---:|---:|---:|---:|---:|']
+    lines += ['', 'Algorithm 1 K(γ) columns below are reported only (A3); K is the trained count.', '',
+              '| Arm | Seed | K | Algorithm 1 K(1.5) | Algorithm 1 K(2) | Algorithm 1 K(3) '
+              '| Algorithm 1 K(5) | Dev AUC | Valid topics |',
+              '|---|---:|---:|---:|---:|---:|---:|---:|---:|']
     for arm, r in result['arms'].items():
         for seed, v in r['seeds'].items():
-            counts = ' | '.join(str(v['K'][g]) for g in ('1.5', '2', '3', '5'))
+            counts = ' | '.join(str(v['K_gamma'][g]) for g in ('1.5', '2', '3', '5'))
             auc = 'undefined' if v['dev_auc'] is None else f"{v['dev_auc']:.5f}"
-            lines.append(f"| {arm} | {seed} | {counts} | {auc} | {v['dev_valid_topics']} |")
+            lines.append(f"| {arm} | {seed} | {v['K']} | {counts} | {auc} | {v['dev_valid_topics']} |")
     lines += ['', '## Row 1', '',
               'Captions: normalize each caption, painting mean, normalize. Image: normalized CLIP image.', '',
               '| Caption encoder | Aspect | CLIP image | Caption | Both-side mean |',
