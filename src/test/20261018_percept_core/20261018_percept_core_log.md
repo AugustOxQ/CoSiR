@@ -1,11 +1,13 @@
 # Round log: PercepT core (r10, from 2026-10-18)
 
 Spec: `docs/superpowers/specs/2026-10-18-percept-core-design.md`. Tickets: `.scratch/r10-percept-core/issues/`
-(outside git). Module prefix `pc_`. Outputs in `outputs/` and `sept_stage0/` (both gitignored).
+(outside git). Module prefix `pc_`. Outputs in `outputs/` (gitignored); `sept_stage0/` holds the first stage 0's
+September re-fit (01:32 run, before A1; nothing writes it now).
 
 ## What the round does
 
-1. Stage 0, the regression check: the unchanged September PercepT (commit `1b70d7f`) and our row 2 scoring.
+1. Stage 0, the regression check (amended, A1): the September code at `1b70d7f` unchanged and copied text-identical,
+   the saved snapshot re-scored, its k-means labels repeated on one thread, and our row 2 scoring.
 2. Stage 1 of the spec, the baseline: PercepT core with the four fixes, arms P1 to P5, seeds 0 to 2 (GPU).
 3. Stage 2 of the spec, the ablation: rows 1, 6, 10, 13 of the follow-up's table, after the head gate (CPU).
 
@@ -20,7 +22,9 @@ Spec: `docs/superpowers/specs/2026-10-18-percept-core-design.md`. Tickets: `.scr
 | `pc_stage1.py`, `pc_stage2.py` | PercepT core Stage 1 (topics) and Stage 2 (image mapper) |
 | `pc_rows.py` | graphs and head rows 6, 10, 13; the head gate (`gate.json`) |
 | `pc_score.py` | image-side scoring, row 1, row 2 check, the results sheet |
-| `pc_stage0.py` | stage 0 |
+| `pc_stage0.py` | stage 0 (A1 checks (i) to (iv), row 2, the four-fix tests) |
+| `pc_repeat.py` | the A2 repeat check: a second Stage 1 `clip_roberta` seed 0, compared bitwise (reported) |
+| `pc_ablation.py` | the ablation table with rows 1 to 13 and the PercepT arm rows 4a to 5c |
 | `pc_queue_gpu.sh`, `pc_queue_cpu.sh` | the two queues (how to call them: `pc_queue.md`) |
 
 ## Commands
@@ -28,7 +32,7 @@ Spec: `docs/superpowers/specs/2026-10-18-percept-core-design.md`. Tickets: `.scr
 From the repository root:
 
 ```bash
-# tests (about 61 s)
+# tests (about 160 s)
 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1 /root/miniconda3/envs/CoSiR/bin/python -m pytest -q src/test/20261018_percept_core
 # the run: see pc_queue.md (GPU queue with --foreground in a background shell, CPU queue beside it)
 ```
@@ -38,6 +42,19 @@ OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1 /root/miniconda3/e
 - Build 1 and 2: tickets 01 to 08 and 06b, merged on `r10-percept-core`; handoffs in `docs/superpowers/handoffs/`.
 - Build 3: the stage 0 trace and the final whole-branch review (Opus `xhigh`: fix first, two queue fixes; all
   load-bearing numbers re-derived on P1 and P2 seed 0 to 1e-10). Fix wave: ticket 09.
+- Build 4 (A1, A2; branch `r10-stage0-a1`): ticket 10, the stage 0 checks that repeat exactly and the one-thread
+  k-means start (`pc_stage1.one_thread()`, config `kmeans_threads=1`; `pc_sept.py` byte-identical, blob `d7c064b`);
+  ticket 11, the Stage 1 repeat step in the GPU queue (`pc_repeat.py`). Both by Codex, Opus ticket reviews, one fix
+  round each.
+- Build 5: GPU smoke (09:01 to 09:03, 125 s, exit 0; `outputs/queue_smoke_b5/` in the integration worktree): stage 0
+  every check PASS in 53 s, 3 Stage 1 and 5 Stage 2 smoke runs, repeat `bitwise_equal` true. Ticket 12 (arm rows 4a
+  to 5c in `pc_ablation.py`). Final whole-branch review (Opus `xhigh`): approve with fixes, no blocker; it re-derived
+  checks (i) to (iv) with its own code (74 / 77 files, 0 differ; 24 copied parts identical; emotion
+  0.12246902855745419, genre 0.22741920423971046 on 9,365 / 159 rows; 0 of 61,402 labels differ in 24.9 s) and the
+  A2 hash (one thread `3b2b08fb7de82704` in both ways, 8 threads `b4eb501325c76f88`). Check (iv) also passes at 8
+  threads (labels equal; only the centers' last bits differ), so the A2 hash test, not (iv), shows the limit works.
+  Fix wave: ticket 13 (the repeat in the sheet, test gaps, the fix-test count); spec text for A1 and A2 (§3.2, §5,
+  §7 C12 exception).
 
 ## Stage 0 (2026-10-19)
 
@@ -46,6 +63,8 @@ genre 0.2617 (recorded 0.2274); row 2 and the four-fix tests pass. Cause traced:
 DAS6 node node404; this machine gives 0.1238 / 0.2617, as it did in September, with identical pretraining losses.
 Trace: `src/test/20261019_stage0_trace/20261019_stage0_trace_log.md`. Per spec §3.5 the PercepT arms stop; the head
 rows still run; the user decides.
+The user amended stage 0 to the checks that repeat exactly (A1) and added the one-thread k-means start (A2), both
+2026-10-19 08:20; builds 4 and 5 above.
 
 ## Topic count (spec §8 case)
 

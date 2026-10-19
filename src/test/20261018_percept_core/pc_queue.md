@@ -25,13 +25,32 @@ On timeout the worker never starts, flock returns nonzero, and the launcher
 records `PC_gpu_DONE lock_or_worker=<code> failed=1`. It also records that line
 if the worker exits without writing DONE. Every launch records `PC_gpu_SUBMIT`
 before waiting for the lock, including the nohup form.
-Stage 0 exports commit `1b70d7f` into `sept_stage0/`, runs both unchanged September
-scripts in fresh interpreters (CM-1–3), checks their measured report columns at
-four decimals, checks row 2, and records the four-fix pytest result. A failed
+Stage 0 checks that the September scripts and every module they could import are
+byte-identical between record commits `3b3ce61`, `4e4480b`, and `1b70d7f`, and that
+every function, class, and constant copied by `pc_sept.py` is text-identical to its
+source at `1b70d7f`. Stage 0 no longer re-runs the September scripts (amendment A1).
+It re-scores the saved September snapshot
+(`res/percept/percept_stage1_embedding_snapshot.npz`) to held-out emotion AMI
+0.122469 and genre AMI 0.227419 (tolerance 1e-6). K-means on the snapshot's
+pre-DEC latents (K 60, 10 restarts, seed 42, one CPU thread) must reproduce its
+saved initial labels exactly. Stage 0 also checks row 2 (tolerance 1e-6) and runs
+the four-fix unit tests. A failed
 Stage 0 blocks all PercepT training, while extraction still runs. A finished
 RoBERTa store with `done.json` count 99999 produces `roberta=skip`. A failed Stage 1
 run blocks its dependent arms; independent runs continue. All failures reach the
 queue exit code and final status line.
+
+PercepT core's Stage 1 runs its k-means start on one CPU thread (A2). After the
+Stage 2 loop, a successful `stage1_clip_roberta_s0` triggers `stage1_repeat`,
+which repeats that run into `outputs/repeat` using `--outroot`. The next step,
+`repeat_check`, compares the arrays' key sets, dtypes, shapes, and bytes, and all
+sidecar keys except `seconds`. It writes `outputs/stage1_repeat.json`, including
+per-array and per-key agreement and both NPZ SHA-256 hashes. Differences are
+reported, not a gate: the comparison exits 0 and the queue continues. A crash or
+missing file fails the step. If the first run failed or was blocked, both repeat
+steps are recorded as `blocked`.
+If `stage1_repeat` fails, `repeat_check` is recorded as `blocked` so older repeat
+files cannot be compared as a fresh run.
 
 The independent CPU queue runs in the foreground:
 
@@ -64,10 +83,10 @@ the same GPU wait protocol, polling every second.
 
 GPU smoke runs 512-caption extraction, all three Stage 1 versions, and all five
 Stage 2 arms at seed 0. Stage 1/2 still read the existing full feature stores.
-September exposes no smoke-size training mode: Stage 0 smoke exports the tree,
-imports both entries in separate processes, checks row 2 and runs the fix tests.
-Its status is `SMOKE`, never `PASS`; it does not check September's numerical
-regression. CPU smoke uses each existing two-epoch head mode at seed 0 and runs
+The Stage 1 repeat uses `--smoke <smoke root>/repeat`, and its comparison report
+is `<smoke root>/stage1_repeat.json`. Stage 0 smoke runs every check described
+above into the smoke folder and writes `SMOKE` instead of `PASS`.
+CPU smoke uses each existing two-epoch head mode at seed 0 and runs
 both scoring commands. Its gate is explicitly a smoke check, not a regression
 pass. The unchanged scoring CLI computes row 1 on the frozen sample.
 

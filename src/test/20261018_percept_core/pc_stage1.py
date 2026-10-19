@@ -1,5 +1,6 @@
 """Fit pair-level PercepT core topics with the September training recipe."""
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -10,7 +11,8 @@ os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
 
 import numpy as np
 import torch
-from threadpoolctl import threadpool_limits
+from threadpoolctl import threadpool_info, threadpool_limits
+from sklearn.utils._openmp_helpers import _openmp_effective_n_threads
 
 import pc_data
 import pc_fixes
@@ -21,6 +23,21 @@ VERSIONS = dict(clip_roberta=('clip_image', 'clip_text', 'roberta', 512),
                 qwen_qwen=('qwen_default', 'qwen_default', 'qwen_emotion_focus', 2048),
                 qwen_roberta=('qwen_default', 'qwen_default', 'roberta', 2048))
 BLOCK_SIZE = 4096
+
+
+@contextmanager
+def one_thread():
+    """Limit already-loaded BLAS and OpenMP pools, including sklearn's."""
+    with threadpool_limits(limits=1):
+        assert _openmp_effective_n_threads() == 1
+        assert all(pool['num_threads'] == 1 for pool in threadpool_info())
+        yield
+
+
+def kmeans_start(encoder, inputs, device, n_clusters, seed):
+    """Run the verbatim September start with repeatable center sums."""
+    with one_thread():
+        return pc_sept.initialize_cluster_centers(encoder, inputs, device, n_clusters, seed)
 
 
 def array_sha256(x):
@@ -141,7 +158,7 @@ def make_config(s, version, seed, smoke, fit_rows, device):
                 adam_betas=[.9, .999], adam_eps=1e-8, weight_decay=0,
                 initial_centers=100, kmeans_n_init=10, kmeans_random_state=seed,
                 kmeans_init='k-means++', kmeans_max_iter=300, kmeans_tol=.0001,
-                kmeans_algorithm='lloyd',
+                kmeans_algorithm='lloyd', kmeans_threads=1,
                 max_joint_steps=5 if smoke else 500, joint_batch='full fit pairs',
                 stability_threshold=0.0 if smoke else .001, full_stability_threshold=.001,
                 stop_rule='post-step hard-label change fraction < threshold or epoch ceiling',
@@ -160,9 +177,10 @@ def make_config(s, version, seed, smoke, fit_rows, device):
                 cublas_workspace_config=os.environ['CUBLAS_WORKSPACE_CONFIG'], cpu_threads=8)
 
 
-def run(s, version, seed, smoke=None, device=None):
+def run(s, version, seed, smoke=None, device=None, outroot=None):
     """Train one version/seed and seal its arrays and complete config sidecar."""
     assert version in VERSIONS and seed in (0, 1, 2)
+    assert smoke is None or outroot is None, '--outroot cannot be used with --smoke'
     if device is None:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
     assert smoke is not None or str(device).startswith('cuda'), 'full Stage 1 requires GPU'
@@ -200,7 +218,7 @@ def run(s, version, seed, smoke=None, device=None):
                 encoder, decoder, inputs, device, lambda line: print(line, flush=True))
             record_seconds(seconds, 'pretrain', start)
             start = time.perf_counter()
-            centers = pc_sept.initialize_cluster_centers(encoder, inputs, device, 100, seed)
+            centers = kmeans_start(encoder, inputs, device, 100, seed)
             record_seconds(seconds, 'kmeans', start)
             start = time.perf_counter()
             history, stop_reason, steps = pc_sept.train_dec_until_stable(
@@ -219,7 +237,8 @@ def run(s, version, seed, smoke=None, device=None):
         topic, q_paint_eval = assign_captions(
             encoder, centers, h, s['pid'], s['subset_pid'], kept, device)
         record_seconds(seconds, 'assignment', start)
-    folder = (Path(smoke) if smoke is not None else HERE / 'outputs') / 'stage1'
+    folder = (Path(smoke) if smoke is not None else
+              Path(outroot) if outroot is not None else HERE / 'outputs') / 'stage1'
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / f'{version}__s{seed}.npz'
     start = time.perf_counter()
@@ -247,10 +266,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--version', choices=VERSIONS, required=True)
     parser.add_argument('--seed', type=int, choices=(0, 1, 2), required=True)
-    parser.add_argument('--smoke', type=Path,
+    outputs = parser.add_mutually_exclusive_group()
+    outputs.add_argument('--smoke', type=Path,
                         help='output root; 2000 fit pairs, 2 pretrain epochs, exactly 5 joint steps')
+    outputs.add_argument('--outroot', type=Path, help='full-run output root (default: HERE/outputs)')
     args = parser.parse_args()
-    run(pc_data.load_frozen(), args.version, args.seed, args.smoke)
+    run(pc_data.load_frozen(), args.version, args.seed, args.smoke, outroot=args.outroot)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,15 @@
 """Pair rows, Eq. 2 fusion, fit-only maps, gap pruning and caption unions."""
+import re
+
 import numpy as np
+
+FIX_TESTS = 21
+
+
+def unit_tests_pass(line):
+    """Spec section 6 (b): the pytest summary of test_pc_fixes.py says exactly FIX_TESTS passed, nothing else."""
+    return isinstance(line, str) and re.fullmatch(
+        rf'{FIX_TESTS} passed(?:, \d+ warnings?)? in \d+(?:\.\d+)?s(?: \([\d:]+\))?', line.strip()) is not None
 
 
 def pair_rows(pid, painting_partition, partition='fit'):
