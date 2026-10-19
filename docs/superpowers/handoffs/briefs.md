@@ -635,3 +635,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-decide-12-handoff.md
 - New chat: tab 'r10 decide 12', session 764edd3d-d74c-4e9b-9959-dc5de47c6dea
 
+[brief] CoSiR: r10 decide 12 -> r10 decide 13 (2026-10-20 00:09 Amsterdam)
+- Done: decisions C and A on the stage 2 sheet, the wrap-up, the literature check on cluster-level losses, the claim test facts brief.
+- State: D2 0.096 / 0.370 / 0.454 on development data; PercepT core 0.077 / 0.229 / 0.436; above the instructed target on emotion only.
+- Next: grill the claim test (D2 on held data, Leiden and PercepT readings), write its spec; then decision B for the cluster-loss track.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-decide-13-handoff.md
+- New chat: tab 'r10 decide 13', session beb2bbd4-0a5c-451a-9c5d-3dcb9fd617ed
+
