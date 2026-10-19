@@ -11,17 +11,16 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-10-18)
+## Now (2026-10-19)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
-on each view, one shared trunk with emotion, style and genre heads (decision B2). The stage 1 follow-up (3 seeds)
-confirms that residual graphs (aspect minus content similarity) train the best heads (target AMI emotion 0.137 vs
-0.118 for the plain aspect graph, style 0.260 vs 0.213) and that the image graph alone is best for genre (0.428);
-without an instruction at test time, the best head is 0.018 (emotion) and 0.005 (style) below the prompted view
-clustered directly and 0.003 above it for genre. Next (user): PercepT core in two versions (CLIP B/32 + RoBERTa, and
-Qwen), whose grill round 1 is open and whose numbers fill the follow-up's ablation table; then the decision on stage
-2. "Something works" by 2026-10-29: per-aspect held-out AMI above PercepT core; by 2026-11-10: aspect-named retrieval
-above prompted Qwen.
+on each view, one shared trunk with emotion, style and genre heads (decision B2). Best heads so far (target AMI, 3
+seeds): residual graphs for emotion 0.137 and style 0.260, the image graph for genre 0.428; without the instruction in
+the graph our network is below the default embedding clustered directly (row 6). The PercepT core run filled ablation
+rows 1, 6, 10 and 13, but its stage 0 failed because the September fit does not repeat itself; the user amended stage
+0 (option a: only the checks that repeat exactly) and added one-thread k-means to PercepT core. Next: a short build,
+then the PercepT core runs, then the decision on stage 2. "Something works" by 2026-10-29: per-aspect held-out AMI
+above PercepT core; by 2026-11-10: aspect-named retrieval above prompted Qwen.
 
 ## Parked ideas
 
@@ -33,6 +32,29 @@ above prompted Qwen.
   (2026-10-18); [proposed in](handoffs/2026-10-18-r10-decide-6-handoff.md))
 - Within-painting caption variation as a signal (probe 57.3% to 46.6% on the residual) (never tried; deferred by the
   user (2026-10-18); [proposed in](../reports/auto/percept/2026-12-06_new_line_candidates.md))
+
+## 2026-10-19 · PercepT core run read: stage 0 fails on September noise, rows 1, 6, 10, 13 filled; stage 0 amended, PercepT core runs next
+
+- **Read:** stage 0 failed (September held-out emotion / genre AMI 0.1244 and 0.1287 / 0.2617 and 0.2804, recorded
+  0.1225 / 0.2274), so the five PercepT arms did not run. Cause: the September k-means start sums its centers in a
+  thread order that changes per run (eight local runs, three outcomes; one thread repeats). Rows (target AMI, 3
+  seeds): row 6, network on the default graph, 0.082 / 0.163 / 0.388, below row 2 (default embedding, 0.089 / 0.171
+  / 0.393); rows 10 and 13, the other side's graph, emotion 0.086 / 0.089, style 0.154 / 0.156, genre 0.428 / 0.434;
+  row 1 (CLIP + RoBERTa, k-means) 0.127 / 0.174 / 0.240, RoBERTa captions emotion 0.189, CLIP images style 0.300.
+- **Meaning (C):** no reading given; the user chose option a and to run PercepT core (user). Ours: stage 0 failed on
+  noise in the September fit, not on our code; our network gains nothing without the instruction in the graph; the
+  September encoders are strong per side, so the PercepT core comparator could be strong on emotion.
+- **Decided (A):** unchanged direction: PercepT core (type baseline, medium loop), then stage 2. Stage 0 amended to
+  the checks that repeat exactly (A1, option a; user), and one-thread k-means in PercepT core's Stage 1 (A2; user,
+  after seeing the recommendation). No container restart (user).
+- **Idea (B):** unchanged (B2).
+- **Why:** a 4-decimal re-fit cannot pass on any machine we checked; the exact checks still catch a silent change in
+  reused code (C12), and one thread makes PercepT core's seeds repeat.
+- **Links:** [run report](../reports/auto/percept/2026-12-13_percept_core.md) ·
+  [user-read report](../user_read/2026-10-19_percept_core.md) ·
+  [amended spec](specs/2026-10-18-percept-core-design.md) ·
+  [load check](../../src/test/20261019_stage0_load_check/20261019_stage0_load_check_log.md) ·
+  [handoff](handoffs/2026-10-19-r10-decide-8-handoff.md)
 
 ## 2026-10-18 · Aspect graph follow-up read; the stage 1 order holds on three seeds; PercepT core next, with an ablation table to fill
 

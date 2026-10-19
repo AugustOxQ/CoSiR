@@ -44,7 +44,8 @@ Development data only: one frozen sample, whose 5,000 evaluation paintings also 
 - Beside any option: one-thread k-means in PercepT core's Stage 1, so its runs repeat (a small change to reviewed
   code; the September start takes 25 s instead of 10 s).
 
-**Your reading.** (left for the user)
+**Your reading.** No reading given (2026-10-19 08:20). The user chose option a and to run PercepT core, with
+one-thread k-means (spec amendments A1, A2).
 
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>

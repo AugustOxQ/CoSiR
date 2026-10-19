@@ -1,6 +1,6 @@
 # PercepT core in five settings, and the missing rows of the ablation table: design
 
-> Date: 2026-10-18 23:33 · Status: approved 2026-10-18 23:34 · Kind: experiment
+> Date: 2026-10-18 23:33 · Status: approved 2026-10-18 23:34; amended 2026-10-19 08:25 (A1, A2 in §4) · Kind: experiment
 > Builds on: [aspect graph follow-up](../../reports/auto/percept/2026-12-12_aspect_graph_followup.md) and its
 > [ablation table](../../user_read/2026-10-18_aspect_graph_followup.md) (rows 1 to 13) · facts brief
 > `.scratch/r10-percept-core/facts.md` · grill record `.scratch/r10-percept-core/grill.md` · Constitution:
@@ -14,8 +14,11 @@ fills the PercepT rows of the ablation table. These rows set what our model must
 table's missing rows of our own network run on the CPU.
 
 **Plan.**
-1. Regression check: the unchanged September PercepT reproduces its recorded numbers exactly (Stage 1: emotion
-   0.1225, genre 0.2274; Stage 2: a recorded AUC). Our scoring code reproduces the default-embedding row (row 2) exactly.
+1. Regression check (amended 2026-10-19, A1): only what repeats exactly. The saved September snapshot re-scores to
+   its recorded numbers (emotion 0.1225, genre 0.2274); the reused September code is byte-identical; k-means on the
+   saved latents gives the saved labels. Our scoring code reproduces the default-embedding row (row 2) exactly. The
+   September re-fit left the check: it does not repeat itself, on this machine or between machines.
+   PercepT core's k-means start runs on one CPU thread, so its runs repeat exactly (A2).
 2. Baseline: PercepT core with three Stage 1 versions and five Stage 2 settings, 3 seeds each, on the local GPU.
    - Stage 1 versions: CLIP + RoBERTa (September encoders); Qwen with the Qwen emotion-instructed caption; Qwen
      with RoBERTa.
@@ -123,7 +126,7 @@ Ablation rows of our network (the stage 1 head and scoring, unchanged; 3 seeds; 
 
 | Stage | Type | Input | Gate to pass | If it fails |
 |---|---|---|---|---|
-| 0 | regression check | the unchanged September Stage 1 (seed 42, K 60 to 40) and Stage 2 (threshold targets); our scoring on the stored default embeddings | emotion AMI 0.1225 and genre AMI 0.2274 (4 decimals); a recorded per-seed Stage 2 macro AUC of the extended seed pilot (4 decimals); row 2 = 0.088556, 0.170954, 0.393076 to 1e-6 | stop stage 1, trace the cause, note it for the user; stage 2 still runs |
+| 0 | regression check (amended, A1) | the saved September node404 Stage 1 snapshot (`res/percept/percept_stage1_embedding_snapshot.npz`); the September code at `1b70d7f` and `pc_sept.py`; our scoring on the stored default embeddings | (i) the September scripts and every module they import are byte-identical between the record commits (`3b3ce61`, `4e4480b`) and `1b70d7f`; (ii) every function, class and constant `pc_sept.py` copies is text-identical to its source at `1b70d7f`; (iii) the snapshot re-scores to held-out emotion AMI 0.122469 and genre AMI 0.227419 (1e-6); (iv) k-means on the snapshot's pre-DEC latents (K 60, n_init 10, seed 42, one thread as A2) gives its saved initial labels exactly; row 2 = 0.088556, 0.170954, 0.393076 to 1e-6 | stop stage 1, trace the cause, note it for the user; stage 2 still runs |
 | 1 | baseline | P1 to P5, seeds 0 to 2 | each arm: "established" checks of §6 | report the arm as not established, with the cause |
 | 2 | ablation | rows 1, 6, 10, 13 | a rerun of stage 1's genre R0 seed 0 head matches its target AMI to 1e-6 (else within 0.002, with the cause stated) | stop the head rows, trace the cause |
 
@@ -153,7 +156,12 @@ graphs of row 6, and everything PercepT core trains.
 | D14 | Stage types | 0 regression, 1 baseline, 2 ablation | exploration for stage 2: row 6 removes one part, so ablation is the first type that fits | agent default | 2026-10-18 23:33 |
 | D15 | The comparator | per aspect, the arm with the highest mean image-side AMI; ties within 0.003 go to the lower arm number | a fixed arm (C1: strongest real comparator) | agent default | 2026-10-18 23:33 |
 
-**Amendments:** none.
+**Amendments:**
+
+| ID | What changed | Why | Decided by | When |
+|---|---|---|---|---|
+| A1 | Stage 0 gate (§3.5): the checks that repeat exactly replace the September re-fit (4 decimals) and the Stage 2 macro AUC (0.8296) | the September k-means start sums its centers in a thread order that changes per run, so the re-fit gave three outcomes in eight local runs (load check `src/test/20261019_stage0_load_check/`); script 2 reaches its AUC only after the re-fit. The Stage 2 code is then covered by check (ii) only | user (option a of the r10 run brief; own pick) | 2026-10-19 08:20 |
+| A2 | PercepT core's Stage 1 runs its k-means start (`pc_sept.initialize_cluster_centers`) under a one-thread limit in `pc_stage1.py`; `pc_sept.py` stays verbatim. Checks: three k-means starts on the snapshot latents under the limit give one center hash; the run repeats Stage 1 `clip_roberta` seed 0 once and compares its saved arrays bitwise (reported, not a gate) | with 8 threads, Stage 1 seeds would carry the same last-bit noise; one thread repeated the whole September fit in two of two runs. Cost: the start takes about 2.5 times longer | user, after seeing the recommendation | 2026-10-19 08:20 |
 
 ## 5. Assumptions and open questions
 
@@ -169,7 +177,7 @@ graphs of row 6, and everything PercepT core trains.
 ## 6. Success criteria
 
 **Descriptive mode.** No decision rides on a bar: the user picks from the filled table.
-An arm is **established** when: stage 0 passed; unit tests pass for the four fixes (pair count equals the fit
+An arm is **established** when: stage 0 passed (the amended gate, A1); unit tests pass for the four fixes (pair count equals the fit
 captions; Eq. 2 on a hand-worked example; Algorithm 1 on norms with a known gap; the multi-hot target equals the OR
 of the caption topics); and its Stage 2 dev macro AUC is at least 0.75 on every seed (September 0.829 with
 threshold targets; the paper 0.94).
@@ -210,7 +218,7 @@ Exceptions: none.
   reviews); the final whole-branch review; the comparator's numbers re-derived independently (C13).
 - Stop points: none between approval and the reports (build and run unattended). Time-box: 2026-10-20.
 - **Budget:** local GPU under the lock, about 2.5 to 3 hours (RoBERTa extraction minutes; 9 Stage 1 runs; 15 Stage 2
-  runs; stage 0 about 15 minutes); CPU about 1.5 hours (21 head runs on three processes, scoring). Estimates, not
+  runs; stage 0 about 15 minutes, about 2 after A1; the build's timing gave about 25 GPU minutes for the whole GPU part, not re-measured); CPU about 1.5 hours (21 head runs on three processes, scoring). Estimates, not
   checked: the build's smoke times one run of each kind, and the run chat recomputes the end time. An end after 11:00
   is weighed as `shared-resources.md` says: the GPU part first, the CPU rows may move to the next evening.
 - GPU check at 23:31: the driver answers; module and library both 595.99.02; no process and no lock on the GPU.
