@@ -36,6 +36,19 @@ frozen train-side sample (fit 13,400, dev 1,489, evaluation 5,000 paintings).
     come from their vectors.
 11. **Queues:** one script per GPU stage, GPU work under `flock -o -w 7200 /tmp/gpu0.lock`, scoring on CPU after.
 
+12. **D17 trigger tie (ticket 04):** if both T4 and T5 pass the D17 test, the form with the larger sum of margins
+    beyond T1's sd wins; an exact tie goes to form b. Why: one reproducible rerun when the spec allows either form.
+13. **D17 rerun and I1 train on seed 0 only** (ticket 04). Why: spec §3.4 gives three seeds only to A1, T1 and the
+    top two rows per aspect.
+14. **The §6 line (fix wave, review 1):** only default-input rows count, against the PercepT core bar's emotion AMI
+    + 0.01 as the sheet computes it (0.077174 + 0.01 = 0.087174). Why: I1 uses instructed inputs (spec D5), and the
+    gate is defined relative to PercepT core.
+15. **Form c early stopping (fix wave, review 3):** dev loss for stopping and best-state choice excludes the mask L1
+    term; the penalty is logged beside it. Why: outputs are normalised after the mask, so the term falls each epoch
+    whatever the fit, and moved T5's best epoch later; CSN also selects on validation fit, not on the penalty.
+16. **D17's best D row (fix wave, review 8):** chosen on seed 0 only, as default 9 says. Why: D rows have one or
+    three seeds depending on the picks; one seed for all keeps the comparison fair.
+
 ## Timeline (Amsterdam time)
 
 - 20:10 tickets 01 (scorer) and 02 (trainer core) to Codex (`gpt-6.1-sol`, medium and high), worktrees
@@ -46,3 +59,22 @@ frozen train-side sample (fit 13,400, dev 1,489, evaluation 5,000 paintings).
   both float16 arrays bitwise equal to stage 1's (its best epoch is 1). T1 smoke: three heads, distinct histories.
   Controller diff read; merged (`c7a4087`). The GPU path is not yet smoked.
 - 20:18 cut to chat `r10 build 8` (context meter past 200k); tickets 03 and 04 go on there.
+- 20:21 tickets 03 (trainer extensions, `gpt-6.1-sol` high) and 04 (stage 0 runner, sheet, queues, medium) to
+  Codex, worktrees `/project/CoSiR-wt-ms03`, `-ms04`. GPU smoke of ticket 02 (T1, A1 `--smoke --device cuda`, and
+  genre A1 2 full epochs): valid outputs; CUDA losses close to CPU (genre epoch 1 dev 7.161 against 7.160); a full
+  genre epoch takes about 1 s on the GPU against 17 s on CPU.
+- 20:27 ticket 04 done (`5d4bc38`): sheet smoke on ticket 02 outputs, scoring 6.2 to 7.7 s per head (both sides);
+  stage 1 AMI 6/6 equal; PercepT 45/45. Controller diff read; merged (`4b4ee36`).
+- 20:32 ticket 03 done (`56b8c66`): six CPU smokes (T4, T5, D1, D2, D5, I1); stage 1 genre arrays and ticket 02's T1
+  arrays still bitwise equal; D1 caption side bitwise at init. Controller diff read; merged (`92fa621`). CUDA smoke
+  of the six rows: valid outputs; full-size joint rows take 1 to 3 s per epoch per head on the GPU.
+- 20:36 to 20:47 stage 0 pre-check in this worktree (pre-fix code, CPU, three aspects in parallel): STAGE0 PASS;
+  genre arrays bitwise equal, 36/36 AMI equal at 6 decimals, 7/7 best epochs equal, PercepT 45/45. The real stage 0
+  reruns from main after the fix wave (the fix changes the trainer's code version).
+- 20:51 run mode set to day (user).
+- 20:55 final whole-branch review (`worker`, Opus `xhigh`): three must-fix findings (the §6 line counted I1; stage 0
+  and score caches not tied to the code version; form c stopped on the mask penalty), six that can wait; scorer,
+  bars, form b, distillation, joint loop and stage 0 re-derived exactly. Review in
+  `.scratch/r10-model-sheet/notes/final_review.md` (outside git). Fix wave brief written (items F1 to F9, defaults
+  14 to 16).
+- 20:58 cut to chat `r10 build 9` (context meter past 200k); the fix wave goes on there.
