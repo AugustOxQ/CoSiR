@@ -78,3 +78,13 @@ frozen train-side sample (fit 13,400, dev 1,489, evaluation 5,000 paintings).
   `.scratch/r10-model-sheet/notes/final_review.md` (outside git). Fix wave brief written (items F1 to F9, defaults
   14 to 16).
 - 20:58 cut to chat `r10 build 9` (context meter past 200k); the fix wave goes on there.
+- 21:00 fix wave to Codex (`gpt-6.1-sol` high), worktree `/project/CoSiR-wt-msfix`, branch `r10-ms-fix`.
+- 21:09 fix wave done (`7814068`, note `ms_fix_build.md`): F1 to F3 and F5 to F9; 20 arrays still bitwise equal to
+  stage 1 and tickets 02 and 03; form c dev loss plus the logged penalty equals the old formula within 4.2e-7; the
+  pre-fix stage 0 copy fails the new `stale` gate (7 paths) while gates a, b, c still pass. Controller diff read;
+  merged (`84dc2db`). CUDA smoke of T5 (4 epochs): penalty logged, best epoch = lowest dev loss, outputs valid.
+- 21:13 scoped re-review (`worker`, Sonnet `high`): PASS, no must-fix item. Two notes for the run: (1) after F7,
+  any config difference (max epochs, device, `--set`) replaces verified heads, so never rerun a row by hand into
+  `outputs/` with other settings; (2) `SCORER_VERSION` hashes `ms_score.py` and `pav_score.py` only (as the brief
+  asked), not `pc_score`, `apc_data` or `pc_data`.
+- 21:15 `r10-model-sheet` merged into main (`e066c92`), pushed. 21:16 stage 0 from the main checkout (CPU).
