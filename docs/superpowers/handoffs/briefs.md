@@ -601,3 +601,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-7-handoff.md
 - New chat: tab 'r10 build 7', session 56b9b751-6946-4c76-b52d-3761e520be8f
 
+[brief] CoSiR: r10 build 7 -> r10 build 8 (2026-10-19 20:18 Amsterdam)
+- Done: tickets 01 (scorer with AMI, V, ARI, FMI) and 02 (trainer core) built by Codex and merged into the integration branch.
+- State: stage 1's genre head is reproduced bitwise on CPU (2 epochs; best epoch 1); PercepT core AMI 45/45 equal.
+- Next: tickets 03 and 04 to Codex in parallel, a GPU smoke, the final review, merge to main, stage 0.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-8-handoff.md
+- New chat: tab 'r10 build 8', session f9fe8466-e514-4f7d-8c29-8372fd321d58
+
