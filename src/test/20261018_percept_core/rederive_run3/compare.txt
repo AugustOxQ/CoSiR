@@ -1,0 +1,20 @@
+clip_roberta s0: 40th 680 41st 678 gap 2
+clip_roberta s1: 40th 669 41st 668 gap 1
+clip_roberta s2: 40th 684 41st 683 gap 1
+qwen_qwen s0: 40th 732 41st 719 gap 13
+qwen_qwen s1: 40th 741 41st 728 gap 13
+qwen_qwen s2: 40th 677 41st 665 gap 12
+qwen_roberta s0: 40th 726 41st 724 gap 2
+qwen_roberta s1: 40th 685 41st 680 gap 5
+qwen_roberta s2: 40th 722 41st 708 gap 14
+file_img: 45 values, max abs diff 0
+file_argmax: 45 values, max abs diff 0
+arm_img_mean: 15 values, max abs diff 0
+arm_img_sd: 15 values, max abs diff 0
+arm_argmax_mean: 15 values, max abs diff 0
+arm_argmax_sd: 15 values, max abs diff 0
+stage1_share: 9 values, max abs diff 0
+stage1_argmax: 27 values, max abs diff 0
+stage1 coverage counts and top-40 equal: 9 of 9
+codex comparators: {"established": {"emotion": {"candidate_arms": ["P1", "P2", "P3", "P4", "P5"], "within_0_003": ["P3"], "comparator_arm": "P3", "comparator_mean": 0.07717367468537395, "comparator_sd": 0.0012437725982342468, "highest_arm": "P3", "highest_mean": 0.07717367468537395}, "style": {"candidate_arms": ["P1", "P2", "P3", "P4", "P5"], "within_0_003": ["P2"], "comparator_arm": "P2", "comparator_mean": 0.22856011139269464, "comparator_sd": 0.004908609753837172, "highest_arm": "P2", "highest_mean": 0.22856011139269464}, "genre": {"candidate_arms": ["P1", "P2", "P3", "P4", "P5"], "within_0_003": ["P3", "P5"], "comparator_arm": "P3", "comparator_mean": 0.435879809088143, "comparator_sd": 0.0037376670156556114, "highest_arm": "P3", "highest_mean": 0.435879809088143}}, "all_three_seeds": {"emotion": {"candidate_arms": ["P1", "P2", "P3", "P4", "P5"], "within_0_003": ["P3"], "comparator_arm": "P3", "compara
+problems: [] | checks ok: 286 of 286

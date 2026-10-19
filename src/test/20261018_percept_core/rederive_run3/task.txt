@@ -1,0 +1,123 @@
+Independent re-derivation of clustering scores from stored outputs (CoSiR r10, rule C13), run 3.
+
+You get the scoring rule and the data. You do not get our numbers. Write your own Python script and compute every
+number yourself.
+
+## Ground rules
+
+- Work only in /tmp/claude-0/-project-CoSiR/724fc430-8911-4bb5-ba46-fe27b9e6c38a/scratchpad/rederive3/ (your folder).
+  Write your script, logs and outputs there. Every path you use is absolute.
+- Do not import, run or read any code under /project/CoSiR/src/test/. Read only the data files named below.
+- Do not read any results file: no *.json file under /project/CoSiR/src/test/20261018_percept_core/outputs/ (the
+  sidecars included), no pc_results.json, pc_tables.md, pc_ablation_table.md, stage0.json, stage1_repeat.json, no
+  reports under /project/CoSiR/docs/, no queue logs or status files, no folder named rederive* outside your own.
+- Python: /root/miniconda3/envs/CoSiR/bin/python, with OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1.
+  No GPU (set CUDA_VISIBLE_DEVICES="").
+- Delete nothing; list what you would remove. Do not create .ccg task records. Do not commit anything.
+- Keep command output short: long output goes to a file, then its tail or a grep. The numbers you report come from your
+  output file, never from a cut-off view.
+- No single command waits more than about 4 minutes: run the long scoring in the background (nohup, log to a file) and
+  check the log.
+
+## Data
+
+Frozen sample: /project/CoSiR/src/test/20261017_prompted_aspect_views/sample.npz (np.load, allow_pickle=False).
+
+- Per caption (99,999 rows): sample_ids (int64 extraction id), pid (painting index, 0 to 19,888), painting_ids (name),
+  emo (emotion label, -1 means none), sty (style label), gen (genre label).
+- Per painting (19,889 rows): first (row index of the painting's first caption), all_painting_ids (name).
+- subset_pid (5,000 painting indices): the evaluation paintings. The order of subset_pid is the row order of every
+  5,000-row output below.
+
+Fit rows: /tmp/claude-0/-project-CoSiR/724fc430-8911-4bb5-ba46-fe27b9e6c38a/scratchpad/rederive3/fit_rows.npy, int64,
+the caption row indices (into the 99,999 captions, ascending) of the 13,400 fit paintings: the training pairs.
+
+Labels of the 5,000 evaluation paintings, in subset_pid order:
+
+- emotion: the majority of emo over the painting's captions with emo >= 0 (9 classes, 0 to 8); ties go to the smallest
+  class id; -1 when no caption of the painting has emo >= 0.
+- style: sty of the painting's first caption (row first[p]).
+- genre: gen of the painting's first caption.
+- Each label is scored only on paintings with label >= 0.
+
+The clustering score of a 5,000 x d matrix X against a label vector y:
+
+1. X as float32.
+2. For r in 0, 1, 2: pred_r = sklearn.cluster.MiniBatchKMeans(n_clusters=20, random_state=r, n_init=3,
+   batch_size=4096).fit_predict(X).
+3. ami_r = sklearn.metrics.adjusted_mutual_info_score(y[y >= 0], pred_r[y >= 0]), default arguments.
+4. score = mean of ami_r over r (also keep the population sd, np.std with ddof=0).
+
+The same three partitions serve all three labels of one matrix.
+
+## Part A: the Stage 2 outputs (the image side)
+
+Folder: /project/CoSiR/src/test/20261018_percept_core/outputs/stage2/. Read only the *.npz files whose name has the
+form <arm>__s<seed>.npz, arm in P1, P2, P3, P4, P5 and seed in 0, 1, 2 (skip any name ending in .pending.npz). Each
+holds one array, eval_prob: 5,000 x K float32, the sigmoid output of one trained model for the 5,000 evaluation
+paintings, rows in subset_pid order, values in [0, 1]. All 15 files should exist and every file should have K = 40
+columns; list any absent file or any other K as a problem.
+
+For each file:
+
+1. Check the shape (5,000 rows, 40 columns), that every value is finite and in [0, 1].
+2. Image-side score: l2-normalize each row of eval_prob (x / max(norm, 1e-12)), then the clustering score above
+   against each of the three labels.
+3. Argmax score: topic = argmax of eval_prob per row (first maximum on ties); AMI of topic against each label
+   (adjusted_mutual_info_score, default arguments, on paintings with label >= 0; no k-means).
+4. Record K.
+
+Per arm, over the seeds present: the mean and the population sd (ddof=0) of the image-side score per label, and of
+the argmax score per label.
+
+**The comparator** per aspect (aspect = emotion, style, genre; the label equal to the aspect), computed twice:
+
+- (a) over the established arms. Established arms (a status given to you, not a number): P1, P2, P3, P4, P5 (all five arms are established in this run).
+- (b) over all arms with all three seeds present.
+
+In each case: the arm with the highest mean image-side score on that label. If other arms in the set are within 0.003
+of that highest mean (highest minus theirs <= 0.003), the comparator is the one with the lowest arm number among them
+(P1 < P2 < ... < P5). Report the comparator arm, its mean and sd, and the highest arm and its mean, per aspect and per
+case.
+
+## Part B: the Stage 1 outputs (the kept topics)
+
+Folder: /project/CoSiR/src/test/20261018_percept_core/outputs/stage1/. Read only the 9 files <version>__s<seed>.npz,
+version in clip_roberta, qwen_qwen, qwen_roberta and seed in 0, 1, 2. Each holds:
+
+- center_norms (100,) float: the norms of the 100 trained topic centers;
+- fit_counts (100,) int64: per center, how many fit pairs have it as their argmax center over all 100 centers;
+- kept (100,) bool: the kept centers;
+- topic (99,999,) integer: per caption (all captions, not only fit), its topic index among the kept centers taken in
+  ascending center order (0 to 39);
+- q_paint_eval (5,000 x 40) float: per evaluation painting (subset_pid order), the mean topic weights of its captions
+  over the kept centers.
+
+The rule for the kept centers: the 40 centers with the largest fit_counts; on equal counts the lower center index is
+kept. fit_counts and topic come from two separate passes of the model, so a fit pair that lies near a tie between two
+centers can land differently in each. Do not rebuild fit_counts from topic, and do not treat a small difference
+between them as an error.
+
+For each file:
+
+1. Check: shapes and dtypes as listed; kept.sum() == 40; fit_counts.sum() equals the number of fit rows; kept equals
+   your own top-40 pick from fit_counts by the rule above; every topic value in 0 to 39; q_paint_eval finite.
+2. Coverage: with_fit_pair = how many of the 40 topics hold at least one fit pair in topic[fit_rows]; with_1pct = how
+   many of the 40 hold at least 1% of the fit pairs (count * 100 >= number of fit rows); share_before_cut =
+   fit_counts[kept].sum() / number of fit rows.
+3. The 40th and 41st largest fit_counts (the gap at the cut).
+4. Stage 1 argmax score: topic = argmax of q_paint_eval per row (first maximum on ties); AMI against each label
+   (default arguments, on paintings with label >= 0).
+
+Per version: the mean and population sd over the 3 seeds of each Stage 1 argmax AMI.
+
+## Output
+
+1. rederive_results.json in your folder: every value at full float precision, with per-k-means-seed AMIs per file.
+2. rederive_summary.md in your folder: a table per arm and label (image-side mean and sd, argmax mean and sd, 6
+   decimals), a table of per-file image-side scores and K, the two comparator tables, a table of the Stage 1 checks
+   and coverage per file, the Stage 1 argmax table, then a list of every check you made (file counts, shapes, value
+   ranges, label counts per label, absent files) and anything that looked wrong.
+3. Your script(s) in your folder.
+
+End with a short reply: the files you wrote, the checks and any problem.

@@ -219,3 +219,50 @@ the comparator from `outputs/stage2/*.npz` and the frozen sample, given the rule
 aggregates equal ours (max abs difference 0); K per file agrees. Its comparator rule had no "established" filter, so
 its genre pick (P1) equals our all-arms pick. Files: `rederive_run2/` (brief `task.txt`, `rederive_summary.md`,
 scripts, `compare.txt`).
+
+## Results, run 3 (A3, fixed K = 40)
+
+Run chat "r10 run 3", 2026-10-19, on `main` at `dfa3a85`. Reports:
+[auto report](../../../docs/reports/auto/percept/2026-12-15_percept_core_k40.md) and
+[user-read report](../../../docs/user_read/2026-10-19_percept_core_k40.md). Run 2's files are kept as
+`outputs/*_run2*`, `logs/run2/` and `pc_queue_gpu_run2.log`.
+
+### The queue
+
+| Queue | Start | End | Exit | Notes |
+|---|---|---|---|---|
+| GPU (`pc_queue_gpu.sh --foreground --lock-wait 14400`) | 16:34:09 | 16:51:49 | 0 | every step 0; stage 0 51 s; RoBERTa `skip`; 9 Stage 1 runs 77 to 99 s; 15 Stage 2 steps 5 to 8 s; `stage1_repeat` 77 s; `repeat_check` 0.1 s |
+
+The CPU queue was not rerun. Score: `pc_score.py && pc_ablation.py > outputs/pc_ablation_table.md` in one chain (exit
+0, 16:52); rows other than 4a to 5c unchanged against `pc_ablation_table_run2.md` (diff checked).
+
+### Stage 0 and the checks
+
+Stage 0 PASS: (i) 0 of 74 and 0 of 77 September files differ; (ii) 0 copied parts differ; (iii) snapshot
+0.12246902855745419 / 0.22741920423971046; (iv) 0 k-means labels differ (25 s); row 2 exact; 30 fix tests passed.
+Stage 1 repeat (A2): bitwise equal (sha256 `255a5b03...`), `fresh`. Training check (final review item 7b): each Stage
+1 file's `center_norms` and sidecar `K_gamma` equal run 2's (`K` there) in 9 of 9 files, bitwise.
+
+### Arms, image-side AMI (k = 20, 3 k-means seeds, mean ± population sd over PercepT seeds)
+
+| Arm | Emotion | Style | Genre | Dev AUC (mean ± sd) | Established |
+|---|---:|---:|---:|---|---|
+| P1 | 0.05296 ± 0.00071 | 0.16732 ± 0.00291 | 0.35583 ± 0.00078 | 0.852 ± 0.002 | yes |
+| P2 | 0.06555 ± 0.00196 | 0.22856 ± 0.00491 | 0.40007 ± 0.00460 | 0.907 ± 0.003 | yes |
+| P3 | 0.07717 ± 0.00124 | 0.18854 ± 0.00284 | 0.43588 ± 0.00374 | 0.959 ± 0.001 | yes |
+| P4 | 0.05350 ± 0.00005 | 0.16248 ± 0.00317 | 0.36147 ± 0.00119 | 0.862 ± 0.003 | yes |
+| P5 | 0.07375 ± 0.00199 | 0.18059 ± 0.00512 | 0.43505 ± 0.00690 | 0.961 ± 0.002 | yes |
+
+Comparator (D15, established arms; the all-arms pick is the same): emotion P3, style P2, genre P3 (P5 within 0.003).
+Kept topics: K = 40 in all 9 Stage 1 runs; 40 of 40 kept topics hold at least 1% of the fit pairs; share before the
+cut 0.567 to 0.627; the 40th and 41st centers differ by 1 to 14 fit pairs. Algorithm 1's K per γ is unchanged from
+run 2 (reported only). K-native measures and per-seed values: `outputs/pc_tables.md`.
+
+### Re-derivation (C13)
+
+Codex (`gpt-6.1-sol`, high) re-derived the image-side and argmax AMI of the 15 arm files, the arm means and sds, the
+comparator over established and over all arms, and the Stage 1 kept-topic checks (top-40 pick from `fit_counts`,
+coverage, share, Stage 1 argmax AMI), given the rule, the data, the fit rows and the established list only. 90
+per-file values, 60 arm aggregates, 9 shares and 27 Stage 1 argmax values equal ours (max abs difference 0); top-40
+pick equal in 9 of 9; 286 input checks pass. Files: `rederive_run3/` (brief `task.txt`, `rederive_summary.md`,
+`rederive.py`, `compare.txt`).
