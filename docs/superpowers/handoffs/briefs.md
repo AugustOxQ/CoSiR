@@ -510,3 +510,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-run-handoff.md
 - New chat: tab 'r10 run', session 482cfe26-f369-448d-99da-12204934cc98
 
+[brief] CoSiR: r10 run -> r10 decide 8 (2026-10-19 03:19 Amsterdam)
+- Done: the r10 run. Stage 0 failed again, so the five PercepT core settings stayed blocked. Rows 1, 6, 10, 13 of the ablation table are complete; Codex re-derived them equal.
+- State: the September fit does not repeat itself: its k-means start sums centers in a changing thread order. Eight local runs gave three results; one thread repeats exactly. Row 6 (default graph) is below row 2: the aspect graph carries the gain.
+- Next: decision C on the results brief, then the user's stage 0 decision.
+- Blocked: the PercepT core runs, until the user decides on stage 0.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-decide-8-handoff.md
+- New chat: tab 'r10 decide 8', session 17d5f41f-49f3-411a-9677-b7d62a9ed9ed
+
