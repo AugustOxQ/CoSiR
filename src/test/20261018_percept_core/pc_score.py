@@ -14,7 +14,7 @@ from itp_data import atomic_json, default_images, fingerprint, load_frozen, targ
 from pbp_graphs import label_vectors, sha_file
 from pav_score import ami, partitions, summary
 from apc_data import l2, paint_mean
-from pc_fixes import unit_tests_pass
+from pc_fixes import top_used, unit_tests_pass
 
 OUTPUTS = HERE / 'outputs'
 LABELS = ('emotion', 'style', 'genre')
@@ -139,6 +139,7 @@ def score_seed(stage1, stage2, s, labels):
     assert fit_counts.shape == (100,) and fit_counts.dtype == np.int64 and (fit_counts >= 0).all()
     assert norms.shape == (100,) and norms.dtype == np.float32 and np.isfinite(norms).all()
     assert kept.shape == (100,) and kept.dtype == bool and k == 40 == kept.sum()
+    assert np.array_equal(kept, top_used(fit_counts, 40)), 'Stage 1 kept mask mismatch'
     assert topic.shape == (99999,) and topic.dtype == np.int16
     assert ((topic >= 0) & (topic < k)).all()
     assert q.shape == (5000, k) and q.dtype == np.float32
@@ -192,7 +193,7 @@ def score_outputs(s, labels, outdir=OUTPUTS):
         arms[arm] = dict(version=version, seeds=seeds, stage1_seeds=stage1_seeds,
                          **aggregate_arm(seeds, stage0['status'] == 'PASS', tests_pass, fix_tests,
                                          list(stage1_seeds.values())))
-    return dict(schema=1, sample_sha256=fingerprint(s), stage0=stage0, stage1_repeat=repeat, arms=arms,
+    return dict(schema=2, sample_sha256=fingerprint(s), stage0=stage0, stage1_repeat=repeat, arms=arms,
                 comparator=comparators(arms), missing_outputs=missing,
                 conventions='Image only: l2(eval_prob), pav k20 seeds012, y>=0; '
                 'population sd over PercepT seeds012; no PercepT caption/mean. '
@@ -259,8 +260,9 @@ def markdown(result):
               '| Arm | K | With >= 1 fit pair | With >= 1% | Share before cut |',
               '|---|---:|---:|---:|---:|']
     for arm, r in result['arms'].items():
-        values = [fmt(r['K'])] + [fmt(r['kept_topics'][key]) if r['kept_topics'] else '—'
-                                  for key in ('with_fit_pair', 'with_1pct', 'share_before_cut')]
+        values = [str(int(r['K']['mean'])) if r['K'] else '—'] + [
+            fmt(r['kept_topics'][key]) if r['kept_topics'] else '—'
+            for key in ('with_fit_pair', 'with_1pct', 'share_before_cut')]
         lines.append(f'| {arm} | ' + ' | '.join(values) + ' |')
     lines += ['', '## Per-seed kept topics', '',
               '| Arm | Seed | K | With >= 1 fit pair | With >= 1% | Share before cut |',
@@ -279,13 +281,15 @@ def markdown(result):
     lines += ['', '## Dev AUC', '', '| Arm | Macro AUC |', '|---|---:|']
     for arm, r in result['arms'].items():
         lines.append(f"| {arm} | {fmt(r['dev_auc'])} |")
-    lines += ['', '| Arm | Seed | K(1.5) | K(2) | K(3) | K(5) | Dev AUC | Valid topics |',
-              '|---|---:|---:|---:|---:|---:|---:|---:|']
+    lines += ['', 'Algorithm 1 K(γ) columns below are reported only (A3); K is the trained count.', '',
+              '| Arm | Seed | K | Algorithm 1 K(1.5) | Algorithm 1 K(2) | Algorithm 1 K(3) '
+              '| Algorithm 1 K(5) | Dev AUC | Valid topics |',
+              '|---|---:|---:|---:|---:|---:|---:|---:|---:|']
     for arm, r in result['arms'].items():
         for seed, v in r['seeds'].items():
             counts = ' | '.join(str(v['K_gamma'][g]) for g in ('1.5', '2', '3', '5'))
             auc = 'undefined' if v['dev_auc'] is None else f"{v['dev_auc']:.5f}"
-            lines.append(f"| {arm} | {seed} | {counts} | {auc} | {v['dev_valid_topics']} |")
+            lines.append(f"| {arm} | {seed} | {v['K']} | {counts} | {auc} | {v['dev_valid_topics']} |")
     lines += ['', '## Row 1', '',
               'Captions: normalize each caption, painting mean, normalize. Image: normalized CLIP image.', '',
               '| Caption encoder | Aspect | CLIP image | Caption | Both-side mean |',

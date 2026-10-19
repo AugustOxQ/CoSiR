@@ -227,6 +227,19 @@ def test_stage1_requires_fixed_k40(k, tmp_path, monkeypatch):
         pc_stage2.load_stage1(s, path, 'clip_roberta', 0)
 
 
+def test_stage1_rejects_a_wrong_kept_mask_with_40_centers(tmp_path, monkeypatch):
+    import pc_stage2
+
+    s, topic = smoke_data(monkeypatch)
+    path = fake_stage1(tmp_path, s, topic)
+    with np.load(path) as z:
+        arrays = dict(z)
+    arrays['kept'][0], arrays['kept'][99] = False, True
+    np.savez(path, **arrays)
+    with pytest.raises(AssertionError, match='kept mask'):
+        pc_stage2.load_stage1(s, path, 'clip_roberta', 0)
+
+
 def test_no_valid_dev_topics_still_writes_predictions_and_null_auc(tmp_path, monkeypatch):
     import pc_data
     import pc_stage2

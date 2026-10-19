@@ -1,6 +1,8 @@
 """Repeatable September artifact checks, without importing September modules."""
 import hashlib
 import json
+import re
+import subprocess
 import sys
 
 import numpy as np
@@ -9,6 +11,17 @@ from sklearn.utils._openmp_helpers import _openmp_effective_n_threads
 
 import pc_stage0
 from pc_fixes import FIX_TESTS
+
+
+def test_fix_test_count_matches_collected_tests():
+    collected = subprocess.run(
+        [sys.executable, '-m', 'pytest', '--collect-only', '-q',
+         str(pc_stage0.HERE / 'test_pc_fixes.py')],
+        capture_output=True, text=True, timeout=30)
+    assert collected.returncode == 0, collected.stdout + collected.stderr
+    count = re.search(r'(\d+) tests? collected', collected.stdout)
+    assert count is not None, collected.stdout
+    assert int(count.group(1)) == FIX_TESTS
 
 
 @pytest.mark.parametrize('commit', pc_stage0.RECORD_COMMITS)

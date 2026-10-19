@@ -160,32 +160,52 @@ def test_clip_inputs_use_fit_pca_mean_for_every_caption(monkeypatch):
 
 
 def test_fit_counts_match_numpy_nearest_centers_after_encoding():
+    import pc_fixes
     import pc_stage1
 
     encoder = torch.nn.Sequential(torch.nn.Linear(2, 2), torch.nn.Dropout(.9))
     with torch.no_grad():
         encoder[0].weight.copy_(torch.tensor([[2., 0.], [0., -1.]]))
         encoder[0].bias.copy_(torch.tensor([1., 2.]))
-    centers = torch.nn.Parameter(torch.full((100, 2), 99.))
+    centers = torch.nn.Parameter(torch.full((100, 2), 9.))
     with torch.no_grad():
         centers[0].copy_(torch.tensor([1., 2.]))
         centers[45].copy_(torch.tensor([5., 2.]))
+        centers[70].copy_(torch.tensor([20., -20.]))
         centers[99].copy_(torch.tensor([1., 0.]))
-    inputs = torch.tensor([[0., 0.], [2., 0.], [0., 2.], [1., 0.], [2., 0.]])
-    encoded = np.array([[1., 2.], [5., 2.], [1., 0.], [3., 2.], [5., 2.]])
+    norms = torch.linalg.vector_norm(centers.detach(), dim=1).numpy()
+    assert not pc_fixes.kept_centers(norms, gamma=2)[70]
+    inputs = torch.tensor([[0., 0.], [2., 0.], [0., 2.], [1., 0.], [2., 0.], [9.5, 22.]])
+    encoded = np.array([[1., 2.], [5., 2.], [1., 0.], [3., 2.], [5., 2.], [20., -20.]])
     distances = ((encoded[:, None] - centers.detach().numpy()[None]) ** 2).sum(2)
     expected = np.bincount(distances.argmin(1), minlength=100)
     before = {key: value.clone() for key, value in encoder.state_dict().items()}
     centers_before = centers.detach().clone()
-    counts = pc_stage1.count_fit_pairs(encoder, centers, inputs, 'cpu', block_size=2)
+    counts = pc_stage1.count_fit_pairs(encoder, centers, inputs, 'cpu', block_size=4)
     np.testing.assert_array_equal(counts, expected)
-    assert counts.shape == (100,) and counts.dtype == np.int64 and counts.sum() == 5
+    assert counts.shape == (100,) and counts.dtype == np.int64 and counts.sum() == 6
     assert counts[0] == 2 and counts[45] == 2 and counts[99] == 1
+    assert counts[70] == 1
     assert not encoder.training and all(p.grad is None for p in encoder.parameters())
     for key, value in encoder.state_dict().items():
         torch.testing.assert_close(value, before[key], rtol=0, atol=0)
     torch.testing.assert_close(centers, centers_before, rtol=0, atol=0)
     assert centers.grad is None
+
+
+def test_kept_topic_stats_use_final_topics_and_share_before_cut():
+    import pc_stage1
+
+    fit_counts = np.zeros(100, dtype=np.int64)
+    fit_counts[0], fit_counts[1:51] = 150, 1
+    kept = np.arange(100) < 40
+    # Topic 1 reaches 1% after reassignment; topic 39 has no final fit pairs.
+    fit_topics = np.array([0] * 151 + [1] * 2 + [2] * 11 + list(range(3, 39)), dtype=np.int16)
+    before = [x.copy() for x in (fit_topics, fit_counts, kept)]
+    stats = pc_stage1.kept_topic_stats(fit_topics, fit_counts, kept)
+    assert stats == dict(fit_pairs=200, with_fit_pair=39, with_1pct=3, share_before_cut=.945)
+    for actual, original in zip((fit_topics, fit_counts, kept), before):
+        np.testing.assert_array_equal(actual, original)
 
 
 def test_assignment_uses_frozen_kept_centers_and_eval_painting_order():

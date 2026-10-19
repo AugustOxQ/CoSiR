@@ -17,6 +17,9 @@ ARM_ROWS = {'4a': 'P1', '4b': 'P2', '5a': 'P3', '5b': 'P4', '5c': 'P5'}
 def load():
     fu = json.loads((HERE.parent / '20261018_aspect_graph_sheet' / 'ags_fu_results.json').read_text())
     result = json.loads((HERE / 'outputs' / 'pc_results.json').read_text())
+    assert result['schema'] == 2, 'PercepT results must use schema 2'
+    assert all(r['K'] in (None, dict(mean=40., sd=0.)) for r in result['arms'].values()), \
+        'PercepT results require K = 40'
     rows = json.loads((HERE / 'outputs' / 'pc_rows_results.json').read_text())['aggregates']
     return fu, result, rows
 
@@ -116,8 +119,9 @@ def main(fu=None, result=None, rows=None):
         print(f'| {name} | {x} vs {y} | ' + ' | '.join(vals) + ' |')
     print('\n### Image-side changes\n\n| Change | Rows | Emotion | Style | Genre |\n|---|---|---:|---:|---:|')
     for name, x, y in IMAGE_DIFFS:
+        star = '' if arms[ARM_ROWS[x]]['established'] and arms[ARM_ROWS[y]]['established'] else '*'
         vals = ['—' if cells[x][a] is None or cells[y][a] is None else
-                f"{cells[x][a]['img'] - cells[y][a]['img']:+.3f}" for a in ASPECTS]
+                f"{cells[x][a]['img'] - cells[y][a]['img']:+.3f}" + star for a in ASPECTS]
         print(f'| {name} | {x} vs {y} | ' + ' | '.join(vals) + ' |')
 
 
