@@ -17,11 +17,12 @@ The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding 
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. The stage 2 sheet's
 best row for the claim, D2 (trunk + direct distillation 0.5), reaches image-side AMI 0.096 / 0.370 / 0.454
 (development data, 3 seeds) against PercepT core 0.077 / 0.229 / 0.436 and the instructed Qwen image 0.093 / 0.395 /
-0.496: above the instructed target on emotion only. Next, two tracks (user): the claim test spec with D2 (the first
-held read; Leiden beside k-means; PercepT with its own assignment and a "paper settings" version beside PercepT core),
-and step 3 for cluster-level losses (contrast per head, teacher clusters as anchors, DEC started from a good
-partition). Gates: 2026-10-29 held-out emotion AMI at least +0.01 above PercepT core; 2026-11-10 the instructed Qwen
-bar and aspect-named retrieval.
+0.496: above the instructed target on emotion only. Next, two tracks (user): the claim test with D2, grilled on
+2026-10-20 (two claim tests: the developed sample for the 10-29 gate, then the full ArtELingo train side; the bar is
+the strongest uncollapsed PercepT, core or one of two paper settings versions; Leiden reported beside), its spec
+next; and decision B for cluster-level losses (contrast per head, teacher clusters as anchors, DEC started from a
+good partition). Gates: 2026-10-29 held-out emotion AMI at least +0.01 above PercepT, with a paired interval above 0;
+2026-11-10 the instructed Qwen bar and aspect-named retrieval.
 
 ## Parked ideas
 
@@ -71,6 +72,24 @@ bar and aspect-named retrieval.
   where only the backbone differs from the paper, runs beside PercepT core, with a collapse rule (user, after seeing
   the recommendation; "it can collapse easily, but I tend to give a try"). The grill and the spec follow in the next
   decide chat.
+- **Grill, claim test (r10 decide 13, closing summary confirmed by the user 2026-10-20 01:20):** two stages, both
+  claim tests. Stage 1 (the 10-29 gate): D2, PercepT core and the two paper settings PercepT versions (strict and
+  K = 40; arms P1, P4) retrain on the developed sample (13,400 fit paintings), 5 seeds, weights saved, read on the
+  12,281 held paintings (user: "develop on same samples now, but be careful of the result claim"). Gate: d = D2
+  emotion AMI minus the strongest uncollapsed PercepT at its stronger reading, k-means k = 20, seed means; GO: d ≥
+  0.01 and the paired 95% interval above 0 (user, 6b); "inconclusive, margin met" (d ≥ 0.01, interval reaches 0):
+  improve the margin on development data, test again (user); inconclusive: 0 < d < 0.01; NO-GO: d ≤ 0, we talk.
+  Paper settings PercepT enters the bar only when not collapsed; both versions run (user, 5c; its arms and collapse
+  thresholds: agent proposal in the option). Leiden (union 20-NN of the held outputs, resolution 1.0, 3 seeds; then
+  September's vote onto training communities) is reported beside the verdict and decides nothing (user, 3a then 3b;
+  7a after the [development Leiden reading](../../src/test/20261020_leiden_dev_reading/20261020_leiden_dev_reading_log.md):
+  emotion lead +0.019 under k-means, +0.009 under Leiden). Stage 2: the full ArtELingo train side (English), its own
+  rule, run only after a GO or inconclusive stage 1 (user, 4b and 8b); its result counts over stage 1's, and an
+  uncollapsed paper settings PercepT that beats D2 there becomes the comparator to improve against (user, S1).
+  ArtELingo-28 (translated) gets its own facts brief and spec after the gate (user, 4b). Minors m1 to m10 (5 seeds,
+  the sheet's label rule, a stage 0 regression, held instructed images, arm per aspect fixed from development data,
+  diagnostics, validation split for stage 2's early stopping, names, local GPU) accepted (user, after seeing the
+  recommendation). The spec and its decision rule follow in r10 decide 14.
 - **Why:** emotion clears the line on development data (+0.019 over PercepT core), and the 10-29 gate needs held
   data. The user challenges the clustering step; Leiden and cluster-level losses test it.
 - **Links:** [auto report](../reports/auto/percept/2026-12-16_model_sheet.md) ·
