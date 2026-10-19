@@ -4,6 +4,7 @@
 > Builds on: [purification pilot](../../reports/auto/percept/2026-12-10_purified_buddy_pilot.md), the grill of
 > [decide 6 handoff](../handoffs/2026-10-18-r10-decide-6-handoff.md) §2 · Constitution: `docs/superpowers/constitution.md`
 > Decision rule: none (descriptive; every stage is an exploration)
+> Stage 2 (model sheet) moved on 2026-10-19 to its own spec, [stage 2 model sheet](2026-10-19-stage2-model-sheet-design.md).
 
 ## Brief (for the user; agents read and decide from §1 onward)
 
