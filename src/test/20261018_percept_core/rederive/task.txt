@@ -1,0 +1,97 @@
+Independent re-derivation of clustering scores from stored outputs (CoSiR r10, rule C13).
+
+You get the scoring rule and the data. You do not get our numbers. Write your own Python script and compute every
+number yourself.
+
+## Ground rules
+
+- Work only in /tmp/claude-0/-project-CoSiR/482cfe26-f369-448d-99da-12204934cc98/scratchpad/rederive/ (your folder).
+  Write your script, logs and outputs there. Every path you use is absolute.
+- Do not import, run or read any code under /project/CoSiR/src/test/. Read only the data files named below. The one
+  shared helper you may import is src.utils.feature_manager.FeatureManager from /project/CoSiR (add /project/CoSiR to
+  sys.path), or read its shards yourself.
+- Do not read any results file: no *.json beside the head outputs, no pc_rows_results.json, pc_results.json,
+  pc_tables.md, pc_rows_tables.md, gate.json, stage0.json, no reports under /project/CoSiR/docs/.
+- Python: /root/miniconda3/envs/CoSiR/bin/python, with OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1.
+  No GPU.
+- Delete nothing; list what you would remove. Do not create .ccg task records. Do not commit anything.
+- Keep command output short: long output goes to a file, then its tail or a grep. The numbers you report come from your
+  output file, never from a cut-off view.
+- No single command waits more than about 4 minutes: run the long scoring in the background (nohup, log to a file) and
+  check the log.
+
+## Data
+
+Frozen sample: /project/CoSiR/src/test/20261017_prompted_aspect_views/sample.npz (np.load, allow_pickle=False).
+
+- Per caption (99,999 rows): sample_ids (int64 extraction id), pid (painting index, 0 to 19,888), painting_ids (name),
+  emo (emotion label, -1 means none), sty (style label), gen (genre label).
+- Per painting (19,889 rows): first (row index of the painting's first caption), all_painting_ids (name).
+- subset_pid (5,000 painting indices): the evaluation paintings. The order of subset_pid is the row order of every
+  5,000-row output below.
+
+Labels of the 5,000 evaluation paintings, in subset_pid order:
+
+- emotion: the majority of emo over the painting's captions with emo >= 0 (9 classes, 0 to 8); ties go to the smallest
+  class id; -1 when no caption of the painting has emo >= 0.
+- style: sty of the painting's first caption (row first[p]).
+- genre: gen of the painting's first caption.
+- Each label is scored only on paintings with label >= 0.
+
+The clustering score of a 5,000 x d matrix X against a label vector y:
+
+1. X as float32.
+2. For r in 0, 1, 2: pred_r = sklearn.cluster.MiniBatchKMeans(n_clusters=20, random_state=r, n_init=3,
+   batch_size=4096).fit_predict(X).
+3. ami_r = sklearn.metrics.adjusted_mutual_info_score(y[y >= 0], pred_r[y >= 0]), default arguments.
+4. score = mean of ami_r over r (also keep the population sd, np.std with ddof=0).
+
+The same three partitions serve all three labels of one matrix.
+
+## Part A: the head outputs
+
+Folder: /project/CoSiR/src/test/20261018_percept_core/outputs/heads/. Read only the *.npz files (skip any name ending
+in .pending.npz). Each holds arrays img and cap, 5,000 x 2,048, float16. File name:
+<aspect>__<graph>[__prompted]__s<seed>.npz.
+
+Score img and cap (as stored, cast to float32, no re-normalization; first check that every row has norm 1 within
+0.01 and report the largest deviation) against all three labels.
+
+Groups:
+
+| Group | Graph | Input (name part) | Aspects | Seeds |
+|---|---|---|---|---|
+| row 6 | Ddef | default (no __prompted) | emotion, style, genre | 0, 1, 2 |
+| row 10 | R0o | default (no __prompted) | emotion, style | 0, 1, 2 |
+| row 13 | R0o | __prompted | emotion, style, genre | 0, 1, 2 |
+| gate | R0 | default | genre | 0 |
+
+Per run: img score and cap score per label, and the both-sides mean (img + cap) / 2 per label. A run's target value is
+its both-sides mean for the label equal to its aspect.
+
+Per group and aspect, over the seeds: the mean and population sd (ddof=0) of the img score, of the cap score and of the
+both-sides mean, for each of the three labels, and of the target value. Report any missing or unexpected file.
+
+## Part B: row 1, k-means on the September encoders
+
+- CLIP store: FeatureManager store at /data/SSD2/pre_extract/artelingo/features (metadata.json, shards/). Each stored
+  sample has a sample id and 512-d img_features and txt_features (float32). Join by sample id, never by position.
+- Image side: for evaluation painting p, the img_features row whose stored sample id equals sample_ids[first[p]].
+  l2-normalize each row, then score.
+- Caption side, two versions:
+  1. CLIP txt_features of every sample caption (join each caption by its sample_ids value).
+  2. RoBERTa-GoEmotions: /data/SSD2/pre_extract/artelingo_full/roberta_go_emotions/txt.npy (99,999 x 768); ids.npz
+     holds the sample_ids and painting_ids of its rows. Join by sample id, and check that the painting_ids agree.
+  For each version: l2-normalize every caption vector, average the captions of each painting (group by pid, all 19,889
+  paintings), l2-normalize each painting mean, take the evaluation paintings in subset_pid order, score.
+- Report the img score, the two cap scores and the two both-sides means ((img + cap) / 2), per label.
+
+## Output
+
+1. rederive_results.json in your folder: every value at full float precision, with per-k-means-seed AMIs.
+2. rederive_summary.md in your folder: one table for Part A (per group, aspect, side, label: mean and sd over seeds, 6
+   decimals), one for the gate run, one for Part B; then a list of every check you made (counts, label counts per
+   label, unit-norm check, join checks) and anything that looked wrong.
+3. Your script(s) in your folder.
+
+End with a short reply: the files you wrote, the checks and any problem.

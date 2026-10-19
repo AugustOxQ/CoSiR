@@ -1,0 +1,10 @@
+single 1 start 03:07:10 load=1.08
+single 1 exit=0 end 03:11:38 load=8.49
+| held-out emotion AMI | 0.1225 | 0.1287 | 0.0062 | FAILED |
+| held-out genre AMI | 0.2274 | 0.2804 | 0.0530 | FAILED |
+[03:11:23] K=60 DEC epoch 010/500: fraction_changed=0.051138 (3,140 nodes)
+single 2 start 03:11:38 load=8.49
+single 2 exit=0 end 03:16:04 load=1.32
+| held-out emotion AMI | 0.1225 | 0.1287 | 0.0062 | FAILED |
+| held-out genre AMI | 0.2274 | 0.2804 | 0.0530 | FAILED |
+[03:15:49] K=60 DEC epoch 010/500: fraction_changed=0.051138 (3,140 nodes)

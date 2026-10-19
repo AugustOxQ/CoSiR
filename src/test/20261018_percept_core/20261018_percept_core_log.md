@@ -55,4 +55,83 @@ same at every γ. Spec: report it, no rerun with another γ.
 
 ## Results
 
-To be filled by the run chat.
+Run chat "r10 run", 2026-10-19, on `main` at `0f47271`. Reports:
+[auto report](../../../docs/reports/auto/percept/2026-12-13_percept_core.md) and
+[user-read report](../../../docs/user_read/2026-10-19_percept_core.md).
+
+### The queues
+
+| Queue | Start | End | Exit | Notes |
+|---|---|---|---|---|
+| GPU (`pc_queue_gpu.sh --foreground --lock-wait 14400`) | 01:32 | 01:44 | 1 (stage 0 FAIL) | stage 0 727 s; RoBERTa `skip`; all 9 Stage 1 and 15 Stage 2 runs `blocked` |
+| CPU (`pc_queue_cpu.sh`) | 01:32 | 02:54 | 0 | gate verified (PASS, difference 0); 24 head runs; rows score 174 s; `gpu_wait=ok`; sheet |
+
+The head runs took 400 to 680 s each (3 seeds per step: 1,182 to 2,030 s), not the 260 s of the build's timing: three
+workers of 8 threads ran beside stage 0 and the load check below. The CPU queue ended at 02:54, not near 02:20.
+
+### Stage 0: FAIL, and the September fit does not repeat itself
+
+| Check | Recorded | Tonight | Status |
+|---|---|---|---|
+| Script 1 (Stage 1 snapshot) held-out emotion / genre AMI | 0.1225 / 0.2274 | 0.1244 / 0.2617 | FAIL |
+| Script 2 (extended-seed Stage 2) held-out emotion / genre AMI | 0.1225 / 0.2274 | 0.1287 / 0.2804 | FAIL |
+| Seed 42 Stage 2 macro AUC | 0.8296 | none (the script stops at its own re-fit check) | FAIL |
+| Row 2, our scoring | 0.088556 / 0.170954 / 0.393076 | equal to 1e-6 | PASS |
+| Four-fix unit tests | pass | 21 passed | PASS |
+
+In the build (00:40 to 00:52) both scripts gave 0.1238 / 0.2617. The handoff's reading "this machine reproduces its
+own September record bit for bit" does not hold. The load check
+(`src/test/20261019_stage0_load_check/20261019_stage0_load_check_log.md`) traced it: the September k-means start
+(K = 60, 10 restarts, 8 threads) gives different centers at the last float32 bit in every run, idle or loaded, with
+the same labels. With one thread its centers are identical in every run. DEC then turns the last-bit differences into
+one of a few outcomes. Eight local runs of the unchanged code:
+
+| Outcome (emotion / genre) | DEC epoch 10 changed nodes | Runs |
+|---|---|---|
+| 0.1238 / 0.2617 | 2,973 | 5: September local sweep, build script 1 and 2, build thread test, tonight idle script 1 |
+| 0.1244 / 0.2617 | 3,016 | 1: tonight script 1 (beside the CPU queue) |
+| 0.1287 / 0.2804 | 3,140 | 2: tonight script 2 (beside the CPU queue, and idle) |
+
+With one CPU thread (OMP, MKL and OpenBLAS at 1), two runs of script 1 gave identical logs and the same result,
+0.1287 / 0.2804: one beside the Codex re-derivation (load 8.5), one idle.
+
+PercepT core's Stage 1 (`pc_sept.py`) uses the same k-means start under `threadpool_limits(8)`, so its runs carry the
+same noise. Per spec §3.5 the PercepT arms stay blocked; the user decides on stage 0.
+
+### Head gate and rows 6, 10, 13 (complete, 3 seeds)
+
+Gate: the build's rerun of genre R0 seed 0 (`outputs/heads/genre__R0__s0.npz`) verified and re-scored, target AMI
+0.406099, difference 0 (PASS).
+
+Target AMI (both-side mean for the aspect's label, k = 20, 5,000 evaluation paintings), mean ± population sd over
+head seeds 0 to 2 (`outputs/pc_rows_tables.md`, `pc_rows_results.json`):
+
+| Row | Graph, input | Emotion | Style | Genre |
+|---|---|---:|---:|---:|
+| 6 | default graph, default input | 0.0823 ± 0.0027 | 0.1630 ± 0.0018 | 0.3881 ± 0.0017 |
+| 10 | other side's aspect graph (R0o), default input | 0.0857 ± 0.0003 | 0.1545 ± 0.0012 | (0.428, follow-up) |
+| 13 | R0o, prompted input | 0.0889 ± 0.0013 | 0.1564 ± 0.0003 | 0.4342 ± 0.0026 |
+
+Row 6's emotion and genre heads use the same default graph (pilot D, 47,516 fit pairs) and the same input, so their
+outputs are byte-identical (same network, scored on two labels). Style's default graph is the image graph I (69,853).
+
+### Row 1 (k-means on the September encoders; sd over k-means seeds)
+
+| Caption encoder | Aspect | CLIP image | Caption | Both-side mean |
+|---|---|---:|---:|---:|
+| CLIP text | emotion | 0.0647 ± 0.0022 | 0.0667 ± 0.0033 | 0.0657 |
+| CLIP text | style | 0.3000 ± 0.0027 | 0.1099 ± 0.0017 | 0.2050 |
+| CLIP text | genre | 0.4116 ± 0.0098 | 0.3305 ± 0.0195 | 0.3710 |
+| RoBERTa | emotion | 0.0647 ± 0.0022 | 0.1894 ± 0.0023 | 0.1271 |
+| RoBERTa | style | 0.3000 ± 0.0027 | 0.0487 ± 0.0010 | 0.1743 |
+| RoBERTa | genre | 0.4116 ± 0.0098 | 0.0680 ± 0.0007 | 0.2398 |
+
+The updated ablation table: `pc_ablation.py` (reads the stored results only) writes `outputs/pc_ablation_table.md`.
+
+### Re-derivation (C13)
+
+Codex (`gpt-6.1-sol`, high) re-derived the head rows, the gate run and row 1 with its own code from the stored
+outputs and the frozen sample, given the scoring rule and the data only (brief and outputs in the session
+scratchpad; its script joins features by sample ID). All 150 per-run side scores, the 3-seed means and sds, and
+every row 1 value equal ours (max abs difference 0). Its checks: 25 heads, no missing or extra file, largest norm
+deviation 3.7e-5, label counts and ID joins. The PercepT comparator has no numbers to re-derive.

@@ -1,0 +1,8 @@
+run_percept_stage1_embedding_snapshot_pilot start 02:55:57 load=3.36
+run_percept_stage1_embedding_snapshot_pilot exit=0 end 02:59:51 load=3.18
+| held-out emotion AMI | 0.1225 | 0.1238 | 0.0013 | FAILED |
+| held-out genre AMI | 0.2274 | 0.2617 | 0.0343 | FAILED |
+run_percept_stage2_extended_seed_pilot start 02:59:51 load=3.18
+run_percept_stage2_extended_seed_pilot exit=0 end 03:03:48 load=3.52
+| held-out emotion AMI | 0.1225 | 0.1287 | 0.0062 | FAILED |
+| held-out genre AMI | 0.2274 | 0.2804 | 0.0530 | FAILED |

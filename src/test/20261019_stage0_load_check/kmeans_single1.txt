@@ -1,0 +1,3 @@
+{"tag": "single1", "repeat": 0, "load1": 1.6953125, "seconds": 9.9, "centers_sha": "fadb74cc3672902f", "labels_sha": "1d4d27d751756753", "labels_equal_september": 1.0, "inertia": 15644.89453125}
+{"tag": "single1", "repeat": 1, "load1": 2.45654296875, "seconds": 9.9, "centers_sha": "228fc51cdc4fd2db", "labels_sha": "1d4d27d751756753", "labels_equal_september": 1.0, "inertia": 15644.892578125}
+{"tag": "single1", "repeat": 2, "load1": 2.9091796875, "seconds": 9.7, "centers_sha": "63f1718e74f2cc69", "labels_sha": "1d4d27d751756753", "labels_equal_september": 1.0, "inertia": 15644.8935546875}
