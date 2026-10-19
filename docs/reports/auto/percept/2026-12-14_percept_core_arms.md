@@ -22,11 +22,13 @@ paintings is clustered at k = 20 and scored by AMI against each aspect's label (
   input 0.081 / 0.348 / 0.458.
 - The other arms: P1 fails the dev AUC bar on one seed (0.620, 2 topics). P3 and P4 lose seed 0 (1 topic). P5 keeps
   1 topic on every seed and never trains.
-- Seeds that keep 99 topics sit near their image encoder clustered directly. P3 (2 seeds): 0.072 / 0.194 / 0.446;
-  Qwen default images 0.070 / 0.222 / 0.449. P2 seed 0: 0.063 / 0.250 / 0.412; CLIP images 0.065 / 0.300 / 0.412.
+- With 99 topics, P3 and P2 come near their image encoder clustered directly on emotion and genre and stay lower on
+  style. P3 (2 seeds): 0.072 / 0.194 / 0.446; Qwen default images 0.070 / 0.222 / 0.449. P2 seed 0: 0.063 / 0.250
+  / 0.412; CLIP images 0.065 / 0.300 / 0.412. P1 seed 0 and P4 are below CLIP images on every aspect.
 
 **What it does not show.** Development data only: the same 5,000 paintings chose our rows and the comparator arm.
-Three seeds per arm; the comparator's spread comes from the topic count, not from training noise. The claim is
+Three seeds per arm; the comparator's spread appears to come mainly from the topic count (no fixed-count repeats
+separate it from training noise). The claim is
 PercepT core (four fixes, our features), not PercepT as published. Which emotion source helps (P5 against P3) stays
 open.
 
@@ -34,8 +36,8 @@ open.
 - a. Keep P2 as the comparator. Add the image encoders clustered directly (rows 1 and 2, image side) as a second bar
   for 2026-10-29. Go to the stage 2 decision. No new run; a reviewer may call the comparator weak.
 - b. Amend PercepT core's topic count so that a gap at the ends cannot set it (for example a fixed count, or a cut
-  only inside the norm range). Rerun the five arms: a short build and about 20 GPU minutes. Gives a stable comparator
-  and a P5 result.
+  only inside the norm range). Rerun the five arms: a short build and about 20 GPU minutes. Aims at a stable comparator
+  and a P5 result; not tested yet.
 - c. Keep the rule and run seeds 3 to 9: about 15 GPU minutes. Measures how often the count falls; gives no stable
   comparator.
 
@@ -44,11 +46,12 @@ open.
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>
 
-**Our reading.** The code is the September code, and PercepT core's runs repeat. The weak comparator comes from the
+**Our reading.** The code is the September code, and the one repeated Stage 1 run was exact. The weak comparator comes from the
 topic count rule. With 100 evenly spread norms, the largest single gap falls at one end, so the cut keeps almost all
 centers or almost none. Training is not the problem: with 99 topics the arms reach dev AUC 0.78 to 0.95. With 99
-topics PercepT core adds little over its image encoder clustered directly. Against those seeds our network's image
-side is level on emotion and genre (within about 0.01) and higher on style (0.348 against 0.250, P2 seed 0). Sure about the
+topics the best settings (P3, P2) add nothing over their image encoder clustered directly. Against the best 99-topic
+seed per aspect (picked after the fact), our network's image side is 0.009 higher on emotion, 0.012 on genre and
+0.098 on style (0.348 against 0.250, P2 seed 0). Sure about the
 count mechanism (norms read directly); medium sure about the 99-topic reading (one or two seeds per arm).
 
 **Our recommendation.** Option b, with the new count rule chosen in the decide chat, then the stage 2 decision in the
@@ -148,10 +151,11 @@ equal to our "all arms" pick. Files: `src/test/20261018_percept_core/rederive_ru
   September's 40 topics. Dev AUC is 0.78 to 0.95 there. With K = 2 or 3 the Stage 2 output has 2 or 3 numbers per
   painting, so k = 20 clustering on it carries little aspect information. P2 seed 1 passes the AUC bar by 0.002 on 2
   topics.
-- **At 99 topics PercepT core is close to its image encoder.** P3 against Qwen default images: emotion 0.072 vs
-  0.070, style 0.194 vs 0.222, genre 0.446 vs 0.449. P2 seed 0 against CLIP images: 0.063 vs 0.065, 0.250 vs 0.300,
-  0.412 vs 0.412. The spec expected PercepT core near the Qwen default embedding; the 99-topic seeds agree. Our
-  reading, on one or two seeds.
+- **At 99 topics the best settings are close to their image encoder on emotion and genre.** P3 against Qwen default
+  images: emotion 0.072 vs 0.070, style 0.194 vs 0.222, genre 0.446 vs 0.449. P2 seed 0 against CLIP images: 0.063
+  vs 0.065, 0.250 vs 0.300, 0.412 vs 0.412. Style stays lower by 0.028 and 0.050. P1 seed 0 (0.051 / 0.166 / 0.349)
+  and P4 are below CLIP images on every aspect. The spec expected PercepT core near the Qwen default embedding; P3's
+  two seeds agree. Our reading, on one or two seeds.
 - **Topics transfer to a CLIP reader only in part.** On the same Qwen topics (seeds 1 and 2), the CLIP patch reader
   (P4) gives 0.052 / 0.156 / 0.348 against the Qwen reader's (P3) 0.072 / 0.194 / 0.446, with dev AUC 0.79 against
   0.94. P4 is also below CLIP images clustered directly.

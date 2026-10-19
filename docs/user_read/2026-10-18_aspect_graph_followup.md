@@ -95,8 +95,9 @@ How to read it:
   and style, and the image-weighted mix (image 0.75, caption 0.25) for genre. "Other side alone" is the graph from
   the other side only (for genre, the image graph).
 - Updated 2026-10-19 with rows 1, 6, 10 and 13 from the
-  [PercepT core run](2026-10-19_percept_core.md). Rows 4 and 5 (PercepT core) are blocked: the regression check of
-  the September code failed, and you decide how to change it.
+  [PercepT core run](2026-10-19_percept_core.md). Rows 4 and 5 (PercepT core) ran on 2026-10-19 after the changed
+  check ([PercepT core arms](2026-10-19_percept_core_arms.md)). PercepT core reads only images at test time, so it
+  has image-side scores only (in the image-side table below).
 
 | # | Input embedding | Method | Graph the network learns from | Emotion | Style | Genre |
 |---|---|---|---|---:|---:|---:|
@@ -106,8 +107,8 @@ How to read it:
 | 2 | Qwen default | k-means on the embedding | none | 0.089 | 0.171 | 0.393 |
 | 3 | Qwen prompted | k-means on the embedding | none | 0.155 | 0.265 | 0.424 |
 | | **PercepT core** | | | | | |
-| 4 | CLIP B/32 + RoBERTa-GoEmotions | PercepT core | none | blocked | blocked | blocked |
-| 5 | Qwen default | PercepT core | none | blocked | blocked | blocked |
+| 4 | CLIP B/32 + RoBERTa-GoEmotions | PercepT core | none | image side only | image side only | image side only |
+| 5 | Qwen default | PercepT core | none | image side only | image side only | image side only |
 | | **Our network, default input (no instruction at test time)** | | | | | |
 | 6 | Qwen default | network | default graph | 0.082 | 0.163 | 0.388 |
 | 7 | Qwen default | network | plain aspect graph | 0.118 | 0.213 | 0.402 |
@@ -139,7 +140,7 @@ rounded numbers):
 | Best network with prompted input vs prompted embedding | 12 vs 3 | −0.004 | +0.018 | 0.000 |
 | Encoder: Qwen default vs CLIP image + CLIP text | 2 vs 1a | +0.023 | −0.034 | +0.022 |
 | Encoder: Qwen default vs CLIP image + RoBERTa-GoEmotions | 2 vs 1b | −0.038 | −0.003 | +0.153 |
-| Method: our network vs PercepT core, same input | 9 (genre 10) vs 5 | blocked | blocked | blocked |
+| Method: our network vs PercepT core, same input | 9 (genre 10) vs 5 | not established | not established | not established |
 
 **What the table says:**
 
@@ -159,7 +160,9 @@ are not on this protocol, so the table leaves them out.
 <details>
 <summary>Image side and caption side for each row</summary>
 
-Same measure and rows; "img" is the image side, "cap" the caption side. Rows 4 and 5 are blocked.
+Same measure and rows; "img" is the image side, "cap" the caption side. Rows 4a and 4b (PercepT core, image side
+only): emotion 0.029 and 0.036, style 0.137 and 0.162, genre 0.234 and 0.217; 4a is not established. Rows 5a to 5c
+are not established (their topic count kept 1 topic on at least one seed).
 
 | # | Emotion img | Emotion cap | Style img | Style cap | Genre img | Genre cap |
 |---|---:|---:|---:|---:|---:|---:|

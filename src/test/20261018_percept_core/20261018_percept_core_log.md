@@ -154,3 +154,58 @@ outputs and the frozen sample, given the scoring rule and the data only (brief a
 scratchpad; its script joins features by sample ID). All 150 per-run side scores, the 3-seed means and sds, and
 every row 1 value equal ours (max abs difference 0). Its checks: 25 heads, no missing or extra file, largest norm
 deviation 3.7e-5, label counts and ID joins. The PercepT comparator has no numbers to re-derive.
+
+## Results, run 2 (PercepT arms, amended stage 0)
+
+Run chat "r10 run 2", 2026-10-19, on `main` at `6cd4526`. Reports:
+[auto report](../../../docs/reports/auto/percept/2026-12-14_percept_core_arms.md) and
+[user-read report](../../../docs/user_read/2026-10-19_percept_core_arms.md). The first run's files are kept as
+`pc_queue_gpu_run1.log`, `logs/stage0_run1.log` and `outputs/{stage0,pc_results,pc_tables,pc_ablation_table}_run1.*`.
+
+### The queue
+
+| Queue | Start | End | Exit | Notes |
+|---|---|---|---|---|
+| GPU (`pc_queue_gpu.sh --foreground --lock-wait 14400`) | 09:50:39 | 10:08:02 | 0 | stage 0 51 s; RoBERTa `skip`; 9 Stage 1 runs 76 to 99 s; 15 Stage 2 steps 3 to 8 s; `stage1_repeat` 77 s; `repeat_check` 0.1 s |
+
+The CPU queue was not rerun. Score: `pc_score.py` (exit 0), `pc_ablation.py > outputs/pc_ablation_table.md` (exit 0;
+rows other than 4a to 5c unchanged against `pc_ablation_table_run1.md`).
+
+### Stage 0 (amended, A1): PASS
+
+(i) 0 of 74 and 0 of 77 September files differ; (ii) 0 copied parts differ; (iii) snapshot 0.12246902855745419 /
+0.22741920423971046 on 9,365 / 159 rows; (iv) 0 k-means labels differ (25 s); row 2 exact; 21 fix tests passed.
+Stage 1 repeat (A2): `clip_roberta__s0` run twice, bitwise equal (sha256 `0f708d26...`), `fresh` on the sheet.
+
+### Topic count (spec §8 case)
+
+| Stage 1 version | Seed 0 | Seed 1 | Seed 2 |
+|---|---:|---:|---:|
+| clip_roberta (P1, P2) | 99 | 2 (100 at γ 5) | 3 |
+| qwen_qwen (P3, P4) | 1 | 99 | 99 |
+| qwen_roberta (P5) | 1 | 1 | 1 |
+
+In every run the 100 center norms spread evenly (about 0.33 to 0.67); the largest adjacent gap (4.3 to 11.8 times
+the mean gap) sits at an end, between sorted positions 1-2, 2-3, 3-4 or 99-100. At K = 99, 40 to 42 topics hold at
+least 1% of the pairs. Stage 2 skips K < 2 (sidecar only): P3 s0, P4 s0, P5 s0 to s2.
+
+### Arms, image-side AMI (k = 20, 3 k-means seeds, mean ± population sd over PercepT seeds)
+
+| Arm | Emotion | Style | Genre | Dev AUC per seed | Established |
+|---|---:|---:|---:|---|---|
+| P1 | 0.02894 ± 0.01576 | 0.13682 ± 0.02772 | 0.23399 ± 0.08386 | 0.799 / 0.620 / 0.830 | no (seed 1 AUC) |
+| P2 | 0.03552 ± 0.01973 | 0.16185 ± 0.07806 | 0.21697 ± 0.14261 | 0.896 / 0.752 / 0.901 | yes |
+| P3 | seeds 1, 2: 0.07198, 0.07201 | 0.19151, 0.19702 | 0.44065, 0.45174 | — / 0.946 / 0.943 | no (seed 0 K = 1) |
+| P4 | seeds 1, 2: 0.05055, 0.05304 | 0.15600, 0.15573 | 0.34854, 0.34748 | — / 0.784 / 0.791 | no (seed 0 K = 1) |
+| P5 | — | — | — | — | no (K = 1 on every seed) |
+
+Comparator (D15, established arms): P2 for every aspect. Over all arms with three trained seeds, genre goes to P1
+(0.23399). K-native measures and per-seed values: `outputs/pc_tables.md`.
+
+### Re-derivation (C13)
+
+Codex (`gpt-6.1-sol`, high) re-derived the image-side and argmax AMI of the 10 arm files, the arm means and sds, and
+the comparator from `outputs/stage2/*.npz` and the frozen sample, given the rule only. 90 per-file values and 24 arm
+aggregates equal ours (max abs difference 0); K per file agrees. Its comparator rule had no "established" filter, so
+its genre pick (P1) equals our all-arms pick. Files: `rederive_run2/` (brief `task.txt`, `rederive_summary.md`,
+scripts, `compare.txt`).
