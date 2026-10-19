@@ -643,3 +643,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-decide-13-handoff.md
 - New chat: tab 'r10 decide 13', session beb2bbd4-0a5c-451a-9c5d-3dcb9fd617ed
 
+[brief] CoSiR: r10 decide 13 -> r10 decide 14 (2026-10-20 01:25 Amsterdam)
+- Done: the claim test grill (8 key questions, closing summary confirmed); a development Leiden reading.
+- State: D2 emotion AMI leads PercepT core by +0.019 under k-means and +0.009 under Leiden (development data).
+- Next: write the two-stage claim test spec and its decision rule; reviewer, user approval; then decision B, track 2.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-decide-14-handoff.md
+- New chat: tab 'r10 decide 14', session 77f3e52d-0faf-4b00-8774-daff75f215d8
+
