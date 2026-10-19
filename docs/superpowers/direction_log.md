@@ -90,7 +90,7 @@ good partition). Gates: 2026-10-29 held-out emotion AMI at least +0.01 above Per
   the sheet's label rule, a stage 0 regression, held instructed images, arm per aspect fixed from development data,
   diagnostics, validation split for stage 2's early stopping, names, local GPU) accepted (user, after seeing the
   recommendation). The spec and its decision rule follow in r10 decide 14.
-- **Spec and rule (r10 decide 14, 2026-10-20 02:00):** [claim test spec](specs/2026-10-20-claim-test-design.md)
+- **Spec and rule (r10 decide 14, 2026-10-20 01:45):** [claim test spec](specs/2026-10-20-claim-test-design.md)
   and [decision rule](../../src/test/20261020_claim_test/DECISION_RULE.md), reviewed by a fresh Opus `xhigh` reviewer.
   Approval: the user's instruction to go on overnight (01:27, "automate and hand me the results in the morning"); the
   user checks the brief in the morning (spec D29). Night mode on; node408 offered for PercepT training (spec D23).

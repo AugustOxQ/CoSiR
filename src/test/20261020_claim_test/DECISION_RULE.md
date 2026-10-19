@@ -1,8 +1,8 @@
 # Decision rule: claim test of D2 against the strongest uncollapsed PercepT, stages 1 and 2
 
-> Spec: [2026-10-20-claim-test-design.md](../../../docs/superpowers/specs/2026-10-20-claim-test-design.md) @ (commit
-> filled at commit) · Written 2026-10-20 01:55 (Amsterdam) before any implementation script exists; revised 02:25
-> after the review · Reviewer: a fresh Opus `xhigh` worker, 2026-10-20 02:10 (pass after fixes; all twelve findings
+> Spec: [2026-10-20-claim-test-design.md](../../../docs/superpowers/specs/2026-10-20-claim-test-design.md) @ 7d82e91
+> (first commit) · Written 2026-10-20 01:35 (Amsterdam) before any implementation script exists; revised 01:43
+> after the review · Reviewer: a fresh Opus `xhigh` worker, 2026-10-20 01:40 (pass after fixes; all twelve findings
 > applied)
 
 The trimmed constitution has no statistics, development-bar or failure-reading principles (old C9 to C11), so this

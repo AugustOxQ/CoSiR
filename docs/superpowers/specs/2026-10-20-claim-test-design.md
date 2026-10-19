@@ -1,6 +1,6 @@
 # Claim test of D2 against the strongest PercepT on held paintings, in two stages: design
 
-> Date: 2026-10-20 01:50, revised 02:30 after the rule review · Status: draft; built under the user's overnight
+> Date: 2026-10-20 01:35, revised 01:43 after the rule review · Status: draft; built under the user's overnight
 > instruction of 2026-10-20 01:27 ("Change the mode to overnight run now, so you can automate and hand me the
 > results in the morning"; D29); approval from the brief is pending · Kind: experiment
 > Builds on: the [stage 2 sheet spec](2026-10-19-stage2-model-sheet-design.md) (D2) and its
@@ -9,7 +9,7 @@
 > the facts brief `.scratch/r10-claim-test/facts.md` (not in git); the
 > [development Leiden reading](../../../src/test/20261020_leiden_dev_reading/20261020_leiden_dev_reading_log.md) ·
 > Constitution: [constitution.md](../constitution.md)
-> Decision rule: `src/test/20261020_claim_test/DECISION_RULE.md` @ (commit filled at commit)
+> Decision rule: `src/test/20261020_claim_test/DECISION_RULE.md` @ 7d82e91 (first commit; the rule text is unchanged since, except dates)
 
 ## Brief (for the user; agents read and decide from §1 onward)
 
@@ -177,26 +177,26 @@ target and encoder rows; per paper settings run: topic count, largest topic shar
 | D13 | k-means at Leiden's count | a diagnostic that decides nothing | in the verdict | agent default (user deferred S3) | 2026-10-20 01:20 |
 | D14 | Minors m1 to m10 | §3.4 (m1, m2), §3.5 (m3), §3.2 and §3.3 (m4, m5, m8), §3.6 (m6), §2 (m7), `GLOSSARY.md` (m9), §9 (m10) | — | user, after seeing the recommendation | 2026-10-20 01:20 |
 | D15 | Plan page | none | — | user ("yes to all"; default) | 2026-10-20 01:20 |
-| D16 | Stage types | 0 and 2a regression checks; 1 and 2 claim tests | claim test is the first type that fits | agent default | 2026-10-20 01:50 |
-| D17 | Bootstrap | 2,000 resamples of the 12,281 held paintings and of each arm's seeds, seed 0; percentile interval (rule §3) | paintings only (too narrow: ignores training noise, rule review); 1,000 resamples (coarser tails) | agent default | 2026-10-20 02:30 |
-| D18 | Comparator inside the bootstrap | the maximum over entries is taken again in each resample | a comparator fixed at the point estimate (ignores the selection on held) | agent default | 2026-10-20 01:50 |
-| D19 | A partly collapsed entry | counts when ≥ 1 of 5 seeds is uncollapsed; score = mean over those seeds; collapse is judged per Stage 1 run and cut | ≥ 3 of 5 (could drop a real PercepT result) | agent default | 2026-10-20 01:50 |
-| D20 | Collapse rule for core | none; core is the established comparator and always counts | the glossary rule targets the paper versions | agent default | 2026-10-20 01:50 |
-| D21 | Unstated paper details | DEC target P refreshed on all fit pairs at each epoch start; stop when < 0.1% of fit pairs change hard topic between epochs (DEC's tolerance), or 200 epochs; cosine per epoch over each phase's maximum; Algorithm 1 starts at 100 topics as core | per-minibatch targets (unstable), core's full-batch rule | agent default | 2026-10-20 01:50 |
-| D22 | Held painting order and normalization | §3.4 | re-normalize (differs from the sheet) | agent default | 2026-10-20 01:50 |
-| D23 | Device | local GPU under the lock; node408 (3 GPUs, reserved) takes PercepT training when the local estimate ends after 11:00, or for stage 2 | all local (misses 11:00 in stage 2) | agent default; node408 offered by the user | 2026-10-20 01:50 |
-| D24 | Re-derivation (C13) | d, its interval and each entry's mean re-derived by separate code from the outputs and the rule only | — | agent default | 2026-10-20 01:50 |
-| D25 | Stage 2 data | train = all 42,969 train paintings; D2 stops early on the validation split (6,152); held unchanged | keep the 1,489 dev paintings for stopping (they are train paintings) | user (m8); split details agent default | 2026-10-20 01:50 |
-| D26 | Stage 2 features | extract instructed Qwen images (3 instructions) for the train and validation paintings not covered, emotion-instructed captions for their captions, RoBERTa for P1's missing captions; in the shared cache | rebuild all stores | agent default | 2026-10-20 01:50 |
-| D27 | Stage 2 recipes | frozen: only the data grows (same epochs, patience, batch sizes, K, γ) | retune at scale (would be selection on new data) | agent default | 2026-10-20 01:50 |
-| D28 | Chat order | stage 1 builds and runs tonight; stage 2 builds after stage 1's verdict, in its own build and run chats | one build for both (delays the morning result) | agent default | 2026-10-20 01:50 |
+| D16 | Stage types | 0 and 2a regression checks; 1 and 2 claim tests | claim test is the first type that fits | agent default | 2026-10-20 01:35 |
+| D17 | Bootstrap | 2,000 resamples of the 12,281 held paintings and of each arm's seeds, seed 0; percentile interval (rule §3) | paintings only (too narrow: ignores training noise, rule review); 1,000 resamples (coarser tails) | agent default | 2026-10-20 01:43 |
+| D18 | Comparator inside the bootstrap | the maximum over entries is taken again in each resample | a comparator fixed at the point estimate (ignores the selection on held) | agent default | 2026-10-20 01:35 |
+| D19 | A partly collapsed entry | counts when ≥ 1 of 5 seeds is uncollapsed; score = mean over those seeds; collapse is judged per Stage 1 run and cut | ≥ 3 of 5 (could drop a real PercepT result) | agent default | 2026-10-20 01:35 |
+| D20 | Collapse rule for core | none; core is the established comparator and always counts | the glossary rule targets the paper versions | agent default | 2026-10-20 01:35 |
+| D21 | Unstated paper details | DEC target P refreshed on all fit pairs at each epoch start; stop when < 0.1% of fit pairs change hard topic between epochs (DEC's tolerance), or 200 epochs; cosine per epoch over each phase's maximum; Algorithm 1 starts at 100 topics as core | per-minibatch targets (unstable), core's full-batch rule | agent default | 2026-10-20 01:35 |
+| D22 | Held painting order and normalization | §3.4 | re-normalize (differs from the sheet) | agent default | 2026-10-20 01:35 |
+| D23 | Device | local GPU under the lock; node408 (3 GPUs, reserved) takes PercepT training when the local estimate ends after 11:00, or for stage 2 | all local (misses 11:00 in stage 2) | agent default; node408 offered by the user | 2026-10-20 01:35 |
+| D24 | Re-derivation (C13) | d, its interval and each entry's mean re-derived by separate code from the outputs and the rule only | — | agent default | 2026-10-20 01:35 |
+| D25 | Stage 2 data | train = all 42,969 train paintings; D2 stops early on the validation split (6,152); held unchanged | keep the 1,489 dev paintings for stopping (they are train paintings) | user (m8); split details agent default | 2026-10-20 01:35 |
+| D26 | Stage 2 features | extract instructed Qwen images (3 instructions) for the train and validation paintings not covered, emotion-instructed captions for their captions, RoBERTa for P1's missing captions; in the shared cache | rebuild all stores | agent default | 2026-10-20 01:35 |
+| D27 | Stage 2 recipes | frozen: only the data grows (same epochs, patience, batch sizes, K, γ) | retune at scale (would be selection on new data) | agent default | 2026-10-20 01:35 |
+| D28 | Chat order | stage 1 builds and runs tonight; stage 2 builds after stage 1's verdict, in its own build and run chats | one build for both (delays the morning result) | agent default | 2026-10-20 01:35 |
 | D29 | Approval | build and run go on under the user's overnight instruction; approval from the brief is pending; a later change to a verdict default is an amendment after results | wait for the morning (loses the night) | user's instruction; going on before approval: agent default | 2026-10-20 01:27 |
 | D30 | Candidate | row D2 | other sheet rows | user, after seeing the recommendation (r10 decide 12) | 2026-10-20 |
 | D31 | PercepT readings | own assignment (top topic) and k-means k = 20; the stronger reading counts | one reading | user, after seeing the recommendation (r10 decide 12) | 2026-10-20 |
 | D32 | Leiden | a Leiden reading in all major tests beside k-means | k-means alone | user (r10 decide 12) | 2026-10-20 |
 | D33 | Paper settings PercepT | runs beside core, with a collapse rule ("it can collapse easily, but I tend to give a try") | core alone | user, after seeing the recommendation (r10 decide 12) | 2026-10-20 |
-| D34 | 10-29 gate | only S1-GO passes; S1-MM and S1-IN leave it open until stage 2 (rule §4) | — | agent default | 2026-10-20 02:30 |
-| D35 | After stage 2 | its outcome alone sets the next step; S2-MM starts a margin round (rule §4) | stage 1's margin met starts one too (conflicts with S1) | agent default, from the user's S1 and S6; to confirm | 2026-10-20 02:30 |
+| D34 | 10-29 gate | only S1-GO passes; S1-MM and S1-IN leave it open until stage 2 (rule §4) | — | agent default | 2026-10-20 01:43 |
+| D35 | After stage 2 | its outcome alone sets the next step; S2-MM starts a margin round (rule §4) | stage 1's margin met starts one too (conflicts with S1) | agent default, from the user's S1 and S6; to confirm | 2026-10-20 01:43 |
 
 Grill rows (D1 to D15) carry 01:20, when the user confirmed the closing summary.
 
@@ -268,7 +268,7 @@ held.
   (scorer, bootstrap, collapse rule, Algorithm 1 cut, held labels); the final whole-branch review.
 - Stop points: none between approval and the reports, except a failed stage 0 or 2a.
 - Budget, stage 1: GPU about 1.5 to 3 h (held instructed images about 0.5 h; training about 1 to 2 h), CPU about 1
-  to 1.5 h (scoring, bootstrap, Leiden) at 8 threads. Build from about 02:30; run from about 07:00; the end
+  to 1.5 h (scoring, bootstrap, Leiden) at 8 threads. Build from about 02:00; run from about 07:00; the end
   estimate is checked at the start against 11:00 (D23). Stage 2: extraction about 1 h, graphs about 0.5 h CPU,
   training about 3 to 6 GPU h, mostly on node408. Time-box: stage 1 report 2026-10-21; stage 2 before 2026-10-29.
 
