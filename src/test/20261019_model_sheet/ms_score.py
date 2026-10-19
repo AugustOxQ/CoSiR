@@ -21,6 +21,7 @@ from pav_score import partitions, summary
 from apc_data import l2
 from pc_data import image_features
 import pc_score
+import pav_score
 
 # Earlier-round code comes from this worktree; ignored artifacts only from main.
 MAIN_TEST = Path('/project/CoSiR/src/test')
@@ -36,6 +37,7 @@ STAGE1 = dict(emotion='Fres1', style='Fres05', genre='R0o')
 METRICS = dict(ami=adjusted_mutual_info_score, v=v_measure_score,
                ari=adjusted_rand_score, fmi=fowlkes_mallows_score)
 SCORING = 'pav k20 seeds012 n_init3 batch4096; float32; y>=0; population sd; v1'
+SCORER_VERSION = hashlib.sha256(Path(__file__).read_bytes() + Path(pav_score.__file__).read_bytes()).hexdigest()
 
 
 def array_sha(x):
@@ -56,7 +58,7 @@ def check_view(x):
 def measures(x, labels, cache_dir=None):
     """One set of three partitions, shared by all metrics and labels.
 
-    Optional disk cache binds array bytes, labels, protocol and sklearn version.
+    Optional disk cache binds array bytes, labels, protocol, code and sklearn version.
     Without cache_dir this is the two-argument scorer imported by the runner.
     """
     x = check_view(x)
@@ -65,6 +67,7 @@ def measures(x, labels, cache_dir=None):
         assert y.shape == (5000,) and np.issubdtype(y.dtype, np.integer)
         assert (y >= 0).any()
     identity = dict(source_sha256=array_sha(x), scoring=SCORING, sklearn=sklearn.__version__,
+                    scorer_version=SCORER_VERSION,
                     labels={k: array_sha(v) for k, v in sorted(labels.items())})
     path = None
     if cache_dir is not None:
@@ -187,11 +190,9 @@ def check_percept(s, labels, outdir=OUTPUTS):
     direct_path = outdir / 'pc_ami_reference.json'
     identity = dict(source_sha256=array_sha(x), sample_sha256=fingerprint(s),
                     labels={k: array_sha(v) for k, v in labels.items()},
-                    sklearn=sklearn.__version__, scoring=SCORING)
-    if direct_path.exists():
-        direct = json.loads(direct_path.read_text())
-        assert direct['identity'] == identity
-    else:
+                    sklearn=sklearn.__version__, scoring=SCORING, scorer_version=SCORER_VERSION)
+    direct = json.loads(direct_path.read_text()) if direct_path.exists() else None
+    if direct is None or direct['identity'] != identity:
         direct = dict(identity=identity, scores=pc_score.ami_scores(x, labels))
         atomic_json(direct_path, direct)
     ours = measures(x, labels, outdir / 'cache')

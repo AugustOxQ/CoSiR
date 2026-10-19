@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from threadpoolctl import threadpool_limits
 import ms_score as score
+import ms_train
 
 HERE = Path(__file__).resolve().parent
 REFERENCE = score.MAIN_TEST / '20261018_aspect_graph_sheet/ags_head_results.json'
@@ -25,12 +26,16 @@ def check(outputs):
     labels = score.label_vectors(s, s['subset_pid'])
     reference = json.loads(REFERENCE.read_text())
     assert reference['identity']['sample_sha256'] == score.fingerprint(s)
-    result = dict(missing=missing, a={}, b={}, best_epochs={}, sample_sha256=score.fingerprint(s))
+    result = dict(missing=missing, stale=[], a={}, b={}, best_epochs={}, sample_sha256=score.fingerprint(s),
+                  code_version=ms_train.code_version(), scorer_version=score.SCORER_VERSION)
     for aspect, seed, path in required:
         if not path.exists():
             continue
         meta = json.loads(path.with_suffix('.json').read_text())
         c = meta['config']
+        if c['code_version'] != result['code_version']:
+            result['stale'].append(str(path))
+            print(f'STALE {path}', flush=True)
         assert c['sample_sha256'] == score.fingerprint(s)
         assert (c['aspect'], c['graph_row'], c['seed']) == (aspect, score.STAGE1[aspect], seed)
         assert c['device'] == 'cpu' and c['threads'] == 8 and c['row']['share'] == 'separate'
@@ -74,6 +79,8 @@ def check(outputs):
     failed = []
     if missing:
         failed.append('missing')
+    if result['stale']:
+        failed.append('stale')
     if len(result['a']) != 2 or not all(v['equal'] for v in result['a'].values()):
         failed.append('a')
     if len(result['b']) != 36 or not all(v['equal'] for v in result['b'].values()):
@@ -86,12 +93,33 @@ def check(outputs):
     return bool(failed)
 
 
+def require_pass(outputs):
+    path = outputs / 'stage0.json'
+    if not path.exists():
+        print(f'STAGE0 required: missing {path}')
+        return 1
+    result = json.loads(path.read_text())
+    reasons = []
+    if result.get('status') != 'PASS':
+        reasons.append(f"status={result.get('status')}; failed={result.get('failed')}")
+    if result.get('code_version') != ms_train.code_version():
+        reasons.append('trainer code_version is stale or missing')
+    if result.get('scorer_version') != score.SCORER_VERSION:
+        reasons.append('SCORER_VERSION is stale or missing')
+    print('STAGE0 required: ' + ('; '.join(reasons) if reasons else 'PASS'))
+    return int(bool(reasons))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--check', action='store_true', help='check existing arrays without training')
+    mode = p.add_mutually_exclusive_group()
+    mode.add_argument('--check', action='store_true', help='check existing arrays without training')
+    mode.add_argument('--require-pass', action='store_true', help='require PASS from the current trainer and scorer; no training/scoring')
     p.add_argument('--aspects', nargs='+', choices=score.ASPECTS)
     p.add_argument('--outputs', type=Path, default=HERE / 'outputs')
     args = p.parse_args()
+    if args.require_pass:
+        return require_pass(args.outputs)
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', OMP_NUM_THREADS='8', MKL_NUM_THREADS='8', CUDA_VISIBLE_DEVICES='')
     if args.check:
         return check(args.outputs)

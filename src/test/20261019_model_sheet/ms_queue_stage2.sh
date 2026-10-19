@@ -3,8 +3,12 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/ms_queue_common.sh"
 stage=2
 status=queue_stage2_status.txt
 printf 'MS_STAGE2_START %s\n' "$(date -Iseconds)" >> "$status"
+# Regenerate only from complete canonical seed-0 heads; never trust an older pick list.
+if ! step manifest cpu --pick-seeds; then
+    finish
+fi
 # Validate before process substitution, whose exit status bash would otherwise hide.
-if step manifest env CUDA_VISIBLE_DEVICES='' "$python_bin" -c '
+if step validate_manifest env CUDA_VISIBLE_DEVICES='' "$python_bin" -c '
 import json
 from ms_rows import ROWS
 r=json.load(open("outputs/seed_rows.json"))
