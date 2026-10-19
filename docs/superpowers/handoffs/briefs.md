@@ -518,3 +518,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-19-r10-decide-8-handoff.md
 - New chat: tab 'r10 decide 8', session 17d5f41f-49f3-411a-9677-b7d62a9ed9ed
 
+[brief] CoSiR: r10 decide 8 -> r10 build 4 (2026-10-19 08:27 Amsterdam)
+- Done: decision C on the r10 run; the user amended stage 0 to the checks that repeat exactly (A1) and added one-thread k-means to PercepT core (A2).
+- State: rows 1, 6, 10, 13 are filled; the five PercepT core arms are still blocked by the old stage 0.
+- Next: one verdict-code ticket (new `pc_stage0.py` checks, one-thread k-means start in `pc_stage1.py`), review, merge, then the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-19-r10-build-4-handoff.md
+- New chat: tab 'r10 build 4', session 406d8e2a-01b9-44da-a28f-3b740ede213b
+
