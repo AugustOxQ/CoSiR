@@ -750,3 +750,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-8-handoff.md
 - New chat: tab 'r10 run 8', session 96ecd8d1-f65b-46f5-b1ae-2d849840747c
 
+[brief] CoSiR: r10 run 8 -> r10 run 9 (2026-10-20 15:08 Amsterdam)
+- Done: the user moved stage 2 to node408; a probe proved the node can run the unchanged code in a fake root.
+- State: no stage 2 training yet; feature stores are being copied to node408; the Codex build brief is ready.
+- Next: Codex builds the sync and runner scripts; review; copy inputs; node check and smoke; stage 2 run on node408.
+- Blocked: nothing. If stage 2a fails on node408, the fallback is the local GPU from 19:00 (rule below).
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-9-handoff.md
+- New chat: tab 'r10 run 9', session cee49ee5-d033-46b6-9bb8-ac719b176de9
+
