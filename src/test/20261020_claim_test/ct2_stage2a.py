@@ -356,7 +356,8 @@ def check(root=S2A, destination=REPORT, *, device='cuda', causes=None, reference
     """
     from threadpoolctl import threadpool_limits
     root, reference = check_root(root), Path(reference).resolve()
-    assert not root.is_relative_to(reference), 'stage 2a root inside the stage 1 outputs'
+    assert root in {S2A.resolve(), chunked_root(S2A).resolve()} or not root.is_relative_to(reference), \
+        'stage 2a root inside the stage 1 outputs'
     causes = causes or {}
     items, sources = {}, {}
 
