@@ -22,6 +22,20 @@ def test_strict_mask_follows_algorithm_one_and_core(norms, expected):
     assert actual.dtype == np.bool_
 
 
+def test_strict_mask_uses_gamma_two_not_three():
+    """Largest gap is 2.5 times the mean gap: Algorithm 1 cuts at gamma 2 and would keep all at gamma 3."""
+    gaps = np.r_[np.full(30, 193.), 490., np.full(68, 193.)]
+    ordered = np.r_[0., np.cumsum(gaps)]
+    assert gaps.max() / gaps.mean() == 2.5
+    norms = ordered[np.random.default_rng(5).permutation(100)]
+    expected = norms <= ordered[30]
+    assert expected.sum() == 31
+    actual = ct_rcol.strict_mask(norms)
+    np.testing.assert_array_equal(actual, expected)
+    np.testing.assert_array_equal(actual, pc_fixes.kept_centers(norms, gamma=2))
+    assert pc_fixes.kept_centers(norms, gamma=3).all()
+
+
 @pytest.mark.parametrize('counts,indices', [
     (np.arange(100, dtype=np.int64), np.arange(60, 100)),
     (np.ones(100, dtype=np.int64), np.arange(40)),

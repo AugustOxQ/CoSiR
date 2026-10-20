@@ -678,6 +678,9 @@ def main(argv=None):
                         help='training defaults to cuda; held uses the recorded training device')
     parser.add_argument('--smoke', action='store_true', help='reduced training limits; never reused as a full run')
     args = parser.parse_args(argv)
+    if args.stage == 'held' and not args.smoke:
+        import ct_stage0
+        ct_stage0.require_pass()  # V1: smoke outputs are never a full run, so only they skip the gate
     check_path(args.settings, args.cut)
     if args.settings == 'paper' and args.arm is not None and args.arm not in ('P1', 'P4'):
         parser.error('Paper settings support P1 and P4 only')

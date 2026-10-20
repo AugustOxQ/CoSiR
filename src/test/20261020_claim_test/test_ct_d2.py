@@ -226,7 +226,7 @@ def test_train_cli_dispatches_the_requested_seed_cohorts(tmp_path, monkeypatch, 
     assert seen == expected
 
 
-def test_held_cli_writes_three_aspects_in_frozen_order_with_sidecars(completed, monkeypatch):
+def test_held_cli_writes_three_aspects_in_frozen_order_with_sidecars(completed, monkeypatch, gate_passes):
     import ct_held
 
     names = [f'painting-{i:05d}' for i in range(12281)]
@@ -344,7 +344,7 @@ def test_train_cli_defaults_to_cuda_without_using_a_gpu(tmp_path, monkeypatch, c
     assert devices == [torch.device('cuda')]
 
 
-def test_held_cli_rejects_a_device_override_different_from_weights(completed, monkeypatch):
+def test_held_cli_rejects_a_device_override_different_from_weights(completed, monkeypatch, gate_passes):
     import ct_held
 
     names = [f'painting-{i:05d}' for i in range(12281)]
@@ -381,3 +381,19 @@ def test_infer_batches_follow_the_sheet_batch_size(completed, monkeypatch):
     assert batches == [((37, 2048), torch.float32, 'cpu'),
                        ((37, 2048), torch.float32, 'cpu'),
                        ((9, 2048), torch.float32, 'cpu')]
+
+
+def test_held_cli_refuses_without_a_stage0_pass_before_training_or_inference(tmp_path, monkeypatch, gate_refuses):
+    error, text = gate_refuses
+    monkeypatch.setattr(ct_d2, 'train', lambda *args: pytest.fail('trained before the V1 gate'))
+    monkeypatch.setattr(ct_d2, 'write_held', lambda *args: pytest.fail('inference before the V1 gate'))
+    for argv in (['--held'], ['--train', '--held']):
+        with pytest.raises(error, match=text):
+            ct_d2.main([*argv, '--seeds', '0', '--outdir', str(tmp_path)])
+
+
+def test_train_only_cli_is_not_gated(tmp_path, monkeypatch, gate_refuses):
+    calls = []
+    monkeypatch.setattr(ct_d2, 'train', lambda *args: calls.append(args))
+    ct_d2.main(['--train', '--seeds', '0', '--outdir', str(tmp_path)])
+    assert len(calls) == 1

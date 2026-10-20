@@ -221,6 +221,9 @@ def main(argv=None):
     args = p.parse_args(argv)
     assert args.train or args.held, 'choose --train and/or --held'
     assert len(set(args.seeds)) == len(args.seeds)
+    if args.held:
+        import ct_stage0
+        ct_stage0.require_pass()  # V1: no held inference without a Stage 0 pass
     if args.train:
         train(args.seeds, args.device or 'cuda', args.outdir)
     if args.held:

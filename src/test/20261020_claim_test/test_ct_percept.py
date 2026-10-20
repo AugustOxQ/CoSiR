@@ -150,12 +150,21 @@ def test_held_cli_saves_frozen_order_and_binds_checkpoint(sample, monkeypatch, d
     monkeypatch.setattr(ct.ct_held, 'read_held_list', lambda path: (names, sha))
     features = np.random.default_rng(87).normal(size=(12281, 512)).astype(np.float32)
     features /= np.linalg.norm(features, axis=1, keepdims=True)
-    monkeypatch.setattr(ct.ct_held, 'clip_global_images', lambda names: features.copy())
+    row_of = {name: i for i, name in enumerate(names)}
+
+    def painting_features(requested):
+        # Each painting keeps its own feature row, so a changed row order changes the output.
+        return features[[row_of[name] for name in requested]]
+
+    monkeypatch.setattr(ct.ct_held, 'clip_global_images', painting_features)
     args = ['--stage', 'held', '--arm', 'P2', '--seeds', '2', '--smoke']
     [path] = ct.main(args)
     assert path == ct.OUTPUTS / 'held/percept/core__k40/P2__s2.npz'
     prob = np.load(path)['prob']
     np.testing.assert_array_equal(prob, ct.infer_stage2('core', 'k40', 'P2', 2, names))
+    reversed_prob = ct.infer_stage2('core', 'k40', 'P2', 2, names[::-1])
+    assert not np.array_equal(prob, reversed_prob)
+    np.testing.assert_allclose(prob, reversed_prob[::-1], rtol=0, atol=1e-6)  # row i is names[i], not its mirror
     meta = json.loads(path.with_suffix('.json').read_text())
     assert prob.shape == (12281, 40) and prob.dtype == np.float32
     assert meta['held_sha256'] == sha and meta['rows'] == 12281
@@ -173,7 +182,7 @@ def test_held_cli_saves_frozen_order_and_binds_checkpoint(sample, monkeypatch, d
     else:
         meta[damage] = 'wrong hash'
         path.with_suffix('.json').write_text(json.dumps(meta))
-    monkeypatch.setattr(ct.ct_held, 'clip_global_images', lambda names: features.copy())
+    monkeypatch.setattr(ct.ct_held, 'clip_global_images', painting_features)
     ct.main(args)
     np.testing.assert_array_equal(np.load(path)['prob'], prob)
     fixed = json.loads(path.with_suffix('.json').read_text())
@@ -321,3 +330,10 @@ def test_inference_refuses_a_device_different_from_the_checkpoint(sample, monkey
             ct.infer_stage2('core', 'k40', 'P2', 0, names, device='cpu')
         else:
             ct.run_held('core', 'k40', 'P2', 0, smoke=True, device='cpu')
+
+
+def test_full_held_cli_refuses_without_a_stage0_pass(monkeypatch, gate_refuses):
+    error, text = gate_refuses
+    monkeypatch.setattr(ct, 'run_held', lambda *args, **kwargs: pytest.fail('held run before the V1 gate'))
+    with pytest.raises(error, match=text):
+        ct.main(['--stage', 'held', '--arm', 'P2', '--seeds', '0'])

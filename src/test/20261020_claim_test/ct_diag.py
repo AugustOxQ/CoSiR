@@ -444,6 +444,8 @@ def main(argv=None):
     parser.add_argument('--out', type=Path, default=HERE / 'diag_stage1.json')
     parser.add_argument('--workers', type=int, choices=range(1, 9), default=8)
     args = parser.parse_args(argv)
+    import ct_stage0
+    ct_stage0.require_pass()  # V1: no diagnostics without a Stage 0 pass
     run(args.verdict, args.outputs, args.out, workers=args.workers)
 
 
