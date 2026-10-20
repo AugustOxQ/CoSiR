@@ -675,3 +675,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-12-handoff.md
 - New chat: tab 'r10 build 12', session 22269b3a-6188-45d7-8964-40009b9ac912
 
+[brief] CoSiR: r10 build 12 -> r10 run 5 (2026-10-20 04:07 Amsterdam)
+- Done: the claim test build is merged into main (07f4449): final review PASS, re-review PASS, 315 tests pass, GPU smoke 9 of 9.
+- State: nothing trained or read on held data yet; development emotion AMI D2 0.096 against PercepT core 0.077.
+- Next: stage 0 queue, then stage 1 (about 1 to 2.5 GPU hours), then the verdict and diagnostics on CPU.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-5-handoff.md
+- New chat: tab 'r10 run 5', session 06515b8b-680b-4ff1-be12-f4fa27e7ef40
+
