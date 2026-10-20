@@ -87,3 +87,9 @@ No user choice of device or start time in the direction log, so the agent defaul
 |---|---|---|
 | 11:00 | chat starts; GPU idle, no lock; run mode night | waiting for 19:00 (background timer) |
 | 11:10 | V2 brief for stage 2 written (`.scratch/r10-claim-test-s2/v2/v2_brief.md`; stage 1's brief with the stage 2 root, 216,107 fit pairs, held-list equality with stage 1) | ready; runs after the GPU queue |
+| 11:55 to 14:55 | user asked how heavy stage 2 is on the GPU (fan noise); not measured; user chose node408 (option c) after seeing the cost of the move | device: node408 (user) |
+| 15:00 | user rule: long GPU runs (over about 1 h) go to a reserved DAS6 node first; locally none on weekdays 10:00 to 19:00 (claude-config a90628d) | recorded |
+| 15:00 to 15:01 | node probe job `20261020-130026-1cd8826` (`scripts/run_node_probe_ct2.sh`, 33 s): A6000, EL8, glibc 2.28; user namespace, bind mounts and chroot work; torch sees the GPU in the fake root | pass |
+| 15:04 | node env has torch 2.14 (local 2.11): plan to copy the local env; feature stores copy to node408 starts (`cluster sync --data`) | running |
+| 15:07 | probe pull also copied the node's whole results root (2.0 GB, new files only) into `res/` | on pending deletions |
+| 15:10 | cut at the context meter's 200k note: handoff `docs/superpowers/handoffs/2026-10-20-r10-run-9-handoff.md`; the node build goes to "r10 run 9" | cut |
