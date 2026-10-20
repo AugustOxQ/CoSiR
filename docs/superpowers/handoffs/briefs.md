@@ -766,3 +766,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-10-handoff.md
 - New chat: tab 'r10 run 10', session e2c43452-0c10-4e65-824b-75e89ccdb7ab
 
+[brief] CoSiR: r10 run 10 -> r10 run 11 (2026-10-20 23:12 Amsterdam)
+- Done: claim test stage 2 ran on the local GPU; outcome GO; independent check agrees exactly; auto report committed.
+- State: D2 0.1008 against PercepT core's own reading 0.0874; d +0.0133 [+0.0081, +0.0146] (bar 0.01, lower > 0).
+- Next: the user-read report, then finish the drafted "r10 decide 16" handoff and open that chat (`--notify`).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-11-handoff.md
+- New chat: tab 'r10 run 11', session 1fdf3d8b-81f9-4364-854c-6c9af257551f
+
