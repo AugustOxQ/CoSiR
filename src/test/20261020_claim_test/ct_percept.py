@@ -30,6 +30,8 @@ OUTPUTS = HERE / 'outputs'
 VERSIONS = ('clip_roberta', 'qwen_qwen')
 ARMS = {arm: pc_stage2.ARMS[arm] for arm in ('P1', 'P2', 'P3', 'P4')}
 SEEDS = tuple(range(5))
+STAGE1_KEYS = dict(core={'center_norms', 'fit_counts', 'kept', 'topic', 'q_paint_eval',
+                         'centers', 'fit_latent', 'kept_k40', 'fit_topics_k40'})
 
 
 def check_path(settings, cut='k40'):
@@ -85,7 +87,7 @@ def verify_output(path):
     assert path.stem == f"{identity}__s{config['seed']}"
     assert file_sha256(path.with_suffix('.pt')) == meta['weights_sha256'], 'weights hash mismatch'
     with np.load(path, allow_pickle=False) as arrays:
-        keys = {'eval_prob'} if stage2 else {'center_norms', 'fit_counts', 'kept', 'topic', 'q_paint_eval'}
+        keys = {'eval_prob'} if stage2 else STAGE1_KEYS[config['settings']]
         assert set(arrays.files) == keys
         assert set(arrays.files) == set(meta['array_sha256s'])
         for key in arrays.files:
@@ -103,6 +105,17 @@ def verify_output(path):
             assert arrays['topic'].shape == (config['captions'],) and arrays['topic'].dtype == np.int16
             assert ((arrays['topic'] >= 0) & (arrays['topic'] < 40)).all()
             assert np.allclose(prob.sum(axis=1), 1, atol=1e-6)
+            centers = arrays['centers']
+            assert centers.shape == (100, 128) and centers.dtype == np.float32
+            assert np.allclose(arrays['center_norms'], np.linalg.norm(centers.astype(np.float64), axis=1),
+                               rtol=1e-6)
+            assert arrays['fit_latent'].shape == (config['fit_pairs'], 128)
+            assert arrays['fit_latent'].dtype == np.float32
+            assert arrays['kept_k40'].dtype == np.bool_
+            assert np.array_equal(arrays['kept_k40'], arrays['kept'])
+            assert arrays['fit_topics_k40'].shape == (config['fit_pairs'],)
+            assert arrays['fit_topics_k40'].dtype == np.int16
+            assert ((arrays['fit_topics_k40'] >= 0) & (arrays['fit_topics_k40'] < 40)).all()
     state = torch.load(path.with_suffix('.pt'), map_location='cpu', weights_only=True)
     with torch.random.fork_rng(devices=[]):
         if stage2:
@@ -113,6 +126,7 @@ def verify_output(path):
             assert set(state) == {'encoder', 'centers'}
             assert state['centers'].shape == (100, 128) and state['centers'].dtype == torch.float32
             assert torch.isfinite(state['centers']).all()
+            assert np.array_equal(state['centers'].numpy(), centers), 'checkpoint centers mismatch'
             module, _ = pc_sept.build_autoencoder(config['input_dim'])
             weights = state['encoder']
         assert weights and all(value.dtype == torch.float32 and torch.isfinite(value).all()
@@ -125,10 +139,12 @@ def cpu_state(module):
     return {key: value.detach().cpu().clone() for key, value in module.state_dict().items()}
 
 
-def run_stage1(s, settings, version, seed, *, smoke=False, device='cpu'):
+def run_stage1(s, settings, version, seed, *, smoke=False, device=None):
     """Train one version/seed and seal its arrays and complete config sidecar."""
     check_path(settings)
     assert version in VERSIONS and seed in SEEDS
+    device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
+    assert smoke or str(device).startswith('cuda'), 'full Stage 1 requires GPU'
     total_start = time.perf_counter()
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -177,6 +193,12 @@ def run_stage1(s, settings, version, seed, *, smoke=False, device='cpu'):
         start = time.perf_counter()
         center_norms = torch.linalg.vector_norm(centers.detach(), dim=1).cpu().numpy()
         fit_counts = pc_stage1.count_fit_pairs(encoder, centers, inputs, device)
+        fit_latent = np.empty((len(inputs), 128), dtype=np.float32)
+        encoder.eval()
+        with torch.no_grad():
+            for start_row in range(0, len(inputs), pc_stage1.BLOCK_SIZE):
+                stop = start_row + pc_stage1.BLOCK_SIZE
+                fit_latent[start_row:stop] = encoder(inputs[start_row:stop].to(device)).cpu().numpy()
         del inputs
         kept = pc_fixes.top_used(fit_counts, 40)
         assert kept.sum() == 40
@@ -196,7 +218,8 @@ def run_stage1(s, settings, version, seed, *, smoke=False, device='cpu'):
                 input_sha256s=provenance['input_sha256s'], maps=provenance['maps'])
     meta['config'].update(settings=settings, cut='k40', eval_paintings=len(s['subset_pid']))
     arrays = dict(center_norms=center_norms, fit_counts=fit_counts, kept=kept,
-                  topic=topic, q_paint_eval=q_paint_eval)
+                  topic=topic, q_paint_eval=q_paint_eval, centers=centers.detach().cpu().numpy(),
+                  fit_latent=fit_latent, kept_k40=kept, fit_topics_k40=topic[fit_rows])
     state = dict(encoder=cpu_state(encoder), centers=centers.detach().cpu().clone())
     return save_output(path, arrays, state, meta)
 
@@ -234,15 +257,44 @@ def train_mapper_with_state(inputs, targets, config, k):
     return (*result, states[0])
 
 
-def run_stage2(s, settings, cut, arm, seed, *, smoke=False, device='cpu'):
+def load_stage1(s, path, version, seed):
+    """Apply core's Stage 1 gates to the claim-test array superset."""
+    path = Path(path)
+    meta = json.loads(path.with_suffix('.json').read_text())
+    assert meta['sample_sha256'] == pc_data.fingerprint(s), 'Stage 1 sample mismatch'
+    assert meta['config']['version'] == version, 'Stage 1 version mismatch'
+    assert meta['config']['seed'] == seed, 'Stage 1 seed mismatch'
+    assert set(meta['K_gamma']) == {'1.5', '2', '3', '5'}
+    k = meta['K']
+    assert type(k) is int and k == 40
+    with np.load(path, allow_pickle=False) as z:
+        assert set(z.files) == STAGE1_KEYS[meta['config']['settings']]
+        assert z['center_norms'].shape == z['fit_counts'].shape == z['kept'].shape == (100,)
+        assert z['center_norms'].dtype == np.float32 and np.isfinite(z['center_norms']).all()
+        assert z['fit_counts'].dtype == np.int64 and (z['fit_counts'] >= 0).all()
+        assert z['kept'].dtype == np.bool_ and k == 40 == int(z['kept'].sum())
+        assert np.array_equal(z['kept'], pc_fixes.top_used(z['fit_counts'], 40)), 'Stage 1 kept mask mismatch'
+        topic = z['topic']
+        assert topic.shape == s['pid'].shape and topic.dtype == np.int16
+        assert ((topic >= 0) & (topic < k)).all()
+        q = z['q_paint_eval']
+        assert q.shape == (len(s['subset_pid']), k) and q.dtype == np.float32
+        assert np.isfinite(q).all() and ((q >= 0) & (q <= 1)).all()
+        assert np.allclose(q.sum(axis=1), 1, atol=1e-6)
+    return topic, k
+
+
+def run_stage2(s, settings, cut, arm, seed, *, smoke=False, device=None):
     """Train core's mapper and save its full evaluation batch and final state."""
     path = stage2_path(settings, cut, arm, seed)
+    device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
+    assert smoke or str(device).startswith('cuda'), 'full Stage 2 requires GPU'
     start = time.perf_counter()
     version, _, _ = ARMS[arm]
     stage1 = stage1_path(settings, version, seed)
     previous = verify_output(stage1)
     assert previous['config']['smoke'] == smoke, 'Stage 1 smoke mismatch'
-    topic, k = pc_stage2.load_stage1(s, stage1, version, seed)
+    topic, k = load_stage1(s, stage1, version, seed)
     config = pc_stage2.make_config(s, arm, seed, smoke, device)
     config.update(settings=settings, cut=cut)
     determinism(seed)
@@ -295,6 +347,7 @@ def infer_stage2(settings, cut, arm, seed, names, *, device=None):
     assert (config['settings'], config['cut'], config['arm'], config['seed']) == (settings, cut, arm, seed)
     assert len(names) == len(set(names)) > 0 and all(isinstance(name, str) for name in names)
     device = config['device'] if device is None else device
+    assert str(device) == config['device'], 'inference device differs from training device'
     determinism(seed)
     with threadpool_limits(limits=8):
         mapper = build_mapper(config, meta['K'])
@@ -377,10 +430,11 @@ def run_held(settings, cut, arm, seed, *, device=None, smoke=False):
     assert source['config']['smoke'] == smoke, 'Stage 2 smoke mismatch'
     names, sha256 = ct_held.read_held_list(OUTPUTS / 'held/held_paintings.json')
     assert len(names) == 12281 and ct_held.names_sha256(names) == sha256
-    device = source['config']['device'] if device is None else device
+    inference_device = source['config']['device'] if device is None else str(device)
+    assert inference_device == source['config']['device'], 'inference device differs from training device'
     path = OUTPUTS / 'held/percept' / f'{settings}__{cut}' / f'{arm}__s{seed}.npz'
     try:
-        verify_held_output(path, source, names, sha256, device)
+        verify_held_output(path, source, names, sha256, inference_device)
         print(f'Verified complete: {path}', flush=True)
         return path
     except INCOMPLETE as error:
@@ -393,7 +447,7 @@ def run_held(settings, cut, arm, seed, *, device=None, smoke=False):
     pending.replace(path)
     meta = dict(config=source['config'], K=source['K'], held_sha256=sha256,
                 rows=len(names), weights_sha256=source['weights_sha256'],
-                inference_device=str(device), array_sha256s=dict(prob=pc_stage1.array_sha256(prob)))
+                inference_device=inference_device, array_sha256s=dict(prob=pc_stage1.array_sha256(prob)))
     pc_stage2.write_sidecar(path.with_suffix('.json'), meta)
     return path
 
@@ -406,7 +460,8 @@ def main(argv=None):
     parser.add_argument('--arm', choices=ARMS)
     parser.add_argument('--seeds', nargs='+', type=int, choices=SEEDS, default=list(SEEDS))
     parser.add_argument('--stage', choices=('1', '2', 'held'), required=True)
-    parser.add_argument('--device', default='cpu', help='training/inference device (default: cpu)')
+    parser.add_argument('--device', default=None,
+                        help='training: CUDA if available, otherwise CPU; held: recorded training device')
     parser.add_argument('--smoke', action='store_true', help='core smoke limits; never reused as a full run')
     args = parser.parse_args(argv)
     if args.stage == '1':
@@ -415,6 +470,9 @@ def main(argv=None):
     elif args.arm is None or args.version is not None:
         parser.error('Stage 2/held requires --arm and no --version')
     assert len(args.seeds) == len(set(args.seeds)), 'duplicate seeds'
+    device = args.device
+    if args.stage != 'held':
+        device = args.device or ('cuda' if torch.cuda.is_available() else 'cpu')
     s = load_frozen() if args.stage != 'held' else None
     paths = []
     for seed in args.seeds:
@@ -423,7 +481,7 @@ def main(argv=None):
                                   device=args.device, smoke=args.smoke))
             continue
         expected = dict(settings=args.settings, cut=args.cut, seed=seed,
-                        smoke=args.smoke, device=args.device)
+                        smoke=args.smoke, device=device)
         previous = None
         if args.stage == '1':
             expected['version'] = args.version
@@ -437,9 +495,9 @@ def main(argv=None):
         if complete_output(path, expected, pc_data.fingerprint(s), previous):
             print(f'Verified complete: {path}', flush=True)
         elif args.stage == '1':
-            run_stage1(s, args.settings, args.version, seed, smoke=args.smoke, device=args.device)
+            run_stage1(s, args.settings, args.version, seed, smoke=args.smoke, device=device)
         else:
-            run_stage2(s, args.settings, args.cut, args.arm, seed, smoke=args.smoke, device=args.device)
+            run_stage2(s, args.settings, args.cut, args.arm, seed, smoke=args.smoke, device=device)
         paths.append(path)
     return paths
 
