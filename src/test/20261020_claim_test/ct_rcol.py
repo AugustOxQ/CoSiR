@@ -3,18 +3,30 @@
 Ticket 07 artifact contract, under outputs/percept/paper/stage1/:
   <version>__s<seed>.npz, versions clip_roberta/qwen_qwen, seeds 0..4.
   center_norms: (100,) finite nonnegative norms in original center order.
-  fit_counts: (100,) nonnegative integers, before pruning, sum 67,327.
+  centers: (100, 128) float32; center_norms matches their row norms (rtol 1e-6).
+  fit_latent: (67,327, 128) float32, in fit-row order.
+  fit_counts: (100,) nonnegative integers, sum 67,327: per-fit-pair argmax
+    of Student-t Q (alpha=1) over all 100 centers, lowest index on a tie.
   kept_strict, kept_k40: (100,) bool masks in original center order.
   fit_topics_strict, fit_topics_k40: (67,327,) integer hard-topic IDs on
-    fit pairs only, indexing np.flatnonzero(kept_<cut>) in ascending order.
+    fit pairs only: argmax of Q renormalized over the kept centers (equivalently
+    the kept columns), lowest index on a tie, as pc_stage1.assign_captions does;
+    IDs index np.flatnonzero(kept_<cut>) in ascending order.
   Other arrays (caption topics, q_paint_eval, etc.) may coexist in the NPZ.
 
 The JSON has runs (version, seed, cut, kept_count, share, collapsed, artifact,
-array_sha256) and entries (B2..B5 -> eligible, seeds). Each hash is SHA-256
+array_sha256, fit_counts_l1_difference, fit_topics_disagreements) and entries
+(B2..B5 -> eligible, seeds). Counts and topics are recomputed in float64 numpy;
+their L1 difference and differing-pair count must each be at most 0.01% of
+fit pairs, allowing near-ties with GPU float32. Each hash is SHA-256
 of the saved array's C-order bytes, matching pc_stage1.array_sha256. Both
 readings of an entry share its seed list. B1 has no collapse rule. V4's
 non-finite held-output check belongs to the scorer; this module reads no held
-outputs. Defaults read artifacts from the main checkout and write here.
+outputs. For every kept center, post-cut counts must be at least fit_counts;
+with all 100 kept, they must be equal. The JSON also records written, in
+Europe/Amsterdam local time (YYYY-MM-DD HH:MM). Existing content is compared
+without written: identical content is left intact, changed content is refused.
+Defaults read and write outputs/percept/ in the main checkout.
 """
 import argparse
 import hashlib
@@ -22,13 +34,15 @@ import json
 import os
 import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
 STAGE1 = Path('/project/CoSiR/src/test/20261020_claim_test/outputs/percept/paper/stage1')
-OUTPUT = HERE / 'outputs/percept/rcol_stage1.json'
+OUTPUT = STAGE1.parents[1] / 'rcol_stage1.json'
 sys.path.insert(0, str(HERE.parent / '20261018_percept_core'))
 import pc_fixes
 
@@ -77,6 +91,27 @@ def array_sha256(array):
     return hashlib.sha256(array.tobytes(order='C')).hexdigest()
 
 
+def _recompute_assignments(centers, fit_latent, masks):
+    """Float64 Student-t Q (alpha=1), in blocks to bound memory."""
+    centers = centers.astype(np.float64)
+    center_squares = np.square(centers).sum(axis=1)
+    counts = np.zeros(100, dtype=np.int64)
+    topics = {cut: np.empty(len(fit_latent), dtype=np.int64) for cut in masks}
+    for start in range(0, len(fit_latent), 4096):
+        latent = fit_latent[start:start + 4096].astype(np.float64)
+        distances = (np.square(latent).sum(axis=1)[:, None] + center_squares -
+                     2 * (latent @ centers.T))
+        np.maximum(distances, 0, out=distances)
+        q = 1 / (1 + distances)
+        q /= q.sum(axis=1, keepdims=True)
+        counts += np.bincount(q.argmax(axis=1), minlength=100)
+        for cut, kept in masks.items():
+            cut_q = q[:, kept]
+            cut_q /= cut_q.sum(axis=1, keepdims=True)
+            topics[cut][start:start + len(latent)] = cut_q.argmax(axis=1)
+    return counts, topics
+
+
 def read_stage1(path):
     """Read one paper run and return its strict and k40 judgments."""
     path = Path(path)
@@ -84,33 +119,59 @@ def read_stage1(path):
     assert version in ('clip_roberta', 'qwen_qwen') and int(seed) in range(5)
     runs = []
     with np.load(path, allow_pickle=False) as z:
-        required = {'center_norms', 'fit_counts', 'kept_strict', 'kept_k40',
+        required = {'centers', 'fit_latent', 'center_norms', 'fit_counts', 'kept_strict', 'kept_k40',
                     'fit_topics_strict', 'fit_topics_k40'}
         assert required <= set(z.files), f'{path}: missing {required - set(z.files)}'
-        norms, counts = z['center_norms'], z['fit_counts']
-        expected_masks = dict(strict=strict_mask(norms), k40=k40_mask(counts))
-        assert counts.sum() == 67327, f'{path}: expected 67,327 fit pairs'
-        for cut in ('strict', 'k40'):
-            arrays = {key: z[key] for key in (
-                'center_norms', 'fit_counts', f'kept_{cut}', f'fit_topics_{cut}')}
-            assert arrays[f'fit_topics_{cut}'].shape == (67327,)
-            assert np.array_equal(arrays[f'kept_{cut}'], expected_masks[cut]), \
-                f'{path}: {cut} mask differs from the rule'
-            result = judge(cut, arrays[f'kept_{cut}'], arrays[f'fit_topics_{cut}'])
-            runs.append(dict(version=version, seed=int(seed), cut=cut, **result,
-                             artifact=str(path.resolve()),
-                             array_sha256={k: array_sha256(v) for k, v in arrays.items()}))
+        arrays = {key: z[key] for key in required}
+    norms, counts = arrays['center_norms'], arrays['fit_counts']
+    centers, latent = arrays['centers'], arrays['fit_latent']
+    expected_masks = dict(strict=strict_mask(norms), k40=k40_mask(counts))
+    assert counts.sum() == 67327, f'{path}: expected 67,327 fit pairs'
+    assert centers.shape == (100, 128) and centers.dtype == np.float32
+    assert latent.shape == (67327, 128) and latent.dtype == np.float32
+    assert np.isfinite(centers).all() and np.isfinite(latent).all()
+    assert np.allclose(norms, np.linalg.norm(centers.astype(np.float64), axis=1), rtol=1e-6), \
+        f'{path}: center norms differ from centers'
+    judgments = {}
+    for cut in ('strict', 'k40'):
+        assert arrays[f'fit_topics_{cut}'].shape == (67327,)
+        assert np.array_equal(arrays[f'kept_{cut}'], expected_masks[cut]), \
+            f'{path}: {cut} mask differs from the rule'
+        judgments[cut] = judge(cut, arrays[f'kept_{cut}'], arrays[f'fit_topics_{cut}'])
+        kept = arrays[f'kept_{cut}']
+        local_counts = np.bincount(arrays[f'fit_topics_{cut}'], minlength=int(kept.sum()))
+        assert (local_counts >= counts[kept]).all(), f'{path}: {cut} post-cut counts lost pairs'
+        if kept.all():
+            assert np.array_equal(local_counts, counts), f'{path}: {cut} post-cut counts differ'
+    recomputed_counts, recomputed_topics = _recompute_assignments(centers, latent, expected_masks)
+    count_l1 = int(np.abs(recomputed_counts - counts.astype(np.int64)).sum())
+    assert count_l1 <= .0001 * len(latent), f'{path}: count L1 difference {count_l1}'
+    for cut in ('strict', 'k40'):
+        disagreements = int(np.count_nonzero(recomputed_topics[cut] != arrays[f'fit_topics_{cut}']))
+        assert disagreements <= .0001 * len(latent), \
+            f'{path}: {cut} topic disagreements {disagreements}'
+        keys = ('centers', 'fit_latent', 'center_norms', 'fit_counts', f'kept_{cut}', f'fit_topics_{cut}')
+        runs.append(dict(version=version, seed=int(seed), cut=cut, **judgments[cut],
+                         artifact=str(path.resolve()), fit_counts_l1_difference=count_l1,
+                         fit_topics_disagreements=disagreements,
+                         array_sha256={k: array_sha256(arrays[k]) for k in keys}))
     return runs
 
 
 def write_stage1(stage1_dir=STAGE1, output=OUTPUT):
-    """Atomically save all ten paper runs' R-COL results before held scoring."""
+    """Atomically save R-COL once; refuse changed results before held scoring."""
     runs = []
     for version in ('clip_roberta', 'qwen_qwen'):
         for seed in range(5):
             runs.extend(read_stage1(Path(stage1_dir) / f'{version}__s{seed}.npz'))
     report = dict(runs=runs, entries=eligible_entries(runs))
     output = Path(output)
+    if output.exists():
+        existing = json.loads(output.read_text())
+        assert {k: v for k, v in existing.items() if k != 'written'} == report, \
+            f'{output}: refusing to overwrite different R-COL content'
+        return existing
+    report['written'] = datetime.now(ZoneInfo('Europe/Amsterdam')).strftime('%Y-%m-%d %H:%M')
     output.parent.mkdir(parents=True, exist_ok=True)
     content = json.dumps(report, indent=2, allow_nan=False) + '\n'
     with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=output.parent,

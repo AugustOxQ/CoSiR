@@ -72,30 +72,39 @@ def test_eligible_entries_use_each_versions_cut_and_sort_surviving_seeds():
     }
 
 
-@pytest.fixture
-def paper_stage1(tmp_path):
-    folder = tmp_path / 'percept' / 'paper' / 'stage1'
+@pytest.fixture(scope='session')
+def paper_artifacts(tmp_path_factory):
+    folder = tmp_path_factory.mktemp('paper_artifacts') / 'stage1'
     folder.mkdir(parents=True)
     for version in ('clip_roberta', 'qwen_qwen'):
         for seed in range(5):
             norms = np.r_[np.ones(20), np.full(80, 10.)].astype(np.float32)
             # Qwen has no norm gap; strict retains all 100 and collapses.
             if version == 'qwen_qwen':
-                norms = np.arange(100, dtype=np.float32)
-            counts = np.r_[np.full(40, 1683), np.zeros(60, dtype=int)]
-            counts[0] += 7  # 67,327 fit pairs, before either cut.
-            kept_strict = np.arange(100) < (20 if version == 'clip_roberta' else 100)
-            strict_topics = np.arange(67327, dtype=np.int64) % 20
-            k40_topics = np.arange(67327, dtype=np.int64) % 40
-            if seed != 2:
-                strict_topics[:] = 3
+                norms = np.arange(1, 101, dtype=np.float32)
+            centers = np.eye(100, 128, dtype=np.float32) * norms[:, None]
+            full_topics = np.arange(67327, dtype=np.int64) % (20 if seed == 2 else 40)
             if seed == 4:
-                k40_topics[:] = 7
+                full_topics[:] = 3
+            counts = np.bincount(full_topics, minlength=100)
+            kept_strict = np.arange(100) < (20 if version == 'clip_roberta' else 100)
+            # Orthogonal excluded centers are equidistant from the 20 low-norm
+            # centers: their pairs go to the first kept center on a tie.
+            strict_topics = (np.where(full_topics < 20, full_topics, 0)
+                             if version == 'clip_roberta' else full_topics)
             np.savez_compressed(folder / f'{version}__s{seed}.npz',
+                                centers=centers, fit_latent=centers[full_topics],
                                 center_norms=norms, fit_counts=counts,
                                 kept_strict=kept_strict, kept_k40=np.arange(100) < 40,
-                                fit_topics_strict=strict_topics, fit_topics_k40=k40_topics)
+                                fit_topics_strict=strict_topics, fit_topics_k40=full_topics)
     return folder
+
+
+@pytest.fixture
+def paper_stage1(tmp_path, paper_artifacts):
+    import shutil
+
+    return shutil.copytree(paper_artifacts, tmp_path / 'percept' / 'paper' / 'stage1')
 
 
 def test_cli_writes_all_runs_eligibility_and_input_array_hashes(paper_stage1, tmp_path):
@@ -124,7 +133,7 @@ def test_cli_writes_all_runs_eligibility_and_input_array_hashes(paper_stage1, tm
         with np.load(paper_stage1 / f"{run['version']}__s{run['seed']}.npz") as z:
             assert run['array_sha256'] == {
                 key: hashlib.sha256(z[key].tobytes(order='C')).hexdigest()
-                for key in ('center_norms', 'fit_counts', f"kept_{run['cut']}",
+                for key in ('centers', 'fit_latent', 'center_norms', 'fit_counts', f"kept_{run['cut']}",
                             f"fit_topics_{run['cut']}")}
         if run['version'] == 'clip_roberta' and run['seed'] == 2 and run['cut'] == 'strict':
             assert run['kept_count'] == 20
@@ -165,14 +174,12 @@ def test_reader_asserts_artifact_keys_shapes_and_consistency(paper_stage1, key, 
         ct_rcol.read_stage1(path)
 
 
-def test_writer_replaces_complete_json_atomically(paper_stage1, tmp_path, monkeypatch):
+def test_writer_creates_complete_json_atomically(paper_stage1, tmp_path, monkeypatch):
     import json
     import os
     from pathlib import Path
 
     output = tmp_path / 'rcol_stage1.json'
-    old = '{"previous": true}\n'
-    output.write_text(old)
     replace = os.replace
     observed = []
 
@@ -180,7 +187,7 @@ def test_writer_replaces_complete_json_atomically(paper_stage1, tmp_path, monkey
         source, destination = Path(source), Path(destination)
         assert destination == output
         assert source != output and source.parent == output.parent
-        assert output.read_text() == old
+        assert not output.exists()
         report = json.loads(source.read_text())
         assert len(report['runs']) == 20 and set(report['entries']) == {'B2', 'B3', 'B4', 'B5'}
         observed.append(report)
@@ -192,6 +199,59 @@ def test_writer_replaces_complete_json_atomically(paper_stage1, tmp_path, monkey
     assert json.loads(output.read_text()) == report
 
 
+def test_writer_records_amsterdam_local_minute(paper_stage1, tmp_path, monkeypatch):
+    from datetime import datetime, timezone
+    import json
+
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz):
+            assert str(tz) == 'Europe/Amsterdam'
+            return datetime(2026, 10, 20, 0, 35, tzinfo=timezone.utc).astimezone(tz)
+
+    monkeypatch.setattr(ct_rcol, 'datetime', FixedDatetime, raising=False)
+    output = tmp_path / 'rcol_stage1.json'
+    report = ct_rcol.write_stage1(paper_stage1, output)
+    assert report['written'] == '2026-10-20 02:35'
+    assert json.loads(output.read_text())['written'] == report['written']
+
+
+def test_writer_leaves_identical_content_and_timestamp_untouched(paper_stage1, tmp_path):
+    import json
+
+    output = tmp_path / 'rcol_stage1.json'
+    report = ct_rcol.write_stage1(paper_stage1, output)
+    report['written'] = '2000-01-01 00:00'
+    original = json.dumps(report, sort_keys=True) + '\n'
+    output.write_text(original)
+    modified = output.stat().st_mtime_ns
+    result = ct_rcol.write_stage1(paper_stage1, output)
+    assert result == report
+    assert output.read_text() == original
+    assert output.stat().st_mtime_ns == modified
+
+
+def test_writer_refuses_changed_content_and_preserves_existing_file(paper_stage1, tmp_path):
+    import json
+
+    output = tmp_path / 'rcol_stage1.json'
+    report = ct_rcol.write_stage1(paper_stage1, output)
+    report['runs'][0]['share'] = .123
+    original = json.dumps(report) + '\n'
+    output.write_text(original)
+    modified = output.stat().st_mtime_ns
+    with pytest.raises(AssertionError, match='refusing to overwrite'):
+        ct_rcol.write_stage1(paper_stage1, output)
+    assert output.read_text() == original
+    assert output.stat().st_mtime_ns == modified
+
+
+def test_default_output_is_in_main_checkout_percept_folder():
+    from pathlib import Path
+
+    assert ct_rcol.OUTPUT == Path('/project/CoSiR/src/test/20261020_claim_test/outputs/percept/rcol_stage1.json')
+
+
 def test_invalid_artifact_cannot_replace_previous_report(paper_stage1, tmp_path):
     output = tmp_path / 'rcol_stage1.json'
     output.write_text('previous complete report\n')
@@ -199,3 +259,109 @@ def test_invalid_artifact_cannot_replace_previous_report(paper_stage1, tmp_path)
     with pytest.raises(AssertionError):
         ct_rcol.write_stage1(paper_stage1, output)
     assert output.read_text() == 'previous complete report\n'
+
+
+def test_reader_recomputes_consistent_student_t_topics_and_counts(paper_stage1):
+    runs = ct_rcol.read_stage1(paper_stage1 / 'clip_roberta__s0.npz')
+    for run in runs:
+        assert run['fit_counts_l1_difference'] == 0
+        assert run['fit_topics_disagreements'] == 0
+    # Half the fit pairs were on removed centers and move to local topic zero.
+    assert runs[0]['share'] == 35344 / 67327
+    assert runs[0]['collapsed'] is True
+
+
+@pytest.mark.parametrize('key,problem', [
+    ('centers', 'missing'), ('fit_latent', 'missing'),
+    ('centers', 'shape'), ('fit_latent', 'shape'),
+    ('centers', 'dtype'), ('fit_latent', 'dtype'),
+    ('centers', 'nonfinite'), ('fit_latent', 'nonfinite'),
+    ('center_norms', 'mismatch'),
+])
+def test_reader_validates_centers_and_fit_latent(paper_stage1, key, problem):
+    path = paper_stage1 / 'clip_roberta__s0.npz'
+    with np.load(path) as z:
+        arrays = dict(z)
+    if problem == 'missing':
+        arrays.pop(key)
+    elif problem == 'shape':
+        arrays[key] = arrays[key][:, :-1]
+    elif problem == 'dtype':
+        arrays[key] = arrays[key].astype(np.float64)
+    elif problem == 'nonfinite':
+        arrays[key][0, 0] = np.nan
+    else:
+        arrays[key][0] += .01
+    np.savez_compressed(path, **arrays)
+    with pytest.raises(AssertionError):
+        ct_rcol.read_stage1(path)
+
+
+@pytest.mark.parametrize('changed,l1,disagreements', [(3, 6, [2, 3]), (4, 8, None)])
+def test_reader_limits_and_records_count_l1_disagreement(paper_stage1, changed, l1, disagreements):
+    path = paper_stage1 / 'clip_roberta__s0.npz'
+    with np.load(path) as z:
+        arrays = dict(z)
+    arrays['fit_latent'][:changed] = arrays['centers'][39]
+    np.savez_compressed(path, **arrays)
+    if disagreements is None:
+        with pytest.raises(AssertionError, match='count L1'):
+            ct_rcol.read_stage1(path)
+    else:
+        runs = ct_rcol.read_stage1(path)
+        assert [r['fit_counts_l1_difference'] for r in runs] == [l1, l1]
+        assert [r['fit_topics_disagreements'] for r in runs] == disagreements
+
+
+@pytest.mark.parametrize('changed', [6, 7])
+def test_reader_limits_and_records_post_cut_topic_disagreement(paper_stage1, changed):
+    path = paper_stage1 / 'clip_roberta__s0.npz'
+    with np.load(path) as z:
+        arrays = dict(z)
+    rows = np.flatnonzero(arrays['fit_topics_strict'] == 0)[:changed]
+    arrays['fit_topics_strict'][rows] = 1
+    np.savez_compressed(path, **arrays)
+    if changed == 7:
+        with pytest.raises(AssertionError, match='topic disagreements'):
+            ct_rcol.read_stage1(path)
+    else:
+        runs = ct_rcol.read_stage1(path)
+        assert [r['fit_topics_disagreements'] for r in runs] == [6, 0]
+
+
+@pytest.mark.parametrize('saved_topic,valid', [(5, True), (10, False)])
+def test_reader_requires_local_topics_for_noncontiguous_kept_centers(paper_stage1, saved_topic, valid):
+    path = paper_stage1 / 'clip_roberta__s0.npz'
+    with np.load(path) as z:
+        arrays = dict(z)
+    # Original center 10 is local center 5 in the strict cut. Both are in
+    # range, so a mistakenly saved full argmax must fail the count check.
+    arrays['kept_strict'] = (np.arange(100) < 40) & (np.arange(100) % 2 == 0)
+    arrays['center_norms'] = np.where(arrays['kept_strict'], 1., 10.).astype(np.float32)
+    arrays['centers'] = np.eye(100, 128, dtype=np.float32) * arrays['center_norms'][:, None]
+    arrays['fit_latent'][:] = arrays['centers'][10]
+    arrays['fit_counts'][:] = 0
+    arrays['fit_counts'][10] = 67327
+    arrays['fit_topics_strict'][:] = saved_topic
+    arrays['fit_topics_k40'][:] = 10
+    np.savez_compressed(path, **arrays)
+    if valid:
+        runs = ct_rcol.read_stage1(path)
+        assert [r['fit_topics_disagreements'] for r in runs] == [0, 0]
+    else:
+        with pytest.raises(AssertionError, match='post-cut counts'):
+            ct_rcol.read_stage1(path)
+
+
+@pytest.mark.parametrize('version,cut', [('clip_roberta', 'strict'), ('qwen_qwen', 'strict'),
+                                       ('clip_roberta', 'k40')])
+def test_reader_rejects_loss_of_a_kept_centers_pairs_even_within_tolerance(paper_stage1, version, cut):
+    path = paper_stage1 / f'{version}__s2.npz'
+    with np.load(path) as z:
+        arrays = dict(z)
+    # One mismatch is under the recomputation tolerance, but no original
+    # winner can move away from a surviving center when other columns are cut.
+    arrays[f'fit_topics_{cut}'][0] = 1
+    np.savez_compressed(path, **arrays)
+    with pytest.raises(AssertionError, match='post-cut counts'):
+        ct_rcol.read_stage1(path)
