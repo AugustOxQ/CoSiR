@@ -774,3 +774,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-11-handoff.md
 - New chat: tab 'r10 run 11', session 1fdf3d8b-81f9-4364-854c-6c9af257551f
 
+[brief] CoSiR: r10 run 11 -> r10 decide 16 (2026-10-20 23:19 Amsterdam)
+- Done: claim test stage 2 ran locally; outcome GO (S2-GO); the independent check agrees exactly; both reports committed.
+- State: D2 emotion AMI 0.1008 against PercepT core's own reading 0.0874; d +0.0133 [+0.0081, +0.0146].
+- Next: the user's reading of stage 2 (decision C), then the paper sentence and ArtELingo-28's facts brief and spec.
+- Blocked: nothing. "r10 decide 15" no longer runs; its points (stage 1's reading, track 2's decision B) come here (§4 b).
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-decide-16-handoff.md
+- New chat: tab 'r10 decide 16', session 4e0939ae-16c7-4ae7-9a1b-7625b27d814c
+
