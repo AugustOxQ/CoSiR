@@ -204,6 +204,7 @@ def wired(tmp_path):
     import ct_rcol
     import ct_score as sc
     import ct_stage0
+    real_write_verdict = sc.write_verdict
     nonfinite = {('paper', 'k40', 'P1', 0)}
     names, sha = ['painting-a', 'painting-b'], 'held-sha'
     labels = {'emotion': 'emotion labels'}
@@ -235,7 +236,7 @@ def wired(tmp_path):
     }
     started = {name: p.start() for name, p in patches.items()}
     started.update(tmp=tmp_path, names=names, sha=sha, labels=labels, eligibility=eligibility,
-                   nonfinite=nonfinite)
+                   nonfinite=nonfinite, real_write_verdict=real_write_verdict)
     yield started
     for p in patches.values():
         p.stop()
@@ -324,7 +325,33 @@ def test_wiring_verdict(wired):
     wired['write_verdict'].assert_called_once_with(
         HERE / 'verdict_stage1.json', 'result', wired['eligibility'], wired['sha'], wired['labels'], 'abc123',
         dict(held_outputs='sources', rcol=dict(path=str(ct_rcol.OUTPUT), sha256='rcol-sha',
-                                               record='rcol record')))
+                                               record='rcol record')), replace=None)
+
+
+def test_verdict_replacement_goes_through_ct_run_only_with_a_reason(wired, monkeypatch):
+    import numpy as np
+    import ct_score as sc
+    monkeypatch.setattr(ct_run, 'HERE', wired['tmp'])
+    path = wired['tmp'] / 'verdict_stage1.json'
+    wired['write_verdict'].side_effect = wired['real_write_verdict']
+    wired['painting_labels'].return_value = {'emotion': np.array([0, 1, -1])}
+
+    def bootstrap(d):
+        return dict(d=d, interval=[d - .1, d + .1], bootstrap_d=[d, d])
+
+    wired['paired_bootstrap'].return_value = bootstrap(.05)
+    ct_run.main(['verdict'])
+    before = path.read_bytes()
+    wired['paired_bootstrap'].return_value = bootstrap(.07)
+    with pytest.raises(AssertionError, match='refusing to replace'):
+        ct_run.main(['verdict'])
+    assert path.read_bytes() == before
+    ct_run.main(['verdict', '--replace', 'V3 rerun: corrected row order'])
+    assert json.loads(path.read_text())['replacement']['reason'] == 'V3 rerun: corrected row order'
+    assert json.loads(path.read_text())['d'] == .07
+    with pytest.raises(AssertionError, match='verdict'):
+        ct_run.main(['d2', '--replace', 'not a verdict step'])
+    wired['d2_train'].assert_not_called()
 
 
 def test_wiring_diagnostics(wired, monkeypatch):

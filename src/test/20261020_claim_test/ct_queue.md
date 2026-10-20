@@ -1,11 +1,12 @@
 # Claim-test queues (ticket 09)
 
-Run from this worktree; the scripts resolve their own round directory. They are
+Run from this checkout (the run chat runs from the main checkout `/project/CoSiR` after the merge); the scripts resolve their own round directory. They are
 foreground queues, fail at the first failed step, and can be submitted with
 `nohup bash ... > session-scratch/queue.log 2>&1 &` by the controller.
 All GPU steps use `flock -o -w 14400 /tmp/gpu0.lock`; `CT_LOCK_WAIT` overrides
 that wait. `CT_PYTHON` overrides the CoSiR Python executable. CPU work uses at
 most eight threads and hides CUDA.
+Stage 0 and stage 1 must run from the same checkout, since the pass records absolute output paths.
 
 ```bash
 bash src/test/20261020_claim_test/ct_queue_stage0.sh
@@ -51,17 +52,24 @@ item `training/code` unless both steps recorded the current identity. Any edit t
 identity covers (including `ct_run.py`, `ct_stage0.py` and the queue scripts) therefore forces seed 0
 retraining before the next pass. Stage 0 retraining is refused once any held NPZ exists.
 
-A pass binds code, the rule, source hashes, training host and device. Changed
+A pass binds code, the rule, source hashes, training host and device. The host
+is the host name; in this Docker container that is the container id, which a
+`docker restart` keeps and a recreated container changes. A recreated container
+fails closed (V1 refuses the old pass) and needs a new stage 0.
+`stage0.json`, `verdict_stage1.json` and `diag_stage1.json` match `*.json` in
+`.gitignore`; committing them needs `git add -f`. The module CLIs `ct_score.py`,
+`ct_diag.py`, `ct_d2.py --held` and `ct_percept.py --stage held` (not `--smoke`)
+run the same V1 check first, with the default report and device `cuda`. Changed
 sources/code or a partial report fail V1. Stage 1 fixes seeds to 0–4; after any
 held NPZ exists it refuses incomplete/changed training artifacts. Existing held
 arrays are verified before inference can reuse them; damaged artifacts stop the
 queue. A hash-verified non-finite paper output is preserved, skipped by inference,
 and passed to the scorer to count as collapsed under V4. A V-check-forced rerun needs controller handling and a report entry under
-V4; there is no automatic seed replacement or deletion.
+V4; rerun the verdict with `ct_run.py verdict --replace "<reason>"`; there is no automatic seed replacement or deletion.
 
 The adapter `ct_run.py` supplies explicit paths to the merged modules without
 editing them. Training, held artifacts and partitions
-are written below this worktree's `outputs/`; verdict and diagnostics are written
+are written below this checkout's `outputs/`; verdict and diagnostics are written
 in this round. Instructed held-image stores go to the shared cache,
 `/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/<key>_held/`
 (the defaults of `ct_extract` and `ct_diag`), and diagnostics read them there; only

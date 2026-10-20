@@ -191,39 +191,49 @@ def _recorded_means(labels, eval_prob):
     return {a: float(np.mean(v)) for a, v in values.items()}
 
 
-def build_percept_trees(root, frozen, *, same_arrays, ami_delta=0., broken=None, device='cuda'):
-    """Fake MS/PC references and a fake current core run for Stage 2 arm P1 (and its Stage 1)."""
+def build_percept_trees(root, frozen, *, same_arrays, ami_delta=0., broken=None, device='cuda',
+                        arms=('P1',), stage1_differs=False, ami_deltas=None):
+    """Fake MS/PC references and a fake current core run for Stage 2 arms (and their clip_roberta Stage 1).
+
+    ami_deltas maps an arm to the shift of its recorded genre AMI (default: ami_delta for P1 only);
+    stage1_differs makes the current Stage 1 arrays differ from the reference.
+    """
     ms, pc, outputs = root / 'ms', root / 'pc', root / 'outputs'
-    old_prob = _probs(1)
-    new_prob = old_prob if same_arrays else _probs(2)
+    ami_deltas = ami_deltas or {'P1': ami_delta}
     fp = frozen['fingerprint']
     s1_arrays = dict(center_norms=np.ones(100, np.float32), fit_counts=np.ones(100, np.int64),
                      kept=np.ones(100, bool), topic=np.zeros(10, np.int16),
                      q_paint_eval=_probs(3))
+    s1_current = dict(s1_arrays, center_norms=np.full(100, 2., np.float32)) if stage1_differs else s1_arrays
     s1_old = _npz(pc / 'stage1/clip_roberta__s0.npz', **s1_arrays)
-    s1_new = _npz(outputs / 'percept/core/stage1/clip_roberta__s0.npz', **s1_arrays)
-    s2_old = _npz(pc / 'stage2/P1__s0.npz', eval_prob=old_prob)
-    s2_new = _npz(outputs / 'percept/core/stage2/k40/P1__s0.npz', eval_prob=new_prob)
+    s1_new = _npz(outputs / 'percept/core/stage1/clip_roberta__s0.npz', **s1_current)
     import ct_percept as pt
-    s1_hashes = {k: pt.pc_stage1.array_sha256(v) for k, v in s1_arrays.items()}
+    s1_hashes = {k: pt.pc_stage1.array_sha256(v) for k, v in s1_current.items()}
     _json(pc / 'stage1/clip_roberta__s0.json', dict(config=dict(seed=0, smoke=False), sample_sha256=fp))
-    _json(pc / 'stage2/P1__s0.json', dict(config=dict(seed=0, smoke=False)))
-    means = _recorded_means(frozen['labels'], new_prob)
-    recorded = dict(means, genre=means['genre'] + ami_delta)
-    _json(pc / 'pc_results.json', dict(arms=dict(P1=dict(seeds={'0': dict(
-        source_sha256=dict(stage1=s1_old, stage2=s2_old),
-        img={a: dict(mean=recorded[a]) for a in ct.ASPECTS})}))))
-    _json(ms / 'ms_results.json', dict(runs={}))
     (outputs / 'percept/core/stage1/clip_roberta__s0.pt').write_bytes(b'stage1 weights')
-    (outputs / 'percept/core/stage2/k40/P1__s0.pt').write_bytes(b'stage2 weights')
     _json(outputs / 'percept/core/stage1/clip_roberta__s0.json', dict(
         config=dict(seed=0, smoke=False, device=device), sample_sha256=fp,
         array_sha256s=s1_hashes, weights_sha256='stage1-weights'))
-    mapper = dict(config=dict(seed=0, smoke=False, device=device), stage1_array_sha256s=s1_hashes,
-                  stage1_weights_sha256='stage1-weights', stage1_sha256=s1_new)
-    if broken:
-        mapper[broken] = 'stale'
-    _json(outputs / 'percept/core/stage2/k40/P1__s0.json', mapper)
+    results = {}
+    for n, arm in enumerate(arms):
+        old_prob = _probs(1 + 10 * n)
+        new_prob = old_prob if same_arrays else _probs(2 + 10 * n)
+        s2_old = _npz(pc / f'stage2/{arm}__s0.npz', eval_prob=old_prob)
+        _npz(outputs / f'percept/core/stage2/k40/{arm}__s0.npz', eval_prob=new_prob)
+        _json(pc / f'stage2/{arm}__s0.json', dict(config=dict(seed=0, smoke=False)))
+        means = _recorded_means(frozen['labels'], new_prob)
+        recorded = dict(means, genre=means['genre'] + ami_deltas.get(arm, 0.))
+        results[arm] = dict(seeds={'0': dict(
+            source_sha256=dict(stage1=s1_old, stage2=s2_old),
+            img={a: dict(mean=recorded[a]) for a in ct.ASPECTS})})
+        (outputs / f'percept/core/stage2/k40/{arm}__s0.pt').write_bytes(b'stage2 weights')
+        mapper = dict(config=dict(seed=0, smoke=False, device=device), stage1_array_sha256s=s1_hashes,
+                      stage1_weights_sha256='stage1-weights', stage1_sha256=s1_new)
+        if broken:
+            mapper[broken] = 'stale'
+        _json(outputs / f'percept/core/stage2/k40/{arm}__s0.json', mapper)
+    _json(pc / 'pc_results.json', dict(arms=results))
+    _json(ms / 'ms_results.json', dict(runs={}))
     return ms, pc, outputs
 
 
@@ -261,6 +271,20 @@ def test_gate_hash_mismatch_with_cause_and_one_far_ami_fails(run_gate):
     result = run_gate(same_arrays=False, ami_delta=2e-4, causes={GATE_ITEM: 'traced kernel order'})
     assert result['status'] == 'FAIL'
     assert max(result['image_ami']['P1']['absolute_errors'].values()) > 1e-4
+
+
+STAGE1_ITEM = 'regression/stage1/clip_roberta'
+
+
+@pytest.mark.parametrize(('deltas', 'status'), [
+    ({'P1': 5e-5, 'P2': 5e-5}, 'PASS'),
+    ({'P1': 0., 'P2': 2e-4}, 'FAIL'),
+    ({'P1': 2e-4, 'P2': 0.}, 'FAIL')])
+def test_gate_stage1_difference_checks_both_dependent_mappers(run_gate, deltas, status):
+    result = run_gate(STAGE1_ITEM, same_arrays=True, stage1_differs=True, arms=('P1', 'P2'), ami_deltas=deltas,
+                      causes={STAGE1_ITEM: 'traced kernel order'})
+    assert result['mode'] == 'ami' and set(result['image_ami']) == {'P1', 'P2'}
+    assert result['status'] == status
 
 
 @pytest.mark.parametrize('field', ['stage1_array_sha256s', 'stage1_weights_sha256', 'stage1_sha256'])

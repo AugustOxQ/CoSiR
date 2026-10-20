@@ -504,7 +504,7 @@ def test_outputs_use_rcol_main_checkout():
     assert score.OUTPUTS == ct_rcol.STAGE1.parents[2]
 
 
-def test_main_reads_ct_rcol_output_before_any_held_input(tmp_path, monkeypatch):
+def test_main_reads_ct_rcol_output_before_any_held_input(tmp_path, monkeypatch, gate_passes):
     import json
     import sys
     import ct_rcol
@@ -515,4 +515,13 @@ def test_main_reads_ct_rcol_output_before_any_held_input(tmp_path, monkeypatch):
     monkeypatch.setattr(ct_rcol, 'OUTPUT', path)
     monkeypatch.setattr(sys, 'argv', ['ct_score.py'])
     with pytest.raises(AssertionError):
+        score.main()
+
+
+def test_main_refuses_without_a_stage0_pass(monkeypatch, gate_refuses):
+    import sys
+    error, text = gate_refuses
+    monkeypatch.setattr(score, 'read_rcol', lambda *args: pytest.fail('read before the V1 gate'))
+    monkeypatch.setattr(sys, 'argv', ['ct_score.py'])
+    with pytest.raises(error, match=text):
         score.main()

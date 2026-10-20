@@ -342,3 +342,10 @@ def test_in_sample_reading_and_held_vote_score_their_own_populations(monkeypatch
     assert record['leiden3b']['graph_vertices'] == 50
     for population in ('fit', 'held'):
         assert [p['scores']['ami'] for p in record[population]['leiden3b']] == [1., 1., 1.]
+
+
+def test_main_refuses_without_a_stage0_pass(monkeypatch, gate_refuses):
+    error, text = gate_refuses
+    monkeypatch.setattr(diag, 'run', lambda *args, **kwargs: pytest.fail('ran before the V1 gate'))
+    with pytest.raises(error, match=text):
+        diag.main([])

@@ -338,6 +338,8 @@ def main():
     p.add_argument('--workers', type=int, default=8, choices=range(1, 9))
     p.add_argument('--replace', metavar='REASON', help='V-check rerun reason for replacing a changed verdict')
     args = p.parse_args()
+    import ct_stage0
+    ct_stage0.require_pass()  # V1: no verdict without a Stage 0 pass
     # Kept local so the pure scorer can be tested before ticket 01 merges.
     import ct_held
 

@@ -159,7 +159,9 @@ def main(argv=None):
     p.add_argument('--report', type=Path, default=HERE / 'stage0.json')
     p.add_argument('--device', default='cuda')
     p.add_argument('--stage0-training', action='store_true')
+    p.add_argument('--replace', metavar='REASON', help='V4 V-check rerun reason for replacing a changed verdict')
     args = p.parse_args(argv)
+    assert args.replace is None or args.step == 'verdict', '--replace applies to the verdict step only'
     if args.step == 'budget':
         print(json.dumps(budget(), sort_keys=True), flush=True)
         return
@@ -218,7 +220,8 @@ def main(argv=None):
         commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=HERE, text=True).strip()
         sc.write_verdict(HERE / 'verdict_stage1.json', result, eligibility, sha, labels, commit,
                          dict(held_outputs=sources, rcol=dict(path=str(ct_rcol.OUTPUT),
-                              sha256=gate.file_sha256(ct_rcol.OUTPUT), record=rcol)))
+                              sha256=gate.file_sha256(ct_rcol.OUTPUT), record=rcol)),
+                         replace=args.replace)
     elif args.step == 'diagnostics':
         import ct_diag
         ct_diag.run(HERE / 'verdict_stage1.json', outputs, HERE / 'diag_stage1.json', workers=8)
