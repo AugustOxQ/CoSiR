@@ -1,0 +1,107 @@
+[
+  {
+    "key": "env",
+    "local": "/root/miniconda3/envs/CoSiR",
+    "remote": "env",
+    "bind": "/root/miniconda3/envs/CoSiR",
+    "certainty": "certain",
+    "exclude_env": true
+  },
+  {
+    "key": "sample",
+    "local": "/project/CoSiR/src/test/20261017_prompted_aspect_views/sample.npz",
+    "remote": "project/src/test/20261017_prompted_aspect_views/sample.npz",
+    "bind": "/project/CoSiR/src/test/20261017_prompted_aspect_views/sample.npz",
+    "certainty": "certain"
+  },
+  {
+    "key": "graphs",
+    "local": "/project/CoSiR/src/test/20261018_aspect_graph_sheet/graphs",
+    "remote": "project/src/test/20261018_aspect_graph_sheet/graphs",
+    "bind": "/project/CoSiR/src/test/20261018_aspect_graph_sheet/graphs",
+    "certainty": "certain"
+  },
+  {
+    "key": "outputs",
+    "local": "/project/CoSiR/src/test/20261020_claim_test/outputs",
+    "remote": "outputs",
+    "bind": "/project/CoSiR/src/test/20261020_claim_test/outputs",
+    "certainty": "certain",
+    "exclude": [
+      "stale",
+      "stage2"
+    ]
+  },
+  {
+    "key": "buddy_graph",
+    "local": "/project/CoSiR-buddy_prototype_conditioning/src/conditional_buddy/buddy_graph.py",
+    "remote": "buddy/src/conditional_buddy/buddy_graph.py",
+    "bind": "/project/CoSiR-buddy_prototype_conditioning/src/conditional_buddy/buddy_graph.py",
+    "certainty": "certain"
+  },
+  {
+    "key": "genre",
+    "local": "/data/SSD/wikiart_genre",
+    "remote": "genre",
+    "bind": "/data/SSD/wikiart_genre",
+    "certainty": "certain"
+  },
+  {
+    "key": "patches",
+    "local": "/data/SSD2/pre_extract/artelingo_percept_patch_features",
+    "remote": "patches",
+    "bind": "/data/SSD2/pre_extract/artelingo_percept_patch_features",
+    "certainty": "certain"
+  },
+  {
+    "key": "qwen_model",
+    "local": "/data/SSD2/HF_home/hub/models--Qwen--Qwen3-VL-Embedding-2B",
+    "remote": "hf_home/hub/models--Qwen--Qwen3-VL-Embedding-2B",
+    "bind": "/data/SSD2/HF_home/hub/models--Qwen--Qwen3-VL-Embedding-2B",
+    "certainty": "possible",
+    "exclude": [
+      "blobs"
+    ]
+  },
+  {
+    "key": "roberta_model",
+    "local": "/data/SSD2/HF_home/hub/models--SamLowe--roberta-base-go_emotions",
+    "remote": "hf_home/hub/models--SamLowe--roberta-base-go_emotions",
+    "bind": "/data/SSD2/HF_home/hub/models--SamLowe--roberta-base-go_emotions",
+    "certainty": "possible",
+    "exclude": [
+      "blobs"
+    ]
+  },
+  {
+    "key": "wikiart",
+    "local": "/data/PDD/wikiart_proj/wikiart",
+    "remote": "wikiart",
+    "bind": "/data/PDD/wikiart_proj/wikiart",
+    "certainty": "possible"
+  },
+  {
+    "key": "full_stores",
+    "local": "/data/SSD2/pre_extract/artelingo_full",
+    "source": "/local/wding/Dataset/pre_extract/artelingo_full",
+    "bind": "/data/SSD2/pre_extract/artelingo_full",
+    "certainty": "certain",
+    "controller": true
+  },
+  {
+    "key": "clip_stores",
+    "local": "/data/SSD2/pre_extract/artelingo",
+    "source": "/local/wding/Dataset/pre_extract/artelingo",
+    "bind": "/data/SSD2/pre_extract/artelingo",
+    "certainty": "certain",
+    "controller": true
+  },
+  {
+    "key": "annotations",
+    "local": "/data/PDD/artelingo/artelingo_train.json",
+    "source": "/var/scratch/wding/Dataset/artelingo/artelingo_train.json",
+    "bind": "/data/PDD/artelingo/artelingo_train.json",
+    "certainty": "certain",
+    "controller": true
+  }
+]
