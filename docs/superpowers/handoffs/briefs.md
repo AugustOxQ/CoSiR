@@ -691,3 +691,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-6-handoff.md
 - New chat: tab 'r10 run 6', session 6b1004fb-cef1-4216-b21a-f9e3c1ddde65
 
+[brief] CoSiR: r10 run 6 -> r10 run 7 (2026-10-20 06:46 Amsterdam)
+- Done: claim test stage 1 is GO: D2 emotion AMI 0.1001 against PercepT core's own reading 0.0855 on 12,281 held paintings.
+- State: d +0.0146 [+0.0093, +0.0157]; the independent check agrees exactly; auto report committed (bc49a6e).
+- Next: user-read report, then open "r10 decide 15" (decision C, track 2's decision B) and "r10 build 13" (stage 2).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-7-handoff.md
+- New chat: tab 'r10 run 7', session 65a0e5e4-2122-4f44-b3d4-d693b454057a
+
