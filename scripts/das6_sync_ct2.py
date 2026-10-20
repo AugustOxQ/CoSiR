@@ -70,7 +70,7 @@ def sync(node, item):
     argv = cluster.rsync_argv(node, item)
     # Dereference env/model symlinks: external targets must not escape the copied tree.
     argv[2:2] = ['--copy-links', *['--exclude=' + x for x in exclusions(item)]]
-    cluster.require_local(argv, 'sync ' + item['key'], 240)
+    cluster.require_local(argv, 'sync ' + item['key'], 6 * 3600)
 
 
 # Node inventory uses cluster.remote, never a direct SSH invocation. Includes hashes
@@ -147,7 +147,7 @@ def fetch(node):
     argv[-2:] = [argv[-1], argv[-2]]
     # Never overwrite a local file, including one created since the conflict scan.
     argv[2:2] = ['--ignore-existing']
-    cluster.require_local(argv, 'fetch stage2', 240)
+    cluster.require_local(argv, 'fetch stage2', 6 * 3600)
     after = inventory(node, source, True)
     if before != after or any(not (local / n).is_file() or sha(local / n) != r['sha256']
                               for n, r in after.items()):
@@ -162,6 +162,8 @@ def main():
     for flag in ('inputs', 'fetch', 'verify'):
         mode.add_argument('--' + flag, action='store_true')
     parser.add_argument('--run', action='store_true')
+    parser.add_argument('--with-possible', action='store_true',
+                        help='also copy or verify conditional extraction inputs')
     args = parser.parse_args()
     cfg = cluster.load_config(SKILL / 'cluster.conf', project='CoSiR')
     node = cluster.validate_node(args.node, cfg)
@@ -171,8 +173,13 @@ def main():
         if args.run:
             fetch(node)
     else:
-        items = actions()
-        for a in items:
+        items = []
+        for a in actions():
+            if a['certainty'] == 'possible' and not args.with_possible:
+                print(f'{a["key"]}: skipped (possible), {a["bytes"]:,} bytes '
+                      f'({a["bytes"]/1024**3:.3f} GiB)')
+                continue
+            items.append(a)
             print(f'{a["key"]}: {a["files_count"]} files {a["bytes"]:,} bytes '
                   f'({a["bytes"]/1024**3:.3f} GiB) -> {a["remote"]}')
         print(f'Total: {sum(a["bytes"] for a in items):,} bytes; '

@@ -92,12 +92,17 @@ def main():
         listing = files(item)
         volume = sum(listing.values())
         text.append(f'| {item["certainty"]} | `{item["local"]}` | {du} | {volume:,} | '
-                    + ('controller' if item.get('controller') else 'das6_sync_ct2 --inputs') + ' |')
+                    + ('controller' if item.get('controller') else 'das6_sync_ct2 --inputs'
+                       + (' --with-possible' if item['certainty'] == 'possible' else '')) + ' |')
     certain = sum(a['bytes'] for a in action_map.values() if a['certainty'] == 'certain')
     possible = sum(a['bytes'] for a in action_map.values() if a['certainty'] == 'possible')
     text += ['', f'Helper transfer: certain {certain:,} bytes ({certain/1024**3:.3f} GiB), '
-             f'possible {possible:,} bytes ({possible/1024**3:.3f} GiB), total {(certain+possible)/1024**3:.3f} GiB.', '',
-             'The helper copies possible inputs too, so missing-store extraction can run unchanged. '
+             f'possible {possible:,} bytes ({possible/1024**3:.3f} GiB), '
+             f'total with --with-possible {(certain+possible)/1024**3:.3f} GiB.', '',
+             'Default --inputs and --verify select only certain items; possible items are printed as '
+             'skipped (possible), with sizes. Add --with-possible to include them. Missing possible '
+             'bind sources are skipped by the launcher and reported as absent (possible) by the checker. '
+             'The default transfer is sufficient because all five existing stage 2 stores passed their checks. '
              'Possible means read only if a stage 2 store is missing: pinned Qwen and RoBERTa model directories '
              '(including snapshots and refs) and WikiArt RGB images. All five stage 2 stores currently have done.json. '
              'Model snapshots are copied with symlinks dereferenced; the duplicate blobs directory is excluded.', '',

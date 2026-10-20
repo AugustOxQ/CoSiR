@@ -16,11 +16,16 @@ if [[ "$act" != --run ]]; then
     /usr/bin/python3 - "$manifest" "$NR" <<'PY'
 import json,sys
 for item in json.load(open(sys.argv[1])):
-    print('bind', item.get('source', sys.argv[2]+'/'+item.get('remote','')), '->',item['bind'])
+    print('bind', item.get('source', sys.argv[2]+'/'+item.get('remote','')), '->',item['bind'],
+          '('+item['certainty']+')')
 PY
     echo "bind $NR/env/lib/python3.11/site-packages/nvidia/cu13/lib -> legacy env lib/python3.10/site-packages/nvidia/cu13/lib"
     echo 'No writes or node contact. Add --run only in the controller-created node job.'
     exit 0
+fi
+if [[ "$mode" == run && "${CUDA_VISIBLE_DEVICES:-}" != 0 ]]; then
+    echo 'REFUSING: the frozen queue pins GPU 0; launch when slot 0 is free (CUDA_VISIBLE_DEVICES must be exactly 0)' >&2
+    exit 1
 fi
 [[ "$CODE" == /local/wding/jobs/*/code && "$JOB" == /local/wding/jobs/* ]] || {
     echo "REFUSING: --run requires /local/wding/jobs/<tag>/code as cwd: $CODE" >&2; exit 1;
@@ -29,14 +34,15 @@ fi
 mapfile -t binds < <(/usr/bin/python3 - "$manifest" "$NR" <<'PY'
 import json,sys
 for item in json.load(open(sys.argv[1])):
-    print(item.get('source',sys.argv[2]+'/'+item.get('remote',''))+'\t'+item['bind'])
+    print(item.get('source',sys.argv[2]+'/'+item.get('remote',''))+'\t'+item['bind']+'\t'+item['certainty'])
 PY
 )
 # feature_extract.py retains a Python 3.10 CUDA-library hint, while the copied
 # local env is Python 3.11. Alias only that library directory, preserving code.
-binds+=("$NR/env/lib/python3.11/site-packages/nvidia/cu13/lib"$'\t'"/root/miniconda3/envs/CoSiR/lib/python3.10/site-packages/nvidia/cu13/lib")
+binds+=("$NR/env/lib/python3.11/site-packages/nvidia/cu13/lib"$'\t'"/root/miniconda3/envs/CoSiR/lib/python3.10/site-packages/nvidia/cu13/lib"$'\t'certain)
 for pair in "${binds[@]}"; do
     source=${pair%%$'\t'*}
+    [[ -e "$source" || "${pair##*$'\t'}" != possible ]] || continue
     [[ -e "$source" ]] || { echo "Missing bind source: $source (run das6_sync_ct2.py --inputs or controller data sync)" >&2; exit 1; }
 done
 mkdir -p "$JOB/ct2-tmp" "$JOB/ct2-home" "$JOB/ct2-cache" "$JOB/ct2-mpl"
@@ -60,7 +66,11 @@ for d in bin sbin lib lib64 lib32 usr etc var home local opt dev proc sys run sr
     else mkdir -p "$R/$d"; mount --rbind "/$d" "$R/$d"; fi
 done
 bind_path() {
-    local source=$1 target=$2
+    local source=$1 target=$2 certainty=${3:-certain}
+    if [[ ! -e "$source" && "$certainty" == possible ]]; then
+        echo "skip possible bind: $target (source absent)"
+        return 0
+    fi
     [[ -e "$source" ]] || { echo "Missing bind source: $source" >&2; exit 1; }
     if [[ -d "$source" ]]; then mkdir -p "$R$target"
     else mkdir -p "$(dirname "$R$target")"; [[ -e "$R$target" ]] || touch "$R$target"; fi
@@ -77,8 +87,9 @@ bind_path "$NR/buddy" /project/CoSiR-buddy_prototype_conditioning
 mount -t tmpfs tmpfs "$R/data/SSD2/pre_extract"
 for d in artelingo_full artelingo; do bind_path "/local/wding/Dataset/pre_extract/$d" "/data/SSD2/pre_extract/$d"; done
 for pair in "$@"; do
-    source=${pair%%$'\t'*}; target=${pair#*$'\t'}
-    bind_path "$source" "$target"
+    source=${pair%%$'\t'*}; remainder=${pair#*$'\t'}
+    target=${remainder%%$'\t'*}; certainty=${remainder##*$'\t'}
+    bind_path "$source" "$target" "$certainty"
 done
 chroot "$R" /bin/bash -s -- "$mode" <<'INNER'
 set -euo pipefail

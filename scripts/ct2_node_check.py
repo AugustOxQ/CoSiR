@@ -26,6 +26,9 @@ def main():
         return
     for item in json.loads((ROOT / 'scripts/ct2_node_inputs.json').read_text()):
         path = Path(item['bind'])
+        if not path.exists() and item['certainty'] == 'possible':
+            print('input', item['key'], 'absent (possible)', flush=True)
+            continue
         assert path.exists(), f'missing {item["certainty"]} input: {path}'
         print('input', item['key'], 'present', flush=True)
     import numpy as np
