@@ -64,3 +64,6 @@ The R-COL file itself is written by the next stage 1 queue.
 | 05:18 to 05:19 | held inference (65 s): D2 heads and PercepT arms, seeds 0 to 4; strict `clip_roberta` seed 0 has no held file (no Stage 2) | pass |
 | 05:19 | instructed held images start (GPU) | running |
 | 05:21 | V2 starts: Codex had no room (5 h window 19% left, needs 20%, resets 07:01), so a Sonnet `high` worker re-derives from `.scratch/r10-claim-test/v2/v2_brief.md` (the rule and the data only, CPU) | running |
+| 05:19 to 06:16 | instructed held images (3,449 s; three stores `emotion_focus_held`, `style_word_held`, `genre_word_held`, 54 MB each, in the shared cache) | pass; stage 1 queue done, failed=0 |
+| 05:21 to 05:26 | V2 worker finished (CPU, about 4 min): `v2_result.json`, `v2_partitions/`, `v2_bootstrap.npz`; no check failed | compared after the verdict |
+| 06:17 | CPU queue starts (verdict, then diagnostics); end estimate about 06:45 | running |
