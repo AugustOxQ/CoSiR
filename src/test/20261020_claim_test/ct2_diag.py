@@ -18,6 +18,7 @@ import ct_diag
 import ct_held
 import ct_score as sc
 import ct2_d2
+import ct2_stage2a
 import ct2_data
 import ct2_verdict
 
@@ -133,6 +134,7 @@ def main(argv=None):
     parser.add_argument('--out', type=Path, default=HERE / 'diag_stage2.json')
     parser.add_argument('--workers', type=int, choices=range(1, 9), default=8)
     args = parser.parse_args(argv)
+    ct2_stage2a.require_pass()  # V1: no diagnostics without a Stage 2a pass
     run(args.verdict, args.root, args.out, workers=args.workers)
 
 
