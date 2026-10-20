@@ -260,7 +260,7 @@ def instructed_images(s, key):
     assert key in ('emotion_focus', 'style_word', 'genre_word'), key
     paths = [ASPECT / key, ASPECT / f'{key}_trainimg']
     extra = ASPECT / f'{key}_s2img'
-    if extra.exists():
+    if s['mode'] == 'full' and extra.exists():
         paths.append(extra)
     wanted = s['all_painting_ids']
     assert len(np.unique(wanted)) == len(wanted)
@@ -288,7 +288,7 @@ def instructed_captions(s, key, *, per_caption=False):
     assert key in ('emotion_focus', 'style_word', 'genre_word'), key
     paths = [_sealed(ASPECT / key, key)]
     extra = ASPECT / 'emotion_focus_s2txt'
-    if key == 'emotion_focus' and extra.exists():
+    if s['mode'] == 'full' and key == 'emotion_focus' and extra.exists():
         paths.append(_sealed(extra, key))
     x = _caption_union(s, paths)
     return x if per_caption else l2(paint_mean(x, s['pid'], len(s['first'])))

@@ -406,3 +406,26 @@ def test_providers_check_parity_for_s2_rows_without_overlap(full_stores, kind):
     (path / 'done.json').write_text(json.dumps(done))
     with pytest.raises(AssertionError, match='parity gate'):
         provide(full_stores, kind)
+
+
+@pytest.mark.parametrize('kind,key', [('image', 'emotion_focus'), ('image', 'style_word'),
+                                      ('image', 'genre_word'), ('caption', 'emotion_focus')])
+def test_sample_never_opens_an_existing_s2_store(tmp_path, monkeypatch, kind, key):
+    monkeypatch.setattr(data, 'ASPECT', tmp_path)
+    write_store(tmp_path / key, key, images=(['a'], [[1, 0, 0]]),
+                captions=([7], ['a'], [[1, 0, 0]]))
+    write_store(tmp_path / f'{key}_trainimg', key, new=True, images=(['a'], [[1, 0, 0]]))
+    extra = tmp_path / f'{key}_s2{"img" if kind == "image" else "txt"}'
+    extra.mkdir()
+    original_open = Path.open
+
+    def guarded_open(path, *args, **kwargs):
+        if path.is_relative_to(extra):
+            pytest.fail('sample opened an s2 store')
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'open', guarded_open)
+    s = dict(mode='sample', all_painting_ids=np.array(['a']), sample_ids=np.array([7], np.int64),
+             painting_ids=np.array(['a']), pid=np.array([0]), first=np.array([0]))
+    actual = data.instructed_images(s, key) if kind == 'image' else data.instructed_captions(s, key)
+    assert np.array_equal(actual, vectors([[1, 0, 0]]).astype(np.float32))

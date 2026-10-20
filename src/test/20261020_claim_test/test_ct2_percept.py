@@ -590,3 +590,18 @@ def test_sample_stage1_never_calls_the_chunked_function_unless_asked(synthetic, 
     with pytest.raises(AssertionError, match='chunked'):
         ct.run_stage1('sample', 'core', 'clip_roberta', 0, root=tmp_path / 'b', device='cpu', smoke=True,
                       dec_chunk_rows=64)
+
+
+@pytest.mark.parametrize('stage', [1, 2])
+@pytest.mark.parametrize('held_name', ['d2/emotion__s0.npz', 'percept/paper__strict/P4__s4.npz'])
+def test_v4_refuses_full_training_after_any_held_output(tmp_path, monkeypatch, stage, held_name):
+    held = tmp_path / 'held' / held_name
+    held.parent.mkdir(parents=True)
+    held.write_bytes(b'held output exists')
+    monkeypatch.setattr(ct, 'require_stage2a', lambda *a: None)
+    monkeypatch.setattr(ct.data, 'split2', lambda *a: pytest.fail('training inputs read after held output'))
+    with pytest.raises(AssertionError, match='^V4'):
+        if stage == 1:
+            ct.run_stage1('full', 'paper', 'qwen_qwen', 0, root=tmp_path)
+        else:
+            ct.run_stage2('full', 'paper', 'k40', 'P4', 0, root=tmp_path)

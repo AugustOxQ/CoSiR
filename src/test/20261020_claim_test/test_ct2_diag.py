@@ -142,5 +142,28 @@ def test_run_writes_stage2_report_with_keys_and_leaves_verdict_alone(tmp_path, m
     assert set(report) >= {'records', 'margins', 'paper_runs', 'fit_sources', 'verdict_sha256', 'eligibility'}
     assert set(report['margins']) == {'leiden_emotion', 'style', 'genre'}
     assert len(report['records']) == 13
-    assert json.loads((tmp_path / 'diag_stage2.json').read_text())['diagnostic_only']
+    assert json.loads((tmp_path / 'diag_stage2.json').read_text()) == report
+    assert report['diagnostic_only']
+    assert report['ct2_code_sha256'] == {str(path): sc._sha_file(path) for path in
+        (diag.HERE / name for name in ('ct2_diag.py', 'ct2_d2.py', 'ct2_percept.py', 'ct2_data.py'))}
     assert '| target | style |' in (tmp_path / 'diag_stage2.md').read_text()
+
+
+def test_runner_diagnostics_uses_its_stage2a_report_and_device(tmp_path, monkeypatch):
+    import ct2_run
+    calls = []
+    monkeypatch.setattr(diag.ct2_stage2a, 'require_pass',
+                        lambda path, device: calls.append((path, device)))
+    monkeypatch.setattr(diag, 'run', lambda *a, **k: None)
+    reports = tmp_path / 'reports'
+    assert ct2_run.main(['diagnostics', '--root', str(tmp_path / 'outputs'), '--reports', str(reports),
+                         '--device', 'cpu', '--smoke']) == 0
+    assert calls == [(reports / 'stage2a.json', 'cpu')] * 2
+
+
+def test_diagnostics_cli_defaults_keep_the_default_gate(monkeypatch):
+    calls = []
+    monkeypatch.setattr(diag.ct2_stage2a, 'require_pass', lambda *a: calls.append(a))
+    monkeypatch.setattr(diag, 'run', lambda *a, **k: None)
+    diag.main([])
+    assert calls == [(diag.HERE / 'stage2a.json', 'cuda')]

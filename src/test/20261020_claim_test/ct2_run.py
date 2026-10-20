@@ -182,7 +182,8 @@ def main(argv=None):
                                  (['--replace', args.replace] if args.replace else []))
         elif args.step == 'diagnostics':
             import ct2_diag
-            ct2_diag.main(['--verdict', str(verdict), '--root', str(full), '--out', str(diag), '--workers', '8'])
+            ct2_diag.main(['--verdict', str(verdict), '--root', str(full), '--out', str(diag), '--workers', '8',
+                          '--stage2a', str(report), '--device', args.device])
     print(f'CT2_RUN {args.step} OK', flush=True)
     return 0
 

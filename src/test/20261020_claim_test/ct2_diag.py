@@ -20,6 +20,7 @@ import ct_score as sc
 import ct2_d2
 import ct2_stage2a
 import ct2_data
+import ct2_percept
 import ct2_verdict
 
 HERE = Path(__file__).resolve().parent
@@ -124,7 +125,16 @@ def run(verdict_path=HERE / 'verdict_stage2.json', root=FULL_ROOT, destination=H
     with patch.object(ct_diag, 'read_verdict', read_verdict), \
             patch.object(ct_diag, 'FitInference', lambda out, names: FitInference(out, names, mode)), \
             patch.object(ct_diag, 'HERE', destination.resolve().parent):
-        return ct_diag.run(verdict_path, root, destination, workers=workers, n_resamples=n_resamples)
+        report = ct_diag.run(verdict_path, root, destination, workers=workers, n_resamples=n_resamples)
+    saved = json.loads(destination.read_text())
+    assert saved == json.loads(json.dumps(report, allow_nan=False)), 'diagnostics fields changed after ct_diag.run'
+    saved['ct2_code_sha256'] = {str(path): sc._sha_file(path) for path in
+                                (Path(__file__), Path(ct2_d2.__file__),
+                                 Path(ct2_percept.__file__), Path(ct2_data.__file__))}
+    assert all(saved[key] == report[key] for key in ('verdict_sha256', 'held_sha256', 'eligibility'))
+    assert sc._sha_file(verdict_path) == saved['verdict_sha256'], 'verdict changed during diagnostics'
+    sc._atomic_json(destination, saved)
+    return saved
 
 
 def main(argv=None):
@@ -133,8 +143,10 @@ def main(argv=None):
     parser.add_argument('--root', type=Path, default=FULL_ROOT)
     parser.add_argument('--out', type=Path, default=HERE / 'diag_stage2.json')
     parser.add_argument('--workers', type=int, choices=range(1, 9), default=8)
+    parser.add_argument('--stage2a', type=Path, default=HERE / 'stage2a.json')
+    parser.add_argument('--device', default='cuda')
     args = parser.parse_args(argv)
-    ct2_stage2a.require_pass()  # V1: no diagnostics without a Stage 2a pass
+    ct2_stage2a.require_pass(args.stage2a, args.device)  # V1: no diagnostics without a Stage 2a pass
     run(args.verdict, args.root, args.out, workers=args.workers)
 
 

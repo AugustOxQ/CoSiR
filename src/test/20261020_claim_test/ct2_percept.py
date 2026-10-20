@@ -200,7 +200,7 @@ def caption_targets(s, topic, k, smoke=False):
     return ids, targets
 
 
-# pc_stage2.make_config, with its inline sample-size gate generalized.
+# pc_stage2.make_config without its inline count gate; split2('sample') preserves the sample counts.
 def mapper_config(s, arm, seed, smoke, device):
     version, kind, width = ARMS[arm]
     partition = partitions(s)
@@ -307,6 +307,8 @@ def run_stage1(mode, settings, version, seed, *, root, device=None, smoke=False,
     """Train all captions of the mode's fit paintings; paper saves both cuts."""
     assert mode in ('sample', 'full'), mode
     require_stage2a(mode, smoke, device or 'cuda')
+    if mode == 'full' and not smoke:
+        assert not any((Path(root) / 'held').rglob('*.npz')), 'V4: training refused, stage 2 held output exists'
     s = data.split2(mode)
     with runtime(root, s, dec_chunk_rows) as view:
         return base.run_stage1(view, settings, version, seed, device=device, smoke=smoke)
@@ -316,6 +318,8 @@ def run_stage2(mode, settings, cut, arm, seed, *, root, device=None, smoke=False
     """Train a core/paper mapper; dev AUC uses the mode's dev paintings."""
     check_arm(mode, settings, cut, arm)
     require_stage2a(mode, smoke, device or 'cuda')
+    if mode == 'full' and not smoke:
+        assert not any((Path(root) / 'held').rglob('*.npz')), 'V4: training refused, stage 2 held output exists'
     s = data.split2(mode)
     with runtime(root, s) as view:
         previous = base.verify_output(base.stage1_path(settings, ARMS[arm][0], seed))

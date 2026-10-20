@@ -354,7 +354,7 @@ def train(mode, seeds=range(5), device='cuda', root=None):
             if verified is not None:
                 result[seed] = verified
                 continue
-            assert not any((root / 'held/d2').glob('*.npz')), 'V4: cannot retrain after held outputs exist'
+            assert not any((root / 'held').rglob('*.npz')), 'V4: cannot retrain after held outputs exist'
             ct_d2._preserve_cohort(root, seed)
             result[seed] = run(s, inputs, graphs, manifests, ROWS['D2'], 'D2', list(ASPECTS),
                                seed, device, root / 'd2/train', max_epochs=ms_train.CONFIG['max_epochs'])

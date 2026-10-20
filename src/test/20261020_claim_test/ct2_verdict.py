@@ -2,6 +2,7 @@
 import argparse
 import json
 import subprocess
+from functools import lru_cache
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,6 +11,7 @@ from threadpoolctl import threadpool_limits
 
 import ct_rcol
 import ct_score
+import ct2_data
 from ct_score import prepare_held, paired_bootstrap
 
 HERE = Path(__file__).resolve().parent
@@ -19,12 +21,26 @@ FROZEN_HELD_LIST = ct_score.OUTPUTS / 'held/held_paintings.json'
 FIT_PAIRS = dict(sample=67327, full=216107)
 
 
+@lru_cache(maxsize=1)
+def full_names_sha256():
+    """Compute the full training split identity once for R-COL and held scoring."""
+    return ct2_data.split2('full')['names_sha256']
+
+
+def require_full_config(config, path):
+    assert config.get('mode') == 'full', f'{path}: training mode must be full'
+    assert config.get('names_sha256') == full_names_sha256(), f'{path}: training names_sha256 mismatch'
+
+
 # ct_rcol.read_stage1 has inline 67,327-row gates. Only its count and paths
 # are generalized below; masks, judgments and recomputation are reused unchanged.
 def read_stage1(path, fit_pairs):
     """Read one paper run and return its strict and k40 judgments."""
     assert fit_pairs > 0
     path = Path(path)
+    if fit_pairs == FIT_PAIRS['full']:
+        meta = json.loads(path.with_suffix('.json').read_text())
+        require_full_config(meta['config'], path)
     version, seed = path.stem.split('__s')
     assert version in ('clip_roberta', 'qwen_qwen') and int(seed) in range(5)
     runs = []
@@ -171,6 +187,20 @@ def run(root=FULL_ROOT, *, stage2a=HERE / 'stage2a.json', device='cuda', workers
     assert all(y.shape == (ct_score.HELD_ROWS,) and np.issubdtype(y.dtype, np.integer)
                for y in labels.values())
     assert (labels['emotion'] >= 0).any()
+    for arm in ct_score.ARM_ORDER:
+        for seed in ct_score.SEEDS:
+            path = root / 'held' / f'{ct_score.HELD_STEMS[arm]}__s{seed}.npz'
+            if not path.exists():
+                continue
+            meta = json.loads(path.with_suffix('.json').read_text())
+            if arm == 'K1':
+                weight = root / 'd2/weights' / f'emotion__s{seed}.json'
+                source = json.loads(weight.read_text())
+                assert meta['weights_sha256'] == source['weights_sha256'], f'{path}: training weights mismatch'
+                config = source['config']
+            else:
+                config = meta['config']
+            require_full_config(config, path)
     fixed, eligibility, sources = prepare_held(names, held_sha256, eligible, strict_widths,
                                               output_root=root)
     result = paired_bootstrap(fixed, labels['emotion'], eligibility['eligible_seeds'], workers=workers)

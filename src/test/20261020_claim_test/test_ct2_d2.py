@@ -387,10 +387,11 @@ def test_resume_rejects_recipe_mismatch_without_changing_artifacts(trained):
     assert before == {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()}
 
 
-def test_v4_prevents_retraining_once_held_outputs_exist(trained):
+@pytest.mark.parametrize('held_name', ['d2/emotion__s0.npz', 'percept/paper__strict/P4__s4.npz'])
+def test_v4_prevents_retraining_once_held_outputs_exist(trained, held_name):
     import ct2_d2
     _, _, root = trained
-    held = root / 'held/d2/emotion__s0.npz'
+    held = root / 'held' / held_name
     held.parent.mkdir(parents=True)
     held.write_bytes(b'held artifact exists')
     weight = root / 'd2/weights/emotion__s0.pt'

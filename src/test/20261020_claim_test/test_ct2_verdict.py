@@ -9,6 +9,7 @@ import pytest
 import ct_rcol
 import ct_score
 import ct2_verdict as verdict
+import ct2_data
 
 
 def test_sample_rcol_reproduces_real_stage1_report(tmp_path):
@@ -32,7 +33,12 @@ def test_sample_rcol_reproduces_real_stage1_report(tmp_path):
 
 
 @pytest.fixture(scope='module')
-def full_paper_root(tmp_path_factory):
+def full_names():
+    return ct2_data.split2('full')['names_sha256']
+
+
+@pytest.fixture(scope='module')
+def full_paper_root(tmp_path_factory, full_names):
     root = tmp_path_factory.mktemp('full_paper')
     stage1 = root / 'percept/paper/stage1'
     stage1.mkdir(parents=True)
@@ -53,6 +59,8 @@ def full_paper_root(tmp_path_factory):
             path = stage1 / f'{version}__s{seed}.npz'
             if path != first:
                 path.hardlink_to(first)
+            path.with_suffix('.json').write_text(json.dumps(dict(config=dict(
+                mode='full', names_sha256=full_names))))
     return root
 
 
@@ -176,7 +184,7 @@ def test_run_saves_rcol_before_held_scoring_and_hashes_both_reports(
     root = tmp_path / 'full'
     stage1_dir = root / 'percept/paper/stage1'
     stage1_dir.mkdir(parents=True)
-    for source in (full_paper_root / 'percept/paper/stage1').glob('*.npz'):
+    for source in (full_paper_root / 'percept/paper/stage1').glob('*'):
         (stage1_dir / source.name).hardlink_to(source)
     rcol_path = root / 'percept/rcol.json'
     assert not rcol_path.exists()
@@ -308,3 +316,70 @@ def test_cli_sample_mode_only_writes_rcol(tmp_path):
     assert report['entries'] == json.loads(ct_rcol.OUTPUT.read_text())['entries']
     assert not (tmp_path / 'verdict_stage1.json').exists()
     assert not (tmp_path / 'verdict_stage2.json').exists()
+
+
+@pytest.mark.parametrize('fault', ['mode', 'names_sha256'])
+def test_full_rcol_refuses_sample_or_wrong_split_sidecars(tmp_path, full_paper_root, full_names, fault):
+    stage1 = tmp_path / 'percept/paper/stage1'
+    stage1.mkdir(parents=True)
+    names = full_names
+    config = dict(mode='full', names_sha256=names)
+    config[fault] = 'sample' if fault == 'mode' else dict(names, fit='other hash')
+    path = stage1 / 'clip_roberta__s0.npz'
+    path.hardlink_to(full_paper_root / 'percept/paper/stage1/clip_roberta__s0.npz')
+    path.with_suffix('.json').write_text(json.dumps(dict(config=config)))
+    with pytest.raises(AssertionError, match=fault):
+        verdict.read_stage1(path, 216107)
+
+
+@pytest.mark.parametrize('arm', ct_score.ARM_ORDER)
+@pytest.mark.parametrize('fault', ['mode', 'names_sha256', 'stage1-copy', None])
+def test_verdict_refuses_wrong_training_provenance_before_scoring(tmp_path, monkeypatch, full_names, arm, fault):
+    import ct2_stage2a
+    import ct_held
+    root = tmp_path / 'full'
+    names = [f'held-{i:05}' for i in range(12281)]
+    held_sha = ct_held.names_sha256(names)
+    held_list = root / 'held/held_paintings.json'
+    held_list.parent.mkdir(parents=True)
+    held_list.write_text(json.dumps(dict(names=names, sha256=held_sha)))
+    report = tmp_path / 'stage2a.json'
+    report.write_text('{}')
+    monkeypatch.setattr(ct2_stage2a, 'require_pass', lambda *a: None)
+    monkeypatch.setattr(verdict, 'write_rcol', lambda *a, **k: None)
+    rcol = root / 'percept/rcol.json'
+    rcol.parent.mkdir(parents=True)
+    rcol.write_text('{}')
+    monkeypatch.setattr(ct_score, 'read_rcol', lambda p: ({}, {}, {}))
+    monkeypatch.setattr(verdict, 'FROZEN_HELD_LIST', held_list)
+    monkeypatch.setattr(ct_held, 'held_names', lambda: names)
+    monkeypatch.setattr(ct_held, 'painting_labels', lambda ns: {
+        a: np.arange(12281) % 2 for a in ('emotion', 'style', 'genre')})
+    def prepare(*a, **k):
+        raise RuntimeError('provenance accepted for scoring')
+
+    monkeypatch.setattr(verdict, 'prepare_held', prepare)
+    expected = full_names
+    config = dict(mode='full', names_sha256=expected)
+    if fault == 'stage1-copy':
+        config = dict(seed=0, smoke=False)  # Stage 1 has neither ct2 field.
+    elif fault is not None:
+        config[fault] = 'sample' if fault == 'mode' else dict(expected, dev='other hash')
+    path = root / 'held' / f'{ct_score.HELD_STEMS[arm]}__s0.npz'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b'held output')
+    meta = dict(config=config)
+    if arm == 'K1':
+        # D2 held sidecars bind the training config through the weights hash.
+        meta = dict(weights_sha256='weights')
+        weight_meta = root / 'd2/weights/emotion__s0.json'
+        weight_meta.parent.mkdir(parents=True)
+        if fault == 'stage1-copy':
+            meta['weights_sha256'] = 'stage1 weights'
+            config = dict(mode='full', names_sha256=expected)
+        weight_meta.write_text(json.dumps(dict(config=config, weights_sha256='weights')))
+    path.with_suffix('.json').write_text(json.dumps(meta))
+    error = RuntimeError if fault is None else AssertionError
+    message = 'provenance accepted' if fault is None else 'mode|names_sha256|weights'
+    with pytest.raises(error, match=message):
+        verdict.run(root, stage2a=report, device='cpu', verdict_path=tmp_path / 'verdict_stage2.json')

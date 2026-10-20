@@ -125,7 +125,7 @@ def test_required_items_cover_stage0s_checks_at_stage2_arms():
     assert {f'regression/rcol/{v}' for v in ('clip_roberta', 'qwen_qwen')} <= items
     assert 'training/code' in items
     assert not any('strict/P1' in key for key in items)    # absent in stage 1: skipped as stage 1 did
-    assert len(items) == 1 + 3 + 4 + 7 + 2 + 3 + 7
+    assert len(items) == 2 + 3 + 4 + 7 + 2 + 3 + 7
 
 
 # --- the gate ---------------------------------------------------------------------------------------
@@ -724,7 +724,8 @@ def test_missing_artifacts_make_failed_items_and_a_closed_gate(world):
     world['reference'].mkdir(parents=True)
     report = ct.check(world['root'], world['tmp'] / 'stage2a.json', device='cuda', reference=world['reference'])
     assert report['status'] == 'FAIL' and set(report['items']) == ct.required_items()
-    assert all(v['status'] == 'FAIL' for v in report['items'].values())
+    assert report['items']['regression/stage0/code']['status'] == 'PASS'
+    assert all(v['status'] == 'FAIL' for k, v in report['items'].items() if k != 'regression/stage0/code')
     with pytest.raises(AssertionError):
         ct.require_pass(world['tmp'] / 'stage2a.json', 'cuda')
 
@@ -853,13 +854,11 @@ def test_real_infer_d2_and_infer_mapper_reach_stage1_inference_with_the_stage1_s
 def test_diagnostics_main_needs_the_stage2a_gate_before_any_other_read(tmp_path, monkeypatch):
     import ct2_diag
     monkeypatch.setattr(ct2_diag, 'run', lambda *a, **k: pytest.fail('diagnostics ran without the gate'))
-    monkeypatch.setattr(ct.require_pass, '__defaults__', (tmp_path / 'missing.json', 'cuda'))
     with pytest.raises(OSError):
-        ct2_diag.main(['--verdict', str(tmp_path / 'v.json')])
+        ct2_diag.main(['--verdict', str(tmp_path / 'v.json'), '--stage2a', str(tmp_path / 'missing.json')])
     put_json(tmp_path / 'failed.json', dict(schema=1, stage='2a', smoke=False, status='FAIL', missing=[], failed=['x']))
-    monkeypatch.setattr(ct.require_pass, '__defaults__', (tmp_path / 'failed.json', 'cuda'))
     with pytest.raises(AssertionError, match='did not pass'):
-        ct2_diag.main(['--verdict', str(tmp_path / 'v.json')])
+        ct2_diag.main(['--verdict', str(tmp_path / 'v.json'), '--stage2a', str(tmp_path / 'failed.json')])
     ran = []
     monkeypatch.setattr(ct, 'require_pass', lambda *a, **k: ran.append('gate'))
     monkeypatch.setattr(ct2_diag, 'run', lambda *a, **k: ran.append('run'))
@@ -906,3 +905,28 @@ def test_a_gating_percept_item_trained_with_chunked_dec_fails(world, item):
     assert result['status'] == 'FAIL' and 'dec_chunk_rows' in result['error']
     build_current(None)
     assert run(world, item)['status'] == 'PASS'
+
+
+@pytest.mark.parametrize('changed', [False, True], ids=['equal', 'one-hash-differs'])
+def test_stage2a_binds_the_code_verified_by_stage0(full_world, monkeypatch, changed):
+    verified = json.loads((ct.HERE / 'stage0.json').read_text())['code']
+    current = dict(verified)
+    if changed:
+        current[next(iter(current))] = 'changed hash'
+    monkeypatch.setattr(ct.ct_stage0, 'code_identity', lambda: current)
+    report = ct.check(full_world['root'], full_world['tmp'] / 'stage2a.json',
+                      reference=full_world['reference'], only=['regression/stage0/code'], chunked=False)
+    assert 'regression/stage0/code' in ct.required_items()
+    assert report['items']['regression/stage0/code']['status'] == ('FAIL' if changed else 'PASS')
+    assert str((ct.HERE / 'stage0.json').resolve()) in report['sources']
+
+
+@pytest.mark.parametrize('name', ['ct2_queue_cpu.sh', 'ct2_queue_gpu.sh', 'ct2_queue_common.sh'])
+def test_queue_script_edits_change_the_code_identity(tmp_path, monkeypatch, name):
+    path = tmp_path / name
+    path.write_text('#!/bin/bash\necho before\n')
+    monkeypatch.setattr(ct, 'HERE', tmp_path)
+    before = ct.ct2_identity()
+    assert f'{tmp_path.name}/{name}' in before
+    path.write_text('#!/bin/bash\necho after\n')
+    assert ct.ct2_identity() != before

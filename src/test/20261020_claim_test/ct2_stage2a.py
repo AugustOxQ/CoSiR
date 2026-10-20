@@ -61,7 +61,7 @@ def mapper_key(settings, cut, arm):
 
 
 def required_items():
-    return ({'training/code'} |
+    return ({'training/code', 'regression/stage0/code'} |
             {f'regression/d2/{a}' for a in ASPECTS} |
             {f'regression/stage1/{s}/{v}' for s, v in STAGE1} |
             {f'regression/stage2/{mapper_key(*m)}' for m in MAPPERS} |
@@ -104,7 +104,8 @@ def compare_judgments(actual, expected):
 # --- code identity ----------------------------------------------------------------------------------
 
 def ct2_identity():
-    return {f'{HERE.name}/{p.name}': file_sha256(p) for p in sorted(HERE.glob('ct2_*.py'))}
+    paths = list(HERE.glob('ct2_*.py')) + list(HERE.glob('ct2_queue*.sh'))
+    return {f'{HERE.name}/{p.name}': file_sha256(p) for p in sorted(paths)}
 
 
 def reference_identity():
@@ -367,6 +368,10 @@ def check(root=S2A, destination=REPORT, *, device='cuda', causes=None, reference
     def read_json(path):
         return json.loads(remember(path).read_text())
 
+    def stage0_code():
+        verified = read_json(HERE / 'stage0.json')['code']
+        return dict(status='PASS' if ct_stage0.code_identity() == verified else 'FAIL')
+
     def recipe_diff(config, reference_config, exempt=('device',)):
         return sorted(k for k, v in reference_config.items() if k not in exempt and config.get(k) != v)
 
@@ -491,6 +496,7 @@ def check(root=S2A, destination=REPORT, *, device='cuda', causes=None, reference
 
     with threadpool_limits(limits=8):
         run_item('training/code', lambda: training_code_item(root))
+        run_item('regression/stage0/code', stage0_code)
         for a in ASPECTS:
             run_item(f'regression/d2/{a}', lambda a=a: regression_d2(a))
         for s, v in STAGE1:
