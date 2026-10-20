@@ -734,3 +734,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-13-3-handoff.md
 - New chat: tab 'r10 build 13 3', session a60f7bce-9f11-49e7-814e-b04b0da43085
 
+[brief] CoSiR: r10 build 13 3 -> r10 build 13 4 (2026-10-20 09:46 Amsterdam)
+- Done: all nine stage 2 tickets merged; the final review gives PASS (no blocker, 17 of 18 mutations caught).
+- State: the fix wave (8 small fixes, 331 tests pass) is on its own branch; the extraction ends about 11:00.
+- Next: after the extraction, merge the fix wave, scoped re-review, store checks, GPU smoke, merge to main, push.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-13-4-handoff.md
+- New chat: tab 'r10 build 13 4', session 2ee64a06-3fc0-4fea-bdc2-b23f8ba04698
+
