@@ -35,6 +35,11 @@ def tiny_model(monkeypatch):
     torch.set_num_threads(8)
 
 
+def teacher_map(x):
+    """A different teacher array per instruction key, as the real stores give."""
+    return {ms_train.head.ASPECTS[a]: np.roll(x, 3 * i + 1, axis=1).copy() for i, a in enumerate(ASPECTS)}
+
+
 def tiny_data(mode='sample', n=19889):
     rng = np.random.default_rng(31)
     values = rng.standard_normal((12, 2048), dtype=np.float32)
@@ -59,6 +64,9 @@ def tiny_data(mode='sample', n=19889):
                     counts={a: {p: {ROWS['D2']['graphs'][a]: len(graphs[a]['rows'][ROWS['D2']['graphs'][a]][p][0])}
                                 for p in ('fit', 'dev')} for a in ASPECTS})
     s['data_sha256'] = dict(img=sha(x), cap=sha(x), fit=sha(fit), dev=sha(dev))
+    teachers = teacher_map(x)
+    for a in ASPECTS:
+        s['data_sha256'][f'{a}.img'] = sha(teachers[ms_train.head.ASPECTS[a]])
     return s, inputs, graphs, dict.fromkeys(ASPECTS, manifest)
 
 
@@ -72,9 +80,9 @@ def test_generalized_loop_matches_sheet_arrays_losses_and_best_epochs(tmp_path, 
         graphs[aspect]['rows'][row]['fit'] = np.tile(pairs, (repeats, 1)), np.tile(weights, repeats)
         manifests[aspect]['counts'][aspect]['fit'][row] = len(pairs) * repeats
     monkeypatch.setattr(ms_train, 'disjoint_split', lambda split: (split['fit'], split['dev']))
-    teacher = inputs['emotion']['img'][:, ::-1]
-    monkeypatch.setattr(ms_train.ags_trainimg, 'aspect_images', lambda split, key: teacher)
-    monkeypatch.setattr(ct2_data, 'instructed_images', lambda split, key: teacher)
+    teachers = teacher_map(inputs['emotion']['img'])
+    monkeypatch.setattr(ms_train.ags_trainimg, 'aspect_images', lambda split, key: teachers[key])
+    monkeypatch.setattr(ct2_data, 'instructed_images', lambda split, key: teachers[key])
     original_loss, traces, phase = ms_train.head_loss, [[], []], [0]
 
     def observe_loss(*args, **kwargs):
@@ -169,14 +177,15 @@ def test_full_training_stops_per_head_saves_best_weights_and_validation_rows(tmp
     import ct2_d2
     s, inputs, graphs, manifests = tiny_data('full', n=12)
     monkeypatch.setattr(ct2_d2, 'load_training_data', lambda mode, root: (s, inputs, graphs, manifests))
-    monkeypatch.setattr(ct2_data, 'instructed_images', lambda split, key: inputs['emotion']['img'][::-1].copy())
+    teachers = teacher_map(inputs['emotion']['img'])
+    monkeypatch.setattr(ct2_data, 'instructed_images', lambda split, key: teachers[key])
     monkeypatch.setitem(ms_train.CONFIG, 'max_epochs', 4)
     monkeypatch.setitem(ms_train.CONFIG, 'patience', 1)
     gates = []
     monkeypatch.setitem(sys.modules, 'ct2_stage2a', SimpleNamespace(require_pass=lambda **kw: gates.append(kw)))
     original_loss = ms_train.head_loss
     checkpoints = {a: [] for a in ASPECTS}
-    dev_losses = dict(emotion=[.1, .2], style=[.3, .1, .2], genre=[.4, .3, .1, .2])
+    dev_losses = dict(emotion=[.1, .1], style=[.3, .1, .2], genre=[.4, .3, .1, .2])
 
     def scripted_dev(models, *args, aspect, include_mask_penalty=True, **kwargs):
         if include_mask_penalty:
@@ -222,7 +231,8 @@ def trained(tmp_path, monkeypatch, tiny_model):
     import ct2_d2
     data = tiny_data('full', n=12)
     monkeypatch.setattr(ct2_d2, 'load_training_data', lambda mode, root: data)
-    monkeypatch.setattr(ct2_data, 'instructed_images', lambda s, key: data[1]['emotion']['img'])
+    teachers = teacher_map(data[1]['emotion']['img'])
+    monkeypatch.setattr(ct2_data, 'instructed_images', lambda s, key: teachers[key])
     monkeypatch.setitem(ms_train.CONFIG, 'max_epochs', 2)
     monkeypatch.setitem(sys.modules, 'ct2_stage2a', SimpleNamespace(require_pass=lambda **kw: None))
     result = ct2_d2.train('full', [0], 'cpu', tmp_path)
@@ -292,12 +302,13 @@ def test_cli_dispatches_mode_seeds_device_and_root(tmp_path, monkeypatch, mode, 
     calls = []
     monkeypatch.setattr(ct2_d2, 'train', lambda *args: calls.append(('train', args)))
     monkeypatch.setattr(ct2_d2, 'write_held', lambda *args: calls.append(('held', args)))
-    argv = ['--mode', mode, '--train', '--held', '--seeds', '0', '4', '--device', 'cpu']
+    argv = ['--mode', mode, '--train', '--seeds', '0', '4', '--device', 'cpu'] + (['--held'] if mode == 'full' else [])
     if explicit_root:
         argv += ['--root', str(tmp_path)]
     ct2_d2.main(argv)
     root = tmp_path if explicit_root else Path(ct2_d2.__file__).parent / 'outputs/stage2' / dirname
-    assert calls == [('train', (mode, [0, 4], 'cpu', root)), ('held', (mode, [0, 4], 'cpu', root))]
+    expected = [('train', (mode, [0, 4], 'cpu', root))]
+    assert calls == expected + ([('held', (mode, [0, 4], 'cpu', root))] if mode == 'full' else [])
 
 
 def test_cli_defaults_to_five_seeds_and_training_cuda(tmp_path, monkeypatch):
@@ -433,12 +444,11 @@ def test_validation_output_verifier_rejects_invalid_arrays_even_with_valid_check
         ct2_d2.verify_output(path, result[0]['emotion']['config'])
 
 
-def test_loader_builds_selected_graphs_then_checks_cache_sources_and_archives(tmp_path, monkeypatch):
-    import ct2_d2
+def loader_setup(monkeypatch, mode):
     rng = np.random.default_rng(17)
     spaces = {k: rng.standard_normal((48, 2048), dtype=np.float32) for k in ct2_graphs.KEYS}
     spaces = {k: x / np.linalg.norm(x, axis=1, keepdims=True) for k, x in spaces.items()}
-    s = dict(mode='full', first=np.arange(48), sample_ids=np.arange(48), pid=np.arange(48),
+    s = dict(mode=mode, first=np.arange(48), sample_ids=np.arange(48), pid=np.arange(48),
              all_painting_ids=np.array([f'p{i:02d}' for i in range(48)]),
              subset_pid=np.empty(0, dtype=np.int64), subset_image_indices=np.empty(0, dtype=np.int64),
              fit=np.arange(24), dev=np.arange(24, 48), fit_pairs=np.arange(24))
@@ -450,6 +460,12 @@ def test_loader_builds_selected_graphs_then_checks_cache_sources_and_archives(tm
     monkeypatch.setattr(ct2_data, 'instructed_captions', lambda split, key: spaces['E'])
     monkeypatch.setattr(ct2_data, 'instructed_images', lambda split, key: spaces[
         {'emotion_focus': 'E', 'style_word': 'style.img', 'genre_word': 'genre.img'}[key]])
+    return s, spaces
+
+
+def test_loader_builds_selected_graphs_then_checks_cache_sources_and_archives(tmp_path, monkeypatch):
+    import ct2_d2
+    s, spaces = loader_setup(monkeypatch, 'full')
     loaded, inputs, graphs, manifests = ct2_d2.load_training_data('full', tmp_path)
     assert loaded['mode'] == 'full'
     for aspect, row in ct2_graphs.ROWS.items():
@@ -467,3 +483,122 @@ def test_loader_builds_selected_graphs_then_checks_cache_sources_and_archives(tm
     (tmp_path / 'd2/graphs/emotion.npz').write_bytes(b'corrupt archive')
     with pytest.raises(AssertionError, match='graph archive checksum mismatch'):
         ct2_d2.load_training_data('full', tmp_path)
+
+
+def test_sample_loader_checks_built_graphs_against_frozen_sample_graphs(tmp_path, monkeypatch):
+    import ct2_d2
+    s, _ = loader_setup(monkeypatch, 'sample')
+    checked = []
+
+    def refuse(graphs):
+        checked.append(graphs)
+        raise AssertionError('sample graph mismatch: test')
+
+    monkeypatch.setattr(ct2_graphs, '_check_sample', refuse)
+    with pytest.raises(AssertionError, match='sample graph mismatch'):
+        ct2_d2.load_training_data('sample', tmp_path)
+    assert len(checked) == 1 and set(checked[0]) == set(ASPECTS)
+    assert not (tmp_path / 'd2/graphs').exists()  # nothing saved from graphs that failed the check
+
+
+def test_full_loader_does_not_check_against_frozen_sample_graphs(tmp_path, monkeypatch):
+    import ct2_d2
+    loader_setup(monkeypatch, 'full')
+    monkeypatch.setattr(ct2_graphs, '_check_sample', lambda graphs: pytest.fail('full graphs checked against sample'))
+    ct2_d2.load_training_data('full', tmp_path)
+
+
+def test_each_head_trains_on_its_own_teacher_and_the_recorded_hash_is_that_teacher(tmp_path, monkeypatch, tiny_model):
+    import ct2_d2
+    s, inputs, graphs, manifests = tiny_data('full', n=12)
+    teachers = teacher_map(inputs['emotion']['img'])
+    assert len({sha(x) for x in teachers.values()}) == 3
+    monkeypatch.setattr(ct2_data, 'instructed_images', lambda split, key: teachers[key])
+    seen = {}
+    original_loss = ms_train.head_loss
+
+    def observe(*args, **kwargs):
+        seen.setdefault(kwargs['aspect'], []).append(kwargs['teacher'].numpy().copy())
+        return original_loss(*args, **kwargs)
+
+    monkeypatch.setattr(ms_train, 'head_loss', observe)
+    ct2_d2.run(s, inputs, graphs, manifests, ROWS['D2'], 'D2', list(ASPECTS), 0,
+               torch.device('cpu'), tmp_path, max_epochs=1)
+    for aspect in ASPECTS:
+        want = teachers[ms_train.head.ASPECTS[aspect]]
+        expected = {part: sha(want[graphs[aspect][f'{part}_node_ids']]) for part in ('fit', 'dev')}
+        assert {sha(x) for x in seen[aspect]} == set(expected.values())
+
+
+@pytest.mark.parametrize('aspect', list(ASPECTS))
+def test_run_rejects_teacher_that_differs_from_the_recorded_hash(tmp_path, monkeypatch, tiny_model, aspect):
+    import ct2_d2
+    s, inputs, graphs, manifests = tiny_data('full', n=12)
+    teachers = teacher_map(inputs['emotion']['img'])
+    monkeypatch.setattr(ct2_data, 'instructed_images', lambda split, key: teachers[key])
+    s['data_sha256'][f'{aspect}.img'] = 'hash of another read'
+    with pytest.raises(AssertionError, match='teacher'):
+        ct2_d2.run(s, inputs, graphs, manifests, ROWS['D2'], 'D2', list(ASPECTS), 0,
+                   torch.device('cpu'), tmp_path, max_epochs=1)
+    assert not list(tmp_path.rglob('*.npz'))
+
+
+def test_run_rejects_every_head_reading_the_emotion_teacher(tmp_path, monkeypatch, tiny_model):
+    import ct2_d2
+    s, inputs, graphs, manifests = tiny_data('full', n=12)
+    teachers = teacher_map(inputs['emotion']['img'])
+    monkeypatch.setattr(ct2_data, 'instructed_images', lambda split, key: teachers['emotion_focus'])
+    with pytest.raises(AssertionError, match='teacher'):
+        ct2_d2.run(s, inputs, graphs, manifests, ROWS['D2'], 'D2', list(ASPECTS), 0,
+                   torch.device('cpu'), tmp_path, max_epochs=1)
+
+
+@pytest.mark.parametrize('call', ['output_root', 'train', 'cli'])
+@pytest.mark.parametrize('sub', ['', 'd2', 'held/d2', 'stage2x'])
+def test_roots_inside_stage1_outputs_are_refused(monkeypatch, call, sub):
+    import ct2_d2
+    root = Path(ct2_d2.__file__).resolve().parent / 'outputs' / sub
+    monkeypatch.setattr(ct2_d2, 'load_training_data', lambda *args: pytest.fail('data loaded under stage 1 outputs'))
+    with pytest.raises(AssertionError, match='stage 1'):
+        if call == 'output_root':
+            ct2_d2.output_root('sample', root)
+        elif call == 'train':
+            ct2_d2.train('sample', [0], 'cpu', root)
+        else:
+            ct2_d2.main(['--mode', 'sample', '--train', '--root', str(root)])
+
+
+def test_roots_below_stage2_outputs_and_elsewhere_are_accepted(tmp_path):
+    import ct2_d2
+    here = Path(ct2_d2.__file__).resolve().parent
+    for root in (here / 'outputs/stage2/s2a', here / 'outputs/stage2/full', here / 'outputs/stage2/other', tmp_path):
+        assert ct2_d2.output_root('sample', root) == root
+    assert ct2_d2.output_root('full') == here / 'outputs/stage2/full'
+    assert ct2_d2.output_root('sample') == here / 'outputs/stage2/s2a'
+    link = tmp_path / 'link'
+    link.symlink_to(here / 'outputs/d2')
+    with pytest.raises(AssertionError, match='stage 1'):
+        ct2_d2.output_root('sample', link)
+
+
+def test_sample_mode_never_reads_held_images(trained, monkeypatch):
+    import ct2_d2
+    _, _, root = trained
+    for name in ('qwen_default_images', 'read_held_list', 'write_held_list'):
+        monkeypatch.setattr(ct_d2.ct_held, name, lambda *args, name=name: pytest.fail(f'{name} called in sample mode'))
+    monkeypatch.setattr(ct_d2, 'write_held', lambda *args: pytest.fail('stage 1 held writer called'))
+    monkeypatch.setattr(ct_d2, 'infer', lambda *args, **kwargs: pytest.fail('stage 1 inference called'))
+    with pytest.raises(AssertionError, match='stage 2a'):
+        ct2_d2.write_held('sample', [0], 'cpu', root)
+    with pytest.raises(AssertionError, match='stage 2a'):
+        ct2_d2.infer('sample', 'emotion', 0, ['painting'], device='cpu', root=root)
+
+
+def test_cli_refuses_held_in_sample_mode_before_training(tmp_path, monkeypatch):
+    import ct2_d2
+    monkeypatch.setattr(ct2_d2, 'train', lambda *args: pytest.fail('trained before the held refusal'))
+    monkeypatch.setattr(ct2_d2, 'write_held', lambda *args: pytest.fail('held written in sample mode'))
+    with pytest.raises(AssertionError, match='stage 2a'):
+        ct2_d2.main(['--mode', 'sample', '--train', '--held', '--root', str(tmp_path)])
+    with pytest.raises(AssertionError, match='stage 2a'):
+        ct2_d2.main(['--mode', 'sample', '--held', '--root', str(tmp_path)])

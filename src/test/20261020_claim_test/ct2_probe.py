@@ -8,6 +8,7 @@ and no artifacts are written. CPU --smoke exercises the workloads without CUDA.
 """
 import argparse
 from contextlib import redirect_stdout
+from functools import partial
 import gc
 import json
 import sys
@@ -74,7 +75,9 @@ def joint_epoch(item, device, fit_pairs):
     encoder.to(device)
     decoder.to(device)
     centers = torch.nn.Parameter(torch.randn(100, 128, device=device))
-    assignments = ct.chunked_soft_assignments if item['chunked'] else ct.ORIGINAL_SOFT_ASSIGNMENTS
+    # Chunked = full mode's setting; the original is sample mode's (stage 1's own function).
+    assignments = (partial(ct.chunked_soft_assignments, chunk_rows=ct.default_chunk_rows('full'))
+                   if item['chunked'] else ct.ORIGINAL_SOFT_ASSIGNMENTS)
     with patch.object(ct.pc_sept, 'MAX_DEC_EPOCHS', 1), \
             patch.object(ct.pc_sept.base, 'soft_assignments', assignments):
         ct.pc_sept.train_dec_until_stable(encoder, decoder, centers, inputs, device, print, 100)
@@ -125,7 +128,7 @@ def run_item(item, device='cuda', *, fit_pairs=FIT_PAIRS,
         result = measure(item, device, work)
         result.update(epochs=1, fit_pairs=fit_pairs, fit_paintings=fit_paintings,
                       dev_paintings=dev_paintings, eval_paintings=dev_paintings,
-                      dec_chunk_rows=ct.DEC_CHUNK_ROWS if item.get('chunked') else None)
+                      dec_chunk_rows=ct.default_chunk_rows('full') if item.get('chunked') else None)
         return result
     finally:
         gc.collect()
