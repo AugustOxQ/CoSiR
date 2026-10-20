@@ -659,3 +659,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-10-handoff.md
 - New chat: tab 'r10 build 10', session 5b6dbd9b-ccfa-4d91-9a8a-6b6c8dbafac8
 
+[brief] CoSiR: r10 build 10 -> r10 build 11 (2026-10-20 02:26 Amsterdam)
+- Done: tickets 01 to 05 of the claim test build, each reviewed and merged: held list and labels, collapse rule, held scorer and bootstrap, D2 and PercepT core with saved weights.
+- State: nothing trained or read on held data yet; integration branch `r10-claim-test` pushed.
+- Next: tickets 06 to 09 (held instructed images, paper settings PercepT, diagnostics, stage 0 and queues), final review, merge.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-11-handoff.md
+- New chat: tab 'r10 build 11', session c87f6cbe-5f4b-4aed-b922-012eda646de7
+
