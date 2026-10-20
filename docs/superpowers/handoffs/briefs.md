@@ -725,3 +725,12 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-13-2-handoff.md
 - New chat: tab 'r10 build 13 2', session 22a23e05-3a5b-48bc-9f9e-3ae6ecc565f8
 
+[brief] CoSiR: r10 build 13 2 -> r10 build 13 3 (2026-10-20 08:19 Amsterdam)
+- Done: tickets 01 to 08 built; 01 to 06 reviewed, fixed and merged; D2 sample seed 0 on the GPU is
+  byte-identical to stage 1; chunked core DEC fits the local GPU (peak 13.6 of 24 GB).
+- State: the stage 2 feature extraction runs on the local GPU since 08:15 (user), owned by the "r10 build 13 2" tab.
+- Next: merge 08, review 07, build 09, final whole-branch review, merge to main.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-13-3-handoff.md
+- New chat: tab 'r10 build 13 3', session a60f7bce-9f11-49e7-814e-b04b0da43085
+
