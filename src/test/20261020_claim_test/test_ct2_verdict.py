@@ -80,6 +80,10 @@ def test_outcome_boundaries_use_unrounded_values(d, lower, expected):
 
 @pytest.mark.parametrize('entries,seeds,expected', [
     ({'B1-own': .9, 'B2-r20': .2}, {'B2': [0]}, None),
+    ({'B1-own': .9, 'B2-r20': .2},
+     {'K1': [0, 1, 2, 3, 4], 'B1': [0, 1, 2, 3, 4], 'B2': [0]}, None),
+    ({'B1-own': .9, 'B2-r20': .4},
+     {'K1': [0, 1, 2, 3, 4], 'B1': [0, 1, 2, 3, 4], 'B2': [0]}, 'B2-r20'),
     ({'B2-r20': .3}, {'B2': [2]}, 'B2-r20'),
     ({'B2-own': .4, 'B3-r20': .6, 'B4-own': .5},
      {'B2': [0], 'B3': [4], 'B4': [1]}, 'B3-r20'),
@@ -162,12 +166,20 @@ def test_scoring_and_bootstrap_are_stage1_functions_unchanged():
     assert verdict.paired_bootstrap is ct_score.paired_bootstrap
 
 
+@pytest.mark.parametrize('frozen_matches', [True, False], ids=['frozen-match', 'frozen-mismatch'])
 def test_run_saves_rcol_before_held_scoring_and_hashes_both_reports(
-        tmp_path, full_paper_root, verdict_inputs, monkeypatch):
+        tmp_path, full_paper_root, verdict_inputs, monkeypatch, frozen_matches):
     import sys
     from types import SimpleNamespace
     import ct_held
 
+    root = tmp_path / 'full'
+    stage1_dir = root / 'percept/paper/stage1'
+    stage1_dir.mkdir(parents=True)
+    for source in (full_paper_root / 'percept/paper/stage1').glob('*.npz'):
+        (stage1_dir / source.name).hardlink_to(source)
+    rcol_path = root / 'percept/rcol.json'
+    assert not rcol_path.exists()
     report = tmp_path / 'stage2a.json'
     report.write_text('{"status": "PASS"}\n')
     gate_calls = []
@@ -177,15 +189,24 @@ def test_run_saves_rcol_before_held_scoring_and_hashes_both_reports(
         gate_calls.append('pass')
 
     monkeypatch.setitem(sys.modules, 'ct2_stage2a', SimpleNamespace(require_pass=require_pass))
-    names = [f'painting_{i:05}' for i in range(12281)]
+    frozen_list = ct_rcol.STAGE1.parents[2] / 'held/held_paintings.json'
+    names, frozen_sha = ct_held.read_held_list(frozen_list)
+    if not frozen_matches:
+        names = [f'painting_{i:05}' for i in range(12281)]
     held_sha = ct_held.names_sha256(names)
-    held_list = full_paper_root / 'held/held_paintings.json'
+    held_list = root / 'held/held_paintings.json'
     held_list.parent.mkdir()
     held_list.write_text(json.dumps(dict(names=names, sha256=held_sha)))
     monkeypatch.setattr(ct_held, 'held_names', lambda: names)
     labels = {aspect: np.arange(12281, dtype=np.int64) % 2
               for aspect in ('emotion', 'style', 'genre')}
-    monkeypatch.setattr(ct_held, 'painting_labels', lambda ns: labels if ns == names else None)
+
+    def painting_labels(ns):
+        assert frozen_matches, 'labels read before checking the frozen held list'
+        assert ns == names and rcol_path.exists()
+        return labels
+
+    monkeypatch.setattr(ct_held, 'painting_labels', painting_labels)
     fixed = {'fixture': 'all held partitions'}
     eligibility = {'eligible_seeds': dict(K1=list(range(5)), B1=list(range(5)),
                                          **{arm: [] for arm in ('B2', 'B3', 'B4', 'B5')})}
@@ -195,11 +216,12 @@ def test_run_saves_rcol_before_held_scoring_and_hashes_both_reports(
     # the identity test above guards that production uses the unmodified functions.
     def prepare(ns, sha, eligible, widths, output_root):
         assert gate_calls == ['pass']
-        rcol = json.loads((full_paper_root / 'percept/rcol.json').read_text())
+        assert rcol_path.exists()
+        rcol = json.loads(rcol_path.read_text())
         assert len(rcol['runs']) == 20
         assert eligible == {arm: [] for arm in ('B2', 'B3', 'B4', 'B5')}
         assert set(widths) == {'B2', 'B3'}
-        assert ns == names and sha == held_sha and Path(output_root) == full_paper_root
+        assert ns == names and sha == held_sha and Path(output_root) == root
         calls.append('prepare')
         return fixed, eligibility, {'held_source': 'fixture'}
 
@@ -214,13 +236,25 @@ def test_run_saves_rcol_before_held_scoring_and_hashes_both_reports(
     stage1 = tmp_path / 'verdict_stage1.json'
     stage1.write_text('untouched stage 1\n')
     path = tmp_path / 'verdict_stage2.json'
-    actual = verdict.run(full_paper_root, stage2a=report, device='cpu', workers=2, verdict_path=path)
+    if not frozen_matches:
+        assert held_sha != frozen_sha
+        with pytest.raises(AssertionError, match='stage 1 frozen held list'):
+            verdict.run(root, stage2a=report, device='cpu', workers=2, verdict_path=path)
+        assert not path.exists() and calls == []
+        return
+    actual = verdict.run(root, stage2a=report, device='cpu', workers=2, verdict_path=path)
     assert calls == ['prepare', 'bootstrap']
     assert json.loads(path.read_text()) == actual
     assert actual['held_sha256'] == held_sha
+    assert actual['sources']['held_list'] == dict(
+        path=str(held_list.resolve()), held_sha256=held_sha,
+        sha256=hashlib.sha256(held_list.read_bytes()).hexdigest())
+    assert actual['sources']['stage1_held_list'] == dict(
+        path=str(frozen_list.resolve()), held_sha256=frozen_sha,
+        sha256=hashlib.sha256(frozen_list.read_bytes()).hexdigest())
     assert actual['sources']['stage2a']['sha256'] == hashlib.sha256(report.read_bytes()).hexdigest()
     assert actual['sources']['rcol']['sha256'] == hashlib.sha256(
-        (full_paper_root / 'percept/rcol.json').read_bytes()).hexdigest()
+        rcol_path.read_bytes()).hexdigest()
     assert actual['sources']['held_outputs'] == {'held_source': 'fixture'}
     assert len(actual['code_commit']) == 40
     assert actual['label_counts']['emotion'] == {'classes': {'0': 6141, '1': 6140}, 'missing': 0}

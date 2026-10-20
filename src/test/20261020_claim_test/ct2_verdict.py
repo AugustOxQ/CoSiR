@@ -14,6 +14,8 @@ from ct_score import prepare_held, paired_bootstrap
 
 HERE = Path(__file__).resolve().parent
 FULL_ROOT = HERE / 'outputs/stage2/full'
+# Frozen stage 1 data stays in the main checkout when running in a worktree.
+FROZEN_HELD_LIST = ct_score.OUTPUTS / 'held/held_paintings.json'
 FIT_PAIRS = dict(sample=67327, full=216107)
 
 
@@ -154,7 +156,14 @@ def run(root=FULL_ROOT, *, stage2a=HERE / 'stage2a.json', device='cuda', workers
     rcol_path = root / 'percept/rcol.json'
     rcol, eligible, strict_widths = ct_score.read_rcol(rcol_path)
     rcol_source = dict(path=str(rcol_path.resolve()), sha256=ct_score._sha_file(rcol_path), record=rcol)
-    names, held_sha256 = ct_held.read_held_list(root / 'held/held_paintings.json')
+    held_list = root / 'held/held_paintings.json'
+    names, held_sha256 = ct_held.read_held_list(held_list)
+    frozen_sha256 = ct_held.read_held_list(FROZEN_HELD_LIST)[1]
+    assert held_sha256 == frozen_sha256, 'stage 2 differs from the stage 1 frozen held list'
+    held_list_source = dict(path=str(held_list.resolve()), held_sha256=held_sha256,
+                            sha256=ct_score._sha_file(held_list))
+    frozen_list_source = dict(path=str(FROZEN_HELD_LIST.resolve()), held_sha256=frozen_sha256,
+                              sha256=ct_score._sha_file(FROZEN_HELD_LIST))
     assert names == ct_held.held_names()
     assert ct_held.names_sha256(names) == held_sha256
     labels = ct_held.painting_labels(names)
@@ -167,7 +176,8 @@ def run(root=FULL_ROOT, *, stage2a=HERE / 'stage2a.json', device='cuda', workers
     result = paired_bootstrap(fixed, labels['emotion'], eligibility['eligible_seeds'], workers=workers)
     code_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=HERE, text=True).strip()
     return write_verdict(verdict_path, result, eligibility, held_sha256, labels, code_commit,
-                         dict(held_outputs=sources, rcol=rcol_source, stage2a=stage2a_source),
+                         dict(held_outputs=sources, rcol=rcol_source, stage2a=stage2a_source,
+                              held_list=held_list_source, stage1_held_list=frozen_list_source),
                          replace=replace)
 
 
