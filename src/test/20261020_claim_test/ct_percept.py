@@ -1,4 +1,11 @@
-"""Core PercepT training artifacts and image-only inference for the claim test."""
+"""Core and paper PercepT artifacts and image-only inference for the claim test.
+
+Paper Stage 1 saves both cuts in one artifact: kept_<cut>, topic_<cut>,
+fit_topics_<cut> and q_paint_eval_<cut>. The unsuffixed core-compatible arrays
+alias K=40; K_by_cut in the sidecar records both widths. stop_epoch is a
+one-element int64 array, also recorded in JSON. Full runs finalize R-COL once
+both versions have all five seeds; smoke artifacts never enter that file.
+"""
 import argparse
 import hashlib
 import json
@@ -33,10 +40,15 @@ SEEDS = tuple(range(5))
 STAGE1_KEYS = dict(core={'center_norms', 'fit_counts', 'kept', 'topic', 'q_paint_eval',
                          'centers', 'fit_latent', 'kept_k40', 'fit_topics_k40'})
 
+STAGE1_KEYS['paper'] = STAGE1_KEYS['core'] | {
+    'kept_strict', 'fit_topics_strict', 'topic_strict', 'topic_k40',
+    'q_paint_eval_strict', 'q_paint_eval_k40', 'stop_epoch'}
+
 
 def check_path(settings, cut='k40'):
-    """Reserve the paper/strict paths for ticket 07."""
-    assert settings == 'core' and cut == 'k40'
+    """Keep core on A3; paper exposes both cuts."""
+    assert settings in ('core', 'paper')
+    assert cut in (('k40',) if settings == 'core' else ('strict', 'k40'))
 
 
 def file_sha256(path):
@@ -56,6 +68,7 @@ def stage1_path(settings, version, seed):
 def stage2_path(settings, cut, arm, seed):
     check_path(settings, cut)
     assert arm in ARMS and seed in SEEDS
+    assert settings != 'paper' or arm in ('P1', 'P4')
     return OUTPUTS / 'percept' / settings / 'stage2' / cut / f'{arm}__s{seed}.npz'
 
 
@@ -81,7 +94,13 @@ def verify_output(path):
     meta = json.loads(path.with_suffix('.json').read_text())
     config = meta['config']
     check_path(config['settings'], config['cut'])
-    assert config['seed'] in SEEDS and meta['K'] == 40
+    assert config['seed'] in SEEDS
+    assert type(meta['K']) is int
+    if config['settings'] == 'core' or 'arm' not in config:
+        assert meta['K'] == 40
+    else:
+        assert config['arm'] in ('P1', 'P4')
+        assert meta['K'] == 40 if config['cut'] == 'k40' else 2 <= meta['K'] <= 100
     stage2 = 'arm' in config
     identity = config['arm'] if stage2 else config['version']
     assert path.stem == f"{identity}__s{config['seed']}"
@@ -94,7 +113,7 @@ def verify_output(path):
             assert pc_stage1.array_sha256(arrays[key]) == meta['array_sha256s'][key], 'array hash mismatch'
             assert np.isfinite(arrays[key]).all()
         prob = arrays['eval_prob' if stage2 else 'q_paint_eval']
-        assert prob.shape == (config['eval_paintings'], 40) and prob.dtype == np.float32
+        assert prob.shape == (config['eval_paintings'], meta['K']) and prob.dtype == np.float32
         assert ((prob >= 0) & (prob <= 1)).all()
         if not stage2:
             assert arrays['center_norms'].shape == (100,) and arrays['center_norms'].dtype == np.float32
@@ -116,6 +135,8 @@ def verify_output(path):
             assert arrays['fit_topics_k40'].shape == (config['fit_pairs'],)
             assert arrays['fit_topics_k40'].dtype == np.int16
             assert ((arrays['fit_topics_k40'] >= 0) & (arrays['fit_topics_k40'] < 40)).all()
+        if not stage2 and config['settings'] == 'paper':
+            verify_paper_cuts(arrays, config, meta)
     state = torch.load(path.with_suffix('.pt'), map_location='cpu', weights_only=True)
     with torch.random.fork_rng(devices=[]):
         if stage2:
@@ -127,12 +148,53 @@ def verify_output(path):
             assert state['centers'].shape == (100, 128) and state['centers'].dtype == torch.float32
             assert torch.isfinite(state['centers']).all()
             assert np.array_equal(state['centers'].numpy(), centers), 'checkpoint centers mismatch'
-            module, _ = pc_sept.build_autoencoder(config['input_dim'])
+            if config['settings'] == 'paper':
+                import ct_paper_sept
+                module, _ = ct_paper_sept.build_autoencoder(config['input_dim'])
+            else:
+                module, _ = pc_sept.build_autoencoder(config['input_dim'])
             weights = state['encoder']
         assert weights and all(value.dtype == torch.float32 and torch.isfinite(value).all()
                                for value in weights.values())
         module.load_state_dict(weights)
     return meta
+
+
+def verify_paper_cuts(arrays, config, meta):
+    """Check both cuts against the rule, including their saved local topic IDs."""
+    import ct_rcol
+    masks = dict(strict=ct_rcol.strict_mask(arrays['center_norms']),
+                 k40=ct_rcol.k40_mask(arrays['fit_counts']))
+    assert meta['K_by_cut'] == {cut: int(mask.sum()) for cut, mask in masks.items()}
+    assert arrays['stop_epoch'].shape == (1,) and arrays['stop_epoch'].dtype == np.int64
+    assert arrays['stop_epoch'].item() == meta['stop_epoch'] == meta['epochs']['joint']
+    assert 1 <= meta['stop_epoch'] <= config['max_joint_steps']
+    for cut, mask in masks.items():
+        assert arrays[f'kept_{cut}'].dtype == np.bool_
+        assert np.array_equal(arrays[f'kept_{cut}'], mask)
+        k = int(mask.sum())
+        for key, shape in ((f'topic_{cut}', (config['captions'],)),
+                           (f'fit_topics_{cut}', (config['fit_pairs'],))):
+            assert arrays[key].shape == shape and arrays[key].dtype == np.int16
+            assert ((arrays[key] >= 0) & (arrays[key] < k)).all()
+        q = arrays[f'q_paint_eval_{cut}']
+        assert q.shape == (config['eval_paintings'], k) and q.dtype == np.float32
+        assert ((q >= 0) & (q <= 1)).all() and np.allclose(q.sum(axis=1), 1, atol=1e-6)
+    assert np.array_equal(arrays['topic_k40'], arrays['topic'])
+    assert np.array_equal(arrays['q_paint_eval_k40'], arrays['q_paint_eval'])
+
+
+def load_paper_cut(s, path, meta, cut):
+    """Read the chosen cut from the single shared paper Stage 1 artifact."""
+    check_path('paper', cut)
+    with np.load(path, allow_pickle=False) as z:
+        assert set(z.files) == STAGE1_KEYS['paper']
+        verify_paper_cuts(z, meta['config'], meta)
+        k = meta['K_by_cut'][cut]
+        topic = z[f'topic_{cut}']
+        assert topic.shape == s['pid'].shape
+        assert z[f'q_paint_eval_{cut}'].shape == (len(s['subset_pid']), k)
+        return topic, k
 
 
 def cpu_state(module):
@@ -143,7 +205,7 @@ def run_stage1(s, settings, version, seed, *, smoke=False, device=None):
     """Train one version/seed and seal its arrays and complete config sidecar."""
     check_path(settings)
     assert version in VERSIONS and seed in SEEDS
-    device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
+    device = device or 'cuda'
     assert smoke or str(device).startswith('cuda'), 'full Stage 1 requires GPU'
     total_start = time.perf_counter()
     np.random.seed(seed)
@@ -160,35 +222,52 @@ def run_stage1(s, settings, version, seed, *, smoke=False, device=None):
         assert len(fit_rows) >= 2000
         fit_rows = fit_rows[:2000]
     config = pc_stage1.make_config(s, version, seed, smoke, fit_rows, device)
+    if settings == 'paper':
+        import ct_paper_sept
+        ct_paper_sept.stage1_config(config)
     with threadpool_limits(limits=8):
         h, provenance = pc_stage1.prepare_inputs(s, version, fit_rows)
         seconds = provenance['seconds']
         inputs = torch.from_numpy(h[fit_rows])
         start = time.perf_counter()
-        encoder, decoder = pc_sept.build_autoencoder(h.shape[1])
+        builder = ct_paper_sept if settings == 'paper' else pc_sept
+        encoder, decoder = builder.build_autoencoder(h.shape[1])
         encoder.to(device)
         decoder.to(device)
-        # Keep the copied functions verbatim; smoke changes only their limits.
-        names = ('PRETRAIN_EPOCHS', 'MAX_DEC_EPOCHS', 'STABILITY_THRESHOLD')
-        previous = {name: getattr(pc_sept, name) for name in names}
-        pc_sept.PRETRAIN_EPOCHS = config['pretrain_epochs']
-        pc_sept.MAX_DEC_EPOCHS = config['max_joint_steps']
-        pc_sept.STABILITY_THRESHOLD = config['stability_threshold']
-        try:
-            pretrain_losses = pc_sept.pretrain_autoencoder(
-                encoder, decoder, inputs, device, lambda line: print(line, flush=True))
+        if settings == 'paper':
+            pretrain_losses = ct_paper_sept.pretrain_autoencoder(
+                encoder, decoder, inputs, device, epochs=config['pretrain_epochs'])
             pc_stage1.record_seconds(seconds, 'pretrain', start)
             start = time.perf_counter()
             centers = pc_stage1.kmeans_start(encoder, inputs, device, 100, seed)
             pc_stage1.record_seconds(seconds, 'kmeans', start)
             start = time.perf_counter()
-            history, stop_reason, steps = pc_sept.train_dec_until_stable(
-                encoder, decoder, centers, inputs, device,
-                lambda line: print(line, flush=True), 100)
+            history, stop_reason, steps = ct_paper_sept.train_dec_until_stable(
+                encoder, decoder, centers, inputs, device, max_epochs=config['max_joint_steps'],
+                stability_threshold=config['stability_threshold'])
             pc_stage1.record_seconds(seconds, 'joint', start)
-        finally:
-            for name, value in previous.items():
-                setattr(pc_sept, name, value)
+        else:
+            # Keep the copied functions verbatim; smoke changes only their limits.
+            names = ('PRETRAIN_EPOCHS', 'MAX_DEC_EPOCHS', 'STABILITY_THRESHOLD')
+            previous = {name: getattr(pc_sept, name) for name in names}
+            pc_sept.PRETRAIN_EPOCHS = config['pretrain_epochs']
+            pc_sept.MAX_DEC_EPOCHS = config['max_joint_steps']
+            pc_sept.STABILITY_THRESHOLD = config['stability_threshold']
+            try:
+                pretrain_losses = pc_sept.pretrain_autoencoder(
+                    encoder, decoder, inputs, device, lambda line: print(line, flush=True))
+                pc_stage1.record_seconds(seconds, 'pretrain', start)
+                start = time.perf_counter()
+                centers = pc_stage1.kmeans_start(encoder, inputs, device, 100, seed)
+                pc_stage1.record_seconds(seconds, 'kmeans', start)
+                start = time.perf_counter()
+                history, stop_reason, steps = pc_sept.train_dec_until_stable(
+                    encoder, decoder, centers, inputs, device,
+                    lambda line: print(line, flush=True), 100)
+                pc_stage1.record_seconds(seconds, 'joint', start)
+            finally:
+                for name, value in previous.items():
+                    setattr(pc_sept, name, value)
         del decoder
         start = time.perf_counter()
         center_norms = torch.linalg.vector_norm(centers.detach(), dim=1).cpu().numpy()
@@ -206,6 +285,11 @@ def run_stage1(s, settings, version, seed, *, smoke=False, device=None):
                   for gamma in ('1.5', '2', '3', '5')}
         topic, q_paint_eval = pc_stage1.assign_captions(
             encoder, centers, h, s['pid'], s['subset_pid'], kept, device)
+        if settings == 'paper':
+            import ct_rcol
+            strict = ct_rcol.strict_mask(center_norms)
+            topic_strict, q_strict = pc_stage1.assign_captions(
+                encoder, centers, h, s['pid'], s['subset_pid'], strict, device)
         kept_topics = pc_stage1.kept_topic_stats(topic[fit_rows], fit_counts, kept)
         pc_stage1.record_seconds(seconds, 'assignment', start)
     path = stage1_path(settings, version, seed)
@@ -220,8 +304,31 @@ def run_stage1(s, settings, version, seed, *, smoke=False, device=None):
     arrays = dict(center_norms=center_norms, fit_counts=fit_counts, kept=kept,
                   topic=topic, q_paint_eval=q_paint_eval, centers=centers.detach().cpu().numpy(),
                   fit_latent=fit_latent, kept_k40=kept, fit_topics_k40=topic[fit_rows])
+    if settings == 'paper':
+        arrays.update(kept_strict=strict, fit_topics_strict=topic_strict[fit_rows],
+                      topic_strict=topic_strict, topic_k40=topic,
+                      q_paint_eval_strict=q_strict, q_paint_eval_k40=q_paint_eval,
+                      stop_epoch=np.asarray([steps], dtype=np.int64))
+        meta.update(K_by_cut=dict(strict=int(strict.sum()), k40=40), stop_epoch=steps)
     state = dict(encoder=cpu_state(encoder), centers=centers.detach().cpu().clone())
-    return save_output(path, arrays, state, meta)
+    save_output(path, arrays, state, meta)
+    if settings == 'paper' and not smoke:
+        finalize_stage1()
+    return path
+
+
+def finalize_stage1():
+    """Write R-COL once both paper versions have all five full-run artifacts."""
+    paths = [stage1_path('paper', version, seed) for version in VERSIONS for seed in SEEDS]
+    if not all(path.exists() for path in paths):
+        return None
+    for path in paths:
+        meta = verify_output(path)
+        assert meta['config']['settings'] == 'paper' and not meta['config']['smoke'], \
+            'R-COL requires full Stage 1 runs'
+        assert meta['config']['fit_pairs'] == 67327
+    import ct_rcol
+    return ct_rcol.write_stage1(paths[0].parent, OUTPUTS / 'percept/rcol_stage1.json')
 
 
 def determinism(seed):
@@ -257,14 +364,17 @@ def train_mapper_with_state(inputs, targets, config, k):
     return (*result, states[0])
 
 
-def load_stage1(s, path, version, seed):
-    """Apply core's Stage 1 gates to the claim-test array superset."""
+def load_stage1(s, path, version, seed, *, cut='k40'):
+    """Validate Stage 1 identity and load caption topics for the selected cut."""
     path = Path(path)
     meta = json.loads(path.with_suffix('.json').read_text())
     assert meta['sample_sha256'] == pc_data.fingerprint(s), 'Stage 1 sample mismatch'
     assert meta['config']['version'] == version, 'Stage 1 version mismatch'
     assert meta['config']['seed'] == seed, 'Stage 1 seed mismatch'
     assert set(meta['K_gamma']) == {'1.5', '2', '3', '5'}
+    if meta['config']['settings'] == 'paper':
+        return load_paper_cut(s, path, meta, cut)
+    assert cut == 'k40'
     k = meta['K']
     assert type(k) is int and k == 40
     with np.load(path, allow_pickle=False) as z:
@@ -285,24 +395,30 @@ def load_stage1(s, path, version, seed):
 
 
 def run_stage2(s, settings, cut, arm, seed, *, smoke=False, device=None):
-    """Train core's mapper and save its full evaluation batch and final state."""
+    """Train the selected recipe's mapper, saving evaluation probabilities and weights."""
     path = stage2_path(settings, cut, arm, seed)
-    device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
+    device = device or 'cuda'
     assert smoke or str(device).startswith('cuda'), 'full Stage 2 requires GPU'
     start = time.perf_counter()
     version, _, _ = ARMS[arm]
     stage1 = stage1_path(settings, version, seed)
     previous = verify_output(stage1)
     assert previous['config']['smoke'] == smoke, 'Stage 1 smoke mismatch'
-    topic, k = load_stage1(s, stage1, version, seed)
+    topic, k = load_stage1(s, stage1, version, seed, cut=cut)
+    if k < 2:
+        print(f'Skipping {settings}/{cut}/{arm} seed={seed}: only {k} topic', flush=True)
+        return None
     config = pc_stage2.make_config(s, arm, seed, smoke, device)
     config.update(settings=settings, cut=cut)
+    if settings == 'paper':
+        import ct_paper_sept
+        ct_paper_sept.stage2_config(config)
     determinism(seed)
     ids, targets = pc_stage2.caption_targets(s, topic, k, smoke)
     with threadpool_limits(limits=8):
         inputs = pc_stage2.image_inputs(s, arm, ids, device)
-        eval_prob, dev_prob, history, epoch_seconds, state = train_mapper_with_state(
-            inputs, targets, config, k)
+        trainer = ct_paper_sept.train_mapper if settings == 'paper' else train_mapper_with_state
+        eval_prob, dev_prob, history, epoch_seconds, state = trainer(inputs, targets, config, k)
     for part, prob in (('eval', eval_prob), ('dev', dev_prob)):
         assert prob.shape == (len(ids[part]), k) and prob.dtype == np.float32
         assert np.isfinite(prob).all() and ((prob >= 0) & (prob <= 1)).all()
@@ -328,7 +444,7 @@ def run_stage2(s, settings, cut, arm, seed, *, smoke=False, device=None):
 
 
 def build_mapper(config, k):
-    """Rebuild the exact core architecture before loading its state."""
+    """Rebuild the shared mapper architecture before loading its state."""
     if config['mapper'] == 'attention':
         return pc_sept.AttentionPoolingMapper(d_model=config['input_dim'], n_topics=k)
     return torch.nn.Sequential(torch.nn.Linear(config['input_dim'], config['hidden_dim']),
@@ -426,6 +542,12 @@ def run_held(settings, cut, arm, seed, *, device=None, smoke=False):
 
     V1 is the queue/controller's prerequisite, before invoking this function.
     """
+    if settings == 'paper':
+        previous = verify_output(stage1_path(settings, ARMS[arm][0], seed))
+        assert previous['config']['smoke'] == smoke, 'Stage 1 smoke mismatch'
+        if previous['K_by_cut'][cut] < 2:
+            print(f'Skipping held {settings}/{cut}/{arm} seed={seed}: only 1 topic', flush=True)
+            return None
     source = verify_output(stage2_path(settings, cut, arm, seed))
     assert source['config']['smoke'] == smoke, 'Stage 2 smoke mismatch'
     names, sha256 = ct_held.read_held_list(OUTPUTS / 'held/held_paintings.json')
@@ -454,16 +576,20 @@ def run_held(settings, cut, arm, seed, *, device=None, smoke=False):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--settings', choices=('core',), default='core')
-    parser.add_argument('--cut', choices=('k40',), default='k40')
+    parser.add_argument('--settings', choices=('core', 'paper'), default='core')
+    parser.add_argument('--cut', choices=('k40', 'strict'), default='k40',
+                        help='Stage 2/held cut; paper Stage 1 saves both cuts')
     parser.add_argument('--version', choices=VERSIONS)
     parser.add_argument('--arm', choices=ARMS)
     parser.add_argument('--seeds', nargs='+', type=int, choices=SEEDS, default=list(SEEDS))
     parser.add_argument('--stage', choices=('1', '2', 'held'), required=True)
     parser.add_argument('--device', default=None,
-                        help='training: CUDA if available, otherwise CPU; held: recorded training device')
-    parser.add_argument('--smoke', action='store_true', help='core smoke limits; never reused as a full run')
+                        help='training defaults to cuda; held uses the recorded training device')
+    parser.add_argument('--smoke', action='store_true', help='reduced training limits; never reused as a full run')
     args = parser.parse_args(argv)
+    check_path(args.settings, args.cut)
+    if args.settings == 'paper' and args.arm is not None and args.arm not in ('P1', 'P4'):
+        parser.error('Paper settings support P1 and P4 only')
     if args.stage == '1':
         if args.version is None or args.arm is not None:
             parser.error('Stage 1 requires --version and no --arm')
@@ -472,15 +598,17 @@ def main(argv=None):
     assert len(args.seeds) == len(set(args.seeds)), 'duplicate seeds'
     device = args.device
     if args.stage != 'held':
-        device = args.device or ('cuda' if torch.cuda.is_available() else 'cpu')
+        device = args.device or 'cuda'
     s = load_frozen() if args.stage != 'held' else None
     paths = []
     for seed in args.seeds:
         if args.stage == 'held':
-            paths.append(run_held(args.settings, args.cut, args.arm, seed,
-                                  device=args.device, smoke=args.smoke))
+            path = run_held(args.settings, args.cut, args.arm, seed,
+                            device=args.device, smoke=args.smoke)
+            if path is not None:
+                paths.append(path)
             continue
-        expected = dict(settings=args.settings, cut=args.cut, seed=seed,
+        expected = dict(settings=args.settings, cut='k40' if args.stage == '1' else args.cut, seed=seed,
                         smoke=args.smoke, device=device)
         previous = None
         if args.stage == '1':
@@ -492,6 +620,9 @@ def main(argv=None):
             path = stage2_path(args.settings, args.cut, args.arm, seed)
             previous = verify_output(stage1_path(args.settings, version, seed))
             assert previous['config']['smoke'] == args.smoke, 'Stage 1 smoke mismatch'
+            if args.settings == 'paper' and previous['K_by_cut'][args.cut] < 2:
+                print(f'Skipping {path}: only 1 topic', flush=True)
+                continue
         if complete_output(path, expected, pc_data.fingerprint(s), previous):
             print(f'Verified complete: {path}', flush=True)
         elif args.stage == '1':
@@ -499,6 +630,8 @@ def main(argv=None):
         else:
             run_stage2(s, args.settings, args.cut, args.arm, seed, smoke=args.smoke, device=device)
         paths.append(path)
+    if args.stage == '1' and args.settings == 'paper' and not args.smoke:
+        finalize_stage1()
     return paths
 
 
