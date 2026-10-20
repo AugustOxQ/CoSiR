@@ -68,6 +68,8 @@ D2 exceeds every eligible entry; core's own assignment sets the bar. An entry is
 
 All ten strict runs collapsed, so both strict comparators are out. Kept counts were 1, 2, 2, 98, 98 (CLIP + RoBERTa) and 98, 99, 99, 99, 99 (Qwen); the rule collapses a run under 10 or over 90. No fixed-count run collapsed.
 
+So the bar is core, which differs from the paper beyond the backbone: one autoencoder layer fewer, no denoising, a balance term, K = 40 and our scoring ([direction log](../../../superpowers/direction_log.md), 2026-10-20 entry). The paper settings versions, where only the backbone differs, collapsed (strict) or scored below core (K = 40). Added after the user-read report's fidelity check.
+
 | Rule outcome | Statistic | Bar | Result |
 |---|---|---|---|
 | S1-GO | d = +0.0146 [+0.0093, +0.0157] | d ≥ 0.0100; lower bound > 0.0000 | GO; 10-29 gate passes; stage 2 runs |
