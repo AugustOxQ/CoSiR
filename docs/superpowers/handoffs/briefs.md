@@ -758,3 +758,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-9-handoff.md
 - New chat: tab 'r10 run 9', session cee49ee5-d033-46b6-9bb8-ac719b176de9
 
+[brief] CoSiR: r10 run 9 -> r10 run 10 (2026-10-20 16:43 Amsterdam)
+- Done: node route built and tested; stage 2 on node408 failed at stage 2a (a guard bug, fixed; then A6000 drift).
+- State: A6000 outputs differ from stage 1's by AMI 0.0004 to 0.017 (limit 1e-4); node route closed; no held output.
+- Next: local stage 2a now (short GPU job), then the GPU and CPU queues from 19:00; V2; reports.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-10-handoff.md
+- New chat: tab 'r10 run 10', session e2c43452-0c10-4e65-824b-75e89ccdb7ab
+
