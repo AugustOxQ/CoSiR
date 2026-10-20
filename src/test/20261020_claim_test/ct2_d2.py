@@ -137,6 +137,7 @@ def run(s, inputs, graphs, manifests, row, name, aspects, seed, device, outdir,
                        ct2_data.instructed_images(s, ms_train.head.ASPECTS[aspect]))
             assert teacher.shape == (len(s['first']), 2048) and teacher.dtype == np.float32
             assert np.isfinite(teacher).all()
+            assert _sha_array(teacher) == s['data_sha256'][f'{aspect}.img'], f'{aspect}: teacher differs from the recorded hash'
             for part in ('fit', 'dev'):
                 ids = graph[f'{part}_node_ids']
                 tensors[aspect][part]['teacher'] = torch.from_numpy(
@@ -296,6 +297,8 @@ def load_training_data(mode, root):
     folder = Path(root) / 'd2/graphs'
     if not (folder / 'manifest.json').exists():
         graphs, manifest = ct2_graphs.build(spaces, s['fit'], s['dev'])
+        if s['mode'] == 'sample':
+            ct2_graphs._check_sample(graphs)
         manifest['identity'] = _graph_identity(s)
         ct2_graphs.save(graphs, manifest, folder)
     graphs, manifests = _read_graphs(s, spaces, folder)
@@ -304,7 +307,11 @@ def load_training_data(mode, root):
 
 def output_root(mode, root=None):
     assert mode in ('sample', 'full'), mode
-    return Path(root) if root is not None else HERE / 'outputs/stage2' / ('s2a' if mode == 'sample' else 'full')
+    root = Path(root) if root is not None else HERE / 'outputs/stage2' / ('s2a' if mode == 'sample' else 'full')
+    resolved, stage1 = root.resolve(), HERE / 'outputs'
+    assert resolved != stage1 and (stage1 not in resolved.parents or stage1 / 'stage2' in (resolved, *resolved.parents)), \
+        f'{root}: inside stage 1 outputs (only outputs/stage2/ is stage 2\'s)'
+    return root
 
 
 def _require_pass(device):
@@ -364,6 +371,7 @@ def _weights_info(mode, root, aspect, seed):
 
 def infer(mode, aspect, seed, names, side='img', *, device=None, root=None):
     """Replay the saved best view through ct_d2.infer, with its exact dtype/batches."""
+    assert mode == 'full', 'stage 2a needs no held data'
     root = output_root(mode, root)
     weights = _weights_info(mode, root, aspect, seed)
     recorded = ct_d2._inference_device(weights, device)
@@ -374,6 +382,7 @@ def infer(mode, aspect, seed, names, side='img', *, device=None, root=None):
 
 def write_held(mode, seeds=range(5), device=None, root=None):
     """Gate held reads, then use stage 1's inference, layout and sidecar checks."""
+    assert mode == 'full', 'stage 2a needs no held data'
     root, seeds = output_root(mode, root), list(seeds)
     assert seeds and len(set(seeds)) == len(seeds) and all(s in range(5) for s in seeds)
     devices = set()
@@ -398,6 +407,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     assert args.train or args.held, 'choose --train and/or --held'
     assert len(set(args.seeds)) == len(args.seeds)
+    assert not args.held or args.mode == 'full', 'stage 2a needs no held data'
     root = output_root(args.mode, args.root)
     if args.train:
         train(args.mode, args.seeds, args.device or 'cuda', root)
