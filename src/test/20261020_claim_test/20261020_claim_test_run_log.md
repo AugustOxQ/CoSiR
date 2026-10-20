@@ -71,3 +71,6 @@ The R-COL file itself is written by the next stage 1 queue.
 | 06:19 | V2 comparison (`.scratch/r10-claim-test/v2/compare_v2.py`): held SHA, label counts, eligibility, all 10 R-COL runs (kept count and flag), all 20 partition files, A_K1, the six A_e, d, both bounds and all 2,000 resampled d equal (difference 0.0) | AGREE |
 | 06:19 to 06:34 | diagnostics (967 s): `diag_stage1.json`, `diag_stage1.md` | pass; CPU queue done, failed=0 |
 | 06:21 | held ledger row H11 | done |
+| 06:36 to 06:40 | auto report draft (Codex `gpt-6.1-sol` medium; room 19%, a report job needs 6%) | done |
+| 06:45 to 06:50 | claim review (Sonnet `high` worker): every number matched its sources; 15 wording and support fixes (unsourced "share artists" removed, spec §6 claim quoted, V1/V4 cells, comparison log moved to `.scratch/r10-claim-test/v2/compare_v2.log`) | done |
+| 06:52 | auto report `docs/reports/auto/percept/2026-12-18_claim_test_stage1.md` committed with its index row; context meter past 200k, so the user-read report and the next chats move to "r10 run 7" | cut |
