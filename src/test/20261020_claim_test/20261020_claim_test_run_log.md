@@ -115,3 +115,13 @@ Handoff: `docs/superpowers/handoffs/2026-10-20-r10-run-9-handoff.md`. Node408 fr
 | 16:35 | guard fix (Codex, 2 min): commit de45b87; the assertion exempts exactly `S2A` and its chunked sibling (the set `check_root` allows); production-layout test red then green; no other module has this assumption (Codex scan of 7 modules and both queues) | reviewed (diff read) |
 | 16:42 | full ct2 suite on the fix branch: 376 passed (374 before, 2 new), 454 s | merged into main 042744b, pushed |
 | 16:50 | cut at the context meter's 200k note: handoff `docs/superpowers/handoffs/2026-10-20-r10-run-10-handoff.md`; local stage 2a and the queues go to "r10 run 10" | cut |
+
+### Local stage 2 run (chat "r10 run 10")
+
+Handoff: `docs/superpowers/handoffs/2026-10-20-r10-run-10-handoff.md`. Night mode. Run from `/project/CoSiR`.
+
+| Time | Step | Result |
+|---|---|---|
+| 16:43 | GPU check: driver 595.99.02 in all three places; container up since 2026-10-19 19:08; GPU idle (33 MiB), no lock; load 1.8; 54 GB free RAM | pass |
+| 16:44 | local stage 2a (`ct2_run.py stage2a --root outputs/stage2 --device cuda`, under the GPU lock; short GPU work, allowed in the daytime); log `outputs/stage2/logs/manual_stage2a.log` | running |
+| 16:57 | **local stage 2a PASS** (13 min, exit 0): 31 items, 0 failed, 0 missing; every regression item in hash mode (D2 three aspects, stage 1 core and paper both versions, stage 2 core P1 to P4, paper P1, P4, strict P4: bit for bit equal to stage 1); R-COL, replays and code items PASS. So the 3090 reproduces stage 1 exactly and the A6000 drift of run 9 was device-bound. Non-gating chunked core seed 0 (1,024-row DEC chunks against unchunked): `center_norms` and `q_paint_eval` differ; image-side AMI differences clip_roberta 3.8e-5 / 1.8e-5 / 6.0e-6, qwen_qwen 2.1e-5 / 2.0e-7 / 3.7e-6 (emotion / style / genre); topics kept 40, used 40 in both | `stage2a.json` committed; the queue's `stage2a` step will skip at 19:00 |
