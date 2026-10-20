@@ -1,7 +1,7 @@
 # Stage 2 queues (ticket 09)
 
-Stage 2a and stage 2 run from this checkout (the integration checkout after the merge); the scripts find
-their own round folder. They are foreground queues like stage 1's (`ct_queue.md`), so run them with
+Stage 2a and stage 2 run from the main checkout `/project/CoSiR` after the merge into main, never from a
+worktree: the scripts find their own round folder and write `outputs/stage2/` and the reports there. They are foreground queues like stage 1's (`ct_queue.md`), so run them with
 `nohup bash ... > session-scratch/queue.log 2>&1 &`. They stop at the first failed step. GPU steps run under
 `flock -o -w 14400 /tmp/gpu0.lock` (`CT_LOCK_WAIT` changes the wait, `CT_GPU_LOCK` the lock file). `CT_PYTHON`
 changes the Python. CPU steps use eight threads with CUDA hidden. No `ct_*` file is used or changed except
