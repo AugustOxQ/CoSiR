@@ -357,7 +357,7 @@ def test_nonfinite_paper_held_output_is_preserved_for_v4_collapse(tmp_path, monk
     stage1.with_suffix('.json').write_text(json.dumps(dict(K_by_cut=dict(k40=40))))
     path = pt.stage2_path('paper', 'k40', 'P1', 0)
     pt.save_output(path, dict(eval_prob=np.full((5000, 40), .5, dtype=np.float32)),
-                   dict(mapper=pt.cpu_state(mapper)), dict(config=config, K=40))
+                   dict(mapper=pt.cpu_state(mapper)), dict(config=config, K=40, nonfinite=False))
     source = pt.verify_output(path)
     held_path = tmp_path / 'held/percept/paper__k40/P1__s0.npz'
     held_path.parent.mkdir(parents=True)
@@ -365,7 +365,8 @@ def test_nonfinite_paper_held_output_is_preserved_for_v4_collapse(tmp_path, monk
     prob[0, 0] = np.nan
     np.savez_compressed(held_path, prob=prob)
     meta = dict(config=config, weights_sha256=source['weights_sha256'], held_sha256=sha,
-                rows=len(names), inference_device='cuda', array_sha256s=dict(prob=pt.pc_stage1.array_sha256(prob)))
+                rows=len(names), inference_device='cuda', array_sha256s=dict(prob=pt.pc_stage1.array_sha256(prob)),
+                nonfinite=True)  # V4 fix: paper sidecars record the flag
     held_path.with_suffix('.json').write_text(json.dumps(meta))
     before = held_path.read_bytes()
     assert ct_run.frozen_held(tmp_path) == {('paper', 'k40', 'P1', 0)}
