@@ -742,3 +742,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-13-4-handoff.md
 - New chat: tab 'r10 build 13 4', session 2ee64a06-3fc0-4fea-bdc2-b23f8ba04698
 
+[brief] CoSiR: r10 build 13 4 -> r10 run 8 (2026-10-20 10:59 Amsterdam)
+- Done: the stage 2 build is merged into main (63ef0c2): final review PASS, fix wave re-review PASS, 374 tests pass, smoke runs pass.
+- State: five new feature stores checked; stage 1 is GO (d +0.0146); no stage 2 training yet.
+- Next: from 19:00, the GPU queue (stage 2a, D2, PercepT core and paper, held), then the CPU queue (verdict, diagnostics).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-8-handoff.md
+- New chat: tab 'r10 run 8', session 96ecd8d1-f65b-46f5-b1ae-2d849840747c
+
