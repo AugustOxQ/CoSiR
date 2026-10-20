@@ -5,7 +5,6 @@
 Failed work remains in <store>.pending for inspection; no resume or overwrite.
 """
 import argparse
-import hashlib
 import json
 import sys
 import time
@@ -19,11 +18,11 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[2]))
 sys.path.insert(0, str(HERE.parent / '20261018_percept_core'))
 import ct2_data as data
+from ct2_data import QWEN_REVISION, ids_sha256
 from ct_extract import encode_rows, image_spec, model_identity
 from itp_data import PROMPTS
 
 STORES = ('emotion_focus_img', 'style_word_img', 'genre_word_img', 'emotion_focus_txt', 'roberta')
-QWEN_REVISION = '9f2f7e710d6d81056aa5c0a4f04764fec6bb7bda'
 
 
 def store_path(store, dest=None):
@@ -134,12 +133,6 @@ def parity_gate(store, enc):
         report.update(min_cosine=float(cosine.min()), mean_cosine=float(cosine.mean()), threshold=.999)
         assert np.isfinite(cosine).all() and (cosine >= .999).all(), f'cosine parity failed: {report}'
     return dict(passed=True, **report)
-
-
-def ids_sha256(ids):
-    """Hash the primary ordered IDs as newline-joined names or decimal IDs (Q1)."""
-    values = ids['painting_names'] if 'painting_names' in ids else ids['sample_ids']
-    return hashlib.sha256('\n'.join(map(str, values)).encode('utf-8')).hexdigest()
 
 
 def extract(store, device='cuda', limit=None, dest=None):

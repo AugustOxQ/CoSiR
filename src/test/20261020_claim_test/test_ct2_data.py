@@ -168,7 +168,15 @@ def write_store(path, key, *, images=None, captions=None, new=False):
         ids.update(sample_ids=np.asarray(sample_ids, dtype=np.int64), caption_painting_ids=names)
         np.save(path / 'txt.npy', vectors(values))
     np.savez(path / 'ids.npz', **ids)
-    (path / 'done.json').write_text(json.dumps(dict(instruction=data.itp_data.PROMPTS[key])))
+    done = dict(instruction=data.itp_data.PROMPTS[key])
+    if path.name.endswith(('_s2img', '_s2txt')):
+        import ct2_extract
+        primary = ids['painting_names'] if images is not None else ids['sample_ids']
+        done.update(store=f'{key}_{"img" if images is not None else "txt"}',
+                    parity_gate=dict(passed=True), model_revision=ct2_extract.QWEN_REVISION,
+                    count=len(primary), shape=[len(primary), 2048],
+                    ids_sha256=hashlib.sha256('\n'.join(map(str, primary)).encode()).hexdigest())
+    (path / 'done.json').write_text(json.dumps(done))
 
 
 @pytest.fixture
@@ -303,7 +311,7 @@ def test_full_providers_reject_nonfinite_features(full_stores, kind):
     raw = np.load(path)
     raw[row] = np.nan
     np.save(path, raw)
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='nonfinite features'):
         provide(full_stores, kind)
 
 
@@ -311,3 +319,90 @@ def test_full_providers_reject_nonfinite_features(full_stores, kind):
 def test_full_style_genre_captions_cannot_fall_back_to_emotion(full_stores, key):
     with pytest.raises(AssertionError, match='missing captions'):
         data.instructed_captions(full_stores, key)
+
+
+@pytest.fixture(params=['image', 'caption', 'roberta'])
+def s2_store(request, full_stores, tmp_path, monkeypatch):
+    if request.param != 'roberta':
+        return data.ASPECT / ('emotion_focus_s2img' if request.param == 'image' else 'emotion_focus_s2txt')
+    old = tmp_path / 'roberta_go_emotions'
+    old.mkdir()
+    revision = 'd75048347613a25d77de8cf6412eaae9fa7b26be'
+    (old / 'done.json').write_text(json.dumps(dict(snapshot_revision=revision)))
+    monkeypatch.setattr(data, 'ROBERTA', old)
+    path = tmp_path / 'roberta_go_emotions_s2'
+    path.mkdir()
+    np.savez(path / 'ids.npz', sample_ids=np.asarray([5, 30], dtype=np.int64), painting_ids=['c', 'a'])
+    np.save(path / 'txt.npy', np.ones((2, 768), dtype=np.float32))
+    done = dict(store='roberta', parity_gate=dict(passed=True), model_revision=revision,
+                count=2, shape=[2, 768], ids_sha256=hashlib.sha256(b'5\n30').hexdigest())
+    (path / 'done.json').write_text(json.dumps(done))
+    return path
+
+
+@pytest.mark.parametrize('fault,message', [
+    ('parity', 'parity gate'), ('revision', 'model revision'), ('count', 'row count'),
+    ('shape', 'shape'), ('hash', 'ID hash'), ('ids_rows', 'row count'),
+])
+def test_s2_store_rejects_untrusted_manifest_or_ids(s2_store, fault, message):
+    done = json.loads((s2_store / 'done.json').read_text())
+    if fault == 'parity':
+        done['parity_gate']['passed'] = False
+    elif fault == 'revision':
+        done['model_revision'] = '0' * 40
+    elif fault == 'count':
+        done['count'] -= 1
+    elif fault == 'shape':
+        done['shape'][0] -= 1
+    elif fault == 'hash':
+        done['ids_sha256'] = '0' * 64
+    else:
+        with np.load(s2_store / 'ids.npz') as z:
+            ids = {k: z[k] for k in z.files}
+        key = 'painting_names' if 'painting_names' in ids else 'sample_ids'
+        ids[key] = ids[key][:-1]
+        np.savez(s2_store / 'ids.npz', **ids)
+    (s2_store / 'done.json').write_text(json.dumps(done))
+    with pytest.raises(AssertionError, match=message):
+        data.check_s2_store(s2_store)
+
+
+def test_s2_store_accepts_matching_manifest(s2_store):
+    assert data.check_s2_store(s2_store) == json.loads((s2_store / 'done.json').read_text())
+
+
+def test_s2_store_uses_recorded_legacy_revision(s2_store):
+    done = json.loads((s2_store / 'done.json').read_text())
+    old = data.ROBERTA if done['store'] == 'roberta' else data.ASPECT / 'emotion_focus'
+    legacy = json.loads((old / 'done.json').read_text())
+    revision_key = 'snapshot_revision' if done['store'] == 'roberta' else 'model_revision'
+    legacy[revision_key] = 'b' * 40
+    (old / 'done.json').write_text(json.dumps(legacy))
+    with pytest.raises(AssertionError, match='model revision'):
+        data.check_s2_store(s2_store)
+    done['model_revision'] = 'b' * 40
+    (s2_store / 'done.json').write_text(json.dumps(done))
+    assert data.check_s2_store(s2_store) == done
+
+
+@pytest.mark.parametrize('kind', ['instructed_image', 'instructed_caption'])
+def test_providers_check_parity_for_s2_rows_without_overlap(full_stores, kind):
+    image = kind.endswith('image')
+    path = data.ASPECT / ('emotion_focus_s2img' if image else 'emotion_focus_s2txt')
+    if image:
+        np.savez(path / 'ids.npz', painting_names=['a'])
+        np.save(path / 'img.npy', vectors([[0, 0, 2]]))
+        primary = ['a']
+    else:
+        np.savez(path / 'ids.npz', sample_ids=np.asarray([5, 30], dtype=np.int64), caption_painting_ids=['c', 'a'])
+        np.save(path / 'txt.npy', vectors([[0, 0, 2], [2, 0, 0]]))
+        primary = [5, 30]
+    done = json.loads((path / 'done.json').read_text())
+    done.update(count=len(primary), shape=[len(primary), 2048],
+                ids_sha256=hashlib.sha256('\n'.join(map(str, primary)).encode()).hexdigest())
+    (path / 'done.json').write_text(json.dumps(done))
+    provide(full_stores, kind)
+    done['parity_gate']['passed'] = False
+    (path / 'done.json').write_text(json.dumps(done))
+    with pytest.raises(AssertionError, match='parity gate'):
+        provide(full_stores, kind)

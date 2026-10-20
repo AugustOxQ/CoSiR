@@ -233,3 +233,21 @@ def test_unchanged_extraction_chunks(setup, store, count, lengths):
     assert [offset for offset, _ in batches] == [0, lengths[0]]
     assert np.concatenate([x for _, x in batches]).argmax(axis=1).tolist() == (
         rows % (768 if store == 'roberta' else 2048)).tolist()
+
+
+@pytest.mark.parametrize('store', ct.STORES)
+def test_extracted_store_passes_data_integrity_check(tmp_path, monkeypatch, setup, store):
+    original = ct.load_encoder
+    revision = 'd75048347613a25d77de8cf6412eaae9fa7b26be' if store == 'roberta' else ct.QWEN_REVISION
+
+    def encoder(key, device):
+        enc, identity = original(key, device)
+        return enc, dict(identity, model_revision=revision)
+
+    monkeypatch.setattr(ct, 'load_encoder', encoder)
+    if store == 'roberta':
+        (ct.data.ROBERTA / 'done.json').write_text(json.dumps(dict(snapshot_revision=revision)))
+    path = ct.extract(store, 'cpu', dest=tmp_path / 'new')
+    done = ct.data.check_s2_store(path)
+    assert done == json.loads((path / 'done.json').read_text())
+    assert done['parity_gate']['passed'] and done['count'] == 3
