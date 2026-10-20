@@ -83,6 +83,10 @@ e. **The wrap-up** (`research-loop.md`): decision C and the direction log entry,
    (`storage.md`), including `cluster du --node node408` for the node items (about 33 GB); a disk ledger row for
    `src/test/20261020_claim_test/outputs/stage2/` (4.6 GB, recommendation keep: the stage 2 report rests on it);
    `wrapup-check`, `disk-check`, `routing-check`; `/project/claude-config/sync.sh`, commit and push that repo.
+f. **Routing review, minor.** At r10 run 11's task end (23:20), `routing-check` printed two items for the user: the
+   implementer estimate (recent jobs cost a median 44% of the five-hour window, the estimate is 10%), and the open
+   item on intermittent Codex launch refusals (watch, no rule change; user, 2026-10-12). Propose the review per
+   `agent-routing.md` ("Keeping this rule current"); the user decides.
 
 ## 5. Code and pitfalls
 
@@ -96,8 +100,8 @@ e. **The wrap-up** (`research-loop.md`): decision C and the direction log entry,
 ## 6. State at handoff
 
 - Running: nothing (no GPU lock, background job, Codex job, node job or subagent).
-- Uncommitted: nothing in git. Outside git: `/project/claude-config/codex/jobs.md` (three new rows: V2, report draft,
-  user-read draft), synced at the wrap-up.
+- Uncommitted: nothing in git. The Codex ledger's rows of runs 9 to 11 (V2, report draft, user-read draft among
+  them) are synced and pushed (claude-config bc2fc23).
 - On disk over 1 GB: `src/test/20261020_claim_test/outputs/stage2/` (4.6 GB, keep; no disk ledger row yet); the
   items on `.scratch/pending_deletions.md` (node408 inputs about 33 GB, node smoke scratch 1.6 GB, old pulled results
   2.0 GB, ...).
