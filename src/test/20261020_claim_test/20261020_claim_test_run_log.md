@@ -49,3 +49,18 @@ The R-COL file itself is written by the next stage 1 queue.
 | Time | Step | Result |
 |---|---|---|
 | 05:02 to 05:06 | `ct_queue_stage0.sh` again (the edit changed the code identity): D2 seed 0 (53 s), core seed 0 (211 s), check (24 s) | PASS, 24 of 24, every regression bitwise equal; old seed 0 artifacts moved to `outputs/stale/` (306 MB, two folders) |
+
+## Run 6 (chat "r10 run 6", unattended, night mode)
+
+| Time | Step | Result |
+|---|---|---|
+| 05:08 | GPU check (driver 595.99.02 in all three places; GPU idle, no lock; load 1.7; 56 GB RAM free; 246 GB free on `/`) | pass |
+| 05:08 | End estimate: paper Stage 2 20 to 40 min, held inference minutes, instructed images about 30 min, so stage 1 by about 06:30; CPU queue about 25 min, by about 07:00 | well before 11:00 |
+| 05:09 | `ct_queue_stage1.sh` again (run 5's stage 1 logs copied to `outputs/logs/run5_stage1/`) | started |
+| 05:09 to 05:10 | require_stage0, budget, frozen, held_list (0 to 4 s each); d2 (18 s) and core (20 s) verify the saved seeds 0 to 4, no retraining | pass |
+| 05:10 | paper: the 10 saved Stage 1 runs verified complete, no retraining; Stage 2 starts; strict `clip_roberta` seed 0 skipped (1 kept topic, rule: at least 2) | running |
+| 05:10 to 05:18 | paper Stage 2 (strict and K = 40, P1 and P4; 476 s) | pass |
+| 05:10, 05:18 | `outputs/percept/rcol_stage1.json` written at 05:10 by the paper step (Stage 2 needs the kept masks), before any held output; the rcol step (6 s) found it and reused it; strict kept counts `clip_roberta` 1, 2, 2, 98, 98 and `qwen_qwen` 98, 99, 99, 99, 99, all collapsed, so B2 and B3 are not eligible; K = 40 largest shares 0.043 to 0.178, none collapsed, so B4 and B5 are eligible with seeds 0 to 4; `qwen_qwen` seed 2 has 10,002 tie pairs | pass; as read in run 5 |
+| 05:18 to 05:19 | held inference (65 s): D2 heads and PercepT arms, seeds 0 to 4; strict `clip_roberta` seed 0 has no held file (no Stage 2) | pass |
+| 05:19 | instructed held images start (GPU) | running |
+| 05:21 | V2 starts: Codex had no room (5 h window 19% left, needs 20%, resets 07:01), so a Sonnet `high` worker re-derives from `.scratch/r10-claim-test/v2/v2_brief.md` (the rule and the data only, CPU) | running |
