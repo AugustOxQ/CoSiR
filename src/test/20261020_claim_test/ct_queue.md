@@ -17,12 +17,14 @@ Wait for each queue to return success before starting the next. Step summaries,
 including nonzero lock/worker exit codes and durations, are printed once and
 appended to `outputs/queue_{stage0,stage1,cpu}_status.txt`; detailed stdout/stderr
 is under `outputs/logs/`. Stage 1 records the local GPU/CPU end estimate against
-11:00 in its budget log. The run chat owns the D23 decision to move PercepT to
+11:00 in its budget log. That budget step prints a fixed upper bound (3 GPU h, 1.5 CPU h),
+not a measurement; the run chat makes the real estimate.
+The run chat owns the D23 decision to move PercepT to
 node408, where a separate Stage 0 is required; these scripts do not submit
 remote work.
 
 Stage 0 trains seed 0 D2 and core (both Stage 1 versions, Stage 2 P1–P4), then
-writes `stage0.json` with 23 individual results. The reference NPZ/JSON files and
+writes `stage0.json` with 24 individual results (the 23 comparisons plus `training/code`). The reference NPZ/JSON files and
 recorded AMIs come from the main checkout, read-only. Scorer replay uses every
 D2 head and P1–P4 image probabilities, each on all three labels. Inference replay
 uses the 5,000 development names in evaluation order and the checkpoint device.
@@ -33,11 +35,21 @@ A hash difference fails unless all three image-side AMIs differ by at most 1e-4
 and the controller supplies a traced cause. Supply a JSON object keyed by the
 failed regression item ID, for example
 `{"regression/stage1/clip_roberta": "<cause established from the failure>"}`.
-Recheck without retraining:
+Recheck without retraining (the replays need the same CUDA determinism variable as training;
+`ct_stage0.py` and `ct_run.py` also set it when it is unset):
 
 ```bash
-flock -o -w 14400 /tmp/gpu0.lock /root/miniconda3/envs/CoSiR/bin/python src/test/20261020_claim_test/ct_stage0.py --causes session-scratch/causes.json
+PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 CUBLAS_WORKSPACE_CONFIG=:4096:8 \
+flock -o -w 14400 /tmp/gpu0.lock /root/miniconda3/envs/CoSiR/bin/python src/test/20261020_claim_test/ct_stage0.py --device cuda --causes session-scratch/causes.json
 ```
+
+Stage 0 cannot pass on stale training code. Each `--stage0-training` step (`d2`, `core`) records
+`ct_stage0.code_identity()` for itself in `outputs/stage0_training_code.json`. If the record for that
+step is missing or differs from the current identity, the step first renames the seed 0 artifacts of that
+step into `outputs/stale/<Amsterdam timestamp>/` (nothing is deleted) and retrains them. The check fails
+item `training/code` unless both steps recorded the current identity. Any edit to the code files the
+identity covers (including `ct_run.py`, `ct_stage0.py` and the queue scripts) therefore forces seed 0
+retraining before the next pass. Stage 0 retraining is refused once any held NPZ exists.
 
 A pass binds code, the rule, source hashes, training host and device. Changed
 sources/code or a partial report fail V1. Stage 1 fixes seeds to 0–4; after any
@@ -48,11 +60,13 @@ and passed to the scorer to count as collapsed under V4. A V-check-forced rerun 
 V4; there is no automatic seed replacement or deletion.
 
 The adapter `ct_run.py` supplies explicit paths to the merged modules without
-editing them. Training, held artifacts, partitions and instructed-image stores
+editing them. Training, held artifacts and partitions
 are written below this worktree's `outputs/`; verdict and diagnostics are written
-in this round. Instructed-image stores go to `outputs/targets/`, and diagnostics
-read them there. The queues never write to the main checkout or shared feature
-cache. Diagnostics run after the saved verdict; independent V2 reproduction
+in this round. Instructed held-image stores go to the shared cache,
+`/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_prompts/<key>_held/`
+(the defaults of `ct_extract` and `ct_diag`), and diagnostics read them there; only
+the held list is redirected to `outputs/held/`. The other queue outputs never go to
+the main checkout or the shared feature cache. Diagnostics run after the saved verdict; independent V2 reproduction
 remains the run chat's prerequisite for reporting an outcome.
 
 The isolated smoke uses two seeds and one epoch, real optimizers/serialization,

@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -36,7 +37,7 @@ def compare_scores(values, expected):
     actual = {a: float(np.mean(xs)) for a, xs in values.items()}
     passed = set(values) == set(expected) == set(ASPECTS)
     passed = passed and all(len(values[a]) == 3 and np.isfinite(actual[a]) and
-                            round(actual[a], 6) == round(expected[a], 6) for a in ASPECTS)
+                            abs(actual[a] - expected[a]) < 5e-7 for a in ASPECTS)
     return dict(status='PASS' if passed else 'FAIL', actual=actual, expected=expected)
 
 
@@ -66,7 +67,8 @@ def required_items():
             {f'regression/stage1/{v}' for v in VERSIONS} |
             {f'regression/stage2/{a}' for a in ARMS} |
             {f'{check}/d2/{a}' for check in ('scorer', 'replay') for a in ASPECTS} |
-            {f'{check}/percept/{a}' for check in ('scorer', 'replay') for a in ARMS})
+            {f'{check}/percept/{a}' for check in ('scorer', 'replay') for a in ARMS} |
+            {'training/code'})
 
 
 def code_identity():
@@ -80,6 +82,34 @@ def code_identity():
                             ('20261017_prompted_aspect_views', 'pav_*.py')):
         paths.extend((HERE.parent / folder).glob(pattern))
     return {str(p.relative_to(HERE.parent)): file_sha256(p) for p in sorted(paths)}
+
+
+TRAINING_CODE = 'stage0_training_code.json'
+TRAINING_STEPS = ('d2', 'core')
+
+
+def read_training_code(outputs):
+    """The code identity each Stage 0 training step last started under, or {} if none."""
+    path = Path(outputs) / TRAINING_CODE
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
+def write_training_code(outputs, step, identity):
+    """Record the identity of the code that trains `step` (d2 or core) in this outputs tree."""
+    assert step in TRAINING_STEPS
+    record = dict(read_training_code(outputs), **{step: identity})
+    path = Path(outputs) / TRAINING_CODE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pending = path.with_suffix('.pending.json')
+    pending.write_text(json.dumps(record, indent=2, sort_keys=True, allow_nan=False) + '\n')
+    pending.replace(path)
+
+
+def training_code_item(outputs):
+    """Seed 0 must come from the code the gate checks; a rerun may reuse older artifacts."""
+    recorded, current = read_training_code(outputs), code_identity()
+    stale = [step for step in TRAINING_STEPS if recorded.get(step) != current]
+    return dict(status='FAIL' if stale else 'PASS', stale_steps=stale)
 
 
 def training_host():
@@ -128,12 +158,14 @@ def verify_dependency(mapper, source, source_sha256):
 
 
 def check(outputs=HERE / 'outputs', destination=HERE / 'stage0.json', *, device='cuda', causes=None,
-          ms=MS, pc=PC):
+          ms=MS, pc=PC, only=None):
     """Compare seed 0 with saved runs, replay the scorer and image inference.
 
     Stage 1 hashes cover every legacy array. Its AMI escape checks both dependent
     Stage 2 image mappers on every aspect, since Stage 1 has no image-only mapper.
     causes maps regression item IDs to explanations established by the controller.
+    only (tests) limits the run to item IDs starting with one of the given prefixes; the
+    report then lists the others as missing and cannot pass.
     All inputs here are development data; no held list or held feature is read.
     """
     from functools import lru_cache
@@ -266,6 +298,8 @@ def check(outputs=HERE / 'outputs', destination=HERE / 'stage0.json', *, device=
         return result
 
     def run_item(key, callback):
+        if only is not None and not key.startswith(tuple(only)):
+            return
         try:
             items[key] = callback()
         except (AssertionError, OSError, ValueError, KeyError, RuntimeError) as error:
@@ -273,6 +307,7 @@ def check(outputs=HERE / 'outputs', destination=HERE / 'stage0.json', *, device=
         print(f'STAGE0 {key} {items[key]["status"]}', flush=True)
 
     with patch.object(pt, 'OUTPUTS', outputs), threadpool_limits(limits=8):
+        run_item('training/code', lambda: training_code_item(outputs))
         for kind, names in (('d2', ASPECTS), ('stage1', VERSIONS), ('stage2', ARMS)):
             for name in names:
                 run_item(f'regression/{kind}/{name}', lambda k=kind, n=name: regression(k, n))
@@ -295,6 +330,7 @@ def check(outputs=HERE / 'outputs', destination=HERE / 'stage0.json', *, device=
 
 
 def main(argv=None):
+    os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')  # determinism() needs it before CUDA work
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--outputs', type=Path, default=HERE / 'outputs')
     p.add_argument('--report', type=Path, default=HERE / 'stage0.json')

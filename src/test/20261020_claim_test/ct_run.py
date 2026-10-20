@@ -1,6 +1,7 @@
 """Queue adapters: explicit local write paths around the frozen ticket modules."""
 import argparse
 import json
+import os
 from pathlib import Path
 
 import ct_stage0 as gate
@@ -20,6 +21,35 @@ def configure(outputs):
     ct_rcol.STAGE1 = outputs / 'percept/paper/stage1'
     ct_rcol.OUTPUT = outputs / 'percept/rcol_stage1.json'
     return outputs
+
+
+STAGE0_ARTIFACTS = dict(d2=('d2/train/D2', 'd2/weights'),
+                        core=('percept/core/stage1', 'percept/core/stage2/k40'))
+
+
+def prepare_stage0_training(outputs, step):
+    """Seed 0 artifacts must come from the code that is running now (V1).
+
+    A step records the code identity it trains under in outputs/stage0_training_code.json.
+    Seed 0 artifacts left by a different (or unrecorded) identity are renamed into
+    outputs/stale/<Amsterdam timestamp>/, never deleted, so the step retrains them.
+    """
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    outputs = Path(outputs)
+    current = gate.code_identity()
+    if gate.read_training_code(outputs).get(step) == current:
+        return []
+    old = [path for folder in STAGE0_ARTIFACTS[step] for path in sorted((outputs / folder).glob('*__s0.*'))]
+    if old:
+        stamp = datetime.now(ZoneInfo('Europe/Amsterdam')).strftime('%Y%m%d_%H%M%S')
+        for path in old:
+            target = outputs / 'stale' / stamp / path.relative_to(outputs)
+            assert not target.exists(), f'stale target exists: {target}'
+            target.parent.mkdir(parents=True, exist_ok=True)
+            path.rename(target)
+    gate.write_training_code(outputs, step, current)
+    return old
 
 
 def frozen_training(outputs, device='cuda'):
@@ -121,6 +151,7 @@ def budget(gpu_hours=3., cpu_hours=1.5):
 
 
 def main(argv=None):
+    os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')  # determinism() needs it before CUDA work
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('step', choices=('budget', 'frozen', 'held-list', 'd2', 'core', 'paper',
                                    'rcol', 'held', 'images', 'verdict', 'diagnostics'))
@@ -137,6 +168,7 @@ def main(argv=None):
     if args.stage0_training:
         assert args.step in ('d2', 'core')
         assert not any((outputs / 'held').rglob('*.npz')), 'V4: Stage 0 retraining after held output exists'
+        prepare_stage0_training(outputs, args.step)
     else:
         gate.require_pass(args.report, args.device)
     if args.step in ('frozen', 'd2', 'core', 'paper'):
@@ -171,9 +203,6 @@ def main(argv=None):
     elif args.step == 'images':
         import ct_extract
         ct_extract.HELD_LIST = outputs / 'held/held_paintings.json'
-        ct_extract.OUTPUT = outputs / 'targets'
-        from functools import partial
-        ct_extract.write_store = partial(ct_extract.write_store, root=outputs / 'targets')
         ct_extract.main(['--device', args.device])
     elif args.step == 'verdict':
         import subprocess
@@ -191,9 +220,7 @@ def main(argv=None):
                          dict(held_outputs=sources, rcol=dict(path=str(ct_rcol.OUTPUT),
                               sha256=gate.file_sha256(ct_rcol.OUTPUT), record=rcol)))
     elif args.step == 'diagnostics':
-        from functools import partial
         import ct_diag
-        ct_diag.target_images = partial(ct_diag.target_images, root=outputs / 'targets')
         ct_diag.run(HERE / 'verdict_stage1.json', outputs, HERE / 'diag_stage1.json', workers=8)
 
 
