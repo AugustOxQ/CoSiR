@@ -715,3 +715,13 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-13-handoff.md
 - New chat: tab 'r10 build 13', session 81559ff7-a4b2-4dfe-a2b2-60ac162302d1
 
+[brief] CoSiR: r10 build 13 -> r10 build 13 2 (2026-10-20 07:23 Amsterdam)
+- Done: facts brief and nine tickets for the stage 2 build (data, extraction, graphs, D2, PercepT, verdict, stage
+  2a, diagnostics, runner).
+- State: no code yet. Core PercepT's full-batch DEC needs 10.3 GiB per tensor at full scale; tickets plan a
+  chunked version and a local-only run (about 5 GPU h).
+- Next: create the integration branch, dispatch tickets 01, 03, 06 to Codex, then the rest.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-13-2-handoff.md
+- New chat: tab 'r10 build 13 2', session 22a23e05-3a5b-48bc-9f9e-3ae6ecc565f8
+
