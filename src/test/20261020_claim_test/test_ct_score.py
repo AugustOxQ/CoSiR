@@ -255,8 +255,9 @@ def test_prepare_held_keeps_core_seeds_and_records_paper_nonfinite_collapse(tmp_
     write_output(tmp_path / 'held' / f'{stems["B2"]}__s1.npz', prob, sha)
     # The external sheet estimator is replaced to keep the full-row fixture cheap.
     monkeypatch.setattr(score, 'partitions', lambda x, k: np.zeros((3, len(x)), np.int64))
+    strict_widths = {arm: dict.fromkeys(range(5), 40) for arm in ('B2', 'B3')}
     fixed, eligibility, sources = score.prepare_held(names, sha,
-        {'B2': [0, 1], 'B3': [], 'B4': [], 'B5': []}, tmp_path)
+        {'B2': [0, 1], 'B3': [], 'B4': [], 'B5': []}, strict_widths, tmp_path)
     assert eligibility['eligible_seeds'] == {'K1': list(range(5)), 'B1': list(range(5)),
                                            'B2': [0], 'B3': [], 'B4': [], 'B5': []}
     assert eligibility['rcol_eligible_seeds']['B2'] == [0, 1]
@@ -266,10 +267,16 @@ def test_prepare_held_keeps_core_seeds_and_records_paper_nonfinite_collapse(tmp_
     assert 1 not in fixed['B2']
     assert sources['K1']['0']['output_sha256']
     assert sources['B2']['1']['status'] == 'nonfinite_held'
+    for seed in (0, 1):
+        mismatched = {arm: widths.copy() for arm, widths in strict_widths.items()}
+        mismatched['B2'][seed] = 39
+        with pytest.raises(AssertionError):
+            score.prepare_held(names, sha, {'B2': [0, 1], 'B3': [], 'B4': [], 'B5': []},
+                               mismatched, tmp_path)
     # A missing required core seed must fail, never reduce its seed list.
     (tmp_path / 'held' / f'{stems["K1"]}__s4.npz').rename(tmp_path / 'absent.npz')
     with pytest.raises(AssertionError):
-        score.prepare_held(names, sha, {'B2': [0, 1], 'B3': [], 'B4': [], 'B5': []}, tmp_path)
+        score.prepare_held(names, sha, {'B2': [0, 1], 'B3': [], 'B4': [], 'B5': []}, strict_widths, tmp_path)
 
 
 @pytest.mark.parametrize(('d', 'lower', 'outcome'), [
@@ -329,9 +336,183 @@ def test_default_bootstrap_has_exactly_2000_resamples():
     assert result['interval'] == pytest.approx([0, 1])
 
 
-def test_core_k40_file_has_exactly_40_probabilities(tmp_path, held_identity):
+@pytest.mark.parametrize('arm', ['B1', 'B4', 'B5'])
+def test_k40_file_has_exactly_40_probabilities(tmp_path, held_identity, arm):
     names, sha = held_identity
     path = tmp_path / 'P3__s0.npz'
     write_output(path, np.full((12281, 39), .5, np.float32), sha)
     with pytest.raises(AssertionError):
-        score.load_held_output(path, 'B1', names, sha)
+        score.load_held_output(path, arm, names, sha)
+
+
+def rcol_record():
+    runs = [dict(version=version, seed=seed, cut=cut, kept_count=count + seed if cut == 'strict' else 40)
+            for version, count in (('clip_roberta', 20), ('qwen_qwen', 30))
+            for seed in range(5) for cut in ('strict', 'k40')]
+    entries = {arm: dict(eligible=arm == 'B2', seeds=[0, 1] if arm == 'B2' else [])
+               for arm in ('B2', 'B3', 'B4', 'B5')}
+    return dict(runs=runs, entries=entries, written='2026-10-20 12:00')
+
+
+def test_reads_ticket02_rcol_file_and_per_seed_strict_widths(tmp_path, monkeypatch):
+    import json
+    import ct_rcol
+    path = tmp_path / 'rcol_stage1.json'
+    record = rcol_record()
+    path.write_text(json.dumps(record))
+    monkeypatch.setattr(ct_rcol, 'OUTPUT', path)
+    actual, seeds, widths = score.read_rcol()
+    assert actual == record
+    assert seeds == {'B2': [0, 1], 'B3': [], 'B4': [], 'B5': []}
+    assert widths == {'B2': dict(enumerate(range(20, 25))), 'B3': dict(enumerate(range(30, 35)))}
+
+
+@pytest.mark.parametrize('invalid', ['missing_entry', 'extra_entry', 'unwritten', 'eligibility', 'duplicate_run'])
+def test_rejects_invalid_rcol_contract(tmp_path, invalid):
+    import json
+    record = rcol_record()
+    if invalid == 'missing_entry':
+        record['entries'].pop('B5')
+    elif invalid == 'extra_entry':
+        record['entries']['B6'] = dict(eligible=False, seeds=[])
+    elif invalid == 'unwritten':
+        record.pop('written')
+    elif invalid == 'eligibility':
+        record['entries']['B2']['eligible'] = False
+    else:
+        record['runs'].append(record['runs'][0])
+    path = tmp_path / 'rcol_stage1.json'
+    path.write_text(json.dumps(record))
+    with pytest.raises(AssertionError):
+        score.read_rcol(path)
+
+
+@pytest.mark.parametrize('arm', ['B2', 'B3'])
+def test_strict_width_must_match_rcol_even_for_nonfinite_outputs(tmp_path, held_identity, arm):
+    names, sha = held_identity
+    path = tmp_path / 'P1__s0.npz'
+    x = np.full((12281, 20), .5, np.float32)
+    write_output(path, x, sha)
+    assert score.load_held_output(path, arm, names, sha, expected_width=20).shape == (12281, 20)
+    for nonfinite in (False, True):
+        if nonfinite:
+            x[0, 0] = np.nan
+            write_output(path, x, sha)
+        with pytest.raises(AssertionError):
+            score.load_held_output(path, arm, names, sha, expected_width=21)
+
+
+def test_repeated_seeds_keep_their_multiplicity_in_the_mean():
+    fixed, labels, _ = hand_case()
+    result = score.score_indices(fixed, labels, np.arange(5),
+                                 {'K1': [0, 0, 1], 'B1': [0, 0, 1], 'B2': [4]})
+    assert result['A_K1'] == pytest.approx(4 / 9)
+    assert result['A_e']['B1-own'] == pytest.approx(1 / 3)
+    assert result['A_e']['B1-r20'] == pytest.approx(-1 / 3)
+    assert result['d'] == pytest.approx(1 / 9)
+
+
+def test_partition_identity_survives_unrelated_scorer_edits(tmp_path, held_identity):
+    import importlib.util
+    import json
+    from pathlib import Path
+    _, sha = held_identity
+    x = np.tile(np.array([.6, .8], np.float32), (12281, 1))
+    path = tmp_path / 'partitions.npz'
+    first = score.fixed_partitions(x, 'percept', path, sha, 'a' * 64)
+    source = Path(score.__file__).read_text()
+    copy_path = tmp_path / 'ct_score_copy.py'
+
+    def load_copy(content):
+        copy_path.write_text(content)
+        spec = importlib.util.spec_from_file_location('ct_score_copy', copy_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    edited = load_copy(source.replace('Rule §4 outcome ID', 'Unrelated reporting edit: rule §4 outcome ID'))
+    second = edited.fixed_partitions(x, 'percept', path, sha, 'a' * 64)
+    np.testing.assert_array_equal(second['r20'], first['r20'])
+    meta = json.loads(path.with_suffix('.json').read_text())
+    assert set(meta['identity']['code_sha256']) == {'pav_score.py', 'apc_data.py', 'output_partitions'}
+    changed = load_copy(source.replace('Cluster all rows once;', 'Changed partition function;'))
+    with pytest.raises(AssertionError):
+        changed.fixed_partitions(x, 'percept', path, sha, 'a' * 64)
+
+
+@pytest.fixture
+def verdict_inputs(held_identity):
+    _, sha = held_identity
+    fixed, labels, seeds = hand_case()
+    return dict(result=score.paired_bootstrap(fixed, labels, seeds, n_resamples=4, workers=1),
+                eligibility={'eligible_seeds': seeds}, held_sha256=sha,
+                labels={'emotion': labels}, code_commit='a' * 40, sources={})
+
+
+def test_verdict_records_dirty_round_files_only(tmp_path, monkeypatch, verdict_inputs):
+    import subprocess
+    repo = tmp_path / 'repo'
+    folder = repo / 'round'
+    folder.mkdir(parents=True)
+    tracked = folder / 'source.py'
+    tracked.write_text('# original\n')
+    outside = repo / 'outside.txt'
+    outside.write_text('original\n')
+    subprocess.run(['git', 'init', '-q', str(repo)], check=True)
+    subprocess.run(['git', 'add', '.'], cwd=repo, check=True)
+    subprocess.run(['git', '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+                    'commit', '-qm', 'fixture'], cwd=repo, check=True)
+    monkeypatch.setattr(score, 'HERE', folder)
+    outside.write_text('outside the round\n')
+    clean = score.write_verdict(tmp_path / 'clean.json', **verdict_inputs)
+    assert clean['dirty'] is False
+    assert clean['dirty_files'] == []
+    tracked.write_text('# modified\n')
+    (folder / 'extra.py').write_text('# untracked\n')
+    dirty = score.write_verdict(tmp_path / 'dirty.json', **verdict_inputs)
+    assert dirty['dirty'] is True
+    assert dirty['dirty_files'] == [' M round/source.py', '?? round/extra.py']
+
+
+def test_verdict_refuses_changes_without_a_recorded_vcheck_replacement(tmp_path, verdict_inputs):
+    import hashlib
+    path = tmp_path / 'verdict_stage1.json'
+    original = score.write_verdict(path, **verdict_inputs)
+    before = path.read_bytes()
+    mtime = path.stat().st_mtime_ns
+    assert score.write_verdict(path, **verdict_inputs) == original
+    assert path.stat().st_mtime_ns == mtime
+    verdict_inputs['result'] = dict(verdict_inputs['result'], d=.02)
+    with pytest.raises(AssertionError, match='refusing to replace'):
+        score.write_verdict(path, **verdict_inputs)
+    assert path.read_bytes() == before
+    with pytest.raises(AssertionError):
+        score.write_verdict(path, **verdict_inputs, replace='  ')
+    reason = 'V3 rerun: corrected saved row order, same seeds and code'
+    replaced = score.write_verdict(path, **verdict_inputs, replace=reason)
+    assert replaced['d'] == .02
+    assert replaced['replacement'] == dict(reason=reason, previous_sha256=hashlib.sha256(before).hexdigest())
+    after = path.read_bytes()
+    assert score.write_verdict(path, **verdict_inputs) == replaced
+    assert path.read_bytes() == after
+
+
+def test_outputs_use_rcol_main_checkout():
+    from pathlib import Path
+    import ct_rcol
+    assert score.OUTPUTS == Path('/project/CoSiR/src/test/20261020_claim_test/outputs')
+    assert score.OUTPUTS == ct_rcol.STAGE1.parents[2]
+
+
+def test_main_reads_ct_rcol_output_before_any_held_input(tmp_path, monkeypatch):
+    import json
+    import sys
+    import ct_rcol
+    path = tmp_path / 'ticket02.json'
+    record = rcol_record()
+    record['entries']['B2']['eligible'] = False
+    path.write_text(json.dumps(record))
+    monkeypatch.setattr(ct_rcol, 'OUTPUT', path)
+    monkeypatch.setattr(sys, 'argv', ['ct_score.py'])
+    with pytest.raises(AssertionError):
+        score.main()
