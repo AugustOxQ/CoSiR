@@ -14,6 +14,7 @@ lifetime high-water mark, including inputs/imports). Array hashes use contiguous
 C-order raw bytes. CLI also binds mode, label-free sample fingerprint and the
 provider's per-role name hashes in identity. With --out BASE/graphs, sample
 archives can also be read by ags_head.load_graph(s, BASE, aspect, [row]).
+Sample CLI builds must equal the hash-checked frozen D2 arrays before saving.
 
 The CLI expects ct2_data.split2(mode), default_images(s), default_captions(s),
 instructed_images(s, key), instructed_captions(s, key). All providers return
@@ -22,6 +23,7 @@ normalized float32 painting arrays, with captions pooled to painting means.
 import argparse
 import hashlib
 import io
+import json
 import resource
 import sys
 import time
@@ -37,6 +39,7 @@ import ags_graphs as ags
 ROWS = dict(emotion='Gres', style='Fres05', genre='R0o')
 KEYS = ('D', 'I', 'E', 'style.img', 'genre.img')
 METHOD = 'D2 selected AGS Gres/Fres05/R0o; block256; sd200000 rng0 offdiagonal; v1'
+FROZEN_GRAPHS = Path('/project/CoSiR/src/test/20261018_aspect_graph_sheet/graphs')
 
 
 def _sha_array(x):
@@ -152,6 +155,16 @@ def save(graphs, manifest, out):
     ags.atomic_json(out / 'manifest.json', manifest)
 
 
+def _check_sample(graphs):
+    manifest = json.loads((FROZEN_GRAPHS / 'manifest.json').read_text())
+    for aspect, graph in graphs.items():
+        path = FROZEN_GRAPHS / f'{aspect}.npz'
+        assert ags.sha_file(path) == manifest['archives'][aspect], 'frozen graph archive checksum mismatch'
+        with np.load(path, allow_pickle=False) as z:
+            for key, value in _arrays(graph).items():
+                assert np.array_equal(value, z[key]), f'sample graph mismatch: {aspect}.{key}'
+
+
 @threadpool_limits.wrap(limits=8)
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -161,13 +174,15 @@ def main():
     import ct2_data
 
     s = ct2_data.split2(args.mode)
+    identity = dict(mode=args.mode, sample_sha256=ags.fingerprint(s), names_sha256=s['names_sha256'])
     spaces = dict(D=ct2_data.default_captions(s), I=ct2_data.default_images(s),
                   E=ct2_data.instructed_captions(s, 'emotion_focus'),
                   **{'style.img': ct2_data.instructed_images(s, 'style_word'),
                      'genre.img': ct2_data.instructed_images(s, 'genre_word')})
     graphs, manifest = build(spaces, s['fit'], s['dev'])
-    manifest['identity'].update(mode=args.mode, sample_sha256=ags.fingerprint(s),
-                                names_sha256=s['names_sha256'])
+    if args.mode == 'sample':
+        _check_sample(graphs)
+    manifest['identity'].update(identity)
     save(graphs, manifest, args.out)
     print(f'D2 graphs: {args.out}; seconds={manifest["seconds"]:.2f}; '
           f'peak RSS={manifest["peak_rss_bytes"] / 2**20:.1f} MiB', flush=True)
