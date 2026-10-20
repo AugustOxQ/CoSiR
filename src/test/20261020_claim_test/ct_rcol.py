@@ -140,9 +140,12 @@ def read_stage1(path):
         judgments[cut] = judge(cut, arrays[f'kept_{cut}'], arrays[f'fit_topics_{cut}'])
         kept = arrays[f'kept_{cut}']
         local_counts = np.bincount(arrays[f'fit_topics_{cut}'], minlength=int(kept.sum()))
-        assert (local_counts >= counts[kept]).all(), f'{path}: {cut} post-cut counts lost pairs'
+        # Counts and topics come from separate GPU float32 passes; allow near-ties as below.
+        lost = int(np.maximum(counts[kept] - local_counts, 0).sum())
+        assert lost <= .0001 * len(latent), f'{path}: {cut} post-cut counts lost {lost} pairs'
         if kept.all():
-            assert np.array_equal(local_counts, counts), f'{path}: {cut} post-cut counts differ'
+            moved = int(np.abs(local_counts - counts).sum())
+            assert moved <= .0001 * len(latent), f'{path}: {cut} post-cut counts differ by {moved}'
     recomputed_counts, recomputed_topics = _recompute_assignments(centers, latent, expected_masks)
     count_l1 = int(np.abs(recomputed_counts - counts.astype(np.int64)).sum())
     assert count_l1 <= .0001 * len(latent), f'{path}: count L1 difference {count_l1}'

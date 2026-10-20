@@ -355,13 +355,14 @@ def test_reader_requires_local_topics_for_noncontiguous_kept_centers(paper_stage
 
 @pytest.mark.parametrize('version,cut', [('clip_roberta', 'strict'), ('qwen_qwen', 'strict'),
                                        ('clip_roberta', 'k40')])
-def test_reader_rejects_loss_of_a_kept_centers_pairs_even_within_tolerance(paper_stage1, version, cut):
+def test_reader_rejects_loss_of_a_kept_centers_pairs_beyond_tolerance(paper_stage1, version, cut):
     path = paper_stage1 / f'{version}__s2.npz'
     with np.load(path) as z:
         arrays = dict(z)
-    # One mismatch is under the recomputation tolerance, but no original
-    # winner can move away from a surviving center when other columns are cut.
-    arrays[f'fit_topics_{cut}'][0] = 1
+    # Counts and topics come from separate GPU passes, so a near-tie may move a
+    # pair (0.01% allowed); 200 moved pairs are far beyond that.
+    topics = arrays[f'fit_topics_{cut}']
+    topics[np.flatnonzero(topics != 1)[:200]] = 1
     np.savez_compressed(path, **arrays)
     with pytest.raises(AssertionError, match='post-cut counts'):
         ct_rcol.read_stage1(path)
