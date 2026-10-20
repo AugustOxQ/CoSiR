@@ -683,3 +683,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-5-handoff.md
 - New chat: tab 'r10 run 5', session 06515b8b-680b-4ff1-be12-f4fa27e7ef40
 
+[brief] CoSiR: r10 run 5 -> r10 run 6 (2026-10-20 05:08 Amsterdam)
+- Done: stage 0 passed (24 of 24, bitwise); stage 1 trained D2, core and paper Stage 1, then stopped on an R-COL recheck bug, now fixed (95a8a57).
+- State: no held output yet. Strict paper runs all collapsed (B2, B3 out); K = 40 runs not (B4, B5 in).
+- Next: rerun `ct_queue_stage1.sh` (paper Stage 2, R-COL, held, images), then `ct_queue_cpu.sh`, V2, reports.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-6-handoff.md
+- New chat: tab 'r10 run 6', session 6b1004fb-cef1-4216-b21a-f9e3c1ddde65
+
