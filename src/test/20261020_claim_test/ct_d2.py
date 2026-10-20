@@ -26,10 +26,15 @@ def _weight_path(outdir, aspect, seed):
     return Path(outdir) / 'd2/weights' / f'{aspect}__s{seed}.pt'
 
 
-def _weights_info(outdir, aspect, seed):
-    path = _weight_path(outdir, aspect, seed)
+def _artifact_info(path, kind):
     info = json.loads(path.with_suffix('.json').read_text())
-    assert ms_train.head.sha_file(path) == info['weights_sha256'], 'weights checksum mismatch'
+    assert ms_train.head.sha_file(path) == info[f'{kind}_sha256'], f'{kind} checksum mismatch'
+    assert isinstance(info['config'], dict)
+    return info
+
+
+def _weights_info(outdir, aspect, seed):
+    info = _artifact_info(_weight_path(outdir, aspect, seed), 'weights')
     config = info['config']
     assert config['aspect'] == aspect and config['seed'] == seed
     assert config['row'] == ROWS['D2'] and config['name'] == 'D2'
@@ -39,23 +44,34 @@ def _weights_info(outdir, aspect, seed):
 
 
 def _verified_cohort(s, manifests, seed, device, outdir):
-    result = {}
-    try:
-        for aspect in ASPECTS:
-            config = ms_train.make_config(s, ROWS['D2'], 'D2', aspect, list(ASPECTS),
-                                          manifests, seed, device, False, ms_train.CONFIG['max_epochs'])
-            path = ms_train.output_path(outdir / 'd2/train', 'D2', aspect,
-                                        config['graph_row'], seed)
+    result, incomplete = {}, False
+    corrupt = (AssertionError, OSError, ValueError, KeyError, zipfile.BadZipFile)
+    for aspect in ASPECTS:
+        config = ms_train.make_config(s, ROWS['D2'], 'D2', aspect, list(ASPECTS),
+                                      manifests, seed, device, False, ms_train.CONFIG['max_epochs'])
+        path = ms_train.output_path(outdir / 'd2/train', 'D2', aspect,
+                                    config['graph_row'], seed)
+        records = {}
+        for kind, artifact in (('output', path), ('weights', _weight_path(outdir, aspect, seed))):
+            try:
+                info = _artifact_info(artifact, kind)
+            except corrupt:
+                incomplete = True
+                continue
+            # A valid artifact from another recipe/device must never be replaced.
+            assert info['config'] == config, f'{kind} resume config mismatch'
+            records[kind] = info
+        if len(records) != 2:
+            continue
+        try:
             output = ms_train.head.verify_output(path, config)
-            if output is None:
-                return None
-            weights = _weights_info(outdir, aspect, seed)
-            for key in ('config', 'output_sha256', 'best_epoch', 'best_dev_loss'):
+            weights = records['weights']
+            for key in ('output_sha256', 'best_epoch', 'best_dev_loss'):
                 assert weights[key] == output[key], f'weights/output {key} mismatch'
             result[aspect] = output
-    except (AssertionError, OSError, ValueError, KeyError, zipfile.BadZipFile):
-        return None
-    return result
+        except corrupt:
+            incomplete = True
+    return None if incomplete else result
 
 
 def _preserve_cohort(outdir, seed):
@@ -91,7 +107,7 @@ def load_training_data():
 
 
 @threadpool_limits.wrap(limits=8)
-def train(seeds=range(5), device='cpu', outdir=OUTPUTS):
+def train(seeds=range(5), device='cuda', outdir=OUTPUTS):
     """Train one unchanged three-aspect D2 cohort per seed, retaining best states."""
     seeds = list(seeds)
     assert seeds and len(set(seeds)) == len(seeds) and all(s in range(5) for s in seeds)
@@ -125,14 +141,20 @@ def train(seeds=range(5), device='cpu', outdir=OUTPUTS):
     return result
 
 
+def _inference_device(weights, device):
+    recorded = torch.device(weights['config']['device'])
+    assert device is None or torch.device(device) == recorded, 'inference device differs from training device'
+    return recorded
+
+
 @threadpool_limits.wrap(limits=8)
-def infer(aspect, seed, names, side='img', *, device='cpu', outdir=OUTPUTS):
+def infer(aspect, seed, names, side='img', *, device=None, outdir=OUTPUTS):
     """Apply one saved best view to default images in the requested name order."""
-    assert side in ('img', 'cap')
+    assert side == 'img', 'held inference requires the image tower'
     path = _weight_path(outdir, aspect, seed)
-    _weights_info(outdir, aspect, seed)
+    weights = _weights_info(outdir, aspect, seed)
     torch.set_num_threads(8)
-    device = torch.device(device)
+    device = _inference_device(weights, device)
     _, views = ms_train.build_model(ROWS['D2'], list(ASPECTS), device)
     view = views[aspect]
     view.load_state_dict(torch.load(path, map_location=device, weights_only=True))
@@ -150,7 +172,7 @@ def infer(aspect, seed, names, side='img', *, device='cpu', outdir=OUTPUTS):
     return out
 
 
-def write_held(seeds=range(5), device='cpu', outdir=OUTPUTS):
+def write_held(seeds=range(5), device=None, outdir=OUTPUTS):
     """Write all three best image views in the frozen held-list order."""
     seeds = list(seeds)
     assert seeds and len(set(seeds)) == len(seeds) and all(s in range(5) for s in seeds)
@@ -163,6 +185,7 @@ def write_held(seeds=range(5), device='cpu', outdir=OUTPUTS):
     for seed in seeds:
         for aspect in ASPECTS:
             weights = _weights_info(outdir, aspect, seed)
+            _inference_device(weights, device)
             path = outdir / 'held/d2' / f'{aspect}__s{seed}.npz'
             identity = dict(held_sha256=held_hash, weights_sha256=weights['weights_sha256'], rows=len(names))
             if path.exists():
@@ -190,7 +213,8 @@ def write_held(seeds=range(5), device='cpu', outdir=OUTPUTS):
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--seeds', type=int, nargs='+', choices=range(5), default=list(range(5)))
-    p.add_argument('--device', choices=['cpu', 'cuda'], default='cpu')
+    p.add_argument('--device', choices=['cpu', 'cuda'],
+                   help='training defaults to cuda; held inference uses the weights device')
     p.add_argument('--train', action='store_true')
     p.add_argument('--held', action='store_true', help='held inference; run after the stage 0 gate')
     p.add_argument('--outdir', type=Path, default=OUTPUTS)
@@ -198,7 +222,7 @@ def main(argv=None):
     assert args.train or args.held, 'choose --train and/or --held'
     assert len(set(args.seeds)) == len(args.seeds)
     if args.train:
-        train(args.seeds, args.device, args.outdir)
+        train(args.seeds, args.device or 'cuda', args.outdir)
     if args.held:
         write_held(args.seeds, args.device, args.outdir)
 

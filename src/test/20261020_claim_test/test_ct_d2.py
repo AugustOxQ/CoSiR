@@ -131,12 +131,12 @@ def test_complete_cohort_skips_only_after_verifying_outputs_and_weights(complete
         pytest.fail('a complete verified cohort must skip training')
 
     monkeypatch.setattr(ms_train, 'run', unexpected_run)
-    result = ct_d2.train([0], outdir=completed)
+    result = ct_d2.train([0], device='cpu', outdir=completed)
     assert set(result[0]) == set(ASPECTS)
 
 
 @pytest.mark.parametrize('fault', ['weight_missing', 'weight_hash', 'weight_meta', 'weight_epoch',
-                                   'output_missing', 'output_hash', 'output_meta', 'stale_config'])
+                                   'output_missing', 'output_hash', 'output_meta'])
 def test_incomplete_or_corrupt_cohort_is_preserved_and_retrained(
         completed, monkeypatch, cohort_data, fault):
     weight = completed / 'd2/weights/emotion__s0.pt'
@@ -147,13 +147,10 @@ def test_incomplete_or_corrupt_cohort_is_preserved_and_retrained(
         weight.write_bytes(b'broken weight file')
     elif fault == 'weight_meta':
         weight.with_suffix('.json').write_text('broken JSON')
-    elif fault in ('weight_epoch', 'stale_config'):
+    elif fault == 'weight_epoch':
         path = weight.with_suffix('.json')
         info = json.loads(path.read_text())
-        if fault == 'weight_epoch':
-            info['best_epoch'] = 2
-        else:
-            info['config']['seed'] = 1
+        info['best_epoch'] = 2
         path.write_text(json.dumps(info))
     elif fault == 'output_missing':
         output.rename(output.with_suffix('.missing'))
@@ -173,7 +170,7 @@ def test_incomplete_or_corrupt_cohort_is_preserved_and_retrained(
         return {'retrained': seed}
 
     monkeypatch.setattr(ms_train, 'run', replay)
-    assert ct_d2.train([0], outdir=completed)[0] == {'retrained': 0}
+    assert ct_d2.train([0], device='cpu', outdir=completed)[0] == {'retrained': 0}
     assert calls == [0]
     archived = {p.relative_to(root): p.read_bytes()
                 for root in (completed / 'd2/replaced').iterdir()
@@ -196,11 +193,10 @@ def test_infer_matches_sheet_outputs_on_all_5000_evaluation_names(completed, sam
                           dict(best_state=state, best_epoch=1, history=[{'epoch': 1}], best=0.25),
                           path, config, time.monotonic())
     with np.load(path, allow_pickle=False) as z:
-        for side in ('img', 'cap'):
-            actual = ct_d2.infer('emotion', 0, names, side=side, outdir=completed, device='cpu')
-            assert actual.dtype == np.float16 and actual.shape == (5000, 2048)
-            np.testing.assert_array_equal(actual.view(np.uint16), z[side].view(np.uint16))
-            assert np.max(np.abs(np.linalg.norm(actual.astype(np.float32), axis=1) - 1)) < 1e-3
+        actual = ct_d2.infer('emotion', 0, names, outdir=completed)
+        assert actual.dtype == np.float16 and actual.shape == (5000, 2048)
+        np.testing.assert_array_equal(actual.view(np.uint16), z['img'].view(np.uint16))
+        assert np.max(np.abs(np.linalg.norm(actual.astype(np.float32), axis=1) - 1)) < 1e-3
 
 
 def test_infer_verifies_weights_before_loading_image_inputs(completed, monkeypatch):
@@ -247,7 +243,7 @@ def test_held_cli_writes_three_aspects_in_frozen_order_with_sidecars(completed, 
         return x
 
     monkeypatch.setattr(ct_held, 'qwen_default_images', images)
-    argv = ['--held', '--seeds', '0', '--device', 'cpu', '--outdir', str(completed)]
+    argv = ['--held', '--seeds', '0', '--outdir', str(completed)]
     ct_d2.main(argv)
     assert reads == [12281] * 3
     before = {}
@@ -273,3 +269,115 @@ def test_held_cli_writes_three_aspects_in_frozen_order_with_sidecars(completed, 
     path.write_bytes(b'corrupted held output')
     with pytest.raises(AssertionError, match='held output checksum mismatch'):
         ct_d2.main(argv)
+
+
+def test_infer_uses_the_recorded_training_device_without_touching_cuda(completed, monkeypatch):
+    path = completed / 'd2/weights/emotion__s0.json'
+    info = json.loads(path.read_text())
+    info['config']['device'] = 'cuda'
+    path.write_text(json.dumps(info))
+
+    class DeviceObserved(Exception):
+        pass
+
+    def build_model(row, aspects, device):
+        assert device == torch.device('cuda')
+        raise DeviceObserved
+
+    monkeypatch.setattr(ms_train, 'build_model', build_model)
+    with pytest.raises(DeviceObserved):
+        ct_d2.infer('emotion', 0, ['a-painting'], outdir=completed)
+
+
+def test_infer_rejects_an_explicit_device_different_from_training(completed, monkeypatch):
+    path = completed / 'd2/weights/emotion__s0.json'
+    info = json.loads(path.read_text())
+    info['config']['device'] = 'cuda'
+    path.write_text(json.dumps(info))
+    monkeypatch.setattr(ms_train, 'build_model', lambda *args: pytest.fail('model built too early'))
+    with pytest.raises(AssertionError, match='inference device differs from training device'):
+        ct_d2.infer('emotion', 0, ['a-painting'], device='cpu', outdir=completed)
+
+
+def test_infer_accepts_only_the_image_tower(completed):
+    with pytest.raises(AssertionError, match='held inference requires the image tower'):
+        ct_d2.infer('emotion', 0, [], side='cap', outdir=completed)
+
+
+@pytest.mark.parametrize('artifact', ['output', 'weights'])
+@pytest.mark.parametrize('field', ['device', 'row'])
+@pytest.mark.parametrize('missing_other', [False, True])
+def test_train_rejects_checksummed_config_mismatch_without_moving_files(
+        completed, monkeypatch, cohort_data, artifact, field, missing_other):
+    path = (completed / 'd2/train/D2/style__Fres05__s0.json' if artifact == 'output'
+            else completed / 'd2/weights/style__s0.json')
+    info = json.loads(path.read_text())
+    if field == 'device':
+        info['config']['device'] = 'cuda'
+    else:
+        info['config']['row']['distill_weight'] = 1.0
+    path.write_text(json.dumps(info))
+    if missing_other:
+        missing = completed / 'd2/train/D2/emotion__Gres__s0.npz'
+        missing.rename(missing.with_suffix('.missing'))
+    before = {p.relative_to(completed): (p.stat().st_mtime_ns, ms_train.head.sha_file(p))
+              for p in completed.rglob('*') if p.is_file()}
+    monkeypatch.setattr(ct_d2, 'load_training_data', lambda: cohort_data)
+    monkeypatch.setattr(ms_train, 'run', lambda *args: pytest.fail('config mismatch must not retrain'))
+    with pytest.raises(AssertionError, match='resume config mismatch'):
+        ct_d2.train([0], device='cpu', outdir=completed)
+    assert {p.relative_to(completed): (p.stat().st_mtime_ns, ms_train.head.sha_file(p))
+            for p in completed.rglob('*') if p.is_file()} == before
+    assert not (completed / 'd2/replaced').exists()
+
+
+def test_train_cli_defaults_to_cuda_without_using_a_gpu(tmp_path, monkeypatch, cohort_data):
+    monkeypatch.setattr(ct_d2, 'load_training_data', lambda: cohort_data)
+    devices = []
+
+    def sheet_run(s, inputs, graphs, manifests, row, name, aspects, seed, device, outdir):
+        devices.append(device)
+        return {}
+
+    monkeypatch.setattr(ms_train, 'run', sheet_run)
+    ct_d2.main(['--train', '--seeds', '0', '--outdir', str(tmp_path)])
+    assert devices == [torch.device('cuda')]
+
+
+def test_held_cli_rejects_a_device_override_different_from_weights(completed, monkeypatch):
+    import ct_held
+
+    names = [f'painting-{i:05d}' for i in range(12281)]
+    ms_train.head.atomic_json(completed / 'held/held_paintings.json',
+                              dict(names=names, sha256=ct_held.names_sha256(names)))
+    monkeypatch.setattr(ms_train, 'build_model', lambda *args: pytest.fail('model built too early'))
+    with pytest.raises(AssertionError, match='inference device differs from training device'):
+        ct_d2.main(['--held', '--seeds', '0', '--device', 'cuda', '--outdir', str(completed)])
+
+
+def test_infer_batches_follow_the_sheet_batch_size(completed, monkeypatch):
+    import ct_held
+
+    monkeypatch.setitem(ms_train.CONFIG, 'batch_size', 37)
+    names = ['a-painting'] * 83
+    x = np.zeros((83, 2048), dtype=np.float32)
+    x[:, 0] = 1
+    monkeypatch.setattr(ct_held, 'qwen_default_images', lambda requested: x if requested == names else None)
+    original_build = ms_train.build_model
+    batches = []
+
+    def build_model(row, aspects, device):
+        models, views = original_build(row, aspects, device)
+
+        def record_batch(model, args):
+            batches.append((tuple(args[0].shape), args[0].dtype, args[0].device.type))
+
+        views['emotion']['img'].register_forward_pre_hook(record_batch)
+        return models, views
+
+    monkeypatch.setattr(ms_train, 'build_model', build_model)
+    actual = ct_d2.infer('emotion', 0, names, outdir=completed)
+    assert actual.shape == (83, 2048) and actual.dtype == np.float16
+    assert batches == [((37, 2048), torch.float32, 'cpu'),
+                       ((37, 2048), torch.float32, 'cpu'),
+                       ((9, 2048), torch.float32, 'cpu')]
