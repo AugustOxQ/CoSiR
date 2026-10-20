@@ -699,3 +699,19 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-run-7-handoff.md
 - New chat: tab 'r10 run 7', session 65a0e5e4-2122-4f44-b3d4-d693b454057a
 
+[brief] CoSiR: r10 run 7 -> r10 decide 15 (2026-10-20 06:54 Amsterdam)
+- Done: claim test stage 1 is GO; the auto report and the user-read report are committed.
+- State: held emotion AMI, D2 0.1001 against PercepT core 0.0855 (d +0.0146 [+0.0093, +0.0157]).
+- Next: your reading of stage 1 (decision C), then the check of the spec's brief, then track 2's idea (decision B).
+- Blocked: nothing; the stage 2 build runs unattended in "r10 build 13".
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-decide-15-handoff.md
+- New chat: tab 'r10 decide 15', session ccb76994-1f0e-4e05-b124-b9148a552644
+
+[brief] CoSiR: r10 run 7 -> r10 build 13 (2026-10-20 06:54 Amsterdam)
+- Done: claim test stage 1 is GO (held emotion AMI, D2 0.1001 against PercepT core 0.0855); both reports committed.
+- State: by the rule, stage 2 runs: every arm retrained on the 42,969 train paintings, same recipes, same held set.
+- Next: facts brief, tickets and build of the stage 2a regression check and stage 2; smoke runs only, no full run.
+- Blocked: nothing; "r10 decide 15" meets the user at the same time.
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-13-handoff.md
+- New chat: tab 'r10 build 13', session 81559ff7-a4b2-4dfe-a2b2-60ac162302d1
+
