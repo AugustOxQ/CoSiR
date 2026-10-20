@@ -93,3 +93,12 @@ No user choice of device or start time in the direction log, so the agent defaul
 | 15:04 | node env has torch 2.14 (local 2.11): plan to copy the local env; feature stores copy to node408 starts (`cluster sync --data`) | running |
 | 15:07 | probe pull also copied the node's whole results root (2.0 GB, new files only) into `res/` | on pending deletions |
 | 15:10 | cut at the context meter's 200k note: handoff `docs/superpowers/handoffs/2026-10-20-r10-run-9-handoff.md`; the node build goes to "r10 run 9" | cut |
+
+### Node route build (chat "r10 run 9")
+
+Handoff: `docs/superpowers/handoffs/2026-10-20-r10-run-9-handoff.md`. Node408 free (3 A6000 idle, 80 h left).
+
+| Time | Step | Result |
+|---|---|---|
+| 15:09 | Codex build (gpt-6.1-sol, medium) of the node route from `.scratch/r10-claim-test-s2/node/codex_brief.md`, worktree `/project/CoSiR-wt/ct2-node` | commit 4d161f4, 10 min |
+| 15:20 | review (controller diff read; plumbing, no ticket review): sound; three fixes: sync timeout 240 s too short for the 25 GB env; "possible" inputs (models, WikiArt, 30 GB) made optional, since all five stores exist; `run` refuses unless the job got GPU 0, since the frozen queue pins `CUDA_VISIBLE_DEVICES=0` | fix round sent (Codex resume) |
