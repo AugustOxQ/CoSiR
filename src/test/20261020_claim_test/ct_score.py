@@ -261,14 +261,20 @@ def _draw_difference(draw):
     return score_indices(_worker_fixed, _worker_labels, rows, seeds)['d']
 
 
-def paired_bootstrap(fixed, labels, eligible, n_resamples=2000, workers=8):
-    """Point estimate and percentile interval; draws are independent of scheduling."""
+def paired_bootstrap(fixed, labels, eligible, n_resamples=2000, workers=8,
+                     comparator_readings=('r20', 'own')):
+    """Point estimate and percentile interval; draws are independent of scheduling.
+
+    Diagnostics may pass ('r20',) for three Leiden readings per vector set.
+    The verdict always uses the default schema and unchanged statistics.
+    """
     assert 1 <= workers <= 8
+    assert comparator_readings in (('r20', 'own'), ('r20',))
     assert labels.ndim == 1 and np.issubdtype(labels.dtype, np.integer)
     for arm, seeds in eligible.items():
         for seed in seeds:
             readings = fixed[arm][seed]
-            assert set(readings) == ({'r20'} if arm == 'K1' else {'r20', 'own'})
+            assert set(readings) == ({'r20'} if arm == 'K1' else set(comparator_readings))
             for reading, ps in readings.items():
                 assert ps.shape == (3 if reading == 'r20' else 1, len(labels))
                 assert np.issubdtype(ps.dtype, np.integer)
