@@ -4,9 +4,9 @@
 - Done: claim test stage 2 ran locally; outcome GO (S2-GO); the independent check agrees exactly; both reports committed.
 - State: D2 emotion AMI 0.1008 against PercepT core's own reading 0.0874; d +0.0133 [+0.0081, +0.0146].
 - Next: the user's reading of stage 2 (decision C), then the paper sentence and ArtELingo-28's facts brief and spec.
-- Blocked: nothing; "r10 decide 15" may still be open with stage 1's reading and track 2's decision B.
+- Blocked: nothing. "r10 decide 15" no longer runs; its points (stage 1's reading, track 2's decision B) come here (§4 b).
 
-> Drafted 2026-10-20 23:20 by "r10 run 10"; finished by "r10 run 11" after the user-read report. Loop step reached: track 1 (claim test), stage 2, step 9 done (verify and
+> Written 2026-10-20 23:19 by "r10 run 11" (drafted by "r10 run 10"). Loop step reached: track 1 (claim test), stage 2, step 9 done (verify and
 > report); step 1 (read results, decision C) next. Direction log entry: [2026-10-20 · Stage 2 model sheet
 > read](../direction_log.md), bullet "Grill, claim test".
 
@@ -56,6 +56,10 @@ Skills: none for decision C; `grilling` and `domain-modeling` only if the user g
   says why.
 - **Run log:** `src/test/20261020_claim_test/20261020_claim_test_run_log.md`, section "Local stage 2 run (chat r10
   run 10)".
+- **User-read report** (2ceb269, r10 run 11): Codex draft, then a Haiku cold read and a Sonnet `high` fidelity check
+  (no wrong number, no misstated rule), one fix wave. No caveat was missing from both reports, so the auto report is
+  unchanged. The fix wave added two results from the full report's analysis: k-means at Leiden's cluster count keeps
+  the lead (+0.0190), and D2 is slightly below the default Qwen image on genre (−0.0082).
 
 ## 4. Open points for the next step
 
@@ -64,10 +68,11 @@ All the user's. Ask each key question answer-first (the user's reading or pick, 
 a. **Decision C, key.** The user's reading of stage 2 from the auto report's results brief, given before ours. Show
    the brief without the collapsed block; then open ours and say where they differ. Record the reading. The user
    already saw the headline numbers in the run chat (2026-10-20 about 22:40), without our reading.
-b. **"r10 decide 15"** was opened at 06:54 and had made no commit by 23:08 (its session was still active). Ask the
-   user whether it is still open. If so, its points (stage 1's reading, the spec brief check, track 2's decision B,
-   its wrap-up) stay there, and this chat does only stage 2's points; one wrap-up covers both. If not, take its
-   open points here.
+b. **"r10 decide 15"** opened at 06:54 and asked for stage 1's reading at once; it got no answer and made no commit.
+   At 23:16 its process no longer ran (checked by r10 run 11; its session file ends at 06:54). Ask the user to
+   confirm, then take its open points here (agent default): stage 1's reading, the spec brief check, track 2's
+   decision B, its wrap-up. One wrap-up covers both stages. If the user reopens decide 15 instead, its points stay
+   there and this chat does only stage 2's points.
 c. **The Leiden result, minor.** Under Leiden the emotion lead vanishes in both stages. The licensed claim names
    k-means with 20 clusters, so the verdict stands; the question is how the paper presents it and whether it shapes
    track 2's decision B or the next spec.
