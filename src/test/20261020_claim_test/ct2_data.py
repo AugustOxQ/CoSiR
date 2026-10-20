@@ -29,6 +29,8 @@ ASPECT = Path('/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_aspect_promp
 ANNOTATIONS = Path('/data/PDD/artelingo/artelingo_train.json')
 CLIP = Path('/data/SSD2/pre_extract/artelingo/features')
 ROBERTA = Path('/data/SSD2/pre_extract/artelingo_full/roberta_go_emotions')
+QWEN_REVISION = '9f2f7e710d6d81056aa5c0a4f04764fec6bb7bda'
+ROBERTA_REVISION = 'd75048347613a25d77de8cf6412eaae9fa7b26be'
 FULL_COUNTS = ((42969, 216107), (6152, 30872), (12281, 61744))
 FULL_NAMES_SHA256 = (
     '921b6b7c18ff2cf3c41bf06acf9b1f787d8b9f927ed728710944403e3e35f118',
@@ -126,6 +128,7 @@ def default_images(s):
     assert all(name in lookup for name in wanted), 'missing default images'
     rows = np.asarray([lookup[name] for name in wanted], dtype=np.int64)
     x = np.asarray(raw[rows], dtype=np.float32)
+    assert np.isfinite(x).all(), 'nonfinite features'
     assert (np.linalg.norm(x, axis=1) > 0).all(), 'zero default images'
     x = l2(x)
     assert np.isfinite(x).all()
@@ -159,7 +162,62 @@ def _sealed(path, key):
     done = json.loads((path / 'done.json').read_text())
     assert done['instruction'] == itp_data.PROMPTS[key], 'instruction mismatch'
     assert not done.get('smoke', False), 'smoke store'
+    if path.name.endswith(('_s2img', '_s2txt')):
+        check_s2_store(path)
     return path
+
+
+def ids_sha256(ids):
+    """Hash the primary ordered IDs as newline-joined names or decimal IDs (Q1)."""
+    values = ids['painting_names'] if 'painting_names' in ids else ids['sample_ids']
+    return hashlib.sha256('\n'.join(map(str, values)).encode('utf-8')).hexdigest()
+
+
+def check_s2_store(path):
+    """Verify an extraction's parity, revision, row counts and ordered ID hash.
+
+    Accepts Qwen s2img/s2txt and RoBERTa _s2 stores; returns their done metadata.
+    Legacy Qwen training manifests omit revisions, so use the extraction's frozen
+    revision there; a recorded legacy revision takes precedence over the fallback.
+    """
+    path = Path(path)
+    done = json.loads((path / 'done.json').read_text())
+    assert done['parity_gate']['passed'] is True, 'stage 2 parity gate failed'
+    assert not done.get('smoke', False), 'smoke store'
+    store = done['store']
+    image = store.endswith('_img')
+    if store == 'roberta':
+        references, fallback = [ROBERTA], ROBERTA_REVISION
+        width, dtype = 768, np.float32
+    else:
+        key, kind = store.rsplit('_', 1)
+        assert key in ('emotion_focus', 'style_word', 'genre_word') and kind in ('img', 'txt')
+        references, fallback = [ASPECT / key], QWEN_REVISION
+        if image:
+            references.append(ASPECT / f'{key}_trainimg')
+        width, dtype = 2048, np.float16
+    revisions = set()
+    for reference in references:
+        for name in ('done.json', 'meta.json'):
+            manifest = reference / name
+            if manifest.exists():
+                legacy = json.loads(manifest.read_text())
+                revision = legacy.get('model_revision', legacy.get('snapshot_revision'))
+                if revision is not None:
+                    revisions.add(revision)
+    assert len(revisions) <= 1, 'legacy model revision mismatch'
+    expected = next(iter(revisions)) if revisions else fallback
+    assert done['model_revision'] == expected, 'stage 2 model revision mismatch'
+    raw = np.load(path / ('img.npy' if image else 'txt.npy'), mmap_mode='r')
+    with np.load(path / 'ids.npz', allow_pickle=False) as z:
+        ids = {key: z[key] for key in z.files}
+    primary = ids['painting_names' if image else 'sample_ids']
+    assert raw.ndim == 2 and raw.shape[1] == width and raw.dtype == dtype, 'stage 2 array shape/dtype'
+    assert done['count'] == len(primary) == raw.shape[0], 'stage 2 row count mismatch'
+    assert all(value.ndim == 1 and len(value) == len(primary) for value in ids.values()), 'stage 2 ID row count mismatch'
+    assert done['shape'] == list(raw.shape), 'stage 2 shape mismatch'
+    assert done['ids_sha256'] == ids_sha256(ids), 'stage 2 ID hash mismatch'
+    return done
 
 
 def _caption_union(s, paths):
@@ -177,7 +235,8 @@ def _caption_union(s, paths):
         for start in range(0, len(source), 4096):
             src, dst = source[start:start + 4096], target[start:start + 4096]
             values = np.asarray(raw[src], dtype=np.float32)
-            assert np.isfinite(values).all() and (np.linalg.norm(values, axis=1) > 0).all()
+            assert np.isfinite(values).all(), 'nonfinite features'
+            assert (np.linalg.norm(values, axis=1) > 0).all(), 'zero caption features'
             overlap = seen[dst]
             if overlap.any():
                 cosines.append(np.sum(l2(x[dst[overlap]]) * l2(values[overlap]), axis=1))
@@ -213,7 +272,8 @@ def instructed_images(s, key):
         source = np.asarray([row for row, name in enumerate(names) if name in lookup], dtype=np.int64)
         target = np.asarray([lookup[names[row]] for row in source], dtype=np.int64)
         values = np.asarray(raw[source], dtype=np.float32)
-        assert np.isfinite(values).all() and (np.linalg.norm(values, axis=1) > 0).all()
+        assert np.isfinite(values).all(), 'nonfinite features'
+        assert (np.linalg.norm(values, axis=1) > 0).all(), 'zero instructed images'
         overlap = seen[target]
         if overlap.any():
             _cosine_gate(x[target[overlap]], values[overlap])
