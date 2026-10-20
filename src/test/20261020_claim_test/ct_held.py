@@ -90,6 +90,7 @@ def painting_labels(names):
     unique, pid = np.unique(paintings, return_inverse=True)
     assert len(unique) == 61402
     emotion, emotion_names = encode_labels([record['emotion'] for record in records])
+    assert (emotion >= 0).all(), 'every caption has an emotion (rule §3)'
     style, style_names = encode_labels([record['art_style'] for record in records])
     assert len(emotion_names) == 9 and len(style_names) == 27
     first_style = paint_first(style, pid, len(unique))
