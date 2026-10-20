@@ -667,3 +667,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-11-handoff.md
 - New chat: tab 'r10 build 11', session c87f6cbe-5f4b-4aed-b922-012eda646de7
 
+[brief] CoSiR: r10 build 11 -> r10 build 12 (2026-10-20 03:25 Amsterdam)
+- Done: tickets 06 to 09 built, reviewed, fixed and merged; final review half done, provisional PASS (every re-derived number matches).
+- State: 300 tests pass; the GPU smoke passes all nine steps; nothing trained or read on held data yet.
+- Next: final review items 7 and 8, one fix wave (three low findings), re-review, merge to main, open "r10 run 5".
+- Blocked: nothing (Codex has 19% until 07:01, so fixes go to Claude).
+- Handoff: docs/superpowers/handoffs/2026-10-20-r10-build-12-handoff.md
+- New chat: tab 'r10 build 12', session 22269b3a-6188-45d7-8964-40009b9ac912
+
