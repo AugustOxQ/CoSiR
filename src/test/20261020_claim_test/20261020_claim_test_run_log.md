@@ -102,3 +102,9 @@ Handoff: `docs/superpowers/handoffs/2026-10-20-r10-run-9-handoff.md`. Node408 fr
 |---|---|---|
 | 15:09 | Codex build (gpt-6.1-sol, medium) of the node route from `.scratch/r10-claim-test-s2/node/codex_brief.md`, worktree `/project/CoSiR-wt/ct2-node` | commit 4d161f4, 10 min |
 | 15:20 | review (controller diff read; plumbing, no ticket review): sound; three fixes: sync timeout 240 s too short for the 25 GB env; "possible" inputs (models, WikiArt, 30 GB) made optional, since all five stores exist; `run` refuses unless the job got GPU 0, since the frozen queue pins `CUDA_VISIBLE_DEVICES=0` | fix round sent (Codex resume) |
+| 15:24 | fix round (Codex resume, 4 min): commit 0337c67; 11 plumbing tests and `bash -n` pass; only `scripts/` changed | merged into main 870eaf9, pushed |
+| 15:28 | inputs to node408 (`das6_sync_ct2.py --inputs --run`): env 23.4 GiB (lean), outputs 2.7, patches 6.7, sample, graphs, genre, buddy helper; 33.0 GiB; possible items skipped | `--verify`: all 7 items equal in files and bytes |
+| 15:32 | node check job `20261020-133139-870eaf9` (40 s): python 3.11.15, torch 2.11.0+cu130, numpy 2.2.6, sklearn 1.6.1, scipy 1.17.1, igraph 1.0.0, leidenalg 0.12.0, RTX A6000; annotations sha256 6a4e5b17... (equal to local); 11 ct2 imports, 5 stores, both splits, 9 full providers | ALL PASS; pulled |
+| 15:34 | node smoke job `20261020-133438-870eaf9` (`ct2_smoke.py --device cuda`) | running |
+| 15:52 | node smoke: every step PASS, 128 gate calls (as local), 1,006 s (local GPU smoke 568 s: the node is about 1.8 times slower on this mix) | pulled; its 1.6 GB scratch on pending deletions |
+| 15:56 | stage 2 run job `20261020-135638-870eaf9` (`run_ct2_node.sh run`: GPU queue, then CPU queue; GPU slot 0, A6000). End estimate: local budget about 5 to 5.5 h; at 1.8 times, up to about 10 h, so about 21:00 to 02:00. Node work only, so the 11:00 local rule does not apply | running |
