@@ -150,7 +150,9 @@ def train_mapper(inputs, targets, config, k):
         for start in range(0, len(target), 64):
             rows = permutation[start:start + 64]
             loss = F.binary_cross_entropy_with_logits(mapper(inputs['fit'][rows]), target[rows])
-            assert torch.isfinite(loss), 'nonfinite mapper loss'
+            # V4: a non-finite Stage 2 loss is not a crash. Training goes on, the weights end
+            # non-finite, and run_stage2 saves the artifact marked nonfinite (the seed collapsed).
+            # Stage 1 (pretraining and DEC above) keeps its loud asserts: R-COL needs finite centers.
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()

@@ -465,3 +465,133 @@ def test_each_training_phase_advances_cosine_once_per_epoch(monkeypatch, phase, 
     assert used_rates[0] == .001
     assert used_rates[epochs // 2] == pytest.approx(.000505)
     assert optimizers[0].param_groups[0]['lr'] == pytest.approx(.00001)
+
+
+# ---- V4: a paper seed with non-finite outputs is saved and counts as collapsed ----
+
+def nan_bce(monkeypatch):
+    """Make every paper mapper loss NaN so its weights end non-finite."""
+    p = paper()
+    real = p.F.binary_cross_entropy_with_logits
+    monkeypatch.setattr(p.F, 'binary_cross_entropy_with_logits',
+                        lambda *args, **kwargs: real(*args, **kwargs) * float('nan'))
+
+
+def held_fixture(monkeypatch):
+    names = sorted(f'held-{i}' for i in range(12281))
+    sha = ct.ct_held.names_sha256(names)
+    monkeypatch.setattr(ct.ct_held, 'read_held_list', lambda path: (names, sha))
+    monkeypatch.setattr(ct.ct_held, 'clip_patches',
+                        lambda names: np.ones((len(names), 50, 512), dtype=np.float32))
+    return names, sha
+
+
+def test_paper_stage2_with_nan_loss_saves_its_artifact_marked_nonfinite(sample, monkeypatch):
+    ct.run_stage1(sample, 'paper', 'clip_roberta', 0, smoke=True, device='cpu')
+    finite = ct.run_stage2(sample, 'paper', 'strict', 'P1', 0, smoke=True, device='cpu')
+    assert ct.verify_output(finite)['nonfinite'] is False
+    nan_bce(monkeypatch)
+    path = ct.run_stage2(sample, 'paper', 'k40', 'P1', 0, smoke=True, device='cpu')
+    meta = ct.verify_output(path)
+    assert meta['nonfinite'] is True
+    state = torch.load(path.with_suffix('.pt'), weights_only=True)['mapper']
+    assert not all(torch.isfinite(v).all() for v in state.values())
+    with np.load(path) as z:
+        assert not np.isfinite(z['eval_prob']).all()
+    assert meta['loss_history'] == [None] * 3
+
+
+def test_nonfinite_weights_are_accepted_only_for_a_paper_sidecar_that_says_so(sample, monkeypatch):
+    ct.run_stage1(sample, 'core', 'clip_roberta', 0, smoke=True, device='cpu')
+    core = ct.run_stage2(sample, 'core', 'k40', 'P2', 0, smoke=True, device='cpu')
+    ct.run_stage1(sample, 'paper', 'clip_roberta', 0, smoke=True, device='cpu')
+    nan_bce(monkeypatch)
+    path = ct.run_stage2(sample, 'paper', 'k40', 'P1', 0, smoke=True, device='cpu')
+    sidecar = path.with_suffix('.json')
+    meta = json.loads(sidecar.read_text())
+    meta['nonfinite'] = False
+    sidecar.write_text(json.dumps(meta))
+    with pytest.raises(AssertionError):
+        ct.verify_output(path)
+    assert 'nonfinite' not in ct.verify_output(core)
+    state = torch.load(core.with_suffix('.pt'), weights_only=True)
+    first = next(iter(state['mapper']))
+    state['mapper'][first] = torch.full_like(state['mapper'][first], float('nan'))
+    torch.save(state, core.with_suffix('.pt'))
+    meta = json.loads(core.with_suffix('.json').read_text())
+    meta['weights_sha256'] = ct.file_sha256(core.with_suffix('.pt'))
+    meta['nonfinite'] = True
+    core.with_suffix('.json').write_text(json.dumps(meta))
+    with pytest.raises(AssertionError):
+        ct.verify_output(core)
+
+
+def test_nonfinite_paper_held_output_is_saved_and_scores_as_collapsed(sample, monkeypatch):
+    import ct_score
+    ct.run_stage1(sample, 'paper', 'clip_roberta', 0, smoke=True, device='cpu')
+    nan_bce(monkeypatch)
+    ct.run_stage2(sample, 'paper', 'strict', 'P1', 0, smoke=True, device='cpu')
+    names, sha = held_fixture(monkeypatch)
+    held = ct.run_held('paper', 'strict', 'P1', 0, smoke=True)
+    info = json.loads(held.with_suffix('.json').read_text())
+    assert info['nonfinite'] is True
+    with np.load(held) as z:
+        assert z['prob'].dtype == np.float32 and z['prob'].shape[0] == 12281
+        assert not np.isfinite(z['prob']).all()
+    assert ct.run_held('paper', 'strict', 'P1', 0, smoke=True) == held
+    assert ct_score.load_held_output(held, 'B2', names, sha) is None
+
+
+def test_finite_paper_held_output_records_nonfinite_false_and_scores(sample, monkeypatch):
+    import ct_score
+    ct.run_stage1(sample, 'paper', 'clip_roberta', 0, smoke=True, device='cpu')
+    ct.run_stage2(sample, 'paper', 'strict', 'P1', 0, smoke=True, device='cpu')
+    names, sha = held_fixture(monkeypatch)
+    held = ct.run_held('paper', 'strict', 'P1', 0, smoke=True)
+    assert json.loads(held.with_suffix('.json').read_text())['nonfinite'] is False
+    assert ct_score.load_held_output(held, 'B2', names, sha).shape[0] == 12281
+
+
+def test_core_held_inference_still_refuses_nonfinite_probabilities(sample, monkeypatch):
+    ct.run_stage1(sample, 'core', 'clip_roberta', 0, smoke=True, device='cpu')
+    ct.run_stage2(sample, 'core', 'k40', 'P2', 0, smoke=True, device='cpu')
+    names = sample['all_painting_ids'][sample['subset_pid']].tolist()
+    real = ct.build_mapper
+
+    def nan_mapper(config, k):
+        module = real(config, k)
+        module.register_forward_hook(lambda m, a, out: out * float('nan'))
+        return module
+
+    monkeypatch.setattr(ct, 'build_mapper', nan_mapper)
+    with pytest.raises(AssertionError):
+        ct.infer_stage2('core', 'k40', 'P2', 0, names)
+
+
+def test_paper_held_check_needs_a_truthful_flag_and_bounds_finite_entries(sample, monkeypatch):
+    ct.run_stage1(sample, 'paper', 'clip_roberta', 0, smoke=True, device='cpu')
+    ct.run_stage2(sample, 'paper', 'strict', 'P1', 0, smoke=True, device='cpu')
+    names, sha = held_fixture(monkeypatch)
+    held = ct.run_held('paper', 'strict', 'P1', 0, smoke=True)
+    source = ct.verify_output(ct.stage2_path('paper', 'strict', 'P1', 0))
+    with np.load(held) as z:
+        prob = z['prob'].copy()
+
+    def rewrite(values, flag):
+        np.savez_compressed(held, prob=values)
+        meta = json.loads(held.with_suffix('.json').read_text())
+        meta.update(nonfinite=flag, array_sha256s=dict(prob=ct.pc_stage1.array_sha256(values)))
+        held.with_suffix('.json').write_text(json.dumps(meta))
+
+    nan_prob = prob.copy()
+    nan_prob[0, 0] = np.nan
+    rewrite(nan_prob, True)
+    assert ct.verify_held_output(held, source, names, sha, 'cpu')['nonfinite'] is True
+    rewrite(nan_prob, False)
+    with pytest.raises(AssertionError):
+        ct.verify_held_output(held, source, names, sha, 'cpu')
+    big = nan_prob.copy()
+    big[1, 0] = 1.5
+    rewrite(big, True)
+    with pytest.raises(AssertionError):
+        ct.verify_held_output(held, source, names, sha, 'cpu')

@@ -103,6 +103,11 @@ def verify_output(path):
         assert meta['K'] == 40 if config['cut'] == 'k40' else 2 <= meta['K'] <= 100
         verify_stage1_width(path, config, meta)
     stage2 = 'arm' in config
+    # V4: only a paper Stage 2 sidecar that says nonfinite: true may hold non-finite values.
+    nonfinite_ok = False
+    if stage2 and config['settings'] == 'paper':
+        nonfinite_ok = meta['nonfinite']
+        assert type(nonfinite_ok) is bool
     identity = config['arm'] if stage2 else config['version']
     assert path.stem == f"{identity}__s{config['seed']}"
     assert file_sha256(path.with_suffix('.pt')) == meta['weights_sha256'], 'weights hash mismatch'
@@ -112,10 +117,10 @@ def verify_output(path):
         assert set(arrays.files) == set(meta['array_sha256s'])
         for key in arrays.files:
             assert pc_stage1.array_sha256(arrays[key]) == meta['array_sha256s'][key], 'array hash mismatch'
-            assert np.isfinite(arrays[key]).all()
+            assert nonfinite_ok or np.isfinite(arrays[key]).all()
         prob = arrays['eval_prob' if stage2 else 'q_paint_eval']
         assert prob.shape == (config['eval_paintings'], meta['K']) and prob.dtype == np.float32
-        assert ((prob >= 0) & (prob <= 1)).all()
+        assert in_unit_interval(prob, nonfinite_ok)
         if not stage2:
             assert arrays['center_norms'].shape == (100,) and arrays['center_norms'].dtype == np.float32
             assert arrays['fit_counts'].shape == (100,) and arrays['fit_counts'].dtype == np.int64
@@ -155,10 +160,17 @@ def verify_output(path):
             else:
                 module, _ = pc_sept.build_autoencoder(config['input_dim'])
             weights = state['encoder']
-        assert weights and all(value.dtype == torch.float32 and torch.isfinite(value).all()
+        assert weights and all(value.dtype == torch.float32 and (nonfinite_ok or torch.isfinite(value).all())
                                for value in weights.values())
         module.load_state_dict(weights)
     return meta
+
+
+def in_unit_interval(prob, nonfinite_ok=False):
+    """All entries in [0, 1]; with nonfinite_ok only the finite entries are checked."""
+    if nonfinite_ok:
+        prob = prob[np.isfinite(prob)]
+    return bool(((prob >= 0) & (prob <= 1)).all())
 
 
 def verify_stage1_width(path, config, meta):
@@ -242,7 +254,11 @@ def cpu_state(module):
 
 
 def run_stage1(s, settings, version, seed, *, smoke=False, device=None):
-    """Train one version/seed and seal its arrays and complete config sidecar."""
+    """Train one version/seed and seal its arrays and complete config sidecar.
+
+    V4 covers Stage 2 and held outputs only. A non-finite Stage 1 (pretraining or DEC, paper
+    settings included) stays a loud crash: R-COL needs finite centers and finite fit assignments.
+    """
     check_path(settings)
     assert version in VERSIONS and seed in SEEDS
     device = device or 'cuda'
@@ -468,7 +484,13 @@ def run_stage2(s, settings, cut, arm, seed, *, smoke=False, device=None):
         eval_prob, dev_prob, history, epoch_seconds, state = trainer(inputs, targets, config, k)
     for part, prob in (('eval', eval_prob), ('dev', dev_prob)):
         assert prob.shape == (len(ids[part]), k) and prob.dtype == np.float32
-        assert np.isfinite(prob).all() and ((prob >= 0) & (prob <= 1)).all()
+        # V4: paper settings may end non-finite (a collapsed seed); core keeps every finite assert.
+        assert in_unit_interval(prob, settings == 'paper')
+        assert settings == 'paper' or np.isfinite(prob).all()
+    nonfinite = settings == 'paper' and (
+        not np.isfinite(eval_prob).all() or not np.isfinite(dev_prob).all()
+        or not all(np.isfinite(h) for h in history)
+        or not all(torch.isfinite(v).all() for v in state.values()))
     meta = dict(config=config, K=k, sample_sha256=pc_data.fingerprint(s),
                 stage1_sha256=file_sha256(stage1),
                 stage1_array_sha256s=previous['array_sha256s'],
@@ -476,9 +498,16 @@ def run_stage2(s, settings, cut, arm, seed, *, smoke=False, device=None):
                 eval_names_sha256=ct_held.names_sha256(s['all_painting_ids'][ids['eval']].tolist()),
                 dev_auc=None, dev_valid_topics=0,
                 loss_history=history, epoch_seconds=epoch_seconds)
+    if settings == 'paper':
+        meta['nonfinite'] = bool(nonfinite)
+        # The sidecar is strict JSON, so a non-finite loss is stored as null.
+        meta['loss_history'] = [h if np.isfinite(h) else None for h in history]
     positives = targets['dev'].sum(axis=0)
     valid = (positives > 0) & (positives < len(targets['dev']))
-    if valid.any():
+    if nonfinite:
+        meta.update(dev_auc_note='Non-finite outputs; dev AUC not computed (V4: collapsed)',
+                    dev_skipped_topics=list(range(k)))
+    elif valid.any():
         aucs, skipped = pc_sept.evaluate_auc(dev_prob, targets['dev'],
                                             lambda line: print(line, flush=True), arm + ' dev')
         meta.update(dev_auc=pc_sept.auc_summary(aucs)['macro'], dev_valid_topics=len(aucs),
@@ -531,7 +560,10 @@ def infer_stage2(settings, cut, arm, seed, names, *, device=None):
         with torch.no_grad():
             prob = mapper(torch.from_numpy(np.ascontiguousarray(x)).to(device)).sigmoid().cpu().numpy()
     assert prob.shape == (len(names), meta['K']) and prob.dtype == np.float32
-    assert np.isfinite(prob).all() and ((prob >= 0) & (prob <= 1)).all()
+    # V4: a paper seed whose held outputs are non-finite is returned as is (ct_score counts it as
+    # collapsed); the [0, 1] check then covers the finite entries. Core keeps its finite assert.
+    assert in_unit_interval(prob, settings == 'paper')
+    assert settings == 'paper' or np.isfinite(prob).all()
     return prob
 
 
@@ -582,7 +614,12 @@ def verify_held_output(path, source, names, sha256, device):
         assert set(z.files) == {'prob'}
         prob = z['prob']
         assert prob.shape == (len(names), source['K']) and prob.dtype == np.float32
-        assert np.isfinite(prob).all() and ((prob >= 0) & (prob <= 1)).all()
+        if source['config']['settings'] == 'paper':
+            # V4: the flag must say whether the saved NPZ holds non-finite values.
+            assert meta['nonfinite'] is bool(not np.isfinite(prob).all())
+            assert in_unit_interval(prob, True)
+        else:
+            assert np.isfinite(prob).all() and ((prob >= 0) & (prob <= 1)).all()
         assert meta['array_sha256s'] == dict(prob=pc_stage1.array_sha256(prob)), 'held array hash mismatch'
     return meta
 
@@ -622,6 +659,8 @@ def run_held(settings, cut, arm, seed, *, device=None, smoke=False):
     meta = dict(config=source['config'], K=source['K'], held_sha256=sha256,
                 rows=len(names), weights_sha256=source['weights_sha256'],
                 inference_device=inference_device, array_sha256s=dict(prob=pc_stage1.array_sha256(prob)))
+    if settings == 'paper':
+        meta['nonfinite'] = bool(not np.isfinite(prob).all())
     pc_stage2.write_sidecar(path.with_suffix('.json'), meta)
     return path
 
