@@ -77,3 +77,13 @@ The R-COL file itself is written by the next stage 1 queue.
 | 06:47 to 06:49 | "r10 run 7": user-read report draft (Codex `gpt-6.1-sol` medium; room 13%, a report job needs 6%) | done; it left out the decision B options and added a "would remove" paragraph |
 | 06:49 to 06:51 | two checks in parallel: cold read (Haiku worker) and fidelity check (Sonnet `high` worker) | fidelity: no wrong numbers; title gave away our reading, style and genre "against core only", Leiden second reading and encoder rows missing, core differs from the paper beyond the backbone (also missing in the auto report). Cold read: undefined terms, the bar's wording, the date in the file name |
 | 06:51 to 06:55 | one fix wave (Claude): user-read report rewritten on both checks, decision B options added from the literature note; one caveat sentence added to the auto report's "Results" | done; no re-check (`user-read-report.md`) |
+
+## Stage 2 (chat "r10 run 8", unattended, night mode)
+
+Handoff: `docs/superpowers/handoffs/2026-10-20-r10-run-8-handoff.md`. Code: main at 63ef0c2 (stage 2 build merged).
+No user choice of device or start time in the direction log, so the agent default holds: local GPU, GPU queue at 19:00.
+
+| Time | Step | Result |
+|---|---|---|
+| 11:00 | chat starts; GPU idle, no lock; run mode night | waiting for 19:00 (background timer) |
+| 11:10 | V2 brief for stage 2 written (`.scratch/r10-claim-test-s2/v2/v2_brief.md`; stage 1's brief with the stage 2 root, 216,107 fit pairs, held-list equality with stage 1) | ready; runs after the GPU queue |
