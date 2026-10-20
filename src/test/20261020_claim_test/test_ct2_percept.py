@@ -1,11 +1,16 @@
 """Stage 2 PercepT recipes, joined inputs and bounded DEC memory."""
 import json
+import sys
+from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 import torch
 
+import ct2_extract
 import ct2_percept as ct
+from test_ct2_extract import features, setup  # noqa: F401  (tiny old stores, fake encoders)
 
 
 @pytest.mark.parametrize('rows', [13, 1031])
@@ -28,41 +33,158 @@ def test_chunked_assignments_match_original_values_and_both_gradients(rows):
         torch.testing.assert_close(ct.chunked_soft_assignments(latent, centers), expected, rtol=0, atol=1e-6)
 
 
-def roberta_store(path, ids, names, values):
-    path.mkdir()
-    np.savez(path / 'ids.npz', sample_ids=np.asarray(ids, dtype=np.int64), painting_ids=np.asarray(names))
-    np.save(path / 'txt.npy', np.asarray(values, dtype=np.float32))
-    (path / 'done.json').write_text(json.dumps(dict(
-        model_id='SamLowe/roberta-base-go_emotions',
-        snapshot_revision='d75048347613a25d77de8cf6412eaae9fa7b26be', count=len(ids))))
+def chunk_inputs(rows):
+    torch.manual_seed(3)
+    return torch.randn(rows, 16, requires_grad=True), torch.randn(100, 16, requires_grad=True)
 
 
-@pytest.mark.parametrize('damage', [None, 'overlap', 'painting', 'missing', 'duplicate', 'revision'])
-def test_roberta_union_joins_ids_prefers_old_and_checks_boundaries(tmp_path, monkeypatch, damage):
-    old, extra = tmp_path / 'old', tmp_path / 's2'
-    a, b, c = np.random.default_rng(7).normal(size=(3, 768)).astype(np.float32)
-    roberta_store(old, [91, 4], ['a', 'b'], [a, b])
-    roberta_store(extra, [8, 91], ['c', 'a'], [c, a * 2])  # cosine passes; retain old bytes
-    s = dict(sample_ids=np.array([4, 8, 91]), painting_ids=np.array(['b', 'c', 'a']))
+def record_original(monkeypatch):
+    calls = []
+    original = ct.ORIGINAL_SOFT_ASSIGNMENTS
+
+    def recorder(latent, centers):
+        calls.append(len(latent))
+        return original(latent, centers)
+
+    monkeypatch.setattr(ct, 'ORIGINAL_SOFT_ASSIGNMENTS', recorder)
+    return calls
+
+
+def test_chunking_happens_with_default_chunk_rows(monkeypatch):
+    """3 full chunks and a tail of 5: a no-op chunker (one big call) must fail."""
+    calls = record_original(monkeypatch)
+    rows = 3 * ct.DEC_CHUNK_ROWS + 5
+    latent, centers = chunk_inputs(rows)
+    q = ct.chunked_soft_assignments(latent, centers)
+    assert calls == [ct.DEC_CHUNK_ROWS] * 3 + [5]
+    q.sum().backward()  # checkpoint recomputes per chunk, never more than a chunk
+    assert len(calls) == 8 and max(calls) <= ct.DEC_CHUNK_ROWS
+
+
+def test_runtime_binds_dec_chunk_rows_to_the_assignment_function(monkeypatch, tmp_path):
+    calls = record_original(monkeypatch)
+    latent, centers = chunk_inputs(3 * 64 + 5)
+    with ct.runtime(tmp_path, dec_chunk_rows=64):
+        ct.pc_sept.base.soft_assignments(latent, centers)
+    assert calls == [64, 64, 64, 5]
+    calls.clear()
+    latent, centers = chunk_inputs(3 * ct.DEC_CHUNK_ROWS + 5)
+    with ct.runtime(tmp_path, ct.data.split2('full')):
+        ct.pc_sept.base.soft_assignments(latent, centers)
+    assert len(calls) == 4 and max(calls) <= 1024
+
+
+def test_sample_mode_uses_the_original_dec_function_and_full_mode_the_chunked_one(tmp_path):
+    sample, full = ct.data.split2('sample'), ct.data.split2('full')
+    assert ct.default_chunk_rows('sample') is None and ct.default_chunk_rows('full') == 1024
+    original = ct.pc_sept.base.soft_assignments
+    with ct.runtime(tmp_path, sample):
+        assert ct.pc_sept.base.soft_assignments is original is ct.ORIGINAL_SOFT_ASSIGNMENTS
+        config = ct.pc_stage1.make_config(sample, 'qwen_qwen', 0, False, sample['fit_pairs'], 'cuda')
+        assert config['dec_chunk_rows'] is None
+    with ct.runtime(tmp_path, sample, dec_chunk_rows=256):
+        assert ct.pc_sept.base.soft_assignments is not original
+        assert ct.pc_stage1.make_config(sample, 'qwen_qwen', 0, False, sample['fit_pairs'], 'cuda')[
+            'dec_chunk_rows'] == 256
+    with ct.runtime(tmp_path, full):
+        assert ct.pc_sept.base.soft_assignments is not original
+        assert ct.pc_stage1.make_config(full, 'qwen_qwen', 0, False, full['fit_pairs'], 'cuda')[
+            'dec_chunk_rows'] == 1024
+    assert ct.pc_sept.base.soft_assignments is original
+
+
+REVISION = 'd75048347613a25d77de8cf6412eaae9fa7b26be'
+MODEL = 'SamLowe/roberta-base-go_emotions'
+
+
+def onehot(ids):
+    return features(ids, 768, np.float32)
+
+
+def reseal(path, ids, names=None, values=None):
+    """Rewrite an s2 store the way ticket 02 writes it: ID hash, count and shape follow."""
+    ids = np.asarray(ids, dtype=np.int64)
+    names = np.asarray([f'p{i:03}' for i in ids] if names is None else names)
+    np.savez(path / 'ids.npz', sample_ids=ids, painting_ids=names)
+    np.save(path / 'txt.npy', onehot(ids) if values is None else np.asarray(values, dtype=np.float32))
+    done = json.loads((path / 'done.json').read_text())
+    done.update(count=len(ids), shape=[len(ids), 768],
+                ids_sha256=ct.data.ids_sha256(dict(sample_ids=ids, painting_ids=names)))
+    (path / 'done.json').write_text(json.dumps(done))
+    return done
+
+
+@pytest.fixture
+def stores(tmp_path, monkeypatch, setup):
+    """Old store (ids 0..31) plus an s2 store written by ct2_extract.extract (ids 35, 40, 47)."""
+    old = ct.data.ROBERTA
+    (old / 'done.json').write_text(json.dumps(dict(model_id=MODEL, snapshot_revision=REVISION, count=32)))
+    original = ct2_extract.load_encoder
+    monkeypatch.setattr(ct2_extract, 'load_encoder', lambda store, device: (
+        original(store, device)[0], dict(model_id=MODEL, model_revision=REVISION)))
+    extra = ct2_extract.extract('roberta', 'cpu')
+    assert extra == ct2_extract.store_path('roberta') == old.with_name(old.name + '_s2')
     monkeypatch.setattr(ct, 'ROBERTA', old)
     monkeypatch.setattr(ct, 'ROBERTA_S2', extra)
+    return old, extra
+
+
+def request(ids, mode='full'):
+    return dict(mode=mode, sample_ids=np.asarray(ids, dtype=np.int64),
+                painting_ids=np.asarray([f'p{i:03}' for i in ids]))
+
+
+def test_roberta_union_reads_a_ticket_02_s2_store_and_prefers_old_rows(stores):
+    old, extra = stores
+    done = json.loads((extra / 'done.json').read_text())
+    assert 'snapshot_revision' not in done and done['model_revision'] == REVISION  # ticket 02's format
+    np.testing.assert_array_equal(ct.caption_features(request([35, 4, 47, 31]), 'roberta'),
+                                  onehot([35, 4, 47, 31]))
+    reseal(extra, [4, 40], values=np.stack([onehot([4])[0] * 2, onehot([40])[0]]))  # cosine 1; keep old bytes
+    np.testing.assert_array_equal(ct.caption_features(request([40, 4]), 'roberta'), onehot([40, 4]))
+
+
+@pytest.mark.parametrize('damage', ['overlap', 'painting', 'missing', 'duplicate', 'revision', 'parity', 'ids'])
+def test_roberta_union_refuses_damaged_s2_stores(stores, damage):
+    old, extra = stores
+    ids = [35, 4, 47]
     if damage == 'overlap':
-        np.save(extra / 'txt.npy', np.stack([c, -a]))
+        reseal(extra, [4, 40], values=np.stack([-onehot([4])[0], onehot([40])[0]]))
     elif damage == 'painting':
-        np.savez(extra / 'ids.npz', sample_ids=np.array([8, 91]), painting_ids=np.array(['wrong', 'a']))
+        reseal(extra, [35, 40, 47], names=['wrong', 'p040', 'p047'])
     elif damage == 'missing':
-        s['sample_ids'][1] = 999
+        ids = [35, 4, 999]
     elif damage == 'duplicate':
-        np.savez(extra / 'ids.npz', sample_ids=np.array([8, 8]), painting_ids=np.array(['c', 'c']))
+        reseal(extra, [35, 35, 47])
     elif damage == 'revision':
-        meta = json.loads((extra / 'done.json').read_text())
-        meta['snapshot_revision'] = 'wrong'
-        (extra / 'done.json').write_text(json.dumps(meta))
-    if damage:
-        with pytest.raises(AssertionError):
-            ct.caption_features(s, 'roberta')
-    else:
-        np.testing.assert_array_equal(ct.caption_features(s, 'roberta'), np.stack([b, c, a]))
+        done = json.loads((extra / 'done.json').read_text())
+        (extra / 'done.json').write_text(json.dumps(dict(done, model_revision='wrong')))
+    elif damage == 'parity':
+        done = json.loads((extra / 'done.json').read_text())
+        done['parity_gate']['passed'] = False
+        (extra / 'done.json').write_text(json.dumps(done))
+    else:  # ids.npz no longer matches the sealed hash
+        np.savez(extra / 'ids.npz', sample_ids=np.array([35, 40, 48]), painting_ids=np.array(['p035', 'p040', 'p048']))
+    with pytest.raises(AssertionError):
+        ct.caption_features(request(ids), 'roberta')
+
+
+def test_roberta_old_store_keeps_its_snapshot_revision_check(stores):
+    old, extra = stores
+    (old / 'done.json').write_text(json.dumps(dict(model_id=MODEL, snapshot_revision='wrong', count=32)))
+    with pytest.raises(AssertionError):
+        ct.caption_features(request([4, 31], 'sample'), 'roberta')
+
+
+def test_sample_mode_reads_only_the_old_store(stores):
+    """The frozen sample is fully covered by the old store; a broken s2 store must not matter."""
+    old, extra = stores
+    (extra / 'done.json').write_text('not json')
+    np.testing.assert_array_equal(ct.caption_features(request([4, 31], 'sample'), 'roberta'), onehot([4, 31]))
+    with pytest.raises(Exception):
+        ct.caption_features(request([4, 31], 'full'), 'roberta')
+    with pytest.raises(AssertionError, match='missing'):
+        ct.caption_features(request([4, 35], 'sample'), 'roberta')  # no fallback to the s2 store
 
 
 @pytest.mark.parametrize(('provider', 'kind'), [
@@ -177,7 +299,10 @@ def test_runners_seal_all_fit_pairs_dev_auc_and_reloadable_mappers(synthetic, tm
     saved = []
     with torch.autograd.graph.saved_tensors_hooks(lambda x: (saved.append(x.shape), x)[1], lambda x: x):
         stage1 = ct.run_stage1(mode, settings, version, 0, root=root, device='cpu', smoke=True)
-    assert all(len(shape) < 3 for shape in saved), 'joint loop must use checkpointed assignments'
+    if mode == 'full':
+        assert all(len(shape) < 3 for shape in saved), 'joint loop must use checkpointed assignments'
+    else:
+        assert any(len(shape) == 3 for shape in saved), 'sample mode keeps stage 1 unchunked function'
     assert ct.base.OUTPUTS == original_root and ct.pc_sept.base.soft_assignments is original_q
     np.testing.assert_array_equal(s['subset_pid'], original_eval)
     meta = ct.verify_output(stage1, root=root)
@@ -232,6 +357,8 @@ def test_held_runner_uses_root_frozen_list_and_training_checkpoint(synthetic, tm
     names = [f'held-{i:05}' for i in range(12281)]
     digest = ct.base.ct_held.names_sha256(names)
     def held_list(path):
+        if path == ct.FROZEN_HELD_LIST:
+            return names, digest
         assert path == root / 'held/held_paintings.json'
         return names, digest
     monkeypatch.setattr(ct.base.ct_held, 'read_held_list', held_list)
@@ -279,7 +406,7 @@ def test_runtime_selects_every_real_fit_pair_and_preserves_frozen_recipe(mode, t
             config = ct.pc_stage1.make_config(view, 'qwen_qwen', 0, False, pairs, 'cuda')
             assert (config['pretrain_epochs'], config['pretrain_batch_size'], config['max_joint_steps']) == (100, 1024, 500)
             assert config['fit_pairs'] == len(pairs)
-            assert config['dec_chunk_rows'] == 1024
+            assert config['dec_chunk_rows'] == (None if mode == 'sample' else 1024)
             mapper = ct.pc_stage2.make_config(view, 'P3', 0, False, 'cuda')
             assert mapper['dev_paintings'] == (1489 if mode == 'sample' else 6152)
             assert ct.pc_data.fingerprint(view) == identity
@@ -331,3 +458,135 @@ def test_paper_strict_mapper_trains_at_selected_non40_width(synthetic, tmp_path,
         assert z['eval_prob'].shape == (9, k)
         np.testing.assert_array_equal(z['eval_prob'], ct.infer_stage2(
             mode, 'paper', 'strict', arm, 0, names, root=tmp_path, device='cpu'))
+
+
+def test_caption_targets_keep_stage1_partition_checks(monkeypatch):
+    s = tiny_roles('sample')
+    topic = np.zeros(8, dtype=np.int16)
+    good = ct.partitions(s)
+    monkeypatch.setattr(ct, 'partitions', lambda _: good[:-1])
+    with pytest.raises(AssertionError):  # partition must have one label per painting
+        ct.caption_targets(s, topic, 3)
+    wrong = good.copy()
+    wrong[s['subset_pid']] = 'dev'
+    monkeypatch.setattr(ct, 'partitions', lambda _: wrong)
+    with pytest.raises(AssertionError):  # evaluation paintings must hold the eval role
+        ct.caption_targets(s, topic, 3)
+    full = tiny_roles('full')
+    wrong = ct.partitions(full)
+    wrong[full['dev'][0]] = 'fit'
+    monkeypatch.setattr(ct, 'partitions', lambda _: wrong)
+    with pytest.raises(AssertionError):  # full mode evaluates the dev role
+        ct.caption_targets(full, topic, 3)
+
+
+class Gate:
+    """Fake ct2_stage2a: records the order of gate calls and base-trainer calls."""
+
+    def __init__(self, monkeypatch, refuse=False):
+        self.events = []
+        self.refuse = refuse
+        monkeypatch.setitem(sys.modules, 'ct2_stage2a', SimpleNamespace(require_pass=self.require_pass))
+
+    def require_pass(self, **kwargs):
+        self.events.append(('gate', kwargs))
+        if self.refuse:
+            raise RuntimeError('stage 2a has not passed')
+
+    def runner(self, name):
+        def call(*args, **kwargs):
+            self.events.append((name, kwargs.get('device')))
+            return Path(name)
+        return call
+
+
+@pytest.fixture
+def trained(synthetic, tmp_path, monkeypatch):
+    """Smoke artifacts for seed 0 (smoke is ungated) and a frozen-list stand-in."""
+    root = tmp_path / 'full'
+    ct.run_stage1('full', 'core', 'clip_roberta', 0, root=root, device='cpu', smoke=True)
+    ct.run_stage2('full', 'core', 'k40', 'P2', 0, root=root, device='cpu', smoke=True)
+    digest = ct.base.ct_held.names_sha256(['a'])
+    monkeypatch.setattr(ct.base.ct_held, 'read_held_list', lambda path: (['a'], digest))
+    return root
+
+
+@pytest.mark.parametrize('refuse', [True, False])
+@pytest.mark.parametrize('stage', ['1', '2', 'held'])
+def test_stage2a_gate_precedes_full_mode_training_and_held_writes(trained, monkeypatch, stage, refuse):
+    gate = Gate(monkeypatch, refuse)
+    for name in ('run_stage1', 'run_stage2', 'run_held'):
+        monkeypatch.setattr(ct.base, name, gate.runner(name))
+    calls = dict(
+        **{'1': lambda **kw: ct.run_stage1('full', 'core', 'clip_roberta', 0, root=trained, **kw),
+           '2': lambda **kw: ct.run_stage2('full', 'core', 'k40', 'P2', 0, root=trained, **kw),
+           'held': lambda **kw: ct.run_held('full', 'core', 'k40', 'P2', 0, root=trained, **kw)})
+    device = 'cpu' if stage == 'held' else None  # held replays the training device (cpu here)
+    if refuse:
+        with pytest.raises(RuntimeError, match='stage 2a'):
+            calls[stage](device=device)
+        assert gate.events == [('gate', dict(device='cpu' if stage == 'held' else 'cuda'))]
+    else:
+        calls[stage](device=device)
+        name = dict([('1', 'run_stage1'), ('2', 'run_stage2'), ('held', 'run_held')])[stage]
+        assert [e[0] for e in gate.events] == ['gate', name]
+        assert gate.events[0][1] == dict(device='cpu' if stage == 'held' else 'cuda')
+
+
+def test_stage2a_gate_uses_the_requested_training_device_and_skips_sample_and_smoke(trained, monkeypatch):
+    gate = Gate(monkeypatch)
+    for name in ('run_stage1', 'run_stage2', 'run_held'):
+        monkeypatch.setattr(ct.base, name, gate.runner(name))
+    ct.run_stage1('full', 'core', 'clip_roberta', 1, root=trained, device='cuda:1')
+    assert gate.events[0] == ('gate', dict(device='cuda:1'))
+    gate.events.clear()
+    ct.run_stage1('sample', 'core', 'clip_roberta', 1, root=trained)  # sample mode is stage 2a itself
+    ct.run_stage1('full', 'core', 'clip_roberta', 1, root=trained, device='cpu', smoke=True)
+    ct.run_held('full', 'core', 'k40', 'P2', 0, root=trained, device='cpu', smoke=True)
+    assert [e[0] for e in gate.events] == ['run_stage1', 'run_stage1', 'run_held']
+
+
+def test_held_list_must_match_the_frozen_stage1_list(trained, monkeypatch):
+    gate = Gate(monkeypatch)
+    monkeypatch.setattr(ct.base, 'run_held', gate.runner('run_held'))
+    digest = ct.base.ct_held.names_sha256(['a'])
+
+    def read(path):
+        return (['a'], digest if path == ct.FROZEN_HELD_LIST else 'other')
+    monkeypatch.setattr(ct.base.ct_held, 'read_held_list', read)
+    with pytest.raises(AssertionError, match='frozen'):
+        ct.run_held('full', 'core', 'k40', 'P2', 0, root=trained, device='cpu', smoke=True)
+    assert gate.events == []
+    monkeypatch.setattr(ct.base.ct_held, 'read_held_list', lambda path: (['a'], digest))
+    ct.run_held('full', 'core', 'k40', 'P2', 0, root=trained, device='cpu', smoke=True)
+    assert gate.events == [('run_held', 'cpu')]
+    assert ct.FROZEN_HELD_LIST == ct.ct_score.OUTPUTS / 'held/held_paintings.json'
+
+
+def test_cli_dec_chunk_rows_default_override_and_separate_root(synthetic, tmp_path):
+    def stage1(root, *extra):
+        [path] = ct.main(['--mode', 'sample', '--stage', '1', '--version', 'clip_roberta', '--seeds', '0',
+                          '--device', 'cpu', '--root', str(root), '--smoke', *extra])
+        return path, ct.verify_output(path, root=root)['config']
+
+    gating, config = stage1(tmp_path / 'gating')
+    assert config['dec_chunk_rows'] is None and config['mode'] == 'sample'
+    before = {p: p.read_bytes() for p in (tmp_path / 'gating').rglob('*') if p.is_file()}
+    extra, config = stage1(tmp_path / 'chunked', '--dec-chunk-rows', '64')
+    assert config['dec_chunk_rows'] == 64 and extra.is_relative_to(tmp_path / 'chunked')
+    assert before == {p: p.read_bytes() for p in (tmp_path / 'gating').rglob('*') if p.is_file()}
+    [path] = ct.main(['--mode', 'full', '--stage', '1', '--version', 'clip_roberta', '--seeds', '0',
+                      '--device', 'cpu', '--root', str(tmp_path / 'full'), '--smoke', '--dec-chunk-rows', '32'])
+    assert ct.verify_output(path, root=tmp_path / 'full')['config']['dec_chunk_rows'] == 32
+    with pytest.raises(SystemExit):  # the flag only concerns Stage 1
+        ct.main(['--mode', 'full', '--stage', '2', '--arm', 'P2', '--root', str(tmp_path), '--dec-chunk-rows', '32'])
+
+
+def test_sample_stage1_never_calls_the_chunked_function_unless_asked(synthetic, tmp_path, monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise AssertionError('chunked assignments used')
+    monkeypatch.setattr(ct, 'chunked_soft_assignments', forbidden)
+    ct.run_stage1('sample', 'core', 'clip_roberta', 0, root=tmp_path, device='cpu', smoke=True)
+    with pytest.raises(AssertionError, match='chunked'):
+        ct.run_stage1('sample', 'core', 'clip_roberta', 0, root=tmp_path / 'b', device='cpu', smoke=True,
+                      dec_chunk_rows=64)

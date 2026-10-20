@@ -1,11 +1,23 @@
-"""PercepT at sample/full scale, with unchanged recipes and checkpointed DEC.
+"""PercepT at sample/full scale, with unchanged recipes and optionally checkpointed DEC.
 
 Public runners take mode, recipe, seed and an artifact root. Full evaluation
 probabilities are on validation (also the mapper's dev AUC set); sample keeps
-stage 1's frozen evaluation order. V1 is enforced by the stage 2 controller.
+stage 1's frozen evaluation order.
+
+DEC row chunks (`dec_chunk_rows`): None keeps stage 1's own soft_assignments
+(bitwise identical to stage 1); an int replaces it by a row-chunked, per-chunk
+checkpointed version whose centers' gradient sums in a different order (about
+1e-8 at 5,000 rows, enough to drift over up to 500 DEC epochs). Default: None in
+sample mode (stage 1 must match by hash, 67,327 pairs), 1,024 in full mode
+(216,107 pairs do not fit unchunked). `--dec-chunk-rows N` overrides it; the
+config records the value. Use a separate --root for such an extra run.
+
+V1 (stage 2a gate): full-mode training (Stage 1 and 2, not smoke) and full-mode
+non-smoke held writes first call ct2_stage2a.require_pass; sample mode never does.
 """
 import argparse
 from contextlib import contextmanager, ExitStack
+from functools import partial
 import json
 import os
 from pathlib import Path
@@ -16,6 +28,8 @@ import torch
 from torch.utils.checkpoint import checkpoint
 
 import ct_percept as base
+import ct_held
+import ct_score
 import ct2_data as data
 
 pc_data = base.pc_data
@@ -30,17 +44,27 @@ DEC_CHUNK_ROWS = 1024
 ORIGINAL_SOFT_ASSIGNMENTS = pc_sept.soft_assignments
 
 
-def chunked_soft_assignments(latent, centers):
+MODE_DEFAULT = 'mode default'
+
+
+def default_chunk_rows(mode):
+    """None (stage 1's function, bitwise) in sample mode; DEC_CHUNK_ROWS in full mode."""
+    assert mode in ('sample', 'full'), mode
+    return None if mode == 'sample' else DEC_CHUNK_ROWS
+
+
+def chunked_soft_assignments(latent, centers, chunk_rows=None):
     """Identical Student-t rows; checkpoint each fixed-size distance broadcast.
 
     Only the centers' gradient sums change order across chunks. Latent rows
     keep their original reductions; Q, global P and the full-batch loss do not
     change. Checkpointing retains no (rows, topics, latent-width) intermediates.
     """
-    assert latent.ndim == centers.ndim == 2 and len(latent) > 0
+    chunk_rows = DEC_CHUNK_ROWS if chunk_rows is None else chunk_rows
+    assert latent.ndim == centers.ndim == 2 and len(latent) > 0 and chunk_rows > 0
     chunks = []
-    for start in range(0, len(latent), DEC_CHUNK_ROWS):
-        rows = latent[start:start + DEC_CHUNK_ROWS]
+    for start in range(0, len(latent), chunk_rows):
+        rows = latent[start:start + chunk_rows]
         if torch.is_grad_enabled():
             q = checkpoint(ORIGINAL_SOFT_ASSIGNMENTS, rows, centers,
                            use_reentrant=False, preserve_rng_state=False)
@@ -55,6 +79,7 @@ ROBERTA = data.ROBERTA
 ROBERTA_S2 = ROBERTA.with_name(ROBERTA.name + '_s2')
 PATCHES = pc_data.PATCHES
 ANNOTATIONS = pc_data.ANNOTATIONS
+FROZEN_HELD_LIST = ct_score.OUTPUTS / 'held/held_paintings.json'
 _CLIP_FEATURES = pc_data.clip_features
 _PATCH_TOKENS = pc_data.patch_tokens
 
@@ -79,12 +104,16 @@ def caption_features(s, kind):
     lookup = {int(sid): row for row, sid in enumerate(wanted)}
     x = np.empty((len(wanted), 768), dtype=np.float32)
     seen = np.zeros(len(wanted), dtype=bool)
-    paths = [ROBERTA] + ([ROBERTA_S2] if ROBERTA_S2.exists() else [])
+    # The frozen sample is fully covered by the old store: sample mode never opens the s2 store.
+    paths = [ROBERTA] + ([ROBERTA_S2] if s['mode'] == 'full' else [])
     for path in paths:
-        meta = json.loads((path / 'done.json').read_text())
-        assert not meta.get('smoke', False), 'smoke RoBERTa store'
+        if path == ROBERTA:
+            meta = json.loads((path / 'done.json').read_text())
+            assert not meta.get('smoke', False), 'smoke RoBERTa store'
+            assert meta['snapshot_revision'] == 'd75048347613a25d77de8cf6412eaae9fa7b26be'
+        else:
+            meta = data.check_s2_store(path)  # parity, revision, counts, ID hash, not smoke
         assert meta['model_id'] == 'SamLowe/roberta-base-go_emotions'
-        assert meta['snapshot_revision'] == 'd75048347613a25d77de8cf6412eaae9fa7b26be'
         with np.load(path / 'ids.npz', allow_pickle=False) as ids:
             stored, names = ids['sample_ids'], ids['painting_ids']
         assert stored.dtype == np.int64 and stored.ndim == 1
@@ -156,8 +185,11 @@ def partitions(s):
 def caption_targets(s, topic, k, smoke=False):
     """Union all captions of each fit/dev painting, preserving core row order."""
     partition = partitions(s)
+    assert partition.shape == (len(s['first']),)
     ids = {part: np.flatnonzero(partition == part).astype(np.int64) for part in ('fit', 'dev')}
     ids['eval'] = evaluation_ids(s).copy()
+    # Sample evaluates its own role; full evaluates the dev role (no independent eval role).
+    assert (partition[ids['eval']] == ('eval' if s['mode'] == 'sample' else 'dev')).all()
     if smoke:
         assert len(ids['fit']) >= 200
         ids['fit'] = ids['fit'][:200]
@@ -201,31 +233,41 @@ _ORIGINAL_STAGE1_CONFIG = pc_stage1.make_config
 _FINGERPRINT = pc_data.fingerprint
 
 
-def stage1_config(s, version, seed, smoke, fit_rows, device):
+def stage1_config(s, version, seed, smoke, fit_rows, device, dec_chunk_rows=MODE_DEFAULT):
+    if dec_chunk_rows == MODE_DEFAULT:
+        dec_chunk_rows = default_chunk_rows(s['mode'])
     config = _ORIGINAL_STAGE1_CONFIG(s, version, seed, smoke, fit_rows, device)
     config.update(mode=s['mode'], names_sha256=s.get('names_sha256', {}),
                   eval_order='subset_pid' if s['mode'] == 'sample' else 'dev',
-                  dec_chunk_rows=DEC_CHUNK_ROWS,
-                  dec_checkpoint='per row chunk; centers gradient sums reordered')
+                  dec_chunk_rows=dec_chunk_rows,
+                  dec_checkpoint=('none; stage 1 soft_assignments' if dec_chunk_rows is None else
+                                  'per row chunk; centers gradient sums reordered'))
     return config
 
 
 @contextmanager
-def runtime(root, s=None):
+def runtime(root, s=None, dec_chunk_rows=MODE_DEFAULT):
     """Temporarily redirect the shared trainers; always restore stage 1 globals.
 
     A private full-mode view aliases subset_pid to dev for legacy array shapes.
     The caller's split and its fingerprint stay canonical. R-COL finalization
     belongs to ct2's verdict ticket: the legacy finalizer requires 67,327 pairs.
+    dec_chunk_rows: see the module docstring; the default depends on s['mode']
+    (full mode's when no split is given).
     """
+    if dec_chunk_rows == MODE_DEFAULT:
+        dec_chunk_rows = default_chunk_rows('full' if s is None else s['mode'])
     with ExitStack() as stack:
         stack.enter_context(patch.object(base, 'OUTPUTS', Path(root)))
-        stack.enter_context(patch.object(pc_sept.base, 'soft_assignments', chunked_soft_assignments))
+        if dec_chunk_rows is not None:
+            stack.enter_context(patch.object(pc_sept.base, 'soft_assignments',
+                                             partial(chunked_soft_assignments, chunk_rows=dec_chunk_rows)))
         stack.enter_context(patch.object(pc_data, 'image_features', image_features))
         stack.enter_context(patch.object(pc_data, 'caption_features', caption_features))
         stack.enter_context(patch.object(pc_data, 'patch_tokens', patch_tokens))
         stack.enter_context(patch.object(pc_data, 'partitions', partitions))
-        stack.enter_context(patch.object(pc_stage1, 'make_config', stage1_config))
+        stack.enter_context(patch.object(pc_stage1, 'make_config',
+                                         partial(stage1_config, dec_chunk_rows=dec_chunk_rows)))
         stack.enter_context(patch.object(pc_stage2, 'make_config', mapper_config))
         stack.enter_context(patch.object(pc_stage2, 'caption_targets', caption_targets))
         stack.enter_context(patch.object(base, 'finalize_stage1', lambda: None))
@@ -253,17 +295,27 @@ def verify_output(path, *, root):
         return base.verify_output(path)
 
 
-def run_stage1(mode, settings, version, seed, *, root, device=None, smoke=False):
+def require_stage2a(mode, smoke, device):
+    """V1: only full-mode, non-smoke work needs the stage 2a pass (sample mode is stage 2a)."""
+    if mode == 'full' and not smoke:
+        import ct2_stage2a
+        ct2_stage2a.require_pass(device=str(device))
+
+
+def run_stage1(mode, settings, version, seed, *, root, device=None, smoke=False,
+               dec_chunk_rows=MODE_DEFAULT):
     """Train all captions of the mode's fit paintings; paper saves both cuts."""
     assert mode in ('sample', 'full'), mode
+    require_stage2a(mode, smoke, device or 'cuda')
     s = data.split2(mode)
-    with runtime(root, s) as view:
+    with runtime(root, s, dec_chunk_rows) as view:
         return base.run_stage1(view, settings, version, seed, device=device, smoke=smoke)
 
 
 def run_stage2(mode, settings, cut, arm, seed, *, root, device=None, smoke=False):
     """Train a core/paper mapper; dev AUC uses the mode's dev paintings."""
     check_arm(mode, settings, cut, arm)
+    require_stage2a(mode, smoke, device or 'cuda')
     s = data.split2(mode)
     with runtime(root, s) as view:
         previous = base.verify_output(base.stage1_path(settings, ARMS[arm][0], seed))
@@ -281,7 +333,7 @@ def infer_stage2(mode, settings, cut, arm, seed, names, *, root, device=None):
 
 
 def run_held(mode, settings, cut, arm, seed, *, root, device=None, smoke=False):
-    """Save ct_percept's held layout/sidecars; controller must enforce V1 first."""
+    """Save ct_percept's held layout/sidecars, after the V1 gate and the frozen-list check."""
     check_arm(mode, settings, cut, arm)
     with runtime(root):
         if settings == 'paper':
@@ -289,6 +341,11 @@ def run_held(mode, settings, cut, arm, seed, *, root, device=None, smoke=False):
         else:
             meta = base.verify_output(base.stage2_path(settings, cut, arm, seed))
         assert meta['config']['mode'] == mode, 'held source mode mismatch'
+        # Held inference runs on the device the weights were trained on.
+        require_stage2a(mode, smoke, meta['config']['device'])
+        held_sha256 = ct_held.read_held_list(Path(root) / 'held/held_paintings.json')[1]
+        frozen_sha256 = ct_held.read_held_list(FROZEN_HELD_LIST)[1]
+        assert held_sha256 == frozen_sha256, 'held list differs from the stage 1 frozen held list'
         return base.run_held(settings, cut, arm, seed, device=device, smoke=smoke)
 
 
@@ -304,7 +361,11 @@ def main(argv=None):
     parser.add_argument('--device', default=None)
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--smoke', action='store_true')
+    parser.add_argument('--dec-chunk-rows', type=int, metavar='N',
+                        help='Stage 1 only: DEC row-chunk size (default: none in sample mode, 1024 in full)')
     args = parser.parse_args(argv)
+    if args.dec_chunk_rows is not None and (args.stage != '1' or args.dec_chunk_rows < 1):
+        parser.error('--dec-chunk-rows is a positive integer and applies to --stage 1 only')
     if len(args.seeds) != len(set(args.seeds)):
         parser.error('duplicate seeds')
     try:
@@ -320,7 +381,8 @@ def main(argv=None):
     for seed in args.seeds:
         kwargs = dict(root=args.root, device=args.device, smoke=args.smoke)
         if args.stage == '1':
-            path = run_stage1(args.mode, args.settings, args.version, seed, **kwargs)
+            path = run_stage1(args.mode, args.settings, args.version, seed, **kwargs,
+                              dec_chunk_rows=MODE_DEFAULT if args.dec_chunk_rows is None else args.dec_chunk_rows)
         else:
             runner = run_stage2 if args.stage == '2' else run_held
             path = runner(args.mode, args.settings, args.cut, args.arm, seed, **kwargs)
