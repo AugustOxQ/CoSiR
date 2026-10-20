@@ -67,3 +67,7 @@ The R-COL file itself is written by the next stage 1 queue.
 | 05:19 to 06:16 | instructed held images (3,449 s; three stores `emotion_focus_held`, `style_word_held`, `genre_word_held`, 54 MB each, in the shared cache) | pass; stage 1 queue done, failed=0 |
 | 05:21 to 05:26 | V2 worker finished (CPU, about 4 min): `v2_result.json`, `v2_partitions/`, `v2_bootstrap.npz`; no check failed | compared after the verdict |
 | 06:17 | CPU queue starts (verdict, then diagnostics); end estimate about 06:45 | running |
+| 06:17 to 06:18 | verdict (118 s): `verdict_stage1.json`, outcome S1-GO, d +0.0146 [+0.0093, +0.0157]; dirty false, code 81113a1 | pass |
+| 06:19 | V2 comparison (`.scratch/r10-claim-test/v2/compare_v2.py`): held SHA, label counts, eligibility, all 10 R-COL runs (kept count and flag), all 20 partition files, A_K1, the six A_e, d, both bounds and all 2,000 resampled d equal (difference 0.0) | AGREE |
+| 06:19 to 06:34 | diagnostics (967 s): `diag_stage1.json`, `diag_stage1.md` | pass; CPU queue done, failed=0 |
+| 06:21 | held ledger row H11 | done |
