@@ -101,6 +101,7 @@ def verify_output(path):
     else:
         assert config['arm'] in ('P1', 'P4')
         assert meta['K'] == 40 if config['cut'] == 'k40' else 2 <= meta['K'] <= 100
+        verify_stage1_width(path, config, meta)
     stage2 = 'arm' in config
     identity = config['arm'] if stage2 else config['version']
     assert path.stem == f"{identity}__s{config['seed']}"
@@ -160,6 +161,16 @@ def verify_output(path):
     return meta
 
 
+def verify_stage1_width(path, config, meta):
+    """Paper Stage 2 width must be its Stage 1 kept count for that cut."""
+    stage1 = stage1_path(config['settings'], ARMS[config['arm']][0], config['seed'])
+    stage1_meta = json.loads(stage1.with_suffix('.json').read_text())
+    with np.load(stage1, allow_pickle=False) as z:
+        kept = int(z[f"kept_{config['cut']}"].sum())
+    assert meta['K'] == kept == stage1_meta['K_by_cut'][config['cut']], \
+        f"{path}: K {meta['K']} differs from Stage 1 kept count {kept}"
+
+
 def verify_paper_cuts(arrays, config, meta):
     """Check both cuts against the rule, including their saved local topic IDs."""
     import ct_rcol
@@ -195,6 +206,35 @@ def load_paper_cut(s, path, meta, cut):
         assert topic.shape == s['pid'].shape
         assert z[f'q_paint_eval_{cut}'].shape == (len(s['subset_pid']), k)
         return topic, k
+
+
+def fit_probabilities(fit_latent, centers, device, block_size=pc_stage1.BLOCK_SIZE):
+    """Student-t Q of every fit pair over all 100 centers, in one float32 pass."""
+    q = np.empty((len(fit_latent), len(centers)), dtype=np.float32)
+    with torch.no_grad():
+        for start in range(0, len(fit_latent), block_size):
+            z = torch.from_numpy(fit_latent[start:start + block_size]).to(device)
+            q[start:start + block_size] = pc_sept.soft_assignments(z, centers.detach()).cpu().numpy()
+    assert np.isfinite(q).all()
+    return q
+
+
+def paper_fit_assignments(q, strict):
+    """Paper fit counts and both cuts' topics from one Q, as ct_rcol's docstring defines them.
+
+    Counts: argmax over all 100 centers. Topics: argmax of Q over the kept columns,
+    renormalized (in float64, so renormalizing creates no new ties), lowest index on a
+    tie. A pair counted at a kept center keeps that center, so no post-cut count is lost.
+    """
+    assert q.ndim == 2 and q.shape[1] == 100 and strict.shape == (100,)
+    counts = np.bincount(q.argmax(axis=1), minlength=100).astype(np.int64)
+    kept = pc_fixes.top_used(counts, 40)
+    topics = {}
+    for cut, mask in (('strict', strict), ('k40', kept)):
+        cut_q = q[:, mask].astype(np.float64)
+        cut_q /= cut_q.sum(axis=1, keepdims=True)
+        topics[cut] = cut_q.argmax(axis=1).astype(np.int16)
+    return counts, kept, topics
 
 
 def cpu_state(module):
@@ -279,18 +319,24 @@ def run_stage1(s, settings, version, seed, *, smoke=False, device=None):
                 stop = start_row + pc_stage1.BLOCK_SIZE
                 fit_latent[start_row:stop] = encoder(inputs[start_row:stop].to(device)).cpu().numpy()
         del inputs
-        kept = pc_fixes.top_used(fit_counts, 40)
+        if settings == 'paper':
+            # One fit Q: counts and topics then agree by construction, even on near-ties.
+            import ct_rcol
+            strict = ct_rcol.strict_mask(center_norms)
+            fit_counts, kept, fit_topics = paper_fit_assignments(
+                fit_probabilities(fit_latent, centers, device), strict)
+        else:
+            kept = pc_fixes.top_used(fit_counts, 40)
         assert kept.sum() == 40
         counts = {gamma: int(pc_fixes.kept_centers(center_norms, gamma=float(gamma)).sum())
                   for gamma in ('1.5', '2', '3', '5')}
         topic, q_paint_eval = pc_stage1.assign_captions(
             encoder, centers, h, s['pid'], s['subset_pid'], kept, device)
         if settings == 'paper':
-            import ct_rcol
-            strict = ct_rcol.strict_mask(center_norms)
             topic_strict, q_strict = pc_stage1.assign_captions(
                 encoder, centers, h, s['pid'], s['subset_pid'], strict, device)
-        kept_topics = pc_stage1.kept_topic_stats(topic[fit_rows], fit_counts, kept)
+        kept_topics = pc_stage1.kept_topic_stats(
+            fit_topics['k40'] if settings == 'paper' else topic[fit_rows], fit_counts, kept)
         pc_stage1.record_seconds(seconds, 'assignment', start)
     path = stage1_path(settings, version, seed)
     pc_stage1.record_seconds(seconds, 'total', total_start)
@@ -305,7 +351,8 @@ def run_stage1(s, settings, version, seed, *, smoke=False, device=None):
                   topic=topic, q_paint_eval=q_paint_eval, centers=centers.detach().cpu().numpy(),
                   fit_latent=fit_latent, kept_k40=kept, fit_topics_k40=topic[fit_rows])
     if settings == 'paper':
-        arrays.update(kept_strict=strict, fit_topics_strict=topic_strict[fit_rows],
+        arrays.update(kept_strict=strict, fit_topics_strict=fit_topics['strict'],
+                      fit_topics_k40=fit_topics['k40'],
                       topic_strict=topic_strict, topic_k40=topic,
                       q_paint_eval_strict=q_strict, q_paint_eval_k40=q_paint_eval,
                       stop_epoch=np.asarray([steps], dtype=np.int64))
@@ -514,6 +561,9 @@ def complete_output(path, expected, sample_sha256, previous=None):
         if previous is not None:
             assert meta['stage1_array_sha256s'] == previous['array_sha256s'], 'Stage 1 arrays changed'
             assert meta['stage1_weights_sha256'] == previous['weights_sha256'], 'Stage 1 weights changed'
+            if meta['config']['settings'] == 'paper':
+                assert meta['K'] == previous['K_by_cut'][meta['config']['cut']], \
+                    'Stage 2 K differs from Stage 1 kept count'
         return True
     except INCOMPLETE as error:
         if path.exists():
@@ -550,6 +600,8 @@ def run_held(settings, cut, arm, seed, *, device=None, smoke=False):
             return None
     source = verify_output(stage2_path(settings, cut, arm, seed))
     assert source['config']['smoke'] == smoke, 'Stage 2 smoke mismatch'
+    if settings == 'paper':
+        assert source['K'] == previous['K_by_cut'][cut], 'Stage 2 K differs from Stage 1 kept count'
     names, sha256 = ct_held.read_held_list(OUTPUTS / 'held/held_paintings.json')
     assert len(names) == 12281 and ct_held.names_sha256(names) == sha256
     inference_device = source['config']['device'] if device is None else str(device)
