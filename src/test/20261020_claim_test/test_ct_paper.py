@@ -161,6 +161,67 @@ def test_paper_stage1_saves_one_run_with_both_cuts_and_rcol_inputs(sample, versi
             np.testing.assert_array_equal(topic, z[f'topic_{cut}'])
 
 
+def test_near_tied_fit_q_gives_counts_and_topics_that_lose_no_pairs(sample, monkeypatch):
+    """Counts and topics must come from one Q: after training, Q is uniform to 1e-8 and
+    differs on every call, so any second pass over the fit pairs breaks the R-COL check."""
+    import ct_paper_sept
+    original_q = ct.pc_sept.soft_assignments
+    original_train = ct_paper_sept.train_dec_until_stable
+    state = dict(noisy=False, calls=0)
+
+    def noisy_q(z, centers):
+        if not state['noisy']:
+            return original_q(z, centers)
+        state['calls'] += 1
+        generator = torch.Generator().manual_seed(state['calls'])
+        noise = torch.randn(len(z), len(centers), generator=generator) * 1e-8
+        q = (1 / len(centers) + noise).to(z.device)
+        return (q / q.sum(dim=1, keepdim=True)).float()
+
+    def train(*args, **kwargs):
+        result = original_train(*args, **kwargs)
+        state['noisy'] = True
+        return result
+
+    monkeypatch.setattr(ct.pc_sept, 'soft_assignments', noisy_q)
+    monkeypatch.setattr(ct_paper_sept, 'train_dec_until_stable', train)
+    path = ct.run_stage1(sample, 'paper', 'clip_roberta', 0, smoke=True, device='cpu')
+    ct.verify_output(path)
+    with np.load(path) as z:
+        counts = z['fit_counts']
+        assert counts.sum() == 2000
+        for cut in ('strict', 'k40'):
+            kept, topics = z[f'kept_{cut}'], z[f'fit_topics_{cut}']
+            local = np.bincount(topics, minlength=int(kept.sum()))
+            assert int(np.maximum(counts[kept] - local, 0).sum()) == 0, cut
+            if kept.all():
+                assert np.array_equal(local, counts)
+    assert state['calls'] > 0
+
+
+def test_paper_stage2_width_must_equal_its_stage1_kept_count(sample):
+    import shutil
+    stage1 = ct.run_stage1(sample, 'paper', 'clip_roberta', 0, smoke=True, device='cpu')
+    previous = ct.verify_output(stage1)
+    good = ct.run_stage2(sample, 'paper', 'k40', 'P1', 0, smoke=True, device='cpu')
+    assert ct.verify_output(good)['K'] == previous['K_by_cut']['k40'] == 40
+    assert previous['K_by_cut']['strict'] != 40
+    # A k40-width mapper filed under the strict cut: payload hashes are all intact.
+    bad = ct.stage2_path('paper', 'strict', 'P1', 0)
+    bad.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(good.with_suffix('.npz'), bad)
+    shutil.copy(good.with_suffix('.pt'), bad.with_suffix('.pt'))
+    meta = json.loads(good.with_suffix('.json').read_text())
+    meta['config']['cut'] = 'strict'
+    bad.with_suffix('.json').write_text(json.dumps(meta))
+    with pytest.raises(AssertionError, match='Stage 1 kept count'):
+        ct.verify_output(bad)
+    expected = dict(settings='paper', cut='strict', arm='P1', seed=0, smoke=True)
+    assert not ct.complete_output(bad, expected, 'synthetic-sample', previous)
+    with pytest.raises(AssertionError, match='Stage 1 kept count'):
+        ct.run_held('paper', 'strict', 'P1', 0, smoke=True)
+
+
 def test_paper_mapper_uses_64_row_batches_and_weights_tail_loss_by_rows(monkeypatch):
     p = paper()
     config = dict(seed=7, device='cpu', input_dim=2, mapper='attention', epochs=1, arm='P1')
