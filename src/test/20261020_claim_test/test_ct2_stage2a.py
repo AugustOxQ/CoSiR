@@ -805,3 +805,104 @@ def test_chunked_results_are_reported_but_never_change_pass_or_fail(full_world):
 def test_static_arm_versions_match_core():
     import ct_percept
     assert ct.VERSION_OF == {arm: ct_percept.ARMS[arm][0] for arm in ct.ARMS}
+
+
+# --- review fixes (ticket 07) -----------------------------------------------------------------------
+
+def test_real_infer_d2_and_infer_mapper_reach_stage1_inference_with_the_stage1_signatures(tmp_path, monkeypatch):
+    """Only the stage 1 inference functions are stubbed; every ct2 wrapper in front of them runs for real."""
+    import ct2_d2
+    import ct2_percept
+    import ct_d2
+    import ct_percept
+    root = tmp_path / 'outputs/stage2/s2a'
+    weight = root / 'd2/weights/emotion__s0.pt'
+    weight.parent.mkdir(parents=True)
+    weight.write_bytes(b'weights')
+    config = dict(aspect='emotion', seed=0, row=ct.ROWS['D2'], name='D2', active_aspects=list(ct.ASPECTS),
+                  smoke=False, max_epochs=ct_d2.ms_train.CONFIG['max_epochs'], mode='sample', device='cuda',
+                  names_sha256='n', data_sha256='d', stage2_code_sha256=ct_d2.ms_train.head.sha_file(Path(ct2_d2.__file__)))
+    put_json(weight.with_suffix('.json'), dict(weights_sha256=sha(weight), config=config))
+    names, seen = ['a', 'b'], {}
+
+    def stub_d2(aspect, seed, names, side='img', *, device=None, outdir=None):
+        seen['d2'] = (aspect, seed, names, side, device, outdir)
+        return 'd2 out'
+
+    def stub_verify(path):
+        seen['verify'] = Path(path)
+        return dict(config=dict(mode='sample'))
+
+    def stub_mapper(settings, cut, arm, seed, names, *, device=None):
+        seen['mapper'] = (settings, cut, arm, seed, names, device, ct_percept.OUTPUTS)
+        return 'mapper out'
+
+    monkeypatch.setattr(ct_d2, 'infer', stub_d2)
+    monkeypatch.setattr(ct_percept, 'verify_output', stub_verify)
+    monkeypatch.setattr(ct_percept, 'infer_stage2', stub_mapper)
+    assert ct.infer_d2(root, 'emotion', names, 'cuda') == 'd2 out'
+    assert seen['d2'] == ('emotion', 0, names, 'img', 'cuda', root)
+    assert ct.infer_mapper(root, 'core', 'k40', 'P1', names, 'cuda') == 'mapper out'
+    assert seen['mapper'] == ('core', 'k40', 'P1', 0, names, 'cuda', root)
+    # The mode check of ct2_d2's weights info still guards the replay.
+    put_json(weight.with_suffix('.json'), dict(weights_sha256=sha(weight), config=dict(config, mode='full')))
+    with pytest.raises(AssertionError, match='mode'):
+        ct.infer_d2(root, 'emotion', names, 'cuda')
+
+
+def test_diagnostics_main_needs_the_stage2a_gate_before_any_other_read(tmp_path, monkeypatch):
+    import ct2_diag
+    monkeypatch.setattr(ct2_diag, 'run', lambda *a, **k: pytest.fail('diagnostics ran without the gate'))
+    monkeypatch.setattr(ct.require_pass, '__defaults__', (tmp_path / 'missing.json', 'cuda'))
+    with pytest.raises(OSError):
+        ct2_diag.main(['--verdict', str(tmp_path / 'v.json')])
+    put_json(tmp_path / 'failed.json', dict(schema=1, stage='2a', smoke=False, status='FAIL', missing=[], failed=['x']))
+    monkeypatch.setattr(ct.require_pass, '__defaults__', (tmp_path / 'failed.json', 'cuda'))
+    with pytest.raises(AssertionError, match='did not pass'):
+        ct2_diag.main(['--verdict', str(tmp_path / 'v.json')])
+    ran = []
+    monkeypatch.setattr(ct, 'require_pass', lambda *a, **k: ran.append('gate'))
+    monkeypatch.setattr(ct2_diag, 'run', lambda *a, **k: ran.append('run'))
+    ct2_diag.main([])
+    assert ran == ['gate', 'run']
+
+
+def test_a_crashing_chunked_training_is_recorded_and_the_gating_report_is_still_written(full_world, monkeypatch):
+    report_path = full_world['tmp'] / 'stage2a.json'
+    monkeypatch.setattr(ct, 'train', lambda *a, **k: None)
+    check = ct.check
+    monkeypatch.setattr(ct, 'check', lambda *a, **k: check(*a, reference=full_world['reference'], **k))
+
+    def crash(*a, **k):
+        raise RuntimeError('CUDA out of memory')
+    monkeypatch.setattr(ct, 'train_chunked', crash)
+    assert ct.main(['--root', str(full_world['root']), '--report', str(report_path)]) == 0
+    report = json.loads(report_path.read_text())
+    assert report['status'] == 'PASS' and not report['failed'] and not report['missing']
+    assert report['chunked']['gating'] is False and 'RuntimeError: CUDA out of memory' in report['chunked']['error']
+    assert {v['status'] for v in report['chunked']['items'].values()} == {'ERROR'}
+    assert ct.require_pass(report_path, 'cuda')['status'] == 'PASS'
+
+
+def test_a_crashing_chunked_comparison_is_recorded_and_never_gates(world, monkeypatch):
+    for version in ('clip_roberta', 'qwen_qwen'):
+        build_stage1(world['reference'], 'core', version, current=False)
+        build_stage1(ct.chunked_root(world['root']), 'core', version, current=True)
+    monkeypatch.setattr(ct, 'compare_arrays', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('boom')))
+    item = ct.chunked_item(ct.chunked_root(world['root']), world['reference'], 'clip_roberta')
+    assert item['gating'] is False and item['status'] == 'ERROR' and 'RuntimeError: boom' in item['error']
+
+
+@pytest.mark.parametrize('item', [S1_ITEM, S2_ITEM])
+def test_a_gating_percept_item_trained_with_chunked_dec_fails(world, item):
+    build_tree(world['reference'], current=False, stage1=[('core', 'clip_roberta')], mappers=[('core', 'k40', 'P1')])
+
+    def build_current(chunk_rows):
+        config = dict(dec_chunk_rows=chunk_rows)
+        build_stage1(world['root'], 'core', 'clip_roberta', current=True, config=config)
+        build_stage2(world['root'], 'core', 'k40', 'P1', current=True, config=config)
+    build_current(1024)
+    result = run(world, item)
+    assert result['status'] == 'FAIL' and 'dec_chunk_rows' in result['error']
+    build_current(None)
+    assert run(world, item)['status'] == 'PASS'

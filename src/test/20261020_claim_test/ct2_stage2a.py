@@ -240,7 +240,8 @@ def verify_percept(path, root):
 
 def infer_d2(root, aspect, names, device):
     import ct2_d2
-    return ct2_d2.infer('sample', aspect, 0, names, device=device, root=root)
+    ct2_d2._weights_info('sample', root, aspect, 0)  # mode, names and code checks; ct2_d2.infer refuses sample mode
+    return ct_d2.infer(aspect, 0, names, device=device, outdir=root)
 
 
 def infer_mapper(root, settings, cut, arm, names, device):
@@ -301,8 +302,8 @@ def chunked_item(root, reference, version):
                           ami_differences={a: abs(ami['actual'][a] - ami['expected'][a]) for a in ASPECTS},
                           topics={name: dict(kept=int(arrays['kept'].sum()), used=int(len(np.unique(arrays['topic']))))
                                   for name, arrays in (('actual', actual), ('expected', expected))})
-    except (AssertionError, OSError, ValueError, KeyError) as error:
-        result.update(status='NOT RUN', error=f'{type(error).__name__}: {error}')
+    except Exception as error:  # non-gating: whatever goes wrong is a note, never a missing report
+        result.update(status='ERROR', error=f'{type(error).__name__}: {error}')
     return result
 
 
@@ -344,11 +345,12 @@ def require_pass(path=HERE / 'stage2a.json', device='cuda'):
 # --- the check --------------------------------------------------------------------------------------
 
 def check(root=S2A, destination=REPORT, *, device='cuda', causes=None, reference=REFERENCE, only=None,
-          chunked=True):
+          chunked=True, chunked_error=None):
     """Compare the sample-size seed 0 artifacts under root with stage 1's under reference.
 
     causes maps item IDs to explanations established by the controller. only (tests) limits the run to
     item IDs starting with one of the given prefixes; the report then lists the others as missing.
+    chunked_error is the message of a failed non-gating chunked training; it is reported and gates nothing.
     All inputs are development data; no held list or held feature is read.
     """
     from threadpoolctl import threadpool_limits
@@ -369,6 +371,8 @@ def check(root=S2A, destination=REPORT, *, device='cuda', causes=None, reference
         return sorted(k for k, v in reference_config.items() if k not in exempt and config.get(k) != v)
 
     def current_checks(config, reference_config, label, exempt=('device',)):
+        assert config.get('dec_chunk_rows') is None, \
+            f'{label} trained with chunked DEC (dec_chunk_rows={config["dec_chunk_rows"]})'
         changed = recipe_diff(config, reference_config, exempt)
         assert not changed, f'{label} recipe changed: {changed}'
         assert config['device'] == str(device), f'{label} training device mismatch'
@@ -501,8 +505,11 @@ def check(root=S2A, destination=REPORT, *, device='cuda', causes=None, reference
             run_item(f'replay/percept/{mapper_key(*m)}', lambda m=m: replay_mapper(*m))
         report_chunked = dict(gating=False, skipped=True)
         if chunked:
-            report_chunked = dict(gating=False, items={v: chunked_item(chunked_root(root), reference, v)
-                                                       for v in VERSIONS})
+            report_chunked = dict(gating=False, items={
+                v: dict(gating=False, status='ERROR', error=chunked_error) if chunked_error
+                else chunked_item(chunked_root(root), reference, v) for v in VERSIONS})
+            if chunked_error:
+                report_chunked['error'] = chunked_error
     remember(ct_d2.SAMPLE)
     return write_report(destination, items, device, sources, root, report_chunked)
 
@@ -526,15 +533,21 @@ def main(argv=None):
             return 1
         print('STAGE2A required: PASS', flush=True)
         return 0
+    chunked_error = None
     root = check_root(args.root)
     if args.report.resolve() == REPORT.resolve():
         assert root == S2A.resolve(), 'the default report needs the default root; give --report for a dry run'
     if not args.check_only:
         train(root, args.device)
         if not args.no_chunked:
-            train_chunked(chunked_root(root), args.device)
+            try:
+                train_chunked(chunked_root(root), args.device)
+            except Exception as error:  # non-gating: the gating check and the report go on
+                chunked_error = f'{type(error).__name__}: {error}'
+                print(f'STAGE2A chunked training failed (non-gating): {chunked_error}', flush=True)
     causes = json.loads(args.causes.read_text()) if args.causes else {}
-    report = check(root, args.report, device=args.device, causes=causes, chunked=not args.no_chunked)
+    report = check(root, args.report, device=args.device, causes=causes, chunked=not args.no_chunked,
+                   chunked_error=chunked_error)
     print(f'STAGE2A {report["status"]} failed={report["failed"]} missing={report["missing"]}', flush=True)
     return int(report['status'] != 'PASS')
 
