@@ -139,6 +139,21 @@ def test_saved_sample_loads_through_the_sheet_graph_loader(sample_build, tmp_pat
                 np.testing.assert_array_equal(actual, expected)
 
 
+def test_cli_checks_identity_before_loading_features(tmp_path, monkeypatch):
+    import ct2_data
+
+    monkeypatch.setattr(sys, 'argv', ['ct2_graphs', '--mode', 'full', '--out', str(tmp_path / 'graphs')])
+    monkeypatch.setattr(ct2_data, 'split2', lambda mode: {})
+
+    def unexpected_features(s):
+        raise AssertionError('features loaded before identity validation')
+
+    monkeypatch.setattr(ct2_data, 'default_captions', unexpected_features)
+    with pytest.raises(KeyError, match='sample_ids'):
+        ct2_graphs.main()
+    assert not (tmp_path / 'graphs').exists()
+
+
 @pytest.mark.parametrize('mode', ['sample', 'full'])
 def test_cli_uses_mode_providers_and_seals_selected_npzs(mode, tmp_path):
     # ct2_data is ticket 01's file. Exercise that external provider contract in a
@@ -176,6 +191,11 @@ def test_cli_uses_mode_providers_and_seals_selected_npzs(mode, tmp_path):
                OMP_NUM_THREADS='8', MKL_NUM_THREADS='8', CUDA_VISIBLE_DEVICES='')
     run = subprocess.run([sys.executable, '-m', 'ct2_graphs', '--mode', mode, '--out', str(out)],
                          cwd=tmp_path, env=env, capture_output=True, text=True, timeout=60)
+    if mode == 'sample':
+        assert run.returncode != 0, 'sample CLI accepted graphs differing from frozen D2'
+        assert 'sample graph mismatch' in run.stderr
+        assert not out.exists(), 'sample regression must pass before saving'
+        return
     assert run.returncode == 0, run.stdout + run.stderr
     assert {p.name for p in out.iterdir()} == {'manifest.json', 'emotion.npz', 'style.npz', 'genre.npz'}
     manifest = json.loads((out / 'manifest.json').read_text())
@@ -206,3 +226,24 @@ def test_cli_uses_mode_providers_and_seals_selected_npzs(mode, tmp_path):
                     np.testing.assert_array_equal(z[key], value)
             assert manifest['array_sha256'][aspect] == {
                 key: hashlib.sha256(z[key].tobytes()).hexdigest() for key in z.files}
+
+
+def test_sample_cli_real_providers_match_frozen_graphs(tmp_path):
+    out = tmp_path / 'graphs'
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', OMP_NUM_THREADS='8',
+               MKL_NUM_THREADS='8', CUDA_VISIBLE_DEVICES='')
+    run = subprocess.run([sys.executable, ct2_graphs.__file__, '--mode', 'sample', '--out', str(out)],
+                         env=env, capture_output=True, text=True, timeout=180)
+    assert run.returncode == 0, run.stdout + run.stderr
+    manifest = json.loads((out / 'manifest.json').read_text())
+    assert manifest['identity']['mode'] == 'sample'
+    frozen = MAIN / '20261018_aspect_graph_sheet/graphs'
+    reference = json.loads((frozen / 'manifest.json').read_text())
+    for aspect, row in PICKS.items():
+        expected, actual = frozen / f'{aspect}.npz', out / f'{aspect}.npz'
+        assert hashlib.sha256(expected.read_bytes()).hexdigest() == reference['archives'][aspect]
+        assert hashlib.sha256(actual.read_bytes()).hexdigest() == manifest['archives'][aspect]
+        with np.load(expected, allow_pickle=False) as old, np.load(actual, allow_pickle=False) as new:
+            for part in ('fit', 'dev'):
+                for key in (f'{part}_node_ids', f'{row}__{part}', f'{row}__{part}_w'):
+                    np.testing.assert_array_equal(new[key], old[key])
