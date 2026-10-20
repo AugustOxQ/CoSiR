@@ -15,10 +15,14 @@ Ticket 07 artifact contract, under outputs/percept/paper/stage1/:
   Other arrays (caption topics, q_paint_eval, etc.) may coexist in the NPZ.
 
 The JSON has runs (version, seed, cut, kept_count, share, collapsed, artifact,
-array_sha256, fit_counts_l1_difference, fit_topics_disagreements) and entries
+array_sha256, fit_counts_l1_difference, fit_topics_disagreements, tie_pairs, tie_groups) and entries
 (B2..B5 -> eligible, seeds). Counts and topics are recomputed in float64 numpy;
 their L1 difference and differing-pair count must each be at most 0.01% of
-fit pairs, allowing near-ties with GPU float32. Each hash is SHA-256
+fit pairs. Centers tied within TIE_RTOL of a pair's maximum Q are ties: a saved
+topic disagrees only if it is not tied for the maximum, and counts are compared
+summed per tie group (connected components of centers tied in some fit pair).
+Runs also record tie_pairs (fit pairs with more than one tied center) and
+tie_groups (center groups of size > 1). Each hash is SHA-256
 of the saved array's C-order bytes, matching pc_stage1.array_sha256. Both
 readings of an entry share its seed list. B1 has no collapse rule. V4's
 non-finite held-output check belongs to the scorer; this module reads no held
@@ -45,6 +49,10 @@ STAGE1 = Path('/project/CoSiR/src/test/20261020_claim_test/outputs/percept/paper
 OUTPUT = STAGE1.parents[1] / 'rcol_stage1.json'
 sys.path.insert(0, str(HERE.parent / '20261018_percept_core'))
 import pc_fixes
+
+# Saved arrays are float32: Q values within this relative distance of the row maximum
+# cannot be told apart, so they are ties under the rule's "lowest index on a tie".
+TIE_RTOL = 1e-6
 
 
 def strict_mask(center_norms):
@@ -91,12 +99,39 @@ def array_sha256(array):
     return hashlib.sha256(array.tobytes(order='C')).hexdigest()
 
 
-def _recompute_assignments(centers, fit_latent, masks):
-    """Float64 Student-t Q (alpha=1), in blocks to bound memory."""
+def _tie_groups(tied_masks):
+    """Connected components (size > 1) of centers tied together in any fit pair's row."""
+    parent = list(range(100))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for mask in tied_masks:
+        members = np.flatnonzero(mask)
+        for other in members[1:]:
+            parent[find(int(other))] = find(int(members[0]))
+    groups = {}
+    for i in range(100):
+        groups.setdefault(find(i), []).append(i)
+    return sorted(g for g in groups.values() if len(g) > 1)
+
+
+def _recompute_assignments(centers, fit_latent, masks, saved_topics):
+    """Float64 Student-t Q (alpha=1), in blocks to bound memory.
+
+    Returns recomputed counts over all 100 centers, per cut the number of saved
+    topics below the row maximum by more than TIE_RTOL (relative), the number of
+    fit pairs with more than one tied center, and the distinct tied-center masks.
+    """
     centers = centers.astype(np.float64)
     center_squares = np.square(centers).sum(axis=1)
     counts = np.zeros(100, dtype=np.int64)
-    topics = {cut: np.empty(len(fit_latent), dtype=np.int64) for cut in masks}
+    disagreements = {cut: 0 for cut in masks}
+    tie_pairs = 0
+    tied_masks = set()
     for start in range(0, len(fit_latent), 4096):
         latent = fit_latent[start:start + 4096].astype(np.float64)
         distances = (np.square(latent).sum(axis=1)[:, None] + center_squares -
@@ -105,11 +140,20 @@ def _recompute_assignments(centers, fit_latent, masks):
         q = 1 / (1 + distances)
         q /= q.sum(axis=1, keepdims=True)
         counts += np.bincount(q.argmax(axis=1), minlength=100)
+        tied = q >= q.max(axis=1, keepdims=True) * (1 - TIE_RTOL)
+        rows = tied.sum(axis=1) > 1
+        tie_pairs += int(rows.sum())
+        if rows.any():
+            tied_masks.update(map(bytes, np.packbits(np.unique(tied[rows], axis=0), axis=1)))
         for cut, kept in masks.items():
             cut_q = q[:, kept]
             cut_q /= cut_q.sum(axis=1, keepdims=True)
-            topics[cut][start:start + len(latent)] = cut_q.argmax(axis=1)
-    return counts, topics
+            saved = saved_topics[cut][start:start + len(latent)]
+            saved_q = np.take_along_axis(cut_q, saved[:, None], axis=1)[:, 0]
+            disagreements[cut] += int(np.count_nonzero(
+                saved_q < cut_q.max(axis=1) * (1 - TIE_RTOL)))
+    unpacked = [np.unpackbits(np.frombuffer(m, dtype=np.uint8))[:100].astype(bool) for m in tied_masks]
+    return counts, disagreements, tie_pairs, unpacked
 
 
 def read_stage1(path):
@@ -146,17 +190,25 @@ def read_stage1(path):
         if kept.all():
             moved = int(np.abs(local_counts - counts).sum())
             assert moved <= .0001 * len(latent), f'{path}: {cut} post-cut counts differ by {moved}'
-    recomputed_counts, recomputed_topics = _recompute_assignments(centers, latent, expected_masks)
-    count_l1 = int(np.abs(recomputed_counts - counts.astype(np.int64)).sum())
+    recomputed_counts, disagreements, tie_pairs, tied_masks = _recompute_assignments(
+        centers, latent, expected_masks,
+        {cut: arrays[f'fit_topics_{cut}'] for cut in expected_masks})
+    # Tied duplicates may split their pairs differently in float32; compare per tie group.
+    tie_groups = _tie_groups(tied_masks)
+    group_of = np.arange(100)
+    for group in tie_groups:
+        group_of[group] = group[0]
+    count_l1 = int(np.abs(np.bincount(group_of, weights=recomputed_counts, minlength=100) -
+                          np.bincount(group_of, weights=counts, minlength=100)).sum())
     assert count_l1 <= .0001 * len(latent), f'{path}: count L1 difference {count_l1}'
     for cut in ('strict', 'k40'):
-        disagreements = int(np.count_nonzero(recomputed_topics[cut] != arrays[f'fit_topics_{cut}']))
-        assert disagreements <= .0001 * len(latent), \
-            f'{path}: {cut} topic disagreements {disagreements}'
+        assert disagreements[cut] <= .0001 * len(latent), \
+            f'{path}: {cut} topic disagreements {disagreements[cut]}'
         keys = ('centers', 'fit_latent', 'center_norms', 'fit_counts', f'kept_{cut}', f'fit_topics_{cut}')
         runs.append(dict(version=version, seed=int(seed), cut=cut, **judgments[cut],
                          artifact=str(path.resolve()), fit_counts_l1_difference=count_l1,
-                         fit_topics_disagreements=disagreements,
+                         fit_topics_disagreements=disagreements[cut],
+                         tie_pairs=tie_pairs, tie_groups=tie_groups,
                          array_sha256={k: array_sha256(arrays[k]) for k in keys}))
     return runs
 

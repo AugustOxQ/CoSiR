@@ -311,7 +311,9 @@ def test_reader_validates_centers_and_fit_latent(paper_stage1, key, problem):
         ct_rcol.read_stage1(path)
 
 
-@pytest.mark.parametrize('changed,l1,disagreements', [(3, 6, [2, 3]), (4, 8, None)])
+# Strict: pairs moved onto center 39 (removed, equidistant from every kept center) tie across
+# all kept centers, so no strict topic disagrees; k40 keeps 39 and disagrees on every moved pair.
+@pytest.mark.parametrize('changed,l1,disagreements', [(3, 6, [0, 3]), (4, 8, None)])
 def test_reader_limits_and_records_count_l1_disagreement(paper_stage1, changed, l1, disagreements):
     path = paper_stage1 / 'clip_roberta__s0.npz'
     with np.load(path) as z:
@@ -332,7 +334,8 @@ def test_reader_limits_and_records_post_cut_topic_disagreement(paper_stage1, cha
     path = paper_stage1 / 'clip_roberta__s0.npz'
     with np.load(path) as z:
         arrays = dict(z)
-    rows = np.flatnonzero(arrays['fit_topics_strict'] == 0)[:changed]
+    # Rows whose latent sits on kept center 0 (not a removed center, so not a tie).
+    rows = np.flatnonzero(arrays['fit_topics_k40'] == 0)[:changed]
     arrays['fit_topics_strict'][rows] = 1
     np.savez_compressed(path, **arrays)
     if changed == 7:
@@ -379,4 +382,78 @@ def test_reader_rejects_loss_of_a_kept_centers_pairs_beyond_tolerance(paper_stag
     topics[np.flatnonzero(topics != 1)[:200]] = 1
     np.savez_compressed(path, **arrays)
     with pytest.raises(AssertionError, match='post-cut counts'):
+        ct_rcol.read_stage1(path)
+
+
+def _write_duplicate_centers(path, to_higher=0, near=False):
+    """Centers 5 and 6 coincide (or differ by 1e-4 in one coordinate when near).
+
+    Every pair of true topic 5 or 6 sits on center 5. The saved counts and
+    topics give those tied pairs to center 5, except the first to_higher of
+    them, which go to center 6 (the higher index of the duplicate pair).
+    """
+    with np.load(path) as z:
+        arrays = dict(z)
+    full_topics = arrays['fit_topics_k40'].copy()
+    centers = arrays['centers']
+    centers[6] = centers[5]
+    if near:
+        centers[6, 50] = 1e-4
+    arrays['center_norms'] = np.linalg.norm(centers.astype(np.float64), axis=1).astype(np.float32)
+    tied = np.flatnonzero((full_topics == 5) | (full_topics == 6))
+    arrays['fit_latent'] = centers[np.where(full_topics == 6, 5, full_topics)]
+    saved = full_topics.copy()
+    saved[tied] = 5
+    saved[tied[:to_higher]] = 6
+    arrays['fit_counts'] = np.bincount(saved, minlength=100)
+    arrays['fit_topics_k40'] = saved
+    arrays['fit_topics_strict'] = np.where(saved < 20, saved, 0)
+    np.savez_compressed(path, **arrays)
+    return arrays, len(tied)
+
+
+@pytest.mark.parametrize('to_higher,near', [(0, False), (700, False), (700, True)])
+def test_reader_accepts_ties_between_duplicate_centers_either_index(paper_stage1, to_higher, near):
+    path = paper_stage1 / 'clip_roberta__s0.npz'
+    arrays, tied = _write_duplicate_centers(path, to_higher, near)
+    runs = ct_rcol.read_stage1(path)
+    assert [r['fit_counts_l1_difference'] for r in runs] == [0, 0]
+    assert [r['fit_topics_disagreements'] for r in runs] == [0, 0]
+    assert [r['tie_pairs'] for r in runs] == [tied, tied]
+    assert [r['tie_groups'] for r in runs] == [[[5, 6]], [[5, 6]]]
+    assert runs[0]['share'] == (arrays['fit_topics_strict'] == 0).sum() / 67327
+    assert runs[1]['kept_count'] == 40 and runs[1]['collapsed'] is False
+
+
+def test_reader_without_ties_records_no_tie_pairs_or_groups(paper_stage1):
+    for run in ct_rcol.read_stage1(paper_stage1 / 'clip_roberta__s0.npz'):
+        assert run['tie_pairs'] == 0 and run['tie_groups'] == []
+
+
+def test_reader_still_rejects_saved_topics_on_a_center_that_is_not_tied(paper_stage1):
+    path = paper_stage1 / 'clip_roberta__s0.npz'
+    arrays, _ = _write_duplicate_centers(path)
+    topics = arrays['fit_topics_k40']
+    # Swap 200 pairs of centers 5 and 7: per-center topic counts, so counts and
+    # post-cut checks stay equal, but center 7 is clearly not tied for them.
+    rows5 = np.flatnonzero(topics == 5)[:200]
+    rows7 = np.flatnonzero(topics == 7)[:200]
+    topics[rows5], topics[rows7] = 7, 5
+    np.savez_compressed(path, **arrays)
+    with pytest.raises(AssertionError, match='k40 topic disagreements 400'):
+        ct_rcol.read_stage1(path)
+
+
+def test_reader_still_rejects_group_level_count_mismatch(paper_stage1):
+    path = paper_stage1 / 'clip_roberta__s0.npz'
+    arrays, _ = _write_duplicate_centers(path)
+    # Move 200 pairs from the duplicate group {5, 6} to center 7 in the counts
+    # and both topic arrays together, so only the recompute can see it.
+    rows5 = np.flatnonzero(arrays['fit_topics_k40'] == 5)[:200]
+    for cut in ('strict', 'k40'):
+        arrays[f'fit_topics_{cut}'][rows5] = 7
+    arrays['fit_counts'][5] -= 200
+    arrays['fit_counts'][7] += 200
+    np.savez_compressed(path, **arrays)
+    with pytest.raises(AssertionError, match='count L1 difference 400'):
         ct_rcol.read_stage1(path)
