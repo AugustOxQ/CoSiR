@@ -720,6 +720,21 @@ def test_check_refuses_to_run_on_the_stage1_outputs_or_another_outputs_folder(fu
         ct.check(bad, full_world['tmp'] / 'r.json', reference=full_world['reference'])
 
 
+@pytest.mark.parametrize('chunked', [False, True])
+def test_check_accepts_stage2a_roots_inside_the_production_reference_tree(world, monkeypatch, chunked):
+    monkeypatch.setattr(ct, 'HERE', world['tmp'])
+    reference = world['tmp'] / 'outputs'
+    reference.mkdir()
+    monkeypatch.setattr(ct, 'REFERENCE', reference)
+    root = ct.chunked_root(world['root']) if chunked else world['root']
+    report = ct.check(root, world['tmp'] / 'stage2a.json', device='cpu', reference=reference)
+    assert report['status'] == 'FAIL' and set(report['items']) == ct.required_items()
+    with pytest.raises(AssertionError):
+        ct.require_pass(world['tmp'] / 'stage2a.json', 'cpu')
+    with pytest.raises(AssertionError, match='outputs'):
+        ct.check(reference / 'percept', world['tmp'] / 'bad.json', device='cpu', reference=reference)
+
+
 def test_missing_artifacts_make_failed_items_and_a_closed_gate(world):
     world['reference'].mkdir(parents=True)
     report = ct.check(world['root'], world['tmp'] / 'stage2a.json', device='cuda', reference=world['reference'])
