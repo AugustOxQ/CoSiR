@@ -3,6 +3,7 @@ import argparse
 import copy
 import hashlib
 import json
+import os
 from contextlib import ExitStack
 from functools import partial
 from pathlib import Path
@@ -15,7 +16,7 @@ from ab_paths import (ASPECT_BASE, MAIN_ROUND, MAIN_TEST, OUTPUTS, ROUND, SAMPLE
                       check_imports, ms_train, pav_sample)
 from ab_rows import ASPECTS, DEFAULT_SWITCHES, ROWS, resolve, validate
 
-SMOKE_ROOT = Path('/tmp/claude-0/-project-CoSiR/0f66078d-adcf-4c6d-beea-edeb3524ab4a/scratchpad/t02_smoke')
+SMOKE_ROOT = Path(os.environ.get('AB_SMOKE_ROOT', '/tmp/claude-0'))
 _ORIGINAL_HEAD_LOSS = ms_train.head_loss
 
 
