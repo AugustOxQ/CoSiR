@@ -1,6 +1,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const COLORS = {'first token': '#999', 'instruction': '#6a9fd8', 'image': '#e2a23a', 'caption': '#6bbf6b', 'other template': '#c9a0d8'};
+const MODS = [['img', 'Image'], ['txt', 'Text'], ['joint', 'Image + text']];
 const st = {ks: [], k: null, view: 'all', mod: 'joint', cap: 0, layerKind: 'layers 16-27', layer: 27, word: null,
             meta: null, pinfo: null, img: null, maps: null, req: 0};
 
@@ -19,51 +20,87 @@ async function jget(url) {
 function loadImg(url) {
   return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; });
 }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c])); }
+function el(tag, cls, text) {
+  const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e;
+}
+function cap1(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function viewLabel(v) { return v.replace(/_/g, ' '); }
+function hue(s) { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
+
+// segmented control: opts = [[value, label], ...]; onpick(value)
+function makeSeg(box, opts, onpick) {
+  box.innerHTML = '';
+  for (const [v, label] of opts) {
+    const b = el('button', '', label); b.type = 'button'; b.dataset.v = v; b.setAttribute('role', 'radio');
+    b.onclick = () => onpick(v);
+    box.appendChild(b);
+  }
+}
+function markSeg(box, value) {
+  for (const b of box.children) { const on = b.dataset.v === value; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); }
+}
 
 async function init() {
   st.meta = await jget('/api/meta');
   st.ks = st.meta.ks;
   if (!st.ks.length) { $('status').textContent = 'no complete painting files found'; return; }
-  const vb = $('viewbtns');
-  for (const v of ['all', ...Object.keys(st.meta.views)]) {
-    const b = document.createElement('button');
-    b.textContent = v === 'all' ? 'all four side by side' : v; b.dataset.v = v;
-    b.onclick = () => { st.view = v; st.word = st.word; markButtons(); render(); };
-    vb.appendChild(b);
-  }
-  markButtons();
-  const ls = $('layersel');
-  for (const b of st.meta.bands) ls.add(new Option(b, b));
-  ls.add(new Option('single layer', 'single'));
-  ls.value = st.layerKind;
+
+  // static legends
+  const stops = []; for (let i = 0; i <= 10; i++) { const c = jet(i / 10); stops.push(`rgb(${c.map(Math.round)}) ${i * 10}%`); }
+  $('jetbar').style.background = `linear-gradient(90deg, ${stops.join(',')})`;
+  const sl = $('splitlegend');
+  for (const [n, c] of Object.entries(COLORS)) sl.innerHTML += `<span><i style="background:${c}"></i>${esc(n)}</span>`;
+
+  // controls
+  makeSeg($('viewseg'), [['all', 'All four'], ...Object.keys(st.meta.views).map(v => [v, viewLabel(v)])],
+          v => { st.view = v; markSeg($('viewseg'), v); render(); });
+  for (const b of $('viewseg').children) if (st.meta.views[b.dataset.v]) b.title = st.meta.views[b.dataset.v];
+  markSeg($('viewseg'), st.view);
+  makeSeg($('modseg'), MODS, v => { if (v === st.mod) return; st.mod = v; st.word = null; updateVis(); refreshMaps(); });
+  makeSeg($('layerseg'), [...st.meta.bands.map(b => [b, cap1(b)]), ['single', 'Single']],
+          v => { if (v === st.layerKind) return; st.layerKind = v; updateVis(); refreshMaps(); });
+
   $('kslider').max = st.ks.length - 1;
-  $('kcount').textContent = st.ks.length + ' paintings';
+  $('kcount').textContent = 'of ' + st.ks.length;
+  $('kcount').title = 'number of paintings; the number box is the painting index k';
   $('kslider').oninput = e => setK(st.ks[+e.target.value]);
   $('knum').onchange = e => { const k = +e.target.value; setK(nearest(k)); };
   $('prev').onclick = () => step(-1); $('next').onclick = () => step(1);
   $('rand').onclick = () => setK(st.ks[Math.floor(Math.random() * st.ks.length)]);
   document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT' && e.target.type === 'number') return;
-    if (e.key === 'ArrowLeft') step(-1); else if (e.key === 'ArrowRight') step(1);
+    const t = e.target;
+    if (t.tagName === 'INPUT' && (t.type === 'number' || t.type === 'range' || t.type === 'text')) return;
+    if (e.key === 'ArrowLeft') step(-1);
+    else if (e.key === 'ArrowRight') step(1);
+    else if (e.key === 'Escape' && st.word !== null) selectWord(null);
   });
-  for (const r of document.getElementsByName('mod')) r.onchange = () => { st.mod = r.value; if (r.checked) { st.mod = r.value; st.word = null; refreshMaps(); updateVis(); } };
-  $('capsel').onchange = e => { st.cap = +e.target.value; st.word = null; refreshMaps(); };
-  ls.onchange = e => { st.layerKind = e.target.value; updateVis(); refreshMaps(); };
   $('layerslider').oninput = e => { st.layer = +e.target.value; $('layerval').textContent = st.layer; };
   $('layerslider').onchange = () => refreshMaps();
   $('opacity').oninput = () => drawAll();
   $('smooth').onchange = () => drawAll();
+  $('sidetoggle').onclick = () => setSide($('side').classList.contains('hidden'));
+  let open = true; try { open = localStorage.getItem('att_side') !== '0'; } catch (e) {}
+  setSide(open, true);
   updateVis();
   setK(st.ks[0]);
+}
+function setSide(open, noDraw) {
+  $('side').classList.toggle('hidden', !open);
+  $('sidetoggle').setAttribute('aria-pressed', open);
+  try { localStorage.setItem('att_side', open ? '1' : '0'); } catch (e) {}
+  if (!noDraw) drawAll();
 }
 function nearest(k) { let b = st.ks[0]; for (const x of st.ks) if (Math.abs(x - k) < Math.abs(b - k)) b = x; return b; }
 function step(d) {
   const i = st.ks.indexOf(st.k); const j = Math.max(0, Math.min(st.ks.length - 1, i + d)); setK(st.ks[j]);
 }
-function markButtons() { for (const b of $('viewbtns').children) b.classList.toggle('on', b.dataset.v === st.view); }
 function updateVis() {
-  $('capsel_wrap').style.display = st.mod === 'img' ? 'none' : '';
+  markSeg($('modseg'), st.mod);
+  markSeg($('layerseg'), st.layerKind);
   $('single_wrap').style.display = st.layerKind === 'single' ? '' : 'none';
+  $('caplist').classList.toggle('off', st.mod === 'img');
+  $('capnote').textContent = st.mod === 'img' ? '(not used for image only)' : '(click to choose)';
 }
 
 async function setK(k) {
@@ -82,16 +119,25 @@ async function setK(k) {
 }
 function showPinfo() {
   const p = st.pinfo;
-  const sel = $('capsel'); sel.innerHTML = '';
-  p.captions.forEach((c, i) => sel.add(new Option(`${i}: ${c.emotion}`, i)));
-  sel.value = st.cap;
-  let h = `<b>k=${p.k}</b> ${esc(p.painting_id)} &mdash; style: <b>${esc(p.style)}</b>, genre: <b>${esc(p.genre)}</b><ol start="0">`;
-  p.captions.forEach(c => { h += `<li>[${esc(c.emotion)}] ${esc(c.text)}</li>`; });
-  $('pinfo').innerHTML = h + '</ol>';
+  $('pinfo').innerHTML = `<span class="k">k</span><span class="v"><b>${p.k}</b></span>` +
+    `<span class="k">id</span><span class="v">${esc(p.painting_id)}</span>` +
+    `<span class="k">style</span><span class="v"><b>${esc(p.style)}</b></span>` +
+    `<span class="k">genre</span><span class="v"><b>${esc(p.genre)}</b></span>`;
+  const box = $('caplist'); box.innerHTML = '';
+  p.captions.forEach((c, i) => {
+    const b = el('button', 'capitem' + (i === st.cap ? ' on' : '')); b.type = 'button'; b.dataset.i = i;
+    b.innerHTML = `<span class="idx">${i}</span><span class="chip" style="--h:${hue(c.emotion)}">${esc(c.emotion)}</span>${esc(c.text)}`;
+    b.onclick = () => pickCap(i);
+    box.appendChild(b);
+  });
 }
-function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c])); }
+function pickCap(i) {
+  st.cap = i; st.word = null;
+  for (const b of $('caplist').children) b.classList.toggle('on', +b.dataset.i === i);
+  if (st.mod !== 'img') refreshMaps();
+}
 
-async function refreshMaps(force) {
+async function refreshMaps() {
   if (st.k === null) return;
   const my = ++st.req;
   $('status').textContent = 'loading maps...';
@@ -106,77 +152,115 @@ async function refreshMaps(force) {
 function render() {
   const P = $('panels'); P.innerHTML = '';
   if (!st.maps) return;
-  const views = st.view === 'all' ? Object.keys(st.meta.views) : [st.view];
-  const w = st.view === 'all' ? Math.max(300, Math.min(480, Math.floor((Math.min(window.innerWidth, 1500) - 70) / 2))) : 520;
+  const views = (st.view === 'all' ? Object.keys(st.meta.views) : [st.view]).filter(v => st.maps.views[v]);
+  P.style.setProperty('--n', views.length);
   for (const v of views) {
-    const d = st.maps.views[v]; if (!d) continue;
-    const div = document.createElement('div'); div.className = 'panel'; div.style.width = (w + 14) + 'px';
-    div.innerHTML = `<div class="title">${v}</div><div class="instr">${esc(st.meta.views[v])}</div>`;
-    const title = document.createElement('div'); title.className = 'stat'; div.appendChild(title);
-    const cv = document.createElement('canvas'); cv.width = w; cv.height = Math.round(w * st.img.height / st.img.width);
-    div.appendChild(cv);
-    const stat = document.createElement('div'); stat.className = 'stat'; div.appendChild(stat);
-    div.appendChild(bar(d.shares));
-    if (d.caption_tokens) div.appendChild(words(d));
+    const d = st.maps.views[v];
+    const solo = views.length === 1;
+    const div = el('section', 'card panel' + (solo ? ' solo' : ''));
+    const head = el('div', 'phead');
+    head.appendChild(el('div', 'pname', viewLabel(v)));
+    const ins = el('div', 'pinstr', st.meta.views[v]); ins.title = st.meta.views[v]; head.appendChild(ins);
+    div.appendChild(head);
+    d._label = el('div', 'plabel'); div.appendChild(d._label);
+    const box = el('div', 'imgbox'); d._cv = el('canvas'); box.appendChild(d._cv); d._box = box; div.appendChild(box);
+    div.appendChild(words(d));
+    div.appendChild(foot(d));
     P.appendChild(div);
-    d._cv = cv; d._stat = stat; d._title = title; d._v = v;
   }
   drawAll();
 }
-function bar(sh) {
-  const wrap = document.createElement('div');
-  const b = document.createElement('div'); b.className = 'bar';
-  const lg = document.createElement('div'); lg.className = 'legend';
+function foot(d) {
+  const sh = d.shares;
+  const wrap = el('div', 'pfoot');
+  const b = el('div', 'bar');
   for (const [n, c] of Object.entries(COLORS)) {
     const x = sh[n] || 0;
     const s = document.createElement('div'); s.style.cssText = `width:${x * 100}%;background:${c}`; s.title = `${n} ${(x * 100).toFixed(1)}%`;
     b.appendChild(s);
-    lg.innerHTML += `<span><i style="background:${c}"></i>${n} ${(x * 100).toFixed(1)}%</span>`;
   }
-  wrap.appendChild(b); wrap.appendChild(lg); return wrap;
+  b.title = Object.entries(COLORS).map(([n]) => `${n} ${((sh[n] || 0) * 100).toFixed(1)}%`).join('\n');
+  wrap.appendChild(b);
+  const t = el('div', 'splittxt', `image ${((sh.image || 0) * 100).toFixed(1)}% · caption ${((sh.caption || 0) * 100).toFixed(1)}%`);
+  t.title = b.title; wrap.appendChild(t);
+  return wrap;
 }
 function words(d) {
-  const box = document.createElement('div'); box.className = 'words' + (st.mod === 'joint' ? ' joint' : '');
+  const box = el('div', 'pcap');
+  if (!d.caption_tokens) { box.classList.add('none'); box.textContent = 'Image only: no caption in the input.'; d._spans = []; return box; }
+  const inner = el('div', 'words' + (st.mod === 'joint' ? ' joint' : ''));
   const mx = Math.max(...d.caption_tokens.map(t => t.weight), 1e-12);
-  d.caption_tokens.forEach((t, i) => {
-    const s = document.createElement('span'); s.className = 'w' + (st.word === i ? ' sel' : '');
-    s.textContent = t.text; s.style.background = `rgba(255,140,0,${(t.weight / mx).toFixed(3)})`;
-    s.title = 'weight ' + t.weight.toPrecision(3);
-    if (st.mod === 'joint') s.onclick = () => { st.word = st.word === i ? null : i; render(); };
-    box.appendChild(s);
+  d._spans = d.caption_tokens.map((t, i) => {
+    const s = el('span', 'w' + (st.word === i ? ' sel' : ''), t.text);
+    s.style.background = `rgba(255,140,0,${(t.weight / mx).toFixed(3)})`;
+    s.title = 'weight ' + t.weight.toPrecision(3) + (st.mod === 'joint' ? '; click for this word\'s map' : '');
+    if (st.mod === 'joint') s.onclick = () => selectWord(st.word === i ? null : i);
+    inner.appendChild(s);
+    return s;
   });
+  box.appendChild(inner);
   return box;
+}
+function selectWord(i) {
+  st.word = i;
+  if (!st.maps) return;
+  for (const d of Object.values(st.maps.views)) if (d._spans) d._spans.forEach((s, j) => s.classList.toggle('sel', j === i));
+  drawAll();
+}
+
+// size the canvas to its box: aspect kept, crisp on high-dpi screens
+function fit(d) {
+  const w = d._box.clientWidth, h = d._box.clientHeight;
+  if (w < 2 || h < 2) return false;
+  const k = Math.min(w / st.img.width, h / st.img.height);
+  const cw = Math.max(1, Math.floor(st.img.width * k)), ch = Math.max(1, Math.floor(st.img.height * k));
+  const dpr = window.devicePixelRatio || 1;
+  d._cv.style.width = cw + 'px'; d._cv.style.height = ch + 'px';
+  d._cv.width = Math.round(cw * dpr); d._cv.height = Math.round(ch * dpr);
+  return true;
+}
+function overlay(d, map) {
+  if (d._ocFor === map) return d._oc;
+  const R = map.length, Cc = map[0].length;
+  let mx = 0; for (const r of map) for (const x of r) if (x > mx) mx = x;
+  const oc = document.createElement('canvas'); oc.width = Cc; oc.height = R;
+  const og = oc.getContext('2d'), id = og.createImageData(Cc, R);
+  for (let i = 0; i < R; i++) for (let j = 0; j < Cc; j++) {
+    const c = jet(map[i][j] / (mx || 1)), o = 4 * (i * Cc + j);
+    id.data[o] = c[0]; id.data[o + 1] = c[1]; id.data[o + 2] = c[2]; id.data[o + 3] = 255;
+  }
+  og.putImageData(id, 0, 0);
+  d._oc = oc; d._ocFor = map; d._mx = mx; d._R = R; d._C = Cc;
+  return oc;
 }
 
 function drawAll() {
-  if (!st.maps) return;
+  if (!st.maps || !st.img) return;
   for (const v of Object.keys(st.maps.views)) {
-    const d = st.maps.views[v]; if (!d._cv) continue;
+    const d = st.maps.views[v]; if (!d._cv || !d._cv.isConnected) continue;
+    if (!fit(d)) continue;
     const cv = d._cv, g = cv.getContext('2d');
     g.clearRect(0, 0, cv.width, cv.height);
     g.drawImage(st.img, 0, 0, cv.width, cv.height);
-    let map = d.image_map, label = 'pooled token', note = '';
+    let map = d.image_map, label = 'pooled last token', note = '';
     if (st.mod === 'joint' && st.word !== null && d.word_maps) {
-      map = d.word_maps[st.word]; label = 'word: ' + JSON.stringify(d.caption_tokens[st.word].text);
+      map = d.word_maps[st.word]; label = 'word ' + JSON.stringify(d.caption_tokens[st.word].text);
       if (st.layerKind === 'single') note = ` (word maps use ${d.word_maps_band})`;
     }
-    d._title.innerHTML = `<b>${esc(label)}</b>` + (note ? `<span class="note">${esc(note)}</span>` : '');
-    if (!map) { d._stat.textContent = 'text only: no image map'; g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(0, 0, cv.width, cv.height); continue; }
-    const R = map.length, Cc = map[0].length;
-    let mx = 0; for (const r of map) for (const x of r) if (x > mx) mx = x;
-    const oc = document.createElement('canvas'); oc.width = Cc; oc.height = R;
-    const og = oc.getContext('2d'), id = og.createImageData(Cc, R);
-    for (let i = 0; i < R; i++) for (let j = 0; j < Cc; j++) {
-      const c = jet(map[i][j] / (mx || 1)), o = 4 * (i * Cc + j);
-      id.data[o] = c[0]; id.data[o + 1] = c[1]; id.data[o + 2] = c[2]; id.data[o + 3] = 255;
+    if (!map) {
+      d._label.innerHTML = '<b>Text only</b> · no image map'; d._label.title = '';
+      g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(0, 0, cv.width, cv.height); continue;
     }
-    og.putImageData(id, 0, 0);
+    const oc = overlay(d, map);
     g.globalAlpha = +$('opacity').value;
     g.imageSmoothingEnabled = $('smooth').checked; g.imageSmoothingQuality = 'high';
     g.drawImage(oc, 0, 0, cv.width, cv.height);
     g.globalAlpha = 1;
-    d._stat.textContent = `scale 0 to max ${mx.toPrecision(4)} (uniform = ${(1 / (R * Cc)).toPrecision(3)}); image share of raw attention ${(d.shares.image * 100).toFixed(1)}%`;
+    d._label.innerHTML = `Map of <b>${esc(label)}</b>` + (note ? `<span class="note">${esc(note)}</span>` : '');
+    d._label.title = `scale 0 to max ${d._mx.toPrecision(4)} (uniform = ${(1 / (d._R * d._C)).toPrecision(3)})`;
+    cv.title = d._label.title;
   }
 }
-window.addEventListener('resize', () => { clearTimeout(window._rt); window._rt = setTimeout(render, 200); });
+let rt = null;
+window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 150); });
 init();

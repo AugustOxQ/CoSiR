@@ -1,42 +1,80 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Attention maps viewer</title>
+<html lang="en"><head><meta charset="utf-8"><title>Attention maps viewer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="/att_viewer.css"></head>
 <body>
-<div class="help">
-Each map is the attention of the pooled last token (the one that becomes the embedding) on the image tokens: raw attention,
-averaged over heads, summed over the chosen layers, then rescaled so the map over the image sums to 1.
-The first token takes most of the attention (attention sink), so the bar under each panel shows how the raw attention is split
-(first token, instruction, image, caption, other template tokens); the map only shows the image part.
-In image+text, click a caption word to see that word's attention over the image.
+<div class="app">
+  <header class="toolbar">
+    <div class="trow">
+      <div class="brand">Attention maps</div>
+      <div class="group nav" role="group" aria-label="Painting">
+        <button id="prev" class="btn" title="Previous painting (left arrow)">&larr; Prev</button>
+        <input type="range" id="kslider" min="0" max="0" value="0" step="1" aria-label="Painting slider">
+        <button id="next" class="btn" title="Next painting (right arrow)">Next &rarr;</button>
+        <input type="number" id="knum" class="num" aria-label="Painting number k">
+        <span id="kcount" class="dim"></span>
+        <button id="rand" class="btn" title="Random painting">Random</button>
+      </div>
+      <div class="group" role="group" aria-label="Heat overlay">
+        <label class="lbl" for="opacity">Opacity</label>
+        <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.5">
+        <label class="switch" title="Smooth the heat map when scaling it up"><input type="checkbox" id="smooth" checked><span class="track"></span><span>Smooth</span></label>
+      </div>
+      <div class="spacer"></div>
+      <span id="status" class="dim status" role="status"></span>
+      <button id="sidetoggle" class="btn" aria-pressed="true" title="Hide or show the side panel">Side panel</button>
+    </div>
+    <div class="trow">
+      <div class="group">
+        <span class="lbl">Input</span>
+        <div id="modseg" class="seg" role="radiogroup" aria-label="Input type"></div>
+      </div>
+      <div class="group">
+        <span class="lbl">Layers</span>
+        <div id="layerseg" class="seg" role="radiogroup" aria-label="Layers"></div>
+        <span id="single_wrap" class="group">
+          <input type="range" id="layerslider" min="0" max="27" value="27" aria-label="Layer">
+          <span class="lbl">layer <b id="layerval">27</b></span>
+        </span>
+      </div>
+      <div class="group">
+        <span class="lbl">Views</span>
+        <div id="viewseg" class="seg" role="radiogroup" aria-label="View filter"></div>
+      </div>
+    </div>
+  </header>
+  <div class="stage">
+    <main id="panels" class="panels"></main>
+    <aside id="side" class="side" aria-label="Information">
+      <section class="card sec">
+        <h3>Painting</h3>
+        <div id="pinfo" class="pinfo"></div>
+      </section>
+      <section class="card sec caps">
+        <h3>Captions <span class="dim" id="capnote"></span></h3>
+        <div id="caplist" class="caplist"></div>
+      </section>
+      <section class="card sec">
+        <h3>Heat colour scale</h3>
+        <div id="jetbar" class="jetbar"></div>
+        <div class="jetlbl"><span>0</span><span>max of each map</span></div>
+        <div class="dim">Each map is scaled to its own maximum, so colours compare positions inside one map, not between maps.</div>
+      </section>
+      <section class="card sec">
+        <h3>Attention split bar</h3>
+        <div id="splitlegend" class="splitlegend"></div>
+      </section>
+      <details class="card sec help">
+        <summary>Help</summary>
+        <p>Each map is the attention of the pooled last token (the one that becomes the embedding) on the image tokens: raw attention,
+        averaged over heads, summed over the chosen layers, then rescaled so the map over the image sums to 1.</p>
+        <p>The first token takes most of the attention (attention sink), so the bar under each panel shows how the raw attention is split
+        (first token, instruction, image, caption, other template tokens); the map only shows the image part.</p>
+        <p>In image + text, click a caption word to see that word's attention over the image. Click it again or press Escape to go back.
+        Left and right arrows change the painting.</p>
+      </details>
+    </aside>
+  </div>
 </div>
-<div class="controls">
-  <div class="row">
-    <b>Painting</b>
-    <button id="prev">&larr; prev</button>
-    <input type="range" id="kslider" min="0" max="0" value="0" step="1">
-    <button id="next">next &rarr;</button>
-    <input type="number" id="knum" style="width:5em">
-    <button id="rand">random</button>
-    <span id="kcount" class="dim"></span>
-  </div>
-  <div id="pinfo" class="pinfo"></div>
-  <div class="row"><b>View</b> <span id="viewbtns"></span></div>
-  <div class="row"><b>Modality</b>
-    <label><input type="radio" name="mod" value="img"> image only</label>
-    <label><input type="radio" name="mod" value="txt"> text only</label>
-    <label><input type="radio" name="mod" value="joint" checked> image+text</label>
-    <span id="capsel_wrap"><b>Caption</b> <select id="capsel"></select></span>
-  </div>
-  <div class="row"><b>Layers</b> <select id="layersel"></select>
-    <span id="single_wrap">layer <input type="range" id="layerslider" min="0" max="27" value="27"> <span id="layerval">27</span></span>
-  </div>
-  <div class="row"><b>Heat map</b>
-    opacity <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.5">
-    <label><input type="checkbox" id="smooth" checked> smooth</label>
-  </div>
-</div>
-<div id="status" class="dim"></div>
-<div id="panels" class="panels"></div>
 <script src="/att_viewer.js"></script>
 </body></html>
