@@ -782,3 +782,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-20-r10-decide-16-handoff.md
 - New chat: tab 'r10 decide 16', session 4e0939ae-16c7-4ae7-9a1b-7625b27d814c
 
+[brief] CoSiR: r10 decide 16 -> r10 build 14 (2026-10-21 03:21 Amsterdam)
+- Done: the claim test's wrap-up; the grill and spec of a D2 building-part ablation with a four-view analysis.
+- State: spec approved (user confirmed the closing summary, 03:30); 13 rows, development data, local 3090, no bar.
+- Next: tickets from the spec, build, final review, merge to main; then open "r10 run 12" unattended.
+- Blocked: nothing. Night mode. Item 5 (backbones, ArtELingo-28) waits for the morning decide chat.
+- Handoff: docs/superpowers/handoffs/2026-10-21-r10-build-14-handoff.md
+- New chat: tab 'r10 build 14', session 0f66078d-adcf-4c6d-beea-edeb3524ab4a
+
