@@ -15,13 +15,14 @@ The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked idea
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. D2 (trunk + direct
-distillation 0.5) passed both claim tests on 12,281 held ArtELingo paintings: at full scale, emotion AMI 0.1008
-against 0.0874 for the strongest uncollapsed PercepT (core), d +0.0133 [+0.0081, +0.0146] (S2-GO); under Leiden there
-is no lead, and D2 stays below the instructed Qwen image on style and genre. Next (user, 2026-10-21): a building-part
-ablation of D2 on development data (node408, 3 seeds); then a deep analysis of it and of the four Qwen image views, a
-list of ways to improve (the cluster-level losses among them), a framing of our advantages, and code for other
-backbones and ArtELingo-28. The 10-29 gate is passed; the 11-10 gate is the instructed Qwen bar and aspect-named
-retrieval.
+distillation 0.5) passed both claim tests on 12,281 held ArtELingo paintings (emotion AMI 0.1008 against 0.0874 for
+PercepT core, S2-GO) but stays below the instructed Qwen image on style and genre. The D2 ablation (5,000 development
+paintings, local 3090, 3 seeds) shows that the instructed graphs carry the gain: without any instruction the model
+falls below PercepT core; the teacher and the shared trunk are close to redundant; without the caption terms emotion
+and style rise (style 0.3945 against the instructed image's 0.3952), confounded with the teacher's loss share. Open
+in decide 17: decision A (a check of the caption-free variants on other development paintings, genre, or item 5:
+other backbones and ArtELingo-28), then item 5's grill; a side chat maps Qwen's attention under the four views. The
+11-10 gate is the instructed Qwen bar and aspect-named retrieval.
 
 ## Parked ideas
 
@@ -37,6 +38,42 @@ retrieval.
   (never tried; not chosen by the user, 2026-10-20; [proposed in](../reports/auto/percept/2026-12-16_model_sheet.md))
 - Align and contrast the three aspect heads of one image (shared part aligned, aspect parts pushed apart) (never tried;
   not chosen by the user, 2026-10-20: the aspects may not be separable; proposed in the r10 decide 12 chat)
+
+## 2026-10-21 · D2 ablation read: the instructed graphs carry the gain, the teacher and the trunk are close to redundant; next step open
+
+- **Read:** image AMI on 5,000 development paintings, 3 seeds; effect = variant minus D2 (0.0962 / 0.3697 / 0.4540,
+  emotion / style / genre). One default-view graph −0.0222 / −0.1681 / −0.0287 and no buddy terms −0.0214 / −0.1473 /
+  −0.0449 (clear on all three); no teacher −0.0032 / −0.0106 / +0.0063 (not resolved / small / not resolved);
+  default-view teacher and separate heads not resolved on all three; image endpoints only +0.0057 / +0.0248 / −0.0086
+  (small / clear / not resolved; style 0.3945 against the instructed Qwen image's 0.3952); no own-caption terms
+  +0.0055 / +0.0180 / +0.0063 (small / clear / not resolved). No instruction anywhere 0.0733 / 0.1848 / 0.4241, below
+  PercepT core (0.0772 / 0.2286 / 0.4359). Instructed inputs leave genre at 0.4545, below their own input (0.4956).
+  Without the caption terms the teacher's loss share rises from 1/5 to 1/3; the ablation does not separate the two.
+- **Meaning (C):** "(1) Seems we have a nice ablation and find some key points and also some design redundency. (2)
+  Even this is only on development data, this is already at certain level of clearance to guide the next-step design.
+  (3) seems our model depends very much of the instructions? (4) the difference across four qwen features is within my
+  expectation, instructing towards emotion will hurt style and genre." (user, before ours). Ours: the instructed
+  graphs are the core and the instruction acts through them, not through the teacher; the teacher and the trunk are
+  close to redundant; the caption-free gains are a lead; genre is the open problem, and its input is not the limit; an
+  instruction changes clustering far more than probe accuracy. Where they differ: the user takes the development
+  result as clear enough to guide the design; we agree for the large effects but would check the caption-free gains on
+  other paintings first (picked on these paintings, confounded with the teacher share); the user's reading leaves out
+  genre. The user's follow-ups: "without caption terms" keeps captions in the graphs (the emotion graph is built from
+  instructed captions); why the own-caption term does not help is open (the teacher share, or its instance-level
+  contrast on content; not checked); genre is included in the caption-free check (user asked; all three aspects are
+  scored); a statistics sheet of the four views (norms, anisotropy, default-to-instructed cosine, per-label neighbour
+  purity, silhouette, hubness) goes beside the next run (user, after seeing the recommendation).
+- **Amendment A1:** confirmed (user, after seeing the recommendation): the no-content-correction row uses the plain
+  instructed style image graph (R0), not the style caption graph (R0o).
+- **Side task (user):** Qwen's attention maps under the four prompts, 5,000 development paintings × 3 input modalities,
+  an HTML viewer and a summary; side chat "r10 attention maps"
+  ([handoff](handoffs/2026-10-21-r10-attention-maps-handoff.md)).
+- **Decided (A):** open, awaiting the user. Options of the brief: (1) the caption-free variants on development
+  paintings that did not choose D2, beside D2 with the teacher at 1/3; (2) genre: the information-ceiling probe, then
+  teacher-faithful heads; (3) item 5: other backbones and ArtELingo-28, then its grill.
+- **Links:** [report](../reports/auto/percept/2026-12-22_d2_ablation.md) ·
+  [user-read report](../user_read/2026-10-21_d2_ablation.md) · [spec](specs/2026-10-21-d2-ablation-design.md) ·
+  [handoff](handoffs/2026-10-21-r10-decide-17-handoff.md)
 
 ## 2026-10-21 · Claim test read: D2 passes both stages (S1-GO, S2-GO); an ablation and analysis of the design before more datasets and backbones
 

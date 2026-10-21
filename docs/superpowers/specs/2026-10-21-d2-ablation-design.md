@@ -154,7 +154,8 @@ New: the default-view graph (R9, R11) and the random graphs (R10), built on fit 
 | D20 | Side work | literature check on the `deep-research` agent (Opus, deep: the paper's central gap); framing note by an Opus `xhigh` worker; the ArtELingo-28 overlap check on CPU | design judgment; the overlap is a fact item 5 needs | agent default | 2026-10-21 03:35 |
 
 **Amendments:**
-- A1 (2026-10-21 04:45, agent default in night mode, from the final review; check it in the morning): R8's style graph
+- A1 (2026-10-21 04:45, agent default in night mode, from the final review; confirmed by the user, after seeing the
+  recommendation, in r10 decide 17): R8's style graph
   is R0, not R0o. In the aspect store, style R0 is the reciprocal top-20 graph of the instructed style *image* view
   (the view Fres05 corrects) and R0o that of the style *caption* view; Fres05 shares 13.5% of its fit edges with R0 and
   0.07% with R0o. With R0o, R8 would change the view as well as the content correction. Emotion R0 (the caption view,
