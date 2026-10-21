@@ -22,7 +22,7 @@ ROWS = {
     'R5': _row(switches=dict(buddy=0.0)),
     'R6': _row(switches=dict(own=0.0)),
     'R7': _row(switches=dict(endpoints='image')),
-    'R8': _row(graphs=dict(emotion='R0', style='R0o', genre='R0o')),
+    'R8': _row(graphs=dict(emotion='R0', style='R0', genre='R0o')),  # plain graph of each aspect's primary view (amendment A1)
     'R9': _row(graphs=dict.fromkeys(ASPECTS, 'Dview'), store='ab'),
     'R10': _row(graphs=dict.fromkeys(ASPECTS, 'rand_s{seed}'), store='ab'),
     'R11': _row(graphs=dict.fromkeys(ASPECTS, 'Dview'), store='ab',

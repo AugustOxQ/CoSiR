@@ -168,6 +168,8 @@ def test_runner_cohorts_seed_graphs_and_metadata(tmp_path, monkeypatch):
                                       for s in (0, 2)}
     meta = json.loads((tmp_path / 'out/train/R7/ab_row.json').read_text())
     assert meta['caption_side'] == 'not scored'
+    for row, side in (('R4', 'not scored'), ('R1', 'scored'), ('R12', 'scored')):  # R4: no loss on the caption net
+        assert json.loads((tmp_path / f'out/train/{row}/ab_row.json').read_text())['caption_side'] == side
 
 
 def test_metadata_refuses_changed_switches(tmp_path):
