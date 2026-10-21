@@ -814,3 +814,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-21-r10-run-13-handoff.md
 - New chat: tab 'r10 run 13', session 1d1a129d-0a46-4942-a62c-55dec4862d25
 
+[brief] CoSiR: r10 run 13 -> r10 decide 17 (2026-10-21 07:08 Amsterdam)
+- Done: the D2 ablation reports (auto report 12-22, user-read report), the literature and framing notes.
+- State: the instructed graphs carry D2's gain; without the caption terms, style AMI is 0.3945 against D2's 0.3697 and the instructed Qwen image's 0.3952 (development).
+- Next: your reading of the results brief (decision C), the wrap-up, then the next step and item 5's grill.
+- Blocked: nothing. The container restart question is asked in this chat.
+- Handoff: docs/superpowers/handoffs/2026-10-21-r10-decide-17-handoff.md
+- New chat: tab 'r10 decide 17', session c8e18750-e7eb-4e65-b741-cf983ca032a0
+
