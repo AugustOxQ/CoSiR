@@ -790,3 +790,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-21-r10-build-14-handoff.md
 - New chat: tab 'r10 build 14', session 0f66078d-adcf-4c6d-beea-edeb3524ab4a
 
+[brief] CoSiR: r10 build 14 -> r10 build 15 (2026-10-21 04:21 Amsterdam)
+- Done: tickets 01 to 05 of the D2 ablation are merged on branch `r10-d2-ablation`; 108 tests pass.
+- State: the scorer reproduces the model sheet's D2 and T1 image AMI exactly (fake run on copies of their outputs).
+- Next: fix the analysis reader of `scores.json`, build ticket 06, GPU smoke, final review, merge; open "r10 run 12".
+- Blocked: nothing. Night mode. Cut at 200k context.
+- Handoff: docs/superpowers/handoffs/2026-10-21-r10-build-15-handoff.md
+- New chat: tab 'r10 build 15', session 594d01b4-f9b6-4254-9058-fab6ca0ffbe4
+
