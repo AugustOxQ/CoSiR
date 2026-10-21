@@ -11,18 +11,17 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-10-20)
+## Now (2026-10-21)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
-on each view, one shared trunk with emotion, style and genre heads, read once on the default image. The stage 2 sheet's
-best row for the claim, D2 (trunk + direct distillation 0.5), reaches image-side AMI 0.096 / 0.370 / 0.454
-(development data, 3 seeds) against PercepT core 0.077 / 0.229 / 0.436 and the instructed Qwen image 0.093 / 0.395 /
-0.496: above the instructed target on emotion only. Next, two tracks (user): the claim test with D2, grilled on
-2026-10-20 (two claim tests: the developed sample for the 10-29 gate, then the full ArtELingo train side; the bar is
-the strongest uncollapsed PercepT, core or one of two paper settings versions; Leiden reported beside), its spec
-and decision rule committed 2026-10-20, stage 1 building and running overnight; and decision B for cluster-level losses (contrast per head, teacher clusters as anchors, DEC started from a
-good partition). Gates: 2026-10-29 held-out emotion AMI at least +0.01 above PercepT, with a paired interval above 0;
-2026-11-10 the instructed Qwen bar and aspect-named retrieval.
+on each view, one shared trunk with emotion, style and genre heads, read once on the default image. D2 (trunk + direct
+distillation 0.5) passed both claim tests on 12,281 held ArtELingo paintings: at full scale, emotion AMI 0.1008
+against 0.0874 for the strongest uncollapsed PercepT (core), d +0.0133 [+0.0081, +0.0146] (S2-GO); under Leiden there
+is no lead, and D2 stays below the instructed Qwen image on style and genre. Next (user, 2026-10-21): a building-part
+ablation of D2 on development data (node408, 3 seeds); then a deep analysis of it and of the four Qwen image views, a
+list of ways to improve (the cluster-level losses among them), a framing of our advantages, and code for other
+backbones and ArtELingo-28. The 10-29 gate is passed; the 11-10 gate is the instructed Qwen bar and aspect-named
+retrieval.
 
 ## Parked ideas
 
@@ -38,6 +37,43 @@ good partition). Gates: 2026-10-29 held-out emotion AMI at least +0.01 above Per
   (never tried; not chosen by the user, 2026-10-20; [proposed in](../reports/auto/percept/2026-12-16_model_sheet.md))
 - Align and contrast the three aspect heads of one image (shared part aligned, aspect parts pushed apart) (never tried;
   not chosen by the user, 2026-10-20: the aspects may not be separable; proposed in the r10 decide 12 chat)
+
+## 2026-10-21 · Claim test read: D2 passes both stages (S1-GO, S2-GO); an ablation and analysis of the design before more datasets and backbones
+
+- **Read:** emotion AMI on 12,281 held paintings, k-means k = 20, 5 seeds, against the strongest uncollapsed PercepT
+  (core, its own top topic). Stage 1 (13,400 fit paintings): D2 0.1001 against 0.0855, d +0.0146 [+0.0093, +0.0157],
+  S1-GO. Stage 2 (42,969 train paintings): D2 0.1008 against 0.0874, d +0.0133 [+0.0081, +0.0146], S2-GO; the
+  independent check agrees exactly. All strict paper settings runs collapsed in both stages; the K = 40 versions score
+  0.064 to 0.071. Diagnostics: Leiden margin −0.0005 [−0.0048, +0.0023] (stage 1 +0.0019); k-means at Leiden's count
+  keeps the lead (+0.0190); style +0.139 and genre +0.021 over core; D2 below the instructed Qwen image on style and
+  genre (0.369 / 0.444 against 0.403 / 0.506). From stage 1 to stage 2 (3.2× training data): emotion D2 +0.7%, core
+  +2.3%, a difference inside the seed noise (about ±0.001 per change; not tested formally); genre D2 −1.2%, core −4.1%.
+- **Meaning (C):** "This seems a good overall result. (1) D2 cleared uncollapsed PercepT, that's a good starting point.
+  But need to establish to more backbones and datasets. (2) Leiden community seems not really helping? (3) paper
+  settings PercepT seems worse than our PercepT core setting which fixed many things." (user, stage 2, before ours;
+  that it covers stage 1 too: agent default, decide 15 got no answer). Ours: a pass with a smaller lead than stage 1;
+  no lead under Leiden; style and genre below the instructed target. Where they differ: the user adds backbones; the
+  user reads Leiden as a weaker readout, we read it as a dependence on the clustering method (Leiden lowers D2 0.1008
+  to 0.0757, core only 0.0799 to 0.0762); the user's reading leaves out the style and genre gap.
+- **Paper sentence (S2-GO, agent; no paper folder for the new line yet):** "On 12,281 held ArtELingo paintings, a model
+  trained on the 42,969 train paintings and read from the default Qwen image gives emotion clusters (k-means, 20
+  clusters) with AMI 0.101, 0.013 above the strongest uncollapsed PercepT reimplementation trained on the same
+  paintings (0.087; paired 95% interval of the difference [0.008, 0.015], over paintings and 5 seeds), each with its
+  own recipe on our feature stores." It covers no style or genre, other dataset or backbone, the instructed Qwen bar,
+  retrieval, or PercepT with its own encoders (spec §6).
+- **Decided (A):** five parts, in order (user): (1) a quick ablation of D2's building parts on the cluster, 3 seeds;
+  (2) a deep analysis of it, and of the four Qwen image embeddings (default and three instructed): how they differ
+  and correlate; (3) a list of ways to improve, with deep research if needed, the three cluster-level candidates
+  among them; (4) our advantages and how to show them (any dataset through Qwen prompting, any backbone, to prove,
+  lightweight, not sure); (5) code for other backbones and ArtELingo-28. Parts 3 to 5 go on locally while part 1
+  runs. Type ablation and analysis, medium loop, no bar (user). The rule's S2-GO step (ArtELingo-28's facts brief and
+  spec) becomes part 5, with backbones added (user).
+- **Idea (B):** track 2's cluster-level loss waits for part 3's list (user: "the three contrastive ways could be
+  within the list").
+- **Why:** "we did not really understand our current design" (user).
+- **Links:** [stage 1 report](../reports/auto/percept/2026-12-18_claim_test_stage1.md) ·
+  [stage 2 report](../reports/auto/percept/2026-12-19_claim_test_stage2.md) ·
+  [spec](specs/2026-10-20-claim-test-design.md) · [handoff](handoffs/2026-10-21-r10-decide-17-handoff.md)
 
 ## 2026-10-20 · Stage 2 model sheet read: D2 above the instructed target on emotion only; claim test with D2 next, cluster-level losses as a second track
 
