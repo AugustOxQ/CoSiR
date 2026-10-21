@@ -73,7 +73,7 @@ retrieval.
 - **Why:** "we did not really understand our current design" (user).
 - **Links:** [stage 1 report](../reports/auto/percept/2026-12-18_claim_test_stage1.md) ·
   [stage 2 report](../reports/auto/percept/2026-12-19_claim_test_stage2.md) ·
-  [spec](specs/2026-10-20-claim-test-design.md) · [handoff](handoffs/2026-10-21-r10-decide-17-handoff.md)
+  [spec](specs/2026-10-20-claim-test-design.md) · [ablation spec](specs/2026-10-21-d2-ablation-design.md) · [build handoff](handoffs/2026-10-21-r10-build-14-handoff.md)
 
 ## 2026-10-20 · Stage 2 model sheet read: D2 above the instructed target on emotion only; claim test with D2 next, cluster-level losses as a second track
 

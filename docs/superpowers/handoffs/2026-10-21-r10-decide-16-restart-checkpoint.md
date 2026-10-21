@@ -1,5 +1,8 @@
 # Handoff: start the two fact-finding jobs, do the claim test's wrap-up, then grill and spec the D2 ablation and the backbone build
 
+> Superseded: never opened as a chat. The user resumed "r10 decide 16" after the restart, and that chat used this file
+> as its checkpoint. The next phase handoff is [r10 build 14](2026-10-21-r10-build-14-handoff.md).
+
 ## Brief
 - Done: decision C for the claim test (user, stage 2; agent default: it covers stage 1); decision A, a five-part plan.
 - State: the plan is ablation, analysis, improvement list, framing, and a backbone and ArtELingo-28 build. No bar.
