@@ -19,7 +19,7 @@ Smoke: `att_extract.py --limit 16 --check-full 4 --out <scratchpad>/att_smoke`.
 - Gate b: cross_l1 is now the L1 between band-renormalised raw cross rows; new img_l1_raw = L1 between shortcut and full-pass band_map image maps. Both fail above 0.05 (threshold unchanged).
 - Smoke (16 paintings, check-full 4): gate b fails the new thresholds in bf16 (img_l1_raw max 0.074, last layer; cross_l1 max 0.102); see the hand-back.
 
-## 2026-10-21 16:58  Gate b limits for raw maps (controller)
+## 2026-10-21 16:50  Gate b limits for raw maps (controller)
 
 - `att_diag_raw_fp32.py` (4 paintings, default and style_word): against the float32 shortcut as reference, the bf16
   shortcut and the bf16 plain pass have the same L1 (image map, layers 16-27: 0.0928 and 0.0928 mean, 0.170 and 0.165
@@ -28,3 +28,11 @@ Smoke: `att_extract.py --limit 16 --check-full 4 --out <scratchpad>/att_smoke`.
   of the project is bf16. The report gives this as the noise floor for differences between views.
 - Gate b limits: raw image map L1 max 0.10, raw cross L1 max 0.20 (about 1.5x the measured shortcut-vs-plain maxima,
   0.074 and 0.102). A wrong cache or position gives L1 near 1 or more.
+
+## 2026-10-21 16:53  Pilot, 100 paintings (`--limit 100 --check-full 8`, scratchpad)
+
+- Gates passed. Gate a: min cosine image 0.9960, text 0.9987. Gate b: embedding cosine min 0.9971; raw image map L1
+  max 0.074 (last layer), 0.060 (layers 16-27); raw cross L1 max 0.102.
+- 1.03 s per painting with gate b on 8 paintings; 0.82 s without, so about 70 min for 5,000. Peak GPU memory 5.0 GB.
+- 158 MB for 100 paintings (about 8 GB for 5,000).
+- GPU power 300 W mean, 347 W max, utilisation 86%: a heavy run, so the full run starts at 19:00 (weekday rule).
