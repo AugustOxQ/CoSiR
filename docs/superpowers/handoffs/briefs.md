@@ -806,3 +806,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-21-r10-run-12-handoff.md
 - New chat: tab 'r10 run 12', session f76b80d5-6ec1-417e-9d2d-c4594b75dc3b
 
+[brief] CoSiR: r10 run 12 -> r10 run 13 (2026-10-21 06:49 Amsterdam)
+- Done: all three ablation stages ran (stage 0 bit for bit 18/18; 11 rows × 3 seeds; scores and diagnostics); literature and framing notes committed.
+- State: without the caption head, style AMI 0.3945 against D2's 0.3697 and the instructed Qwen image's 0.3952; the instructed graphs carry the gain; no instruction anywhere falls below PercepT core.
+- Next: Codex drafts the auto report from the ready brief; Claude's claim review; the user-read report and its two checks; then open "r10 decide 17".
+- Blocked: nothing. Night mode. Reports due by 10:00.
+- Handoff: docs/superpowers/handoffs/2026-10-21-r10-run-13-handoff.md
+- New chat: tab 'r10 run 13', session 1d1a129d-0a46-4942-a62c-55dec4862d25
+
