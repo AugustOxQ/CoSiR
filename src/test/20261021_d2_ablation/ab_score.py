@@ -350,7 +350,7 @@ def attribution_markdown(result, refs):
            'Descriptive; nothing here decides anything.', '']
     if result['missing']:
         out += ['Missing rows: ' + '; '.join(f'{r} ({", ".join(v)})' for r, v in result['missing'].items()), '']
-    for a in ASPECTS:
+    for a in (a for a in ASPECTS if a in result['aspects']):  # --aspects may score a subset (smoke)
         block = result['aspects'][a]
         out += [f'## {a}', '', f'Labelled evaluation paintings: {block["n_labelled"]}.', '',
                 '| Row | Change from D2 | Image AMI | Effect vs R0 [95% interval] | Caption AMI | Leiden AMI (img) | '
