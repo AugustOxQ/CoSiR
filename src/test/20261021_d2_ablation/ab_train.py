@@ -107,7 +107,8 @@ def write_row_metadata(outputs, name, seeds):
                                   for f in ('ab_paths.py', 'ab_rows.py', 'ab_train.py'))).hexdigest()
     metadata = dict(recipe, name=name, code_sha256=code,
                     graph_store=str((MAIN_ROUND if recipe['store'] == 'ab' else ASPECT_BASE) / 'graphs'),
-                    caption_side='not scored' if recipe['switches']['endpoints'] == 'image' else 'scored')
+                    caption_side=('not scored' if recipe['switches']['endpoints'] == 'image'
+                                  or not recipe['base']['graph_terms'] else 'scored'))
     path = Path(outputs) / 'train' / name / 'ab_row.json'
     graphs_by_seed = {}
     if path.exists():

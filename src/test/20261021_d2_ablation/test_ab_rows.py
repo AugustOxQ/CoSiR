@@ -25,7 +25,7 @@ def test_complete_table_and_reference_rows():
     ('R5', {'switches.buddy': 0.0}),
     ('R6', {'switches.own': 0.0}),
     ('R7', {'switches.endpoints': 'image'}),
-    ('R8', {'base.graphs': dict(emotion='R0', style='R0o', genre='R0o')}),
+    ('R8', {'base.graphs': dict(emotion='R0', style='R0', genre='R0o')}),
     ('R9', {'base.graphs': dict.fromkeys(ms_rows.ASPECTS, 'Dview'), 'store': 'ab'}),
     ('R10', {'base.graphs': dict.fromkeys(ms_rows.ASPECTS, 'rand_s{seed}'), 'store': 'ab'}),
     ('R11', {'base.graphs': dict.fromkeys(ms_rows.ASPECTS, 'Dview'), 'store': 'ab',

@@ -54,7 +54,7 @@ RANKS = (8, 16, 32)
 K_NN = 20
 K_MEANS = 20
 SEEDS = (0, 1, 2)
-KMEANS_THREADS = 8  # ticket 04's scorer runs k-means under 8 threads; keep the partitions comparable
+KMEANS_THREADS = 8  # the scorer runs k-means at 1 thread per worker; on D2's 27 image partitions 1 and 8 threads agree
 SCORES_NEEDED = 'needs scores.json'
 
 

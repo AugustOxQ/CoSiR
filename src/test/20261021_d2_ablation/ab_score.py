@@ -9,16 +9,17 @@ Per row, aspect, side (img, cap) and model seed 0 to 2:
   population sd over seeds (`ms_score.aggregate`'s rule);
   Leiden reading: union 20-NN graph, resolution 1.0 (modularity), Leiden seeds 0 to 2, AMI with the own label;
   probe (D18): ab_metrics.probe on the image side of every seed and the caption side of seed 0.
-Effect (D19): image-side k-means AMI of a row minus R0's, percentile 95% interval from paired draws. The draw list is
-built once per aspect with `default_rng(0)` and is the same for every row: each draw resamples the labelled evaluation
-paintings (one list shared by all rows) and, for every row in table order R0 to R12, the model seeds with replacement.
+Effect (D19): image-side k-means AMI of a row minus R0's, percentile 95% interval. The draw list is built once per
+aspect with `default_rng(0)` and is the same for every row: each draw resamples the labelled evaluation paintings (one
+list shared by all rows: paired over paintings) and, for every row in table order R0 to R12, its own model seeds with
+replacement (seeds are drawn independently per row, the claim test's scheme; this widens the intervals).
 
 Reuse note: the claim test's `ct_score.draw_bootstrap`, `score_indices` and `paired_bootstrap` assert the arm names
 K1, B1 to B5 and read one fixed arm against the best of the others, so they cannot take R0 to R12. `draw_list` and
 `bootstrap_effects` below keep their scheme (default_rng(0); rows then seeds per arm in table order; percentile 2.5 and
 97.5; fork pool with one BLAS thread per worker) and are generalized to named rows and a per-row reference.
 
-R7's caption side is "not scored" (D16; `caption_side` in ab_row.json). A row with missing files is listed as missing and
+R7's caption side (D16) and R4's (no loss reaches its caption network) are "not scored" (`caption_side` in ab_row.json). A row with missing files is listed as missing and
 the rest are scored (spec 3.5 stage 1). No verdict code: the table is descriptive (spec 9).
 """
 import argparse
@@ -65,13 +66,13 @@ CHANGE = dict(  # spec 3.2, "Change from D2"
     R0='none (D2)', R1='separate heads, no shared trunk', R2='no distillation (= T1)',
     R3='teacher = default Qwen image', R4='distillation only, no graph terms',
     R5='no buddy terms', R6='no own-caption terms', R7='image endpoints only (no caption head)',
-    R8='plain instructed graphs (R0, R0o)', R9='one default-view graph', R10='random pairs, degrees kept',
+    R8='plain instructed graphs (emotion R0, style R0)', R9='one default-view graph', R10='random pairs, degrees kept',
     R11='R9 and R2: no instruction anywhere', R12='instructed inputs on both sides')
 NOTES = ('kmeans.nmi is sklearn v_measure_score (equal to NMI with arithmetic mean). Row values: mean over k-means random states, '
          'then over the 3 model seeds; sd is the population sd over model seeds. Leiden: union 20-NN graph, modularity '
          '(resolution 1), Leiden seeds 0 to 2, same averaging. Probe: ab_metrics.probe on 1 BLAS thread per worker '
          '(balanced accuracy can differ from an 8-thread run in the 3rd decimal). Effects: row minus R0 on the image-side '
-         'k-means AMI, percentile 95% interval over paired draws.')
+         'k-means AMI, percentile 95% interval; paintings paired across rows, seeds resampled independently per row.')
 
 
 # ------------------------------------------------------------------------------------------------ reading rows
@@ -276,7 +277,8 @@ def _bootstrap_one(draw):
 
 
 def bootstrap_effects(parts, y, draws, ref=REFERENCE_ROW, workers=8):
-    """Effect of every row against `ref` on the image-side AMI, with a paired percentile interval.
+    """Effect of every row against `ref` on the image-side AMI, with a percentile interval (paintings
+    paired across rows, seeds resampled independently per row).
 
     parts[row][seed] = (3, n) k-means partitions of the evaluation paintings; y = labels (negative = unlabelled).
     A row against itself: same seed draws on both sides, so the effect is exactly 0 in every draw.
@@ -342,13 +344,13 @@ def attribution_markdown(result, refs):
     out = ['# D2 ablation: attribution table', '',
            f'Scored {result["written"]}. Image-side k-means (k = 20) AMI with the own label, mean over random states 0 to 2, '
            f'then over model seeds 0 to 2 (± population sd over seeds). Effect = row minus R0, with a percentile 95% '
-           f'interval from {result["resamples"]} paired draws over the labelled evaluation paintings and model seeds '
-           '(the same draws for every row). Leiden: union 20-NN graph, resolution 1.0, 3 seeds, no interval. Probe: '
+           f'interval from {result["resamples"]} bootstrap draws: paintings paired (the same resample for every row), model '
+           'seeds resampled independently per row. Leiden: union 20-NN graph, resolution 1.0, 3 seeds, no interval. Probe: '
            'image-side balanced accuracy (5-fold logistic regression), mean over seeds. Best epochs per seed. '
            'Descriptive; nothing here decides anything.', '']
     if result['missing']:
         out += ['Missing rows: ' + '; '.join(f'{r} ({", ".join(v)})' for r, v in result['missing'].items()), '']
-    for a in ASPECTS:
+    for a in (a for a in ASPECTS if a in result['aspects']):  # --aspects may score a subset (smoke)
         block = result['aspects'][a]
         out += [f'## {a}', '', f'Labelled evaluation paintings: {block["n_labelled"]}.', '',
                 '| Row | Change from D2 | Image AMI | Effect vs R0 [95% interval] | Caption AMI | Leiden AMI (img) | '

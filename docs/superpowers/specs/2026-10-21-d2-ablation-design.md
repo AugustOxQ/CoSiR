@@ -73,7 +73,7 @@ Each row changes one part of R0; "switch" means new code, default-off, that leav
 | R5 | no buddy terms; own-caption terms and teacher kept | the buddy pairs | switch |
 | R6 | no own-caption terms; buddy terms and teacher kept | the own caption | switch |
 | R7 | image endpoints only: image–image buddy term and teacher | the caption side | switch (D16) |
-| R8 | plain instructed graphs: emotion R0, style R0o (no content subtraction) | the content correction | existing graphs |
+| R8 | plain instructed graphs: emotion R0, style R0 (no content subtraction; genre R0o as D2; amendment A1) | the content correction | existing graphs |
 | R9 | one default-view graph for all three heads | whether the graphs need the instruction | switch (D14) |
 | R10 | random pairs with each node's degree kept, per aspect | whether graph structure matters | switch (D15) |
 | R11 | R9 and R2: default-view graph, no teacher | D2 with no instruction anywhere | R9 + R2 |
@@ -93,8 +93,8 @@ References, no training (model sheet numbers): the default Qwen image, the instr
 ### 3.4 Measurement
 
 - Main: image-side AMI with the own label per aspect, k-means k = 20, mean over random states 0 to 2, then over model
-  seeds. Effect of a row: its AMI minus R0's, with a paired 95% bootstrap interval over evaluation paintings and model
-  seeds (2,000 draws, the same draws for every row; D19).
+  seeds. Effect of a row: its AMI minus R0's, with a 95% bootstrap interval over evaluation paintings (paired across
+  rows) and model seeds (resampled per row), 2,000 draws, the same draws for every row (D19, as the claim test).
 - Beside it: caption-side AMI; a Leiden reading (union 20-NN graph, resolution 1.0, 3 seeds, as the claim test); a
   linear probe (D18); NMI and ARI in the JSON.
 - Seeds: 3, as the model sheet; the effects we look for (0.005 and up) sit above its seed spread (0.001 to 0.008).
@@ -153,14 +153,21 @@ New: the default-view graph (R9, R11) and the random graphs (R10), built on fit 
 | D19 | Interval | paired bootstrap over paintings and seeds, 2,000 draws, percentile | as the claim test | agent default | 2026-10-21 03:35 |
 | D20 | Side work | literature check on the `deep-research` agent (Opus, deep: the paper's central gap); framing note by an Opus `xhigh` worker; the ArtELingo-28 overlap check on CPU | design judgment; the overlap is a fact item 5 needs | agent default | 2026-10-21 03:35 |
 
-**Amendments:** none.
+**Amendments:**
+- A1 (2026-10-21 04:45, agent default in night mode, from the final review; check it in the morning): R8's style graph
+  is R0, not R0o. In the aspect store, style R0 is the reciprocal top-20 graph of the instructed style *image* view
+  (the view Fres05 corrects) and R0o that of the style *caption* view; Fres05 shares 13.5% of its fit edges with R0 and
+  0.07% with R0o. With R0o, R8 would change the view as well as the content correction. Emotion R0 (the caption view,
+  as Gres) and genre R0o (D2's own graph) stay. Also: R4's caption side is not scored, since no loss reaches its
+  caption network (as R7, D16). Wording only: D19's draws pair paintings across rows and resample model seeds per
+  row, the claim test's scheme. Places changed: §3.2, §3.4, §5, `ab_rows.py`, `ab_train.py`, `ab_score.py`, tests.
 
 ## 5. Assumptions and open questions
 
 - Assumption: the model sheet's saved D2 and T1 outputs reproduce bit for bit on today's 3090 and driver. Checked: the
   claim test's stage 2a reproduced stage 1 bit for bit on 2026-10-20; the model sheet itself is not rechecked yet.
-- Assumption: graphs R0 (emotion) and R0o (style) exist in the aspect graph store. Checked: f1 facts §1 (selection by
-  `graphs.<aspect>`); the exact rows: not checked.
+- Assumption: graphs R0 (emotion) and R0 (style) exist in the aspect graph store. Checked 2026-10-21 04:40: both load
+  with `ags_head.load_graph` (amendment A1).
 - Open questions: none.
 
 ## 6. Success criteria
