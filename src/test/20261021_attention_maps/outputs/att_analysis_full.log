@@ -1,0 +1,13 @@
+5000 painting files in /data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_attention
+500/5000 paintings, 2 s
+1000/5000 paintings, 4 s
+1500/5000 paintings, 7 s
+2000/5000 paintings, 9 s
+2500/5000 paintings, 11 s
+3000/5000 paintings, 13 s
+3500/5000 paintings, 15 s
+4000/5000 paintings, 17 s
+4500/5000 paintings, 20 s
+5000/5000 paintings, 22 s
+5000 analysed, 0 skipped
+done in 29 s; outputs in /project/CoSiR/src/test/20261021_attention_maps/outputs/qwen3vl_emb_2b_attention

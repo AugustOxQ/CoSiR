@@ -45,3 +45,22 @@ Smoke: `att_extract.py --limit 16 --check-full 4 --out <scratchpad>/att_smoke`.
   shuffled baseline, adding the caption, caption words, labels with Kruskal-Wallis and Bonferroni, word maps). Pilot
   (100 paintings, `--min-class 5`): default-band L1 to the default view 0.68 to 0.79 against 1.15 to 1.22 shuffled and
   a bf16 floor of about 0.09. Full run after the extraction: `att_analysis.py --root <attention root> --workers 8`.
+
+## 2026-10-21 20:08  Full run, 5,000 paintings (`att_queue_full.sh`, local 3090)
+
+- Started 19:00 under the GPU lock; done 20:08 (4,116 s, 0.82 s per painting, peak 5.6 GB). Exit 0; 5,000 files,
+  8.1 GB in `/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_attention/` (run record `run_0_all.json`).
+- Passes: 20,000 img, 100,640 txt, 100,640 joint (5,000 paintings and 25,160 captions, 3 to 12 per painting, x 4 views).
+- Gate a (first 32 paintings): mean cosine 0.9989 to 0.9993 for images, 0.9996 to 0.9997 for captions; min 0.9960;
+  each image's nearest stored row is its own. Gate b (8 paintings, 184 passes): cosine min 0.9971, mean 0.9994;
+  raw image-map L1 max 0.060 (layers 16-27), 0.074 (last layer), 0.039 (all layers); cross L1 max 0.102. All passed.
+- Log: `outputs/full_run.log`.
+
+## 2026-10-21 20:09  Analysis, 5,000 paintings
+
+- `att_analysis.py --workers 8`: 29 s; outputs in `outputs/qwen3vl_emb_2b_attention/` (analysis.md, analysis.json,
+  8 figures, per_painting.csv.gz). Max |share sum - 1| 1.5e-3; no cross rows dropped.
+- Chance level for "hottest token on the border ring": the ring's share of tokens, mean 0.209 (median 0.178) over the
+  5,000 grids (computed from per_painting.csv.gz grid_rows and grid_cols; 48 to 512 image tokens).
+- Viewer restarted on the full root (port 8765, detached; log `outputs/viewer_full.log`).
+- Report: `docs/reports/auto/percept/2026-12-23_attention_maps.md`.
