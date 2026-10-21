@@ -1,9 +1,9 @@
 # D2 ablation queues
 
-Run from this worktree's round folder:
+Run from the main checkout's round folder (artifacts live only there), each queue with `run_in_background: true`:
 
 ```bash
-cd /project/CoSiR-wt/r10-d2-ablation-t06/src/test/20261021_d2_ablation
+cd /project/CoSiR/src/test/20261021_d2_ablation
 bash ab_queue_stage0.sh
 bash ab_queue_stage1.sh
 bash ab_queue_stage2.sh
@@ -33,7 +33,7 @@ For the controller's smoke run, use an explicit scratch destination:
 
 ```bash
 export AB_SMOKE=1
-export AB_OUTPUTS=/tmp/claude-0/-project-CoSiR/594d01b4-f9b6-4254-9058-fab6ca0ffbe4/scratchpad/t06/queue_smoke
+export AB_OUTPUTS=<your session scratchpad>/queue_smoke
 bash ab_queue_stage0.sh
 bash ab_queue_stage1.sh
 bash ab_queue_stage2.sh
