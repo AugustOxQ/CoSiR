@@ -822,3 +822,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-21-r10-decide-17-handoff.md
 - New chat: tab 'r10 decide 17', session c8e18750-e7eb-4e65-b741-cf983ca032a0
 
+[brief] CoSiR: r10 decide 17 -> r10 attention maps (2026-10-21 15:21 Amsterdam)
+- Done: decide 17 read the D2 ablation (decision C); the user asked for this side task before the next run.
+- State: the four Qwen views differ in structure (an instruction keeps 31% to 42% of the default image's top-20 neighbours); their attention is not looked at yet.
+- Next: settle the open design points with the user, then extract the maps, build the HTML viewer, write the summary.
+- Blocked: nothing. Run mode is "night": ask the main chat for "day" so this chat may ask the user.
+- Handoff: docs/superpowers/handoffs/2026-10-21-r10-attention-maps-handoff.md
+- New chat: tab 'r10 attention maps', session e5b42f77-07da-4e87-9759-def96bd42c89
+
