@@ -36,3 +36,12 @@ Smoke: `att_extract.py --limit 16 --check-full 4 --out <scratchpad>/att_smoke`.
 - 1.03 s per painting with gate b on 8 paintings; 0.82 s without, so about 70 min for 5,000. Peak GPU memory 5.0 GB.
 - 158 MB for 100 paintings (about 8 GB for 5,000).
 - GPU power 300 W mean, 347 W max, utilisation 86%: a heavy run, so the full run starts at 19:00 (weekday rule).
+
+## 2026-10-21 17:05  Viewer and analysis script
+
+- `att_viewer.py` (+ html, js, css): local server, one painting at a time; endpoints checked on the pilot; not yet seen
+  in a browser. `att_label_names.json` is a gitignored cache it rebuilds when missing.
+- `att_analysis.py`: the summary measures 1 to 7 (shares by layer, map shape, change from the default view with a
+  shuffled baseline, adding the caption, caption words, labels with Kruskal-Wallis and Bonferroni, word maps). Pilot
+  (100 paintings, `--min-class 5`): default-band L1 to the default view 0.68 to 0.79 against 1.15 to 1.22 shuffled and
+  a bf16 floor of about 0.09. Full run after the extraction: `att_analysis.py --root <attention root> --workers 8`.
