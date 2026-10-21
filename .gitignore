@@ -213,3 +213,4 @@ docs/paper/
 # Matt Pocock chain build tracker (local, never committed)
 .scratch/
 src/test/20261018_aspect_graph_sheet/graphs/*.npz
+src/test/20261021_d2_ablation/graphs/*.npz
