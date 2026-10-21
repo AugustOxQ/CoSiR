@@ -1,0 +1,30 @@
+# 20261021 attention maps extraction
+
+Written 2026-10-21. Extraction script for Qwen3-VL-Embedding-2B attention maps (4 instructions x img / txt / joint, 5,000 paintings).
+
+- att_core.py: token types, rollout, suffix rollout (shared-start shortcut), writer, load_painting (numpy only at import).
+- att_extract.py: CLI (--out --start --limit --views --check-full --device).
+- att_diag_gate_a.py, att_diag_fp32.py, att_diag_cross.py: diagnostics behind three deviations from the brief.
+  1. Gate a: eager bf16 against stored sdpa batch embeddings gives mean cosine 0.9987 to 0.9993 (sdpa bs=1 alone gives 0.9994), so mean > 0.998 / min > 0.99 plus a nearest-row order check replace mean > 0.999.
+  2. Gate b: bf16 shortcut against plain pass has cosine min 0.9971 (eager vs sdpa plain passes: 0.9965); with the model in float32 the shortcut matches the plain pass to 1e-6 (cosine 1 - 1e-7, image-map L1 8e-7, cross L1 1.4e-6). Cosine floor set to 0.995 (mean 0.999); image-map L1 max 0.05 unchanged.
+  3. Cross maps are stored as float32: values are 1e-10 to 1e-6, float16 would give L1 about 1 against the true map.
+Smoke: `att_extract.py --limit 16 --check-full 4 --out <scratchpad>/att_smoke`.
+
+## 2026-10-21 16:47  Raw attention instead of rollout
+
+- Finding: rollout fails on this causal model. 99.999% of the pooled token's rollout mass goes to token 0, and the image remainder is mostly position (the top image rows).
+- User decision (after seeing the recommendation): the maps are raw attention, the head-mean attention row of the query token summed over a layer range. Default is layers 16 to 27; last layer and all layers are the other choices (att_core.BANDS, layer index 0..27 = order of out.attentions). `att_core.band_map(p, band, kind)` returns the renormalised map and the mean per-layer share.
+- Kept: `layers` (raw per-layer rows of the pooled token) and `roll` (pooled rollout row, as a record).
+- Cross maps changed: now the raw head-mean attention of every caption-token row over the image columns, summed per band, float16, shape (3, n_caption_tokens, n_image_tokens). The caption-row rollout is no longer computed (suffix rollout kept for the pooled row only). full_pass (gate b) also returns raw layers and raw cross maps.
+- Gate b: cross_l1 is now the L1 between band-renormalised raw cross rows; new img_l1_raw = L1 between shortcut and full-pass band_map image maps. Both fail above 0.05 (threshold unchanged).
+- Smoke (16 paintings, check-full 4): gate b fails the new thresholds in bf16 (img_l1_raw max 0.074, last layer; cross_l1 max 0.102); see the hand-back.
+
+## 2026-10-21 16:58  Gate b limits for raw maps (controller)
+
+- `att_diag_raw_fp32.py` (4 paintings, default and style_word): against the float32 shortcut as reference, the bf16
+  shortcut and the bf16 plain pass have the same L1 (image map, layers 16-27: 0.0928 and 0.0928 mean, 0.170 and 0.165
+  max; caption-word rows: 0.085 and 0.084 mean). So the shortcut adds no error; the gap is bf16 rounding.
+- bf16 moves about 5% of a map's mass against float32 (L1 0.06 to 0.14 mean by band). Kept bf16: every embedding store
+  of the project is bf16. The report gives this as the noise floor for differences between views.
+- Gate b limits: raw image map L1 max 0.10, raw cross L1 max 0.20 (about 1.5x the measured shortcut-vs-plain maxima,
+  0.074 and 0.102). A wrong cache or position gives L1 near 1 or more.
