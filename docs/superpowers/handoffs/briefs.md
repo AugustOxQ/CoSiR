@@ -798,3 +798,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-21-r10-build-15-handoff.md
 - New chat: tab 'r10 build 15', session 594d01b4-f9b6-4254-9058-fab6ca0ffbe4
 
+[brief] CoSiR: r10 build 15 -> r10 run 12 (2026-10-21 05:02 Amsterdam)
+- Done: the D2 ablation build is merged into main (6 tickets, final review, one fix wave); 108 tests pass.
+- State: the GPU smoke's stage 0 already matched the model sheet's D2 and T1 bit for bit (18/18); all 13 rows train.
+- Next: run the stage 0 queue (R0, R2 against the model sheet), then stage 1 (11 rows), then stage 2 (CPU analysis).
+- Blocked: nothing. Night mode. Reports due by 10:00; machine free by 11:00.
+- Handoff: docs/superpowers/handoffs/2026-10-21-r10-run-12-handoff.md
+- New chat: tab 'r10 run 12', session f76b80d5-6ec1-417e-9d2d-c4594b75dc3b
+
