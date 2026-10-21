@@ -143,10 +143,13 @@ def test_scores_reader(tmp_path):
 def test_row_meta_reader(tmp_path):
     folder = tmp_path / 'R3'
     folder.mkdir()
-    (folder / 'ab_row.json').write_text(json.dumps(dict(name='R3', switches=dict(
-        teacher='default', buddy=1.0, own=1.0, endpoints='both'), store='aspect', caption_side='scored')))
+    sw = dict(teacher='default', buddy=1.0, own=1.0, endpoints='both')
+    (folder / 'ab_row.json').write_text(json.dumps(dict(name='R3', base=dict(distill='direct'), switches=sw,
+                                                        store='aspect', caption_side='scored')))
     m = A.read_row_meta(folder)
-    assert m['switches']['teacher'] == 'default'
+    assert m['switches']['teacher'] == 'default' and m['teacher'] == 'default'
+    (folder / 'ab_row.json').write_text(json.dumps(dict(name='R3', base=dict(distill='none'), switches=sw)))
+    assert A.read_row_meta(folder)['teacher'] == 'none'  # no distillation: no teacher, whatever the switch says
     (folder / 'ab_row.json').write_text(json.dumps(dict(name='R4', switches={})))
     with pytest.raises((AssertionError, KeyError)):
         A.read_row_meta(folder)

@@ -396,7 +396,10 @@ def read_row_meta(folder):
     assert isinstance(meta, dict) and meta['name'] == folder.name, (folder, meta.get('name'))
     sw = meta['switches']
     assert sw['teacher'] in ('instructed', 'default') and sw['endpoints'] in ('both', 'image'), sw
-    return dict(name=meta['name'], switches=sw, store=meta.get('store'), caption_side=meta.get('caption_side'))
+    assert meta['base']['distill'] in ('none', 'direct'), meta['base']['distill']
+    teacher = 'none' if meta['base']['distill'] == 'none' else sw['teacher']  # R2, R11: no distillation
+    return dict(name=meta['name'], switches=sw, store=meta.get('store'), caption_side=meta.get('caption_side'),
+                teacher=teacher)
 
 
 def read_scores(path):
@@ -490,7 +493,8 @@ def run_rows(ctx, outputs, rows=None, workers=4, smoke=False, log=print):
     if rows:
         names = list(rows)
     else:
-        names = sorted(p.name for p in train.iterdir() if (p / 'ab_row.json').exists()) if train.exists() else []
+        names = sorted((p.name for p in train.iterdir() if (p / 'ab_row.json').exists()),
+                       key=lambda n: int(n[1:])) if train.exists() else []  # table order R0 to R12
     scores = read_scores(outputs / 'scores' / 'scores.json')
     if scores is None:
         log(f'  {outputs / "scores" / "scores.json"} absent: probe-minus-AMI gap and per-class recall marked "{SCORES_NEEDED}"')
@@ -561,9 +565,9 @@ def rows_markdown(r):
         for name, row in r['rows'].items():
             a = row['aspects'].get(aspect)
             if a is None:
-                L.append(f"| {name} | {row['meta']['switches']['teacher']} | 0 |" + ' missing |' * len(cols))
+                L.append(f"| {name} | {row['meta']['teacher']} | 0 |" + ' missing |' * len(cols))
                 continue
-            L.append(f"| {name} | {row['meta']['switches']['teacher']} | {a['n_seeds']} | " + ' | '.join(
+            L.append(f"| {name} | {row['meta']['teacher']} | {a['n_seeds']} | " + ' | '.join(
                 ms(a[k]) if isinstance(a[k], dict) else a[k] for k, _ in cols) + ' |')
         L.append('')
     L += ['## Class to cluster, seed 0, random state 0', '',
