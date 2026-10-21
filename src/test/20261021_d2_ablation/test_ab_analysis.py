@@ -112,15 +112,30 @@ def test_class_to_cluster_counts():
 
 
 def test_scores_reader(tmp_path):
+    """A file assembled by ab_score's own writer (summarize_row, then atomic_json as ab_score.run does)."""
+    import ab_score as sc
+    from itp_data import atomic_json
     assert A.read_scores(tmp_path / 'scores.json') is None
-    cell = dict(ami=dict(mean=.1, sd=.0), probe=dict(balanced_accuracy=.3, per_class_recall=[.3], classes=[0]))
+
+    def side(base, probe):
+        r = dict(kmeans={m: dict(mean=base + i, sd=0.0) for i, m in enumerate(('ami', 'v', 'ari', 'fmi'))},
+                 leiden_ami=[base, base + .1, base + .2])
+        if probe:
+            r['probe'] = dict(balanced_accuracy=.5 + base / 10, per_class_recall=[.1 + base / 10, .9],
+                              classes=[0, 1], majority_rate=.6, chance=.5, n=10, convergence_warnings=0)
+        return r
+    per_seed = {s: dict(img=side(s / 100, True), cap=side(s, s == 0)) for s in sc.SEEDS}
+    result = dict(schema=sc.SCHEMA, aspects={'emotion': dict(n_labelled=10, rows={'R0': sc.summarize_row(per_seed, True)})})
     path = tmp_path / 'scores.json'
-    path.write_text(json.dumps(dict(rows={'R0': {'emotion': {'img': {'0': cell}}}})))
+    atomic_json(path, result)
     d = A.read_scores(path)
-    ami, probe = A.score_entry(d, 'R0', 'emotion', 0)
-    assert ami == .1 and probe['balanced_accuracy'] == .3
+    for seed in sc.SEEDS:
+        ami, probe = A.score_entry(d, 'R0', 'emotion', seed)
+        assert ami == seed / 100 and probe['balanced_accuracy'] == .5 + seed / 1000
+        assert probe['per_class_recall'] == [.1 + seed / 1000, .9] and probe['classes'] == [0, 1]
     assert A.score_entry(d, 'R0', 'style', 0) is None
-    path.write_text(json.dumps(dict(nothing=1)))
+    assert A.score_entry(d, 'R1', 'emotion', 0) is None
+    path.write_text(json.dumps(dict(rows={})))
     with pytest.raises(AssertionError):
         A.read_scores(path)
 

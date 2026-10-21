@@ -400,26 +400,34 @@ def read_row_meta(folder):
 
 
 def read_scores(path):
-    """Ticket 04's scores.json. Returns None when the file is absent. Expected layout (asserted where used):
-    scores['rows'][row][aspect]['img'][str(seed)] = {'ami': {'mean': ..} or float,
-    'probe': {'balanced_accuracy': .., 'per_class_recall': [..], 'classes': [..]}}."""
+    """Ticket 04's scores.json. Returns None when the file is absent. Layout, as `ab_score.run` writes it:
+    scores['aspects'][aspect]['rows'][row]['img'] with ['kmeans']['ami']['per_seed'] in SEEDS order and
+    ['probe'] = {'seeds': [..], 'balanced_accuracy': {'per_seed': [..]}, 'per_class_recall': {str(seed): [..]},
+    'classes': [..]}."""
     path = Path(path)
     if not path.exists():
         return None
     d = json.loads(path.read_text())
-    assert isinstance(d, dict) and isinstance(d.get('rows'), dict), f'{path}: no "rows" mapping'
+    assert isinstance(d, dict) and isinstance(d.get('aspects'), dict), f'{path}: no "aspects" mapping'
+    for a, block in d['aspects'].items():
+        assert a in ASPECTS and isinstance(block.get('rows'), dict), f'{path}: aspect {a!r} has no "rows" mapping'
     return d
 
 
 def score_entry(scores, row, aspect, seed):
-    """(ami, probe dict) of one image-side cell, or None if the row, aspect or seed is not in scores.json."""
+    """(ami, probe dict) of one image-side cell, or None if the aspect or row is not in scores.json."""
     try:
-        cell = scores['rows'][row][aspect]['img'][str(seed)]
+        img = scores['aspects'][aspect]['rows'][row]['img']
     except KeyError:
         return None
-    ami = cell['ami']
-    ami = ami['mean'] if isinstance(ami, dict) else ami
-    probe = cell['probe']
+    per_seed = img['kmeans']['ami']['per_seed']
+    assert len(per_seed) == len(SEEDS), (row, aspect, per_seed)
+    ami = per_seed[SEEDS.index(seed)]
+    pr = img['probe']
+    assert pr['seeds'] == list(SEEDS), (row, aspect, pr['seeds'])  # the image side is probed on every seed
+    probe = dict(balanced_accuracy=pr['balanced_accuracy']['per_seed'][pr['seeds'].index(seed)],
+                 per_class_recall=pr['per_class_recall'][str(seed)], classes=pr['classes'])
+    assert len(probe['per_class_recall']) == len(probe['classes']), (row, aspect, seed)
     assert np.isfinite(ami) and 0 <= probe['balanced_accuracy'] <= 1, (row, aspect, seed)
     return float(ami), probe
 
