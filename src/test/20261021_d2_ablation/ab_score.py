@@ -72,7 +72,7 @@ NOTES = ('kmeans.nmi is sklearn v_measure_score (equal to NMI with arithmetic me
          'then over the 3 model seeds; sd is the population sd over model seeds. Leiden: union 20-NN graph, modularity '
          '(resolution 1), Leiden seeds 0 to 2, same averaging. Probe: ab_metrics.probe on 1 BLAS thread per worker '
          '(balanced accuracy can differ from an 8-thread run in the 3rd decimal). Effects: row minus R0 on the image-side '
-         'k-means AMI, percentile 95% interval over paired draws.')
+         'k-means AMI, percentile 95% interval; paintings paired across rows, seeds resampled independently per row.')
 
 
 # ------------------------------------------------------------------------------------------------ reading rows
@@ -277,7 +277,8 @@ def _bootstrap_one(draw):
 
 
 def bootstrap_effects(parts, y, draws, ref=REFERENCE_ROW, workers=8):
-    """Effect of every row against `ref` on the image-side AMI, with a paired percentile interval.
+    """Effect of every row against `ref` on the image-side AMI, with a percentile interval (paintings
+    paired across rows, seeds resampled independently per row).
 
     parts[row][seed] = (3, n) k-means partitions of the evaluation paintings; y = labels (negative = unlabelled).
     A row against itself: same seed draws on both sides, so the effect is exactly 0 in every draw.

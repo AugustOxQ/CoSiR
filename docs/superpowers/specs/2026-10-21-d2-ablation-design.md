@@ -93,8 +93,8 @@ References, no training (model sheet numbers): the default Qwen image, the instr
 ### 3.4 Measurement
 
 - Main: image-side AMI with the own label per aspect, k-means k = 20, mean over random states 0 to 2, then over model
-  seeds. Effect of a row: its AMI minus R0's, with a paired 95% bootstrap interval over evaluation paintings and model
-  seeds (2,000 draws, the same draws for every row; D19).
+  seeds. Effect of a row: its AMI minus R0's, with a 95% bootstrap interval over evaluation paintings (paired across
+  rows) and model seeds (resampled per row), 2,000 draws, the same draws for every row (D19, as the claim test).
 - Beside it: caption-side AMI; a Leiden reading (union 20-NN graph, resolution 1.0, 3 seeds, as the claim test); a
   linear probe (D18); NMI and ARI in the JSON.
 - Seeds: 3, as the model sheet; the effects we look for (0.005 and up) sit above its seed spread (0.001 to 0.008).
@@ -159,7 +159,8 @@ New: the default-view graph (R9, R11) and the random graphs (R10), built on fit 
   (the view Fres05 corrects) and R0o that of the style *caption* view; Fres05 shares 13.5% of its fit edges with R0 and
   0.07% with R0o. With R0o, R8 would change the view as well as the content correction. Emotion R0 (the caption view,
   as Gres) and genre R0o (D2's own graph) stay. Also: R4's caption side is not scored, since no loss reaches its
-  caption network (as R7, D16). Places changed: §3.2, §5, ticket 02's rows in `ab_rows.py` and its test.
+  caption network (as R7, D16). Wording only: D19's draws pair paintings across rows and resample model seeds per
+  row, the claim test's scheme. Places changed: §3.2, §3.4, §5, `ab_rows.py`, `ab_train.py`, `ab_score.py`, tests.
 
 ## 5. Assumptions and open questions
 
