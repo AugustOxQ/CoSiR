@@ -10,7 +10,7 @@
 - With an instruction, the model reads less of the image: about half the share it gives without one.
 - On captions, the emotion instruction clearly picks out emotion words. Style and genre do this only in part.
 - Instructed image maps put more weight on a few tokens, often on the border. These tokens are scattered, not one region.
-- The maps look speckled because the model's attention is speckled. We checked: there is no bug (added 2026-10-22).
+- The maps look speckled because the model's attention is speckled. Our checks found no bug (added 2026-10-22).
 - A local viewer shows the maps for any painting, instruction and input.
 
 ## How we got here
@@ -55,10 +55,11 @@ The border caveat: in layers 16 to 27 the hottest patch is on the border in 63% 
 default maps. In the last layer, and over all layers, every map peaks on the border most of the time.
 
 Why the maps look scattered (added 2026-10-22). You saw speckled maps in the viewer and asked whether something was
-wrong. Nothing was. A fresh pass gives the same maps, and the tokens sit in the right places: when we paint a square
-black on a painting, the tokens that change most are the ones under the square. But neighbouring tokens get only weakly
-similar attention, and a plain grey image is speckled too. So the speckle is the model's own. Coarse areas, such as
-a frame or the sky, still show when the map is coloured by rank.
+wrong. Our checks found nothing. A fresh pass gives the same maps up to rounding, and the tokens sit in the right
+places: when we paint a square black on six paintings, the tokens that change most are the ones under the square. But
+neighbouring tokens get only weakly similar attention, and a plain grey image is speckled too. So the speckle is the
+model's own. In the eight examples we looked at, coarse areas such as a frame or the sky still show when the map is
+coloured by rank.
 
 > Full report: "Results" and "Analysis".
 
