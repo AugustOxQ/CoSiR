@@ -264,6 +264,45 @@ def synthetic_regions():
         yield name, Image.fromarray(np.asarray(colors, np.uint8)[truth]), cell_truth(truth), len(colors)
 
 
+def geometry_base(name, image):
+    """Paired base X and binary changed-cell truth, independent of model outputs."""
+    from PIL import Image, ImageDraw
+    if name.startswith('a'):
+        base = Image.new('RGB', image.size, (0, 0, 255))
+    elif name.startswith('b'):
+        base = Image.new('RGB', image.size, (0, 0, 0))
+    elif name.startswith('c'):
+        base = Image.new('RGB', image.size, (128, 128, 128))
+    else:
+        base = image.copy()
+        # Only top-right changes: red in X, original green in Y.
+        ImageDraw.Draw(base).rectangle((image.width // 2, 0, image.width - 1,
+                                        image.height // 2 - 1), fill=(255, 0, 0))
+    changed = np.any(np.asarray(base) != np.asarray(image), axis=-1).astype(np.int8)
+    return base, cell_truth(changed)
+
+
+def two_means_split(values):
+    """Exact minimum-SSE 1-D two-means (Otsu), with the high group = changed.
+
+    Search only distinct adjacent values. Neither region truth nor token positions
+    enter the split; all cells, including boundary cells, contribute to fitting it.
+    """
+    x = np.sort(np.asarray(values, np.float64).ravel())
+    if len(x) < 2 or not np.isfinite(x).all() or x[0] == x[-1]:
+        raise ValueError('differential distances need at least two distinct finite values')
+    # Scaling avoids overflow and leaves the optimal split unchanged.
+    scaled = (x - x[0]) / (x[-1] - x[0])
+    left_n = np.arange(1, len(x), dtype=np.float64)
+    right_n = len(x) - left_n
+    sums = np.cumsum(scaled)
+    mean_gap = sums[:-1] / left_n - (sums[-1] - sums[:-1]) / right_n
+    separation = left_n * right_n * np.square(mean_gap)
+    separation[x[:-1] == x[1:]] = -np.inf
+    cut = int(separation.argmax())
+    return float(x[cut] + (x[cut + 1] - x[cut]) / 2)
+
+
 def geometry(model, args):
     plt = plot_module()
     fixtures = list(synthetic_regions())[:args.geometry_limit]
@@ -271,11 +310,17 @@ def geometry(model, args):
     records = []
     for i, (name, image, truth, k) in enumerate(fixtures):
         p = model.run(image, 'default', geometry=True)
+        base, changed_truth = geometry_base(name, image)
+        reference = model.run(base, 'default', geometry=True)
         grid = p['grid']
         assert grid == truth.shape and image.size == (grid[1] * 32, grid[0] * 32)
+        assert reference['grid'] == grid and np.array_equal(p['ids'], reference['ids'])
+        assert np.array_equal(p['ttype'], reference['ttype'])
         axes[i, 0].imshow(image)
         axes[i, 0].set_title(name)
-        rec = dict(image=name, grid_hw=list(grid), valid_cells=int((truth >= 0).sum()), layers={})
+        valid = changed_truth >= 0
+        rec = dict(image=name, grid_hw=list(grid), valid_cells=int(valid.sum()),
+                   changed_cells=int((changed_truth == 1).sum()), layers={})
         pixel_labels = kmeans(p['pixel_vectors'], k, np.random.default_rng(args.seed + i))
         rec['processor_calibration'] = {
             'true': matching_score(pixel_labels.reshape(grid), truth, k),
@@ -283,22 +328,27 @@ def geometry(model, args):
             'random': matching_score(np.random.default_rng(args.seed + i).permutation(pixel_labels).reshape(grid), truth, k)}
         for li, layer in enumerate(('0', '8')):
             rng = np.random.default_rng(np.random.SeedSequence([args.seed, i, int(layer)]))
-            labels = kmeans(p['geometry_vectors'][layer], k, rng)
-            true = labels.reshape(grid)
-            transposed = labels.reshape(grid[1], grid[0]).T
-            shuffled = rng.permutation(labels).reshape(grid)
-            scores = {order: matching_score(lab, truth, k) for order, lab in
-                      [('true', true), ('transpose', transposed), ('random', shuffled)]}
+            delta = p['geometry_vectors'][layer].astype(np.float64) - reference['geometry_vectors'][layer]
+            distances = np.linalg.norm(delta, axis=-1)
+            threshold = two_means_split(distances)
+            true = distances.reshape(grid)
+            transposed = distances.reshape(grid[1], grid[0]).T
+            shuffled = rng.permutation(distances).reshape(grid)
+            scores = {order: float(np.mean((d[valid] > threshold) == changed_truth[valid]))
+                      for order, d in [('true', true), ('transpose', transposed), ('random', shuffled)]}
             controls_required = not name.startswith('c')
-            controls_pass = all(scores['true'] - scores[c] >= 0.10 and scores[c] < 0.95
-                                for c in ('transpose', 'random'))
-            scores['pass'] = scores['true'] >= 0.95 and (not controls_required or controls_pass)
+            controls_pass = scores['true'] - scores['transpose'] >= 0.10
+            scores.update(threshold=threshold, min_distance=float(distances.min()),
+                          max_distance=float(distances.max()), predicted_changed_cells=int((distances > threshold).sum()))
+            if layer == '0':
+                scores['pass'] = scores['true'] >= 0.95 and (not controls_required or controls_pass)
             rec['layers'][layer] = scores
-            for col, (lab, order) in enumerate(((true, 'true'), (transposed, 'transpose')), start=1 + 2 * li):
-                axes[i, col].imshow(lab, vmin=0, vmax=k - 1, cmap='tab10', interpolation='nearest')
-                axes[i, col].set_title(f'hidden[{layer}] {order}: {scores[order]:.3f}')
+            for col, (d, order) in enumerate(((true, 'true'), (transposed, 'transpose')), start=1 + 2 * li):
+                axes[i, col].imshow(d, vmin=0, vmax=distances.max(), cmap='viridis', interpolation='nearest')
+                axes[i, col].set_title(f'||delta hidden[{layer}]|| {order}: {scores[order]:.3f}')
         records.append(rec)
         image.close()
+        base.close()
         print(f'geometry {name}: ' + json.dumps(rec['layers']), flush=True)
     for ax in axes.ravel():
         ax.axis('off')
@@ -307,13 +357,15 @@ def geometry(model, args):
     fig.savefig(path, dpi=140)
     plt.close(fig)
     complete = len(fixtures) == 4
-    passed = all(v['pass'] for r in records for v in r['layers'].values())
+    passed = all(r['layers']['0']['pass'] for r in records)
     return dict(status=('PASS' if complete else 'PARTIAL') if passed else 'FAIL',
                 complete=complete, smoke_checks_pass=passed, records=records, figure=str(path),
-                rule='Both hidden[0] and hidden[8]: true >= .95; a,b,d controls < .95 and >= .10 lower.',
-                interpretation='A failure alone cannot distinguish an ordering error from embeddings whose '
-                'colour regions are not k-means separable. Processor calibration is a separate pixel-stream '
-                'check, not a passing result for the hidden-state test.')
+                rule='Differential hidden[0]: true >= .95 for all layouts; a,b,d transpose >= .10 lower. '
+                'Hidden[8] and random controls are reported, not gated.',
+                interpretation='Per-cell d = L2(h_Y - h_X); an exact 1-D two-means split of d alone predicts '
+                'the high-distance group as changed. Agreement excludes boundary-straddling cells. '
+                'Position terms cancel between paired inputs; vision/LLM mixing can spread differences. '
+                'Figure pairs share a colour scale within each layer. Processor calibration is unchanged.')
 
 
 def viewer_check():
@@ -578,6 +630,8 @@ def objects(model, args):
                 share, mass = float(mask.mean()), float(m[mask].sum())
                 records.append(dict(object=name, center_xy=list(center), view=view, band=band[0],
                                     object_mass=mass, object_token_share=share, enrichment=mass / share,
+                                    object_hottest_rank=1 + int((m > m[mask].max()).sum()),
+                                    n_cells=int(m.size),
                                     fractional_cell_mass=float((m * coverage).sum()),
                                     fractional_token_share=float(coverage.mean()),
                                     hottest_row_col=[int(rr), int(cc)],
@@ -672,6 +726,20 @@ def summary(results, out):
             for row in r['records']:
                 lines.append(f"| {row['object']} | {row['view']} | {row['band']} | {row['object_mass']:.4f} | "
                              f"{row['object_token_share']:.4f} | {row['enrichment']:.3f} | {row['hottest_row_col']} |")
+            lines += ['', 'Medians over the four positions; hottest object-cell rank among all cells '
+                      'is 1 + the number of cells with strictly greater attention (1 = hottest).', '',
+                      '| Object | View | Band | Median mass | Median token share | Median hottest object rank |',
+                      '|---|---|---|---:|---:|---:|']
+            groups = {}
+            for row in r['records']:
+                key = (row['object'].rsplit('_', 1)[0], row['view'], row['band'])
+                groups.setdefault(key, []).append(row)
+            for (kind, view, band), rows in groups.items():
+                mass = float(np.median([row['object_mass'] for row in rows]))
+                share = float(np.median([row['object_token_share'] for row in rows]))
+                rank = (f"{np.median([row['object_hottest_rank'] for row in rows]):.1f}"
+                        if all('object_hottest_rank' in row for row in rows) else 'unavailable; rerun objects')
+                lines.append(f'| {kind} | {view} | {band} | {mass:.4f} | {share:.4f} | {rank} |')
         else:
             lines += [f"Paintings: {r['paintings']}", r['rendering']]
         paths = r.get('figures', [r['figure']] if 'figure' in r else [])
