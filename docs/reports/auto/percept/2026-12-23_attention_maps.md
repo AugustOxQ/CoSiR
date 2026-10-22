@@ -23,9 +23,10 @@ summary measures cover all 5,000 paintings. Side task of r10 decide 17.
   alike: median Moran's I 0.14 (default) and 0.06 to 0.09 (instructions), about 0 for shuffled maps (5,000 paintings,
   layers 16 to 27). A plain grey image gives the same speckle. So "more peaked" means more mass on a few scattered
   tokens, not on one region ("Spatial structure check" below).
-- Added 2026-10-22: weighting each attention by the size of what the token passes on (Kobayashi et al. 2020) keeps
-  every result here in the same direction (304 paintings, all captions). It cuts the first token's share to 0.12 to
-  0.13 and leaves the speckle (Spearman 0.96 to 0.97 with the raw maps). The hottest token sits on the border less
+- Added 2026-10-22: replacing each attention weight by the size of what the token adds to the attention output
+  (Kobayashi et al. 2020) keeps the checked image-only and caption-only results in the same direction (304 paintings,
+  all captions; joint input and word maps not re-checked). It cuts the first token's share to 0.12 to 0.13 (image
+  only) and leaves the speckle (Spearman 0.96 to 0.97 with the raw maps). The hottest token sits on the border less
   often: 0.41 (emotion) and 0.15 (default), against 0.60 and 0.25 raw ("Value-weighted check" below).
 - On captions, the emotion instruction moves attention to emotion words (bored, anger, lonely). Style and genre
   shift less cleanly: style raises cartoon, abstract, realistic; genre raises abstract, portrait, adventure. The
@@ -167,12 +168,12 @@ bug behind it (the user asked after seeing the viewer). Scripts `att_diag_spatia
 - Stored maps: a plain GPU pass (4 paintings, default and emotion views) gives L1 0.02 to 0.03 to the stored maps
   (layers 16 to 27); the viewer serves the stored values to within 5e-7.
 - Token order: with a 96 px square painted black on 6 paintings, the changed tokens are found in the map's order
-  (median AUC 0.98 to 1.00 at the LLM input and layers 1 to 16; transposed or shuffled 0.33 to 0.55).
+  (median AUC 0.98 to 1.00 at the LLM input and layers 1, 4, 8 and 16; transposed or shuffled 0.33 to 0.55).
 - Spatial structure: Moran's I measures how alike neighbouring tokens are (about 0 for random positions, near 1 for a
   smooth map). Median over the 5,000 paintings, layers 16 to 27: 0.138 (default), 0.065 to 0.088 (instructions),
   about 0 shuffled. On 16 paintings, single heads are no smoother.
 - Source: a grey canvas with one object gives the same speckle. A pattern shared by position explains little: a
-  painting and the mean map of its grid size have median Spearman 0.15 to 0.21 (29 grid sizes, 3,163 paintings).
+  painting and the leave-one-out mean map of its grid size have median Spearman 0.15 to 0.21 (29 grid sizes, 3,163 paintings).
 - Coarse content shows when maps are coloured by rank (8 examples): frames, margins, sky or ground bands. A red disc
   gets 1.4 to 2.3 times its token share (default view, layers 16 to 27, four positions).
 
@@ -180,17 +181,18 @@ Our reading: raw attention of the pooled token is a weak picture of where the mo
 another attribution method (for example gradient-based; not tried).
 
 **Value-weighted check (added 2026-10-22).** The first token is a standard attention sink, and discounting it changes
-no result above. Each attention weight of the pooled token is replaced by the size of what that token adds to the
+none of the checked results (joint input, word maps and label tests not re-checked). Each attention weight of the pooled token is replaced by the size of what that token adds to the
 layer's attention output, ||sum_h a_h W_O^h v_h|| (Kobayashi et al. 2020). Image only on 304 paintings, caption only
 on all 25,160 captions; layers 16 to 27 unless named. Script `att_diag_value_weighted.py`, tables in
 `outputs/value_weighted/`; reading rules fixed before the run (round log).
 
 - The sink: at the outputs of layers 2 to 8 the first token's hidden state is about 200 to 370 times the median
-  token's (norm and largest value); its value vector is 0.07 times an image token's. Weighted, its share falls from
-  0.62–0.67 to 0.12–0.13.
-- The speckle stays: weighted and raw maps have Spearman 0.96–0.97. Moran's I misses our bar (a rise of 0.05 in 75%
-  of paintings); it rises only for emotion, by 0.03.
-- Results hold: weighted image share 0.64 (default) against 0.36–0.37 (raw 0.22 against 0.12); L1 to the default
+  token's (norm and largest value); the size of what it passes on (||W_O^h v||, mean over heads) is 0.07 times the median
+  image token's. Weighted, its share falls from 0.62–0.67 to 0.12–0.13 (image only; caption only 0.65–0.71 to
+  0.15–0.17).
+- The speckle stays: weighted and raw maps have Spearman 0.96–0.97. Moran's I misses our bar (a median rise of at least
+  0.05, and a rise in at least 75% of paintings); it rises only for emotion, by 0.03 in median.
+- The checked results hold: weighted image share 0.64 (default) against 0.36–0.37 (raw 0.22 against 0.12); L1 to the default
   0.65–0.89 (shuffled 1.18–1.31); emotion caption words stay on top (bored, awe, amused, excited).
 - Border: the hottest token is on the border in 0.15 (default) to 0.41 (emotion) of weighted maps, against 0.25 to
   0.60 raw; over all layers 0.15–0.42 against 0.73–0.99. So the early layers' edge spots are mostly parked weight.

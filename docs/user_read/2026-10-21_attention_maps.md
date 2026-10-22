@@ -12,7 +12,7 @@
 - Instructed image maps put more weight on a few tokens, often on the border. These tokens are scattered, not one region.
 - The maps look speckled because the model's attention is speckled. Our checks found no bug (added 2026-10-22).
 - The first token is a known "attention sink": it takes about two thirds of the attention but passes on little.
-  When we discount it, every result keeps its direction (added 2026-10-22).
+  When we discount it, the results we checked keep their direction (added 2026-10-22).
 - A local viewer shows the maps for any painting, instruction and input.
 
 ## How we got here
@@ -65,9 +65,10 @@ model's own. In the eight examples we looked at, coarse areas such as a frame or
 coloured by rank.
 
 Is the first token a problem? (added 2026-10-22). You asked whether its large share is the known attention sink. It
-is. That token's inner values are hundreds of times larger than those of other tokens, and what it passes on is small.
-Weight on it lets a head do nothing. So we weighted each attention value by the size of what its token passes on (304
-paintings, all captions). Every result above keeps its direction, and the maps stay speckled. Fewer maps peak on the
+is. In the early layers, that token's inner values are hundreds of times larger than those of other tokens, and what
+it passes on is small. Weight on it lets a head do nothing. So we replaced each attention value with the size of what
+its token adds to the output (304 paintings, all captions). The image-only and caption-only results keep their
+direction, and the maps stay speckled. We did not re-check the image-with-caption input. Fewer maps peak on the
 border: the emotion map in 41% of paintings (60% before), the default in 15% (25% before).
 
 ![Raw maps beside value-weighted maps](assets/2026-10-21_attention_maps/fig_raw_vs_weighted.jpg)
@@ -101,8 +102,8 @@ The viewer runs at http://localhost:8765/.
 - **Pooled token:** Qwen's last token; its state is the embedding.
 - **Attention sink:** the first token (`<|im_start|>`), which takes about 60 to 70% of the pooled token's attention
   in every case but passes on little.
-- **Value-weighted attention:** each attention value times the size of what its token passes on (Kobayashi et al.
-  2020).
+- **Value-weighted attention:** for each token, the size of what it adds to the attention output, all heads added
+  together (Kobayashi et al. 2020).
 - **Instruction (view):** the task text given to Qwen (`default`, `emotion_focus`, `style_word`, `genre_word`).
 - **Layers 16 to 27:** the layers we sum over by default; the viewer also offers the last layer and all 28 layers.
 - **L1 gap:** the summed absolute difference between two maps, from 0 (same) to 2 (no overlap).
