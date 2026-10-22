@@ -18,6 +18,10 @@ summary measures cover all 5,000 paintings. Side task of r10 decide 17.
 - Instructed maps are more peaked: the top 1% of image tokens hold 0.14 to 0.15 of the mass, against 0.06. But the
   hottest token sits on the image border in 34 to 63% of paintings, against 29% for the default and 21% by chance.
   In the last layer and over all layers every view, the default included, peaks on the border in 61 to 98%.
+- Added 2026-10-22: the maps are speckled, and this comes from the model, not from a bug. A fresh recomputation
+  matches the stored maps, and the token order is right. Neighbouring tokens are only weakly alike: Moran's I 0.14
+  (default) and 0.06 to 0.09 (instructions), against 0 for shuffled maps. A plain grey image gives the same speckle.
+  So "more peaked" means more mass on a few scattered tokens, not on one region ("Spatial structure check" below).
 - On captions, the emotion instruction moves attention to emotion words (bored, anger, lonely). Style and genre
   shift less cleanly: style raises cartoon, abstract, realistic; genre raises abstract, portrait, adventure. The
   default favours scene nouns (horses, statue, beach).
@@ -147,6 +151,26 @@ largest overall: style classes' image share, last layer, style instruction, H 15
 
 The 2 tests that do not pass are emotion classes' L1 to default in the last layer (style view) and all layers (genre
 view). Full tables: `analysis.md`.
+
+**Spatial structure check (added 2026-10-22).** The scattered look of the image maps is real; the pipeline is
+correct. The user asked after seeing the viewer. Scripts `att_diag_spatial.py`, `att_diag_order_real.py`,
+`att_diag_pos_pattern.py`; outputs and the full numbers in `outputs/spatial_diag/` and the round log.
+
+- Stored maps: a plain full pass on the GPU gives L1 0.02 to 0.03 to the stored maps (layers 16 to 27; max 0.068,
+  last layer), and the viewer serves the stored values.
+- Token order: on 6 paintings with a region painted black, the image tokens that change are found in the map's order
+  (AUC 0.98 to 1.00 for a 96 px square; 0.74 to 0.90 for large regions), against 0.33 to 0.55 when the same values are
+  read transposed or shuffled.
+- Spatial structure: Moran's I is the correlation of each token with its four neighbours (0 for values at random
+  positions, near 1 for a smooth map). Over the 5,000 paintings, layers 16 to 27: 0.138 (default), 0.065 to 0.088
+  (instructions), about 0 shuffled; 0.20 to 0.23 over all layers. Single heads are no smoother (0.05 to 0.19).
+- Source of the speckle: a grey canvas with one object gives the same speckle, so it is the model's. It is not a fixed
+  position pattern: maps of different paintings with the same grid share little (Spearman 0.06 to 0.09).
+- Coarse content still shows: rank-coloured maps follow frames, margins and sky or ground bands; a red disc gets 1.4
+  to 2.3 times its token share (default view), a drawn face about 1 times.
+
+Our reading: raw attention of the pooled token is a weak picture of where the model looks. A paper figure would need
+another attribution method, such as gradients.
 
 ## Deviations
 

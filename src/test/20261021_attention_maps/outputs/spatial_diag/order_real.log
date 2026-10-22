@@ -1,0 +1,13 @@
+k=0 grid=(29, 17) done
+k=625 grid=(20, 24) done
+k=1250 grid=(14, 17) done
+k=1875 grid=(20, 25) done
+k=3125 grid=(16, 11) done
+k=4375 grid=(20, 25) done
+
+median AUC over paintings (true / transposed / random), rows = layer, cols = region
+hidden[ 0]  left_3/8: 0.743 (min 0.708) / 0.532 / 0.487   top_1/4: 0.789 (min 0.653) / 0.536 / 0.491   square_96: 0.976 (min 0.928) / 0.450 / 0.551
+hidden[ 1]  left_3/8: 0.845 (min 0.786) / 0.500 / 0.483   top_1/4: 0.823 (min 0.745) / 0.516 / 0.497   square_96: 0.993 (min 0.986) / 0.421 / 0.450
+hidden[ 4]  left_3/8: 0.898 (min 0.857) / 0.502 / 0.502   top_1/4: 0.889 (min 0.789) / 0.516 / 0.495   square_96: 0.997 (min 0.989) / 0.436 / 0.537
+hidden[ 8]  left_3/8: 0.883 (min 0.844) / 0.499 / 0.514   top_1/4: 0.890 (min 0.792) / 0.513 / 0.503   square_96: 0.996 (min 0.984) / 0.397 / 0.534
+hidden[16]  left_3/8: 0.870 (min 0.827) / 0.439 / 0.498   top_1/4: 0.834 (min 0.674) / 0.505 / 0.479   square_96: 0.996 (min 0.984) / 0.334 / 0.543

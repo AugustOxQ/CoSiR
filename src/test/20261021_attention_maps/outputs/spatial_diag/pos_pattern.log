@@ -1,0 +1,6 @@
+groups with >= 40 paintings: 29, covering 3163 paintings; largest: [((26, 19), 334), ((19, 26), 278), ((25, 20), 260), ((20, 25), 234), ((18, 27), 196), ((27, 18), 184)]
+default        rho_loo 0.185 [0.077, 0.290]  rho_pair 0.073 [-0.010, 0.165]  R2(value) 0.049 [0.013, 0.150]  Moran raw 0.130 [0.061, 0.220]  Moran ratio 0.112 [0.045, 0.195]
+emotion_focus  rho_loo 0.145 [0.045, 0.256]  rho_pair 0.059 [-0.024, 0.155]  R2(value) 0.149 [0.011, 0.442]  Moran raw 0.058 [0.005, 0.164]  Moran ratio 0.065 [0.007, 0.157]
+style_word     rho_loo 0.212 [0.102, 0.320]  rho_pair 0.085 [0.002, 0.181]  R2(value) 0.072 [0.013, 0.205]  Moran raw 0.085 [0.030, 0.160]  Moran ratio 0.069 [0.013, 0.145]
+genre_word     rho_loo 0.170 [0.069, 0.272]  rho_pair 0.063 [-0.015, 0.149]  R2(value) 0.048 [0.008, 0.128]  Moran raw 0.084 [0.027, 0.155]  Moran ratio 0.067 [0.010, 0.138]
+largest group (26, 19) Spearman of group-mean maps between views: {'defa-emot': 0.685, 'defa-styl': 0.485, 'defa-genr': 0.487, 'emot-styl': 0.152, 'emot-genr': 0.175, 'styl-genr': 0.912}

@@ -64,3 +64,33 @@ Smoke: `att_extract.py --limit 16 --check-full 4 --out <scratchpad>/att_smoke`.
   5,000 grids (computed from per_painting.csv.gz grid_rows and grid_cols; 48 to 512 image tokens).
 - Viewer restarted on the full root (port 8765, detached; log `outputs/viewer_full.log`).
 - Report: `docs/reports/auto/percept/2026-12-23_attention_maps.md`.
+
+## 2026-10-22 03:13  Check: are the scattered image maps a bug? (user question after seeing the viewer)
+
+- Problem: in the viewer the image maps look scattered, almost random. Question: pipeline bug or the model?
+- Scripts: `att_diag_spatial.py` (Codex, commits c954012, 6712018; parts geometry, recompute, structure, sinks,
+  objects, sheet), `att_diag_order_real.py` and `att_diag_pos_pattern.py` (controller). Outputs in
+  `outputs/spatial_diag/` (GPU parts: `summary_gpu_recompute_sinks_objects.md`; CPU parts:
+  `summary_cpu_structure_sheet_geometry.md`, whose recompute and sinks rows are a 1-painting float32 smoke only).
+- No bug found:
+  1. Recompute (GPU bf16, plain full passes, 4 paintings x 2 views x 3 bands): L1 to the stored maps 0.02-0.03
+     (layers 16-27), max 0.068 (last layer); the query row is `<|endoftext|>`. The viewer's `/api/maps` equals the
+     stored maps to 5e-7.
+  2. Token order: 6 real paintings, a region painted black; the image tokens that change are found in the map's
+     row-major order (AUC of the hidden-state change, changed against unchanged cells: 96 px square 0.976 at the LLM
+     input, 0.98-1.00 at layers 1-16; left 3/8 and top 1/4 0.74-0.90), against 0.33-0.55 for the transposed and random
+     orders. A red disc on grey: the hottest token (default, layers 16-27) lies on the disc in 3 of 4 positions.
+     Codex's first order test (flat synthetic colours, k-means, then a differential test) could not decide: on flat
+     images the vision encoder's last layer spreads a change over many tokens; real paintings keep it local.
+- The maps really are speckled:
+  1. Moran's I (rook neighbours), 5,000 paintings, layers 16-27: default 0.138 [0.064, 0.233], instructed
+     0.065-0.088, shuffled positions about 0; all layers 0.20-0.23.
+  2. A plain grey canvas gives the same speckle (objects figure), so it comes from the model, not the painting.
+  3. Single heads are no cleaner: per-head Moran's I 0.05-0.19 (16 paintings).
+  4. Not a fixed position pattern: paintings with the same grid size share little (pairwise Spearman 0.06-0.09,
+     leave-one-out group mean 0.15-0.21); dividing by the group mean does not smooth the maps.
+  5. Hidden-state norm and attention: Spearman 0.47-0.61; no outlier image tokens (max norm 1.4x the median).
+- Coarse structure exists: rank-coloured maps follow frames, margins and sky/ground bands (`sheet_ranks.jpg`); a red
+  disc draws 1.4-2.3x its token share (default, layers 16-27), drawn faces about 1x, the last layer 0.3-0.5x.
+- Consequence: "more focused" instructed maps put more mass on a few scattered tokens, not on one region. Raw
+  attention is a weak picture of where the model looks; a paper figure would need another attribution method.
