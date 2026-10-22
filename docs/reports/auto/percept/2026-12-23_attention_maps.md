@@ -14,7 +14,7 @@ summary measures cover all 5,000 paintings. Side task of r10 decide 17.
 - The instructions change the image map. L1 distance to the default map: 0.68 (emotion), 0.79 (style), 0.81 (genre).
   Same values at shuffled positions: 1.16 to 1.23. bf16 rounding noise: 0.09. Style and genre are the closest pair (0.49).
 - The instructions lower the image's share of the pooled token's attention: 0.22 (default) against 0.12 (each
-  instruction). The first token (an attention sink) takes 0.62 to 0.67 in every view.
+  instruction). The first token (an attention sink) takes 0.62 to 0.67 in every view, but passes on little.
 - Instructed maps are more peaked: the top 1% of image tokens hold 0.14 to 0.15 of the mass, against 0.06. But the
   hottest token sits on the image border in 34 to 63% of paintings, against 29% for the default and 21% by chance.
   In the last layer and over all layers every view, the default included, peaks on the border in 61 to 98%.
@@ -23,6 +23,10 @@ summary measures cover all 5,000 paintings. Side task of r10 decide 17.
   alike: median Moran's I 0.14 (default) and 0.06 to 0.09 (instructions), about 0 for shuffled maps (5,000 paintings,
   layers 16 to 27). A plain grey image gives the same speckle. So "more peaked" means more mass on a few scattered
   tokens, not on one region ("Spatial structure check" below).
+- Added 2026-10-22: weighting each attention by the size of what the token passes on (Kobayashi et al. 2020) keeps
+  every result here in the same direction (304 paintings, all captions). It cuts the first token's share to 0.12 to
+  0.13 and leaves the speckle (Spearman 0.96 to 0.97 with the raw maps). The hottest token sits on the border less
+  often: 0.41 (emotion) and 0.15 (default), against 0.60 and 0.25 raw ("Value-weighted check" below).
 - On captions, the emotion instruction moves attention to emotion words (bored, anger, lonely). Style and genre
   shift less cleanly: style raises cartoon, abstract, realistic; genre raises abstract, portrait, adventure. The
   default favours scene nouns (horses, statue, beach).
@@ -31,8 +35,9 @@ summary measures cover all 5,000 paintings. Side task of r10 decide 17.
 - Label classes differ in 61 of 63 Kruskal–Wallis tests (Bonferroni p < 0.001), but the differences are small: the
   emotion classes' image share spans 0.217 to 0.223 under the default.
 
-**What it does not show.** Attention weight is not importance for the embedding: no gradient or masking check. The
-border hot spots may be artifact tokens of the vision encoder; not checked. One model (2B), development paintings
+**What it does not show.** Attention weight is not importance for the embedding: no gradient or masking check. Part of
+the border hot spots is weight on tokens that pass on little; whether the rest are vision-encoder artifact tokens is
+not checked. One model (2B), development paintings
 only, one bf16 pass per input. The numbers depend on the band; the last layer and all layers are in the tables below.
 
 **Options for next.**
@@ -50,10 +55,11 @@ only, one bf16 pass per input. The numbers depend on the band; the last layer an
 **Our reading.** The instructions act as a clear redirection inside the language model. The pooled token reads less of
 the image, and the image map changes far above the noise floor in all three bands. We are fairly sure of this. On
 captions the move to the aspect's words is clear for emotion and partial for style and genre. We are unsure what the
-sharper instructed image maps mean, because much of their peak sits on the border, where the other bands peak in
-every view. The views separate from layer 16 on; layers 0 to 15 give the image nearly the same share in every view.
+sharper instructed image maps mean: much of their peak sits on the border. Value weighting removes part of it, but
+the emotion map still peaks there more often than the default. The views separate from layer 16 on; layers 0 to 15 give the image nearly the same share in every view.
 
-**Our recommendation.** Option 1, a short border check, before any paper figure uses these maps; then option 3. Our view.
+**Our recommendation.** Option 3. The value-weighted check answered part of option 1; a paper figure should use
+value-weighted maps or a gradient method. Our view.
 
 </details>
 
@@ -122,8 +128,9 @@ the instructed pooled token reads less of the image, and reads it in a more peak
 
 **The border caveat.** The ring of border tokens holds 21% of the image tokens on average. The hottest token is on it
 in 29% of default maps (layers 16 to 27), a little above chance, and in 63% of emotion maps. In the last layer and all layers the
-share is 0.61 to 0.98 in every view, so the early and last layers carry strong edge spots. These may be the high-norm
-artifact tokens known from ViTs (Darcet et al. 2024); not checked. The viewer shows them as bright edge cells.
+share is 0.61 to 0.98 in every view, so the early and last layers carry strong edge spots. Value weighting (below) shows that part of
+these spots is weight on tokens that pass on little; whether they are the artifact tokens known from ViTs (Darcet et
+al. 2024) is not checked. The viewer shows them as bright edge cells.
 
 **Caption words.** The weight of a caption token is the pooled token's attention on it, renormalised over the
 caption and averaged per occurrence (tokens with at least 50 occurrences). Layers 16 to 27, caption only:
@@ -154,28 +161,39 @@ The 2 tests that do not pass are emotion classes' L1 to default in the last laye
 view). Full tables: `analysis.md`.
 
 **Spatial structure check (added 2026-10-22).** The scattered look of the image maps is real; the checks found no
-bug behind it. The user asked after seeing the viewer. Scripts `att_diag_spatial.py`, `att_diag_order_real.py`,
-`att_diag_pos_pattern.py`; outputs and the full numbers in `outputs/spatial_diag/` and the round log.
+bug behind it (the user asked after seeing the viewer). Scripts `att_diag_spatial.py`, `att_diag_order_real.py`,
+`att_diag_pos_pattern.py`; full numbers in `outputs/spatial_diag/` and the round log.
 
-- Stored maps: a plain full pass on the GPU (4 paintings, default and emotion views) gives L1 0.02 to 0.03 to the
-  stored maps (layers 16 to 27; max 0.068, last layer). The viewer serves the stored values to within 5e-7.
-- Token order: on 6 paintings with a region painted black, the image tokens that change are found in the map's order.
-  Median AUC over the paintings, at the LLM input and layers 1, 4, 8, 16: 0.98 to 1.00 for a 96 px square (lowest
-  single painting 0.93), 0.74 to 0.90 for large regions; 0.33 to 0.55 when the same values are read transposed or
-  shuffled.
-- Spatial structure: Moran's I measures how alike horizontally and vertically neighbouring tokens are over a whole
-  map (about 0 for values at random positions, near 1 for a smooth map). Median over the 5,000 paintings, layers 16
-  to 27: 0.138 (default), 0.065 to 0.088 (instructions), about 0 shuffled; 0.20 to 0.23 over all layers. On 16
-  paintings, single heads are no smoother (medians 0.05 to 0.19 across heads and views).
-- Source of the speckle: a grey canvas with one object gives the same speckle, so it is the model's. Only a small part
-  is a pattern shared by position: within 29 grid sizes (3,163 paintings), two paintings' maps have median Spearman
-  0.06 to 0.09, a painting and its group mean 0.15 to 0.21.
-- Coarse content still shows: in the 8 rank-coloured examples, the maps follow frames, margins and sky or ground bands.
-  A red disc gets 1.4 to 2.3 times its token share, a drawn face 0.7 to 1.1 times (default view, layers 16 to 27, four
-  positions each); in the last layer both get less than their share.
+- Stored maps: a plain GPU pass (4 paintings, default and emotion views) gives L1 0.02 to 0.03 to the stored maps
+  (layers 16 to 27); the viewer serves the stored values to within 5e-7.
+- Token order: with a 96 px square painted black on 6 paintings, the changed tokens are found in the map's order
+  (median AUC 0.98 to 1.00 at the LLM input and layers 1 to 16; transposed or shuffled 0.33 to 0.55).
+- Spatial structure: Moran's I measures how alike neighbouring tokens are (about 0 for random positions, near 1 for a
+  smooth map). Median over the 5,000 paintings, layers 16 to 27: 0.138 (default), 0.065 to 0.088 (instructions),
+  about 0 shuffled. On 16 paintings, single heads are no smoother.
+- Source: a grey canvas with one object gives the same speckle. A pattern shared by position explains little: a
+  painting and the mean map of its grid size have median Spearman 0.15 to 0.21 (29 grid sizes, 3,163 paintings).
+- Coarse content shows when maps are coloured by rank (8 examples): frames, margins, sky or ground bands. A red disc
+  gets 1.4 to 2.3 times its token share (default view, layers 16 to 27, four positions).
 
 Our reading: raw attention of the pooled token is a weak picture of where the model looks. A paper figure would need
 another attribution method (for example gradient-based; not tried).
+
+**Value-weighted check (added 2026-10-22).** The first token is a standard attention sink, and discounting it changes
+no result above. Each attention weight of the pooled token is replaced by the size of what that token adds to the
+layer's attention output, ||sum_h a_h W_O^h v_h|| (Kobayashi et al. 2020). Image only on 304 paintings, caption only
+on all 25,160 captions; layers 16 to 27 unless named. Script `att_diag_value_weighted.py`, tables in
+`outputs/value_weighted/`; reading rules fixed before the run (round log).
+
+- The sink: at the outputs of layers 2 to 8 the first token's hidden state is about 200 to 370 times the median
+  token's (norm and largest value); its value vector is 0.07 times an image token's. Weighted, its share falls from
+  0.62–0.67 to 0.12–0.13.
+- The speckle stays: weighted and raw maps have Spearman 0.96–0.97. Moran's I misses our bar (a rise of 0.05 in 75%
+  of paintings); it rises only for emotion, by 0.03.
+- Results hold: weighted image share 0.64 (default) against 0.36–0.37 (raw 0.22 against 0.12); L1 to the default
+  0.65–0.89 (shuffled 1.18–1.31); emotion caption words stay on top (bored, awe, amused, excited).
+- Border: the hottest token is on the border in 0.15 (default) to 0.41 (emotion) of weighted maps, against 0.25 to
+  0.60 raw; over all layers 0.15–0.42 against 0.73–0.99. So the early layers' edge spots are mostly parked weight.
 
 ## Deviations
 
@@ -195,6 +213,7 @@ another attribution method (for example gradient-based; not tried).
 
 ## Files and storage
 
+- **Checks of 2026-10-22:** `outputs/spatial_diag/`, `outputs/value_weighted/` (in the round folder).
 - **Outputs:** `src/test/20261021_attention_maps/outputs/qwen3vl_emb_2b_attention/` (`analysis.md`, `analysis.json`,
   8 figures; `per_painting.csv.gz` not committed), run log `outputs/full_run.log`.
 - **Viewer:** `PYTHONDONTWRITEBYTECODE=1 /root/miniconda3/envs/CoSiR/bin/python src/test/20261021_attention_maps/att_viewer.py --root /data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_attention --port 8765`, then http://localhost:8765/.

@@ -94,3 +94,52 @@ Smoke: `att_extract.py --limit 16 --check-full 4 --out <scratchpad>/att_smoke`.
   disc draws 1.4-2.3x its token share (default, layers 16-27), drawn faces about 1x, the last layer 0.3-0.5x.
 - Consequence: "more focused" instructed maps put more mass on a few scattered tokens, not on one region. Raw
   attention is a weak picture of where the model looks; a paper figure would need another attribution method.
+
+## 2026-10-22 13:53  Value-weighted attention: does weight parked on the sink drive the speckle or any result? (user, option g)
+
+- Question (user, after the sink explanation): the first token takes 0.62-0.67 of the pooled token's attention. Is
+  this the known attention sink, and do our maps or results depend on weight that idle heads park there? The user
+  wants this before giving their reading of the results brief.
+- Method: `att_diag_value_weighted.py`. Hooks on each layer's `v_proj`; per layer, the pooled row's terms
+  w_j = ||sum_h a_hj W_O^h v_j^(h//2)|| (Kobayashi et al. 2020; 16 query heads, 8 value heads) and the variant
+  w2_j = sum_h a_hj ||W_O^h v_j||, summed per band and renormalised like the raw maps. Image only on 300 random
+  development paintings (seed 0) plus k = 0, 1250, 2500, 3750 for a sheet; caption only on all 25,160 captions.
+  Checks: input ids equal the store's; recomputed raw maps match the stored ones (L1 < 0.1) for the first 4
+  paintings and painting 0's captions. Also: token 0's value size (mean over heads of ||W_O^h v||) against the median
+  image or caption token, and its hidden-state max-abs and norm against the median token (massive activations).
+- Reading rules, fixed before the run: (1) token 0 is a no-op sink if its weighted share is far below 0.62-0.67;
+  (2) weighting makes maps less speckled if the median Moran's I rises by >= 0.05 and in >= 75% of paintings;
+  (3) a headline result holds if its direction holds under weighting (default image share above the instructed ones;
+  L1 to the default above 0.09 and below shuffled; the emotion view's top caption words still emotion words).
+- Smoke (6 paintings, 191 captions; scratchpad): passed the checks; full GPU part about 13 min, light.
+
+### 14:08  Results (GPU 13:54-14:07, 2 s per painting for 4 views, captions 632 s; outputs/value_weighted/)
+
+Image only on 304 paintings (300 random + the 4 sheet paintings), captions only on all 25,160 captions. All store
+checks passed. Medians over paintings, layers 16-27 unless named. Full tables: `outputs/value_weighted/summary.md`.
+
+- Rule 1, met: `<|im_start|>` is a classic sink. Its hidden state has max-abs 275-365x and norm 198-224x the median
+  token at the outputs of layers 2, 4 and 8 (92-97x and 73-76x at layer 16), and its value vector is 0.065-0.067x a median image token's
+  (layers 16-27). Weighted, its share falls from 0.62-0.67 to 0.12-0.13 (image input) and from 0.65-0.71 to
+  0.15-0.17 (caption input).
+- Rule 2, not met: weighting does not reduce the speckle. Spearman raw vs weighted map 0.96-0.97. Moran's I raw vs
+  weighted: default 0.134 vs 0.111, emotion 0.064 vs 0.094 (higher in 83% of paintings, but +0.03 < 0.05), style
+  0.088 vs 0.066, genre 0.082 vs 0.064; shuffled about 0. The variant w2 gives the same. The sheet looks the same.
+- Rule 3, met for every headline result:
+  - image share, default vs instructed: raw 0.216 vs 0.119-0.123; weighted 0.638 vs 0.359-0.371 (the image passes on
+    most of the attention output once the sink is discounted);
+  - L1 to the default: raw 0.68 / 0.79 / 0.80, weighted 0.65 / 0.87 / 0.89 (emotion / style / genre), shuffled
+    1.18-1.31;
+  - top-5% mass: default 0.20 raw, 0.21 weighted; instructed 0.37-0.40 raw, 0.35-0.43 weighted;
+  - captions: top-word means raw vs weighted Spearman 0.97-0.98 (834 tokens with >= 50 occurrences); emotion top
+    weighted: bored, awe, amused, excited, confused, proud; largest rises: style cartoon, abstract, distorted,
+    realistic; genre abstract, portrait, adventure (same as raw).
+- New: the border peaks are partly parked weight. Hottest token on the border, raw vs weighted: layers 16-27 default
+  0.25 vs 0.15, emotion 0.60 vs 0.41, style 0.47 vs 0.31, genre 0.40 vs 0.23; all layers 0.73-0.99 vs 0.15-0.42; last
+  layer 0.59-0.67 vs 0.51-0.58. Over all layers the weighting also changes the map more (Spearman 0.80-0.85) and
+  halves Moran's I (0.20-0.23 vs 0.07-0.11): the early layers' smooth edge pattern is weight on small-value tokens.
+- Reading: the sink is the known no-op sink (massive activation, small value). It does not explain the speckle and does
+  not change any headline result. It explains most of the all-layer border peaks and part of the layers 16-27 ones;
+  the emotion map still peaks on the border more often than the default (0.41 vs 0.15, chance about 0.21).
+- Limits: value weighting still reads one attention sublayer; it is not importance for the final embedding (no
+  gradient or masking check). Joint input and word maps not re-checked.

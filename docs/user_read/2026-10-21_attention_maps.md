@@ -11,6 +11,8 @@
 - On captions, the emotion instruction clearly picks out emotion words. Style and genre do this only in part.
 - Instructed image maps put more weight on a few tokens, often on the border. These tokens are scattered, not one region.
 - The maps look speckled because the model's attention is speckled. Our checks found no bug (added 2026-10-22).
+- The first token is a known "attention sink": it takes about two thirds of the attention but passes on little.
+  When we discount it, every result keeps its direction (added 2026-10-22).
 - A local viewer shows the maps for any painting, instruction and input.
 
 ## How we got here
@@ -52,7 +54,8 @@ On captions alone, the words with the most weight are:
 | genre | portrait, abstract, statue |
 
 The border caveat: in layers 16 to 27 the hottest patch is on the border in 63% of emotion maps, against 29% of
-default maps. In the last layer, and over all layers, every map peaks on the border most of the time.
+default maps. In the last layer, and over all layers, every map peaks on the border most of the time. Part of this is weight that
+passes on little (next paragraphs).
 
 Why the maps look scattered (added 2026-10-22). You saw speckled maps in the viewer and asked whether something was
 wrong. Our checks found nothing. A fresh pass gives the same maps up to rounding, and the tokens sit in the right
@@ -61,15 +64,26 @@ neighbouring tokens get only weakly similar attention, and a plain grey image is
 model's own. In the eight examples we looked at, coarse areas such as a frame or the sky still show when the map is
 coloured by rank.
 
+Is the first token a problem? (added 2026-10-22). You asked whether its large share is the known attention sink. It
+is. That token's inner values are hundreds of times larger than those of other tokens, and what it passes on is small.
+Weight on it lets a head do nothing. So we weighted each attention value by the size of what its token passes on (304
+paintings, all captions). Every result above keeps its direction, and the maps stay speckled. Fewer maps peak on the
+border: the emotion map in 41% of paintings (60% before), the default in 15% (25% before).
+
+![Raw maps beside value-weighted maps](assets/2026-10-21_attention_maps/fig_raw_vs_weighted.jpg)
+
+Four paintings, layers 16 to 27: each instruction's raw map, then its value-weighted map. The pairs look almost the
+same.
+
 > Full report: "Results" and "Analysis".
 
 <details>
 <summary>Our advice (open after giving your reading)</summary>
 
 Our view: two results are clear. The instructions move the image map and lower the image's share, and the emotion
-instruction moves caption attention to emotion words. The sharper instructed image maps are not yet clear, because of
-the border patches. A short check of these patches (about an hour) should come before any paper figure uses the maps.
-After that, go back to the main loop.
+instruction moves caption attention to emotion words. The sharper instructed image maps are only partly clear. Weighting
+removes part of the border peak, but the emotion map still peaks on the border more often than the default. A paper
+figure should use value-weighted maps or a gradient method. Otherwise, go back to the main loop.
 
 </details>
 
@@ -85,7 +99,10 @@ The viewer runs at http://localhost:8765/.
 ## Glossary
 
 - **Pooled token:** Qwen's last token; its state is the embedding.
-- **Attention sink:** the first token, which takes about 60 to 70% of the pooled token's attention in every case.
+- **Attention sink:** the first token (`<|im_start|>`), which takes about 60 to 70% of the pooled token's attention
+  in every case but passes on little.
+- **Value-weighted attention:** each attention value times the size of what its token passes on (Kobayashi et al.
+  2020).
 - **Instruction (view):** the task text given to Qwen (`default`, `emotion_focus`, `style_word`, `genre_word`).
 - **Layers 16 to 27:** the layers we sum over by default; the viewer also offers the last layer and all 28 layers.
 - **L1 gap:** the summed absolute difference between two maps, from 0 (same) to 2 (no overlap).
