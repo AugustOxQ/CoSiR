@@ -13,6 +13,8 @@
 - The maps look speckled because the model's attention is speckled. Our checks found no bug (added 2026-10-22).
 - The first token is a known "attention sink": it takes about two thirds of the attention but passes on little.
   When we discount it, the results we checked keep their direction (added 2026-10-22).
+- The sharper instructed maps are not a border effect. The emotion view's pull to the border follows the image's
+  edge, not what the painting shows there (added 2026-10-24).
 - A local viewer shows the maps for any painting, instruction and input.
 
 ## How we got here
@@ -76,24 +78,35 @@ border: the emotion map in 41% of paintings (60% before), the default in 15% (25
 Four paintings, layers 16 to 27: each instruction's raw map, then its value-weighted map. The pairs look almost the
 same.
 
+Is the border content or position? (added 2026-10-24). You chose a small border check. First, we removed the outer
+ring of tokens from every map. On all 5,000 paintings, the instructed maps stay as peaked and nearly as far from the
+default map. So the border does not carry these results. Second, we shrank 304 paintings inside a one-token grey
+frame, so the outer ring shows only grey. The emotion map still peaks on that grey ring, even a little more often
+(raw maps: 70% of paintings against 60% before; weighted: 54% against 41%), and the painting's own edge does not take over. So the emotion view pulls
+toward the edge of the image grid, whatever the edge shows. Why it does this is not checked.
+
+![Original maps beside grey-frame maps](assets/2026-10-21_attention_maps/fig_grey_ring.jpg)
+
+Four paintings, layers 16 to 27, value-weighted: each instruction's map on the original painting, then on the
+painting inside the grey frame.
+
 > Full report: "Results" and "Analysis".
 
 <details>
 <summary>Our advice (open after giving your reading)</summary>
 
 Our view: two results are clear. The instructions move the image map and lower the image's share, and the emotion
-instruction moves caption attention to emotion words. The sharper instructed image maps are only partly clear. Weighting
-removes part of the border peak, but the emotion map still peaks on the border more often than the default. A paper
-figure should use value-weighted maps or a gradient method. Otherwise, go back to the main loop.
+instruction moves caption attention to emotion words. The sharper instructed image maps are not a border effect, but what
+their scattered peaks show is still open. The emotion view's border peaks are a pull to the edge of the image grid. A
+paper figure should use value-weighted maps or a gradient method. Otherwise, go back to the main loop.
 
 </details>
 
 ## Next
 
-The main research loop is at its decision step: choosing the next direction. Your decisions here:
-
-1. Your reading of these results.
-2. Whether to check the border patches, test word maps against hand-marked regions, or stop here.
+The main research loop is at its decision step: choosing the next direction. You gave your reading on 2026-10-24: the
+results are very interesting and give a basis for deeper analysis. You chose a small border check, now done. The
+viewer now also colours maps by rank and can blur them.
 
 The viewer runs at http://localhost:8765/.
 

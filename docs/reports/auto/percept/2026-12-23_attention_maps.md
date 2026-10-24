@@ -18,11 +18,13 @@ summary measures cover all 5,000 paintings. Side task of r10 decide 17.
 - Instructed maps are more peaked: the top 1% of image tokens hold 0.14 to 0.15 of the mass, against 0.06. But the
   hottest token sits on the image border in 34 to 63% of paintings, against 29% for the default and 21% by chance.
   In the last layer and over all layers every view, the default included, peaks on the border in 61 to 98%.
-- Added 2026-10-22: the maps are speckled, and our checks found no bug behind it. A fresh recomputation (4 paintings,
-  2 views) matches the stored maps up to rounding, and the token order is right. Neighbouring tokens are only weakly
-  alike: median Moran's I 0.14 (default) and 0.06 to 0.09 (instructions), about 0 for shuffled maps (5,000 paintings,
-  layers 16 to 27). A plain grey image gives the same speckle. So "more peaked" means more mass on a few scattered
-  tokens, not on one region ("Spatial structure check" below).
+  Added 2026-10-24: without the border ring the instructed maps stay as peaked and nearly as far from the default (5,000
+  paintings). The emotion view's border peaks follow the edge of the token grid, not the painting: a grey ring around
+  a shrunk painting takes them as often or more (304 paintings; "Border check" below).
+- Added 2026-10-22: the maps are speckled, and our checks found no bug behind it. Neighbouring tokens are only
+  weakly alike (median Moran's I 0.14 default, 0.06 to 0.09 instructions, about 0 shuffled; 5,000 paintings, layers
+  16 to 27), and a plain grey image is speckled too. So "more peaked" means more mass on a few scattered tokens, not
+  on one region ("Spatial structure check" below).
 - Added 2026-10-22: replacing each attention weight by the size of what the token adds to the attention output
   (Kobayashi et al. 2020) keeps the checked image-only and caption-only results in the same direction (304 paintings,
   all captions; joint input and word maps not re-checked). It cuts the first token's share to 0.12 to 0.13 (image
@@ -48,19 +50,22 @@ only, one bf16 pass per input. The numbers depend on the band; the last layer an
    "anger" lands on the angry part of the painting.
 3. Stop here: keep the viewer for figures and intuition, and go back to decide 17 (no cost).
 
-**Your reading.** <left for the user>
+**Your reading.** (user, 2026-10-24, after the value-weighted check) "thats very interesting results, provide some
+potential basis for deeper analysis." Then: option 1 in a small form; keep the store; viewer switches for rank and
+blur; no value-weighted maps for all paintings.
 
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>
 
 **Our reading.** The instructions act as a clear redirection inside the language model. The pooled token reads less of
 the image, and the image map changes far above the noise floor in all three bands. We are fairly sure of this. On
-captions the move to the aspect's words is clear for emotion and partial for style and genre. We are unsure what the
-sharper instructed image maps mean: much of their peak sits on the border. Value weighting removes part of it, but
-the emotion map still peaks there more often than the default. The views separate from layer 16 on; layers 0 to 15 give the image nearly the same share in every view.
+captions the move to the aspect's words is clear for emotion and partial for style and genre. The sharper instructed
+image maps are not a border effect: they stay sharper without the outer ring. The emotion view's extra border peaks
+are a pull to the grid edge, not to frames or margins. What the scattered interior peaks show is still open (updated
+2026-10-24, after the border check). The views separate from layer 16 on; layers 0 to 15 give the image nearly the same share in every view.
 
-**Our recommendation.** Option 3. The value-weighted check answered part of option 1; a paper figure should use
-value-weighted maps or a gradient method. Our view.
+**Our recommendation.** Option 3, now that a small option 1 is done; a paper figure should use value-weighted maps
+or a gradient method. Our view.
 
 </details>
 
@@ -131,7 +136,8 @@ the instructed pooled token reads less of the image, and reads it in a more peak
 in 29% of default maps (layers 16 to 27), a little above chance, and in 63% of emotion maps. In the last layer and all layers the
 share is 0.61 to 0.98 in every view, so the early and last layers carry strong edge spots. Value weighting (below) shows that part of
 these spots is weight on tokens that pass on little; whether they are the artifact tokens known from ViTs (Darcet et
-al. 2024) is not checked. The viewer shows them as bright edge cells.
+al. 2024) is not checked. The viewer shows them as bright edge cells. The border check (below) shows that in layers
+16 to 27 the emotion view's border peaks follow the grid edge, not what the painting shows there.
 
 **Caption words.** The weight of a caption token is the pooled token's attention on it, renormalised over the
 caption and averaged per occurrence (tokens with at least 50 occurrences). Layers 16 to 27, caption only:
@@ -197,6 +203,18 @@ on all 25,160 captions; layers 16 to 27 unless named. Script `att_diag_value_wei
 - Border: the hottest token is on the border in 0.15 (default) to 0.41 (emotion) of weighted maps, against 0.25 to
   0.60 raw; over all layers 0.15–0.42 against 0.73–0.99. So the early layers' edge spots are mostly parked weight.
 
+**Border check (added 2026-10-24).** The sharper instructed maps and the view differences do not need the border;
+the emotion view's border peaks are a pull to the grid edge. Layers 16 to 27, image only; script `att_diag_border.py`,
+tables in `outputs/border_check/`; reading rules fixed before the run (round log).
+
+- Without the outer ring (renormalised), the L1 to the default keeps 0.91 (emotion), 1.01 (style) and 1.01 (genre)
+  of the full-map L1 (5,000 paintings, raw; 0.94 to 1.00 weighted on 304). The interior top-1% mass is 0.14 to 0.15
+  for the instructions against 0.06 for the default.
+- Grey-ring test (304 paintings): each painting shrunk by one token per side inside a grey ring, so the outer ring is
+  grey and the painting's edge sits one ring in. The emotion map's hottest token is on the grey ring in 0.70 of
+  paintings raw (0.60 on the original outer ring) and 0.54 weighted (0.41); the ring one in does not gain it
+  (0.08 and 0.07). Style, genre and default change by 0.10 or less. Why edge tokens draw the peak is not checked.
+
 ## Deviations
 
 - **Map type.** The handoff asked for attention maps; we first used rollout (Abnar and Zuidema). It failed on this
@@ -215,7 +233,8 @@ on all 25,160 captions; layers 16 to 27 unless named. Script `att_diag_value_wei
 
 ## Files and storage
 
-- **Checks of 2026-10-22:** `outputs/spatial_diag/`, `outputs/value_weighted/` (in the round folder).
+- **Checks of 2026-10-22 and 24:** `outputs/spatial_diag/`, `outputs/value_weighted/`, `outputs/border_check/` (in
+  the round folder).
 - **Outputs:** `src/test/20261021_attention_maps/outputs/qwen3vl_emb_2b_attention/` (`analysis.md`, `analysis.json`,
   8 figures; `per_painting.csv.gz` not committed), run log `outputs/full_run.log`.
 - **Viewer:** `PYTHONDONTWRITEBYTECODE=1 /root/miniconda3/envs/CoSiR/bin/python src/test/20261021_attention_maps/att_viewer.py --root /data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_attention --port 8765`, then http://localhost:8765/.

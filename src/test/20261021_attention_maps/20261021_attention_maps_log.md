@@ -143,3 +143,45 @@ checks passed. Medians over paintings, layers 16-27 unless named. Full tables: `
   the emotion map still peaks on the border more often than the default (0.41 vs 0.15, chance about 0.21).
 - Limits: value weighting still reads one attention sublayer; it is not importance for the final embedding (no
   gradient or masking check). Joint input and word maps not re-checked.
+
+## 2026-10-24 16:42  User decisions; viewer switches; border check (option 1, small)
+
+- Decisions (user): reading "thats very interesting results, provide some potential basis for deeper analysis";
+  keep the 8.1 GB store (ledger row added); option 1 "a bit"; Codex report estimate 3% to 7% (routing review
+  recorded); viewer switches yes; value-weighted maps for all 5,000 paintings no.
+- The container restarted at 16:39; the viewer server (old pid 197563) was gone and was started again on port 8765.
+- Viewer (commit 668eaae): switches Rank (colour by percentile rank within the map) and Blur (Gaussian, sigma 1
+  token, radius 2, edge weights renormalised); both remembered per browser. Endpoint test passed; the two map
+  functions checked with node on a small grid.
+- Border check: `att_diag_border.py`. (1) Interior-only maps: drop the outer ring, renormalise, re-measure the L1 to
+  the default and the part of the full L1 on the ring; stored raw maps on all 5,000 paintings, raw and weighted on the
+  304 of the value-weighted check. (2) Grey-ring test on the same 304: each prepared painting shrunk by 64 px
+  (bicubic) and pasted at (32, 32) on grey 128, so the grid is unchanged, the outer ring is grey and the painting's
+  edge sits on ring 1. Raw and weighted maps from one pass per view.
+- Reading rules, fixed before the run (layers 16-27, emotion view first): position if the grey ring holds the
+  hottest token about as often as the original outer ring (within 0.10); content if that falls to the ring's token
+  share or below and ring 1 gains it; mixed otherwise. The view differences do not need the border if the
+  interior-only L1 keeps at least 80% of the full L1 for every instruction (medians).
+- Smoke (5 paintings, scratchpad): ran; analysis and sheet work.
+
+### 16:49  Border check results (grey-ring pass 185 s; outputs/border_check/)
+
+Layers 16-27, image only; ring 0 holds 0.207 of the tokens on average in the 304 paintings. Full tables:
+`outputs/border_check/summary.md`; sheet `sheet_original_vs_padded.jpg` (weighted maps).
+
+- Grey-ring test, hottest token on the outer ring, original vs grey ring:
+  - emotion: raw 0.60 vs 0.70, weighted 0.41 vs 0.54; ring 1 (now the painting's edge) does not gain it (raw 0.08
+    vs 0.08, weighted 0.10 vs 0.07). Ring-0 enrichment rises: raw 1.11 vs 1.45, weighted 0.86 vs 1.14.
+  - style: raw 0.47 vs 0.39, weighted 0.31 vs 0.24; genre: raw 0.40 vs 0.38, weighted 0.23 vs 0.26; default: raw
+    0.25 vs 0.17, weighted 0.15 vs 0.10.
+  - Reading against the rule: position. For emotion raw the change is +0.10 (inside the band); weighted it is +0.13,
+    outside the band but upward: the grey ring takes the peak even more often. No view shows the content pattern
+    (a fall to about 0.21 with ring 1 gaining). Style, genre and default stay within 0.10.
+- Interior-only maps (outer ring dropped): the interior L1 to the default keeps 0.91 (emotion), 1.01 (style) and
+  1.01 (genre) of the full L1 on the 5,000 stored raw maps (medians), 0.94 / 1.00 / 1.00 weighted (304); rule met.
+  The ring holds 0.28 (emotion) and 0.21 (style, genre) of the full L1. Peakedness survives inside: top-1% mass of the
+  interior 0.136 / 0.150 / 0.150 against 0.060 for the default (5,000 raw).
+- Reading: the sharper instructed maps and the view differences are not a border effect. The emotion view's border
+  peak is a pull to the edge of the token grid, whatever the edge shows; the frames and margins of the paintings are
+  not what draws it. Why edge tokens draw it (for example, edge tokens holding image-wide information, as register
+  tokens do in ViTs) is not checked.
