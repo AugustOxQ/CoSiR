@@ -19,6 +19,8 @@
         <label class="lbl" for="opacity">Opacity</label>
         <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.5">
         <label class="switch" title="Smooth the heat map when scaling it up"><input type="checkbox" id="smooth" checked><span class="track"></span><span>Smooth</span></label>
+        <label class="switch" title="Colour each token by its rank within the map (percentile), not by its value"><input type="checkbox" id="rank"><span class="track"></span><span>Rank</span></label>
+        <label class="switch" title="Blur the map over neighbouring tokens (Gaussian, sigma 1 token) before colouring"><input type="checkbox" id="blur"><span class="track"></span><span>Blur</span></label>
       </div>
       <div class="spacer"></div>
       <span id="status" class="dim status" role="status"></span>
@@ -57,8 +59,9 @@
       <section class="card sec">
         <h3>Heat colour scale</h3>
         <div id="jetbar" class="jetbar"></div>
-        <div class="jetlbl"><span>0</span><span>max of each map</span></div>
-        <div class="dim">Each map is scaled to its own maximum, so colours compare positions inside one map, not between maps.</div>
+        <div class="jetlbl"><span id="jetlo">0</span><span id="jethi">max of each map</span></div>
+        <div class="dim" id="jetnote">Each map is scaled to its own maximum, so colours compare positions inside one map, not between maps.</div>
+        <div class="dim">Rank colours tokens by their order within the map, which shows coarse areas the few hottest tokens hide. Blur averages each token with its neighbours (Gaussian, sigma 1 token).</div>
       </section>
       <section class="card sec">
         <h3>Attention split bar</h3>

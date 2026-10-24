@@ -79,6 +79,11 @@ async function init() {
   $('layerslider').onchange = () => refreshMaps();
   $('opacity').oninput = () => drawAll();
   $('smooth').onchange = () => drawAll();
+  for (const id of ['rank', 'blur']) {
+    try { $(id).checked = localStorage.getItem('att_' + id) === '1'; } catch (e) {}
+    $(id).onchange = () => { try { localStorage.setItem('att_' + id, $(id).checked ? '1' : '0'); } catch (e) {} legend(); drawAll(); };
+  }
+  legend();
   $('sidetoggle').onclick = () => setSide($('side').classList.contains('hidden'));
   let open = true; try { open = localStorage.getItem('att_side') !== '0'; } catch (e) {}
   setSide(open, true);
@@ -219,18 +224,57 @@ function fit(d) {
   d._cv.width = Math.round(cw * dpr); d._cv.height = Math.round(ch * dpr);
   return true;
 }
+function legend() {
+  const rank = $('rank').checked;
+  $('jetlo').textContent = rank ? 'lowest' : '0';
+  $('jethi').textContent = rank ? 'highest token of each map' : 'max of each map';
+  $('jetnote').textContent = rank
+    ? 'Colours show each token\'s rank within its own map (percentile), so equal steps of colour are equal numbers of tokens.'
+    : 'Each map is scaled to its own maximum, so colours compare positions inside one map, not between maps.';
+}
+// Gaussian blur over the token grid, sigma 1 token, radius 2; weights renormalised at the edges
+function blurMap(map) {
+  const R = map.length, Cc = map[0].length, w = [-2, -1, 0, 1, 2].map(x => Math.exp(-x * x / 2));
+  const pass = (src, horiz) => src.map((row, i) => row.map((_, j) => {
+    let s = 0, n = 0;
+    for (let t = -2; t <= 2; t++) {
+      const a = horiz ? i : i + t, b = horiz ? j + t : j;
+      if (a < 0 || a >= R || b < 0 || b >= Cc) continue;
+      s += w[t + 2] * src[a][b]; n += w[t + 2];
+    }
+    return s / n;
+  }));
+  return pass(pass(map, true), false);
+}
+// percentile rank within the map, 0 (lowest) to 1 (highest); ties share their average rank
+function rankMap(map) {
+  const flat = map.flat(), n = flat.length, idx = flat.map((_, i) => i).sort((a, b) => flat[a] - flat[b]);
+  const r = new Array(n);
+  for (let i = 0; i < n;) {
+    let j = i; while (j + 1 < n && flat[idx[j + 1]] === flat[idx[i]]) j++;
+    for (let t = i; t <= j; t++) r[idx[t]] = (i + j) / 2 / Math.max(n - 1, 1);
+    i = j + 1;
+  }
+  const C = map[0].length;
+  return map.map((row, i) => row.map((_, j) => r[i * C + j]));
+}
 function overlay(d, map) {
-  if (d._ocFor === map) return d._oc;
+  const mode = ($('rank').checked ? 'r' : '') + ($('blur').checked ? 'b' : '');
+  if (d._ocFor === map && d._ocMode === mode) return d._oc;
   const R = map.length, Cc = map[0].length;
   let mx = 0; for (const r of map) for (const x of r) if (x > mx) mx = x;
+  let shown = $('blur').checked ? blurMap(map) : map;
+  let smx = 1;
+  if ($('rank').checked) shown = rankMap(shown);
+  else { smx = 0; for (const r of shown) for (const x of r) if (x > smx) smx = x; }
   const oc = document.createElement('canvas'); oc.width = Cc; oc.height = R;
   const og = oc.getContext('2d'), id = og.createImageData(Cc, R);
   for (let i = 0; i < R; i++) for (let j = 0; j < Cc; j++) {
-    const c = jet(map[i][j] / (mx || 1)), o = 4 * (i * Cc + j);
+    const c = jet(shown[i][j] / (smx || 1)), o = 4 * (i * Cc + j);
     id.data[o] = c[0]; id.data[o + 1] = c[1]; id.data[o + 2] = c[2]; id.data[o + 3] = 255;
   }
   og.putImageData(id, 0, 0);
-  d._oc = oc; d._ocFor = map; d._mx = mx; d._R = R; d._C = Cc;
+  d._oc = oc; d._ocFor = map; d._ocMode = mode; d._mx = mx; d._R = R; d._C = Cc;
   return oc;
 }
 
@@ -257,7 +301,8 @@ function drawAll() {
     g.drawImage(oc, 0, 0, cv.width, cv.height);
     g.globalAlpha = 1;
     d._label.innerHTML = `Map of <b>${esc(label)}</b>` + (note ? `<span class="note">${esc(note)}</span>` : '');
-    d._label.title = `scale 0 to max ${d._mx.toPrecision(4)} (uniform = ${(1 / (d._R * d._C)).toPrecision(3)})`;
+    d._label.title = ($('rank').checked ? 'colour = rank within the map; ' : '') + ($('blur').checked ? 'blurred (sigma 1 token); ' : '')
+      + `raw max ${d._mx.toPrecision(4)} (uniform = ${(1 / (d._R * d._C)).toPrecision(3)})`;
     cv.title = d._label.title;
   }
 }
