@@ -174,8 +174,8 @@ Layers 16-27, image only; ring 0 holds 0.207 of the tokens on average in the 304
     vs 0.08, weighted 0.10 vs 0.07). Ring-0 enrichment rises: raw 1.11 vs 1.45, weighted 0.86 vs 1.14.
   - style: raw 0.47 vs 0.39, weighted 0.31 vs 0.24; genre: raw 0.40 vs 0.38, weighted 0.23 vs 0.26; default: raw
     0.25 vs 0.17, weighted 0.15 vs 0.10.
-  - Reading against the rule: position. For emotion raw the change is +0.10 (inside the band); weighted it is +0.13,
-    outside the band but upward: the grey ring takes the peak even more often. No view shows the content pattern
+  - Reading against the rule: position. For emotion raw the change is +0.102 (at the band); weighted it is +0.122,
+    just outside the band but upward: the grey ring takes the peak even more often. No view shows the content pattern
     (a fall to about 0.21 with ring 1 gaining). Style, genre and default stay within 0.10.
 - Interior-only maps (outer ring dropped): the interior L1 to the default keeps 0.91 (emotion), 1.01 (style) and
   1.01 (genre) of the full L1 on the 5,000 stored raw maps (medians), 0.94 / 1.00 / 1.00 weighted (304); rule met.
