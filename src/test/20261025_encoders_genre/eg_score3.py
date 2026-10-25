@@ -17,6 +17,7 @@ draws). Decisions use unrounded values. Caches (fixed partitions, per-variant bo
 `<outputs>/stage_iii/partitions/<variant>/s0/`; the frozen 12-24 outputs are only read.
 """
 import argparse
+import ast
 import hashlib
 import json
 import multiprocessing
@@ -189,12 +190,44 @@ def _file_sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def scorer_code_sha256():
+    """Hash this scorer and its transitive top-level imports in the round and RB folders.
+
+    Keep provenance outside the score identity: VG2 independently authenticates data, not scorer code.
+    Resolve imports statically, independent of runtime imports; lazy imports inside functions are excluded.
+    Hash names as well as contents, so added/removed dependencies also invalidate old scores.
+    """
+    folders = (eg_paths.ROUND, Path(rb_ami.__file__).parent)
+    pending = [eg_paths.ROUND / 'eg_score3.py']
+    files = set()
+    while pending:
+        path = pending.pop()
+        if path in files:
+            continue
+        files.add(path)
+        for node in ast.parse(path.read_bytes(), filename=str(path)).body:
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                names = [node.module]
+            else:
+                continue
+            for name in names:
+                for folder in folders:
+                    dependency = folder / f'{name}.py'
+                    if dependency.is_file():
+                        pending.append(dependency)
+                        break
+    manifest = {f'{p.parent.name}/{p.name}': _file_sha256(p) for p in files}
+    return hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()
+
+
 def code_state():
-    """git HEAD of this checkout, whether tracked files differ, and the scorer's own hash."""
+    """git HEAD, tracked changes and the scorer/dependency hash."""
     def git(*a):
         return subprocess.run(['git', '-C', str(eg_paths.ROUND), *a], capture_output=True, text=True, check=True).stdout
     return dict(code_commit=git('rev-parse', 'HEAD').strip(), code_dirty=bool(git('status', '--porcelain', '-uno').strip()),
-                code_sha256=_file_sha256(Path(__file__)))
+                code_sha256=scorer_code_sha256())
 
 
 def stage_dir(outputs):
@@ -393,11 +426,20 @@ def _header(ctx, n_draws, smoke):
                 **code_state())
 
 
+def check_score_code(path):
+    """Refuse an existing score made by other code; used by the writer and queue preflight."""
+    path = Path(path)
+    old = json.loads(path.read_text())
+    assert old.get('code_sha256') == scorer_code_sha256(), \
+        f'{path}: stale code_sha256; move {path} aside, then rerun'
+    return old
+
+
 def _write_or_skip(path, record):
     """Write `record`; an existing file with the same identity is kept (never overwritten), another one stops."""
     path = Path(path)
     if path.exists():
-        old = json.loads(path.read_text())
+        old = check_score_code(path)
         assert old['identity'] == record['identity'], f'{path} exists with other inputs; move it aside'
         print(f'{path}: exists with the same inputs, kept', flush=True)
         return old
@@ -820,6 +862,9 @@ def run_report(outputs, smoke=False, ctx=None, old_labels=None, leiden_fn=None):
         fresh = json.loads(fresh_path.read_text())
         assert fresh['stage'] == 'fresh' and fresh['winner'] == sa['winner'] and fresh['smoke'] == bool(smoke)
         assert fresh['identity']['score_all_sha256'] == _file_sha256(all_path), 'score_fresh.json is for another score_all.json'
+    from eg_run import gate_vg2
+    for phase in ('first', 'all') + (('fresh',) if sa['fresh_seeds'] else ()):
+        gate_vg2(Path(outputs), phase)
     ctx = ctx or load_context()
     p_sha, labels = ctx['p_sha'], ctx['labels']
     assert sa['identity']['p_sha256'] == p_sha
@@ -965,7 +1010,7 @@ def parse_failed(items, scored=None):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Stage iii scorer, seed 0.')
-    parser.add_argument('mode', choices=['first', 'all', 'fresh', 'report', 'check'])
+    parser.add_argument('mode', choices=['first', 'all', 'fresh', 'report', 'check', 'check-code'])
     parser.add_argument('what', nargs='?', choices=['vg1'], help='for `check`')
     parser.add_argument('--outputs', type=Path, default=eg_paths.OUTPUTS)
     parser.add_argument('--smoke', action='store_true', help='20 bootstrap draws; outputs under /tmp/claude-0/')
@@ -978,6 +1023,15 @@ def main(argv=None):
     if args.smoke:
         assert eg_paths.smoke_ok(args.outputs), 'smoke needs --outputs under /tmp/claude-0/'
     eg_paths.check_imports()
+    if args.mode == 'check-code':
+        for phase in ('first', 'all', 'fresh'):
+            path = stage_dir(args.outputs) / f'score_{phase}.json'
+            if path.exists():
+                try:
+                    check_score_code(path)
+                except AssertionError as err:
+                    parser.exit(1, f'{err}\n')
+        return
     n_draws = 20 if args.smoke else rb_ami.N_DRAWS
     scored = list(V.FIRST)
     if args.mode == 'all':

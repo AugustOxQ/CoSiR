@@ -42,10 +42,15 @@ nothing else; the table says which.
 | `gpu` | all | `stage_iii`, `stores`, `stage_i`, `stage_ii` in this order (stage iii needs no new store, spec §3.5), the CPU report queues 3, 4, 5 in the background one after the other once stage i ends, then the held table | none: a queue that stops is noted and the chain goes on; exit 1 if any queue stopped |
 
 Every queue can be started again after a stop: finished work is skipped (a store whose `index.json` exists, a gate file
-that exists, a trained run, a score or re-derivation file). A regression file that exists is never rerun, so after a
-fix delete the failed file first (the controller decides; nothing here deletes). X0, V5 and the gate files that exist
-in the build outputs (`stores/x0.json`, `part2/regression/x{1,2}_*.json`, `stage_ii/vl1_scorer.json`,
-`stage_iii/{vg1,vg1_scorer,fresh_parity}.json`) are skipped.
+that exists, a trained run, a score or re-derivation file). Move a failed regression file aside to a dated folder before
+rerunning after a fix; delete nothing. X0, V5 and the gate files that exist in the build outputs (`stores/x0.json`,
+`part2/regression/x{1,2}_*.json`, `stage_ii/vl1_scorer.json`, `stage_iii/{vg1,vg1_scorer}.json`) are skipped.
+Stage iii first checks every existing `score_{first,all,fresh}.json` with `eg_score3.py check-code`: a stale or missing
+top-level `code_sha256` stops with "move <file> aside, then rerun", before training or skipping scores. Manual scoring
+also refuses a stale destination. The hash covers `eg_score3.py` and its transitive top-level imports in this round
+and the RB round (static AST traversal, excluding lazy imports inside functions); it stays outside `identity`, whose
+input hashes VG2 compares. The non-smoke parity step rechecks the weights,
+but keeps `fresh_parity.json` byte for byte when its result is unchanged (commit, dirty state and timing are bookkeeping).
 
 ## Gates and stops (`eg_run.py gate NAME`, exit 1 with an `EG_STOP` line)
 
@@ -61,7 +66,58 @@ After every `eg_train3 train` the queue looks at each run's `run.json`: a run wi
 and no `rerun_of` gets one `train --variants V --seeds S --rerun-failed` call (same seed and code; the trainer moves the old
 folder aside). A run already rerun is never called again (the trainer would refuse). The rerun comes before the scoring
 (`eg_score3` refuses a VG3 failure that was not rerun). A run that stays failed after its rerun goes into the scoring as a failed
-run; if its exports exist and still fail VG3, run `eg_score3.py first|all|fresh --failed VARIANT=CAUSE` by hand.
+run. If an otherwise successful `run.json` has exports that still fail VG3 after the forced rerun, score it by hand
+with `--failed`. Both CLIs accept repeatable flags, but their fresh-seed keys differ:
+
+- Scorer: `--failed VARIANT=CAUSE` for `first`, `all` and `fresh`. On `fresh`, it checks every seed of that variant and
+  marks only those whose exports fail VG3; it refuses the declaration if none fails.
+- VG2: `--failed VARIANT=CAUSE` for seed 0 (`first`/`all`); `--failed variant/sN=CAUSE` for each failed fresh seed.
+  The variant ID keeps its real case (for example `GT-4/s2`). Repeat the fresh declaration for every affected seed.
+
+A hand-run scorer with `--failed` needs VG2 run by hand with the matching flag; the queue supplies no `--failed` flags.
+For seed 0, for example, run `python eg_score3.py first --outputs "$EG_OUTPUTS" --failed 'GA-1=VG3 after forced rerun'`
+and `python eg_vg2.py --phase first --outputs "$EG_OUTPUTS" --failed 'GA-1=VG3 after forced rerun'` (repeat for `all`
+if that variant is still included). For fresh seeds, assuming GT-4 won and only its seed 2 still fails:
+
+```bash
+# fresh VG3 failure
+python eg_score3.py fresh --outputs "$EG_OUTPUTS" --failed 'GT-4=VG3 after forced rerun'
+python eg_vg2.py --phase fresh --outputs "$EG_OUTPUTS" --failed 'GT-4/s2=VG3 after forced rerun'
+```
+
+Add `--smoke` to both commands for a smoke tree. These declarations require the one forced rerun first; they do not
+permit another training run. After VG2 agrees, run `python eg_score3.py report --outputs "$EG_OUTPUTS"` (matching
+`--smoke` if used). `report` itself requires an agreeing VG2 file no older than its score for `first`, `all`, and
+`fresh` when triggered.
+
+## Stage iii recovery after a scorer or VG2 fix
+
+After fixing a VG2 disagreement or a stale-file refusal, preserve the old evidence in a dated folder before rerunning.
+From this round's code folder, set `EG_OUTPUTS` to the output tree being repaired and use the following conservative
+recipe. It moves aside all three scores, their VG2 records, both reports, the partition/bootstrap/reading caches, and
+the VG1 scorer result so that VG1 is checked on the final code. Nothing is deleted. Keep `train/`, `vg1.json` and
+`fresh_parity.json`: saved training exports/weights stay fixed under VG4, and unchanged parity evidence keeps its hash.
+If the parity result itself was wrong, trace the cause and move that file aside too before the non-smoke parity rerun.
+
+```bash
+# stage iii recovery
+: "${EG_OUTPUTS:?set EG_OUTPUTS to the stage iii output tree}"
+stage="$EG_OUTPUTS/stage_iii"
+mkdir -p "$stage/aside"
+aside=$(mktemp -d "$stage/aside/$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")
+for name in score_first.json score_all.json score_fresh.json rederive_vg2_first.json rederive_vg2_all.json rederive_vg2_fresh.json reported.json reported.md partitions vg1_scorer.json; do
+    if [[ -e "$stage/$name" ]]; then mv "$stage/$name" "$aside/"; fi
+done
+"${EG_PYTHON:-python}" eg_score3.py check vg1 --outputs "$EG_OUTPUTS"
+bash eg_queue_stage_iii.sh
+```
+
+The queue reruns `first`, VG2 first, `all`, VG2 all, and, when triggered, parity, `fresh`, VG2 fresh, then `report`.
+Finished training runs are reused. Keep the existing queue settings (`EG_SMOKE`, `EG_DEVICE`, `EG_PYTHON`, workers).
+When manual `--failed` declarations are needed, run the scorer and VG2 phases by hand with the matching flags above,
+gating each phase with `python eg_run.py gate vg2 --phase PHASE --outputs "$EG_OUTPUTS"` before continuing; finish
+with `report`. A smoke recovery still needs the copied parity evidence. Stage iii weight candidates for later removal
+remain on the pending deletions list; this recovery moves only derived files and never removes weights.
 
 ## Deferral for time (D15)
 

@@ -430,6 +430,13 @@ def regress_vg1(data, outputs, device):
     return record
 
 
+def parity_result(record):
+    """Parity evidence without per-run commit, dirty state or timing bookkeeping."""
+    if isinstance(record, dict):
+        return {k: parity_result(v) for k, v in record.items() if k not in ('code_commit', 'code_dirty', 'seconds')}
+    return record
+
+
 def parity(data, outputs, device, seeds):
     """R6-5 at fresh seeds (into eg_paths.iii_run) against 12-24's K4 weights of the same seed (rule §4.3, C12)."""
     outputs = check_outputs(outputs, False)
@@ -451,6 +458,10 @@ def parity(data, outputs, device, seeds):
     commit, dirty = code_commit()                  # of the last call; every seed's own commit is in its item
     record.update(code_commit=commit, code_dirty=dirty, reference=str(K4_WEIGHTS))
     record['pass'] = all(record['seeds'].get(str(s), {}).get('pass') for s in V.FRESH_SEEDS)
+    if path.exists():
+        old = json.loads(path.read_text())
+        if parity_result(old) == parity_result(record):
+            return old
     atomic_record(path, record)
     return record
 

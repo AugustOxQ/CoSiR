@@ -384,3 +384,56 @@ def test_reported_markdown_rounds_lists_fresh_epochs_and_notes_the_adaptor(tmp_p
     assert f'| {WINNER} | 2 | failed' in text
     r['winner'], r['A_genre_winner'], r['fresh'], r['seed0_outcome'] = None, None, None, 'III-NONE'
     assert 'A_genre -' in s3.report_markdown(r)
+
+
+class ReadingsReached(Exception):
+    pass
+
+
+def report_gate_files(out, fresh):
+    import os
+    write_score_all(out, fresh=fresh)
+    stage = s3.stage_dir(out)
+    put_json(stage/'score_first.json', {})
+    if fresh:
+        put_json(stage/'score_fresh.json', dict(stage='fresh', winner=WINNER, smoke=True,
+                 identity=dict(score_all_sha256=s3._file_sha256(stage/'score_all.json'))))
+    for phase in ('first', 'all') + (('fresh',) if fresh else ()):
+        score = stage/f'score_{phase}.json'
+        gate = stage/f'rederive_vg2_{phase}.json'
+        put_json(gate, dict(phase=phase, agree=True))
+        os.utime(score, ns=(1_000_000_000, 1_000_000_000))
+        os.utime(gate, ns=(2_000_000_000, 2_000_000_000))
+
+
+@pytest.mark.parametrize('phase', ['first', 'all', 'fresh'])
+@pytest.mark.parametrize('fault', ['missing', 'disagrees', 'older', 'wrong_phase'])
+def test_report_refuses_without_current_vg2_agreement(tmp_path, monkeypatch, phase, fault):
+    import os
+    import eg_run
+    report_gate_files(tmp_path, fresh=phase == 'fresh')
+    gate = s3.stage_dir(tmp_path)/f'rederive_vg2_{phase}.json'
+    if fault == 'missing':
+        gate.rename(gate.with_name('aside_' + gate.name))
+    elif fault == 'disagrees':
+        put_json(gate, dict(phase=phase, agree=False))
+    elif fault == 'wrong_phase':
+        put_json(gate, dict(phase='wrong', agree=True))
+    else:
+        os.utime(gate, ns=(0, 0))
+    def readings():
+        raise ReadingsReached('report read inputs before VG2 held')
+    monkeypatch.setattr(s3, 'load_context', readings)
+    with pytest.raises(eg_run.Stop, match='VG2|rederive_vg2'):
+        s3.run_report(tmp_path, smoke=True)
+    assert not (s3.stage_dir(tmp_path)/'reported.json').exists()
+
+
+@pytest.mark.parametrize('fresh', [False, True])
+def test_report_starts_readings_after_all_required_vg2_gates(tmp_path, monkeypatch, fresh):
+    report_gate_files(tmp_path, fresh)
+    def readings():
+        raise ReadingsReached
+    monkeypatch.setattr(s3, 'load_context', readings)
+    with pytest.raises(ReadingsReached):
+        s3.run_report(tmp_path, smoke=True)

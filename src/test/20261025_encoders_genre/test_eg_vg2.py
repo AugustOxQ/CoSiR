@@ -416,7 +416,7 @@ def add_fresh_files(f, fresh_caches=True):
         runs=runs, reading='Seed-0 outcome III-GO stands; fresh seeds: C-HOLDS.',
         identity=dict(p_sha256=f['p_sha'], label_sha256=f['label_sha'], n_draws=20, winner='GT-2', seeds=[1,2,3],
           score_all_sha256=digest((out/'stage_iii/score_all.json').read_bytes()), fresh_parity_sha256=parity_hash,
-          failed={}, run_sha256=run_hashes))
+          failed={}, run_sha256=run_hashes, img_sha256=images))
     dump(out/'stage_iii/score_fresh.json', fresh)
     return rb2, fresh
 
@@ -461,6 +461,7 @@ def test_no_c_outcome_record_agrees(files):
                  genre_vs_targets=None, runs=None, no_outcome_cause='R6-5 parity failed',
                  reading='Seed-0 outcome III-GO stands; no C outcome is stated.')
     fresh['identity'].pop('run_sha256')
+    fresh['identity'].pop('img_sha256')
     fresh['identity'].update(fresh_parity_sha256=parity_hash, n_draws=37, failed={}, code_dirty=True)
     dump(files['out']/'stage_iii/score_fresh.json', fresh)
     report = verify(files, 'fresh', rb_part2=rb2)
@@ -508,6 +509,7 @@ def test_fresh_nonfinite_no_outcome_agrees(files):
     run_hash = digest(path.read_bytes())
     fresh['runs']['GT-2']['2'] = dict(status='failed', cause=run['cause'], best_epoch={}, run_sha256=run_hash)
     fresh['identity']['run_sha256']['GT-2']['2'] = run_hash
+    fresh['identity'].pop('img_sha256')
     fresh.update(c_outcome=None, effects=None, genre_vs_targets=None, no_outcome_cause='non-finite run',
                  reading='Seed-0 outcome III-GO stands; no C outcome is stated.')
     dump(files['out']/'stage_iii/score_fresh.json', fresh)
@@ -598,3 +600,27 @@ def test_iii_none_reading_requires_neither_go_nor_promising(files):
     record['reading'] += ' The winner remains neither GO nor promising.'
     vg.compare_record(inputs, ours, record, 'fresh')
     assert bad == []
+
+
+def test_real_fresh_writer_with_c_outcome_agrees_end_to_end(files, monkeypatch):
+    import eg_score3 as scorer
+    rb2, _ = add_fresh_files(files)
+    monkeypatch.setattr(scorer.eg_paths, 'P_SHA256', files['p_sha'])
+    check_export = scorer.rb_pick.vp2_problem
+    monkeypatch.setattr(scorer.rb_pick, 'vp2_problem', lambda x: check_export(x, n_rows=40))
+    monkeypatch.setattr(scorer.rb_pick, 'WIDTH', 20)
+    # The small fixture's partitions are real; give their scorer sidecars the current code identity.
+    for path in (files['out']/'stage_iii/partitions').glob('*/s[123]/*.json'):
+        side = json.loads(path.read_text())
+        ident = side['identity']
+        side['identity'] = scorer._identity(ident['variant'], ident['aspect'], ident['p_sha256'],
+                                            ident['img_sha256'], ident['seed'])
+        dump(path, side)
+    path = files['out']/'stage_iii/score_fresh.json'
+    path.rename(path.with_name('fixture_score_fresh.json'))
+    ctx = dict(p_sha=files['p_sha'], labels={a: files['y'] for a in vg.ASPECTS})
+    record = scorer.run_fresh(files['out'], 20, 1, smoke=True, ctx=ctx)
+    assert record['c_outcome'] == 'C-HOLDS'
+    assert set(record['identity']['img_sha256']) == {'GT-2', vg.BASE}
+    report = verify(files, 'fresh', rb_part2=rb2)
+    assert report['agree'], report['differences']

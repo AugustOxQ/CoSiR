@@ -160,3 +160,152 @@ def test_variant_folders_outside_the_allowed_set_stop_the_scorer(tmp_path):
     with pytest.raises(AssertionError, match='VG4'):
         s3.check_variant_dirs(tmp_path, ['GT-2', 'GT-4'])
     s3.check_variant_dirs(tmp_path, ['GT-2', 'GT-4', 'GT-6'])
+
+
+@pytest.mark.parametrize('old_hash', ['old scorer', None])
+def test_existing_score_refuses_stale_code_without_overwriting(tmp_path, old_hash):
+    path = tmp_path / 'score_first.json'
+    old = dict(identity={'p_sha256': 'p'}, code_sha256=old_hash)
+    path.write_text(json.dumps(old))
+    before = path.read_bytes()
+    record = dict(identity=old['identity'], **s3.code_state())
+    with pytest.raises(AssertionError, match=f'move {path} aside, then rerun'):
+        s3._write_or_skip(path, record)
+    assert path.read_bytes() == before
+
+
+def test_score_code_hash_covers_imported_round_modules(monkeypatch):
+    original = s3._file_sha256
+    before = s3.code_state()['code_sha256']
+    monkeypatch.setattr(s3, '_file_sha256', lambda p: 'changed' if p.name == 'eg_variants.py' else original(p))
+    assert s3.code_state()['code_sha256'] != before
+
+
+@pytest.mark.parametrize('module, changes_hash', [
+    ('eg_pinfer.py', False), ('eg_score.py', False), ('eg_run.py', False),
+    ('eg_score3.py', True), ('eg_paths.py', True), ('eg_variants.py', True),
+    ('rb_ami.py', True), ('rb_data.py', True), ('rb_pick.py', True),
+    ('rb_paths.py', True), ('rb_rows.py', True), ('rb_score3_dependency.py', True),
+])
+def test_score_code_hash_tracks_only_static_module_dependencies(tmp_path, monkeypatch, module, changes_hash):
+    import shutil
+    from pathlib import Path
+
+    folders = []
+    for source, pattern in ((eg_paths.ROUND, 'eg_*.py'), (Path(s3.rb_ami.__file__).parent, 'rb_*.py')):
+        folder = tmp_path / source.name
+        folder.mkdir()
+        for path in source.glob(pattern):
+            shutil.copyfile(path, folder / path.name)
+        folders.append(folder)
+    round_folder, rb_folder = folders
+    # A from-import reached through rb_pick -> rb_rows; never imported at runtime.
+    rows = rb_folder / 'rb_rows.py'
+    rows.write_text(rows.read_text() + '\nfrom rb_score3_dependency import value as dependency_value\n')
+    (rb_folder / 'rb_score3_dependency.py').write_text('import rb_rows\nvalue = 1\n')  # cycle
+    monkeypatch.setattr(eg_paths, 'ROUND', round_folder)
+    monkeypatch.setattr(s3.rb_ami, '__file__', str(rb_folder / 'rb_ami.py'))
+    before = s3.scorer_code_sha256()
+    # A score remains valid after unrelated edits, and is refused after dependency edits.
+    score = tmp_path / 'score_first.json'
+    score.write_text(json.dumps(dict(code_sha256=before)))
+    path = (round_folder if module.startswith('eg_') else rb_folder) / module
+    path.write_text(path.read_text() + '\n# changed after scoring\n')
+    assert (s3.scorer_code_sha256() != before) == changes_hash
+    if changes_hash:
+        with pytest.raises(AssertionError, match='stale code_sha256'):
+            s3.check_score_code(score)
+    else:
+        s3.check_score_code(score)
+
+
+@pytest.mark.parametrize('phase', ['first', 'all', 'fresh'])
+def test_queue_refuses_stale_score_before_any_work(tmp_path, phase):
+    import os
+    import subprocess
+    import sys
+    stage = tmp_path / 'stage_iii'
+    stage.mkdir()
+    path = stage / f'score_{phase}.json'
+    path.write_text(json.dumps(dict(code_sha256='old scorer', identity={})))
+    # Any work other than the real code preflight fails immediately; no runner sees real outputs.
+    wrapper = tmp_path / 'python'
+    wrapper.write_text(f'#!{sys.executable}\nimport os, sys\n'
+                       'if "check-code" in sys.argv:\n'
+                       '    os.execv(sys.executable, [sys.executable] + sys.argv[1:])\n'
+                       'print("UNEXPECTED_WORK", sys.argv)\nsys.exit(1)\n')
+    wrapper.chmod(0o755)
+    env = dict(os.environ, EG_OUTPUTS=str(tmp_path), EG_PYTHON=str(wrapper), EG_DEVICE='cpu',
+               EG_PENDING=str(tmp_path/'pending.md'), EG_GPU_LOCK=str(tmp_path/'gpu.lock'), EG_DRY='0', EG_SMOKE='0')
+    result = subprocess.run(['bash', str(eg_paths.ROUND/'eg_queue_stage_iii.sh')],
+                            env=env, capture_output=True, text=True, timeout=30)
+    assert result.returncode != 0
+    assert f'move {path} aside, then rerun' in result.stdout + result.stderr
+    assert 'UNEXPECTED_WORK' not in result.stdout + result.stderr
+
+
+def doc_shell_block(marker):
+    import re
+    text = (eg_paths.ROUND/'eg_queue.md').read_text()
+    blocks = re.findall(r'```bash\n(.*?)```', text, re.S)
+    matching = [block for block in blocks if block.startswith(marker + '\n')]
+    assert len(matching) == 1, f'missing executable documentation: {marker}'
+    return matching[0]
+
+
+def test_documented_stage_iii_recovery_preserves_files_and_reruns(tmp_path):
+    import os
+    import subprocess
+    block = doc_shell_block('# stage iii recovery')
+    stage = tmp_path/'stage_iii'
+    stage.mkdir()
+    names = [f'{kind}_{phase}.json' for kind in ('score', 'rederive_vg2') for phase in ('first', 'all', 'fresh')]
+    names += ['reported.json', 'reported.md', 'vg1_scorer.json', 'partitions']
+    for name in names:
+        (stage/name).write_text(name)
+    (stage/'train').mkdir()
+    (stage/'train/keep').write_text('trained weights')
+    (stage/'fresh_parity.json').write_text('parity evidence')
+    commands = tmp_path/'commands'
+    commands.mkdir()
+    for name in ('python', 'bash'):
+        path = commands/name
+        path.write_text('#!/bin/sh\nprintf "%s\\n" "' + name + ' $*" >> "$CALLS"\n')
+        path.chmod(0o755)
+    calls = tmp_path/'calls'
+    env = dict(os.environ, EG_OUTPUTS=str(tmp_path), EG_PYTHON=str(commands/'python'),
+               PATH=str(commands)+os.pathsep+os.environ['PATH'], CALLS=str(calls))
+    subprocess.run(['/bin/bash', '-euc', block], env=env, cwd=eg_paths.ROUND, check=True, timeout=10)
+    for name in names:
+        moved = list((stage/'aside').glob(f'*/{name}'))
+        assert len(moved) == 1 and moved[0].read_text() == name
+        assert not (stage/name).exists()
+    assert (stage/'train/keep').read_text() == 'trained weights'
+    assert (stage/'fresh_parity.json').read_text() == 'parity evidence'
+    assert calls.read_text().splitlines() == [
+        f'python eg_score3.py check vg1 --outputs {tmp_path}', 'bash eg_queue_stage_iii.sh']
+
+
+def test_documented_fresh_failed_flags_pass_both_real_cli_parsers(tmp_path, monkeypatch):
+    import shlex
+    import eg_vg2
+    block = doc_shell_block('# fresh VG3 failure')
+    stage = tmp_path/'stage_iii'
+    stage.mkdir()
+    (stage/'score_all.json').write_text(json.dumps(dict(winner='GT-4')))
+    captured = {}
+    def score(outputs, draws, workers, smoke, failed):
+        captured['scorer'] = failed
+        return dict(winner='GT-4', c_outcome=None, no_outcome_cause='VG3', reading='no C outcome')
+    def verify(*args, **kwargs):
+        captured['vg2'] = kwargs['failed']
+        return dict(agree=True, differences=[], n_draws=20, complete=True)
+    monkeypatch.setattr(s3, 'run_fresh', score)
+    monkeypatch.setattr(eg_vg2, 'run', verify)
+    for line in block.splitlines():
+        if line.startswith('python '):
+            args = [word.replace('$EG_OUTPUTS', str(tmp_path)) for word in shlex.split(line)]
+            main = s3.main if args[1] == 'eg_score3.py' else eg_vg2.main
+            assert main(args[2:]) == 0
+    assert captured == dict(scorer={'GT-4': 'VG3 after forced rerun'},
+                            vg2={'GT-4/s2': 'VG3 after forced rerun'})
