@@ -11,6 +11,6 @@ if [[ "$dry" != 1 && ! -f "$outputs/part2/verdict_stage$stage.json" && "$stage" 
     note "no verdict_stage4.json (no candidate ran stage 4): nothing to report"; finish
 fi
 gate "v2_$stage" || finish
-# Default candidates of rb_part2_report: every block of the verdict file with an outcome.
+# Default candidates of rb_part2_report: every block of the verdict file with an outcome and no reported block yet.
 step "report$stage" cpu "$here/rb_part2_report.py" --stage "$stage" --outputs "$outputs" --workers 8 "${smoke[@]}" || finish
 finish

@@ -12,7 +12,7 @@ script `scripts/extract_features.py` and the round folder are found from the que
 | `RB_SMOKE=1` | off | adds `--smoke` where the runner has it; `RB_OUTPUTS` must be under `/tmp/claude-0/` (else exit 2) |
 | `RB_PYTHON` | CoSiR env python | |
 | `RB_LOCK_WAIT`, `RB_GPU_LOCK` | 14400 s, `/tmp/gpu0.lock` | GPU steps: `flock -o -w $RB_LOCK_WAIT $RB_GPU_LOCK env CUDA_VISIBLE_DEVICES=0 python -u ...` |
-| `RB_DEFER` | empty | e.g. `K5`: candidates left out of stages 3, 4, 5 for time (spec D32; logged; never dropped; run the stage again without it) |
+| `RB_DEFER` | empty | e.g. `K5`: candidates left out of stages 3, 4, 5 for time (spec D32; logged; never dropped; run `stores`, then the stage again without it) |
 | `RB_DEVICE` | `cuda` | `cpu` only for a plumbing test without the GPU |
 | `RB_DRY=1` | off | print each step's command, run nothing |
 | `RB_CPU_LOCK` | `/tmp/rb_cpu.lock` | the CPU-only queues (1x, reports) run one at a time |
@@ -78,7 +78,7 @@ and the pick goes on without it. A failure that is not a VP2 assertion stops the
 ### Triggers, K5, stores
 
 `pick.json` `triggers {K4, K5}` are read by `rb_run candidates|triggers` (never re-derived). K4 exists unless P-KEEP; K5, M5
-and the two DINOv2 stores only when K5 is triggered. Candidates run in the order K2, K3, K4, K5. Stage 3 sets `soft=1` on the
+and the two DINOv2 stores only when K5 is triggered (the stores also not while K5 is in `RB_DEFER`). Candidates run in the order K2, K3, K4, K5. Stage 3 sets `soft=1` on the
 scorer: its exit 1 (a candidate without an outcome, V failure) is reported; `rb_run check-verdict` then demands a block for
 every candidate, so a crash still stops the queue. A candidate whose training, inference or matched arm fails does not stop the others: the queue
 notes it (`RB_STAGE3_NOTE K.. failed`), the scorer gives it a block without an outcome (the cause in `v_failure`), and the
@@ -90,7 +90,8 @@ failure is a bug to trace, not an outcome.
 `rb_run candidates 3|4` lists only the candidates without a block in that stage's verdict file, so a rerun (for example
 of stage 3 without `RB_DEFER` after a split) trains and scores only the new ones; `rb_score` merges blocks by name and
 refuses to recompute a finished block, whose recorded code commit may have changed. `check-verdict` checks every expected
-candidate. Stage 5 recomputes every model (its blocks hold no commit, so finished ones come out identical, 5 to 10 min).
+candidate. After a K5 deferral, run `stores` first (`rb_queue_gpu.sh` does): the DINOv2 stores are built only while K5
+is not deferred, and a K5 run without them gets a block without an outcome, which a rerun does not retry. Stage 5 recomputes every model (its blocks hold no commit, so finished ones come out identical, 5 to 10 min).
 A candidate whose block has no outcome is not rescored by a rerun; that needs the scorer's `--replace REASON`.
 
 Part 2 makes no forced rerun (V4's "still fails V3 after the forced rerun"): `rb_student` and `rb_matched` refuse to
