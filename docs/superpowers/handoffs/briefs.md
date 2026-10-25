@@ -974,3 +974,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21g-handoff.md
 - New chat: tab 'r10 build 21g', session 3167e5d0-510a-4bf1-8444-8701183bff48
 
+[brief] CoSiR: r10 build 21g -> r10 run 21 (2026-10-25 22:58 Amsterdam)
+- Done: build 21 complete: 16 tickets, final review, one fix wave, re-review PASS; merged into main at 960b1e4.
+- State: gates passed in the build: X0, X1, X2, VG1, fresh-seed parity, VL1 (a); 397 round tests pass.
+- Next: end estimate against 11:00 Monday, then stage iii, the stores queue, a stage i smoke, stage i, stage ii.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-run-21-handoff.md
+- New chat: tab 'r10 run 21', session 2b7153d0-a761-498d-a849-cc1a1704b69b
+
