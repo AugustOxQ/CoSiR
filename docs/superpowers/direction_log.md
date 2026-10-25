@@ -22,8 +22,9 @@ falls below PercepT core; the teacher and the shared trunk are close to redundan
 and style rise (style 0.3945 against the instructed image's 0.3952), confounded with the teacher's loss share.
 Next (user, 2026-10-25): part 1, on development paintings, checks the caption-free variants on paintings that did not
 choose D2, the genre information ceiling and the four-view statistics; part 2 builds code for other backbones and
-ArtELingo-28; the grill of both is open in decide 17. The 11-10 gate is the instructed Qwen bar and aspect-named
-image retrieval.
+ArtELingo-28. The grill closed in decide 18 (2026-10-25): a fixed rule on 29,232 fresh development paintings picks
+the recipe, then SigLIP 2 and CLIP B/32 students face the strongest PercepT core arm on held paintings; the spec is
+written in decide 19, then the build. The 11-10 gate is the instructed Qwen bar and aspect-named image retrieval.
 
 ## Parked ideas
 
@@ -92,10 +93,21 @@ image retrieval.
   training recipe as a setting; its runs follow part 1's recipe. Type confirmation and exploration (part 1),
   incremental (part 2); medium loop. Retrieval for the 11-10 gate: image queries with an aspect name only (user,
   after seeing the recommendation). The side task's four ideas are parked (user, after seeing the recommendation).
+- **Idea (B):** grill (decides 17 and 18, 2026-10-25). Part 1 scores six recipes (D2, image endpoints only, no
+  own-caption terms; teacher at 1/5 and 1/3; one seed) on the 29,232 train-side paintings outside the old sample
+  (user). A fixed guarded rule picks part 2's recipe: at least "small" on one aspect, never more than one 12-22 seed
+  range below D2, the largest mean gain wins, else D2 (user). Students on SigLIP 2, then CLIP B/32; DINOv2 only if
+  image endpoints only wins (user, after seeing the recommendation); Qwen captions, graphs and teacher kept (user,
+  after seeing the recommendation). Bar: the strongest PercepT core arm per aspect, a matched arm on the backbone's
+  image included; the frozen backbone image reported (user, after seeing the recommendation). Held, trained on the
+  13,400 first, then the full split unless NO-GO (user; the NO-GO rule after seeing the recommendation).
+  ArtELingo-28 as a test set and a descriptive culture split (user). The brief is approved through the closing
+  summary (user, 2026-10-25 03:02).
 - **Why:** part 1 is cheap and settles the recipe that item 5 runs; building both together saves a loop before 11-10.
 - **Links:** [report](../reports/auto/percept/2026-12-22_d2_ablation.md) ·
   [user-read report](../user_read/2026-10-21_d2_ablation.md) · [spec](specs/2026-10-21-d2-ablation-design.md) ·
-  [handoff](handoffs/2026-10-21-r10-decide-17-handoff.md)
+  [handoff](handoffs/2026-10-21-r10-decide-17-handoff.md) ·
+  [grill handoff](handoffs/2026-10-25-r10-decide-19-handoff.md)
 
 ## 2026-10-21 · Claim test read: D2 passes both stages (S1-GO, S2-GO); an ablation and analysis of the design before more datasets and backbones
 
