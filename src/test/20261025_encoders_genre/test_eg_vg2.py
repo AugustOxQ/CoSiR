@@ -54,6 +54,14 @@ def test_unguarded_highest_rung_uses_neighbors(tmp_path):
     assert choice['extras'] == ['GT-3', 'GT-6']
 
 
+def test_all_failed_first_variants_have_no_closest_guard(tmp_path):
+    records = {v: vg.variant_result(dict(status='failed', cause='non-finite loss', best_epoch={}), None)
+               for v in vg.variants.FIRST}
+    choice = vg.choose_first(records)
+    assert choice == dict(closest=None, method=None, rung=None, guarded_pool=False,
+                          closest_guarded=None, extras=[])
+
+
 def test_ties_keep_first_and_guard_is_inclusive(tmp_path):
     records = {v: result(.51, -.0046, -.0082) for v in vg.variants.FIRST}
     choice = vg.choose_first(records)
@@ -572,5 +580,21 @@ def test_missing_run_provenance_is_reported(files):
 
 def test_reading_preserves_seed0_outcome(tmp_path):
     assert 'not repeated on fresh seeds' in vg.fresh_reading('III-PROM', 'C-FAILS')
-    assert 'does not make it GO or promising' in vg.fresh_reading('III-NONE', 'C-HOLDS')
+    assert 'neither GO nor promising' in vg.fresh_reading('III-NONE', 'C-HOLDS')
+    assert 'neither GO nor promising' in vg.fresh_reading('III-NONE', None)
     assert 'no C outcome' in vg.fresh_reading('III-GO', None)
+
+
+def test_iii_none_reading_requires_neither_go_nor_promising(files):
+    _, record = add_fresh_files(files)
+    record.update(seed0_outcome='III-NONE', A_genre_seed0=.4,
+                  reading='Seed-0 outcome III-NONE stands; fresh seeds C-HOLDS.')
+    ours = dict(record, reading='III-NONE; C-HOLDS; the winner remains neither GO nor promising.')
+    bad = []
+    inputs = vg.Inputs(files['out'], files['rb'], 40, 20, files['p_sha'], bad)
+    vg.compare_record(inputs, ours, record, 'fresh')
+    assert 'score_fresh/reading' in {d['path'] for d in bad}
+    bad.clear()
+    record['reading'] += ' The winner remains neither GO nor promising.'
+    vg.compare_record(inputs, ours, record, 'fresh')
+    assert bad == []

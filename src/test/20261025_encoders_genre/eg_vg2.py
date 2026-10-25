@@ -127,7 +127,7 @@ def choose_first(records):
     guarded = [v for v in usable if records[v]['guarded']]
     if not usable:
         return dict(closest=None, method=None, rung=None, guarded_pool=False,
-                    closest_guarded=False, extras=[])
+                    closest_guarded=None, extras=[])
     closest = max(guarded or usable, key=lambda v: records[v]['A_genre'])
     method, rung = variants.parse(closest)
     ladder = variants.LADDERS[method]
@@ -168,9 +168,10 @@ def c_outcome(effects):
 def fresh_reading(seed0_outcome, outcome):
     sentence = f'Seed-0 outcome {seed0_outcome} stands; '
     if outcome is None:
-        return sentence + 'no C outcome is stated.'
+        return sentence + 'no C outcome is stated.' + (
+            ' The winner remains neither GO nor promising.' if seed0_outcome == 'III-NONE' else '')
     if seed0_outcome == 'III-NONE':
-        return sentence + f'{outcome} does not make it GO or promising.'
+        return sentence + f'{outcome}; the winner remains neither GO nor promising.'
     if outcome == 'C-FAILS':
         return sentence + 'not repeated on fresh seeds (C-FAILS).'
     return sentence + f'fresh seeds: {outcome}.'
@@ -535,6 +536,8 @@ def compare_record(inputs, ours, theirs, phase):
         tokens = [ours['seed0_outcome']]
         if ours['c_outcome']:
             tokens.append(ours['c_outcome'])
+        if ours['seed0_outcome'] == 'III-NONE':
+            tokens.append('neither GO nor promising')
         if ours['seed0_outcome'] in ('III-GO', 'III-PROM') and ours['c_outcome'] == 'C-FAILS':
             tokens.append('not repeated on fresh seeds')
         if not isinstance(reading, str) or not all(t in reading for t in tokens):
