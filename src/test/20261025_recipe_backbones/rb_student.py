@@ -27,6 +27,7 @@ from threadpoolctl import threadpool_limits
 import rb_paths
 import rb_rows
 import rb_encoders
+import rb_score
 import ab_train
 import ct_d2
 import ct2_d2
@@ -149,6 +150,7 @@ def train_cohort(scale, s, inputs, graphs, manifests, images, encoder, recipe_na
     """
     assert scale in SCALES and encoder in rb_encoders.WIDTH
     recipe = rb_rows.recipe(recipe_name)
+    assert recipe['base']['inputs'] == 'default', 'the student takes the default inputs (Qwen caption mean)'
     width = rb_encoders.WIDTH[encoder]
     assert images.shape == (len(s['first']), width) and images.dtype == np.float32 and np.isfinite(images).all()
     assert all(inputs[a]['cap'].shape == (len(s['first']), 2048) for a in ASPECTS)
@@ -240,6 +242,10 @@ def train(scale, encoder, recipe_name, seeds, device, outputs, *, smoke=False, m
     if device.type == 'cuda':
         assert os.environ.get('CUBLAS_WORKSPACE_CONFIG') == ':4096:8', 'set CUBLAS_WORKSPACE_CONFIG=:4096:8 (CT queue)'
     arm = arm or arm_for(encoder, recipe_name)
+    pick = outputs / 'part1/pick.json'
+    if arm in ('K4', 'K5') and pick.exists():     # rule §4.1: the pick decides the recipe of K4 and K5
+        assert recipe_name == picked_recipe(outputs), \
+            f'{arm} trains the recipe of {pick} ({picked_recipe(outputs)}), not {recipe_name}'
     root = Path(root) if root is not None else outputs / 'part2' / scale
     torch.set_num_threads(8)
     s, inputs, graphs, manifests = load_scale(scale)
@@ -251,8 +257,8 @@ def train(scale, encoder, recipe_name, seeds, device, outputs, *, smoke=False, m
         if state == 'done':
             print(f'{arm} {recipe_name} s{seed}: verified weights; skip', flush=True)
             continue
-        held = list((root / 'held' / arm).glob(f'*__s{seed}.npz')) if (root / 'held' / arm).exists() else []
-        assert not held, 'V4: cannot retrain after held outputs exist'
+        held = sorted((root / 'held' / arm).rglob('*.npz')) if (root / 'held' / arm).exists() else []
+        assert not held, f'V4: no new training of {arm} once held outputs exist (any seed): {held[0]}'
         if state == 'broken':
             _move_aside(root, arm, seed, recipe_name)
         result[seed] = train_cohort(scale, s, inputs, graphs, manifests, images, encoder, recipe_name, seed, device,
@@ -325,8 +331,8 @@ def require_regression(outputs, scale):
     stage = {v: k for k, v in STAGES.items()}[scale]
     path = Path(outputs) / 'part2/regression' / f'{stage}.json'
     assert path.is_file(), f'V1: {path} missing; run --regress {stage} first'
-    record = json.loads(path.read_text())
-    assert record.get('pass') is True, f'V1: {stage} regression did not pass; no held output of a new arm'
+    # the shared V1 rule (rb_score): sample = its stage 3, full = its stage 4 (which also reads verdict_stage3.json)
+    rb_score.require_gate(Path(outputs), {'sample': 3, 'full': 4}[scale], [])
 
 
 def ct_root(scale):
@@ -406,21 +412,6 @@ def infer_arm(scale, arm, seeds, kinds, outputs, device=None, *, smoke=False, ro
 
 # --- regressions (stage 2 sample, stage 3a full) -----------------------------------------------------------------
 
-def write_regression_items(path, items):
-    """Merge items {name: {'pass': bool, ...}} into a regression file {pass, items}; pass = every item passes.
-
-    Items of other tickets stay; an item of the same name is replaced (same file shape as `rb_score`'s writer).
-    """
-    assert all(isinstance(item.get('pass'), bool) for item in items.values())
-    path = Path(path)
-    record = json.loads(path.read_text()) if path.exists() else dict(items={})
-    assert isinstance(record['items'], dict)
-    record['items'].update(items)
-    record['pass'] = all(item['pass'] for item in record['items'].values())
-    ms_train.head.atomic_json(path, record)
-    return record
-
-
 def _bits(x):
     return np.ascontiguousarray(x).view(np.uint16 if x.dtype == np.float16 else np.uint8)
 
@@ -477,7 +468,7 @@ def regress(stage, device, outputs, *, smoke=False):
     x_held = rb_encoders.full_images('qwen3vl_emb_2b', names)
     items = regression_items(reg_root, ct, x_held)
     items['student/held_list'] = {'pass': sha256 == rb_paths.HELD_SHA256, 'sha256': sha256}
-    record = write_regression_items(outputs / 'part2/regression' / f'{stage}.json', items)
+    record = rb_score.write_regression_items(outputs / 'part2/regression' / f'{stage}.json', items)
     print(f'{stage}: pass={record["pass"]}; student items failing: '
           f'{[k for k, v in items.items() if not v["pass"]]}', flush=True)
     return record

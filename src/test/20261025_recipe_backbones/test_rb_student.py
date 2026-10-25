@@ -263,6 +263,49 @@ def test_sample_scale_patches_the_sheet_loop_like_the_full_scale(tmp_path, tiny,
     assert ms_train.make_config is rb_student.SHEET_MAKE_CONFIG and ms_train.save_output is rb_student.SHEET_SAVE_OUTPUT
 
 
+@pytest.mark.parametrize('scale', ['full', 'sample'])
+@pytest.mark.parametrize('name', ['R6-3', 'R7-5'])
+def test_the_loop_runs_under_the_switched_loss_at_both_scales(tmp_path, tiny, monkeypatch, scale, name):
+    """Wrap the loop itself (no training): what it sees as `ms_train.head_loss` is the recipe's switched loss."""
+    import ct2_d2
+    import rb_student
+    s, inputs, graphs, manifests, images = tiny(512)
+    seen = []
+
+    def spy(*args, **kwargs):
+        seen.append(ms_train.head_loss)
+        return 'ran'
+
+    monkeypatch.setattr(ms_train, 'run', spy)
+    monkeypatch.setattr(ct2_d2, 'run', spy)
+    rb_student.train_cohort(scale, s, inputs, graphs, manifests, images, 'clip_b32', name, 0, torch.device('cpu'),
+                            tmp_path, 'K3', max_epochs=2)
+    (loss,) = seen
+    assert loss is not rb_student.SHEET_HEAD_LOSS and loss.func is rb_student.ab_train.switched_head_loss
+    assert loss.keywords['switches'] == rb_rows.recipe(name)['switches']
+    assert ms_train.head_loss is rb_student.SHEET_HEAD_LOSS
+    seen.clear()
+    rb_student.train_cohort(scale, s, inputs, graphs, manifests, images, 'clip_b32', 'R0-5', 0, torch.device('cpu'),
+                            tmp_path, 'K3', max_epochs=2)
+    assert seen == [rb_student.SHEET_HEAD_LOSS]
+
+
+def test_train_cohort_refuses_a_recipe_with_other_inputs(tmp_path, tiny, monkeypatch):
+    import rb_student
+    s, inputs, graphs, manifests, images = tiny(512)
+    real = rb_rows.recipe
+
+    def other(name):
+        recipe = real(name)
+        recipe['base']['inputs'] = 'instructed'
+        return recipe
+
+    monkeypatch.setattr(rb_student.rb_rows, 'recipe', other)
+    with pytest.raises(AssertionError, match='inputs'):
+        rb_student.train_cohort('full', s, inputs, graphs, manifests, images, 'clip_b32', 'R0-5', 0,
+                                torch.device('cpu'), tmp_path, 'K3', max_epochs=2)
+
+
 @pytest.fixture
 def driver(tiny, monkeypatch):
     import rb_student
@@ -294,6 +337,9 @@ def test_train_resumes_replaces_incomplete_and_refuses_after_held(tmp_path, driv
     held.mkdir(parents=True)
     (held / 'emotion__s0.npz').write_bytes(b'x')
     (tmp_path / 'part2/full/weights/K3/genre__s0.pt').unlink()
+    with pytest.raises(AssertionError, match='V4'):
+        rb_student.train('full', 'clip_b32', 'R0-5', [0], 'cpu', tmp_path, max_epochs=2)
+    (held / 'emotion__s0.npz').rename(held / 'emotion__s3.npz')                  # a held output of another seed
     with pytest.raises(AssertionError, match='V4'):
         rb_student.train('full', 'clip_b32', 'R0-5', [0], 'cpu', tmp_path, max_epochs=2)
 
@@ -381,9 +427,20 @@ def test_held_inference_needs_the_stage_gate_and_writes_the_index_files(tmp_path
     gate = tmp_path / 'part2/regression/stage3a.json'
     gate.parent.mkdir(parents=True)
     gate.write_text(json.dumps(dict(pas=True, items={})))
+    with pytest.raises((AssertionError, KeyError)):                            # no 'pass' key (shared rule: KeyError)
+        rb_student.infer_arm('full', 'K3', [0], ('held',), tmp_path, 'cpu')
+    gate.write_text(json.dumps({'pass': True, 'items': {}}))                     # no passing student/matched/scorer item
     with pytest.raises(AssertionError, match='V1'):
         rb_student.infer_arm('full', 'K3', [0], ('held',), tmp_path, 'cpu')
-    gate.write_text(json.dumps({'pass': True, 'items': {}}))
+    items = {f'{group}x': {'pass': True} for group in ('student/', 'matched/', 'scorer/')}
+    gate.write_text(json.dumps({'pass': True, 'items': dict(items, **{'matched/bad': {'pass': False}})}))
+    with pytest.raises(AssertionError, match='V1'):                                # file says pass, an item fails
+        rb_student.infer_arm('full', 'K3', [0], ('held',), tmp_path, 'cpu')
+    gate.write_text(json.dumps({'pass': True, 'items': {k: v for k, v in items.items() if k != 'scorer/x'}}))
+    with pytest.raises(AssertionError, match='V1'):                                # a group has no passing item
+        rb_student.infer_arm('full', 'K3', [0], ('held',), tmp_path, 'cpu')
+    gate.write_text(json.dumps({'pass': True, 'items': items}))
+    (tmp_path / 'part2/verdict_stage3.json').write_text(json.dumps(dict(blocks={})))   # stage 4's V1 reads it too
     rb_student.infer_arm('full', 'K3', [0], ('held', 'a28'), tmp_path, 'cpu')
     for aspect in ASPECTS:
         for kind, rows, names in (('held', 9, 'held'), ('a28', 5, 'a28')):
@@ -466,6 +523,20 @@ def test_regress_passes_when_the_student_is_the_cts_d2_and_merges_items(tmp_path
     assert not (out / 'part2/full/weights').exists() and (out / 'part2/regression/stage3a_run/held/regression').is_dir()
 
 
+def test_regress_writes_through_the_shared_locked_writer(tmp_path, ct_reference, monkeypatch):
+    import rb_score
+    import rb_student
+    calls = []
+    original = rb_score.write_regression_items
+    monkeypatch.setattr(rb_score, 'write_regression_items', lambda *a, **k: calls.append(a[0]) or original(*a, **k))
+    out = tmp_path / 'rb'
+    record = rb_student.regress('stage3a', 'cpu', out)
+    path = out / 'part2/regression/stage3a.json'
+    assert calls == [path] and json.loads(path.read_text()) == record
+    assert path.with_name('stage3a.json.lock').is_file()                      # the shared writer's fcntl lock
+    assert not hasattr(rb_student, 'write_regression_items')
+
+
 def test_regress_fails_on_one_flipped_bit(tmp_path, ct_reference):
     import rb_student
     ct, held, a28 = ct_reference
@@ -518,6 +589,27 @@ def test_picked_recipe_reads_pick_json_and_checks_outcome(tmp_path):
         pick.write_text(json.dumps(bad))
         with pytest.raises(AssertionError):
             rb_student.picked_recipe(tmp_path)
+
+
+def test_k4_and_k5_follow_the_pick_when_pick_json_exists(tmp_path, driver):
+    import rb_student
+    driver(1024)                                      # DINOv2-large width
+    # without pick.json nothing changes: any recipe trains
+    rb_student.train('full', 'dinov2_large', 'R7-3', [0], 'cpu', tmp_path / 'free', max_epochs=2)
+    assert (tmp_path / 'free/part2/full/weights/K5/emotion__s0.pt').is_file()
+    pick = tmp_path / 'part1/pick.json'
+    pick.parent.mkdir(parents=True)
+    pick.write_text(json.dumps(dict(outcome='P-R7-5', recipe='R7-5')))
+    for encoder, recipe in (('dinov2_large', 'R7-3'), ('qwen3vl_emb_2b', 'R6-3')):
+        with pytest.raises(AssertionError, match='pick.json'):
+            rb_student.train('full', encoder, recipe, [0], 'cpu', tmp_path, max_epochs=2)
+    assert not (tmp_path / 'part2').exists()
+    rb_student.train('full', 'dinov2_large', 'R7-5', [0], 'cpu', tmp_path, max_epochs=2)        # the picked recipe
+    assert (tmp_path / 'part2/full/weights/K5/emotion__s0.pt').is_file()
+    # K2 and K3 are not tied to the pick
+    driver(512)
+    rb_student.train('full', 'clip_b32', 'R0-5', [0], 'cpu', tmp_path, max_epochs=2)
+    assert (tmp_path / 'part2/full/weights/K3/emotion__s0.pt').is_file()
 
 
 def test_cli_train_sets_the_ct_determinism_env_and_passes_the_pick(tmp_path, monkeypatch):
