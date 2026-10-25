@@ -166,3 +166,38 @@ def test_a_smoke_v2_file_passes_only_a_smoke_reporter_under_the_scratch_root(tmp
     monkeypatch.setattr(eg_paths, 'SMOKE_ROOT', tmp_path)
     v2_file(tmp_path, False)
     rep.require_v2(3, tmp_path, [], tmp_path / 'v.json')                           # a real V2 file passes a real run
+
+
+def test_no_outcome_markdown_lists_each_cause():
+    skipped = {'K8': 'V5: missing img.npy'}
+    assert 'K8: V5: missing img.npy' in rep.markdown(3, 'sample', {}, skipped)
+    assert 'K8: V5: missing img.npy' in rep.markdown5({}, skipped)
+
+
+@pytest.mark.parametrize('change', ['v5', 'x0'])
+def test_no_outcome_report_writes_stores_and_refreshes_changed_hashes(tmp_path, monkeypatch, change):
+    import numpy as np
+    write_stores(tmp_path)
+    verdict = dict(stage=3, scale='sample', held_sha256='H', blocks={
+        'K8': dict(outcome_id=None, v_failure='V5: missing img.npy')})
+    path = tmp_path / 'part2/verdict_stage3.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(verdict))
+    monkeypatch.setattr(rep.rpr, 'held_labels', lambda: (['p'], 'H', {'emotion': np.array([0])}))
+    monkeypatch.setattr(rep.eg_score, 'read_rcol_eligible', lambda *a: ({}, tmp_path / 'rcol'))
+    first = rep.run_held(3, tmp_path, 1, 1, None, None, False)
+    assert first['blocks']['stores']['v5_sha256'] == rep.sha256_of(tmp_path / 'stores/v5.json')
+    assert 'K8: V5: missing img.npy' in (tmp_path / 'part2/reported_stage3.md').read_text()
+    source = tmp_path / f'stores/{change}.json'
+    source.write_text(source.read_text() + '\n')
+    second = rep.run_held(3, tmp_path, 1, 1, None, None, False)
+    assert second['blocks']['stores'][f'{change}_sha256'] == rep.sha256_of(source)
+    assert second['blocks']['stores'][f'{change}_sha256'] != first['blocks']['stores'][f'{change}_sha256']
+
+
+def test_stores_report_accepts_exception_entry_with_its_cause(tmp_path):
+    doc = v5_doc()
+    doc['stores']['artelingo28/clip_b16'] = {'pass': False, 'checks': {}, 'cause': 'missing index.json'}
+    write_stores(tmp_path, v5=doc)
+    b = rep.stores_block(tmp_path)
+    assert 'missing index.json' in rep.stores_markdown(b)

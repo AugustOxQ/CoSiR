@@ -4,7 +4,7 @@
 # scripts/extract_features.py and the X0 git archive live there. A finished store, a written x0.json and a passed V5
 # entry are skipped. A failed X0 writes no store and ends the queue (stage i stops; stages ii and iii go on).
 # A failed extraction or V5 of one store costs only that candidate (no outcome); the others go on.
-# Candidates deferred (part2/deferral.json, EG_DEFER) get no store in this run: run the queue again without it.
+# Candidates deferred in part2/deferral.json get no store; release with eg_run.py defer --release K.
 # Smoke: extract_features --limit 16 --out-root <outputs>/stores (writes under _smoke/); V5 only for stores whose real
 # index.json exists (V5 reads /data/SSD2/pre_extract, never a smoke store).
 queue=stores
@@ -15,8 +15,7 @@ else
     step x0 gpu "$here/eg_x0.py" --outputs "$outputs" --device "$device" || finish
 fi
 gate x0 || { printf 'EG_STORES_STOP X0 failed: no new store is written; stage i stops, stages ii (K2 to K4) and iii go on\n' | tee -a "$status"; failed=1; finish; }
-cands=$(all_cands)
-[[ -n "${EG_DEFER:-}" ]] && note "deferred for time (EG_DEFER): $EG_DEFER"
+cands=$(all_cands) || { failed=1; finish; }
 note "stores for: $cands"
 extract() {  # extract LABEL DONEFILE ARGS...   returns 1 on a failed extraction (the caller notes it)
     local label=$1 done_file=$2; shift 2

@@ -2,7 +2,7 @@
 VL1 (b), VL1 (c), VL3, VL4.
 
   infer  writes `stage_ii/p/<arm>/...` (`eg_paths.p_student`, `eg_paths.p_own`, each with a `.json` sidecar) and the index
-         `stage_ii/p/index.json` (key `missing`: arm -> reason, for candidates without stage 3 weights).
+         `stage_ii/p/index.json` (key `missing`: arm -> reason, for candidates without a stage 3 outcome or weights).
   check  VL1 (b), VL1 (c), VL3 on the exports; writes `stage_ii/vl1.json` (`pass`, items `b`, `c`, `vl3`).
   all    infer, then check.
 """
@@ -16,6 +16,7 @@ from pathlib import Path
 import numpy as np
 
 import eg_encoders
+import eg_run
 import eg_paths  # noqa: F401  (sys.path)
 
 STAGE = 'stage_ii'
@@ -81,14 +82,22 @@ def own_files(outputs, enc, seeds):
 
 
 def plan(outputs, aspects=eg_paths.ASPECTS, seeds=eg_paths.SEEDS, encoders=eg_encoders.ENCODERS):
-    """(arms to infer, missing): an old arm without weights is an error; a new arm without weights is missing."""
+    """(arms to infer, missing): an old arm without weights is an error; a new arm needs a stage 3 outcome and weights."""
     arms, missing = [], {}
+    deferred = eg_run.deferred(outputs)
+    stopped = eg_run.stage_i_failure(outputs)
     for enc in encoders:
+        reason = ((stopped or ('deferred before stage ii' if enc.student in deferred else None)
+                   or eg_run.stage3_failure(outputs, enc.student)) if enc.new else None)
+        if reason:
+            missing.update({enc.student: reason, enc.own: reason})
+            continue
         for arm, files in ((enc.student, student_files(outputs, enc, aspects, seeds)),
                            (enc.own, own_files(outputs, enc, seeds))):
             absent = [f for f in files if not Path(f).is_file()]
             if absent and enc.new:
-                missing[arm] = f'no stage 3 weights: {absent[0]} (and {len(absent) - 1} more) not found'
+                relative = Path(absent[0]).relative_to(Path(outputs))
+                missing[arm] = f'no stage 3 weights: {relative} (and {len(absent) - 1} more) not found'
             else:
                 assert not absent, f'{arm}: saved weights missing: {absent[:3]}'
                 arms.append(arm)
@@ -178,11 +187,11 @@ class Run:
             if ok:
                 return 'kept'
             assert forced, f'VL4: {out} fails VL3 ({detail["error"]}); a rerun needs --forced-vl3 CAUSE'
-            self.log_forced(out, detail)
         weights = rb_student.weights_path(weights_root(self.outputs, enc.student), enc.student, aspect, seed)
         info = json.loads(weights.with_suffix('.json').read_text())
         w_sha = rb_student.ms_train.head.sha_file(weights)
         assert w_sha == info['weights_sha256'], f'{weights}: weights checksum mismatch'
+        self.prepare_rerun(out, w_sha, forced, detail if out.exists() else None)
         img = rb_student.infer(weights, aspect, enc.width, self.store_images(enc.store), self.args.device)
         vl3_student(img, self.n_rows)
         _atomic_npz(out, img=img)
@@ -201,13 +210,13 @@ class Run:
             if ok:
                 return 'kept'
             assert forced, f'VL4: {out} fails VL3 ({detail["error"]}); a rerun needs --forced-vl3 CAUSE'
-            self.log_forced(out, detail)
         ck = own_checkpoint(self.outputs, enc.own, seed)
         meta = rb_matched.base.verify_output(ck)
         device = meta['config']['device']       # rb_matched.infer insists on the training device
         if str(device).startswith('cuda') and not __import__('torch').cuda.is_available():
             assert self.args.smoke, f'{enc.own}: trained on {device}, which is not available'
             return 'skipped (smoke without GPU)'
+        self.prepare_rerun(out, meta['weights_sha256'], forced, detail if out.exists() else None)
         prob = rb_matched.infer(ck, self.store_images(enc.store), device)
         vl3_own(prob, self.n_rows)
         _atomic_npz(out, prob=prob)
@@ -218,8 +227,23 @@ class Run:
             sha256=array_sha256(prob), device=str(device), smoke=bool(self.args.smoke), code_commit=self.commit))
         return 'wrote'
 
-    def log_forced(self, out, detail):
-        line = dict(file=str(out), cause=self.args.forced_vl3, failed=detail, code_commit=self.commit)
+    def prepare_rerun(self, out, weights_sha256, forced, detail=None):
+        """Before replacing an export, enforce VL4's same weights/code and record the rerun."""
+        side = out.with_suffix('.json')
+        complete = self.index_path.exists() and json.loads(self.index_path.read_text()).get('complete')
+        if not out.exists() and not side.exists() and not complete:
+            return
+        assert side.is_file(), f'VL4: {out}: cannot verify same weights and code without the old sidecar'
+        old = json.loads(side.read_text())
+        assert (old.get('weights_sha256'), old.get('code_commit')) == (weights_sha256, self.commit), \
+            f'VL4: {out}: a rerun requires the same weights and code as the old sidecar'
+        if out.exists():
+            self.log_forced(out, detail, forced)
+        else:
+            self.log_forced(out, dict(error='export missing'), forced or 'export missing; re-inferred from saved weights')
+
+    def log_forced(self, out, detail, cause):
+        line = dict(file=str(out), cause=cause, failed=detail, code_commit=self.commit)
         log = Path(self.outputs) / STAGE / 'vl4_log.jsonl'
         log.parent.mkdir(parents=True, exist_ok=True)
         with log.open('a') as f:
@@ -235,6 +259,8 @@ class Run:
                 encoders = tuple(e for e in encoders if e.student in args.arms or e.own in args.arms)
             if args.seeds is not None:
                 self.seeds = tuple(args.seeds)
+        if not args.smoke:
+            eg_run.require_stage_ii_ready(self.outputs)
         arms, missing = plan(self.outputs, self.aspects, self.seeds, encoders)
         if args.arms:
             arms = [a for a in arms if a in args.arms]

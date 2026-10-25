@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Sourced by every eg_queue_*.sh (style of rb_queue_common.sh). Set `queue` before sourcing.
 # Env: EG_OUTPUTS (outputs folder; default the round's, on /data/SSD2), EG_SMOKE=1 (scratch outputs under /tmp/claude-0/
-#      only), EG_PYTHON, EG_LOCK_WAIT (default 14400 s), EG_GPU_LOCK (default /tmp/gpu0.lock), EG_DEFER ("K5 K8":
-#      candidates left out for time, on top of part2/deferral.json), EG_DEVICE (cuda; "cpu" only for a plumbing test),
+#      only), EG_PYTHON, EG_LOCK_WAIT (default 14400 s), EG_GPU_LOCK (default /tmp/gpu0.lock),
+#      EG_DEVICE (cuda; "cpu" only for a plumbing test),
 #      EG_DRY=1 (print the commands, run none), EG_PENDING (pending deletions list).
 set -u
 set -o pipefail
@@ -68,9 +68,7 @@ gate() {   # gate NAME [--cand K | --stage N | --phase P]: a failed gate returns
     failed=$before   # a gate that does not hold stops what depends on it; the caller decides (and sets failed)
     return "$code"
 }
-driver() {  # driver ARGS... -> stdout of eg_run.py (dry: a fixed list for candidates and a28)
-    if [[ "$dry" == 1 && "$1" == candidates ]]; then echo "K6 K7 K8 K5"; return 0; fi
-    if [[ "$dry" == 1 && "$1" == a28 ]]; then echo "K6 K7 K8 K5|full sample|{}"; return 0; fi
+driver() {  # driver ARGS... -> stdout of eg_run.py (read-only lists, including dry runs)
     cpu "$run" "$@" --outputs "$outputs"
 }
 finish() {
@@ -81,20 +79,15 @@ note() { printf 'EG_%s_NOTE %s\n' "${queue^^}" "$*" | tee -a "$status"; }
 # --- helpers -------------------------------------------------------------------------------------------------------
 store_of() { case "$1" in K6) echo clip_b16;; K7) echo clip_l14;; K8) echo siglip_so400m;; K5) echo dinov2_large;; esac; }
 matched_of() { case "$1" in K6) echo M6;; K7) echo M7;; K8) echo M8;; K5) echo M5;; esac; }
-is_env_deferred() { local c; for c in ${EG_DEFER:-}; do [[ "$c" == "$1" ]] && return 0; done; return 1; }
-filter_deferred() {   # filter_deferred K...  -> those not in EG_DEFER (deferral.json is applied by eg_run candidates)
-    local c out=()
-    for c in "$@"; do is_env_deferred "$c" || out+=("$c"); done
-    echo "${out[*]:-}"
+all_cands() {   # the candidates minus recorded deferrals, including candidates already scored
+    driver candidates 3 --include-done
 }
-all_cands() {   # the four candidates minus part2/deferral.json and EG_DEFER (stores queue; no stage 3 block test)
-    local d c list=""
-    if [[ "$dry" == 1 ]]; then list="K6 K7 K8 K5"
-    else
-        d=$(cpu "$run" defer --outputs "$outputs" | sed 's/^EG_DEFER deferred: //; s/none//')
-        for c in K6 K7 K8 K5; do [[ " $d " == *" $c "* ]] || list+="$c "; done
-    fi
-    filter_deferred $list
+stage_i_stopped() {   # only an existing FAILED record, never an absent gate
+    local file
+    for file in "$outputs/stores/x0.json" "$outputs"/part2/regression/x1_{student,matched,scorer}.json; do
+        [[ "$(jget "$file" "d.get('pass') is False")" == True ]] && return 0
+    done
+    return 1
 }
 jget() {   # jget FILE PYEXPR  (d = the loaded JSON) -> value; empty when the file is missing
     [[ -f "$1" ]] || return 0

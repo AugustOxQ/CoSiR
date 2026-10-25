@@ -199,9 +199,27 @@ def main():
     res = load(path)
     res.setdefault('stores', {})
     failed = []
+    res['code_commit'] = git_head()
+    res['rule_commit'] = eg_paths.RULE_COMMIT
+
+    def save():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=path.parent, suffix='.tmp')
+        with os.fdopen(fd, 'w') as f:
+            json.dump(res, f, indent=1, sort_keys=True)
+        os.replace(tmp, path)
+
+    def checked(dataset, store, **kw):
+        try:
+            return check_store(dataset, store, **kw)
+        except Exception as err:
+            return {'pass': False, 'checks': {}, 'cause': f'{type(err).__name__}: {err}'}
 
     def record(dataset, store, r):
+        if not r['pass']:
+            r.setdefault('cause', ', '.join(k for k, ok in r.get('checks', {}).items() if not ok) or 'check failed')
         res['stores'][f'{dataset}/{store}'] = r
+        save()
         print(f'{dataset}/{store}: pass={r["pass"]} {json.dumps(r.get("retrieval", r.get("dino_vs_archive", "")))}',
               flush=True)
         if not r['pass']:
@@ -212,27 +230,21 @@ def main():
         res.setdefault('calibration_a28', {})
         for dataset in (FULL, A28):
             for store in CALIBRATION:
-                r = check_store(dataset, store, bar_void=False, calibration_store=True)
-                record(dataset, store, r)
+                r = checked(dataset, store, bar_void=False, calibration_store=True)
                 if 'retrieval' in r:
                     (res['calibration'] if dataset == FULL else res['calibration_a28'])[store] = r['retrieval']['top1']
+                record(dataset, store, r)
     if 'calibration' not in res or any(s not in res['calibration'] for s in CALIBRATION):
         raise SystemExit('no calibration in v5.json: run --calibrate first')
     res['bar_void'] = any(res['calibration'][s] < BAR for s in CALIBRATION)
     if a.store:
         for dataset in a.dataset:
-            r = check_store(dataset, a.store, res['bar_void'])
+            r = checked(dataset, a.store, bar_void=res['bar_void'])
             if dataset == A28 and not r['pass']:
                 full = res['stores'].get(f'{FULL}/{a.store}')
                 r['fails_on_28_only'] = bool(full and full['pass'])   # removes only the A outcome
             record(dataset, a.store, r)
-    res['code_commit'] = git_head()
-    res['rule_commit'] = eg_paths.RULE_COMMIT
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix='.tmp')
-    with os.fdopen(fd, 'w') as f:
-        json.dump(res, f, indent=1, sort_keys=True)
-    os.replace(tmp, path)
+    save()
     print(f'bar_void={res["bar_void"]} calibration={res["calibration"]} -> {path}')
     if failed:
         print('FAILED:', failed)

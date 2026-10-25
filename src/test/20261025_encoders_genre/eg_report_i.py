@@ -7,7 +7,7 @@ the seed spreads, the best epochs, the frozen-image partitions and the Leiden re
 
 It refuses to run before the stage's verdict file holds the candidate's outcome and V2 (`eg_v2`) agrees with that
 block (RB rule §4.2, last bullet), and refuses when a saved reported block no longer matches the verdict block it was
-made from. Writes `<outputs>/part2/reported_stage{3,4,5}.{json,md}`. Stage 3 also writes, once, the `stores` block
+made from. Writes `<outputs>/part2/reported_stage{3,4,5}.{json,md}`. Stage 3 also refreshes, when the source hashes change, the `stores` block
 (spec §3.6: each new store's V5 values beside CLIP B/32's and SigLIP 2's, and X0, the old stores' difference from the
 current extractor), read from `<outputs>/stores/v5.json` and `x0.json`; both must exist and X0 must pass.
 
@@ -98,9 +98,12 @@ def store_row(v5, dataset, store):
     if entry is None:
         return dict(checked=False)
     checks = entry['checks']
-    assert set(STRUCTURE) <= set(checks), f'{dataset}/{store}: structure checks missing'
-    row = {'checked': True, 'pass': entry['pass'], 'structure': {k: checks[k] for k in STRUCTURE},
+    assert set(STRUCTURE) <= set(checks) or (entry['pass'] is False and entry.get('cause')), \
+        f'{dataset}/{store}: structure checks missing'
+    row = {'checked': True, 'pass': entry['pass'], 'structure': {k: checks[k] for k in STRUCTURE if k in checks},
            'failing_checks': sorted(k for k, ok in checks.items() if not ok)}
+    if entry.get('cause'):
+        row['cause'] = entry['cause']
     if 'retrieval' in entry:
         r = entry['retrieval']
         row['retrieval'] = dict(top1=r['top1'], n=r['n_paintings'], chance=r['chance'])
@@ -139,7 +142,8 @@ def stores_block(outputs):
 
 
 def _failing(row):
-    return ', '.join(row['failing_checks']) or 'none'
+    checks = ', '.join(row['failing_checks']) or 'none'
+    return checks + ('; ' + row['cause'] if row.get('cause') else '')
 
 
 def stores_markdown(b):
@@ -254,7 +258,7 @@ def markdown(stage, scale, reports, skipped, stores=None):
          'candidate minus the largest comparator entry, with the 95% percentile interval of its own '
          '`default_rng(0)` bootstrap over exactly the arms listed. Emotion margins (a) and (b) are the verdict.', '']
     if skipped:
-        L += [f'Skipped (no outcome in the verdict file): {", ".join(sorted(skipped))}.', '']
+        L += [f'No outcome: {c}: {skipped[c]}' for c in sorted(skipped)] + ['']
     for c, r in reports.items():
         L += [f'## {c}', '', f'Verdict (emotion, all entries): d {r["verdict"]["d"]:+.4f}, '
               f'{r["verdict"]["outcome_id"]}. Frozen encoder image: {r["frozen_arm"]}.', '',
@@ -299,17 +303,15 @@ def run_held(stage, outputs, workers, n_resamples, candidates, replace, allow_ol
     saved = json.loads(path.read_text())['blocks'] if path.exists() else {}
     todo = list(candidates) if candidates else [c for c in done if c not in saved]
     assert set(todo) <= set(done), f'no outcome in the verdict file for {sorted(set(todo) - set(done))}'
-    skipped = sorted(c for c, b in blocks.items() if not b.get('outcome_id'))
+    skipped = {c: b.get('v_failure', 'cause not recorded') for c, b in blocks.items() if not b.get('outcome_id')}
     check_saved_against_verdict(stage, saved, blocks, skip=todo)
     if todo:
         require_v2(stage, outputs, todo, verdict_path, smoke)
     header = dict(stage=stage, scale=scale, held_sha256=sha)
-    if not todo and not saved:
-        print(f'stage {stage}: no candidate has an outcome in the verdict file; nothing to report')
-        return None
     if not todo:
-        print(f'stage {stage}: every candidate with an outcome is already reported; nothing recomputed')
-        record = json.loads(path.read_text())
+        print(f'stage {stage}: ' + ('every candidate with an outcome is already reported; nothing recomputed'
+                                  if done else 'no candidate has an outcome; reporting the causes'))
+        record = json.loads(path.read_text()) if path.exists() else dict(header, blocks={})
     else:
         ctx = dict(scale=scale, roots=eg_score.Roots(outputs, outputs), sha=sha, names=names, n_rows=len(names),
                    labels=labels, rcol=rcol, n_resamples=n_resamples, workers=workers)
@@ -319,8 +321,12 @@ def run_held(stage, outputs, workers, n_resamples, candidates, replace, allow_ol
             report = report_candidate(c, blocks[c], ctx)
             block = dict(report, code=code, verdict_block_sha256=rpr.block_sha(blocks[c]))
             record = eg_score.write_block(path, header, c, block, replace)
-    if stage == 3 and STORES not in record['blocks']:               # once, at stage 3
-        record = eg_score.write_block(path, header, STORES, stores_block(outputs), replace)
+    if stage == 3:
+        old = record['blocks'].get(STORES, {})
+        hashes = {f'{name}_sha256': sha256_of(outputs / f'stores/{name}.json') for name in ('v5', 'x0')}
+        if any(old.get(k) != v for k, v in hashes.items()):
+            record['blocks'][STORES] = stores_block(outputs)
+            rb_score._atomic_json(path, record)
     shown = {c: b for c, b in sorted(record['blocks'].items()) if c != STORES}
     (outputs / f'part2/reported_stage{stage}.md').write_text(
         markdown(stage, scale, shown, skipped, record['blocks'].get(STORES)) + '\n')
@@ -382,7 +388,7 @@ def markdown5(blocks, skipped):
          'of its own `default_rng(0)` bootstrap over exactly the arms listed. Emotion `vs_a`/`vs_b`/`vs_max_ab` are '
          'the verdict\'s arms.', '']
     if skipped:
-        L += [f'Skipped (no outcome in the verdict file): {", ".join(sorted(skipped))}.', '']
+        L += [f'No outcome: {c}: {skipped[c]}' for c in sorted(skipped)] + ['']
     for model, b in sorted(blocks.items()):
         L += [f'## {model} ({b["scale"]} scale)', '', f'Verdict: d {b["verdict_d"]:+.4f}, {b["verdict_outcome"]}.', '',
               '| aspect | margin | d [interval] | model score | arms |', '|---|---|---|---|---|']
@@ -406,7 +412,7 @@ def run_a28(outputs, workers, n_resamples, seeds, candidates, replace, allow_old
     saved = json.loads(path.read_text())['blocks'] if path.exists() else {}
     todo = list(candidates) if candidates else [c for c in done if c not in saved]
     assert set(todo) <= set(done), f'no outcome in the verdict file for {sorted(set(todo) - set(done))}'
-    skipped = sorted(c for c, b in verdict['blocks'].items() if not b.get('outcome_id'))
+    skipped = {c: b.get('v_failure', 'cause not recorded') for c, b in verdict['blocks'].items() if not b.get('outcome_id')}
     check_saved_against_verdict(5, saved, verdict['blocks'], skip=todo)
     if todo:
         require_v2(5, outputs, todo, verdict_path, smoke)
@@ -420,8 +426,7 @@ def run_a28(outputs, workers, n_resamples, seeds, candidates, replace, allow_old
         print(f'{model}: reported', flush=True)
     if record is None:
         print('stage 5: no model has an outcome in the verdict file; nothing to report')
-        return None
-    (outputs / 'part2/reported_stage5.md').write_text(markdown5(record['blocks'], skipped) + '\n')
+    (outputs / 'part2/reported_stage5.md').write_text(markdown5(record['blocks'] if record else {}, skipped) + '\n')
     return record
 
 
