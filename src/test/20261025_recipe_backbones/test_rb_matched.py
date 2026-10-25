@@ -264,16 +264,75 @@ def test_v4_refuses_a_new_seed_once_held_outputs_exist(tmp_path):
     m.run_matched(world, 'M3', [0], out, 'cpu', smoke=False, epochs=2, gate=False)
 
 
-def test_v4_refuses_to_retrain_a_seed_whose_outputs_fail_verification(tmp_path):
+def test_v4_refuses_to_retrain_a_seed_whose_stage2_file_fails_verification(tmp_path):
     world = fake_world(tmp_path)
     out = tmp_path / 'out'
     m.run_matched(world, 'M2', [0], out, 'cpu', smoke=False, epochs=2, gate=False)
-    a28 = out / 'part2/sample/a28/M2/P3__s0.npz'
-    a28.with_suffix('.json').unlink()
+    (out / 'part2/sample/matched/M2/P3__s0.json').unlink()      # the Stage 2 file no longer verifies
     before = _mtimes(out)
     with pytest.raises(AssertionError, match='V4'):
         m.run_matched(world, 'M2', [0], out, 'cpu', smoke=False, epochs=2, gate=False)
     assert _mtimes(out) == before
+
+
+def _held_files(out):
+    return sorted((out / 'part2/sample/held/M2').glob('P3__s*.npz'))
+
+
+def test_crash_in_training_resumes_by_training_the_missing_seeds_only(tmp_path, monkeypatch):
+    world = fake_world(tmp_path)
+    out = tmp_path / 'out'
+    real = m.train_stage2
+
+    def crash_at_seed_1(s, topic, k, images, backbone, seed, *args, **kwargs):
+        if seed == 1:
+            raise RuntimeError('injected crash')
+        return real(s, topic, k, images, backbone, seed, *args, **kwargs)
+    monkeypatch.setattr(m, 'train_stage2', crash_at_seed_1)
+    with pytest.raises(RuntimeError, match='injected'):
+        m.run_matched(world, 'M2', [0, 1, 2], out, 'cpu', smoke=False, epochs=2, gate=False)
+    assert _held_files(out) == []           # training is a phase of its own: no held output yet
+    trained = []
+
+    def record(s, topic, k, images, backbone, seed, *args, **kwargs):
+        trained.append(seed)
+        return real(s, topic, k, images, backbone, seed, *args, **kwargs)
+    monkeypatch.setattr(m, 'train_stage2', record)
+    m.run_matched(world, 'M2', [0, 1, 2], out, 'cpu', smoke=False, epochs=2, gate=False)
+    assert trained == [1, 2]
+    assert [p.name for p in _held_files(out)] == [f'P3__s{i}.npz' for i in range(3)]
+    for seed in range(3):
+        rb_score.load_output(out / f'part2/sample/a28/M2/P3__s{seed}.npz', 'M2', N_A28, world.a28_sha256, 'sample',
+                             seed, 'percept')
+
+
+def test_crash_in_inference_resumes_by_finishing_inference_without_training(tmp_path, monkeypatch):
+    world = fake_world(tmp_path)
+    out = tmp_path / 'out'
+    real = m.infer
+    calls = []
+
+    def crash_at_seed_1(path, images, device=None):
+        calls.append(path.name)
+        if path.name == 'P3__s1.npz':
+            raise RuntimeError('injected crash')
+        return real(path, images, device)
+    monkeypatch.setattr(m, 'infer', crash_at_seed_1)
+    with pytest.raises(RuntimeError, match='injected'):
+        m.run_matched(world, 'M2', [0, 1, 2], out, 'cpu', smoke=False, epochs=2, gate=False)
+    assert [p.name for p in _held_files(out)] == ['P3__s0.npz']
+    monkeypatch.setattr(m, 'infer', real)
+
+    def boom(*args, **kwargs):
+        raise AssertionError('trained again')
+    monkeypatch.setattr(m, 'train_stage2', boom)
+    m.run_matched(world, 'M2', [0, 1, 2], out, 'cpu', smoke=False, epochs=2, gate=False)
+    assert [p.name for p in _held_files(out)] == [f'P3__s{i}.npz' for i in range(3)]
+    # the outputs are the saved mappers' readings, as the single-seed test requires
+    for seed in range(3):
+        prob = m.infer(out / f'part2/sample/matched/M2/P3__s{seed}.npz',
+                       world.full_images('siglip2_so400m', world.held_names))
+        np.testing.assert_array_equal(np.load(out / f'part2/sample/held/M2/P3__s{seed}.npz')['prob'], prob)
 
 
 def test_run_matched_gate_blocks_before_any_training(tmp_path):

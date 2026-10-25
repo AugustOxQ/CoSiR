@@ -203,67 +203,77 @@ def _gate(outputs, scale, candidates):
     rb_score.require_gate(Path(outputs), 3 if scale == 'sample' else 4, list(candidates))
 
 
-def _verified(world, arm, seed, outputs, smoke):
-    """True when the Stage 2 file, the held output and the ArtELingo-28 output of this seed all exist and verify
-    (sidecars, hashes, list hashes, the Stage 1 file of this seed); False when absent, partial or failing."""
-    stage2 = stage2_path(outputs, world.scale, arm, seed)
-    held = rb_score.output_path(world.scale, arm, seed, outputs=outputs)
-    a28 = a28_path(outputs, world.scale, arm, seed)
-    if not all(p.exists() and p.with_suffix('.json').exists() for p in (stage2, held, a28)):
+def _stage2_ok(world, arm, seed, outputs, smoke):
+    """The seed's Stage 2 file verifies (hashes) and was trained on this seed's Stage 1 file, backbone and mode."""
+    path = stage2_path(outputs, world.scale, arm, seed)
+    if not (path.exists() and path.with_suffix('.json').exists()):
         return False
     try:
-        weights = base.verify_output(stage2)['weights_sha256']
-        stage1_sha256 = world.topics(seed)[2]
-        for path, n_rows, list_sha256 in ((held, len(world.held_names), world.held_sha256),
-                                          (a28, len(world.a28_names), world.a28_sha256)):
-            rb_score.load_output(path, arm, n_rows, list_sha256, world.scale, seed, 'percept')
-            meta = json.loads(path.with_suffix('.json').read_text())
-            assert (meta['stage2_weights_sha256'], meta['stage1_sha256'], meta['smoke']) == \
-                (weights, stage1_sha256, smoke)
+        meta = base.verify_output(path)
+        return (meta['stage1_sha256'], meta['backbone'], meta['arm'], meta['config']['smoke'], meta['config']['seed']) \
+            == (world.topics(seed)[2], MATCHED[arm], arm, smoke, seed)
     except (AssertionError, KeyError, ValueError):
         return False
-    return True
+
+
+def _output_ok(path, stage2, world, arm, seed, n_rows, list_sha256, smoke):
+    """A held or ArtELingo-28 output exists and verifies against its saved Stage 2 file."""
+    if not (path.exists() and path.with_suffix('.json').exists()):
+        return False
+    try:
+        rb_score.load_output(path, arm, n_rows, list_sha256, world.scale, seed, 'percept')
+        meta = json.loads(path.with_suffix('.json').read_text())
+        weights = base.verify_output(stage2)['weights_sha256']
+        return (meta['stage2_weights_sha256'], meta['stage1_sha256'], meta['smoke']) == \
+            (weights, world.topics(seed)[2], smoke)
+    except (AssertionError, KeyError, ValueError):
+        return False
 
 
 def run_matched(world, arm, seeds, outputs, device, smoke, epochs=None, gate=True):
     """Train `arm` (M2, M3 or M5) for each seed at the world's scale; write held and ArtELingo-28 outputs.
 
-    V4 (rule §4.2): a seed whose Stage 2 file, held output and ArtELingo-28 output all verify is skipped (crash
-    resume); no training at all (checked once, before the first seed) if any held output of this arm exists at this
-    scale, whatever its seed, and a seed still has to be trained."""
+    Two phases, as in rb_student. Training: each seed whose Stage 2 file does not verify is trained and saved; no
+    output is written. V4 (rule §4.2): if any seed has to be trained and any held output of this arm exists at this
+    scale (any seed), refuse. Inference: for every seed, the held and ArtELingo-28 outputs are read from the saved
+    Stage 2 file unless they exist and verify. A crash in training or in inference resumes without retraining."""
     backbone = MATCHED[arm]
     if gate:
         _gate(outputs, world.scale, [CANDIDATE[arm]])
     s = world.s
     held_root = rb_score.output_path(world.scale, arm, 0, outputs=outputs).parent
-    todo = [seed for seed in seeds if not _verified(world, arm, seed, outputs, smoke)]
+    todo = [seed for seed in seeds if not _stage2_ok(world, arm, seed, outputs, smoke)]
     held_files = sorted(held_root.rglob('*.npz')) if held_root.exists() else []
     assert not (todo and held_files), f'V4: no new training of {arm} at {world.scale} once held outputs exist ' \
                                       f'(any seed): {held_files[0]}; seeds to train: {todo}'
-    all_images = held_images = a28_images = None
-    paths = []
-    for seed in seeds:
-        held_path = rb_score.output_path(world.scale, arm, seed, outputs=outputs)
-        if seed not in todo:
-            print(f'{arm} {world.scale} s{seed}: verified outputs; skip', flush=True)
-            paths.append(held_path)
-            continue
-        if all_images is None:
-            all_images = world.full_images(backbone, s['all_painting_ids'])
-            held_images = world.full_images(backbone, world.held_names)
-            a28_images = world.a28_images(backbone)
+    if todo:
+        all_images = world.full_images(backbone, s['all_painting_ids'])
+    for seed in todo:
         topic, k, stage1_sha256 = world.topics(seed)
         result = train_stage2(s, topic, k, all_images, backbone, seed, device, smoke, epochs=epochs)
-        path = save_stage2(stage2_path(outputs, world.scale, arm, seed), result,
-                           dict(stage1_sha256=stage1_sha256, backbone=backbone, arm=arm, code_sha256=_code()))
+        save_stage2(stage2_path(outputs, world.scale, arm, seed), result,
+                    dict(stage1_sha256=stage1_sha256, backbone=backbone, arm=arm, code_sha256=_code()))
+        print(f'{arm} {world.scale} s{seed}: trained', flush=True)
+    images = {}
+    paths = []
+    for seed in seeds:
+        path = stage2_path(outputs, world.scale, arm, seed)
         weights = base.verify_output(path)['weights_sha256']
-        extra = dict(backbone=backbone, stage2_weights_sha256=weights, stage1_sha256=stage1_sha256, smoke=smoke)
-        write_output(held_path, infer(path, held_images), list_sha256=world.held_sha256, scale=world.scale,
-                     arm=arm, seed=seed, extra=extra)
-        write_output(a28_path(outputs, world.scale, arm, seed), infer(path, a28_images),
-                     list_sha256=world.a28_sha256, scale=world.scale, arm=arm, seed=seed, extra=extra)
+        extra = dict(backbone=backbone, stage2_weights_sha256=weights, stage1_sha256=world.topics(seed)[2],
+                     smoke=smoke)
+        held_path = rb_score.output_path(world.scale, arm, seed, outputs=outputs)
+        for out, kind, n_rows, list_sha256 in ((held_path, 'held', len(world.held_names), world.held_sha256),
+                                               (a28_path(outputs, world.scale, arm, seed), 'a28',
+                                                len(world.a28_names), world.a28_sha256)):
+            if _output_ok(out, path, world, arm, seed, n_rows, list_sha256, smoke):
+                continue
+            if kind not in images:
+                images[kind] = (world.full_images(backbone, world.held_names) if kind == 'held'
+                                else world.a28_images(backbone))
+            write_output(out, infer(path, images[kind]), list_sha256=list_sha256, scale=world.scale, arm=arm,
+                         seed=seed, extra=extra)
         paths.append(held_path)
-        print(f'{arm} {world.scale} s{seed}: wrote {held_path.parent} and a28', flush=True)
+        print(f'{arm} {world.scale} s{seed}: held and a28 outputs ready in {held_path.parent}', flush=True)
     return paths
 
 
