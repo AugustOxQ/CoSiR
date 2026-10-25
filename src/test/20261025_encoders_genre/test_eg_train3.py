@@ -483,3 +483,45 @@ def test_parity_keeps_the_code_commit_of_every_seed(tmp_path):
         record = eg_train3.parity(None, tmp_path, 'cpu', [2])
     assert record['seeds']['1']['code_commit'] == 'aaa' and record['seeds']['2']['code_commit'] == 'bbb'
     assert record['code_commit'] == 'bbb'
+
+
+@pytest.mark.parametrize('result_changed', [False, True])
+def test_parity_rerun_preserves_file_unless_result_changes(tmp_path, monkeypatch, result_changed):
+    monkeypatch.setattr(eg_train3, 'check_outputs', lambda outputs, smoke: outputs)
+    monkeypatch.setattr(eg_train3, 'run_variant', lambda *args: dict(status='ok'))
+    monkeypatch.setattr(eg_train3, 'states_equal', lambda *args: True)
+    monkeypatch.setattr(eg_train3, 'code_commit', lambda: ('before commit', False))
+    first = eg_train3.parity(None, tmp_path, 'cpu', V.FRESH_SEEDS)
+    path = tmp_path / 'stage_iii/fresh_parity.json'
+    before, mtime = path.read_bytes(), path.stat().st_mtime_ns
+    monkeypatch.setattr(eg_train3, 'code_commit', lambda: ('after commit', True))
+    monkeypatch.setattr(eg_train3, 'states_equal', lambda *args: not result_changed)
+    again = eg_train3.parity(None, tmp_path, 'cpu', V.FRESH_SEEDS)
+    if result_changed:
+        assert again['pass'] is False and path.read_bytes() != before
+    else:
+        assert again == first
+        assert path.read_bytes() == before and path.stat().st_mtime_ns == mtime
+
+
+def test_ga_fit_ignores_teacher_rows_outside_13400_fit_paintings(cohort, tmp_path):
+    fit, _ = ms_train.disjoint_split(cohort[0])
+    assert len(fit) == 13400
+    changed_teacher = cohort[4].copy()
+    outside_fit = np.ones(len(changed_teacher), dtype=bool)
+    outside_fit[fit] = False
+    # Replace stopping and old-5,000 teachers with a very different, still unit-norm image.
+    changed_teacher[outside_fit] = 0
+    changed_teacher[outside_fit, 0] = 1
+    changed = (*cohort[:4], changed_teacher, cohort[5])
+    before, after = tmp_path/'before', tmp_path/'after'
+    before.mkdir()
+    after.mkdir()
+    # One epoch: changed stopping targets cannot alter which epoch supplies the saved weights.
+    run_cohort(cohort, before, 'GA-1', max_epochs=1)
+    run_cohort(changed, after, 'GA-1', max_epochs=1)
+    original = torch.load(before/'genre.pt', weights_only=True)
+    perturbed = torch.load(after/'genre.pt', weights_only=True)
+    assert original.keys() == perturbed.keys()
+    assert all(torch.equal(original[k], perturbed[k]) for k in original), \
+        'GA training used teacher rows outside the 13,400 fit paintings'

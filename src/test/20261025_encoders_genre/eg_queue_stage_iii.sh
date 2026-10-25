@@ -42,6 +42,10 @@ append_pending() {  # the weights of the variants listed in score_all.json "pend
     done
     note "pending deletions appended to $pending (weights below T_g - 0.0128; fresh-seed weights kept)"
 }
+# Refuse stale scores before training or skip-if-exists decisions.
+if [[ "$dry" != 1 ]]; then
+    code_check=$(cpu "$here/eg_score3.py" check-code --outputs "$outputs" 2>&1) || stop "$code_check"
+fi
 # --- VG1 ------------------------------------------------------------------------------------------------------------
 if [[ -f "$stage/vg1.json" && "$dry" != 1 ]]; then note "vg1.json exists, VG1 training half skipped"
 else soft=1 step vg1_train gpu "$here/eg_train3.py" regress vg1 --device "$device" --outputs "$outputs"; failed=0; fi

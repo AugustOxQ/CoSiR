@@ -488,6 +488,8 @@ def fresh_scores(inputs, labels, label_sha, header, seed0, n_draws, workers, rb_
                 for a in ASPECTS:
                     parts = {v: {s: inputs.partitions(v, s, a) for s in SEEDS} for v in (winner, BASE)}
                     effects[a] = score_effects(labels[a], parts, n_draws, workers, fresh=True)[winner]
+                identity['img_sha256'] = {v: {str(s): {a: inputs.img_hashes[v, s, a] for a in ASPECTS}
+                                                for s in SEEDS} for v in (winner, BASE)}
                 ours['effects'] = effects
                 abar = effects['genre']['Abar'][winner]
                 target, level = header['t_g'], header['promising']
