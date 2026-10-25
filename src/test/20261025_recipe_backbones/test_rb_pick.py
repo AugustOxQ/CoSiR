@@ -168,6 +168,7 @@ def test_bootstrap_needs_the_reference_and_three_partitions_each():
 
 # ------------------------------------------------------------------ files: synthetic exports in tmp_path
 import hashlib   # noqa: E402
+import shutil   # noqa: E402
 
 import rb_ami   # noqa: E402
 import rb_data  # noqa: E402
@@ -364,3 +365,58 @@ def test_real_p_labels_at_full_size_parallel_equals_serial():
         parallel = rb_pick.bootstrap_scores(labels[aspect], parts, 4, workers=8)
         for name in parts:
             np.testing.assert_array_equal(serial[name], parallel[name])
+
+
+# ------------------------------------------------------------------ review fixes (ticket 03, build 17)
+def test_label_hashes_and_triggers_are_in_pick_json(planted_run):
+    tmp_path, labels, p_sha, pick = planted_run
+    assert pick['label_sha256'] == {a: sha(labels[a].astype(np.int64)) for a in CLASSES}
+    assert pick['outcome'] != 'P-KEEP'
+    assert pick['triggers'] == {'K4': True, 'K5': pick['recipe'] in ('R7-5', 'R7-3')}
+    assert pick['vp2_failed'] == {}
+
+
+def test_triggers_follow_the_rule_line():
+    assert rb_pick.triggers('P-KEEP', 'R0-5') == {'K4': False, 'K5': False}
+    assert rb_pick.triggers('P-R0-3', 'R0-3') == {'K4': True, 'K5': False}
+    assert rb_pick.triggers('P-R6-5', 'R6-5') == {'K4': True, 'K5': False}
+    assert rb_pick.triggers('P-R7-5', 'R7-5') == {'K4': True, 'K5': True}
+    assert rb_pick.triggers('P-R7-3', 'R7-3') == {'K4': True, 'K5': True}
+
+
+def test_a_candidate_still_failing_vp2_after_its_rerun_is_excluded_without_loading_its_exports(tmp_path):
+    signal = {r: flat(0.02) for r in rb_rows.ORDER}
+    signal['R6-3'] = flat(0.08)
+    labels, p_sha = setup(tmp_path, signal)
+    shutil.rmtree(tmp_path / 'part1' / 'train' / 'R6-3')                  # the export was never written
+    with pytest.raises(FileNotFoundError):                                # not on the list: still an error
+        rb_pick.run(tmp_path, labels, n_draws=2, workers=1, n_rows=N)
+    pick = rb_pick.run(tmp_path, labels, n_draws=10, workers=1, n_rows=N, vp2_failed={'R6-3': 'norm error 0.5'})
+    block = pick['candidates']['R6-3']
+    assert block == {'vp2_ok': False, 'vp2_problems': ['norm error 0.5'], 'guard': None, 'pass': False, 'g': None,
+                     'flag_g_le_0': None}
+    assert pick['recipes']['R6-3'] is None and pick['vp2_failed'] == {'R6-3': 'norm error 0.5'}
+    assert 'R6-3' not in pick['sources']
+    assert not (tmp_path / 'part1' / 'partitions' / 'R6-3').exists()
+    assert pick['outcome'] == 'P-KEEP' and pick['recipe'] == 'R0-5' and pick['triggers'] == {'K4': False, 'K5': False}
+    assert pick['recipes']['R7-3'] is not None                            # the others are scored
+
+
+def test_vp2_failed_refuses_the_reference_and_unknown_recipes(tmp_path):
+    signal = {r: flat(0.02) for r in rb_rows.ORDER}
+    labels, _ = setup(tmp_path, signal)
+    with pytest.raises(AssertionError, match='R0-5'):
+        rb_pick.run(tmp_path, labels, n_draws=2, workers=1, n_rows=N, vp2_failed={'R0-5': 'x'})
+    with pytest.raises(AssertionError, match='R9-9'):
+        rb_pick.run(tmp_path, labels, n_draws=2, workers=1, n_rows=N, vp2_failed={'R9-9': 'x'})
+    assert not (tmp_path / 'part1' / 'pick.json').exists()
+
+
+def test_vp2_failed_command_line_form():
+    assert rb_pick.parse_vp2_failed([]) == {}
+    assert rb_pick.parse_vp2_failed(['R6-3=norm error 0.5 = bad', 'R7-5=nan']) == {'R6-3': 'norm error 0.5 = bad',
+                                                                                  'R7-5': 'nan'}
+    with pytest.raises(AssertionError):
+        rb_pick.parse_vp2_failed(['R6-3'])
+    with pytest.raises(AssertionError):
+        rb_pick.parse_vp2_failed(['R6-3=a', 'R6-3=b'])

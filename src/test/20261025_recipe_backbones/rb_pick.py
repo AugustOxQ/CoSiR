@@ -87,6 +87,11 @@ def decide(effects, vp2_problems=None):
     return blocks, f'P-{chosen}', chosen
 
 
+def triggers(outcome, recipe):
+    """Rule §4.1 "Triggers": K4 exists unless P-KEEP; K5 (and M5) only under P-R7-5 or P-R7-3."""
+    return {'K4': bool(outcome != 'P-KEEP'), 'K5': bool(recipe in ('R7-5', 'R7-3'))}
+
+
 # ------------------------------------------------------------------ the bootstrap
 _BOOT = {}
 
@@ -232,12 +237,19 @@ def fixed_partitions(outputs, recipe, aspect, img, p_sha):
 
 
 # ------------------------------------------------------------------ the pick
-def run(outputs, labels, *, expect_names=None, n_draws=rb_ami.N_DRAWS, workers=8, smoke=False, n_rows=N_P):
+def run(outputs, labels, *, expect_names=None, n_draws=rb_ami.N_DRAWS, workers=8, smoke=False, n_rows=N_P,
+        vp2_failed=None):
     """Partitions, effects and the outcome of part 1; writes `part1/pick.json` and returns it.
 
     `labels` = {aspect: int64 [n_rows]} in P order (-1 masked): `rb_data.p_labels()`. `expect_names` (the real P)
-    is checked against `part1/P.json`.
+    is checked against `part1/P.json`. `vp2_failed` = {recipe: cause} for candidates that still fail VP2 after their
+    forced rerun (rule VP3): excluded like an in-file VP2 failure, exports not loaded (they may not exist). R0-5 in
+    it stops part 1.
     """
+    vp2_failed = dict(vp2_failed or {})
+    assert REFERENCE not in vp2_failed, f'{REFERENCE} fails VP2, part 1 stops (rule VP3): {vp2_failed[REFERENCE]}'
+    assert set(vp2_failed) <= set(CANDIDATES), f'not candidates: {sorted(set(vp2_failed) - set(CANDIDATES))}'
+    assert all(isinstance(c, str) and c for c in vp2_failed.values()), 'every VP2 failure needs a cause'
     outputs = Path(outputs)
     names = rb_data.read_p_json(outputs, expect=expect_names)
     assert len(names) == n_rows, (len(names), n_rows)
@@ -246,8 +258,10 @@ def run(outputs, labels, *, expect_names=None, n_draws=rb_ami.N_DRAWS, workers=8
     for a in ASPECTS:
         assert labels[a].dtype == np.int64 and labels[a].shape == (n_rows,) and labels[a].min() >= -1
         assert (labels[a] >= 0).any(), a
-    problems, images = {}, {}
+    problems, images = {n: [c] for n, c in vp2_failed.items()}, {}
     for name in rb_rows.ORDER:
+        if name in vp2_failed:
+            continue
         for aspect in ASPECTS:
             img = load_export(outputs, name, aspect, p_sha)
             problem = vp2_problem(img, n_rows)
@@ -269,6 +283,8 @@ def run(outputs, labels, *, expect_names=None, n_draws=rb_ami.N_DRAWS, workers=8
         p_sha256=p_sha, n_rows=n_rows, smoke=bool(smoke), n_draws=n_draws, versions=rb_ami.versions(),
         threads=rb_ami.THREADS, seed_ranges=dict(SEED_RANGES), reference=REFERENCE, tie_order=list(CANDIDATES),
         label_counts={a: int((labels[a] >= 0).sum()) for a in ASPECTS},
+        label_sha256={a: array_sha256(labels[a]) for a in ASPECTS},      # int64 bytes in P order
+        vp2_failed=vp2_failed, triggers=triggers(outcome, recipe),
         recipes=recipes, candidates=candidates, outcome=outcome, recipe=recipe,
         flag_g_le_0=bool(recipe != REFERENCE and candidates[recipe]['flag_g_le_0']),
         sources={n: {a: array_sha256(images[n, a]) for a in ASPECTS} for n in scored}, code_sha256=code_sha256())
@@ -281,19 +297,33 @@ def run(outputs, labels, *, expect_names=None, n_draws=rb_ami.N_DRAWS, workers=8
     return pick_json
 
 
+def parse_vp2_failed(items):
+    """['RECIPE=CAUSE', ...] -> {recipe: cause}; the cause is everything after the first '='."""
+    out = {}
+    for item in items:
+        recipe, sep, cause = item.partition('=')
+        assert sep and recipe and cause, f'--vp2-failed wants RECIPE=CAUSE, got {item!r}'
+        assert recipe not in out, f'--vp2-failed twice for {recipe}'
+        out[recipe] = cause
+    return out
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Part 1: fixed partitions, effects against R0-5 and the pick.')
     parser.add_argument('--outputs', type=Path, default=rb_paths.OUTPUTS)
     parser.add_argument('--smoke', action='store_true', help='20 bootstrap draws; outputs under /tmp/claude-0/')
     parser.add_argument('--workers', type=int, default=8, choices=range(1, 9))
+    parser.add_argument('--vp2-failed', action='append', default=[], metavar='RECIPE=CAUSE',
+                        help='a candidate still failing VP2 after its forced rerun (repeatable); not scored, never passes')
     args = parser.parse_args(argv)
+    vp2_failed = parse_vp2_failed(args.vp2_failed)
     if args.smoke:
         assert str(args.outputs.resolve()).startswith('/tmp/claude-0/'), 'smoke needs --outputs under /tmp/claude-0/'
     rb_paths.check_imports()
     names = rb_data.p_names()
     assert rb_data.names_sha256(names) == rb_data.p_sha256()
     pick_json = run(args.outputs, rb_data.p_labels(), expect_names=names, n_draws=20 if args.smoke else rb_ami.N_DRAWS,
-                    workers=args.workers, smoke=args.smoke)
+                    workers=args.workers, smoke=args.smoke, vp2_failed=vp2_failed)
     print(f"{args.outputs / 'part1' / 'pick.json'}: outcome {pick_json['outcome']}, recipe {pick_json['recipe']}"
           f"{' (g <= 0: flagged)' if pick_json['flag_g_le_0'] else ''}", flush=True)
     return 0
