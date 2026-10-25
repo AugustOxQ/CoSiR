@@ -61,6 +61,8 @@ All stages finished without failure.
 The round ran 2026-10-25, 06:59–13:07 Amsterdam time, in the main checkout with RTX 3090 and CPU scoring.
 
 Part 1 selected a recipe; part 2 tested held claims at both scales, then ArtELingo-28.
+Every part 2 student uses the picked recipe; only the image network's first layer changes with the encoder's width (rule §2).
+Context: D2 passed both held emotion claim tests (full scale 0.1008 against PercepT core's 0.0874, report 12-19) but stayed below the instructed Qwen image on style and genre (direction log, 2026-10-21). In 12-22, dropping the own-caption terms also raised the teacher's loss share from 1/5 to 1/3; part 1's six recipes separate the two.
 Stopping used 1,489 sample and 6,152 full-scale paintings.
 AMI averages three k-means states, then five seeds in part 2. Settings were not tuned.
 Intervals use 2,000 paired painting bootstraps; part 2 resamples seeds and recomputes maxima.
@@ -139,7 +141,7 @@ Independent derivations agreed for part 1 and stages 3–5, without exclusions o
 ## Analysis
 
 **Our reading:** the probe supports spec §3.6: default images hold genre information; losses limit its use.
-With label-free stopping, ridge reaches genre AMI 0.5040 against instructed 0.4989, default 0.4623 and D2 0.4604 on fresh development data.
+The probe predicts each instructed Qwen image from the default one (ridge and a 4-layer MLP, fit on the 13,400 sample paintings, stopped on the regression loss of the 1,489 stopping paintings, no labels); it decides nothing. Ridge reaches genre AMI 0.5040 against instructed 0.4989, default 0.4623 and D2 0.4604 on fresh development data.
 
 **Our reading:** the [four-view sheet][sheet] shows better neighbours alongside more concentrated vectors.
 
