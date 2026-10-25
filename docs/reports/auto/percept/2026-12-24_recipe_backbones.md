@@ -4,102 +4,86 @@
 
 ## Results brief
 
-**What we tried.** We chose a recipe, the loss terms and weights, then tested students on different image encoders.
-Adjusted mutual information (AMI) measures cluster agreement with labels.
+**What we tried.** We chose loss terms and weights (a recipe), then tested students on different image encoders.
 
-**Outcome against the bar.** The recipe without own-caption terms won on 29,232 development paintings with seed 0.
-Own-caption terms align each painting's image with its own caption.
-The winner kept teacher share 1/5, meaning the teacher supplies one fifth of the loss weight.
-Its gains against the previous model, D2, were:
+**Terms.**
 
-| Emotion gain [95% interval] | Style gain [95% interval] | Genre gain [95% interval] |
+- D2 is the previous recipe (report 12-22). Own-caption terms align each image with its caption. Teacher share 1/5 gives the teacher one fifth of loss weight.
+- AMI measures cluster agreement with labels. A seed range is D2's AMI spread over three seeds in 12-22, the development bar's unit.
+- PercepT core is our reimplementation. B1 is its Qwen default-image arm. Own reading selects the top topic; r20 uses k-means with 20 clusters.
+- Held paintings are for evaluation. Sample and full scale mean training on 13,400 and 42,969 paintings.
+- Matched arms retrain PercepT's second stage on the student's encoder images, keeping Qwen topics and settings. Frozen inputs are encoder embeddings clustered without a student.
+- Gain = the student's AMI minus the strongest comparator's AMI. GO passes; inconclusive has a positive gain without passing.
+
+**Outcome against the bar.** Removing own-caption terms at teacher share 1/5 won on 29,232 development paintings, seed 0. Image endpoints only at 1/5 was close: mean gain 1.55 against the winner's 1.60 seed ranges.
+
+| Emotion change vs D2 [95% interval] | Style change vs D2 [95% interval] | Genre change vs D2 [95% interval] |
 |---|---|---|
-| +0.0061 [+0.0046, +0.0076] | +0.0240 [+0.0216, +0.0261] | +0.0070 [+0.0039, +0.0102] |
+| +0.0061 [+0.0046, +0.0076] | +0.0240 [+0.0216, +0.0261] | +0.0070 [+0.0039, +0.0102]; below one seed range (0.0128) |
 
-A seed range is D2's spread over three seeds in 12-22, the unit of the development bar.
-The image-endpoints-only recipe at share 1/5 was close, with mean gain 1.55 against the winner's 1.60 seed ranges.
+On the 12,281 held paintings, B1's own reading was strongest for all three students. GO required gain ≥ 0.0100 and a positive lower bound.
 
-Held emotion required a gain of 0.0100 with a positive lower interval bound.
-A matched arm retrains PercepT's second stage on the student's images, keeping Qwen topics and core settings.
-Qwen core's own reading on its default image set every bar; both new matched arms were weaker.
-The Qwen student's matched arm was the bar itself.
-
-| Full-scale student | AMI | Strongest core entry (B1, own reading) | Gain [95% interval] | Verdict |
+| Full-scale student | AMI | B1 own AMI | Gain [95% interval] | Verdict |
 |---|---:|---:|---|---|
 | SigLIP 2 | 0.1024 | 0.0874 | +0.0150 [+0.0096, +0.0163] | GO at both scales |
 | CLIP B/32 | 0.0885 | 0.0874 | +0.0011 [-0.0043, +0.0025] | Inconclusive at both scales |
 | Qwen, picked recipe | 0.1029 | 0.0874 | +0.0154 [+0.0100, +0.0169] | GO at both scales |
 
-On ArtELingo-28's 746 paintings, no model holds the lead with an interval above zero.
-The previous Qwen recipe, the picked Qwen recipe and SigLIP 2 are qualified.
-Their gains are positive, but their intervals reach below zero.
-CLIP B/32 is below PercepT core.
+No model holds the lead on ArtELingo-28's 746 paintings with an interval above zero. Both Qwen recipes and SigLIP 2 are qualified: positive gains with intervals reaching below zero. CLIP B/32 is below core. SigLIP 2's matched arm sets its bar there.
 
-**What it does not show.** Selection among five candidates on one seed can inflate the winner's gain.
-Every claim needs Qwen3-VL-Embedding at training time for graphs, teacher and captions.
-The held claims exclude style, genre, retrieval and untested backbones.
-ArtELingo-28 is small, with 746 paintings and wide intervals.
-Inconclusive for CLIP B/32 is not a NO-GO.
+**What it does not show.** Selection among five candidates on one seed can inflate the winner's gain. Every claim needs Qwen3-VL-Embedding graphs, teacher and captions at training. The claims are k-means-only: full-scale Leiden emotion intervals include zero for SigLIP 2 and Qwen. Style, genre, retrieval and untested backbones are excluded. ArtELingo-28 is small with wide intervals; CLIP's inconclusive held result is not NO-GO.
 The user took these flagged decisions after our recommendation:
 
 | D8 | D9 | D11 | D13 |
 |---|---|---|---|
-| Encoder order; conditional DINOv2 | Qwen captions | Strongest comparator, matched arm included | Full scale unless NO-GO |
+| We test SigLIP 2 then CLIP B/32; DINOv2 runs only if image endpoints only wins. | Every student needs Qwen captions at training. | The strongest entry, matched arm included, sets the bar. | Full scale runs unless the sample result is NO-GO. |
 
 **Options for next.**
 
-1. Test teacher-faithful heads or losses on development data ([ideas 2 and 3][lossideas]). The probe finds genre information in the default image. Runs take minutes on the 3090 and could test whether losses preserve it.
-2. Write “any student backbone, Qwen teacher at training” into the CVPR framing for the 2026-11-10 abstract ([framing note][framing]). SigLIP 2 meets its condition at both scales; report CLIP B/32 as inconclusive. Writing and review time is not estimated; this could define the paper's scope.
-3. Investigate CLIP B/32's weaker gain despite higher frozen emotion AMI: 0.0642 against SigLIP 2's 0.0569 at stage 3. Cost is not estimated; this could test how the loss transfers between encoders.
+1. Test teacher-faithful heads or losses on development data ([ideas 2 and 3][lossideas]). Our reading: the probe puts genre information in the default image. Runs take minutes on the 3090 and test whether losses preserve it.
+2. Write this for the CVPR 2026-11-10 abstract. “The emotion lead over PercepT core holds on two image encoders, Qwen and SigLIP 2, with Qwen3-VL-Embedding at training; CLIP B/32 is inconclusive.” Writing time is unestimated; this could set the abstract's scope.
 
 **Your reading.** We record your reading at wrap-up.
 
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>
 
-**Our reading.** Our view: removal at teacher share 1/5 gains on all aspects and resolves 12-22's confound within these recipes.
-Raising the share alone loses on all three, averaging -1.36 seed ranges.
-Removal at share 1/3 gives no qualifying gain, averaging 0.10.
-The gain comes from removing the terms, rather than the teacher's larger share.
-SigLIP 2 meets the framing note's “any backbone” condition at both scales, with Qwen supervision at training.
-CLIP B/32 leaves it unresolved; ArtELingo-28 gives only qualified support.
+**Our reading.** Our view: dropping own-caption terms at teacher share 1/5 gains on emotion and style on one development seed. Genre is +0.0070, positive but below one seed range (0.0128). Raising the share alone loses on all aspects, averaging -1.36 seed ranges. Removal at share 1/3 gives no qualifying gain, averaging 0.10. This answers 12-22's confound only in that setting.
 
-**Our recommendation.** Our view: write the claim with the Qwen caveat, then test genre losses on development data.
+The [framing note][framing] requires a SigLIP 2 or CLIP student above PercepT core. SigLIP 2 meets that condition at both scales. Our view supports this narrow claim. “The emotion lead over PercepT core holds on two image encoders, Qwen and SigLIP 2, with Qwen3-VL-Embedding at training; CLIP B/32 is inconclusive.” ArtELingo-28 gives only qualified support.
 
+**Our recommendation.** Our view: write the narrow claim, then test genre losses on development data.
 </details>
 
 ## What ran
 
-All candidates finished; stage 4's descriptive readings remain pending.
-The round ran on 2026-10-25 from 06:59 to 09:52 Amsterdam time, using the main checkout, local RTX 3090 and CPU scoring.
+All stages finished without failure.
+The round ran 2026-10-25, 06:59–13:07 Amsterdam time, in the main checkout with RTX 3090 and CPU scoring.
 
-Part 1 selected a recipe; part 2 tested held claims at both scales, then confirmed on ArtELingo-28.
-Both included exploration.
-
-The sample used 13,400 training paintings and 1,489 stopping paintings; full scale used 42,969 and 6,152.
-AMI averages three k-means states, then five model seeds in part 2; settings were not tuned per encoder.
-Intervals use 2,000 paired painting bootstraps; part 2 also resamples seeds and recomputes comparator maxima.
+Part 1 selected a recipe; part 2 tested held claims at both scales, then ArtELingo-28.
+Stopping used 1,489 sample and 6,152 full-scale paintings.
+AMI averages three k-means states, then five seeds in part 2. Settings were not tuned.
+Intervals use 2,000 paired painting bootstraps; part 2 resamples seeds and recomputes maxima.
 
 ## Results
 
-The recipe pick and two emotion claims pass.
+The pick and two emotion claims pass.
 
 ### Part 1 pick
 
-The development comparison uses 29,232 paintings and seed 0; genre has labels on 23,682 paintings.
+Part 1 uses 29,232 paintings and seed 0; genre labels cover 23,682 paintings.
 The emotion, style and genre seed ranges are 0.0046, 0.0082 and 0.0128.
-A recipe must gain at least one range with a positive lower bound and lose at most one range on each aspect.
+Passing requires one gain of at least one range with a positive lower bound, and no loss exceeding one range per aspect.
 The largest mean gain wins, rounded to two decimals.
 
 | ID / recipe | Measured image AMI change [95% interval] | D2 comparator | Bar | Outcome |
 |---|---|---|---|---|
-| R6-5: no own-caption terms, teacher share 1/5 | Emotion: +0.0061 [+0.0046, +0.0076]; style: +0.0240 [+0.0216, +0.0261]; genre: +0.0070 [+0.0039, +0.0102] | Emotion 0.1010; style 0.3748; genre 0.4604 | Gain and guard pass; mean 1.60 | P-R6-5: picked |
+| R6-5: no own-caption terms, teacher share 1/5 | Emotion: +0.0061 [+0.0046, +0.0076] | D2 emotion 0.1010 | Emotion gain and all guards pass; mean 1.60 | P-R6-5: picked |
 
 **Verdict under the rule:** no own-caption terms at share 1/5 wins.
 Both image-endpoints-only recipes pass: teacher share 1/5 gives mean gain 1.55, and share 1/3 gives mean gain 1.04.
-D2 at share 1/3 fails the genre guard; removal at share 1/3 has no qualifying gain.
-Qwen runs; DINOv2 does not. The licensed claim covers these image AMI changes against D2 on fresh development paintings, with one seed.
-It covers no held result.
+D2 at share 1/3 fails the style and genre guards; removal at share 1/3 has no qualifying gain.
+The recipe change triggers a Qwen student; DINOv2 runs only if image endpoints only wins. The licensed image AMI claim compares the pick with D2 on fresh development paintings, one seed. It covers development only.
 
 ### Part 2 held emotion: stages 3 and 4
 
@@ -108,15 +92,15 @@ Smaller positive gains are inconclusive.
 
 | ID / input | Stage / AMI | Gain [95% interval] | Comparator / AMI | Bar | Outcome |
 |---|---|---|---|---|---|
-| K2: SigLIP 2 | 3 / 0.1020 | +0.0165 [+0.0110, +0.0177] | B1-own: core own / 0.0855 | GO bar | S1-GO |
+| K2: SigLIP 2 | 3 / 0.1020 | +0.0165 [+0.0110, +0.0177] | B1-own / 0.0855 | GO bar | S1-GO |
 | K3: CLIP B/32 | 3 / 0.0901 | +0.0046 [-0.0006, +0.0057] | B1-own / 0.0855 | GO bar | S1-IN |
 | K4: Qwen, picked | 3 / 0.1045 | +0.0190 [+0.0137, +0.0201] | B1-own / 0.0855 | GO bar | S1-GO |
 | K2 | 4 / 0.1024 | +0.0150 [+0.0096, +0.0163] | B1-own / 0.0874 | GO bar | S2-GO |
 | K3 | 4 / 0.0885 | +0.0011 [-0.0043, +0.0025] | B1-own / 0.0874 | GO bar | S2-IN |
 | K4 | 4 / 0.1029 | +0.0154 [+0.0100, +0.0169] | B1-own / 0.0874 | GO bar | S2-GO |
 
-Matched arms retain saved Qwen Stage 1 topics, core settings and corresponding seeds, while retraining Stage 2 on the candidate's encoder images.
-The table gives matched arms' emotion AMI, using their own reading:
+Matched arms retrain Stage 2 on the candidate's images, keeping Qwen topics, settings and corresponding seeds.
+Matched arms use their own reading below:
 
 | ID / image | Stage 3 own AMI | Stage 4 own AMI |
 |---|---:|---:|
@@ -147,9 +131,9 @@ Each comparison uses 746 paintings, their own images, English-translated caption
 | K4 | 0.1443 | +0.0167 [-0.0103, +0.0212] | B1-own / 0.1277 | holds bar | A-QUAL |
 
 **Verdict under the rule:** both Qwen recipes and SigLIP 2 are qualified; CLIP B/32 fails with a negative gain.
-No model licenses the ArtELingo-28 “holds” claim. Confirmation cannot rescue a failed backbone test.
+No model earns “holds”. A-FAILS applies to ArtELingo-28; CLIP B/32's held test was inconclusive.
 
-All gates passed: stage 0 matched 9/9 exports bit for bit; sample and full regressions passed 27/27 checks each.
+All regressions passed: 9/9 exports bit for bit at stage 0; 27/27 checks at both scales.
 Independent derivations agreed for part 1 and stages 3–5, without exclusions or skips.
 
 ## Analysis
@@ -157,16 +141,17 @@ Independent derivations agreed for part 1 and stages 3–5, without exclusions o
 **Our reading:** the probe supports spec §3.6: default images hold genre information; losses limit its use.
 With label-free stopping, ridge reaches genre AMI 0.5040 against instructed 0.4989, default 0.4623 and D2 0.4604 on fresh development data.
 
-**Our reading:** the [four-view sheet][sheet] shows better neighbours but more concentrated instructed vectors.
-Negative emotion and style silhouettes suggest a clustering limit.
+**Our reading:** the [four-view sheet][sheet] shows better neighbours alongside more concentrated vectors.
 
-**Our reading:** [part 1 diagnostics][part1report] retain the winner's lead on all aspects.
-This holds on the old 5,000 paintings, fresh captions, Leiden clusters and epoch-4 exports.
-The winner stops at emotion epoch 3, style epoch 2 and genre epoch 1.
-Early exports run patience epochs; image-endpoints-only recipes lack a caption network.
+**Our reading:** [part 1 diagnostics][part1report] retain the winner's lead over D2 on all aspects.
+Image endpoints only at share 1/5 matches or exceeds it on several diagnostics.
+This holds on the old 5,000 paintings, captions, Leiden and epoch-4 exports.
+Its best epochs are 3 for emotion, 2 for style and 1 for genre.
+The epoch-4 export is a fixed snapshot after epoch 4. Image-endpoints-only recipes lack a caption network.
 
-**Our reading:** [stage 3][stage3report] exceeds PercepT on style and genre, but all students miss instructed genre.
-Each cell is student AMI minus comparator AMI. Style uses 12,281 paintings; genre uses 9,949 labelled paintings.
+**Our reading:** [stage 3][stage3report] exceeds PercepT on style and genre; all students miss instructed genre.
+Cells give student AMI minus comparator AMI; style uses 12,281 paintings, genre 9,949 labelled paintings.
+The Qwen student's matched arm is B1 in both reported tables.
 
 | ID / aspect | Strongest PercepT entry (B1–B6) | Candidate matched arm | Candidate frozen image | T: aspect-instructed Qwen image |
 |---|---:|---:|---:|---|
@@ -177,25 +162,46 @@ Each cell is student AMI minus comparator AMI. Style uses 12,281 paintings; genr
 | K3 / genre | +0.0146 | +0.0149 | +0.0472 | -0.0505 |
 | K4 / genre | +0.0179 | +0.0179 | +0.0070 | -0.0471 |
 
-All students exceed their frozen image on emotion. SigLIP 2 and Qwen also exceed the instructed image; CLIP B/32 remains unresolved.
-**Our reading:** Leiden weakens emotion leads; SigLIP 2's genre interval crosses zero, while CLIP B/32 and Qwen remain positive.
-Claims remain specific to k-means.
-
-[Diagnostics][stage3report] show narrow emotion seed spans and early best epochs.
-Previous Qwen stops later on style and genre; with the picked student's comparators, its margin is +0.0146 [+0.0093, +0.0157].
-CLIP B/32 store parity covers 61,402 paintings, with cosine mean 0.999993, minimum 0.997838 and none below 0.99.
-**Our reading:** parity does not explain CLIP's result. SigLIP 2 extraction parity was not checked.
-
 ### Stage 4 reported readings
 
-Pending: the stage 4 report queue runs 2026-10-25 from 19:00; this section is filled from part2/reported_stage4.{json,md}.
+**Our reading:** [full scale][stage4report] retains style gains and the instructed genre gap.
+Arms stay fixed; the strongest entry can change.
+
+| ID / aspect | PercepT maximum | Matched arm | Frozen encoder | T |
+|---|---:|---:|---:|---:|
+| K2 / style | +0.2006 | +0.2024 | +0.1019 | +0.0278 |
+| K2 / genre | +0.0418 | +0.0129 | +0.0923 | -0.0375 |
+| K3 / style | +0.1395 | +0.1532 | +0.0714 | -0.0333 |
+| K3 / genre | +0.0215 | +0.0198 | +0.0400 | -0.0577 |
+| K4 / style | +0.1699 | +0.2046 | +0.1763 | -0.0029 |
+| K4 / genre | +0.0265 | +0.0304 | +0.0014 | -0.0527 |
+
+| Emotion gain | SigLIP 2 | CLIP B/32 | Qwen |
+|---|---:|---:|---:|
+| Against frozen input | +0.0455 | +0.0243 | +0.0321 |
+| Against instructed Qwen | +0.0103 | -0.0035 | +0.0108 |
+
+**Our reading:** CLIP B/32's Leiden emotion margin flips from positive to -0.0043 [-0.0088, -0.0016].
+
+SigLIP 2's Leiden genre margin flips from uncertain negative to +0.0123 [+0.0041, +0.0206].
+Leiden style and genre intervals are positive; SigLIP 2 and Qwen emotion intervals include zero.
+
+| Diagnostic | SigLIP 2 | CLIP B/32 | Qwen |
+|---|---|---|---|
+| Emotion AMI seed min–max | 0.1016–0.1032 | 0.0877–0.0906 | 0.1017–0.1041 |
+| Best emotion epochs | 5–12 | 5–12 | 5–8 |
+| Best style epochs | 2–4 | 1–3 | 2–4 |
+| Best genre epochs | 1–2 | 1 | 1 |
+
+Previous Qwen with the picked student's entries gives +0.0133 [+0.0081, +0.0148].
+CLIP B/32 mean cosine to the legacy store is 0.999993.
 
 ### ArtELingo-28 reported context
 
 **Our reading:** [transfer remains uncertain][stage5report] in both image groups.
 Of the 746 paintings, 248 also belong to ArtELingo; their different image files have mean Qwen embedding cosine 0.934
 ([spec §8](../../../superpowers/specs/2026-10-25-recipe-and-backbones-design.md#8-risks)). The cause was not checked.
-The other 498 are outside our ArtELingo store. Cells give emotion AMI and gain against the subset's strongest comparator, with 95% intervals.
+The other 498 are outside our store. Cells give emotion AMI and gain against each subset's strongest comparator, with 95% intervals.
 
 | Model | 248 shared: AMI; gain [95% interval] | 498 outside: AMI; gain [95% interval] |
 |---|---|---|
@@ -204,7 +210,7 @@ The other 498 are outside our ArtELingo store. Cells give emotion AMI and gain a
 | K3 | 0.1088; -0.0062 [-0.0480, +0.0135] | 0.1139; -0.0014 [-0.0344, +0.0044] |
 | K4 | 0.1116; -0.0034 [-0.0396, +0.0121] | 0.1471; +0.0317 [-0.0046, +0.0365] |
 
-SigLIP 2 uses its matched arm; other models use Qwen core's own reading. All subset intervals include zero.
+SigLIP 2 uses its matched arm; the others use Qwen core's own reading. All intervals include zero.
 Language-specific labels differ from pooled labels; this split does not test culture as a condition.
 
 ## Deviations
@@ -220,15 +226,18 @@ Timing and defaults qualify the run; there were no formal rule amendments.
 | Stage 5 scale | “Stage 4 ran” means reached an outcome. All did; K1–K4 used full scale. |
 | D31 / rule §4.2 | Qwen held outcomes test the development pick; they do not choose recipes. |
 
-Both descriptive queues moved to evening. After the chain, stage 3 fitted the morning: 08:52–09:52, taking 3,613 seconds.
-Stage 4 stays at 19:00 because morning left no margin before 11:00. Neither decides an outcome. Part 1 had no exclusions or forced rerun.
+Stage 3's report queue ran 08:52 to 09:52 after the chain, taking 3,613 seconds.
+Stage 4's was planned for 19:00 and ran 12:06 to 13:07 on the user's word, taking 3,617 seconds without failure.
+Neither queue decides an outcome.
+Part 1 had no exclusions or forced rerun.
 
 Old development data chose D2 among 13 rows and supplied the caption-free variants. Encoder choice used no held numbers.
+No choice was made on held data, and none is made here. The comparator's maximum is taken on held data (spec §8).
 
 ## Files and storage
 
-We keep the outputs until the wrap-up's storage summary. The [round folder][round] holds code, rule and log.
-The gitignored [outputs][outputs] exist only in the main checkout and hold the pick, verdicts, derivations, diagnostics and queue statuses.
+The [round folder][round] holds code, rule and log. We keep outputs until the wrap-up's storage summary.
+The gitignored [outputs][outputs] exist only in the main checkout, including verdicts, diagnostics, queues and `part2/reported_stage4.{json,md}`.
 
 | System disk storage, checked with du -sh | Size |
 |---|---:|
@@ -238,7 +247,7 @@ The gitignored [outputs][outputs] exist only in the main checkout and hold the p
 | Part 2 sample | 5.3 GB |
 | Part 2 regression | about 0.8 GB (760M) |
 
-The build scratch trees are listed in [.scratch/pending_deletions.md](../../../../.scratch/pending_deletions.md). Nothing was removed.
+Build scratch trees are listed in [the cleanup list](../../../../.scratch/pending_deletions.md). Nothing was removed.
 
 [round]: ../../../../src/test/20261025_recipe_backbones/
 [outputs]: ../../../../src/test/20261025_recipe_backbones/outputs/
@@ -249,3 +258,4 @@ The build scratch trees are listed in [.scratch/pending_deletions.md](../../../.
 
 [lossideas]: ../../literature/2026-12-20_ways_to_improve.md#candidate-ideas-one-ranking
 [framing]: 2026-12-21_advantages_framing.md
+[stage4report]: ../../../../src/test/20261025_recipe_backbones/outputs/part2/reported_stage4.md

@@ -25,6 +25,8 @@ Chat "r10 run 14", unattended (night mode), from the main checkout `/project/CoS
 | 08:52 to 09:52 | `rb_queue_cpu.sh 3` (stage 3 report queue), alone on the CPU; load 5.2, 56 GB free; gate v2_3 (3 s), report (3,613 s) | done, no step failed; `part2/reported_stage3.{json,md}` (decides nothing) |
 | 09:52 | GPU check: driver, kernel module and library all 595.99.02; no GPU process, no lock of this chat; 188 GB free on `/` | pass |
 | 09:55 | Cut to "r10 run 15" (context meter) | handoff `2026-10-25-r10-run-15-handoff.md` |
+| 10:04 to 10:17 | (r10 run 15) report 12-24 drafted by Codex, one revision round | stage 4 readings left as a marked gap |
+| 12:06 to 13:07 | `rb_queue_cpu.sh 4` (stage 4 report queue), alone on the CPU; load 0.2, 55 GB available; started at noon on the user's word (Sunday, machine idle), not at 19:00; gate v2_4 (3 s), report (3,617 s) | done, no step failed; `part2/reported_stage4.{json,md}` (decides nothing) |
 
 ## The split (spec D32)
 
