@@ -165,7 +165,7 @@ WIDTHS = {'qwen3vl_emb_2b': 24, 'clip_b32': 12, 'siglip2_so400m': 20}
 
 
 def fake_world(tmp_path, scale='sample'):
-    s, topic = fake_split()
+    s, _ = fake_split()
     held = [f'h{i}' for i in range(N_HELD)]
     a28 = [f'a{i}' for i in range(N_A28)]
     store = {}
@@ -181,7 +181,7 @@ def fake_world(tmp_path, scale='sample'):
     def a28_images(backbone):
         return full_images(backbone, a28)
 
-    return m.World(scale=scale, ct_root=tmp_path / 'ct', s=s, topics=lambda seed: (topic, K, 'cc' * 32),
+    return m.World(scale=scale, ct_root=tmp_path / 'ct', s=s, topics=lambda seed: (fake_split(seed)[1], K, f'{seed + 1:02x}' * 32),
                    held_names=held, held_sha256='aa' * 32, full_images=full_images,
                    a28_names=a28, a28_sha256='bb' * 32, a28_images=a28_images,
                    clip_images=lambda names: full_images('clip_b32', names))
@@ -214,6 +214,66 @@ def test_run_matched_writes_held_and_a28_outputs_for_every_seed_given(tmp_path):
     # held output is the saved mapper's reading of the candidate's own held image
     prob = m.infer(out / 'part2/sample/matched/M2/P3__s0.npz', world.full_images('siglip2_so400m', world.held_names))
     np.testing.assert_array_equal(h, prob)
+
+
+def test_each_seed_trains_on_its_own_stage1_topics(tmp_path):
+    world = fake_world(tmp_path)
+    assert not np.array_equal(world.topics(0)[0], world.topics(1)[0])
+    out = tmp_path / 'out'
+    m.run_matched(world, 'M2', [0, 1], out, 'cpu', smoke=False, epochs=2, gate=False)
+    for seed in (0, 1):
+        want = world.topics(seed)[2]
+        for kind in ('matched', 'held', 'a28'):
+            side = json.loads((out / f'part2/sample/{kind}/M2/P3__s{seed}.json').read_text())
+            assert side['stage1_sha256'] == want, (kind, seed)
+    # the seed-1 mapper was trained on seed-1 topics: its Stage 2 targets are not those of seed 0
+    s, images = world.s, world.full_images('siglip2_so400m', world.s['all_painting_ids'])
+    again = m.train_stage2(s, world.topics(1)[0], K, images, 'siglip2_so400m', 1, 'cpu', smoke=False, epochs=2)
+    with np.load(out / 'part2/sample/matched/M2/P3__s1.npz') as z:
+        np.testing.assert_array_equal(z['eval_prob'], again['eval_prob'])
+
+
+def _mtimes(out):
+    return {str(p): p.stat().st_mtime_ns for p in sorted((out / 'part2').rglob('*')) if p.is_file()}
+
+
+def test_run_matched_resumes_verified_seeds_without_retraining(tmp_path, monkeypatch):
+    world = fake_world(tmp_path)
+    out = tmp_path / 'out'
+    first = m.run_matched(world, 'M2', [0, 1], out, 'cpu', smoke=False, epochs=2, gate=False)
+    before = _mtimes(out)
+    assert before
+
+    def boom(*args, **kwargs):
+        raise AssertionError('trained again')
+    monkeypatch.setattr(m, 'train_stage2', boom)
+    second = m.run_matched(world, 'M2', [0, 1], out, 'cpu', smoke=False, epochs=2, gate=False)
+    assert second == first
+    assert _mtimes(out) == before
+
+
+def test_v4_refuses_a_new_seed_once_held_outputs_exist(tmp_path):
+    world = fake_world(tmp_path)
+    out = tmp_path / 'out'
+    m.run_matched(world, 'M2', [0], out, 'cpu', smoke=False, epochs=2, gate=False)
+    before = _mtimes(out)
+    with pytest.raises(AssertionError, match='V4'):
+        m.run_matched(world, 'M2', [0, 1], out, 'cpu', smoke=False, epochs=2, gate=False)
+    assert _mtimes(out) == before          # seed 1 was not trained, seed 0 was not touched
+    # another matched arm has its own held folder
+    m.run_matched(world, 'M3', [0], out, 'cpu', smoke=False, epochs=2, gate=False)
+
+
+def test_v4_refuses_to_retrain_a_seed_whose_outputs_fail_verification(tmp_path):
+    world = fake_world(tmp_path)
+    out = tmp_path / 'out'
+    m.run_matched(world, 'M2', [0], out, 'cpu', smoke=False, epochs=2, gate=False)
+    a28 = out / 'part2/sample/a28/M2/P3__s0.npz'
+    a28.with_suffix('.json').unlink()
+    before = _mtimes(out)
+    with pytest.raises(AssertionError, match='V4'):
+        m.run_matched(world, 'M2', [0], out, 'cpu', smoke=False, epochs=2, gate=False)
+    assert _mtimes(out) == before
 
 
 def test_run_matched_gate_blocks_before_any_training(tmp_path):
@@ -255,6 +315,23 @@ def test_regression_passes_when_the_qwen_input_reproduces_the_ct_files(tmp_path)
     assert record['items'] and all(k.startswith('matched/') for k in record['items'])
     assert {'matched/qwen_s0/eval_prob', 'matched/qwen_s0/held_prob', 'matched/qwen_s0/mapper_state',
             'matched/ct_mapper_infer/P3_s0', 'matched/ct_mapper_infer/P2_s0'} <= set(record['items'])
+
+
+def test_regression_eval_prob_item_fails_on_one_flipped_bit_of_the_ct_file(tmp_path):
+    world = fake_world(tmp_path)
+    make_ct_files(world)
+    ct_eval = world.ct_root / 'percept/core/stage2/k40/P3__s0.npz'
+    prob = np.load(ct_eval)['eval_prob'].copy()
+    prob[1, 4] = np.nextafter(prob[1, 4], np.float32(2) if prob[1, 4] < .5 else np.float32(-1))
+    np.savez_compressed(ct_eval, eval_prob=prob)
+    side = json.loads(ct_eval.with_suffix('.json').read_text())    # keep the CT file self-consistent
+    side['array_sha256s']['eval_prob'] = ct_percept.pc_stage1.array_sha256(prob)
+    ct_eval.with_suffix('.json').write_text(json.dumps(side))
+    record = m.regress(world, tmp_path / 'out', 'cpu', epochs=3)
+    assert record['pass'] is False
+    assert record['items']['matched/qwen_s0/eval_prob']['pass'] is False
+    assert record['items']['matched/qwen_s0/held_prob']['pass'] is True
+    assert record['items']['matched/qwen_s0/mapper_state']['pass'] is True
 
 
 def test_regression_fails_on_one_flipped_bit_and_keeps_other_tickets_items(tmp_path):

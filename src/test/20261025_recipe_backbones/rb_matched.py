@@ -203,24 +203,61 @@ def _gate(outputs, scale, candidates):
     rb_score.require_gate(Path(outputs), 3 if scale == 'sample' else 4, list(candidates))
 
 
+def _verified(world, arm, seed, outputs, smoke):
+    """True when the Stage 2 file, the held output and the ArtELingo-28 output of this seed all exist and verify
+    (sidecars, hashes, list hashes, the Stage 1 file of this seed); False when absent, partial or failing."""
+    stage2 = stage2_path(outputs, world.scale, arm, seed)
+    held = rb_score.output_path(world.scale, arm, seed, outputs=outputs)
+    a28 = a28_path(outputs, world.scale, arm, seed)
+    if not all(p.exists() and p.with_suffix('.json').exists() for p in (stage2, held, a28)):
+        return False
+    try:
+        weights = base.verify_output(stage2)['weights_sha256']
+        stage1_sha256 = world.topics(seed)[2]
+        for path, n_rows, list_sha256 in ((held, len(world.held_names), world.held_sha256),
+                                          (a28, len(world.a28_names), world.a28_sha256)):
+            rb_score.load_output(path, arm, n_rows, list_sha256, world.scale, seed, 'percept')
+            meta = json.loads(path.with_suffix('.json').read_text())
+            assert (meta['stage2_weights_sha256'], meta['stage1_sha256'], meta['smoke']) == \
+                (weights, stage1_sha256, smoke)
+    except (AssertionError, KeyError, ValueError):
+        return False
+    return True
+
+
 def run_matched(world, arm, seeds, outputs, device, smoke, epochs=None, gate=True):
-    """Train `arm` (M2, M3 or M5) for each seed at the world's scale; write held and ArtELingo-28 outputs."""
+    """Train `arm` (M2, M3 or M5) for each seed at the world's scale; write held and ArtELingo-28 outputs.
+
+    V4 (rule §4.2): a seed whose Stage 2 file, held output and ArtELingo-28 output all verify is skipped (crash
+    resume); no training at all (checked once, before the first seed) if any held output of this arm exists at this
+    scale, whatever its seed, and a seed still has to be trained."""
     backbone = MATCHED[arm]
     if gate:
         _gate(outputs, world.scale, [CANDIDATE[arm]])
     s = world.s
-    all_images = world.full_images(backbone, s['all_painting_ids'])
-    held_images = world.full_images(backbone, world.held_names)
-    a28_images = world.a28_images(backbone)
+    held_root = rb_score.output_path(world.scale, arm, 0, outputs=outputs).parent
+    todo = [seed for seed in seeds if not _verified(world, arm, seed, outputs, smoke)]
+    held_files = sorted(held_root.rglob('*.npz')) if held_root.exists() else []
+    assert not (todo and held_files), f'V4: no new training of {arm} at {world.scale} once held outputs exist ' \
+                                      f'(any seed): {held_files[0]}; seeds to train: {todo}'
+    all_images = held_images = a28_images = None
     paths = []
     for seed in seeds:
+        held_path = rb_score.output_path(world.scale, arm, seed, outputs=outputs)
+        if seed not in todo:
+            print(f'{arm} {world.scale} s{seed}: verified outputs; skip', flush=True)
+            paths.append(held_path)
+            continue
+        if all_images is None:
+            all_images = world.full_images(backbone, s['all_painting_ids'])
+            held_images = world.full_images(backbone, world.held_names)
+            a28_images = world.a28_images(backbone)
         topic, k, stage1_sha256 = world.topics(seed)
         result = train_stage2(s, topic, k, all_images, backbone, seed, device, smoke, epochs=epochs)
         path = save_stage2(stage2_path(outputs, world.scale, arm, seed), result,
                            dict(stage1_sha256=stage1_sha256, backbone=backbone, arm=arm, code_sha256=_code()))
         weights = base.verify_output(path)['weights_sha256']
         extra = dict(backbone=backbone, stage2_weights_sha256=weights, stage1_sha256=stage1_sha256, smoke=smoke)
-        held_path = rb_score.output_path(world.scale, arm, seed, outputs=outputs)
         write_output(held_path, infer(path, held_images), list_sha256=world.held_sha256, scale=world.scale,
                      arm=arm, seed=seed, extra=extra)
         write_output(a28_path(outputs, world.scale, arm, seed), infer(path, a28_images),
