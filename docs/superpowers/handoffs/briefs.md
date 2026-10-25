@@ -934,3 +934,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21b-handoff.md
 - New chat: tab 'r10 build 21b', session 24b8d019-1c58-4ecd-9de1-dd74af2470a7
 
+[brief] CoSiR: r10 build 21b -> r10 build 21c (2026-10-25 19:41 Amsterdam)
+- Done: tickets 01, 02, 03, 04, 08 and 12 reviewed and merged; X0 passes, and the student and matched halves of X1 and X2 pass on the GPU.
+- State: 05 built (scorer checks on 12-24 pass, diff 0), its review not yet run; 11 review FIX (one missing refusal); 07 built, not checked. Six tickets not started.
+- Next: Opus review of 05, fix round of 11, check of 07; then 13, 06, 09 (Codex after 21:26).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21c-handoff.md
+- New chat: tab 'r10 build 21c', session 46fd8f3c-3629-40f8-98bc-63333032b546
+
