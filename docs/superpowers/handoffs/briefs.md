@@ -950,3 +950,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21d-handoff.md
 - New chat: tab 'r10 build 21d', session 2c8782ae-531e-496e-b1b2-c8e5eeab9346
 
+[brief] CoSiR: r10 build 21d -> r10 build 21e (2026-10-25 20:45 Amsterdam)
+- Done: tickets 09, 10 and 13 merged (13 of 16). X1 and X2 scorer checks pass on the real outputs; B1 and B6 sample-scale ArtELingo-28 inference done.
+- State: 06 and 14 reviewed FIX (numbers right; 06 keeps stale entries and lacks the V5 and X0 section, 14 fails on the real file formats). 16 not started.
+- Next: Codex fix of 14 by resume and a Sonnet fixer for 06, in parallel; then 16.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21e-handoff.md
+- New chat: tab 'r10 build 21e', session 8dd4b1f1-0a50-46a4-8808-6ce20da4e076
+
