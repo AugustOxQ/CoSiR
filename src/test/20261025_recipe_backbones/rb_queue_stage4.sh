@@ -6,7 +6,12 @@ gate stage4 || finish
 cands=$(driver candidates 4) || finish
 [[ -n "${RB_DEFER:-}" ]] && note "deferred for time (logged): $RB_DEFER"
 if [[ -z "$cands" ]]; then note "no candidate has an S1 outcome other than S1-NO: stage 4 does not run"; finish; fi
-for k in $cands; do candidate full "$k" || finish; done
+# A failed candidate leaves only itself without an outcome (V4; the scorer records the cause); the others go on
+# (spec §9: the only stops are a failed stage 0, 2 or 3a).
+for k in $cands; do
+    soft=1 candidate full "$k" || note "$k failed (step line above, log in $outputs/logs): no outcome for $k; the other candidates go on"
+done
+failed=0
 soft=1 step verdict4 cpu "$here/rb_score.py" --stage 4 --candidates $cands --outputs "$outputs" --workers 8 "${smoke[@]}"
 failed=0
 step check4 cpu "$run" check-verdict 4 --candidates $cands --outputs "$outputs" "${smoke[@]}" || finish

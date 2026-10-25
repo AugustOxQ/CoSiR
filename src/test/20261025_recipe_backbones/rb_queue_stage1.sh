@@ -5,9 +5,17 @@
 queue=stage1
 source "$(dirname -- "${BASH_SOURCE[0]}")/rb_queue_common.sh"
 gate stage1 || finish
+# A restart after stage 1 finished (pick written, VP1 agrees) skips it: VP3 refuses to retrain a finished recipe.
+if [[ "$dry" != 1 ]] && cpu "$run" gate vp1 --outputs "$outputs" "${smoke[@]}" > /dev/null 2>&1; then
+    note "stage 1 already done (VP1 agrees); skipped"
+    cpu "$run" pick --outputs "$outputs" "${smoke[@]}" | tee -a "$status"; finish
+fi
 vp2_args=()
 gate_vp3() { step "vp3_$1" cpu "$run" vp3 --recipe "$r" --outputs "$outputs" "${smoke[@]}" "${@:2}"; }   # uses the loop's $r
 for r in $("$python_bin" "$run" recipes); do
+    if [[ "$dry" != 1 ]] && ls "$outputs/part1/train/$r/"{emotion,style,genre}__s0__P.npz > /dev/null 2>&1; then
+        note "$r finished before (P exports of all three aspects): not trained again (VP3)"; continue
+    fi
     gate_vp3 "$r" || finish
     if ! step "part1_$r" gpu "$here/rb_part1.py" --recipes "$r" --outputs "$outputs" --device "$device" "${smoke[@]}"; then
         failed=0

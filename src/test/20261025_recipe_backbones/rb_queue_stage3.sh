@@ -6,7 +6,12 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/rb_queue_common.sh"
 gate stage3 || finish
 cands=$(driver candidates 3) || finish
 [[ -n "${RB_DEFER:-}" ]] && note "deferred for time (logged): $RB_DEFER"
-for k in $cands; do candidate sample "$k" || finish; done
+# A failed candidate leaves only itself without an outcome (V4; the scorer records the cause); the others go on
+# (spec §9: the only stops are a failed stage 0, 2 or 3a).
+for k in $cands; do
+    soft=1 candidate sample "$k" || note "$k failed (step line above, log in $outputs/logs): no outcome for $k; the other candidates go on"
+done
+failed=0
 soft=1 step verdict3 cpu "$here/rb_score.py" --stage 3 --candidates $cands --outputs "$outputs" --workers 8 "${smoke[@]}"
 # Exit 1 of the scorer means a candidate without an outcome (V failure: reported with the cause), a crash too: the
 # verdict file must hold a block for every candidate.

@@ -45,7 +45,8 @@ Always `PYTHONDONTWRITEBYTECODE=1`, 8 threads, `CUBLAS_WORKSPACE_CONFIG=:4096:8`
 `rb_queue_gpu.sh` runs queues 1, 2, 4, 5, 6, 8, 9, 11 in this order and stops at the first failed one; it starts 3, 7 and
 10 in the background as soon as their inputs exist and waits for them at the end. Single queues: `bash
 src/test/20261025_recipe_backbones/rb_queue_<name>.sh` (CPU queue: `rb_queue_cpu.sh 3` or `4`). Every queue can be
-started again after a stop: finished work is skipped by the runners' own checks.
+started again after a stop: finished work is skipped by the runners' own checks. Stage 1 is skipped as a whole once VP1 agrees, and a finished
+recipe (P exports of all three aspects) is skipped inside it; a 1x step whose `part1/<name>.json` exists is skipped.
 
 ### Gates (`rb_run.py gate NAME`, exit 1 with an `RB_STOP` line)
 
@@ -75,7 +76,10 @@ and the pick goes on without it. A failure that is not a VP2 assertion stops the
 `pick.json` `triggers {K4, K5}` are read by `rb_run candidates|triggers` (never re-derived). K4 exists unless P-KEEP; K5, M5
 and the two DINOv2 stores only when K5 is triggered. Candidates run in the order K2, K3, K4, K5. Stage 3 sets `soft=1` on the
 scorer: its exit 1 (a candidate without an outcome, V failure) is reported; `rb_run check-verdict` then demands a block for
-every candidate, so a crash still stops the queue.
+every candidate, so a crash still stops the queue. A candidate whose training, inference or matched arm fails does not stop the others: the queue
+notes it (`RB_STAGE3_NOTE K.. failed`), the scorer gives it a block without an outcome (the cause in `v_failure`), and the
+stage goes on (spec §9: the only stops are a failed stage 0, 2 or 3a). The run chat reports it; a crash that is not a V3
+failure is a bug to trace, not an outcome.
 
 ### Stage 5 scale
 
