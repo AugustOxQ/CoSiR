@@ -162,7 +162,8 @@ def test_raw_exports_are_repartitioned_before_caches_are_compared(tmp_path):
              ours=hashlib.sha256(changed.tobytes()).hexdigest(), theirs='0' * 64)]
 
 
-def test_report_checks_independent_labels_and_preserves_an_existing_result(tmp_path):
+def test_report_checks_independent_labels_and_preserves_an_existing_result(tmp_path, monkeypatch):
+    monkeypatch.setattr(eg_vl2.eg_paths, 'SMOKE_ROOT', tmp_path.resolve())   # smoke mode outside /tmp/claude-0
     names = ['a', 'b', 'c', 'd']
     p_sha = hashlib.sha256(b'a\nb\nc\nd').hexdigest()
     annotations = [dict(painting=p, emotion=e, art_style=s) for p, e, s in
