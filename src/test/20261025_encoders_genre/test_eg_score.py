@@ -116,9 +116,10 @@ def test_stage_3_writes_a_block_per_candidate_with_s1_outcome_and_caches_under_o
 
 
 def test_stage_4_is_the_same_statistic_at_full_scale_with_s2_outcomes(world):
+    verdict_file(world, 3, {'K6': dict(outcome_id='S1-GO')})
     block = score.run_stage(4, ['K6'], world, workers=1, n_resamples=3)['blocks']['K6']
     assert block['scale'] == 'full' and block['outcome_id'].startswith('S2-')
-    assert (world / 'part2/verdict_stage4.json').exists() and not (world / 'part2/verdict_stage3.json').exists()
+    assert json.loads((world / 'part2/verdict_stage4.json').read_text())['blocks'].keys() == {'K6'}
 
 
 def test_the_statistic_is_rb_scores_on_the_same_partitions(world):
@@ -220,6 +221,7 @@ def run5(roots, models, seeds=(0, 1), setup=None, **kw):
 @pytest.mark.parametrize('model, matched', [('K6', 'M6'), ('K7', 'M7'), ('K8', 'M8'), ('K5', 'M5')])
 def test_stage_5_entries_are_b1_b6_and_the_matched_arm_and_a_holds_when_the_model_wins(tmp_path, model, matched):
     roots = score.Roots(tmp_path / 'o', tmp_path / 'o', tmp_path / 'frozen')
+    pass_x2(roots.read)
     write28(roots.read, 'sample', model, matched)
     block = run5(roots, [model])['blocks'][model]
     assert block['arms'] == [model, 'B1', 'B6', matched] and block['scale'] == 'sample'
@@ -244,6 +246,7 @@ def test_stage_5_reading_is_a_fails_when_an_entry_beats_the_model_and_a_qual_has
 
 def test_the_scale_is_full_when_stage_4_gave_the_model_an_outcome_else_sample(tmp_path):
     out = tmp_path
+    pass_x2(out)
     assert score.scale_and_reason('K6', out) == ('sample', 'no stage 4 outcome')
     verdict_file(out, 4, {'K6': dict(outcome_id='S2-GO'), 'K7': dict(outcome_id=None), 'K8': dict(outcome_id='S2-NO')})
     assert score.scale_and_reason('K6', out) == ('full', None)
@@ -254,15 +257,16 @@ def test_the_scale_is_full_when_stage_4_gave_the_model_an_outcome_else_sample(tm
 def test_when_x2_failed_stage_5_runs_at_the_sample_scale_whatever_stage_4_says(tmp_path):
     out = tmp_path
     verdict_file(out, 4, {'K6': dict(outcome_id='S2-GO')})
-    rb_score.write_regression_items(out / 'part2/regression/x2_student.json', {'student/a': {'pass': True}})
+    pass_x2(out)
     rb_score.write_regression_items(out / 'part2/regression/x2_scorer.json', {'scorer/a': {'pass': False}})
-    assert score.scale_and_reason('K6', out) == ('sample', 'X2 failed')
+    assert score.scale_and_reason('K6', out)[0] == 'sample' and 'x2_scorer.json fails' in score.scale_and_reason('K6', out)[1]
     assert score.scale_and_reason('K6', out, check_x2=False) == ('full', None)    # the checks ignore the gate
 
 
 def test_full_scale_reads_b1_and_b6_from_12_24s_full_outputs_and_the_rest_from_the_read_root(tmp_path):
     roots = score.Roots(tmp_path / 'o', tmp_path / 'o', tmp_path / 'frozen')
     verdict_file(roots.read, 4, {'K6': dict(outcome_id='S2-GO')})
+    pass_x2(roots.read)
     write28(roots.read, 'full', 'K6', 'M6', b=False)
     for s in (0, 1):
         for arm in ('B1', 'B6'):
@@ -405,3 +409,129 @@ def test_k1_is_always_full_and_its_b1_is_its_only_matched_arm(tmp_path, monkeypa
     assert score.scale_and_reason('K1', tmp_path) == ('full', None)
     assert score.arms_a28('K1') == ('K1', 'B1', 'B6') and score.arms_a28('K4') == ('K4', 'B1', 'B6')
     assert score.arms_a28('K2') == ('K2', 'B1', 'B6', 'M2')
+
+
+# --- fix round: a kept block is checked against its recorded inputs; --replace per candidate; X2 not passed ------------
+
+def pass_x2(out):
+    for part in score.X2_PARTS:
+        rb_score.write_regression_items(out / f'part2/regression/x2_{part}.json', {f'{part}/a': {'pass': True}})
+
+
+def test_a_kept_stage_5_block_at_a_scale_no_longer_due_is_refused_until_a_reason_is_given(tmp_path):
+    roots = score.Roots(tmp_path / 'o', tmp_path / 'o', tmp_path / 'frozen')
+    pass_x2(roots.read)
+    write28(roots.read, 'sample', 'K6', 'M6')
+    assert run5(roots, ['K6'])['blocks']['K6']['scale'] == 'sample'
+    verdict_file(roots.read, 4, {'K6': dict(outcome_id='S2-GO')})        # stage 4 now has an outcome: full is due
+    assert score.scale_and_reason('K6', roots.read) == ('full', None)
+    with pytest.raises(AssertionError, match='give --replace REASON'):
+        run5(roots, ['K6'])
+    write28(roots.read, 'full', 'K6', 'M6', b=False)                     # the reason lets it recompute at full
+    for s in (0, 1):
+        for arm in ('B1', 'B6'):
+            put28(roots.frozen, 'full', arm, s, np.random.default_rng(s + 3).random((N28, 40)))
+    block = run5(roots, ['K6'], replace='V3 wrong scale')['blocks']['K6']
+    assert block['scale'] == 'full'
+    assert run5(roots, ['K6'])['blocks']['K6'] == block                  # and now the rerun keeps it
+
+
+def test_a_kept_stage_5_block_is_kept_while_its_scale_and_outputs_stand(tmp_path):
+    roots = score.Roots(tmp_path / 'o', tmp_path / 'o', tmp_path / 'frozen')
+    write28(roots.read, 'sample', 'K6', 'M6')
+    first = run5(roots, ['K6'])['blocks']['K6']
+    assert run5(roots, ['K6'])['blocks']['K6'] == first
+
+
+def test_a_kept_stage_5_block_whose_output_was_rewritten_is_refused(tmp_path):
+    roots = score.Roots(tmp_path / 'o', tmp_path / 'o', tmp_path / 'frozen')
+    write28(roots.read, 'sample', 'K6', 'M6')
+    run5(roots, ['K6'])
+    put28(roots.read, 'sample', 'M6', 1, np.random.default_rng(99).random((N28, 40)))
+    with pytest.raises(AssertionError, match='give --replace REASON'):
+        run5(roots, ['K6'])
+
+
+def test_a_kept_stage_block_whose_held_output_was_rewritten_is_refused(world):
+    first = score.run_stage(3, ['K6'], world, workers=1, n_resamples=3)['blocks']['K6']
+    p = score.output_path('sample', 'K6', 0, 'emotion', world)
+    np.savez(p, img=unit(60, 2048, 999))
+    put_sidecar(p, 'K6', 0, 'emotion', 'sample')
+    with pytest.raises(AssertionError, match='give --replace REASON'):
+        score.run_stage(3, ['K6'], world, workers=1, n_resamples=3)
+    for stale in (world / 'part2/partitions/sample/K6').glob('emotion__s0__*'):
+        stale.unlink()                      # the partition cache is keyed on the output hash and refuses a changed one
+    redone = score.run_stage(3, ['K6'], world, workers=1, n_resamples=3, replace='V3 output rewritten')['blocks']['K6']
+    assert redone['sources']['held_outputs']['K6']['0']['output_sha256'] == rb_score.sha_file(p)
+    assert redone != first
+
+
+def test_a_kept_stage_block_whose_rcol_file_changed_is_refused(world, tmp_path):
+    score.run_stage(3, ['K6'], world, workers=1, n_resamples=3)
+    (tmp_path / 'rcol.json').write_text('{"changed": 1}')
+    with pytest.raises(AssertionError, match='give --replace REASON'):
+        score.run_stage(3, ['K6'], world, workers=1, n_resamples=3)
+
+
+def test_a_kept_block_without_an_outcome_has_no_sources_to_check_and_is_kept(world):
+    (world / 'part2/sample/held/K6/genre__s2.npz').unlink()
+    first = score.run_stage(3, ['K6'], world, workers=1, n_resamples=3)['blocks']['K6']
+    assert first['outcome_id'] is None
+    assert score.run_stage(3, ['K6'], world, workers=1, n_resamples=3)['blocks']['K6'] == first
+
+
+def put_k7(world):
+    rng = np.random.default_rng(5)
+    for scale in ('sample', 'full'):
+        for s in SEEDS5:
+            put_student(world, scale, 'K7', s, 60)
+            put_prob(score.output_path(scale, 'M7', s, outputs=world), 'M7', s, scale, rng.random((60, 40)))
+
+
+def test_each_replaced_candidate_keeps_its_reason_and_the_previous_hash(world):
+    put_k7(world)
+    score.run_stage(3, ['K6', 'K7'], world, workers=1, n_resamples=3)
+    path = world / 'part2/verdict_stage3.json'
+    before_k6 = rb_score.sha_file(path)
+    (world / 'part2/sample/held/K6/genre__s2.npz').unlink()
+    score.run_stage(3, ['K6'], world, workers=1, n_resamples=3, replace='V3 first reason')
+    before_k7 = rb_score.sha_file(path)
+    (world / 'part2/sample/held/K7/genre__s2.npz').unlink()
+    record = score.run_stage(3, ['K7'], world, workers=1, n_resamples=3, replace='V3 second reason')
+    rep = record['replacement']
+    assert rep['reason'] == 'V3 second reason' and rep['blocks'] == ['K7'] and rep['previous_sha256'] == before_k7
+    assert [(h['blocks'], h['reason'], h['previous_sha256']) for h in rep['history']] == [
+        (['K6'], 'V3 first reason', before_k6), (['K7'], 'V3 second reason', before_k7)]
+    assert json.loads(path.read_text()) == record
+    assert record['blocks']['K6']['outcome_id'] is None and record['blocks']['K7']['outcome_id'] is None
+
+
+def test_replace_needs_explicit_candidates_on_the_command_line(tmp_path):
+    with pytest.raises(SystemExit):
+        score.main(['--stage', '3', '--replace', 'V3 redo', '--outputs', str(tmp_path)])
+
+
+def test_x2_not_passed_means_a_missing_or_failing_file_and_the_reason_says_which(tmp_path):
+    out = tmp_path
+    verdict_file(out, 4, {'K6': dict(outcome_id='S2-GO')})
+    scale, reason = score.scale_and_reason('K6', out)
+    assert scale == 'sample' and all(f'x2_{part}.json missing' in reason for part in score.X2_PARTS)
+    pass_x2(out)
+    assert score.scale_and_reason('K6', out) == ('full', None)
+    rb_score.write_regression_items(out / 'part2/regression/x2_matched.json', {'matched/b': {'pass': False}})
+    scale, reason = score.scale_and_reason('K6', out)
+    assert scale == 'sample' and 'x2_matched.json fails' in reason and 'missing' not in reason
+    (out / 'part2/regression/x2_student.json').unlink()
+    assert 'x2_student.json missing' in score.scale_and_reason('K6', out)[1]
+
+
+def test_stage_4_needs_a_stage_3_block_with_an_outcome_other_than_s1_no(world):
+    with pytest.raises(AssertionError, match='stage 3'):
+        score.run_stage(4, ['K6'], world, workers=1, n_resamples=3)          # no stage 3 file
+    for block in (dict(outcome_id=None), dict(outcome_id='S1-NO')):
+        verdict_file(world, 3, {'K6': block})
+        with pytest.raises(AssertionError, match='K6.*stage 3'):
+            score.run_stage(4, ['K6'], world, workers=1, n_resamples=3)
+        (world / 'part2/verdict_stage3.json').unlink()
+    verdict_file(world, 3, {'K6': dict(outcome_id='S1-MM')})
+    assert score.run_stage(4, ['K6'], world, workers=1, n_resamples=3)['blocks']['K6']['outcome_id'].startswith('S2-')

@@ -131,6 +131,46 @@ def stage_block(candidate, scale, roots, labels, sha, rcol, rcol_path, n_resampl
     return block
 
 
+def check_stage_3_done(candidate, outputs):
+    """Rule §2.1 order: a candidate's stage 4 starts only after its stage 3 gave an outcome other than S1-NO."""
+    path = Path(outputs) / 'part2/verdict_stage3.json'
+    assert path.exists(), f'{candidate}: no stage 3 verdict ({path}); stage 4 starts after stage 3'
+    outcome = json.loads(path.read_text())['blocks'].get(candidate, {}).get('outcome_id')
+    assert outcome and outcome != 'S1-NO', f'{candidate}: stage 3 outcome is {outcome}; stage 4 does not run'
+
+
+def check_sources(name, block, outputs, rcol=None):
+    """A kept block is checked against its recorded inputs: every recorded `output_sha256` (a dict arm -> seed ->
+    {path, output_sha256}) and the rcol file's `sha256` must equal the hash of the file now on disk. A block without
+    an outcome has no sources and is not checked."""
+    if block.get('outcome_id') is None:
+        return
+    files = [(info['path'], info['output_sha256']) for per_seed in outputs.values() for info in per_seed.values()]
+    if rcol:
+        files.append((rcol['path'], rcol['sha256']))
+    assert files, f'{name}: a block with an outcome records no sources'
+    changed = [path for path, recorded in files if sha_file(path) != recorded]
+    assert not changed, f'{name}: kept block is stale, {len(changed)} recorded input(s) changed, first {changed[0]}; ' \
+                        'give --replace REASON'
+
+
+def write_block(path, header, name, block, replace):
+    """`rb_score.write_verdict` for one block; its single `replacement` entry (reason, blocks, previous_sha256) stays as
+    the latest replacement and gains `history`: every replacement made so far, each with its candidates, reason and
+    the previous file hash (the header check of `write_verdict` ignores `replacement`)."""
+    path = Path(path)
+    before = json.loads(path.read_text()).get('replacement') if path.exists() else None
+    record = rb_score.write_verdict(path, header, {name: block}, replace)
+    now = record.get('replacement')
+    if now is None or now == before:
+        return record
+    history = list((before or {}).get('history') or ([dict(before)] if before else []))
+    history.append({k: v for k, v in now.items() if k != 'history'})
+    record['replacement'] = dict(now, history=history)
+    rb_score._atomic_json(path, record)
+    return record
+
+
 def _line(block):
     if block['outcome_id'] is None:
         return f'NO OUTCOME ({block["v_failure"]})'
@@ -140,8 +180,10 @@ def _line(block):
 def run_stage(stage, candidates, outputs=None, workers=8, n_resamples=2000, replace=None, roots=None):
     """Stage 3 (sample) or 4 (full): each candidate's statistic into `<outputs>/part2/verdict_stage{3,4}.json`.
 
-    No gate here (the gates V1 are `eg_run`'s). A candidate whose block is already in the file is kept unless
-    `replace` gives a V-check reason (then it is recomputed and `write_verdict` records the change)."""
+    No gate here (the gates V1 are `eg_run`'s) except rule §2.1's order: a candidate's stage 4 needs its stage 3 block
+    with an outcome other than S1-NO. A candidate whose block is already in the file is kept unless `replace` gives a
+    V-check reason (then it is recomputed and `write_verdict` records the change); a kept block whose recorded inputs
+    changed since it was scored is refused (give `replace`)."""
     scale = STAGES[stage]
     outputs = Path(eg_paths.OUTPUTS if outputs is None else outputs)
     roots = roots or Roots(outputs, outputs)
@@ -153,11 +195,15 @@ def run_stage(stage, candidates, outputs=None, workers=8, n_resamples=2000, repl
     for candidate in candidates:
         saved = json.loads(path.read_text())['blocks'] if path.exists() else {}
         if candidate in saved and not replace:
+            check_sources(candidate, saved[candidate], saved[candidate].get('sources', {}).get('held_outputs', {}),
+                          saved[candidate].get('sources', {}).get('rcol'))
             print(f'{candidate}: kept ({_line(saved[candidate])})', flush=True)
             record = json.loads(path.read_text())
             continue
+        if stage == 4:
+            check_stage_3_done(candidate, outputs)
         block = stage_block(candidate, scale, roots, labels, sha, rcol, rcol_path, n_resamples, workers)
-        record = rb_score.write_verdict(path, header, {candidate: block}, replace)
+        record = write_block(path, header, candidate, block, replace)
         print(f'{candidate}: {_line(block)}', flush=True)
     return record
 
@@ -175,23 +221,27 @@ def arms_a28(model):
     return rb_a28.arms_for(model)
 
 
-def x2_failed(outputs):
-    """True when one of X2's three regression files says it did not pass (rule §4.1: stage 5 then runs at sample)."""
+def x2_not_passed(outputs):
+    """None when X2 passed: all three regression files exist and pass. Else the reason, naming each missing or failing
+    file (rule §4.1: stage 5 then runs at the sample scale)."""
+    faults = []
     for part in X2_PARTS:
         path = Path(outputs) / f'part2/regression/x2_{part}.json'
-        if path.exists() and json.loads(path.read_text())['pass'] is not True:
-            return True
-    return False
+        if not path.exists():
+            faults.append(f'{path.name} missing')
+        elif json.loads(path.read_text()).get('pass') is not True:
+            faults.append(f'{path.name} fails')
+    return 'X2 not passed: ' + ', '.join(faults) if faults else None
 
 
 def scale_and_reason(model, outputs, stage4=None, check_x2=True):
     """(scale, reason) of a model's stage 5 (rule §2.1): full when its stage 4 block has an outcome, else sample;
-    sample whenever X2 failed (§4.1). K1's stage 4 is the CT's stage 2: always full. `stage4` overrides the verdict
+    sample whenever X2 has not passed (§4.1: a missing X2 file counts). K1's stage 4 is the CT's stage 2: always full. `stage4` overrides the verdict
     file and `check_x2=False` skips the X2 files: for the checks on 12-24's outputs."""
     if model == 'K1':
         return rb_a28.scale_and_reason(model, outputs)
-    if check_x2 and x2_failed(outputs):
-        return 'sample', 'X2 failed'
+    if check_x2 and x2_not_passed(outputs):
+        return 'sample', x2_not_passed(outputs)
     path = Path(stage4) if stage4 else Path(outputs) / 'part2/verdict_stage4.json'
     if path.exists() and json.loads(path.read_text())['blocks'].get(model, {}).get('outcome_id'):
         return 'full', None
@@ -259,7 +309,8 @@ def model_block(model, scale, reason, roots, setup, seeds, n_resamples, workers)
 
 def run_verdict(models, outputs=None, setup=None, workers=8, n_resamples=2000, seeds=SEEDS, replace=None, roots=None):
     """d_A28 and the reading of each model into `<outputs>/part2/verdict_stage5.json` (one block per model, at the
-    scale `scale_and_reason` gives). A model whose block is already in the file is kept unless `replace` is given."""
+    scale `scale_and_reason` gives). A model whose block is already in the file is kept unless `replace` is given; a
+    kept block is refused (give `replace`) when its scale is no longer the one due or a recorded input changed."""
     outputs = Path(eg_paths.OUTPUTS if outputs is None else outputs)
     roots = roots or Roots(outputs, outputs)
     setup = setup or rb_a28.real_setup()
@@ -267,13 +318,16 @@ def run_verdict(models, outputs=None, setup=None, workers=8, n_resamples=2000, s
     record = None
     for model in models:
         saved = json.loads(path.read_text())['blocks'] if path.exists() else {}
+        scale, reason = scale_and_reason(model, outputs)
         if model in saved and not replace:
+            assert saved[model]['scale'] == scale, \
+                f'{model}: kept block is at the {saved[model]["scale"]} scale but {scale} is due; give --replace REASON'
+            check_sources(model, saved[model], saved[model].get('sources', {}))
             print(f'{model}: kept ({_line(saved[model])})', flush=True)
             record = json.loads(path.read_text())
             continue
-        scale, reason = scale_and_reason(model, outputs)
         block = model_block(model, scale, reason, roots, setup, seeds, n_resamples, workers)
-        record = rb_score.write_verdict(path, rb_a28.header_of(setup), {model: block}, replace)
+        record = write_block(path, rb_a28.header_of(setup), model, block, replace)
         print(f'{model}: {_line(block)} ({scale})', flush=True)
     return record
 
@@ -351,9 +405,13 @@ def main(argv=None):
     what = p.add_mutually_exclusive_group(required=True)
     what.add_argument('--check', choices=sorted(CHECKS), help='scorer half of X1 or X2 on 12-24\'s saved outputs')
     what.add_argument('--stage', type=int, choices=(3, 4, 5), help='verdict of stage 3 (sample), 4 (full) or 5 (A28)')
-    p.add_argument('--candidates', nargs='+', choices=eg_encoders.CANDIDATES, default=list(eg_encoders.CANDIDATES))
+    p.add_argument('--candidates', nargs='+', choices=eg_encoders.CANDIDATES,
+                   help='default: all four; required with --replace')
     p.add_argument('--replace', metavar='REASON', help='V-check reason for replacing a saved block')
     args = p.parse_args(argv)
+    if args.replace and not args.candidates:
+        p.error('--replace needs --candidates (one or more): a reason applies only to the candidates named')
+    args.candidates = args.candidates or list(eg_encoders.CANDIDATES)
     if args.smoke:
         assert eg_paths.smoke_ok(args.outputs), 'smoke needs --outputs under /tmp/claude-0/'
         assert args.stage, 'a regression check is never shrunk: no --smoke with --check'
