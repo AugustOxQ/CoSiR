@@ -846,3 +846,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-decide-19-handoff.md
 - New chat: tab 'r10 decide 19', session 73bdd249-0544-4f58-abd3-33fa72fd46ae
 
+[brief] CoSiR: r10 decide 19 -> r10 build 16 (2026-10-25 03:29 Amsterdam)
+- Done: the spec and decision rule of decide 17's two-part loop, reviewed (rule: Opus `xhigh`; cold check: Sonnet `high`) and committed.
+- State: part 1 picks one of six recipes on 29,232 fresh development paintings; part 2 tests SigLIP 2 and CLIP B/32 students against PercepT on held emotion.
+- Next: tickets from the spec and rule, the build, the final review, merge; then open "r10 run 14".
+- Blocked: nothing. Night mode; no container restart (user).
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-16-handoff.md
+- New chat: tab 'r10 build 16', session ebe70ffc-9ae9-4e30-9995-6c10660ea6f8
+
