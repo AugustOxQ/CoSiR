@@ -1,6 +1,6 @@
 """Frozen-backbone feature extraction for the later CVPR experiments (plan Task 16, E4).
 
-    python scripts/extract_features.py --dataset NAME --backbone {clip_b32,qwen3vl_emb_2b,siglip2_so400m,dinov2_large}
+    python scripts/extract_features.py --dataset NAME --backbone {clip_b32,qwen3vl_emb_2b,siglip2_so400m,dinov2_large,clip_b16,clip_l14,siglip_so400m}
         [--limit N] [--image-only]
 
 dinov2_large is image-only (--image-only required, artelingo_full and artelingo28 only): txt.npy is not written and
@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 PRE_EXTRACT = Path("/data/SSD2/pre_extract")
 CLIP, QWEN, SIGLIP2, DINO = "clip_b32", "qwen3vl_emb_2b", "siglip2_so400m", "dinov2_large"
+CLIP16, CLIP_L14, SIGLIP1 = "clip_b16", "clip_l14", "siglip_so400m"   # r10 build 21 (ArtELingo only)
 ARTELINGO_ANN = Path("/data/PDD/artelingo/artelingo_train.json")
 ARTELINGO_FEATURES = "/data/SSD2/pre_extract/artelingo/features"
 ARTELINGO_IMAGES = Path("/data/PDD/wikiart_proj/wikiart")
@@ -62,8 +63,8 @@ DILATION = 0.7        # GeneCIS datasets/vaw_dataset.py
 PAD_CROP = True
 
 ALLOWED = {
-    "artelingo28": [CLIP, QWEN, SIGLIP2, DINO],
-    "artelingo_full": [CLIP, QWEN, SIGLIP2, DINO],
+    "artelingo28": [CLIP, QWEN, SIGLIP2, DINO, CLIP16, CLIP_L14, SIGLIP1],
+    "artelingo_full": [CLIP, QWEN, SIGLIP2, DINO, CLIP16, CLIP_L14, SIGLIP1],
     "semart": [CLIP, QWEN, SIGLIP2],
     "coco_train2014": [CLIP, QWEN],
     "genecis_vg_crops": [CLIP, QWEN],
@@ -71,7 +72,8 @@ ALLOWED = {
 }
 # batch sizes chosen to fit well under ~20 GB on an otherwise idle 24 GB GPU
 BATCH = {CLIP: dict(img=256, txt=512), QWEN: dict(img=32, txt=128), SIGLIP2: dict(img=32, txt=256),
-         DINO: dict(img=128, txt=1)}
+         DINO: dict(img=128, txt=1), CLIP16: dict(img=256, txt=512), CLIP_L14: dict(img=128, txt=512),
+         SIGLIP1: dict(img=32, txt=256)}
 IMAGE_ONLY_DATASETS = ("artelingo_full", "artelingo28")   # --image-only; DINO has no text tower
 IMG_CHUNK, TXT_CHUNK = 256, 4096
 
@@ -343,9 +345,9 @@ def apply_limit(spec: Spec, limit: Optional[int]) -> Spec:
 def count_truncated(enc, texts) -> int:
     """Texts that the encoder's tokenizer would cut: more than 77 CLIP tokens, 64 lower-cased SigLIP 2 tokens, or
     512 tokens of the full Qwen prompt (chat template included, so the generation suffix is lost for these)."""
-    if enc.name == CLIP:
+    if enc.name in (CLIP, CLIP16, CLIP_L14):
         tok, limit, wrap = enc.p.tokenizer, 77, (lambda t: t)
-    elif enc.name == SIGLIP2:
+    elif enc.name in (SIGLIP2, SIGLIP1):
         tok, limit, wrap = enc.p.tokenizer, 64, str.lower
     else:
         assert enc.name == QWEN
@@ -478,7 +480,7 @@ def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset=""
     del img, txt
     index = {"dataset": dataset, "backbone": enc.name, "smoke": smoke, "dtype": "float16", "dim": dim,
              "n_images": n_img, "n_texts": n_txt, "n_texts_truncated": prog["n_truncated"],
-             "truncation_limit": {CLIP: 77, SIGLIP2: 64, QWEN: 512, DINO: None}[enc.name], "extra": spec.extra,
+             "truncation_limit": {CLIP: 77, SIGLIP2: 64, QWEN: 512, DINO: None, CLIP16: 77, CLIP_L14: 77, SIGLIP1: 64}[enc.name], "extra": spec.extra,
              "image_only": image_only,
              "images": spec.images, "texts": spec.text_meta}
     with open(index_path, "w") as f:
@@ -491,7 +493,7 @@ def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset=""
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--dataset", choices=sorted(ADAPTERS))
-    ap.add_argument("--backbone", choices=[CLIP, QWEN, SIGLIP2, DINO])
+    ap.add_argument("--backbone", choices=[CLIP, QWEN, SIGLIP2, DINO, CLIP16, CLIP_L14, SIGLIP1])
     ap.add_argument("--image-only", action="store_true", help="images only (required for dinov2_large)")
     ap.add_argument("--verify", nargs=2, metavar=("DATASET", "BACKBONE"),
                     help="read-only finite/norm gate on a sealed output")
