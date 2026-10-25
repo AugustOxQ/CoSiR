@@ -870,3 +870,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-18-handoff.md
 - New chat: tab 'r10 build 18', session aef61a93-9b15-4433-a322-fab20ac96c0f
 
+[brief] CoSiR: r10 build 18 -> r10 build 19 (2026-10-25 05:45 Amsterdam)
+- Done: tickets 04, 05, 06, 07, 13, 15 merged (05 and 15 after Opus `high` reviews and fixes); VP1 agrees with the pick end to end; round tests 313 passed.
+- State: 15 of 16 tickets merged; 16 (stage driver, queues) built, CPU smoke of stages 0, 1, 1x passed; GPU smoke not run.
+- Next: diff read and GPU smoke of 16, merge; final review (Opus `xhigh`); one fix wave; merge into main; run chat handoff.
+- Blocked: nothing. Night mode; GPU check passes; no container restart.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-19-handoff.md
+- New chat: tab 'r10 build 19', session d14991a9-632f-476b-84dc-a5e9238e928d
+
