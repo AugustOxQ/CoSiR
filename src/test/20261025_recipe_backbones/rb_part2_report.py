@@ -319,6 +319,14 @@ def markdown(stage, scale, reports, k1, cosine, skipped):
     return '\n'.join(L)
 
 
+OTHER_BLOCKS = ('K1_with_K4_entry_set', 'clip_b32_cosine')
+
+
+def block_sha(block):
+    """Hash of one candidate's block as read from the verdict file; the reported block carries it."""
+    return hashlib.sha256(json.dumps(block, sort_keys=True).encode()).hexdigest()
+
+
 def run(stage, outputs=None, workers=8, n_resamples=2000, candidates=None, replace=None):
     outputs = Path(rb_paths.OUTPUTS if outputs is None else outputs)
     scale = STAGES[stage]
@@ -328,26 +336,38 @@ def run(stage, outputs=None, workers=8, n_resamples=2000, candidates=None, repla
     rcol, rcol_path = rb_score.read_rcol_eligible(scale)
     blocks = verdict['blocks']
     done = sorted(c for c, b in blocks.items() if b.get('outcome_id'))
-    todo = sorted(candidates) if candidates else done
+    path = outputs / f'part2/reported_stage{stage}.json'
+    saved = json.loads(path.read_text())['blocks'] if path.exists() else {}
+    if candidates:
+        todo = sorted(candidates)
+    else:                                   # a rerun after a deferral reports only the candidates not yet reported
+        todo = [c for c in done if c not in saved]
     assert set(todo) <= set(done), f'no outcome in the verdict file for {sorted(set(todo) - set(done))}'
-    skipped = sorted(set(blocks) - set(todo))
-    ctx = dict(scale=scale, outputs=outputs, sha=sha, names=names, n_rows=len(names), labels=labels, rcol=rcol,
-               n_resamples=n_resamples, workers=workers)
-    reports, k1, kept = {}, None, {}
-    for c in todo:
-        reports[c], fixed, eligible = report_candidate(c, blocks[c], ctx)
-        kept[c] = (fixed, eligible)
-    if 'K4' in reports:
-        k1 = report_k1(*kept['K4'], ctx)
-    cosine = clip_cosine(outputs)
-    code = dict(rb_part2_report_sha256=rb_score.sha_file(__file__), **rb_score._code_identity())
-    header = dict(stage=stage, scale=scale, held_sha256=sha, verdict_sha256=rb_score.sha_file(verdict_path))
-    out = {c: dict(r, code=code) for c, r in reports.items()}
-    if k1:
-        out['K1_with_K4_entry_set'] = k1
-    out['clip_b32_cosine'] = cosine
-    record = rb_score.write_verdict(outputs / f'part2/reported_stage{stage}.json', header, out, replace)
-    md = markdown(stage, scale, reports, k1, cosine, skipped)
+    skipped = sorted(c for c in blocks if c not in done)
+    header = dict(stage=stage, scale=scale, held_sha256=sha)
+    if not todo:
+        assert saved, f'{path}: nothing to report and no saved record'
+        print(f'stage {stage}: every candidate with an outcome is already reported; nothing recomputed')
+        record = json.loads(path.read_text())
+    else:
+        ctx = dict(scale=scale, outputs=outputs, sha=sha, names=names, n_rows=len(names), labels=labels, rcol=rcol,
+                   n_resamples=n_resamples, workers=workers)
+        reports, k1, kept = {}, None, {}
+        for c in todo:
+            reports[c], fixed, eligible = report_candidate(c, blocks[c], ctx)
+            kept[c] = (fixed, eligible)
+        if 'K4' in reports:
+            k1 = report_k1(*kept['K4'], ctx)
+        code = dict(rb_part2_report_sha256=rb_score.sha_file(__file__), **rb_score._code_identity())
+        out = {c: dict(r, code=code, verdict_block_sha256=block_sha(blocks[c])) for c, r in reports.items()}
+        if k1:
+            out['K1_with_K4_entry_set'] = k1
+        if 'clip_b32_cosine' not in saved:
+            out['clip_b32_cosine'] = clip_cosine(outputs)
+        record = rb_score.write_verdict(path, header, out, replace)
+    shown = {c: b for c, b in sorted(record['blocks'].items()) if c not in OTHER_BLOCKS}
+    md = markdown(stage, scale, shown, record['blocks'].get('K1_with_K4_entry_set'),
+                  record['blocks']['clip_b32_cosine'], skipped)
     (outputs / f'part2/reported_stage{stage}.md').write_text(md + '\n')
     return record
 
@@ -360,7 +380,7 @@ def main(argv=None):
     p.add_argument('--workers', type=int, default=8, choices=range(1, 9))
     p.add_argument('--stage', type=int, choices=sorted(STAGES), required=True)
     p.add_argument('--candidates', nargs='+', choices=('K2', 'K3', 'K4', 'K5'),
-                   help='default: every candidate with an outcome in the verdict file')
+                   help='default: every candidate with an outcome in the verdict file and no reported block yet')
     p.add_argument('--replace', metavar='REASON', help='V-check reason for replacing a changed block')
     args = p.parse_args(argv)
     if args.smoke:

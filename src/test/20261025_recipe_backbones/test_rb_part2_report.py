@@ -103,3 +103,37 @@ def test_end_to_end_on_small_synthetic_outputs(tmp_path, monkeypatch):
     cli_out = tmp_path / 'not_tmp'
     with pytest.raises(AssertionError, match='/tmp/claude-0'):
         rpt.main(['--stage', '3', '--smoke', '--outputs', str(cli_out)])
+
+
+def test_rerun_after_a_deferral_reports_only_the_new_candidate(tmp_path, monkeypatch):
+    out, _ = world(tmp_path, monkeypatch)
+    vpath = out / 'part2/verdict_stage3.json'
+    full = vpath.read_text()
+    verdict = json.loads(full)
+    k4 = verdict['blocks'].pop('K4')                              # K4 deferred: not in the verdict file yet
+    vpath.write_text(json.dumps(verdict))
+    rpath = out / 'part2/reported_stage3.json'
+    rpt.run(3, out, workers=1, n_resamples=4)
+    first = json.loads(rpath.read_text())
+    assert first['blocks'].keys() == {'K2', 'clip_b32_cosine'}
+    assert first['blocks']['K2']['verdict_block_sha256'] == rpt.block_sha(verdict['blocks']['K2'])
+    verdict['blocks']['K4'] = k4                                  # the deferred run adds its block, then a new commit
+    vpath.write_text(json.dumps(verdict))
+    ident = score._code_identity()
+    monkeypatch.setattr(score, '_code_identity', lambda: dict(ident, git_commit='later'))
+    computed = []
+    real = rpt.report_candidate
+    monkeypatch.setattr(rpt, 'report_candidate', lambda c, *a: computed.append(c) or real(c, *a))
+    rpt.run(3, out, workers=1, n_resamples=4)
+    assert computed == ['K4']
+    second = json.loads(rpath.read_text())
+    assert second['blocks'].keys() == {'K2', 'K4', 'K1_with_K4_entry_set', 'clip_b32_cosine'}
+    for name in ('K2', 'clip_b32_cosine'):
+        assert second['blocks'][name] == first['blocks'][name]
+    md = (out / 'part2/reported_stage3.md').read_text()
+    assert '## K2' in md and '## K4' in md and 'K1 with K4' in md and 'CLIP B/32 store' in md
+    before = rpath.read_bytes()
+    computed.clear()
+    rpt.run(3, out, workers=1, n_resamples=4)                     # third run: nothing to compute
+    assert computed == [] and rpath.read_bytes() == before
+    assert '## K4' in (out / 'part2/reported_stage3.md').read_text()
