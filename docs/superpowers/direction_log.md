@@ -23,7 +23,8 @@ captions at training: SigLIP 2 (0.1024) and Qwen (0.1029) pass held emotion at b
 (0.0885) is inconclusive. The claims are k-means only; every student stays below the instructed Qwen image on genre.
 Next (user, decide 20): one medium loop with four more encoders under 12-24's rule (CLIP B/16, CLIP L/14, SigLIP 1,
 DINOv2-large), a backbone analysis, and teacher-faithful heads or losses for genre; aspect-named retrieval follows in
-the loop after. The CVPR abstract is due 2026-11-10; the 11-10 gate is the instructed Qwen bar and retrieval.
+the loop after. Its [spec](specs/2026-10-25-encoders-and-genre-design.md) was approved on 2026-10-25 (decide 21); the
+build runs next. The CVPR abstract is due 2026-11-10; the 11-10 gate is the instructed Qwen bar and retrieval.
 
 ## Parked ideas
 
@@ -98,7 +99,8 @@ the loop after. The CVPR abstract is due 2026-11-10; the 11-10 gate is the instr
 - **Links:** [report](../reports/auto/percept/2026-12-24_recipe_backbones.md) ·
   [user-read report](../user_read/2026-10-25_recipe_backbones.md) ·
   [spec](specs/2026-10-25-recipe-and-backbones-design.md) ·
-  [handoff](handoffs/2026-10-25-r10-decide-20-handoff.md)
+  [handoff](handoffs/2026-10-25-r10-decide-20-handoff.md) · next loop's
+  [spec](specs/2026-10-25-encoders-and-genre-design.md) (approved 2026-10-25 18:35)
 
 ## 2026-10-21 · D2 ablation read: the instructed graphs carry the gain, the teacher and the trunk are close to redundant; next step open
 

@@ -1,7 +1,7 @@
 # Decision rule: four more encoders on held paintings (stage i), each student's lift over its encoder's own PercepT arm on development paintings (stage ii), and genre variants toward the instructed Qwen image (stage iii)
 
 > Spec: [2026-10-25-encoders-and-genre-design.md](../../../docs/superpowers/specs/2026-10-25-encoders-and-genre-design.md)
-> @ (first commit) · Written 2026-10-25 17:55 (Amsterdam) before any implementation script exists; revised 18:40
+> @ f0f7c91 (first commit) · Written 2026-10-25 17:55 (Amsterdam) before any implementation script exists; revised 18:40
 > after the review · Reviewer: a fresh Opus `xhigh` worker, 2026-10-25 18:30 (pass after fixes; all thirteen findings
 > applied), and a cold Sonnet `high` check against the grill record (five must-fix points applied)
 

@@ -1,12 +1,13 @@
 # Four more encoders against PercepT on held paintings, the student's lift per encoder on development paintings, and genre variants toward the instructed Qwen image: design
 
-> Date: 2026-10-25 18:00, revised 18:45 after the rule review and the cold check · Status: draft (the user confirmed
-> the closing summary in r10 decide 20 at 17:29 by the chat log; approval from this brief) · Kind: experiment
+> Date: 2026-10-25 18:00, revised 18:30 after the rule review and the cold check · Status: approved 2026-10-25 18:35
+> (from this brief, r10 decide 21; the closing summary was confirmed in r10 decide 20 at 17:29 by the chat log) · Kind:
+> experiment
 > Builds on: [report 12-24](../../reports/auto/percept/2026-12-24_recipe_backbones.md), its
 > [spec](2026-10-25-recipe-and-backbones-design.md) and [rule](../../../src/test/20261025_recipe_backbones/DECISION_RULE.md);
 > the grill record in the [decide 21 handoff](../handoffs/2026-10-25-r10-decide-21-handoff.md) §2 · Constitution:
 > [constitution.md](../constitution.md)
-> Decision rule: `src/test/20261025_encoders_genre/DECISION_RULE.md` @ (first commit, after the review)
+> Decision rule: `src/test/20261025_encoders_genre/DECISION_RULE.md` @ f0f7c91 (first commit, after the review)
 
 ## Brief (for the user; agents read and decide from §1 onward)
 
@@ -210,7 +211,7 @@ Times are Amsterdam time on 2026-10-25, from the user's messages in the r10 deci
 | D13 | Minor m4 | stage ii's statistics (§3.6); the correlation is descriptive | — | user, after seeing the recommendation | 16:52 |
 | D14 | Minor m5 | five glossary terms: recipe, teacher share, matched arm, frozen input, seed range (added in decide 21) | — | user, after seeing the recommendation | 16:52 |
 | D15 | Minor m6, timing | the build tonight; the run after it if it can end by 11:00, else Monday 2026-10-26 19:00 | — | user, after seeing the recommendation | 16:52 |
-| D16 | Plan page; approval | none ("plain"); approval from this brief | — | user | 16:52 |
+| D16 | Plan page; approval; restart | none ("plain"); approval from this brief ("approve", 18:35); a container restart before the build chat ("yes need restart, otherwise GPU might crash", 18:35) | — | user | 16:52, 18:35 |
 | D17 | Abstract; retrieval | not now; retrieval the next loop ("the retrieval is important") | retrieval in this loop | user | 16:23 |
 | D18 | Loop size | medium; step 3 skipped (stage i reuses a reviewed rule) | full loop | agent default (not contested) | 16:21 |
 | D19 | Stage types | i: claim test as 12-24; ii: confirmation of 12-24's lift reading, an outcome per encoder; iii: incremental, then a confirmation on fresh seeds | ii as an exploration (no outcome; weaker) | agent default | 18:00 |
