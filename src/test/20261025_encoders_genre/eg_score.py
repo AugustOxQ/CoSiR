@@ -16,6 +16,7 @@ from threadpoolctl import threadpool_limits
 
 import eg_paths
 import eg_encoders
+import eg_run
 
 eg_encoders.extend_rb_maps()
 import rb_a28  # noqa: E402
@@ -114,9 +115,26 @@ def prepare_arms(scale, arms, rcol_eligible, held_sha256, roots, aspect='emotion
     return fixed, rb_score.eligible_seeds(arms, rcol_eligible, nonfinite), dict(outputs=sources, nonfinite_held=nonfinite)
 
 
+def v5_failure(outputs, candidate, dataset):
+    """Preserve a failed store's recorded cause instead of reporting a downstream missing output."""
+    enc = eg_encoders.BY_STUDENT.get(candidate)
+    path = Path(outputs) / 'stores/v5.json'
+    if not enc or not enc.new or not path.is_file():
+        return None
+    key = f'{dataset}/{enc.store}'
+    entry = json.loads(path.read_text()).get('stores', {}).get(key, {})
+    if entry.get('pass') is not False:
+        return None
+    cause = entry.get('cause') or ', '.join(k for k, ok in entry.get('checks', {}).items() if not ok) or 'check failed'
+    return f'V5 {key}: {cause}'
+
+
 def stage_block(candidate, scale, roots, labels, sha, rcol, rcol_path, n_resamples, workers, arms=None):
     """One candidate's block at stage 3 or 4; a missing or invalid file (V3, V4) gives a block without an outcome."""
     arms = tuple(arms or arms_for(candidate))
+    failure = v5_failure(roots.read, candidate, 'artelingo_full')
+    if failure:
+        return dict(candidate=candidate, arms=list(arms), scale=scale, outcome_id=None, v_failure=failure)
     try:
         check_v3_aspects(scale, candidate, roots, sha, len(labels))
         fixed, eligible, sources = prepare_arms(scale, arms, rcol, sha, roots, n_rows=len(labels))
@@ -298,6 +316,11 @@ def a28_block(model, scale, roots, setup, seeds, n_resamples, workers):
 
 def model_block(model, scale, reason, roots, setup, seeds, n_resamples, workers):
     """One model's stage 5 block; a missing or invalid output file (V3) gives a block without an outcome."""
+    failure = eg_run.stage3_failure(roots.read, model) if model in NEW_STUDENTS else None
+    failure = ('no stage 3 outcome: ' + failure) if failure else v5_failure(roots.read, model, 'artelingo28')
+    if failure:
+        return dict(candidate=model, arms=list(arms_a28(model)), scale=scale, outcome_id=None,
+                    v_failure=failure, **({'scale_reason': reason} if reason else {}))
     try:
         block = a28_block(model, scale, roots, setup, list(seeds), n_resamples, workers)
     except OutputFault as err:

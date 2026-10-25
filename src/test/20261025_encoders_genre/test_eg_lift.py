@@ -179,6 +179,9 @@ def plant(tmp_path, labels, *, student_aligned, own_aligned, missing=None, vl1=T
     """Write exports of K4/B1 (student aligned with emotion, own random), K2/M2 (student random, own aligned), K6/M6 missing."""
     out = tmp_path / 'outputs'
     (out / 'stage_ii/p').mkdir(parents=True)
+    (out / 'part2').mkdir()
+    (out / 'part2/verdict_stage3.json').write_text(json.dumps(dict(
+        blocks={enc.student: dict(outcome_id='S1-GO') for enc in TOY if enc.new})))
     (out / 'stage_ii/p/index.json').write_text(json.dumps(dict(missing=missing or {})))
     (out / 'stage_ii/vl1.json').write_text(json.dumps(dict(**{'pass': vl1})))
     (out / 'stage_ii/vl1_scorer.json').write_text(json.dumps(vl1_scorer_record(**{'pass': vl1_scorer})))
@@ -390,3 +393,14 @@ def test_vl1a_fails_beyond_1e6_and_still_writes_the_record(tmp_path):
     bad = [i['name'] for i in rec['items'] if not i['ok']]
     assert rec['pass'] is False and bad == ['references_p/style_word/genre']
     assert json.loads((tmp_path / 'outputs/stage_ii/vl1_scorer.json').read_text())['pass'] is False
+
+
+def test_stage3_no_outcome_is_missing_even_with_all_p_exports(tmp_path):
+    labels = toy_labels()
+    out = plant(tmp_path, labels, student_aligned={'K4', 'K6'}, own_aligned={'M2'})
+    path = out / 'part2/verdict_stage3.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(dict(blocks={'K6': dict(outcome_id=None, v_failure='V3 held failed')})))
+    result = run_toy(out, labels)
+    b = result['encoders']['K6']
+    assert b['status'] == 'missing' and b['outcome'] is None and b['reason'] == 'V3 held failed'

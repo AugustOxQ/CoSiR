@@ -214,6 +214,12 @@ def verdict_file(outputs, stage, blocks):
 
 
 def run5(roots, models, seeds=(0, 1), setup=None, **kw):
+    # Stage 5 fixtures represent candidates that already earned a stage 3 outcome.
+    path = roots.read / 'part2/verdict_stage3.json'
+    blocks = json.loads(path.read_text())['blocks'] if path.exists() else {}
+    for model in models:
+        blocks.setdefault(model, dict(outcome_id='S1-GO'))
+    verdict_file(roots.read, 3, blocks)
     return score.run_verdict(models, roots.cache, setup or setup28(), workers=1, n_resamples=10, seeds=seeds,
                              roots=roots, **kw)
 
@@ -393,7 +399,9 @@ def test_the_check_needs_the_saved_draw_count_and_an_outputs_folder_outside_12_2
         score.run_check('x1', frozen / 'inside', workers=1, n_resamples=6, frozen=frozen)
 
 
-def test_cli_refuses_smoke_outside_tmp_and_never_shrinks_a_check(tmp_path):
+def test_cli_refuses_smoke_outside_tmp_and_never_shrinks_a_check(tmp_path, monkeypatch):
+    # PYTEST_DEBUG_TEMPROOT itself may be inside the production smoke root.
+    monkeypatch.setattr(eg_paths, 'SMOKE_ROOT', tmp_path / 'allowed-smoke')
     with pytest.raises(AssertionError, match='/tmp/claude-0'):
         score.main(['--stage', '3', '--candidates', 'K6', '--smoke', '--outputs', str(tmp_path / 'not-tmp')])
     with pytest.raises(AssertionError):
@@ -535,3 +543,11 @@ def test_stage_4_needs_a_stage_3_block_with_an_outcome_other_than_s1_no(world):
         (world / 'part2/verdict_stage3.json').unlink()
     verdict_file(world, 3, {'K6': dict(outcome_id='S1-MM')})
     assert score.run_stage(4, ['K6'], world, workers=1, n_resamples=3)['blocks']['K6']['outcome_id'].startswith('S2-')
+
+
+def test_s1_go_includes_exact_margin_threshold_through_stage_block(world, monkeypatch):
+    # Stub only the statistic: stage_block must still reach candidate_block and rb_score.outcome.
+    monkeypatch.setattr(rb_score, 'paired_bootstrap', lambda *a, **kw: dict(
+        d=.01, interval=[.001, .02], bootstrap_d=[.01], A_cand=.11, A_e={'B1-own': .1}, max_entry='B1-own'))
+    block = score.run_stage(3, ['K6'], world, workers=1, n_resamples=1)['blocks']['K6']
+    assert block['d'] == .01 and block['outcome_id'] == 'S1-GO'

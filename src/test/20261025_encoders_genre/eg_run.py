@@ -8,6 +8,7 @@ exit 1 with one `EG_STOP <reason>` line. Commands (rule §2.1, §4.1 to §4.3; s
       vg2 --phase first|all|fresh | parity (R6-5 fresh-seed weights equal 12-24's K4; before any C outcome)
   candidates STAGE     3: K6 K7 K8 K5 minus deferred minus those with a block in verdict_stage3.json;
                        4: those with an S1 outcome other than S1-NO, minus deferred, minus blocks in verdict_stage4.json
+                       5: every non-deferred candidate with a stage 3 block, including no-outcome blocks
   check-verdict STAGE  every listed candidate has a block (RB's check)
   a28                  'models|scales of B1/B6 needed|{model: scale}' for stage 5
   defer                print the deferred candidates (part2/deferral.json)
@@ -152,8 +153,10 @@ def gate_v2(out, stage):
     need(stage in (3, 4, 5), 'v2 --stage must be 3, 4 or 5')
     path, vpath = out / f'part2/rederive_v2_stage{stage}.json', out / f'part2/verdict_stage{stage}.json'
     rec = load(path)
-    need(rec.get('agree') is True, f'V2 does not agree for stage {stage}')
     blocks = blocks_of(out, stage)
+    need(any(outcome_of(b) is not None for b in blocks.values()),
+         f'V2 stage {stage}: no candidate has an outcome; nothing re-derived')
+    need(rec.get('agree') is True, f'V2 does not agree for stage {stage}')
     newer(path, vpath, 'V2')
     missing = [c for c, b in blocks.items() if outcome_of(b) is not None and c not in rec.get('candidates', {})]
     need(not missing, f'V2 stage {stage} lacks {missing}: rerun V2')
@@ -262,8 +265,11 @@ def candidates(out, stage, todo=True):
     if stage == 4:
         s3 = blocks_of(out, 3, must=False)
         names = [c for c in names if c in s3 and outcome_of(s3[c]) not in (None, 'S1-NO')]
+    elif stage == 5:
+        s3 = blocks_of(out, 3, must=False)
+        names = [c for c in names if c in s3]
     elif stage != 3:
-        raise Stop('candidates STAGE: 3 or 4')
+        raise Stop('candidates STAGE: 3, 4 or 5')
     if todo:
         done = blocks_of(out, stage, must=False)
         names = [c for c in names if c not in done]
@@ -296,11 +302,38 @@ def a28_scale(out, model, s4=None):
     return 'full' if model in s4 and outcome_of(s4[model]) is not None else 'sample'
 
 
+def stage_i_failure(out):
+    """Only an existing failed X0/X1 record licenses stage ii's K2-to-K4 path."""
+    paths = [Path(out) / 'stores/x0.json'] + [Path(out) / f'part2/regression/x1_{p}.json' for p in X_PARTS]
+    for path in paths:
+        if path.is_file() and load(path).get('pass') is False:
+            return f'{path.name} failed'
+    return None
+
+
+def require_stage_ii_ready(out):
+    """Do not lock the P plan while a non-deferred candidate still awaits stage 3."""
+    if stage_i_failure(out):
+        return
+    todo = candidates(out, 3)
+    need(not todo, f'stage 3 has no block yet for: {todo}; refusing the stage ii plan lock')
+
+
+def stage3_failure(out, candidate):
+    """Rule §2.2: weights alone do not establish a stage 3 outcome."""
+    block = blocks_of(out, 3, must=False).get(candidate)
+    if block is None:
+        return 'stage 3 block missing'
+    if outcome_of(block) is None:
+        return block.get('v_failure') or 'stage 3 block has no outcome'
+    return None
+
+
 def a28_plan(out):
-    """Stage 5 models: the candidates not deferred that have a stage 3 block (outputs exist) and whose ArtELingo-28
+    """Stage 5 inference models: candidates not deferred that have a stage 3 outcome and whose ArtELingo-28
     store passed V5; their scales, and the scales of B1 / B6 outputs they need."""
     s3 = blocks_of(out, 3, must=False)
-    models = [c for c in CANDIDATES if c not in deferred(out) and c in s3]
+    models = [c for c in CANDIDATES if c not in deferred(out) and c in s3 and outcome_of(s3[c]) is not None]
     models = [m for m in models if v5_entry(out, BY_STUDENT[m], A28)['pass']] if models else models
     s4 = blocks_of(out, 4, must=False)
     scales = {m: a28_scale(out, m, s4) for m in models}
@@ -499,6 +532,7 @@ def main(argv=None):
     ap.add_argument('--release')
     ap.add_argument('--reason')
     ap.add_argument('--now', help='ISO time for tests')
+    ap.add_argument('--include-done', action='store_true', help='candidates: include candidates with a verdict block')
     ap.add_argument('--print-only', action='store_true', help='replace, score3, lift-score: print the call only')
     ap.add_argument('--workers', type=int, default=8)
     args, extra = ap.parse_known_args(argv)
@@ -510,7 +544,7 @@ def main(argv=None):
         if cmd == 'gate':
             print(f'EG_GATE {args.arg} ok: {run_gate(out, args)}')
         elif cmd == 'candidates':
-            print(' '.join(candidates(out, int(args.arg))))
+            print(' '.join(candidates(out, int(args.arg), todo=not args.include_done)))
         elif cmd == 'check-verdict':
             print('EG_VERDICT ' + check_verdict(out, int(args.arg), args.candidates or candidates(out, int(args.arg), todo=False)))
         elif cmd == 'a28':

@@ -12,7 +12,7 @@ held() {
     if [[ -f "$outputs/stage_ii/held_table.json" && "$dry" != 1 ]]; then note "held_table.json exists, skipped"; return 0; fi
     if [[ "$dry" != 1 ]]; then
         [[ -f "$outputs/stage_ii/stats.json" ]] || stop "the P table (stats.json) must exist before the held table"
-        if [[ ! -f "$outputs/part2/reported_stage3.json" ]] || { [[ -f "$outputs/part2/verdict_stage4.json" && ! -f "$outputs/part2/reported_stage4.json" ]]; }; then
+        if ! stage_i_stopped && { [[ ! -f "$outputs/part2/reported_stage3.json" ]] || { [[ -f "$outputs/part2/verdict_stage4.json" && ! -f "$outputs/part2/reported_stage4.json" ]]; }; }; then
             note "held table waits for the stage i reports (part2/reported_stage3.json, _stage4.json): run eg_queue_cpu_i.sh 3 and 4, then 'bash eg_queue_stage_ii.sh held'"
             return 0
         fi
@@ -21,18 +21,23 @@ held() {
 }
 if [[ "${1:-}" == held ]]; then held; finish; fi
 if [[ "$dry" != 1 ]]; then
-    if gate x0 && gate x1; then
-        todo=$(filter_deferred $(driver candidates 3))
-        [[ -z "$todo" ]] || stop "stage 3 has no block yet for: $todo (run eg_queue_stage_i.sh; or defer them with eg_run.py defer / EG_DEFER)"
+    if stage_i_stopped; then
+        note "stage i stopped at a failed X0 or X1: stage ii runs with K2 to K4 only (rule §4.1)"
     else
-        note "stage i stopped at X0 or X1: stage ii runs with K2 to K4 only (rule §4.1)"
+        for file in "$outputs/stores/x0.json" "$outputs"/part2/regression/x1_{student,matched,scorer}.json; do
+            [[ -f "$file" ]] || stop "missing gate file $file: wait for X0/X1 before locking the stage ii plan"
+        done
+        gate x0 && gate x1 || stop "X0/X1 gates are invalid: see gate logs"
+        todo=$(driver candidates 3) || stop "stage 3 candidate list failed"
+        [[ -z "$todo" ]] || stop "stage 3 has no block yet for: $todo (run eg_queue_stage_i.sh; or record a deferral with eg_run.py defer --estimate-end)"
     fi
 fi
-[[ -n "${EG_DEFER:-}" ]] && note "deferred for time (EG_DEFER, logged): $EG_DEFER"
+pinfer_smoke=("${smoke[@]}")
+[[ "${EG_SMOKE:-0}" == 1 ]] && pinfer_smoke+=(--n-rows 29232)
 if [[ -f "$outputs/stage_ii/vl1.json" && "$dry" != 1 ]]; then
     note "vl1.json exists, P inference skipped"
 else
-    step pinfer gpu "$here/eg_pinfer.py" all --device "$device" --outputs "$outputs" "${smoke[@]}" || stop "P inference or VL1 (b), (c), VL3 failed (a VL3 failure may be rerun once: eg_pinfer.py infer --forced-vl3 CAUSE)"
+    step pinfer gpu "$here/eg_pinfer.py" all --device "$device" --outputs "$outputs" "${pinfer_smoke[@]}" || stop "P inference or VL1 (b), (c), VL3 failed (a VL3 failure may be rerun once: eg_pinfer.py infer --forced-vl3 CAUSE)"
 fi
 if [[ -f "$outputs/stage_ii/vl1_scorer.json" && "$dry" != 1 ]]; then
     note "vl1_scorer.json exists, VL1 (a) skipped"

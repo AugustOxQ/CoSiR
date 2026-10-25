@@ -2,7 +2,8 @@
 ArtELingo-28 at the sample scale, and the matched half of X1 and X2 (rule §2.1 stage 5, §4.1).
 
 Training, inference and the writers are `rb_matched`'s own (World, train_stage2, infer with its second normalization of
-the inputs, write_output, run_matched, run_ct_a28); this module adds the CLI, this round's gate (V1), the eg_ code
+the inputs, write_output, run_ct_a28); the round-local run_matched driver adds selectable inference kinds. This module adds
+the CLI, this round's gate (V1), the eg_ code
 hashes as provenance, and `regress x1|x2`. Files are 12-24's layout under `--outputs`:
   part2/<scale>/matched/M<k>/P3__s<seed>.{npz,json,pt}   part2/<scale>/held/M<k>/P3__s<seed>.npz
   part2/<scale>/a28/M<k>/P3__s<seed>.npz                 part2/sample/a28/{B1/P3,B6/P2}__s<seed>.npz
@@ -70,7 +71,7 @@ def _read_pass(path):
     return record
 
 
-def require_gate(outputs, scale, arm):
+def require_gate(outputs, scale, arm, kinds=('held', 'a28')):
     """V1 (rule §4.1): stage 3 (sample) needs X0, V5 for this candidate (held: its ArtELingo store, ArtELingo-28: its
     28 store) and X1; stage 4 (full) needs X2. `arm` is M<k>, or B1 / B6 (no V5 entry of their own)."""
     outputs = Path(outputs)
@@ -81,7 +82,8 @@ def require_gate(outputs, scale, arm):
         if arm in eg_encoders.BY_OWN and eg_encoders.BY_OWN[arm].new:      # V5 covers new stores only (rule §4.1)
             v5 = json.loads((outputs / 'stores/v5.json').read_text())
             store = eg_encoders.BY_OWN[arm].store
-            for key in (f'artelingo_full/{store}', f'artelingo28/{store}'):
+            for kind in kinds:
+                key = f'{"artelingo_full" if kind == "held" else "artelingo28"}/{store}'
                 assert key in v5['stores'], f'V1: V5 has no entry {key}'
                 assert v5['stores'][key].get('pass') is True, f'V1: V5 fails for {key}'
     for part in ('student', 'matched', 'scorer'):
@@ -104,7 +106,53 @@ def _patched():
 
 # --- run --------------------------------------------------------------------------------------------------------
 
-def run(scale, arm, seeds, outputs, device, *, smoke=False, epochs=None, gated=True):
+def run_matched(world, arm, seeds, outputs, device, smoke, epochs=None, kinds=('held', 'a28')):
+    """Round-local rb_matched driver: train each seed, then write the selected held/ArtELingo-28 outputs.
+
+    Two phases, as in rb_student. Training: each seed whose Stage 2 file does not verify is trained and saved; no
+    output is written. V4 (rule §4.2): if any seed has to be trained and any held output of this arm exists at this
+    scale (any seed), refuse. Inference: for every seed, the held and ArtELingo-28 outputs are read from the saved
+    Stage 2 file unless they exist and verify. A crash in training or in inference resumes without retraining."""
+    backbone = rb_matched.MATCHED[arm]
+    assert kinds and set(kinds) <= {'held', 'a28'}, kinds
+    s = world.s
+    held_root = rb_score.output_path(world.scale, arm, 0, outputs=outputs).parent
+    todo = [seed for seed in seeds if not rb_matched._stage2_ok(world, arm, seed, outputs, smoke)]
+    held_files = sorted(held_root.rglob('*.npz')) if held_root.exists() else []
+    assert not (todo and held_files), f'V4: no new training of {arm} at {world.scale} once held outputs exist ' \
+                                      f'(any seed): {held_files[0]}; seeds to train: {todo}'
+    if todo:
+        all_images = world.full_images(backbone, s['all_painting_ids'])
+    for seed in todo:
+        topic, k, stage1_sha256 = world.topics(seed)
+        result = rb_matched.train_stage2(s, topic, k, all_images, backbone, seed, device, smoke, epochs=epochs)
+        rb_matched.save_stage2(rb_matched.stage2_path(outputs, world.scale, arm, seed), result,
+                    dict(stage1_sha256=stage1_sha256, backbone=backbone, arm=arm, code_sha256=rb_matched._code()))
+        print(f'{arm} {world.scale} s{seed}: trained', flush=True)
+    images = {}
+    paths = []
+    for seed in seeds:
+        path = rb_matched.stage2_path(outputs, world.scale, arm, seed)
+        weights = base.verify_output(path)['weights_sha256']
+        extra = dict(backbone=backbone, stage2_weights_sha256=weights, stage1_sha256=world.topics(seed)[2],
+                     smoke=smoke)
+        held_path = rb_score.output_path(world.scale, arm, seed, outputs=outputs)
+        for kind in kinds:
+            out, n_rows, list_sha256 = ((held_path, len(world.held_names), world.held_sha256) if kind == 'held'
+                else (rb_matched.a28_path(outputs, world.scale, arm, seed), len(world.a28_names), world.a28_sha256))
+            if rb_matched._output_ok(out, path, world, arm, seed, n_rows, list_sha256, smoke):
+                continue
+            if kind not in images:
+                images[kind] = (world.full_images(backbone, world.held_names) if kind == 'held'
+                                else world.a28_images(backbone))
+            rb_matched.write_output(out, rb_matched.infer(path, images[kind]), list_sha256=list_sha256,
+                                    scale=world.scale, arm=arm, seed=seed, extra=extra)
+        paths.append(held_path)
+        print(f'{arm} {world.scale} s{seed}: {kinds} outputs ready in {held_path.parent}', flush=True)
+    return paths
+
+
+def run(scale, arm, seeds, outputs, device, *, smoke=False, epochs=None, gated=True, kinds=('held', 'a28')):
     """Matched arm `arm` (train, then held and ArtELingo-28 outputs), or B1 / B6 on ArtELingo-28 (sample scale)."""
     allowed = set(NEW_ARMS) | set(CT_ARMS) | (set(SMOKE_ONLY_ARMS) if (smoke or not gated) else set())
     assert arm in allowed, arm
@@ -112,12 +160,12 @@ def run(scale, arm, seeds, outputs, device, *, smoke=False, epochs=None, gated=T
     eg_paths.check_imports()
     outputs = Path(outputs)
     if gated and not smoke:
-        require_gate(outputs, scale, arm)
+        require_gate(outputs, scale, arm, kinds)
     world = rb_matched.load_world(scale)
     with _patched():
         if arm in CT_ARMS:
             return rb_matched.run_ct_a28(world, arm, seeds, outputs, gate=False)
-        return rb_matched.run_matched(world, arm, seeds, outputs, device, smoke, epochs=epochs, gate=False)
+        return run_matched(world, arm, seeds, outputs, device, smoke, epochs=epochs, kinds=kinds)
 
 
 # --- X1 and X2, matched half ------------------------------------------------------------------------------------
@@ -209,6 +257,7 @@ def main(argv=None):
     parser.add_argument('--smoke', action='store_true', help='outputs under /tmp/claude-0; seed 0; 2 epochs')
     parser.add_argument('--scale', required=True, choices=sorted(set(SCALE_OF.values())))
     parser.add_argument('--arm', required=True, choices=list(NEW_ARMS) + list(SMOKE_ONLY_ARMS) + list(CT_ARMS))
+    parser.add_argument('--kinds', nargs='+', choices=('held', 'a28'), default=['held', 'a28'])
     parser.add_argument('--seeds', type=int, nargs='+', choices=range(5), default=list(range(5)))
     parser.add_argument('--device', default=None)
     args = parser.parse_args(argv)
@@ -218,7 +267,7 @@ def main(argv=None):
     device = args.device or ('cuda' if torch.cuda.is_available() or not args.smoke else 'cpu')
     assert args.smoke or args.arm in CT_ARMS or device.startswith('cuda'), 'full Stage 2 requires GPU'
     return run(args.scale, args.arm, seeds, args.outputs, device, smoke=args.smoke,
-               epochs=2 if args.smoke else None)
+               epochs=2 if args.smoke else None, kinds=args.kinds)
 
 
 if __name__ == '__main__':

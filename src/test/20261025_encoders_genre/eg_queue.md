@@ -14,7 +14,6 @@ file. Queues never wait for input. The driver that decides between steps is `eg_
 | `EG_PYTHON` | CoSiR env python | |
 | `EG_LOCK_WAIT`, `EG_GPU_LOCK` | 14400 s, `/tmp/gpu0.lock` | GPU steps: `flock -o -w $EG_LOCK_WAIT $EG_GPU_LOCK env CUDA_VISIBLE_DEVICES=0 python -u ...` |
 | `EG_CPU_LOCK` | `/tmp/eg_cpu.lock` | the report queues (`cpu_i`) run one at a time |
-| `EG_DEFER` | empty | e.g. `"K5"` or `"K5 K8"`: candidates left out of the stores and stages i for time (D15; logged; never dropped: run the queues again without it). Adds to `part2/deferral.json` |
 | `EG_DEVICE` | `cuda` | `cpu` only for a plumbing test |
 | `EG_DRY=1` | off | print each step's command, run none (plumbing check only) |
 | `EG_PENDING` | `/project/CoSiR/.scratch/pending_deletions.md` | where stage iii appends weights that may go (never deleted) |
@@ -34,10 +33,10 @@ nothing else; the table says which.
 
 | Queue (`eg_queue_*.sh`) | Resource | What | Stops |
 |---|---|---|---|
-| `stores` | GPU, CPU | X0 (`eg_x0`); the eight extractions (K6 CLIP B/16, K7 CLIP L/14, K8 SigLIP 1, K5 DINOv2-large `--image-only`; each for `artelingo_full` and `artelingo28`); V5 (`eg_v5 --calibrate`, then each store) | X0 fails: no store is written, queue ends (stage i stops; ii with K2 to K4 and iii go on). A failed extraction or V5 of one store: noted, only that candidate has no outcome |
-| `stage_i` | GPU, CPU | budget line; gate X0; X1 (three halves); per candidate K6, K7, K8, K5: `gate stage3`, student train and infer, matched arm; `eg_score --stage 3`; `check-verdict 3`; `eg_v2 --stage 3`; X2; per candidate with an S1 outcome other than S1-NO: `gate v2 --stage 3`, `gate stage4`, student and matched at full scale; `eg_score --stage 4`; `eg_v2 --stage 4`; stage 5 (B1 and B6 sample inference when `eg_run a28` lists the sample scale; `eg_score --stage 5`; `eg_v2 --stage 5`) | X0 or X1 fails: stage i ends. V5 failed for one store: that candidate gets a block without an outcome. X2 fails: no stage 4, stage 5 at the sample scale. A V2 that disagrees: stage i ends |
-| `cpu_i N` (3, 4 or 5) | CPU | `gate v2 --stage N`; `eg_report_i --stage N` (about 30 to 40 min per candidate) | V2 gate fails: no report |
-| `stage_ii` | GPU, CPU | P inference and VL1 (b), (c), VL3 (`eg_pinfer all`); VL1 (a) (`eg_lift check`); `gate vl1`; `eg_run lift-score`; `eg_vl2`; `gate vl2`; `eg_stats stats` (the P table); `eg_stats held` (needs the reports of `cpu_i`; `bash eg_queue_stage_ii.sh held` runs it alone) | VL1 fails: stage ii ends. Stage 3 not finished for a candidate that is not deferred (and X0, X1 hold): ends at once. X0 or X1 failed: runs with K2 to K4 |
+| `stores` | GPU, CPU | X0 (`eg_x0`); the eight extractions (K6 CLIP B/16, K7 CLIP L/14, K8 SigLIP 1, K5 DINOv2-large `--image-only`; each for `artelingo_full` and `artelingo28`); V5 (`eg_v5 --calibrate`, then each store) | X0 fails: no store is written, queue ends (stage i stops; ii with K2 to K4 and iii go on). A failed extraction or V5: noted with the cause; full split failure removes that candidate's outcome, A28-only failure removes only its A outcome |
+| `stage_i` | GPU, CPU | budget line; gate X0; X1 (three halves); per candidate K6, K7, K8, K5: `gate stage3`, student train and infer, matched arm; `eg_score --stage 3`; `check-verdict 3`; `eg_v2 --stage 3`; X2; per candidate with an S1 outcome other than S1-NO: `gate v2 --stage 3`, `gate stage4`, student and matched at full scale; `eg_score --stage 4`; `eg_v2 --stage 4`; stage 5 (B1 and B6 sample inference when `eg_run a28` lists the sample scale; `eg_score --stage 5`; `eg_v2 --stage 5`) | X0 or X1 fails: stage i ends. V5 failed on the full split: that candidate gets a block without an outcome, with the V5 cause. A28-only failure: both arms use `--kinds held` at both scales; only A has no outcome, with the V5 cause. No stage 3 outcome: no A outcome. X2 fails: no stage 4, stage 5 at the sample scale. A V2 that disagrees: stage i ends |
+| `cpu_i N` (3, 4 or 5) | CPU | `gate v2 --stage N`; `eg_report_i --stage N` (about 30 to 40 min per candidate) | For outcomes, V2 gate fails: no report. With no candidate outcome: report the causes and stores without re-deriving |
+| `stage_ii` | GPU, CPU | P inference and VL1 (b), (c), VL3 (`eg_pinfer all`); VL1 (a) (`eg_lift check`); `gate vl1`; `eg_run lift-score`; `eg_vl2`; `gate vl2`; `eg_stats stats` (the P table); `eg_stats held` (needs the reports of `cpu_i`; `bash eg_queue_stage_ii.sh held` runs it alone) | VL1 fails: stage ii ends. Stage 3 not finished for a candidate that is not deferred (and X0, X1 hold): ends at once. X0 or X1 failed: runs with K2 to K4 and builds the held table without waiting for stage i reports. Missing gate files: stops before P inference |
 | `stage_iii` | GPU, CPU | VG1 (`eg_train3 regress vg1`, `eg_score3 check vg1`); the five variants; `eg_run score3 first`; `eg_vg2 --phase first`; the two extras; `score3 all`; pending list; `eg_vg2 all`; when triggered: winner and R6-5 on seeds 1 to 3, `eg_train3 parity`, `gate parity`, `eg_score3 fresh`, `eg_vg2 fresh`; `eg_score3 report` | VG1 fails: no variant runs. A VG2 that disagrees: ends. A failed parity: no C outcome (the scorer records the cause), the queue goes on |
 | `gpu` | all | `stage_iii`, `stores`, `stage_i`, `stage_ii` in this order (stage iii needs no new store, spec §3.5), the CPU report queues 3, 4, 5 in the background one after the other once stage i ends, then the held table | none: a queue that stops is noted and the chain goes on; exit 1 if any queue stopped |
 
@@ -122,10 +121,11 @@ remain on the pending deletions list; this recovery moves only derived files and
 ## Deferral for time (D15)
 
 The `budget` line is the first output of `stage_i`. If its high end is after 11:00: `python eg_run.py defer
---estimate-end HH:MM --outputs ...` defers the next of K5, K8, K7, K6 (one per call; call `budget` again), or set
-`EG_DEFER="K5"` for one run. Deferred candidates get no store, no stage 3 and no stage 4 in the run; stage ii starts when
-every candidate not deferred has its stage 3 block. A deferred candidate is never dropped: `python eg_run.py defer --release K`
-(or run without `EG_DEFER`), then `eg_queue_stores.sh` and `eg_queue_stage_i.sh` again (they train and score only
+--estimate-end HH:MM --outputs ...` defers the next of K5, K8, K7, K6 (one per call; call `budget` again).
+The estimate and decision are recorded in `part2/deferral.json`; this is the only deferral route.
+Deferred candidates get no store, no stage 3 and no stage 4 in the run; stage ii starts when
+every candidate not deferred has its stage 3 block. A deferred candidate is never dropped: `python eg_run.py defer --release K`,
+then `eg_queue_stores.sh` and `eg_queue_stage_i.sh` again (they train and score only
 candidates without a block; stage 5 includes the new model). Stage ii for the deferred encoders is later reported as missing
 (rule §2.2); nothing is added after P outputs exist (VL4).
 

@@ -121,6 +121,8 @@ def run_stage(stage, outputs=None, candidates=None, draws=rb_v2.DRAWS, workers=8
         written = {}
         doc = dict(schema=1, stage=stage, smoke=smoke, tolerance=rb_v2.TOL, verdict_file=str(verdict))
     agree = bool(written) and all(r['comparison']['agree'] for r in written.values())   # nothing checked is no agreement
+    if not written:
+        print(f'V2 stage {stage}: no candidate has an outcome; nothing re-derived (stage stops)', flush=True)
     doc.update(agree=agree, rule=str(eg_paths.RULE), rb_rule=str(rb_v2.rb_paths.RULE), round='encoders_genre',
                code_commit=_git_head(), eg_v2_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                candidates=written, skipped=skipped)

@@ -13,6 +13,7 @@ from sklearn.metrics import adjusted_mutual_info_score as ami
 from threadpoolctl import threadpool_limits
 
 import eg_encoders
+import eg_run
 import eg_paths  # noqa: F401  (sys.path)
 import rb_ami
 
@@ -283,7 +284,8 @@ def run(outputs, labels, *, frozen_images, p_sha=eg_paths.P_SHA256, n_rows=N_P, 
     folder = outputs / STAGE / 'partitions'
     record, sources = {}, {}
     for enc in encoders:
-        reasons = [missing[n] for n in (enc.student, enc.own, enc.frozen, enc.store) if n in missing]
+        stage3_reason = eg_run.stage3_failure(outputs, enc.student) if enc.new else None
+        reasons = ([stage3_reason] if stage3_reason else []) + [missing[n] for n in (enc.student, enc.own, enc.frozen, enc.store) if n in missing]
         if reasons:
             record[enc.student] = dict(encoder=enc.store, student=enc.student, own=enc.own, frozen=enc.frozen,
                                        status='missing', reason=reasons[0], outcome=None)

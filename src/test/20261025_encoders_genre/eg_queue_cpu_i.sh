@@ -10,7 +10,11 @@ if [[ "$dry" != 1 ]]; then exec 8> "${EG_CPU_LOCK:-/tmp/eg_cpu.lock}"; flock -w 
 if [[ "$dry" != 1 && ! -f "$outputs/part2/verdict_stage$stage.json" ]]; then
     note "no verdict_stage$stage.json (no candidate ran that stage): nothing to report"; finish
 fi
-gate v2 --stage "$stage" || { printf 'EG_CPU_I%s_STOP V2 does not agree (or is older than the verdict): no reported readings\n' "$stage" | tee -a "$status"; failed=1; finish; }
+if [[ "$dry" != 1 && "$(jget "$outputs/part2/verdict_stage$stage.json" "any(b.get('outcome_id') is not None for b in d['blocks'].values())")" == False ]]; then
+    note "no candidate has an outcome: report the causes and stores without a V2 re-derivation"
+else
+    gate v2 --stage "$stage" || { printf 'EG_CPU_I%s_STOP V2 does not agree (or is older than the verdict): no reported readings\n' "$stage" | tee -a "$status"; failed=1; finish; }
+fi
 # Default candidates of eg_report_i: every block with an outcome and no reported block yet.
 step "report$stage" cpu "$here/eg_report_i.py" --stage "$stage" --outputs "$outputs" --workers 8 "${smoke[@]}" || finish
 finish
