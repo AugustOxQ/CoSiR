@@ -16,15 +16,14 @@ The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked idea
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. D2 (trunk + direct
 distillation 0.5) passed both claim tests on 12,281 held ArtELingo paintings (emotion AMI 0.1008 against 0.0874 for
-PercepT core, S2-GO) but stays below the instructed Qwen image on style and genre. The D2 ablation (5,000 development
-paintings, local 3090, 3 seeds) shows that the instructed graphs carry the gain: without any instruction the model
-falls below PercepT core; the teacher and the shared trunk are close to redundant; without the caption terms emotion
-and style rise (style 0.3945 against the instructed image's 0.3952), confounded with the teacher's loss share.
-Next (user, 2026-10-25): part 1, on development paintings, checks the caption-free variants on paintings that did not
-choose D2, the genre information ceiling and the four-view statistics; part 2 builds code for other backbones and
-ArtELingo-28. The grill closed in decide 18 (2026-10-25): a fixed rule on 29,232 fresh development paintings picks
-the recipe, then SigLIP 2 and CLIP B/32 students face the strongest PercepT core arm on held paintings; the spec is
-written in decide 19, then the build. The 11-10 gate is the instructed Qwen bar and aspect-named image retrieval.
+PercepT core, S2-GO) but stays below the instructed Qwen image on style and genre. The recipe and backbone round
+(report 12-24, 2026-10-25) replaced D2 with the recipe without own-caption terms at teacher share 1/5 (picked on
+29,232 development paintings, one seed) and tested students on other image encoders, with Qwen graphs, teacher and
+captions at training: SigLIP 2 (0.1024) and Qwen (0.1029) pass held emotion at both scales against 0.0874; CLIP B/32
+(0.0885) is inconclusive. The claims are k-means only; every student stays below the instructed Qwen image on genre.
+Next (user, decide 20): one medium loop with four more encoders under 12-24's rule (CLIP B/16, CLIP L/14, SigLIP 1,
+DINOv2-large), a backbone analysis, and teacher-faithful heads or losses for genre; aspect-named retrieval follows in
+the loop after. The CVPR abstract is due 2026-11-10; the 11-10 gate is the instructed Qwen bar and retrieval.
 
 ## Parked ideas
 
@@ -49,6 +48,43 @@ written in decide 19, then the build. The 11-10 gate is the instructed Qwen bar 
   by the user, 2026-10-25; [proposed in](../reports/auto/percept/2026-12-23_attention_maps.md))
 - Align and contrast the three aspect heads of one image (shared part aligned, aspect parts pushed apart) (never tried;
   not chosen by the user, 2026-10-20: the aspects may not be separable; proposed in the r10 decide 12 chat)
+
+## 2026-10-25 · Recipe and backbone round read: SigLIP 2 and Qwen pass held emotion, CLIP B/32 inconclusive; next step open
+
+- **Read:** part 1 (29,232 development paintings, seed 0): no own-caption terms at teacher share 1/5 replaces D2,
+  emotion +0.0061 [+0.0046, +0.0076], style +0.0240 [+0.0216, +0.0261], genre +0.0070 [+0.0039, +0.0102] (below one
+  seed range, 0.0128); image endpoints only at 1/5 close (mean gain 1.55 against 1.60 seed ranges). Part 2 (12,281
+  held paintings, 5 seeds, full scale; bar: PercepT core's Qwen arm, own reading, 0.0874): SigLIP 2 0.1024, +0.0150
+  [+0.0096, +0.0163], GO at both scales; Qwen with the new recipe 0.1029, +0.0154 [+0.0100, +0.0169], GO at both
+  scales; CLIP B/32 0.0885, +0.0011 [-0.0043, +0.0025], inconclusive at both scales. Each encoder's own PercepT arm:
+  SigLIP 2 0.0793, CLIP B/32 0.0716. ArtELingo-28 (746): SigLIP 2 and both Qwen recipes qualified, CLIP B/32 fails.
+  The claims are k-means only (full-scale Leiden emotion intervals include zero for SigLIP 2 and Qwen). The ceiling
+  probe puts genre information in the default image (ridge genre AMI 0.5040 against the instructed image's 0.4989);
+  every student stays below the instructed Qwen image on genre.
+- **Meaning (C):** "I think for SigLIP2 and Qwen thats a good result, CLIP B/32 suprisingly beging bad." (user,
+  before ours). Ours: the new recipe gains on emotion and style on one development seed, genre less; SigLIP 2 meets
+  the framing note's "any backbone" condition; this supports the narrow claim "the emotion lead over PercepT core holds
+  on two image encoders, Qwen and SigLIP 2, with Qwen3-VL-Embedding at training"; write it for the abstract, then test
+  genre losses. Where they differ: on held paintings CLIP B/32 is inconclusive, not bad, and fails only on
+  ArtELingo-28; the student lifts each encoder above its own PercepT arm by a similar amount (SigLIP 2 +0.0231, CLIP
+  B/32 +0.0169, Qwen +0.0155; arithmetic from the report's tables, not checked), so CLIP's low start sets its result;
+  we put the abstract claim first, the user's next steps leave it out; the user's reading leaves out the k-means-only,
+  ArtELingo-28 and one-seed limits.
+- **Decided (A):** the user's three proposals as one medium loop, shaped by our recommendation (user, after seeing
+  the recommendation). Stage i, more backbones (claim test, held): CLIP B/16, CLIP L/14 at 224 px, SigLIP 1 So400m/14
+  at 384 px and DINOv2-large under 12-24's rule with only the encoder list changed (models: user, after seeing the
+  recommendation). Stage ii, the backbone analysis (confirmation, existing outputs plus stage i's): per encoder its
+  frozen AMI, its own PercepT arm, the student's lift and the four-view statistics; does the lift follow the encoder's
+  starting level; a method idea from it is tested on development paintings in a later loop. Stage iii, teacher-faithful
+  heads or losses for genre (incremental, development, Qwen, on the new recipe; literature note 12-20, ideas 2 and 3).
+  Medium loop: step 3 skipped, the options are clear and stage i reuses a reviewed rule (agent default). The abstract:
+  not now (user). Aspect-named retrieval for the 11-10 gate: the next loop, "the retrieval is important" (user).
+- **Why:** more encoders test whether the student's lift is general and whether CLIP B/32's result comes from its low
+  start; the genre gap to the instructed Qwen image is the open problem; all three run in minutes per training run.
+- **Links:** [report](../reports/auto/percept/2026-12-24_recipe_backbones.md) ·
+  [user-read report](../user_read/2026-10-25_recipe_backbones.md) ·
+  [spec](specs/2026-10-25-recipe-and-backbones-design.md) ·
+  [handoff](handoffs/2026-10-25-r10-decide-20-handoff.md)
 
 ## 2026-10-21 · D2 ablation read: the instructed graphs carry the gain, the teacher and the trunk are close to redundant; next step open
 
