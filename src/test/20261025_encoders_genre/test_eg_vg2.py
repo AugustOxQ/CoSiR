@@ -244,7 +244,7 @@ def test_all_phase_rederives_extras_and_winner(files):
     assert report['agree'], report['differences']
 
 
-def add_fresh_files(f):
+def add_fresh_files(f, fresh_caches=True):
     import torch
     out, rb2 = f['out'], f['rb'].parent/'part2'
     runs, run_hashes, images = {}, {}, {}
@@ -262,15 +262,20 @@ def add_fresh_files(f):
             for a in vg.ASPECTS:
                 np.savez(folder/f'{a}__P.npz', img=x)
                 np.savez(folder/f'{a}__old5000.npz', img=x)
+                dump(folder/f'{a}.json', dict(aspect=a, best_epoch=1, epochs_run=16, best_dev_loss=1.,
+                    history=[dict(epoch=1, step=1, train_loss=1., dev_loss=1., seconds=1.)], seconds=1.,
+                    arrays={f'{a}__P.npz': {'img': digest(x.tobytes())},
+                            f'{a}__old5000.npz': {'img': digest(x.tobytes())}}))
                 cache0 = out/f'stage_iii/partitions/{v}/s0/{a}__partitions.npz'
                 with np.load(cache0) as z:
                     parts = z['labels']
                 cache = out/f'stage_iii/partitions/{v}/s{s}/{a}__partitions.npz'
-                cache.parent.mkdir(parents=True, exist_ok=True)
-                np.savez(cache, labels=parts)
                 side = json.loads(cache0.with_suffix('.json').read_text())
                 side['identity']['seed'] = s
-                dump(cache.with_suffix('.json'), side)
+                if fresh_caches:
+                    cache.parent.mkdir(parents=True, exist_ok=True)
+                    np.savez(cache, labels=parts)
+                    dump(cache.with_suffix('.json'), side)
                 if v == vg.BASE:
                     # Frozen K4 states and fresh R6-5 states: same tensor bytes.
                     state = {f'{arm}.{layer}.{field}': torch.ones(1) for arm in ('img', 'cap')
@@ -297,7 +302,7 @@ def add_fresh_files(f):
         runs=runs, reading='Seed-0 outcome III-GO stands; fresh seeds: C-HOLDS.',
         identity=dict(p_sha256=f['p_sha'], label_sha256=f['label_sha'], n_draws=20, winner='GT-2', seeds=[1,2,3],
           score_all_sha256=digest((out/'stage_iii/score_all.json').read_bytes()), fresh_parity_sha256=parity_hash,
-          failed={}, run_sha256=run_hashes, img_sha256=images))
+          failed={}, run_sha256=run_hashes))
     dump(out/'stage_iii/score_fresh.json', fresh)
     return rb2, fresh
 
@@ -322,6 +327,32 @@ def test_failed_parity_seed_may_omit_weights_equal(tmp_path):
     assert vg.parity_differences(ours, theirs) == []
     theirs['reference'] = 'K4'
     assert vg.parity_differences(ours, theirs)[0]['path'] == 'fresh_parity/reference'
+
+
+def test_no_c_outcome_record_agrees(files):
+    import torch
+    rb2, fresh = add_fresh_files(files, fresh_caches=False)
+    weight = files['out']/'stage_iii/train/R6-5/s1/emotion.pt'
+    state = torch.load(weight, weights_only=True)
+    state['img.output.bias'][0] = 2
+    torch.save(state, weight)
+    parity = fresh['parity']
+    parity.pop('sha256')
+    parity['pass'] = parity['seeds']['1']['pass'] = False
+    parity['seeds']['1']['weights_equal']['emotion'] = False
+    parity_path = files['out']/'stage_iii/fresh_parity.json'
+    dump(parity_path, parity)
+    parity_hash = digest(parity_path.read_bytes())
+    fresh.update(parity=dict(parity, sha256=parity_hash), c_outcome=None, effects=None,
+                 genre_vs_targets=None, runs=None, no_outcome_cause='R6-5 parity failed',
+                 reading='Seed-0 outcome III-GO stands; no C outcome is stated.')
+    fresh['identity'].pop('run_sha256')
+    fresh['identity'].update(fresh_parity_sha256=parity_hash, n_draws=37, failed={}, code_dirty=True)
+    dump(files['out']/'stage_iii/score_fresh.json', fresh)
+    report = verify(files, 'fresh', rb_part2=rb2)
+    assert report['agree'], report['differences']
+    assert report['recomputed']['effects'] is None
+    assert all('/s0/' in k for k in report['input_array_hashes']['img_sha256'])
 
 
 def test_false_parity_pass_cannot_license_c_outcome(files):

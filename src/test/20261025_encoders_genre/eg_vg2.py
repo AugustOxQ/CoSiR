@@ -391,25 +391,15 @@ def fresh_scores(inputs, labels, label_sha, header, seed0, n_draws, workers, rb_
     winner = seed0['winner']
     ours = dict(header, winner=winner, seeds=list(SEEDS), seed0_outcome=seed0['outcome'],
                 A_genre_seed0=seed0['A_genre_winner'], c_outcome=None, no_outcome_cause=None,
-                effects=None, genre_vs_targets=None, runs={}, parity=None)
+                effects=None, genre_vs_targets=None, runs=None, parity=None)
     identity = dict(p_sha256=inputs.p_sha, label_sha256=label_sha, n_draws=n_draws,
-                    winner=winner, seeds=list(SEEDS), failed={}, run_sha256={}, img_sha256={})
+                    winner=winner, seeds=list(SEEDS), failed={})
     if not seed0['fresh_seeds']:
         ours['no_outcome_cause'] = 'fresh seeds not triggered by the independently computed seed-0 effects'
     else:
         parity_seeds = {}
-        for v in (winner, BASE):
-            ours['runs'][v], identity['run_sha256'][v] = {}, {}
-            for s in SEEDS:
-                run = inputs.run_record(v, s)
-                digest = inputs.hashes[str(paths.iii_run(inputs.outputs, v, s)/'run.json')]
-                ours['runs'][v][str(s)] = {k: run.get(k) for k in ('status', 'cause', 'best_epoch')}
-                ours['runs'][v][str(s)]['run_sha256'] = digest
-                identity['run_sha256'][v][str(s)] = digest
-                if run['status'] == 'failed':
-                    identity['failed'][f'{v}/s{s}'] = run['cause']
         for s in SEEDS:
-            run = inputs.runs[BASE, s]
+            run = inputs.run_record(BASE, s)
             equal = {}
             for a in ASPECTS:
                 try:
@@ -421,37 +411,44 @@ def fresh_scores(inputs, labels, label_sha, header, seed0, n_draws, workers, rb_
                                            theirs=str(error)))
                     equal[a] = False
             parity_seeds[str(s)] = {'pass': all(equal.values()), 'run_status': run['status'],
-                                   'run_cause': run.get('cause'), 'weights_equal': equal}
+                                   'weights_equal': equal}
         parity_ok = all(p['pass'] for p in parity_seeds.values())
         expected_parity = {'pass': parity_ok, 'seeds': parity_seeds}
-        # Draw fresh effects from raw exports, even when the parity gate fails.
-        if not identity['failed']:
-            effects = {}
-            for a in ASPECTS:
-                parts = {v: {s: inputs.partitions(v, s, a) for s in SEEDS} for v in (winner, BASE)}
-                effects[a] = score_effects(labels[a], parts, n_draws, workers, fresh=True)[winner]
-            ours['effects'] = effects
-            abar = effects['genre']['Abar'][winner]
-            target, level = header['t_g'], header['promising']
-            ours['genre_vs_targets'] = dict(A_bar=abar, t_g=target, promising=level,
-                diff_t_g=abar-target, diff_promising=abar-level, reaches_t_g=abar >= target,
-                reaches_promising=abar >= level)
-            if parity_ok:
-                ours['c_outcome'] = c_outcome(effects)
-            else:
-                ours['no_outcome_cause'] = 'fresh R6-5 weights differ from frozen K4 weights'
-        else:
-            ours['no_outcome_cause'] = 'at least one fresh-seed run failed'
-        for v in (winner, BASE):
-            identity['img_sha256'][v] = {
-                str(s): {a: inputs.img_hashes[v, s, a] for a in ASPECTS}
-                for s in SEEDS if (v, s, 'emotion') in inputs.img_hashes}
         parity_path = inputs.outputs/'stage_iii/fresh_parity.json'
         parity = inputs.json(parity_path, ('pass', 'seeds', 'reference'))
         inputs.bad.extend(parity_differences(expected_parity, parity))
         digest = inputs.hashes[str(parity_path)]
-        ours['parity'] = dict(parity, sha256=digest)
+        ours['parity'] = dict(expected_parity, reference=parity['reference'], sha256=digest)
         identity['fresh_parity_sha256'] = digest
+        if not parity_ok:
+            ours['no_outcome_cause'] = 'fresh R6-5 weights differ from frozen K4 weights'
+        else:
+            ours['runs'], identity['run_sha256'] = {}, {}
+            failed = []
+            for v in (winner, BASE):
+                ours['runs'][v], identity['run_sha256'][v] = {}, {}
+                for s in SEEDS:
+                    run = inputs.run_record(v, s)
+                    digest = inputs.hashes[str(paths.iii_run(inputs.outputs, v, s)/'run.json')]
+                    ours['runs'][v][str(s)] = {k: run.get(k) for k in ('status', 'cause', 'best_epoch')}
+                    ours['runs'][v][str(s)]['run_sha256'] = digest
+                    identity['run_sha256'][v][str(s)] = digest
+                    if run['status'] == 'failed':
+                        failed.append((v, s))
+            if failed:
+                ours['no_outcome_cause'] = 'at least one fresh-seed run failed'
+            else:
+                effects = {}
+                for a in ASPECTS:
+                    parts = {v: {s: inputs.partitions(v, s, a) for s in SEEDS} for v in (winner, BASE)}
+                    effects[a] = score_effects(labels[a], parts, n_draws, workers, fresh=True)[winner]
+                ours['effects'] = effects
+                abar = effects['genre']['Abar'][winner]
+                target, level = header['t_g'], header['promising']
+                ours['genre_vs_targets'] = dict(A_bar=abar, t_g=target, promising=level,
+                    diff_t_g=abar-target, diff_promising=abar-level, reaches_t_g=abar >= target,
+                    reaches_promising=abar >= level)
+                ours['c_outcome'] = c_outcome(effects)
     # This file's hash authenticates the compared record; no score is used here.
     identity['score_all_sha256'] = sha(inputs.bytes(inputs.outputs/'stage_iii/score_all.json'))
     ours['identity'] = identity
@@ -466,6 +463,13 @@ def compare_record(inputs, ours, theirs, phase):
     wording or a template for the rest of the reading sentence.
     """
     expected = dict(ours)
+    # The header/results already decide draws, arms and failures. Identity
+    # bookkeeping is not evidence; compare the hashes of the actual inputs.
+    def hashes(identity):
+        assert isinstance(identity, dict)
+        return {k: v for k, v in identity.items() if k.endswith('sha256') and v is not None and v != {}}
+
+    inputs.check(hashes(expected.pop('identity')), hashes(theirs.get('identity', {})), f'score_{phase}/identity')
     if phase == 'fresh':
         parity = expected.pop('parity')
         if parity is None:
