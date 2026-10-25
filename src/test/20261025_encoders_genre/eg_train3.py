@@ -227,7 +227,7 @@ def code_commit():
 
 
 def write_run(run_dir, variant, seed, status, *, cause=None, failure_kind=None, exporter=None, p_sha256=None,
-              smoke=False, max_epochs=None, seconds=None):
+              smoke=False, max_epochs=None, seconds=None, old5000_problems=(), rerun_of=None):
     assert p_sha256, 'run.json needs p_sha256 (the P name list hash of the export; the scorer refuses a run without it)'
     commit, dirty = code_commit()
     info = exporter.info if exporter is not None else {}
@@ -236,7 +236,9 @@ def write_run(run_dir, variant, seed, status, *, cause=None, failure_kind=None, 
                   epochs_run={a: i['epochs_run'] for a, i in info.items()},
                   best_dev_loss={a: i['best_dev_loss'] for a, i in info.items()},
                   p_sha256=p_sha256, smoke=smoke, max_epochs=max_epochs, seconds=seconds,
-                  code_commit=commit, code_dirty=dirty)
+                  code_commit=commit, code_dirty=dirty, old5000_problems=list(old5000_problems))
+    if rerun_of is not None:
+        record['rerun_of'] = str(rerun_of)         # VG4: this run is the one rerun of a VG3 failure
     if status == 'failed':
         assert cause and failure_kind in ('nonfinite_loss', 'vg3')
         record.update(cause=cause, failure_kind=failure_kind)
@@ -246,11 +248,13 @@ def write_run(run_dir, variant, seed, status, *, cause=None, failure_kind=None, 
 
 
 def train_cohort(s, inputs, graphs, manifests, recipe, variant, seed, device, run_dir, *, p, p_sha256,
-                 smoke=False, max_epochs=None):
+                 smoke=False, max_epochs=None, rerun_of=None):
     """Train R6-5 with the genre change of `variant` at `seed`, export, check VG3, write `run.json`; returns it.
 
     `inputs` {aspect: {img, cap}} (the default images and caption means), `p` {img: float32 [N_P, 2048]} or None.
-    A non-finite loss, or an export failing VG3, gives a record with status failed and its cause."""
+    A non-finite loss, or a P export failing VG3, gives a record with status failed and its cause. Problems of the old
+    5,000 exports are listed in `old5000_problems` (rule VG3 covers P only). `rerun_of`: the moved-aside folder of the
+    VG3-failed run this one repeats."""
     switches = V.switches(variant)
     run_dir, device = Path(run_dir), torch.device(device)
     max_epochs = ms_train.CONFIG['max_epochs'] if max_epochs is None else max_epochs
@@ -273,17 +277,17 @@ def train_cohort(s, inputs, graphs, manifests, recipe, variant, seed, device, ru
         except NonFiniteLoss as error:
             return write_run(run_dir, variant, seed, 'failed', failure_kind='nonfinite_loss',
                              cause=f'non-finite loss in the {error.args[0]} head', p_sha256=p_sha256, smoke=smoke,
-                             max_epochs=max_epochs, seconds=time.monotonic() - start)
+                             max_epochs=max_epochs, seconds=time.monotonic() - start, rerun_of=rerun_of)
     assert set(exporter.info) == set(ASPECTS)
-    problems = []
+    problems, old_problems = [], []
     for aspect in ASPECTS:
         for name, arrays in exporter.exports[aspect].items():
-            n = N_OLD if name.endswith('__old5000.npz') else N_P
-            problem = vg3_problem(arrays['img'], n)
+            old = name.endswith('__old5000.npz')
+            problem = vg3_problem(arrays['img'], N_OLD if old else N_P)
             if problem:
-                problems.append(f'{name}: {problem}')
+                (old_problems if old else problems).append(f'{name}: {problem}')
     common = dict(exporter=exporter, p_sha256=p_sha256, smoke=smoke, max_epochs=max_epochs,
-                  seconds=time.monotonic() - start)
+                  seconds=time.monotonic() - start, old5000_problems=old_problems, rerun_of=rerun_of)
     if problems:
         return write_run(run_dir, variant, seed, 'failed', failure_kind='vg3', cause='VG3: ' + '; '.join(problems),
                          **common)
@@ -331,6 +335,16 @@ def move_aside(outputs, run_dir, variant, seed):
     return target
 
 
+def vg3_failures_aside(outputs, variant, seed):
+    """The moved-aside folders of this variant and seed whose run.json is a VG3 failure (an earlier rerun's origin)."""
+    found = []
+    for path in sorted((Path(outputs) / 'stage_iii/replaced' / variant).glob(f's{seed}-*/run.json')):
+        record = json.loads(path.read_text())
+        if record.get('status') == 'failed' and record.get('failure_kind') == 'vg3':
+            found.append(path.parent)
+    return found
+
+
 def run_variant(data, variant, seed, outputs, device, *, run_dir=None, smoke=False, max_epochs=None,
                 rerun_failed=False):
     """One run into `run_dir` (default `eg_paths.iii_run`); skipped when its run.json matches; returns the record.
@@ -341,6 +355,7 @@ def run_variant(data, variant, seed, outputs, device, *, run_dir=None, smoke=Fal
     assert seed in eg_paths.SEEDS
     outputs = check_outputs(outputs, smoke)
     run_dir = Path(run_dir) if run_dir is not None else eg_paths.iii_run(outputs, variant, seed)
+    rerun_of = None
     max_epochs_used = (2 if smoke else ms_train.CONFIG['max_epochs']) if max_epochs is None else max_epochs
     assert not smoke or max_epochs_used == 2, '--smoke requires 2 epochs'
     record_path = run_dir / 'run.json'
@@ -352,8 +367,15 @@ def run_variant(data, variant, seed, outputs, device, *, run_dir=None, smoke=Fal
         if record['status'] == 'ok' or not (rerun_failed and record['failure_kind'] == 'vg3'):
             print(f'{variant} s{seed}: {record["status"]} run exists; skip', flush=True)
             return record
-        print(f'{variant} s{seed}: VG3 failure, rerun once; old folder moved to {move_aside(outputs, run_dir, variant, seed)}',
-              flush=True)
+        # VG4 allows one rerun, same seed and code: refuse a second one, and one on other code.
+        assert 'rerun_of' not in record and not vg3_failures_aside(outputs, variant, seed), (
+            f'{variant} s{seed}: already rerun once after a VG3 failure (VG4); no second rerun')
+        head, dirty = code_commit()
+        assert record['code_commit'] == head and not record['code_dirty'] and not dirty, (
+            f'{variant} s{seed}: a rerun needs the same code: the failed run was {record["code_commit"]} '
+            f'(dirty {record["code_dirty"]}), now {head} (dirty {dirty})')
+        rerun_of = move_aside(outputs, run_dir, variant, seed)
+        print(f'{variant} s{seed}: VG3 failure, rerun once; old folder moved to {rerun_of}', flush=True)
     elif run_dir.exists() and any(run_dir.iterdir()):
         print(f'{variant} s{seed}: incomplete folder moved to {move_aside(outputs, run_dir, variant, seed)}', flush=True)
     if torch.device(device).type == 'cuda':
@@ -366,7 +388,7 @@ def run_variant(data, variant, seed, outputs, device, *, run_dir=None, smoke=Fal
     for aspect in ASPECTS:
         graphs[aspect], manifests[aspect] = ms_train.head.load_graph(s, base, aspect, [recipe['base']['graphs'][aspect]])
     return train_cohort(s, {a: inputs for a in ASPECTS}, graphs, manifests, recipe, variant, seed, device, run_dir,
-                        p=p, p_sha256=p_sha, smoke=smoke, max_epochs=max_epochs_used)
+                        p=p, p_sha256=p_sha, smoke=smoke, max_epochs=max_epochs_used, rerun_of=rerun_of)
 
 
 # ------------------------------------------------------------------ VG1 and the fresh-seed parity
@@ -417,7 +439,8 @@ def parity(data, outputs, device, seeds):
         assert seed in V.FRESH_SEEDS, seed
         run = run_variant(data, BASE, seed, outputs, device)
         run_dir = eg_paths.iii_run(outputs, BASE, seed)
-        item = dict(run_status=run['status'], run_cause=run.get('cause'))
+        commit, dirty = code_commit()
+        item = dict(run_status=run['status'], run_cause=run.get('cause'), code_commit=commit, code_dirty=dirty)
         if run['status'] == 'ok':
             item['weights_equal'] = {a: states_equal(run_dir / f'{a}.pt', K4_WEIGHTS / f'{a}__s{seed}.pt')
                                      for a in ASPECTS}
@@ -425,7 +448,7 @@ def parity(data, outputs, device, seeds):
         else:
             item['pass'] = False
         record['seeds'][str(seed)] = item
-    commit, dirty = code_commit()
+    commit, dirty = code_commit()                  # of the last call; every seed's own commit is in its item
     record.update(code_commit=commit, code_dirty=dirty, reference=str(K4_WEIGHTS))
     record['pass'] = all(record['seeds'].get(str(s), {}).get('pass') for s in V.FRESH_SEEDS)
     atomic_record(path, record)

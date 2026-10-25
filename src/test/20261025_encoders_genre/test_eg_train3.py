@@ -125,6 +125,45 @@ def test_adaptor_weight_scales_the_term_and_trains_the_adaptor(batch):
     assert all(p.grad is not None and p.grad.abs().sum() > 0 for p in genre.adaptor.parameters())
 
 
+def grads(params, value):
+    """Gradients of `value` on `params` (None where there is none), then cleared."""
+    for p in params:
+        p.grad = None
+    value.backward()
+    out = [None if p.grad is None else p.grad.clone() for p in params]
+    for p in params:
+        p.grad = None
+    return out
+
+
+@pytest.mark.parametrize('variant,term', [('GR-0.5', 'relational'), ('GR-2', 'relational'), ('GA-1', 'adaptor'),
+                                          ('GT-2', 'direct')])
+def test_switch_gradients_flow_through_the_head_output_like_the_independent_sum(batch, variant, term):
+    """The extra term must reach the image head and the adaptor: a detached z would pass the value tests."""
+    genre = make_genre(batch, variant)
+    params = list(batch['models'].parameters())
+    n_models = len(params)
+    if genre.adaptor is not None:
+        params += list(genre.adaptor.parameters())
+    actual = grads(params, loss(batch, genre))
+    z, ids = head_output(batch)
+    teacher = batch['teacher'][ids]
+    if term == 'relational':
+        extra = genre.lam * ms_train.distill_loss(z, teacher, ids, 'relational')
+    elif term == 'direct':
+        extra = (0.25 * genre.m - 0.25) * ms_train.distill_loss(z, teacher, ids, 'direct')
+    else:
+        target = torch.from_numpy(rb_probe.Standardizer(batch['teacher'].numpy()).fwd(batch['teacher'].numpy()))[ids]
+        extra = genre.w * rb_probe.loss_fn(genre.adaptor(z), target)
+    expected = grads(params, original(batch) + extra)
+    assert len(actual) == len(expected) and all(a is not None for a in actual)
+    for a, e in zip(actual, expected):
+        torch.testing.assert_close(a, e)
+    plain = grads(params[:n_models], original(batch))
+    # the extra term really moves the head (otherwise the comparison above is empty)
+    assert any(not torch.allclose(a, p) for a, p in zip(actual[:n_models], plain))
+
+
 def test_adaptor_is_not_used_when_w_is_zero(batch):
     genre = make_genre(batch, 'GT-2')
     assert genre.adaptor is None
@@ -349,3 +388,98 @@ def test_a_vg3_failure_marks_the_run_failed_and_says_which_export(cohort, tmp_pa
         record = run_cohort(cohort, tmp_path, 'GR-2')
     assert record['status'] == 'failed' and record['failure_kind'] == 'vg3' and 'VG3' in record['cause']
     assert 'emotion' in record['cause']
+
+
+def test_a_vg3_failure_on_the_old_5000_export_is_recorded_without_failing_the_run(cohort, tmp_path):
+    """Rule VG3 covers P only; the old-5,000 exports are reported in run.json."""
+    with patch.object(eg_train3, 'vg3_problem', lambda x, n: 'norm error 2' if n == eg_train3.N_OLD else None):
+        record = run_cohort(cohort, tmp_path, 'GR-2')
+    saved = json.loads((tmp_path / 'run.json').read_text())
+    assert record['status'] == saved['status'] == 'ok' and 'cause' not in saved
+    assert saved['old5000_problems'] and all('old5000' in p for p in saved['old5000_problems'])
+    assert len(saved['old5000_problems']) == len(eg_train3.ASPECTS)
+
+
+def test_a_clean_run_has_an_empty_old_5000_problem_list(runs):
+    assert json.loads((runs['GT-2'] / 'run.json').read_text())['old5000_problems'] == []
+
+
+# ------------------------------------------------------------------ VG4: one rerun after a VG3 failure
+class StubData:
+    def get(self):
+        return None, {}, {}, 'f' * 64
+
+
+@pytest.fixture
+def vg3_runs(tmp_path):
+    """run_variant with a fake trainer that fails VG3 every time; `calls` counts the trainings."""
+    calls = []
+    state = dict(commit=('c0ffee', False))
+
+    def fake_train(s, inputs, graphs, manifests, recipe, variant, seed, device, run_dir, *, max_epochs, rerun_of=None,
+                   **kwargs):
+        calls.append(rerun_of)
+        return eg_train3.write_run(run_dir, variant, seed, 'failed', failure_kind='vg3', cause='VG3: fake',
+                                   p_sha256='f' * 64, max_epochs=max_epochs, rerun_of=rerun_of)
+
+    def run(rerun_failed):
+        return eg_train3.run_variant(StubData(), 'GR-2', 1, tmp_path, 'cpu', rerun_failed=rerun_failed)
+
+    with patch.object(eg_train3, 'train_cohort', fake_train), patch.object(eg_paths, 'check_imports', lambda: None), \
+            patch.object(ab_train, 'require_graph_store', lambda recipe: None), \
+            patch.object(ms_train.head, 'load_graph', lambda *a: (None, None)), \
+            patch.object(eg_train3, 'code_commit', lambda: state['commit']):
+        yield tmp_path, calls, run, state
+
+
+def test_a_second_rerun_after_a_vg3_rerun_is_refused(vg3_runs):
+    outputs, calls, run, _ = vg3_runs
+    assert run(False)['status'] == 'failed' and len(calls) == 1
+    again = run(True)                                   # VG4: the one rerun
+    assert len(calls) == 2 and again['status'] == 'failed'
+    moved = list((outputs / 'stage_iii/replaced/GR-2').glob('s1-*'))
+    assert len(moved) == 1 and again['rerun_of'] == str(moved[0])
+    with pytest.raises(AssertionError, match='already rerun'):
+        run(True)
+    assert len(calls) == 2 and len(list((outputs / 'stage_iii/replaced/GR-2').glob('s1-*'))) == 1
+    assert json.loads((eg_paths.iii_run(outputs, 'GR-2', 1) / 'run.json').read_text())['rerun_of'] == str(moved[0])
+
+
+def test_a_rerun_is_refused_when_a_vg3_failed_run_was_already_moved_aside(vg3_runs):
+    """The record may lack `rerun_of` (an interrupted rerun was retrained as a first run): replaced/ still counts."""
+    outputs, calls, run, _ = vg3_runs
+    run(False)
+    run(True)
+    path = eg_paths.iii_run(outputs, 'GR-2', 1) / 'run.json'
+    record = json.loads(path.read_text())
+    del record['rerun_of']
+    path.write_text(json.dumps(record))
+    with pytest.raises(AssertionError, match='already rerun'):
+        run(True)
+    assert len(calls) == 2
+
+
+def test_a_rerun_needs_the_old_run_to_come_from_the_current_clean_code(vg3_runs):
+    outputs, calls, run, state = vg3_runs
+    run(False)
+    state['commit'] = ('newer', False)
+    with pytest.raises(AssertionError, match='same code'):
+        run(True)
+    state['commit'] = ('c0ffee', True)
+    with pytest.raises(AssertionError, match='same code'):
+        run(True)
+    assert len(calls) == 1 and (eg_paths.iii_run(outputs, 'GR-2', 1) / 'run.json').exists()
+    state['commit'] = ('c0ffee', False)
+    assert run(True)['rerun_of'] and len(calls) == 2
+
+
+def test_parity_keeps_the_code_commit_of_every_seed(tmp_path):
+    state = dict(commit=('aaa', False))
+    def fake_run(data, variant, seed, outputs, device):
+        return dict(status='failed', cause='x')
+    with patch.object(eg_train3, 'run_variant', fake_run), patch.object(eg_train3, 'code_commit', lambda: state['commit']):
+        eg_train3.parity(None, tmp_path, 'cpu', [1])
+        state['commit'] = ('bbb', False)
+        record = eg_train3.parity(None, tmp_path, 'cpu', [2])
+    assert record['seeds']['1']['code_commit'] == 'aaa' and record['seeds']['2']['code_commit'] == 'bbb'
+    assert record['code_commit'] == 'bbb'
