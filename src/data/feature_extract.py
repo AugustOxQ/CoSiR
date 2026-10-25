@@ -1,4 +1,4 @@
-"""Frozen-backbone feature extraction: CLIP ViT-B/32, SigLIP 2 and Qwen3-VL-Embedding-2B.
+"""Frozen-backbone feature extraction: CLIP ViT-B/32, SigLIP 2, Qwen3-VL-Embedding-2B and DINOv2-large (images only).
 
 Ported from src/test/20261025_backbone_check/extract.py (HFClipLike, QwenEmb). All encoders return float32,
 L2-normalised arrays. PIL images and strings in, numpy out; no file paths.
@@ -19,6 +19,7 @@ QWEN_MAX_PIXELS = 512 * 32 * 32     # caps image tokens at 512 (backbone check s
 CLIP_REPO = "openai/clip-vit-base-patch32"
 QWEN_REPO = "Qwen/Qwen3-VL-Embedding-2B"
 SIGLIP2_REPO = "google/siglip2-so400m-patch14-384"
+DINOV2_REPO = "facebook/dinov2-large"
 
 
 def _l2(x) -> np.ndarray:
@@ -201,6 +202,35 @@ class Qwen3VLEmb(Encoder):
         return out
 
 
+class Dinov2Large(Encoder):
+    """Image-only. Pooled output = CLS token after the final layer norm, L2-normalised; the processor's default
+    input size (resize 256, centre crop 224). No text tower."""
+    name = "dinov2_large"
+    dim = 1024
+
+    def __init__(self, device: str = "cuda"):
+        from transformers import AutoImageProcessor, AutoModel
+        self.device = device
+        self.dtype = torch.float16 if device.startswith("cuda") else torch.float32
+        self.m = AutoModel.from_pretrained(DINOV2_REPO, dtype=self.dtype).to(device).eval()
+        self.p = AutoImageProcessor.from_pretrained(DINOV2_REPO)
+        assert self.m.config.hidden_size == self.dim
+
+    @torch.no_grad()
+    def encode_images(self, images, batch_size: int = 128) -> np.ndarray:
+        images = list(images)
+        out = []
+        for b in _batches(images, batch_size):
+            x = self.p([im.convert("RGB") for im in b], return_tensors="pt")["pixel_values"]
+            out.append(_l2(self.m(pixel_values=x.to(self.device, self.dtype)).pooler_output))
+        x = np.concatenate(out)
+        assert x.shape == (len(images), self.dim) and np.isfinite(x).all()
+        return x
+
+    def encode_texts(self, texts, batch_size: int = 256) -> np.ndarray:
+        raise NotImplementedError("dinov2_large is image-only")
+
+
 def load_encoder(name: str, device: str = "cuda", instruction: str = QWEN_INSTRUCTION_DEFAULT) -> Encoder:
     if name == "clip_b32":
         return ClipB32(device)
@@ -208,4 +238,6 @@ def load_encoder(name: str, device: str = "cuda", instruction: str = QWEN_INSTRU
         return Qwen3VLEmb(device, instruction)
     if name == "siglip2_so400m":
         return Siglip2So400m(device)
+    if name == "dinov2_large":
+        return Dinov2Large(device)
     raise KeyError(name)
