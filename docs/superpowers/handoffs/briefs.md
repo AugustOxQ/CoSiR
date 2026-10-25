@@ -902,3 +902,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-run-15-handoff.md
 - New chat: tab 'r10 run 15', session e22bd7b0-de1f-4e64-8112-c42fb4064e8d
 
+[brief] CoSiR: r10 run 15 -> r10 decide 20 (2026-10-25 13:43 Amsterdam)
+- Done: the recipe and backbone round; report 12-24 and its user-read report, both checked and committed.
+- State: SigLIP 2 and Qwen (new recipe) pass held emotion at both scales (+0.0150, +0.0154 against 0.0874); CLIP B/32 inconclusive.
+- Next: show the user the results brief without our reading, record their reading, wrap up, then step 2.
+- Blocked: nothing. Day mode (set by the user at 12:35).
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-decide-20-handoff.md
+- New chat: tab 'r10 decide 20', session e3ee1966-a3e6-4423-8cff-6b315c5b0d00
+
