@@ -182,23 +182,38 @@ def real_setup(read_set=rb_encoders.READ_SET, csv=CSV):
 
 
 def default_models(outputs):
-    """The models that exist: K1 and every candidate with ArtELingo-28 outputs at either scale."""
-    return [m for m in ENCODER if any((Path(outputs) / f'part2/{s}/a28/{m}').is_dir() for s in ('sample', 'full'))]
+    """K1, K2, K3, and K4 / K5 when `part1/pick.json` says they exist (its `triggers`, rule §4.1)."""
+    path = Path(outputs) / 'part1/pick.json'
+    assert path.exists(), f'{path}: the default model list comes from the triggers of part 1'
+    triggers = json.loads(path.read_text())['triggers']
+    assert set(triggers) == {'K4', 'K5'}, triggers
+    return ['K1', 'K2', 'K3'] + [m for m in ('K4', 'K5') if triggers[m]]
 
 
 def model_scale(model, outputs):
-    """Full scale when the model's stage 4 ran (a block with an outcome in `verdict_stage4.json`; K1: the CT's full
-    run, taken as run when its full ArtELingo-28 outputs exist), else the sample scale (rule §2, stage 5)."""
-    outputs = Path(outputs)
+    """(Rule §2, stage 5) Full scale when the model's stage 4 ran (a block with an outcome in `verdict_stage4.json`),
+    else the sample scale. K1's stage 4 is the CT's stage 2: always full (its verdict file must exist); missing
+    outputs then fail V3, they never change the scale."""
+    return scale_and_reason(model, outputs)[0]
+
+
+def scale_and_reason(model, outputs):
     if model == 'K1':
-        return 'full' if (outputs / 'part2/full/a28/K1').is_dir() else 'sample'
-    path = outputs / 'part2/verdict_stage4.json'
-    ran = path.exists() and json.loads(path.read_text())['blocks'].get(model, {}).get('outcome_id')
-    return 'full' if ran else 'sample'
+        path = rb_score.CT_VERDICTS['full']
+        assert path.exists(), f'{path}: the CT full verdict (K1 runs at full scale)'
+        return 'full', None
+    path = Path(outputs) / 'part2/verdict_stage4.json'
+    if path.exists() and json.loads(path.read_text())['blocks'].get(model, {}).get('outcome_id'):
+        return 'full', None
+    return 'sample', 'no stage 4 outcome'
 
 
 VERDICT, REPORTED = 'part2/verdict_stage5.json', 'part2/reported_stage5.json'
 ASPECTS = ('emotion', 'style', 'genre')
+
+
+class OutputFault(AssertionError):
+    """A fault of an output file (missing, or failing its checks): V3 for the model, nothing else is."""
 
 
 def partitions_of(arm, aspect, scale, outputs, setup, seeds):
@@ -209,8 +224,11 @@ def partitions_of(arm, aspect, scale, outputs, setup, seeds):
     fixed, sources = {}, {}
     for seed in seeds:
         path = output_path(outputs, scale, arm, seed, aspect)
-        assert path.exists(), f'missing output: {path}'
-        x = read_output(path, arm, scale, seed, part_aspect, sha, n)
+        try:
+            assert path.exists(), f'missing output: {path}'
+            x = read_output(path, arm, scale, seed, part_aspect, sha, n)
+        except (AssertionError, FileNotFoundError) as err:
+            raise OutputFault(f'{type(err).__name__}: {err}') from err
         digest = rb_score.sha_file(path)
         fixed[seed] = rb_score.fixed_partitions(x, arm, folder, part_aspect, seed, sha, digest)
         sources[str(seed)] = dict(path=str(path), output_sha256=digest)
@@ -247,13 +265,16 @@ def run_verdict(models, outputs, setup=None, workers=8, n_resamples=2000, seeds=
     path = outputs / VERDICT
     record = None
     for model in models:
-        scale = model_scale(model, outputs)
+        scale, reason = scale_and_reason(model, outputs)
         try:
             block = verdict_block(model, scale, outputs, setup, list(seeds), n_resamples, workers)
+            if reason:
+                block['scale_reason'] = reason
             line = f'{block["outcome_id"]} d={block["d"]:.4f} interval={block["interval"]} ({scale})'
-        except (AssertionError, FileNotFoundError) as err:   # V3: only this model's outcome is removed
-            block = dict(candidate=model, arms=list(arms_for(model)), scale=scale, outcome_id=None,
-                         v_failure=f'{type(err).__name__}: {err}')
+        except OutputFault as err:                           # V3: only this model's outcome is removed
+            block = dict(candidate=model, arms=list(arms_for(model)), scale=scale, outcome_id=None, v_failure=str(err))
+            if reason:
+                block['scale_reason'] = reason
             line = f'NO OUTCOME ({block["v_failure"]})'
         record = rb_score.write_verdict(path, header_of(setup), {model: block}, replace)
         print(f'{model}: {line}', flush=True)
@@ -367,7 +388,7 @@ def main(argv=None):
     p.add_argument('--outputs', type=Path, default=rb_paths.OUTPUTS)
     p.add_argument('--smoke', action='store_true', help='seed 0 only, 20 draws; outputs under /tmp/claude-0/')
     p.add_argument('--workers', type=int, default=8, choices=range(1, 9))
-    p.add_argument('--models', nargs='+', choices=sorted(ENCODER), help='default: every model with outputs')
+    p.add_argument('--models', nargs='+', choices=sorted(ENCODER), help='default: K1, K2, K3 and the triggered K4, K5')
     p.add_argument('--part', choices=('verdict', 'reported', 'both'), default='both')
     p.add_argument('--replace', metavar='REASON', help='V-check reason for replacing a changed block')
     args = p.parse_args(argv)

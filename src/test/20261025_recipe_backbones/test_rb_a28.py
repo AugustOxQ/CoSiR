@@ -1,6 +1,7 @@
 """Tests of rb_a28 on small fixtures; the real-data checks run with RB_SLOW=1."""
 import json
 import os
+import shutil
 
 import numpy as np
 import pandas as pd
@@ -8,6 +9,7 @@ import pytest
 
 import rb_paths  # noqa: F401  (sys.path)
 import rb_a28 as a28
+import rb_score
 
 slow = pytest.mark.skipif(not os.environ.get('RB_SLOW'), reason='real files: set RB_SLOW=1')
 
@@ -295,9 +297,9 @@ def test_verdict_a_holds_when_the_model_beats_every_entry_and_a_fails_when_one_e
 
 def test_k1_and_k4_have_b1_as_their_only_matched_arm(tmp_path):
     setup = make_setup()
-    for model in ('K1', 'K4'):
-        write_all(tmp_path, setup, True, model=model)
-        write_all(tmp_path, setup, True, model='K2')       # an unused matched arm file must not matter
+    write_all(tmp_path, setup, True, model='K1', scale='full')          # K1 is always read at full scale
+    write_all(tmp_path, setup, True, model='K4')
+    write_all(tmp_path, setup, True, model='K2')           # an unused matched arm file must not matter
     rec = run(tmp_path, setup, models=('K1', 'K4'))
     for model in ('K1', 'K4'):
         assert rec['blocks'][model]['arms'] == [model, 'B1', 'B6']
@@ -314,16 +316,92 @@ def test_a_model_with_a_bad_or_missing_output_gets_no_outcome_and_the_others_kee
     assert rec['blocks']['K3']['outcome_id'] is None and 'genre__s1' in rec['blocks']['K3']['v_failure']
 
 
-def test_the_model_scale_is_full_only_when_stage_4_gave_it_an_outcome(tmp_path):
+def test_the_model_scale_is_full_when_stage_4_gave_it_an_outcome_and_always_for_k1(tmp_path):
     assert a28.model_scale('K2', tmp_path) == 'sample'
     v4 = tmp_path / 'part2/verdict_stage4.json'
     v4.parent.mkdir(parents=True)
     v4.write_text(json.dumps(dict(blocks=dict(K2=dict(outcome_id='S2-GO'), K3=dict(outcome_id=None)))))
     assert a28.model_scale('K2', tmp_path) == 'full'
     assert a28.model_scale('K3', tmp_path) == 'sample' and a28.model_scale('K5', tmp_path) == 'sample'
-    assert a28.model_scale('K1', tmp_path) == 'sample'
+    assert a28.model_scale('K1', tmp_path) == 'full'                  # the CT's stage 2 ran; no outputs needed here
     (tmp_path / 'part2/full/a28/K1').mkdir(parents=True)
     assert a28.model_scale('K1', tmp_path) == 'full'
+
+
+def test_k1_scale_asserts_the_claim_tests_full_verdict_exists(tmp_path, monkeypatch):
+    monkeypatch.setitem(rb_score.CT_VERDICTS, 'full', tmp_path / 'nope.json')
+    with pytest.raises(AssertionError, match='nope.json'):
+        a28.model_scale('K1', tmp_path)
+    assert a28.model_scale('K2', tmp_path) == 'sample'                # other models do not look at it
+
+
+def test_a_sample_scale_block_records_why_and_a_full_scale_block_does_not(tmp_path):
+    setup = make_setup()
+    write_all(tmp_path, setup, True, model='K2')
+    write_all(tmp_path, setup, True, model='K1', scale='full')
+    rec = run(tmp_path, setup, models=('K2', 'K1', 'K3'))
+    assert rec['blocks']['K2']['scale'] == 'sample' and rec['blocks']['K2']['scale_reason'] == 'no stage 4 outcome'
+    assert rec['blocks']['K1']['scale'] == 'full' and 'scale_reason' not in rec['blocks']['K1']
+    assert rec['blocks']['K3']['outcome_id'] is None and rec['blocks']['K3']['scale_reason'] == 'no stage 4 outcome'
+
+
+def test_k1_without_full_outputs_fails_v3_and_keeps_scale_full(tmp_path):
+    setup = make_setup()
+    write_all(tmp_path, setup, True, model='K1', scale='sample')      # only sample outputs exist
+    block = run(tmp_path, setup, models=('K1',))['blocks']['K1']
+    assert block['scale'] == 'full' and block['outcome_id'] is None and 'missing output' in block['v_failure']
+
+
+def test_only_faults_of_the_output_files_count_as_v3(tmp_path, monkeypatch):
+    setup = make_setup()
+    write_all(tmp_path, setup, True, model='K2')
+
+    def broken(*args, **kw):
+        raise AssertionError('partition cache disagrees')
+    monkeypatch.setattr(a28.rb_score, 'fixed_partitions', broken)
+    with pytest.raises(AssertionError, match='partition cache'):
+        run(tmp_path, setup, models=('K2',))
+    assert not (tmp_path / 'part2/verdict_stage5.json').exists()
+
+
+def test_a_scorer_assertion_crashes_too(tmp_path, monkeypatch):
+    setup = make_setup()
+    write_all(tmp_path, setup, True, model='K2')
+
+    def broken(*args, **kw):
+        raise AssertionError('scorer disagrees')
+    monkeypatch.setattr(a28.rb_score, 'paired_bootstrap', broken)
+    with pytest.raises(AssertionError, match='scorer'):
+        run(tmp_path, setup, models=('K2',))
+
+
+def put_triggers(outputs, **triggers):
+    path = outputs / 'part1/pick.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(dict(triggers=triggers)))
+
+
+@pytest.mark.parametrize('k4, k5, expected', [(False, False, ['K1', 'K2', 'K3']), (True, False, ['K1', 'K2', 'K3', 'K4']),
+                                              (False, True, ['K1', 'K2', 'K3', 'K5']),
+                                              (True, True, ['K1', 'K2', 'K3', 'K4', 'K5'])])
+def test_the_default_models_follow_the_triggers_not_the_folders(tmp_path, k4, k5, expected):
+    put_triggers(tmp_path, K4=k4, K5=k5)
+    (tmp_path / 'part2/sample/a28/K4').mkdir(parents=True)             # a folder without a trigger changes nothing
+    (tmp_path / 'part2/sample/a28/K5').mkdir(parents=True)
+    assert a28.default_models(tmp_path) == expected
+
+
+def test_the_default_models_need_the_pick_file(tmp_path):
+    with pytest.raises(AssertionError, match='pick.json'):
+        a28.default_models(tmp_path)
+
+
+def test_a_listed_model_without_outputs_fails_v3_with_a_reason(tmp_path):
+    setup = make_setup()
+    write_all(tmp_path, setup, True, model='K2')
+    rec = run(tmp_path, setup, models=('K2', 'K4'))
+    assert rec['blocks']['K2']['outcome_id'] == 'A-HOLDS'
+    assert rec['blocks']['K4']['outcome_id'] is None and 'missing output' in rec['blocks']['K4']['v_failure']
 
 
 def test_a_changed_verdict_block_is_refused_without_a_reason(tmp_path):
@@ -333,6 +411,9 @@ def test_a_changed_verdict_block_is_refused_without_a_reason(tmp_path):
     run(tmp_path, setup)                                     # the same content again is fine
     for seed in (0, 1):
         put(tmp_path, 'B1', seed, aligned_prob(setup['labels']['emotion']))
+    with pytest.raises(AssertionError, match='inputs changed'):      # a stale partition cache is a crash, not V3
+        run(tmp_path, setup)
+    shutil.rmtree(tmp_path / 'part2/partitions')
     with pytest.raises(AssertionError, match='refusing'):
         run(tmp_path, setup)
 
