@@ -113,8 +113,7 @@ def gate_stage3(out, smoke):
 def gate_stage4(out, smoke):
     gate_part2(out, smoke)
     msg = regression_complete(out, 'stage3a')
-    v2 = load(out / 'part2/rederive_v2_stage3.json')
-    need(v2.get('agree') is True, 'V2 does not agree for stage 3: stage 4 does not start')
+    check_v2(out, 3, 'stage 4 does not start')
     return msg
 
 
@@ -123,10 +122,20 @@ def gate_stage5(out, smoke):
     return regression_complete(out, 'stage3a')
 
 
+def check_v2(out, stage, effect):
+    """V2 agrees, is not older than the stage's verdict file, and re-derived every block that has an outcome."""
+    path, vpath = out / f'part2/rederive_v2_stage{stage}.json', out / f'part2/verdict_stage{stage}.json'
+    rec = load(path)
+    need(rec.get('agree') is True, f'V2 does not agree for stage {stage}: {effect}')
+    blocks = load(vpath)['blocks']
+    need(path.stat().st_mtime >= vpath.stat().st_mtime, f'rederive_v2_stage{stage}.json is older than the verdict: rerun V2')
+    missing = [c for c, b in blocks.items() if b.get('outcome_id') is not None and c not in rec.get('candidates', {})]
+    need(not missing, f'V2 stage {stage} lacks {missing}: rerun V2')
+
+
 def gate_v2(stage):
     def gate(out, smoke):
-        rec = load(out / f'part2/rederive_v2_stage{stage}.json')
-        need(rec.get('agree') is True, f'V2 does not agree for stage {stage}: the reported readings do not run')
+        check_v2(out, stage, 'the reported readings do not run')
         return f'V2 agrees for stage {stage}'
     return gate
 
@@ -258,7 +267,7 @@ CPU_STEPS = dict(
 def budget(out, now=None):
     """End estimate: the foreground chain in order (GPU steps and the CPU steps between them), plus the two part 2
     report queues, which start after their stage's V2, run one after the other (CPU lock) and beside the GPU chain.
-    End = the later of the chain's end and the stage 4 report's end. Steps whose output file exists cost 0. The
+    End = the later of the chain's end and the stage 4 report's end. Steps whose output file exists cost 0; stages 3 and 4 cost only the candidates without a block in their verdict file. The
     numbers are in GPU_STEPS and CPU_STEPS (`M` measured, `S` spec §9, `E` estimate); CPU load from the reports slows
     the chain's own CPU steps, which this does not model."""
     now = now or datetime.now(ZoneInfo('Europe/Amsterdam'))
@@ -275,7 +284,19 @@ def budget(out, now=None):
         chain.append((label, 0 if skip else lo * count, 0 if skip else hi * count, src))
         marks[label] = (sum(c[1] for c in chain), sum(c[2] for c in chain))
 
-    n23 = sum(c in ('K2', 'K3') for c in cands)
+    def blocks_of(rel):
+        p = out / rel
+        return set(json.loads(p.read_text()).get('blocks', {})) if p.exists() else None
+
+    v3b, v4b = blocks_of('part2/verdict_stage3.json'), blocks_of('part2/verdict_stage4.json')
+    s3 = list(cands)                                   # stage 4: S1 outcome other than None / S1-NO when known, else all
+    s4 = list(cands)
+    if v3b is not None:
+        o3 = json.loads((out / 'part2/verdict_stage3.json').read_text())['blocks']
+        s4 = [c for c in cands if o3.get(c, {}).get('outcome_id') not in (None, 'S1-NO')]
+    todo3 = [c for c in s3 if c not in (v3b or ())]
+    todo4 = [c for c in s4 if c not in (v4b or ())]
+    n23 = lambda todo: sum(c in ('K2', 'K3') for c in todo)
     add('stage0', GPU_STEPS, 'stage0', skip=done('stage0.json'))
     add('part1', GPU_STEPS, 'part1', skip=done('part1/pick.json'))
     add('pick', CPU_STEPS, 'pick', skip=done('part1/pick.json'))
@@ -289,33 +310,30 @@ def budget(out, now=None):
             store('artelingo28/dinov2_large/index.json'))
     add('reg2', GPU_STEPS, 'reg2', skip=done('part2/regression/stage2.json'))
     add('check2', CPU_STEPS, 'check2', skip=done('part2/regression/stage2.json'))
-    v3 = done('part2/verdict_stage3.json')
-    add('k23_sample', GPU_STEPS, 'k23_sample', n23, skip=v3)
+    add('k23_sample', GPU_STEPS, 'k23_sample', n23(todo3), skip=not n23(todo3))
     for k in ('K4', 'K5'):
-        if k in cands:
-            add(f'{k.lower()}_sample', GPU_STEPS, f'{k.lower()}_sample', skip=v3)
-    add('verdict3', CPU_STEPS, 'verdict', skip=v3)
-    add('v2_3', CPU_STEPS, 'v2', skip=done('part2/rederive_v2_stage3.json'))
+        add(f'{k.lower()}_sample', GPU_STEPS, f'{k.lower()}_sample', skip=k not in todo3)
+    add('verdict3', CPU_STEPS, 'verdict', skip=not todo3)
+    add('v2_3', CPU_STEPS, 'v2', skip=not todo3 and done('part2/rederive_v2_stage3.json'))
     add('reg3a', GPU_STEPS, 'reg3a', skip=done('part2/regression/stage3a.json'))
     add('check3a', CPU_STEPS, 'check3a', skip=done('part2/regression/stage3a.json'))
-    v4 = done('part2/verdict_stage4.json')
-    add('k23_full', GPU_STEPS, 'k23_full', n23, skip=v4)
+    add('k23_full', GPU_STEPS, 'k23_full', n23(todo4), skip=not n23(todo4))
     for k in ('K4', 'K5'):
-        if k in cands:
-            add(f'{k.lower()}_full', GPU_STEPS, f'{k.lower()}_full', skip=v4)
-    add('verdict4', CPU_STEPS, 'verdict', skip=v4)
-    add('v2_4', CPU_STEPS, 'v2', skip=done('part2/rederive_v2_stage4.json'))
+        add(f'{k.lower()}_full', GPU_STEPS, f'{k.lower()}_full', skip=k not in todo4)
+    add('verdict4', CPU_STEPS, 'verdict', skip=not todo4)
+    add('v2_4', CPU_STEPS, 'v2', skip=not todo4 and done('part2/rederive_v2_stage4.json'))
     add('stage5', GPU_STEPS, 'stage5')
     add('a28_verdict', CPU_STEPS, 'a28_verdict')
     add('v2_5', CPU_STEPS, 'v2')
-    n = len(cands)
+    n3, n4 = (len([c for c in s if c not in (blocks_of(f'part2/reported_stage{k}.json') or ())])
+              for k, s in ((3, s3), (4, s4)))
     ends = []
     for i in (0, 1):
-        rep = CPU_STEPS['report'][i] * n
+        rep = CPU_STEPS['report'][i]
         start3 = marks['v2_3'][i]
-        end3 = start3 + (0 if done('part2/reported_stage3.json') else rep)
+        end3 = start3 + rep * n3
         start4 = max(marks['v2_4'][i], end3)
-        end4 = start4 + (0 if done('part2/reported_stage4.json') else rep)
+        end4 = start4 + rep * n4
         ends.append(max(marks['v2_5'][i], end4))
     deadline = now.replace(hour=11, minute=0, second=0, microsecond=0)
     if deadline <= now:
