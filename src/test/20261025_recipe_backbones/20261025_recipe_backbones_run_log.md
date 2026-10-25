@@ -22,7 +22,9 @@ Chat "r10 run 14", unattended (night mode), from the main checkout `/project/CoS
 | 08:00 to 08:41 | `stage4`: K2, K3, K4 (none S1-NO) and M2, M3 at full scale, seeds 0 to 4: train (511, 499, 515 s), infer (15, 14, 15 s), matched arm (M2 32 s, M3 28 s); scorer (433 s), check-verdict, V2 (376 s) | V2 agrees; K2 S2-GO d +0.0150 [+0.0096, +0.0163]; K3 S2-IN d +0.0011 [−0.0043, +0.0025]; K4 S2-GO d +0.0154 [+0.0100, +0.0169]; the bar is B1 own (0.0874) for all three |
 | 08:41 to 08:51 | `stage5`: ArtELingo-28, K1 to K4 at full scale (every stage 4 gave an outcome); K1, B1, B6 inference (6 to 7 s each), scorer (539 s), check, V2 (51 s) | V2 agrees; K1 A-QUAL d +0.0067 [−0.0200, +0.0116]; K2 A-QUAL +0.0244 [−0.0044, +0.0271]; K3 A-FAILS −0.0079 [−0.0332, +0.0001]; K4 A-QUAL +0.0167 [−0.0103, +0.0212] |
 | 08:51 | chain done; GPU free (no process, no lock) | done |
-| 08:52 | `rb_queue_cpu.sh 3` (stage 3 report queue), alone on the CPU; load 5.2, 56 GB free | running |
+| 08:52 to 09:52 | `rb_queue_cpu.sh 3` (stage 3 report queue), alone on the CPU; load 5.2, 56 GB free; gate v2_3 (3 s), report (3,613 s) | done, no step failed; `part2/reported_stage3.{json,md}` (decides nothing) |
+| 09:52 | GPU check: driver, kernel module and library all 595.99.02; no GPU process, no lock of this chat; 188 GB free on `/` | pass |
+| 09:55 | Cut to "r10 run 15" (context meter) | handoff `2026-10-25-r10-run-15-handoff.md` |
 
 ## The split (spec D32)
 
@@ -54,3 +56,8 @@ alone on the CPU (3 candidates, 90 to 120 min estimated: end 10:22 to 10:52); on
 for the evening window (19:00). Why: with the chain finished, the stage 3 queue fits before 11:00 at its high
 estimate and halves the evening's work. If it runs past 11:00 (its estimate is not measured), it is a CPU-only job
 at 8 of 32 cores and is let finish; the log says so.
+
+At 09:52 the stage 3 report queue was done in 60 min for three candidates (estimate 90 to 120). The stage 4 report
+queue (the same three candidates) stays in the evening window (19:00). Why (agent): started now, it would end about
+10:53 at the measured time, with no margin before 11:00; the evening run delays only the descriptive readings, and
+the reports stay due 2026-10-26 10:00.
