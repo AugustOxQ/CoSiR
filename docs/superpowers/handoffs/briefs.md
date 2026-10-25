@@ -958,3 +958,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21e-handoff.md
 - New chat: tab 'r10 build 21e', session 8dd4b1f1-0a50-46a4-8808-6ce20da4e076
 
+[brief] CoSiR: r10 build 21e -> r10 build 21f (2026-10-25 21:28 Amsterdam)
+- Done: all 16 tickets merged (06 and 14 after fix rounds; 16 the queues). 275 tests pass; the stores and stage iii queue smokes pass, and VG2 agrees on its first and all phases.
+- State: integration branch r10-encoders-genre at b4e11f0, pushed. The fresh-seed phase of stage iii has not run end to end.
+- Next: the final review, three Opus xhigh reviewers by stage (brief written).
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21f-handoff.md
+- New chat: tab 'r10 build 21f', session 56959795-a4cd-4060-876c-8a6c6accfb43
+
