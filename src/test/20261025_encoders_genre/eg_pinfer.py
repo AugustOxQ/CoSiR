@@ -188,7 +188,8 @@ class Run:
         _atomic_npz(out, img=img)
         _atomic_json(out.with_suffix('.json'), dict(
             arm=enc.student, aspect=aspect, seed=seed, store=enc.store, batch=BATCH, p_sha256=self.p_sha,
-            weights_sha256=w_sha, weights=str(weights), rows=self.n_rows, dtype='float16', sha256=array_sha256(img),
+            weights_sha256=w_sha, weights=str(weights), rows=self.n_rows, width=int(img.shape[1]), dtype='float16',
+            sha256=array_sha256(img),
             device=self.args.device, smoke=bool(self.args.smoke), code_commit=self.commit))
         return 'wrote'
 
@@ -212,7 +213,8 @@ class Run:
         _atomic_npz(out, prob=prob)
         _atomic_json(out.with_suffix('.json'), dict(
             arm=enc.own, seed=seed, store=enc.store, batch='one batch (rb_matched.infer)', p_sha256=self.p_sha,
-            weights_sha256=meta['weights_sha256'], weights=str(ck), rows=self.n_rows, dtype='float32',
+            weights_sha256=meta['weights_sha256'], weights=str(ck), rows=self.n_rows, width=int(prob.shape[1]),
+            dtype='float32',
             sha256=array_sha256(prob), device=str(device), smoke=bool(self.args.smoke), code_commit=self.commit))
         return 'wrote'
 
