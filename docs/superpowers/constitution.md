@@ -14,7 +14,7 @@ Specs written earlier are not rewritten.
 - **C1 Strongest real comparator.** Every headline number MUST stand beside the strongest real alternative: the
   strongest condition-free score measured so far, a prior method replicated on the same split, or the current best.
   Never a lift over nothing or random. *Why:* a claim without a real baseline cannot be judged. *Source:*
-  `report-writing.md`; memory `feedback_report-writing-principles`.
+  `report-writing.md`.
 
 ## Data and seeds
 
@@ -46,7 +46,7 @@ Specs written earlier are not rewritten.
   scoped re-review before a report is committed.
 - `agent-routing.md`: subagents implement; the main session launches every real run.
 - `shared-resources.md`: GPU work under the lock; CPU-heavy work at 8 threads or fewer.
-- `storage.md` and `data-storage.md`: feature caches in `/data/SSD2/pre_extract/`; run folders hold only their own
+- `storage.md`: feature caches in `/data/SSD2/pre_extract/`; run folders hold only their own
   outputs.
-- `report-writing.md`, `reports-layout.md`: reports in `docs/reports/auto/<line>/`, one row in `reports_sum.md` each.
+- `report-writing.md`, `docs-layout.md`: reports in `docs/reports/auto/<line>/`, one row in `reports_sum.md` each.
 - `timestamps.md`: times in Amsterdam local time.
