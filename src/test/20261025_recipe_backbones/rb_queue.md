@@ -33,7 +33,7 @@ Always `PYTHONDONTWRITEBYTECODE=1`, 8 threads, `CUBLAS_WORKSPACE_CONFIG=:4096:8`
 | 1 | `stage0` | GPU | budget line; `rb_stage0` (V0) | none (skipped when `stage0.json` passed) |
 | 2 | `stage1` | GPU, then CPU | per recipe `rb_run vp3` then `rb_part1` (R0-5, R0-3, R6-5, R6-3, R7-5, R7-3); `rb_pick`; `rb_vp1`; then the pick line | stage 0 passed |
 | 3 | `stage1x` | CPU, probe on GPU | `rb_sheet`, `rb_part1_report`, `rb_probe`; a failed step is "reported as missing", not a stop | VP1 agrees |
-| 4 | `stores` | GPU | CLIP B/32 full; DINOv2 full and 28 (only if K5 triggered); the three instructed Qwen stores of the 746 | part 2 gate |
+| 4 | `stores` | GPU | CLIP B/32 full; DINOv2 full and 28 (only if K5 triggered and not in `RB_DEFER`); the three instructed Qwen stores of the 746 | part 2 gate |
 | 5 | `stage2` | GPU, CPU | regressions: `rb_student regress`, `rb_matched --regress`, `rb_score --check` (`stage2`) | part 2 gate |
 | 6 | `stage3` | GPU, CPU | per candidate K2, K3, K4, K5: student train and infer, matched arm; `rb_score --stage 3`; `rb_v2 --stage 3` | stage 2 gate |
 | 7 | `cpu 3` | CPU only | `rb_part2_report --stage 3` (30 to 40 min per candidate, estimated) | V2 agrees |

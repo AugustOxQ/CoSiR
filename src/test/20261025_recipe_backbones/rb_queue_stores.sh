@@ -9,6 +9,7 @@ gate part2 || finish
 pre=/data/SSD2/pre_extract
 k5=0
 for c in $(driver triggers); do [[ "$c" == K5 ]] && k5=1; done
+for c in ${RB_DEFER:-}; do [[ "$c" == K5 && "$k5" == 1 ]] && k5=deferred; done   # built by the rerun without RB_DEFER
 extract() {  # extract LABEL DONEFILE ARGS...
     local label=$1 done_file=$2; shift 2
     if [[ "${RB_SMOKE:-0}" == 1 ]]; then
@@ -23,6 +24,8 @@ extract clip_full "$pre/artelingo_full/clip_b32/index.json" --dataset artelingo_
 if [[ "$k5" == 1 ]]; then
     extract dino_full "$pre/artelingo_full/dinov2_large/index.json" --dataset artelingo_full --backbone dinov2_large --image-only || finish
     extract dino_a28 "$pre/artelingo28/dinov2_large/index.json" --dataset artelingo28 --backbone dinov2_large --image-only || finish
+elif [[ "$k5" == deferred ]]; then
+    note "K5 deferred (RB_DEFER): no DINOv2 stores in this run"
 else
     note "K5 not triggered: no DINOv2 stores"
 fi

@@ -223,7 +223,7 @@ def test_budget_per_candidate(tmp_path, monkeypatch):
     verdict(out, 3, dict(K2='S1-IN', K3='S1-IN', K4='S1-IN'))               # K5 still to do (deferred run)
     s = steps(rb_run.budget(out, now=now))
     assert s['k5_sample'] > 0 and s['k23_sample'] == 0 and s['k4_sample'] == 0 and s['verdict3'] > 0 and s['v2_3'] > 0
-    assert s['k23_full'] > 0 and s['k4_full'] > 0 and s['k5_full'] == 0     # K5 has no S1 block yet: not in stage 4
+    assert s['k23_full'] > 0 and s['k4_full'] > 0 and s['k5_full'] > 0      # K5 has no S1 block yet: counted (worst case)
     verdict(out, 3, dict(K2='S1-IN', K3='S1-NO', K4=None, K5='S1-IN'))
     s = steps(rb_run.budget(out, now=now))
     assert s['k5_sample'] == s['k4_sample'] == s['k23_sample'] == s['verdict3'] == 0

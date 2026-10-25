@@ -267,9 +267,10 @@ CPU_STEPS = dict(
 def budget(out, now=None):
     """End estimate: the foreground chain in order (GPU steps and the CPU steps between them), plus the two part 2
     report queues, which start after their stage's V2, run one after the other (CPU lock) and beside the GPU chain.
-    End = the later of the chain's end and the stage 4 report's end. Steps whose output file exists cost 0; stages 3 and 4 cost only the candidates without a block in their verdict file. The
-    numbers are in GPU_STEPS and CPU_STEPS (`M` measured, `S` spec §9, `E` estimate); CPU load from the reports slows
-    the chain's own CPU steps, which this does not model."""
+    End = the later of the chain's end and the stage 4 report's end. Steps whose output file exists cost 0; stages 3
+    and 4 and their reports cost only the candidates without a block in their verdict (report) file, and a candidate
+    without a stage 3 block counts for stage 4 (worst case). The numbers are in GPU_STEPS and CPU_STEPS (`M` measured,
+    `S` spec §9, `E` estimate); CPU load from the reports slows the chain's own CPU steps, which this does not model."""
     now = now or datetime.now(ZoneInfo('Europe/Amsterdam'))
     try:
         t = triggers(out) if (out / 'part1/pick.json').exists() else {'K4': True, 'K5': True}
@@ -293,7 +294,7 @@ def budget(out, now=None):
     s4 = list(cands)
     if v3b is not None:
         o3 = json.loads((out / 'part2/verdict_stage3.json').read_text())['blocks']
-        s4 = [c for c in cands if o3.get(c, {}).get('outcome_id') not in (None, 'S1-NO')]
+        s4 = [c for c in cands if c not in o3 or o3[c].get('outcome_id') not in (None, 'S1-NO')]
     todo3 = [c for c in s3 if c not in (v3b or ())]
     todo4 = [c for c in s4 if c not in (v4b or ())]
     n23 = lambda todo: sum(c in ('K2', 'K3') for c in todo)
