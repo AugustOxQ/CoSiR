@@ -7,6 +7,7 @@ VL1 (b), VL1 (c), VL3, VL4.
   all    infer, then check.
 """
 import argparse
+import ast
 import hashlib
 import json
 import subprocess
@@ -36,6 +37,48 @@ def array_sha256(x):
 def code_commit():
     return subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=eg_paths.ROUND, capture_output=True, text=True,
                           check=True).stdout.strip()
+
+
+CODE_ROOT = eg_paths.ROUND / 'eg_pinfer.py'
+CODE_FOLDERS = (eg_paths.ROUND, eg_paths.TEST / '20261025_recipe_backbones')   # this round's folder and RB's
+CODE_SKIP = ('eg_run',)       # the driver gates; it makes no P bytes, so a change to it must not refuse a rerun
+
+
+def code_sha256():
+    """Hash of the code that makes the P exports: this file and the static closure of its imports in this round's and
+    the RB round's folders (the style of `eg_score3.scorer_code_sha256`; the walk is copied, not imported).
+
+    Why not `git rev-parse HEAD`: the first inference and the one rerun VL4 allows (`--forced-vl3`) are hours apart, a
+    commit lands after every chat, and HEAD ignores a dirty tree. File names and bytes are hashed, so an edited file
+    in the working tree counts and an unrelated commit does not.
+    The root's imports are read at any depth (`rb_student`, `rb_matched`, `rb_encoders`, `rb_data` are imported inside
+    the methods that make the bytes); the imports of the files it reaches are read at module level only. `eg_run` (the
+    driver) is not followed. Older rounds' modules (`ct_*`, `ms_train`, ...) are outside the two folders and not hashed.
+    """
+    pending, files = [Path(CODE_ROOT)], set()
+    while pending:
+        path = pending.pop()
+        if path in files:
+            continue
+        files.add(path)
+        tree = ast.parse(path.read_bytes(), filename=str(path))
+        for node in (ast.walk(tree) if path == Path(CODE_ROOT) else tree.body):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                names = [node.module]
+            else:
+                continue
+            for name in names:
+                if name in CODE_SKIP:
+                    continue
+                for folder in CODE_FOLDERS:
+                    dependency = Path(folder) / f'{name}.py'
+                    if dependency.is_file():
+                        pending.append(dependency)
+                        break
+    manifest = {f'{p.parent.name}/{p.name}': hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
+    return hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()
 
 
 def _atomic_json(path, value):
@@ -154,7 +197,8 @@ class Run:
         self.p_sha = rb_data.names_sha256(self.names)
         self.n_rows = len(self.names)
         self.images = {}
-        self.commit = code_commit()
+        self.commit = code_commit()              # provenance only
+        self.code_sha = code_sha256()            # the identity VL4 compares on a rerun
         self.base = Path(self.outputs) / STAGE / 'p'
         self.index_path = self.base / 'index.json'
 
@@ -182,7 +226,10 @@ class Run:
     def student_one(self, enc, aspect, seed, forced):
         import rb_student
         out = eg_paths.p_student(self.outputs, enc.student, aspect, seed)
-        if out.exists():
+        detail = None
+        if out.exists() and self.orphan(out):
+            detail = dict(error='sidecar missing')
+        elif out.exists():
             ok, detail = check_export(out, self.p_sha, self.n_rows, 'student')
             if ok:
                 return 'kept'
@@ -191,7 +238,7 @@ class Run:
         info = json.loads(weights.with_suffix('.json').read_text())
         w_sha = rb_student.ms_train.head.sha_file(weights)
         assert w_sha == info['weights_sha256'], f'{weights}: weights checksum mismatch'
-        self.prepare_rerun(out, w_sha, forced, detail if out.exists() else None)
+        self.prepare_rerun(out, w_sha, forced, detail)
         img = rb_student.infer(weights, aspect, enc.width, self.store_images(enc.store), self.args.device)
         vl3_student(img, self.n_rows)
         _atomic_npz(out, img=img)
@@ -199,13 +246,16 @@ class Run:
             arm=enc.student, aspect=aspect, seed=seed, store=enc.store, batch=BATCH, p_sha256=self.p_sha,
             weights_sha256=w_sha, weights=str(weights), rows=self.n_rows, width=int(img.shape[1]), dtype='float16',
             sha256=array_sha256(img),
-            device=self.args.device, smoke=bool(self.args.smoke), code_commit=self.commit))
+            device=self.args.device, smoke=bool(self.args.smoke), code_commit=self.commit, code_sha256=self.code_sha))
         return 'wrote'
 
     def own_one(self, enc, seed, forced):
         import rb_matched
         out = eg_paths.p_own(self.outputs, enc.own, seed)
-        if out.exists():
+        detail = None
+        if out.exists() and self.orphan(out):
+            detail = dict(error='sidecar missing')
+        elif out.exists():
             ok, detail = check_export(out, self.p_sha, self.n_rows, 'own')
             if ok:
                 return 'kept'
@@ -216,7 +266,7 @@ class Run:
         if str(device).startswith('cuda') and not __import__('torch').cuda.is_available():
             assert self.args.smoke, f'{enc.own}: trained on {device}, which is not available'
             return 'skipped (smoke without GPU)'
-        self.prepare_rerun(out, meta['weights_sha256'], forced, detail if out.exists() else None)
+        self.prepare_rerun(out, meta['weights_sha256'], forced, detail)
         prob = rb_matched.infer(ck, self.store_images(enc.store), device)
         vl3_own(prob, self.n_rows)
         _atomic_npz(out, prob=prob)
@@ -224,18 +274,33 @@ class Run:
             arm=enc.own, seed=seed, store=enc.store, batch='one batch (rb_matched.infer)', p_sha256=self.p_sha,
             weights_sha256=meta['weights_sha256'], weights=str(ck), rows=self.n_rows, width=int(prob.shape[1]),
             dtype='float32',
-            sha256=array_sha256(prob), device=str(device), smoke=bool(self.args.smoke), code_commit=self.commit))
+            sha256=array_sha256(prob), device=str(device), smoke=bool(self.args.smoke), code_commit=self.commit,
+            code_sha256=self.code_sha))
         return 'wrote'
 
+    def index_complete(self):
+        return bool(self.index_path.exists() and json.loads(self.index_path.read_text()).get('complete'))
+
+    def orphan(self, out):
+        """An export whose sidecar is missing while the index is not complete: a crash between the two writes."""
+        return out.exists() and not out.with_suffix('.json').exists() and self.index_path.exists() \
+            and not self.index_complete()
+
     def prepare_rerun(self, out, weights_sha256, forced, detail=None):
-        """Before replacing an export, enforce VL4's same weights/code and record the rerun."""
+        """Before replacing an export, enforce VL4's same weights and same code (`code_sha256`, not HEAD) and record
+        the rerun. A missing sidecar is re-inferred only while the index is not complete."""
         side = out.with_suffix('.json')
-        complete = self.index_path.exists() and json.loads(self.index_path.read_text()).get('complete')
+        complete = self.index_complete()
         if not out.exists() and not side.exists() and not complete:
+            return
+        if self.orphan(out):
+            self.log_forced(out, detail or dict(error='sidecar missing'), 'sidecar missing; re-inferred')
             return
         assert side.is_file(), f'VL4: {out}: cannot verify same weights and code without the old sidecar'
         old = json.loads(side.read_text())
-        assert (old.get('weights_sha256'), old.get('code_commit')) == (weights_sha256, self.commit), \
+        assert old.get('code_sha256'), f'VL4: {out}: the old sidecar has no code_sha256 (made by older code); ' \
+                                       'the rerun cannot verify the same code'
+        assert (old.get('weights_sha256'), old['code_sha256']) == (weights_sha256, self.code_sha), \
             f'VL4: {out}: a rerun requires the same weights and code as the old sidecar'
         if out.exists():
             self.log_forced(out, detail, forced)
@@ -243,7 +308,7 @@ class Run:
             self.log_forced(out, dict(error='export missing'), forced or 'export missing; re-inferred from saved weights')
 
     def log_forced(self, out, detail, cause):
-        line = dict(file=str(out), cause=cause, failed=detail, code_commit=self.commit)
+        line = dict(file=str(out), cause=cause, failed=detail, code_commit=self.commit, code_sha256=self.code_sha)
         log = Path(self.outputs) / STAGE / 'vl4_log.jsonl'
         log.parent.mkdir(parents=True, exist_ok=True)
         with log.open('a') as f:

@@ -40,7 +40,7 @@ def bare_run(out, *, smoke=False, forced=None):
     run.args = SimpleNamespace(smoke=smoke, arms=None, seeds=None, forced_vl3=forced, device='cpu')
     run.base = out / 'stage_ii/p'
     run.index_path = run.base / 'index.json'
-    run.p_sha, run.n_rows, run.commit = 'P', 1, 'COMMIT'
+    run.p_sha, run.n_rows, run.commit, run.code_sha = 'P', 1, 'COMMIT', 'CODE'
     run.aspects, run.seeds = eg_paths.ASPECTS, eg_paths.SEEDS
     return run
 
@@ -202,7 +202,7 @@ def test_forced_export_rerun_requires_same_weights_and_code(tmp_path, monkeypatc
     out.write_bytes(b'failed VL3')
     put(tmp_path, str(out.with_suffix('.json').relative_to(tmp_path)),
         dict(weights_sha256='OLD' if mismatch == 'weights' else 'W',
-             code_commit='OLD' if mismatch == 'code' else 'COMMIT'))
+             code_commit='ANY COMMIT', code_sha256='OLD' if mismatch == 'code' else 'CODE'))
     monkeypatch.setattr(run, 'store_images', lambda *a: np.ones((1, enc.width), np.float32))
     monkeypatch.setattr(rb_student, 'weights_path', lambda *a: tmp_path / 'weights.pt')
     put(tmp_path, 'weights.json', dict(weights_sha256='W'))
@@ -219,7 +219,8 @@ def test_forced_export_rerun_requires_same_weights_and_code(tmp_path, monkeypatc
         assert out.read_bytes() == b'failed VL3'
     else:
         assert call() == 'wrote'
-        assert json.loads(out.with_suffix('.json').read_text())['code_commit'] == 'COMMIT'
+        side = json.loads(out.with_suffix('.json').read_text())
+        assert side['code_commit'] == 'COMMIT' and side['code_sha256'] == 'CODE'
         assert len((tmp_path / 'stage_ii/vl4_log.jsonl').read_text().splitlines()) == 1
 
 
@@ -232,7 +233,7 @@ def test_moved_export_after_complete_is_logged_as_a_rerun(tmp_path, monkeypatch,
     put(tmp_path, 'stage_ii/p/index.json', dict(complete=True))
     enc = eg_encoders.BY_STUDENT['K6']
     out = eg_paths.p_student(tmp_path, 'K6', 'emotion', 0) if kind == 'student' else eg_paths.p_own(tmp_path, 'M6', 0)
-    put(tmp_path, str(out.with_suffix('.json').relative_to(tmp_path)), dict(weights_sha256='W', code_commit='COMMIT'))
+    put(tmp_path, str(out.with_suffix('.json').relative_to(tmp_path)), dict(weights_sha256='W', code_commit='COMMIT', code_sha256='CODE'))
     monkeypatch.setattr(run, 'store_images', lambda *a: np.ones((1, enc.width), np.float32))
     monkeypatch.setattr(rb_student, 'weights_path', lambda *a: tmp_path / 'weights.pt')
     put(tmp_path, 'weights.json', dict(weights_sha256='W'))

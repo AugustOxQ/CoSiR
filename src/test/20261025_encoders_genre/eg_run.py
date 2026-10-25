@@ -496,7 +496,9 @@ def py(script, *args):
 
 def replace(out, stage, cand, reason, print_only, workers):
     """After a fix, replace a kept no-outcome block (ticket 05 review). A replaced stage 4 block that moves the
-    candidate's stage 5 scale replaces its stage 5 block too (same reason)."""
+    candidate's stage 5 scale replaces its stage 5 block too (same reason). A replaced stage 3 block also replaces the
+    candidate's stage 5 block when that says "no stage 3 outcome" (the queue writes both in one pass); a stage 5 block
+    with an outcome or another cause is kept. `--print-only` prints both calls."""
     need(reason and reason.strip(), 'replace needs a non-empty V-check reason (--reason)')
     need(stage in (3, 4), 'replace --stage must be 3 or 4')
     cand_of(cand)
@@ -506,6 +508,12 @@ def replace(out, stage, cand, reason, print_only, workers):
     old_scale = a28_scale(out, cand)
     base = ['--outputs', out, '--workers', workers, '--candidates', cand, '--replace', reason]
     code = call(py('eg_score.py', '--stage', stage, *base), print_only)
+    if stage == 3:
+        s5 = blocks_of(out, 5, must=False).get(cand)
+        if print_only or (s5 is not None and str(s5.get('v_failure') or '').startswith('no stage 3 outcome')):
+            why = f'{reason} (stage 3 block of {cand} replaced)'
+            code = call(py('eg_score.py', '--stage', 5, '--outputs', out, '--workers', workers,
+                           '--candidates', cand, '--replace', why), print_only) or code
     if stage == 4:
         new_scale = a28_scale(out, cand)
         s5 = blocks_of(out, 5, must=False).get(cand)

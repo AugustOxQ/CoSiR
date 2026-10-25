@@ -15,7 +15,7 @@ file. Queues never wait for input. The driver that decides between steps is `eg_
 | `EG_LOCK_WAIT`, `EG_GPU_LOCK` | 14400 s, `/tmp/gpu0.lock` | GPU steps: `flock -o -w $EG_LOCK_WAIT $EG_GPU_LOCK env CUDA_VISIBLE_DEVICES=0 python -u ...` |
 | `EG_CPU_LOCK` | `/tmp/eg_cpu.lock` | the report queues (`cpu_i`) run one at a time |
 | `EG_DEVICE` | `cuda` | `cpu` only for a plumbing test |
-| `EG_DRY=1` | off | print each step's command, run none (plumbing check only) |
+| `EG_DRY=1` | off | dry run: each step's command is printed, none is run. The candidate lists come from the real `eg_run.py`, so on a fresh tree only the steps whose inputs exist are printed (no stage 4 or stage 5 command while no stage 3 block exists) |
 | `EG_PENDING` | `/project/CoSiR/.scratch/pending_deletions.md` | where stage iii appends weights that may go (never deleted) |
 
 Always `PYTHONDONTWRITEBYTECODE=1`, 8 threads, `CUBLAS_WORKSPACE_CONFIG=:4096:8`. CPU steps hide CUDA.
@@ -131,11 +131,20 @@ candidates without a block; stage 5 includes the new model). Stage ii for the de
 
 ## Replace a kept no-outcome block after a fix
 
-`eg_score` refuses to recompute a finished block. After a fix, move the stale partition caches of that candidate aside
-(they are under `<outputs>/part2/partitions/<scale>/<arm>/`; `mv` them to a dated folder, delete nothing), then
-`python eg_run.py replace --stage 3 --cand K6 --reason "<V-check cause fixed>" --outputs <dir>` (add `--print-only` to see the
-`eg_score.py --replace` calls first; a replaced stage 4 block that moves the candidate's stage 5 scale replaces its stage 5
-block too). Then rerun `eg_v2` for the stage and the `cpu_i` queue.
+`eg_score` refuses to recompute a finished block. After a fix, work in this order:
+
+1. Make the outputs the candidate lacks (the `stores` queue for a store or V5 cause, then the `stage_i` queue for the
+   runner outputs), so that the block can get an outcome.
+2. Move the stale partition caches of that candidate aside (they are under `<outputs>/part2/partitions/<scale>/<arm>/`;
+   `mv` them to a dated folder, delete nothing), then
+   `python eg_run.py replace --stage 3 --cand K6 --reason "<V-check cause fixed>" --outputs <dir>` (add `--print-only` to
+   see the `eg_score.py --replace` calls first). `replace --stage 3` also replaces the candidate's stage 5 block when that
+   block says "no stage 3 outcome" (same reason, plus "(stage 3 block of K6 replaced)"); a stage 5 block with an outcome or
+   another cause is kept. A replaced stage 4 block that moves the candidate's stage 5 scale replaces its stage 5 block too.
+3. Then rerun `eg_v2` for each stage touched (3, 4, 5), and the `cpu_i` queues.
+
+A stage 5 block whose cause is a failed A28 V5 (not "no stage 3 outcome") is not replaced by `replace`: after the V5 fix,
+call `python eg_score.py --stage 5 --candidates K6 --replace "<reason>" --outputs <dir>` by hand.
 
 ## Weights below target
 
@@ -145,7 +154,7 @@ fresh-seed weights are not listed. Nothing is deleted.
 
 ## Smoke (the controller's; scratch under `/tmp/claude-0/`)
 
-`EG_SMOKE=1` shrinks only what the runners shrink (seed 0, 2 epochs, 20 draws, 1,000 P rows, `--limit 16` extraction).
+`EG_SMOKE=1` shrinks only what the runners shrink (seed 0, 2 epochs, 20 draws, `--limit 16` extraction; the P rows are not cut, see stage ii below).
 The regressions (X1, X2, `eg_train3 regress vg1`) and X0, V5 and `parity` have no smoke mode. Use the build's gate files by
 copying them into the scratch folder first. With `S=/tmp/claude-0/<scratch>/eg` and `R=/data/SSD2/cosir_r10/20261025_encoders_genre/outputs`:
 
@@ -161,13 +170,13 @@ bash eg_queue_stores.sh        # X0 skipped (x0.json), smoke extraction into $S/
 bash eg_queue_stage_iii.sh     # five variants, first, VG2 first, extras, all, VG2 all, fresh seeds, fresh, VG2 fresh, report
 bash eg_queue_stage_i.sh       # needs V5 entries for the new stores in $S/stores/v5.json (a real 'stores' run, or the 12-24 stores for K2/K3 only)
 bash eg_queue_cpu_i.sh 3 ; bash eg_queue_cpu_i.sh 4 ; bash eg_queue_cpu_i.sh 5
-bash eg_queue_stage_ii.sh      # P cut to 1,024 rows; VL1 (b)/(c) in smoke are the runner's own
+bash eg_queue_stage_ii.sh      # full P (the queue passes --n-rows 29232, so the P hash is the real one); VL1 (b)/(c) in smoke are the runner's own
 bash eg_queue_gpu.sh           # or all of the above in one
 ```
 
 Stage iii alone is the cheapest end-to-end test (it needs no store). The smoke stage i needs the new stores in
 `/data/SSD2/pre_extract` (V5 and the runners read them there): run the real `stores` queue once first, or smoke only
-`stage_iii`, `cpu_i`/`stage_ii` on fakes. `EG_DRY=1` prints all commands without running (used for the build check).
+`stage_iii`, `cpu_i`/`stage_ii` on fakes. `EG_DRY=1` runs the real `eg_run.py` driver and prints the commands it reaches: on a fresh tree it prints only the steps whose inputs exist, not every command.
 
 Replace smoke (after a stage 3 block without an outcome exists in the scratch folder; `eg_run replace` has no smoke
 flag, so it scores with the full 2,000 draws, a few minutes per candidate):
