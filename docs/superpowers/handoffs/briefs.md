@@ -838,3 +838,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-decide-18-handoff.md
 - New chat: tab 'r10 decide 18', session b6a50c6b-1a3d-4a79-bca7-3a1a6102bf12
 
+[brief] CoSiR: r10 decide 18 -> r10 decide 19 (2026-10-25 03:04 Amsterdam)
+- Done: grill round 2 (recipe rule, backbones, comparator, minor batch), the closing summary, the user's approval.
+- State: the user approved the brief through the closing summary (option a); night mode; no container restart.
+- Next: write the spec and the decision rule, run the rule review and the cold check, commit, open "r10 build 16".
+- Blocked: nothing. The user is asleep: ask nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-decide-19-handoff.md
+- New chat: tab 'r10 decide 19', session 73bdd249-0544-4f58-abd3-33fa72fd46ae
+
