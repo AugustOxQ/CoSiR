@@ -214,3 +214,6 @@ docs/paper/
 .scratch/
 src/test/20261018_aspect_graph_sheet/graphs/*.npz
 src/test/20261021_d2_ablation/graphs/*.npz
+
+# r10 build 21: the round outputs folder is a link to /data/SSD2 (spec D31)
+src/test/20261025_encoders_genre/outputs
