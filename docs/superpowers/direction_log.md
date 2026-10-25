@@ -11,7 +11,7 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-10-21)
+## Now (2026-10-25)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. D2 (trunk + direct
@@ -19,10 +19,11 @@ distillation 0.5) passed both claim tests on 12,281 held ArtELingo paintings (em
 PercepT core, S2-GO) but stays below the instructed Qwen image on style and genre. The D2 ablation (5,000 development
 paintings, local 3090, 3 seeds) shows that the instructed graphs carry the gain: without any instruction the model
 falls below PercepT core; the teacher and the shared trunk are close to redundant; without the caption terms emotion
-and style rise (style 0.3945 against the instructed image's 0.3952), confounded with the teacher's loss share. Open
-in decide 17: decision A (a check of the caption-free variants on other development paintings, genre, or item 5:
-other backbones and ArtELingo-28), then item 5's grill; the side chat on Qwen's attention is done (report 12-23), with four
-candidate ideas for decision A. The 11-10 gate is the instructed Qwen bar and aspect-named retrieval.
+and style rise (style 0.3945 against the instructed image's 0.3952), confounded with the teacher's loss share.
+Next (user, 2026-10-25): part 1, on development paintings, checks the caption-free variants on paintings that did not
+choose D2, the genre information ceiling and the four-view statistics; part 2 builds code for other backbones and
+ArtELingo-28; the grill of both is open in decide 17. The 11-10 gate is the instructed Qwen bar and aspect-named
+image retrieval.
 
 ## Parked ideas
 
@@ -36,6 +37,15 @@ candidate ideas for decision A. The 11-10 gate is the instructed Qwen bar and as
   user (2026-10-18); [proposed in](../reports/auto/percept/2026-12-06_new_line_candidates.md))
 - A short stage 2 loop for style and genre: relational distillation alone (0.5, 2) and combined with direct at 0.5
   (never tried; not chosen by the user, 2026-10-20; [proposed in](../reports/auto/percept/2026-12-16_model_sheet.md))
+- Edge-token probe: a linear probe per token ring of Qwen's hidden states, for the emotion view's border pull
+  (never tried; parked by the user, 2026-10-25; [proposed in](../reports/auto/percept/2026-12-23_attention_maps.md))
+- Aspect words as a caption signal: weight the caption terms by the emotion view's word attention; needs an
+  extraction on the fit paintings; revisit after part 1 of decide 17's loop (never tried; parked by the user,
+  2026-10-25; [proposed in](../reports/auto/percept/2026-12-23_attention_maps.md))
+- Masking test: mask the most-attended image tokens against random ones, measure the embedding shift (never tried;
+  parked by the user, 2026-10-25; [proposed in](../reports/auto/percept/2026-12-23_attention_maps.md))
+- Class differences in the image share under the emotion instruction against each class's gain (never tried; parked
+  by the user, 2026-10-25; [proposed in](../reports/auto/percept/2026-12-23_attention_maps.md))
 - Align and contrast the three aspect heads of one image (shared part aligned, aspect parts pushed apart) (never tried;
   not chosen by the user, 2026-10-20: the aspects may not be separable; proposed in the r10 decide 12 chat)
 
@@ -75,9 +85,14 @@ candidate ideas for decision A. The 11-10 gate is the instructed Qwen bar and as
   attention is a weak picture of where the model looks. Four candidate ideas handed to this loop's decision A (edge
   tokens probe, aspect words as a caption signal, masking test, class differences; report section "Candidate ideas
   for decide 17").
-- **Decided (A):** open, awaiting the user. Options of the brief: (1) the caption-free variants on development
-  paintings that did not choose D2, beside D2 with the teacher at 1/3; (2) genre: the information-ceiling probe, then
-  teacher-faithful heads; (3) item 5: other backbones and ArtELingo-28, then its grill.
+- **Decided (A):** two parts in one loop (user, after seeing the recommendation). Part 1, on development paintings:
+  the caption-free variants (image endpoints only, no own-caption terms) on development paintings that did not choose
+  D2, beside D2 with the teacher at 1/3, all three aspects; the genre information-ceiling probe (literature note 12-20,
+  idea 1); the four-view statistics sheet. Part 2: code for item 5 (other backbones and ArtELingo-28) with the
+  training recipe as a setting; its runs follow part 1's recipe. Type confirmation and exploration (part 1),
+  incremental (part 2); medium loop. Retrieval for the 11-10 gate: image queries with an aspect name only (user,
+  after seeing the recommendation). The side task's four ideas are parked (user, after seeing the recommendation).
+- **Why:** part 1 is cheap and settles the recipe that item 5 runs; building both together saves a loop before 11-10.
 - **Links:** [report](../reports/auto/percept/2026-12-22_d2_ablation.md) ·
   [user-read report](../user_read/2026-10-21_d2_ablation.md) · [spec](specs/2026-10-21-d2-ablation-design.md) ·
   [handoff](handoffs/2026-10-21-r10-decide-17-handoff.md)
