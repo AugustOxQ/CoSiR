@@ -11,12 +11,12 @@ Chat "r10 run 14", unattended (night mode), from the main checkout `/project/CoS
 | 06:59 | `rb_run.py budget` at start, nothing run: all four candidates 12:38 to 14:50; `RB_DEFER="K5"` 11:14 to 13:00; `"K4 K5"` 10:10 to 11:35 | past 11:00 in every option: split (D32), chosen after the pick (below) |
 | 07:00 to 07:03 | `rb_queue_stage0.sh` (V0: R0-5, R6-3, R7-3 seed 0 on the old 5,000 against 12-22's exports; 126 s) | PASS 9/9 items bit for bit; genre labels on 23,682 of the 29,232; scoring time: partitions 7.1 s per export, AMI 0.0145 s per call, part 1 bootstrap about 1,568 s in one process (stand-in on a random unit-norm array, not an export) |
 | 07:03 to 07:22 | `rb_queue_stage1.sh`: six recipes (07:03 to 07:11; 53 to 101 s each), pick (370 s), VP1 (351 s) | VP1 agrees; **P-R6-5** (no own-caption terms, teacher share 1/5); triggers K4 yes, K5 no; no VP2 failure, no forced rerun |
-| 07:25 | Split chosen (below) | chain with K2, K3, K4 now; both part 2 report queues in the evening |
-| 07:25 | `rb_queue_stage1x.sh` (background, CPU lock; probe on the GPU lock) | running |
-| 07:26 | chain: `stores`, `stage2`, `stage3`, `stage3a`, `stage4`, `stage5`, one after another (no `RB_DEFER`) | running |
+| 07:24 | Split chosen (below) | chain with K2, K3, K4 now; both part 2 report queues in the evening |
+| 07:24 | `rb_queue_stage1x.sh` (background, CPU lock; probe on the GPU lock) | running |
+| 07:24 | chain: `stores`, `stage2`, `stage3`, `stage3a`, `stage4`, `stage5`, one after another (no `RB_DEFER`) | running |
 | 07:24 | `stores`: CLIP B/32 full and the three ArtELingo-28 instructed Qwen stores exist (skipped); K5 not triggered, no DINOv2 store | done |
 | 07:24 to 07:27 | `stage2`: student regression (65 s), matched-arm regression (10 s), scorer check (122 s) | PASS, 27 of 27 items |
-| 07:25 to 07:41 | `stage1x`: four-view sheet (133 s), part 1 reported readings (680 s), ceiling probe (209 s, GPU) | done, no step missing |
+| 07:24 to 07:41 | `stage1x`: four-view sheet (133 s), part 1 reported readings (680 s), ceiling probe (209 s, GPU) | done, no step missing |
 | 07:27 to 07:55 | `stage3`: per candidate train (179, 179, 192 s), infer (15, 16, 198 s; K4's waited for the probe's GPU lock), matched arm (M2 16 s, M3 14 s); scorer (441 s), check-verdict, V2 (375 s) | V2 agrees (no candidate skipped); K2 S1-GO d +0.0165 [+0.0110, +0.0177]; K3 S1-IN d +0.0046 [−0.0006, +0.0057]; K4 S1-GO d +0.0190 [+0.0137, +0.0201]; the bar is B1 own (0.0855) for all three |
 | 07:55 to 08:00 | `stage3a`: student regression at full scale (178 s), matched arm (13 s), scorer check (115 s) | PASS, 27 of 27 items |
 | 08:00 to 08:41 | `stage4`: K2, K3, K4 (none S1-NO) and M2, M3 at full scale, seeds 0 to 4: train (511, 499, 515 s), infer (15, 14, 15 s), matched arm (M2 32 s, M3 28 s); scorer (433 s), check-verdict, V2 (376 s) | V2 agrees; K2 S2-GO d +0.0150 [+0.0096, +0.0163]; K3 S2-IN d +0.0011 [−0.0043, +0.0025]; K4 S2-GO d +0.0154 [+0.0100, +0.0169]; the bar is B1 own (0.0874) for all three |
