@@ -1,12 +1,12 @@
 # The recipe pick on fresh development paintings, then D2 students on SigLIP 2 and CLIP B/32 against PercepT on held paintings: design
 
-> Date: 2026-10-25 03:15, revised 03:30 after the rule review and the cold check · Status: approved 2026-10-25 03:02 through the closing summary (the user confirmed it in
+> Date: 2026-10-25 03:15, revised 03:28 after the rule review and the cold check · Status: approved 2026-10-25 03:02 through the closing summary (the user confirmed it in
 > r10 decide 18, option a; a cold check compares this spec and its rule with the grill record) · Kind: experiment
 > Builds on: the [D2 ablation report 12-22](../../reports/auto/percept/2026-12-22_d2_ablation.md) and its
 > [spec](2026-10-21-d2-ablation-design.md); the [claim test spec](2026-10-20-claim-test-design.md) and its
 > [rule](../../../src/test/20261020_claim_test/DECISION_RULE.md); the grill record in the
 > [decide 19 handoff](../handoffs/2026-10-25-r10-decide-19-handoff.md) §2 · Constitution: [constitution.md](../constitution.md)
-> Decision rule: `src/test/20261025_recipe_backbones/DECISION_RULE.md` @ (first commit; filled at commit)
+> Decision rule: `src/test/20261025_recipe_backbones/DECISION_RULE.md` @ a32b63d (first commit, after the review)
 
 ## Brief (for the user; agents read and decide from §1 onward)
 

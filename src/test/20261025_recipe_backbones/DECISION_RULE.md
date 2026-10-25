@@ -1,7 +1,7 @@
 # Decision rule: the recipe pick on fresh development paintings (part 1), the backbone claim tests on held paintings (part 2) and the ArtELingo-28 reading
 
 > Spec: [2026-10-25-recipe-and-backbones-design.md](../../../docs/superpowers/specs/2026-10-25-recipe-and-backbones-design.md)
-> @ (first commit) · Written 2026-10-25 03:16 (Amsterdam) before any implementation script exists; revised 03:30
+> @ a32b63d (first commit) · Written 2026-10-25 03:16 (Amsterdam) before any implementation script exists; revised 03:28
 > after the review · Reviewer: a fresh Opus `xhigh` worker, 2026-10-25 03:27 (pass after fixes; all fourteen findings
 > applied)
 
