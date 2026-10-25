@@ -17,6 +17,7 @@ draws). Decisions use unrounded values. Caches (fixed partitions, per-variant bo
 `<outputs>/stage_iii/partitions/<variant>/s0/`; the frozen 12-24 outputs are only read.
 """
 import argparse
+import ast
 import hashlib
 import json
 import multiprocessing
@@ -190,12 +191,33 @@ def _file_sha256(path):
 
 
 def scorer_code_sha256():
-    """Hash the round's Python modules and the RB modules used by scoring, caching and reporting.
+    """Hash this scorer and its transitive top-level imports in the round and RB folders.
 
     Keep provenance outside the score identity: VG2 independently authenticates data, not scorer code.
-    Hash names as well as contents, so added/removed modules also invalidate old scores.
+    Resolve imports statically, independent of runtime imports; lazy imports inside functions are excluded.
+    Hash names as well as contents, so added/removed dependencies also invalidate old scores.
     """
-    files = sorted(eg_paths.ROUND.glob('eg_*.py')) + sorted(Path(rb_ami.__file__).parent.glob('rb_*.py'))
+    folders = (eg_paths.ROUND, Path(rb_ami.__file__).parent)
+    pending = [eg_paths.ROUND / 'eg_score3.py']
+    files = set()
+    while pending:
+        path = pending.pop()
+        if path in files:
+            continue
+        files.add(path)
+        for node in ast.parse(path.read_bytes(), filename=str(path)).body:
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                names = [node.module]
+            else:
+                continue
+            for name in names:
+                for folder in folders:
+                    dependency = folder / f'{name}.py'
+                    if dependency.is_file():
+                        pending.append(dependency)
+                        break
     manifest = {f'{p.parent.name}/{p.name}': _file_sha256(p) for p in files}
     return hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()
 

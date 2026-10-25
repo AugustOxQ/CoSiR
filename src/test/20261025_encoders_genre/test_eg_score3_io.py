@@ -181,6 +181,44 @@ def test_score_code_hash_covers_imported_round_modules(monkeypatch):
     assert s3.code_state()['code_sha256'] != before
 
 
+@pytest.mark.parametrize('module, changes_hash', [
+    ('eg_pinfer.py', False), ('eg_score.py', False), ('eg_run.py', False),
+    ('eg_score3.py', True), ('eg_paths.py', True), ('eg_variants.py', True),
+    ('rb_ami.py', True), ('rb_data.py', True), ('rb_pick.py', True),
+    ('rb_paths.py', True), ('rb_rows.py', True), ('rb_score3_dependency.py', True),
+])
+def test_score_code_hash_tracks_only_static_module_dependencies(tmp_path, monkeypatch, module, changes_hash):
+    import shutil
+    from pathlib import Path
+
+    folders = []
+    for source, pattern in ((eg_paths.ROUND, 'eg_*.py'), (Path(s3.rb_ami.__file__).parent, 'rb_*.py')):
+        folder = tmp_path / source.name
+        folder.mkdir()
+        for path in source.glob(pattern):
+            shutil.copyfile(path, folder / path.name)
+        folders.append(folder)
+    round_folder, rb_folder = folders
+    # A from-import reached through rb_pick -> rb_rows; never imported at runtime.
+    rows = rb_folder / 'rb_rows.py'
+    rows.write_text(rows.read_text() + '\nfrom rb_score3_dependency import value as dependency_value\n')
+    (rb_folder / 'rb_score3_dependency.py').write_text('import rb_rows\nvalue = 1\n')  # cycle
+    monkeypatch.setattr(eg_paths, 'ROUND', round_folder)
+    monkeypatch.setattr(s3.rb_ami, '__file__', str(rb_folder / 'rb_ami.py'))
+    before = s3.scorer_code_sha256()
+    # A score remains valid after unrelated edits, and is refused after dependency edits.
+    score = tmp_path / 'score_first.json'
+    score.write_text(json.dumps(dict(code_sha256=before)))
+    path = (round_folder if module.startswith('eg_') else rb_folder) / module
+    path.write_text(path.read_text() + '\n# changed after scoring\n')
+    assert (s3.scorer_code_sha256() != before) == changes_hash
+    if changes_hash:
+        with pytest.raises(AssertionError, match='stale code_sha256'):
+            s3.check_score_code(score)
+    else:
+        s3.check_score_code(score)
+
+
 @pytest.mark.parametrize('phase', ['first', 'all', 'fresh'])
 def test_queue_refuses_stale_score_before_any_work(tmp_path, phase):
     import os

@@ -47,8 +47,9 @@ rerunning after a fix; delete nothing. X0, V5 and the gate files that exist in t
 `part2/regression/x{1,2}_*.json`, `stage_ii/vl1_scorer.json`, `stage_iii/{vg1,vg1_scorer}.json`) are skipped.
 Stage iii first checks every existing `score_{first,all,fresh}.json` with `eg_score3.py check-code`: a stale or missing
 top-level `code_sha256` stops with "move <file> aside, then rerun", before training or skipping scores. Manual scoring
-also refuses a stale destination. The hash covers all `eg_*.py` modules in this round and `rb_*.py` modules in the RB
-round; it stays outside `identity`, whose input hashes VG2 compares. The non-smoke parity step rechecks the weights,
+also refuses a stale destination. The hash covers `eg_score3.py` and its transitive top-level imports in this round
+and the RB round (static AST traversal, excluding lazy imports inside functions); it stays outside `identity`, whose
+input hashes VG2 compares. The non-smoke parity step rechecks the weights,
 but keeps `fresh_parity.json` byte for byte when its result is unchanged (commit, dirty state and timing are bookkeeping).
 
 ## Gates and stops (`eg_run.py gate NAME`, exit 1 with an `EG_STOP` line)
