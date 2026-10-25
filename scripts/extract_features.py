@@ -1,6 +1,10 @@
 """Frozen-backbone feature extraction for the later CVPR experiments (plan Task 16, E4).
 
-    python scripts/extract_features.py --dataset NAME --backbone {clip_b32,qwen3vl_emb_2b,siglip2_so400m} [--limit N]
+    python scripts/extract_features.py --dataset NAME --backbone {clip_b32,qwen3vl_emb_2b,siglip2_so400m,dinov2_large}
+        [--limit N] [--image-only]
+
+dinov2_large is image-only (--image-only required, artelingo_full and artelingo28 only): txt.npy is not written and
+index.json has n_texts 0, "texts": [] and "image_only": true.
 
 Writes /data/SSD2/pre_extract/<dataset>/<backbone>/{img.npy, txt.npy, index.json} (float16, L2-normalised) with a
 progress.json resume file. With --limit the output goes to /data/SSD2/pre_extract/_smoke/... instead, so a smoke run
@@ -36,7 +40,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 PRE_EXTRACT = Path("/data/SSD2/pre_extract")
-CLIP, QWEN, SIGLIP2 = "clip_b32", "qwen3vl_emb_2b", "siglip2_so400m"
+CLIP, QWEN, SIGLIP2, DINO = "clip_b32", "qwen3vl_emb_2b", "siglip2_so400m", "dinov2_large"
 ARTELINGO_ANN = Path("/data/PDD/artelingo/artelingo_train.json")
 ARTELINGO_FEATURES = "/data/SSD2/pre_extract/artelingo/features"
 ARTELINGO_IMAGES = Path("/data/PDD/wikiart_proj/wikiart")
@@ -58,15 +62,17 @@ DILATION = 0.7        # GeneCIS datasets/vaw_dataset.py
 PAD_CROP = True
 
 ALLOWED = {
-    "artelingo28": [CLIP, QWEN, SIGLIP2],
-    "artelingo_full": [QWEN, SIGLIP2],
+    "artelingo28": [CLIP, QWEN, SIGLIP2, DINO],
+    "artelingo_full": [CLIP, QWEN, SIGLIP2, DINO],
     "semart": [CLIP, QWEN, SIGLIP2],
     "coco_train2014": [CLIP, QWEN],
     "genecis_vg_crops": [CLIP, QWEN],
     "genecis_coco": [QWEN],
 }
 # batch sizes chosen to fit well under ~20 GB on an otherwise idle 24 GB GPU
-BATCH = {CLIP: dict(img=256, txt=512), QWEN: dict(img=32, txt=128), SIGLIP2: dict(img=32, txt=256)}
+BATCH = {CLIP: dict(img=256, txt=512), QWEN: dict(img=32, txt=128), SIGLIP2: dict(img=32, txt=256),
+         DINO: dict(img=128, txt=1)}
+IMAGE_ONLY_DATASETS = ("artelingo_full", "artelingo28")   # --image-only; DINO has no text tower
 IMG_CHUNK, TXT_CHUNK = 256, 4096
 
 
@@ -369,9 +375,9 @@ def out_dir_for(dataset, backbone, smoke, root=PRE_EXTRACT):
 
 
 def check_arrays(img, txt, tol=1e-2, chunk=65536) -> dict:
-    """Finite and unit-norm gate (chunked, read-only); rows of an empty array are vacuously fine."""
+    """Finite and unit-norm gate (chunked, read-only); rows of an empty array are vacuously fine; txt may be None."""
     res = {"ok": True, "n_nonfinite": 0, "n_bad_norm": 0, "max_norm_dev": 0.0}
-    for arr in (img, txt):
+    for arr in (img,) if txt is None else (img, txt):
         for i in range(0, len(arr), chunk):
             x = np.asarray(arr[i:i + chunk], dtype=np.float32)
             fin = np.isfinite(x).all(1)
@@ -387,16 +393,19 @@ def verify(dataset, backbone, root=PRE_EXTRACT) -> dict:
     """Read-only gate on a sealed output."""
     out = out_dir_for(dataset, backbone, False, root)
     idx = json.load(open(out / "index.json"))
-    img, txt = np.load(out / "img.npy", mmap_mode="r"), np.load(out / "txt.npy", mmap_mode="r")
+    img = np.load(out / "img.npy", mmap_mode="r")
+    txt = None if idx.get("image_only") else np.load(out / "txt.npy", mmap_mode="r")
     res = check_arrays(img, txt)
-    res["shape_ok"] = (len(img), len(txt)) == (idx["n_images"], idx["n_texts"])
+    res["shape_ok"] = (len(img), 0 if txt is None else len(txt)) == (idx["n_images"], idx["n_texts"])
     res["ok"] = res["ok"] and res["shape_ok"]
     return res
 
 
 def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset="", log=print,
-            batch_img=None, batch_txt=None) -> dict:
+            batch_img=None, batch_txt=None, image_only=False) -> dict:
+    """image_only: no text pass and no txt.npy (spec.texts must be empty); index.json says so."""
     out = Path(out)
+    assert not image_only or (not spec.texts and not spec.text_meta), "image-only extraction needs an empty text list"
     index_path, prog_path = out / "index.json", out / "progress.json"
     if index_path.exists() and not (overwrite or smoke):
         raise SystemExit(f"{index_path} exists (finished output); pass --overwrite to redo it")
@@ -405,7 +414,7 @@ def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset=""
     out.mkdir(parents=True, exist_ok=True)
     n_img, n_txt, dim = len(spec.images), len(spec.texts), enc.dim
     from numpy.lib.format import open_memmap
-    resume = prog_path.exists() and (out / "img.npy").exists() and (out / "txt.npy").exists()
+    resume = prog_path.exists() and (out / "img.npy").exists() and (image_only or (out / "txt.npy").exists())
     prog = json.load(open(prog_path)) if resume else dict(img_done=0, txt_done=0, n_truncated=0, img_seconds=0.0,
                                                           txt_seconds=0.0)
     if resume and (prog["n_img"], prog["n_txt"]) != (n_img, n_txt):
@@ -418,12 +427,14 @@ def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset=""
     prog.update(n_img=n_img, n_txt=n_txt)
     mode = "r+" if resume else "w+"
     img = open_memmap(out / "img.npy", mode=mode, dtype=np.float16, shape=(n_img, dim))
-    txt = open_memmap(out / "txt.npy", mode=mode, dtype=np.float16, shape=(n_txt, dim))
+    txt = None if image_only else open_memmap(out / "txt.npy", mode=mode, dtype=np.float16, shape=(n_txt, dim))
     bs = dict(img=batch_img or BATCH[enc.name]["img"], txt=batch_txt or BATCH[enc.name]["txt"])
     assert bs["img"] > 0 and bs["txt"] > 0
 
     def save():
-        img.flush(); txt.flush()
+        img.flush()
+        if txt is not None:
+            txt.flush()
         tmp = prog_path.with_suffix(".tmp")
         json.dump(prog, open(tmp, "w")); os.replace(tmp, prog_path)
 
@@ -457,7 +468,9 @@ def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset=""
         save()
         log(f"[{dataset}/{enc.name}] texts {b}/{n_txt}  {prog['txt_done'] / max(prog['txt_seconds'], 1e-9):.1f}/s")
     pool.shutdown()
-    img.flush(); txt.flush()
+    img.flush()
+    if txt is not None:
+        txt.flush()
     prog["gate"] = check_arrays(img, txt)
     save()
     if not prog["gate"]["ok"]:
@@ -465,7 +478,8 @@ def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset=""
     del img, txt
     index = {"dataset": dataset, "backbone": enc.name, "smoke": smoke, "dtype": "float16", "dim": dim,
              "n_images": n_img, "n_texts": n_txt, "n_texts_truncated": prog["n_truncated"],
-             "truncation_limit": {CLIP: 77, SIGLIP2: 64, QWEN: 512}[enc.name], "extra": spec.extra,
+             "truncation_limit": {CLIP: 77, SIGLIP2: 64, QWEN: 512, DINO: None}[enc.name], "extra": spec.extra,
+             "image_only": image_only,
              "images": spec.images, "texts": spec.text_meta}
     with open(index_path, "w") as f:
         json.dump(index, f)
@@ -477,7 +491,8 @@ def extract(spec: Spec, enc, out: Path, overwrite=False, smoke=False, dataset=""
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--dataset", choices=sorted(ADAPTERS))
-    ap.add_argument("--backbone", choices=[CLIP, QWEN, SIGLIP2])
+    ap.add_argument("--backbone", choices=[CLIP, QWEN, SIGLIP2, DINO])
+    ap.add_argument("--image-only", action="store_true", help="images only (required for dinov2_large)")
     ap.add_argument("--verify", nargs=2, metavar=("DATASET", "BACKBONE"),
                     help="read-only finite/norm gate on a sealed output")
     ap.add_argument("--limit", type=int, default=None, help="first N images (smoke; writes under _smoke/)")
@@ -517,14 +532,21 @@ def main(argv=None):
                   sample_ids=np.load(a.sample_ids, allow_pickle=False) if a.sample_ids is not None else None)
     elif a.dataset == "semart":
         kw = dict(semart_dir=a.semart_dir)
+    if a.image_only != (a.backbone == DINO):
+        raise SystemExit("--image-only goes with dinov2_large and with no other backbone")
+    if a.image_only and a.dataset not in IMAGE_ONLY_DATASETS:
+        raise SystemExit(f"--image-only is for {IMAGE_ONLY_DATASETS} only")
     spec = apply_limit(ADAPTERS[a.dataset](**kw), a.limit)
+    if a.image_only:
+        spec = Spec(spec.images, spec.load_image, [], [], spec.extra)
     print(f"{a.dataset}: {len(spec.images)} images, {len(spec.texts)} texts", flush=True)
     from src.data.feature_extract import load_encoder
     enc = load_encoder(a.backbone, a.device)
     out = out_dir_for(a.dataset, a.backbone, smoke=a.limit is not None, root=a.out_root)
     t = time.time()
     prog = extract(spec, enc, out, overwrite=a.overwrite, smoke=a.limit is not None, dataset=a.dataset,
-                   log=lambda s: print(s, flush=True), batch_img=a.batch_img, batch_txt=a.batch_txt)
+                   log=lambda s: print(s, flush=True), batch_img=a.batch_img, batch_txt=a.batch_txt,
+                   image_only=a.image_only)
     print(json.dumps({k: prog[k] for k in ("n_img", "n_txt", "n_truncated", "img_seconds", "txt_seconds",
                                            "index_sha256")}), flush=True)
     print(f"done {out} in {time.time() - t:.0f}s")
