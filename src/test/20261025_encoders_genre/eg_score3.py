@@ -319,6 +319,11 @@ def read_run(outputs, variant, p_sha, declared_failed=None, seed=SEED):
                run_sha256=_file_sha256(run_path), img=None)
     if run['status'] == 'failed':
         assert run.get('cause'), f'{variant}: failed run without a cause'
+        assert run.get('failure_kind') in ('nonfinite_loss', 'vg3'), (variant, 'failure_kind', run.get('failure_kind'))
+        # rule §4.3: a run fails if its loss goes non-finite, or if it still fails VG3 after its (one) rerun
+        assert run['failure_kind'] != 'vg3' or 'rerun_of' in run, (
+            f'{variant} s{seed}: failed VG3 and has not been rerun; rerun it once first '
+            '(`eg_train3.py train --rerun-failed`)')
         return rec
     img, problems = {}, {}
     for a in ASPECTS:
@@ -589,7 +594,8 @@ def genre_vs_targets(abar_genre):
 
 
 def reading_both(seed0_outcome, c):
-    """The "reading both" sentence (rule §4.3, D34): the seed-0 outcome stands; the C outcome says whether it repeats."""
+    """The "reading both" sentence (rule §4.3, D34): the seed-0 outcome stands; C-FAILS is "not repeated on fresh seeds",
+    C-HOLDS "repeated", C-QUAL gets no verdict phrase."""
     assert seed0_outcome in ('III-GO', 'III-PROM', 'III-NONE') and c in ('C-HOLDS', 'C-QUAL', 'C-FAILS', None)
     if c is None:
         return f'Seed-0 outcome {seed0_outcome} stands; no C outcome, so nothing says whether it repeats on fresh seeds.'
@@ -598,8 +604,10 @@ def reading_both(seed0_outcome, c):
                 'promising. R6-5 stays the recipe.')
     if c == 'C-FAILS':
         return f'Seed-0 outcome {seed0_outcome} stands, and it is not repeated on fresh seeds (C-FAILS).'
-    how = 'C-HOLDS' if c == 'C-HOLDS' else 'C-QUAL (qualified: positive gain, guards hold, but short of C-HOLDS)'
-    return f'Seed-0 outcome {seed0_outcome} stands, and the fresh seeds repeat it: {how}.'
+    if c == 'C-QUAL':                       # D34: no fixed phrase for C-QUAL, and it is not counted as promising
+        return (f'Seed-0 outcome {seed0_outcome} stands; on fresh seeds C-QUAL (qualified: e_genre > 0 and both guards '
+                'hold, short of C-HOLDS).')
+    return f'Seed-0 outcome {seed0_outcome} stands, and it is repeated on fresh seeds (C-HOLDS).'
 
 
 # ------------------------------------------------------------------ fresh seeds, files
@@ -688,6 +696,9 @@ def run_fresh(outputs, n_draws, workers, smoke=False, declared_failed=None, ctx=
     summary = {n: {str(s): dict(status=r['status'], cause=r['cause'], best_epoch=r['best_epoch'],
                                 run_sha256=r['run_sha256']) for s, r in by.items()} for n, by in runs.items()}
     identity['run_sha256'] = {n: {str(s): r['run_sha256'] for s, r in by.items()} for n, by in runs.items()}
+    for n in declared_failed:
+        assert any(r['status'] == 'failed' for r in runs[n].values()), \
+            f'--failed {n}: no seed of {n} is a failed run (its exports pass VG3 on every fresh seed)'
     failed = [f'{n} seed {s}: {r["cause"]}' for n, by in runs.items() for s, r in by.items() if r['status'] == 'failed']
     if failed:
         return no_outcome('a fresh-seed run failed (' + '; '.join(failed) + ')', summary)
@@ -881,7 +892,7 @@ def report_markdown(r):
     head = '| variant | ' + ' | '.join(asp) + ' |\n|---|' + '---|' * len(asp)
     lines = ['# Stage iii: reported readings (decide nothing)', '',
              f"P sha256 {r['p_sha256']}{'; SMOKE RUN' if r['smoke'] else ''}. Seed 0 unless stated; reference {r['reference']}. "
-             f"Seed-0 outcome: {r['seed0_outcome']}; winner {r['winner']} (A_genre {r['A_genre_winner']}). "
+             f"Seed-0 outcome: {r['seed0_outcome']}; winner {r['winner']} (A_genre {_f(r['A_genre_winner']) if r['A_genre_winner'] is not None else '-'}). "
              f"Labelled on P: {r['label_counts_p']}; on the old 5,000: {r['label_counts_old5000']}.", '',
              '## Three aspects on P: A (e against R6-5 [95% interval])', '', head]
     for v in r['variants']:
@@ -900,9 +911,17 @@ def report_markdown(r):
     lines += ['', '## Best epochs', '', head]
     lines += [f'| {v} | ' + ' | '.join(str(ent[v]['best_epoch'][a]) if ent[v]['best_epoch'] else '-' for a in asp) + ' |'
               for v in r['variants']]
+    runs = (r['fresh'] or {}).get('runs')
+    if runs:
+        lines += ['', '## Best epochs on the fresh seeds', '', '| variant | seed | ' + ' | '.join(asp) + ' |', '|---|---|' + '---|' * len(asp)]
+        for n, by in runs.items():
+            for s, x in sorted(by.items()):
+                lines.append(f'| {n} | {s} | ' + (' | '.join(str(x['best_epoch'][a]) for a in asp) if x['status'] == 'ok'
+                                                  else f"failed: {x['cause']}" + ' |' * (len(asp) - 1)) + ' |')
     ga = [v for v in r['variants'] if 'adaptor' in ent[v]]
     if ga:
         lines += ['', '## GA: the adaptor\'s own output against the head (genre AMI on P)', '',
+                  'The adaptor rows are clustered without the unit-norm check (the adaptor predicts standardized targets).', '',
                   '| variant | adaptor output | head | adaptor - head |', '|---|---|---|---|']
         lines += [f"| {v} | {_f(ent[v]['adaptor']['A'])} | {_f(ent[v]['adaptor']['head_A'])} | {ent[v]['adaptor']['adaptor_minus_head']:+.4f} |" for v in ga]
     ref = r['references']

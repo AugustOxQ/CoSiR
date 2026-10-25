@@ -130,11 +130,20 @@ def test_genre_against_the_targets_compares_unrounded_values():
 def test_reading_both_sentence():
     assert 'not repeated on fresh seeds' in s3.reading_both('III-GO', 'C-FAILS')
     assert 'not repeated on fresh seeds' in s3.reading_both('III-PROM', 'C-FAILS')
-    assert 'repeat it' in s3.reading_both('III-GO', 'C-HOLDS') and 'not repeated' not in s3.reading_both('III-GO', 'C-HOLDS')
+    assert 'not repeated' not in s3.reading_both('III-GO', 'C-HOLDS') and 'C-HOLDS' in s3.reading_both('III-GO', 'C-HOLDS')
     for c in ('C-HOLDS', 'C-QUAL', 'C-FAILS'):                      # III-NONE: neither GO nor promising, whatever C says
         text = s3.reading_both('III-NONE', c)
         assert 'neither' in text and c in text and 'not repeated' not in text
     assert 'no C outcome' in s3.reading_both('III-GO', None)
+
+
+def test_c_qual_reading_says_neither_repeated_nor_not_repeated():
+    """D34 gives a fixed phrase to C-FAILS only and rejects counting C-QUAL as promising."""
+    for seed0 in ('III-GO', 'III-PROM'):
+        text = s3.reading_both(seed0, 'C-QUAL')
+        assert f'Seed-0 outcome {seed0} stands' in text and 'C-QUAL' in text
+        assert 'repeat' not in text and 'promising' not in text
+    assert 'repeated on fresh seeds (C-HOLDS)' in s3.reading_both('III-PROM', 'C-HOLDS')
 
 
 # ------------------------------------------------------------------ files: parity, failed runs, the whole command
@@ -165,10 +174,15 @@ def write_parity(out, ok=(True, True, True), cause=None):
                                                       'reference': 'K4'})
 
 
-def write_run_json(out, variant, seed, status='ok', cause=None):
-    put_json(eg_paths.iii_run(out, variant, seed) / 'run.json', dict(
-        variant=variant, seed=seed, switches=V.switches(variant), status=status, cause=cause, p_sha256=PSHA,
-        best_epoch={a: 4 for a in eg_paths.ASPECTS}))
+def write_run_json(out, variant, seed, status='ok', cause=None, failure_kind=None, rerun_of=None):
+    """A run.json as `eg_train3.write_run` writes it: a failure has `failure_kind`, a rerun has `rerun_of`."""
+    record = dict(variant=variant, seed=seed, switches=V.switches(variant), status=status, p_sha256=PSHA,
+                  best_epoch={a: 4 for a in eg_paths.ASPECTS})
+    if status == 'failed':
+        record.update(cause=cause, failure_kind=failure_kind)
+    if rerun_of is not None:
+        record['rerun_of'] = rerun_of
+    put_json(eg_paths.iii_run(out, variant, seed) / 'run.json', record)
 
 
 def onehot_images(y, noise, seed, width=16):
@@ -238,7 +252,7 @@ def test_a_failed_fresh_run_leaves_no_c_outcome(tmp_path, monkeypatch):
 
 
 def test_read_run_reads_the_fresh_seed_it_is_asked_for(tmp_path):
-    write_run_json(tmp_path, WINNER, 2, status='failed', cause='non-finite loss')
+    write_run_json(tmp_path, WINNER, 2, status='failed', cause='non-finite loss', failure_kind='nonfinite_loss')
     r = s3.read_run(tmp_path, WINNER, PSHA, seed=2)
     assert r['status'] == 'failed' and r['img'] is None
     with pytest.raises(AssertionError):
@@ -278,3 +292,95 @@ def test_the_whole_command_on_small_synthetic_runs(tmp_path, monkeypatch):
                 assert (base / f'{a}__partitions.npz').exists() and (base / f'{a}__boot.json').exists()
     monkeypatch.setattr(s3, 'fresh_boot_scores', lambda *a, **k: pytest.fail('bootstrap recomputed'))
     assert s3.run_fresh(tmp_path, 6, 1, smoke=True, ctx=ctx) == rec              # same inputs: kept, nothing redone
+
+
+# ------------------------------------------------------------------ review fixes
+def test_first_vg3_failure_is_not_a_final_failed_run(tmp_path):
+    """Rule 4.3: a run fails only if it still fails VG3 after its rerun."""
+    write_run_json(tmp_path, WINNER, 1, status='failed', cause='VG3: genre: norm 0', failure_kind='vg3')
+    with pytest.raises(AssertionError, match=r'rerun it once first \(`eg_train3.py train --rerun-failed`\)'):
+        s3.read_run(tmp_path, WINNER, PSHA, seed=1)
+    with pytest.raises(AssertionError, match='rerun it once first'):             # a fresh seed through the fresh reader
+        s3.read_fresh_run(tmp_path, WINNER, 1, PSHA, {})
+    with pytest.raises(AssertionError, match='rerun it once first'):             # seed 0 behaves the same
+        write_run_json(tmp_path, 'GT-2', 0, status='failed', cause='VG3: genre: norm 0', failure_kind='vg3')
+        s3.read_run(tmp_path, 'GT-2', PSHA)
+    with pytest.raises(AssertionError, match='rerun it once first'):             # --failed does not change that
+        s3.read_run(tmp_path, 'GT-2', PSHA, {'GT-2': 'bad'})
+
+
+def test_a_failed_rerun_and_a_non_finite_failure_stay_final(tmp_path):
+    write_run_json(tmp_path, WINNER, 1, status='failed', cause='VG3: genre: norm 0', failure_kind='vg3',
+                   rerun_of='/x/s1.failed-1')
+    r = s3.read_run(tmp_path, WINNER, PSHA, seed=1)
+    assert r['status'] == 'failed' and r['img'] is None and 'VG3' in r['cause']
+    write_run_json(tmp_path, WINNER, 2, status='failed', cause='non-finite loss at epoch 3', failure_kind='nonfinite_loss')
+    assert s3.read_run(tmp_path, WINNER, PSHA, seed=2)['status'] == 'failed'
+    write_run_json(tmp_path, 'GT-2', 0, status='failed', cause='VG3: genre: norm 0', failure_kind='vg3', rerun_of='/x/s0.failed-1')
+    assert s3.read_run(tmp_path, 'GT-2', PSHA)['status'] == 'failed'
+
+
+def test_a_failed_run_json_needs_a_known_failure_kind(tmp_path):
+    write_run_json(tmp_path, WINNER, 1, status='failed', cause='something', failure_kind=None)
+    with pytest.raises(AssertionError, match='failure_kind'):
+        s3.read_run(tmp_path, WINNER, PSHA, seed=1)
+
+
+def test_fresh_refuses_a_declared_variant_with_no_failed_seed(tmp_path, monkeypatch):
+    write_score_all(tmp_path)
+    write_parity(tmp_path)
+    ctx = labels_ctx()
+    stub_read_run(monkeypatch, ctx, {WINNER: 0.05, 'R6-5': 0.7})
+    with pytest.raises(AssertionError, match=r'--failed GT-4.*no seed'):
+        s3.run_fresh(tmp_path, 6, 1, smoke=True, ctx=ctx, declared_failed={WINNER: 'norm 0 after the rerun'})
+    stub_read_run(monkeypatch, ctx, {WINNER: 0.05, 'R6-5': 0.7}, {(WINNER, 2): 'norm 0 after the rerun'})
+    rec = s3.run_fresh(tmp_path, 6, 1, smoke=True, ctx=ctx, declared_failed={WINNER: 'norm 0 after the rerun'})
+    assert rec['c_outcome'] is None and 'seed 2' in rec['no_outcome_cause']
+
+
+def test_fresh_end_to_end_stops_on_another_variants_fresh_folder(tmp_path, monkeypatch):
+    write_score_all(tmp_path)
+    write_parity(tmp_path)
+    write_run_json(tmp_path, 'GR-2', 2)                                  # a fresh-seed run of a variant that is not the winner
+    ctx = labels_ctx()
+    stub_read_run(monkeypatch, ctx, {WINNER: 0.05, 'R6-5': 0.7})
+    with pytest.raises(AssertionError, match='VG4'):
+        s3.run_fresh(tmp_path, 6, 1, smoke=True, ctx=ctx)
+    assert not (s3.stage_dir(tmp_path) / 'score_fresh.json').exists()
+
+
+def test_a_failed_r6_5_fresh_run_leaves_no_c_outcome_and_names_the_cause(tmp_path, monkeypatch):
+    write_score_all(tmp_path)
+    write_parity(tmp_path)
+    ctx = labels_ctx()
+    stub_read_run(monkeypatch, ctx, {WINNER: 0.05, 'R6-5': 0.7}, {('R6-5', 3): 'VG3: genre: norm 0 after the rerun'})
+    rec = s3.run_fresh(tmp_path, 6, 1, smoke=True, ctx=ctx)
+    assert rec['c_outcome'] is None and rec['effects'] is None and rec['genre_vs_targets'] is None
+    assert 'R6-5 seed 3' in rec['no_outcome_cause'] and 'norm 0 after the rerun' in rec['no_outcome_cause']
+    assert rec['runs']['R6-5']['3']['status'] == 'failed' and rec['runs'][WINNER]['3']['status'] == 'ok'
+    assert 'no C outcome' in rec['reading']
+
+
+def test_reported_markdown_rounds_lists_fresh_epochs_and_notes_the_adaptor(tmp_path):
+    asp = list(eg_paths.ASPECTS)
+    ep = {a: 4 for a in asp}
+    p = {a: dict(A=0.3, e=0.01, lo=0.0, hi=0.02) for a in asp}
+    leiden = {a: dict(mean=0.2) for a in asp}
+    entry = lambda extra=None: dict(status='ok', cause=None, best_epoch=ep, p=p, leiden=leiden,
+                                    old5000={a: 0.25 for a in asp}, **(extra or {}))
+    fresh = dict(c_outcome=None, no_outcome_cause='x', effects=None, genre_vs_targets=None, reading='r', runs={
+        WINNER: {'1': dict(status='ok', cause=None, best_epoch={'emotion': 7, 'style': 8, 'genre': 9}),
+                 '2': dict(status='failed', cause='non-finite', best_epoch={})}})
+    r = dict(p_sha256='ab', smoke=False, reference='R6-5', seed0_outcome='III-PROM', winner=WINNER,
+             A_genre_winner=0.4912345678, label_counts_p={}, label_counts_old5000={}, variants=['R6-5', WINNER, 'GA-1'],
+             entries={'R6-5': entry(), WINNER: entry(), 'GA-1': entry(dict(adaptor=dict(A=0.3, head_A=0.31, adaptor_minus_head=-0.01)))},
+             references=dict(t_g=0.4989, promising=0.486, probe_genre_ridge_p=0.5,
+                             instructed_genre_image_p={a: 0.1 for a in asp}, default_image_p={a: 0.1 for a in asp}),
+             fresh=fresh, base_vs_12_24={})
+    text = s3.report_markdown(r)
+    assert '0.4912345678' not in text and 'A_genre 0.4912' in text
+    assert 'without the unit-norm check' in text
+    assert 'Best epochs on the fresh seeds' in text and f'| {WINNER} | 1 | 7 | 8 | 9 |' in text
+    assert f'| {WINNER} | 2 | failed' in text
+    r['winner'], r['A_genre_winner'], r['fresh'], r['seed0_outcome'] = None, None, None, 'III-NONE'
+    assert 'A_genre -' in s3.report_markdown(r)
