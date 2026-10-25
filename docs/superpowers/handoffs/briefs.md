@@ -830,3 +830,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-21-r10-attention-maps-handoff.md
 - New chat: tab 'r10 attention maps', session e5b42f77-07da-4e87-9759-def96bd42c89
 
+[brief] CoSiR: r10 decide 17 -> r10 decide 18 (2026-10-25 02:32 Amsterdam)
+- Done: decision C on the D2 ablation, the wrap-up, decision A (two parts), grill round 1 (fresh sample, recipe rule, ArtELingo-28's role).
+- State: part 1 checks the caption-free variants on all 29,232 train-side paintings outside the old sample; part 2 builds code for other backbones and ArtELingo-28.
+- Next: grill round 2 (three key questions, then the minor batch), the closing summary, then the spec.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-decide-18-handoff.md
+- New chat: tab 'r10 decide 18', session b6a50c6b-1a3d-4a79-bca7-3a1a6102bf12
+
