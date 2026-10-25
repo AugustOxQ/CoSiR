@@ -70,6 +70,8 @@ def write_run(out, variant, status='ok', cause=None, n=29232, norm=1.0, finite=T
     folder.mkdir(parents=True)
     run = dict(variant=variant, seed=0, switches=V.switches(variant), status=status, cause=cause,
                best_epoch={a: 3 for a in eg_paths.ASPECTS}, p_sha256=p_sha)
+    if status == 'failed':
+        run['failure_kind'] = 'nonfinite_loss'
     if p_sha is None:
         del run['p_sha256']
     (folder / 'run.json').write_text(json.dumps(run))
