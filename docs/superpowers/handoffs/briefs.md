@@ -854,3 +854,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-16-handoff.md
 - New chat: tab 'r10 build 16', session ebe70ffc-9ae9-4e30-9995-6c10660ea6f8
 
+[brief] CoSiR: r10 build 16 -> r10 build 17 (2026-10-25 04:19 Amsterdam)
+- Done: 16 tickets written; 01, 02, 09, 12 merged (stage 0: 9 of 9 exports bit for bit; scorer check exact).
+- State: 10 (student) built, its GPU regressions pass at both scales; three review fixes owed before its merge.
+- Next: 10's fixer, then the frontier (03, 05, 07, 08, 11, 15; then 04, 06, 13, 14; 16), final review, merge.
+- Blocked: nothing. Night mode; no container restart (user).
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-17-handoff.md
+- New chat: tab 'r10 build 17', session 5bbe6f00-e848-42c9-a9fc-7c04aec7ff4f
+
