@@ -21,8 +21,8 @@ paintings, local 3090, 3 seeds) shows that the instructed graphs carry the gain:
 falls below PercepT core; the teacher and the shared trunk are close to redundant; without the caption terms emotion
 and style rise (style 0.3945 against the instructed image's 0.3952), confounded with the teacher's loss share. Open
 in decide 17: decision A (a check of the caption-free variants on other development paintings, genre, or item 5:
-other backbones and ArtELingo-28), then item 5's grill; a side chat maps Qwen's attention under the four views. The
-11-10 gate is the instructed Qwen bar and aspect-named retrieval.
+other backbones and ArtELingo-28), then item 5's grill; the side chat on Qwen's attention is done (report 12-23), with four
+candidate ideas for decision A. The 11-10 gate is the instructed Qwen bar and aspect-named retrieval.
 
 ## Parked ideas
 
@@ -67,7 +67,14 @@ other backbones and ArtELingo-28), then item 5's grill; a side chat maps Qwen's 
   instructed style image graph (R0), not the style caption graph (R0o).
 - **Side task (user):** Qwen's attention maps under the four prompts, 5,000 development paintings × 3 input modalities,
   an HTML viewer and a summary; side chat "r10 attention maps"
-  ([handoff](handoffs/2026-10-21-r10-attention-maps-handoff.md)).
+  ([handoff](handoffs/2026-10-21-r10-attention-maps-handoff.md)). Done 2026-10-25
+  ([report 12-23](../reports/auto/percept/2026-12-23_attention_maps.md)): the instructions move the image map (L1 0.68
+  to 0.81 from the default, floor 0.09) and halve the image's share of the pooled token's attention (0.22 to 0.12);
+  the emotion instruction moves caption attention to emotion words. Its decision C: "very interesting results,
+  provide some potential basis for deeper analysis." (user, before ours); ours: the instruction effects are solid, raw
+  attention is a weak picture of where the model looks. Four candidate ideas handed to this loop's decision A (edge
+  tokens probe, aspect words as a caption signal, masking test, class differences; report section "Candidate ideas
+  for decide 17").
 - **Decided (A):** open, awaiting the user. Options of the brief: (1) the caption-free variants on development
   paintings that did not choose D2, beside D2 with the teacher at 1/3; (2) genre: the information-ceiling probe, then
   teacher-faithful heads; (3) item 5: other backbones and ArtELingo-28, then its grill.
