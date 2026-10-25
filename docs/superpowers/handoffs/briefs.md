@@ -926,3 +926,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21-handoff.md
 - New chat: tab 'r10 build 21', session 06c0cfc8-5c9e-40ef-8f0c-1a58bed7fb46
 
+[brief] CoSiR: r10 build 21 -> r10 build 21b (2026-10-25 19:10 Amsterdam)
+- Done: 16 tickets and their index written from the spec and rule; foundation (paths, encoder table, stage iii variant constants) committed on branch `r10-encoders-genre`; a code map of the reused 12-24 code; the three new checkpoints cached and checked loadable.
+- State: no ticket started; Codex 77% of its five-hour window left (reset 21:26).
+- Next: dispatch the first wave (01 Codex, 05 and 12 Sonnet `high`), then work the frontier.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21b-handoff.md
+- New chat: tab 'r10 build 21b', session 24b8d019-1c58-4ecd-9de1-dd74af2470a7
+
