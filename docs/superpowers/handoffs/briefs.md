@@ -886,3 +886,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-20-handoff.md
 - New chat: tab 'r10 build 20', session 4c57cb8b-ff7f-48dc-aab4-0bc3d48f11a5
 
+[brief] CoSiR: r10 build 20 -> r10 run 14 (2026-10-25 06:59 Amsterdam)
+- Done: the build is merged into main (1227cfb): 16 tickets, final review with no blocker, one fix wave, re-review PASS.
+- State: the GPU smoke ran every queue; CLIP B/32 and ArtELingo-28 Qwen stores built; round suite 334 passed.
+- Next: estimate the end, choose the split (D32: with all four candidates it ends after 11:00), run, report.
+- Blocked: nothing. Night mode; GPU check passes; no container restart.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-run-14-handoff.md
+- New chat: tab 'r10 run 14', session 745d4891-f166-420b-bcab-fb6eddcba5dd
+
