@@ -46,6 +46,14 @@ def test_extras_follow_ladder_and_failed_runs_count_as_run(tmp_path):
     assert not records['GT-4']['guarded']
 
 
+def test_unguarded_highest_rung_uses_neighbors(tmp_path):
+    records = {v: result(.4, emotion=-.01) for v in vg.variants.FIRST}
+    records['GT-4'] = result(.51, emotion=-.01)
+    choice = vg.choose_first(records)
+    assert choice['closest'] == 'GT-4' and choice['closest_guarded'] is False
+    assert choice['extras'] == ['GT-3', 'GT-6']
+
+
 def test_ties_keep_first_and_guard_is_inclusive(tmp_path):
     records = {v: result(.51, -.0046, -.0082) for v in vg.variants.FIRST}
     choice = vg.choose_first(records)
@@ -55,6 +63,32 @@ def test_ties_keep_first_and_guard_is_inclusive(tmp_path):
     records = {v: result(.51, -.00461) for v in vg.variants.FIRST}
     assert vg.choose_all(records, [], .4989161752444698)['winner'] is None
     assert vg.choose_first(records)['guarded_pool'] is False
+
+
+def test_iii_go_includes_target_boundary(tmp_path):
+    target = .4989161752444698
+    records = {v: result(.4) for v in vg.variants.FIRST}
+    records['GT-2'] = result(target)
+    assert vg.choose_all(records, [], target)['outcome'] == 'III-GO'
+
+
+def test_fresh_trigger_includes_seed_range_boundary(tmp_path):
+    records = {v: result(.4) for v in vg.variants.FIRST}
+    records['GT-2'] = result(.5)
+    records['GT-2']['e_genre'] = .0128
+    records['GT-2']['effects']['genre']['e'] = .0128
+    assert vg.choose_all(records, [], .4989161752444698)['fresh_seeds'] is True
+    records['GT-2']['e_genre'] = np.nextafter(.0128, -np.inf)
+    records['GT-2']['effects']['genre']['e'] = records['GT-2']['e_genre']
+    assert vg.choose_all(records, [], .4989161752444698)['fresh_seeds'] is False
+
+
+@pytest.mark.parametrize('at_boundary', [True, False])
+def test_promising_level_is_target_minus_genre_range(tmp_path, at_boundary):
+    target, level = .4989161752444698, .4861161752444698
+    records = {v: result(.4) for v in vg.variants.FIRST}
+    records['GT-2'] = result(level if at_boundary else np.nextafter(level, -np.inf))
+    assert vg.choose_all(records, [], target)['outcome'] == ('III-PROM' if at_boundary else 'III-NONE')
 
 
 def test_fresh_seed_pairing_and_c_outcomes(tmp_path):
@@ -77,6 +111,11 @@ def test_fresh_seed_pairing_and_c_outcomes(tmp_path):
     assert vg.c_outcome(record) == 'C-QUAL'
     record['emotion']['e'] = -.005
     assert vg.c_outcome(record) == 'C-FAILS'
+
+
+def test_zero_genre_effect_is_c_fails(tmp_path):
+    effects = {a: dict(e=0., lo=-.001, hi=.001) for a in vg.ASPECTS}
+    assert vg.c_outcome(effects) == 'C-FAILS'
 
 
 def dump(path, value):
