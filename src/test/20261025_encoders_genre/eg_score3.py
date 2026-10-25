@@ -229,7 +229,7 @@ def _identity(variant, aspect, p_sha, img_sha, **extra):
     versions = rb_ami.versions()
     return dict(variant=variant, aspect=aspect, seed=SEED, p_sha256=p_sha, img_sha256=img_sha,
                 sklearn=versions['sklearn'], numpy=versions['numpy'],
-                rb_ami_sha256=rb_pick.code_sha256(('rb_ami.py',))['rb_ami.py'], **extra)
+                code_sha256=rb_pick.code_sha256(('rb_ami.py', 'rb_pick.py')), **extra)
 
 
 def fixed_partitions(outputs, variant, aspect, img, p_sha):
@@ -295,7 +295,9 @@ def base_images(p_sha):
 
 def read_run(outputs, variant, p_sha, declared_failed=None):
     """{status, cause, best_epoch, run_sha256, img {aspect: array}} of one seed-0 variant run. A run.json with
-    status 'failed', or a variant named in `declared_failed` (VG3 still failing after its rerun), has no exports read."""
+    status 'failed' has no exports read. A variant named in `declared_failed` (rule §4.3: VG3 still failing after its
+    rerun) has its exports read and must fail VG3 on at least one aspect; the problems are kept as `vg3_problem`
+    beside the declared cause, and the record is a failed run."""
     declared_failed = declared_failed or {}
     folder = eg_paths.iii_run(outputs, variant, SEED)
     run_path = folder / 'run.json'
@@ -304,22 +306,25 @@ def read_run(outputs, variant, p_sha, declared_failed=None):
     assert run['variant'] == variant and run['seed'] == SEED, (variant, run.get('variant'), run.get('seed'))
     assert run['switches'] == V.switches(variant), f'{variant}: run.json switches {run["switches"]}'
     assert run['status'] in ('ok', 'failed'), (variant, run['status'])
-    if 'p_sha256' in run:
-        assert run['p_sha256'] == p_sha, f'{variant}: run.json is for another P'
+    assert p_sha == eg_paths.P_SHA256, 'P differs from 12-24\'s'
+    assert run.get('p_sha256') == p_sha, f'{variant}: run.json p_sha256 {run.get("p_sha256")!r} is not the P of 12-24'
     rec = dict(status=run['status'], cause=run.get('cause'), best_epoch=run.get('best_epoch'),
                run_sha256=_file_sha256(run_path), img=None)
     if run['status'] == 'failed':
         assert run.get('cause'), f'{variant}: failed run without a cause'
         return rec
-    if variant in declared_failed:
-        return dict(rec, status='failed', cause=declared_failed[variant])
-    img = {}
+    img, problems = {}, {}
     for a in ASPECTS:
         with np.load(folder / f'{a}__P.npz', allow_pickle=False) as z:
             assert 'img' in z.files, (variant, a, z.files)
             img[a] = z['img']
         problem = rb_pick.vp2_problem(img[a])                     # VG3: 29,232 finite unit-norm rows
-        assert problem is None, f'VG3 {variant}/{a}: {problem} (rerun it, or declare the failure with --failed)'
+        if problem is not None:
+            problems[a] = problem
+    if variant in declared_failed:
+        assert problems, f'VG3 {variant}: --failed declared it, but its exports pass VG3 on every aspect (rule §4.3)'
+        return dict(rec, status='failed', cause=declared_failed[variant], vg3_problem=problems)
+    assert not problems, f'VG3 {variant}: {problems} (rerun it, or declare the failure with --failed)'
     return dict(rec, img=img)
 
 
@@ -334,6 +339,9 @@ def check_variant_dirs(outputs, allowed):
 # ------------------------------------------------------------------ scoring
 def score_variants(outputs, variants, n_draws, workers, declared_failed=None, ctx=None):
     """{'base': {aspect: A}, 'results': {variant: record}, 'identity': {...}} for `variants` against R6-5."""
+    declared_failed = declared_failed or {}
+    assert set(declared_failed) <= set(variants), \
+        f'--failed names {sorted(set(declared_failed) - set(variants))}, which are not among the scored {list(variants)}'
     ctx = ctx or load_context()
     p_sha, labels = ctx['p_sha'], ctx['labels']
     base = base_images(p_sha)
@@ -359,7 +367,8 @@ def score_variants(outputs, variants, n_draws, workers, declared_failed=None, ct
     results = {}
     for v in variants:
         if runs[v]['status'] == 'failed':
-            rec = failed_record(runs[v]['cause'])
+            rec = dict(failed_record(runs[v]['cause']), **({'vg3_problem': runs[v]['vg3_problem']}
+                                                           if 'vg3_problem' in runs[v] else {}))
         else:
             rec = condition_record(effects[v])
         results[v] = dict(rec, best_epoch=runs[v]['best_epoch'])
@@ -466,13 +475,15 @@ def run_check_vg1(outputs):
 
 
 # ------------------------------------------------------------------ CLI
-def parse_failed(items):
-    """['VARIANT=CAUSE', ...] -> {variant: cause}: a variant still failing VG3 after its rerun."""
+def parse_failed(items, scored=None):
+    """['VARIANT=CAUSE', ...] -> {variant: cause}: a variant still failing VG3 after its rerun. With `scored` (the
+    variants this mode scores) a variant outside it is refused."""
     out = {}
     for item in items:
         variant, sep, cause = item.partition('=')
         assert sep and cause, f'--failed wants VARIANT=CAUSE, got {item!r}'
         V.parse(variant)
+        assert scored is None or variant in scored, f'--failed {variant}: not among the scored variants {list(scored)}'
         assert variant not in out, f'--failed twice for {variant}'
         out[variant] = cause
     return out
@@ -494,7 +505,12 @@ def main(argv=None):
         assert eg_paths.smoke_ok(args.outputs), 'smoke needs --outputs under /tmp/claude-0/'
     eg_paths.check_imports()
     n_draws = 20 if args.smoke else rb_ami.N_DRAWS
-    failed = parse_failed(args.failed)
+    scored = list(V.FIRST)
+    if args.mode == 'all':
+        first_path = stage_dir(args.outputs) / 'score_first.json'
+        scored += json.loads(first_path.read_text())['extras'] if first_path.exists() else []
+    failed = parse_failed(args.failed, scored if args.mode != 'check' else None)
+    assert not (args.mode == 'check' and failed), '--failed does not apply to `check vg1`'
     if args.mode == 'check':
         rec = run_check_vg1(args.outputs)
         print(f"{stage_dir(args.outputs) / 'vg1_scorer.json'}: VG1 scorer half {'PASS' if rec['pass'] else 'FAIL'}; "

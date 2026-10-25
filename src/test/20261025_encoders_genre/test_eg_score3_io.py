@@ -62,11 +62,17 @@ def test_cached_bootstrap_scores_are_reused_and_arms_are_independent(monkeypatch
 
 
 # ------------------------------------------------------------------ reading a run (VG3, failed runs, VG4 folders)
-def write_run(out, variant, status='ok', cause=None, n=29232, norm=1.0, finite=True):
+PSHA = eg_paths.P_SHA256
+
+
+def write_run(out, variant, status='ok', cause=None, n=29232, norm=1.0, finite=True, p_sha=PSHA):
     folder = eg_paths.iii_run(out, variant, 0)
     folder.mkdir(parents=True)
-    (folder / 'run.json').write_text(json.dumps(dict(variant=variant, seed=0, switches=V.switches(variant), status=status,
-                                                     cause=cause, best_epoch={a: 3 for a in eg_paths.ASPECTS})))
+    run = dict(variant=variant, seed=0, switches=V.switches(variant), status=status, cause=cause,
+               best_epoch={a: 3 for a in eg_paths.ASPECTS}, p_sha256=p_sha)
+    if p_sha is None:
+        del run['p_sha256']
+    (folder / 'run.json').write_text(json.dumps(run))
     if status == 'ok':
         x = np.zeros((n, 2048), np.float16)
         x[:, 0] = norm
@@ -78,22 +84,70 @@ def write_run(out, variant, status='ok', cause=None, n=29232, norm=1.0, finite=T
 
 def test_read_run_ok_failed_declared_and_vg3(tmp_path):
     write_run(tmp_path, 'GT-2')
-    r = s3.read_run(tmp_path, 'GT-2', 'sha')
+    r = s3.read_run(tmp_path, 'GT-2', PSHA)
     assert r['status'] == 'ok' and set(r['img']) == {'emotion', 'style', 'genre'} and r['best_epoch']['genre'] == 3
     write_run(tmp_path, 'GT-4', status='failed', cause='non-finite loss at epoch 2')
-    r = s3.read_run(tmp_path, 'GT-4', 'sha')
+    r = s3.read_run(tmp_path, 'GT-4', PSHA)
     assert r['status'] == 'failed' and r['img'] is None and 'non-finite' in r['cause']
     write_run(tmp_path, 'GR-2', norm=0.5)                              # fails VG3 (not unit norm)
     with pytest.raises(AssertionError, match='VG3'):
-        s3.read_run(tmp_path, 'GR-2', 'sha')
-    r = s3.read_run(tmp_path, 'GR-2', 'sha', {'GR-2': 'norm 0.5 after the rerun'})
+        s3.read_run(tmp_path, 'GR-2', PSHA)
+    r = s3.read_run(tmp_path, 'GR-2', PSHA, {'GR-2': 'norm 0.5 after the rerun'})
     assert r['status'] == 'failed' and r['cause'] == 'norm 0.5 after the rerun'
+    assert set(r['vg3_problem']) == {'emotion', 'style', 'genre'} and r['img'] is None     # the problem beside the cause
     write_run(tmp_path, 'GA-1', n=100)
     with pytest.raises(AssertionError, match='VG3'):
-        s3.read_run(tmp_path, 'GA-1', 'sha')
+        s3.read_run(tmp_path, 'GA-1', PSHA)
     write_run(tmp_path, 'GR-0.5', finite=False)
     with pytest.raises(AssertionError, match='VG3'):
-        s3.read_run(tmp_path, 'GR-0.5', 'sha')
+        s3.read_run(tmp_path, 'GR-0.5', PSHA)
+
+
+def test_declared_failure_of_a_run_that_passes_vg3_is_refused(tmp_path):
+    write_run(tmp_path, 'GT-2')                                        # exports pass VG3 on all three aspects
+    with pytest.raises(AssertionError, match='VG3'):
+        s3.read_run(tmp_path, 'GT-2', PSHA, {'GT-2': 'no good reason'})
+
+
+def test_declared_failure_needs_one_aspect_failing_vg3(tmp_path):
+    write_run(tmp_path, 'GT-2')
+    folder = eg_paths.iii_run(tmp_path, 'GT-2', 0)
+    bad = np.zeros((29232, 2048), np.float16)                          # genre alone is not unit norm
+    np.savez(folder / 'genre__P.npz', img=bad)
+    with pytest.raises(AssertionError, match='VG3'):
+        s3.read_run(tmp_path, 'GT-2', PSHA)
+    r = s3.read_run(tmp_path, 'GT-2', PSHA, {'GT-2': 'genre norm 0 after the rerun'})
+    assert r['status'] == 'failed' and list(r['vg3_problem']) == ['genre'] and 'norm 0' in r['cause']
+
+
+def test_run_json_must_carry_the_p_hash_of_12_24(tmp_path):
+    write_run(tmp_path, 'GT-2', p_sha=None)
+    with pytest.raises(AssertionError, match='p_sha256'):
+        s3.read_run(tmp_path, 'GT-2', PSHA)
+    write_run(tmp_path, 'GT-4', status='failed', cause='non-finite loss', p_sha=None)
+    with pytest.raises(AssertionError, match='p_sha256'):
+        s3.read_run(tmp_path, 'GT-4', PSHA)
+    write_run(tmp_path, 'GR-2', p_sha='0' * 64)
+    with pytest.raises(AssertionError, match='p_sha256'):
+        s3.read_run(tmp_path, 'GR-2', PSHA)
+
+
+def test_failed_option_refuses_a_variant_outside_the_scored_set():
+    first = list(V.FIRST)
+    assert s3.parse_failed(['GT-2=bad norm'], first) == {'GT-2': 'bad norm'}
+    with pytest.raises(AssertionError, match='scored'):
+        s3.parse_failed(['GT-6=bad norm'], first)                      # a valid variant, but not run in this stage
+    assert s3.parse_failed(['GT-6=bad norm'], first + ['GT-6']) == {'GT-6': 'bad norm'}
+
+
+def test_scorer_refuses_a_declared_variant_outside_the_variants_it_scores(tmp_path):
+    with pytest.raises(AssertionError, match='scored'):
+        s3.score_variants(tmp_path, ['GT-2'], 20, 1, {'GT-4': 'x'}, ctx=dict(p_sha=PSHA, labels={}))
+
+
+def test_bootstrap_cache_identity_names_the_code_it_runs():
+    ident = s3._identity('GT-2', 'genre', 'p', 'i')
+    assert set(ident['code_sha256']) == {'rb_ami.py', 'rb_pick.py'}
 
 
 def test_variant_folders_outside_the_allowed_set_stop_the_scorer(tmp_path):
