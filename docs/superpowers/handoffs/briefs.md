@@ -862,3 +862,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-17-handoff.md
 - New chat: tab 'r10 build 17', session 5bbe6f00-e848-42c9-a9fc-7c04aec7ff4f
 
+[brief] CoSiR: r10 build 17 -> r10 build 18 (2026-10-25 04:57 Amsterdam)
+- Done: tickets 03, 08, 10, 11, 14 merged (each verdict ticket reviewed by Opus `high`, fixes applied; GPU regressions pass).
+- State: 9 of 16 tickets merged; 05 built, not reviewed; 15 built, not reviewed (it reproduces the CT stage 1 and 2 verdicts exactly).
+- Next: read the part 1 agreement check, review 05 and 15, build 07, 13, 04, 06, then 16; final review; merge.
+- Blocked: nothing. Night mode; GPU check passes; no container restart.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-18-handoff.md
+- New chat: tab 'r10 build 18', session aef61a93-9b15-4433-a322-fab20ac96c0f
+
