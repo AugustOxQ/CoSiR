@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import time
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -284,6 +285,25 @@ def save(path, key, arr, side):
     path.with_suffix('.json').write_text(json.dumps(side))
 
 
+def save_partitions(out, tag, res):
+    """Save the partitions a run derived, as the round's scorer does: part2/partitions/<tag>/<arm>/<aspect>__s*__<r>.npz."""
+    for arm, by_seed in res['_partitions'].items():
+        for s, readings in by_seed.items():
+            name = 'emotion' if arm.startswith('K') else 'percept'
+            for reading, arr in readings.items():
+                f = Path(out) / f'part2/partitions/{tag}/{arm}/{name}__s{s}__{reading}.npz'
+                f.parent.mkdir(parents=True, exist_ok=True)
+                np.savez(f, labels=arr)
+
+
+def stage_block(res, outcome_id='O1', **extra):
+    """A verdict block as the writers write it for a candidate that reached an outcome."""
+    name = res['candidate']
+    return dict(outcome_id=outcome_id, d=res['d'], **{f'A_{name}': res['A_cand']}, A_e=res['A_e'],
+                interval=res['interval'], eligibility=dict(eligible_seeds=res['eligible_seeds']),
+                bootstrap_d=res['bootstrap_d'], **extra)
+
+
 class World:
     """Tiny CT-like root, a candidate K2 and its matched arm M2 under an outputs folder."""
 
@@ -345,25 +365,41 @@ def test_run_stage_end_to_end_synthetic(tmp_path):
     assert res['label_counts'] == {str(k): int(v) for k, v in enumerate(np.bincount(w.labels, minlength=9))}
     assert res['d'] == pytest.approx(res['A_cand'] - max(res['A_e'].values()), abs=1e-12)
     assert len(res['bootstrap_d']) == 8
-    # the saved partitions of the new arms, when present, are compared; here none exist yet
+    # no partition was saved yet: nothing is checked, and every partition is named as unchecked (finding 3)
     assert res['partitions']['checked'] == 0 and res['partitions']['unchecked'] > 0
-    # now the new round's own saved partitions: equal, then one planted difference
-    parts = res['_partitions']
-    for arm in ('K2', 'M2'):
-        for s in range(5):
-            name = 'emotion' if arm == 'K2' else 'percept'
-            for reading, arr in parts[arm][s].items():
-                f = w.out / f'part2/partitions/sample/{arm}/{name}__s{s}__{reading}.npz'
-                f.parent.mkdir(parents=True, exist_ok=True)
-                np.savez(f, labels=arr)
+    assert len(res['partitions']['mismatches']) == res['partitions']['unchecked']
+    # now the saved partitions of every arm: equal, then one planted difference
+    save_partitions(w.out, 'sample', res)
     res2 = rb_v2.run_candidate('K2', 3, w.roots, draws=8, workers=2)
     assert res2['partitions']['checked'] > 0 and not res2['partitions']['mismatches']
+    assert res2['partitions']['unchecked'] == 0
     f = w.out / 'part2/partitions/sample/M2/percept__s1__own.npz'
     bad = np.load(f)['labels'].copy()
     bad[0, 0] = (bad[0, 0] + 1) % 40
     np.savez(f, labels=bad)
     res3 = rb_v2.run_candidate('K2', 3, w.roots, draws=8, workers=2)
     assert len(res3['partitions']['mismatches']) == 1 and 'M2' in res3['partitions']['mismatches'][0]
+
+
+def test_unchecked_partition_fails_v2_one_mismatch_per_arm_seed_and_reading(tmp_path):
+    """Finding 3: a partition that was never compared has not been shown equal."""
+    w = World(tmp_path)
+    res = rb_v2.run_candidate('K2', 3, w.roots, draws=4, workers=2)
+    save_partitions(w.out, 'sample', res)
+    verdict = w.out / 'part2/verdict_stage3.json'
+    write_verdict(verdict, stage_block(res))
+    assert rb_v2.run_stage(3, w.roots, candidates=['K2'], draws=4, workers=2)['agree']
+    (w.out / 'part2/partitions/sample/B1/percept__s2__own.npz').unlink()      # the expected file is missing
+    gone = rb_v2.run_candidate('K2', 3, w.roots, draws=4, workers=2)
+    assert gone['partitions']['unchecked'] == 1 and len(gone['partitions']['mismatches']) == 1
+    summary = rb_v2.run_stage(3, w.roots, candidates=['K2'], draws=4, workers=2)
+    assert not summary['agree']
+    (msg,) = summary['candidates']['K2']
+    assert 'B1' in msg and 's2' in msg and 'own' in msg and 'unchecked' in msg
+    # a renamed partitions folder leaves every partition unchecked
+    (w.out / 'part2/partitions').rename(w.out / 'part2/partitions_moved')
+    none = rb_v2.run_candidate('K2', 3, w.roots, draws=4, workers=2)
+    assert none['partitions']['checked'] == 0 and len(none['partitions']['mismatches']) == none['partitions']['unchecked'] > 30
 
 
 def test_run_candidate_asserts_a_sidecar_that_disagrees(tmp_path):
@@ -388,10 +424,10 @@ def test_run_candidate_asserts_a_non_unit_student_row(tmp_path):
 def test_stage_file_compares_with_the_verdict_and_reports_the_planted_difference(tmp_path):
     w = World(tmp_path)
     res = rb_v2.run_candidate('K2', 3, w.roots, draws=8, workers=2)
+    save_partitions(w.out, 'sample', res)
     verdict = w.out / 'part2/verdict_stage3.json'
     verdict.parent.mkdir(parents=True, exist_ok=True)
-    block = dict(d=res['d'], A_K2=res['A_cand'], A_e=res['A_e'], interval=res['interval'],
-                 eligibility=dict(eligible_seeds=res['eligible_seeds']), bootstrap_d=res['bootstrap_d'])
+    block = stage_block(res)
     write_verdict(verdict, block)
     summary = rb_v2.run_stage(3, w.roots, candidates=['K2'], draws=8, workers=2)
     saved = json.loads((w.out / 'part2/rederive_v2_stage3.json').read_text())
@@ -403,6 +439,37 @@ def test_stage_file_compares_with_the_verdict_and_reports_the_planted_difference
     saved = json.loads((w.out / 'part2/rederive_v2_stage3.json').read_text())
     assert not summary['agree'] and not saved['agree']
     assert any('B4-own' in m for m in saved['candidates']['K2']['comparison']['mismatches'])
+
+
+def test_block_without_outcome_is_skipped_and_recorded_others_go_on(tmp_path):
+    """Finding 1: a v_failure block (outcome_id None, no d, no A_e) does not stop the stage run."""
+    w = World(tmp_path)
+    res = rb_v2.run_candidate('K2', 3, w.roots, draws=8, workers=2)
+    save_partitions(w.out, 'sample', res)
+    verdict = w.out / 'part2/verdict_stage3.json'
+    failure = dict(outcome_id=None, v_failure='V3: missing file .../held/K3/emotion__s0.json')
+    verdict.write_text(json.dumps({'schema': 1, 'stage': 3, 'candidates': {'K2': stage_block(res), 'K3': failure}}))
+    summary = rb_v2.run_stage(3, w.roots, draws=8, workers=2)                 # no --candidates: the file's own blocks
+    saved = json.loads((w.out / 'part2/rederive_v2_stage3.json').read_text())
+    assert summary['agree'] and saved['agree'] and set(saved['candidates']) == {'K2'}
+    assert saved['candidates']['K2']['comparison']['agree']
+    assert saved['skipped']['K3']['status'] == 'no outcome, not re-derived'
+    assert saved['skipped']['K3']['v_failure'] == failure['v_failure']
+    assert summary['skipped'] == {'K3': failure['v_failure']}
+
+
+def test_smoke_stage3_keeps_all_five_seeds_and_20_draws(tmp_path, monkeypatch):
+    """Finding 5: as rb_score --smoke (stages 3 and 4 keep the five seeds)."""
+    monkeypatch.setattr(rb_v2, 'check_smoke_outputs', lambda path: None)
+    w = World(tmp_path)
+    res = rb_v2.run_candidate('K2', 3, w.roots, draws=20, workers=2)
+    save_partitions(w.out, 'sample', res)
+    verdict = w.out / 'part2/verdict_stage3.json'
+    write_verdict(verdict, stage_block(res))
+    summary = rb_v2.run_stage(3, w.roots, candidates=['K2'], workers=2, smoke=True)
+    saved = json.loads((w.out / 'part2/rederive_v2_stage3.json').read_text())['candidates']['K2']
+    assert saved['seeds'] == [0, 1, 2, 3, 4] and saved['draws'] == 20
+    assert summary['agree']                                         # the smoke verdict (five seeds, 20 draws) is matched
 
 
 def test_smoke_refuses_an_outputs_path_outside_the_scratch_area():
@@ -456,47 +523,172 @@ def test_reproduces_ct_verdict_stage2():
 
 # ---- stage 5, synthetic ------------------------------------------------------------------------------------
 
+class A28World:
+    """Tiny ArtELingo-28 tables and the saved outputs of models at a scale (same arrays at either scale)."""
+
+    def __init__(self, tmp, n=30):
+        self.n = n
+        names = sorted(f'q{i:02d}' for i in range(n))
+        self.sha = hashlib.sha256('\n'.join(names).encode()).hexdigest()
+        csv = pd.DataFrame({'emotion': [NINE[(i // 3 * 5 + (i % 3 == 2)) % 9] if i % 7 else 'other' for i in range(3 * n)],
+                            'painting': [nm for nm in names for _ in range(3)]})
+        parquet = pd.DataFrame({'row_id': np.arange(3 * n)[::-1].copy(), 'painting': csv['painting'].to_numpy()[::-1]})
+        got_names, self.labels, info = rb_v2.a28_emotion_labels(parquet, csv)
+        assert got_names == names and info['paintings'] == n
+        self.out = tmp / 'out'
+        self.roots = rb_v2.Roots(outputs=self.out, ct={'sample': tmp, 'full': tmp}, held_sha='x',
+                                 rcol={}, annotations=[], a28=(parquet, csv), a28_paintings=n)
+
+    def write_model(self, model, scale):
+        """Arrays depend on (arm, seed) only: the same at either scale, and B1, B6 shared by the models."""
+        arms = [(model, None, None)] + [('B1', 'P3', 2), ('B6', 'P2', 1)]
+        if model in rb_v2.MATCHED:
+            arms.append((rb_v2.MATCHED[model], 'P3', 3))
+        for s in range(5):
+            for arm, p, q in arms:
+                rng = np.random.default_rng([2, s, *arm.encode()])
+                base = dict(list_sha256=self.sha, rows=self.n, scale=scale, seed=s)
+                if p is None:
+                    x = np.eye(2048, dtype=np.float32)[self.labels * 3] \
+                        + 0.3 * rng.normal(size=(self.n, 2048)).astype(np.float32)
+                    x = (x / np.linalg.norm(x, axis=1, keepdims=True)).astype(np.float16)
+                    save(self.out / f'part2/{scale}/a28/{arm}/emotion__s{s}.npz', 'img', x,
+                         dict(base, width=2048, dtype='float16', arm=arm, aspect='emotion'))
+                else:
+                    pr = (np.eye(40, dtype=np.float32)[self.labels % 40] * q
+                          + rng.random((self.n, 40)).astype(np.float32)).astype(np.float32)
+                    save(self.out / f'part2/{scale}/a28/{arm}/{p}__s{s}.npz', 'prob', pr,
+                         dict(base, width=40, dtype='float32', arm=arm, aspect='percept'))
+
+    def derive(self, model, scale, draws=6):
+        res = rb_v2.run_candidate(model, 5, self.roots, draws=draws, workers=2, scale=scale)
+        save_partitions(self.out, f'a28_{scale}', res)
+        return res
+
+    def block(self, res, **extra):
+        return dict(outcome_id='O5', d=res['d'], A_cand=res['A_cand'], A_e=res['A_e'], interval=res['interval'],
+                    eligibility=dict(eligible_seeds=res['eligible_seeds']), bootstrap_d=res['bootstrap_d'], **extra)
+
+    def write_verdicts(self, blocks, stage4=None):
+        (self.out / 'part2').mkdir(parents=True, exist_ok=True)
+        (self.out / 'part2/verdict_stage5.json').write_text(json.dumps({'blocks': blocks}))
+        if stage4 is not None:
+            (self.out / 'part2/verdict_stage4.json').write_text(json.dumps({'candidates': stage4}))
+
+
 def test_stage5_end_to_end_synthetic(tmp_path):
-    n = 30
-    names = sorted(f'q{i:02d}' for i in range(n))
-    sha = hashlib.sha256('\n'.join(names).encode()).hexdigest()
-    rng = np.random.default_rng(2)
-    csv = pd.DataFrame({'emotion': [NINE[(i // 3 * 5 + (i % 3 == 2)) % 9] if i % 7 else 'other' for i in range(3 * n)],
-                        'painting': [nm for nm in names for _ in range(3)]})
-    parquet = pd.DataFrame({'row_id': np.arange(3 * n)[::-1].copy(), 'painting': csv['painting'].to_numpy()[::-1]})
-    got_names, labels, info = rb_v2.a28_emotion_labels(parquet, csv)
-    assert got_names == names and info['paintings'] == n
-    out = tmp_path / 'out'
-    roots = rb_v2.Roots(outputs=out, ct={'sample': tmp_path, 'full': tmp_path}, held_sha='x',
-                        rcol={}, annotations=[], a28=(parquet, csv), a28_paintings=n)
-
-    def prob(q):
-        return (np.eye(40, dtype=np.float32)[labels % 40] * q + rng.random((n, 40)).astype(np.float32)).astype(np.float32)
-
-    for s in range(5):
-        x = np.eye(2048, dtype=np.float32)[labels * 3] + 0.3 * rng.normal(size=(n, 2048)).astype(np.float32)
-        x = (x / np.linalg.norm(x, axis=1, keepdims=True)).astype(np.float16)
-        base = dict(list_sha256=sha, rows=n, scale='sample', seed=s)
-        save(out / f'part2/sample/a28/K2/emotion__s{s}.npz', 'img', x,
-             dict(base, width=2048, dtype='float16', arm='K2', aspect='emotion'))
-        for arm, p, q in [('B1', 'P3', 2), ('B6', 'P2', 1), ('M2', 'P3', 3)]:
-            save(out / f'part2/sample/a28/{arm}/{p}__s{s}.npz', 'prob', prob(q),
-                 dict(base, width=40, dtype='float32', arm=arm, aspect='percept'))
-    res = rb_v2.run_candidate('K2', 5, roots, draws=6, workers=2, scale='sample')
+    w = A28World(tmp_path)
+    w.write_model('K2', 'sample')
+    res = rb_v2.run_candidate('K2', 5, w.roots, draws=6, workers=2, scale='sample')
     assert set(res['A_e']) == {f'{b}-{r}' for b in ('B1', 'B6', 'M2') for r in ('r20', 'own')}
-    assert res['n'] == n and res['list_sha256'] == sha and 'B2' not in res['eligible_seeds']
-    block = dict(d_A28=res['d'], A_K2=res['A_cand'], A_e=res['A_e'], interval=res['interval'],
-                 eligible_seeds=res['eligible_seeds'], bootstrap_d=res['bootstrap_d'])
-    v = out / 'part2/verdict_stage5.json'
-    v.write_text(json.dumps({'models': {'K2': block}}))
-    summary = rb_v2.run_stage(5, roots, candidates=['K2'], draws=6, workers=2, scales={'K2': 'sample'})
-    assert summary['agree']
+    assert res['n'] == w.n and res['list_sha256'] == w.sha and 'B2' not in res['eligible_seeds']
+    assert res['partitions']['checked'] == 0 and res['partitions']['unchecked'] > 0
+    res = w.derive('K2', 'sample')
+    assert res['partitions']['checked'] == 0              # derived before the partitions were saved
+    again = rb_v2.run_candidate('K2', 5, w.roots, draws=6, workers=2, scale='sample')
+    assert again['partitions']['unchecked'] == 0 and again['partitions']['checked'] > 0
+    w.write_verdicts({'K2': w.block(res, scale='sample')})
+    kwargs = dict(candidates=['K2'], draws=6, workers=2, scales={'K2': 'sample'})
+    assert rb_v2.run_stage(5, w.roots, **kwargs)['agree']
+    block = w.block(res, scale='sample')
     block['interval'] = [block['interval'][0], block['interval'][1] + 1e-3]
-    v.write_text(json.dumps({'models': {'K2': block}}))
-    assert not rb_v2.run_stage(5, roots, candidates=['K2'], draws=6, workers=2, scales={'K2': 'sample'})['agree']
-    side = out / 'part2/sample/a28/B1/P3__s0.json'
+    w.write_verdicts({'K2': block})
+    assert not rb_v2.run_stage(5, w.roots, **kwargs)['agree']
+    side = w.out / 'part2/sample/a28/B1/P3__s0.json'
     d = json.loads(side.read_text())
     d['list_sha256'] = 'bad'
     side.write_text(json.dumps(d))
     with pytest.raises(AssertionError):
-        rb_v2.run_candidate('K2', 5, roots, draws=2, workers=1, scale='sample')
+        rb_v2.run_candidate('K2', 5, w.roots, draws=2, workers=1, scale='sample')
+
+
+def test_stage5_scale_is_full_for_k1_and_for_a_model_with_a_stage4_outcome_else_sample(tmp_path):
+    """Finding 2: K1 full; any other model full only when its stage 4 block has an outcome_id; else sample."""
+    w = A28World(tmp_path)
+    blocks, scales = {}, {'K1': 'full', 'K2': 'full', 'K3': 'sample', 'K5': 'sample'}
+    for model, scale in scales.items():
+        w.write_model(model, scale)
+        blocks[model] = w.block(w.derive(model, scale), scale=scale)
+    stage4 = {'K2': dict(outcome_id='O4', d=.1), 'K3': dict(outcome_id=None, v_failure='V3: missing file')}   # K5: none
+    w.write_verdicts(blocks, stage4)
+    summary = rb_v2.run_stage(5, w.roots, draws=6, workers=2)           # scales from the stage 4 file, not --scale
+    saved = json.loads((w.out / 'part2/rederive_v2_stage5.json').read_text())
+    assert {m: r['scale'] for m, r in saved['candidates'].items()} == scales
+    assert summary['agree'], summary
+    (w.out / 'part2/verdict_stage4.json').unlink()                      # no stage 4 file: K1 full, the others sample
+    w.write_model('K2', 'sample')
+    w.derive('K2', 'sample')
+    rb_v2.run_stage(5, w.roots, candidates=['K1', 'K2'], draws=6, workers=2)
+    saved = json.loads((w.out / 'part2/rederive_v2_stage5.json').read_text())
+    assert {m: r['scale'] for m, r in saved['candidates'].items()} == {'K1': 'full', 'K2': 'sample'}
+
+
+def test_stage5_reports_a_scale_difference_as_its_own_mismatch(tmp_path):
+    """Finding 2: the stage 5 block's `scale` must be the scale V2 takes from the stage 4 outcome."""
+    w = A28World(tmp_path)
+    for scale in ('sample', 'full'):
+        w.write_model('K2', scale)
+    res = w.derive('K2', 'full')
+    w.derive('K2', 'sample')
+    stage4 = {'K2': dict(outcome_id='O4', d=.1)}
+    w.write_verdicts({'K2': w.block(res, scale='full')}, stage4)
+    assert rb_v2.run_stage(5, w.roots, draws=6, workers=2)['agree']
+    w.write_verdicts({'K2': w.block(res, scale='sample')}, stage4)       # the writer ran sample; V2 reads full
+    out = rb_v2.run_stage(5, w.roots, draws=6, workers=2)
+    assert not out['agree']
+    (msg,) = out['candidates']['K2']
+    assert 'scale' in msg and 'full' in msg and 'sample' in msg
+    w.write_verdicts({'K2': w.block(res)}, stage4)                       # no scale field at all
+    out = rb_v2.run_stage(5, w.roots, draws=6, workers=2)
+    assert not out['agree'] and any('scale' in m for m in out['candidates']['K2'])
+
+
+def test_smoke_stage5_uses_seed_0_only(tmp_path, monkeypatch):
+    """Finding 5: as rb_a28 --smoke."""
+    monkeypatch.setattr(rb_v2, 'check_smoke_outputs', lambda path: None)
+    w = A28World(tmp_path)
+    w.write_model('K1', 'full')
+    res = rb_v2.run_candidate('K1', 5, w.roots, draws=20, workers=2, scale='full', seeds=(0,))
+    save_partitions(w.out, 'a28_full', res)
+    w.write_verdicts({'K1': w.block(res, scale='full')})
+    summary = rb_v2.run_stage(5, w.roots, candidates=['K1'], workers=2, smoke=True)
+    saved = json.loads((w.out / 'part2/rederive_v2_stage5.json').read_text())['candidates']['K1']
+    assert saved['seeds'] == [0] and saved['draws'] == 20 and summary['agree']
+
+
+# ---- --ct-check exit code (finding 4) ----------------------------------------------------------------------
+
+def ct_like():
+    verdict = dict(d=.012, A_K1=.1, A_e={'B1-r20': .088, 'B1-own': .085}, interval=[.009, .015],
+                   eligibility=dict(eligible_seeds={'K1': [0, 1], 'B1': [0, 1], 'B2': []}), bootstrap_d=[.01, .011])
+    res = dict(d=.012, A_cand=.1, A_e={'B1-r20': .088, 'B1-own': .085}, interval=[.009, .015],
+               eligible_seeds={'K1': [0, 1], 'B1': [0, 1], 'B2': []}, bootstrap_d=[.01, .011],
+               partitions=dict(checked=35, unchecked=0, mismatches=[]), eligibility_notes=[])
+    return res, verdict
+
+
+def run_main_ct_check(monkeypatch, res, verdict):
+    monkeypatch.setattr(rb_v2, 'rederive_ct', lambda stage, workers=8: res)
+    monkeypatch.setattr(rb_v2, 'load_ct_verdict', lambda stage: verdict)
+    return rb_v2.main(['--ct-check', '1'])
+
+
+def test_ct_check_exit_code_fails_on_every_kind_of_difference(tmp_path, monkeypatch, capsys):
+    res, verdict = ct_like()
+    assert run_main_ct_check(monkeypatch, res, verdict) == 0
+    cases = {
+        'd': lambda r, v: r.update(d=.0121),
+        'A_K1': lambda r, v: r.update(A_cand=.1001),
+        'A_e': lambda r, v: r['A_e'].update({'B1-own': .0851}),
+        'bound': lambda r, v: r.update(interval=[.009, .0151]),
+        'eligibility': lambda r, v: r['eligible_seeds'].update(B1=[0, 1, 2]),
+        'partition': lambda r, v: r['partitions']['mismatches'].append('B1 s0 own: differs from x'),
+        'unchecked': lambda r, v: r['partitions']['mismatches'].append('B1 s0 own: unchecked'),
+    }
+    for name, plant in cases.items():
+        res, verdict = ct_like()
+        plant(res, verdict)
+        assert run_main_ct_check(monkeypatch, res, verdict) == 1, name
+    capsys.readouterr()
+
+

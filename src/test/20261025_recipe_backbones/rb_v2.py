@@ -415,8 +415,9 @@ def run_candidate(cand, stage, roots, draws=DRAWS, workers=8, scale=None, seeds=
             saved = saved_partition_paths(roots, scale, mode, p, s)
             for reading, arr in pt.items():
                 files = [(src, f, k) for (r, src), (f, k) in saved.items() if r == reading]
-                if not files:
+                if not files:       # a partition never compared has not been shown equal (rule §4.2 V2)
                     check['unchecked'] += 1
+                    check['mismatches'].append(f"{p['name']} s{s} {reading}: unchecked, no saved partition to compare")
                 for src, f, k in files:
                     check['checked'] += 1
                     got = np.load(f)[k]
@@ -445,24 +446,61 @@ def _first(block, keys, what):
     raise AssertionError(f'verdict block has none of {keys} ({what})')
 
 
-def read_block(path, name):
-    """The candidate's (or model's) block of a verdict file, normalised to the fields that are compared."""
+def find_block(path, name):
+    """The raw block of a verdict file for a candidate (or model); None when the file has none."""
     verdict = json.loads(Path(path).read_text())
     found = [v[name] for k in ('candidates', 'models', 'blocks') if isinstance(verdict.get(k), dict)
              for v in [verdict[k]] if name in v]
     if name in verdict and isinstance(verdict[name], dict):
         found.append(verdict[name])
-    assert len(found) == 1, f'{path}: expected one block for {name}, found {len(found)}'
-    b = found[0]
+    assert len(found) <= 1, f'{path}: expected one block for {name}, found {len(found)}'
+    return found[0] if found else None
+
+
+def normalise_block(b, name):
+    """The fields that are compared, whatever the writer called them."""
     elig = b.get('eligibility', b)
     return dict(d=_first(b, ('d', 'd_A28'), 'd'), A_cand=_first(b, (f'A_{name}', 'A_cand', 'A_model', 'A_K'), 'A'),
                 A_e=_first(b, ('A_e',), 'A_e'), interval=_first(b, ('interval',), 'interval'),
                 eligible_seeds=_first(elig, ('eligible_seeds',), 'eligible seeds'),
-                bootstrap_d=b.get('bootstrap_d'))
+                bootstrap_d=b.get('bootstrap_d'), scale=b.get('scale'))
 
 
-def compare(result, block, tol=TOL):
-    """Equal partitions and eligibility; d, each A_e, both bounds within tol (rule §4.2 V2)."""
+def read_block(path, name):
+    """The candidate's (or model's) block of a verdict file, normalised to the fields that are compared."""
+    b = find_block(path, name)
+    assert b is not None, f'{path}: expected one block for {name}, found 0'
+    return normalise_block(b, name)
+
+
+def outcome_of(path, name):
+    """(outcome_id, v_failure) of a block: the writers set outcome_id None on a v_failure block."""
+    b = find_block(path, name)
+    assert b is not None and 'outcome_id' in b, f'{path}: block {name} is missing or has no outcome_id'
+    return b['outcome_id'], b.get('v_failure')
+
+
+def load_ct_verdict(stage):
+    return json.loads((rb_paths.MAIN_TEST / f'20261020_claim_test/verdict_stage{stage}.json').read_text())
+
+
+def compare_ct(res, verdict, tol=TOL):
+    """The CT's own verdict_stage{1,2}.json against the re-derivation of K1: the same comparison as for a verdict block."""
+    return compare(res, normalise_block(verdict, 'K1'), tol)
+
+
+def stage5_scale(model, out_dir):
+    """K1 at full scale; any other model at full scale only when its stage 4 block has an outcome_id, else sample."""
+    stage4 = Path(out_dir) / 'verdict_stage4.json'
+    if model == 'K1':
+        return 'full'
+    if stage4.exists() and find_block(stage4, model) is not None and outcome_of(stage4, model)[0] is not None:
+        return 'full'
+    return 'sample'
+
+
+def compare(result, block, tol=TOL, check_scale=False):
+    """Equal partitions and eligibility; d, each A_e, both bounds within tol (rule §4.2 V2). Stage 5: also the scale."""
     bad, diffs = [], []
 
     def num(label, mine, theirs):
@@ -484,6 +522,10 @@ def compare(result, block, tol=TOL):
         mine, theirs = result['eligible_seeds'].get(arm), block['eligible_seeds'].get(arm)
         if mine is None or theirs is None or [int(s) for s in mine] != [int(s) for s in theirs]:
             bad.append(f'eligible seeds {arm}: re-derived {mine}, verdict {theirs}')
+    if check_scale:
+        if block.get('scale') != result['scale']:
+            bad.append(f"scale: re-derived at {result['scale']!r} (K1, or a stage 4 outcome: full; else sample), "
+                       f"verdict block says {block.get('scale')!r}")
     bad += [f'R-COL record: {m}' for m in result.get('eligibility_notes', [])]
     bad += [f'partitions: {m}' for m in result.get('partitions', {}).get('mismatches', [])]
     out = dict(agree=not bad, mismatches=bad, max_abs_diff=max(diffs) if diffs else None, tolerance=tol)
@@ -520,27 +562,32 @@ def run_stage(stage, roots, candidates=None, draws=DRAWS, workers=8, scales=None
     if smoke:
         check_smoke_outputs(roots.outputs)
         draws = 20
-    seeds = (0,) if smoke else SEEDS
+    seeds = (0,) if smoke and stage == 5 else SEEDS      # as the writers' smoke runs: rb_score keeps five, rb_a28 uses seed 0
     scales = dict(scales or {})
-    written = {}
-    stage4 = out_dir / 'verdict_stage4.json'
+    written, skipped = {}, {}
     for cand in candidates:
+        outcome_id, v_failure = outcome_of(verdict, cand)
+        if outcome_id is None:
+            skipped[cand] = dict(status='no outcome, not re-derived', v_failure=v_failure)
+            continue
         scale = scales.get(cand)
         if stage == 5 and scale is None:
-            scale = 'full' if cand == 'K1' or (stage4.exists() and cand in _blocks_in(stage4)) else 'sample'
+            scale = stage5_scale(cand, out_dir)
         t0 = time.time()
         res = run_candidate(cand, stage, roots, draws=draws, workers=workers, scale=scale, seeds=seeds)
         res.pop('_partitions')
-        res['comparison'] = compare(res, read_block(verdict, cand))
+        res['comparison'] = compare(res, read_block(verdict, cand), check_scale=stage == 5)
         res['seconds'] = round(time.time() - t0, 1)
         written[cand] = res
     agree = all(r['comparison']['agree'] for r in written.values())
     doc = dict(schema=1, stage=stage, smoke=smoke, agree=agree, tolerance=TOL, rule=str(rb_paths.RULE),
                verdict_file=str(verdict), versions=dict(sklearn=sklearn.__version__, numpy=np.__version__),
-               code_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), candidates=written)
+               code_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), candidates=written,
+               skipped=skipped)
     target = out_dir / f'rederive_v2_stage{stage}.json'
     target.write_text(json.dumps(doc))
-    return dict(agree=agree, file=str(target), candidates={c: r['comparison']['mismatches'] for c, r in written.items()})
+    return dict(agree=agree, file=str(target), candidates={c: r['comparison']['mismatches'] for c, r in written.items()},
+                skipped={c: v['v_failure'] for c, v in skipped.items()})
 
 
 def main(argv=None):
@@ -556,12 +603,13 @@ def main(argv=None):
     assert bool(args.stage) != bool(args.ct_check), 'give --stage or --ct-check'
     if args.ct_check:
         res = rederive_ct(args.ct_check, workers=args.workers)
-        verdict = json.loads((rb_paths.MAIN_TEST / f'20261020_claim_test/verdict_stage{args.ct_check}.json').read_text())
-        dif = max(abs(res['d'] - verdict['d']), *(abs(res['A_e'][k] - v) for k, v in verdict['A_e'].items()),
-                  *(abs(a - b) for a, b in zip(res['interval'], verdict['interval'])))
-        print(f"CT stage {args.ct_check}: d {res['d']:.6f} vs {verdict['d']:.6f}; max diff {dif:.2e}; partitions "
-              f"checked {res['partitions']['checked']}, mismatches {len(res['partitions']['mismatches'])}")
-        return 0 if dif < TOL else 1
+        out = compare_ct(res, load_ct_verdict(args.ct_check))
+        print(f"CT stage {args.ct_check}: d {res['d']:.6f}; max diff {out['max_abs_diff']:.2e}; partitions "
+              f"checked {res['partitions']['checked']}, unchecked {res['partitions']['unchecked']}, "
+              f"mismatches {len(res['partitions']['mismatches'])}")
+        for m in out['mismatches']:
+            print('  MISMATCH', m)
+        return 0 if out['agree'] else 1
     roots = Roots.default(args.outputs)
     summary = run_stage(args.stage, roots, candidates=args.candidates, workers=args.workers, smoke=args.smoke,
                         scales=dict(s.split('=') for s in args.scale))
