@@ -107,7 +107,7 @@ def test_a_forced_difference_in_d_or_an_interval_bound_makes_it_disagree(tmp_pat
     doc = json.loads((w.out / 'part2/rederive_v2_stage3.json').read_text())
     assert doc['agree'] is False and doc['candidates']['K6']['comparison']['agree'] is False
     verdict_for(w, res, interval=[res['interval'][0], res['interval'][1] + 1e-3])
-    out = v2.run_stage(3, w.out, roots=w.roots, draws=8, workers=2, force=True)
+    out = v2.run_stage(3, w.out, roots=w.roots, draws=8, workers=2)
     assert not out['agree'] and any('interval upper' in m for m in out['candidates']['K6'])
 
 
@@ -122,7 +122,7 @@ def test_a_changed_eligibility_or_a_changed_saved_partition_makes_it_disagree(tm
     bad = np.load(f)['labels'].copy()
     bad[0, 0] += 1
     np.savez(f, labels=bad)
-    out = v2.run_stage(3, w.out, roots=w.roots, draws=8, workers=2, force=True)
+    out = v2.run_stage(3, w.out, roots=w.roots, draws=8, workers=2)
     assert not out['agree'] and any('K6 s1 r20' in m for m in out['candidates']['K6'])
 
 
@@ -135,16 +135,50 @@ def test_a_file_with_no_candidate_re_derived_does_not_agree(tmp_path):
     assert doc['agree'] is False and doc['skipped']['K6']['v_failure']
 
 
-def test_a_rerun_keeps_a_candidate_whose_block_is_unchanged_and_redoes_a_changed_one(tmp_path, monkeypatch):
+def test_a_rerun_re_derives_every_candidate_again_and_there_is_no_keep_path(tmp_path, monkeypatch):
+    """A kept entry would outlive changed outputs or code (finding 1): every run derives every candidate again."""
     w, res = held_world(tmp_path)
     verdict_for(w, res)
     assert v2.run_stage(3, w.out, roots=w.roots, draws=8, workers=2)['agree']
     calls = []
     real = rb_v2.run_candidate
     monkeypatch.setattr(rb_v2, 'run_candidate', lambda *a, **k: calls.append(a[0]) or real(*a, **k))
-    assert v2.run_stage(3, w.out, roots=w.roots, draws=8, workers=2)['agree'] and calls == []
-    verdict_for(w, res, d=res['d'] + 1e-3)                        # a replaced block: V2 looks again and now disagrees
-    assert not v2.run_stage(3, w.out, roots=w.roots, draws=8, workers=2)['agree'] and calls == ['K6']
+    assert v2.run_stage(3, w.out, roots=w.roots, draws=8, workers=2)['agree'] and calls == ['K6']
+    verdict_for(w, res, d=res['d'] + 1e-3)                        # a replaced block: now disagrees
+    assert not v2.run_stage(3, w.out, roots=w.roots, draws=8, workers=2)['agree'] and calls == ['K6', 'K6']
+    with pytest.raises(TypeError):
+        v2.run_stage(3, w.out, roots=w.roots, draws=8, workers=2, force=True)
+    with pytest.raises(SystemExit):
+        v2.main(['--stage', '3', '--force'])
+
+
+def test_changed_outputs_after_an_agreeing_run_are_seen_by_the_next_run(tmp_path):
+    w, res = held_world(tmp_path)
+    verdict_for(w, res)
+    assert v2.run_stage(3, w.out, roots=w.roots, draws=8, workers=2)['agree']
+    f = w.out / 'part2/partitions/sample/K6/emotion__s1__r20.npz'
+    bad = np.load(f)['labels'].copy()
+    bad[0, 0] += 1
+    np.savez(f, labels=bad)
+    out = v2.run_stage(3, w.out, roots=w.roots, draws=8, workers=2)
+    assert not out['agree'] and any('K6 s1 r20' in m for m in out['candidates']['K6'])
+
+
+# --- --candidates only for scratch outputs (finding 3) --------------------------------------------------------------------
+
+def test_a_candidate_list_is_refused_for_outputs_outside_the_scratch_root(tmp_path, monkeypatch):
+    """`--candidates` would drop the other candidates' entries from the file: allowed only under /tmp/claude-0/."""
+    w, res = held_world(tmp_path)
+    verdict_for(w, res)
+    monkeypatch.setattr(eg_paths, 'SMOKE_ROOT', tmp_path / 'elsewhere')
+    with pytest.raises(AssertionError, match='candidates'):
+        v2.run_stage(3, w.out, ['K6'], roots=w.roots, draws=8, workers=2)
+    with pytest.raises(AssertionError, match='candidates'):
+        v2.main(['--stage', '3', '--candidates', 'K6', '--outputs', str(w.out)])
+    assert not (w.out / 'part2/rederive_v2_stage3.json').exists()
+    monkeypatch.setattr(eg_paths, 'SMOKE_ROOT', tmp_path)
+    assert v2.run_stage(3, w.out, ['K6'], roots=w.roots, draws=8, workers=2)['agree']
+    assert v2.run_stage(3, w.out, roots=w.roots, draws=8, workers=2)['agree']       # no list: always allowed
 
 
 # --- stage 5 -------------------------------------------------------------------------------------------------------------
@@ -168,5 +202,5 @@ def test_stage5_reads_b1_and_b6_at_the_full_scale_from_the_frozen_outputs(tmp_pa
     doc = json.loads((w.out / 'part2/rederive_v2_stage5.json').read_text())
     assert doc['candidates']['K6']['scale'] == 'full'
     w.write_verdicts({'K6': dict(block, scale='sample')}, stage4={'K6': dict(outcome_id='S2-GO')})
-    out = v2.run_stage(5, w.out, roots=roots, draws=6, workers=2, force=True)
+    out = v2.run_stage(5, w.out, roots=roots, draws=6, workers=2)
     assert not out['agree'] and any('scale' in m for m in out['candidates']['K6'])

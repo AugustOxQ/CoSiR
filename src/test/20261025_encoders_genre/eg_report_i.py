@@ -6,11 +6,15 @@ the seed spreads, the best epochs, the frozen-image partitions and the Leiden re
 `rb_a28.run_reported` with the same changes. Nothing here enters a verdict maximum or states an outcome.
 
 It refuses to run before the stage's verdict file holds the candidate's outcome and V2 (`eg_v2`) agrees with that
-block (RB rule §4.2, last bullet). Writes `<outputs>/part2/reported_stage{3,4,5}.{json,md}`.
+block (RB rule §4.2, last bullet), and refuses when a saved reported block no longer matches the verdict block it was
+made from. Writes `<outputs>/part2/reported_stage{3,4,5}.{json,md}`. Stage 3 also writes, once, the `stores` block
+(spec §3.6: each new store's V5 values beside CLIP B/32's and SigLIP 2's, and X0, the old stores' difference from the
+current extractor), read from `<outputs>/stores/v5.json` and `x0.json`; both must exist and X0 must pass.
 
 CLI (from the round folder):
   python eg_report_i.py --stage 3|4|5 [--candidates K6 K7 ...] [--outputs DIR] [--smoke] [--workers 8] [--replace REASON]
 """
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -22,6 +26,7 @@ import eg_paths
 import eg_encoders
 import eg_score
 import eg_v2
+import eg_v5
 
 import rb_a28  # noqa: E402
 import rb_part2_report as rpr  # noqa: E402
@@ -33,23 +38,151 @@ COMPARATORS = rpr.COMPARATORS
 OLD_CANDIDATES = eg_v2.OLD_CANDIDATES          # K2 to K4 only for the parity check (K1 has no frozen-image F1 here)
 PARITY_CANDIDATES = ('K2', 'K3', 'K4')
 KINDS = {3: 'sample', 4: 'full'}
+STORES = 'stores'                              # the block of V5 and X0 values in reported_stage3.json
 
 
 # --- the V2 boundary -------------------------------------------------------------------------------------------------------
 
-def require_v2(stage, outputs, candidates, verdict_path):
+def require_v2(stage, outputs, candidates, verdict_path, smoke=False):
     """RB rule §4.2, last bullet: each candidate has a V2 entry that agrees and still equals the verdict block now in
-    the file (a block replaced after V2 ran is refused). Assertion text names the candidate and the fault."""
+    the file (a block replaced after V2 ran is refused). Assertion text names the candidate and the fault. A smoke V2
+    file is accepted only when this reporter itself runs as a smoke under /tmp/claude-0/."""
     path = Path(outputs) / f'part2/rederive_v2_stage{stage}.json'
     assert path.is_file(), f'{path}: the reported readings run only after V2 (eg_v2.py --stage {stage})'
     doc = json.loads(path.read_text())
-    assert doc['stage'] == stage and not doc['smoke'], f'{path}: not a V2 file of stage {stage} (or a smoke run)'
+    assert doc['stage'] == stage, f'{path}: not a V2 file of stage {stage}'
+    assert not doc['smoke'] or (smoke and eg_paths.smoke_ok(outputs)), \
+        f'{path}: a smoke V2 file; accepted only when the reporter runs with --smoke under /tmp/claude-0/'
     for cand in candidates:
         entry = doc['candidates'].get(cand)
         assert entry is not None, f'{cand}: no V2 entry in {path.name}'
         assert entry['comparison']['agree'], f'{cand}: V2 does not agree: {entry["comparison"]["mismatches"][:2]}'
         now = rb_v2.compare(entry, rb_v2.read_block(verdict_path, cand), check_scale=stage == 5)
         assert now['agree'], f'{cand}: V2 was run on another block than the verdict file holds now: {now["mismatches"][:2]}'
+
+
+def check_saved_against_verdict(stage, saved, verdict_blocks, skip=()):
+    """A saved reported block must still belong to the verdict block now in the file (finding 4): its recorded
+    `verdict_block_sha256` equals the block's hash; at stage 5 also the recorded verdict_d, verdict_outcome and
+    verdict_interval. Refuses on a change, naming the candidate. `skip`: candidates about to be recomputed (the
+    write then refuses or, with --replace, replaces)."""
+    for cand, block in saved.items():
+        if cand in skip or cand == STORES:
+            continue
+        assert cand in verdict_blocks, f'{cand}: reported at stage {stage}, but the verdict file has no block for it now'
+        now = verdict_blocks[cand]
+        assert block.get('verdict_block_sha256') == rpr.block_sha(now), \
+            f'{cand}: the saved reported block was made from another verdict block than the file holds now'
+        if stage == 5:
+            seen = (block['verdict_d'], block['verdict_outcome'], block['verdict_interval'])
+            assert seen == (now['d'], now['outcome_id'], now['interval']), \
+                f'{cand}: the saved reported block has d {seen[0]}, {seen[1]}; the verdict file now has d {now["d"]}, {now["outcome_id"]}'
+
+
+# --- V5 and X0 values (spec §3.6 stage i; stage 3 only, once) ---------------------------------------------------------------
+
+STRUCTURE = ('not_smoke', 'rows', 'names_unique', 'names_equal_reference_in_order', 'width', 'finite', 'nonzero')
+DATASETS = {eg_v5.FULL: 'ArtELingo, full split (retrieval on the first 1,000 paintings of P)',
+            eg_v5.A28: 'ArtELingo-28 (all 746 paintings)'}
+STORE_ROLES = tuple((s, 'calibration') for s in eg_v5.CALIBRATION) + tuple(
+    (e.store, e.student) for e in eg_encoders.ENCODERS if e.new)
+
+
+def sha256_of(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def store_row(v5, dataset, store):
+    """One store's V5 values in one dataset, from its entry in v5.json; {checked: False} for a store without one."""
+    entry = v5['stores'].get(f'{dataset}/{store}')
+    if entry is None:
+        return dict(checked=False)
+    checks = entry['checks']
+    assert set(STRUCTURE) <= set(checks), f'{dataset}/{store}: structure checks missing'
+    row = {'checked': True, 'pass': entry['pass'], 'structure': {k: checks[k] for k in STRUCTURE},
+           'failing_checks': sorted(k for k, ok in checks.items() if not ok)}
+    if 'retrieval' in entry:
+        r = entry['retrieval']
+        row['retrieval'] = dict(top1=r['top1'], n=r['n_paintings'], chance=r['chance'])
+        if 'retrieval_ge_1pct' in checks:                                  # a new text store: the bar applies
+            row['retrieval'].update(bar=eg_v5.BAR, bar_void=entry['bar_void'], bar_ok=checks['retrieval_ge_1pct'])
+    if 'dino_vs_archive' in entry:
+        d = entry['dino_vs_archive']
+        row['dino_vs_archive'] = dict(min_cosine=d['min_cosine'], mean_cosine=d['mean_cosine'], n=d['n'],
+                                      archive_n=d['archive_n'], bar=eg_v5.DINO_MIN_COS,
+                                      ok=checks['dino_cosine_ge_0.99'])
+    if 'fails_on_28_only' in entry:
+        row['fails_on_28_only'] = entry['fails_on_28_only']
+    return row
+
+
+def stores_block(outputs):
+    """The V5 and X0 values for the reporter (spec §3.6 stage i); decides nothing. Both files must exist and X0 must
+    pass; each file's sha256 is recorded."""
+    v5_path, x0_path = Path(outputs) / 'stores/v5.json', Path(outputs) / 'stores/x0.json'
+    for path in (v5_path, x0_path):
+        assert path.is_file(), f'{path}: the stage 3 reported readings need the V5 and X0 files'
+    v5, x0 = json.loads(v5_path.read_text()), json.loads(x0_path.read_text())
+    assert x0['pass'] is True, f'{x0_path}: X0 does not pass'
+    assert set(eg_v5.CALIBRATION) <= set(x0['stores']), f'{x0_path}: no entry for {eg_v5.CALIBRATION}'
+    assert all(s in v5['calibration'] for s in eg_v5.CALIBRATION) and 'bar_void' in v5, f'{v5_path}: no calibration'
+    datasets = {ds: {s: dict(role=role, **store_row(v5, ds, s)) for s, role in STORE_ROLES} for ds in DATASETS}
+    x0_stores = {s: dict(equal=e['equal'], new_vs_old=e['new_vs_old'], vs_stored=e['vs_stored'])
+                 for s, e in x0['stores'].items()}
+    return dict(v5_file=str(v5_path), v5_sha256=sha256_of(v5_path), x0_file=str(x0_path), x0_sha256=sha256_of(x0_path),
+                bar=eg_v5.BAR, bar_void=v5['bar_void'], calibration=v5['calibration'],
+                calibration_a28=v5.get('calibration_a28'), v5_code_commit=v5.get('code_commit'),
+                v5_rule_commit=v5.get('rule_commit'), datasets=datasets,
+                x0={'pass': x0['pass'], 'code_commit': x0['code_commit'], 'old_commit': x0['old_commit'],
+                    'n_images': x0['n_images'], 'working_tree_dirty': x0.get('working_tree_dirty'),
+                    'stores': x0_stores})
+
+
+def _failing(row):
+    return ', '.join(row['failing_checks']) or 'none'
+
+
+def stores_markdown(b):
+    """The md section of a `stores` block."""
+    L = ['## Store checks (V5) and the extractor regression (X0)', '',
+         'Decides nothing. V5 values of each new store beside those of CLIP B/32 and SigLIP 2 (the calibration stores: '
+         'their retrieval number sets the bar and decides nothing). Bar: top-1 retrieval of a painting\'s image to its '
+         f'own caption mean at least {b["bar"]:.0%}; the bar is void if CLIP B/32 or SigLIP 2 falls under it '
+         f'(void here: {"yes" if b["bar_void"] else "no"}). A store without an entry in v5.json reads "not checked". '
+         f'Source: `{b["v5_file"]}` (sha256 `{b["v5_sha256"][:16]}`).', '']
+    for ds, rows in b['datasets'].items():
+        L += [f'### {DATASETS[ds]}', '', '| store | role | top-1 | n | chance | bar | DINOv2 cosine to archive '
+              '(min, mean; n of archive n) | structure | pass | failing checks |', '|---|---|---|---|---|---|---|---|---|---|']
+        for store, r in rows.items():
+            if not r['checked']:
+                L.append(f'| {store} | {r["role"]} | not checked | | | | | | | |')
+                continue
+            ret, dino = r.get('retrieval'), r.get('dino_vs_archive')
+            top1 = f'{ret["top1"]:.3f}' if ret else ''
+            n = str(ret['n']) if ret else ''
+            chance = f'{ret["chance"]:.4f}' if ret else ''
+            bar = ('' if ret is None or 'bar' not in ret else
+                   ('void' if ret['bar_void'] else '') + (' ' if ret['bar_void'] else '') +
+                   ('met' if ret['bar_ok'] else 'missed'))
+            cos = (f'{dino["min_cosine"]:.4f}, {dino["mean_cosine"]:.4f}; {dino["n"]} of {dino["archive_n"]}, '
+                   f'{"ok" if dino["ok"] else "below " + str(dino["bar"])}') if dino else ''
+            struct = f'{sum(r["structure"].values())} of {len(r["structure"])}'
+            L.append(f'| {store} | {r["role"]} | {top1} | {n} | {chance} | {bar} | {cos} | {struct} | '
+                     f'{"yes" if r["pass"] else "NO"} | {_failing(r)} |')
+        L.append('')
+    x = b['x0']
+    L += ['### Old stores against the current extractor (X0)', '',
+          f'X0 {"passes" if x["pass"] else "FAILS"}: the first {x["n_images"]} images of each old store, re-extracted '
+          f'with the changed extractor (code {x["code_commit"][:7]}) and with the old one ({x["old_commit"][:7]}). '
+          f'Source: `{b["x0_file"]}` (sha256 `{b["x0_sha256"][:16]}`). Decides nothing.', '',
+          '| store | changed extractor equals the old, bit for bit | max abs difference (rows affected) | '
+          'stored rows against the changed extractor: max abs (rows affected of n) |', '|---|---|---|---|']
+    for store, e in x['stores'].items():
+        nv, st = e['new_vs_old'], e['vs_stored']['new']
+        L.append(f'| {store} | {"yes" if e["equal"] else "NO"} | {nv["max_abs"]:g} ({nv["rows_affected"]}) | '
+                 f'{st["max_abs"]:g} ({st["rows_affected"]} of {x["n_images"]}) |')
+    L += ['', 'The stored rows come from older extractor versions (D21); a difference there is not an X0 failure.', '']
+    return '\n'.join(L)
 
 
 # --- stages 3 and 4 ---------------------------------------------------------------------------------------------------------
@@ -115,7 +248,7 @@ def report_candidate(candidate, block, ctx):
     return report
 
 
-def markdown(stage, scale, reports, skipped):
+def markdown(stage, scale, reports, skipped, stores=None):
     L = [f'# Stage i reported margins, stage {stage} ({scale} scale)', '',
          'Decides nothing: no margin here enters a verdict maximum, and no outcome is stated. d = score of the '
          'candidate minus the largest comparator entry, with the 95% percentile interval of its own '
@@ -139,6 +272,8 @@ def markdown(stage, scale, reports, skipped):
         for aspect, seeds in r['best_epochs'].items():
             L.append(f'- {aspect}: ' + ', '.join(f's{s} {v["best_epoch"]}' for s, v in seeds.items()))
         L.append('')
+    if stores:
+        L += [stores_markdown(stores)]
     return '\n'.join(L)
 
 
@@ -151,7 +286,7 @@ def read_verdict(outputs, stage):
     return record, path
 
 
-def run_held(stage, outputs, workers, n_resamples, candidates, replace, allow_old):
+def run_held(stage, outputs, workers, n_resamples, candidates, replace, allow_old, smoke=False):
     scale = KINDS[stage]
     verdict, verdict_path = read_verdict(outputs, stage)
     assert verdict['scale'] == scale, verdict_path
@@ -165,8 +300,9 @@ def run_held(stage, outputs, workers, n_resamples, candidates, replace, allow_ol
     todo = list(candidates) if candidates else [c for c in done if c not in saved]
     assert set(todo) <= set(done), f'no outcome in the verdict file for {sorted(set(todo) - set(done))}'
     skipped = sorted(c for c, b in blocks.items() if not b.get('outcome_id'))
+    check_saved_against_verdict(stage, saved, blocks, skip=todo)
     if todo:
-        require_v2(stage, outputs, todo, verdict_path)
+        require_v2(stage, outputs, todo, verdict_path, smoke)
     header = dict(stage=stage, scale=scale, held_sha256=sha)
     if not todo and not saved:
         print(f'stage {stage}: no candidate has an outcome in the verdict file; nothing to report')
@@ -183,8 +319,11 @@ def run_held(stage, outputs, workers, n_resamples, candidates, replace, allow_ol
             report = report_candidate(c, blocks[c], ctx)
             block = dict(report, code=code, verdict_block_sha256=rpr.block_sha(blocks[c]))
             record = eg_score.write_block(path, header, c, block, replace)
-    shown = {c: b for c, b in sorted(record['blocks'].items())}
-    (outputs / f'part2/reported_stage{stage}.md').write_text(markdown(stage, scale, shown, skipped) + '\n')
+    if stage == 3 and STORES not in record['blocks']:               # once, at stage 3
+        record = eg_score.write_block(path, header, STORES, stores_block(outputs), replace)
+    shown = {c: b for c, b in sorted(record['blocks'].items()) if c != STORES}
+    (outputs / f'part2/reported_stage{stage}.md').write_text(
+        markdown(stage, scale, shown, skipped, record['blocks'].get(STORES)) + '\n')
     return record
 
 
@@ -258,7 +397,7 @@ def markdown5(blocks, skipped):
     return '\n'.join(L)
 
 
-def run_a28(outputs, workers, n_resamples, seeds, candidates, replace, allow_old):
+def run_a28(outputs, workers, n_resamples, seeds, candidates, replace, allow_old, smoke=False):
     setup = rb_a28.real_setup()
     verdict, verdict_path = read_verdict(outputs, 5)
     assert verdict['list_sha256'] == setup['sha256'] and verdict['n_rows'] == len(setup['names']), verdict_path
@@ -268,12 +407,14 @@ def run_a28(outputs, workers, n_resamples, seeds, candidates, replace, allow_old
     todo = list(candidates) if candidates else [c for c in done if c not in saved]
     assert set(todo) <= set(done), f'no outcome in the verdict file for {sorted(set(todo) - set(done))}'
     skipped = sorted(c for c, b in verdict['blocks'].items() if not b.get('outcome_id'))
+    check_saved_against_verdict(5, saved, verdict['blocks'], skip=todo)
     if todo:
-        require_v2(5, outputs, todo, verdict_path)
+        require_v2(5, outputs, todo, verdict_path, smoke)
     record = json.loads(path.read_text()) if path.exists() else None
     roots = eg_score.Roots(outputs, outputs)
     for model in todo:
         block = reported_block(model, verdict['blocks'][model], roots, setup, list(seeds), n_resamples, workers)
+        block['verdict_block_sha256'] = rpr.block_sha(verdict['blocks'][model])
         block['code'] = dict(eg_report_i_sha256=eg_score.sha_file(__file__), **eg_score.code_identity())
         record = eg_score.write_block(path, rb_a28.header_of(setup), model, block, replace)
         print(f'{model}: reported', flush=True)
@@ -285,11 +426,12 @@ def run_a28(outputs, workers, n_resamples, seeds, candidates, replace, allow_old
 
 
 def run(stage, outputs=None, workers=8, n_resamples=2000, candidates=None, replace=None, seeds=eg_score.SEEDS,
-        allow_old=False):
+        allow_old=False, smoke=False):
     outputs = Path(eg_paths.OUTPUTS if outputs is None else outputs)
+    assert not smoke or eg_paths.smoke_ok(outputs), 'smoke needs --outputs under /tmp/claude-0/'
     if stage == 5:
-        return run_a28(outputs, workers, n_resamples, seeds, candidates, replace, allow_old)
-    return run_held(stage, outputs, workers, n_resamples, candidates, replace, allow_old)
+        return run_a28(outputs, workers, n_resamples, seeds, candidates, replace, allow_old, smoke)
+    return run_held(stage, outputs, workers, n_resamples, candidates, replace, allow_old, smoke)
 
 
 def main(argv=None):
@@ -309,7 +451,7 @@ def main(argv=None):
         assert eg_paths.smoke_ok(args.outputs), 'smoke (and K2 to K4) need --outputs under /tmp/claude-0/'
     with threadpool_limits(limits=8):
         run(args.stage, args.outputs, args.workers, 20 if args.smoke else 2000, args.candidates, args.replace,
-            seeds=[0] if args.smoke else eg_score.SEEDS, allow_old=old)
+            seeds=[0] if args.smoke else eg_score.SEEDS, allow_old=old, smoke=args.smoke)
 
 
 if __name__ == '__main__':

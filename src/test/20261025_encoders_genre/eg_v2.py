@@ -3,12 +3,14 @@
 
 `rb_v2.run_stage` is reused as it is (labels, R-COL eligibility, partitions, AMI, bootstrap, comparison); this module
 adds what is this round's: the candidate list (K6, K7, K8, K5 with a block that has an outcome), the place of B1 and
-B6 on ArtELingo-28 at the full scale (12-24's saved outputs; the sample scale is this round's), the merge with an
-earlier run of the same file, and this round's header. It reads our verdict file only to compare, after its own
-numbers exist. Writes `<outputs>/part2/rederive_v2_stage{3,4,5}.json`.
+B6 on ArtELingo-28 at the full scale (12-24's saved outputs; the sample scale is this round's) and this round's
+header. Every run derives every candidate again (nothing is kept from an earlier file: an entry could outlive changed
+outputs or code). It reads our verdict file only to compare, after its own numbers exist. Writes
+`<outputs>/part2/rederive_v2_stage{3,4,5}.json`.
 
 CLI (from the round folder):
-  python eg_v2.py --stage 3|4|5 [--candidates K6 K7 ...] [--outputs DIR] [--smoke] [--workers 8] [--force]
+  python eg_v2.py --stage 3|4|5 [--candidates K6 K7 ...] [--outputs DIR] [--smoke] [--workers 8]
+  (--candidates only with --outputs under /tmp/claude-0/: a list would drop the other candidates from the file)
 """
 import contextlib
 import dataclasses
@@ -86,53 +88,38 @@ def candidates_with_outcome(verdict_path, requested=None, allow_old=False):
     return ready, skipped
 
 
-def _kept(prior, cand, verdict_path, stage, draws):
-    """Whether an earlier run's entry for `cand` still stands: made with this many draws and still equal to the
-    verdict block now in the file (a replaced block is looked at again)."""
-    entry = (prior or {}).get('candidates', {}).get(cand)
-    if entry is None or prior.get('smoke') or entry['draws'] != draws:
-        return False
-    comparison = rb_v2.compare(entry, rb_v2.read_block(verdict_path, cand), check_scale=stage == 5)
-    return comparison['agree'] and entry['comparison']['agree']
-
-
 def _write_json(path, doc):
     tmp = Path(str(path) + '.pending')
     tmp.write_text(json.dumps(doc))
     tmp.replace(path)
 
 
-def run_stage(stage, outputs=None, candidates=None, draws=rb_v2.DRAWS, workers=8, smoke=False, force=False,
-              roots=None, allow_old=False):
-    """Re-derive each candidate of `part2/verdict_stage{stage}.json` that has an outcome and compare. A candidate
-    already re-derived in the file, with this many draws and still agreeing with the block now in the verdict file,
-    is kept (`force` redoes it). Returns {agree, file, candidates: {c: mismatches}, skipped: {c: v_failure}}."""
+def run_stage(stage, outputs=None, candidates=None, draws=rb_v2.DRAWS, workers=8, smoke=False, roots=None,
+              allow_old=False):
+    """Re-derive each candidate of `part2/verdict_stage{stage}.json` that has an outcome and compare; the file is
+    written whole, every candidate derived again. `candidates` (a subset) only for outputs under /tmp/claude-0/:
+    the file would lack the others. Returns {agree, file, candidates: {c: mismatches}, skipped: {c: v_failure}}."""
     outputs = Path(outputs or eg_paths.OUTPUTS)
     roots = roots or Roots.default(outputs)
     assert Path(roots.outputs) == outputs, (roots.outputs, outputs)
     verdict = outputs / f'part2/verdict_stage{stage}.json'
     assert verdict.exists(), f'{verdict} does not exist: V2 runs after the verdict file'
+    assert not candidates or eg_paths.smoke_ok(outputs), \
+        '--candidates (a subset) only with outputs under /tmp/claude-0/: the file would lack the other candidates'
     if smoke:
         assert eg_paths.smoke_ok(outputs), 'smoke needs --outputs under /tmp/claude-0/'
         draws = 20
     ready, skipped = candidates_with_outcome(verdict, candidates, allow_old)
     target = outputs / f'part2/rederive_v2_stage{stage}.json'
-    prior = json.loads(target.read_text()) if target.exists() and not force and not smoke else None
-    kept = {c: prior['candidates'][c] for c in ready if _kept(prior, c, verdict, stage, draws)}
-    todo = [c for c in ready if c not in kept]
-    written = dict(kept)
-    for c in kept:
-        print(f'{c}: kept (V2 of the same block already in {target.name})', flush=True)
-    if todo:
+    if ready:
         with scoped_plans():
-            rb_v2.run_stage(stage, roots, candidates=todo, draws=draws, workers=workers, smoke=smoke)
-        fresh = json.loads(target.read_text())
-        written.update(fresh['candidates'])
-        doc = fresh
+            rb_v2.run_stage(stage, roots, candidates=ready, draws=draws, workers=workers, smoke=smoke)
+        doc = json.loads(target.read_text())
+        written = doc['candidates']
+        assert list(written) == ready, (list(written), ready)
     else:
-        doc = dict(schema=1, stage=stage, smoke=smoke, tolerance=rb_v2.TOL, verdict_file=str(verdict),
-                   versions=(prior or {}).get('versions'), code_sha256=(prior or {}).get('code_sha256'))
-    written = {c: written[c] for c in ready}
+        written = {}
+        doc = dict(schema=1, stage=stage, smoke=smoke, tolerance=rb_v2.TOL, verdict_file=str(verdict))
     agree = bool(written) and all(r['comparison']['agree'] for r in written.values())   # nothing checked is no agreement
     doc.update(agree=agree, rule=str(eg_paths.RULE), rb_rule=str(rb_v2.rb_paths.RULE), round='encoders_genre',
                code_commit=_git_head(), eg_v2_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
@@ -151,17 +138,19 @@ def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--stage', type=int, choices=(3, 4, 5), required=True)
     p.add_argument('--candidates', nargs='+', choices=eg_encoders.CANDIDATES + OLD_CANDIDATES,
-                   help='default: every block of K5 to K8 with an outcome. K1 to K4 only with --outputs under '
-                        '/tmp/claude-0/ (the parity check on 12-24\'s saved outputs)')
+                   help='default (and the only form for the real outputs): every block of K5 to K8 with an outcome. '
+                        'A list, and K1 to K4 (the parity check on 12-24\'s saved outputs), only with --outputs '
+                        'under /tmp/claude-0/')
     p.add_argument('--outputs', type=Path, default=eg_paths.OUTPUTS)
     p.add_argument('--smoke', action='store_true', help='20 draws; outputs under /tmp/claude-0/')
     p.add_argument('--workers', type=int, default=8)
-    p.add_argument('--force', action='store_true', help='re-derive candidates already in the file')
     args = p.parse_args(argv)
+    assert not args.candidates or eg_paths.smoke_ok(args.outputs), \
+        '--candidates (a subset) only with --outputs under /tmp/claude-0/: the file would lack the other candidates'
     old = bool(args.candidates) and any(c in OLD_CANDIDATES for c in args.candidates)
     assert not old or eg_paths.smoke_ok(args.outputs), 'K1 to K4 only with --outputs under /tmp/claude-0/'
     summary = run_stage(args.stage, args.outputs, args.candidates, workers=args.workers, smoke=args.smoke,
-                        force=args.force, allow_old=old)
+                        allow_old=old)
     print(json.dumps(summary, indent=1))
     return 0 if (summary['agree'] or args.smoke) else 1
 
