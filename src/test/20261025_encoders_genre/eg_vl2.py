@@ -73,7 +73,7 @@ def rederive_encoder(encoder, outputs, names, labels, missing, inputs,
     """One frozen encoder entry: missing inputs suppress its entire outcome."""
     e = encoder
     record = dict(encoder=e.store, student=e.student, own=e.own, frozen=e.frozen,
-                  status='missing', outcome=None, aspects={})
+                  status='missing', outcome=None)
     for name in (e.student, e.own, e.frozen, e.store):
         if name in missing:
             record['reason'] = f'{name}: {missing[name]}'
@@ -166,6 +166,7 @@ def read_frozen(root, encoder, names, inputs, count):
 
 
 def outcome(emotion):
+    assert np.isfinite([emotion['lift'], *emotion['interval']]).all(), 'lift and bounds must be finite'
     if emotion['lift'] <= 0:
         return 'L-FAILS'
     return 'L-HOLDS' if emotion['interval'][0] > 0 else 'L-QUAL'
@@ -208,18 +209,31 @@ def compare_partitions(outputs, ours, p_sha, n_rows, inputs):
         if not inputs.exists(path) or not inputs.exists(path.with_suffix('.json')):
             found.append(dict(path=where, ours='present', theirs='<missing>'))
             continue
-        identity = inputs.json(path.with_suffix('.json'), ['p_sha256'])
-        # The ticket fixes only the presence of an identity sidecar. Check its
-        # P binding, plus the optional descriptive fields when supplied.
-        expected = dict(p_sha256=p_sha, n_rows=n_rows, rows=n_rows,
-                        arm=name.split('/')[0], name=name.split('/')[1])
-        for key in identity.keys() & expected.keys():
+        meta = inputs.json(path.with_suffix('.json'),
+                           ['identity', 'sha256', 'shape', 'k', 'states', 'threads'])
+        identity = meta['identity']
+        assert isinstance(identity, dict) and {
+            'arm', 'name', 'kind', 'p_sha256', 'source_sha256',
+            'sklearn', 'numpy', 'rb_ami_sha256'} <= identity.keys(), f'{path}: identity keys'
+        assert isinstance(identity['source_sha256'], str) and len(identity['source_sha256']) == 64
+        arm, partition_name = name.split('/')
+        expected = dict(p_sha256=p_sha, arm=arm, name=partition_name,
+                        kind='own' if partition_name.endswith('__own') else 'r20',
+                        sklearn=sklearn.__version__, numpy=np.__version__,
+                        rb_ami_sha256=file_sha256(inputs.track(
+                            eg_paths.TEST / '20261025_recipe_backbones/rb_ami.py')))
+        for key in expected:
             found += differences(expected[key], identity[key], f'{where}.identity.{key}')
         with np.load(inputs.track(path), allow_pickle=False) as cache:
             assert 'labels' in cache.files, f'{path}: labels key'
             theirs = cache['labels']
         assert theirs.dtype == np.int64 and theirs.ndim == 2, f'{path}: dtype/rank'
         assert theirs.shape[1] == n_rows and (theirs >= 0).all(), f'{path}: rows/labels'
+        array_sha = hashlib.sha256(np.ascontiguousarray(theirs).tobytes()).hexdigest()
+        found += differences(array_sha, meta['sha256'], f'{where}.sha256')
+        found += differences(list(theirs.shape), meta['shape'], f'{where}.shape')
+        for key, value in dict(k=20, states=[0, 1, 2], threads=8).items():
+            found += differences(value, meta[key], f'{where}.{key}')
         found += differences(array, theirs, where)
     return found
 
@@ -284,8 +298,10 @@ def score_aspect(labels, student, r20, own, frozen, n_draws=N_DRAWS, workers=8):
                 len(tasks), initializer=_init_bootstrap, initargs=args) as pool:
             values = pool.map(_bootstrap_chunk, tasks)
     interval = np.percentile(np.concatenate(values), [2.5, 97.5]).tolist()
+    lift = scores['student'] - scores[best]
+    assert np.isfinite([lift, *interval]).all(), 'lift and bounds must be finite'
     return dict(n_labelled=len(labelled), n_draws=n_draws, A=scores, own_best=best,
-                lift=scores['student'] - scores[best], interval=interval,
+                lift=lift, interval=interval,
                 student_minus_frozen=scores['student'] - scores['frozen'])
 
 
@@ -386,6 +402,9 @@ def _semantic_record(record):
     keys = ('p_sha256', 'n_rows', 'n_draws', 'label_sha256', 'label_counts',
             'versions', 'threads', 'rb_ami_sha256', 'encoders')
     result = {k: record.get(k, '<missing>') for k in keys}
+    if isinstance(result['versions'], dict):
+        result['versions'] = {k: result['versions'].get(k, '<missing>')
+                              for k in ('sklearn', 'numpy')}
     if isinstance(result['encoders'], dict):
         result['encoders'] = {k: {field: value for field, value in v.items() if field != 'reason'}
                               for k, v in result['encoders'].items()}
@@ -404,13 +423,14 @@ def _cached_result(path, config):
 
 
 def run(outputs, workers=8, smoke=False, *, p_path=None, pick_path=None,
-        annotations_path=None, genre_paths=None, n_rows=N_ROWS, n_draws=N_DRAWS,
+        annotations_path=None, genre_paths=None, n_rows=N_ROWS, n_draws=None,
         p_sha256=eg_paths.P_SHA256, store_root=None, store_count=61402):
     """Write a VL2 report. Optional raw-input paths/sizes permit tiny tests.
 
-    CLI runs always use the frozen full P and 2,000 draws. --smoke restricts
-    the output location; it does not weaken the rule's statistics.
+    CLI runs use the frozen full P and 2,000 draws, or 20 for --smoke.
+    Smoke outputs are restricted to /tmp/claude-0/.
     """
+    n_draws = (20 if smoke else N_DRAWS) if n_draws is None else n_draws
     assert 1 <= workers <= 8 and n_draws > 0
     outputs = Path(outputs)
     assert not smoke or eg_paths.smoke_ok(outputs), '--smoke writes only under /tmp/claude-0/'
@@ -470,7 +490,9 @@ def run(outputs, workers=8, smoke=False, *, p_path=None, pick_path=None,
                          ['p_sha256', 'n_rows', 'n_draws', 'label_sha256', 'label_counts',
                           'versions', 'threads', 'rb_ami_sha256', 'code_commit', 'sources', 'encoders'])
     assert isinstance(theirs['encoders'], dict)
-    assert all(isinstance(v, dict) and {'status', 'outcome', 'aspects'} <= v.keys()
+    assert all(isinstance(v, dict) and {'status', 'outcome'} <= v.keys()
+               and v['status'] in ('scored', 'missing')
+               and (v['status'] != 'scored' or isinstance(v.get('aspects'), dict))
                for v in theirs['encoders'].values()), 'lift encoder schema'
     found = differences(_semantic_record(ours), _semantic_record(theirs))
     found += compare_partitions(outputs, independent_partitions, p_sha256, n_rows, inputs)
