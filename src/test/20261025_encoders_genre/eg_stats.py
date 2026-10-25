@@ -30,6 +30,7 @@ THREADS = 8
 SMOKE_ROWS = 1000
 SCALES = {3: 'sample', 4: 'full'}          # reported_stage{3,4}.json: stage 3 on the sample, stage 4 on the full split
 READINGS = ('r20', 'own')
+CONSTANT_TOL = 1e-6      # max minus min below this: float noise, no rank correlation
 _NOTE = 'descriptive only: n is the number of encoders; no test, no threshold'
 
 
@@ -69,8 +70,10 @@ def spearman(x, y):
     x, y = np.asarray(x, dtype=np.float64), np.asarray(y, dtype=np.float64)
     assert x.shape == y.shape and x.ndim == 1 and np.isfinite(x).all() and np.isfinite(y).all()
     n = int(len(x))
-    if n < 3 or np.ptp(x) == 0 or np.ptp(y) == 0:
+    if n < 3:
         return {'rho': None, 'n': n}
+    if np.ptp(x) < CONSTANT_TOL or np.ptp(y) < CONSTANT_TOL:
+        return {'rho': None, 'n': n, 'reason': 'constant over the encoders'}
     return {'rho': float(spearmanr(x, y)[0]), 'n': n}
 
 
@@ -225,7 +228,8 @@ def stats_md(rec):
     lines += ['', f"## Spearman correlation with the emotion lift (n = {c['n']} encoders: {', '.join(c['stores']) or 'none'})", '',
               f"{_NOTE}. With n < 3 no value is given.", '', '| quantity | rho |', '|---|---|']
     for k, v in c['rho'].items():
-        lines.append(f"| {k} | {fmt(v['rho'], 3)} |")
+        cell = 'n/a: constant over the encoders' if 'reason' in v else fmt(v['rho'], 3)
+        lines.append(f'| {k} | {cell} |')
     lines += ['', 'Encoders without a lift outcome (not scored in lift.json): '
               + (', '.join(rec['lift_not_scored']) or 'none') + '.', '']
     return '\n'.join(lines)
