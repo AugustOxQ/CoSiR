@@ -64,7 +64,9 @@ recipe (P exports of all three aspects) is skipped inside it; a 1x step whose `p
   always, through the code that 3a proves bit for bit (C12). So a failed 3a stops stages 4 and 5; the report says so.
 - `vp3 --recipe R [--forced]`: the plan is the six recipes (`part1/plan.json`); a recipe with P exports for all three aspects
   is not trained again without `--forced`; every call is appended to `part1/vp3_log.jsonl`.
-- `v2_3`, `v2_4`: the re-derivation agrees before the reported readings run (rule §4.2).
+- `v2_3`, `v2_4`: the re-derivation agrees before the reported readings run (rule §4.2). It also must not be older
+  than its verdict file and must re-derive every block with an outcome (else "rerun V2"); `stage4` checks stage 3's V2
+  the same way, so a V2 file left from before a deferral rerun does not open the next step.
 
 ### VP2 after a forced rerun
 
@@ -90,6 +92,11 @@ of stage 3 without `RB_DEFER` after a split) trains and scores only the new ones
 refuses to recompute a finished block, whose recorded code commit may have changed. `check-verdict` checks every expected
 candidate. Stage 5 recomputes every model (its blocks hold no commit, so finished ones come out identical, 5 to 10 min).
 A candidate whose block has no outcome is not rescored by a rerun; that needs the scorer's `--replace REASON`.
+
+Part 2 makes no forced rerun (V4's "still fails V3 after the forced rerun"): `rb_student` and `rb_matched` refuse to
+train once a held output exists and have no `--forced`, and the code is deterministic, so a rerun would fail the
+same way. A seed that fails V3 (for example non-finite held probabilities) leaves its candidate without an outcome,
+with the cause in `v_failure`; the report says that no forced rerun was made (agent default, final review 2).
 
 ### Stage 5 scale
 
@@ -123,7 +130,7 @@ and run for real into the scratch folder. A smoke stage 0 exits 1 by design (its
 ## End estimate against 11:00 (D32)
 
 `rb_run.py budget` (first lines of the stage 0 queue): it adds the step times in chain order, skips steps whose output file
-exists, and puts the two report queues beside the chain (stage 3's starts after its V2; stage 4's after its V2 and after stage
+exists (in stages 3 and 4 and their reports, per candidate: one with a block is done, as `rb_run candidates`), and puts the two report queues beside the chain (stage 3's starts after its V2; stage 4's after its V2 and after stage
 3's report, one CPU job at a time). End = the later of the chain's end and stage 4's report end; low and high from the
 table in `rb_run.py` (`M` measured: part 1 bootstrap 7 min at 8 workers, VP1 7 min, one P export's partitions 7.5 s;
 `S` spec §9: part 1 25 min, CLIP store 10, students and matched arms at both scales 45, K4 15, DINOv2 35, ArtELingo-28 5,
