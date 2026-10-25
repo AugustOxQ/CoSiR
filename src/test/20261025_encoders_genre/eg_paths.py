@@ -34,6 +34,22 @@ HELD_SHA256 = rb_paths.HELD_SHA256
 X0_OLD_COMMIT = '45721894ade9ab553b92e561aeda9348c09cb399'
 
 
+def p_student(outputs, arm, aspect, seed):
+    """Stage ii: a student's P export (key 'img', float16 [29232, 2048]) with a .json sidecar."""
+    return Path(outputs) / 'stage_ii/p' / arm / f'{aspect}__s{seed}.npz'
+
+
+def p_own(outputs, arm, seed):
+    """Stage ii: an own PercepT arm's P export (key 'prob', float32 sigmoid [29232, 40]) with a .json sidecar."""
+    return Path(outputs) / 'stage_ii/p' / arm / f'P3__s{seed}.npz'
+
+
+def iii_run(outputs, variant, seed):
+    """Stage iii: one run's folder. Holds {aspect}.pt/.json (best state), {aspect}__P.npz and {aspect}__old5000.npz
+    (key 'img', float16 [n, 2048]), genre__P_adaptor.npz (GA only, key 'adaptor'), run.json (status, best epochs)."""
+    return Path(outputs) / 'stage_iii/train' / variant / f's{seed}'
+
+
 def smoke_ok(outputs):
     """A smoke writes only under /tmp/claude-0."""
     return Path(outputs).resolve().is_relative_to(SMOKE_ROOT)
