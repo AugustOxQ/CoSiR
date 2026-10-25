@@ -176,6 +176,10 @@ def read_reference(outputs, aspect, sname, shape):
     f = Path(outputs) / 'part1' / 'train' / REFERENCE / f'{aspect}__s0__{sname}.npz'
     if not f.exists():
         return None
+    if sname == 'P':          # rows in P.json order: the export's training record names the same P (C6)
+        p_sha = json.loads((Path(outputs) / 'part1' / 'P.json').read_text())['sha256']
+        record = json.loads((f.parent / f'{aspect}__s0.json').read_text())
+        assert record['p_sha256'] == p_sha, f'{f}: its record names another P'
     with np.load(f) as z:
         img = z['img']
     assert img.shape == tuple(shape), (f, img.shape)

@@ -35,6 +35,8 @@ def test_end_to_end(tmp_path, monkeypatch):
     folder.mkdir(parents=True)
     for a in rb_probe.ASPECTS:
         np.savez(folder / f'{a}__s0__P.npz', img=sets['P']['instr'][a].astype(np.float16))
+        (folder / f'{a}__s0.json').write_text(json.dumps(dict(p_sha256='f' * 64)))
+    (tmp_path / 'part1' / 'P.json').write_text(json.dumps(dict(sha256='f' * 64)))
     fit = {a: (xf, yf) for a in rb_probe.ASPECTS}
     stop = {a: (xs, ys) for a in rb_probe.ASPECTS}
     monkeypatch.setattr(rb_probe, "MAX_EPOCHS", 30)
