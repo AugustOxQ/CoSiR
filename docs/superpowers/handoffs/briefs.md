@@ -878,3 +878,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-19-handoff.md
 - New chat: tab 'r10 build 19', session d14991a9-632f-476b-84dc-a5e9238e928d
 
+[brief] CoSiR: r10 build 19 -> r10 build 20 (2026-10-25 06:36 Amsterdam)
+- Done: ticket 16 smoked on the GPU end to end (every queue and runner) and merged; final review (Opus `xhigh`, two parts): FIX, no blocker; part 1's findings fixed; real CLIP B/32 and ArtELingo-28 Qwen stores built.
+- State: 16 of 16 tickets merged on `r10-recipe-backbones` (tip 366c4e2); round suite 326 passed, 14 skipped.
+- Next: fix wave for review part 2 (three small code fixes, two notes), scoped re-review, merge into main, run handoff.
+- Blocked: nothing. Night mode; GPU check passes; no container restart.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-20-handoff.md
+- New chat: tab 'r10 build 20', session 4c57cb8b-ff7f-48dc-aab4-0bc3d48f11a5
+
