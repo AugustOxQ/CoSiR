@@ -81,6 +81,18 @@ the loop after. The CVPR abstract is due 2026-11-10; the 11-10 gate is the instr
   heads or losses for genre (incremental, development, Qwen, on the new recipe; literature note 12-20, ideas 2 and 3).
   Medium loop: step 3 skipped, the options are clear and stage i reuses a reviewed rule (agent default). The abstract:
   not now (user). Aspect-named retrieval for the 11-10 gate: the next loop, "the retrieval is important" (user).
+- **Idea (B):** the three stages above; grill in decide 20, 2026-10-25 16:40 to 17:25 (record in the
+  [decide 21 handoff](handoffs/2026-10-25-r10-decide-21-handoff.md) §2). Stage ii looks at development paintings
+  first: the sample-scale students and PercepT arms of all seven encoders scored on the 29,232, then the held table,
+  which chooses nothing; a method idea from it goes to development first, to held only as a new claim test in a later
+  loop (user; the what-if confirmed). Stage iii: the target is the instructed genre value 0.4989 ("2c would be the
+  target, but we might not be able to reach it directly from this round") (user); a variant never wins if another
+  aspect loses more than one seed range (user, after seeing the recommendation); weights of every variant within one
+  genre seed range of the target are kept, and the closest method gets two more weights (user, after seeing the
+  recommendation). Stage i: one verdict per encoder, the rule unchanged except the encoder list (user); how the paper
+  reports the verdicts is open, "we might exclude models that cannot pass, too soon to determine the paper writing
+  now" (user). Minor points m1 to m6 accepted (user, after seeing the recommendation); no plan page (user). Closing
+  summary confirmed (user, 17:25).
 - **Why:** more encoders test whether the student's lift is general and whether CLIP B/32's result comes from its low
   start; the genre gap to the instructed Qwen image is the open problem; all three run in minutes per training run.
 - **Links:** [report](../reports/auto/percept/2026-12-24_recipe_backbones.md) ·
