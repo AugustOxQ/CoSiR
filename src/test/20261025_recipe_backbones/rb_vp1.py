@@ -28,6 +28,7 @@ RECIPES = (REFERENCE,) + CANDIDATES
 SEED_RANGES = {'emotion': 0.0046, 'style': 0.0082, 'genre': 0.0128}
 TOL = 1e-6
 N_P = 29232
+WIDTH = 2048
 N_DRAWS = 2000
 SEEDS = (0, 1, 2)
 
@@ -195,9 +196,19 @@ def _export_path(outputs, recipe, aspect):
     return Path(outputs) / 'part1' / 'train' / recipe / f'{aspect}__s0__P.npz'
 
 
-def _check_export(x, n_rows):
-    """The part of VP2 this module can check on its own: rows, finite, unit norm. Returns a problem or None."""
-    if x.ndim != 2 or x.shape[0] != n_rows:
+def _read_export(outputs, recipe, aspect, p_sha):
+    """A P export's image rows, after its training record names the same P (rows in P.json order, C6)."""
+    path = _export_path(outputs, recipe, aspect)
+    record = json.loads((path.parent / f'{aspect}__s0.json').read_text())
+    assert record['p_sha256'] == p_sha, f'{path}: its record names another P ({record["p_sha256"]})'
+    return np.load(path)['img']
+
+
+def _check_export(x, n_rows, width=WIDTH):
+    """The part of VP2 this module can check on its own: dtype, shape, finite, unit norm. Returns a problem or None."""
+    if x.dtype != np.float16:
+        return f'dtype {x.dtype}'
+    if x.shape != (n_rows, width):
         return f'shape {x.shape}'
     x32 = x.astype(np.float32)
     if not np.isfinite(x32).all():
@@ -206,8 +217,22 @@ def _check_export(x, n_rows):
     return None if err < 1e-3 else f'norm error {err:.4g}'
 
 
-def derive(outputs, annotations=None, genre_loader=None, excluded=(), n_draws=N_DRAWS, workers=8, n_rows=N_P):
-    """Everything VP1 recomputes. `excluded` = candidates VP2 excluded (their exports are not read)."""
+def _excluded_check(outputs, recipe, p_sha, n_rows, width):
+    """A candidate the pick file excludes: are all three P exports there, and do they pass this module's checks?"""
+    if not all(_export_path(outputs, recipe, a).exists() for a in ASPECTS):
+        return dict(present=False, problems=[])
+    problems = []
+    for a in ASPECTS:
+        bad = _check_export(_read_export(outputs, recipe, a, p_sha), n_rows, width)
+        if bad:
+            problems.append(f'{a}: {bad}')
+    return dict(present=True, problems=problems)
+
+
+def derive(outputs, annotations=None, genre_loader=None, excluded=(), n_draws=N_DRAWS, workers=8, n_rows=N_P,
+           width=WIDTH):
+    """Everything VP1 recomputes. `excluded` = candidates the pick file excludes by VP2: not scored, but their
+    exports, when all three exist, are checked (an exclusion of exports that pass is a disagreement)."""
     assert REFERENCE not in excluded, 'R0-5 excluded: part 1 stops (rule §4.1 VP3)'
     names, p_sha = _load_p(outputs, n_rows)
     annotations = _default_annotations() if annotations is None else annotations
@@ -215,14 +240,15 @@ def derive(outputs, annotations=None, genre_loader=None, excluded=(), n_draws=N_
     labels = labels_from_annotations(names, annotations, genre_loader(names))
     label_sha = {a: sha256_labels(labels[a]) for a in ASPECTS}
     label_counts = {a: int((labels[a] >= 0).sum()) for a in ASPECTS}
-    parts, problems = {}, {}
+    parts, problems, excluded_exports = {}, {}, {}
     for r in RECIPES:
         if r in excluded:
+            excluded_exports[r] = _excluded_check(outputs, r, p_sha, n_rows, width)
             continue
         parts[r] = {}
         for a in ASPECTS:
-            x = np.load(_export_path(outputs, r, a))['img']
-            bad = _check_export(x, n_rows)
+            x = _read_export(outputs, r, a, p_sha)
+            bad = _check_export(x, n_rows, width)
             if bad:
                 problems.setdefault(r, []).append(f'{a}: {bad}')
                 continue
@@ -243,7 +269,7 @@ def derive(outputs, annotations=None, genre_loader=None, excluded=(), n_draws=N_
     cands, outcome, recipe = decide({r: effects[r] for r in CANDIDATES})
     return dict(p_sha256=p_sha, label_sha256=label_sha, label_counts=label_counts, parts=parts, effects=effects,
                 candidates=cands, outcome=outcome, recipe=recipe, triggers=triggers(recipe),
-                vp2_problems=problems, excluded=sorted(excluded), n_draws=n_draws,
+                vp2_problems=problems, excluded=sorted(excluded), excluded_exports=excluded_exports, n_draws=n_draws,
                 versions={'sklearn': sklearn.__version__, 'numpy': np.__version__})
 
 
@@ -274,7 +300,8 @@ def compare(outputs, mine):
     outputs = Path(outputs)
     pick = json.loads((outputs / 'part1' / 'pick.json').read_text())
     excl = pick_exclusions(pick)
-    res = dict(excluded=excl, p_sha256=_eq(mine['p_sha256'], pick['p_sha256']),
+    res = dict(excluded=excl, excluded_exports=mine['excluded_exports'],
+               draws=_eq(mine['n_draws'], pick['n_draws']), p_sha256=_eq(mine['p_sha256'], pick['p_sha256']),
                seed_ranges=_eq(SEED_RANGES, pick['seed_ranges']),
                label_counts={a: _eq(mine['label_counts'][a], pick['label_counts'][a]) for a in ASPECTS},
                label_sha256={a: _eq(mine['label_sha256'][a], pick['label_sha256'][a]) for a in ASPECTS},
@@ -285,8 +312,12 @@ def compare(outputs, mine):
         if not entry['agree']:
             bad.append(path)
 
-    for k in ('p_sha256', 'seed_ranges'):
+    for k in ('draws', 'p_sha256', 'seed_ranges'):
         note(k, res[k])
+    for c in excl:
+        chk = mine['excluded_exports'].get(c)
+        if chk is not None and chk['present'] and not chk['problems']:
+            bad.append(f'pick excluded {c}, its exports pass VP2')
     for a in ASPECTS:
         note(f'label_counts/{a}', res['label_counts'][a])
         note(f'label_sha256/{a}', res['label_sha256'][a])
@@ -346,12 +377,12 @@ def _md(res):
     return '\n'.join(lines) + '\n'
 
 
-def run(outputs, annotations=None, genre_loader=None, n_draws=N_DRAWS, workers=8, n_rows=N_P):
+def run(outputs, annotations=None, genre_loader=None, n_draws=N_DRAWS, workers=8, n_rows=N_P, width=WIDTH):
     """Re-derive, compare, write part1/rederive_vp1.json and .md. Returns the result dict."""
     outputs = Path(outputs)
     pick = json.loads((outputs / 'part1' / 'pick.json').read_text())
     mine = derive(outputs, annotations, genre_loader, excluded=pick_exclusions(pick), n_draws=n_draws,
-                  workers=workers, n_rows=n_rows)
+                  workers=workers, n_rows=n_rows, width=width)
     res = compare(outputs, mine)
     res.update(n_draws=n_draws, versions=dict(mine=mine['versions'], pick=pick.get('versions')),
                vp2_problems_mine=mine['vp2_problems'], mine=dict(

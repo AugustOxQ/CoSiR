@@ -217,8 +217,13 @@ def write_p(tmp_path, names=NAMES):
     return sha
 
 
+W = 16
+
+
 def write_exports(tmp_path, labels, signal):
-    """Exports whose cluster structure follows the labels with strength signal[recipe] (the rest is noise)."""
+    """Exports whose cluster structure follows the labels with strength signal[recipe] (the rest is noise), each with
+    its training record naming P."""
+    sha = json.loads((tmp_path / 'part1' / 'P.json').read_text())['sha256']
     rng = np.random.default_rng(11)
     for r, strength in signal.items():
         for a in rb_vp1.ASPECTS:
@@ -228,6 +233,7 @@ def write_exports(tmp_path, labels, signal):
             d = tmp_path / 'part1' / 'train' / r
             d.mkdir(parents=True, exist_ok=True)
             np.savez(d / f'{a}__s0__P.npz', img=unit(x), cap=unit(x))
+            (d / f'{a}__s0.json').write_text(json.dumps(dict(p_sha256=sha)))
 
 
 SIGNAL = {'R0-5': 0.5, 'R0-3': 0.5, 'R6-5': 3.0, 'R6-3': 0.5, 'R7-5': 0.5, 'R7-3': 0.5}
@@ -238,8 +244,19 @@ def derive_all(tmp_path, excluded=(), signal=SIGNAL):
     labels = rb_vp1.labels_from_annotations(NAMES, synth_annotations(), synth_genre(NAMES))
     write_exports(tmp_path, labels, signal)
     mine = rb_vp1.derive(tmp_path, annotations=synth_annotations(), genre_loader=synth_genre, excluded=excluded,
-                         n_draws=8, workers=1, n_rows=N)
+                         n_draws=8, workers=1, n_rows=N, width=W)
     return sha, labels, mine
+
+
+def rederive(tmp_path, excluded=()):
+    return rb_vp1.derive(tmp_path, annotations=synth_annotations(), genre_loader=synth_genre, excluded=excluded,
+                         n_draws=8, workers=1, n_rows=N, width=W)
+
+
+def scale_export(tmp_path, recipe, aspect, factor=1.1):
+    f = tmp_path / 'part1' / 'train' / recipe / f'{aspect}__s0__P.npz'
+    x = np.load(f)
+    np.savez(f, img=x['img'] * np.float16(factor), cap=x['cap'])
 
 
 def make_pick(mine, excluded=()):
@@ -250,7 +267,7 @@ def make_pick(mine, excluded=()):
                 label_counts=mine['label_counts'], label_sha256=mine['label_sha256'], recipes=recipes,
                 candidates={c: dict(mine['candidates'][c], vp2_ok=c not in excluded, vp2_problems=[])
                             for c in rb_vp1.CANDIDATES},
-                outcome=mine['outcome'], recipe=mine['recipe'], triggers=mine['triggers'],
+                outcome=mine['outcome'], recipe=mine['recipe'], triggers=mine['triggers'], n_draws=mine['n_draws'],
                 vp2_failed={c: 'norm error' for c in excluded}))
 
 
@@ -304,7 +321,7 @@ def test_identical_files_agree(tmp_path):
 
 
 @pytest.mark.parametrize('what', ['partition', 'e', 'lo', 'hi', 'bound_just_over_tol', 'outcome', 'label_hash',
-                                  'trigger', 'p_sha', 'g', 'gain_flag'])
+                                  'trigger', 'p_sha', 'g', 'gain_flag', 'n_draws'])
 def test_a_planted_difference_is_reported(tmp_path, what):
     _, _, mine = derive_all(tmp_path)
     pick = make_pick(mine)
@@ -332,6 +349,8 @@ def test_a_planted_difference_is_reported(tmp_path, what):
         pick['p_sha256'] = '1' * 64
     elif what == 'g':
         pick['candidates']['R0-3']['g'] += 0.01
+    elif what == 'n_draws':
+        pick['n_draws'] = 20
     elif what == 'gain_flag':
         pick['recipes']['R6-5']['emotion']['gain'] = not pick['recipes']['R6-5']['emotion']['gain']
     if what != 'partition':
@@ -349,7 +368,11 @@ def test_a_difference_inside_the_tolerance_is_not_a_disagreement(tmp_path):
 
 
 def test_a_candidate_excluded_by_vp2_is_excluded_not_a_disagreement(tmp_path):
-    _, _, mine = derive_all(tmp_path, excluded=('R6-5',))
+    derive_all(tmp_path, excluded=('R6-5',))
+    scale_export(tmp_path, 'R6-5', 'genre')           # its exports really fail VP2
+    mine = rederive(tmp_path, excluded=('R6-5',))
+    chk = mine['excluded_exports']['R6-5']
+    assert chk['present'] is True and len(chk['problems']) == 1 and chk['problems'][0].startswith('genre: norm')
     assert mine['effects']['R6-5'] is None and mine['candidates']['R6-5']['pass'] is False
     assert mine['outcome'] != 'P-R6-5'
     res = agree_all(tmp_path, mine, excluded=('R6-5',))
@@ -360,13 +383,42 @@ def test_a_candidate_excluded_by_vp2_is_excluded_not_a_disagreement(tmp_path):
     assert agree_all(tmp_path, mine, pick, ('R6-5',))['agree'] is False
 
 
+def test_an_excluded_candidate_whose_exports_pass_is_a_disagreement(tmp_path):
+    _, _, mine = derive_all(tmp_path, excluded=('R6-5',))
+    assert mine['excluded_exports']['R6-5'] == dict(present=True, problems=[])
+    res = agree_all(tmp_path, mine, excluded=('R6-5',))
+    assert res['agree'] is False and 'pick excluded R6-5, its exports pass VP2' in res['disagreements']
+
+
+def test_an_excluded_candidate_without_its_exports_is_not_a_disagreement(tmp_path):
+    derive_all(tmp_path, excluded=('R6-5',))
+    (tmp_path / 'part1' / 'train' / 'R6-5' / 'style__s0__P.npz').unlink()   # training stopped before this export
+    mine = rederive(tmp_path, excluded=('R6-5',))
+    assert mine['excluded_exports']['R6-5'] == dict(present=False, problems=[])
+    assert agree_all(tmp_path, mine, excluded=('R6-5',))['agree'] is True
+
+
+def test_an_export_whose_record_names_another_p_is_refused(tmp_path):
+    derive_all(tmp_path)
+    (tmp_path / 'part1' / 'train' / 'R7-5' / 'emotion__s0.json').write_text(json.dumps(dict(p_sha256='3' * 64)))
+    with pytest.raises(AssertionError, match='another P'):
+        rederive(tmp_path)
+
+
+@pytest.mark.parametrize('bad', ['float32', 'width'])
+def test_an_export_of_the_wrong_dtype_or_width_fails_vp2(bad):
+    x = unit(np.random.default_rng(0).normal(size=(N, W)))
+    x = x.astype(np.float32) if bad == 'float32' else x[:, :-1]
+    assert rb_vp1._check_export(x, N, W) is not None
+    assert rb_vp1._check_export(unit(np.random.default_rng(0).normal(size=(N, W))), N, W) is None
+
+
 def test_a_candidate_the_pick_scored_but_mine_found_bad_is_a_disagreement(tmp_path):
     _, _, mine = derive_all(tmp_path)
     pick = make_pick(mine)
     x = np.load(tmp_path / 'part1' / 'train' / 'R6-3' / 'style__s0__P.npz')
     np.savez(tmp_path / 'part1' / 'train' / 'R6-3' / 'style__s0__P.npz', img=x['img'] * np.float16(1.1), cap=x['cap'])
-    mine2 = rb_vp1.derive(tmp_path, annotations=synth_annotations(), genre_loader=synth_genre, excluded=(),
-                          n_draws=8, workers=1, n_rows=N)
+    mine2 = rederive(tmp_path)
     assert mine2['vp2_problems'] and 'R6-3' in mine2['vp2_problems']
     write_saved_partitions(tmp_path, mine)
     (tmp_path / 'part1' / 'pick.json').write_text(json.dumps(pick))
@@ -378,7 +430,7 @@ def test_run_writes_the_json_and_md_and_refuses_a_changed_p_hash(tmp_path):
     _, _, mine = derive_all(tmp_path)
     agree_all(tmp_path, mine)
     res = rb_vp1.run(tmp_path, annotations=synth_annotations(), genre_loader=synth_genre, n_draws=8, workers=1,
-                     n_rows=N)
+                     n_rows=N, width=W)
     out = json.loads((tmp_path / 'part1' / 'rederive_vp1.json').read_text())
     assert res['agree'] is True and out['agree'] is True and out['n_draws'] == 8
     assert (tmp_path / 'part1' / 'rederive_vp1.md').read_text().startswith('# VP1')
@@ -387,7 +439,7 @@ def test_run_writes_the_json_and_md_and_refuses_a_changed_p_hash(tmp_path):
     (tmp_path / 'part1' / 'P.json').write_text(json.dumps(p))
     with pytest.raises(AssertionError):
         rb_vp1.run(tmp_path, annotations=synth_annotations(), genre_loader=synth_genre, n_draws=8, workers=1,
-                   n_rows=N)
+                   n_rows=N, width=W)
 
 
 def test_smoke_refuses_an_outputs_path_outside_the_scratch_area():
