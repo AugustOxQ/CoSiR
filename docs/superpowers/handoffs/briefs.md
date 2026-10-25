@@ -894,3 +894,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-run-14-handoff.md
 - New chat: tab 'r10 run 14', session 745d4891-f166-420b-bcab-fb6eddcba5dd
 
+[brief] CoSiR: r10 run 14 -> r10 run 15 (2026-10-25 09:53 Amsterdam)
+- Done: the whole GPU chain and the stage 3 report queue; every outcome is in and its re-derivation agrees.
+- State: pick R6-5; held emotion at full scale: SigLIP 2 GO (+0.0150), Qwen with R6-5 GO (+0.0154), CLIP B/32 inconclusive (+0.0011).
+- Next: draft 12-24; at 19:00 run `rb_queue_cpu.sh 4` (CPU only); finish the reports by 2026-10-26 10:00.
+- Blocked: nothing. Night mode; the GPU is not needed.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-run-15-handoff.md
+- New chat: tab 'r10 run 15', session e22bd7b0-de1f-4e64-8112-c42fb4064e8d
+
