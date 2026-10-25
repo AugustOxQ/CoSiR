@@ -942,3 +942,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21c-handoff.md
 - New chat: tab 'r10 build 21c', session 46fd8f3c-3629-40f8-98bc-63333032b546
 
+[brief] CoSiR: r10 build 21c -> r10 build 21d (2026-10-25 20:05 Amsterdam)
+- Done: tickets 05, 07, 11 and 15 merged (10 of 16). VG1, the fresh-seed parity, VL1 (a) and the VG1 scorer half pass on the real outputs; 07 to 08 runs end to end on the full P.
+- State: 09 (Codex) review FIX, four file-format mismatches with 08; 13 built, not reviewed. 06, 10, 14 and 16 not started.
+- Next: Codex fix of 09 by resume, Opus review of 13, Codex 14, the real X1/X2 scorer checks; then 06.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21d-handoff.md
+- New chat: tab 'r10 build 21d', session 2c8782ae-531e-496e-b1b2-c8e5eeab9346
+
