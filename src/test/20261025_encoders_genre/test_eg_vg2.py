@@ -246,7 +246,7 @@ def test_all_phase_rederives_extras_and_winner(files):
 
 def add_fresh_files(f):
     import torch
-    out, rb2 = f['out'], f['rb'].parent/'rb2'
+    out, rb2 = f['out'], f['rb'].parent/'part2'
     runs, run_hashes, images = {}, {}, {}
     for v in ('GT-2', vg.BASE):
         runs[v], run_hashes[v], images[v] = {}, {}, {}
@@ -280,8 +280,10 @@ def add_fresh_files(f):
                     frozen.parent.mkdir(parents=True, exist_ok=True)
                     torch.save(state, frozen)
     parity = {'pass': True, 'seeds': {str(s): {'pass': True, 'run_status': 'ok', 'run_cause': None,
+              'code_commit': 'fixture', 'code_dirty': False,
               'weights_equal': dict.fromkeys(vg.ASPECTS, True)} for s in (1, 2, 3)},
-              'code_commit': 'fixture', 'reference': 'K4'}
+              'code_commit': 'fixture', 'code_dirty': False,
+              'reference': str(rb2/'sample/weights/K4')}
     dump(out/'stage_iii/fresh_parity.json', parity)
     parity_hash = digest((out/'stage_iii/fresh_parity.json').read_bytes())
     fresh = {k: f['first'][k] for k in ('smoke', 'n_draws', 'reference', 'seed', 't_g', 'promising',
@@ -300,10 +302,26 @@ def add_fresh_files(f):
     return rb2, fresh
 
 
-def test_fresh_phase_rederives_c_outcome_and_parity(files):
-    rb2, _ = add_fresh_files(files)
+def test_real_parity_path_and_bookkeeping_agree(files):
+    rb2, fresh = add_fresh_files(files)
+    fresh['parity']['code_dirty'] = True
+    fresh['parity']['seeds']['1']['code_commit'] = 'other bookkeeping'
+    dump(files['out']/'stage_iii/score_fresh.json', fresh)
     report = verify(files, 'fresh', rb_part2=rb2)
     assert report['agree'], report['differences']
+
+
+def test_failed_parity_seed_may_omit_weights_equal(tmp_path):
+    ours = {'pass': False, 'seeds': {}}
+    theirs = {'pass': False, 'reference': str(tmp_path/'part2/sample/weights/K4'), 'seeds': {}}
+    for s in vg.SEEDS:
+        ours['seeds'][str(s)] = {'pass': False, 'run_status': 'failed',
+                                'weights_equal': dict.fromkeys(vg.ASPECTS, False)}
+        theirs['seeds'][str(s)] = {'pass': False, 'run_status': 'failed', 'run_cause': 'loss',
+                                  'code_commit': 'trainer', 'code_dirty': True}
+    assert vg.parity_differences(ours, theirs) == []
+    theirs['reference'] = 'K4'
+    assert vg.parity_differences(ours, theirs)[0]['path'] == 'fresh_parity/reference'
 
 
 def test_false_parity_pass_cannot_license_c_outcome(files):

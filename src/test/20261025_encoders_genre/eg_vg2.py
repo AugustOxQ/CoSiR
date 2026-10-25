@@ -367,6 +367,26 @@ def weights_equal(inputs, fresh_path, frozen_path):
         for k in fresh))
 
 
+def parity_differences(ours, theirs, path='fresh_parity'):
+    """Only parity decisions enter VG2; trainer bookkeeping is descriptive."""
+    if not isinstance(theirs, dict):
+        return differences(ours, theirs, path)
+    reference = theirs.get('reference')
+    bad = []
+    if not isinstance(reference, str) or Path(reference).parts[-4:] != ('part2', 'sample', 'weights', 'K4'):
+        bad.append(dict(path=path+'/reference', ours='path ending part2/sample/weights/K4', theirs=reference))
+    expected, actual = {'pass': ours['pass'], 'seeds': {}}, {'pass': theirs.get('pass'), 'seeds': {}}
+    seeds = theirs.get('seeds', {})
+    assert isinstance(seeds, dict)
+    for s in sorted(set(ours['seeds']) | set(seeds)):
+        mine, saved = ours['seeds'].get(s, {}), seeds.get(s, {})
+        assert isinstance(saved, dict)
+        keys = ['pass', 'run_status'] + (['weights_equal'] if 'weights_equal' in saved else [])
+        expected['seeds'][s] = {k: mine.get(k, '<missing>') for k in keys}
+        actual['seeds'][s] = {k: saved.get(k, '<missing>') for k in keys}
+    return bad + differences(expected, actual, path)
+
+
 def fresh_scores(inputs, labels, label_sha, header, seed0, n_draws, workers, rb_part2):
     winner = seed0['winner']
     ours = dict(header, winner=winner, seeds=list(SEEDS), seed0_outcome=seed0['outcome'],
@@ -403,7 +423,7 @@ def fresh_scores(inputs, labels, label_sha, header, seed0, n_draws, workers, rb_
             parity_seeds[str(s)] = {'pass': all(equal.values()), 'run_status': run['status'],
                                    'run_cause': run.get('cause'), 'weights_equal': equal}
         parity_ok = all(p['pass'] for p in parity_seeds.values())
-        expected_parity = {'pass': parity_ok, 'seeds': parity_seeds, 'reference': 'K4'}
+        expected_parity = {'pass': parity_ok, 'seeds': parity_seeds}
         # Draw fresh effects from raw exports, even when the parity gate fails.
         if not identity['failed']:
             effects = {}
@@ -427,8 +447,8 @@ def fresh_scores(inputs, labels, label_sha, header, seed0, n_draws, workers, rb_
                 str(s): {a: inputs.img_hashes[v, s, a] for a in ASPECTS}
                 for s in SEEDS if (v, s, 'emotion') in inputs.img_hashes}
         parity_path = inputs.outputs/'stage_iii/fresh_parity.json'
-        parity = inputs.json(parity_path, ('pass', 'seeds', 'reference', 'code_commit'))
-        inputs.check(expected_parity, {k: parity.get(k, '<missing>') for k in expected_parity}, 'fresh_parity')
+        parity = inputs.json(parity_path, ('pass', 'seeds', 'reference'))
+        inputs.bad.extend(parity_differences(expected_parity, parity))
         digest = inputs.hashes[str(parity_path)]
         ours['parity'] = dict(parity, sha256=digest)
         identity['fresh_parity_sha256'] = digest
@@ -447,6 +467,14 @@ def compare_record(inputs, ours, theirs, phase):
     """
     expected = dict(ours)
     if phase == 'fresh':
+        parity = expected.pop('parity')
+        if parity is None:
+            inputs.check(None, theirs.get('parity', '<missing>'), 'score_fresh/parity')
+        else:
+            saved_parity = theirs.get('parity')
+            inputs.bad.extend(parity_differences(parity, saved_parity, 'score_fresh/parity'))
+            inputs.check(parity['sha256'], saved_parity.get('sha256') if isinstance(saved_parity, dict) else None,
+                         'score_fresh/parity/sha256')
         expected.pop('reading')
         cause = expected.pop('no_outcome_cause')
         actual = theirs.get('no_outcome_cause', '<missing>')
