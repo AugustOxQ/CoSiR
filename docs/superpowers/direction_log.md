@@ -67,7 +67,9 @@ the loop after. The CVPR abstract is due 2026-11-10; the 11-10 gate is the instr
   on two image encoders, Qwen and SigLIP 2, with Qwen3-VL-Embedding at training"; write it for the abstract, then test
   genre losses. Where they differ: on held paintings CLIP B/32 is inconclusive, not bad, and fails only on
   ArtELingo-28; the student lifts each encoder above its own PercepT arm by a similar amount (SigLIP 2 +0.0231, CLIP
-  B/32 +0.0169, Qwen +0.0155; arithmetic from the report's tables, not checked), so CLIP's low start sets its result;
+  B/32 +0.0169, Qwen +0.0155; arithmetic from the report's tables, not checked) and CLIP's own PercepT arm starts
+  lowest (0.0716); correction (decide 20 facts brief, read from the outputs): CLIP B/32's frozen emotion AMI (0.0642)
+  is above SigLIP 2's (0.0569), whose student ends near the top, so the starting level alone does not explain it;
   we put the abstract claim first, the user's next steps leave it out; the user's reading leaves out the k-means-only,
   ArtELingo-28 and one-seed limits.
 - **Decided (A):** the user's three proposals as one medium loop, shaped by our recommendation (user, after seeing
