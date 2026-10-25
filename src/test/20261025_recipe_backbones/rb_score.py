@@ -5,6 +5,7 @@ its matched arm (M2, M3, M5; none for K4). The candidate's reading is r20 only; 
 Reuses the CT's partition code and AMI; the CT's own scorer hard-codes K1 and its arm order, so the statistic,
 the draw order and the verdict files are generalized here (RB rule §3.2, §4.2).
 """
+import fcntl
 import hashlib
 import inspect
 import json
@@ -175,20 +176,45 @@ def output_path(scale, arm, seed, aspect='emotion', outputs=None):
     return outputs / f'part2/{scale}/held/{arm}/P3__s{seed}.npz'
 
 
-def load_output(path, arm, n_rows=HELD_ROWS, held_sha256=None):
+def array_sha256(x):
+    return hashlib.sha256(np.ascontiguousarray(x).tobytes()).hexdigest()
+
+
+def check_sidecar(path, x, arm, n_rows, list_sha256, scale, seed, aspect):
+    """The index's "Output sidecars" of a new arm's output: the sibling .json binds the list (and so the row order),
+    the row count, width, dtype, the saved array's sha256 and the arm's identity."""
+    meta_path = Path(path).with_suffix('.json')
+    assert meta_path.exists(), f'{path}: missing sidecar {meta_path.name}'
+    meta = json.loads(meta_path.read_text())
+    expected = dict(list_sha256=list_sha256, rows=n_rows, width=int(x.shape[1]), dtype=str(x.dtype),
+                    sha256=array_sha256(x), scale=scale, arm=arm, seed=seed,
+                    aspect=aspect if arm[0] == 'K' else 'percept')
+    for key, value in expected.items():
+        assert key in meta and meta[key] == value, f'{path}: sidecar {key} is {meta.get(key)!r}, expected {value!r}'
+
+
+def load_output(path, arm, n_rows=HELD_ROWS, list_sha256=None, scale=None, seed=None, aspect=None):
     """A saved output as float32, checked as V3 (rows, width, dtype, unit norm for K, [0, 1] for PercepT).
 
     Non-finite paper arms (B2 to B5) return None (V4: they leave the entry); any other arm fails.
-    CT sidecars must carry the held list's hash when `held_sha256` is given.
+    CT sidecars must carry the held list's hash when `list_sha256` is given. Every new arm (K2 to K5, M2, M3, M5)
+    needs its sidecar checked, so `list_sha256` (held list, or the ArtELingo-28 list), `scale`, `seed` and `aspect`
+    are required for it.
     """
     path = Path(path)
     is_k = arm[0] == 'K'
-    if held_sha256 is not None and arm in CT_STEMS:
-        meta = json.loads(path.with_suffix('.json').read_text())
-        assert meta['held_sha256'] == held_sha256 and meta['rows'] == n_rows, path
+    if arm in CT_STEMS:
+        if list_sha256 is not None:
+            meta = json.loads(path.with_suffix('.json').read_text())
+            assert meta['held_sha256'] == list_sha256 and meta['rows'] == n_rows, path
+    else:
+        assert None not in (list_sha256, scale, seed, aspect), f'{path}: a new arm needs its sidecar expectations'
     with np.load(path, allow_pickle=False) as z:
         assert z.files == (['img'] if is_k else ['prob']), path
         x = z['img' if is_k else 'prob']
+    if arm not in CT_STEMS:
+        assert x.ndim == 2 and x.shape[0] == n_rows, path
+        check_sidecar(path, x, arm, n_rows, list_sha256, scale, seed, aspect)
     assert x.ndim == 2 and x.shape[0] == n_rows, path
     if is_k:
         assert x.shape[1] == 2048 and x.dtype == np.float16, path
@@ -289,7 +315,7 @@ def prepare_arms(scale, arms, rcol_eligible, held_sha256, outputs=None, aspect='
         for seed in eligible[arm]:
             path = output_path(scale, arm, seed, aspect if arm[0] == 'K' else 'emotion', outputs)
             assert path.exists(), f'missing eligible output: {path}'
-            x = load_output(path, arm, n_rows, held_sha256)
+            x = load_output(path, arm, n_rows, held_sha256, scale, seed, aspect)
             sources[arm][str(seed)] = dict(path=str(path), output_sha256=sha_file(path))
             if x is None:
                 nonfinite[arm].append(seed)
@@ -360,10 +386,13 @@ def write_regression_items(path, items):
     """Merge items {name: {'pass': bool, ...}} into a regression file {pass, items}; pass = every item passes."""
     assert all(isinstance(item.get('pass'), bool) for item in items.values())
     path = Path(path)
-    record = json.loads(path.read_text()) if path.exists() else dict(items={})
-    record['items'].update(_json_value(items))
-    record['pass'] = all(item['pass'] for item in record['items'].values())
-    _atomic_json(path, record)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.with_name(path.name + '.lock').open('w') as lock:   # tickets 10, 11 and 12 write the same file
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        record = json.loads(path.read_text()) if path.exists() else dict(items={})
+        record['items'].update(_json_value(items))
+        record['pass'] = all(item['pass'] for item in record['items'].values())
+        _atomic_json(path, record)
     return record
 
 
@@ -438,17 +467,27 @@ def check_v3_aspects(scale, candidate, outputs, held_sha256, n_rows=HELD_ROWS):
     """V3 on all three aspects of every seed of a candidate's output set (style and genre are only reported)."""
     for aspect in ('emotion', 'style', 'genre'):
         for seed in SEEDS:
-            load_output(output_path(scale, candidate, seed, aspect, outputs), candidate, n_rows, held_sha256)
+            load_output(output_path(scale, candidate, seed, aspect, outputs), candidate, n_rows, held_sha256, scale,
+                        seed, aspect)
+
+
+REGRESSION_GROUPS = ('student/', 'matched/', 'scorer/')   # index "Regressions": tickets 10, 11, 12
 
 
 def require_gate(outputs, stage, candidates):
     """V1: stage 3 needs a passed stage 2, stage 4 a passed stage 3a and, per candidate, a stage 3 block not S1-NO."""
-    reg = json.loads((outputs / f'part2/regression/{"stage2" if stage == 3 else "stage3a"}.json').read_text())
-    assert reg['pass'] is True, f'V1: the regression check of stage {"2" if stage == 3 else "3a"} has not passed'
+    name = "2" if stage == 3 else "3a"
+    reg = json.loads((outputs / f'part2/regression/stage{name}.json').read_text())
+    items = reg['items']
+    bad = sorted(k for k, v in items.items() if v['pass'] is not True)
+    assert reg['pass'] is True and not bad, f'V1: the regression check of stage {name} has failing items {bad}'
+    for group in REGRESSION_GROUPS:
+        assert any(k.startswith(group) and v['pass'] is True for k, v in items.items()), \
+            f'V1: the regression check of stage {name} has no passing {group}* item'
     if stage == 4:
         v3 = json.loads((outputs / 'part2/verdict_stage3.json').read_text())
         for c in candidates:
-            assert c in v3['blocks'], f'{c}: no stage 3 outcome yet'
+            assert c in v3['blocks'] and v3['blocks'][c].get('outcome_id'), f'{c}: no stage 3 outcome yet'
             assert v3['blocks'][c]['outcome_id'] != 'S1-NO', f'{c}: S1-NO, stage 4 does not run'
 
 
@@ -462,16 +501,25 @@ def run_stage(stage, candidates, outputs=None, workers=8, n_resamples=2000, gate
     rcol, rcol_path = read_rcol_eligible(scale)
     header = dict(stage=stage, scale=scale, held_sha256=sha)
     path = outputs / f'part2/verdict_stage{stage}.json'
+    record = None
     for candidate in candidates:
         arms = arms_for(candidate)
-        check_v3_aspects(scale, candidate, outputs, sha, len(labels))
-        fixed, eligible, sources = prepare_arms(scale, arms, rcol, sha, outputs, n_rows=len(labels))
-        eligibility = dict(eligible_seeds=eligible, rcol_eligible_seeds=rcol, nonfinite_held=sources['nonfinite_held'])
-        block = candidate_block(fixed, labels, eligible, arms, scale, n_resamples, workers, eligibility,
-                                dict(held_outputs=sources['outputs'], rcol=dict(path=str(rcol_path), sha256=sha_file(rcol_path)),
-                                     code=_code_identity()))
+        try:
+            check_v3_aspects(scale, candidate, outputs, sha, len(labels))
+            fixed, eligible, sources = prepare_arms(scale, arms, rcol, sha, outputs, n_rows=len(labels))
+            eligibility = dict(eligible_seeds=eligible, rcol_eligible_seeds=rcol,
+                               nonfinite_held=sources['nonfinite_held'])
+            block = candidate_block(fixed, labels, eligible, arms, scale, n_resamples, workers, eligibility,
+                                    dict(held_outputs=sources['outputs'],
+                                         rcol=dict(path=str(rcol_path), sha256=sha_file(rcol_path)),
+                                         code=_code_identity()))
+            line = f'd={block["d"]:.4f} interval={block["interval"]} {block["outcome_id"]}'
+        except (AssertionError, FileNotFoundError) as err:   # V3 / V4: only this candidate's outcome is removed
+            block = dict(candidate=candidate, arms=list(arms), scale=scale, outcome_id=None,
+                         v_failure=f'{type(err).__name__}: {err}')
+            line = f'NO OUTCOME ({block["v_failure"]})'
         record = write_verdict(path, header, {candidate: block}, replace)
-        print(f'{candidate}: d={block["d"]:.4f} interval={block["interval"]} {block["outcome_id"]}', flush=True)
+        print(f'{candidate}: {line}', flush=True)
     return record
 
 
@@ -496,8 +544,10 @@ def main(argv=None):
         print(f'{args.check}: pass={record["pass"]}; failing scorer items: {bad}', flush=True)
         raise SystemExit(0 if not bad else 1)
     assert args.candidates, '--stage needs --candidates'
-    run_stage(args.stage, args.candidates, args.outputs, args.workers, n_resamples=20 if args.smoke else 2000,
-              gate=not args.smoke, replace=args.replace)
+    record = run_stage(args.stage, args.candidates, args.outputs, args.workers,
+                       n_resamples=20 if args.smoke else 2000, gate=not args.smoke, replace=args.replace)
+    failed = [c for c in args.candidates if record['blocks'][c].get('outcome_id') is None]
+    raise SystemExit(1 if failed else 0)
 
 
 if __name__ == '__main__':

@@ -1,4 +1,6 @@
 """Part 2 scorer seams (ticket 12): bootstrap draw order, indexed scores, eligibility, outcomes, verdict files."""
+import json
+
 import numpy as np
 import pytest
 
@@ -191,6 +193,24 @@ def unit(n, w, seed):
     return (x / np.linalg.norm(x, axis=1, keepdims=True)).astype(np.float16)
 
 
+def put_sidecar(path, arm, seed=0, aspect=None, scale='sample', list_sha256='H', override=None):
+    """Write the index's output sidecar of a new arm's .npz (read back from the file, independent of rb_score)."""
+    import hashlib
+    import json
+    with np.load(path) as z:
+        key, = z.files
+        x = z[key]
+    meta = dict(list_sha256=list_sha256, rows=int(x.shape[0]), width=int(x.shape[1]), dtype=str(x.dtype),
+                sha256=hashlib.sha256(x.tobytes()).hexdigest(), scale=scale, arm=arm, seed=seed,
+                aspect=aspect or ('percept' if arm[0] != 'K' else 'emotion'))
+    meta.update(override or {})
+    path.with_suffix('.json').write_text(json.dumps(meta))
+
+
+def load_new(path, arm, n, seed=0, aspect=None, scale='sample', list_sha256='H'):
+    return score.load_output(path, arm, n, list_sha256, scale, seed, aspect or ('emotion' if arm[0] == 'K' else 'percept'))
+
+
 def test_output_paths_ct_arms_from_the_ct_scale_root_new_arms_from_part2_outputs(tmp_path):
     p = score.output_path('sample', 'B6', 2, outputs=tmp_path)
     assert p == rb_paths.CT_OUT / 'held/percept/core__k40/P2__s2.npz'
@@ -205,20 +225,58 @@ def test_output_paths_ct_arms_from_the_ct_scale_root_new_arms_from_part2_outputs
 def test_load_output_checks_rows_width_dtype_range_and_norm(tmp_path):
     k = unit(30, 2048, 0)
     write_k(tmp_path / 'k.npz', k)
-    np.testing.assert_array_equal(score.load_output(tmp_path / 'k.npz', 'K2', 30), k.astype(np.float32))
+    put_sidecar(tmp_path / 'k.npz', 'K2')
+    np.testing.assert_array_equal(load_new(tmp_path / 'k.npz', 'K2', 30), k.astype(np.float32))
     for bad in (k[:29], np.concatenate([k[:, :-1], k[:, :1]], 1) * 2):
         write_k(tmp_path / 'bad.npz', bad)
+        put_sidecar(tmp_path / 'bad.npz', 'K2')
         with pytest.raises(AssertionError):
-            score.load_output(tmp_path / 'bad.npz', 'K2', 30)
+            load_new(tmp_path / 'bad.npz', 'K2', 30)
     prob = np.random.default_rng(1).random((30, 40)).astype(np.float32)
     np.savez(tmp_path / 'p.npz', prob=prob)
-    np.testing.assert_array_equal(score.load_output(tmp_path / 'p.npz', 'M2', 30), prob)
+    put_sidecar(tmp_path / 'p.npz', 'M2')
+    np.testing.assert_array_equal(load_new(tmp_path / 'p.npz', 'M2', 30), prob)
     np.savez(tmp_path / 'p.npz', prob=prob * 2)
     with pytest.raises(AssertionError):
         score.load_output(tmp_path / 'p.npz', 'B6', 30)
     np.savez(tmp_path / 'p.npz', prob=prob[:, :39])
     with pytest.raises(AssertionError):
         score.load_output(tmp_path / 'p.npz', 'B1', 30)
+
+
+def test_new_arm_outputs_need_a_sidecar_that_matches_the_list_and_the_saved_array(tmp_path):
+    k = unit(30, 2048, 0)
+    prob = np.random.default_rng(1).random((30, 40)).astype(np.float32)
+    write_k(tmp_path / 'k.npz', k)
+    np.savez(tmp_path / 'p.npz', prob=prob)
+    with pytest.raises(AssertionError, match='sidecar'):                    # missing
+        load_new(tmp_path / 'k.npz', 'K2', 30)
+    with pytest.raises(AssertionError, match='sidecar'):
+        load_new(tmp_path / 'p.npz', 'M2', 30)
+    for arm, name in (('K2', 'k.npz'), ('M2', 'p.npz')):
+        path = tmp_path / name
+        put_sidecar(path, arm)
+        with pytest.raises(AssertionError, match='list'):                   # wrong list (stage 5: a28 hash vs held)
+            load_new(path, arm, 30, list_sha256='OTHER')
+        with pytest.raises(AssertionError, match='list'):                   # sidecar of another list
+            put_sidecar(path, arm, list_sha256='OTHER')
+            load_new(path, arm, 30)
+        for key, value in (('sha256', '0' * 64), ('rows', 29), ('width', 2047), ('dtype', 'float64'), ('scale', 'full'),
+                           ('arm', 'K3'), ('seed', 1), ('aspect', 'style')):
+            put_sidecar(path, arm, override={key: value})
+            with pytest.raises(AssertionError, match=key):
+                load_new(path, arm, 30)
+        put_sidecar(path, arm)
+        assert load_new(path, arm, 30).shape[0] == 30
+    # the order is what the sidecar's array hash binds: the same rows in another order fail
+    write_k(tmp_path / 'k.npz', k[::-1])
+    with pytest.raises(AssertionError, match='sha256'):
+        load_new(tmp_path / 'k.npz', 'K2', 30)
+    # ArtELingo-28 outputs: the list is the a28 list, 746 rows
+    a28 = unit(746, 2048, 3)
+    write_k(tmp_path / 'a.npz', a28)
+    put_sidecar(tmp_path / 'a.npz', 'K3', list_sha256='A28', scale='full')
+    assert load_new(tmp_path / 'a.npz', 'K3', 746, scale='full', list_sha256='A28').shape == (746, 2048)
 
 
 def test_nonfinite_paper_outputs_are_dropped_everything_else_fails(tmp_path):
@@ -302,6 +360,8 @@ def test_prepare_arms_loads_fixes_and_drops_nonfinite_paper_seeds(tmp_path, monk
         put(score.output_path('sample', 'K2', s, outputs=out), img=unit(n, 2048, s))
         put(score.output_path('sample', 'B1', s, outputs=out), prob=rng.random((n, 40)).astype(np.float32))
         put(score.output_path('sample', 'M2', s, outputs=out), prob=rng.random((n, 40)).astype(np.float32))
+        put_sidecar(score.output_path('sample', 'K2', s, outputs=out), 'K2', s)
+        put_sidecar(score.output_path('sample', 'M2', s, outputs=out), 'M2', s)
     for s in (0, 1):
         prob = rng.random((n, 40)).astype(np.float32)
         prob[0, 0] = np.nan if s == 1 else prob[0, 0]
@@ -367,6 +427,37 @@ def test_regression_items_merge_by_name_and_pass_needs_every_item(tmp_path):
     assert rec['pass'] is True
 
 
+def test_regression_items_of_concurrent_writers_are_all_kept(tmp_path):
+    import multiprocessing as mp
+    path = tmp_path / 'part2/regression/stage2.json'
+    with mp.get_context('fork').Pool(8) as pool:
+        pool.starmap(write_items_of_writer, [(path, w) for w in range(8)])
+    rec = json.loads(path.read_text())
+    assert sorted(rec['items']) == sorted(f'scorer/w{w}_{i}' for w in range(8) for i in range(15)) and rec['pass']
+
+
+def write_items_of_writer(path, w):
+    for i in range(15):
+        score.write_regression_items(path, {f'scorer/w{w}_{i}': {'pass': True}})
+
+
+def test_regression_items_write_waits_for_the_lock_file(tmp_path):
+    import fcntl
+    import threading
+    import time
+    path = tmp_path / 'part2/regression/stage2.json'
+    path.parent.mkdir(parents=True)
+    done = threading.Event()
+    with (tmp_path / 'part2/regression/stage2.json.lock').open('w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        t = threading.Thread(target=lambda: (score.write_regression_items(path, {'scorer/a': {'pass': True}}), done.set()))
+        t.start()
+        time.sleep(0.5)
+        assert not done.is_set() and not path.exists()
+    t.join(10)
+    assert done.is_set() and json.loads(path.read_text())['items'] == {'scorer/a': {'pass': True}}
+
+
 def test_comparison_with_ct_values_flags_every_difference_beyond_1e6():
     ct = dict(A_K1=.1, A_e={'B1-r20': .05, 'B1-own': .06}, d=.04, interval=[.01, .03], bootstrap_d=[.04, .03, .02])
     ours = dict(A_cand=.1 + 5e-7, A_e={'B1-r20': .05, 'B1-own': .06 + 2e-6}, d=.04, interval=[.01, .03],
@@ -395,6 +486,9 @@ def test_comparison_on_the_real_ct_partitions_with_20_draws_passes_points_not_bo
 
 # ---- stage driver and CLI -----------------------------------------------------------------------------------
 
+GROUPS = {'student/a': {'pass': True}, 'matched/a': {'pass': True}, 'scorer/a': {'pass': True}}
+
+
 def tiny_world(tmp_path, monkeypatch, n=60):
     """A 60-painting stand-in for the held set: CT-layout files under tmp, K2 and M2 outputs under outputs."""
     import json
@@ -416,8 +510,10 @@ def tiny_world(tmp_path, monkeypatch, n=60):
     for s in SEEDS5:
         for aspect in ('emotion', 'style', 'genre'):
             put(score.output_path('sample', 'K2', s, aspect, out), img=unit(n, 2048, s))
+            put_sidecar(score.output_path('sample', 'K2', s, aspect, out), 'K2', s, aspect)
         for arm in ('B1', 'B4', 'B5', 'B6', 'M2'):
             put(score.output_path('sample', arm, s, outputs=out), prob=rng.random((n, 40)).astype(np.float32))
+        put_sidecar(score.output_path('sample', 'M2', s, outputs=out), 'M2', s)
     return out
 
 
@@ -425,10 +521,10 @@ def test_stage_driver_writes_a_block_per_candidate_after_the_gate(tmp_path, monk
     out = tiny_world(tmp_path, monkeypatch)
     with pytest.raises(FileNotFoundError):                         # V1: no regression file yet
         score.run_stage(3, ['K2'], out, workers=1, n_resamples=3)
-    score.write_regression_items(out / 'part2/regression/stage2.json', {'x': {'pass': False}})
+    score.write_regression_items(out / 'part2/regression/stage2.json', {**GROUPS, 'student/b': {'pass': False}})
     with pytest.raises(AssertionError, match='V1'):
         score.run_stage(3, ['K2'], out, workers=1, n_resamples=3)
-    score.write_regression_items(out / 'part2/regression/stage2.json', {'x': {'pass': True}})
+    score.write_regression_items(out / 'part2/regression/stage2.json', {'student/b': {'pass': True}})
     record = score.run_stage(3, ['K2'], out, workers=1, n_resamples=3)
     block = record['blocks']['K2']
     assert record['stage'] == 3 and block['arms'] == list(NEW_ARMS)
@@ -439,7 +535,7 @@ def test_stage_driver_writes_a_block_per_candidate_after_the_gate(tmp_path, monk
 
 def test_stage_4_needs_the_regression_and_a_stage_3_block_that_is_not_s1_no(tmp_path):
     out = tmp_path
-    score.write_regression_items(out / 'part2/regression/stage3a.json', {'x': {'pass': True}})
+    score.write_regression_items(out / 'part2/regression/stage3a.json', GROUPS)
     with pytest.raises(FileNotFoundError):
         score.require_gate(out, 4, ['K2'])
     header = dict(stage=3, scale='sample', held_sha256='H')
@@ -450,6 +546,49 @@ def test_stage_4_needs_the_regression_and_a_stage_3_block_that_is_not_s1_no(tmp_
         score.require_gate(out, 4, ['K3'])
     with pytest.raises(AssertionError, match='no stage 3'):
         score.require_gate(out, 4, ['K5'])
+
+
+@pytest.mark.parametrize('stage, name', [(3, 'stage2'), (4, 'stage3a')])
+def test_gate_needs_a_passing_item_of_each_group_and_no_failing_item(tmp_path, stage, name):
+    path = tmp_path / f'part2/regression/{name}.json'
+    score.write_verdict(tmp_path / 'part2/verdict_stage3.json', dict(stage=3, scale='sample', held_sha256='H'),
+                        {'K2': dict(outcome_id='S1-MM')})
+    for missing in ('student/', 'matched/', 'scorer/'):                    # after `--check` alone only scorer/* exist
+        path.unlink(missing_ok=True)
+        score.write_regression_items(path, {k: v for k, v in GROUPS.items() if not k.startswith(missing)})
+        assert json.loads(path.read_text())['pass'] is True
+        with pytest.raises(AssertionError, match='V1'):
+            score.require_gate(tmp_path, stage, ['K2'])
+    path.unlink()
+    score.write_regression_items(path, {**GROUPS, 'matched/b': {'pass': False}})
+    with pytest.raises(AssertionError, match='V1'):
+        score.require_gate(tmp_path, stage, ['K2'])
+    score.write_regression_items(path, {'matched/b': {'pass': True}})
+    score.require_gate(tmp_path, stage, ['K2'])
+    record = json.loads(path.read_text())                                   # a hand-edited pass flag does not count
+    record['items']['student/a']['pass'] = False
+    path.write_text(json.dumps(record))
+    with pytest.raises(AssertionError, match='V1'):
+        score.require_gate(tmp_path, stage, ['K2'])
+
+
+def test_a_v3_failure_of_one_candidate_removes_only_its_outcome(tmp_path, monkeypatch):
+    out = tiny_world(tmp_path, monkeypatch)
+    score.write_regression_items(out / 'part2/regression/stage2.json', GROUPS)
+    for s in SEEDS5:                                                         # K3: every file, its list hash wrong
+        for aspect in ('emotion', 'style', 'genre'):
+            path = score.output_path('sample', 'K3', s, aspect, out)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            write_k(path, unit(60, 2048, s))
+            put_sidecar(path, 'K3', s, aspect, list_sha256='OTHER')
+        put_sidecar(score.output_path('sample', 'K2', s, 'emotion', out), 'K2', s, 'emotion')
+    record = score.run_stage(3, ['K3', 'K2'], out, workers=1, n_resamples=3)
+    assert record['blocks']['K2']['outcome_id'].startswith('S1-') and len(record['blocks']['K2']['bootstrap_d']) == 3
+    bad = record['blocks']['K3']
+    assert bad['outcome_id'] is None and 'list_sha256' in bad['v_failure'] and 'bootstrap_d' not in bad
+    with pytest.raises(AssertionError, match='no stage 3 outcome'):          # a failed block never opens stage 4
+        score.write_regression_items(out / 'part2/regression/stage3a.json', GROUPS)
+        score.require_gate(out, 4, ['K3'])
 
 
 def test_cli_refuses_smoke_outside_tmp_and_never_shrinks_a_check(tmp_path):
