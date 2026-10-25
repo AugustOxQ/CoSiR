@@ -966,3 +966,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21f-handoff.md
 - New chat: tab 'r10 build 21f', session 56959795-a4cd-4060-876c-8a6c6accfb43
 
+[brief] CoSiR: r10 build 21f -> r10 build 21g (2026-10-25 22:23 Amsterdam)
+- Done: final review by stage (all FIX); fix wave by Codex, both fix branches merged into the integration branch.
+- State: integration branch at f0b5566, pushed; the fresh-seed phase now runs end to end at smoke scale (forced winner GR-4: C-HOLDS, VG2 fresh agrees, 0 differences).
+- Next: Sonnet high re-review of the two fix diffs, X1 and X2 scorer reruns (eg_score.py changed), full tests, merge into main.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21g-handoff.md
+- New chat: tab 'r10 build 21g', session 3167e5d0-510a-4bf1-8444-8701183bff48
+
