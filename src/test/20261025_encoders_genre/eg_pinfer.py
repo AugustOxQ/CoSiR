@@ -303,7 +303,8 @@ class Run:
         if str(device).startswith('cuda') and not __import__('torch').cuda.is_available():
             c = dict(equal=False, error=f'M2 was trained on {device}, which is not available', ref=str(held_ref))
         else:
-            held = rb_student.held_names()
+            held, held_sha = rb_student.held_names()
+            assert held_sha == eg_paths.HELD_SHA256
             prob = rb_matched.infer(ck, rb_encoders.full_images('siglip2_so400m', held), device)
             with np.load(held_ref, allow_pickle=False) as z:
                 theirs = z['prob']
