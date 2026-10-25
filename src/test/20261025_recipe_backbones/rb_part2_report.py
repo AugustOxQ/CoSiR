@@ -345,8 +345,10 @@ def run(stage, outputs=None, workers=8, n_resamples=2000, candidates=None, repla
     assert set(todo) <= set(done), f'no outcome in the verdict file for {sorted(set(todo) - set(done))}'
     skipped = sorted(c for c in blocks if c not in done)
     header = dict(stage=stage, scale=scale, held_sha256=sha)
+    if not todo and not saved:              # no candidate has an outcome (each failed V3 or V4): nothing to report
+        print(f'stage {stage}: no candidate has an outcome in the verdict file; nothing to report')
+        return None
     if not todo:
-        assert saved, f'{path}: nothing to report and no saved record'
         print(f'stage {stage}: every candidate with an outcome is already reported; nothing recomputed')
         record = json.loads(path.read_text())
     else:
