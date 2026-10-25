@@ -101,6 +101,13 @@ def trainer_run(variant, seed, p_sha):
                 max_epochs=200, seconds=1., code_commit='fixture', code_dirty=False, old5000_problems=[])
 
 
+def export_sidecar(folder, aspect, x):
+    dump(folder/f'{aspect}.json', dict(aspect=aspect, best_epoch=1, epochs_run=16, best_dev_loss=1.,
+        history=[dict(epoch=1, step=1, train_loss=1., dev_loss=1., seconds=1.)], seconds=1.,
+        arrays={f'{aspect}__P.npz': {'img': digest(x.tobytes())},
+                f'{aspect}__old5000.npz': {'img': digest(x.tobytes())}}))
+
+
 @pytest.fixture(autouse=True)
 def smoke_root(tmp_path, monkeypatch):
     monkeypatch.setattr(vg.paths, 'SMOKE_ROOT', tmp_path)
@@ -149,6 +156,9 @@ def files(tmp_path):
             np.savez(folder / (stem + '.npz'), **(dict(img=x, cap=x) if v == vg.BASE else dict(img=x)))
             if v == vg.BASE:
                 dump(folder / f'{a}__s0.json', dict(recipe=v, aspect=a, seed=0, p_sha256=p_sha))
+            else:
+                np.savez(folder/f'{a}__old5000.npz', img=x)
+                export_sidecar(folder, a, x)
             cache = out / 'stage_iii/partitions' / v / 's0' / f'{a}__partitions.npz'
             cache.parent.mkdir(parents=True, exist_ok=True)
             np.savez(cache, labels=parts)
@@ -226,17 +236,77 @@ def test_forced_difference_is_reported(files, change, path):
 def test_failed_run_is_rederived_from_run_json(files):
     folder = files['out']/'stage_iii/train/GA-1/s0'
     run = json.loads((folder/'run.json').read_text())
-    run.update(status='failed', cause='non-finite loss', failure_kind='nonfinite_loss')
+    run.update(status='failed', cause='non-finite loss', failure_kind='nonfinite_loss',
+               best_epoch={}, epochs_run={}, best_dev_loss={})
     dump(folder/'run.json', run)
     record = files['first']
     record['results']['GA-1'] = dict(status='failed', cause='non-finite loss', effects=None,
-        A_genre=None, e_genre=None, guarded=False, best_epoch=dict.fromkeys(vg.ASPECTS, 1))
+        A_genre=None, e_genre=None, guarded=False, best_epoch={})
     record['identity']['img_sha256'].pop('GA-1')
-    record['identity']['failed']['GA-1'] = 'non-finite loss'
     record['identity']['run_sha256']['GA-1'] = digest((folder/'run.json').read_bytes())
     dump(files['out']/'stage_iii/score_first.json', record)
     report = verify(files)
     assert report['agree'], report['differences']
+
+
+def test_final_vg3_failure_requires_rerun(files):
+    path = files['out']/'stage_iii/train/GA-1/s0/run.json'
+    run = json.loads(path.read_text())
+    run.update(status='failed', cause='VG3: nonfinite rows', failure_kind='vg3')
+    dump(path, run)
+    report = verify(files)
+    assert not report['complete']
+    assert 'rerun_of' in report['differences'][-1]['theirs']
+
+
+@pytest.mark.parametrize('fault', ['cause', 'failure_kind', 'unknown_kind'])
+def test_failed_run_requires_cause_and_failure_kind(files, fault):
+    path = files['out']/'stage_iii/train/GA-1/s0/run.json'
+    run = json.loads(path.read_text())
+    run.update(status='failed', cause='non-finite loss', failure_kind='nonfinite_loss',
+               best_epoch={}, epochs_run={}, best_dev_loss={})
+    if fault == 'unknown_kind':
+        run['failure_kind'] = 'other'
+    else:
+        run.pop(fault)
+    dump(path, run)
+    report = verify(files)
+    assert not report['complete'] and not report['agree']
+    assert ('cause' if fault == 'cause' else 'failure_kind') in report['differences'][-1]['theirs']
+
+
+@pytest.mark.parametrize('rerun', [False, True])
+def test_declared_vg3_failure_checks_exports_and_rerun(files, rerun):
+    folder = files['out']/'stage_iii/train/GA-1/s0'
+    run = json.loads((folder/'run.json').read_text())
+    if rerun:
+        run['rerun_of'] = str(files['out']/'stage_iii/replaced/GA-1/s0')
+    dump(folder/'run.json', run)
+    x = files['perfect'].copy()
+    x[0, 0] = np.nan
+    np.savez(folder/'emotion__P.npz', img=x)
+    export_sidecar(folder, 'emotion', x)
+    report = verify(files, failed={'GA-1': 'VG3 after its rerun'})
+    assert not report['agree']  # Existing score claims this invalid run succeeded.
+    if rerun:
+        record = report['recomputed']['results']['GA-1']
+        assert report['complete']
+        assert record['status'] == 'failed' and record['effects'] is None and not record['guarded']
+        assert record['vg3_problem']
+        assert report['recomputed']['identity']['failed'] == {'GA-1': 'VG3 after its rerun'}
+    else:
+        assert not report['complete']
+        assert 'rerun_of' in report['differences'][-1]['theirs']
+
+
+def test_declared_vg3_cannot_exclude_valid_exports(files):
+    folder = files['out']/'stage_iii/train/GA-1/s0'
+    run = json.loads((folder/'run.json').read_text())
+    run['rerun_of'] = str(files['out']/'stage_iii/replaced/GA-1/s0')
+    dump(folder/'run.json', run)
+    report = verify(files, failed={'GA-1': 'VG3 after its rerun'})
+    assert not report['complete'] and not report['agree']
+    assert 'exports pass VG3' in report['differences'][-1]['theirs']
 
 
 def test_all_phase_rederives_extras_and_winner(files):
@@ -262,10 +332,7 @@ def add_fresh_files(f, fresh_caches=True):
             for a in vg.ASPECTS:
                 np.savez(folder/f'{a}__P.npz', img=x)
                 np.savez(folder/f'{a}__old5000.npz', img=x)
-                dump(folder/f'{a}.json', dict(aspect=a, best_epoch=1, epochs_run=16, best_dev_loss=1.,
-                    history=[dict(epoch=1, step=1, train_loss=1., dev_loss=1., seconds=1.)], seconds=1.,
-                    arrays={f'{a}__P.npz': {'img': digest(x.tobytes())},
-                            f'{a}__old5000.npz': {'img': digest(x.tobytes())}}))
+                export_sidecar(folder, a, x)
                 cache0 = out/f'stage_iii/partitions/{v}/s0/{a}__partitions.npz'
                 with np.load(cache0) as z:
                     parts = z['labels']
@@ -372,7 +439,8 @@ def test_fresh_failed_run_leaves_no_c_outcome(files):
     rb2, fresh = add_fresh_files(files)
     path = files['out']/'stage_iii/train/GT-2/s2/run.json'
     run = json.loads(path.read_text())
-    run.update(status='failed', cause='non-finite loss', failure_kind='nonfinite_loss')
+    run.update(status='failed', cause='non-finite loss', failure_kind='nonfinite_loss',
+               best_epoch={}, epochs_run={}, best_dev_loss={})
     dump(path, run)
     fresh.pop('no_outcome_cause')
     dump(files['out']/'stage_iii/score_fresh.json', fresh)
@@ -381,6 +449,25 @@ def test_fresh_failed_run_leaves_no_c_outcome(files):
     assert report['recomputed']['c_outcome'] is None
     assert 'score_fresh/c_outcome' in {d['path'] for d in report['differences']}
     assert 'score_fresh/no_outcome_cause' in {d['path'] for d in report['differences']}
+
+
+def test_fresh_nonfinite_no_outcome_agrees(files):
+    rb2, fresh = add_fresh_files(files, fresh_caches=False)
+    path = files['out']/'stage_iii/train/GT-2/s2/run.json'
+    run = json.loads(path.read_text())
+    run.update(status='failed', cause='non-finite loss', failure_kind='nonfinite_loss',
+               best_epoch={}, epochs_run={}, best_dev_loss={})
+    dump(path, run)
+    run_hash = digest(path.read_bytes())
+    fresh['runs']['GT-2']['2'] = dict(status='failed', cause=run['cause'], best_epoch={}, run_sha256=run_hash)
+    fresh['identity']['run_sha256']['GT-2']['2'] = run_hash
+    fresh.update(c_outcome=None, effects=None, genre_vs_targets=None, no_outcome_cause='non-finite run',
+                 reading='Seed-0 outcome III-GO stands; no C outcome is stated.')
+    dump(files['out']/'stage_iii/score_fresh.json', fresh)
+    report = verify(files, 'fresh', rb_part2=rb2)
+    assert report['agree'], report['differences']
+    assert report['recomputed']['identity']['failed'] == {}
+    assert all('/s0/' in k for k in report['input_array_hashes']['img_sha256'])
 
 
 def test_workers_preserve_paired_draw_stream(tmp_path):

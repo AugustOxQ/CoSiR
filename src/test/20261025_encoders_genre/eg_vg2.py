@@ -36,6 +36,10 @@ SEEDS = (1, 2, 3)
 _DRAW_INPUT = None
 
 
+class VG3Problem(AssertionError):
+    """An export fails the rule's dtype, rows, finite or unit-norm checks."""
+
+
 def mean_ami(labels, partitions, indices):
     assert labels.ndim == 1 and partitions.shape == (3, len(labels))
     assert len(indices) and (labels[indices] >= 0).all()
@@ -113,6 +117,8 @@ def variant_result(run, effects):
                       guarded=all(effects[a]['e'] >= -RANGES[a] for a in ('emotion', 'style')))
     else:
         assert run['status'] == 'failed' and run['cause'] and effects is None
+        if 'vg3_problem' in run:
+            record['vg3_problem'] = run['vg3_problem']
     return record
 
 
@@ -198,6 +204,10 @@ def differences(ours, theirs, path=''):
     """Compare complete subtrees, including missing/extra keys and strict booleans."""
     missing = '<missing>'
     out = []
+    if path.endswith('/vg3_problem') and ours and theirs != missing and theirs:
+        # The explanatory diagnostic has no rule-prescribed prose/template.
+        # Its truth is checked independently against the exports and rerun.
+        return []
     if isinstance(ours, dict) and isinstance(theirs, dict):
         for key in sorted(set(ours) | set(theirs)):
             out.extend(differences(ours.get(key, missing), theirs.get(key, missing),
@@ -221,11 +231,12 @@ def differences(ours, theirs, path=''):
 class Inputs:
     """Read/validate raw inputs, retain their hashes and our independent partitions."""
 
-    def __init__(self, outputs, rb, n_rows, width, p_sha, bad):
+    def __init__(self, outputs, rb, n_rows, width, p_sha, bad, failed=None):
         self.outputs, self.rb = Path(outputs), Path(rb)
         self.n_rows, self.width, self.p_sha = n_rows, width, p_sha
         self.hashes, self.parts, self.img_hashes, self.runs = {}, {}, {}, {}
         self.bad = bad
+        self.failed = {} if failed is None else dict(failed)
 
     def bytes(self, path):
         path = Path(path)
@@ -250,11 +261,15 @@ class Inputs:
             assert run['variant'] == variant and run['seed'] == seed, f'{path}: run identity'
             assert run['switches'] == variants.switches(variant), f'{path}: switches'
             assert run['status'] in ('ok', 'failed')
-            assert set(run['best_epoch']) == set(ASPECTS)
+            assert isinstance(run['best_epoch'], dict)
+            assert (set(run['best_epoch']) == set(ASPECTS) if run['status'] == 'ok' else
+                    set(run['best_epoch']) <= set(ASPECTS)), f'{path}: best_epoch'
             assert all(v is None or (type(v) is int and v >= 0) for v in run['best_epoch'].values())
             if run['status'] == 'failed':
                 assert isinstance(run.get('cause'), str) and run['cause'], f'{path}: failed run needs cause'
                 assert run.get('failure_kind') in ('nonfinite_loss', 'vg3'), f'{path}: failure_kind'
+                if run['failure_kind'] == 'vg3':
+                    assert isinstance(run.get('rerun_of'), str) and run['rerun_of'], f'{path}: VG3 needs rerun_of'
             else:
                 assert run.get('cause') is None, f'{path}: successful run has failure cause'
             self.check(self.p_sha, run.get('p_sha256', '<missing>'), f'inputs/{variant}/s{seed}/p_sha256')
@@ -264,10 +279,23 @@ class Inputs:
             self.runs[key] = run
         return self.runs[key]
 
-    def partitions(self, variant, seed, aspect):
+    def scoring_run(self, variant, seed):
+        run = self.run_record(variant, seed)
+        key = variant if seed == 0 else f'{variant}/s{seed}'
+        if key not in self.failed or run['status'] == 'failed':
+            return run
+        assert isinstance(run.get('rerun_of'), str) and run['rerun_of'], f'{variant}/s{seed}: VG3 needs rerun_of'
+        problems = []
+        for aspect in ASPECTS:
+            try:
+                self.export_float32(variant, seed, aspect)
+            except VG3Problem as error:
+                problems.append(str(error))
+        assert problems, f'{variant}/s{seed}: declared failed but exports pass VG3'
+        return dict(run, status='failed', cause=self.failed[key], vg3_problem=problems)
+
+    def export_float32(self, variant, seed, aspect):
         key = variant, seed, aspect
-        if key in self.parts:
-            return self.parts[key]
         if variant == BASE and seed == 0:
             folder = self.rb / 'train' / BASE
             meta = self.json(folder / f'{aspect}__s0.json', ('recipe', 'aspect', 'seed', 'p_sha256'))
@@ -283,14 +311,29 @@ class Inputs:
         with np.load(path, allow_pickle=False) as z:
             assert 'img' in z.files and set(z.files) <= {'img', 'cap'}, f'{path}: keys'
             x = z['img']
-            assert x.dtype == np.float16 and x.shape == (self.n_rows, self.width), f'{path}: shape/dtype'
+            if x.dtype != np.float16 or x.shape != (self.n_rows, self.width):
+                raise VG3Problem(f'{path}: shape/dtype')
             if 'cap' in z.files:
                 assert z['cap'].shape == x.shape and z['cap'].dtype == np.float16
                 assert np.isfinite(z['cap']).all()
         self.img_hashes[key] = array_sha(x)
         x = x.astype(np.float32)
-        assert np.isfinite(x).all(), f'{path}: nonfinite image'
-        assert np.all(np.abs(np.linalg.norm(x, axis=1) - 1) < 1e-3), f'{path}: unit norm'
+        if not np.isfinite(x).all():
+            raise VG3Problem(f'{path}: nonfinite image')
+        if not np.all(np.abs(np.linalg.norm(x, axis=1) - 1) < 1e-3):
+            raise VG3Problem(f'{path}: unit norm')
+        if variant != BASE or seed != 0:
+            side = self.json(path.parent/f'{aspect}.json', ('aspect', 'best_epoch', 'epochs_run',
+                             'best_dev_loss', 'history', 'seconds', 'arrays'))
+            assert side['aspect'] == aspect and side['best_epoch'] == run['best_epoch'][aspect]
+            assert side['arrays'][path.name]['img'] == self.img_hashes[key], f'{path}: sidecar image hash'
+        return x
+
+    def partitions(self, variant, seed, aspect):
+        key = variant, seed, aspect
+        if key in self.parts:
+            return self.parts[key]
+        x = self.export_float32(variant, seed, aspect)
         with threadpool_limits(limits=8):
             parts = np.stack([MiniBatchKMeans(n_clusters=20, random_state=s, n_init=3,
                                               batch_size=4096).fit_predict(x) for s in (0, 1, 2)])
@@ -331,7 +374,7 @@ class Inputs:
 
 
 def seed0_scores(inputs, labels, order, n_draws, workers):
-    runs = {v: inputs.run_record(v, 0) for v in order}
+    runs = {v: inputs.scoring_run(v, 0) for v in order}
     effects = {v: {} for v in order if runs[v]['status'] == 'ok'}
     base_a = {}
     for a in ASPECTS:
@@ -346,9 +389,9 @@ def seed0_scores(inputs, labels, order, n_draws, workers):
 def seed0_identity(inputs, labels_sha, order, n_draws):
     return dict(p_sha256=inputs.p_sha, label_sha256=labels_sha, n_draws=n_draws, variants=order,
                 img_sha256={v: {a: inputs.img_hashes[v, 0, a] for a in ASPECTS}
-                            for v in [BASE]+order if (v, 0, 'emotion') in inputs.img_hashes},
+                            for v in [BASE]+order if (v, 0, 'emotion') in inputs.parts},
                 run_sha256={v: inputs.hashes[str(paths.iii_run(inputs.outputs, v, 0)/'run.json')] for v in order},
-                failed={v: inputs.runs[v, 0]['cause'] for v in order if inputs.runs[v, 0]['status'] == 'failed'})
+                failed=dict(inputs.failed))
 
 
 def weights_equal(inputs, fresh_path, frozen_path):
@@ -393,7 +436,7 @@ def fresh_scores(inputs, labels, label_sha, header, seed0, n_draws, workers, rb_
                 A_genre_seed0=seed0['A_genre_winner'], c_outcome=None, no_outcome_cause=None,
                 effects=None, genre_vs_targets=None, runs=None, parity=None)
     identity = dict(p_sha256=inputs.p_sha, label_sha256=label_sha, n_draws=n_draws,
-                    winner=winner, seeds=list(SEEDS), failed={})
+                    winner=winner, seeds=list(SEEDS), failed=dict(inputs.failed))
     if not seed0['fresh_seeds']:
         ours['no_outcome_cause'] = 'fresh seeds not triggered by the independently computed seed-0 effects'
     else:
@@ -428,10 +471,12 @@ def fresh_scores(inputs, labels, label_sha, header, seed0, n_draws, workers, rb_
             for v in (winner, BASE):
                 ours['runs'][v], identity['run_sha256'][v] = {}, {}
                 for s in SEEDS:
-                    run = inputs.run_record(v, s)
+                    run = inputs.scoring_run(v, s)
                     digest = inputs.hashes[str(paths.iii_run(inputs.outputs, v, s)/'run.json')]
                     ours['runs'][v][str(s)] = {k: run.get(k) for k in ('status', 'cause', 'best_epoch')}
                     ours['runs'][v][str(s)]['run_sha256'] = digest
+                    if 'vg3_problem' in run:
+                        ours['runs'][v][str(s)]['vg3_problem'] = run['vg3_problem']
                     identity['run_sha256'][v][str(s)] = digest
                     if run['status'] == 'failed':
                         failed.append((v, s))
@@ -502,7 +547,7 @@ def compare_record(inputs, ours, theirs, phase):
 
 def run(outputs, phase, *, smoke=False, workers=8, rb_part1=None, annotations=None,
         genre_loader=None, expected_p_sha=paths.P_SHA256, n_rows=29232, width=2048,
-        report_outputs=None, rb_part2=None):
+        report_outputs=None, rb_part2=None, failed=None):
     """Re-derive from raw inputs, then compare and write a phase-specific report.
 
     Explicit data/path/shape arguments support tiny synthetic datasets. CLI runs
@@ -512,7 +557,7 @@ def run(outputs, phase, *, smoke=False, workers=8, rb_part1=None, annotations=No
     n_draws = 20 if smoke else 2000
     bad = []
     inputs = Inputs(outputs, paths.RB_PART1 if rb_part1 is None else rb_part1,
-                    n_rows, width, expected_p_sha, bad)
+                    n_rows, width, expected_p_sha, bad, failed=failed)
     complete = False
     ours = None
     label_sha = {}
@@ -604,14 +649,22 @@ def main(argv=None):
     parser.add_argument('--outputs', type=Path, default=paths.OUTPUTS)
     parser.add_argument('--workers', type=int, choices=range(1, 9), default=8)
     parser.add_argument('--smoke', action='store_true', help='20 independent draws; reports only under /tmp/claude-0/')
+    parser.add_argument('--failed', action='append', default=[], metavar='RUN=CAUSE',
+                        help='declare a final VG3 failure: variant=reason or variant/sN=reason (repeatable)')
     parser.add_argument('--report-outputs', type=Path,
                         help='write stage_iii/rederive_vg2_<phase>.json here; read inputs from --outputs')
     args = parser.parse_args(argv)
     if args.smoke and not paths.smoke_ok(args.report_outputs or args.outputs):
         parser.error('--smoke refuses report writes outside /tmp/claude-0/')
+    failed = {}
+    for declaration in args.failed:
+        key, sep, cause = declaration.partition('=')
+        if not sep or not key or not cause or key in failed:
+            parser.error('--failed requires a unique RUN=CAUSE')
+        failed[key] = cause
     paths.check_imports()
     report = run(args.outputs, args.phase, smoke=args.smoke, workers=args.workers,
-                 report_outputs=args.report_outputs)
+                 report_outputs=args.report_outputs, failed=failed)
     print(f'VG2 phase={args.phase} agree={report["agree"]}; {len(report["differences"])} differences; '
           f'{report["n_draws"]} draws; complete={report["complete"]}')
     return 0 if report['agree'] else 1
