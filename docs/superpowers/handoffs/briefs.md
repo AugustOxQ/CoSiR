@@ -918,3 +918,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-decide-21-handoff.md
 - New chat: tab 'r10 decide 21', session 6521deb1-f244-4fb7-b259-fae033c79a56
 
+[brief] CoSiR: r10 decide 21 -> r10 build 21 (2026-10-25 18:45 Amsterdam)
+- Done: spec and decision rule for the next loop written, reviewed (Opus `xhigh` rule review, cold Sonnet check) and approved by the user at 18:35; five glossary terms added.
+- State: three stages: four more encoders on held paintings; each student's lift over its own PercepT arm on development paintings; five genre variants toward 0.4989.
+- Next: tickets from the spec, the build per `matt-chain.md`, the final review, merge into main, the run handoff.
+- Blocked: nothing. The user restarts the container before this chat opens.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-build-21-handoff.md
+- New chat: tab 'r10 build 21', session 06c0cfc8-5c9e-40ef-8f0c-1a58bed7fb46
+
