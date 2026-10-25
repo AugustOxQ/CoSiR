@@ -20,6 +20,9 @@ CLIP_REPO = "openai/clip-vit-base-patch32"
 QWEN_REPO = "Qwen/Qwen3-VL-Embedding-2B"
 SIGLIP2_REPO = "google/siglip2-so400m-patch14-384"
 DINOV2_REPO = "facebook/dinov2-large"
+CLIP_B16_REPO = "openai/clip-vit-base-patch16"
+CLIP_L14_REPO = "openai/clip-vit-large-patch14"
+SIGLIP1_REPO = "google/siglip-so400m-patch14-384"
 
 
 def _l2(x) -> np.ndarray:
@@ -143,6 +146,47 @@ class Siglip2So400m(ClipB32):
         return self._check(np.concatenate(out), len(texts))
 
 
+class ClipB16(ClipB32):
+    name = "clip_b16"
+    dim = 512
+
+    def __init__(self, device: str = "cuda"):
+        from transformers import AutoModel, AutoProcessor
+        self.device = device
+        self.dtype = torch.float16 if device.startswith("cuda") else torch.float32
+        self.m = AutoModel.from_pretrained(CLIP_B16_REPO, dtype=self.dtype).to(device).eval()
+        self.p = AutoProcessor.from_pretrained(CLIP_B16_REPO)
+        assert self.m.config.projection_dim == self.dim
+
+
+class ClipL14(ClipB32):
+    name = "clip_l14"
+    dim = 768
+
+    def __init__(self, device: str = "cuda"):
+        from transformers import AutoModel, AutoProcessor
+        self.device = device
+        self.dtype = torch.float16 if device.startswith("cuda") else torch.float32
+        self.m = AutoModel.from_pretrained(CLIP_L14_REPO, dtype=self.dtype).to(device).eval()
+        self.p = AutoProcessor.from_pretrained(CLIP_L14_REPO)
+        assert self.m.config.projection_dim == self.dim
+
+
+class SiglipSo400m(Siglip2So400m):
+    """SigLIP 1 (not SigLIP 2): own checkpoint and processor; image and text paths as SigLIP 2 (lower-cased, padded
+    to 64)."""
+    name = "siglip_so400m"
+    dim = 1152
+
+    def __init__(self, device: str = "cuda"):
+        from transformers import AutoModel, AutoProcessor
+        self.device, self.dtype = device, torch.bfloat16
+        self.m = AutoModel.from_pretrained(SIGLIP1_REPO, dtype=self.dtype).to(device).eval()
+        self.p = AutoProcessor.from_pretrained(SIGLIP1_REPO)
+        assert self.m.config.vision_config.hidden_size == self.dim
+        assert self.m.config.text_config.hidden_size == self.dim
+
+
 class Qwen3VLEmb(Encoder):
     name = "qwen3vl_emb_2b"
     dim = 2048
@@ -240,4 +284,10 @@ def load_encoder(name: str, device: str = "cuda", instruction: str = QWEN_INSTRU
         return Siglip2So400m(device)
     if name == "dinov2_large":
         return Dinov2Large(device)
+    if name == "clip_b16":
+        return ClipB16(device)
+    if name == "clip_l14":
+        return ClipL14(device)
+    if name == "siglip_so400m":
+        return SiglipSo400m(device)
     raise KeyError(name)
