@@ -93,6 +93,19 @@ def versions():
                 scipy=scipy.__version__, threadpoolctl=threadpoolctl.__version__)
 
 
+def trainer_run(variant, seed, p_sha):
+    """Keys from eg_train3.write_run's successful records (no cause key)."""
+    return dict(variant=variant, seed=seed, switches=vg.variants.switches(variant), status='ok',
+                best_epoch=dict.fromkeys(vg.ASPECTS, 1), epochs_run=dict.fromkeys(vg.ASPECTS, 16),
+                best_dev_loss=dict.fromkeys(vg.ASPECTS, 1.), p_sha256=p_sha, smoke=True,
+                max_epochs=200, seconds=1., code_commit='fixture', code_dirty=False, old5000_problems=[])
+
+
+@pytest.fixture(autouse=True)
+def smoke_root(tmp_path, monkeypatch):
+    monkeypatch.setattr(vg.paths, 'SMOKE_ROOT', tmp_path)
+
+
 @pytest.fixture
 def files(tmp_path):
     """Constant base AMI=0; every variant's partition equals the labels: AMI=1.
@@ -123,9 +136,7 @@ def files(tmp_path):
         x = base if v == vg.BASE else perfect
         img_hashes[v] = dict.fromkeys(vg.ASPECTS, digest(x.tobytes()))
         if v != vg.BASE:
-            run = dict(variant=v, seed=0, switches=vg.variants.switches(v), p_sha256=p_sha,
-                       status='ok', cause=None, best_epoch=dict.fromkeys(vg.ASPECTS, 1),
-                       code_commit='fixture')
+            run = trainer_run(v, 0, p_sha)
             dump(folder / 'run.json', run)
             runs[v] = run
             hashes[v] = digest((folder / 'run.json').read_bytes())
@@ -143,7 +154,8 @@ def files(tmp_path):
             np.savez(cache, labels=parts)
             dump(cache.with_suffix('.json'), dict(identity=dict(variant=v, aspect=a, seed=0,
                  p_sha256=p_sha, img_sha256=digest(x.tobytes()), sklearn=sklearn.__version__,
-                 numpy=np.__version__, rb_ami_sha256='fixture'), versions=versions(), k=20,
+                 numpy=np.__version__, code_sha256={'rb_ami.py': 'fixture', 'rb_pick.py': 'fixture'}),
+                 versions=versions(), k=20,
                  states=[0, 1, 2], array=dict(shape=[3, 40], dtype='int64', sha256=digest(parts.tobytes()))))
     header = dict(smoke=True, n_draws=20, reference=vg.BASE, seed=0, t_g=target,
                   promising=target-.0128, ranges=vg.RANGES, versions=versions(),
@@ -176,7 +188,9 @@ def verify(f, phase='first', **kwargs):
                   width=20, smoke=True, workers=1, **kwargs)
 
 
-def test_first_phase_rederives_real_shape_files(files):
+def test_ok_run_without_cause_agrees(files):
+    run = json.loads((files['out']/'stage_iii/train/GT-2/s0/run.json').read_text())
+    assert 'cause' not in run
     report = verify(files)
     assert report['agree'], report['differences']
     assert report['n_draws'] == 20
@@ -212,7 +226,7 @@ def test_forced_difference_is_reported(files, change, path):
 def test_failed_run_is_rederived_from_run_json(files):
     folder = files['out']/'stage_iii/train/GA-1/s0'
     run = json.loads((folder/'run.json').read_text())
-    run.update(status='failed', cause='non-finite loss')
+    run.update(status='failed', cause='non-finite loss', failure_kind='nonfinite_loss')
     dump(folder/'run.json', run)
     record = files['first']
     record['results']['GA-1'] = dict(status='failed', cause='non-finite loss', effects=None,
@@ -238,8 +252,7 @@ def add_fresh_files(f):
         runs[v], run_hashes[v], images[v] = {}, {}, {}
         for s in (1, 2, 3):
             folder = out/f'stage_iii/train/{v}/s{s}'
-            run = dict(variant=v, seed=s, switches=vg.variants.switches(v), p_sha256=f['p_sha'],
-                status='ok', cause=None, best_epoch=dict.fromkeys(vg.ASPECTS, 1), code_commit='fixture')
+            run = trainer_run(v, s, f['p_sha'])
             dump(folder/'run.json', run)
             run_hashes[v][str(s)] = digest((folder/'run.json').read_bytes())
             runs[v][str(s)] = dict(status='ok', cause=None, best_epoch=run['best_epoch'],
@@ -257,9 +270,6 @@ def add_fresh_files(f):
                 np.savez(cache, labels=parts)
                 side = json.loads(cache0.with_suffix('.json').read_text())
                 side['identity']['seed'] = s
-                # The fresh writer nests source-code hashes, unlike the first smoke.
-                side['identity'].pop('rb_ami_sha256')
-                side['identity']['code_sha256'] = {'rb_ami.py': 'fixture', 'rb_pick.py': 'fixture'}
                 dump(cache.with_suffix('.json'), side)
                 if v == vg.BASE:
                     # Frozen K4 states and fresh R6-5 states: same tensor bytes.
@@ -313,7 +323,7 @@ def test_fresh_failed_run_leaves_no_c_outcome(files):
     rb2, fresh = add_fresh_files(files)
     path = files['out']/'stage_iii/train/GT-2/s2/run.json'
     run = json.loads(path.read_text())
-    run.update(status='failed', cause='non-finite loss')
+    run.update(status='failed', cause='non-finite loss', failure_kind='nonfinite_loss')
     dump(path, run)
     fresh.pop('no_outcome_cause')
     dump(files['out']/'stage_iii/score_fresh.json', fresh)

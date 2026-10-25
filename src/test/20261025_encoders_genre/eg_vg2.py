@@ -105,7 +105,7 @@ def score_effects(labels, parts, n_draws=2000, workers=8, fresh=False):
 
 
 def variant_result(run, effects):
-    record = {k: run[k] for k in ('status', 'cause', 'best_epoch')}
+    record = {k: run.get(k) for k in ('status', 'cause', 'best_epoch')}
     record.update(effects=effects, A_genre=None, e_genre=None, guarded=False)
     if run['status'] == 'ok':
         assert effects is not None
@@ -246,14 +246,17 @@ class Inputs:
         key = variant, seed
         if key not in self.runs:
             path = paths.iii_run(self.outputs, variant, seed) / 'run.json'
-            run = self.json(path, ('variant', 'seed', 'switches', 'status', 'cause', 'best_epoch'))
+            run = self.json(path, ('variant', 'seed', 'switches', 'status', 'best_epoch'))
             assert run['variant'] == variant and run['seed'] == seed, f'{path}: run identity'
             assert run['switches'] == variants.switches(variant), f'{path}: switches'
             assert run['status'] in ('ok', 'failed')
             assert set(run['best_epoch']) == set(ASPECTS)
             assert all(v is None or (type(v) is int and v >= 0) for v in run['best_epoch'].values())
-            assert (run['cause'] is None if run['status'] == 'ok' else
-                    isinstance(run['cause'], str) and bool(run['cause']))
+            if run['status'] == 'failed':
+                assert isinstance(run.get('cause'), str) and run['cause'], f'{path}: failed run needs cause'
+                assert run.get('failure_kind') in ('nonfinite_loss', 'vg3'), f'{path}: failure_kind'
+            else:
+                assert run.get('cause') is None, f'{path}: successful run has failure cause'
             self.check(self.p_sha, run.get('p_sha256', '<missing>'), f'inputs/{variant}/s{seed}/p_sha256')
             if not isinstance(run.get('code_commit'), str) or not run['code_commit']:
                 self.check('nonempty commit', run.get('code_commit', '<missing>'),
@@ -380,7 +383,7 @@ def fresh_scores(inputs, labels, label_sha, header, seed0, n_draws, workers, rb_
             for s in SEEDS:
                 run = inputs.run_record(v, s)
                 digest = inputs.hashes[str(paths.iii_run(inputs.outputs, v, s)/'run.json')]
-                ours['runs'][v][str(s)] = {k: run[k] for k in ('status', 'cause', 'best_epoch')}
+                ours['runs'][v][str(s)] = {k: run.get(k) for k in ('status', 'cause', 'best_epoch')}
                 ours['runs'][v][str(s)]['run_sha256'] = digest
                 identity['run_sha256'][v][str(s)] = digest
                 if run['status'] == 'failed':
@@ -398,7 +401,7 @@ def fresh_scores(inputs, labels, label_sha, header, seed0, n_draws, workers, rb_
                                            theirs=str(error)))
                     equal[a] = False
             parity_seeds[str(s)] = {'pass': all(equal.values()), 'run_status': run['status'],
-                                   'run_cause': run['cause'], 'weights_equal': equal}
+                                   'run_cause': run.get('cause'), 'weights_equal': equal}
         parity_ok = all(p['pass'] for p in parity_seeds.values())
         expected_parity = {'pass': parity_ok, 'seeds': parity_seeds, 'reference': 'K4'}
         # Draw fresh effects from raw exports, even when the parity gate fails.
