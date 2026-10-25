@@ -204,7 +204,10 @@ def make_instructed(root, key, names, instruction=None, seed=3, **done):
     x = np.random.default_rng(seed).normal(size=(len(names), 2048)).astype(np.float16)
     np.save(path / 'img.npy', x)
     np.savez(path / 'ids.npz', painting_names=np.asarray(names))
-    meta = dict(store=f'{key}_img', instruction=instruction or itp_data.PROMPTS[key], smoke=False)
+    import ct2_data
+    meta = dict(store=f'{key}_img', instruction=instruction or itp_data.PROMPTS[key], smoke=False,
+                model_revision=ct2_data.QWEN_REVISION, count=len(names),
+                ids_sha256=ct2_data.ids_sha256({'painting_names': list(names)}))
     meta.update(done)
     (path / 'done.json').write_text(json.dumps(meta))
     return x
@@ -226,6 +229,18 @@ def test_a28_instructed_refuses_unsealed_wrong_or_partial_stores(a28):
         rb_encoders.a28_instructed('style_word')
     make_instructed(a28, 'genre_word', sorted(A28)[:4])
     with pytest.raises(AssertionError):
+        rb_encoders.a28_instructed('genre_word')
+
+
+def test_a28_instructed_refuses_wrong_revision_count_or_ids(a28):
+    make_instructed(a28, 'emotion_focus', sorted(A28), model_revision='0' * 40)
+    with pytest.raises(AssertionError, match='revision'):
+        rb_encoders.a28_instructed('emotion_focus')
+    make_instructed(a28, 'style_word', sorted(A28), count=len(A28) + 1)
+    with pytest.raises(AssertionError):
+        rb_encoders.a28_instructed('style_word')
+    make_instructed(a28, 'genre_word', sorted(A28), ids_sha256='0' * 64)
+    with pytest.raises(AssertionError, match='ids hash'):
         rb_encoders.a28_instructed('genre_word')
 
 

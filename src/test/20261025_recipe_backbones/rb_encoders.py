@@ -121,12 +121,17 @@ def a28_instructed(key):
     """The instructed Qwen image (`key` in A28_KEYS) of the 746 paintings in `a28_names()` order, float32 unit norm.
 
     Store `A28_ROOT/qwen3vl_emb_2b_aspect_prompts/<key>` read with the CT's sealed check (done.json: the CT's
-    instruction, not a smoke store) and name reader (`ids.npz` painting_names); one row per painting, 746 exactly.
+    instruction, not a smoke store, the CT's Qwen revision, count and ids hash) and name reader (`ids.npz` painting_names); one row per painting, 746 exactly.
     """
     assert key in A28_KEYS, key
-    stored, raw = ct2_data._image_store(ct2_data._sealed(A28_ROOT / 'qwen3vl_emb_2b_aspect_prompts' / key, key))
+    path = ct2_data._sealed(A28_ROOT / 'qwen3vl_emb_2b_aspect_prompts' / key, key)
+    done = json.loads((path / 'done.json').read_text())
+    stored, raw = ct2_data._image_store(path)
     names = a28_names()
     assert len(stored) == A28_COUNT, (key, len(stored))
+    assert done['model_revision'] == ct2_data.QWEN_REVISION, f'{key}: model revision {done["model_revision"]}'
+    assert done['count'] == len(stored) == len(raw), (key, done['count'], len(stored), len(raw))
+    assert done['ids_sha256'] == ct2_data.ids_sha256({'painting_names': stored}), f'{key}: ids hash mismatch'
     lookup = {str(name): row for row, name in enumerate(stored)}
     missing = [name for name in names if name not in lookup]
     assert not missing, f'{key}: {len(missing)} names missing, e.g. {missing[:3]}'
