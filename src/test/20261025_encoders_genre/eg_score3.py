@@ -641,7 +641,8 @@ def read_parity(outputs):
     path = stage_dir(outputs) / 'fresh_parity.json'
     assert path.exists(), f'{path} missing: ticket 11\'s `parity --seeds 1 2 3` has not run'
     parity = json.loads(path.read_text())
-    assert sorted(parity['seeds']) == [str(s) for s in FRESH], sorted(parity['seeds'])
+    assert sorted(parity['seeds']) == [str(s) for s in FRESH], \
+        f'{path} holds seeds {sorted(parity["seeds"])}: run `eg_train3.py parity --seeds 1 2 3` first'
     assert all(isinstance(r['pass'], bool) for r in parity['seeds'].values()) and isinstance(parity['pass'], bool)
     assert parity['pass'] == all(r['pass'] for r in parity['seeds'].values()), 'fresh_parity.json: pass disagrees with its seeds'
     return parity, _file_sha256(path)
