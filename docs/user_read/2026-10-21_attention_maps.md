@@ -108,7 +108,9 @@ paper figure should use value-weighted maps or a gradient method. Otherwise, go 
 
 The main research loop is at its decision step: choosing the next direction. You gave your reading on 2026-10-24: the
 results are very interesting and provide some potential basis for deeper analysis. You chose a small border check, now done. The
-viewer now also colours maps by rank and can blur them.
+viewer now also colours maps by rank and can blur them. On 2026-10-25 you handed four candidate ideas for deeper
+analysis to decide 17 (full report, "Candidate ideas for decide 17"). The first asks whether edge tokens carry
+image-wide information. The second uses aspect words as a training signal.
 
 The viewer runs at http://localhost:8765/.
 

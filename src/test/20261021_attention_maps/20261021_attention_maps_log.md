@@ -185,3 +185,14 @@ Layers 16-27, image only; ring 0 holds 0.207 of the tokens on average in the 304
   peak is a pull to the edge of the token grid, whatever the edge shows; the frames and margins of the paintings are
   not what draws it. Why edge tokens draw it (for example, edge tokens holding image-wide information, as register
   tokens do in ViTs) is not checked.
+
+### 2026-10-25 02:16  Storage decision; ideas handed to decide 17
+
+- Storage (user, 2026-10-25: "a. yes"): deleted the session scratch of the checks (value_weighted 231 MB,
+  border_check 29 MB, smoke and debug folders about 75 MB) and the gitignored duplicate `out/` (9.2 MB). The committed
+  summaries in `outputs/` stay; the 8.1 GB store stays (ledger row 2026-10-24, keep).
+- Four candidate ideas (edge-token probe, aspect words as a caption signal, masking test, class differences) go to
+  decide 17 for its step 3 (user, after seeing the recommendation: "b. as recommended"). Listed in the auto report,
+  "Candidate ideas for decide 17"; sent to the decide 17 chat. The direction log is left to decide 17.
+- Correction: the chat reply of 2026-10-24 gave "portraits 0.137 vs landscapes 0.111"; analysis.md gives landscape
+  0.113 and cityscape 0.111. The report uses the right values.

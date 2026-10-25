@@ -220,6 +220,23 @@ tables in `outputs/border_check/`; reading rules fixed before the run (round log
   we read it as position. Style, genre and default change by less than 0.10. Why edge tokens draw the peak is not
   checked.
 
+## Candidate ideas for decide 17
+
+Handed to decide 17 as candidates for its step 3 (user, after seeing the recommendation, 2026-10-25). None was run;
+costs are estimates.
+
+1. **Do edge tokens hold image-wide information?** A linear probe per token ring (hidden states, layers 16 to 27)
+   for the emotion, style and genre labels. It would explain the emotion view's pull to the grid edge. About 1 to 2
+   hours, light GPU (the store keeps attention, not hidden states).
+2. **Aspect words as a training signal.** Weight the model's caption terms by the emotion view's word attention. The
+   D2 ablation found the caption terms confounded with the teacher's loss share; this would test a sharper caption
+   signal. Links to the main line.
+3. **Does attention match importance?** Mask the most-attended image tokens, and the same number of random tokens,
+   and measure how far the embedding moves. About 1 to 2 hours of GPU.
+4. **Class differences.** Under the emotion instruction the image share is 0.137 (portrait) and 0.134 (nude) against
+   0.111 (cityscape) and 0.113 (landscape). Check whether this follows each class's gain from the instructed views.
+   About 1 hour, CPU only.
+
 ## Deviations
 
 - **Map type.** The handoff asked for attention maps; we first used rollout (Abnar and Zuidema). It failed on this
@@ -244,4 +261,5 @@ tables in `outputs/border_check/`; reading rules fixed before the run (round log
   8 figures; `per_painting.csv.gz` not committed), run log `outputs/full_run.log`.
 - **Viewer:** `PYTHONDONTWRITEBYTECODE=1 /root/miniconda3/envs/CoSiR/bin/python src/test/20261021_attention_maps/att_viewer.py --root /data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_attention --port 8765`, then http://localhost:8765/.
 - **Store:** `/data/SSD2/pre_extract/artelingo_full/qwen3vl_emb_2b_attention/`, 8.1 GB, 5,000 `p####.npz` files and
-  `run_0_all.json`. Storage: see the disk ledger rows dated 2026-10-21.
+  `run_0_all.json`. Storage: see the disk ledger row dated 2026-10-24 (kept). The check scratch files were deleted
+  on 2026-10-25 (user); the committed summaries in `outputs/` stay.
