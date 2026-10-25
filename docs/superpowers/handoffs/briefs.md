@@ -910,3 +910,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-decide-20-handoff.md
 - New chat: tab 'r10 decide 20', session e3ee1966-a3e6-4423-8cff-6b315c5b0d00
 
+[brief] CoSiR: r10 decide 20 -> r10 decide 21 (2026-10-25 17:32 Amsterdam)
+- Done: report 12-24 read (decision C), wrap-up (33 GB deleted), decision A and the grill; closing summary confirmed.
+- State: next loop: four more encoders under 12-24's rule; a backbone analysis on development paintings; genre variants toward the instructed value 0.4989.
+- Next: write the spec and the amended rule, get the rule reviewed, then the user approves the brief.
+- Blocked: nothing. Day mode.
+- Handoff: docs/superpowers/handoffs/2026-10-25-r10-decide-21-handoff.md
+- New chat: tab 'r10 decide 21', session 6521deb1-f244-4fb7-b259-fae033c79a56
+
