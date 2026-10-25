@@ -78,7 +78,7 @@ def require_gate(outputs, scale, arm):
     x = 'x1' if scale == 'sample' else 'x2'
     if scale == 'sample':
         _read_pass(outputs / 'stores/x0.json')
-        if arm in eg_encoders.BY_OWN:
+        if arm in eg_encoders.BY_OWN and eg_encoders.BY_OWN[arm].new:      # V5 covers new stores only (rule §4.1)
             v5 = json.loads((outputs / 'stores/v5.json').read_text())
             store = eg_encoders.BY_OWN[arm].store
             for key in (f'artelingo_full/{store}', f'artelingo28/{store}'):
