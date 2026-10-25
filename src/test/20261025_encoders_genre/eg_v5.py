@@ -238,6 +238,11 @@ def main():
         raise SystemExit('no calibration in v5.json: run --calibrate first')
     res['bar_void'] = any(res['calibration'][s] < BAR for s in CALIBRATION)
     if a.store:
+        # A hard kill between two datasets must not leave the old block of the dataset in flight (the stores queue
+        # skips V5 when both old blocks pass): drop this store's blocks first, then check and save per dataset.
+        for dataset in a.dataset:
+            res['stores'].pop(f'{dataset}/{a.store}', None)
+        save()
         for dataset in a.dataset:
             r = checked(dataset, a.store, bar_void=res['bar_void'])
             if dataset == A28 and not r['pass']:
