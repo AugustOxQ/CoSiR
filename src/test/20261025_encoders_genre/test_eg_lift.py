@@ -87,6 +87,17 @@ def test_score_aspect_takes_the_point_maximum_over_the_two_readings_and_fails_on
     assert eg_lift.outcome(r['lift'], r['interval'][0]) == 'L-FAILS'
 
 
+def test_score_aspect_takes_the_arg_max_reading_when_it_is_the_better_one():
+    rng = np.random.default_rng(13)
+    labels = rng.integers(0, 3, 60)
+    student = perfect_or_null(labels, {0, 1})                        # A = 2/5
+    own_r20 = perfect_or_null(labels, {0})                           # A = 1/5
+    own_own = perfect_or_null(labels, {0, 1, 2, 3}, m=1)             # A = 4/5
+    r = eg_lift.score_aspect(labels, student, own_r20, own_own, np.tile(labels, (3, 1)), n_draws=20, workers=1)
+    assert r['A']['own_own'] > r['A']['own_r20']
+    assert r['own_best'] == 'own_own' and r['lift'] == pytest.approx(0.4 - 0.8)      # not student - own_r20 = +0.2
+
+
 def test_bootstrap_matches_a_plain_loop_on_random_partitions_and_ignores_workers():
     rng = np.random.default_rng(3)
     n = 80
@@ -112,7 +123,7 @@ import eg_encoders  # noqa: E402
 
 N, W = 90, 8
 P_SHA = 'p' * 64
-TOY = eg_encoders.ENCODERS[:3]                    # K4/B1, K2/M2, K3/M3 with toy widths: stores are only keys here
+TOY = (eg_encoders.ENCODERS[0], eg_encoders.ENCODERS[1], eg_encoders.ENCODERS[3])   # K4/B1, K2/M2, K6/M6 (new); toy widths
 
 
 def toy_labels():
@@ -130,18 +141,20 @@ def blobs_of(codes, seed, noise=0.05):
     return (x / np.linalg.norm(x, axis=1, keepdims=True)).astype(np.float32)
 
 
-def write_student(outputs, arm, aspect, seed, x, p_sha=P_SHA):
+def write_student(outputs, arm, aspect, seed, x, p_sha=P_SHA, changes=None):
     path = eg_paths.p_student(outputs, arm, aspect, seed)
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez(path, img=x.astype(np.float16))
-    path.with_suffix('.json').write_text(json.dumps(dict(p_sha256=p_sha)))
+    side = dict(p_sha256=p_sha, arm=arm, seed=seed, aspect=aspect, rows=x.shape[0], width=x.shape[1])
+    path.with_suffix('.json').write_text(json.dumps({**side, **(changes or {})}))
 
 
-def write_own(outputs, arm, seed, prob, p_sha=P_SHA):
+def write_own(outputs, arm, seed, prob, p_sha=P_SHA, changes=None):
     path = eg_paths.p_own(outputs, arm, seed)
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez(path, prob=prob.astype(np.float32))
-    path.with_suffix('.json').write_text(json.dumps(dict(p_sha256=p_sha)))
+    side = dict(p_sha256=p_sha, arm=arm, seed=seed, rows=prob.shape[0], width=prob.shape[1])
+    path.with_suffix('.json').write_text(json.dumps({**side, **(changes or {})}))
 
 
 def aligned_prob(codes, seed):
@@ -156,13 +169,19 @@ def random_prob(seed):
     return np.random.default_rng(seed).random((N, 40))
 
 
+def vl1_scorer_record(**changes):
+    """A passing `vl1_scorer.json` as `check_vl1a` writes it, for this code and the toy P."""
+    return {**{'pass': True}, **dict(p_sha256=P_SHA, rb_ami_sha256=eg_lift.rb_ami_sha256(), versions=eg_lift.versions()),
+            **changes}
+
+
 def plant(tmp_path, labels, *, student_aligned, own_aligned, missing=None, vl1=True, vl1_scorer=True):
-    """Write exports of K4/B1 (student aligned with emotion, own random), K2/M2 (student random, own aligned), K3/M3 missing."""
+    """Write exports of K4/B1 (student aligned with emotion, own random), K2/M2 (student random, own aligned), K6/M6 missing."""
     out = tmp_path / 'outputs'
     (out / 'stage_ii/p').mkdir(parents=True)
     (out / 'stage_ii/p/index.json').write_text(json.dumps(dict(missing=missing or {})))
     (out / 'stage_ii/vl1.json').write_text(json.dumps(dict(**{'pass': vl1})))
-    (out / 'stage_ii/vl1_scorer.json').write_text(json.dumps(dict(**{'pass': vl1_scorer})))
+    (out / 'stage_ii/vl1_scorer.json').write_text(json.dumps(vl1_scorer_record(**{'pass': vl1_scorer})))
     for enc in TOY:
         if enc.student in (missing or {}):
             continue
@@ -186,11 +205,11 @@ def run_toy(out, labels, **kw):
 
 def test_run_scores_present_encoders_and_reports_a_missing_one_without_outcome(tmp_path):
     labels = toy_labels()
-    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K3': 'no stage 3 weights'})
+    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K6': 'no stage 3 weights'})
     result = run_toy(out, labels)
     assert json.loads((out / 'stage_ii/lift.json').read_text()) == json.loads(json.dumps(result))
-    k4, k2, k3 = (result['encoders'][s] for s in ('K4', 'K2', 'K3'))
-    assert k3['status'] == 'missing' and k3['reason'] == 'no stage 3 weights' and k3['outcome'] is None
+    k4, k2, k6 = (result['encoders'][s] for s in ('K4', 'K2', 'K6'))
+    assert k6['status'] == 'missing' and k6['reason'] == 'no stage 3 weights' and k6['outcome'] is None
     assert k4['status'] == 'scored' and k2['status'] == 'scored'
     assert k4['outcome'] in ('L-HOLDS', 'L-QUAL') and k4['aspects']['emotion']['lift'] > 0     # aligned student, random own
     assert k2['outcome'] == 'L-FAILS' and k2['aspects']['emotion']['lift'] < 0                  # random student, aligned own
@@ -202,7 +221,7 @@ def test_run_scores_present_encoders_and_reports_a_missing_one_without_outcome(t
 
 def test_partitions_are_cached_under_stage_ii_and_reused_and_other_inputs_are_refused(tmp_path, monkeypatch):
     labels = toy_labels()
-    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K3': 'x'})
+    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K6': 'x'})
     first = run_toy(out, labels)
     cache = out / 'stage_ii/partitions'
     assert (cache / 'K4/emotion__s0.npz').is_file() and (cache / 'B1/P3__s0__r20.npz').is_file()
@@ -222,7 +241,7 @@ def test_partitions_are_cached_under_stage_ii_and_reused_and_other_inputs_are_re
 
 def test_lift_json_is_not_overwritten_by_a_run_with_other_results(tmp_path):
     labels = toy_labels()
-    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K3': 'x'})
+    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K6': 'x'})
     run_toy(out, labels)
     run_toy(out, labels)                                               # same results: fine
     with pytest.raises(AssertionError, match='other results'):
@@ -233,7 +252,7 @@ def test_lift_json_is_not_overwritten_by_a_run_with_other_results(tmp_path):
 @pytest.mark.parametrize('vl1,vl1_scorer', [(False, True), (True, False)])
 def test_refuses_unless_vl1_passes(tmp_path, vl1, vl1_scorer):
     labels = toy_labels()
-    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K3': 'x'}, vl1=vl1, vl1_scorer=vl1_scorer)
+    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K6': 'x'}, vl1=vl1, vl1_scorer=vl1_scorer)
     with pytest.raises(AssertionError, match='VL1'):
         run_toy(out, labels)
     assert not (out / 'stage_ii/lift.json').exists()
@@ -241,15 +260,81 @@ def test_refuses_unless_vl1_passes(tmp_path, vl1, vl1_scorer):
 
 def test_refuses_without_vl1_json(tmp_path):
     labels = toy_labels()
-    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K3': 'x'})
+    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K6': 'x'})
     (out / 'stage_ii/vl1.json').unlink()
     with pytest.raises((AssertionError, FileNotFoundError)):
         run_toy(out, labels)
 
 
+@pytest.mark.parametrize('change', [dict(p_sha256='q' * 64), dict(rb_ami_sha256='0' * 64), dict(versions=dict(sklearn='0.0', numpy='0.0'))])
+def test_refuses_a_vl1_a_record_made_for_other_code_or_data(tmp_path, change):
+    labels = toy_labels()
+    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K6': 'x'})
+    (out / 'stage_ii/vl1_scorer.json').write_text(json.dumps(vl1_scorer_record(**change)))
+    with pytest.raises(AssertionError, match='VL1.*differs'):
+        run_toy(out, labels)
+    assert not (out / 'stage_ii/lift.json').exists()
+
+
+@pytest.mark.parametrize('key', ['p_sha256', 'rb_ami_sha256', 'versions'])
+def test_refuses_a_vl1_a_record_without_a_key(tmp_path, key):
+    labels = toy_labels()
+    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K6': 'x'})
+    record = vl1_scorer_record()
+    del record[key]
+    (out / 'stage_ii/vl1_scorer.json').write_text(json.dumps(record))
+    with pytest.raises(AssertionError, match='VL1'):
+        run_toy(out, labels)
+
+
+@pytest.mark.parametrize('missing', [{'K3': 'x'}, {'F3': 'x'}, {'M2': 'x'}, {'qwen3vl_emb_2b': 'x'}, ['K4'], {'K6': 'x', 'B1': 'y'}])
+def test_only_new_encoders_can_be_listed_missing(tmp_path, missing):
+    labels = toy_labels()
+    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K6': 'x'})
+    (out / 'stage_ii/p/index.json').write_text(json.dumps(dict(missing=missing)))
+    with pytest.raises(AssertionError, match='new encoder'):
+        run_toy(out, labels)
+    assert not (out / 'stage_ii/lift.json').exists()
+
+
+def test_new_encoders_can_be_listed_missing_by_any_of_their_names():
+    for enc in eg_encoders.ENCODERS:
+        if enc.new:
+            for name in (enc.student, enc.own, enc.frozen, enc.store):
+                assert eg_lift.check_missing({name: 'x'}) == {name: 'x'}
+
+
+@pytest.mark.parametrize('arm,change', [('K2', dict(arm='K4')), ('K2', dict(seed=2)), ('K2', dict(aspect='emotion')),
+                                         ('K2', dict(rows=N + 1)), ('K2', dict(width=W + 1)),
+                                         ('M2', dict(arm='B1')), ('M2', dict(seed=2)), ('M2', dict(rows=N + 1)),
+                                         ('M2', dict(width=41))])
+def test_a_sidecar_that_differs_from_the_arm_seed_aspect_or_array_shape_stops_the_run(tmp_path, arm, change):
+    labels = toy_labels()
+    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K6': 'x'})
+    if arm == 'K2':
+        write_student(out, 'K2', 'style', 3, blobs_of(np.zeros(N, dtype=int), 1), changes=change)
+    else:
+        write_own(out, 'M2', 3, random_prob(3), changes=change)
+    with pytest.raises(AssertionError, match='sidecar'):
+        run_toy(out, labels)
+
+
+@pytest.mark.parametrize('arm,key', [('K2', 'arm'), ('K2', 'seed'), ('K2', 'aspect'), ('K2', 'rows'), ('K2', 'width'),
+                                     ('M2', 'arm'), ('M2', 'seed'), ('M2', 'rows'), ('M2', 'width')])
+def test_a_sidecar_without_a_key_stops_the_run(tmp_path, arm, key):
+    labels = toy_labels()
+    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K6': 'x'})
+    path = eg_paths.p_student(out, 'K2', 'style', 3) if arm == 'K2' else eg_paths.p_own(out, 'M2', 3)
+    side = json.loads(path.with_suffix('.json').read_text())
+    del side[key]
+    path.with_suffix('.json').write_text(json.dumps(side))
+    with pytest.raises(AssertionError, match='sidecar'):
+        run_toy(out, labels)
+
+
 def test_an_export_of_another_p_or_a_not_unit_student_or_a_missing_file_stops_the_run(tmp_path):
     labels = toy_labels()
-    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K3': 'x'})
+    out = plant(tmp_path, labels, student_aligned={'K4'}, own_aligned={'M2'}, missing={'K6': 'x'})
     write_student(out, 'K2', 'style', 3, blobs_of(np.zeros(N, dtype=int), 1), p_sha='q' * 64)
     with pytest.raises(AssertionError, match='P sha256'):
         run_toy(out, labels)

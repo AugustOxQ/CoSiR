@@ -143,42 +143,66 @@ def versions():
     return dict(sklearn=v['sklearn'], numpy=v['numpy'])
 
 
-def require_vl1(outputs):
-    """The scorer states no outcome until VL1 holds: `vl1.json` (b, c, VL3; ticket 07) and `vl1_scorer.json` (a)."""
+def require_vl1(outputs, p_sha=eg_paths.P_SHA256):
+    """The scorer states no outcome until VL1 holds: `vl1.json` (b, c, VL3; ticket 07) and `vl1_scorer.json` (a).
+    The record of (a) counts only for this code and data: its `p_sha256`, `rb_ami_sha256` and `versions` must equal the
+    current ones."""
     for name in ('vl1.json', 'vl1_scorer.json'):
         path = Path(outputs) / STAGE / name
         assert path.is_file(), f'VL1: {path} missing; no outcome before VL1 holds'
         record = json.loads(path.read_text())
         assert record.get('pass') is True, f'VL1: {path} does not pass; stage ii stops (rule §4.2)'
+        if name == 'vl1_scorer.json':
+            current = dict(p_sha256=p_sha, rb_ami_sha256=rb_ami_sha256(), versions=versions())
+            for key, value in current.items():
+                assert key in record, f'VL1: {path} has no {key}; rerun `check`'
+                assert record[key] == value, f'VL1: {path} {key} differs from the current one; rerun `check`'
+
+
+def check_missing(missing):
+    """Only the new encoders (K5 to K8, `new=True`) can lack stage 3 weights (rule §2.2): every name must be the student,
+    own arm, frozen image or store name of one of them."""
+    allowed = {n for e in eg_encoders.ENCODERS if e.new for n in (e.student, e.own, e.frozen, e.store)}
+    for name in missing:
+        assert name in allowed, f'index.json: {name!r} listed missing; only a new encoder can be (one of {sorted(allowed)})'
+    return missing
 
 
 def read_missing(outputs):
     """{arm id: reason} of the encoders without stage 3 weights, from `stage_ii/p/index.json` key `missing`
-    (a dict arm -> reason, or a list of arms). The arm may be the student, own arm, frozen image or store name."""
+    (a dict arm -> reason, or a list of arms). The arm may be the student, own arm, frozen image or store name of a new
+    encoder (`check_missing`)."""
     index = json.loads((Path(outputs) / STAGE / 'p' / 'index.json').read_text())
     missing = index.get('missing', {})
     if isinstance(missing, list):
         missing = {name: 'listed as missing in stage_ii/p/index.json' for name in missing}
     assert isinstance(missing, dict) and all(isinstance(v, str) for v in missing.values()), 'index.json: missing'
-    return missing
+    return check_missing(missing)
 
 
-def _check_sidecar(path, p_sha):
+def _check_sidecar(path, arr, p_sha, arm, seed, aspect=None):
+    """The sibling .json of an export, with RB's key names (`rb_score.check_sidecar`): `p_sha256`, `arm`, `seed`, `rows`
+    and `width` (from the array), and `aspect` for a student. Every key must be present and equal."""
     side = path.with_suffix('.json')
     assert side.is_file(), f'{side}: sidecar missing'
     record = json.loads(side.read_text())
     assert record.get('p_sha256') == p_sha, f'{side}: P sha256 differs from P'
+    expected = dict(arm=arm, seed=seed, rows=int(arr.shape[0]), width=int(arr.shape[1]))
+    if aspect is not None:
+        expected['aspect'] = aspect
+    for key, value in expected.items():
+        assert key in record and record[key] == value, f'{side}: sidecar {key} is {record.get(key)!r}, expected {value!r}'
     return record
 
 
 def load_student(outputs, arm, aspect, seed, n_rows=N_P, width=WIDTH, p_sha=eg_paths.P_SHA256):
     """(img float16 [n, width], its SHA-256) of a student's P export after the sidecar and VL3 checks."""
     path = eg_paths.p_student(outputs, arm, aspect, seed)
-    _check_sidecar(path, p_sha)
     with np.load(path, allow_pickle=False) as z:
         assert 'img' in z.files, (path, z.files)
         img = z['img']
     assert img.dtype == np.float16 and img.shape == (n_rows, width), f'{path}: {img.dtype} {img.shape}'
+    _check_sidecar(path, img, p_sha, arm, seed, aspect)
     rb_ami.unit_float32(img)                      # finite and unit norm within 1e-3
     return img, array_sha256(img)
 
@@ -186,11 +210,11 @@ def load_student(outputs, arm, aspect, seed, n_rows=N_P, width=WIDTH, p_sha=eg_p
 def load_own(outputs, arm, seed, n_rows=N_P, p_sha=eg_paths.P_SHA256):
     """(prob float32 [n, 40], its SHA-256) of an own arm's P export after the sidecar checks."""
     path = eg_paths.p_own(outputs, arm, seed)
-    _check_sidecar(path, p_sha)
     with np.load(path, allow_pickle=False) as z:
         assert 'prob' in z.files, (path, z.files)
         prob = z['prob']
     assert prob.dtype == np.float32 and prob.shape == (n_rows, N_TOPICS), f'{path}: {prob.dtype} {prob.shape}'
+    _check_sidecar(path, prob, p_sha, arm, seed)
     assert np.isfinite(prob).all() and prob.min() >= 0 and prob.max() <= 1, f'{path}: not sigmoid probabilities'
     assert (np.linalg.norm(prob, axis=1) > 0).all(), f'{path}: a zero row'
     return prob, array_sha256(prob)
@@ -250,7 +274,7 @@ def run(outputs, labels, *, frozen_images, p_sha=eg_paths.P_SHA256, n_rows=N_P, 
     `labels` = {aspect: int64 [n_rows]} in P order (-1 masked). `frozen_images(store)` = float32 [n_rows, w], unit norm.
     Refuses unless VL1 holds. An encoder listed missing in `stage_ii/p/index.json` is reported missing, no outcome."""
     outputs = Path(outputs)
-    require_vl1(outputs)
+    require_vl1(outputs, p_sha)
     assert set(labels) == set(eg_paths.ASPECTS)
     for a in eg_paths.ASPECTS:
         assert labels[a].dtype == np.int64 and labels[a].shape == (n_rows,) and labels[a].min() >= -1, a
