@@ -60,6 +60,8 @@ recipe (P exports of all three aspects) is skipped inside it; a 1x step whose `p
   one `scorer/A_e/*` and one `scorer/partitions/*`. (`rb_score.require_gate` checks again inside the runners.)
 - `stage4`: stage 3a items as above and `rederive_v2_stage3.json` agrees. A candidate's own gate: `rb_run candidates 4` lists
   those with an `outcome_id` that is not None and not `S1-NO` (from `verdict_stage3.json`).
+- Stage 5 also needs a passed 3a (agent default; spec §3.5 names only stage 4): stage 5 reads full-scale outputs, K1's
+  always, through the code that 3a proves bit for bit (C12). So a failed 3a stops stages 4 and 5; the report says so.
 - `vp3 --recipe R [--forced]`: the plan is the six recipes (`part1/plan.json`); a recipe with P exports for all three aspects
   is not trained again without `--forced`; every call is appended to `part1/vp3_log.jsonl`.
 - `v2_3`, `v2_4`: the re-derivation agrees before the reported readings run (rule §4.2).
@@ -80,6 +82,14 @@ every candidate, so a crash still stops the queue. A candidate whose training, i
 notes it (`RB_STAGE3_NOTE K.. failed`), the scorer gives it a block without an outcome (the cause in `v_failure`), and the
 stage goes on (spec §9: the only stops are a failed stage 0, 2 or 3a). The run chat reports it; a crash that is not a V3
 failure is a bug to trace, not an outcome.
+
+### Reruns after a stop or a deferral
+
+`rb_run candidates 3|4` lists only the candidates without a block in that stage's verdict file, so a rerun (for example
+of stage 3 without `RB_DEFER` after a split) trains and scores only the new ones; `rb_score` merges blocks by name and
+refuses to recompute a finished block, whose recorded code commit may have changed. `check-verdict` checks every expected
+candidate. Stage 5 recomputes every model (its blocks hold no commit, so finished ones come out identical, 5 to 10 min).
+A candidate whose block has no outcome is not rescored by a rerun; that needs the scorer's `--replace REASON`.
 
 ### Stage 5 scale
 

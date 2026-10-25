@@ -68,8 +68,15 @@ def test_candidates_and_stage5_scales(tmp_path, monkeypatch):
         'K2': {'outcome_id': 'S1-NO'}, 'K3': {'outcome_id': 'S1-MM'}, 'K4': {'outcome_id': None}}})
     assert rb_run.candidates(tmp_path, 4) == ['K3']
     monkeypatch.setenv('RB_DEFER', 'K3')
-    assert rb_run.candidates(tmp_path, 3) == ['K2', 'K4']
+    assert rb_run.candidates(tmp_path, 3, todo=False) == ['K2', 'K4']
     monkeypatch.delenv('RB_DEFER')
+    assert rb_run.candidates(tmp_path, 3) == []              # every candidate has a stage 3 block: nothing to redo
+    put(tmp_path / 'part1/pick.json', {'triggers': {'K4': True, 'K5': True}})
+    assert rb_run.candidates(tmp_path, 3) == ['K5']          # a rerun after deferring K5 scores K5 only
+    assert rb_run.candidates(tmp_path, 3, todo=False) == ['K2', 'K3', 'K4', 'K5']
+    put(tmp_path / 'part2/verdict_stage4.json', {'blocks': {'K3': {'outcome_id': 'S2-IN'}}})
+    assert rb_run.candidates(tmp_path, 4) == [] and rb_run.candidates(tmp_path, 4, todo=False) == ['K3']
+    put(tmp_path / 'part1/pick.json', {'triggers': {'K4': True, 'K5': False}})
     put(tmp_path / 'part2/verdict_stage4.json', {'blocks': {'K3': {'outcome_id': 'S2-IN'}, 'K4': {'outcome_id': None}}})
     models, scales = rb_run.a28_plan(tmp_path)
     assert models == ['K1', 'K2', 'K3', 'K4'] and scales == dict(K1='full', K2='sample', K3='full', K4='sample')

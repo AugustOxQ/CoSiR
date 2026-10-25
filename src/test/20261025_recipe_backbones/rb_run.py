@@ -185,17 +185,24 @@ def deferred():
     return [c for c in os.environ.get('RB_DEFER', '').split() if c]
 
 
-def candidates(out, stage):
+def candidates(out, stage, todo=True):
     """Triggered candidates in the order K2, K3, K4, K5, minus RB_DEFER. Stage 4: only those with an S1 outcome
-    other than S1-NO (rule §4.2); a candidate without an outcome has no stage 4."""
+    other than S1-NO (rule §4.2); a candidate without an outcome has no stage 4. `todo`: also minus those that already
+    have a block in this stage's verdict file, so a rerun after a deferral trains and scores only the new ones
+    (rb_score merges blocks by name and refuses to recompute a block whose code commit changed)."""
     t = triggers(out)
     names = [c for c in CANDIDATES if c in ('K2', 'K3') or t[c]]
     for c in deferred():
         need(c in CANDIDATES, f'RB_DEFER names {c}')
-    if stage == 3:
-        return [c for c in names if c not in deferred()]
-    blocks = s1_outcomes(out)
-    return [c for c in names if c not in deferred() and blocks.get(c, {}).get('outcome_id') not in (None, 'S1-NO')]
+    names = [c for c in names if c not in deferred()]
+    if stage == 4:
+        blocks = s1_outcomes(out)
+        names = [c for c in names if blocks.get(c, {}).get('outcome_id') not in (None, 'S1-NO')]
+    if todo:
+        verdict = out / f'part2/verdict_stage{stage}.json'
+        scored = set(json.loads(verdict.read_text())['blocks']) if verdict.exists() else set()
+        names = [c for c in names if c not in scored]
+    return names
 
 
 def check_verdict(out, stage, cands):
@@ -273,10 +280,13 @@ def budget(out, now=None):
     add('part1', GPU_STEPS, 'part1', skip=done('part1/pick.json'))
     add('pick', CPU_STEPS, 'pick', skip=done('part1/pick.json'))
     add('vp1', CPU_STEPS, 'vp1', skip=done('part1/rederive_vp1.json'))
-    add('stores_clip', GPU_STEPS, 'stores_clip')
-    add('stores_a28', GPU_STEPS, 'stores_a28')
+    store = lambda rel: (Path(rb_paths.PRE) / rel).exists()
+    add('stores_clip', GPU_STEPS, 'stores_clip', skip=store('artelingo_full/clip_b32/index.json'))
+    add('stores_a28', GPU_STEPS, 'stores_a28', skip=all(store(f'artelingo28/qwen3vl_emb_2b_aspect_prompts/{k}/done.json')
+                                                        for k in ('emotion_focus', 'style_word', 'genre_word')))
     if 'K5' in cands:
-        add('stores_dino', GPU_STEPS, 'stores_dino')
+        add('stores_dino', GPU_STEPS, 'stores_dino', skip=store('artelingo_full/dinov2_large/index.json') and
+            store('artelingo28/dinov2_large/index.json'))
     add('reg2', GPU_STEPS, 'reg2', skip=done('part2/regression/stage2.json'))
     add('check2', CPU_STEPS, 'check2', skip=done('part2/regression/stage2.json'))
     v3 = done('part2/verdict_stage3.json')
@@ -356,7 +366,8 @@ def main(argv=None):
         elif args.command == 'candidates':
             print(' '.join(candidates(out, int(args.arg))))
         elif args.command == 'check-verdict':
-            print('RB_VERDICT ' + check_verdict(out, int(args.arg), args.candidates or candidates(out, int(args.arg))))
+            print('RB_VERDICT ' + check_verdict(out, int(args.arg),
+                                                args.candidates or candidates(out, int(args.arg), todo=False)))
         elif args.command == 'triggers':
             print(' '.join(c for c, v in triggers(out).items() if v))
         elif args.command == 'a28':
