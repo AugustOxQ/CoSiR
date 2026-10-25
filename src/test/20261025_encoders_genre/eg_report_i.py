@@ -164,7 +164,7 @@ def run_held(stage, outputs, workers, n_resamples, candidates, replace, allow_ol
     saved = json.loads(path.read_text())['blocks'] if path.exists() else {}
     todo = list(candidates) if candidates else [c for c in done if c not in saved]
     assert set(todo) <= set(done), f'no outcome in the verdict file for {sorted(set(todo) - set(done))}'
-    skipped = sorted(c for c in blocks if c not in done)
+    skipped = sorted(c for c, b in blocks.items() if not b.get('outcome_id'))
     if todo:
         require_v2(stage, outputs, todo, verdict_path)
     header = dict(stage=stage, scale=scale, held_sha256=sha)
@@ -267,7 +267,7 @@ def run_a28(outputs, workers, n_resamples, seeds, candidates, replace, allow_old
     saved = json.loads(path.read_text())['blocks'] if path.exists() else {}
     todo = list(candidates) if candidates else [c for c in done if c not in saved]
     assert set(todo) <= set(done), f'no outcome in the verdict file for {sorted(set(todo) - set(done))}'
-    skipped = sorted(c for c in verdict['blocks'] if c not in done)
+    skipped = sorted(c for c, b in verdict['blocks'].items() if not b.get('outcome_id'))
     if todo:
         require_v2(5, outputs, todo, verdict_path)
     record = json.loads(path.read_text()) if path.exists() else None
