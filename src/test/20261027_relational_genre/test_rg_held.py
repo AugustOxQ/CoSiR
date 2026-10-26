@@ -108,6 +108,7 @@ def test_pc_needs_d_r_at_or_above_g_half_and_the_lower_bound_above_zero():
 
 def test_part_is_pc_without_go_or_mm_and_no_is_the_rest():
     assert out(-0.05, -0.06, 0.03, 0.01)['outcome_id'] == 'G-PART'
+    assert out(-0.05, -0.06, 0.03, 0.01)['partial_sentence'] is True
     assert out(-0.05, -0.06, 0.03, 0.0)['outcome_id'] == 'G-NO'
     assert out(-0.05, -0.06, 0.01, 0.01)['outcome_id'] == 'G-NO'
     assert out(-0.05, -0.06, 0.03, 0.01, g_half=0.04)['outcome_id'] == 'G-NO'

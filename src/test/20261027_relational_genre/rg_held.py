@@ -144,7 +144,7 @@ def outcome(d_t, lo_t, d_r, lo_r, g_half_value, x=rg_variants.X):
         kind = 'G-NO'
     return dict(outcome_id=kind, matches_or_exceeds=bool(kind == 'G-GO' and lo_t > 0), pc=pc,
                 pc_parts=dict(d_R_ge_G_half=bool(d_r >= g_half_value), lower_gt_0=bool(lo_r > 0)),
-                partial_sentence=pc if kind == 'G-MM' else None, X=x)
+                partial_sentence=pc if kind in ('G-MM', 'G-PART') else None, X=x)   # G-PART is the partial sentence itself
 
 
 # --- files ------------------------------------------------------------------------------------------------------
@@ -157,7 +157,8 @@ def code_provenance():
     """Provenance only: git HEAD of this checkout and whether the tree has uncommitted changes."""
     here = Path(__file__).resolve().parent
     head = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=here, capture_output=True, text=True, check=True).stdout.strip()
-    dirty = bool(subprocess.run(['git', 'status', '--porcelain', '--untracked-files=no'], cwd=here,
+    # this round's .py files, untracked ones included (a new module not yet committed counts as dirty)
+    dirty = bool(subprocess.run(['git', 'status', '--porcelain', '--', '*.py'], cwd=here,
                                 capture_output=True, text=True, check=True).stdout.strip())
     return dict(code_commit=head, dirty=dirty, rg_held_sha256=sha_file(__file__),
                 rb_score_sha256=sha_file(rb_score.__file__))
