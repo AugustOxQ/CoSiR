@@ -30,3 +30,6 @@ scratchpad (`console/`).
 | 03:25 | `cpu_i 5` started (gate V2 5 passes) | running |
 | 03:25 to 03:34 | `cpu_i 5` (report 559 s) | `part2/reported_stage5.{json,md}` |
 | 03:34 | Run done (step 8): no GPU process, no lock, no queue left; GPU and CPU free 7.5 h before 11:00 (the start estimate was 03:46 to 05:41 for the chain, plus 161 min of reports) | done |
+| 03:35 | Step 9: the auto report draft went to Codex (`gpt-6.1-sol` medium; room: 100% of the five-hour window); the auto-mode permission check refused the `codex e` call (no reason given), so Claude took the job back as the rule says: a Sonnet `high` worker drafts 12-25 from the same brief | drafting |
+| 03:36 | Held ledger rows H16 (stage 3), H17 (stage 4), H18 (ArtELingo-28, stage 5) written | done |
+| 03:38 | Restart question before the cut (asked 03:37; GPU check passed: driver, module and library 595.99.02) | no container restart (user, 03:38) |
