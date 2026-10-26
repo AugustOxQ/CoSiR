@@ -43,7 +43,8 @@ SCALE = 'full'
 OUT = rb_student.OUT
 K4_FULL = rg_paths.RB_PART2 / 'full'                    # 12-24's frozen K4 (Qwen, R6-5) weights and held outputs
 SEEDS = tuple(range(5))
-CODE_FILES = ('rg_loss.py', 'rg_variants.py')           # the files whose change alters a trained weight
+CODE_FILES = ('rg_loss.py', 'rg_variants.py', 'rg_full.py')   # the files whose change alters a trained weight
+VC1_RUN = Path('stage_c/regression/vc1_run')              # under the outputs folder: `regress vc1`'s weights and held outputs
 
 
 class NonFiniteLoss(Exception):
@@ -100,17 +101,26 @@ def _record(path):
     return record
 
 
-def require_guard(out, arm, *, ancestor=rule_commit_is_ancestor):
-    """The held guard (rule §4.3 VC1, VC4): held outputs of `arm` only when `stage_c/regression/vc1_train.json` and
-    `vc1_scorer.json` pass, `stage_b/verdict.json` is B-PICK with `v_held` == `arm` and its switches equal the arm's,
-    and the rule commit is an ancestor of HEAD. Returns the SHA-256 of the three files read."""
+def _weights_record(root, arm, aspect, seed):
+    return _record(rb_student.weights_path(root, arm, aspect, seed).with_suffix('.json'))
+
+
+def require_guard(out, arm, *, ancestor=rule_commit_is_ancestor, seeds=V.FULL_SEEDS):
+    """The held guard (rule §4.3 VC1, VC4): held outputs of `arm` only when `stage_c/regression/vc1_train.json` (a full
+    run, not a smoke) and `vc1_scorer.json` pass, the weights of `arm` for `seeds` were trained by the code VC1 checked
+    (the `rg` and `rb` code hashes of their records equal those of the VC1 run's R6-5 weights), `stage_b/verdict.json`
+    is B-PICK with `v_held` == `arm` and its switches equal the arm's, and the rule commit is an ancestor of HEAD.
+    Returns the SHA-256 of the three files read."""
     out = Path(out)
     assert arm in V.ARMS and arm != V.BASE, f'{arm}: not a candidate arm of this round'
     shas = {}
     for name in ('vc1_train', 'vc1_scorer'):
         path = out / f'stage_c/regression/{name}.json'
         assert path.is_file(), f'VC1: {path} missing'
-        assert _record(path).get('pass') is True, f'VC1: {path} does not pass'
+        record = _record(path)
+        assert record.get('pass') is True, f'VC1: {path} does not pass'
+        if name == 'vc1_train':
+            assert record.get('identity', {}).get('smoke') is False, f'VC1: {path} is a smoke run (or has no identity)'
         shas[name] = rb_student.ms_train.head.sha_file(path)
     path = out / 'stage_b/verdict.json'
     verdict = _record(path)
@@ -118,6 +128,13 @@ def require_guard(out, arm, *, ancestor=rule_commit_is_ancestor):
     assert verdict.get('v_held') == arm, f'{path}: v_held is {verdict.get("v_held")!r}; G is {arm!r}'
     assert verdict.get('v_held_switches') == V.switches(arm), f'{path}: v_held_switches differ from {arm}\'s switches'
     shas['stage_b_verdict'] = rb_student.ms_train.head.sha_file(path)
+    for aspect in ASPECTS:
+        vc1 = _weights_record(out / VC1_RUN, V.BASE, aspect, 0)['config']
+        for seed in seeds:
+            config = _weights_record(rg_paths.full_root(out), arm, aspect, seed)['config']
+            for block in ('rg', 'rb'):
+                assert config[block]['code_sha256'] == vc1[block]['code_sha256'], \
+                    f'VC1: {arm} {aspect} s{seed} was trained by other {block} code than the VC1 run checked; rerun `regress vc1`'
     assert ancestor(), f'the rule commit {rg_paths.RULE_COMMIT} is not an ancestor of HEAD'
     return shas
 
@@ -125,11 +142,12 @@ def require_guard(out, arm, *, ancestor=rule_commit_is_ancestor):
 # --- provenance ---------------------------------------------------------------------------------------------------
 
 def code_provenance():
-    """git HEAD of this checkout, whether tracked files are modified, and the hashes of this round's code."""
+    """git HEAD of this checkout, whether this round's .py files are modified or new, and the hashes of this round's code."""
     git = ['git', '-C', str(rg_paths.ROUND)]
     head = subprocess.run(git + ['rev-parse', 'HEAD'], capture_output=True, text=True, check=True).stdout.strip()
-    dirty = bool(subprocess.run(git + ['status', '--porcelain', '-uno'], capture_output=True, text=True,
-                                check=True).stdout.strip())
+    # this round's .py files, untracked ones included (a new module not yet committed counts as dirty), as rg_held
+    dirty = bool(subprocess.run(git + ['status', '--porcelain', '--', '*.py'], cwd=rg_paths.ROUND,
+                                capture_output=True, text=True, check=True).stdout.strip())
     return dict(code_commit=head, dirty=dirty, rg_full_sha256=ms_train.head.sha_file(Path(__file__)),
                 rg_loss_sha256=ms_train.head.sha_file(rg_paths.ROUND / 'rg_loss.py'))
 
@@ -283,20 +301,35 @@ def _arm_weights(root, arm, aspect, seed, smoke):
     assert ms_train.head.sha_file(path) == info['weights_sha256'], f'{path}: weights checksum mismatch'
     config = info['config']
     assert (config['aspect'], config['seed'], config['smoke']) == (aspect, seed, smoke)
+    assert smoke or config['max_epochs'] == ms_train.CONFIG['max_epochs'], \
+        f'{path}: trained with max_epochs {config["max_epochs"]}, not the CT\'s {ms_train.CONFIG["max_epochs"]}'
     assert (config['rb']['scale'], config['rb']['encoder'], config['rb']['width'], config['rb']['recipe']) == (
         SCALE, ENCODER, rb_encoders.WIDTH[ENCODER], RECIPE)
     assert config['rg']['arm'] == arm and config['rg']['switches'] == V.switches(arm), f'{path}: other arm or switches'
     return path, config, info['weights_sha256']
 
 
+def _refuse_failed(root, arm, seeds):
+    """VC4: a seed whose training stopped on a non-finite loss, or whose held output failed VC3 twice, is not tried again."""
+    for seed in seeds:
+        assert not failed_path(root, arm, seed).exists(), \
+            f'VC4: {arm} s{seed} stopped on a non-finite loss ({failed_path(root, arm, seed)}); no held output'
+        for aspect in ASPECTS:
+            path = root / 'held' / arm / f'failed__{aspect}__s{seed}.json'
+            assert not path.exists(), f'VC4: {arm} {aspect} s{seed} failed VC3 twice ({path}); no new attempt'
+
+
 def infer_held(arm, seeds, device, root, *, smoke=False):
     """A copy of `rb_student.infer_arm` for kind held, Qwen at full scale. No guard here (`held` and `regress vc1`
     decide when this may run). Files `root/held/<arm>/<aspect>__s{seed}.npz` as 12-24's; an existing file must match.
     VC3 on each output; a failure is rerun once from the same weights, and a second failure is recorded in
-    `root/held/<arm>/failed__<aspect>__s{seed}.json` and stops."""
+    `root/held/<arm>/failed__<aspect>__s{seed}.json` and stops; the output then keeps the first attempt's problem in
+    `vc3_problems`. A seed with such a record, or with a training run that stopped on a non-finite loss, is refused
+    (VC4: no stage C outcome, no new attempt), before any file is written."""
     seeds = list(seeds)
     assert arm in V.ARMS and seeds and len(set(seeds)) == len(seeds) and all(s in SEEDS for s in seeds)
     root = _check_root(root)
+    _refuse_failed(root, arm, seeds)
     names, names_sha = rb_student.held_names()
     x = rb_encoders.full_images(ENCODER, names)
     width = rb_encoders.WIDTH[ENCODER]
@@ -337,7 +370,8 @@ def infer_held(arm, seeds, device, root, *, smoke=False):
                                       **code_provenance()))
                     raise AssertionError(f'{path}: VC3 failed twice: {problems}')
                 rb_student.write_outputs(path, dict(img=out),
-                                         dict(meta, sha256=rb_student.sha_array(out), vc3_attempts=len(problems) + 1))
+                                         dict(meta, sha256=rb_student.sha_array(out), vc3_attempts=len(problems) + 1,
+                                          vc3_problems=problems))
                 arrays, info = rb_student.read_outputs(path)
             assert info['sha256'] == info['arrays']['img']['sha256'] == rb_student.sha_array(out)
             result[aspect, seed] = out
@@ -349,7 +383,16 @@ def held(arm, seeds, outputs, device=None, *, smoke=False, ancestor=rule_commit_
     """Guarded held inference of `arm` (G): `require_guard` first, before any data or weights are read."""
     outputs = rb_student._check_outputs(outputs, smoke)
     if not smoke:      # a smoke writes under /tmp/claude-0 only, as rb_student.infer_arm
-        require_guard(outputs, arm, ancestor=ancestor)
+        seeds = list(seeds)
+        assert sorted(seeds) == list(V.FULL_SEEDS), f'held runs all seeds {V.FULL_SEEDS} of the arm at once, not {seeds}'
+        require_guard(outputs, arm, ancestor=ancestor, seeds=seeds)
+        # nothing is written before every seed's weights are there and intact (a partial run would leave held outputs
+        # that block training the rest, VC4)
+        root = _check_root(rg_paths.full_root(outputs))
+        _refuse_failed(root, arm, seeds)
+        for seed in seeds:
+            for aspect in ASPECTS:
+                _arm_weights(root, arm, aspect, seed, False)
     else:
         assert arm in V.ARMS and arm != V.BASE, arm
     torch.set_num_threads(8)

@@ -7,8 +7,13 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+import subprocess
+
 import ab_train
+import rb_encoders
 import rb_rows
+import rb_student
+import rg_paths
 import rg_variants as V
 from ab_paths import ms_train
 
@@ -20,11 +25,30 @@ def put(path, value):
     path.write_text(json.dumps(value))
 
 
+ASPECTS = ('emotion', 'style', 'genre')
+
+
+def put_weights(root, arm, seeds=(0,), *, rg_code='rg-code', rb_code='rb-code', max_epochs=None, smoke=False):
+    """Fake saved best views (a few bytes and the record the trainer writes) of `arm` under `root/weights/<arm>/`."""
+    for seed in seeds:
+        for aspect in ASPECTS:
+            path = rb_student.weights_path(root, arm, aspect, seed)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(f'{arm}{aspect}{seed}'.encode())
+            config = dict(aspect=aspect, seed=seed, smoke=smoke, device='cpu',
+                          max_epochs=ms_train.CONFIG['max_epochs'] if max_epochs is None else max_epochs,
+                          rb=dict(scale='full', encoder='qwen3vl_emb_2b', width=2048, recipe='R6-5', code_sha256=rb_code),
+                          rg=dict(arm=arm, switches=V.switches(arm), code_sha256=rg_code))
+            put(path.with_suffix('.json'), dict(weights_sha256=ms_train.head.sha_file(path), config=config))
+
+
 @pytest.fixture
 def out(tmp_path):
     put(tmp_path / 'stage_b/verdict.json', dict(outcome='B-PICK', v_held='GR-8', v_held_switches=V.switches('GR-8')))
-    for name in ('vc1_train', 'vc1_scorer'):
-        put(tmp_path / f'stage_c/regression/{name}.json', {'pass': True})
+    put(tmp_path / 'stage_c/regression/vc1_train.json', {'pass': True, 'identity': {'smoke': False}})
+    put(tmp_path / 'stage_c/regression/vc1_scorer.json', {'pass': True})
+    put_weights(tmp_path / 'stage_c/regression/vc1_run', 'R6-5')
+    put_weights(rg_paths.full_root(tmp_path), 'GR-8', V.FULL_SEEDS)
     return tmp_path
 
 
@@ -70,7 +94,7 @@ def test_guard_refuses_b_none(out):
 
 def test_guard_refuses_another_arm_than_v_held(out):
     import rg_full
-    with pytest.raises(AssertionError, match='v_held'):
+    with pytest.raises(AssertionError, match='v_held is'):
         rg_full.require_guard(out, 'GR-16', ancestor=yes)
 
 
@@ -82,10 +106,11 @@ def test_guard_refuses_other_switches_than_the_arms(out):
         rg_full.require_guard(out, 'GR-8', ancestor=yes)
 
 
-def test_guard_refuses_an_arm_outside_the_round(out):
+@pytest.mark.parametrize('arm', ['K4', 'R6-5'])
+def test_guard_refuses_an_arm_outside_the_round_and_the_base_recipe(out, arm):
     import rg_full
-    with pytest.raises(AssertionError):
-        rg_full.require_guard(out, 'K4', ancestor=yes)
+    with pytest.raises(AssertionError, match='not a candidate arm'):
+        rg_full.require_guard(out, arm, ancestor=yes)
 
 
 def test_guard_refuses_when_the_rule_commit_is_not_an_ancestor(out):
@@ -228,3 +253,193 @@ def test_a_non_finite_loss_stops_the_run_with_its_aspect():
     with pytest.raises(rg_full.NonFiniteLoss) as info:
         loss(**b)
     assert info.value.args[0] == 'genre'
+
+
+# --- the guard's VC1 code identity ------------------------------------------------------------------------------
+
+def test_guard_refuses_a_smoke_vc1_train_record(out):
+    import rg_full
+    put(out / 'stage_c/regression/vc1_train.json', {'pass': True, 'identity': {'smoke': True}})
+    with pytest.raises(AssertionError, match='smoke'):
+        rg_full.require_guard(out, 'GR-8', ancestor=yes)
+
+
+def test_guard_refuses_a_vc1_train_record_without_identity(out):
+    import rg_full
+    put(out / 'stage_c/regression/vc1_train.json', {'pass': True})
+    with pytest.raises(AssertionError, match='smoke'):
+        rg_full.require_guard(out, 'GR-8', ancestor=yes)
+
+
+@pytest.mark.parametrize('which', ['rg', 'rb'])
+def test_guard_refuses_weights_of_code_that_vc1_did_not_check(out, which):
+    import rg_full
+    put_weights(rg_paths.full_root(out), 'GR-8', (3,), **{f'{which}_code': 'changed-after-vc1'})
+    with pytest.raises(AssertionError, match='code'):
+        rg_full.require_guard(out, 'GR-8', ancestor=yes)
+
+
+def test_guard_refuses_when_the_vc1_run_has_no_weights_record(out):
+    import rg_full
+    (out / 'stage_c/regression/vc1_run/weights/R6-5/genre__s0.json').unlink()
+    with pytest.raises(AssertionError, match='missing'):
+        rg_full.require_guard(out, 'GR-8', ancestor=yes)
+
+
+def test_rg_full_itself_counts_as_code_that_alters_a_weight():
+    import rg_full
+    assert 'rg_full.py' in rg_full.CODE_FILES
+
+
+# --- held inference: VC3, a partial run, the guard's call site --------------------------------------------------
+
+N_ROWS = 4
+
+
+@pytest.fixture
+def fake(monkeypatch):
+    """Inference without data or a model: `infer` returns the queued arrays (1.0 marks a VC3 failure)."""
+    import rg_full
+    state = dict(calls=0, queue=[])
+    monkeypatch.setattr(rb_student, 'held_names', lambda: ([f'p{i}' for i in range(N_ROWS)], 'names-sha'))
+    monkeypatch.setattr(rb_encoders, 'full_images',
+                        lambda encoder, names: np.zeros((len(names), rb_encoders.WIDTH[encoder]), dtype=np.float32))
+    monkeypatch.setattr(rg_paths, 'N_HELD', N_ROWS)
+
+    def infer(weights, aspect, width, x, device):
+        state['calls'] += 1
+        return np.full((N_ROWS, 2048), state['queue'].pop(0) if state['queue'] else 0.0, dtype=np.float16)
+
+    monkeypatch.setattr(rb_student, 'infer', infer)
+    monkeypatch.setattr(rg_full, 'vc3_problem', lambda x: 'bad output' if x[0, 0] == 1 else None)
+    return state
+
+
+@pytest.fixture
+def root(tmp_path):
+    put_weights(tmp_path, 'GR-8', V.FULL_SEEDS)
+    return tmp_path
+
+
+def test_a_second_vc3_failure_is_recorded_and_a_second_call_does_not_try_again(root, fake):
+    import rg_full
+    fake['queue'] = [1.0, 1.0]
+    with pytest.raises(AssertionError, match='VC3 failed twice'):
+        rg_full.infer_held('GR-8', [0], 'cpu', root)
+    failed = root / 'held/GR-8/failed__emotion__s0.json'
+    assert json.loads(failed.read_text())['problems'] == ['bad output', 'bad output'] and fake['calls'] == 2
+    with pytest.raises(AssertionError, match='VC4'):             # a good third attempt must not hide the failure
+        rg_full.infer_held('GR-8', [0], 'cpu', root)
+    assert fake['calls'] == 2 and not list((root / 'held/GR-8').glob('*.npz'))
+
+
+def test_a_stopped_training_run_leaves_no_held_output(root, fake):
+    import rg_full
+    put(rg_full.failed_path(root, 'GR-8', 1), dict(failure_kind='nonfinite_loss'))
+    with pytest.raises(AssertionError, match='VC4'):
+        rg_full.infer_held('GR-8', [0, 1], 'cpu', root)
+    assert fake['calls'] == 0 and not (root / 'held').exists()
+
+
+def test_a_vc3_rerun_that_passes_lists_the_first_problem_in_the_output(root, fake):
+    import rg_full
+    fake['queue'] = [1.0]
+    rg_full.infer_held('GR-8', [0], 'cpu', root)
+    _, info = rb_student.read_outputs(root / 'held/GR-8/emotion__s0.npz')
+    assert info['vc3_attempts'] == 2 and info['vc3_problems'] == ['bad output']
+    _, info = rb_student.read_outputs(root / 'held/GR-8/style__s0.npz')
+    assert info['vc3_attempts'] == 1 and info['vc3_problems'] == []
+
+
+def test_weights_trained_with_fewer_epochs_than_the_ct_are_refused_outside_a_smoke(tmp_path, fake):
+    import rg_full
+    put_weights(tmp_path, 'GR-8', (0,), max_epochs=3)
+    with pytest.raises(AssertionError, match='max_epochs'):
+        rg_full.infer_held('GR-8', [0], 'cpu', tmp_path)
+    assert fake['calls'] == 0
+
+
+@pytest.fixture
+def infer_calls(monkeypatch):
+    import rg_full
+    calls = []
+    monkeypatch.setattr(rg_full, 'infer_held', lambda *args, **kwargs: calls.append((args, kwargs)) or {})
+    return calls
+
+
+def test_held_refuses_before_any_inference_when_the_guard_fails(out, infer_calls):
+    import rg_full
+    put(out / 'stage_b/verdict.json', dict(outcome='B-NONE', v_held=None, v_held_switches=None))
+    with pytest.raises(AssertionError, match='B-PICK'):
+        rg_full.held('GR-8', list(V.FULL_SEEDS), out, ancestor=yes)
+    assert infer_calls == []
+
+
+def test_held_runs_inference_on_the_full_root_when_the_guard_passes(out, infer_calls):
+    import rg_full
+    rg_full.held('GR-8', list(V.FULL_SEEDS), out, ancestor=yes)
+    assert len(infer_calls) == 1 and infer_calls[0][0][:2] == ('GR-8', list(V.FULL_SEEDS))
+    assert infer_calls[0][0][3] == rg_paths.full_root(out) and infer_calls[0][1] == dict(smoke=False)
+
+
+def test_held_smoke_outside_the_smoke_folder_is_refused(infer_calls):
+    import rg_full
+    with pytest.raises(AssertionError, match='claude-0'):
+        rg_full.held('GR-8', [0], '/nonexistent/outputs', smoke=True)
+    assert infer_calls == []
+
+
+def test_held_refuses_a_partial_seed_list_before_any_output(out, infer_calls):
+    import rg_full
+    with pytest.raises(AssertionError, match='seeds'):
+        rg_full.held('GR-8', [0, 1], out, ancestor=yes)
+    assert infer_calls == []
+
+
+def test_held_refuses_missing_weights_of_a_later_seed_before_any_output(out, infer_calls):
+    import rg_full
+    rb_student.weights_path(rg_paths.full_root(out), 'GR-8', 'genre', 4).unlink()
+    with pytest.raises(AssertionError, match='missing'):
+        rg_full.held('GR-8', list(V.FULL_SEEDS), out, ancestor=yes)
+    assert infer_calls == []
+
+
+def test_held_refuses_a_weights_checksum_mismatch_of_a_later_seed(out, infer_calls):
+    import rg_full
+    rb_student.weights_path(rg_paths.full_root(out), 'GR-8', 'style', 3).write_bytes(b'other')
+    with pytest.raises(AssertionError, match='checksum'):
+        rg_full.held('GR-8', list(V.FULL_SEEDS), out, ancestor=yes)
+    assert infer_calls == []
+
+
+def test_held_refuses_when_any_seed_stopped_on_a_non_finite_loss(out, infer_calls):
+    import rg_full
+    put(rg_full.failed_path(rg_paths.full_root(out), 'GR-8', 2), dict(failure_kind='nonfinite_loss'))
+    with pytest.raises(AssertionError, match='VC4'):
+        rg_full.held('GR-8', list(V.FULL_SEEDS), out, ancestor=yes)
+    assert infer_calls == []
+
+
+def test_held_refuses_when_any_seed_has_a_recorded_vc3_failure(out, infer_calls):
+    import rg_full
+    put(rg_paths.full_root(out) / 'held/GR-8/failed__genre__s4.json', dict(failure_kind='vc3'))
+    with pytest.raises(AssertionError, match='VC4'):
+        rg_full.held('GR-8', list(V.FULL_SEEDS), out, ancestor=yes)
+    assert infer_calls == []
+
+
+# --- provenance -------------------------------------------------------------------------------------------------
+
+def test_code_provenance_counts_an_untracked_py_file_as_dirty(tmp_path, monkeypatch):
+    import rg_full
+    git = ['git', '-c', 'user.name=t', '-c', 'user.email=t@t']
+    subprocess.run(git + ['init', '-q'], cwd=tmp_path, check=True)
+    (tmp_path / 'rg_loss.py').write_text('x = 1\n')
+    subprocess.run(['git', 'add', '.'], cwd=tmp_path, check=True)
+    subprocess.run(git + ['commit', '-qm', 'a'], cwd=tmp_path, check=True)
+    monkeypatch.setattr(rg_paths, 'ROUND', tmp_path)
+    assert rg_full.code_provenance()['dirty'] is False
+    (tmp_path / 'notes.txt').write_text('not code\n')
+    assert rg_full.code_provenance()['dirty'] is False
+    (tmp_path / 'new_module.py').write_text('y = 2\n')
+    assert rg_full.code_provenance()['dirty'] is True
