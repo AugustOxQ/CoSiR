@@ -1037,3 +1037,10 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-design-qa-handoff.md
 - New chat: tab 'r10 design Q&A', session fa22e8d8-9451-44a0-99cb-13e5d1c2af8b
 
+[brief] CoSiR: r10 design Q&A -> r10 design Q&A 2 (2026-10-26 17:05 Amsterdam)
+- Done: two framework figures of the current model, low detail and detailed (formulas, λ example, InfoNCE matrix), with build scripts, in `docs/reports/assets/2026-10-26_condition_free_line/`; questions (a) to (g) on the heads and losses, the mean caption, the residual graphs and the stopping rule answered from the code.
+- State: results unchanged (held emotion: Qwen 0.1029 against the PercepT bar 0.0874); the figures are in the repo but not yet in the stage report or on the page.
+- Next: further questions and figure adjustments as the user asks; three notes wait for the decide 23 chat (sect …
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-design-qa-2-handoff.md
+- New chat: tab 'r10 design Q&A 2', session ff11d771-e545-4c7b-8762-225ff3b9e588
+
