@@ -23,10 +23,12 @@ are inconclusive; DINOv2-large fails at sample scale. The claims are k-means onl
 every one of the seven students lifts over its own PercepT arm (+0.0117 to +0.0288). A relational genre term at weight
 8 reaches the instructed Qwen genre image's level on development data (genre AMI 0.5022 against the recipe's 0.4694 on
 fresh seeds; picked among seven variants on one seed; no held test). The stage report of the whole new line (design,
-ablations, analyses) is written (2026-10-26). Next (user, decide 23, 2026-10-26): close the genre gap first: more
-development work on the relational term (weights above 8 on seed 0; weights 2 and 4 on fresh seeds), then a held
-genre claim test of the selected variant; the write-up of the encoder claims comes after; aspect-named retrieval
-for the 11-10 gate still waits (decide 20). The CVPR abstract is due
+ablations, analyses) is written (2026-10-26). Next (user, decide 23, 2026-10-26): close the genre gap first, in one full loop: a
+sweep of the relational genre term (weights 16 and 32 on seed 0; relational alone and a sharper teacher temperature
+at weight 8; teacher anchors instead of in-batch rows), weights 2 and 4 and the sweep's best on fresh seeds, then a
+held genre claim test of the selected variant (decision rule before any code); the write-up of the encoder claims
+comes after; aspect-named retrieval for the 11-10 gate still waits (decide 20). The grill and the spec run in the
+r10 decide 24 chat. The CVPR abstract is due
 2026-11-10.
 
 ## Parked ideas
@@ -40,7 +42,8 @@ for the 11-10 gate still waits (decide 20). The CVPR abstract is due
 - Within-painting caption variation as a signal (probe 57.3% to 46.6% on the residual) (never tried; deferred by the
   user (2026-10-18); [proposed in](../reports/auto/percept/2026-12-06_new_line_candidates.md))
 - A short stage 2 loop for style and genre: relational distillation alone (0.5, 2) and combined with direct at 0.5
-  (never tried; not chosen by the user, 2026-10-20; [proposed in](../reports/auto/percept/2026-12-16_model_sheet.md))
+  (never tried; not chosen by the user, 2026-10-20; [proposed in](../reports/auto/percept/2026-12-16_model_sheet.md);
+  the genre half, relational alone, taken up in r10 decide 23, 2026-10-26)
 - Edge-token probe: a linear probe per token ring of Qwen's hidden states, for the emotion view's border pull
   (never tried; parked by the user, 2026-10-25; [proposed in](../reports/auto/percept/2026-12-23_attention_maps.md))
 - Aspect words as a caption signal: weight the caption terms by the emotion view's word attention; needs an
