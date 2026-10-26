@@ -57,7 +57,7 @@ if the user has not reacted, say them again in one line each:
   the stage report ("Where we stand", "All methods on held data, three aspects") with its sources: the held style and
   genre values come from the rounds' stage-4 held readings, which the auto reports give only as margins. The PercepT
   rows use the stronger of the two readings per aspect (agent default; the label says so).
-- **The site:** staged, not deployed. In `/project/cosir-devlog`, uncommitted on purpose: `site/p/<stem>.html`,
+- **The site:** deployed on the user's word on 2026-10-26 16:03 (the link is in `/project/cosir-devlog/deploys.log`, kept out of this public repo); the site repo is committed and pushed. The post is ready to paste with that link. In `/project/cosir-devlog`, uncommitted on purpose: `site/p/<stem>.html`,
   `site/assets/<stem>/`, `updates.json`, `site/index.html`; `devlog-publish --site /project/cosir-devlog check` is
   clean. Deploy only on the user's word: `devlog-publish --site /project/cosir-devlog deploy --yes`, then commit and
   push the site repo. If the user does not want it deployed yet, the staged files stay as they are.
@@ -85,7 +85,7 @@ b. **Minor: the page.** Did it open; the user's comments are feedback, not comma
    user's comments"). Small edits: a Sonnet `high` worker edits the source `.src.html`, the controller re-packs from
    a scratch copy with an `assets` symlink to `docs/reports/assets`, replaces the `data:image` URI by the source's
    relative path, re-stages with `devlog-publish add` (it overwrites), commits and pushes.
-c. **Minor: the deploy,** only on the user's word.
+c. Done: the deploy (2026-10-26 16:03).
 d. **Minor: the two wrap-up items** above, if the user wants them handled now.
 
 ## 5. Code and pitfalls
