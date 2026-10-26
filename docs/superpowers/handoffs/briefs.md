@@ -1006,3 +1006,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-stage-report-handoff.md
 - New chat: tab 'r10 stage report', session 51aed311-efb5-4c57-8068-31d9bbc4f421
 
+[brief] CoSiR: r10 stage report -> r10 stage report 2 (2026-10-26 14:10 Amsterdam)
+- Done: the "r10 stage report" chat read the direction log, the previous stage report and reports 12-16 to 12-25, and wrote the writer's brief (outline, sources, fixed facts) and four figure briefs; its context passed 200k, so it cut here.
+- State: no report text yet; the briefs are in .scratch/stage_pages/2026-10-26_condition_free_line/ (the stem of the report is 2026-10-26_condition_free_line).
+- Next: launch the Opus writer and the four Codex figure jobs in parallel, then the claim review, the index row, the page, the post; the user looks; then "r10 decide 23".
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-stage-report-2-handoff.md
+- New chat: tab 'r10 stage report 2', session 05b01a45-fbcd-45c2-89d2-d8317ef9fa0e
+
