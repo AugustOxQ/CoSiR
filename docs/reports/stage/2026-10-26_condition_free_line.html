@@ -2004,7 +2004,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
   </tbody>
 </table></template></doc-mock>
 <h3 id="all-methods">All methods on three aspects</h3>
-<p>This table gives every method on the three aspects: the frozen image of each encoder, PercepT core on each encoder, the two ceilings, and our network on each encoder.</p>
+<p>This table gives every method on the three aspects. The rows are the frozen image of each encoder, PercepT core on each encoder, the two ceilings, and our network on each encoder.</p>
 <doc-mock frame="none" w="600" label="Held AMI, 12,281 paintings (genre on 9,949), k-means with 20 clusters, 5 model seeds, full-scale training unless marked; the frozen rows need no training. PercepT rows: PercepT core whose classifier reads that encoder's image, with the stronger of its two readings per aspect (its own top topic on emotion and style, k-means on its topic probabilities on genre); the strongest PercepT core style entry over all its versions is 0.2297. The linear probe has no held value: its row is on 5,000 development paintings, default Qwen image."><template>
 <table>
   <thead><tr><th>Method</th><th class="n">Emotion</th><th class="n">Style</th><th class="n">Genre</th></tr></thead>
