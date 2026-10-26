@@ -1097,3 +1097,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-build-5-handoff.md
 - New chat: tab 'r10 build 5', session b4527a1e-8cfa-4e8e-a2ab-28076068d8c6
 
+[brief] CoSiR: r10 build 5 -> r10 build 6 (2026-10-26 23:31 Amsterdam)
+- Done: fix wave for stages A, B and C merged; scoped re-review PASS (83 mutations); follow-up fix merged; smoke chain: A and B clean.
+- State: the stage C smoke stops at the held scorer: a smoke trains seed 0 only, the scorer needs five seeds (smoke plumbing, not the real path).
+- Next: fix the stage C smoke and rerun queue C, the gate checks (GPU, about 35 min), merge into main, the run handoff.
+- Blocked: nothing. No container restart for this build (user, 20:01); ask about one before the run chat.
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-build-6-handoff.md
+- New chat: tab 'r10 build 6', session 015c1d62-d012-4e23-8997-67098136ebf8
+
