@@ -2053,6 +2053,19 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
     <tr><td>Matched arm</td><td>PercepT core whose image classifier reads the same encoder as our network.</td></tr>
   </tbody>
 </table>
+<section class="figs">
+<style>
+.figs .fw { max-width: 560px; margin: 0 auto 22px; }
+.figs .fw > a { display: block; background: var(--card, #fff); border: 1px solid var(--line, #ddd); border-radius: var(--r, 10px); padding: 12px; }
+.figs .fw > a:hover { border-color: var(--accent, #d9481f); }
+.figs .fw img { display: block; width: 100%; height: auto; border-radius: 6px; background: #ffffff; }
+.figs .fw figcaption { font-size: 13px; color: var(--ink-2, #555); margin-top: 8px; text-align: center; }
+</style>
+<h2 id="figures">The model in two figures</h2>
+<p>Two figures of the model as it stands on 2026-10-26: the structure, and the same with the formulas as in the code. A click on a preview opens the full-size image in a new tab.</p>
+<figure class="fw"><a href="../assets/2026-10-26_condition_free_line/framework.png" target="_blank" rel="noopener"><img src="../assets/2026-10-26_condition_free_line/framework.png" alt="The condition-free model: train on Qwen's instructed views, read the default image once" loading="lazy"></a><figcaption>The structure: four views of each painting from one frozen embedder; two sides, each a shared trunk and three aspect heads; one buddy graph, a buddy loss and a teacher loss per aspect; one default-image pass at test time. Click to open at full size.</figcaption></figure>
+<figure class="fw"><a href="../assets/2026-10-26_condition_free_line/framework_detail.png" target="_blank" rel="noopener"><img src="../assets/2026-10-26_condition_free_line/framework_detail.png" alt="The condition-free model in detail: views, residual graphs, network, losses, test" loading="lazy"></a><figcaption>The detail: the six Qwen embeddings per painting and their prompts, the residual graph scores with a worked example, the layer shapes, the loss terms and the stopping rule, the test-time reading. Click to open at full size.</figcaption></figure>
+</section>
 </main>
 </body>
 </html>

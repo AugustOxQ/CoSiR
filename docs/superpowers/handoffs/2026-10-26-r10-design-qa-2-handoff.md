@@ -1,9 +1,9 @@
-# Handoff: r10 design Q&A 2: go on answering the user's design questions and adjusting the two framework figures
+# Handoff: r10 design Q&A 2: the two framework figures close the stage report and its dev-log page; further questions as the user asks
 
 ## Brief
-- Done: two framework figures of the current model, low detail and detailed (formulas, λ example, InfoNCE matrix), with build scripts, in `docs/reports/assets/2026-10-26_condition_free_line/`; questions (a) to (g) on the heads and losses, the mean caption, the residual graphs and the stopping rule answered from the code.
-- State: results unchanged (held emotion: Qwen 0.1029 against the PercepT bar 0.0874); the figures are in the repo but not yet in the stage report or on the page.
-- Next: further questions and figure adjustments as the user asks; three notes wait for the decide 23 chat (section 4).
+- Done: two framework figures of the current model, low detail and detailed (formulas, λ example, InfoNCE matrix), with build scripts, in `docs/reports/assets/2026-10-26_condition_free_line/`; questions (a) to (g) answered from the code. On the user's word (2026-10-26, about 17:05) the figures close the stage report (section "The model in two figures", small previews that open the full-size PNG; a pointer from the design section) and the dev-log page; the page was deployed at 17:07 (`/project/cosir-devlog/deploys.log`) and both repos are pushed.
+- State: results unchanged (held emotion: Qwen 0.1029 against the PercepT bar 0.0874); the figures are in the report and on the site.
+- Next: further questions and figure adjustments as the user asks (a changed figure needs the report's PNG rebuilt, then `devlog-publish add` again and `deploy --yes` on the user's word); two notes wait for the decide 23 chat (section 4).
 - Blocked: nothing.
 
 > Written 2026-10-26 17:05 by "r10 design Q&A". Loop step reached: side chat; step 2 (decision A) stays open in the decide 23 chat. Direction log entry: [2026-10-26 · Encoders and genre round read](../direction_log.md).
@@ -20,7 +20,7 @@ Skills: none.
 ## 2. Decided by the user, not to be reopened
 
 - This chat explains and draws; every research decision goes to the "r10 decide 23" tab (user, 2026-10-26 16:19, first Q&A handoff).
-- The two framework figures go into the project (user, 2026-10-26, this chat); whether they enter the stage report or the dev-log page is for the decide 23 chat.
+- The two framework figures go into the project (user, 2026-10-26, this chat), and they close the stage report and the dev-log page with small previews that open the full-size image (user, 2026-10-26, about 17:05, this chat; deployed 17:07). The old model figure stays in the design section.
 - The archive is read only when the user asks about the conditioned line.
 
 ## 3. Where things stand
@@ -39,7 +39,6 @@ Notes for the decide 23 chat (minor; nothing to decide here):
 
 1. The stage report's model figure (`model_structure.png`, panel 2) says "content similarity subtracted" for all three graphs; the genre graph is plain.
 2. Each aspect's saved best state includes the trunk at that aspect's best epoch, and scoring reloads it per aspect (`ms_train.save_output`, `ct2_d2.py` 63, `rb_student.py` 308, `eg_train3.py` 196). So the three outputs come from three trunk snapshots; "one trunk" describes the architecture, not the weights as scored. The one Qwen pass per image is unaffected. Whether scoring with one shared snapshot changes AMI is not checked.
-3. Whether the two framework figures replace or join `model_structure.png` in the stage report and on the dev-log page.
 
 ## 5. Code and pitfalls
 
@@ -49,6 +48,6 @@ Notes for the decide 23 chat (minor; nothing to decide here):
 
 ## 6. State at handoff
 
-- Running: the "r10 decide 23" chat (open, decision A); a page server on port 8768 (scratchpad copy of the two figures); the attention viewer on port 8770; the "r10 stage report 3" chat's servers on 8766 and 8790. No subagent, GPU lock or cluster job.
-- Uncommitted: nothing in the project after this cut's commit; in `/project/cosir-devlog`, whatever the decide 23 chat left (not this chat's).
+- Running: the "r10 decide 23" chat (open, decision A). The earlier preview servers (8766, 8768, 8770, 8790) ended with their chats. No subagent, GPU lock or cluster job.
+- Uncommitted: nothing of this chat's in the project or in `/project/cosir-devlog` (`briefs.md` and `chats.tsv` carry another chat's edits).
 - On disk over 1 GB: unchanged (the attention store, 8.1 GB, has its ledger row).

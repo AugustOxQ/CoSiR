@@ -175,6 +175,9 @@ The tables distinguish its recipe from the first shared model tested on 10-20.
 *Instructed views build one graph per aspect; a shared trunk with three heads learns from them; at test time one
 default image gives three aspect outputs.*
 
+Two fuller figures, the structure and the formulas as in the code, close this report
+([The model in two figures](#the-model-in-two-figures)).
+
 ### The four views
 
 Aspect instructions changed Qwen's clustering geometry. Qwen3-VL-Embedding-2B ("Qwen") replaces its default system
@@ -1213,3 +1216,24 @@ Specs and rules: [aspect graph design](../../superpowers/specs/2026-10-18-aspect
 Context: [direction log](../../superpowers/direction_log.md) · [glossary](../../../GLOSSARY.md) ·
 [image-side ceiling log](../../../src/test/20261019_emotion_ceiling/20261019_emotion_ceiling_log.md) ·
 [archive index](../../../archive/v2_conditioned/README.md) · [previous stage report](2026-10-19_qwen_buddy_line.md).
+
+## The model in two figures
+
+Two figures draw the model as it stands on 2026-10-26, from the code of the claim-test graphs, the model-sheet trainer
+and the current recipe (no own-caption terms, teacher weight 0.25). The first gives the structure; the second adds the
+formulas. Each preview is small; click it to open the full-size image.
+
+<a href="../assets/2026-10-26_condition_free_line/framework.png"><img src="../assets/2026-10-26_condition_free_line/framework.png" width="600" alt="The condition-free model: train on Qwen's instructed views, read the default image once"></a>
+
+*The structure: four views of each painting from one frozen embedder; two sides, each a shared trunk and three aspect
+heads; one buddy graph per aspect; a buddy loss and a teacher loss per aspect; at test time one default-image pass,
+k-means per head, AMI against the labels. Click to open at full size.*
+
+<a href="../assets/2026-10-26_condition_free_line/framework_detail.png"><img src="../assets/2026-10-26_condition_free_line/framework_detail.png" width="600" alt="The condition-free model in detail: views, residual graphs, network, losses, test"></a>
+
+*The detail: the six Qwen embeddings per painting and their system prompts; the residual graph scores with a worked
+example of the weight λ; the layer shapes and parameter counts; the InfoNCE terms, the teacher term, the stopping rule
+and the settings; the test-time reading and the held emotion numbers of 2026-10-26. Click to open at full size.*
+
+Build scripts: `build_framework_figure.py` and `build_framework_detail_figure.py` in
+[the assets folder](../assets/2026-10-26_condition_free_line/); run from that folder, each writes its SVG and PNG beside itself.
