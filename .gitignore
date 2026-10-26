@@ -217,3 +217,5 @@ src/test/20261021_d2_ablation/graphs/*.npz
 
 # r10 build 21: the round outputs folder is a link to /data/SSD2 (spec D31)
 src/test/20261025_encoders_genre/outputs
+# r10 build 25: the relational genre round outputs folder is a link to /data/SSD2
+src/test/20261027_relational_genre/outputs
