@@ -1,6 +1,6 @@
 # The relational genre term: a sweep on seed 0, a pick on fresh seeds and a held genre claim test: design
 
-> Date: 2026-10-26 19:35 · Status: draft · Kind: experiment
+> Date: 2026-10-26 19:35 · Status: approved 2026-10-26 19:57 (from the brief, r10 decide 25) · Kind: experiment
 > Builds on: [report 12-25](../../reports/auto/percept/2026-12-25_encoders_genre.md) (stage iii), its
 > [spec](2026-10-25-encoders-and-genre-design.md) and [rule](../../../src/test/20261025_encoders_genre/DECISION_RULE.md);
 > the [literature note 12-26](../../reports/literature/2026-12-26_relational_genre_term.md); the grill in the r10
