@@ -10,6 +10,7 @@ Modes (`python rg_score.py MODE`):
              -> regression/va1_scorer.json
   check vb1  the frozen fresh-seed exports of GR-8 and R6-5 hash to 12-25's score_fresh.json and the fresh-seed scorer
              gives its `effects` within 1e-6 -> stage_b/vb1.json
+  report     the reported readings of stages A and B (spec §3.6; rg_report.py) -> reported_ab.{json,md}
   b          stage B (rule §3.1, §4.2): GR-2, GR-4, GR-8 and v*_A (when A-NEW) on seeds 1 to 3 against R6-5: effects, C
              levels, v_held, B-PICK / B-NONE -> stage_b/verdict.json (refuses without a passing vb1.json and stage A's
              verdict; VB4: any other arm or seed is refused)
@@ -858,7 +859,7 @@ def parse_failed(items):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Stage A (seed 0) and stage B (seeds 1 to 3) scorer.')
-    parser.add_argument('mode', choices=['climb', 'a', 'b', 'check'])
+    parser.add_argument('mode', choices=['climb', 'a', 'b', 'check', 'report'])
     parser.add_argument('what', nargs='?', choices=['va1', 'vb1'], help='for `check`')
     parser.add_argument('--outputs', type=Path, default=rg_paths.OUTPUTS)
     parser.add_argument('--smoke', action='store_true', help='20 bootstrap draws; outputs under /tmp/claude-0/')
@@ -866,14 +867,20 @@ def main(argv=None):
     parser.add_argument('--failed', action='append', default=[], metavar='ARM=CAUSE',
                         help='an arm still failing VA3 after its forced rerun (repeatable)')
     args = parser.parse_args(argv)
-    assert (args.mode == 'check') == (args.what is not None), 'usage: climb | a | b | check va1 | check vb1'
+    assert (args.mode == 'check') == (args.what is not None), 'usage: climb | a | b | report | check va1 | check vb1'
     if args.smoke:
         assert rg_paths.smoke_ok(args.outputs), 'smoke needs --outputs under /tmp/claude-0/'
     rg_paths.check_imports()
     n_draws = 20 if args.smoke else rb_ami.N_DRAWS
     failed = parse_failed(args.failed)
     assert not (args.mode == 'check' and failed), '--failed does not apply to `check`'
-    if args.mode == 'check' and args.what == 'vb1':
+    if args.mode == 'report':
+        assert not failed, '--failed does not apply to `report`'
+        import rg_report                                 # lazy: the report code is not part of the scorer's code hash
+        rec = rg_report.run_report(args.outputs, args.smoke)
+        print(f"{args.outputs}/reported_ab.md: stage A {rec['a_outcome']}, v*_A {rec['v_star_a']}; stage B "
+              f"{rec['stage_b']['outcome'] if rec['stage_b'] else 'not yet'}")
+    elif args.mode == 'check' and args.what == 'vb1':
         rec = run_check_vb1(args.outputs, n_draws, args.workers, args.smoke)
         print(f"{b_dir(args.outputs) / 'vb1.json'}: VB1 {'PASS' if rec['pass'] else 'FAIL'}; "
               f"{sum(i['pass'] for i in rec['items'].values())} of {len(rec['items'])} items within {TOL}")
