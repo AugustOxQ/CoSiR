@@ -998,3 +998,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-decide-22-handoff.md
 - New chat: tab 'r10 decide 22', session 886d1e15-2da4-47da-b696-ce06cfce6f46
 
+[brief] CoSiR: r10 decide 22 -> r10 stage report (2026-10-26 14:00 Amsterdam)
+- Done: decide 22 read report 12-25 (decision C recorded), wrote the direction log entry, cleaned 60 GB of build and run scratch.
+- State: four encoders pass held emotion against PercepT core on the Qwen image (0.0874): Qwen 0.1029, SigLIP 2 0.1024, SigLIP 1 0.1036, CLIP L/14 0.0996; a relational genre term reaches the instructed image's level on development data (0.5022 against the recipe's 0.4694).
+- Next: the stage report of the whole new line, self-contained, for the user and for outside reviewers; then its outside-view page and dev-log post; then open "r10 decide 23".
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-stage-report-handoff.md
+- New chat: tab 'r10 stage report', session 51aed311-efb5-4c57-8068-31d9bbc4f421
+
