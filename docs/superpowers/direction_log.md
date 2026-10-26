@@ -22,11 +22,11 @@ own reading on the Qwen image, 0.0874; a pass needs +0.0100 with the interval ab
 are inconclusive; DINOv2-large fails at sample scale. The claims are k-means only. On 29,232 development paintings
 every one of the seven students lifts over its own PercepT arm (+0.0117 to +0.0288). A relational genre term at weight
 8 reaches the instructed Qwen genre image's level on development data (genre AMI 0.5022 against the recipe's 0.4694 on
-fresh seeds; picked among seven variants on one seed; no held test). Next (user, decide 22): a stage report of the
-whole new line (design, ablations, analyses; self-contained, for the user and outside readers) before the next
-experiment. The next loop's direction is open until the user has read it: a held genre test of the weight-8 variant,
-more development work on the relational term (weights above 8, the other weights on fresh seeds), or the write-up of
-the encoder claims; aspect-named retrieval for the 11-10 gate still waits (decide 20). The CVPR abstract is due
+fresh seeds; picked among seven variants on one seed; no held test). The stage report of the whole new line (design,
+ablations, analyses) is written (2026-10-26). Next (user, decide 23, 2026-10-26): close the genre gap first: more
+development work on the relational term (weights above 8 on seed 0; weights 2 and 4 on fresh seeds), then a held
+genre claim test of the selected variant; the write-up of the encoder claims comes after; aspect-named retrieval
+for the 11-10 gate still waits (decide 20). The CVPR abstract is due
 2026-11-10.
 
 ## Parked ideas
@@ -87,7 +87,8 @@ the encoder claims; aspect-named retrieval for the 11-10 gate still waits (decid
   enough context for the user and for outside reviewers; the markdown stage report with its outside-view page and
   dev-log post): "a writing chapter for me to comprehensively understand the current progress ... a good stage report
   for me and also outside reviewers to check, so every detail must be clear and self-contained" (user). The next
-  experiment loop: open, awaiting the user after the stage report. Options: 1, a held genre claim test of the
+  experiment loop (user, own pick, 2026-10-26 16:40, decide 23, after the stage report): option 2, then 1, "close
+  the genre gap first". Options: 1, a held genre claim test of the
   weight-8 variant (a new rule, a held read); 2, more development work on the relational term (weights above 8, the
   other weights on fresh seeds); 3, pause genre and write the two new encoder claims. Our recommendation (in the
   report): 2, then 1. Aspect-named retrieval for the 11-10 gate still waits (decide 20).
