@@ -453,7 +453,8 @@ def read_run(outputs, arm, p_sha, declared_failed=None, smoke=False):
 
 
 def check_arm_dirs(outputs, allowed):
-    """VA4: only allowed seed-0 arms; replaced runs must be the current run's forced VA3 origin."""
+    """VA4: only allowed seed-0 arms; a replaced run with a run.json must be the current run's forced VA3 origin; one without
+    is an interrupted, never scored run (accepted, one note line each)."""
     root = Path(outputs) / 'train'
     found = sorted(p.parent.name for p in root.glob(f'*/s{SEED}')) if root.exists() else []
     extra = [v for v in found if v not in set(allowed)]
@@ -461,7 +462,13 @@ def check_arm_dirs(outputs, allowed):
     for origin in sorted((Path(outputs) / 'replaced').glob('*/s0*')):
         arm = origin.parent.name
         path = origin / 'run.json'
-        assert arm in allowed and path.is_file(), f'VA4: unapproved replaced run {origin}'
+        assert arm in allowed, f'VA4: unapproved replaced run {origin}'
+        if not path.exists():
+            # no run.json: an interrupted run that was never scored; rg_train.run_variant moved it aside before it trained
+            # the arm again. Not a retrain of a scored arm, so VA4 allows it; the report lists it.
+            print(f'VA4 note: interrupted run moved aside, never scored: {origin}')
+            continue
+        assert path.is_file(), f'VA4: unapproved replaced run {origin}'
         old = json.loads(path.read_text())
         assert (old.get('variant'), old.get('seed'), old.get('status'), old.get('failure_kind')) == (arm, 0, 'failed', 'va3'), f'VA4: replaced run was not a VA3 failure: {origin}'
         current_path = root / arm / 's0' / 'run.json'

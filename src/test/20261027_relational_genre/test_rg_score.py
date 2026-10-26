@@ -436,7 +436,7 @@ def test_run_code_requires_a_complete_va1_hash_manifest(tmp_path):
         S.read_run(tmp_path, 'GR-16', S.rg_paths.P_SHA256)
 
 
-@pytest.mark.parametrize('problem', ['missing_record', 'ok', 'nonfinite_loss', 'wrong_identity', 'unlinked', 'wrong_link', 'extra_arm'])
+@pytest.mark.parametrize('problem', ['ok', 'nonfinite_loss', 'wrong_identity', 'unlinked', 'wrong_link', 'extra_arm'])
 def test_va4_refuses_replaced_seed0_runs_except_linked_va3_failures(tmp_path, problem):
     arm = 'GN-8' if problem == 'extra_arm' else 'GR-16'
     origin = tmp_path / 'replaced' / arm / 's0-previous'
@@ -448,8 +448,7 @@ def test_va4_refuses_replaced_seed0_runs_except_linked_va3_failures(tmp_path, pr
         old['failure_kind'] = 'nonfinite_loss'
     if problem == 'wrong_identity':
         old['seed'] = 1
-    if problem != 'missing_record':
-        (origin / 'run.json').write_text(json.dumps(old))
+    (origin / 'run.json').write_text(json.dumps(old))
     write_run(tmp_path, arm=arm, rerun_of=str(tmp_path / 'wrong') if problem == 'wrong_link' else
               None if problem == 'unlinked' else str(origin))
     with pytest.raises(AssertionError, match='VA4'):
@@ -466,10 +465,27 @@ def test_va4_accepts_the_linked_va3_failure_and_ignores_replaced_fresh_seeds(tmp
 
 
 def test_a_checks_replaced_runs_before_scoring(tmp_path, monkeypatch):
-    (tmp_path / 'replaced/GR-16/s0-unrecorded').mkdir(parents=True)
+    origin = tmp_path / 'replaced/GR-16/s0-unlinked'
+    origin.mkdir(parents=True)
+    (origin / 'run.json').write_text(json.dumps(dict(variant='GR-16', seed=0, status='ok')))
     with pytest.raises(AssertionError, match='VA4'):
         fake_run_a(monkeypatch, tmp_path, True)
 
+
+
+def test_va4_accepts_an_interrupted_run_moved_aside_and_prints_a_note(tmp_path, capsys):
+    # rg_train.run_variant moves a folder with no run.json aside before it trains the arm again: never scored
+    interrupted = tmp_path / 'replaced/GR-16/s0-1234'
+    interrupted.mkdir(parents=True)
+    (interrupted / 'epoch.pt').write_text('partial')
+    S.check_arm_dirs(tmp_path, ['GR-16'])
+    assert capsys.readouterr().out.splitlines() == [f'VA4 note: interrupted run moved aside, never scored: {interrupted}']
+
+
+def test_va4_refuses_an_interrupted_run_of_an_arm_outside_the_allowed_set(tmp_path):
+    (tmp_path / 'replaced/GN-8/s0-1234').mkdir(parents=True)
+    with pytest.raises(AssertionError, match='VA4.*unapproved'):
+        S.check_arm_dirs(tmp_path, ['GR-16'])
 
 
 def test_va4_refuses_an_origin_with_no_current_run(tmp_path):

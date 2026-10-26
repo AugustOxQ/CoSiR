@@ -42,7 +42,7 @@ Runner flags: `--outputs`, `--smoke` and `--workers` are added as each runner ta
 | 4 | `train_GR-16_GR-32_s0` | `rg_train train --arms GR-16 GR-32 --seeds 0` | GPU | a failed run (non-finite loss; VA3 after the trainer's one rerun) is noted, the scorer reads its `run.json`; a crash without `run.json` stops |
 | 5 | climb loop, at most four decisions: `climb_i`, `va2_rung_<newest>`, `train_<next>` | `rg_score climb`; `rg_v2 --phase rung --arm <newest>`; `rg_train train --arms <next> --seeds 0` | CPU, CPU, GPU | `<newest>` and `<next>` come from the last decision of `stage_a/climb.json` (`next` null ends the climb; GR-64, GR-128, GR-256 only). **`rg_v2` exit 1 stops the queue before the next rung** (rule §4.1) |
 | 6 | `train_GN-8_GS-0.02_GS-0.01_GQ-8_s0` | `rg_train train --arms GN-8 GS-0.02 GS-0.01 GQ-8 --seeds 0` | GPU | one call, the four arms in this order |
-| 7 | `score_a` | `rg_score a` | CPU | after it: weights listed in `stage_a/verdict.json` `pending_deletions` go on the pending list |
+| 7 | `score_a` | `rg_score a` | CPU | after it: weights listed in `stage_a/verdict.json` `pending_deletions` go on the pending list. The run chat also copies every `VA4 note: interrupted run moved aside, never scored: <path>` line of the `score_a` log into the report and the handoff (rule VA4: the report lists reruns) |
 | 8 | `va2_a` | `rg_v2 --phase a` | CPU | exit 1: **stop**, no stage A outcome |
 | 9 | `loss_scale` | `rg_train lossscale` | GPU | after the outcome (spec §3.6); a failure is noted, B goes on; its weights go on the pending list |
 
@@ -142,6 +142,9 @@ by hand, and the matching `rg_v2` call with the same flag if `rg_v2` takes one, 
    rung on disk and `rg_score.extend_climb_log` refuses a first decision other than GR-8, GR-16, GR-32. Fix the code, keep
    the `climb.json`, and run `rg_v2 --phase rung --arm <newest>` again against it. If an earlier decision in the log is
    itself wrong, stop and leave it for the morning (a note in the handoff); never move `climb.json` aside then.
+4a. The `eq` step fails with "EQ code hashes changed" (an `eq.json` made by older code): move `regression/eq.json` aside
+   (`mv` to `<outputs>/aside/`, never delete) and start queue A again. Do this before GQ-8 trains if you can: GQ-8 trains
+   anyway (the trainer does not read `eq.json`), and `rg_score a` then refuses the stale file (`read_eq`).
 5. A training run failed (non-finite loss, VA3 after its rerun): it stays failed and is reported (rule "Failed runs"; VA4
    and VB4: no other run). VC4: a G seed that fails is not rerun beyond the rule's one VC3 rerun; no stage C outcome.
 6. GPU lock wait over 4 h: the step ends with a failure line; start the queue again when the GPU is free.

@@ -86,9 +86,9 @@ def term_means_of(folder, arm, smoke):
     run = json.loads(path.read_text())
     assert run['variant'] == arm, (arm, run['variant'])
     tm = run.get('term_means')
-    if tm is None:
+    if tm is None or tm == []:                 # [] : stopped on a non-finite loss in its first call (no step to average)
         return None
-    assert run.get('term_aspect') == 'genre' and isinstance(tm, list) and tm, (arm, 'term_means')
+    assert run.get('term_aspect') == 'genre' and isinstance(tm, list), (arm, 'term_means')
     assert all('epoch' in e and 'calls' in e for e in tm), (arm, 'term_means rows')
     return dict(term_aspect='genre', reduction=run.get('term_reduction'), status=run['status'], smoke=bool(run.get('smoke')),
                 best_epoch=run.get('best_epoch'), epochs=tm, **({'anchors': run['anchors']} if 'anchors' in run else {}))
