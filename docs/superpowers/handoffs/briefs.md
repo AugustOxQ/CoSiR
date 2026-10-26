@@ -982,3 +982,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-25-r10-run-21-handoff.md
 - New chat: tab 'r10 run 21', session 2b7153d0-a761-498d-a849-cc1a1704b69b
 
+[brief] CoSiR: r10 run 21 -> r10 run 21b (2026-10-26 03:44 Amsterdam)
+- Done: the run ended at 03:34, all three stages have outcomes, every check agrees; report 12-25 drafted, not yet reviewed.
+- State: CLIP L/14 and SigLIP 1 pass on held paintings; all seven students lift on development paintings; the relational term at weight 8 reaches the genre target and repeats on fresh seeds.
+- Next: claim review of 12-25, fixes, the user-read report and its two checks, index row; then the next loop's decide chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-run-21b-handoff.md
+- New chat: tab 'r10 run 21b', session 9d74d41b-a219-468a-8188-82f6ce775540
+
