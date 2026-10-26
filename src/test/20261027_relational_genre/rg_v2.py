@@ -24,7 +24,6 @@ import threadpoolctl
 BASE = 'R6-5'
 ASPECTS = paths.ASPECTS
 RANGES = variants.RANGES
-ROOT = Path(__file__).resolve().parents[3]
 
 
 class ExportProblem(AssertionError):
@@ -42,10 +41,21 @@ def versions():
 
 def stage_a_record(run, effects):
     good = run['status'] == 'ok'
+    # rerun_of is copied from run.json when it is there, as the scorer does (rg_score.read_run, score_arms)
     return dict(status=run['status'], cause=run.get('cause'), best_epoch=run['best_epoch'],
                 effects=effects, A_genre=effects['genre']['A'] if good else None,
                 e_genre=effects['genre']['e'] if good else None,
-                guarded=good and all(effects[a]['e'] >= -RANGES[a] for a in ('emotion', 'style')))
+                guarded=good and all(effects[a]['e'] >= -RANGES[a] for a in ('emotion', 'style')),
+                **({'rerun_of': run['rerun_of']} if 'rerun_of' in run else {}))
+
+
+def rung_record(r):
+    """One rung of a climb entry: what the scorer's climb_entry records for it (rerun_of only when the run has it)."""
+    out = {k: r[k] for k in ('status', 'cause', 'A_genre', 'e_genre', 'guarded')}
+    out.update({f'e_{a}': r['effects'][a]['e'] if r['effects'] else None for a in ('emotion', 'style')})
+    if 'rerun_of' in r:
+        out['rerun_of'] = r['rerun_of']
+    return out
 
 
 def climb_decision(records):
@@ -81,7 +91,8 @@ def choose_a(records, eq_pass):
                 outcome='A-SAME' if winner == 'GR-8' else 'A-NEW',
                 levels={v: target_level(records[v]['A_genre']) for v in order},
                 kept_weights=kept, pending_deletions=[v for v in order if v not in kept],
-                stage_b_new=list(variants.B_NEW) + ([] if winner == 'GR-8' else [winner]))
+                # the scorer's form (rg_score.run_a, decide_a): the winner trains fresh beside GR-2 and GR-4
+                stage_b_new=list(variants.B_NEW), trains_fresh=[] if winner == 'GR-8' else [winner])
 
 
 def confirmation(effects):
@@ -118,7 +129,9 @@ def differences(ours, theirs, path=''):
     missing = '<missing>'
     # Cause prose has no rule-prescribed wording. Preserve exact failure keys,
     # but require nonempty text on each side rather than identical diagnostics.
-    if '/failed/' in path or (path.endswith('/cause') and (ours is not None or theirs is not None)):
+    # rerun_of is the folder a rerun moved the first run to; it is compared the same way.
+    if '/failed/' in path or path.endswith('/rerun_of') or (
+            path.endswith('/cause') and (ours is not None or theirs is not None)):
         equal = all(isinstance(v, str) and v != missing and bool(v.strip()) for v in (ours, theirs))
         return [] if equal else [dict(path=path, ours=ours, theirs=theirs)]
     if isinstance(ours, dict) and isinstance(theirs, dict):
@@ -315,10 +328,7 @@ def derive_a(inputs, labels, phase, arm, draws, workers):
         records.update(scored)
         order.append(next_arm)
     if phase == 'rung':
-        return dict(decision, rungs={v: {k: records[v][k] for k in
-                    ('status', 'cause', 'A_genre', 'e_genre', 'guarded')} |
-                    {f'e_{a}': records[v]['effects'][a]['e'] if records[v]['effects'] else None
-                     for a in ('emotion', 'style')} for v in order}, decisions=decisions)
+        return dict(decision, rungs={v: rung_record(records[v]) for v in order}, decisions=decisions)
     _, others = seed0_scores(inputs, labels, list(variants.A_OTHER), draws, workers)
     records.update(others)
     order.extend(variants.A_OTHER)
@@ -367,12 +377,20 @@ def run(outputs, phase, *, smoke=False, workers=8, arm=None, rb_part1=None,
                   label_counts={a: int((y >= 0).sum()) for a, y in labels.items()},
                   label_sha256={a: array_sha(y) for a, y in labels.items()},
                   img_sha256={f'{v}/s{s}/{a}': h for (v, s, a), h in inputs.img_hashes.items()},
-                  code_commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
-                  code_dirty=bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True)),
+                  **dict(zip(('code_commit', 'code_dirty'), code_state())),
                   code_sha256=sha(Path(__file__).read_bytes()))
     dest = Path(outputs)/('stage_b/rederive_vb2.json' if phase == 'b' else f'stage_a/rederive_va2_{phase}.json')
     write_json(dest, report)
     return report
+
+
+def code_state(here=None):
+    """(git HEAD, dirty). Dirty as rg_held.code_provenance: `git status --porcelain -- '*.py'` run in the round folder,
+    untracked .py files included."""
+    here = Path(__file__).resolve().parent if here is None else Path(here)
+    head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=here, text=True).strip()
+    dirty = bool(subprocess.check_output(['git', 'status', '--porcelain', '--', '*.py'], cwd=here, text=True).strip())
+    return head, dirty
 
 
 def check_fields(ours, theirs, bad, path):
@@ -429,12 +447,7 @@ def compare_decision(expected, actual, records, bad, prefix):
     # Reasons are descriptive prose; the guard/newest/rivals/next encode their rule meaning.
     if not isinstance(actual.get('reason'), str) or not actual['reason']:
         bad.append(dict(path=prefix+'/reason', ours='nonempty explanation', theirs=actual.get('reason')))
-    rungs = {}
-    for v in expected['rungs_run']:
-        r = records[v]
-        rungs[v] = {k: r[k] for k in ('status', 'cause', 'A_genre', 'e_genre', 'guarded')}
-        rungs[v].update({f'e_{a}': r['effects'][a]['e'] if r['effects'] else None
-                         for a in ('emotion', 'style')})
+    rungs = {v: rung_record(records[v]) for v in expected['rungs_run']}
     bad.extend(differences(rungs, actual.get('rungs', '<missing>'), prefix+'/rungs'))
 
 

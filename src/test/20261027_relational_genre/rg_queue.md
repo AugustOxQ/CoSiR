@@ -37,7 +37,7 @@ Runner flags: `--outputs`, `--smoke` and `--workers` are added as each runner ta
 | # | Step (label) | Command | Res. | Gate / stop |
 |---|---|---|---|---|
 | 1 | `va1_train` | `rg_train regress va1` | GPU | the VA1 runs' weights go on the pending list |
-| 2 | `va1_scorer` | `rg_score check va1` | CPU | VA1 = `regression/va1.json` and `va1_scorer.json` both `pass` true; otherwise **stop**: nothing runs in A, B or C |
+| 2 | `va1_scorer` | `rg_score check va1` | CPU | a hard step outside a smoke (its exit code 1 stops the queue; in a smoke it is noted). VA1 = `regression/va1.json` and `va1_scorer.json` both `pass` true; otherwise **stop**: nothing runs in A, B or C. `rg_score climb` and `a` also read both files (`read_va1`): the scorer half must have passed with the current scorer code hash, the training half must have passed and not be a smoke, and the hashes of `rg_train.py`, `rg_loss.py` and `rg_variants.py` in `va1.json` and in every `run.json` must equal the current ones (`climb`, `a` and `b` require it) |
 | 3 | `eq` | `rg_train eq --device cpu` | CPU | fails: noted, GQ-8 still trains and cannot win (rule §4.1); no `eq.json`: stop |
 | 4 | `train_GR-16_GR-32_s0` | `rg_train train --arms GR-16 GR-32 --seeds 0` | GPU | a failed run (non-finite loss; VA3 after the trainer's one rerun) is noted, the scorer reads its `run.json`; a crash without `run.json` stops |
 | 5 | climb loop, at most four decisions: `climb_i`, `va2_rung_<newest>`, `train_<next>` | `rg_score climb`; `rg_v2 --phase rung --arm <newest>`; `rg_train train --arms <next> --seeds 0` | CPU, CPU, GPU | `<newest>` and `<next>` come from the last decision of `stage_a/climb.json` (`next` null ends the climb; GR-64, GR-128, GR-256 only). **`rg_v2` exit 1 stops the queue before the next rung** (rule §4.1) |
@@ -51,11 +51,11 @@ Runner flags: `--outputs`, `--smoke` and `--workers` are added as each runner ta
 | # | Step | Command | Res. | Gate / stop |
 |---|---|---|---|---|
 | 0 | start | stage A's last `DONE` has `failed=0`; `stage_a/verdict.json` exists | | else **stop** |
-| 1 | `vb1` | `rg_score check vb1` | CPU | `stage_b/vb1.json` `pass` true; otherwise **stop** (B and C) |
+| 1 | `vb1` | `rg_score check vb1` | CPU | the step must exit 0 outside a smoke and `stage_b/vb1.json` must have `pass` true; otherwise **stop** (B and C) with a VB1 message. In a smoke the failure is noted and the chain goes on |
 | 2 | `train_GR-2_GR-4[_v*]_s123` | `rg_train train --arms GR-2 GR-4 [<v*_A>] --seeds 1 2 3` | GPU | v*_A is added only when `stage_a/verdict.json` `outcome` is A-NEW (`winner`); failed runs as in stage A (arm not confirmed) |
 | 3 | `score_b` | `rg_score b` | CPU | |
 | 4 | `vb2` | `rg_v2 --phase b` | CPU | exit 1: **stop**, no B outcome |
-| 5 | `report_ab` | `rg_score report` | CPU | |
+| 5 | `report_ab` | `rg_score report` | CPU | a soft step: the report decides nothing (spec §3.5, §3.6), so a failure is noted and stage C is not held back; a missing, failed or empty loss-scale run is a line in the report, not an error |
 
 ### `c` (stage C, only on B-PICK)
 
@@ -72,9 +72,8 @@ Runner flags: `--outputs`, `--smoke` and `--workers` are added as each runner ta
 
 `gpu` runs `a`, `b`, `c` in this order; a queue that stops is noted and the chain goes on to queues that refuse
 themselves with the reason (a failed gate stops only the stages behind it, spec §3.5). Exit 1 when any queue stopped.
-Every runner skips work that is finished, so any queue can be started again after a stop (same command). Flags guessed
-for `rg_v2.py` (not on the integration branch when this was written): `--phase rung|a|b`, `--arm`, `--outputs`,
-`--workers`, `--smoke`; the controller adjusts the spelling in `rg_queue_a.sh` and `rg_queue_b.sh` after ticket 09 lands.
+Every runner except `rg_v2` skips work that is finished, so any queue can be started again after a stop (same command).
+`rg_v2` always recomputes (see Recovery, step 2).
 
 ## Pending deletions
 
@@ -121,16 +120,28 @@ by hand, and the matching `rg_v2` call with the same flag if `rg_v2` takes one, 
 ## Recovery (after any stop)
 
 1. Read the last lines of `<outputs>/queue_<queue>_status.txt` and the named log in `<outputs>/logs/`.
-2. A runner crashed or the machine stopped: start the same queue again; finished runs, scores and re-derivations are
-   skipped (runner side). A climb restarted after a stop recomputes the decision (it is not added twice) and goes on.
+2. A runner crashed or the machine stopped: start the same queue again; finished runs and scores are skipped (runner
+   side). `rg_v2` is not skipped on a restart: it always recomputes from the raw exports, and `rg_v2 --phase b` redoes
+   stage A too (about 10 min extra at full scale). A climb restarted after a stop recomputes the decision (it is not
+   added twice) and goes on.
 3. A gate failed (VA1, VB1, VC1): trace the cause; move the failed regression file aside to a dated folder under
    `<outputs>/aside/` (`mv`, nothing is deleted) after the fix, then start the queue again. For VC1 trained by older
    code, move `stage_c/regression/vc1_run/` aside too: the trainer refuses its old code hashes. VA1 failing stops
-   everything behind it.
+   everything behind it. After a scorer fix, move `regression/va1_scorer.json` aside (`mv`, never delete) and run queue A
+   again: `rg_score check va1` refuses a file made by other scorer code, and `climb` and `a` refuse a `va1_scorer.json` of
+   other code. After an edit of `rg_train.py`, `rg_loss.py` or `rg_variants.py`, VA1 (`regression/va1.json` and its runs)
+   and every arm trained since must be redone: `va1.json` and each `run.json` carry the hashes of these three files, and
+   `climb`, `a` and `b` require them equal to the current files.
 4. `rg_v2` disagrees (rung, a, b, vc2): both values go in the report; the fix is by the rule's text. After the fix move
    the stale scorer files of that phase and the re-derivation file aside (`stage_a/climb.json` and `verdict.json`,
    `stage_b/verdict.json`, `stage_c/verdict.json` and the matching `rederive_*` files; the training outputs stay) and start
-   the queue again. A rung disagreement must be settled before the next rung runs.
+   the queue again. After a scorer fix also move `stage_b/vb1.json` aside (`mv`, never delete): `rg_score check vb1`
+   (`keep_check`) refuses a file made by other code, and queue B stops at VB1 until it is moved. A rung disagreement
+   must be settled before the next rung runs. `stage_a/climb.json` can be moved aside and rebuilt only while no rung above
+   GR-32 is trained. Once GR-64 or a higher rung exists, `climb.json` is fixed in place: a fresh `climb` would score every
+   rung on disk and `rg_score.extend_climb_log` refuses a first decision other than GR-8, GR-16, GR-32. Fix the code, keep
+   the `climb.json`, and run `rg_v2 --phase rung --arm <newest>` again against it. If an earlier decision in the log is
+   itself wrong, stop and leave it for the morning (a note in the handoff); never move `climb.json` aside then.
 5. A training run failed (non-finite loss, VA3 after its rerun): it stays failed and is reported (rule "Failed runs"; VA4
    and VB4: no other run). VC4: a G seed that fails is not rerun beyond the rule's one VC3 rerun; no stage C outcome.
 6. GPU lock wait over 4 h: the step ends with a failure line; start the queue again when the GPU is free.
