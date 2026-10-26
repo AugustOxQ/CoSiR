@@ -1021,3 +1021,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-stage-report-3-handoff.md
 - New chat: tab 'r10 stage report 3', session 40e72bdc-0383-4d7c-b19d-1edc94728a00
 
+[brief] CoSiR: r10 stage report 3 -> r10 decide 23 (2026-10-26 15:22 Amsterdam)
+- Done: the outside-view page and the dev-log post of the stage report are built, checked, indexed, committed and pushed (b75f1a1); the page is staged on the dev-log site (not deployed) and was opened for the user's look.
+- State: held emotion passes on four encoders (Qwen 0.1029 against the strongest PercepT entry 0.0874; SigLIP 1 0.1036, SigLIP 2 0.1024, CLIP L/14 0.0996); the next experiment is open.
+- Next: the user's reading of the report and the page; small edits on request; the deploy only on the user's word; then decision A among the three options of the 2026-10-26 entry.
+- Blocked: …
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-decide-23-handoff.md
+- New chat: tab 'r10 decide 23', session 83e891c2-54af-45b3-a763-17da05a28b60
+
