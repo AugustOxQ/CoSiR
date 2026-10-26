@@ -11,20 +11,23 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-10-25)
+## Now (2026-10-26)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
-on each view, one shared trunk with emotion, style and genre heads, read once on the default image. D2 (trunk + direct
-distillation 0.5) passed both claim tests on 12,281 held ArtELingo paintings (emotion AMI 0.1008 against 0.0874 for
-PercepT core, S2-GO) but stays below the instructed Qwen image on style and genre. The recipe and backbone round
-(report 12-24, 2026-10-25) replaced D2 with the recipe without own-caption terms at teacher share 1/5 (picked on
-29,232 development paintings, one seed) and tested students on other image encoders, with Qwen graphs, teacher and
-captions at training: SigLIP 2 (0.1024) and Qwen (0.1029) pass held emotion at both scales against 0.0874; CLIP B/32
-(0.0885) is inconclusive. The claims are k-means only; every student stays below the instructed Qwen image on genre.
-Next (user, decide 20): one medium loop with four more encoders under 12-24's rule (CLIP B/16, CLIP L/14, SigLIP 1,
-DINOv2-large), a backbone analysis, and teacher-faithful heads or losses for genre; aspect-named retrieval follows in
-the loop after. Its [spec](specs/2026-10-25-encoders-and-genre-design.md) was approved on 2026-10-25 (decide 21); the
-build runs next. The CVPR abstract is due 2026-11-10; the 11-10 gate is the instructed Qwen bar and retrieval.
+on each view, one shared trunk with emotion, style and genre heads, read once on the default image. The current recipe
+(no own-caption terms, teacher share 1/5; report 12-24) passes the held emotion claim test on four image encoders,
+each with Qwen graphs, teacher and captions at training (12,281 held ArtELingo paintings, 5 seeds; bar: PercepT core's
+own reading on the Qwen image, 0.0874; a pass needs +0.0100 with the interval above zero): Qwen 0.1029, SigLIP 2
+0.1024 (12-24), SigLIP 1 0.1036 and CLIP L/14 0.0996 (12-25, 2026-10-26). CLIP B/32 (0.0885) and CLIP B/16 (0.0945)
+are inconclusive; DINOv2-large fails at sample scale. The claims are k-means only. On 29,232 development paintings
+every one of the seven students lifts over its own PercepT arm (+0.0117 to +0.0288). A relational genre term at weight
+8 reaches the instructed Qwen genre image's level on development data (genre AMI 0.5022 against the recipe's 0.4694 on
+fresh seeds; picked among seven variants on one seed; no held test). Next (user, decide 22): a stage report of the
+whole new line (design, ablations, analyses; self-contained, for the user and outside readers) before the next
+experiment. The next loop's direction is open until the user has read it: a held genre test of the weight-8 variant,
+more development work on the relational term (weights above 8, the other weights on fresh seeds), or the write-up of
+the encoder claims; aspect-named retrieval for the 11-10 gate still waits (decide 20). The CVPR abstract is due
+2026-11-10.
 
 ## Parked ideas
 
@@ -49,6 +52,53 @@ build runs next. The CVPR abstract is due 2026-11-10; the 11-10 gate is the inst
   by the user, 2026-10-25; [proposed in](../reports/auto/percept/2026-12-23_attention_maps.md))
 - Align and contrast the three aspect heads of one image (shared part aligned, aspect parts pushed apart) (never tried;
   not chosen by the user, 2026-10-20: the aspects may not be separable; proposed in the r10 decide 12 chat)
+
+## 2026-10-26 · Encoders and genre round read: CLIP L/14 and SigLIP 1 pass held emotion, CLIP B/16 inconclusive, DINOv2 fails; a relational genre term reaches the target on development data; a stage report of the new line first
+
+- **Read:** stage i (12,281 held paintings, 5 seeds, full scale; bar: PercepT core's own reading on the Qwen image,
+  0.0874; a pass needs +0.0100 with the interval above zero): CLIP L/14 0.0996, +0.0122 [+0.0068, +0.0136], GO at
+  both scales; SigLIP 1 0.1036, +0.0162 [+0.0106, +0.0179], GO at both scales; CLIP B/16 0.0945, +0.0070 [+0.0016,
+  +0.0085], inconclusive at both scales; DINOv2-large −0.0041 [−0.0094, −0.0030] at sample scale (0.0814 against
+  0.0855), fails, no full-scale test. ArtELingo-28 (746): CLIP B/16 fails, the other three qualified. k-means only:
+  the Leiden emotion intervals of CLIP L/14 and SigLIP 1 include zero. Every student needs Qwen3-VL-Embedding at
+  training (graphs, teacher, captions). Stage ii (29,232 development paintings, sample scale, 5 seeds): all seven
+  students lift over their own PercepT arm, +0.0117 (DINOv2) to +0.0288 (SigLIP 1), intervals above zero; the lift
+  follows the encoder's style statistics (Spearman +0.93 purity, +0.96 silhouette; seven points) and not its frozen
+  emotion AMI (+0.04); Qwen's lift is inflated by the recipe pick on the same paintings. Stage iii (Qwen, development,
+  seed 0; target: the instructed Qwen genre image, 0.4989; recipe 0.4674): the relational term at weight 8 reaches
+  genre 0.5018 with both guards met; fresh seeds 1 to 3: 0.5022 against the recipe's 0.4694, +0.0328 [+0.0235,
+  +0.0442], emotion +0.0004, style −0.0010. A higher teacher weight lowers genre (x2 0.4594, x4 0.4478); the
+  regression term leaves the head unchanged (0.4675; its adaptor reaches 0.4985). Picked among seven variants on one
+  seed; only weight 8, the highest tried, on fresh seeds; no held genre test.
+- **Meaning (C):** "I think this is partially good, CLIP L and SigLip1 did the job, and results seems positive and
+  okey. However, the failed other several models (clip b 16&32, dinov2) possibly means our design is not really a
+  plug&play module that fits any model backbones." (user, before ours). Ours: the encoder results fit our priors
+  (CLIP L/14 and SigLIP 1 pass, CLIP B/16 inconclusive, DINOv2 fails); the genre result is the surprise (every
+  relational weight gives at least +0.0261 against a prior of at most +0.0120), fairly sure on development data since
+  the fresh seeds agree, less sure which weight is best. Where they differ: on held paintings CLIP B/16 and CLIP B/32
+  are inconclusive (positive, below the +0.0100 size bar), not failed; DINOv2 is the one fail. On development
+  paintings the design lifts every one of the seven encoders over PercepT on the same encoder, so the "plug and play"
+  question splits: a lift over PercepT on the same encoder, yes for all seven (development data); a student above
+  the strongest PercepT entry, PercepT core on the Qwen image (0.0874), only for the stronger encoders, whose own
+  PercepT arms start near Qwen's (CLIP B/16 0.0728, CLIP B/32 0.0708, DINOv2 0.0722 against Qwen's 0.0844). The
+  training side is not plug and play at all: every student needs Qwen's graphs, teacher and captions. The user's
+  reading leaves out the genre result and the k-means-only and ArtELingo-28 limits.
+- **Decided (A):** a stage report of the whole new line first (design, ablations, analyses; self-contained, with
+  enough context for the user and for outside reviewers; the markdown stage report with its outside-view page and
+  dev-log post): "a writing chapter for me to comprehensively understand the current progress ... a good stage report
+  for me and also outside reviewers to check, so every detail must be clear and self-contained" (user). The next
+  experiment loop: open, awaiting the user after the stage report. Options: 1, a held genre claim test of the
+  weight-8 variant (a new rule, a held read); 2, more development work on the relational term (weights above 8, the
+  other weights on fresh seeds); 3, pause genre and write the two new encoder claims. Our recommendation (in the
+  report): 2, then 1. Aspect-named retrieval for the 11-10 gate still waits (decide 20).
+- **Idea (B):** none this loop (a writing task; the stage report covers 2026-10-15 to 2026-10-26, the 2026-10-19
+  stage report folded in as its first part: agent default, the user's "overview of the whole design").
+- **Why:** the user wants an overview of the whole design, with its ablations and analyses, before the next
+  direction; the abstract deadline (2026-11-10) leaves time for one or two more loops after it.
+- **Links:** [report](../reports/auto/percept/2026-12-25_encoders_genre.md) ·
+  [user-read report](../user_read/2026-10-26_encoders_genre.md) ·
+  [spec](specs/2026-10-25-encoders-and-genre-design.md) ·
+  [handoff](handoffs/2026-10-26-r10-decide-22-handoff.md)
 
 ## 2026-10-25 · Recipe and backbone round read: SigLIP 2 and Qwen pass held emotion, CLIP B/32 inconclusive; next step open
 
