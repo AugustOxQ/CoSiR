@@ -27,9 +27,11 @@ ablations, analyses) is written (2026-10-26). Next (user, decide 23, 2026-10-26)
 sweep of the relational genre term (weights 16 and 32 on seed 0; relational alone and a sharper teacher temperature
 at weight 8; teacher anchors instead of in-batch rows), weights 2 and 4 and the sweep's best on fresh seeds, then a
 held genre claim test of the selected variant (decision rule before any code); the write-up of the encoder claims
-comes after; aspect-named retrieval for the 11-10 gate still waits (decide 20). The grill and the spec run in the
-r10 decide 24 chat. The CVPR abstract is due
-2026-11-10.
+comes after; aspect-named retrieval for the 11-10 gate still waits (decide 20). The spec
+([relational genre](specs/2026-10-26-relational-genre-design.md), approved by the user 2026-10-26 19:57) and its
+rule (2e9529a) set the held bar: GO when the picked variant is level with the instructed Qwen genre image (0.5062)
+within 0.0128; partial when it closes at least half the held gap over the recipe (0.4534). The build runs tonight,
+the run on 2026-10-27. The CVPR abstract is due 2026-11-10.
 
 ## Parked ideas
 
