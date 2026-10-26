@@ -1065,3 +1065,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-build-handoff.md
 - New chat: tab 'r10 build', session 897467be-475b-4277-aa98-e950d94f81ac
 
+[brief] CoSiR: r10 build -> r10 build 2 (2026-10-26 20:11 Amsterdam)
+- Done: tickets 01 to 11 with the coverage line, checked; integration branch `r10-relational-genre` with the round foundation (abbf031), pushed.
+- State: no ticket started. Codex at 20:05: five-hour window 100% left (reset 01:04), weekly 96%.
+- Next: dispatch 01 (Codex high), 03 and 07 (Sonnet high workers), then the frontier as the index says.
+- Blocked: nothing. No container restart (user, 20:01, for this build); GPU check passes at 20:10.
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-build-2-handoff.md
+- New chat: tab 'r10 build 2', session 3f234a27-b711-4820-8195-7bee84bb59ea
+
