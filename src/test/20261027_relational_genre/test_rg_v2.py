@@ -121,53 +121,87 @@ def test_synthetic_exports_rederive_exact_scores_before_opening_comparison(raw_t
     assert any('climb.json' in d['theirs'] for d in report['differences'])
 
 
-def standin_a(tree):
-    """An independently specified scorer record: identical exports have zero effects."""
+def standin_a(tree, degraded=()):
+    """Stage A scorer files in the format the scorer writes. The records come from rg_score's own functions
+    (condition_record, failed_record, climb_entry, decide_a), called here in the test only; rg_v2 never imports it.
+    Only the numbers are made here: k-means partitions as the rule specifies and eg_vg2's scores.
+    `degraded`: arms whose genre export is damaged first (100 rows moved to the next cluster), so that their genre score
+    is lower than the other arms' (an A-NEW stand-in). A run.json with status failed gives a failed record."""
+    import json
     import numpy as np
+    import rg_score as S
     from sklearn.cluster import MiniBatchKMeans
     from threadpoolctl import threadpool_limits
     out, rb, frozen = tree['outputs'], tree['rb_part1'], tree['frozen_root']
     order = list(v2.variants.LADDER[:3])+list(v2.variants.A_OTHER)
     p_sha = tree['expected_p_sha']
     y = np.arange(400, dtype=np.int64)%20
-    identity = dict(p_sha256=p_sha, label_sha256={a: v2.array_sha(y) for a in v2.ASPECTS},
-                    n_draws=20, arms=order, img_sha256={}, run_sha256={}, failed={})
-    results = {}
     x = np.tile(np.eye(20, dtype=np.float16), (20, 1))
-    with threadpool_limits(limits=8):
-        parts = np.stack([MiniBatchKMeans(n_clusters=20, random_state=s, n_init=3,
-                                         batch_size=4096).fit_predict(x.astype(np.float32))
-                          for s in (0, 1, 2)]).astype(np.int64)
+
+    def folder(v):
+        return rb/'train'/v if v == v2.BASE else frozen/v/'s0' if v == 'GR-8' else out/'train'/v/'s0'
+
+    for v in degraded:
+        bad = x.copy()
+        bad[:100] = x[(np.arange(100)+1)%20]
+        np.savez(folder(v)/'genre__P.npz', img=bad)
+        side = json.loads((folder(v)/'genre.json').read_text())
+        side['arrays']['genre__P.npz']['img'] = v2.array_sha(bad)
+        v2.write_json(folder(v)/'genre.json', side)
+    runs = {v: json.loads((folder(v)/'run.json').read_text()) for v in order}
+    failed = [v for v in order if runs[v]['status'] == 'failed']
+    imgs = {}
     for v in [v2.BASE]+order:
-        identity['img_sha256'][v] = {a: v2.array_sha(x) for a in v2.ASPECTS}
-        for a in v2.ASPECTS:
-            dest = out/'stage_a/partitions'/v/'s0'/f'{a}__partitions.npz'
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            np.savez(dest, labels=parts)
-        if v == v2.BASE:
+        if v in failed:
             continue
-        folder = frozen/v/'s0' if v == 'GR-8' else out/'train'/v/'s0'
-        identity['run_sha256'][v] = v2.sha((folder/'run.json').read_bytes())
-        results[v] = dict(status='ok', cause=None, best_epoch={a: 1 for a in v2.ASPECTS},
-            effects={a: dict(A=1., e=0., lo=0., hi=0.) for a in v2.ASPECTS},
-            A_genre=1., e_genre=0., guarded=True)
+        imgs[v] = {}
+        for a in v2.ASPECTS:
+            with np.load(folder(v)/(f'{a}__s0__P.npz' if v == v2.BASE else f'{a}__P.npz')) as z:
+                imgs[v][a] = z['img']
+    parts = {}
+    with threadpool_limits(limits=8):
+        for v in imgs:
+            for a in v2.ASPECTS:
+                key = v2.array_sha(imgs[v][a])
+                if key not in parts:
+                    parts[key] = np.stack([MiniBatchKMeans(n_clusters=20, random_state=s, n_init=3, batch_size=4096)
+                                           .fit_predict(imgs[v][a].astype(np.float32)) for s in (0, 1, 2)]).astype(np.int64)
+                dest = out/'stage_a/partitions'/v/'s0'/f'{a}__partitions.npz'
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                np.savez(dest, labels=parts[key])
+    effects = {v: {} for v in imgs if v != v2.BASE}
+    base_A = {}
+    for a in v2.ASPECTS:
+        by_arm = {v: {0: parts[v2.array_sha(imgs[v][a])]} for v in imgs}
+        scores = v2.score_effects(y, by_arm, 20, 1)
+        base_A[a] = scores[v2.BASE]['A']
+        for v in effects:
+            effects[v][a] = scores[v]
+    results = {}
+    for v in order:
+        rerun = {'rerun_of': runs[v]['rerun_of']} if 'rerun_of' in runs[v] else {}
+        rec = S.failed_record(runs[v]['cause']) if v in failed else S.condition_record(effects[v])
+        results[v] = dict(rec, best_epoch=runs[v]['best_epoch'], **rerun)       # as rg_score.score_arms
+    identity = dict(p_sha256=p_sha, label_sha256={a: v2.array_sha(y) for a in v2.ASPECTS}, n_draws=20, arms=order,
+                    img_sha256={v: {a: v2.array_sha(imgs[v][a]) for a in v2.ASPECTS} for v in imgs},
+                    run_sha256={v: v2.sha((folder(v)/'run.json').read_bytes()) for v in order},
+                    failed={v: results[v]['cause'] for v in failed})
+    rungs = list(v2.variants.LADDER[:3])
+    entry = S.climb_entry({v: results[v] for v in rungs})
+    d = S.decide_a(results, True, rungs)
     verdict = dict(stage='a', smoke=True, n_draws=20, reference='R6-5', seed=0,
         t_g=v2.variants.T_G, promising=v2.variants.T_G-.0128, ranges=v2.RANGES,
-        label_counts={a: 400 for a in v2.ASPECTS}, base_A={a: 1. for a in v2.ASPECTS},
-        arms=order, climb_rungs=list(v2.variants.LADDER[:3]), still_rising_at_cap=False,
-        results=results, eq_pass=True, winner='GR-8', A_genre_winner=1., outcome='A-SAME',
-        climb_reason='tied', levels={v: 'target' for v in order}, kept_weights=list(order), pending_deletions=[],
-        stage_b_new=['GR-2', 'GR-4'], identity=identity)
+        label_counts={a: 400 for a in v2.ASPECTS}, base_A=base_A, arms=order, climb_rungs=rungs,
+        climb_reason=entry['reason'], still_rising_at_cap=entry['still_rising'], results=results, **d,
+        stage_b_new=list(v2.variants.B_NEW), identity=identity)         # the form of rg_score.run_a
     v2.write_json(out/'stage_a/verdict.json', verdict)
-    climb_identity = dict(identity, arms=order[:3], n_draws=None,
-        img_sha256={v: identity['img_sha256'][v] for v in [v2.BASE]+order[:3]},
-        run_sha256={v: identity['run_sha256'][v] for v in order[:3]})
+    climb_identity = dict(identity, arms=rungs, n_draws=None,
+        img_sha256={v: identity['img_sha256'][v] for v in [v2.BASE]+rungs if v in imgs},
+        run_sha256={v: identity['run_sha256'][v] for v in rungs},
+        failed={v: identity['failed'][v] for v in rungs if v in failed})
     v2.write_json(out/'stage_a/climb.json', dict(stage='climb', smoke=True, t_g=v2.variants.T_G,
-        promising=v2.variants.T_G-.0128, ranges=v2.RANGES, p_sha256=p_sha, decisions=[dict(
-            rungs_run=list(v2.variants.LADDER[:3]), newest='GR-32', next=None,
-            still_rising=False, reason='tied', identity=climb_identity, rivals={'GR-8': 1., 'GR-16': 1.},
-            rungs={v: dict(status='ok', cause=None, A_genre=1., e_genre=0., e_emotion=0.,
-                           e_style=0., guarded=True) for v in v2.variants.LADDER[:3]})]))
+        promising=v2.variants.T_G-.0128, ranges=v2.RANGES, p_sha256=p_sha,
+        decisions=[dict(entry, identity=climb_identity)]))
     return verdict
 
 
@@ -362,7 +396,10 @@ def test_seed_zero_target_levels_use_unrounded_boundaries(a, level):
 def test_new_seed_zero_winner_uses_ladder_tie_order():
     result = v2.choose_a({'GR-8': record(.50), 'GR-16': record(.51), 'GR-32': record(.51)}, True)
     assert result['winner'] == 'GR-16'
-    assert result['stage_b_new'] == ['GR-2', 'GR-4', 'GR-16']
+    # the scorer's form (rg_score.run_a, decide_a): stage B's new arms stay GR-2, GR-4; the winner trains fresh
+    assert result['stage_b_new'] == ['GR-2', 'GR-4']
+    assert result['trains_fresh'] == ['GR-16']
+    assert v2.choose_a({'GR-8': record(.50), 'GR-16': record(.49), 'GR-32': record(.4)}, True)['trains_fresh'] == []
 
 
 def test_new_held_candidate_and_new_winner_tie_priority():
@@ -388,7 +425,101 @@ def test_labels_use_caption_plurality_smallest_tie_first_style_and_mask(raw_tree
 
 
 def test_independence_has_no_prohibited_scorer_imports():
-    assert not {'rg_score', 'rg_report', 'eg_score3', 'rb_pick', 'rb_ami'} & sys.modules.keys()
+    # A fresh process: pytest's own sys.modules holds rg_score when a test_rg_score*.py file runs in the same session.
+    import subprocess
+    code = ('import sys; sys.path.insert(0, %r); import rg_v2; '
+            'bad = {"rg_score", "rg_report", "eg_score3", "rb_pick", "rb_ami"} & sys.modules.keys(); '
+            'print(sorted(bad))' % str(Path(__file__).resolve().parent))
+    done = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, check=True)
+    assert done.stdout.strip() == '[]', done.stdout
+
+
+def test_a_new_scorer_format_agrees_and_trains_the_winner_fresh(raw_tree):
+    """A-NEW as rg_score.run_a writes it: stage_b_new stays GR-2, GR-4 and the winner is in trains_fresh."""
+    verdict = standin_a(raw_tree, degraded=('GR-8',))
+    assert verdict['outcome'] == 'A-NEW' and verdict['winner'] != 'GR-8'
+    assert verdict['stage_b_new'] == ['GR-2', 'GR-4'] and verdict['trains_fresh'] == [verdict['winner']]
+    report = v2.run(phase='a', **raw_tree)
+    assert report['agree'], report['differences']
+    assert report['recomputed']['trains_fresh'] == [verdict['winner']]
+    assert report['recomputed']['stage_b_new'] == ['GR-2', 'GR-4']
+    # a verdict that lists the winner in stage_b_new (the old form) is a disagreement
+    verdict['stage_b_new'] = ['GR-2', 'GR-4', verdict['winner']]
+    v2.write_json(raw_tree['outputs']/'stage_a/verdict.json', verdict)
+    report = v2.run(phase='a', **raw_tree)
+    assert not report['agree']
+    assert any(d['path'].startswith('stage_a/verdict/stage_b_new') for d in report['differences'])
+
+
+def rerun_ok_standin(tree):
+    """GR-32 passed after its one VA3 rerun: run.json says ok and carries rerun_of; the scorer copies it."""
+    import json
+    folder = tree['outputs']/'train/GR-32/s0'
+    run = json.loads((folder/'run.json').read_text())
+    run['rerun_of'] = 'replaced/GR-32/s0-1'
+    v2.write_json(folder/'run.json', run)
+    return standin_a(tree)
+
+
+@pytest.mark.parametrize('phase', ['rung', 'a'])
+def test_rerun_of_that_passes_after_the_rerun_agrees_and_is_carried(raw_tree, phase):
+    verdict = rerun_ok_standin(raw_tree)
+    assert verdict['results']['GR-32']['rerun_of'] == 'replaced/GR-32/s0-1'
+    report = v2.run(phase=phase, **raw_tree)
+    assert report['agree'], report['differences']
+    result = (report['recomputed']['rungs'] if phase == 'rung' else report['recomputed']['results'])['GR-32']
+    assert result['rerun_of'] == 'replaced/GR-32/s0-1'
+
+
+@pytest.mark.parametrize('phase', ['rung', 'a'])
+@pytest.mark.parametrize('change', ['empty', 'missing'])
+def test_rerun_of_is_compared_as_a_nonempty_string(raw_tree, phase, change):
+    import json
+    rerun_ok_standin(raw_tree)
+    out = raw_tree['outputs']
+    for path, pick in ((out/'stage_a/climb.json', lambda d: d['decisions'][-1]['rungs']['GR-32']),
+                       (out/'stage_a/verdict.json', lambda d: d['results']['GR-32'])):
+        data = json.loads(path.read_text())
+        if change == 'empty':
+            pick(data)['rerun_of'] = ''
+        else:
+            del pick(data)['rerun_of']
+        v2.write_json(path, data)
+    report = v2.run(phase=phase, **raw_tree)
+    assert not report['agree']
+    assert any(d['path'].endswith('/GR-32/rerun_of') for d in report['differences'])
+
+
+def test_rerun_of_wording_may_differ_but_the_text_may_not_be_empty(raw_tree):
+    import json
+    rerun_ok_standin(raw_tree)
+    path = raw_tree['outputs']/'stage_a/climb.json'
+    climb = json.loads(path.read_text())
+    climb['decisions'][-1]['rungs']['GR-32']['rerun_of'] = 'aside/GR-32/s0-first'
+    v2.write_json(path, climb)
+    assert v2.run(phase='rung', **raw_tree)['agree']
+
+
+def test_code_state_dirty_flag_is_this_round_python_files_untracked_included(tmp_path):
+    """Provenance as rg_held.code_provenance: `git status --porcelain -- '*.py'` in the round folder; the HEAD commit as it was."""
+    import subprocess
+
+    def git(*args):
+        return subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', *args], cwd=tmp_path,
+                              capture_output=True, text=True, check=True).stdout.strip()
+    git('init', '-q')
+    (tmp_path/'a.py').write_text('x = 1\n')
+    git('add', 'a.py')
+    git('commit', '-qm', 'first')
+    head = git('rev-parse', 'HEAD')
+    assert v2.code_state(tmp_path) == (head, False)
+    (tmp_path/'notes.md').write_text('untracked, not python\n')
+    assert v2.code_state(tmp_path) == (head, False)
+    (tmp_path/'new_module.py').write_text('y = 2\n')              # untracked .py counts
+    assert v2.code_state(tmp_path) == (head, True)
+    (tmp_path/'new_module.py').unlink()
+    (tmp_path/'a.py').write_text('x = 2\n')                      # a changed tracked .py counts
+    assert v2.code_state(tmp_path) == (head, True)
 
 
 def test_stage_b_arm_lists_follow_scorer_tie_order(raw_tree):
@@ -431,37 +562,18 @@ def test_failed_fresh_seed_matches_scorer_arm_key_and_nonempty_cause(raw_tree):
 
 
 def failed_a_standin(tree):
-    """A trainer VA3 rerun failure, as copied into the scorer's A/climb records."""
+    """A trainer VA3 rerun failure, as the scorer copies it into its A and climb records (standin_a builds those with
+    the scorer's own functions from the run.json written here)."""
     import json
     import numpy as np
-    verdict = standin_a(tree)
-    out = tree['outputs']
-    folder = out/'train/GR-32/s0'
+    folder = tree['outputs']/'train/GR-32/s0'
     run = json.loads((folder/'run.json').read_text())
     cause = 'VA3: genre__P.npz: rows not unit norm'
     run.update(status='failed', failure_kind='va3', rerun_of='replaced/GR-32/s0-1', cause=cause)
     v2.write_json(folder/'run.json', run)
     np.savez(folder/'genre__P.npz', img=np.zeros((400, 20), dtype=np.float16))
-    digest = v2.sha((folder/'run.json').read_bytes())
-    verdict['results']['GR-32'] = dict(status='failed', cause=cause, best_epoch=run['best_epoch'],
-        effects=None, A_genre=None, e_genre=None, guarded=False)
-    verdict['levels']['GR-32'] = None
-    verdict['kept_weights'].remove('GR-32')
-    verdict['pending_deletions'] = ['GR-32']
-    verdict['climb_reason'] = 'failed'
-    verdict['identity']['failed'] = {'GR-32': cause}
-    verdict['identity']['img_sha256'].pop('GR-32')
-    verdict['identity']['run_sha256']['GR-32'] = digest
-    v2.write_json(out/'stage_a/verdict.json', verdict)
-    climb = json.loads((out/'stage_a/climb.json').read_text())
-    d = climb['decisions'][-1]
-    d['rungs']['GR-32'] = dict(status='failed', cause=cause, A_genre=None, e_genre=None,
-        e_emotion=None, e_style=None, guarded=False)
-    d['reason'] = 'failed'
-    d['identity']['failed'] = {'GR-32': cause}
-    d['identity']['img_sha256'].pop('GR-32')
-    d['identity']['run_sha256']['GR-32'] = digest
-    v2.write_json(out/'stage_a/climb.json', climb)
+    verdict = standin_a(tree)
+    assert verdict['results']['GR-32']['rerun_of'] == 'replaced/GR-32/s0-1'
     return cause
 
 

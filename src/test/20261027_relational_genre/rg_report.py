@@ -94,15 +94,64 @@ def term_means_of(folder, arm, smoke):
                 best_epoch=run.get('best_epoch'), epochs=tm, **({'anchors': run['anchors']} if 'anchors' in run else {}))
 
 
+def _plain(x):
+    """A JSON-safe copy of `x`: a non-finite float becomes its text ('nan', 'inf', '-inf'), shown as such in the report."""
+    if isinstance(x, float) and not np.isfinite(x):
+        return str(x)
+    if isinstance(x, dict):
+        return {k: _plain(v) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_plain(v) for v in x]
+    return x
+
+
+def _loss_scale_run(ls_path, smoke):
+    """The loss-scale run's record for the report. The report decides nothing, so a missing file, a failed run or empty
+    epoch means is a `problems` line in the report, not an assertion (spec §3.5, §3.6). -> dict(source, problems, ...)."""
+    out = dict(source=str(ls_path), problems=[], epoch_means=[])
+    if not ls_path.exists():
+        out['problems'].append(f'{ls_path} is missing: the loss-scale run left no record (it failed or did not run)')
+        return out
+    out['sha256'] = S._file_sha256(ls_path)
+    try:
+        ls = json.loads(ls_path.read_text())
+    except ValueError as error:
+        out['problems'].append(f'{ls_path} is not readable JSON: {error}')
+        return out
+    if not isinstance(ls, dict):
+        out['problems'].append(f'{ls_path} holds no JSON object')
+        return out
+    ls = _plain(ls)
+    for key in ('status', 'cause', 'variant', 'switches', 'smoke', 'reduction', 'anchors'):
+        if key in ls:
+            out[key] = ls[key]
+    out.update({k: v for k, v in ls.items() if 'finite' in k})       # a recorded count of non-finite terms, whatever its name
+    if 'smoke' in ls and ls['smoke'] != bool(smoke):
+        out['problems'].append(f"the record is from a {'smoke' if ls['smoke'] else 'real'} run, this report is not")
+    if ls.get('status') != 'ok':
+        out['problems'].append(f"the run's status is {ls.get('status')!r}; cause: {ls.get('cause')}")
+    if 'variant' in ls and (ls['variant'], ls.get('switches')) != (V.LOSS_SCALE, V.LOSS_SCALE_SWITCHES):
+        out['problems'].append(f"variant {ls['variant']!r} with switches {ls.get('switches')!r} is not {V.LOSS_SCALE}'s")
+    means = ls.get('epoch_means')
+    if not isinstance(means, list) or not means:
+        out['problems'].append('no epoch means (the run stopped before it finished its first epoch of training calls)')
+        means = []
+    out['epoch_means'] = [e for e in means if isinstance(e, dict)]
+    for e in out['epoch_means']:
+        absent = [k for k in ('direct', 'relational') if k not in e]
+        if absent:
+            out['problems'].append(f"epoch {e.get('epoch')}: no {' or '.join(absent)} term")
+    shown = [f'epoch {e.get("epoch")} {k} {v}' for e in out['epoch_means'] for k, v in e.items() if isinstance(v, str)]
+    if shown:
+        out['problems'].append('non-finite term values: ' + '; '.join(shown))
+    return out
+
+
 def loss_scale(outputs, arms, smoke):
     """spec §3.6: the loss-scale run's epoch means, each arm's genre term means, EQ's values."""
     out = Path(outputs)
     ls_path = out / 'loss_scale' / 'loss_scale.json'
-    assert ls_path.exists(), f'{ls_path} missing: the loss-scale run (ticket 02) must have run'
-    ls = json.loads(ls_path.read_text())
-    assert ls['smoke'] == bool(smoke) and ls['epoch_means'], f'{ls_path}: smoke flag differs or no epoch means'
-    assert all('direct' in e and 'relational' in e for e in ls['epoch_means']), 'loss_scale.json: direct/relational terms'
-    assert ls['variant'] == V.LOSS_SCALE and ls['switches'] == V.LOSS_SCALE_SWITCHES, (ls['variant'], ls['switches'])
+    run_record = _loss_scale_run(ls_path, smoke)
     per_arm = {}
     for arm in arms:
         folder = out / 'regression' / 'va1_GR-8_s0' if arm == 'GR-8' else rg_paths.run_dir(out, arm, 0)
@@ -111,9 +160,7 @@ def loss_scale(outputs, arms, smoke):
     assert eq_path.exists(), f'{eq_path} missing'
     eq = json.loads(eq_path.read_text())
     assert eq['smoke'] == bool(smoke) and isinstance(eq['pass'], bool) and eq['items'], f'{eq_path}: smoke flag, pass or items'
-    return dict(loss_scale=dict(source=str(ls_path), sha256=S._file_sha256(ls_path),
-                                **{k: ls[k] for k in ('status', 'variant', 'switches', 'smoke', 'epoch_means', 'reduction', 'anchors')
-                                   if k in ls}),
+    return dict(loss_scale=run_record,
                 arm_term_means=per_arm,
                 eq=dict(source=str(eq_path), sha256=S._file_sha256(eq_path), **{'pass': eq['pass']}, tolerance=eq.get('tolerance'),
                         items=eq['items']))
@@ -257,6 +304,8 @@ def markdown(r):
     lines += [f'| {v} | ' + ' | '.join(_f(ent[v]['old5000'][a]) for a in asp) + ' |' for v in ok]
     lines += ['', '## Leiden AMI on P (union 20-NN cosine graph, resolution 1, mean of seeds 0 to 2)', '', head]
     lines += [f'| {v} | ' + ' | '.join(_f(ent[v]['leiden'][a]['mean']) for a in asp) + ' |' for v in ok]
+    lines += ['', 'The old-5,000 and Leiden readings cover the seed-0 arms only. GR-2 and GR-4 have no seed-0 run in this round, so they get '
+              'neither (rule §4.1 reports them for stage A; the reported list of rule §4.2 has no such reading for stage B, and the rule governs over spec §3.6).']
     lines += ['', '## Best epochs (seed 0)', '', head]
     lines += [f'| {v} | ' + ' | '.join(str(ent[v]['best_epoch'][a]) if ent[v]['best_epoch'] else '-' for a in asp) + ' |' for v in arms]
     lines += ['', '## References', '',
@@ -286,19 +335,25 @@ def markdown(r):
                          f"{s['arms']}: Abar_genre spread {_f(s['spread'])} against r_genre {_f(b['r_genre'])}: "
                          f"{'within one seed range of each other' if s['within_one_range'] else 'further apart than one seed range'}.") + '')
         lines += ['', f"Confirmed arms within one seed range of v_held: {b['within_one_range_of_v_held'] or 'none'}. The pick follows the rule (user, K2b).",
-                  '', '### Best epochs on the fresh seeds', '', '| arm | seed | ' + ' | '.join(asp) + ' |', '|---|---|' + '---|' * len(asp)]
+                  '', '### Best epochs on the fresh seeds', '', '| arm | seed | ' + ' | '.join(asp) + ' | rerun of |', '|---|---|' + '---|' * (len(asp) + 1)]
         for n, by in b['runs'].items():
             for s, x in sorted(by.items()):
-                lines.append(f'| {n} | {s} | ' + (' | '.join(str(x['best_epoch'][a]) for a in asp) if x['status'] == 'ok'
-                                                  else f"failed: {x['cause']}" + ' |' * (len(asp) - 1)) + ' |')
+                cells = [str(x['best_epoch'][a]) for a in asp] if x['status'] == 'ok' else [f"failed: {x['cause']}"] + [''] * (len(asp) - 1)
+                lines.append(f'| {n} | {s} | ' + ' | '.join(cells) + f" | {x.get('rerun_of', '-')} |")
     ls = r['loss_scale']
+    name = ls.get('variant', V.LOSS_SCALE)
     lines += ['', '## Loss scale (spec §3.6)', '',
-              f"Loss-scale run {ls['variant']} (relational weight 1, seed 0, one epoch, no export on P); status {ls.get('status')}. "
-              'Mean over the epoch\'s training calls of each term, before its weight (direct term enters at 0.25, relational term at its lambda).', '',
-              '| run | epoch | term means | calls |', '|---|---|---|---|']
+              f"Loss-scale run {name} (relational weight 1, seed 0, one epoch, no export on P); status {ls.get('status')}. "
+              'Mean over the epoch\'s training calls of each term, before its weight (direct term enters at 0.25, relational term at its lambda).']
+    lines += ['', *[f'Loss-scale problem: {p}.' for p in ls['problems']]] if ls['problems'] else []
+    lines += [f'Recorded {k}: {v}.' for k, v in sorted(ls.items()) if 'finite' in k]
+    if ls['epoch_means']:
+        lines += ['', '| run | epoch | term means | calls |', '|---|---|---|---|']
+    else:
+        lines += ['', 'No epoch means are reported.']
     for e in ls['epoch_means']:
         keys = [k for k in e if k not in ('epoch', 'calls', 'pairs')]
-        lines.append(f"| {ls['variant']} | {e['epoch']} | " + ', '.join(f'{k} {_f(e[k])}' for k in sorted(keys)) + f" | {e['calls']} |")
+        lines.append(f"| {name} | {e.get('epoch')} | " + ', '.join(f'{k} {_f(e[k])}' for k in sorted(keys)) + f" | {e.get('calls')} |")
     lines += ['', 'Genre term means per arm (GR-8 from regression/va1_GR-8_s0; GQ-8\'s anchors term beside GR-8\'s relational term):', '',
               '| arm | epoch | term means | calls |', '|---|---|---|---|']
     for arm in r['arms']:
