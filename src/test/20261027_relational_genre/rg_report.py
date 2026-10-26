@@ -141,9 +141,10 @@ def _loss_scale_run(ls_path, smoke):
         absent = [k for k in ('direct', 'relational') if k not in e]
         if absent:
             out['problems'].append(f"epoch {e.get('epoch')}: no {' or '.join(absent)} term")
-    shown = [f'epoch {e.get("epoch")} {k} {v}' for e in out['epoch_means'] for k, v in e.items() if isinstance(v, str)]
+    # rg_train writes a non-finite term mean as null (with nonfinite_counts per term); older records may hold 'nan' text
+    shown = [f'epoch {e.get("epoch")} {k}' for e in out['epoch_means'] for k, v in e.items() if v is None or isinstance(v, str)]
     if shown:
-        out['problems'].append('non-finite term values: ' + '; '.join(shown))
+        out['problems'].append('non-finite term means: ' + '; '.join(shown))
     return out
 
 
@@ -268,11 +269,19 @@ def _f(x, d=4):
     return 'n/a' if x is None else x if isinstance(x, str) else f'{x:.{d}f}'
 
 
+def _term_cells(e):
+    """'term mean' for each term of one epoch row of term means; a null (non-finite) mean shows as non-finite, with the
+    number of training calls where the term was non-finite (rg_train's nonfinite_counts)."""
+    counts = e.get('nonfinite_counts') or {}
+    keys = [k for k in e if k not in ('epoch', 'calls', 'pairs', 'nonfinite_counts')]
+    return ', '.join(f'{k} ' + ('non-finite' if e[k] is None else _f(e[k]))
+                     + (f' ({counts[k]} non-finite calls)' if counts.get(k) else '') for k in sorted(keys))
+
+
 def _terms_row(name, t):
     if t is None:
         return [f'| {name} | no term means in run.json | | |']
-    keys = [k for k in t['epochs'][0] if k not in ('epoch', 'calls', 'pairs')]
-    return [f"| {name} | {e['epoch']} | " + ', '.join(f'{k} {_f(e[k])}' for k in sorted(keys)) + f" | {e['calls']} |" for e in t['epochs']]
+    return [f"| {name} | {e['epoch']} | " + _term_cells(e) + f" | {e['calls']} |" for e in t['epochs']]
 
 
 def markdown(r):
@@ -352,8 +361,7 @@ def markdown(r):
     else:
         lines += ['', 'No epoch means are reported.']
     for e in ls['epoch_means']:
-        keys = [k for k in e if k not in ('epoch', 'calls', 'pairs')]
-        lines.append(f"| {name} | {e.get('epoch')} | " + ', '.join(f'{k} {_f(e[k])}' for k in sorted(keys)) + f" | {e.get('calls')} |")
+        lines.append(f"| {name} | {e.get('epoch')} | " + _term_cells(e) + f" | {e.get('calls')} |")
     lines += ['', 'Genre term means per arm (GR-8 from regression/va1_GR-8_s0; GQ-8\'s anchors term beside GR-8\'s relational term):', '',
               '| arm | epoch | term means | calls |', '|---|---|---|---|']
     for arm in r['arms']:
