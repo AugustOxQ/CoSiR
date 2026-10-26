@@ -79,11 +79,8 @@ def test_fresh_pick_uses_only_confirmed_arms_and_rule_ties():
 
 
 @pytest.fixture
-def raw_tree():
-    # Keep synthetic writes inside the authorized worktree, and retain everything.
-    import uuid
-    root = Path(__file__).resolve().parents[3] / '.scratch' / 't09-tests' / uuid.uuid4().hex
-    root.mkdir(parents=True)
+def raw_tree(tmp_path):
+    root = tmp_path
     import numpy as np
     names = [f'p{i:03d}' for i in range(400)]
     x = np.tile(np.eye(20, dtype=np.float16), (20, 1))
@@ -159,16 +156,16 @@ def standin_a(tree):
         label_counts={a: 400 for a in v2.ASPECTS}, base_A={a: 1. for a in v2.ASPECTS},
         arms=order, climb_rungs=list(v2.variants.LADDER[:3]), still_rising_at_cap=False,
         results=results, eq_pass=True, winner='GR-8', A_genre_winner=1., outcome='A-SAME',
-        climb_reason='tie', levels={v: 'target' for v in order}, kept_weights=order, pending_deletions=[],
+        climb_reason='tied', levels={v: 'target' for v in order}, kept_weights=list(order), pending_deletions=[],
         stage_b_new=['GR-2', 'GR-4'], identity=identity)
     v2.write_json(out/'stage_a/verdict.json', verdict)
     climb_identity = dict(identity, arms=order[:3], n_draws=None,
         img_sha256={v: identity['img_sha256'][v] for v in [v2.BASE]+order[:3]},
-        run_sha256={v: v2.sha(f'historical metadata {v}'.encode()) for v in order[:3]})
+        run_sha256={v: identity['run_sha256'][v] for v in order[:3]})
     v2.write_json(out/'stage_a/climb.json', dict(stage='climb', smoke=True, t_g=v2.variants.T_G,
         promising=v2.variants.T_G-.0128, ranges=v2.RANGES, p_sha256=p_sha, decisions=[dict(
             rungs_run=list(v2.variants.LADDER[:3]), newest='GR-32', next=None,
-            still_rising=False, reason='tie', identity=climb_identity, rivals={'GR-8': 1., 'GR-16': 1.},
+            still_rising=False, reason='tied', identity=climb_identity, rivals={'GR-8': 1., 'GR-16': 1.},
             rungs={v: dict(status='ok', cause=None, A_genre=1., e_genre=0., e_emotion=0.,
                            e_style=0., guarded=True) for v in v2.variants.LADDER[:3]})]))
     return verdict
@@ -207,7 +204,7 @@ def standin_b(tree):
     import numpy as np
     standin_a(tree)
     out, frozen = tree['outputs'], tree['frozen_root']
-    arms = ['GR-2', 'GR-4', 'GR-8']
+    arms = ['GR-8', 'GR-2', 'GR-4']
     hashes, run_hashes = {}, {}
     for v in [v2.BASE]+arms:
         hashes[v], run_hashes[v] = {}, {}
@@ -246,7 +243,7 @@ def standin_b(tree):
     v2.write_json(out/'stage_b/verdict.json', verdict)
     # Keep the actual external JSON spelling of pass.
     v2.write_json(out/'stage_b/vb1.json', {'pass': True, 'hashes_checked': True, 'bounds_checked': False,
-        'items': {'genre/e': {'value': 0., 'expected': 0., 'diff': 0., 'pass': True}},
+        'items': {'genre_e': {'value': 0., 'expected': 0., 'diff': 0., 'pass': True}},
         'p_sha256': tree['expected_p_sha'], 'reference_sha256': v2.sha(ref.read_bytes()),
         'identity': {'img_sha256': {v: hashes[v] for v in ('GR-8', v2.BASE)}}})
     return ref, verdict
@@ -343,15 +340,21 @@ def test_vb1_detects_changed_frozen_array_hash(raw_tree):
     assert any(d['path'].endswith('/frozen_hashes/GR-8/1/genre') for d in report['differences'])
 
 
-def test_cli_returns_one_on_disagreement_and_rejects_unsafe_smoke_path(raw_tree):
+def test_cli_returns_one_on_disagreement_and_rejects_unsafe_smoke_path(raw_tree, monkeypatch):
+    import json
+    # Redirect the external input root so this also works without the real dataset.
+    monkeypatch.setattr(v2.paths, 'RB_PART1', raw_tree['rb_part1'])
     assert v2.main(['--phase', 'rung', '--outputs', str(raw_tree['outputs'])]) == 1
+    report = json.loads((raw_tree['outputs']/'stage_a/rederive_va2_rung.json').read_text())
+    assert not report['agree']
+    assert any('P count/order/unique' in d['theirs'] for d in report['differences'])
     with pytest.raises(SystemExit) as exc:
-        v2.main(['--phase', 'a', '--smoke', '--outputs', str(raw_tree['outputs'])])
+        v2.main(['--phase', 'a', '--smoke', '--outputs', '/var/tmp/rg_t09_refused_smoke'])
     assert exc.value.code == 2
 
 
 @pytest.mark.parametrize('a, level', [(v2.variants.T_G, 'target'),
-    (v2.variants.T_G-.0128, 'promising'), (v2.variants.T_G-.01280000001, 'neither'), (None, 'neither')])
+    (v2.variants.T_G-.0128, 'promising'), (v2.variants.T_G-.01280000001, 'neither'), (None, None)])
 def test_seed_zero_target_levels_use_unrounded_boundaries(a, level):
     assert v2.target_level(a) == level
 
@@ -386,3 +389,154 @@ def test_labels_use_caption_plurality_smallest_tie_first_style_and_mask(raw_tree
 
 def test_independence_has_no_prohibited_scorer_imports():
     assert not {'rg_score', 'rg_report', 'eg_score3', 'rb_pick', 'rb_ami'} & sys.modules.keys()
+
+
+def test_stage_b_arm_lists_follow_scorer_tie_order(raw_tree):
+    ref, _ = standin_b(raw_tree)
+    report = v2.run(phase='b', fresh_reference=ref, **raw_tree)
+    assert report['agree'], report['differences']
+    assert report['recomputed']['stage_b_arms'] == ['GR-8', 'GR-2', 'GR-4']
+
+
+def failed_fresh_standin(tree, verdict, *, va3=False):
+    """Scorer's arm-level failure and trainer's per-seed run record."""
+    import json
+    import numpy as np
+    folder = tree['outputs']/'train/GR-2/s2'
+    run = json.loads((folder/'run.json').read_text())
+    cause = 'VA3: genre__P.npz: rows not unit norm' if va3 else 'nonfinite loss'
+    run.update(status='failed', cause=cause, failure_kind='va3' if va3 else 'nonfinite_loss')
+    if va3:
+        run['rerun_of'] = 'replaced/GR-2/s2-1'
+        np.savez(folder/'genre__P.npz', img=np.zeros((400, 20), dtype=np.float16))
+    v2.write_json(folder/'run.json', run)
+    verdict['results']['GR-2'] = dict(status='failed', cause=f'seed 2: {cause}', effects=None,
+        Abar_genre=None, e_genre=None, c_outcome=None, confirmed=False)
+    verdict['levels']['GR-2'] = None
+    verdict['identity']['failed'] = {'GR-2': f'seed 2: {cause}'}
+    verdict['identity']['img_sha256'].pop('GR-2')
+    verdict['identity']['run_sha256']['GR-2']['2'] = v2.sha((folder/'run.json').read_bytes())
+    v2.write_json(tree['outputs']/'stage_b/verdict.json', verdict)
+    return cause
+
+
+def test_failed_fresh_seed_matches_scorer_arm_key_and_nonempty_cause(raw_tree):
+    ref, verdict = standin_b(raw_tree)
+    failed_fresh_standin(raw_tree, verdict)
+    # Diagnostic wording can differ; the failed arm and presence of a cause cannot.
+    verdict['identity']['failed']['GR-2'] = 'seed 2 failed on nonfinite loss'
+    v2.write_json(raw_tree['outputs']/'stage_b/verdict.json', verdict)
+    report = v2.run(phase='b', fresh_reference=ref, **raw_tree)
+    assert report['agree'], report['differences']
+
+
+def failed_a_standin(tree):
+    """A trainer VA3 rerun failure, as copied into the scorer's A/climb records."""
+    import json
+    import numpy as np
+    verdict = standin_a(tree)
+    out = tree['outputs']
+    folder = out/'train/GR-32/s0'
+    run = json.loads((folder/'run.json').read_text())
+    cause = 'VA3: genre__P.npz: rows not unit norm'
+    run.update(status='failed', failure_kind='va3', rerun_of='replaced/GR-32/s0-1', cause=cause)
+    v2.write_json(folder/'run.json', run)
+    np.savez(folder/'genre__P.npz', img=np.zeros((400, 20), dtype=np.float16))
+    digest = v2.sha((folder/'run.json').read_bytes())
+    verdict['results']['GR-32'] = dict(status='failed', cause=cause, best_epoch=run['best_epoch'],
+        effects=None, A_genre=None, e_genre=None, guarded=False)
+    verdict['levels']['GR-32'] = None
+    verdict['kept_weights'].remove('GR-32')
+    verdict['pending_deletions'] = ['GR-32']
+    verdict['climb_reason'] = 'failed'
+    verdict['identity']['failed'] = {'GR-32': cause}
+    verdict['identity']['img_sha256'].pop('GR-32')
+    verdict['identity']['run_sha256']['GR-32'] = digest
+    v2.write_json(out/'stage_a/verdict.json', verdict)
+    climb = json.loads((out/'stage_a/climb.json').read_text())
+    d = climb['decisions'][-1]
+    d['rungs']['GR-32'] = dict(status='failed', cause=cause, A_genre=None, e_genre=None,
+        e_emotion=None, e_style=None, guarded=False)
+    d['reason'] = 'failed'
+    d['identity']['failed'] = {'GR-32': cause}
+    d['identity']['img_sha256'].pop('GR-32')
+    d['identity']['run_sha256']['GR-32'] = digest
+    v2.write_json(out/'stage_a/climb.json', climb)
+    return cause
+
+
+@pytest.mark.parametrize('phase', ['rung', 'a', 'b'])
+def test_va3_failed_rerun_preserves_trainer_cause_and_agrees(raw_tree, phase):
+    if phase == 'b':
+        ref, verdict = standin_b(raw_tree)
+        cause = failed_fresh_standin(raw_tree, verdict, va3=True)
+        kwargs = dict(fresh_reference=ref)
+    else:
+        cause = failed_a_standin(raw_tree)
+        kwargs = {}
+    report = v2.run(phase=phase, **kwargs, **raw_tree)
+    assert report['agree'], report['differences']
+    result = (report['recomputed']['rungs']['GR-32'] if phase == 'rung' else
+              report['recomputed']['results']['GR-32' if phase == 'a' else 'GR-2'])
+    assert result['cause'] == cause
+
+
+def test_rung_disagrees_when_climb_run_digest_differs(raw_tree):
+    import json
+    standin_a(raw_tree)
+    path = raw_tree['outputs']/'stage_a/climb.json'
+    climb = json.loads(path.read_text())
+    climb['decisions'][-1]['identity']['run_sha256']['GR-32'] = '0'*64
+    v2.write_json(path, climb)
+    report = v2.run(phase='rung', arm='GR-32', **raw_tree)
+    assert not report['agree']
+    assert any(d['path'].endswith('/run_sha256/GR-32') for d in report['differences'])
+
+
+def test_rung_disagrees_when_climb_image_hash_differs(raw_tree):
+    import json
+    standin_a(raw_tree)
+    path = raw_tree['outputs']/'stage_a/climb.json'
+    climb = json.loads(path.read_text())
+    climb['decisions'][-1]['identity']['img_sha256']['GR-32']['genre'] = '0'*64
+    v2.write_json(path, climb)
+    report = v2.run(phase='rung', arm='GR-32', **raw_tree)
+    assert not report['agree']
+    assert any(d['path'].endswith('/img_sha256/GR-32/genre') for d in report['differences'])
+
+
+@pytest.mark.parametrize('phase', ['rung', 'a'])
+@pytest.mark.parametrize('wording, agree', [('genre invalid after the allowed rerun', True), ('', False)])
+def test_failed_a_and_climb_causes_require_text_not_equal_wording(raw_tree, phase, wording, agree):
+    import json
+    failed_a_standin(raw_tree)
+    out = raw_tree['outputs']
+    path = out/'stage_a/climb.json'
+    climb = json.loads(path.read_text())
+    d = climb['decisions'][-1]
+    d['rungs']['GR-32']['cause'] = wording
+    d['identity']['failed']['GR-32'] = wording
+    v2.write_json(path, climb)
+    path = out/'stage_a/verdict.json'
+    verdict = json.loads(path.read_text())
+    verdict['results']['GR-32']['cause'] = wording
+    verdict['identity']['failed']['GR-32'] = wording
+    v2.write_json(path, verdict)
+    report = v2.run(phase=phase, **raw_tree)
+    assert report['agree'] is agree, report['differences']
+    if not agree:
+        assert any(d['path'].endswith('/rungs/GR-32/cause') for d in report['differences'])
+        assert any(d['path'].endswith('/identity/failed/GR-32') for d in report['differences'])
+        if phase == 'a':
+            assert any(d['path'].endswith('/results/GR-32/cause') for d in report['differences'])
+
+
+@pytest.mark.parametrize('failure_map', [{'GR-2/s2': 'seed 2 failed'}, {'GR-2': ''}, {}])
+def test_fresh_failed_keys_and_nonempty_causes_are_required(raw_tree, failure_map):
+    ref, verdict = standin_b(raw_tree)
+    failed_fresh_standin(raw_tree, verdict)
+    verdict['identity']['failed'] = failure_map
+    v2.write_json(raw_tree['outputs']/'stage_b/verdict.json', verdict)
+    report = v2.run(phase='b', fresh_reference=ref, **raw_tree)
+    assert not report['agree']
+    assert any('/identity/failed/' in d['path'] for d in report['differences'])

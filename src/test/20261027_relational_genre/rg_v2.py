@@ -64,6 +64,8 @@ def climb_decision(records):
 
 
 def target_level(a):
+    if a is None:
+        return None
     return 'target' if a is not None and a >= variants.T_G else 'promising' if (
         a is not None and a >= variants.T_G-RANGES['genre']) else 'neither'
 
@@ -114,6 +116,11 @@ def write_json(path, value):
 def differences(ours, theirs, path=''):
     """Compare numeric leaves within 1e-6; decisions, types and keys exactly."""
     missing = '<missing>'
+    # Cause prose has no rule-prescribed wording. Preserve exact failure keys,
+    # but require nonempty text on each side rather than identical diagnostics.
+    if '/failed/' in path or (path.endswith('/cause') and (ours is not None or theirs is not None)):
+        equal = all(isinstance(v, str) and v != missing and bool(v.strip()) for v in (ours, theirs))
+        return [] if equal else [dict(path=path, ours=ours, theirs=theirs)]
     if isinstance(ours, dict) and isinstance(theirs, dict):
         return [d for k in sorted(set(ours) | set(theirs)) for d in
                 differences(ours.get(k, missing), theirs.get(k, missing), f'{path}/{k}')]
@@ -194,7 +201,8 @@ class Inputs:
                 except ExportProblem as error:
                     problems.append(str(error))
             if problems:
-                run = dict(run, status='failed', cause='VA3/VB3 after rerun: '+'; '.join(problems))
+                run = dict(run, status='failed', cause=run['cause'] if run['status'] == 'failed' else
+                           'VA3/VB3 after rerun: '+'; '.join(problems))
             else:
                 assert run['status'] == 'ok', f'{arm}/s{seed}: claimed export failure passes'
         if run['status'] == 'failed':
@@ -389,7 +397,8 @@ def identity(inputs, labels, order, draws, fresh=False):
                 continue
             digests[str(s)] = inputs.hashes[str(inputs.folder(v, s)/'run.json')]
             if (v, s) in inputs.failed:
-                failed[f'{v}/s{s}' if fresh else v] = inputs.failed[v, s]
+                cause = f'seed {s}: {inputs.failed[v, s]}' if fresh else inputs.failed[v, s]
+                failed[v] = '; '.join(filter(None, (failed.get(v), cause)))
         if digests:
             runs[v] = digests if fresh else digests['0']
     return dict(p_sha256=inputs.p_sha, label_sha256={a: array_sha(y) for a, y in labels.items()},
@@ -432,20 +441,13 @@ def compare_decision(expected, actual, records, bad, prefix):
 
 def compare_climb_identity(inputs, labels, order, draws, actual, bad, prefix):
     expected = identity(inputs, labels, order, draws)
-    # A climb decision uses points, not bootstrap bounds. Its historical run.json
-    # digest may predate added diagnostics (term means, for example). The labels
-    # and image arrays determine its statistics and must still match exactly.
+    # The climb uses points only, so no bootstrap draw count is required.
+    # Its recorded raw-run digests must match, just like its label/export hashes.
     expected.pop('n_draws')
-    runs = expected.pop('run_sha256')
     check_fields(expected, actual, bad, prefix)
     if actual.get('n_draws', '<missing>') not in (None, draws):
         bad.append(dict(path=prefix+'/n_draws', ours=[None, draws], theirs=actual.get('n_draws')))
-    recorded = actual.get('run_sha256', {})
-    assert isinstance(recorded, dict), f'{prefix}: run hash map'
-    bad.extend(differences(sorted(runs), sorted(recorded), prefix+'/run_sha256/arms'))
-    for v, digest in recorded.items():
-        if not (isinstance(digest, str) and len(digest) == 64 and all(c in '0123456789abcdef' for c in digest)):
-            bad.append(dict(path=prefix+'/run_sha256/'+v, ours='SHA-256', theirs=digest))
+
 
 def compare_a(inputs, labels, ours, phase, draws, bad):
     pick_path = inputs.rb/'pick.json'
@@ -487,7 +489,7 @@ def compare_a(inputs, labels, ours, phase, draws, bad):
 
 def derive_b(inputs, labels, seed0, draws, workers):
     winner = seed0['winner']
-    order = list(variants.B_NEW)+['GR-8']+([] if winner == 'GR-8' else [winner])
+    order = list(variants.B_TIE_ORDER)+([] if winner == 'GR-8' else [winner])
     runs = {v: {str(s): inputs.scoring_run(v, s) for s in variants.FRESH_SEEDS} for v in [BASE]+order}
     usable = [v for v in order if all(r['status'] == 'ok' for r in runs[v].values()) and
               all(r['status'] == 'ok' for r in runs[BASE].values())]
