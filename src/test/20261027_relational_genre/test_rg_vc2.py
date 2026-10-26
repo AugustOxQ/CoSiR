@@ -254,3 +254,26 @@ def test_runner_persists_disagreement_and_invalidates_skip_when_input_changes(tm
     updated = vc.run(outputs, 'G', smoke=True, workers=1, inputs=inputs)
     assert 'skipped' not in updated
     assert any(str(cache) in diff for diff in updated['differences'])
+
+
+def test_vc2_dirty_flag_covers_only_round_python_including_untracked(tmp_path, monkeypatch):
+    import subprocess
+    here = tmp_path / 'src/test/round'
+    here.mkdir(parents=True)
+    (here / 'rg_paths.py').write_text('x = 1\n')
+    git = ['git', '-C', str(tmp_path), '-c', 'user.name=t', '-c', 'user.email=t@t']
+    subprocess.run(git + ['init', '-q'], check=True)
+    subprocess.run(git + ['add', '.'], check=True)
+    subprocess.run(git + ['commit', '-qm', 'baseline'], check=True)
+    monkeypatch.setattr(vc.rg_paths, 'ROUND', here)
+    assert vc._code_record()['dirty'] is False
+    (here / 'notes.md').write_text('run notes\n')
+    (tmp_path / 'other_round.py').write_text('unrelated = True\n')
+    assert vc._code_record()['dirty'] is False
+    (here / 'untracked.py').write_text('new_code = True\n')
+    assert vc._code_record()['dirty'] is True
+    subprocess.run(git + ['add', '.'], check=True)
+    subprocess.run(git + ['commit', '-qm', 'new code'], check=True)
+    assert vc._code_record()['dirty'] is False
+    (here / 'rg_paths.py').write_text('x = 2\n')
+    assert vc._code_record()['dirty'] is True

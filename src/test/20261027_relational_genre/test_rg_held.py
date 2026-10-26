@@ -139,7 +139,10 @@ def write_gate(out_dir, *, v_held='GR-8', outcome='B-PICK', switches=None, train
     sw = rg_variants.switches('GR-8') if switches is None else switches
     (out_dir / 'stage_b').mkdir(parents=True)
     (out_dir / 'stage_b/verdict.json').write_text(json.dumps(
-        dict(outcome=outcome, v_held=v_held, v_held_switches=sw)))
+        dict(outcome=outcome, v_held=v_held, v_held_switches=sw, smoke=False)))
+    (out_dir / "stage_b/rederive_vb2.json").write_text(json.dumps(dict(
+        agree=True, complete=True, smoke=False, input_hashes={
+            str(out_dir / "stage_b/verdict.json"): rg_held.sha_file(out_dir / "stage_b/verdict.json")})))
     reg = out_dir / 'stage_c/regression'
     reg.mkdir(parents=True)
     for name, ok in (('vc1_train', train), ('vc1_scorer', scorer)):
@@ -150,7 +153,7 @@ def write_gate(out_dir, *, v_held='GR-8', outcome='B-PICK', switches=None, train
 def test_gate_passes_for_the_named_v_held_with_both_vc1_files_passing(tmp_path):
     write_gate(tmp_path)
     shas = rg_held.require_gate(tmp_path, 'GR-8')
-    assert set(shas) == {'stage_b_verdict', 'vc1_train', 'vc1_scorer'}
+    assert set(shas) == {'stage_b_verdict', 'rederive_vb2', 'vc1_train', 'vc1_scorer'}
 
 
 @pytest.mark.parametrize('kw', [dict(v_held='GR-4'), dict(v_held=None, outcome='B-NONE'),
@@ -283,3 +286,123 @@ def test_a_vc1_scorer_record_counts_only_for_this_scorer_code():
     assert not rg_held.vc1_scorer_is_current(dict(identity=dict(rg_held_sha256='x',
                                                                  rb_score_sha256=now['rb_score_sha256'])))
     assert not rg_held.vc1_scorer_is_current(dict(items={}))
+
+
+@pytest.fixture
+def report_inputs(tmp_path, monkeypatch):
+    """Tiny files at the report boundary; diagnostics and frozen stores are substituted, never read."""
+    out = tmp_path / 'outputs'
+    file = out / 'stage_c/full/held/GR-8/genre__s0.npz'
+    file.parent.mkdir(parents=True)
+    file.write_bytes(b'held output')
+    source = dict(path=str(file), output_sha256=rg_held.sha_file(file), vc3_attempts=2)
+    verdict = dict(stage='C', arm='GR-8', smoke=False, held_sha256=rg_paths.HELD_SHA256,
+                   sources=dict(G_outputs={'0': source}), outcome_id='G-NO',
+                   d_T=dict(d=-.05), d_R=dict(d=0.), G_half=G_HALF)
+    (out / 'stage_c/verdict.json').write_text(json.dumps(verdict))
+    vc2 = dict(agree=True, config=dict(comparison_sha256=rg_held.sha_file(out / 'stage_c/verdict.json')))
+    (out / 'stage_c/rederive_vc2.json').write_text(json.dumps(vc2))
+    rb = tmp_path / 'rb'
+    rb.mkdir()
+    block = dict(eligible_seeds={}, best_epochs={},
+                 aspects={a: dict(margins={}, point_spread={}) for a in rg_paths.ASPECTS})
+    (rb / 'reported_stage4.json').write_text(json.dumps(dict(held_sha256=rg_paths.HELD_SHA256, blocks=dict(K4=block))))
+    monkeypatch.setattr(rg_paths, 'RB_PART2', rb)
+    monkeypatch.setattr(rg_held.rb_part2_report, 'held_labels',
+                        lambda: (list(range(rg_paths.N_HELD)), rg_paths.HELD_SHA256, {}))
+    monkeypatch.setattr(rb_score, 'read_rcol_eligible', lambda scale: ({}, 'rcol'))
+    monkeypatch.setattr(rb_score, 'eligible_seeds', lambda *args: {})
+    monkeypatch.setattr(rg_held, '_comparator_sources', lambda eligible: {})
+    monkeypatch.setattr(rg_held, '_frozen_comparator_partitions', lambda eligible: {})
+    monkeypatch.setattr(rg_held, '_leiden_comparators', lambda *args: {})
+    monkeypatch.setattr(rg_held, 'report_g', lambda *args: dict(aspects={}, best_epochs={}))
+    return out
+
+
+@pytest.mark.parametrize('bad', ['missing', 'disagree', 'stale', 'no_hash'])
+def test_report_refuses_without_vc2_agreement_on_the_current_verdict(report_inputs, bad):
+    out = report_inputs
+    path = out / 'stage_c/rederive_vc2.json'
+    record = json.loads(path.read_text())
+    if bad == 'missing':
+        path.rename(path.with_suffix('.aside'))
+    else:
+        if bad == 'disagree':
+            record['agree'] = False
+        elif bad == 'stale':
+            record['config']['comparison_sha256'] = 'old-verdict'
+        else:
+            record['config'] = {}
+        path.write_text(json.dumps(record))
+    with pytest.raises(AssertionError, match='VC2'):
+        rg_held.run_report(out, 'GR-8')
+    assert not (out / 'stage_c/reported.json').exists()
+
+
+def test_report_accepts_current_vc2_and_lists_the_verdict_vc3_attempts(report_inputs):
+    record = rg_held.run_report(report_inputs, 'GR-8')
+    assert record['verdict_summary']['G_outputs']['0']['vc3_attempts'] == 2
+
+
+def test_report_smoke_keeps_its_vc2_bypass(report_inputs, monkeypatch):
+    monkeypatch.setattr(rg_paths, 'smoke_ok', lambda out: True)
+    path = report_inputs / 'stage_c/verdict.json'
+    verdict = json.loads(path.read_text())
+    verdict['smoke'] = True
+    path.write_text(json.dumps(verdict))
+    (report_inputs / 'stage_c/rederive_vc2.json').rename(report_inputs / 'stage_c/rederive_vc2.aside')
+    assert rg_held.run_report(report_inputs, 'GR-8', n_resamples=20, smoke=True)['smoke'] is True
+
+
+@pytest.fixture
+def tiny_held_outputs(tmp_path, monkeypatch):
+    import rb_student
+    y = np.array([0, 0, 1, 1])
+    parts = np.stack([y] * 3)
+    x = np.tile(np.eye(1, 16, dtype=np.float16), (len(y), 1))
+    out = tmp_path / 'outputs'
+    files = {}
+    for aspect in rg_paths.ASPECTS:
+        for seed in SEEDS5:
+            file = rg_paths.full_root(out) / f'held/GR-8/{aspect}__s{seed}.npz'
+            meta = dict(kind='held', arm='GR-8', scale='full', aspect=aspect, seed=seed,
+                        rows=len(y), width=16, dtype='float16', list_sha256='held',
+                        sha256=rb_student.sha_array(x), vc3_attempts=2 if seed == 1 else 1)
+            rb_student.write_outputs(file, dict(img=x), meta)
+            files[aspect, seed] = file
+    load = rg_held.load_held_output
+    monkeypatch.setattr(rg_held, 'load_held_output',
+                        lambda *args, **kwargs: load(*args, n_rows=len(y), width=16, **kwargs))
+    monkeypatch.setattr(rg_paths, 'smoke_ok', lambda out: True)
+    monkeypatch.setattr(rg_variants, 'G_HALF', .5)
+    monkeypatch.setattr(rg_held, 'held_setup_genre', lambda: (list(range(len(y))), 'held', y))
+    monkeypatch.setattr(rg_held, 'r_sources', lambda: {s: files['genre', s] for s in SEEDS5})
+    monkeypatch.setattr(rg_held, '_frozen_r20', lambda arm, *args: (
+        {0: {'r20': parts}} if arm == 'T' else {s: {'r20': np.zeros_like(parts)} for s in SEEDS5}))
+    monkeypatch.setattr(rg_held, 'g_partitions', lambda *args: np.zeros_like(parts))
+    return out, y, parts
+
+
+def test_score_lists_vc3_attempts_per_seed_in_the_saved_verdict(tiny_held_outputs):
+    out, _, _ = tiny_held_outputs
+    rg_held.run_score(out, 'GR-8', workers=1, n_resamples=20, smoke=True)
+    saved = json.loads((out / 'stage_c/verdict.json').read_text())
+    assert {s: rec['vc3_attempts'] for s, rec in saved['sources']['G_outputs'].items()} == {
+        '0': 1, '1': 2, '2': 1, '3': 1, '4': 1}
+
+
+def test_report_g_lists_vc3_attempts_for_each_aspect_and_seed(tiny_held_outputs, monkeypatch):
+    out, y, parts = tiny_held_outputs
+    monkeypatch.setattr(rg_held, 'best_epochs_g', lambda *args: {})
+    monkeypatch.setattr(rg_held, 'read_frozen_partitions', lambda *args: parts)
+    monkeypatch.setattr(rb_score, 'fixed_partitions', lambda *args: {'r20': parts})
+    monkeypatch.setattr(rg_held, '_leiden_g', lambda *args: parts)
+    monkeypatch.setattr(rb_score, 'score_indices', lambda *args: {})
+    monkeypatch.setattr(rg_held.rb_part2_report, 'seed_spread', lambda *args: {})
+    monkeypatch.setattr(rg_held.rb_part2_report, 'margin', lambda *args, **kwargs: dict(d=0.))
+    ctx = dict(sha='held', n_rows=len(y), n_resamples=20, workers=1, labels={a: y for a in rg_paths.ASPECTS},
+               eligible={}, comp_sources={}, comp_fixed={}, comp_leiden={})
+    record = rg_held.report_g(out, 'GR-8', ctx)
+    for aspect in rg_paths.ASPECTS:
+        assert {s: rec['vc3_attempts'] for s, rec in record['sources']['G_outputs'][aspect].items()} == {
+            '0': 1, '1': 2, '2': 1, '3': 1, '4': 1}

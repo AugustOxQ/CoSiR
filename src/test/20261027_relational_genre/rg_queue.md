@@ -68,7 +68,7 @@ Runner flags: `--outputs`, `--smoke` and `--workers` are added as each runner ta
 | 4 | `held_g` | `rg_full held --arm G --seeds 0 1 2 3 4` | GPU | guarded; VC3's one rerun is the runner's; a second VC3 failure: **stop** |
 | 5 | `score_c` | `rg_held score --arm G` | CPU | |
 | 6 | `vc2` | `rg_vc2 --arm G` | CPU | exit 1: **stop**, no stage C outcome |
-| 7 | `report_c` | `rg_held report --arm G` | CPU | |
+| 7 | `report_c` | `rg_held report --arm G` | CPU | after VC2 agrees on the current verdict; then the run chat adds the held-ledger row (below) |
 
 `gpu` runs `a`, `b`, `c` in this order; a queue that stops is noted and the chain goes on to queues that refuse
 themselves with the reason (a failed gate stops only the stages behind it, spec §3.5). Exit 1 when any queue stopped.
@@ -124,8 +124,9 @@ by hand, and the matching `rg_v2` call with the same flag if `rg_v2` takes one, 
 2. A runner crashed or the machine stopped: start the same queue again; finished runs, scores and re-derivations are
    skipped (runner side). A climb restarted after a stop recomputes the decision (it is not added twice) and goes on.
 3. A gate failed (VA1, VB1, VC1): trace the cause; move the failed regression file aside to a dated folder under
-   `<outputs>/aside/` (`mv`, nothing is deleted) after the fix, then start the queue again. VA1 failing stops everything
-   behind it.
+   `<outputs>/aside/` (`mv`, nothing is deleted) after the fix, then start the queue again. For VC1 trained by older
+   code, move `stage_c/regression/vc1_run/` aside too: the trainer refuses its old code hashes. VA1 failing stops
+   everything behind it.
 4. `rg_v2` disagrees (rung, a, b, vc2): both values go in the report; the fix is by the rule's text. After the fix move
    the stale scorer files of that phase and the re-derivation file aside (`stage_a/climb.json` and `verdict.json`,
    `stage_b/verdict.json`, `stage_c/verdict.json` and the matching `rederive_*` files; the training outputs stay) and start
@@ -133,6 +134,11 @@ by hand, and the matching `rg_v2` call with the same flag if `rg_v2` takes one, 
 5. A training run failed (non-finite loss, VA3 after its rerun): it stays failed and is reported (rule "Failed runs"; VA4
    and VB4: no other run). VC4: a G seed that fails is not rerun beyond the rule's one VC3 rerun; no stage C outcome.
 6. GPU lock wait over 4 h: the step ends with a failure line; start the queue again when the GPU is free.
+
+After stage C finishes and VC2 agrees, the run chat adds a row to `docs/superpowers/held_ledger.md` in its existing
+format (H17 and H18): the held list's SHA-256, round folder `src/test/20261027_relational_genre/` and commit,
+`stage_c/verdict.json` SHA-256 and outcome, and the report path. This is a run-chat step after the queue, when those
+values are known; the queue does not write the ledger.
 
 ## Smoke (the controller's; GPU; scratch under `/tmp/claude-0/`)
 

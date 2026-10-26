@@ -1,5 +1,6 @@
 """Tiny CPU checks of the full-scale trainer's loss wiring and the held guard (ticket 06; verdict code)."""
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -39,6 +40,9 @@ def put_weights(root, arm, seeds=(0,), *, rg_code='rg-code', rb_code='rb-code', 
                           max_epochs=ms_train.CONFIG['max_epochs'] if max_epochs is None else max_epochs,
                           rb=dict(scale='full', encoder='qwen3vl_emb_2b', width=2048, recipe='R6-5', code_sha256=rb_code),
                           rg=dict(arm=arm, switches=V.switches(arm), code_sha256=rg_code))
+            verdict = root.parents[1] / 'stage_b/verdict.json'
+            if verdict.is_file():
+                config['rg']['stage_b_verdict_sha256'] = ms_train.head.sha_file(verdict)
             put(path.with_suffix('.json'), dict(weights_sha256=ms_train.head.sha_file(path), config=config))
 
 
@@ -56,10 +60,12 @@ def out(tmp_path, monkeypatch):
     # the current code's hashes are fixed to the fake records' (tests of the code on disk change them again)
     monkeypatch.setattr(rg_full, '_code_sha256', lambda: 'rg-code')
     monkeypatch.setattr(rg_full, '_rb_code_sha256', lambda: 'rb-code')
-    put(tmp_path / 'stage_b/verdict.json', dict(outcome='B-PICK', v_held='GR-8', v_held_switches=V.switches('GR-8')))
+    put(tmp_path / 'stage_b/verdict.json', dict(outcome='B-PICK', v_held='GR-8', v_held_switches=V.switches('GR-8'), smoke=False))
+    put_vb2(tmp_path)
     put_weights(tmp_path / 'stage_c/regression/vc1_run', 'R6-5')
     put(tmp_path / 'stage_c/regression/vc1_train.json', vc1_train_record(tmp_path))
-    put(tmp_path / 'stage_c/regression/vc1_scorer.json', {'pass': True})
+    import rg_held
+    put(tmp_path / 'stage_c/regression/vc1_scorer.json', {'pass': True, 'identity': rg_held.code_provenance()})
     put_weights(rg_paths.full_root(tmp_path), 'GR-8', V.FULL_SEEDS)
     return tmp_path
 
@@ -534,3 +540,177 @@ def test_code_provenance_counts_an_untracked_py_file_as_dirty(tmp_path, monkeypa
     assert rg_full.code_provenance()['dirty'] is False
     (tmp_path / 'new_module.py').write_text('y = 2\n')
     assert rg_full.code_provenance()['dirty'] is True
+
+
+@pytest.mark.parametrize('field', ['rg_held_sha256', 'rb_score_sha256'])
+def test_guard_refuses_a_stale_vc1_scorer(out, field):
+    import rg_full
+    path = out / 'stage_c/regression/vc1_scorer.json'
+    record = json.loads(path.read_text())
+    record['identity'][field] = 'older-code'
+    put(path, record)
+    with pytest.raises(AssertionError, match='scorer.*other code'):
+        rg_full.require_guard(out, 'GR-8', ancestor=yes)
+
+
+def put_vb2(out):
+    verdict = out / 'stage_b/verdict.json'
+    put(out / 'stage_b/rederive_vb2.json', dict(agree=True, complete=True, smoke=False,
+        input_hashes={str(verdict): ms_train.head.sha_file(verdict)}))
+
+
+def call_gate(gate, out):
+    import rg_full
+    import rg_held
+    return (rg_full.require_guard(out, 'GR-8', ancestor=yes) if gate == 'held'
+            else rg_held.require_gate(out, 'GR-8'))
+
+
+@pytest.mark.parametrize('gate', ['held', 'score'])
+@pytest.mark.parametrize('bad', ['missing', 'disagree', 'incomplete', 'smoke', 'no_smoke',
+                                'stale', 'no_verdict_hash', 'unrelated_hash', 'smoke_verdict'])
+def test_stage_c_gates_refuse_invalid_vb2(out, gate, bad):
+    path = out / 'stage_b/rederive_vb2.json'
+    rec = json.loads(path.read_text())
+    if bad == 'missing':
+        path.rename(path.with_suffix('.aside'))
+    elif bad == 'disagree':
+        rec['agree'] = False
+    elif bad == 'incomplete':
+        rec['complete'] = False
+    elif bad == 'smoke':
+        rec['smoke'] = True
+    elif bad == 'no_smoke':
+        del rec['smoke']
+    elif bad == 'stale':
+        rec['input_hashes'][str(out / 'stage_b/verdict.json')] = 'old-verdict'
+    elif bad == 'no_verdict_hash':
+        rec['input_hashes'] = {}
+    elif bad == 'unrelated_hash':
+        rec['input_hashes'] = {str(out / 'other/verdict.json'): ms_train.head.sha_file(out / 'stage_b/verdict.json')}
+    else:
+        verdict = out / 'stage_b/verdict.json'
+        v = json.loads(verdict.read_text())
+        v['smoke'] = True
+        put(verdict, v)
+        rec['input_hashes'][str(verdict)] = ms_train.head.sha_file(verdict)
+    if bad != 'missing':
+        put(path, rec)
+    with pytest.raises(AssertionError, match='VB2'):
+        call_gate(gate, out)
+
+
+@pytest.mark.parametrize('gate', ['held', 'score'])
+def test_stage_c_gates_accept_vb2_through_outputs_symlink_and_record_its_hash(out, gate):
+    link = out / 'outputs_link'
+    link.symlink_to(out, target_is_directory=True)
+    rec = json.loads((out / 'stage_b/rederive_vb2.json').read_text())
+    rec['input_hashes'] = {str(link / 'stage_b/verdict.json'): ms_train.head.sha_file(out / 'stage_b/verdict.json')}
+    put(out / 'stage_b/rederive_vb2.json', rec)
+    shas = call_gate(gate, out)
+    assert shas['rederive_vb2'] == ms_train.head.sha_file(out / 'stage_b/rederive_vb2.json')
+
+
+
+@pytest.fixture
+def tiny_training(monkeypatch):
+    """No data load or optimizer: capture configs at the trainer's save boundary."""
+    import rg_full
+    monkeypatch.setattr(rb_student, 'load_scale', lambda scale: (
+        dict(first=[0, 1], fit=np.array([0]), dev=np.array([1])),
+        {a: dict(cap=np.zeros((2, 2048), dtype=np.float32)) for a in ASPECTS}, {}, {}))
+    monkeypatch.setattr(rb_student, 'training_images', lambda *args: np.zeros((2, 2048), dtype=np.float32))
+    saved = []
+    def run(*args, **kwargs):
+        config = rg_full.ct2_d2.make_config()
+        saved.append(config)
+        root = Path(args[9]).parents[1]
+        for aspect in ASPECTS:
+            file = rb_student.weights_path(root, config['rg']['arm'], aspect, args[7])
+            file.parent.mkdir(parents=True, exist_ok=True)
+            file.write_bytes(b'synthetic best weights')
+            put(file.with_suffix('.json'), dict(config=config, weights_sha256=ms_train.head.sha_file(file)))
+        return dict(status='ok')
+    monkeypatch.setattr(rb_student, 'CT2_MAKE_CONFIG', lambda: {})
+    monkeypatch.setattr(rg_full.ct2_d2, 'run', run)
+    return saved
+
+
+@pytest.mark.parametrize('bad', ['missing', 'B-NONE', 'wrong-arm'])
+@pytest.mark.parametrize('custom_root', [False, True])
+def test_candidate_train_requires_the_stage_b_pick(out, tiny_training, bad, custom_root):
+    import rg_full
+    (rg_paths.full_root(out) / 'weights').rename(rg_paths.full_root(out) / 'weights.aside')
+    path = out / 'stage_b/verdict.json'
+    verdict = json.loads(path.read_text())
+    if bad == 'missing':
+        path.rename(path.with_suffix('.aside'))
+    else:
+        verdict.update(outcome='B-NONE') if bad == 'B-NONE' else verdict.update(v_held='GR-4')
+        put(path, verdict)
+    with pytest.raises(AssertionError, match='verdict|B-PICK|v_held'):
+        rg_full.train('GR-8', [0], 'cpu', out, root=out / 'custom' if custom_root else None)
+    assert tiny_training == []
+
+
+def test_candidate_train_records_the_stage_b_verdict_in_every_saved_config(out, tiny_training):
+    import rg_full
+    # No candidate weights yet: training produces a new cohort, rather than resuming fake records.
+    (rg_paths.full_root(out) / 'weights').rename(rg_paths.full_root(out) / 'weights.aside')
+    rg_full.train('GR-8', [0, 1], 'cpu', out)
+    assert len(tiny_training) == 2
+    assert all(rec['rg']['stage_b_verdict_sha256'] == ms_train.head.sha_file(out / 'stage_b/verdict.json')
+               for rec in tiny_training)
+    for seed in (0, 1):
+        for aspect in ASPECTS:
+            file = rb_student.weights_path(rg_paths.full_root(out), 'GR-8', aspect, seed).with_suffix('.json')
+            assert json.loads(file.read_text())['config']['rg']['stage_b_verdict_sha256'] == ms_train.head.sha_file(out / 'stage_b/verdict.json')
+    # Resuming must accept the same recorded config and skip the already verified cohorts.
+    assert rg_full.train('GR-8', [0, 1], 'cpu', out) == {}
+    assert len(tiny_training) == 2
+
+
+def test_vc1_training_does_not_require_a_stage_b_pick(tmp_path, tiny_training):
+    import rg_full
+    rg_full.train('R6-5', [0], 'cpu', tmp_path, root=tmp_path / 'vc1_run')
+    assert len(tiny_training) == 1
+    assert 'stage_b_verdict_sha256' not in tiny_training[0]['rg']
+
+
+def test_smoke_training_does_not_require_a_stage_b_pick(tmp_path, tiny_training, monkeypatch):
+    import rg_full
+    monkeypatch.setattr(rb_student, 'SMOKE_ROOT', tmp_path)
+    rg_full.train('GR-8', [0], 'cpu', tmp_path, smoke=True)
+    assert len(tiny_training) == 1
+
+
+@pytest.mark.parametrize('bad', ['missing', 'stale'])
+def test_guard_refuses_weights_without_the_current_b_verdict(out, bad):
+    import rg_full
+    path = rb_student.weights_path(rg_paths.full_root(out), 'GR-8', 'genre', 4).with_suffix('.json')
+    record = json.loads(path.read_text())
+    if bad == 'missing':
+        del record['config']['rg']['stage_b_verdict_sha256']
+    else:
+        record['config']['rg']['stage_b_verdict_sha256'] = 'old-verdict'
+    put(path, record)
+    with pytest.raises(AssertionError, match='B verdict'):
+        rg_full.require_guard(out, 'GR-8', ancestor=yes)
+
+
+@pytest.mark.parametrize('failed_seed', [0, 1])
+def test_train_cli_exits_nonzero_with_the_vc4_cause_when_any_seed_fails(out, tiny_training, monkeypatch, capsys, failed_seed):
+    import rg_full
+    (rg_paths.full_root(out) / 'weights').rename(rg_paths.full_root(out) / 'weights.aside')
+    def run(*args, **kwargs):
+        if args[7] == failed_seed:
+            raise rg_full.NonFiniteLoss('genre')
+        return dict(status='ok')
+    monkeypatch.setattr(rg_full.ct2_d2, 'run', run)
+    with pytest.raises(SystemExit) as error:
+        rg_full.main(['train', '--arm', 'GR-8', '--seeds', '0', '1', '--device', 'cpu', '--outputs', str(out)])
+    assert error.value.code == 1
+    text = capsys.readouterr().out
+    assert f'GR-8 s{failed_seed}' in text and 'non-finite loss in the genre head' in text and 'VC4' in text
+    record = json.loads(rg_full.failed_path(rg_paths.full_root(out), 'GR-8', failed_seed).read_text())
+    assert record['status'] == 'failed' and record['failure_kind'] == 'nonfinite_loss'

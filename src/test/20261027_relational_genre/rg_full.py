@@ -111,7 +111,8 @@ def require_guard(out, arm, *, ancestor=rule_commit_is_ancestor, seeds=V.FULL_SE
     (the `rg` and `rb` code hashes of their records equal those of the VC1 run's R6-5 weights), the code on disk now
     has those hashes too, the VC1 run's weights are the files `vc1_train.json` checked, `stage_b/verdict.json`
     is B-PICK with `v_held` == `arm` and its switches equal the arm's, and the rule commit is an ancestor of HEAD.
-    Returns the SHA-256 of the three files read."""
+    VB2 must agree with the current B verdict. Returns the gate input files' SHA-256."""
+    import rg_held  # local: the scorer must stay independent of the full-scale trainer
     out = Path(out)
     assert arm in V.ARMS and arm != V.BASE, f'{arm}: not a candidate arm of this round'
     shas = {}
@@ -122,6 +123,7 @@ def require_guard(out, arm, *, ancestor=rule_commit_is_ancestor, seeds=V.FULL_SE
         assert record.get('pass') is True, f'VC1: {path} does not pass'
         if name == 'vc1_train':
             assert record.get('identity', {}).get('smoke') is False, f'VC1: {path} is a smoke run (or has no identity)'
+        assert name != 'vc1_scorer' or rg_held.vc1_scorer_is_current(record), 'VC1: scorer was written by other code; rerun `check vc1`'
         shas[name] = rb_student.ms_train.head.sha_file(path)
     path = out / 'stage_b/verdict.json'
     verdict = _record(path)
@@ -129,6 +131,7 @@ def require_guard(out, arm, *, ancestor=rule_commit_is_ancestor, seeds=V.FULL_SE
     assert verdict.get('v_held') == arm, f'{path}: v_held is {verdict.get("v_held")!r}; G is {arm!r}'
     assert verdict.get('v_held_switches') == V.switches(arm), f'{path}: v_held_switches differ from {arm}\'s switches'
     shas['stage_b_verdict'] = rb_student.ms_train.head.sha_file(path)
+    shas['rederive_vb2'] = rg_held.require_vb2(out)
     now = dict(rg=_code_sha256(), rb=_rb_code_sha256())                  # the code on disk now, not the records' claim
     items = _record(out / 'stage_c/regression/vc1_train.json').get('items', {})
     for aspect in ASPECTS:
@@ -142,6 +145,7 @@ def require_guard(out, arm, *, ancestor=rule_commit_is_ancestor, seeds=V.FULL_SE
                 f'VC1: the {block} code on disk now is not the {block} code of the VC1 run; rerun `regress vc1` and retrain {arm}'
         for seed in seeds:
             config = _weights_record(rg_paths.full_root(out), arm, aspect, seed)['config']
+            assert config['rg'].get('stage_b_verdict_sha256') == shas['stage_b_verdict'], f'VC4: {arm} {aspect} s{seed} was trained under another B verdict'
             for block in ('rg', 'rb'):
                 assert config[block].get('code_sha256') == vc1[block]['code_sha256'], \
                     f'VC1: {arm} {aspect} s{seed} was trained by other {block} code than the VC1 run checked; rerun `regress vc1`'
@@ -172,14 +176,17 @@ def _rb_code_sha256():
     return hashlib.sha256(json.dumps(rb_student.code_hashes(), sort_keys=True).encode()).hexdigest()
 
 
-def rg_block(arm, seed, n_fit):
+def rg_block(arm, seed, n_fit, stage_b_verdict_sha256=None):
     """The config's rg part: the arm's switches and, for GQ, the anchors' positions (count, SHA-256)."""
     switches = V.switches(arm)
     anchors = None
     if switches['anchors']:
         ids = rg_loss.draw_anchors(n_fit, seed)
         anchors = dict(count=int(len(ids)), n_fit=int(n_fit), positions_sha256=rb_student.sha_array(ids.numpy()))
-    return dict(arm=arm, switches=switches, anchors=anchors, code_sha256=_code_sha256())
+    block = dict(arm=arm, switches=switches, anchors=anchors, code_sha256=_code_sha256())
+    if stage_b_verdict_sha256 is not None:
+        block['stage_b_verdict_sha256'] = stage_b_verdict_sha256
+    return block
 
 
 def _atomic_json(path, value):
@@ -214,7 +221,8 @@ def _with_blocks(make_config, rb, rg):
     return wrapped
 
 
-def train_cohort(s, inputs, graphs, manifests, images, arm, seed, device, root, *, rb, smoke=False, max_epochs=None):
+def train_cohort(s, inputs, graphs, manifests, images, arm, seed, device, root, *, rb, smoke=False, max_epochs=None,
+                 stage_b_verdict_sha256=None):
     """One three-aspect cohort of `arm` at full scale: `rb_student.train_cohort` for Qwen and R6-5, with the arm's loss.
     Returns the loop's result, or a failed record (also written to `failed_path`) when a loss is not finite."""
     recipe = rb_rows.recipe(RECIPE)
@@ -233,7 +241,7 @@ def train_cohort(s, inputs, graphs, manifests, images, arm, seed, device, root, 
         assert rb_student.sha_array(teacher) == s['data_sha256']['genre.img'], 'genre teacher differs from the CT\'s'
         fit_teacher = torch.from_numpy(np.ascontiguousarray(teacher[s['fit']]))
         del teacher
-    rg = rg_block(arm, seed, len(s['fit']))
+    rg = rg_block(arm, seed, len(s['fit']), stage_b_verdict_sha256)
     loss = head_loss_for(arm, seed, fit_teacher=fit_teacher, n_dev=len(s['dev']))
     start = time.monotonic()
     with ExitStack() as stack:
@@ -277,6 +285,13 @@ def train(arm, seeds, device, outputs, *, smoke=False, max_epochs=None, root=Non
     assert not smoke or (seeds == [0] and (max_epochs or 2) <= 2), '--smoke: seed 0 and at most 2 epochs'
     if device.type == 'cuda':
         assert os.environ.get('CUBLAS_WORKSPACE_CONFIG') == ':4096:8', 'set CUBLAS_WORKSPACE_CONFIG=:4096:8 (CT queue)'
+    stage_b_verdict_sha256 = None
+    if not smoke and arm != V.BASE:
+        verdict_path = outputs / 'stage_b/verdict.json'
+        verdict = _record(verdict_path)
+        assert verdict.get('outcome') == 'B-PICK', f'{verdict_path}: candidate training needs B-PICK'
+        assert verdict.get('v_held') == arm, f'{verdict_path}: v_held must equal {arm} before candidate training'
+        stage_b_verdict_sha256 = ms_train.head.sha_file(verdict_path)
     root = _check_root(root if root is not None else rg_paths.full_root(outputs))
     for seed in seeds:     # refuse before the data load
         assert not failed_path(root, arm, seed).exists(), \
@@ -287,7 +302,7 @@ def train(arm, seeds, device, outputs, *, smoke=False, max_epochs=None, root=Non
     rb = rb_student._rb_block(SCALE, ENCODER, RECIPE, rb_rows.recipe(RECIPE), images)
     result = {}
     for seed in seeds:
-        rg = rg_block(arm, seed, len(s['fit']))
+        rg = rg_block(arm, seed, len(s['fit']), stage_b_verdict_sha256)
         state = _cohort_state(root, arm, seed, rb, rg)
         if state == 'done':
             print(f'{arm} s{seed}: verified weights; skip', flush=True)
@@ -297,7 +312,8 @@ def train(arm, seeds, device, outputs, *, smoke=False, max_epochs=None, root=Non
         if state == 'broken':
             rb_student._move_aside(root, arm, seed, RECIPE)
         result[seed] = train_cohort(s, inputs, graphs, manifests, images, arm, seed, device, root, rb=rb,
-                                    smoke=smoke, max_epochs=max_epochs)
+                                    smoke=smoke, max_epochs=max_epochs,
+                                    stage_b_verdict_sha256=stage_b_verdict_sha256)
     return result
 
 
@@ -496,7 +512,13 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.command == 'train':
         seeds = [0] if args.smoke else args.seeds
-        return train(args.arm, seeds, args.device, args.outputs, smoke=args.smoke, max_epochs=args.max_epochs)
+        result = train(args.arm, seeds, args.device, args.outputs, smoke=args.smoke, max_epochs=args.max_epochs)
+        failures = {seed: rec for seed, rec in result.items() if rec.get('status') == 'failed'}
+        for seed, rec in failures.items():
+            print(f'{args.arm} s{seed}: {rec["cause"]} (VC4: no stage C outcome)', flush=True)
+        if failures:
+            raise SystemExit(1)
+        return result
     if args.command == 'held':
         seeds = [0] if args.smoke else args.seeds
         return held(args.arm, seeds, args.outputs, args.device, smoke=args.smoke)

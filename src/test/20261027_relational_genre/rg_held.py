@@ -193,6 +193,12 @@ def load_held_output(path, arm, seed, list_sha256, n_rows=rg_paths.N_HELD, width
     return x
 
 
+def held_output_source(path):
+    """Provenance of a checked held output, including its VC3 attempts (frozen smoke fixtures predate VC3)."""
+    info = _record(Path(path).with_suffix('.json'))
+    return dict(path=str(path), output_sha256=sha_file(path), vc3_attempts=info.get('vc3_attempts', 1))
+
+
 def read_frozen_partitions(path, n_rows=rg_paths.N_HELD, source_file=None, n_sets=3):
     """A frozen r20 partition file (key `labels`, int [3, n]) with its sidecar: the file's SHA-256, H's hash, the row
     count, and, when `source_file` is given, the SHA-256 of the output file the partitions came from. `n_sets` is 3
@@ -225,9 +231,26 @@ def _record(path):
     return json.loads(path.read_text())
 
 
+def require_vb2(out, smoke=False):
+    """VB2 stops stage C unless its complete agreement covers the current B verdict bytes and mode."""
+    out = Path(out)
+    path = out / 'stage_b/rederive_vb2.json'
+    assert path.is_file(), f'VB2: {path} missing'
+    record = json.loads(path.read_text())
+    assert record.get('agree') is True, f'VB2: {path} does not agree'
+    assert record.get('complete') is True, f'VB2: {path} is incomplete'
+    assert record.get('smoke') is smoke, f'VB2: {path} smoke mode differs'
+    verdict = out / 'stage_b/verdict.json'
+    assert _record(verdict).get('smoke') is smoke, f'VB2: {verdict} smoke mode differs'
+    compared = [sha for name, sha in record.get('input_hashes', {}).items()
+                if Path(name).resolve() == verdict.resolve()]
+    assert compared and all(sha == sha_file(verdict) for sha in compared), f'VB2: {path} did not check the current B verdict'
+    return sha_file(path)
+
+
 def require_gate(out, arm):
     """`score --arm G`: `stage_b/verdict.json` is B-PICK naming G as v_held with G's switches, and both VC1 files
-    pass. Returns the SHA-256 of the three files read."""
+    pass, and VB2 agrees with the current B verdict. Returns the input files' SHA-256."""
     out = Path(out)
     assert arm in rg_variants.ARMS, f'{arm}: not an arm of this round'
     verdict = _record(out / 'stage_b/verdict.json')
@@ -235,6 +258,7 @@ def require_gate(out, arm):
         f'stage_b/verdict.json: outcome {verdict.get("outcome")!r}, v_held {verdict.get("v_held")!r}; G is {arm!r}'
     assert verdict.get('v_held_switches') == rg_variants.switches(arm), 'stage_b/verdict.json: switches differ'
     shas = dict(stage_b_verdict=sha_file(out / 'stage_b/verdict.json'))
+    shas['rederive_vb2'] = require_vb2(out)
     for name in ('vc1_train', 'vc1_scorer'):
         path = out / f'stage_c/regression/{name}.json'
         assert _record(path).get('pass') is True, f'VC1: {path} does not pass'
@@ -378,7 +402,7 @@ def run_score(out, arm, workers=8, n_resamples=N_RESAMPLES, smoke=False):
     for s, file in g_files.items():
         assert file.is_file(), f'missing held output of G: {file}'
         x = load_held_output(file, arm, s, sha)                                  # VC3
-        g_sources[str(s)] = dict(path=str(file), output_sha256=sha_file(file))
+        g_sources[str(s)] = held_output_source(file)
         fixed_g[s] = {'r20': g_partitions(x, out / 'stage_c/partitions' / arm, s, sha, g_sources[str(s)]['output_sha256'])}
     r_files = r_sources()
     fixed_r = _frozen_r20('K4', 'genre', SEEDS, r_files)
@@ -505,7 +529,7 @@ def report_g(out, arm, ctx):
             file = root / f'{aspect}__s{s}.npz'
             assert file.is_file(), f'missing held output of G: {file}'
             x = load_held_output(file, arm, s, sha, aspect=aspect)                 # VC3
-            src[str(s)] = dict(path=str(file), output_sha256=sha_file(file))
+            src[str(s)] = held_output_source(file)
             g_fixed[s] = {'r20': rb_score.fixed_partitions(                       # 'K': the r20-only kind, as g_partitions
                 x, PARTITION_ARM, out / 'stage_c/partitions' / arm, aspect, s, sha, src[str(s)]['output_sha256'])['r20']}
             g_leiden[s] = {'r20': _leiden_g(x, out / f'stage_c/leiden/{arm}/{aspect}__s{s}.npz', _leiden_identity(
@@ -586,6 +610,12 @@ def run_report(out, arm, workers=8, n_resamples=N_RESAMPLES, smoke=False):
     verdict = json.loads(verdict_path.read_text())
     assert verdict['stage'] == 'C' and verdict['arm'] == arm and verdict['smoke'] == bool(smoke), \
         f'{verdict_path}: stage {verdict["stage"]!r}, arm {verdict["arm"]!r}, smoke {verdict["smoke"]!r}'
+    if not smoke:
+        vc2_path = out / 'stage_c/rederive_vc2.json'
+        assert vc2_path.is_file(), f'VC2: {vc2_path} missing'
+        vc2 = json.loads(vc2_path.read_text())
+        assert vc2.get('agree') is True, f'VC2: {vc2_path} does not agree'
+        assert vc2.get('config', {}).get('comparison_sha256') == sha_file(verdict_path), f'VC2: {vc2_path} did not check the current C verdict'
     names, sha, labels = rb_part2_report.held_labels()
     assert sha == rg_paths.HELD_SHA256 == verdict['held_sha256'] and len(names) == rg_paths.N_HELD
     for s, rec in verdict['sources']['G_outputs'].items():                     # G's genre outputs are the verdict's
@@ -602,7 +632,8 @@ def run_report(out, arm, workers=8, n_resamples=N_RESAMPLES, smoke=False):
     record = dict(schema=1, stage='C', arm=arm, held_sha256=sha, rule_commit=rg_paths.RULE_COMMIT, smoke=bool(smoke),
                   n_resamples=n_resamples,
                   verdict_summary=dict(outcome_id=verdict['outcome_id'], d_T=verdict['d_T']['d'],
-                                       d_R=verdict['d_R']['d'], G_half=verdict['G_half']),
+                                       d_R=verdict['d_R']['d'], G_half=verdict['G_half'],
+                                       G_outputs=verdict['sources']['G_outputs']),
                   G=g, K4_frozen=_k4_beside(reported_stage4, sha),
                   inputs=dict(verdict_sha256=sha_file(verdict_path), rcol=str(rcol_path),
                               reported_stage4_sha256=sha_file(rg_paths.RB_PART2 / 'reported_stage4.json')),

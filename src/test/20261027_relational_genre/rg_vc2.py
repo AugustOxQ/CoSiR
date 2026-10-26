@@ -321,10 +321,10 @@ def compare_k4(mine, report):
 
 
 def _code_record():
-    root = rg_paths.ROUND.parents[2]
+    root = rg_paths.ROUND
     def git(*args):
-        return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
-    return dict(code_commit=git('rev-parse', 'HEAD'), dirty=bool(git('status', '--porcelain')),
+        return subprocess.check_output(['git', *args], cwd=root, text=True).strip()
+    return dict(code_commit=git('rev-parse', 'HEAD'), dirty=bool(git('status', '--porcelain', '--', '*.py')),
                 files={str(p): file_sha(p) for p in
                        (Path(__file__), rg_paths.ROUND / 'rg_paths.py',
                         rg_paths.TEST / '20261025_recipe_backbones/rb_v2.py')})
