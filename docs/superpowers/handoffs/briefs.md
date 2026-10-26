@@ -1073,3 +1073,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-build-2-handoff.md
 - New chat: tab 'r10 build 2', session 3f234a27-b711-4820-8195-7bee84bb59ea
 
+[brief] CoSiR: r10 build 2 -> r10 build 3 (2026-10-26 20:54 Amsterdam)
+- Done: tickets 01, 02, 03, 07, 08 reviewed and merged (141 tests); 06 fixed after its review; 04 and 10 built; 05 built on 04 (its smoke matches 12-24's R6-5 readings).
+- State: the real checks pass: VA1 scorer 16 of 16 and VB1 15 of 15 against 12-25, VC1 scorer 25 of 25 against 12-24 (all at 0.0); VC2's K4 check agrees.
+- Next: Opus review of 10, re-review of 06, fixer for 04; then 09 (Codex), 11, the gate checks, the final review.
+- Blocked: nothing. No container restart (user, 20:01, for this build).
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-build-3-handoff.md
+- New chat: tab 'r10 build 3', session cc538fca-68fa-4dab-b0ba-32cee82209aa
+
