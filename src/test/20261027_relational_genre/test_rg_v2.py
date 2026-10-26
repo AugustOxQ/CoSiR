@@ -162,9 +162,9 @@ def standin_a(tree):
         climb_reason='tie', levels={v: 'target' for v in order}, kept_weights=order, pending_deletions=[],
         stage_b_new=['GR-2', 'GR-4'], identity=identity)
     v2.write_json(out/'stage_a/verdict.json', verdict)
-    climb_identity = dict(identity, arms=order[:3],
+    climb_identity = dict(identity, arms=order[:3], n_draws=None,
         img_sha256={v: identity['img_sha256'][v] for v in [v2.BASE]+order[:3]},
-        run_sha256={v: identity['run_sha256'][v] for v in order[:3]})
+        run_sha256={v: v2.sha(f'historical metadata {v}'.encode()) for v in order[:3]})
     v2.write_json(out/'stage_a/climb.json', dict(stage='climb', smoke=True, t_g=v2.variants.T_G,
         promising=v2.variants.T_G-.0128, ranges=v2.RANGES, p_sha256=p_sha, decisions=[dict(
             rungs_run=list(v2.variants.LADDER[:3]), newest='GR-32', next=None,

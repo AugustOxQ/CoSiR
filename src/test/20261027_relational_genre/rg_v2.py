@@ -429,6 +429,24 @@ def compare_decision(expected, actual, records, bad, prefix):
     bad.extend(differences(rungs, actual.get('rungs', '<missing>'), prefix+'/rungs'))
 
 
+
+def compare_climb_identity(inputs, labels, order, draws, actual, bad, prefix):
+    expected = identity(inputs, labels, order, draws)
+    # A climb decision uses points, not bootstrap bounds. Its historical run.json
+    # digest may predate added diagnostics (term means, for example). The labels
+    # and image arrays determine its statistics and must still match exactly.
+    expected.pop('n_draws')
+    runs = expected.pop('run_sha256')
+    check_fields(expected, actual, bad, prefix)
+    if actual.get('n_draws', '<missing>') not in (None, draws):
+        bad.append(dict(path=prefix+'/n_draws', ours=[None, draws], theirs=actual.get('n_draws')))
+    recorded = actual.get('run_sha256', {})
+    assert isinstance(recorded, dict), f'{prefix}: run hash map'
+    bad.extend(differences(sorted(runs), sorted(recorded), prefix+'/run_sha256/arms'))
+    for v, digest in recorded.items():
+        if not (isinstance(digest, str) and len(digest) == 64 and all(c in '0123456789abcdef' for c in digest)):
+            bad.append(dict(path=prefix+'/run_sha256/'+v, ours='SHA-256', theirs=digest))
+
 def compare_a(inputs, labels, ours, phase, draws, bad):
     pick_path = inputs.rb/'pick.json'
     if pick_path.exists():
@@ -446,15 +464,15 @@ def compare_a(inputs, labels, ours, phase, draws, bad):
         records = {v: dict(r, effects={a: dict(e=r[f'e_{a}']) for a in ('emotion', 'style')}
                           if r['status'] == 'ok' else None) for v, r in ours['rungs'].items()}
         compare_decision(ours, actual_decisions[-1], records, bad, 'climb/last')
-        check_fields(identity(inputs, labels, ours['rungs_run'], draws),
-                     actual_decisions[-1].get('identity', {}), bad, 'climb/last/identity')
+        compare_climb_identity(inputs, labels, ours['rungs_run'], draws,
+                               actual_decisions[-1].get('identity', {}), bad, 'climb/last/identity')
     else:
         if len(ours['decisions']) != len(actual_decisions):
             bad.extend(differences(len(ours['decisions']), len(actual_decisions), 'climb/decision_count'))
         for i, (d, saved) in enumerate(zip(ours['decisions'], actual_decisions)):
             compare_decision(d, saved, ours['results'], bad, f'climb/decisions/{i}')
-            check_fields(identity(inputs, labels, d['rungs_run'], draws),
-                         saved.get('identity', {}), bad, f'climb/decisions/{i}/identity')
+            compare_climb_identity(inputs, labels, d['rungs_run'], draws,
+                                   saved.get('identity', {}), bad, f'climb/decisions/{i}/identity')
         path = inputs.outputs/'stage_a/verdict.json'
         theirs = inputs.json(path, ('results', 'identity'))
         expected = {k: v for k, v in ours.items() if k != 'decisions'}
