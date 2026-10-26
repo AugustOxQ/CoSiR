@@ -1,0 +1,638 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1600" viewBox="0 0 1600 1600"><defs><marker id="ah" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#222222"/></marker></defs><rect width="1600" height="1600" fill="#FFFFFF"/><text x="800" y="36" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:22px;font-weight:bold;">The condition-free model in detail: views, residual graphs, network, losses, test</text>
+<text x="800" y="62" text-anchor="middle" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:14px;font-weight:normal;">Formulas as in the code on 2026-10-26 (claim-test graphs, model-sheet trainer, current recipe: no own-caption terms, teacher weight 0.25). All embeddings and outputs are unit vectors; τ = 0.05.</text>
+<rect x="420" y="78" width="26" height="14" rx="3" fill="#FDE7CF" stroke="#E07B20" stroke-width="1.6"/>
+<text x="454" y="89" text-anchor="start" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">trained module</text>
+<rect x="564" y="78" width="26" height="14" rx="3" fill="#EEE8F6" stroke="#7B5EA7" stroke-width="1.6"/>
+<text x="598" y="89" text-anchor="start" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">frozen encoder</text>
+<rect x="708" y="78" width="26" height="14" rx="3" fill="#F3F3F3" stroke="#7A7A7A" stroke-width="1.6"/>
+<text x="742" y="89" text-anchor="start" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">data, embeddings</text>
+<rect x="862" y="78" width="26" height="14" rx="3" fill="#DCEBF7" stroke="#3A78B5" stroke-width="1.6"/>
+<text x="896" y="89" text-anchor="start" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">fixed operation</text>
+<rect x="1006" y="78" width="26" height="14" rx="3" fill="#E3F2E1" stroke="#3C8C3C" stroke-width="1.6"/>
+<text x="1040" y="89" text-anchor="start" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">loss</text>
+<rect x="1090" y="78" width="26" height="14" rx="3" fill="#FFFFFF" stroke="#9A9A9A" stroke-width="1.6" stroke-dasharray="7,5"/>
+<text x="1124" y="89" text-anchor="start" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">note</text>
+<rect x="30" y="102" width="1540" height="300" rx="12" fill="#FAFAFA" stroke="#CCCCCC" stroke-width="1.2"/>
+<text x="44" y="126" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:17px;font-weight:bold;">1  Views: six Qwen embeddings per painting p, from one frozen embedder</text>
+<rect x="50" y="150" width="120" height="80" rx="6" fill="#FFFFFF" stroke="#7A7A7A" stroke-width="1.6"/>
+<rect x="53" y="153" width="114" height="74" rx="4" fill="#E8EEF3"/>
+<line x1="58" y1="199.6" x2="162" y2="199.6" stroke="#8AA0B0" stroke-width="1.5"/>
+<circle cx="136.39999999999998" cy="176.4" r="8.0" fill="#F0C060"/>
+<text x="110.0" y="222" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:13px;font-weight:bold;">painting p</text>
+<text x="50" y="258" text-anchor="start" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;font-style:italic;">its captions (example text)</text>
+<rect x="50" y="266" width="150" height="26" rx="8" fill="#F3F3F3" stroke="#7A7A7A" stroke-width="1.6"/>
+<text x="125.0" y="282.85" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">“a calm lake at dusk”</text>
+<rect x="50" y="298" width="150" height="26" rx="8" fill="#F3F3F3" stroke="#7A7A7A" stroke-width="1.6"/>
+<text x="125.0" y="314.85" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">“lonely and quiet”</text>
+<rect x="50" y="330" width="150" height="26" rx="8" fill="#F3F3F3" stroke="#7A7A7A" stroke-width="1.6"/>
+<text x="125.0" y="346.85" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">“soft evening light”</text>
+<rect x="215" y="150" width="185" height="56" rx="8" fill="#EEE8F6" stroke="#7B5EA7" stroke-width="1.6"/>
+<text x="307.5" y="174.25" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12.5px;font-weight:bold;">Qwen3-VL-Embedding-2B</text>
+<text x="307.5" y="190.5" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12.5px;font-weight:normal;">frozen; one pass per view</text>
+<polyline points="170,178 213,178" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<polyline points="200,310 207,310 207,192 213,192" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="420" y="150" width="420" height="100" rx="8" fill="#DCEBF7" stroke="#3A78B5" stroke-width="1.6"/>
+<text x="630.0" y="176.375" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:10.5px;font-weight:bold;">the system prompt makes the view</text>
+<text x="630.0" y="190.025" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:10.5px;font-weight:normal;">default: “Represent the user’s input”</text>
+<text x="630.0" y="203.675" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:10.5px;font-weight:normal;">emotion: “Represent the emotion of this artwork, or of this description</text>
+<text x="630.0" y="217.325" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:10.5px;font-weight:normal;">of an artwork. Focus only on the emotion.”</text>
+<text x="630.0" y="230.975" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:10.5px;font-weight:normal;">style, genre: “Describe the &lt;aspect&gt; of this artwork in one word”</text>
+<polyline points="418,178 402,178" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<polyline points="840,200 868,200" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<text x="854" y="186" text-anchor="middle" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;font-style:italic;">six views</text>
+<text x="880" y="142" text-anchor="start" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;font-style:italic;">default view: the network’s input</text>
+<rect x="880.0" y="150" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="885.5" y="150" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="891.0" y="150" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="896.5" y="150" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="902.0" y="150" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="907.5" y="150" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="913.0" y="150" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="918.5" y="150" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="924.0" y="150" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="929.5" y="150" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="935.0" y="150" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="940.5" y="150" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="879" y="149" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="954" y="159.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="955" y="160" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">x<tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan> = Qwen(image<tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan>)</text>
+<rect x="880.0" y="172" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="885.5" y="172" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="891.0" y="172" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="896.5" y="172" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="902.0" y="172" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="907.5" y="172" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="913.0" y="172" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="918.5" y="172" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="924.0" y="172" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="929.5" y="172" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="935.0" y="172" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="940.5" y="172" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="879" y="171" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="954" y="181.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="955" y="182" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">c<tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan> = norm( mean<tspan dy="4" style="font-size:8.64px">k</tspan><tspan dy="-4"> </tspan> Qwen(caption<tspan dy="4" style="font-size:8.64px">p,k</tspan><tspan dy="-4"> </tspan>) ):  the painting mean</text>
+<text x="880" y="213" text-anchor="start" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;font-style:italic;">instructed images: the teacher targets; the style and genre graphs</text>
+<rect x="880.0" y="221" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="885.5" y="221" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="891.0" y="221" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="896.5" y="221" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="902.0" y="221" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="907.5" y="221" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="913.0" y="221" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="918.5" y="221" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="924.0" y="221" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="929.5" y="221" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="935.0" y="221" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="940.5" y="221" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="879" y="220" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="954" y="230.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="955" y="231" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">t<tspan dy="-5" style="font-size:8.64px">emo</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan> = Qwen<tspan dy="4" style="font-size:8.64px">emo</tspan><tspan dy="-4"> </tspan>(image<tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan>)</text>
+<rect x="880.0" y="243" width="4.5" height="11" fill="#74b382"/>
+<rect x="885.5" y="243" width="4.5" height="11" fill="#74b382"/>
+<rect x="891.0" y="243" width="4.5" height="11" fill="#74b382"/>
+<rect x="896.5" y="243" width="4.5" height="11" fill="#74b382"/>
+<rect x="902.0" y="243" width="4.5" height="11" fill="#74b382"/>
+<rect x="907.5" y="243" width="4.5" height="11" fill="#74b382"/>
+<rect x="913.0" y="243" width="4.5" height="11" fill="#74b382"/>
+<rect x="918.5" y="243" width="4.5" height="11" fill="#74b382"/>
+<rect x="924.0" y="243" width="4.5" height="11" fill="#74b382"/>
+<rect x="929.5" y="243" width="4.5" height="11" fill="#74b382"/>
+<rect x="935.0" y="243" width="4.5" height="11" fill="#74b382"/>
+<rect x="940.5" y="243" width="4.5" height="11" fill="#74b382"/>
+<rect x="879" y="242" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="954" y="252.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="955" y="253" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">t<tspan dy="-5" style="font-size:8.64px">sty</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan> = Qwen<tspan dy="4" style="font-size:8.64px">sty</tspan><tspan dy="-4"> </tspan>(image<tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan>)</text>
+<rect x="880.0" y="265" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="885.5" y="265" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="891.0" y="265" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="896.5" y="265" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="902.0" y="265" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="907.5" y="265" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="913.0" y="265" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="918.5" y="265" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="924.0" y="265" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="929.5" y="265" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="935.0" y="265" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="940.5" y="265" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="879" y="264" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="954" y="274.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="955" y="275" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">t<tspan dy="-5" style="font-size:8.64px">gen</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan> = Qwen<tspan dy="4" style="font-size:8.64px">gen</tspan><tspan dy="-4"> </tspan>(image<tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan>)</text>
+<text x="880" y="300" text-anchor="start" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;font-style:italic;">instructed captions: the emotion graph</text>
+<rect x="880.0" y="308" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="885.5" y="308" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="891.0" y="308" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="896.5" y="308" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="902.0" y="308" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="907.5" y="308" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="913.0" y="308" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="918.5" y="308" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="924.0" y="308" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="929.5" y="308" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="935.0" y="308" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="940.5" y="308" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="879" y="307" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="954" y="317.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="955" y="318" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">e<tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan> = norm( mean<tspan dy="4" style="font-size:8.64px">k</tspan><tspan dy="-4"> </tspan> Qwen<tspan dy="4" style="font-size:8.64px">emo</tspan><tspan dy="-4"> </tspan>(caption<tspan dy="4" style="font-size:8.64px">p,k</tspan><tspan dy="-4"> </tspan>) )</text>
+<rect x="215" y="262" width="625" height="128" rx="8" fill="#FFFFFF" stroke="#9A9A9A" stroke-width="1.6" stroke-dasharray="7,5"/>
+<text x="527.5" y="286.95000000000005" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">why the mean, why the instruction</text>
+<text x="527.5" y="301.25000000000006" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">a painting has several captions by different viewers; their mean embedding is one caption</text>
+<text x="527.5" y="315.55000000000007" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">vector per painting, so images and captions pair one to one. An instruction changes which</text>
+<text x="527.5" y="329.85" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">paintings Qwen places near each other: on 5,000 development paintings the emotion instruction</text>
+<text x="527.5" y="344.15000000000003" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">raised emotion AMI from 0.0696 to 0.0929 (image side), the style instruction raised style AMI</text>
+<text x="527.5" y="358.45000000000005" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">from 0.2217 to 0.3952, and each lowered most other-aspect AMIs (stage report, step 2).</text>
+<text x="527.5" y="372.75000000000006" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">Qwen never trains; the model learns these geometries from the default view alone.</text>
+<rect x="30" y="422" width="1540" height="340" rx="12" fill="#FAFAFA" stroke="#CCCCCC" stroke-width="1.2"/>
+<text x="44" y="446" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:17px;font-weight:bold;">2  Buddy graphs: one per aspect, built on the training paintings only, no labels</text>
+<text x="50" y="472.0" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">scaled similarity in a space V:   sim<tspan dy="4" style="font-size:8.64px">V</tspan><tspan dy="-4"> </tspan>(i, j) = cos(v<tspan dy="4" style="font-size:8.64px">i</tspan><tspan dy="-4"> </tspan>, v<tspan dy="4" style="font-size:8.64px">j</tspan><tspan dy="-4"> </tspan>) / sd<tspan dy="4" style="font-size:8.64px">V</tspan><tspan dy="-4"> </tspan>,     sd<tspan dy="4" style="font-size:8.64px">V</tspan><tspan dy="-4"> </tspan> = std of cos over 200,000 random pairs (seed 0)</text>
+<text x="50" y="490.6" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">content(i, j) = ½ [ sim<tspan dy="4" style="font-size:8.64px">D</tspan><tspan dy="-4"> </tspan>(i, j) + sim<tspan dy="4" style="font-size:8.64px">I</tspan><tspan dy="-4"> </tspan>(i, j) ]                D: the default caption means c,  I: the default images x</text>
+<text x="50" y="509.2" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">emotion score(i, j) = sim<tspan dy="4" style="font-size:8.64px">E</tspan><tspan dy="-4"> </tspan>(i, j) − λ<tspan dy="4" style="font-size:8.64px">i</tspan><tspan dy="-4"> </tspan> · content(i, j)          E: the emotion caption means e</text>
+<text x="50" y="527.8" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">style score(i, j) = sim<tspan dy="4" style="font-size:8.64px">S</tspan><tspan dy="-4"> </tspan>(i, j) − 0.5 · content(i, j)            S: the style-instructed images t<tspan dy="-5" style="font-size:8.64px">sty</tspan><tspan dy="5"> </tspan></text>
+<text x="50" y="546.4" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">genre score(i, j) = cos(t<tspan dy="-5" style="font-size:8.64px">gen</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">i</tspan><tspan dy="-4"> </tspan>, t<tspan dy="-5" style="font-size:8.64px">gen</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">j</tspan><tspan dy="-4"> </tspan>)                        nothing subtracted</text>
+<text x="50" y="588.0" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">λ<tspan dy="4" style="font-size:8.64px">i</tspan><tspan dy="-4"> </tspan> = | plain emotion buddies of i ∩ content buddies of i |  /  | plain emotion buddies of i |</text>
+<text x="50" y="606.6" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">plain emotion buddies: mutual top-20 in E alone;  content buddies: mutual top-20 in D or in I;</text>
+<text x="50" y="625.2" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">a painting with no plain emotion buddy gets the mean λ.  Example at right: 2 of 4, so λ<tspan dy="4" style="font-size:8.64px">i</tspan><tspan dy="-4"> </tspan> = 0.5 and half</text>
+<text x="50" y="643.8" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">of content(i, j) is subtracted from every score of anchor i.</text>
+<rect x="740" y="472" width="450" height="84" rx="8" fill="#DCEBF7" stroke="#3A78B5" stroke-width="1.6"/>
+<text x="965.0" y="495.59999999999997" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11.5px;font-weight:bold;">from scores to a graph, per aspect</text>
+<text x="965.0" y="510.54999999999995" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11.5px;font-weight:normal;">for each anchor i, the 20 highest scores (self excluded);</text>
+<text x="965.0" y="525.5" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11.5px;font-weight:normal;">keep the pair (i, j) only if each is in the other’s 20 (mutual);</text>
+<text x="965.0" y="540.4499999999999" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11.5px;font-weight:normal;">every kept pair has weight 1</text>
+<rect x="740" y="572" width="450" height="110" rx="8" fill="#FFFFFF" stroke="#9A9A9A" stroke-width="1.6" stroke-dasharray="7,5"/>
+<text x="965.0" y="595.1" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">what the subtraction does</text>
+<text x="965.0" y="609.4" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">a content twin of i (same scene, little emotion in common) loses</text>
+<text x="965.0" y="623.7" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">score and drops out of the top-20; an emotion twin with a different</text>
+<text x="965.0" y="638.0" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">scene gains and comes in. The weight λ of i is large when its emotion</text>
+<text x="965.0" y="652.3000000000001" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">neighbours are mostly content neighbours, so the subtraction is</text>
+<text x="965.0" y="666.6" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">strongest where emotion and content coincide.</text>
+<line x1="1350" y1="547" x2="1265" y2="497" stroke="#8A8A8A" stroke-width="3.2" stroke-dasharray="5,4"/>
+<line x1="1350" y1="547" x2="1435" y2="497" stroke="#8A8A8A" stroke-width="3.2" stroke-dasharray="5,4"/>
+<line x1="1350" y1="547" x2="1350" y2="622" stroke="#8A8A8A" stroke-width="3.2" stroke-dasharray="5,4"/>
+<line x1="1350" y1="547" x2="1265" y2="497" stroke="#4a9c5b" stroke-width="1.8"/>
+<line x1="1350" y1="547" x2="1435" y2="497" stroke="#4a9c5b" stroke-width="1.8"/>
+<line x1="1350" y1="547" x2="1255" y2="587" stroke="#4a9c5b" stroke-width="1.8"/>
+<line x1="1350" y1="547" x2="1445" y2="587" stroke="#4a9c5b" stroke-width="1.8"/>
+<circle cx="1265" cy="497" r="12" fill="#FFFFFF" stroke="#333333" stroke-width="2.4"/>
+<text x="1265" y="501" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">a</text>
+<circle cx="1435" cy="497" r="12" fill="#FFFFFF" stroke="#333333" stroke-width="2.4"/>
+<text x="1435" y="501" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">b</text>
+<circle cx="1255" cy="587" r="12" fill="#FFFFFF" stroke="#7A7A7A" stroke-width="1.4"/>
+<text x="1255" y="591" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">c</text>
+<circle cx="1445" cy="587" r="12" fill="#FFFFFF" stroke="#7A7A7A" stroke-width="1.4"/>
+<text x="1445" y="591" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">d</text>
+<circle cx="1350" cy="622" r="12" fill="#FFFFFF" stroke="#7A7A7A" stroke-width="1.4"/>
+<text x="1350" y="626" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">e</text>
+<circle cx="1350" cy="547" r="14" fill="#FDE7CF" stroke="#E07B20" stroke-width="1.8"/>
+<text x="1350" y="551" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:13px;font-weight:bold;">i</text>
+<line x1="1235" y1="652" x2="1263" y2="652" stroke="#4a9c5b" stroke-width="1.8"/>
+<text x="1269" y="656" text-anchor="start" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">plain emotion buddy of i (mutual top-20 in E alone)</text>
+<line x1="1235" y1="672" x2="1263" y2="672" stroke="#8A8A8A" stroke-width="3.2" stroke-dasharray="5,4"/>
+<text x="1269" y="676" text-anchor="start" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">content buddy of i (mutual top-20 in D or in I)</text>
+<circle cx="1249" cy="692" r="7" fill="#FFFFFF" stroke="#333333" stroke-width="2.4"/>
+<text x="1269" y="696" text-anchor="start" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">both: a and b</text>
+<text x="1350" y="734" text-anchor="middle" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:14px;font-weight:bold;">λ<tspan dy="4" style="font-size:10.08px">i</tspan><tspan dy="-4"> </tspan> = 2 / 4 = 0.5</text>
+<rect x="30" y="782" width="740" height="440" rx="12" fill="#FAFAFA" stroke="#CCCCCC" stroke-width="1.2"/>
+<text x="44" y="806" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:17px;font-weight:bold;">3  The network: two sides; a first layer shared by the aspects, a second layer per aspect</text>
+<text x="50" y="832.0" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">image side:    h = GELU( W<tspan dy="4" style="font-size:8.64px">1</tspan><tspan dy="-4"> </tspan> x<tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan> ), dropout 0.1;     z<tspan dy="-5" style="font-size:8.64px">a</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">img</tspan><tspan dy="-4"> </tspan>(p) = norm( W<tspan dy="-5" style="font-size:8.64px">a</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">2</tspan><tspan dy="-4"> </tspan> h ),   a ∈ {emotion, style, genre}</text>
+<text x="50" y="850.6" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">caption side:  the same shape on c<tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan> with its own weights W′<tspan dy="4" style="font-size:8.64px">1</tspan><tspan dy="-4"> </tspan>, W′<tspan dy="-5" style="font-size:8.64px">a</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">2</tspan><tspan dy="-4"> </tspan>; the sides share nothing</text>
+<text x="50" y="869.2" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">W<tspan dy="4" style="font-size:8.64px">1</tspan><tspan dy="-4"> </tspan>: 2048 × 1024, one per side, shared by the three aspects;   W<tspan dy="-5" style="font-size:8.64px">a</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">2</tspan><tspan dy="-4"> </tspan>: 1024 × 2048, one per aspect and side</text>
+<text x="50" y="887.8" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">parameters: 8.4 M per side, 16.8 M in all; three separate two-layer MLPs per side would be 25.2 M (not chosen, step 12)</text>
+<rect x="60.0" y="930" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="65.5" y="930" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="71.0" y="930" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="76.5" y="930" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="82.0" y="930" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="87.5" y="930" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="93.0" y="930" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="98.5" y="930" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="104.0" y="930" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="109.5" y="930" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="115.0" y="930" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="120.5" y="930" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="59" y="929" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="134" y="939.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="60" y="956" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">x<tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan></text>
+<polyline points="130,935 173,935" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="175" y="912" width="150" height="46" rx="8" fill="#FDE7CF" stroke="#E07B20" stroke-width="1.6"/>
+<text x="250.0" y="931.4000000000001" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">W<tspan dy="4" style="font-size:8.64px">1</tspan><tspan dy="-4"> </tspan>, GELU</text>
+<text x="250.0" y="947.0000000000001" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">2048 → 1024</text>
+<rect x="259" y="903" width="58" height="18" rx="9" fill="#E07B20" stroke="#E07B20" stroke-width="1.6"/>
+<text x="288.0" y="916" text-anchor="middle" fill="#FFFFFF" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">trained</text>
+<rect x="360" y="900" width="110" height="28" rx="8" fill="#FDE7CF" stroke="#E07B20" stroke-width="1.6"/>
+<text x="415.0" y="918.2" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">W<tspan dy="-5" style="font-size:8.64px">emo</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">2</tspan><tspan dy="-4"> </tspan></text>
+<polyline points="325,935 358,914" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<polyline points="470,914 498,914" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="500.0" y="909" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="505.5" y="909" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="511.0" y="909" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="516.5" y="909" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="522.0" y="909" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="527.5" y="909" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="533.0" y="909" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="538.5" y="909" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="544.0" y="909" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="549.5" y="909" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="555.0" y="909" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="560.5" y="909" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="499" y="908" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="574" y="918.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="576" y="919" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">z<tspan dy="-5" style="font-size:8.64px">emo</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">img</tspan><tspan dy="-4"> </tspan>(p)</text>
+<rect x="360" y="936" width="110" height="28" rx="8" fill="#FDE7CF" stroke="#E07B20" stroke-width="1.6"/>
+<text x="415.0" y="954.2" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">W<tspan dy="-5" style="font-size:8.64px">sty</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">2</tspan><tspan dy="-4"> </tspan></text>
+<polyline points="325,935 358,950" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<polyline points="470,950 498,950" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="500.0" y="945" width="4.5" height="11" fill="#74b382"/>
+<rect x="505.5" y="945" width="4.5" height="11" fill="#74b382"/>
+<rect x="511.0" y="945" width="4.5" height="11" fill="#74b382"/>
+<rect x="516.5" y="945" width="4.5" height="11" fill="#74b382"/>
+<rect x="522.0" y="945" width="4.5" height="11" fill="#74b382"/>
+<rect x="527.5" y="945" width="4.5" height="11" fill="#74b382"/>
+<rect x="533.0" y="945" width="4.5" height="11" fill="#74b382"/>
+<rect x="538.5" y="945" width="4.5" height="11" fill="#74b382"/>
+<rect x="544.0" y="945" width="4.5" height="11" fill="#74b382"/>
+<rect x="549.5" y="945" width="4.5" height="11" fill="#74b382"/>
+<rect x="555.0" y="945" width="4.5" height="11" fill="#74b382"/>
+<rect x="560.5" y="945" width="4.5" height="11" fill="#74b382"/>
+<rect x="499" y="944" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="574" y="954.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="576" y="955" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">z<tspan dy="-5" style="font-size:8.64px">sty</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">img</tspan><tspan dy="-4"> </tspan>(p)</text>
+<rect x="360" y="972" width="110" height="28" rx="8" fill="#FDE7CF" stroke="#E07B20" stroke-width="1.6"/>
+<text x="415.0" y="990.2" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">W<tspan dy="-5" style="font-size:8.64px">gen</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">2</tspan><tspan dy="-4"> </tspan></text>
+<polyline points="325,935 358,986" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<polyline points="470,986 498,986" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="500.0" y="981" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="505.5" y="981" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="511.0" y="981" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="516.5" y="981" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="522.0" y="981" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="527.5" y="981" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="533.0" y="981" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="538.5" y="981" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="544.0" y="981" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="549.5" y="981" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="555.0" y="981" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="560.5" y="981" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="499" y="980" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="574" y="990.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="576" y="991" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">z<tspan dy="-5" style="font-size:8.64px">gen</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">img</tspan><tspan dy="-4"> </tspan>(p)</text>
+<rect x="60.0" y="1060" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="65.5" y="1060" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="71.0" y="1060" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="76.5" y="1060" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="82.0" y="1060" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="87.5" y="1060" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="93.0" y="1060" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="98.5" y="1060" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="104.0" y="1060" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="109.5" y="1060" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="115.0" y="1060" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="120.5" y="1060" width="4.5" height="11" fill="#9AA8B4"/>
+<rect x="59" y="1059" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="134" y="1069.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="60" y="1086" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">c<tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan></text>
+<polyline points="130,1065 173,1065" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="175" y="1042" width="150" height="46" rx="8" fill="#FDE7CF" stroke="#E07B20" stroke-width="1.6"/>
+<text x="250.0" y="1061.4" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">W′<tspan dy="4" style="font-size:8.64px">1</tspan><tspan dy="-4"> </tspan>, GELU</text>
+<text x="250.0" y="1077.0" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">2048 → 1024</text>
+<rect x="259" y="1033" width="58" height="18" rx="9" fill="#E07B20" stroke="#E07B20" stroke-width="1.6"/>
+<text x="288.0" y="1046" text-anchor="middle" fill="#FFFFFF" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">trained</text>
+<rect x="360" y="1030" width="110" height="28" rx="8" fill="#FDE7CF" stroke="#E07B20" stroke-width="1.6"/>
+<text x="415.0" y="1048.2" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">W′<tspan dy="-5" style="font-size:8.64px">emo</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">2</tspan><tspan dy="-4"> </tspan></text>
+<polyline points="325,1065 358,1044" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<polyline points="470,1044 498,1044" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="500.0" y="1039" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="505.5" y="1039" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="511.0" y="1039" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="516.5" y="1039" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="522.0" y="1039" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="527.5" y="1039" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="533.0" y="1039" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="538.5" y="1039" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="544.0" y="1039" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="549.5" y="1039" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="555.0" y="1039" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="560.5" y="1039" width="4.5" height="11" fill="#4a9c5b"/>
+<rect x="499" y="1038" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="574" y="1048.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="576" y="1049" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">z<tspan dy="-5" style="font-size:8.64px">emo</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">cap</tspan><tspan dy="-4"> </tspan>(p)</text>
+<rect x="360" y="1066" width="110" height="28" rx="8" fill="#FDE7CF" stroke="#E07B20" stroke-width="1.6"/>
+<text x="415.0" y="1084.2" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">W′<tspan dy="-5" style="font-size:8.64px">sty</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">2</tspan><tspan dy="-4"> </tspan></text>
+<polyline points="325,1065 358,1080" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<polyline points="470,1080 498,1080" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="500.0" y="1075" width="4.5" height="11" fill="#74b382"/>
+<rect x="505.5" y="1075" width="4.5" height="11" fill="#74b382"/>
+<rect x="511.0" y="1075" width="4.5" height="11" fill="#74b382"/>
+<rect x="516.5" y="1075" width="4.5" height="11" fill="#74b382"/>
+<rect x="522.0" y="1075" width="4.5" height="11" fill="#74b382"/>
+<rect x="527.5" y="1075" width="4.5" height="11" fill="#74b382"/>
+<rect x="533.0" y="1075" width="4.5" height="11" fill="#74b382"/>
+<rect x="538.5" y="1075" width="4.5" height="11" fill="#74b382"/>
+<rect x="544.0" y="1075" width="4.5" height="11" fill="#74b382"/>
+<rect x="549.5" y="1075" width="4.5" height="11" fill="#74b382"/>
+<rect x="555.0" y="1075" width="4.5" height="11" fill="#74b382"/>
+<rect x="560.5" y="1075" width="4.5" height="11" fill="#74b382"/>
+<rect x="499" y="1074" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="574" y="1084.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="576" y="1085" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">z<tspan dy="-5" style="font-size:8.64px">sty</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">cap</tspan><tspan dy="-4"> </tspan>(p)</text>
+<rect x="360" y="1102" width="110" height="28" rx="8" fill="#FDE7CF" stroke="#E07B20" stroke-width="1.6"/>
+<text x="415.0" y="1120.2" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">W′<tspan dy="-5" style="font-size:8.64px">gen</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">2</tspan><tspan dy="-4"> </tspan></text>
+<polyline points="325,1065 358,1116" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<polyline points="470,1116 498,1116" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="500.0" y="1111" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="505.5" y="1111" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="511.0" y="1111" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="516.5" y="1111" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="522.0" y="1111" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="527.5" y="1111" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="533.0" y="1111" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="538.5" y="1111" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="544.0" y="1111" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="549.5" y="1111" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="555.0" y="1111" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="560.5" y="1111" width="4.5" height="11" fill="#a2cdaa"/>
+<rect x="499" y="1110" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="574" y="1120.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="576" y="1121" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">z<tspan dy="-5" style="font-size:8.64px">gen</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">cap</tspan><tspan dy="-4"> </tspan>(p)</text>
+<text x="395" y="1016" text-anchor="middle" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;font-style:italic;">W₁ is updated by every aspect’s loss; each W₂ only by its own aspect’s</text>
+<rect x="50" y="1138" width="700" height="72" rx="8" fill="#FFFFFF" stroke="#9A9A9A" stroke-width="1.6" stroke-dasharray="7,5"/>
+<text x="400.0" y="1163.55" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">another image encoder as the student’s input</text>
+<text x="400.0" y="1177.85" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">x<tspan dy="4" style="font-size:7.92px">p</tspan><tspan dy="-4"> </tspan> comes from SigLIP, CLIP or DINOv2 instead of Qwen; only W<tspan dy="4" style="font-size:7.92px">1</tspan><tspan dy="-4"> </tspan> changes its input width (SigLIP 2: 1,152;</text>
+<text x="400.0" y="1192.1499999999999" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">CLIP B/32: 512; DINOv2-large: 1,024). The caption side, the graphs and the teacher targets stay Qwen’s.</text>
+<rect x="790" y="782" width="780" height="440" rx="12" fill="#FAFAFA" stroke="#CCCCCC" stroke-width="1.2"/>
+<text x="804" y="806" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:17px;font-weight:bold;">4  The losses, for one aspect a and one batch of B = 512 buddy pairs (i, j) from a’s graph</text>
+<text x="805" y="832.0" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">InfoNCE between two lists of outputs u<tspan dy="4" style="font-size:8.64px">k</tspan><tspan dy="-4"> </tspan>, v<tspan dy="4" style="font-size:8.64px">k</tspan><tspan dy="-4"> </tspan> (k = 1 … B):</text>
+<text x="805" y="850.6" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">NCE(u, v) = ½ mean<tspan dy="4" style="font-size:8.64px">k</tspan><tspan dy="-4"> </tspan> [ −log softmax<tspan dy="4" style="font-size:8.64px">l</tspan><tspan dy="-4"> </tspan>( u<tspan dy="4" style="font-size:8.64px">k</tspan><tspan dy="-4"> </tspan>·v<tspan dy="4" style="font-size:8.64px">l</tspan><tspan dy="-4"> </tspan> / τ )<tspan dy="4" style="font-size:8.64px">k</tspan><tspan dy="-4"> </tspan>  −  log softmax<tspan dy="4" style="font-size:8.64px">l</tspan><tspan dy="-4"> </tspan>( v<tspan dy="4" style="font-size:8.64px">k</tspan><tspan dy="-4"> </tspan>·u<tspan dy="4" style="font-size:8.64px">l</tspan><tspan dy="-4"> </tspan> / τ )<tspan dy="4" style="font-size:8.64px">k</tspan><tspan dy="-4"> </tspan> ]</text>
+<text x="805" y="869.2" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">the k-th pair is the positive; the other B − 1 paintings of the batch are the negatives</text>
+<rect x="1400" y="845" width="20" height="20" fill="#9ED39A" stroke="#BBBBBB" stroke-width="0.8"/>
+<rect x="1422" y="845" width="20" height="20" fill="#EDEDED" stroke="#BBBBBB" stroke-width="0.8"/>
+<rect x="1444" y="845" width="20" height="20" fill="#EDEDED" stroke="#BBBBBB" stroke-width="0.8"/>
+<rect x="1466" y="845" width="20" height="20" fill="#EDEDED" stroke="#BBBBBB" stroke-width="0.8"/>
+<text x="1394" y="859.96" text-anchor="end" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">i<tspan dy="4" style="font-size:7.92px">1</tspan><tspan dy="-4"> </tspan></text>
+<text x="1410.0" y="839" text-anchor="middle" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">j<tspan dy="4" style="font-size:7.92px">1</tspan><tspan dy="-4"> </tspan></text>
+<rect x="1400" y="867" width="20" height="20" fill="#EDEDED" stroke="#BBBBBB" stroke-width="0.8"/>
+<rect x="1422" y="867" width="20" height="20" fill="#9ED39A" stroke="#BBBBBB" stroke-width="0.8"/>
+<rect x="1444" y="867" width="20" height="20" fill="#EDEDED" stroke="#BBBBBB" stroke-width="0.8"/>
+<rect x="1466" y="867" width="20" height="20" fill="#EDEDED" stroke="#BBBBBB" stroke-width="0.8"/>
+<text x="1394" y="881.96" text-anchor="end" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">i<tspan dy="4" style="font-size:7.92px">2</tspan><tspan dy="-4"> </tspan></text>
+<text x="1432.0" y="839" text-anchor="middle" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">j<tspan dy="4" style="font-size:7.92px">2</tspan><tspan dy="-4"> </tspan></text>
+<rect x="1400" y="889" width="20" height="20" fill="#EDEDED" stroke="#BBBBBB" stroke-width="0.8"/>
+<rect x="1422" y="889" width="20" height="20" fill="#EDEDED" stroke="#BBBBBB" stroke-width="0.8"/>
+<rect x="1444" y="889" width="20" height="20" fill="#9ED39A" stroke="#BBBBBB" stroke-width="0.8"/>
+<rect x="1466" y="889" width="20" height="20" fill="#EDEDED" stroke="#BBBBBB" stroke-width="0.8"/>
+<text x="1394" y="903.96" text-anchor="end" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">i<tspan dy="4" style="font-size:7.92px">3</tspan><tspan dy="-4"> </tspan></text>
+<text x="1454.0" y="839" text-anchor="middle" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">j<tspan dy="4" style="font-size:7.92px">3</tspan><tspan dy="-4"> </tspan></text>
+<rect x="1400" y="911" width="20" height="20" fill="#EDEDED" stroke="#BBBBBB" stroke-width="0.8"/>
+<rect x="1422" y="911" width="20" height="20" fill="#EDEDED" stroke="#BBBBBB" stroke-width="0.8"/>
+<rect x="1444" y="911" width="20" height="20" fill="#EDEDED" stroke="#BBBBBB" stroke-width="0.8"/>
+<rect x="1466" y="911" width="20" height="20" fill="#9ED39A" stroke="#BBBBBB" stroke-width="0.8"/>
+<text x="1394" y="925.96" text-anchor="end" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">i<tspan dy="4" style="font-size:7.92px">4</tspan><tspan dy="-4"> </tspan></text>
+<text x="1476.0" y="839" text-anchor="middle" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">j<tspan dy="4" style="font-size:7.92px">4</tspan><tspan dy="-4"> </tspan></text>
+<text x="1444" y="950" text-anchor="middle" fill="#444444" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:10.5px;font-weight:normal;">u<tspan dy="4" style="font-size:7.56px">k</tspan><tspan dy="-4"> </tspan>·v<tspan dy="4" style="font-size:7.56px">l</tspan><tspan dy="-4"> </tspan> / τ:  the diagonal is the positive</text>
+<text x="1444" y="964" text-anchor="middle" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:10.5px;font-weight:normal;font-style:italic;">(4 of the 512 pairs drawn)</text>
+<rect x="805" y="908" width="485" height="96" rx="8" fill="#E3F2E1" stroke="#3C8C3C" stroke-width="1.6"/>
+<text x="1047.5" y="937.6" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11.5px;font-weight:bold;">buddy loss, 4/5 of the weight (both sides, cross pairs included)</text>
+<text x="1047.5" y="952.5500000000001" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11.5px;font-weight:normal;">L<tspan dy="-5" style="font-size:8.28px">a</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.28px">buddy</tspan><tspan dy="-4"> </tspan> = ¼ [ NCE(z<tspan dy="4" style="font-size:8.28px">img</tspan><tspan dy="-4"> </tspan>(i), z<tspan dy="4" style="font-size:8.28px">img</tspan><tspan dy="-4"> </tspan>(j)) + NCE(z<tspan dy="4" style="font-size:8.28px">img</tspan><tspan dy="-4"> </tspan>(i), z<tspan dy="4" style="font-size:8.28px">cap</tspan><tspan dy="-4"> </tspan>(j))</text>
+<text x="1047.5" y="967.5" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11.5px;font-weight:normal;">+ NCE(z<tspan dy="4" style="font-size:8.28px">cap</tspan><tspan dy="-4"> </tspan>(i), z<tspan dy="4" style="font-size:8.28px">img</tspan><tspan dy="-4"> </tspan>(j)) + NCE(z<tspan dy="4" style="font-size:8.28px">cap</tspan><tspan dy="-4"> </tspan>(i), z<tspan dy="4" style="font-size:8.28px">cap</tspan><tspan dy="-4"> </tspan>(j)) ]</text>
+<text x="1047.5" y="982.45" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11.5px;font-weight:normal;">a painting’s outputs move toward its buddy’s, away from the batch’s others</text>
+<rect x="805" y="1016" width="485" height="96" rx="8" fill="#E3F2E1" stroke="#3C8C3C" stroke-width="1.6"/>
+<text x="1047.5" y="1045.6000000000001" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11.5px;font-weight:bold;">teacher loss, 1/5 of the weight (image side only; direct distillation)</text>
+<text x="1047.5" y="1060.5500000000002" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11.5px;font-weight:normal;">L<tspan dy="-5" style="font-size:8.28px">a</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.28px">teach</tspan><tspan dy="-4"> </tspan> = mean<tspan dy="4" style="font-size:8.28px">n</tspan><tspan dy="-4"> </tspan> −log softmax<tspan dy="4" style="font-size:8.28px">m</tspan><tspan dy="-4"> </tspan>( z<tspan dy="-5" style="font-size:8.28px">a</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.28px">img</tspan><tspan dy="-4"> </tspan>(p<tspan dy="4" style="font-size:8.28px">n</tspan><tspan dy="-4"> </tspan>) · t<tspan dy="-5" style="font-size:8.28px">a</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.28px">p_m</tspan><tspan dy="-4"> </tspan> / τ )<tspan dy="4" style="font-size:8.28px">n</tspan><tspan dy="-4"> </tspan></text>
+<text x="1047.5" y="1075.5000000000002" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11.5px;font-weight:normal;">over the 2B paintings of the batch (both endpoints of every pair);</text>
+<text x="1047.5" y="1090.45" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11.5px;font-weight:normal;">the same painting is masked out of the negatives</text>
+<rect x="1310" y="1016" width="245" height="96" rx="8" fill="#FFFFFF" stroke="#9A9A9A" stroke-width="1.6" stroke-dasharray="7,5"/>
+<text x="1432.5" y="1033.55" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:10.5px;font-weight:bold;">stopping, per aspect</text>
+<text x="1432.5" y="1047.2" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:10.5px;font-weight:normal;">after each epoch: L<tspan dy="-5" style="font-size:7.56px">a</tspan><tspan dy="5"> </tspan> on the stopping</text>
+<text x="1432.5" y="1060.85" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:10.5px;font-weight:normal;">paintings’ pairs (6,152 paintings),</text>
+<text x="1432.5" y="1074.5" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:10.5px;font-weight:normal;">no labels; a new minimum saves the</text>
+<text x="1432.5" y="1088.1499999999999" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:10.5px;font-weight:normal;">heads and the trunk; stop after</text>
+<text x="1432.5" y="1101.8" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:10.5px;font-weight:normal;">15 epochs without one</text>
+<text x="805" y="1140.0" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">L<tspan dy="-5" style="font-size:8.64px">a</tspan><tspan dy="5"> </tspan> = L<tspan dy="-5" style="font-size:8.64px">a</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">buddy</tspan><tspan dy="-4"> </tspan> + 0.25 · L<tspan dy="-5" style="font-size:8.64px">a</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">teach</tspan><tspan dy="-4"> </tspan>;    one batch per aspect per step, the three aspects in turn</text>
+<text x="805" y="1158.6" text-anchor="start" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">own-caption terms, ½ [ NCE(z<tspan dy="4" style="font-size:8.64px">img</tspan><tspan dy="-4"> </tspan>(i), z<tspan dy="4" style="font-size:8.64px">cap</tspan><tspan dy="-4"> </tspan>(i)) + NCE(z<tspan dy="4" style="font-size:8.64px">img</tspan><tspan dy="-4"> </tspan>(j), z<tspan dy="4" style="font-size:8.64px">cap</tspan><tspan dy="-4"> </tspan>(j)) ], have weight 0 in the current recipe</text>
+<text x="1180" y="1200" text-anchor="middle" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;font-style:italic;">settings: AdamW, learning rate 1e-3, weight decay 0.05, batch 512, at most 200 epochs, patience 15</text>
+<rect x="30" y="1242" width="1540" height="330" rx="12" fill="#FAFAFA" stroke="#CCCCCC" stroke-width="1.2"/>
+<text x="44" y="1266" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:17px;font-weight:bold;">5  Test time: one default-image pass, k-means per aspect, AMI against the labels</text>
+<rect x="50" y="1300" width="120" height="80" rx="6" fill="#FFFFFF" stroke="#7A7A7A" stroke-width="1.6"/>
+<rect x="53" y="1303" width="114" height="74" rx="4" fill="#E8EEF3"/>
+<line x1="58" y1="1349.6" x2="162" y2="1349.6" stroke="#8AA0B0" stroke-width="1.5"/>
+<circle cx="136.39999999999998" cy="1326.4" r="8.0" fill="#F0C060"/>
+<text x="110.0" y="1372" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:13px;font-weight:bold;">painting p</text>
+<polyline points="170,1340 203,1340" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="205" y="1312" width="170" height="56" rx="8" fill="#EEE8F6" stroke="#7B5EA7" stroke-width="1.6"/>
+<text x="290.0" y="1336.4" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">image encoder, frozen</text>
+<text x="290.0" y="1352.0" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">Qwen; or SigLIP, CLIP</text>
+<polyline points="375,1340 408,1340" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="410.0" y="1335" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="415.5" y="1335" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="421.0" y="1335" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="426.5" y="1335" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="432.0" y="1335" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="437.5" y="1335" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="443.0" y="1335" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="448.5" y="1335" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="454.0" y="1335" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="459.5" y="1335" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="465.0" y="1335" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="470.5" y="1335" width="4.5" height="11" fill="#5B8DB8"/>
+<rect x="409" y="1334" width="67" height="13" rx="2" fill="none" stroke="#7A7A7A" stroke-width="1"/>
+<text x="484" y="1344.5" text-anchor="start" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;"></text>
+<text x="443" y="1365" text-anchor="middle" fill="#1A1A1A" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">x<tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan></text>
+<polyline points="480,1340 513,1340" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="515" y="1300" width="300" height="80" rx="8" fill="#FDE7CF" stroke="#E07B20" stroke-width="1.6"/>
+<text x="665.0" y="1328.6000000000001" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">trunk and three heads, as trained</text>
+<text x="665.0" y="1344.2" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">z<tspan dy="-5" style="font-size:8.64px">a</tspan><tspan dy="5"> </tspan>(p) = norm( W<tspan dy="-5" style="font-size:8.64px">a</tspan><tspan dy="5"> </tspan><tspan dy="4" style="font-size:8.64px">2</tspan><tspan dy="-4"> </tspan> GELU( W<tspan dy="4" style="font-size:8.64px">1</tspan><tspan dy="-4"> </tspan> x<tspan dy="4" style="font-size:8.64px">p</tspan><tspan dy="-4"> </tspan> ) )</text>
+<text x="665.0" y="1359.8000000000002" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">for a = emotion, style, genre; one trunk pass</text>
+<rect x="749" y="1291" width="58" height="18" rx="9" fill="#E07B20" stroke="#E07B20" stroke-width="1.6"/>
+<text x="778.0" y="1304" text-anchor="middle" fill="#FFFFFF" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">trained</text>
+<polyline points="815,1340 835,1340 835,1282 1225,1282" fill="none" stroke="#222222" stroke-width="1.6"/>
+<polyline points="925,1282 925,1293" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="860" y="1295" width="130" height="90" rx="6" fill="#FFFFFF" stroke="#7A7A7A" stroke-width="1.6"/>
+<circle cx="964.9" cy="1321.4" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="953.7" cy="1319.1" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="957.4" cy="1323.9" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="951.7" cy="1317.1" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="963.4" cy="1312.5" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="959.0" cy="1326.9" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="951.6" cy="1317.2" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="953.6" cy="1328.3" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="959.4" cy="1312.4" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="956.7" cy="1330.6" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="969.5" cy="1328.2" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="958.4" cy="1312.6" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="962.1" cy="1323.1" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="961.3" cy="1333.9" r="3" fill="#4a9c5b" opacity="0.85"/>
+<circle cx="952.3" cy="1322.8" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="956.1" cy="1319.4" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="944.6" cy="1316.4" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="957.6" cy="1324.2" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="946.2" cy="1328.3" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="952.3" cy="1312.6" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="956.1" cy="1320.2" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="938.5" cy="1324.3" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="947.5" cy="1318.6" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="956.0" cy="1307.2" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="939.0" cy="1318.4" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="952.9" cy="1316.9" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="941.5" cy="1314.4" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="949.6" cy="1325.3" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="912.8" cy="1307.2" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="923.3" cy="1317.9" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="917.7" cy="1324.2" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="933.3" cy="1316.8" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="922.9" cy="1323.9" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="922.1" cy="1311.5" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="925.4" cy="1314.6" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="929.0" cy="1317.2" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="924.3" cy="1323.6" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="924.9" cy="1316.3" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="916.8" cy="1331.2" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="936.1" cy="1310.9" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="916.4" cy="1324.0" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="920.6" cy="1320.4" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="947.2" cy="1359.3" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="938.6" cy="1355.5" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="939.0" cy="1360.9" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="955.5" cy="1365.2" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="937.9" cy="1364.2" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="940.8" cy="1349.1" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="938.8" cy="1364.7" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="934.3" cy="1364.4" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="937.0" cy="1358.6" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="928.9" cy="1371.5" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="943.9" cy="1364.8" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="935.6" cy="1349.2" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="950.8" cy="1354.0" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="954.8" cy="1357.4" r="3" fill="#A6A49E" opacity="0.85"/>
+<text x="925.0" y="1379" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">emotion space</text>
+<polyline points="1075,1282 1075,1293" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="1010" y="1295" width="130" height="90" rx="6" fill="#FFFFFF" stroke="#7A7A7A" stroke-width="1.6"/>
+<circle cx="1052.8" cy="1328.3" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1060.3" cy="1339.4" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1052.2" cy="1339.1" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1042.6" cy="1342.9" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1053.5" cy="1338.7" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1044.6" cy="1344.3" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1038.1" cy="1330.4" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1049.6" cy="1335.7" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1028.6" cy="1334.8" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1041.8" cy="1332.4" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1032.4" cy="1340.2" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1054.2" cy="1338.5" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1039.3" cy="1342.4" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1052.6" cy="1338.1" r="3" fill="#74b382" opacity="0.85"/>
+<circle cx="1087.9" cy="1321.1" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1081.0" cy="1309.4" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1086.1" cy="1316.1" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1092.9" cy="1306.5" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1076.9" cy="1309.3" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1067.1" cy="1315.3" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1087.7" cy="1309.9" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1095.5" cy="1319.7" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1088.6" cy="1317.1" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1091.6" cy="1306.2" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1088.5" cy="1318.3" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1066.8" cy="1316.7" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1080.6" cy="1319.5" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1078.9" cy="1314.4" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1050.7" cy="1357.6" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1053.0" cy="1362.5" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1052.0" cy="1359.8" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1057.4" cy="1366.9" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1045.9" cy="1367.1" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1059.0" cy="1374.4" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1033.2" cy="1368.7" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1051.8" cy="1362.5" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1038.4" cy="1371.0" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1036.1" cy="1366.7" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1059.4" cy="1353.0" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1044.8" cy="1354.9" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1049.8" cy="1372.7" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1066.0" cy="1351.9" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1036.3" cy="1324.4" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1055.9" cy="1322.7" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1034.7" cy="1321.9" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1041.3" cy="1318.7" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1034.8" cy="1322.4" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1044.3" cy="1319.4" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1039.5" cy="1311.9" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1037.1" cy="1327.6" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1039.8" cy="1310.9" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1053.6" cy="1323.3" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1060.7" cy="1320.4" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1037.3" cy="1310.9" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1053.5" cy="1336.2" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1034.0" cy="1315.9" r="3" fill="#A6A49E" opacity="0.85"/>
+<text x="1075.0" y="1379" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">style space</text>
+<polyline points="1225,1282 1225,1293" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="1160" y="1295" width="130" height="90" rx="6" fill="#FFFFFF" stroke="#7A7A7A" stroke-width="1.6"/>
+<circle cx="1204.6" cy="1370.4" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1205.4" cy="1367.2" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1188.2" cy="1365.1" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1197.3" cy="1375.3" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1213.6" cy="1370.1" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1205.0" cy="1368.0" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1211.6" cy="1362.0" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1201.0" cy="1363.4" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1200.1" cy="1360.4" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1203.0" cy="1359.5" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1212.5" cy="1354.1" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1213.1" cy="1360.2" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1200.6" cy="1355.6" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1204.3" cy="1362.6" r="3" fill="#a2cdaa" opacity="0.85"/>
+<circle cx="1202.5" cy="1319.3" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1201.6" cy="1334.1" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1204.5" cy="1319.1" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1209.4" cy="1321.9" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1206.2" cy="1326.5" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1197.2" cy="1310.5" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1197.6" cy="1326.2" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1197.3" cy="1325.4" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1209.7" cy="1319.3" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1212.0" cy="1332.9" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1210.6" cy="1330.0" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1210.7" cy="1336.9" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1202.5" cy="1322.7" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1206.3" cy="1317.0" r="3" fill="#C98B2E" opacity="0.85"/>
+<circle cx="1199.2" cy="1319.9" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1216.7" cy="1328.4" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1199.3" cy="1313.6" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1210.4" cy="1324.3" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1212.8" cy="1329.7" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1224.5" cy="1326.9" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1218.9" cy="1318.5" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1202.6" cy="1326.9" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1219.3" cy="1330.0" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1218.7" cy="1330.4" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1220.7" cy="1314.4" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1206.6" cy="1328.3" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1218.7" cy="1315.9" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1224.0" cy="1322.7" r="3" fill="#1D6FD1" opacity="0.85"/>
+<circle cx="1236.2" cy="1320.9" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1245.1" cy="1310.2" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1247.3" cy="1319.7" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1231.3" cy="1317.5" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1218.4" cy="1315.1" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1240.0" cy="1314.7" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1235.3" cy="1318.3" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1238.7" cy="1325.6" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1238.1" cy="1317.6" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1243.2" cy="1332.3" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1235.2" cy="1322.4" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1223.9" cy="1327.7" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1244.3" cy="1327.6" r="3" fill="#A6A49E" opacity="0.85"/>
+<circle cx="1237.8" cy="1312.6" r="3" fill="#A6A49E" opacity="0.85"/>
+<text x="1225.0" y="1379" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">genre space</text>
+<text x="1080" y="1402" text-anchor="middle" fill="#444444" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;font-style:italic;">k-means with 20 clusters per aspect, on the aspect’s outputs of the test paintings (4 clusters drawn)</text>
+<polyline points="1292,1340 1343,1340" fill="none" stroke="#222222" stroke-width="1.6" marker-end="url(#ah)"/>
+<rect x="1345" y="1300" width="210" height="80" rx="8" fill="#DCEBF7" stroke="#3A78B5" stroke-width="1.6"/>
+<text x="1450.0" y="1328.6000000000001" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:bold;">score per aspect</text>
+<text x="1450.0" y="1344.2" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">AMI( clusters<tspan dy="4" style="font-size:8.64px">a</tspan><tspan dy="-4"> </tspan> , labels<tspan dy="4" style="font-size:8.64px">a</tspan><tspan dy="-4"> </tspan> )</text>
+<text x="1450.0" y="1359.8000000000002" text-anchor="middle" fill="#222222" xml:space="preserve" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:12px;font-weight:normal;">adjusted mutual information</text>
+<rect x="50" y="1430" width="740" height="120" rx="8" fill="#FFFFFF" stroke="#9A9A9A" stroke-width="1.6" stroke-dasharray="7,5"/>
+<text x="420.0" y="1472.3999999999999" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">the labels and the sets (labels appear only here)</text>
+<text x="420.0" y="1486.6999999999998" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">emotion: the mode of the caption labels of the painting (nine ArtELingo emotions); style and genre: WikiArt’s.</text>
+<text x="420.0" y="1500.9999999999998" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">held set: 12,281 ArtELingo paintings, read with 5 model seeds; development: 29,232 fresh paintings.</text>
+<text x="420.0" y="1515.3" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">an instruction-free pass: no caption, no prompt, no PercepT topic classifier at test time.</text>
+<rect x="810" y="1430" width="745" height="120" rx="8" fill="#FFFFFF" stroke="#9A9A9A" stroke-width="1.6" stroke-dasharray="7,5"/>
+<text x="1182.5" y="1472.3999999999999" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:bold;">where it stands (held emotion AMI, 2026-10-26)</text>
+<text x="1182.5" y="1486.6999999999998" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">ours, Qwen input: 0.1029;  SigLIP 1: 0.1036;  SigLIP 2: 0.1024;  CLIP L/14: 0.0996  (passes)</text>
+<text x="1182.5" y="1500.9999999999998" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">bar: PercepT core’s own reading on the Qwen image, 0.0874; a pass needs +0.0100 with the interval above zero</text>
+<text x="1182.5" y="1515.3" text-anchor="middle" fill="#222222" style="font-family:Lato, DejaVu Sans, sans-serif;font-size:11px;font-weight:normal;">CLIP B/16 (0.0945) and B/32 (0.0885) inconclusive; DINOv2-large fails. Style and genre: development data only.</text></svg>
