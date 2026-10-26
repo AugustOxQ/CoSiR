@@ -1,7 +1,7 @@
 # Decision rule: the relational genre term's sweep on seed 0 (stage A), the pick on fresh seeds (stage B) and the held genre claim test of the selected variant (stage C)
 
 > Spec: [2026-10-26-relational-genre-design.md](../../../docs/superpowers/specs/2026-10-26-relational-genre-design.md)
-> @ (first commit) · Written 2026-10-26 19:35 (Amsterdam) before any implementation script exists; revised
+> @ 2e9529a (first commit) · Written 2026-10-26 19:35 (Amsterdam) before any implementation script exists; revised
 > 19:49 after the review · Reviewer: a fresh Opus `xhigh` worker, 2026-10-26 19:55 (pass after fixes: four
 > must-fix, eleven should-fix and ten nit findings, all applied)
 
