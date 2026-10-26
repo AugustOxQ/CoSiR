@@ -1016,6 +1016,57 @@ The current recipe gives a held emotion lead over the strongest PercepT on four 
 12,281 held paintings, five seeds, full scale unless marked; the strongest entry is PercepT core's Qwen arm, own
 reading. Sources: [claim test, stage 2](../auto/percept/2026-12-19_claim_test_stage2.md), [recipe and backbones](../auto/percept/2026-12-24_recipe_backbones.md), [encoders and genre](../auto/percept/2026-12-25_encoders_genre.md).
 
+### All methods on held data, three aspects
+
+Every method on the held paintings, three aspects, with no verdict. The PercepT core rows give, per aspect, the stronger
+of its two readings: its own top topic for emotion and style, k-means on its topic probabilities for genre (the sources
+give both readings; the Qwen row is the strongest eligible entry on emotion). The strongest core style entry over all
+arms is 0.2297, from the arm with CLIP features and Qwen topics ([step 13](#2026-10-20--the-held-emotion-claim-test-sample-scale-then-full-scale-worked)).
+The label-trained probe has no held value; its row repeats the development value from
+[the metric and the readings](#the-metric-and-the-readings).
+
+| Method | Emotion | Style | Genre |
+|---|---:|---:|---:|
+| **Frozen default image, clustered directly (no training)** | | | |
+| Qwen | 0.0708 | 0.2233 | 0.4521 |
+| SigLIP 1 | 0.0672 | 0.3632 | 0.4273 |
+| SigLIP 2 | 0.0569 | 0.3285 | 0.3764 |
+| CLIP L/14 | 0.0659 | 0.3527 | 0.4026 |
+| CLIP B/16 | 0.0631 | 0.3066 | 0.4119 |
+| CLIP B/32 | 0.0642 | 0.2978 | 0.4085 |
+| DINOv2-large | 0.0602 | 0.2354 | 0.4209 |
+| **PercepT core, its classifier on that encoder's image** | | | |
+| Qwen | 0.0874 | 0.1950 | 0.4230 |
+| SigLIP 1 | 0.0821 | 0.2293 | 0.4539 |
+| SigLIP 2 | 0.0793 | 0.2280 | 0.4558 |
+| CLIP L/14 | 0.0793 | 0.2306 | 0.4433 |
+| CLIP B/16 | 0.0749 | 0.2228 | 0.4309 |
+| CLIP B/32 | 0.0716 | 0.2161 | 0.4286 |
+| DINOv2-large (sample scale) | 0.0726 | 0.1975 | 0.4300 |
+| **Two ceilings** | | | |
+| Instructed Qwen image, one pass per aspect | 0.0921 | 0.4026 | 0.5062 |
+| Label-trained linear probe, default Qwen image (5,000 development paintings) | 0.1215 | 0.5275 | 0.6566 |
+| **Our network, read once on that encoder's default image** | | | |
+| Qwen, first shared model | 0.1008 | 0.3685 | 0.4438 |
+| Qwen, current recipe | 0.1029 | 0.3996 | 0.4534 |
+| SigLIP 1 | 0.1036 | 0.4351 | 0.4702 |
+| SigLIP 2 | 0.1024 | 0.4304 | 0.4687 |
+| CLIP L/14 | 0.0996 | 0.4133 | 0.4654 |
+| CLIP B/16 | 0.0945 | 0.3894 | 0.4575 |
+| CLIP B/32 | 0.0885 | 0.3693 | 0.4484 |
+| DINOv2-large (sample scale) | 0.0814 | 0.3342 | 0.4544 |
+
+12,281 held paintings (genre on 9,949), k-means with 20 clusters, five model seeds, full-scale training unless marked;
+the frozen rows need no training. Sources: emotion as in the table above; the Qwen frozen image and the instructed
+image from [claim test, stage 2](../auto/percept/2026-12-19_claim_test_stage2.md) ("Target and encoder" table); the
+students' style and genre, the matched arms' two readings and the other frozen images from the rounds' stage-4 held
+readings, `src/test/20261025_recipe_backbones/outputs/part2/reported_stage4.md` and its `.json` (SigLIP 2, CLIP B/32,
+the Qwen recipe; linked from [recipe and backbones](../auto/percept/2026-12-24_recipe_backbones.md)) and
+`src/test/20261025_encoders_genre/outputs/part2/reported_stage4.json` (CLIP B/16, CLIP L/14, SigLIP 1;
+`reported_stage3` for DINOv2-large; linked from [encoders and genre](../auto/percept/2026-12-25_encoders_genre.md)); the
+probe from [model sheet](../auto/percept/2026-12-16_model_sheet.md). The auto reports state the students' style and
+genre only as margins over the instructed image and the frozen input.
+
 ### The current recipe against the instructed Qwen image
 
 The current Qwen recipe led instructed Qwen on held emotion and trailed on genre; its style difference was close to zero.

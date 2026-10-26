@@ -51,6 +51,12 @@ if the user has not reacted, say them again in one line each:
   `docs-check` clean. The page is 217 KB, holds no `data:image`, and leaves only the pack's two allowed warnings
   (paragraph count, prose budget). Its facts are a subset of the report; a Sonnet `high` check (34 changes, listed
   in `.scratch/stage_pages/2026-10-26_condition_free_line.changes.md`) and the controller's read stand behind it.
+- **Added on the user's request (2026-10-26, after the first look):** a second table below "All results at a glance",
+  "All methods on three aspects": frozen image, PercepT core and our network per encoder on held data, plus the two
+  ceilings (the instructed Qwen image; the label-trained probe, development only), no verdict. The same table sits in
+  the stage report ("Where we stand", "All methods on held data, three aspects") with its sources: the held style and
+  genre values come from the rounds' stage-4 held readings, which the auto reports give only as margins. The PercepT
+  rows use the stronger of the two readings per aspect (agent default; the label says so).
 - **The site:** staged, not deployed. In `/project/cosir-devlog`, uncommitted on purpose: `site/p/<stem>.html`,
   `site/assets/<stem>/`, `updates.json`, `site/index.html`; `devlog-publish --site /project/cosir-devlog check` is
   clean. Deploy only on the user's word: `devlog-publish --site /project/cosir-devlog deploy --yes`, then commit and
