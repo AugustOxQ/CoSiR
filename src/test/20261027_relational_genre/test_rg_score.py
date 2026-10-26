@@ -198,3 +198,110 @@ def test_climb_refuses_before_gr16_and_gr32_exist_and_on_gaps():
         S.climb_decision(gap)
     with pytest.raises(AssertionError, match='GR-8'):
         S.climb_decision({k: v for k, v in ladder(0.5018, 0.505, 0.507).items() if k != 'GR-8'})
+
+
+# ------------------------------------------------------------------ file boundaries (review fixes)
+import json
+
+import numpy as np
+
+
+def write_run(tmp_path, arm='GR-16', **over):
+    """A seed-0 run.json of a new arm under tmp_path, failed unless `over` says otherwise; returns tmp_path."""
+    run = dict(variant=arm, seed=0, switches=S.V.switches(arm), status='failed', cause='x', failure_kind='nonfinite_loss',
+               p_sha256=S.rg_paths.P_SHA256)
+    run.update(over)
+    path = S.rg_paths.run_dir(tmp_path, arm, 0) / 'run.json'
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({k: v for k, v in run.items() if v is not None}))
+    return tmp_path
+
+
+def read_failed(tmp_path, **over):
+    return S.read_run(write_run(tmp_path, **over), 'GR-16', S.rg_paths.P_SHA256)
+
+
+def test_read_run_failed_kinds(tmp_path):
+    assert read_failed(tmp_path)['status'] == 'failed'                                    # a non-finite loss
+    other = tmp_path / 'b'
+    rec = read_failed(other, failure_kind='va3', rerun_of='first.json', cause='VA3 after rerun')
+    assert rec['status'] == 'failed' and rec['rerun_of'] == 'first.json'                 # a VA3 failure after its rerun
+
+
+def test_read_run_refuses_an_unknown_failure_kind(tmp_path):
+    with pytest.raises(AssertionError, match='failure_kind'):
+        read_failed(tmp_path, failure_kind='vg3', rerun_of='first.json')                 # 12-25's spelling is not this round's
+    with pytest.raises(AssertionError, match='failure_kind'):
+        read_failed(tmp_path / 'b', failure_kind=None)
+
+
+def test_read_run_refuses_a_va3_failure_that_was_not_rerun(tmp_path):
+    with pytest.raises(AssertionError, match='rerun it once first'):
+        read_failed(tmp_path, failure_kind='va3')
+
+
+def test_new_arm_must_carry_the_rg_switch_form_but_gr8_the_frozen_one(tmp_path):
+    eg_form = S.V.eg_form(S.V.ARMS['GR-16'])
+    with pytest.raises(AssertionError, match='switches'):
+        read_failed(tmp_path, switches=eg_form)                                           # 12-25's {m, lam, w} on a new arm
+    assert read_failed(tmp_path / 'b', switches=S.V.switches('GR-16'))['status'] == 'failed'
+    assert S.V.eg_form(S.V.ARMS['GR-8']) == dict(m=1, lam=8, w=0)                         # GR-8 is read in 12-25's form only
+
+
+def test_read_run_carries_rerun_of_only_when_present(tmp_path):
+    assert 'rerun_of' not in read_failed(tmp_path)
+    assert read_failed(tmp_path / 'b', failure_kind='va3', rerun_of='r.json')['rerun_of'] == 'r.json'
+
+
+def write_eq(outputs, **over):
+    eq = {'pass': True, 'smoke': False, **over}
+    path = outputs / 'regression' / 'eq.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(eq))
+
+
+def test_read_eq_checks_the_mode_and_hashes_the_file(tmp_path):
+    write_eq(tmp_path)
+    got = S.read_eq(tmp_path, smoke=False)
+    assert got['pass'] is True and len(got['sha256']) == 64
+    with pytest.raises(AssertionError, match='smoke'):
+        S.read_eq(tmp_path, smoke=True)
+    write_eq(tmp_path, smoke=True)
+    with pytest.raises(AssertionError, match='smoke'):
+        S.read_eq(tmp_path, smoke=False)
+    assert S.read_eq(tmp_path, smoke=True)['sha256'] != got['sha256']
+    write_eq(tmp_path, smoke=False, **{'pass': False})
+    assert S.read_eq(tmp_path, smoke=False)['pass'] is False and S.read_eq(tmp_path, smoke=False)['sha256'] != got['sha256']
+
+
+def fake_run_a(monkeypatch, tmp_path, eq_pass, rerun_of=None):
+    """run_a on synthetic climb.json, eq.json and scored records (no data, no training)."""
+    climb = dict(stage='climb', smoke=True, decisions=S.extend_climb_log([], entry(0.5018, 0.505, 0.504)))
+    (tmp_path / 'stage_a').mkdir(exist_ok=True)
+    (tmp_path / 'stage_a' / 'climb.json').write_text(json.dumps(climb))
+    write_eq(tmp_path, smoke=True, **{'pass': eq_pass})
+    results = full_set(GR_16=0.505, GR_32=0.504)
+    if rerun_of:
+        results['GR-32'] = dict(results['GR-32'], rerun_of=rerun_of)
+    labels = {a: np.array([0, 1, -1]) for a in S.ASPECTS}
+    monkeypatch.setattr(S.E, 'load_context', lambda: dict(p_sha='p', labels=labels))
+    monkeypatch.setattr(S, 'score_arms', lambda *a, **k: dict(base={x: 0.1 for x in S.ASPECTS}, results=results,
+                                                              identity=dict(arms=list(results))))
+    return S.run_a(tmp_path, 20, 1, smoke=True)
+
+
+def test_verdict_identity_holds_the_eq_result_and_a_changed_eq_stops_the_rewrite(monkeypatch, tmp_path):
+    first = fake_run_a(monkeypatch, tmp_path, True)
+    assert first['identity']['eq']['pass'] is True and len(first['identity']['eq']['sha256']) == 64
+    fake_run_a(monkeypatch, tmp_path, True)                                              # same eq.json: kept
+    with pytest.raises(AssertionError, match='other inputs'):
+        fake_run_a(monkeypatch, tmp_path, False)                                         # eq.json changed: stops
+
+
+def test_rerun_of_reaches_verdict_and_climb_records(monkeypatch, tmp_path):
+    v = fake_run_a(monkeypatch, tmp_path, True, rerun_of='first.json')
+    assert v['results']['GR-32']['rerun_of'] == 'first.json' and 'rerun_of' not in v['results']['GR-16']
+    recs = ladder(0.5018, 0.505, 0.507)
+    recs['GR-32'] = dict(recs['GR-32'], rerun_of='first.json')
+    e = S.climb_entry(recs)
+    assert e['rungs']['GR-32']['rerun_of'] == 'first.json' and 'rerun_of' not in e['rungs']['GR-16']

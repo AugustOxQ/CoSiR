@@ -94,7 +94,7 @@ def climb_entry(records):
         eff = r['effects']
         rungs[n] = dict(status=r['status'], cause=r['cause'], A_genre=r['A_genre'], e_genre=r['e_genre'],
                         e_emotion=eff['emotion']['e'] if eff else None, e_style=eff['style']['e'] if eff else None,
-                        guarded=r['guarded'])
+                        guarded=r['guarded'], **({'rerun_of': r['rerun_of']} if 'rerun_of' in r else {}))
     return dict(rungs_run=list(records), rungs=rungs, **d)
 
 
@@ -280,23 +280,29 @@ def read_run(outputs, arm, p_sha, declared_failed=None, smoke=False):
     which reads 12-25's stage iii folders and `eg_variants`' switches). A run.json with status 'failed' has no exports
     read. An arm in `declared_failed` (VA3 still failing after its rerun) has its exports read and must fail VA3 on at
     least one aspect; it is then a failed run with the declared cause. The switches are the arm's rg form (a new arm) or
-    12-25's {m, lam, w} form (GR-8, frozen; a new arm of that form too)."""
+    12-25's {m, lam, w} form (GR-8 only: its run is 12-25's frozen one). A failed run's `failure_kind` is 'nonfinite_loss' or
+    'va3' (this round's trainer; 12-25's spelling is 'vg3'), and a 'va3' failure must carry `rerun_of` (rule §4.1: one rerun
+    first). `rerun_of`, when present, goes into the record (VA4's report lists the reruns)."""
     declared_failed = declared_failed or {}
     folder = arm_folder(outputs, arm)
     run_path = folder / 'run.json'
     assert run_path.exists(), f'{arm}: {run_path} missing (the run has not finished)'
     run = json.loads(run_path.read_text())
     assert run['variant'] == arm and run['seed'] == SEED, (arm, run.get('variant'), run.get('seed'))
-    want = [V.eg_form(V.ARMS[arm])] if arm == 'GR-8' else [V.switches(arm), V.eg_form(V.ARMS[arm])]
-    assert run['switches'] in [w for w in want if w is not None], f'{arm}: run.json switches {run["switches"]}'
+    want = V.eg_form(V.ARMS[arm]) if arm == 'GR-8' else V.switches(arm)
+    assert run['switches'] == want, f'{arm}: run.json switches {run["switches"]}, expected {want}'
     assert run['status'] in ('ok', 'failed'), (arm, run['status'])
     assert p_sha == rg_paths.P_SHA256, 'P differs from 12-25\'s'
     assert run.get('p_sha256') == p_sha, f'{arm}: run.json p_sha256 {run.get("p_sha256")!r} is not 12-25\'s P'
     assert smoke or not run.get('smoke'), f'{arm}: a smoke run is not scored outside a smoke'
     rec = dict(status=run['status'], cause=run.get('cause'), best_epoch=run.get('best_epoch'),
-               run_sha256=_file_sha256(run_path), img=None)
+               run_sha256=_file_sha256(run_path), img=None, **({'rerun_of': run['rerun_of']} if 'rerun_of' in run else {}))
     if run['status'] == 'failed':
         assert run.get('cause'), f'{arm}: failed run without a cause'
+        # copied from `eg_score3.read_run` (spelled 'va3' here, 'vg3' there); rule §4.1: a run fails if its loss goes
+        # non-finite, or if it still fails VA3 after its (one) rerun
+        assert run.get('failure_kind') in ('nonfinite_loss', 'va3'), (arm, 'failure_kind', run.get('failure_kind'))
+        assert run['failure_kind'] != 'va3' or 'rerun_of' in run, f'{arm} s0: failed VA3 and has not been rerun; rerun it once first'
         return rec
     img, problems = {}, {}
     for a in ASPECTS:
@@ -361,7 +367,7 @@ def score_arms(outputs, arms, n_draws, workers, declared_failed=None, ctx=None, 
                                                            if 'vg3_problem' in runs[v] else {}))
         else:
             rec = condition_record(effects[v])
-        results[v] = dict(rec, best_epoch=runs[v]['best_epoch'])
+        results[v] = dict(rec, best_epoch=runs[v]['best_epoch'], **({'rerun_of': runs[v]['rerun_of']} if 'rerun_of' in runs[v] else {}))
     return dict(base=base_A, results=results, identity=identity)
 
 
@@ -417,13 +423,15 @@ def run_climb(outputs, workers, smoke=False, declared_failed=None):
     return log[-1]
 
 
-def read_eq(outputs):
-    """regression/eq.json's verdict: `pass` (bool). GQ-8 trains only after EQ ran, so the file must exist."""
+def read_eq(outputs, smoke=False):
+    """regression/eq.json's verdict: dict(pass (bool), sha256 of the file). GQ-8 trains only after EQ ran, so the file must
+    exist, and it was made in the same mode as this scoring."""
     path = Path(outputs) / 'regression' / 'eq.json'
     assert path.exists(), f'{path} missing: EQ (rule §2.1) must have run before GQ-8'
     eq = json.loads(path.read_text())
     assert isinstance(eq.get('pass'), bool), f'{path}: no boolean `pass`'
-    return eq['pass']
+    assert eq.get('smoke') == bool(smoke), f'{path}: smoke {eq.get("smoke")!r}, this scoring has smoke={bool(smoke)}'
+    return dict(**{'pass': eq['pass']}, sha256=_file_sha256(path))
 
 
 def run_a(outputs, n_draws, workers, smoke=False, declared_failed=None):
@@ -435,7 +443,7 @@ def run_a(outputs, n_draws, workers, smoke=False, declared_failed=None):
     rungs = climb_rungs(climb['decisions'])
     arms = rungs + list(V.A_OTHER)
     check_arm_dirs(outputs, [a for a in arms if a != 'GR-8'])
-    eq_pass = read_eq(outputs)
+    eq = read_eq(outputs, smoke)
     ctx = E.load_context()
     scored = score_arms(outputs, arms, n_draws, workers, declared_failed, ctx, smoke)
     results = scored['results']
@@ -443,11 +451,11 @@ def run_a(outputs, n_draws, workers, smoke=False, declared_failed=None):
         y = results[r]
         assert (x['status'], x['guarded']) == (y['status'], y['guarded']) and \
             (x['A_genre'] is None or abs(x['A_genre'] - y['A_genre']) < 1e-9), f'{r}: differs from climb.json'
-    d = decide_a(results, eq_pass, rungs)
+    d = decide_a(results, eq['pass'], rungs)
     record = dict(stage='a', **_header(ctx, n_draws, smoke), base_A=scored['base'], arms=list(results), climb_rungs=rungs,
                   climb_reason=climb['decisions'][-1]['reason'], still_rising_at_cap=climb['decisions'][-1]['still_rising'],
                   results={n: results[n] for n in V.A_TIE_ORDER if n in results}, **d, stage_b_new=list(V.B_NEW),
-                  identity=scored['identity'])
+                  identity=dict(scored['identity'], eq=eq))      # a verdict made with another eq.json is not kept
     return _write_or_skip(stage_dir(outputs) / 'verdict.json', _clean(record))
 
 
