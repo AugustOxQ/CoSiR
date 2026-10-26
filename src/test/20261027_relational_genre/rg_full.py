@@ -108,7 +108,8 @@ def _weights_record(root, arm, aspect, seed):
 def require_guard(out, arm, *, ancestor=rule_commit_is_ancestor, seeds=V.FULL_SEEDS):
     """The held guard (rule §4.3 VC1, VC4): held outputs of `arm` only when `stage_c/regression/vc1_train.json` (a full
     run, not a smoke) and `vc1_scorer.json` pass, the weights of `arm` for `seeds` were trained by the code VC1 checked
-    (the `rg` and `rb` code hashes of their records equal those of the VC1 run's R6-5 weights), `stage_b/verdict.json`
+    (the `rg` and `rb` code hashes of their records equal those of the VC1 run's R6-5 weights), the code on disk now
+    has those hashes too, the VC1 run's weights are the files `vc1_train.json` checked, `stage_b/verdict.json`
     is B-PICK with `v_held` == `arm` and its switches equal the arm's, and the rule commit is an ancestor of HEAD.
     Returns the SHA-256 of the three files read."""
     out = Path(out)
@@ -128,12 +129,21 @@ def require_guard(out, arm, *, ancestor=rule_commit_is_ancestor, seeds=V.FULL_SE
     assert verdict.get('v_held') == arm, f'{path}: v_held is {verdict.get("v_held")!r}; G is {arm!r}'
     assert verdict.get('v_held_switches') == V.switches(arm), f'{path}: v_held_switches differ from {arm}\'s switches'
     shas['stage_b_verdict'] = rb_student.ms_train.head.sha_file(path)
+    now = dict(rg=_code_sha256(), rb=_rb_code_sha256())                  # the code on disk now, not the records' claim
+    items = _record(out / 'stage_c/regression/vc1_train.json').get('items', {})
     for aspect in ASPECTS:
-        vc1 = _weights_record(out / VC1_RUN, V.BASE, aspect, 0)['config']
+        vc1_record = _weights_record(out / VC1_RUN, V.BASE, aspect, 0)
+        vc1 = vc1_record['config']
+        ours = items.get(aspect, {}).get('weights', {}).get('ours_sha256')
+        assert ours is not None and vc1_record.get('weights_sha256') == ours, \
+            f'VC1: the VC1 run\'s {aspect} weights are not the ones vc1_train.json checked; rerun `regress vc1`'
+        for block in ('rg', 'rb'):
+            assert vc1[block].get('code_sha256') == now[block], \
+                f'VC1: the {block} code on disk now is not the {block} code of the VC1 run; rerun `regress vc1` and retrain {arm}'
         for seed in seeds:
             config = _weights_record(rg_paths.full_root(out), arm, aspect, seed)['config']
             for block in ('rg', 'rb'):
-                assert config[block]['code_sha256'] == vc1[block]['code_sha256'], \
+                assert config[block].get('code_sha256') == vc1[block]['code_sha256'], \
                     f'VC1: {arm} {aspect} s{seed} was trained by other {block} code than the VC1 run checked; rerun `regress vc1`'
     assert ancestor(), f'the rule commit {rg_paths.RULE_COMMIT} is not an ancestor of HEAD'
     return shas
@@ -155,6 +165,11 @@ def code_provenance():
 def _code_sha256():
     sha = {name: ms_train.head.sha_file(rg_paths.ROUND / name) for name in CODE_FILES}
     return hashlib.sha256(json.dumps(sha, sort_keys=True).encode()).hexdigest()
+
+
+def _rb_code_sha256():
+    """The `rb` block's `code_sha256` for the code on disk now: `rb_student._rb_block`'s formula over `code_hashes()`."""
+    return hashlib.sha256(json.dumps(rb_student.code_hashes(), sort_keys=True).encode()).hexdigest()
 
 
 def rg_block(arm, seed, n_fit):

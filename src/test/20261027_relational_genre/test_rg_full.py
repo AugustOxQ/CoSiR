@@ -42,12 +42,24 @@ def put_weights(root, arm, seeds=(0,), *, rg_code='rg-code', rb_code='rb-code', 
             put(path.with_suffix('.json'), dict(weights_sha256=ms_train.head.sha_file(path), config=config))
 
 
+def vc1_train_record(tmp_path, **overrides):
+    """A passing full-run `vc1_train.json` whose per-aspect weights checksums are those of the fake VC1 run's files."""
+    run = tmp_path / 'stage_c/regression/vc1_run'
+    items = {aspect: {'pass': True, 'weights': {'pass': True, 'ours_sha256': ms_train.head.sha_file(
+        rb_student.weights_path(run, 'R6-5', aspect, 0))}} for aspect in ASPECTS}
+    return {'pass': True, 'identity': {'smoke': False}, 'items': items, **overrides}
+
+
 @pytest.fixture
-def out(tmp_path):
+def out(tmp_path, monkeypatch):
+    import rg_full
+    # the current code's hashes are fixed to the fake records' (tests of the code on disk change them again)
+    monkeypatch.setattr(rg_full, '_code_sha256', lambda: 'rg-code')
+    monkeypatch.setattr(rg_full, '_rb_code_sha256', lambda: 'rb-code')
     put(tmp_path / 'stage_b/verdict.json', dict(outcome='B-PICK', v_held='GR-8', v_held_switches=V.switches('GR-8')))
-    put(tmp_path / 'stage_c/regression/vc1_train.json', {'pass': True, 'identity': {'smoke': False}})
-    put(tmp_path / 'stage_c/regression/vc1_scorer.json', {'pass': True})
     put_weights(tmp_path / 'stage_c/regression/vc1_run', 'R6-5')
+    put(tmp_path / 'stage_c/regression/vc1_train.json', vc1_train_record(tmp_path))
+    put(tmp_path / 'stage_c/regression/vc1_scorer.json', {'pass': True})
     put_weights(rg_paths.full_root(tmp_path), 'GR-8', V.FULL_SEEDS)
     return tmp_path
 
@@ -289,6 +301,85 @@ def test_guard_refuses_when_the_vc1_run_has_no_weights_record(out):
 def test_rg_full_itself_counts_as_code_that_alters_a_weight():
     import rg_full
     assert 'rg_full.py' in rg_full.CODE_FILES
+
+
+def test_guard_refuses_a_vc1_run_weights_record_without_a_code_hash(out):
+    import rg_full
+    path = out / 'stage_c/regression/vc1_run/weights/R6-5/genre__s0.json'
+    record = json.loads(path.read_text())
+    del record['config']['rg']['code_sha256']
+    put(path, record)
+    with pytest.raises(AssertionError, match='rg code'):
+        rg_full.require_guard(out, 'GR-8', ancestor=yes)
+
+
+def test_guard_refuses_a_trained_record_without_a_code_hash(out):
+    import rg_full
+    path = rb_student.weights_path(rg_paths.full_root(out), 'GR-8', 'style', 0).with_suffix('.json')
+    record = json.loads(path.read_text())
+    del record['config']['rb']['code_sha256']
+    put(path, record)
+    with pytest.raises(AssertionError, match='rb code'):
+        rg_full.require_guard(out, 'GR-8', ancestor=yes)
+
+
+# --- the guard checks the code on disk now, and ties the VC1 run to vc1_train.json ---------------------------------
+
+def test_guard_refuses_when_the_rg_code_on_disk_changed_after_vc1(out, monkeypatch):
+    import rg_full
+    monkeypatch.setattr(rg_full, '_code_sha256', lambda: 'edited-after-vc1')
+    with pytest.raises(AssertionError, match='rg code on disk'):
+        rg_full.require_guard(out, 'GR-8', ancestor=yes)
+
+
+def test_guard_refuses_when_the_rb_code_on_disk_changed_after_vc1(out, monkeypatch):
+    import rg_full
+    monkeypatch.setattr(rg_full, '_rb_code_sha256', lambda: 'edited-after-vc1')
+    with pytest.raises(AssertionError, match='rb code on disk'):
+        rg_full.require_guard(out, 'GR-8', ancestor=yes)
+
+
+def test_guard_refuses_a_vc1_run_that_vc1_train_json_does_not_describe(out):
+    import rg_full
+    # `regress vc1` retrained vc1_run and stopped before it rewrote vc1_train.json: the old pass is still there
+    run = out / 'stage_c/regression/vc1_run'
+    put_weights(run, 'R6-5', rg_code='rg-code')
+    (run / 'weights/R6-5/style__s0').write_bytes(b'retrained')
+    path = run / 'weights/R6-5/style__s0.json'
+    record = json.loads(path.read_text())
+    record['weights_sha256'] = ms_train.head.sha_file(run / 'weights/R6-5/style__s0')
+    put(path, record)
+    with pytest.raises(AssertionError, match='vc1_train.json'):
+        rg_full.require_guard(out, 'GR-8', ancestor=yes)
+
+
+def test_guard_refuses_a_vc1_train_record_without_the_aspect_checksum(out):
+    import rg_full
+    put(out / 'stage_c/regression/vc1_train.json', vc1_train_record(out, items={}))
+    with pytest.raises(AssertionError, match='vc1_train.json'):
+        rg_full.require_guard(out, 'GR-8', ancestor=yes)
+
+
+def test_the_current_rb_code_hash_is_the_one_rb_student_writes_into_a_config():
+    import rg_full
+    rb = rb_student._rb_block('full', rg_full.ENCODER, rg_full.RECIPE, rb_rows.recipe(rg_full.RECIPE), np.zeros((2, 3)))
+    assert rg_full._rb_code_sha256() == rb['code_sha256']
+
+
+def test_an_edit_to_a_code_file_changes_the_code_hash(tmp_path, monkeypatch):
+    import shutil
+    import rg_full
+    for name in rg_full.CODE_FILES:
+        shutil.copy(rg_paths.ROUND / name, tmp_path / name)
+    monkeypatch.setattr(rg_paths, 'ROUND', tmp_path)
+    before = rg_full._code_sha256()
+    assert before == rg_full._code_sha256()
+    for name in rg_full.CODE_FILES:
+        original = (tmp_path / name).read_text()
+        (tmp_path / name).write_text(original + '# edited\n')
+        assert rg_full._code_sha256() != before, name
+        (tmp_path / name).write_text(original)
+        assert rg_full._code_sha256() == before, name
 
 
 # --- held inference: VC3, a partial run, the guard's call site --------------------------------------------------
