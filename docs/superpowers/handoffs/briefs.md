@@ -990,3 +990,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-run-21b-handoff.md
 - New chat: tab 'r10 run 21b', session 9d74d41b-a219-468a-8188-82f6ce775540
 
+[brief] CoSiR: r10 run 21b -> r10 decide 22 (2026-10-26 04:07 Amsterdam)
+- Done: report 12-25 passed its claim review (Codex: no wrong number), was fixed and committed with its user-read report and index row; three Codex jobs ran without a refusal.
+- State: CLIP L/14 (+0.0122) and SigLIP 1 (+0.0162) each pass held emotion against the 0.0100 bar; all seven students lift on development paintings; the relational term at weight 8 reaches the genre target on development data (fresh seeds 0.5022 against the recipe's 0.4694).
+- Next: step 1, your reading of 12-25's results brief; the wrap-up (direction log entry, storage summary); then steps 2 to 6.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-decide-22-handoff.md
+- New chat: tab 'r10 decide 22', session 886d1e15-2da4-47da-b696-ce06cfce6f46
+
