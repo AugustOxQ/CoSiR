@@ -21,7 +21,6 @@ else
     note "G = $g (stage B pick, v_held)"
 fi
 seeds="0 1 2 3 4"
-[[ "${RG_SMOKE:-0}" == 1 ]] && seeds="0"   # the runners force seed 0 in a smoke
 # --- VC1 -----------------------------------------------------------------------------------------------------------------
 softstep vc1_train gpu "$here/rg_full.py" regress vc1 --device "$device" --outputs "$outputs" "${smoke[@]}"
 pending_add "$c/regression/vc1_run" "VC1 regression run weights (R6-5 at full scale, switches off)" "regression run of the gate; vc1_train.json is the record"

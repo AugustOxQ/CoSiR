@@ -684,6 +684,25 @@ def test_smoke_training_does_not_require_a_stage_b_pick(tmp_path, tiny_training,
     assert len(tiny_training) == 1
 
 
+def test_smoke_trains_every_seed_given_but_at_most_two_epochs(tmp_path, tiny_training, monkeypatch):
+    # the held scorer reads all five seeds, also in a smoke
+    import rg_full
+    monkeypatch.setattr(rb_student, 'SMOKE_ROOT', tmp_path)
+    rg_full.train('GR-8', [0, 1, 2, 3, 4], 'cpu', tmp_path, smoke=True)
+    assert len(tiny_training) == 5
+    with pytest.raises(AssertionError, match='at most 2 epochs'):
+        rg_full.train('GR-8', [0], 'cpu', tmp_path, smoke=True, max_epochs=3)
+
+
+@pytest.mark.parametrize('command', ['train', 'held'])
+def test_cli_smoke_passes_the_seeds_through(tmp_path, monkeypatch, command):
+    import rg_full
+    calls = []
+    monkeypatch.setattr(rg_full, command, lambda arm, seeds, *a, **k: calls.append(seeds) or {})
+    rg_full.main([command, '--arm', 'GR-8', '--seeds', '0', '1', '2', '3', '4', '--outputs', str(tmp_path), '--smoke'])
+    assert calls == [[0, 1, 2, 3, 4]]
+
+
 @pytest.mark.parametrize('bad', ['missing', 'stale'])
 def test_guard_refuses_weights_without_the_current_b_verdict(out, bad):
     import rg_full

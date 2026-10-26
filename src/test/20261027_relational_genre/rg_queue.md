@@ -64,7 +64,7 @@ Runner flags: `--outputs`, `--smoke` and `--workers` are added as each runner ta
 | 0 | start | stage B's last `DONE` has `failed=0`; `stage_b/verdict.json` `outcome` = B-PICK; G = `v_held` | | B-NONE: note and end, exit 0 |
 | 1 | `vc1_train` | `rg_full regress vc1` | GPU | the VC1 run's weights go on the pending list |
 | 2 | `vc1_scorer` | `rg_held check vc1` | CPU | VC1 = `stage_c/regression/vc1_train.json` and `vc1_scorer.json` both `pass` true; otherwise **stop**, no held output of G |
-| 3 | `train_g` | `rg_full train --arm G --seeds 0 1 2 3 4` | GPU | failure (VC4: non-finite loss, not rerun): **stop**, no stage C outcome |
+| 3 | `train_g` | `rg_full train --arm G --seeds 0 1 2 3 4` | GPU | failure (VC4: non-finite loss, not rerun): **stop**, no stage C outcome. A smoke also trains the five seeds (2 epochs, about 70 s each), so `score_c`, `vc2` and `report_c` run in a smoke |
 | 4 | `held_g` | `rg_full held --arm G --seeds 0 1 2 3 4` | GPU | guarded; VC3's one rerun is the runner's; a second VC3 failure: **stop** |
 | 5 | `score_c` | `rg_held score --arm G` | CPU | |
 | 6 | `vc2` | `rg_vc2 --arm G` | CPU | exit 1: **stop**, no stage C outcome |

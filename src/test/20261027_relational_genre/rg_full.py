@@ -282,7 +282,7 @@ def train(arm, seeds, device, outputs, *, smoke=False, max_epochs=None, root=Non
     assert arm in V.ARMS and seeds and len(set(seeds)) == len(seeds) and all(s in SEEDS for s in seeds)
     assert arm != V.BASE or root is not None, f'{V.BASE} trains only as the VC1 regression (`regress vc1`)'
     outputs, device = rb_student._check_outputs(outputs, smoke), torch.device(device)
-    assert not smoke or (seeds == [0] and (max_epochs or 2) <= 2), '--smoke: seed 0 and at most 2 epochs'
+    assert not smoke or (max_epochs or 2) <= 2, '--smoke: at most 2 epochs'   # all five seeds, so the held scorer runs
     if device.type == 'cuda':
         assert os.environ.get('CUBLAS_WORKSPACE_CONFIG') == ':4096:8', 'set CUBLAS_WORKSPACE_CONFIG=:4096:8 (CT queue)'
     stage_b_verdict_sha256 = None
@@ -491,7 +491,7 @@ def main(argv=None):
 
     def common(p):
         p.add_argument('--outputs', type=Path, default=rg_paths.OUTPUTS)
-        p.add_argument('--smoke', action='store_true', help='outputs under /tmp/claude-0; seed 0; at most 2 epochs')
+        p.add_argument('--smoke', action='store_true', help='outputs under /tmp/claude-0; at most 2 epochs')
 
     candidates = [arm for arm in V.ARMS if arm != V.BASE]
     p = commands.add_parser('train', help='train an arm at full scale')
@@ -511,8 +511,7 @@ def main(argv=None):
     common(p)
     args = parser.parse_args(argv)
     if args.command == 'train':
-        seeds = [0] if args.smoke else args.seeds
-        result = train(args.arm, seeds, args.device, args.outputs, smoke=args.smoke, max_epochs=args.max_epochs)
+        result = train(args.arm, args.seeds, args.device, args.outputs, smoke=args.smoke, max_epochs=args.max_epochs)
         failures = {seed: rec for seed, rec in result.items() if rec.get('status') == 'failed'}
         for seed, rec in failures.items():
             print(f'{args.arm} s{seed}: {rec["cause"]} (VC4: no stage C outcome)', flush=True)
@@ -520,8 +519,7 @@ def main(argv=None):
             raise SystemExit(1)
         return result
     if args.command == 'held':
-        seeds = [0] if args.smoke else args.seeds
-        return held(args.arm, seeds, args.outputs, args.device, smoke=args.smoke)
+        return held(args.arm, args.seeds, args.outputs, args.device, smoke=args.smoke)
     return regress_vc1(args.device, args.outputs, smoke=args.smoke)
 
 
