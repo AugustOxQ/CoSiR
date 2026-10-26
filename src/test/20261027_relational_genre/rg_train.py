@@ -171,7 +171,7 @@ def write_run(run_dir, arm, seed, status, *, genre, loss, exporter, p_sha256, sm
     if status == 'failed':
         assert cause and failure_kind in ('nonfinite_loss', 'va3')
         record.update(cause=cause, failure_kind=failure_kind)
-    for aspect, files in exporter.exports.items():
+    for files in exporter.exports.values():
         for name, arrays in files.items():
             if name.endswith('__old5000.npz'):
                 problem = eg.vg3_problem(arrays['img'], paths.N_OLD)
@@ -189,7 +189,8 @@ def train_cohort(s, inputs, graphs, manifests, recipe, variant, seed, device, ru
     assert p is None or p_sha256 == paths.P_SHA256, 'VA3 P name hash mismatch'
     run_dir, device = Path(run_dir), torch.device(device)
     max_epochs = ms_train.CONFIG['max_epochs'] if max_epochs is None else max_epochs
-    genre = rg_loss.GenreLoss(sw, seed, term_log={})
+    genre = rg_loss.GenreLoss(sw, seed, term_log={},
+                              n_dev=len(graphs['genre']['dev_node_ids']) if sw['anchors'] else None)
     n_pairs = len(graphs['genre']['rows'][recipe['base']['graphs']['genre']]['fit'][0])
     loss = TrainingLoss(genre, recipe['switches'], min(n_pairs, 5000) if smoke else n_pairs,
                         diagnostic=diagnostic)
@@ -428,14 +429,13 @@ def regress_va1(data, outputs, device, *, smoke=False):
                 aspects[aspect] = comparisons
         passed = run['status'] == 'ok' and len(aspects) == len(ASPECTS) and all(
             a['P_img_equal'] for a in aspects.values())
-        items[f'{arm}_s{seed}'] = dict(pass_=passed, aspects=aspects, run_status=run['status'],
-                                       run_cause=run.get('cause'), reference=str(ref), run_dir=str(folder))
-        items[f'{arm}_s{seed}']['pass'] = items[f'{arm}_s{seed}'].pop('pass_')
+        items[f'{arm}_s{seed}'] = dict(aspects=aspects, run_status=run['status'],
+                                      run_cause=run.get('cause'), reference=str(ref), run_dir=str(folder))
+        items[f'{arm}_s{seed}']['pass'] = passed
     commit, dirty = code_commit()
-    record = dict(pass_=all(i['pass'] for i in items.values()) and not smoke,
-                  items=items, smoke=smoke, p_sha256=paths.P_SHA256,
+    record = dict(items=items, smoke=smoke, p_sha256=paths.P_SHA256,
                   code_commit=commit, code_dirty=dirty, input_hashes=hashes)
-    record['pass'] = record.pop('pass_')
+    record['pass'] = all(i['pass'] for i in items.values()) and not smoke
     atomic_record(outputs / 'regression/va1.json', record)
     return record
 

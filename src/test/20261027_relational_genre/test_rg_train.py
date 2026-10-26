@@ -58,10 +58,12 @@ def test_cohort_routes_every_fit_and_dev_loss_through_rg_and_restores_hooks(monk
     recipe = train.resolved(0)
     graph = {'rows': {recipe['base']['graphs']['genre']: {'fit': (np.array([[0, 1]]), np.ones(1))}}}
     calls = []
-    original_loss, original_build, original_save = (train.ms_train.head_loss, train.ms_train.build_model,
-                                                     train.ms_train.save_output)
+    original_loss, original_build, original_save = (
+        train.ms_train.head_loss, train.ms_train.build_model, train.ms_train.save_output)
 
     def switched(*args, **kwargs):
+        assert kwargs['switches'] == recipe['switches']
+        assert kwargs['genre'].switches == V.switches('GN-8')
         calls.append((args[6], args[9]))
         return torch.tensor(float('nan') if len(calls) == 6 else 1., requires_grad=True)
 
@@ -83,3 +85,47 @@ def test_cohort_routes_every_fit_and_dev_loss_through_rg_and_restores_hooks(monk
     assert train.ms_train.head_loss is original_loss
     assert train.ms_train.build_model is original_build
     assert train.ms_train.save_output is original_save
+
+
+def test_cohort_gq_uses_fit_anchors_with_the_reviewed_dev_tensor_guard(monkeypatch):
+    rng = np.random.default_rng(11)
+    teacher = rng.standard_normal((4200, 6)).astype(np.float32)
+    teacher /= np.linalg.norm(teacher, axis=1, keepdims=True)
+    order = rng.permutation(len(teacher)).astype(np.int64)
+    recipe = train.resolved(0)
+    pairs, weights = np.array([[0, 1], [0, 2]], dtype=np.int64), np.ones(2, dtype=np.float32)
+    graph = dict(fit_node_ids=order[:4100], dev_node_ids=order[4100:],
+                 rows={recipe['base']['graphs']['genre']: {'fit': (pairs, weights)}})
+    observations = []
+
+    def factory(_row, aspects, _device):
+        models = nn.ModuleDict({s: nn.Sequential(nn.Linear(6, 6), nn.Dropout(0.1)) for s in ('img', 'cap')})
+        return models, {a: models for a in aspects}
+
+    def frozen_loop(*_args):
+        models, views = train.ms_train.build_model(recipe['base'], list(train.ASPECTS), torch.device('cpu'))
+        for part in ('fit', 'dev'):
+            x = torch.from_numpy(teacher[graph[f'{part}_node_ids']])
+            if part == 'fit':
+                models.train()
+                value = train.ms_train.head_loss(views['genre'], x, x, pairs, weights, recipe['base'],
+                                                 'genre', x)
+            else:
+                models.eval()
+                with torch.no_grad():
+                    value = train.ms_train.head_loss(views['genre'], x, x, pairs, weights, recipe['base'],
+                                                     'genre', x, include_mask_penalty=False)
+            observations.append(float(value.detach()))
+        # No optimizer, file exports or real training: stop after exercising the loss seam.
+        raise train.NonFiniteLoss('synthetic stop')
+
+    monkeypatch.setattr(train, 'atomic_record', lambda *_: None)
+    monkeypatch.setattr(train.ms_train, 'build_model', factory)
+    monkeypatch.setattr(train.ms_train, 'run', frozen_loop)
+    monkeypatch.setattr(train.ms_train.ags_trainimg, 'aspect_images', lambda *_: teacher)
+    record = train.train_cohort({}, {}, {'genre': graph}, {}, recipe, 'GQ-8', 0, 'cpu',
+                                Path(__file__).parent / 'unused_test_run', p=None,
+                                p_sha256='a' * 64, max_epochs=2)
+    assert len(observations) == 2 and np.isfinite(observations).all()
+    assert record['term_means'][0]['calls'] == 1
+    assert record['anchors']['count'] == 4096
