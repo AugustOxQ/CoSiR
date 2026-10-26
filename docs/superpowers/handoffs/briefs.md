@@ -1089,3 +1089,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-build-4-handoff.md
 - New chat: tab 'r10 build 4', session 988b5644-bdbe-48aa-8bb5-e40c107f0e6a
 
+[brief] CoSiR: r10 build 4 -> r10 build 5 (2026-10-26 22:26 Amsterdam)
+- Done: all 11 tickets merged (09 after one Codex fix round); final review of stages A, B, C (three Opus xhigh); stage C fixes merged.
+- State: every re-derived number matches 12-25 and 12-24 exactly; stage A review found three bugs that would stop or bypass the real run.
+- Next: fix wave for stages A and B, then the scoped re-review, a fresh smoke chain, the gate checks, merge into main, the run handoff.
+- Blocked: nothing. No container restart (user, 20:01, for this build).
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-build-5-handoff.md
+- New chat: tab 'r10 build 5', session b4527a1e-8cfa-4e8e-a2ab-28076068d8c6
+
