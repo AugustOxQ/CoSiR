@@ -688,16 +688,21 @@ def read_fresh_run(outputs, arm, seed, p_sha, declared_failed, smoke):
     assert run_path.exists(), f'{arm} s{seed}: {run_path} missing (the run has not finished)'
     run = json.loads(run_path.read_text())
     assert run['variant'] == arm and run['seed'] == seed, (arm, seed, run.get('variant'), run.get('seed'))
-    want = [V.eg_form(V.ARMS[arm])] if arm in FROZEN_ARMS else [V.switches(arm), V.eg_form(V.ARMS[arm])]
-    assert run['switches'] in [w for w in want if w is not None], f'{arm} s{seed}: run.json switches {run["switches"]}'
+    want = V.eg_form(V.ARMS[arm]) if arm in FROZEN_ARMS else V.switches(arm)    # as ticket 03's `read_run`
+    assert run['switches'] == want, f'{arm} s{seed}: run.json switches {run["switches"]}, expected {want}'
     assert run['status'] in ('ok', 'failed'), (arm, seed, run['status'])
     assert p_sha == rg_paths.P_SHA256, 'P differs from 12-25\'s'
     assert run.get('p_sha256') == p_sha, f'{arm} s{seed}: run.json p_sha256 {run.get("p_sha256")!r} is not 12-25\'s P'
     assert smoke or not run.get('smoke'), f'{arm} s{seed}: a smoke run is not scored outside a smoke'
     rec = dict(status=run['status'], cause=run.get('cause'), best_epoch=run.get('best_epoch'),
-               run_sha256=_file_sha256(run_path), img=None)
+               run_sha256=_file_sha256(run_path), img=None, **({'rerun_of': run['rerun_of']} if 'rerun_of' in run else {}))
     if run['status'] == 'failed':
         assert run.get('cause'), f'{arm} s{seed}: failed run without a cause'
+        # as ticket 03's `read_run`: rule §4.2, a run fails if its loss goes non-finite, or if it still fails VB3 after its
+        # (one) rerun; this round's trainer spells the second kind 'va3'
+        assert run.get('failure_kind') in ('nonfinite_loss', 'va3'), (arm, seed, 'failure_kind', run.get('failure_kind'))
+        assert run['failure_kind'] != 'va3' or 'rerun_of' in run, \
+            f'{arm} s{seed}: failed VB3 and has not been rerun; rerun it once first'
         return rec
     img, problems = {}, {}
     for a in ASPECTS:
@@ -758,7 +763,9 @@ def score_fresh_arms(outputs, arms, n_draws, workers, declared_failed, ctx, smok
     records = {n: b_record(effects[n], n) if n in ok else failed_b_record(status[n][1]) for n in arms}
     return dict(records=records, identity=identity, runs={n: {str(s): dict(status=r['status'], cause=r['cause'],
                                                                            best_epoch=r['best_epoch'],
-                                                                           run_sha256=r['run_sha256'])
+                                                                           run_sha256=r['run_sha256'],
+                                                                           **({'rerun_of': r['rerun_of']}
+                                                                              if 'rerun_of' in r else {}))
                                                               for s, r in runs[n].items()} for n in runs})
 
 

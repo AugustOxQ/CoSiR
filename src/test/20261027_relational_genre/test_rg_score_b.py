@@ -205,12 +205,16 @@ def test_vb1_effects_agree_within_1e_6_and_report_each_item():
 
 
 # ---------------------------------------------------------------- reading a fresh-seed run (failed runs, VB3)
-def make_run(root, arm, seed, status='ok', cause=None, smoke=False):
+def make_run(root, arm, seed, status='ok', cause=None, smoke=False, kind=None, rerun_of=None, switches=None):
     """A run folder under `root` as the trainer leaves it; its exports are too small to pass VB3."""
     folder = S.rg_paths.run_dir(root, arm, seed)
     folder.mkdir(parents=True)
-    run = dict(variant=arm, seed=seed, switches=S.V.switches(arm), status=status, cause=cause, best_epoch={}, smoke=smoke,
-               p_sha256=S.rg_paths.P_SHA256)
+    run = dict(variant=arm, seed=seed, switches=switches or S.V.switches(arm), status=status, cause=cause, best_epoch={},
+               smoke=smoke, p_sha256=S.rg_paths.P_SHA256)
+    if kind:
+        run['failure_kind'] = kind
+    if rerun_of:
+        run['rerun_of'] = rerun_of
     (folder / 'run.json').write_text(json.dumps(run))
     for a in S.ASPECTS:
         np.savez(folder / f'{a}__P.npz', img=np.zeros((4, 2048), np.float16))
@@ -219,7 +223,7 @@ def make_run(root, arm, seed, status='ok', cause=None, smoke=False):
 
 def test_a_failed_fresh_run_is_read_without_its_exports_and_fails_its_arm(tmp_path):
     make_run(tmp_path, 'GR-2', 1)
-    make_run(tmp_path, 'GR-2', 2, status='failed', cause='nonfinite loss')
+    make_run(tmp_path, 'GR-2', 2, status='failed', cause='nonfinite loss', kind='nonfinite_loss')
     r2 = S.read_fresh_run(tmp_path, 'GR-2', 2, S.rg_paths.P_SHA256, {}, False)
     assert (r2['status'], r2['cause'], r2['img']) == ('failed', 'nonfinite loss', None)
     assert S.arm_run_status({1: dict(status='ok', cause=None), 2: r2}) == ('failed', 'seed 2: nonfinite loss')
@@ -228,6 +232,24 @@ def test_a_failed_fresh_run_is_read_without_its_exports_and_fails_its_arm(tmp_pa
         S.read_fresh_run(tmp_path, 'GR-2', 1, S.rg_paths.P_SHA256, {}, False)
     r1 = S.read_fresh_run(tmp_path, 'GR-2', 1, S.rg_paths.P_SHA256, {'GR-2': 'VB3 after rerun'}, False)
     assert (r1['status'], r1['cause']) == ('failed', 'VB3 after rerun') and 'genre' in r1['vg3_problem']
+
+
+def test_a_failed_vb3_run_needs_its_rerun_and_the_failure_kind_and_switches_must_be_known(tmp_path):
+    p = S.rg_paths.P_SHA256
+    make_run(tmp_path, 'GR-2', 1, status='failed', cause='VA3: x', kind='va3')
+    with pytest.raises(AssertionError, match='rerun'):                       # rule §4.2: it fails after its one rerun
+        S.read_fresh_run(tmp_path, 'GR-2', 1, p, {}, False)
+    make_run(tmp_path, 'GR-2', 2, status='failed', cause='VA3: x', kind='va3', rerun_of='/x/old')
+    r = S.read_fresh_run(tmp_path, 'GR-2', 2, p, {}, False)
+    assert r['status'] == 'failed' and r['rerun_of'] == '/x/old'
+    make_run(tmp_path, 'GR-2', 3, status='failed', cause='y', kind='other')
+    with pytest.raises(AssertionError, match='failure_kind'):
+        S.read_fresh_run(tmp_path, 'GR-2', 3, p, {}, False)
+    make_run(tmp_path, 'GR-4', 1, switches=dict(m=1, lam=4, w=0))           # a new arm has this round's switches only
+    with pytest.raises(AssertionError, match='switches'):
+        S.read_fresh_run(tmp_path, 'GR-4', 1, p, {}, False)
+    with pytest.raises(AssertionError, match='VB4'):                         # a seed outside 1 to 3
+        S.read_fresh_run(tmp_path, 'GR-2', 0, p, {}, False)
 
 
 def test_a_declared_failure_needs_exports_that_fail_vb3_and_a_run_folder_must_match(tmp_path, monkeypatch):
