@@ -1081,3 +1081,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-build-3-handoff.md
 - New chat: tab 'r10 build 3', session cc538fca-68fa-4dab-b0ba-32cee82209aa
 
+[brief] CoSiR: r10 build 3 -> r10 build 4 (2026-10-26 21:32 Amsterdam)
+- Done: tickets 04 (fixed), 05, 06 (two fix rounds) and 10 (fixed) reviewed and merged; 9 of 11 on the integration branch, 256 tests pass.
+- State: 09 built by Codex (both smoke re-derivations agree, 0 differences); 11 built (queues; dry run clean).
+- Next: Opus review of 09; diff read, merge and GPU smoke chain of 11; then the final review (three Opus reviewers).
+- Blocked: nothing. No container restart (user, 20:01, for this build).
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-build-4-handoff.md
+- New chat: tab 'r10 build 4', session 988b5644-bdbe-48aa-8bb5-e40c107f0e6a
+
