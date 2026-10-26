@@ -4,7 +4,7 @@
 - Done: spec and decision rule of the relational genre loop, reviewed (Opus `xhigh`, pass after fixes) and approved by the user at 19:57.
 - State: held genre, 9,949 paintings: the recipe 0.4534 against the instructed Qwen genre image 0.5062. GO: level within 0.0128; partial: half the gap closed.
 - Next: tickets from the spec and rule, the build per `matt-chain.md`, the final review, merge into main, the run handoff.
-- Blocked: nothing.
+- Blocked: nothing. No container restart (user, 20:01; the GPU check passes).
 
 > Written 2026-10-26 19:59 by "r10 decide 25". Loop step reached: step 6 done (spec approved); step 7 (build) next.
 > Direction log entry: [2026-10-26 · Encoders and genre round read](../direction_log.md) (its "Now" names the spec).
