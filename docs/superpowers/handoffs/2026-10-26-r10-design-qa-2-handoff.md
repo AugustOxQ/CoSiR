@@ -3,7 +3,7 @@
 ## Brief
 - Done: two framework figures of the current model, low detail and detailed (formulas, λ example, InfoNCE matrix), with build scripts, in `docs/reports/assets/2026-10-26_condition_free_line/`; questions (a) to (g) answered from the code. On the user's word (2026-10-26, about 18:00) the figures close the stage report (section "The model in two figures", small previews that open the full-size PNG; a pointer from the design section) and the dev-log page; the page was deployed at 18:07 (`/project/cosir-devlog/deploys.log`) and both repos are pushed.
 - State: results unchanged (held emotion: Qwen 0.1029 against the PercepT bar 0.0874); the figures are in the report and on the site.
-- Next: further questions and figure adjustments as the user asks (a changed figure needs the report's PNG rebuilt, then `devlog-publish add` again and `deploy --yes` on the user's word); two notes wait for the decide 23 chat (section 4).
+- Next: this chat closed at the user's word (2026-10-26 18:14); the loop goes on in the "r10 decide 23" tab (decision A). New design questions open a new side chat from that tab. A changed figure needs the report's PNG rebuilt, then `devlog-publish add` again and `deploy --yes` on the user's word. Two notes wait for the decide 23 chat (section 4).
 - Blocked: nothing.
 
 > Written 2026-10-26 17:05 by "r10 design Q&A". Loop step reached: side chat; step 2 (decision A) stays open in the decide 23 chat. Direction log entry: [2026-10-26 · Encoders and genre round read](../direction_log.md).
@@ -48,6 +48,6 @@ Notes for the decide 23 chat (minor; nothing to decide here):
 
 ## 6. State at handoff
 
-- Running: the "r10 decide 23" chat (open, decision A). The earlier preview servers (8766, 8768, 8770, 8790) ended with their chats. No subagent, GPU lock or cluster job.
+- Running: the "r10 decide 23" chat (open, decision A). This chat closed at 2026-10-26 18:14 and started nothing that runs on: no preview server (the earlier ones on 8766, 8768, 8770 and 8790 ended with their chats), no subagent, GPU lock or cluster job.
 - Uncommitted: nothing of this chat's in the project or in `/project/cosir-devlog` (`briefs.md` and `chats.tsv` carry another chat's edits).
 - On disk over 1 GB: unchanged (the attention store, 8.1 GB, has its ledger row).
