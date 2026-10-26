@@ -33,3 +33,4 @@ scratchpad (`console/`).
 | 03:35 | Step 9: the auto report draft went to Codex (`gpt-6.1-sol` medium; room: 100% of the five-hour window); the auto-mode permission check refused the `codex e` call (no reason given), so Claude took the job back as the rule says: a Sonnet `high` worker drafts 12-25 from the same brief | drafting |
 | 03:36 | Held ledger rows H16 (stage 3), H17 (stage 4), H18 (ArtELingo-28, stage 5) written | done |
 | 03:38 | Restart question before the cut (asked 03:37; GPU check passed: driver, module and library 595.99.02) | no container restart (user, 03:38) |
+| 2026-10-26 13:58 (r10 decide 22) | Storage summary: the outputs are kept (33 GB on SSD2; the seed-0 weights of GT-2, GT-4 and GA-1 deleted, the exports stay); the build and run scratch (about 60 GB on the system disk), the merged worktrees and branches deleted; rows in the disk ledger `/project/claude-config/storage/disk_ledger.md` | done |
