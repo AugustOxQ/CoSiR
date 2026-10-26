@@ -1044,3 +1044,9 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-design-qa-2-handoff.md
 - New chat: tab 'r10 design Q&A 2', session ff11d771-e545-4c7b-8762-225ff3b9e588
 
+[brief] CoSiR: r10 decide 23 -> r10 decide 24 (2026-10-26 18:48 Amsterdam)
+- Done: decisions A and B are made and recorded: one full loop that sweeps the relational genre term (weights 16 and 32; relational alone and a sharper teacher temperature at weight 8; teacher anchors), confirms on fresh seeds and ends with a held genre claim test of the selected variant. The literature check of the term is saved (12-26). The stage report is approved by the user and its page is deployed.
+- State: held genre, full scale, 9,949 paintings: the current recipe about 0.4535 against the instructed Qwen genre image 0.5062 (PercepT core's best about 0.4270); on development the weight …
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-decide-24-handoff.md
+- New chat: tab 'r10 decide 24', session 2b78475b-0a13-4190-9fd9-4b950558ae86
+
