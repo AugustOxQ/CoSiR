@@ -22,6 +22,7 @@ the frozen 12-24 and 12-25 files are only read.
 import argparse
 import ast
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -238,14 +239,17 @@ def check_vb4(arms, v_star_a, seeds):
 
 
 def check_fresh_dirs(outputs, allowed):
-    """VB4: no run folder of an arm outside `allowed` on a seed other than 0 (seed 0's are stage A's), and none on a seed
-    outside 1 to 3."""
+    """VB4: a run folder `train/<arm>/s<seed>` is stage B's only for an arm in `allowed` on a seed of 1 to 3; other arms
+    have seed 0 (stage A's, VA4 checks those) and nothing else. GR-2 and GR-4 have no seed 0 (they are stage B's only), and
+    a folder not named `s<int>` is refused."""
     root = Path(outputs) / 'train'
     bad = []
     for path in sorted(root.glob('*/s*')) if root.exists() else []:
-        seed = int(path.name[1:])
-        if seed != SEED and (path.parent.name not in set(allowed) or seed not in FRESH):
-            bad.append(f'{path.parent.name}/{path.name}')
+        arm, found = path.parent.name, re.fullmatch(r's(\d+)', path.name)
+        seed = int(found.group(1)) if found else None
+        stage_a = seed == SEED and arm not in V.B_NEW
+        if not stage_a and (seed not in FRESH or arm not in set(allowed)):
+            bad.append(f'{arm}/{path.name}')
     assert not bad, f'VB4: run folders beyond {sorted(allowed)} on seeds {FRESH}: {bad}'
 
 
@@ -490,20 +494,21 @@ def score_arms(outputs, arms, n_draws, workers, declared_failed=None, ctx=None, 
     return dict(base=base_A, results=results, identity=identity)
 
 
-def _header(ctx, n_draws, smoke):
+def _header(ctx, n_draws, smoke, code):
     return dict(smoke=bool(smoke), n_draws=n_draws, reference=BASE, seed=SEED, t_g=V.T_G, promising=PROMISING,
                 ranges=dict(RANGES), rule_commit=rg_paths.RULE_COMMIT, versions=rb_ami.versions(),
-                label_counts={a: int((ctx['labels'][a] >= 0).sum()) for a in ASPECTS}, **code_state())
+                label_counts={a: int((ctx['labels'][a] >= 0).sum()) for a in ASPECTS}, **code)
 
 
 def _clean(record):
     return json.loads(json.dumps(record, allow_nan=False))
 
 
-def check_score_code(path):
-    """Refuse an existing output made by other code (copied from `eg_score3.check_score_code`)."""
+def check_score_code(path, code_sha256):
+    """Refuse an existing output made by other code than `code_sha256` (the code the run started with; copied from
+    `eg_score3.check_score_code`). The old file is only read."""
     old = json.loads(Path(path).read_text())
-    assert old.get('code_sha256') == scorer_code_sha256(), f'{path}: stale code_sha256; move {path} aside, then rerun'
+    assert old.get('code_sha256') == code_sha256, f'{path}: stale code_sha256; move {path} aside, then rerun'
     return old
 
 
@@ -511,9 +516,27 @@ def _write_or_skip(path, record):
     """Write `record`; an existing file with the same identity is kept (never overwritten), another one stops."""
     path = Path(path)
     if path.exists():
-        old = check_score_code(path)
+        old = check_score_code(path, record['code_sha256'])
         assert old['identity'] == record['identity'], f'{path} exists with other inputs; move it aside'
         print(f'{path}: exists with the same inputs, kept', flush=True)
+        return old
+    _json_dump(path, record)
+    return record
+
+
+def keep_check(path, record):
+    """Write the check `record`, or keep an existing file that is the same check: same `code_sha256`, same inputs
+    (`identity`, reference and P hashes) and same values. Any other existing file stops the run with a message to move it
+    aside and rerun; the file is never overwritten or deleted here (VA1 and VB1 files gate later stages)."""
+    path = Path(path)
+    if path.exists():
+        old = check_score_code(path, record['code_sha256'])
+        assert all(old.get(k) == record.get(k) for k in ('identity', 'reference_sha256', 'p_sha256')), \
+            f'{path} exists with other inputs; move it aside, then rerun'
+        assert old['pass'] == record['pass'] and old['smoke'] == record['smoke'] and \
+            all(abs(old['items'][k]['value'] - v['value']) < 1e-9 for k, v in record['items'].items()), \
+            f'{path} exists with other values; move it aside, then rerun'
+        print(f'{path}: exists with the same code, inputs and values, kept', flush=True)
         return old
     _json_dump(path, record)
     return record
@@ -529,10 +552,11 @@ def ladder_records(outputs, n_draws, workers, declared_failed, ctx, smoke):
 
 def run_climb(outputs, workers, smoke=False, declared_failed=None):
     """The climb's decision on the rungs run so far, appended to stage_a/climb.json (point estimates only)."""
+    code = code_state()                                   # taken before the scoring: the record names the code that computed it
     path = stage_dir(outputs) / 'climb.json'
     ctx = E.load_context()
     records, scored = ladder_records(outputs, None, workers, declared_failed, ctx, smoke)
-    entry = dict(climb_entry(records), identity=scored['identity'], **code_state())
+    entry = dict(climb_entry(records), identity=scored['identity'], **code)
     old = json.loads(path.read_text()) if path.exists() else dict(stage='climb', smoke=bool(smoke), decisions=[])
     assert old['stage'] == 'climb' and old['smoke'] == bool(smoke), f'{path}: from a {"smoke" if old["smoke"] else "real"} run'
     log = extend_climb_log(old['decisions'], _clean(entry))
@@ -555,6 +579,7 @@ def read_eq(outputs, smoke=False):
 
 def run_a(outputs, n_draws, workers, smoke=False, declared_failed=None):
     """Stage A's verdict -> stage_a/verdict.json: every arm of the finished climb plus A_OTHER, v*_A, the outcome."""
+    code = code_state()                                   # taken before the scoring: the record names the code that computed it
     climb_path = stage_dir(outputs) / 'climb.json'
     assert climb_path.exists(), f'{climb_path} missing: run `climb` first'
     climb = json.loads(climb_path.read_text())
@@ -571,7 +596,7 @@ def run_a(outputs, n_draws, workers, smoke=False, declared_failed=None):
         assert (x['status'], x['guarded']) == (y['status'], y['guarded']) and \
             (x['A_genre'] is None or abs(x['A_genre'] - y['A_genre']) < 1e-9), f'{r}: differs from climb.json'
     d = decide_a(results, eq['pass'], rungs)
-    record = dict(stage='a', **_header(ctx, n_draws, smoke), base_A=scored['base'], arms=list(results), climb_rungs=rungs,
+    record = dict(stage='a', **_header(ctx, n_draws, smoke, code), base_A=scored['base'], arms=list(results), climb_rungs=rungs,
                   climb_reason=climb['decisions'][-1]['reason'], still_rising_at_cap=climb['decisions'][-1]['still_rising'],
                   results={n: results[n] for n in V.A_TIE_ORDER if n in results}, **d, stage_b_new=list(V.B_NEW),
                   identity=dict(scored['identity'], eq=eq))      # a verdict made with another eq.json is not kept
@@ -582,6 +607,7 @@ def run_check_va1(outputs, n_draws, workers, smoke=False):
     """VA1 scorer half: the scorer gives 12-25's score_all.json `results` of R6-5 (`base_A`) and GR-8 (each A, e and bound)
     and T_g within 1e-6 -> regression/va1_scorer.json. A smoke (20 draws) checks A and e only, not the bounds."""
     import rb_part1_report
+    code = code_state()                                   # taken before the scoring: the record names the code that computed it
     path = Path(outputs) / 'regression' / 'va1_scorer.json'
     ref_path = rg_paths.EG_III / 'score_all.json'
     ref = json.loads(ref_path.read_text())
@@ -606,17 +632,9 @@ def run_check_va1(outputs, n_draws, workers, smoke=False):
         print(f'{k}: {v["value"]:.10f} (12-25 {v["expected"]:.10f}, diff {v["diff"]:.1e})', flush=True)
     record = dict(stage='va1_scorer', smoke=bool(smoke), n_draws=n_draws, bounds_checked=not smoke,
                   **{'pass': all(i['pass'] for i in items.values())}, tol=TOL, items=items, reference=str(ref_path),
-                  reference_sha256=_file_sha256(ref_path), p_sha256=ctx['p_sha'], versions=rb_ami.versions(), **code_state(),
+                  reference_sha256=_file_sha256(ref_path), p_sha256=ctx['p_sha'], versions=rb_ami.versions(), **code,
                   identity=scored['identity'])
-    record = _clean(record)
-    if path.exists():
-        old = json.loads(path.read_text())
-        assert old['pass'] == record['pass'] and old['smoke'] == record['smoke'] and \
-            all(abs(old['items'][k]['value'] - v['value']) < 1e-9 for k, v in items.items()), f'{path} exists with other values'
-        print(f'{path}: exists with the same values, kept', flush=True)
-    else:
-        _json_dump(path, record)
-    return record
+    return keep_check(path, _clean(record))
 
 
 # ------------------------------------------------------------------ stage B: files
@@ -769,16 +787,17 @@ def score_fresh_arms(outputs, arms, n_draws, workers, declared_failed, ctx, smok
                                                               for s, r in runs[n].items()} for n in runs})
 
 
-def _header_b(ctx, n_draws, smoke):
+def _header_b(ctx, n_draws, smoke, code):
     return dict(smoke=bool(smoke), n_draws=n_draws, reference=BASE, seeds=list(FRESH), t_g=V.T_G, promising=PROMISING,
                 ranges=dict(RANGES), rule_commit=rg_paths.RULE_COMMIT, versions=rb_ami.versions(),
-                label_counts={a: int((ctx['labels'][a] >= 0).sum()) for a in ASPECTS}, **code_state())
+                label_counts={a: int((ctx['labels'][a] >= 0).sum()) for a in ASPECTS}, **code)
 
 
 def run_check_vb1(outputs, n_draws, workers, smoke=False):
     """VB1 (rule §4.2): the frozen fresh-seed exports of GR-8 and R6-5 hash to 12-25's `score_fresh.json`
     `identity.img_sha256` per arm, seed and aspect, and this scorer on them gives its `effects` (Ā, ē, both bounds per
     aspect) within 1e-6 -> stage_b/vb1.json. A smoke (20 draws) checks hashes, Ā and ē only, not the bounds."""
+    code = code_state()                                   # taken before the scoring: the record names the code that computed it
     path = b_dir(outputs) / 'vb1.json'
     ref_path = rg_paths.EG_III / 'score_fresh.json'
     ref = json.loads(ref_path.read_text())
@@ -795,21 +814,14 @@ def run_check_vb1(outputs, n_draws, workers, smoke=False):
         print(f'{k}: {v["value"]:.10f} (12-25 {v["expected"]:.10f}, diff {v["diff"]:.1e})', flush=True)
     record = dict(stage='vb1', smoke=bool(smoke), n_draws=n_draws, bounds_checked=not smoke, hashes_checked=True,
                   **{'pass': all(i['pass'] for i in items.values())}, tol=TOL, items=items, reference=str(ref_path),
-                  reference_sha256=_file_sha256(ref_path), p_sha256=ctx['p_sha'], versions=rb_ami.versions(), **code_state(),
+                  reference_sha256=_file_sha256(ref_path), p_sha256=ctx['p_sha'], versions=rb_ami.versions(), **code,
                   identity=scored['identity'])
-    record = _clean(record)
-    if path.exists():
-        old = json.loads(path.read_text())
-        assert old['pass'] == record['pass'] and old['smoke'] == record['smoke'] and \
-            all(abs(old['items'][k]['value'] - v['value']) < 1e-9 for k, v in items.items()), f'{path} exists with other values'
-        print(f'{path}: exists with the same values, kept', flush=True)
-    else:
-        _json_dump(path, record)
-    return record
+    return keep_check(path, _clean(record))
 
 
 def run_b(outputs, n_draws, workers, smoke=False, declared_failed=None):
     """Stage B's verdict -> stage_b/verdict.json: GR-8, GR-2, GR-4 and v*_A (A-NEW) on seeds 1 to 3 against R6-5."""
+    code = code_state()                                   # taken before the scoring: the record names the code that computed it
     declared_failed = declared_failed or {}
     vb1 = read_vb1(outputs, smoke)
     va = read_stage_a(outputs, smoke)
@@ -828,7 +840,7 @@ def run_b(outputs, n_draws, workers, smoke=False, declared_failed=None):
     d = decide_b(scored['records'], v_star)
     identity = dict(scored['identity'], vb1_sha256=_file_sha256(b_dir(outputs) / 'vb1.json'),
                     stage_a_verdict_sha256=_file_sha256(stage_dir(outputs) / 'verdict.json'))
-    record = dict(stage='b', **_header_b(ctx, n_draws, smoke), a_outcome=va['outcome'], v_star_a=va['winner'],
+    record = dict(stage='b', **_header_b(ctx, n_draws, smoke, code), a_outcome=va['outcome'], v_star_a=va['winner'],
                   stage_b_arms=list(arms), vb1_pass=vb1['pass'], results=scored['records'], runs=scored['runs'], **d,
                   identity=identity)
     return _write_or_skip(b_dir(outputs) / 'verdict.json', _clean(record))
