@@ -13,30 +13,42 @@ class GenreLoss:
     """One run's genre switches, kept separate from the unchanged recipe switches.
 
     GQ callers pass the fixed teacher ``anchors``, their ``anchor_ids`` in the
-    fit tensor's local order, and ``n_fit`` (never full-sample/extraction IDs).
-    Build/draw these after the model is built. Dev tensors are disjoint from fit;
-    the trainer's ``include_mask_penalty=False`` identifies those calls.
+    fit tensor's local order, ``n_fit`` (the fit tensor's row count) and ``n_dev``
+    (the dev tensor's row count, different from ``n_fit``); never full-sample or
+    extraction IDs. Build/draw these after the model is built. Dev tensors are
+    disjoint from fit; the trainer's ``include_mask_penalty=False`` identifies
+    those calls, which must carry exactly ``n_dev`` rows. On fit calls the anchor
+    rows must equal the fit teacher's rows at ``anchor_ids``. The anchors move to
+    the teacher's device on the first GQ call (``to``).
 
     Optional ``term_log`` is a caller-owned dict, cleared on each call and filled
     with detached, unweighted scalar tensors for the terms present (``direct``,
     ``relational`` or ``anchors``). Copy it after each call to retain a history.
     """
 
-    def __init__(self, switches, seed=0, *, anchors=None, anchor_ids=None, n_fit=None, term_log=None):
+    def __init__(self, switches, seed=0, *, anchors=None, anchor_ids=None, n_fit=None, n_dev=None,
+                 term_log=None):
         assert switches in list(V.ARMS.values()) + [V.LOSS_SCALE_SWITCHES], switches
         self.switches = dict(switches)
         self.seed = seed
         self.m, self.lam = switches['m'], switches['lam']
         self.tau_t, self.n_anchors = switches['tau_t'], switches['anchors']
-        self.anchors, self.anchor_ids, self.n_fit = anchors, anchor_ids, n_fit
+        self.anchors, self.anchor_ids, self.n_fit, self.n_dev = anchors, anchor_ids, n_fit, n_dev
         self.term_log = term_log
         if anchors is not None:
             assert self.n_anchors == V.N_ANCHORS and n_fit is not None and n_fit >= V.N_ANCHORS
             assert anchors.ndim == 2 and len(anchors) == V.N_ANCHORS and not anchors.requires_grad
+            assert n_dev is not None and n_dev > 0 and n_dev != n_fit, 'dev and fit row counts must differ'
             assert anchor_ids is not None and anchor_ids.shape == (V.N_ANCHORS,)
             assert anchor_ids.dtype == torch.long
             assert len(anchor_ids.unique()) == V.N_ANCHORS
             assert bool(((anchor_ids >= 0) & (anchor_ids < n_fit)).all()), 'anchors must use fit-local IDs'
+
+    def to(self, device):
+        """Move the anchors and their positions to ``device`` (values unchanged); returns self."""
+        if self.anchors is not None and (self.anchors.device != device or self.anchor_ids.device != device):
+            self.anchors, self.anchor_ids = self.anchors.to(device), self.anchor_ids.to(device)
+        return self
 
     @property
     def off(self):
@@ -90,13 +102,19 @@ def switched_head_loss(models, img, cap, pairs, weights, row, aspect, teacher=No
     if genre.lam:
         if genre.n_anchors:
             assert genre.anchors is not None and genre.anchor_ids is not None
+            assert genre.tau_t == V.TAU, 'GQ anchors need tau_t equal to the student temperature (no arm sharpens it)'
+            genre.to(teacher.device)
             assert teacher.shape[0] == len(img), 'teacher must have this fit/dev tensor row count'
             if include_mask_penalty:
                 assert len(img) == genre.n_fit, 'fit tensors must use fit-local IDs'
+                assert torch.equal(teacher[genre.anchor_ids], genre.anchors), \
+                    'anchor rows must equal the fit teacher rows at the anchor positions'
+            else:
+                assert len(img) == teacher.shape[0] == genre.n_dev, 'dev call must carry the dev tensors'
             # Dev painting sets are disjoint from fit. Their local indices can
             # coincide numerically, so comparing them to fit-local IDs is wrong.
             a_ids = genre.anchor_ids if include_mask_penalty else None
-            relational = anchors_loss(z, teacher[ids], ids, genre.anchors, genre.anchors, a_ids, genre.tau_t)
+            relational = anchors_loss(z, teacher[ids], ids, genre.anchors, genre.anchors, a_ids, V.TAU)
             term_name = 'anchors'
         else:
             relational = relational_loss(z, teacher[ids], ids, genre.tau_t)
