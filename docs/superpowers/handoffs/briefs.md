@@ -1050,3 +1050,10 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-decide-24-handoff.md
 - New chat: tab 'r10 decide 24', session 2b78475b-0a13-4190-9fd9-4b950558ae86
 
+[brief] CoSiR: r10 decide 24 -> r10 decide 25 (2026-10-26 19:51 Amsterdam)
+- Done: the grill of the genre loop (three key questions and the minors answered), the spec (draft) and the decision rule, reviewed by a fresh Opus `xhigh` worker (pass after fixes, all applied) and committed (rule 2e9529a, spec bcc4811); glossary entries "relational term" and "teacher anchors".
+- State: held genre, 9,949 labelled paintings: the recipe 0.4534 against the instructed Qwen genre image 0.5062; the bar: level within 0.0128 (GO) or at least half the gap closed over the recipe (partial).
+- Next: paste the brief for the user's approval; on the yes, mark the spec approved, rewrite th …
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-decide-25-handoff.md
+- New chat: tab 'r10 decide 25', session 42cb3988-2055-4a3c-b1cd-14fc1abc94e3
+
