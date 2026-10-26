@@ -136,7 +136,7 @@ def test_gq_uses_fixed_teacher_anchors_and_masks_only_fit_paintings(batch, dev):
     anchor_ids = draw_anchors(n_fit, 3)
     anchors = fit_teacher[anchor_ids]
     genre = GenreLoss(V.switches('GQ-8'), seed=3, anchors=anchors,
-                      anchor_ids=anchor_ids, n_fit=n_fit)
+                      anchor_ids=anchor_ids, n_fit=n_fit, n_dev=8)
     if not dev:
         # Local positions, unrelated to extraction IDs or the full sample's order.
         batch.update(img=rows(n_fit), cap=rows(n_fit, seed=9), teacher=fit_teacher)
@@ -158,7 +158,7 @@ def test_per_call_log_is_raw_detached_and_does_not_change_the_computation(batch,
     extra = {}
     if arm == 'GQ-8':
         anchor_ids = draw_anchors(4096, 0)
-        extra = dict(anchors=rows(4096)[anchor_ids], anchor_ids=anchor_ids, n_fit=4096)
+        extra = dict(anchors=rows(4096)[anchor_ids], anchor_ids=anchor_ids, n_fit=4096, n_dev=8)
         # Use the small disjoint dev tensor for this logging test.
     batch['include_mask_penalty'] = arm != 'GQ-8'
     log = {'stale': torch.tensor(-1)}
@@ -251,11 +251,11 @@ def test_relational_rejects_ids_that_do_not_name_every_row():
 
 
 @pytest.mark.parametrize('problem', ['missing-count', 'missing-ids', 'global-ids', 'duplicate-ids',
-                                   'trainable-teacher', 'wrong-count'])
+                                   'trainable-teacher', 'wrong-count', 'missing-dev-count', 'dev-count-is-fit-count'])
 def test_gq_rejects_invalid_anchor_context(problem):
     from rg_loss import GenreLoss
 
-    args = dict(anchors=rows(4096), anchor_ids=torch.arange(4096), n_fit=4096)
+    args = dict(anchors=rows(4096), anchor_ids=torch.arange(4096), n_fit=4096, n_dev=8)
     if problem == 'missing-count':
         args['n_fit'] = None
     elif problem == 'missing-ids':
@@ -264,6 +264,10 @@ def test_gq_rejects_invalid_anchor_context(problem):
         args['anchor_ids'] += 5000
     elif problem == 'duplicate-ids':
         args['anchor_ids'].zero_()
+    elif problem == 'missing-dev-count':
+        args['n_dev'] = None
+    elif problem == 'dev-count-is-fit-count':
+        args['n_dev'] = 4096
     elif problem == 'trainable-teacher':
         args['anchors'].requires_grad_()
     else:
@@ -272,12 +276,92 @@ def test_gq_rejects_invalid_anchor_context(problem):
         GenreLoss(V.switches('GQ-8'), **args)
 
 
-def test_gq_checks_fit_tensor_count_and_dev_teacher_count(batch):
-    from rg_loss import GenreLoss, switched_head_loss
+def gq_fit_context(n_fit=4096, n_dev=8):
+    """A GQ genre loss whose anchors are the rows of ``fit_teacher`` at ``anchor_ids``."""
+    from rg_loss import GenreLoss, draw_anchors
 
-    genre = GenreLoss(V.switches('GQ-8'), anchors=rows(4096),
-                      anchor_ids=torch.arange(4096), n_fit=4096)
+    fit_teacher = rows(n_fit, seed=13)
+    anchor_ids = draw_anchors(n_fit, 3)
+    genre = GenreLoss(V.switches('GQ-8'), anchors=fit_teacher[anchor_ids], anchor_ids=anchor_ids,
+                      n_fit=n_fit, n_dev=n_dev)
+    return genre, fit_teacher
+
+
+def test_gq_checks_fit_tensor_count_and_dev_teacher_count(batch):
+    from rg_loss import switched_head_loss
+
+    genre, _ = gq_fit_context()
     with pytest.raises(AssertionError, match='fit-local'):
         switched_head_loss(**batch, genre=genre)
     with pytest.raises(AssertionError):
         switched_head_loss(**dict(batch, teacher=rows(4096)), genre=genre, include_mask_penalty=False)
+
+
+def test_gq_dev_call_refuses_fit_sized_tensors(batch):
+    from rg_loss import switched_head_loss
+
+    genre, fit_teacher = gq_fit_context()
+    fit = dict(batch, img=rows(4096), cap=rows(4096, seed=9), teacher=fit_teacher)
+    # Fit tensors on a dev call would silently skip the anchor masking.
+    with pytest.raises(AssertionError, match='dev'):
+        switched_head_loss(**fit, genre=genre, include_mask_penalty=False)
+    # The dev-sized tensors the genre was built for still pass.
+    assert torch.isfinite(switched_head_loss(**batch, genre=genre, include_mask_penalty=False))
+
+
+def test_gq_student_rows_stay_at_005_so_a_sharpened_teacher_is_refused(batch):
+    from rg_loss import switched_head_loss
+
+    genre, _ = gq_fit_context()
+    genre.tau_t = 0.02
+    with pytest.raises(AssertionError, match='tau_t'):
+        switched_head_loss(**batch, genre=genre, include_mask_penalty=False)
+
+
+def test_gq_fit_call_refuses_anchor_rows_that_are_not_the_fit_teacher_rows(batch):
+    from rg_loss import GenreLoss, switched_head_loss
+
+    genre, fit_teacher = gq_fit_context()
+    fit = dict(batch, img=rows(4096), cap=rows(4096, seed=9), teacher=fit_teacher)
+    assert torch.isfinite(switched_head_loss(**fit, genre=genre))
+    stale = GenreLoss(V.switches('GQ-8'), anchors=rows(4096, seed=99)[genre.anchor_ids],
+                      anchor_ids=genre.anchor_ids, n_fit=4096, n_dev=8)
+    with pytest.raises(AssertionError, match='anchor rows'):
+        switched_head_loss(**fit, genre=stale)
+    # The same tensors are a legitimate dev call: no anchor-row check there.
+    assert torch.isfinite(switched_head_loss(**batch, genre=stale, include_mask_penalty=False))
+
+
+def test_gq_moves_anchors_to_the_teacher_device_once_without_changing_values(batch, monkeypatch):
+    from rg_loss import switched_head_loss
+
+    genre, _ = gq_fit_context()
+    values = genre.anchors.clone(), genre.anchor_ids.clone()
+    seen = []
+    to = genre.to
+    monkeypatch.setattr(genre, 'to', lambda device: seen.append(device) or to(device))
+    switched_head_loss(**batch, genre=genre, include_mask_penalty=False)
+    assert seen == [batch['teacher'].device]
+    assert torch.equal(genre.anchors, values[0]) and torch.equal(genre.anchor_ids, values[1])
+    moved = genre.to(torch.device('meta'))
+    assert moved is genre and genre.anchors.device.type == genre.anchor_ids.device.type == 'meta'
+
+
+@pytest.mark.parametrize('logged', [False, True])
+def test_gn_computes_no_direct_term_at_all(batch, monkeypatch, logged):
+    from rg_loss import GenreLoss, switched_head_loss
+
+    real = ms_train.distill_loss
+
+    def no_direct(z, t, ids, mode, *args, **kwargs):
+        assert mode != 'direct', 'GN must not compute a direct term, not even to multiply it by 0'
+        return real(z, t, ids, mode, *args, **kwargs)
+
+    monkeypatch.setattr(ms_train, 'distill_loss', no_direct)
+    log = {} if logged else None
+    switched_head_loss(**batch, genre=GenreLoss(V.switches('GN-8'), term_log=log))
+    if logged:
+        assert 'direct' not in log
+    # Sanity: the guard does fire for an arm that has the direct term.
+    with pytest.raises(AssertionError, match='direct'):
+        switched_head_loss(**batch, genre=GenreLoss(V.switches('GR-8')))
