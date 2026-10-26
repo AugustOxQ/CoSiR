@@ -1,12 +1,12 @@
 """Independent VC2 behavior, using small CPU examples only."""
 import copy
 import json
-import tempfile
 from pathlib import Path
 
 import numpy as np
 import pytest
 
+import rg_held
 import rg_vc2 as vc
 from sklearn.metrics import adjusted_mutual_info_score
 
@@ -25,7 +25,8 @@ def test_rule_outcomes_at_strict_and_inclusive_boundaries(d, lo, dr, lr, want, p
     assert result['outcome_id'] == want
     assert result['pc'] is pc
     assert result['matches_or_exceeds'] is exceeds
-    assert result['partial_sentence'] is (pc and want in ('G-MM', 'G-PART'))
+    # rg_held's form: the PC value for G-MM and G-PART, None otherwise
+    assert result['partial_sentence'] is (pc if want in ('G-MM', 'G-PART') else None)
 
 
 def test_separate_row_then_seed_draw_streams():
@@ -87,10 +88,7 @@ def test_point_estimates_for_perfect_clusters_and_constant_recipe():
     assert result['outcome_id'] == 'G-GO'
 
 
-def toy_files():
-    root = Path('/tmp/claude-0')
-    root.mkdir(exist_ok=True)
-    root = Path(tempfile.mkdtemp(prefix='rg-vc2-test-', dir=root))
+def toy_files(root):
     n, width = 48, 24
     names = [f'p{i:03}' for i in range(n)]
     sha = vc.sha256_names(names)
@@ -136,8 +134,8 @@ def toy_files():
     return root, outputs, inputs
 
 
-def test_rederive_from_saved_outputs_checks_every_partition_and_input_identity():
-    root, outputs, inputs = toy_files()
+def test_rederive_from_saved_outputs_checks_every_partition_and_input_identity(tmp_path):
+    root, outputs, inputs = toy_files(tmp_path)
     result = vc.derive(outputs, 'G', inputs, draws=3, workers=1)
     assert result['labelled_rows'] == 44
     assert result['partitions']['checked'] == 11
@@ -154,6 +152,53 @@ def test_rederive_from_saved_outputs_checks_every_partition_and_input_identity()
     side.write_text(json.dumps(meta))
     with pytest.raises(AssertionError, match='list_sha256'):
         vc.derive(outputs, 'G', inputs, draws=3, workers=1)
+
+
+def held_shaped_verdict(mine):
+    """The record as rg_held.run_score writes it (outcome by rg_held.outcome, per_seed keyed as its
+    _bootstrap keys it), after the JSON round trip of the saved file."""
+    d_t, d_r = mine['d_T'], mine['d_R']
+    verdict = copy.deepcopy(mine)
+    verdict.update(rg_held.outcome(d_t['d'], d_t['interval'][0], d_r['d'], d_r['interval'][0], mine['G_half']))
+    g = mine['d_T']['per_seed']['G']
+    verdict['d_T']['per_seed'] = {'G': {int(s): v for s, v in g.items()}, 'T': {0: d_t['A_T']}}
+    verdict['d_R']['per_seed'] = {'G': {int(s): v for s, v in g.items()},
+                                  'R': {int(s): v for s, v in d_r['per_seed']['R'].items()}}
+    verdict.pop('partitions')      # VC2's own bookkeeping, not in rg_held's record
+    return json.loads(json.dumps(verdict))
+
+
+@pytest.mark.parametrize('d_t,lo_t,d_r,lo_r,want', [
+    (.02, .001, .04, .01, 'G-GO'),
+    (-.02, -.03, .04, 0., 'G-NO'),
+    (-.0128, -.02, .06, .001, 'G-MM'),
+    (-.02, -.03, .06, .001, 'G-PART'),
+])
+def test_comparison_agrees_with_the_record_rg_held_writes(d_t, lo_t, d_r, lo_r, want):
+    labels, g, t, r = synthetic_parts()
+    mine = vc.calculate(labels, g, t, r, draws=4, workers=1)
+    mine.update(arm='G', held_sha256='hash', rule_commit='rule', smoke=True,
+                G_half_frozen=mine['G_half'], partitions=dict(checked=11, differences=[]))
+    # Force the four outcomes: the statistics only need to be self-consistent between the two records.
+    mine['d_T'].update(d=d_t, interval=[lo_t, mine['d_T']['interval'][1]])
+    mine['d_R'].update(d=d_r, interval=[lo_r, mine['d_R']['interval'][1]])
+    mine['G_half'] = mine['G_half_frozen'] = .05
+    mine.update(vc.decide(d_t, lo_t, d_r, lo_r, .05))
+    assert mine['outcome_id'] == want
+    verdict = held_shaped_verdict(mine)
+    assert verdict['partial_sentence'] is (mine['pc'] if want in ('G-MM', 'G-PART') else None)
+    comparison = vc.compare_verdict(mine, verdict)
+    assert comparison['differences'] == [] and comparison['agree']
+
+
+def test_comparison_reports_a_changed_per_seed_value():
+    labels, g, t, r = synthetic_parts()
+    mine = vc.calculate(labels, g, t, r, draws=4, workers=1)
+    mine.update(arm='G', held_sha256='hash', rule_commit='rule', smoke=True,
+                G_half_frozen=mine['G_half'], partitions=dict(checked=11, differences=[]))
+    verdict = held_shaped_verdict(mine)
+    verdict['d_R']['per_seed']['R']['3'] += 1e-3
+    assert any('d_R.per_seed.R.3' in diff for diff in vc.compare_verdict(mine, verdict)['differences'])
 
 
 def test_comparison_reports_numbers_draws_outcome_and_partition_disagreements():
@@ -176,10 +221,8 @@ def test_comparison_reports_numbers_draws_outcome_and_partition_disagreements():
         assert any(field in diff for diff in comparison['differences'])
 
 
-def test_labels_join_by_caption_painting_and_mask_missing_or_conflicting_genres():
-    base = Path('/tmp/claude-0')
-    base.mkdir(exist_ok=True)
-    root = Path(tempfile.mkdtemp(prefix='rg-vc2-labels-', dir=base))
+def test_labels_join_by_caption_painting_and_mask_missing_or_conflicting_genres(tmp_path):
+    root = tmp_path
     captions = root / 'captions.json'
     captions.write_text(json.dumps([dict(painting=n) for n in ['b', 'a', 'c', 'a']]))
     first, second = root / 'train.csv', root / 'val.csv'
@@ -190,8 +233,10 @@ def test_labels_join_by_caption_painting_and_mask_missing_or_conflicting_genres(
         vc.genre_labels(['d'], captions, (first, second))
 
 
-def test_runner_persists_disagreement_and_invalidates_skip_when_input_changes():
-    _, outputs, inputs = toy_files()
+def test_runner_persists_disagreement_and_invalidates_skip_when_input_changes(tmp_path, monkeypatch):
+    # smoke_ok only admits /tmp/claude-0/; pytest's tmp_path lives elsewhere and is cleaned by pytest.
+    monkeypatch.setattr(vc.rg_paths, 'smoke_ok', lambda path: True)
+    _, outputs, inputs = toy_files(tmp_path)
     mine = vc.derive(outputs, 'G', inputs, draws=20, workers=1)
     mine['smoke'] = True
     mine['outcome_id'] = 'deliberately wrong'

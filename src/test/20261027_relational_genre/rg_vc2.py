@@ -43,7 +43,7 @@ def decide(d_t, lower_t, d_r, lower_r, half_gap):
         outcome = 'G-NO'
     return dict(outcome_id=outcome, pc=pc, pc_parts=parts,
                 matches_or_exceeds=bool(lower_t > 0),
-                partial_sentence=bool(pc and outcome in ('G-MM', 'G-PART')))
+                partial_sentence=pc if outcome in ('G-MM', 'G-PART') else None)   # as rg_held.outcome
 
 
 def _scores(labels, parts, rows):
@@ -83,7 +83,7 @@ def calculate(labels, g, t, r, draws=2000, workers=8):
     pg, pt, pr = _scores(labels, g, initial), _scores(labels, {0: t}, initial)[0], _scores(labels, r, initial)
     ag, ar = float(np.mean(list(pg.values()))), float(np.mean(list(pr.values())))
     result = dict(X=.0128, G_half=(pt - ar) / 2, labelled_rows=int((labels >= 0).sum()))
-    for stat, other, point, per in [('T', t, pt, pt), ('R', r, ar, {str(s): pr[s] for s in SEEDS})]:
+    for stat, other, point, per in [('T', t, pt, {'0': pt}), ('R', r, ar, {str(s): pr[s] for s in SEEDS})]:
         pools = {'G': SEEDS} if stat == 'T' else {'G': SEEDS, 'R': SEEDS}
         rows, seeds = draw_plan(n, pools, draws)
         _BOOT.update(labels=labels, g=g, other=other, rows=rows, seeds=seeds, stat=stat)
@@ -137,7 +137,7 @@ def compare_verdict(mine, verdict):
         _numeric_differences(mine[key], verdict.get(key), key, differences, deltas)
     _numeric_differences(mine['G_half'], mine['G_half_frozen'], 'frozen half gap', differences, deltas)
     for stat in ('d_T', 'd_R'):
-        keys = ('A_G', 'A_T' if stat == 'd_T' else 'A_R', 'd', 'interval', 'bootstrap_d')
+        keys = ('A_G', 'A_T' if stat == 'd_T' else 'A_R', 'd', 'interval', 'bootstrap_d', 'per_seed')
         _numeric_differences({k: mine[stat][k] for k in keys}, verdict.get(stat), stat, differences, deltas)
     for key in ('outcome_id', 'matches_or_exceeds', 'pc', 'pc_parts', 'partial_sentence',
                 'arm', 'held_sha256', 'rule_commit', 'smoke'):
