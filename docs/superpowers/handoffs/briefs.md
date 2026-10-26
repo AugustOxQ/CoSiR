@@ -1014,3 +1014,10 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-stage-report-2-handoff.md
 - New chat: tab 'r10 stage report 2', session 05b01a45-fbcd-45c2-89d2-d8317ef9fa0e
 
+[brief] CoSiR: r10 stage report 2 -> r10 stage report 3 (2026-10-26 15:02 Amsterdam)
+- Done: the stage report of the condition-free line is written, reviewed, indexed and pushed (commit 6d81850): an Opus draft, a trim, a Codex claim review (23 must-fix items, provenance and overclaim; no wrong number in the result tables) applied by a fix wave, the controller's re-read; four figures with scripts.
+- State: 10,657 words; held emotion passes on four encoders (Qwen 0.1029 against 0.0874, SigLIP 1 0.1036, SigLIP 2 0.1024, CLIP L/14 0.0996). No page, no post yet; the index row lacks their links.
+- Next: the outside-view page (its draft brief is ready), the dev-log post, the user's …
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-stage-report-3-handoff.md
+- New chat: tab 'r10 stage report 3', session 40e72bdc-0383-4d7c-b19d-1edc94728a00
+
