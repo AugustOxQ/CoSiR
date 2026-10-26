@@ -1029,3 +1029,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-decide-23-handoff.md
 - New chat: tab 'r10 decide 23', session 83e891c2-54af-45b3-a763-17da05a28b60
 
+[brief] CoSiR: r10 decide 23 -> r10 design Q&A (2026-10-26 16:20 Amsterdam)
+- Done: nothing yet; a side chat, opened from "r10 decide 23" at the user's request (2026-10-26 16:19).
+- State: the current recipe (no own-caption terms, teacher share 1/5) passes held emotion on four encoders (Qwen 0.1029 against the strongest PercepT entry 0.0874); decision A on the next experiment is open in the decide 23 chat.
+- Next: read the design sources below, then answer the user's questions about the model structure; change nothing.
+- Blocked: nothing; waits for the user's first question.
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-design-qa-handoff.md
+- New chat: tab 'r10 design Q&A', session fa22e8d8-9451-44a0-99cb-13e5d1c2af8b
+
