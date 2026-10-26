@@ -1018,7 +1018,8 @@ reading. Sources: [claim test, stage 2](../auto/percept/2026-12-19_claim_test_st
 
 ### All methods on held data, three aspects
 
-Every method on the held paintings, three aspects, with no verdict. The PercepT core rows give, per aspect, the stronger
+Every method on the held paintings, three aspects, with no verdict. Underlined: the highest value in its block for
+that aspect. Bold: above the instructed Qwen image for that aspect. The PercepT core rows give, per aspect, the stronger
 of its two readings: its own top topic for emotion and style, k-means on its topic probabilities for genre (the sources
 give both readings; the Qwen row is the strongest eligible entry on emotion). The strongest core style entry over all
 arms is 0.2297, from the arm with CLIP features and Qwen topics ([step 13](#2026-10-20--the-held-emotion-claim-test-sample-scale-then-full-scale-worked)).
@@ -1028,31 +1029,31 @@ The label-trained probe has no held value; its row repeats the development value
 | Method | Emotion | Style | Genre |
 |---|---:|---:|---:|
 | **Frozen default image, clustered directly (no training)** | | | |
-| Qwen | 0.0708 | 0.2233 | 0.4521 |
-| SigLIP 1 | 0.0672 | 0.3632 | 0.4273 |
+| Qwen | <u>0.0708</u> | 0.2233 | <u>0.4521</u> |
+| SigLIP 1 | 0.0672 | <u>0.3632</u> | 0.4273 |
 | SigLIP 2 | 0.0569 | 0.3285 | 0.3764 |
 | CLIP L/14 | 0.0659 | 0.3527 | 0.4026 |
 | CLIP B/16 | 0.0631 | 0.3066 | 0.4119 |
 | CLIP B/32 | 0.0642 | 0.2978 | 0.4085 |
 | DINOv2-large | 0.0602 | 0.2354 | 0.4209 |
 | **PercepT core, its classifier on that encoder's image** | | | |
-| Qwen | 0.0874 | 0.1950 | 0.4230 |
+| Qwen | <u>0.0874</u> | 0.1950 | 0.4230 |
 | SigLIP 1 | 0.0821 | 0.2293 | 0.4539 |
-| SigLIP 2 | 0.0793 | 0.2280 | 0.4558 |
-| CLIP L/14 | 0.0793 | 0.2306 | 0.4433 |
+| SigLIP 2 | 0.0793 | 0.2280 | <u>0.4558</u> |
+| CLIP L/14 | 0.0793 | <u>0.2306</u> | 0.4433 |
 | CLIP B/16 | 0.0749 | 0.2228 | 0.4309 |
 | CLIP B/32 | 0.0716 | 0.2161 | 0.4286 |
 | DINOv2-large (sample scale) | 0.0726 | 0.1975 | 0.4300 |
 | **Two ceilings** | | | |
 | Instructed Qwen image, one pass per aspect | 0.0921 | 0.4026 | 0.5062 |
-| Label-trained linear probe, default Qwen image (5,000 development paintings) | 0.1215 | 0.5275 | 0.6566 |
+| Label-trained linear probe, default Qwen image (5,000 development paintings) | <b><u>0.1215</u></b> | <b><u>0.5275</u></b> | <b><u>0.6566</u></b> |
 | **Our network, read once on that encoder's default image** | | | |
-| Qwen, first shared model | 0.1008 | 0.3685 | 0.4438 |
-| Qwen, current recipe | 0.1029 | 0.3996 | 0.4534 |
-| SigLIP 1 | 0.1036 | 0.4351 | 0.4702 |
-| SigLIP 2 | 0.1024 | 0.4304 | 0.4687 |
-| CLIP L/14 | 0.0996 | 0.4133 | 0.4654 |
-| CLIP B/16 | 0.0945 | 0.3894 | 0.4575 |
+| Qwen, first shared model | <b>0.1008</b> | 0.3685 | 0.4438 |
+| Qwen, current recipe | <b>0.1029</b> | 0.3996 | 0.4534 |
+| SigLIP 1 | <b><u>0.1036</u></b> | <b><u>0.4351</u></b> | <u>0.4702</u> |
+| SigLIP 2 | <b>0.1024</b> | <b>0.4304</b> | 0.4687 |
+| CLIP L/14 | <b>0.0996</b> | <b>0.4133</b> | 0.4654 |
+| CLIP B/16 | <b>0.0945</b> | 0.3894 | 0.4575 |
 | CLIP B/32 | 0.0885 | 0.3693 | 0.4484 |
 | DINOv2-large (sample scale) | 0.0814 | 0.3342 | 0.4544 |
 
