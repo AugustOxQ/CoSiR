@@ -274,7 +274,7 @@ def test_read_eq_checks_the_mode_and_hashes_the_file(tmp_path):
     assert S.read_eq(tmp_path, smoke=False)['pass'] is False and S.read_eq(tmp_path, smoke=False)['sha256'] != got['sha256']
 
 
-def fake_run_a(monkeypatch, tmp_path, eq_pass, rerun_of=None):
+def fake_run_a(monkeypatch, tmp_path, eq_pass, rerun_of=None, on_score=lambda: None):
     """run_a on synthetic climb.json, eq.json and scored records (no data, no training)."""
     climb = dict(stage='climb', smoke=True, decisions=S.extend_climb_log([], entry(0.5018, 0.505, 0.504)))
     (tmp_path / 'stage_a').mkdir(exist_ok=True)
@@ -285,8 +285,11 @@ def fake_run_a(monkeypatch, tmp_path, eq_pass, rerun_of=None):
         results['GR-32'] = dict(results['GR-32'], rerun_of=rerun_of)
     labels = {a: np.array([0, 1, -1]) for a in S.ASPECTS}
     monkeypatch.setattr(S.E, 'load_context', lambda: dict(p_sha='p', labels=labels))
-    monkeypatch.setattr(S, 'score_arms', lambda *a, **k: dict(base={x: 0.1 for x in S.ASPECTS}, results=results,
-                                                              identity=dict(arms=list(results))))
+
+    def score_arms(*a, **k):
+        on_score()
+        return dict(base={x: 0.1 for x in S.ASPECTS}, results=results, identity=dict(arms=list(results)))
+    monkeypatch.setattr(S, 'score_arms', score_arms)
     return S.run_a(tmp_path, 20, 1, smoke=True)
 
 
@@ -305,3 +308,51 @@ def test_rerun_of_reaches_verdict_and_climb_records(monkeypatch, tmp_path):
     recs['GR-32'] = dict(recs['GR-32'], rerun_of='first.json')
     e = S.climb_entry(recs)
     assert e['rungs']['GR-32']['rerun_of'] == 'first.json' and 'rerun_of' not in e['rungs']['GR-16']
+
+
+# ------------------------------------------------------------------ review fixes: an old check file, and code_state taken once
+def counting_code_state(monkeypatch, fixed=False):
+    """Replace code_state by a counter: call n gives code 'h<n>' (or always 'h1' when `fixed`). Returns the call list."""
+    calls = []
+
+    def fake():
+        calls.append(1)
+        n = 1 if fixed else len(calls)
+        return dict(code_commit=f'c{n}', code_dirty=False, code_sha256=f'h{n}')
+    monkeypatch.setattr(S, 'code_state', fake)
+    return calls
+
+
+def check_record(code='h1', identity=None, value=1.0, ok=True):
+    return dict(stage='va1_scorer', smoke=False, **{'pass': ok}, code_sha256=code, identity=identity or {'x': 1},
+                items={'k': dict(value=value)})
+
+
+def test_keep_check_writes_keeps_and_refuses_without_touching_the_old_file(tmp_path):
+    path = tmp_path / 'regression' / 'va1_scorer.json'
+    assert S.keep_check(path, check_record()) == check_record()                       # no file: written
+    before = path.read_bytes()
+    assert S.keep_check(path, check_record()) == check_record()                       # same code, inputs, values: kept
+    for new, match in [(check_record(code='h2'), 'code_sha256.*move.*aside.*rerun'),
+                       (check_record(identity={'x': 2}), 'other inputs'),
+                       (check_record(value=1.1), 'other values'),
+                       (check_record(ok=False), 'other values')]:
+        with pytest.raises(AssertionError, match=match):
+            S.keep_check(path, new)
+        assert path.read_bytes() == before                                           # never overwritten
+
+
+def test_run_a_and_climb_take_code_state_once_at_the_start(monkeypatch, tmp_path):
+    calls = counting_code_state(monkeypatch)
+    v = fake_run_a(monkeypatch, tmp_path, True, on_score=lambda: calls.append('scoring') if len(calls) != 1 else None)
+    assert calls == [1] and (v['code_commit'], v['code_sha256']) == ('c1', 'h1')
+    calls.clear()
+    labels = {a: np.array([0, 1, -1]) for a in S.ASPECTS}
+    monkeypatch.setattr(S.E, 'load_context', lambda: dict(p_sha='p', labels=labels))
+
+    def ladder_records(*a, **k):
+        calls.append('scoring') if len(calls) != 1 else None            # the code was read before the scoring started
+        return ladder(0.5018, 0.505, 0.507), dict(identity={'x': 1})
+    monkeypatch.setattr(S, 'ladder_records', ladder_records)
+    e = S.run_climb(tmp_path / 'c', 1, smoke=True)
+    assert calls == [1] and (e['code_commit'], e['code_sha256']) == ('c1', 'h1')

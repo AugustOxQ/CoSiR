@@ -117,6 +117,16 @@ def test_arms_within_one_genre_range_of_the_pick_are_listed():
     assert S.decide_b({'GR-8': rec(0.51), 'GR-2': rec(0.40), 'GR-4': rec(0.41)}, None)['within_one_range'] == []
 
 
+def test_an_arm_exactly_one_genre_range_below_the_pick_is_listed_and_a_hair_further_is_not(monkeypatch):
+    """The boundary is hit exactly: with r_genre = 0.25, 0.75 and 0.5 are binary fractions, so 0.75 - 0.5 == 0.25 holds
+    in floating point (0.5100 - (0.5100 - 0.0128) != 0.0128 does not)."""
+    monkeypatch.setattr(S, 'RANGES', dict(S.RANGES, genre=0.25))
+    assert 0.75 - 0.5 == 0.25
+    r = {'GR-8': rec(0.75), 'GR-2': rec(0.5), 'GR-4': rec(np.nextafter(0.5, 0))}
+    d = S.decide_b(r, None)
+    assert d['v_held'] == 'GR-8' and d['within_one_range'] == ['GR-2']
+
+
 # ---------------------------------------------------------------- VB4
 def test_vb4_refuses_other_arms_and_seeds():
     S.check_vb4(['GR-8', 'GR-2', 'GR-4'], None, (1, 2, 3))
@@ -133,13 +143,22 @@ def test_vb4_refuses_other_arms_and_seeds():
 
 def test_vb4_refuses_run_folders_of_other_arms_on_the_fresh_seeds(tmp_path):
     allowed = ['GR-2', 'GR-4', 'GR-16']
-    for a, s in [('GR-2', 1), ('GR-4', 3), ('GR-16', 2), ('GN-8', 0), ('GR-32', 0)]:     # seed 0 folders are stage A's
+    for a, s in [('GR-2', 1), ('GR-4', 3), ('GR-16', 2), ('GR-16', 0), ('GN-8', 0), ('GR-32', 0)]:   # v*_A and A's arms have s0
         (tmp_path / 'train' / a / f's{s}').mkdir(parents=True)
     S.check_fresh_dirs(tmp_path, allowed)
     (tmp_path / 'train' / 'GN-8' / 's2').mkdir()
     with pytest.raises(AssertionError, match='VB4.*GN-8'):
         S.check_fresh_dirs(tmp_path, allowed)
     S.check_fresh_dirs(tmp_path / 'nothing', allowed)                                    # no train folder: nothing to refuse
+
+
+@pytest.mark.parametrize('arm, seed', [('GR-2', 4), ('GR-2', 0), ('GR-4', 0), ('GR-16', 4), ('GR-4', 10)])
+def test_vb4_refuses_a_new_arm_on_seed_0_and_any_seed_outside_1_to_3(tmp_path, arm, seed):
+    (tmp_path / 'train' / 'GR-2' / 's1').mkdir(parents=True)
+    S.check_fresh_dirs(tmp_path, ['GR-2', 'GR-4', 'GR-16'])
+    (tmp_path / 'train' / arm / f's{seed}').mkdir(parents=True)
+    with pytest.raises(AssertionError, match=f'VB4.*{arm}/s{seed}'):
+        S.check_fresh_dirs(tmp_path, ['GR-2', 'GR-4', 'GR-16'])
 
 
 def test_the_stage_b_arm_set_follows_the_a_outcome():
@@ -263,3 +282,91 @@ def test_a_declared_failure_needs_exports_that_fail_vb3_and_a_run_folder_must_ma
         S.read_fresh_run(tmp_path, 'GR-2', 1, S.rg_paths.P_SHA256, {}, False)
     with pytest.raises(AssertionError, match='missing'):                     # a run that has not finished
         S.read_fresh_run(tmp_path, 'GR-4', 2, S.rg_paths.P_SHA256, {}, False)
+
+
+# ---------------------------------------------------------------- review fixes: an old check file, and code_state taken once
+def counting_code_state(monkeypatch, fixed=False, start=0):
+    """Replace code_state by a counter: call n gives code 'h<n>' (or always 'h1' when `fixed`; `start` shifts the numbering). Returns the call list."""
+    calls = []
+
+    def fake():
+        calls.append(1)
+        n = 1 if fixed else len(calls) + start
+        return dict(code_commit=f'c{n}', code_dirty=False, code_sha256=f'h{n}')
+    monkeypatch.setattr(S, 'code_state', fake)
+    return calls
+
+
+IMG = {'GR-8': {'1': {'emotion': 'aa', 'style': 'bb', 'genre': 'cc'}}, 'R6-5': {'1': {'emotion': 'dd', 'style': 'ee', 'genre': 'ff'}}}
+EFFECTS = {a: {'Abar': {'GR-8': 0.5, 'R6-5': 0.4}, 'e': 0.1, 'lo': 0.05, 'hi': 0.15} for a in S.ASPECTS}
+
+
+def fake_check_vb1(monkeypatch, tmp_path, shift=0.0, on_score=lambda: None):
+    """run_check_vb1 on a synthetic 12-25 reference and a synthetic scoring (no data, no training); smoke mode."""
+    labels = {a: np.array([0, 1, -1]) for a in S.ASPECTS}
+    ref = dict(stage='fresh', smoke=False, n_draws=S.rb_ami.N_DRAWS, winner='GR-8', seeds=[1, 2, 3], effects=EFFECTS,
+               identity=dict(p_sha256='p', label_sha256={a: S.rb_pick.array_sha256(labels[a]) for a in S.ASPECTS}, img_sha256=IMG))
+    write(tmp_path / 'ref' / 'score_fresh.json', ref)
+    monkeypatch.setattr(S.rg_paths, 'EG_III', tmp_path / 'ref')
+    monkeypatch.setattr(S.E, 'load_context', lambda: dict(p_sha='p', labels=labels))
+    got = json.loads(json.dumps(EFFECTS))
+    got['genre']['e'] += shift
+
+    def score_fresh_arms(*a, **k):
+        on_score()
+        return dict(records={'GR-8': dict(status='ok', effects=got)}, identity=dict(img_sha256=IMG))
+    monkeypatch.setattr(S, 'score_fresh_arms', score_fresh_arms)
+    return S.run_check_vb1(tmp_path / 'out', 20, 1, smoke=True)
+
+
+def test_check_vb1_keeps_a_file_of_the_same_code_and_inputs_and_refuses_one_of_other_code(monkeypatch, tmp_path):
+    counting_code_state(monkeypatch, fixed=True)
+    first = fake_check_vb1(monkeypatch, tmp_path)
+    path = tmp_path / 'out' / 'stage_b' / 'vb1.json'
+    before = path.read_bytes()
+    assert first['pass'] is True and fake_check_vb1(monkeypatch, tmp_path)['pass'] is True       # same code: kept
+    assert path.read_bytes() == before
+    counting_code_state(monkeypatch, start=1)                                                     # the scorer code changed
+    with pytest.raises(AssertionError, match='code_sha256.*move.*aside.*rerun'):
+        fake_check_vb1(monkeypatch, tmp_path)
+    assert path.read_bytes() == before                                                            # never overwritten
+
+
+def test_check_vb1_refuses_a_file_of_the_same_code_with_other_values_or_inputs(monkeypatch, tmp_path):
+    counting_code_state(monkeypatch, fixed=True)
+    fake_check_vb1(monkeypatch, tmp_path)
+    with pytest.raises(AssertionError, match='other values'):
+        fake_check_vb1(monkeypatch, tmp_path, shift=0.5)
+    path = tmp_path / 'out' / 'stage_b' / 'vb1.json'
+    old = json.loads(path.read_text())
+    old['identity']['img_sha256'] = {}
+    path.write_text(json.dumps(old))
+    with pytest.raises(AssertionError, match='other inputs'):
+        fake_check_vb1(monkeypatch, tmp_path)
+
+
+def test_check_vb1_names_the_code_it_started_with(monkeypatch, tmp_path):
+    calls = counting_code_state(monkeypatch)
+    rec_ = fake_check_vb1(monkeypatch, tmp_path, on_score=lambda: calls.append('scoring') if len(calls) != 1 else None)
+    assert calls == [1] and (rec_['code_commit'], rec_['code_sha256']) == ('c1', 'h1')
+
+
+def test_b_takes_code_state_once_at_the_start(monkeypatch, tmp_path):
+    calls = counting_code_state(monkeypatch)
+    out = tmp_path
+    write(out / 'stage_b' / 'vb1.json', {'stage': 'vb1'})
+    write(out / 'stage_a' / 'verdict.json', {'stage': 'a', 'smoke': True, 'outcome': 'A-SAME', 'winner': 'GR-8',
+                                             'identity': {'p_sha256': 'p'}})
+    write(tmp_path / 'ref' / 'score_fresh.json', {'identity': {'img_sha256': IMG}})
+    monkeypatch.setattr(S.rg_paths, 'EG_III', tmp_path / 'ref')
+    monkeypatch.setattr(S, 'read_vb1', lambda *a: {'pass': True})
+    labels = {a: np.array([0, 1, -1]) for a in S.ASPECTS}
+    monkeypatch.setattr(S.E, 'load_context', lambda: dict(p_sha='p', labels=labels))
+    records = {'GR-8': rec(0.5), 'GR-2': rec(0.4), 'GR-4': rec(0.3)}
+
+    def score_fresh_arms(*a, **k):
+        calls.append('scoring') if len(calls) != 1 else None            # the code was read before the scoring started
+        return dict(records=records, runs={}, identity=dict(img_sha256=IMG))
+    monkeypatch.setattr(S, 'score_fresh_arms', score_fresh_arms)
+    v = S.run_b(out, 20, 1, smoke=True)
+    assert calls == [1] and (v['code_commit'], v['code_sha256']) == ('c1', 'h1')

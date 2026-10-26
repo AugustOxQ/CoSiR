@@ -7,6 +7,9 @@
              d_T, d_R at I_0 and the full seed lists, the two bootstraps, G_half, PC and the outcome G-GO, G-MM,
              G-PART or G-NO -> `stage_c/verdict.json`. Refuses unless `stage_b/verdict.json` names G as v_held and
              both VC1 files pass. It states nothing else: the diagnostics (spec §3.6) run after the verdict exists.
+`report --arm G`  stage C's diagnostics (spec §3.6; ticket 08), only after `stage_c/verdict.json` exists: G's emotion,
+             style and genre on H with 12-24's reported margins (`rb_part2_report`), Leiden, seed spreads, best
+             epochs, K4's frozen block beside G's -> `stage_c/reported.{json,md}`. Decides nothing.
 
 The statistic is 12-24's: `rb_score.score_indices` (indexed rows, then the unlabelled rows masked inside the AMI; the
 mean over the drawn seeds of the mean over a set's three r20 partitions). The draws are this module's own, written
@@ -409,6 +412,215 @@ def run_score(out, arm, workers=8, n_resamples=N_RESAMPLES, smoke=False):
     return record
 
 
+# --- report (spec §3.6 "Stage C"; ticket 08; reported only, decides nothing) ---------------------------------------
+
+COMPARATORS = rb_part2_report.COMPARATORS           # B1 to B6
+FROZEN_IMAGE = 'F4'                                 # K4's default Qwen image (rb_part2_report.FROZEN['K4'])
+
+
+def _frozen_comparator_partitions(eligible):
+    """B1 to B6's frozen part 2 partitions {arm: {seed: {'r20', 'own'}}} for each arm's eligible seeds (the same files
+    `check vc1` reads); an arm with no eligible seed has none."""
+    return {arm: {s: {r: read_frozen_partitions(rg_paths.RB_PART2 / f'partitions/full/{arm}/percept__s{s}__{r}.npz',
+                                                n_sets=3 if r == 'r20' else 1) for r in ('r20', 'own')}
+                  for s in eligible[arm]} for arm in COMPARATORS}
+
+
+def _comparator_sources(eligible):
+    """{arm: {seed: {path, output_sha256}}}: the CT's saved B1 to B6 outputs the partitions came from."""
+    return {arm: {str(s): dict(path=str(rb_score.output_path('full', arm, s)),
+                               output_sha256=sha_file(rb_score.output_path('full', arm, s))) for s in eligible[arm]}
+            for arm in COMPARATORS}
+
+
+def _leiden_identity(held_sha, source_sha):
+    import ct_diag
+    return dict(held_sha256=held_sha, source_sha256=source_sha, k=rb_part2_report.LEIDEN_K,
+                code_sha256=rb_score.sha_file(ct_diag.__file__))
+
+
+def _read_leiden(path, identity, n_rows):
+    path = Path(path)
+    meta = json.loads(path.with_suffix('.json').read_text())
+    assert meta['identity'] == identity and meta['partitions_sha256'] == sha_file(path), f'{path}: Leiden inputs changed'
+    with np.load(path, allow_pickle=False) as z:
+        labels = z['labels']
+    assert labels.shape == (3, n_rows) and np.issubdtype(labels.dtype, np.integer), path
+    return labels
+
+
+def _leiden_g(x, path, identity):
+    """G's Leiden partitions of one output set, cached with a sidecar under the round's own outputs (a copy of the
+    caching branch of `rb_part2_report.leiden_fixed`, whose loader reads only 12-24's arm names)."""
+    path = Path(path)
+    if path.exists():
+        return _read_leiden(path, identity, len(x))
+    labels = rb_part2_report.leiden_reading(x)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix('.pending.npz')
+    np.savez_compressed(tmp, labels=labels)
+    tmp.replace(path)
+    path.with_suffix('.json').write_text(json.dumps(dict(identity=identity, partitions_sha256=sha_file(path)),
+                                                    indent=2) + '\n')
+    return labels
+
+
+def _leiden_comparators(eligible, sources, sha, n_rows):
+    """B1 to B6's frozen Leiden partitions (12-24's `part2/leiden/full/<arm>/percept__s{seed}.npz`), read only."""
+    return {arm: {s: dict(r20=_read_leiden(
+        rg_paths.RB_PART2 / f'leiden/full/{arm}/percept__s{s}.npz',
+        _leiden_identity(sha, sources[arm][str(s)]['output_sha256']), n_rows)) for s in eligible[arm]}
+        for arm in COMPARATORS}
+
+
+def best_epochs_g(out, arm):
+    """Best epoch and best dev loss per aspect and seed from G's full-scale weight sidecars."""
+    root = rg_paths.full_root(out) / 'weights' / arm
+    result = {}
+    for aspect in rg_paths.ASPECTS:
+        result[aspect] = {}
+        for s in SEEDS:
+            meta = json.loads((root / f'{aspect}__s{s}.json').read_text())
+            result[aspect][str(s)] = dict(best_epoch=int(meta['best_epoch']), best_dev_loss=float(meta['best_dev_loss']))
+    return result
+
+
+def report_g(out, arm, ctx):
+    """The reported block of G: for each aspect the margins of 12-24's K4 block, Leiden, seed spreads, best epochs."""
+    sha, n_rows, nr, workers = ctx['sha'], ctx['n_rows'], ctx['n_resamples'], ctx['workers']
+    labels = ctx['labels']
+    eligible = dict(ctx['eligible'], **{arm: list(SEEDS)})
+    groups = rb_part2_report.margin_arms('K4')                 # K4's lists with G in the candidate's place
+    arms_a = (arm,) + groups['a'][1:]
+    arms_b = (arm,) + groups['b'][1:]
+    assert arms_a == (arm,) + COMPARATORS and arms_b == (arm, 'B1') and groups['ab'][1:] == groups['a'][1:]
+    f4 = {0: {'r20': read_frozen_partitions(rg_paths.RB_PART2 / f'partitions/full/{FROZEN_IMAGE}/frozen__s0__r20.npz')}}
+    everything = np.arange(n_rows)
+    root = rg_paths.full_root(out) / 'held' / arm
+    report = dict(candidate=arm, arms=list(arms_a), eligible_seeds=eligible, frozen_arm=FROZEN_IMAGE, aspects={},
+                  best_epochs=best_epochs_g(out, arm), sources=dict(G_outputs={}, comparators=ctx['comp_sources']))
+    for aspect in rg_paths.ASPECTS:
+        g_fixed, g_leiden, src = {}, {}, {}
+        for s in SEEDS:
+            file = root / f'{aspect}__s{s}.npz'
+            assert file.is_file(), f'missing held output of G: {file}'
+            x = load_held_output(file, arm, s, sha, aspect=aspect)                 # VC3
+            src[str(s)] = dict(path=str(file), output_sha256=sha_file(file))
+            g_fixed[s] = {'r20': rb_score.fixed_partitions(                       # 'K': the r20-only kind, as g_partitions
+                x, PARTITION_ARM, out / 'stage_c/partitions' / arm, aspect, s, sha, src[str(s)]['output_sha256'])['r20']}
+            g_leiden[s] = {'r20': _leiden_g(x, out / f'stage_c/leiden/{arm}/{aspect}__s{s}.npz', _leiden_identity(
+                sha, src[str(s)]['output_sha256']))}
+        report['sources']['G_outputs'][aspect] = src
+        y = labels[aspect]
+        t = read_frozen_partitions(rg_paths.RB_PART2 / f'partitions/full/T/{aspect}__s0__r20.npz')
+        fx = dict(ctx['comp_fixed'], **{arm: g_fixed, FROZEN_IMAGE: f4, 'T': {0: {'r20': t}}})
+        res = dict(labels_masked=int((y < 0).sum()), margins={},
+                   point_spread=rb_part2_report.seed_spread(rb_score.score_indices(fx, y, everything, eligible, arms_a)))
+        m = res['margins']
+        if aspect != 'emotion':                                 # emotion: against T and F4 only (spec §3.6)
+            m['a_B1_to_B6'] = rb_part2_report.margin(fx, y, eligible, arms_a, nr, workers)
+            m['b_matched'] = rb_part2_report.margin(fx, y, eligible, arms_b, nr, workers)
+            m['max_a_b'] = rb_part2_report.margin(fx, y, eligible, arms_a, nr, workers)   # K4's 'ab' list = 'a'
+        m['c_frozen'] = rb_part2_report.margin(fx, y, eligible, (arm, FROZEN_IMAGE), nr, workers, seedless=(FROZEN_IMAGE,))
+        m['T'] = rb_part2_report.margin(fx, y, eligible, (arm, 'T'), nr, workers, seedless=('T',))
+        lf = dict(ctx['comp_leiden'], **{arm: g_leiden})
+        m['leiden_vs_all'] = rb_part2_report.margin(lf, y, eligible, arms_a, nr, workers, lenient=True)
+        report['aspects'][aspect] = res
+        print(f'{arm} {aspect}: ' + ', '.join(f'{k} d={v["d"]:+.4f}' for k, v in m.items()), flush=True)
+    return report
+
+
+def _k4_beside(reported_stage4, sha):
+    """12-24's frozen K4 block (full scale), cut to what the comparison shows."""
+    assert reported_stage4['held_sha256'] == sha
+    block = reported_stage4['blocks']['K4']
+    return dict(source=str(rg_paths.RB_PART2 / 'reported_stage4.json'), best_epochs=block['best_epochs'],
+                aspects={a: dict(margins=block['aspects'][a]['margins'], point_spread=block['aspects'][a]['point_spread'])
+                         for a in rg_paths.ASPECTS})
+
+
+def _fmt(m):
+    lo, hi = m['interval']
+    return f'{m["d"]:+.4f} [{lo:+.4f}, {hi:+.4f}]'
+
+
+def report_markdown(record):
+    g, k4, arm = record['G'], record['K4_frozen'], record['arm']
+    v = record['verdict_summary']
+    L = [f'# Stage C reported readings: {arm} on H' + (' (smoke)' if record['smoke'] else ''), '',
+         'Decides nothing. Margins are 12-24\'s (`rb_part2_report.margin`): d = the score of the student minus the '
+         'largest comparator entry, with the 95% interval of its own bootstrap over the arms named. K4 is 12-24\'s '
+         'frozen block, for comparison.', '',
+         f'Verdict (stage_c/verdict.json): {v["outcome_id"]}; d_T {v["d_T"]:+.4f}, d_R {v["d_R"]:+.4f}, '
+         f'G_half {v["G_half"]:.4f}.', '',
+         '| aspect | margin | G d [interval] | G score | G largest entry | K4 d [interval] | K4 score |',
+         '|---|---|---|---|---|---|---|']
+    for aspect, res in g['aspects'].items():
+        for name, m in res['margins'].items():
+            k = k4['aspects'][aspect]['margins'].get(name)
+            L.append(f'| {aspect} | {name} | {_fmt(m)} | {m["A_cand"]:.4f} | {m["max_entry"]} '
+                     f'{m["A_e"][m["max_entry"]]:.4f} | ' + (f'{_fmt(k)} | {k["A_cand"]:.4f} |' if k else ' | |'))
+    L += ['', 'Seed spread of each aspect\'s score (G, then K4; mean, min, max, sd over seeds):', '',
+          '| aspect | student | mean | min | max | sd |', '|---|---|---|---|---|---|']
+    for aspect in g['aspects']:
+        for who, spread, name in (('G', g['aspects'][aspect]['point_spread'], arm),
+                                  ('K4', k4['aspects'][aspect]['point_spread'], 'K4')):
+            s = spread[name]['r20']
+            L.append(f'| {aspect} | {who} | {s["mean"]:.4f} | {s["min"]:.4f} | {s["max"]:.4f} | {s["sd"]:.4f} |')
+    L += ['', 'Best epoch per seed:', '']
+    for who, be in (('G', g['best_epochs']), ('K4', k4['best_epochs'])):
+        for aspect, seeds in be.items():
+            L.append(f'- {who} {aspect}: ' + ', '.join(f's{s} {x["best_epoch"]}' for s, x in seeds.items()))
+    return '\n'.join(L) + '\n'
+
+
+def run_report(out, arm, workers=8, n_resamples=N_RESAMPLES, smoke=False):
+    """Stage C's reported readings -> `stage_c/reported.{json,md}`. Refuses before `stage_c/verdict.json` exists."""
+    out = Path(out)
+    if smoke:
+        assert rg_paths.smoke_ok(out), 'smoke needs --outputs under /tmp/claude-0/'
+    else:
+        assert n_resamples == N_RESAMPLES
+    verdict_path = out / 'stage_c/verdict.json'
+    assert verdict_path.is_file(), f'{verdict_path}: the reported readings run only after the verdict file exists'
+    verdict = json.loads(verdict_path.read_text())
+    assert verdict['stage'] == 'C' and verdict['arm'] == arm and verdict['smoke'] == bool(smoke), \
+        f'{verdict_path}: stage {verdict["stage"]!r}, arm {verdict["arm"]!r}, smoke {verdict["smoke"]!r}'
+    names, sha, labels = rb_part2_report.held_labels()
+    assert sha == rg_paths.HELD_SHA256 == verdict['held_sha256'] and len(names) == rg_paths.N_HELD
+    for s, rec in verdict['sources']['G_outputs'].items():                     # G's genre outputs are the verdict's
+        assert sha_file(rec['path']) == rec['output_sha256'], f'{rec["path"]}: changed since the verdict'
+    rcol, rcol_path = rb_score.read_rcol_eligible('full')
+    eligible = {a: v for a, v in rb_score.eligible_seeds((arm,) + COMPARATORS, rcol).items() if a != arm}
+    sources = _comparator_sources(eligible)
+    reported_stage4 = json.loads((rg_paths.RB_PART2 / 'reported_stage4.json').read_text())
+    assert {a: list(v) for a, v in reported_stage4['blocks']['K4']['eligible_seeds'].items() if a != 'K4'} == eligible
+    ctx = dict(sha=sha, n_rows=len(names), n_resamples=n_resamples, workers=workers, labels=labels,
+               eligible=eligible, comp_sources=sources, comp_fixed=_frozen_comparator_partitions(eligible),
+               comp_leiden=_leiden_comparators(eligible, sources, sha, len(names)))
+    g = report_g(out, arm, ctx)
+    record = dict(schema=1, stage='C', arm=arm, held_sha256=sha, rule_commit=rg_paths.RULE_COMMIT, smoke=bool(smoke),
+                  n_resamples=n_resamples,
+                  verdict_summary=dict(outcome_id=verdict['outcome_id'], d_T=verdict['d_T']['d'],
+                                       d_R=verdict['d_R']['d'], G_half=verdict['G_half']),
+                  G=g, K4_frozen=_k4_beside(reported_stage4, sha),
+                  inputs=dict(verdict_sha256=sha_file(verdict_path), rcol=str(rcol_path),
+                              reported_stage4_sha256=sha_file(rg_paths.RB_PART2 / 'reported_stage4.json')),
+                  code=dict(code_provenance(), rb_part2_report_sha256=sha_file(rb_part2_report.__file__)))
+    record = json.loads(json.dumps(record, default=lambda o: o.item() if hasattr(o, 'item') else o.tolist()))
+    path = out / 'stage_c/reported.json'
+    keep = lambda r: {k: v for k, v in r.items() if k != 'code'}
+    if path.exists():
+        assert keep(json.loads(path.read_text())) == keep(record), f'{path}: exists and differs; not overwritten'
+    else:
+        _atomic_json(path, record)
+    md = path.with_suffix('.md')
+    if not md.exists():
+        md.write_text(report_markdown(record))
+    print(f'wrote {path} and {md}', flush=True)
+    return record
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--outputs', type=Path, default=rg_paths.OUTPUTS)
@@ -418,6 +630,8 @@ def main(argv=None):
     sub.add_parser('check').add_argument('what', choices=['vc1'])
     s = sub.add_parser('score')
     s.add_argument('--arm', required=True, help='G: the stage B pick (smoke: also K4)')
+    r = sub.add_parser('report')
+    r.add_argument('--arm', required=True, help='G, as for score; needs stage_c/verdict.json')
     args = p.parse_args(argv)
     rg_paths.check_imports()
     if args.smoke:
@@ -428,6 +642,9 @@ def main(argv=None):
         record = run_check_vc1(args.outputs, args.workers)
         raise SystemExit(0 if record['pass'] else 1)
     assert args.arm in rg_variants.ARMS or (args.smoke and args.arm == 'K4'), args.arm
+    if args.cmd == 'report':
+        run_report(args.outputs, args.arm, args.workers, n, args.smoke)
+        return
     run_score(args.outputs, args.arm, args.workers, n, args.smoke)
 
 
