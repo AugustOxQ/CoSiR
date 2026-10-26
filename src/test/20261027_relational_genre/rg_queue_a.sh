@@ -18,7 +18,13 @@ softstep va1_train gpu "$here/rg_train.py" regress va1 --device "$device" --outp
 for d in "$outputs"/regression/va1_*_s*/; do
     [[ -d "$d" ]] && pending_add "${d%/}" "VA1 regression run weights (sample scale, switches off or GR-8)" "regression runs of the gate; the exports and va1.json are the record"
 done
-softstep va1_scorer cpu "$here/rg_score.py" check va1 --outputs "$outputs" "${w[@]}" "${smoke[@]}"
+softstep va1_scorer cpu "$here/rg_score.py" check va1 --outputs "$outputs" "${w[@]}" "${smoke[@]}" || {
+    if [[ "${RG_SMOKE:-0}" == 1 ]]; then
+        note "smoke: VA1's scorer half failed or is stale; the chain goes on"
+    else
+        stop "VA1's scorer half failed or is stale: nothing runs (rule §4.1)"
+    fi
+}
 regression_gate VA1 "$outputs/regression/va1.json" "$outputs/regression/va1_scorer.json" \
     || stop "VA1 does not hold: nothing runs in stages A, B or C (rule §4.1); the cause goes in the report"
 # --- EQ ----------------------------------------------------------------------------------------------------------

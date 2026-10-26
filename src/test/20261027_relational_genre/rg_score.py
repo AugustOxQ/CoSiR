@@ -342,10 +342,10 @@ def scorer_code_sha256():
 
 
 def code_state():
-    """git HEAD, tracked changes and the scorer/dependency hash."""
+    """git HEAD, round-local Python changes and the scorer/dependency hash."""
     def git(*a):
         return subprocess.run(['git', '-C', str(rg_paths.ROUND), *a], capture_output=True, text=True, check=True).stdout
-    return dict(code_commit=git('rev-parse', 'HEAD').strip(), code_dirty=bool(git('status', '--porcelain', '-uno').strip()),
+    return dict(code_commit=git('rev-parse', 'HEAD').strip(), code_dirty=bool(git('status', '--porcelain', '--', '*.py').strip()),
                 code_sha256=scorer_code_sha256())
 
 
@@ -399,6 +399,13 @@ class DiskBoots:
 
 
 # ------------------------------------------------------------------ inputs
+def check_run_code(outputs, run, smoke):
+    va1 = read_training_va1(outputs, smoke)
+    hashes = va1.get('rg_code_sha256')
+    assert isinstance(hashes, dict) and set(hashes) == {'rg_train.py', 'rg_loss.py', 'rg_variants.py'}, 'VA1: missing rg_code_sha256'
+    assert run.get('rg_code_sha256') == hashes, 'trained by other code than VA1 checked; rerun VA1 or retrain'
+
+
 def read_run(outputs, arm, p_sha, declared_failed=None, smoke=False):
     """{status, cause, best_epoch, run_sha256, img {aspect: array}} of one arm at seed 0 (copied from `eg_score3.read_run`,
     which reads 12-25's stage iii folders and `eg_variants`' switches). A run.json with status 'failed' has no exports
@@ -412,6 +419,8 @@ def read_run(outputs, arm, p_sha, declared_failed=None, smoke=False):
     run_path = folder / 'run.json'
     assert run_path.exists(), f'{arm}: {run_path} missing (the run has not finished)'
     run = json.loads(run_path.read_text())
+    if arm != 'GR-8':
+        check_run_code(outputs, run, smoke)
     assert run['variant'] == arm and run['seed'] == SEED, (arm, run.get('variant'), run.get('seed'))
     want = V.eg_form(V.ARMS[arm]) if arm == 'GR-8' else V.switches(arm)
     assert run['switches'] == want, f'{arm}: run.json switches {run["switches"]}, expected {want}'
@@ -444,11 +453,22 @@ def read_run(outputs, arm, p_sha, declared_failed=None, smoke=False):
 
 
 def check_arm_dirs(outputs, allowed):
-    """VA4: no seed-0 run folder of an arm outside `allowed` (stage B's GR-2, GR-4 and the fresh seeds are not at seed 0)."""
+    """VA4: only allowed seed-0 arms; replaced runs must be the current run's forced VA3 origin."""
     root = Path(outputs) / 'train'
     found = sorted(p.parent.name for p in root.glob(f'*/s{SEED}')) if root.exists() else []
     extra = [v for v in found if v not in set(allowed)]
     assert not extra, f'VA4: seed-0 run folders of arms outside the climb\'s record and A_OTHER: {extra}'
+    for origin in sorted((Path(outputs) / 'replaced').glob('*/s0*')):
+        arm = origin.parent.name
+        path = origin / 'run.json'
+        assert arm in allowed and path.is_file(), f'VA4: unapproved replaced run {origin}'
+        old = json.loads(path.read_text())
+        assert (old.get('variant'), old.get('seed'), old.get('status'), old.get('failure_kind')) == (arm, 0, 'failed', 'va3'), f'VA4: replaced run was not a VA3 failure: {origin}'
+        current_path = root / arm / 's0' / 'run.json'
+        assert current_path.is_file(), f'VA4: no current run for replaced run {origin}'
+        current = json.loads(current_path.read_text())
+        link = current.get('rerun_of')
+        assert link and Path(link).resolve() == origin.resolve(), f'VA4: replaced run is not named by the current rerun_of: {origin}'
 
 
 def score_arms(outputs, arms, n_draws, workers, declared_failed=None, ctx=None, smoke=False):
@@ -553,6 +573,7 @@ def ladder_records(outputs, n_draws, workers, declared_failed, ctx, smoke):
 
 def run_climb(outputs, workers, smoke=False, declared_failed=None):
     """The climb's decision on the rungs run so far, appended to stage_a/climb.json (point estimates only)."""
+    read_va1(outputs, smoke)
     code = code_state()                                   # taken before the scoring: the record names the code that computed it
     path = stage_dir(outputs) / 'climb.json'
     ctx = E.load_context()
@@ -567,12 +588,35 @@ def run_climb(outputs, workers, smoke=False, declared_failed=None):
     return log[-1]
 
 
+def read_training_va1(outputs, smoke):
+    path = Path(outputs) / 'regression' / 'va1.json'
+    assert path.exists(), f'VA1: {path} missing; run the training half first'
+    va1 = json.loads(path.read_text())
+    assert va1.get('smoke') is bool(smoke), f'VA1: {path}: smoke flag differs'
+    assert smoke or va1.get('pass') is True, f'VA1 training half did not pass ({path})'
+    return va1
+
+
+def read_va1(outputs, smoke):
+    """Both VA1 halves, bound to this scorer; the two-epoch training smoke cannot pass."""
+    path = Path(outputs) / 'regression' / 'va1_scorer.json'
+    assert path.exists(), f'VA1: {path} missing; run `check va1` first'
+    scorer = json.loads(path.read_text())
+    assert scorer.get('stage') == 'va1_scorer', f'VA1: {path}: stage differs'
+    assert scorer.get('smoke') is bool(smoke), f'VA1: {path}: smoke flag differs'
+    assert scorer.get('pass') is True, f'VA1 scorer half did not pass ({path})'
+    assert scorer.get('code_sha256') == scorer_code_sha256(), f'VA1: {path}: stale code_sha256; rerun `check va1`'
+    return read_training_va1(outputs, smoke)
+
+
 def read_eq(outputs, smoke=False):
     """regression/eq.json's verdict: dict(pass (bool), sha256 of the file). GQ-8 trains only after EQ ran, so the file must
     exist, and it was made in the same mode as this scoring."""
     path = Path(outputs) / 'regression' / 'eq.json'
     assert path.exists(), f'{path} missing: EQ (rule §2.1) must have run before GQ-8'
     eq = json.loads(path.read_text())
+    from rg_train import eq_code_sha256
+    assert eq.get('eq_code_sha256') == eq_code_sha256(), f'EQ: {path}: stale or missing code hashes; move it aside and rerun EQ'
     assert isinstance(eq.get('pass'), bool), f'{path}: no boolean `pass`'
     assert eq.get('smoke') == bool(smoke), f'{path}: smoke {eq.get("smoke")!r}, this scoring has smoke={bool(smoke)}'
     return dict(**{'pass': eq['pass']}, sha256=_file_sha256(path))
@@ -580,6 +624,7 @@ def read_eq(outputs, smoke=False):
 
 def run_a(outputs, n_draws, workers, smoke=False, declared_failed=None):
     """Stage A's verdict -> stage_a/verdict.json: every arm of the finished climb plus A_OTHER, v*_A, the outcome."""
+    read_va1(outputs, smoke)
     code = code_state()                                   # taken before the scoring: the record names the code that computed it
     climb_path = stage_dir(outputs) / 'climb.json'
     assert climb_path.exists(), f'{climb_path} missing: run `climb` first'
@@ -706,6 +751,8 @@ def read_fresh_run(outputs, arm, seed, p_sha, declared_failed, smoke):
     run_path = folder / 'run.json'
     assert run_path.exists(), f'{arm} s{seed}: {run_path} missing (the run has not finished)'
     run = json.loads(run_path.read_text())
+    if arm not in FROZEN_ARMS:
+        check_run_code(outputs, run, smoke)
     assert run['variant'] == arm and run['seed'] == seed, (arm, seed, run.get('variant'), run.get('seed'))
     want = V.eg_form(V.ARMS[arm]) if arm in FROZEN_ARMS else V.switches(arm)    # as ticket 03's `read_run`
     assert run['switches'] == want, f'{arm} s{seed}: run.json switches {run["switches"]}, expected {want}'

@@ -1,4 +1,6 @@
 """Stage A scorer (ticket 03): the guard, the climb, v*_A, the A outcomes, VA4 -- on synthetic records."""
+from pathlib import Path
+
 import pytest
 
 import rg_score as S
@@ -210,6 +212,8 @@ def write_run(tmp_path, arm='GR-16', **over):
     """A seed-0 run.json of a new arm under tmp_path, failed unless `over` says otherwise; returns tmp_path."""
     run = dict(variant=arm, seed=0, switches=S.V.switches(arm), status='failed', cause='x', failure_kind='nonfinite_loss',
                p_sha256=S.rg_paths.P_SHA256)
+    va1 = write_va1(tmp_path, smoke=over.get('smoke', False))
+    run['rg_code_sha256'] = va1['rg_code_sha256']
     run.update(over)
     path = S.rg_paths.run_dir(tmp_path, arm, 0) / 'run.json'
     path.parent.mkdir(parents=True)
@@ -254,7 +258,8 @@ def test_read_run_carries_rerun_of_only_when_present(tmp_path):
 
 
 def write_eq(outputs, **over):
-    eq = {'pass': True, 'smoke': False, **over}
+    from rg_train import eq_code_sha256
+    eq = {'pass': True, 'smoke': False, 'eq_code_sha256': eq_code_sha256(), **over}
     path = outputs / 'regression' / 'eq.json'
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(eq))
@@ -276,6 +281,7 @@ def test_read_eq_checks_the_mode_and_hashes_the_file(tmp_path):
 
 def fake_run_a(monkeypatch, tmp_path, eq_pass, rerun_of=None, on_score=lambda: None):
     """run_a on synthetic climb.json, eq.json and scored records (no data, no training)."""
+    write_va1(tmp_path, smoke=True)
     climb = dict(stage='climb', smoke=True, decisions=S.extend_climb_log([], entry(0.5018, 0.505, 0.504)))
     (tmp_path / 'stage_a').mkdir(exist_ok=True)
     (tmp_path / 'stage_a' / 'climb.json').write_text(json.dumps(climb))
@@ -354,5 +360,159 @@ def test_run_a_and_climb_take_code_state_once_at_the_start(monkeypatch, tmp_path
         calls.append('scoring') if len(calls) != 1 else None            # the code was read before the scoring started
         return ladder(0.5018, 0.505, 0.507), dict(identity={'x': 1})
     monkeypatch.setattr(S, 'ladder_records', ladder_records)
+    write_va1(tmp_path / 'c', smoke=True)
     e = S.run_climb(tmp_path / 'c', 1, smoke=True)
     assert calls == [1] and (e['code_commit'], e['code_sha256']) == ('c1', 'h1')
+
+
+# Final review A: gate currency at the entry points and file boundary.
+def write_va1(outputs, smoke=False, **over):
+    folder = outputs / 'regression'
+    folder.mkdir(parents=True, exist_ok=True)
+    scorer = dict(stage='va1_scorer', smoke=smoke, code_sha256=S.scorer_code_sha256(), **{'pass': True})
+    training = dict(smoke=smoke, rg_code_sha256={'rg_train.py': 'train', 'rg_loss.py': 'loss', 'rg_variants.py': 'variants'},
+                    **{'pass': not smoke})
+    scorer.update(over.get('scorer', {}))
+    training.update(over.get('training', {}))
+    (folder / 'va1_scorer.json').write_text(json.dumps(scorer))
+    (folder / 'va1.json').write_text(json.dumps(training))
+    return training
+
+
+@pytest.mark.parametrize('smoke', [False, True])
+def test_read_va1_accepts_both_halves_including_the_smoke_training_failure(tmp_path, smoke):
+    write_va1(tmp_path, smoke)
+    assert S.read_va1(tmp_path, smoke)['smoke'] is smoke
+
+
+@pytest.mark.parametrize('half, change', [
+    ('scorer', {'stage': 'vb1'}), ('scorer', {'smoke': True}),
+    ('scorer', {'pass': False}), ('scorer', {'code_sha256': 'stale'}),
+    ('training', {'pass': False}), ('training', {'smoke': True}),
+])
+def test_read_va1_refuses_invalid_halves(tmp_path, half, change):
+    write_va1(tmp_path, **{half: change})
+    with pytest.raises(AssertionError, match='VA1'):
+        S.read_va1(tmp_path, False)
+
+
+@pytest.mark.parametrize('half', ['va1', 'va1_scorer'])
+def test_read_va1_requires_both_files(tmp_path, half):
+    write_va1(tmp_path)
+    (tmp_path / 'regression' / f'{half}.json').rename(tmp_path / f'{half}.saved')
+    with pytest.raises(AssertionError, match='VA1'):
+        S.read_va1(tmp_path, False)
+
+
+@pytest.mark.parametrize('mode', ['a', 'climb'])
+def test_stage_a_checks_va1_before_loading_data(tmp_path, monkeypatch, mode):
+    monkeypatch.setattr(S.E, 'load_context', lambda: pytest.fail('data loaded before VA1'))
+    with pytest.raises(AssertionError, match='VA1'):
+        if mode == 'a':
+            S.run_a(tmp_path, 20, 1)
+        else:
+            S.run_climb(tmp_path, 1)
+
+
+@pytest.mark.parametrize('smoke', [False, True])
+@pytest.mark.parametrize('hashes', [None, {'rg_train.py': 'other'}])
+def test_seed0_runs_must_use_the_code_va1_checked(tmp_path, smoke, hashes):
+    write_run(tmp_path, smoke=smoke, rg_code_sha256=hashes)
+    with pytest.raises(AssertionError, match='trained by other code than VA1 checked'):
+        S.read_run(tmp_path, 'GR-16', S.rg_paths.P_SHA256, smoke=smoke)
+
+
+@pytest.mark.parametrize('hashes', [None, {'rg_loss.py': 'stale'}])
+def test_read_eq_refuses_missing_or_stale_code_hashes(tmp_path, hashes):
+    write_eq(tmp_path, eq_code_sha256=hashes)
+    with pytest.raises(AssertionError, match='EQ.*code'):
+        S.read_eq(tmp_path)
+
+
+def test_run_code_requires_a_complete_va1_hash_manifest(tmp_path):
+    write_run(tmp_path, rg_code_sha256={})
+    write_va1(tmp_path, training={'rg_code_sha256': {}})
+    with pytest.raises(AssertionError, match='VA1.*rg_code_sha256'):
+        S.read_run(tmp_path, 'GR-16', S.rg_paths.P_SHA256)
+
+
+@pytest.mark.parametrize('problem', ['missing_record', 'ok', 'nonfinite_loss', 'wrong_identity', 'unlinked', 'wrong_link', 'extra_arm'])
+def test_va4_refuses_replaced_seed0_runs_except_linked_va3_failures(tmp_path, problem):
+    arm = 'GN-8' if problem == 'extra_arm' else 'GR-16'
+    origin = tmp_path / 'replaced' / arm / 's0-previous'
+    origin.mkdir(parents=True)
+    old = dict(variant=arm, seed=0, status='failed', failure_kind='va3')
+    if problem == 'ok':
+        old['status'] = 'ok'
+    if problem == 'nonfinite_loss':
+        old['failure_kind'] = 'nonfinite_loss'
+    if problem == 'wrong_identity':
+        old['seed'] = 1
+    if problem != 'missing_record':
+        (origin / 'run.json').write_text(json.dumps(old))
+    write_run(tmp_path, arm=arm, rerun_of=str(tmp_path / 'wrong') if problem == 'wrong_link' else
+              None if problem == 'unlinked' else str(origin))
+    with pytest.raises(AssertionError, match='VA4'):
+        S.check_arm_dirs(tmp_path, ['GR-16'])
+
+
+def test_va4_accepts_the_linked_va3_failure_and_ignores_replaced_fresh_seeds(tmp_path):
+    origin = tmp_path / 'replaced/GR-16/s0-previous'
+    origin.mkdir(parents=True)
+    (origin / 'run.json').write_text(json.dumps(dict(variant='GR-16', seed=0, status='failed', failure_kind='va3')))
+    write_run(tmp_path, rerun_of=str(origin))
+    (tmp_path / 'replaced/GN-8/s1-other').mkdir(parents=True)
+    S.check_arm_dirs(tmp_path, ['GR-16'])
+
+
+def test_a_checks_replaced_runs_before_scoring(tmp_path, monkeypatch):
+    (tmp_path / 'replaced/GR-16/s0-unrecorded').mkdir(parents=True)
+    with pytest.raises(AssertionError, match='VA4'):
+        fake_run_a(monkeypatch, tmp_path, True)
+
+
+
+def test_va4_refuses_an_origin_with_no_current_run(tmp_path):
+    origin = tmp_path / 'replaced/GR-16/s0-origin'
+    origin.mkdir(parents=True)
+    (origin / 'run.json').write_text(json.dumps(dict(variant='GR-16', seed=0, status='failed', failure_kind='va3')))
+    with pytest.raises(AssertionError, match='VA4.*no current run'):
+        S.check_arm_dirs(tmp_path, ['GR-16'])
+
+
+def test_va4_refuses_replaced_arm_outside_the_climb(tmp_path):
+    origin = tmp_path / 'replaced/GN-8/s0-origin'
+    origin.mkdir(parents=True)
+    (origin / 'run.json').write_text(json.dumps(dict(variant='GN-8', seed=0, status='failed', failure_kind='va3')))
+    # No live GN-8 folder: only the replaced-folder scan can spot this arm.
+    with pytest.raises(AssertionError, match='VA4.*unapproved'):
+        S.check_arm_dirs(tmp_path, ['GR-16'])
+
+
+@pytest.mark.parametrize('smoke', [False, True])
+def test_queue_a_scorer_failure_stops_real_runs_and_notes_smokes(tmp_path, smoke):
+    import subprocess
+    script = (Path(S.__file__).parent / 'rg_queue_a.sh').read_text().split('# --- EQ')[0]
+    # Exercise the queue's actual gate block; substitute commands, never run a trainer or GPU.
+    stub = tmp_path / 'common.sh'
+    stub.write_text('''outputs=$1
+workers=1
+device=cpu
+smoke=()
+here=/unused
+softstep() { [[ "$1" != va1_scorer ]]; }
+pending_add() { :; }
+regression_gate() { return 0; }  # stale files still say pass
+note() { echo "$*"; }
+stop() { echo "$*"; exit 17; }
+''')
+    source = next(line for line in script.splitlines() if line.startswith('source '))
+    script = script.replace(source, 'source "$2"') + '\necho AFTER_VA1\n'
+    env = dict(__import__('os').environ, RG_SMOKE='1' if smoke else '0')
+    got = subprocess.run(['bash', '-c', script, 'queue-test', str(tmp_path), str(stub)], env=env,
+                         capture_output=True, text=True, check=False)
+    if smoke:
+        assert got.returncode == 0 and 'smoke:' in got.stdout and 'AFTER_VA1' in got.stdout
+    else:
+        assert got.returncode == 17 and "VA1's scorer half failed or is stale: nothing runs" in got.stdout
+        assert 'AFTER_VA1' not in got.stdout

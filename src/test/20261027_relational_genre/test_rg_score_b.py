@@ -230,6 +230,8 @@ def make_run(root, arm, seed, status='ok', cause=None, smoke=False, kind=None, r
     folder.mkdir(parents=True)
     run = dict(variant=arm, seed=seed, switches=switches or S.V.switches(arm), status=status, cause=cause, best_epoch={},
                smoke=smoke, p_sha256=S.rg_paths.P_SHA256)
+    from test_rg_score import write_va1
+    run['rg_code_sha256'] = write_va1(root, smoke)['rg_code_sha256']
     if kind:
         run['failure_kind'] = kind
     if rerun_of:
@@ -351,22 +353,69 @@ def test_check_vb1_names_the_code_it_started_with(monkeypatch, tmp_path):
     assert calls == [1] and (rec_['code_commit'], rec_['code_sha256']) == ('c1', 'h1')
 
 
-def test_b_takes_code_state_once_at_the_start(monkeypatch, tmp_path):
+def fake_b(monkeypatch, tmp_path, changed_arm=None):
     calls = counting_code_state(monkeypatch)
     out = tmp_path
-    write(out / 'stage_b' / 'vb1.json', {'stage': 'vb1'})
+    reference_img = json.loads(json.dumps(IMG))
+    frozen_path = tmp_path / 'frozen_export.npz'
+    if changed_arm:
+        np.savez(frozen_path, img=np.eye(3, dtype=np.float32))
+        with np.load(frozen_path) as z:
+            reference_img[changed_arm]['1']['style'] = S.rb_pick.array_sha256(z['img'])
+    write(out / 'stage_b' / 'vb1.json', dict(stage='vb1', smoke=True, code_sha256=S.scorer_code_sha256(),
+                                             identity={'img_sha256': reference_img}, **{'pass': True}))
     write(out / 'stage_a' / 'verdict.json', {'stage': 'a', 'smoke': True, 'outcome': 'A-SAME', 'winner': 'GR-8',
                                              'identity': {'p_sha256': 'p'}})
-    write(tmp_path / 'ref' / 'score_fresh.json', {'identity': {'img_sha256': IMG}})
+    write(tmp_path / 'ref' / 'score_fresh.json', {'identity': {'img_sha256': reference_img}})
     monkeypatch.setattr(S.rg_paths, 'EG_III', tmp_path / 'ref')
-    monkeypatch.setattr(S, 'read_vb1', lambda *a: {'pass': True})
     labels = {a: np.array([0, 1, -1]) for a in S.ASPECTS}
     monkeypatch.setattr(S.E, 'load_context', lambda: dict(p_sha='p', labels=labels))
     records = {'GR-8': rec(0.5), 'GR-2': rec(0.4), 'GR-4': rec(0.3)}
 
     def score_fresh_arms(*a, **k):
-        calls.append('scoring') if len(calls) != 1 else None            # the code was read before the scoring started
-        return dict(records=records, runs={}, identity=dict(img_sha256=IMG))
+        calls.append('scoring') if len(calls) != 1 else None  # code was read before scoring started
+        actual_img = json.loads(json.dumps(reference_img))
+        if changed_arm:
+            # read_vb1 has accepted the gate; the export read during b now changes.
+            np.savez(frozen_path, img=np.roll(np.eye(3, dtype=np.float32), 1, axis=0))
+            with np.load(frozen_path) as z:
+                actual_img[changed_arm]['1']['style'] = S.rb_pick.array_sha256(z['img'])
+            assert actual_img != reference_img
+        return dict(records=records, runs={}, identity=dict(img_sha256=actual_img))
     monkeypatch.setattr(S, 'score_fresh_arms', score_fresh_arms)
     v = S.run_b(out, 20, 1, smoke=True)
+    return calls, v
+
+
+def test_b_takes_code_state_once_at_the_start(monkeypatch, tmp_path):
+    calls, v = fake_b(monkeypatch, tmp_path)
     assert calls == [1] and (v['code_commit'], v['code_sha256']) == ('c1', 'h1')
+
+
+@pytest.mark.parametrize('smoke', [False, True])
+@pytest.mark.parametrize('hashes', [None, {'rg_loss.py': 'other'}])
+def test_fresh_runs_must_use_the_code_va1_checked(tmp_path, smoke, hashes):
+    folder = make_run(tmp_path, 'GR-2', 1, status='failed', cause='nonfinite', kind='nonfinite_loss', smoke=smoke)
+    path = folder / 'run.json'
+    run = json.loads(path.read_text())
+    run['rg_code_sha256'] = hashes
+    path.write_text(json.dumps(run))
+    with pytest.raises(AssertionError, match='trained by other code than VA1 checked'):
+        S.read_fresh_run(tmp_path, 'GR-2', 1, S.rg_paths.P_SHA256, {}, smoke)
+
+
+def test_frozen_runs_need_no_rg_code_hash(tmp_path, monkeypatch):
+    folder = make_run(tmp_path, 'GR-8', 1, status='failed', cause='nonfinite', kind='nonfinite_loss',
+                      switches=S.V.eg_form(S.V.ARMS['GR-8']))
+    path = folder / 'run.json'
+    run = json.loads(path.read_text())
+    run.pop('rg_code_sha256')
+    path.write_text(json.dumps(run))
+    monkeypatch.setattr(S.rg_paths, 'frozen_run', lambda *_: folder)
+    assert S.read_fresh_run(tmp_path, 'GR-8', 1, S.rg_paths.P_SHA256, {}, False)['status'] == 'failed'
+
+
+@pytest.mark.parametrize('arm', ['GR-8', 'R6-5'])
+def test_b_refuses_a_frozen_export_changed_after_vb1(tmp_path, monkeypatch, arm):
+    with pytest.raises(AssertionError, match=f'VB1.*{arm}.*style'):
+        fake_b(monkeypatch, tmp_path, changed_arm=arm)

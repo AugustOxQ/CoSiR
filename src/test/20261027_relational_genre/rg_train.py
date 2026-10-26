@@ -1,7 +1,10 @@
 """Sample-scale relational genre trainer: train, regress va1, eq and lossscale."""
 import argparse
+import hashlib
+import inspect
 import json
 import os
+import subprocess
 import time
 from contextlib import ExitStack
 from pathlib import Path
@@ -24,8 +27,27 @@ NonFiniteLoss = eg.NonFiniteLoss
 resolved = eg.resolved
 bits_equal = eg.bits_equal
 states_equal = eg.states_equal
-code_commit = eg.code_commit
 atomic_record = eg.atomic_record
+
+
+def code_commit():
+    """HEAD plus this round's Python edits, including untracked modules (as rg_held)."""
+    here = Path(__file__).resolve().parent
+    def git(*args):
+        return subprocess.run(['git', *args], cwd=here, capture_output=True, text=True, check=True).stdout.strip()
+    return git('rev-parse', 'HEAD'), bool(git('status', '--porcelain', '--', '*.py'))
+
+
+def rg_code_sha256():
+    """The three RG training files VA1 checks, hashed as bytes."""
+    return {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in
+            (Path(__file__), Path(rg_loss.__file__), Path(V.__file__))}
+
+
+def eq_code_sha256():
+    """Bind EQ to both loss implementations, including distill_loss's defining file."""
+    reference = Path(inspect.getsourcefile(ms_train.distill_loss))
+    return {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (Path(rg_loss.__file__), reference)}
 
 
 def unit_rows(x):
@@ -43,9 +65,11 @@ def build_model_with(genre, original, fit_teacher, *, diagnostic=False):
             assert 'genre' in views and genre.anchors is None
             teacher = unit_rows(fit_teacher())
             ids = rg_loss.draw_anchors(len(teacher), genre.seed)
-            genre.n_fit = len(teacher)
-            genre.anchor_ids = ids.to(device)
-            genre.anchors = teacher[ids.to(teacher.device)].detach().to(device)
+            # Validate through GenreLoss's constructor, also for the measured GQ term of GR-1.
+            checked = rg_loss.GenreLoss(V.switches('GQ-8'), genre.seed,
+                                       anchors=teacher[ids.to(teacher.device)].detach().to(device),
+                                       anchor_ids=ids.to(device), n_fit=len(teacher), n_dev=genre.n_dev)
+            genre.n_fit, genre.anchor_ids, genre.anchors = checked.n_fit, checked.anchor_ids, checked.anchors
         return models, views
     return build
 
@@ -92,9 +116,11 @@ class TrainingLoss:
                     terms['anchors'] = float(rg_loss.anchors_loss(
                         outputs[0], teacher[ids], ids, self.genre.anchors, self.genre.anchors,
                         self.genre.anchor_ids))
-            if not all(np.isfinite(v) for v in terms.values()):
-                raise NonFiniteLoss(aspect)
-            self.steps.append(dict(step=len(self.steps) + 1, epoch=self.epoch, pairs=len(pairs), **terms))
+            # Only the returned loss is optimized. Detached diagnostics can be non-finite without stopping training.
+            counts = {k: int(not np.isfinite(v)) for k, v in terms.items()}
+            terms = {k: v if np.isfinite(v) else None for k, v in terms.items()}
+            self.steps.append(dict(step=len(self.steps) + 1, epoch=self.epoch, pairs=len(pairs),
+                                   nonfinite_counts=counts, **terms))
             self.seen += len(pairs)
             assert self.seen <= self.n_pairs
             if self.seen == self.n_pairs:
@@ -105,10 +131,12 @@ class TrainingLoss:
         result = []
         for epoch in sorted({s['epoch'] for s in self.steps}):
             steps = [s for s in self.steps if s['epoch'] == epoch]
-            keys = set(steps[0]) - {'step', 'epoch', 'pairs'}
-            assert all(set(s) - {'step', 'epoch', 'pairs'} == keys for s in steps)
+            keys = set(steps[0]) - {'step', 'epoch', 'pairs', 'nonfinite_counts'}
+            assert all(set(s) - {'step', 'epoch', 'pairs', 'nonfinite_counts'} == keys for s in steps)
             result.append(dict(epoch=epoch, calls=len(steps), pairs=sum(s['pairs'] for s in steps),
-                               **{k: float(np.mean([s[k] for s in steps])) for k in sorted(keys)}))
+                               nonfinite_counts={k: sum(s['nonfinite_counts'][k] for s in steps) for k in sorted(keys)},
+                               **{k: float(np.mean([s[k] for s in steps])) if all(s[k] is not None for s in steps)
+                                  else None for k in sorted(keys)}))
         return result
 
 
@@ -161,7 +189,7 @@ def write_run(run_dir, arm, seed, status, *, genre, loss, exporter, p_sha256, sm
                   best_dev_loss={a: i['best_dev_loss'] for a, i in info.items()},
                   p_sha256=p_sha256, smoke=smoke, max_epochs=max_epochs, seconds=seconds,
                   term_means=loss.means(), term_aspect='genre', term_reduction='mean_over_training_calls',
-                  code_commit=commit, code_dirty=dirty, input_hashes=input_hashes,
+                  code_commit=commit, code_dirty=dirty, rg_code_sha256=rg_code_sha256(), input_hashes=input_hashes,
                   old5000_problems=[])
     anchors = anchor_record(genre)
     if anchors is not None:
@@ -190,7 +218,7 @@ def train_cohort(s, inputs, graphs, manifests, recipe, variant, seed, device, ru
     run_dir, device = Path(run_dir), torch.device(device)
     max_epochs = ms_train.CONFIG['max_epochs'] if max_epochs is None else max_epochs
     genre = rg_loss.GenreLoss(sw, seed, term_log={},
-                              n_dev=len(graphs['genre']['dev_node_ids']) if sw['anchors'] else None)
+                              n_dev=len(graphs['genre']['dev_node_ids']) if sw['anchors'] or diagnostic else None)
     n_pairs = len(graphs['genre']['rows'][recipe['base']['graphs']['genre']]['fit'][0])
     loss = TrainingLoss(genre, recipe['switches'], min(n_pairs, 5000) if smoke else n_pairs,
                         diagnostic=diagnostic)
@@ -334,6 +362,7 @@ def run_variant(data, variant, seed, outputs, device, *, run_dir=None, smoke=Fal
         assert (record['variant'], record['seed'], record['switches'], record['smoke'], record['max_epochs']) == (
             variant, seed, switches, smoke, max_epochs), f'{record_path}: configuration mismatch'
         assert record['p_sha256'] == p_sha and record['input_hashes'] == identity, 'run inputs changed'
+        assert record.get('rg_code_sha256') == rg_code_sha256(), 'run rg_code_sha256 changed; move it aside and rerun'
         assert record['status'] in ('ok', 'failed')
         if record['status'] == 'ok' or record['failure_kind'] != 'va3' or 'rerun_of' in record:
             if record['status'] == 'ok':
@@ -353,6 +382,7 @@ def run_variant(data, variant, seed, outputs, device, *, run_dir=None, smoke=Fal
             assert (origin['code_commit'], origin['code_dirty']) == code_commit() and not origin['code_dirty']
             assert (origin['variant'], origin['seed'], origin['switches'], origin['smoke'], origin['max_epochs']) == (
                 variant, seed, switches, smoke, max_epochs), 'interrupted VA3 rerun configuration changed'
+            assert origin.get('rg_code_sha256') == rg_code_sha256(), 'VA3 origin rg_code_sha256 changed; move it aside and rerun'
             assert origin['input_hashes'] == identity, 'interrupted VA3 rerun inputs changed'
             rerun_of = previous[0]
         if run_dir.exists() and any(run_dir.iterdir()):
@@ -434,7 +464,7 @@ def regress_va1(data, outputs, device, *, smoke=False):
         items[f'{arm}_s{seed}']['pass'] = passed
     commit, dirty = code_commit()
     record = dict(items=items, smoke=smoke, p_sha256=paths.P_SHA256,
-                  code_commit=commit, code_dirty=dirty, input_hashes=hashes)
+                  code_commit=commit, code_dirty=dirty, rg_code_sha256=rg_code_sha256(), input_hashes=hashes)
     record['pass'] = all(i['pass'] for i in items.values()) and not smoke
     atomic_record(outputs / 'regression/va1.json', record)
     return record
@@ -460,6 +490,7 @@ def equivalence(data, outputs, device='cpu', *, smoke=False):
     path = outputs / 'regression/eq.json'
     if path.exists():
         old = json.loads(path.read_text())
+        assert old.get('eq_code_sha256') == eq_code_sha256(), 'EQ code hashes changed; move eq.json aside and rerun EQ'
         assert old['smoke'] == smoke and old['device'] == str(device), 'EQ configuration mismatch'
         assert old['input_hashes'] == hashes and old['tolerance'] == V.TOL, 'EQ inputs/configuration changed'
         assert [i['seed'] for i in old['items']] == [0, 1, 2] and 'pass' in old
@@ -488,7 +519,7 @@ def equivalence(data, outputs, device='cpu', *, smoke=False):
         items[-1]['pass'] = finite and abs(relational - anchors) <= V.TOL
         del models, views, img, teacher, z, t
     commit, dirty = code_commit()
-    record = dict(tolerance=V.TOL, items=items, smoke=smoke, device=str(device),
+    record = dict(tolerance=V.TOL, items=items, smoke=smoke, device=str(device), eq_code_sha256=eq_code_sha256(),
                   code_commit=commit, code_dirty=dirty, input_hashes=hashes)
     record['pass'] = all(i['pass'] for i in items)
     atomic_record(path, record)
