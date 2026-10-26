@@ -1057,3 +1057,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-decide-25-handoff.md
 - New chat: tab 'r10 decide 25', session 42cb3988-2055-4a3c-b1cd-14fc1abc94e3
 
+[brief] CoSiR: r10 decide 25 -> r10 build (2026-10-26 20:01 Amsterdam)
+- Done: spec and decision rule of the relational genre loop, reviewed (Opus `xhigh`, pass after fixes) and approved by the user at 19:57.
+- State: held genre, 9,949 paintings: the recipe 0.4534 against the instructed Qwen genre image 0.5062. GO: level within 0.0128; partial: half the gap closed.
+- Next: tickets from the spec and rule, the build per `matt-chain.md`, the final review, merge into main, the run handoff.
+- Blocked: nothing. No container restart (user, 20:01; the GPU check passes).
+- Handoff: docs/superpowers/handoffs/2026-10-26-r10-build-handoff.md
+- New chat: tab 'r10 build', session 897467be-475b-4277-aa98-e950d94f81ac
+
