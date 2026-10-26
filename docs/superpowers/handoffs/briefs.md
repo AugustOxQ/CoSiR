@@ -1105,3 +1105,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-26-r10-build-6-handoff.md
 - New chat: tab 'r10 build 6', session 015c1d62-d012-4e23-8997-67098136ebf8
 
+[brief] CoSiR: r10 build 6 -> r10 run (2026-10-27 00:33 Amsterdam)
+- Done: build complete: 11 tickets, final review, one fix wave, re-review PASS, stage C smoke fixed; merged into main at b8310b1.
+- State: all six build gates pass in the real outputs (VA1 both halves, EQ, VB1, VC1 both halves); 430 round tests pass in main.
+- Next: end estimate, then `rg_queue_gpu.sh` from the main checkout (A, B, C; about 3.5 h), then verify and report 12-27.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-27-r10-run-handoff.md
+- New chat: tab 'r10 run', session 010a1a39-b741-43b7-bd52-35b3a9730147
+
