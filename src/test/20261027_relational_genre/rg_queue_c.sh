@@ -37,7 +37,7 @@ step score_c cpu "$here/rg_held.py" --outputs "$outputs" --workers "$workers" "$
     || stop "the held scorer failed"
 step vc2 cpu "$here/rg_vc2.py" --outputs "$outputs" --arm "$g" --workers "$workers" "${smoke[@]}" \
     || stop "VC2 disagrees with the held scorer: no stage C outcome is stated; trace"
-[[ "$dry" == 1 ]] || note "stage C outcome: $(jget "$c/verdict.json" "d.get('outcome')")"
+[[ "$dry" == 1 ]] || note "stage C outcome: $(jget "$c/verdict.json" "d.get('outcome_id')")"
 step report_c cpu "$here/rg_held.py" --outputs "$outputs" --workers "$workers" "${smoke[@]}" report --arm "$g" \
     || stop "the stage C report failed"
 finish
