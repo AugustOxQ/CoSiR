@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # The local fallback of stages 1 and 2 (rule §4.2 "Fallback"; GPU and CPU): used when N1, N2 or N3 fails, stage 1 cannot start on
-# the node by 14:00, stage 2 has not ended there by 22:00, or the node is lost. Both stages run here from the start, with 12-27's
-# local GS-0.02 seed-0 run as G0 (`rs_sweep score --frozen-g0`; frozen, V1a shows the trainer reproduces it). G0' and N3 are the
-# node's; the node's results are reported only. Order: G0's score; the 13 knobs in the sheet's order (their three values trained
+# the node by RS_START_BY, stage 2 has not ended there by RS_END_BY (the node plan's deadlines: the real start of stage 1 on the node,
+# and that start plus 8 h; rule §4.2, exception of 2026-10-27 15:31), or the node is lost. Both stages run here from the start, with
+# 12-27's local GS-0.02 seed-0 run as G0 (`rs_sweep score --frozen-g0`; frozen, V1a shows the trainer reproduces it). G0' and N3 are the
+# node's; the node's results are reported only. First step: if `<outputs>/sweep/node402/` exists (the node wrote stage files before
+# the fallback), it is MOVED (never deleted) to `<outputs>/aside/node402_<YYYYmmdd-HHMM>/sweep/node402/`, so that the readers that
+# decide F (`rs_full.sweep_ended_without_candidates`, `rs_ablation.resolve_final`) see the local machine only; the queue refuses if
+# that target exists, and prints one line for rs_node_log.md. `scores/node402/` is read by no such reader and stays. Order: G0's score; the 13 knobs in the sheet's order (their three values trained
 # in one call, then scored); `rs_sweep stage1`; V1c part (a) (`rs_vp partitions`) and part (b) (`rs_vp sweep`); then, unless
 # SWEEP-NONE, the grid's new points (groups of 6), `rs_sweep stage2`, V1c again. A disagreement stops the queue before the next
 # stage. The k11 runs are skipped when gates/k11_sample.json failed (rule §2.2; `rs_sweep stage1` enters them as failed).
@@ -14,6 +18,19 @@ queue=fallback
 source "$(dirname -- "${BASH_SOURCE[0]}")/rs_queue_common.sh"
 w=(--workers "$workers")
 m=local
+# --- the node's stage files go aside (decided: the node's results are reported only; a move, never a delete) -------------------------
+node_sweep=$outputs/sweep/node402
+if [[ -e "$node_sweep" ]]; then
+    aside=$outputs/aside/node402_$(TZ=Europe/Amsterdam date '+%Y%m%d-%H%M')
+    if [[ -e "$aside" ]]; then stop "the target $aside exists: the node's stage files are not moved (nothing was changed); look at it, then start the queue again"; fi
+    if [[ "$dry" == 1 ]]; then
+        note "dry: would move $node_sweep to $aside/sweep/node402 (a move; add this line to rs_node_log.md)"
+    else
+        mkdir -p "$aside/sweep" && mv -- "$node_sweep" "$aside/sweep/" \
+            || stop "moving $node_sweep to $aside/sweep/ failed: nothing is deleted; look at both folders"
+        note "rs_node_log.md entry: $(TZ=Europe/Amsterdam date '+%F %H:%M') fallback: moved $node_sweep to $aside/sweep/node402 (the node's stage files; reported only)"
+    fi
+fi
 gate V1a-train "$outputs/gates/v1a_train.json" "no stage 1 run starts (rule §4.2 V1a)"
 gate V1a-scorer "$outputs/gates/v1a_scorer.json" "no stage 1 run starts (rule §4.2 V1a)"
 train_score() {   # train_score LABEL NAME...: one trainer call (seed 0, machine local) then its scores; failed runs are recorded outcomes

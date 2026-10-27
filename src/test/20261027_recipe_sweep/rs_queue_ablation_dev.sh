@@ -3,8 +3,10 @@
 # 3 on the frozen sample, then `rs_ablation dev --final F`, then `rs_vp ablation --final F` (the point values, rule §4.5).
 # F = `rs_queue_names.py final` (c* of stage3/verdict.json under PICK, else G; refused when no stage 3 file and no SWEEP-NONE or
 # TOP-NONE explains it). F's runs are stage 3's (or 12-27's G seeds 1 to 3): nothing to train for F.
-# Gates checked first: V1a, V3a (`rs_ablation` refuses without gates/v3a.json whatever stages 1 and 2 gave; checked here first) and,
-# when a stage 3 file exists, its re-derivation V3c. A graph removal (content_correction, instructed_graphs) whose sample-scale
+# Gates checked first: V1a, V3a (`rs_ablation` refuses without gates/v3a.json whatever stages 1 and 2 gave; checked here first) and
+# the re-derivation behind F, for F = G as for F = c*: V3c (`stage3/rederive_stage3.json`) when a stage 3 file exists (PICK or
+# KEEP-G), else V1c of the sweep machine (`sweep/<m>/rederive_stage1.json`, and `rederive_stage2.json` when stage 2 ran;
+# SWEEP-NONE or TOP-NONE; rule §4.2). A graph removal (content_correction, instructed_graphs) whose sample-scale
 # graph check failed (gates/ablation_graphs.json) is skipped with a note and stops only itself; `rs_ablation dev` lists it as
 # failed with the cause, and its output records `inputs.ablation_graphs_sha256`, the SHA-256 of that gate file. One arm's trainer
 # call fails alone: the other arms go on; scoring starts only when every arm has a run.json. Weights of every arm are kept.
@@ -14,9 +16,7 @@ w=(--workers "$workers")
 gate V1a-train "$outputs/gates/v1a_train.json" "no ablation run starts (rule §4.2 V1a)"
 gate V1a-scorer "$outputs/gates/v1a_scorer.json" "no ablation run starts (rule §4.2 V1a)"
 gate V3a "$outputs/gates/v3a.json" "V3a passes before the development ablation whatever stages 1 and 2 give; rs_ablation refuses without it"
-if [[ "$dry" != 1 && -f "$outputs/stage3/verdict.json" ]]; then
-    gate V3c "$outputs/stage3/rederive_stage3.json" "F is not stated until the stage 3 re-derivation agrees"
-fi
+f_basis_gates   # V3c when stage 3 gave a verdict (c* or KEEP-G), else V1c of the sweep machine (F = G after SWEEP-NONE or TOP-NONE)
 if [[ "$dry" == 1 ]]; then
     f=F; arms=$(names arms --final-name G)
     note "dry: F and the eight removal arms come from rs_queue_names.py (final, arms); shown for F = G (for c* the arms are c*-no_<removal>)"
