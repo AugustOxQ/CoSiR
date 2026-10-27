@@ -12,6 +12,7 @@ import rs_ablation as A
 import rs_paths
 import rs_sheet as H
 import rs_stage3 as T
+import rs_stage0
 import rs_sweep as S
 import rb_pick
 
@@ -23,10 +24,17 @@ N_ROWS, N_DRAWS = 40, 12
 
 
 # ------------------------------------------------------------------ the stage files F is read from
+def put_gate(outputs, smoke=False):
+    S._json_dump(T.gate_path(outputs), dict(stage='v3a', smoke=smoke, **{'pass': True},
+        code_sha256=T.code_sha256(), p_sha256=rs_paths.P_SHA256, items={k: {'pass': True} for k in T.v3a_item_names(smoke)},
+        bounds_checked=not smoke, n_draws=T.SMOKE_DRAWS if smoke else T.N_DRAWS))
+
+
 def put_stage3(outputs, outcome='PICK', pick='k6=0.0005', smoke=False, runs=None, n_draws=None):
     rec = dict(stage='stage3', smoke=smoke, outcome=outcome, pick=pick if outcome == 'PICK' else None, p_sha256=rs_paths.P_SHA256,
                n_draws=n_draws or (T.SMOKE_DRAWS if smoke else T.N_DRAWS), inputs=dict(runs=runs or {}), results={})
     S._json_dump(T.verdict_path(outputs), rec)
+    put_gate(outputs, smoke)
     return rec
 
 
@@ -79,12 +87,24 @@ def test_a_missing_stage_3_file_without_a_none_outcome_is_refused(tmp_path):
         A.resolve_final(tmp_path, smoke=False)                           # stage 2 gave TOP: stage 3 must have run
 
 
-def test_stage_files_of_two_machines_need_a_machine_argument(tmp_path):
+def test_every_machine_must_have_ended_before_f_can_be_g(tmp_path):
     put_stage1(tmp_path, 'SWEEP-NONE', 'local')
-    put_stage1(tmp_path, 'SWEEP-NONE', 'node402')
-    with pytest.raises(AssertionError, match='--machine'):
+    put_stage1(tmp_path, 'GRID-1', 'node402')
+    with pytest.raises(AssertionError, match='stage 3'):
         A.resolve_final(tmp_path, smoke=False)
-    assert A.resolve_final(tmp_path, smoke=False, machine='node402')['machine'] == 'node402'
+    put_stage2(tmp_path, 'TOP-NONE', 'node402')
+    f = A.resolve_final(tmp_path, smoke=False)
+    assert f['is_g'] and f['ended'] == {'local': 'SWEEP-NONE', 'node402': 'TOP-NONE'}
+    assert f['stage_files'] == {m: {stage: S._file_sha256(S.sweep_path(tmp_path, m, stage))
+                                  for stage in ('stage1', 'stage2') if S.sweep_path(tmp_path, m, stage).exists()}
+                                for m in ('local', 'node402')}
+    put_stage1(tmp_path, 'SWEEP-NONE', 'node402')
+    assert A.resolve_final(tmp_path, smoke=False)['ended'] == {'local': 'SWEEP-NONE', 'node402': 'SWEEP-NONE'}
+
+
+def test_machine_option_is_no_longer_accepted():
+    with pytest.raises(SystemExit):
+        A.main(['dev', '--final', 'G', '--machine', 'local'])
 
 
 def test_final_must_equal_the_stage_files(tmp_path):
@@ -145,7 +165,7 @@ def test_each_arm_is_f_with_one_removal_and_nothing_retuned(changes, base):
         assert H.parse(name) == A.arm_config(final, x) == dict(cfg, remove=(x,))
 
 
-def test_a_failing_graph_check_stops_exactly_the_two_graph_removals(tmp_path):
+def test_a_failing_graph_check_stops_only_its_own_removal(tmp_path):
     assert all(A.graph_gate_cause(tmp_path, x) is None for x in H.REMOVALS)          # no gate file: the arms' own files decide
     S._json_dump(tmp_path / 'gates' / 'ablation_graphs.json', dict(name='ablation_graphs', **{'pass': False}, items=dict(
         default_view={'pass': False}, uncorrected={'pass': True})))
@@ -183,9 +203,9 @@ def test_f_runs_under_pick_are_stage_3s_and_checked_against_its_verdict(tmp_path
     runs = {s: fake_run(rng, tag=f'sha{s}') for s in SEEDS}
     calls = []
     monkeypatch.setattr(T, 'read_config_runs', lambda outputs, names, smoke: calls.append((names, smoke)) or {names[0]: runs})
-    monkeypatch.setattr(A.T, 'require_v3a', lambda *a: pytest.fail('stage 3 ran with a gate; F = c* needs no G'))
+    monkeypatch.setattr(A.T, 'require_v3a', lambda outputs, smoke: calls.append(('gate', smoke)) or {})
     got = A.read_final_dev_runs(tmp_path, pick_final(tmp_path, runs), smoke=False)
-    assert got == runs and calls == [(['k6=0.0005'], False)]
+    assert got == runs and calls == [('gate', False), (['k6=0.0005'], False)]
 
 
 def test_f_run_that_is_not_the_one_stage_3_scored_is_refused(tmp_path, monkeypatch):
@@ -265,12 +285,14 @@ def test_a_removal_arm_that_is_ok_on_all_seeds_is_read_through_stage_sweeps_run_
     put_stage3(tmp_path, 'KEEP-G')
     final = A.resolve_final(tmp_path, smoke=False)
     for s in SEEDS:
-        put_run(tmp_path, 'G-no_buddy', s)
+        put_run(tmp_path, 'G-no_buddy', s, **({'rerun_of': 'first-run-sha'} if s == 2 else {}))
     calls = []
     monkeypatch.setattr(A.S, 'read_run', lambda outputs, name, seed, machine, smoke: calls.append((name, seed, machine, smoke)) or dict(status='ok', img={}))
     arms = A.dev_arms(tmp_path, final, ['buddy'], smoke=False)
     assert arms['buddy']['cause'] is None and sorted(arms['buddy']['runs']) == [1, 2, 3]
     assert calls == [('G-no_buddy', s, 'local', False) for s in SEEDS]
+
+    assert arms['buddy']['reruns'] == [dict(removal='buddy', arm='G-no_buddy', seed=2, rerun_of='first-run-sha')]
 
 
 def test_an_unfinished_removal_arm_is_refused_not_listed_as_failed(tmp_path):
@@ -375,8 +397,11 @@ def test_f_partitions_are_stage_3s_when_they_exist_and_every_other_run_is_in_the
 
 
 def test_dev_f_scores_are_read_from_stage_3_and_new_ones_go_to_the_ablation_cache(tmp_path, monkeypatch):
-    stub_partitions(monkeypatch)
-    (T.cache_root(tmp_path) / 'GS-0.02').mkdir(parents=True)
+    calls = stub_partitions(monkeypatch)
+    for seed in SEEDS:
+        folder = T.cache_root(tmp_path) / 'GS-0.02' / f's{seed}'
+        folder.mkdir(parents=True)
+        (folder / 'emotion__partitions.npz').write_bytes(b'partition stub')
     final, f_runs, arms = two_arm_world(tmp_path, monkeypatch)
     ctx = tiny_ctx()
     labels_sha = {a: rb_pick.array_sha256(ctx['labels'][a]) for a in ASP}
@@ -394,6 +419,8 @@ def test_dev_f_scores_are_read_from_stage_3_and_new_ones_go_to_the_ablation_cach
         return real(labels, parts, I_, workers)
     monkeypatch.setattr(A.T, 'boot_scores', spy)
     out = A.score_dev(tmp_path, final, f_runs, arms, ctx, N_DRAWS, 1)
+    assert [(folder, seed) for folder, name, aspect, seed in calls if name == 'GS-0.02' and aspect == 'emotion'] == [
+        (str(T.cache_root(tmp_path) / 'GS-0.02' / f's{seed}'), seed) for seed in SEEDS]
     assert seen and all(names == ['G-no_buddy'] or names == ['G-no_direct'] for names in seen)      # F's scores were not recomputed
     assert list(A.cache_root(tmp_path).glob('G-no_buddy/s*/*__boot_*.npz')) and not list(A.cache_root(tmp_path).glob('GS-0.02/**/*boot*'))
     # and the numbers are those of a run without any cache
@@ -524,19 +551,39 @@ def test_held_arm_failure_lists_every_failed_seed(tmp_path):
     assert A.held_arm_failure(tmp_path, 'G-no_buddy') == 'seed 1: non-finite loss in the emotion head; seed 4: non-finite loss in the genre head'
 
 
+def put_v4c(outputs_root, arm_name, **changes):
+    root = rs_paths.full_root(outputs_root) / 'held' / arm_name
+    root.mkdir(parents=True, exist_ok=True)
+    outputs_sha = {}
+    for a in ASP:
+        for seed in FULL:
+            key = f'{a}__s{seed}'
+            outputs_sha[key] = f'{a}-{seed}-array-sha'
+            (root / f'{key}.json').write_text(json.dumps(dict(sha256=outputs_sha[key])))
+    gate = dict(name=arm_name, **{'pass': True}, list_sha256=rs_paths.HELD_SHA256, outputs=outputs_sha, reruns=[])
+    gate.update(changes)
+    S._json_dump(root / 'v4c.json', gate)
+    return gate
+
+
 def held_world(tmp_path, monkeypatch, failed=(), smoke=False):
     """F = G (frozen sources stubbed), two arms; partitions are the stub rows themselves."""
+    monkeypatch.setattr(rs_stage0, 'g_full_outputs_check', lambda: {'pass': True, 'record_sha256': 'frozen-record', 'verdict_sha256': 'frozen-verdict'})
     rng = np.random.default_rng(5)
     n = 60
     labels = {a: rng.integers(0, 4, n) for a in ASP}
     labels['genre'][[2, 3, 9]] = -1
-    parts = {}
+    parts = {'roots': []}
 
     def held_partitions(outputs, root, arm, aspect, seed, sha):
+        parts['roots'].append((root, arm, aspect, seed))
         p = parts.setdefault((arm, aspect, seed), rng.integers(0, 4, (3, n)))
-        return p, dict(path=f'{arm}/{aspect}/{seed}', output_sha256='0' * 64, vc3_attempts=1)
+        return p, dict(path=f'{arm}/{aspect}/{seed}', output_sha256='0' * 64, vc3_attempts=2 if arm == 'G-no_direct' and aspect == 'emotion' and seed == 2 else 1)
     monkeypatch.setattr(A, 'held_partitions', held_partitions)
     put_stage3(tmp_path, 'KEEP-G', smoke=smoke)
+    put_v4c(tmp_path, 'G-no_direct')
+    if 'buddy' not in failed:
+        put_v4c(tmp_path, 'G-no_buddy')
     final = A.resolve_final(tmp_path, smoke=smoke)
     arms = {x: dict(name=f'G-no_{x}', cause=('seed 4: non-finite loss in the genre head' if x in failed else None)) for x in ('buddy', 'direct')}
     return final, arms, labels, parts
@@ -554,6 +601,9 @@ def test_score_held_effects_per_aspect_and_a_failed_arm_gets_none(tmp_path, monk
         want = A.held_effect(fx, ff, labels[a], 6, 1)
         assert rec['aspects'][a] == want
         assert set(want) == {'effect', 'lo', 'hi', 'arm_ami', 'final_ami', 'arm_seed_ami', 'final_seed_ami'}
+    assert parts['roots'] == [(root, arm, a, seed) for root, arm in (
+        (rs_paths.RG_FULL / 'held' / 'GS-0.02', 'GS-0.02'),
+        (rs_paths.full_root(tmp_path) / 'held' / 'G-no_direct', 'G-no_direct')) for a in ASP for seed in FULL]
     assert ('G-no_buddy', 'genre', 0) not in parts                          # a failed arm's outputs are never partitioned
     assert set(sources) == {'GS-0.02', 'G-no_direct'} and sorted(sources['GS-0.02']) == sorted(ASP)
 
@@ -572,7 +622,9 @@ def test_failed_list_carries_the_removal_the_arm_and_the_cause():
 def test_dev_record_keys_and_the_file_is_kept_on_a_rerun(tmp_path, monkeypatch):
     stub_partitions(monkeypatch)
     final, f_runs, arms = two_arm_world(tmp_path, monkeypatch, smoke=True)
-    S._json_dump(tmp_path / 'gates' / 'v3a.json', dict(stage='v3a'))
+    put_gate(tmp_path, smoke=True)
+    S._json_dump(tmp_path / 'gates' / 'ablation_graphs.json', {'pass': False, 'items': {}})
+    arms['buddy']['reruns'] = [dict(removal='buddy', arm='G-no_buddy', seed=2, rerun_of='first-run-sha')]
     monkeypatch.setattr(A.E, 'load_context', lambda: tiny_ctx())
     monkeypatch.setattr(A, 'read_final_dev_runs', lambda outputs, f, smoke: f_runs)
     monkeypatch.setattr(A, 'dev_arms', lambda outputs, f, removals, smoke: {x: arms[x] for x in removals})
@@ -583,11 +635,16 @@ def test_dev_record_keys_and_the_file_is_kept_on_a_rerun(tmp_path, monkeypatch):
     assert rec['final']['name'] == 'G' and rec['final']['outcome'] == 'KEEP-G' and rec['removals'] == ['direct', 'buddy']
     assert set(rec['results']['buddy']) == {'arm', 'status', 'cause', 'aspects', 'M'}
     assert set(rec['results']['buddy']['aspects']['emotion']) == {'effect', 'lo', 'hi', 'arm_ami', 'final_ami', 'arm_seed_ami', 'final_seed_ami'}
+    assert rec['reruns'] == [dict(removal='buddy', arm='G-no_buddy', seed=2, rerun_of='first-run-sha')]
+    assert rec['inputs']['ablation_graphs_sha256'] == S._file_sha256(tmp_path / 'gates' / 'ablation_graphs.json')
     assert rec['failed'] == [] and rec['inputs']['v3a_sha256'] == S._file_sha256(tmp_path / 'gates' / 'v3a.json')
     path = tmp_path / 'ablation' / 'dev.json'
     assert json.loads(path.read_text())['results'] == json.loads(json.dumps(rec['results']))
     again = A.run_dev(tmp_path, 'G', smoke=True, workers=1, removals=['buddy', 'direct'])
     assert again['results'] == rec['results']
+    f_runs[1]['run_sha256'] = 'another stage 3 export'
+    with pytest.raises(AssertionError, match='exists with other'):
+        A.run_dev(tmp_path, 'G', smoke=True, workers=1, removals=['buddy', 'direct'])
 
 
 def test_a_full_run_has_all_eight_removals_and_a_subset_only_with_smoke(tmp_path):
@@ -622,6 +679,7 @@ def test_held_arms_list_a_failed_arm_require_outputs_of_the_others_and_refuse_an
     for a in ASP:
         for s in FULL:
             (held / f'{a}__s{s}.npz').write_bytes(b'x')
+    put_v4c(tmp_path, 'G-no_direct')
     arms = A.held_arms(tmp_path, final, ['direct', 'buddy'])
     assert arms == {'direct': dict(name='G-no_direct', cause=None),
                     'buddy': dict(name='G-no_buddy', cause='seed 3: non-finite loss in the style head')}
@@ -633,6 +691,7 @@ def test_held_record_keys_and_the_file_is_kept_on_a_rerun(tmp_path, monkeypatch)
     final, arms, labels, parts = held_world(tmp_path, monkeypatch, failed=('buddy',), smoke=True)
     monkeypatch.setattr(A.rb_part2_report, 'held_labels', lambda: (['p'] * rs_paths.N_HELD, rs_paths.HELD_SHA256, labels))
     monkeypatch.setattr(A, 'held_arms', lambda outputs, f, removals: {x: arms[x] for x in removals})
+    S._json_dump(tmp_path / 'gates' / 'ablation_graphs.json', {'pass': False, 'items': {}})
     monkeypatch.setattr(A, 'held_final_source', lambda outputs, f: ('froot', 'GS-0.02'))
     rec = A.run_held(tmp_path, 'G', smoke=True, workers=1, removals=['buddy', 'direct'])
     assert {'stage', 'smoke', 'written', 'rule_commit', 'ranges', 'seeds', 'n_draws', 'held_sha256', 'draws', 'final', 'final_key',
@@ -642,6 +701,147 @@ def test_held_record_keys_and_the_file_is_kept_on_a_rerun(tmp_path, monkeypatch)
     assert rec['results']['buddy'] == dict(arm='G-no_buddy', status='failed', cause='seed 4: non-finite loss in the genre head', aspects=None)
     assert set(rec['results']['direct']['aspects']['genre']) == {'effect', 'lo', 'hi', 'arm_ami', 'final_ami', 'arm_seed_ami', 'final_seed_ami'}
     assert rec['failed'] == [dict(removal='buddy', arm='G-no_buddy', cause='seed 4: non-finite loss in the genre head')]
+    assert rec['reruns'] == [dict(removal='direct', arm='G-no_direct', aspect='emotion', seed=2, vc3_attempts=2)]
+    assert rec['inputs']['ablation_graphs_sha256'] == S._file_sha256(tmp_path / 'gates' / 'ablation_graphs.json')
+    assert rec['inputs']['g_full_outputs']['record_sha256'] == 'frozen-record'
     assert rec['inputs']['stage4_sha256'] is None and set(rec['inputs']['outputs']) == {'GS-0.02', 'G-no_direct'}
     assert json.loads((tmp_path / 'ablation' / 'held.json').read_text())['results'] == rec['results']
     assert A.run_held(tmp_path, 'G', smoke=True, workers=1, removals=['buddy', 'direct'])['results'] == rec['results']
+
+
+@pytest.mark.parametrize('outcome,pick,change,reason', [
+    ('KEEP-G', 'k6=0.0005', {}, 'KEEP-G with a pick'),
+    ('PICK', 'G', {}, 'pick'),
+    ('PICK', 'k6=0.0005', {'p_sha256': 'other P'}, 'other P'),
+])
+def test_inconsistent_stage3_identity_is_refused(tmp_path, outcome, pick, change, reason):
+    rec = put_stage3(tmp_path, outcome, pick)
+    S._json_dump(T.verdict_path(tmp_path), dict(rec, pick=pick, **change))
+    with pytest.raises(AssertionError, match=reason):
+        A.resolve_final(tmp_path, smoke=False)
+
+
+def test_held_graph_failure_is_listed_without_requiring_that_arms_outputs(tmp_path):
+    S._json_dump(tmp_path / 'gates' / 'ablation_graphs.json', {
+        'pass': False, 'items': {'default_view': {'pass': False}, 'uncorrected': {'pass': True}}})
+    arms = A.held_arms(tmp_path, g_final(tmp_path), ['instructed_graphs'])
+    assert arms['instructed_graphs']['name'] == 'G-no_instructed_graphs'
+    assert 'default_view' in arms['instructed_graphs']['cause']
+
+
+@pytest.mark.parametrize('candidate', [None, 'k2=8'])
+def test_run_held_requires_stage4_candidate_before_reading_arms(tmp_path, monkeypatch, candidate):
+    put_stage3(tmp_path, 'PICK')
+    if candidate is not None:
+        S._json_dump(tmp_path / 'stage4' / 'verdict.json', dict(candidate=candidate))
+    monkeypatch.setattr(A, 'held_arms', lambda *a: pytest.fail('arms read before stage4'))
+    monkeypatch.setattr(A.rb_part2_report, 'held_labels', lambda: (['p'] * rs_paths.N_HELD, rs_paths.HELD_SHA256, {}))
+    with pytest.raises(AssertionError, match='stage4'):
+        A.run_held(tmp_path, 'k6=0.0005')
+
+
+@pytest.mark.parametrize('names,sha', [(['p'] * rs_paths.N_HELD, 'other H'), (['p'], rs_paths.HELD_SHA256)])
+def test_run_held_refuses_other_h_before_reading_arms(tmp_path, monkeypatch, names, sha):
+    g_final(tmp_path)
+    monkeypatch.setattr(A.rb_part2_report, 'held_labels', lambda: (names, sha, {}))
+    monkeypatch.setattr(A, 'held_arms', lambda *a: pytest.fail('arms read before H checked'))
+    with pytest.raises(AssertionError, match='H differs'):
+        A.run_held(tmp_path, 'G')
+
+
+def test_score_held_under_pick_reads_f_and_arms_from_their_own_folders(tmp_path, monkeypatch):
+    _, arms, labels, parts = held_world(tmp_path, monkeypatch, failed=('buddy',))
+    put_stage3(tmp_path, 'PICK')
+    final = A.resolve_final(tmp_path, smoke=False)
+    put_v4c(tmp_path, 'k6=0.0005')
+    A.score_held(tmp_path, final, arms, labels, rs_paths.HELD_SHA256, 2, 1)
+    assert parts['roots'] == [(rs_paths.full_root(tmp_path) / 'held' / arm, arm, a, seed)
+                              for arm in ('k6=0.0005', 'G-no_direct') for a in ASP for seed in FULL]
+
+
+@pytest.mark.parametrize('aspect', ASP)
+def test_held_partitions_checks_sidecar_aspect_arm_and_seed(tmp_path, monkeypatch, aspect):
+    root = tmp_path / 'outputs'
+    root.mkdir()
+    (root / f'{aspect}__s3.npz').write_bytes(b'output stub')
+    calls = []
+    img = np.ones((2, 3))
+    def load(file, arm, seed, sha, aspect='genre'):
+        calls.append((file, arm, seed, sha, aspect))
+        return img
+    monkeypatch.setattr(A.rg_held, 'load_held_output', load)
+    monkeypatch.setattr(A.rg_held, 'held_output_source', lambda file: dict(output_sha256='file sha'))
+    monkeypatch.setattr(A.rb_score, 'fixed_partitions', lambda *a: {'r20': 'partitions'})
+    assert A.held_partitions(tmp_path, root, 'k6=0.0005-no_buddy', aspect, 3, 'H') == ('partitions', {'output_sha256': 'file sha'})
+    assert calls == [(root / f'{aspect}__s3.npz', 'k6=0.0005-no_buddy', 3, 'H', aspect)]
+
+
+@pytest.mark.parametrize('outcome', ['KEEP-G', 'PICK'])
+@pytest.mark.parametrize('mode', ['dev', 'held'])
+def test_both_modes_require_v3a_for_every_final_model(tmp_path, monkeypatch, outcome, mode):
+    put_stage3(tmp_path, outcome)
+    if outcome == 'PICK':
+        S._json_dump(tmp_path / 'stage4' / 'verdict.json', dict(candidate='k6=0.0005'))
+    monkeypatch.setattr(A.rb_part2_report, 'held_labels', lambda: (['p'] * rs_paths.N_HELD, rs_paths.HELD_SHA256, {}))
+    def refuse(*args):
+        raise AssertionError('V3a sentinel')
+    monkeypatch.setattr(A.T, 'require_v3a', refuse)
+    monkeypatch.setattr(A.T, 'read_config_runs', lambda *a: pytest.fail('read candidate before V3a'))
+    monkeypatch.setattr(A, 'held_arms', lambda *a: pytest.fail('read held arms before V3a'))
+    with pytest.raises(AssertionError, match='V3a sentinel'):
+        (A.run_dev if mode == 'dev' else A.run_held)(tmp_path, 'G' if outcome == 'KEEP-G' else 'k6=0.0005')
+
+
+@pytest.mark.parametrize('where', ['arm', 'final'])
+@pytest.mark.parametrize('bad', ['missing', 'pass', 'name', 'list_sha256', 'outputs', 'output_sha256'])
+def test_held_requires_matching_v4c_for_ok_arms_and_pick(tmp_path, monkeypatch, where, bad):
+    final, arms, labels, _ = held_world(tmp_path, monkeypatch, failed=('buddy',))
+    if where == 'final':
+        put_stage3(tmp_path, 'PICK')
+        final = A.resolve_final(tmp_path, smoke=False)
+    name = 'G-no_direct' if where == 'arm' else 'k6=0.0005'
+    _, root = full_dirs(tmp_path, name)
+    for a in ASP:
+        for seed in FULL:
+            (root / f'{a}__s{seed}.npz').write_bytes(b'output stub')
+    # A missing stamp is represented by a fresh root rather than deleting a fixture.
+    if bad == 'missing' and where == 'arm':
+        root.joinpath('v4c.json').rename(root / 'v4c.saved.json')
+    elif bad == 'output_sha256':
+        gate = put_v4c(tmp_path, name)
+        gate['outputs']['emotion__s2'] = 'different-array-sha'
+        S._json_dump(root / 'v4c.json', gate)
+    elif bad != 'missing':
+        put_v4c(tmp_path, name, **{bad: {'pass': False, 'name': 'other', 'list_sha256': 'other H', 'outputs': {}}[bad]})
+    with pytest.raises(AssertionError, match='V4c'):
+        if where == 'arm':
+            A.held_arms(tmp_path, final, ['direct'])
+        else:
+            A.score_held(tmp_path, final, arms, labels, rs_paths.HELD_SHA256, 2, 1)
+
+
+def test_held_record_binds_v4c_hash_and_lists_gate_reruns(tmp_path, monkeypatch):
+    _, arms, labels, _ = held_world(tmp_path, monkeypatch, failed=('buddy',), smoke=True)
+    put_stage3(tmp_path, 'PICK', smoke=True)
+    final = A.resolve_final(tmp_path, smoke=True)
+    arm = 'G-no_direct'
+    gate_reruns = [{'output': 'emotion__s2', 'problems': ['first attempt nonfinite']}]
+    put_v4c(tmp_path, arm, reruns=gate_reruns)
+    put_v4c(tmp_path, final['name'])
+    S._json_dump(tmp_path / 'stage4' / 'verdict.json', dict(candidate=final['name']))
+    monkeypatch.setattr(A.rb_part2_report, 'held_labels', lambda: (['p'] * rs_paths.N_HELD, rs_paths.HELD_SHA256, labels))
+    monkeypatch.setattr(A, 'held_arms', lambda *a: arms)
+    rec = A.run_held(tmp_path, final['name'], smoke=True, workers=1, removals=['buddy', 'direct'])
+    assert set(rec['inputs']['v4c']) == {final['name'], arm}
+    stamp = rec['inputs']['v4c'][arm]
+    assert stamp == dict(sha256=S._file_sha256(rs_paths.full_root(tmp_path) / 'held' / arm / 'v4c.json'), reruns=gate_reruns)
+
+
+
+def test_held_f_equals_g_requires_12_27s_recorded_output_hashes(tmp_path, monkeypatch):
+    held_world(tmp_path, monkeypatch)
+    monkeypatch.setattr(A.rb_part2_report, 'held_labels', lambda: (['p'] * rs_paths.N_HELD, rs_paths.HELD_SHA256, {}))
+    monkeypatch.setattr(rs_stage0, 'g_full_outputs_check', lambda: {'pass': False, 'record_sha256': 'record'})
+    monkeypatch.setattr(A, 'held_arms', lambda *a: pytest.fail('arms read before G hash binding'))
+    with pytest.raises(AssertionError, match='12-27'):
+        A.run_held(tmp_path, 'G')

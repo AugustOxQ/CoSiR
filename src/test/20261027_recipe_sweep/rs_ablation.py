@@ -31,6 +31,8 @@ from pathlib import Path
 import numpy as np
 
 import rs_paths
+import rs_full
+import rs_stage0
 import rs_sheet
 import rs_stage3 as T
 import rs_sweep as S
@@ -71,15 +73,14 @@ def _stage_record(path, stage, smoke):
     return rec
 
 
-def _final(name, outcome, pick, cfg, machine, stage3_sha256, source_sha256):
+def _final(name, outcome, pick, cfg, stage3_sha256, source_sha256, ended=None, stage_files=None):
     return dict(name=name, outcome=outcome, pick=pick, config=cfg, is_g=pick is None, run_key=G_ARM if pick is None else pick,
-                machine=machine, stage3_sha256=stage3_sha256, source_sha256=source_sha256)
+                stage3_sha256=stage3_sha256, source_sha256=source_sha256, ended=ended or {}, stage_files=stage_files or {})
 
 
-def resolve_final(outputs, smoke, machine=None):
+def resolve_final(outputs, smoke):
     """F (rule §2.5): c* under PICK, G under KEEP-G of `stage3/verdict.json`; with no stage 3 file, G after stage 1's
-    SWEEP-NONE or stage 2's TOP-NONE (the outcome is read from the stage file of `machine`; two machines with stage files
-    need `machine`). Anything else is refused."""
+    SWEEP-NONE or stage 2's TOP-NONE on every machine with a stage 1 file (the same rule as the full trainer)."""
     outputs = Path(outputs)
     path = T.verdict_path(outputs)
     if path.exists():
@@ -89,21 +90,30 @@ def resolve_final(outputs, smoke, machine=None):
         sha = S._file_sha256(path)
         if v['outcome'] == 'KEEP-G':
             assert v['pick'] is None, f'{path}: KEEP-G with a pick'
-            return _final(G_NAME, 'KEEP-G', None, rs_sheet.config(), None, sha, sha)
+            return _final(G_NAME, 'KEEP-G', None, rs_sheet.config(), sha, sha)
         cfg = rs_sheet.parse(v['pick'])
         assert rs_sheet.name(cfg) == v['pick'] and not cfg['remove'] and cfg != rs_sheet.config(), f'{path}: pick {v["pick"]!r}'
-        return _final(v['pick'], 'PICK', v['pick'], cfg, None, sha, sha)
-    have = [m for m in S.MACHINES if S.sweep_path(outputs, m, 'stage1').exists() and (machine in (None, m))]
-    assert have, (f'no stage 3 verdict ({path}) and no stage 1 file'
-                  f'{"" if machine is None else " of " + machine}: F cannot be resolved (rule §2.5)')
-    assert len(have) == 1, f'no stage 3 verdict, and stage 1 files of {have}: pass --machine to say which sweep ended'
-    m = have[0]
-    for stage, none in (('stage1', 'SWEEP-NONE'), ('stage2', 'TOP-NONE')):
-        p = S.sweep_path(outputs, m, stage)
-        if p.exists() and _stage_record(p, stage, smoke)['outcome'] == none:
-            return _final(G_NAME, none, None, rs_sheet.config(), m, None, S._file_sha256(p))
-    raise AssertionError(f'no stage 3 verdict ({path}), and stage 1 and 2 of {m} did not end in SWEEP-NONE or TOP-NONE: '
-                         'stage 3 must have run (a missing file is not a KEEP-G)')
+        return _final(v['pick'], 'PICK', v['pick'], cfg, sha, sha)
+    stage_files = {}
+    for m in S.MACHINES:
+        if not S.sweep_path(outputs, m, 'stage1').is_file():
+            continue
+        stage_files[m] = {}
+        for stage in ('stage1', 'stage2'):
+            p = S.sweep_path(outputs, m, stage)
+            if p.is_file():
+                _stage_record(p, stage, smoke)
+                stage_files[m][stage] = S._file_sha256(p)
+    ended = rs_full.sweep_ended_without_candidates(outputs)
+    assert ended, (f'no stage 3 verdict ({path}), and not every machine with a stage 1 file ended in '
+                   'SWEEP-NONE or TOP-NONE: stage 3 must have run (a missing file is not a KEEP-G)')
+    outcomes = set(ended.values())
+    outcome = 'SWEEP-NONE' if outcomes == {'SWEEP-NONE'} else 'TOP-NONE'
+    source = None
+    if len(ended) == 1:
+        m, result = next(iter(ended.items()))
+        source = stage_files[m]['stage1' if result == 'SWEEP-NONE' else 'stage2']
+    return _final(G_NAME, outcome, None, rs_sheet.config(), None, source, ended, stage_files)
 
 
 def check_final(final, name):
@@ -147,6 +157,11 @@ def graph_gate_cause(outputs, removal):
         return (f'the sample-scale check of the {variant} graphs failed ({path.relative_to(outputs)}): '
                 f'the {removal} removal does not run (rule §2.5)')
     return None
+
+
+def graph_gate_sha256(outputs):
+    path = Path(outputs) / 'gates' / 'ablation_graphs.json'
+    return S._file_sha256(path) if path.is_file() else None
 
 
 def failed_list(results):
@@ -200,8 +215,9 @@ def run_hashes(runs):
 def read_final_dev_runs(outputs, final, smoke):
     """{seed: run} of F on seeds 1 to 3. G: 12-27's runs through stage 3's reader with its V3a hash binding. c*: the runs
     stage 3 scored, accepted only if their run.json and exports have the SHA-256s its verdict recorded."""
+    gate = T.require_v3a(outputs, smoke)
     if final['is_g']:
-        return T.read_g_runs(T.require_v3a(outputs, smoke))
+        return T.read_g_runs(gate)
     name = final['name']
     runs = T.read_config_runs(outputs, [name], smoke)[name]
     failed = [s for s, r in runs.items() if r['status'] != 'ok']
@@ -234,7 +250,14 @@ def dev_arms(outputs, final, removals, smoke):
     for x, name in arm_names(final, removals).items():
         cause = graph_gate_cause(outputs, x) or arm_dev_failure(outputs, name, smoke)
         runs = None if cause else {s: S.read_run(outputs, name, s, 'local', smoke) for s in DEV_SEEDS}
-        arms[x] = dict(name=name, cause=cause, runs=runs)
+        reruns = []
+        for seed in DEV_SEEDS:
+            path = rs_paths.run_dir(outputs, name, seed) / 'run.json'
+            if path.is_file():
+                rerun_of = json.loads(path.read_text()).get('rerun_of')
+                if rerun_of is not None:
+                    reruns.append(dict(removal=x, arm=name, seed=seed, rerun_of=rerun_of))
+        arms[x] = dict(name=name, cause=cause, runs=runs, reruns=reruns)
     return arms
 
 
@@ -344,6 +367,24 @@ def require_held_outputs(outputs, name):
             assert path.is_file(), f'{name}: held output {path} missing; the arm has not finished'
 
 
+def require_v4c(outputs, name):
+    """The completed guarded held path, bound to this arm, H and every sidecar's array SHA-256. The array and
+    sidecar are checked together again by `held_partitions`; a failed arm has no stamp and never calls this."""
+    root = rs_paths.full_root(outputs) / 'held' / name
+    path = root / 'v4c.json'
+    assert path.is_file(), f'V4c: {path} missing; guarded held inference has not finished'
+    gate = json.loads(path.read_text())
+    assert gate['pass'] is True and gate['name'] == name, f'V4c: {path}: not a passing record for {name}'
+    assert gate['list_sha256'] == rs_paths.HELD_SHA256, f'V4c: {path}: other H'
+    keys = {f'{a}__s{s}' for a in ASPECTS for s in FULL_SEEDS}
+    assert set(gate['outputs']) == keys, f'V4c: {path}: incomplete output set'
+    for key in sorted(keys):
+        sidecar = root / f'{key}.json'
+        assert sidecar.is_file(), f'V4c: {sidecar} missing'
+        assert gate['outputs'][key] == json.loads(sidecar.read_text())['sha256'], f'V4c: {path}: {key} differs from sidecar'
+    return dict(sha256=S._file_sha256(path), reruns=gate['reruns'])
+
+
 def held_arms(outputs, final, removals):
     """{removal: dict(name, cause)}: cause set for a failed arm (graph check, training, VC3), None for an arm with all
     its 15 held outputs; an arm with neither is refused."""
@@ -352,6 +393,7 @@ def held_arms(outputs, final, removals):
         cause = graph_gate_cause(outputs, x) or held_arm_failure(outputs, name)
         if not cause:
             require_held_outputs(outputs, name)
+            require_v4c(outputs, name)
         arms[x] = dict(name=name, cause=cause)
     return arms
 
@@ -384,6 +426,8 @@ def score_held(outputs, final, arms, labels, sha, n_draws, workers):
     """({removal: record}, {arm name: {aspect: {seed: source}}}): per aspect Δ_a(x) with its interval and the absolute A beside;
     a failed arm gets no effect and its outputs are never read. Sources include F's."""
     f_root, f_arm = held_final_source(outputs, final)
+    if not final['is_g']:
+        require_v4c(outputs, f_arm)
     f_fixed = f_sources = None
     results, sources = {}, {}
     for x, arm in arms.items():
@@ -437,7 +481,7 @@ def code_state():
 
 
 def final_record(final):
-    return {k: final[k] for k in ('name', 'outcome', 'pick', 'config', 'machine', 'stage3_sha256', 'source_sha256')}
+    return {k: final[k] for k in ('name', 'outcome', 'pick', 'config', 'stage3_sha256', 'source_sha256', 'ended', 'stage_files')}
 
 
 def dev_path(outputs):
@@ -448,10 +492,10 @@ def held_path(outputs):
     return Path(outputs) / 'ablation' / 'held.json'
 
 
-def run_dev(outputs, final_name, machine=None, smoke=False, workers=8, removals=None):
+def run_dev(outputs, final_name, smoke=False, workers=8, removals=None):
     """The development ablation -> ablation/dev.json (rule §3.5). F and `--final` are checked before any file is read."""
     removals = check_removals(removals, smoke)
-    final = resolve_final(outputs, smoke, machine)
+    final = resolve_final(outputs, smoke)
     check_final(final, final_name)
     code = code_state()                                   # taken before the scoring: the record names the code that computed it
     n_draws = SMOKE_DRAWS if smoke else N_DRAWS
@@ -463,24 +507,30 @@ def run_dev(outputs, final_name, machine=None, smoke=False, workers=8, removals=
                   ranges=dict(rs_sheet.RANGES), seeds=list(DEV_SEEDS), n_draws=n_draws, draw_mode='joint',
                   draws='per removal: default_rng(0); I_b over the rows of P, then S_b over seeds 1 to 3, shared by the arm, F and the aspects',
                   final=final_record(final), final_key=final['run_key'], removals=removals, results=results,
-                  failed=failed_list(results),
-                  inputs=dict(final_runs=run_hashes(f_runs), v3a_sha256=S._file_sha256(T.gate_path(outputs)) if final['is_g'] else None,
+                  failed=failed_list(results), reruns=[r for arm in arms.values() for r in arm.get('reruns', [])],
+                  inputs=dict(ablation_graphs_sha256=graph_gate_sha256(outputs), final_runs=run_hashes(f_runs),
+                              v3a_sha256=S._file_sha256(T.gate_path(outputs)),
                               arm_runs={x: None if arm['runs'] is None else run_hashes(arm['runs']) for x, arm in arms.items()}),
                   p_sha256=rs_paths.P_SHA256, versions=rb_ami.versions(), host=socket.gethostname(), **code)
     return S._keep_or_write(dev_path(outputs), S._clean(record))
 
 
-def run_held(outputs, final_name, machine=None, smoke=False, workers=8, removals=None):
+def run_held(outputs, final_name, smoke=False, workers=8, removals=None):
     """The held ablation -> ablation/held.json (rule §3.5)."""
     removals = check_removals(removals, smoke)
-    final = resolve_final(outputs, smoke, machine)
+    final = resolve_final(outputs, smoke)
     check_final(final, final_name)
     stage4_sha = require_stage4_candidate(outputs, final)
     code = code_state()
     n_draws = SMOKE_DRAWS if smoke else N_DRAWS
     names, sha, labels = rb_part2_report.held_labels()
     assert sha == rs_paths.HELD_SHA256 and len(names) == rs_paths.N_HELD, 'H differs from the CT\'s'
+    T.require_v3a(outputs, smoke)
+    g_full = rs_stage0.g_full_outputs_check() if final['is_g'] else None
+    assert g_full is None or g_full['pass'] is True, '12-27 G held outputs differ from its recorded hashes'
     arms = held_arms(outputs, final, removals)
+    v4c_names = ([final['name']] if not final['is_g'] else []) + [arm['name'] for arm in arms.values() if not arm['cause']]
+    v4c = {name: require_v4c(outputs, name) for name in v4c_names}
     results, sources = score_held(outputs, final, arms, labels, sha, n_draws, workers)
     record = dict(stage='ablation_held', smoke=bool(smoke), written=T.now_amsterdam(), rule_commit=rs_paths.RULE_COMMIT,
                   ranges=dict(rs_sheet.RANGES), seeds=list(FULL_SEEDS), n_draws=n_draws, held_sha256=sha,
@@ -488,7 +538,12 @@ def run_held(outputs, final_name, machine=None, smoke=False, workers=8, removals
                   draws='per aspect: default_rng(0); I_b over the 12,281 rows of H, then one S_b over seeds 0 to 4 shared by the arm and F',
                   final=final_record(final), final_key=held_final_source(outputs, final)[1], removals=removals, results=results,
                   failed=failed_list(results),
-                  inputs=dict(stage4_sha256=stage4_sha, outputs=sources),
+                  reruns=[dict(removal=next((x for x, arm in arms.items() if arm['name'] == name), None),
+                               arm=name, aspect=a, seed=int(seed), vc3_attempts=source['vc3_attempts'])
+                          for name, aspects in sources.items() for a, seeds in aspects.items() for seed, source in seeds.items()
+                          if source['vc3_attempts'] > 1],
+                  inputs=dict(ablation_graphs_sha256=graph_gate_sha256(outputs), stage4_sha256=stage4_sha,
+                              v3a_sha256=S._file_sha256(T.gate_path(outputs)), v4c=v4c, g_full_outputs=g_full, outputs=sources),
                   versions=rb_ami.versions(), host=socket.gethostname(), **code)
     return S._keep_or_write(held_path(outputs), S._clean(record))
 
@@ -498,7 +553,6 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description='The ablation scorer of the recipe sweep: development and held effects of the removals.')
     parser.add_argument('mode', choices=['dev', 'held'])
     parser.add_argument('--final', required=True, metavar='NAME', help="F's run name ('G' when G stays); must equal the stage files'")
-    parser.add_argument('--machine', choices=S.MACHINES, help='which machine ran stages 1 and 2, when no stage 3 file exists and both have stage files')
     parser.add_argument('--removals', nargs='+', help=f'a subset of {list(REMOVALS)} (smoke only)')
     parser.add_argument('--workers', type=int, default=8)
     parser.add_argument('--outputs', type=Path, default=None,
@@ -510,7 +564,7 @@ def main(argv=None):
     outputs = rs_paths.check_outputs(outputs, args.smoke)
     rs_paths.check_imports()
     run = run_dev if args.mode == 'dev' else run_held
-    rec = run(outputs, args.final, args.machine, args.smoke, args.workers, args.removals)
+    rec = run(outputs, args.final, args.smoke, args.workers, args.removals)
     path = dev_path(outputs) if args.mode == 'dev' else held_path(outputs)
     print(f'{path}: {len(rec["results"]) - len(rec["failed"])} arms scored, {len(rec["failed"])} failed'
           + ''.join(f'\n  failed {f["removal"]} ({f["arm"]}): {f["cause"]}' for f in rec['failed']))
