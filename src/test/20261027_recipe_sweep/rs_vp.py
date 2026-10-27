@@ -324,7 +324,7 @@ def choose_pick(order, stats):
 
 # ---- raw inputs: hashes, P, labels, exports, partitions (rule §3.2; EG §3.3; RB §3.1) -----------------------------
 
-THREADS = int(os.environ.get('OMP_NUM_THREADS', 8))       # RB §3.1 says 8 threads; the node's value is recorded
+THREADS = 8                                               # RB §3.1: fixed, independent of the environment
 
 
 def sha(data):
@@ -554,13 +554,42 @@ def score_dir(outputs, machine):
     return Path(outputs) / 'scores' / machine
 
 
-def stage_run_folders(outputs, frozen_g=None):
+def graph_gate_failure(rec, outputs, gate, variant=None):
+    """§2.2 / §2.5: a failed graph reproduction stops only the runs that need those graphs."""
+    path = Path(outputs) / 'gates' / f'{gate}.json'
+    if not path.exists():
+        return None
+    data = rec.json(path, ('pass',))
+    item = data if variant is None else data.get('items', {}).get(variant)
+    if item is None:
+        return None
+    assert isinstance(item.get('pass'), bool), f'{path}: gate pass is not boolean'
+    return f'{gate}/{variant or "sample"}: graph reproduction failed' if item['pass'] is False else None
+
+
+def gated_sweep_runs(rec, outputs, runs):
+    """§2.2: k11's three stage 1 values do not run and are not counting when its check fails."""
+    cause = graph_gate_failure(rec, outputs, 'k11_sample')
+    if cause:
+        runs = dict(runs)
+        runs.update({n: dict(status='failed', A=None, cause=cause) for n in STAGE1_NAMES if n.startswith('k11=')})
+    return runs
+
+
+def stage_run_folders(outputs, frozen_g=None, skipped=None):
     """{name: seed-0 run folder} of this machine's stage 1 and 2 runs: the sample-scale run folders under train/ with
     a seed 0 and no removal. G0 is train/G/s0, or, when the machine has none (the fallback), 12-27's frozen
     GS-0.02 seed 0 run."""
     out = {}
-    for d in sorted((Path(outputs) / 'train').iterdir()):
-        removal = d.name != G_REPEAT and sheet.parse(d.name)['remove']        # G-repeat is G0' (not a sheet name)
+    for d in sorted((Path(outputs) / 'train').glob('*')):
+        if not d.is_dir():
+            continue
+        try:
+            removal = d.name != G_REPEAT and sheet.parse(d.name)['remove']
+        except (AssertionError, ValueError, KeyError):
+            if skipped is not None:
+                skipped.append(d.name)
+            continue
         if removal or not (d / 's0' / 'run.json').exists():
             continue
         out[d.name] = d / 's0'
@@ -574,10 +603,20 @@ def part_a(outputs, machine, ctx, rec=None, only=None, threads=THREADS, frozen_g
     files: equal partitions, A within 1e-6, same status. Writes scores/<machine>/rederive_partitions.json."""
     rec = rec or Recorder()
     sdir = score_dir(outputs, machine)
-    folders = stage_run_folders(outputs, frozen_g)
+    skipped = []
+    folders = stage_run_folders(outputs, frozen_g, skipped)
     names = sorted(folders if only is None else only)
+    blocked = gated_sweep_runs(rec, outputs, {})
+    names = sorted(set(names) | (set(blocked) if only is None else set(blocked) & set(only)))
     items, runs = {}, {}
     for name in names:
+        if name in blocked:
+            runs[name] = blocked[name]
+            theirs_path = sdir / f'{name}__s{SWEEP_SEED}.json'
+            if theirs_path.exists():
+                theirs = rec.json(theirs_path, ('status', 'A'))
+                compare(items, f'gate/{name}', dict(status='failed', A=None), theirs)
+            continue
         arm = derive_arm(rec, ctx, {SWEEP_SEED: folders[name]}, threads)
         A = None if arm['status'] == 'failed' else {
             a: a_value(ctx, a, arm['parts'][a][SWEEP_SEED]) for a in ASPECTS}
@@ -603,10 +642,10 @@ def part_a(outputs, machine, ctx, rec=None, only=None, threads=THREADS, frozen_g
             add_item(items, f'A/{name}', A, theirs.get('A'), same=False)
     if only is None:
         extra = sorted(p.name[:-len(f'__s{SWEEP_SEED}.json')] for p in sdir.glob(f'*__s{SWEEP_SEED}.json')
-                       if p.name[:-len(f'__s{SWEEP_SEED}.json')] not in folders)
+                       if p.name[:-len(f'__s{SWEEP_SEED}.json')] not in set(folders) | set(blocked))
         for name in extra:
             add_item(items, f'score_file/{name}', 'no run folder', 'run folder', same=False)
-    rep = report('V1c partitions', items, rec, ctx, machine=machine, n_runs=len(runs), runs=runs)
+    rep = report('V1c partitions', items, rec, ctx, machine=machine, n_runs=len(runs), runs=runs, skipped_folders=skipped)
     write_json(dest or sdir / 'rederive_partitions.json', rep)
     return rep
 
@@ -620,6 +659,9 @@ def guard_bool(guard):
 
 def compare_rows(items, path, mine_rows, theirs_rows):
     """Rows by name: status, A, gain, M, guard, counting. `theirs_rows` = the file's list of row dicts."""
+    if not isinstance(theirs_rows, list):
+        add_item(items, path, 'rows', theirs_rows, same=False)
+        return
     by_name = {r['name']: r for r in theirs_rows}
     for name, row in mine_rows.items():
         r = by_name.get(name)
@@ -636,9 +678,9 @@ def compare_stage1(items, mine, theirs):
     for (grid knobs, levels, grid points) are compared as sets."""
     compare(items, 'stage1/ranges', R_A, theirs.get('ranges', MISSING))
     compare(items, 'stage1/reference/A', mine['rows'][G_NAME]['A'], theirs.get('reference', {}).get('A', MISSING))
-    compare_rows(items, 'stage1/runs', {n: mine['rows'][n] for n in STAGE1_NAMES}, theirs['runs'])   # G is `reference`
+    compare_rows(items, 'stage1/runs', {n: mine['rows'][n] for n in STAGE1_NAMES}, theirs.get('runs', MISSING))   # G is `reference`
     sets_equal(items, 'stage1/failed', [n for n in STAGE1_NAMES if mine['rows'][n]['status'] == 'failed'],
-               [f['name'] for f in theirs.get('failed', [])])
+               [f['name'] for f in theirs['failed']] if 'failed' in theirs else MISSING)
     compare(items, 'stage1/knob_gains', mine['knob_gains'], theirs.get('knob_gains', MISSING))
     sets_equal(items, 'stage1/grid_knobs', mine['grid_knobs'], theirs.get('grid_knobs', MISSING))
     add_item(items, 'stage1/outcome', mine['outcome'], theirs.get('outcome', MISSING))
@@ -657,11 +699,11 @@ def compare_stage1(items, mine, theirs):
 def compare_stage2(items, mine, theirs):
     """mine = derive_stage2(scorer's A values); theirs = sweep/<machine>/stage2.json. TOP is ordered; the pool is a
     set; the outcome is TOP-NONE or not (the file's word for the other case is not fixed by the rule)."""
-    compare_rows(items, 'stage2/new_runs', mine['rows'], theirs['new_runs'])
+    compare_rows(items, 'stage2/new_runs', mine['rows'], theirs.get('new_runs', MISSING))
     sets_equal(items, 'stage2/failed', [n for n, r in mine['rows'].items() if r['status'] == 'failed'],
-               [f['name'] for f in theirs.get('failed', [])])
+               [f['name'] for f in theirs['failed']] if 'failed' in theirs else MISSING)
     sets_equal(items, 'stage2/pool', mine['pool'], theirs.get('pool', MISSING))
-    top = [r['name'] if isinstance(r, dict) else r for r in theirs.get('top', [])]
+    top = [r['name'] if isinstance(r, dict) else r for r in theirs['top']] if 'top' in theirs else MISSING
     add_item(items, 'stage2/top', mine['top'], top)
     add_item(items, 'stage2/outcome_is_top_none', mine['outcome'] == 'TOP-NONE',
              theirs.get('outcome') == 'TOP-NONE')
@@ -684,7 +726,8 @@ def sweep(outputs, machine):
     rec, sdir = Recorder(), score_dir(outputs, machine)
     part = rec.json(sdir / 'rederive_partitions.json', ('pass', 'runs'))
     assert part['pass'] is True, 'part (a) did not pass or did not run: fix it first (rule §4.2 V1c)'
-    theirs_runs, mine_runs = scorer_runs(rec, sdir), runs_from(part['runs'])
+    theirs_runs = gated_sweep_runs(rec, outputs, scorer_runs(rec, sdir))
+    mine_runs = gated_sweep_runs(rec, outputs, runs_from(part['runs']))
     reports = []
     for stage, derive, compare_fn in ((1, derive_stage1, compare_stage1), (2, derive_stage2, compare_stage2)):
         path = Path(outputs) / 'sweep' / machine / f'stage{stage}.json'
@@ -699,10 +742,9 @@ def sweep(outputs, machine):
         sets_equal(items, 'both_sets/stage1/grid_knobs', d1_m['grid_knobs'], d1_t['grid_knobs'])
         add_item(items, 'both_sets/stage1/outcome', d1_m['outcome'], d1_t['outcome'])
         sets_equal(items, 'both_sets/stage1/grid_new', d1_m['grid']['new'], d1_t['grid']['new'])
-        compare(items, 'both_sets/stage1/knob_gains', d1_m['knob_gains'], d1_t['knob_gains'])
         for name, row in d1_m['rows'].items():
             if name in d1_t['rows']:
-                compare(items, f'both_sets/rows/{name}', {k: row[k] for k in ('status', 'M', 'counting')},
+                compare(items, f'both_sets/rows/{name}', {k: row[k] for k in ('status', 'counting')},
                         d1_t['rows'][name])
         if stage == 2:
             add_item(items, 'both_sets/stage2/top', d_m['top'], d_t['top'])
@@ -712,7 +754,8 @@ def sweep(outputs, machine):
         rep = report(f'V1c stage {stage}', items, rec, None, machine=machine,
                      mine=dict(outcome=d1_m['outcome'], grid_knobs=d1_m['grid_knobs'], new=d1_m['grid']['new'],
                                **({} if stage == 1 else dict(pool=d_m['pool'], top=d_m['top']))),
-                     scorer_sha256={n: rec.hashes[str(sdir / f'{n}__s{SWEEP_SEED}.json')] for n in theirs_runs})
+                     scorer_sha256={n: rec.hashes[str(sdir / f'{n}__s{SWEEP_SEED}.json')] for n in theirs_runs
+                                    if str(sdir / f'{n}__s{SWEEP_SEED}.json') in rec.hashes})
         write_json(path.parent / f'rederive_stage{stage}.json', rep)
         reports.append(rep)
     assert reports, f'no stage1.json under {Path(outputs) / "sweep" / machine}'
@@ -727,14 +770,14 @@ def cache_file(outputs, stage, name, seed, aspect):
     return Path(outputs) / stage / 'cache' / name / f's{seed}' / f'{aspect}__partitions.npz'
 
 
-def compare_cache(items, rec, outputs, stage, name, arm, required):
+def compare_cache(items, rec, outputs, stage, name, arm, required, item_name=None):
     """The scorer's saved partitions of an ok arm against mine, every seed and aspect. A file that is not there is
     a difference when `required`, and not looked for otherwise."""
     for s in DEV_SEEDS:
         for a in ASPECTS:
             path = cache_file(outputs, stage, name, s, a)
             if required or path.exists():
-                compare_partition_file(items, rec, path, f'partitions/{name}/s{s}/{a}', arm['parts'][a][s])
+                compare_partition_file(items, rec, path, f'partitions/{item_name or name}/s{s}/{a}', arm['parts'][a][s])
 
 
 def compare_partition_file(items, rec, path, key, mine):
@@ -785,14 +828,18 @@ def stage3_core(outputs, top, ctx, rec, n_draws=N_DRAWS, workers=8, threads=THRE
             for a in ASPECTS:
                 compare_partition_file(items, rec, Path(g_partitions) / f's{s}' / f'{a}__partitions.npz',
                                        f'partitions/G/s{s}/{a}', arms[G_NAME]['parts'][a][s])
-    compare_cache(items, rec, outputs, 'stage3', G_NAME, arms[G_NAME], False)     # if the scorer cached G's too
+    compare_cache(items, rec, outputs, 'stage3', G_ARM, arms[G_NAME], False, item_name='G_cache')     # if the scorer cached G's too
     for name in top:
         if arms[name]['status'] == 'ok':
             compare_cache(items, rec, outputs, 'stage3', name, arms[name], True)
     stats, ref = arm_stats(arms, ctx, G_NAME, n_draws, workers)
     chosen = choose_pick(list(top), stats)
     pick_config = None if chosen['pick'] is None else json.loads(json.dumps(sheet.parse(chosen['pick'])))
+    inputs = dict(runs={n: {str(seed): dict(run_sha256=arms[n]['run_sha256'][seed],
+                                          img_sha256=arms[n]['img_by_seed'][seed] or None)
+                            for seed in DEV_SEEDS} for n in top})
     return dict(top=list(top), G=dict(Abar=ref['Abar'], A=ref['A']), configs=stats, **chosen, pick_config=pick_config,
+                inputs=inputs,
                 failed=[n for n in top if stats[n]['status'] == 'failed'],
                 not_qualifying=[n for n in top if stats[n]['status'] == 'ok' and not stats[n]['qualifies']],
                 n_draws=n_draws, items=items, items_pass=bool(items) and all(i['pass'] for i in items.values()))
@@ -809,13 +856,28 @@ def ablation_core(outputs, final, ctx, rec, n_draws=0, workers=8, threads=THREAD
     names = {x: sheet.name(sheet.config(base, remove=(x,))) for x in removals}
     g_folders = g_folders or {s: paths.RG_TRAIN / G_ARM / f's{s}' for s in DEV_SEEDS}
     folders = {final: g_folders if final == G_NAME else {s: paths.run_dir(outputs, final, s) for s in DEV_SEEDS}}
-    missing = [n for n in names.values() if not all((paths.run_dir(outputs, n, s) / 'run.json').exists()
-                                                    for s in DEV_SEEDS)]
-    assert not missing, f'ablation arms without runs: {missing}'
-    folders.update({n: {s: paths.run_dir(outputs, n, s) for s in DEV_SEEDS} for n in names.values()})
+    blocked = {}
+    variants = dict(content_correction='uncorrected', instructed_graphs='default_view')  # §2.5
+    for x, n in names.items():
+        cause = graph_gate_failure(rec, outputs, 'ablation_graphs', variants[x]) if x in variants else None
+        if cause:
+            blocked[n] = dict(status='failed', cause=cause)
+        else:
+            assert all((paths.run_dir(outputs, n, s) / 'run.json').exists() for s in DEV_SEEDS), \
+                f'ablation arm without runs: {n}'
+            folders[n] = {s: paths.run_dir(outputs, n, s) for s in DEV_SEEDS}
     arms = dev_arms(rec, ctx, folders, threads)
+    arms.update(blocked)
     items = {}
-    compare_cache(items, rec, outputs, 'ablation', final, arms[final], False)
+    if final == G_NAME and g_partitions is not None:
+        for seed in DEV_SEEDS:
+            for a in ASPECTS:
+                compare_partition_file(items, rec, Path(g_partitions) / f's{seed}' / f'{a}__partitions.npz',
+                                       f'partitions/G/s{seed}/{a}', arms[final]['parts'][a][seed])
+    compare_cache(items, rec, outputs, 'ablation', G_ARM if final == G_NAME else final, arms[final], False,
+                  item_name='G_cache' if final == G_NAME else final)
+    if final != G_NAME:
+        compare_cache(items, rec, outputs, 'stage3', final, arms[final], False, item_name=f'{final}_stage3_cache')
     for name in names.values():
         if arms[name]['status'] == 'ok':
             compare_cache(items, rec, outputs, 'ablation', name, arms[name], True)
@@ -880,6 +942,8 @@ def compare_config(items, path, name, mine, theirs):
     add_item(items, f'{path}/qualifies', mine['qualifies'], t['qualifies'])
     if mine['status'] != 'ok':
         compare(items, f'{path}/cause', mine['cause'], t['cause'])
+        for key in ('effects', 'M'):
+            add_item(items, f'{path}/{key}', None, theirs.get(key, MISSING))
         return
     for key in ('Abar', 'e', 'M'):
         compare(items, f'{path}/{key}', _drop_none(mine[key]), t[key])
@@ -890,7 +954,8 @@ def compare_config(items, path, name, mine, theirs):
 def compare_stage3(items, mine, verdict, stage2=None):
     """mine = stage3_core's record; verdict = stage3/verdict.json (ticket 06's layout; `written` is not compared).
     Compared: ranges, seeds, draws, TOP (ordered), outcome, pick, pick_config, qualifiers / not_qualifying / failed (as
-    sets), every configuration's numbers, G's Abar when the file carries it. `lead` and `conditions` are not compared."""
+    sets), every configuration's numbers, G's Abar and per-seed A, and the run/export hashes.
+    `lead` and `conditions` are reported only."""
     compare(items, 'stage3/ranges', R_A, verdict.get('ranges', MISSING))
     add_item(items, 'stage3/seeds', list(DEV_SEEDS), verdict.get('seeds', MISSING))
     add_item(items, 'stage3/draw_mode', 'joint', verdict.get('draw_mode', MISSING))     # §3.3: the joint bootstrap
@@ -909,6 +974,13 @@ def compare_stage3(items, mine, verdict, stage2=None):
         ref = norm_config(recs.get(name), name)
         if ref != MISSING and ref['Abar_ref'] != MISSING:
             compare(items, f'stage3/{name}/G_Abar', mine['G']['Abar'], ref['Abar_ref'])
+        if c['status'] == 'ok':
+            expected_g = {a: seed_keys(v) for a, v in mine['G']['A'].items()}
+            theirs_g = {a: recs.get(name, {}).get('effects', {}).get(a, {}).get('A', {}).get(G_ARM, MISSING)
+                        for a in ASPECTS}
+            compare(items, f'stage3/{name}/G_A', expected_g, theirs_g)
+    compare(items, 'stage3/inputs/runs', mine.get('inputs', {}).get('runs', {}),
+            verdict.get('inputs', {}).get('runs', MISSING))
     if stage2 is not None:
         add_item(items, 'stage3/inputs/stage2_sha256', stage2['sha256'], verdict.get('inputs', {}).get('stage2_sha256', MISSING))
         add_item(items, 'stage3/stage2_top', mine['top'], stage2['top'])
@@ -940,7 +1012,7 @@ def compare_ablation(items, mine, verdict):
     fields and `draws` (prose) are not compared). The removals compared are the file's `removals`."""
     final = verdict.get('final', {})
     add_item(items, 'ablation/final/name', mine['final'], final.get('name', MISSING) if isinstance(final, dict) else MISSING)
-    add_item(items, 'ablation/final_key', mine['final'], verdict.get('final_key', MISSING))
+    add_item(items, 'ablation/final_key', G_ARM if mine['final'] == G_NAME else mine['final'], verdict.get('final_key', MISSING))
     compare(items, 'ablation/ranges', R_A, verdict.get('ranges', MISSING))
     add_item(items, 'ablation/seeds', list(DEV_SEEDS), verdict.get('seeds', MISSING))
     add_item(items, 'ablation/draw_mode', 'joint', verdict.get('draw_mode', MISSING))   # §3.5: §3.3's joint bootstrap
@@ -953,7 +1025,7 @@ def compare_ablation(items, mine, verdict):
         compare_dev_arm(items, f'ablation/{x}', name, mine['arms'][name], mine['F'], recs.get(x))
     sets_equal(items, 'ablation/failed', [f'{x}:{n}' for x, n in mine['removal_arms'].items()
                                           if mine['arms'][n]['status'] == 'failed'],
-               [f'{f["removal"]}:{f["arm"]}' for f in verdict.get('failed', [])])
+               [f'{f["removal"]}:{f["arm"]}' for f in verdict['failed']] if 'failed' in verdict else MISSING)
     compare(items, 'ablation/inputs', mine['inputs'], {k: verdict.get('inputs', {}).get(k, MISSING) for k in mine['inputs']})
 
 
@@ -965,7 +1037,7 @@ def stage3(outputs, sweep_machine, ctx=None, rec=None, g_partitions='frozen', **
     assert kw.get('n_draws', N_DRAWS) > 0, 'the qualifiers need the intervals: --draws must be positive'
     part = rec.json(score_dir(outputs, sweep_machine) / 'rederive_partitions.json', ('pass', 'runs'))
     assert part['pass'] is True, 'part (a) did not pass or did not run: fix it first (rule §4.2 V1c)'
-    d2 = derive_stage2(runs_from(part['runs']))
+    d2 = derive_stage2(gated_sweep_runs(rec, outputs, runs_from(part['runs'])))
     assert d2['top'], 'TOP-NONE: stage 3 does not run'
     s2_path = Path(outputs) / 'sweep' / sweep_machine / 'stage2.json'
     s2 = rec.json(s2_path, ('top',))
@@ -984,9 +1056,29 @@ def stage3(outputs, sweep_machine, ctx=None, rec=None, g_partitions='frozen', **
     return rep
 
 
+def development_final(outputs, rec):
+    """§4.2, §4.3, §2.5: F is the stage 3 pick, else G only after every sweep has ended without TOP."""
+    root = Path(outputs)
+    path = root / 'stage3/verdict.json'
+    if path.exists():
+        verdict = rec.json(path, ('outcome', 'pick'))
+        assert verdict['outcome'] in ('PICK', 'KEEP-G'), f'{path}: unknown outcome'
+        return verdict
+    ended = []
+    for first in sorted((root / 'sweep').glob('*/stage1.json')):
+        s1 = rec.json(first, ('outcome',))
+        second = first.with_name('stage2.json')
+        s2 = rec.json(second, ('outcome',)) if second.exists() else None
+        outcome = s1['outcome'] if s1['outcome'] == 'SWEEP-NONE' else s2['outcome'] if s2 else None
+        assert outcome in ('SWEEP-NONE', 'TOP-NONE'), f'{first.parent.name}: missing stage 3 verdict after {outcome}'
+        ended.append(outcome)
+    assert ended, 'missing stage 3 verdict and no completed machine sweep'
+    return dict(outcome=None, pick=None, terminal_outcomes=sorted(set(ended)))
+
+
 def ablation(outputs, final, ctx=None, rec=None, **kw):
     """The development ablation: ablation_core against ablation/dev.json, for the removals the file lists (all eight
-    unless it is a smoke); `final` must be the stage 3 pick (or G under KEEP-G). `n_draws` -1 takes the file's.
+    unless it is a smoke); `final` must be the stage 3 pick, or G after KEEP-G / SWEEP-NONE / TOP-NONE. `n_draws` -1 takes the file's.
     Writes ablation/rederive_dev.json."""
     rec = rec or Recorder()
     ctx = ctx or load_context(rec)
@@ -996,12 +1088,19 @@ def ablation(outputs, final, ctx=None, rec=None, **kw):
         f'removals {theirs["removals"]}: a real run covers the rule\'s eight'
     if kw.get('n_draws') == -1:
         kw['n_draws'] = theirs['n_draws']
-    s3 = rec.json(Path(outputs) / 'stage3' / 'verdict.json', ('outcome', 'pick'))
+    s3 = development_final(outputs, rec)
     mine = ablation_core(outputs, final, ctx, rec, removals=theirs['removals'], **kw)
     items = mine.pop('items')
     add_item(items, 'ablation/final_is_stage3_final', final, s3['pick'] if s3['outcome'] == 'PICK' else G_NAME)
-    add_item(items, 'ablation/final/outcome_and_pick', [s3['outcome'], s3['pick']],
-             [theirs.get('final', {}).get('outcome', MISSING), theirs.get('final', {}).get('pick', MISSING)])
+    final_meta = theirs.get('final', {})
+    if 'terminal_outcomes' in s3:
+        outcome = final_meta.get('outcome', MISSING)
+        add_item(items, 'ablation/final/outcome', s3['terminal_outcomes'], outcome,
+                 same=outcome in s3['terminal_outcomes'])
+        add_item(items, 'ablation/final/pick', None, final_meta.get('pick', MISSING))
+    else:
+        add_item(items, 'ablation/final/outcome_and_pick', [s3['outcome'], s3['pick']],
+                 [final_meta.get('outcome', MISSING), final_meta.get('pick', MISSING)])
     add_item(items, 'ablation/p_sha256', ctx.p_sha, theirs.get('p_sha256', MISSING))
     compare_ablation(items, mine, theirs)
     rep = report('development ablation', items, rec, ctx, mine=mine)

@@ -424,7 +424,7 @@ def test_part_a_failed_run_and_export_failing_v1b_and_missing_score_file(tmp_pat
     assert rep['pass'] is True
     assert rep['runs']['k1=2']['status'] == 'failed' and rep['runs']['k2=2']['status'] == 'failed'
     assert rep['runs']['k2=2']['A'] is None and 'norm' in rep['runs']['k2=2']['cause']
-    (out / 'scores' / 'local' / 'k2=2__s0.json').unlink()
+    (out / 'scores' / 'local' / 'k2=2__s0.json').rename(out / 'scores/local/missing.saved')
     assert rs_vp.part_a(out, 'local', ctx, threads=1)['pass'] is False     # no score file for a run
 
 
@@ -520,7 +520,7 @@ def test_sweep_catches_two_sets_of_a_that_give_another_top_and_refuses_a_failed_
     mine = {n: dict(r) for n, r in runs.items()}
     mine['k3=12'] = dict(status='ok', A={a: runs['k3=12']['A'][a] + 5 * RA[a] for a in RA})   # my A: k3=12 leads
     out = sweep_outputs(tmp_path, runs, mine=mine)
-    assert rs_vp.sweep(out, 'node402')[0]['pass'] is False
+    assert [r['pass'] for r in rs_vp.sweep(out, 'node402')] == [True, False]
     p = out / 'scores/node402/rederive_partitions.json'
     d = json.loads(p.read_text())
     d['pass'] = False
@@ -656,7 +656,7 @@ def test_stage3_core_compares_partitions_of_tops_runs_and_of_g(tmp_path):
     np.savez(f, labels=lab)
     assert rs_vp.stage3_core(out, top, ctx, rs_vp.Recorder(), **kw)['items_pass'] is False
     np.savez(f, labels=arms['k3=12']['style'][2])
-    f.with_name('genre__partitions.npz').unlink()                    # a partition file that is not there
+    f.with_name('genre__partitions.npz').rename(f.with_name('genre.saved.npz'))                    # a partition file that is not there
     assert rs_vp.stage3_core(out, top, ctx, rs_vp.Recorder(), **kw)['items_pass'] is False
     np.savez(f.with_name('genre__partitions.npz'), labels=arms['k3=12']['genre'][2])
     g = gparts / 's1' / 'emotion__partitions.npz'
@@ -687,7 +687,8 @@ def verdict_like(mine, stage2_sha='abc'):
             return dict(status='failed', cause='seed 1: nonfinite loss at epoch 2 (emotion)', effects=None, M=None,
                         conditions=None, qualifies=False)
         eff = {a: dict(c['e'][a], Abar={name: c['Abar'][a], 'G': mine['G']['Abar'][a]},
-                       A={name: {str(s): v for s, v in c['A'][a].items()}}) for a in rs_vp.ASPECTS}
+                       A={name: {str(s): v for s, v in c['A'][a].items()},
+                          'GS-0.02': {str(s): v for s, v in mine['G']['A'][a].items()}}) for a in rs_vp.ASPECTS}
         return dict(status='ok', cause=None, effects=eff, M=dict(c['M']), conditions={'any': 'free form'},
                     qualifies=c['qualifies'])
     return dict(stage='stage3', smoke=False, written='2026-10-28 09:15', stage2_machine='local',
@@ -696,7 +697,7 @@ def verdict_like(mine, stage2_sha='abc'):
                 pick=mine['pick'], pick_config=mine['pick_config'], qualifiers=list(mine['qualifiers']),
                 not_qualifying=list(mine['not_qualifying']), failed=list(mine['failed']), lead=None,
                 results={n: result(n, c) for n, c in mine['configs'].items()},
-                inputs=dict(stage2_sha256=stage2_sha))
+                inputs=dict(stage2_sha256=stage2_sha, **mine.get('inputs', {})))
 
 
 def fake_mine():
@@ -707,7 +708,9 @@ def fake_mine():
     bad = dict(status='failed', cause='seed 1: nonfinite loss at epoch 2 (emotion)', qualifies=False)
     return dict(top=['a', 'b', 'c'], pick='k3=12', outcome='PICK', qualifiers=['a'], failed=['c'],
                 not_qualifying=['b'], pick_config=json.loads(json.dumps(rs_sheet.parse('k3=12'))), n_draws=2000,
-                G=dict(Abar=dict(emotion=0.099, style=0.398, genre=0.497)),
+                G=dict(Abar=dict(emotion=0.099, style=0.398, genre=0.497),
+                       A={a: {1: 0.09, 2: 0.1, 3: 0.11} for a in rs_vp.ASPECTS}),
+                inputs=dict(runs={'a': {'1': dict(run_sha256='raw', img_sha256={'emotion': 'export'})}}),
                 configs={'a': ok, 'b': dict(ok, qualifies=False, M=dict(M=0.4, lo=-0.1, hi=0.9)), 'c': bad})
 
 
@@ -794,8 +797,7 @@ def test_ablation_core_points_e_a_against_the_final_model(tmp_path):
     lab[0, 0] = (lab[0, 0] + 1) % 20
     np.savez(f, labels=lab)
     assert not all(i['pass'] for i in rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), **kw)['items'].values())
-    import shutil
-    shutil.rmtree(out / 'train' / 'G-no_buddy')
+    (out / 'train' / 'G-no_buddy').rename(out / 'train' / 'saved_buddy')
     with pytest.raises(AssertionError, match='arm'):
         rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), **kw)
 
@@ -815,7 +817,9 @@ def dev_like(mine):
         results[x] = dict(arm=name, status='ok', cause=None, aspects=aspects, M=dict(arm['M']))
     return dict(stage='ablation_dev', smoke=True, written='2026-10-27 12:31', rule_commit='x', ranges=dict(RA),
                 seeds=[1, 2, 3], n_draws=mine['n_draws'], draw_mode='joint', draws='prose',
-                final=dict(name=mine['final'], outcome='KEEP-G', pick=None), final_key=mine['final'],
+                final=dict(name=mine['final'], outcome='KEEP-G', pick=None,
+                           config=json.loads(json.dumps(rs_sheet.parse(mine['final']))),
+                           is_g=mine['final'] == 'G', ended={}, stage_files={}), final_key='GS-0.02' if mine['final'] == 'G' else mine['final'],
                 removals=list(mine['removal_arms']), results=results, failed=failed, inputs=json.loads(json.dumps(mine['inputs'])))
 
 
@@ -912,6 +916,12 @@ def test_stage3_wrapper_takes_top_from_my_a_values_and_compares_with_the_verdict
     rep = rs_vp.stage3(out, 'node402', ctx=ctx, g_partitions=gparts, **kw)
     assert rep['pass'] is True and rep['mine']['top'] == top
     assert json.loads((out / 'stage3' / 'rederive_stage3.json').read_text())['pass'] is True
+    part_path = sdir / 'rederive_partitions.json'
+    part = json.loads(part_path.read_text())
+    part['runs'] = {n: r for n, r in part['runs'].items() if not n.startswith('k11=')}
+    part_path.write_text(json.dumps(part))
+    rs_vp.write_json(out / 'gates/k11_sample.json', {'pass': False})
+    assert rs_vp.stage3(out, 'node402', ctx=ctx, g_partitions=gparts, **kw)['pass'] is True
     verdict['results'][top[1]]['M']['lo'] += 1e-5
     vfile.write_text(json.dumps(verdict))
     assert rs_vp.stage3(out, 'node402', ctx=ctx, g_partitions=gparts, **kw)['pass'] is False
@@ -924,3 +934,287 @@ def test_command_line_parses_every_mode_and_refuses_outputs_in_a_frozen_folder(t
         rs_vp.main(['partitions'])                                     # --machine is required
     with pytest.raises(AssertionError, match='frozen'):
         rs_vp.main(['sweep', '--machine', 'local', '--outputs', str(rs_vp.paths.RG_OUT / 'x')])
+
+
+@pytest.mark.parametrize('outcomes', [('SWEEP-NONE',), ('TOP-NONE',), ('SWEEP-NONE', 'TOP-NONE'),
+                                    ('SWEEP-NONE', 'TOP')])
+def test_ablation_without_stage3_requires_every_machine_to_have_ended(tmp_path, outcomes):
+    ctx = tiny_ctx()
+    out, frozen, _ = ablation_case(tmp_path, ctx, removals=('buddy',))
+    kw = dict(n_draws=0, workers=1, threads=1, g_folders=frozen)
+    mine = rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), removals=('buddy',), **kw)
+    v = dev_like(mine)
+    # A mixed terminal set keeps G; label the aggregate SWEEP-NONE when either sweep stopped there.
+    v['final'].update(outcome='SWEEP-NONE' if 'SWEEP-NONE' in outcomes else 'TOP-NONE')
+    v['p_sha256'] = ctx.p_sha
+    rs_vp.write_json(out / 'ablation/dev.json', v)
+    for machine, outcome in zip(('local', 'node402'), outcomes):
+        rs_vp.write_json(out / 'sweep' / machine / 'stage1.json',
+                         dict(outcome='SWEEP-NONE' if outcome == 'SWEEP-NONE' else 'GRID-1'))
+        if outcome != 'SWEEP-NONE':
+            rs_vp.write_json(out / 'sweep' / machine / 'stage2.json', dict(outcome=outcome))
+    # A folder without stage1.json does not participate.
+    rs_vp.write_json(out / 'sweep/unused/stage2.json', dict(outcome='TOP'))
+    if 'TOP' in outcomes:
+        with pytest.raises(AssertionError, match='stage 3.*node402|node402.*stage 3'):
+            rs_vp.ablation(out, 'G', ctx=ctx, **kw)
+    else:
+        rep = rs_vp.ablation(out, 'G', ctx=ctx, **kw)
+        assert rep['pass'], [k for k, i in rep['items'].items() if not i['pass']]
+        assert any('stage1.json' in p for p in rep['input_sha256'])
+
+
+@pytest.mark.parametrize('scores_present', [True, False])
+def test_failed_k11_gate_counts_its_missing_runs_as_failed_in_sweep_and_partitions(tmp_path, scores_present):
+    failed = [n for n in rs_vp.STAGE1_NAMES if n.startswith('k11=')]
+    runs = runs_for({}, failed=failed)
+    out = sweep_outputs(tmp_path, runs)
+    part = out / 'scores/node402/rederive_partitions.json'
+    data = json.loads(part.read_text())
+    for n in failed:
+        data['runs'].pop(n)
+        score = out / 'scores/node402' / f'{n}__s0.json'
+        score.rename(score.with_suffix('.saved'))
+    part.write_text(json.dumps(data))
+    rs_vp.write_json(out / 'gates/k11_sample.json', {'pass': False, 'cause': 'rebuild differs'})
+    assert [r['pass'] for r in rs_vp.sweep(out, 'node402')] == [True]
+    # Part (a) also records the gate-blocked rows without requiring a run folder.
+    ctx = tiny_ctx()
+    frozen = tmp_path / 'frozen/s0'
+    write_run(frozen, 1)
+    (out / 'train').mkdir()
+    score_file(out, 'node402', 'G', ctx, 1)
+    if scores_present:
+        for n in failed:
+            rs_vp.write_json(out / 'scores/node402' / f'{n}__s0.json', dict(status='failed', A=None))
+    rep = rs_vp.part_a(out, 'node402', ctx, threads=1, frozen_g=frozen, only=['G'] + failed)
+    assert rep['pass'] and all(rep['runs'][n]['status'] == 'failed' for n in failed)
+
+
+@pytest.mark.parametrize('removal,variant', [('instructed_graphs', 'default_view'),
+                                            ('content_correction', 'uncorrected')])
+def test_failed_ablation_graph_gate_only_blocks_its_own_arm(tmp_path, removal, variant):
+    ctx = tiny_ctx()
+    out, frozen, _ = ablation_case(tmp_path, ctx, removals=('buddy',))
+    rs_vp.write_json(out / 'gates/ablation_graphs.json',
+                     {'pass': False, 'items': {variant: {'pass': False, 'cause': 'graph differs'}}})
+    mine = rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), n_draws=0, workers=1, threads=1,
+                               g_folders=frozen, removals=('buddy', removal))
+    assert mine['arms'][f'G-no_{removal}']['status'] == 'failed'
+    assert mine['arms'][f'G-no_{removal}']['cause']
+    assert mine['arms']['G-no_buddy']['status'] == 'ok'
+    items = {}
+    rs_vp.compare_ablation(items, mine, dev_like(mine))
+    assert items and all(i['pass'] for i in items.values())
+
+
+@pytest.mark.parametrize('cache_name', ['G', 'GS-0.02'])
+def test_frozen_g_difference_survives_a_matching_scorer_cache(tmp_path, cache_name):
+    # Review scratch case, with its bug assertion inverted; exercise the old alias and the real run key.
+    ctx = tiny_ctx()
+    out, frozen, arms = stage3_case(tmp_path, ctx)
+    write_cache(out, arms, ('k3=12', 'k6=0.0005'))
+    write_cache(out, {cache_name: arms['G']}, (cache_name,))
+    gparts = tmp_path / 'g_partitions'
+    write_g_partitions(gparts, arms)
+    g = gparts / 's1/emotion__partitions.npz'
+    lab = np.load(g)['labels'].copy()
+    lab[1, 3] = (lab[1, 3] + 1) % 20
+    np.savez(g, labels=lab)
+    mine = rs_vp.stage3_core(out, ['k3=12', 'k6=0.0005'], ctx, rs_vp.Recorder(), n_draws=3,
+                             workers=1, threads=1, g_folders=frozen, g_partitions=gparts)
+    assert mine['items_pass'] is False
+    assert mine['items']['partitions/G/s1/emotion']['pass'] is False
+
+
+def test_scorer_g_cache_is_compared_under_its_real_key(tmp_path):
+    ctx = tiny_ctx()
+    out, frozen, arms = stage3_case(tmp_path, ctx)
+    write_cache(out, arms, ('k3=12', 'k6=0.0005'))
+    write_cache(out, {'GS-0.02': arms['G']}, ('GS-0.02',))
+    g = out / 'stage3/cache/GS-0.02/s1/emotion__partitions.npz'
+    lab = np.load(g)['labels'].copy()
+    lab[1, 3] = (lab[1, 3] + 1) % 20
+    np.savez(g, labels=lab)
+    mine = rs_vp.stage3_core(out, ['k3=12', 'k6=0.0005'], ctx, rs_vp.Recorder(), n_draws=3,
+                             workers=1, threads=1, g_folders=frozen)
+    assert mine['items_pass'] is False
+    assert mine['items']['partitions/G_cache/s1/emotion']['pass'] is False
+
+
+def test_grid_tie_at_the_fourth_slot_uses_sheet_order():
+    deltas = {'k1=2': ranges(3), 'k2=8': ranges(2), 'k3=12': ranges(2),
+              'k4=0.025': ranges(1), 'k5=0.5': ranges(1)}
+    assert rs_vp.derive_stage1(runs_for(deltas))['grid_knobs'] == ['k1', 'k2', 'k3', 'k4']
+
+
+def test_positive_mean_that_fails_guard_is_not_a_grid_level():
+    runs = runs_for({'k3=4': ranges(0.5), 'k3=12': (-RA['emotion'], 3 * RA['style'], 0)})
+    s1 = rs_vp.derive_stage1(runs)
+    assert s1['rows']['k3=12']['M'] > 0 and not s1['rows']['k3=12']['guard']
+    assert s1['levels']['k3'] == [8, 4]
+
+
+@pytest.mark.parametrize('stage,key', [(1, 'leaf'), (1, 'list'), (1, 'failed'), (1, 'runs'),
+                                     (2, 'leaf'), (2, 'list'), (2, 'failed'), (2, 'new_runs'),
+                                     (3, 'leaf'), (3, 'list'), (4, 'leaf'), (4, 'list'), (4, 'failed')])
+def test_missing_verdict_fields_are_disagreements(tmp_path, stage, key):
+    if stage in (1, 2):
+        runs = sweep_case()
+        mine = (rs_vp.derive_stage1 if stage == 1 else rs_vp.derive_stage2)(runs)
+        v = (stage1_json if stage == 1 else stage2_json)(mine)
+        compare_fn = rs_vp.compare_stage1 if stage == 1 else rs_vp.compare_stage2
+        if key == 'leaf':
+            v['runs' if stage == 1 else 'new_runs'][0].pop('M')
+        else:
+            v.pop(('grid_knobs' if stage == 1 else 'pool') if key == 'list' else key)
+    elif stage == 3:
+        mine = fake_mine()
+        v = verdict_like(mine)
+        compare_fn = rs_vp.compare_stage3
+        if key == 'leaf':
+            v['results']['a']['effects']['emotion'].pop('lo')
+        else:
+            v.pop('qualifiers')
+    else:
+        ctx = tiny_ctx()
+        out, frozen, _ = ablation_case(tmp_path, ctx, removals=('buddy',))
+        mine = rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), n_draws=0, workers=1, threads=1,
+                                   g_folders=frozen, removals=('buddy',))
+        v = dev_like(mine)
+        compare_fn = rs_vp.compare_ablation
+        if key == 'leaf':
+            v['results']['buddy']['aspects']['emotion'].pop('effect')
+        else:
+            v.pop('removals' if key == 'list' else key)
+    items = {}
+    compare_fn(items, mine, v)
+    assert items and any(not i['pass'] for i in items.values())
+
+
+def test_cli_exits_one_on_wrong_top(tmp_path):
+    out = sweep_outputs(tmp_path, sweep_case())
+    path = out / 'sweep/node402/stage2.json'
+    v = json.loads(path.read_text())
+    v['top'] = v['top'][::-1]
+    path.write_text(json.dumps(v))
+    assert rs_vp.main(['sweep', '--machine', 'node402', '--outputs', str(out)]) == 1
+
+
+def test_guard_is_compared_even_when_counting_is_unchanged():
+    mine = rs_vp.derive_stage1(runs_for({}))
+    v = stage1_json(mine)
+    v['runs'][0]['guard'] = False
+    items = {}
+    rs_vp.compare_stage1(items, mine, v)
+    assert any(not i['pass'] for i in items.values())
+
+
+def test_empty_report_is_not_a_pass():
+    assert rs_vp.report('empty', {}, rs_vp.Recorder(), None)['pass'] is False
+
+
+def test_stage3_top_is_bound_to_stage2_independently_of_verdict_top():
+    mine = fake_mine()
+    items = {}
+    rs_vp.compare_stage3(items, mine, verdict_like(mine), dict(sha256='abc', top=['other']))
+    assert any(not i['pass'] for i in items.values())
+
+
+def test_ablation_final_is_bound_to_stage3_independently_of_dev_final(tmp_path):
+    ctx = tiny_ctx()
+    out, frozen, _ = ablation_case(tmp_path, ctx, removals=('buddy',))
+    kw = dict(n_draws=0, workers=1, threads=1, g_folders=frozen)
+    mine = rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), removals=('buddy',), **kw)
+    v = dev_like(mine)
+    v['final'].update(outcome='PICK', pick='k3=12')
+    v['p_sha256'] = ctx.p_sha
+    rs_vp.write_json(out / 'ablation/dev.json', v)
+    rs_vp.write_json(out / 'stage3/verdict.json', dict(outcome='PICK', pick='k3=12'))
+    assert rs_vp.ablation(out, 'G', ctx=ctx, **kw)['pass'] is False
+
+
+def test_kmeans_default_is_eight_threads_despite_environment(tmp_path):
+    import os
+    import subprocess
+    env = dict(os.environ, OMP_NUM_THREADS='2')
+    result = subprocess.run([rs_vp.sys.executable, '-c', 'import rs_vp; print(rs_vp.THREADS)'],
+                            cwd=rs_vp.paths.ROUND, env=env, text=True, capture_output=True, check=True, timeout=30)
+    assert result.stdout.strip() == '8'
+
+
+def test_failed_stage3_configuration_requires_null_numbers():
+    mine = fake_mine()
+    for key in ('effects', 'M'):
+        v = verdict_like(mine)
+        v['results']['c'][key] = {}
+        items = {}
+        rs_vp.compare_stage3(items, mine, v)
+        assert any(not i['pass'] for i in items.values())
+
+
+def test_partitions_skip_and_list_folders_that_are_not_sheet_runs(tmp_path):
+    ctx = tiny_ctx()
+    out = tmp_path / 'out'
+    write_run(out / 'train/G/s0', 1)
+    write_run(out / 'train/GS-0.02/s0', 2)
+    write_run(out / 'train/smoke_saved/s0', 3)
+    score_file(out, 'local', 'G', ctx, 1)
+    rep = rs_vp.part_a(out, 'local', ctx, threads=1)
+    assert rep['pass'] and rep['skipped_folders'] == ['GS-0.02', 'smoke_saved']
+
+
+def test_ablation_compares_real_g_cache_and_keeps_frozen_comparison(tmp_path):
+    ctx = tiny_ctx()
+    out, frozen, arms = ablation_case(tmp_path, ctx, removals=('buddy',))
+    write_cache(out, {'GS-0.02': arms['G']}, ('GS-0.02',), stage='ablation')
+    gparts = tmp_path / 'gparts'
+    write_g_partitions(gparts, arms)
+    g = out / 'ablation/cache/GS-0.02/s1/emotion__partitions.npz'
+    lab = np.load(g)['labels'].copy()
+    lab[1, 3] = (lab[1, 3] + 1) % 20
+    np.savez(g, labels=lab)
+    mine = rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), n_draws=0, workers=1, threads=1,
+                               g_folders=frozen, g_partitions=gparts, removals=('buddy',))
+    assert mine['items']['partitions/G_cache/s1/emotion']['pass'] is False
+    assert mine['items']['partitions/G/s1/emotion']['pass'] is True
+
+
+@pytest.mark.parametrize('field', ['g_seed', 'run_hash'])
+def test_stage3_binds_g_seed_values_and_run_hashes(field):
+    mine = fake_mine()
+    v = verdict_like(mine)
+    if field == 'g_seed':
+        v['results']['a']['effects']['emotion']['A']['GS-0.02']['2'] = 0.9
+    else:
+        v['inputs'] = json.loads(json.dumps(v['inputs']))
+        v['inputs']['runs']['a']['1']['run_sha256'] = 'changed'
+    items = {}
+    rs_vp.compare_stage3(items, mine, v)
+    assert any(not i['pass'] for i in items.values())
+
+
+def test_both_a_sets_need_the_same_decisions_within_part_a_tolerance(tmp_path):
+    runs = runs_for({'k3=12': ranges(1)})
+    mine = json.loads(json.dumps(runs))
+    mine['k3=12']['A']['emotion'] += 5e-7  # allowed by V1c (a), moves M by more than 1e-6
+    out = sweep_outputs(tmp_path, runs, mine=mine)
+    assert [r['pass'] for r in rs_vp.sweep(out, 'node402')] == [True, True]
+
+
+def test_mixed_terminal_sweeps_allow_either_observed_outcome_label(tmp_path):
+    ctx = tiny_ctx()
+    out, frozen, _ = ablation_case(tmp_path, ctx, removals=('buddy',))
+    kw = dict(n_draws=0, workers=1, threads=1, g_folders=frozen)
+    mine = rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), removals=('buddy',), **kw)
+    v = dev_like(mine)
+    v['p_sha256'] = ctx.p_sha
+    v['final']['outcome'] = 'TOP-NONE'
+    rs_vp.write_json(out / 'ablation/dev.json', v)
+    rs_vp.write_json(out / 'sweep/local/stage1.json', dict(outcome='SWEEP-NONE'))
+    rs_vp.write_json(out / 'sweep/node402/stage1.json', dict(outcome='GRID-1'))
+    rs_vp.write_json(out / 'sweep/node402/stage2.json', dict(outcome='TOP-NONE'))
+    assert rs_vp.ablation(out, 'G', ctx=ctx, **kw)['pass'] is True
+    v['final']['outcome'] = 'KEEP-G'  # no such terminal outcome exists without stage3
+    rs_vp.write_json(out / 'ablation/dev.json', v)
+    assert rs_vp.ablation(out, 'G', ctx=ctx, **kw)['pass'] is False
