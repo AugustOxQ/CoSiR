@@ -45,3 +45,14 @@ Run chat "r10 run", from the handoff `docs/superpowers/handoffs/2026-10-27-r10-r
   (A_R 0.4534); G_half 0.0264 equals the frozen value; PC holds; `matches_or_exceeds` false (lower bound under 0).
   9,949 labelled rows. `stage_c/verdict.json` SHA-256 a6fd488e44620b2c912a014c307ed748c6a5ce26f8a03fabb17a60b9c7455361.
 - `vc2` (99 s, 01:59): agree, max abs difference 6.9e-18. Stage C outcome stated: G-GO.
+- `report_c` (1,071 s). Queue C done 02:16, failed=0; `RG_GPU_DONE failed=0 2026-10-27 02:16`. Total 103 min against
+  the 210 estimated; the GPU lock was free at the end.
+
+## Step 9 (verify and report)
+
+- Report 12-27 (`docs/reports/auto/percept/2026-12-27_relational_genre.md`), the user-read report, held ledger row H19
+  and the index row, committed 53b155d.
+- Codex claim review of report 12-27 (`gpt-6.1-sol` medium): 333 numbers checked, 5 findings, all applied (252d13f).
+  Codex cold read of the user-read report (`gpt-6-luna` medium): valid findings applied. Briefs and logs in
+  `.scratch/r10-relational-genre/run_notes/`.
+- 02:26 cut at the context meter to "r10 run 2" (the user-read fidelity check, then the next decide chat).
