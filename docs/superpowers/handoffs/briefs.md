@@ -1129,3 +1129,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-27-r10-decide-26-handoff.md
 - New chat: tab 'r10 decide 26', session b63b7607-e86d-4705-84e1-5e7d070a69e3
 
+[brief] CoSiR: r10 decide 26 -> r10 decide 27 (2026-10-27 03:30 Amsterdam)
+- Done: decision C on report 12-27, the wrap-up, decision A, decision B and the grill of the next loop (closing summary confirmed by the user).
+- State: model G is level with the instructed Qwen genre image on held paintings (0.5001 against 0.5062); next loop: held emotion test with G, a staged sweep on DAS6 node402, an ablation and an analysis.
+- Next: step 6, the spec and its decision rule from §2; the user approves the brief; then the restart question and the cut to the build.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-27-r10-decide-27-handoff.md
+- New chat: tab 'r10 decide 27', session f2e3eca7-b668-4b3e-b8d3-e31c20f0a64c
+
