@@ -326,9 +326,9 @@ def read_score(outputs, machine, name, seed):
     return rec
 
 
-def _keep_or_write(path, record, ignore=('code_commit', 'code_dirty', 'host')):
-    """Write `record`; an existing file with the same values (up to the code commit, the dirty flag and the host) and the
-    same scorer code is kept, any other one stops the run. Never overwrites or deletes."""
+def _keep_or_write(path, record, ignore=('code_commit', 'code_dirty', 'host', 'written')):
+    """Write `record`; an existing file with the same values (up to the code commit, the dirty flag, the host and the time
+    written) and the same scorer code is kept, any other one stops the run. Never overwrites or deletes."""
     path = Path(path)
     if path.exists():
         old = json.loads(path.read_text())
