@@ -258,7 +258,10 @@ def read_run(outputs, name, seed, machine, smoke, frozen_g0=False):
                cause=run.get('cause'), best_epoch=run.get('best_epoch'), run_sha256=_file_sha256(path), img=None)
     if run['status'] == 'failed':
         assert run.get('cause'), f'{name}: failed run without a cause'
-        return rec
+        # as rg_score.read_run: a run fails by a non-finite loss, or by V1b after its one rerun (rule V1d)
+        assert run.get('failure_kind') in ('nonfinite_loss', 'va3'), (name, 'failure_kind', run.get('failure_kind'))
+        assert run['failure_kind'] != 'va3' or 'rerun_of' in run, f'{name} s{seed}: failed V1b and has not been rerun; rerun it once first'
+        return dict(rec, **({'rerun_of': run['rerun_of']} if 'rerun_of' in run else {}))
     img = read_exports(folder)
     problems = v1b_problems(img)
     assert not problems, f'V1b {name} s{seed}: {problems} (the trainer reruns it once; a second failure is status failed)'
@@ -355,6 +358,7 @@ def run_score(outputs, machine, names, seed, smoke=False, frozen_g0=False):
             img_sha = {a: rb_pick.array_sha256(run['img'][a]) for a in ASPECTS}
         rec = dict(stage='score', name=n, seed=seed, machine=machine, host=socket.gethostname(), source=run['source'],
                    smoke=bool(smoke), status=run['status'], cause=run['cause'], best_epoch=run['best_epoch'], A=A,
+                   **({'rerun_of': run['rerun_of']} if 'rerun_of' in run else {}),
                    img_sha256=img_sha, run_sha256=run['run_sha256'], p_sha256=ctx['p_sha'],
                    label_sha256={a: rb_pick.array_sha256(ctx['labels'][a]) for a in ASPECTS},
                    versions=rb_ami.versions(), rule_commit=rs_paths.RULE_COMMIT, **code)
@@ -405,11 +409,47 @@ def decide_stage1(table):
                 levels=level_of, grid=dict(points=[dict(name=n, kind=kind[n]) for n in split['order']], **split))
 
 
+REF_SOURCE = dict(local='12-27', node402='rs_trainer')    # G₀: 12-27's local run on the fallback (rule §4.2), the round's own on the node
+
+
+def k11_gate(outputs):
+    """None, or the failed k11 sample graph check (gates/k11_sample.json with pass false): rule §2.2, the k11 runs do not
+    run, are not counting, and the cause is reported. A missing file is not a failure (the check has not run)."""
+    path = Path(outputs) / 'gates' / 'k11_sample.json'
+    if not path.exists():
+        return None
+    gate = json.loads(path.read_text())
+    if gate['pass'] is True:
+        return None
+    return dict(cause=gate.get('cause') or 'the k = 20 rebuild differs from the frozen sample graphs (gates/k11_sample.json)',
+                sha256=_file_sha256(path))
+
+
+def stage1_table(outputs, machine, smoke):
+    """({name: row}, {input: SHA-256}) of G₀ and the 39 runs. G₀ must be the machine's own kind of run (REF_SOURCE). When the
+    k11 gate failed, k11's three runs are entered as failed (not counting) with its cause and the gate's SHA-256 is an input;
+    a score file of such a run is refused."""
+    gate = k11_gate(outputs)
+    k11 = [rs_sheet.name(c) for c in rs_sheet.stage1() if rs_sheet.changed(c) == ('k11',)] if gate else []
+    names = [n for n in [G_NAME] + stage1_names() if n not in k11]
+    table = load_table(outputs, machine, names, smoke)
+    assert table[G_NAME]['source'] == REF_SOURCE[machine], \
+        f'G₀ on {machine} must come from {REF_SOURCE[machine]} (rule §4.2), not {table[G_NAME]["source"]}'
+    inputs = input_hashes(outputs, machine, names)
+    if gate:
+        extra = [n for n in k11 if score_path(outputs, machine, n, 0).exists()]
+        assert not extra, f'k11 gate failed but scores exist: {extra}'
+        for n in k11:
+            table[n] = dict(status='failed', cause=f'k11 sample graph check failed: {gate["cause"]}', A=None, best_epoch=None,
+                            source=None)
+        inputs['gates/k11_sample.json'] = gate['sha256']
+    return {n: table[n] for n in [G_NAME] + stage1_names()}, inputs
+
+
 def run_stage1(outputs, machine, smoke=False):
     """G₀ and the 39 runs of `machine` -> sweep/<machine>/stage1.json (rule §4.2 Stage 1). Stops when a run is missing."""
-    names = [G_NAME] + stage1_names()
     code = code_state()
-    table = load_table(outputs, machine, names, smoke)
+    table, inputs = stage1_table(outputs, machine, smoke)
     d = decide_stage1(table)
     judged = d['judged']
     record = dict(stage='stage1', machine=machine, smoke=bool(smoke), rule_commit=rs_paths.RULE_COMMIT,
@@ -419,7 +459,7 @@ def run_stage1(outputs, machine, smoke=False):
                   failed=[dict(name=n, cause=j['cause']) for n, j in judged.items() if j['status'] == 'failed'],
                   curves={k: knob_curve(judged, k) for k in rs_sheet.KNOBS}, knob_gains=d['knob_gains'],
                   grid_knobs=d['grid_knobs'], outcome=d['outcome'], levels=d['levels'], grid=d['grid'],
-                  inputs=input_hashes(outputs, machine, names), p_sha256=rs_paths.P_SHA256, **code)
+                  inputs=inputs, p_sha256=rs_paths.P_SHA256, **code)
     return _keep_or_write(sweep_path(outputs, machine, 'stage1'), _clean(record))
 
 
@@ -434,10 +474,9 @@ def run_stage2(outputs, machine, smoke=False):
     code = code_state()
     new = s1['grid']['new']
     names = [G_NAME] + stage1_names() + new
-    table = load_table(outputs, machine, names, smoke)
-    now = input_hashes(outputs, machine, [G_NAME] + stage1_names())
-    assert now == {n: s1['inputs'][n] for n in now} and set(s1['inputs']) == set(now), \
-        f'{s1_path} is stale: stage 1\'s score files changed; rerun stage1 (move the old file aside)'
+    table1, now = stage1_table(outputs, machine, smoke)
+    assert now == s1['inputs'], f'{s1_path} is stale: stage 1\'s score files changed; rerun stage1 (move the old file aside)'
+    table = dict(table1, **load_table(outputs, machine, new, smoke))
     assert _clean({k: decide_stage1(table)[k] for k in ('outcome', 'grid_knobs', 'levels', 'grid')}) == \
         {k: s1[k] for k in ('outcome', 'grid_knobs', 'levels', 'grid')}, f'{s1_path} differs from the scores\' decision'
     judged = judge_all({n: table[n] for n in names}, table[G_NAME]['A'])
@@ -450,7 +489,7 @@ def run_stage2(outputs, machine, smoke=False):
                   grid_table=[dict(kind=p['kind'], **(_row_out(judged[p['name']]) if p['name'] != G_NAME else dict(name=G_NAME)))
                               for p in s1['grid']['points']],
                   pool=members, top=[dict(rank=i + 1, **_row_out(judged[n])) for i, n in enumerate(chosen)],
-                  outcome=stage2_outcome(members), inputs=input_hashes(outputs, machine, names),
+                  outcome=stage2_outcome(members), inputs=dict(now, **input_hashes(outputs, machine, new)),
                   p_sha256=rs_paths.P_SHA256, **code)
     return _keep_or_write(sweep_path(outputs, machine, 'stage2'), _clean(record))
 
