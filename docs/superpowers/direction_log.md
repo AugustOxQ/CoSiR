@@ -25,8 +25,8 @@ instructed Qwen image, G wins on emotion and is level on style and genre; agains
 claims are k-means, ArtELingo and (genre) Qwen only. Next (user, decide 26, 2026-10-27): one medium loop: the held
 emotion claim test with G as the new recipe, then a recipe sweep on DAS6 on development data (the strongest recipe
 for all three aspects; "level" accepted) with an ablation study and a real analysis beside it, then the other
-passing encoders with the final recipe, then aspect-named retrieval as the second task. The sweep's search space is
-chosen at step 4 of decide 26. The CVPR abstract is due 2026-11-10.
+passing encoders with the final recipe, then aspect-named retrieval as the second task. The sweep is staged (a one-knob scan,
+then a joint grid; stages 1 and 2 on DAS6 node402, the rest local); the spec is written in decide 27. The CVPR abstract is due 2026-11-10.
 
 ## Parked ideas
 
@@ -84,7 +84,16 @@ chosen at step 4 of decide 26. The CVPR abstract is due 2026-11-10.
   round); then aspect-named retrieval as the second task, once the sweep fixes the clustering part (user; decide 20's
   gate keeps retrieval). Options were: 1, the held emotion test with G; 2, the change on the other encoders; 3, the
   write-up. Our recommendation: 1, then 3. Storage: all recommendations approved (user).
-- **Idea (B):** open: the sweep's search space and the analysis plan, chosen at step 4 of this decide chat.
+- **Idea (B):** a staged sweep: a one-knob scan around G (about 45 configurations, seed 0), then a joint grid over the
+  3 or 4 knobs with the largest mean gain (about 70 configurations), the top 3 on fresh seeds, one held test of the
+  pick (user, own pick; the wide random search over all knobs runs later only with spare time and idle node GPUs,
+  scored on development paintings, never held). Not chosen: a narrow sweep of the loss knobs alone. Grill (decide 26,
+  2026-10-27 03:00 to 03:30): stages 1 and 2 on DAS6 node402, every stage that decides or gives a reported number
+  local (user chose DAS6; the split, after seeing the recommendation); the pick by mean gain in seed ranges (user)
+  with every aspect at least level with G: at seed 0 at most half a seed range below G, at stage 3 level in the 12-27
+  sense and the mean gain's interval above zero, else G stays (user's own rule, its per-stage form after seeing the
+  recommendation); a held win over the teacher means the interval above zero, its size in seed ranges reported
+  (user); minor m1 to m7 as recommended; no plan page (user). Closing summary confirmed by the user.
 - **Why:** a paper needs one model for its three aspect claims; the sweep may turn a level into a win and gives a
   stable recipe before the encoders and retrieval reuse it; the analysis lines feed the paper's ablation and
   analysis sections. The abstract is due 2026-11-10.
