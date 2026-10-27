@@ -1,6 +1,7 @@
 """Ticket 05: stage 0. CPU only, synthetic data and tiny fake outputs; the checks on the real arrays are the gates
 (`rs_stage0 check v0a`, `held`, `check v0c`, `check v0d`)."""
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -230,13 +231,44 @@ def test_read_gate_refuses_missing_failed_and_stale(tmp_path, monkeypatch):
 def test_code_files_cover_the_scorer_and_the_inference():
     assert set(S0.code_files()) == set(S0.CODE_MODULES)
     assert {'rs_stage0', 'rb_score', 'rb_student', 'rb_pick', 'ct_score'} <= set(S0.code_files())
+    # the trainer's modules, and every file `rb_student.code_hashes()` names (the model behind `rb_student.infer`)
+    assert {'rg_train', 'rg_variants', 'rs_sheet', 'rs_train'} <= set(S0.code_files())
+    behind_infer = {Path(name).stem for name in rb_student.code_hashes()}
+    assert behind_infer <= set(S0.code_files()), behind_infer - set(S0.code_files())
+
+
+def test_outcome_family_name_is_a_parameter():
+    assert S0.outcome_id(0.02, 0.01, 'full') == 'G-EF-GO'
+    prefix = {'sample': 'C-ES', 'full': 'C-EF'}
+    assert S0.outcome_id(0.02, 0.01, 'full', prefix) == 'C-EF-GO'
+    assert S0.outcome_id(-0.02, -0.01, 'sample', prefix) == 'C-ES-NO'
+
+
+def fake_k4_block(scale):
+    """A stand-in for 12-24's K4 block of its stage verdict (2,000 bootstrap d, as the scorer check asserts)."""
+    return dict(candidate='K4', scale=scale, d=0.012, A_cand=0.2, A_e={'B1-r20': 0.11, 'B1-own': 0.1, 'B4-r20': 0.12},
+                interval=[0.002, 0.021], bootstrap_d=[float(v) for v in np.linspace(0.0, 0.024, 2000)],
+                outcome_id='K4-ES-GO' if scale == 'sample' else 'K4-EF-GO')
+
+
+@pytest.fixture
+def rb_verdicts(tmp_path, monkeypatch):
+    """12-24's two stage verdicts, small: the entries V0a must hold come from them."""
+    files = {}
+    for scale in S0.SCALES:
+        files[scale] = tmp_path / 'rb' / f'verdict_{scale}.json'
+        files[scale].parent.mkdir(exist_ok=True)
+        files[scale].write_text(json.dumps(dict(held_sha256=S0.HELD_SHA256, scale=scale,
+                                                blocks=dict(K4=fake_k4_block(scale)))))
+    monkeypatch.setattr(S0, 'RB_VERDICT', files)
+    return files
 
 
 def items_for(part, ok=True):
-    return {name: {'pass': ok} for name in S0.V0A_GROUPS[part]}
+    return {name: {'pass': ok} for name in S0.v0a_groups()[part]}
 
 
-def test_v0a_passes_only_with_both_parts_complete_and_current(tmp_path, monkeypatch):
+def test_v0a_passes_only_with_both_parts_complete_and_current(tmp_path, monkeypatch, rb_verdicts):
     assert S0.write_v0a(tmp_path, 'cpu', items_for('cpu'))['pass'] is False         # the gpu part is missing
     record = S0.write_v0a(tmp_path, 'gpu', items_for('gpu'))
     assert record['pass'] is True and set(record['parts']) == {'cpu', 'gpu'}
@@ -248,11 +280,25 @@ def test_v0a_passes_only_with_both_parts_complete_and_current(tmp_path, monkeypa
     assert S0.write_v0a(tmp_path, 'cpu', items_for('cpu'))['pass'] is True
 
 
-def test_v0a_expects_the_checks_the_rule_names():
-    cpu, gpu = S0.V0A_GROUPS['cpu'], S0.V0A_GROUPS['gpu']
-    assert {'scorer/sample/d', 'scorer/full/d', 'g_full/outputs_sha256', 'g_sample/weights'} <= set(cpu)
+def test_v0a_expects_the_checks_the_rule_names(rb_verdicts):
+    groups = S0.v0a_groups()
+    cpu, gpu = groups['cpu'], groups['gpu']
+    assert {'g_full/outputs_sha256', 'g_full/weights_sha256', 'g_sample/weights'} <= set(cpu)
+    for scale in S0.SCALES:                     # every scorer-check item the rule names, at each scale
+        assert {f'scorer/{scale}/{k}' for k in ('d', 'A_cand', 'interval_lo', 'interval_hi', 'entries', 'bootstrap_d',
+                                                 'outcome', 'partitions_equal', 'A_e/B1-r20', 'A_e/B1-own',
+                                                 'A_e/B4-r20')} <= set(cpu)
     assert {f'g_full/seed0_inference/{a}' for a in S0.ASPECTS} | {
         f'sample/r6_5_s1_inference/{a}' for a in S0.ASPECTS} == set(gpu)
+
+
+def test_v0a_part_fails_when_any_named_item_is_missing(tmp_path, rb_verdicts):
+    S0.write_v0a(tmp_path, 'gpu', items_for('gpu'))
+    for name in S0.v0a_groups()['cpu']:
+        items = {k: v for k, v in items_for('cpu').items() if k != name}
+        record = S0.write_v0a(tmp_path, 'cpu', items)
+        assert record['parts']['cpu']['pass'] is False and record['pass'] is False, name
+    assert S0.write_v0a(tmp_path, 'cpu', items_for('cpu'))['pass'] is True
 
 
 def test_compare_blocks_tolerance_is_1e_6(synthetic):
@@ -275,6 +321,57 @@ def test_compare_blocks_tolerance_is_1e_6(synthetic):
     assert not S0.compare_blocks(block, other)['outcome']['pass']
 
 
+def test_compare_blocks_fails_on_each_field_changed_once():
+    """Rule §3.1: d, A_cand, each A_e, both bounds, and (here also) the entries, every bootstrap d and the outcome."""
+    theirs = fake_k4_block('sample')
+    ours = lambda: json.loads(json.dumps(theirs))
+    assert all(v['pass'] for v in S0.compare_blocks(ours(), theirs).values())
+    changes = {
+        'd': lambda b: b.update(d=b['d'] + 1e-5),
+        'A_cand': lambda b: b.update(A_cand=b['A_cand'] - 1e-5),
+        'interval_lo': lambda b: b['interval'].__setitem__(0, b['interval'][0] + 1e-5),
+        'interval_hi': lambda b: b['interval'].__setitem__(1, b['interval'][1] + 1e-5),
+        'entries': lambda b: b['A_e'].pop('B4-r20'),
+        'bootstrap_d': lambda b: b['bootstrap_d'].__setitem__(7, b['bootstrap_d'][7] + 1e-5),
+        'outcome': lambda b: b.update(outcome_id='G-ES-NO'),
+        **{f'A_e/{e}': (lambda e: lambda b: b['A_e'].__setitem__(e, b['A_e'][e] + 1e-5))(e) for e in theirs['A_e']},
+    }
+    assert {k for k in changes} == {f for f in S0.compare_blocks(ours(), theirs)}
+    for item, change in changes.items():
+        block = ours()
+        change(block)
+        result = S0.compare_blocks(block, theirs)
+        assert result[item]['pass'] is False, item
+        failing = {k for k, v in result.items() if not v['pass']}
+        assert failing == {item} | ({'A_e/B4-r20'} if item == 'entries' else set()), (item, failing)
+
+
+def test_scorer_check_binds_the_items_and_compares_the_partitions_to_12_24s(tmp_path, monkeypatch, rb_verdicts):
+    part2 = tmp_path / 'part2'
+    cache = tmp_path / 'cache'
+    rng = np.random.default_rng(3)
+    for scale in S0.SCALES:
+        for seed in S0.SEEDS:
+            labels = rng.integers(0, 6, size=(3, 30))
+            for root in (part2 / 'partitions' / scale / 'K4', cache / scale / 'K4'):
+                root.mkdir(parents=True, exist_ok=True)
+                np.savez(root / f'emotion__s{seed}__r20.npz', labels=labels)
+    monkeypatch.setattr(paths, 'RB_PART2', part2)
+    monkeypatch.setattr(S0, 'score_scale', lambda *a, **k: fake_k4_block('sample'))
+    items = {}
+    for scale in S0.SCALES:
+        items.update(S0.scorer_check(scale, cache, 2000, 1))
+    assert set(S0.v0a_groups()['cpu']) & {k for k in items} == {k for k in S0.v0a_groups()['cpu'] if k.startswith('scorer/')}
+    assert all(v['pass'] for v in items.values())
+    with np.load(cache / 'full' / 'K4' / 'emotion__s3__r20.npz') as z:       # one partition now differs from 12-24's
+        labels = z['labels'].copy()
+    labels[0, 0] = (labels[0, 0] + 1) % 6
+    np.savez(cache / 'full' / 'K4' / 'emotion__s3__r20.npz', labels=labels)
+    items = S0.scorer_check('full', cache, 2000, 1)
+    assert items['scorer/full/partitions_equal']['pass'] is False and items['scorer/full/partitions_equal']['equal']['3'] is False
+    assert S0.scorer_check('sample', cache, 2000, 1)['scorer/sample/partitions_equal']['pass'] is True
+
+
 def test_bits_equal_compares_bits_not_values():
     a = unit(1)
     assert S0._bits_equal(a, a.copy()) and not S0._bits_equal(a, a.astype(np.float32))
@@ -285,22 +382,59 @@ def test_bits_equal_compares_bits_not_values():
     assert S0._bits_equal(n, n.copy())
 
 
-def test_g_full_outputs_check_against_the_stage_c_record(tmp_path, monkeypatch):
-    held, record = tmp_path / 'held', {}
+@pytest.fixture
+def stage_c(tmp_path, monkeypatch):
+    """A tiny 12-27 stage C: held outputs, their weights, `reported.json` and `verdict.json` (genre claim)."""
+    held, weights, record, claim = tmp_path / 'held', tmp_path / 'weights', {}, {}
+    held.mkdir()
+    weights.mkdir()
     for aspect in S0.ASPECTS:
         record[aspect] = {}
         for seed in S0.SEEDS:
             path = held / f'{aspect}__s{seed}.npz'
-            path.parent.mkdir(exist_ok=True)
             path.write_bytes(f'{aspect}{seed}'.encode())
             record[aspect][str(seed)] = dict(path=f'/x/{path.name}', output_sha256=rb_score.sha_file(path))
+            if aspect == 'genre':
+                claim[str(seed)] = dict(path=f'/x/{path.name}', output_sha256=rb_score.sha_file(path))
+            pt = weights / f'{aspect}__s{seed}.pt'
+            pt.write_bytes(f'w{aspect}{seed}'.encode())
+            pt.with_suffix('.json').write_text(json.dumps(dict(weights_sha256=rb_score.sha_file(pt))))
+            held.joinpath(f'{aspect}__s{seed}.json').write_text(json.dumps(dict(weights_sha256=rb_score.sha_file(pt))))
     (tmp_path / 'reported.json').write_text(json.dumps(dict(G=dict(sources=dict(G_outputs=record)))))
+    (tmp_path / 'verdict.json').write_text(json.dumps(dict(sources=dict(G_outputs=claim))))
     monkeypatch.setattr(S0, 'G_FULL_HELD', held)
+    monkeypatch.setattr(S0, 'G_FULL_WEIGHTS', weights)
     monkeypatch.setattr(S0, 'G_FULL_RECORD', tmp_path / 'reported.json')
+    monkeypatch.setattr(S0, 'G_FULL_VERDICT', tmp_path / 'verdict.json')
+    return tmp_path
+
+
+def test_g_full_outputs_check_against_the_stage_c_record(stage_c):
+    held = stage_c / 'held'
     assert S0.g_full_outputs_check()['pass'] is True
     (held / 'style__s2.npz').write_bytes(b'changed')
     result = S0.g_full_outputs_check()
     assert result['pass'] is False and not result['files']['style__s2']['equal']
+
+
+def test_g_full_outputs_check_also_against_the_stage_c_verdicts_claim(stage_c):
+    claim = json.loads((stage_c / 'verdict.json').read_text())
+    claim['sources']['G_outputs']['3']['output_sha256'] = '0' * 64          # the record of reported.json is right
+    (stage_c / 'verdict.json').write_text(json.dumps(claim))
+    result = S0.g_full_outputs_check()
+    assert result['pass'] is False and not result['verdict_files']['genre__s3']['equal']
+    assert all(v['equal'] for v in result['files'].values())
+
+
+def test_g_full_weights_check_against_12_27s_own_records(stage_c):
+    assert S0.g_full_weights_check()['pass'] is True
+    (stage_c / 'weights' / 'genre__s1.pt').write_bytes(b'changed')           # the records beside it no longer match
+    result = S0.g_full_weights_check()
+    assert result['pass'] is False and not result['files']['genre__s1']['equal']
+    (stage_c / 'weights' / 'genre__s1.pt').write_bytes(b'wgenre1')
+    sidecar = stage_c / 'held' / 'style__s0.json'
+    sidecar.write_text(json.dumps(dict(weights_sha256='0' * 64)))              # the held output's sidecar differs
+    assert S0.g_full_weights_check()['pass'] is False
 
 
 # ------------------------------------------------------------------ sample weights and held inference
@@ -311,6 +445,16 @@ def make_head(folder, aspect, content):
     folder.mkdir(parents=True, exist_ok=True)
     (folder / f'{aspect}.pt').write_bytes(content)
     (folder / f'{aspect}.json').write_text(json.dumps(dict(config=dict(device='cpu'))))
+
+
+T0 = 1_700_000_000_000_000_000              # ns: the V1a gate's mtime; seed 4's files are written after it
+
+
+def set_mtimes(outputs, gate=T0, seed4=T0 + 10**11):
+    os.utime(S0.gate_path(outputs, 'v1a_train'), ns=(gate, gate))
+    folder = paths.run_dir(outputs, 'G', 4)
+    for path in [folder] + list(folder.rglob('*')):
+        os.utime(path, ns=(seed4, seed4))
 
 
 @pytest.fixture
@@ -335,6 +479,7 @@ def world(small, tmp_path, monkeypatch):
     recorded = S0.g_sample_weights_record()['sha256']
     S0._atomic_json(S0.gate_path(outputs, 'v0a'), {'pass': True, 'code_sha256': S0.code_sha256(),
                                                    'parts': {'cpu': {'items': {'g_sample/weights': {'sha256': recorded}}}}})
+    set_mtimes(outputs)
     return outputs, recorded
 
 
@@ -541,7 +686,7 @@ def test_v0d_gate_passes_when_nothing_was_retrained_and_lists_reruns(world, fake
     outputs, _ = full_world(world, fake_infer, monkeypatch, tmp_path)
     gate = S0.check_v0d(outputs)
     assert gate['pass'] is True and gate['items']['seed4_trained_once']['trainings'] == 1
-    assert all(i['v0c_attempts'] == 1 for k, i in gate['items'].items() if k != 'seed4_trained_once')
+    assert all(i['v0c_attempts'] == 1 for k, i in gate['items'].items() if '__s' in k)
 
 
 def test_v0d_gate_fails_on_retrained_seed_4_or_replaced_frozen_weights(world, fake_infer, monkeypatch, tmp_path):
@@ -576,13 +721,34 @@ def fake_block(d, lower, scale):
                 outcome_id=S0.outcome_id(d, lower, scale))
 
 
+def v0c_record(scale_pass=(True, True), shas=None, held_sha=None):
+    """A V0c gate's content: per file pass and SHA-256 (emotion shas by seed from `shas`), a pass per scale."""
+    items = {scale: {f'{a}__s{s}': {'pass': ok, 'output_sha256': f'{scale}{a}{s}'.ljust(64, '0')} if ok else
+                     {'pass': False, 'problem': f'{a}__s{s}: V0c: bad'}
+                     for a in S0.ASPECTS for s in S0.SEEDS} for scale, ok in zip(S0.SCALES, scale_pass)}
+    if not all(scale_pass):                  # one failing file in a failing scale
+        scale = S0.SCALES[scale_pass.index(False)]
+        items[scale]['genre__s2'] = {'pass': False, 'problem': 'genre__s2: V0c: bad'}
+    return dict(**{'pass': all(scale_pass)}, code_sha256=S0.code_sha256(), items=items,
+                held_sha256=held_sha or S0.HELD_SHA256, scale_pass=dict(zip(S0.SCALES, scale_pass)))
+
+
 @pytest.fixture
 def gated(tmp_path, monkeypatch):
-    for name in ('v0a', 'v0c', 'v0d'):
+    for name in ('v0a', 'v0d'):
         S0._atomic_json(S0.gate_path(tmp_path, name), dict(**{'pass': True}, code_sha256=S0.code_sha256()))
+    S0._atomic_json(S0.gate_path(tmp_path, 'v0c'), v0c_record())
     monkeypatch.setattr(S0.paths, 'check_outputs', lambda o, smoke=False: Path(o))
     monkeypatch.setattr(S0.paths, 'check_imports', lambda: None)
     return tmp_path
+
+
+def score_fake(blocks, seen=None):
+    def score(cand, scale, cache, n, w, recorded=None):
+        if seen is not None:
+            seen.append((scale, cand, cache, recorded))
+        return dict(blocks[scale])
+    return score
 
 
 def test_verdict_needs_v0a_v0c_and_v0d(gated, monkeypatch):
@@ -590,18 +756,24 @@ def test_verdict_needs_v0a_v0c_and_v0d(gated, monkeypatch):
     for name in ('v0a', 'v0c', 'v0d'):
         path = S0.gate_path(gated, name)
         good = path.read_text()
-        path.write_text(json.dumps(dict(**{'pass': False}, code_sha256=S0.code_sha256())))
-        with pytest.raises(S0.Refusal):
-            S0.verdict(gated)
+        for bad in (dict(json.loads(good), code_sha256='0' * 64),                    # stale code
+                    *([dict(json.loads(good), **{'pass': False})] if name != 'v0c' else [])):
+            path.write_text(json.dumps(bad))
+            with pytest.raises(S0.Refusal):
+                S0.verdict(gated)
         path.unlink()
         with pytest.raises(S0.Refusal, match='missing'):
             S0.verdict(gated)
         path.write_text(good)
+    path = S0.gate_path(gated, 'v0c')                  # H is not the CT's list: a refusal, not a scale without outcome
+    path.write_text(json.dumps(v0c_record(held_sha='0' * 64)))
+    with pytest.raises(S0.Refusal, match='SHA-256'):
+        S0.verdict(gated)
 
 
 def test_verdict_records_both_scales_e0_and_is_written_once(gated, monkeypatch):
     blocks = {'sample': fake_block(0.015, 0.004, 'sample'), 'full': fake_block(0.0164, 0.011, 'full')}
-    monkeypatch.setattr(S0, 'score_scale', lambda cand, scale, cache, n, w: dict(blocks[scale]))
+    monkeypatch.setattr(S0, 'score_scale', score_fake(blocks))
     record = S0.verdict(gated)
     assert record['outcomes'] == {'sample': 'G-ES-GO', 'full': 'G-EF-GO'} and record['E0'] is True
     assert record['blocks']['full']['d'] == 0.0164 and 'A_e' in record['blocks']['sample']
@@ -614,16 +786,291 @@ def test_verdict_records_both_scales_e0_and_is_written_once(gated, monkeypatch):
 
 def test_verdict_e0_false_when_full_is_not_go_or_sample_is_no(gated, monkeypatch):
     blocks = {'sample': fake_block(-0.01, -0.02, 'sample'), 'full': fake_block(0.0164, 0.011, 'full')}
-    monkeypatch.setattr(S0, 'score_scale', lambda cand, scale, cache, n, w: dict(blocks[scale]))
+    monkeypatch.setattr(S0, 'score_scale', score_fake(blocks))
     assert S0.verdict(gated)['E0'] is False
 
 
 def test_verdict_scores_g_at_both_scales_from_the_right_folders(gated, monkeypatch):
     seen = []
-    monkeypatch.setattr(S0, 'score_scale', lambda cand, scale, cache, n, w: (seen.append((scale, cand, cache)),
-                                                                              fake_block(0.0, -0.1, scale))[1])
+    blocks = {scale: fake_block(0.0, -0.1, scale) for scale in S0.SCALES}
+    monkeypatch.setattr(S0, 'score_scale', score_fake(blocks, seen))
     S0.verdict(gated)
-    assert [s for s, _, _ in seen] == ['sample', 'full']
+    assert [s for s, *_ in seen] == ['sample', 'full']
     assert seen[0][1] == S0.sample_g(gated) and seen[0][1].held_dir == gated / 'stage0/sample/held/G'
     assert seen[1][1] == S0.FULL_G and S0.FULL_G.held_dir == paths.RG_FULL / 'held' / 'GS-0.02'
     assert seen[0][2] == gated / 'stage0/partitions'
+
+
+def test_verdict_reads_only_outputs_with_the_sha_the_v0c_gate_recorded(gated, monkeypatch):
+    seen = []
+    blocks = {scale: fake_block(0.0, -0.1, scale) for scale in S0.SCALES}
+    monkeypatch.setattr(S0, 'score_scale', score_fake(blocks, seen))
+    S0.verdict(gated)
+    gate = json.loads(S0.gate_path(gated, 'v0c').read_text())
+    for scale, _, _, recorded in seen:
+        assert recorded == {str(s): gate['items'][scale][f'emotion__s{s}']['output_sha256'] for s in S0.SEEDS}
+
+
+def test_one_scale_failing_v0c_has_no_outcome_and_the_other_is_scored(gated, monkeypatch):
+    """Rule §4.1 V0d: a seed that still fails leaves that scale with no outcome (not both scales)."""
+    seen = []
+    blocks = {scale: fake_block(0.0164, 0.011, scale) for scale in S0.SCALES}
+    monkeypatch.setattr(S0, 'score_scale', score_fake(blocks, seen))
+    S0._atomic_json(S0.gate_path(gated, 'v0c'), v0c_record((False, True)))
+    record = S0.verdict(gated)
+    assert [s for s, *_ in seen] == ['full']
+    assert record['outcomes'] == {'sample': None, 'full': 'G-EF-GO'} and record['E0'] is False
+    assert record['blocks']['sample']['outcome_id'] is None
+    assert 'genre__s2' in record['blocks']['sample']['v_failure'] and 'V0c' in record['blocks']['sample']['v_failure']
+    assert record['blocks']['full']['d'] == 0.0164
+
+
+def test_the_full_scale_failing_v0c_leaves_only_the_sample_scale_scored(tmp_path, gated, monkeypatch):
+    blocks = {scale: fake_block(0.015, 0.004, scale) for scale in S0.SCALES}
+    monkeypatch.setattr(S0, 'score_scale', score_fake(blocks))
+    S0._atomic_json(S0.gate_path(gated, 'v0c'), v0c_record((True, False)))
+    record = S0.verdict(gated)
+    assert record['outcomes'] == {'sample': 'G-ES-GO', 'full': None} and record['E0'] is False
+
+
+def test_both_scales_failing_v0c_have_no_outcome(gated, monkeypatch):
+    monkeypatch.setattr(S0, 'score_scale', lambda *a, **k: pytest.fail('scored a failed set'))
+    S0._atomic_json(S0.gate_path(gated, 'v0c'), v0c_record((False, False)))
+    assert S0.verdict(gated)['outcomes'] == {'sample': None, 'full': None}
+
+
+# ------------------------------------------------------------------ the score on a tiny world (M3f)
+@pytest.fixture
+def tiny_score(small, synthetic, tmp_path, monkeypatch):
+    """`score_scale` on 150 rows: G's sample files (emotion differs from style and genre), 12-24's comparators from the
+    `synthetic` partitions; `held_setup`, `read_rcol_eligible`, `comparators` and the partitioning are patched."""
+    labels, _, comp, rcol = synthetic
+    n = len(labels)
+    monkeypatch.setattr(S0, 'N_HELD', n)
+    for seed in S0.SEEDS:
+        for aspect in S0.ASPECTS:
+            x = unit(seed + (0 if aspect == 'emotion' else 100), n)
+            write_output(tmp_path / 'g', 'G', 'sample', aspect, seed, x=x, rows=n)
+    calls = []
+
+    def fixed_partitions(x, arm, folder, aspect, seed, held_sha256, source_sha256):
+        calls.append(dict(arm=arm, folder=Path(folder), aspect=aspect, seed=seed, x=x.copy()))
+        lab = x[:, :6].argmax(1)
+        return {'r20': np.stack([lab, (lab + 1) % 6, lab])}
+    rcol_path = tmp_path / 'rcol.json'
+    rcol_path.write_text('{}')
+    monkeypatch.setattr(rb_score, 'fixed_partitions', fixed_partitions)
+    monkeypatch.setattr(rb_score, 'held_setup', lambda: (NAMES, S0.HELD_SHA256, labels))
+    monkeypatch.setattr(rb_score, 'read_rcol_eligible', lambda scale: (rcol, rcol_path))
+    monkeypatch.setattr(S0, 'comparators', lambda scale, r: (comp, None, dict(outputs={'B1': {}}, nonfinite_held={})))
+    return S0.Candidate('G', tmp_path / 'g', 'G'), calls, (labels, comp, rcol, n)
+
+
+def test_score_scale_reads_the_emotion_files_and_gives_assembles_block(tiny_score, tmp_path):
+    cand, calls, (labels, comp, rcol, n) = tiny_score
+    block = S0.score_scale(cand, 'sample', tmp_path / 'cache', 20, 1)
+    assert [(c['aspect'], c['seed'], c['arm']) for c in calls] == [('emotion', s, 'K4') for s in S0.SEEDS]
+    assert all(c['folder'] == tmp_path / 'cache' / 'sample' / 'G' for c in calls)
+    for call in calls:
+        assert np.array_equal(call['x'], unit(call['seed'], n).astype(np.float32))      # the emotion file, not style's
+    fixed = {c['seed']: {'r20': np.stack([c['x'][:, :6].argmax(1), (c['x'][:, :6].argmax(1) + 1) % 6,
+                                          c['x'][:, :6].argmax(1)])} for c in calls}
+    ref = S0.assemble('G', fixed, comp, rcol, {}, labels, 'sample', 20, 1)
+    for key in ('d', 'A_cand', 'A_e', 'interval', 'bootstrap_d', 'outcome_id', 'arms', 'eligibility'):
+        assert block[key] == ref[key], key
+    assert block['sources']['held_outputs']['G']['0']['path'].endswith('/emotion__s0.npz')
+
+
+def test_the_outcome_family_name_reaches_the_block_of_assemble_and_score_scale(tiny_score, tmp_path, synthetic):
+    cand, _, (labels, comp, rcol, n) = tiny_score
+    prefix = {'sample': 'C-ES', 'full': 'C-EF'}
+    block = S0.score_scale(cand, 'sample', tmp_path / 'cache', 10, 1, prefix=prefix)
+    assert block['outcome_id'].startswith('C-ES-') and S0.score_scale(
+        cand, 'sample', tmp_path / 'cache', 10, 1)['outcome_id'].startswith('G-ES-')
+    cand_fixed = synthetic[1]
+    assert S0.assemble('G', cand_fixed, comp, rcol, {}, labels, 'full', 10, 1, prefix=prefix)['outcome_id'].startswith('C-EF-')
+
+
+def test_score_scale_refuses_an_output_that_changed_since_the_v0c_gate(tiny_score, tmp_path):
+    cand, calls, _ = tiny_score
+    _, sha = S0.load_candidate(cand, 'sample', 'emotion', 0)
+    recorded = {str(s): S0.load_candidate(cand, 'sample', 'emotion', s)[1] for s in S0.SEEDS}
+    assert S0.score_scale(cand, 'sample', tmp_path / 'cache', 10, 1, recorded=recorded)['outcome_id'].startswith('G-ES-')
+    with pytest.raises(AssertionError, match='V0c gate'):
+        S0.score_scale(cand, 'sample', tmp_path / 'cache2', 10, 1, recorded=dict(recorded, **{'0': '0' * 64}))
+
+
+
+
+# ------------------------------------------------------------------ review fixes: weights provenance (M4e, M4f, M4j, M4k)
+def test_seed_4_run_must_be_a_real_run_on_p(world):
+    outputs, _ = world
+    path = run_json(outputs)
+    run = json.loads(path.read_text())
+    path.write_text(json.dumps(dict(run, smoke=True)))                           # a smoke run
+    with pytest.raises(AssertionError, match='not G'):
+        S0.sample_weights(outputs, 4, 'emotion')
+    path.write_text(json.dumps(dict(run, p_sha256='0' * 64)))                    # trained on another P
+    with pytest.raises(AssertionError):
+        S0.sample_weights(outputs, 4, 'emotion')
+    path.write_text(json.dumps(run))
+    assert S0.sample_weights(outputs, 4, 'emotion')[1]
+
+
+@pytest.mark.parametrize('change', [dict(status='failed'), dict(variant='GS-0.01'), dict(seed=1)])
+def test_frozen_seeds_run_json_must_be_an_ok_run_of_g_at_that_seed(world, change):
+    outputs, recorded = world
+    path = paths.RG_TRAIN / paths.G_ARM / 's2/run.json'
+    run = json.loads(path.read_text())
+    path.write_text(json.dumps(dict(run, **change)))
+    with pytest.raises(AssertionError):
+        S0.sample_weights(outputs, 2, 'genre', recorded)
+    path.write_text(json.dumps(run))
+    assert S0.sample_weights(outputs, 2, 'genre', recorded)[1] == recorded['s2/genre']
+
+
+def test_held_refuses_a_tampered_frozen_head_with_the_v0a_record_and_writes_nothing(world, monkeypatch, fake_infer):
+    outputs, _ = world
+    monkeypatch.setattr(S0, 'held_images', lambda: X)
+    monkeypatch.setattr(S0.rg_train, 'check_device', lambda d: d)
+    (paths.RG_TRAIN / paths.G_ARM / 's2/genre.pt').write_bytes(b'tampered')
+    with pytest.raises(AssertionError, match='V0a record'):
+        S0.held(outputs, [2], 'cpu')
+    assert not S0.sample_g(outputs).held_dir.exists() and fake_infer == []
+
+
+def test_g_sample_weights_record_is_compared_with_the_v1a_gates_reference(world):
+    outputs, recorded = world
+    gate = json.loads(S0.gate_path(outputs, 'v1a_train').read_text())
+    S0._atomic_json(S0.gate_path(outputs, 'v1a_train'), dict(gate, input_hashes={}))
+    assert S0.g_sample_weights_record(outputs)['v1a_compared'] == {}               # no record of these heads
+    reference = {f'{k}/state': {'replay': v, 'reference': v} for k, v in recorded.items() if k.startswith(('s0/', 's1/'))}
+    S0._atomic_json(S0.gate_path(outputs, 'v1a_train'), dict(gate, input_hashes=reference))
+    result = S0.g_sample_weights_record(outputs)
+    assert result['pass'] is True and sorted(result['v1a_compared']) == sorted(reference_key[:-6] for reference_key in reference)
+    (paths.RG_TRAIN / paths.G_ARM / 's1/style.pt').write_bytes(b'replaced since')
+    result = S0.g_sample_weights_record(outputs)
+    assert result['pass'] is False and result['v1a_compared']['s1/style']['equal'] is False
+
+
+# ------------------------------------------------------------------ review fixes: held inference of an existing output (M5e)
+def test_infer_set_applies_v0c_to_an_existing_output(world, fake_infer):
+    outputs, recorded = world
+    held = S0.sample_g(outputs).held_dir
+    S0.infer_set(held, 'G', 'sample', [0], weights_for(outputs, recorded), X, 'cpu')
+    path = held / 'emotion__s0.npz'
+    arrays, info = rb_student.read_outputs(path)
+    bad = arrays['img'] * np.float16(2)                       # a consistent file whose rows are not unit norm
+    meta = {k: v for k, v in info.items() if k not in ('arrays', 'code_sha256')}
+    rb_student.write_outputs(path, dict(img=bad), dict(meta, sha256=rb_student.sha_array(bad)))
+    with pytest.raises(AssertionError, match='V0c'):
+        S0.infer_set(held, 'G', 'sample', [0], weights_for(outputs, recorded), X, 'cpu')
+
+
+# ------------------------------------------------------------------ review fixes: V0c per scale and H's list
+def test_v0c_has_a_pass_per_scale(world, fake_infer, monkeypatch, tmp_path):
+    outputs, _ = full_world(world, fake_infer, monkeypatch, tmp_path)
+    gate = S0.check_v0c(outputs)
+    assert gate['scale_pass'] == {'sample': True, 'full': True} and gate['pass'] is True
+    write_output(S0.FULL_G.held_dir, paths.G_ARM, 'full', 'genre', 2, x=unit(2) * np.float16(2))
+    gate = S0.check_v0c(outputs)
+    assert gate['scale_pass'] == {'sample': True, 'full': False} and gate['pass'] is False
+    assert S0.read_gate(outputs, 'v0c', must_pass=False)['scale_pass']['sample'] is True
+    (S0.sample_g(outputs).held_dir / 'style__s1.npz').unlink()
+    assert S0.check_v0c(outputs)['scale_pass'] == {'sample': False, 'full': False}
+
+
+def test_v0c_fails_both_scales_when_h_is_not_the_cts_list(world, fake_infer, monkeypatch, tmp_path):
+    outputs, _ = full_world(world, fake_infer, monkeypatch, tmp_path)
+    monkeypatch.setattr(rb_student, 'held_names', lambda: (NAMES, '0' * 64))
+    gate = S0.check_v0c(outputs)
+    assert gate['pass'] is False and gate['scale_pass'] == {'sample': False, 'full': False}
+
+
+# ------------------------------------------------------------------ review fixes: V0d
+@pytest.fixture
+def flaky_infer(monkeypatch):
+    """The first inference of the run fails V0c (not unit norm); every other gives a good output."""
+    calls = []
+
+    def infer(weights, aspect, x, device):
+        calls.append(aspect)
+        return unit(1) * np.float16(3) if len(calls) == 1 else unit(1)
+    monkeypatch.setattr(S0, 'infer', infer)
+    return calls
+
+
+def test_v0d_passes_when_one_output_needed_one_v0c_rerun(world, flaky_infer, monkeypatch, tmp_path):
+    outputs, _ = full_world(world, flaky_infer, monkeypatch, tmp_path)
+    gate = S0.check_v0d(outputs)
+    item = gate['items']['emotion__s0']
+    assert item['v0c_attempts'] == 2 and item['pass'] is True and gate['pass'] is True
+
+
+def aside(outputs, n, **record):
+    folder = outputs / 'replaced' / 'G' / f's4-{n}'
+    folder.mkdir(parents=True)
+    (folder / 'x.pt').write_bytes(b'x')
+    if record:
+        (folder / 'run.json').write_text(json.dumps(dict(variant='G', seed=4, **record)))
+    return folder
+
+
+@pytest.mark.parametrize('record', [dict(status='ok'), dict(status='failed', failure_kind='va3'),
+                                    dict(status='failed', failure_kind='nonfinite')])
+def test_v0d_seed_4_trained_once_fails_on_any_other_training_with_a_run_json(world, fake_infer, monkeypatch, tmp_path,
+                                                                             record):
+    outputs, _ = full_world(world, fake_infer, monkeypatch, tmp_path)
+    assert S0.check_v0d(outputs)['items']['seed4_trained_once']['pass'] is True
+    aside(outputs, 1, **record)                   # no rerun_of in seed 4's final run.json: still a second training
+    item = S0.check_v0d(outputs)['items']['seed4_trained_once']
+    assert item['pass'] is False and item['trainings'] == 2 and len(item['aside_with_run_json']) == 1
+
+
+def test_v0d_seed_4_rerun_of_without_an_aside_folder_fails(world, fake_infer, monkeypatch, tmp_path):
+    outputs, _ = full_world(world, fake_infer, monkeypatch, tmp_path)
+    path = run_json(outputs)
+    path.write_text(json.dumps(dict(json.loads(path.read_text()), rerun_of=str(outputs / 'replaced/G/s4-9'))))
+    item = S0.check_v0d(outputs)['items']['seed4_trained_once']
+    assert item['pass'] is False and item['aside_with_run_json'] == []
+
+
+def test_v0d_lists_an_interrupted_aside_folder_without_failing(world, fake_infer, monkeypatch, tmp_path):
+    outputs, _ = full_world(world, fake_infer, monkeypatch, tmp_path)
+    interrupted = aside(outputs, 1)               # no run.json
+    item = S0.check_v0d(outputs)['items']['seed4_trained_once']
+    assert item['pass'] is True and item['aside_interrupted'] == [str(interrupted)] and item['trainings'] == 1
+
+
+def test_v0d_v1a_gate_must_be_older_than_seed_4s_first_file(world, fake_infer, monkeypatch, tmp_path):
+    outputs, _ = full_world(world, fake_infer, monkeypatch, tmp_path)
+    assert S0.check_v0d(outputs)['items']['v1a_before_seed4']['pass'] is True
+    set_mtimes(outputs, gate=T0 + 10**11)         # the gate is as old as the first file: not earlier
+    assert S0.check_v0d(outputs)['items']['v1a_before_seed4']['pass'] is False
+    set_mtimes(outputs, gate=T0 + 2 * 10**11)     # the gate was written after seed 4 trained
+    gate = S0.check_v0d(outputs)
+    assert gate['items']['v1a_before_seed4']['pass'] is False and gate['pass'] is False
+    set_mtimes(outputs)
+    folder = aside(outputs, 1, status='failed', failure_kind='va3')                 # an earlier training moved aside
+    os.utime(folder / 'x.pt', ns=(T0 - 10**9, T0 - 10**9))
+    assert S0.check_v0d(outputs)['items']['v1a_before_seed4']['pass'] is False
+
+
+def test_v0d_policy_followed_when_a_seed_failed_v0c_twice(world, fake_infer, monkeypatch, tmp_path):
+    outputs, _ = full_world(world, fake_infer, monkeypatch, tmp_path)
+    held = S0.sample_g(outputs).held_dir
+    (held / 'genre__s2.npz').unlink()
+    (held / 'genre__s2.json').unlink()
+    S0._atomic_json(S0.failed_path(held, 'genre', 2), dict(arm='G', aspect='genre', seed=2, problems=['a', 'b']))
+    gate = S0.check_v0d(outputs)
+    assert gate['items']['genre__s2']['pass'] is True and gate['items']['genre__s2']['failed_twice'] and gate['pass']
+    v0c = S0.check_v0c(outputs)
+    assert v0c['scale_pass'] == {'sample': False, 'full': True}                # this scale alone has no outcome
+    # the record must be what infer_set writes: two problems, no output beside it
+    for bad in (dict(arm='G', aspect='genre', seed=2, problems=['a']), dict(arm='G', aspect='style', seed=2, problems=['a', 'b']),
+                {}):
+        S0.failed_path(held, 'genre', 2).write_text(json.dumps(bad))
+        assert S0.check_v0d(outputs)['items']['genre__s2']['pass'] is False
+    S0._atomic_json(S0.failed_path(held, 'genre', 2), dict(arm='G', aspect='genre', seed=2, problems=['a', 'b']))
+    write_output(held, 'G', 'sample', 'genre', 2)                           # an output beside the failure record
+    assert S0.check_v0d(outputs)['items']['genre__s2']['pass'] is False

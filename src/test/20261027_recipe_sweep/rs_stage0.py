@@ -21,8 +21,10 @@ CLI (`python rs_stage0.py ...`):
                           (GPU; run with CUBLAS_WORKSPACE_CONFIG=:4096:8)
   held --seeds 0 1 2 3 4  held inference of G's sample heads (GPU; needs gates/v0a.json, and for seed 4 the trained
                           run and gates/v1a_train.json)
-  check v0c / check v0d   the gates over the written sets
-  verdict                 stage0/verdict.json (needs v0a, v0c, v0d)
+  check v0c / check v0d   the gates over the written sets (v0c has a pass per scale; v0d passes when the seed policy
+                          was followed: a seed that failed V0c twice has its failure record, and that scale no outcome)
+  verdict                 stage0/verdict.json (needs v0a and v0d; scores the scales whose V0c set passes, from the
+                          files whose SHA-256 the V0c gate recorded; the other scale has outcome_id None and its cause)
 """
 import argparse
 import hashlib
@@ -55,17 +57,21 @@ BASELINES = ('B1', 'B2', 'B3', 'B4', 'B5', 'B6')
 G_LABEL = 'G'                              # G's arm label in the arms tuple and in the sample sidecars
 ENCODER = 'qwen3vl_emb_2b'
 RECIPE = V.BASE                            # 'R6-5'
-KIND = {'sample': 'ES', 'full': 'EF'}      # G-ES-* and G-EF-* (rule §4.1)
+OUTCOME_PREFIX = {'sample': 'G-ES', 'full': 'G-EF'}   # G-ES-* and G-EF-* (rule §4.1); ticket 09 passes c*'s own
 TOL = 1e-6                                 # V0a
 N_HELD, WIDTH, HELD_SHA256 = paths.N_HELD, paths.WIDTH, paths.HELD_SHA256
-# What decides V0a to V0d: this module and the frozen modules that score, infer and load (gates carry their hashes).
+# What decides V0a to V0d: this module, the modules that score, the modules that infer (rb_student.infer builds its
+# model from rb_rows, ms_train and, through `rb_student.code_hashes()`, ab_train and ab_rows) and the trainer's
+# modules (seed 4 and the weights' provenance). Gates carry their hashes.
 CODE_MODULES = ('rs_stage0', 'rs_paths', 'rb_score', 'rb_student', 'rb_encoders', 'rb_pick', 'rb_ami', 'ct_score',
-                'ct_held', 'pav_score', 'apc_data', 'ct2_data')
+                'ct_held', 'pav_score', 'apc_data', 'ct2_data', 'rb_rows', 'ab_train', 'ab_rows', 'ms_train', 'ct_d2',
+                'ct2_d2', 'rg_train', 'rg_variants', 'rs_sheet', 'rs_train')
 R6_5_S1 = paths.EG_OUT / 'stage_iii/train/R6-5/s1'                  # 12-25's R6-5 sample seed 1, equal to K4's
 K4_SAMPLE = paths.RB_PART2 / 'sample'
 G_FULL_HELD = paths.RG_FULL / 'held' / paths.G_ARM
 G_FULL_WEIGHTS = paths.RG_FULL / 'weights' / paths.G_ARM
 G_FULL_RECORD = paths.RG_STAGE_C / 'reported.json'                  # 12-27's stage C metadata (output SHA-256s)
+G_FULL_VERDICT = paths.RG_STAGE_C / 'verdict.json'                  # its claim: `sources.G_outputs`, the genre outputs
 RB_VERDICT = {'sample': paths.RB_PART2 / 'verdict_stage3.json', 'full': paths.RB_PART2 / 'verdict_stage4.json'}
 
 
@@ -101,12 +107,14 @@ def arms_for(label):
     return (label,) + BASELINES
 
 
-def outcome_id(d, lower, scale):
+def outcome_id(d, lower, scale, prefix=None):
     """G-ES-* (sample) or G-EF-* (full) from `rb_score.outcome`'s thresholds (rule §4.1, on unrounded values):
-    GO d >= 0.01 and lower > 0; MM d >= 0.01 and lower <= 0; IN 0 < d < 0.01; NO d <= 0."""
+    GO d >= 0.01 and lower > 0; MM d >= 0.01 and lower <= 0; IN 0 < d < 0.01; NO d <= 0. `prefix` maps a scale to
+    the outcome family's name (default `OUTCOME_PREFIX`; ticket 09 gives c*'s)."""
+    prefix = OUTCOME_PREFIX if prefix is None else prefix
     kind = rb_score.outcome(d, lower, scale).split('-')[1]
     assert kind in ('GO', 'MM', 'IN', 'NO')
-    return f'G-{KIND[scale]}-{kind}'
+    return f'{prefix[scale]}-{kind}'
 
 
 def e0(outcomes):
@@ -148,15 +156,16 @@ def gate_path(outputs, name):
     return Path(outputs) / 'gates' / f'{name}.json'
 
 
-def read_gate(outputs, name):
-    """A gate file that passes for the current code, or a Refusal with the reason."""
+def read_gate(outputs, name, must_pass=True):
+    """A gate file that passes for the current code, or a Refusal with the reason. `must_pass=False` (V0c in the
+    verdict, which scores the scales whose own V0c set passes) still refuses a missing or stale file."""
     path = gate_path(outputs, name)
     if not path.is_file():
         raise Refusal(f'{path} is missing: run its check first')
     gate = json.loads(path.read_text())
     if gate['code_sha256'] != code_sha256():
         raise Refusal(f'{path} was written by other stage 0 code: rerun the check')
-    if not gate['pass']:
+    if must_pass and not gate['pass']:
         raise Refusal(f'{path} failed: this step does not run')
     return gate
 
@@ -222,12 +231,15 @@ def load_candidate(cand, scale, aspect, seed):
     return arrays['img'].astype(np.float32), sha_file(path)
 
 
-def candidate_fixed(cand, scale, folder, aspect='emotion'):
+def candidate_fixed(cand, scale, folder, aspect='emotion', recorded=None):
     """Fixed r20 partitions of the candidate's five seeds and the sources record. `rb_score.fixed_partitions` picks the
-    image-head reading (r20 only) from the first letter of the arm: 'K4' is that selector here, not the candidate."""
+    image-head reading (r20 only) from the first letter of the arm: 'K4' is that selector here, not the candidate.
+    `recorded` (seed as text -> SHA-256) is the V0c gate's record of these files: a file that changed since is refused."""
     fixed, sources = {}, {}
     for seed in SEEDS:
         x, sha = load_candidate(cand, scale, aspect, seed)
+        assert recorded is None or recorded[str(seed)] == sha, \
+            f'{cand.held_dir}/{aspect}__s{seed}.npz: SHA-256 differs from the V0c gate'
         sources[str(seed)] = dict(path=str(Path(cand.held_dir) / f'{aspect}__s{seed}.npz'), output_sha256=sha)
         fixed[seed] = rb_score.fixed_partitions(x, 'K4', folder, aspect, seed, HELD_SHA256, sha)
     return fixed, sources
@@ -248,9 +260,10 @@ def comparators(scale, rcol, rb_out=None):
 
 
 def assemble(label, cand_fixed, comp_fixed, rcol, nonfinite, labels, scale, n_resamples=2000, workers=8,
-             sources=None):
+             sources=None, prefix=None):
     """The candidate's verdict block: arms in rule order, eligibility by `rb_score.eligible_seeds` (the candidate has
-    seeds 0 to 4), then `rb_score.candidate_block` (its own default_rng(0): I_b, then S_b per arm with seeds)."""
+    seeds 0 to 4), then `rb_score.candidate_block` (its own default_rng(0): I_b, then S_b per arm with seeds). The
+    outcome is named by `prefix` (scale -> family; default G-ES / G-EF)."""
     arms = arms_for(label)
     eligible = rb_score.eligible_seeds(arms, rcol, nonfinite)
     assert eligible[label] == list(SEEDS)
@@ -259,21 +272,22 @@ def assemble(label, cand_fixed, comp_fixed, rcol, nonfinite, labels, scale, n_re
     eligibility = dict(eligible_seeds=eligible, rcol_eligible_seeds=rcol, nonfinite_held=nonfinite)
     block = rb_score.candidate_block(fixed, labels, eligible, arms, scale, n_resamples, workers, eligibility,
                                      sources or {})
-    block['outcome_id'] = outcome_id(block['d'], block['interval'][0], scale)
+    block['outcome_id'] = outcome_id(block['d'], block['interval'][0], scale, prefix)
     return block
 
 
-def score_scale(cand, scale, cache, n_resamples=2000, workers=8):
-    """One scale's block for `cand`: its outputs and 12-24's B1 to B6 on the held emotion labels."""
+def score_scale(cand, scale, cache, n_resamples=2000, workers=8, recorded=None, prefix=None):
+    """One scale's block for `cand`: its outputs and 12-24's B1 to B6 on the held emotion labels. `recorded`: the V0c
+    gate's SHA-256 of the candidate's emotion outputs, by seed as text."""
     names, sha, labels = rb_score.held_setup()
     assert sha == HELD_SHA256
     rcol, rcol_path = rb_score.read_rcol_eligible(scale)
     comp_fixed, _, comp_sources = comparators(scale, rcol)
-    cand_fixed, cand_sources = candidate_fixed(cand, scale, Path(cache) / scale / cand.label)
+    cand_fixed, cand_sources = candidate_fixed(cand, scale, Path(cache) / scale / cand.label, recorded=recorded)
     sources = dict(held_outputs=dict(comp_sources['outputs'], **{cand.label: cand_sources}),
                    rcol=dict(path=str(rcol_path), sha256=sha_file(rcol_path)))
     return assemble(cand.label, cand_fixed, comp_fixed, rcol, comp_sources['nonfinite_held'], labels, scale,
-                    n_resamples, workers, sources)
+                    n_resamples, workers, sources, prefix)
 
 
 # ================================================================== held inference
@@ -439,10 +453,11 @@ def scorer_check(scale, cache, n_resamples=2000, workers=8):
 
 def g_full_outputs_check():
     """G's full-scale held outputs have the SHA-256 12-27's stage C metadata recorded (`reported.json`, all three
-    aspects, five seeds)."""
+    aspects, five seeds), and the genre ones also those of `stage_c/verdict.json`'s `G_outputs` (its claim)."""
     recorded = json.loads(G_FULL_RECORD.read_text())['G']['sources']['G_outputs']
-    assert sorted(recorded) == sorted(ASPECTS)
-    got = {}
+    claim = json.loads(G_FULL_VERDICT.read_text())['sources']['G_outputs']
+    assert sorted(recorded) == sorted(ASPECTS) and sorted(claim) == [str(s) for s in SEEDS]
+    got, verdict = {}, {}
     for aspect in ASPECTS:
         assert sorted(recorded[aspect]) == [str(s) for s in SEEDS]
         for seed in SEEDS:
@@ -450,12 +465,34 @@ def g_full_outputs_check():
             ours, theirs = sha_file(path), recorded[aspect][str(seed)]['output_sha256']
             assert recorded[aspect][str(seed)]['path'].endswith(f'/{path.name}')
             got[f'{aspect}__s{seed}'] = dict(ours=ours, recorded=theirs, equal=ours == theirs)
-    return {'pass': all(v['equal'] for v in got.values()), 'files': got, 'record': str(G_FULL_RECORD),
-            'record_sha256': sha_file(G_FULL_RECORD)}
+            if aspect == 'genre':
+                assert claim[str(seed)]['path'].endswith(f'/{path.name}')
+                verdict[f'{aspect}__s{seed}'] = dict(ours=ours, recorded=claim[str(seed)]['output_sha256'],
+                                                     equal=ours == claim[str(seed)]['output_sha256'])
+    return {'pass': all(v['equal'] for v in list(got.values()) + list(verdict.values())), 'files': got,
+            'verdict_files': verdict, 'record': str(G_FULL_RECORD), 'record_sha256': sha_file(G_FULL_RECORD),
+            'verdict': str(G_FULL_VERDICT), 'verdict_sha256': sha_file(G_FULL_VERDICT)}
 
 
-def g_sample_weights_record():
-    """SHA-256 of G's sample weights at seeds 0 to 3 (12-27's files), recorded by V0a."""
+def g_full_weights_check():
+    """G's full-scale weights have the SHA-256 12-27 recorded beside them (`weights/{aspect}__s{seed}.json`) and in
+    the held output's sidecar."""
+    got = {}
+    for aspect in ASPECTS:
+        for seed in SEEDS:
+            path = G_FULL_WEIGHTS / f'{aspect}__s{seed}.pt'
+            ours = sha_file(path)
+            beside = json.loads(path.with_suffix('.json').read_text())['weights_sha256']
+            sidecar = json.loads((G_FULL_HELD / f'{aspect}__s{seed}.json').read_text())['weights_sha256']
+            got[f'{aspect}__s{seed}'] = dict(ours=ours, weights_json=beside, held_sidecar=sidecar,
+                                             equal=ours == beside == sidecar)
+    return {'pass': all(v['equal'] for v in got.values()), 'files': got}
+
+
+def g_sample_weights_record(outputs=None):
+    """SHA-256 of G's sample weights at seeds 0 to 3 (12-27's files), recorded by V0a. 12-27 recorded no SHA-256 of
+    these .pt files; the record that exists is this build's V1a gate (`gates/v1a_train.json`: the reference state's
+    SHA-256 for seeds 0 and 1, from the files as they were then). Where `outputs` has it, each must equal ours."""
     sha = {}
     for seed in SAMPLE_FROZEN_SEEDS:
         folder = paths.RG_TRAIN / paths.G_ARM / f's{seed}'
@@ -463,7 +500,15 @@ def g_sample_weights_record():
         assert record['status'] == 'ok' and record['variant'] == paths.G_ARM and record['seed'] == seed
         for aspect in ASPECTS:
             sha[f's{seed}/{aspect}'] = sha_file(folder / f'{aspect}.pt')
-    return {'pass': len(sha) == len(SAMPLE_FROZEN_SEEDS) * len(ASPECTS), 'sha256': sha}
+    compared = {}
+    if outputs is not None and gate_path(outputs, 'v1a_train').is_file():
+        reference = json.loads(gate_path(outputs, 'v1a_train').read_text())['input_hashes']
+        for key, ours in sha.items():
+            if f'{key}/state' in reference:
+                compared[key] = dict(ours=ours, v1a_reference=reference[f'{key}/state']['reference'],
+                                     equal=ours == reference[f'{key}/state']['reference'])
+    return {'pass': len(sha) == len(SAMPLE_FROZEN_SEEDS) * len(ASPECTS) and all(v['equal'] for v in compared.values()),
+            'sha256': sha, 'v1a_compared': compared}
 
 
 def states_equal_r65_k4():
@@ -482,7 +527,8 @@ def v0a_cpu(outputs, workers=8, n_resamples=2000):
         print(f'V0a scorer {scale}: ' + ('pass' if all(v['pass'] for k, v in items.items() if f'/{scale}/' in k)
                                           else 'FAIL'), flush=True)
     items['g_full/outputs_sha256'] = g_full_outputs_check()
-    items['g_sample/weights'] = g_sample_weights_record()
+    items['g_full/weights_sha256'] = g_full_weights_check()
+    items['g_sample/weights'] = g_sample_weights_record(outputs)
     items['sample/r6_5_s1_states_equal_k4'] = states_equal_r65_k4()
     return items
 
@@ -515,25 +561,35 @@ def v0a_gpu(device):
     return items
 
 
-V0A_GROUPS = {'cpu': ('scorer/sample/d', 'scorer/full/d', 'scorer/sample/partitions_equal',
-                      'scorer/full/partitions_equal', 'g_full/outputs_sha256', 'g_sample/weights',
-                      'sample/r6_5_s1_states_equal_k4'),
-              'gpu': tuple(f'{k}/{a}' for k in ('g_full/seed0_inference', 'sample/r6_5_s1_inference')
-                           for a in ASPECTS)}
+SCORER_FIELDS = ('d', 'A_cand', 'interval_lo', 'interval_hi', 'entries', 'bootstrap_d', 'outcome', 'partitions_equal')
+
+
+def v0a_groups():
+    """The items each V0a part must hold (rule §3.1, §4.1): per scale every field of the scorer check (d, A_cand, both
+    bounds, the entry set, each A_e of 12-24's K4 block, every bootstrap d, the outcome kind, the partitions), then
+    the rest of the rule's list."""
+    cpu = []
+    for scale in SCALES:
+        block = json.loads(RB_VERDICT[scale].read_text())['blocks']['K4']
+        cpu += [f'scorer/{scale}/{k}' for k in SCORER_FIELDS] + [f'scorer/{scale}/A_e/{e}' for e in sorted(block['A_e'])]
+    cpu += ['g_full/outputs_sha256', 'g_full/weights_sha256', 'g_sample/weights', 'sample/r6_5_s1_states_equal_k4']
+    return {'cpu': tuple(cpu),
+            'gpu': tuple(f'{k}/{a}' for k in ('g_full/seed0_inference', 'sample/r6_5_s1_inference') for a in ASPECTS)}
 
 
 def write_v0a(outputs, part, items):
     """Merge one part into gates/v0a.json. The gate passes when both parts are there, each passes with every expected
     item, and both carry the hashes of the code that is on disk now."""
-    assert part in V0A_GROUPS
+    groups = v0a_groups()
+    assert part in groups
     path = gate_path(outputs, 'v0a')
     record = json.loads(path.read_text()) if path.is_file() else dict(name='v0a', parts={})
     now = code_sha256()
     record['parts'][part] = dict(items=_clean(items), code_sha256=now, code_files=code_files(), **_git_state(),
                                  **{'pass': bool(items) and all(v['pass'] for v in items.values())
-                                    and set(V0A_GROUPS[part]) <= set(items)})
+                                    and set(groups[part]) <= set(items)})
     record['code_sha256'] = now
-    record['pass'] = (set(record['parts']) == set(V0A_GROUPS)
+    record['pass'] = (set(record['parts']) == set(groups)
                       and all(p['pass'] and p['code_sha256'] == now for p in record['parts'].values()))
     _atomic_json(path, record)
     return record
@@ -554,15 +610,63 @@ def v0c_items(cand, scale):
 
 
 def check_v0c(outputs):
+    """V0c on both scales. The gate has a pass per scale (`scale_pass`): a scale whose set fails has no outcome (rule
+    §4.1 V0d), the other is still scored; `pass` is true when both hold."""
     items = {scale: v0c_items(cand, scale) for scale, cand in (('sample', sample_g(outputs)), ('full', FULL_G))}
     names, sha = rb_student.held_names()
-    passed = sha == HELD_SHA256 and all(i['pass'] for s in items.values() for i in s.values())
-    return write_gate(outputs, 'v0c', passed, items, held_sha256=sha, n_rows=N_HELD)
+    scale_pass = {scale: sha == HELD_SHA256 and all(i['pass'] for i in scale_items.values())
+                  for scale, scale_items in items.items()}
+    return write_gate(outputs, 'v0c', all(scale_pass.values()), items, held_sha256=sha, n_rows=N_HELD,
+                      scale_pass=scale_pass)
+
+
+def failure_record_problem(held_dir, aspect, seed):
+    """None when the failure record of an output is what `infer_set` writes after a second V0c failure (two problems,
+    no output file beside it): the seed policy followed; else the problem."""
+    path = failed_path(held_dir, aspect, seed)
+    record = json.loads(path.read_text())
+    if not {'arm', 'aspect', 'seed', 'problems'} <= set(record) or (record['aspect'], record['seed']) != (aspect, seed):
+        return f'{path}: not a failure record of this output'
+    if len(record['problems']) != 2:
+        return f'{path}: {len(record["problems"])} problems recorded; the policy is one rerun, then the record'
+    if (Path(held_dir) / f'{aspect}__s{seed}.npz').exists():
+        return f'{path}: an output exists beside the failure record'
+    return None
+
+
+def seed4_files(outputs):
+    """(final run folder, the folders moved aside under replaced/G/s4-*) of seed 4's training(s)."""
+    name = S.name(S.config())
+    aside = sorted(p for p in (Path(outputs) / 'replaced' / name).glob('s4-*') if p.is_dir())
+    return paths.run_dir(outputs, name, 4), aside
+
+
+def seed4_trained_once(outputs):
+    """Rule V0d, strict: seed 4 trains once. Every folder under replaced/G/s4-* with a run.json (status ok, a V1b
+    failure or any other) is a second training and fails; one without is an interrupted run, listed. Rule V1d's
+    V1b rerun covers G0, G0', the stage 1 runs and the grid's new points, not seed 4."""
+    folder, aside = seed4_files(outputs)
+    run = json.loads((folder / 'run.json').read_text())
+    with_record = [str(p) for p in aside if (p / 'run.json').is_file()]
+    interrupted = [str(p) for p in aside if not (p / 'run.json').is_file()]
+    return {'pass': run['status'] == 'ok' and not with_record and 'rerun_of' not in run, 'status': run['status'],
+            'rerun_of': run.get('rerun_of'), 'aside_with_run_json': with_record, 'aside_interrupted': interrupted,
+            'trainings': 1 + len(with_record)}
+
+
+def v1a_before_seed4(outputs):
+    """V0a: V1a passed before seed 4 trains. `rs_train` writes no start time, so the training's start is the earliest
+    mtime in the seed's run folder and in the folders moved aside; the V1a gate file must be older."""
+    gate = gate_path(outputs, 'v1a_train').stat().st_mtime_ns
+    folder, aside = seed4_files(outputs)
+    started = min(p.stat().st_mtime_ns for root in [folder] + aside for p in root.rglob('*') if p.is_file())
+    return {'pass': gate < started, 'v1a_gate_mtime_ns': gate, 'seed4_first_file_mtime_ns': started}
 
 
 def check_v0d(outputs):
     """Seed policy over the sample set: every output's weights SHA-256 is the current weights' (seeds 0 to 3: the V0a
-    record), no failure record, one training of seed 4 (a V1b rerun, rule V1d, is listed), V0c reruns listed."""
+    record); V0c reruns are listed (one allowed); a seed that failed twice has a well-formed failure record and no
+    output (policy followed: that scale gets no outcome); seed 4 trained once, after V1a."""
     outputs = Path(outputs)
     recorded = read_gate(outputs, 'v0a')['parts']['cpu']['items']['g_sample/weights']['sha256']
     held_dir = sample_g(outputs).held_dir
@@ -571,38 +675,56 @@ def check_v0d(outputs):
         for aspect in ASPECTS:
             key = f'{aspect}__s{seed}'
             try:
-                assert not failed_path(held_dir, aspect, seed).exists(), 'a failure record exists'
+                if failed_path(held_dir, aspect, seed).exists():
+                    problem = failure_record_problem(held_dir, aspect, seed)
+                    assert problem is None, problem
+                    items[key] = {'pass': True, 'failed_twice': True,
+                                  'v0c_problems': json.loads(failed_path(held_dir, aspect, seed).read_text())['problems']}
+                    continue
                 _, info = rb_student.read_outputs(held_dir / f'{aspect}__s{seed}.npz')
                 _, sha = sample_weights(outputs, seed, aspect, recorded)
                 assert info['weights_sha256'] == sha, 'the weights changed after the held output was written'
                 items[key] = {'pass': info['vc3_attempts'] <= 2, 'weights_sha256': sha,
                               'v0c_attempts': info['vc3_attempts'], 'v0c_problems': info['vc3_problems']}
-            except (AssertionError, Refusal, FileNotFoundError) as error:
+            except (AssertionError, Refusal, FileNotFoundError, KeyError, ValueError) as error:
                 items[key] = {'pass': False, 'problem': str(error)}
-    folder = paths.run_dir(outputs, S.name(S.config()), 4)
-    try:
-        run = json.loads((folder / 'run.json').read_text())
-        aside = [str(p) for p in rg_train.va3_failures_aside(outputs, S.name(S.config()), 4)]
-        items['seed4_trained_once'] = {'pass': run['status'] == 'ok' and len(aside) <= 1 and (len(aside) == 1) == (
-            'rerun_of' in run), 'status': run['status'], 'v1b_reruns': aside, 'rerun_of': run.get('rerun_of'),
-            'trainings': 1 + len(aside)}
-    except (FileNotFoundError, KeyError) as error:
-        items['seed4_trained_once'] = {'pass': False, 'problem': repr(error)}
+    for key, check in (('seed4_trained_once', seed4_trained_once), ('v1a_before_seed4', v1a_before_seed4)):
+        try:
+            items[key] = check(outputs)
+        except (FileNotFoundError, KeyError, ValueError) as error:
+            items[key] = {'pass': False, 'problem': repr(error)}
     return write_gate(outputs, 'v0d', all(i['pass'] for i in items.values()), items)
 
 
 # ================================================================== the verdict
+def no_outcome_block(scale, v0c):
+    """A scale whose V0c set failed (as `rb_score.run_stage` writes a candidate with no outcome): the cause is listed."""
+    bad = {k: v['problem'] for k, v in v0c['items'][scale].items() if not v['pass']}
+    return dict(candidate=G_LABEL, scale=scale, outcome_id=None,
+                v_failure=f'V0c: {len(bad)} of {len(v0c["items"][scale])} outputs fail (rule V0d: no outcome at '
+                          f'this scale): {bad}')
+
+
 def verdict(outputs, n_resamples=2000, workers=8):
-    """stage0/verdict.json: per scale d, A_G, each A_e, bounds, outcome; E0. Needs v0a, v0c and v0d (current code).
-    Written once: a second call must give the same record."""
+    """stage0/verdict.json: per scale d, A_G, each A_e, bounds, outcome; E0. Needs v0a and v0d (current code) and the
+    V0c gate; a scale whose V0c set fails has `outcome_id: None` with its cause, the other is scored from the files
+    whose SHA-256 the V0c gate recorded. Written once: a second call must give the same record."""
     outputs = paths.check_outputs(outputs)
     paths.check_imports()
     gates = {name: gate_path(outputs, name) for name in ('v0a', 'v0c', 'v0d')}
-    for name in gates:
-        read_gate(outputs, name)
+    read_gate(outputs, 'v0a')
+    v0c = read_gate(outputs, 'v0c', must_pass=False)
+    read_gate(outputs, 'v0d')
+    if v0c['held_sha256'] != HELD_SHA256:
+        raise Refusal(f'{gates["v0c"]}: H\'s SHA-256 is not the CT\'s: no outcome')
     cache = outputs / 'stage0/partitions'
-    blocks = {scale: _clean(score_scale(cand, scale, cache, n_resamples, workers))
-              for scale, cand in (('sample', sample_g(outputs)), ('full', FULL_G))}
+    blocks = {}
+    for scale, cand in (('sample', sample_g(outputs)), ('full', FULL_G)):
+        if v0c['scale_pass'][scale]:
+            recorded = {str(seed): v0c['items'][scale][f'emotion__s{seed}']['output_sha256'] for seed in SEEDS}
+            blocks[scale] = _clean(score_scale(cand, scale, cache, n_resamples, workers, recorded=recorded))
+        else:
+            blocks[scale] = _clean(no_outcome_block(scale, v0c))
     outcomes = {scale: block['outcome_id'] for scale, block in blocks.items()}
     record = dict(schema=1, stage=0, rule_commit=paths.RULE_COMMIT, held_sha256=HELD_SHA256, blocks=blocks,
                   outcomes=outcomes, E0=e0(outcomes), n_resamples=n_resamples,
