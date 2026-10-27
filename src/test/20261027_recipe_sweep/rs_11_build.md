@@ -102,7 +102,7 @@ Build 11, 27 October 2026 (fix commit on `worktree-agent-a9b6b08a3a20079fc`; end
   sidecar arm of G's sample-scale held outputs, 'G' (`STAGE0_SAMPLE_ARM`), is confirmed by the re-review (rereview_11.md, c).
 - The scorer's `gates/v0c.json` is not compared (not asked): my own V0c verdict per scale could be checked against its
   `scale_pass`.
-- A seed with both a `failed__` record and an output is treated as failed (not tested).
+- A seed with both a `failed__` record and an output is treated as failed (tested since build 12: `test_a_seed_with_a_failure_record_and_an_output_is_failed`).
 - The real run of stage 4 for a PICK candidate other than G (needs ticket 09 on a real c*): the code path is the same
   with `held_dir(outputs, name)` under `full_root(outputs)`; only G was run.
 - The real (non-smoke) ablation: all eight removals and 2,000 draws; the fixture run had two removals, 20 draws.
