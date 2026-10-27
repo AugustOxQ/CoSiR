@@ -54,8 +54,10 @@ def make_case(n=48):
     good_first, good_last = labels.copy(), labels.copy()
     good_first[n // 2:] = rng.integers(0, 4, size=n - n // 2)       # E1 is right on the first half only
     good_last[:n // 2] = rng.integers(0, 4, size=n // 2)            # E2 on the second half only
+    own_last = labels.copy()                                         # E2's own reading is right on the last 3/4 of the rows
+    own_last[:n // 4] = rng.integers(0, 4, size=n // 4)
     e1 = {s: {'r20': np.stack([good_first] * 3), 'own': good_first[None, :]} for s in (0, 1)}
-    e2 = {s: {'r20': np.stack([good_last] * 3), 'own': good_last[None, :]} for s in (0, 1)}
+    e2 = {s: {'r20': np.stack([good_last] * 3), 'own': own_last[None, :]} for s in (0, 1)}
     return labels, cand, {'E1': e1, 'E2': e2}
 
 
@@ -72,7 +74,7 @@ def test_entries_statistic_retakes_the_maximum_per_draw():
         values = {(e, r): mean(entries[e], e, r) for e in entries for r in ('r20', 'own')}
         leaders.add(max(values, key=values.get))
         expected.append(a - max(values.values()))
-    assert len(leaders) > 1, 'the case must make the leading entry change between draws'
+    assert len(leaders) > 1 and 'own' in {r for _, r in leaders}, 'the leading entry and reading must change between draws'
     assert np.allclose(res['bootstrap_d'], expected, atol=1e-12)
     assert np.allclose(res['interval'], np.percentile(expected, [2.5, 97.5]), atol=1e-12)
 
