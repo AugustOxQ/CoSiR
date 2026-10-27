@@ -512,3 +512,12 @@ def test_failed_k11_gate_refuses_k11_scores(tmp_path):
     put_k11_gate(tmp_path, False)
     with pytest.raises(AssertionError, match='k11'):
         S.run_stage1(tmp_path, 'local')
+
+
+def test_a_record_rewritten_with_equal_content_keeps_the_file_whatever_the_time_written(tmp_path):
+    path = tmp_path / 'x' / 'verdict.json'
+    first = S._keep_or_write(path, dict(value=1, written='2026-10-28 09:15', host='a', code_commit='c1', code_dirty=False))
+    again = S._keep_or_write(path, dict(value=1, written='2026-10-28 11:40', host='b', code_commit='c2', code_dirty=True))
+    assert again == first and json.loads(path.read_text())['written'] == '2026-10-28 09:15'
+    with pytest.raises(AssertionError, match='other inputs'):
+        S._keep_or_write(path, dict(value=2, written='2026-10-28 09:15'))
