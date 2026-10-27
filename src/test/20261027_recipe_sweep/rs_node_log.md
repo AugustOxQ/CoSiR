@@ -44,3 +44,13 @@ One entry per sync and node check of the r10 recipe sweep (rule §4.2 "The node 
   k2 0/2/8, k9 1024/512; 18 new points); `rs_vp sweep` (part (b)): pass (`sweep/node402/rederive_stage1.json`).
   The plan ended 18:29.
 - Stage 2 started 18:30 (`RS_END_BY` 2026-10-28 01:08): 18 new points in three shards.
+- Stage 2 shards (`rs1027-stage2-a`, `-b`, `-c`, slots 0 to 2, at a87cb1d): 18 grid points, all ok (no V1b failure);
+  ended about 18:55; pulls verified; scores fetched.
+- V1c part (a) (`rs1027-stage2-vp`, node CPU, 59 runs): the plan's `cluster watch` stopped at 19:27 on its default
+  30-minute stall limit while the job still ran (V1c part (a) prints only at its end; stage 1's took 31 minutes for 41
+  runs). Not a failure: the run chat watched it again with `--stall-minutes 120` and ran the plan's remaining steps by
+  hand, in the same order (script `stage2_tail.sh` in the run chat's scratchpad, status lines in
+  `queue_node_stage2_status.txt`): pull; the stage 1 home copy moved to `rederive_partitions.stage1.json`; fetch; part
+  (a) pass (59 runs); deadline not passed; `rs_sweep stage2`: TOP; `rs_vp sweep` (part (b)): pass. Done 19:39.
+- TOP: k11=40 (M 0.92), k2=2+k9=512+k11=40 (0.87), k4=0.035+k11=40 (0.75). Stage 3 runs locally from 19:4x.
+- For a later round: a node job that prints nothing for over 30 minutes needs `--stall-minutes` in the plan's watch.
