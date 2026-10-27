@@ -311,6 +311,9 @@ def test_a_scale_without_outcome_must_match_the_verdict():
     assert all(i['ok'] for i in V.compare_stage0(mine, theirs))
     theirs['blocks']['full']['outcome_id'] = 'G-EF-GO'
     assert not all(i['ok'] for i in V.compare_stage0(mine, theirs))
+    del theirs['blocks']['full']['v_failure']                  # no outcome and no cause is a missing value, not a stated failure
+    theirs['blocks']['full']['outcome_id'] = None
+    assert 'full.outcome_id' in names_of(V.compare_stage0(mine, theirs))
 
 
 def test_compare_stage0_partitions_item_per_scale():
