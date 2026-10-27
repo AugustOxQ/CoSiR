@@ -1,19 +1,29 @@
 #!/usr/bin/env bash
 # The node plan of stages 1 and 2 (spec §3.5, D4, D19; rule §4.0, §4.2): prints (RS_DRY=1) or runs, in order, the `cluster` and
 # local commands. The real mode is for the run chat; this file was only ever run DRY by its author.
-#   bash rs_node_plan.sh stage1   gates n1 and n2 (fetched, pass), the 14:00 deadline, `cluster status`, `cluster sync`, three shards
+#   bash rs_node_plan.sh stage1   gates n1 and n2 (fetched, pass), V1a (gates/v1a_train.json and v1a_scorer.json, local, pass), the start
+#                                 deadline RS_START_BY (a real check: now after it stops the plan), `cluster status`, `cluster sync`, three shards
 #                                 of G, G-repeat and the 39 stage 1 runs (one `cluster launch` each, one GPU each), watch, pull, fetch
 #                                 the scores; N3 (`run_rs_node.sh n3`); V1c part (a) on the node (`run_rs_node.sh vp`); locally
 #                                 `rs_sweep stage1 --machine node402` and V1c part (b) (`rs_vp sweep --machine node402`)
-#   bash rs_node_plan.sh stage2   the 22:00 deadline note, the grid's new points (sweep/node402/stage1.json grid.new) in three shards,
-#                                 the same launch, watch, pull and fetch; V1c part (a) again on the node (all runs), then locally
-#                                 `rs_sweep stage2 --machine node402` and V1c part (b)
+#   bash rs_node_plan.sh stage2   the end deadline RS_END_BY (a real check at the start and again right before `rs_sweep stage2`;
+#                                 now after it stops the plan), the grid's new points (sweep/node402/stage1.json grid.new) in three shards,
+#                                 the same launch, watch, pull and fetch; V1c part (a) again on the node (all runs). The node's
+#                                 `rs_vp partitions` rewrites scores/<node>/rederive_partitions.json (now stage 1 and 2 runs), which differs
+#                                 from the stage 1 copy at home and so would make the fetch refuse (das6_sync_rs never overwrites a differing
+#                                 file): the plan first moves the home copy to rederive_partitions.stage1.json (a move, never a delete; it
+#                                 refuses when that name exists with different content). Then locally `rs_sweep stage2 --machine <node>`
+#                                 and V1c part (b)
 # A failed step stops the plan with RS_NODE_STOP; the run chat then decides: relaunch with a NEW tag, or the local fallback
-# (rs_queue_fallback.sh; rule §4.2: N1, N2 or N3 fails, stage 1 cannot start by 14:00, stage 2 not ended by 22:00, node lost).
+# (rs_queue_fallback.sh; rule §4.2: N1, N2 or N3 fails, stage 1 cannot start by RS_START_BY, stage 2 not ended by RS_END_BY, node lost).
+# The deadlines are full Amsterdam date-times `YYYY-MM-DD HH:MM` (they compare right across midnight). The rule's defaults are 14:00 and
+# 22:00 today; under the rule's exception of 2026-10-27 15:31 (§4.2, the user) the run chat sets RS_START_BY to the real stage 1 start on
+# the node and RS_END_BY to that start plus 8 hours. DRY mode only notes whether a deadline would stop the plan.
 # The launched command has no shell metacharacters (the launch accepts plain `bash scripts/run_*.sh ...`). Each node step adds an
 # entry to rs_node_log.md (this plan prints the reminder; it does not write the log). Nothing is deleted anywhere.
 # Env: RS_DRY=1, RS_OUTPUTS, RS_PYTHON, RS_CLUSTER (default ~/.claude/skills/cluster-run/cluster), RS_NODE (node402), RS_TAG (tag
-#      prefix, default rs<MMDD>), RS_START_BY (14:00 for stage 1), RS_END_BY (22:00 for stage 2), RS_FAKE_NOW (HH:MM, tests only).
+#      prefix, default rs<MMDD>), RS_START_BY (stage 1; default 14:00 today), RS_END_BY (stage 2; default 22:00 today), both
+#      `YYYY-MM-DD HH:MM`; RS_FAKE_NOW (same form) and RS_SYNC_PY (a stand-in for scripts/das6_sync_rs.py) are for tests only.
 set -u
 set -o pipefail
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
@@ -27,9 +37,14 @@ node=${RS_NODE:-node402}
 outputs=${RS_OUTPUTS:-/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs}
 dry=${RS_DRY:-0}
 tag=${RS_TAG:-rs$(TZ=Europe/Amsterdam date '+%m%d')}
-start_by=${RS_START_BY:-14:00}
-end_by=${RS_END_BY:-22:00}
-sync_py=$root/scripts/das6_sync_rs.py
+today=$(TZ=Europe/Amsterdam date '+%F')
+start_by=${RS_START_BY:-$today 14:00}
+end_by=${RS_END_BY:-$today 22:00}
+stamp_re='^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}$'
+for v in "start_by=$start_by" "end_by=$end_by" "fake_now=${RS_FAKE_NOW:-$today 00:00}"; do
+    [[ "${v#*=}" =~ $stamp_re ]] || { echo "bad ${v%%=*}: '${v#*=}' (the form is 'YYYY-MM-DD HH:MM', Amsterdam time)" >&2; exit 2; }
+done
+sync_py=${RS_SYNC_PY:-$root/scripts/das6_sync_rs.py}
 nodes_runner='bash scripts/run_rs_node.sh'
 status=/dev/null
 if [[ "$dry" != 1 ]]; then mkdir -p "$outputs/logs"; status="$outputs/queue_node_${phase}_status.txt"; fi
@@ -43,7 +58,36 @@ run() {   # run LABEL CMD...: print it; run it unless dry; a failure stops the p
     "$@" > "$outputs/logs/node_${phase}_$label.log" 2>&1 || stop "$label failed (log $outputs/logs/node_${phase}_$label.log): relaunch with a new tag, or the local fallback"
 }
 jget() { [[ -f "$1" ]] || return 0; "$python_bin" -I -c 'import json,sys; d=json.load(open(sys.argv[1])); print(eval(sys.argv[2]))' "$1" "$2"; }
-now_hhmm() { if [[ -n "${RS_FAKE_NOW:-}" ]]; then echo "$RS_FAKE_NOW"; else TZ=Europe/Amsterdam date '+%H:%M'; fi; }
+now_stamp() { if [[ -n "${RS_FAKE_NOW:-}" ]]; then echo "$RS_FAKE_NOW"; else TZ=Europe/Amsterdam date '+%F %H:%M'; fi; }
+late() { [[ "$(now_stamp)" > "$1" ]]; }   # late STAMP: now is after STAMP (ISO date-times compare as strings, also across midnight)
+deadline() {   # deadline KIND STAMP WHAT: stop when now is after STAMP (dry: only say what a real run would do)
+    local kind=$1 stamp=$2 what=$3
+    if [[ "$dry" == 1 ]]; then
+        if late "$stamp"; then note "dry: $kind $stamp, now $(now_stamp): LATE, a real run would stop here ($what)"
+        else note "dry: $kind $stamp, now $(now_stamp): not late ($what)"; fi
+        return 0
+    fi
+    if late "$stamp"; then stop "$what: now $(now_stamp) is after $kind $stamp: stages 1 and 2 run locally from the start, the node results reported only (rs_queue_fallback.sh)"; fi
+}
+gate_local() {   # gate_local NAME: gates/NAME.json at home (not fetched) has pass true
+    if [[ "$dry" == 1 ]]; then note "dry: gate $1 needs pass true in $outputs/gates/$1.json (local file, as the local queues check it)"; return 0; fi
+    [[ "$(jget "$outputs/gates/$1.json" "d['pass']")" == True ]] || stop "gate $1 does not hold ($outputs/gates/$1.json missing or pass not true): no stage 1 run starts (rule §4.2 V1a)"
+    note "gate $1 holds"
+}
+move_stage1_partitions() {   # stage 2 only: the home copy of the stage 1 rederive_partitions.json moves aside (a move, never a delete)
+    local d=$outputs/scores/$node
+    local src=$d/rederive_partitions.json dst=$d/rederive_partitions.stage1.json
+    if [[ "$dry" == 1 ]]; then
+        printf 'DRY move_stage1_partitions: mv -- %s %s   (only when the first exists; refuses if the second exists with other content)\n' "$src" "$dst" | tee -a "$status"
+        return 0
+    fi
+    if [[ ! -e "$src" ]]; then note "no $src at home: nothing to move aside"; return 0; fi
+    if [[ -e "$dst" ]] && ! cmp -s "$src" "$dst"; then
+        stop "$dst exists with other content than $src: not overwritten (the fetch of the stage 2 partitions would refuse); the run chat decides"
+    fi
+    printf 'RUN move_stage1_partitions: mv -- %s %s\n' "$src" "$dst" | tee -a "$status"
+    mv -- "$src" "$dst" || stop "move_stage1_partitions failed"
+}
 gate_pass() {   # gate_pass NAME: gates/NAME.json (fetched from the node) has pass true
     if [[ "$dry" == 1 ]]; then note "dry: gates/$1.json needs pass true (N1 and N2 were run by the controller; fetch: python scripts/das6_sync_rs.py --node $node --fetch gates/$1.json --run)"; return 0; fi
     [[ "$(jget "$outputs/gates/$1.json" "d['pass']")" == True ]] || stop "gates/$1.json missing or not pass: the node route fails here, stages 1 and 2 run locally (rs_queue_fallback.sh)"
@@ -64,17 +108,19 @@ one_job() {   # one_job TAGSUFFIX MODE: a single-purpose job (n3, vp) with no ar
     wait_pull "$tag-$phase-$1"
 }
 note "each node step below adds an entry to rs_node_log.md (round folder): the tag, the time, the node's GPUs, what came home"
-t=$(now_hhmm)
 if [[ "$phase" == stage1 ]]; then
-    if [[ "$dry" == 1 ]]; then note "dry: stage 1 must start on the node by $start_by (now $t); later: the local fallback"
-    elif [[ "$t" > "$start_by" ]]; then stop "stage 1 cannot start on the node by $start_by (now $t): stages 1 and 2 run locally (rs_queue_fallback.sh)"; fi
+    [[ "$dry" == 1 || -n "${RS_START_BY:-}" ]] || note "RS_START_BY is not set: the rule's 14:00 today applies. Under the rule's exception (§4.2, 2026-10-27 15:31, user) the run chat sets RS_START_BY to the real stage 1 start and RS_END_BY (stage 2) to that start plus 8 hours"
+    deadline RS_START_BY "$start_by" "stage 1 cannot start on the node by RS_START_BY"
     gate_pass n1
     gate_pass n2
+    gate_local v1a_train
+    gate_local v1a_scorer
     run status "$cluster" status --node "$node"
     run sync "$cluster" sync --node "$node"
     shards=$("$python_bin" "$here/rs_queue_names.py" shards 3)
 else
-    if [[ "$dry" == 1 ]]; then note "dry: stage 2 must end by $end_by (now $t); after that: the local fallback from the start, the node results reported only"; fi
+    [[ "$dry" == 1 || -n "${RS_END_BY:-}" ]] || note "RS_END_BY is not set: the rule's 22:00 today applies. Under the rule's exception (§4.2, 2026-10-27 15:31, user) the run chat must set RS_END_BY to the real stage 1 start on the node plus 8 hours"
+    deadline RS_END_BY "$end_by" "stage 2 has not ended by RS_END_BY"
     gate_pass n3
     run status "$cluster" status --node "$node"
     if [[ "$dry" == 1 ]]; then
@@ -103,8 +149,10 @@ if [[ "$phase" == stage1 ]]; then
     note "N3 read: gates/n3.json (a pass is required; its parity readings are reported, no gate)"
 fi
 one_job vp vp
+[[ "$phase" == stage2 ]] && move_stage1_partitions
 fetch scores/$node
 if [[ "$dry" != 1 ]]; then [[ "$(jget "$outputs/scores/$node/rederive_partitions.json" "d['pass']")" == True ]] || stop "V1c part (a) on the node disagrees: trace and fix before $phase is stated"; fi
+[[ "$phase" == stage2 ]] && deadline RS_END_BY "$end_by" "stage 2 has not ended by RS_END_BY"
 run "$phase" "$python_bin" "$here/rs_sweep.py" "$phase" --machine "$node" --outputs "$outputs"
 run "v1c_b_$phase" "$python_bin" "$here/rs_vp.py" sweep --machine "$node" --outputs "$outputs"
 if [[ "$phase" == stage1 ]]; then

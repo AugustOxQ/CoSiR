@@ -61,7 +61,7 @@ the ablation; V4a blocks stage 4 and the held ablation; V3a blocks stage 3 and b
 | | per knob `train_k<n>`, `score_k<n>` | k11: skipped when `gates/k11_sample.json` has pass false (the runner `rs_sweep stage1` enters them as failed); the graphs refuse by themselves | a crash stops; a failed run is a recorded outcome |
 | | `stage1`, `v1c_a_stage1`, `v1c_b_stage1` | `rs_vp` part (a) then (b) (part (b) refuses without (a)) | stop before stage 2 |
 | | `train_grid<n>`, `stage2`, `v1c_a_stage2`, `v1c_b_stage2` | SWEEP-NONE ends the queue (exit 0; G stays) | stop before stage 3 |
-| `rs_node_plan.sh` | see "The node plan" | `gates/n1.json`, `n2.json`, `n3.json` pass; 14:00 and 22:00 deadlines | `RS_NODE_STOP`: fallback |
+| `rs_node_plan.sh` | see "The node plan" | `gates/n1.json`, `n2.json`, `n3.json`, `v1a_train.json`, `v1a_scorer.json` pass; deadlines `RS_START_BY` and `RS_END_BY` (date-times) | `RS_NODE_STOP`: fallback |
 | `stage3` | `train_top` | queue: V1a, V3a (the runner `rs_stage3 verdict` also refuses without it), V1c of the sweep machine (`scores/<m>/rederive_partitions.json`, `sweep/<m>/rederive_stage2.json`); SWEEP-NONE or TOP-NONE: note, exit 0 | stop |
 | | `verdict`, `v3c` | `rs_vp stage3` (exit 1 on disagreement) | stop: stage 4 does not run |
 | `stage4` | `train_c`, `held_c` | queue: V1a, V4a (both halves; `rs_full` also refuses), V3c (`stage3/rederive_stage3.json`); KEEP-G or no stage 3 file: note "stage 4 does not run", exit 0 (G's outcomes by hand: `rs_stage4 verdict --candidate G`, a read of 12-27's saved outputs; the queue does not run it) | stop |
@@ -84,19 +84,29 @@ to 19:00.
 `RS_DRY=1 bash rs_node_plan.sh stage1` prints it. Real mode is for the run chat, from the merged main checkout, after N1 and
 N2 passed (the controller's) and `das6_sync_rs.py --inputs --run` was done. The commands, in order:
 
-1. Stage 1: `gates/n1.json` and `n2.json` pass; the start is before 14:00; `cluster status --node node402`; `cluster sync`.
+1. Stage 1: `gates/n1.json` and `n2.json` pass, and V1a (`gates/v1a_train.json`, `v1a_scorer.json`, local files, as the local queues check
+   them); now is not after `RS_START_BY`; `cluster status --node node402`; `cluster sync`.
+   Deadlines: `RS_START_BY` and `RS_END_BY` are full Amsterdam date-times `YYYY-MM-DD HH:MM` (the old `HH:MM` form is refused). Unset,
+   they are the rule's 14:00 and 22:00 today, which is strict. Rule §4.2, exception of 2026-10-27 15:31 (user): the run chat sets
+   `RS_START_BY` to the real stage 1 start on the node and `RS_END_BY` to that start plus 8 hours; the real mode notes it when
+   they are unset. A deadline is a real check (`RS_NODE_STOP`, then the local fallback); DRY mode only notes what it would do.
 2. Three shards of G, G-repeat (both first, in shard a) and the 39 stage 1 runs (14, 14 and 13 runs), one
    `cluster launch --node node402 --tag <rsMMDD>-stage1-<a|b|c> -- bash scripts/run_rs_node.sh shard --configs ... --seeds 0`
    each (one GPU each; the command has no shell metacharacters), then `cluster watch` and `cluster pull --tag` for each, then
    `das6_sync_rs.py --fetch scores/node402`.
 3. N3 (`run_rs_node.sh n3`) and `--fetch gates/n3.json`; a failing N3 stops the plan (fallback).
 4. V1c part (a) on the node (`run_rs_node.sh vp`), fetch `scores/node402` (it holds `rederive_partitions.json`); a disagreement stops.
+   (Stage 2 does this step again; see the move above.)
 5. Locally `rs_sweep stage1 --machine node402`, then `rs_vp sweep --machine node402` (part (b)).
 6. `rs_node_plan.sh stage2`: needs `gates/n3.json`; the grid's new points from `sweep/node402/stage1.json` `grid.new` in three
    shards; the same launch, watch, pull and fetch; part (a) again on the node over all runs; locally `rs_sweep stage2 --machine
-   node402` and `rs_vp sweep`. Stage 2 must end by 22:00.
+   node402` and `rs_vp sweep`. Stage 2 is checked against `RS_END_BY` at its start and again right before `rs_sweep stage2`.
+   The node's `rs_vp partitions` rewrites `scores/node402/rederive_partitions.json` (now all runs; it is the only file that job
+   writes). Before the second fetch the plan moves the home copy from stage 1 to `rederive_partitions.stage1.json` (a move; it
+   stops if that name exists with other content), else the fetch would refuse a differing local file. The readers keep reading
+   `rederive_partitions.json`. A full second run of stage 2 after a good fetch stops at that move: the run chat decides.
 
-Fallback conditions (rule §4.2): N1, N2 or N3 fails, stage 1 cannot start on the node by 14:00, stage 2 has not ended by 22:00,
+Fallback conditions (rule §4.2): N1, N2 or N3 fails, stage 1 cannot start on the node by `RS_START_BY`, stage 2 has not ended by `RS_END_BY`,
 or the node is lost and one rerun (a new tag) does not fix it. Then run `rs_queue_fallback.sh`; the node results are reported only.
 The node's outputs stay on the node: add a pending row with their size (`cluster du --node node402`). G0 and TOP's weights and
 exports are copied home before 2026-10-30 (the reservation ends about 2026-10-31 00:40). No decision compares a node number
@@ -152,6 +162,9 @@ g. V3a passes before the development ablation, whatever stages 1 and 2 give (`rs
    queue checks `gates/v3a.json` first and says so.
 h. The ablation outputs record `inputs.ablation_graphs_sha256`, the SHA-256 of the graph gate file they relied on (`ablation/dev.json`
    and `held.json`; the queue notes it after scoring).
+i. On the node, a k11 refusal stops the rest of its shard (`run_rs_node.sh shard` has `set -e`). Left as it is: the k11 gate
+   (`gates/k11_sample.json`) passes (18 of 18 arrays equal), so no k11 run is refused. If it ever fails, run the other shard
+   members again in a new shard without the `k11=` names.
 
 ## Recovery (after any stop)
 
