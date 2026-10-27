@@ -1177,3 +1177,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-27-r10-build-11-handoff.md
 - New chat: tab 'r10 build 11', session c7ef3664-41ba-42c9-9619-bb206754f2c8
 
+[brief] CoSiR: r10 build 11 -> r10 build 12 (2026-10-27 15:21 Amsterdam)
+- Done: ticket 15 and the MS3e test merged; ticket 11's fix wave done (113 tests, 0 disagree end to end); N1 and N2 pass on node402; the three removal smokes pass.
+- State: 14 of 15 tickets merged. Ticket 11 waits for its re-review and full self-check.
+- Next: the 11 re-review and self-check at once; merge; the final review (three Opus `xhigh` reviewers).
+- Blocked: rule §4.2's 14:00 node deadline is past: the user decides (shift it or run locally).
+- Handoff: docs/superpowers/handoffs/2026-10-27-r10-build-12-handoff.md
+- New chat: tab 'r10 build 12', session 92336ec7-94d0-4db9-a968-64f1ceb97d78
+
