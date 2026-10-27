@@ -1037,6 +1037,150 @@ def test_report_says_when_the_verdict_is_not_a_smoke(small):
     assert run_stage4(small) == 0 and report(small, 'stage4')['smoke'] is False
 
 
+# ---- test gaps found by the re-review of ticket 11 (rereview_11.md, b: the missed mutants) --------------------------
+
+def test_a_seed_with_a_failure_record_and_an_output_is_failed(small):
+    stage4_tree(small)
+    held = rs_paths.full_root(small) / 'held' / 'c'
+    (held / 'failed__style__s1.json').write_text(json.dumps(dict(problems=['shape'])))     # the output files stay
+    assert (held / 'style__s1.npz').is_file()
+    parts, problems = V.student_parts(FakeCtx(150), held, 'style', 1, 'c')
+    assert sorted(parts) == [0, 2, 3, 4] and list(problems) == [1] and problems[1][0].startswith('failure record')
+    assert V.student_problems(FakeCtx(150), held, 'emotion', 1, 'c') == {}
+    cause = V.stage4_failure(FakeCtx(150), small, 'c', 1)
+    assert cause and cause.startswith('V4d: style s1: failure record') and cause.count(';') == 0
+
+
+@pytest.mark.parametrize('v4c, failed', [({}, True), ({'problems': ['x']}, True), ({'pass': None}, True), ({'pass': 'true'}, True),
+                                         ({'pass': False}, True), ({'pass': True}, False)])
+def test_v4c_json_passes_only_with_pass_true(small, v4c, failed):
+    stage4_tree(small)
+    (rs_paths.full_root(small) / 'held' / 'c' / 'v4c.json').write_text(json.dumps(v4c))
+    cause = V.stage4_failure(FakeCtx(150), small, 'c', 1)
+    assert (cause is not None and cause.startswith('V4c: ')) is failed and (failed or cause is None)
+
+
+def test_compare_stage0_n_resamples_is_an_item():
+    mine = mine_pair()
+    verdict = verdict_from(mine)
+    verdict['n_resamples'] = 20
+    assert names_of(V.compare_stage0(mine, verdict)) == ['n_resamples']
+    del verdict['n_resamples']
+    assert names_of(V.compare_stage0(mine, verdict)) == ['n_resamples']
+
+
+def test_a_missing_outcomes_key_does_not_read_as_no_outcome():
+    mine = mine_pair()
+    mine['blocks']['full'] = dict(candidate='G', scale='full', outcome_id=None, v_failure=['seed 3: non-finite rows'])
+    mine['E0'] = False
+    theirs = verdict_from(mine)
+    theirs['blocks']['full'] = dict(outcome_id=None, v_failure='seed 3 failed V0c')
+    assert names_of(V.compare_stage0(mine, theirs)) == []
+    del theirs['outcomes']
+    assert sorted(names_of(V.compare_stage0(mine, theirs))) == ['full.outcomes', 'sample.outcomes']
+
+
+@pytest.mark.parametrize('drop', [('ranges',), ('aspects',), ('emotion_margin',), ('held_sha256',), ('n_resamples',)])
+def test_compare_stage4_missing_top_level_key_is_an_item_not_a_traceback(drop):
+    mine = mine_stage4()
+    verdict = verdict_stage4(mine)
+    del verdict[drop[0]]
+    assert names_of(V.compare_stage4(mine, verdict))
+    if drop == ('ranges',):
+        assert {f'ranges.{a}' for a in V.ASPECTS} <= set(names_of(V.compare_stage4(mine, verdict)))
+
+
+@pytest.mark.parametrize('drop', ['results', 'removals', 'seeds', 'labelled_rows', 'n_draws', 'held_sha256'])
+@pytest.mark.parametrize('smoke', [True, False])
+def test_compare_ablation_missing_top_level_key_is_an_item_not_a_traceback(drop, smoke):
+    mine = mine_ablation()
+    verdict = verdict_ablation(mine, smoke=smoke)
+    del verdict[drop]
+    assert names_of(V.compare_ablation(mine, verdict))
+    if drop == 'results':
+        assert 'direct.listed' in names_of(V.compare_ablation(mine, verdict))
+
+
+def test_sidecar_with_a_missing_key_is_refused():
+    x = unit_rows(10)
+    side = dict(rows=10, list_sha256='h', aspect='emotion', seed=2, arm='G', sha256=V.array_sha(x))
+    for key in side:
+        with pytest.raises((AssertionError, KeyError)):
+            V.check_sidecar({k: v for k, v in side.items() if k != key}, x, 'emotion', 2, 10, 'h', 'G')
+
+
+@pytest.mark.parametrize('where', ['sibling', 'dots'])
+def test_smoke_verdict_in_a_folder_that_only_starts_like_scratch_is_refused_by_the_command(small, where):
+    base = small.parent                                          # the monkeypatched SMOKE_ROOT of the fixture
+    if where == 'sibling':
+        out = base.parent / (base.name + 'x') / 'outputs'        # /tmp/claude-0x/o against /tmp/claude-0
+    else:
+        out = base / 'inner' / '..' / '..' / (base.name + 'y') / 'outputs'     # /tmp/claude-0/../x/o
+        (base / 'inner').mkdir()
+    assert str(out).startswith(str(base)) and not out.resolve().is_relative_to(base)
+    stage4_tree(out.resolve())
+    stage4_verdict(out.resolve())
+    with pytest.raises(AssertionError, match='smoke'):
+        V.main(['stage4', '--candidate', 'c', '--outputs', str(out), '--workers', '1'])
+    assert not (out.resolve() / 'stage4/rederive_stage4.json').exists()
+
+
+def test_stage0_scorer_without_outcome_while_mine_has_one_is_flagged_item_by_item():
+    mine = mine_pair()
+    verdict = verdict_from(mine)
+    verdict['blocks']['full'] = dict(candidate='G', scale='full', outcome_id=None, v_failure='V0c: emotion s3 failed twice')
+    verdict['outcomes']['full'] = None
+    verdict['E0'] = False
+    assert sorted(names_of(V.compare_stage0(mine, verdict))) == ['E0', 'full.outcome_id', 'full.outcomes']    # no d, no interval, ...
+
+
+def test_stage4_scorer_without_outcome_while_mine_has_one_is_flagged_item_by_item():
+    items = V.compare_stage4(mine_stage4(), failed_verdict_stage4())
+    assert sorted(names_of(items)) == ['emotion.outcome_id', 'emotion_margin.outcome_id', 'genre.outcome_id', 'stage4.no_outcome',
+                                       'style.outcome_id']
+    assert not any(i['name'].endswith(('d_T', 'interval_lower')) for i in items)
+    items = V.compare_stage4(failed_stage4(mine_stage4()), verdict_stage4(mine_stage4()))           # and the other way round
+    assert 'stage4.no_outcome' in names_of(items) and not any(i['name'].endswith('d_T') for i in items)
+
+
+# ---- t_partitions on a small store of its own (no fake): T_equals_frozen and the frozen file's path ----------------
+
+def write_t_store(root, aspect, names, seed):
+    store = root / f'{V.PROMPTS[aspect]}_held'
+    store.mkdir(parents=True)
+    x = unit_rows(150, 8, seed)
+    np.save(store / 'img.npy', x)
+    np.savez(store / 'ids.npz', painting_names=np.asarray(names))
+    (store / 'meta.json').write_text(json.dumps(dict(held_sha256='h', shape=[150, 8], dtype='float16', img_sha256=V.array_sha(x))))
+    x32 = x.astype(np.float32)
+    return V.r20_partition(x32 / np.maximum(np.linalg.norm(x32, axis=1, keepdims=True), 1e-12))     # what the frozen file holds
+
+
+def test_t_partitions_equal_the_frozen_file_s0_of_the_aspect(tmp_path, monkeypatch):
+    monkeypatch.setattr(V, 'N_HELD', 150)
+    monkeypatch.setattr(V, 'WIDTH', 8)
+    monkeypatch.setattr(V, 'HELD_SHA256', 'h')
+    names = [f'p{i:03d}' for i in range(150)]
+    ctx = FakeCtx(150)
+    ctx.names = names
+    root, frozen = tmp_path / 'prompts', tmp_path / 'frozen_T'
+    frozen.mkdir()
+    monkeypatch.setattr(V, 'PROMPT_ROOT', root)
+    monkeypatch.setattr(V, 'RB_T_PARTITIONS', frozen)
+    V._CACHE.clear()
+    mine = {a: write_t_store(root, a, names, 40 + i) for i, a in enumerate(V.ASPECTS)}
+    for a in V.ASPECTS:
+        np.savez(frozen / f'{a}__s0__r20.npz', labels=mine[a].astype(np.int32))
+        np.savez(frozen / f'{a}__s1__r20.npz', labels=(mine[a] + 1) % 20)          # a decoy: the other seed's file differs
+    swap_clusters(frozen / 'style__s0__r20.npz')                                    # one aspect's frozen file differs from the store
+    for a, equal in (('emotion', True), ('style', False), ('genre', True)):
+        got, same = V.t_partitions(ctx, a)
+        assert same is equal, a
+        assert np.array_equal(got, mine[a])
+    assert any(k.endswith('frozen_T/emotion__s0__r20.npz') for k in ctx.sources)
+    V._CACHE.clear()
+
+
 # ---- integration: K4's sample-scale block from the frozen files (point values only) ---------------------------
 
 def test_k4_sample_point_values_equal_the_frozen_block():
