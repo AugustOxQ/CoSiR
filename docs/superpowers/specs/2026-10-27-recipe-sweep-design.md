@@ -5,7 +5,7 @@
 > [spec](2026-10-26-relational-genre-design.md) and [rule](../../../src/test/20261027_relational_genre/DECISION_RULE.md);
 > the grill in the r10 decide 26 chat (its record: the [decide 26 handoff](../handoffs/2026-10-27-r10-decide-27-handoff.md)
 > §2 and the [direction log](../direction_log.md) entry of 2026-10-27) · Constitution: [constitution.md](../constitution.md)
-> Decision rule: `src/test/20261027_recipe_sweep/DECISION_RULE.md` @ <first commit, after the review>
+> Decision rule: `src/test/20261027_recipe_sweep/DECISION_RULE.md` @ 35fcf68 (first commit, after the review)
 
 ## Brief (for the user; agents read and decide from §1 onward)
 

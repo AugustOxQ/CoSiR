@@ -26,7 +26,7 @@ claims are k-means, ArtELingo and (genre) Qwen only. Next (user, decide 26, 2026
 emotion claim test with G as the new recipe, then a recipe sweep on DAS6 on development data (the strongest recipe
 for all three aspects; "level" accepted) with an ablation study and a real analysis beside it, then the other
 passing encoders with the final recipe, then aspect-named retrieval as the second task. The sweep is staged (a one-knob scan,
-then a joint grid; stages 1 and 2 on DAS6 node402, the rest local); the spec is written in decide 27. The CVPR abstract is due 2026-11-10.
+then a joint grid; stages 1 and 2 on DAS6 node402, the rest local); the spec and rule were approved in decide 27 (2026-10-27 03:48), and the build runs next. The CVPR abstract is due 2026-11-10.
 
 ## Parked ideas
 
@@ -101,7 +101,9 @@ then a joint grid; stages 1 and 2 on DAS6 node402, the rest local); the spec is 
   [user-read report](../user_read/2026-10-27_relational_genre.md) ·
   [spec](specs/2026-10-26-relational-genre-design.md) ·
   [rule](../../src/test/20261027_relational_genre/DECISION_RULE.md) ·
-  [handoff](handoffs/2026-10-27-r10-decide-26-handoff.md)
+  [handoff](handoffs/2026-10-27-r10-decide-26-handoff.md) ·
+  [next spec](specs/2026-10-27-recipe-sweep-design.md) (approved 2026-10-27 03:48 by the user, from the brief) ·
+  [next rule](../../src/test/20261027_recipe_sweep/DECISION_RULE.md)
 
 ## 2026-10-26 · Encoders and genre round read: CLIP L/14 and SigLIP 1 pass held emotion, CLIP B/16 inconclusive, DINOv2 fails; a relational genre term reaches the target on development data; a stage report of the new line first
 

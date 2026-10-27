@@ -1,7 +1,7 @@
 # Decision rule: model G's held emotion claim test (stage 0), the staged recipe sweep (stages 1 to 3), the held test of the pick (stage 4), and the ablation
 
 > Spec: [2026-10-27-recipe-sweep-design.md](../../../docs/superpowers/specs/2026-10-27-recipe-sweep-design.md)
-> @ <first commit> · Written 2026-10-27 03:45 (Amsterdam) before any implementation script exists; revised 03:59 after the
+> @ 35fcf68 (approved spec, first commit with the rule) · Written 2026-10-27 03:45 (Amsterdam) before any implementation script exists; revised 03:59 after the
 > review · Reviewer: a fresh Opus `xhigh` worker, 2026-10-27 03:59 (pass after fixes: four must-fix, nine should-fix and
 > twelve nit findings, all applied)
 
