@@ -214,6 +214,11 @@ stage 1 cannot start on the node by 14:00, when stage 2 has not ended by 22:00, 
 stages 1 and 2 run locally from the start, with 12-27's local GS-0.02 seed-0 run as G₀ (frozen; V1a shows the trainer
 reproduces it), and the node results are reported only. The run chat measures the power draw of the first local run:
 under 200 W the runs go on by day; otherwise they wait for 19:00, and the held ablation follows them.
+**Exception, 2026-10-27 15:31 (user, after seeing the recommendation): "keep the node route and shift the
+deadlines".** The build ended after 14:00, so stage 1 starts on the node later in the evening. Both deadlines move by
+the same shift, the real start of stage 1 on the node minus 14:00: stage 1's start deadline is its real start (the run
+chat sets `RS_START_BY` to it), and stage 2 must end by that start plus 8 hours (22:00 plus the shift; `RS_END_BY`).
+The other fallback triggers stay as written: N1, N2 or N3 fails, or the node is lost and one rerun does not fix it.
 
 **Stage 1.** For each knob k: its knob gain g_k = the largest M over its counting values; none when no value counts.
 - **Grid knobs:** the knobs with g_k > 0; the 4 with the largest g_k when more qualify; ties to the number sheet's
