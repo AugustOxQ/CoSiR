@@ -3,14 +3,15 @@
 #   cluster launch --node node402 -- bash scripts/run_rs_node.sh check                       N1
 #   cluster launch --node node402 -- bash scripts/run_rs_node.sh smoke                       N2
 #   cluster launch --node node402 -- bash scripts/run_rs_node.sh shard --configs G G-repeat --seeds 0
+#   cluster launch --node node402 -- bash scripts/run_rs_node.sh vp                         V1c part (a) (rs_vp partitions, CPU; added by ticket 15)
 #   cluster launch --node node402 -- bash scripts/run_rs_node.sh n3                          N3 (rs_sweep n3, on the node's CPU)
 # shard: for each config in order, rs_train (finished runs skip) then rs_sweep score on the node's CPU, per seed.
 # A config name that fails to parse or a run that raises stops the shard (a failed run is a recorded outcome, not an error).
-# Dry: CLUSTER_DRY_RUN=1, or --plan as the last argument, prints the plan and touches nothing (no node contact, no mounts).
+# Dry: --plan as the last argument prints the plan and touches nothing (no node contact, no mounts).
 set -euo pipefail
-usage='usage: bash scripts/run_rs_node.sh check|smoke|n3|shard [--configs NAME...] [--seeds N...] [--plan]'
+usage='usage: bash scripts/run_rs_node.sh check|smoke|n3|vp|shard [--configs NAME...] [--seeds N...] [--plan]'
 mode=${1:-}
-case "$mode" in check|smoke|n3|shard) shift ;; *) echo "$usage" >&2; exit 2 ;; esac
+case "$mode" in check|smoke|n3|vp|shard) shift ;; *) echo "$usage" >&2; exit 2 ;; esac
 configs=() seeds=() plan=0 field=
 for arg in "$@"; do
     case "$arg" in
@@ -47,9 +48,9 @@ for item in json.load(open(sys.argv[1])):
         print(sys.argv[2] + '/' + item['remote'] + '\t' + item['local'])
 PY
 }
-if [[ "$plan" == 1 || "${CLUSTER_DRY_RUN:-0}" == 1 ]]; then
+if [[ "$plan" == 1 ]]; then
     echo "PLAN $mode: code=$CODE; node inputs=$NR; outputs=$NR/outputs -> $OUT; job-local root/tmp/home/cache under $JOB"
-    echo "PLAN configs=${configs[*]:-} seeds=${seeds[*]:-}; CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset} (shard, check and smoke need a single GPU index)"
+    echo "PLAN configs=${configs[*]:-} seeds=${seeds[*]:-}, CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset} (shard, check and smoke need a single GPU index)"
     echo "bind $CODE -> /project/CoSiR"
     echo "bind $NR/outputs -> $OUT"
     bind_list | while IFS=$'\t' read -r source target; do echo "bind $source -> $target"; done
@@ -57,6 +58,7 @@ if [[ "$plan" == 1 || "${CLUSTER_DRY_RUN:-0}" == 1 ]]; then
         check) echo 'run: python scripts/rs_node_check.py n1' ;;
         smoke) echo 'run: flock $JOB/gpu0.lock python scripts/rs_node_check.py n2' ;;
         n3) echo 'run: python rs_sweep.py n3 --machine node402' ;;
+        vp) echo 'run: python rs_vp.py partitions --machine node402 (V1c part (a), on the node CPU)' ;;
         shard) for c in "${configs[@]}"; do
                    echo "run: rs_train.py train --configs $c --seeds ${seeds[*]} --machine node402 --device cuda; then per seed S: rs_sweep.py score --machine node402 --runs $c --seed S"
                done ;;
@@ -67,7 +69,7 @@ fi
 [[ "$CODE" == /local/wding/jobs/*/code && "$JOB" == /local/wding/jobs/* ]] || {
     echo "REFUSING: a real run needs /local/wding/jobs/<tag>/code as cwd: $CODE" >&2; exit 1;
 }
-if [[ "$mode" != n3 ]]; then
+if [[ "$mode" != n3 && "$mode" != vp ]]; then
     # One GPU per job from the cluster allocation: launch sets CUDA_VISIBLE_DEVICES to the slot's device.
     [[ "${CUDA_VISIBLE_DEVICES:-}" =~ ^[0-9]+$ ]] || {
         echo "REFUSING: CUDA_VISIBLE_DEVICES must be one GPU index from cluster launch, got '${CUDA_VISIBLE_DEVICES:-unset}'" >&2; exit 1;
@@ -124,6 +126,9 @@ smoke)
     ;;
 n3)
     "$RS_PYTHON" "$round/rs_sweep.py" n3 --machine node402
+    ;;
+vp)
+    "$RS_PYTHON" "$round/rs_vp.py" partitions --machine node402
     ;;
 shard)
     for config in $RS_CONFIGS; do

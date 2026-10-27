@@ -701,3 +701,24 @@ def test_verdict_refuses_a_held_file_that_changed_since_v4c(staged, monkeypatch)
     with pytest.raises(AssertionError, match='SHA-256 differs'):
         S4.verdict(outputs, 'k6=0.0005', n_resamples=5, workers=1)
     assert not (outputs / 'stage4/verdict.json').exists()
+
+
+def put_other_held(outputs, other):
+    put_path = outputs / 'full/held' / other / 'genre__s0.npz'
+    put_path.parent.mkdir(parents=True)
+    put_path.write_bytes(b'x')
+
+
+def test_pick_refuses_a_second_candidate_with_held_outputs_and_names_it(staged):
+    outputs, fake = staged
+    put_other_held(outputs, 'k7=0.01')
+    with pytest.raises(S0.Refusal, match='V4d: no second candidate.*k7=0.01'):
+        S4.verdict(outputs, 'k6=0.0005', n_resamples=5, workers=1)
+    assert fake.calls == [] and not (outputs / 'stage4/verdict.json').exists()
+
+
+def test_pick_is_not_refused_for_a_removal_arms_held_outputs(staged):
+    outputs, fake = staged
+    put_other_held(outputs, f'k6=0.0005-no_{sheet.REMOVALS[0]}')
+    record = S4.verdict(outputs, 'k6=0.0005', n_resamples=5, workers=1)
+    assert (outputs / 'stage4/verdict.json').exists() and record
