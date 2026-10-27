@@ -49,7 +49,7 @@ PY
 }
 if [[ "$plan" == 1 || "${CLUSTER_DRY_RUN:-0}" == 1 ]]; then
     echo "PLAN $mode: code=$CODE; node inputs=$NR; outputs=$NR/outputs -> $OUT; job-local root/tmp/home/cache under $JOB"
-    echo "PLAN configs=${configs[*]:-} seeds=${seeds[*]:-}; CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset} (shard, check and smoke need a single GPU index)"
+    echo "PLAN configs=${configs[*]:-} seeds=${seeds[*]:-}, CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset} (shard, check and smoke need a single GPU index)"
     echo "bind $CODE -> /project/CoSiR"
     echo "bind $NR/outputs -> $OUT"
     bind_list | while IFS=$'\t' read -r source target; do echo "bind $source -> $target"; done
