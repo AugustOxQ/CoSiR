@@ -15,10 +15,10 @@ source is missing.
 """
 import argparse
 import hashlib
-import importlib.metadata
 import json
 import os
 import shlex
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -118,8 +118,17 @@ def input_manifest():
         for name, size in files(item).items():
             path = Path(item['local']) if kind(item) == 'file' else Path(item['local']) / name
             table[str(path)] = dict(sha256=sha(path), bytes=size, item=item['key'])
-    versions = {p: importlib.metadata.version(p) for p in VERSION_PACKAGES}
-    return dict(files=table, versions=versions, python=f'{sys.version_info.major}.{sys.version_info.minor}')
+    return dict(files=table, **env_versions())
+
+
+def env_versions():
+    """The shipped env's package versions and Python, read by the env's own interpreter: this script runs under the
+    system Python, which has no torch (the first --run failed there)."""
+    env = next(item['local'] for item in items() if item['key'] == 'env')
+    code = ('import importlib.metadata as m, json, sys; print(json.dumps(dict(versions={p: m.version(p) for p in %r}, '
+            'python=f"{sys.version_info.major}.{sys.version_info.minor}")))' % (VERSION_PACKAGES,))
+    out = subprocess.run([f'{env}/bin/python', '-I', '-c', code], capture_output=True, text=True, check=True).stdout
+    return json.loads(out)
 
 
 def write_manifest(node):

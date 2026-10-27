@@ -1153,3 +1153,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-27-r10-build-8-handoff.md
 - New chat: tab 'r10 build 8', session 6b187b7a-3b07-4455-bfc1-34e24d98acb7
 
+[brief] CoSiR: r10 build 8 -> r10 build 9 (2026-10-27 11:43 Amsterdam)
+- Done: tickets 05 and 14 merged (286 tests pass); node402 has the round's inputs (27.4 GiB, verified equal); the k11 full-scale gate passes; V4a passes in scratch.
+- State: 06 and 08 built and reviewed (numbers correct; test gaps and two code fixes to apply); 07 built, not reviewed; 12 half done.
+- Next: fixers for 06 and 08, a review of 07, a worker to finish 12, then 09, 10, 11, 13, 15.
+- Blocked: nothing. The build will end in the afternoon, later than the 10:30 planned.
+- Handoff: docs/superpowers/handoffs/2026-10-27-r10-build-9-handoff.md
+- New chat: tab 'r10 build 9', session e4726375-b39f-4421-932e-c9c60cc2248e
+
