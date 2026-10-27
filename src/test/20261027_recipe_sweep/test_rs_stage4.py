@@ -1,6 +1,8 @@
 """Ticket 09: the stage 4 scorer. CPU only, synthetic data; the check on the real arrays is the gate
 (`rs_stage4 check v4a`)."""
 import json
+import os
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -10,12 +12,24 @@ import rs_paths as paths
 import rs_sheet as sheet
 import rs_stage0 as S0
 import rs_stage4 as S4
+import rs_full as F
 import rb_part2_report
 import rb_score
 import rg_held
 
 N = 80                                     # a stand-in for H's 12,281 rows
 RANGES = sheet.RANGES
+CANDIDATE_FIXED = S0.candidate_fixed
+
+
+@pytest.fixture
+def tmp_path():
+    """Held smoke fixtures belong under the smoke root, also with pytest's default TMPDIR."""
+    root = Path(os.environ.get('TMPDIR', paths.SMOKE_ROOT))
+    if not paths.smoke_ok(root):
+        root = paths.SMOKE_ROOT
+    root.mkdir(parents=True, exist_ok=True)
+    return Path(tempfile.mkdtemp(prefix='rs-stage4-', dir=root))
 
 
 # ------------------------------------------------------------------ outcomes at their edges
@@ -221,7 +235,7 @@ def put(outputs, relative, record):
 
 
 def test_candidate_is_the_stage_3_pick(tmp_path):
-    put(tmp_path, 'stage3/verdict.json', dict(outcome='PICK', pick='k6=0.0005', pick_config={}, smoke=False))
+    put(tmp_path, 'stage3/verdict.json', dict(outcome='PICK', pick='k6=0.0005', pick_config=dict(sheet.parse('k6=0.0005'), remove=[]), smoke=False))
     got = S4.stage_candidate(tmp_path)
     assert got['name'] == 'k6=0.0005' and got['kind'] == 'PICK'
     assert got['upstream']['file'] == 'stage3/verdict.json' and len(got['upstream']['sha256']) == 64
@@ -265,14 +279,24 @@ def test_missing_stage_3_file_without_that_outcome_is_an_error(tmp_path, files):
         S4.stage_candidate(tmp_path)
 
 
-def test_two_machines_need_the_machine_named(tmp_path):
+def test_every_machine_must_have_ended_without_candidates(tmp_path):
     put(tmp_path, 'sweep/local/stage1.json', dict(outcome='SWEEP-NONE'))
     put(tmp_path, 'sweep/node402/stage1.json', dict(outcome='GRID-1'))
-    with pytest.raises(S0.Refusal, match='--machine'):
-        S4.stage_candidate(tmp_path)
-    assert S4.stage_candidate(tmp_path, machine='local')['name'] == 'G'
     with pytest.raises(S0.Refusal):
-        S4.stage_candidate(tmp_path, machine='node402')
+        S4.stage_candidate(tmp_path)
+    put(tmp_path, 'sweep/node402/stage2.json', dict(outcome='TOP-NONE'))
+    got = S4.stage_candidate(tmp_path)
+    assert got['name'] == 'G'
+    assert set(got['upstream']['machines']) == {'local', 'node402'}
+    for machine, record in got['upstream']['machines'].items():
+        assert record['sha256'] == S4.sha_file(tmp_path / record['file'])
+        assert record['file'].startswith(f'sweep/{machine}/')
+
+
+def test_stage_candidate_refuses_a_pick_config_that_does_not_name_the_pick(tmp_path):
+    put(tmp_path, 'stage3/verdict.json', dict(outcome='PICK', pick='k6=0.0005', pick_config={}, smoke=False))
+    with pytest.raises(S0.Refusal, match='pick_config'):
+        S4.stage_candidate(tmp_path)
 
 
 def test_candidate_held_folder_and_sidecar_arm(tmp_path):
@@ -289,17 +313,20 @@ class Fake:
 
     def __init__(self, monkeypatch, outputs, labels, cand, t, d_emotion=0.012, lo_emotion=0.004):
         self.calls = []
+        self.recorded = []
         monkeypatch.setattr(S4, 'held_labels', lambda: {a: labels for a in S4.ASPECTS})
 
         def candidate_fixed(c, scale, folder, aspect='emotion', recorded=None):
+            self.recorded.append(('fixed', aspect, recorded))
             self.calls.append(('fixed', c.label, scale, Path(folder), aspect))
             return cand, {str(s): dict(path=f'{c.label}/{aspect}__s{s}', output_sha256=f'{s}' * 64) for s in S4.SEEDS}
 
         def score_scale(c, scale, cache, n, w, recorded=None, prefix=None):
+            self.recorded.append(('score_scale', 'emotion', recorded))
             self.calls.append(('score_scale', c.label, scale, Path(cache), prefix))
             return dict(candidate=c.label, d=d_emotion, interval=[lo_emotion, 0.02], A_cand=.1, A_e={'B1-r20': .09},
                         outcome_id=S0.outcome_id(d_emotion, lo_emotion, scale, prefix), bootstrap_d=[],
-                        eligibility=dict(eligible_seeds={'B1': [0, 1, 2, 3, 4]}), arms=[c.label, 'B1'])
+                        eligibility=dict(eligible_seeds={a: list(S4.SEEDS) for a in (c.label,) + S4.BASELINES}), arms=[c.label, 'B1'])
         monkeypatch.setattr(S0, 'candidate_fixed', candidate_fixed)
         monkeypatch.setattr(S0, 'score_scale', score_scale)
         monkeypatch.setattr(S4, 't_fixed', lambda aspect: (t, dict(path='T', sha256='0' * 64)))
@@ -308,8 +335,14 @@ class Fake:
 @pytest.fixture
 def staged(tmp_path, monkeypatch, world):
     labels, cand, _, t = world
-    put(tmp_path, 'stage3/verdict.json', dict(outcome='PICK', pick='k6=0.0005', pick_config={}, smoke=False))
+    put(tmp_path, 'stage3/verdict.json', dict(outcome='PICK', pick='k6=0.0005', pick_config=dict(sheet.parse('k6=0.0005'), remove=[]), smoke=False))
     write_gate(tmp_path)
+    put(tmp_path, 'gates/v4a_train.json', {'pass': True, 'smoke': False, 'code_sha256': F.code_sha256()})
+    put(tmp_path, 'full/held/k6=0.0005/v4c.json', dict(name='k6=0.0005', rows=paths.N_HELD,
+        list_sha256=paths.HELD_SHA256,
+        outputs={f'{a}__s{s}': f'a{i + s}' * 32 for i, a in enumerate(S4.ASPECTS) for s in S4.SEEDS},
+        output_files={f'{a}__s{s}': f'{i + s}' * 64 for i, a in enumerate(S4.ASPECTS)
+                                             for s in S4.SEEDS}, **{'pass': True}))
     fake = Fake(monkeypatch, tmp_path, labels, cand, t)
     return tmp_path, fake
 
@@ -480,8 +513,191 @@ def test_report_blocks_give_vs_all_per_baseline_and_d_g(world):
         m = got[aspect]['vs_B1_to_B6']
         assert m['d'] == ref['d'] and [m['lo'], m['hi']] == ref['interval'] and m['max_entry'] == ref['max_entry']
         assert set(got[aspect]['per_baseline']) == set(S4.BASELINES) and got[aspect]['per_baseline']['B2'] is None
+    for aspect in S4.ASPECTS:
+        assert got[aspect]['b_matched'] == got[aspect]['per_baseline']['B1']
     d_g = got['genre']['d_G']
     assert set(d_g) == {'d', 'lo', 'hi', 'A_cand', 'A_G'} and abs(d_g['d'] - (d_g['A_cand'] - d_g['A_G'])) < 1e-12
     none = S4.report_blocks('G', by_aspect, comp, dict(eligible, G=eligible['k2=8']), {a: labels for a in S4.ASPECTS},
                             emotion_margin, None, 6, 1)
     assert all(b['d_G'] is None for b in none.values())                      # the candidate is G: nothing to subtract
+
+
+@pytest.mark.parametrize('folder', [paths.ROUND, paths.TEST])
+def test_code_sha256_is_independent_of_the_working_directory(monkeypatch, folder):
+    monkeypatch.chdir(paths.ROUND.parents[2])
+    expected = S4.code_sha256()
+    monkeypatch.chdir(folder)
+    assert S4.code_sha256() == expected
+
+
+def test_verdict_and_v4a_use_each_aspects_labels_and_instructed_image(staged, monkeypatch, world):
+    outputs, _ = staged
+    labels, cand, _, t = world
+    # Different row orders change the AMI; relabelling cluster IDs alone would not.
+    ys = {a: np.roll(labels, i * 9) for i, a in enumerate(S4.ASPECTS)}
+    ts = {a: {0: {'r20': np.roll(t[0]['r20'], i * 7, axis=1)}} for i, a in enumerate(S4.ASPECTS)}
+    monkeypatch.setattr(S4, 'held_labels', lambda: ys)
+    monkeypatch.setattr(S4, 't_fixed', lambda a: (ts[a], dict(path=a, sha256=a)))
+    expected = {a: S4.d_t_block(cand, ts[a], ys[a], a, 5, 1) for a in S4.ASPECTS}
+    record = S4.verdict(outputs, 'k6=0.0005', n_resamples=5, workers=1)
+    for a in S4.ASPECTS:
+        for key in ('d', 'lo', 'hi', 'A_cand', 'A_T', 'labelled_rows', 'outcome'):
+            assert record['aspects'][a][key] == expected[a][key], (a, key)
+    frozen = {a: dict(d=e['d'], interval=[e['lo'], e['hi']], A_G=e['A_cand'], A_T=e['A_T'],
+                      bootstrap_d=e['bootstrap_d']) for a, e in expected.items()}
+    monkeypatch.setattr(S4, 'frozen_d_t', lambda: frozen)
+    monkeypatch.setattr(S4, 'frozen_partitions_equal', lambda *a: {'pass': True})
+    gate = S4.check_v4a(outputs, workers=1, n_resamples=5, smoke=True)
+    assert gate['pass'] is True
+    assert gate['ours'] == record['aspects']
+
+
+@pytest.mark.parametrize('change', [dict(smoke=True), dict(code_sha256={'rs_stage4.py': 'stale'})])
+def test_full_gate_refuses_smoke_or_stale_scorer(tmp_path, change):
+    import rs_full as F
+    put(tmp_path, 'gates/v4a_train.json', {'pass': True, 'smoke': False, 'code_sha256': F.code_sha256()})
+    write_gate(tmp_path, **change)
+    with pytest.raises(S0.Refusal):
+        F.require_v4a(tmp_path)
+
+
+@pytest.mark.parametrize('change', [dict(smoke=True), {'pass': False}, dict(code_sha256={'rs_full.py': 'stale'})])
+def test_pick_needs_the_current_training_gate_before_any_held_read(staged, change):
+    outputs, fake = staged
+    path = outputs / 'gates/v4a_train.json'
+    put(outputs, 'gates/v4a_train.json', dict(json.loads(path.read_text()), **change))
+    with pytest.raises((S0.Refusal, AssertionError)):
+        S4.verdict(outputs, 'k6=0.0005', n_resamples=5, workers=1)
+    assert fake.calls == []
+
+
+def test_pick_binds_all_reads_to_v4c_and_records_both_gates(staged):
+    outputs, fake = staged
+    record = S4.verdict(outputs, 'k6=0.0005', n_resamples=5, workers=1)
+    v4c = json.loads((outputs / 'full/held/k6=0.0005/v4c.json').read_text())
+    for kind, aspect, recorded in fake.recorded:
+        assert recorded == {str(s): v4c['output_files'][f'{aspect}__s{s}'] for s in S4.SEEDS}, (kind, aspect)
+    for gate, rel in (('v4a_train', 'gates/v4a_train.json'), ('v4c', 'full/held/k6=0.0005/v4c.json')):
+        assert record['gates'][gate] == S4.sha_file(outputs / rel)
+
+
+@pytest.mark.parametrize('failure', ['training', 'held', 'v4c'])
+def test_failed_pick_has_no_outcome_and_preserves_the_cause_without_scoring(staged, failure):
+    outputs, fake = staged
+    if failure == 'training':
+        put(outputs, 'full/train/k6=0.0005/failed__s2.json', dict(cause='non-finite loss in style'))
+    elif failure == 'held':
+        put(outputs, 'full/held/k6=0.0005/failed__style__s2.json', dict(problems=['not finite', 'not finite']))
+    else:
+        put(outputs, 'full/held/k6=0.0005/v4c.json', {'pass': False, 'cause': 'style s2 failed twice'})
+    if failure != 'v4c':
+        path = outputs / 'full/held/k6=0.0005/v4c.json'
+        path.rename(path.with_name('v4c.saved.json'))
+    record = S4.verdict(outputs, 'k6=0.0005', n_resamples=5, workers=1)
+    assert all(b['outcome'] is None for b in record['aspects'].values())
+    assert record['emotion_margin']['outcome'] is None
+    assert 'style' in record['v_failure']
+    assert fake.calls == []
+    assert json.loads((outputs / 'stage4/verdict.json').read_text()) == record
+    with pytest.raises(S0.Refusal, match='no outcome'):
+        S4.report(outputs, n_resamples=5, workers=1)
+
+
+def test_pick_needs_a_complete_v4c_record(staged):
+    outputs, fake = staged
+    path = outputs / 'full/held/k6=0.0005/v4c.json'
+    record = json.loads(path.read_text())
+    record['output_files'].pop('style__s2')
+    put(outputs, 'full/held/k6=0.0005/v4c.json', record)
+    with pytest.raises(S0.Refusal, match='V4c'):
+        S4.verdict(outputs, 'k6=0.0005', n_resamples=5, workers=1)
+    assert fake.calls == []
+
+
+def test_verdict_never_shrinks_a_real_held_claim(staged, monkeypatch):
+    outputs, fake = staged
+    monkeypatch.setattr(paths, 'smoke_ok', lambda out: False)
+    with pytest.raises(AssertionError, match='2,000'):
+        S4.verdict(outputs, 'k6=0.0005', n_resamples=5, workers=1)
+    assert fake.calls == [] and not (outputs / 'stage4/verdict.json').exists()
+
+
+def test_shrunk_scratch_verdict_is_marked_smoke(staged):
+    outputs, _ = staged
+    assert paths.smoke_ok(outputs)
+    record = S4.verdict(outputs, 'k6=0.0005', n_resamples=5, workers=1)
+    assert record['smoke'] is True
+
+
+def test_t_fixed_reads_each_aspects_own_partition_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(paths, 'RB_PART2', tmp_path)
+    for i, aspect in enumerate(S4.ASPECTS):
+        path = tmp_path / f'partitions/full/T/{aspect}__s0__r20.npz'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        np.savez(path, labels=np.full((3, paths.N_HELD), i, dtype=np.int32))
+        put(tmp_path, str(path.with_suffix('.json').relative_to(tmp_path)), dict(
+            partitions_sha256=S4.sha_file(path), identity=dict(rows=paths.N_HELD, held_sha256=paths.HELD_SHA256)))
+    for i, aspect in enumerate(S4.ASPECTS):
+        fixed, source = S4.t_fixed(aspect)
+        assert np.all(fixed[0]['r20'] == i), aspect
+        assert source['path'].endswith(f'{aspect}__s0__r20.npz')
+        assert source['sha256'] == S4.sha_file(source['path'])
+
+
+def test_check_v4a_rejects_a_changed_real_partition_file(tmp_path, monkeypatch, world):
+    labels, cand, _, t = world
+    Fake(monkeypatch, tmp_path, labels, cand, t)
+    monkeypatch.setattr(paths, 'RG_STAGE_C', tmp_path / 'frozen')
+    for aspect in S4.ASPECTS:
+        for seed in S4.SEEDS:
+            path = paths.RG_STAGE_C / f'partitions/{paths.G_ARM}/{aspect}__s{seed}__r20.npz'
+            path.parent.mkdir(parents=True, exist_ok=True)
+            np.savez(path, labels=cand[seed]['r20'])
+    ours = {a: S4.d_t_block(cand, t, labels, a, 5, 1) for a in S4.ASPECTS}
+    monkeypatch.setattr(S4, 'frozen_d_t', lambda: {a: dict(d=e['d'], A_G=e['A_cand'], A_T=e['A_T'],
+        interval=[e['lo'], e['hi']], bootstrap_d=e['bootstrap_d']) for a, e in ours.items()})
+    assert S4.check_v4a(tmp_path, workers=1, n_resamples=5, smoke=True)['pass'] is True
+    path = paths.RG_STAGE_C / f'partitions/{paths.G_ARM}/style__s2__r20.npz'
+    changed = cand[2]['r20'].copy()
+    changed[0, 0] += 1
+    np.savez(path, labels=changed)
+    gate = S4.check_v4a(tmp_path, workers=1, n_resamples=5, smoke=True)
+    assert gate['pass'] is False and gate['failing'] == ['partitions/style']
+    assert gate['items']['partitions/style']['equal']['2'] is False
+
+
+@pytest.mark.parametrize('changed,allowed', [('rs_train.py', True), ('rb_score.py', False)])
+def test_report_compares_only_scorer_files_and_records_both_code_stamps(staged, monkeypatch, changed, allowed):
+    outputs, _ = staged
+    v = S4.verdict(outputs, 'k6=0.0005', n_resamples=5, workers=1)
+    now = dict(v['code_sha256'], **{changed: '0' * 64})
+    monkeypatch.setattr(S4, 'code_sha256', lambda: now)
+    write_gate(outputs)
+    rcol = put(outputs, 'rcol.json', {})
+    monkeypatch.setattr(rb_score, 'read_rcol_eligible', lambda scale: ({}, rcol))
+    monkeypatch.setattr(rb_score, 'eligible_seeds', lambda *a: v['emotion_margin']['eligible_seeds'])
+    monkeypatch.setattr(rg_held, '_frozen_comparator_partitions', lambda *a: {})
+    monkeypatch.setattr(S4, 'report_blocks', lambda *a, **k: {'genre': {}})
+    monkeypatch.setattr(S4, 'genre_leiden', lambda *a, **k: {})
+    if not allowed:
+        with pytest.raises((S0.Refusal, AssertionError), match='scor|code'):
+            S4.report(outputs, n_resamples=5, workers=1)
+        assert not (outputs / 'stage4/reported.json').exists()
+    else:
+        record = S4.report(outputs, n_resamples=5, workers=1)
+        assert record['verdict_code_sha256'] == v['code_sha256']
+        assert record['code_sha256'] == now
+
+
+
+def test_verdict_refuses_a_held_file_that_changed_since_v4c(staged, monkeypatch):
+    outputs, _ = staged
+    path = outputs / 'full/held/k6=0.0005/style__s0.npz'
+    path.write_bytes(b'changed held output')
+    monkeypatch.setattr(S0, 'candidate_fixed', CANDIDATE_FIXED)
+    monkeypatch.setattr(S0, 'load_candidate', lambda cand, scale, aspect, seed:
+                        (np.zeros((N, 2)), S4.sha_file(path)))
+    monkeypatch.setattr(rb_score, 'fixed_partitions', lambda *a, **k: pytest.fail('partitioning before hash check'))
+    with pytest.raises(AssertionError, match='SHA-256 differs'):
+        S4.verdict(outputs, 'k6=0.0005', n_resamples=5, workers=1)
+    assert not (outputs / 'stage4/verdict.json').exists()

@@ -22,7 +22,7 @@ Files (under --outputs, default `rs_paths.OUTPUTS`):
 CLI (`python rs_stage4.py ...`):
   check v4a [--smoke]    G's saved held outputs in c's place against 12-27's `stage_c/verdict.json` (genre) and
                          `reported.json` (emotion and style, margin "T") within 1e-6 (a smoke: 20 draws, point values only)
-  verdict --candidate NAME [--machine M]   stage4/verdict.json; refuses unless NAME is c* (or G where G is the candidate)
+  verdict --candidate NAME   stage4/verdict.json; refuses unless NAME is c* (or G where G is the candidate)
   report                 stage4/reported.json, only after the verdict file exists
 """
 import argparse
@@ -51,9 +51,12 @@ RANGES = sheet.RANGES                      # r_a (rule §3)
 N_RESAMPLES = rg_held.N_RESAMPLES          # 2000
 TOL = S0.TOL                               # V4a: 1e-6
 HELD_SHA256, N_HELD = paths.HELD_SHA256, paths.N_HELD
-PE_PREFIX = {'sample': 'PE', 'full': 'PE'}   # PE-GO, PE-MM, PE-IN, PE-NO (rule §4.4: the thresholds of §4.1)
+PE_PREFIX = {'full': 'PE'}   # PE-GO, PE-MM, PE-IN, PE-NO (rule §4.4: the thresholds of §4.1)
 G_NAME = 'G'
 Refusal = S0.Refusal
+# Report/verdict parity binds scoring, labels and partitions; the current V4a gate still binds the full closure.
+SCORER_FILES = ('rs_stage4.py', 'rs_stage0.py', 'rs_sheet.py', 'rs_paths.py', 'rg_held.py', 'rb_score.py',
+                'rb_part2_report.py', 'ct_held.py', 'ct_score.py', 'ct_diag.py', 'pav_score.py')
 
 
 # ================================================================== the rule's outcome logic (pure)
@@ -118,7 +121,8 @@ def _margin_out(m):
 
 def per_baseline_margins(fixed, labels, eligible, label, n_resamples=N_RESAMPLES, workers=8):
     """The candidate's margin against each of B1 to B6 alone (12-24's `margin`: d = A_c minus the larger of the
-    baseline's r20 and own readings; its own `default_rng(0)` over (c, Bk)); None for a baseline with no eligible seed."""
+    baseline's r20 and own readings; its own `default_rng(0)` over (c, Bk)); None for a baseline with no eligible seed.
+    Single-baseline margins beyond B1 (`b_matched`) are extra readings, deciding nothing."""
     result = {}
     for arm in BASELINES:
         if not eligible[arm]:
@@ -168,7 +172,7 @@ def code_sha256():
         if name in seen:
             continue
         spec = importlib.util.find_spec(name)
-        if spec is None or not spec.origin or not _under_src_test(spec.origin):
+        if spec is None or not spec.has_location or not str(spec.origin).endswith('.py') or not _under_src_test(spec.origin):
             seen[name] = None
             continue
         seen[name] = Path(spec.origin)
@@ -181,6 +185,11 @@ def code_sha256():
 
 def gate_path(outputs, name='v4a_scorer'):
     return S0.gate_path(outputs, name)
+
+
+def scorer_sha256(stamp=None):
+    stamp = code_sha256() if stamp is None else stamp
+    return {name: stamp[name] for name in SCORER_FILES}
 
 
 def require_v4a_scorer(outputs):
@@ -222,10 +231,19 @@ def candidate(outputs, name):
     return S0.Candidate(name, paths.full_root(outputs) / 'held' / name, name)
 
 
-def stage_candidate(outputs, machine=None):
+def score_aspect(cand, aspect, labels, cache, n_resamples=N_RESAMPLES, workers=8, recorded=None):
+    """The same per-aspect read and statistic for the held verdict and V4a's G replay."""
+    fixed_c, src = S0.candidate_fixed(cand, 'full', cache, aspect, recorded=recorded)
+    fixed_t, t_src = t_fixed(aspect)
+    res = d_t_block(fixed_c, fixed_t, labels[aspect], aspect, n_resamples, workers)
+    return res, fixed_c, dict(candidate_outputs=src, T_partitions=t_src)
+
+
+def stage_candidate(outputs):
     """Who stage 4 scores: {name, kind, upstream: {file, sha256, outcome}}. `stage3/verdict.json` decides (PICK: its
     `pick`; KEEP-G: G). Where that file does not exist, the candidate is G only when stage 1 gave SWEEP-NONE or stage 2
-    TOP-NONE (`sweep/<machine>/stage{1,2}.json`); any other missing stage 3 file is an error."""
+    TOP-NONE on every machine with a stage 1 file, using `rs_full.sweep_ended_without_candidates`."""
+    import rs_full
     outputs = Path(outputs)
     stage3 = outputs / 'stage3/verdict.json'
     if stage3.is_file():
@@ -233,6 +251,10 @@ def stage_candidate(outputs, machine=None):
         if v.get('smoke') is not False:
             raise Refusal(f'{stage3} is a smoke record (smoke={v.get("smoke")!r}): stage 4 reads the real one')
         if v.get('outcome') == 'PICK' and isinstance(v.get('pick'), str) and v['pick']:
+            try:
+                rs_full.require_stage3(outputs, sheet.parse(v['pick']))
+            except (AssertionError, ValueError, KeyError) as error:
+                raise Refusal(f'{stage3}: {error}') from error
             name, kind = v['pick'], 'PICK'
         elif v.get('outcome') == 'KEEP-G' and v.get('pick') is None:
             name, kind = G_NAME, 'KEEP-G'
@@ -241,23 +263,16 @@ def stage_candidate(outputs, machine=None):
                           f'run name nor KEEP-G with no pick')
         return dict(name=name, kind=kind, upstream=dict(file='stage3/verdict.json', sha256=sha_file(stage3),
                                                         outcome=v['outcome'], pick=v['pick']))
-    machines = [machine] if machine else [m for m in rs_sweep.MACHINES if rs_sweep.sweep_path(outputs, m, 'stage1').is_file()]
-    if len(machines) != 1:
-        raise Refusal(f'{stage3} is missing and the sweep files are on {machines or "no machine"}: '
-                      f'name the machine of stages 1 and 2 with --machine')
-    s1 = rs_sweep.sweep_path(outputs, machines[0], 'stage1')
-    s2 = rs_sweep.sweep_path(outputs, machines[0], 'stage2')
-    if not s1.is_file():
-        raise Refusal(f'{stage3} is missing and {s1} is missing')
-    outcome1 = json.loads(s1.read_text())['outcome']
-    if outcome1 == 'SWEEP-NONE':
-        return dict(name=G_NAME, kind='SWEEP-NONE', upstream=dict(file=str(s1.relative_to(outputs)),
-                                                                  sha256=sha_file(s1), outcome=outcome1))
-    if s2.is_file() and json.loads(s2.read_text())['outcome'] == 'TOP-NONE':
-        return dict(name=G_NAME, kind='TOP-NONE', upstream=dict(file=str(s2.relative_to(outputs)),
-                                                                sha256=sha_file(s2), outcome='TOP-NONE'))
-    raise Refusal(f'{stage3} is missing, and neither stage 1 (SWEEP-NONE; it gave {outcome1!r}) nor stage 2 '
-                  f'(TOP-NONE; {s2} {"gave another outcome" if s2.is_file() else "is missing"}) says G stays')
+    ended = rs_full.sweep_ended_without_candidates(outputs)
+    if not ended:
+        raise Refusal(f'{stage3} is missing and not every machine ended in SWEEP-NONE or TOP-NONE')
+    machines = {}
+    for machine, outcome in ended.items():
+        stage = 'stage1' if outcome == 'SWEEP-NONE' else 'stage2'
+        path = rs_sweep.sweep_path(outputs, machine, stage)
+        machines[machine] = dict(file=str(path.relative_to(outputs)), sha256=sha_file(path), outcome=outcome)
+    kind = 'SWEEP-NONE' if all(v == 'SWEEP-NONE' for v in ended.values()) else 'TOP-NONE'
+    return dict(name=G_NAME, kind=kind, upstream=dict(next(iter(machines.values())), machines=machines))
 
 
 # ================================================================== the verdict
@@ -272,37 +287,81 @@ def _keep_or_write(path, record):
     return record
 
 
-def verdict(outputs, name, machine=None, n_resamples=N_RESAMPLES, workers=8):
-    """stage4/verdict.json: per aspect d_T and its outcome, the emotion margin over PercepT and its outcome. The gate
-    first; then the candidate must be what stage 3 (or stages 1 and 2) say. Written once: a second call must agree."""
+def pick_validity(outputs, cand):
+    """PICK requires both V4a halves and V4c. Terminal seed failures leave all held claims without an outcome."""
+    import rs_full
+    try:
+        gates = rs_full.require_v4a(outputs)
+        rs_full.refuse_second_candidate(paths.full_root(outputs), cand.label, sheet.parse(cand.label))
+    except AssertionError as error:
+        raise Refusal(str(error)) from error
+    failures = {}
+    for seed in SEEDS:
+        files = [rs_full.rg_full.failed_path(paths.full_root(outputs), cand.label, seed)]
+        files += [S0.failed_path(cand.held_dir, aspect, seed) for aspect in ASPECTS]
+        for path in files:
+            if path.is_file():
+                failures[str(path)] = dict(sha256=sha_file(path), record=json.loads(path.read_text()))
+    path = cand.held_dir / 'v4c.json'
+    v4c = json.loads(path.read_text()) if path.is_file() else None
+    if v4c is not None:
+        gates['v4c'] = sha_file(path)
+    if failures:
+        return gates, None, f'V4d: no outcome after terminal seed failure: {failures}', failures
+    if v4c is None:
+        raise Refusal(f'V4c record {path} is missing')
+    if v4c.get('pass') is not True:
+        return gates, None, f'V4c: no outcome: {v4c}', {}
+    expected = {f'{a}__s{s}' for a in ASPECTS for s in SEEDS}
+    if (v4c.get('name'), v4c.get('rows'), v4c.get('list_sha256')) != (cand.label, N_HELD, HELD_SHA256):
+        raise Refusal(f'V4c: {path} does not name this candidate and H')
+    if set(v4c.get('outputs', {})) != expected or set(v4c.get('output_files', {})) != expected:
+        raise Refusal(f'V4c: {path} does not bind all five seeds of every aspect')
+    recorded = {a: {str(s): v4c['output_files'][f'{a}__s{s}'] for s in SEEDS} for a in ASPECTS}
+    return gates, recorded, None, {}
+
+
+def verdict(outputs, name, n_resamples=N_RESAMPLES, workers=8):
+    """stage4/verdict.json: the gated per-aspect d_T and emotion margin, or no outcome with the V4d cause.
+    Written once: a second call must agree."""
     outputs = Path(outputs)
+    assert n_resamples == N_RESAMPLES or paths.smoke_ok(outputs), 'a held verdict requires 2,000 draws outside scratch'
     gate_sha = require_v4a_scorer(outputs)
-    who = stage_candidate(outputs, machine)
+    who = stage_candidate(outputs)
     if name != who['name']:
         raise Refusal(f'{name!r} is not c*: {who["upstream"]["file"]} names {who["name"]!r} ({who["kind"]}); '
                       f'`verdict --candidate` takes only that candidate')
     cand = candidate(outputs, name)
-    labels = held_labels()
-    cache = outputs / 'stage4/partitions'
-    # the emotion margin first: it also writes the candidate's emotion partitions, which d_T,emotion reads
-    block = S0.score_scale(cand, 'full', cache, n_resamples, workers, prefix=PE_PREFIX)
+    gates, recorded, failure, failures = dict(v4a_scorer=gate_sha), None, None, {}
+    if who['kind'] == 'PICK':
+        gates, recorded, failure, failures = pick_validity(outputs, cand)
     aspects, sources = {}, {}
-    for aspect in ASPECTS:
-        fixed_c, src = S0.candidate_fixed(cand, 'full', cache / 'full' / cand.label, aspect)
-        fixed_t, t_src = t_fixed(aspect)
-        res = d_t_block(fixed_c, fixed_t, labels[aspect], aspect, n_resamples, workers)
-        res.pop('bootstrap_d')
-        res.pop('per_seed')
-        aspects[aspect] = res
-        sources[aspect] = dict(candidate_outputs=src, T_partitions=t_src)
-    entries = block['A_e']
-    margin = dict(d=block['d'], lo=block['interval'][0], hi=block['interval'][1], A_cand=block['A_cand'], A_e=entries,
-                  max_entry=max(entries, key=entries.get), outcome=block['outcome_id'], arms=block['arms'],
-                  eligible_seeds=block['eligibility']['eligible_seeds'])
+    if failure is not None:
+        aspects = {a: dict(outcome=None, v_failure=failure) for a in ASPECTS}
+        margin = dict(outcome=None, v_failure=failure)
+    else:
+        labels = held_labels()
+        cache = outputs / 'stage4/partitions'
+        # The emotion margin also writes the partitions that d_T,emotion reads.
+        block = S0.score_scale(cand, 'full', cache, n_resamples, workers,
+                               recorded=None if recorded is None else recorded['emotion'], prefix=PE_PREFIX)
+        for aspect in ASPECTS:
+            res, _, src = score_aspect(cand, aspect, labels, cache / 'full' / cand.label, n_resamples, workers,
+                                       recorded=None if recorded is None else recorded[aspect])
+            res.pop('bootstrap_d')
+            res.pop('per_seed')
+            aspects[aspect] = res
+            sources[aspect] = src
+        entries = block['A_e']
+        margin = dict(d=block['d'], lo=block['interval'][0], hi=block['interval'][1], A_cand=block['A_cand'], A_e=entries,
+                      max_entry=max(entries, key=entries.get), outcome=block['outcome_id'], arms=block['arms'],
+                      eligible_seeds=block['eligibility']['eligible_seeds'])
+    stamp = code_sha256()
     record = dict(schema=1, stage=4, rule_commit=paths.RULE_COMMIT, held_sha256=HELD_SHA256, candidate=name,
-                  kind=who['kind'], n_resamples=n_resamples, ranges=dict(RANGES), aspects=aspects,
-                  emotion_margin=margin, sources=dict(upstream=who['upstream'], by_aspect=sources),
-                  gates=dict(v4a_scorer=gate_sha), code_sha256=code_sha256(),
+                  kind=who['kind'], n_resamples=n_resamples, smoke=n_resamples != N_RESAMPLES,
+                  ranges=dict(RANGES), aspects=aspects,
+                  emotion_margin=margin, sources=dict(upstream=who['upstream'], by_aspect=sources, failures=failures),
+                  gates=gates, code_sha256=stamp, scorer_sha256=scorer_sha256(stamp), v_failure=failure,
                   v4b='pending (ticket 11, the re-derivation from the rule)')
     return _keep_or_write(outputs / 'stage4/verdict.json', record)
 
@@ -323,6 +382,7 @@ def report_blocks(label, fixed_by_aspect, comp_fixed, eligible, labels, verdict_
         else:
             block['vs_B1_to_B6'] = _margin_out(rb_part2_report.margin(fixed, y, eligible, arms, n_resamples, workers))
         block['per_baseline'] = per_baseline_margins(fixed, y, eligible, label, n_resamples, workers)
+        block['b_matched'] = block['per_baseline']['B1']
         block['d_G'] = (None if g_fixed_by_aspect is None else
                         {k: v for k, v in d_g_block(fixed_by_aspect[aspect], g_fixed_by_aspect[aspect], y,
                                                     n_resamples, workers).items() if k != 'bootstrap_d'})
@@ -353,7 +413,11 @@ def report(outputs, n_resamples=N_RESAMPLES, workers=8):
         raise Refusal(f'{vpath} is missing: the reported block runs only after the verdict file exists')
     require_v4a_scorer(outputs)
     v = json.loads(vpath.read_text())
-    assert v['code_sha256'] == code_sha256(), f'{vpath} was written by other code than is on disk now'
+    stamp = code_sha256()
+    if scorer_sha256(v['code_sha256']) != scorer_sha256(stamp):
+        raise Refusal(f'{vpath} was written by other scorer code than is on disk now')
+    if v.get('v_failure') is not None:
+        raise Refusal(f'{vpath}: no outcome: {v["v_failure"]}')
     cand = candidate(outputs, v['candidate'])
     labels = held_labels()
     cache = outputs / 'stage4/partitions'
@@ -372,7 +436,7 @@ def report(outputs, n_resamples=N_RESAMPLES, workers=8):
                   aspects=aspects, d_G_note=('the candidate is G: d_G is None' if is_g else
                                              'd_G,a = c minus G (12-27\'s held outputs), one S_b shared'),
                   inputs=dict(verdict_sha256=sha_file(vpath), rcol=str(rcol_path), rcol_sha256=sha_file(rcol_path)),
-                  code_sha256=code_sha256())
+                  code_sha256=stamp, verdict_code_sha256=v['code_sha256'], scorer_sha256=scorer_sha256(stamp))
     return _keep_or_write(outputs / 'stage4/reported.json', record)
 
 
@@ -432,10 +496,8 @@ def check_v4a(outputs, workers=8, n_resamples=N_RESAMPLES, smoke=False):
     cache = outputs / 'stage4/regression/partitions/full' / G_NAME
     items, ours_all = {}, {}
     for aspect in ASPECTS:
-        fixed_c, _ = S0.candidate_fixed(S0.FULL_G, 'full', cache, aspect)
+        ours, fixed_c, _ = score_aspect(S0.FULL_G, aspect, labels, cache, n_resamples, workers)
         items[f'partitions/{aspect}'] = frozen_partitions_equal(aspect, fixed_c)
-        fixed_t, _ = t_fixed(aspect)
-        ours = d_t_block(fixed_c, fixed_t, labels[aspect], aspect, n_resamples, workers)
         ours_all[aspect] = {k: v for k, v in ours.items() if k not in ('bootstrap_d', 'per_seed')}
         items.update(compare_d_t(aspect, ours, frozen[aspect], point_only=smoke))
     diffs = [i['abs_diff'] for i in items.values() if 'abs_diff' in i]
@@ -462,7 +524,6 @@ def main(argv=None):
     c.add_argument('--smoke', action='store_true', help='20 draws, point values only; outputs under /tmp/claude-0/')
     v = sub.add_parser('verdict')
     v.add_argument('--candidate', required=True, help='c* (the stage 3 pick), or G where G is the candidate')
-    v.add_argument('--machine', choices=['local', 'node402'], help='stages 1 and 2 machine, when stage 3 has no file')
     sub.add_parser('report')
     args = parser.parse_args(argv)
     smoke = getattr(args, 'smoke', False)
@@ -477,7 +538,10 @@ def main(argv=None):
                   f'{gate_path(outputs)}', flush=True)
             return 0 if record['pass'] else 1
         if args.command == 'verdict':
-            record = verdict(outputs, args.candidate, args.machine, workers=args.workers)
+            record = verdict(outputs, args.candidate, workers=args.workers)
+            if record.get('v_failure') is not None:
+                print(f'stage 4 ({record["candidate"]}): no outcome: {record["v_failure"]}', flush=True)
+                return 0
             print(f'stage 4 ({record["candidate"]}, {record["kind"]}): '
                   + '; '.join(f'{a} d {b["d"]:+.4f} [{b["lo"]:+.4f}, {b["hi"]:+.4f}] {b["outcome"]}'
                               for a, b in record['aspects'].items())
