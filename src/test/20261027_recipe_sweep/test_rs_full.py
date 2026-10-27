@@ -14,6 +14,7 @@ import torch
 from torch.nn import functional as Fn
 
 import rs_full as F
+import rs_graphs
 import rs_knobs as K
 import rs_paths as paths
 import rs_sheet as S
@@ -236,7 +237,7 @@ def test_k11_replaces_the_full_loader_and_k20_never_does(monkeypatch, tmp_path):
             seen.append((k, variant, outputs))
             return 's', 'inputs', 'graphs', 'manifests'
 
-    monkeypatch.setitem(sys.modules, 'rs_graphs', Fake)
+    monkeypatch.setattr(K, 'rs_graphs', Fake)
     frozen = rb_student.load_scale
     with ExitStack() as stack:
         K.patches(S.config({'k11': 30}), stack, scale='full', outputs=tmp_path)
@@ -246,6 +247,21 @@ def test_k11_replaces_the_full_loader_and_k20_never_does(monkeypatch, tmp_path):
         K.patches(S.config({'k11': 30}), ExitStack(), scale='full')
     with pytest.raises(AssertionError, match='frozen'):
         K.store_training_data('full', 20, tmp_path)
+
+
+def test_the_code_hash_does_not_depend_on_which_configurations_were_patched_before(tmp_path):
+    # `rs_knobs` imports `rs_graphs` (and through it `ab_graphs`) when it is imported, not when a k11 or a graph removal
+    # is first patched in: `held --config A B` and a resumed run compare equal hashes whatever the run order. A fresh process.
+    script = ("import conftest\nfrom contextlib import ExitStack\nimport rs_full as F, rs_knobs as K, rs_sheet as S\n"
+              "before = F.code_sha256()\n"
+              "for cfg in (S.config({'k11': 30}), S.config(remove=['content_correction'])):\n"
+              "    try:\n        K.patches(cfg, ExitStack(), scale='full', outputs='/nonexistent')\n"
+              "    except Exception:\n        pass\n"
+              "assert before == F.code_sha256() and 'ab_graphs.py' in before, sorted(before)\n")
+    done = subprocess.run([sys.executable, '-I', '-c', 'import sys; sys.path.insert(0, sys.argv[1]); exec(sys.argv[2])',
+                           str(paths.ROUND), script], capture_output=True, text=True,
+                          env=dict(PATH='/usr/bin', PYTHONDONTWRITEBYTECODE='1'))
+    assert done.returncode == 0, done.stderr[-600:]
 
 
 def test_k11_reaches_the_load_data_seam_of_the_full_path(monkeypatch, tmp_path):
@@ -258,7 +274,7 @@ def test_k11_reaches_the_load_data_seam_of_the_full_path(monkeypatch, tmp_path):
             seen.append((k, variant, outputs))
             return 's', 'inputs', 'graphs', 'manifests'
 
-    monkeypatch.setitem(sys.modules, 'rs_graphs', Fake)
+    monkeypatch.setattr(K, 'rs_graphs', Fake)
     monkeypatch.setattr(rb_student, 'training_images', lambda encoder, s, inputs: ('images', encoder, s, inputs))
     with ExitStack() as stack:
         K.patches(S.config({'k11': 30}), stack, scale='full', outputs=tmp_path)
@@ -488,6 +504,70 @@ def test_an_ablation_arm_needs_the_stage_3_verdict_before_anything_else(run, tmp
     with pytest.raises(AssertionError, match='final model'):
         train(ABLATION_OF_G, outputs=tmp_path)
     assert run.loads == 0
+
+
+def put_ablation_gate(outputs):
+    """A passing `gates/ablation_graphs.json` for the graph code on disk (the stores are not built: the cohort is a recorder)."""
+    put(Path(outputs) / 'gates/ablation_graphs.json', {
+        'pass': True, 'items': {v: {'pass': True} for v in ('uncorrected', 'default_view')},
+        'code_sha256': rs_graphs.code_sha256()})
+
+
+@pytest.mark.parametrize('removal,variant', [
+    ('direct', 'aspect'), ('buddy', 'aspect'), ('shared_trunk', 'aspect'), ('content_correction', 'uncorrected'),
+    ('instructed_graphs', 'default_view')])
+def test_a_removal_arm_trains_with_its_part_out_and_its_record_says_so(run, tmp_path, removal, variant):
+    # F = G here (KEEP-G): the arm is a removal from G. Its alias is taken after the patches, so the arm 'G-no_direct'
+    # carries m = 0 inside the cohort; the record names the removal, what was patched and the graphs read.
+    put_verdict(tmp_path, 'KEEP-G')
+    put_ablation_gate(tmp_path)
+    cfg = S.config(remove=[removal])
+    name = S.name(cfg)
+    assert name == f'G-no_{removal}'
+    train(name, outputs=tmp_path)
+    [call] = run.calls
+    assert call['arm'] == name and call['alias'] and call['arms']['m'] == (0 if removal == 'direct' else 1)
+    assert name not in V.ARMS and V.ARMS['GS-0.02']['m'] == 1                                   # the alias is gone
+    record = json.loads((paths.full_root(tmp_path) / 'train' / name / 'run__s0.json').read_text())
+    assert record['config'] == F.jsonable(cfg) and record['config']['remove'] == [removal]
+    assert set(record['knobs']) == {f'no_{removal}'} == set(K.describe(cfg, scale='full'))
+    assert record['graphs'] == dict(k=20, variant=variant)
+    assert record['stage3_verdict_sha256'] == ms_train.head.sha_file(tmp_path / VERDICT_BAD)
+
+
+def test_the_direct_arm_reads_m_zero_at_the_cohort_but_the_candidate_arm_does_not(run, tmp_path):
+    put_verdict(tmp_path, 'KEEP-G')
+    train(S.name(S.config(remove=['direct'])), outputs=tmp_path)
+    assert [call['arms']['m'] for call in run.calls] == [0]
+    assert V.ARMS['GS-0.02']['m'] == 1
+
+
+@pytest.mark.parametrize('sweep', [dict(stage1='SWEEP-NONE'), dict(stage1='GRID-2', stage2='TOP-NONE')])
+def test_a_removal_from_g_trains_and_runs_held_with_no_stage_3_verdict_after_sweep_none_or_top_none(
+        run, tmp_path, monkeypatch, sweep):
+    # stage 3 never ran: there is no stage3/verdict.json, F = G, and the ablation of G goes on to the end (the run
+    # records no verdict hash, and the held guard does not hash the missing file)
+    recorder = Held(monkeypatch)
+    put_sweep(tmp_path, **sweep)
+    put_gates(tmp_path)
+    assert not (tmp_path / VERDICT_BAD).exists()
+    train(ABLATION_OF_G, seeds=S.FULL_SEEDS, outputs=tmp_path)
+    assert [call['arm'] for call in run.calls] == [ABLATION_OF_G] * 5
+    root = paths.full_root(tmp_path)
+    for seed in S.FULL_SEEDS:
+        assert json.loads(F.record_path(root, ABLATION_OF_G, seed).read_text())['stage3_verdict_sha256'] is None
+    held(ABLATION_OF_G, tmp_path)
+    [call] = recorder.calls
+    assert call['arm'] == ABLATION_OF_G and call['seeds'] == [0, 1, 2, 3, 4]
+    assert json.loads((root / 'held' / ABLATION_OF_G / 'v4c.json').read_text())['pass'] is True
+    # a removal from anything but G, and a candidate, are still refused (train and held, before any data or weights)
+    loads = run.loads
+    for name in ('k6=0.0005-no_buddy', 'k6=0.0005'):
+        with pytest.raises(AssertionError, match='final model|KEEP-G'):
+            train(name, outputs=tmp_path)
+        with pytest.raises(AssertionError, match='final model|KEEP-G'):
+            held(name, tmp_path)
+    assert run.loads == loads and len(recorder.calls) == 1
 
 
 def put_other_held(outputs, other):

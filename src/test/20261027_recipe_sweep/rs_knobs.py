@@ -49,6 +49,7 @@ import torch
 from torch import nn
 
 import rs_paths  # noqa: F401  (sys.path)
+import rs_graphs      # imported here, not where used: the modules the code hash covers must not depend on the run order
 import rs_sheet as S
 import ab_train
 import eg_train3 as eg
@@ -73,23 +74,15 @@ def store_training_data(scale, k, outputs, variant='aspect'):
     from ticket 03's `rs_graphs.full_training_data` (which enforces gates/k11_full.json, V4c, and for a graph variant
     gates/ablation_graphs.json). k = 20 of the aspect graphs never comes here: the frozen loader reads the CT's graphs."""
     assert scale == 'full' and (k, variant) != (S.G['k11'], 'aspect'), 'k = 20 is the frozen store'
-    try:
-        import rs_graphs
-    except ImportError:
-        raise AssertionError(f'k11 = {k}: rs_graphs (ticket 03) is not merged; only k = 20 can run') from None
     return rs_graphs.full_training_data(k, variant, outputs=outputs)
 
 
 def store_graphs(s, k, outputs, variant='aspect'):
     """The sample graphs of mutual top-k `k` as `rg_train.load_graphs(s, recipe)` returns them, (graphs, manifests),
-    from ticket 03's `rs_graphs.sample_store` (imported here: the one seam; it enforces its own gates, check K
+    from ticket 03's `rs_graphs.sample_store` (the one seam; it enforces its own gates, check K
     included, and for a graph variant the ablation gate). k = 20 of the aspect graphs never comes here: the frozen
     loader reads the frozen store."""
     assert (k, variant) != (S.G['k11'], 'aspect'), 'k = 20 is the frozen store'
-    try:
-        import rs_graphs
-    except ImportError:
-        raise AssertionError(f'k11 = {k}: rs_graphs (ticket 03) is not merged; only k = 20 can run') from None
     return rs_graphs.sample_store(k, variant, s=s, outputs=outputs)
 
 
@@ -294,17 +287,21 @@ def with_recipe_graph_rows(recipe, rows):
 
 
 def _removal_plan(cfg):
-    """[(description, enter)] of the loss and trunk removals. The relational removals enter through the knob patches
-    (`effective`) and the graph removals through the k11 seam (both in `_plan`); their descriptions are here."""
+    """[(description, enter)] of the loss and trunk removals, for F's own `cfg` (with its removal). The relational removals
+    enter through the knob patches (`effective`) and the graph removals through the k11 seam (both in `_plan`); their
+    descriptions are here."""
     plan = []
     arm = f'rg_variants.ARMS[{rs_paths.G_ARM}]'
     for removal in cfg['remove']:
         key = f'no_{removal}'
+        # The wrapper of `ab_train.switched_head_loss` (k1, k2) is named only where F has such a term: for G no patch of it is
+        # entered, and for `relational` none ever is (the term is not added).
+        wrapper = cfg['k1'] or cfg['k2']
         if removal == 'relational':
-            plan.append(({key: {arm: {'lam': 0}, 'ab_train.switched_head_loss': 'no relational term on emotion and style'}},
+            plan.append(({key: dict({arm: {'lam': 0}}, **({'ab_train.switched_head_loss': 'k1/k2 term not added'} if wrapper else {}))},
                          lambda stack: None))
         elif removal == 'sharp_row':
-            plan.append(({key: {arm: {'tau_t': V.TAU}, 'ab_train.switched_head_loss': f'teacher row at {V.TAU}'}},
+            plan.append(({key: dict({arm: {'tau_t': V.TAU}}, **({'ab_train.switched_head_loss': f'teacher row at {V.TAU}'} if wrapper else {}))},
                          lambda stack: None))
         elif removal == 'direct':
             def enter(stack):
@@ -334,7 +331,7 @@ def _plan(cfg, outputs=None, scale='sample'):
     enters the patch. Empty for G. A removal's parts follow the knobs' (the relational removals act through the knobs,
     `effective`; the k1 to k4 they set are described under the removal, not as a knob of the configuration)."""
     check_removal(cfg)
-    removal, cfg = cfg['remove'], effective(cfg)
+    original, removal, cfg = cfg, cfg['remove'], effective(cfg)
     changed = S.changed(cfg)
     plan = []
     relational = [k for k in ('k1', 'k2') if k in changed]
@@ -403,7 +400,6 @@ def _plan(cfg, outputs=None, scale='sample'):
                 stack.enter_context(patch.object(rb_student, 'load_scale',
                                                  lambda scale: store_training_data(scale, k, outputs, variant)))
             if variant != 'aspect':
-                import rs_graphs
                 rows = rs_graphs.row_names(variant)
                 if scale == 'sample':
                     stack.enter_context(patch.object(rg_train, 'resolved', with_graph_rows(rg_train.resolved, rows)))
@@ -412,7 +408,7 @@ def _plan(cfg, outputs=None, scale='sample'):
         plan.append((description, enter_graphs))
     induced = {k for r in removal for k in KNOBS_OF.get(r, ())}
     plan = [({k: v for k, v in d.items() if k not in induced}, enter) for d, enter in plan]
-    return plan + _removal_plan(dict(cfg, remove=removal))
+    return plan + _removal_plan(original)
 
 
 def describe(cfg, scale='sample'):
@@ -435,7 +431,6 @@ def patches(cfg, stack, *, scale, outputs=None):
     graph = [GRAPH_REMOVALS[r] for r in cfg['remove'] if r in GRAPH_REMOVALS]
     assert outputs is not None or not ('k11' in description or graph), 'k11 and the graph removals: needs the outputs folder'
     for variant in graph:
-        import rs_graphs
         rs_graphs.require_gate(outputs, 'ablation_graphs', variant)
     for _, enter in _plan(cfg, outputs, scale):
         enter(stack)

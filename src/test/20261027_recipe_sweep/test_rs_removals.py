@@ -127,7 +127,7 @@ def batch(n=6, seed=0):
     return img, cap, teacher, pairs, weights
 
 
-def route(cfg, scale, aspect, *, fit=True, train=False, seed=3):
+def route(cfg, scale, aspect, *, fit=True, train=False, seed=3, before=None):
     """(loss, models, views, tensors): the loss one head gets under `cfg` as the scale's trainer routes it. The model is
     built under G's patches only (the removals do not touch the build), so every cfg starts from the same weights."""
     img, cap, teacher, pairs, weights = batch()
@@ -145,6 +145,8 @@ def route(cfg, scale, aspect, *, fit=True, train=False, seed=3):
         else:
             head_loss = rg_full.head_loss_for('GS-0.02', 0, fit_teacher=None, n_dev=1)
             call = lambda: head_loss(views[aspect], img, cap, pairs, weights, row, aspect, teacher, None, fit)
+        if before is not None:
+            before(views)
         torch.manual_seed(9)
         with torch.set_grad_enabled(fit):
             loss = call()
@@ -247,6 +249,13 @@ def test_direct_drops_the_term_and_leaves_the_recipe_row_alone(scale):
         rg_loss.switched_head_loss(views['genre'], img, cap, pairs, weights, recipe['base'], 'genre', teacher, None,
                                    True, switches=recipe['switches'], genre=genre)
         assert set(genre.term_log) == {'relational'}
+        # absent, not weighted 0: a non-finite teacher row (0 * inf = nan) cannot reach the loss of the other two heads
+        bad = teacher.clone()
+        bad[0] = float('inf')
+        for aspect in ('emotion', 'style'):
+            loss = rg_loss.switched_head_loss(views[aspect], img, cap, pairs, weights, recipe['base'], aspect, bad, None,
+                                              True, switches=recipe['switches'], genre=genre)
+            assert torch.isfinite(loss), aspect
     loss, _, views, _ = route(removal('direct'), scale, 'emotion', train=True)
     loss.backward()
     assert all(p.grad is not None for p in views['emotion']['img'].parameters())
@@ -284,6 +293,21 @@ def test_the_caption_network_gets_gradient_only_through_the_buddy_terms(name, ca
     cap = list(views[aspect]['cap'].parameters())
     assert all((p.grad is not None) == cap_grad for p in cap)
     assert all(p.grad is not None for p in views[aspect]['img'].parameters())     # the image side always trains
+
+
+@pytest.mark.parametrize('scale', SCALES)
+@pytest.mark.parametrize('name,calls', [(None, 1), ('buddy', 1), ('caption_endpoints', 0)])
+@pytest.mark.parametrize('aspect', ASPECTS)
+def test_the_caption_network_still_runs_when_only_the_buddy_terms_are_off(name, calls, aspect, scale):
+    # as in `ab_train`: buddy off keeps the caption forward pass (the same dropout draws on every head, so the image
+    # side of the three heads is unchanged by the switch); image-only endpoints skip it
+    seen = []
+
+    def hook(views):
+        views[aspect]['cap'].register_forward_hook(lambda *args: seen.append(1))
+
+    route(removal(name) if name else S.config(), scale, aspect, before=hook)
+    assert len(seen) == calls, (name, aspect, scale)
 
 
 @pytest.mark.parametrize('scale', SCALES)
@@ -460,6 +484,20 @@ def test_shared_trunk_gives_each_aspect_its_own_trunk_on_both_sides(scale):
     assert out.shape == (3, 2048) and torch.allclose(out.norm(dim=1), torch.ones(3), atol=1e-5)
 
 
+@pytest.mark.parametrize('scale', SCALES)
+def test_shared_trunk_creates_the_three_trunks_before_the_three_heads(scale):
+    # the order of creation decides the initial draws; the docstring of `separate_trunks` names it
+    row = rg_train.resolved(0)['base'] if scale == 'sample' else rb_rows.recipe(V.BASE)['base']
+    with ExitStack() as stack:
+        K.patches(removal('shared_trunk'), stack, scale=scale)
+        models, _ = (rb_student.build_model(row, ASPECTS, CPU, width=2048) if scale == 'full' else
+                     ms_train.build_model(row, ASPECTS, CPU))
+    for side in ('img', 'cap'):
+        names = [n for n, _ in models[side].named_parameters()]
+        kinds = [n.split('.')[0] for n in names]
+        assert kinds == ['trunks'] * 6 + ['heads'] * 6, names
+
+
 def test_shared_trunk_keeps_the_trunks_width_and_dropout_of_the_run():
     for width, dropout in ((1024, 0.1), (512, 0.0), (2048, 0.3)):
         cfg = S.config({'k9': width, 'k10': dropout}, remove=['shared_trunk'])
@@ -512,6 +550,28 @@ def test_a_removal_with_nothing_to_remove_refuses():
         patched(S.config({'k4': 0.05}, remove=['sharp_row']), scale='sample')
     # a relational term on emotion alone is enough to remove
     patched(S.config({'k1': 2, 'k3': 0}, remove=['relational']), scale='sample')
+    # direct: the teacher weight is 0
+    for scale in SCALES:
+        with pytest.raises(AssertionError, match='no direct term'):
+            patched(S.config({'k5': 0}, remove=['direct']), scale=scale)
+    with pytest.raises(AssertionError, match='no direct term'):
+        K.describe(S.config({'k5': 0}, remove=['direct']))
+
+
+@pytest.mark.parametrize('scale', SCALES)
+def test_the_recorded_description_names_only_the_patches_that_are_entered(scale):
+    # `ab_train.switched_head_loss` is wrapped only for a k1 or k2 term, and by sharp_row alone (relational adds none);
+    # the record names it exactly then, with what happens to it
+    target = 'ab_train.switched_head_loss'
+    frozen = ab_train.switched_head_loss
+    text = dict(relational='k1/k2 term not added', sharp_row=f'teacher row at {TAU}')
+    for name in text:
+        for k in ({}, {'k1': 2}, {'k2': 2}):
+            with ExitStack() as stack:
+                description = K.patches(removal(name, **k), stack, scale=scale)[f'no_{name}']
+                wrapped = ab_train.switched_head_loss is not frozen
+            assert wrapped == (name == 'sharp_row' and bool(k)), (name, k)
+            assert (description.get(target) == text[name]) == bool(k) and (target in description) == bool(k), (name, k)
 
 
 def test_one_removal_at_a_time():
