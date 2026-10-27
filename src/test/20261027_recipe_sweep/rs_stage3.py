@@ -23,7 +23,9 @@ import hashlib
 import json
 import multiprocessing
 import socket
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import numpy as np
 from threadpoolctl import threadpool_limits
@@ -145,16 +147,19 @@ def boot_scores(labels, parts, I, workers):
 
 class Boots:
     """Per-run bootstrap scores of one aspect on one seed, cached next to the run's partitions (`<root>/<name>/s<seed>/`;
-    the format of `eg_score3.DiskBoots`). The identity holds the draws' tag, so scores of other draws are refused."""
+    the format of `eg_score3.DiskBoots`). The identity holds the draws' tag and the hash of this module's code (which
+    makes the draws and the scores), so scores of other draws or other code are refused."""
 
     def __init__(self, root, aspect, seed, p_sha, label_sha, img_sha, n_draws):
         self.root, self.aspect, self.seed, self.n_draws = Path(root), aspect, seed, n_draws
         self.p_sha, self.label_sha, self.img_sha = p_sha, label_sha, img_sha
+        self.draw_code = code_sha256()
 
     def _where(self, name, tag):
         path = self.root / name / f's{self.seed}' / f'{self.aspect}__boot_{tag}.npz'
         return path, E._identity(name, self.aspect, self.p_sha, self.img_sha[name], self.seed,
-                                 label_sha256=self.label_sha, n_draws=self.n_draws, draws=f'joint-v1:{tag}')
+                                 label_sha256=self.label_sha, n_draws=self.n_draws, draws=f'joint-v1:{tag}',
+                                 draw_code_sha256=self.draw_code)
 
     def get(self, name, tag):
         path, identity = self._where(name, tag)
@@ -320,12 +325,40 @@ def caches_for(outputs, names, runs, ctx, n_draws):
                          {n: rb_pick.array_sha256(runs[n][s]['img'][a]) for n in names}, n_draws) for s in SEEDS} for a in ASPECTS}
 
 
+def now_amsterdam():
+    """Amsterdam local time to the minute, `YYYY-MM-DD HH:MM` (the verdict's `written`)."""
+    return datetime.now(ZoneInfo('Europe/Amsterdam')).strftime('%Y-%m-%d %H:%M')
+
+
 def compare(items, name, value, want):
     items[name] = dict(value=float(value), expected=float(want), diff=float(abs(value - want)),
                        **{'pass': bool(abs(value - want) <= TOL)})
 
 
 # ------------------------------------------------------------------ V3a
+def v3a_item_names(smoke):
+    """The items a V3a gate must hold (names, in the order `run_check_v3a` writes them): per aspect Ā of both arms (the
+    arm, then its three seeds) and ē; unless a smoke, the joint bounds (emotion and style: genre's labelled rows are
+    fewer than P's, so its joint draw is not the EG rule's) and the per-aspect-mode bounds of all three; the two hash
+    and partition equalities."""
+    names = []
+    for a in ASPECTS:
+        for n in (G_ARM, R_ARM):
+            names += [f'{a}_Abar_{n}'] + [f'{a}_A_{n}_s{s}' for s in SEEDS]
+        names.append(f'{a}_e')
+        if not smoke:
+            if a != 'genre':
+                names += [f'{a}_lo_joint', f'{a}_hi_joint']
+            names += [f'{a}_lo_per_aspect', f'{a}_hi_per_aspect']
+    return names + ['export_hashes_equal_stage_b', 'partitions_equal_to_stage_b']
+
+
+def partition_item(equal):
+    """The gate item for `equal` = {name: {seed: {aspect: bool}}}: the run's partitions equal 12-27's stage B files."""
+    bad = [f'{n} s{s} {a}' for n in equal for s in equal[n] for a in equal[n][s] if not equal[n][s][a]]
+    return {'mismatches': bad, 'pass': not bad}
+
+
 def run_check_v3a(outputs, workers, smoke=False):
     """V3a (rule §4.3) -> gates/v3a.json. 12-27's stage B files with R6-5 in G's place and GS-0.02 in c's: Ā_a of both and ē_a
     equal `RG/outputs/stage_b/verdict.json` within 1e-6 (joint mode), so do the emotion and style bounds (all 29,232 rows
@@ -373,6 +406,8 @@ def run_check_v3a(outputs, workers, smoke=False):
     bad = [f'{n} s{s} {a}' for n in arms for s in SEEDS for a in ASPECTS
            if runs[n][s]['array_sha256'][a] != ref['identity']['img_sha256'][n][str(s)][a]]
     items['export_hashes_equal_stage_b'] = {'mismatches': bad, 'pass': not bad}
+    items['partitions_equal_to_stage_b'] = partition_item(equal)
+    assert list(items) == v3a_item_names(smoke), 'V3a items differ from the item list the verdict requires'
     for k, v in items.items():
         if 'value' in v:
             print(f'{k}: {v["value"]:.10f} (12-27 {v["expected"]:.10f}, diff {v["diff"]:.1e})', flush=True)
@@ -391,7 +426,8 @@ def run_check_v3a(outputs, workers, smoke=False):
 
 
 def require_v3a(outputs, smoke):
-    """The gate file: exists, a V3a record of the same kind (smoke or real), passed, written by this code, on P."""
+    """The gate file: exists, a V3a record of the same kind (smoke or real), passed, written by this code, on P, with every
+    V3a item (and, unless a smoke, the bounds checked with 2,000 draws)."""
     path = gate_path(outputs)
     assert path.exists(), f'{path} missing: run `rs_stage3 check v3a` first (V3a)'
     gate = json.loads(path.read_text())
@@ -399,6 +435,10 @@ def require_v3a(outputs, smoke):
     assert gate['pass'] is True, f'V3a did not pass ({path}); stage 3 stops, trace the cause'
     assert gate['code_sha256'] == code_sha256(), f'{path} was written by other stage 3 code; rerun `check v3a`'
     assert gate['p_sha256'] == rs_paths.P_SHA256, f'{path}: other P'
+    missing = [k for k in v3a_item_names(smoke) if k not in gate['items']]
+    assert not missing, f'{path}: items missing from the V3a record: {missing}'
+    assert gate['bounds_checked'] is (not smoke) and gate['n_draws'] == (SMOKE_DRAWS if smoke else N_DRAWS), \
+        f'{path}: bounds not checked, or not with {N_DRAWS} draws'
     return gate
 
 
@@ -472,7 +512,7 @@ def run_verdict(outputs, top_path, workers=8, smoke=False):
     hashes = {n: {str(s): dict(run_sha256=r['run_sha256'], img_sha256=None if r['img'] is None else
                               {a: rb_pick.array_sha256(r['img'][a]) for a in ASPECTS}) for s, r in config_runs[n].items()}
               for n in names}
-    record = dict(stage='stage3', smoke=bool(smoke), stage2_machine=s2['machine'], rule_commit=rs_paths.RULE_COMMIT,
+    record = dict(stage='stage3', smoke=bool(smoke), written=now_amsterdam(), stage2_machine=s2['machine'], rule_commit=rs_paths.RULE_COMMIT,
                   ranges=dict(RANGES), seeds=list(SEEDS), n_draws=n_draws, draw_mode='joint', reference=dict(name='G', arm=G_ARM),
                   top=names, **d, pick_config=json.loads(json.dumps(rs_sheet.parse(d['pick']))) if d['pick'] else None,
                   results={n: records[n] for n in names},
