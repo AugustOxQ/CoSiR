@@ -1145,3 +1145,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-27-r10-build-7-handoff.md
 - New chat: tab 'r10 build 7', session 8f340436-65f2-45ae-b263-b4b6db658f0a
 
+[brief] CoSiR: r10 build 7 -> r10 build 8 (2026-10-27 04:42 Amsterdam)
+- Done: tickets 01 to 04 built, reviewed by Opus `high` workers, fixed and merged on `r10-recipe-sweep` (189 tests).
+- State: gates pass: V1a (G equal to 12-27's G bit for bit, seeds 0 and 1; scorer 3 of 3 within 1e-6), k11 and ablation graph checks. No new number on P or H.
+- Next: tickets 05 to 15 per the index; Codex has room again after 06:22.
+- Blocked: nothing. Night mode: do not wait for the user. The build will likely end after 10:30.
+- Handoff: docs/superpowers/handoffs/2026-10-27-r10-build-8-handoff.md
+- New chat: tab 'r10 build 8', session 6b187b7a-3b07-4455-bfc1-34e24d98acb7
+
