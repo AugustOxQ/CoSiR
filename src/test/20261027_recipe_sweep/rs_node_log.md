@@ -54,3 +54,6 @@ One entry per sync and node check of the r10 recipe sweep (rule §4.2 "The node 
   (a) pass (59 runs); deadline not passed; `rs_sweep stage2`: TOP; `rs_vp sweep` (part (b)): pass. Done 19:39.
 - TOP: k11=40 (M 0.92), k2=2+k9=512+k11=40 (0.87), k4=0.035+k11=40 (0.75). Stage 3 runs locally from 19:4x.
 - For a later round: a node job that prints nothing for over 30 minutes needs `--stall-minutes` in the plan's watch.
+- 20:0x: G₀'s and TOP's runs copied home (rule §4.5, before 2026-10-30): `das6_sync_rs.py --fetch train/G train/k11=40
+  train/k2=2+k9=512+k11=40 train/k4=0.035+k11=40 --run`, each verified (13 files), under
+  `outputs/node402/train/` (1.9 GB). The node's other outputs stay on the node until the wrap-up.
