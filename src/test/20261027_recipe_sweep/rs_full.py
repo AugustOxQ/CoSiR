@@ -330,6 +330,10 @@ def require_v4a(outputs):
     scorer gate pass. Returns the gate files' SHA-256."""
     shas = {}
     for gate in ('v4a_train', 'v4a_scorer'):
+        if gate == 'v4a_scorer':
+            import rs_stage4
+            shas[gate] = rs_stage4.require_v4a_scorer(outputs)
+            continue
         path = Path(outputs) / f'gates/{gate}.json'
         record = rg_full._record(path)
         assert record.get('pass') is True, f'V4a: {path} does not pass'
@@ -367,7 +371,7 @@ def v4c_record(root, name, seeds):
     """V4c: each held output set, read again from its `.npz` (checked against its record by `rb_student.read_outputs`),
     has H's rows (12,281, finite, unit norm: `rg_full.vc3_problem` runs again here) and H's SHA-256, and the array's
     SHA-256 is the one the record names. Lists the outputs that needed a second try (V4d). Returns the record."""
-    outputs, reruns = {}, []
+    outputs, output_files, reruns = {}, {}, []
     for seed in seeds:
         for aspect in ASPECTS:
             path = Path(root) / 'held' / name / f'{aspect}__s{seed}.npz'
@@ -378,11 +382,13 @@ def v4c_record(root, name, seeds):
             problem = rg_full.vc3_problem(arrays['img'])
             assert problem is None, f'V4c: {path}: {problem}'
             assert rb_student.sha_array(arrays['img']) == info['sha256'], f'V4c: {path}: array differs from the record'
+            # The scorer's `recorded` argument binds files, not the array digest in their sidecars.
             outputs[f'{aspect}__s{seed}'] = info['sha256']
+            output_files[f'{aspect}__s{seed}'] = sha(path)
             if info['vc3_attempts'] > 1:
                 reruns.append(dict(output=f'{aspect}__s{seed}', problems=info['vc3_problems']))
     return {'pass': True, 'name': name, 'rows': paths.N_HELD, 'list_sha256': paths.HELD_SHA256, 'outputs': outputs,
-            'reruns': reruns}
+            'output_files': output_files, 'reruns': reruns}
 
 
 @threadpool_limits.wrap(limits=8)
