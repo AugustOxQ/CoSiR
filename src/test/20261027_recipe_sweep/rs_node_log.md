@@ -34,3 +34,13 @@ One entry per sync and node check of the r10 recipe sweep (rule §4.2 "The node 
   2026-10-28 01:08 (plus 8 hours).
 - Stage 1 launched 17:08 to 17:10, all at sha a87cb1d: `rs1027-stage1-a` (slot 0: G, G-repeat and 12 runs),
   `rs1027-stage1-b` (slot 1: 14 runs), `rs1027-stage1-c` (slot 2: 13 runs).
+- Stage 1 shards ended about 17:55 (about 3 min per run on an A6000, scoring included); pulls verified;
+  `fetch scores/node402` brought 41 score files home. No run failed (`failed` empty; every export passed V1b).
+- N3 (`rs1027-stage1-n3`): PASS. G₀ and G₀′ equal bit for bit (exports and best epoch; difference 0 on each aspect,
+  limit r_a / 2). Readings, no gate: trainer parity (G₀ minus 12-27's local seed-0 run) emotion +0.0003, style +0.0020,
+  genre −0.0077; scorer parity 0 on each aspect. `gates/n3.json` fetched home.
+- V1c part (a) (`rs1027-stage1-vp`, node CPU): pass, 41 runs; `scores/node402/rederive_partitions.json` fetched.
+- Local: `rs_sweep stage1 --machine node402`: GRID-4 (grid knobs k11, k4, k2, k9; levels k11 20/40, k4 0.02/0.035,
+  k2 0/2/8, k9 1024/512; 18 new points); `rs_vp sweep` (part (b)): pass (`sweep/node402/rederive_stage1.json`).
+  The plan ended 18:29.
+- Stage 2 started 18:30 (`RS_END_BY` 2026-10-28 01:08): 18 new points in three shards.
