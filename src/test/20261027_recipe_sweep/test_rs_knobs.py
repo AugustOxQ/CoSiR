@@ -85,17 +85,17 @@ def test_two_knobs_patch_the_union():
     assert touched(cfg) == {'arm'} and set(K.describe(cfg)) == {'k3', 'k4'}
 
 
-def test_patches_unwind_on_error_and_removals_wait_for_ticket_07():
+def test_patches_unwind_on_error():
     before = state()
     with pytest.raises(RuntimeError):
         with ExitStack() as stack:
             K.patches(S.config({'k6': 5e-4, 'k5': 0.5}), stack, scale='sample')
             raise RuntimeError
     assert state() == before
-    with pytest.raises(AssertionError, match='ticket 07'):
-        K.patches(S.config(remove=['buddy']), ExitStack(), scale='sample')
-    with pytest.raises(AssertionError, match='ticket 08'):
-        K.patches(S.config({'k6': 5e-4}), ExitStack(), scale='full')
+    # full scale (ticket 08): the same configurations patch; its tests are in test_rs_full.py
+    with ExitStack() as stack:
+        assert set(K.patches(S.config({'k6': 5e-4}), stack, scale='full')) == {'k6'}
+    assert state() == before
 
 
 # ------------------------------------------------------------------ the loss terms, on tiny tensors
@@ -344,7 +344,7 @@ def test_k11_calls_rs_graphs_with_the_loaded_sample_and_k20_never_does(monkeypat
             seen.append((k, variant, s, outputs))
             return 'graphs', 'manifests'
 
-    monkeypatch.setitem(sys.modules, 'rs_graphs', Fake)
+    monkeypatch.setattr(K, 'rs_graphs', Fake)
     recipe = rg_train.resolved(0)
     with ExitStack() as stack:
         K.patches(S.config({'k11': 30}), stack, scale='sample', outputs=tmp_path)
@@ -356,9 +356,3 @@ def test_k11_calls_rs_graphs_with_the_loaded_sample_and_k20_never_does(monkeypat
     with pytest.raises(AssertionError, match='frozen store'):
         K.store_graphs('s', 20, tmp_path)
     assert len(seen) == 1
-
-
-def test_k11_refuses_until_rs_graphs_exists(monkeypatch, tmp_path):
-    monkeypatch.setitem(sys.modules, 'rs_graphs', None)    # an import of it raises ImportError
-    with pytest.raises(AssertionError, match='rs_graphs .* not merged'):
-        K.store_graphs('s', 30, tmp_path)

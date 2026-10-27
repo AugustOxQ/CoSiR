@@ -10,6 +10,8 @@ import numpy as np
 import pytest
 import torch
 
+import rs_graphs
+import rs_knobs as K
 import rs_paths as paths
 import rs_sheet as S
 import rs_train as T
@@ -154,6 +156,67 @@ def test_seeds_scratch_and_frozen_outputs_are_checked(cohort, tmp_path):
         run(outputs=paths.RG_OUT / 'x')
 
 
+def put(path, value):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value))
+
+
+def put_verdict(outputs, outcome='KEEP-G', pick=None):
+    put(Path(outputs) / 'stage3/verdict.json', dict(
+        outcome=outcome, pick=pick, pick_config=T.jsonable(S.parse(pick)) if pick else None))
+
+
+@pytest.mark.parametrize('removal,variant', [('direct', 'aspect'), ('content_correction', 'uncorrected')])
+def test_a_removal_arm_trains_with_its_part_out_and_its_record_says_so(cohort, tmp_path, monkeypatch, removal, variant):
+    # F = G (KEEP-G). The arm 'G-no_direct' carries m = 0 inside the cohort; the record names the removal and the patches.
+    calls, _ = cohort
+    put_verdict(tmp_path)
+    put(tmp_path / 'gates/ablation_graphs.json', {
+        'pass': True, 'items': {v: {'pass': True} for v in ('uncorrected', 'default_view')},
+        'code_sha256': rs_graphs.code_sha256()})
+    seen = []
+    monkeypatch.setattr(rs_graphs, 'sample_store', lambda k, variant='aspect', *, s=None, outputs=None: (
+        seen.append((k, variant)), ({a: {} for a in T.ASPECTS}, {a: {'archives': {a: 'x'}, 'identity': 'i'} for a in T.ASPECTS}))[1])
+    cfg = S.config(remove=[removal])
+    record = run(cfg, seed=1, outputs=tmp_path)
+    [call] = trained(calls)
+    assert call['variant'] == 'GS-0.02' and call['arm']['m'] == (0 if removal == 'direct' else 1)
+    assert call['run_dir'] == paths.run_dir(tmp_path, f'G-no_{removal}', 1).resolve()
+    assert record['name'] == f'G-no_{removal}' and record['config'] == T.jsonable(cfg) and record['config']['remove'] == [removal]
+    assert set(record['knobs']) == {f'no_{removal}'}
+    assert seen == ([] if variant == 'aspect' else [(20, variant)])
+    assert V.ARMS['GS-0.02']['m'] == 1                                                         # undone after the run
+
+
+def test_a_removal_arm_is_a_removal_from_the_final_model_at_seeds_1_to_3(cohort, tmp_path):
+    calls, _ = cohort
+    ablation = S.config(remove=['buddy'])
+    with pytest.raises(AssertionError, match='stage3/verdict.json.*missing'):
+        run(ablation, seed=1, outputs=tmp_path)                                   # no verdict, and no SWEEP-NONE to explain it
+    put_verdict(tmp_path, 'PICK', 'k6=0.0005')
+    with pytest.raises(AssertionError, match='not a removal from the final model'):
+        run(ablation, seed=1, outputs=tmp_path)                                   # F is k6=0.0005, not G
+    run(S.config({'k6': 5e-4}, remove=['buddy']), seed=3, outputs=tmp_path)
+    put_verdict(tmp_path)
+    for seed in (0, 4):
+        with pytest.raises(AssertionError, match='seeds 1 to 3'):
+            run(ablation, seed=seed, outputs=tmp_path)
+    run(ablation, seed=2, outputs=tmp_path)
+    assert [c['seed'] for c in trained(calls)] == [3, 2]
+
+
+def test_after_sweep_none_the_final_model_is_g_and_a_smoke_needs_no_verdict(cohort, tmp_path):
+    calls, _ = cohort
+    put(tmp_path / 'sweep/local/stage1.json', dict(outcome='SWEEP-NONE'))
+    run(S.config(remove=['buddy']), seed=1, outputs=tmp_path)
+    with pytest.raises(AssertionError, match='final model'):
+        run(S.config({'k6': 5e-4}, remove=['buddy']), seed=1, outputs=tmp_path)
+    out = Path(tempfile.mkdtemp(dir=SCRATCH))
+    run(S.config({'k6': 5e-4}, remove=['buddy']), seed=0, outputs=out, smoke=True)
+    assert len(trained(calls)) == 2
+
+
 def test_k11_goes_through_rs_graphs_with_the_loaded_sample(monkeypatch, tmp_path):
     """The k11 run's graphs are rs_graphs.sample_store(k, 'aspect', s=, outputs=); no gate of this module."""
     seen = []
@@ -164,7 +227,7 @@ def test_k11_goes_through_rs_graphs_with_the_loaded_sample(monkeypatch, tmp_path
             seen.append((k, variant, s, outputs))
             return {a: {} for a in T.ASPECTS}, {a: {'archives': {a: 'x'}, 'identity': 'i'} for a in T.ASPECTS}
 
-    monkeypatch.setitem(sys.modules, 'rs_graphs', Fake)
+    monkeypatch.setattr(K, 'rs_graphs', Fake)
     monkeypatch.setattr(rg_train, 'verify_cached_run', lambda *a, **k: None)
     monkeypatch.setattr(T, 'code_commit', lambda: ('abc', False))
     got = []
