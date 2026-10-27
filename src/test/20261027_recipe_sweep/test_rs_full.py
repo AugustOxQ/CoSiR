@@ -2,8 +2,9 @@
 layer reaching the full path (patched objects, tiny CPU tensors), the run logic with the cohort replaced by a
 recorder, and V4a's comparison. The cohort itself is `rg_full.train_cohort` (`ct2_d2.run`), checked by V4a on the GPU."""
 import json
-import shutil
+import os
 import subprocess
+import tempfile
 import sys
 from contextlib import ExitStack
 from pathlib import Path
@@ -14,6 +15,7 @@ import torch
 from torch.nn import functional as Fn
 
 import rs_full as F
+import rs_stage4 as S4
 import rs_graphs
 import rs_knobs as K
 import rs_paths as paths
@@ -33,9 +35,11 @@ ASPECTS = F.ASPECTS
 
 def scratch(name):
     """An empty folder of this test's own under the smoke root (a smoke may write nowhere else)."""
-    folder = paths.SMOKE_ROOT / name
-    shutil.rmtree(folder, ignore_errors=True)
-    return folder
+    root = Path(os.environ.get('TMPDIR', paths.SMOKE_ROOT))
+    if not paths.smoke_ok(root):
+        root = paths.SMOKE_ROOT
+    root.mkdir(parents=True, exist_ok=True)
+    return Path(tempfile.mkdtemp(prefix=name + '-', dir=root))
 
 
 def put(path, value):
@@ -405,7 +409,7 @@ def test_a_finished_seed_is_skipped_only_when_its_record_is_this_runs(run, tmp_p
     with pytest.raises(AssertionError, match=match):
         train(outputs=tmp_path, root=tmp_path / 'r')
     assert len(run.calls) == 1
-    record_path.unlink()
+    record_path.rename(record_path.with_name(record_path.name + '.absent'))
     with pytest.raises(AssertionError, match='without a run record'):
         train(outputs=tmp_path, root=tmp_path / 'r')
 
@@ -623,7 +627,7 @@ def test_a_smoke_runs_without_the_verdict_and_writes_under_scratch_only(run):
 # ------------------------------------------------------------------------------------------------ held inference
 def put_gates(outputs, **over):
     put(Path(outputs) / 'gates/v4a_train.json', {'pass': True, 'smoke': False, 'code_sha256': F.code_sha256(), **over})
-    put(Path(outputs) / 'gates/v4a_scorer.json', {'pass': True})
+    put(Path(outputs) / 'gates/v4a_scorer.json', {'pass': True, 'smoke': False, 'code_sha256': S4.code_sha256()})
 
 
 TINY_ROWS = 7
@@ -696,12 +700,12 @@ def test_held_refuses_without_the_v4a_gates(held_setup, gate, change, match):
     recorder, name, out = held_setup
     path = out / f'gates/{gate}.json'
     if change == 'delete':
-        path.unlink()
+        path.rename(path.with_name(path.name + '.absent'))
     else:
         record = json.loads(path.read_text())
         record.update({'pass': change['pass_']} if 'pass_' in change else change)
         put(path, record)
-    with pytest.raises(AssertionError, match=match):
+    with pytest.raises((AssertionError, S4.Refusal), match=match):
         held(name, out)
     assert not recorder.calls and not (paths.full_root(out) / 'held').exists()
 
@@ -762,7 +766,8 @@ def test_held_refuses_a_stage_3_verdict_changed_after_the_first_full_run(held_se
 
 def test_held_refuses_a_missing_seed_before_writing_anything(held_setup):
     recorder, name, out = held_setup
-    rb_student.weights_path(paths.full_root(out), name, 'style', 3).unlink()
+    missing = rb_student.weights_path(paths.full_root(out), name, 'style', 3)
+    missing.rename(missing.with_name(missing.name + '.absent'))
     with pytest.raises(AssertionError, match='missing'):
         held(name, out)
     assert not recorder.calls
@@ -824,8 +829,8 @@ def test_v4c_record_refuses_wrong_rows_hash_or_missing_output(tmp_path):
     put(json_path, dict(info, rows=5))
     with pytest.raises(AssertionError, match='rows'):
         F.v4c_record(tmp_path, 'x', [0])
-    json_path.unlink()
-    (tmp_path / 'held/x/genre__s0.npz').unlink()
+    json_path.rename(json_path.with_name(json_path.name + '.absent'))
+    (tmp_path / 'held/x/genre__s0.npz').rename(tmp_path / 'held/x/genre__s0.npz.absent')
     with pytest.raises(AssertionError, match='missing'):
         F.v4c_record(tmp_path, 'x', [0])
 
@@ -970,3 +975,19 @@ def test_regress_v4a_runs_on_the_device_of_the_reference(run, tmp_path):
     with pytest.raises(AssertionError, match='trained on cuda'):
         F.regress_v4a('cpu', tmp_path)
     assert not run.calls
+
+
+def test_v4c_binds_the_held_files_that_the_scorer_reads(tmp_path):
+    for aspect in ASPECTS:
+        put_held_output(tmp_path, 'x', aspect, 0)
+    record = F.v4c_record(tmp_path, 'x', [0])
+    assert record['output_files'] == {f'{a}__s0': F.sha(tmp_path / f'held/x/{a}__s0.npz') for a in ASPECTS}
+
+
+
+def test_v4c_preserves_the_array_hash_contract_used_by_the_ablation(tmp_path):
+    for aspect in ASPECTS:
+        put_held_output(tmp_path, 'x', aspect, 0)
+    record = F.v4c_record(tmp_path, 'x', [0])
+    assert record['outputs'] == {f'{a}__s0': json.loads((tmp_path / f'held/x/{a}__s0.json').read_text())['sha256']
+                                 for a in ASPECTS}
