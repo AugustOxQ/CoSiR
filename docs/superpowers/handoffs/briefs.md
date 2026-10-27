@@ -1121,3 +1121,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-27-r10-run-2-handoff.md
 - New chat: tab 'r10 run 2', session 78d5075e-ecc3-45b7-b1d6-f9a42a592659
 
+[brief] CoSiR: r10 run 2 -> r10 decide 26 (2026-10-27 02:37 Amsterdam)
+- Done: the relational genre round ran and both reports are written and checked (claim review, cold read, fidelity check, one fix wave each).
+- State: held genre AMI 0.5001 against the instructed Qwen genre image's 0.5062 (−0.0060 [−0.0105, −0.0014]): G-GO, level within one seed range, not "matches or exceeds"; +0.0467 over the recipe.
+- Next: step 1, your reading of 12-27's results brief; the wrap-up (direction log entry, storage summary); then steps 2 to 6.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-27-r10-decide-26-handoff.md
+- New chat: tab 'r10 decide 26', session b63b7607-e86d-4705-84e1-5e7d070a69e3
+
