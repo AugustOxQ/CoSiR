@@ -1169,3 +1169,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-27-r10-build-10-handoff.md
 - New chat: tab 'r10 build 10', session 690179f0-bb27-42b5-b70c-303bb30c8137
 
+[brief] CoSiR: r10 build 10 -> r10 build 11 (2026-10-27 14:36 Amsterdam)
+- Done: 09, 10, 12 and 13 merged (09, 10, 12 after Codex fix waves and re-reviews); gates V1a, V0a and V4a pass; 11's and 12's self-checks pass.
+- State: 13 of 15 tickets merged. Ticket 11 is reviewed, with 2 must-fix items: the F = G key, and partitions never checked equal.
+- Next: 11's fix wave and ticket 15 at once; cluster sync, N1, N2; then the final review.
+- Blocked: nothing. The user wants stage 1 as soon as possible, with no step skipped. Codex has no room until 18:02.
+- Handoff: docs/superpowers/handoffs/2026-10-27-r10-build-11-handoff.md
+- New chat: tab 'r10 build 11', session c7ef3664-41ba-42c9-9619-bb206754f2c8
+
