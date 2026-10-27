@@ -26,7 +26,8 @@ On development data the sharper teacher won seed 0 (0.5074 against weight 8's 0.
 **What it does not show.** The model is still below the instructed image: the whole interval is under zero, so
 "matches or exceeds" is not licensed. The fresh-seed pick is by 0.0028 over weight 8, inside one seed range. Weight 8
 was not tested on held paintings. The claim is k-means, Qwen and ArtELingo only. The emotion margin against PercepT
-core, the emotion claim's bar, was not computed for this model.
+core, the emotion claim's bar, was not computed for this model. The held split was read before (the claim tests and
+12-24): the instructed image's and the recipe's held scores were known when this loop was designed.
 
 **Options for next.**
 1. Make the sharper-teacher model the recipe and re-run the held emotion claim test with it (about 1 hour; chosen
@@ -44,8 +45,8 @@ core, the emotion claim's bar, was not computed for this model.
 lift (+0.0356), and 0.0467 of the 0.0527 gap is gone. We expected a partial outcome (prior: GO 0.15, partial 0.50).
 We are fairly sure the relational term drives the lift, since every confirmed arm gains +0.027 to +0.036 on
 development data. We are not sure the sharper teacher matters: its fresh-seed lead over weight 8 is inside one seed range. A
-likely reason for the larger held lift (not checked): at full scale the recipe's genre head stops at epoch 1 in every
-seed, while this model's genre head trains to epochs 4 to 7.
+likely reason for the larger held lift (not checked): at full scale the recipe's best genre checkpoint is from epoch 1
+in every seed, while this model's best genre checkpoints come from epochs 4 to 7.
 
 **Our recommendation.** Option 1 first: it is cheap, and a paper needs one model for its emotion, style and genre
 claims. Then option 3.
@@ -61,7 +62,8 @@ All three stages ran in one queue chain with no stop, no failed run and no rerun
   and the seed-0 winner); stage C, a claim test on held paintings (the pick at full scale, seeds 0 to 4).
 - **Data:** stages A and B: 29,232 development paintings (genre labels on 23,682), training on 13,400 fit paintings;
   stage C: 42,969 train paintings, early stopping on 6,152 validation paintings, 12,281 held paintings (genre labels
-  on 9,949). Held data chose nothing: the stage B verdict file named the candidate before any full-scale run.
+  on 9,949). Held data chose nothing: the stage B verdict file named the candidate before any full-scale run. The held split
+  is the one the claim tests and 12-24 read; its comparator scores were known at design time (spec §8).
 - **Code:** main at 68e8081 (the round's code as merged at b8310b1, not dirty), local RTX 3090 under the GPU lock and
   8 CPU threads; 2026-10-27 00:33 to 02:16 (stage A 23 min, B 47 min, C 33 min; the estimate was 210 min).
 - **Gates:** VA1 (both halves), EQ, VB1 and VC1 (both halves) passed in the build on 2026-10-26 at the same code; the
@@ -125,16 +127,18 @@ seeds, paired 95% interval over paintings and seeds.
 **Re-derivations agree everywhere.** Separate code, given the rule and the exports, recomputed the climb rung (0
 differences), stage A (0), stage B (0) and stage C (largest difference 6.9e-18).
 
-**The ladder peaks between weights 8 and 16.** Weight 16 adds 0.0003 over weight 8 at seed 0, and weight 32 is
-0.0054 below weight 8. The fresh seeds show the same shape below: weights 2, 4 and 8 give 0.4965, 0.5005 and 0.5022.
+**At seed 0, weight 16 leads the tested ladder.** Weight 16 adds 0.0003 over weight 8, and weight 32 is 0.0054
+below weight 8; weights 16 and 32 have no fresh seeds. The fresh seeds show the same shape below: weights 2, 4 and 8 give 0.4965, 0.5005 and 0.5022.
 
-**The teacher temperature has a narrow best value.** At 0.02 the arm gains 0.0056 over weight 8 at seed 0; at 0.01
-it is 0.0136 below weight 8 and its style effect is −0.0094. The relational term alone (no direct term) and the teacher anchors both lose
-genre against weight 8, so the direct term and the in-batch rows both help.
+**At seed 0, temperature 0.02 leads the tested temperatures.** At 0.02 the arm gains 0.0056 over weight 8; at 0.01
+it is 0.0137 below weight 8 and its style effect is −0.0094. The relational term alone (no direct term) and the teacher anchors both score
+below weight 8 at seed 0; neither ran on fresh seeds, so this does not show that the direct term and the in-batch
+rows help in general.
 
 **Loss scale** (one epoch at weight 1, seed 0, reported only): the direct term's mean is 3.72 and the relational
-term's 0.30. With the direct term at 0.25 and the relational term at 8, the relational term carries about 2.6 times
-the direct term's weighted value in the first epoch.
+term's 0.30. Reweighted to 0.25 and 8, these means put the relational term at about 2.6 times the direct term. In the
+weight-8 run itself the first-epoch ratio is 0.90 (direct 4.65, relational 0.13), so the two terms carry similar
+weighted values there.
 
 **Held readings beside the verdict** (decide nothing; 12-24's margins, G against the largest entry):
 
@@ -149,8 +153,9 @@ the direct term's weighted value in the first epoch.
 - Leiden genre: 0.5072 against the strongest PercepT entry's 0.4454, +0.0618 [+0.0527, +0.0718]. Leiden against the
   instructed image was not computed.
 - Seed spread of G's genre: standard deviation 0.0039 (recipe 0.0050).
-- Best epochs: the recipe's genre head stops at epoch 1 in all five seeds; G's at epochs 4 to 7. Emotion and style
-  stop at the same epochs as the recipe except style in seeds 3 and 4.
+- Best epochs (the selected checkpoints; G's genre runs went on to epochs 19 to 22): the recipe's best genre
+  checkpoint is from epoch 1 in all five seeds, G's from epochs 4 to 7. Emotion and style select the same epochs as
+  the recipe except style in seeds 3 and 4.
 
 **Development readings** (old 5,000 and Leiden, seed-0 arms only): on the old 5,000, GS-0.02 gives genre 0.5032
 against GR-8's 0.5119 and the recipe's 0.4794; Leiden genre on development paintings gives GS-0.02 0.5005 against

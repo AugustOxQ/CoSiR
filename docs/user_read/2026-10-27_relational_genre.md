@@ -105,13 +105,15 @@ Emotion and style stay within one seed range of the recipe for all four.
 We clustered its genre output on 12,281 held paintings and scored the 9,949 with a genre label.
 The bar is the instructed Qwen genre image, the strongest genre reading we have.
 "Level" means the lower end of the interval is less than one seed range (0.0128) below the bar.
-We fixed this margin, and the other outcomes, before any held number existed.
+We fixed this margin, and the other outcomes, before any held number of this model existed.
+Earlier tests had read these held paintings, so the bar's and the recipe's scores were known when we designed the loop.
 
 **Did it work?** Yes. The model is level with the instructed genre image within one seed range.
 It is still below the image by 0.0060, and the whole interval is below zero.
 The test covers Qwen, k-means clustering and ArtELingo only.
 The held gain over the recipe, +0.0467, is larger than the development gain, +0.0356.
-Our reading, not checked: at full scale the recipe's genre head stops after one epoch, while this model's trains for four to seven.
+Our reading, not checked: at full scale the recipe's best genre checkpoint comes from the first epoch.
+This model's best genre checkpoints come from epochs four to seven.
 
 **Key evidence.** Held genre AMI, five seeds, 9,949 labelled paintings.
 
