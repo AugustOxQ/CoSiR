@@ -20,3 +20,17 @@ One entry per sync and node check of the r10 recipe sweep (rule §4.2 "The node 
 - Node jobs launch from the worktree `/project/CoSiR-wt-node` (branch `r10-rs-cluster-run`), since `cluster launch`
   needs the node to hold HEAD and HEAD's subject or branch to name "cluster run". The run chat syncs the final
   reviewed code the same way (a branch whose name holds "cluster-run", at the merged tip) before stage 1.
+
+## 2026-10-27, run 3: sync and stage 1
+
+- Code: the node worktree `/project/CoSiR-wt-node` (branch `r10-rs-cluster-run`) fast-forwarded from ea1bd84 to main's
+  tip a87cb1d (the build's merged code, eb1d04b, plus handoff commits; no code change after eb1d04b).
+- `cluster sync` (17:07): ok, sha a87cb1d; the node's clone holds the commit (`git cat-file -e` passed in the sync).
+  `cluster status` still shows `code_head` 1ea7742: that is the clone's checked-out branch, which sync never moves; every
+  job runs in its own worktree at the launched commit (each launch's `sha` field says a87cb1d). Not a blocker.
+- Inputs: `das6_sync_rs.py --node node402 --verify` (17:07): all 13 items equal in files and bytes (27.4 GiB).
+- Reservation: node402, 3 GPUs free (RTX A6000, 48 GB each), 79 h 44 min left at 17:06.
+- Deadlines (rule §4.2, exception of 15:31): `RS_START_BY` 2026-10-27 17:08 (the plan's start), `RS_END_BY`
+  2026-10-28 01:08 (plus 8 hours).
+- Stage 1 launched 17:08 to 17:10, all at sha a87cb1d: `rs1027-stage1-a` (slot 0: G, G-repeat and 12 runs),
+  `rs1027-stage1-b` (slot 1: 14 runs), `rs1027-stage1-c` (slot 2: 13 runs).
