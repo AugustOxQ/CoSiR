@@ -33,7 +33,7 @@ def touched(cfg):
     """The names of `state()` that differ inside the patches of `cfg`; and that they are restored after."""
     before = state()
     with ExitStack() as stack:
-        K.patches(cfg, stack, scale='sample')
+        K.patches(cfg, stack, scale='sample', outputs='o')
         inside = state()
     assert state() == before
     return {name for name in before if inside[name] != before[name]}
@@ -108,8 +108,9 @@ def batch(n=6, seed=0):
     return img, cap, teacher, pairs, weights
 
 
-def head_loss(cfg, aspect, *, eval_mode=True, seed=3):
-    """The loss rg_train's TrainingLoss route computes for one head under `cfg` (patched as the cohort is)."""
+def head_loss(cfg, aspect, *, eval_mode=True, seed=3, fit=True):
+    """The loss rg_train's TrainingLoss route computes for one head under `cfg` (patched as the cohort is). `fit`
+    False is a stopping call: include_mask_penalty False, under no_grad, as ms_train.run makes it."""
     img, cap, teacher, pairs, weights = batch()
     with ExitStack() as stack:
         K.patches(cfg, stack, scale='sample')
@@ -119,8 +120,9 @@ def head_loss(cfg, aspect, *, eval_mode=True, seed=3):
         torch.manual_seed(seed)
         models, views = ms_train.build_model(recipe['base'], list(rg_train.ASPECTS), CPU)
         models.eval() if eval_mode else models.train()
-        loss = rg_loss.switched_head_loss(views[aspect], img, cap, pairs, weights, recipe['base'], aspect, teacher,
-                                          None, True, switches=recipe['switches'], genre=genre)
+        with torch.set_grad_enabled(fit):
+            loss = rg_loss.switched_head_loss(views[aspect], img, cap, pairs, weights, recipe['base'], aspect,
+                                              teacher, None, fit, switches=recipe['switches'], genre=genre)
         z = views[aspect]['img'](img[torch.as_tensor(pairs).T.reshape(-1)]) if eval_mode else None
     return float(loss.detach()), z, (img, cap, teacher, pairs)
 
@@ -134,16 +136,49 @@ def relational(z, teacher, pairs, tau_t):
     return float(rg_loss.relational_loss(z, teacher[ids], ids, tau_t).detach())
 
 
+@pytest.mark.parametrize('fit', [True, False], ids=['fit call', 'stopping call'])
 @pytest.mark.parametrize('knob,aspect,other', [('k1', 'emotion', 'style'), ('k2', 'style', 'emotion')])
-def test_k1_k2_add_the_relational_term_to_their_own_head_only(knob, aspect, other):
-    base, z, (_, _, teacher, pairs) = head_loss(S.config(), aspect)
+def test_k1_k2_add_the_relational_term_to_their_own_head_only(knob, aspect, other, fit):
+    # the stopping loss carries the term too: the loss that is trained is the loss that stops
+    base, z, (_, _, teacher, pairs) = head_loss(S.config(), aspect, fit=fit)
     for weight in (2, 16):
         for tau_t in (0.02, 0.035):
             cfg = S.config({knob: weight, 'k4': tau_t} if tau_t != 0.02 else {knob: weight})
-            loss, _, _ = head_loss(cfg, aspect)
+            loss, _, _ = head_loss(cfg, aspect, fit=fit)
             assert loss == pytest.approx(base + weight * relational(z, teacher, pairs, tau_t), rel=1e-5)
-            assert head_loss(cfg, other)[0] == head_loss(S.config(), other)[0]
-            assert head_loss(cfg, 'genre')[0] == head_loss(S.config({'k4': tau_t} if tau_t != 0.02 else None), 'genre')[0]
+            assert head_loss(cfg, other, fit=fit)[0] == head_loss(S.config(), other, fit=fit)[0]
+            assert head_loss(cfg, 'genre', fit=fit)[0] == head_loss(
+                S.config({'k4': tau_t} if tau_t != 0.02 else None), 'genre', fit=fit)[0]
+
+
+@pytest.mark.parametrize('knob,aspect', [('k1', 'emotion'), ('k2', 'style')])
+def test_k1_k2_relational_term_carries_gradient_to_the_head(knob, aspect):
+    # grad(k1 loss) = grad(G loss) + weight * grad(relational term on the head's own z): the term is attached
+    img, cap, teacher, pairs, weights = batch()
+    recipe = rg_train.resolved(0)
+    ids = ids_of(pairs)
+    weight, tau_t = 8, 0.025
+
+    def grads(cfg, extra=False):
+        with ExitStack() as stack:
+            K.patches(cfg, stack, scale='sample')
+            torch.manual_seed(3)
+            models, views = ms_train.build_model(recipe['base'], list(rg_train.ASPECTS), CPU)
+            models.eval()
+            params = list(views[aspect]['img'].parameters())
+            genre = rg_loss.GenreLoss(V.switches('GS-0.02'), 0, term_log={})
+            loss = rg_loss.switched_head_loss(views[aspect], img, cap, pairs, weights, recipe['base'], aspect,
+                                              teacher, None, True, switches=recipe['switches'], genre=genre)
+            if extra:
+                z = views[aspect]['img'](img[ids])
+                loss = weight * rg_loss.relational_loss(z, teacher[ids], ids, tau_t)
+            return torch.autograd.grad(loss, params)
+
+    g_k, g_g = grads(S.config({knob: weight, 'k4': tau_t})), grads(S.config({'k4': tau_t}))
+    g_rel = grads(S.config(), extra=True)
+    assert sum(float(g.norm()) for g in g_rel) > 1e-4
+    for a, b, c in zip(g_k, g_g, g_rel):
+        assert torch.allclose(a, b + c, atol=1e-6, rtol=1e-4)
 
 
 def test_k1_relational_term_is_on_the_frozen_forward_pass_not_a_second_one():
@@ -167,14 +202,15 @@ def test_k1_relational_term_is_on_the_frozen_forward_pass_not_a_second_one():
     assert views['emotion']['img'].trunk[0].weight.grad is not None
 
 
-def test_k3_and_k4_set_the_genre_relational_weight_and_teacher_temperature():
-    base, z, (_, _, teacher, pairs) = head_loss(S.config(), 'genre')
+@pytest.mark.parametrize('fit', [True, False], ids=['fit call', 'stopping call'])
+def test_k3_and_k4_set_the_genre_relational_weight_and_teacher_temperature(fit):
+    base, z, (_, _, teacher, pairs) = head_loss(S.config(), 'genre', fit=fit)
     rel = relational(z, teacher, pairs, 0.02)
     for lam in (4, 12, 16):
-        loss, _, _ = head_loss(S.config({'k3': lam}), 'genre')
+        loss, _, _ = head_loss(S.config({'k3': lam}), 'genre', fit=fit)
         assert loss == pytest.approx(base + (lam - 8) * rel, rel=1e-5)
     for tau_t in (0.015, 0.035):
-        loss, _, _ = head_loss(S.config({'k4': tau_t}), 'genre')
+        loss, _, _ = head_loss(S.config({'k4': tau_t}), 'genre', fit=fit)
         assert loss == pytest.approx(base + 8 * (relational(z, teacher, pairs, tau_t) - rel), rel=1e-5)
     # the student row stays at 0.05 and the direct term is untouched: k3 = 8 and k4 = G's value change nothing
     assert head_loss(S.config(), 'emotion')[0] == head_loss(S.config({'k3': 12}), 'emotion')[0]
@@ -299,39 +335,30 @@ def test_trunk_at_g_values_equals_the_frozen_trunk_under_the_same_seed():
 
 
 # ------------------------------------------------------------------ k11
-def test_k11_reads_the_store_of_rs_graphs_and_k20_the_frozen_loader(monkeypatch, tmp_path):
-    calls = []
+def test_k11_calls_rs_graphs_with_the_loaded_sample_and_k20_never_does(monkeypatch, tmp_path):
+    seen = []
 
     class Fake:
         @staticmethod
-        def sample_store(k, variant):
-            calls.append(('store', k, variant))
-            return tmp_path
+        def sample_store(k, variant='aspect', *, s=None, outputs=None):
+            seen.append((k, variant, s, outputs))
+            return 'graphs', 'manifests'
 
     monkeypatch.setitem(sys.modules, 'rs_graphs', Fake)
-
-    def load_graph(s, base, aspect, rows):
-        calls.append(('load', base, aspect, tuple(rows)))
-        return {'a': aspect}, {'m': aspect}
-
-    monkeypatch.setattr(ms_train.head, 'load_graph', load_graph)
     recipe = rg_train.resolved(0)
     with ExitStack() as stack:
-        K.patches(S.config({'k11': 30}), stack, scale='sample')
-        graphs, manifests = rg_train.load_graphs('sample', recipe)
-    assert calls[0] == ('store', 30, 'aspect')
-    assert [c[:3] for c in calls[1:]] == [('load', tmp_path, a) for a in rg_train.ASPECTS]
-    assert [c[3] for c in calls[1:]] == [(recipe['base']['graphs'][a],) for a in rg_train.ASPECTS]
-    assert set(graphs) == set(manifests) == set(rg_train.ASPECTS)
-    # k = 20 never reaches rs_graphs: the frozen loader (checked by its own tests) is the function itself
-    calls.clear()
-    monkeypatch.setattr(rg_train, 'load_graphs', lambda s, r: ('frozen', s))
-    assert K.load_graphs_k('s', recipe, 20) == ('frozen', 's') and not calls
+        K.patches(S.config({'k11': 30}), stack, scale='sample', outputs=tmp_path)
+        assert rg_train.load_graphs('the sample', recipe) == ('graphs', 'manifests')
+    assert seen == [(30, 'aspect', 'the sample', tmp_path)]
+    assert rg_train.load_graphs.__module__ == 'rg_train'          # restored: the frozen loader
+    with pytest.raises(AssertionError, match='needs the outputs'):
+        K.patches(S.config({'k11': 30}), ExitStack(), scale='sample')
+    with pytest.raises(AssertionError, match='frozen store'):
+        K.store_graphs('s', 20, tmp_path)
+    assert len(seen) == 1
 
 
-def test_k11_refuses_until_rs_graphs_exists(monkeypatch):
+def test_k11_refuses_until_rs_graphs_exists(monkeypatch, tmp_path):
     monkeypatch.setitem(sys.modules, 'rs_graphs', None)    # an import of it raises ImportError
     with pytest.raises(AssertionError, match='rs_graphs .* not merged'):
-        K.sample_store(30)
-    with pytest.raises(AssertionError, match='frozen store'):
-        K.sample_store(20)
+        K.store_graphs('s', 30, tmp_path)

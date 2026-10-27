@@ -8,6 +8,7 @@ G enters no patch: `run_config` reaches `rg_train.train_cohort` (with `rg_loss.s
 import argparse
 import hashlib
 import json
+import subprocess
 import socket
 import sys
 from contextlib import ExitStack
@@ -21,23 +22,27 @@ import rs_sheet as S
 import rs_knobs
 import ab_train
 import eg_train3 as eg
+import ab_rows
 import rb_part1
+import rb_rows
 import rg_loss
 import rg_train
 import rg_variants as V
-from ab_paths import ms_train
+from ab_paths import ms_rows, ms_train
 
 ASPECTS = tuple(paths.ASPECTS)
 G_ARM = paths.G_ARM
 SEEDS = (0, 1, 2, 3, 4)
 MACHINES = ('local', 'node402')
+V1A = 'G-v1a'                 # V1a's replays of G, named apart from G's own runs (moved-aside folders)
 REPEAT = 'G-repeat'           # G₀′ (rule N3): G's configuration repeated in its own folder
 ROUND_FILES = ('rs_train.py', 'rs_knobs.py', 'rs_sheet.py', 'rs_paths.py')
 # What decides a run's numbers: the knob layer, the sheet, the 12-27 trainer and loss, and the frozen modules under them.
 # A finished run is resumed only if these are unchanged (the CLI and the gate code may change).
 TRAINING_FILES = (Path(rs_knobs.__file__), Path(S.__file__), Path(rg_train.__file__), Path(rg_loss.__file__),
                   Path(V.__file__), Path(ms_train.__file__), Path(ms_train.itp_train.__file__),
-                  Path(ab_train.__file__), Path(eg.__file__))
+                  Path(ab_train.__file__), Path(eg.__file__), Path(rb_rows.__file__), Path(ab_rows.__file__),
+                  Path(ms_rows.__file__), Path(ms_train.head.__file__), Path(ms_train.ags_trainimg.__file__))
 
 
 def sha(path):
@@ -59,11 +64,13 @@ def jsonable(cfg):
     return dict(cfg, remove=list(cfg['remove']))
 
 
-def require_k11_gate(outputs):
-    """Rule §2.2: before any k11 run the rebuild at k = 20 must equal the frozen sample graphs bit for bit."""
-    gate = Path(outputs) / 'gates/k11_sample.json'
-    assert gate.is_file() and json.loads(gate.read_text()).get('pass') is True, \
-        f'k11 runs do not run: check K ({gate}) has not passed'
+def code_commit():
+    """HEAD, and whether any Python file of this round or of 12-27 is modified or untracked (rg_train's own check
+    sees 12-27's folder only)."""
+    def git(*args):
+        return subprocess.run(['git', *args], cwd=paths.ROUND, capture_output=True, text=True, check=True).stdout.strip()
+    return git('rev-parse', 'HEAD'), bool(git('status', '--porcelain', '--', ':/src/test/20261027_recipe_sweep/*.py',
+                                               ':/src/test/20261027_relational_genre/*.py'))
 
 
 def run_config(data, cfg, seed, outputs, device, *, run_dir=None, smoke=False, max_epochs=None, machine='local',
@@ -76,7 +83,7 @@ def run_config(data, cfg, seed, outputs, device, *, run_dir=None, smoke=False, m
     aside (V1d); a run that stops on a non-finite loss is `failed` and not rerun. `name` overrides the folder and
     record name of the same configuration (G's repeat on the node is 'G-repeat'); `machine` is written as given."""
     name = name or S.name(cfg)
-    assert name == S.name(cfg) or (name, cfg) == (REPEAT, S.config()), (name, S.name(cfg))
+    assert name == S.name(cfg) or (name in (REPEAT, V1A) and cfg == S.config()), (name, S.name(cfg))
     assert machine in MACHINES, machine
     assert seed in SEEDS, seed
     outputs, device = paths.check_outputs(outputs, smoke), rg_train.check_device(device)
@@ -86,10 +93,8 @@ def run_config(data, cfg, seed, outputs, device, *, run_dir=None, smoke=False, m
     max_epochs = (2 if smoke else ms_train.CONFIG['max_epochs']) if max_epochs is None else max_epochs
     assert not smoke or max_epochs == 2, '--smoke requires 2 epochs'
     assert 1 <= max_epochs <= ms_train.CONFIG['max_epochs']
-    if cfg['k11'] != S.G['k11']:
-        require_k11_gate(outputs)
     with ExitStack() as stack:
-        knobs = rs_knobs.patches(cfg, stack, scale='sample')
+        knobs = rs_knobs.patches(cfg, stack, scale='sample', outputs=outputs)
         s, inputs, p, p_sha = data.get(export_p=True)
         recipe = rg_train.resolved(seed)
         graphs, manifests = rg_train.load_graphs(s, recipe)
@@ -115,7 +120,7 @@ def run_config(data, cfg, seed, outputs, device, *, run_dir=None, smoke=False, m
                     print(f'{name} s{seed}: {record["status"]} run exists; skip', flush=True)
                     return record
                 assert not rg_train.va3_failures_aside(outputs, name, seed), 'already rerun once after V1b'
-                head, dirty = rg_train.code_commit()
+                head, dirty = code_commit()
                 assert record['code_commit'] == head and not record['code_dirty'] and not dirty, \
                     'a V1b rerun needs the same clean code'
                 rerun_of = rg_train.move_aside(outputs, run_dir, name, seed)
@@ -125,11 +130,13 @@ def run_config(data, cfg, seed, outputs, device, *, run_dir=None, smoke=False, m
                 assert len(previous) <= 1, 'already rerun once after V1b'
                 if previous:
                     origin = json.loads((previous[0] / 'run.json').read_text())
-                    assert (origin['code_commit'], origin['code_dirty']) == rg_train.code_commit() \
+                    assert (origin['code_commit'], origin['code_dirty']) == code_commit() \
                         and not origin['code_dirty']
                     assert (origin['name'], origin['seed'], origin['config'], origin['smoke'],
                             origin['max_epochs']) == same, 'interrupted V1b rerun configuration changed'
                     assert origin['input_hashes'] == identity, 'interrupted V1b rerun inputs changed'
+                    assert all(origin['code_sha256'].get(k) == v for k, v in code_sha256(training_only=True).items()), \
+                        'interrupted V1b rerun code_sha256 changed'
                     rerun_of = previous[0]
                 if run_dir.exists() and any(run_dir.iterdir()):
                     rg_train.move_aside(outputs, run_dir, name, seed)
@@ -137,7 +144,9 @@ def run_config(data, cfg, seed, outputs, device, *, run_dir=None, smoke=False, m
                                            device, run_dir, p=p, p_sha256=p_sha, smoke=smoke, max_epochs=max_epochs,
                                            rerun_of=rerun_of, input_hashes=identity)
             assert record['switches'] == switches
-            record.update(variant=name, name=name, base_arm=G_ARM, config=jsonable(cfg), knobs=knobs,
+            head, dirty = code_commit()
+            record.update(code_commit=head, code_dirty=dirty, cause=record.get('cause'),
+                          variant=name, name=name, base_arm=G_ARM, config=jsonable(cfg), knobs=knobs,
                           code_sha256=code_sha256(), machine=machine, host=socket.gethostname())
             eg.atomic_record(run_dir / 'run.json', record)
             if record['status'] == 'failed' and record['failure_kind'] == 'va3' and rerun_of is None:
@@ -153,7 +162,8 @@ def regress_v1a(data, outputs, device, *, smoke=False, machine='local'):
     items, hashes = {}, {}
     for seed in (0, 1):
         folder = outputs / 'regression' / f'v1a_s{seed}'
-        run = run_config(data, S.config(), seed, outputs, device, run_dir=folder, smoke=smoke, machine=machine)
+        run = run_config(data, S.config(), seed, outputs, device, run_dir=folder, smoke=smoke, machine=machine,
+                         name=V1A)
         ref = paths.RG_TRAIN / G_ARM / f's{seed}'
         frozen = json.loads((ref / 'run.json').read_text())
         assert frozen['status'] == 'ok' and frozen['variant'] == G_ARM and frozen['seed'] == seed
@@ -176,7 +186,7 @@ def regress_v1a(data, outputs, device, *, smoke=False, machine='local'):
             all(c.values()) for c in aspects.values())
         items[f's{seed}'] = dict(aspects=aspects, run_status=run['status'], run_cause=run.get('cause'),
                                  reference=str(ref), run_dir=str(folder), **{'pass': passed})
-    commit, dirty = rg_train.code_commit()
+    commit, dirty = code_commit()
     record = dict(items=items, smoke=smoke, p_sha256=paths.P_SHA256, code_commit=commit, code_dirty=dirty,
                   code_sha256=code_sha256(), rg_code_sha256=rg_train.rg_code_sha256(), input_hashes=hashes)
     record['pass'] = all(i['pass'] for i in items.values()) and not smoke

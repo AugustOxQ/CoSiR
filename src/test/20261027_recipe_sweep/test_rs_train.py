@@ -1,6 +1,8 @@
 """The sample-scale trainer's run logic (resume, V1d rerun, failures, records) and V1a's comparison, with the cohort
 replaced by a recorder; the cohort itself is `rg_train.train_cohort`, checked by V1a on the GPU."""
 import json
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -36,7 +38,7 @@ def cohort(monkeypatch, tmp_path):
     manifests = {a: {'archives': {a: 'x'}, 'identity': 'i'} for a in T.ASPECTS}
     monkeypatch.setattr(rg_train, 'load_graphs', lambda s, recipe: ({a: {} for a in T.ASPECTS}, manifests))
     monkeypatch.setattr(rg_train, 'verify_cached_run', lambda folder, record, export_p: calls.append('verify'))
-    monkeypatch.setattr(rg_train, 'code_commit', lambda: ('abc', False))
+    monkeypatch.setattr(T, 'code_commit', lambda: ('abc', False))
 
     def train_cohort(s, inputs, graphs, mans, recipe, variant, seed, device, run_dir, *, p, p_sha256, smoke,
                      max_epochs, rerun_of, input_hashes, diagnostic=False):
@@ -143,19 +145,77 @@ def test_a_v1b_failure_is_rerun_once_with_the_first_run_moved_aside(cohort, tmp_
     assert run(S.config({'k7': 0.01}), outputs=tmp_path)['status'] == 'failed' and len(trained(calls)) == 4
 
 
-def test_k11_runs_need_check_k_and_seeds_and_scratch_are_checked(cohort, tmp_path):
-    with pytest.raises(AssertionError, match='check K'):
-        run(S.config({'k11': 30}), outputs=tmp_path)
-    (tmp_path / 'gates').mkdir()
-    (tmp_path / 'gates/k11_sample.json').write_text(json.dumps({'pass': False}))
-    with pytest.raises(AssertionError, match='check K'):
-        run(S.config({'k11': 30}), outputs=tmp_path)
+def test_seeds_scratch_and_frozen_outputs_are_checked(cohort, tmp_path):
     with pytest.raises(AssertionError):
         run(seed=5, outputs=tmp_path)
     with pytest.raises(AssertionError, match='/tmp/claude-0'):
         run(outputs=tmp_path, smoke=True)
     with pytest.raises(AssertionError, match='frozen input'):
         run(outputs=paths.RG_OUT / 'x')
+
+
+def test_k11_goes_through_rs_graphs_with_the_loaded_sample(monkeypatch, tmp_path):
+    """The k11 run's graphs are rs_graphs.sample_store(k, 'aspect', s=, outputs=); no gate of this module."""
+    seen = []
+
+    class Fake:
+        @staticmethod
+        def sample_store(k, variant='aspect', *, s=None, outputs=None):
+            seen.append((k, variant, s, outputs))
+            return {a: {} for a in T.ASPECTS}, {a: {'archives': {a: 'x'}, 'identity': 'i'} for a in T.ASPECTS}
+
+    monkeypatch.setitem(sys.modules, 'rs_graphs', Fake)
+    monkeypatch.setattr(rg_train, 'verify_cached_run', lambda *a, **k: None)
+    monkeypatch.setattr(T, 'code_commit', lambda: ('abc', False))
+    got = []
+
+    def stop(*args, **kwargs):
+        got.append(args[2])
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(rg_train, 'train_cohort', stop)
+    with pytest.raises(KeyboardInterrupt):
+        run(S.config({'k11': 30}), outputs=tmp_path)
+    assert seen == [(30, 'aspect', 'sample', tmp_path.resolve())] and set(got[0]) == set(T.ASPECTS)
+
+
+def test_code_dirty_sees_the_round_folder_and_12_27(tmp_path, monkeypatch):
+    def git(*args):
+        subprocess.run(['git', *args], cwd=tmp_path, check=True, capture_output=True)
+
+    git('init', '-q')
+    git('config', 'user.email', 'a@b')
+    git('config', 'user.name', 'n')
+    for folder in ('20261027_recipe_sweep', '20261027_relational_genre', '20261026_other'):
+        (tmp_path / 'src/test' / folder).mkdir(parents=True)
+        (tmp_path / 'src/test' / folder / 'x.py').write_text('1\n')
+    git('add', '-A')
+    git('commit', '-qm', 'a')
+    monkeypatch.setattr(paths, 'ROUND', tmp_path / 'src/test/20261027_recipe_sweep')
+    head, dirty = T.code_commit()
+    assert len(head) == 40 and not dirty
+    for folder, expected in (('20261026_other', False), ('20261027_recipe_sweep', True), ('20261027_relational_genre', True)):
+        path = tmp_path / 'src/test' / folder / 'x.py'
+        path.write_text('2\n')
+        assert T.code_commit()[1] is expected, folder
+        git('checkout', '--', str(path))
+    (tmp_path / 'src/test/20261027_recipe_sweep/new.py').write_text('1\n')
+    assert T.code_commit()[1]
+
+
+def test_an_interrupted_v1b_rerun_checks_the_origin_code(cohort, tmp_path):
+    calls, outcomes = cohort
+    outcomes.extend(['va3', 'ok'])
+    run(outputs=tmp_path)
+    [aside] = (tmp_path / 'replaced' / 'G').glob('s0-*')
+    done = paths.run_dir(tmp_path, 'G', 0)
+    done.rename(tmp_path / 'finished_rerun')                    # as if the rerun was interrupted before its folder
+    origin = json.loads((aside / 'run.json').read_text())
+    (aside / 'run.json').write_text(json.dumps(dict(origin, code_sha256=dict(origin['code_sha256'], **{'rs_knobs.py': '0'}))))
+    with pytest.raises(AssertionError, match='code_sha256 changed'):
+        run(outputs=tmp_path)
+    (aside / 'run.json').write_text(json.dumps(origin))
+    assert run(outputs=tmp_path)['rerun_of'] == str(aside)
 
 
 def test_smoke_runs_two_epochs_in_scratch(cohort):
@@ -182,10 +242,11 @@ def test_v1a_compares_exports_and_states_bit_for_bit(tmp_path, monkeypatch):
                 np.savez(ref / f'{a}__{label}.npz', img=arrays[(seed, a, label)])
     monkeypatch.setattr(paths, 'RG_TRAIN', ref_root)
     monkeypatch.setattr(rg_train, 'read_export', lambda path, n: np.load(path)['img'])
-    monkeypatch.setattr(rg_train, 'code_commit', lambda: ('abc', False))
+    monkeypatch.setattr(T, 'code_commit', lambda: ('abc', False))
     state = dict(damage=None)
 
-    def replay(data, cfg, seed, outputs, device, *, run_dir, smoke, machine):
+    def replay(data, cfg, seed, outputs, device, *, run_dir, smoke, machine, name):
+        assert name == 'G-v1a'
         assert cfg == S.config()
         run_dir.mkdir(parents=True, exist_ok=True)
         for a in T.ASPECTS:

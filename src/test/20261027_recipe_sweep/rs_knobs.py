@@ -14,7 +14,7 @@ knob lives (facts brief §A):
            (all buddy terms) and `itp_train.loss_fn` (not on this path); the direct and relational terms hard-code
            0.05. The export's inference batch reads 'batch_size' too, so k8 pins it to G's value there.
   k9, k10  `ms_train.TrunkSide` (hard-coded 1024 and 0.1); `CONFIG['architecture'/'dropout']` follow for the records
-  k11      `rg_train.load_graphs` reads the graph store of `rs_graphs.sample_store(k)` (ticket 03)
+  k11      `rg_train.load_graphs` is replaced by `rs_graphs.sample_store(k, 'aspect', s=, outputs=)` (ticket 03)
 The stopping loss of a head with a relational term includes that term (as genre's does at G): the loss that is
 trained is the loss that stops.
 """
@@ -43,27 +43,16 @@ assert V.ARMS[V.BASE]['lam'] == 0 and V.ARMS['GS-0.02'] == dict(m=1, lam=S.G['k3
 assert V.TEACHER_WEIGHT == S.G['k5']
 
 
-def sample_store(k):
-    """The `base` folder of the sample graph store at mutual top-k `k` (ticket 03's `rs_graphs.sample_store`), in the
-    form `ab_train.require_graph_store` returns: `<base>/graphs/{manifest.json, <aspect>.npz}`. The one seam to ticket
-    03; k = 20 never comes here (the frozen store is read by the frozen loader)."""
+def store_graphs(s, k, outputs):
+    """The sample graphs of mutual top-k `k` as `rg_train.load_graphs(s, recipe)` returns them, (graphs, manifests),
+    from ticket 03's `rs_graphs.sample_store` (imported here: the one seam; it enforces its own gates, check K
+    included). k = 20 never comes here: the frozen loader reads the frozen store."""
     assert k != S.G['k11'], 'k = 20 is the frozen store'
     try:
         import rs_graphs
     except ImportError:
         raise AssertionError(f'k11 = {k}: rs_graphs (ticket 03) is not merged; only k = 20 can run') from None
-    return rs_graphs.sample_store(k=k, variant='aspect')
-
-
-def load_graphs_k(s, recipe, k):
-    """`rg_train.load_graphs` with the store of `k` (copied from it: same loader and checks, another base)."""
-    if k == S.G['k11']:
-        return rg_train.load_graphs(s, recipe)
-    base = sample_store(k)
-    graphs, manifests = {}, {}
-    for aspect in rg_train.ASPECTS:
-        graphs[aspect], manifests[aspect] = ms_train.head.load_graph(s, base, aspect, [recipe['base']['graphs'][aspect]])
-    return graphs, manifests
+    return rs_graphs.sample_store(k, 'aspect', s=s, outputs=outputs)
 
 
 def with_relational(original, lam, tau_t):
@@ -119,7 +108,7 @@ def with_direct_weight(resolved, weight):
     return weighted
 
 
-def _plan(cfg):
+def _plan(cfg, outputs=None):
     """[(description, enter)] for the changed knobs: description {knob: {target: value}} (JSON), enter(stack)
     enters the patch. Empty for G."""
     changed = S.changed(cfg)
@@ -165,9 +154,9 @@ def _plan(cfg):
         plan.append((description, enter_config))
     if 'k11' in changed:
         k = cfg['k11']
-        plan.append(({'k11': {'rg_train.load_graphs': f'store of rs_graphs.sample_store(k={k})'}},
+        plan.append(({'k11': {'rg_train.load_graphs': f'rs_graphs.sample_store(k={k}, \'aspect\')'}},
                      lambda stack: stack.enter_context(patch.object(
-                         rg_train, 'load_graphs', lambda s, recipe: load_graphs_k(s, recipe, k)))))
+                         rg_train, 'load_graphs', lambda s, recipe: store_graphs(s, k, outputs)))))
     return plan
 
 
@@ -180,14 +169,16 @@ def describe(cfg):
     return description
 
 
-def patches(cfg, stack, *, scale):
-    """Enter every patch `cfg` needs into `stack`; none for G. Returns `describe(cfg)`. Sample scale only: the
-    full-scale seams (ticket 08) extend this."""
+def patches(cfg, stack, *, scale, outputs=None):
+    """Enter every patch `cfg` needs into `stack`; none for G. Returns `describe(cfg)`. `outputs` (the run's output
+    folder, where the graph stores live) is needed for k11 only. Sample scale only: the full-scale seams (ticket 08)
+    extend this."""
     assert scale in ('sample', 'full'), scale
     assert not cfg['remove'], 'removal switches: ticket 07'
     description = describe(cfg)
     if description:
         assert scale == 'sample', 'knobs at full scale: ticket 08'
-    for _, enter in _plan(cfg):
+    assert outputs is not None or 'k11' not in description, 'k11 needs the outputs folder'
+    for _, enter in _plan(cfg, outputs):
         enter(stack)
     return description
