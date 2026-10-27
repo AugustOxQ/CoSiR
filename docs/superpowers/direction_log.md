@@ -11,27 +11,22 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-10-26)
+## Now (2026-10-27)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
-on each view, one shared trunk with emotion, style and genre heads, read once on the default image. The current recipe
-(no own-caption terms, teacher share 1/5; report 12-24) passes the held emotion claim test on four image encoders,
-each with Qwen graphs, teacher and captions at training (12,281 held ArtELingo paintings, 5 seeds; bar: PercepT core's
-own reading on the Qwen image, 0.0874; a pass needs +0.0100 with the interval above zero): Qwen 0.1029, SigLIP 2
-0.1024 (12-24), SigLIP 1 0.1036 and CLIP L/14 0.0996 (12-25, 2026-10-26). CLIP B/32 (0.0885) and CLIP B/16 (0.0945)
-are inconclusive; DINOv2-large fails at sample scale. The claims are k-means only. On 29,232 development paintings
-every one of the seven students lifts over its own PercepT arm (+0.0117 to +0.0288). A relational genre term at weight
-8 reaches the instructed Qwen genre image's level on development data (genre AMI 0.5022 against the recipe's 0.4694 on
-fresh seeds; picked among seven variants on one seed; no held test). The stage report of the whole new line (design,
-ablations, analyses) is written (2026-10-26). Next (user, decide 23, 2026-10-26): close the genre gap first, in one full loop: a
-sweep of the relational genre term (weights 16 and 32 on seed 0; relational alone and a sharper teacher temperature
-at weight 8; teacher anchors instead of in-batch rows), weights 2 and 4 and the sweep's best on fresh seeds, then a
-held genre claim test of the selected variant (decision rule before any code); the write-up of the encoder claims
-comes after; aspect-named retrieval for the 11-10 gate still waits (decide 20). The spec
-([relational genre](specs/2026-10-26-relational-genre-design.md), approved by the user 2026-10-26 19:57) and its
-rule (2e9529a) set the held bar: GO when the picked variant is level with the instructed Qwen genre image (0.5062)
-within 0.0128; partial when it closes at least half the held gap over the recipe (0.4534). The build runs tonight,
-the run on 2026-10-27. The CVPR abstract is due 2026-11-10.
+on each view, one shared trunk with emotion, style and genre heads, read once on the default image. The recipe of
+12-24 passes the held emotion claim test on four image encoders (12,281 held ArtELingo paintings, 5 seeds; bar:
+PercepT core's own reading on the Qwen image, 0.0874, +0.0100 with the interval above zero): Qwen 0.1029, SigLIP 2
+0.1024, SigLIP 1 0.1036, CLIP L/14 0.0996; CLIP B/32 and B/16 inconclusive, DINOv2-large fails. The relational genre
+round (report 12-27, 2026-10-27) adds a relational term with a sharper teacher row (temperature 0.02, weight 8):
+model G reaches held genre AMI 0.5001, level with the instructed Qwen genre image (0.5062) within one seed range
+(−0.0060 [−0.0105, −0.0014]), +0.0467 over the recipe and +0.0732 over the strongest PercepT entry. Against the
+instructed Qwen image, G wins on emotion and is level on style and genre; against PercepT it wins on all three. The
+claims are k-means, ArtELingo and (genre) Qwen only. Next (user, decide 26, 2026-10-27): one medium loop: the held
+emotion claim test with G as the new recipe, then a recipe sweep on DAS6 on development data (the strongest recipe
+for all three aspects; "level" accepted) with an ablation study and a real analysis beside it, then the other
+passing encoders with the final recipe, then aspect-named retrieval as the second task. The sweep's search space is
+chosen at step 4 of decide 26. The CVPR abstract is due 2026-11-10.
 
 ## Parked ideas
 
@@ -57,6 +52,47 @@ the run on 2026-10-27. The CVPR abstract is due 2026-11-10.
   by the user, 2026-10-25; [proposed in](../reports/auto/percept/2026-12-23_attention_maps.md))
 - Align and contrast the three aspect heads of one image (shared part aligned, aspect parts pushed apart) (never tried;
   not chosen by the user, 2026-10-20: the aspects may not be separable; proposed in the r10 decide 12 chat)
+
+## 2026-10-27 · Relational genre round read: a sharper teacher brings held genre level with the instructed Qwen genre image (G-GO); next, the held emotion test with this model, a recipe sweep on DAS6 with ablations and analysis, then the encoders, then retrieval
+
+- **Read:** stage A (29,232 development paintings, seed 0; target: the instructed Qwen genre image, 0.4989): the
+  sharper teacher row (temperature 0.02, weight 8) 0.5074 wins against weight 8's 0.5018; weight 16 0.5022, weight
+  32 0.4964 (the climb stops); temperature 0.01 fails the style guard; the relational term alone 0.4972 and teacher
+  anchors 0.4900 lose. Stage B (seeds 1 to 3): all four arms confirmed, sharper teacher 0.5050, weight 8 0.5022, 4
+  0.5005, 2 0.4965 against the recipe's 0.4694; the four within 0.0085, under one seed range (0.0128). Stage C (held,
+  full scale, 9,949 labelled paintings, 5 seeds): model G 0.5001 against the bar 0.5062, −0.0060 [−0.0105, −0.0014],
+  G-GO (level within one seed range, not "matches or exceeds"); over the recipe +0.0467 [+0.0402, +0.0531], over the
+  strongest PercepT entry +0.0732. G's held readings against the instructed Qwen image (recorded, no fixed bar):
+  emotion +0.0118 [+0.0083, +0.0150], style +0.0032 [−0.0019, +0.0085]; G's emotion margin over PercepT core not
+  computed. k-means, Qwen and ArtELingo only; the held split was read before.
+- **Meaning (C):** "I also think so, so we now have two levels and one win (emotion), and hopefully we can get all
+  three as win (higher-than-noise)." (user, before ours). Ours: the genre gap is almost closed (0.0467 of 0.0527);
+  the held lift is larger than the development lift; fairly sure the relational term drives it, not sure the sharper
+  teacher matters (its fresh-seed lead over weight 8, 0.0028, is inside one seed range). Where they differ: the
+  user's "two levels, one win" is against the instructed Qwen image, our teacher; against PercepT, the published
+  comparator, all three aspects already win (style +0.1760, genre +0.0732, emotion about +0.0165, not computed with
+  the claim test's bootstrap). A held genre win over the teacher needs +0.011 to +0.019 more genre AMI; our guess for
+  a sweep alone is about 0.2 (not checked).
+- **Decided (A):** one medium loop, type sweep: first the held emotion claim test with model G as the new recipe
+  (about 1 hour; adopted after its held numbers, so disclosed); then a recipe sweep on DAS6 on development data with
+  Qwen, aimed at the strongest recipe for all three aspects, "level" with the teacher accepted as a possible end
+  state, the margins against the teacher reported (user, after seeing the recommendation; the user's own aim was a
+  win on all three); beside it a deep analysis in two lines, an ablation study (which part of the model is useful)
+  and a real analysis (distributions, statistics, what the model really learned) (user); then the other passing
+  encoders (SigLIP 2, SigLIP 1, CLIP L/14) with the final recipe (user, after seeing the recommendation: the user's
+  order was encoders before the sweep; ours moved them after, so a recipe change does not force a second encoder
+  round); then aspect-named retrieval as the second task, once the sweep fixes the clustering part (user; decide 20's
+  gate keeps retrieval). Options were: 1, the held emotion test with G; 2, the change on the other encoders; 3, the
+  write-up. Our recommendation: 1, then 3. Storage: all recommendations approved (user).
+- **Idea (B):** open: the sweep's search space and the analysis plan, chosen at step 4 of this decide chat.
+- **Why:** a paper needs one model for its three aspect claims; the sweep may turn a level into a win and gives a
+  stable recipe before the encoders and retrieval reuse it; the analysis lines feed the paper's ablation and
+  analysis sections. The abstract is due 2026-11-10.
+- **Links:** [report](../reports/auto/percept/2026-12-27_relational_genre.md) ·
+  [user-read report](../user_read/2026-10-27_relational_genre.md) ·
+  [spec](specs/2026-10-26-relational-genre-design.md) ·
+  [rule](../../src/test/20261027_relational_genre/DECISION_RULE.md) ·
+  [handoff](handoffs/2026-10-27-r10-decide-26-handoff.md)
 
 ## 2026-10-26 · Encoders and genre round read: CLIP L/14 and SigLIP 1 pass held emotion, CLIP B/16 inconclusive, DINOv2 fails; a relational genre term reaches the target on development data; a stage report of the new line first
 
