@@ -6,7 +6,7 @@
 #   cluster launch --node node402 -- bash scripts/run_rs_node.sh n3                          N3 (rs_sweep n3, on the node's CPU)
 # shard: for each config in order, rs_train (finished runs skip) then rs_sweep score on the node's CPU, per seed.
 # A config name that fails to parse or a run that raises stops the shard (a failed run is a recorded outcome, not an error).
-# Dry: CLUSTER_DRY_RUN=1, or --plan as the last argument, prints the plan and touches nothing (no node contact, no mounts).
+# Dry: --plan as the last argument prints the plan and touches nothing (no node contact, no mounts).
 set -euo pipefail
 usage='usage: bash scripts/run_rs_node.sh check|smoke|n3|shard [--configs NAME...] [--seeds N...] [--plan]'
 mode=${1:-}
@@ -47,7 +47,7 @@ for item in json.load(open(sys.argv[1])):
         print(sys.argv[2] + '/' + item['remote'] + '\t' + item['local'])
 PY
 }
-if [[ "$plan" == 1 || "${CLUSTER_DRY_RUN:-0}" == 1 ]]; then
+if [[ "$plan" == 1 ]]; then
     echo "PLAN $mode: code=$CODE; node inputs=$NR; outputs=$NR/outputs -> $OUT; job-local root/tmp/home/cache under $JOB"
     echo "PLAN configs=${configs[*]:-} seeds=${seeds[*]:-}, CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset} (shard, check and smoke need a single GPU index)"
     echo "bind $CODE -> /project/CoSiR"
