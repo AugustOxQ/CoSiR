@@ -435,6 +435,10 @@ def test_g_full_weights_check_against_12_27s_own_records(stage_c):
     sidecar = stage_c / 'held' / 'style__s0.json'
     sidecar.write_text(json.dumps(dict(weights_sha256='0' * 64)))              # the held output's sidecar differs
     assert S0.g_full_weights_check()['pass'] is False
+    sidecar.write_text(json.dumps(dict(weights_sha256=rb_score.sha_file(stage_c / 'weights' / 'style__s0.pt'))))
+    assert S0.g_full_weights_check()['pass'] is True
+    (stage_c / 'weights' / 'genre__s4.json').write_text(json.dumps(dict(weights_sha256='0' * 64)))   # the json beside it
+    assert S0.g_full_weights_check()['pass'] is False
 
 
 # ------------------------------------------------------------------ sample weights and held inference
