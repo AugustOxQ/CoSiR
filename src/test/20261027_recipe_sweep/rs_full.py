@@ -152,8 +152,8 @@ def resolve(name):
 
 
 def graph_choice(cfg):
-    """Which graphs the run reads: the CT's aspect graphs at the run's k11. Ticket 07's graph removals change `variant`."""
-    return dict(k=cfg['k11'], variant='aspect')
+    """Which graphs the run reads: the CT's aspect graphs at the run's k11. A graph removal (ticket 07) changes `variant`."""
+    return dict(k=cfg['k11'], variant=rs_knobs.GRAPH_REMOVALS.get(cfg['remove'][0], 'aspect') if cfg['remove'] else 'aspect')
 
 
 def stage3_problem(cfg, verdict):
