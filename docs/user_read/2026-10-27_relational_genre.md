@@ -136,7 +136,8 @@ We did not compute its emotion margin over PercepT, the bar of the emotion claim
 
 Our view: next, make this model the recipe and run the held emotion test with it.
 A paper needs one model for its emotion, style and genre claims. This test is cheap, about one hour.
-We chose this model after we read its held numbers, so the report must say so.
+We picked this model for the held test before it had any held number.
+A choice to make it the recipe comes after its held numbers, so we must disclose that choice.
 
 After that, write up the encoder claims and the genre claim for the abstract on 2026-11-10.
 We are not sure that the sharper target matters. Its lead over weight 8 is inside one seed range, and weight 8 had no held test.
