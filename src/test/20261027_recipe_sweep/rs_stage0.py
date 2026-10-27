@@ -622,13 +622,17 @@ def check_v0c(outputs):
 
 def failure_record_problem(held_dir, aspect, seed):
     """None when the failure record of an output is what `infer_set` writes after a second V0c failure (two problems,
-    no output file beside it): the seed policy followed; else the problem."""
+    no output file beside it): the seed policy followed; else the problem (an unreadable or malformed body is one)."""
     path = failed_path(held_dir, aspect, seed)
-    record = json.loads(path.read_text())
-    if not {'arm', 'aspect', 'seed', 'problems'} <= set(record) or (record['aspect'], record['seed']) != (aspect, seed):
+    try:
+        record = json.loads(path.read_text())
+    except (OSError, ValueError) as error:
+        return f'{path}: not readable as a failure record ({error!r})'
+    if not isinstance(record, dict) or not {'arm', 'aspect', 'seed', 'problems'} <= set(record) \
+            or (record['aspect'], record['seed']) != (aspect, seed):
         return f'{path}: not a failure record of this output'
-    if len(record['problems']) != 2:
-        return f'{path}: {len(record["problems"])} problems recorded; the policy is one rerun, then the record'
+    if not isinstance(record['problems'], list) or len(record['problems']) != 2:
+        return f'{path}: the policy is one rerun, then the record (two problems), not {record["problems"]!r}'
     if (Path(held_dir) / f'{aspect}__s{seed}.npz').exists():
         return f'{path}: an output exists beside the failure record'
     return None
@@ -641,17 +645,27 @@ def seed4_files(outputs):
     return paths.run_dir(outputs, name, 4), aside
 
 
+SEED4_FAILED_NOTE = 'seed 4 failed its one training: the sample scale has no outcome'
+
+
 def seed4_trained_once(outputs):
     """Rule V0d, strict: seed 4 trains once. Every folder under replaced/G/s4-* with a run.json (status ok, a V1b
-    failure or any other) is a second training and fails; one without is an interrupted run, listed. Rule V1d's
-    V1b rerun covers G0, G0', the stage 1 runs and the grid's new points, not seed 4."""
+    failure or any other) is a second training and fails, as does a final run.json with `rerun_of`; one folder without
+    a run.json is an interrupted run, listed. Rule V1d's V1b rerun covers G0, G0', the stage 1 runs and the grid's new
+    points, not seed 4. The one training may have failed (status failed, no second training): the policy is followed,
+    `failed_once` is true and the sample scale has no outcome (V0c); seed 4 then has no held outputs."""
     folder, aside = seed4_files(outputs)
     run = json.loads((folder / 'run.json').read_text())
     with_record = [str(p) for p in aside if (p / 'run.json').is_file()]
     interrupted = [str(p) for p in aside if not (p / 'run.json').is_file()]
-    return {'pass': run['status'] == 'ok' and not with_record and 'rerun_of' not in run, 'status': run['status'],
+    second = bool(with_record) or 'rerun_of' in run
+    failed_once = run['status'] == 'failed' and not second
+    item = {'pass': (run['status'] == 'ok' or failed_once) and not second, 'status': run['status'],
             'rerun_of': run.get('rerun_of'), 'aside_with_run_json': with_record, 'aside_interrupted': interrupted,
-            'trainings': 1 + len(with_record)}
+            'trainings': 1 + len(with_record), 'failed_once': failed_once}
+    if failed_once:
+        item['note'] = SEED4_FAILED_NOTE
+    return item
 
 
 def v1a_before_seed4(outputs):
@@ -664,35 +678,50 @@ def v1a_before_seed4(outputs):
 
 
 def check_v0d(outputs):
-    """Seed policy over the sample set: every output's weights SHA-256 is the current weights' (seeds 0 to 3: the V0a
-    record); V0c reruns are listed (one allowed); a seed that failed twice has a well-formed failure record and no
-    output (policy followed: that scale gets no outcome); seed 4 trained once, after V1a."""
+    """Seed policy over the sample set (rule §4.1 V0d). Broken, V0d fails: seed 4 trained more than once; an output
+    whose weights changed after it was written (seeds 0 to 3: the V0a record); more than one V0c rerun; a malformed
+    failure record; an output missing with nothing to explain it. Followed, V0d passes and the sample scale alone has
+    no outcome (its V0c gate fails): a seed with a well-formed failure record (a second V0c failure, no output beside
+    it) and so its other aspects with no output, listed as not computed after the failure (an output that exists is
+    checked as usual); seed 4's one training failed (no second training), so seed 4 has no held outputs. Seed 4 trains
+    after V1a."""
     outputs = Path(outputs)
     recorded = read_gate(outputs, 'v0a')['parts']['cpu']['items']['g_sample/weights']['sha256']
     held_dir = sample_g(outputs).held_dir
     items = {}
+    for key, check in (('seed4_trained_once', seed4_trained_once), ('v1a_before_seed4', v1a_before_seed4)):
+        try:
+            items[key] = check(outputs)
+        except (FileNotFoundError, KeyError, ValueError) as error:
+            items[key] = {'pass': False, 'problem': repr(error)}
+    seed4_failed = items['seed4_trained_once'].get('failed_once', False)
     for seed in SEEDS:
+        failed = {aspect: failure_record_problem(held_dir, aspect, seed) for aspect in ASPECTS
+                  if failed_path(held_dir, aspect, seed).exists()}
+        well_formed = sorted(aspect for aspect, problem in failed.items() if problem is None)
         for aspect in ASPECTS:
             key = f'{aspect}__s{seed}'
+            output = held_dir / f'{aspect}__s{seed}.npz'
             try:
-                if failed_path(held_dir, aspect, seed).exists():
-                    problem = failure_record_problem(held_dir, aspect, seed)
-                    assert problem is None, problem
+                if aspect in failed:
+                    assert failed[aspect] is None, failed[aspect]
                     items[key] = {'pass': True, 'failed_twice': True,
                                   'v0c_problems': json.loads(failed_path(held_dir, aspect, seed).read_text())['problems']}
                     continue
-                _, info = rb_student.read_outputs(held_dir / f'{aspect}__s{seed}.npz')
+                if not output.exists() and well_formed:
+                    items[key] = {'pass': True, 'not_computed_after_failure': True, 'failed_aspects': well_formed,
+                                  'note': f"not computed after the seed's failure ({', '.join(well_formed)} failed V0c twice)"}
+                    continue
+                if not output.exists() and seed == 4 and seed4_failed:
+                    items[key] = {'pass': True, 'seed4_failed_one_training': True, 'note': SEED4_FAILED_NOTE}
+                    continue
+                _, info = rb_student.read_outputs(output)
                 _, sha = sample_weights(outputs, seed, aspect, recorded)
                 assert info['weights_sha256'] == sha, 'the weights changed after the held output was written'
                 items[key] = {'pass': info['vc3_attempts'] <= 2, 'weights_sha256': sha,
                               'v0c_attempts': info['vc3_attempts'], 'v0c_problems': info['vc3_problems']}
             except (AssertionError, Refusal, FileNotFoundError, KeyError, ValueError) as error:
                 items[key] = {'pass': False, 'problem': str(error)}
-    for key, check in (('seed4_trained_once', seed4_trained_once), ('v1a_before_seed4', v1a_before_seed4)):
-        try:
-            items[key] = check(outputs)
-        except (FileNotFoundError, KeyError, ValueError) as error:
-            items[key] = {'pass': False, 'problem': repr(error)}
     return write_gate(outputs, 'v0d', all(i['pass'] for i in items.values()), items)
 
 
