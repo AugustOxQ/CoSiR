@@ -1201,3 +1201,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-27-r10-run-4-handoff.md
 - New chat: tab 'r10 run 4', session ff58b704-015a-482e-a370-856010fa2a92
 
+[brief] CoSiR: r10 run 4 -> r10 run 5 (2026-10-27 22:34 Amsterdam)
+- Done: drafts of report 12-28, its user-read report and the run log (stages 0 to 4); the claim review is applied (269 of about 270 numbers matched; the one wrong number is fixed).
+- State: c* (40 graph neighbours) on held paintings: emotion +0.0145 and style +0.0041 above the instructed Qwen image; genre −0.0060, below it by less than one seed range.
+- Next: the ablation chain runs (dev scoring now; held end estimated 05:00 to 06:00, not 04:30). Then H22, the ablation into the drafts, the checks, the wrap-up.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-27-r10-run-5-handoff.md
+- New chat: tab 'r10 run 5', session f7deb04f-88d9-47f9-9f63-b04dee14ea39
+
