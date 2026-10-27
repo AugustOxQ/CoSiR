@@ -33,6 +33,7 @@ from threadpoolctl import threadpool_limits
 import rs_paths as paths
 import rs_sheet as S
 import rs_knobs
+import rs_sweep
 import rs_train
 import ab_train
 import ct2_d2  # noqa: F401  (the frozen modules whose hashes are checked)
@@ -73,6 +74,9 @@ def frozen_modules():
     return result
 
 
+FROZEN_MINIMUM = ('ms_train', 'ms_rows', 'ct2_d2', 'ct2_data', 'ct2_graphs', 'rg_loss', 'rg_full')   # loaded, or the check is empty
+
+
 def git_show(commit, relative):
     return subprocess.run(['git', 'show', f'{commit}:{relative}'], cwd=paths.ROUND, capture_output=True,
                           check=True).stdout
@@ -80,11 +84,13 @@ def git_show(commit, relative):
 
 def require_frozen_code(show=git_show):
     """V4a: every module of `frozen_modules()` equals its file at `rs_paths.FROZEN_COMMIT` (read with `git show`).
-    Returns {name: sha256}; refuses with the module's name otherwise."""
+    The modules of `FROZEN_MINIMUM` must be among them. Returns {name: sha256}; refuses with the module's name otherwise."""
+    modules = frozen_modules()
+    assert set(FROZEN_MINIMUM) <= set(modules), f'frozen modules not loaded: {sorted(set(FROZEN_MINIMUM) - set(modules))}'
     top = Path(subprocess.run(['git', 'rev-parse', '--show-toplevel'], cwd=paths.ROUND, capture_output=True, text=True,
                               check=True).stdout.strip()).resolve()
     shas = {}
-    for name, record in frozen_modules().items():
+    for name, record in modules.items():
         relative = Path(record['path']).relative_to(top)
         try:
             frozen = show(paths.FROZEN_COMMIT, str(relative))
@@ -97,15 +103,35 @@ def require_frozen_code(show=git_show):
 
 
 def code_sha256():
-    """SHA-256, by file name, of what decides a full-scale run: this round's files, the frozen modules, and the
-    other modules under them (the loss, the recipe rows, the encoders' loader, 12-24's student)."""
+    """SHA-256, by file name, of what decides a full-scale run: this round's files, the frozen modules, 12-24's student
+    and the other modules named here, and every other module imported now whose file is under `src/test/` (the recipe
+    rows, the encoders' loader, the CT's held and training-image code, ...; test files are not code of the run)."""
     files = [paths.ROUND / name for name in ROUND_FILES]
     files += [Path(record['path']) for record in frozen_modules().values()]
     files += [Path(m.__file__) for m in (rb_student, rb_rows, rb_encoders, ab_train, eg, V, ms_train.itp_train,
                                          ms_train.head)]
-    result = {Path(p).name: sha(p) for p in files}
-    assert len(result) == len(set(map(Path, files))), 'two files with one name'
+    for name, module in sorted(sys.modules.items()):
+        path = Path(getattr(module, '__file__', None) or '/').resolve()
+        if '.' not in name and paths.TEST in path.parents and not path.name.startswith(('test_', 'conftest')):
+            files.append(path)
+    files = sorted(set(map(Path, files)))
+    result = {p.name: sha(p) for p in files}
+    assert len(result) == len(files), 'two files with one name'
     return result
+
+
+def code_problem(recorded, current=None):
+    """None, or the first file of `current` (default `code_sha256()`) that `recorded` has with another SHA-256 or lacks
+    although the round's own list names it. A module only imported now (a lazy import of a path the recorded run did not
+    take) is not a difference."""
+    current = code_sha256() if current is None else current
+    always = {p.name for p in [paths.ROUND / n for n in ROUND_FILES]} | {Path(r['path']).name for r in frozen_modules().values()}
+    for name, value in current.items():
+        if name in recorded and recorded[name] != value:
+            return f'{name} differs'
+        if name not in recorded and name in always:
+            return f'{name} is not in the record'
+    return None
 
 
 def jsonable(cfg):
@@ -133,28 +159,69 @@ def graph_choice(cfg):
 def stage3_problem(cfg, verdict):
     """None, or why `cfg` may not run at full scale under this stage 3 verdict: a stage 4 candidate is c* of a PICK; an
     ablation arm (a removal) is a removal from the final model F (c* under PICK, G under KEEP-G)."""
-    final = S.parse(verdict['c_star']) if verdict['outcome'] == 'PICK' else S.config()
+    final = S.parse(verdict['pick']) if verdict['outcome'] == 'PICK' else S.config()
     if not cfg['remove']:
         if verdict['outcome'] != 'PICK':
-            return 'the stage 3 verdict is KEEP-G: stage 4 does not run'
+            return 'the stage 3 verdict is KEEP-G (or the sweep ended before stage 3): stage 4 does not run'
         if cfg != final:
-            return f'the stage 3 verdict names {verdict["c_star"]}, not {S.name(cfg)}'
+            return f'the stage 3 verdict names {verdict["pick"]}, not {S.name(cfg)}'
         return None
     if dict(cfg, remove=()) != final:
         return f'{S.name(cfg)} is not a removal from the final model {S.name(final)}'
     return None
 
 
+def sweep_ended_without_candidates(outputs):
+    """{machine: outcome} when the sweep ended before stage 3 on every machine that has a stage 1 file (stage 1's SWEEP-NONE
+    or stage 2's TOP-NONE: stage 3 never ran, so there is no `stage3/verdict.json` and F = G); None when it did not (or
+    when there is no stage 1 file)."""
+    ended = {}
+    for machine in rs_sweep.MACHINES:
+        stage1, stage2 = (rs_sweep.sweep_path(outputs, machine, stage) for stage in ('stage1', 'stage2'))
+        if not stage1.is_file():
+            continue
+        if json.loads(stage1.read_text())['outcome'] == rs_sweep.stage1_outcome([]):
+            ended[machine] = rs_sweep.stage1_outcome([])
+        elif stage2.is_file() and json.loads(stage2.read_text())['outcome'] == rs_sweep.stage2_outcome([]):
+            ended[machine] = rs_sweep.stage2_outcome([])
+        else:
+            return None
+    return ended or None
+
+
 def require_stage3(outputs, cfg):
-    """The stage 3 verdict names `cfg` (see `stage3_problem`); returns its SHA-256. The file's fields, as ticket 06
-    writes them: outcome 'PICK' or 'KEEP-G', and c_star (a run name) under PICK."""
+    """The stage 3 verdict names `cfg` (see `stage3_problem`); returns the verdict file's SHA-256, or None when there is
+    no file because the sweep ended before stage 3 (`sweep_ended_without_candidates`: then F = G, and a missing file in any
+    other case is an error). The file's fields, as ticket 06 writes them: outcome 'PICK' or 'KEEP-G', `pick` (c*'s run
+    name; None under KEEP-G) and `pick_config` (the parsed configuration of the pick)."""
     path = Path(outputs) / STAGE3
+    if not path.exists():
+        ended = sweep_ended_without_candidates(outputs)
+        assert ended, f'{path} missing, and no stage 1 SWEEP-NONE or stage 2 TOP-NONE explains it'
+        problem = stage3_problem(cfg, dict(outcome='KEEP-G', pick=None))
+        assert problem is None, f'no {STAGE3} ({ended}): {problem}'
+        return None
     verdict = rg_full._record(path)
+    assert verdict.get('smoke') is not True, f'{path} is a smoke verdict'
     assert verdict.get('outcome') in ('PICK', 'KEEP-G'), f'{path}: outcome {verdict.get("outcome")!r}'
-    assert verdict['outcome'] == 'KEEP-G' or isinstance(verdict.get('c_star'), str), f'{path}: PICK without c_star'
+    if verdict['outcome'] == 'PICK':
+        assert isinstance(verdict.get('pick'), str), f'{path}: PICK without a pick'
+        assert verdict.get('pick_config') == jsonable(S.parse(verdict['pick'])), f'{path}: pick_config is not the pick\'s'
+    else:
+        assert verdict.get('pick') is None and verdict.get('pick_config') is None, f'{path}: KEEP-G with a pick'
     problem = stage3_problem(cfg, verdict)
     assert problem is None, f'{path}: {problem}'
     return sha(path)
+
+
+def refuse_second_candidate(root, name, cfg):
+    """V4d: no second candidate. A configuration without removals is refused once another configuration without
+    removals has held outputs under `root` (ablation arms, named '...-no_<part>', are exempt on both sides)."""
+    folder = Path(root) / 'held'
+    if cfg['remove'] or not folder.exists():
+        return
+    others = [d.name for d in sorted(folder.iterdir()) if d.name != name and '-no_' not in d.name and any(d.rglob('*.npz'))]
+    assert not others, f'V4d: no second candidate: {name} cannot run, {others[0]} has held outputs under {root}'
 
 
 def arm_alias(name):
@@ -187,8 +254,8 @@ def check_resumed(root, name, seed, cfg, smoke, shas):
     assert (record['name'], record['seed'], record['config'], record['smoke']) == (name, seed, jsonable(cfg), smoke), \
         f'{path}: configuration mismatch'
     assert record['frozen_sha256'] == shas, f'{path}: frozen modules changed'
-    assert all(record['code_sha256'].get(k) == v for k, v in code_sha256().items()), \
-        f'{path}: code_sha256 changed; move it aside and rerun'
+    assert code_problem(record['code_sha256']) is None, \
+        f'{path}: code_sha256 changed ({code_problem(record["code_sha256"])}); move it aside and rerun'
     return record
 
 
@@ -210,6 +277,8 @@ def train(name, seeds, device, outputs, *, smoke=False, max_epochs=None, root=No
         assert os.environ.get('CUBLAS_WORKSPACE_CONFIG') == ':4096:8', 'set CUBLAS_WORKSPACE_CONFIG=:4096:8 (CT queue)'
     shas = require_frozen_code()                        # before any data is read
     verdict_sha = require_stage3(outputs, cfg) if not smoke and name != V4A else None
+    if name != V4A:
+        refuse_second_candidate(root, name, cfg)
     for seed in seeds:
         assert not rg_full.failed_path(root, name, seed).exists(), \
             f'V4d: {name} s{seed} stopped on a non-finite loss ({rg_full.failed_path(root, name, seed)}); no rerun'
@@ -266,8 +335,8 @@ def require_v4a(outputs):
         assert record.get('pass') is True, f'V4a: {path} does not pass'
         if gate == 'v4a_train':
             assert record.get('smoke') is False, f'V4a: {path} is a smoke run'
-            assert record.get('code_sha256') == code_sha256(), \
-                f'V4a: {path} was written by other code than is on disk now; rerun `regress v4a`'
+            assert code_problem(record.get('code_sha256') or {}) is None, \
+                f'V4a: {path} was written by other code than is on disk now ({code_problem(record.get("code_sha256") or {})}); rerun `regress v4a`'
         shas[gate] = sha(path)
     return shas
 
@@ -276,18 +345,18 @@ def rule_commit_is_ancestor(commit=paths.RULE_COMMIT):
     return rg_full.rule_commit_is_ancestor(commit)
 
 
-def check_runs(root, name, cfg, seeds, outputs, shas):
+def check_runs(root, name, cfg, seeds, verdict_sha, shas):
     """Every seed's run record is ok, was written by the code on disk now, names the stage 3 verdict that is there now
-    (it was written before the first full run and has not changed since), and agrees with its weights."""
-    verdict_sha = sha(Path(outputs) / STAGE3)
+    (it was written before the first full run and has not changed since; None when the sweep ended before stage 3), and
+    agrees with its weights."""
     for seed in seeds:
         record = json.loads(record_path(root, name, seed).read_text())
         assert record['status'] == 'ok' and record['config'] == jsonable(cfg), f'{name} s{seed}: not an ok run of {name}'
         assert record['stage3_verdict_sha256'] == verdict_sha, \
             f'{name} s{seed}: the stage 3 verdict changed after the first full run (or the run was a smoke)'
         assert record['frozen_sha256'] == shas, f'{name} s{seed}: trained by other frozen modules than are on disk now'
-        assert all(record['code_sha256'].get(k) == v for k, v in code_sha256().items()), \
-            f'{name} s{seed}: trained by other code (code_sha256 changed); retrain'
+        assert code_problem(record['code_sha256']) is None, \
+            f'{name} s{seed}: trained by other code ({code_problem(record["code_sha256"])}); retrain'
         for aspect in ASPECTS:
             weights = rb_student.weights_path(root, name, aspect, seed)
             assert record['weights_sha256'][aspect] == ms_train.head.sha_file(weights), \
@@ -295,16 +364,20 @@ def check_runs(root, name, cfg, seeds, outputs, shas):
 
 
 def v4c_record(root, name, seeds):
-    """V4c: each held output set has H's rows (12,281, finite and unit norm: `rg_full.vc3_problem` ran on each when it
-    was written) and H's SHA-256. Lists the outputs that needed a second try (V4d). Returns the record."""
+    """V4c: each held output set, read again from its `.npz` (checked against its record by `rb_student.read_outputs`),
+    has H's rows (12,281, finite, unit norm: `rg_full.vc3_problem` runs again here) and H's SHA-256, and the array's
+    SHA-256 is the one the record names. Lists the outputs that needed a second try (V4d). Returns the record."""
     outputs, reruns = {}, []
     for seed in seeds:
         for aspect in ASPECTS:
-            path = Path(root) / 'held' / name / f'{aspect}__s{seed}.json'
+            path = Path(root) / 'held' / name / f'{aspect}__s{seed}.npz'
             assert path.is_file(), f'V4c: {path} missing'
-            info = json.loads(path.read_text())
+            arrays, info = rb_student.read_outputs(path)
             assert info['rows'] == paths.N_HELD, f'V4c: {path}: rows {info["rows"]}, not {paths.N_HELD}'
             assert info['list_sha256'] == paths.HELD_SHA256, f"V4c: {path}: held list SHA-256 differs from the CT's"
+            problem = rg_full.vc3_problem(arrays['img'])
+            assert problem is None, f'V4c: {path}: {problem}'
+            assert rb_student.sha_array(arrays['img']) == info['sha256'], f'V4c: {path}: array differs from the record'
             outputs[f'{aspect}__s{seed}'] = info['sha256']
             if info['vc3_attempts'] > 1:
                 reruns.append(dict(output=f'{aspect}__s{seed}', problems=info['vc3_problems']))
@@ -325,8 +398,9 @@ def held(name, seeds, outputs, device=None, *, smoke=False, ancestor=rule_commit
     if not smoke:
         assert sorted(seeds) == list(S.FULL_SEEDS), f'held runs all seeds {S.FULL_SEEDS} of a configuration at once, not {seeds}'
         require_v4a(outputs)
-        require_stage3(outputs, cfg)
+        verdict_sha = require_stage3(outputs, cfg)
         shas = require_frozen_code()
+        refuse_second_candidate(root, name, cfg)
         rg_full._refuse_failed(root, name, seeds)
     torch.set_num_threads(8)
     with ExitStack() as stack:
@@ -337,7 +411,7 @@ def held(name, seeds, outputs, device=None, *, smoke=False, ancestor=rule_commit
             for seed in seeds:
                 for aspect in ASPECTS:
                     rg_full._arm_weights(root, name, aspect, seed, False)
-            check_runs(root, name, cfg, seeds, outputs, shas)
+            check_runs(root, name, cfg, seeds, verdict_sha, shas)
             assert ancestor(), f'the rule commit {paths.RULE_COMMIT} is not an ancestor of HEAD'
         rg_full.infer_held(name, seeds, device, root, smoke=smoke)
     record = v4c_record(root, name, seeds)
@@ -385,9 +459,7 @@ def regress_v4a(device, outputs, *, smoke=False):
         f'the reference weights were trained on {recorded["config"]["device"]}; the regression must run on it'
     reg_root = (outputs / 'regression/v4a_run').resolve()
     runs = train(V4A, [0], device, outputs, smoke=smoke, root=reg_root)
-    with ExitStack() as stack:
-        rs_knobs.patches(S.config(), stack, scale='full', outputs=outputs)       # none: G
-        stack.enter_context(arm_alias(V4A))
+    with arm_alias(V4A):                                      # G enters no patch
         rg_full.infer_held(V4A, [0], device, reg_root, smoke=smoke)
     items = v4a_items(reg_root)
     commit, dirty = rs_train.code_commit()
