@@ -219,3 +219,5 @@ src/test/20261021_d2_ablation/graphs/*.npz
 src/test/20261025_encoders_genre/outputs
 # r10 build 25: the relational genre round outputs folder is a link to /data/SSD2
 src/test/20261027_relational_genre/outputs
+# r10 build 7: the recipe sweep round outputs folder is a link to /data/SSD2
+src/test/20261027_recipe_sweep/outputs
