@@ -80,7 +80,9 @@ def guard(outputs, model, smoke):
     else:
         path = Path(outputs) / 'stage4/verdict.json'
         assert path.is_file(), 'refused: stage4/verdict.json does not exist yet'
-        assert json.loads(path.read_text()).get('candidate') == model, f'refused: stage4/verdict.json does not name {model}'
+        verdict = json.loads(path.read_text())
+        assert verdict.get('candidate') == model, f'refused: stage4/verdict.json does not name {model}'
+        assert not verdict.get('v_failure'), f'refused: stage4/verdict.json has no outcome ({verdict["v_failure"]})'
 
 
 def model_dirs(outputs, model):
