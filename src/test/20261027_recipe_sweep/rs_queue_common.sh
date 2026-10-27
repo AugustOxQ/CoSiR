@@ -5,7 +5,8 @@
 #      RS_PYTHON, RS_LOCK_WAIT (default 14400 s), RS_GPU_LOCK (default /tmp/gpu0.lock), RS_DEVICE (cuda; "cpu" only for a
 #      plumbing test), RS_WORKERS (scorer workers, default 8), RS_DRY=1 (print every command in order, run none, write nothing),
 #      RS_PENDING (pending deletions list), RS_SWEEP_MACHINE (local or node402: the machine whose stage 1 and 2 files stage 3
-#      reads; default: local when sweep/local/stage2.json exists, else node402), RS_FORCE_HOUR=1 (skip the weekday rule),
+#      reads; default: local when sweep/local/stage2.json or sweep/local/stage1.json exists, else node402), RS_FORCE_HOUR=1 (skip
+#      the weekday rule),
 #      RS_DAY_OK=1 (fallback only: the first local run drew under 200 W, so the rest may run on weekday daytime),
 #      RS_FAKE_TIME="<ISO weekday 1-7> <hour 0-23>" (tests of the weekday rule only).
 set -u
@@ -139,6 +140,29 @@ sweep_machine() {   # the machine of stages 1 and 2 for stage 3 and later: RS_SW
     if [[ -n "${RS_SWEEP_MACHINE:-}" ]]; then echo "$RS_SWEEP_MACHINE"
     elif [[ -f "$outputs/sweep/local/stage2.json" || -f "$outputs/sweep/local/stage1.json" ]]; then echo local
     else echo node402; fi
+}
+f_basis_gates() {   # the re-derivation that states why F is what it is (the ablation queues and the F = G stage 4 steps). When a stage 3
+    # verdict exists (PICK or KEEP-G): V3c (stage3/rederive_stage3.json passes). Else F = G because the sweep ended without candidates:
+    # V1c of the sweep machine (sweep/<m>/rederive_stage1.json, and rederive_stage2.json when stage 2 ran). A dry run with no file
+    # to read notes all three.
+    local m
+    if [[ -f "$outputs/stage3/verdict.json" ]]; then
+        gate V3c "$outputs/stage3/rederive_stage3.json" "F is not stated until the stage 3 re-derivation agrees (PICK or KEEP-G)"
+        return 0
+    fi
+    m=$(sweep_machine)
+    if [[ "$dry" == 1 && ! -f "$outputs/sweep/$m/stage1.json" ]]; then
+        note "dry: no stage 3 verdict and no stage 1 file to read: V3c when stage3/verdict.json exists (PICK or KEEP-G), else V1c of the sweep machine $m (SWEEP-NONE: stage 1; TOP-NONE: stages 1 and 2)"
+        gate V3c "$outputs/stage3/rederive_stage3.json" "when stage3/verdict.json exists"
+        gate V1c-stage1 "$outputs/sweep/$m/rederive_stage1.json" "no stage 3 file"
+        gate V1c-stage2 "$outputs/sweep/$m/rederive_stage2.json" "no stage 3 file, stage 2 ran"
+        return 0
+    fi
+    note "no stage 3 file: F = G rests on the sweep ending without candidates on $m; its stage 1 and 2 re-derivations (V1c) must hold"
+    gate V1c-stage1 "$outputs/sweep/$m/rederive_stage1.json" "F = G (SWEEP-NONE or TOP-NONE) is not stated until V1c of stage 1 agrees (rule §4.2)"
+    if [[ -f "$outputs/sweep/$m/stage2.json" ]]; then
+        gate V1c-stage2 "$outputs/sweep/$m/rederive_stage2.json" "F = G (TOP-NONE) is not stated until V1c of stage 2 agrees (rule §4.2)"
+    fi
 }
 pending_add() {  # pending_add DIR WHAT WHY: the *.pt files under DIR -> one row on the pending list (once); nothing is deleted
     local dir=$1 what=$2 why=$3 size stamp

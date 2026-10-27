@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Stage 0 (spec §3.5, rule §4.1; GPU then CPU): G's emotion claim at both scales. Gates first (V1a both halves, V0a: the build's
 # files; the runner `rs_stage0 held` refuses without V0a and, for seed 4, without a passing gates/v1a_train.json for the trainer on
-# disk; `rs_train train` does not check V1a itself, so this queue does). Then: seed 4 trains once (G at the sample scale); held
+# disk; `rs_train train` does not check V1a itself, so this queue does). Then: seed 4 trains once (G at the sample scale; a failed
+# seed 4 is NOT rerun, rule V0d: the sample scale then has no outcome, the full scale is scored as usual); held
 # inference of G's sample seeds 0 to 4; V0c; V0d; the verdict; V0b (`rs_vh stage0`: a disagreement states no outcome and stops
 # the queue before G's analysis); then G's analysis (after the verdict file, rule §4.1). Stage 0 leads to nothing: no other stage
 # waits for it. gates/v1a_train.json must not be rewritten after seed 4 trains (V0d compares the mtimes).
@@ -24,7 +25,7 @@ step train_seed4 gpu "$here/rs_train.py" train --configs G --seeds 4 --device "$
 if [[ "$dry" != 1 ]]; then
     seeds=4 check_runs G
     (( unfinished == 0 )) || stop "seed 4 left no run.json"
-    [[ "$(run_status "$outputs/train/G/s4/run.json")" == ok ]] || stop "seed 4 FAILED: V0d (it is rerun once by hand, same seed and code, listed; a seed that still fails leaves the sample scale with no outcome)"
+    [[ "$(run_status "$outputs/train/G/s4/run.json")" == ok ]] || stop "seed 4 FAILED: seed 4 trains once; a failed training is NOT rerun (rule V0d). The sample scale then has no outcome and the full scale is scored as usual (the stage 0 code is being fixed to do so): finish the remaining steps (held_sample for the other seeds, v0c, v0d, verdict, v0b) by hand when it does"
 fi
 pending_add "$outputs/regression/v1a_s0" "V1a regression run weights (G at seed 0, sample scale)" "regression run of the gate; gates/v1a_train.json is the record"
 pending_add "$outputs/regression/v1a_s1" "V1a regression run weights (G at seed 1, sample scale)" "regression run of the gate; gates/v1a_train.json is the record"
@@ -32,7 +33,7 @@ step held_sample gpu "$here/rs_stage0.py" --outputs "$outputs" "${w[@]}" held --
     || stop "G's sample held inference failed (V0a's GPU part or V0c rows; see the log)"
 # --- the gates over the sets, the verdict, V0b ---------------------------------------------------------------------------------
 softstep v0c cpu "$here/rs_stage0.py" --outputs "$outputs" "${w[@]}" check v0c \
-    || note "V0c fails at a scale: that scale gets no outcome (the verdict scores the scales whose set passes); the seed is rerun once by hand (V0d)"
+    || note "V0c fails at a scale: that scale gets no outcome (the verdict scores the scales whose set passes); a seed that fails V0c is rerun once (same seed and code, listed; V0d), but seed 4 is never retrained"
 step v0d cpu "$here/rs_stage0.py" --outputs "$outputs" "${w[@]}" check v0d \
     || stop "V0d does not hold (seed policy): no outcome"
 step verdict cpu "$here/rs_stage0.py" --outputs "$outputs" "${w[@]}" verdict || stop "the stage 0 verdict failed"

@@ -52,24 +52,26 @@ the ablation; V4a blocks stage 4 and the held ablation; V3a blocks stage 3 and b
 
 | Queue | Step (label) | Gate checked first, by whom | Failure |
 |---|---|---|---|
-| `stage0` | `train_seed4` | queue: `gates/v1a_train.json` and `v1a_scorer.json` pass (`rs_train train` does not check V1a), `gates/v0a.json` pass | stop; a failed seed 4 stops with the V0d text |
+| `stage0` | `train_seed4` | queue: `gates/v1a_train.json` and `v1a_scorer.json` pass (`rs_train train` does not check V1a), `gates/v0a.json` pass | stop; a failed seed 4 stops the queue and is NOT rerun (rule V0d: seed 4 trains once): the sample scale then has no outcome and the full scale is scored as usual (the stage 0 code is being fixed to do so); the remaining steps are then run by hand |
 | | `held_sample` | runner: `rs_stage0 held` refuses without V0a, and for seed 4 without a passing `v1a_train.json` for the trainer on disk | stop |
 | | `v0c`, `v0d`, `verdict` | V0c soft (a failing scale gets no outcome, the verdict scores the other); V0d and the verdict are hard (the runner refuses without V0a and V0d) | stop |
 | | `v0b` | `rs_vh stage0` (exit 1 on disagreement) | stop: no outcome stated, G's analysis does not run |
 | | `analysis_g` | runner: refuses without `stage0/verdict.json` | stop |
-| `fallback` | `score_g0` | queue: V1a both halves | stop |
+| `fallback` | first step: the node's stage files aside | if `sweep/node402/` exists it is moved (never deleted) to `aside/node402_<YYYYmmdd-HHMM>/sweep/node402/`; the queue refuses when that folder exists and prints the rs_node_log.md line (see "Fallback conditions") | stop on a refusal |
+| | `score_g0` | queue: V1a both halves | stop |
 | | per knob `train_k<n>`, `score_k<n>` | k11: skipped when `gates/k11_sample.json` has pass false (the runner `rs_sweep stage1` enters them as failed); the graphs refuse by themselves | a crash stops; a failed run is a recorded outcome |
 | | `stage1`, `v1c_a_stage1`, `v1c_b_stage1` | `rs_vp` part (a) then (b) (part (b) refuses without (a)) | stop before stage 2 |
 | | `train_grid<n>`, `stage2`, `v1c_a_stage2`, `v1c_b_stage2` | SWEEP-NONE ends the queue (exit 0; G stays) | stop before stage 3 |
 | `rs_node_plan.sh` | see "The node plan" | `gates/n1.json`, `n2.json`, `n3.json`, `v1a_train.json`, `v1a_scorer.json` pass; deadlines `RS_START_BY` and `RS_END_BY` (date-times) | `RS_NODE_STOP`: fallback |
 | `stage3` | `train_top` | queue: V1a, V3a (the runner `rs_stage3 verdict` also refuses without it), V1c of the sweep machine (`scores/<m>/rederive_partitions.json`, `sweep/<m>/rederive_stage2.json`); SWEEP-NONE or TOP-NONE: note, exit 0 | stop |
 | | `verdict`, `v3c` | `rs_vp stage3` (exit 1 on disagreement) | stop: stage 4 does not run |
-| `stage4` | `train_c`, `held_c` | queue: V1a, V4a (both halves; `rs_full` also refuses), V3c (`stage3/rederive_stage3.json`); KEEP-G or no stage 3 file: note "stage 4 does not run", exit 0 (G's outcomes by hand: `rs_stage4 verdict --candidate G`, a read of 12-27's saved outputs; the queue does not run it) | stop |
+| `stage4` | `train_c`, `held_c` | queue: V1a, V4a (both halves; `rs_full` also refuses), V3c (`stage3/rederive_stage3.json`) | stop |
+| | KEEP-G, or no stage 3 file (F = G) | no training, no held inference. Gates: V4a scorer half (`gates/v4a_scorer.json`); V3c under KEEP-G, V1c of the sweep machine (`sweep/<m>/rederive_stage1.json`, and `rederive_stage2.json` when stage 2 ran) with no stage 3 file. Two CPU steps: `verdict` = `rs_stage4 verdict --candidate G`, then `v4b` = `rs_vh stage4 --candidate G`; G's outcomes are this round's stage 4 verdict on G's saved held outputs, checked by V4b (rule §4.4, last paragraph). No report, no analysis | stop: no outcome stated |
 | | `verdict`, `v4b` | `rs_vh stage4` | stop: no outcome stated, the analysis does not run |
 | | `report` (soft), `analysis_c` | after the verdict file (rule §4.4) | report failure is noted |
-| `ablation_dev` | `train_<removal>` | queue: V1a, **V3a first** (see run note g), V3c when `stage3/verdict.json` exists; a graph removal whose `gates/ablation_graphs.json` item failed is skipped with a note (run note b) | a trainer failure of one arm is noted, the others go on; scoring starts when every arm has a `run.json` |
+| `ablation_dev` | `train_<removal>` | queue: V1a, **V3a first** (see run note g), then the re-derivation behind F, also for F = G: V3c when `stage3/verdict.json` exists (PICK or KEEP-G), else V1c of the sweep machine (`sweep/<m>/rederive_stage1.json`, and `rederive_stage2.json` when stage 2 ran); a graph removal whose `gates/ablation_graphs.json` item failed is skipped with a note (run note b) | a trainer failure of one arm is noted, the others go on; scoring starts when every arm has a `run.json` |
 | | `score_dev`, `v_ablation` | `rs_ablation dev` and `rs_vp ablation` | stop |
-| `ablation_held` | weekday rule, `train_<removal>`, `held_<removal>` | queue: weekday rule; V1a, V4a, V3a; for F = c*: V3c, `stage4/verdict.json` names F, V4b (`stage4/rederive_stage4.json`) | an arm's failure is noted, the others go on |
+| `ablation_held` | weekday rule, `train_<removal>`, `held_<removal>` | queue: weekday rule; V1a, V4a, V3a; the re-derivation behind F, also for F = G (V3c when `stage3/verdict.json` exists, else V1c of the sweep machine, as in `ablation_dev`); for F = c*: `stage4/verdict.json` names F, V4b (`stage4/rederive_stage4.json`) | an arm's failure is noted, the others go on |
 | | `score_held`, `v_ablation` | `rs_ablation held` refuses an arm without held outputs and without a failure record | stop |
 
 The weekday rule: `ablation_held` refuses to start on a weekday (Monday to Friday) before 19:00 Amsterdam time unless
@@ -108,6 +110,13 @@ N2 passed (the controller's) and `das6_sync_rs.py --inputs --run` was done. The 
 
 Fallback conditions (rule §4.2): N1, N2 or N3 fails, stage 1 cannot start on the node by `RS_START_BY`, stage 2 has not ended by `RS_END_BY`,
 or the node is lost and one rerun (a new tag) does not fix it. Then run `rs_queue_fallback.sh`; the node results are reported only.
+If the node wrote stage files before the fallback (for example stage 1 ended there and stage 2 missed `RS_END_BY`), the fallback's
+first step moves `sweep/node402/` (never a delete) to `<outputs>/aside/node402_<YYYYmmdd-HHMM>/sweep/node402/` and prints one line
+`RS_FALLBACK_NOTE rs_node_log.md entry: ...`: add it to `rs_node_log.md`. The readers that decide F (`rs_full.sweep_ended_without_candidates`,
+`rs_ablation.resolve_final`, `rs_stage4.stage_candidate`, `rs_vp` development ablation) count every machine that has a
+`sweep/<m>/stage1.json`; without the move a node GRID-n beside a local SWEEP-NONE would make "F cannot be resolved". The queue
+refuses when the target folder exists (nothing is changed). `scores/node402/` is read by none of them and stays; the files in
+`aside/` stay readable for the report. A dry run only says what it would move.
 The node's outputs stay on the node: add a pending row with their size (`cluster du --node node402`). G0 and TOP's weights and
 exports are copied home before 2026-10-30 (the reservation ends about 2026-10-31 00:40). No decision compares a node number
 with a local number.
@@ -115,7 +124,7 @@ with a local number.
 ## Pending deletions
 
 Rows go to the pending list, once per folder, from the `*.pt` files under it; nothing is deleted: the V1a regression runs
-`regression/v1a_s0` and `v1a_s1` (`stage0` queue); the V4a replay `full/regression/v4a_run` (`stage4`); every fallback run of
+`regression/v1a_s0` and `v1a_s1` (`stage0` queue); the V4a replay `regression/v4a_run` (`stage4`); every fallback run of
 stages 1 and 2 not in TOP (`fallback`). Kept (rule §4.5): G0, TOP's runs, every stage 3, stage 4 and ablation run, G's seed 4.
 
 ## Expected times (8 CPU threads, one RTX 3090)
@@ -141,7 +150,7 @@ seeds 631 s, held 15 s, scorer calls 1.5 to 9 min, report 18 min) and the spec's
 | H21 stage 4 | after `stage4` ends | as H20 for c* at full scale, seeds 0 to 4 (c*'s name); purpose: d_T per aspect against the instructed image, PE-* emotion margin over PercepT (rule §4.4); `stage4/verdict.json` SHA-256 and outcomes per aspect, V4b agrees; recipe chosen before this read (the stage 3 verdict SHA-256) |
 | H22 held ablation | after `ablation_held` ends | the eight removals of F at full scale, seeds 0 to 4; purpose: the held ablation (rule §3.5); `ablation/held.json` SHA-256 and `inputs.ablation_graphs_sha256`; F's name; the removals that did not run, with the cause |
 
-Under KEEP-G or SWEEP-NONE or TOP-NONE there is no H21; G's held outcomes then come from 12-27's read (H19) and stage 0's.
+Under KEEP-G or SWEEP-NONE or TOP-NONE there is no H21 and no new held read: G's held outcomes come from this round's stage 4 verdict on G's saved held outputs (`stage4` queue: `rs_stage4 verdict --candidate G`, then V4b `rs_vh stage4 --candidate G`; rule §4.4, last paragraph), which equal 12-27's by V4a (H19's read); G's emotion claim is stage 0's.
 
 ## Run notes (decided in the build)
 

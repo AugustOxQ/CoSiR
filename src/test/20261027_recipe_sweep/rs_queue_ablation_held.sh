@@ -3,7 +3,9 @@
 # inference, `rs_ablation held --final F`, `rs_vh ablation --final F`. About 80 GPU minutes, then CPU scoring: START IT FROM 19:00.
 # The weekday rule: it refuses to start on a weekday (Monday to Friday) before 19:00 Amsterdam time unless RS_FORCE_HOUR=1.
 # Gates: V1a, V4a (both halves; the held ablation does not run when V4a fails, rule §4.4), V3a (rs_ablation refuses without it),
-# and for F = c*: stage4/verdict.json names F and V4b agrees (stage4/rederive_stage4.json). For F = G the held outputs are 12-27's.
+# the re-derivation behind F, for F = G as for F = c*: V3c (stage3/rederive_stage3.json) when a stage 3 file exists (PICK or KEEP-G),
+# else V1c of the sweep machine (sweep/<m>/rederive_stage1.json, and rederive_stage2.json when stage 2 ran; rule §4.2), and for
+# F = c*: stage4/verdict.json names F and V4b agrees (stage4/rederive_stage4.json). For F = G the held outputs are 12-27's.
 # The graph removals whose graph check failed are skipped as in the development queue (the gate file's SHA-256 goes into
 # ablation/held.json as inputs.ablation_graphs_sha256). A trainer failure of one arm stops only that arm; scoring starts only
 # when every arm that is to run has its outputs. Weights of every arm are kept.
@@ -18,13 +20,14 @@ gate V4a-scorer "$outputs/gates/v4a_scorer.json" "the held ablation does not run
 gate V3a "$outputs/gates/v3a.json" "rs_ablation refuses without it"
 if [[ "$dry" == 1 ]]; then
     f=F; arms=$(names arms --final-name G)
-    note "dry: F and the eight removal arms come from rs_queue_names.py (final, arms); shown for F = G (for c* the arms are c*-no_<removal>); for F = c* the gates V3c and V4b (rederive_stage3.json, rederive_stage4.json) are also required"
+    note "dry: F and the eight removal arms come from rs_queue_names.py (final, arms); shown for F = G (for c* the arms are c*-no_<removal>); the re-derivation behind F is gated for F = G too (V3c, or V1c of the sweep machine when there is no stage 3 file); for F = c* V4b (rederive_stage4.json) is also required"
+    f_basis_gates
 else
     f=$(names final --outputs "$outputs" "${smoke[@]}") || stop "F cannot be resolved (rs_queue_names.py final)"
     arms=$(names arms --outputs "$outputs" "${smoke[@]}") || stop "the arm names cannot be resolved"
     note "F = $f"
+    f_basis_gates   # V3c when stage 3 gave a verdict (c* or KEEP-G), else V1c of the sweep machine (F = G after SWEEP-NONE or TOP-NONE)
     if [[ "$f" != G ]]; then
-        gate V3c "$outputs/stage3/rederive_stage3.json" "F = c* is not stated until the stage 3 re-derivation agrees"
         [[ "$(jget "$outputs/stage4/verdict.json" "d['candidate']")" == "$f" ]] || stop "stage4/verdict.json does not name F = $f: run the stage 4 queue first"
         gate V4b "$outputs/stage4/rederive_stage4.json" "F's held outcomes are not stated until V4b agrees"
     fi
