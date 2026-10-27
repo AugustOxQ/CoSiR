@@ -384,6 +384,19 @@ def test_n3_edges():
     assert S.n3_items(a, a)['style']['diff'] == 0.0
 
 
+@pytest.mark.parametrize('aspect', ['emotion', 'style', 'genre'])
+def test_n3_a_difference_of_exactly_r_a_over_2_passes(aspect):
+    """Rule §4.2: `<= r_a / 2`, the edge passes. Base 0.0, so the float difference is exactly r_a / 2."""
+    r = S.RANGES
+    base = dict(emotion=0.0, style=0.0, genre=0.0)
+    item = S.n3_items(base, dict(base, **{aspect: r[aspect] / 2}))[aspect]
+    assert item['diff'] == item['limit'] == r[aspect] / 2 and item['pass'] is True
+    item = S.n3_items(base, dict(base, **{aspect: -r[aspect] / 2}))[aspect]            # and downward
+    assert item['diff'] == item['limit'] and item['pass'] is True
+    over = S.n3_items(base, dict(base, **{aspect: np.nextafter(r[aspect] / 2, 1.0)}))[aspect]
+    assert over['diff'] > over['limit'] and over['pass'] is False
+
+
 # ------------------------------------------------------------------ the scorer's refusals
 def write_run(folder, **run):
     folder.mkdir(parents=True, exist_ok=True)

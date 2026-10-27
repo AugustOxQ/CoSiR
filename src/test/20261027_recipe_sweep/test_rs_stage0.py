@@ -1078,3 +1078,222 @@ def test_v0d_policy_followed_when_a_seed_failed_v0c_twice(world, fake_infer, mon
     S0._atomic_json(S0.failed_path(held, 'genre', 2), dict(arm='G', aspect='genre', seed=2, problems=['a', 'b']))
     write_output(held, 'G', 'sample', 'genre', 2)                           # an output beside the failure record
     assert S0.check_v0d(outputs)['items']['genre__s2']['pass'] is False
+
+
+# ------------------------------------------------------------------ V0d: a broken policy and a followed one (final review H1)
+def failing_infer(monkeypatch, aspect, seed):
+    """`infer` with `fake_infer`'s outputs, except that G's frozen head of `aspect` at `seed` is never unit norm."""
+    bad = f'frozen {aspect} {seed}'.encode()
+
+    def infer(weights, asp, x, device):
+        if Path(weights).read_bytes() == bad:
+            return unit(1) * np.float16(3)                      # fails V0c on both attempts
+        return unit(int.from_bytes(Path(weights).read_bytes()[:4], 'little') + 1)
+    monkeypatch.setattr(S0, 'infer', infer)
+
+
+def full_set(monkeypatch, tmp_path):
+    full = tmp_path / 'g_full'
+    write_set(full, paths.G_ARM, 'full')
+    monkeypatch.setattr(S0, 'FULL_G', S0.Candidate('G', full, paths.G_ARM))
+
+
+def verdict_after(outputs, monkeypatch):
+    """`verdict` with a faked score: (the record, the scales that were scored)."""
+    seen = []
+    blocks = {scale: fake_block(0.0164, 0.011, scale) for scale in S0.SCALES}
+    monkeypatch.setattr(S0, 'score_scale', score_fake(blocks, seen))
+    monkeypatch.setattr(S0.paths, 'check_imports', lambda: None)
+    return S0.verdict(outputs), [s for s, *_ in seen]
+
+
+def assert_sample_has_no_outcome(outputs, monkeypatch):
+    """V0c fails the sample scale alone; the verdict gives it a no-outcome block with its cause and scores the full
+    scale; E0 is false."""
+    v0c = S0.check_v0c(outputs)
+    assert v0c['scale_pass'] == {'sample': False, 'full': True}
+    record, scored = verdict_after(outputs, monkeypatch)
+    assert scored == ['full']
+    assert record['outcomes'] == {'sample': None, 'full': 'G-EF-GO'} and record['E0'] is False
+    assert record['blocks']['sample']['outcome_id'] is None and 'V0c' in record['blocks']['sample']['v_failure']
+    assert record['blocks']['full']['d'] == 0.0164
+
+
+@pytest.mark.parametrize('aspect', S0.ASPECTS)
+@pytest.mark.parametrize('seed', [0, 2])
+def test_v0d_followed_when_any_aspect_failed_v0c_twice(world, monkeypatch, tmp_path, aspect, seed):
+    """H1: the failing aspect's later aspects at that seed can never be written; V0d passes, the sample scale alone has
+    no outcome, the full scale is scored."""
+    outputs, _ = world
+    monkeypatch.setattr(S0, 'held_images', lambda: X)
+    monkeypatch.setattr(S0.rg_train, 'check_device', lambda d: d)
+    failing_infer(monkeypatch, aspect, seed)
+    with pytest.raises(AssertionError, match='failed twice'):
+        S0.held(outputs, [0, 1, 2, 3, 4], 'cpu')
+    with pytest.raises(AssertionError, match='V0d'):
+        S0.held(outputs, [seed], 'cpu')                         # the seed is refused as a whole
+    S0.held(outputs, [s for s in S0.SEEDS if s > seed], 'cpu')   # the later seeds, by hand
+    full_set(monkeypatch, tmp_path)
+    gate = S0.check_v0d(outputs)
+    later = S0.ASPECTS[S0.ASPECTS.index(aspect) + 1:]
+    assert gate['pass'] is True, {k: v for k, v in gate['items'].items() if not v['pass']}
+    assert gate['items'][f'{aspect}__s{seed}']['failed_twice'] is True
+    for other in S0.ASPECTS:
+        item = gate['items'][f'{other}__s{seed}']
+        if other in later:
+            assert item['not_computed_after_failure'] is True and 'not computed after the seed' in item['note']
+        elif other != aspect:
+            assert 'weights_sha256' in item and 'not_computed_after_failure' not in item    # an output: checked as usual
+    assert_sample_has_no_outcome(outputs, monkeypatch)
+
+
+def test_v0d_an_output_beside_the_failed_seed_is_still_checked(world, monkeypatch, tmp_path):
+    outputs, _ = world
+    monkeypatch.setattr(S0, 'held_images', lambda: X)
+    monkeypatch.setattr(S0.rg_train, 'check_device', lambda d: d)
+    failing_infer(monkeypatch, 'style', 0)
+    with pytest.raises(AssertionError, match='failed twice'):
+        S0.held(outputs, [0, 1, 2, 3, 4], 'cpu')
+    S0.held(outputs, [1, 2, 3, 4], 'cpu')
+    full_set(monkeypatch, tmp_path)
+    assert S0.check_v0d(outputs)['pass'] is True
+    (paths.RG_TRAIN / paths.G_ARM / 's0/emotion.pt').write_bytes(b'replaced after the output was written')
+    gate = S0.check_v0d(outputs)
+    assert gate['pass'] is False and 'V0a record' in gate['items']['emotion__s0']['problem']
+
+
+def test_v0d_a_failure_record_covers_only_its_own_seed(world, fake_infer, monkeypatch, tmp_path):
+    outputs, _ = full_world(world, fake_infer, monkeypatch, tmp_path)
+    held = S0.sample_g(outputs).held_dir
+    for aspect in ('emotion', 'style', 'genre'):                # seed 2 failed at emotion; style and genre are not computed
+        (held / f'{aspect}__s2.npz').unlink()
+        (held / f'{aspect}__s2.json').unlink()
+    S0._atomic_json(S0.failed_path(held, 'emotion', 2), dict(arm='G', aspect='emotion', seed=2, problems=['a', 'b']))
+    assert S0.check_v0d(outputs)['pass'] is True
+    (held / 'style__s3.npz').unlink()                           # an output of another seed is missing, no record
+    (held / 'style__s3.json').unlink()
+    gate = S0.check_v0d(outputs)
+    assert gate['pass'] is False and not gate['items']['style__s3']['pass']
+    assert gate['items']['genre__s2']['pass'] is True
+
+
+def test_v0d_a_missing_output_without_any_failure_record_fails(world, fake_infer, monkeypatch, tmp_path):
+    outputs, _ = full_world(world, fake_infer, monkeypatch, tmp_path)
+    held = S0.sample_g(outputs).held_dir
+    (held / 'style__s1.npz').unlink()
+    (held / 'style__s1.json').unlink()
+    gate = S0.check_v0d(outputs)
+    assert gate['pass'] is False and not gate['items']['style__s1']['pass'] and gate['items']['genre__s1']['pass']
+    with pytest.raises(S0.Refusal, match='v0d'):
+        verdict_after(outputs, monkeypatch)
+
+
+@pytest.mark.parametrize('body', ['not json', '{}', '[]', '3', json.dumps(dict(arm='G', aspect='emotion', seed=2,
+                                                                             problems=['only one'])),
+                                  json.dumps(dict(arm='G', aspect='style', seed=2, problems=['a', 'b'])),
+                                  json.dumps(dict(arm='G', aspect='emotion', seed=3, problems=['a', 'b']))])
+def test_v0d_a_malformed_failure_record_fails_and_covers_nothing(world, fake_infer, monkeypatch, tmp_path, body):
+    outputs, _ = full_world(world, fake_infer, monkeypatch, tmp_path)
+    held = S0.sample_g(outputs).held_dir
+    for aspect in ('emotion', 'style', 'genre'):
+        (held / f'{aspect}__s2.npz').unlink()
+        (held / f'{aspect}__s2.json').unlink()
+    S0.failed_path(held, 'emotion', 2).write_text(body)
+    gate = S0.check_v0d(outputs)
+    assert gate['pass'] is False and not gate['items']['emotion__s2']['pass']
+    assert not gate['items']['style__s2']['pass'] and not gate['items']['genre__s2']['pass']   # not covered by it
+    with pytest.raises(S0.Refusal, match='v0d'):
+        verdict_after(outputs, monkeypatch)
+
+
+def test_v0d_more_than_one_v0c_rerun_fails(world, fake_infer, monkeypatch, tmp_path):
+    outputs, _ = full_world(world, fake_infer, monkeypatch, tmp_path)
+    side = S0.sample_g(outputs).held_dir / 'genre__s1.json'
+    info = json.loads(side.read_text())
+    info['vc3_attempts'] = 3
+    side.write_text(json.dumps(info))
+    gate = S0.check_v0d(outputs)
+    assert gate['pass'] is False and gate['items']['genre__s1']['pass'] is False
+
+
+def fail_seed_4(outputs, **change):
+    path = run_json(outputs)
+    path.write_text(json.dumps(dict(json.loads(path.read_text()), status='failed', cause='non-finite loss', **change)))
+
+
+def test_v0d_followed_when_seed_4_failed_its_one_training(world, fake_infer, monkeypatch, tmp_path):
+    """H1, second path: seed 4 trained once and failed, not rerun: V0d passes, seed 4 has no held outputs, the sample
+    scale has no outcome, the full scale is scored."""
+    outputs, _ = world
+    monkeypatch.setattr(S0, 'held_images', lambda: X)
+    monkeypatch.setattr(S0.rg_train, 'check_device', lambda d: d)
+    S0.held(outputs, [0, 1, 2, 3], 'cpu')
+    fail_seed_4(outputs)
+    with pytest.raises(S0.Refusal, match='failed'):
+        S0.held(outputs, [4], 'cpu')                            # nothing to infer from a failed run
+    full_set(monkeypatch, tmp_path)
+    gate = S0.check_v0d(outputs)
+    assert gate['pass'] is True, {k: v for k, v in gate['items'].items() if not v['pass']}
+    once = gate['items']['seed4_trained_once']
+    assert once['pass'] is True and once['status'] == 'failed' and once['trainings'] == 1
+    assert 'seed 4 failed its one training: the sample scale has no outcome' in once['note']
+    for aspect in S0.ASPECTS:
+        item = gate['items'][f'{aspect}__s4']
+        assert item['pass'] is True and item['seed4_failed_one_training'] is True
+        assert not (S0.sample_g(outputs).held_dir / f'{aspect}__s4.npz').exists()
+    assert_sample_has_no_outcome(outputs, monkeypatch)
+
+
+@pytest.mark.parametrize('second', ['aside', 'rerun_of'])
+def test_v0d_fails_when_seed_4_trained_twice_and_the_verdict_refuses(world, fake_infer, monkeypatch, tmp_path, second):
+    outputs, _ = world
+    monkeypatch.setattr(S0, 'held_images', lambda: X)
+    monkeypatch.setattr(S0.rg_train, 'check_device', lambda d: d)
+    S0.held(outputs, [0, 1, 2, 3], 'cpu')
+    fail_seed_4(outputs)
+    full_set(monkeypatch, tmp_path)
+    if second == 'aside':
+        aside(outputs, 1, status='failed', failure_kind='va3')          # the first training, moved aside
+    else:
+        fail_seed_4(outputs, rerun_of=str(outputs / 'replaced/G/s4-9'))
+    gate = S0.check_v0d(outputs)
+    assert gate['pass'] is False and gate['items']['seed4_trained_once']['pass'] is False
+    with pytest.raises(S0.Refusal, match='v0d'):
+        verdict_after(outputs, monkeypatch)
+
+
+def test_v0d_seed_4_output_that_exists_for_a_failed_run_fails(world, fake_infer, monkeypatch, tmp_path):
+    """The failed-seed pass is for a seed with no held output: an output written from weights of a run now failed is a
+    changed weight."""
+    outputs, _ = full_world(world, fake_infer, monkeypatch, tmp_path)
+    fail_seed_4(outputs)
+    gate = S0.check_v0d(outputs)
+    assert gate['pass'] is False and not gate['items']['emotion__s4']['pass']
+
+
+def test_v0d_seed_4_failure_does_not_excuse_another_seeds_missing_output(world, fake_infer, monkeypatch, tmp_path):
+    outputs, _ = world
+    monkeypatch.setattr(S0, 'held_images', lambda: X)
+    monkeypatch.setattr(S0.rg_train, 'check_device', lambda d: d)
+    S0.held(outputs, [0, 1, 2, 3], 'cpu')
+    fail_seed_4(outputs)
+    full_set(monkeypatch, tmp_path)
+    assert S0.check_v0d(outputs)['pass'] is True
+    held = S0.sample_g(outputs).held_dir
+    (held / 'style__s1.npz').unlink()
+    (held / 'style__s1.json').unlink()
+    gate = S0.check_v0d(outputs)
+    assert gate['pass'] is False and not gate['items']['style__s1']['pass'] and gate['items']['genre__s4']['pass']
+
+
+@pytest.mark.parametrize('status', ['running', 'interrupted', None])
+def test_v0d_seed_4_run_with_a_status_other_than_ok_or_failed_fails(world, fake_infer, monkeypatch, tmp_path, status):
+    outputs, _ = world
+    monkeypatch.setattr(S0, 'held_images', lambda: X)
+    monkeypatch.setattr(S0.rg_train, 'check_device', lambda d: d)
+    S0.held(outputs, [0, 1, 2, 3], 'cpu')
+    path = run_json(outputs)
+    path.write_text(json.dumps(dict(json.loads(path.read_text()), status=status)))
+    full_set(monkeypatch, tmp_path)
+    gate = S0.check_v0d(outputs)
+    assert gate['pass'] is False and gate['items']['seed4_trained_once']['pass'] is False
