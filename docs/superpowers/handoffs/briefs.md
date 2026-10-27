@@ -1185,3 +1185,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-27-r10-build-12-handoff.md
 - New chat: tab 'r10 build 12', session 92336ec7-94d0-4db9-a968-64f1ceb97d78
 
+[brief] CoSiR: r10 build 12 -> r10 run 3 (2026-10-27 17:05 Amsterdam)
+- Done: the build is finished: 15 tickets, the final review (parts H, D, A) and its fix wave, all merged into main and pushed (eb1d04b).
+- State: every gate passes on the merged code (V0a rerun 16:20; V1a, V3a, V4a, k11, ablation graphs; N1 and N2 on node402).
+- Next: resync node402 from a cluster-run branch at main's tip, then stage 1 on the node and stage 0 locally, by rs_queue.md.
+- Blocked: nothing. The user's rule §4.2 exception (15:31): node route kept, deadlines shifted by the real stage 1 start.
+- Handoff: docs/superpowers/handoffs/2026-10-27-r10-run-3-handoff.md
+- New chat: tab 'r10 run 3', session 197a25bd-5b5f-4a2e-be46-c0a7080cf8c8
+
