@@ -93,6 +93,12 @@ def run_config(data, cfg, seed, outputs, device, *, run_dir=None, smoke=False, m
     max_epochs = (2 if smoke else ms_train.CONFIG['max_epochs']) if max_epochs is None else max_epochs
     assert not smoke or max_epochs == 2, '--smoke requires 2 epochs'
     assert 1 <= max_epochs <= ms_train.CONFIG['max_epochs']
+    if cfg['remove'] and not smoke:
+        # An ablation arm is a removal from the final model F (c* under PICK, else G), trained at seeds 1 to 3 (rule §2.5).
+        # The check is `rs_full.require_stage3`, the one the full-scale arms pass (imported here: rs_full imports this module).
+        assert seed in S.DEV_SEEDS, f'{name}: the ablation trains at seeds {S.DEV_SEEDS} (seeds 1 to 3), not {seed}'
+        import rs_full
+        rs_full.require_stage3(outputs, cfg)
     with ExitStack() as stack:
         knobs = rs_knobs.patches(cfg, stack, scale='sample', outputs=outputs)
         s, inputs, p, p_sha = data.get(export_p=True)

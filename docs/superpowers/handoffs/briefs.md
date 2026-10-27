@@ -1161,3 +1161,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-27-r10-build-9-handoff.md
 - New chat: tab 'r10 build 9', session e4726375-b39f-4421-932e-c9c60cc2248e
 
+[brief] CoSiR: r10 build 9 -> r10 build 10 (2026-10-27 12:58 Amsterdam)
+- Done: tickets 06, 07 and 08 merged after review and fixes (587 tests pass); real V3a gate passes (39 of 39, difference 0).
+- State: 09 and 10 built and reviewed (no wrong number; test gaps and guards to fix); 12 and 13 built; 11 half done.
+- Next: fixers for 09 and 10, an Opus review of 12, merge 13, a worker to finish 11; then the GPU gates and N1, N2.
+- Blocked: nothing. Codex refusal is with the user (they asked another chat to check it).
+- Handoff: docs/superpowers/handoffs/2026-10-27-r10-build-10-handoff.md
+- New chat: tab 'r10 build 10', session 690179f0-bb27-42b5-b70c-303bb30c8137
+
