@@ -383,9 +383,36 @@ Our reading: more graph neighbours can supply positives from more neighbours per
 - Would remove after wrap-up review, never in this drafting job: `<O>/regression/v1a_s0`, `v1a_s1`, `v4a_run`; non-shortlisted node sweep weights and expendable node job scratch once sized and home copies verified. Prior pending rows also name build smoke/review scratch and merged fix worktrees; no new deletion or move is authorized here. The node's remaining output size still needs the wrap-up inventory.
 Storage: decided at the wrap-up; see `.scratch/pending_deletions.md` and the disk ledger `/project/claude-config/storage/disk_ledger.md`.
 
-## Ablation (running)
+## Ablation
 
-Dev queue started 21:11 (F = k11=40; gates V1a, V3a, V3c hold). Results added when the chain ends.
+F = k11=40 (c*). The removals and what each changes: spec §3.2, "Ablation". Rule: §2.5, §3.5, §4.5.
+
+### Development (done 2026-10-27 22:50)
+
+- Queue `rs_queue_ablation_dev.sh`: started 21:11, `dev_exit=0` at 22:50, `failed=0`. Gates V1a (train, scorer), V3a and V3c held.
+- Training: 24 runs (8 removals × seeds 1 to 3), 3,763 s in total, no failure, no rerun. Scoring (`score_dev`): 1,528 s. Re-derivation (`v_ablation`, `rs_vp ablation`): 647 s.
+- `ablation/dev.json` SHA-256 `c8218ceb3b85fd2340d44474f648fa3e3afe2cd674f2124bc988230054526be6` (written 22:39, code `da6fa381…`, commit a808d0e, clean).
+- `ablation/rederive_dev.json` SHA-256 `01ba39ef65de77fde4e492a0010448143542adf9ffeaaaa59ca5bf1872db7077`: `pass: true`, 442 of 442 items pass, largest numeric difference 0.0.
+- `inputs.ablation_graphs_sha256` = `698100b2fa4dea71f752ed03aea9c8bfd2189a89a745d74e4bd39bae99fefc97`; both graph checks passed, so the content-correction and instructed-graph removals ran.
+- Draws: per removal `default_rng(0)`, I_b over the rows of P, then S_b over seeds 1 to 3, shared by the arm, F and the aspects; 2,000 draws.
+- c*'s means on P (stage 3 runs, seeds 1 to 3): emotion 0.1089, style 0.4072, genre 0.5019.
+
+| Removal / arm | Seconds (3 seeds) | Emotion arm / c* / ē [95%] | Style arm / c* / ē [95%] | Genre arm / c* / ē [95%] | Mean gain [95%] (seed ranges) |
+|---|---|---|---|---|---|
+| relational term / `k11=40-no_relational` | 297 | 0.1080 / 0.1089 / -0.0009 [-0.0035, +0.0013] | 0.4064 / 0.4072 / -0.0008 [-0.0050, +0.0052] | 0.4722 / 0.5019 / -0.0297 [-0.0339, -0.0258] | -0.869 [-1.150, -0.574] |
+| sharper teacher row / `k11=40-no_sharp_row` | 329 | 0.1091 / 0.1089 / +0.0002 [-0.0015, +0.0018] | 0.4009 / 0.4072 / -0.0063 [-0.0134, -0.0006] | 0.5022 / 0.5019 / +0.0003 [-0.0082, +0.0073] | -0.233 [-0.355, -0.111] |
+| direct teacher / `k11=40-no_direct` | 304 | 0.1111 / 0.1089 / +0.0022 [+0.0005, +0.0037] | 0.4065 / 0.4072 / -0.0007 [-0.0026, +0.0014] | 0.5030 / 0.5019 / +0.0011 [-0.0051, +0.0057] | +0.165 [-0.002, +0.327] |
+| buddy terms / `k11=40-no_buddy` | 1374 | 0.0796 / 0.1089 / -0.0292 [-0.0319, -0.0264] | 0.2517 / 0.4072 / -0.1555 [-0.1591, -0.1506] | 0.5018 / 0.5019 / -0.0001 [-0.0020, +0.0018] | -8.441 [-8.733, -8.067] |
+| caption endpoints / `k11=40-no_caption_endpoints` | 271 | 0.1089 / 0.1089 / 0.0000 [-0.0016, +0.0017] | 0.4114 / 0.4072 / +0.0042 [+0.0013, +0.0072] | 0.5075 / 0.5019 / +0.0056 [-0.0018, +0.0155] | +0.315 [+0.121, +0.534] |
+| content correction / `k11=40-no_content_correction` | 422 | 0.0985 / 0.1089 / -0.0103 [-0.0131, -0.0074] | 0.3394 / 0.4072 / -0.0678 [-0.0737, -0.0599] | 0.5025 / 0.5019 / +0.0006 [-0.0039, +0.0067] | -3.491 [-3.896, -3.097] |
+| instructed graphs / `k11=40-no_instructed_graphs` | 425 | 0.0743 / 0.1089 / -0.0346 [-0.0381, -0.0315] | 0.2078 / 0.4072 / -0.1994 [-0.2029, -0.1948] | 0.5033 / 0.5019 / +0.0015 [-0.0002, +0.0032] | -10.573 [-10.853, -10.258] |
+| shared trunk / `k11=40-no_shared_trunk` | 341 | 0.1089 / 0.1089 / 0.0000 [-0.0025, +0.0023] | 0.4057 / 0.4072 / -0.0015 [-0.0058, +0.0019] | 0.5066 / 0.5019 / +0.0048 [+0.0029, +0.0067] | +0.062 [-0.143, +0.276] |
+
+Key: arm / c* are mean AMIs over seeds 1 to 3 on P; ē = arm minus c*; mean gain = ē divided by the seed range (emotion 0.0046, style 0.0082, genre 0.0128), averaged over the three aspects.
+
+### Held (running)
+
+Queue `rs_queue_ablation_held.sh` started 22:50 (gates V3a, V3c, V4b hold; F = k11=40). Estimated end 2026-10-28 05:00 to 06:00. Results added when it ends.
 
 ## Deviations
 

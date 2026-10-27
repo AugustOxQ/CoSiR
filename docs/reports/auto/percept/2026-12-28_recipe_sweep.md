@@ -71,7 +71,7 @@ G reuses runs except sample seed 4 and sample held inference; ArtELingo-28 is un
 | 2 / sweep | 18:30 to 19:39 | node402 |
 | 3 / confirmation with pick | 19:39 to 20:13 | local |
 | 4 / claim test, then c* analysis | 20:14 to 21:09 | local |
-| Ablation / development, then held | started 21:11 | local |
+| Ablation / development, then held | development 21:11 to 22:50; held from 22:50 | local |
 
 - Code: eb1d04b, launched a87cb1d; node402: three RTX A6000s; local: 8 CPU threads.
 - Measurement: image heads, k-means with 20 clusters and three states; paired 95% intervals, 2,000 painting/seed draws.
@@ -183,7 +183,29 @@ Held style minus G: +0.0009 [-0.0044, +0.0065], crossing zero.
 
 ### Ablation
 
-<!-- ABLATION-TABLES: development and held, added after the chain ends -->
+On development paintings, removing the buddy terms, the instructed graphs or the content correction from c* lowers emotion and style; removing the relational term lowers genre.
+The ablation decides nothing.
+
+**Development.** Each removal ran at seeds 1 to 3 on P, against c*'s stage 3 runs (emotion/style/genre 0.1089/0.4072/0.5019), with 2,000 joint draws per removal.
+All eight removals ran; the separate re-derivation agrees on all 442 items.
+
+| Removal | Emotion ē [95%] | Style ē [95%] | Genre ē [95%] | Mean gain [95%] |
+|---|---|---|---|---|
+| relational term | -0.0009 [-0.0035, +0.0013] | -0.0008 [-0.0050, +0.0052] | -0.0297 [-0.0339, -0.0258] | -0.869 [-1.150, -0.574] |
+| sharper teacher row | +0.0002 [-0.0015, +0.0018] | -0.0063 [-0.0134, -0.0006] | +0.0003 [-0.0082, +0.0073] | -0.233 [-0.355, -0.111] |
+| direct teacher | +0.0022 [+0.0005, +0.0037] | -0.0007 [-0.0026, +0.0014] | +0.0011 [-0.0051, +0.0057] | +0.165 [-0.002, +0.327] |
+| buddy terms | -0.0292 [-0.0319, -0.0264] | -0.1555 [-0.1591, -0.1506] | -0.0001 [-0.0020, +0.0018] | -8.441 [-8.733, -8.067] |
+| caption endpoints | 0.0000 [-0.0016, +0.0017] | +0.0042 [+0.0013, +0.0072] | +0.0056 [-0.0018, +0.0155] | +0.315 [+0.121, +0.534] |
+| content correction | -0.0103 [-0.0131, -0.0074] | -0.0678 [-0.0737, -0.0599] | +0.0006 [-0.0039, +0.0067] | -3.491 [-3.896, -3.097] |
+| instructed graphs | -0.0346 [-0.0381, -0.0315] | -0.1994 [-0.2029, -0.1948] | +0.0015 [-0.0002, +0.0032] | -10.573 [-10.853, -10.258] |
+| shared trunk | 0.0000 [-0.0025, +0.0023] | -0.0015 [-0.0058, +0.0019] | +0.0048 [+0.0029, +0.0067] | +0.062 [-0.143, +0.276] |
+
+Key: ē: removal minus c*, mean AMI over seeds 1 to 3; mean gain: ē divided by the seed range, averaged over aspects.
+
+- On P, removing the instructed graphs from c* changes style AMI by -0.1994 [-0.2029, -0.1948], the largest change.
+- Three removals raise one aspect with the interval above zero: caption endpoints (style), shared trunk (genre) and direct teacher (emotion).
+
+<!-- ABLATION-HELD: held table, added after the held queue ends -->
 
 ## Analysis
 
