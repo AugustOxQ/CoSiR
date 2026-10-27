@@ -15,6 +15,14 @@ knob lives (facts brief §A):
            0.05. The export's inference batch reads 'batch_size' too, so k8 pins it to G's value there.
   k9, k10  `ms_train.TrunkSide` (hard-coded 1024 and 0.1); `CONFIG['architecture'/'dropout']` follow for the records
   k11      `rg_train.load_graphs` is replaced by `rs_graphs.sample_store(k, 'aspect', s=, outputs=)` (ticket 03)
+Full scale (ticket 08; `rs_full` runs `rg_full.train_cohort` and `rg_full.infer_held` under these patches): the same
+patches except where the full path reads another object. The loss patches (k1 to k4) and CONFIG / TrunkSide (k6 to k10,
+k12, k13) are the objects both paths share. The differences:
+  k5       `rb_rows.recipe(V.BASE)` (the row `rg_full.train_cohort` hands to `ct2_d2.run`) instead of `rg_train.resolved`
+  k8       the export batches are two functions: `rb_student.CT2_SAVE_OUTPUT` (training's exports) and `rb_student.infer`
+           (held inference), instead of `eg.infer_img`
+  k11      `rb_student.load_scale` (the CT's full loader, which `rs_full` calls for the data and the graphs) is replaced
+           by `rs_graphs.full_training_data(k, 'aspect', outputs=)`. Ticket 07's graph removals enter at the same seam.
 The stopping loss of a head with a relational term includes that term (as genre's does at G): the loss that is
 trained is the loss that stops.
 """
@@ -29,6 +37,8 @@ import rs_paths  # noqa: F401  (sys.path)
 import rs_sheet as S
 import ab_train
 import eg_train3 as eg
+import rb_rows
+import rb_student
 import rg_loss
 import rg_train
 import rg_variants as V
@@ -41,6 +51,18 @@ assert {key: ms_train.CONFIG[key] for key in CONFIG_KEYS.values()} == {
 assert ms_train.CONFIG['dropout'] == S.G['k10'] and ms_train.CONFIG['architecture'] == [2048, S.G['k9'], 2048]
 assert V.ARMS[V.BASE]['lam'] == 0 and V.ARMS['GS-0.02'] == dict(m=1, lam=S.G['k3'], tau_t=S.G['k4'], anchors=0)
 assert V.TEACHER_WEIGHT == S.G['k5']
+
+
+def store_training_data(scale, k, outputs):
+    """The full-scale (s, inputs, graphs, manifests) of mutual top-k `k` as `rb_student.load_scale('full')` returns them,
+    from ticket 03's `rs_graphs.full_training_data` (which enforces gates/k11_full.json, V4c). k = 20 never comes
+    here: the frozen loader reads the CT's graphs."""
+    assert scale == 'full' and k != S.G['k11'], 'k = 20 is the frozen store'
+    try:
+        import rs_graphs
+    except ImportError:
+        raise AssertionError(f'k11 = {k}: rs_graphs (ticket 03) is not merged; only k = 20 can run') from None
+    return rs_graphs.full_training_data(k, 'aspect', outputs=outputs)
 
 
 def store_graphs(s, k, outputs):
@@ -108,7 +130,19 @@ def with_direct_weight(resolved, weight):
     return weighted
 
 
-def _plan(cfg, outputs=None):
+def with_recipe_weight(recipe, weight):
+    """`rb_rows.recipe` with the direct teacher weight of the training recipe's row set (k5), as `with_direct_weight` does
+    for the sample scale's `resolved`. Other recipes (held inference builds the model from R0-5's row) are untouched."""
+    def weighted(name):
+        row = recipe(name)
+        if name == V.BASE:
+            assert row['base']['distill'] == 'direct' and row['base']['distill_weight'] == S.G['k5']
+            row['base']['distill_weight'] = weight
+        return row
+    return weighted
+
+
+def _plan(cfg, outputs=None, scale='sample'):
     """[(description, enter)] for the changed knobs: description {knob: {target: value}} (JSON), enter(stack)
     enters the patch. Empty for G."""
     changed = S.changed(cfg)
@@ -127,15 +161,19 @@ def _plan(cfg, outputs=None):
         plan.append(({k: {target: {key: arm[key]}} for k, key in (('k3', 'lam'), ('k4', 'tau_t')) if key in arm},
                      lambda stack: stack.enter_context(patch.dict(V.ARMS[rs_paths.G_ARM], arm))))
     if 'k5' in changed:
-        plan.append(({'k5': {'rg_train.resolved': f'direct weight {cfg["k5"]}',
-                             'rg_variants.TEACHER_WEIGHT': cfg['k5']}},
+        recipe_target, recipe_module, recipe_name, wrap = (
+            ('rg_train.resolved', rg_train, 'resolved', with_direct_weight) if scale == 'sample' else
+            ('rb_rows.recipe', rb_rows, 'recipe', with_recipe_weight))
+        plan.append(({'k5': {recipe_target: f'direct weight {cfg["k5"]}', 'rg_variants.TEACHER_WEIGHT': cfg['k5']}},
                      lambda stack: (stack.enter_context(patch.object(
-                         rg_train, 'resolved', with_direct_weight(rg_train.resolved, cfg['k5']))),
+                         recipe_module, recipe_name, wrap(getattr(recipe_module, recipe_name), cfg['k5']))),
                          stack.enter_context(patch.object(V, 'TEACHER_WEIGHT', cfg['k5'])))))
     values = {key: cfg[k] for k, key in CONFIG_KEYS.items() if k in changed}
     description = {k: {'ms_train.CONFIG': {key: cfg[k]}} for k, key in CONFIG_KEYS.items() if k in changed}
     if 'k8' in changed:
-        description['k8']['eg_train3.infer_img'] = f'export batches pinned at {G_BATCH}'
+        for target in (('eg_train3.infer_img',) if scale == 'sample' else
+                       ('rb_student.CT2_SAVE_OUTPUT', 'rb_student.infer')):
+            description['k8'][target] = f'export batches pinned at {G_BATCH}'
     if 'k9' in changed:
         values['architecture'] = [2048, cfg['k9'], 2048]
         description['k9'] = {'ms_train.CONFIG': {'architecture': values['architecture']},
@@ -148,37 +186,41 @@ def _plan(cfg, outputs=None):
         def enter_config(stack):
             stack.enter_context(patch.dict(ms_train.CONFIG, values))
             if 'k8' in changed:
-                stack.enter_context(patch.object(eg, 'infer_img', pinned_batch(eg.infer_img, G_BATCH)))
+                for module, name in (((eg, 'infer_img'),) if scale == 'sample' else
+                                     ((rb_student, 'CT2_SAVE_OUTPUT'), (rb_student, 'infer'))):
+                    stack.enter_context(patch.object(module, name, pinned_batch(getattr(module, name), G_BATCH)))
             if 'k9' in changed or 'k10' in changed:
                 stack.enter_context(patch.object(ms_train, 'TrunkSide', trunk_side(cfg['k9'], cfg['k10'])))
         plan.append((description, enter_config))
-    if 'k11' in changed:
+    if 'k11' in changed and scale == 'sample':
         k = cfg['k11']
         plan.append(({'k11': {'rg_train.load_graphs': f'rs_graphs.sample_store(k={k}, \'aspect\')'}},
                      lambda stack: stack.enter_context(patch.object(
                          rg_train, 'load_graphs', lambda s, recipe: store_graphs(s, k, outputs)))))
+    if 'k11' in changed and scale == 'full':
+        k = cfg['k11']
+        plan.append(({'k11': {'rb_student.load_scale': f'rs_graphs.full_training_data(k={k}, \'aspect\')'}},
+                     lambda stack: stack.enter_context(patch.object(
+                         rb_student, 'load_scale', lambda scale: store_training_data(scale, k, outputs)))))
     return plan
 
 
-def describe(cfg):
+def describe(cfg, scale='sample'):
     """What the configuration patches, {knob: {target: value}} (empty for G); recorded in every run.json."""
     description = {}
-    for part, _ in _plan(cfg):
+    for part, _ in _plan(cfg, scale=scale):
         description.update(part)
     assert set(description) == set(S.changed(cfg)), (sorted(description), S.changed(cfg))
     return description
 
 
 def patches(cfg, stack, *, scale, outputs=None):
-    """Enter every patch `cfg` needs into `stack`; none for G. Returns `describe(cfg)`. `outputs` (the run's output
-    folder, where the graph stores live) is needed for k11 only. Sample scale only: the full-scale seams (ticket 08)
-    extend this."""
+    """Enter every patch `cfg` needs into `stack`; none for G. Returns `describe(cfg, scale)`. `outputs` (the run's output
+    folder, where the graph stores live) is needed for k11 only."""
     assert scale in ('sample', 'full'), scale
     assert not cfg['remove'], 'removal switches: ticket 07'
-    description = describe(cfg)
-    if description:
-        assert scale == 'sample', 'knobs at full scale: ticket 08'
+    description = describe(cfg, scale)
     assert outputs is not None or 'k11' not in description, 'k11 needs the outputs folder'
-    for _, enter in _plan(cfg, outputs):
+    for _, enter in _plan(cfg, outputs, scale):
         enter(stack)
     return description
