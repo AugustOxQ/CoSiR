@@ -224,11 +224,6 @@ def test_k11_replaces_the_full_loader_and_k20_never_does(monkeypatch, tmp_path):
         K.store_training_data('full', 20, tmp_path)
 
 
-def test_removals_still_wait_for_ticket_07_at_full_scale():
-    with pytest.raises(AssertionError, match='ticket 07'):
-        K.patches(S.config(remove=['buddy']), ExitStack(), scale='full')
-
-
 # ------------------------------------------------------------------------------------------------- the run logic
 VERDICT_BAD = 'stage3/verdict.json'
 
