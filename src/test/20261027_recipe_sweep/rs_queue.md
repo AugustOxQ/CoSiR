@@ -52,7 +52,7 @@ the ablation; V4a blocks stage 4 and the held ablation; V3a blocks stage 3 and b
 
 | Queue | Step (label) | Gate checked first, by whom | Failure |
 |---|---|---|---|
-| `stage0` | `train_seed4` | queue: `gates/v1a_train.json` and `v1a_scorer.json` pass (`rs_train train` does not check V1a), `gates/v0a.json` pass | stop; a failed seed 4 stops the queue and is NOT rerun (rule V0d: seed 4 trains once): the sample scale then has no outcome and the full scale is scored as usual (the stage 0 code is being fixed to do so); the remaining steps are then run by hand |
+| `stage0` | `train_seed4` | queue: `gates/v1a_train.json` and `v1a_scorer.json` pass (`rs_train train` does not check V1a), `gates/v0a.json` pass | stop; a failed seed 4 stops the queue and is NOT rerun (rule V0d: seed 4 trains once): the sample scale then has no outcome and the full scale is scored as usual (`rs_stage0 check v0d` and `verdict` do so since build 12); the remaining steps are then run by hand |
 | | `held_sample` | runner: `rs_stage0 held` refuses without V0a, and for seed 4 without a passing `v1a_train.json` for the trainer on disk | stop |
 | | `v0c`, `v0d`, `verdict` | V0c soft (a failing scale gets no outcome, the verdict scores the other); V0d and the verdict are hard (the runner refuses without V0a and V0d) | stop |
 | | `v0b` | `rs_vh stage0` (exit 1 on disagreement) | stop: no outcome stated, G's analysis does not run |
