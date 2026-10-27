@@ -1,6 +1,7 @@
 """The sample-scale trainer's run logic (resume, V1d rerun, failures, records) and V1a's comparison, with the cohort
 replaced by a recorder; the cohort itself is `rg_train.train_cohort`, checked by V1a on the GPU."""
 import json
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -13,6 +14,10 @@ import rs_train as T
 import rg_train
 import rg_variants as V
 from ab_paths import ms_train
+
+
+SCRATCH = paths.SMOKE_ROOT / 'r10-rs-02'
+SCRATCH.mkdir(parents=True, exist_ok=True)
 
 
 class FakeData:
@@ -155,7 +160,7 @@ def test_k11_runs_need_check_k_and_seeds_and_scratch_are_checked(cohort, tmp_pat
 
 def test_smoke_runs_two_epochs_in_scratch(cohort):
     calls, _ = cohort
-    out = paths.SMOKE_ROOT / 'r10-rs-02/test-smoke'
+    out = Path(tempfile.mkdtemp(dir=SCRATCH))
     record = run(S.config({'k13': 5}), outputs=out, smoke=True)
     assert (trained(calls)[0]['smoke'], trained(calls)[0]['max_epochs'], record['smoke']) == (True, 2, True)
     assert trained(calls)[0]['run_dir'].is_relative_to(out)
@@ -199,7 +204,7 @@ def test_v1a_compares_exports_and_states_bit_for_bit(tmp_path, monkeypatch):
     record = T.regress_v1a(FakeData(), out, 'cpu', smoke=False)
     assert not record['pass'] and record['items']['s1']['aspects']['style']['state_equal'] is False
     assert record['items']['s0']['pass'] and not record['items']['s1']['pass']
-    assert not T.regress_v1a(FakeData(), paths.SMOKE_ROOT / 'r10-rs-02/test-smoke-v1a', 'cpu', smoke=True)['pass']
+    assert not T.regress_v1a(FakeData(), Path(tempfile.mkdtemp(dir=SCRATCH)), 'cpu', smoke=True)['pass']
 
 
 def test_g_repeat_is_g_in_its_own_folder_and_machine_is_written_as_given(cohort, tmp_path):
