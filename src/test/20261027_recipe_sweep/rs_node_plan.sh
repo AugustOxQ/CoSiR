@@ -11,8 +11,9 @@
 #                                 the same launch, watch, pull and fetch; V1c part (a) again on the node (all runs). The node's
 #                                 `rs_vp partitions` rewrites scores/<node>/rederive_partitions.json (now stage 1 and 2 runs), which differs
 #                                 from the stage 1 copy at home and so would make the fetch refuse (das6_sync_rs never overwrites a differing
-#                                 file): the plan first moves the home copy to rederive_partitions.stage1.json (a move, never a delete; it
-#                                 refuses when that name exists with different content). Then locally `rs_sweep stage2 --machine <node>`
+#                                 file): the plan first moves the home copy to rederive_partitions.stage1.json (a move, never a delete; when that
+#                                 name already exists it moves nothing and goes on, so a rerun after a failed second fetch continues,
+#                                 and the fetch refuses by itself if the home and node files differ). Then locally `rs_sweep stage2 --machine <node>`
 #                                 and V1c part (b)
 # A failed step stops the plan with RS_NODE_STOP; the run chat then decides: relaunch with a NEW tag, or the local fallback
 # (rs_queue_fallback.sh; rule §4.2: N1, N2 or N3 fails, stage 1 cannot start by RS_START_BY, stage 2 not ended by RS_END_BY, node lost).
@@ -78,13 +79,11 @@ move_stage1_partitions() {   # stage 2 only: the home copy of the stage 1 rederi
     local d=$outputs/scores/$node
     local src=$d/rederive_partitions.json dst=$d/rederive_partitions.stage1.json
     if [[ "$dry" == 1 ]]; then
-        printf 'DRY move_stage1_partitions: mv -- %s %s   (only when the first exists; refuses if the second exists with other content)\n' "$src" "$dst" | tee -a "$status"
+        printf 'DRY move_stage1_partitions: mv -- %s %s   (only when the first exists and the second does not; if the second exists, a note and no move)\n' "$src" "$dst" | tee -a "$status"
         return 0
     fi
+    if [[ -e "$dst" ]]; then note "the stage 1 copy is already aside ($dst): not moved, not overwritten; the fetch decides"; return 0; fi
     if [[ ! -e "$src" ]]; then note "no $src at home: nothing to move aside"; return 0; fi
-    if [[ -e "$dst" ]] && ! cmp -s "$src" "$dst"; then
-        stop "$dst exists with other content than $src: not overwritten (the fetch of the stage 2 partitions would refuse); the run chat decides"
-    fi
     printf 'RUN move_stage1_partitions: mv -- %s %s\n' "$src" "$dst" | tee -a "$status"
     mv -- "$src" "$dst" || stop "move_stage1_partitions failed"
 }

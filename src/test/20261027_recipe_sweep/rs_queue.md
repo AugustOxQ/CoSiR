@@ -104,9 +104,9 @@ N2 passed (the controller's) and `das6_sync_rs.py --inputs --run` was done. The 
    shards; the same launch, watch, pull and fetch; part (a) again on the node over all runs; locally `rs_sweep stage2 --machine
    node402` and `rs_vp sweep`. Stage 2 is checked against `RS_END_BY` at its start and again right before `rs_sweep stage2`.
    The node's `rs_vp partitions` rewrites `scores/node402/rederive_partitions.json` (now all runs; it is the only file that job
-   writes). Before the second fetch the plan moves the home copy from stage 1 to `rederive_partitions.stage1.json` (a move; it
-   stops if that name exists with other content), else the fetch would refuse a differing local file. The readers keep reading
-   `rederive_partitions.json`. A full second run of stage 2 after a good fetch stops at that move: the run chat decides.
+   writes). Before the second fetch the plan moves the home copy from stage 1 to `rederive_partitions.stage1.json` (a move; if that
+   name already exists it moves nothing and goes on), else the fetch would refuse a differing local file. The readers keep reading
+   `rederive_partitions.json`. A stage 2 rerun (after a failed second fetch, or a V1c part (a) stop) continues; the fetch refuses by itself if the home and node files differ.
 
 Fallback conditions (rule §4.2): N1, N2 or N3 fails, stage 1 cannot start on the node by `RS_START_BY`, stage 2 has not ended by `RS_END_BY`,
 or the node is lost and one rerun (a new tag) does not fix it. Then run `rs_queue_fallback.sh`; the node results are reported only.
