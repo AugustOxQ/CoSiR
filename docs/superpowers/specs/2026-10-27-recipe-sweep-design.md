@@ -1,6 +1,6 @@
 # Model G's held emotion test, a staged recipe sweep, an ablation and an analysis: design
 
-> Date: 2026-10-27 04:05 · Status: draft · Kind: experiment
+> Date: 2026-10-27 03:42 · Status: approved 2026-10-27 03:48 (from the brief, r10 decide 27) · Kind: experiment
 > Builds on: [report 12-27](../../reports/auto/percept/2026-12-27_relational_genre.md), its
 > [spec](2026-10-26-relational-genre-design.md) and [rule](../../../src/test/20261027_relational_genre/DECISION_RULE.md);
 > the grill in the r10 decide 26 chat (its record: the [decide 26 handoff](../handoffs/2026-10-27-r10-decide-27-handoff.md)
@@ -37,19 +37,22 @@ Stages 1 to 3: G on the same machine and seeds. Stage 4: the instructed Qwen ima
 - We expect (guesses): stage 0 GO 0.85; a pick that replaces G 0.5; given a pick, held wins on emotion 0.9, style 0.4,
   genre 0.15.
 
-**Cost.** DAS6 node402: about 3.5 hours on 3 GPUs. Local: about 2.5 GPU hours and 8 CPU hours; light work by day,
-the full-scale ablation (about 80 GPU minutes) from 19:00. Reports by 2026-10-28 03:00.
+**Cost.** DAS6 node402: about 3.5 hours on 3 GPUs. Local: about 2.5 GPU hours and 8 CPU hours. Light work runs by
+day; the full-scale ablation (about 80 GPU minutes, then its CPU scoring) runs from 19:00 to about 23:00. If the node
+fails, stages 1 and 2 add about 6 local hours. Reports by 2026-10-28 03:00.
 
 **Check these.**
-- Taken after our recommendation: stages 1 and 2 on the node, all else local, node numbers never compared with local;
-  the per-stage form of your "each aspect at least level with G" rule.
-- Agent defaults: the 39 stage 1 values (40 runs, below the "about 45"); the grid rule; one joint bootstrap for the
-  mean gain.
-- Agent default: the node's agreement with local is recorded, not a gate. If the node route fails, stages 1 and 2 both
-  run locally.
-- Agent default: the full-scale ablation ends about 23:00, later than the 21:30 you saw.
-- Most likely wrong: about 110 runs on one seed inflate the top gains. On fresh seeds the gains may fall under one seed
-  range, so G stays with about 0.5.
+- Taken after our recommendation: the sweep before the encoders; "level" with the teacher as an accepted end state;
+  stages 1 and 2 on the node, all else local, node numbers never compared with local; the per-stage form of your
+  "each aspect at least level with G" rule.
+- Agent defaults: the stage types (0 and 4 claim tests, 1 and 2 sweeps, 3 a confirmation); the 39 stage 1 values (40
+  runs, below the "about 45"), graph neighbours kept; the grid rule; one joint bootstrap for the mean gain.
+- Agent default, an exception to the regression rule (C12): the node's agreement with local is recorded, not a gate.
+  The node must repeat its own G run within half a seed range; if not, or if the route fails, stages 1 and 2 run
+  locally.
+- Agent default: the full-scale ablation ends about 23:00 (its CPU scoring), later than the 21:30 you saw.
+- Most likely wrong: about 110 runs on one seed inflate the top gains. On fresh seeds the mean gain's interval may
+  reach zero, so G stays (about 0.5); with three seeds its lower end sits near the worst seed's gain.
 
 ## 1. Context and goal
 
@@ -96,7 +99,7 @@ seed range, or a held genre win.
 against 12-24's PercepT entries B1 to B6 at the same scale (the RB rule, part 2; G takes K4's place).
 
 **Stages 1 and 2.** Every run is G with the knobs named changed and all else fixed (K = 20 k-means readout, inputs,
-teachers, AdamW, 200 epochs at most, output width 2048). The comparator is G's own run on the node at seed 0.
+teachers, AdamW, 200 epochs at most, output width 2048). The comparator is G's own run at seed 0 on the machine of stages 1 and 2.
 
 The number sheet (stage 1; each knob changed alone; 39 runs and G's reference):
 
@@ -105,7 +108,7 @@ The number sheet (stage 1; each knob changed alone; 39 runs and G's reference):
 | k1 | relational term on the emotion head: weight (12-27's form: in-batch, the teacher row at k4's temperature, the student row at 0.05, beside the direct term; teacher: the instructed Qwen emotion image) | off | 2, 8, 16 |
 | k2 | relational term on the style head: weight (the same form; the instructed style image) | off | 2, 8, 16 |
 | k3 | the genre relational weight | 8 | 4, 12, 16 |
-| k4 | the genre teacher row's temperature (every relational term in the run) | 0.02 | 0.015, 0.025, 0.035 |
+| k4 | the relational teacher row's temperature (every relational term in the run) | 0.02 | 0.015, 0.025, 0.035 |
 | k5 | the direct teacher weight, all three heads | 0.25 | 0.0625, 0.125, 0.5 |
 | k6 | learning rate | 1e-3 | 3e-4, 5e-4, 2e-3 |
 | k7 | weight decay (AdamW) | 0.05 | 0, 0.01, 0.2 |
@@ -117,7 +120,7 @@ The number sheet (stage 1; each knob changed alone; 39 runs and G's reference):
 | k13 | early stopping patience, epochs | 15 | 5, 10, 30 |
 
 Stage 2's grid: the (up to) 4 knobs with the largest positive knob gain, each at G's value and its (up to) 2 best
-values; at most 3⁴ = 81 points, of which up to 9 ran in stage 1 (rule §4.2).
+counting values with a positive mean gain; at most 3⁴ = 81 points, of which up to 9 ran in stage 1 (rule §4.2).
 
 **Stage 3.** The top 3 configurations of stages 1 and 2 at seeds 1 to 3 against G's 12-27 runs at the same seeds.
 
@@ -155,8 +158,8 @@ run. G itself became the recipe after its held genre reading; the report disclos
 
 ### 3.4 Measurement
 
-- **Metric.** AMI of k-means partitions (20 clusters, three random states, mean) against each aspect's labels; Leiden
-  reported beside. Image side only.
+- **Metric.** AMI of k-means partitions (20 clusters, three random states, mean) against each aspect's labels; image side
+  only. Leiden is reported beside at stage 4.
 - **Gains.** On P, gain_a = AMI_a(run) − AMI_a(G) over aspects emotion, style, genre, in units of the seed range r_a;
   the mean gain M = the mean of gain_a / r_a. Stages 1 and 2 use point values at seed 0; stage 3 three-seed means with
   one paired bootstrap per configuration (2,000 draws over paintings and seeds, the same draws for all three aspects
@@ -172,25 +175,25 @@ run. G itself became the recipe after its held genre reading; the report disclos
 | Stage | Type | Input | Gate to pass | If it fails |
 |-------|------|-------|--------------|-------------|
 | R0 | regression | the stage 0 scorer on 12-24's K4 outputs; G's frozen files | K4's verdicts at both scales within 1e-6; G's hashes | stop stage 0; trace |
-| R1 | regression | this round's trainer, every knob at G's value, seeds 0 and 1, locally | 12-27's G exports bit for bit | stop everything; trace |
+| R1 | regression | this round's trainer, every knob at G's value, seeds 0 and 1, locally | 12-27's G exports bit for bit | no new training run (stage 0's seed 4, stages 1 to 4, the ablation); trace |
 | R3 | regression | the stage 3 scorer on 12-27's stage B files | 12-27's stage B values within 1e-6 | stop stage 3; trace |
 | R4 | regression | the full-scale trainer with G's knobs, seed 0 | G's full-scale weights and held outputs bit for bit | no held output of a pick; trace |
-| N | node route | node check, smoke job, G's reference run | runs complete, exports valid; agreement with local recorded | stages 1 and 2 both run locally |
+| N | node route | node check, smoke job, G's reference run twice | runs complete, exports valid, the two G runs within half a seed range; agreement with local recorded | stages 1 and 2 both run locally |
 | 0 | claim test, held | G, both scales | the emotion bar at each scale | reported; the sweep goes on |
 | 1 | sweep, seed 0 | 39 runs and G (node) | knob gains; the grid | no knob gains: G stays |
-| 2 | sweep, seed 0 | the grid (node) | the top 3 | none counts: G stays |
+| 2 | sweep, seed 0 | the grid (node) | the top 3 | — (after a grid the pool is never empty) |
 | 3 | confirmation with a pick, seeds 1 to 3 | the top 3 and G (local) | a qualifying run | G stays; stage 4 skipped |
 | 4 | claim test, held | the pick at full scale | per aspect against T; emotion against PercepT | — |
 | AB | ablation | the final model | effects with intervals | — |
 
-R0, R1, R3 and R4 run in the build. Order in the run: stage 1 on the node and stage 0 with G's analysis locally at the
-same time; then stage 2; then stage 3, stage 4 and the final model's analysis; the development ablation by day; the
+R0, R1, R3 and R4 run in the build. Order in the run: stage 1 on the node and stage 0 locally at the same time, G's
+analysis after stage 0's verdict; then stage 2; then stage 3, stage 4 and the final model's analysis; the development ablation by day; the
 held ablation from 19:00. Re-derivations by separate code (C13) run before each stage's outcome is stated.
 
 ### 3.6 Diagnostics: the analysis (decides nothing)
 
-Measured on held paintings at full scale, 5 seeds (galleries on seed 0); on G beside stage 0 and again on the final
-model when it is not G; for comparison, on T and on the frozen default Qwen image where the item applies.
+Measured on held paintings at full scale, 5 seeds (galleries on seed 0); on G after stage 0's verdict and again on the
+final model when it is not G; for comparison, on T and on the frozen default Qwen image where the item applies.
 
 - **Heads against label sets:** the AMI of each head's partition against each aspect's labels (3 by 3).
 - **Per class:** per label class, the F1 of its best-matching cluster, the model minus T; the cluster composition
@@ -224,27 +227,27 @@ From the r10 decide 26 chat, 2026-10-27 (the direction log entry of that date), 
 | D6 | A held win (Q3) | the interval of the pick minus T above zero; level as 12-27; each win's size in seed ranges; the paper says "above the teacher (interval above zero)" | a point win | user | decide 26 |
 | D7 | Stage 0 (m1) | the earlier emotion claim test: both scales, 5 seeds, +0.0100 over PercepT core with the interval above zero; G's full-scale files reused after checks; sample seed 4 and held inference of the sample seeds new; G's adoption after its held reading disclosed | full scale only | user, after seeing the recommendation | decide 26 |
 | D8 | Stage 1 knobs (m2) | the 13 knobs of §3.2 | a smaller list | user, after seeing the recommendation | decide 26 |
-| D9 | Stage 1 values | 3 values per knob (§3.2); 39 runs and G | 2 values for most knobs | agent default | 04:05 |
-| D10 | The grid | the up to 4 knobs with the largest positive knob gain; each at G's value and its up to 2 best counting values; reused stage 1 points | 3 knobs at 4 levels | agent default | 04:05 |
+| D9 | Stage 1 values | 3 values per knob (§3.2); 39 runs and G | 2 values for most knobs | agent default | 03:42 |
+| D10 | The grid | the up to 4 knobs with the largest positive knob gain; each at G's value and its up to 2 best counting values with M > 0; reused stage 1 points | 3 knobs at 4 levels | agent default | 03:42 |
 | D11 | Seeds (m3) | stages 1 and 2 on seed 0; the top 3 on seeds 1 to 3; the pick at full scale, 5 seeds, held | more seeds in the sweep | user, after seeing the recommendation | decide 26 |
 | D12 | K (m4) | k-means K stays 20 | K as a knob | user, after seeing the recommendation | decide 26 |
 | D13 | The ablation (m5) | on the final model; development with seeds 1 to 3 and held at full scale with 5 seeds; the eight removals of §3.2 | on G only | user, after seeing the recommendation | decide 26 |
 | D14 | The analysis (m6) | §3.6, on G now and on the pick | none | user, after seeing the recommendation | decide 26 |
 | D15 | Later loops (m7) | the encoders, then retrieval | in this loop | user, after seeing the recommendation | decide 26 |
 | D16 | A plan page | none ("plain") | a page | user | decide 26 |
-| D17 | Stage types | 0 and 4 claim tests; 1 and 2 sweeps; 3 a confirmation with a pick; the ablation; the analysis descriptive | stage 3 as a sweep | agent default | 04:05 |
-| D18 | The mean gain's interval | one bootstrap per configuration, the same draws for the three aspects and M, paintings drawn over all of P with unlabelled rows masked | per-aspect bootstraps (no joint interval for M) | agent default | 04:05 |
-| D19 | The node route | inputs in one small folder under a new mapping in the shared cluster config, checked by the smoke job; scoring on the node by both scorers; the node's agreement with local recorded, not a gate; if the route fails before stage 2 ends, stages 1 and 2 both run locally | a gate on agreement with local (the 10-20 gap of up to 0.0168 would likely close the route) | agent default (flag) | 04:05 |
-| D20 | Stage 0's sentence | GO at full scale and the sample scale not NO-GO, as 12-24's flow | full scale alone | agent default | 04:05 |
-| D21 | Graph neighbours | stays in stage 1: a rebuild takes about 30 s at the sample scale and about 200 s at full scale | dropped for cost | agent default | 04:05 |
-| D22 | Timing | the development ablation by day (about 17 GPU minutes); the held ablation from 19:00 (about 80 GPU minutes, the weekday rule) | all of it from 19:00 | agent default | 04:05 |
-| D23 | Names and places | round folder `src/test/20261027_recipe_sweep/` (prefix `rs_`), report 12-28; "mean gain" in plain words, no glossary entry | a new term | agent default | 04:05 |
+| D17 | Stage types | 0 and 4 claim tests; 1 and 2 sweeps; 3 a confirmation with a pick; the ablation; the analysis descriptive | stage 3 as a sweep | agent default | 03:42 |
+| D18 | The mean gain's interval | one bootstrap per configuration, the same draws for the three aspects and M, paintings drawn over all of P with unlabelled rows masked | per-aspect bootstraps (no joint interval for M) | agent default | 03:42 |
+| D19 | The node route | inputs in one small folder under a new mapping in the shared cluster config, checked by the smoke job; scoring on the node by both scorers; G's node run repeated at once, within half a seed range; the node's agreement with local recorded, not a gate (a C12 exception); if the route fails before stage 2 ends, stages 1 and 2 both run locally; the kept node runs copied home before 2026-10-30 | a gate on agreement with local (the 10-20 gap of up to 0.0168 would likely close the route) | agent default (flag) | 03:42 |
+| D20 | Stage 0's sentence | GO at full scale and the sample scale not NO-GO, as 12-24's flow | full scale alone | agent default | 03:42 |
+| D21 | Graph neighbours | stays in stage 1: a rebuild takes about 30 s at the sample scale and about 200 s at full scale | dropped for cost | agent default | 03:42 |
+| D22 | Timing | the development ablation by day (about 17 GPU minutes); the held ablation from 19:00 (about 80 GPU minutes, then its CPU scoring to about 23:00; the weekday rule) | all of it from 19:00 | agent default | 03:42 |
+| D23 | Names and places | round folder `src/test/20261027_recipe_sweep/` (prefix `rs_`), report 12-28; "mean gain" in plain words, no glossary entry | a new term | agent default | 03:42 |
 
 **Amendments** (changes after approval; "none" until there is one)
 
 | ID | When | Change | Reason | Decided by | Before or after results | Places updated |
 |----|------|--------|--------|------------|-------------------------|----------------|
-| none | — | — | — | — | — | — |
+| A1 | 2026-10-27 03:59 | the review's fixes (C12 exception, the k11 and k8 notes, the sample held inference check, E0, the node's repeat check and deadline, the ablation's graph check, tie-breaks, wording) | the rule review, run before approval and finished after it; none changes a user decision or a bar (user's instruction at approval) | agent default | before | brief (Cost, Check these), §3.2, §3.4, §3.5, §3.6, §4 D10 D19 D22, §6, §7, §9; rule |
 
 ## 5. Assumptions and open questions
 
@@ -266,8 +269,8 @@ committed before any code; it governs where it differs from this spec. Its crite
 - Stage 4: per aspect T-WIN, T-LEVEL, T-BELOW; the emotion claim PE-GO, -MM, -IN, -NO; validity V4.
 
 **Selection rules.** Stages 1 and 2 (rule §4.2): guarded configurations ranked by M; ties to fewer changed knobs,
-then the number sheet's order. Stage 3 (rule §4.3): the qualifier with the largest three-seed M; ties to stage 2's
-rank.
+then the number sheet's order. Stage 3 (rule §4.3): the qualifier with the largest three-seed M; ties to TOP's
+order.
 
 **Licensed claims.**
 - Stage 0, E0: "On 12,281 held ArtELingo paintings, model G gives emotion clusters (k-means, 20 clusters) above the
@@ -293,10 +296,12 @@ rank.
 | C6 sample IDs | pass | exports keep P's and H's orders; the format checks hash them |
 | C7 rule before code | pass | the rule reviewed by a fresh Opus `xhigh` worker and committed before any code |
 | C8 prior and disclosure | pass | rule §1; §8 below |
-| C12 regression first | pass | R0, R1, R3, R4 locally; the node runs reuse R1's code, its parity recorded |
+| C12 regression first | exception (rule §6) | R0, R1, R3, R4 and the ablation's graph check locally; on the node the parity with local is recorded, not a gate |
 | C13 independent re-derivation | pass | separate code for every deciding number, on the node for its partitions and locally for every aggregate |
 
-Exceptions: none.
+Exceptions: C12 on the node (rule §6): the node's trainer and scorer need not reproduce 12-27's local numbers · stages
+1 and 2 compare node runs only with node runs (D4) · a parity gate was rejected: the 10-20 gap (up to 0.0168) would
+likely close the route.
 
 ## 8. Risks
 
@@ -320,7 +325,7 @@ No choice is made on held data here: the pick is written down before its first f
 
 - At the end: round folder `src/test/20261027_recipe_sweep/` with the rule, a verdict file per stage, the knob gains,
   the grid and the pick, the re-derivation files (outputs on `/data/SSD2/cosir_r10/20261027_recipe_sweep/`, gitignored;
-  node exports stay on the node until the wrap-up); one auto report (12-28) in `docs/reports/auto/percept/` with a
+  node exports stay on the node until the wrap-up, the kept node runs copied home before 2026-10-30); one auto report (12-28) in `docs/reports/auto/percept/` with a
   results brief, and a user-read report; a row in `docs/superpowers/held_ledger.md` per held read.
 - Reviews: the rule and this spec by a fresh Opus `xhigh` worker before the commit; the build per `matt-chain.md`, with
   ticket reviews and unit tests for verdict code (the new switches, the stage 0 adapter, the knob gains and grid, the
