@@ -1113,3 +1113,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-27-r10-run-handoff.md
 - New chat: tab 'r10 run', session 010a1a39-b741-43b7-bd52-35b3a9730147
 
+[brief] CoSiR: r10 run -> r10 run 2 (2026-10-27 02:33 Amsterdam)
+- Done: the run chain went through with no stop (00:33 to 02:16): A-NEW, B-PICK, G-GO; all re-derivations agree. Report 12-27 and the user-read report are written, claim-reviewed and cold-read.
+- State: held genre AMI 0.5001 against the instructed Qwen genre image's 0.5062 (−0.0060 [−0.0105, −0.0014]): level within one seed range; +0.0467 over the recipe.
+- Next: the user-read report's fidelity check and one fix wave, then the next decide chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-27-r10-run-2-handoff.md
+- New chat: tab 'r10 run 2', session 78d5075e-ecc3-45b7-b1d6-f9a42a592659
+
