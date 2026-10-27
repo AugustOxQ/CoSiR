@@ -221,22 +221,23 @@ def put(outputs, relative, record):
 
 
 def test_candidate_is_the_stage_3_pick(tmp_path):
-    put(tmp_path, 'stage3/verdict.json', dict(outcome='PICK', pick='k6=0.0005', pick_config={}))
+    put(tmp_path, 'stage3/verdict.json', dict(outcome='PICK', pick='k6=0.0005', pick_config={}, smoke=False))
     got = S4.stage_candidate(tmp_path)
     assert got['name'] == 'k6=0.0005' and got['kind'] == 'PICK'
     assert got['upstream']['file'] == 'stage3/verdict.json' and len(got['upstream']['sha256']) == 64
 
 
 def test_keep_g_gives_g(tmp_path):
-    put(tmp_path, 'stage3/verdict.json', dict(outcome='KEEP-G', pick=None, pick_config=None))
+    put(tmp_path, 'stage3/verdict.json', dict(outcome='KEEP-G', pick=None, pick_config=None, smoke=False))
     got = S4.stage_candidate(tmp_path)
     assert got['name'] == 'G' and got['kind'] == 'KEEP-G'
 
 
 @pytest.mark.parametrize('bad', [dict(outcome='PICK', pick=None), dict(outcome='KEEP-G', pick='G'),
-                                 dict(outcome='PICK', pick=''), dict(outcome='MAYBE', pick=None)])
-def test_stage_3_file_that_contradicts_itself_is_refused(tmp_path, bad):
-    put(tmp_path, 'stage3/verdict.json', bad)
+                                 dict(outcome='PICK', pick=''), dict(outcome='MAYBE', pick=None),
+                                 dict(outcome='PICK', pick='k6=0.0005', smoke=True)])
+def test_stage_3_file_that_contradicts_itself_or_is_a_smoke_is_refused(tmp_path, bad):
+    put(tmp_path, 'stage3/verdict.json', {'smoke': False, **bad})
     with pytest.raises(S0.Refusal):
         S4.stage_candidate(tmp_path)
 
@@ -307,7 +308,7 @@ class Fake:
 @pytest.fixture
 def staged(tmp_path, monkeypatch, world):
     labels, cand, _, t = world
-    put(tmp_path, 'stage3/verdict.json', dict(outcome='PICK', pick='k6=0.0005', pick_config={}))
+    put(tmp_path, 'stage3/verdict.json', dict(outcome='PICK', pick='k6=0.0005', pick_config={}, smoke=False))
     write_gate(tmp_path)
     fake = Fake(monkeypatch, tmp_path, labels, cand, t)
     return tmp_path, fake
@@ -330,7 +331,7 @@ def test_verdict_refuses_any_candidate_but_c_star(staged):
 
 def test_verdict_under_keep_g_takes_g_only(tmp_path, monkeypatch, world):
     labels, cand, _, t = world
-    put(tmp_path, 'stage3/verdict.json', dict(outcome='KEEP-G', pick=None, pick_config=None))
+    put(tmp_path, 'stage3/verdict.json', dict(outcome='KEEP-G', pick=None, pick_config=None, smoke=False))
     write_gate(tmp_path)
     fake = Fake(monkeypatch, tmp_path, labels, cand, t)
     with pytest.raises(S0.Refusal):

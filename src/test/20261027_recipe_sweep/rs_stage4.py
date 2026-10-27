@@ -230,6 +230,8 @@ def stage_candidate(outputs, machine=None):
     stage3 = outputs / 'stage3/verdict.json'
     if stage3.is_file():
         v = json.loads(stage3.read_text())
+        if v.get('smoke') is not False:
+            raise Refusal(f'{stage3} is a smoke record (smoke={v.get("smoke")!r}): stage 4 reads the real one')
         if v.get('outcome') == 'PICK' and isinstance(v.get('pick'), str) and v['pick']:
             name, kind = v['pick'], 'PICK'
         elif v.get('outcome') == 'KEEP-G' and v.get('pick') is None:
