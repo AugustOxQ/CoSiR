@@ -1,0 +1,123 @@
+[
+  {
+    "key": "env",
+    "local": "/root/miniconda3/envs/CoSiR",
+    "remote": "env",
+    "exclude_env": true
+  },
+  {
+    "key": "sample",
+    "local": "/project/CoSiR/src/test/20261017_prompted_aspect_views/sample.npz",
+    "remote": "project/src/test/20261017_prompted_aspect_views/sample.npz"
+  },
+  {
+    "key": "graphs",
+    "local": "/project/CoSiR/src/test/20261018_aspect_graph_sheet/graphs",
+    "remote": "project/src/test/20261018_aspect_graph_sheet/graphs"
+  },
+  {
+    "key": "rb_p",
+    "local": "/project/CoSiR/src/test/20261025_recipe_backbones/outputs",
+    "remote": "project/src/test/20261025_recipe_backbones/outputs",
+    "files": [
+      "part1/P.json",
+      "part1/pick.json"
+    ]
+  },
+  {
+    "key": "rg_frozen",
+    "local": "/project/CoSiR/src/test/20261027_relational_genre/outputs",
+    "remote": "project/src/test/20261027_relational_genre/outputs",
+    "files": [
+      "stage_a/partitions/GS-0.02/s0/emotion__partitions.npz",
+      "stage_a/partitions/GS-0.02/s0/genre__partitions.npz",
+      "stage_a/partitions/GS-0.02/s0/style__partitions.npz",
+      "stage_a/verdict.json",
+      "train/GS-0.02/s0/emotion__P.npz",
+      "train/GS-0.02/s0/genre__P.npz",
+      "train/GS-0.02/s0/run.json",
+      "train/GS-0.02/s0/style__P.npz"
+    ]
+  },
+  {
+    "key": "wikiart_genre",
+    "local": "/data/SSD/wikiart_genre",
+    "remote": "wikiart_genre"
+  },
+  {
+    "key": "annotations",
+    "local": "/data/PDD/artelingo/artelingo_train.json",
+    "remote": "artelingo/artelingo_train.json"
+  },
+  {
+    "key": "clip_features",
+    "local": "/data/SSD2/pre_extract/artelingo",
+    "remote": "pre_extract/artelingo",
+    "files": [
+      "features/metadata.json",
+      "features/shards/shard_00000/sample_ids.npy",
+      "features/shards/shard_00001/sample_ids.npy",
+      "features/shards/shard_00002/sample_ids.npy",
+      "features/shards/shard_00003/sample_ids.npy"
+    ]
+  },
+  {
+    "key": "full_stores",
+    "local": "/data/SSD2/pre_extract/artelingo_full",
+    "remote": "pre_extract/artelingo_full",
+    "files": [
+      "qwen3vl_emb_2b/img.npy",
+      "qwen3vl_emb_2b/index.json",
+      "qwen3vl_emb_2b/txt.npy",
+      "qwen3vl_emb_2b_aspect_prompts/default/done.json",
+      "qwen3vl_emb_2b_aspect_prompts/default/ids.npz",
+      "qwen3vl_emb_2b_aspect_prompts/default/img.npy",
+      "qwen3vl_emb_2b_aspect_prompts/default/txt.npy",
+      "qwen3vl_emb_2b_aspect_prompts/emotion_focus/done.json",
+      "qwen3vl_emb_2b_aspect_prompts/emotion_focus/ids.npz",
+      "qwen3vl_emb_2b_aspect_prompts/emotion_focus/img.npy",
+      "qwen3vl_emb_2b_aspect_prompts/emotion_focus/txt.npy",
+      "qwen3vl_emb_2b_aspect_prompts/emotion_focus_trainimg/done.json",
+      "qwen3vl_emb_2b_aspect_prompts/emotion_focus_trainimg/ids.npz",
+      "qwen3vl_emb_2b_aspect_prompts/emotion_focus_trainimg/img.npy",
+      "qwen3vl_emb_2b_aspect_prompts/genre_word/done.json",
+      "qwen3vl_emb_2b_aspect_prompts/genre_word/ids.npz",
+      "qwen3vl_emb_2b_aspect_prompts/genre_word/img.npy",
+      "qwen3vl_emb_2b_aspect_prompts/genre_word/txt.npy",
+      "qwen3vl_emb_2b_aspect_prompts/genre_word_trainimg/done.json",
+      "qwen3vl_emb_2b_aspect_prompts/genre_word_trainimg/ids.npz",
+      "qwen3vl_emb_2b_aspect_prompts/genre_word_trainimg/img.npy",
+      "qwen3vl_emb_2b_aspect_prompts/style_word/done.json",
+      "qwen3vl_emb_2b_aspect_prompts/style_word/ids.npz",
+      "qwen3vl_emb_2b_aspect_prompts/style_word/img.npy",
+      "qwen3vl_emb_2b_aspect_prompts/style_word/txt.npy",
+      "qwen3vl_emb_2b_aspect_prompts/style_word_trainimg/done.json",
+      "qwen3vl_emb_2b_aspect_prompts/style_word_trainimg/ids.npz",
+      "qwen3vl_emb_2b_aspect_prompts/style_word_trainimg/img.npy"
+    ]
+  },
+  {
+    "key": "k11_gate",
+    "local": "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/gates/k11_sample.json",
+    "remote": "outputs/gates/k11_sample.json",
+    "outputs": true
+  },
+  {
+    "key": "k11_graphs_k10",
+    "local": "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/graphs/sample/aspect__k10",
+    "remote": "outputs/graphs/sample/aspect__k10",
+    "outputs": true
+  },
+  {
+    "key": "k11_graphs_k30",
+    "local": "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/graphs/sample/aspect__k30",
+    "remote": "outputs/graphs/sample/aspect__k30",
+    "outputs": true
+  },
+  {
+    "key": "k11_graphs_k40",
+    "local": "/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/graphs/sample/aspect__k40",
+    "remote": "outputs/graphs/sample/aspect__k40",
+    "outputs": true
+  }
+]
