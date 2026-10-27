@@ -1193,3 +1193,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-27-r10-run-3-handoff.md
 - New chat: tab 'r10 run 3', session 197a25bd-5b5f-4a2e-be46-c0a7080cf8c8
 
+[brief] CoSiR: r10 run 3 -> r10 run 4 (2026-10-27 21:38 Amsterdam)
+- Done: stages 0 to 4. c* = k11=40 (mutual top-k 40). Held, against the instructed Qwen image: emotion and style win, genre is level.
+- State: c*'s held emotion AMI is 0.1066 against PercepT's best 0.0874 (+0.0192, PE-GO). Every re-derivation agrees.
+- Next: the ablation chain runs detached since 21:11 (dev, then held; ends about 04:30). Watch it, add H22, then write both reports.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-27-r10-run-4-handoff.md
+- New chat: tab 'r10 run 4', session ff58b704-015a-482e-a370-856010fa2a92
+
