@@ -62,7 +62,11 @@ Not rerun after the merge (the self-check code is untouched; the 42 tests ran).
   files' own A values, then `compare_stage1` / `compare_stage2`: 424, 412 and 20 items, 0 differ (after the fixes above).
   Before them: G was expected as a row, and SWEEP-NONE gave a G0 grid point.
 - ablation/dev.json of ticket 10's smoke (fixture /tmp/claude-0/r10-rs-10/outputs, F = k6=0.0005 under PICK, 20 draws,
-  arms 'direct' ok and 'buddy' failed): see the hand-back for the final run.
+  arms 'direct' ok and 'buddy' failed): `rs_vp.py ablation --final k6=0.0005 --outputs /tmp/claude-0/r10-rs-10/outputs
+  --draws -1` (3 min 14 s, 8 threads) gave pass=True, 99 items, 0 differ, largest numeric diff 0.0: effects, intervals
+  (20 draws), M, per-seed AMI, the failed arm, run.json and export SHA-256s, and the scorer's partitions all equal.
+  Written to /tmp/claude-0/r10-rs-10/outputs/ablation/rederive_dev.json (beside dev.json). A first run found one real
+  bug of mine (`sets_equal` on a dict), fixed and covered by the tests.
 
 ## OPEN
 - `self-check --draws 2000` (about 10 min on 8 workers; does not fit 4 minutes): expect per-aspect lo/hi for all three
