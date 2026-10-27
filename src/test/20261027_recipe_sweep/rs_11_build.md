@@ -99,7 +99,7 @@ Build 11, 27 October 2026 (fix commit on `worktree-agent-a9b6b08a3a20079fc`; end
 
 ## Left open
 - Stage 0 against the scorer's real output (the example is the review's fixture: K4's files as G's sample set). The
-  sidecar arm of G's sample-scale held outputs is assumed to be 'G' (`STAGE0_SAMPLE_ARM`): one line to change.
+  sidecar arm of G's sample-scale held outputs, 'G' (`STAGE0_SAMPLE_ARM`), is confirmed by the re-review (rereview_11.md, c).
 - The scorer's `gates/v0c.json` is not compared (not asked): my own V0c verdict per scale could be checked against its
   `scale_pass`.
 - A seed with both a `failed__` record and an output is treated as failed (not tested).
