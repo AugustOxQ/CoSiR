@@ -31,10 +31,9 @@ CLI: rs_graphs build --scale {sample,full} --k K --variant V [--outputs DIR]
 """
 import argparse
 import hashlib
-import inspect
+import importlib
 import json
 import subprocess
-import sys
 import time
 from contextlib import ExitStack
 from functools import partial
@@ -58,7 +57,6 @@ ms_train = ab_train.ms_train
 ASPECTS = rs_paths.ASPECTS
 VARIANTS = ('aspect', 'uncorrected', 'default_view')
 FROZEN = (20, 'aspect')                       # the CT's graphs
-K11 = (10, 30, 40)                            # the sheet's k11 values (rs_sheet.VALUES['k11'])
 ROWS = dict(aspect=dict(ct2_graphs.ROWS),
             uncorrected=dict(emotion='R0', style='R0', genre='R0o'),
             default_view=dict.fromkeys(ASPECTS, ab_graphs.DVIEW))
@@ -67,9 +65,13 @@ AB_FROZEN = rs_paths.MAIN_TEST / '20261021_d2_ablation/graphs'              # sa
 # The frozen sample graphs each variant is compared with: folder, row of each aspect.
 REFERENCE = dict(aspect=(AGS_FROZEN, ROWS['aspect']), uncorrected=(AGS_FROZEN, ROWS['uncorrected']),
                  default_view=(AB_FROZEN, ROWS['default_view']))
-# SHA-256 of `inspect.getsource(ct2_graphs._partition)`: if the CT's function changes, `_partition_k` needs a review.
+# SHA-256 of `inspect.getsource(...)` of the CT's functions that `_partition_aspect` and `_mutual` copy: if one
+# changes, the copy needs a review (a test pins both).
 CT_PARTITION_SHA256 = '8d81a5e267ce2b874698a9e51f2db110ef3a40fb5136d9c0088286c437c2465a'
-CODE_MODULES = ('rs_graphs', 'ct2_graphs', 'ct2_d2', 'ct2_data', 'ab_graphs', 'ags_graphs')
+CT_MUTUAL_SHA256 = '68991d4759677d3d7a17efab2ae65f964e0eea446e5ee8897ff7e05c8af29c83'
+# This module and the frozen modules that shape the arrays or their loading (the gates are stamped with their hashes).
+CODE_MODULES = ('rs_graphs', 'ct2_graphs', 'ct2_d2', 'ct2_data', 'ab_graphs', 'ags_graphs', 'apc_data', 'pbp_graphs',
+                'itp_data', 'ags_head')
 
 
 class GraphRefusal(RuntimeError):
@@ -130,7 +132,8 @@ def _partition_k(spaces, nodes, *, k, variant):
 
 def code_files():
     """SHA-256 of each file of the graph code: this module and the frozen modules it drives."""
-    files = {m: Path(__file__) if m == 'rs_graphs' else Path(sys.modules[m].__file__) for m in CODE_MODULES}
+    files = {m: Path(__file__) if m == 'rs_graphs' else Path(importlib.import_module(m).__file__)
+             for m in CODE_MODULES}
     return {m: hashlib.sha256(path.read_bytes()).hexdigest() for m, path in files.items()}
 
 
@@ -157,9 +160,10 @@ def enter_patches(stack, k, variant, *, force=False):
         stack.enter_context(patch.object(ct2_graphs, 'ROWS', dict(ROWS[variant])))
 
 
-def store_root(outputs, scale, k, variant):
+def store_root(outputs, scale, k, variant, *, check=False):
+    """A check builds its own store, under graphs/<scale>/check/, so that no earlier build stands in for it."""
     assert scale in ('sample', 'full')
-    return Path(outputs) / 'graphs' / scale / f'{variant}__k{k}'
+    return Path(outputs) / 'graphs' / scale / ('check' if check else '.') / f'{variant}__k{k}'
 
 
 def _atomic_json(path, value):
@@ -169,13 +173,36 @@ def _atomic_json(path, value):
 def _git_state():
     def git(*args):
         return subprocess.run(['git', *args], cwd=rs_paths.ROUND, capture_output=True, text=True, check=True).stdout.strip()
-    return dict(code_commit=git('rev-parse', 'HEAD'), code_dirty=bool(git('status', '--porcelain', '--', '*.py')))
+    # code_dirty: any tracked or untracked .py file of the repository differs from HEAD.
+    return dict(code_commit=git('rev-parse', 'HEAD'), code_dirty=bool(git('status', '--porcelain', '--', ':/*.py')))
 
 
-def _materialize(scale, k, variant, outputs, *, force=False):
+def require_absent(root):
+    """A check starts from nothing: an existing store was built by an earlier run, whatever its code."""
+    if (root / 'rs_build.json').exists() or (root / 'd2').exists():
+        raise GraphRefusal(f'{root} exists: move it aside (a check builds its own store)')
+
+
+def _require_own_store(root, scale, k, variant):
+    """An existing store is read only if this code and this request built it (the record is written after the build)."""
+    if not (root / 'd2/graphs/manifest.json').exists():
+        return
+    record_path = root / 'rs_build.json'
+    if not record_path.exists():
+        raise GraphRefusal(f'{root} has a manifest but no rs_build.json: move it aside')
+    record = json.loads(record_path.read_text())
+    if record['code_sha256'] != code_sha256():
+        raise GraphRefusal(f'{root}: store built by other graph code: move it aside')
+    assert (record['scale'], record['k'], record['variant']) == (scale, k, variant), f'{record_path}: another store'
+
+
+def _materialize(scale, k, variant, outputs, *, force=False, check=False):
     """Build (when the store is absent) and read the variant's graphs by the CT's `load_training_data`. Returns
-    (root, (s, inputs, graphs, manifests)). The gates are the callers'."""
-    root = store_root(outputs, scale, k, variant)
+    (root, (s, inputs, graphs, manifests)). The gates are the callers'. A check (check=True) needs an absent store."""
+    root = store_root(outputs, scale, k, variant, check=check)
+    if check:
+        require_absent(root)
+    _require_own_store(root, scale, k, variant)
     wall = time.monotonic()
     with ExitStack() as stack, threadpool_limits(limits=8):
         enter_patches(stack, k, variant, force=force)
@@ -307,23 +334,30 @@ def _compare_variant(scale_root, folder, rows):
     return dict(rows=rows, arrays=items, frozen_archives=frozen_archives, **{'pass': ok})
 
 
+def _loaded_equal(s, root, frozen_base, rows):
+    """Per aspect: the rebuilt store read by the frozen sample loader equals the frozen store read by it (node ids,
+    pairs, weights, dtypes)."""
+    out = {}
+    for aspect in ASPECTS:
+        graph, _ = ms_train.head.load_graph(s, root / 'd2', aspect, [rows[aspect]])
+        frozen, _ = ms_train.head.load_graph(s, frozen_base, aspect, [rows[aspect]])
+        same = set(graph) == set(frozen) and all(
+            np.array_equal(frozen[f'{p}_node_ids'], graph[f'{p}_node_ids']) for p in ('fit', 'dev'))
+        for part in ('fit', 'dev'):
+            for a, b in zip(frozen['rows'][rows[aspect]][part], graph['rows'][rows[aspect]][part]):
+                same = same and a.dtype == b.dtype and np.array_equal(a, b)
+        out[aspect] = bool(same)
+    return out
+
+
 def check_k11_sample(outputs):
     """Check K (rule §2.2): the sample rebuild at k = 20 equals the frozen sample graphs bit for bit."""
     started = time.monotonic()
-    root, _ = _materialize('sample', 20, 'aspect', outputs, force=True)
+    root, _ = _materialize('sample', 20, 'aspect', outputs, force=True, check=True)
     folder, rows = REFERENCE['aspect']
     result = _compare_variant(root, folder, rows)
     # And through the loaders: the rebuilt store read by the frozen sample loader equals what rg_train.load_graphs reads.
-    s = ab_train.load_sample()
-    frozen, _ = rg_train.load_graphs(s, rg_train.resolved(0))
-    loaded = {}
-    for aspect in ASPECTS:
-        graph, _ = ms_train.head.load_graph(s, root / 'd2', aspect, [rows[aspect]])
-        same = all(np.array_equal(frozen[aspect][f'{p}_node_ids'], graph[f'{p}_node_ids']) for p in ('fit', 'dev'))
-        for part in ('fit', 'dev'):
-            for a, b in zip(frozen[aspect]['rows'][rows[aspect]][part], graph['rows'][rows[aspect]][part]):
-                same = same and a.dtype == b.dtype and np.array_equal(a, b)
-        loaded[aspect] = same
+    loaded = _loaded_equal(ab_train.load_sample(), root, folder.parent, rows)
     passed = result['pass'] and all(loaded.values())
     return _write_gate(outputs, 'k11_sample', passed, dict(arrays=result['arrays'], loaded_equal=loaded),
                        dict(scale='sample', k=20, variant='aspect', store=str(root), rows=rows,
@@ -335,7 +369,7 @@ def check_k11_sample(outputs):
 def check_k11_full(outputs):
     """V4c: the full-scale rebuild at k = 20 equals the CT's 42,969-node graphs bit for bit (arrays, archives, manifest)."""
     started = time.monotonic()
-    root, _ = _materialize('full', 20, 'aspect', outputs, force=True)
+    root, _ = _materialize('full', 20, 'aspect', outputs, force=True, check=True)
     folder = rs_paths.CT_FULL / 'd2/graphs'
     frozen_manifest = json.loads((folder / 'manifest.json').read_text())
     manifest = json.loads((root / 'd2/graphs/manifest.json').read_text())
@@ -362,10 +396,17 @@ def check_ablation(outputs):
     uncorrected build equals the AGS sheet's R0 / R0o rows, bit for bit."""
     started = time.monotonic()
     items, built = {}, {}
-    for variant in ('default_view', 'uncorrected'):
-        root, _ = _materialize('sample', 20, variant, outputs, force=True)
+    variants = ('default_view', 'uncorrected')
+    for variant in variants:        # both stores absent before the first build
+        require_absent(store_root(outputs, 'sample', 20, variant, check=True))
+    s = ab_train.load_sample()
+    for variant in variants:
+        root, _ = _materialize('sample', 20, variant, outputs, force=True, check=True)
         folder, rows = REFERENCE[variant]
         items[variant] = _compare_variant(root, folder, rows)
+        # And through the loader: the rebuilt store read by the frozen sample loader equals the frozen store read by it.
+        loaded = _loaded_equal(s, root, folder.parent, rows)
+        items[variant].update(loaded_equal=loaded, **{'pass': items[variant]['pass'] and all(loaded.values())})
         built[variant] = str(root)
     passed = all(item['pass'] for item in items.values())
     return _write_gate(outputs, 'ablation_graphs', passed, items,
@@ -392,16 +433,19 @@ def main():
         started = time.monotonic()
         try:
             require_gates(outputs, args.scale, args.k, args.variant)
+            root, _ = _materialize(args.scale, args.k, args.variant, outputs, force=(args.k, args.variant) == FROZEN)
         except GraphRefusal as error:
             raise SystemExit(f'REFUSED: {error}')
-        root, _ = _materialize(args.scale, args.k, args.variant, outputs, force=(args.k, args.variant) == FROZEN)
         record = json.loads((root / 'rs_build.json').read_text())
         print(f'{args.scale} {args.variant} k={args.k}: {root}; build {record["build_seconds"]:.1f}s; '
               f'this call {time.monotonic() - started:.1f}s (providers, build or read, checks of the CT loader)',
               flush=True)
         return
-    gate = dict({'k11-sample': check_k11_sample, 'k11-full': check_k11_full, 'ablation': check_ablation}
-                )[args.which](outputs)
+    check = dict({'k11-sample': check_k11_sample, 'k11-full': check_k11_full, 'ablation': check_ablation})[args.which]
+    try:
+        gate = check(outputs)
+    except GraphRefusal as error:
+        raise SystemExit(f'REFUSED: {error}')
     print(f'{gate["name"]}: {"PASS" if gate["pass"] else "FAIL"} ({gate["seconds"]:.1f}s) '
           f'{gate_path(outputs, gate["name"])}', flush=True)
     raise SystemExit(0 if gate['pass'] else 1)

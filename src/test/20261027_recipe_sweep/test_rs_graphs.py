@@ -3,6 +3,7 @@ import hashlib
 import inspect
 import json
 from contextlib import ExitStack
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -34,6 +35,15 @@ def test_original_partition_source_is_pinned():
     # `_partition_aspect` is a copy of this function: if the CT's changes, the copy needs a review.
     source = inspect.getsource(ct2_graphs._partition)
     assert hashlib.sha256(source.encode()).hexdigest() == G.CT_PARTITION_SHA256
+
+
+def test_original_mutual_source_is_pinned():
+    assert hashlib.sha256(inspect.getsource(ct2_graphs._mutual).encode()).hexdigest() == G.CT_MUTUAL_SHA256
+
+
+def test_code_files_cover_the_modules_that_shape_the_arrays():
+    files = G.code_files()
+    assert set(files) == set(G.CODE_MODULES) and {'apc_data', 'pbp_graphs', 'itp_data', 'ags_head'} <= set(files)
 
 
 def test_mutual_equals_ct2_at_20_and_follows_k(spaces):
@@ -219,8 +229,8 @@ def test_full_check_passes_on_equal_stores_and_fails_on_one_changed_value(spaces
     monkeypatch.setattr(G.rs_paths, 'CT_FULL', ct_full)
     rebuilt = tmp_path / 'rebuilt'
 
-    def fake_materialize(scale, k, variant, outputs, *, force=False):
-        assert (scale, k, variant, force) == ('full', 20, 'aspect', True)
+    def fake_materialize(scale, k, variant, outputs, *, force=False, check=False):
+        assert (scale, k, variant, force, check) == ('full', 20, 'aspect', True, True)
         ct2_graphs.save(*build(spaces, 20, 'aspect', force=True), rebuilt / 'd2/graphs')
         return rebuilt, None
     monkeypatch.setattr(G, '_materialize', fake_materialize)
@@ -238,3 +248,89 @@ def test_full_check_passes_on_equal_stores_and_fails_on_one_changed_value(spaces
     assert not gate['pass'] and not gate['items']['arrays']['emotion']['Gres__fit']['equal']
     with pytest.raises(G.GraphRefusal, match='failed'):
         G.require_gate(outputs, 'k11_full')
+
+
+@pytest.fixture
+def stub_store(spaces, monkeypatch):
+    """`ct2_d2.load_training_data` replaced by a synthetic build saved in the CT's layout; counts its calls."""
+    calls = []
+
+    def load(scale, root):
+        calls.append((scale, root))
+        graphs, manifest = build(spaces, 20, 'aspect', force=True)
+        ct2_graphs.save(graphs, manifest, root / 'd2/graphs')
+        return 'data'
+    monkeypatch.setattr(G.ct2_d2, 'load_training_data', load)
+    return calls
+
+
+def test_materialize_reads_its_own_store_and_refuses_another_code_or_no_record(tmp_path, stub_store):
+    root, data = G._materialize('sample', 11, 'aspect', tmp_path)
+    assert data == 'data' and root == tmp_path / 'graphs/sample/aspect__k11' and len(stub_store) == 1
+    record = json.loads((root / 'rs_build.json').read_text())
+    assert (record['scale'], record['k'], record['variant']) == ('sample', 11, 'aspect')
+    G._materialize('sample', 11, 'aspect', tmp_path)                       # same code: read again
+    # built by other graph code
+    (root / 'rs_build.json').write_text(json.dumps(dict(record, code_sha256='0' * 64)))
+    with pytest.raises(G.GraphRefusal, match='other graph code: move it aside'):
+        G._materialize('sample', 11, 'aspect', tmp_path)
+    # a manifest without a record (a build that did not finish, or one by hand)
+    (root / 'rs_build.json').unlink()
+    with pytest.raises(G.GraphRefusal, match='no rs_build.json: move it aside'):
+        G._materialize('sample', 11, 'aspect', tmp_path)
+    # a record of another request
+    (root / 'rs_build.json').write_text(json.dumps(dict(record, k=40)))
+    with pytest.raises(AssertionError, match='another store'):
+        G._materialize('sample', 11, 'aspect', tmp_path)
+    assert len(stub_store) == 2        # the refusals came before any build
+
+
+@pytest.mark.parametrize('check, scale, variants', [
+    ('check_k11_sample', 'sample', ['aspect']), ('check_k11_full', 'full', ['aspect']),
+    ('check_ablation', 'sample', ['default_view', 'uncorrected'])])
+def test_checks_need_a_fresh_store(tmp_path, stub_store, check, scale, variants):
+    for variant in variants:        # an earlier build (any one of the check's stores) is no stand-in
+        root = G.store_root(tmp_path, scale, 20, variant, check=True)
+        (root / 'd2/graphs').mkdir(parents=True)
+        (root / 'rs_build.json').write_text('{}')
+        with pytest.raises(G.GraphRefusal, match='move it aside'):
+            getattr(G, check)(tmp_path)
+        (root / 'rs_build.json').unlink()
+        (root / 'd2/graphs').rmdir()
+        (root / 'd2').rmdir()
+    assert stub_store == []            # no build ran, no gate written
+    assert not G.gate_path(tmp_path, 'k11_sample').exists()
+
+
+def test_loaders_pass_scale_k_and_variant_to_the_build(tmp_path, monkeypatch):
+    seen = []
+
+    class Stop(Exception):
+        pass
+
+    def materialize(scale, k, variant, outputs, **kwargs):
+        seen.append(('materialize', scale, k, variant, Path(outputs)))
+        return tmp_path, ('s', 'inputs', 'graphs', 'manifests')
+
+    def stop(*args):
+        raise Stop()
+    monkeypatch.setattr(G, 'require_gates', lambda outputs, scale, k, variant: seen.append(('gates', scale, k, variant)))
+    monkeypatch.setattr(G, '_materialize', materialize)
+    monkeypatch.setattr(G.ms_train.head, 'load_graph', stop)
+    with pytest.raises(Stop):
+        G.sample_store(30, 'uncorrected', s={}, outputs=tmp_path)
+    assert seen == [('gates', 'sample', 30, 'uncorrected'), ('materialize', 'sample', 30, 'uncorrected', tmp_path)]
+    seen.clear()
+    assert G.full_graphs(10, 'default_view', outputs=tmp_path) == ('graphs', 'manifests')
+    assert G.full_training_data(40, 'aspect', outputs=tmp_path)[0] == 's'
+    assert seen == [('gates', 'full', 10, 'default_view'), ('materialize', 'full', 10, 'default_view', tmp_path),
+                    ('gates', 'full', 40, 'aspect'), ('materialize', 'full', 40, 'aspect', tmp_path)]
+
+
+def test_the_ct_graphs_come_from_the_frozen_loaders_without_gates_or_builds(tmp_path, monkeypatch):
+    monkeypatch.setattr(G, 'require_gates', lambda *args: pytest.fail('gate'))
+    monkeypatch.setattr(G, '_materialize', lambda *args, **kwargs: pytest.fail('build'))
+    monkeypatch.setattr(G.rg_train, 'load_graphs', lambda s, recipe: ('sample graphs', s, recipe['store']))
+    monkeypatch.setattr(G.rb_student, 'load_scale', lambda scale: ('full', scale))
+    assert G.sample_store(s='S', outputs=tmp_path) == ('sample graphs', 'S', 'aspect')
+    assert G.full_training_data(outputs=tmp_path) == ('full', 'full')
