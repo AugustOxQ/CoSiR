@@ -41,7 +41,7 @@ CLAIM_BAR = 0.01                             # rule 4.1: GO and MM need d >= 0.0
 HELD_SHA256 = 'a0b1139c6056fd858ddbd2ee1dd4bafd1453e590818c6aa59883364c0288a876'   # CT rule 3, RG rule 3.2
 N_HELD, WIDTH = 12281, 2048                  # rule 3.4, spec 3.3
 N_GENRE_LABELLED = 9949                      # RG rule 3.2
-K, STATES, N_INIT, BATCH = 20, (0, 1, 2), 3, 4096        # RB rule 3.1: MiniBatchKMeans partitions
+K, STATES, N_INIT, BATCH = 20, (0, 1, 2), 3, 4096        # CT rule 3: MiniBatchKMeans partitions (RB rule 3.1 reads them)
 UNIT_TOL = 1e-3                              # unit norm checked, |norm - 1| < 1e-3, not repaired
 READINGS = ('r20', 'own')                    # CT rule 3: an entry's two readings
 EMOTIONS = ('amusement', 'anger', 'awe', 'contentment', 'disgust', 'excitement', 'fear', 'sadness',
@@ -62,9 +62,11 @@ PROMPT_ROOT = rs_paths.PRE / 'artelingo_full/qwen3vl_emb_2b_aspect_prompts'
 CT_ROOT = {'sample': rs_paths.CT_OUT, 'full': rs_paths.CT_FULL}
 RCOL = {'sample': rs_paths.CT_OUT / 'percept/rcol_stage1.json', 'full': rs_paths.CT_FULL / 'percept/rcol.json'}
 RB_K4_DIRS = {s: rs_paths.RB_PART2 / s / 'held/K4' for s in ('sample', 'full')}
-RB_K4_PARTITIONS = {s: rs_paths.RB_PART2 / 'partitions' / s / 'K4' for s in ('sample', 'full')}
+RB_PARTITIONS = rs_paths.RB_PART2 / 'partitions'      # 12-24's cache: <scale>/<arm>/percept__s<seed>__<reading>.npz
+RB_K4_PARTITIONS = {s: RB_PARTITIONS / s / 'K4' for s in ('sample', 'full')}
 RB_T_PARTITIONS = rs_paths.RB_PART2 / 'partitions/full/T'
 SELF_OUT = Path('/tmp/claude-0/r10-rs-11')
+STAGE0_SAMPLE_ARM = 'G'                      # the sidecar's arm of G's sample-scale held outputs (rs_sheet.name of G's config)
 
 
 # ---- small helpers --------------------------------------------------------------------------------------------
@@ -235,7 +237,7 @@ class Ctx:
 # ---- partitions (RB rule 3.1, CT rule 3) -----------------------------------------------------------------------
 
 def r20_partition(x):
-    """MiniBatchKMeans k = 20, states 0, 1, 2, n_init 3, batch 4096, on float32; unit norm checked, not repaired
+    """MiniBatchKMeans k = 20, states 0, 1, 2, n_init 3, batch 4096, on float32 (CT rule 3); unit norm checked, not repaired
     (adapted from rb_v2.r20_partition): int64 [3, n]."""
     x = np.asarray(x).astype(np.float32)
     assert np.isfinite(x).all()
@@ -276,9 +278,15 @@ def v0c_problems(x, n=None, width=None):
     return problems
 
 
-def check_sidecar(side, x, aspect, seed, n, list_sha):
-    """The sidecar of a saved output set names the same rows, list, aspect, seed and array hash."""
-    want = dict(rows=n, list_sha256=list_sha, aspect=aspect, seed=seed, sha256=array_sha(x))
+def arm_name(name):
+    """The sidecar's arm of a run's full-scale held outputs: G's are 12-27's, named by its arm GS-0.02; every other run
+    carries its own name."""
+    return rs_paths.G_ARM if name == 'G' else name
+
+
+def check_sidecar(side, x, aspect, seed, n, list_sha, arm):
+    """The sidecar of a saved output set names the same rows, list, aspect, seed, arm and array hash."""
+    want = dict(rows=n, list_sha256=list_sha, aspect=aspect, seed=seed, arm=arm, sha256=array_sha(x))
     for key, value in want.items():
         assert side[key] == value, (key, side[key], value)
 
@@ -292,9 +300,9 @@ def _partition_task(t):
         x = z[t['key']]
     assert x.shape[0] == N_HELD, (path, x.shape)
     if t['kind'] == 'student':
-        check_sidecar(side, x, t['aspect'], t['seed'], N_HELD, HELD_SHA256)
+        check_sidecar(side, x, t['aspect'], t['seed'], N_HELD, HELD_SHA256, t['arm'])
         problems = v0c_problems(x)
-        return dict(problems=problems, parts=None if problems else dict(r20=r20_partition(x)))
+        return dict(problems=problems, parts=dict(r20=r20_partition(x)) if t['parts'] and not problems else None)
     assert side['held_sha256'] == HELD_SHA256 and side['rows'] == N_HELD, path
     assert x.dtype == np.float32 and x.ndim == 2, path
     assert side['array_sha256s']['prob'] == array_sha(x), (path, 'sha256 of the saved array')
@@ -306,6 +314,8 @@ def _partition_task(t):
 
 def _run_tasks(tasks, workers):
     assert 1 <= workers <= 8
+    if not tasks:
+        return []
     if workers == 1:
         return [_partition_task(t) for t in tasks]
     with mp.get_context('fork').Pool(workers) as pool:
@@ -315,19 +325,52 @@ def _run_tasks(tasks, workers):
 _CACHE = {}
 
 
-def student_parts(ctx, cdir, aspect, workers):
-    """The five seeds' r20 partitions of one aspect's saved output set: (parts, problems by seed)."""
-    key = (str(cdir), aspect)
-    if key not in _CACHE:
-        tasks = []
-        for s in SEEDS:
-            path = Path(cdir) / f'{aspect}__s{s}.npz'
+def student_tasks(ctx, cdir, aspect, arm, parts):
+    """One task per seed whose output exists and has no failure record; the others are problems already: a seed that
+    failed V0c twice has `failed__{aspect}__s{seed}.json` and no output (V0d, V4d), a missing output is the same."""
+    tasks, problems = [], {}
+    for s in SEEDS:
+        path, failed = Path(cdir) / f'{aspect}__s{s}.npz', Path(cdir) / f'failed__{aspect}__s{s}.json'
+        if failed.is_file():
+            ctx.record(failed)
+            problems[s] = [f'failure record {failed.name}']
+        elif not path.is_file():
+            problems[s] = [f'no output {path.name}']
+        else:
             ctx.record(path), ctx.record(path.with_suffix('.json'))
-            tasks.append(dict(path=str(path), key='img', kind='student', aspect=aspect, seed=s))
-        outs = _run_tasks(tasks, workers)
-        _CACHE[key] = ({s: o['parts'] for s, o in zip(SEEDS, outs) if o['parts']},
-                       {s: o['problems'] for s, o in zip(SEEDS, outs) if o['problems']})
+            tasks.append(dict(path=str(path), key='img', kind='student', aspect=aspect, seed=s, arm=arm, parts=parts))
+    return tasks, problems
+
+
+def _student(ctx, cdir, aspect, workers, arm, parts):
+    key = (str(cdir), aspect, arm, parts)
+    if key not in _CACHE:
+        tasks, problems = student_tasks(ctx, cdir, aspect, arm, parts)
+        got = {}
+        for t, o in zip(tasks, _run_tasks(tasks, workers)):
+            if o['problems']:
+                problems[t['seed']] = o['problems']
+            elif o['parts']:
+                got[t['seed']] = o['parts']
+        _CACHE[key] = (got, dict(sorted(problems.items())))
     return _CACHE[key]
+
+
+def student_parts(ctx, cdir, aspect, workers, arm):
+    """The five seeds' r20 partitions of one aspect's saved output set: (parts, problems by seed). A seed that failed
+    or has no output is a problem, not a crash."""
+    return _student(ctx, cdir, aspect, workers, arm, True)
+
+
+def student_problems(ctx, cdir, aspect, workers, arm):
+    """V0c on one aspect's saved output set without partitions: the problems by seed ({} when it passes)."""
+    return _student(ctx, cdir, aspect, workers, arm, False)[1]
+
+
+def cause_text(rule, by_aspect):
+    """'V0c: emotion s3: failure record ...; style s1: ...' from {aspect: {seed: [problem]}}; None when empty."""
+    parts = [f"{a} s{s}: {', '.join(p)}" for a, problems in by_aspect.items() for s, p in problems.items()]
+    return f"{rule}: " + '; '.join(parts) if parts else None
 
 
 # ---- the comparators B1 to B6 and their eligibility (CT rule 4 R-COL, RB rule 2) --------------------------------
@@ -355,12 +398,12 @@ def rcol_notes(rcol):
     return notes
 
 
-def _same_partitions(mine, path, key, label, report):
-    """Compare with a saved partition file when it exists; count the others as unchecked."""
+def _same_partitions(ctx, mine, path, key, label, report):
+    """Compare with a saved partition file (recorded among the inputs) when it exists; count the others as unchecked."""
     if path is None or not Path(path).is_file():
         report['unchecked'] += 1
         return
-    with np.load(path, allow_pickle=False) as z:
+    with np.load(ctx.record(path), allow_pickle=False) as z:
         theirs = z[key]
     report['checked'] += 1
     if theirs.shape != mine.shape or not np.array_equal(theirs, mine):
@@ -392,9 +435,9 @@ def entry_parts(ctx, scale, workers):
     saved = dict(checked=0, unchecked=0, mismatches=[])
     for name in B_ARMS:
         for s, pt in parts[name].items():
-            path = root / 'partitions' / f'{name}__s{s}.npz'
-            for reading in READINGS:
-                _same_partitions(pt[reading], path, reading, f'{name} s{s} {reading}', saved)
+            for reading in READINGS:             # 12-24's cache: <scale>/<arm>/percept__s<seed>__<reading>.npz, key labels
+                path = RB_PARTITIONS / scale / name / f'percept__s{s}__{reading}.npz'
+                _same_partitions(ctx, pt[reading], path, 'labels', f'{name} s{s} {reading}', saved)
     _CACHE[('entries', scale)] = dict(parts=parts, eligible={n: sorted(p) for n, p in parts.items()},
                                       dropped=dropped, notes=rcol_notes(rcol), saved=saved)
     return _CACHE[('entries', scale)]
@@ -550,17 +593,26 @@ def paired_statistic(labels, xs, final, draws=DRAWS, workers=8):
 
 # ---- stage 0 (rule 3.1, 4.1) ----------------------------------------------------------------------------------
 
-def stage0_scale(ctx, scale, cand_dir, cand_name='G', draws=DRAWS, workers=8, cand_saved=None):
-    """One scale: the emotion statistic of the candidate's saved held outputs against B1 to B6."""
-    cand, problems = student_parts(ctx, cand_dir, 'emotion', workers)
-    if problems:                                            # V0d: a seed that fails V0c leaves the scale with no outcome
-        return dict(candidate=cand_name, scale=scale, claim=None, v_failure={str(s): p for s, p in problems.items()})
+def stage0_scale(ctx, scale, cand_dir, cand_name='G', draws=DRAWS, workers=8, cand_saved=None, arm=None,
+                 checked=('emotion',)):
+    """One scale: the emotion statistic of the candidate's saved held outputs against B1 to B6. `checked` lists the
+    aspects whose output sets must pass V0c (stage 0: all three); a failure in any leaves the scale with no outcome
+    (V0d). `arm` is the sidecar's arm (default: the candidate's name)."""
+    arm = arm or cand_name
+    bad = {a: student_problems(ctx, cand_dir, a, workers, arm) for a in checked if a != 'emotion'}
+    cand, problems = {}, {}
+    if not any(bad.values()):                                # no need to cluster when the scale has no outcome anyway
+        cand, problems = student_parts(ctx, cand_dir, 'emotion', workers, arm)
+    bad['emotion'] = problems
+    cause = cause_text('V0c', {a: p for a, p in bad.items() if p})
+    if cause:
+        return dict(candidate=cand_name, scale=scale, claim=None, outcome_id=None, v_failure=cause)
     entries = entry_parts(ctx, scale, workers)
     res = entries_statistic(ctx.labels['emotion'], cand, entries['parts'], draws, workers, cand_name)
     saved = dict(checked=entries['saved']['checked'], unchecked=entries['saved']['unchecked'],
                  mismatches=list(entries['saved']['mismatches']))
     for s, pt in cand.items():
-        _same_partitions(pt['r20'], None if cand_saved is None else Path(cand_saved) / f'emotion__s{s}__r20.npz',
+        _same_partitions(ctx, pt['r20'], None if cand_saved is None else Path(cand_saved) / f'emotion__s{s}__r20.npz',
                          'labels', f'{cand_name} s{s} r20', saved)
     lower = res['interval'][0] if draws else None
     res.update(candidate=cand_name, scale=scale, v_failure=None, partitions=saved, eligibility_notes=entries['notes'],
@@ -577,12 +629,13 @@ def held_dir(outputs, name):
 
 
 def stage0(ctx, outputs, draws=DRAWS, workers=8):
-    """Both scales: G's sample seeds are this round's held inference, G's full seeds are 12-27's."""
-    dirs = {'sample': Path(outputs) / 'stage0/sample/held/G', 'full': held_dir(outputs, 'G')}
+    """Both scales: G's sample seeds are this round's held inference, G's full seeds are 12-27's. The scorer's partition
+    cache of G is `stage0/partitions/<scale>/G/emotion__s{seed}__r20.npz`."""
+    dirs = {'sample': (Path(outputs) / 'stage0/sample/held/G', STAGE0_SAMPLE_ARM), 'full': (held_dir(outputs, 'G'), arm_name('G'))}
     blocks = {}
-    for scale, cdir in dirs.items():
+    for scale, (cdir, arm) in dirs.items():
         saved = Path(outputs) / 'stage0/partitions' / scale / 'G'
-        b = stage0_scale(ctx, scale, cdir, 'G', draws, workers, saved if saved.is_dir() else None)
+        b = stage0_scale(ctx, scale, cdir, 'G', draws, workers, saved, arm, checked=ASPECTS)
         b['outcome_id'] = None if b['claim'] is None else stage0_outcome(scale, b['d'], b['interval'][0])
         blocks[scale] = b
     return dict(blocks=blocks, n_resamples=draws, held_sha256=HELD_SHA256,
@@ -617,24 +670,55 @@ def t_partitions(ctx, aspect):
     return _CACHE[('T', aspect)]
 
 
+def stage4_failure(ctx, outputs, candidate, workers):
+    """V4d, V4c: why stage 4 has no outcome, or None. A seed that failed twice leaves `failed__s{seed}.json` in the
+    candidate's training folder or `failed__{aspect}__s{seed}.json` in its held folder (a missing output counts the same);
+    `v4c.json` of the held folder with pass not true; any held output set that fails V0c. One failure leaves every
+    aspect and the margin without an outcome (rule 4.4, V4d)."""
+    cdir, arm, causes = held_dir(outputs, candidate), arm_name(candidate), []
+    for s in SEEDS:
+        failed = rs_paths.full_root(outputs) / 'train' / candidate / f'failed__s{s}.json'
+        if failed.is_file():
+            ctx.record(failed)
+            causes.append(f'V4d: training of {candidate} failed, seed {s}')
+    v4c = cdir / 'v4c.json'
+    if v4c.is_file() and json.loads(ctx.record(v4c).read_text()).get('pass') is not True:
+        causes.append(f'V4c: {v4c} does not pass')
+    for a in ASPECTS:
+        for s, problems in student_problems(ctx, cdir, a, workers, arm).items():
+            held_missing = problems[0].startswith(('failure record', 'no output'))
+            causes.append(f"{'V4d' if held_missing else 'V4c'}: {a} s{s}: {', '.join(problems)}")
+    return '; '.join(causes) or None
+
+
 def stage4(ctx, outputs, candidate, draws=DRAWS, workers=8, margin=True):
-    """d_T,a per aspect against T_a (RG rule 3.2 with c* in G's place) and the emotion margin over B1 to B6."""
-    cdir = held_dir(outputs, candidate)
+    """d_T,a per aspect against T_a (RG rule 3.2 with c* in G's place) and the emotion margin over B1 to B6. The scorer's
+    partition cache of the candidate is `stage4/partitions/full/<name>/{aspect}__s{seed}__r20.npz`."""
+    cdir, arm = held_dir(outputs, candidate), arm_name(candidate)
+    cause = stage4_failure(ctx, outputs, candidate, workers)
+    out = dict(candidate=candidate, n_resamples=draws, held_sha256=HELD_SHA256, v_failure=cause)
+    if cause:                                               # V4d: no outcome for any aspect nor the margin
+        out['aspects'] = {a: dict(outcome_id=None, v_failure=cause) for a in ASPECTS}
+        if margin:
+            out['emotion_margin'] = dict(candidate=candidate, scale='full', claim=None, outcome_id=None, v_failure=cause)
+        return out
+    saved_dir = Path(outputs) / 'stage4/partitions/full' / candidate
     aspects = {}
     for a in ASPECTS:
-        cand, problems = student_parts(ctx, cdir, a, workers)
+        cand, problems = student_parts(ctx, cdir, a, workers, arm)
+        assert not problems, problems
         t, equal = t_partitions(ctx, a)
-        res = dict(T_equals_frozen=equal)
-        if problems:                                        # V4d: a seed that fails V0c leaves no outcome
-            res.update(outcome_id=None, v_failure={str(s): p for s, p in problems.items()})
-        else:
-            res.update(fixed_statistic(ctx.labels[a], cand, {0: dict(r20=t)}, draws, workers, candidate))
-            res.update(outcome_id=t_outcome(a, res['interval'][0]) if draws else None,
-                       size_in_seed_ranges=res['d'] / RANGES[a], labelled_rows=int((ctx.labels[a] >= 0).sum()))
+        saved = dict(checked=0, unchecked=0, mismatches=[])
+        for s, pt in cand.items():
+            _same_partitions(ctx, pt['r20'], saved_dir / f'{a}__s{s}__r20.npz', 'labels', f'{candidate} {a} s{s} r20', saved)
+        res = dict(T_equals_frozen=equal, partitions=saved)
+        res.update(fixed_statistic(ctx.labels[a], cand, {0: dict(r20=t)}, draws, workers, candidate))
+        res.update(outcome_id=t_outcome(a, res['interval'][0]) if draws else None, v_failure=None,
+                   size_in_seed_ranges=res['d'] / RANGES[a], labelled_rows=int((ctx.labels[a] >= 0).sum()))
         aspects[a] = res
-    out = dict(candidate=candidate, aspects=aspects, n_resamples=draws, held_sha256=HELD_SHA256)
+    out['aspects'] = aspects
     if margin:
-        b = stage0_scale(ctx, 'full', cdir, candidate, draws, workers)
+        b = stage0_scale(ctx, 'full', cdir, candidate, draws, workers, saved_dir, arm)
         b['outcome_id'] = None if b['claim'] is None else emotion_margin_outcome(b['d'], b['interval'][0])
         out['emotion_margin'] = b
     return out
@@ -653,14 +737,14 @@ def ablation(ctx, outputs, final, draws=DRAWS, workers=8):
     names = removal_names(final)
     f_parts, arms, status = {}, {}, {}
     for a in ASPECTS:
-        f_parts[a], problems = student_parts(ctx, held_dir(outputs, final), a, workers)
+        f_parts[a], problems = student_parts(ctx, held_dir(outputs, final), a, workers, arm_name(final))
         assert not problems and len(f_parts[a]) == len(SEEDS), f'F ({final}) {a}: {problems}'
     for x, name in names.items():
         cdir = held_dir(outputs, name)
         if not all((cdir / f'{a}__s{s}.npz').is_file() for a in ASPECTS for s in SEEDS):
             status[x] = dict(name=name, status='missing')       # an arm that failed has no outputs: no effect
             continue
-        got = {a: student_parts(ctx, cdir, a, workers) for a in ASPECTS}
+        got = {a: student_parts(ctx, cdir, a, workers, name) for a in ASPECTS}
         bad = {a: p for a, (_, p) in got.items() if p}
         status[x] = dict(name=name, status='failed V0c' if bad else 'ok', problems=bad)
         if not bad:
@@ -710,20 +794,15 @@ def bounds_of(theirs):
     return [theirs.get('lo'), theirs.get('hi')]
 
 
-def cause_of(theirs, top=None):
-    """Why a verdict block has no outcome: its own `cause` or `v_failure`, else the verdict's top-level cause."""
-    return theirs.get('cause') or theirs.get('v_failure') or top
-
-
-def has_no_outcome(theirs, top_cause=None):
-    """An outcome key that is present and None, with a cause (V0d, V4d). A missing key is not a stated failure."""
+def has_no_outcome(theirs):
+    """An outcome key that is present and None, with a `v_failure` cause (V0d, V4d). A missing key is not a stated failure."""
     keys = [k for k in ('outcome_id', 'outcome') if k in theirs]
-    return bool(keys) and all(theirs[k] is None for k in keys) and bool(cause_of(theirs, top_cause))
+    return bool(keys) and all(theirs[k] is None for k in keys) and bool(theirs.get('v_failure'))
 
 
-def outcome_label(theirs, fn=lambda s: s, top_cause=None):
+def outcome_label(theirs, fn=lambda s: s):
     """What the verdict says: 'no outcome' (with a cause), the outcome id after fn, or 'missing'."""
-    if has_no_outcome(theirs, top_cause):
+    if has_no_outcome(theirs):
         return 'no outcome'
     for key in ('outcome_id', 'outcome'):
         if theirs.get(key) is not None:
@@ -740,15 +819,22 @@ def boot_item(name, mine, theirs, short):
     return item(f"{name}_{'prefix_' if short else ''}max_abs_diff", diff, 0.0)
 
 
-def compare_block(prefix, mine, theirs, outcome=None, top_cause=None, short=False):
+def partition_items(prefix, saved):
+    """V0b, V4b: equal partitions. Every partition file the scorer or 12-24 saved is compared; none may differ or be missing."""
+    return [item(f'{prefix}.partitions.mismatches', len(saved['mismatches']), 0),
+            item(f'{prefix}.partitions.unchecked', saved['unchecked'], 0)]
+
+
+def compare_block(prefix, mine, theirs, outcome=None, short=False, full_layout=False):
     """One stage-0-style block (K4's layout; ticket 09's emotion_margin with lo, hi, outcome) against a verdict block;
     `outcome` maps an outcome id to what is compared. A block with no outcome is compared on that alone. `short` (the
     self-check with fewer draws than the frozen file): the draws are the first of the same stream, so compare that prefix;
-    the bounds and the outcome depend on the draw count and are left out."""
+    the bounds and the outcome depend on the draw count and are left out. `full_layout` (stage 0, the K4 blocks): the
+    draws and the per-seed values must be in the verdict."""
     outcome = outcome or (lambda s: s)
-    if mine.get('v_failure') or has_no_outcome(theirs, top_cause):
+    if mine.get('v_failure') or has_no_outcome(theirs):
         return [item(f'{prefix}.outcome_id', 'no outcome' if mine.get('v_failure') else outcome(mine['outcome_id']),
-                     outcome_label(theirs, outcome, top_cause))]
+                     outcome_label(theirs, outcome))]
     items = [item(f'{prefix}.d', mine['d'], theirs.get('d')),
              item(f'{prefix}.A_cand', mine['A_cand'], _first(theirs, ('A_cand', 'A_G', 'A_c')))]
     their_ae = theirs.get('A_e') or {}
@@ -767,24 +853,44 @@ def compare_block(prefix, mine, theirs, outcome=None, top_cause=None, short=Fals
                           None if their_list is None else [int(s) for s in their_list]))
     if theirs.get('bootstrap_d') is not None:
         items.append(boot_item(f'{prefix}.bootstrap_d', mine['bootstrap_d'], theirs['bootstrap_d'], short))
-    if theirs.get('per_seed') is not None:
-        mine_ps = {k: v for k, v in mine['per_seed'].items() if k in theirs['per_seed']}
-        diff = max_abs_difference(mine_ps, {k: theirs['per_seed'][k] for k in mine_ps})
+    elif full_layout:
+        items.append(item(f'{prefix}.bootstrap_d', 'present', 'missing from the verdict'))
+    if theirs.get('per_seed') is not None:                  # every arm I computed (G or the candidate, B1 to B6 with seeds)
+        diff = max_abs_difference(mine['per_seed'], theirs['per_seed'])
         items.append(item(f'{prefix}.per_seed_max_abs_diff', 'different keys' if diff is None else diff, 0.0))
+    elif full_layout:
+        items.append(item(f'{prefix}.per_seed', 'present', 'missing from the verdict'))
     if not short:
-        items.append(item(f'{prefix}.outcome_id', outcome(mine['outcome_id']), outcome_label(theirs, outcome, top_cause)))
+        items.append(item(f'{prefix}.outcome_id', outcome(mine['outcome_id']), outcome_label(theirs, outcome)))
     return items
 
 
 def compare_stage0(mine, verdict):
-    """The re-derived stage 0 against <outputs>/stage0/verdict.json (ticket 05's keys: blocks, outcomes, E0, ...)."""
+    """The re-derived stage 0 against <outputs>/stage0/verdict.json (ticket 05's keys: blocks, outcomes, E0, ...). A
+    missing key is an item that disagrees, not a traceback."""
     items = [item('held_sha256', mine['held_sha256'], verdict.get('held_sha256')),
              item('n_resamples', mine['n_resamples'], verdict.get('n_resamples'))]
     for scale in ('sample', 'full'):
-        items += compare_block(scale, mine['blocks'][scale], verdict['blocks'][scale])
-        items.append(item(f'{scale}.outcomes', mine['blocks'][scale]['outcome_id'], verdict['outcomes'].get(scale)))
+        theirs, block = (verdict.get('blocks') or {}).get(scale), mine['blocks'][scale]
+        if theirs is None:
+            items.append(item(f'{scale}.block', 'present', 'missing from the verdict'))
+        else:
+            items += compare_block(scale, block, theirs, full_layout=True)
+            if not block.get('v_failure'):
+                items += partition_items(scale, block['partitions'])
+        items.append(item(f'{scale}.outcomes', block['outcome_id'], (verdict.get('outcomes') or {}).get(scale, 'missing')))
     items.append(item('E0', mine['E0'], verdict.get('E0')))
     return items
+
+
+def stage0_notes(mine, verdict):
+    """One sentence per scale that has no outcome on either side (V0d): the causes; only the outcomes are compared."""
+    notes = []
+    for scale in ('sample', 'full'):
+        theirs = (verdict.get('blocks') or {}).get(scale) or {}
+        if mine['blocks'][scale].get('v_failure') or has_no_outcome(theirs):
+            notes.append(f"{scale}: no outcome; mine: {mine['blocks'][scale].get('v_failure')}; verdict: {theirs.get('v_failure')}")
+    return notes
 
 
 def draws_for(verdict, key):
@@ -793,13 +899,12 @@ def draws_for(verdict, key):
     return int(verdict[key]) if verdict.get('smoke') and verdict.get(key) is not None else DRAWS
 
 
-def compare_t_block(prefix, mine, theirs, aspect, with_outcome=True, top_cause=None, short=False):
+def compare_t_block(prefix, mine, theirs, aspect, with_outcome=True, short=False):
     """d_T,a against a verdict block (RG's verdict.json d_T, RG's reported.json margin T, or ticket 09's aspects[a])."""
     if theirs is None:
         return [item(f'{prefix}.present', 'present', 'missing from the verdict')]
-    if mine.get('v_failure') or has_no_outcome(theirs, top_cause):
-        return [item(f'{prefix}.outcome_id', 'no outcome' if mine.get('v_failure') else mine['outcome_id'],
-                     outcome_label(theirs, top_cause=top_cause))]
+    if mine.get('v_failure') or has_no_outcome(theirs):
+        return [item(f'{prefix}.outcome_id', 'no outcome' if mine.get('v_failure') else mine['outcome_id'], outcome_label(theirs))]
     a_t = _first(theirs, ('A_T', 'A_fixed')) if _first(theirs, ('A_T', 'A_fixed')) is not None else \
         (theirs.get('A_e') or {}).get('T-r20')
     items = [item(f'{prefix}.d_T', mine['d'], _first(theirs, ('d', 'd_T'))),
@@ -818,37 +923,43 @@ def compare_t_block(prefix, mine, theirs, aspect, with_outcome=True, top_cause=N
     return items
 
 
-def no_outcome_note(verdict):
-    """A sentence when a stage 4 verdict states no outcome (V4d), else None: then only the cause is compared."""
-    if not verdict.get('aspects') and verdict.get('cause'):
-        return f"stage 4 verdict states no outcome; only the cause is compared: {verdict['cause']}"
-    gone = [a for a, v in (verdict.get('aspects') or {}).items() if has_no_outcome(v, verdict.get('cause'))]
-    if gone:
-        return f"stage 4 verdict states no outcome for {', '.join(gone)}; only the cause is compared"
-    return None
+def stage4_notes(mine, verdict):
+    """A sentence when stage 4 has no outcome on either side (V4c, V4d): the causes; only the outcomes are compared."""
+    if mine.get('v_failure') or verdict.get('v_failure'):
+        return [f"stage 4: no outcome; mine: {mine.get('v_failure')}; verdict: {verdict.get('v_failure')}"]
+    return []
 
 
-def _failed_anywhere(mine):
-    return any(r.get('v_failure') for r in mine['aspects'].values()) or bool(mine.get('emotion_margin', {}).get('v_failure'))
+def compare_no_outcome_stage4(mine, verdict):
+    """V4d: one failure leaves every aspect and the margin without an outcome. The verdict says it by its top-level
+    `v_failure` and `outcome` None in each aspect and in the margin; compare those and nothing else."""
+    failed = bool(mine.get('v_failure'))
+    items = [item('stage4.no_outcome', failed, bool(verdict.get('v_failure')))]
+    for a in ASPECTS:
+        items.append(item(f'{a}.outcome_id', 'no outcome' if failed else mine['aspects'][a]['outcome_id'],
+                          outcome_label((verdict.get('aspects') or {}).get(a) or {})))
+    items.append(item('emotion_margin.outcome_id', 'no outcome' if failed else mine['emotion_margin']['outcome_id'],
+                      outcome_label(verdict.get('emotion_margin') or {})))
+    return items
 
 
 def compare_stage4(mine, verdict):
     """The re-derived stage 4 against <outputs>/stage4/verdict.json, by ticket 09's keys: every value the rule names
-    (V4b: each d_T,a with its bounds and outcome, the emotion margin, the ranges). A missing key is a disagreement;
-    extra keys are ignored. `kind` (PICK or KEEP-G) is stage 3's, not re-derived here."""
+    (V4b: each d_T,a with its bounds and outcome, the emotion margin, the ranges) and equal partitions. A missing key is
+    a disagreement; extra keys are ignored. `kind` (PICK or KEEP-G) is stage 3's, not re-derived here."""
     items = [item('held_sha256', mine['held_sha256'], verdict.get('held_sha256')),
              item('candidate', mine['candidate'], verdict.get('candidate'))]
-    if not verdict.get('aspects') and verdict.get('cause'):         # V4d: no outcome, a cause, nothing else to compare
-        return items + [item('a V0c failure in my outputs', _failed_anywhere(mine), True)]
-    top = verdict.get('cause')
+    if mine.get('v_failure') or verdict.get('v_failure'):
+        return items + compare_no_outcome_stage4(mine, verdict)
     items.append(item('n_resamples', mine['n_resamples'], verdict.get('n_resamples')))
     for a in ASPECTS:
         items.append(item(f'ranges.{a}', RANGES[a], (verdict.get('ranges') or {}).get(a)))
     for a in ASPECTS:
         r, theirs = mine['aspects'][a], (verdict.get('aspects') or {}).get(a)
         items.append(item(f'{a}.T_partitions_equal_frozen', r['T_equals_frozen'], True))
-        items += compare_t_block(a, r, theirs, a, top_cause=top)
-        if theirs is not None and not r.get('v_failure') and not has_no_outcome(theirs, top):
+        items += partition_items(a, r['partitions'])
+        items += compare_t_block(a, r, theirs, a)
+        if theirs is not None and not has_no_outcome(theirs):
             items += [item(f'{a}.d_in_ranges', r['size_in_seed_ranges'], theirs.get('d_in_ranges')),
                       item(f'{a}.labelled_rows', r['labelled_rows'], theirs.get('labelled_rows')),
                       item(f'{a}.labels_masked', N_HELD - r['labelled_rows'], theirs.get('labels_masked'))]
@@ -856,8 +967,8 @@ def compare_stage4(mine, verdict):
     if margin is None:
         return items + [item('emotion_margin', 'present', 'missing from the verdict')]
     m = mine['emotion_margin']
-    items += compare_block('emotion_margin', m, margin, top_cause=top)
-    if not m.get('v_failure') and not has_no_outcome(margin, top):
+    items += compare_block('emotion_margin', m, margin) + partition_items('emotion_margin', m['partitions'])
+    if not has_no_outcome(margin):
         items += [item('emotion_margin.max_entry', max(m['A_e'], key=m['A_e'].get), margin.get('max_entry')),
                   item('emotion_margin.arms', list(m['eligible_seeds']), margin.get('arms'))]
     return items
@@ -882,7 +993,7 @@ def compare_ablation(mine, verdict):
     """The re-derived held ablation against <outputs>/ablation/held.json (ticket 10's keys). A missing key is a
     disagreement; extra keys are ignored. A failed or missing arm has no effect: only its status is compared."""
     items = [item('held_sha256', mine['held_sha256'], verdict.get('held_sha256')),
-             item('final', mine['final'], verdict.get('final_key')),
+             item('final', arm_name(mine['final']), verdict.get('final_key')),      # G's folder is named GS-0.02
              item('n_draws', mine['n_resamples'], verdict.get('n_draws')),
              item('seeds', list(SEEDS), verdict.get('seeds'))]
     items += [item(f'labelled_rows.{a}', mine['labelled_rows'][a], (verdict.get('labelled_rows') or {}).get(a)) for a in ASPECTS]
@@ -926,8 +1037,9 @@ def selfcheck(ctx, draws=DRAWS, workers=8):
         suffix = lambda s: None if s is None else s.rsplit('-', 1)[-1]          # S1-GO / S2-GO / G-ES-GO: compare the tail
         extra[f'K4_{scale}'] = b
         if draws:
-            items += compare_block(f'K4.{scale}', b, frozen, outcome=suffix, short=draws < DRAWS)
+            items += compare_block(f'K4.{scale}', b, frozen, outcome=suffix, short=draws < DRAWS, full_layout=True)
         items += [item(f'K4.{scale}.partitions_mismatches', len(b['partitions']['mismatches']), 0),
+                  item(f'K4.{scale}.partitions_unchecked', b['partitions']['unchecked'], 0),
                   item(f'K4.{scale}.partitions_checked_gt_0', b['partitions']['checked'] > 0, True),
                   item(f'K4.{scale}.R-COL notes', len(b['eligibility_notes']), 0)]
         if not draws:
@@ -946,8 +1058,8 @@ def selfcheck(ctx, draws=DRAWS, workers=8):
         if draws == DRAWS:                       # an outcome rests on the bounds: only at the rule's draw count
             items.append(item(f'G.{a}.outcome_id (rule 4.4 text)', res['aspects'][a]['outcome_id'], expected_outcome[a]))
     # the paired statistic (held ablation) with G as F and K4 as x: its point value is minus RG's d_R on genre
-    g = student_parts(ctx, held_dir(rs_paths.OUTPUTS, 'G'), 'genre', workers)[0]
-    k4 = student_parts(ctx, RB_K4_DIRS['full'], 'genre', workers)[0]
+    g = student_parts(ctx, held_dir(rs_paths.OUTPUTS, 'G'), 'genre', workers, arm_name('G'))[0]
+    k4 = student_parts(ctx, RB_K4_DIRS['full'], 'genre', workers, 'K4')[0]
     pair = paired_statistic(ctx.labels['genre'], {'K4': k4}, g, draws=0, workers=1)['K4']
     items += [item('paired.genre.delta = -d_R', pair['d'], -rg_verdict['d_R']['d']),
               item('paired.genre.A_arm = A_R', pair['A_arm'], rg_verdict['d_R']['A_R']),
@@ -993,21 +1105,25 @@ def run(args):
         outputs = rs_paths.check_outputs(args.outputs)
         checked = ctx.record(verdict_file(args.mode, outputs))           # V runs after the verdict file exists
         verdict = json.loads(checked.read_text())
+        assert not verdict.get('smoke') or rs_paths.smoke_ok(outputs), \
+            f'refused: a smoke verdict outside {rs_paths.SMOKE_ROOT} ({outputs}); a smoke never stands for the real run'
         notes = []
         if args.mode == 'stage0':
             mine = stage0(ctx, outputs, draws_for(verdict, 'n_resamples'), args.workers)
             items = compare_stage0(mine, verdict)
+            notes = stage0_notes(mine, verdict)
         elif args.mode == 'stage4':
             mine = stage4(ctx, outputs, args.candidate, draws_for(verdict, 'n_resamples'), args.workers)
             items = compare_stage4(mine, verdict)
-            notes = [n for n in (no_outcome_note(verdict),) if n]
+            notes = stage4_notes(mine, verdict)
         else:
             mine = ablation(ctx, outputs, args.final, draws_for(verdict, 'n_draws'), args.workers)
             items = compare_ablation(mine, verdict)
         print(f"{args.mode}: {mine['n_resamples']} draws" + (' (a smoke verdict sets its own count)' if verdict.get('smoke') else ''))
         for n in notes:
             print('  NOTE', n)
-        code = finish(args.mode, checked, items, ctx.sources, dict(mine=mine, notes=notes, seconds=round(time.time() - t0, 1)))
+        code = finish(args.mode, checked, items, ctx.sources, dict(mine=mine, notes=notes, smoke=bool(verdict.get('smoke')),
+                                                                    seconds=round(time.time() - t0, 1)))
     bad = [i for i in items if not i['ok']]
     worst = max((i['diff'] for i in items if isinstance(i['diff'], float)), default=0.0)
     print(f"{args.mode}: {len(items)} items, {len(bad)} disagree, largest numeric difference {worst:.3g}")

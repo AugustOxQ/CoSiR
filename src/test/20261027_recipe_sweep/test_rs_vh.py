@@ -239,11 +239,11 @@ def test_partition_refuses_rows_that_are_not_unit_norm():
 
 def test_sidecar_is_checked_against_the_array(tmp_path):
     x = unit_rows(10)
-    side = dict(rows=10, list_sha256='h', aspect='emotion', seed=2, sha256=V.array_sha(x))
-    V.check_sidecar(side, x, 'emotion', 2, 10, 'h')
-    for key, wrong in (('rows', 9), ('list_sha256', 'z'), ('aspect', 'style'), ('seed', 3), ('sha256', '0')):
+    side = dict(rows=10, list_sha256='h', aspect='emotion', seed=2, arm='G', sha256=V.array_sha(x))
+    V.check_sidecar(side, x, 'emotion', 2, 10, 'h', 'G')
+    for key, wrong in (('rows', 9), ('list_sha256', 'z'), ('aspect', 'style'), ('seed', 3), ('arm', 'K4'), ('sha256', '0')):
         with pytest.raises(AssertionError):
-            V.check_sidecar({**side, key: wrong}, x, 'emotion', 2, 10, 'h')
+            V.check_sidecar({**side, key: wrong}, x, 'emotion', 2, 10, 'h', 'G')
 
 
 def test_held_dir_names(tmp_path):
@@ -262,14 +262,15 @@ def test_removal_arm_names():
 def block(d=0.0123, lower=0.004):
     return dict(candidate='G', scale='sample', d=d, A_cand=0.1, A_e={'B1-r20': 0.08, 'B1-own': 0.087},
                 interval=[lower, 0.02], bootstrap_d=[0.01, 0.02], eligible_seeds={'G': [0, 1], 'B2': []},
-                per_seed={'G': {'0': {'r20': [0.1, 0.2, 0.3]}}}, outcome_id='G-ES-GO', v_failure=None)
+                per_seed={'G': {'0': {'r20': [0.1, 0.2, 0.3]}}, 'B1': {'0': {'r20': [0.1, 0.2, 0.3]}}}, outcome_id='G-ES-GO',
+                v_failure=None, partitions=dict(checked=7, unchecked=0, mismatches=[]))
 
 
 def verdict_from(mine):
     out = dict(blocks={s: {**b, 'eligibility': {'eligible_seeds': b.get('eligible_seeds', {})}} for s, b in mine['blocks'].items()},
                outcomes={s: b['outcome_id'] for s, b in mine['blocks'].items()}, E0=mine['E0'], n_resamples=2000,
                held_sha256=V.HELD_SHA256)
-    return json.loads(json.dumps(out))      # a copy: the verdict file shares nothing with the record
+    return json.loads(json.dumps(out, default=V._plain))      # a copy: the verdict file shares nothing with the record
 
 
 def mine_pair():
@@ -312,6 +313,39 @@ def test_a_scale_without_outcome_must_match_the_verdict():
     assert not all(i['ok'] for i in V.compare_stage0(mine, theirs))
 
 
+def test_compare_stage0_partitions_item_per_scale():
+    mine = mine_pair()
+    items = V.compare_stage0(mine, verdict_from(mine))
+    assert {'sample.partitions.mismatches', 'sample.partitions.unchecked', 'full.partitions.mismatches',
+            'full.partitions.unchecked'} <= {i['name'] for i in items} and all(i['ok'] for i in items)
+    mine['blocks']['full']['partitions'] = dict(checked=6, unchecked=1, mismatches=[])
+    assert names_of(V.compare_stage0(mine, verdict_from(mine))) == ['full.partitions.unchecked']
+    mine['blocks']['full']['partitions'] = dict(checked=7, unchecked=0, mismatches=['G s0 r20: differs from x'])
+    assert names_of(V.compare_stage0(mine, verdict_from(mine))) == ['full.partitions.mismatches']
+
+
+@pytest.mark.parametrize('drop', [('blocks', 'sample'), ('blocks',), ('outcomes',), ('blocks', 'full', 'bootstrap_d'),
+                                  ('blocks', 'full', 'per_seed')])
+def test_compare_stage0_missing_key_is_an_item_not_a_traceback(drop):
+    mine = mine_pair()
+    verdict = verdict_from(mine)
+    node = verdict
+    for k in drop[:-1]:
+        node = node[k]
+    del node[drop[-1]]
+    assert names_of(V.compare_stage0(mine, verdict))
+
+
+def test_per_seed_items_cover_every_arm_i_computed():
+    mine = mine_pair()
+    verdict = verdict_from(mine)
+    del verdict['blocks']['sample']['per_seed']['B1']                     # an arm the verdict lacks
+    assert 'sample.per_seed_max_abs_diff' in names_of(V.compare_stage0(mine, verdict))
+    verdict = verdict_from(mine)
+    verdict['blocks']['full']['per_seed']['B1']['0']['r20'][1] += 1e-3
+    assert 'full.per_seed_max_abs_diff' in names_of(V.compare_stage0(mine, verdict))
+
+
 def test_atomic_json_and_exit_code(tmp_path, monkeypatch):
     target = tmp_path / 'sub' / 'rederive_x.json'
     V.write_json(target, {'a': 1})
@@ -348,7 +382,8 @@ def test_cli_modes_exist():
 
 def aspect_record(a, d, lower, upper, outcome, labelled):
     return dict(T_equals_frozen=True, d=d, A_cand=0.4, A_fixed=0.4 - d, interval=[lower, upper], bootstrap_d=[lower, upper],
-                outcome_id=outcome, size_in_seed_ranges=d / V.RANGES[a], labelled_rows=labelled, v_failure=None)
+                outcome_id=outcome, size_in_seed_ranges=d / V.RANGES[a], labelled_rows=labelled, v_failure=None,
+                partitions=dict(checked=5, unchecked=0, mismatches=[]))
 
 
 def mine_stage4():
@@ -457,28 +492,48 @@ def test_compare_stage4_ignores_extra_keys():
     assert all(i['ok'] for i in V.compare_stage4(mine, verdict))
 
 
-def test_compare_stage4_aspect_without_outcome_needs_my_failure_too():
-    mine = mine_stage4()
-    mine['aspects']['style'] = dict(T_equals_frozen=True, outcome_id=None, v_failure={'3': ['non-finite rows']})
-    verdict = verdict_stage4(mine_stage4())
-    verdict['aspects']['style'] = dict(outcome=None, cause='seed 3 failed V4c twice')       # nothing to compare but the cause
-    items = V.compare_stage4(mine, verdict)
+def failed_stage4(mine, cause='V4d: training failed, seed 2'):
+    """My record when stage 4 has no outcome (V4d): every aspect and the margin without one, the cause at the top."""
+    out = dict(mine, v_failure=cause)
+    out['aspects'] = {a: dict(outcome_id=None, v_failure=cause) for a in V.ASPECTS}
+    out['emotion_margin'] = dict(candidate='G', scale='full', claim=None, outcome_id=None, v_failure=cause)
+    return out
+
+
+def failed_verdict_stage4(cause='V4d: seed 2 training failed twice'):
+    """The scorer's verdict with no outcome: top-level v_failure, outcome None in every aspect and in the margin."""
+    return dict(schema=1, stage=4, candidate='G', held_sha256=V.HELD_SHA256, n_resamples=2000, smoke=False, v_failure=cause,
+                aspects={a: dict(outcome=None, v_failure=cause) for a in V.ASPECTS},
+                emotion_margin=dict(outcome=None, v_failure=cause))
+
+
+def test_compare_stage4_no_outcome_both_sides_compares_only_the_outcomes():
+    mine = failed_stage4(mine_stage4())
+    items = V.compare_stage4(mine, failed_verdict_stage4())
     assert all(i['ok'] for i in items)
-    assert 'style.d_T' not in {i['name'] for i in items}
-    verdict['aspects']['style'] = dict(outcome='T-LEVEL', d=0.0)
-    assert not all(i['ok'] for i in V.compare_stage4(mine, verdict))
-    del verdict['aspects']['style']['outcome']                 # no outcome key and no cause: a missing value, not a failure
-    assert not all(i['ok'] for i in V.compare_stage4(mine, verdict))
+    assert {i['name'] for i in items} >= {'emotion.outcome_id', 'style.outcome_id', 'genre.outcome_id', 'emotion_margin.outcome_id'}
+    assert not any('d_T' in i['name'] or 'interval' in i['name'] for i in items)
 
 
-def test_compare_stage4_verdict_with_only_a_cause():
-    mine = mine_stage4()
-    mine['aspects']['genre'] = dict(T_equals_frozen=True, outcome_id=None, v_failure={'0': ['dtype float32']})
-    verdict = dict(schema=1, stage=4, candidate='G', held_sha256=V.HELD_SHA256, kind=None, outcome=None, cause='V4d: seed 0 failed twice')
-    items = V.compare_stage4(mine, verdict)
-    assert all(i['ok'] for i in items) and 'no outcome' in V.no_outcome_note(verdict)
-    assert V.no_outcome_note(verdict_stage4(mine_stage4())) is None
-    assert not all(i['ok'] for i in V.compare_stage4(mine_stage4(), verdict))      # my outputs are fine, the verdict says failed
+def test_compare_stage4_one_side_without_outcome_is_a_disagreement():
+    verdict = failed_verdict_stage4()
+    assert not all(i['ok'] for i in V.compare_stage4(mine_stage4(), verdict))              # the scorer failed, I did not
+    assert not all(i['ok'] for i in V.compare_stage4(failed_stage4(mine_stage4()), verdict_stage4(mine_stage4())))
+    half = failed_verdict_stage4()
+    half['aspects']['style'] = dict(outcome='T-LEVEL', d=0.0)                               # one aspect still has an outcome
+    assert 'style.outcome_id' in names_of(V.compare_stage4(failed_stage4(mine_stage4()), half))
+    del half['aspects']['style']['outcome']
+    assert 'style.outcome_id' in names_of(V.compare_stage4(failed_stage4(mine_stage4()), half))   # no key: not a stated failure
+    no_top = failed_verdict_stage4()
+    del no_top['v_failure']
+    assert not all(i['ok'] for i in V.compare_stage4(failed_stage4(mine_stage4()), no_top))
+
+
+def test_stage4_notes_print_the_cause():
+    mine, verdict = failed_stage4(mine_stage4()), failed_verdict_stage4()
+    assert 'V4d: training failed, seed 2' in ' '.join(V.stage4_notes(mine, verdict))
+    assert 'V4d: seed 2 training failed twice' in ' '.join(V.stage4_notes(mine, verdict))
+    assert V.stage4_notes(mine_stage4(), verdict_stage4(mine_stage4())) == []
 
 
 def test_draws_follow_a_smoke_verdict_only():
@@ -489,15 +544,19 @@ def test_draws_follow_a_smoke_verdict_only():
 
 # ---- the ablation wiring: synthetic outputs tree, one removal present, seven missing ---------------------------
 
-def write_set(folder, n, seed0, bad_norm=False):
-    """Five seeds of three aspects in the saved layout (npz key img, sidecar with rows, list hash, aspect, seed, hash)."""
+def write_set(folder, n, seed0, bad_norm=False, arm='x', skip=()):
+    """Five seeds of three aspects in the saved layout (npz key img, sidecar with rows, list hash, aspect, seed, arm,
+    hash); the (aspect, seed) pairs in `skip` are left out."""
     folder.mkdir(parents=True)
     for a in V.ASPECTS:
         for s in V.SEEDS:
+            if (a, s) in skip:
+                continue
             x = unit_rows(n, 8, seed0 + 10 * V.ASPECTS.index(a) + s)
             x = x * np.float16(1.05) if bad_norm and (a, s) == ('style', 3) else x
             np.savez(folder / f'{a}__s{s}.npz', img=x)
-            (folder / f'{a}__s{s}.json').write_text(json.dumps(dict(rows=n, list_sha256='h', aspect=a, seed=s, sha256=V.array_sha(x))))
+            (folder / f'{a}__s{s}.json').write_text(json.dumps(dict(rows=n, list_sha256='h', aspect=a, seed=s, arm=arm,
+                                                                  sha256=V.array_sha(x))))
 
 
 class FakeCtx:
@@ -520,8 +579,8 @@ def tree(tmp_path, monkeypatch):
     V._CACHE.clear()
     final = 'k6=0.0005'
     root = rs_paths.full_root(tmp_path) / 'held'
-    write_set(root / final, 150, 1)
-    write_set(root / f'{final}-no_direct', 150, 500)
+    write_set(root / final, 150, 1, arm=final)
+    write_set(root / f'{final}-no_direct', 150, 500, arm=f'{final}-no_direct')
     yield tmp_path, final
     V._CACHE.clear()
 
@@ -554,7 +613,7 @@ def test_ablation_wiring_one_arm_present_seven_missing(tree):
 
 def test_ablation_arm_failing_v0c_has_no_effect(tmp_path, monkeypatch, tree):
     out, final = tree
-    write_set(rs_paths.full_root(out) / 'held' / f'{final}-no_buddy', 150, 900, bad_norm=True)
+    write_set(rs_paths.full_root(out) / 'held' / f'{final}-no_buddy', 150, 900, bad_norm=True, arm=f'{final}-no_buddy')
     res = V.ablation(FakeCtx(150), out, final, draws=3, workers=1)
     assert res['removals']['buddy']['status'] == 'failed V0c' and 'style' in res['removals']['buddy']['problems']
     assert set(res['effects']) == {'direct'}
@@ -562,7 +621,7 @@ def test_ablation_arm_failing_v0c_has_no_effect(tmp_path, monkeypatch, tree):
 
 def test_ablation_final_must_pass_v0c(tree):
     out, final = tree
-    write_set(rs_paths.full_root(out) / 'held' / 'k6=0.0007', 150, 77, bad_norm=True)
+    write_set(rs_paths.full_root(out) / 'held' / 'k6=0.0007', 150, 77, bad_norm=True, arm='k6=0.0007')
     with pytest.raises(AssertionError):
         V.ablation(FakeCtx(150), out, 'k6=0.0007', draws=3, workers=1)
 
@@ -596,8 +655,9 @@ def verdict_ablation(mine, listed=('direct', 'buddy'), smoke=True):
             results[x] = dict(arm=mine['removals'][x]['name'], status='ok', cause=None, aspects=asp)
         else:
             results[x] = dict(arm=mine['removals'][x]['name'], status='failed', cause='seed 3: non-finite loss', aspects=None)
+    final_key = rs_paths.G_ARM if mine['final'] == 'G' else mine['final']       # the scorer names G's folder by its 12-27 arm
     return json.loads(json.dumps(dict(stage='ablation_held', smoke=smoke, seeds=list(V.SEEDS), n_draws=2000, held_sha256=V.HELD_SHA256,
-                                      labelled_rows=mine['labelled_rows'], final_key=mine['final'], removals=list(listed),
+                                      labelled_rows=mine['labelled_rows'], final_key=final_key, removals=list(listed),
                                       results=results, extra=1)))
 
 
@@ -643,6 +703,18 @@ def test_compare_ablation_flags_seed_values_status_and_names():
     assert 'n_draws' in names_of(V.compare_ablation(mine, verdict))
 
 
+def test_compare_ablation_final_g_is_named_gs_002_in_the_verdict():
+    mine = dict(mine_ablation(), final='G')
+    verdict = verdict_ablation(mine)
+    assert verdict['final_key'] == 'GS-0.02'
+    assert names_of(V.compare_ablation(mine, verdict)) == []
+    verdict['final_key'] = 'G'                                           # the scorer never writes this when F = G
+    assert names_of(V.compare_ablation(mine, verdict)) == ['final']
+    other = mine_ablation()                                              # any other final: the run's own name
+    assert names_of(V.compare_ablation(other, verdict_ablation(other))) == []
+    assert V.arm_name('G') == 'GS-0.02' and V.arm_name('k6=0.0005') == 'k6=0.0005'
+
+
 def test_compare_ablation_fails_on_a_missing_key_and_ignores_extras():
     mine = mine_ablation()
     for where, key in ((('results', 'direct', 'aspects', 'style'), 'lo'), (('results', 'direct', 'aspects', 'genre'), 'arm_seed_ami'),
@@ -666,6 +738,298 @@ def test_compare_ablation_removals_listed():
     assert 'removals listed' in names_of(V.compare_ablation(mine, verdict_ablation(mine, smoke=False)))   # a real run lists all eight
     hidden = verdict_ablation(mine, listed=('buddy',), smoke=True)      # my outputs have the direct arm: the verdict must list it
     assert any(not i['ok'] and i['name'].startswith('direct') for i in V.compare_ablation(mine, hidden))
+
+
+# ---- the comparators against 12-24's partition cache (rule V0b: equal partitions) ----------------------------------
+
+def write_percept_tree(tmp_path, monkeypatch, scale='sample'):
+    """B1 and B6 with five seeds each (B2 to B5 have no eligible seeds), their probabilities and 12-24's partition cache."""
+    monkeypatch.setattr(V, 'N_HELD', 150)
+    monkeypatch.setattr(V, 'HELD_SHA256', 'h')
+    root, cache = tmp_path / 'ct', tmp_path / 'rb_partitions'
+    rcol = tmp_path / 'rcol.json'
+    rcol.write_text(json.dumps(dict(runs=[], entries={a: dict(seeds=[]) for a, (_, _, cut) in V.B_ARMS.items() if cut})))
+    monkeypatch.setitem(V.CT_ROOT, scale, root)
+    monkeypatch.setitem(V.RCOL, scale, rcol)
+    monkeypatch.setattr(V, 'RB_PARTITIONS', cache)
+    V._CACHE.clear()
+    for name in ('B1', 'B6'):
+        folder, arm, _ = V.B_ARMS[name]
+        for s in V.SEEDS:
+            prob = np.random.default_rng(100 * s + len(name)).random((150, 20)).astype(np.float32)
+            path = root / 'held/percept' / folder / f'{arm}__s{s}.npz'
+            path.parent.mkdir(parents=True, exist_ok=True)
+            np.savez(path, prob=prob)
+            path.with_suffix('.json').write_text(json.dumps(dict(held_sha256='h', rows=150, array_sha256s=dict(prob=V.array_sha(prob)))))
+            target = cache / scale / name
+            target.mkdir(parents=True, exist_ok=True)
+            for reading, part in (('r20', V.r20_partition(V.l2_probabilities(prob))), ('own', V.own_partition(prob))):
+                np.savez(target / f'percept__s{s}__{reading}.npz', labels=part)
+    return cache / scale
+
+
+def test_entry_partitions_are_compared_with_the_rb_cache_including_b6(tmp_path, monkeypatch):
+    cache = write_percept_tree(tmp_path, monkeypatch)
+    ctx = FakeCtx(150)
+    res = V.entry_parts(ctx, 'sample', 1)
+    assert res['saved'] == dict(checked=20, unchecked=0, mismatches=[])               # B1 and B6: five seeds, two readings
+    assert any(k.endswith('B6/percept__s4__own.npz') for k in ctx.sources), 'partition files read are recorded'
+    V._CACHE.clear()
+    (cache / 'B6/percept__s2__r20.npz').unlink()
+    assert V.entry_parts(FakeCtx(150), 'sample', 1)['saved']['unchecked'] == 1
+    V._CACHE.clear()
+    path = cache / 'B1/percept__s0__r20.npz'
+    with np.load(path) as z:
+        labels = z['labels'].copy()
+    np.savez(path, labels=(labels + 1) % 20)                                           # a permuted partition
+    saved = V.entry_parts(FakeCtx(150), 'sample', 1)['saved']
+    assert len(saved['mismatches']) == 1 and 'B1 s0 r20' in saved['mismatches'][0]
+    V._CACHE.clear()
+
+
+# ---- whole modes on tiny trees (150 rows): partitions, no-outcome paths, smoke ---------------------------------
+
+def fake_entries(ctx, scale, workers):
+    rng = np.random.default_rng(11)
+    parts = {'B1': {s: fake_parts(rng, 150, ctx.labels['emotion'], 0.6) for s in (0, 1)}, 'B2': {}}
+    return dict(parts=parts, eligible={'B1': [0, 1], 'B2': []}, dropped={}, notes=[],
+                saved=dict(checked=4, unchecked=0, mismatches=[]))
+
+
+def fake_t(ctx, aspect):
+    return fake_parts(np.random.default_rng(12), 150, ctx.labels[aspect], 0.5)['r20'], True
+
+
+@pytest.fixture
+def small(tmp_path, monkeypatch):
+    monkeypatch.setattr(V, 'N_HELD', 150)
+    monkeypatch.setattr(V, 'WIDTH', 8)
+    monkeypatch.setattr(V, 'HELD_SHA256', 'h')
+    monkeypatch.setattr(rs_paths, 'RG_FULL', tmp_path / 'rg_full')
+    monkeypatch.setattr(rs_paths, 'SMOKE_ROOT', tmp_path)
+    monkeypatch.setattr(V, 'Ctx', lambda: FakeCtx(150))
+    monkeypatch.setattr(V, 'entry_parts', fake_entries)
+    monkeypatch.setattr(V, 't_partitions', fake_t)
+    V._CACHE.clear()
+    yield tmp_path / 'outputs'
+    V._CACHE.clear()
+
+
+def write_cache(folder, seed0, aspects=('emotion',)):
+    """The scorer's partition cache for a set written by write_set(seed0): {aspect}__s{seed}__r20.npz, key labels."""
+    folder.mkdir(parents=True, exist_ok=True)
+    for a in aspects:
+        for s in V.SEEDS:
+            x = unit_rows(150, 8, seed0 + 10 * V.ASPECTS.index(a) + s)
+            np.savez(folder / f'{a}__s{s}__r20.npz', labels=V.r20_partition(x).astype(np.int32))
+
+
+def stage0_tree(out, skip=()):
+    write_set(out / 'stage0/sample/held/G', 150, 1, arm='G', skip=skip)
+    write_set(rs_paths.RG_FULL / 'held' / rs_paths.G_ARM, 150, 2, arm=rs_paths.G_ARM)
+    for scale, seed0 in (('sample', 1), ('full', 2)):
+        write_cache(out / 'stage0/partitions' / scale / 'G', seed0)
+
+
+def write_verdict(path, verdict):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(verdict))
+
+
+def stage0_verdict(out):
+    verdict = verdict_from(V.stage0(FakeCtx(150), out, 6, 1))
+    verdict.update(smoke=True, n_resamples=6)
+    write_verdict(out / 'stage0/verdict.json', verdict)
+    return verdict
+
+
+def run_stage0(out):
+    return V.main(['stage0', '--outputs', str(out), '--workers', '1'])
+
+
+def report(out, mode):
+    return json.loads((out / mode / f'rederive_{mode}.json').read_text())
+
+
+def test_stage0_whole_run_agrees_and_the_report_has_smoke_and_the_partition_files(small):
+    stage0_tree(small)
+    stage0_verdict(small)
+    assert run_stage0(small) == 0
+    doc = report(small, 'stage0')
+    assert doc['pass'] is True and doc['smoke'] is True
+    assert any(k.endswith('partitions/sample/G/emotion__s0__r20.npz') for k in doc['inputs_sha256'])
+    assert {'sample.partitions.mismatches', 'full.partitions.unchecked'} <= {i['name'] for i in doc['items']}
+
+
+def swap_clusters(path):
+    with np.load(path) as z:
+        labels = z['labels'].copy()
+    first, second = labels == 0, labels == 1
+    labels[first], labels[second] = 1, 0
+    np.savez(path, labels=labels)
+
+
+def test_stage0_permuted_partition_fails_the_run(small):
+    stage0_tree(small)
+    stage0_verdict(small)
+    swap_clusters(small / 'stage0/partitions/sample/G/emotion__s0__r20.npz')
+    assert run_stage0(small) == 1
+    bad = [i['name'] for i in report(small, 'stage0')['items'] if not i['ok']]
+    assert bad == ['sample.partitions.mismatches']
+
+
+def test_stage0_missing_partition_file_fails_the_run(small):
+    stage0_tree(small)
+    stage0_verdict(small)
+    (small / 'stage0/partitions/full/G/emotion__s3__r20.npz').unlink()
+    assert run_stage0(small) == 1
+    assert [i['name'] for i in report(small, 'stage0')['items'] if not i['ok']] == ['full.partitions.unchecked']
+
+
+@pytest.mark.parametrize('aspect, seed, how', [('emotion', 3, 'record'), ('style', 2, 'record'), ('genre', 0, 'missing'),
+                                              ('style', 4, 'record')])
+def test_stage0_failed_seed_leaves_the_scale_with_no_outcome_in_both_runs(small, aspect, seed, how):
+    stage0_tree(small, skip=((aspect, seed),))
+    folder = small / 'stage0/sample/held/G'
+    if how == 'record':                                       # the scorer's failed__ record instead of the output files
+        (folder / f'failed__{aspect}__s{seed}.json').write_text(json.dumps(dict(problems=['shape'])))
+    verdict = stage0_verdict(small)                           # my own record is the scorer's here: both have no outcome
+    assert verdict['outcomes']['sample'] is None and verdict['E0'] is False and verdict['outcomes']['full']
+    assert verdict['blocks']['sample']['v_failure']
+    assert run_stage0(small) == 0                             # no traceback: a rederive file, pass
+    doc = report(small, 'stage0')
+    assert doc['pass'] is True and doc['mine']['blocks']['sample']['outcome_id'] is None
+    assert any('sample' in n and 'no outcome' in n for n in doc['notes'])
+    claimed = json.loads((small / 'stage0/verdict.json').read_text())
+    claimed['blocks']['sample'] = dict(candidate='G', scale='sample', outcome_id='G-ES-GO')    # the scorer found an outcome
+    claimed['outcomes']['sample'] = 'G-ES-GO'
+    write_verdict(small / 'stage0/verdict.json', claimed)
+    assert run_stage0(small) == 1
+
+
+def test_stage0_scorer_without_outcome_while_mine_has_one_fails(small):
+    stage0_tree(small)
+    verdict = stage0_verdict(small)
+    verdict['blocks']['full'] = dict(candidate='G', scale='full', outcome_id=None, v_failure='V0c: emotion s3 failed twice')
+    verdict['outcomes']['full'] = None
+    verdict['E0'] = False
+    write_verdict(small / 'stage0/verdict.json', verdict)
+    assert run_stage0(small) == 1
+
+
+def stage4_tree(out, name='c', skip=()):
+    write_set(rs_paths.full_root(out) / 'held' / name, 150, 3, arm=name, skip=skip)
+    write_cache(out / 'stage4/partitions/full' / name, 3, V.ASPECTS)
+
+
+def stage4_verdict(out, name='c'):
+    mine = V.stage4(FakeCtx(150), out, name, 6, 1)
+    verdict = verdict_stage4(mine)
+    m = mine['emotion_margin']
+    verdict['emotion_margin']['max_entry'] = max(m['A_e'], key=m['A_e'].get)
+    verdict.update(smoke=True, n_resamples=6, candidate=name)
+    write_verdict(out / 'stage4/verdict.json', verdict)
+    return verdict
+
+
+def run_stage4(out, name='c'):
+    return V.main(['stage4', '--candidate', name, '--outputs', str(out), '--workers', '1'])
+
+
+def test_stage4_whole_run_agrees_and_compares_every_aspects_partitions(small):
+    stage4_tree(small)
+    stage4_verdict(small)
+    assert run_stage4(small) == 0
+    doc = report(small, 'stage4')
+    names = {i['name'] for i in doc['items']}
+    assert doc['pass'] and doc['smoke'] and {f'{a}.partitions.mismatches' for a in V.ASPECTS} <= names
+    assert {'emotion_margin.partitions.unchecked', 'genre.partitions.unchecked'} <= names
+    assert any(k.endswith('stage4/partitions/full/c/genre__s4__r20.npz') for k in doc['inputs_sha256'])
+
+
+@pytest.mark.parametrize('aspect, flagged', [('emotion', ['emotion.partitions.mismatches', 'emotion_margin.partitions.mismatches']),
+                                             ('style', ['style.partitions.mismatches']), ('genre', ['genre.partitions.mismatches'])])
+def test_stage4_permuted_candidate_partition_fails_the_run(small, aspect, flagged):
+    stage4_tree(small)
+    stage4_verdict(small)
+    swap_clusters(small / f'stage4/partitions/full/c/{aspect}__s1__r20.npz')
+    assert run_stage4(small) == 1
+    assert [i['name'] for i in report(small, 'stage4')['items'] if not i['ok']] == flagged
+
+
+@pytest.mark.parametrize('aspect, flagged', [('emotion', ['emotion.partitions.unchecked', 'emotion_margin.partitions.unchecked']),
+                                             ('style', ['style.partitions.unchecked'])])
+def test_stage4_missing_partition_file_fails_the_run(small, aspect, flagged):
+    stage4_tree(small)
+    stage4_verdict(small)
+    (small / f'stage4/partitions/full/c/{aspect}__s2__r20.npz').unlink()
+    assert run_stage4(small) == 1
+    assert [i['name'] for i in report(small, 'stage4')['items'] if not i['ok']] == flagged
+
+
+def inject_failure(out, kind, name='c'):
+    held = rs_paths.full_root(out) / 'held' / name
+    if kind == 'train':
+        folder = rs_paths.full_root(out) / 'train' / name
+        folder.mkdir(parents=True)
+        (folder / 'failed__s2.json').write_text(json.dumps(dict(cause='non-finite loss')))
+    elif kind == 'v4c':
+        (held / 'v4c.json').write_text(json.dumps(dict(**{'pass': False}, problems=['x'])))
+    elif kind == 'held':
+        for suffix in ('.npz', '.json'):
+            (held / f'style__s1{suffix}').unlink()
+        (held / 'failed__style__s1.json').write_text(json.dumps(dict(problems=['shape'])))
+    else:
+        for suffix in ('.npz', '.json'):                      # an output missing without any record
+            (held / f'genre__s4{suffix}').unlink()
+
+
+@pytest.mark.parametrize('kind', ['train', 'v4c', 'held', 'missing'])
+def test_stage4_any_failure_leaves_every_aspect_and_the_margin_without_outcome(small, kind):
+    stage4_tree(small)
+    healthy = stage4_verdict(small)
+    inject_failure(small, kind)
+    V._CACHE.clear()                                           # the healthy run's reads must not stand in for the new files
+    mine = V.stage4(FakeCtx(150), small, 'c', 6, 1)
+    assert mine['v_failure'] and all(mine['aspects'][a]['outcome_id'] is None for a in V.ASPECTS)
+    assert mine['emotion_margin']['outcome_id'] is None
+    assert run_stage4(small) == 1                              # the verdict still states outcomes: a disagreement
+    scorer = failed_verdict_stage4(f'{kind}: the scorer cause')
+    scorer['candidate'] = 'c'
+    write_verdict(small / 'stage4/verdict.json', scorer)
+    assert run_stage4(small) == 0                              # no traceback; the rederive file says pass
+    doc = report(small, 'stage4')
+    assert doc['pass'] is True and doc['mine']['v_failure'] and any('the scorer cause' in n for n in doc['notes'])
+    assert healthy['aspects']['emotion']['outcome']
+
+
+def test_stage4_scorer_failure_while_my_outputs_are_fine_fails(small):
+    stage4_tree(small)
+    stage4_verdict(small)
+    scorer = failed_verdict_stage4('V4d: seed 2 failed twice')
+    scorer.update(candidate='c', smoke=True, n_resamples=6)       # a smoke: my outputs are re-derived with 6 draws, not 2,000
+    write_verdict(small / 'stage4/verdict.json', scorer)
+    assert run_stage4(small) == 1
+
+
+# ---- smoke verdicts ---------------------------------------------------------------------------------------------
+
+def test_smoke_verdict_outside_scratch_is_refused_and_leaves_no_report(small, monkeypatch):
+    stage4_tree(small)
+    stage4_verdict(small)
+    monkeypatch.setattr(rs_paths, 'SMOKE_ROOT', small.parent / 'elsewhere')       # the outputs are not under scratch now
+    with pytest.raises(AssertionError, match='smoke'):
+        run_stage4(small)
+    assert not (small / 'stage4/rederive_stage4.json').exists()
+
+
+def test_report_says_when_the_verdict_is_not_a_smoke(small):
+    scorer = failed_verdict_stage4()
+    scorer['candidate'] = 'c'
+    write_verdict(small / 'stage4/verdict.json', scorer)
+    stage4_tree(small)
+    inject_failure(small, 'train')
+    assert run_stage4(small) == 0 and report(small, 'stage4')['smoke'] is False
 
 
 # ---- integration: K4's sample-scale block from the frozen files (point values only) ---------------------------
