@@ -442,16 +442,19 @@ def test_part_a_uses_frozen_g_when_the_machine_has_no_g_run(tmp_path):
 # ---- part (b): the sweep's decisions from both sets of A values ------------------------------------------------------
 
 def stage1_json(d1):
-    """A stage 1 file in the shape the ticket names (rows as a list, curves omitted)."""
-    return dict(stage='1', ranges=RA, reference=dict(name='G', A=d1['rows']['G']['A']),
-                runs=[dict(r, best_epoch=None, cause=None) for r in d1['rows'].values()],
+    """A stage 1 file in the layout of the round's example (stage1.json, written by ticket 04's tests): `runs` holds the
+    39 stage 1 rows without G (G is `reference`), `failed` = [{name, cause}], and a SWEEP-NONE has an empty grid."""
+    rows = [dict(r, best_epoch=None, cause=None) for n, r in d1['rows'].items() if n in rs_vp.STAGE1_NAMES]
+    return dict(stage='stage1', ranges=RA, reference=dict(name='G', source='12-27', A=d1['rows']['G']['A']),
+                runs=rows, failed=[dict(name=r['name'], cause='x') for r in rows if r['status'] == 'failed'],
                 knob_gains=d1['knob_gains'], grid_knobs=d1['grid_knobs'], outcome=d1['outcome'], levels=d1['levels'],
-                grid=dict(points=d1['grid']['points'], order=[], g0='G', reused=d1['grid']['reused'],
-                          new=d1['grid']['new']))
+                grid=dict(points=d1['grid']['points'], order=[p['name'] for p in d1['grid']['points']],
+                          g0=['G'] if d1['grid_knobs'] else [], reused=d1['grid']['reused'], new=d1['grid']['new']))
 
 
 def stage2_json(d2):
-    return dict(stage='2', new_runs=[dict(r, best_epoch=None, cause=None) for r in d2['rows'].values()],
+    rows = [dict(r, best_epoch=None, cause=None) for r in d2['rows'].values()]
+    return dict(stage='stage2', new_runs=rows, failed=[dict(name=r['name'], cause='x') for r in rows if r['status'] == 'failed'],
                 pool=d2['pool'], top=[dict(rank=i + 1, name=n) for i, n in enumerate(d2['top'])], outcome=d2['outcome'])
 
 
@@ -530,6 +533,27 @@ def test_sweep_without_stage2_checks_stage1_only_and_sweep_none_has_no_stage2(tm
     out = sweep_outputs(tmp_path, runs_for({}))
     reps = rs_vp.sweep(out, 'node402')
     assert len(reps) == 1 and reps[0]['pass'] is True and reps[0]['mine']['outcome'] == 'SWEEP-NONE'
+    assert json.loads((out / 'sweep/node402/stage1.json').read_text())['grid']['points'] == []      # no grid, no G0 point
+
+
+def test_sweep_reads_the_round_layout_with_failed_runs_and_no_g_row(tmp_path):
+    runs = with_grid({'k3=12': ranges(1), 'k6=0.0005': ranges(2)}, new={'k3=12+k6=0.0005': ranges(2.5)})
+    runs['k5=0.5'] = dict(status='failed', A=None)
+    runs['k3=12+k6=0.0005'] = dict(status='failed', A=None)
+    out = sweep_outputs(tmp_path, runs)
+    s1 = json.loads((out / 'sweep/node402/stage1.json').read_text())
+    assert 'G' not in [r['name'] for r in s1['runs']] and s1['failed'] == [dict(name='k5=0.5', cause='x')]
+    assert [r['pass'] for r in rs_vp.sweep(out, 'node402')] == [True, True]
+    f1, f2 = out / 'sweep/node402/stage1.json', out / 'sweep/node402/stage2.json'
+    bad = json.loads(f1.read_text())
+    bad['failed'] = []
+    f1.write_text(json.dumps(bad))
+    assert rs_vp.sweep(out, 'node402')[0]['pass'] is False
+    f1.write_text(json.dumps(s1))
+    bad = json.loads(f2.read_text())
+    bad['failed'] = []
+    f2.write_text(json.dumps(bad))
+    assert rs_vp.sweep(out, 'node402')[1]['pass'] is False
 
 
 # ---- stage 3 and the development ablation: files to verdicts --------------------------------------------------------
@@ -600,19 +624,14 @@ def test_stage3_core_on_a_tiny_case_matches_the_rules_text(tmp_path):
     assert mine['outcome'] in ('PICK', 'KEEP-G') and (mine['pick'] is None) == (mine['outcome'] == 'KEEP-G')
 
 
-def write_scorer_files(out, ctx, arms, names):
-    """What a correct scorer leaves for seeds 1 to 3 of `names`: partitions and score files under scores/local/."""
-    from sklearn.metrics import adjusted_mutual_info_score as ami
+def write_cache(out, arms, names, stage='stage3'):
+    """What a correct scorer leaves for seeds 1 to 3 of `names`: partitions under <stage>/cache/<name>/s<seed>/."""
     for name in names:
         for s in rs_vp.DEV_SEEDS:
-            d = out / 'scores' / 'local'
-            (d / 'partitions' / name / f's{s}').mkdir(parents=True, exist_ok=True)
-            A = {}
+            d = out / stage / 'cache' / name / f's{s}'
+            d.mkdir(parents=True, exist_ok=True)
             for a in rs_vp.ASPECTS:
-                np.savez(d / 'partitions' / name / f's{s}' / f'{a}__partitions.npz', labels=arms[name][a][s])
-                idx = np.flatnonzero(ctx.labels[a] >= 0)
-                A[a] = float(np.mean([ami(ctx.labels[a][idx], p[idx]) for p in arms[name][a][s]]))
-            (d / f'{name}__s{s}.json').write_text(json.dumps(dict(name=name, seed=s, status='ok', A=A)))
+                np.savez(d / f'{a}__partitions.npz', labels=arms[name][a][s])
 
 
 def write_g_partitions(path, arms):
@@ -622,26 +641,29 @@ def write_g_partitions(path, arms):
             np.savez(path / f's{s}' / f'{a}__partitions.npz', labels=arms['G'][a][s])
 
 
-def test_stage3_core_compares_partitions_and_score_files(tmp_path):
+def test_stage3_core_compares_partitions_of_tops_runs_and_of_g(tmp_path):
     ctx = tiny_ctx()
     out, frozen, arms = stage3_case(tmp_path, ctx)
     gparts = tmp_path / 'g_partitions'
-    write_scorer_files(out, ctx, arms, ('k3=12', 'k6=0.0005'))
+    write_cache(out, arms, ('k3=12', 'k6=0.0005'))
     write_g_partitions(gparts, arms)
     kw = dict(n_draws=3, workers=1, threads=1, g_folders=frozen, g_partitions=gparts)
-    assert rs_vp.stage3_core(out, ['k3=12', 'k6=0.0005'], ctx, rs_vp.Recorder(), **kw)['items_pass'] is True
-    f = out / 'scores' / 'local' / 'k3=12__s2.json'
-    d = json.loads(f.read_text())
-    d['A']['style'] += 3e-6
-    f.write_text(json.dumps(d))
-    assert rs_vp.stage3_core(out, ['k3=12', 'k6=0.0005'], ctx, rs_vp.Recorder(), **kw)['items_pass'] is False
-    d['A']['style'] -= 3e-6
-    f.write_text(json.dumps(d))
+    top = ['k3=12', 'k6=0.0005']
+    assert rs_vp.stage3_core(out, top, ctx, rs_vp.Recorder(), **kw)['items_pass'] is True
+    f = out / 'stage3' / 'cache' / 'k3=12' / 's2' / 'style__partitions.npz'
+    lab = np.load(f)['labels'].copy()
+    lab[2, 5] = (lab[2, 5] + 1) % 20                                 # one label of one state differs
+    np.savez(f, labels=lab)
+    assert rs_vp.stage3_core(out, top, ctx, rs_vp.Recorder(), **kw)['items_pass'] is False
+    np.savez(f, labels=arms['k3=12']['style'][2])
+    f.with_name('genre__partitions.npz').unlink()                    # a partition file that is not there
+    assert rs_vp.stage3_core(out, top, ctx, rs_vp.Recorder(), **kw)['items_pass'] is False
+    np.savez(f.with_name('genre__partitions.npz'), labels=arms['k3=12']['genre'][2])
     g = gparts / 's1' / 'emotion__partitions.npz'
     lab = np.load(g)['labels'].copy()
     lab[1, 3] = (lab[1, 3] + 1) % 20
     np.savez(g, labels=lab)
-    assert rs_vp.stage3_core(out, ['k3=12', 'k6=0.0005'], ctx, rs_vp.Recorder(), **kw)['items_pass'] is False
+    assert rs_vp.stage3_core(out, top, ctx, rs_vp.Recorder(), **kw)['items_pass'] is False
 
 
 def test_stage3_a_config_with_a_failed_or_bad_seed_does_not_qualify_and_has_no_numbers(tmp_path):
@@ -657,61 +679,105 @@ def test_stage3_a_config_with_a_failed_or_bad_seed_does_not_qualify_and_has_no_n
     assert mine['outcome'] == 'KEEP-G' and mine['qualifiers'] == []
 
 
-def verdict_like(mine):
-    """A verdict file in the layout compare_stage3 assumes."""
-    return dict(pick=mine['pick'], outcome=mine['outcome'], qualifiers=mine['qualifiers'],
-                configs={n: ({k: c[k] for k in ('status', 'Abar', 'e', 'M', 'qualifies')} if c['status'] == 'ok'
-                             else dict(status='failed', cause='x', qualifies=False))
-                         for n, c in mine['configs'].items()})
+def verdict_like(mine, stage2_sha='abc'):
+    """A stage3/verdict.json in the layout of ticket 06's examples: results {name: {status, cause, effects, M,
+    conditions, qualifies}}, effects[a] = {e, lo, hi} with Abar ({config, G}) and A ({config: {seed}}) beside."""
+    def result(name, c):
+        if c['status'] != 'ok':
+            return dict(status='failed', cause='seed 1: nonfinite loss at epoch 2 (emotion)', effects=None, M=None,
+                        conditions=None, qualifies=False)
+        eff = {a: dict(c['e'][a], Abar={name: c['Abar'][a], 'G': mine['G']['Abar'][a]},
+                       A={name: {str(s): v for s, v in c['A'][a].items()}}) for a in rs_vp.ASPECTS}
+        return dict(status='ok', cause=None, effects=eff, M=dict(c['M']), conditions={'any': 'free form'},
+                    qualifies=c['qualifies'])
+    return dict(stage='stage3', smoke=False, written='2026-10-28 09:15', stage2_machine='local',
+                ranges=dict(RA), seeds=[1, 2, 3], n_draws=mine['n_draws'], draw_mode='joint',
+                reference=dict(name='G', arm='GS-0.02'), top=list(mine['top']), outcome=mine['outcome'],
+                pick=mine['pick'], pick_config=mine['pick_config'], qualifiers=list(mine['qualifiers']),
+                not_qualifying=list(mine['not_qualifying']), failed=list(mine['failed']), lead=None,
+                results={n: result(n, c) for n, c in mine['configs'].items()},
+                inputs=dict(stage2_sha256=stage2_sha))
 
 
 def fake_mine():
     ok = dict(status='ok', cause=None, qualifies=True, Abar=dict(emotion=0.1, style=0.4, genre=0.5),
+              A={a: {1: 0.09, 2: 0.1, 3: 0.11} for a in rs_vp.ASPECTS},
               e=dict(emotion=dict(e=0.001, lo=-0.001, hi=0.003), style=dict(e=0.002, lo=0.0, hi=0.004),
                      genre=dict(e=0.003, lo=0.001, hi=0.005)), M=dict(M=0.5, lo=0.1, hi=0.9))
-    return dict(top=['a', 'b'], pick='a', outcome='PICK', qualifiers=['a'],
-                configs={'a': ok, 'b': dict(ok, qualifies=False, M=dict(M=0.4, lo=-0.1, hi=0.9))})
+    bad = dict(status='failed', cause='seed 1: nonfinite loss at epoch 2 (emotion)', qualifies=False)
+    return dict(top=['a', 'b', 'c'], pick='k3=12', outcome='PICK', qualifiers=['a'], failed=['c'],
+                not_qualifying=['b'], pick_config=json.loads(json.dumps(rs_sheet.parse('k3=12'))), n_draws=2000,
+                G=dict(Abar=dict(emotion=0.099, style=0.398, genre=0.497)),
+                configs={'a': ok, 'b': dict(ok, qualifies=False, M=dict(M=0.4, lo=-0.1, hi=0.9)), 'c': bad})
 
 
 def test_compare_stage3_agrees_and_catches_each_kind_of_difference():
     mine = fake_mine()
     items = {}
-    rs_vp.compare_stage3(items, mine, verdict_like(mine))
+    rs_vp.compare_stage3(items, mine, verdict_like(mine), stage2=dict(sha256='abc', top=mine['top']))
     assert items and all(i['pass'] for i in items.values())
     edits = (lambda v: v.update(pick='b'), lambda v: v.update(outcome='KEEP-G'), lambda v: v.update(qualifiers=['a', 'b']),
-             lambda v: v['configs']['a']['Abar'].update(genre=0.5001),
-             lambda v: v['configs']['a']['e']['style'].update(lo=-0.0001),
-             lambda v: v['configs']['a']['M'].update(hi=0.95), lambda v: v['configs']['b'].update(qualifies=True))
+             lambda v: v.update(top=['b', 'a', 'c']), lambda v: v.update(failed=[]), lambda v: v.update(n_draws=100),
+             lambda v: v.update(not_qualifying=[]), lambda v: v.update(pick_config=None),
+             lambda v: v['ranges'].update(genre=0.0129), lambda v: v.update(draw_mode='aspect'),
+             lambda v: v['results']['a']['effects']['genre']['Abar'].update(a=0.5001),
+             lambda v: v['results']['a']['effects']['genre']['Abar'].update(G=0.4971),
+             lambda v: v['results']['a']['effects']['style'].update(lo=-0.0001),
+             lambda v: v['results']['a']['effects']['emotion'].update(e=0.0011),
+             lambda v: v['results']['a']['effects']['emotion']['A']['a'].update({'2': 0.2}),
+             lambda v: v['results']['a']['M'].update(hi=0.95), lambda v: v['results']['b'].update(qualifies=True),
+             lambda v: v['results']['c'].update(status='ok'), lambda v: v['results'].pop('b'),
+             lambda v: v['inputs'].update(stage2_sha256='zzz'))
     for edit in edits:
         v = json.loads(json.dumps(verdict_like(mine)))
         edit(v)
         items = {}
-        rs_vp.compare_stage3(items, mine, v)
-        assert not all(i['pass'] for i in items.values())
-    items = {}
+        rs_vp.compare_stage3(items, mine, v, stage2=dict(sha256='abc', top=mine['top']))
+        assert not all(i['pass'] for i in items.values()), edit
     v = verdict_like(mine)
-    v['configs']['a']['Abar']['genre'] += 5e-7                       # inside 1e-6
-    rs_vp.compare_stage3(items, mine, v)
+    v['results']['a']['effects']['genre']['Abar']['a'] += 5e-7       # inside 1e-6
+    v['written'] = 'any time'                                        # not compared
+    items = {}
+    rs_vp.compare_stage3(items, mine, v, stage2=dict(sha256='abc', top=mine['top']))
     assert all(i['pass'] for i in items.values())
+
+
+def test_compare_stage3_reads_the_keep_g_example_with_a_failed_configuration():
+    mine = dict(top=['k6=0.0003'], pick=None, outcome='KEEP-G', qualifiers=[], failed=['k6=0.0003'], not_qualifying=[],
+                pick_config=None, n_draws=2000, G=dict(Abar={}),
+                configs={'k6=0.0003': dict(status='failed', cause='seed 1: nonfinite loss (emotion)', qualifies=False)})
+    v = verdict_like(mine)
+    v['pick'] = v['pick_config'] = v['lead'] = None
+    items = {}
+    rs_vp.compare_stage3(items, mine, v)
+    assert items and all(i['pass'] for i in items.values()), [k for k, i in items.items() if not i['pass']]
+
+
+def ablation_case(tmp_path, ctx, removals=('direct', 'buddy', 'relational')):
+    """Final model G (frozen runs), one failed arm ('direct'), two ok arms, and the scorer's cache for the ok ones."""
+    frozen = {s: tmp_path / 'frozen' / f's{s}' for s in rs_vp.DEV_SEEDS}
+    arms = {'G': write_arm(ctx, frozen, 1)}
+    out = tmp_path / 'out'
+    for i, x in enumerate(removals):
+        name = f'G-no_{x}'
+        if x == 'direct':
+            for s in rs_vp.DEV_SEEDS:
+                write_run(out / 'train' / name / f's{s}', 0, status='failed' if s == 2 else 'ok')
+            continue
+        arms[name] = write_arm(ctx, {s: out / 'train' / name / f's{s}' for s in rs_vp.DEV_SEEDS}, 2 + i)
+    write_cache(out, arms, [n for n in arms if n != 'G'], stage='ablation')
+    return out, frozen, arms
 
 
 def test_ablation_core_points_e_a_against_the_final_model(tmp_path):
     ctx = tiny_ctx()
-    frozen = {s: tmp_path / 'frozen' / f's{s}' for s in rs_vp.DEV_SEEDS}
-    arms = {'G': write_arm(ctx, frozen, 1)}
-    out = tmp_path / 'out'
-    for i, x in enumerate(rs_vp.REMOVALS):
-        name = f'G-no_{x}'
-        if x == 'direct':
-            write_run(out / 'train' / name / 's1', 0, status='failed')       # a failed arm: reported, no effect
-            for s in (2, 3):
-                write_run(out / 'train' / name / f's{s}', 0, status='failed')
-            continue
-        arms[name] = write_arm(ctx, {s: out / 'train' / name / f's{s}' for s in rs_vp.DEV_SEEDS}, 2 + i)
-    mine = rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), n_draws=0, workers=1, threads=1, g_folders=frozen,
-                               g_partitions=None)
-    assert mine['final'] == 'G' and sorted(mine['arms']) == sorted(f'G-no_{x}' for x in rs_vp.REMOVALS)
+    out, frozen, arms = ablation_case(tmp_path, ctx)
+    kw = dict(n_draws=0, workers=1, threads=1, g_folders=frozen, g_partitions=None, removals=('direct', 'buddy', 'relational'))
+    mine = rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), **kw)
+    assert mine['final'] == 'G' and sorted(mine['arms']) == ['G-no_buddy', 'G-no_direct', 'G-no_relational']
+    assert mine['removal_arms'] == {x: f'G-no_{x}' for x in ('direct', 'buddy', 'relational')}
     assert mine['arms']['G-no_direct']['status'] == 'failed' and 'e' not in mine['arms']['G-no_direct']
+    assert mine['items'] and all(i['pass'] for i in mine['items'].values())
     from sklearn.metrics import adjusted_mutual_info_score as ami
     for a in rs_vp.ASPECTS:
         idx = np.flatnonzero(ctx.labels[a] >= 0)
@@ -719,34 +785,101 @@ def test_ablation_core_points_e_a_against_the_final_model(tmp_path):
                                 for s in rs_vp.DEV_SEEDS])
         assert mine['arms']['G-no_buddy']['e'][a]['e'] == pytest.approx(ab('G-no_buddy') - ab('G'), abs=1e-12)
         assert mine['arms']['G-no_buddy']['e'][a]['lo'] is None            # points only (n_draws 0)
-    del_dir = out / 'train' / 'G-no_buddy'
+        assert mine['arms']['G-no_buddy']['A'][a][2] == pytest.approx(
+            np.mean([ami(ctx.labels[a][idx], p[idx]) for p in arms['G-no_buddy'][a][2]]), abs=1e-12)
+    assert set(mine['inputs']['arm_runs']) == {'buddy', 'relational'} and set(mine['inputs']['final_runs']) == {'1', '2', '3'}
+    # a scorer partition that differs, and an ok arm without its cache files, are differences
+    f = out / 'ablation' / 'cache' / 'G-no_buddy' / 's3' / 'emotion__partitions.npz'
+    lab = np.load(f)['labels'].copy()
+    lab[0, 0] = (lab[0, 0] + 1) % 20
+    np.savez(f, labels=lab)
+    assert not all(i['pass'] for i in rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), **kw)['items'].values())
     import shutil
-    shutil.rmtree(del_dir)
+    shutil.rmtree(out / 'train' / 'G-no_buddy')
     with pytest.raises(AssertionError, match='arm'):
-        rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), n_draws=0, workers=1, threads=1, g_folders=frozen,
-                            g_partitions=None)
+        rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), **kw)
 
 
-def test_compare_ablation_checks_points_and_the_failed_arms():
-    arm = dict(status='ok', cause=None, Abar=dict(emotion=0.1, style=0.4, genre=0.5),
-               e=dict(emotion=dict(e=0.001, lo=None, hi=None), style=dict(e=0.002, lo=None, hi=None),
-                      genre=dict(e=-0.003, lo=None, hi=None)))
-    mine = dict(final='G', arms={'G-no_buddy': arm, 'G-no_direct': dict(status='failed', cause='nan loss')})
-    theirs = dict(final='G', results={'G-no_buddy': dict(status='ok', effects={a: dict(e=arm['e'][a]['e'], lo=-1, hi=1)
-                                                                              for a in rs_vp.ASPECTS}),
-                                      'G-no_direct': dict(status='failed', cause='non-finite loss')})
+def dev_like(mine):
+    """An ablation/dev.json in ticket 10's layout built from my record (a correct scorer)."""
+    results, failed = {}, []
+    for x, name in mine['removal_arms'].items():
+        arm = mine['arms'][name]
+        if arm['status'] != 'ok':
+            results[x] = dict(arm=name, status='failed', cause='seed 2: non-finite loss in the genre head', aspects=None, M=None)
+            failed.append(dict(removal=x, arm=name, cause=results[x]['cause']))
+            continue
+        aspects = {a: dict(effect=arm['e'][a]['e'], lo=arm['e'][a]['lo'], hi=arm['e'][a]['hi'], arm_ami=arm['Abar'][a],
+                           final_ami=mine['F']['Abar'][a], arm_seed_ami={str(s): v for s, v in arm['A'][a].items()},
+                           final_seed_ami={str(s): v for s, v in mine['F']['A'][a].items()}) for a in rs_vp.ASPECTS}
+        results[x] = dict(arm=name, status='ok', cause=None, aspects=aspects, M=dict(arm['M']))
+    return dict(stage='ablation_dev', smoke=True, written='2026-10-27 12:31', rule_commit='x', ranges=dict(RA),
+                seeds=[1, 2, 3], n_draws=mine['n_draws'], draw_mode='joint', draws='prose',
+                final=dict(name=mine['final'], outcome='KEEP-G', pick=None), final_key=mine['final'],
+                removals=list(mine['removal_arms']), results=results, failed=failed, inputs=json.loads(json.dumps(mine['inputs'])))
+
+
+def test_compare_ablation_checks_each_number_the_failed_arms_and_the_inputs(tmp_path):
+    ctx = tiny_ctx()
+    out, frozen, arms = ablation_case(tmp_path, ctx)
+    mine = rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), n_draws=3, workers=1, threads=1, g_folders=frozen,
+                               g_partitions=None, removals=('direct', 'buddy', 'relational'))
+    mine.pop('items')
     items = {}
-    rs_vp.compare_ablation(items, mine, theirs)
-    assert items and all(i['pass'] for i in items.values())
-    theirs['results']['G-no_buddy']['effects']['genre']['e'] += 2e-6
+    rs_vp.compare_ablation(items, mine, dev_like(mine))
+    assert items and all(i['pass'] for i in items.values()), [k for k, i in items.items() if not i['pass']]
+    edits = (lambda v: v['results']['buddy']['aspects']['genre'].update(effect=v['results']['buddy']['aspects']['genre']['effect'] + 2e-6),
+             lambda v: v['results']['buddy']['aspects']['genre'].update(lo=-1),
+             lambda v: v['results']['relational']['aspects']['style']['arm_seed_ami'].update({'2': 0.9}),
+             lambda v: v['results']['relational']['aspects']['style']['final_seed_ami'].update({'3': 0.9}),
+             lambda v: v['results']['relational']['aspects']['emotion'].update(arm_ami=0.9),
+             lambda v: v['results']['relational']['M'].update(hi=9.0),
+             lambda v: v['results']['relational'].update(arm='G-no_other'),
+             lambda v: v['results']['direct'].update(status='ok'),
+             lambda v: v['results']['direct'].update(aspects={}),
+             lambda v: v.update(failed=[]), lambda v: v.update(removals=['direct', 'buddy']),
+             lambda v: v['results'].pop('relational'), lambda v: v['final'].update(name='k3=12'), lambda v: v.update(final_key='x'),
+             lambda v: v.update(n_draws=7), lambda v: v.update(seeds=[0, 1, 2]),
+             lambda v: v['inputs']['final_runs']['1'].update(run_sha256='z'),
+             lambda v: v['inputs']['arm_runs']['relational']['3']['img_sha256'].update(genre='z'))
+    for edit in edits:
+        v = json.loads(json.dumps(dev_like(mine)))
+        edit(v)
+        items = {}
+        rs_vp.compare_ablation(items, mine, v)
+        assert not all(i['pass'] for i in items.values()), edit
+    v = json.loads(json.dumps(dev_like(mine)))
+    v['written'], v['host'], v['draws'] = 'later', 'h', 'other prose'          # not compared
+    v['results']['direct']['cause'] = 'another prose cause'
     items = {}
-    rs_vp.compare_ablation(items, mine, theirs)
-    assert not all(i['pass'] for i in items.values())
-    theirs['results']['G-no_buddy']['effects']['genre']['e'] -= 2e-6
-    theirs['final'] = 'k3=12'
-    items = {}
-    rs_vp.compare_ablation(items, mine, theirs)
-    assert not all(i['pass'] for i in items.values())
+    rs_vp.compare_ablation(items, mine, v)
+    assert all(i['pass'] for i in items.values())
+
+
+def test_ablation_wrapper_takes_the_removals_from_the_file_and_refuses_a_partial_real_run(tmp_path):
+    ctx = tiny_ctx()
+    out, frozen, arms = ablation_case(tmp_path, ctx)
+    removals = ('direct', 'buddy', 'relational')
+    kw = dict(n_draws=3, workers=1, threads=1, g_folders=frozen, g_partitions=None)
+    mine = rs_vp.ablation_core(out, 'G', ctx, rs_vp.Recorder(), removals=removals, **kw)
+    mine.pop('items')
+    (out / 'stage3').mkdir()
+    (out / 'stage3' / 'verdict.json').write_text(json.dumps(dict(outcome='KEEP-G', pick=None)))
+    v = dev_like(mine)
+    v['p_sha256'] = ctx.p_sha
+    (out / 'ablation').mkdir(exist_ok=True)
+    dev = out / 'ablation' / 'dev.json'
+    dev.write_text(json.dumps(v))
+    rep = rs_vp.ablation(out, 'G', ctx=ctx, **kw)
+    assert rep['pass'] is True and json.loads((out / 'ablation' / 'rederive_dev.json').read_text())['pass'] is True
+    assert rs_vp.ablation(out, 'G', ctx=ctx, **dict(kw, n_draws=-1))['pass'] is True      # the file's own count
+    v['smoke'] = False                                                    # a real run lists the rule's eight removals
+    dev.write_text(json.dumps(v))
+    with pytest.raises(AssertionError, match='eight'):
+        rs_vp.ablation(out, 'G', ctx=ctx, **kw)
+    v['smoke'], v['final']['pick'] = True, 'k3=12'
+    dev.write_text(json.dumps(v))
+    assert rs_vp.ablation(out, 'G', ctx=ctx, **kw)['pass'] is False
 
 
 def test_stage3_wrapper_takes_top_from_my_a_values_and_compares_with_the_verdict_file(tmp_path):
@@ -759,7 +892,7 @@ def test_stage3_wrapper_takes_top_from_my_a_values_and_compares_with_the_verdict
     arms = {'G': write_arm(ctx, frozen, 1)}
     for tag, name in enumerate(top, start=2):
         arms[name] = write_arm(ctx, {s: out / 'train' / name / f's{s}' for s in rs_vp.DEV_SEEDS}, tag)
-    write_scorer_files(out, ctx, arms, top)
+    write_cache(out, arms, top)
     gparts = tmp_path / 'g_partitions'
     write_g_partitions(gparts, arms)
     sdir = out / 'scores' / 'node402'
@@ -768,16 +901,22 @@ def test_stage3_wrapper_takes_top_from_my_a_values_and_compares_with_the_verdict
         **{'pass': True}, runs={n: dict(status=r['status'], A=r['A']) for n, r in runs.items()})))
     kw = dict(n_draws=3, workers=1, threads=1, g_folders=frozen)
     core = rs_vp.stage3_core(out, top, ctx, rs_vp.Recorder(), g_partitions=gparts, **kw)
-    verdict = verdict_like(core)
-    (out / 'stage3').mkdir()
+    (out / 'sweep' / 'node402').mkdir(parents=True)
+    s2 = out / 'sweep' / 'node402' / 'stage2.json'
+    s2.write_text(json.dumps(stage2_json(rs_vp.derive_stage2(runs))))
+    verdict = verdict_like(core, stage2_sha=rs_vp.sha(s2.read_bytes()))
+    verdict['stage2_machine'] = 'node402'
+    (out / 'stage3').mkdir(exist_ok=True)
     vfile = out / 'stage3' / 'verdict.json'
     vfile.write_text(json.dumps(verdict))
     rep = rs_vp.stage3(out, 'node402', ctx=ctx, g_partitions=gparts, **kw)
     assert rep['pass'] is True and rep['mine']['top'] == top
     assert json.loads((out / 'stage3' / 'rederive_stage3.json').read_text())['pass'] is True
-    verdict['configs'][top[1]]['M']['lo'] += 1e-5
+    verdict['results'][top[1]]['M']['lo'] += 1e-5
     vfile.write_text(json.dumps(verdict))
     assert rs_vp.stage3(out, 'node402', ctx=ctx, g_partitions=gparts, **kw)['pass'] is False
+    with pytest.raises(AssertionError, match='draws'):
+        rs_vp.stage3(out, 'node402', ctx=ctx, g_partitions=gparts, **dict(kw, n_draws=0))
 
 
 def test_command_line_parses_every_mode_and_refuses_outputs_in_a_frozen_folder(tmp_path):
