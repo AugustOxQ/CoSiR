@@ -1137,3 +1137,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-27-r10-decide-27-handoff.md
 - New chat: tab 'r10 decide 27', session f2e3eca7-b668-4b3e-b8d3-e31c20f0a64c
 
+[brief] CoSiR: r10 decide 27 -> r10 build 7 (2026-10-27 04:01 Amsterdam)
+- Done: the spec and decision rule of the recipe sweep loop; the user approved the brief at 03:48; an Opus `xhigh` review passed after fixes (all applied).
+- State: model G is the reference (held genre 0.5001 against the instructed Qwen image's 0.5062); no new number exists.
+- Next: the build per matt-chain.md (tickets, implement, final review), with gates V0a, V1a, V3a, V4a and a node check and smoke job on node402.
+- Blocked: nothing. Night mode: do not wait for the user.
+- Handoff: docs/superpowers/handoffs/2026-10-27-r10-build-7-handoff.md
+- New chat: tab 'r10 build 7', session 8f340436-65f2-45ae-b263-b4b6db658f0a
+
