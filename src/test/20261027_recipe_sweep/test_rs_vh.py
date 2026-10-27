@@ -344,6 +344,330 @@ def test_cli_modes_exist():
         p.parse_args(['stage4'])
 
 
+# ---- stage 4 against ticket 09's verdict.json (keys of the example file, build 10) ----------------------------
+
+def aspect_record(a, d, lower, upper, outcome, labelled):
+    return dict(T_equals_frozen=True, d=d, A_cand=0.4, A_fixed=0.4 - d, interval=[lower, upper], bootstrap_d=[lower, upper],
+                outcome_id=outcome, size_in_seed_ranges=d / V.RANGES[a], labelled_rows=labelled, v_failure=None)
+
+
+def mine_stage4():
+    margin = {**block(0.0164, 0.0107), 'scale': 'full', 'outcome_id': 'PE-GO', 'eligible_seeds': {'G': [0, 1], 'B1': [0, 1], 'B2': []}}
+    return dict(candidate='G', n_resamples=2000, held_sha256=V.HELD_SHA256, emotion_margin=margin, aspects=dict(
+        emotion=aspect_record('emotion', 0.0118, 0.0083, 0.015, 'T-WIN', V.N_HELD),
+        style=aspect_record('style', 0.0032, -0.0019, 0.0085, 'T-LEVEL', V.N_HELD),
+        genre=aspect_record('genre', -0.006, -0.0105, -0.0014, 'T-LEVEL', V.N_GENRE_LABELLED)))
+
+
+def verdict_stage4(mine):
+    """Ticket 09's keys: aspects{a: d, lo, hi, outcome, A_cand, A_T, d_in_ranges, labelled_rows, labels_masked},
+    emotion_margin{d, lo, hi, outcome, A_cand, A_e, max_entry, arms, eligible_seeds}; the rest is extra."""
+    out = dict(schema=1, stage=4, kind='KEEP-G', candidate=mine['candidate'], n_resamples=2000, held_sha256=V.HELD_SHA256,
+               ranges=dict(V.RANGES), sources={'x': 1}, gates={}, code_sha256={}, v4b='pending', aspects={})
+    for a, r in mine['aspects'].items():
+        out['aspects'][a] = dict(d=r['d'], lo=r['interval'][0], hi=r['interval'][1], outcome=r['outcome_id'], A_cand=r['A_cand'],
+                                 A_T=r['A_fixed'], d_in_ranges=r['size_in_seed_ranges'], labelled_rows=r['labelled_rows'],
+                                 labels_masked=V.N_HELD - r['labelled_rows'])
+    m = mine['emotion_margin']
+    out['emotion_margin'] = dict(d=m['d'], lo=m['interval'][0], hi=m['interval'][1], outcome=m['outcome_id'], A_cand=m['A_cand'],
+                                 A_e=dict(m['A_e']), max_entry='B1-own', arms=list(m['eligible_seeds']),
+                                 eligible_seeds=json.loads(json.dumps(m['eligible_seeds'])), eligible=None)
+    return json.loads(json.dumps(out))
+
+
+def names_of(items, ok=False):
+    return [i['name'] for i in items if i['ok'] is ok]
+
+
+def test_short_comparison_checks_the_prefix_of_the_draws_and_not_the_bounds():
+    # the self-check with fewer draws: the first draws of a longer file are the same draws (one stream), the bounds are not
+    mine = block()
+    mine.update(bootstrap_d=[0.01, 0.02], interval=[0.0105, 0.0195])
+    theirs = {**mine, 'bootstrap_d': [0.01, 0.02, 0.03, 0.04], 'interval': [0.011, 0.039]}
+    full = V.compare_block('b', mine, theirs)
+    assert {'b.bootstrap_d_max_abs_diff', 'b.interval_lower'} <= set(names_of(full))
+    short = V.compare_block('b', mine, theirs, short=True)
+    assert all(i['ok'] for i in short) and 'b.bootstrap_d_prefix_max_abs_diff' in {i['name'] for i in short}
+    assert not {'b.interval_lower', 'b.interval_upper', 'b.outcome_id'} & {i['name'] for i in short}
+    theirs['bootstrap_d'][1] = 0.0201
+    assert names_of(V.compare_block('b', mine, theirs, short=True)) == ['b.bootstrap_d_prefix_max_abs_diff']
+    t = dict(aspect_record('style', 0.0032, -0.0019, 0.0085, 'T-LEVEL', V.N_HELD), A_fixed=0.4 - 0.0032)
+    t_theirs = dict(d=0.0032, A_cand=0.4, A_T=0.4 - 0.0032, lo=-0.002, hi=0.009, bootstrap_d=[-0.0019, 0.0085, 0.1], outcome='T-WIN')
+    assert all(i['ok'] for i in V.compare_t_block('s', t, t_theirs, 'style', short=True))
+    assert 's.interval_lower' in names_of(V.compare_t_block('s', t, t_theirs, 'style'))
+
+
+def test_compare_stage4_agrees_with_09s_keys():
+    mine = mine_stage4()
+    items = V.compare_stage4(mine, verdict_stage4(mine))
+    assert items and all(i['ok'] for i in items)
+    named = {i['name'] for i in items}
+    assert {'emotion.d_T', 'style.interval_lower', 'genre.A_T', 'genre.labels_masked', 'emotion.d_in_ranges',
+            'genre.outcome_id', 'emotion_margin.d', 'emotion_margin.interval_upper', 'emotion_margin.max_entry',
+            'emotion_margin.arms', 'emotion_margin.outcome_id', 'emotion_margin.A_e[B1-own]',
+            'emotion_margin.eligible_seeds[B2]', 'ranges.genre', 'candidate', 'n_resamples'} <= named
+
+
+@pytest.mark.parametrize('where, key, value, flagged', [
+    (('aspects', 'style'), 'd', 0.0032 + 3e-6, 'style.d_T'),
+    (('aspects', 'style'), 'lo', -0.0019 + 3e-6, 'style.interval_lower'),
+    (('aspects', 'genre'), 'hi', 0.0, 'genre.interval_upper'),
+    (('aspects', 'genre'), 'A_T', 0.5, 'genre.A_T'),
+    (('aspects', 'emotion'), 'outcome', 'T-LEVEL', 'emotion.outcome_id'),
+    (('aspects', 'emotion'), 'd_in_ranges', 1.0, 'emotion.d_in_ranges'),
+    (('aspects', 'genre'), 'labels_masked', 0, 'genre.labels_masked'),
+    (('aspects', 'genre'), 'labelled_rows', 12281, 'genre.labelled_rows'),
+    (('emotion_margin',), 'lo', 0.0, 'emotion_margin.interval_lower'),
+    (('emotion_margin',), 'outcome', 'PE-MM', 'emotion_margin.outcome_id'),
+    (('emotion_margin',), 'max_entry', 'B1-r20', 'emotion_margin.max_entry'),
+    (('emotion_margin',), 'arms', ['G', 'B1'], 'emotion_margin.arms'),
+    ((), 'candidate', 'K9', 'candidate'),
+    (('ranges',), 'style', 0.01, 'ranges.style'),
+])
+def test_compare_stage4_flags_each_value_the_rule_names(where, key, value, flagged):
+    mine = mine_stage4()
+    verdict = verdict_stage4(mine)
+    node = verdict
+    for k in where:
+        node = node[k]
+    node[key] = value
+    assert names_of(V.compare_stage4(mine, verdict)) == [flagged]
+
+
+@pytest.mark.parametrize('where, key', [
+    (('aspects', 'emotion'), 'A_T'), (('aspects', 'style'), 'lo'), (('aspects', 'genre'), 'outcome'),
+    (('aspects', 'genre'), 'labels_masked'), (('emotion_margin',), 'hi'), (('emotion_margin',), 'A_e'),
+    (('emotion_margin',), 'max_entry'), (('emotion_margin',), 'outcome'), (('ranges',), 'genre'), ((), 'candidate')])
+def test_compare_stage4_fails_on_a_missing_key(where, key):
+    mine = mine_stage4()
+    verdict = verdict_stage4(mine)
+    node = verdict
+    for k in where:
+        node = node[k]
+    del node[key]
+    assert names_of(V.compare_stage4(mine, verdict))
+
+
+def test_compare_stage4_ignores_extra_keys():
+    mine = mine_stage4()
+    verdict = verdict_stage4(mine)
+    verdict['smoke'] = True
+    verdict['aspects']['style']['note'] = 'extra'
+    verdict['emotion_margin']['whatever'] = [1, 2]
+    assert all(i['ok'] for i in V.compare_stage4(mine, verdict))
+
+
+def test_compare_stage4_aspect_without_outcome_needs_my_failure_too():
+    mine = mine_stage4()
+    mine['aspects']['style'] = dict(T_equals_frozen=True, outcome_id=None, v_failure={'3': ['non-finite rows']})
+    verdict = verdict_stage4(mine_stage4())
+    verdict['aspects']['style'] = dict(outcome=None, cause='seed 3 failed V4c twice')       # nothing to compare but the cause
+    items = V.compare_stage4(mine, verdict)
+    assert all(i['ok'] for i in items)
+    assert 'style.d_T' not in {i['name'] for i in items}
+    verdict['aspects']['style'] = dict(outcome='T-LEVEL', d=0.0)
+    assert not all(i['ok'] for i in V.compare_stage4(mine, verdict))
+    del verdict['aspects']['style']['outcome']                 # no outcome key and no cause: a missing value, not a failure
+    assert not all(i['ok'] for i in V.compare_stage4(mine, verdict))
+
+
+def test_compare_stage4_verdict_with_only_a_cause():
+    mine = mine_stage4()
+    mine['aspects']['genre'] = dict(T_equals_frozen=True, outcome_id=None, v_failure={'0': ['dtype float32']})
+    verdict = dict(schema=1, stage=4, candidate='G', held_sha256=V.HELD_SHA256, kind=None, outcome=None, cause='V4d: seed 0 failed twice')
+    items = V.compare_stage4(mine, verdict)
+    assert all(i['ok'] for i in items) and 'no outcome' in V.no_outcome_note(verdict)
+    assert V.no_outcome_note(verdict_stage4(mine_stage4())) is None
+    assert not all(i['ok'] for i in V.compare_stage4(mine_stage4(), verdict))      # my outputs are fine, the verdict says failed
+
+
+def test_draws_follow_a_smoke_verdict_only():
+    assert V.draws_for(dict(smoke=True, n_draws=20), 'n_draws') == 20
+    assert V.draws_for(dict(smoke=False, n_draws=20), 'n_draws') == V.DRAWS
+    assert V.draws_for(dict(n_resamples=20), 'n_resamples') == V.DRAWS
+
+
+# ---- the ablation wiring: synthetic outputs tree, one removal present, seven missing ---------------------------
+
+def write_set(folder, n, seed0, bad_norm=False):
+    """Five seeds of three aspects in the saved layout (npz key img, sidecar with rows, list hash, aspect, seed, hash)."""
+    folder.mkdir(parents=True)
+    for a in V.ASPECTS:
+        for s in V.SEEDS:
+            x = unit_rows(n, 8, seed0 + 10 * V.ASPECTS.index(a) + s)
+            x = x * np.float16(1.05) if bad_norm and (a, s) == ('style', 3) else x
+            np.savez(folder / f'{a}__s{s}.npz', img=x)
+            (folder / f'{a}__s{s}.json').write_text(json.dumps(dict(rows=n, list_sha256='h', aspect=a, seed=s, sha256=V.array_sha(x))))
+
+
+class FakeCtx:
+    def __init__(self, n):
+        self.sources = {}
+        rng = np.random.default_rng(3)
+        self.labels = {a: rng.integers(0, 5, size=n) for a in V.ASPECTS}
+        self.labels['genre'][::7] = -1
+
+    def record(self, path):
+        self.sources[str(path)] = 'x'
+        return path
+
+
+@pytest.fixture
+def tree(tmp_path, monkeypatch):
+    monkeypatch.setattr(V, 'N_HELD', 150)
+    monkeypatch.setattr(V, 'WIDTH', 8)
+    monkeypatch.setattr(V, 'HELD_SHA256', 'h')
+    V._CACHE.clear()
+    final = 'k6=0.0005'
+    root = rs_paths.full_root(tmp_path) / 'held'
+    write_set(root / final, 150, 1)
+    write_set(root / f'{final}-no_direct', 150, 500)
+    yield tmp_path, final
+    V._CACHE.clear()
+
+
+def test_ablation_wiring_one_arm_present_seven_missing(tree):
+    out, final = tree
+    ctx = FakeCtx(150)
+    res = V.ablation(ctx, out, final, draws=6, workers=1)
+    assert res['removals']['direct'] == dict(name=f'{final}-no_direct', status='ok', problems={})
+    assert [x for x, r in res['removals'].items() if r['status'] == 'missing'] == [x for x in V.REMOVALS if x != 'direct']
+    assert set(res['effects']) == {'direct'} and set(res['effects']['direct']) == set(V.ASPECTS)
+    assert res['n_resamples'] == 6 and res['labelled_rows'] == {a: int((ctx.labels[a] >= 0).sum()) for a in V.ASPECTS}
+    # one aspect by hand: the arm's and F's point AMIs over the labelled rows, per seed (mean of the 3 r20 partitions)
+    a = 'style'
+    keep = ctx.labels[a] >= 0
+    cache = {}
+    for name, seed0 in (('arm', 500), ('final', 1)):
+        for s in V.SEEDS:
+            x = unit_rows(150, 8, seed0 + 10 * V.ASPECTS.index(a) + s)
+            cache[name, s] = np.mean([ami(ctx.labels[a][keep], p[keep]) for p in V.r20_partition(x)])
+    r = res['effects']['direct'][a]
+    assert r['A_arm'] == pytest.approx(np.mean([cache['arm', s] for s in V.SEEDS]), abs=1e-12)
+    assert r['A_final'] == pytest.approx(np.mean([cache['final', s] for s in V.SEEDS]), abs=1e-12)
+    assert r['d'] == pytest.approx(r['A_arm'] - r['A_final'], abs=1e-12)
+    assert r['arm_seed_ami'] == pytest.approx({str(s): cache['arm', s] for s in V.SEEDS}, abs=1e-12)
+    assert r['final_seed_ami'] == pytest.approx({str(s): cache['final', s] for s in V.SEEDS}, abs=1e-12)
+    assert len(r['bootstrap_d']) == 6
+    assert ctx.sources, 'every file read is recorded'
+
+
+def test_ablation_arm_failing_v0c_has_no_effect(tmp_path, monkeypatch, tree):
+    out, final = tree
+    write_set(rs_paths.full_root(out) / 'held' / f'{final}-no_buddy', 150, 900, bad_norm=True)
+    res = V.ablation(FakeCtx(150), out, final, draws=3, workers=1)
+    assert res['removals']['buddy']['status'] == 'failed V0c' and 'style' in res['removals']['buddy']['problems']
+    assert set(res['effects']) == {'direct'}
+
+
+def test_ablation_final_must_pass_v0c(tree):
+    out, final = tree
+    write_set(rs_paths.full_root(out) / 'held' / 'k6=0.0007', 150, 77, bad_norm=True)
+    with pytest.raises(AssertionError):
+        V.ablation(FakeCtx(150), out, 'k6=0.0007', draws=3, workers=1)
+
+
+# ---- the held ablation against ticket 10's held.json (keys of the example file, build 10) ------------------------
+
+def effect_record(d, lower, upper):
+    return dict(A_arm=0.3 + d, A_final=0.3, d=d, interval=[lower, upper], bootstrap_d=[lower, upper],
+                arm_seed_ami={str(s): 0.3 + d + 0.01 * s for s in V.SEEDS}, final_seed_ami={str(s): 0.3 + 0.01 * s for s in V.SEEDS})
+
+
+def mine_ablation():
+    status = {x: dict(name=f'F-no_{x}', status='missing') for x in V.REMOVALS}
+    status['direct'] = dict(name='F-no_direct', status='ok', problems={})
+    status['buddy'] = dict(name='F-no_buddy', status='failed V0c', problems={'style': {3: ['non-finite rows']}})
+    return dict(final='F', removals=status, n_resamples=2000, held_sha256=V.HELD_SHA256,
+                labelled_rows=dict(emotion=V.N_HELD, style=V.N_HELD, genre=V.N_GENRE_LABELLED),
+                effects={'direct': {'emotion': effect_record(0.001, -0.0005, 0.002), 'style': effect_record(-0.01, -0.02, 0.0),
+                                    'genre': effect_record(0.0, -0.001, 0.001)}})
+
+
+def verdict_ablation(mine, listed=('direct', 'buddy'), smoke=True):
+    """Ticket 10's keys: final_key, removals (list), n_draws, seeds, labelled_rows, results{x: arm, status, cause,
+    aspects{a: effect, lo, hi, arm_ami, final_ami, arm_seed_ami, final_seed_ami}}; the rest is extra."""
+    results = {}
+    for x in listed:
+        if x in mine['effects']:
+            asp = {a: dict(effect=r['d'], lo=r['interval'][0], hi=r['interval'][1], arm_ami=r['A_arm'], final_ami=r['A_final'],
+                           arm_seed_ami=dict(r['arm_seed_ami']), final_seed_ami=dict(r['final_seed_ami']))
+                   for a, r in mine['effects'][x].items()}
+            results[x] = dict(arm=mine['removals'][x]['name'], status='ok', cause=None, aspects=asp)
+        else:
+            results[x] = dict(arm=mine['removals'][x]['name'], status='failed', cause='seed 3: non-finite loss', aspects=None)
+    return json.loads(json.dumps(dict(stage='ablation_held', smoke=smoke, seeds=list(V.SEEDS), n_draws=2000, held_sha256=V.HELD_SHA256,
+                                      labelled_rows=mine['labelled_rows'], final_key=mine['final'], removals=list(listed),
+                                      results=results, extra=1)))
+
+
+def test_compare_ablation_agrees_with_10s_keys():
+    mine = mine_ablation()
+    items = V.compare_ablation(mine, verdict_ablation(mine, listed=tuple(V.REMOVALS), smoke=False))
+    assert items and all(i['ok'] for i in items), names_of(items)
+    named = {i['name'] for i in items}
+    assert {'direct.emotion.effect', 'direct.style.interval_lower', 'direct.genre.arm_ami', 'direct.genre.final_ami',
+            'direct.style.arm_seed_ami[3]', 'direct.style.final_seed_ami[0]', 'buddy.status', 'direct.status',
+            'direct.arm', 'final', 'n_draws', 'removals listed', 'labelled_rows.genre'} <= named
+
+
+@pytest.mark.parametrize('x, a, key, value, flagged', [
+    ('direct', 'emotion', 'effect', 0.001 + 4e-6, 'direct.emotion.effect'),
+    ('direct', 'style', 'hi', 0.5, 'direct.style.interval_upper'),
+    ('direct', 'genre', 'arm_ami', 0.9, 'direct.genre.arm_ami'),
+    ('direct', 'genre', 'final_ami', 0.9, 'direct.genre.final_ami'),
+])
+def test_compare_ablation_flags_each_number(x, a, key, value, flagged):
+    mine = mine_ablation()
+    verdict = verdict_ablation(mine)
+    verdict['results'][x]['aspects'][a][key] = value
+    assert flagged in names_of(V.compare_ablation(mine, verdict))
+
+
+def test_compare_ablation_flags_seed_values_status_and_names():
+    mine = mine_ablation()
+    verdict = verdict_ablation(mine)
+    verdict['results']['direct']['aspects']['style']['arm_seed_ami']['3'] = 0.0
+    assert names_of(V.compare_ablation(mine, verdict)) == ['direct.style.arm_seed_ami[3]']
+    verdict = verdict_ablation(mine)
+    verdict['results']['buddy']['status'] = 'ok'
+    assert 'buddy.status' in names_of(V.compare_ablation(mine, verdict))
+    verdict = verdict_ablation(mine)
+    verdict['results']['direct']['arm'] = 'F-no_directt'
+    assert names_of(V.compare_ablation(mine, verdict)) == ['direct.arm']
+    verdict = verdict_ablation(mine)
+    verdict['final_key'] = 'G'
+    assert names_of(V.compare_ablation(mine, verdict)) == ['final']
+    verdict = verdict_ablation(mine)
+    verdict['n_draws'] = 20
+    assert 'n_draws' in names_of(V.compare_ablation(mine, verdict))
+
+
+def test_compare_ablation_fails_on_a_missing_key_and_ignores_extras():
+    mine = mine_ablation()
+    for where, key in ((('results', 'direct', 'aspects', 'style'), 'lo'), (('results', 'direct', 'aspects', 'genre'), 'arm_seed_ami'),
+                       (('results', 'direct'), 'status'), ((), 'final_key'), (('labelled_rows',), 'genre')):
+        verdict = verdict_ablation(mine)
+        node = verdict
+        for k in where:
+            node = node[k]
+        del node[key]
+        assert names_of(V.compare_ablation(mine, verdict)), (where, key)
+    verdict = verdict_ablation(mine)
+    verdict['results']['direct']['aspects']['style']['extra'] = 1
+    verdict['host'] = 'x'
+    assert names_of(V.compare_ablation(mine, verdict)) == []
+
+
+def test_compare_ablation_removals_listed():
+    mine = mine_ablation()
+    smoke = verdict_ablation(mine, smoke=True)                   # a smoke may run fewer than eight removals
+    assert all(i['ok'] for i in V.compare_ablation(mine, smoke))
+    assert 'removals listed' in names_of(V.compare_ablation(mine, verdict_ablation(mine, smoke=False)))   # a real run lists all eight
+    hidden = verdict_ablation(mine, listed=('buddy',), smoke=True)      # my outputs have the direct arm: the verdict must list it
+    assert any(not i['ok'] and i['name'].startswith('direct') for i in V.compare_ablation(mine, hidden))
+
+
 # ---- integration: K4's sample-scale block from the frozen files (point values only) ---------------------------
 
 def test_k4_sample_point_values_equal_the_frozen_block():
