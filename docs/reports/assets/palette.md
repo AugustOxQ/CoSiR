@@ -47,3 +47,4 @@ First used in `2026-10-19_qwen_buddy_line/image_side_ami.png`.
 | PercepT core (our PercepT re-implementation, 40 topics) | `#c98b2e` |
 | Our network (aspect-graph network, default image, one pass) | `#1d6fd1` |
 | Qwen image with the aspect's instruction | `#4a9c5b` |
+| Previous recipe G (relational genre term, 20 neighbours) | `#8fb8ea` (new, 2026-10-28) |
