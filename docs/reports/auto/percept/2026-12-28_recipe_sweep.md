@@ -28,12 +28,13 @@ Key: T: the instructed Qwen image of each aspect; PercepT core: the project base
 
 **What it does not show.** The sweep's seed-0 gains are inflated, because we picked among about 60 configurations.
 Seeds 1 to 3 are new to these runs, but rounds 12-25 and 12-27 also picked on them.
-The held split and T were read in earlier rounds, and G's known held emotion AMI (0.1039) made stage 0 close to known.
+The held split and T were read in earlier rounds, and G became the recipe after its held genre reading.
+G's known held emotion AMI (0.1039) made stage 0 close to known.
 The claims cover k-means, the Qwen image encoder and ArtELingo only. The ablation decides nothing, and there is no retrieval result yet.
 
 **Options for next.**
 
-1. Drop the caption endpoints from c*. On development paintings, c* without them gains +0.315 [+0.121, +0.534] seed ranges over c*. Its held numbers already exist as an ablation arm, so a held test would be close to known; it costs under an hour.
+1. Drop the caption endpoints from c*. On development paintings, c* without them gains +0.315 [+0.121, +0.534] seed ranges over c*, from style; the other aspects show no clear change. Its held numbers already exist as an ablation arm, so a held test would be close to known; it costs under an hour.
 2. Test the recipe with SigLIP 2, SigLIP 1 and CLIP L/14. It costs about half a day of GPU, and node402 is idle until about 2026-10-30 23:30. It shows whether the recipe transfers to other image encoders.
 3. Draft the CVPR abstract (due 2026-11-10) from the supported claims. It costs writing time and fixes what the paper can claim.
 
@@ -51,7 +52,7 @@ Their effects on the other aspects are mixed or uncertain, so these two parts ca
 Our priors fit: stage 0 GO at 0.85 (sample) and 0.9 (full), a pick at 0.5; given a pick, a held win at 0.9 for emotion, 0.4 for style and 0.15 for genre.
 
 **Our recommendation.** Take option 1 first, because it is small and may become the recipe for the other tests.
-Then run option 2 on node402 before the reservation ends. Draft the abstract (option 3) in parallel, since the emotion claim holds with either recipe.
+Then run option 2 on node402 before the reservation ends. Draft the abstract (option 3) in parallel. Its emotion claim rests on c*; a new recipe would need its own claim test.
 
 </details>
 

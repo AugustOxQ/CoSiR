@@ -5,7 +5,7 @@
 ## Summary
 
 - G, the previous model, passes the held emotion claim against PercepT at both training scales.
-- The recipe search picks c*: G with 40 graph neighbours, instead of 20; other changes give small or negative gains.
+- The recipe search picks c*: G with 40 graph neighbours, instead of 20; other single changes give smaller gains, and combinations do not help.
 - On held paintings, c* beats the instructed Qwen image on emotion and narrowly on style.
 - Genre remains below the instructed image by less than one seed range, the normal spread between model seeds.
 - The relational term carries genre; the instructed graphs, the buddy terms and the content correction carry emotion and style.
@@ -66,13 +66,13 @@ This gives each aspect a comparable unit, despite their different score scales.
 A guard limits losses on any aspect, so a large style gain cannot hide a large genre loss.
 Confirmation also needs the mean gain's interval above zero.
 
-The winning change broadens the graph from twenty to forty neighbours per painting.
+The winning change raises the graph's neighbour limit from twenty to forty: two paintings link when each is among the other's forty nearest.
 Graph neighbours are paintings linked as nearby in the instructed image views; these links guide what the model learns.
 Broader links could supply more useful positive examples and explain the style gain. That explanation remains untested.
 The pick, c*, keeps every other setting of G.
 
 **Did it work?** Yes. More graph neighbours won alone and after the joint grid.
-Other settings gave small or negative gains; combinations did not improve on the graph change alone.
+Other settings gave smaller gains; combinations did not improve on the graph change alone.
 The mean-gain intervals overlap, so the rule picks c* without proof that it clearly beats the runner-up.
 The first search selected among about sixty configurations, which inflates its best scores.
 
@@ -82,7 +82,7 @@ The first search selected among about sixty configurations, which inflates its b
 |---|---:|---:|---:|---:|---|
 | G, reference | 0.1062 | 0.3931 | 0.5050 | reference | reference |
 | c*: more graph neighbours only | 0.1089 | 0.4072 | 0.5019 | +0.683 | Yes |
-| More neighbours, style relational loss, narrower shared network | 0.1085 | 0.4020 | 0.4990 | +0.369 | Yes |
+| More neighbours, style relational loss, narrower shared trunk | 0.1085 | 0.4020 | 0.4990 | +0.369 | Yes |
 | More neighbours, softer teacher target | 0.1082 | 0.3991 | 0.5006 | +0.272 | No; interval crosses zero |
 
 The relational loss copies the teacher's pattern of similarities; a softer target spreads weight more widely across paintings.
@@ -130,9 +130,9 @@ The eight parts do the following:
 - The relational term makes the genre head copy the teacher's pattern of similarities between paintings.
 - The sharper teacher row gives the nearest paintings more weight in that pattern.
 - The direct teacher makes each head copy the instructed Qwen image for its aspect.
-- The buddy terms bring linked paintings together through their images and captions.
+- The four buddy terms pull paintings that a graph links closer together, through their images and captions.
 - The caption endpoints let the buddy terms use captions as well as images.
-- The content correction adjusts the emotion and style graphs for content.
+- The content correction subtracts content similarity before the emotion and style graphs are built; the genre graph has none.
 - The instructed graphs link nearby paintings in the instructed image view for each aspect.
 - The shared trunk processes the input for all heads; removing it gives each aspect its own trunk.
 
@@ -140,17 +140,19 @@ Removing the caption endpoints leaves only images in the buddy terms.
 Removing the instructed graphs makes all aspects use one graph from the default image view.
 
 The removals ran on development paintings with three seeds and on held paintings with five seeds at full scale.
-The ablation decides nothing.
+The ablation explains the recipe; it does not choose or change it.
 
-**Did it work?** Yes: the relational term carries genre.
+**Did it work?** Yes, it shows which parts carry each aspect. The relational term carries genre.
 On held paintings, removing the relational term from c* changes genre AMI by −0.0440.
 The instructed graphs, the buddy terms and the content correction carry emotion and style.
 Removing the instructed graphs from c* changes style AMI by −0.1903 and emotion AMI by −0.0327.
 Removing the buddy terms or the content correction changes both aspects in the same direction.
+Removing the content correction from c* changes held genre AMI by +0.0072, with its interval above zero.
 
 On held paintings, removing the direct teacher from c* changes emotion AMI by +0.0035 and style AMI by +0.0041.
 Removing the caption endpoints from c* changes style AMI by +0.0072.
 All three intervals are above zero.
+Their effects on the other aspects are mixed or uncertain, so the ablation does not show that these parts are unneeded.
 On development paintings, removing the direct teacher from c* changes emotion AMI by +0.0022, with its interval above zero.
 Removing the caption endpoints from c* changes style AMI by +0.0042, with its interval above zero.
 
@@ -158,6 +160,7 @@ The held numbers for c* without the caption endpoints already exist.
 A later held test of that recipe would be close to known.
 
 **Key evidence.** The table compares held AMI of c* with each part removed, minus c*, over five seeds and 12,281 held paintings.
+Most changes under 0.01 have intervals that cross zero; the text names the ones that do not.
 
 | Removal | Emotion Δ | Style Δ | Genre Δ |
 |---|---:|---:|---:|
@@ -183,12 +186,13 @@ c*'s held style gain over G is +0.0009, with its interval across zero.
 Genre stays within the agreed margin of the instructed image.
 
 The ablation shows that the instructed graphs, the buddy terms and the content correction each carry many seed ranges on style.
-The direct teacher and the caption endpoints look unneeded because development and held paintings agree on the direction for emotion and style, respectively.
+Removing the direct teacher raised emotion, and removing the caption endpoints raised style, on development and held paintings.
+Their effects on the other aspects are mixed or uncertain, so these two parts call for a follow-up; the ablation does not show that they are unneeded.
 The outcomes fit our earlier expectations.
 
 Our recommendation: first try dropping the caption endpoints, because this costs little and may become the recipe for the other tests.
 Then test the other image encoders before the machine reservation ends.
-Draft the abstract in parallel, since the emotion claim holds with either recipe.
+Draft the abstract in parallel. Its emotion claim rests on c*; a recipe without the caption endpoints would need its own claim test.
 
 </details>
 
@@ -200,6 +204,7 @@ You give your reading, then choose the next work from these options:
 
 - Drop the caption endpoints from c*.
   On development paintings, this gains +0.315 seed ranges over c*, with an interval above zero.
+  The gain comes from style; the other aspects show no clear change.
   It costs under an hour and could give the recipe for later tests.
   Its held numbers already exist, so a held test would be close to known.
 - Test the recipe with SigLIP 2, SigLIP 1 and CLIP L/14, other image encoders.
@@ -216,22 +221,24 @@ These choices can overlap, as our advice proposes. The current evidence covers Q
 ## Glossary
 
 - G: the previous recipe, with a relational genre loss and sharper teacher target; GS-0.02 in the previous report.
-- c*: G with graph neighbours increased from 20 to 40; the pick that replaces G.
+- c*: G with graph neighbours increased from 20 to 40; it keeps G's sharper teacher target; the pick that replaces G.
 - Recipe: the training losses and their settings.
 - Head: the model output for one aspect: emotion, style or genre.
 - Instructed Qwen image (T): an image embedding made with an instruction for one aspect; the held comparison bar.
 - PercepT core: the project's corrected PercepT baseline; the emotion comparison uses its own clusters.
 - Seed range: an earlier model's score spread across seeds; emotion 0.0046, style 0.0082, genre 0.0128.
 - Mean gain: gain over G divided by the seed range for each aspect, then averaged across aspects.
-- Graph neighbours (mutual top-k, k11): nearby paintings linked in the instructed views to guide training.
-- Relational loss: a term that makes the model copy the teacher's pattern of similarities between paintings.
+- Graph neighbours (mutual top-k, k11): the link limit k in the instructed-view graphs; two paintings link when each is among the other's k nearest.
+- Relational loss (relational term): a term, on the genre head in c*, that makes the head copy the teacher's pattern of similarities between paintings.
 - Direct teacher: this term makes each head copy the instructed Qwen image for its aspect.
-- Buddy terms: these terms bring linked paintings together through their images and captions.
+- Buddy terms: four terms that pull graph-linked paintings closer together, through their images and captions.
 - Caption endpoints: these let the buddy terms use captions as well as images.
-- Content correction: this adjusts the emotion and style graphs for content.
+- Content correction: this subtracts content similarity before the emotion and style graphs are built.
 - Instructed graphs: these link nearby paintings in the instructed image view for each aspect.
 - Shared trunk: this network processes the input for all heads.
 - Sharper teacher row: this target gives the nearest paintings more weight in the teacher's pattern of similarities.
+- Qwen3-VL-Embedding (Qwen): the image-text embedding model whose instructed image views are the teacher.
+- ArtELingo: the painting dataset of this test, with viewers' emotion labels and captions, and style and genre labels.
 - Development paintings: the paintings used to compare recipes and choose the pick.
 - Held paintings: the separate paintings used for claim tests; this split had been read in earlier rounds.
 - AMI: adjusted mutual information, the agreement between clusters and labels.
