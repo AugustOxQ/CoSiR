@@ -8,7 +8,7 @@
 - The recipe search picks c*: G with 40 graph neighbours, instead of 20; other changes give small or negative gains.
 - On held paintings, c* beats the instructed Qwen image on emotion and narrowly on style.
 - Genre remains below the instructed image by less than one seed range, the normal spread between model seeds.
-- <!-- ABLATION-SUMMARY -->
+- The relational term carries genre; the instructed graphs, the buddy terms and the content correction carry emotion and style.
 - The pick replaces G under the fixed rule; the held results support claims only for Qwen, k-means and ArtELingo.
 
 ## How we got here
@@ -121,29 +121,93 @@ The large development style gain therefore does not carry through as a clear hel
 > Full report: [Stage 4](../reports/auto/percept/2026-12-28_recipe_sweep.md#stage-4-held-full-scale).
 
 ## Which parts carry the result (ablation)
-<!-- ABLATION-USERREAD: added after the held ablation -->
+
+**Problem.** We knew c* works, but we did not know which of its parts carry the result.
+
+**Idea.** Remove one part at a time from c* and retrain, with nothing else changed or retuned.
+The eight parts do the following:
+
+- The relational term makes the genre head copy the teacher's pattern of similarities between paintings.
+- The sharper teacher row gives the nearest paintings more weight in that pattern.
+- The direct teacher makes each head copy the instructed Qwen image for its aspect.
+- The buddy terms bring linked paintings together through their images and captions.
+- The caption endpoints let the buddy terms use captions as well as images.
+- The content correction adjusts the emotion and style graphs for content.
+- The instructed graphs link nearby paintings in the instructed image view for each aspect.
+- The shared trunk processes the input for all heads; removing it gives each aspect its own trunk.
+
+Removing the caption endpoints leaves only images in the buddy terms.
+Removing the instructed graphs makes all aspects use one graph from the default image view.
+
+The removals ran on development paintings with three seeds and on held paintings with five seeds at full scale.
+The ablation decides nothing.
+
+**Did it work?** Yes: the relational term carries genre.
+On held paintings, removing the relational term from c* changes genre AMI by −0.0440.
+The instructed graphs, the buddy terms and the content correction carry emotion and style.
+Removing the instructed graphs from c* changes style AMI by −0.1903 and emotion AMI by −0.0327.
+Removing the buddy terms or the content correction changes both aspects in the same direction.
+
+On held paintings, removing the direct teacher from c* changes emotion AMI by +0.0035 and style AMI by +0.0041.
+Removing the caption endpoints from c* changes style AMI by +0.0072.
+All three intervals are above zero.
+On development paintings, removing the direct teacher from c* changes emotion AMI by +0.0022, with its interval above zero.
+Removing the caption endpoints from c* changes style AMI by +0.0042, with its interval above zero.
+
+The held numbers for c* without the caption endpoints already exist.
+A later held test of that recipe would be close to known.
+
+**Key evidence.** The table compares held AMI of c* with each part removed, minus c*, over five seeds and 12,281 held paintings.
+
+| Removal | Emotion Δ | Style Δ | Genre Δ |
+|---|---:|---:|---:|
+| Relational term | +0.0009 | 0.0000 | −0.0440 |
+| Sharper teacher row | +0.0016 | +0.0008 | −0.0038 |
+| Direct teacher | +0.0035 | +0.0041 | −0.0031 |
+| Buddy terms | −0.0277 | −0.1512 | −0.0015 |
+| Caption endpoints | +0.0009 | +0.0072 | −0.0034 |
+| Content correction | −0.0090 | −0.0752 | +0.0072 |
+| Instructed graphs | −0.0327 | −0.1903 | +0.0054 |
+| Shared trunk | −0.0001 | +0.0023 | −0.0001 |
+
+> Full report: [Ablation](../reports/auto/percept/2026-12-28_recipe_sweep.md#ablation).
 
 ## Advice
 
 <details><summary>Our advice (open after giving your reading)</summary>
 
-Our view: finish the ablation, then test other image encoders and retrieval while we draft the paper's supported claims.
-The ablation removes parts of the recipe to test which ones carry the result.
-We trust the emotion result more than the narrow style win.
-The held genre result supports a shortfall within the agreed margin, not a win against the instructed image.
+Our view: we trust the emotion result most.
+c* beats the instructed Qwen image by about three seed ranges and PercepT core by +0.0192.
+The style win passes the rule but is narrow.
+c*'s held style gain over G is +0.0009, with its interval across zero.
+Genre stays within the agreed margin of the instructed image.
+
+The ablation shows that the instructed graphs, the buddy terms and the content correction each carry many seed ranges on style.
+The direct teacher and the caption endpoints look unneeded because development and held paintings agree on the direction for emotion and style, respectively.
+The outcomes fit our earlier expectations.
+
+Our recommendation: first try dropping the caption endpoints, because this costs little and may become the recipe for the other tests.
+Then test the other image encoders before the machine reservation ends.
+Draft the abstract in parallel, since the emotion claim holds with either recipe.
 
 </details>
 
 ## Next
 
-c* replaces G under the fixed decision rule. The ablation is still in progress.
+c* replaces G under the fixed decision rule.
 The held outcomes do not trigger any next experiment automatically.
 You give your reading, then choose the next work from these options:
 
-- Test c* with SigLIP 2, SigLIP 1 and CLIP L/14, other image encoders, on development and held paintings.
-  This checks transfer and costs about half a day of local GPU work.
-- Test aspect-named retrieval: find images for a named aspect. This adds a second task; its implementation and compute remain unscoped.
-- Draft the CVPR abstract from the supported claims. This needs writing time.
+- Drop the caption endpoints from c*.
+  On development paintings, this gains +0.315 seed ranges over c*, with an interval above zero.
+  It costs under an hour and could give the recipe for later tests.
+  Its held numbers already exist, so a held test would be close to known.
+- Test the recipe with SigLIP 2, SigLIP 1 and CLIP L/14, other image encoders.
+  This costs about half a day of GPU work and shows whether the recipe transfers to other image encoders.
+- Draft the CVPR abstract from the supported claims.
+  This costs writing time and fixes what the paper can claim.
+
+Aspect-named retrieval, the second task, has no result yet.
 
 These choices can overlap, as our advice proposes. The current evidence covers Qwen, k-means and ArtELingo only.
 
@@ -161,6 +225,13 @@ These choices can overlap, as our advice proposes. The current evidence covers Q
 - Mean gain: gain over G divided by the seed range for each aspect, then averaged across aspects.
 - Graph neighbours (mutual top-k, k11): nearby paintings linked in the instructed views to guide training.
 - Relational loss: a term that makes the model copy the teacher's pattern of similarities between paintings.
+- Direct teacher: this term makes each head copy the instructed Qwen image for its aspect.
+- Buddy terms: these terms bring linked paintings together through their images and captions.
+- Caption endpoints: these let the buddy terms use captions as well as images.
+- Content correction: this adjusts the emotion and style graphs for content.
+- Instructed graphs: these link nearby paintings in the instructed image view for each aspect.
+- Shared trunk: this network processes the input for all heads.
+- Sharper teacher row: this target gives the nearest paintings more weight in the teacher's pattern of similarities.
 - Development paintings: the paintings used to compare recipes and choose the pick.
 - Held paintings: the separate paintings used for claim tests; this split had been read in earlier rounds.
 - AMI: adjusted mutual information, the agreement between clusters and labels.

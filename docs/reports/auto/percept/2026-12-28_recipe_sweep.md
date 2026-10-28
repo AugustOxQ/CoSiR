@@ -46,7 +46,8 @@ The claims cover k-means, the Qwen image encoder and ArtELingo only. The ablatio
 The style win passes the rule but is narrow, and c*'s held style is level with G's (+0.0009, interval across zero).
 Genre is within the agreed margin of T, not a win.
 The ablation is clear for the large parts: each of the instructed graphs, the buddy terms and the content correction is worth many seed ranges on style.
-The direct teacher and the caption endpoints look unneeded, since development and held paintings agree on the direction.
+Removing the direct teacher raised emotion, and removing the caption endpoints raised style, on development and held paintings.
+Their effects on the other aspects are mixed or uncertain, so these two parts call for a follow-up; the ablation does not show that they are unneeded.
 Our priors fit: stage 0 GO at 0.85 (sample) and 0.9 (full), a pick at 0.5; given a pick, a held win at 0.9 for emotion, 0.4 for style and 0.15 for genre.
 
 **Our recommendation.** Take option 1 first, because it is small and may become the recipe for the other tests.
@@ -115,7 +116,7 @@ The four largest knob gains, in seed ranges over node G, formed the stage 2 grid
 - graph neighbours 40: +0.924; teacher row temperature 0.035: +0.371;
 - style relational weight 8: +0.288; trunk width 512: +0.164.
 
-The fifth was a lower direct teacher weight (0.0625: +0.158). Patience changed the mean gain by at most 0.001. All 13 curves, with guard failures: [run log, stage 1](../../../../src/test/20261027_recipe_sweep/20261027_recipe_sweep_log.md#stage-1-single-knob-sweep-on-node402-2026-10-27).
+The fifth was a lower direct teacher weight (0.0625: +0.158). Patience changed the mean gain by at most 0.0012. All 13 curves, with guard failures: [run log, stage 1](../../../../src/test/20261027_recipe_sweep/20261027_recipe_sweep_log.md#stage-1-single-knob-sweep-on-node402-2026-10-27).
 
 Node parity is recorded, not a gate; no decision compares node with local (rule exception).
 
