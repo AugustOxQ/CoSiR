@@ -410,9 +410,34 @@ F = k11=40 (c*). The removals and what each changes: spec §3.2, "Ablation". Rul
 
 Key: arm / c* are mean AMIs over seeds 1 to 3 on P; ē = arm minus c*; mean gain = ē divided by the seed range (emotion 0.0046, style 0.0082, genre 0.0128), averaged over the three aspects.
 
-### Held (running)
+### Held (done 2026-10-28 03:53)
 
-Queue `rs_queue_ablation_held.sh` started 22:50 (gates V3a, V3c, V4b hold; F = k11=40). Estimated end 2026-10-28 05:00 to 06:00. Results added when it ends.
+- Queue `rs_queue_ablation_held.sh`: started 2026-10-27 22:50, `held_exit=0` at 03:53, `failed=0`. Gates V3a, V3c and V4b held; F = k11=40.
+- Training: 40 runs (8 removals × seeds 0 to 4, full scale), 15,124 s in total, no failure, no rerun; held inference about 22 s per removal. Scoring (`score_held`): 1,810 s. Re-derivation (`v_ablation`, `rs_vh ablation`): 1,048 s.
+- `ablation/held.json` SHA-256 `58c255ddfe54f5330000097a10d338e9a6f4a6a85ed6d92f27680e206e39a601` (written 03:36; code `da6fa381…`, commit 446d5b0, a documentation commit made during the run; clean).
+- `ablation/rederive_ablation.json` SHA-256 `30a78a8b71a69320703199cd1dd5d76e794a5e9fffa187bb678c69a3219ddd37`: `pass: true`, 384 of 384 items within 1e-6, largest difference 0.0; it checked `held.json` at the SHA-256 above.
+- `inputs.ablation_graphs_sha256` = `698100b2fa4dea71f752ed03aea9c8bfd2189a89a745d74e4bd39bae99fefc97`, the same file as the development ablation.
+- Draws: per aspect `default_rng(0)`, I_b over the 12,281 rows of H, then one S_b over seeds 0 to 4 shared by the arm and F; 2,000 draws. Labelled rows: emotion 12,281, style 12,281, genre 9,949.
+- c*'s held AMIs (stage 4 runs, seeds 0 to 4): emotion 0.1066, style 0.4066, genre 0.5001.
+
+| Removal / arm | Seconds (5 seeds) | Emotion arm / Δ [95%] (Δ/r) | Style arm / Δ [95%] (Δ/r) | Genre arm / Δ [95%] (Δ/r) |
+|---|---|---|---|---|
+| relational term / `k11=40-no_relational` | 980 | 0.1075 / +0.0009 [-0.0013, +0.0032] (+0.21) | 0.4066 / 0.0000 [-0.0054, +0.0048] (+0.00) | 0.4561 / -0.0440 [-0.0512, -0.0372] (-3.44) |
+| sharper teacher row / `k11=40-no_sharp_row` | 1109 | 0.1082 / +0.0016 [-0.0015, +0.0046] (+0.34) | 0.4075 / +0.0008 [-0.0030, +0.0048] (+0.10) | 0.4963 / -0.0038 [-0.0074, -0.0002] (-0.30) |
+| direct teacher / `k11=40-no_direct` | 1106 | 0.1101 / +0.0035 [+0.0008, +0.0056] (+0.76) | 0.4108 / +0.0041 [+0.0016, +0.0067] (+0.50) | 0.4970 / -0.0031 [-0.0080, +0.0014] (-0.24) |
+| buddy terms / `k11=40-no_buddy` | 3867 | 0.0788 / -0.0277 [-0.0305, -0.0250] (-6.03) | 0.2554 / -0.1512 [-0.1547, -0.1451] (-18.44) | 0.4986 / -0.0015 [-0.0059, +0.0027] (-0.12) |
+| caption endpoints / `k11=40-no_caption_endpoints` | 1761 | 0.1075 / +0.0009 [-0.0024, +0.0044] (+0.20) | 0.4138 / +0.0072 [+0.0015, +0.0121] (+0.88) | 0.4967 / -0.0034 [-0.0119, +0.0045] (-0.27) |
+| content correction / `k11=40-no_content_correction` | 1705 | 0.0976 / -0.0090 [-0.0119, -0.0062] (-1.95) | 0.3315 / -0.0752 [-0.0814, -0.0679] (-9.17) | 0.5073 / +0.0072 [+0.0030, +0.0113] (+0.56) |
+| instructed graphs / `k11=40-no_instructed_graphs` | 3276 | 0.0739 / -0.0327 [-0.0361, -0.0292] (-7.11) | 0.2163 / -0.1903 [-0.1959, -0.1822] (-23.21) | 0.5055 / +0.0054 [-0.0014, +0.0132] (+0.42) |
+| shared trunk / `k11=40-no_shared_trunk` | 1320 | 0.1065 / -0.0001 [-0.0025, +0.0027] (-0.02) | 0.4090 / +0.0023 [-0.0022, +0.0069] (+0.29) | 0.5000 / -0.0001 [-0.0057, +0.0059] (-0.01) |
+
+Key: arm = the removal's held AMI, seeds 0 to 4; Δ = arm minus c* with its 95% interval; Δ/r = Δ divided by the seed range.
+
+### Ablation reading (decides nothing)
+
+- Two groups of parts carry the result. The relational term carries genre. The instructed graphs, the buddy terms and the content correction carry emotion and style.
+- Two parts lower held scores: without the direct teacher, emotion +0.0035 and style +0.0041; without the caption endpoints, style +0.0072. The development ablation shows the same direction for emotion (direct teacher, +0.0022 [+0.0005, +0.0037]) and style (caption endpoints, +0.0042 [+0.0013, +0.0072]).
+- On development paintings, c* without the caption endpoints has a mean gain of +0.315 [+0.121, +0.534] seed ranges over c*. The held numbers of that model already exist, as this ablation's arm.
 
 ## Deviations
 

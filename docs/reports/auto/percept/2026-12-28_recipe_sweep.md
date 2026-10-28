@@ -4,12 +4,13 @@
 
 ## Results brief
 
-**What we tried.** We swept G, the previous recipe with a sharper genre teacher row, confirmed three candidates, and tested one held pick.
-c* changes only graph neighbours from 20 to 40.
+**What we tried.** We tested the held emotion claim of G, the previous recipe with a sharper genre teacher row ([spec](../../../superpowers/specs/2026-10-27-recipe-sweep-design.md)).
+Then we swept G's settings, confirmed three candidates and tested the pick, c*, once on held paintings.
+c* changes only the graph neighbours, from 20 to 40. Last, we removed each of c*'s eight parts in turn.
 
-**Outcome against the bar.** c* has clusters above the instructed Qwen image on emotion and style: style +0.0041 [+0.0004, +0.0081], 0.50 seed ranges.
-We used 12,281 held paintings (genre labels on 9,949), 5 seeds.
-Genre is below the instructed image by less than one seed range (0.0128); its whole interval is below zero.
+**Outcome against the bar.** c* replaces G under the rule.
+On 12,281 held paintings (genre labels on 9,949) and 5 seeds, c* beats the instructed Qwen image on emotion and style.
+Genre is below the instructed image by less than one seed range (0.0128), with its whole interval below zero.
 
 | Aspect / comparator T | c* AMI | Comparator AMI | Difference [95%] |
 |---|---|---|---|
@@ -18,36 +19,38 @@ Genre is below the instructed image by less than one seed range (0.0128); its wh
 | genre | 0.5001 | 0.5062 | -0.0060 [-0.0103, -0.0015] |
 | emotion / PercepT core | 0.1066 | 0.0874 | +0.0192 [+0.0137, +0.0207] |
 
-Key: T: instructed Qwen image of each aspect; PercepT core: project baseline.
-Style's lower bound is about 0.05 seed ranges above zero.
-G passed the emotion claim at both scales:
+Key: T: the instructed Qwen image of each aspect; PercepT core: the project baseline.
 
-- Full: +0.0164 [+0.0107, +0.0182]; sample: +0.0188 [+0.0137, +0.0200].
+- The style win is narrow: its lower bound is about 0.05 seed ranges above zero.
+- G passed the emotion claim against PercepT core at both scales: full +0.0164 [+0.0107, +0.0182], sample +0.0188 [+0.0137, +0.0200].
+- Held ablation: the relational term carries genre (without it, genre AMI changes by -0.0440 [-0.0512, -0.0372]). The instructed graphs, the buddy terms and the content correction carry emotion and style.
+- Without the direct teacher or the caption endpoints, held emotion or style rises.
 
-<!-- ABLATION-BRIEF: one or two lines, added after the held ablation -->
-
-The held split, T and G were read before; G became the recipe after its held genre reading.
-
-**What it does not show.** Seed-0 gains are inflated by the pick among about 60 configurations.
-Seeds 1 to 3 are new to these runs; 12-25 and 12-27 also picked on P and them, and they confirmed G.
-G's known held emotion AMI (0.1039) made stage 0 close to known; claims cover k-means, Qwen and ArtELingo only.
+**What it does not show.** The sweep's seed-0 gains are inflated, because we picked among about 60 configurations.
+Seeds 1 to 3 are new to these runs, but rounds 12-25 and 12-27 also picked on them.
+The held split and T were read in earlier rounds, and G's known held emotion AMI (0.1039) made stage 0 close to known.
+The claims cover k-means, the Qwen image encoder and ArtELingo only. The ablation decides nothing, and there is no retrieval result yet.
 
 **Options for next.**
 
-1. Test SigLIP 2, SigLIP 1 and CLIP L/14 with c*. About half a day of local GPU for development and held tests checks transfer.
-2. Test aspect-named retrieval. Implementation and compute, not yet scoped, would test a second task.
-3. Draft the CVPR abstract due 2026-11-10. Writing time would establish the supported claims.
+1. Drop the caption endpoints from c*. On development paintings, c* without them gains +0.315 [+0.121, +0.534] seed ranges over c*. Its held numbers already exist as an ablation arm, so a held test would be close to known; it costs under an hour.
+2. Test the recipe with SigLIP 2, SigLIP 1 and CLIP L/14. It costs about half a day of GPU, and node402 is idle until about 2026-10-30 23:30. It shows whether the recipe transfers to other image encoders.
+3. Draft the CVPR abstract (due 2026-11-10) from the supported claims. It costs writing time and fixes what the paper can claim.
 
 **Your reading.**
 
 <details>
 <summary>Our reading and recommendation (open after writing yours)</summary>
 
-**Our reading.** We trust emotion more than style.
-Prior: stage 0 GO 0.85 sample, 0.9 full; a pick 0.5.
-Given a pick, held-win priors: emotion 0.9, style 0.4, genre 0.15. Outcomes fit.
+**Our reading.** We trust the emotion result most: c* beats T by about three seed ranges and PercepT core by +0.0192.
+The style win passes the rule but is narrow, and c*'s held style is level with G's (+0.0009, interval across zero).
+Genre is within the agreed margin of T, not a win.
+The ablation is clear for the large parts: each of the instructed graphs, the buddy terms and the content correction is worth many seed ranges on style.
+The direct teacher and the caption endpoints look unneeded, since development and held paintings agree on the direction.
+Our priors fit: stage 0 GO at 0.85 (sample) and 0.9 (full), a pick at 0.5; given a pick, a held win at 0.9 for emotion, 0.4 for style and 0.15 for genre.
 
-**Our recommendation.** Finish the ablation, then encoders and retrieval while drafting.
+**Our recommendation.** Take option 1 first, because it is small and may become the recipe for the other tests.
+Then run option 2 on node402 before the reservation ends. Draft the abstract (option 3) in parallel, since the emotion claim holds with either recipe.
 
 </details>
 
@@ -107,21 +110,12 @@ Key: r: seed range, emotion 0.0046/style 0.0082/genre 0.0128; B1-own: PercepT co
 
 Graph neighbours 40 leads. Guard: no aspect loses more than half a seed range against node G.
 
-| ID / knob | G | Value: mean gain (seed ranges) | Guard failures |
-|---|---|---|---|
-| k1 / emotion relational weight | 0 | 2: -0.559; 8: -0.700; 16: -1.197 | 2, 8, 16 |
-| k2 / style relational weight | 0 | 2: +0.069; 8: +0.288; 16: -0.119 | 16 |
-| k3 / genre relational weight | 8 | 4: +0.067; 12: -0.208; 16: -0.368 | 12, 16 |
-| k4 / teacher row temperature | 0.02 | 0.015: -0.121; 0.025: -0.303; 0.035: +0.371 | 0.015, 0.025 |
-| k5 / direct teacher weight | 0.25 | 0.0625: +0.158; 0.125: -0.225; 0.5: -0.454 | 0.125, 0.5 |
-| k6 / learning rate | 0.001 | 0.0003: -0.391; 0.0005: -0.101; 0.002: -0.339 | 0.0003 |
-| k7 / weight decay | 0.05 | 0: -0.239; 0.01: -0.299; 0.2: -0.146 | 0, 0.01, 0.2 |
-| k8 / batch pairs | 512 | 256: -0.169; 1024: -0.146; 2048: +0.133 | none |
-| k9 / trunk width | 1024 | 512: +0.164; 1536: -0.156; 2048: -0.032 | 1536 |
-| k10 / dropout | 0.1 | 0: -0.414; 0.2: -0.136; 0.3: -0.854 | 0, 0.3 |
-| k11 / graph neighbours | 20 | 10: -0.191; 30: -0.064; 40: +0.924 | 10 |
-| k12 / buddy temperature | 0.05 | 0.03: +0.060; 0.07: -0.403; 0.1: -0.766 | 0.07, 0.1 |
-| k13 / patience | 15 | 5: +0.001; 10: +0.000; 30: +0.000 | none |
+The four largest knob gains, in seed ranges over node G, formed the stage 2 grid:
+
+- graph neighbours 40: +0.924; teacher row temperature 0.035: +0.371;
+- style relational weight 8: +0.288; trunk width 512: +0.164.
+
+The fifth was a lower direct teacher weight (0.0625: +0.158). Patience changed the mean gain by at most 0.001. All 13 curves, with guard failures: [run log, stage 1](../../../../src/test/20261027_recipe_sweep/20261027_recipe_sweep_log.md#stage-1-single-knob-sweep-on-node402-2026-10-27).
 
 Node parity is recorded, not a gate; no decision compares node with local (rule exception).
 
@@ -205,7 +199,28 @@ Key: ē: removal minus c*, mean AMI over seeds 1 to 3; mean gain: ē divided by 
 - On P, removing the instructed graphs from c* changes style AMI by -0.1994 [-0.2029, -0.1948], the largest change.
 - Three removals raise one aspect with the interval above zero: caption endpoints (style), shared trunk (genre) and direct teacher (emotion).
 
-<!-- ABLATION-HELD: held table, added after the held queue ends -->
+**Held.** Each removal ran at full scale, seeds 0 to 4, on the 12,281 held paintings (genre labels on 9,949), against c*'s stage 4 runs (emotion/style/genre 0.1066/0.4066/0.5001), with 2,000 draws per aspect.
+All eight removals ran; the separate re-derivation agrees on all 384 items.
+
+| Removal | Emotion AMI / Δ [95%] | Style AMI / Δ [95%] | Genre AMI / Δ [95%] |
+|---|---|---|---|
+| relational term | 0.1075 / +0.0009 [-0.0013, +0.0032] | 0.4066 / 0.0000 [-0.0054, +0.0048] | 0.4561 / -0.0440 [-0.0512, -0.0372] |
+| sharper teacher row | 0.1082 / +0.0016 [-0.0015, +0.0046] | 0.4075 / +0.0008 [-0.0030, +0.0048] | 0.4963 / -0.0038 [-0.0074, -0.0002] |
+| direct teacher | 0.1101 / +0.0035 [+0.0008, +0.0056] | 0.4108 / +0.0041 [+0.0016, +0.0067] | 0.4970 / -0.0031 [-0.0080, +0.0014] |
+| buddy terms | 0.0788 / -0.0277 [-0.0305, -0.0250] | 0.2554 / -0.1512 [-0.1547, -0.1451] | 0.4986 / -0.0015 [-0.0059, +0.0027] |
+| caption endpoints | 0.1075 / +0.0009 [-0.0024, +0.0044] | 0.4138 / +0.0072 [+0.0015, +0.0121] | 0.4967 / -0.0034 [-0.0119, +0.0045] |
+| content correction | 0.0976 / -0.0090 [-0.0119, -0.0062] | 0.3315 / -0.0752 [-0.0814, -0.0679] | 0.5073 / +0.0072 [+0.0030, +0.0113] |
+| instructed graphs | 0.0739 / -0.0327 [-0.0361, -0.0292] | 0.2163 / -0.1903 [-0.1959, -0.1822] | 0.5055 / +0.0054 [-0.0014, +0.0132] |
+| shared trunk | 0.1065 / -0.0001 [-0.0025, +0.0027] | 0.4090 / +0.0023 [-0.0022, +0.0069] | 0.5000 / -0.0001 [-0.0057, +0.0059] |
+
+Key: AMI: the removal's held AMI; Δ: removal minus c*.
+
+- On held paintings, removing the relational term from c* changes genre AMI by -0.0440 [-0.0512, -0.0372]. No other removal changes genre by more than 0.0072.
+- Removing the instructed graphs changes style AMI by -0.1903 [-0.1959, -0.1822] and emotion AMI by -0.0327 [-0.0361, -0.0292]. The buddy terms and the content correction act in the same direction.
+- Removing the direct teacher raises emotion and style; removing the caption endpoints raises style. All three intervals are above zero.
+- On development paintings, the same removals raise the same aspect with the interval above zero: the direct teacher on emotion, the caption endpoints on style.
+- Removing the content correction raises held genre by +0.0072 [+0.0030, +0.0113]; on development paintings the change is +0.0006, with the interval across zero.
+- Removing the shared trunk changes no aspect by more than 0.0023, with every interval across zero.
 
 ## Analysis
 
@@ -217,11 +232,7 @@ Emotion-head AMI on genre falls from 0.4048 to 0.3889. Each label set favours it
 | style | 0.0622 → 0.0610 | 0.4057 → 0.4066 | 0.2983 → 0.2903 |
 | genre | 0.0695 → 0.0701 | 0.2668 → 0.2720 | 0.5001 → 0.5001 |
 
-| Head pair | G AMI | c* AMI | Teacher AMI |
-|---|---|---|---|
-| emotion-style | 0.2401 | 0.2326 | 0.2853 |
-| emotion-genre | 0.4234 | 0.4066 | 0.4263 |
-| style-genre | 0.4033 | 0.4008 | 0.4640 |
+The heads agree slightly less with each other in c* than in G (emotion-genre head pair 0.4234 → 0.4066; head-pair table in the run log).
 
 Class F1 shifts both ways; teacher overlap rises for style/genre and falls for emotion.
 See [F1 and geometry/overlap tables](../../../../src/test/20261027_recipe_sweep/20261027_recipe_sweep_log.md#diagnostic-detail-completed-after-the-relevant-verdicts).
@@ -230,23 +241,15 @@ See [F1 and geometry/overlap tables](../../../../src/test/20261027_recipe_sweep/
 
 ## Deviations
 
-The watch timed out; ablation cost exceeded estimates.
+The stage 2 watch timed out, and the ablation took longer than estimated.
 
 - User exception, 15:31: node start 2026-10-27 17:08; end-by 2026-10-28 01:08.
 - At 19:27, stage 2's watch hit its 30-minute silence limit. Verification kept running; the chat used `--stall-minutes 120` and finished the ordered tail by hand. No rerun or changed result.
 - Metadata: stale scorer hash, unread by guards (queue note e); fixed `v4b: pending` and printed `None` precede the passing held check. Commit fields track documentation; hashes bind code.
 - Other stages: none beyond the node parity exception.
 
-Ablation timings cover three seeds per step:
-
-| Timing | Reading |
-|---|---|
-| Seconds per removal, three seeds | relational 297; sharp row 329; direct 304; buddy 1374; caption endpoints 271; correction 422; graphs 425; trunk 341 |
-| 24 development runs | 3,763 s, about 63 GPU min; estimated 17 |
-| Typical / buddy run | about 100 / 460 s; buddy genre reaches epoch cap in two seeds |
-| Held end, estimate | 2026-10-28 05:00 to 06:00; buddy alone about 2 h |
-
-Estimated end: before 11:00, outside weekday 10:00 to 19:00; later than planned end 23:00 and report 03:00.
+The ablation took longer than estimated: development 63 GPU minutes against 17, held 252 against 80 (per-removal times in the run log).
+The chain ended at 03:53, before 11:00 and outside weekday working hours, but after the planned end (23:00) and report time (03:00).
 
 ## Files and storage
 
