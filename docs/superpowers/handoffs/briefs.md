@@ -1209,3 +1209,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-27-r10-run-5-handoff.md
 - New chat: tab 'r10 run 5', session f7deb04f-88d9-47f9-9f63-b04dee14ea39
 
+[brief] CoSiR: r10 run 5 -> r10 reports (2026-10-28 04:08 Amsterdam)
+- Done: r10's recipe sweep is reported: report 12-28, its user-read report, H22, the index row; checks applied.
+- State: c* (40 graph neighbours) on held paintings: emotion +0.0145 and style +0.0041 above the instructed Qwen image; genre −0.0060, below it by less than one seed range.
+- Next: the stage report of the sweep and its outside-view page, then the weekly report draft, unattended.
+- Blocked: nothing. In the morning the user reviews; slides and handoff 2 of 2 follow.
+- Handoff: docs/superpowers/handoffs/2026-10-28-r10-reports-handoff.md
+- New chat: tab 'r10 reports', session c21d9339-c0fc-46fa-ae1e-e545c595393c
+
