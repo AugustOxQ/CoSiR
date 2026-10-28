@@ -1217,3 +1217,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-28-r10-reports-handoff.md
 - New chat: tab 'r10 reports', session c21d9339-c0fc-46fa-ae1e-e545c595393c
 
+[brief] CoSiR: r10 reports -> r10 reports 2 (2026-10-28 04:26 Amsterdam)
+- Done: stage report of r10's sweep (2026-10-28_recipe_sweep, six figures, claim review applied), committed; weekly report draft v1 written.
+- State: the pick (40 neighbours) on held paintings: emotion +0.0145 and style +0.0041 above the instructed Qwen image; genre level.
+- Next: the outside-view page and its dev-log post, then the weekly draft's checks, fix wave and new figures.
+- Blocked: nothing. The user reviews both reports in the morning.
+- Handoff: docs/superpowers/handoffs/2026-10-28-r10-reports-2-handoff.md
+- New chat: tab 'r10 reports 2', session d185ca5b-b59f-421e-9a6d-9079e523877c
+
