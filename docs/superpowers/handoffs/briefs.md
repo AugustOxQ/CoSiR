@@ -1233,3 +1233,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-28-r10-reports-3-handoff.md
 - New chat: tab 'r10 reports 3', session ccc0fdd0-92e7-45b5-9fa1-dff7c4059ae3
 
+[brief] CoSiR: r10 reports 3 -> r10 reports 4 (2026-10-28 05:16 Amsterdam)
+- Done: slide deck v2 for the weekly meeting (26 slides, 4 new figures, pptx built); number check 400 of 400 matched.
+- State: the sweep's pick on held paintings: emotion +0.0145 and style +0.0041 above the instructed Qwen image; genre level. No decision C yet.
+- Next: the morning with the user: the page, weekly v2 and slides v2; updates; then handoff 2 of 2 and r11's decide chat.
+- Blocked: waits for the user (weekly length, deck length, publishing, decision C).
+- Handoff: docs/superpowers/handoffs/2026-10-28-r10-reports-4-handoff.md
+- New chat: tab 'r10 reports 4', session 384f89f8-fe8e-430c-b491-7366d1957f22
+
