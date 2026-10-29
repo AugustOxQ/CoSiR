@@ -1,7 +1,6 @@
 """Join contracts first, then the frozen held/validation file boundaries."""
 import json
 import os
-import uuid
 from collections import Counter
 from pathlib import Path
 
@@ -14,17 +13,8 @@ import rs_vh
 
 
 @pytest.fixture
-def store_path():
-    # Keep every test write in this worktree, and retain fixtures (delete nothing).
-    path = rt_paths.ROUND.parents[2] / '.scratch/r11-t01-tests' / uuid.uuid4().hex
-    path.mkdir(parents=True)
-    return path
-
-
-@pytest.fixture
-def tmp_path(store_path):
-    # Override pytest's /tmp fixture: keep these fake files, without cleanup.
-    return store_path
+def store_path(tmp_path):
+    return tmp_path
 
 
 @pytest.fixture
