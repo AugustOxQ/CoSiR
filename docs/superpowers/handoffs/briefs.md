@@ -1305,3 +1305,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-29-r11-run-handoff.md
 - New chat: tab 'r11 run', session 638621e6-a2f9-41bd-b8e4-57c372c7448a
 
+[brief] CoSiR: r11 run -> r11 report (2026-10-29 23:04 Amsterdam)
+- Done: the r11 run. Stage 0b first failed (PercepT core read from the wrong mapper); fixed as amendment A2, rerun, all checks pass.
+- State: stage 5 (each model with its read-out picked on validation): GO. Stage 1 (plain cosine): NO-GO, emotion below the instructed Qwen image. Switch test GO.
+- Next: the auto report and the user-read report (step 9), then open the r12 decide chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-29-r11-report-handoff.md
+- New chat: tab 'r11 report', session 22e40bb3-5649-48c3-b338-a25763e5b8cd
+
