@@ -56,6 +56,60 @@ def test_coco_adapter_groups_captions_and_checks_path(tmp_path):
         ef.adapter_coco_train2014(image_dir=tmp_path / "missing", captions_path=tmp_path / "c.json")
 
 
+def test_impressions_adapter(tmp_path):
+    metadata = tmp_path / "metadata"
+    metadata.mkdir()
+    train = [{"image_id": 42, "ImgId": "b_cap2_2", "image": "b_cap2_2.png",
+              "caption": " first ", "caption_type": "aesthetic"},
+             {"image_id": 17, "ImgId": "a", "image": "a.png", "caption": "second",
+              "caption_type": "description"},
+             {"image_id": 81, "ImgId": "b_cap2_2", "image": "b_cap2_2.png", "caption": "third",
+              "caption_type": "impression"},
+             {"image_id": 90, "ImgId": "a", "image": "a.png", "caption": "",
+              "caption_type": "caption"}]
+    test = [{"image_id": 23, "ImgId": "c", "image": "c.png", "caption": ["fourth", "", "fifth"],
+             "caption_type": ["impression", "caption", "aesthetic"]},
+            {"image_id": 51, "ImgId": "a", "image": "a.png", "caption": ["sixth", "   "]}]
+    for split, rows in (("train", train), ("test", test)):
+        (metadata / f"impressions_{split}.json").write_text(json.dumps(rows))
+    (metadata / "mean_impact_scores.csv").write_text(
+        ",ImgId,Impact_Mean,Impact_std,Impact_var\n0,b,1.0,0,0\n1,b_cap2_2,4.5,0,0\n2,a,2.0,0,0\n")
+    for filename in ("a.png", "b_cap2_2.png", "c.png"):
+        _img(tmp_path / "media" / filename)
+    assert ef.ALLOWED["impressions"] == [ef.CLIP, ef.QWEN, ef.SIGLIP2]
+    spec = ef.ADAPTERS["impressions"](impressions_dir=tmp_path)
+    assert spec.images == [
+        {"image": "b_cap2_2.png", "ImgId": "b_cap2_2", "uuid": "b", "has_overlay": True,
+         "splits": ["train"], "impact_mean": 4.5},
+        {"image": "a.png", "ImgId": "a", "uuid": "a", "has_overlay": False,
+         "splits": ["test", "train"], "impact_mean": 2.0},
+        {"image": "c.png", "ImgId": "c", "uuid": "c", "has_overlay": False,
+         "splits": ["test"], "impact_mean": None}]
+    assert spec.texts == [" first ", "second", "third", "fourth", "fifth", "sixth"]
+    assert spec.text_meta == [
+        {"img": 0, "split": "train", "caption_type": "aesthetic", "image_id": 42, "elem": 0},
+        {"img": 1, "split": "train", "caption_type": "description", "image_id": 17, "elem": 0},
+        {"img": 0, "split": "train", "caption_type": "impression", "image_id": 81, "elem": 0},
+        {"img": 2, "split": "test", "caption_type": "impression", "image_id": 23, "elem": 0},
+        {"img": 2, "split": "test", "caption_type": "aesthetic", "image_id": 23, "elem": 2},
+        {"img": 1, "split": "test", "caption_type": None, "image_id": 51, "elem": 0}]
+    assert spec.extra == {"n_train_texts": 3, "n_test_texts": 3, "n_images": 3, "n_overlay_images": 1,
+                          "n_impact_missing": 1, "n_empty_captions_skipped": 3}
+    with spec.load_image(0) as image:
+        assert image.size == (40, 30) and image.mode == "RGB"
+
+
+def test_impressions_adapter_missing_image(tmp_path):
+    metadata = tmp_path / "metadata"
+    metadata.mkdir()
+    (metadata / "mean_impact_scores.csv").write_text("ImgId,Impact_Mean\n")
+    (metadata / "impressions_train.json").write_text(json.dumps([
+        {"image_id": 75, "ImgId": "missing", "image": "missing.png", "caption": "text"}]))
+    (metadata / "impressions_test.json").write_text("[]")
+    with pytest.raises(SystemExit, match="missing.png"):
+        ef.adapter_impressions(impressions_dir=tmp_path)
+
+
 def test_genecis_coco_adapter_matches_store(tmp_path):
     rows = [{"image": "val2014/a.jpg", "caption": "c0", "image_id": "coco_1", "caption_id": 5},
             {"image": "val2014/a.jpg", "caption": "c1", "image_id": "coco_1", "caption_id": 6},
