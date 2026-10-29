@@ -1281,3 +1281,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-29-r11-build-2-handoff.md
 - New chat: tab 'r11 build 2', session 377b90b0-e3cd-4025-88b4-c754376deadf
 
+[brief] CoSiR: r11 build 2 -> r11 build 3 (2026-10-29 19:13 Amsterdam)
+- Done: tickets 01, 04 and 08 reviewed (01, 04 pass; 08 pass after one fix) and merged with 05 and 06; 216 tests pass.
+- State: 7 of 9 tickets merged on `r11-retrieval`. Stage 0's one full check reproduced r10's held c* emotion AMI exactly.
+- Next: the GPU exports (PercepT validation, CRL lists) after the Affection extraction (about 20:15), then ticket 07.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-29-r11-build-3-handoff.md
+- New chat: tab 'r11 build 3', session 585c1724-5f23-49f9-94a9-046b675ae2e9
+
