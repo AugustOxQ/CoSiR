@@ -38,8 +38,8 @@ MAIN = Path('/project/CoSiR')                                   # frozen, gitign
 RS_DIR = MAIN / 'src/test/20261027_recipe_sweep'                # r10's round, imported read-only
 OUTPUTS_DEFAULT = Path('/data/SSD2/cosir_r11/20261029_retrieval/outputs')
 HELD_LIST = MAIN / 'src/test/20261020_claim_test/outputs/held/held_paintings.json'
-PERCEPT_HELD = str(MAIN / 'src/test/20261020_claim_test/outputs/held/percept/core__k40/P3__s{seed}.npz')          # 'prob'
-PERCEPT_VAL = 'percept_val/P3__s{seed}.npz'      # under --inputs; 'prob'; spec amendment A1: the held mapper's weights
+PERCEPT_HELD = str(MAIN / 'src/test/20261020_claim_test/outputs/stage2/full/held/percept/core__k40/P3__s{seed}.npz')          # 'prob'
+PERCEPT_VAL = 'percept_val_full/P3__s{seed}.npz'      # under --inputs; 'prob'; amendments A1, A2: the held (full-scale) mapper's weights
 R10_OUT = Path('/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full')
 CSTAR_HELD = str(R10_OUT / 'held/k11=40/{aspect}__s{seed}.npz')                                                # 'img'
 CSTAR_VAL = str(R10_OUT / 'train/k11=40/R6-5/{file}__s{seed}.npz')                                             # 'img'
@@ -300,7 +300,7 @@ class Data:
     when smoke is set). Embeddings come back float32 with rows normalized (norm clipped at 1e-12)."""
 
     def __init__(self, inputs, smoke=0):
-        self.inputs = Path(inputs)                                # derived inputs: percept_val/, crl/
+        self.inputs = Path(inputs)                                # derived inputs: percept_val_full/, crl/
         self.smoke = smoke
         for p in (str(RS_DIR),):
             if p not in sys.path:
@@ -867,7 +867,7 @@ def main(argv=None):
     ap.add_argument('mode', choices=sorted(STAGES))
     ap.add_argument('--outputs', type=Path, default=OUTPUTS_DEFAULT)
     ap.add_argument('--inputs', type=Path, default=OUTPUTS_DEFAULT,
-                    help='folder of the derived inputs (percept_val/, crl/); the real one also in smoke runs')
+                    help='folder of the derived inputs (percept_val_full/, crl/); the real one also in smoke runs')
     ap.add_argument('--smoke', type=int, default=0, metavar='N')
     ap.add_argument('--workers', type=int, default=8)
     ap.add_argument('--tol', type=float, default=TOL)

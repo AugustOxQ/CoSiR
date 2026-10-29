@@ -12,6 +12,9 @@ if _sweep not in sys.path:
 import rs_paths  # noqa: E402
 
 MAIN_TEST, CT_OUT, PRE = rs_paths.MAIN_TEST, rs_paths.CT_OUT, rs_paths.PRE
+# Amendment A2: PercepT core comes from the full-scale mapper (stage 0b reference); validation exports go to a new folder.
+PERCEPT_OUT = CT_OUT / 'stage2/full'
+PERCEPT_VAL_DIR = 'percept_val_full'
 OUTPUTS = Path(os.environ.get('RT_OUTPUTS', '/data/SSD2/cosir_r11/20261029_retrieval/outputs'))
 ASPECTS = ('emotion', 'style', 'genre')
 SEEDS = (0, 1, 2, 3, 4)

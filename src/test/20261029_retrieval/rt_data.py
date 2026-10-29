@@ -198,9 +198,9 @@ def _instructed(split, aspect, ns):
 
 
 def _percept(split, seed, ns):
-    # Amendment 1: both splits use the held comparator's sample-scale mapper.
-    held = rt_paths.CT_OUT / f'held/percept/core__k40/P3__s{seed}.npz'
-    path = held if split == 'held' else rt_paths.OUTPUTS / f'percept_val/P3__s{seed}.npz'
+    # Amendments 1 and 2: both splits use the held comparator's mapper, the full-scale one.
+    held = rt_paths.PERCEPT_OUT / f'held/percept/core__k40/P3__s{seed}.npz'
+    path = held if split == 'held' else rt_paths.OUTPUTS / rt_paths.PERCEPT_VAL_DIR / f'P3__s{seed}.npz'
     if split == 'val' and (not path.is_file() or not path.with_suffix('.json').is_file()):
         raise FileNotFoundError(f'Missing PercepT validation export {path}; run rt_percept_val.py')
     side = _json(path.with_suffix('.json'))

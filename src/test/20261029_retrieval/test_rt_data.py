@@ -21,17 +21,18 @@ def store_path(tmp_path):
 def percept_source(tmp_path, monkeypatch):
     ns = ['a', 'b', 'c']
     monkeypatch.setattr(rt_paths, 'CT_OUT', tmp_path / 'frozen')
+    monkeypatch.setattr(rt_paths, 'PERCEPT_OUT', tmp_path / 'frozen/stage2/full')
     monkeypatch.setattr(rt_paths, 'OUTPUTS', tmp_path / 'outputs')
     monkeypatch.setattr(rt_paths, 'N_VAL', 3)
     monkeypatch.setattr(rt_data, 'names', lambda split: ns if split == 'val' else pytest.fail(split))
     for seed in rt_paths.SEEDS:
-        weights = rt_paths.CT_OUT / f'percept/core/stage2/k40/P3__s{seed}.pt'
+        weights = rt_paths.PERCEPT_OUT / f'percept/core/stage2/k40/P3__s{seed}.pt'
         weights.parent.mkdir(parents=True, exist_ok=True)
-        weights.write_bytes(f'sample mapper seed {seed}'.encode())
+        weights.write_bytes(f'full-scale mapper seed {seed}'.encode())
         config = dict(settings='core', cut='k40', arm='P3', seed=seed, smoke=False, device='cuda')
         source = dict(config=config, K=40, weights_sha256=rs_vh.file_sha(weights))
         weights.with_suffix('.json').write_text(json.dumps(source))
-        held = rt_paths.CT_OUT / f'held/percept/core__k40/P3__s{seed}.json'
+        held = rt_paths.PERCEPT_OUT / f'held/percept/core__k40/P3__s{seed}.json'
         held.parent.mkdir(parents=True, exist_ok=True)
         held.write_text(json.dumps(dict(source, rows=12281, held_sha256=rs_vh.HELD_SHA256,
                                         inference_device='cuda')))
@@ -41,9 +42,9 @@ def percept_source(tmp_path, monkeypatch):
 @pytest.mark.parametrize('corruption', [None, 'rows', 'names', 'weights', 'hash', 'device', 'dtype', 'shape'])
 def test_percept_validation_checks_exported_file(percept_source, corruption):
     x = percept_source
-    path = rt_paths.OUTPUTS / 'percept_val/P3__s0.npz'
+    path = rt_paths.OUTPUTS / rt_paths.PERCEPT_VAL_DIR / 'P3__s0.npz'
     path.parent.mkdir(parents=True)
-    weights = rt_paths.CT_OUT / 'percept/core/stage2/k40/P3__s0.pt'
+    weights = rt_paths.PERCEPT_OUT / 'percept/core/stage2/k40/P3__s0.pt'
     side = dict(rows=3, val_sha256=rs_vh.names_sha(['a', 'b', 'c']),
                 weights_sha256=rs_vh.file_sha(weights), array_sha256s={'prob': rs_vh.array_sha(x)},
                 device='cuda', seed=0)
@@ -78,7 +79,7 @@ def test_percept_export_cli_uses_held_mapper_and_preserves_matching_files(percep
     original_root = ct_percept.OUTPUTS
 
     def infer(settings, cut, arm, seed, ns):
-        assert ct_percept.OUTPUTS == rt_paths.CT_OUT, 'must read frozen inputs from main checkout'
+        assert ct_percept.OUTPUTS == rt_paths.PERCEPT_OUT, 'must read the full-scale mapper'
         calls.append((settings, cut, arm, seed, ns))
         return percept_source.copy()
 
@@ -88,13 +89,13 @@ def test_percept_export_cli_uses_held_mapper_and_preserves_matching_files(percep
     assert ct_percept.OUTPUTS == original_root
     for seed in range(5):
         np.testing.assert_array_equal(rt_data.raw('percept', 'val', 'emotion', seed), percept_source)
-        path = rt_paths.OUTPUTS / f'percept_val/P3__s{seed}.json'
+        path = rt_paths.OUTPUTS / rt_paths.PERCEPT_VAL_DIR / f'P3__s{seed}.json'
         side = json.loads(path.read_text())
-        held = rt_paths.CT_OUT / f'held/percept/core__k40/P3__s{seed}.json'
+        held = rt_paths.PERCEPT_OUT / f'held/percept/core__k40/P3__s{seed}.json'
         assert side == dict(rows=3, val_sha256=rs_vh.names_sha(['a', 'b', 'c']), seed=seed,
                             weights_sha256=json.loads(held.read_text())['weights_sha256'],
                             array_sha256s={'prob': rs_vh.array_sha(percept_source)}, device='cuda')
-    directory = rt_paths.OUTPUTS / 'percept_val'
+    directory = rt_paths.OUTPUTS / rt_paths.PERCEPT_VAL_DIR
     before = {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in directory.iterdir()}
     assert rt_percept_val.main([]) == 0
     assert {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in directory.iterdir()} == before
@@ -103,7 +104,7 @@ def test_percept_export_cli_uses_held_mapper_and_preserves_matching_files(percep
 def test_percept_export_rejects_wrong_weights_before_inference(percept_source, monkeypatch):
     import ct_percept
     import rt_percept_val
-    path = rt_paths.CT_OUT / 'percept/core/stage2/k40/P3__s0.pt'
+    path = rt_paths.PERCEPT_OUT / 'percept/core/stage2/k40/P3__s0.pt'
     path.write_bytes(b'wrong full-scale weights')
     monkeypatch.setattr(ct_percept, 'infer_stage2', lambda *a, **k: pytest.fail('must check weights first'))
     with pytest.raises(AssertionError, match='weights'):
@@ -116,7 +117,7 @@ def test_percept_export_refuses_different_existing_content(percept_source, monke
     import ct_percept
     import rt_percept_val
     monkeypatch.setattr(ct_percept, 'infer_stage2', lambda *args: percept_source.copy())
-    path = rt_paths.OUTPUTS / 'percept_val/P3__s0.npz'
+    path = rt_paths.OUTPUTS / rt_paths.PERCEPT_VAL_DIR / 'P3__s0.npz'
     path.parent.mkdir(parents=True)
     if existing == 'array':
         np.savez(path, prob=np.full((3, 40), 0.75, dtype=np.float32))
@@ -307,8 +308,8 @@ def _source_row(arm, split, aspect, seed, painting, row):
         with np.load(path) as z:
             return z['img'][row]
     if arm == 'percept':
-        path = (rt_paths.CT_OUT / f'held/percept/core__k40/P3__s{seed}.npz' if split == 'held' else
-                rt_paths.OUTPUTS / f'percept_val/P3__s{seed}.npz')
+        path = (rt_paths.PERCEPT_OUT / f'held/percept/core__k40/P3__s{seed}.npz' if split == 'held' else
+                rt_paths.OUTPUTS / rt_paths.PERCEPT_VAL_DIR / f'P3__s{seed}.npz')
         with np.load(path) as z:
             return z['prob'][row]
     if arm == 'instructed':
@@ -337,9 +338,9 @@ CASES = ([(arm, aspect, seed) for arm in ('cstar', 'percept') for seed in range(
 @pytest.mark.parametrize('arm,aspect,seed', CASES)
 def test_real_arm_shape_dtype_and_known_row(split, arm, aspect, seed):
     if arm == 'percept' and split == 'val':
-        path = rt_paths.OUTPUTS / f'percept_val/P3__s{seed}.npz'
+        path = rt_paths.OUTPUTS / rt_paths.PERCEPT_VAL_DIR / f'P3__s{seed}.npz'
         if not path.is_file() or not path.with_suffix('.json').is_file():
-            pytest.skip('Run rt_percept_val.py to export validation from the held mapper')
+            pytest.skip('percept_val_full/ is missing: run rt_percept_val.py to export validation from the full-scale held mapper')
     ns = rt_data.names(split)
     x = rt_data.raw(arm, split, aspect, seed)
     width = dict(cstar=2048, plain=2048, instructed=2048, clip=768, siglip2=1152, percept=40)[arm]
@@ -358,12 +359,31 @@ def test_real_arm_shape_dtype_and_known_row(split, arm, aspect, seed):
 @pytest.mark.real_data
 @pytest.mark.parametrize('seed', range(5))
 def test_real_percept_validation_weights_match_held_mapper(seed):
-    weights = rt_paths.CT_OUT / f'percept/core/stage2/k40/P3__s{seed}.pt'
+    weights = rt_paths.PERCEPT_OUT / f'percept/core/stage2/k40/P3__s{seed}.pt'
     original = json.loads(weights.with_suffix('.json').read_text())
-    held = json.loads((rt_paths.CT_OUT / f'held/percept/core__k40/P3__s{seed}.json').read_text())
+    held = json.loads((rt_paths.PERCEPT_OUT / f'held/percept/core__k40/P3__s{seed}.json').read_text())
     assert rs_vh.file_sha(weights) == original['weights_sha256'] == held['weights_sha256']
-    assert original['config']['fit_paintings'] == held['config']['fit_paintings'] == 13400
+    assert original['config']['fit_paintings'] == held['config']['fit_paintings']
+    assert original['config']['fit_paintings'] != 13400, 'sample-scale mapper (13,400 paintings) must not be read'
     assert original['config']['device'] == held['inference_device'] == 'cuda'
+
+
+@pytest.mark.real_data
+@pytest.mark.parametrize('seed', range(5))
+def test_real_percept_held_sidecar_hash_is_full_scale_weights(seed):
+    """The held file rt_data reads was produced by the full-scale .pt (amendment 2)."""
+    assert rt_paths.PERCEPT_OUT == rt_paths.CT_OUT / 'stage2/full'
+    weights = rt_paths.PERCEPT_OUT / f'percept/core/stage2/k40/P3__s{seed}.pt'
+    sidecar = rt_data._json(rt_paths.PERCEPT_OUT / f'held/percept/core__k40/P3__s{seed}.json')
+    assert sidecar['weights_sha256'] == rs_vh.file_sha(weights)
+    rt_data.raw('percept', 'held', 'emotion', seed)   # the read itself runs the sidecar checks
+
+
+@pytest.mark.real_data
+def test_real_percept_core_held_emotion_ami_matches_frozen_reference():
+    import rt_stage0
+    values, _ = rt_stage0.held_ami(workers=8, pairs=[('percept', 'emotion')])
+    assert abs(values['percept/emotion'] - 0.08742922158584242) < 1e-9
 
 
 @pytest.mark.real_data

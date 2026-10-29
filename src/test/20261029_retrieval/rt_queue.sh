@@ -175,8 +175,8 @@ check_export_files() {
 if [[ $MODE == smoke ]]; then
     if [[ $DRY_RUN -eq 0 ]]; then
         check_export_files derived_exports \
-            "$INPUTS"/percept_val/P3__s0.npz "$INPUTS"/percept_val/P3__s1.npz \
-            "$INPUTS"/percept_val/P3__s2.npz "$INPUTS"/percept_val/P3__s3.npz "$INPUTS"/percept_val/P3__s4.npz \
+            "$INPUTS"/percept_val_full/P3__s0.npz "$INPUTS"/percept_val_full/P3__s1.npz \
+            "$INPUTS"/percept_val_full/P3__s2.npz "$INPUTS"/percept_val_full/P3__s3.npz "$INPUTS"/percept_val_full/P3__s4.npz \
             "$INPUTS"/crl/lists.json "$INPUTS"/crl/emotion_text.json "$INPUTS"/crl/style_text.json "$INPUTS"/crl/genre_text.json
     else
         printf '  # percept_val, crl_lists, crl_texts skipped (smoke uses existing derived inputs)\n'
@@ -185,7 +185,7 @@ if [[ $MODE == smoke ]]; then
     record_status crl_lists skipped
     record_status crl_texts skipped
 else
-    PERCEPT_FILES=("$INPUTS"/percept_val/P3__s0.npz "$INPUTS"/percept_val/P3__s1.npz "$INPUTS"/percept_val/P3__s2.npz "$INPUTS"/percept_val/P3__s3.npz "$INPUTS"/percept_val/P3__s4.npz)
+    PERCEPT_FILES=("$INPUTS"/percept_val_full/P3__s0.npz "$INPUTS"/percept_val_full/P3__s1.npz "$INPUTS"/percept_val_full/P3__s2.npz "$INPUTS"/percept_val_full/P3__s3.npz "$INPUTS"/percept_val_full/P3__s4.npz)
     if [[ -f ${PERCEPT_FILES[0]} && -f ${PERCEPT_FILES[1]} && -f ${PERCEPT_FILES[2]} && -f ${PERCEPT_FILES[3]} && -f ${PERCEPT_FILES[4]} ]]; then
         record_status percept_val skipped
         [[ $DRY_RUN -eq 1 ]] && printf '  # percept_val skipped (all outputs exist)\n'

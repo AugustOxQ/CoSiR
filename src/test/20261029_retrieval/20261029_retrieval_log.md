@@ -144,3 +144,31 @@ smoke (the controller runs them).
   plain `git add` of `stage0a_ranges.json` would fail at `commit_ranges` on the first full run, and every held stage
   would then refuse. `.gitignore` now un-ignores that one path; `test_the_real_ranges_file_is_not_gitignored` pins it
   (it fails with the negation removed). The temporary-repo guard tests could not see it (no `.gitignore` there).
+
+## Amendment 2 (PercepT core at full scale)
+
+Failure: the stage 0b regression check failed on one item. The held emotion AMI of PercepT core P3 (own reading) came out
+0.08549055120302276; the frozen reference in `rt_stage0.py` `AMI_REFERENCES` is 0.08742922158584242.
+
+Cause: the round read PercepT core from the sample-scale mapper (fit on 13,400 paintings). The reference, and r10's
+comparator for c* (a full-scale model), use the full-scale mapper. The frozen r10 functions run on the full-scale held
+files give exactly 0.08742922158584242. For seeds 0 to 4 the full `.pt` hash equals the hash in both the full record and the
+full held sidecar.
+
+Path change (`rt_paths.PERCEPT_OUT = CT_OUT / 'stage2/full'`; `rt_paths.PERCEPT_VAL_DIR = 'percept_val_full'`):
+- held probabilities and sidecar: `held/percept/core__k40/...` becomes `stage2/full/held/percept/core__k40/...`;
+- mapper weights and record (export source): `percept/core/stage2/k40/...` becomes `stage2/full/percept/core/stage2/k40/...`;
+- `ct_percept.OUTPUTS` during `infer_stage2` is `CT / 'stage2/full'`;
+- `rt_vh.py` has the same two paths as its own constants (it still imports no `rt_` module).
+
+Amendment 1 is kept as is: validation is re-inferred from the same mapper as held, with the same hash checks. Only the
+mapper changed.
+
+New export folder: `<outputs>/percept_val_full/`. The old `percept_val/` files are not touched, and `_publish` never
+overwrites them. The queue checks `percept_val_full/` and runs the export when it is missing (it needs the GPU).
+
+Tests (`test_rt_data.py`): the fixtures and real-data tests use the new paths. Two new real-data tests:
+`test_real_percept_held_sidecar_hash_is_full_scale_weights` (seeds 0 to 4: the held sidecar `rt_data` reads has the hash of
+the full-scale `.pt`) and `test_real_percept_core_held_emotion_ami_matches_frozen_reference` (own-reading held emotion AMI
+through `rt_stage0.held_ami`, equal to 0.08742922158584242 within 1e-9). Real-data tests that need the validation exports
+skip while `percept_val_full/` is missing.

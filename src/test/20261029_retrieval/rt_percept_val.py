@@ -1,9 +1,10 @@
-"""Export validation probabilities with the held PercepT P3 mapper (amendment 1).
+"""Export validation probabilities with the held PercepT P3 mapper (amendments 1 and 2: the full-scale mapper).
 
 Run on the training CUDA device, under the caller's GPU lock, for example:
   flock -o -w 3600 /tmp/gpu0.lock python src/test/20261029_retrieval/rt_percept_val.py
 
-Frozen inputs come from the main checkout; exports go to RT_OUTPUTS/percept_val.
+Frozen inputs come from the main checkout; exports go to RT_OUTPUTS/percept_val_full
+(a new folder; the earlier sample-scale percept_val/ exports stay untouched).
 An existing array or sidecar is retained only when its content agrees exactly.
 """
 import argparse
@@ -45,8 +46,8 @@ def export(seed):
     assert seed in rt_paths.SEEDS, seed
     ns = rt_data.names('val')
     assert len(ns) == len(set(ns)) == rt_paths.N_VAL and ns == sorted(ns), 'validation names/order'
-    source = rt_paths.CT_OUT / f'percept/core/stage2/k40/P3__s{seed}.npz'
-    held = rt_paths.CT_OUT / f'held/percept/core__k40/P3__s{seed}.json'
+    source = rt_paths.PERCEPT_OUT / f'percept/core/stage2/k40/P3__s{seed}.npz'
+    held = rt_paths.PERCEPT_OUT / f'held/percept/core__k40/P3__s{seed}.json'
     original = json.loads(source.with_suffix('.json').read_text())
     comparator = json.loads(held.read_text())
     for record in (original, comparator):
@@ -60,7 +61,7 @@ def export(seed):
 
     # ct_percept defaults to its importing checkout's outputs. Redirect only its
     # read-only input root, and let infer_stage2 enforce the training device.
-    with patch.object(ct_percept, 'OUTPUTS', rt_paths.CT_OUT):
+    with patch.object(ct_percept, 'OUTPUTS', rt_paths.PERCEPT_OUT):
         assert ct_percept.stage2_path('core', 'k40', 'P3', seed) == source
         prob = ct_percept.infer_stage2('core', 'k40', 'P3', seed, ns)
     assert prob.shape == (rt_paths.N_VAL, 40) and prob.dtype == np.float32, 'validation probabilities shape/dtype'
@@ -68,7 +69,7 @@ def export(seed):
     assert rs_vh.file_sha(source.with_suffix('.pt')) == weights_sha, 'mapper weights changed during inference'
     side = dict(rows=len(ns), val_sha256=rs_vh.names_sha(ns), weights_sha256=weights_sha,
                 array_sha256s={'prob': rs_vh.array_sha(prob)}, device=device, seed=seed)
-    path = rt_paths.OUTPUTS / f'percept_val/P3__s{seed}.npz'
+    path = rt_paths.OUTPUTS / rt_paths.PERCEPT_VAL_DIR / f'P3__s{seed}.npz'
     _publish(path, prob, side)
     return path
 
