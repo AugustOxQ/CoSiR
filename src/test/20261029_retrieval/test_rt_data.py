@@ -21,6 +21,142 @@ def store_path():
     return path
 
 
+@pytest.fixture
+def tmp_path(store_path):
+    # Override pytest's /tmp fixture: keep these fake files, without cleanup.
+    return store_path
+
+
+@pytest.fixture
+def percept_source(tmp_path, monkeypatch):
+    ns = ['a', 'b', 'c']
+    monkeypatch.setattr(rt_paths, 'CT_OUT', tmp_path / 'frozen')
+    monkeypatch.setattr(rt_paths, 'OUTPUTS', tmp_path / 'outputs')
+    monkeypatch.setattr(rt_paths, 'N_VAL', 3)
+    monkeypatch.setattr(rt_data, 'names', lambda split: ns if split == 'val' else pytest.fail(split))
+    for seed in rt_paths.SEEDS:
+        weights = rt_paths.CT_OUT / f'percept/core/stage2/k40/P3__s{seed}.pt'
+        weights.parent.mkdir(parents=True, exist_ok=True)
+        weights.write_bytes(f'sample mapper seed {seed}'.encode())
+        config = dict(settings='core', cut='k40', arm='P3', seed=seed, smoke=False, device='cuda')
+        source = dict(config=config, K=40, weights_sha256=rs_vh.file_sha(weights))
+        weights.with_suffix('.json').write_text(json.dumps(source))
+        held = rt_paths.CT_OUT / f'held/percept/core__k40/P3__s{seed}.json'
+        held.parent.mkdir(parents=True, exist_ok=True)
+        held.write_text(json.dumps(dict(source, rows=12281, held_sha256=rs_vh.HELD_SHA256,
+                                        inference_device='cuda')))
+    return np.full((3, 40), 0.25, dtype=np.float32)
+
+
+@pytest.mark.parametrize('corruption', [None, 'rows', 'names', 'weights', 'hash', 'device', 'dtype', 'shape'])
+def test_percept_validation_checks_exported_file(percept_source, corruption):
+    x = percept_source
+    path = rt_paths.OUTPUTS / 'percept_val/P3__s0.npz'
+    path.parent.mkdir(parents=True)
+    weights = rt_paths.CT_OUT / 'percept/core/stage2/k40/P3__s0.pt'
+    side = dict(rows=3, val_sha256=rs_vh.names_sha(['a', 'b', 'c']),
+                weights_sha256=rs_vh.file_sha(weights), array_sha256s={'prob': rs_vh.array_sha(x)},
+                device='cuda', seed=0)
+    if corruption in ('rows', 'names', 'weights', 'device'):
+        side[dict(rows='rows', names='val_sha256', weights='weights_sha256', device='device')[corruption]] = 'bad'
+    elif corruption == 'hash':
+        side['array_sha256s']['prob'] = 'bad'
+    elif corruption == 'dtype':
+        x = x.astype(np.float16)
+        side['array_sha256s']['prob'] = rs_vh.array_sha(x)
+    elif corruption == 'shape':
+        x = x[:, :39]
+        side['array_sha256s']['prob'] = rs_vh.array_sha(x)
+    np.savez(path, prob=x)
+    path.with_suffix('.json').write_text(json.dumps(side))
+    if corruption:
+        with pytest.raises(AssertionError):
+            rt_data.raw('percept', 'val', 'emotion', 0)
+    else:
+        np.testing.assert_array_equal(rt_data.raw('percept', 'val', 'emotion', 0), x)
+
+
+def test_missing_percept_validation_names_export_command(percept_source):
+    with pytest.raises(FileNotFoundError, match='rt_percept_val.py'):
+        rt_data.raw('percept', 'val', 'emotion', 0)
+
+
+def test_percept_export_cli_uses_held_mapper_and_preserves_matching_files(percept_source, monkeypatch):
+    import ct_percept
+    import rt_percept_val
+    calls = []
+    original_root = ct_percept.OUTPUTS
+
+    def infer(settings, cut, arm, seed, ns):
+        assert ct_percept.OUTPUTS == rt_paths.CT_OUT, 'must read frozen inputs from main checkout'
+        calls.append((settings, cut, arm, seed, ns))
+        return percept_source.copy()
+
+    monkeypatch.setattr(ct_percept, 'infer_stage2', infer)
+    assert rt_percept_val.main([]) == 0
+    assert calls == [('core', 'k40', 'P3', seed, ['a', 'b', 'c']) for seed in range(5)]
+    assert ct_percept.OUTPUTS == original_root
+    for seed in range(5):
+        np.testing.assert_array_equal(rt_data.raw('percept', 'val', 'emotion', seed), percept_source)
+        path = rt_paths.OUTPUTS / f'percept_val/P3__s{seed}.json'
+        side = json.loads(path.read_text())
+        held = rt_paths.CT_OUT / f'held/percept/core__k40/P3__s{seed}.json'
+        assert side == dict(rows=3, val_sha256=rs_vh.names_sha(['a', 'b', 'c']), seed=seed,
+                            weights_sha256=json.loads(held.read_text())['weights_sha256'],
+                            array_sha256s={'prob': rs_vh.array_sha(percept_source)}, device='cuda')
+    directory = rt_paths.OUTPUTS / 'percept_val'
+    before = {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in directory.iterdir()}
+    assert rt_percept_val.main([]) == 0
+    assert {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in directory.iterdir()} == before
+
+
+def test_percept_export_rejects_wrong_weights_before_inference(percept_source, monkeypatch):
+    import ct_percept
+    import rt_percept_val
+    path = rt_paths.CT_OUT / 'percept/core/stage2/k40/P3__s0.pt'
+    path.write_bytes(b'wrong full-scale weights')
+    monkeypatch.setattr(ct_percept, 'infer_stage2', lambda *a, **k: pytest.fail('must check weights first'))
+    with pytest.raises(AssertionError, match='weights'):
+        rt_percept_val.export(0)
+    assert not rt_paths.OUTPUTS.exists()
+
+
+@pytest.mark.parametrize('existing', ['array', 'sidecar'])
+def test_percept_export_refuses_different_existing_content(percept_source, monkeypatch, existing):
+    import ct_percept
+    import rt_percept_val
+    monkeypatch.setattr(ct_percept, 'infer_stage2', lambda *args: percept_source.copy())
+    path = rt_paths.OUTPUTS / 'percept_val/P3__s0.npz'
+    path.parent.mkdir(parents=True)
+    if existing == 'array':
+        np.savez(path, prob=np.full((3, 40), 0.75, dtype=np.float32))
+    else:
+        path.with_suffix('.json').write_text(json.dumps({'weights_sha256': 'wrong mapper'}))
+    before = {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in path.parent.iterdir()}
+    with pytest.raises(FileExistsError, match='different content'):
+        rt_percept_val.export(0)
+    assert {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in path.parent.iterdir()} == before
+
+
+@pytest.mark.parametrize('invalid', ['dtype', 'shape', 'nonfinite', 'probability'])
+def test_percept_export_checks_inference_boundary(percept_source, monkeypatch, invalid):
+    import ct_percept
+    import rt_percept_val
+    x = percept_source.copy()
+    if invalid == 'dtype':
+        x = x.astype(np.float16)
+    elif invalid == 'shape':
+        x = x[:, :39]
+    elif invalid == 'nonfinite':
+        x[0, 0] = np.nan
+    else:
+        x[0, 0] = 1.01
+    monkeypatch.setattr(ct_percept, 'infer_stage2', lambda *args: x)
+    with pytest.raises(AssertionError):
+        rt_percept_val.export(0)
+    assert not rt_paths.OUTPUTS.exists()
+
+
 @pytest.mark.parametrize('kind', ['index', 'ids'])
 def test_name_join_preserves_caller_order_and_stored_dtype(store_path, kind):
     x = np.asarray([[3, 4], [0, 2], [5, 0]], dtype=np.float16)
@@ -153,10 +289,10 @@ def _source_row(arm, split, aspect, seed, painting, row):
         with np.load(path) as z:
             return z['img'][row]
     if arm == 'percept':
-        rel = (f'held/percept/core__k40/P3__s{seed}.npz' if split == 'held' else
-               f'stage2/full/percept/core/stage2/k40/P3__s{seed}.npz')
-        with np.load(rt_paths.CT_OUT / rel) as z:
-            return z['prob' if split == 'held' else 'eval_prob'][row]
+        path = (rt_paths.CT_OUT / f'held/percept/core__k40/P3__s{seed}.npz' if split == 'held' else
+                rt_paths.OUTPUTS / f'percept_val/P3__s{seed}.npz')
+        with np.load(path) as z:
+            return z['prob'][row]
     if arm == 'instructed':
         prompt = dict(emotion='emotion_focus', style='style_word', genre='genre_word')[aspect]
         path = pre / f'qwen3vl_emb_2b_aspect_prompts/{prompt}_{"held" if split == "held" else "s2img"}'
@@ -182,6 +318,10 @@ CASES = ([(arm, aspect, seed) for arm in ('cstar', 'percept') for seed in range(
 @pytest.mark.parametrize('split', ['held', 'val'])
 @pytest.mark.parametrize('arm,aspect,seed', CASES)
 def test_real_arm_shape_dtype_and_known_row(split, arm, aspect, seed):
+    if arm == 'percept' and split == 'val':
+        path = rt_paths.OUTPUTS / f'percept_val/P3__s{seed}.npz'
+        if not path.is_file() or not path.with_suffix('.json').is_file():
+            pytest.skip('Run rt_percept_val.py to export validation from the held mapper')
     ns = rt_data.names(split)
     x = rt_data.raw(arm, split, aspect, seed)
     width = dict(cstar=2048, plain=2048, instructed=2048, clip=768, siglip2=1152, percept=40)[arm]
@@ -195,6 +335,17 @@ def test_real_arm_shape_dtype_and_known_row(split, arm, aspect, seed):
         assert ((x >= 0) & (x <= 1)).all()
     else:
         np.testing.assert_allclose(np.linalg.norm(x.astype(np.float32), axis=1), 1, rtol=0, atol=3e-4)
+
+
+@pytest.mark.real_data
+@pytest.mark.parametrize('seed', range(5))
+def test_real_percept_validation_weights_match_held_mapper(seed):
+    weights = rt_paths.CT_OUT / f'percept/core/stage2/k40/P3__s{seed}.pt'
+    original = json.loads(weights.with_suffix('.json').read_text())
+    held = json.loads((rt_paths.CT_OUT / f'held/percept/core__k40/P3__s{seed}.json').read_text())
+    assert rs_vh.file_sha(weights) == original['weights_sha256'] == held['weights_sha256']
+    assert original['config']['fit_paintings'] == held['config']['fit_paintings'] == 13400
+    assert original['config']['device'] == held['inference_device'] == 'cuda'
 
 
 @pytest.mark.real_data

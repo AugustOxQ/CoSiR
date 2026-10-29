@@ -197,26 +197,28 @@ def _instructed(split, aspect, ns):
 
 
 def _percept(split, seed, ns):
-    # These are the specified frozen P3 files. Held used the sample mapper;
-    # validation used the full mapper (their weight hashes differ).
-    rel = (f'held/percept/core__k40/P3__s{seed}.npz' if split == 'held' else
-           f'stage2/full/percept/core/stage2/k40/P3__s{seed}.npz')
-    path = rt_paths.CT_OUT / rel
+    # Amendment 1: both splits use the held comparator's sample-scale mapper.
+    held = rt_paths.CT_OUT / f'held/percept/core__k40/P3__s{seed}.npz'
+    path = held if split == 'held' else rt_paths.OUTPUTS / f'percept_val/P3__s{seed}.npz'
+    if split == 'val' and (not path.is_file() or not path.with_suffix('.json').is_file()):
+        raise FileNotFoundError(f'Missing PercepT validation export {path}; run rt_percept_val.py')
     side = _json(path.with_suffix('.json'))
-    config = side['config']
+    source = side if split == 'held' else _json(held.with_suffix('.json'))
+    config = source['config']
     assert (config['settings'], config['cut'], config['arm'], config['seed']) == ('core', 'k40', 'P3', seed)
-    assert not config['smoke'] and side['K'] == 40
-    key = 'prob' if split == 'held' else 'eval_prob'
+    assert not config['smoke'] and source['K'] == 40
     with np.load(path, allow_pickle=False) as z:
-        assert set(z.files) == {key}, path
-        x = _view(z[key], len(ns), 40, np.float32)
+        assert set(z.files) == {'prob'}, path
+        x = _view(z['prob'], len(ns), 40, np.float32)
+    assert side['rows'] == len(ns), 'PercepT row count'
     if split == 'held':
-        assert side['rows'] == len(ns) and side['held_sha256'] == rs_vh.names_sha(ns)
+        assert side['held_sha256'] == rs_vh.names_sha(ns)
     else:
-        assert config['mode'] == 'full' and config['eval_order'] == 'dev'
-        assert config['eval_paintings'] == len(ns)
-        assert side['eval_names_sha256'] == config['names_sha256']['dev'] == rs_vh.names_sha(ns)
-    assert side['array_sha256s'] == {key: rs_vh.array_sha(x)}, 'PercepT array hash'
+        assert side['val_sha256'] == rs_vh.names_sha(ns), 'PercepT validation names hash'
+        assert side['weights_sha256'] == source['weights_sha256'], 'PercepT held mapper weights hash'
+        assert side['device'] == source['inference_device'] == config['device'] == 'cuda', 'PercepT device'
+        assert side['seed'] == seed, 'PercepT seed'
+    assert side['array_sha256s'] == {'prob': rs_vh.array_sha(x)}, 'PercepT array hash'
     assert ((x >= 0) & (x <= 1)).all(), 'PercepT probability range'
     return x
 
