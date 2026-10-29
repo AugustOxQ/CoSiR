@@ -1265,3 +1265,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-29-r11-decide-2-handoff.md
 - New chat: tab 'r11 decide 2', session e63ccdad-8470-4f7a-b5c4-4d20bba0ada2
 
+[brief] CoSiR: r11 decide 2 -> r11 build (2026-10-29 18:31 Amsterdam)
+- Done: r11's grill, spec and rule review (Opus `xhigh`, pass after fixes); the user approved the spec from its brief.
+- State: c* is frozen; every input exists (c*'s held and validation embeddings, all baseline stores); no retrieval code yet.
+- Next: tickets, implementation and the final review of the retrieval spec; then open the run chat.
+- Blocked: nothing. The Affection extraction holds the GPU from 19:00 to about 20:15.
+- Handoff: docs/superpowers/handoffs/2026-10-29-r11-build-handoff.md
+- New chat: tab 'r11 build', session 0e4164af-a6af-4060-8cbc-f0eebae7e900
+
