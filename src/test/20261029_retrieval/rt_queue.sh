@@ -116,7 +116,7 @@ if [[ $MODE == full ]]; then
     RANGE_FILE=$SCRIPT_DIR/stage0a_ranges.json
     if [[ $DRY_RUN -eq 1 ]]; then
         printf '  git -C %q add %q\n' "$TOPLEVEL" "$RANGE_FILE"
-        printf '  git -C %q commit -m %q\n' "$TOPLEVEL" 'r11 run: stage 0a seed ranges, committed before any held retrieval'
+        printf '  git -C %q commit -m %q -- %q\n' "$TOPLEVEL" 'r11 run: stage 0a seed ranges, committed before any held retrieval' "$RANGE_FILE"
         printf '  git -C %q push\n' "$TOPLEVEL"
     elif git -C "$TOPLEVEL" ls-files --error-unmatch -- "$RANGE_FILE" >/dev/null 2>&1; then
         # A rerun: the committed r_a stays fixed; 0a must reproduce it byte for byte.
