@@ -120,6 +120,21 @@ def halves(n):
     return np.arange(0, n, 2), np.arange(1, n, 2)
 
 
+def half_dropped(labels):
+    """{aspect: [dropped in half 0, dropped in half 1]}: the queries rt_metrics.retrieval drops (a labelled row with
+    no other labelled row of its class in its half). Depends only on the labels and the halves."""
+    out = {}
+    for a, lab in labels.items():
+        lab = np.asarray(lab)
+        counts = []
+        for idx in halves(len(lab)):
+            l = lab[idx]
+            l = l[l >= 0].astype(np.int64)
+            counts.append(int((np.bincount(l)[l] == 1).sum()))
+        out[a] = counts
+    return out
+
+
 def crossfit_all(xs, labels, ros, workers=8):
     """Cross-fit scores of several read-outs at once (the eigendecomposition of a fit half is done once and shared
     by the whitening sizes; the same applied rows are shared by the k values).
@@ -135,6 +150,10 @@ def crossfit_all(xs, labels, ros, workers=8):
     for a in aspects:
         for s in seeds:
             assert (a, s) in xs, ('missing matrix', a, s)
+        a_seeds = sorted({s for (b, s) in xs if b == a}, key=lambda v: (v is not None, v))
+        assert a_seeds == [None] or a_seeds == [0, 1, 2, 3, 4], ('seed set', a, a_seeds)
+    want_dropped = half_dropped(labels)
+    checked = set()  # (aspect, half) whose dropped count was compared
     n = len(labels[aspects[0]])
     halves_ = halves(n)
     acc = {ro: {a: [] for a in aspects} for ro in ros}  # per-seed means
@@ -157,8 +176,11 @@ def crossfit_all(xs, labels, ros, workers=8):
                     if wk not in applied:
                         params = fit(ro, x_fit, _eig_cache=eigs.get(key))
                         applied[wk] = apply(params, x[score_idx])
-                    ap = rt_metrics.retrieval(applied[wk], labels[a][score_idx], qe_k=ro.k, workers=workers)['ap']
-                    per_half[ro].append(ap.mean())
+                    res = rt_metrics.retrieval(applied[wk], labels[a][score_idx], qe_k=ro.k, workers=workers)
+                    if (a, h) not in checked:
+                        assert res['dropped'] == want_dropped[a][h], ('dropped', a, h, res['dropped'], want_dropped[a][h])
+                        checked.add((a, h))
+                    per_half[ro].append(res['ap'].mean())
             for ro in ros:
                 acc[ro][a].append(np.mean(per_half[ro]))
     return {ro: {a: float(np.mean(acc[ro][a])) for a in aspects} for ro in ros}

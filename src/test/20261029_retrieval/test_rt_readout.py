@@ -171,7 +171,7 @@ def test_halves_by_parity_of_position():
     assert sorted(np.concatenate([even, odd]).tolist()) == list(range(6152))
 
 
-def toy(rng, n=120, d=10, n_seeds=1, per_aspect=True):
+def toy(rng, n=120, d=10, n_seeds=5, per_aspect=True):
     """xs[(aspect, seed)] and labels[aspect]; genre has unlabelled rows. Rows are anisotropic, off-centre."""
     labels = {'emotion': rng.integers(0, 3, size=n), 'style': rng.integers(0, 4, size=n),
               'genre': rng.integers(0, 3, size=n)}
@@ -242,12 +242,12 @@ def test_crossfit_fit_uses_unlabelled_rows_too():
 
 def test_crossfit_averages_seeds_after_halves():
     rng = np.random.default_rng(13)
-    xs, labels = toy(rng, n_seeds=3)
+    xs, labels = toy(rng)
     ro = ReadOut('center', None, 1)
     got = ro_mod.crossfit(xs, labels, ro, workers=1)
     for a in ASPECTS:
         per_seed = [ro_mod.crossfit({(b, None): xs[(b, s)] for b in ASPECTS}, labels, ro, workers=1)[a]
-                    for s in range(3)]
+                    for s in range(5)]
         assert got[a] == pytest.approx(np.mean(per_seed), abs=1e-12)
 
 
@@ -262,7 +262,7 @@ def test_crossfit_aspect_free_arm_may_share_one_matrix():
 
 def test_crossfit_all_equals_crossfit_per_readout():
     rng = np.random.default_rng(15)
-    xs, labels = toy(rng, n_seeds=2)
+    xs, labels = toy(rng)
     ros = [R0, ReadOut('whiten', 6, 0), ReadOut('whiten', 6, 5), ReadOut('center', None, 3)]
     allres = ro_mod.crossfit_all(xs, labels, ros, workers=1)
     assert list(allres) == ros
@@ -272,8 +272,42 @@ def test_crossfit_all_equals_crossfit_per_readout():
 
 def test_crossfit_asserts_missing_matrix():
     rng = np.random.default_rng(16)
-    xs, labels = toy(rng, n_seeds=2)
+    xs, labels = toy(rng)
     del xs[('style', 1)]
+    with pytest.raises(AssertionError):
+        ro_mod.crossfit(xs, labels, R0, workers=1)
+
+
+def test_half_dropped_counts_queries_without_a_relevant_painting_in_the_half():
+    # positions 0..7: even half = 0,2,4,6; odd half = 1,3,5,7. Class 1 is a singleton in the even half (dropped);
+    # the -1 rows are not queries and are not counted.
+    lab = np.array([0, 0, 0, -1, 1, 0, 0, 1], dtype=np.int64)
+    # even half labels 0,0,1,0 -> one dropped; odd half labels 0,-1,0,1 -> the single class-1 row is dropped
+    assert ro_mod.half_dropped({'style': lab}) == {'style': [1, 1]}
+    lab2 = np.array([0, 0, 0, -1, 1, 0, 0, 0], dtype=np.int64)
+    assert ro_mod.half_dropped({'style': lab2, 'genre': np.full(8, -1)}) == {'style': [1, 0], 'genre': [0, 0]}
+
+
+def test_crossfit_all_checks_retrieval_dropped_against_half_dropped(monkeypatch):
+    rng = np.random.default_rng(17)
+    xs, labels = toy(rng)
+    labels['style'][:] = labels['style'] % 3
+    labels['style'][0] = 3        # a singleton class in the even half (position 0): one dropped query
+    assert ro_mod.half_dropped(labels)['style'][0] >= 1
+    got = ro_mod.crossfit_all(xs, labels, [R0], workers=1)   # the counts agree: no assertion error
+    assert set(got[R0]) == set(ASPECTS)
+    real = ro_mod.half_dropped
+    monkeypatch.setattr(ro_mod, 'half_dropped',
+                        lambda lab: {a: [d + 1 for d in v] for a, v in real(lab).items()})
+    with pytest.raises(AssertionError):
+        ro_mod.crossfit_all(xs, labels, [R0], workers=1)
+
+
+@pytest.mark.parametrize('seeds', [(0, 1, 2), (0, 1, 2, 3), (0, 1, 2, 3, 4, 5), (1, 2, 3, 4, 5), (None, 0, 1, 2, 3, 4)])
+def test_crossfit_asserts_the_seed_set(seeds):
+    rng = np.random.default_rng(18)
+    xs, labels = toy(rng, n_seeds=1)
+    xs = {(a, s): xs[(a, 0)] for a in ASPECTS for s in seeds}
     with pytest.raises(AssertionError):
         ro_mod.crossfit(xs, labels, R0, workers=1)
 
@@ -370,6 +404,12 @@ def test_tie_larger_whitening_size():
     # and with expansion at equal W and k
     e = [ReadOut('whiten', s, 5) for s in (64, 256)]
     assert ro_mod.select(rows_from({e[0]: 0.5, e[1]: 0.5}), R_A) == e[1]
+
+
+def test_tie_smaller_k_before_larger_whitening_size():
+    small_k, big_size = ReadOut('whiten', 64, 1), ReadOut('whiten', 1024, 3)
+    # both kept, tied within 0.001; the larger size is the (slightly) better one
+    assert ro_mod.select(rows_from({small_k: 0.4995, big_size: 0.5}), R_A) == small_k
 
 
 def test_select_does_not_depend_on_row_order():
