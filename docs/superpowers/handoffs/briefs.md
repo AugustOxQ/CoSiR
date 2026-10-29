@@ -1273,3 +1273,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-29-r11-build-handoff.md
 - New chat: tab 'r11 build', session 0e4164af-a6af-4060-8cbc-f0eebae7e900
 
+[brief] CoSiR: r11 build -> r11 build 2 (2026-10-29 18:58 Amsterdam)
+- Done: 9 tickets written; tickets 02 (metrics) and 03 (statistics) reviewed by Opus and merged; 01, 04 and 08 built.
+- State: a review found a float32 tie bug (fixed: float64 cosines). Spec amendment A1: PercepT validation outputs now come from the held mapper.
+- Next: Opus reviews of 01 and 04, then tickets 05, 06, 07 and 09, the GPU exports, a smoke run and the final review.
+- Blocked: nothing. The GPU is busy with the Affection extraction from 19:00 to about 20:15.
+- Handoff: docs/superpowers/handoffs/2026-10-29-r11-build-2-handoff.md
+- New chat: tab 'r11 build 2', session 377b90b0-e3cd-4025-88b4-c754376deadf
+
