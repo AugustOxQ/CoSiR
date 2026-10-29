@@ -1297,3 +1297,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-29-r11-build-4-handoff.md
 - New chat: tab 'r11 build 4', session 9c200e0c-de7a-4ee7-bb01-9d0a11351c04
 
+[brief] CoSiR: r11 build 4 -> r11 run (2026-10-29 22:02 Amsterdam)
+- Done: the r11 retrieval build: 9 tickets; the final review (no must-fix); fixes F1 to F3 (re-review pass) and F4 (a must-fix found after it); merged into main.
+- State: full-scale validation check: stage 4 19 min; `rt_vh` agrees on all 790 values (largest difference 1.8e-7, tolerance 1e-6). Queue smoke at 2,100 rows after the fixes: all steps exit 0, 0 disagreements.
+- Next: run `rt_queue.sh full` from `/project/CoSiR` on main, about 1.5 to 2.5 hours, then step 9: the auto report and the user-read report.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-29-r11-run-handoff.md
+- New chat: tab 'r11 run', session 638621e6-a2f9-41bd-b8e4-57c372c7448a
+
