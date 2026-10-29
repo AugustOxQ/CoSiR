@@ -118,11 +118,22 @@ if [[ $MODE == full ]]; then
         printf '  git -C %q add %q\n' "$TOPLEVEL" "$RANGE_FILE"
         printf '  git -C %q commit -m %q\n' "$TOPLEVEL" 'r11 run: stage 0a seed ranges, committed before any held retrieval'
         printf '  git -C %q push\n' "$TOPLEVEL"
+    elif git -C "$TOPLEVEL" ls-files --error-unmatch -- "$RANGE_FILE" >/dev/null 2>&1; then
+        # A rerun: the committed r_a stays fixed; 0a must reproduce it byte for byte.
+        if git -C "$TOPLEVEL" diff --quiet HEAD -- "$RANGE_FILE"; then
+            record_status commit_ranges skipped
+        else
+            record_status commit_ranges 1
+            printf 'Queue failed at commit_ranges: 0a changed the committed %s\n' "$RANGE_FILE"
+            exit 1
+        fi
     else
         git -C "$TOPLEVEL" add -- "$RANGE_FILE" >"$OUT/logs/commit_ranges.log" 2>&1
         code=$?
         if [[ $code -eq 0 ]]; then
-            git -C "$TOPLEVEL" commit -m 'r11 run: stage 0a seed ranges, committed before any held retrieval' >>"$OUT/logs/commit_ranges.log" 2>&1
+            # Only this path: anything else staged in the checkout stays out of the commit.
+            git -C "$TOPLEVEL" commit -m 'r11 run: stage 0a seed ranges, committed before any held retrieval' \
+                -- "$RANGE_FILE" >>"$OUT/logs/commit_ranges.log" 2>&1
             code=$?
         fi
         record_status commit_ranges "$code"
