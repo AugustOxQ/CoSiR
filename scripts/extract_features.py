@@ -22,6 +22,7 @@ so this is a disclosed access, not a held read.
 """
 
 import argparse
+import csv
 import hashlib
 import json
 import os
@@ -51,6 +52,7 @@ A28_ZIP = A28_DIR / "images.zip"
 A28_TRANSLATIONS = PRE_EXTRACT / "artelingo28/nllb200_3.3b_en/translations.parquet"
 A28_READ_SET = PRE_EXTRACT / "artelingo28/read_set_a28.parquet"
 SEMART_DIR = Path("/data/SSD/semart/SemArt")
+IMPRESSIONS_DIR = Path("/project/Impressions")
 COCO_ROOT = Path("/data/SSD/coco")
 COCO_TRAIN_IMAGES = COCO_ROOT / "images" / "train2014"
 COCO_TRAIN_CAPTIONS = COCO_ROOT / "annotations" / "captions_train2014.json"
@@ -58,6 +60,13 @@ GENECIS_COCO_JSON = Path("/data/PDD/genecis/genecis_coco.json")
 GENECIS_COCO_STORE = Path("/data/SSD2/pre_extract/genecis_coco/features")
 GENECIS_FOCUS_ATTRIBUTE = Path("/project/genecis/genecis/focus_attribute.json")
 VG_IMAGES = Path("/data/SSD/visual_genome/VG_100K_all")
+AFFECTION_DIR = Path("/data/SSD/affection/language/version_0")
+AFFECTION_IMAGE_ROOTS = {
+    "coco_affective": {"train2014": COCO_TRAIN_IMAGES, "val2014": COCO_ROOT / "images" / "val2014"},
+    "visual_genome_affective": VG_IMAGES,
+    "flickr30k_affective": Path("/data/SSD/flickr30k/images/flickr30k-images"),
+    "emotional_machines_affective": Path("/data/SSD/affection/emotional_machines/CGnA10766/data/cgna"),
+}
 
 DILATION = 0.7        # GeneCIS datasets/vaw_dataset.py
 PAD_CROP = True
@@ -66,6 +75,8 @@ ALLOWED = {
     "artelingo28": [CLIP, QWEN, SIGLIP2, DINO, CLIP16, CLIP_L14, SIGLIP1],
     "artelingo_full": [CLIP, QWEN, SIGLIP2, DINO, CLIP16, CLIP_L14, SIGLIP1],
     "semart": [CLIP, QWEN, SIGLIP2],
+    "impressions": [CLIP, QWEN, SIGLIP2],
+    "affection_local": [CLIP, QWEN, SIGLIP2],
     "coco_train2014": [CLIP, QWEN],
     "genecis_vg_crops": [CLIP, QWEN],
     "genecis_coco": [QWEN],
@@ -235,6 +246,95 @@ def adapter_semart(semart_dir=SEMART_DIR, **_) -> Spec:
                 {"n_descriptions_changed_by_scrub": n_changed})
 
 
+def adapter_impressions(impressions_dir=IMPRESSIONS_DIR, **_) -> Spec:
+    """Keep train captions in legacy store order; expand test captions in their list order."""
+    impressions_dir = Path(impressions_dir)
+    metadata = impressions_dir / "metadata"
+    # Scores belong to the full ImgId: overlays have their own scores, distinct from the base UUID.
+    with (metadata / "mean_impact_scores.csv").open() as f:
+        impact = {r["ImgId"]: float(r["Impact_Mean"]) for r in csv.DictReader(f)}
+    img_row: dict = {}
+    images, texts, tmeta = [], [], []
+    counts = {"n_train_texts": 0, "n_test_texts": 0, "n_empty_captions_skipped": 0}
+    for split in ("train", "test"):
+        with (metadata / f"impressions_{split}.json").open() as f:
+            rows = json.load(f)
+        for r in rows:
+            filename, iid = r["image"], r["ImgId"]
+            if filename not in img_row:
+                path = impressions_dir / "media" / filename
+                if not path.is_file():
+                    raise SystemExit(f"Impressions image not found at {path}; check the path before extracting")
+                img_row[filename] = len(images)
+                images.append({"image": filename, "ImgId": iid, "uuid": iid.split("_cap", 1)[0],
+                               "has_overlay": "_cap" in iid, "splits": [], "impact_mean": impact.get(iid)})
+            img = img_row[filename]
+            if split not in images[img]["splits"]:
+                images[img]["splits"].append(split)
+                images[img]["splits"].sort()
+            captions = r["caption"] if isinstance(r["caption"], list) else [r["caption"]]
+            caption_type = r.get("caption_type")
+            for elem, caption in enumerate(captions):
+                if not caption.strip():
+                    counts["n_empty_captions_skipped"] += 1
+                    continue
+                texts.append(caption)
+                tmeta.append({"img": img, "split": split, "caption_type":
+                              caption_type[elem] if isinstance(caption_type, list) else caption_type,
+                              "image_id": r["image_id"], "elem": elem})
+                counts[f"n_{split}_texts"] += 1
+    counts.update(n_images=len(images), n_overlay_images=sum(m["has_overlay"] for m in images),
+                  n_impact_missing=sum(m["impact_mean"] is None for m in images))
+    return Spec(images, lambda i: _open_rgb(impressions_dir / "media" / images[i]["image"]), texts, tmeta, counts)
+
+
+def adapter_affection_local(affection_dir=AFFECTION_DIR, image_roots=AFFECTION_IMAGE_ROOTS, **_) -> Spec:
+    """Keep raw utterances and splits in preprocessed CSV order; csv_row indexes that file. Sources: the keys of
+    image_roots (the four on disk; you_aaai_affective has no public image copy)."""
+    import pandas as pd
+    affection_dir = Path(affection_dir)
+    pre = pd.read_csv(affection_dir / "affection_preprocessed_public_version_0.csv",
+                      usecols=["workerid", "image_name", "dataset", "utterance", "emotion", "split"], dtype=str)
+    img_row: dict = {}
+    images, paths, texts, tmeta = [], [], [], []
+    counts = {"sources": list(image_roots),
+              "n_images_per_source": dict.fromkeys(image_roots, 0),
+              "n_texts_per_source": dict.fromkeys(image_roots, 0),
+              "n_empty_skipped": 0, "n_rows_dropped_other_sources": 0}
+    for csv_row, (workerid, name, source, utterance, emotion, split) in enumerate(zip(
+            pre.workerid, pre.image_name, pre.dataset, pre.utterance, pre.emotion, pre.split)):
+        if source not in image_roots:
+            counts["n_rows_dropped_other_sources"] += 1
+            continue
+        key = (source, name)
+        if key not in img_row:
+            root = image_roots[source]
+            if source == "coco_affective":
+                prefix = next((p for p in ("train2014", "val2014") if name.startswith(f"COCO_{p}_")), None)
+                if prefix is None:
+                    raise SystemExit(f"Affection unrecognized COCO image name at row {csv_row}: {name}")
+                root = root[prefix]
+            path = Path(root) / name
+            if not path.is_file():
+                raise SystemExit(f"Affection image not found at {path}; check the path before extracting")
+            img_row[key] = len(images)
+            paths.append(path)
+            images.append({"source": source, "image_name": name, "splits": [], "n_texts": 0})
+            counts["n_images_per_source"][source] += 1
+        img = img_row[key]
+        if split not in images[img]["splits"]:
+            images[img]["splits"].append(split)
+            images[img]["splits"].sort()
+        if pd.isna(utterance) or not utterance.strip():
+            counts["n_empty_skipped"] += 1
+            continue
+        texts.append(utterance)
+        tmeta.append({"img": img, "csv_row": csv_row, "emotion": emotion, "workerid": workerid, "split": split})
+        images[img]["n_texts"] += 1
+        counts["n_texts_per_source"][source] += 1
+    return Spec(images, lambda i: _open_rgb(paths[i]), texts, tmeta, counts)
+
+
 def adapter_coco_train2014(image_dir=COCO_TRAIN_IMAGES, captions_path=COCO_TRAIN_CAPTIONS, **_) -> Spec:
     image_dir = Path(image_dir)
     if not image_dir.is_dir():
@@ -328,6 +428,7 @@ def adapter_genecis_vg_crops(focus_path=GENECIS_FOCUS_ATTRIBUTE, image_dir=VG_IM
 
 
 ADAPTERS = {"artelingo28": adapter_artelingo28, "artelingo_full": adapter_artelingo_full, "semart": adapter_semart,
+            "impressions": adapter_impressions, "affection_local": adapter_affection_local,
             "coco_train2014": adapter_coco_train2014, "genecis_coco": adapter_genecis_coco,
             "genecis_vg_crops": adapter_genecis_vg_crops}
 
