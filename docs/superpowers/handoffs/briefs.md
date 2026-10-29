@@ -1313,3 +1313,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-29-r11-report-handoff.md
 - New chat: tab 'r11 report', session 22e40bb3-5649-48c3-b338-a25763e5b8cd
 
+[brief] CoSiR: r11 report -> r12 decide (2026-10-29 23:15 Amsterdam)
+- Done: r11's reports: auto report 12-29 and the user-read report, both checked.
+- State: retrieval passes the bar with read-outs picked on validation: level with the teacher on emotion and style, a win on genre. With plain cosine, emotion is below the teacher.
+- Next: show the results brief without our reading, ask for the user's reading, then wrap up r11 and decide r12.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-29-r12-decide-handoff.md
+- New chat: tab 'r12 decide', session 0f9c0f9f-e394-49b4-96ab-a537b2ebe63a
+
