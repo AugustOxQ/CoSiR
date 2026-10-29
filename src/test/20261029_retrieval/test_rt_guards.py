@@ -217,3 +217,10 @@ def test_stage0a_writes_a_byte_identical_ranges_file_on_a_rerun(env, monkeypatch
     assert first == second
     assert tuple(json.loads(first)) == rt_paths.RANGES_KEYS
     assert json.loads(first) == rt_paths.committed_ranges(doc2)
+
+
+def test_the_real_ranges_file_is_not_gitignored():
+    """The queue adds RANGES_FILE with a plain `git add`; the repo's `*.json` rule must not ignore it."""
+    f = rt_paths.RANGES_FILE
+    r = subprocess.run(['git', 'check-ignore', '-q', str(f)], cwd=f.parent, capture_output=True)
+    assert r.returncode == 1, f'{f} is gitignored: `git add` in rt_queue.sh full mode would fail'
