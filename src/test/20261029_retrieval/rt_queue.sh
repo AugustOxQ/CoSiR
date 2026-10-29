@@ -3,6 +3,9 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 PYTHON=/root/miniconda3/envs/CoSiR/bin/python
+# Smoke rows: each parity half (SMOKE_N / 2 rows) must exceed the largest whitening size, 1,024, or whiten1024
+# keeps an arbitrary basis of the fit half's null space and C13 cannot compare it (fix-c13, round log).
+SMOKE_N=2100
 INPUTS="${RT_OUTPUTS:-/data/SSD2/cosir_r11/20261029_retrieval/outputs}"
 export PYTHONDONTWRITEBYTECODE=1 HF_HUB_OFFLINE=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8
 MODE=${1:-}
@@ -96,7 +99,7 @@ python_command() {
     local script=$1
     shift
     if [[ $MODE == smoke ]]; then
-        quote_command "$PYTHON" "$script" "$@" --smoke 600 --outputs "$OUT"
+        quote_command "$PYTHON" "$script" "$@" --smoke "$SMOKE_N" --outputs "$OUT"
     else
         quote_command "$PYTHON" "$script" "$@" --outputs "$OUT"
     fi
@@ -109,7 +112,7 @@ else
 fi
 
 STAGE0=("$PYTHON" rt_stage0.py 0a --outputs "$OUT")
-if [[ $MODE == smoke ]]; then STAGE0+=(--smoke 600); fi
+if [[ $MODE == smoke ]]; then STAGE0+=(--smoke "$SMOKE_N"); fi
 run_step stage0a "$OUT/logs/stage0a.log" "${STAGE0[@]}"
 
 if [[ $MODE == full ]]; then
@@ -153,7 +156,7 @@ if [[ $MODE == full ]]; then
 fi
 
 STAGE0=("$PYTHON" rt_stage0.py 0b --outputs "$OUT")
-if [[ $MODE == smoke ]]; then STAGE0+=(--smoke 600); fi
+if [[ $MODE == smoke ]]; then STAGE0+=(--smoke "$SMOKE_N"); fi
 run_step stage0b "$OUT/logs/stage0b.log" "${STAGE0[@]}"
 
 check_export_files() {
@@ -205,13 +208,13 @@ fi
 
 for stage in stage1 stage2 stage3 stage4 stage5 diag; do
     RUN=("$PYTHON" rt_run.py "$stage" --outputs "$OUT")
-    if [[ $MODE == smoke ]]; then RUN+=(--smoke 600); fi
+    if [[ $MODE == smoke ]]; then RUN+=(--smoke "$SMOKE_N"); fi
     run_step "$stage" "$OUT/logs/$stage.log" "${RUN[@]}"
 done
 
 for stage in stage0a stage1 stage2 stage3 stage4 stage5; do
     VH=("$PYTHON" rt_vh.py "$stage" --outputs "$OUT")
-    if [[ $MODE == smoke ]]; then VH+=(--smoke 600); fi
+    if [[ $MODE == smoke ]]; then VH+=(--smoke "$SMOKE_N"); fi
     run_step "vh_$stage" "$OUT/logs/vh_$stage.log" "${VH[@]}"
 done
 
