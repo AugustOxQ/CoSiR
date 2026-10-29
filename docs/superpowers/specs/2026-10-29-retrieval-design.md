@@ -189,7 +189,8 @@ Grill rows: the r11 decide 2 grill, 2026-10-29 16:20 to 17:30.
 | D14 | Stage types | §3.5 | stages 1, 2 and 5 feed paper claims; 3 checks stage 1; 4 picks among settings | agent default | 2026-10-29 17:50 |
 | D15 | Which held table carries the paper's claim | stage 5 (each arm with its validation-picked read-out); stage 1 reported as the untuned row | (stage 1 alone; both required) | user | 2026-10-29 18:00 |
 
-**Amendments**: none.
+**Amendments**:
+- A1 (build, 2026-10-29, agent default, before any result): the saved validation P3 outputs come from PercepT's full-scale mapper (fit on 42,969 paintings), the held ones from the sample-scale mapper (13,400; r10's entry, D11). Validation P3 is re-inferred from the held mapper's weights (`ct_percept.infer_stage2`, same seeds), so stage 4 fits and picks on the model it is applied to. Held, D11 and stage 0b are unchanged. Places: §4, §5; ticket 01 and the round log.
 
 ## 5. Assumptions and open questions
 
@@ -197,8 +198,8 @@ Grill rows: the r11 decide 2 grill, 2026-10-29 16:20 to 17:30.
   heads. Checked: the reviewer's CPU re-inference of seed 0 matched within 6.1e-5; stage 0b checks all 15.
 - Assumption: the validation and held instructed images share prompts and model. Checked: the same instruction text
   and model revision (9f2f7e7) in both stores' metadata.
-- Assumption: PercepT core's held and validation P3 outputs come from the same mapper. Checked: both from
-  `ct_percept.infer_stage2`.
+- Assumption: PercepT core's held and validation P3 outputs come from the same mapper. Found wrong in the build
+  (different mappers); fixed by amendment A1 (§4).
 - Assumption: Qwen3-VL-8B-Instruct is in the HF cache. Checked: snapshot 0c351dd is there.
 - Open questions: none (D15 answered).
 
