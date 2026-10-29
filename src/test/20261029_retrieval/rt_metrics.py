@@ -1,8 +1,9 @@
 """Retrieval metrics for the r11 retrieval round (spec 2026-10-29-retrieval-design, 3.4 and 6).
 
 Pure array functions, no file reading. Rows are used as given (callers pass L2-normalized float32 rows), so
-cosine = dot product. Ranking: the gallery excludes the query; descending similarity by a stable sort over the
-gallery in row order, so ties keep gallery row order.
+cosine = dot product, computed in float64 from the float32 values (float32 products of identical rows differ in
+the last bits with the block shape and the thread count, which breaks the tie order). Ranking: the gallery
+excludes the query; descending similarity by a stable sort over the gallery in row order, so ties keep gallery row order.
 
 Speed: queries go in blocks; `workers` > 1 runs blocks in forked processes, each limited to one BLAS thread.
 """
@@ -11,7 +12,7 @@ import multiprocessing as mp
 import numpy as np
 from threadpoolctl import threadpool_limits
 
-BLOCK = 256        # queries per block in retrieval(): sims 256 x n float32 (12 MB at n = 12,281) plus the sort
+BLOCK = 256        # queries per block in retrieval(): sims 256 x n float64 (25 MB at n = 12,281) plus the sort
 GRADED_BLOCK = 64  # queries per block in graded(): gain matrices 64 x n float64
 
 _SHARED = {}       # set before the fork; read by the workers
@@ -52,9 +53,9 @@ def _graded_block(rows):
     got = np.take_along_axis(gain, order, axis=1)
     ideal = -np.sort(-gain, axis=1)[:, :-1]
     disc = 1.0 / np.log2(np.arange(2, got.shape[1] + 2))
-    idcg = ideal @ disc
+    idcg = (ideal * disc).sum(axis=1)  # not a matrix-vector product: its rounding would depend on the block shape
     assert (idcg > 0).all()
-    return (got @ disc) / idcg
+    return (got * disc).sum(axis=1) / idcg
 
 
 def _init_worker():
@@ -81,7 +82,7 @@ def retrieval(x, labels, qe_k=0, workers=8):
     assert x.dtype == np.float32 and x.ndim == 2 and labels.shape == (len(x),)
     assert qe_k >= 0
     keep = np.flatnonzero(labels >= 0)
-    xs, ls = x[keep], labels[keep].astype(np.int64)
+    xs, ls = x[keep].astype(np.float64), labels[keep].astype(np.int64)  # float64: identical rows give identical sims
     n_rel = np.bincount(ls)[ls] - 1
     qrows = np.flatnonzero(n_rel > 0)
     assert len(qrows) > 0
@@ -102,6 +103,8 @@ def graded(x, dist, workers=8):
     x = np.asarray(x)
     dist = np.asarray(dist)
     assert x.dtype == np.float32 and x.ndim == 2 and dist.ndim == 2 and len(dist) == len(x)
+    assert (dist >= 0).all()  # the -1 sentinel in _graded_block relies on it
+    x = x.astype(np.float64)  # float64: identical rows give identical sims, whatever the block shape
     dist = dist.astype(np.float64)
     _SHARED.update(x=x, dist=dist)
     try:
