@@ -93,9 +93,7 @@ def test_paired_is_deterministic_per_call():
 
 
 def test_paired_seed_resample_is_shared_by_both_sides():
-    # Seeds differ in level: candidate seed s has constant s, comparator constant 0 for every seed. Then every draw's
-    # d_b is mean(S) (one S for both sides). If the sides had their own S, comparator's term would be 0 anyway, so
-    # use comparator constant s too: d_b must be exactly 0 only under a shared S.
+    # Both sides equal seed s's constant: d_b is 0 for every draw only when one S serves both sides.
     n = 6
     cand = np.repeat(np.arange(5.0)[:, None], n, axis=1)
     comp = cand.copy()

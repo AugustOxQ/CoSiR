@@ -9,6 +9,7 @@ import numpy as np
 
 def outcome(lower, r):
     """r10's T-WIN / T-LEVEL / T-BELOW on the interval's lower bound; r is the seed range of the aspect."""
+    assert np.isfinite(r) and r >= 0, f'seed range must be finite and >= 0, got {r}'
     if lower > 0:
         return 'WIN'
     if lower > -r:
