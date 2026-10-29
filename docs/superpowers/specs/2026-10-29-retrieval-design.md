@@ -191,6 +191,7 @@ Grill rows: the r11 decide 2 grill, 2026-10-29 16:20 to 17:30.
 
 **Amendments**:
 - A1 (build, 2026-10-29, agent default, before any result): the saved validation P3 outputs come from PercepT's full-scale mapper (fit on 42,969 paintings), the held ones from the sample-scale mapper (13,400; r10's entry, D11). Validation P3 is re-inferred from the held mapper's weights (`ct_percept.infer_stage2`, same seeds), so stage 4 fits and picks on the model it is applied to. Held, D11 and stage 0b are unchanged. Places: §4, §5; ticket 01 and the round log.
+- A2 (run, 2026-10-29 22:10, agent default, after stage 0a and before any held retrieval number; corrects A1): stage 0b failed on one item, PercepT core's held emotion AMI 0.08549055120302276 against the reference 0.08742922158584242. The held P3 file that A1 called r10's entry is the sample-scale mapper's; r10's comparator for the full-scale c*, and the 0b reference, is the full-scale mapper (`20261020_claim_test/outputs/stage2/full/`; the frozen r10 functions give exactly 0.08742922158584242 on its held file). PercepT core now reads held P3 from the full-scale mapper, and validation P3 is re-inferred from the same full-scale weights into a new folder (`percept_val_full/`), with A1's hash checks. The reference, D11 and every other arm are unchanged; PercepT core stays descriptive. The queue then reran from stage 0a. Places: §5; the round log, "Amendment 2".
 
 ## 5. Assumptions and open questions
 
@@ -199,7 +200,8 @@ Grill rows: the r11 decide 2 grill, 2026-10-29 16:20 to 17:30.
 - Assumption: the validation and held instructed images share prompts and model. Checked: the same instruction text
   and model revision (9f2f7e7) in both stores' metadata.
 - Assumption: PercepT core's held and validation P3 outputs come from the same mapper. Found wrong in the build
-  (different mappers); fixed by amendment A1 (§4).
+  (different mappers); fixed by amendment A1 (§4). A1 took the sample-scale mapper as r10's entry; stage 0b showed
+  that r10's entry is the full-scale mapper; corrected by amendment A2 (§4).
 - Assumption: Qwen3-VL-8B-Instruct is in the HF cache. Checked: snapshot 0c351dd is there.
 - Open questions: none (D15 answered).
 
