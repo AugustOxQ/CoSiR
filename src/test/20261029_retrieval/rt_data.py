@@ -2,7 +2,7 @@
 
 `raw` preserves r10's representation (including normalized float32 plain Qwen).
 `embed` converts it to float32 and L2 normalizes. Arrays are loaded per call rather
-than cached across arms/seeds. CRL is reserved for ticket 05.
+than cached across arms/seeds. CRL (width K per aspect) is the clip rows times its text array.
 """
 import json
 from functools import lru_cache
@@ -227,9 +227,13 @@ def raw(arm, split, aspect, seed=None):
     """Stored representation in `names(split)` order; seeded arms require seed 0..4."""
     assert arm in ARMS and split in ('held', 'val') and aspect in rt_paths.ASPECTS, (arm, split, aspect)
     assert (seed in rt_paths.SEEDS if arm in SEEDED else seed is None), (arm, seed)
-    if arm == 'crl':
-        raise NotImplementedError('CRL is implemented in ticket 05')
     ns = names(split)
+    if arm == 'crl':
+        import rt_crl
+        text = rt_crl.text_array(aspect)
+        x = embed('clip', split, aspect) @ text.T
+        assert x.shape == (len(ns), text.shape[0]) and x.dtype == np.float32
+        return _view(x, len(ns), text.shape[0], np.float32)
     if arm == 'cstar':
         x = _cstar(split, aspect, seed, ns)
     elif arm == 'instructed':

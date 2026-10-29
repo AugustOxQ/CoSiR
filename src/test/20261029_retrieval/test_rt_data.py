@@ -194,8 +194,9 @@ def test_embed_float32_normalization_and_zero_floor(monkeypatch):
 
 
 @pytest.mark.parametrize('split', ['held', 'val'])
-def test_crl_reserved(split):
-    with pytest.raises(NotImplementedError):
+def test_crl_needs_its_text_arrays(split, tmp_path, monkeypatch):
+    monkeypatch.setattr(rt_data.rt_paths, 'OUTPUTS', tmp_path)
+    with pytest.raises(FileNotFoundError):
         rt_data.raw('crl', split, 'emotion')
 
 
