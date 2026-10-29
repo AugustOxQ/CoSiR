@@ -1,4 +1,5 @@
 """Round-local code, SSD outputs, and read-only frozen inputs from the main checkout."""
+import json
 import os
 import sys
 from pathlib import Path
@@ -17,3 +18,15 @@ SEEDS = (0, 1, 2, 3, 4)
 N_HELD, N_VAL = 12281, 6152
 N_GENRE = {'held': 9949, 'val': 4960}
 RANGES_FILE = ROUND / 'stage0a_ranges.json'
+# The committed file holds only what a rerun of 0a reproduces exactly; wall-clock times stay in <outputs>/stage0a/ranges.json.
+RANGES_KEYS = ('map', 'ndcg', 'inputs', 'smoke')
+
+
+def committed_ranges(doc):
+    """The part of a stage 0a doc that RANGES_FILE holds, in file order."""
+    return {k: doc[k] for k in RANGES_KEYS}
+
+
+def ranges_match(outputs_doc_path):
+    """True when RANGES_FILE equals the committed keys of the stage 0a doc at `outputs_doc_path` (parsed JSON)."""
+    return json.loads(Path(RANGES_FILE).read_text()) == committed_ranges(json.loads(Path(outputs_doc_path).read_text()))

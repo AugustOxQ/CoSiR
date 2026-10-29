@@ -106,3 +106,36 @@ Smoke: `rt_queue.sh smoke <scratch>` (every step with `--smoke N`, real derived 
   value: stage 0a 24, stage 1 68, stage 2 47, stage 3 19, stage 4 790, stage 5 47 values, 0 disagreements.
   Step times: stage 0a and 0b under 1 minute each; stages 1 to 3 under 1 minute each; stage 4 11.2 minutes (c* 290 s,
   PercepT 139 s, the others 28 to 57 s); stage 5 under 1 minute; the six `rt_vh` checks 5 minutes together.
+
+## Final review fixes (r11 build 4)
+
+Three findings of the final whole-branch review, fixed on `r11-fix2`.
+
+- F1 (should-fix): a full-mode rerun of `rt_queue.sh` could never pass `commit_ranges`. 0a wrote the same doc, with
+  wall-clock times, to `<outputs>/stage0a/ranges.json` and to the tracked `stage0a_ranges.json`, so a rerun changed the
+  tracked file and `guard()` refused every held stage. Now `rt_paths.RANGES_KEYS = ('map', 'ndcg', 'inputs', 'smoke')`
+  names what the committed file holds; `stage0a` writes the full doc to outputs and only those keys to `RANGES_FILE`.
+  `rt_paths.ranges_match(outputs_doc_path)` compares `RANGES_FILE` with those keys of the outputs doc (parsed JSON);
+  0a's own assert, `rt_run.guard` and the full-mode assert in `stage4` all call it. `rt_vh.py` imports no `rt_` module
+  and never reads `RANGES_FILE` (grep: no match); it reads only `<outputs>/stage0a/ranges.json`. Unchanged.
+- F2 (should-fix): no test pinned a held-data guard. New `test_rt_guards.py` (15 tests): `guard()` on a temporary git
+  repo (missing, untracked, staged, working copy changed, different from outputs, no picks; allowed when equal, also
+  with other timings; smoke skips the git checks), `ranges_match`, `stage4`'s assert, `Loader` and
+  `Inputs(validation_only=True)` refusing held reads before any store read, and two `stage0a` calls with different
+  timings writing a byte-identical `RANGES_FILE`.
+- F3 (note): `rt_queue.sh` runs `rt_vh.py stage4` directly after `rt_run.py stage4`, so C13 confirms the picks before
+  stage 5 reads them. Order: 0a, commit_ranges, 0b, exports, stage1, stage2, stage3, stage4, vh_stage4, stage5, diag,
+  vh_stage0a, vh_stage1, vh_stage2, vh_stage3, vh_stage5.
+
+Mutation check (scratch copy of `src/test`, each guard removed in turn; the real files were not edited):
+
+| Mutation | Result |
+|---|---|
+| M1 `guard()` returns '' at once | 8 tests fail (all the refusal tests) |
+| M2 `Loader._check` does nothing | `test_loader_refuses_held_reads_before_any_store_read` fails |
+| M3 `ranges_match` always true | 3 fail (`test_ranges_match_equal_and_unequal`, `test_stage4_full_mode_asserts_the_same_comparison`, `test_guard_refuses_committed_but_different_from_outputs`) |
+| M4 `Inputs.read` validation-only assert removed | `test_inputs_validation_only_refuses_held_reads_before_any_store_read` fails |
+| M5 `stage0a` writes the full doc to `RANGES_FILE` | `test_stage0a_writes_a_byte_identical_ranges_file_on_a_rerun` fails |
+
+All five caught. `test_rt_guards.py` and `test_rt_vh.py`: 22 passed. Not run: the rest of the round's tests and the queue
+smoke (the controller runs them).

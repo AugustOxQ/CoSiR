@@ -122,7 +122,7 @@ if [[ $MODE == full ]]; then
         printf '  git -C %q commit -m %q -- %q\n' "$TOPLEVEL" 'r11 run: stage 0a seed ranges, committed before any held retrieval' "$RANGE_FILE"
         printf '  git -C %q push\n' "$TOPLEVEL"
     elif git -C "$TOPLEVEL" ls-files --error-unmatch -- "$RANGE_FILE" >/dev/null 2>&1; then
-        # A rerun: the committed r_a stays fixed; 0a must reproduce it byte for byte.
+        # A rerun: the committed r_a stays fixed; 0a writes only rerun-stable keys, so it must reproduce the file byte for byte.
         if git -C "$TOPLEVEL" diff --quiet HEAD -- "$RANGE_FILE"; then
             record_status commit_ranges skipped
         else
@@ -206,16 +206,19 @@ else
     fi
 fi
 
-for stage in stage1 stage2 stage3 stage4 stage5 diag; do
+# C13 confirms stage 4's picks (rt_vh.py stage4) before stage 5 reads them.
+STEPS=(stage1 stage2 stage3 stage4 vh_stage4 stage5 diag vh_stage0a vh_stage1 vh_stage2 vh_stage3 vh_stage5)
+for step in "${STEPS[@]}"; do
+    if [[ $step == vh_* ]]; then
+        VH=("$PYTHON" rt_vh.py "${step#vh_}" --outputs "$OUT")
+        if [[ $MODE == smoke ]]; then VH+=(--smoke "$SMOKE_N"); fi
+        run_step "$step" "$OUT/logs/$step.log" "${VH[@]}"
+        continue
+    fi
+    stage=$step
     RUN=("$PYTHON" rt_run.py "$stage" --outputs "$OUT")
     if [[ $MODE == smoke ]]; then RUN+=(--smoke "$SMOKE_N"); fi
     run_step "$stage" "$OUT/logs/$stage.log" "${RUN[@]}"
-done
-
-for stage in stage0a stage1 stage2 stage3 stage4 stage5; do
-    VH=("$PYTHON" rt_vh.py "$stage" --outputs "$OUT")
-    if [[ $MODE == smoke ]]; then VH+=(--smoke "$SMOKE_N"); fi
-    run_step "vh_$stage" "$OUT/logs/vh_$stage.log" "${VH[@]}"
 done
 
 if [[ $DRY_RUN -eq 1 ]]; then
