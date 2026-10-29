@@ -6,7 +6,7 @@
 Wiring only: the metrics come from rt_metrics, the read-outs from rt_readout, the bootstrap, outcomes and the SC table
 from rt_stats, the data from rt_data. Inputs (rt_data arrays, the PercepT validation export, the CRL files) come from
 rt_paths.OUTPUTS; every file written goes under --outputs. Held stages (1, 2, 3, 5 and diag) refuse to start unless
-the committed seed ranges are tracked by git, unchanged against HEAD and equal to <outputs>/stage0a/ranges.json
+the committed seed ranges are tracked by git, unchanged against HEAD and equal to the committed keys of <outputs>/stage0a/ranges.json
 (skipped only with --smoke). Stage 4 reads validation data only.
 
 Files (under --outputs): stage{1,2,3,5}/verdict.json, stage2/switch.json, stage{1,2,3,5}/perquery/*.npz,
@@ -106,7 +106,7 @@ def guard(args, need_picks=False):
         return f'{f} is not tracked by git: commit the seed ranges before any held stage'
     if subprocess.run(['git', 'diff', '--quiet', 'HEAD', '--', str(f)], cwd=cwd, capture_output=True).returncode:
         return f'{f} differs from HEAD: commit the seed ranges before any held stage'
-    if read_json(f) != read_json(ranges_out):
+    if not rt_paths.ranges_match(ranges_out):
         return f'{f} and {ranges_out} differ'
     return ''
 
@@ -325,7 +325,7 @@ def stage4(args):
     t0 = time.perf_counter()
     r_map, _, ranges_sha = load_ranges(args)
     if args.smoke is None:
-        assert read_json(rt_paths.RANGES_FILE) == read_json(Path(args.outputs) / 'stage0a/ranges.json')
+        assert rt_paths.ranges_match(Path(args.outputs) / 'stage0a/ranges.json'), 'RANGES_FILE differs from stage 0a'
     L = Loader(args.smoke, ('val',))                       # every data call below is validation only
     labels = L.labels('val')
     scores = {}

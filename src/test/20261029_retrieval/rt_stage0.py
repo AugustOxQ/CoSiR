@@ -4,7 +4,8 @@
 
 Smoke slices numerical inputs after the frozen loaders validate their sources.
 Full-source hashes/counts (0b ii/iii) remain integrity checks in smoke mode.
-Only a full 0a writes RANGES_FILE; committing that file is the queue's job.
+Only a full 0a writes RANGES_FILE (the keys rt_paths.RANGES_KEYS, so a rerun reproduces it byte for byte; the timings
+stay in <outputs>/stage0a/ranges.json); committing that file is the queue's job.
 """
 import argparse
 import json
@@ -100,8 +101,8 @@ def stage0a(outputs, workers=8, smoke=None):
     path = outputs / 'stage0a/ranges.json'
     _write(path, doc)
     if smoke is None:
-        _write(rt_paths.RANGES_FILE, doc)
-        assert path.read_bytes() == rt_paths.RANGES_FILE.read_bytes()
+        _write(rt_paths.RANGES_FILE, rt_paths.committed_ranges(doc))
+        assert rt_paths.ranges_match(path)
     print(f'0a: PASS; {len(rt_paths.SEEDS)} seeds/aspect; {doc["total_seconds"]:.2f}s; {path}')
     return 0
 
