@@ -1,4 +1,5 @@
 """Adapter listing, scrubbing, GeneCIS crop and resume behaviour of scripts/extract_features.py (tiny fixtures)."""
+import csv
 import json
 from types import SimpleNamespace
 
@@ -108,6 +109,93 @@ def test_impressions_adapter_missing_image(tmp_path):
     (metadata / "impressions_test.json").write_text("[]")
     with pytest.raises(SystemExit, match="missing.png"):
         ef.adapter_impressions(impressions_dir=tmp_path)
+
+
+def _affection_fixture(tmp_path):
+    roots = {"coco_affective": {s: tmp_path / s for s in ("train2014", "val2014")},
+             "visual_genome_affective": tmp_path / "vg", "flickr30k_affective": tmp_path / "flickr"}
+    rows = [
+        ["w0", "shared.jpg", "visual_genome_affective", " first ", "awe", "train"],
+        ["w1", "COCO_val2014_000000000078.jpg", "coco_affective", "second", "joy", "val"],
+        ["w2", "absent.jpg", "you_aaai_affective", "drop", "fear", "test"],
+        ["w3", "shared.jpg", "flickr30k_affective", "third", "sadness", "test"],
+        ["w4", "shared.jpg", "visual_genome_affective", "fourth", "awe", "test"],
+        ["w5", "absent.jpg", "emotional_machines_affective", "drop too", "anger", "train"],
+        ["w6", "shared.jpg", "visual_genome_affective", "", "something-else", "ignored"],
+        ["w7", "COCO_train2014_000000000078.jpg", "coco_affective", "fifth", "joy", "train"],
+        ["w8", "empty.jpg", "flickr30k_affective", "NaN", "sadness", "ignored"],
+        ["w9", "shared.jpg", "flickr30k_affective", "   ", "sadness", "val"],
+    ]
+    for version in ("raw", "preprocessed"):
+        with (tmp_path / f"affection_{version}_public_version_0.csv").open("w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["workerid", "image_name", "dataset", "utterance", "emotion", "split",
+                             "utterance_spelled", "tokens"])
+            writer.writerows(r + ["DO NOT USE", "unused"] for r in rows)
+    for _, name, source, *_ in rows:
+        if source in roots:
+            root = roots[source]
+            if source == "coco_affective":
+                root = root[name.split("_")[1]]
+            _img(root / name)
+    return roots
+
+
+def test_affection_local_adapter(tmp_path):
+    roots = _affection_fixture(tmp_path)
+    assert ef.ALLOWED["affection_local"] == [ef.CLIP, ef.QWEN, ef.SIGLIP2]
+    spec = ef.ADAPTERS["affection_local"](affection_dir=tmp_path, image_roots=roots)
+    assert spec.images == [
+        {"source": "visual_genome_affective", "image_name": "shared.jpg",
+         "splits": ["ignored", "test", "train"], "n_texts": 2},
+        {"source": "coco_affective", "image_name": "COCO_val2014_000000000078.jpg",
+         "splits": ["val"], "n_texts": 1},
+        {"source": "flickr30k_affective", "image_name": "shared.jpg",
+         "splits": ["test", "val"], "n_texts": 1},
+        {"source": "coco_affective", "image_name": "COCO_train2014_000000000078.jpg",
+         "splits": ["train"], "n_texts": 1},
+        {"source": "flickr30k_affective", "image_name": "empty.jpg",
+         "splits": ["ignored"], "n_texts": 0}]
+    assert spec.texts == [" first ", "second", "third", "fourth", "fifth"]
+    assert spec.text_meta == [
+        {"img": 0, "csv_row": 0, "emotion": "awe", "workerid": "w0", "split": "train"},
+        {"img": 1, "csv_row": 1, "emotion": "joy", "workerid": "w1", "split": "val"},
+        {"img": 2, "csv_row": 3, "emotion": "sadness", "workerid": "w3", "split": "test"},
+        {"img": 0, "csv_row": 4, "emotion": "awe", "workerid": "w4", "split": "test"},
+        {"img": 3, "csv_row": 7, "emotion": "joy", "workerid": "w7", "split": "train"}]
+    assert spec.extra == {
+        "sources": ["coco_affective", "visual_genome_affective", "flickr30k_affective"],
+        "n_images_per_source": {"coco_affective": 2, "visual_genome_affective": 1, "flickr30k_affective": 2},
+        "n_texts_per_source": {"coco_affective": 2, "visual_genome_affective": 2, "flickr30k_affective": 1},
+        "n_empty_skipped": 3, "n_rows_dropped_other_sources": 2}
+    for i in range(len(spec.images)):
+        with spec.load_image(i) as image:
+            assert image.size == (40, 30) and image.mode == "RGB"
+
+
+@pytest.mark.parametrize("column", ["workerid", "image_name", "dataset", "length"])
+def test_affection_local_adapter_misaligned_csv(tmp_path, column):
+    roots = _affection_fixture(tmp_path)
+    path = tmp_path / "affection_preprocessed_public_version_0.csv"
+    with path.open() as f:
+        rows = list(csv.reader(f))
+    if column == "length":
+        rows = rows[:-1]
+        mismatch = 9
+    else:
+        rows[3][rows[0].index(column)] = "wrong"
+        mismatch = 2  # Even a dropped source must match before filtering.
+    with path.open("w", newline="") as f:
+        csv.writer(f).writerows(rows)
+    with pytest.raises(SystemExit, match=f"mismatch at row {mismatch} "):
+        ef.adapter_affection_local(affection_dir=tmp_path, image_roots=roots)
+
+
+def test_affection_local_adapter_missing_image(tmp_path):
+    roots = _affection_fixture(tmp_path)
+    roots["visual_genome_affective"] = tmp_path / "missing"
+    with pytest.raises(SystemExit, match="missing/shared.jpg"):
+        ef.adapter_affection_local(affection_dir=tmp_path, image_roots=roots)
 
 
 def test_genecis_coco_adapter_matches_store(tmp_path):
