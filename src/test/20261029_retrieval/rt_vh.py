@@ -13,7 +13,7 @@ any rt_ module (this file imports none and no source of the main code was read).
 and compares them with the run's file under --outputs, values within 1e-6, same outcomes and picks. Each mode
 writes rederive_<stage>.json beside the checked file and exits 1 on any disagreement (exit 2: input missing).
 
-  python rt_vh.py stage1 [--outputs DIR] [--smoke N] [--workers 8]
+  python rt_vh.py stage1 [--outputs DIR] [--inputs DIR] [--smoke N] [--workers 8]
 
 Numeric convention (controller note): every cosine similarity is a float64 matrix product of rows that were
 normalized in float32 (cast to float64 before the product). Ranking: stable descending sort, ties keep gallery row
@@ -37,8 +37,7 @@ RS_DIR = MAIN / 'src/test/20261027_recipe_sweep'                # r10's round, i
 OUTPUTS_DEFAULT = Path('/data/SSD2/cosir_r11/20261029_retrieval/outputs')
 HELD_LIST = MAIN / 'src/test/20261020_claim_test/outputs/held/held_paintings.json'
 PERCEPT_HELD = str(MAIN / 'src/test/20261020_claim_test/outputs/held/percept/core__k40/P3__s{seed}.npz')          # 'prob'
-PERCEPT_VAL = str(MAIN / ('src/test/20261020_claim_test/outputs/stage2/full/percept/core/stage2/k40/'
-                         'P3__s{seed}.npz'))                                                                  # 'eval_prob'
+PERCEPT_VAL = 'percept_val/P3__s{seed}.npz'      # under --inputs; 'prob'; spec amendment A1: the held mapper's weights
 R10_OUT = Path('/data/SSD2/cosir_r10/20261027_recipe_sweep/outputs/full')
 CSTAR_HELD = str(R10_OUT / 'held/k11=40/{aspect}__s{seed}.npz')                                                # 'img'
 CSTAR_VAL = str(R10_OUT / 'train/k11=40/R6-5/{file}__s{seed}.npz')                                             # 'img'
@@ -298,8 +297,8 @@ class Data:
     """Names, labels and embeddings of the held list and the sorted validation names (first `smoke` rows of each
     when smoke is set). Embeddings come back float32 with rows normalized (norm clipped at 1e-12)."""
 
-    def __init__(self, outputs, smoke=0):
-        self.outputs = Path(outputs)
+    def __init__(self, inputs, smoke=0):
+        self.inputs = Path(inputs)                                # derived inputs: percept_val/, crl/
         self.smoke = smoke
         for p in (str(RS_DIR),):
             if p not in sys.path:
@@ -347,7 +346,7 @@ class Data:
         return np.asarray([idx[n] for n in self.names[sp]], dtype=np.int64)
 
     def crl_text(self, aspect):
-        path = self.outputs / 'crl' / f'{aspect}_text.npy'
+        path = self.inputs / 'crl' / f'{aspect}_text.npy'
         if not path.exists():
             raise Missing(f'CRL text embeddings not found: {path}')
         t = np.load(path)
@@ -380,9 +379,11 @@ class Data:
             x = np.asarray(img[self._prompt_rows(folder, sp)])
             assert x.dtype == np.float16 and x.shape == (n, 2048), (folder, x.shape, x.dtype)
         elif arm == 'percept':
-            path = (PERCEPT_HELD if sp == 'held' else PERCEPT_VAL).format(seed=seed)
+            path = PERCEPT_HELD.format(seed=seed) if sp == 'held' else str(self.inputs / PERCEPT_VAL.format(seed=seed))
+            if not Path(path).exists():
+                raise Missing(f'PercepT outputs not found: {path}')
             with np.load(path, allow_pickle=False) as z:
-                x = z['prob' if sp == 'held' else 'eval_prob'][:n]
+                x = z['prob'][:n]
             assert x.shape == (n, 40) and x.dtype == np.float32, (path, x.shape, x.dtype)
         elif arm == 'crl':
             clip = self.emb('clip', sp)                           # normalized CLIP L/14 image rows
@@ -858,13 +859,19 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('mode', choices=sorted(STAGES))
     ap.add_argument('--outputs', type=Path, default=OUTPUTS_DEFAULT)
+    ap.add_argument('--inputs', type=Path, default=OUTPUTS_DEFAULT,
+                    help='folder of the derived inputs (percept_val/, crl/); the real one also in smoke runs')
     ap.add_argument('--smoke', type=int, default=0, metavar='N')
     ap.add_argument('--workers', type=int, default=8)
     ap.add_argument('--tol', type=float, default=TOL)
     args = ap.parse_args(argv)
     args.draws = 200 if args.smoke else DRAWS
     log(f'{args.mode}: outputs {args.outputs}, smoke {args.smoke}, draws {args.draws}, workers {args.workers}')
-    data = Data(args.outputs, args.smoke)
+    try:
+        data = Data(args.inputs, args.smoke)
+    except FileNotFoundError as e:
+        log(f'STOP (nothing compared): {e}')
+        return 2
     log('  names', {k: len(v) for k, v in data.names.items()}, 'labelled',
         {sp: {a: int((data.labels[sp][a] >= 0).sum()) for a in ASPECTS} for sp in data.names})
     describe_loading(data, LOAD_ARMS[args.mode])
@@ -876,7 +883,7 @@ def main(argv=None):
         if args.mode == 'stage5':
             load_run_file(args.outputs, 'stage4', 'picks.json')
         return STAGES[args.mode](Run(data, args), args)
-    except Missing as e:
+    except (Missing, FileNotFoundError) as e:
         log(f'STOP (nothing compared): {e}')
         return 2
 
