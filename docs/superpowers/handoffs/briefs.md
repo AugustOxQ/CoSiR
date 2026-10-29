@@ -1257,3 +1257,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-29-r11-decide-handoff-2of2.md
 - New chat: tab 'r11 decide', session aa81522f-3321-40bb-a53f-aba97e25d1cf
 
+[brief] CoSiR: r11 decide -> r11 decide 2 (2026-10-29 16:17 Amsterdam)
+- Done: decision C on r10 and its wrap-up (main merged and pushed); Qwen store for Impressions; Affection on disk (4 of 5 sources); step 3 facts on retrieval.
+- State: c* is the frozen recipe for 11-10; its held per-aspect embeddings exist (5 seeds); no retrieval code yet.
+- Next: show the three retrieval protocol options, the user picks one, then a short grill and a short spec.
+- Blocked: nothing. The Affection store runs at 19:00 (about 75 min).
+- Handoff: docs/superpowers/handoffs/2026-10-29-r11-decide-2-handoff.md
+- New chat: tab 'r11 decide 2', session e63ccdad-8470-4f7a-b5c4-4d20bba0ada2
+
