@@ -1,4 +1,4 @@
-"""Tests for rt_readout (verdict code): menu, whitening, cross-fit, guard, score and the tie rule."""
+"""Tests for rt_readout: menu, whitening, cross-fit, selection and the round log's Numeric convention."""
 import numpy as np
 import pytest
 
@@ -143,6 +143,18 @@ def test_none_is_the_normalized_input():
     x = rng.standard_normal((30, 7)).astype(np.float32) * 3
     out = ro_mod.apply(ro_mod.fit(R0, x), x)
     assert np.allclose(out, x / np.linalg.norm(x, axis=1, keepdims=True), atol=1e-6)
+
+
+def test_numeric_convention_projects_then_scales_and_casts_only_after_normalization():
+    rng = np.random.default_rng(25)
+    x = anisotropic(rng, 80, 12)
+    new = anisotropic(rng, 30, 12)
+    mu, lam, u = ro_mod._eig(x)
+    params = ro_mod.fit(ReadOut('whiten', 8, 0), x, _eig_cache=(mu, lam, u))
+    want = ((new.astype(np.float64) - mu) @ u[:, :8]) / np.sqrt(lam[:8] + 1e-6 * lam[0])
+    np.testing.assert_array_equal(ro_mod._transform(params, new), want)
+    want /= np.linalg.norm(want, axis=1, keepdims=True)
+    np.testing.assert_array_equal(ro_mod.apply(params, new), want.astype(np.float32))
 
 
 def test_fit_rejects_size_above_width():

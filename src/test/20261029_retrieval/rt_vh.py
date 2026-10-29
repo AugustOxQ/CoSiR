@@ -1,7 +1,8 @@
 """rt_vh (r11 ticket 08, constitution C13): the retrieval round's numbers re-derived from the rule's text alone.
 
 Written from the spec's rule (docs/superpowers/specs/2026-10-29-retrieval-design.md: 3.4, 3.5, 6) and the data, without
-any rt_ module (this file imports none and no source of the main code was read). It recomputes, from the stores:
+any rt_ module (this file imports none). The initial implementation was written without reading the main code;
+the C13 fix follows the written Numeric convention in 20261029_retrieval_log.md. It recomputes, from the stores:
 
   stage0a   c*'s validation mAP per seed and aspect under plain cosine, the ranges r_a, the emotion nDCG range
   stage1    SC1-SC6: every comparison (d, interval, outcome, r), each SC's pass, the GO
@@ -15,8 +16,9 @@ writes rederive_<stage>.json beside the checked file and exits 1 on any disagree
 
   python rt_vh.py stage1 [--outputs DIR] [--inputs DIR] [--smoke N] [--workers 8]
 
-Numeric convention (controller note): every cosine similarity is a float64 matrix product of rows that were
-normalized in float32 (cast to float64 before the product). Ranking: stable descending sort, ties keep gallery row
+Numeric convention: see 20261029_retrieval_log.md. Input rows normalize once in float32; CRL cosines and their
+normalization use float64 before one float32 cast. Every W (including none) and its normalization use float64,
+then one float32 cast. QE and similarities use float64. Ranking: stable descending sort, ties keep gallery row
 order. Frozen r10 pieces used read-only: rs_vh's three label functions (and its ANNOTATIONS and GENRE_CSVS), and
 ct2_data.split2('full') for the sorted validation names.
 """
@@ -241,13 +243,13 @@ def fit_stats(Xfit32):
     mu = X.mean(axis=0)
     Xc = X - mu
     lam, U = np.linalg.eigh(Xc.T @ Xc / (len(X) - 1))
-    return mu, np.maximum(lam[::-1], 0.0), U[:, ::-1]
+    return mu, lam[::-1], U[:, ::-1]
 
 
 def apply_w(w, size, stats, X32):
     """The read-out's W stage followed by L2 normalization; float32 [n, d'] (rows normalized)."""
     if w == 'none':
-        return X32
+        return l2(X32.astype(np.float64)).astype(np.float32)
     mu, lam, U = stats
     Xc = X32.astype(np.float64) - mu
     if w == 'center':
@@ -387,8 +389,11 @@ class Data:
             assert x.shape == (n, 40) and x.dtype == np.float32, (path, x.shape, x.dtype)
         elif arm == 'crl':
             clip = self.emb('clip', sp)                           # normalized CLIP L/14 image rows
-            v = clip @ self.crl_text(head).T                      # cosines with the aspect's value texts
-            x = v.astype(np.float32)
+            v = clip.astype(np.float64) @ self.crl_text(head).astype(np.float64).T
+            x = l2(v).astype(np.float32)                          # one cast, after cosine-vector normalization
+            assert np.isfinite(x).all()
+            self._cache[key] = x
+            return x
         else:
             raise AssertionError(arm)
         x = x.astype(np.float32)
@@ -505,11 +510,13 @@ class Run:
         for seed in arm_seeds(arm):
             x = self.d.emb(arm, sp, head, seed)
             k = 0
-            if ro is not None and ro != R0:
+            if ro is not None:
                 w, size, k = ro
+                stats = None
                 if w != 'none':
                     xv = self.d.emb(arm, 'val', head, seed)
-                    x = apply_w(w, size, fit_stats(xv) if w == 'whiten' else (xv.astype(np.float64).mean(axis=0), None, None), x)
+                    stats = fit_stats(xv) if w == 'whiten' else (xv.astype(np.float64).mean(axis=0), None, None)
+                x = apply_w(w, size, stats, x)
             ap = ap_all(x, lab, self.workers, ks=(k,))[k]
             rows.append(ap)
         ap = np.stack(rows)
