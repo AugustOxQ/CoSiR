@@ -77,7 +77,9 @@ Next: r11's protocol at its grill. Deadlines: abstract 2026-11-10, paper 2026-11
   recipe freezes at 11-10 and the late sweep gives analysis and robustness only; the method and setup sections are
   drafted during r11 and r12. The weekly meeting also raised multi-task learning as a possible storyline (a literature
   check on it is proposed, not decided). Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23
-  (23:59 AoE each).
+  (23:59 AoE each). c* is the recipe that freezes at 11-10; c* without the caption endpoints becomes an r13
+  analysis item (user, after seeing the recommendation, 2026-10-29). r11 runs as a medium loop with a short grill and
+  a short spec (user, after seeing the recommendation). Storage: all recommendations approved (user).
 - **Idea (B):** for r11, at its grill (retrieval protocol: query, gallery, labels, metric, baselines).
 - **Data side job (2026-10-29, agent):** Qwen stores for Impressions (built; no class labels, so no AMI reference)
   and Affection's three local sources (COCO, Visual Genome, Flickr30k: 52,596 of 85,007 images; extraction queued for
