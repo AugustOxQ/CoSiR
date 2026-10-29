@@ -65,6 +65,7 @@ AFFECTION_IMAGE_ROOTS = {
     "coco_affective": {"train2014": COCO_TRAIN_IMAGES, "val2014": COCO_ROOT / "images" / "val2014"},
     "visual_genome_affective": VG_IMAGES,
     "flickr30k_affective": Path("/data/SSD/flickr30k/images/flickr30k-images"),
+    "emotional_machines_affective": Path("/data/SSD/affection/emotional_machines/CGnA10766/data/cgna"),
 }
 
 DILATION = 0.7        # GeneCIS datasets/vaw_dataset.py
@@ -288,20 +289,21 @@ def adapter_impressions(impressions_dir=IMPRESSIONS_DIR, **_) -> Spec:
 
 
 def adapter_affection_local(affection_dir=AFFECTION_DIR, image_roots=AFFECTION_IMAGE_ROOTS, **_) -> Spec:
-    """Keep raw utterances and splits in preprocessed CSV order; csv_row indexes that file."""
+    """Keep raw utterances and splits in preprocessed CSV order; csv_row indexes that file. Sources: the keys of
+    image_roots (the four on disk; you_aaai_affective has no public image copy)."""
     import pandas as pd
     affection_dir = Path(affection_dir)
     pre = pd.read_csv(affection_dir / "affection_preprocessed_public_version_0.csv",
                       usecols=["workerid", "image_name", "dataset", "utterance", "emotion", "split"], dtype=str)
     img_row: dict = {}
     images, paths, texts, tmeta = [], [], [], []
-    counts = {"sources": list(AFFECTION_IMAGE_ROOTS),
-              "n_images_per_source": dict.fromkeys(AFFECTION_IMAGE_ROOTS, 0),
-              "n_texts_per_source": dict.fromkeys(AFFECTION_IMAGE_ROOTS, 0),
+    counts = {"sources": list(image_roots),
+              "n_images_per_source": dict.fromkeys(image_roots, 0),
+              "n_texts_per_source": dict.fromkeys(image_roots, 0),
               "n_empty_skipped": 0, "n_rows_dropped_other_sources": 0}
     for csv_row, (workerid, name, source, utterance, emotion, split) in enumerate(zip(
             pre.workerid, pre.image_name, pre.dataset, pre.utterance, pre.emotion, pre.split)):
-        if source not in AFFECTION_IMAGE_ROOTS:
+        if source not in image_roots:
             counts["n_rows_dropped_other_sources"] += 1
             continue
         key = (source, name)

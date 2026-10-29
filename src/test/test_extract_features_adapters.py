@@ -172,6 +172,18 @@ def test_affection_local_adapter(tmp_path):
             assert image.size == (40, 30) and image.mode == "RGB"
 
 
+def test_affection_local_sources_follow_image_roots(tmp_path):
+    roots = _affection_fixture(tmp_path)
+    roots["emotional_machines_affective"] = tmp_path / "em"
+    _img(tmp_path / "em" / "absent.jpg")
+    spec = ef.adapter_affection_local(affection_dir=tmp_path, image_roots=roots)
+    assert spec.images[3] == {"source": "emotional_machines_affective", "image_name": "absent.jpg",
+                              "splits": ["train"], "n_texts": 1}
+    assert spec.extra["n_rows_dropped_other_sources"] == 1
+    assert set(ef.AFFECTION_IMAGE_ROOTS) == {"coco_affective", "visual_genome_affective", "flickr30k_affective",
+                                             "emotional_machines_affective"}
+
+
 def test_affection_local_adapter_missing_image(tmp_path):
     roots = _affection_fixture(tmp_path)
     roots["visual_genome_affective"] = tmp_path / "missing"
