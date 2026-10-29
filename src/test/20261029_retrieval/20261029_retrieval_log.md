@@ -90,3 +90,19 @@ The table gives cross-fit mAP after averaging all required seeds, main / indepen
 | crl | 600 | whiten50+k3 | 0.220319695625 / 0.220319695625 | 0.250137307401 / 0.250137307401 | 0.408332766981 / 0.408332766981 | 0 | 0 |
 | crl | 2050 | none+k0 | 0.265335628741 / 0.265335628741 | 0.365178667920 / 0.365178667920 | 0.526405006687 / 0.526405006687 | 0 | 0 |
 | crl | 2050 | whiten50+k0 | 0.225665908203 / 0.225665908203 | 0.221207352218 / 0.221207352218 | 0.340532072770 / 0.340532072770 | 0 | 0 |
+
+## Build 3: the queue smoke (2026-10-29)
+
+GPU exports (20:22 to 20:23, after the Affection extraction freed the lock), from this folder with
+`PYTHONDONTWRITEBYTECODE=1 HF_HUB_OFFLINE=1`, under `flock -o -w 7200 /tmp/gpu0.lock`: `rt_percept_val.py`, then
+`rt_crl.py lists`, then `rt_crl.py texts`. CRL lists: 50 values per aspect (one width K = 50); values equal to a label
+name: emotion 4, style 3, genre 4. `test_rt_data.py` then passed in full (100, no skips).
+
+Smoke: `rt_queue.sh smoke <scratch>` (every step with `--smoke N`, real derived inputs, outputs in scratch).
+- At 600 rows (20:24 to 20:36): every step passed up to `rt_vh.py stage4`, which found 174 of 790 values outside 1e-6
+  (picks equal). Causes and fix: the section "C13 stage 4 numeric alignment" above. Whitening to 1,024 needs each
+  parity half above 1,024 rows, so the queue's smoke now uses 2,100 rows (`SMOKE_N`).
+- At 2,100 rows (20:55 to 21:15), after fix-c13: all 228 tests pass; every step exits 0; `rt_vh` agrees on every
+  value: stage 0a 24, stage 1 68, stage 2 47, stage 3 19, stage 4 790, stage 5 47 values, 0 disagreements.
+  Step times: stage 0a and 0b under 1 minute each; stages 1 to 3 under 1 minute each; stage 4 11.2 minutes (c* 290 s,
+  PercepT 139 s, the others 28 to 57 s); stage 5 under 1 minute; the six `rt_vh` checks 5 minutes together.
