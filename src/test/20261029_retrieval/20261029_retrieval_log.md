@@ -172,3 +172,21 @@ Tests (`test_rt_data.py`): the fixtures and real-data tests use the new paths. T
 the full-scale `.pt`) and `test_real_percept_core_held_emotion_ami_matches_frozen_reference` (own-reading held emotion AMI
 through `rt_stage0.held_ami`, equal to 0.08742922158584242 within 1e-9). Real-data tests that need the validation exports
 skip while `percept_val_full/` is missing.
+
+## The full run (r11 run, 2026-10-29)
+
+From `/project/CoSiR` on main, `bash rt_queue.sh full`, CPU (8 threads, 8 workers); the PercepT export under the GPU lock.
+
+- First start (22:02): stage 0a passed; its seed ranges were committed and pushed (`9829741`) before any held retrieval
+  number. Stage 0b failed on one of 54 items, PercepT core's held emotion AMI (amendment 2 above). The failed record is
+  kept as `<outputs>/stage0b/check_failed_A1_sample_scale.json` and `logs/stage0b_failed_A1_sample_scale.log`.
+- Fix: `r11-fix3` (Sonnet `high` worker; controller diff read; 128 tests pass, then the 38 PercepT tests with the new
+  exports, no skips), merged as `625eb64`, with the spec's amendment A2 (`1a00ff8`).
+- Second start (22:10 to 23:02): every step exit 0. Stage 0a reproduced the committed ranges byte for byte
+  (`commit_ranges skipped`); 0b 54 of 54; the PercepT export about 1 minute; stage 1 4 min, 2 1 min, 3 1 min, 4 17 min,
+  `rt_vh stage4` 11 min, 5 and diag under 1 min each, the other five `rt_vh` checks 10 min together.
+- C13: `rt_vh` agrees on every value (0a 24, stage 1 68, stage 2 47, stage 3 19, stage 4 790, stage 5 47; tolerance 1e-6).
+- Cross-check against the build's full-scale validation check: stage 0a's ranges equal; stage 4's mAP values equal
+  exactly for six arms; PercepT core differs (largest 0.018), as amendment 2 expects.
+- Verdicts: stage 1 NO-GO (SC4, emotion against the instructed image: BELOW); stage 2 switch GO; stage 3 qualified;
+  stage 4 picks center+k10 for every arm except CRL (none+k10); stage 5 GO. Numbers: the auto report.
