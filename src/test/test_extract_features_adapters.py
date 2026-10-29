@@ -126,12 +126,11 @@ def _affection_fixture(tmp_path):
         ["w8", "empty.jpg", "flickr30k_affective", "NaN", "sadness", "ignored"],
         ["w9", "shared.jpg", "flickr30k_affective", "   ", "sadness", "val"],
     ]
-    for version in ("raw", "preprocessed"):
-        with (tmp_path / f"affection_{version}_public_version_0.csv").open("w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["workerid", "image_name", "dataset", "utterance", "emotion", "split",
-                             "utterance_spelled", "tokens"])
-            writer.writerows(r + ["DO NOT USE", "unused"] for r in rows)
+    with (tmp_path / "affection_preprocessed_public_version_0.csv").open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["workerid", "image_name", "dataset", "utterance", "emotion", "split",
+                         "utterance_spelled", "tokens"])
+        writer.writerows(r + ["DO NOT USE", "unused"] for r in rows)
     for _, name, source, *_ in rows:
         if source in roots:
             root = roots[source]
@@ -171,24 +170,6 @@ def test_affection_local_adapter(tmp_path):
     for i in range(len(spec.images)):
         with spec.load_image(i) as image:
             assert image.size == (40, 30) and image.mode == "RGB"
-
-
-@pytest.mark.parametrize("column", ["workerid", "image_name", "dataset", "length"])
-def test_affection_local_adapter_misaligned_csv(tmp_path, column):
-    roots = _affection_fixture(tmp_path)
-    path = tmp_path / "affection_preprocessed_public_version_0.csv"
-    with path.open() as f:
-        rows = list(csv.reader(f))
-    if column == "length":
-        rows = rows[:-1]
-        mismatch = 9
-    else:
-        rows[3][rows[0].index(column)] = "wrong"
-        mismatch = 2  # Even a dropped source must match before filtering.
-    with path.open("w", newline="") as f:
-        csv.writer(f).writerows(rows)
-    with pytest.raises(SystemExit, match=f"mismatch at row {mismatch} "):
-        ef.adapter_affection_local(affection_dir=tmp_path, image_roots=roots)
 
 
 def test_affection_local_adapter_missing_image(tmp_path):

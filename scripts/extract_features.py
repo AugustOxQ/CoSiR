@@ -288,21 +288,11 @@ def adapter_impressions(impressions_dir=IMPRESSIONS_DIR, **_) -> Spec:
 
 
 def adapter_affection_local(affection_dir=AFFECTION_DIR, image_roots=AFFECTION_IMAGE_ROOTS, **_) -> Spec:
-    """Pair raw utterances with annotation splits only after checking positional identity."""
+    """Keep raw utterances and splits in preprocessed CSV order; csv_row indexes that file."""
     import pandas as pd
     affection_dir = Path(affection_dir)
-    keys = ["workerid", "image_name", "dataset"]
-    raw = pd.read_csv(affection_dir / "affection_raw_public_version_0.csv",
-                      usecols=keys + ["utterance", "emotion"], dtype=str)
     pre = pd.read_csv(affection_dir / "affection_preprocessed_public_version_0.csv",
-                      usecols=keys + ["split"], dtype=str)
-    common = min(len(raw), len(pre))
-    mismatch = np.flatnonzero((raw[keys].iloc[:common].fillna("").to_numpy() !=
-                              pre[keys].iloc[:common].fillna("").to_numpy()).any(axis=1))
-    if len(mismatch) or len(raw) != len(pre):
-        row = int(mismatch[0]) if len(mismatch) else common
-        raise SystemExit(f"Affection CSVs mismatch at row {row} (0-based); raw has {len(raw)} rows, "
-                         f"preprocessed has {len(pre)} rows")
+                      usecols=["workerid", "image_name", "dataset", "utterance", "emotion", "split"], dtype=str)
     img_row: dict = {}
     images, paths, texts, tmeta = [], [], [], []
     counts = {"sources": list(AFFECTION_IMAGE_ROOTS),
@@ -310,7 +300,7 @@ def adapter_affection_local(affection_dir=AFFECTION_DIR, image_roots=AFFECTION_I
               "n_texts_per_source": dict.fromkeys(AFFECTION_IMAGE_ROOTS, 0),
               "n_empty_skipped": 0, "n_rows_dropped_other_sources": 0}
     for csv_row, (workerid, name, source, utterance, emotion, split) in enumerate(zip(
-            raw.workerid, raw.image_name, raw.dataset, raw.utterance, raw.emotion, pre.split)):
+            pre.workerid, pre.image_name, pre.dataset, pre.utterance, pre.emotion, pre.split)):
         if source not in AFFECTION_IMAGE_ROOTS:
             counts["n_rows_dropped_other_sources"] += 1
             continue
