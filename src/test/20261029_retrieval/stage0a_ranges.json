@@ -1,0 +1,69 @@
+{
+  "map": {
+    "emotion": {
+      "per_seed": [
+        0.2663909953213407,
+        0.2671040461641097,
+        0.26779820370243823,
+        0.26669595198280077,
+        0.2678026060992622
+      ],
+      "r": 0.0014116107779215126
+    },
+    "style": {
+      "per_seed": [
+        0.31225281548064443,
+        0.312894226033748,
+        0.31268984573208525,
+        0.31320380721493224,
+        0.310974472566083
+      ],
+      "r": 0.002229334648849224
+    },
+    "genre": {
+      "per_seed": [
+        0.5933162868176972,
+        0.5929071484707084,
+        0.5938731131470107,
+        0.5967309462019488,
+        0.5950860734228458
+      ],
+      "r": 0.0038237977312404192
+    }
+  },
+  "ndcg": {
+    "emotion": {
+      "per_seed": [
+        0.9249494206137872,
+        0.925255300760445,
+        0.9251480056722631,
+        0.9251289688810658,
+        0.9251593478542484
+      ],
+      "r": 0.00030588014665788865
+    }
+  },
+  "inputs": {
+    "names/val": "1430d4b56e4a76dbe3e1c4d699e1db5c92967c5f2048b74b6cbcdf1589809e2e",
+    "labels/val/emotion": "0ac61c2c217e1c52ca080b72029a63fbb88e3dddba639e3d0588f1ee9c438870",
+    "labels/val/style": "326eaf882c410743e6bf34908ab1c360daab315876fed235ef5dd59bab60ece5",
+    "labels/val/genre": "9b1f7b2bd162612178e90c00d25f8c3a664ec87913322b7193bdd1606f7c36a4",
+    "emotion_dist/val": "a7d9ad4106f73439d6d9e31d329d1337134838744e4e4174be31c38b3344fefe",
+    "embed/val/cstar/emotion/0": "9c37c296cf7bc83798395f38c5a08985d37c67ff64d6be495d1da3236110eaac",
+    "embed/val/cstar/emotion/1": "2c04c554162f93bc2a63ff996282cd40f1580f7e5a282d4e3b91005afb4df570",
+    "embed/val/cstar/emotion/2": "577b7b362653da2a97d1f4694a7bab176ba8d4a31718aaf4ad547f8263cd899f",
+    "embed/val/cstar/emotion/3": "52a917b615bed6242ecf7d629d4ea032e86ae041a242e6e36c6c7e8cf2cd0fc7",
+    "embed/val/cstar/emotion/4": "c877bae9136497d7cdc0491e4608262f32d261e6cdd4192ef2db0600c59af0a7",
+    "embed/val/cstar/style/0": "e8e3fb08db732c8d9a8ab78a30429ed7c2e00e99cb5d62d4f8a8005277cbac41",
+    "embed/val/cstar/style/1": "fff5678e890b78ccdaf98427937503b52e708562b552cb4d08e419d12bf83347",
+    "embed/val/cstar/style/2": "d221d44f6e58b0173cef382334ed65a668e63a099b0434d22a2e26d4cc1984c9",
+    "embed/val/cstar/style/3": "0d6ee5a221c438d8ec4d23d4ce27cce5bc2707e81a07655ad158f02721e496f0",
+    "embed/val/cstar/style/4": "c8a02e19539c544832b905f6a7b521e72df85f559ba0bda3ea2a4a69c80b3bbc",
+    "embed/val/cstar/genre/0": "1563fdd4928e6786aab57a074431f268f64659714a2d5b4ed6bca11dc6ae3957",
+    "embed/val/cstar/genre/1": "e0b2bfe540b0f23c6ddb92656cfb038fe34d41e20362d2537744372dce36fd71",
+    "embed/val/cstar/genre/2": "385b25bf70a2ca09322be9b5656efd10462439facce7d2067fee78144d1fe9a8",
+    "embed/val/cstar/genre/3": "eb55ade27e9037a7ccb7fea376162828d8185a0c346ab20251e44acd74e92811",
+    "embed/val/cstar/genre/4": "ddbc32b4ae6b514f1a4fcde032cf92dcda4dbaf392ec2e9fb6c903da854e5b97"
+  },
+  "smoke": null
+}
