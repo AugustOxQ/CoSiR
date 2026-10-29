@@ -1,8 +1,9 @@
 """Frozen r11 data in sorted split order; all joins and positional hashes are checked.
 
 `raw` preserves r10's representation (including normalized float32 plain Qwen).
-`embed` converts it to float32 and L2 normalizes. Arrays are loaded per call rather
-than cached across arms/seeds. CRL (width K per aspect) is the clip rows times its text array.
+`embed` L2 normalizes once, preserving the plain loader's existing float32 normalization.
+Arrays are loaded per call rather than cached across arms/seeds. CRL cosines and their normalization use float64,
+then cast once to float32. See "Numeric convention" in 20261029_retrieval_log.md.
 """
 import json
 from functools import lru_cache
@@ -231,9 +232,9 @@ def raw(arm, split, aspect, seed=None):
     if arm == 'crl':
         import rt_crl
         text = rt_crl.text_array(aspect)
-        x = embed('clip', split, aspect) @ text.T
-        assert x.shape == (len(ns), text.shape[0]) and x.dtype == np.float32
-        return _view(x, len(ns), text.shape[0], np.float32)
+        x = embed('clip', split, aspect).astype(np.float64) @ text.astype(np.float64).T
+        assert x.shape == (len(ns), text.shape[0]) and x.dtype == np.float64
+        return _view(x, len(ns), text.shape[0], np.float64)
     if arm == 'cstar':
         x = _cstar(split, aspect, seed, ns)
     elif arm == 'instructed':
@@ -250,6 +251,9 @@ def raw(arm, split, aspect, seed=None):
 
 
 def embed(arm, split, aspect, seed=None):
-    """Float32 raw rows divided by max(their float32 L2 norm, 1e-12)."""
-    x = raw(arm, split, aspect, seed).astype(np.float32)
-    return x / np.maximum(np.linalg.norm(x, axis=1, keepdims=True), 1e-12)
+    """Unit float32 rows; see the round log's Numeric convention (CRL normalizes before its single cast)."""
+    x = raw(arm, split, aspect, seed)
+    if arm == 'plain':
+        return x  # raw preserves the frozen loader's already normalized float32 rows (stage 0b's hash).
+    x = x.astype(np.float64 if arm == 'crl' else np.float32)
+    return (x / np.maximum(np.linalg.norm(x, axis=1, keepdims=True), 1e-12)).astype(np.float32)

@@ -1,4 +1,4 @@
-"""Join contracts first, then the frozen held/validation file boundaries."""
+"""Join contracts, frozen file boundaries, and the round log's Numeric convention."""
 import json
 import os
 from collections import Counter
@@ -181,6 +181,33 @@ def test_embed_float32_normalization_and_zero_floor(monkeypatch):
     assert actual.dtype == np.float32
     np.testing.assert_array_equal(actual, np.asarray([[0.6, 0.8], [0, 0]], dtype=np.float32))
     np.testing.assert_array_equal(x, [[3, 4], [0, 0]])
+
+
+def test_plain_embed_preserves_the_frozen_loaders_single_normalization(monkeypatch):
+    x = np.random.default_rng(23).normal(size=(12, 17)).astype(np.float32)
+    x /= np.linalg.norm(x, axis=1, keepdims=True)
+    monkeypatch.setattr(rt_data, 'raw', lambda *args: x)
+    np.testing.assert_array_equal(rt_data.embed('plain', 'val', 'emotion'), x)
+
+
+def test_crl_cosines_and_normalization_stay_float64_until_unit_rows(monkeypatch):
+    import rt_crl
+    rng = np.random.default_rng(24)
+    image = rng.normal(size=(12, 768)).astype(np.float32)
+    text = rng.normal(size=(50, 768)).astype(np.float32)
+    image /= np.linalg.norm(image, axis=1, keepdims=True)
+    text /= np.linalg.norm(text, axis=1, keepdims=True)
+    embed = rt_data.embed
+    monkeypatch.setattr(rt_data, 'names', lambda split: list(map(str, range(12))))
+    monkeypatch.setattr(rt_data, 'embed', lambda *args: image)
+    monkeypatch.setattr(rt_crl, 'text_array', lambda aspect: text)
+    want = image.astype(np.float64) @ text.astype(np.float64).T
+    raw = rt_data.raw('crl', 'val', 'emotion')
+    assert raw.dtype == np.float64
+    np.testing.assert_array_equal(raw, want)
+    monkeypatch.setattr(rt_data, 'raw', lambda *args: raw)
+    want /= np.linalg.norm(want, axis=1, keepdims=True)
+    np.testing.assert_array_equal(embed('crl', 'val', 'emotion'), want.astype(np.float32))
 
 
 @pytest.mark.parametrize('split', ['held', 'val'])

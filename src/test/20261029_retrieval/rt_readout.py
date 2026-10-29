@@ -3,6 +3,7 @@ section 6 "Selection rule", 3.2 last paragraph, D8, D13).
 
 Pure array functions, no file reading. A read-out is a map W (none, centering, PCA whitening to `size` dimensions,
 each followed by L2 normalization) crossed with average query expansion k (0 = none).
+See "Numeric convention" in 20261029_retrieval_log.md: W and normalization use float64, then one float32 cast.
 """
 from dataclasses import dataclass
 from typing import Optional
@@ -85,7 +86,7 @@ def fit(ro, x, _eig_cache=None):
     eps = EPS_REL * lam[0]
     d = ro.size
     assert (lam[:d] + eps > 0).all()
-    return {'w': 'whiten', 'mu': mu, 'proj': u[:, :d] / np.sqrt(lam[:d] + eps)}
+    return {'w': 'whiten', 'mu': mu, 'proj': u[:, :d], 'scale': np.sqrt(lam[:d] + eps)}
 
 
 def _transform(params, x):
@@ -95,7 +96,7 @@ def _transform(params, x):
         return x64
     if params['w'] == 'center':
         return x64 - params['mu']
-    return (x64 - params['mu']) @ params['proj']
+    return ((x64 - params['mu']) @ params['proj']) / params['scale']
 
 
 def apply(params, x):

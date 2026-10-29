@@ -1,5 +1,5 @@
 """rt_vh's AP and nDCG against scikit-learn on tie-free inputs, and the tie rule by hand (ties keep gallery row order;
-scikit-learn groups ties). Nothing else: the module is itself the check."""
+scikit-learn groups ties), and the round log's Numeric convention. The module is itself the independent check."""
 import numpy as np
 import pytest
 from sklearn.metrics import average_precision_score, ndcg_score
@@ -10,6 +10,48 @@ import rt_vh
 def _unit(rng, n, d):
     x = rng.normal(size=(n, d))
     return x / np.linalg.norm(x, axis=1, keepdims=True)
+
+
+def test_none_readout_normalizes_in_float64_before_single_cast():
+    x = np.random.default_rng(26).normal(size=(20, 17)).astype(np.float32)
+    x /= np.linalg.norm(x, axis=1, keepdims=True)
+    want = x.astype(np.float64)
+    want /= np.linalg.norm(want, axis=1, keepdims=True)
+    np.testing.assert_array_equal(rt_vh.apply_w('none', 0, None, x), want.astype(np.float32))
+
+
+def test_crl_loader_casts_only_after_float64_cosines_and_normalization():
+    rng = np.random.default_rng(27)
+    image = _unit(rng, 20, 768).astype(np.float32)
+    text = _unit(rng, 50, 768).astype(np.float32)
+    data = rt_vh.Data.__new__(rt_vh.Data)
+    data.names = {'val': list(map(str, range(20)))}
+    data._cache = {('clip', 'val', None, None): image}
+    data.crl_text = lambda aspect: text
+    want = image.astype(np.float64) @ text.astype(np.float64).T
+    want /= np.linalg.norm(want, axis=1, keepdims=True)
+    np.testing.assert_array_equal(data.emb('crl', 'val', 'emotion'), want.astype(np.float32))
+
+
+@pytest.mark.parametrize('k', [0, 3])
+def test_stage5_none_readout_uses_the_same_normalization_convention(k, monkeypatch):
+    from types import SimpleNamespace
+    rng = np.random.default_rng(28)
+    x = rng.normal(size=(30, 17)).astype(np.float32)
+    x /= np.linalg.norm(x, axis=1, keepdims=True)
+    lab = np.arange(30) % 3
+    data = SimpleNamespace(labels={'held': {'emotion': lab}}, emb=lambda *args: x)
+    run = rt_vh.Run(data, SimpleNamespace(workers=1))
+    want = x.astype(np.float64)
+    want /= np.linalg.norm(want, axis=1, keepdims=True)
+
+    def check_rows(X32, labels, workers, ks):
+        assert X32.dtype == np.float32 and ks == (k,)
+        np.testing.assert_array_equal(X32, want.astype(np.float32))
+        return {k: np.zeros(len(labels))}
+
+    monkeypatch.setattr(rt_vh, 'ap_all', check_rows)
+    run.perq('held', 'clip', None, 'emotion', ro=('none', 0, k))
 
 
 def test_ap_matches_sklearn_tie_free():
