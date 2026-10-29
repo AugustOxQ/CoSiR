@@ -1241,3 +1241,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-28-r10-reports-4-handoff.md
 - New chat: tab 'r10 reports 4', session 384f89f8-fe8e-430c-b491-7366d1957f22
 
+[brief] CoSiR: r10 reports 4 -> r10 reports 5 (2026-10-29 01:06 Amsterdam)
+- Done: slide deck v3 (25 slides) from the user's page-by-page reading. The deck rules are now in the slides template. The 12-28 stage report is on the dev-log.
+- State: the weekly report stays at v2 (the user's call); all drafts are uncommitted. No decision C yet.
+- Next: ask the user what the meeting changed and settle open points a to h. Then commit the drafts, add the index row, write handoff 2 of 2 and open r11's decide chat.
+- Blocked: waits for the user.
+- Handoff: docs/superpowers/handoffs/2026-10-29-r10-reports-5-handoff.md
+- New chat: tab 'r10 reports 5', session de03b678-c43b-40d2-9d99-686242916471
+
