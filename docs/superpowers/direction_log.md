@@ -22,7 +22,7 @@ style (+0.0041), and is level on genre (−0.0060, within one seed range); it be
 The claims are k-means, Qwen and ArtELingo only. The user's plan (2026-10-29): r11 retrieval (a fast build, first
 results, small optimization steps), r12 more datasets (Affection, Impressions, PolyArt), r13 a large sweep and
 analysis after 11-10; the main recipe freezes at 11-10. A data side job builds the Affection and Impressions stores.
-Next: r11's protocol at its grill. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
+Next: r11's retrieval spec (2026-10-29) is built and run unattended. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 
 ## Parked ideas
 
@@ -80,7 +80,13 @@ Next: r11's protocol at its grill. Deadlines: abstract 2026-11-10, paper 2026-11
   (23:59 AoE each). c* is the recipe that freezes at 11-10; c* without the caption endpoints becomes an r13
   analysis item (user, after seeing the recommendation, 2026-10-29). r11 runs as a medium loop with a short grill and
   a short spec (user, after seeing the recommendation). Storage: all recommendations approved (user).
-- **Idea (B):** for r11, at its grill (retrieval protocol: query, gallery, labels, metric, baselines).
+- **Idea (B):** r11's retrieval protocol (grill in "r11 decide 2", 2026-10-29 16:20 to 17:30): a held painting
+  plus an aspect name; label retrieval (mAP, P@10), then the aspect-switch table, then graded emotion relevance
+  (nDCG), in that order (user). Bar: c* WIN over the plain Qwen image on all three aspects and LEVEL or WIN against
+  the instructed image on each (user); mAP carries emotion (user); CRL, CLIP L/14, SigLIP 2 and PercepT core are
+  descriptive rows (user); the switch test written now, its claim decided after the numbers (user, after seeing the
+  recommendation); read-out-only optimization first, picked on validation paintings, and the claim rests on that
+  tuned held table (user). [Spec](specs/2026-10-29-retrieval-design.md).
 - **Data side job (2026-10-29, agent):** Qwen stores for Impressions (built; no class labels, so no AMI reference)
   and Affection's three local sources (COCO, Visual Genome, Flickr30k: 52,596 of 85,007 images; extraction queued for
   19:00 under the working-hours rule, user); the other two sources (You et al., Emotional Machines) have no public
