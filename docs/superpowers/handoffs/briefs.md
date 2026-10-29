@@ -1289,3 +1289,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-29-r11-build-3-handoff.md
 - New chat: tab 'r11 build 3', session 585c1724-5f23-49f9-94a9-046b675ae2e9
 
+[brief] CoSiR: r11 build 3 -> r11 build 4 (2026-10-29 21:16 Amsterdam)
+- Done: all 9 tickets merged on `r11-retrieval`; a C13 mismatch in stage 4 fixed (one numeric convention).
+- State: the queue smoke at 2,100 rows passes: 228 tests, every step exit 0, `rt_vh` 0 disagreements in 995 values.
+- Next: the final whole-branch review (Opus `xhigh`), one fix wave and its re-review, merge into main, cut to the run.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-29-r11-build-4-handoff.md
+- New chat: tab 'r11 build 4', session 9c200e0c-de7a-4ee7-bb01-9d0a11351c04
+
