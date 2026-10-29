@@ -11,22 +11,18 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-10-27)
+## Now (2026-10-29)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
 on each view, one shared trunk with emotion, style and genre heads, read once on the default image. The recipe of
-12-24 passes the held emotion claim test on four image encoders (12,281 held ArtELingo paintings, 5 seeds; bar:
-PercepT core's own reading on the Qwen image, 0.0874, +0.0100 with the interval above zero): Qwen 0.1029, SigLIP 2
-0.1024, SigLIP 1 0.1036, CLIP L/14 0.0996; CLIP B/32 and B/16 inconclusive, DINOv2-large fails. The relational genre
-round (report 12-27, 2026-10-27) adds a relational term with a sharper teacher row (temperature 0.02, weight 8):
-model G reaches held genre AMI 0.5001, level with the instructed Qwen genre image (0.5062) within one seed range
-(−0.0060 [−0.0105, −0.0014]), +0.0467 over the recipe and +0.0732 over the strongest PercepT entry. Against the
-instructed Qwen image, G wins on emotion and is level on style and genre; against PercepT it wins on all three. The
-claims are k-means, ArtELingo and (genre) Qwen only. Next (user, decide 26, 2026-10-27): one medium loop: the held
-emotion claim test with G as the new recipe, then a recipe sweep on DAS6 on development data (the strongest recipe
-for all three aspects; "level" accepted) with an ablation study and a real analysis beside it, then the other
-passing encoders with the final recipe, then aspect-named retrieval as the second task. The sweep is staged (a one-knob scan,
-then a joint grid; stages 1 and 2 on DAS6 node402, the rest local); the spec and rule were approved in decide 27 (2026-10-27 03:48), and the build runs next. The CVPR abstract is due 2026-11-10.
+12-24 passes the held emotion claim test on four image encoders (Qwen, SigLIP 2, SigLIP 1, CLIP L/14). The recipe
+sweep (report 12-28) picks c*: model G (relational genre term, sharper teacher row) with 40 graph neighbours. On
+12,281 held ArtELingo paintings and 5 seeds, c* beats the instructed Qwen image on emotion (+0.0145) and narrowly on
+style (+0.0041), and is level on genre (−0.0060, within one seed range); it beats PercepT core on emotion by +0.0192.
+The claims are k-means, Qwen and ArtELingo only. The user's plan (2026-10-29): r11 retrieval (a fast build, first
+results, small optimization steps), r12 more datasets (Affection, Impressions, PolyArt), r13 a large sweep and
+analysis after 11-10; the main recipe freezes at 11-10. A data side job builds the Affection and Impressions stores.
+Next: r11's protocol at its grill. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 
 ## Parked ideas
 
@@ -52,6 +48,50 @@ then a joint grid; stages 1 and 2 on DAS6 node402, the rest local); the spec and
   by the user, 2026-10-25; [proposed in](../reports/auto/percept/2026-12-23_attention_maps.md))
 - Align and contrast the three aspect heads of one image (shared part aligned, aspect parts pushed apart) (never tried;
   not chosen by the user, 2026-10-20: the aspects may not be separable; proposed in the r10 decide 12 chat)
+
+## 2026-10-29 · Recipe sweep read: c* (40 graph neighbours) replaces G, above the instructed Qwen image on emotion and style, genre level; next, the plan to the deadlines: r11 retrieval, r12 more datasets, r13 a large sweep and analysis
+
+- **Read:** stage 0: G passes the held emotion claim against PercepT core at both scales (full +0.0164 [+0.0107,
+  +0.0182], sample +0.0188). Sweep (about 60 configurations on node402, development, seed 0), confirmation on seeds 1
+  to 3, pick c*: G with 40 graph neighbours instead of 20. Held (12,281 paintings, genre labels on 9,949, 5 seeds,
+  full scale), c* against the instructed Qwen image: emotion 0.1066 against 0.0921, +0.0145 [+0.0113, +0.0177];
+  style 0.4066 against 0.4026, +0.0041 [+0.0004, +0.0081]; genre 0.5001 against 0.5062, −0.0060 [−0.0103, −0.0015]
+  (within one seed range, 0.0128); against PercepT core, emotion +0.0192 [+0.0137, +0.0207]. Ablation (decides
+  nothing): the relational term carries genre (−0.0440 without it); the instructed graphs, the buddy terms and the
+  content correction carry emotion and style; without the direct teacher held emotion rises (+0.0035), without the
+  caption endpoints held style rises (+0.0072). k-means, Qwen and ArtELingo only; the sweep's seed-0 gains are
+  inflated by the pick among about 60 configurations.
+- **Meaning (C):** "I think overall good, we can have a bigger sweep and check later on genre, but now the table is
+  okey." (user, before ours). Ours: emotion is the result to trust (about three seed ranges over the instructed
+  image, +0.0192 over PercepT core); the style win passes the rule but is narrow (lower bound about 0.05 seed ranges
+  above zero) and level with G; genre is level, not a win; two parts (the direct teacher, the caption endpoints) call
+  for a follow-up, since removing each raised one aspect on development and held paintings. Where they differ: none on
+  the table; ours flags the narrow style win and the two parts. The user puts genre and further tuning into the later
+  large sweep (r13).
+- **Decided (A):** the plan to the deadlines (user, "r10 reports 5", 2026-10-29 about 01:35, "yes" to our summary of
+  it): r11 retrieval, a fast build and test, first results, then a few small optimization steps, running before
+  November, a good result before 11-10; r12 more datasets (PolyArt, Affection, Impressions; meeting of 2026-10-28) in
+  the clustering task and in retrieval, before 11-10 at least for clustering; r13 a large-scale sweep, deep analysis
+  and qualitative results, between 11-10 and the paper deadline; anything more in the supplementary week. Three
+  changes, accepted by the user after seeing the recommendation: a data side job starts at once beside r11; the main
+  recipe freezes at 11-10 and the late sweep gives analysis and robustness only; the method and setup sections are
+  drafted during r11 and r12. The weekly meeting also raised multi-task learning as a possible storyline (a literature
+  check on it is proposed, not decided). Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23
+  (23:59 AoE each).
+- **Idea (B):** for r11, at its grill (retrieval protocol: query, gallery, labels, metric, baselines).
+- **Data side job (2026-10-29, agent):** Qwen stores for Impressions (built; no class labels, so no AMI reference)
+  and Affection's three local sources (COCO, Visual Genome, Flickr30k: 52,596 of 85,007 images; extraction queued for
+  19:00 under the working-hours rule, user); the other two sources (You et al., Emotional Machines) have no public
+  download. Log: `src/test/20261029_r11_data/20261029_r11_data_log.md` (branch `r11-data`).
+- **Why:** the paper needs a second task (retrieval) and a second dataset before the abstract; the recipe freeze keeps
+  the main numbers fixed in the last week.
+- **Links:** [report](../reports/auto/percept/2026-12-28_recipe_sweep.md) ·
+  [user-read report](../user_read/2026-10-28_recipe_sweep.md) ·
+  [spec](specs/2026-10-27-recipe-sweep-design.md) ·
+  [rule](../../src/test/20261027_recipe_sweep/DECISION_RULE.md) ·
+  [weekly report](../reports/weekly/2026-10-28_condition_free_line.md) ·
+  [handoff 1 of 2](handoffs/2026-10-28-r11-decide-handoff-1of2.md) ·
+  [handoff 2 of 2](handoffs/2026-10-29-r11-decide-handoff-2of2.md)
 
 ## 2026-10-27 · Relational genre round read: a sharper teacher brings held genre level with the instructed Qwen genre image (G-GO); next, the held emotion test with this model, a recipe sweep on DAS6 with ablations and analysis, then the encoders, then retrieval
 
