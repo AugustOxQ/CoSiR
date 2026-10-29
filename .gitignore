@@ -152,6 +152,8 @@ dmypy.json
 *.pickle
 *.csv
 *.json
+# r11: the seed ranges are committed before any held retrieval (spec 3.5), so the queue must be able to add them.
+!src/test/20261029_retrieval/stage0a_ranges.json
 *.npy
 
 # Folder

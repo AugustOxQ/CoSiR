@@ -139,3 +139,8 @@ Mutation check (scratch copy of `src/test`, each guard removed in turn; the real
 
 All five caught. `test_rt_guards.py` and `test_rt_vh.py`: 22 passed. Not run: the rest of the round's tests and the queue
 smoke (the controller runs them).
+
+- F4 (must-fix, found by the controller after the re-review): the repo's `.gitignore` ignores `*.json`, so the queue's
+  plain `git add` of `stage0a_ranges.json` would fail at `commit_ranges` on the first full run, and every held stage
+  would then refuse. `.gitignore` now un-ignores that one path; `test_the_real_ranges_file_is_not_gitignored` pins it
+  (it fails with the negation removed). The temporary-repo guard tests could not see it (no `.gitignore` there).
