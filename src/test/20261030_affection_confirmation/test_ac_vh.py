@@ -455,9 +455,15 @@ def test_artelingo_clip_crl_uses_frozen_texts_and_reports_round_mismatch(tmp_pat
     local = data.outputs / 'crl/clip_painting_emotion.npy'
     local.parent.mkdir(parents=True)
     np.save(local, frozen[::-1])
-    write_json(tmp_path / 'r11/crl/lists.json', {'aspects': {'emotion': {'values': ['first', 'second']}}})
-    write_crl_metadata(data.outputs, 'clip', 'painting', 'emotion')
+    values = {'values': ['first', 'second']}
+    write_json(tmp_path / 'r11/crl/lists.json', {'aspects': {'emotion': values, 'style': values}})
+    for aspect in ('emotion', 'style'):                    # r11's own sidecars; the round has no local CLIP painting json
+        write_json(tmp_path / f'r11/crl/{aspect}_text.json', dict(
+            model='openai/clip-vit-large-patch14', texts=[f'a painting with the {aspect} of {v}' for v in values['values']]))
+    np.save(tmp_path / 'r11/crl/style_text.npy', frozen)
     np.testing.assert_array_equal(data.embed('artelingo', 'crl_clip_painting', 'val'), [[1., 0.]])
+    np.testing.assert_array_equal(data.embed('artelingo', 'crl_clip_painting', 'val', aspect='style'), [[1., 0.]])
+    assert data.frozen_crl_aspects == {'emotion', 'style'}
     mine = {metric: vh.seed_range([.1, .2, .3, .4, .5]) for metric in ('clu', 'map', 'ndcg')}
     write_json(data.outputs / 'records/stage0b_ranges.json', mine)    # smoke run: <outputs>/records (ticket 13)
     write_json(data.outputs / 'stage0a/gates.json', {'ok': True, 'items': {}})
@@ -466,6 +472,7 @@ def test_artelingo_clip_crl_uses_frozen_texts_and_reports_round_mismatch(tmp_pat
     assert vh.compare_final(run, '0b', mine, data.outputs) == 1
     report = vh.read_json(data.outputs / 'vh/0b.json')
     assert not report['items']['inputs.crl.clip_painting_emotion.equals_r11']['ok']
+    assert 'inputs.crl.clip_painting_style.equals_r11' not in report['items']       # no local style copy to compare
     np.save(local, frozen)
     assert vh.compare_final(run, '0b', mine, data.outputs) == 0
 

@@ -237,21 +237,24 @@ class Data:
         assert (seed in SEEDS) if arm in ('cstar', 'percept') else seed is None
         if arm.startswith('crl_'):
             encoder, wording = arm[4:].split('_')
-            side = read_json(self.outputs / 'crl' / f'{encoder}_{wording}_{aspect}.json')
             values = read_json(R11 / 'crl/lists.json')['aspects'][aspect]['values']
             assert encoder in TEXT_MODELS and wording in ('painting', 'photo')
-            assert side['texts'] == [f'a {wording} with the {aspect} of {v}' for v in values], 'CRL texts/order'
-            assert side['encoder'] == encoder, 'CRL encoder'
-            assert side['model_id'] == TEXT_MODELS[encoder], 'CRL text model'
-            instruction = DEFAULT_INSTRUCTION if encoder == 'qwen' else None
-            assert side['instruction'] == instruction, 'CRL text instruction'
-            image = self.embed(dataset, 'clip' if encoder == 'clip' else 'plain', split, aspect)
             if dataset == 'artelingo' and (encoder, wording) == ('clip', 'painting'):
-                # SC5–SC7 must not inherit a text-vector error from this round.
+                # r11's CLIP CRL arm (spec 3.2): r11's own texts and text vectors, so SC5–SC7 must not inherit a
+                # text-vector error from this round. The round writes a local copy for emotion only (Affection's arm).
                 self.frozen_crl_aspects.add(aspect)
+                side = read_json(R11 / 'crl' / f'{aspect}_text.json')
+                assert side['model'] == TEXT_MODELS[encoder], 'CRL text model'
                 path = R11 / 'crl' / f'{aspect}_text.npy'
             else:
+                side = read_json(self.outputs / 'crl' / f'{encoder}_{wording}_{aspect}.json')
+                assert side['encoder'] == encoder, 'CRL encoder'
+                assert side['model_id'] == TEXT_MODELS[encoder], 'CRL text model'
+                instruction = DEFAULT_INSTRUCTION if encoder == 'qwen' else None
+                assert side['instruction'] == instruction, 'CRL text instruction'
                 path = self.outputs / 'crl' / f'{encoder}_{wording}_{aspect}.npy'
+            assert side['texts'] == [f'a {wording} with the {aspect} of {v}' for v in values], 'CRL texts/order'
+            image = self.embed(dataset, 'clip' if encoder == 'clip' else 'plain', split, aspect)
             text = np.load(path, allow_pickle=False)
             assert text.ndim == 2 and len(text) == len(values), 'CRL text/value count'
             return crl_vectors(image, text)
@@ -675,6 +678,8 @@ def compare_final(run, stage, mine, outputs):
     outputs = Path(outputs)
     check = Check()
     for aspect in sorted(getattr(run.data, 'frozen_crl_aspects', ())):
+        if aspect != 'emotion' and not (outputs / 'crl' / f'clip_painting_{aspect}.npy').exists():
+            continue                                  # the round copies r11's CLIP painting texts for emotion only
         frozen = np.load(R11 / 'crl' / f'{aspect}_text.npy', allow_pickle=False)
         local = np.load(outputs / 'crl' / f'clip_painting_{aspect}.npy', allow_pickle=False)
         equal = local.dtype == frozen.dtype and np.array_equal(local, frozen)
