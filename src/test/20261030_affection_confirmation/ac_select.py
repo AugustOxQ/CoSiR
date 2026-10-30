@@ -155,6 +155,36 @@ def build_stage1(aff_tables, aff_picks, ami, r_clu, r_ret, art_tables, art_picks
     return picks, scores
 
 
+def replay_r11_stage4(arms=None, workers=8, data=None, ranges=None):
+    """Spec 3.5 stage 0a(iii), r11 stage 4 part: r11's stage 4 scores and picks recomputed through this module
+    from r11's inputs (rt_data.embed on the ArtELingo validation paintings), as rt_run.stage4 builds them.
+    arms: default every r11 arm; data: the module providing labels / embed / ARMS / SEEDED / ASPECT_FREE / WIDTHS
+    (default rt_data); ranges: {aspect: r_a} (default r11's stage0a_ranges.json, mAP).
+    Returns (scores, picks) in r11's stage4/scores.json form ({arm: {name: {'map', 'score', 'kept'}}}) and
+    stage4/picks.json form ({arm: name})."""
+    if data is None:
+        import rt_data as data
+    if ranges is None:
+        doc = json.loads(ac_paths.R11_RANGES_FILE.read_text())
+        ranges = {a: float(doc['map'][a]['r']) for a in ac_paths.ASPECTS}
+    arms = tuple(data.ARMS if arms is None else arms)
+    labels = data.labels('val')
+    scores, picks = {}, {}
+    for arm in arms:
+        xs = {}
+        for s in (ac_paths.SEEDS if arm in data.SEEDED else (None,)):
+            if arm in data.ASPECT_FREE:
+                x = data.embed(arm, 'val', 'emotion', s)
+                xs.update({(a, s): x for a in ac_paths.ASPECTS})      # one matrix: its eigendecomposition is shared
+            else:
+                xs.update({(a, s): data.embed(arm, 'val', a, s) for a in ac_paths.ASPECTS})
+        if arm != 'crl':
+            assert {x.shape[1] for x in xs.values()} == {data.WIDTHS[arm]}, arm
+        scores[arm], picked = arm_table(xs, labels, ranges, workers=workers)
+        picks[arm] = rt_readout.name(picked)
+    return scores, picks
+
+
 def validate_picks(picks):
     """The picks document's shape (index, 'stage1/picks.json'); asserts, returns nothing."""
     assert set(picks) == {'affection', 'artelingo'}

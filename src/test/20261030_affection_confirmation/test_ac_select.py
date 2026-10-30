@@ -336,6 +336,62 @@ def test_write_picks_refuses_an_invalid_document(tmp_path):
     assert not (tmp_path / 'out').exists()
 
 
+# ---- the replay of r11's stage 4 -----------------------------------------------------------------------------------
+
+def fake_data():
+    """A stand-in for rt_data: a seeded arm with one head per aspect, an aspect-free arm, a 'crl' arm (width 5)."""
+    from types import SimpleNamespace
+    lab = {a: synthetic(0, classes=3 + i)[1] for i, a in enumerate(ABC)}
+
+    def embed(arm, split, aspect, seed=None):
+        assert split == 'val'
+        k = {'cstar': 100 + 7 * ABC.index(aspect) + (seed or 0), 'plain': 50, 'crl': 60 + ABC.index(aspect)}[arm]
+        return synthetic(k, d=5 if arm == 'crl' else 8)[0]
+
+    return SimpleNamespace(labels=lambda split: lab, embed=embed, SEEDED={'cstar'}, ASPECT_FREE={'plain'},
+                           WIDTHS={'cstar': 8, 'plain': 8}), lab
+
+
+def test_replay_of_r11_stage4_gives_each_arms_table_in_r11s_format():
+    import rt_readout
+    data, lab = fake_data()
+    scores, picks = ac_select.replay_r11_stage4(('cstar', 'plain', 'crl'), workers=1, data=data, ranges=RANGES3)
+    assert set(scores) == set(picks) == {'cstar', 'plain', 'crl'}
+    assert list(scores['cstar']) == [rt_readout.name(m) for m in rt_readout.menu(8)]
+    assert list(scores['crl']) == [rt_readout.name(m) for m in rt_readout.menu(5)]
+    assert set(scores['plain']['none+k0']) == {'map', 'score', 'kept'} and set(scores['plain']['none+k0']['map']) == set(ABC)
+    # the seeded arm averages the five seeds' R0 values per aspect; the aspect-free arm uses one matrix for all
+    for i, a in enumerate(ABC):
+        by_hand = np.mean([r0_crossfit_map(data.embed('cstar', 'val', a, s), lab[a]) for s in range(5)])
+        assert scores['cstar']['none+k0']['map'][a] == pytest.approx(by_hand, abs=1e-12)
+        assert scores['plain']['none+k0']['map'][a] == pytest.approx(r0_crossfit_map(data.embed('plain', 'val', a), lab[a]),
+                                                                    abs=1e-12)
+    assert all(picks[arm] in scores[arm] for arm in picks)
+
+
+R11_ARMS = ('cstar', 'plain', 'instructed', 'clip', 'siglip2', 'percept', 'crl')
+
+
+@pytest.mark.slow
+@pytest.mark.real_data
+@pytest.mark.parametrize('arm', R11_ARMS)
+def test_replay_matches_r11s_saved_stage4_scores_and_pick(arm):
+    """Stage 0a(iii), r11 stage 4 part (run by the controller): every score within 1e-9 of r11's saved
+    stage4/scores.json, and the arm's pick of stage4/picks.json. The seven arms together took about 17 minutes in
+    r11 (c* the longest); pass `-k <arm>` to run one."""
+    saved = json.loads((ac_paths.R11_OUT / 'stage4/scores.json').read_text())[arm]
+    saved_pick = json.loads((ac_paths.R11_OUT / 'stage4/picks.json').read_text())[arm]
+    scores, picks = ac_select.replay_r11_stage4((arm,))
+    assert list(scores[arm]) == list(saved)
+    for name, row in saved.items():
+        got = scores[arm][name]
+        assert got['kept'] == row['kept'], (arm, name)
+        assert abs(got['score'] - row['score']) < 1e-9, (arm, name)
+        for a in ABC:
+            assert abs(got['map'][a] - row['map'][a]) < 1e-9, (arm, name, a)
+    assert picks[arm] == saved_pick
+
+
 def test_three_aspect_pick_and_scores_equal_r11s_own_functions_on_random_tables():
     rng = np.random.default_rng(3)
     menu = rt_readout.menu(2048)
