@@ -74,6 +74,17 @@ prepares r13. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 20
   teacher, so that r13 starts with two or three candidates (user, after seeing the recommendation; the user's own lean
   was a retrain with an extra signal). D7: the switch test as one supporting sentence; D6: our CRL re-implementation
   gets a bar in r12's spec (user, after seeing the recommendation).
+- **Idea (B):** r12's protocol (grill in the r12 decide chat, three rounds, ending 2026-10-30 20:20). Affection,
+  emotion only, on its official split: validation for picks and seed ranges, test held, train untouched so r13 may
+  train on it (user). Impressions: example retrievals only (user, after seeing the recommendation). The teacher in
+  two wordings (artwork, photo), the better one on validation per task (user). Verdict on Affection's test: holds when
+  c* WINs over the plain Qwen image in clustering and retrieval and is LEVEL or WIN against the teacher in both;
+  qualified when that holds in one task only; fails otherwise. A yes/no line beside it says whether the ArtELingo
+  clustering WIN over the teacher repeats; it does not decide (user; the qualified and fails wording is ours, confirmed
+  by the user). CRL in CLIP L/14 and Qwen versions; the better on validation faces a WIN bar at stage 5 on ArtELingo
+  (three aspects) and Affection (emotion); a failed bar gives no claim and keeps its row (user). PercepT core: a frozen
+  descriptive row on Affection beside its published 0.18 (user, unsure). Minor points: our defaults (user, ok). No
+  plan page (user); the glossary's "seed range" widened (user).
 - **Why:** r12 tests whether c*'s clustering win over the teacher and its retrieval level hold beyond ArtELingo, and
   it keeps the 2026-11-10 freeze; the side job prepares the retrain without GPU time.
 - **Links:** [report 12-29](../reports/auto/percept/2026-12-29_retrieval.md) · [literature note 12-30](../reports/literature/2026-12-30_signals_beyond_teacher.md) (candidates for r13) ·
