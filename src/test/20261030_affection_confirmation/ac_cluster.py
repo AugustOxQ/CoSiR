@@ -94,6 +94,37 @@ def paired(cand_parts, comp_parts, labels, draws=DRAWS, workers=8):
     return dict(A_cand=a_cand, A_comp=a_comp, d=res['d'], interval=interval, bootstrap_d=res['bootstrap_d'])
 
 
+def _replay_fit(task):
+    """One fit of the replay (in a worker): the held emotion rows of c* at a seed, or of the teacher (seed None).
+    c* is read in its stored float16 and the teacher as unit float32, as `rt_stage0._partition` does."""
+    arm, seed, limit = task
+    import rt_data
+    with threadpool_limits(1):
+        if arm == 'cstar':
+            x = rt_data.raw('cstar', 'held', 'emotion', seed)
+        else:
+            x = rt_data.embed('instructed', 'held', 'emotion')
+        return task, partitions(x[:limit])
+
+
+def r10_emotion_replay(workers=8, draws=DRAWS, limit=None):
+    """Spec §3.5 0a(iii), r10 part: r10's stage 4 emotion block on its held inputs, through this module. c*'s full-scale
+    held emotion outputs (seeds 0 to 4; `rt_data.raw('cstar', 'held', ...)`, the files `rs_stage4` scores) and the
+    teacher's held store (`rt_data.embed('instructed', ...)`) are clustered by `partitions` and compared by `paired`;
+    labels are `rt_data.labels('held')['emotion']` (< 0 masked inside the AMI). The teacher's partitions are fitted
+    afresh here (r10 scored 12-24's frozen file of the same fit); the spec expects A_cand 0.10658729378204021, A_T
+    0.09207439052277983, d 0.014512903259260385, interval [0.011288090988306501, 0.017671180133450672] within 1e-9.
+    `limit` keeps the first rows only (a plumbing smoke). Returns {'A_cand', 'A_T', 'd', 'interval'}."""
+    import rt_data
+    labels = rt_data.labels('held')['emotion'][:limit]
+    tasks = [('cstar', seed, limit) for seed in SEEDS] + [('instructed', None, limit)]
+    with mp.get_context('fork').Pool(min(workers, len(tasks))) as pool:
+        fitted = dict(pool.map(_replay_fit, tasks, chunksize=1))
+    cand = np.stack([fitted[('cstar', seed, limit)] for seed in SEEDS])
+    res = paired(cand, fitted[('instructed', None, limit)], labels, draws, workers)
+    return dict(A_cand=res['A_cand'], A_T=res['A_comp'], d=res['d'], interval=res['interval'])
+
+
 def _cache_root(root):
     return Path(root) if root is not None else ac_paths.OUTPUTS / 'partitions'
 

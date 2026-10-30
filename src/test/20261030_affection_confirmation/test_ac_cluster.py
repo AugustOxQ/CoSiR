@@ -202,3 +202,25 @@ def test_cache_hashes_the_float32_rows_so_float16_and_float32_of_one_array_agree
     b = ac_cluster.cached_partitions(x16.astype(np.float32), 'half', root=tmp_path)
     np.testing.assert_array_equal(a, b)
     assert (tmp_path / 'half.npz').stat().st_mtime_ns == stamp
+
+
+# ---- spec §3.5 0a(iii), r10 part: the replay on r10's held emotion inputs (slow; run by the controller) --------------
+
+R10_BLOCK = dict(A_cand=0.10658729378204021, A_T=0.09207439052277983, d=0.014512903259260385,
+                 interval=[0.011288090988306501, 0.017671180133450672])
+
+
+@pytest.mark.real_data
+def test_replay_plumbing_on_a_prefix_of_the_held_rows_returns_the_block_keys():
+    got = ac_cluster.r10_emotion_replay(workers=2, draws=3, limit=400)
+    assert set(got) == {'A_cand', 'A_T', 'd', 'interval'}
+    assert got['d'] == pytest.approx(got['A_cand'] - got['A_T'], abs=1e-12)
+    assert got['interval'][0] <= got['interval'][1]
+
+
+@pytest.mark.slow
+def test_replay_gives_r10s_stage_4_emotion_block_within_1e_9():
+    got = ac_cluster.r10_emotion_replay(workers=8)
+    for key in ('A_cand', 'A_T', 'd'):
+        assert got[key] == pytest.approx(R10_BLOCK[key], abs=1e-9), key
+    assert got['interval'] == pytest.approx(R10_BLOCK['interval'], abs=1e-9)
