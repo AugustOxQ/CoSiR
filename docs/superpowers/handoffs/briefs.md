@@ -1354,3 +1354,13 @@
 - Handoff: docs/superpowers/handoffs/2026-10-30-r12-build-4-handoff.md
 - New chat: tab 'r12 build 4', session 877a08b8-2b87-407d-ae98-84283a075758
 
+[brief] CoSiR: r12 build 4 -> r12 build 5 (2026-10-31 00:07 Amsterdam)
+- Done: the end-to-end smoke ran to vh stage 1 (4 contact fixes); the final Opus `xhigh` review: pass after fixes.
+- State: the fix wave (diag assert, c* clustering on stored float16 rows) is built by Codex on `r12-fixwave`
+  (`a0c8038`, 10 tests, 4 mutations caught), not yet reviewed; vh stage 1 has 14 open contact mismatches.
+- Next: review and merge `r12-fixwave`; fix vh stage 1's ArtELingo comparison; a fresh smoke from stage 0b to stage 4;
+  a Sonnet `high` re-review; merge to main; the run handoff and the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-31-r12-build-5-handoff.md
+- New chat: tab 'r12 build 5', session 821f6960-ca57-4192-9e31-11e6aa0926f0
+
