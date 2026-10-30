@@ -1345,3 +1345,12 @@
 - Handoff: docs/superpowers/handoffs/2026-10-30-r12-build-3-handoff.md
 - New chat: tab 'r12 build 3', session 008deb6f-33e9-4a28-8c51-7ee234b2960b
 
+[brief] CoSiR: r12 build 3 -> r12 build 4 (2026-10-30 22:54 Amsterdam)
+- Done: all 13 r12 build tickets merged into `r12-affection` (08 fixes, 09, 10, 12, 13 in this chat); 515 fast tests pass.
+- State: the queue script `ac_queue.sh` passes `bash -n` and both dry-runs; it has not run yet. Diag has not run on data.
+- Next: the end-to-end smoke (`ac_queue.sh smoke <scratch>`, light GPU under the lock), fixes, the final whole-branch
+  review (Opus `xhigh`), one fix wave and a re-review, merge to main, then the run handoff and the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-30-r12-build-4-handoff.md
+- New chat: tab 'r12 build 4', session 877a08b8-2b87-407d-ae98-84283a075758
+
