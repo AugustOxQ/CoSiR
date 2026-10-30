@@ -125,3 +125,23 @@ the run handoff).
   5e-8 (the score in units of r, about 0.001, then differs by about 5e-5).
 - Fix wave (Codex `gpt-6.1-sol` high, branch `r12-fixwave`): the diag assert with a diag test, and c* clustering on
   its stored float16 rows (r10's protocol) in stage 0b, stage 2 and diag.
+
+### Build chat 5 (2026-10-31 00:08 to …)
+
+- 00:12 the fix wave's diff read by the controller (verdict code): `ac_data.stored` returns the checked float16 export
+  rows unchanged; stage 0b r_clu, stage 2 partitions (SC1, SC3) and diag cluster c* through it; r10's
+  `r20_partition` and vh cast the same rows to float32, so all three paths match. 512 fast tests and the 26 slow and
+  real-data tests pass. Merged into `r12-affection` (`5c93064`).
+- 00:14 to 00:18 vh stage 1 fix (Codex `gpt-6.1-sol` high, by resume of the fix wave session, `90ff740`): for
+  ArtELingo, vh no longer cross-fits c* (its pick is fixed) and scores CLIP CRL only at R0 and `none+k10`, the rows
+  the runner writes (spec §6); the restricted cross-fit is bit-equal to the full menu on the same rows. Four tests;
+  three fail with the full menu restored. 516 fast tests pass. Controller diff read: pass. Merged (`ba6ef6e`).
+- **Fresh smoke** (`ac_queue.sh smoke`, 2,100 keys, draws 200 and 500; GPU-step outputs copied from build chat 4's
+  smoke, everything from stage 0a on recomputed), 00:15 to 00:50: every step exit 0 (17 run, 12 skipped as sealed).
+  Step times (s): FI 18, parity a 33, PercepT check 9, re-infer 13, CRL check 20, parity c 13, stage 0a 5, stage 0b
+  22, vh 0b 19, stage 1 312, vh 1 443, stage 2 57, vh 2 513, stage 3 41, vh 3 517, diag 37, stage 4 8. vh agrees on
+  every item: 0b 41, 1 598, 2 186, 3 188 (0 mismatches). vh 1 took 1,302 s before the fix.
+- Stage 0b on stored float16 rows gives the same r_clu on the smoke as before (0.004444511160314857).
+- The final reviewer's re-derivation script on the fresh smoke: stage 0b and 1 (`stage01.txt`): r_clu, r_map,
+  r_nDCG per seed diff 0; teacher AMIs diff 0; both wording picks and the three read-out picks equal (mAP within
+  5e-8).
