@@ -64,7 +64,20 @@ def _split(split):
     assert len(ns) == len(set(ns)) == ac_paths.N[split], 'split key count'
     votes = np.asarray([counts[key] for key in ns], dtype=np.int64)
     assert votes.shape == (len(ns), 9) and (votes.sum(axis=1) > 0).all(), 'annotation votes'
+    n = ac_paths.SMOKE
+    if n > 0:
+        # Smoke mode (ticket 13): the first N sorted keys, after the full-split asserts. FI (you_aaai_affective)
+        # sorts last, so these keys are non-FI and are in the current store.
+        fi = f'{ac_paths.FI_SOURCE}/'
+        assert n <= sum(not key.startswith(fi) for key in ns), f'AC_SMOKE {n} exceeds the non-FI keys of {split}'
+        assert not any(key.startswith(fi) for key in ns[:n]), f'FI key among the first {n} of {split}'
+        ns, votes = ns[:n], votes[:n]
     return ns, votes
+
+
+def _count(split):
+    """Rows of a split: its full count, or AC_SMOKE in smoke mode."""
+    return ac_paths.SMOKE or ac_paths.N[split]
 
 
 def keys(split):
@@ -77,7 +90,7 @@ def labels(split):
     _, votes = _split(split)
     # Spec §3.4 L130–132: argmax chooses the first (lowest alphabetical) code.
     result = votes.argmax(axis=1).astype(np.int64)
-    assert result.shape == (ac_paths.N[split],) and result.dtype == np.int64
+    assert result.shape == (_count(split),) and result.dtype == np.int64
     return result
 
 
@@ -86,7 +99,7 @@ def ties(split):
     _, votes = _split(split)
     # Spec §3.4 L131–134: ties concern the plurality, not any repeated vote count.
     result = (votes == votes.max(axis=1, keepdims=True)).sum(axis=1) > 1
-    assert result.shape == (ac_paths.N[split],) and result.dtype == np.bool_
+    assert result.shape == (_count(split),) and result.dtype == np.bool_
     return result
 
 
@@ -95,7 +108,7 @@ def emotion_dist(split):
     _, votes = _split(split)
     # Spec §3.4 L132: graded relevance uses exactly the label's annotation rows.
     result = votes / votes.sum(axis=1, keepdims=True)
-    assert result.shape == (ac_paths.N[split], 9) and result.dtype == np.float64
+    assert result.shape == (_count(split), 9) and result.dtype == np.float64
     assert np.allclose(result.sum(axis=1), 1, rtol=0, atol=1e-15)
     return result
 
@@ -198,7 +211,9 @@ def _view(arm, requested):
     assert stored == keys('val') + keys('test'), 'view key order'
     assert side['keys_sha256'] == rs_vh.names_sha(stored), 'view keys hash'
     gate = side['gate']
-    assert side['smoke'] is False and isinstance(gate, dict) and gate.get('ok') is True, 'view extraction gate'
+    # Smoke mode: only a smoke view (with the truncated key list, asserted above) is read; a full run refuses one.
+    assert side['smoke'] is (ac_paths.SMOKE > 0), 'view smoke flag'
+    assert isinstance(gate, dict) and gate.get('ok') is True, 'view extraction gate'
     assert {'ok', 'n_nonfinite', 'n_bad_norm', 'max_norm_dev'} <= set(gate), 'view gate fields'
     assert all(type(gate[field]) is int and gate[field] == 0 for field in ('n_nonfinite', 'n_bad_norm')), 'view gate counts'
     dev = gate['max_norm_dev']
@@ -226,7 +241,7 @@ def _export(arm, split, seed, head, requested):
                                            'split', 'seed', 'smoke', 'device' if percept else 'aspect'))
     # Spec §3.3 L124 (C6): the positional export must attest to the full key list.
     assert side['keys_sha256'] == rs_vh.names_sha(requested), 'export keys hash'
-    assert side['split'] == split and side['seed'] == seed and side['smoke'] is False, 'export identity'
+    assert side['split'] == split and side['seed'] == seed and side['smoke'] is (ac_paths.SMOKE > 0), 'export identity'
     weights = side['weights_sha256']
     assert isinstance(weights, str) and len(weights) == 64 and all(c in '0123456789abcdef' for c in weights), 'weights hash'
     # Spec §3.7 L189: exports must use the frozen mapper, for this head and seed.
@@ -325,6 +340,16 @@ def percept_prob(split, seed):
     return _export('percept', split, seed, 'emotion', keys(split))
 
 
+def smoke_rows(x):
+    """The first AC_SMOKE rows of an ArtELingo array (r11's names are sorted, as ac_vh's smoke takes them); x itself
+    when SMOKE = 0."""
+    n = ac_paths.SMOKE
+    if n == 0:
+        return x
+    assert len(x) >= n, f'AC_SMOKE {n} exceeds {len(x)} rows'
+    return x[:n]
+
+
 def artelingo_crl_qwen(split, aspect):
     """Painting-worded Qwen CRL in frozen r11 names(split) order, for all aspects."""
     assert split in ('val', 'held') and aspect in ac_paths.ASPECTS, (split, aspect)
@@ -333,4 +358,5 @@ def artelingo_crl_qwen(split, aspect):
     assert requested == sorted(requested), 'ArtELingo name order'
     # Spec §3.2 L105: r11 owns the frozen key/hash join for every old ArtELingo arm.
     img = _array(rt_data.embed('plain', split, aspect), len(requested), 2048, np.float32, unit=True)
+    img = _array(smoke_rows(img), len(smoke_rows(requested)), 2048, np.float32, unit=True)
     return _crl(img, 'qwen', 'painting', aspect)

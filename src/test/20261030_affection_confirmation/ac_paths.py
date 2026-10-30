@@ -16,7 +16,13 @@ R11_ROUND = MAIN / 'src/test/20261029_retrieval'
 R11_OUT = Path('/data/SSD2/cosir_r11/20261029_retrieval/outputs')
 R11_CRL_LISTS_FILE = R11_OUT / 'crl/lists.json'   # frozen value order, shared by all four CRL versions
 R11_RANGES_FILE = R11_ROUND / 'stage0a_ranges.json'  # r11's r_a (mAP per aspect): SC5 to SC7 and the ArtELingo picks
-OUTPUTS = Path(os.environ.get('AC_OUTPUTS', '/data/SSD2/cosir_r12/20261030_affection_confirmation/outputs'))
+DEFAULT_OUTPUTS = Path('/data/SSD2/cosir_r12/20261030_affection_confirmation/outputs')
+OUTPUTS = Path(os.environ.get('AC_OUTPUTS', DEFAULT_OUTPUTS))
+# Smoke mode (ticket 13): AC_SMOKE=N runs the loaders on the first N keys per split. Read as ac_paths.SMOKE at call time.
+SMOKE = int(os.environ.get('AC_SMOKE', '0'))
+assert SMOKE >= 0, 'AC_SMOKE must be 0 (full) or a positive row count'
+assert SMOKE == 0 or OUTPUTS.resolve() != DEFAULT_OUTPUTS.resolve(), \
+    'AC_SMOKE needs AC_OUTPUTS set to a scratch folder, never the default outputs'
 
 # Affection (spec §3.3). The store holds 85,007 images after ticket 01's merge (63,199 before).
 AFF = Path('/data/SSD2/pre_extract/affection_local')
@@ -24,6 +30,9 @@ STORE = AFF / 'qwen3vl_emb_2b'
 STORE_FI = AFF / 'qwen3vl_emb_2b_fi'                 # FI-only extraction, merged into STORE by ac_store.py
 VIEWS = AFF / 'qwen3vl_emb_2b_aspect_prompts'
 CLIP_VIEW = AFF / 'clip_l14_valtest'
+if SMOKE > 0:       # smoke views live in the scratch outputs, with the real folders' names; the store stays real
+    VIEWS = OUTPUTS / 'smoke_views' / VIEWS.name
+    CLIP_VIEW = OUTPUTS / 'smoke_views' / CLIP_VIEW.name
 ANNOTATIONS = Path('/data/SSD/affection/language/version_0/affection_preprocessed_public_version_0.csv')
 FI_ROOT = Path('/data/SSD/affection/fi_t4sa/dataset/benchmark/FI/images')   # <emotion>/<emotion>_NNNN.jpg
 FI_SOURCE = 'you_aaai_affective'

@@ -32,8 +32,11 @@ import ac_paths as P  # noqa: E402  (also puts every older round, e.g. ct2_*, on
 import rs_vh  # noqa: E402
 
 VIEWS = ('emotion_focus', 'emotion_focus_photo', 'default', 'clip_l14')
-CANONICAL = {'emotion_focus': P.VIEWS / 'emotion_focus', 'emotion_focus_photo': P.VIEWS / 'emotion_focus_photo',
-             'clip_l14': P.CLIP_VIEW}
+# The real folders, also under AC_SMOKE (when P.VIEWS and P.CLIP_VIEW point at the scratch smoke_views, which are
+# not canonical): a smoke extraction may go into smoke_views and never into these.
+_VIEWS, _CLIP_VIEW = P.AFF / 'qwen3vl_emb_2b_aspect_prompts', P.AFF / 'clip_l14_valtest'
+CANONICAL = {'emotion_focus': _VIEWS / 'emotion_focus', 'emotion_focus_photo': _VIEWS / 'emotion_focus_photo',
+             'clip_l14': _CLIP_VIEW}
 BATCH = {'emotion_focus': 32, 'emotion_focus_photo': 32, 'default': 32, 'clip_l14': 128}  # clip: BATCH[CLIP_L14]['img']
 WIDTH = {'emotion_focus': 2048, 'emotion_focus_photo': 2048, 'default': 2048, 'clip_l14': 768}
 COSINE_MIN = 0.999
@@ -46,6 +49,12 @@ ART_IMAGES = Path('/data/PDD/wikiart_proj/wikiart')
 def valtest_keys():
     import ac_data
     return ac_data.keys('val') + ac_data.keys('test')
+
+
+def is_smoke_run(smoke_n, keys):
+    """A view is a smoke view when --smoke is given, when AC_SMOKE is set (valtest_keys is then the truncated list,
+    so equal keys would otherwise be marked as a full view), or when the keys are not the val and test keys."""
+    return bool(smoke_n) or P.SMOKE > 0 or keys != valtest_keys()
 
 
 def parse_keys(arg):
@@ -173,6 +182,7 @@ def extract(view, keys, out, device='cuda', smoke=False):
     assert view in VIEWS
     check_keys(keys)
     out = Path(out)
+    assert smoke or P.SMOKE == 0, 'AC_SMOKE is set: this must be a smoke extraction'
     assert not (smoke and is_canonical(out)), 'a smoke view cannot go into a canonical folder'
     assert smoke or keys == valtest_keys() or not is_canonical(out), 'a canonical view takes exactly valtest keys'
     pending = check_target(out)
@@ -288,7 +298,7 @@ def main(argv=None):
         report = parity(args.which, args.device)
         return 0 if report['ok'] else 1
     keys = smoke_keys(args.smoke) if args.smoke else parse_keys(args.keys)
-    extract(args.view, keys, args.out, args.device, smoke=bool(args.smoke) or keys != valtest_keys())
+    extract(args.view, keys, args.out, args.device, smoke=is_smoke_run(args.smoke, keys))
     return 0
 
 

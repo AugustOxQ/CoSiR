@@ -25,7 +25,8 @@ Readings where the text/interface leaves a detail open:
 * Clustering SC rows use null readout_c/readout_t: r20 partitions have no retrieval
   read-out. Extra descriptive output fields are ignored, but picks and SC IDs are exact.
 
-CLI: --stage {0b,1,2,3} --outputs DIR [--smoke [N]] [--draws-clu N] [--draws-ret N]. Missing input: exit 2;
+CLI: --stage {0b,1,2,3} --outputs DIR [--smoke [N]] [--views-root DIR] [--draws-clu N] [--draws-ret N]. In smoke the
+committed records are read from <outputs>/records/ (never the round folder). Missing input: exit 2;
 comparison mismatch: exit 1. Every compared leaf is saved to outputs/vh/<stage>.json.
 Real runs can be expensive; this implementation does no GPU work.
 """
@@ -137,8 +138,11 @@ def crl_vectors(image, text):
 
 class Data:
     """Independent loaders. No result, pick, per-query or partition file from this round is an input."""
-    def __init__(self, outputs, smoke=0, aff=AFF, annotation=ANNOTATIONS):
+    def __init__(self, outputs, smoke=0, aff=AFF, annotation=ANNOTATIONS, views_root=None):
         self.outputs, self.smoke, self.aff = Path(outputs), smoke, Path(aff)
+        # The three view folders (qwen3vl_emb_2b_aspect_prompts/*, clip_l14_valtest) are read under views_root;
+        # a smoke run points it at <outputs>/smoke_views. The default store always stays under aff.
+        self.views_root = Path(views_root) if views_root else self.aff
         self.frozen_crl_aspects = set()
         self.full = annotations(annotation)
         self.records = {sp: {k: v[:smoke] if smoke else v for k, v in r.items()}
@@ -264,9 +268,9 @@ class Data:
             assert x.dtype == np.float16 and x.shape[1] == 2048
             x = joined_rows(x, keys, wanted)
         else:
-            folders = {'teacher_artwork': self.aff / 'qwen3vl_emb_2b_aspect_prompts/emotion_focus',
-                       'teacher_photo': self.aff / 'qwen3vl_emb_2b_aspect_prompts/emotion_focus_photo',
-                       'clip': self.aff / 'clip_l14_valtest'}
+            folders = {'teacher_artwork': self.views_root / 'qwen3vl_emb_2b_aspect_prompts/emotion_focus',
+                       'teacher_photo': self.views_root / 'qwen3vl_emb_2b_aspect_prompts/emotion_focus_photo',
+                       'clip': self.views_root / 'clip_l14_valtest'}
             x = self._view(folders[arm], wanted, VIEW_INSTRUCTIONS[arm])
             assert x.shape[1] == (768 if arm == 'clip' else 2048)
         assert len(x) == len(wanted)
@@ -659,6 +663,12 @@ class Check:
         return all(v['ok'] for v in self.items.values())
 
 
+def records_dir(outputs, smoke):
+    """Where the committed records (stage0b_ranges.json, stage1_picks.json) are read: the round folder in a full
+    run; in smoke the runner's scratch copies under <outputs>/records, so a smoke run never touches the round folder."""
+    return Path(outputs) / 'records' if smoke else ROUND
+
+
 def compare_final(run, stage, mine, outputs):
     """The ONLY round result reader. All independent calculations have already finished."""
     outputs = Path(outputs)
@@ -694,10 +704,11 @@ def compare_final(run, stage, mine, outputs):
         check.compare('picks', run.selection['picks'], read_json(outputs / 'stage1/picks.json'), strict=True)
     if stage != '0b':
         check.compare('ranges', run.ranges, read_json(outputs / 'stage0b/ranges.json'))
+    records = records_dir(outputs, run.smoke)
     check.compare('committed.ranges', mine if stage == '0b' else run.ranges,
-                  read_json(ROUND / 'stage0b_ranges.json'))
+                  read_json(records / 'stage0b_ranges.json'))
     if stage != '0b':
-        check.compare('committed.picks', run.selection['picks'], read_json(ROUND / 'stage1_picks.json'), strict=True)
+        check.compare('committed.picks', run.selection['picks'], read_json(records / 'stage1_picks.json'), strict=True)
     out = outputs / 'vh' / f'{stage}.json'
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(dict(stage=stage, smoke=run.smoke, ok=check.ok, items=check.items,
@@ -713,6 +724,9 @@ def main(argv=None):
     parser.add_argument('--stage', required=True, choices=('0b', '1', '2', '3'))
     parser.add_argument('--outputs', type=Path, default=Path(os.environ.get('AC_OUTPUTS', DEFAULT_OUTPUTS)))
     parser.add_argument('--smoke', type=int, nargs='?', const=2100, default=0, metavar='N')
+    parser.add_argument('--views-root', type=Path, default=None, metavar='DIR',
+                        help='folder holding qwen3vl_emb_2b_aspect_prompts/ and clip_l14_valtest/ '
+                             '(default: the real Affection folders); a smoke run uses <outputs>/smoke_views')
     parser.add_argument('--draws-clu', type=int, default=2000)
     parser.add_argument('--draws-ret', type=int, default=10000)
     args = parser.parse_args(argv)
@@ -721,7 +735,8 @@ def main(argv=None):
     if args.draws_clu <= 0 or args.draws_ret <= 0:
         parser.error('bootstrap draws must be positive')
     try:
-        run = Run(Data(args.outputs, args.smoke), args.smoke, args.draws_clu, args.draws_ret)
+        extra = {'views_root': args.views_root} if args.views_root else {}
+        run = Run(Data(args.outputs, args.smoke, **extra), args.smoke, args.draws_clu, args.draws_ret)
         mine = run.derive(args.stage)
         return compare_final(run, args.stage, mine, args.outputs)
     except (FileNotFoundError, KeyError, AssertionError, ValueError) as error:

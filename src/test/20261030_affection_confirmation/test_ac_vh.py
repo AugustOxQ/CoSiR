@@ -310,9 +310,9 @@ def test_all_stages_compare_reports_and_detect_mismatches(tmp_path, monkeypatch,
     run.art_ranges = dict.fromkeys(vh.ASPECTS, .1)
     # Compute all expected results BEFORE any reference JSON exists.
     derived = {stage: run.derive(stage) for stage in ('0b', '1', '2', '3')}
-    monkeypatch.setattr(vh, 'ROUND', tmp_path / 'committed')
-    write_json(tmp_path / 'committed/stage0b_ranges.json', derived['0b'])
-    write_json(tmp_path / 'committed/stage1_picks.json', derived['1']['picks'])
+    # A smoke run reads the committed records from <outputs>/records (ticket 13), not from the round folder.
+    write_json(tmp_path / 'records/stage0b_ranges.json', derived['0b'])
+    write_json(tmp_path / 'records/stage1_picks.json', derived['1']['picks'])
     write_json(tmp_path / 'stage0a/gates.json', dict(ok=True, items={}))
     assert derived['0b']['map']['r'] > 0 and derived['0b']['clu']['r'] > 0
     assert derived['1']['picks']['artelingo']['readout']['cstar'] == 'center+k10'
@@ -415,8 +415,7 @@ def test_label_gate_values_and_extra_pick_are_compared(tmp_path, monkeypatch):
     run = vh.Run(data, smoke=2)
     mine = dict(clu=vh.seed_range([0, .1, .2, .3, .4]), map=vh.seed_range([.1] * 5),
                 ndcg=vh.seed_range([.2] * 5))
-    monkeypatch.setattr(vh, 'ROUND', tmp_path / 'committed')
-    write_json(tmp_path / 'committed/stage0b_ranges.json', mine)
+    write_json(tmp_path / 'records/stage0b_ranges.json', mine)    # smoke run: <outputs>/records (ticket 13)
     write_json(tmp_path / 'stage0b/ranges.json', mine)
     write_json(tmp_path / 'stage0a/gates.json', dict(ok=True, items={
         'label_counts_val': dict(value=[1, 0, 0, 0, 0, 0, 1, 0, 0]),
@@ -452,8 +451,7 @@ def test_artelingo_clip_crl_uses_frozen_texts_and_reports_round_mismatch(tmp_pat
     write_crl_metadata(data.outputs, 'clip', 'painting', 'emotion')
     np.testing.assert_array_equal(data.embed('artelingo', 'crl_clip_painting', 'val'), [[1., 0.]])
     mine = {metric: vh.seed_range([.1, .2, .3, .4, .5]) for metric in ('clu', 'map', 'ndcg')}
-    monkeypatch.setattr(vh, 'ROUND', tmp_path / 'committed')
-    write_json(tmp_path / 'committed/stage0b_ranges.json', mine)
+    write_json(data.outputs / 'records/stage0b_ranges.json', mine)    # smoke run: <outputs>/records (ticket 13)
     write_json(data.outputs / 'stage0a/gates.json', {'ok': True, 'items': {}})
     write_json(data.outputs / 'stage0b/ranges.json', mine)
     run = vh.Run(data, smoke=2)
@@ -651,9 +649,13 @@ def comparison_files(tmp_path, monkeypatch):
     write_json(tmp_path / 'stage0b/ranges.json', run.ranges)
     write_json(tmp_path / 'stage1/picks.json', run.selection['picks'])
     write_json(tmp_path / 'stage2/verdict.json', mine)
+    # The fixture is a smoke run, so the committed records are the runner's scratch copies under <outputs>/records
+    # (ticket 13); ROUND (full runs) is pointed at a folder with deliberately wrong records to prove it is not read.
     monkeypatch.setattr(vh, 'ROUND', tmp_path / 'committed', raising=False)
-    write_json(tmp_path / 'committed/stage0b_ranges.json', run.ranges)
-    write_json(tmp_path / 'committed/stage1_picks.json', run.selection['picks'])
+    write_json(tmp_path / 'committed/stage0b_ranges.json', {'wrong': True})
+    write_json(tmp_path / 'committed/stage1_picks.json', {'wrong': True})
+    write_json(tmp_path / 'records/stage0b_ranges.json', run.ranges)
+    write_json(tmp_path / 'records/stage1_picks.json', run.selection['picks'])
     return run, mine, tmp_path
 
 
@@ -688,11 +690,76 @@ def test_report_rejects_planted_pick_outcome_difference_and_removed_key(comparis
 def test_committed_range_and_pick_copies_are_independently_compared(comparison_files, copy, item):
     run, mine, outputs = comparison_files
     assert vh.compare_final(run, '2', mine, outputs) == 0
-    record = vh.read_json(outputs / 'committed' / copy)
+    record = vh.read_json(outputs / 'records' / copy)
     if copy == 'stage0b_ranges.json':
         record['map']['r'] += 1e-5
     else:
         record['affection']['readout']['cstar'] = 'center+k0'
-    write_json(outputs / 'committed' / copy, record)
+    write_json(outputs / 'records' / copy, record)
     assert vh.compare_final(run, '2', mine, outputs) == 1
     assert not vh.read_json(outputs / 'vh/2.json')['items'][item]['ok']
+
+
+def test_committed_records_come_from_outputs_records_in_smoke_and_from_the_round_folder_otherwise(tmp_path):
+    assert vh.records_dir(tmp_path, 7) == tmp_path / 'records'
+    assert vh.records_dir(str(tmp_path), 1) == tmp_path / 'records'
+    assert vh.records_dir(tmp_path, 0) == vh.ROUND
+    assert (vh.ROUND / 'stage0b_ranges.json').parent == Path(vh.__file__).resolve().parent
+
+
+def test_smoke_compare_does_not_read_the_round_folder(comparison_files):
+    # ROUND holds {'wrong': True} records in this fixture; a smoke run that read them would mismatch.
+    run, mine, outputs = comparison_files
+    assert vh.compare_final(run, '2', mine, outputs) == 0
+    items = vh.read_json(outputs / 'vh/2.json')['items']
+    assert items['committed.ranges.map.r']['ok'] and items['committed.picks.affection.readout.cstar']['ok']
+    (outputs / 'records/stage0b_ranges.json').unlink()
+    with pytest.raises(FileNotFoundError):
+        vh.compare_final(run, '2', mine, outputs)
+
+
+# ---- --views-root (ticket 13): a smoke vh run reads the smoke views, everything else stays on the real folders ----
+
+def test_views_are_read_from_views_root_while_the_store_stays_under_aff(tmp_path):
+    ann = tmp_path / 'ann.csv'
+    write_annotations(ann)
+    aff, root = tmp_path / 'aff', tmp_path / 'scratch/smoke_views'
+    data = vh.Data(tmp_path, smoke=2, annotation=ann, aff=aff, views_root=root)
+    assert data.records['val']['keys'] == ['a/a', 'z/b']
+    views = {'teacher_artwork': ('qwen3vl_emb_2b_aspect_prompts/emotion_focus', 2048),
+             'teacher_photo': ('qwen3vl_emb_2b_aspect_prompts/emotion_focus_photo', 2048),
+             'clip': ('clip_l14_valtest', 768)}
+    for arm, (folder, width) in views.items():
+        (root / folder).mkdir(parents=True)
+        x = np.zeros((2, width), dtype=np.float16)
+        x[0, 1], x[1, 0] = 1, 1                               # rows in keys.json order: z/b first
+        np.save(root / folder / 'img.npy', x)
+        write_json(root / folder / 'keys.json', ['z/b', 'a/a'])
+        write_json(root / folder / 'meta.json',
+                   {'instruction': vh.VIEW_INSTRUCTIONS[arm], 'gate': {'ok': True}, 'smoke': True})
+        got = data.embed('affection', arm, 'val')
+        np.testing.assert_array_equal(got[:, :2], [[1, 0], [0, 1]])        # joined by key: a/a first
+    assert not (aff / 'qwen3vl_emb_2b_aspect_prompts').exists()          # nothing was read from aff for views
+
+
+def test_views_root_defaults_to_the_real_aff_folders(tmp_path):
+    ann = tmp_path / 'ann.csv'
+    write_annotations(ann)
+    data = vh.Data(tmp_path, smoke=2, annotation=ann, aff=tmp_path / 'aff')
+    assert data.views_root == tmp_path / 'aff'
+    assert vh.Data(tmp_path, smoke=2, annotation=ann).views_root == vh.AFF
+
+
+def test_views_root_flag_is_passed_only_when_given(tmp_path, monkeypatch):
+    seen = []
+
+    class StopData:
+        def __init__(self, outputs, smoke, **kwargs):
+            seen.append((outputs, smoke, kwargs))
+            raise FileNotFoundError('stop here')
+
+    monkeypatch.setattr(vh, 'Data', StopData)
+    assert vh.main(['--stage', '0b', '--outputs', str(tmp_path), '--smoke', '3']) == 2
+    assert vh.main(['--stage', '0b', '--outputs', str(tmp_path), '--smoke', '3',
+                    '--views-root', str(tmp_path / 'v')]) == 2
+    assert seen == [(tmp_path, 3, {}), (tmp_path, 3, {'views_root': tmp_path / 'v'})]
