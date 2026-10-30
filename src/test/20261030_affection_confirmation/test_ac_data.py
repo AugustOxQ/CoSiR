@@ -1,7 +1,10 @@
 """Label verdicts and keyed file boundaries; synthetic files need no extraction or GPU."""
 import csv
+import importlib
 import json
+import os
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -44,6 +47,8 @@ def small_round(tmp_path, monkeypatch):
     monkeypatch.setattr(ac_paths, 'N', {'val': 2, 'test': 1})
     for name in ('STORE', 'VIEWS', 'CLIP_VIEW', 'OUTPUTS'):
         monkeypatch.setattr(ac_paths, name, tmp_path / name.lower())
+    monkeypatch.setattr(rt_data, 'CSTAR_ROOT', tmp_path / 'r10_cstar')
+    monkeypatch.setattr(rt_data.rt_paths, 'PERCEPT_OUT', tmp_path / 'r11_percept')
     return tmp_path
 
 
@@ -73,6 +78,21 @@ def test_image_cannot_belong_to_two_nonignored_splits(small_round):
         handle.write('a,a.jpg,test,fear\n')
     with pytest.raises(AssertionError, match='split'):
         ac_data.keys('val')
+
+
+def test_annotation_keys_use_utf8_with_a_non_utf8_locale(small_round, monkeypatch):
+    path = ac_paths.ANNOTATIONS
+    text = path.read_text(encoding='utf-8').replace('a.jpg', 'été.jpg')
+    path.write_text(text, encoding='utf-8')
+    original_open = Path.open
+
+    def locale_open(opened, *args, **kwargs):
+        if opened == path and 'encoding' not in kwargs:
+            kwargs['encoding'] = 'ascii'  # Simulate a host whose default encoding is not UTF-8.
+        return original_open(opened, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'open', locale_open)
+    assert ac_data.keys('val') == ['a/été.jpg', 'z/b.jpg']
 
 
 @pytest.mark.real_data
@@ -112,6 +132,45 @@ def test_plain_store_gathers_by_source_and_name(small_round):
     assert actual.dtype == np.float32
     np.testing.assert_array_equal(actual, x[[3, 0]].astype(np.float32))
     np.testing.assert_array_equal(ac_data.embed('plain', 'test'), x[[2]].astype(np.float32))
+
+
+def test_plain_caches_unchanged_index_keys_and_reloads_features(small_round, monkeypatch):
+    x = default_store()
+    index = ac_paths.STORE / 'index.json'
+    original_read = Path.read_text
+    reads = []
+
+    def read_text(path, *args, **kwargs):
+        if path == index:
+            reads.append(path)
+        return original_read(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'read_text', read_text)
+    ac_data.embed('plain', 'val')
+    ac_data.embed('plain', 'test')
+    changed = x[[1, 0, 3, 2]]
+    np.save(ac_paths.STORE / 'img.npy', changed)
+    np.testing.assert_array_equal(ac_data.embed('plain', 'val'), changed[[3, 0]].astype(np.float32))
+    assert len(reads) == 1, 'unchanged large store index should be parsed once'
+
+
+@pytest.mark.parametrize('changed', ['mtime', 'size'])
+def test_plain_refreshes_cached_keys_when_index_stat_changes(small_round, changed):
+    x = default_store()
+    index = ac_paths.STORE / 'index.json'
+    ac_data.embed('plain', 'val')
+    stat = index.stat()
+    side = json.loads(index.read_text())
+    side['images'][0], side['images'][3] = side['images'][3], side['images'][0]
+    if changed == 'size':
+        side['note'] = 'size changes while mtime is held constant'
+    write_json(index, side)
+    os.utime(index, ns=(stat.st_atime_ns, stat.st_mtime_ns + (1_000_000 if changed == 'mtime' else 0)))
+    if changed == 'mtime':
+        assert index.stat().st_size == stat.st_size
+    else:
+        assert index.stat().st_mtime_ns == stat.st_mtime_ns
+    np.testing.assert_array_equal(ac_data.embed('plain', 'val'), x[[0, 3]].astype(np.float32))
 
 
 @pytest.mark.parametrize('damage', ['missing', 'duplicate', 'dtype', 'shape', 'nonfinite', 'nonunit', 'smoke'])
@@ -158,7 +217,8 @@ def feature_view(arm):
     side = {'instruction': instruction,
             'model_id': rt_crl.CLIP_ID if is_clip else 'Qwen/Qwen3-VL-Embedding-2B',
             'model_revision': rt_crl.CLIP_REVISION if is_clip else rt_data.ct2_data.QWEN_REVISION,
-            'dtype': 'float16', 'shape': list(x.shape), 'smoke': False, 'gate': {'ok': True},
+            'dtype': 'float16', 'shape': list(x.shape), 'smoke': False,
+            'gate': {'ok': True, 'n_nonfinite': 0, 'n_bad_norm': 0, 'max_norm_dev': 0.0},
             'keys_sha256': rs_vh.names_sha(stored), 'img_sha256': rs_vh.array_sha(x)}
     write_json(path / 'keys.json', stored)
     write_json(path / 'meta.json', side)
@@ -206,14 +266,32 @@ def test_view_rejects_corrupt_or_wrong_identity_files(small_round, damage):
         ac_data.embed('teacher_photo', 'val')
 
 
+@pytest.mark.parametrize('field', ['n_nonfinite', 'n_bad_norm', 'max_norm_dev'])
+@pytest.mark.parametrize('damage', ['missing', 'nonzero'])
+def test_view_requires_complete_clean_gate_even_when_ok_is_true(small_round, field, damage):
+    path, side, _ = feature_view('teacher_photo')
+    gate = side['gate']
+    if damage == 'missing':
+        side['gate'] = {key: value for key, value in gate.items() if key != field}
+    else:
+        gate[field] = .01 if field == 'max_norm_dev' else 1
+    write_json(path / 'meta.json', side)
+    with pytest.raises(AssertionError):
+        ac_data.embed('teacher_photo', 'val')
+
+
 def frozen_export(arm, split='val', seed=0, head='emotion'):
     percept = arm == 'percept'
     path = ac_paths.OUTPUTS / 'exports' / arm / split / f'{"P3" if percept else head}__s{seed}.npz'
     x = basis(ac_paths.N[split], 40 if percept else 2048, np.float32 if percept else np.float16)
     if percept:
         x[:, 5] = .5  # Stored probabilities are normalized by embed, not assumed unit.
+    weights = rs_vh.names_sha([arm, head, str(seed)])
+    reference = (rt_data.rt_paths.PERCEPT_OUT / f'held/percept/core__k40/P3__s{seed}.json' if percept else
+                 rt_data.CSTAR_ROOT / f'held/k11=40/{head}__s{seed}.json')
+    write_json(reference, {'weights_sha256': weights})
     side = {'keys_sha256': rs_vh.names_sha(ac_data.keys(split)), 'array_sha256': rs_vh.array_sha(x),
-            'weights_sha256': 'f' * 64, 'split': split, 'seed': seed, 'smoke': False}
+            'weights_sha256': weights, 'split': split, 'seed': seed, 'smoke': False}
     side.update({'device': 'cuda'} if percept else {'aspect': head})
     write_json(path.with_suffix('.json'), side)
     np.savez(path, **{'prob' if percept else 'img': x})
@@ -233,14 +311,45 @@ def test_seeded_exports_follow_keys_hash_and_normalize(small_round, split, arm, 
     np.testing.assert_array_equal(actual, expected)
 
 
+@pytest.mark.parametrize('split', ['val', 'test'])
+def test_percept_prob_preserves_raw_export_bytes(small_round, split):
+    _, _, expected = frozen_export('percept', split, seed=4)
+    actual = ac_data.percept_prob(split, 4)
+    assert actual.dtype == np.float32 and actual.shape == (ac_paths.N[split], 40)
+    assert actual.tobytes() == expected.tobytes()
+    assert actual[0, 5] == .5 and actual[0, 0] == 1
+    assert not np.array_equal(actual, ac_data.embed('percept', split, 4))
+
+
+@pytest.mark.parametrize('seed', [None, 5, True, 0.0])
+def test_percept_prob_requires_a_valid_integer_seed(small_round, seed):
+    with pytest.raises(AssertionError):
+        ac_data.percept_prob('val', seed)
+
+
+def test_percept_own_reading_uses_raw_near_tie_probabilities(small_round):
+    path, side, x = frozen_export('percept')
+    x[:] = np.float32(.018908909)
+    x[:, 0] = np.float32(.95)
+    x[:, 1] = np.nextafter(np.float32(.95), np.float32(1))
+    side['array_sha256'] = rs_vh.array_sha(x)
+    write_json(path.with_suffix('.json'), side)
+    np.savez(path, prob=x)
+    assert ac_data.percept_prob('val', 0).argmax(axis=1).tolist() == [1, 1]
+    assert ac_data.embed('percept', 'val', 0).argmax(axis=1).tolist() == [0, 0]
+
+
 @pytest.mark.parametrize('arm', ['cstar', 'percept'])
 @pytest.mark.parametrize('damage', ['keys_sha256', 'array_sha256', 'weights_sha256', 'split', 'seed',
-                                  'smoke', 'identity', 'dtype', 'shape', 'npz_keys', 'nonfinite', 'bad_values'])
+                                  'other_weights', 'smoke', 'identity', 'dtype', 'shape', 'npz_keys',
+                                  'nonfinite', 'bad_values'])
 def test_export_rejects_invalid_boundaries(small_round, arm, damage):
     path, side, x = frozen_export(arm)
     key = 'prob' if arm == 'percept' else 'img'
     if damage in ('keys_sha256', 'array_sha256', 'weights_sha256', 'split'):
         side[damage] = 'wrong'
+    elif damage == 'other_weights':
+        side['weights_sha256'] = rs_vh.names_sha([arm, 'emotion', '1'])  # Valid hash, wrong frozen seed.
     elif damage == 'seed':
         side['seed'] = 1
     elif damage == 'smoke':
@@ -263,14 +372,24 @@ def test_export_rejects_invalid_boundaries(small_round, arm, damage):
     write_json(path.with_suffix('.json'), side)
     with pytest.raises(AssertionError):
         ac_data.embed(arm, 'val', seed=0)
+    if arm == 'percept':
+        with pytest.raises(AssertionError):
+            ac_data.percept_prob('val', 0)
+
+
+def test_crl_fixture_preserves_an_importable_module(small_round, monkeypatch, request):
+    module = SimpleNamespace(vectors=lambda img, text: None)
+    monkeypatch.setitem(sys.modules, 'ac_crl', module)
+    request.getfixturevalue('crl_inputs')
+    assert importlib.import_module('ac_crl') is module
 
 
 @pytest.fixture
 def crl_inputs(small_round, monkeypatch):
-    """Use r11 as the ticket-05 vector dependency until ac_crl is delivered.
+    """Prefer real ac_crl; provide a loader-only stand-in while ticket 05 is absent.
 
-    Its real raw('crl') and embed('crl') run; only frozen image/text input
-    boundaries are replaced with the small arrays supplied by the r12 reader.
+    The independent reference runs r11's actual raw('crl') and embed('crl')
+    with only the frozen image/text input boundaries replaced by small arrays.
     """
     lists_path = small_round / 'lists.json'
     write_json(lists_path, {'aspects': {a: {'values': ['joy', 'fear', 'calm'], 'count': 3}
@@ -293,8 +412,17 @@ def crl_inputs(small_round, monkeypatch):
             patch.setattr(rt_data, 'embed', embed)
             return original_embed('crl', 'val', 'emotion')
 
-    monkeypatch.setitem(sys.modules, 'ac_crl', SimpleNamespace(vectors=legacy_vectors))
-    return legacy_vectors
+    try:
+        module = importlib.import_module('ac_crl')
+    except ModuleNotFoundError as error:
+        if error.name != 'ac_crl':
+            raise  # A broken dependency inside real ac_crl must fail the suite.
+        module = SimpleNamespace(vectors=legacy_vectors)
+        monkeypatch.setitem(sys.modules, 'ac_crl', module)
+        real = False
+    else:
+        real = True
+    return SimpleNamespace(module=module, reference=legacy_vectors, real=real)
 
 
 def crl_texts(encoder, wording, aspect='emotion', *, hashed=True):
@@ -307,6 +435,9 @@ def crl_texts(encoder, wording, aspect='emotion', *, hashed=True):
     x[2, 3] = 1
     texts = [f'a {wording} with the {aspect} of {value}' for value in ('joy', 'fear', 'calm')]
     side = {'texts': texts, 'encoder': encoder,
+            'model_id': rt_crl.CLIP_ID if encoder == 'clip' else 'Qwen/Qwen3-VL-Embedding-2B',
+            'instruction': None if encoder == 'clip' else "Represent the user's input.",
+            'template': f'a {wording} with the {{aspect}} of {{value}}',
             'model_revision': rt_crl.CLIP_REVISION if encoder == 'clip' else rt_data.ct2_data.QWEN_REVISION}
     if hashed:
         side['array_sha256'] = rs_vh.array_sha(x)
@@ -317,17 +448,33 @@ def crl_texts(encoder, wording, aspect='emotion', *, hashed=True):
 
 @pytest.mark.parametrize('version', ac_paths.CRL_VERSIONS)
 @pytest.mark.parametrize('split', ['val', 'test'])
-def test_crl_arms_read_the_right_encoder_and_wording_in_r11_form(crl_inputs, version, split):
+def test_crl_arms_read_the_right_encoder_and_wording(crl_inputs, version, split):
     encoder, wording = version.split('_')
-    _, _, text = crl_texts(encoder, wording)
-    img = ac_data.embed('clip' if encoder == 'clip' else 'plain', split)
-    expected = crl_inputs(img, text)
+    crl_texts(encoder, wording)
     actual = ac_data.embed(f'crl_{version}', split)
     assert actual.dtype == np.float32
-    np.testing.assert_array_equal(actual, expected)
-    # Independent worked example catches wrong images, transposes and sign loss.
+    # Worked examples test routing even when the real vector module is absent.
     if split == 'test':
         np.testing.assert_allclose(actual[0], [2**-.5, -(2**-.5), 0], rtol=0, atol=1e-7)
+    elif encoder == 'clip':
+        np.testing.assert_allclose(actual, [[2**-.5, -(2**-.5), 0], [2**-.5, 2**-.5, 0]], atol=1e-7)
+    else:
+        np.testing.assert_allclose(actual, [[1/6**.5, 1/6**.5, 2/6**.5],
+                                            [2**-.5, -(2**-.5), 0]], atol=1e-7)
+
+
+def test_real_crl_vectors_equal_r11_bit_for_bit(crl_inputs):
+    if not crl_inputs.real:
+        pytest.skip('ticket 05 ac_crl is absent; the loader stand-in cannot validate CRL numerical parity')
+    rng = np.random.default_rng(20261030)
+    img = rng.normal(size=(7, 768)).astype(np.float32)
+    text = rng.normal(size=(5, 768)).astype(np.float32)
+    img /= np.linalg.norm(img, axis=1, keepdims=True)
+    text /= np.linalg.norm(text, axis=1, keepdims=True)
+    actual = crl_inputs.module.vectors(img, text)
+    expected = crl_inputs.reference(img, text)
+    assert actual.shape == expected.shape and actual.dtype == expected.dtype == np.float32
+    assert actual.tobytes() == expected.tobytes()
 
 
 @pytest.mark.parametrize('damage', ['texts', 'encoder', 'model_revision', 'array_sha256',
@@ -350,6 +497,24 @@ def test_crl_text_boundary_rejects_wrong_values_or_arrays(crl_inputs, damage):
         side['array_sha256'] = rs_vh.array_sha(x)
         np.save(path, x)
     write_json(path.with_suffix('.json'), side)
+    with pytest.raises(AssertionError):
+        ac_data.embed('crl_qwen_photo', 'val')
+
+
+@pytest.mark.parametrize('encoder', ['clip', 'qwen'])
+@pytest.mark.parametrize('field', ['model_id', 'instruction', 'template'])
+def test_crl_text_metadata_rejects_wrong_encoder_or_prompt(crl_inputs, encoder, field):
+    path, side, _ = crl_texts(encoder, 'photo')
+    side[field] = 'wrong'
+    write_json(path.with_suffix('.json'), side)
+    with pytest.raises(AssertionError):
+        ac_data.embed(f'crl_{encoder}_photo', 'val')
+
+
+@pytest.mark.parametrize('field', ['texts', 'encoder', 'model_id', 'model_revision', 'instruction', 'template'])
+def test_crl_text_requires_all_index_sidecar_fields(crl_inputs, field):
+    path, side, _ = crl_texts('qwen', 'photo')
+    write_json(path.with_suffix('.json'), {key: value for key, value in side.items() if key != field})
     with pytest.raises(AssertionError):
         ac_data.embed('crl_qwen_photo', 'val')
 

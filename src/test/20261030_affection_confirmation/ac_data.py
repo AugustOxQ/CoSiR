@@ -2,7 +2,8 @@
 
 Keys use rs_vh.names_sha (UTF-8, newline joined, no trailing newline); array
 hashes use rs_vh.array_sha (contiguous array bytes, not the .npy/.npz file).
-Only annotation aggregates are cached; feature arrays are read per call.
+Annotation aggregates and store index keys are cached by file stat; feature
+arrays are read per call.
 """
 import csv
 import json
@@ -28,7 +29,7 @@ def _annotations(path, mtime_ns, size):
     assert tuple(emotions) == rs_vh.EMOTIONS == tuple(sorted(emotions)), 'r10 emotion codes'
     codes = {emotion: i for i, emotion in enumerate(emotions)}
     membership, counts = {}, {}
-    with Path(path).open(newline='') as handle:
+    with Path(path).open(newline='', encoding='utf-8') as handle:
         reader = csv.DictReader(handle)
         fields = reader.fieldnames
         assert fields and len(fields) == len(set(fields)), 'annotation columns'
@@ -150,9 +151,16 @@ def _unit(x):
     return _array(x / norms, len(x), x.shape[1], np.float32, unit=True)
 
 
-def _plain(requested):
-    path = Path(ac_paths.STORE)
-    side = _json(path / 'index.json', ('dataset', 'backbone', 'smoke', 'dtype', 'dim', 'n_images', 'images'))
+def _seed(seed):
+    assert isinstance(seed, (int, np.integer)) and not isinstance(seed, (bool, np.bool_)), seed
+    assert seed in ac_paths.SEEDS, seed
+
+
+@lru_cache(maxsize=2)
+def _store_keys(path, mtime_ns, size):
+    """Cache only the checked key list, never the index's large annotation payload."""
+    del mtime_ns, size  # Invalidate when either stat component changes.
+    side = _json(path, ('dataset', 'backbone', 'smoke', 'dtype', 'dim', 'n_images', 'images'))
     assert side['dataset'] == 'affection_local' and side['backbone'] == 'qwen3vl_emb_2b', 'store identity'
     assert side['smoke'] is False and side['dtype'] == 'float16' and side['dim'] == 2048, 'store metadata'
     stored = []
@@ -163,6 +171,15 @@ def _plain(requested):
         assert isinstance(row['image_name'], str) and row['image_name'], 'store image name'
         stored.append(f"{row['source']}/{row['image_name']}")
     assert len(stored) == side['n_images'], 'store row count'
+    _key_list(stored)
+    return tuple(stored)
+
+
+def _plain(requested):
+    path = Path(ac_paths.STORE)
+    index = path / 'index.json'
+    stat = index.stat()
+    stored = list(_store_keys(index, stat.st_mtime_ns, stat.st_size))
     rows = _gather(stored, requested)
     x = np.load(path / 'img.npy', mmap_mode='r', allow_pickle=False)
     assert x.shape == (len(stored), 2048) and x.dtype == np.float16, 'store array shape/dtype'
@@ -182,6 +199,10 @@ def _view(arm, requested):
     assert side['keys_sha256'] == rs_vh.names_sha(stored), 'view keys hash'
     gate = side['gate']
     assert side['smoke'] is False and isinstance(gate, dict) and gate.get('ok') is True, 'view extraction gate'
+    assert {'ok', 'n_nonfinite', 'n_bad_norm', 'max_norm_dev'} <= set(gate), 'view gate fields'
+    assert all(type(gate[field]) is int and gate[field] == 0 for field in ('n_nonfinite', 'n_bad_norm')), 'view gate counts'
+    dev = gate['max_norm_dev']
+    assert isinstance(dev, (int, float)) and np.isfinite(dev) and 0 <= dev <= 1e-3, 'view gate norm deviation'
     width = 768 if is_clip else 2048
     assert side['dtype'] == 'float16' and side['shape'] == [len(stored), width], 'view shape/dtype'
     model = rt_crl.CLIP_ID if is_clip else 'Qwen/Qwen3-VL-Embedding-2B'
@@ -207,8 +228,11 @@ def _export(arm, split, seed, head, requested):
     assert side['keys_sha256'] == rs_vh.names_sha(requested), 'export keys hash'
     assert side['split'] == split and side['seed'] == seed and side['smoke'] is False, 'export identity'
     weights = side['weights_sha256']
-    # Ticket 04 gates the actual frozen weights; this boundary requires its hash record.
     assert isinstance(weights, str) and len(weights) == 64 and all(c in '0123456789abcdef' for c in weights), 'weights hash'
+    # Spec §3.7 L189: exports must use the frozen mapper, for this head and seed.
+    reference = (rt_data.rt_paths.PERCEPT_OUT / f'held/percept/core__k40/P3__s{seed}.json' if percept else
+                 rt_data.CSTAR_ROOT / f'held/k11=40/{head}__s{seed}.json')
+    assert weights == _json(reference, ('weights_sha256',))['weights_sha256'], 'frozen weights hash'
     if percept:
         assert side['device'] == 'cuda', 'PercepT training device (spec §3.7 L190)'
     else:
@@ -224,6 +248,8 @@ def _export(arm, split, seed, head, requested):
 
 
 def _crl_text(encoder, wording, aspect):
+    from src.data.feature_extract import QWEN_INSTRUCTION_DEFAULT, QWEN_REPO
+
     assert encoder in ('clip', 'qwen') and wording in ('painting', 'photo') and aspect in ac_paths.ASPECTS
     lists = _json(ac_paths.R11_CRL_LISTS_FILE, ('aspects',))
     assert set(lists['aspects']) == set(ac_paths.ASPECTS), 'frozen CRL aspects'
@@ -233,12 +259,19 @@ def _crl_text(encoder, wording, aspect):
     _key_list(values)
     assert entry['count'] == len(values) > 0, 'frozen CRL value count'
     path = Path(ac_paths.OUTPUTS) / 'crl' / f'{encoder}_{wording}_{aspect}.npy'
-    side = _json(path.with_suffix('.json'), ('texts', 'encoder', 'model_revision'))
+    side = _json(path.with_suffix('.json'), ('texts', 'encoder', 'model_id', 'model_revision',
+                                           'instruction', 'template'))
     # Spec §3.2 L104–105, §3.7 L189: use r11's frozen values in their original order.
     assert side['texts'] == [f'a {wording} with the {aspect} of {value}' for value in values], 'CRL value texts/order'
     assert side['encoder'] == encoder, 'CRL text encoder'
+    model = rt_crl.CLIP_ID if encoder == 'clip' else QWEN_REPO
+    assert side['model_id'] == model, 'CRL text model'
     revision = rt_crl.CLIP_REVISION if encoder == 'clip' else rt_data.ct2_data.QWEN_REVISION
     assert side['model_revision'] == revision, 'CRL text revision'
+    # Spec §3.2 L104: Qwen uses the default text instruction, as extract_features.py does.
+    instruction = None if encoder == 'clip' else QWEN_INSTRUCTION_DEFAULT
+    assert side['instruction'] == instruction, 'CRL text instruction'
+    assert side['template'] == f'a {wording} with the {{aspect}} of {{value}}', 'CRL text template'
     width = 768 if encoder == 'clip' else 2048
     x = np.load(path, allow_pickle=False)
     _array(x, len(values), width, np.float32, unit=True)
@@ -270,8 +303,7 @@ def embed(arm, split, seed=None, *, head='emotion'):
     assert arm in ARMS and split in ac_paths.SPLITS, (arm, split)
     assert head in ac_paths.ASPECTS and (arm == 'cstar' or head == 'emotion'), (arm, head)
     if arm in SEEDED:
-        assert isinstance(seed, (int, np.integer)) and not isinstance(seed, (bool, np.bool_)), (arm, seed)
-        assert seed in ac_paths.SEEDS, (arm, seed)
+        _seed(seed)
     else:
         assert seed is None, (arm, seed)
     requested = keys(split)
@@ -283,6 +315,14 @@ def embed(arm, split, seed=None, *, head='emotion'):
         return _unit(_export(arm, split, seed, head, requested))
     _, encoder, wording = arm.split('_')
     return _crl(embed('clip' if encoder == 'clip' else 'plain', split), encoder, wording, 'emotion')
+
+
+def percept_prob(split, seed):
+    """Checked raw float32 [n, 40] probabilities in keys(split) order."""
+    assert split in ac_paths.SPLITS, split
+    _seed(seed)
+    # Spec §3.4 L135–137: r10's own reading takes argmax before normalization.
+    return _export('percept', split, seed, 'emotion', keys(split))
 
 
 def artelingo_crl_qwen(split, aspect):
