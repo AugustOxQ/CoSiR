@@ -60,6 +60,197 @@ def test_ranges_doc_refuses_a_zero_range():
         ac_stats.ranges_doc([0.1] * 5, [0.2, 0.21, 0.2, 0.2, 0.2], [0.5, 0.52, 0.5, 0.5, 0.5])
 
 
+def brute_ap(x, lab):
+    """AP per query by loops: gallery = all other rows, stable descending cosine, queries with a relevant item."""
+    x = x.astype(np.float64)
+    out = []
+    for q in range(len(x)):
+        g = [i for i in range(len(x)) if i != q]
+        order = sorted(g, key=lambda i: -(x[q] @ x[i]))        # sorted is stable: ties keep gallery order
+        rel = [lab[i] == lab[q] for i in order]
+        if not any(rel):
+            continue
+        hits, s = 0, 0.0
+        for rank, r in enumerate(rel, 1):
+            if r:
+                hits += 1
+                s += hits / rank
+        out.append(s / hits)
+    return np.array(out)
+
+
+def brute_ndcg(x, dist):
+    x = x.astype(np.float64)
+    out = []
+    for q in range(len(x)):
+        g = [i for i in range(len(x)) if i != q]
+        gain = {i: np.minimum(dist[q], dist[i]).sum() for i in g}
+        order = sorted(g, key=lambda i: -(x[q] @ x[i]))
+        ideal = sorted(g, key=lambda i: -gain[i])
+        disc = [1 / np.log2(r + 2) for r in range(len(g))]
+        out.append(sum(gain[i] * d for i, d in zip(order, disc)) / sum(gain[i] * d for i, d in zip(ideal, disc)))
+    return np.array(out)
+
+
+def test_measure_seed_ranges_gives_the_per_seed_ami_map_and_ndcg_and_their_ranges():
+    import ac_cluster
+    from sklearn.metrics import adjusted_mutual_info_score as sk_ami
+    n = 120
+    xs = {s: blobs(80 + s, n=n, classes=4, noise=0.6 + 0.15 * s)[0] for s in range(5)}
+    lab = blobs(80, n=n, classes=4)[1]
+    dist = np.random.default_rng(5).dirichlet(np.ones(9), size=n)
+    doc = ac_stats.measure_seed_ranges(lambda s: xs[s], lab, dist, workers=1)
+    assert set(doc) == {'clu', 'map', 'ndcg'}
+    want_clu = [np.mean([sk_ami(lab, p) for p in ac_cluster.partitions(xs[s])]) for s in range(5)]
+    want_map = [brute_ap(xs[s], lab).mean() for s in range(5)]
+    want_ndcg = [brute_ndcg(xs[s], dist).mean() for s in range(5)]
+    for key, want in (('clu', want_clu), ('map', want_map), ('ndcg', want_ndcg)):
+        np.testing.assert_allclose(doc[key]['per_seed'], want, atol=1e-10, rtol=0)
+        assert doc[key]['r'] == max(doc[key]['per_seed']) - min(doc[key]['per_seed'])
+    assert doc['map']['per_seed'][0] > doc['map']['per_seed'][4]          # the noise grows with the seed index
+
+
+def test_validation_seed_ranges_read_c_stars_emotion_head_on_all_validation_images(monkeypatch):
+    import ac_data
+    n = 100
+    xs = {s: blobs(90 + s, n=n, noise=0.6 + 0.1 * s)[0] for s in range(5)}
+    lab = blobs(90, n=n)[1]
+    dist = np.random.default_rng(6).dirichlet(np.ones(9), size=n)
+    calls = []
+
+    def embed(arm, split, seed=None, *, head='emotion'):
+        calls.append((arm, split, seed, head))
+        return xs[seed]
+
+    monkeypatch.setattr(ac_data, 'embed', embed)
+    monkeypatch.setattr(ac_data, 'labels', lambda split: lab if split == 'val' else 1 / 0)
+    monkeypatch.setattr(ac_data, 'emotion_dist', lambda split: dist if split == 'val' else 1 / 0)
+    doc = ac_stats.validation_seed_ranges(workers=1)
+    assert set(calls) == {('cstar', 'val', s, 'emotion') for s in range(5)}      # c*, validation only, emotion head
+    assert doc['map']['per_seed'][0] == pytest.approx(brute_ap(xs[0], lab).mean(), abs=1e-10)
+
+
+def test_r11_r_a_is_the_frozen_map_range_per_aspect():
+    r_a = ac_stats.r11_r_a()
+    assert set(r_a) == {'emotion', 'style', 'genre'}
+    assert r_a['emotion'] == 0.0014116107779215126 and r_a['style'] == 0.002229334648849224
+
+
+def test_write_ranges_freezes_the_committed_copy(tmp_path):
+    doc = ac_stats.ranges_doc([0.1, 0.12, 0.11, 0.105, 0.115], [0.2, 0.21, 0.205, 0.2, 0.19],
+                              [0.5, 0.52, 0.51, 0.5, 0.49])
+    copy = tmp_path / 'stage0b_ranges.json'
+    ac_stats.write_ranges(doc, tmp_path / 'out', copy_to=copy)
+    assert json.loads((tmp_path / 'out/stage0b/ranges.json').read_text()) == doc
+    assert copy.read_bytes() == (tmp_path / 'out/stage0b/ranges.json').read_bytes()
+    assert ac_stats.load_ranges(copy) == doc
+    ac_stats.write_ranges(doc, tmp_path / 'out', copy_to=copy)                 # the same content again: allowed
+    other = ac_stats.ranges_doc([0.1, 0.13, 0.11, 0.105, 0.115], doc['map']['per_seed'], doc['ndcg']['per_seed'])
+    with pytest.raises(AssertionError):
+        ac_stats.write_ranges(other, tmp_path / 'out2', copy_to=copy)
+    assert json.loads(copy.read_text()) == doc and not (tmp_path / 'out2').exists()
+
+
+def test_load_ranges_refuses_a_document_whose_r_is_not_the_per_seed_range(tmp_path):
+    doc = ac_stats.ranges_doc([0.1, 0.12, 0.11, 0.105, 0.115], [0.2, 0.21, 0.205, 0.2, 0.19],
+                              [0.5, 0.52, 0.51, 0.5, 0.49])
+    doc['clu']['r'] = 0.5
+    f = tmp_path / 'r.json'
+    f.write_text(json.dumps(doc))
+    with pytest.raises(AssertionError):
+        ac_stats.load_ranges(f)
+
+
+# ---- the replay of r11's stage 5 -----------------------------------------------------------------------------------
+
+ASP = ('emotion', 'style', 'genre')
+
+
+def fake_artelingo():
+    """A stand-in for rt_data: validation and held rows; c* seeded with a head per aspect, plain aspect-free,
+    instructed with a head per aspect."""
+    from types import SimpleNamespace
+    n = 90
+    lab = {a: blobs(100 + i, n=n, classes=3 + i)[1] for i, a in enumerate(ASP)}
+    noise = {'cstar': 0.5, 'instructed': 0.6, 'plain': 1.4}
+
+    def embed(arm, split, aspect, seed=None):
+        i = 0 if arm == 'plain' else ASP.index(aspect)           # an aspect-free arm ignores the aspect
+        k = (0 if split == 'val' else 500) + 10 * i + (seed or 0) + {'cstar': 0, 'plain': 3, 'instructed': 7}[arm]
+        return blobs(k, n=n, classes=3 + i, noise=noise[arm])[0]
+
+    return SimpleNamespace(labels=lambda split: lab, embed=embed, ARMS=('cstar', 'plain', 'instructed'),
+                           SEEDED={'cstar'}, ASPECT_FREE={'plain'}), lab
+
+
+R11_PICKS = {'cstar': 'center+k3', 'plain': 'center+k3', 'instructed': 'none+k1'}
+
+
+def test_replay_of_r11_stage5_gives_the_arm_maps_and_sc10_to_sc15_in_r11s_format():
+    data, lab = fake_artelingo()
+    got = ac_stats.replay_r11_stage5(workers=1, draws=60, data=data, picks=R11_PICKS, ranges=R_A)
+    assert set(got) == {'map', 'sc'} and set(got['map']) == {'cstar', 'plain', 'instructed'}
+    assert list(got['sc']) == [f'SC{i}' for i in range(10, 16)]
+    # per-arm mAP: mean over seeds and the five per-seed values for the seeded arm, None for the others
+    c = got['map']['cstar']['style']
+    assert len(c['per_seed']) == 5 and c['mean'] == pytest.approx(np.mean(c['per_seed']), abs=1e-15)
+    assert got['map']['plain']['genre']['per_seed'] is None
+    # by hand for one cell: plain, genre: centre on validation (the aspect-free arm has one matrix), k = 3
+    import rt_metrics
+    xv, xh = data.embed('plain', 'val', 'genre'), data.embed('plain', 'held', 'genre')
+    z = xh.astype(np.float64) - xv.astype(np.float64).mean(axis=0)
+    z = (z / np.linalg.norm(z, axis=1, keepdims=True)).astype(np.float32)
+    want = rt_metrics.retrieval(z, lab['genre'], qe_k=3, workers=1)['ap'].mean()
+    assert got['map']['plain']['genre']['mean'] == pytest.approx(want, abs=1e-12)
+    # the table: SC10 to SC12 against plain, SC13 to SC15 against instructed, one comparison each
+    for i, a in enumerate(ASP):
+        for sid, comp in ((f'SC{10 + i}', 'plain'), (f'SC{13 + i}', 'instructed')):
+            comp_ = got['sc'][sid]['comparisons']
+            assert len(comp_) == 1
+            e = comp_[0]
+            assert e['candidate'] == ['cstar', a] and e['aspect'] == a and e['r'] == R_A[a]
+            assert e['comparator'][0] == comp
+            assert e['d'] == pytest.approx(got['map']['cstar'][a]['mean'] - got['map'][comp][a]['mean'], abs=1e-12)
+            assert e['outcome'] == ac_stats.outcome(e['interval'][0], R_A[a])
+            bar = ('WIN',) if comp == 'plain' else ('WIN', 'LEVEL')       # r11's bars: plain WIN, instructed LEVEL or WIN
+            assert got['sc'][sid]['pass'] == (e['outcome'] in bar)
+
+
+def test_replay_refuses_an_arm_without_a_pick():
+    data, _ = fake_artelingo()
+    with pytest.raises(AssertionError):
+        ac_stats.replay_r11_stage5(workers=1, draws=10, data=data, picks={'cstar': 'center+k3'}, ranges=R_A)
+
+
+R11_STAGE5 = ac_paths.R11_OUT / 'stage5/verdict.json'
+
+
+@pytest.mark.slow
+@pytest.mark.real_data
+def test_replay_matches_r11s_saved_stage5_verdict():
+    """Stage 0a(iii), r11 stage 5 part (run by the controller): every arm's mAP (mean and per-seed values) and
+    SC10 to SC15's d, interval, r and outcome within 1e-9 of r11's saved stage5/verdict.json. r11's stage 5 took
+    235 s with 8 workers (c* and the other arms, 10,000 draws); the replay does the same work."""
+    saved = json.loads(R11_STAGE5.read_text())
+    got = ac_stats.replay_r11_stage5(workers=8, draws=saved['draws'])
+    assert list(got['map']) == saved['arms']
+    for arm, by_aspect in saved['map'].items():
+        for a, cell in by_aspect.items():
+            assert abs(got['map'][arm][a]['mean'] - cell['mean']) < 1e-9, (arm, a)
+            if cell['per_seed'] is None:
+                assert got['map'][arm][a]['per_seed'] is None, (arm, a)
+            else:
+                assert max(abs(g - s) for g, s in zip(got['map'][arm][a]['per_seed'], cell['per_seed'])) < 1e-9, (arm, a)
+    assert list(got['sc']) == list(saved['sc'])
+    for sid, doc in saved['sc'].items():
+        assert got['sc'][sid]['pass'] == doc['pass'], sid
+        for g, s in zip(got['sc'][sid]['comparisons'], doc['comparisons']):
+            assert abs(g['d'] - s['d']) < 1e-9 and abs(g['r'] - s['r']) < 1e-12, sid
+            assert max(abs(x - y) for x, y in zip(g['interval'], s['interval'])) < 1e-9, sid
+            assert (g['outcome'], g['candidate'], g['comparator'], g['aspect']) == \
+                (s['outcome'], s['candidate'], s['comparator'], s['aspect']), sid
+
+
 # ---- the SC table --------------------------------------------------------------------------------------------------
 
 RANGES = {'clu': {'per_seed': [0] * 5, 'r': 0.011}, 'map': {'per_seed': [0] * 5, 'r': 0.0022},

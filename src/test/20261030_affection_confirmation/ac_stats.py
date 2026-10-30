@@ -48,6 +48,65 @@ def ranges_doc(clu_per_seed, map_per_seed, ndcg_per_seed):
     return doc
 
 
+def measure_seed_ranges(get_x, labels, dist, workers=8):
+    """The three seed ranges of spec §3.4 from c*'s emotion head on all validation images. get_x(seed) -> float32 unit
+    rows for seed 0 to 4 (the rows are queries and gallery together); labels: int64 [n]; dist: float64 [n, 9], the
+    graded relevance. Per seed: the mean over three states of the AMI of r10's k = 20 partitions (r_clu); mAP of
+    plain cosine R0 (r_ret,mAP); nDCG of plain cosine with the overlap gain (r_ret,nDCG). Returns `ranges_doc`."""
+    import ac_cluster
+    labels = np.asarray(labels)
+    clu, mp, nd = [], [], []
+    for seed in SEEDS:
+        x = get_x(seed)
+        clu.append(ac_cluster.ami(ac_cluster.partitions(x), labels))
+        res = rt_metrics.retrieval(x, labels, qe_k=0, workers=workers)
+        assert res['dropped'] == 0 and len(res['rows']) == len(x), 'every validation image must be a query'
+        mp.append(float(res['ap'].mean()))
+        nd.append(float(rt_metrics.graded(x, dist, workers=workers).mean()))
+    return ranges_doc(clu, mp, nd)
+
+
+def validation_seed_ranges(workers=8):
+    """Stage 0b: `measure_seed_ranges` on c*'s emotion head and the labels of Affection validation."""
+    import ac_data
+    return measure_seed_ranges(lambda seed: ac_data.embed('cstar', 'val', seed, head='emotion'),
+                               ac_data.labels('val'), ac_data.emotion_dist('val'), workers=workers)
+
+
+def load_ranges(path):
+    """Read a `ranges.json` and check it: the three entries, five finite per-seed values each, and r equal to their
+    max minus min (so a hand-edited range is refused)."""
+    doc = json.loads(Path(path).read_text())
+    assert set(doc) == {'clu', 'map', 'ndcg'}, tuple(doc)
+    for name, e in doc.items():
+        assert set(e) == {'per_seed', 'r'} and len(e['per_seed']) == 5, name
+        assert e['r'] == seed_range(e['per_seed']) and e['r'] > 0, (name, e['r'])
+    return doc
+
+
+def write_ranges(doc, outputs, copy_to=None):
+    """Write <outputs>/stage0b/ranges.json (indent 1, no NaN). copy_to (the committed ac_paths.RANGES_FILE): the ranges
+    are frozen once written, so a copy that exists with other content refuses the write; the same content is
+    rewritten unchanged. Nothing is written when a check fails."""
+    for name, e in doc.items():
+        assert e['r'] == seed_range(e['per_seed']), name
+    assert set(doc) == {'clu', 'map', 'ndcg'}
+    text = json.dumps(doc, indent=1, allow_nan=False) + '\n'
+    if copy_to is not None and Path(copy_to).exists():
+        assert Path(copy_to).read_text() == text, f'{copy_to} holds other ranges: they are frozen once committed'
+    out = Path(outputs) / 'stage0b'
+    out.mkdir(parents=True, exist_ok=True)
+    (out / 'ranges.json').write_text(text)
+    if copy_to is not None:
+        Path(copy_to).write_text(text)
+
+
+def r11_r_a():
+    """r11's seed range per aspect (mAP, c* under R0 on ArtELingo validation): SC5 to SC7 and the ArtELingo picks."""
+    doc = json.loads(ac_paths.R11_RANGES_FILE.read_text())
+    return {a: float(doc['map'][a]['r']) for a in ac_paths.ASPECTS}
+
+
 # ---- the SC table (spec §6) ----------------------------------------------------------------------------------------
 
 class Sc(NamedTuple):
@@ -184,6 +243,54 @@ def cluster_sc(sc_id, res, picks, ranges, r_a=None):
     assert SC[sc_id].metric == 'ami', f'{sc_id} is a retrieval SC: use retrieval_sc'
     return sc_entry(sc_id, picks, res['A_cand'], res['A_comp'], res['d'], res['interval'],
                     r_for(sc_id, ranges, r_a))
+
+
+# ---- spec §3.5 0a(iii): the replay of r11's stage 5 ----------------------------------------------------------------
+
+def replay_r11_stage5(arms=None, workers=8, draws=10000, data=None, picks=None, ranges=None):
+    """r11's stage 5 recomputed through this module (`arm_retrieval`, rt_stats.paired and outcome), as `rt_run.stage5`:
+    every arm's own head per aspect, its stage 4 read-out fitted on all ArtELingo validation paintings and applied to
+    the held ones, mAP and SC10 to SC15 (r11's table) with 10,000 draws.
+    data: the module providing labels / embed / ARMS / SEEDED / ASPECT_FREE (default rt_data); picks: {arm: read-out
+    name} (default r11's stage4/picks.json); ranges: {aspect: r_a} (default r11's stage0a_ranges.json).
+    Returns {'map': {arm: {aspect: {'mean', 'per_seed'}}}, 'sc': {id: {'comparisons': [...], 'pass': bool}}} in the
+    form of r11's stage5/verdict.json (only the SCs whose arms were all scored)."""
+    if data is None:
+        import rt_data as data
+    if picks is None:
+        picks = json.loads((ac_paths.R11_OUT / 'stage4/picks.json').read_text())
+    if ranges is None:
+        ranges = r11_r_a()
+    arms = tuple(data.ARMS if arms is None else arms)
+    assert set(arms) <= set(picks), ('picks missing for', set(arms) - set(picks))
+    labels = data.labels('held')
+    cells = {}
+    for arm in arms:
+        for aspect in ac_paths.ASPECTS:
+            head = None if arm in data.ASPECT_FREE else aspect
+            cells[(arm, head, aspect)] = arm_retrieval(
+                lambda s: data.embed(arm, 'val', head or 'emotion', s), lambda s: data.embed(arm, 'held', head or 'emotion', s),
+                picks[arm], labels[aspect], seeds=SEEDS if arm in data.SEEDED else None, workers=workers)
+    maps = {arm: {a: {'mean': cells[(arm, None if arm in data.ASPECT_FREE else a, a)]['point'],
+                      'per_seed': cells[(arm, None if arm in data.ASPECT_FREE else a, a)]['per_seed']}
+                  for a in ac_paths.ASPECTS} for arm in arms}
+    sc_doc = {}
+    for sid in rt_stats.TABLE_IDS[5]:
+        sc = rt_stats.SC[sid]
+        if not all(c.candidate[0] in arms and c.comparator[0] in arms for c in sc.comparisons):
+            continue
+        comps, outs = [], []
+        for cmp in sc.comparisons:
+            cand, comp = cells[(*cmp.candidate, sc.aspect)], cells[(*cmp.comparator, sc.aspect)]
+            assert np.array_equal(cand['rows'], comp['rows']), (sid, 'query rows differ')
+            p = rt_stats.paired(cand['ap'], comp['ap'], draws)
+            o = outcome(p['interval'][0], ranges[sc.aspect])
+            outs.append(o)
+            comps.append({'candidate': list(cmp.candidate), 'comparator': list(cmp.comparator), 'aspect': sc.aspect,
+                          'd': p['d'], 'interval': [float(v) for v in p['interval']], 'r': ranges[sc.aspect],
+                          'outcome': o, 'bar': cmp.bar})
+        sc_doc[sid] = {'comparisons': comps, 'pass': bool(rt_stats.sc_pass(sid, outs))}
+    return {'map': maps, 'sc': sc_doc}
 
 
 # ---- the verdict files (index: stage2/verdict.json, stage3/verdict.json) -------------------------------------------
