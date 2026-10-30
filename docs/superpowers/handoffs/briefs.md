@@ -1337,3 +1337,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-30-r12-build-2-handoff.md
 - New chat: tab 'r12 build 2', session b41ac56b-c054-49a9-969c-bdd0db0183f8
 
+[brief] CoSiR: r12 build 2 -> r12 build 3 (2026-10-30 22:33 Amsterdam)
+- Done: 9 of 13 r12 build tickets merged into `r12-affection` (01, 03, 04, 05, 08 in this chat); 433 fast tests pass.
+- State: early gate runs pass: 0a(iv) 6.1e-5 (bar 1e-3), 0a(v) all five PercepT hashes equal, 0a(ii)(a) cosine 0.99982, 0a(vi) exact, 0a(vii) hashes equal, r11 stage 5 replay within 1e-9.
+- Next: the 08 review fixes, then tickets 13 (smoke mode, new) and 09 in parallel, then 10, 12, the final review, merge to main.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-30-r12-build-3-handoff.md
+- New chat: tab 'r12 build 3', session 008deb6f-33e9-4a28-8c51-7ee234b2960b
+
