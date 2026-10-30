@@ -1,0 +1,21 @@
+{
+ "img_file_sha256": "afa1f4939ab4c9df2166b331049b8b7a9664428cbe54d69c34511143009e2b23",
+ "txt_file_sha256": "afc3f909d74f5f435dcd4a18e794b5a7c44e322e0c5b559c576e3802adf2d0ad",
+ "index_file_sha256": "14162e47a4960abe7b277b984ae472be87abb32837830cd8b08f4b3e592bcea9",
+ "img_rows_sha256": "178cfbd20155fdae59139ec6b862a46e6ab70abea17d50e7b6f73cb3c2d4def5",
+ "txt_rows_sha256": "11a09ec0923b545884ff2a2f058627c2ab1d4fab099e86fb9ff8d2d9bc897661",
+ "images_sha256": "8198bad8bc766a95f3be53d5a0c85d75395e750e0d882778aefbc20c93c664eb",
+ "texts_sha256": "67df51181525bd0a09ddba500eb3648f6e176f6de421e5bf4d9896e8718913e0",
+ "img_shape": [
+  63199,
+  2048
+ ],
+ "txt_shape": [
+  392331,
+  2048
+ ],
+ "dtype": "float16",
+ "n_images": 63199,
+ "n_texts": 392331,
+ "store": "/data/SSD2/pre_extract/affection_local/qwen3vl_emb_2b"
+}
