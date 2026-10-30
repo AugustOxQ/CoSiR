@@ -94,3 +94,34 @@ the run handoff).
   SC10 to SC15's d and intervals within 1e-9, 250 s.
 - Stage 4 (ticket 10, CPU, scratch outputs): the Impressions figure built from the real store and c*'s seed-0 emotion
   head; the PNG was looked at (three look-and-fix rounds by the worker; checked by the controller).
+
+### Build chat 4 (2026-10-30 22:54 to 2026-10-31 00:10)
+
+- 22:55 ticket 10's diff read by the controller (`ac_diag.py`, the two dispatch lines): no must-fix from the read.
+- **End-to-end smoke** (`ac_queue.sh smoke`, 2,100 keys per split, draws 200 and 500), scratch folder of build chat 4.
+  Step times (s): FI 13, parity a 27, smoke keys 6, `emotion_focus` 247, `emotion_focus_photo` 267, CLIP L/14 45,
+  PercepT export 11 and check 10, c* export 23, re-infer 14, Impressions export 6, CRL texts 13 and check 20, parity c
+  13, stage 0a 5, stage 0b 22, vh 0b 29, stage 1 379, vh 1 1,302. GPU steps about 12 minutes in all (instructed views
+  about 8.5 images/s on 4,200 images each, under the lock, light).
+- Contact fixes found by the smoke, each with a test: `record_copy` makes `OUTPUTS/records/` (`d3e054a`); stages 0b
+  and 1 are sealed by the outputs file and the record copy, since a failed copy left a seal (`3f4fd5d`); vh accepts the
+  runner's "skipped in smoke" label gates in smoke only, mutation-checked (`84f8e11`); vh reads r11's own sidecars for
+  the frozen ArtELingo CLIP CRL arm, since the round writes CLIP painting texts for emotion only (`910e527`).
+- Ticket 13's review nits fixed (Sonnet `high` worker, a test per fix, each failing without it; 528 tests with the
+  slow replays pass on its branch) and merged (`931fae7`).
+- **vh stage 1 mismatch, open**: for ArtELingo's fixed-pick arms vh scores the full read-out menu (c* and CLIP CRL),
+  the runner only what §6 needs (CLIP CRL at R0 and `none+k10`; c* not at all). The 14 mismatches are all rows the
+  runner does not hold; every shared row agrees. Fix in vh (compare the rule's rows; ideally also skip computing the
+  rest, which is most of vh's 20 minutes per stage), next chat.
+- **Final whole-branch review** (Opus `xhigh` worker at `910e527`): pass after fixes. Must-fix: `ac_diag.py:187`
+  asserts six stage 2 arms, stage 2 writes ten, so diag always fails. Should-fix: no tests for `ac_diag.py` or
+  `ac_queue.sh`; c* clustering in stages 0b and 2 uses re-normalized unit float32 rows, while r10, the 0a(iii) replay
+  and vh use the stored float16 rows (equal on the smoke); C13 runs after a verdict file is written (reading: a verdict
+  counts only once its `vh/<stage>.json` passes; the queue stops on a failed vh). 28 mutations, all caught. Traced the
+  SC table, bootstraps, outcomes, verdict logic, stage 1 rule, seed ranges, held-data order, stage 0a and joins as
+  matching the spec.
+- Reviewer's independent re-derivation on the smoke (own code, numpy and scikit-learn only): r_clu, r_map, r_nDCG
+  per seed equal (diff 0); teacher AMIs equal; clustering wording pick equal; teacher read-out picks equal, mAP within
+  5e-8 (the score in units of r, about 0.001, then differs by about 5e-5).
+- Fix wave (Codex `gpt-6.1-sol` high, branch `r12-fixwave`): the diag assert with a diag test, and c* clustering on
+  its stored float16 rows (r10's protocol) in stage 0b, stage 2 and diag.
