@@ -1321,3 +1321,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-29-r12-decide-handoff.md
 - New chat: tab 'r12 decide', session 0f9c0f9f-e394-49b4-96ab-a537b2ebe63a
 
+[brief] CoSiR: r12 decide -> r12 build (2026-10-30 21:19 Amsterdam)
+- Done: r12 decided and specced: frozen c* on Affection photos (emotion; confirmation) and CRL bars on ArtELingo and Affection; the spec was reviewed (Opus xhigh) and approved.
+- State: on ArtELingo, c* beats its teacher in clustering (+0.0145 AMI) and matches it in retrieval; the Affection store has 63,199 of 85,007 images (FI not yet in).
+- Next: tickets, build and final review of the spec's code; then open the run chat.
+- Blocked: nothing (PolyArt waits for the user's link; not in r12).
+- Handoff: docs/superpowers/handoffs/2026-10-30-r12-build-handoff.md
+- New chat: tab 'r12 build', session a96e3389-bf60-42ed-8db2-79dd2bfef6f0
+
