@@ -79,7 +79,8 @@ prepares r13. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 20
   train on it (user). Impressions: example retrievals only (user, after seeing the recommendation). The teacher in
   two wordings (artwork, photo), the better one on validation per task (user). Verdict on Affection's test: holds when
   c* WINs over the plain Qwen image in clustering and retrieval and is LEVEL or WIN against the teacher in both;
-  qualified when that holds in one task only; fails otherwise. A yes/no line beside it says whether the ArtELingo
+  qualified when c* WINs over the plain image in both tasks but is LEVEL or WIN against the teacher in one task only;
+  fails otherwise. A yes/no line beside it says whether the ArtELingo
   clustering WIN over the teacher repeats; it does not decide (user; the qualified and fails wording is ours, confirmed
   by the user). CRL in CLIP L/14 and Qwen versions; the better on validation faces a WIN bar at stage 5 on ArtELingo
   (three aspects) and Affection (emotion); a failed bar gives no claim and keeps its row (user). PercepT core: a frozen
