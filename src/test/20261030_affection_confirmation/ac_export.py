@@ -72,6 +72,8 @@ def _publish(path, name, x, side):
 
 def _requested(split, smoke):
     """keys(split), or with smoke the first N non-FI keys (FI images enter the store only in the run chat)."""
+    # AC_SMOKE = N makes ac_data.keys the first N keys already; the sidecar must then say smoke, for the same N.
+    assert ac_paths.SMOKE == 0 or smoke == ac_paths.SMOKE, 'AC_SMOKE is set: pass --smoke with the same N'
     keys = ac_data.keys(split)
     if smoke is None:
         return keys
