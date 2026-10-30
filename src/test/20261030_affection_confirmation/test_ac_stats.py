@@ -130,6 +130,7 @@ def test_validation_seed_ranges_read_c_stars_emotion_head_on_all_validation_imag
     assert doc['map']['per_seed'][0] == pytest.approx(brute_ap(xs[0], lab).mean(), abs=1e-10)
 
 
+@pytest.mark.real_data
 def test_r11_r_a_is_the_frozen_map_range_per_aspect():
     r_a = ac_stats.r11_r_a()
     assert set(r_a) == {'emotion', 'style', 'genre'}
@@ -161,18 +162,31 @@ def test_load_ranges_refuses_a_document_whose_r_is_not_the_per_seed_range(tmp_pa
         ac_stats.load_ranges(f)
 
 
+def test_load_ranges_refuses_a_zero_range_even_when_r_matches_the_per_seed_values(tmp_path):
+    # five equal per-seed values: r = 0 = max - min, so only the positivity guard can refuse it
+    doc = {k: {'per_seed': v, 'r': ac_stats.seed_range(v)} for k, v in
+           (('clu', [0.1] * 5), ('map', [0.2, 0.21, 0.205, 0.2, 0.19]), ('ndcg', [0.5, 0.52, 0.51, 0.5, 0.49]))}
+    f = tmp_path / 'r.json'
+    f.write_text(json.dumps(doc))
+    with pytest.raises(AssertionError, match='clu'):
+        ac_stats.load_ranges(f)
+    doc['clu'] = {'per_seed': [0.1, 0.12, 0.11, 0.105, 0.115], 'r': 0.12 - 0.1}
+    f.write_text(json.dumps(doc))
+    assert ac_stats.load_ranges(f)['clu']['r'] == 0.12 - 0.1                  # the same file with a positive range loads
+
+
 # ---- the replay of r11's stage 5 -----------------------------------------------------------------------------------
 
 ASP = ('emotion', 'style', 'genre')
 
 
-def fake_artelingo():
+def fake_artelingo(noise=None):
     """A stand-in for rt_data: validation and held rows; c* seeded with a head per aspect, plain aspect-free,
-    instructed with a head per aspect."""
+    instructed with a head per aspect. noise: the blob noise per arm (default: c* the best but plain)."""
     from types import SimpleNamespace
     n = 90
     lab = {a: blobs(100 + i, n=n, classes=3 + i)[1] for i, a in enumerate(ASP)}
-    noise = {'cstar': 0.5, 'instructed': 0.6, 'plain': 1.4}
+    noise = noise or {'cstar': 0.5, 'instructed': 0.6, 'plain': 1.4}
 
     def embed(arm, split, aspect, seed=None):
         i = 0 if arm == 'plain' else ASP.index(aspect)           # an aspect-free arm ignores the aspect
@@ -188,6 +202,10 @@ R11_PICKS = {'cstar': 'center+k3', 'plain': 'center+k3', 'instructed': 'none+k1'
 
 def test_replay_of_r11_stage5_gives_the_arm_maps_and_sc10_to_sc15_in_r11s_format():
     data, lab = fake_artelingo()
+    import ac_select
+    import rt_readout
+    menu = rt_readout.menu(16)                       # the fake embeddings are 16 wide (`blobs`, d = 16)
+    assert all(ac_select.readout_from_name(name) in menu for name in R11_PICKS.values())
     got = ac_stats.replay_r11_stage5(workers=1, draws=60, data=data, picks=R11_PICKS, ranges=R_A)
     assert set(got) == {'map', 'sc'} and set(got['map']) == {'cstar', 'plain', 'instructed'}
     assert list(got['sc']) == [f'SC{i}' for i in range(10, 16)]
@@ -222,6 +240,52 @@ def test_replay_refuses_an_arm_without_a_pick():
         ac_stats.replay_r11_stage5(workers=1, draws=10, data=data, picks={'cstar': 'center+k3'}, ranges=R_A)
 
 
+def hand_ap(x_val, x_held, labels, centre, k):
+    """mAP of one cell by hand: centre on the validation mean (float64) or just re-normalise, one cast to float32,
+    then r11's retrieval with the expansion k (the read-out arithmetic is written out here, not taken from ac_stats)."""
+    import rt_metrics
+    z = x_held.astype(np.float64) - (x_val.astype(np.float64).mean(axis=0) if centre else 0.0)
+    z = (z / np.maximum(np.linalg.norm(z, axis=1, keepdims=True), 1e-12)).astype(np.float32)
+    return float(rt_metrics.retrieval(z, labels, qe_k=k, workers=1)['ap'].mean())
+
+
+def test_replay_scores_each_arms_own_head_per_aspect_by_hand():
+    # Mutation guard: a replay that always read c*'s (or any arm's) emotion head would pass the structure checks above;
+    # each cell's per-seed mAP is recomputed here from that aspect's own head and that aspect's own labels.
+    data, lab = fake_artelingo()
+    got = ac_stats.replay_r11_stage5(workers=1, draws=20, data=data, picks=R11_PICKS, ranges=R_A)
+    for a in ASP:
+        want = [hand_ap(data.embed('cstar', 'val', a, s), data.embed('cstar', 'held', a, s), lab[a], True, 3)
+                for s in range(5)]
+        np.testing.assert_allclose(got['map']['cstar'][a]['per_seed'], want, atol=1e-12, rtol=0)
+        want_i = hand_ap(data.embed('instructed', 'val', a), data.embed('instructed', 'held', a), lab[a], False, 1)
+        assert got['map']['instructed'][a]['mean'] == pytest.approx(want_i, abs=1e-12)        # 'none+k1', own head
+    # the three c* heads really are different data (else the check above could not tell them apart)
+    cells = [got['map']['cstar'][a]['per_seed'] for a in ASP]
+    assert len({tuple(c) for c in cells}) == 3
+    for a in ('style', 'genre'):
+        emo = [hand_ap(data.embed('cstar', 'val', 'emotion', s), data.embed('cstar', 'held', 'emotion', s),
+                       lab[a], True, 3) for s in range(5)]
+        assert not np.allclose(got['map']['cstar'][a]['per_seed'], emo, atol=1e-6)
+
+
+def test_replay_scores_each_sc_against_its_own_aspects_range():
+    # Mutation guard: c* is worse than the instructed arm everywhere, so SC13 to SC15 are LEVEL or BELOW depending on
+    # r; a replay that scored every SC with the emotion range would flip SC14 (and SC15) under these two range sets.
+    data, _ = fake_artelingo(noise={'cstar': 1.0, 'instructed': 0.7, 'plain': 1.6})
+    cases = [({'emotion': 0.05, 'style': 0.2, 'genre': 0.05}, {'SC13': 'BELOW', 'SC14': 'LEVEL', 'SC15': 'BELOW'}),
+             ({'emotion': 0.2, 'style': 0.05, 'genre': 0.2}, {'SC13': 'LEVEL', 'SC14': 'BELOW', 'SC15': 'LEVEL'})]
+    for r_a, want in cases:
+        got = ac_stats.replay_r11_stage5(workers=1, draws=60, data=data, picks=R11_PICKS, ranges=r_a)
+        for sid, outcome_ in want.items():
+            e = got['sc'][sid]['comparisons'][0]
+            assert -0.2 < e['interval'][0] < -0.05, (sid, e['interval'])        # the lower bound sits between the r's
+            assert e['r'] == r_a[e['aspect']] and e['outcome'] == outcome_, (sid, e)
+            assert got['sc'][sid]['pass'] == (outcome_ == 'LEVEL'), sid          # SC13 to SC15: LEVEL or WIN
+        for sid in ('SC10', 'SC11', 'SC12'):                                     # c* beats plain by a wide margin
+            assert got['sc'][sid]['comparisons'][0]['outcome'] == 'WIN', sid
+
+
 R11_STAGE5 = ac_paths.R11_OUT / 'stage5/verdict.json'
 
 
@@ -240,10 +304,12 @@ def test_replay_matches_r11s_saved_stage5_verdict():
             if cell['per_seed'] is None:
                 assert got['map'][arm][a]['per_seed'] is None, (arm, a)
             else:
+                assert len(got['map'][arm][a]['per_seed']) == len(cell['per_seed']) == 5, (arm, a)
                 assert max(abs(g - s) for g, s in zip(got['map'][arm][a]['per_seed'], cell['per_seed'])) < 1e-9, (arm, a)
     assert list(got['sc']) == list(saved['sc'])
     for sid, doc in saved['sc'].items():
         assert got['sc'][sid]['pass'] == doc['pass'], sid
+        assert len(got['sc'][sid]['comparisons']) == len(doc['comparisons']), sid
         for g, s in zip(got['sc'][sid]['comparisons'], doc['comparisons']):
             assert abs(g['d'] - s['d']) < 1e-9 and abs(g['r'] - s['r']) < 1e-12, sid
             assert max(abs(x - y) for x, y in zip(g['interval'], s['interval'])) < 1e-9, sid
@@ -281,6 +347,16 @@ def test_r_mapping_per_sc():
     got = {sid: ac_stats.r_for(sid, RANGES, R_A) for sid in ac_stats.SC}
     assert got == {'SC1': 0.011, 'SC2': 0.0022, 'SC3': 0.011, 'SC4': 0.0022,
                    'SC5': 0.0014, 'SC6': 0.0025, 'SC7': 0.0033, 'SC8': 0.0022}
+
+
+def test_r_for_refuses_a_range_that_is_zero_negative_or_not_finite():
+    # r11's `outcome` accepts r = 0 (LEVEL impossible); a range read from a file must be finite and positive here
+    for bad in (0.0, -0.001, float('nan'), float('inf')):
+        for sid, ranges, r_a in (('SC1', {**RANGES, 'clu': {'r': bad}}, R_A), ('SC2', {**RANGES, 'map': {'r': bad}}, R_A),
+                                 ('SC6', RANGES, {**R_A, 'style': bad})):
+            with pytest.raises(AssertionError):
+                ac_stats.r_for(sid, ranges, r_a)
+    assert ac_stats.r_for('SC6', RANGES, R_A) == 0.0025              # the good values still pass
 
 
 def picks_fixture(wc='artwork', wr='photo', affection_crl='qwen_photo', art_crl='clip_painting'):
@@ -450,6 +526,22 @@ def test_stage2_doc_refuses_an_entry_whose_outcome_does_not_match_its_interval()
         ac_stats.stage2_doc({k: v for k, v in stage2_entries(['WIN'] * 4).items() if k != 'SC4'}, rows={})
 
 
+@pytest.mark.parametrize('field, wrong', [('dataset', 'artelingo'), ('aspect', 'style'), ('metric', 'ami')])
+def test_stage2_doc_refuses_an_entry_that_is_about_another_dataset_aspect_or_metric(field, wrong):
+    # outcome and pass still follow from the interval, so only the table check can notice that SC2's entry is not SC2's
+    sc = stage2_entries(['WIN', 'WIN', 'WIN', 'WIN'])
+    sc['SC2'] = dict(sc['SC2'], **{field: wrong})
+    with pytest.raises(AssertionError):
+        ac_stats.stage2_doc(sc, rows={})
+
+
+def test_stage3_doc_refuses_an_entry_that_is_about_another_aspect():
+    sc = stage3_entries([0.01] * 4)
+    sc['SC7'] = dict(sc['SC7'], aspect='style')               # SC7 is ArtELingo genre
+    with pytest.raises(AssertionError):
+        ac_stats.stage3_doc(sc, rows={})
+
+
 def stage3_entries(lowers):
     return {sid: entry(sid, lowers[i]) for i, sid in enumerate(ac_stats.STAGE3_IDS)}
 
@@ -603,3 +695,39 @@ def test_retrieval_sc_refuses_arms_scored_on_different_queries():
         ac_stats.retrieval_sc('SC2', a, b, picks_fixture(), RANGES, R_A, draws=10)
     with pytest.raises(AssertionError):          # a clustering SC is not scored here
         ac_stats.retrieval_sc('SC1', a, a, picks_fixture(), RANGES, R_A, draws=10)
+
+
+def test_retrieval_sc_refuses_arms_with_the_same_number_of_queries_but_different_rows():
+    # Mutation guard: with different counts rt_stats.paired raises first, so this needs equal counts, unequal rows.
+    ang = np.radians([0.0, 10.0, 80.0, 90.0, 45.0])
+    x = np.stack([np.cos(ang), np.sin(ang)], axis=1).astype(np.float32)
+    a = ac_stats.arm_retrieval(unseeded(x), unseeded(x), 'none+k0', np.array([0, 0, 1, 1, -1]), workers=1)
+    b = ac_stats.arm_retrieval(unseeded(x), unseeded(x), 'none+k0', np.array([-1, 0, 0, 1, 1]), workers=1)
+    assert list(a['rows']) == [0, 1, 2, 3] and list(b['rows']) == [1, 2, 3, 4]
+    assert a['ap'].shape == b['ap'].shape
+    with pytest.raises(AssertionError, match='different queries'):
+        ac_stats.retrieval_sc('SC2', a, b, picks_fixture(), RANGES, R_A, draws=10)
+    ac_stats.retrieval_sc('SC2', a, a, picks_fixture(), RANGES, R_A, draws=10)        # the same rows are accepted
+
+
+@pytest.mark.parametrize('what', ['rows', 'dropped'])
+def test_arm_retrieval_refuses_a_seed_scored_on_other_queries(monkeypatch, what):
+    # r11's retrieval chooses the query rows from the labels alone, so a seed can differ only if that function
+    # changes; the guard (`ac_stats.py` "queries differ between seeds") is exercised by making the third seed differ.
+    import rt_metrics
+    real = rt_metrics.retrieval
+    calls = []
+
+    def other_on_third(x, labels, qe_k=0, workers=8):
+        res = real(x, labels, qe_k=qe_k, workers=workers)
+        calls.append(1)
+        if len(calls) == 3:
+            res = dict(res, rows=res['rows'] + 1) if what == 'rows' else dict(res, dropped=res['dropped'] + 1)
+        return res
+
+    x, lab = blobs(7, n=40)
+    ok = ac_stats.arm_retrieval(unseeded(x), unseeded(x), 'none+k0', lab, seeds=(0, 1, 2, 3, 4), workers=1)
+    assert ok['ap'].shape == (5, 40)                                   # unchanged function: every seed accepted
+    monkeypatch.setattr(rt_metrics, 'retrieval', other_on_third)
+    with pytest.raises(AssertionError, match='queries differ between seeds'):
+        ac_stats.arm_retrieval(unseeded(x), unseeded(x), 'none+k0', lab, seeds=(0, 1, 2, 3, 4), workers=1)
