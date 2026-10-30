@@ -1,4 +1,7 @@
 """Tests of ac_cluster (ticket 06): partitions, AMI, the paired bootstrap, the partition cache, the r10 replay."""
+import json
+import os
+
 import numpy as np
 import pytest
 from sklearn.cluster import MiniBatchKMeans
@@ -64,6 +67,28 @@ def test_ami_of_a_seeded_side_is_the_mean_over_seeds_of_the_state_means(labels_s
     assert ac_cluster.ami(parts, labels_small) == pytest.approx(expected, abs=1e-12)
 
 
+def test_ami_accepts_percept_cores_own_reading_one_partition_per_set(labels_small):
+    own = fake_parts(300, 11)[:1]                                     # int32 [1, n]
+    assert ac_cluster.ami(own, labels_small) == pytest.approx(adjusted_mutual_info_score(labels_small, own[0]), abs=1e-12)
+    seeded = np.random.default_rng(12).integers(0, 6, size=(5, 1, 300)).astype(np.int32)    # int32 [5, 1, n]
+    expected = np.mean([adjusted_mutual_info_score(labels_small, p[0]) for p in seeded])
+    assert ac_cluster.ami(seeded, labels_small) == pytest.approx(expected, abs=1e-12)
+
+
+def test_ami_takes_what_percept_partitions_returns(labels_small):
+    prob = np.random.default_rng(13).uniform(0.01, 0.99, size=(300, 40)).astype(np.float32)
+    got = ac_cluster.percept_partitions(prob)
+    assert ac_cluster.ami(got['own'], labels_small) == pytest.approx(
+        adjusted_mutual_info_score(labels_small, prob.argmax(axis=1)), abs=1e-12)
+    expected = np.mean([adjusted_mutual_info_score(labels_small, p) for p in got['r20']])
+    assert ac_cluster.ami(got['r20'], labels_small) == pytest.approx(expected, abs=1e-12)
+
+
+def test_ami_refuses_other_partition_counts(labels_small):
+    with pytest.raises(AssertionError):
+        ac_cluster.ami(fake_parts(300, 2)[:2], labels_small)
+
+
 def test_ami_masks_negative_labels(labels_small):
     parts = fake_parts(300, 4)
     y = labels_small.copy()
@@ -77,6 +102,18 @@ def test_ami_masks_negative_labels(labels_small):
 def mean_ami(y, rows, parts):
     """sklearn's AMI by hand: mean over the states of the AMI of the drawn rows."""
     return np.mean([adjusted_mutual_info_score(y[rows], p[rows]) for p in parts])
+
+
+def hand_draws_independent(cand, comp, y, draws):
+    """Both seeded, as r10's d_R: per draw rows, then the candidate's seeds, then the comparator's own seeds."""
+    rng = np.random.default_rng(0)
+    n, ds = len(y), []
+    for _ in range(draws):
+        rows = rng.integers(0, n, size=n)
+        s_c = rng.choice(5, size=5, replace=True)
+        s_r = rng.choice(5, size=5, replace=True)
+        ds.append(np.mean([mean_ami(y, rows, cand[i]) for i in s_c]) - np.mean([mean_ami(y, rows, comp[i]) for i in s_r]))
+    return ds
 
 
 def hand_draws(cand, comp, y, draws, comp_seeded=False):
@@ -125,10 +162,31 @@ def test_one_rng_per_statistic_the_comparator_does_not_move_the_draws(y_small):
         np.testing.assert_allclose(got['bootstrap_d'], hand_draws(cand, comp, y_small, 4), atol=1e-12)
 
 
-def test_a_seeded_comparator_shares_the_candidates_seed_draw(y_small):
+def test_a_seeded_comparator_shares_the_candidates_seed_draw_when_asked(y_small):
+    cand, comp = fake_parts(120, 6, seeded=True), fake_parts(120, 9, seeded=True)
+    got = ac_cluster.paired(cand, comp, y_small, draws=4, workers=1, shared_seeds=True)
+    np.testing.assert_allclose(got['bootstrap_d'], hand_draws(cand, comp, y_small, 4, comp_seeded=True), atol=1e-12)
+
+
+def test_a_seeded_comparator_draws_its_own_seeds_by_default(y_small):
     cand, comp = fake_parts(120, 6, seeded=True), fake_parts(120, 9, seeded=True)
     got = ac_cluster.paired(cand, comp, y_small, draws=4, workers=1)
-    np.testing.assert_allclose(got['bootstrap_d'], hand_draws(cand, comp, y_small, 4, comp_seeded=True), atol=1e-12)
+    expected = hand_draws_independent(cand, comp, y_small, 4)
+    np.testing.assert_allclose(got['bootstrap_d'], expected, atol=1e-12)
+    np.testing.assert_allclose(got['interval'], np.percentile(expected, [2.5, 97.5]), atol=1e-12)
+    a_c = np.mean([mean_ami(y_small, np.arange(120), c) for c in cand])
+    a_r = np.mean([mean_ami(y_small, np.arange(120), c) for c in comp])
+    assert got['A_cand'] == pytest.approx(a_c, abs=1e-12) and got['A_comp'] == pytest.approx(a_r, abs=1e-12)
+    shared = ac_cluster.paired(cand, comp, y_small, draws=4, workers=1, shared_seeds=True)
+    assert shared['bootstrap_d'] != got['bootstrap_d']
+
+
+def test_shared_seeds_needs_a_seeded_comparator_and_own_readings_are_not_for_paired(y_small):
+    cand, plain = fake_parts(120, 6, seeded=True), fake_parts(120, 7)
+    with pytest.raises(AssertionError):
+        ac_cluster.paired(cand, plain, y_small, draws=2, shared_seeds=True)
+    with pytest.raises(AssertionError, match='expected 3'):
+        ac_cluster.paired(cand, plain[:1], y_small, draws=2)         # the own reading is scored by `ami` only
 
 
 def test_paired_checks_shapes_and_seededness(y_small):
@@ -193,6 +251,38 @@ def test_a_changed_cache_file_is_refused(x_small, tmp_path):
     np.savez(tmp_path / 'broken.npz', labels=np.zeros((3, 300), dtype=np.int32))
     with pytest.raises(AssertionError):
         ac_cluster.cached_partitions(x_small, 'broken', root=tmp_path)
+
+
+def test_a_changed_setting_in_the_sidecar_forces_a_refit(x_small, tmp_path):
+    ac_cluster.cached_partitions(x_small, 'sett', root=tmp_path)
+    side_path = tmp_path / 'sett.json'
+    side = json.loads(side_path.read_text())
+    side['settings']['k'] = 7
+    side_path.write_text(json.dumps(side))
+    stamp = (tmp_path / 'sett.npz').stat().st_mtime_ns
+    got = ac_cluster.cached_partitions(x_small, 'sett', root=tmp_path)
+    np.testing.assert_array_equal(got, ac_cluster.partitions(x_small))
+    assert (tmp_path / 'sett.npz').stat().st_mtime_ns != stamp                       # rewritten
+    assert json.loads(side_path.read_text())['settings']['k'] == 20
+
+
+def test_a_stored_shape_that_differs_forces_a_refit(x_small, tmp_path):
+    ac_cluster.cached_partitions(x_small, 'shp', root=tmp_path)
+    side_path = tmp_path / 'shp.json'
+    side = json.loads(side_path.read_text())
+    side['shape'] = [299, 8]
+    side_path.write_text(json.dumps(side))
+    stamp = (tmp_path / 'shp.npz').stat().st_mtime_ns
+    ac_cluster.cached_partitions(x_small, 'shp', root=tmp_path)
+    assert (tmp_path / 'shp.npz').stat().st_mtime_ns != stamp
+    assert json.loads(side_path.read_text())['shape'] == [300, 8]
+
+
+def test_the_temporary_file_name_is_unique_per_writer_and_none_is_left(x_small, tmp_path):
+    ac_cluster.cached_partitions(x_small, 'tmpn', root=tmp_path)
+    assert sorted(p.name for p in tmp_path.iterdir()) == ['tmpn.json', 'tmpn.npz']
+    assert str(os.getpid()) in ac_cluster._tmp_path(tmp_path / 'tmpn.npz').name
+    assert ac_cluster._tmp_path(tmp_path / 'tmpn.npz') != tmp_path / 'tmpn.npz'
 
 
 def test_cache_hashes_the_float32_rows_so_float16_and_float32_of_one_array_agree(x_small, tmp_path):

@@ -11,8 +11,10 @@ imported read-only.
   paired(cand, comp, labels) rg_held.bootstrap_d_t,    d = A_cand - A_comp with the 95% percentile interval. Seeded
                              rs_stage4.d_g_block       candidate against an unseeded comparator: rg_held.draws_d_t
                                                        (rows I_b = integers, then S_b = choice of 5 seeds, the
-                                                       comparator draws nothing). Both seeded: rs_stage4.draws_d_g
-                                                       (rows, then one S_b shared by both). A fresh default_rng(0) per
+                                                       comparator draws nothing). Both seeded: rg_held.draws_d_r
+                                                       (rows, S_b, then the comparator's own S_R,b); with
+                                                       shared_seeds=True rs_stage4.draws_d_g (rows, then one S_b shared
+                                                       by both). A fresh default_rng(0) per
                                                        call, hence per statistic. Partitions are fitted once.
                                                        rs_stage4.d_t_block is tied to ArtELingo's aspects (its outcome
                                                        uses RANGES[aspect]); its core rg_held.bootstrap_d_t is used.
@@ -59,35 +61,48 @@ def _seeded(parts):
     return parts.ndim == 3
 
 
-def _fixed(parts, n):
-    """r10's `fixed` form of one side: {seed: {'r20': int [3, n]}} (an unseeded side is {0: ...})."""
+def _fixed(parts, n, own=False):
+    """r10's `fixed` form of one side: {seed: {'r20': int [3, n]}} (an unseeded side is {0: ...}). `own=True` also
+    accepts PercepT core's own reading, one partition per set ([1, n], seeded [5, 1, n]; r10's `{'own': [1, n]}`
+    form, `rs_vh.own_partition`); the key stays 'r20' because the AMI does not care which reading it scores."""
     parts = np.asarray(parts)
-    if _seeded(parts):
-        assert parts.shape == (len(SEEDS), len(STATES), n), parts.shape
+    width = (len(STATES), 1) if own else (len(STATES),)
+    seeded = _seeded(parts)
+    assert parts.shape[-2] in width, f'{parts.shape[-2]} partitions per set, expected {" or ".join(map(str, width))}'
+    if seeded:
+        assert parts.shape == (len(SEEDS), parts.shape[1], n), parts.shape
         return {seed: {'r20': parts[i]} for i, seed in enumerate(SEEDS)}
-    assert parts.shape == (len(STATES), n), parts.shape
+    assert parts.shape == (parts.shape[0], n), parts.shape
     return {0: {'r20': parts}}
 
 
 def ami(parts, labels):
-    """Mean AMI against `labels`: over the states, and for a seeded side over the seeds of the state means."""
+    """Mean AMI against `labels`: over the states, and for a seeded side over the seeds of the state means. `parts` is
+    1 or 3 partitions per set, so PercepT core's own reading ([1, n] or [5, 1, n]) is scored too."""
     labels = np.asarray(labels)
-    fixed = _fixed(parts, len(labels))
+    fixed = _fixed(parts, len(labels), own=True)
     table = rs_vh.point_table(labels, {'x': fixed})
     return rs_vh._mean_over(rs_vh._point_val(table), 'x', sorted(fixed))
 
 
-def paired(cand_parts, comp_parts, labels, draws=DRAWS, workers=8):
+def paired(cand_parts, comp_parts, labels, draws=DRAWS, workers=8, shared_seeds=False):
     """d = A_cand - A_comp over `labels` with r10's paired bootstrap (partitions fixed, rows then seeds).
-    The candidate is seeded (int32 [5, 3, n]); the comparator is unseeded ([3, n]) or seeded (draws shared with the
-    candidate, as r10's d_G). Returns {'A_cand', 'A_comp', 'd', 'interval': [lo, hi], 'bootstrap_d'}."""
+    The candidate is seeded (int32 [5, 3, n]); the comparator is unseeded ([3, n]) or seeded. A seeded comparator
+    draws its own seeds (rows, candidate seeds, comparator seeds; `rg_held.bootstrap_d_r`, as r10's d_R for an
+    unrelated arm); `shared_seeds=True` gives both the one seed draw (`rs_stage4.d_g_block`, r10's d_G, for two runs of
+    one recipe). Only 3-partition sets are scored here: the own reading (one partition) goes through `ami`.
+    Returns {'A_cand', 'A_comp', 'd', 'interval': [lo, hi], 'bootstrap_d'}."""
     labels = np.asarray(labels)
     assert labels.ndim == 1 and np.issubdtype(labels.dtype, np.integer) and (labels >= 0).any()
     assert _seeded(cand_parts), 'the candidate must be seeded: int32 [5, 3, n]'
     cand, comp = _fixed(cand_parts, len(labels)), _fixed(comp_parts, len(labels))
-    if _seeded(comp_parts):
+    assert not shared_seeds or _seeded(comp_parts), 'shared_seeds needs a seeded comparator'
+    if _seeded(comp_parts) and shared_seeds:
         res = rs_stage4.d_g_block(cand, comp, labels, draws, workers)
         a_cand, a_comp, interval = res['A_cand'], res['A_G'], [res['lo'], res['hi']]
+    elif _seeded(comp_parts):
+        res = rg_held.bootstrap_d_r(cand, comp, labels, draws, workers)
+        a_cand, a_comp, interval = res['A_G'], res['A_R'], list(res['interval'])
     else:
         res = rg_held.bootstrap_d_t(cand, comp, labels, draws, workers)
         a_cand, a_comp, interval = res['A_G'], res['A_T'], list(res['interval'])
@@ -125,6 +140,11 @@ def r10_emotion_replay(workers=8, draws=DRAWS, limit=None):
     return dict(A_cand=res['A_cand'], A_T=res['A_comp'], d=res['d'], interval=res['interval'])
 
 
+def _tmp_path(path):
+    """A temporary name for `path` that is unique per writer (the process id), so two writers never share one."""
+    return path.with_name(f'{path.stem}.{os.getpid()}.tmp.npz')
+
+
 def _cache_root(root):
     return Path(root) if root is not None else ac_paths.OUTPUTS / 'partitions'
 
@@ -144,7 +164,7 @@ def cached_partitions(x, name, root=None):
         assert path.is_file() and side_path.is_file(), f'{path}: partition file and sidecar are not both there'
         side = json.loads(side_path.read_text())
         assert side['partitions_sha256'] == rs_vh.file_sha(path), f'{path}: partition file changed'
-        if side['array_sha256'] == row_sha and side['settings'] == settings:
+        if side['array_sha256'] == row_sha and side['settings'] == settings and side.get('shape') == list(x32.shape):
             with np.load(path, allow_pickle=False) as z:
                 assert z.files == ['labels']
                 labels = z['labels']
@@ -152,7 +172,7 @@ def cached_partitions(x, name, root=None):
             return labels
     labels = partitions(x32)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f'{name}.tmp.npz')
+    tmp = _tmp_path(path)
     np.savez(tmp, labels=labels)
     os.replace(tmp, path)
     side_path.write_text(json.dumps(dict(array_sha256=row_sha, shape=list(x32.shape), settings=settings,
