@@ -14,6 +14,7 @@ MAIN = Path('/project/CoSiR')                       # frozen, gitignored inputs 
 MAIN_TEST, CT_OUT, PRE = rt_paths.MAIN_TEST, rt_paths.CT_OUT, rt_paths.PRE
 R11_ROUND = MAIN / 'src/test/20261029_retrieval'
 R11_OUT = Path('/data/SSD2/cosir_r11/20261029_retrieval/outputs')
+R11_CRL_LISTS_FILE = R11_OUT / 'crl/lists.json'   # frozen value order, shared by all four CRL versions
 R11_RANGES_FILE = R11_ROUND / 'stage0a_ranges.json'  # r11's r_a (mAP per aspect): SC5 to SC7 and the ArtELingo picks
 OUTPUTS = Path(os.environ.get('AC_OUTPUTS', '/data/SSD2/cosir_r12/20261030_affection_confirmation/outputs'))
 
