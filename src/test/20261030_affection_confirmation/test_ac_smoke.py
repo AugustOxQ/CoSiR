@@ -3,6 +3,7 @@
 Synthetic annotations and files only (no GPU, no real data). With SMOKE = 0 nothing here changes the full-mode
 behaviour; test_ac_data.py keeps covering that.
 """
+import importlib.util
 import json
 import os
 import subprocess
@@ -338,9 +339,14 @@ def test_artelingo_qwen_crl_in_smoke_is_the_first_rows_of_the_full_arm(smoke_rou
 @pytest.mark.real_data
 def test_r11_artelingo_names_are_sorted_like_the_vh_smoke_order():
     # ac_vh's smoke takes names[:N] of the sorted ArtELingo names per split; r11's rt_data.names is that order.
+    spec = importlib.util.spec_from_file_location('independent_vh', ROUND / 'ac_vh.py')
+    vh = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(vh)
+    frozen = vh.Data.frozen_art_names.func(None)         # a cached_property that reads no instance state
     for part in ('val', 'held'):
         names = rt_data.names(part)
         assert names == sorted(names) and len(names) == (6152 if part == 'val' else 12281)
+        assert names == frozen[part], f'rt_data.names({part!r}) differs from ac_vh frozen_art_names'
 
 
 # ---- ac_paths ---------------------------------------------------------------------------------------------------
@@ -425,3 +431,20 @@ def test_extract_smoke_flag_and_canonical_folders_under_ac_smoke(smoke_round, mo
 def test_extract_in_ac_smoke_must_be_flagged_smoke(smoke_round):
     with pytest.raises(AssertionError, match='smoke'):
         ac_extract.extract('emotion_focus', truncated(), ac_paths.VIEWS / 'emotion_focus', smoke=False)
+
+
+def test_empty_ac_smoke_means_no_smoke():
+    done = run_import({'AC_SMOKE': ''})
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.split()[0] == '0'
+
+
+def test_export_impressions_and_reinfer_refuse_a_smoke_n_that_differs_from_ac_smoke(smoke_round):
+    for call in (ac_export.export_impressions, ac_export.reinfer):
+        for bad in (3, None):
+            with pytest.raises(AssertionError, match='AC_SMOKE'):
+                call(smoke=bad)
+    with pytest.raises(AssertionError, match='AC_SMOKE'):       # the CLI: --smoke 3 against AC_SMOKE = 2
+        ac_export.main(['impressions', '--smoke', '3'])
+    with pytest.raises(AssertionError, match='AC_SMOKE'):
+        ac_export.main(['reinfer'])

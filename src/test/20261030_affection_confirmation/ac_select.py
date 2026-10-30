@@ -239,6 +239,8 @@ def write_picks(picks, scores, outputs, copy_to=None):
     """Write <outputs>/stage1/picks.json and scores.json (r11's JSON style: indent 1, no NaN). copy_to (the
     committed ac_paths.PICKS_FILE): the picks are frozen once written, so a copy that exists with other content
     refuses the write; the same content is rewritten unchanged. Nothing is written when a check fails."""
+    if copy_to is not None:
+        ac_paths.check_record_write(copy_to)
     validate_picks(picks)
     text = json.dumps(picks, indent=1, allow_nan=False) + '\n'
     score_text = json.dumps(scores, indent=1, allow_nan=False) + '\n'

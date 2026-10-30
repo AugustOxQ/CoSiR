@@ -763,3 +763,23 @@ def test_views_root_flag_is_passed_only_when_given(tmp_path, monkeypatch):
     assert vh.main(['--stage', '0b', '--outputs', str(tmp_path), '--smoke', '3',
                     '--views-root', str(tmp_path / 'v')]) == 2
     assert seen == [(tmp_path, 3, {}), (tmp_path, 3, {'views_root': tmp_path / 'v'})]
+
+
+def test_cli_smoke_must_equal_ac_smoke_when_that_is_set(tmp_path, monkeypatch):
+    seen = []
+
+    class StopData:
+        def __init__(self, outputs, smoke):
+            seen.append(smoke)
+            raise FileNotFoundError('synthetic stop')
+    monkeypatch.setattr(vh, 'Data', StopData)
+    monkeypatch.setenv('AC_SMOKE', '21')
+    base = ['--stage', '0b', '--outputs', str(tmp_path)]
+    for flags in (['--smoke', '22'], []):                 # a different N, and a full run, against AC_SMOKE = 21
+        with pytest.raises(SystemExit) as e:
+            vh.main(base + flags)
+        assert e.value.code == 2
+    assert seen == []
+    assert vh.main(base + ['--smoke', '21']) == 2 and seen == [21]     # equal: reaches the data
+    monkeypatch.setenv('AC_SMOKE', '')                     # empty = 0: a full run and a standalone smoke are both allowed
+    assert vh.main(base) == 2 and vh.main(base + ['--smoke', '21']) == 2 and seen == [21, 0, 21]

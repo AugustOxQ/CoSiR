@@ -89,6 +89,8 @@ def write_ranges(doc, outputs, copy_to=None):
     """Write <outputs>/stage0b/ranges.json (indent 1, no NaN). copy_to (the committed ac_paths.RANGES_FILE): the ranges
     are frozen once written, so a copy that exists with other content refuses the write; the same content is
     rewritten unchanged. Nothing is written when a check fails."""
+    if copy_to is not None:
+        ac_paths.check_record_write(copy_to)
     for name, e in doc.items():
         assert e['r'] == seed_range(e['per_seed']), name
     assert set(doc) == {'clu', 'map', 'ndcg'}

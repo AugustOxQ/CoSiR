@@ -19,7 +19,7 @@ R11_RANGES_FILE = R11_ROUND / 'stage0a_ranges.json'  # r11's r_a (mAP per aspect
 DEFAULT_OUTPUTS = Path('/data/SSD2/cosir_r12/20261030_affection_confirmation/outputs')
 OUTPUTS = Path(os.environ.get('AC_OUTPUTS', DEFAULT_OUTPUTS))
 # Smoke mode (ticket 13): AC_SMOKE=N runs the loaders on the first N keys per split. Read as ac_paths.SMOKE at call time.
-SMOKE = int(os.environ.get('AC_SMOKE', '0'))
+SMOKE = int(os.environ.get('AC_SMOKE') or 0)     # set but empty means no smoke
 assert SMOKE >= 0, 'AC_SMOKE must be 0 (full) or a positive row count'
 assert SMOKE == 0 or OUTPUTS.resolve() != DEFAULT_OUTPUTS.resolve(), \
     'AC_SMOKE needs AC_OUTPUTS set to a scratch folder, never the default outputs'
@@ -58,3 +58,9 @@ CRL_VERSIONS = ('clip_painting', 'clip_photo', 'qwen_painting', 'qwen_photo')   
 STORE_HASHES_FILE = ROUND / 'stage0a_store_hashes.json'
 RANGES_FILE = ROUND / 'stage0b_ranges.json'
 PICKS_FILE = ROUND / 'stage1_picks.json'
+
+
+def check_record_write(path):
+    """Smoke never writes the committed record files (the runner redirects its copies to OUTPUTS/records)."""
+    assert not SMOKE or Path(path).resolve() not in {RANGES_FILE.resolve(), PICKS_FILE.resolve()}, \
+        f'AC_SMOKE is set: refusing to write the committed record {path}'
