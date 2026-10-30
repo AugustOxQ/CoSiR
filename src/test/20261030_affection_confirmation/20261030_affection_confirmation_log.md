@@ -31,6 +31,12 @@ the run handoff).
   start after 01 merges, since 03 reuses 01's FI path code.
 - 22:12 ticket 01 merged (diff read). `ac_store.py record` run on the real store and its hashes file committed
   (`cc2a102`) before any FI row exists. 22:13 ticket 04 merged (diff read). 22:20 ticket 03 merged (diff read).
+- 22:35 ticket 05 merged (diff read). 22:45 ticket 08 merged after an Opus `high` review (pass, no must-fix; four
+  should-fix test gaps for a fix round, listed in `.scratch/r12-affection/notes/08-review-fixes.md`). 433 fast tests
+  pass on the integration branch.
+- 22:50 the context meter passed 200k; cut to build chat 3. Found before the cut: ticket 12's planned smoke cannot run
+  as written (the loaders refuse smoke views and exports, and full views need the run chat's heavy GPU steps); ticket
+  13 (a smoke mode, verdict code) added to the tracker.
 
 ### Readings settled in the build (agent defaults; reviewers agreed)
 
@@ -59,3 +65,8 @@ the run handoff).
   difference 0.
 - 64-image smokes of the three views sealed (instructed Qwen about 13 images/s on the smoke, CLIP L/14 faster).
   The early runs wrote to the scratchpad; the run chat's stage 0a reruns every item into the real outputs.
+- 0a(vii) (early run, light GPU): CLIP-CRL validation vectors hash-equal to r11's for emotion, style and genre; the
+  copied CLIP painting texts hash-equal; the Qwen text path on the first 200 store texts, min cosine 0.99952 (bar
+  0.999), mean 0.99980. The six CRL text arrays take 12 s.
+- 0a(iii), r11 stage 5 part (ticket 08's slow test, rerun by the controller): r11's per-arm and per-seed mAPs and
+  SC10 to SC15's d and intervals within 1e-9, 250 s.
