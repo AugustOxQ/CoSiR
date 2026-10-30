@@ -120,6 +120,12 @@ def test_readout_by_name_round_trips_the_menu():
             assert ac_select.readout_by_name(rt_readout.name(x), width) == x
 
 
+def test_readout_from_name_round_trips_the_menu_without_the_width():
+    for width in (8, 50, 768, 2048):
+        for x in rt_readout.menu(width):
+            assert ac_select.readout_from_name(rt_readout.name(x)) == x
+
+
 def test_arm_table_has_the_menu_and_r0_scores_zero():
     x, lab = synthetic(0)
     table, picked = ac_select.arm_table({('emotion', None): x}, {'emotion': lab}, {'emotion': 0.01}, workers=1)
@@ -159,6 +165,19 @@ def test_a_fixed_read_out_is_returned_with_r0_beside_it():
     assert picked == fixed and list(table) == ['none+k0', 'none+k10']
 
 
+def test_keys_must_be_the_sorted_validation_list_with_one_per_row():
+    x, lab = synthetic(2)
+    args = ({('emotion', None): x}, {'emotion': lab}, {'emotion': 0.01})
+    keys = [f'img{i:03d}' for i in range(N_SYN)]
+    ac_select.arm_table(*args, ros=[R0], keys=keys, workers=1)                          # sorted, one per row: fine
+    with pytest.raises(AssertionError):
+        ac_select.arm_table(*args, ros=[R0], keys=keys[::-1], workers=1)                # not sorted
+    with pytest.raises(AssertionError):
+        ac_select.arm_table(*args, ros=[R0], keys=keys[:-1], workers=1)                 # one short
+    with pytest.raises(AssertionError):
+        ac_select.arm_table(*args, ros=[R0], keys=keys + ['img999'], workers=1)         # one too many
+
+
 # ---- teacher wording ----------------------------------------------------------------------------------------------
 
 def test_photo_wording_needs_more_than_0_001_r():
@@ -172,6 +191,8 @@ def test_wording_margin_is_in_units_of_r_not_of_the_value():
     # a gap of 0.002 is 4 r when r = 0.0005 (photo); a gap of 0.0004 is 0.0008 r when r = 0.5 (artwork)
     assert ac_select.pick_wording(0.1, 0.102, 0.0005) == 'photo'
     assert ac_select.pick_wording(0.1, 0.1004, 0.5) == 'artwork'
+    # the readings disagree: a gap of 0.0008 is under an unscaled 0.001 but 1.6 r when r = 0.0005, so photo
+    assert ac_select.pick_wording(0.1, 0.1008, 0.0005) == 'photo'
 
 
 def test_artwork_wins_when_photo_is_worse_or_equal():
@@ -216,13 +237,15 @@ def test_crl_version_refuses_an_unknown_name():
 
 # ---- the stage 1 documents: picks.json and scores.json -------------------------------------------------------------
 
-def tbl(maps, picked, r0=None):
-    """A table with R0 and the picked read-out: maps = {aspect: mAP at the pick}, r0 = {aspect: mAP at R0}."""
+def tbl(maps, picked, ranges, r0=None, extra=None):
+    """A table with R0 and the picked read-out, scores as arm_table writes them (mean over aspects of
+    (mAP - mAP(R0)) / r_a) and the guard. maps = {aspect: mAP at the pick}, ranges = {aspect: r_a},
+    r0 = {aspect: mAP at R0} (default 0.01 below the pick), extra = {name: maps}: further rows."""
     r0 = r0 or {a: v - 0.01 for a, v in maps.items()}
-    out = {'none+k0': {'map': dict(r0), 'score': 0.0, 'kept': True}}
-    if picked != 'none+k0':
-        out[picked] = {'map': dict(maps), 'score': 1.0, 'kept': True}
-    return out
+    rows = {'none+k0': dict(r0), **({} if picked == 'none+k0' else {picked: dict(maps)}), **(extra or {})}
+    return {n: {'map': dict(m),
+                'score': sum((m[a] - r0[a]) / ranges[a] for a in r0) / len(r0),
+                'kept': all(m[a] >= r0[a] - ranges[a] - 1e-12 for a in r0)} for n, m in rows.items()}
 
 
 AFF_ARMS = ('cstar', 'plain', 'teacher_artwork', 'teacher_photo', 'clip', 'percept',
@@ -234,11 +257,11 @@ R_ART = {'emotion': 0.0014, 'style': 0.0022, 'genre': 0.003}
 def stage1_inputs(aff_map=None, art_qwen_maps=None, ami=(0.20, 0.30)):
     """Affection tables where every arm picks center+k3 with mAP 0.30, except those overridden in `aff_map`."""
     aff_map = aff_map or {}
-    tables = {a: tbl({'emotion': aff_map.get(a, 0.30)}, 'center+k3') for a in AFF_ARMS}
+    tables = {a: tbl({'emotion': aff_map.get(a, 0.30)}, 'center+k3', {'emotion': R_RET}) for a in AFF_ARMS}
     picks = {a: ro('center', k=3) for a in AFF_ARMS}
     art_tables = {
-        'crl_clip_painting': tbl({'emotion': 0.26, 'style': 0.29, 'genre': 0.51}, 'none+k10'),
-        'crl_qwen_painting': tbl(art_qwen_maps or {'emotion': 0.25, 'style': 0.28, 'genre': 0.50}, 'center+k5'),
+        'crl_clip_painting': tbl({'emotion': 0.26, 'style': 0.29, 'genre': 0.51}, 'none+k10', R_ART),
+        'crl_qwen_painting': tbl(art_qwen_maps or {'emotion': 0.25, 'style': 0.28, 'genre': 0.50}, 'center+k5', R_ART),
     }
     art_picks = {'crl_clip_painting': ro('none', k=10), 'crl_qwen_painting': ro('center', k=5)}
     return dict(aff_tables=tables, aff_picks=picks, ami=dict(artwork=ami[0], photo=ami[1]), r_clu=R_CLU, r_ret=R_RET,
@@ -267,10 +290,19 @@ def test_stage1_documents_have_the_index_format():
 def test_stage1_teacher_retrieval_wording_uses_the_map_at_each_wordings_own_pick():
     # photo's mAP is 0.3012 against 0.30: 0.0012 / r_ret(0.002) = 0.6 r > 0.001 r
     inp = stage1_inputs(aff_map={'teacher_photo': 0.3012})
-    inp['aff_tables']['teacher_photo']['whiten64+k0'] = {'map': {'emotion': 0.9}, 'score': 0.0, 'kept': True}  # not the pick
+    # a worse row that is not the pick: its mAP must not be read
+    inp['aff_tables']['teacher_photo'] = tbl({'emotion': 0.3012}, 'center+k3', {'emotion': R_RET},
+                                             extra={'whiten64+k0': {'emotion': 0.2}})
     picks, scores = ac_select.build_stage1(**inp)
     assert picks['affection']['teacher_wording']['retrieval'] == 'photo'
     assert scores['teacher_wording']['retrieval'] == {'artwork': 0.30, 'photo': 0.3012}
+
+
+def test_stage1_retrieval_wording_margin_is_in_units_of_r_ret_not_r_clu():
+    # R_CLU (0.004) is twice R_RET (0.002): 0.0011 r_ret is only 0.00055 r_clu, so r_clu would give artwork
+    for gap, wording in ((0.0011 * R_RET, 'photo'), (0.001 * R_RET, 'artwork')):
+        picks, _ = ac_select.build_stage1(**stage1_inputs(aff_map={'teacher_photo': 0.30 + gap}))
+        assert picks['affection']['teacher_wording']['retrieval'] == wording, gap
 
 
 def test_stage1_clustering_wording_uses_the_ami_inputs_and_r_clu():
@@ -302,6 +334,59 @@ def test_stage1_artelingo_crl_version_is_the_three_aspect_mean_of_map_over_r11s_
 def test_stage1_refuses_a_fixed_artelingo_pick_that_differs_from_r11s():
     inp = stage1_inputs()
     inp['art_picks']['crl_clip_painting'] = ro('center', k=10)
+    with pytest.raises(AssertionError):
+        ac_select.build_stage1(**inp)
+
+
+def test_stage1_refuses_an_affection_score_that_is_not_the_gain_over_r0_in_units_of_r_ret():
+    inp = stage1_inputs()
+    inp['aff_tables']['clip']['center+k3']['score'] += 1e-9
+    with pytest.raises(AssertionError):
+        ac_select.build_stage1(**inp)
+
+
+def test_stage1_refuses_an_affection_pick_that_is_not_the_pick_of_its_table():
+    inp = stage1_inputs()
+    inp['aff_tables']['plain'] = tbl({'emotion': 0.30}, 'center+k3', {'emotion': R_RET},
+                                     extra={'center+k5': {'emotion': 0.31}})     # center+k5 is better
+    with pytest.raises(AssertionError):
+        ac_select.build_stage1(**inp)                                             # picks['plain'] is center+k3
+    inp['aff_picks']['plain'] = ro('center', k=5)
+    ac_select.build_stage1(**inp)
+
+
+def test_stage1_refuses_an_artelingo_qwen_pick_that_is_not_the_pick_of_its_table():
+    inp = stage1_inputs()
+    inp['art_tables']['crl_qwen_painting'] = tbl({'emotion': 0.25, 'style': 0.28, 'genre': 0.50}, 'center+k5', R_ART,
+                                                 extra={'center+k7': {'emotion': 0.26, 'style': 0.29, 'genre': 0.51}})
+    with pytest.raises(AssertionError):
+        ac_select.build_stage1(**inp)
+
+
+def test_stage1_refuses_an_artelingo_score_that_is_not_the_three_aspect_gain_in_units_of_r_a():
+    for arm in ('crl_clip_painting', 'crl_qwen_painting'):
+        inp = stage1_inputs()
+        row = next(v for n, v in inp['art_tables'][arm].items() if n != 'none+k0')
+        row['score'] += 1e-9
+        with pytest.raises(AssertionError):
+            ac_select.build_stage1(**inp)
+
+
+def test_stage1_refuses_an_artelingo_table_that_lacks_an_aspect():
+    inp = stage1_inputs()
+    inp['art_tables']['crl_qwen_painting'] = tbl({'emotion': 0.25, 'style': 0.28}, 'center+k5', R_ART)
+    with pytest.raises(AssertionError):
+        ac_select.build_stage1(**inp)
+    inp = stage1_inputs()
+    inp['art_tables']['crl_clip_painting'] = tbl({'emotion': 0.26, 'style': 0.29, 'genre': 0.51, 'x': 0.1}, 'none+k10',
+                                                 {**R_ART, 'x': 0.01})
+    with pytest.raises(AssertionError):
+        ac_select.build_stage1(**inp)
+
+
+def test_stage1_refuses_an_affection_table_with_other_aspects_than_emotion():
+    inp = stage1_inputs()
+    inp['aff_tables']['clip'] = tbl({'emotion': 0.30, 'style': 0.3}, 'center+k3', {'emotion': R_RET, 'style': 0.01})
     with pytest.raises(AssertionError):
         ac_select.build_stage1(**inp)
 

@@ -3,7 +3,10 @@
 
 Pure functions on cross-fit rows and plain numbers; no file reading except the replay of r11's stage 4 and the
 writer of the picks files. The menu, the cross-fit halves, the tie order and the tie tolerance are r11's
-(rt_readout), imported and not copied.
+(rt_readout), imported and not copied. The scoring, the guard and the pick (readout_scores, readout_guard,
+pick_readout) are the exception: they are re-implemented for one aspect (Affection has only emotion), because r11's
+score, guard and select assert three aspects. The tests check them against r11's own functions on random
+three-aspect tables.
 """
 import json
 from pathlib import Path
@@ -83,18 +86,23 @@ def readout_by_name(name, width):
     return by_name[name]
 
 
-def arm_table(xs, labels, ranges, ros=None, fixed=None, workers=8):
+def arm_table(xs, labels, ranges, ros=None, fixed=None, workers=8, keys=None):
     """One arm's validation table and pick, through r11's cross-fit (rt_readout.crossfit_all: parity halves of the
     position in the sorted validation list, fit on one half and scored on the other, mean over the two halves, then
     over the seeds of a seeded arm).
     xs: {(aspect, seed): float32 [n, width] unit rows in sorted-key order}, seed None for an unseeded arm, 0..4 for a
     seeded one; labels: {aspect: int64 [n]}; ranges: {aspect: r_a}. ros: the read-outs to score (default the menu at
     the arm's width). fixed: a read-out given in advance (ArtELingo's c* and CLIP CRL): only R0 and it are scored
-    and it is the pick.
+    and it is the pick. keys: optional, the validation keys in row order; the parity halves are right only in
+    sorted-key order, so it must be sorted and have one key per row.
     Returns (table, pick): table = {name: {'map': {aspect: mAP}, 'score': gain, 'kept': guard}} in the order scored,
     pick = a ReadOut."""
     widths = {x.shape[1] for x in xs.values()}
     assert len(widths) == 1, ('one width per arm', widths)
+    if keys is not None:
+        keys = list(keys)
+        assert keys == sorted(keys), 'the rows must be in sorted-key order'
+        assert all(len(x) == len(keys) for x in xs.values()), ('one key per row', len(keys))
     width = widths.pop()
     assert set(labels) == {a for (a, _) in xs} and set(ranges) >= set(labels), (tuple(labels), tuple(ranges))
     if fixed is not None:
@@ -117,6 +125,30 @@ ARTELINGO_FIXED = {'cstar': 'center+k10', 'crl_clip_painting': 'none+k10'}   # r
 ARTELINGO_VERSIONS = ('clip_painting', 'qwen_painting')
 
 
+def readout_from_name(name):
+    """The read-out with this name (rt_readout.name's form: 'none+k0', 'center+k10', 'whiten256+k3')."""
+    head, k = name.split('+k')
+    w = head.rstrip('0123456789')
+    return rt_readout.ReadOut(w, int(head[len(w):]) if w == 'whiten' else None, int(k))
+
+
+TOL = 1e-12
+
+
+def _check_table(table, ranges, aspects, pick=None):
+    """Re-derive what a table says: its rows cover exactly `aspects`; each score is the mean over the aspects of
+    (mAP - mAP(R0)) / r_a within 1e-12; if `pick` is given, it is pick_readout on the table's mAPs."""
+    assert 'none+k0' in table, 'the R0 row is needed'
+    base = table['none+k0']['map']
+    for n, row in table.items():
+        assert set(row['map']) == set(aspects), (n, tuple(row['map']))
+        want = sum((row['map'][a] - base[a]) / ranges[a] for a in aspects) / len(aspects)
+        assert abs(row['score'] - want) <= TOL, (n, row['score'], want)
+    if pick is not None:
+        rows = {readout_from_name(n): row['map'] for n, row in table.items()}
+        assert pick_readout(rows, ranges) == pick, ('the pick is not the table\'s', rt_readout.name(pick))
+
+
 def _at_pick(table, pick):
     return table[rt_readout.name(pick)]['map']
 
@@ -133,6 +165,10 @@ def build_stage1(aff_tables, aff_picks, ami, r_clu, r_ret, art_tables, art_picks
     assert set(art_tables) == set(art_picks) == {'crl_clip_painting', 'crl_qwen_painting'}
     assert art_picks['crl_clip_painting'] == readout_by_name(ARTELINGO_FIXED['crl_clip_painting'], 50), \
         'the CLIP CRL on ArtELingo keeps r11\'s pick'
+    for arm in AFFECTION_ARMS:       # the tables and picks are given: re-derive them before they decide anything
+        _check_table(aff_tables[arm], {'emotion': r_ret}, ('emotion',), aff_picks[arm])
+    _check_table(art_tables['crl_clip_painting'], art_ranges, ac_paths.ASPECTS)            # its pick is fixed
+    _check_table(art_tables['crl_qwen_painting'], art_ranges, ac_paths.ASPECTS, art_picks['crl_qwen_painting'])
     aff_maps = {arm: _at_pick(aff_tables[arm], aff_picks[arm]) for arm in AFFECTION_ARMS}
     retrieval = {w: aff_maps[f'teacher_{w}']['emotion'] for w in ('artwork', 'photo')}
     wording = {'clustering': pick_wording(ami['artwork'], ami['photo'], r_clu),
