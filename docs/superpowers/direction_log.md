@@ -11,18 +11,18 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-10-29)
+## Now (2026-10-30)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
-on each view, one shared trunk with emotion, style and genre heads, read once on the default image. The recipe of
-12-24 passes the held emotion claim test on four image encoders (Qwen, SigLIP 2, SigLIP 1, CLIP L/14). The recipe
-sweep (report 12-28) picks c*: model G (relational genre term, sharper teacher row) with 40 graph neighbours. On
-12,281 held ArtELingo paintings and 5 seeds, c* beats the instructed Qwen image on emotion (+0.0145) and narrowly on
-style (+0.0041), and is level on genre (−0.0060, within one seed range); it beats PercepT core on emotion by +0.0192.
-The claims are k-means, Qwen and ArtELingo only. The user's plan (2026-10-29): r11 retrieval (a fast build, first
-results, small optimization steps), r12 more datasets (Affection, Impressions, PolyArt), r13 a large sweep and
-analysis after 11-10; the main recipe freezes at 11-10. A data side job builds the Affection and Impressions stores.
-Next: r11's retrieval spec (2026-10-29) is built and run unattended. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
+on each view, one shared trunk with emotion, style and genre heads, read once on the default image. c* (report 12-28:
+model G with 40 graph neighbours) passes the held claim tests on ArtELingo: in clustering it beats the instructed Qwen
+image on emotion (+0.0145 AMI) and narrowly on style, level on genre; in retrieval (report 12-29) it is far above the
+plain Qwen image and level with the instructed image after read-outs picked on validation (genre a narrow win; with
+plain cosine, emotion is below it). The user reads the teacher as a cap on the student. The plan (2026-10-29): r12
+more datasets, r13 a large sweep and analysis after 11-10; c* freezes at 11-10. Next: r12 (confirmation, medium
+loop), frozen c* on Affection and Impressions (PolyArt waits for the user's link), clustering and retrieval, with a
+CRL bar; the FI extraction completes the Affection store. Beside it, a literature check on a signal beyond the teacher
+prepares r13. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 
 ## Parked ideas
 
@@ -49,7 +49,7 @@ Next: r11's retrieval spec (2026-10-29) is built and run unattended. Deadlines: 
 - Align and contrast the three aspect heads of one image (shared part aligned, aspect parts pushed apart) (never tried;
   not chosen by the user, 2026-10-20: the aspects may not be separable; proposed in the r10 decide 12 chat)
 
-## 2026-10-30 · Retrieval round read: c* level with its teacher after validation-picked read-outs, far above the plain Qwen image; next step open
+## 2026-10-30 · Retrieval round read: c* level with its teacher after validation-picked read-outs, far above the plain Qwen image; next, r12 on more datasets (confirmation) and a literature check on a signal beyond the teacher
 
 - **Read:** held label retrieval (12,281 paintings, genre labels on 9,949, 5 seeds, mAP; c* frozen, no training in
   any stage). Stage 1, plain cosine, NO-GO: c* against the instructed Qwen image (the teacher), emotion −0.0023
@@ -68,7 +68,14 @@ Next: r11's retrieval spec (2026-10-29) is built and run unattended. Deadlines: 
   teacher". Where they differ: the user names the cause (a student that copies its teacher is capped by it) and leans
   to retraining with a signal the teacher lacks; ours reads the cap as soft (held clustering emotion is +0.0145 AMI
   above the teacher) and recommended retraining only in r13, after the 2026-11-10 freeze.
-- **Decided (A):** open, awaiting the user.
+- **Decided (A):** r12 as planned: frozen c* on Affection and Impressions (PolyArt open; the user returns with
+  its link), clustering and retrieval beyond ArtELingo; type confirmation, medium loop (user, after seeing the
+  recommendation). Beside it, a step 3 side job now: our parked ideas and a literature check on a signal beyond the
+  teacher, so that r13 starts with two or three candidates (user, after seeing the recommendation; the user's own lean
+  was a retrain with an extra signal). D7: the switch test as one supporting sentence; D6: our CRL re-implementation
+  gets a bar in r12's spec (user, after seeing the recommendation).
+- **Why:** r12 tests whether c*'s clustering win over the teacher and its retrieval level hold beyond ArtELingo, and
+  it keeps the 2026-11-10 freeze; the side job prepares the retrain without GPU time.
 - **Links:** [report 12-29](../reports/auto/percept/2026-12-29_retrieval.md) ·
   [spec](specs/2026-10-29-retrieval-design.md) · [handoff](handoffs/2026-10-29-r12-decide-handoff.md)
 
