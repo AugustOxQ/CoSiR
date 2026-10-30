@@ -423,6 +423,14 @@ def test_label_gate_values_and_extra_pick_are_compared(tmp_path, monkeypatch):
     assert vh.compare_final(run, '0b', mine, tmp_path) == 1
     report = vh.read_json(tmp_path / 'vh/0b.json')
     assert report['items']['labels.gates.label_ties_val']['ours'] == 1
+    write_json(tmp_path / 'stage0a/gates.json', dict(ok=True, items={       # the runner's smoke marker passes in smoke
+        'label_counts_val': dict(value=vh.SKIPPED), 'label_ties_val': dict(value=vh.SKIPPED)}))
+    assert vh.compare_final(run, '0b', mine, tmp_path) == 0
+    monkeypatch.setattr(vh, 'ROUND', tmp_path / 'records')                  # and never in a full run
+    assert vh.compare_final(vh.Run(data, smoke=0), '0b', mine, tmp_path) == 1
+    report = vh.read_json(tmp_path / 'vh/0b.json')
+    assert not report['items']['labels.gates.label_ties_val']['ok']
+    assert not report['items']['labels.gates.label_counts_val']['ok']
     check = vh.Check()
     check.compare('picks', {'readout': {'cstar': 'none+k0'}},
                   {'readout': {'cstar': 'none+k0', 'extra_arm': 'none+k0'}}, strict=True)

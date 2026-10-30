@@ -66,6 +66,7 @@ R0 = ('none', 0, 0)
 EXPECTED_COUNTS = {'val': [798, 54, 622, 1387, 189, 620, 203, 270, 108],
                    'test': [1651, 81, 1460, 2626, 351, 1185, 448, 501, 198]}
 EXPECTED_TIES = {'val': 907, 'test': 1917}
+SKIPPED = 'skipped in smoke'                          # the runner's marker for a full-split gate item in smoke
 DEFAULT_INSTRUCTION = "Represent the user's input."  # frozen pav_prompts.PROMPTS['default']
 TEXT_MODELS = {'clip': 'openai/clip-vit-large-patch14', 'qwen': 'Qwen/Qwen3-VL-Embedding-2B'}
 VIEW_INSTRUCTIONS = {
@@ -689,6 +690,9 @@ def compare_final(run, stage, mine, outputs):
         for field, prefix in (('counts', 'label_counts'), ('ties', 'label_ties')):
             name = f'{prefix}_{sp}'
             if name in items:
+                if run.smoke and items[name]['value'] == SKIPPED:    # full-split numbers: the runner skips them in smoke
+                    check.items[f'labels.gates.{name}'] = dict(ours=summary[sp][field], theirs=SKIPPED, ok=True)
+                    continue
                 check.compare(f'labels.gates.{name}', summary[sp][field], items[name]['value'])
     if stage == '1':
         check.compare('scores', mine['scores'], read_json(outputs / 'stage1/scores.json'))
