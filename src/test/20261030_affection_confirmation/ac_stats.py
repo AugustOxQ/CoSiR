@@ -15,7 +15,8 @@ SC1 to SC8, the comparators follow the stage 1 picks, each SC has its own r, and
                              the retrieval comparison with picked read-outs and the verdict files' `sc` entries
   replay_r11_stage5          spec §3.5 0a(iii), r11 stage 5 part
 
-Pure functions: no file reading except `r11_r_a`, `replay_r11_stage5` (r11's frozen inputs) and `write_ranges`.
+Pure functions: no file access except `load_ranges` (reads a ranges file), `r11_r_a` and `replay_r11_stage5` (read r11's
+frozen inputs), `write_ranges` (writes) and `validation_seed_ranges` (reads c*'s validation arrays through `ac_data`).
 """
 import json
 from pathlib import Path
@@ -146,11 +147,11 @@ STAGE3_IDS = ('SC5', 'SC6', 'SC7', 'SC8')
 
 def r_for(sc_id, ranges, r_a):
     """The seed range of an SC. ranges: the `stage0b/ranges.json` document (or any {'clu'|'map': {'r': f}});
-    r_a: {aspect: r} (r11's `stage0a_ranges.json` mAP ranges; see `r11_r_a`)."""
+    r_a: {aspect: r} (r11's `stage0a_ranges.json` mAP ranges; see `r11_r_a`). The range must be finite and positive."""
     sc = SC[sc_id]
-    if sc.r == 'r_a':
-        return float(r_a[sc.aspect])
-    return float(ranges[sc.r]['r'])
+    r = float(r_a[sc.aspect]) if sc.r == 'r_a' else float(ranges[sc.r]['r'])
+    assert np.isfinite(r) and r > 0, f'{sc_id}: seed range {r} must be finite and positive'   # r11's outcome accepts 0
+    return r
 
 
 def comparator_arm(sc_id, picks):
