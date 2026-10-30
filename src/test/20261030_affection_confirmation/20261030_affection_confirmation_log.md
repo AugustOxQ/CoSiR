@@ -126,7 +126,7 @@ the run handoff).
 - Fix wave (Codex `gpt-6.1-sol` high, branch `r12-fixwave`): the diag assert with a diag test, and c* clustering on
   its stored float16 rows (r10's protocol) in stage 0b, stage 2 and diag.
 
-### Build chat 5 (2026-10-31 00:08 to 01:05)
+### Build chat 5 (2026-10-31 00:08 to 01:00)
 
 - 00:12 the fix wave's diff read by the controller (verdict code): `ac_data.stored` returns the checked float16 export
   rows unchanged; stage 0b r_clu, stage 2 partitions (SC1, SC3) and diag cluster c* through it; r10's
