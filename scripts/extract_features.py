@@ -67,6 +67,8 @@ AFFECTION_IMAGE_ROOTS = {
     "flickr30k_affective": Path("/data/SSD/flickr30k/images/flickr30k-images"),
     "emotional_machines_affective": Path("/data/SSD/affection/emotional_machines/CGnA10766/data/cgna"),
 }
+AFFECTION_FI_SOURCE = "you_aaai_affective"
+AFFECTION_FI_ROOT = Path("/data/SSD/affection/fi_t4sa/dataset/benchmark/FI/images")   # <emotion>/<emotion>_NNNN.jpg
 
 DILATION = 0.7        # GeneCIS datasets/vaw_dataset.py
 PAD_CROP = True
@@ -77,6 +79,7 @@ ALLOWED = {
     "semart": [CLIP, QWEN, SIGLIP2],
     "impressions": [CLIP, QWEN, SIGLIP2],
     "affection_local": [CLIP, QWEN, SIGLIP2],
+    "affection_fi": [QWEN],
     "coco_train2014": [CLIP, QWEN],
     "genecis_vg_crops": [CLIP, QWEN],
     "genecis_coco": [QWEN],
@@ -288,10 +291,25 @@ def adapter_impressions(impressions_dir=IMPRESSIONS_DIR, **_) -> Spec:
     return Spec(images, lambda i: _open_rgb(impressions_dir / "media" / images[i]["image"]), texts, tmeta, counts)
 
 
-def adapter_affection_local(affection_dir=AFFECTION_DIR, image_roots=AFFECTION_IMAGE_ROOTS, **_) -> Spec:
+def _fi_path(root, name) -> Path:
+    """FI file `<emotion>_NNNN.jpg` sits in `root/<emotion>/`; the folder is asserted to exist."""
+    folder = Path(root) / name.rsplit("_", 1)[0]
+    if not folder.is_dir():
+        raise SystemExit(f"Affection FI emotion folder not found at {folder} (image {name})")
+    return folder / name
+
+
+def adapter_affection_local(affection_dir=AFFECTION_DIR, image_roots=AFFECTION_IMAGE_ROOTS, sources=None,
+                            **_) -> Spec:
     """Keep raw utterances and splits in preprocessed CSV order; csv_row indexes that file. Sources: the keys of
-    image_roots (the four on disk; you_aaai_affective has no public image copy)."""
+    image_roots (the four on disk by default), restricted to `sources` when given. An image_roots entry for
+    you_aaai_affective (FI) is a root with per-emotion subfolders."""
     import pandas as pd
+    if sources is not None:
+        missing = [s for s in sources if s not in image_roots]
+        if missing:
+            raise SystemExit(f"Affection sources without an image root: {missing}")
+        image_roots = {s: image_roots[s] for s in image_roots if s in sources}
     affection_dir = Path(affection_dir)
     pre = pd.read_csv(affection_dir / "affection_preprocessed_public_version_0.csv",
                       usecols=["workerid", "image_name", "dataset", "utterance", "emotion", "split"], dtype=str)
@@ -314,7 +332,7 @@ def adapter_affection_local(affection_dir=AFFECTION_DIR, image_roots=AFFECTION_I
                 if prefix is None:
                     raise SystemExit(f"Affection unrecognized COCO image name at row {csv_row}: {name}")
                 root = root[prefix]
-            path = Path(root) / name
+            path = _fi_path(root, name) if source == AFFECTION_FI_SOURCE else Path(root) / name
             if not path.is_file():
                 raise SystemExit(f"Affection image not found at {path}; check the path before extracting")
             img_row[key] = len(images)
@@ -333,6 +351,11 @@ def adapter_affection_local(affection_dir=AFFECTION_DIR, image_roots=AFFECTION_I
         images[img]["n_texts"] += 1
         counts["n_texts_per_source"][source] += 1
     return Spec(images, lambda i: _open_rgb(paths[i]), texts, tmeta, counts)
+
+
+def adapter_affection_fi(fi_root=AFFECTION_FI_ROOT, **kw) -> Spec:
+    """FI only (you_aaai_affective), CSV order; appended to the default store by ac_store.py merge."""
+    return adapter_affection_local(image_roots={AFFECTION_FI_SOURCE: fi_root}, **kw)
 
 
 def adapter_coco_train2014(image_dir=COCO_TRAIN_IMAGES, captions_path=COCO_TRAIN_CAPTIONS, **_) -> Spec:
@@ -429,6 +452,7 @@ def adapter_genecis_vg_crops(focus_path=GENECIS_FOCUS_ATTRIBUTE, image_dir=VG_IM
 
 ADAPTERS = {"artelingo28": adapter_artelingo28, "artelingo_full": adapter_artelingo_full, "semart": adapter_semart,
             "impressions": adapter_impressions, "affection_local": adapter_affection_local,
+            "affection_fi": adapter_affection_fi,
             "coco_train2014": adapter_coco_train2014, "genecis_coco": adapter_genecis_coco,
             "genecis_vg_crops": adapter_genecis_vg_crops}
 
@@ -474,6 +498,8 @@ def a28_item_sha256(spec):
 
 
 def out_dir_for(dataset, backbone, smoke, root=PRE_EXTRACT):
+    if dataset == "affection_fi" and not smoke:      # FI-only store next to the default one (ticket 01)
+        return Path(root) / "affection_local" / f"{backbone}_fi"
     return Path(root) / ("_smoke" if smoke else "") / dataset / backbone
 
 
