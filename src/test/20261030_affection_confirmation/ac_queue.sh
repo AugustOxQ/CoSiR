@@ -291,14 +291,16 @@ run_step parity_c "${GPU[@]}" "$PYTHON" "$SCRIPT_DIR/ac_extract.py" parity c
 SEALS=("$S0A/gates.json")
 run_step stage0a "${ACRUN[@]}" --stage 0a "${STAGE_FLAGS[@]}"
 
-SEALS=("$OUT/stage0b/ranges.json")
+# The record copy is written after the outputs file, so both seal the stage (a failed copy leaves the step open).
+if [[ $MODE == smoke ]]; then RECORDS=$OUT/records; else RECORDS=$SCRIPT_DIR; fi
+SEALS=("$OUT/stage0b/ranges.json" "$RECORDS/stage0b_ranges.json")
 run_step stage0b "${ACRUN[@]}" --stage 0b "${STAGE_FLAGS[@]}"
 SEALS=("$OUT/vh/0b.json")
 run_step vh_0b "${ACVH[@]}" --stage 0b --outputs "$OUT" "${VH_FLAGS[@]}"
 commit_record commit_ranges "$SCRIPT_DIR/stage0b_ranges.json" \
     'r12 run: stage 0b seed ranges, committed before any Affection test number'
 
-SEALS=("$OUT/stage1/picks.json")
+SEALS=("$OUT/stage1/picks.json" "$RECORDS/stage1_picks.json")
 run_step stage1 "${ACRUN[@]}" --stage 1 "${STAGE_FLAGS[@]}"
 SEALS=("$OUT/vh/1.json")
 run_step vh_1 "${ACVH[@]}" --stage 1 --outputs "$OUT" "${VH_FLAGS[@]}"
