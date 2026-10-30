@@ -1364,3 +1364,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-31-r12-build-5-handoff.md
 - New chat: tab 'r12 build 5', session 821f6960-ca57-4192-9e31-11e6aa0926f0
 
+[brief] CoSiR: r12 build 5 -> r12 run (2026-10-31 00:56 Amsterdam)
+- Done: the r12 build: 13 tickets, the final review (pass after fixes), the fix wave, the vh stage 1 fix, a scoped re-review (pass); merged into main.
+- State: fresh smoke at 2,100 keys: every step exit 0; vh agrees on all 1,013 items; the reviewer's own re-derivation equals it (SC8 d within 1e-8).
+- Next: `bash ac_queue.sh full` from `/project/CoSiR` on main, about 5 to 8 hours (GPU about 1.5 h first), then step 9: the auto report and the user-read report.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-31-r12-run-handoff.md
+- New chat: tab 'r12 run', session 5a80a533-f230-4fac-bf4e-eba689817c70
+
