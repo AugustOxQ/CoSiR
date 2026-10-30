@@ -38,7 +38,7 @@ import rt_data
 import rt_metrics
 import rt_readout
 
-STAGES = ('0a', '0b', '1', '2', '3')
+STAGES = ('0a', '0b', '1', '2', '3', 'diag', '4')
 SKIPPED = 'skipped in smoke'
 EXPECTED_LABELS = {
     'val': dict(classes=[798, 54, 622, 1387, 189, 620, 203, 270, 108], ties=907),
@@ -445,6 +445,18 @@ def stage3(args):
     doc.update(note=NOTE_STAGE3, smoke=smoke(), draws_ret=args.draws_ret)
     write_json(outputs() / 'stage3/verdict.json', doc)
     return doc
+
+
+# ---- diagnostics and the Impressions figure (ac_diag.py; descriptive, decides nothing) -----------------------------------
+
+def stagediag(args):
+    import ac_diag
+    return ac_diag.diag(args)
+
+
+def stage4(args):
+    import ac_diag
+    return ac_diag.stage4(args)
 
 
 # ---- command line ---------------------------------------------------------------------------------------------------------
