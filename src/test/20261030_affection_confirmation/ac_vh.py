@@ -8,7 +8,7 @@ Readings where the text/interface leaves a detail open:
 * CRL's 'within 0.001 r' means <= .001 in the mean normalized score units,
   including ArtELingo's three different r_a. Wording's > .001*r is strict.
 * A zero range makes normalized selection undefined: stop; never invent an epsilon.
-* Smoke takes the first N sorted keys and retains the full menu/k20 (default N=2100).
+* Smoke takes the first N sorted keys and retains the same read-out rules/k20 (default N=2100).
   Draw counts are explicit flags, defaulting to 2000/10000 even in smoke. It may
   slice full exports or use smoke exports; a full run rejects smoke exports.
 * Retrieval input/W/CRL arithmetic follows the frozen r11 log's numeric convention. Covariance
@@ -20,7 +20,7 @@ Readings where the text/interface leaves a detail open:
   UTF-8 (with/without a final newline); never accept a row count as an identity check.
 * Labels are checked against §3.4 on full runs. Gate entries named label_counts_{split}
   and label_ties_{split} are compared when present; the index does not name them.
-* ArtELingo fixed picks remain fixed; their cross-fit scores are still remeasured.
+* ArtELingo fixed picks remain fixed; only CLIP CRL's R0 and fixed-pick cross-fit scores are remeasured.
   ArtELingo CRL arm IDs use the same crl_<version> names as Affection.
 * Clustering SC rows use null readout_c/readout_t: r20 partitions have no retrieval
   read-out. Extra descriptive output fields are ignored, but picks and SC IDs are exact.
@@ -528,18 +528,21 @@ class Run:
         source = read_json(R11 / 'stage0a/ranges.json')
         return {a: source['map'][a]['r'] for a in ASPECTS}
 
-    def crossfit(self, dataset, arm, aspects):
+    def crossfit(self, dataset, arm, aspects, ros=None):
         by = defaultdict(lambda: defaultdict(list))
         for aspect in aspects:
             for seed in (SEEDS if arm in ('cstar', 'percept') else (None,)):
                 x = self.data.embed(dataset, arm, 'val', aspect, seed)
                 y = self.data.labels(dataset, 'val', aspect)
+                groups = defaultdict(list)
+                for w, size, k in (menu(x.shape[1]) if ros is None else sorted(ros, key=tie_key)):
+                    groups[w, size].append(k)
                 for half in (0, 1):
                     score = np.arange(len(x)) % 2 == half
                     stats = fit(x[~score])
-                    for w, size in dict.fromkeys((w, n) for w, n, _ in menu(x.shape[1])):
+                    for (w, size), ks in groups.items():
                         z = transform(x[score], (w, size, 0), stats)
-                        result = retrieval(z, y[score], ks=(0, 1, 3, 5, 10))
+                        result = retrieval(z, y[score], ks=tuple(ks))
                         for k, ap in result['ap'].items():
                             assert np.isfinite(ap).any(), 'no cross-fit queries with relevant gallery rows'
                             by[(w, size, k)][aspect].append(float(np.nanmean(ap)))
@@ -555,10 +558,14 @@ class Run:
             maps, ro_picks = {}, {}
             scores['readout'][dataset] = {}
             for arm in arms:
-                table = self.crossfit(dataset, arm, aspects)
+                if dataset == 'artelingo' and arm == 'cstar':
+                    ro_picks[arm] = 'center+k10'
+                    continue
+                ros = {R0, ('none', 0, 10)} if dataset == 'artelingo' and arm == 'crl_clip_painting' else None
+                table = self.crossfit(dataset, arm, aspects, ros=ros)
                 pick, summary = select_readout(table, ranges)
-                if dataset == 'artelingo' and arm in ('cstar', 'crl_clip_painting'):
-                    pick = 'center+k10' if arm == 'cstar' else 'none+k10'
+                if dataset == 'artelingo' and arm == 'crl_clip_painting':
+                    pick = 'none+k10'
                 maps[arm], ro_picks[arm] = table, pick
                 scores['readout'][dataset][arm] = summary
             versions = VERSIONS if dataset == 'affection' else ('clip_painting', 'qwen_painting')

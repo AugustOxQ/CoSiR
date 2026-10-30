@@ -303,6 +303,106 @@ def test_crossfit_fits_other_parity_half(tmp_path, monkeypatch):
     assert len(maps) == 15 and all(np.isfinite(v['emotion']) for v in maps.values())
 
 
+@pytest.fixture
+def selection_run(tmp_path):
+    run = vh.Run(SyntheticData(tmp_path), 48, draws_clu=3, draws_ret=7)
+    run.ranges = {m: vh.seed_range([.1, .2, .3, .4, .5]) for m in ('clu', 'map', 'ndcg')}
+    run.art_ranges = dict(zip(vh.ASPECTS, (.1, .2, .3)))
+    return run
+
+
+def test_selection_scores_only_the_needed_artelingo_readouts(selection_run, monkeypatch):
+    run = selection_run
+    original = run.crossfit
+    calls = {}
+
+    def crossfit(dataset, arm, aspects, ros=None):
+        calls[dataset, arm] = ros
+        return original(dataset, arm, aspects, ros=ros)
+
+    monkeypatch.setattr(run, 'crossfit', crossfit)
+    result = run.selection
+    art = result['scores']['readout']['artelingo']
+    assert set(art) == {'crl_clip_painting', 'crl_qwen_painting'}, 'no c* cross-fit table'
+    assert set(art['crl_clip_painting']) == {'none+k0', 'none+k10'}, 'fixed pick and R0 only'
+    assert ('artelingo', 'cstar') not in calls, 'c* has a fixed pick without cross-fit'
+    assert calls['artelingo', 'crl_clip_painting'] == {vh.R0, ('none', 0, 10)}, 'restricted CLIP CRL'
+    assert calls['artelingo', 'crl_qwen_painting'] is None, 'full Qwen CRL menu'
+    for arm in vh.AFF_ARMS:
+        assert calls['affection', arm] is None, arm
+    expected = {vh.ro_name(ro) for ro in vh.menu(4)}
+    assert set(art['crl_qwen_painting']) == expected, 'full Qwen CRL table'
+    assert all(set(table) == expected for table in result['scores']['readout']['affection'].values()), 'Affection tables'
+    picks = result['picks']['artelingo']
+    assert picks['readout']['cstar'] == 'center+k10' and picks['readout']['crl_clip_painting'] == 'none+k10', 'fixed picks'
+    table = art['crl_clip_painting']
+    gain = np.mean([(table['none+k10']['map'][a] - table['none+k0']['map'][a]) / run.art_ranges[a]
+                    for a in vh.ASPECTS])
+    version = np.mean([table['none+k10']['map'][a] / run.art_ranges[a] for a in vh.ASPECTS])
+    assert table['none+k10']['score'] == gain, 'gain over R0 in r_a units'
+    assert result['scores']['crl_version']['artelingo']['clip_painting'] == version, 'version uses the fixed pick'
+
+
+def test_restricted_crossfit_is_bit_equal_and_scores_only_requested_groups(selection_run, monkeypatch):
+    run = selection_run
+    full = run.crossfit('artelingo', 'crl_clip_painting', vh.ASPECTS)
+    real_fit, real_transform, real_retrieval = vh.fit, vh.transform, vh.retrieval
+    fits, transforms, scored_ks = [], [], []
+
+    def fit(x):
+        fits.append(x)
+        return real_fit(x)
+
+    def transform(x, ro, stats):
+        transforms.append(ro)
+        return real_transform(x, ro, stats)
+
+    def retrieval(x, labels, *, ks):
+        assert set(ks) == {0, 10}, 'only the requested k values'
+        scored_ks.append(tuple(ks))
+        return real_retrieval(x, labels, ks=ks)
+
+    monkeypatch.setattr(vh, 'fit', fit)
+    monkeypatch.setattr(vh, 'transform', transform)
+    monkeypatch.setattr(vh, 'retrieval', retrieval)
+    restricted = run.crossfit('artelingo', 'crl_clip_painting', vh.ASPECTS, ros={vh.R0, ('none', 0, 10)})
+    assert set(restricted) == {vh.R0, ('none', 0, 10)}, 'only requested readouts'
+    for ro in restricted:
+        for aspect in vh.ASPECTS:
+            assert restricted[ro][aspect].hex() == full[ro][aspect].hex(), (ro, aspect)
+    assert len(fits) == len(transforms) == len(scored_ks) == 6, 'one fit, transform and ranking per aspect and half'
+    assert set(transforms) == {vh.R0}, 'no center or whitening transforms'
+
+
+@pytest.mark.parametrize('missing', [False, True])
+def test_stage1_comparison_accepts_runner_tables_and_rejects_missing_fixed_row(selection_run, tmp_path, missing):
+    run = selection_run
+    mine = run.selection
+    scores = json.loads(json.dumps(mine['scores']))
+    art = scores['readout']['artelingo']
+    scores['readout']['artelingo'] = {arm: table for arm, table in art.items() if arm != 'cstar'}
+    art = scores['readout']['artelingo']
+    art['crl_clip_painting'] = {ro: row for ro, row in art['crl_clip_painting'].items()
+                               if ro in ('none+k0', 'none+k10')}
+    for arms in scores['readout'].values():
+        for table in arms.values():
+            for row in table.values():
+                row['kept'] = True
+    if missing:
+        art['crl_clip_painting'].pop('none+k10')
+    write_json(tmp_path / 'stage0a/gates.json', dict(ok=True, items={}))
+    write_json(tmp_path / 'stage0b/ranges.json', run.ranges)
+    write_json(tmp_path / 'records/stage0b_ranges.json', run.ranges)
+    write_json(tmp_path / 'stage1/picks.json', mine['picks'])
+    write_json(tmp_path / 'records/stage1_picks.json', mine['picks'])
+    write_json(tmp_path / 'stage1/scores.json', scores)
+    assert vh.compare_final(run, '1', mine, tmp_path) == int(missing), 'runner table comparison'
+    report = vh.read_json(tmp_path / 'vh/1.json')
+    mismatches = {name for name, row in report['items'].items() if not row['ok']}
+    expected = {'scores.readout.artelingo.crl_clip_painting.none+k10'} if missing else set()
+    assert report['ok'] == (not missing) and mismatches == expected, 'only a missing fixed row fails'
+
+
 def test_all_stages_compare_reports_and_detect_mismatches(tmp_path, monkeypatch, capsys):
     data = SyntheticData(tmp_path)
     run = vh.Run(data, 48, draws_clu=3, draws_ret=7)
