@@ -199,9 +199,10 @@ fi
 
 # ---- 0a(i): FI-only extraction, merge, swap --------------------------------------------------------------------------
 if [[ $MODE == smoke ]]; then
-    # --limit 64 writes under _smoke/ (never the real FI folder); it only exercises the GPU path.
+    # --limit 64 writes under <scratch>/pre_extract/_smoke/ (never the shared feature folders); it only exercises
+    # the GPU path.
     run_step fi_extract "${GPU[@]}" "$PYTHON" "$REPO/scripts/extract_features.py" \
-        --dataset affection_fi --backbone qwen3vl_emb_2b --limit 64
+        --dataset affection_fi --backbone qwen3vl_emb_2b --limit 64 --out-root "$OUT/pre_extract"
     skip_step merge_swap 'smoke: needs FI in the store'
 else
     # The FI folder is needed only until the merge is sealed; a folder that is already swapped away may be gone.
