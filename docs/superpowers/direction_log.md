@@ -89,7 +89,7 @@ prepares r13. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 20
 - **Why:** r12 tests whether c*'s clustering win over the teacher and its retrieval level hold beyond ArtELingo, and
   it keeps the 2026-11-10 freeze; the side job prepares the retrain without GPU time.
 - **Links:** [report 12-29](../reports/auto/percept/2026-12-29_retrieval.md) · [literature note 12-30](../reports/literature/2026-12-30_signals_beyond_teacher.md) (candidates for r13) ·
-  [spec](specs/2026-10-29-retrieval-design.md) · [handoff](handoffs/2026-10-29-r12-decide-handoff.md)
+  [r11 spec](specs/2026-10-29-retrieval-design.md) · [r12 spec](specs/2026-10-30-affection-confirmation-design.md) · [handoff](handoffs/2026-10-29-r12-decide-handoff.md)
 
 ## 2026-10-29 · Recipe sweep read: c* (40 graph neighbours) replaces G, above the instructed Qwen image on emotion and style, genre level; next, the plan to the deadlines: r11 retrieval, r12 more datasets, r13 a large sweep and analysis
 
