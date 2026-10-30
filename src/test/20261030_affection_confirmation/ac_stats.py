@@ -49,9 +49,10 @@ def ranges_doc(clu_per_seed, map_per_seed, ndcg_per_seed):
     return doc
 
 
-def measure_seed_ranges(get_x, labels, dist, workers=8):
+def measure_seed_ranges(get_x, get_cluster, labels, dist, workers=8):
     """The three seed ranges of spec §3.4 from c*'s emotion head on all validation images. get_x(seed) -> float32 unit
-    rows for seed 0 to 4 (the rows are queries and gallery together); labels: int64 [n]; dist: float64 [n, 9], the
+    rows for retrieval; get_cluster(seed) -> checked stored float16 rows for clustering, seed 0 to 4.
+    The rows are queries and gallery together; labels: int64 [n]; dist: float64 [n, 9], the
     graded relevance. Per seed: the mean over three states of the AMI of r10's k = 20 partitions (r_clu); mAP of
     plain cosine R0 (r_ret,mAP); nDCG of plain cosine with the overlap gain (r_ret,nDCG). Returns `ranges_doc`."""
     import ac_cluster
@@ -59,7 +60,7 @@ def measure_seed_ranges(get_x, labels, dist, workers=8):
     clu, mp, nd = [], [], []
     for seed in SEEDS:
         x = get_x(seed)
-        clu.append(ac_cluster.ami(ac_cluster.partitions(x), labels))
+        clu.append(ac_cluster.ami(ac_cluster.partitions(get_cluster(seed)), labels))
         res = rt_metrics.retrieval(x, labels, qe_k=0, workers=workers)
         assert res['dropped'] == 0 and len(res['rows']) == len(x), 'every validation image must be a query'
         mp.append(float(res['ap'].mean()))
@@ -71,6 +72,7 @@ def validation_seed_ranges(workers=8):
     """Stage 0b: `measure_seed_ranges` on c*'s emotion head and the labels of Affection validation."""
     import ac_data
     return measure_seed_ranges(lambda seed: ac_data.embed('cstar', 'val', seed, head='emotion'),
+                               lambda seed: ac_data.stored('cstar', 'val', seed, head='emotion'),
                                ac_data.labels('val'), ac_data.emotion_dist('val'), workers=workers)
 
 

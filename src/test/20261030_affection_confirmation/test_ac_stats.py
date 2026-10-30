@@ -99,7 +99,7 @@ def test_measure_seed_ranges_gives_the_per_seed_ami_map_and_ndcg_and_their_range
     xs = {s: blobs(80 + s, n=n, classes=4, noise=0.6 + 0.15 * s)[0] for s in range(5)}
     lab = blobs(80, n=n, classes=4)[1]
     dist = np.random.default_rng(5).dirichlet(np.ones(9), size=n)
-    doc = ac_stats.measure_seed_ranges(lambda s: xs[s], lab, dist, workers=1)
+    doc = ac_stats.measure_seed_ranges(lambda s: xs[s], lambda s: xs[s], lab, dist, workers=1)
     assert set(doc) == {'clu', 'map', 'ndcg'}
     want_clu = [np.mean([sk_ami(lab, p) for p in ac_cluster.partitions(xs[s])]) for s in range(5)]
     want_map = [brute_ap(xs[s], lab).mean() for s in range(5)]
@@ -112,22 +112,52 @@ def test_measure_seed_ranges_gives_the_per_seed_ami_map_and_ndcg_and_their_range
 
 def test_validation_seed_ranges_read_c_stars_emotion_head_on_all_validation_images(monkeypatch):
     import ac_data
+    import ac_cluster
+    import rt_metrics
     n = 100
-    xs = {s: blobs(90 + s, n=n, noise=0.6 + 0.1 * s)[0] for s in range(5)}
+    raw = {s: (blobs(90 + s, n=n, noise=0.6 + 0.1 * s)[0] * 1.0005).astype(np.float16) for s in range(5)}
+    xs = {s: ac_data._unit(raw[s]) for s in range(5)}
     lab = blobs(90, n=n)[1]
     dist = np.random.default_rng(6).dirichlet(np.ones(9), size=n)
-    calls = []
+    calls, stored_calls, clustered, retrieved, graded = [], [], [], [], []
 
     def embed(arm, split, seed=None, *, head='emotion'):
         calls.append((arm, split, seed, head))
         return xs[seed]
 
+    def stored(arm, split, seed, *, head='emotion'):
+        stored_calls.append((arm, split, seed, head))
+        return raw[seed]
+
+    partition, retrieval, ndcg = ac_cluster.partitions, rt_metrics.retrieval, rt_metrics.graded
+
+    def cluster(x):
+        assert x.dtype == np.float16, 'clustering needs stored rows'
+        np.testing.assert_array_equal(x, raw[len(clustered)])
+        clustered.append(x)
+        return partition(x)
+
+    def metric(real, seen):
+        def score(x, *a, **kw):
+            assert x.dtype == np.float32, 'retrieval needs unit float32 rows'
+            np.testing.assert_array_equal(x, xs[len(seen)])
+            seen.append(x)
+            return real(x, *a, **kw)
+        return score
+
     monkeypatch.setattr(ac_data, 'embed', embed)
+    monkeypatch.setattr(ac_data, 'stored', stored)
+    monkeypatch.setattr(ac_cluster, 'partitions', cluster)
+    monkeypatch.setattr(rt_metrics, 'retrieval', metric(retrieval, retrieved))
+    monkeypatch.setattr(rt_metrics, 'graded', metric(ndcg, graded))
     monkeypatch.setattr(ac_data, 'labels', lambda split: lab if split == 'val' else 1 / 0)
     monkeypatch.setattr(ac_data, 'emotion_dist', lambda split: dist if split == 'val' else 1 / 0)
     doc = ac_stats.validation_seed_ranges(workers=1)
     assert set(calls) == {('cstar', 'val', s, 'emotion') for s in range(5)}      # c*, validation only, emotion head
+    assert calls == stored_calls and len(clustered) == len(retrieved) == len(graded) == 5, 'separate inputs per seed'
     assert doc['map']['per_seed'][0] == pytest.approx(brute_ap(xs[0], lab).mean(), abs=1e-10)
+    want = [ac_cluster.ami(partition(raw[s]), lab) for s in range(5)]
+    np.testing.assert_allclose(doc['clu']['per_seed'], want, atol=1e-12, rtol=0)
 
 
 @pytest.mark.real_data

@@ -312,6 +312,46 @@ def test_seeded_exports_follow_keys_hash_and_normalize(small_round, split, arm, 
 
 
 @pytest.mark.parametrize('split', ['val', 'test'])
+def test_cstar_stored_preserves_export_rows_for_saved_partitions(small_round, monkeypatch, split):
+    import ac_run
+    expected = []
+    for seed in ac_paths.SEEDS:
+        path, side, x = frozen_export('cstar', split, seed)
+        x[:, 100 + seed] = np.float16(.03125)
+        side['array_sha256'] = rs_vh.array_sha(x)
+        write_json(path.with_suffix('.json'), side)
+        np.savez(path, img=x)
+        actual = ac_data.stored('cstar', split, seed)
+        assert actual.dtype == np.float16 and actual.tobytes() == x.tobytes(), 'stored rows changed'
+        assert not np.array_equal(actual.astype(np.float32), ac_data.embed('cstar', split, seed)), 'norm repair'
+        expected.append(x.astype(np.float32))
+    if split == 'val':
+        return
+    seen = []
+
+    def partition(x):
+        assert x.dtype == np.float32, 'cache must cast stored rows to float32'
+        np.testing.assert_array_equal(x, expected[len(seen)])
+        seen.append(x)
+        return np.zeros((3, len(x)), dtype=np.int64)
+
+    monkeypatch.setattr(rs_vh, 'r20_partition', partition)
+    parts = ac_run.aff_partitions('cstar', ac_data.labels('test'), workers=1)
+    assert len(seen) == 5 and parts['r20'].shape == (5, 3, 1), 'every seed clustered'
+    for seed, x in enumerate(expected):
+        side = json.loads((ac_paths.OUTPUTS / f'partitions/affection__test__cstar__s{seed}.json').read_text())
+        assert side['array_sha256'] == rs_vh.array_sha(x), 'cache hashes stored float32 rows'
+
+
+@pytest.mark.parametrize('arm,split,seed,head', [('plain', 'val', 0, 'emotion'), ('cstar', 'train', 0, 'emotion'),
+                                              ('cstar', 'val', None, 'emotion'), ('cstar', 'val', True, 'emotion'),
+                                              ('cstar', 'val', 5, 'emotion'), ('cstar', 'val', 0, 'unknown')])
+def test_stored_requires_cstar_split_seed_and_head(small_round, arm, split, seed, head):
+    with pytest.raises(AssertionError):
+        ac_data.stored(arm, split, seed, head=head)
+
+
+@pytest.mark.parametrize('split', ['val', 'test'])
 def test_percept_prob_preserves_raw_export_bytes(small_round, split):
     _, _, expected = frozen_export('percept', split, seed=4)
     actual = ac_data.percept_prob(split, 4)
@@ -375,6 +415,9 @@ def test_export_rejects_invalid_boundaries(small_round, arm, damage):
     if arm == 'percept':
         with pytest.raises(AssertionError):
             ac_data.percept_prob('val', 0)
+    else:
+        with pytest.raises(AssertionError):
+            ac_data.stored('cstar', 'val', 0)
 
 
 def test_crl_fixture_preserves_an_importable_module(small_round, monkeypatch, request):
