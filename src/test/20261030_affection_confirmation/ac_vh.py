@@ -8,11 +8,13 @@ Readings where the text/interface leaves a detail open:
 * CRL's 'within 0.001 r' means <= .001 in the mean normalized score units,
   including ArtELingo's three different r_a. Wording's > .001*r is strict.
 * A zero range makes normalized selection undefined: stop; never invent an epsilon.
-* Smoke takes the first N sorted keys, retains the full menu/k20, and uses 200 draws
-  for both bootstraps, following r11's smoke convention (default N=2100). It may
+* Smoke takes the first N sorted keys and retains the full menu/k20 (default N=2100).
+  Draw counts are explicit flags, defaulting to 2000/10000 even in smoke. It may
   slice full exports or use smoke exports; a full run rejects smoke exports.
-* Input/W/CRL arithmetic follows the frozen r11 log's numeric convention. Covariance
+* Retrieval input/W/CRL arithmetic follows the frozen r11 log's numeric convention. Covariance
   uses n-1, no eigenvalue clipping; zero vector norms are floored at 1e-12.
+  c* clustering instead casts stored float16 to float32 and checks the unit norm
+  within 1e-3 without repairing it, as frozen r10's r20_partition does.
 * Export keys_sha256 has no serialization in the index. Accept SHA256 of exactly
   the expected ordered list encoded as default JSON, compact JSON, or newline-joined
   UTF-8 (with/without a final newline); never accept a row count as an identity check.
@@ -23,7 +25,7 @@ Readings where the text/interface leaves a detail open:
 * Clustering SC rows use null readout_c/readout_t: r20 partitions have no retrieval
   read-out. Extra descriptive output fields are ignored, but picks and SC IDs are exact.
 
-CLI: --stage {0b,1,2,3} --outputs DIR [--smoke [N]]. Missing input: exit 2;
+CLI: --stage {0b,1,2,3} --outputs DIR [--smoke [N]] [--draws-clu N] [--draws-ret N]. Missing input: exit 2;
 comparison mismatch: exit 1. Every compared leaf is saved to outputs/vh/<stage>.json.
 Real runs can be expensive; this implementation does no GPU work.
 """
@@ -44,6 +46,7 @@ from sklearn.metrics import adjusted_mutual_info_score
 from threadpoolctl import threadpool_limits
 
 MAIN = Path('/project/CoSiR')
+ROUND = Path(__file__).resolve().parent
 AFF = Path('/data/SSD2/pre_extract/affection_local')
 ANNOTATIONS = Path('/data/SSD/affection/language/version_0/affection_preprocessed_public_version_0.csv')
 DEFAULT_OUTPUTS = Path('/data/SSD2/cosir_r12/20261030_affection_confirmation/outputs')
@@ -62,6 +65,14 @@ R0 = ('none', 0, 0)
 EXPECTED_COUNTS = {'val': [798, 54, 622, 1387, 189, 620, 203, 270, 108],
                    'test': [1651, 81, 1460, 2626, 351, 1185, 448, 501, 198]}
 EXPECTED_TIES = {'val': 907, 'test': 1917}
+DEFAULT_INSTRUCTION = "Represent the user's input."  # frozen pav_prompts.PROMPTS['default']
+TEXT_MODELS = {'clip': 'openai/clip-vit-large-patch14', 'qwen': 'Qwen/Qwen3-VL-Embedding-2B'}
+VIEW_INSTRUCTIONS = {
+    # r10's frozen pav_prompts.PROMPTS['emotion_focus']; r12 spec §3.2 photo text.
+    'teacher_artwork': 'Represent the emotion that this artwork, or this description of an artwork, conveys. Focus only on the emotion.',
+    'teacher_photo': 'Represent the emotion that this photo, or this description of a photo, conveys. Focus only on the emotion.',
+    'clip': None,
+}
 
 
 def read_json(path):
@@ -128,6 +139,7 @@ class Data:
     """Independent loaders. No result, pick, per-query or partition file from this round is an input."""
     def __init__(self, outputs, smoke=0, aff=AFF, annotation=ANNOTATIONS):
         self.outputs, self.smoke, self.aff = Path(outputs), smoke, Path(aff)
+        self.frozen_crl_aspects = set()
         self.full = annotations(annotation)
         self.records = {sp: {k: v[:smoke] if smoke else v for k, v in r.items()}
                         for sp, r in self.full.items()}
@@ -176,7 +188,11 @@ class Data:
                 'genre': rs_vh.genre_labels(names, raw, rs_vh.GENRE_CSVS)})
         return result
 
-    def _view(self, folder, wanted):
+    def _view(self, folder, wanted, instruction=None):
+        meta = read_json(folder / 'meta.json')
+        assert meta['instruction'] == instruction, 'view instruction'
+        assert meta['gate']['ok'] is True, 'view extraction gate'
+        assert self.smoke or meta['smoke'] is False, 'full run cannot use a smoke view'
         keys = read_json(folder / 'keys.json')
         x = np.load(folder / 'img.npy', mmap_mode='r', allow_pickle=False)
         assert x.dtype == np.float16
@@ -205,12 +221,34 @@ class Data:
         assert hashlib.sha256(np.ascontiguousarray(x).tobytes()).hexdigest() == meta['array_sha256']
         return joined_rows(x, keys[:expected], self.records[split]['keys'])
 
+    def cluster_cstar(self, split, seed):
+        """r10's clustering input: cast only; preserve stored float16 norm deviations."""
+        x = self._export('cstar', split, seed, 'emotion').astype(np.float32)
+        assert np.isfinite(x).all()
+        assert np.max(np.abs(np.linalg.norm(x, axis=1) - 1)) < 1e-3, 'cstar rows not unit norm'
+        return x
+
     def embed(self, dataset, arm, split, aspect='emotion', seed=None):
         assert (seed in SEEDS) if arm in ('cstar', 'percept') else seed is None
         if arm.startswith('crl_'):
             encoder, wording = arm[4:].split('_')
+            side = read_json(self.outputs / 'crl' / f'{encoder}_{wording}_{aspect}.json')
+            values = read_json(R11 / 'crl/lists.json')['aspects'][aspect]['values']
+            assert encoder in TEXT_MODELS and wording in ('painting', 'photo')
+            assert side['texts'] == [f'a {wording} with the {aspect} of {v}' for v in values], 'CRL texts/order'
+            assert side['encoder'] == encoder, 'CRL encoder'
+            assert side['model_id'] == TEXT_MODELS[encoder], 'CRL text model'
+            instruction = DEFAULT_INSTRUCTION if encoder == 'qwen' else None
+            assert side['instruction'] == instruction, 'CRL text instruction'
             image = self.embed(dataset, 'clip' if encoder == 'clip' else 'plain', split, aspect)
-            text = np.load(self.outputs / 'crl' / f'{encoder}_{wording}_{aspect}.npy', allow_pickle=False)
+            if dataset == 'artelingo' and (encoder, wording) == ('clip', 'painting'):
+                # SC5–SC7 must not inherit a text-vector error from this round.
+                self.frozen_crl_aspects.add(aspect)
+                path = R11 / 'crl' / f'{aspect}_text.npy'
+            else:
+                path = self.outputs / 'crl' / f'{encoder}_{wording}_{aspect}.npy'
+            text = np.load(path, allow_pickle=False)
+            assert text.ndim == 2 and len(text) == len(values), 'CRL text/value count'
             return crl_vectors(image, text)
         if dataset == 'artelingo':
             return self._art_embed(arm, split, aspect, seed)
@@ -229,7 +267,7 @@ class Data:
             folders = {'teacher_artwork': self.aff / 'qwen3vl_emb_2b_aspect_prompts/emotion_focus',
                        'teacher_photo': self.aff / 'qwen3vl_emb_2b_aspect_prompts/emotion_focus_photo',
                        'clip': self.aff / 'clip_l14_valtest'}
-            x = self._view(folders[arm], wanted)
+            x = self._view(folders[arm], wanted, VIEW_INSTRUCTIONS[arm])
             assert x.shape[1] == (768 if arm == 'clip' else 2048)
         assert len(x) == len(wanted)
         return unit(x, np.float32)
@@ -449,14 +487,17 @@ def version_pick(scores):
 
 
 class Run:
-    def __init__(self, data, smoke=0):
+    def __init__(self, data, smoke=0, draws_clu=2000, draws_ret=10000):
+        assert draws_clu > 0 and draws_ret > 0, 'bootstrap draws must be positive'
         self.data, self.smoke = data, smoke
+        self.draws_clu, self.draws_ret = draws_clu, draws_ret
         self.cluster_cache, self.query_cache = {}, {}
 
     def parts(self, split, arm):
         key = split, arm
         if key not in self.cluster_cache:
-            result = [partitions(self.data.embed('affection', arm, split, seed=s))
+            result = [partitions(self.data.cluster_cstar(split, s) if arm == 'cstar' else
+                                 self.data.embed('affection', arm, split, seed=s))
                       for s in (SEEDS if arm in ('cstar', 'percept') else (None,))]
             self.cluster_cache[key] = np.stack(result) if arm in ('cstar', 'percept') else result[0]
         return self.cluster_cache[key]
@@ -550,12 +591,12 @@ class Run:
         picks = self.selection['picks'][dataset]['readout']
         if metric == 'ami':
             stat = paired_cluster(self.parts('test', 'cstar'), self.parts('test', comp),
-                                  self.data.labels(dataset, 'test', aspect), 200 if self.smoke else 2000)
+                                  self.data.labels(dataset, 'test', aspect), self.draws_clu)
             r, roc, rot = self.ranges['clu']['r'], None, None
         else:
             roc, rot = picks['cstar'], picks[comp]
             stat = paired_retrieval(self.perquery(dataset, 'cstar', aspect, roc),
-                                    self.perquery(dataset, comp, aspect, rot), 200 if self.smoke else 10000)
+                                    self.perquery(dataset, comp, aspect, rot), self.draws_ret)
             r = self.ranges['map']['r'] if dataset == 'affection' else self.art_ranges[aspect]
         result = outcome(stat['interval'][0], r)
         return dict(candidate='cstar', comparator=comp, dataset=dataset, aspect=aspect, metric=metric,
@@ -594,7 +635,10 @@ class Check:
                 if strict:
                     self.compare(f'{name}.keys', sorted(ours), sorted(theirs))
                 for k, v in ours.items():
-                    self.compare(f'{name}.{k}', v, theirs.get(k), strict=strict)
+                    if k not in theirs:
+                        self.items[f'{name}.{k}'] = dict(ours=v, theirs='<missing key>', ok=False)
+                    else:
+                        self.compare(f'{name}.{k}', v, theirs[k], strict=strict)
             return
         if isinstance(ours, (list, tuple)):
             if not isinstance(theirs, (list, tuple)) or len(ours) != len(theirs):
@@ -619,6 +663,11 @@ def compare_final(run, stage, mine, outputs):
     """The ONLY round result reader. All independent calculations have already finished."""
     outputs = Path(outputs)
     check = Check()
+    for aspect in sorted(getattr(run.data, 'frozen_crl_aspects', ())):
+        frozen = np.load(R11 / 'crl' / f'{aspect}_text.npy', allow_pickle=False)
+        local = np.load(outputs / 'crl' / f'clip_painting_{aspect}.npy', allow_pickle=False)
+        equal = local.dtype == frozen.dtype and np.array_equal(local, frozen)
+        check.compare(f'inputs.crl.clip_painting_{aspect}.equals_r11', True, bool(equal))
     summary = label_summary(run.data.full)
     if not run.smoke:
         check.compare('labels.spec', summary, {sp: dict(counts=EXPECTED_COUNTS[sp], ties=EXPECTED_TIES[sp],
@@ -645,9 +694,14 @@ def compare_final(run, stage, mine, outputs):
         check.compare('picks', run.selection['picks'], read_json(outputs / 'stage1/picks.json'), strict=True)
     if stage != '0b':
         check.compare('ranges', run.ranges, read_json(outputs / 'stage0b/ranges.json'))
+    check.compare('committed.ranges', mine if stage == '0b' else run.ranges,
+                  read_json(ROUND / 'stage0b_ranges.json'))
+    if stage != '0b':
+        check.compare('committed.picks', run.selection['picks'], read_json(ROUND / 'stage1_picks.json'), strict=True)
     out = outputs / 'vh' / f'{stage}.json'
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(dict(stage=stage, smoke=run.smoke, ok=check.ok, items=check.items,
+                                   draws_clu=run.draws_clu, draws_ret=run.draws_ret,
                                    labels=summary, mine=mine), indent=2, allow_nan=False) + '\n')
     bad = sum(not v['ok'] for v in check.items.values())
     print(f'C13 stage {stage}: {len(check.items)} items, {bad} mismatches; {out}', flush=True)
@@ -659,11 +713,15 @@ def main(argv=None):
     parser.add_argument('--stage', required=True, choices=('0b', '1', '2', '3'))
     parser.add_argument('--outputs', type=Path, default=Path(os.environ.get('AC_OUTPUTS', DEFAULT_OUTPUTS)))
     parser.add_argument('--smoke', type=int, nargs='?', const=2100, default=0, metavar='N')
+    parser.add_argument('--draws-clu', type=int, default=2000)
+    parser.add_argument('--draws-ret', type=int, default=10000)
     args = parser.parse_args(argv)
     if args.smoke < 0:
         parser.error('--smoke must be positive (or omitted)')
+    if args.draws_clu <= 0 or args.draws_ret <= 0:
+        parser.error('bootstrap draws must be positive')
     try:
-        run = Run(Data(args.outputs, args.smoke), args.smoke)
+        run = Run(Data(args.outputs, args.smoke), args.smoke, args.draws_clu, args.draws_ret)
         mine = run.derive(args.stage)
         return compare_final(run, args.stage, mine, args.outputs)
     except (FileNotFoundError, KeyError, AssertionError, ValueError) as error:
