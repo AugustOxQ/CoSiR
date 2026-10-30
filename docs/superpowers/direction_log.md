@@ -49,6 +49,29 @@ Next: r11's retrieval spec (2026-10-29) is built and run unattended. Deadlines: 
 - Align and contrast the three aspect heads of one image (shared part aligned, aspect parts pushed apart) (never tried;
   not chosen by the user, 2026-10-20: the aspects may not be separable; proposed in the r10 decide 12 chat)
 
+## 2026-10-30 · Retrieval round read: c* level with its teacher after validation-picked read-outs, far above the plain Qwen image; next step open
+
+- **Read:** held label retrieval (12,281 paintings, genre labels on 9,949, 5 seeds, mAP; c* frozen, no training in
+  any stage). Stage 1, plain cosine, NO-GO: c* against the instructed Qwen image (the teacher), emotion −0.0023
+  [−0.0032, −0.0014] BELOW (about 1.6 retrieval seed ranges), style +0.0019 [+0.0008, +0.0030] WIN, genre +0.0037
+  [+0.0024, +0.0051] WIN. Stage 5, each model's read-out picked on validation (centering plus query expansion with
+  k = 10 for c* and both Qwen images), GO: emotion +0.0007 [−0.0002, +0.0016] LEVEL, style +0.0017 [−0.0001, +0.0036]
+  LEVEL, genre +0.0027 [+0.0013, +0.0042] WIN. Against the plain Qwen image at stage 5: emotion +0.0208, style
+  +0.1311, genre +0.0790. Switch test GO (the teacher shows the same pattern); graded emotion qualified. Every pick
+  sits at the menu's largest k; no whitening passed the guard.
+- **Meaning (C):** "the gain over baseline a a bit week?" (about c* minus the instructed image) "Ok then I
+  understood. The key is that the teacher-student framework kind of limiting the ceiling of how much the student can
+  do. And yes indeed we might step into the retrain/extra signal part." (user, after seeing part of ours: the
+  teacher's role, a soft ceiling). Ours: the planned claim holds, but c* matches its teacher overall; the large
+  margins are over the plain image; at plain cosine emotion is below the teacher, so the emotion claim rests on the
+  picked read-outs; high confidence in the plain-image wins and the switch test, moderate in "level with the
+  teacher". Where they differ: the user names the cause (a student that copies its teacher is capped by it) and leans
+  to retraining with a signal the teacher lacks; ours reads the cap as soft (held clustering emotion is +0.0145 AMI
+  above the teacher) and recommended retraining only in r13, after the 2026-11-10 freeze.
+- **Decided (A):** open, awaiting the user.
+- **Links:** [report 12-29](../reports/auto/percept/2026-12-29_retrieval.md) ·
+  [spec](specs/2026-10-29-retrieval-design.md) · [handoff](handoffs/2026-10-29-r12-decide-handoff.md)
+
 ## 2026-10-29 · Recipe sweep read: c* (40 graph neighbours) replaces G, above the instructed Qwen image on emotion and style, genre level; next, the plan to the deadlines: r11 retrieval, r12 more datasets, r13 a large sweep and analysis
 
 - **Read:** stage 0: G passes the held emotion claim against PercepT core at both scales (full +0.0164 [+0.0107,
