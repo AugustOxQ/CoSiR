@@ -95,7 +95,7 @@ def test_smoke_guard_checks_the_copy_against_the_outputs_and_skips_git(world, mo
     assert ac_run.record_copy('ranges') == world['out'] / 'records/stage0b_ranges.json'
     assert 'does not exist' in ac_run.guard_reason('ranges')
     rec = ac_run.record_copy('ranges')
-    rec.parent.mkdir(parents=True)
+    assert rec.parent.is_dir()                                        # the smoke records folder is made for the writer
     rec.write_text((world['out'] / 'stage0b/ranges.json').read_text())
     assert ac_run.guard_reason('ranges') == ''                       # not in git: the git part is skipped
     assert 'skipped' in capsys.readouterr().out

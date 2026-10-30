@@ -77,7 +77,10 @@ def read_json(path):
 def record_copy(kind):
     """The record file of the committed copy: RANGES_FILE or PICKS_FILE (smoke: the same name under OUTPUTS/records)."""
     f = Path(ac_paths.RANGES_FILE if kind == 'ranges' else ac_paths.PICKS_FILE)
-    return outputs() / 'records' / f.name if smoke() else f
+    if not smoke():
+        return f
+    (outputs() / 'records').mkdir(parents=True, exist_ok=True)
+    return outputs() / 'records' / f.name
 
 
 def record_output(kind):
