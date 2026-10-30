@@ -736,6 +736,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.smoke < 0:
         parser.error('--smoke must be positive (or omitted)')
+    env_smoke = int(os.environ.get('AC_SMOKE') or 0)     # vh imports no ac_*: it reads the env itself
+    if env_smoke and args.smoke != env_smoke:
+        parser.error(f'AC_SMOKE={env_smoke} is set: pass --smoke {env_smoke} (got {args.smoke})')
     if args.draws_clu <= 0 or args.draws_ret <= 0:
         parser.error('bootstrap draws must be positive')
     try:

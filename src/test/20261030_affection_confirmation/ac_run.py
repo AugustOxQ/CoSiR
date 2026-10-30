@@ -79,8 +79,10 @@ def record_copy(kind):
     f = Path(ac_paths.RANGES_FILE if kind == 'ranges' else ac_paths.PICKS_FILE)
     if not smoke():
         return f
-    (outputs() / 'records').mkdir(parents=True, exist_ok=True)
-    return outputs() / 'records' / f.name
+    copy = outputs() / 'records' / f.name
+    ac_paths.check_record_write(copy)
+    copy.parent.mkdir(parents=True, exist_ok=True)
+    return copy
 
 
 def record_output(kind):

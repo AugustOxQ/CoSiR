@@ -70,10 +70,14 @@ def _publish(path, name, x, side):
     return path
 
 
-def _requested(split, smoke):
-    """keys(split), or with smoke the first N non-FI keys (FI images enter the store only in the run chat)."""
+def _check_smoke(smoke):
     # AC_SMOKE = N makes ac_data.keys the first N keys already; the sidecar must then say smoke, for the same N.
     assert ac_paths.SMOKE == 0 or smoke == ac_paths.SMOKE, 'AC_SMOKE is set: pass --smoke with the same N'
+
+
+def _requested(split, smoke):
+    """keys(split), or with smoke the first N non-FI keys (FI images enter the store only in the run chat)."""
+    _check_smoke(smoke)
     keys = ac_data.keys(split)
     if smoke is None:
         return keys
@@ -129,6 +133,7 @@ def export_cstar(splits=('val', 'test'), smoke=None):
 
 def export_impressions(smoke=None):
     """c*'s seed-0 emotion head on the Impressions default store: all 1,442 images, keyed by file name."""
+    _check_smoke(smoke)
     out = _outputs(smoke)
     store = Path(ac_paths.IMPRESSIONS_STORE)
     index = json.loads((store / 'index.json').read_text())
@@ -153,6 +158,7 @@ def export_impressions(smoke=None):
 
 def reinfer(smoke=None):
     """Re-infer ArtELingo validation outputs for all 15 heads from the plain Qwen image (r11's 0b(iv) path)."""
+    _check_smoke(smoke)
     out = _outputs(smoke)
     start = time.perf_counter()
     x = rt_data.embed('plain', 'val', 'emotion')

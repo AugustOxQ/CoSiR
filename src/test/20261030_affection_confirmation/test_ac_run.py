@@ -125,3 +125,20 @@ def test_cli_stage_0a_with_empty_outputs_exits_nonzero_naming_missing_items_and_
         assert name in gates['missing'] and name in r.stderr
     for name in ('0a(iii)_r10_stage4_emotion', '0a(iii)_r11_stage4', '0a(iii)_r11_stage5'):
         assert gates['items'][name]['value'].startswith('not run')       # replays come after the item check
+
+
+def test_smoke_never_writes_the_committed_record_files(world, monkeypatch):
+    import ac_select
+    import ac_stats
+    monkeypatch.setattr(ac_paths, 'SMOKE', 5)
+    for kind in ('ranges', 'picks'):                       # the runner's own copies are redirected and pass
+        assert ac_run.record_copy(kind).parent == world['out'] / 'records'
+    ranges = {k: dict(v, per_seed=[0.1, 0.2, 0.3, 0.4, 0.5], r=0.4) for k, v in RANGES.items()}
+    before = {f.name: f.read_bytes() for f in world['repo'].glob('*.json')}
+    with pytest.raises(AssertionError, match='committed record'):
+        ac_stats.write_ranges(ranges, world['out'] / 'x', copy_to=ac_paths.RANGES_FILE)
+    with pytest.raises(AssertionError, match='committed record'):
+        ac_select.write_picks(PICKS, {}, world['out'] / 'x', copy_to=ac_paths.PICKS_FILE)
+    assert {f.name: f.read_bytes() for f in world['repo'].glob('*.json')} == before and not (world['out'] / 'x').exists()
+    monkeypatch.setattr(ac_paths, 'SMOKE', 0)
+    ac_paths.check_record_write(ac_paths.PICKS_FILE)       # a full run may write them
