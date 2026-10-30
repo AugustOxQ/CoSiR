@@ -1329,3 +1329,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-30-r12-build-handoff.md
 - New chat: tab 'r12 build', session a96e3389-bf60-42ed-8db2-79dd2bfef6f0
 
+[brief] CoSiR: r12 build -> r12 build 2 (2026-10-30 22:06 Amsterdam)
+- Done: 4 of 12 r12 build tickets merged into `r12-affection` (data and labels, clustering, stage 1 selection, the C13 re-derivation), each reviewed by Opus `high`; 292 fast tests pass.
+- State: labels equal the spec's gate exactly; r10's held emotion block and r11's stage 4 scores and picks replay within 1e-9 through the new code.
+- Next: tickets 01, 03, 04, 05, 08 in parallel (at most three at once), then 09, 10, 12, the final review, merge to main; then open the run chat.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-30-r12-build-2-handoff.md
+- New chat: tab 'r12 build 2', session b41ac56b-c054-49a9-969c-bdd0db0183f8
+
