@@ -126,7 +126,7 @@ the run handoff).
 - Fix wave (Codex `gpt-6.1-sol` high, branch `r12-fixwave`): the diag assert with a diag test, and c* clustering on
   its stored float16 rows (r10's protocol) in stage 0b, stage 2 and diag.
 
-### Build chat 5 (2026-10-31 00:08 to …)
+### Build chat 5 (2026-10-31 00:08 to 01:05)
 
 - 00:12 the fix wave's diff read by the controller (verdict code): `ac_data.stored` returns the checked float16 export
   rows unchanged; stage 0b r_clu, stage 2 partitions (SC1, SC3) and diag cluster c* through it; r10's
@@ -145,3 +145,12 @@ the run handoff).
 - The final reviewer's re-derivation script on the fresh smoke: stage 0b and 1 (`stage01.txt`): r_clu, r_map,
   r_nDCG per seed diff 0; teacher AMIs diff 0; both wording picks and the three read-out picks equal (mAP within
   5e-8).
+- The same script, SC part (`sc.txt`): SC1 and SC2 d diff 0 (c* clustered on the stored float16 rows), SC8 d diff
+  9.7e-9 (bar 1e-6); same outcomes and the same verdict line.
+- **Scoped re-review** (Sonnet `high` worker, every change after `910e527`, at `ee39896`): pass, no must-fix or
+  should-fix. Each fix's new test fails when that fix is reverted (scratch copies); vh imports no `ac_*` module; the
+  restricted cross-fit is bit-equal; stages 2 and 3 of vh still compare picks strictly. Its note: the smoke gives the
+  same r_clu with stored and re-normalized rows, so only the unit tests show the `stored` change. Report:
+  `.scratch/r12-affection/build5/rereview_report.md`.
+- `r12-affection` merged into main (`fd6a4b5`) and pushed; `ac_queue.sh full --dry-run` from main lists 26 steps.
+  Worktrees, branches and smoke folders are on `.scratch/pending_deletions.md`.
