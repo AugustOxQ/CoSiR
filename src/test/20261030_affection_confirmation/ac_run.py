@@ -352,7 +352,7 @@ def aff_partitions(arm, labels, workers):
         out['r20'] = np.stack([b['r20'] for b in both])
         out['own'] = np.stack([b['own'] for b in both])
     elif arm == 'cstar':
-        out['r20'] = np.stack([ac_cluster.cached_partitions(ac_data.embed(arm, 'test', s),
+        out['r20'] = np.stack([ac_cluster.cached_partitions(ac_data.stored(arm, 'test', s),
                                                             f'affection__test__{arm}__s{s}') for s in SEEDS])
     else:
         out['r20'] = ac_cluster.cached_partitions(ac_data.embed(arm, 'test'), f'affection__test__{arm}__s-')

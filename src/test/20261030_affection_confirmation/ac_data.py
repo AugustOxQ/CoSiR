@@ -313,6 +313,14 @@ def _crl(img, encoder, wording, aspect):
     return _array(ac_crl.vectors(img, text), len(img), len(text), np.float32, unit=True)
 
 
+def stored(arm, split, seed, *, head='emotion'):
+    """Checked c* float16 export rows in keys(split) order, without norm repair (r10 clustering)."""
+    assert arm == 'cstar' and split in ac_paths.SPLITS, (arm, split)
+    assert head in ac_paths.ASPECTS, head
+    _seed(seed)
+    return _export(arm, split, seed, head, keys(split))
+
+
 def embed(arm, split, seed=None, *, head='emotion'):
     """Unit float32 rows in keys(split) order; cstar supports the switch-column head."""
     assert arm in ARMS and split in ac_paths.SPLITS, (arm, split)

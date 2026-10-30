@@ -126,15 +126,17 @@ def _untied(picks, ranges, draws_clu, draws_ret, workers):
     labels = ac_data.labels('test')[keep]
     assert len(keep) < ac_paths.N['test'] or _smoke(), 'no tied image'
     get = lambda arm: (lambda s: np.ascontiguousarray(ac_data.embed(arm, 'test', s)[keep]))
+    get_cluster = lambda arm, s: (ac_data.stored(arm, 'test', s) if arm == 'cstar' else
+                                  ac_data.embed(arm, 'test', s))[keep]
     aff = picks['affection']
     parts, ret, sc = {}, {}, {}
 
     def parts_of(arm):
         if arm not in parts:
             if arm in ac_data.SEEDED:
-                parts[arm] = np.stack([ac_cluster.partitions(get(arm)(s)) for s in SEEDS])
+                parts[arm] = np.stack([ac_cluster.partitions(get_cluster(arm, s)) for s in SEEDS])
             else:
-                parts[arm] = ac_cluster.partitions(get(arm)(None))
+                parts[arm] = ac_cluster.partitions(get_cluster(arm, None))
         return parts[arm]
 
     def ret_of(arm):
@@ -184,7 +186,7 @@ def diag(args):
     ranges = R.load_ranges()
     aff = picks['affection']
     rows2 = s2['rows']
-    assert set(rows2) == set(ac_data.ARMS[:6]), list(rows2)      # the six stage 2 arms
+    assert set(rows2) == set(ac_data.ARMS), list(rows2)
     labels, dist = ac_data.labels('test'), ac_data.emotion_dist('test')
     src = ac_data.sources('test')
     assert len(src) == len(labels) == len(dist) and dist.shape[1] == 9
