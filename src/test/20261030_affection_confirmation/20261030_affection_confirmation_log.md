@@ -37,6 +37,15 @@ the run handoff).
 - 22:31 the context meter passed 200k; cut to build chat 3. Found before the cut: ticket 12's planned smoke cannot run
   as written (the loaders refuse smoke views and exports, and full views need the run chat's heavy GPU steps); ticket
   13 (a smoke mode, verdict code) added to the tracker.
+- 22:33 build chat 3 opens (handoff `2026-10-30-r12-build-3-handoff.md`). Codex still has no room (reset 23:52), so
+  wave 3 goes to Claude workers: the 08 review fixes and ticket 13 (Sonnet `high`, test-first), ticket 09 (Sonnet
+  `medium`).
+- 22:41 ticket 09 built (diff read). 22:44 the 08 review fixes merged (`306aaf6`); all 128 `test_ac_stats.py` tests
+  pass with the slow replays (217 s). 22:45 ticket 13 built. 22:46 ticket 12 (queue script, Sonnet `medium`) and
+  22:48 ticket 10 (diagnostics and figure, Sonnet `medium`) built on 09's branch.
+- 22:50 ticket 13's Opus `high` review: pass, no must-fix (four mutations each caught; full mode unchanged). 22:51
+  tickets 13, 09, 10 and 12 merged; 515 fast tests pass. The queue's smoke FI extraction was moved to the scratch
+  folder by the controller (`e86559b`). Cut to build chat 4 at the context meter (200k).
 
 ### Readings settled in the build (agent defaults; reviewers agreed)
 
@@ -46,6 +55,19 @@ the run handoff).
 - **r11's guard on Affection read-outs**: kept; with one aspect it cannot change a pick.
 - **A seeded clustering comparator** (PercepT core, descriptive only) draws its own seeds, as r10's d_R; SC1 and SC3
   have unseeded comparators, so no verdict number depends on it.
+
+- **Smoke size: 2,100 keys per split** (ticket 12 said about 200): each cross-fit half must exceed the largest
+  whitening size, 1,024 (r11's finding); `ac_vh.py`'s smoke default is 2,100 too. Smoke draws: 200 (clustering),
+  500 (retrieval), passed to the runner and to vh alike.
+- **Stage 0a**: the three replays of 0a(iii) run only when every other item is present and passes. In smoke, the
+  replays, the FI merge, 0a(ii)(b) and the label counts (full-split numbers) are recorded "skipped in smoke".
+- **Diagnostics, "every row not picked"**: all stage 1 validation rows with a `picked` flag, plus the test rows of the
+  teacher wording and CRL versions not picked (from stages 2 and 3). Test numbers for read-outs not picked are not
+  computed (the diag file says so).
+- **Impressions (D13)**: the store holds 1,442 files of 822 photo IDs, not the spec's 827 (train plus test is 822;
+  the annotation file has 823; the media folder 945). The figure uses the store's 822: 6 queries, 816 gallery. 427 IDs
+  have a file without a headline overlay; 395 have only overlay files, so D13's fallback applies. The figure decides
+  nothing.
 
 ### Checks run in the build (CPU)
 
@@ -70,3 +92,5 @@ the run handoff).
   0.999), mean 0.99980. The six CRL text arrays take 12 s.
 - 0a(iii), r11 stage 5 part (ticket 08's slow test, rerun by the controller): r11's per-arm and per-seed mAPs and
   SC10 to SC15's d and intervals within 1e-9, 250 s.
+- Stage 4 (ticket 10, CPU, scratch outputs): the Impressions figure built from the real store and c*'s seed-0 emotion
+  head; the PNG was looked at (three look-and-fix rounds by the worker; checked by the controller).
