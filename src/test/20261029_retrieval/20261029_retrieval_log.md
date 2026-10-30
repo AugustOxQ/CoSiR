@@ -190,3 +190,7 @@ From `/project/CoSiR` on main, `bash rt_queue.sh full`, CPU (8 threads, 8 worker
   exactly for six arms; PercepT core differs (largest 0.018), as amendment 2 expects.
 - Verdicts: stage 1 NO-GO (SC4, emotion against the instructed image: BELOW); stage 2 switch GO; stage 3 qualified;
   stage 4 picks center+k10 for every arm except CRL (none+k10); stage 5 GO. Numbers: the auto report.
+
+## Storage (r12 decide, 2026-10-30)
+
+The 14 r11 worktrees (1.6 GB), the r11 branches (local and remote), the build scratchpads and `outputs/percept_val/` were deleted with the user's approval; the outputs (59 MB) are kept, since report 12-29 rests on them. Rows: `/project/claude-config/storage/disk_ledger.md`.
