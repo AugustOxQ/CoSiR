@@ -30,11 +30,11 @@ the run handoff).
 - 22:08 wave 2: tickets 01, 04 (Sonnet `medium`) and 08 (Sonnet `high`, test-first); 03 and 05 (Sonnet `medium`)
   start after 01 merges, since 03 reuses 01's FI path code.
 - 22:12 ticket 01 merged (diff read). `ac_store.py record` run on the real store and its hashes file committed
-  (`cc2a102`) before any FI row exists. 22:13 ticket 04 merged (diff read). 22:20 ticket 03 merged (diff read).
-- 22:35 ticket 05 merged (diff read). 22:45 ticket 08 merged after an Opus `high` review (pass, no must-fix; four
+  (`cc2a102`) before any FI row exists. 22:13 ticket 04 merged (diff read). 22:17 ticket 03 merged (diff read).
+- 22:26 ticket 05 merged (diff read). 22:28 ticket 08 merged after an Opus `high` review (pass, no must-fix; four
   should-fix test gaps for a fix round, listed in `.scratch/r12-affection/notes/08-review-fixes.md`). 433 fast tests
   pass on the integration branch.
-- 22:50 the context meter passed 200k; cut to build chat 3. Found before the cut: ticket 12's planned smoke cannot run
+- 22:31 the context meter passed 200k; cut to build chat 3. Found before the cut: ticket 12's planned smoke cannot run
   as written (the loaders refuse smoke views and exports, and full views need the run chat's heavy GPU steps); ticket
   13 (a smoke mode, verdict code) added to the tracker.
 
