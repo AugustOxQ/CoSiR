@@ -1388,3 +1388,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-31-r13-decide-handoff.md
 - New chat: tab 'r13 decide', session 38810575-7ec5-48ca-88f0-feaecce1dc60
 
+[brief] CoSiR: r13 decide -> r13 decide 2 (2026-10-31 15:28 Amsterdam)
+- Done: decision C on report 12-31, the r12 wrap-up, decision A and the grill for r13; the r13 spec is a draft.
+- State: r13 fine-tunes c* on Affection's 72,255 unlabeled train photos (9-row sweep on validation, then 5 seeds) and tests it against its teacher with r12's rule.
+- Next: a fresh Opus xhigh worker reviews the spec's rule (C7); apply fixes; paste the brief for the user's approval.
+- Blocked: nothing; PolyArt waits for the user's link.
+- Handoff: docs/superpowers/handoffs/2026-10-31-r13-decide-2-handoff.md
+- New chat: tab 'r13 decide 2', session b74d81b8-4841-446a-8ba1-944bc40c5fd4
+
