@@ -1,0 +1,29 @@
+{
+ "affection": {
+  "readout": {
+   "cstar": "center+k10",
+   "plain": "center+k10",
+   "teacher_artwork": "center+k10",
+   "teacher_photo": "center+k10",
+   "clip": "center+k10",
+   "percept": "center+k0",
+   "crl_clip_painting": "center+k10",
+   "crl_clip_photo": "center+k10",
+   "crl_qwen_painting": "center+k10",
+   "crl_qwen_photo": "center+k10"
+  },
+  "teacher_wording": {
+   "clustering": "artwork",
+   "retrieval": "artwork"
+  },
+  "crl_version": "clip_painting"
+ },
+ "artelingo": {
+  "readout": {
+   "cstar": "center+k10",
+   "crl_clip_painting": "none+k10",
+   "crl_qwen_painting": "center+k10"
+  },
+  "crl_version": "clip_painting"
+ }
+}
