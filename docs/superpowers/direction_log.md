@@ -11,18 +11,17 @@ weekly and stage reports.
 
 The conditioned line's log (2026-09-28 to 2026-10-15, rounds 1 to 9, parked ideas) is archived: [direction log](../../archive/v2_conditioned/docs/superpowers/direction_log.md).
 
-## Now (2026-10-30)
+## Now (2026-10-31)
 
 The new line builds a condition-free model over PercepT: one Qwen3-VL-Embedding instruction per aspect, buddy graphs
-on each view, one shared trunk with emotion, style and genre heads, read once on the default image. c* (report 12-28:
-model G with 40 graph neighbours) passes the held claim tests on ArtELingo: in clustering it beats the instructed Qwen
-image on emotion (+0.0145 AMI) and narrowly on style, level on genre; in retrieval (report 12-29) it is far above the
-plain Qwen image and level with the instructed image after read-outs picked on validation (genre a narrow win; with
-plain cosine, emotion is below it). The user reads the teacher as a cap on the student. The plan (2026-10-29): r12
-more datasets, r13 a large sweep and analysis after 11-10; c* freezes at 11-10. Next: r12 (confirmation, medium
-loop), frozen c* on Affection and Impressions (PolyArt waits for the user's link), clustering and retrieval, with a
-CRL bar; the FI extraction completes the Affection store. Beside it, a literature check on a signal beyond the teacher
-prepares r13. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
+on each view, one shared trunk with emotion, style and genre heads, read once on the default image. On ArtELingo, c*
+(report 12-28) beats the instructed Qwen image (its teacher) in clustering on emotion and narrowly on style, is level
+with it in retrieval after read-outs picked on validation (report 12-29), and passes the CRL bars on all three aspects
+(report 12-31). On Affection photos, frozen c* is above the plain Qwen image but below its teacher (AMI −0.0282, mAP
+−0.0190; report 12-31, fails), and the user does not accept a student below its teacher. Next: r13 (incremental,
+medium loop), c* trained on Affection's train photos too, before the 2026-11-10 freeze; the current c* stays the
+fallback; the large sweep moves to r14, after the freeze; PolyArt waits for the user's link. Deadlines: abstract
+2026-11-10, paper 2026-11-16, supplementary 2026-11-23.
 
 ## Parked ideas
 
@@ -48,6 +47,35 @@ prepares r13. Deadlines: abstract 2026-11-10, paper 2026-11-16, supplementary 20
   by the user, 2026-10-25; [proposed in](../reports/auto/percept/2026-12-23_attention_maps.md))
 - Align and contrast the three aspect heads of one image (shared part aligned, aspect parts pushed apart) (never tried;
   not chosen by the user, 2026-10-20: the aspects may not be separable; proposed in the r10 decide 12 chat)
+
+## 2026-10-31 · Affection confirmation read: frozen c* above the plain Qwen image, below its teacher (fails); the ArtELingo CRL bars pass; next, c* trained on photos too, before the 11-10 freeze
+
+- **Read:** Affection test (8,501 photos, emotion, 5 seeds; c* frozen, heads trained on paintings only). c* minus the
+  plain Qwen image: AMI +0.0343 [+0.0298, +0.0387] WIN, mAP +0.0304 [+0.0293, +0.0315] WIN. c* minus the teacher
+  (instructed Qwen image, artwork wording picked on validation): AMI −0.0282 [−0.0333, −0.0233] BELOW (about 8 seed
+  ranges), mAP −0.0190 [−0.0205, −0.0176] BELOW (about 19). Verdict: fails. c* keeps 54.9% (AMI) and 61.5% (mAP) of
+  the teacher's gain over the plain image, against 103.4% in ArtELingo emotion retrieval. The ArtELingo clustering WIN
+  over the teacher does not repeat on photos. CRL bars: ArtELingo WIN on emotion, style and genre (bar set after r11's
+  descriptive held CRL numbers were seen); Affection LEVEL +0.0016 [−0.0001, +0.0032], no claim. Re-derivation: 0
+  mismatches.
+- **Meaning (C):** "I think above plain is good but lower than teacher is not quite okey." (user, before seeing
+  ours). Ours: c* transfers only in part; the gap is robust (every source, untied images, plain cosine, graded nDCG);
+  heads trained only on paintings could explain it, not tested; high confidence. Where they differ: ours read it as
+  partial transfer that the paper can report as it is, while the user sets the bar on photos at least level with the
+  teacher; ours put the retrain after the freeze, the user wants it now.
+- **Decided (A):** report 12-31's option 1, c* trained on photos too, now, before the 2026-11-10 freeze (user; the
+  option was the user's own pick, the timing "now" after seeing our changed recommendation); type incremental (agent
+  default), medium loop with step 3 skipped, since the literature note 12-30 is on file (user, after seeing the
+  recommendation). The planned large sweep moves to r14, after the freeze (agent default). Option 3, frozen c* on
+  PolyArt, waits for the user's link. Storage: the five deletes approved (user).
+- **Idea (B):** c* trained on Affection's train photos as well (user, own pick); the grill in the r13 decide chat sets
+  the details.
+- **Why:** the user does not accept c* below its teacher on photos; heads that never saw photos are the likely cause,
+  and a medium loop fits before the abstract (r12 took about 1.5 days from decide to report). The current c* and
+  report 12-31's wording stay the fallback.
+- **Links:** [report 12-31](../reports/auto/percept/2026-12-31_affection_confirmation.md) ·
+  [user-read report](../user_read/2026-10-31_affection_confirmation.md) ·
+  [r12 spec](specs/2026-10-30-affection-confirmation-design.md) · [handoff](handoffs/2026-10-31-r13-decide-handoff.md)
 
 ## 2026-10-30 · Retrieval round read: c* level with its teacher after validation-picked read-outs, far above the plain Qwen image; next, r12 on more datasets (confirmation) and a literature check on a signal beyond the teacher
 
