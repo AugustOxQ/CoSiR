@@ -154,3 +154,34 @@ the run handoff).
   `.scratch/r12-affection/build5/rereview_report.md`.
 - `r12-affection` merged into main (`fd6a4b5`) and pushed; `ac_queue.sh full --dry-run` from main lists 26 steps.
   Worktrees, branches and smoke folders are on `.scratch/pending_deletions.md`.
+
+## Run (2026-10-31, run chat "r12 run", night mode)
+
+- 00:56 GPU check: driver 595.99.02, GPU idle, no lock. `ac_queue.sh full --dry-run` from main (`989c2aa`): 26 steps.
+- 00:57 `ac_queue.sh full` started (background, main session). Outputs `/data/SSD2/cosir_r12/20261030_affection_confirmation/outputs`.
+- GPU steps (s): FI 1,553 (heavy, about 280 to 340 W; Saturday, no working-hours limit), `emotion_focus` 656,
+  `emotion_focus_photo` 652 (about 19.4 images/s on 12,752 images, twice the spec's assumed 10.2), CLIP L/14 92,
+  parity a 27, b 25, c 10, PercepT export 9 and check 6, CRL texts 10 and check 15. GPU in all about 51 minutes.
+- CPU steps (s): merge and swap 17, c* export 35, re-infer 12, Impressions export 3, stage 0a 1,215 (the three
+  replays), stage 0b 28, vh 0b 28, stage 1 306, vh 1 1,110, stage 2 184, vh 2 1,430.
+- Stage 0a: every gate passes (label counts and ties equal §3.4; 0a(i) old rows unchanged; 0a(ii)b min cosine 0.99921,
+  max abs diff 0.0080; 0a(iii) r10 block and r11 stages 4 and 5 replays max abs diff 0; the rest as in the build).
+- Stage 0b (`8ab72ce`, pushed 02:10): r_clu 0.003431, r_ret,mAP 0.001010, r_ret,nDCG 0.000344. vh 0b: 79 items, 0
+  mismatches.
+- Stage 1 (`2109864`, pushed 02:34): every Affection arm picks centering plus query expansion k = 10 except PercepT
+  core (centering, k = 0); teacher wording artwork for both tasks (AMI 0.1719 against 0.1629; cross-fit mAP 0.3044
+  against 0.2995); CRL version CLIP L/14 painting on both datasets (Affection 277.33 against 275.52, 275.49, 272.32;
+  ArtELingo 148.71 against 140.00, in units of r); ArtELingo Qwen CRL picks centering plus k = 10. vh 1: 636 items, 0
+  mismatches.
+- Stage 2: verdict **fails** (SC1, SC2 WIN; SC3, SC4 BELOW); the ArtELingo clustering WIN over the teacher repeats:
+  no. vh 2: 224 items, 0 mismatches.
+- Stage 3 (168 s): SC5 to SC7 WIN (ArtELingo CRL bar passes on emotion, style and genre; c*'s and CLIP CRL's held
+  mAPs equal r11's stage 5 values); SC8 LEVEL, so the Affection CRL bar fails (lower bound −0.09 r). vh 3 (1,585 s):
+  226 items, 0 mismatches.
+- Diagnostics (168 s) and stage 4 (8 s): `diag/diag.json`; the Impressions figure `stage4/impressions.png` (822 photo
+  IDs, 6 queries, 816 gallery; looked at by the controller: legible, c* and plain share many top-5 images).
+- 03:33 queue end: "All steps done (full): 28 run, 0 skipped", exit 0. Every C13 check passed, so every stage's
+  verdict counts. Wall time 2 h 36 min (the handoff estimated 5 to 8 h); GPU about 51 minutes, local, heavy.
+- Disk: outputs 0.7 GB on `/data/SSD2`; the Affection store is now 2.4 GB with FI. Listed on
+  `.scratch/pending_deletions.md`: `qwen3vl_emb_2b_pre_fi/` (1.8 GB, the store before FI) and `qwen3vl_emb_2b_fi/`
+  (626 MB, the FI-only extraction, merged into the store).
