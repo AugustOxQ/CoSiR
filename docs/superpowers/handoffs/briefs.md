@@ -1372,3 +1372,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-31-r12-run-handoff.md
 - New chat: tab 'r12 run', session 5a80a533-f230-4fac-bf4e-eba689817c70
 
+[brief] CoSiR: r12 run -> r12 run 2 (2026-10-31 03:42 Amsterdam)
+- Done: the r12 queue (all 28 steps, every C13 check agrees, 03:33) and auto report 12-31 (`354257c`).
+- State: Affection fails: c* beats the plain Qwen image (AMI +0.0343, mAP +0.0304, WIN) but is below its teacher (AMI −0.0282, mAP −0.0190, BELOW). The ArtELingo CRL bars pass; Affection CRL is LEVEL, no claim.
+- Next: the user-read report (draft, figure, two checks, one fix wave), then open "r13 decide" with `--new-loop`.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-10-31-r12-run-2-handoff.md
+- New chat: tab 'r12 run 2', session 7af6f746-5c59-4061-8229-9b4d21711852
+
