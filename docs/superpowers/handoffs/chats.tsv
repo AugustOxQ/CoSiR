@@ -198,3 +198,5 @@ opened	loop	label	session	opened from	first read
 2026-10-31 00:07	r12	r12 build 5	821f6960-ca57-4192-9e31-11e6aa0926f0	877a08b8-2b87-407d-ae98-84283a075758	docs/superpowers/handoffs/2026-10-31-r12-build-5-handoff.md
 2026-10-31 00:56	r12	r12 run	5a80a533-f230-4fac-bf4e-eba689817c70	821f6960-ca57-4192-9e31-11e6aa0926f0	docs/superpowers/handoffs/2026-10-31-r12-run-handoff.md
 2026-10-31 03:42	r12	r12 run 2	7af6f746-5c59-4061-8229-9b4d21711852	5a80a533-f230-4fac-bf4e-eba689817c70	docs/superpowers/handoffs/2026-10-31-r12-run-2-handoff.md
+2026-10-31 03:49	main	r13 main	c4f9f8d0-8e75-4aa6-8d71-dc2fd86fa5e9	7af6f746-5c59-4061-8229-9b4d21711852	../../root/.claude/templates/main_chat_start.md
+2026-10-31 03:49	r13	r13 decide	38810575-7ec5-48ca-88f0-feaecce1dc60	7af6f746-5c59-4061-8229-9b4d21711852	docs/superpowers/handoffs/2026-10-31-r13-decide-handoff.md

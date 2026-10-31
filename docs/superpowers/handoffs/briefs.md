@@ -1380,3 +1380,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-31-r12-run-2-handoff.md
 - New chat: tab 'r12 run 2', session 7af6f746-5c59-4061-8229-9b4d21711852
 
+[brief] CoSiR: r12 run 2 -> r13 decide (2026-10-31 03:49 Amsterdam)
+- Done: r12's reports: auto report 12-31 and the user-read report, both checked.
+- State: Affection fails: c* is above the plain Qwen image (AMI +0.0343, mAP +0.0304) but below its teacher (AMI −0.0282, mAP −0.0190). The ArtELingo CRL bars pass; Affection CRL is LEVEL, no claim.
+- Next: show the results brief without our reading, ask for the user's reading, then wrap up r12 and decide r13.
+- Blocked: nothing; PolyArt waits for the user's link.
+- Handoff: docs/superpowers/handoffs/2026-10-31-r13-decide-handoff.md
+- New chat: tab 'r13 decide', session 38810575-7ec5-48ca-88f0-feaecce1dc60
+
