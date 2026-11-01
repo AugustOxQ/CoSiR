@@ -198,7 +198,11 @@ def test_a_clearly_better_candidate_wins_every_bar(fake_r12, tmp_path):
     assert (e['comparator'], e['metric'], e['readout_c'], e['readout_t'], e['r']) == \
         ('crl_clip_painting', 'map', 'center+k10', 'center+k10', R['map'])
     assert e['point_t'] == pytest.approx(0.3) and e['d'] == pytest.approx(e['point_c'] - e['point_t'])
-    assert doc['sc']['SC1']['r'] == R['clu'] and doc['sc']['SC4']['r'] == R['map']
+    # the spec's section 6 table: (comparator, metric, r) of every SC
+    table = {'SC1': ('plain', 'ami', R['clu']), 'SC2': ('plain', 'map', R['map']),
+             'SC3': ('teacher_artwork', 'ami', R['clu']), 'SC4': ('teacher_artwork', 'map', R['map']),
+             'SC5': ('crl_clip_painting', 'map', R['map'])}
+    assert {k: (v['comparator'], v['metric'], v['r']) for k, v in doc['sc'].items()} == table
 
 
 def test_a_clearly_worse_candidate_is_below_and_fails(fake_r12, tmp_path):
