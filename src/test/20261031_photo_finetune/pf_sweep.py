@@ -129,6 +129,7 @@ def sheet(rows):
     settings come from `row9` and must match the entry given; when `row9` says skipped there must be no row 9 entry
     (the sheet records it as `skipped`, scores null). Row 1 failed: RuntimeError."""
     assert rows[0]['status'] == REFERENCE and all(n in rows for n in range(1, 9)), sorted(rows)
+    assert all(rows[n]['settings'] == P.GRID[n] for n in range(1, 9)), 'sweep settings differ from grid'
     settings9, skipped, equals = row9(rows)
     if skipped:
         assert 9 not in rows, 'row 9 equals an earlier row and must not be run'
@@ -164,7 +165,8 @@ def gate_ii_sweep(seeds=P.SEEDS, out=None, workers=8):
     """Gate (ii), the sweep-score part: frozen c*'s r12 validation exports (`ac_data.stored('cstar', 'val', s)`) go
     through `score`; seed 0's AMI must equal FROZEN_AMI_S0 and the mean mAP of the five seeds CSTAR_MAP_5SEED, each
     within 1e-9. Writes `OUTPUTS/stage0a/sweep_replay.json` (or `out`) and returns the record. `seeds` may be cut
-    to a subset for a plumbing check (the record is then incomplete and not ok)."""
+    to a subset containing seed 0 for a plumbing check (the record is then incomplete and not ok)."""
+    assert 0 in seeds, 'sweep replay requires seed 0'
     t0 = time.time()
     per_seed = {s: score(ac_data.stored('cstar', 'val', s), workers=workers) for s in seeds}
     res = replay_check(per_seed)
