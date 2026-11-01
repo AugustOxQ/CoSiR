@@ -101,7 +101,7 @@ def build(k, correction, fit, val):
 
 
 def load(k, correction, fit_keys, val_keys):
-    """Verify provenance; return fit_pairs, dev_pairs, manifest, and directory path.
+    """Verify provenance; return pairs, manifest, manifest_sha256, directory path.
 
     Endpoints are local to the corresponding supplied key list. Unit edge weights
     are implicit; callers can batch these arrays directly.
@@ -119,7 +119,7 @@ def load(k, correction, fit_keys, val_keys):
     for side, keys in (('fit', fit_keys), ('dev', val_keys)):
         _check_pairs(arrays[f'{side}_pairs'], len(keys))
         assert len(arrays[f'{side}_pairs']) == manifest['counts'][side], 'graph count mismatch'
-    return dict(arrays, manifest=manifest, path=folder)
+    return dict(arrays, manifest=manifest, manifest_sha256=ags.sha_file(folder / 'manifest.json'), path=folder)
 
 
 def _replay_inputs(mode):

@@ -8,8 +8,10 @@ k. Fit and validation graphs use independent node sets.
 
 `build` takes dictionaries containing `keys`, `E`, `D`, `I` (extra fields such as
 `T` are ignored). `load` returns a dictionary with `fit_pairs`, `dev_pairs`,
-`manifest`, and `path`. The index did not prescribe that return type: this is an
-interface inference. Manifest `counts` uses `fit` and `dev`; `pairs_sha256` hashes
+`manifest`, `manifest_sha256`, and `path`. The index did not prescribe that return
+type: this is an interface inference. `manifest_sha256` supplies the trainer's
+graph provenance field (confirmed after merging ticket 05). Manifest `counts`
+uses `fit` and `dev`; `pairs_sha256` hashes
 the `emotion.npz` file bytes; key hashes use the frozen newline-joined convention.
 Loads verify keys/order, settings, code, archive hash, array structure, and counts.
 

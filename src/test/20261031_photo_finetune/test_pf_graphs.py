@@ -64,6 +64,7 @@ def test_build_and_load_independent_fit_and_validation(output_root, correction):
             np.testing.assert_array_equal(archive[f'{side}_pairs'], graph[f'{side}_pairs'])
     manifest = json.loads((path / 'manifest.json').read_text())
     assert graph['manifest'] == manifest and graph['path'] == path
+    assert graph['manifest_sha256'] == rs_graphs.ags.sha_file(path / 'manifest.json')
     assert manifest['k'] == 3 and manifest['correction'] == correction
     assert manifest['fit_keys_sha256'] == hashlib.sha256('\n'.join(fit['keys']).encode()).hexdigest()
     assert manifest['val_keys_sha256'] == hashlib.sha256('\n'.join(val['keys']).encode()).hexdigest()
