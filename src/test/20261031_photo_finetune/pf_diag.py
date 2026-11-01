@@ -50,11 +50,15 @@ def _read(path):
 
 # ---- (a), (b): R0 rows and graded nDCG ---------------------------------------------------------------------------------
 
-def r0_row(test_embed, labels, dist, workers=8):
-    """Plain-cosine rows of a seeded arm: float32 unit [5, n, d] -> {'map_r0': {'map', 'per_seed'}, 'ndcg_r0': {'mean',
-    'per_seed'}} (`rt_metrics.retrieval` with qe_k = 0, `rt_metrics.graded`)."""
-    maps = [_f(rt_metrics.retrieval(np.ascontiguousarray(test_embed[s]), labels, qe_k=0, workers=workers)['ap'].mean())
-            for s in range(len(test_embed))]
+def r0_row(val_embed, test_embed, labels, dist, workers=8):
+    """Plain-cosine rows of a seeded arm: float32 unit [5, nv|n, d] -> {'map_r0': {'map', 'per_seed'}, 'ndcg_r0':
+    {'mean', 'per_seed'}}. mAP through the R0 read-out `none+k0` (`ac_stats.arm_retrieval`), the path of the verdict
+    rows and of r12's R0 rows: its re-normalization moves rows by about 1e-8, which shifts mAP by a few 1e-9 against a
+    bare `rt_metrics.retrieval(qe_k=0)` (smoke 1, 2026-11-01). nDCG on the raw rows, as r12's `ac_diag._ndcg(ro=None)`."""
+    res = ac_stats.arm_retrieval(lambda s: val_embed[s], lambda s: test_embed[s], 'none+k0', labels, seeds=SEEDS,
+                                 workers=workers)
+    assert res['dropped'] == 0, ('R0 queries without a relevant item', res['dropped'])
+    maps = [_f(m) for m in res['per_seed']]
     nd = [_f(rt_metrics.graded(np.ascontiguousarray(test_embed[s]), dist, workers=workers).mean()) for s in range(len(test_embed))]
     return dict(map_r0=dict(map=_f(np.mean(maps)), per_seed=maps), ndcg_r0=dict(mean=_f(np.mean(nd)), per_seed=nd))
 
@@ -298,7 +302,7 @@ def main(workers=8):
         edge_plurality_share='validation graph of the row\'s (k, correction); plurality = ac_data.labels(val); chance = '
                              'share for random pairs'))
     # (a) R0 rows
-    mine = r0_row(cand.test_embed, labels, dist, workers)
+    mine = r0_row(cand.val_embed, cand.test_embed, labels, dist, workers)
     assert abs(mine['map_r0']['map'] - rows[PHOTO]['map_r0']['map']) < 1e-9, 'R0 mAP differs from the verdict row'
     assert abs(mine['ndcg_r0']['mean'] - rows[PHOTO]['ndcg_r0']) < 1e-9, 'R0 nDCG differs from the verdict row'
     carried = {arm: r for arm, r in r12diag['r0_rows'].items() if arm in ('cstar', 'plain', teacher, crl)}
