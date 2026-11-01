@@ -185,3 +185,36 @@ def test_gate_iv_real_data(output_root):
     """Controller only: all three r10 emotion graphs, fit and dev, on CPU."""
     report = pf_graphs.gate_iv()
     assert report['ok'], report
+
+
+def test_sd_draws_once_with_node_count(monkeypatch):
+    from unittest.mock import Mock
+    draw = Mock(wraps=pf_graphs.ags.draw_pairs)
+    monkeypatch.setattr(pf_graphs.ags, 'draw_pairs', draw)
+    x = spaces(37)
+    pf_graphs.emotion_pairs(x['E'], x['D'], x['I'], 3, True)
+    draw.assert_called_once_with(37)
+
+
+@pytest.mark.parametrize('bad', ['overlap', 'length', 'k', 'correction', 'archive'])
+def test_graph_boundaries_refuse_inconsistent_inputs(output_root, bad):
+    fit, val = photos(17, 'train', 7), photos(13, 'val', 11)
+    if bad in ('overlap', 'length'):
+        if bad == 'overlap':
+            val['keys'][0] = fit['keys'][0]
+        else:
+            fit['keys'] = fit['keys'][:-1]
+        with pytest.raises(AssertionError): pf_graphs.build(3, False, fit, val)
+        return
+    folder = pf_graphs.build(3, False, fit, val)
+    marker = folder / 'manifest.json'
+    manifest = json.loads(marker.read_text())
+    if bad == 'archive':
+        with np.load(folder / 'emotion.npz') as archive:
+            arrays = {key: archive[key] for key in archive.files}
+        np.savez(folder / 'emotion.npz', **arrays, extra=np.zeros(1))
+        manifest['pairs_sha256'] = pf_graphs.ags.sha_file(folder / 'emotion.npz')
+    else:
+        manifest[bad] = 4 if bad == 'k' else True
+    marker.write_text(json.dumps(manifest))
+    with pytest.raises(AssertionError): pf_graphs.load(3, False, fit['keys'], val['keys'])
