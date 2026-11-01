@@ -1,0 +1,14 @@
+n best>= 0.8 4509
+n best>= 0.85 2328
+n best>= 0.9 1369
+nan 0
+0.8-0.85: n=273 pixcopy(>0.95)=0 (>0.9)=1
+0.85-0.9: n=127 pixcopy(>0.95)=5 (>0.9)=6
+0.9-0.93: n=395 pixcopy(>0.95)=143 (>0.9)=147
+0.93-0.95: n=437 pixcopy(>0.95)=325 (>0.9)=325
+0.95-0.97: n=461 pixcopy(>0.95)=393 (>0.9)=398
+0.97-0.98: n=52 pixcopy(>0.95)=40 (>0.9)=42
+0.98-1.01: n=24 pixcopy(>0.95)=22 (>0.9)=22
+pixel copies with best>=0.90: 923
+by source pair [(('emotio', 'you_aa'), 476), (('you_aa', 'emotio'), 401), (('you_aa', 'you_aa'), 13), (('emotio', 'emotio'), 12), (('visual', 'visual'), 7), (('flickr', 'coco_a'), 6), (('coco_a', 'coco_a'), 4), (('coco_a', 'flickr'), 2), (('coco_a', 'emotio'), 2)]
+min qwen cos among pixel copies 0.8896981

@@ -1,6 +1,6 @@
 # c* fine-tuned on Affection's unlabeled train photos, tested against its teacher on held photos: design
 
-> Date: 2026-10-31 15:40 · Status: draft · Kind: experiment
+> Date: 2026-10-31 15:40 · Status: approved 2026-11-01 15:33 (from the brief, r13 decide 2; no container restart) · Kind: experiment
 > Builds on: [report 12-31](../../reports/auto/percept/2026-12-31_affection_confirmation.md) (frozen c* on Affection:
 > above the plain image, below its teacher; fails); the grill in the r13 decide chat (2026-10-31, two rounds, ending
 > about 15:20; its answers are §4) · Constitution: [constitution.md](../constitution.md)
@@ -39,7 +39,7 @@ goes to the test. We expect a WIN over the plain image and a much smaller gap to
 likely, fails is possible.
 
 **Cost.** About 1.5 h of heavy GPU for the extraction, then about 1.2 h of light GPU for training, all local; CPU about
-2 h. Build tonight; run on Sunday 2026-11-01 (no working-hours limit); the report about Monday 11-02, at the latest
+2 h. Build on Sunday 2026-11-01, run that night (ending before 11:00 on Monday); the report about Monday 11-02, at the latest
 2026-11-03 23:00.
 
 **Check these.**
@@ -319,7 +319,7 @@ Exceptions: none.
   near-copy rule, the graph builder, the sweep score and pick, and the outcome code as verdict code; the C13
   re-derivation by Codex; the final whole-branch review.
 - Stop points: none between approval and the reports. Time-box: the report by 2026-11-03 23:00.
-- Budget: heavy GPU about 1.5 h, local, under the lock, on Sunday 2026-11-01 (a weekend day): 72,255 instructed images
+- Budget: heavy GPU about 1.5 h, local, under the lock, in the night of Sunday 2026-11-01 to Monday, ending by 11:00: 72,255 instructed images
   at the measured 19.4 images/s (about 62 min) and about 448,000 train and 26,371 validation instructed explanations
   (about 26 min, not checked). Light GPU about 1.2 h: the graphs, 9 sweep rows and 5 fresh runs. CPU about 2 h at 8 threads (the protocol and its
   checks). No DAS6. Disk: about 0.3 GB of images and about 1.9 GB of explanation vectors (float16) on SSD2.

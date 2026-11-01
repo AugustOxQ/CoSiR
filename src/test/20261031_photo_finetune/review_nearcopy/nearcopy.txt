@@ -1,0 +1,27 @@
+norm min max 0.99975514 1.0002439
+secs 4.512061834335327
+th 0.9 n 1369
+th 0.95 n 537
+th 0.97 n 76
+th 0.98 n 24
+th 0.99 n 9
+th 0.995 n 3
+th 0.999 n 0
+>=0.98 pairs [((np.str_('you_aaai_affective'), np.str_('you_aaai_affective'), np.str_('val')), 6), ((np.str_('emotional_machines_affective'), np.str_('emotional_machines_affective'), np.str_('test')), 3), ((np.str_('emotional_machines_affective'), np.str_('you_aaai_affective'), np.str_('val')), 2), ((np.str_('emotional_machines_affective'), np.str_('emotional_machines_affective'), np.str_('val')), 2), ((np.str_('visual_genome_affective'), np.str_('visual_genome_affective'), np.str_('test')), 2), ((np.str_('you_aaai_affective'), np.str_('you_aaai_affective'), np.str_('test')), 2), ((np.str_('you_aaai_affective'), np.str_('emotional_machines_affective'), np.str_('val')), 2), ((np.str_('you_aaai_affective'), np.str_('emotional_machines_affective'), np.str_('test')), 2), ((np.str_('coco_affective'), np.str_('coco_affective'), np.str_('test')), 1), ((np.str_('coco_affective'), np.str_('coco_affective'), np.str_('val')), 1), ((np.str_('emotional_machines_affective'), np.str_('you_aaai_affective'), np.str_('test')), 1)]
+0.95-0.98 pairs [((np.str_('emotional_machines_affective'), np.str_('you_aaai_affective')), 231), ((np.str_('you_aaai_affective'), np.str_('emotional_machines_affective')), 187), ((np.str_('emotional_machines_affective'), np.str_('emotional_machines_affective')), 45), ((np.str_('you_aaai_affective'), np.str_('you_aaai_affective')), 30), ((np.str_('coco_affective'), np.str_('coco_affective')), 9), ((np.str_('visual_genome_affective'), np.str_('visual_genome_affective')), 7), ((np.str_('coco_affective'), np.str_('visual_genome_affective')), 2), ((np.str_('coco_affective'), np.str_('emotional_machines_affective')), 1), ((np.str_('flickr30k_affective'), np.str_('coco_affective')), 1)]
+[(np.float64(0.9), np.int64(61)), (np.float64(0.905), np.int64(58)), (np.float64(0.91), np.int64(63)), (np.float64(0.915), np.int64(60)), (np.float64(0.92), np.int64(72)), (np.float64(0.925), np.int64(81)), (np.float64(0.93), np.int64(98)), (np.float64(0.935), np.int64(90)), (np.float64(0.94), np.int64(109)), (np.float64(0.945), np.int64(140)), (np.float64(0.95), np.int64(119)), (np.float64(0.955), np.int64(127)), (np.float64(0.96), np.int64(122)), (np.float64(0.965), np.int64(93)), (np.float64(0.97), np.int64(39)), (np.float64(0.975), np.int64(13)), (np.float64(0.98), np.int64(10)), (np.float64(0.985), np.int64(5)), (np.float64(0.99), np.int64(6)), (np.float64(0.995), np.int64(3))]
+0.9707 coco_affective COCO_train2014_000000032639.jpg | coco_affective COCO_train2014_000000409623.jpg test
+0.9554 coco_affective COCO_train2014_000000261043.jpg | visual_genome_affective 2354012.jpg test
+0.9523 coco_affective COCO_val2014_000000139281.jpg | coco_affective COCO_val2014_000000439326.jpg test
+0.9597 coco_affective COCO_val2014_000000174371.jpg | coco_affective COCO_train2014_000000336231.jpg test
+0.9528 coco_affective COCO_val2014_000000415073.jpg | emotional_machines_affective 1622.jpg test
+0.9571 coco_affective COCO_val2014_000000551650.jpg | coco_affective COCO_train2014_000000503779.jpg test
+0.955 coco_affective COCO_val2014_000000527054.jpg | coco_affective COCO_val2014_000000401446.jpg val
+0.9748 coco_affective COCO_train2014_000000460761.jpg | coco_affective COCO_train2014_000000479120.jpg val
+0.9527 coco_affective COCO_train2014_000000328295.jpg | visual_genome_affective 2354012.jpg test
+0.9649 coco_affective COCO_val2014_000000190756.jpg | coco_affective COCO_val2014_000000522198.jpg test
+0.9656 coco_affective COCO_train2014_000000333066.jpg | coco_affective COCO_train2014_000000280191.jpg test
+0.9785 coco_affective COCO_train2014_000000401557.jpg | coco_affective COCO_train2014_000000056636.jpg val
+0.9514 flickr30k_affective 435054077.jpg | coco_affective COCO_train2014_000000499451.jpg val
+0.9608 emotional_machines_affective 9758.jpg | you_aaai_affective awe_2145.jpg test
+0.9537 emotional_machines_affective 9599.jpg | you_aaai_affective awe_1914.jpg test

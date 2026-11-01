@@ -74,7 +74,8 @@ fallback; the large sweep moves to r14, after the freeze; PolyArt waits for the 
   recommendation); r12's bar unchanged, LEVEL in the new model's own seed range (B1, user); a 9-row sweep on Affection
   validation, seed 0 (C2, user; the grid ours, approved); the pick by the weaker teacher gap in c*'s r12 seed ranges
   (D2, user); a failure is reported as it is, with no second sweep row on the test (user). No plan page (user). Spec:
-  [2026-10-31-photo-finetune-design.md](specs/2026-10-31-photo-finetune-design.md), draft, rule review next.
+  [2026-10-31-photo-finetune-design.md](specs/2026-10-31-photo-finetune-design.md), rule-reviewed (Opus `xhigh`; the
+  near-copy cut moved from 0.98 to 0.85) and approved from the brief 2026-11-01 15:33 (user); build next.
 - **Why:** the user does not accept c* below its teacher on photos; heads that never saw photos are the likely cause,
   and a medium loop fits before the abstract (r12 took about 1.5 days from decide to report). The current c* and
   report 12-31's wording stay the fallback.
