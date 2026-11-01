@@ -1,0 +1,183 @@
+{
+ "rows": {
+  "0": {
+   "settings": null,
+   "changed": null,
+   "status": "reference",
+   "ami": 0.14268969071601648,
+   "map": 0.285559489135791,
+   "g_clu": -8.513777900616624,
+   "g_map": -18.645605131578616,
+   "score": -18.645605131578616
+  },
+  "1": {
+   "settings": {
+    "start": "cstar",
+    "lr": 0.001,
+    "k": 40,
+    "correction": true,
+    "teacher_weight": 0.25
+   },
+   "changed": 0,
+   "status": "ok",
+   "ami": 0.17686408425655642,
+   "map": 0.32271956383188477,
+   "g_clu": 1.447305710205791,
+   "g_map": 18.134772708690793,
+   "score": 1.447305710205791
+  },
+  "2": {
+   "settings": {
+    "start": "cstar",
+    "lr": 0.0003,
+    "k": 40,
+    "correction": true,
+    "teacher_weight": 0.25
+   },
+   "changed": 1,
+   "status": "ok",
+   "ami": 0.18730731009338322,
+   "map": 0.3225315306341513,
+   "g_clu": 4.491276208290278,
+   "g_map": 17.948660809947,
+   "score": 4.491276208290278
+  },
+  "3": {
+   "settings": {
+    "start": "cstar",
+    "lr": 0.0001,
+    "k": 40,
+    "correction": true,
+    "teacher_weight": 0.25
+   },
+   "changed": 1,
+   "status": "ok",
+   "ami": 0.18407712628825648,
+   "map": 0.3240419957730603,
+   "g_clu": 3.549748718621076,
+   "g_map": 19.443692210663436,
+   "score": 3.549748718621076
+  },
+  "4": {
+   "settings": {
+    "start": "cstar",
+    "lr": 0.001,
+    "k": 20,
+    "correction": true,
+    "teacher_weight": 0.25
+   },
+   "changed": 1,
+   "status": "ok",
+   "ami": 0.18574848610460534,
+   "map": 0.3171086159339134,
+   "g_clu": 4.036913321986171,
+   "g_map": 12.581156753469179,
+   "score": 4.036913321986171
+  },
+  "5": {
+   "settings": {
+    "start": "cstar",
+    "lr": 0.001,
+    "k": 80,
+    "correction": true,
+    "teacher_weight": 0.25
+   },
+   "changed": 1,
+   "status": "ok",
+   "ami": 0.19048224756359675,
+   "map": 0.3280086851678208,
+   "g_clu": 5.41670060718746,
+   "g_map": 23.36985048422622,
+   "score": 5.41670060718746
+  },
+  "6": {
+   "settings": {
+    "start": "cstar",
+    "lr": 0.001,
+    "k": 40,
+    "correction": false,
+    "teacher_weight": 0.25
+   },
+   "changed": 1,
+   "status": "ok",
+   "ami": 0.15702809162082512,
+   "map": 0.29322707031816053,
+   "g_clu": -4.334449594794284,
+   "g_map": -11.056370305897905,
+   "score": -11.056370305897905
+  },
+  "7": {
+   "settings": {
+    "start": "cstar",
+    "lr": 0.001,
+    "k": 40,
+    "correction": true,
+    "teacher_weight": 1.0
+   },
+   "changed": 1,
+   "status": "ok",
+   "ami": 0.18055580664353246,
+   "map": 0.31465564269932167,
+   "g_clu": 2.523361538994384,
+   "g_map": 10.153247683366189,
+   "score": 2.523361538994384
+  },
+  "8": {
+   "settings": {
+    "start": "random",
+    "lr": 0.001,
+    "k": 40,
+    "correction": true,
+    "teacher_weight": 0.25
+   },
+   "changed": 1,
+   "status": "ok",
+   "ami": 0.180132715371226,
+   "map": 0.3227300856505656,
+   "g_clu": 2.400039744462624,
+   "g_map": 18.145187016783893,
+   "score": 2.400039744462624
+  },
+  "9": {
+   "settings": {
+    "start": "cstar",
+    "lr": 0.0003,
+    "k": 80,
+    "correction": true,
+    "teacher_weight": 1.0
+   },
+   "changed": 3,
+   "status": "ok",
+   "ami": 0.18366516534423316,
+   "map": 0.3166931726517838,
+   "g_clu": 3.4296711698288296,
+   "g_map": 12.16995841727388,
+   "score": 3.4296711698288296
+  }
+ },
+ "row9": {
+  "settings": {
+   "start": "cstar",
+   "lr": 0.0003,
+   "k": 80,
+   "correction": true,
+   "teacher_weight": 1.0
+  },
+  "skipped": false,
+  "equals": null
+ },
+ "pick": {
+  "row": 5,
+  "settings": {
+   "start": "cstar",
+   "lr": 0.001,
+   "k": 80,
+   "correction": true,
+   "teacher_weight": 0.25
+  },
+  "best_score": 5.41670060718746,
+  "tied_rows": [
+   5
+  ]
+ }
+}
