@@ -175,7 +175,7 @@ def test_pick_ignores_failed_rows_and_skipped_row_9():
 
 def test_pick_never_takes_row_0():
     rows = rows_with([-1.0, -5, -5, -5, -5, -5, -5, -5])
-    rows[0] = {'settings': None, 'status': 'reference', 'score': 100.0}
+    rows[0] = {'settings': GRID[1], 'status': 'ok', 'score': 100.0}
     assert pf_sweep.pick(rows)['row'] == 1
 
 
@@ -348,3 +348,27 @@ def test_gate_ii_sweep_replays_frozen_cstar_through_the_sweep_score():
     assert res['complete'] and res['ok'], res
     assert abs(res['ami_diff']) <= P.TOL['ii'] and abs(res['map_diff']) <= P.TOL['ii']
     assert (P.OUTPUTS / 'stage0a' / 'sweep_replay.json').exists()
+
+
+@pytest.mark.parametrize('bad', ['reference', 'missing', 'skipped', 'status', 'settings'])
+def test_sheet_refuses_invalid_rows(bad):
+    rows = full_rows([0.0, 1.0, 0.5, -1, -1, -1, -1, 0.2])
+    if bad == 'reference':
+        rows[0]['status'] = 'ok'
+    elif bad == 'missing':
+        rows.pop(3)
+    elif bad == 'skipped':
+        rows[9] = pf_sweep.entry(GRID[2], 'ok', scores_for(2.0))
+    elif bad == 'status':
+        rows = full_rows([0.0, 1.0, 2.0, -1, 0.5, -1, 0.7, -9])
+        rows[9] = pf_sweep.entry(pf_sweep.row9(rows)[0], 'skipped')
+    else:
+        rows[3]['settings'] = dict(GRID[3], lr=0.0002)
+    with pytest.raises(AssertionError): pf_sweep.sheet(rows)
+
+
+def test_gate_sweep_refuses_seeds_without_zero(tmp_path, monkeypatch):
+    monkeypatch.setattr(pf_sweep.ac_data, 'stored', lambda *a, **kw: None)
+    monkeypatch.setattr(pf_sweep, 'score', lambda *a, **kw: {'ami': 0.1, 'map': 0.2})
+    with pytest.raises(AssertionError, match='requires seed 0'):
+        pf_sweep.gate_ii_sweep(seeds=(1,), out=tmp_path / 'replay.json')

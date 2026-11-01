@@ -73,6 +73,7 @@ def compute(train_keys, train, held_keys, held_split, held, *, cut=pf_paths.NEAR
 def run():
     """Compute the near-copy record on the default store and write NEARCOPY_FILE and OUTPUTS/stage0a/nearcopy.json.
 
+    Held rows are ordered val then test: ties go to val.
     Reads images only (joined by key through `pf_data.default_images`), never labels. Returns the record.
     """
     started = time.time()

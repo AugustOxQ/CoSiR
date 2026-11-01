@@ -197,3 +197,19 @@ def test_within_train_count_does_not_depend_on_the_block(block):
     want, _ = compute(train, held, held_split=split, cut=0.8, block=10 ** 6)
     got, _ = compute(train, held, held_split=split, cut=0.8, block=block)
     assert 0 < got['within_train_copies'] < len(train) and got['within_train_copies'] == want['within_train_copies']
+
+
+def test_within_train_cut_is_inclusive():
+    rec, _ = compute([[1, 0, 0, 0], [1, 1, 1, 1]], [[0, 0, 0, 1]], cut=0.5)
+    assert rec['within_train_copies'] == 2
+
+
+def test_within_train_uses_the_requested_cut():
+    # The only pair has cosine 0.82: above 0.8, below the default 0.85.
+    rec, _ = compute([[1, 0, 0], [0.82, np.sqrt(1 - 0.82 ** 2), 0], [0, 0, 1]], [[0, -1, 0]], cut=0.8)
+    assert rec['within_train_copies'] == 2
+
+
+def test_train_keys_must_be_unique():
+    with pytest.raises(AssertionError, match='keys must be distinct'):
+        compute([[1, 0], [0, 1]], [[-1, 0]], train_keys=['s/same', 's/same'])

@@ -243,6 +243,39 @@ def test_gate_writes_failures_for_each_range_and_readout_field(tmp_path, monkeyp
             assert result['items'][f'readout.{name}.{field}']['ok'] is False
     assert result['items']['readout.none+k0.kept']['ok'] is False
 
+    # From matching references, corrupt one field at a time. Reuse the measured
+    # tables here so these checks isolate the gate comparison, not scoring.
+    import copy
+    measured = pf_stage2.ranges(raw.__getitem__, unit.__getitem__, labels=labels, dist=dist, workers=1)
+    selected = pf_stage2.readout(unit, reference['map']['r'], labels=labels, workers=1)
+    monkeypatch.setattr(pf_stage2, 'ranges', lambda *a, **kw: measured)
+    monkeypatch.setattr(pf_stage2, 'readout', lambda *a, **kw: selected)
+    for bad in (None, 'pick', 'extra', 'missing', 'tolerance'):
+        ref_ranges, ref_scores = copy.deepcopy(measured), copy.deepcopy(selected['scores'])
+        ref_pick = selected['pick']
+        if bad == 'pick':
+            ref_pick = 'none+k0' if ref_pick != 'none+k0' else 'center+k10'
+        elif bad == 'extra':
+            ref_scores['unexpected+k0'] = ref_scores['none+k0']
+        elif bad == 'missing':
+            ref_scores.pop('none+k0')
+        elif bad == 'tolerance':
+            ref_ranges['clu']['per_seed'][0] += 1e-6
+            values = ref_ranges['clu']['per_seed']
+            ref_ranges['clu']['r'] = max(values) - min(values)
+        for path, doc in (
+            ('stage0b/ranges.json', ref_ranges),
+            ('stage1/scores.json', {'readout': {'affection': {'cstar': ref_scores}}}),
+            ('stage1/picks.json', {'affection': {'readout': {'cstar': ref_pick}}}),
+        ):
+            (pf_paths.R12_OUT / path).write_text(json.dumps(doc))
+        check = pf_stage2.gate_ii_stage2(workers=1)
+        assert check['ok'] == (bad is None), bad
+        if bad is not None:
+            field = {'pick': 'readout.pick', 'extra': 'readout.names', 'missing': 'readout.names',
+                     'tolerance': 'ranges.clu.per_seed.0'}[bad]
+            assert check['items'][field]['ok'] is False, bad
+
 
 @pytest.mark.slow
 @pytest.mark.real_data
@@ -256,3 +289,80 @@ def test_gate_ii_stage2(tmp_path, monkeypatch):
     assert result['ok'], {k: v for k, v in result['items'].items() if not v['ok']}
     assert result['items']['readout.pick']['value'] == 'center+k10'
     assert sum(k.endswith('.map.emotion') for k in result['items']) == 25
+
+
+@pytest.mark.parametrize('bad', ['finite', 'label_low', 'label_high', 'label_dtype', 'dtype', 'shape'])
+def test_array_guards_refuse_invalid_runs(bad, monkeypatch):
+    import pf_stage2
+    _, unit, labels, _ = synthetic()
+    if bad == 'finite':
+        unit[0][0, 0] = np.nan
+        # Isolate finiteness from the independent norm guard.
+        monkeypatch.setattr(np.linalg, 'norm', lambda x, axis: np.ones(len(x)))
+    elif bad == 'label_low':
+        labels[0] = -1
+    elif bad == 'label_high':
+        labels[0] = len(pf_paths.EMOTIONS)
+    elif bad == 'label_dtype':
+        labels = labels.astype(np.int32)
+    elif bad == 'dtype':
+        unit[0] = unit[0].astype(np.float64)
+    else:
+        unit[0] = np.pad(unit[0], ((0, 0), (0, 1)))  # still unit; only the width differs
+    with pytest.raises(AssertionError): pf_stage2._check_arrays(unit, labels, np.float32)
+
+
+@pytest.mark.parametrize('bad', ['shape', 'dist_dtype', 'negative', 'sums'])
+def test_ranges_refuse_inconsistent_inputs(bad, monkeypatch):
+    import pf_stage2
+    raw, unit, labels, dist = synthetic()
+    # This boundary test must not rely on frozen measurement guards catching it later.
+    monkeypatch.setattr(pf_stage2.ac_stats, 'measure_seed_ranges', lambda *a, **kw: {})
+    if bad == 'shape':
+        unit = {s: np.pad(x, ((0, 0), (0, 1))) for s, x in unit.items()}
+    elif bad == 'dist_dtype':
+        dist = dist.astype(np.float32)
+    elif bad == 'negative':
+        dist[0, :2] = [-0.1, 1.1]  # sum stays one
+    else:
+        dist[0] *= 0.5
+    with pytest.raises(AssertionError):
+        pf_stage2.ranges(raw.__getitem__, unit.__getitem__, labels=labels, dist=dist)
+
+
+def test_readout_checks_default_validation_keys(monkeypatch):
+    import ac_data
+    import pf_stage2
+    _, unit, labels, _ = synthetic()
+    monkeypatch.setattr(ac_data, 'labels', lambda split: labels)
+    monkeypatch.setattr(ac_data, 'keys', lambda split: ['same/key'] * len(labels))
+    monkeypatch.setattr(pf_stage2.ac_select, 'arm_table', lambda *a, **kw: ({}, pf_stage2.ac_select.R0))
+    with pytest.raises(AssertionError, match='unique key'): pf_stage2.readout(unit, 0.01)
+
+
+@pytest.mark.parametrize('bad', ['r12_ranges', 'default_r12_ranges', 'keys', 'pick'])
+def test_record_refuses_inconsistent_fields(bad, tmp_path, monkeypatch):
+    import copy
+    import pf_stage2
+    import rt_readout
+    measured = {m: {'per_seed': [0.1, 0.2, 0.3, 0.4, 0.5], 'r': 0.4} for m in ('clu', 'map', 'ndcg')}
+    frozen = copy.deepcopy(measured)
+    scores = {rt_readout.name(ro): {'map': {'emotion': 0.25}, 'score': 0.0, 'kept': True}
+              for ro in rt_readout.menu(2048)}
+    selected = {'pick': 'none+k0', 'scores': scores}
+    if bad == 'r12_ranges':
+        frozen['map']['r'] = 0.3
+    elif bad == 'default_r12_ranges':
+        frozen['map']['r'] = 0.3
+        monkeypatch.setattr(pf_paths, 'R12_OUT', tmp_path)
+        path = tmp_path / 'stage0b/ranges.json'
+        path.parent.mkdir()
+        path.write_text(json.dumps(frozen))
+        frozen = None
+    elif bad == 'keys':
+        selected['extra'] = True
+    else:
+        selected['pick'] = 'whiten1+k0'  # valid read-out, absent from this width's menu
+        # Isolate the record's membership guard from the separate table-score check.
+        monkeypatch.setattr(pf_stage2.ac_select, '_check_table', lambda *a, **kw: None)
+    with pytest.raises(AssertionError): pf_stage2.record(measured, selected, r12_ranges=frozen)
