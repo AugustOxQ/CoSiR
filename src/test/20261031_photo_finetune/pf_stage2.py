@@ -75,11 +75,12 @@ def readout(xs_val, r_map, *, labels=None, keys=None, workers=8):
     return {'pick': rt_readout.name(pick), 'scores': table}
 
 
-def record(seed_ranges, selected_readout, *, r12_ranges=None):
+def record(seed_ranges, selected_readout, *, r12_ranges=None, width=2048):
     """Build the shared stage-2 record, unrounded; ticket 10 writes/commits it.
 
     selected_readout is readout()'s result. The default comparison ranges are
-    read from frozen r12; an explicit document supports isolated tests.
+    read from frozen r12; an explicit document supports isolated tests. Require
+    the full menu at width (2048 for photo exports) and scores/pick at this r'_mAP.
     """
     if r12_ranges is None:
         r12_ranges = ac_stats.load_ranges(pf_paths.R12_OUT / 'stage0b/ranges.json')
@@ -89,6 +90,10 @@ def record(seed_ranges, selected_readout, *, r12_ranges=None):
         assert doc == checked, 'ranges must equal the unrounded max minus min over five runs'
     assert set(selected_readout) == {'pick', 'scores'}
     assert selected_readout['pick'] in selected_readout['scores']
+    sc = selected_readout['scores']
+    assert list(sc) == [rt_readout.name(x) for x in rt_readout.menu(width)]
+    ac_select._check_table(sc, {'emotion': seed_ranges['map']['r']}, ('emotion',),
+                           pick=ac_select.readout_from_name(selected_readout['pick']))
     return json.loads(json.dumps({'ranges': seed_ranges, 'r12_ranges': r12_ranges,
                                   'readout': selected_readout}, allow_nan=False))
 

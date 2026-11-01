@@ -49,6 +49,30 @@ def test_ranges_measure_five_runs_and_keep_each_unrounded_spread():
     np.testing.assert_allclose(result['map']['per_seed'], expected, atol=1e-14, rtol=0)
 
 
+def test_ranges_cluster_stored_rows_and_retrieve_embedded_rows():
+    import ac_cluster
+    import pf_stage2
+    import rt_metrics
+
+    raw, unit, labels, dist = synthetic()
+    # Preserve valid dtypes/norms, but break the agreement of the two representations.
+    rng = np.random.default_rng(42)
+    unit = {s: x[rng.permutation(len(x))] for s, x in unit.items()}
+    expected_clu = []
+    expected_map = []
+    for s in pf_paths.SEEDS:
+        stored_parts = ac_cluster.partitions(raw[s])
+        embedded_parts = ac_cluster.partitions(unit[s])
+        stored_ami = ac_cluster.ami(stored_parts, labels)
+        assert not np.array_equal(stored_parts, embedded_parts)
+        assert abs(stored_ami - ac_cluster.ami(embedded_parts, labels)) > 0.01
+        expected_clu.append(stored_ami)
+        expected_map.append(float(rt_metrics.retrieval(unit[s], labels, workers=1)['ap'].mean()))
+    result = pf_stage2.ranges(raw.__getitem__, unit.__getitem__, labels=labels, dist=dist, workers=1)
+    np.testing.assert_array_equal(result['clu']['per_seed'], expected_clu)
+    np.testing.assert_array_equal(result['map']['per_seed'], expected_map)
+
+
 @pytest.mark.parametrize('missing', ['stored', 'embed'])
 def test_ranges_require_all_five_runs(missing):
     import pf_stage2
@@ -132,7 +156,7 @@ def test_record_has_the_shared_schema_and_keeps_unrounded_numbers():
               for metric in measured}
     _, unit, labels, _ = synthetic()
     selected = pf_stage2.readout(unit, measured['map']['r'], labels=labels, workers=1)
-    result = pf_stage2.record(measured, selected, r12_ranges=frozen)
+    result = pf_stage2.record(measured, selected, r12_ranges=frozen, width=8)
     assert result == {'ranges': measured, 'r12_ranges': frozen, 'readout': selected}
     assert json.loads(json.dumps(result, allow_nan=False)) == result
     measured['clu']['per_seed'][0] = 999
@@ -148,6 +172,34 @@ def test_record_refuses_a_missing_run_or_an_edited_range():
     for bad in ({'per_seed': [0.1] * 4, 'r': 0.1}, {'per_seed': [0.1, 0.2, 0.3, 0.4, 0.5], 'r': 0.3}):
         with pytest.raises(AssertionError):
             pf_stage2.record(dict(measured, clu=bad), selected, r12_ranges=measured)
+
+
+def test_record_refuses_readout_scored_with_another_range():
+    import pf_stage2
+
+    measured = {metric: {'per_seed': [0.1, 0.2, 0.3, 0.4, 0.5], 'r': 0.4}
+                for metric in ('clu', 'map', 'ndcg')}
+    _, unit, labels, _ = synthetic()
+    wrong = pf_stage2.readout(unit, pf_paths.R12_R_MAP, labels=labels, workers=1)
+    with pytest.raises(AssertionError):
+        pf_stage2.record(measured, wrong, r12_ranges=measured, width=8)
+    right = pf_stage2.readout(unit, measured['map']['r'], labels=labels, workers=1)
+    assert pf_stage2.record(measured, right, r12_ranges=measured, width=8)['readout'] == right
+
+
+def test_record_requires_the_complete_menu_in_tie_order():
+    import pf_stage2
+    import rt_readout
+
+    measured = {metric: {'per_seed': [0.1, 0.2, 0.3, 0.4, 0.5], 'r': 0.4}
+                for metric in ('clu', 'map', 'ndcg')}
+    scores = {rt_readout.name(ro): {'map': {'emotion': 0.25}, 'score': 0.0, 'kept': True}
+              for ro in rt_readout.menu(2048)}
+    selected = {'pick': 'none+k0', 'scores': scores}
+    assert pf_stage2.record(measured, selected, r12_ranges=measured)['readout'] == selected
+    for bad in (dict(list(scores.items())[:-1]), dict(reversed(list(scores.items())))):
+        with pytest.raises(AssertionError):
+            pf_stage2.record(measured, dict(selected, scores=bad), r12_ranges=measured)
 
 
 def test_gate_writes_failures_for_each_range_and_readout_field(tmp_path, monkeypatch):
