@@ -1396,3 +1396,11 @@
 - Handoff: docs/superpowers/handoffs/2026-10-31-r13-decide-2-handoff.md
 - New chat: tab 'r13 decide 2', session b74d81b8-4841-446a-8ba1-944bc40c5fd4
 
+[brief] CoSiR: r13 decide 2 -> r13 build (2026-11-01 15:34 Amsterdam)
+- Done: r13 decided, specced, rule-reviewed (Opus xhigh, all fixes applied) and approved from the brief; no container restart.
+- State: frozen c* is below its teacher on Affection test (AMI −0.0282, mAP −0.0190); r13 fine-tunes it on 72,255 unlabeled train photos minus about 2,328 near-copies of held photos.
+- Next: tickets, build and final review of the spec's code; then open the run chat.
+- Blocked: nothing (PolyArt waits for the user's link; not in r13).
+- Handoff: docs/superpowers/handoffs/2026-11-01-r13-build-handoff.md
+- New chat: tab 'r13 build', session f434bfe3-0dcb-464c-83fb-8a42a3a38e99
+
