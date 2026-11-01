@@ -143,6 +143,8 @@ Teacher gain share = (model minus plain) / (teacher minus plain), point values o
 |AMI|127.5%|54.9%|
 |Picked mAP|145.9%|61.5%|
 
+On paintings, frozen c* reached 103.4% of the teacher's mAP gain (12,281 held ArtELingo paintings; [r12](2026-12-31_affection_confirmation.md)). The photo model was not tested on paintings.
+
 Plain cosine and graded nDCG keep the order. nDCG uses emotion overlap without query expansion, also after the picked transform.
 
 |Arm|R0: plain-cosine mAP|R0: nDCG|Picked-transform nDCG|
