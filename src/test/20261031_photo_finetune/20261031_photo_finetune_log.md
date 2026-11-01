@@ -37,3 +37,45 @@ Gates (all ok): parity images min cosine 0.99974 (200 rows), parity texts 0.9993
 0.0).
 
 GPU peak and power not measured (light: 2,000 images, 2-epoch runs).
+
+## Final whole-branch review and fix wave (2026-11-01 17:33 to 18:20, build chat 5)
+
+Opus `xhigh` review in four parts (a first reviewer stopped at its context limit; three parts went on in parallel).
+Record: `.scratch/r13-photo-finetune/notes/final_review.md` (outside git), details in `review_final/part_{A,B,C}.md`.
+No FIX BEFORE RUN; nothing gave a wrong number. Leakage ruled out for smoke 1's row 1 score (a retrain with random
+validation arrays gives the same checkpoint bit for bit; a ridge map default to teacher image on the fit photos
+reaches validation AMI 0.1561, mAP 0.2921, below the teacher's 0.1719, 0.3044). Hard rule 6: SC1 to SC5 and D1 to
+D14 all covered.
+
+Fix wave, two Codex jobs (`gpt-6.1-sol` high), merged `b56b86a` (W1) and `c35db35` (W2):
+- W1: stage 2 refuses a sheet whose picked sweep run is missing, failed, of other settings or of another fit set, and
+  a reused run of another fit set (B2); stage 1 is sealed by the sheet and `stage1/rows.json`; C13 compare always
+  runs and diag reruns when older than the verdict or the compare (B1); stage 3 checks r', the read-out, and the
+  final runs' seeds, start hashes and fit set before any test export (A1, D10, D12); wiring tests past the guards;
+  full-run refusal of the smoke flags tested (A2); require_gates refuses a 0a of another smoke setting (A3); stage
+  tracebacks go into the stage log; the dead smoke relaxation of the full-draws gate item removed.
+- W2: the 13 deferred ticket-review notes (sweep sheet and pick guards, stage 2 and stage 3 guard tests, stage 3
+  checks of each comparator's point and AMI against r12's records, near-copy cut and count tests, graph refusals).
+- All targeted mutants fail a fast test (W1 14 of 14, W2 56 of 56). Fast suite 362 passed. Sonnet `high`
+  re-review: pass (`notes/fix_wave_rereview.md`).
+
+## Build smoke 2 (2026-11-01 18:13 to 18:37, build chat 5, after the fix wave)
+
+`bash pf_queue.sh smoke <scratch>/smoke2` on `r13-photo-finetune` at `c35db35`, same settings as smoke 1. All steps
+exit 0; the two commit steps are skipped in smoke, as designed.
+
+| Step | Seconds |
+|---|---|
+| extract_images | 126 |
+| extract_texts | 184 |
+| stage0a | 580 |
+| stage1 | 31 |
+| stage2 | 169 |
+| stage3 | 72 |
+| c13_derive | 188 |
+| c13_compare | 3 |
+| diag | 76 |
+
+Gates 10 of 10 ok; C13 compare 298 items, 0 mismatches; diag ok. The new stage 3 comparator checks pass on r12's
+records. Rerun test of B1: with `stage3/verdict.json` moved aside, the queue reran stage 3, compare and diag (3 run,
+8 skipped, 18:37 to 18:40), and the new verdict equals the first byte for byte.
