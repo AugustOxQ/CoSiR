@@ -1404,3 +1404,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-01-r13-build-handoff.md
 - New chat: tab 'r13 build', session f434bfe3-0dcb-464c-83fb-8a42a3a38e99
 
+[brief] CoSiR: r13 build -> r13 build 2 (2026-11-01 15:53 Amsterdam)
+- Done: build chat 1 wrote the code map (Codex), the 13 tickets and the shared paths module (`pf_paths`); cut at 200k context.
+- State: integration branch `r13-photo-finetune` (one commit, `db2a006`); no ticket started yet.
+- Next: dispatch wave 1 (tickets 01, 04, 05), then the rest by the frontier; reviews; final Opus `xhigh` review.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-01-r13-build-2-handoff.md
+- New chat: tab 'r13 build 2', session 16ca8eb8-97ea-4bd0-aa38-2c4c7e896f7c
+
