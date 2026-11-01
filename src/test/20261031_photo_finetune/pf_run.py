@@ -27,6 +27,7 @@ import json
 import subprocess
 import sys
 import time
+import traceback
 from pathlib import Path
 
 import numpy as np
@@ -41,6 +42,7 @@ import pf_stage2
 import pf_stage3
 import pf_sweep
 import pf_train
+import rs_vh
 
 STAGES = ('0a', '1', '2', '3', 'diag')
 SKIP_NOTE = 'only in smoke (PF_SMOKE)'
@@ -87,6 +89,10 @@ def logged(stage):
         sys.stdout, sys.stderr = _Tee(old[0], f), _Tee(old[1], f)
         try:
             yield
+        except BaseException:
+            # The uncaught traceback reaches real stderr after these streams are restored.
+            traceback.print_exc(file=f)
+            raise
         finally:
             sys.stdout.flush()
             sys.stdout, sys.stderr = old
@@ -126,12 +132,15 @@ def guard_reason(f):
 
 def require_gates(stage):
     """Spec §3.5: stages 1 to 3 run only after stage 0a passed. SystemExit unless OUTPUTS/stage0a/gates.json exists
-    and holds "ok": true (a failed 0a leaves no verdict). Smoke included."""
+    and holds "ok": true for the current smoke setting (a failed 0a leaves no verdict)."""
     f = outputs() / 'stage0a/gates.json'
     if not f.is_file():
         raise SystemExit(f'REFUSED: stage {stage}: {f} does not exist: run stage 0a first')
-    if read_json(f).get('ok') is not True:
+    doc = read_json(f)
+    if doc.get('ok') is not True:
         raise SystemExit(f'REFUSED: stage {stage}: stage 0a did not pass ({f} has no "ok": true)')
+    if doc.get('smoke') != P.SMOKE:
+        raise SystemExit(f'REFUSED: stage {stage}: gates.json smoke differs from PF_SMOKE={P.SMOKE}')
 
 
 def require_records(stage):
@@ -194,7 +203,6 @@ def _nearcopy_item(o):
 
 def gate_items():
     o = outputs() / 'stage0a'
-    full = P.SMOKE == 0
     return {
         '0a(i)_parity_images': _item(o / 'parity_images.json', 'min cosine >= 0.999', _parity),
         '0a(i)_parity_texts': _item(o / 'parity_texts.json', 'min cosine >= 0.999', _parity),
@@ -206,7 +214,7 @@ def gate_items():
                                       _failed_items),
         '0a(ii)_sc_replay': _item(o / 'sc_replay.json', 'r12 SC1-SC4, SC8 within 1e-9 at the full draws',
                                   lambda d: dict(failed=_failed_items(d), full_draws=d['full_draws']),
-                                  extra_ok=lambda d: d['full_draws'] or not full),
+                                  extra_ok=lambda d: d['full_draws']),
         '0a(iii)_inference': _item(o / 'inference.json', 'c* exports within 1e-3, five seeds, val and test',
                                    lambda d: max(d['max_abs_diff'].values())),
         '0a(iv)_graphs': _item(o / 'graphs.json', 'r10 emotion graphs reproduced exactly',
@@ -290,6 +298,9 @@ def train(stage, run_id, settings, cstar_seed, train_seed, graphs, fit, val, arg
     run_json = outputs() / 'runs' / run_id / 'run.json'
     if run_json.is_file():
         rec = read_json(run_json)
+        if rec.get('fit_keys_sha256') != rs_vh.names_sha(pf_data.fit_keys()):
+            raise SystemExit(f'REFUSED: {run_id}: existing run.json has other fit_keys_sha256; '
+                             f'move {run_json.parent} aside to retrain')
         assert rec['settings'] == dict(settings) and rec['cstar_seed'] == cstar_seed and rec['train_seed'] == train_seed, \
             f'{run_id}: existing run.json has other settings or seeds; move {run_json.parent} aside to retrain'
         print(f'  {run_id}: reusing the finished run (status {rec["status"]})', flush=True)
@@ -363,6 +374,19 @@ def final_id(s):
     return f'final/s{s}'
 
 
+def require_sweep_pick(pick):
+    """Reject a stale sheet before loading arrays or training with another outputs root / fit set."""
+    run_id = f'sweep/row{pick["row"]}'
+    path = outputs() / 'runs' / run_id / 'run.json'
+    if not path.is_file():
+        raise SystemExit(f'REFUSED: stage 2: {run_id}: {path} does not exist')
+    run = read_json(path)
+    if (run.get('status') != 'ok' or run.get('settings') != pick['settings']
+            or run.get('fit_keys_sha256') != rs_vh.names_sha(pf_data.fit_keys())):
+        raise SystemExit(f'REFUSED: stage 2: {run_id}: run must be ok with the sheet pick settings '
+                         'and current fit_keys_sha256')
+
+
 def stage2(args):
     require_gates('2')
     require_records('2')                            # the guard comes before any data is loaded
@@ -371,6 +395,7 @@ def stage2(args):
     pick = sheet['pick']
     settings = {c: pick['settings'][c] for c in P.COLUMNS}
     assert settings == pick['settings'], pick
+    require_sweep_pick(pick)
     print(f'  pick: row {pick["row"]}, settings {settings}', flush=True)
     fit, val = load_arrays()
     graphs = Graphs(fit, val, '2')
@@ -408,22 +433,35 @@ class RunLoader:
         return pf_export.embed(final_id(seed), split)
 
 
+def require_final_runs(sheet, rec, pick, r):
+    """D10/D12 and frozen argument checks that need no test data, before any test export."""
+    assert pick == rec['readout']['pick'], 'read-out differs from the stage 2 record'
+    assert r == {'clu': rec['ranges']['clu']['r'], 'map': rec['ranges']['map']['r']} and \
+        rec['ranges'] != rec['r12_ranges'], 'r must be the record\'s photo-model ranges, not r12\'s'
+    fit_sha = rs_vh.names_sha(pf_data.fit_keys())
+    for s in P.SEEDS:
+        run = read_json(outputs() / 'runs' / final_id(s) / 'run.json')
+        assert run['status'] == 'ok' and run['settings'] == sheet['pick']['settings'], (final_id(s), 'not the sheet pick')
+        assert type(run['cstar_seed']) is int and run['cstar_seed'] == s, (final_id(s), 'cstar_seed')
+        assert type(run['train_seed']) is int and run['train_seed'] == P.train_seed(s), (final_id(s), 'train_seed')
+        expected_start = (read_json(Path(P.CSTAR_WEIGHTS) / f'emotion__s{s}.json')['weights_sha256']
+                          if run['settings']['start'] == 'cstar' else None)
+        assert run['cstar_weights_sha256'] == expected_start, (final_id(s), 'cstar_weights_sha256')
+        assert run['fit_keys_sha256'] == fit_sha, (final_id(s), 'fit_keys_sha256')
+
+
 def stage3(args):
     require_gates('3')
     require_records('3')                            # the guard comes before any test export
     sheet, rec = read_json(P.SHEET_FILE), read_json(P.STAGE2_FILE)
     pick = rec['readout']['pick']
     r = {'clu': rec['ranges']['clu']['r'], 'map': rec['ranges']['map']['r']}      # the photo model's r' from the record
-    for s in P.SEEDS:
-        run = read_json(outputs() / 'runs' / final_id(s) / 'run.json')
-        assert run['status'] == 'ok' and run['settings'] == sheet['pick']['settings'], (final_id(s), 'not the sheet pick')
+    require_final_runs(sheet, rec, pick, r)
     with step('3', 'test exports'):                 # the first test number: only now, after the guard
         for s in P.SEEDS:
             pf_export.export(final_id(s), 'test')
     cand = pf_stage3.candidate_from_data('photo', pick, RunLoader)
     assert cand.readout == pick == rec['readout']['pick'], 'candidate read-out differs from the stage 2 record'
-    assert r == {'clu': rec['ranges']['clu']['r'], 'map': rec['ranges']['map']['r']} and \
-        rec['ranges'] != rec['r12_ranges'], 'r must be the record\'s photo-model ranges, not r12\'s'
     assert cand.val_embed.shape[:2] == (5, N_VAL), ('validation embeddings', cand.val_embed.shape)
     with step('3', 'SC1-SC5'):
         res = pf_stage3.stage3(cand, r, workers=args.workers, draws_clu=args.draws_clu, draws_ret=args.draws_ret)
