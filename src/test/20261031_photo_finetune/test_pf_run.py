@@ -391,3 +391,13 @@ def test_stage_crash_traceback_is_saved_in_stage_log(repo, monkeypatch, capsys):
     assert 'before crash stdout' in captured.out and 'before crash stderr' in captured.err
     print('after restoration')
     assert 'after restoration' not in (P.OUTPUTS / 'logs/2.log').read_text()
+
+
+@pytest.mark.parametrize('smoke', [0, 2000])
+@pytest.mark.parametrize('full_draws', [False, True])
+def test_sc_gate_always_requires_full_draws(repo, monkeypatch, smoke, full_draws):
+    monkeypatch.setattr(P, 'SMOKE', smoke)
+    monkeypatch.setattr(P, 'NEARCOPY_FILE', repo / 'absent_nearcopy.json')
+    pf_run.write_json(P.OUTPUTS / 'stage0a/sc_replay.json', dict(ok=True, items={}, full_draws=full_draws))
+    item = pf_run.gate_items()['0a(ii)_sc_replay']
+    assert item['ok'] is full_draws

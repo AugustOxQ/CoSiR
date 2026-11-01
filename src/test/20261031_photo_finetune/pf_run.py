@@ -203,7 +203,6 @@ def _nearcopy_item(o):
 
 def gate_items():
     o = outputs() / 'stage0a'
-    full = P.SMOKE == 0
     return {
         '0a(i)_parity_images': _item(o / 'parity_images.json', 'min cosine >= 0.999', _parity),
         '0a(i)_parity_texts': _item(o / 'parity_texts.json', 'min cosine >= 0.999', _parity),
@@ -215,7 +214,7 @@ def gate_items():
                                       _failed_items),
         '0a(ii)_sc_replay': _item(o / 'sc_replay.json', 'r12 SC1-SC4, SC8 within 1e-9 at the full draws',
                                   lambda d: dict(failed=_failed_items(d), full_draws=d['full_draws']),
-                                  extra_ok=lambda d: d['full_draws'] or not full),
+                                  extra_ok=lambda d: d['full_draws']),
         '0a(iii)_inference': _item(o / 'inference.json', 'c* exports within 1e-3, five seeds, val and test',
                                    lambda d: max(d['max_abs_diff'].values())),
         '0a(iv)_graphs': _item(o / 'graphs.json', 'r10 emotion graphs reproduced exactly',
