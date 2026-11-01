@@ -100,7 +100,7 @@ def test_smoke_flags_and_no_commits(smoke):
     assert steps['commit_sheet_nearcopy'] is None and steps['commit_stage2'] is None
     assert argv(steps, 'extract_images')[-2:] == ['images', '--smoke']
     assert argv(steps, 'extract_texts')[-2:] == ['texts', '--smoke']
-    assert argv(steps, 'stage0a')[-5:] == ['0a'] + DRAWS
+    assert argv(steps, 'stage0a')[-1] == '0a'               # full draws: the SC replay gate needs them
     assert argv(steps, 'stage1')[-5:] == ['1', '--rows', '1,8', '--max-epochs', '2']
     assert argv(steps, 'stage2')[-3:] == ['2', '--max-epochs', '2']
     assert argv(steps, 'stage3')[-5:] == ['3'] + DRAWS

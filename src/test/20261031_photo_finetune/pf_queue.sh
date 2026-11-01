@@ -226,7 +226,8 @@ PFREDERIVE=("$PYTHON" "$SCRIPT_DIR/pf_rederive.py")
 EXTRACT_FLAGS=() S0A_FLAGS=() S1_FLAGS=() S2_FLAGS=() S3_FLAGS=() DERIVE_FLAGS=()
 if [[ $MODE == smoke ]]; then
     EXTRACT_FLAGS=(--smoke)
-    S0A_FLAGS=("${SMOKE_DRAWS[@]}")
+    # S0A_FLAGS stays empty: gate 0a(ii)'s SC replay matches r12's intervals within 1e-9 only at the full draws
+    # (about 95 s); at smoke draws only the points match and gates.json is not ok (smoke 1, 2026-11-01).
     S1_FLAGS=(--rows 1,8 --max-epochs 2)
     S2_FLAGS=(--max-epochs 2)
     S3_FLAGS=("${SMOKE_DRAWS[@]}")
