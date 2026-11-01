@@ -1420,3 +1420,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-01-r13-build-3-handoff.md
 - New chat: tab 'r13 build 3', session 961079eb-9f0b-4f5f-a7c8-6b9c3058cc4f
 
+[brief] CoSiR: r13 build 3 -> r13 build 4 (2026-11-01 16:56 Amsterdam)
+- Done: build chat 3 merged tickets 04, 08, 09 (review fixes applied, gates still pass), 10 and 11; 12 of 13 tickets built.
+- State: ticket 12 (the C13 re-derivation) is reviewed and waits on one Codex fix round; ticket 13 is not started.
+- Next: send ticket 12's fix by Codex resume, build 13, run the smoke, then the final Opus review, fix wave, merge to main.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-01-r13-build-4-handoff.md
+- New chat: tab 'r13 build 4', session bdddaed0-e3a1-4db8-b151-872b891c175d
+
