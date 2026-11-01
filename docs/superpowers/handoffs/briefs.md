@@ -1444,3 +1444,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-01-r13-run-handoff.md
 - New chat: tab 'r13 run', session 3bf88693-a46a-4785-813e-8413003a012c
 
+[brief] CoSiR: r13 run -> r14 decide (2026-11-01 21:42 Amsterdam)
+- Done: the r13 run finished (queue 18:43 to 21:24, all 11 steps ok). The verdict is "holds", and C13 agrees on all 378 items. The auto report and the user-read report are committed.
+- State: photo model against the teacher on Affection test: AMI 0.1838 against 0.1666, mAP 0.3172 against 0.2945. Both are WINs.
+- Next: r14 decide: step 1 (the user's reading), the r13 wrap-up, then step 2.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-01-r13-run-2-handoff.md
+- New chat: tab 'r14 decide', session 231885ae-9168-4719-bb17-fc882c65ec41
+
