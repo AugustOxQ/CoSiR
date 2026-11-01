@@ -1436,3 +1436,11 @@
 - Handoff: docs/superpowers/handoffs/2026-11-01-r13-build-5-handoff.md
 - New chat: tab 'r13 build 5', session 2e68287b-d82f-48de-a02f-92b84b958992
 
+[brief] CoSiR: r13 build 5 -> r13 run (2026-11-01 18:42 Amsterdam)
+- Done: the build is finished and merged into main (`269edae`). The final review (Opus `xhigh`) found no wrong number; one fix wave fixed 5 findings and 13 older notes; the re-review passed; smoke 2 passed (C13: 298 items equal).
+- State: ready to run. Frozen c* is below its teacher on Affection test (AMI −0.0282, mAP −0.0190); r13 fine-tunes it on the train photos.
+- Next: `bash src/test/20261031_photo_finetune/pf_queue.sh full` from `/project/CoSiR` (about 5 to 6 h, ends about 01:00), then verify, then the two reports.
+- Blocked: nothing.
+- Handoff: docs/superpowers/handoffs/2026-11-01-r13-run-handoff.md
+- New chat: tab 'r13 run', session 3bf88693-a46a-4785-813e-8413003a012c
+
