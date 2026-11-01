@@ -177,3 +177,20 @@ def test_stage1_seal_needs_sheet_and_output(queue_harness):
     assert run()['stage1'] == '0'
     assert rows.is_file()
     assert run()['stage1'] == 'skipped'
+
+
+@pytest.mark.parametrize('newer', ['verdict', 'rederive', 'diag'])
+def test_compare_always_runs_and_diag_requires_fresh_inputs(queue_harness, newer):
+    import os
+    out, run = queue_harness
+    run()
+    paths = {'verdict': out / 'stage3/verdict.json', 'rederive': out / 'rederive/rederive.json',
+             'diag': out / 'diag/diag.json'}
+    # Explicit mtimes avoid sleeps and filesystem timestamp resolution dependence.
+    for name, path in paths.items():
+        stamp = (2_000_000_010 if newer == 'diag' else 1_000_000_010) if name == newer else 1_000_000_000
+        os.utime(path, (stamp, stamp))
+    status = run()
+    assert status['c13_derive'] == 'skipped'
+    assert status['c13_compare'] == '0'
+    assert status['diag'] == ('skipped' if newer == 'diag' else '0')

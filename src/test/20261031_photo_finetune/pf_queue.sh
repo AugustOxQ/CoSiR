@@ -272,9 +272,15 @@ SEALS=("$OUT/stage3/verdict.json")
 run_step stage3 "${PFRUN[@]}" 3 "${S3_FLAGS[@]}"
 SEALS=("$OUT/rederive/theirs.json")
 run_step c13_derive "${PFREDERIVE[@]}" derive --workers 8 "${DERIVE_FLAGS[@]}"
-SEALS=("$OUT/rederive/rederive.json")
+# Compare every verdict, including a stage 3 rerun against an already derived result.
+SEALS=()
 run_step c13_compare "${PFREDERIVE[@]}" compare
-SEALS=("$OUT/diag/diag.json")
+SEALS=()
+if [[ $OUT/diag/diag.json -nt $OUT/stage3/verdict.json &&
+      $OUT/diag/diag.json -nt $OUT/rederive/rederive.json &&
+      -f $OUT/stage3/verdict.json && -f $OUT/rederive/rederive.json ]]; then
+    SEALS=("$OUT/diag/diag.json")
+fi
 run_step diag "${PFRUN[@]}" diag
 
 printf 'All steps done (%s): %d run, %d skipped.\n' "$MODE" "$N_RUN" "$N_SKIP"
