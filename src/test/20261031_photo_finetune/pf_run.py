@@ -124,6 +124,16 @@ def guard_reason(f):
     return ''
 
 
+def require_gates(stage):
+    """Spec §3.5: stages 1 to 3 run only after stage 0a passed. SystemExit unless OUTPUTS/stage0a/gates.json exists
+    and holds "ok": true (a failed 0a leaves no verdict). Smoke included."""
+    f = outputs() / 'stage0a/gates.json'
+    if not f.is_file():
+        raise SystemExit(f'REFUSED: stage {stage}: {f} does not exist: run stage 0a first')
+    if read_json(f).get('ok') is not True:
+        raise SystemExit(f'REFUSED: stage {stage}: stage 0a did not pass ({f} has no "ok": true)')
+
+
 def require_records(stage):
     """The guard: stage 2 needs the sheet, stage 3 the sheet and the stage 2 record, committed. SystemExit (nonzero)
     before any data is loaded when one fails. The files are read from `pf_paths` at call time."""
@@ -302,6 +312,7 @@ def parse_rows(text):
 
 
 def stage1(args):
+    require_gates('1')                              # before any data is loaded
     rows_run = list(range(1, 9)) if args.rows is None else parse_rows(args.rows)
     assert args.rows is None or P.SMOKE > 0, f'--rows {SKIP_NOTE}'    # rows outside enter the sheet as skipped: never in a full run
     assert 1 in rows_run, 'row 1 must run (the sheet and the pick need it)'
@@ -353,6 +364,7 @@ def final_id(s):
 
 
 def stage2(args):
+    require_gates('2')
     require_records('2')                            # the guard comes before any data is loaded
     assert args.rows is None, '--rows is a stage 1 option'
     sheet = read_json(P.SHEET_FILE)
@@ -397,6 +409,7 @@ class RunLoader:
 
 
 def stage3(args):
+    require_gates('3')
     require_records('3')                            # the guard comes before any test export
     sheet, rec = read_json(P.SHEET_FILE), read_json(P.STAGE2_FILE)
     pick = rec['readout']['pick']

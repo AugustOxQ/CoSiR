@@ -3,6 +3,7 @@ committed stage 2 record (and sheet). The records live in a temporary git repo; 
 `STAGE2_FILE` and `SMOKE` are monkeypatched (the stages read them at call time). The files hold junk ('{}'), so a
 stage whose guard was removed fails with a KeyError right after the guard, before any data, run or export is touched."""
 import argparse
+import json
 import subprocess
 
 import pytest
@@ -24,7 +25,14 @@ def repo(tmp_path, monkeypatch):
     monkeypatch.setattr(P, 'SMOKE', 0)
     monkeypatch.setattr(P, 'SHEET_FILE', tmp_path / 'stage1_sheet.json')
     monkeypatch.setattr(P, 'STAGE2_FILE', tmp_path / 'stage2_records.json')
+    monkeypatch.setattr(P, 'OUTPUTS', tmp_path / 'outputs')
+    write_gates(tmp_path / 'outputs', True)
     return tmp_path
+
+
+def write_gates(outputs, ok):
+    (outputs / 'stage0a').mkdir(parents=True, exist_ok=True)
+    (outputs / 'stage0a/gates.json').write_text(json.dumps({'items': {}, 'ok': ok}))
 
 
 def commit(repo, f):
@@ -85,3 +93,25 @@ def test_stage3_passes_the_guard_with_both_committed(repo):
         commit(repo, f)
     with pytest.raises(KeyError):
         pf_run.stage3(ARGS)
+
+
+def commit_records(repo):
+    for f in (P.SHEET_FILE, P.STAGE2_FILE):
+        f.write_text('{}')
+        commit(repo, f)
+
+
+@pytest.mark.parametrize('stage', ['1', '2', '3'])
+def test_stages_refuse_without_gates_json(repo, stage):
+    commit_records(repo)                                            # so only the gates guard can refuse
+    (P.OUTPUTS / 'stage0a/gates.json').unlink()
+    with pytest.raises(SystemExit, match=f'REFUSED: stage {stage}: .*gates.json does not exist'):
+        getattr(pf_run, f'stage{stage}')(ARGS)
+
+
+@pytest.mark.parametrize('stage', ['1', '2', '3'])
+def test_stages_refuse_when_gates_not_ok(repo, stage):
+    commit_records(repo)
+    write_gates(P.OUTPUTS, False)
+    with pytest.raises(SystemExit, match=f'REFUSED: stage {stage}: stage 0a did not pass'):
+        getattr(pf_run, f'stage{stage}')(ARGS)
